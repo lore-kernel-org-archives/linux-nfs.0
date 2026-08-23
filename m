@@ -1,159 +1,220 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from mx0b-00154904.pphosted.com (mx0b-00154904.pphosted.com [148.163.137.20])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2DC553612D8
-	for <linux-nfs@vger.kernel.org>; Sun, 23 Aug 2026 01:40:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4E0B636920D
+	for <linux-nfs@vger.kernel.org>; Sun, 23 Aug 2026 11:33:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.137.20
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787449228; cv=none; b=Z3JJ8JCkaVipVhQ9MPWEjWI/Prksdy02ErRnJQWabALQY3oGSl42MjemaIzo74NtfiO0tB2fc5VdShfuHyp3WNpZpUndapSF9Sz4HVw0+P6p79/z4UDFPhddN9MT7zQctK0BWWuP6P3Wn2pOVirJ6GRqbaNPtydQ2nnsqMPbors=
+	t=1787484799; cv=none; b=DVk38wCDG5TwyGNgbQvO0IzkOTSQ7u/sSZAT+ykI5B7tdgjCBDHOaknVuE0SBiZkQal89RDJw8Pyq08no5s1fObvgzpfYFYjfoCDGjBTIPuK+pRu6QHTr5cKcDtcmWT5k9CRW4yZ1dkQG9LWUjhGDmGm8XtrCB35RERL+3Eu/FA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787449228; c=relaxed/simple;
-	bh=ys1Tdxj8ouHjbwJtYte7q7Lwv356iCYaSxo2veTE0L4=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=kSn5A0J4a8MxZMI0yfBktJ26uBGq6v5GLc5zbLRr1tWTtvpONoKfXbrrrU4bs5pP8Sq0Q93CFFebPPxfholAw+VKO10A2QDYOUAb1ZMYWshpHAbNGYyhgiGupvXZSDDmUJZxa7E/Iy/RLEXiFPo4TVREBkmcvYLVFgTsQEPzyeI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jWKLFbSs; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787484799; c=relaxed/simple;
+	bh=7JGgsA30Ai3ow7KuE0EsDOera/bbHxze236C5Kx10cA=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=r/6OSBpIC4N+H7CoKupjCGy/LZV6YtNMevpwxObIvLj/r13kT9axxkKWQEcbEDjva9FtU1Pq7orlpKxexghehKCprZoLbdI8kmTpevGBkdLu8ncs+JMqGd92jNH73lkXAb8SYeoEyoNK4fIBrwfnAr8twIKiZHceHfq/0bahFLc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=nl51xI7V; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=WxUnouEw; arc=none smtp.client-ip=148.163.137.20
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dell.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jWKLFbSs"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 17C1E1F00A3E;
-	Sun, 23 Aug 2026 01:40:26 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787449226;
-	bh=+0KNAk2fNKhKwYrh1f1sgiubznbU4e6nhKrT5lNB60w=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=jWKLFbSsBxpVs6pZP+WLgsT/vSN77nFjRklruMzZXsR4XYJAulKU64BTtbaMK8zzU
-	 aThbXWzQliIza4721fgcWXdaITifvR12EGSw/fVosMGl8kn2ITrHewc/zdlxNjh188
-	 fX+HIieg7/hAUDugOWNQNDFjFOOqbZWfX5DfEZHVbpmpCnhjtqfBFAURzDRseY+bH/
-	 j0tqpc/2gWwP9TUSxqpkoPKJj6EderqckzUrCQQxX7P0hSD0A0Y2WbLK9P0FgQb11i
-	 pdqMYBal5V15k2pOUoHqPf5RmbwxMkE93L/xr+IDCHgj4V30jiz5VIqC0oH12VWCnZ
-	 ctAG8YZrnI+NA==
-From: Chuck Lever <cel@kernel.org>
-Date: Sat, 22 Aug 2026 21:40:16 -0400
-Subject: [PATCH v3 2/2] lockd: Serialize block retries against host
- teardown
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="nl51xI7V";
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="WxUnouEw"
+Received: from pps.filterd (m0170398.ppops.net [127.0.0.1])
+	by mx0b-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67NAA2EE017896
+	for <linux-nfs@vger.kernel.org>; Sun, 23 Aug 2026 07:33:11 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=dell.com; h=cc
+	:content-transfer-encoding:date:from:message-id:mime-version
+	:subject:to; s=smtpout1; bh=Ti35abEh5n+uUg9qgrWVI+E5O4UoV7z2u00q
+	CqgX6GI=; b=nl51xI7Vo/L3DqiHCQTZlCpaiwCaKOwEBHp/hInwTlBeYXEiDDaQ
+	jvPGQu2+sJAhe3xOetNjtV/YZ0g85SOctx95PzyeEjket31S49BKQV9AEhmb2VYr
+	Ml8uqjfQPJEsH9jwAZQcR02LqU0LNmDyxZLkbilUJ29Ibg5mLNV0y6AIwht2UJ60
+	ggRaXGsFQJkxQ4YC7xZD7O2UFhIRavRvO0OalOK0dnOfgJoKR5l0GH7Tpx2Ka7cf
+	Zr1eoz92FTYZi14lxYFqpMkpgy2U7At4HQu+zXZ+tvyiHbDpJQMDa3uEKVrTfmEZ
+	o0wApp5e1Ewo8s17fqVgNoFYQxtwLlLd8g==
+Received: from mx0a-00154901.pphosted.com (mx0a-00154901.pphosted.com [67.231.149.39])
+	by mx0b-00154904.pphosted.com (PPS) with ESMTPS id 4g7704tjvp-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Sun, 23 Aug 2026 07:33:11 -0400 (EDT)
+Received: from pps.filterd (m0134746.ppops.net [127.0.0.1])
+	by mx0a-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67NAA80N428130
+	for <linux-nfs@vger.kernel.org>; Sun, 23 Aug 2026 07:33:10 -0400
+Received: from esapsmtplv09.us.dell.com (esapsmtplv09.us.dell.com [143.166.203.151])
+	by mx0a-00154901.pphosted.com (PPS) with ESMTPS id 4g7x3095ew-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Sun, 23 Aug 2026 07:33:10 -0400 (EDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+  d=dell.com; i=@dell.com; q=dns/txt; s=smtpdev1;
+  t=1787484791; x=1819020791;
+  h=from:to:cc:subject:date:message-id:mime-version:
+   content-transfer-encoding;
+  bh=Ti35abEh5n+uUg9qgrWVI+E5O4UoV7z2u00qCqgX6GI=;
+  b=WxUnouEwoZw2OiGxT4bXV9KXfhkR+yRamZ5thGynW5gubSjRmtk6ACwq
+   KCE9wR3GYyBX7wdS5aDEyOXm+F/g0uDaAtclUderHlriT/Yex96VI6zGO
+   xBwz0OCIAOaVuFw+WUJ5gXdECco4I2e13JKs+puyA6N+TADQ5NPABxxAi
+   Mm54gaCEGSqeSqAIIkdicIuENXwVtbFdz/DZKEGVEnvgC6yZ5dDp167Q7
+   TE5W9iNTQ+VDltSj/a+khXuy5T2vfChvbLo+pNsITX1EMu/ZUJpt6LQ+d
+   WRsZMLa/C77zO6hQFEq2px8OeDCWxLNPQOWI3HrjBOvX7SGmBlJ7TVypW
+   w==;
+X-CSE-ConnectionGUID: V7rfXtbRTM6yOMT0MTwhuQ==
+X-CSE-MsgGUID: hHYIMv4TTZO4Sxcgd29Zhg==
+X-LoopCount0: from 10.17.189.166
+X-MS-Exchange-CrossPremises-AuthAs: Internal
+Received: from unknown (HELO W-96J1TH4.blr.amer.dell.com) ([10.17.189.166])
+  by esapsmtplv09.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 23 Aug 2026 11:33:07 +0000
+From: prabhakar.pujeri@dell.com
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>
+Cc: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>,
+        Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+        Rick Macklem <rmacklem@uoguelph.ca>, linux-nfs@vger.kernel.org,
+        Prabhakar Pujeri <prabhakar.pujeri@dell.com>
+Subject: [PATCH] nfsd: release POSIX ACLs of unexecuted compound ops
+Date: Sun, 23 Aug 2026 11:32:55 +0000
+Message-ID: <20260823113255.3417-1-prabhakar.pujeri@dell.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260822-lockd-retry-blocked-uaf-v3-2-761661eae60c@kernel.org>
-References: <20260822-lockd-retry-blocked-uaf-v3-0-761661eae60c@kernel.org>
-In-Reply-To: <20260822-lockd-retry-blocked-uaf-v3-0-761661eae60c@kernel.org>
-To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
- Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>, Trond Myklebust <trondmy@kernel.org>, 
- Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>, 
- sashiko-bot <sashiko-bot@kernel.org>
-X-Mailer: b4 0.16-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3267; i=cel@kernel.org;
- h=from:subject:message-id; bh=ys1Tdxj8ouHjbwJtYte7q7Lwv356iCYaSxo2veTE0L4=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqik+IAzy43AbSBaHXZgEdnvVrLoTTfc+ez2zME
- vDc8tKFIgiJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaopPiAAKCRAzarMzb2Z/
- l7r8D/0ckzdJ8s4gImY6Q20EVi+IAhF1z4N971RYjgviRxp6rXtO59croOqr83DwclwjiUC3GLj
- uYrZdUdiKtYvYBWpaGnS9YXIASafvTB6nNREcQpdNIXi6UiA3gcz9/Jd6HfYFYcjevGzKXs9U6h
- iWKrgHowoq0exx3GYmNJn1wFTcbrzKFThCGVURgW6V+dBhGSFv0rcrk58ZZapYlNjW5KFOnYQ3W
- U0KV5ZQVKh6tU521Hj6HMdhD6s6tFBLiOmfNfAnvkxrIwHJP6Mgp4F67/d+Xmn9sLQN+nOi1Uoi
- NSzzWfgrGU5VzFmezSWylDVpauh7uPqkC7LgfwAe1lUAkWG1Gy0pFsE7cbf9/cLLR3yKzeQn3V9
- 8Dka7HonxcfTqLy5WpAN4jiQOOmpfy3tqAAVyd71uA2JGn2LIKS4TKB8K3ho3wvcm2YwzgZDu19
- 2C0tLXvYhNYVTi3aFOSmfuO5zP3cN8m4vmCQUrMmCOZusquObGp3pKmT3k6Slfv2idAo22bqBFM
- 8Nr1PNZxebcKodPQsn+fvt8gJ/ckHKqJrf6qcSIbLGhsIeSnlecyzaZwacXg00PxTnWpRGb6Rwk
- FrIYWTF216dJ6jUABMZnUu6U1ppm4RDi3HQDQL20ncQcNt4rcTq7nGfMTk8GWHI9AgLvjAk6mBx
- 2BjkHb6FtKTNveQ==
-X-Developer-Key: i=cel@kernel.org; a=openpgp;
- fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
+Content-Transfer-Encoding: 8bit
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
+ definitions=2026-08-23_04,2026-08-21_02,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ phishscore=0 bulkscore=0 adultscore=0 malwarescore=0 suspectscore=0
+ spamscore=0 priorityscore=1501 impostorscore=0 clxscore=1011
+ lowpriorityscore=0 classifier=typeunknown authscore=0 authtc= authcc=
+ route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2606150000
+ definitions=main-2608230104
+X-Proofpoint-Spam-Info: AW1haW4tMjYwODIzMDEwNSBTYWx0ZWRfXxTiD6rEE/LhH
+ /md46MOLAsSujhBZJzwJ9YpLnD5tbgf5R3esrCPX6yGrLPwLIRlEpnG12iIRgn/7rTF8KnaW4Fw
+ R6SCnmE/BeJhBHZmq1JAj27oPlxke2s=
+X-Proofpoint-ORIG-GUID: qBSTsq2H3BM3waFeDmdW-YOVDQY0nkQ0
+X-Proofpoint-GUID: qBSTsq2H3BM3waFeDmdW-YOVDQY0nkQ0
+X-Authority-Analysis: v=2.4 cv=JpPBas4C c=1 sm=1 tr=0 ts=6a8ada77 cx=c_pps
+ a=j0++y401J6f/BxNAf5EDow==:117 a=1BWgYg405ukQaXe9BCXDPw==:17
+ a=b3DhMmMkJVNBYjixYE3i3TbOsPs=:19 a=Sv0fKeRqtYgA:10 a=ke5jqHz-1hQA:10
+ a=VkNPw1HP01LnGYTKEx00:22 a=6gNNCFAoQcIphELLPWWu:22 a=vUAfKriDyi6VqHAKCLgX:22
+ a=iLNU1ar6AAAA:8 a=ktf7JTcnP4ES0ovlpp0A:9 a=gbU3OgOOxF9bX48Letew:22
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODIzMDEwNSBTYWx0ZWRfX8esBOKUH3LNm
+ qP2+FNATprTMltBziNgjEWiOYJ62X0CW4UccBpQGnAWLCLphonL/+wiFCwB51da9mT15A+cSoe2
+ Vl41/rf+Q6SD65000jCCgeHNh81aEUQN7/42k+x6uZfbq/YOBvV4KkjJ1tBBjqZLTh6aQawL5i9
+ iQhv+lrg7okDziA8EwtpBwUJC3FEDT7PjNxuXKX5pM5n1wLMborxViw86HOZDYLUENZBcQdSgQt
+ AYGHawLhIZJcTA2VlTdrSzyRqeSnYr4d6b3g6g4ZFX9CNdP6fu46A4lUP2egVXnHkF2BbI/c3hg
+ 3VPbuKRU8BzK3yJ0E0eeDJ8jn1C7oUun3w8wOPAY70Pyx7wiUiJBrCAuYKnkxyYRwNbjCWSHwKC
+ hczzgdo3Q0QY6utUxCPssF2LNTCT+8k98ftALkh4n+y+EEDsD11PDWB6YIXvr4Nix9UvqW5IoxG
+ y+loxMpLah3tzqkOTQA==
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0
+ lowpriorityscore=0 bulkscore=0 clxscore=1011 spamscore=0 suspectscore=0
+ impostorscore=0 adultscore=0 priorityscore=1501 phishscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608230105
 
-nlmsvc_grant_blocked() unlinks a block from nlm_blocked before it
-retries the lock, then re-inserts it. nlmsvc_traverse_blocks() skips a
-block that is not on nlm_blocked, so a teardown scan that runs during a
-retry passes it by and the retry puts it back. The surviving block pins
-its host. lockd warns that it could not shut down the host module, and
-the host outlives its network namespace.
+From: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
 
-Hold the file's f_mutex across the retry, and extend the scan's hold
-across its unlink, so a scan and a retry of the same file can no longer
-interleave. Drop the mutex before releasing a block reference, since
-the last put takes f_mutex. A retry that waited out a scan re-checks
-under nlm_blocked_lock that its block is still queued and due.
+nfsd4_decode_fattr4() allocates POSIX ACLs while decoding OP_OPEN,
+OP_CREATE, and OP_SETATTR. Normally a processed OPEN releases them from
+its op_release callback, while CREATE and SETATTR transfer ownership to
+struct nfsd_attrs and clear their pointers.
 
-Reported-by: sashiko-bot <sashiko-bot@kernel.org>
-Closes: https://sashiko.dev/#/patchset/20260819162247.2970703-1-cel@kernel.org?part=1
-Signed-off-by: Chuck Lever <cel@kernel.org>
+If compound processing stops before a decoded ACL-bearing operation,
+nfsd4_release_compoundargs() frees the operation array without dropping
+those ACL references. A client can repeat an aborting compound to leak
+server memory.
+
+Release ACLs that remain attached to decoded operations when the
+compound arguments are destroyed. Clear the OPEN pointers in its release
+callback so the final sweep remains idempotent for processed operations;
+CREATE and SETATTR already clear theirs when transferring ownership.
+
+The procedure release callback also runs after a hard XDR decode failure.
+Keep opcnt limited to fully initialized entries on a truncated operation
+number, and clear it when the dynamic operation array cannot be
+allocated, so cleanup never walks stale inline entries or beyond the
+inline array.
+
+An A/B kmemleak test with 512 crafted NFSv4.2 compounds found 347--349
+leaked 64-byte ACL objects without this change and none with it. On the
+rebased kernel, 512 runtime-abort and 512 hard-decode compounds completed
+without a kmemleak or KASAN report.
+
+Fixes: 5fc51dfc2eb1 ("NFSD: Add support for XDR decoding POSIX draft ACLs")
+Signed-off-by: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
 ---
- fs/lockd/svclock.c | 31 ++++++++++++++++++++++++++++---
- 1 file changed, 28 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs4proc.c |  2 ++
+ fs/nfsd/nfs4xdr.c  | 31 ++++++++++++++++++++++++++++++-
+ 2 files changed, 32 insertions(+), 1 deletion(-)
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 8d83283d3e21..495eacb3264f 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -295,14 +295,17 @@ void nlmsvc_traverse_blocks(struct nlm_host *host,
- 	list_for_each_entry_safe(block, next, &file->f_blocks, b_flist) {
- 		if (!match(block->b_host, host))
- 			continue;
--		/* Do not destroy blocks that are not on
--		 * the global retry list - why? */
-+		/*
-+		 * nlmsvc_retry_blocked() holds f_mutex while the block
-+		 * is off nlm_blocked, so a block off the list here has
-+		 * been retired.
-+		 */
- 		if (list_empty(&block->b_list))
- 			continue;
- 		kref_get(&block->b_count);
- 		spin_unlock(&nlm_blocked_lock);
--		mutex_unlock(&file->f_mutex);
- 		nlmsvc_unlink_block(block);
-+		mutex_unlock(&file->f_mutex);
- 		nlmsvc_release_block(block);
- 		goto restart;
- 	}
-@@ -1012,6 +1015,8 @@ nlmsvc_retry_blocked(struct svc_rqst *rqstp)
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 88385a161b4d..3d0404592580 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -800,6 +800,8 @@ nfsd4_open_release(union nfsd4_op_u *u)
  {
- 	unsigned long	timeout = MAX_SCHEDULE_TIMEOUT;
- 	struct nlm_block *block;
-+	struct nlm_file *file;
-+	bool due;
+ 	posix_acl_release(u->open.op_dpacl);
+ 	posix_acl_release(u->open.op_pacl);
++	u->open.op_dpacl = NULL;
++	u->open.op_pacl = NULL;
+ }
  
- 	spin_lock(&nlm_blocked_lock);
- 	while (!list_empty(&nlm_blocked) && !svc_thread_should_stop(rqstp)) {
-@@ -1026,6 +1031,25 @@ nlmsvc_retry_blocked(struct svc_rqst *rqstp)
- 		kref_get(&block->b_count);
- 		spin_unlock(&nlm_blocked_lock);
- 
-+		/*
-+		 * Hold f_mutex so nlmsvc_traverse_blocks() cannot scan
-+		 * the file while the retry has the block off nlm_blocked.
-+		 */
-+		file = block->b_file;
-+		mutex_lock(&file->f_mutex);
-+		spin_lock(&nlm_blocked_lock);
-+		due = !list_empty(&block->b_list) &&
-+		      block->b_when != NLM_NEVER &&
-+		      !time_after(block->b_when, jiffies);
-+		spin_unlock(&nlm_blocked_lock);
-+
-+		if (!due) {
-+			mutex_unlock(&file->f_mutex);
-+			nlmsvc_release_block(block);
-+			spin_lock(&nlm_blocked_lock);
-+			continue;
-+		}
-+
- 		dprintk("nlmsvc_retry_blocked(%p, when=%ld)\n",
- 			block, block->b_when);
- 		if (block->b_flags & B_QUEUED) {
-@@ -1034,6 +1058,7 @@ nlmsvc_retry_blocked(struct svc_rqst *rqstp)
- 			retry_deferred_block(block);
- 		} else
- 			nlmsvc_grant_blocked(block);
-+		mutex_unlock(&file->f_mutex);
- 		nlmsvc_release_block(block);
- 		spin_lock(&nlm_blocked_lock);
+ /*
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index a154b02d82b3..6be367998a40 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2680,6 +2680,7 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 		argp->ops = vcalloc(argp->opcnt, sizeof(*argp->ops));
+ 		if (!argp->ops) {
+ 			argp->ops = argp->iops;
++			argp->opcnt = 0;
+ 			return false;
+ 		}
  	}
+@@ -2692,8 +2693,10 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 		op->replay = NULL;
+ 		op->opdesc = NULL;
+ 
+-		if (xdr_stream_decode_u32(argp->xdr, &op->opnum) < 0)
++		if (xdr_stream_decode_u32(argp->xdr, &op->opnum) < 0) {
++			argp->opcnt = i;
+ 			return false;
++		}
+ 		if (nfsd4_opnum_in_range(argp, op)) {
+ 			op->opdesc = OPDESC(op);
+ 			op->status = nfsd4_dec_ops[op->opnum](argp, &op->u);
+@@ -6836,6 +6839,32 @@ void nfsd4_encode_replay(struct xdr_stream *xdr, struct nfsd4_op *op)
+ void nfsd4_release_compoundargs(struct svc_rqst *rqstp)
+ {
+ 	struct nfsd4_compoundargs *args = rqstp->rq_argp;
++	unsigned int i;
++
++	/*
++	 * Ops that were decoded but never executed (a later op failed to
++	 * decode, or an earlier op failed at runtime) may still hold
++	 * decoded POSIX ACLs; release them here.  Executed ops have
++	 * already released or NULLed their ACL pointers.
++	 */
++	for (i = 0; i < args->opcnt; i++) {
++		struct nfsd4_op *op = &args->ops[i];
++
++		switch (op->opnum) {
++		case OP_OPEN:
++			posix_acl_release(op->u.open.op_dpacl);
++			posix_acl_release(op->u.open.op_pacl);
++			break;
++		case OP_CREATE:
++			posix_acl_release(op->u.create.cr_dpacl);
++			posix_acl_release(op->u.create.cr_pacl);
++			break;
++		case OP_SETATTR:
++			posix_acl_release(op->u.setattr.sa_dpacl);
++			posix_acl_release(op->u.setattr.sa_pacl);
++			break;
++		}
++	}
+ 
+ 	args->opcnt = 0;
+ 	if (args->ops != args->iops) {
 
+base-commit: 01c2994ccb0197cb44b0db89aacab460110f6347
 -- 
 2.54.0
 
