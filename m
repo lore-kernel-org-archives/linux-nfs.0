@@ -1,44 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43082408614
-	for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 12:46:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE862372B2B;
+	Mon, 24 Aug 2026 12:46:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787575571; cv=none; b=FlSIQYX5osnIa4hgeldGNNsGXp7K+llXxWlrZqcqkH2jHNHb51ZHtYFKiGcg4iHewQHzeGnGdm+XxuIsXtNAU/mLduISrVRUaQLG5CMqt87sxiGbIHWoDL+9MpYJoAXbh2901Nk5sxhPonwmkkRT1Fh16GtpUCcwXPqana1rv8o=
+	t=1787575588; cv=none; b=k5RIHZi9zY7p9ifLeE6Xxh+hcg+Tqyz2pJL3y2JEZm72CL4PzdVASSIdzrFehRbAWAZWgjw/S4VDDIk0kExbuMViAGYCpPzvw+IFw68yBvY2tBViFAmoLd5eB4uQyzrRD/Hg+BnZ4bmhUIhWRC4euIwW4gQTby7JDYdFJ8dvt4Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787575571; c=relaxed/simple;
-	bh=QXWIoSsvoLSJuEWBOM1kDzt8e3iGeCt/t3Tp7g15zKQ=;
+	s=arc-20240116; t=1787575588; c=relaxed/simple;
+	bh=EKaXdLhZSTc3+XNNykxVWxk2GQ/l4RcUR3L4VKL3b/w=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=lOvoK7XNP93yjvsojAQOR+7U8ybVrX1fMPUOvayDQrvZaCXU5QJPYVeh7zzfpok8lxQ5oshynJLe8iRIQMGOROOjNQyRkKj9j15UDp6mlIuZsqAK2c3AW8BrhWEjk41Qe4J+eesdvHpg2NcEWNqYyYU6EQkN3/xkrAm6pXBqEf4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IEkJ0r8N; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=TgHO4BNhnUQQkRZWZTHyHB+gJWecZAdu6kW9prwrSd56blMtgRmq7N1AOLE5uWBWe8EPKzti1FYapFsI1xE+1YkGcs6EQXvRAMoNdpERO3TcE0ZnSFWYpOwo/wFYmadupsg3l3lomT7RSZmDo6TQHX81QMpF87sYpZFYCo6fQtQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BxqYjOUO; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IEkJ0r8N"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1D7761F000E9;
-	Mon, 24 Aug 2026 12:46:09 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BxqYjOUO"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 643C91F000E9;
+	Mon, 24 Aug 2026 12:46:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787575569;
-	bh=6B4zeReu69Rql46FLq/n6/HegngFjVMrpar8Ac7qB6A=;
+	s=k20260515; t=1787575587;
+	bh=bRQGSjjBJibHPfHafVx/NE1y6G3aD6gkYt/uM4eeX3g=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=IEkJ0r8N/XaEW9es4xAg/Sgiuukf2Fkgp+9WDqfgm45SjwX7KP+9mSU3FjuzzzFkV
-	 BE4Rh0ctPf9CC1e2tBzq0GBN+eXvjlSWna87lje0f/edjeOULh/Id/5cy3aqzfuNlQ
-	 M8nd+6iL7wF/J3NtVZhZYgJ6zHCRpiVUcaeLpT17HJFOZp6VrE1nb5IapKbcNM3QQr
-	 tBpcQLX6LqU2lDCM0oQhxspdl48yMf79R3o3BtxlIcq5hVKZzzvJEJW3V9FEjdgFSc
-	 DZuZ13BGy5RbspqcRLkU2wrmaIUVdcgtTbfT8hI8+KxlhU98LQxE2uyAmvxzRxdlUo
-	 cQhstV3v3+UUw==
-Message-ID: <40a5b6327dff9aaebb1cf07f75fbed692d4382f6.camel@kernel.org>
-Subject: Re: [PATCH v3 0/2] lockd: Fix two teardown races in the block retry
- loop
+	b=BxqYjOUO7lcXfRW6FW4IH7kaV6g/BTKu6zVvjrnVq+BVnYq0ta8+NQZfh5+dn5QsZ
+	 LMC6+Qd5wjaUNOIGXYu/H+rExXm4CV8TMI9/ZC62qCg0Q1+81Ee9ENIXd8txi+6iyA
+	 XrpvYXYWxTgq13q2OOkxOUOAkONAgHnX19addWbAHc/eNl7XCSk/0+qH1ITUktjxjK
+	 V3si3tzFGiGlTElfETLbCLr9Zi5X8AD6xzgYxxtZzIsIERkMxxAKH59SASIMPkSJN3
+	 IPuF0NO9Pqola0ZTihoomzykEzfAE5gtqGCF08+BtMeunCfBKKnxS+UywSWr2Xo2Ai
+	 WGlhpDc+fenFw==
+Message-ID: <f649df704abcd8f2a972fb91bd24c29afd9e17dd.camel@kernel.org>
+Subject: Re: [PATCH] NFSD: docs: Fix pNFS SCSI Kconfig symbol
 From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>, Trond Myklebust <trondmy@kernel.org>, Anna
- Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org, Shuangpeng Bai <shuangpeng.kernel@gmail.com>,
-  sashiko-bot <sashiko-bot@kernel.org>
-Date: Mon, 24 Aug 2026 08:46:07 -0400
-In-Reply-To: <20260822-lockd-retry-blocked-uaf-v3-0-761661eae60c@kernel.org>
-References: <20260822-lockd-retry-blocked-uaf-v3-0-761661eae60c@kernel.org>
+To: Karl Mehltretter <kmehltretter@gmail.com>, Chuck Lever <cel@kernel.org>
+Cc: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, Christoph
+ Hellwig <hch@lst.de>, 	linux-nfs@vger.kernel.org, Jonathan Corbet
+ <corbet@lwn.net>, 	linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Mon, 24 Aug 2026 08:46:24 -0400
+In-Reply-To: <20260822081033.82098-1-kmehltretter@gmail.com>
+References: <20260822081033.82098-1-kmehltretter@gmail.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -123,54 +121,32 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, 2026-08-22 at 21:40 -0400, Chuck Lever wrote:
-> nlmsvc_retry_blocked() is the only path that operates on a block with
-> nlm_blocked_lock dropped. Both defects live in that window. Shuangpeng
-> Bai's KASAN report catches one of them, a block freed while the retry
-> is still using it. sashiko-bot flagged the other while reviewing v1.
-> The retry re-queues a block that the teardown scan has already
-> retired, so the host that block pins is never reaped.
+On Sat, 2026-08-22 at 10:10 +0200, Karl Mehltretter wrote:
+> The pNFS SCSI layout server is controlled by NFSD_SCSILAYOUT.
+> NFSD_SCSI has never existed.
 >=20
-> Patch 1 fixes the first and applies without patch 2, so it can be
-> backported on its own. Patch 2 is meant for mainline only. The race
-> it closes leaks a host, and closing it widens the f_mutex hold across
-> the retry loop.
->=20
-> v2 added a B_DEAD flag that makes nlmsvc_insert_block() refuse to
-> queue a retired block. That appeared to repair the second race, but
-> it doesn't work. Every caller relies on that insert to take the list
-> reference, so a refused insert lets nlmsvc_grant_blocked() drop the
-> last reference to a block whose file_lock the VFS still has queued
-> on a blocker.
->=20
-> Signed-off-by: Chuck Lever <cel@kernel.org>
->=20
+> Fixes: f99d4fbdae67 ("nfsd: add SCSI layout support")
+> Assisted-by: Codex:gpt-5.6-sol
+> Signed-off-by: Karl Mehltretter <kmehltretter@gmail.com>
 > ---
-> Changes in v3:
-> - Split the fix in two. Patch 1 is the block reference alone.
-> - Drop B_DEAD. A refused insert could free a live block (sashiko-bot).
-> - Serialize the retry against nlmsvc_traverse_blocks() with f_mutex.
-> - Link to v2: https://lore.kernel.org/r/20260820150831.3291262-1-cel@kern=
-el.org
+>  Documentation/admin-guide/nfs/pnfs-scsi-server.rst | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 >=20
-> Changes in v2:
-> - Add B_DEAD so a retry cannot requeue a retired block (sashiko-bot).
-> - Link to v1: https://lore.kernel.org/r/20260819162247.2970703-1-cel@kern=
-el.org
->=20
-> ---
-> Chuck Lever (2):
->       lockd: Fix use-after-free in nlmsvc_retry_blocked
->       lockd: Serialize block retries against host teardown
->=20
->  fs/lockd/svclock.c | 33 ++++++++++++++++++++++++++++++---
->  1 file changed, 30 insertions(+), 3 deletions(-)
-> ---
-> base-commit: 01c2994ccb0197cb44b0db89aacab460110f6347
-> change-id: 20260820-lockd-retry-blocked-uaf-68f6b50098d9
->=20
-> Best regards,
-> -- =20
-> Chuck Lever
+> diff --git a/Documentation/admin-guide/nfs/pnfs-scsi-server.rst b/Documen=
+tation/admin-guide/nfs/pnfs-scsi-server.rst
+> index b202508d281d5..a3074450ac158 100644
+> --- a/Documentation/admin-guide/nfs/pnfs-scsi-server.rst
+> +++ b/Documentation/admin-guide/nfs/pnfs-scsi-server.rst
+> @@ -16,7 +16,7 @@ addition to the MDS.  As of now the file system needs t=
+o sit directly on the
+>  exported LUN, striping or concatenation of LUNs on the MDS and clients
+>  is not supported yet.
+> =20
+> -On a server built with CONFIG_NFSD_SCSI, the pNFS SCSI volume support is
+> +On a server built with CONFIG_NFSD_SCSILAYOUT, the pNFS SCSI volume supp=
+ort is
+>  automatically enabled if the file system is exported using the "pnfs"
+>  option and the underlying SCSI device support persistent reservations.
+>  On the client make sure the kernel has the CONFIG_PNFS_BLOCK option
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
