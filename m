@@ -1,433 +1,139 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ed1-f52.google.com (mail-ed1-f52.google.com [209.85.208.52])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2A293363086
-	for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 15:02:03 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787583727; cv=none; b=CRE4qPKIxnEV+WDKNVkWWDdMPby+INXLL6mmLUgYaaPM48pCcC65nSUP8Q9WixKyQGMAApK4o5fGu6als0TaRbpDL4+FmY79xRTDbUUHxAfbJSoBvTYOCuWtKJqKLXGkApHN57DWq1ya3f00+vhBbgpylJaYMECfYxIWyhe48go=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787583727; c=relaxed/simple;
-	bh=N0G8QjNCNGIBQnyNuPE6mZGl7LBf74gy5UdDDCMl9hw=;
-	h=From:In-Reply-To:References:To:Cc:Subject:MIME-Version:
-	 Content-Type:Date:Message-ID; b=HkJsgB6VXfZYCCliD0SYTXxJ2K3Td/Vh/3CM2KsUTdU7UoaaowHbKZb1hfIVj8+Vl6wtzM5a0Jgcqnj2az2g8ggQoOBYIMJniGogFO8rPKGxyFy+S3f8YTB2c2QUZhy2A07tPq2vMQZKpJDPzYETIuyLe165C+twHfy4KT76Jpc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=In0Hpv7T; arc=none smtp.client-ip=170.10.133.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C130444A3E8
+	for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 15:39:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.52
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1787586000; cv=pass; b=RvZIVGfE/N/bM5RU1fWQ5gJrK4Tr8W6Kb5M1U86eiVMZKc4tuYCfEHq2gr3k7oo+WVovAIQt5KCWRL978SZUKr6PP3Oe/rSZCL1ikLB36PwiLolz6sdobdWbHF9FvSHCv0XqFcSmCNeerRZLmDHU89Yxap1w+Xz/yatRHeRML8M=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1787586000; c=relaxed/simple;
+	bh=TKa+7Rt0HMct/L3Y9OQKcWqR+kqwOl5wJxjs0oMkUU4=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=OWxr0g7aPnJa7eStHAvJVJmXoX1jwIdWYC8zVH+O/xjPLVTybRaeymtiL8RpwbKGmUv2+taB8xeeW2qvqvwBymnDGy+wPh1bUPmbax9Qb+H78/rxbFkiKLeFV5S9n6NgBkLNSrITlGtTLKw4irMzpI5zSxd7ekaJwU+v7RXtPow=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=W3PgV/+u; arc=pass smtp.client-ip=209.85.208.52
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="In0Hpv7T"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1787583722;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=nO//czvvztOuNSNWZRG8kBY0zaU5xWtjhN7ZKW5YMbI=;
-	b=In0Hpv7THhHRHwZCIWpX09DzILyF+UfsphOpE3lI8ggk3tnN5uTgJSAJWKMdKtOzxBavyg
-	4qDIwdR2CfoEJ7r9oQ0LCOp9DPvugO5b8s3q/jYdmeHPB2yK/VZSrMI5GyqlqgjyKOOr3U
-	/FIHAxGtW8HSGIyiqfwlkerFJjQqP+A=
-Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-690-qRaPtRW7NxmtGTjHvtDIvQ-1; Mon,
- 24 Aug 2026 11:01:58 -0400
-X-MC-Unique: qRaPtRW7NxmtGTjHvtDIvQ-1
-X-Mimecast-MFC-AGG-ID: qRaPtRW7NxmtGTjHvtDIvQ_1787583713
-Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 84A4A197753E;
-	Mon, 24 Aug 2026 15:01:52 +0000 (UTC)
-Received: from warthog.procyon.org.uk (unknown [10.44.32.15])
-	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 68B031955F0F;
-	Mon, 24 Aug 2026 15:01:46 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
-	Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
-	Kingdom.
-	Registered in England and Wales under Company Registration No. 3798903
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <20260824144130.759997-1-dhowells@redhat.com>
-References: <20260824144130.759997-1-dhowells@redhat.com>
-To: Paulo Alcantara <pc@manguebit.org>
-Cc: dhowells@redhat.com, Christian Brauner <christian@brauner.io>,
-    Matthew Wilcox <willy@infradead.org>,
-    Christoph Hellwig <hch@infradead.org>, Jens Axboe <axboe@kernel.dk>,
-    Leon Romanovsky <leon@kernel.org>,
-    Namjae Jeon <linkinjeon@kernel.org>,
-    ChenXiaoSong <chenxiaosong@chenxiaosong.com>,
-    Marc Dionne <marc.dionne@auristor.com>,
-    Stefan Metzmacher <metze@samba.org>,
-    Eric Van Hensbergen <ericvh@kernel.org>,
-    Dominique Martinet <asmadeus@codewreck.org>,
-    Ilya Dryomov <idryomov@gmail.com>, netfs@lists.linux.dev,
-    linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org,
-    linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-    v9fs@lists.linux.dev, linux-erofs@lists.ozlabs.org,
-    linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH v10 36/35] cachefiles: Preset the state xattr when creating a new file
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="W3PgV/+u"
+Received: by mail-ed1-f52.google.com with SMTP id 4fb4d7f45d1cf-6a17cb94b26so6893280a12.3
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 08:39:58 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1787585997; cv=none;
+        d=google.com; s=arc-20260327;
+        b=eeMXcfh24GZssyr5GQ58GYV2BqC7Q82W1LsDT9A3UZtBG6KhYXjb7FqBNNA+PaEohU
+         MWBzNfzz2Fq+eV9rlm3HNUs9ibqByKLDijzLkmU9hMXAvjbPkyhhYOavZ/Z4DfGZTVxf
+         91zG4worLiWJzms8IDB5fXnE9XZUpHRJ2dQ69NyxrWz8bEX1CPZaHyz7mm20iIVd3OoG
+         YI3fdcqP+aQZb11GGX5hiu/k1eNP4xivx4knxvloK1yAWAyPwac2ZkFSqotisxGhTnrj
+         cKK5hvxkcCNFKml/0+sCI7vwSzdBFlNkGwWGtuxc7Gmpf8ImzaEXqEuSPiNlO9mG3Jm/
+         0xig==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=wJCHcWH/H7HoSqeQAsfWyCv2ylIhs9AEwOmpHAgZ6Mo=;
+        fh=j8ECeZhRcibOr4S/W+mQJQ/Yl3CYEobL9AGWCO6Ppwk=;
+        b=pijTOwf5slYVF/Q0JPpKGRr8nWhQrjq0X93pTJrmjVdJfkWMG7M3h7GHQMgoZBtrTF
+         cQ8x9MIZs0ivLk+YIcjv9hbINLu+Yw9YbjGWcow39lXlPfpA1cnODdjKOwSwyExWswch
+         lo2PhQ8QWrs+r04PsOiL3PAP0NJXSnF6Ohp+kT673vYJZ4EzUF2nLihs8bS6NUVgkEkW
+         opj3JQBa6ZwXExfCJ0rBBquKljpt9XrgECvjh820f/6/vYXSNdcvx+pZRUH4Qsd1Ialx
+         /ZOQ7ejv79tZLld5pKpblKolZk2aaH+2zPhgBOK7QiBKg0+MdBDchInNafWgnkJ2eBs7
+         rwoQ==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1787585997; x=1788190797; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=wJCHcWH/H7HoSqeQAsfWyCv2ylIhs9AEwOmpHAgZ6Mo=;
+        b=W3PgV/+uOfQUz8pF76YCRrs84UlPEQPXY6HtwG0yI1HdTUh2ba/YB+1YJpUAS8XdXn
+         Nx3XJL9Oc00PyQABJxkNHFOgjCSoI/xWe345bzxJ/b+/kz+4kSbygw7HCiQgxjGaaY4w
+         sghmbsvrUQl3pnPyXdGdA9OZQnrQ3Opb24oUwzcYrUtP9FEkKTZuwypkY5AjwFbFS7XO
+         yXa9rXb/qmJZWLA0UVIlNsn2+ODVi/ShtKx/zqYe1EQzakHcxF5auvyTFihZJF/CcTTj
+         7uN/TKfLsHjfnw2WMoiN/6eXZExCjtCWKoYymHKhPSIbWZYRwFyYcpRQTDjzw//We5Rb
+         2vuw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787585997; x=1788190797;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=wJCHcWH/H7HoSqeQAsfWyCv2ylIhs9AEwOmpHAgZ6Mo=;
+        b=peff5wWKxm+qy9UfeWMcqJkCBoGHjqgElbELwnSMVOoNNSLo9mLoFTU65A7tumf9iC
+         2HubpUu6qJ4NwxKw9LMg6fhVkYQ3I3kcCKv6K7ckc7O/l+oUGvjeesBj4gbJF5l2rh+s
+         HOcE0Ax6P6Ms/2ZiTyHN2HzZp1whUK5ByYZ5XO2lcZq4rVg7hkxVEB819hFRbinVEuVa
+         jcbiQsf6GKMft55Hgl0iYmsKTka5FPw1T8H/lyBduo2JBEPOGZftX953PxRPYhuiZ0Cc
+         +x+7oTcS6VcfaZSiu0WYKXtYaMAzRkKYMO/GtTYFfOLD9LbOakedznZre0UdSlQf5e/4
+         Qk9g==
+X-Forwarded-Encrypted: i=1; AHgh+Roo2CGTEdCXkqHBQiOchAl7OJ8I6YwoVD8iEF+p3uMsmlrWTVhYVQBFozPQCaxIKy4e45eS+7lKCpM=@vger.kernel.org
+X-Gm-Message-State: AFuF++l9uZ6GwToZPEyZecL+2RWv4dbATTcLyt1dEIQzYEg6GkfFb1aT
+	H8kjS+c/pb+JRAnakpLf11BQX/UVAUjIR588aBQRBRCD7pNPgywfsfyPPp8uE68W4+uRypGaSfq
+	KEsA76Qx4VY5308vluLtqA55YtkfhlFM=
+X-Gm-Gg: AR+sD11HSDQP8ks6Ja75is9TkpN/aFpc9cYK0gEtsK+XMRk76yDaWsmQu8gwf0BxS7E
+	ran4VVRB8QXn/YJBJxtub24IZ3/r9Wl1q/3TR8xp3RmUN0Qb8j3r3ocaE1CEPXOX8Jswn2QHos0
+	qK2XnebLS/mSYoWIjLP4BW2iwuMEoAQ44apPOCoEH2JXRL2UGFzdx8Cl75AoRnSjjg9MtwI47Bh
+	Z+yECjxFWkoy3jdqpHj78vGFJgbPww33J2s3Frcrn5xz6pCCmjl/gZ3y5Qz/TFWVZCXPZh4gfO/
+	mOiqc3T9hhS4MnDbV9xdnpcgoQISIhh1jzYwxEt0kPybyn4HiCwzfg3vZxQHCcsrgB2C8c84kJX
+	b
+X-Received: by 2002:a05:6402:1ecb:b0:6a0:dda3:83db with SMTP id
+ 4fb4d7f45d1cf-6a42eec0421mr29612154a12.0.1787585996720; Mon, 24 Aug 2026
+ 08:39:56 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <761011.1787583705.1@warthog.procyon.org.uk>
+References: <20260824144130.759997-1-dhowells@redhat.com> <20260824144130.759997-31-dhowells@redhat.com>
+In-Reply-To: <20260824144130.759997-31-dhowells@redhat.com>
+From: =?UTF-8?Q?Aur=C3=A9lien_Couderc?= <aurelien.couderc2002@gmail.com>
+Date: Mon, 24 Aug 2026 17:39:20 +0200
+X-Gm-Features: AcwNN1UVhOm3jvQyZ6QNY0YG-DuDugP0zSGCGTU-9BV_0e1-yGju4sTdJrlUq5g
+Message-ID: <CA+1jF5qPZUhCevwbu7zQDEVWss6gMdoDMhqKqH3k7v=WStRtEA@mail.gmail.com>
+Subject: READ_PLUS in NetFS? Re: [PATCH v10 30/35] netfs: Simplify read abandonment
+To: David Howells <dhowells@redhat.com>
+Cc: Paulo Alcantara <pc@manguebit.org>, Christian Brauner <christian@brauner.io>, 
+	Matthew Wilcox <willy@infradead.org>, Christoph Hellwig <hch@infradead.org>, Jens Axboe <axboe@kernel.dk>, 
+	Leon Romanovsky <leon@kernel.org>, Namjae Jeon <linkinjeon@kernel.org>, 
+	ChenXiaoSong <chenxiaosong@chenxiaosong.com>, Marc Dionne <marc.dionne@auristor.com>, 
+	Stefan Metzmacher <metze@samba.org>, Eric Van Hensbergen <ericvh@kernel.org>, 
+	Dominique Martinet <asmadeus@codewreck.org>, Ilya Dryomov <idryomov@gmail.com>, netfs@lists.linux.dev, 
+	linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, 
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>, ceph-devel@vger.kernel.org, 
+	v9fs@lists.linux.dev, linux-erofs@lists.ozlabs.org, 
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
-Date: Mon, 24 Aug 2026 16:01:45 +0100
-Message-ID: <761012.1787583705@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
 
-    =
+On Mon, Aug 24, 2026 at 5:04=E2=80=AFPM David Howells <dhowells@redhat.com>=
+ wrote:
+>
+> Currently, if one or more of the subrequests in a read request fails, the
+> read collection algorithm will attempt to salvage folios that are fully
+> downloaded but that span multiple subreqs, provided all of the contributo=
+ry
+> subreqs succeeded, but this makes the algorithm quite complicated as a
+> subreq can contribute to multiple folios and a folio can be contributed t=
+o
+> by multiple subreqs.
+>
+> Simplify this by just abandoning the rest of a read request once a
+> permanently failed subreq is hit.  This is what read_folio, DIO/unbuffere=
+d
+> read, gap filling, RMW and write preload all need to do; readahead is the
+> odd one out as it doesn't have any return other than unlocking folios.
+>
+> With this change, even for readahead, the rest of the read is simply
+> abandoned; read() and suchlike will call ->read_folio() on each
+> non-uptodate folio to retry and retrieve the error.
+>
+> Note that retryable failures still get retried by netfslib as part of the
+> request as before.
 
-With a really small cache, cachefiles is likely to see a lot of writes
-hitting ENOSPC - and this can include setxattr that sets the state xattr o=
-n
-a cachefile - but we don't really want to successfully fill a cache file
-only to have to scrap it because we can't set the xattr.
+What about READ_PLUS, i.e. sparse file reads? If you do this kind of
+work of handling partial abandonment, can such a work also benefit
+READ_PLUS?
 
-Instead, preset the xattr when we create the tmpfile we're going to use,
-and scrap the file at that point if we get ENOSPC.  Only if setxattr
-succeeds do we allow data to be written to the file.
-
-Note that there is a potential performance loss in that writes to the cach=
-e
-have to be delayed until this is completed - but we do the tmpfile/setxatt=
-r
-in parallel, starting when the file is opened and only have to wait once
-writeback occurs.
-
-Further, a new tracepoint, cachefiles_no_space, has been added to log ENOS=
-PC
-events, along with a couple of subreq traces to log failure detection in
-netfslib.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Marc Dionne <marc.dionne@auristor.com>
-cc: Paulo Alcantara <pc@manguebit.org>
-cc: netfs@lists.linux.dev
-cc: linux-fsdevel@vger.kernel.org
----
- fs/cachefiles/internal.h          |    1 =
-
- fs/cachefiles/io.c                |   23 ++++++++++----
- fs/cachefiles/namei.c             |   15 ++++++++-
- fs/cachefiles/xattr.c             |   59 ++++++++++++++++++++++++++++++++=
-+++++-
- include/trace/events/cachefiles.h |   30 ++++++++++++++++++-
- include/trace/events/netfs.h      |    2 +
- 6 files changed, 120 insertions(+), 10 deletions(-)
-
-diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
-index b2605111fd56..664be64ab538 100644
---- a/fs/cachefiles/internal.h
-+++ b/fs/cachefiles/internal.h
-@@ -283,6 +283,7 @@ void cachefiles_withdraw_volume(struct cachefiles_volu=
-me *volume);
- /*
-  * xattr.c
-  */
-+int cachefiles_preset_object_xattr(struct cachefiles_object *object, stru=
-ct file *file);
- extern int cachefiles_set_object_xattr(struct cachefiles_object *object);
- extern int cachefiles_check_auxdata(struct cachefiles_object *object,
- 				    struct file *file);
-diff --git a/fs/cachefiles/io.c b/fs/cachefiles/io.c
-index a1580385d5fb..73c8ba01a9e2 100644
---- a/fs/cachefiles/io.c
-+++ b/fs/cachefiles/io.c
-@@ -672,10 +672,14 @@ int __cachefiles_prepare_write(struct cachefiles_obj=
-ect *object,
- 	 * space, we need to see if it's fully allocated.  If it's not, we may
- 	 * want to cull it.
- 	 */
--	if (cachefiles_has_space(cache, 0, *_len / cache->bsize,
--				 cachefiles_has_space_check) =3D=3D 0)
-+	ret =3D cachefiles_has_space(cache, 0, *_len / cache->bsize,
-+				   cachefiles_has_space_check);
-+	if (ret =3D=3D 0)
- 		return 0; /* Enough space to simply overwrite the whole block */
- =
-
-+	if (ret =3D=3D -ENOBUFS)
-+		trace_cachefiles_no_space(object, cachefiles_trace_write_nospace_2);
-+
- 	pos =3D cachefiles_inject_read_error();
- 	if (pos =3D=3D 0)
- 		pos =3D vfs_llseek(file, start, SEEK_HOLE);
-@@ -704,8 +708,11 @@ int __cachefiles_prepare_write(struct cachefiles_obje=
-ct *object,
- 	return ret;
- =
-
- check_space:
--	return cachefiles_has_space(cache, 0, *_len / cache->bsize,
--				    cachefiles_has_space_for_write);
-+	ret =3D cachefiles_has_space(cache, 0, *_len / cache->bsize,
-+				   cachefiles_has_space_for_write);
-+	if (ret =3D=3D -ENOBUFS)
-+		trace_cachefiles_no_space(object, cachefiles_trace_write_nospace);
-+	return ret;
- }
- =
-
- static int cachefiles_prepare_write_old(struct netfs_cache_resources *cre=
-s,
-@@ -757,10 +764,14 @@ static int cachefiles_issue_write(struct netfs_io_su=
-brequest *subreq)
- 	       wreq->debug_id, subreq->debug_index, start, start + len - 1);
- =
-
- 	if (!cachefiles_cres_file(cres)) {
--		if (!fscache_wait_for_operation(cres, FSCACHE_WANT_WRITE))
-+		if (!fscache_wait_for_operation(cres, FSCACHE_WANT_WRITE)) {
-+			trace_netfs_sreq(subreq, netfs_sreq_trace_cache_waitfail);
- 			return -ENOBUFS;
--		if (!cachefiles_cres_file(cres))
-+		}
-+		if (!cachefiles_cres_file(cres)) {
-+			trace_netfs_sreq(subreq, netfs_sreq_trace_cache_nofile);
- 			return -ENOBUFS;
-+		}
- 	}
- =
-
- 	ret =3D netfs_prepare_write_buffer(subreq, BIO_MAX_VECS);
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index a30df0f91e5e..ef656a319ede 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -117,8 +117,11 @@ struct dentry *cachefiles_get_directory(struct cachef=
-iles_cache *cache,
- 	if (d_is_negative(subdir)) {
- 		ret =3D cachefiles_has_space(cache, 1, 0,
- 					   cachefiles_has_space_for_create);
--		if (ret < 0)
-+		if (ret < 0) {
-+			if (ret =3D=3D -ENOBUFS)
-+				trace_cachefiles_no_space(NULL, cachefiles_trace_mkdir_nospace);
- 			goto mkdir_error;
-+		}
- =
-
- 		_debug("attempt mkdir");
- =
-
-@@ -447,6 +450,11 @@ struct file *cachefiles_create_tmpfile(struct cachefi=
-les_object *object)
- 		pr_notice("Cache does not support read_iter and write_iter\n");
- 		goto err_unuse;
- 	}
-+
-+	/* Preallocate space for the xattr. */
-+	ret =3D cachefiles_preset_object_xattr(object, file);
-+	if (ret < 0)
-+		goto err_unuse;
- out:
- 	cachefiles_end_secure(cache, saved_cred);
- 	object->content_info =3D CACHEFILES_CONTENT_ALL;
-@@ -470,8 +478,11 @@ static bool cachefiles_create_file(struct cachefiles_=
-object *object)
- =
-
- 	ret =3D cachefiles_has_space(object->volume->cache, 1, 0,
- 				   cachefiles_has_space_for_create);
--	if (ret < 0)
-+	if (ret < 0) {
-+		if (ret =3D=3D -ENOBUFS)
-+			trace_cachefiles_no_space(object, cachefiles_trace_create_nospace);
- 		return false;
-+	}
- =
-
- 	file =3D cachefiles_create_tmpfile(object);
- 	if (IS_ERR(file))
-diff --git a/fs/cachefiles/xattr.c b/fs/cachefiles/xattr.c
-index 5c1794beca93..9f78710bfe4d 100644
---- a/fs/cachefiles/xattr.c
-+++ b/fs/cachefiles/xattr.c
-@@ -34,6 +34,57 @@ struct cachefiles_vol_xattr {
- 	__u8	data[];		/* netfs volume coherency data */
- } __packed;
- =
-
-+/*
-+ * Preset the state xattr on a cache file to allocate space for it.
-+ */
-+int cachefiles_preset_object_xattr(struct cachefiles_object *object, stru=
-ct file *file)
-+{
-+	struct cachefiles_xattr *buf;
-+	struct dentry *dentry =3D file->f_path.dentry;
-+	unsigned int len =3D object->cookie->aux_len;
-+	int ret;
-+
-+	buf =3D kzalloc(sizeof(struct cachefiles_xattr) + min(len, sizeof(__be64=
-)), GFP_KERNEL);
-+	if (!buf)
-+		return -ENOMEM;
-+
-+	buf->type		=3D CACHEFILES_COOKIE_TYPE_DATA;
-+	buf->content		=3D CACHEFILES_CONTENT_DIRTY;
-+
-+	ret =3D cachefiles_inject_write_error();
-+	if (ret =3D=3D 0) {
-+		ret =3D mnt_want_write_file(file);
-+		if (ret =3D=3D 0) {
-+			ret =3D vfs_setxattr(&nop_mnt_idmap, dentry,
-+					   cachefiles_xattr_cache, buf,
-+					   sizeof(struct cachefiles_xattr) + len, 0);
-+			mnt_drop_write_file(file);
-+		}
-+	}
-+	if (ret < 0) {
-+		trace_cachefiles_vfs_error(object, file_inode(file), ret,
-+					   cachefiles_trace_setxattr_error);
-+		trace_cachefiles_coherency(object, file_inode(file)->i_ino,
-+					   object->object_size,
-+					   buf->data, buf->content,
-+					   cachefiles_coherency_set_fail);
-+		switch (ret) {
-+		case -ENOMEM:
-+		case -ENOSPC:
-+			break;
-+		default:
-+			cachefiles_io_error_obj(
-+				object,
-+				"Failed to set xattr with error %d", ret);
-+			break;
-+		}
-+	}
-+
-+	kfree(buf);
-+	_leave(" =3D %d", ret);
-+	return ret;
-+}
-+
- /*
-  * set the state xattr on a cache file
-  */
-@@ -82,10 +133,16 @@ int cachefiles_set_object_xattr(struct cachefiles_obj=
-ect *object)
- 		trace_cachefiles_coherency(object, file_inode(file)->i_ino,
- 					   object_size, buf->data, buf->content,
- 					   cachefiles_coherency_set_fail);
--		if (ret !=3D -ENOMEM)
-+		switch (ret) {
-+		case -ENOMEM:
-+			break;
-+		case -ENOSPC:
-+		default:
- 			cachefiles_io_error_obj(
- 				object,
- 				"Failed to set xattr with error %d", ret);
-+			break;
-+		}
- 	} else {
- 		trace_cachefiles_coherency(object, file_inode(file)->i_ino,
- 					   object_size, buf->data, buf->content,
-diff --git a/include/trace/events/cachefiles.h b/include/trace/events/cach=
-efiles.h
-index 6146483300c2..3dca69126586 100644
---- a/include/trace/events/cachefiles.h
-+++ b/include/trace/events/cachefiles.h
-@@ -85,11 +85,13 @@ enum cachefiles_prepare_read_trace {
- =
-
- enum cachefiles_error_trace {
- 	cachefiles_trace_alignment_error,
-+	cachefiles_trace_create_nospace,
- 	cachefiles_trace_fallocate_error,
- 	cachefiles_trace_getxattr_error,
- 	cachefiles_trace_link_error,
- 	cachefiles_trace_lookup_error,
- 	cachefiles_trace_mkdir_error,
-+	cachefiles_trace_mkdir_nospace,
- 	cachefiles_trace_notify_change_error,
- 	cachefiles_trace_open_error,
- 	cachefiles_trace_read_error,
-@@ -102,6 +104,8 @@ enum cachefiles_error_trace {
- 	cachefiles_trace_trunc_error,
- 	cachefiles_trace_unlink_error,
- 	cachefiles_trace_write_error,
-+	cachefiles_trace_write_nospace,
-+	cachefiles_trace_write_nospace_2,
- };
- =
-
- #endif
-@@ -171,11 +175,13 @@ enum cachefiles_error_trace {
- =
-
- #define cachefiles_error_traces						\
- 	EM(cachefiles_trace_alignment_error,	"align")		\
-+	EM(cachefiles_trace_create_nospace,	"create-nospace")	\
- 	EM(cachefiles_trace_fallocate_error,	"fallocate")		\
- 	EM(cachefiles_trace_getxattr_error,	"getxattr")		\
- 	EM(cachefiles_trace_link_error,		"link")			\
- 	EM(cachefiles_trace_lookup_error,	"lookup")		\
- 	EM(cachefiles_trace_mkdir_error,	"mkdir")		\
-+	EM(cachefiles_trace_mkdir_nospace,	"mkdir-nospace")	\
- 	EM(cachefiles_trace_notify_change_error, "notify_change")	\
- 	EM(cachefiles_trace_open_error,		"open")			\
- 	EM(cachefiles_trace_read_error,		"read")			\
-@@ -187,7 +193,9 @@ enum cachefiles_error_trace {
- 	EM(cachefiles_trace_tmpfile_error,	"tmpfile")		\
- 	EM(cachefiles_trace_trunc_error,	"trunc")		\
- 	EM(cachefiles_trace_unlink_error,	"unlink")		\
--	E_(cachefiles_trace_write_error,	"write")
-+	EM(cachefiles_trace_write_error,	"write")		\
-+	EM(cachefiles_trace_write_nospace,	"write-nospace")	\
-+	E_(cachefiles_trace_write_nospace_2,	"write-nospace-2")
- =
-
- =
-
- /*
-@@ -707,6 +715,26 @@ TRACE_EVENT(cachefiles_io_error,
- 		      __entry->error)
- 	    );
- =
-
-+TRACE_EVENT(cachefiles_no_space,
-+	    TP_PROTO(struct cachefiles_object *obj, enum cachefiles_error_trace =
-trace),
-+
-+	    TP_ARGS(obj, trace),
-+
-+	    TP_STRUCT__entry(
-+		    __field(unsigned int,			obj)
-+		    __field(enum cachefiles_error_trace,	trace)
-+			     ),
-+
-+	    TP_fast_assign(
-+		    __entry->obj	=3D obj ? obj->debug_id : 0;
-+		    __entry->trace	=3D trace;
-+			   ),
-+
-+	    TP_printk("o=3D%08x %s",
-+		      __entry->obj,
-+		      __print_symbolic(__entry->trace, cachefiles_error_traces))
-+	    );
-+
- #endif /* _TRACE_CACHEFILES_H */
- =
-
- /* This part must be outside protection */
-diff --git a/include/trace/events/netfs.h b/include/trace/events/netfs.h
-index dfe08492d1ad..54e90694eda7 100644
---- a/include/trace/events/netfs.h
-+++ b/include/trace/events/netfs.h
-@@ -102,8 +102,10 @@
- 	EM(netfs_sreq_trace_abandoned,		"ABNDN")	\
- 	EM(netfs_sreq_trace_add_donations,	"+DON ")	\
- 	EM(netfs_sreq_trace_added,		"ADD  ")	\
-+	EM(netfs_sreq_trace_cache_nofile,	"CA-!F")	\
- 	EM(netfs_sreq_trace_cache_nowrite,	"CA-NW")	\
- 	EM(netfs_sreq_trace_cache_prepare,	"CA-PR")	\
-+	EM(netfs_sreq_trace_cache_waitfail,	"CA-!W")	\
- 	EM(netfs_sreq_trace_cache_write,	"CA-WR")	\
- 	EM(netfs_sreq_trace_cancel,		"CANCL")	\
- 	EM(netfs_sreq_trace_clear,		"CLEAR")	\
-
+Aur=C3=A9lien
+--=20
+Aur=C3=A9lien Couderc <aurelien.couderc2002@gmail.com>
+Big Data/Data mining expert, chess enthusiast
