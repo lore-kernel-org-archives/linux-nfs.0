@@ -1,260 +1,182 @@
-Received: from mail-ed1-f51.google.com (mail-ed1-f51.google.com [209.85.208.51])
+Received: from mail-yx1-f41.google.com (mail-yx1-f41.google.com [74.125.224.41])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6EFF53F5BE6
-	for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 17:19:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.51
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787591975; cv=pass; b=gdYYi70yys7L7GaJ1t3ocY/26I0d7WtKNxgpNxvsYcvvSPvEOc3xA2HJ1mnQeMfiHdzkV4a8r7EuGPBmjyuzezfqBzoeailVj5otNoKv37kJcqIBm4G1HGaX5FPbMz+qXw1J+GL8NfxW3m+zUGL+q3Ni5N8QDycz1JcVkmVXz5I=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787591975; c=relaxed/simple;
-	bh=9szRXNz+1rbQ1qPmMhoZClR1R6MTvny3zRZAdVoNZ9A=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=MlirxVxLqe8MkPr0p/Pr1w5AnJolD6WnWac4Af6HUT4izCBqhnX+zcbrlz7cJw2iReoQUsseAsUl74/xp9RePYvWp0K3hKcrR1QEXEtHnKSK0gtEPzShJyG945REBdIRSyYDrA6nFgvbuNPTQ+QjmUvX3tp52d5Cb6WlcN1WqaE=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=XjWU3A/h; arc=pass smtp.client-ip=209.85.208.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E454742C513
+	for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 17:37:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.224.41
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1787593048; cv=none; b=RyOB+D1E//1FEDxQzYTH7v2K99/tcDTgBOLijGppS2W8lyH7rGJL1ExryW/69A3DAAzVEPJGT2B3a8UCtQeA+P61g/Pix9OcCRZFpYc2/s2IhKcwE5NSHm4DhXtt7aSbIcA3CYjffUZDn94/YUjfRwO93bc1AZf1ktWQavAawVs=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1787593048; c=relaxed/simple;
+	bh=y1LwkuJrKqmPKjA1nv1GBZdrDvHyK67PxeM6dHPhccQ=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=tO1DREOBpPf/U/1Zr3paiZ66No3i5gEO0tPOeEbsupno4ZcvLp3HMlrP2FQYlyJwoDaFm4m23z6vnJ9KHSHq6cP1cQlmbjVGiJsn9gaUdTZ+G547IQG+GH8NoXjfhTMWB99ykhRv9vLC0WLODWQo6JZKW0mzi9YjXLu1Gsvoxow=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=truenas.com; spf=pass smtp.mailfrom=truenas.com; dkim=pass (2048-bit key) header.d=truenas.com header.i=@truenas.com header.b=f7VWl28X; arc=none smtp.client-ip=74.125.224.41
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=truenas.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=truenas.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="XjWU3A/h"
-Received: by mail-ed1-f51.google.com with SMTP id 4fb4d7f45d1cf-6a051b737d8so4698247a12.1
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 10:19:33 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1787591971; cv=none;
-        d=google.com; s=arc-20260327;
-        b=gtu5bGJPsyMwx7KpBlpnu8QZrmPgwAsNeVoFBYwM/y7I6n6JaNDrD5i8rIRyoMNznk
-         /59ElepAlJiJH8/T/O0r6wBu7nSiue8vgOK4K72F0HgOuZcCLDBXw5rjGGfhyZJQqYVb
-         dAlLTp7AxjXQ3XJdC28vm1DrMaEJ8h2W7yQ2S2sBZhUaCz98KAnMO2/SGoghZZ9n25hP
-         sw7Tf39Hwo+Cm4wfC2o1WYLEvO647np1bUO7ecb6EBdAoNH1v8+u22bIk5mfjrgY3XJ5
-         wQ0kz8EdjjENjualnbAeLAoXi76ClurfUkcmxvjzVTu3SMw/o1D+A0ftF6hc/GPsUL5K
-         mH1w==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=hAvzxihNiFtM0K3Wr9CDqWroU4/ZmBDLBIfShjTV4Pc=;
-        fh=+23kccuru2GfULYo+iabYjgZJrPbkIxsAcLNcONAgw4=;
-        b=lRGPd88jyvlZi9fLomj1Vo7YxjXeEZnU6H4RCLJ1UsgSp+SGcFsxhEm9VTcNeybTJv
-         jVe0biANGJiaof7iFtiYaXvsk0vJwCmSCTwgz6wK5t2n9OohEaYr1Lw6QD/XT90aSXDy
-         6h0FnUQwcTe85tz8OVo66lNPdJV40xk0NSvE/3g9gJS2ZGHQTu0AR0Df+KyylCu0Dp17
-         M+NS65OyI0lwtUg3Pm0YItL2LqNX+cWHwScGAIc2QIyNRo5FiYSK+uUzawbeX78SK+9I
-         7XfmI72GOSDPTyLSSER+fYaaWHHhZPFXeO9nmU4yzFnTUWfp2oGvBrV4tgxAZbQo3w3T
-         lgjw==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key) header.d=truenas.com header.i=@truenas.com header.b="f7VWl28X"
+Received: by mail-yx1-f41.google.com with SMTP id 956f58d0204a3-66d06b5f023so1937456d50.2
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 10:37:15 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1787591971; x=1788196771; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=hAvzxihNiFtM0K3Wr9CDqWroU4/ZmBDLBIfShjTV4Pc=;
-        b=XjWU3A/h1HLrhHE0fJyK2MiRDzpMsGWp3NL710HfYjL73Kmdpax/vm9J6Cvd6JAsPE
-         sNYrbGvcGbR5nJ7eZOzdnwZ6AF7XqjSB/BJ1S/wBSJSxvzUVMVj2j6u0NKhZrX6mY9SD
-         5ITO3kHgfu2U3B/6LAz3wkaJRscUHlr4q328dIaCyIDWx7BG6jN61znD8eFwrUMHmG9I
-         Rezk53FSU2/gMkv8hD1OTGJru+D33imEOeT9wenjEriIc4v3La7SPvYvQE+b6M2T5JBz
-         XRN3NeNBd0j3gufKoivC9AI99XtdYxg1jmP/9cfWPCXmpurp9gBDC5CJFrPoUsJl5H5r
-         0Iyg==
+        d=truenas.com; s=google; t=1787593033; x=1788197833; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=0ZPzoehwqsp1tcTgBFI/7UAjsP2nS8LuPRehc3KxXBQ=;
+        b=f7VWl28Xb3QUv3lb0+xUOeDBSpEg7Q2USsx6esWyX3y6ydyeb5u65vuqYlJCM0nIAr
+         1xQZv9mKQOpkxtjjMcqI+JZ3wfT7Pla2uanZ+F+Y0vuHOakontizBPhWaRlIYUQ4ZHjs
+         3lo8L8lcCi1c5b1+HCMC3uoPnn6yb9QGSigKEWIRZ2DaHm6oPV+vZF/S1aAhFFSxfTNW
+         NMoGEOucPskrJSCsPH7VFk+jWN1/suuP6EK/Y8f0BRCVeOQkBBm/RnKlmf2xAzomN3Zf
+         gZYwBSgTeyO5RVIZWw+yLCYF7IGQmBpye7rPsDCtMa4ToNo39kfQvpPxtVUOhYe4m3Ox
+         M+oQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787591971; x=1788196771;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=hAvzxihNiFtM0K3Wr9CDqWroU4/ZmBDLBIfShjTV4Pc=;
-        b=ZH1S1PdijOmZv4VZTha8qEtuMMuq4EZ2mLXyfuIOS8wu7Ujv6o2W4gvK8LZ4GrAUBy
-         OAVlL+HWuB96is12pRHzTedyZfHgaLuWTKmk0FU3viKuVULjnhFzqYGMqIYP/f4CYp7H
-         M5YK+QCRO7sswKistIwW0UqCI92ispyFTsr6nXdkvLlRs0GcQw/SY4d0sXQyCQIu44pA
-         ryx3AZ20n8fvsy5iX+fSPNPQ6r66TDHhdeS7pnh0xJdBbNPuNwBG74HMoGHzuTUC2RKP
-         4buQVUkNIge/acsA8R2Yb48h18zntKDDsm5wt8AeyVccECm+pXYipuVGLSCeHbwivFaN
-         hSpA==
-X-Forwarded-Encrypted: i=1; AHgh+RpikBILeTyXGL9vbIa7zABVtRA0dr1JSNMj4GmC5dyA/7f44r++bT7W2tZL95mDP/uhB6mhw3Jnt+o=@vger.kernel.org
-X-Gm-Message-State: AFuF++k/lmzKv51T8cRBBQgP8VOLLy8GtAK5/vRNQPJkj7uCr4P/+VLi
-	81uKH6Z0fbKtxN9yVvzuiZ1lrrLRrXQVkyCao5XcpfZjbrcfPtQIdlQPzCY4VtKQLoLU7MNPQ8W
-	dXDiNLVSOPjpaykezzdu60QBR7+Rac6o=
-X-Gm-Gg: AR+sD10qPD2vXL6mupIJfq+Ofnm2QeMt57Ltxz/uSJOYKTw2ER7+xu1aq7kAn0LPPpc
-	uXXEjxeMGoW2VAhYM+xPR2MjnWiVwsWSqJKtVfY8n4tqsc3pr4gfqh2xTXftfRRVt/me28TO1Zt
-	BNGB33mXXcPaau87bzf2UFnebJuUV4QpJy2LSi51ekZW5rPT1waWtYAXIS9U0vGI0Auui7E0G8y
-	SsZ+nzVmkklFw0SUB6XQNcG+6wxYhj8vOe4/x0bdaLr6RtowAJVRCPXGT9Aeom3bzxU+Q97lJDq
-	yTFJNKYXUfQ55WYpec2df61gSlt+f38rGk/KhimmTDRJWJbJtAC8VvkK
-X-Received: by 2002:a05:6402:254f:b0:6a0:9c84:ce0e with SMTP id
- 4fb4d7f45d1cf-6a5c414f08bmr300600a12.14.1787591971270; Mon, 24 Aug 2026
- 10:19:31 -0700 (PDT)
+        d=1e100.net; s=20251104; t=1787593033; x=1788197833;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=0ZPzoehwqsp1tcTgBFI/7UAjsP2nS8LuPRehc3KxXBQ=;
+        b=dujDe1b7syKOCnHaybpliILK2Xg7gdsbguxloKlHumRmC8p2HPDzaicYlW5x/+MTmo
+         seWs9w/mVn4PSqy0ODpqbzr0u05jNlPJD8RUwCzNRAQyZkgjO75tbNvux1E7AyLv6pCD
+         RP+N+8KIgazyiNiX/52ElcmUUbvWkagQj1jvQvYmODTER0W7Mdxbi6LtMQEA8H5DbCIO
+         FnQGEszeZMfSHNPzaihvWl/ackXD/cdVerLjfLv1Hdkh2IRQkwN/gJjoqtZRijcQbPCu
+         CGnUqwzsGYVdOfLywfTVYWgkAtrJYlsiwhNJFA/lE+QgE8NfvyQrTUZftdcnqCLVLw6T
+         bBtg==
+X-Gm-Message-State: AFuF++kcbMFvtf/1v9XYAAVv+bK7eKbvjffC+eUPjPqgdpY27UCIwWIa
+	q9TUNS1EtgXtr2WXSMrmB8j6C/XShZIbTRUIuDR9OOn9ZErEPDyQEMCoE66C8MWXwQ==
+X-Gm-Gg: AR+sD11P//vqsVPqUNmuuYp4KMf3MbwVnfxdxq2Gx8+CkIDxxM4L/D2ukzTPTbTG8+z
+	yPRU0QgFez0eqK9MwN57Z0qCOShBWAzJYN/PoqEF+9F8plgF1dIeqoNLr3cFuJFLF9RckNLJ7GG
+	XFgGLaF7xcpf2njF2gl5fJyyjAZf+YkoEXq3jeNAg+/sfl5Wb14MrZX0I8uHFZ7F4h5hOLTQKsB
+	OM8i7OG5LiHnUEUIL0iyXuHXoYVv7GNoQx+hD9UxVlevjHzid+drmdIkjCLRhxvaRAODoKzJD1h
+	dQs9RM58V1np2oQhmxuUdp0u/gkNmbJoKoiGEOMeF9Cu7w1UcfWMpy1qlPfgT+jf5YVv+jz7T3E
+	OuRevxjyh2SI4GX8131n1GW+fBguSlmYG4+qTSIpfSyB05MiE2+HMW8iv5ZWNkBKBL5ULHM+CqV
+	6f1qA90BxL6ow/tFtDnXOFn3HHfN8t9E2gUkG4eclLNcvNs/jBDBlX0oWgNfzm
+X-Received: by 2002:a05:690e:1309:b0:66d:7b7:e36c with SMTP id 956f58d0204a3-66d07b7ea83mr2773799d50.48.1787593033079;
+        Mon, 24 Aug 2026 10:37:13 -0700 (PDT)
+Received: from hamza-PC ([124.29.197.38])
+        by smtp.gmail.com with ESMTPSA id 956f58d0204a3-66cf4a2c204sm4214957d50.16.2026.08.24.10.37.09
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 24 Aug 2026 10:37:12 -0700 (PDT)
+From: Ameer Hamza <ameer.hamza@truenas.com>
+To: cel@kernel.org,
+	jlayton@kernel.org,
+	neil@brown.name,
+	okorniev@redhat.com,
+	Dai.Ngo@oracle.com,
+	tom@talpey.com
+Cc: linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	alexander.motin@truenas.com,
+	caleb.stjohn@truenas.com,
+	ameer.hamza@truenas.com
+Subject: [PATCH] nfsd: don't modify a session slot when replaying its cached reply
+Date: Mon, 24 Aug 2026 22:36:41 +0500
+Message-ID: <20260824173641.3274260-1-ameer.hamza@truenas.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260824161021.245575-1-cel@kernel.org>
-In-Reply-To: <20260824161021.245575-1-cel@kernel.org>
-From: Amir Goldstein <amir73il@gmail.com>
-Date: Mon, 24 Aug 2026 19:19:19 +0200
-X-Gm-Features: AcwNN1W_Jkk999mAIT6mTotVsZn7LO3MMN0Ci3O6rzFYDCFOV23BjVOjeaFyHYI
-Message-ID: <CAOQ4uxgCrwDCX88uC=cDr16hQVHOkaPJBppLk740vmGpA4Ya8w@mail.gmail.com>
-Subject: Re: [PATCH v1] splice: emit a single fsnotify access event per NFSD READ
-To: Chuck Lever <cel@kernel.org>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org, 
-	Ameer Hamza <ameer.hamza@truenas.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Mon, Aug 24, 2026 at 6:10=E2=80=AFPM Chuck Lever <cel@kernel.org> wrote:
->
-> nfsd_finish_read() calls fsnotify_access() on both NFSD read paths,
-> because splice_direct_to_actor() does not emit the event itself. The
-> iterator path reaches nfsd_finish_read() from vfs_iocb_iter_read(),
-> which has already emitted one. A READ served without splice therefore
-> emits two access events.
->
-> NFSD does not use splice for the GSS integrity and privacy services, so
-> a READ on a sec=3Dkrb5i or sec=3Dkrb5p mount takes the iterator. An inoti=
-fy
-> watch on that file sees the READ twice.
->
-> Reported-by: Ameer Hamza <ameer.hamza@truenas.com>
-> Closes: https://lore.kernel.org/linux-nfs/20260818225715.572140-1-ameer.h=
-amza@truenas.com/
-> Suggested-by: Amir Goldstein <amir73il@gmail.com>
-> Link: https://lore.kernel.org/linux-nfs/CAOQ4uxgUOqFv6pVmdT_+4DjA0KQoQDCz=
-N2Xz=3Dxm1FyumewHZXg@mail.gmail.com/
-> Signed-off-by: Chuck Lever <cel@kernel.org>
+nfsd4_sequence() claims a session slot by setting NFSD4_SLOT_INUSE
+under nn->client_lock. A reply served from the slot's reply cache does
+not claim it, and that distinction lived only in cstate->status, which
+nfsd4_sequence() set to nfserr_replay_cache. Commit cc028a10a48c
+("NFSD: Hoist status code encoding into XDR encoder functions") moved
+nfsd4_proc_compound()'s cstate->status assignment below the out:
+label, and the replay path's goto out was the one path that relied on
+skipping it. The test in nfsd4_sequence_done() therefore no longer
+identifies a replay, and every replay now stores its reply and clears
+NFSD4_SLOT_INUSE as though it owned the slot.
 
-Reviewed-by: Amir Goldstein <amir73il@gmail.com>
-> ---
->  fs/nfsd/vfs.c          |  7 ++----
->  fs/splice.c            | 56 +++++++++++++++++++++++++++++++-----------
->  include/linux/splice.h |  4 +--
->  3 files changed, 45 insertions(+), 22 deletions(-)
->
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index f9131827d391..c134064a1c79 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -1046,7 +1046,6 @@ static __be32 nfsd_finish_read(struct svc_rqst *rqs=
-tp, struct svc_fh *fhp,
->                 nfsd_stats_io_read_add(nn, fhp->fh_export, host_err);
->                 *eof =3D nfsd_eof_on_read(file, offset, host_err, *count)=
-;
->                 *count =3D host_err;
-> -               fsnotify_access(file);
->                 trace_nfsd_read_io_done(rqstp, fhp, offset, *count);
->                 return 0;
->         } else {
-> @@ -1080,10 +1079,8 @@ __be32 nfsd_splice_read(struct svc_rqst *rqstp, st=
-ruct svc_fh *fhp,
->         ssize_t host_err;
->
->         trace_nfsd_read_splice(rqstp, fhp, offset, *count);
-> -       host_err =3D rw_verify_area(READ, file, &offset, *count);
-> -       if (!host_err)
-> -               host_err =3D splice_direct_to_actor(file, &sd,
-> -                                                 nfsd_direct_splice_acto=
-r);
-> +       host_err =3D vfs_splice_direct_to_actor(file, &sd,
-> +                                             nfsd_direct_splice_actor);
->         return nfsd_finish_read(rqstp, fhp, file, offset, count, eof, hos=
-t_err);
->  }
->
-> diff --git a/fs/splice.c b/fs/splice.c
-> index 9d8f63e2fd1a..42ad712a0f4d 100644
-> --- a/fs/splice.c
-> +++ b/fs/splice.c
-> @@ -1009,21 +1009,14 @@ ssize_t vfs_splice_read(struct file *in, loff_t *=
-ppos,
->  }
->  EXPORT_SYMBOL_GPL(vfs_splice_read);
->
-> -/**
-> - * splice_direct_to_actor - splices data directly between two non-pipes
-> - * @in:                file to splice from
-> - * @sd:                actor information on where to splice to
-> - * @actor:     handles the data splicing
-> - *
-> - * Description:
-> - *    This is a special case helper to splice directly between two
-> - *    points, without requiring an explicit pipe. Internally an allocate=
-d
-> - *    pipe is cached in the process, and reused during the lifetime of
-> - *    that process.
-> - *
-> +/*
-> + * This is a special case helper to splice directly between two
-> + * points, without requiring an explicit pipe. Internally an allocated
-> + * pipe is cached in the process, and reused during the lifetime of
-> + * that process.
->   */
-> -ssize_t splice_direct_to_actor(struct file *in, struct splice_desc *sd,
-> -                              splice_direct_actor *actor)
-> +static ssize_t splice_direct_to_actor(struct file *in, struct splice_des=
-c *sd,
-> +                                     splice_direct_actor *actor)
->  {
->         struct pipe_inode_info *pipe;
->         ssize_t ret, bytes;
-> @@ -1147,7 +1140,40 @@ ssize_t splice_direct_to_actor(struct file *in, st=
-ruct splice_desc *sd,
->
->         goto done;
->  }
-> -EXPORT_SYMBOL(splice_direct_to_actor);
-> +
-> +/**
-> + * vfs_splice_direct_to_actor - splice from a file through a caller's ac=
-tor
-> + * @in:                file to splice from; must be seekable (FMODE_LSEE=
-K)
-> + * @sd:                splice parameters. The caller sets @sd->pos and
-> + *             @sd->total_len. @sd->pos advances as data is consumed,
-> + *             and @sd->total_len is overwritten with the length of
-> + *             each read.
-> + * @actor:     consumes each pipe-full and returns the number of
-> + *             bytes taken
-> + *
-> + * Description:
-> + *    Splice from @in through @actor, for a caller that consumes
-> + *    the data itself rather than sending it to a second file.
-> + *    This helper verifies the read and emits the fsnotify access
-> + *    event. do_splice_direct() leaves both to its callers.
-> + *
-> + * Return: The number of bytes spliced, or a negative errno.
-> + */
-> +ssize_t vfs_splice_direct_to_actor(struct file *in, struct splice_desc *=
-sd,
-> +                                  splice_direct_actor *actor)
-> +{
-> +       ssize_t ret;
-> +
-> +       ret =3D rw_verify_area(READ, in, &sd->pos, sd->total_len);
-> +       if (ret < 0)
-> +               return ret;
-> +
-> +       ret =3D splice_direct_to_actor(in, sd, actor);
-> +       if (ret >=3D 0)
-> +               fsnotify_access(in);
-> +       return ret;
-> +}
-> +EXPORT_SYMBOL(vfs_splice_direct_to_actor);
->
->  static int direct_splice_actor(struct pipe_inode_info *pipe,
->                                struct splice_desc *sd)
-> diff --git a/include/linux/splice.h b/include/linux/splice.h
-> index 9dec4861d09f..4e91d03ed645 100644
-> --- a/include/linux/splice.h
-> +++ b/include/linux/splice.h
-> @@ -79,8 +79,8 @@ ssize_t add_to_pipe(struct pipe_inode_info *pipe, struc=
-t pipe_buffer *buf);
->  ssize_t vfs_splice_read(struct file *in, loff_t *ppos,
->                         struct pipe_inode_info *pipe, size_t len,
->                         unsigned int flags);
-> -ssize_t splice_direct_to_actor(struct file *file, struct splice_desc *sd=
-,
-> -                              splice_direct_actor *actor);
-> +ssize_t vfs_splice_direct_to_actor(struct file *file, struct splice_desc=
- *sd,
-> +                                  splice_direct_actor *actor);
->  ssize_t do_splice(struct file *in, loff_t *off_in, struct file *out,
->                   loff_t *off_out, size_t len, unsigned int flags);
->  ssize_t do_splice_direct(struct file *in, loff_t *ppos, struct file *out=
-,
-> --
-> 2.54.0
->
+NFSD4_SLOT_INUSE is the interlock: check_slot_seqid() rejects every
+sequence id for a slot that is in use, before replay_matches_cache()
+runs. A replay never sets it, so two replays can be in flight on the
+same slot at once. One can read slot->sl_cred under nn->client_lock
+while the other's completion frees and rebuilds it from the XDR
+encoder without that lock. Two completions can also collide with each
+other and release the same group_info twice. free_svc_cred() leaves
+cr_uid, cr_gid and cr_flavor intact, so the reader passes every
+earlier test in same_creds() and dereferences a NULL cr_group_info.
+From a 6.12.91 production server:
+
+  BUG: kernel NULL pointer dereference, address: 0000000000000004
+  CPU: 63 UID: 0 PID: 39015 Comm: nfsd
+  RIP: 0010:same_creds+0x38/0xa0 [nfsd]
+  RDX: 0000000000000000
+  Call Trace:
+   nfsd4_sequence+0x6a8/0x910 [nfsd]
+   nfsd4_proc_compound+0x345/0x670 [nfsd]
+   nfsd_dispatch+0x100/0x220 [nfsd]
+   svc_process_common+0x311/0x700 [sunrpc]
+   svc_process+0x131/0x1c0 [sunrpc]
+   svc_recv+0x7ef/0x9c0 [sunrpc]
+   nfsd+0xa3/0x100 [nfsd]
+  Kernel panic - not syncing: Fatal exception
+
+Since v6.14 a live session's slot table can shrink, and the unowned
+store becomes a use-after-free write. nfsd4_sequence() defers the
+shrink while a slot is in use, but it tests NFSD4_SLOT_INUSE, which a
+replay does not set, so free_session_slots() can kfree() the slot the
+replay still holds in cstate->slot.
+
+Record the claim in cstate->slot_owned when nfsd4_sequence() accepts a
+request and test that in nfsd4_sequence_done(), so only the request
+that claimed the slot updates its cached reply and clears
+NFSD4_SLOT_INUSE. svc_generic_init_request() zeroes the compound
+response before each request, so the flag starts clear.
+
+Fixes: cc028a10a48c ("NFSD: Hoist status code encoding into XDR encoder functions")
+Assisted-by: Claude:claude-opus-5
+Signed-off-by: Ameer Hamza <ameer.hamza@truenas.com>
+---
+Reproduced on an unmodified tree with a client that pipelines two
+copies of a cached request before reading either reply.
+
+ fs/nfsd/nfs4state.c | 7 ++++++-
+ fs/nfsd/xdr4.h      | 1 +
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2c1b8b2cbbb5b..a4a75a512e9f0 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5170,6 +5170,7 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		slot->sl_flags &= ~NFSD4_SLOT_CACHETHIS;
+ 
+ 	cstate->slot = slot;
++	cstate->slot_owned = true;
+ 	cstate->session = session;
+ 	cstate->clp = clp;
+ 
+@@ -5244,7 +5245,11 @@ nfsd4_sequence_done(struct nfsd4_compoundres *resp)
+ 	struct nfsd4_compound_state *cs = &resp->cstate;
+ 
+ 	if (nfsd4_has_session(cs)) {
+-		if (cs->status != nfserr_replay_cache) {
++		/*
++		 * Only the request that claimed the slot may update its
++		 * cached reply and clear NFSD4_SLOT_INUSE.
++		 */
++		if (cs->slot_owned) {
+ 			nfsd4_store_cache_entry(resp);
+ 			cs->slot->sl_flags &= ~NFSD4_SLOT_INUSE;
+ 		}
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index b841bc462dac8..5b7edf1893e0a 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -62,6 +62,7 @@ struct nfsd4_compound_state {
+ 	struct nfsd4_slot	*slot;
+ 	int			data_offset;
+ 	bool                    spo_must_allowed;
++	bool			slot_owned;
+ 	size_t			iovlen;
+ 	u32			minorversion;
+ 	__be32			status;
+
+base-commit: 46ff234c7129c7c10ed493413d4f60d0cf4dd1f1
+-- 
+2.53.0
+
