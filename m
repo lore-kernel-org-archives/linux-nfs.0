@@ -1,186 +1,142 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ej1-f54.google.com (mail-ej1-f54.google.com [209.85.218.54])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E149F3F0A90;
-	Mon, 24 Aug 2026 16:10:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787587832; cv=none; b=Eoh2vWg31ECKn5yiCfpvGmjOVyPw8OXZSQaHNNP3zWoETKVlCMHl4kWl2Zi3A+VGzy6FW+i9mSvpb1dJi33lhP/e8dPcz8NCNNRD/zwH1mDpDl94FmEyb8t/yfAYXdacjtpYfPJGyIPU2uZda6iCh1qXdA2q8sM3mGRF48HLGe4=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787587832; c=relaxed/simple;
-	bh=GQ7v2PE13mwFYuHvAGzOTYt0xMmPdF3iW0exAl1pQ8I=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=pVWAYlieaUMiZbusMNTr954TDq46wapGXm9zj++NKzJ0E6UmAJEs9X85FJ7JIBGBdaYXX3BH7VeNMFyzzfRIqvkGssEXLqVl6F/DRErB4FzNPOFImYvjf7/pATtR+ujCQj3a0NP0O/fl7CC6J7Qx6YtuhaaBCYkBf1wfrSGRqmY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZjxY61eE; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 423E742125A
+	for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 16:12:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.54
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1787587963; cv=pass; b=H2SW6hnjSqcjwHgbmJoqChm+mAp8/xeZNkwvqBcxzTSyjunW9ueIJ4xWNmsH8QcZ0yAxRae9ybJ1EeE1ROnB+6VqV5wPNDOVnopQx+gqkg3655/llL+tdB7MN+/XwIt8kpsofr2zJdcH209gjz8ygtEfoTc2FSmXy9zzKbukPOQ=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1787587963; c=relaxed/simple;
+	bh=upeiVkj1KjgWaSEPSM6wBhsUQiXS1SCs4E5bSq0CyKQ=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=kug+dhM4TtQNFGAl/s3GqFQGtM76f8LDBETEGL9YsP/V3thDfo4F74u3nmKD7/iKatqzSksYaLIVpCobDXKEr8nDBiBPYozdig3q1VSq4ldUlfBcIPZWO9e+byco4T2s5+RnIDZ/RqkNIsdU5RTsr/YH7dLGvvAfaKz8Ht9kE5k=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=QLwKNBpO; arc=pass smtp.client-ip=209.85.218.54
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZjxY61eE"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E30DE1F000E9;
-	Mon, 24 Aug 2026 16:10:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787587830;
-	bh=qp6T/9IVHu4zROnBfv+3+Gt5gh+VaqWcPCSCqTyXMis=;
-	h=From:To:Cc:Subject:Date;
-	b=ZjxY61eEceVs4fv5LJ/hLNyKIGYqG0d851/kNbln7xQ1AP0gZv9tpREnB9Esw7BNg
-	 hnPVoOGtN6IhITGfzrEQ/p95nNTxOohP6mmGje+wDPTIpR23x2n4XPTZ7Fj4MgCpoV
-	 Sglu8rFX4oRkAvbijfyQOAE2N3rQ4x1+FGnrubaOC/xtv/yX9+d9NFnxakhzFpJ/bp
-	 h9yrCnTaQNQ3MAkwHv+g/QJvh22HT//8HhK6P8axXfl6foU3b9Cffyh5yiR96zbzru
-	 vWtJOjEkI/NPKUx7DzRBDaJ4A1yujXO/r874XwVRTUuAxFB6dYY4xUetjstteSl0jM
-	 8tuc2ut2pzsDQ==
-From: Chuck Lever <cel@kernel.org>
-To: Al Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>,
-	Jan Kara <jack@suse.cz>
-Cc: <linux-fsdevel@vger.kernel.org>,
-	<linux-nfs@vger.kernel.org>,
-	Ameer Hamza <ameer.hamza@truenas.com>,
-	Amir Goldstein <amir73il@gmail.com>
-Subject: [PATCH v1] splice: emit a single fsnotify access event per NFSD READ
-Date: Mon, 24 Aug 2026 12:10:21 -0400
-Message-ID: <20260824161021.245575-1-cel@kernel.org>
-X-Mailer: git-send-email 2.54.0
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="QLwKNBpO"
+Received: by mail-ej1-f54.google.com with SMTP id a640c23a62f3a-c2022323c37so580185166b.0
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 09:12:41 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1787587959; cv=none;
+        d=google.com; s=arc-20260327;
+        b=Z+ix5xqCRsMOiZeCaPUTpFzLVbxl/s/S4779CA4QglIU2jVMHCl66z9kUNyYY3cUV+
+         DkHfSEahOxoZJzkCjdiTF6EpXniuiesJbJBn500ubxt5JIBS7OcpBmFoD491Kw/HlpT9
+         kb78cJms917eLvjQ48Wb6DGwwuW3poMETD17kMwkgwOBtA23u94Lot1Gw1GOg/AV5n0P
+         8Fwy1eTULK9e+mYtRa3pcGVEHn23AJbdxXbJ9hDetm5pQszKAAnbYhzUMZmetXu2cxAH
+         rc56ycMO/iAamyqq6jy407PRHcPwm7/OQABlIsOq+HvPubda88pgTmr2SpXnMXUwNbKu
+         qTIw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=upeiVkj1KjgWaSEPSM6wBhsUQiXS1SCs4E5bSq0CyKQ=;
+        fh=dAmjiugBOi1qdp35VPh6fiWzJzmayQ24VuwwCs1ULIs=;
+        b=drPtRnE5HpybmP2tAsqX/IJB/DTOw9pDK1Dts6oXi6As/CTYVsA4wCyPY3+yg3yx+k
+         eAnZhdXcvKc5oGXHs3ChCpmeY9CS4d+v5e3JQE534pWlgqJYbVyvLqF2fPu/Mmn95eCW
+         qnACmmy3u1DjGyvxQN01CCPFZd6qp1PqrS9Eryb3BFs5tqeweG0Q8X6/W+LPSat6P/Xs
+         LXm7YIr0H/TdgEUQWY1UAO3GhugTbVSdPQtXbZPQ04Wm1kq+ri0L0CqSzYgdtt8EmfRy
+         4P0VP+IYFLEBDxtAhlVoY+bs6HBCD7VUHcW2KBlgxqb6Z6bvACSkozx+pSTfngdu+DHL
+         lvSw==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1787587959; x=1788192759; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=upeiVkj1KjgWaSEPSM6wBhsUQiXS1SCs4E5bSq0CyKQ=;
+        b=QLwKNBpOWkxuPivcCAoQLngmbse/NpRpeUmg0aBqHDj/jPrD5rpojZ9P+xY2VrmP+k
+         cxZ/BR4GkW31z2JWxHS5hf05sP0euTsy1Lm4SyPo8ujM/tJbs7uAwPgDbgfyFPM7cHsM
+         +vP+jk6Eqc/yOZW/ap/1e1nwMoey61p9TAWj4HCp7IWukkfuTZsDjeky1j5G4oRFPZzs
+         m7mz/2OtiWGJSfa1iDK1kLc6aRtuWD9JHTKBVRF5QVlMC/w90RpJKHL4NzD6UpNKbQ6g
+         IVnwWTl9HHZ6K5QcoXUQX6FMIKoZFuRtX2/miTmccrDXF5+vGMBTiRvwpE+WMukEPkzm
+         YinA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787587959; x=1788192759;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=upeiVkj1KjgWaSEPSM6wBhsUQiXS1SCs4E5bSq0CyKQ=;
+        b=beVIq1rBa/Z2zVp+MiawzIZntYOWSFwBJMNaF3v083tmxWnoxcIm4hBNhDLLKnVu6P
+         NrKS7XOQNo9ok00Ne/NeDvQn/1AacBMPIeyam1TO0YKZoYrAXBIL1fUNalJ73gAbomTl
+         nZc5LZR10I3D9H9YReUm0LEVzNx+NGHQltYc6jME8HklvaR4eLNtHZf1/jAB7/HZQcVe
+         DU/mTiQNce69bG7+zG9DxwQyYjobzGvr8kxv90bTzkyU0HHRVbRLdcdfpV83eBTVbVvQ
+         l6CovBJLUHr48DlbvUpIdSMNhZFDM1eYoSPUntTcXfH6ZjxhgvUY5VuqqilxhX0orKxs
+         1EqA==
+X-Gm-Message-State: AFuF++kAMnNkYrYLr5V+i5ozaP/hFWBfxcB10bU97zW9sjyAq9Qp6hYl
+	Hb72Guv42ZpPRu0G+ZJnWC/wvYr/CsqUdSZ+GKzIc5+3EJqmibmsU4/kqd4O/PnWWc0GMvfxPAw
+	AsQxE5pVY2Wod12qMT6JvuLo3oE9Irs8=
+X-Gm-Gg: AR+sD10z469pwQ/kE/Di3GaLutvD16KzNyCxLv2CTawWHsHQhb6E2W8v6CZwExvue6X
+	wWfI7E1ouadeBECV+UyNbJ5TeGBH5ZuQNoHVXtBd+5Djy2tybVzSNnFc9AeVHGt5F0h7qYhzsYi
+	vFPmXao78pstQLSJ18pXmbZ2adGbHflS8NB9etoYF+i9TkQ051uB85DeXBwXmSAKT4FIjo38uF+
+	QHEeUq5cV6lsxSomkoTAZ3pbw627jDJA3LJA+avp+nf4ZLBqpAo7cEeVVeeLnXXaNU1nOaOf1YM
+	BcWZm7yVTnf5Tv5dNSLD+qTHkz0bzB7m0iY4JTDEIb7rlA4y0t0beDsORE9rsTTDcOzKaQx/LRD
+	u
+X-Received: by 2002:a17:907:c30c:b0:c1f:9cdb:9965 with SMTP id
+ a640c23a62f3a-c246a2eb836mr3251486766b.2.1787587959170; Mon, 24 Aug 2026
+ 09:12:39 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <1759357733-64526-1-git-send-email-dai.ngo@oracle.com>
+ <CA+1jF5rAMkb44Pu8XGDnu9WUE54sHVf5TurMsQXfrUrmu0Ojjw@mail.gmail.com>
+ <CA+1jF5qAbz2pMSAnSdJVo0P1d=jM5ysDsUi6BpW_+v9LgaLsPQ@mail.gmail.com> <00efd625-90e0-4ddb-b996-69a952d4d420@app.fastmail.com>
+In-Reply-To: <00efd625-90e0-4ddb-b996-69a952d4d420@app.fastmail.com>
+From: =?UTF-8?Q?Aur=C3=A9lien_Couderc?= <aurelien.couderc2002@gmail.com>
+Date: Mon, 24 Aug 2026 18:12:01 +0200
+X-Gm-Features: AcwNN1XQ0fWpUzzaGN7dVAhrmvQt5rLogIgurM_hAyO0TFaM75vsQjzjK8ByBaI
+Message-ID: <CA+1jF5oa5v+6_ML=QMXuJ_H=ckgYnQhF5Lf18-GSq7hucEy1oQ@mail.gmail.com>
+Subject: Re: READ_PLUS broken in Linux 6.12, worked in Linux 5.10! Re: [PATCH
+ 1/1] DIO: add NFSv4.2 READ_PLUS support for nfstest_dio
+To: Chuck Lever <cel@kernel.org>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-nfsd_finish_read() calls fsnotify_access() on both NFSD read paths,
-because splice_direct_to_actor() does not emit the event itself. The
-iterator path reaches nfsd_finish_read() from vfs_iocb_iter_read(),
-which has already emitted one. A READ served without splice therefore
-emits two access events.
+On Mon, Aug 24, 2026 at 5:57=E2=80=AFPM Chuck Lever <cel@kernel.org> wrote:
+>
+>
+> On Mon, Aug 24, 2026, at 11:40 AM, Aur=C3=A9lien Couderc wrote:
+> > Reminder: This is still broken in Linux 7.2.
+> >
+> > Aur=C3=A9lien
+> >
+> > On Thu, Oct 2, 2025 at 10:22=E2=80=AFAM Aur=C3=A9lien Couderc
+> > <aurelien.couderc2002@gmail.com> wrote:
+> >>
+> >> On Thu, Oct 2, 2025 at 12:29=E2=80=AFAM Dai Ngo <dai.ngo@oracle.com> w=
+rote:
+> >> >
+> >> > From: Oracle Public Cloud User <opc@dngo-nfstest-client.allregionali=
+ads.osdevelopmeniad.oraclevcn.com>
+> >> >
+> >> > Check for nfs_version >=3D 4.2 and use READ_PLUS instead of READ.
+> >>
+> >> FYI READ_PLUS is **BROKEN** for sparse files. It was working in Linux
+> >> 5.10, but as soon as we switched to Linux 6.12 it reported only data
+> >> and no holes in sparse files. We're back to Linux 5.10 and cannot
+> >> upgrade because of this.
+>
+> Aur=C3=A9lien, "broken" is not an actionable bug report. It's a
+> complaint.
+>
+> Do you mean that NFSD returns READ_PLUS responses that contain only
+> data segments, never holes? That is perhaps not optimal, but it is
+> 100% spec-compliant, as far as I am aware.
+>
+> NFSD was changed to do this because there is no common race-free
+> way to detect holes in files on Linux filesystems. If kernel VFS
+> developers know of a way to do this, please reach out to me.
 
-NFSD does not use splice for the GSS integrity and privacy services, so
-a READ on a sec=krb5i or sec=krb5p mount takes the iterator. An inotify
-watch on that file sees the READ twice.
+Why is this a job of the VFS? On the NFS server side? If someone wants
+a race-free hole listing he has to lock (shared lock) that file on the
+NFS client side, NFS server handles THAT lock. Problem solved.
 
-Reported-by: Ameer Hamza <ameer.hamza@truenas.com>
-Closes: https://lore.kernel.org/linux-nfs/20260818225715.572140-1-ameer.hamza@truenas.com/
-Suggested-by: Amir Goldstein <amir73il@gmail.com>
-Link: https://lore.kernel.org/linux-nfs/CAOQ4uxgUOqFv6pVmdT_+4DjA0KQoQDCzN2Xz=xm1FyumewHZXg@mail.gmail.com/
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- fs/nfsd/vfs.c          |  7 ++----
- fs/splice.c            | 56 +++++++++++++++++++++++++++++++-----------
- include/linux/splice.h |  4 +--
- 3 files changed, 45 insertions(+), 22 deletions(-)
-
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index f9131827d391..c134064a1c79 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1046,7 +1046,6 @@ static __be32 nfsd_finish_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		nfsd_stats_io_read_add(nn, fhp->fh_export, host_err);
- 		*eof = nfsd_eof_on_read(file, offset, host_err, *count);
- 		*count = host_err;
--		fsnotify_access(file);
- 		trace_nfsd_read_io_done(rqstp, fhp, offset, *count);
- 		return 0;
- 	} else {
-@@ -1080,10 +1079,8 @@ __be32 nfsd_splice_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	ssize_t host_err;
- 
- 	trace_nfsd_read_splice(rqstp, fhp, offset, *count);
--	host_err = rw_verify_area(READ, file, &offset, *count);
--	if (!host_err)
--		host_err = splice_direct_to_actor(file, &sd,
--						  nfsd_direct_splice_actor);
-+	host_err = vfs_splice_direct_to_actor(file, &sd,
-+					      nfsd_direct_splice_actor);
- 	return nfsd_finish_read(rqstp, fhp, file, offset, count, eof, host_err);
- }
- 
-diff --git a/fs/splice.c b/fs/splice.c
-index 9d8f63e2fd1a..42ad712a0f4d 100644
---- a/fs/splice.c
-+++ b/fs/splice.c
-@@ -1009,21 +1009,14 @@ ssize_t vfs_splice_read(struct file *in, loff_t *ppos,
- }
- EXPORT_SYMBOL_GPL(vfs_splice_read);
- 
--/**
-- * splice_direct_to_actor - splices data directly between two non-pipes
-- * @in:		file to splice from
-- * @sd:		actor information on where to splice to
-- * @actor:	handles the data splicing
-- *
-- * Description:
-- *    This is a special case helper to splice directly between two
-- *    points, without requiring an explicit pipe. Internally an allocated
-- *    pipe is cached in the process, and reused during the lifetime of
-- *    that process.
-- *
-+/*
-+ * This is a special case helper to splice directly between two
-+ * points, without requiring an explicit pipe. Internally an allocated
-+ * pipe is cached in the process, and reused during the lifetime of
-+ * that process.
-  */
--ssize_t splice_direct_to_actor(struct file *in, struct splice_desc *sd,
--			       splice_direct_actor *actor)
-+static ssize_t splice_direct_to_actor(struct file *in, struct splice_desc *sd,
-+				      splice_direct_actor *actor)
- {
- 	struct pipe_inode_info *pipe;
- 	ssize_t ret, bytes;
-@@ -1147,7 +1140,40 @@ ssize_t splice_direct_to_actor(struct file *in, struct splice_desc *sd,
- 
- 	goto done;
- }
--EXPORT_SYMBOL(splice_direct_to_actor);
-+
-+/**
-+ * vfs_splice_direct_to_actor - splice from a file through a caller's actor
-+ * @in:		file to splice from; must be seekable (FMODE_LSEEK)
-+ * @sd:		splice parameters. The caller sets @sd->pos and
-+ *		@sd->total_len. @sd->pos advances as data is consumed,
-+ *		and @sd->total_len is overwritten with the length of
-+ *		each read.
-+ * @actor:	consumes each pipe-full and returns the number of
-+ *		bytes taken
-+ *
-+ * Description:
-+ *    Splice from @in through @actor, for a caller that consumes
-+ *    the data itself rather than sending it to a second file.
-+ *    This helper verifies the read and emits the fsnotify access
-+ *    event. do_splice_direct() leaves both to its callers.
-+ *
-+ * Return: The number of bytes spliced, or a negative errno.
-+ */
-+ssize_t vfs_splice_direct_to_actor(struct file *in, struct splice_desc *sd,
-+				   splice_direct_actor *actor)
-+{
-+	ssize_t ret;
-+
-+	ret = rw_verify_area(READ, in, &sd->pos, sd->total_len);
-+	if (ret < 0)
-+		return ret;
-+
-+	ret = splice_direct_to_actor(in, sd, actor);
-+	if (ret >= 0)
-+		fsnotify_access(in);
-+	return ret;
-+}
-+EXPORT_SYMBOL(vfs_splice_direct_to_actor);
- 
- static int direct_splice_actor(struct pipe_inode_info *pipe,
- 			       struct splice_desc *sd)
-diff --git a/include/linux/splice.h b/include/linux/splice.h
-index 9dec4861d09f..4e91d03ed645 100644
---- a/include/linux/splice.h
-+++ b/include/linux/splice.h
-@@ -79,8 +79,8 @@ ssize_t add_to_pipe(struct pipe_inode_info *pipe, struct pipe_buffer *buf);
- ssize_t vfs_splice_read(struct file *in, loff_t *ppos,
- 			struct pipe_inode_info *pipe, size_t len,
- 			unsigned int flags);
--ssize_t splice_direct_to_actor(struct file *file, struct splice_desc *sd,
--			       splice_direct_actor *actor);
-+ssize_t vfs_splice_direct_to_actor(struct file *file, struct splice_desc *sd,
-+				   splice_direct_actor *actor);
- ssize_t do_splice(struct file *in, loff_t *off_in, struct file *out,
- 		  loff_t *off_out, size_t len, unsigned int flags);
- ssize_t do_splice_direct(struct file *in, loff_t *ppos, struct file *out,
--- 
-2.54.0
-
+Aur=C3=A9lien
+--=20
+Aur=C3=A9lien Couderc <aurelien.couderc2002@gmail.com>
+Big Data/Data mining expert, chess enthusiast
