@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1A3834302FC
-	for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 14:04:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D16DD433059
+	for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 14:04:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787580294; cv=none; b=JNfwyqphIVPGSDR5orDQQvOuY1fhVs5ZndOX2noJmzrmSW1r8EIy2ickv/4v1f9I8KW8vb4VG3VjAJpL1WFA4Bki5+oPip8cS6F8rDrk7u+TfhddQhIW5BOHsnoptGR8Yvfyaq5HBChIWT9Y4HaEoY3fte4t8/rm7F5tgVW4VBo=
+	t=1787580295; cv=none; b=WrkVPEII4HiKtU1Fl6m1/0+6fs1tnMzZZ2Higxw3+cAPdTybAtLrrfmgTgY0TTPue2m3ky+CCJm8os8oFbFdj8eUsYKVKqoRAfWFaS/warq1JpkIs4vug4t5KxWM23NnFSCHXaehTK1xFuBGFIVE5L/JVtzAGQuUooaOAS3dFwY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787580294; c=relaxed/simple;
-	bh=mNk99gFLo92/ixC/ateQE1izZtkBpzktnLO9HAT5RS0=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=QV+0FUzYlQGmQRBVtfMzvrZiBZ9mAhcFtqgz4ytV8iE5tkbPD4IiSrMtjIU3L8us89DfsdZLwOrstJalgEhZD3uWJzqz9D7bQfQRF3zIolfRUzWdbdBzIkK/PehhADMM1j3M/Z7kH2yksCBHpdTGQ2sdDRj95CctcNwsbFkGICg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=eb9M9F4Y; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787580295; c=relaxed/simple;
+	bh=dm0QEoDqyYPVdycXxqcq65jZs8yIJLWpWaylOb388l8=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=L/R7q2g++e07JfQ5QsikXMADd8H1hnzR+YX1CIht98kLl4DEACvUnNqsasBckdhbnXjrydPiXErZX/ukiXtUbThGHOfe267pD7xT86e3I5lGRf9xJ2hClKAulrEDaoVoP7L2VHEyfeSikSIa0SHCRIYqpDGhpTp7YWFl4Sv5ZpE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=J7Nke1jt; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="eb9M9F4Y"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D082E1F00A3A;
-	Mon, 24 Aug 2026 14:04:51 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="J7Nke1jt"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D856A1F000E9;
+	Mon, 24 Aug 2026 14:04:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787580292;
-	bh=l6ZUjnYnh/UuMrsMSqz21tTMuJ+guaB5Arf0wxfg/ZE=;
-	h=From:Subject:Date:To:Cc;
-	b=eb9M9F4Y/YjP6jcKobSiMBSzo0IZpfqKK3jGi298PUpsHvBgtLmo90WmWJoHniRiW
-	 /mV+x1CbrXSW+kJpvGjfuKL/jKpSeVFYLrJSHOMQ3Wkmkur+wOA/mqoebRMBxFbjeR
-	 TGps27B/2j08KOfdD16BFBcgYJzYXx8kUEi6G5udpwJV/oBslygK/+NCMlXaadRJnb
-	 cyk9kh8Oyn2Q2nBQLPzBe6jVytiBrXHFwc7mh7dC6uSbwMklQmlsuKnpM6Z+p5Zp3C
-	 W+a4smgmvVc50Qet9zsYIxGbvTs0v9dGodwucALQ6xdgklvgBEpeKMRwqKyJmjnACi
-	 lagiKwEU0tb0Q==
+	s=k20260515; t=1787580293;
+	bh=Veh3k0EWbNUJ94rZQlPIslZtiIhPa+roXeKYPTY7qxg=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=J7Nke1jt8J6Rs5ZCVAHcZet3BB5syEu1H4ZwQHomI1qeJHUmRoisb5GNVZ7ISTMz2
+	 /1bSzSNdh35XDoR84gahg8RzTKCROxnkPxpE9mDnLy0FGwWH1bkaKLlVRRrrsHB5Kr
+	 WirfqtOPJx32yfO3OPEEp8/rKTliLH1q4NCcCwLemIpm4F34b9vloAC4gUmweAeZQU
+	 qwPz8josea03mPS4LGDC4jxgw73HKfmaKXAZC2v7glm8JuolI4ow4V60FnWjVe7iUS
+	 I6CsHq1ZiMNwRocRsUC5JZqEbah/TN8FAPZqhEEGO+P4mxs1xiYCsr7+GTchSeh1zf
+	 vIFmRQg9gIfQg==
 From: Chuck Lever <cel@kernel.org>
-Subject: [PATCH 0/2] NFSD: Fixes for NFSv4 COMPOUND argument teardown
-Date: Mon, 24 Aug 2026 10:04:39 -0400
-Message-Id: <20260824-nfsd-posix-acl-ownership-v1-0-090fffc608ec@kernel.org>
+Date: Mon, 24 Aug 2026 10:04:40 -0400
+Subject: [PATCH 1/2] NFSD: Fix out-of-bounds read in the rpc_status dump
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,68 +37,96 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQrDIBBFrxJm3YHEhFB6ldKFmjFOKSqObQMhd
- 6+my/f57+0glJkEbt0OmT4sHEOF4dKB9TqshLxUBtWrub+qCYOTBVMU3lDbF8ZvoCyeE47GjM7
- SNJvBQtVTJsfbmb4//ixv8yRbWq89jBZCk3Wwvk1nuZAUDiscxw/RY5mDmwAAAA==
-X-Change-ID: 20260824-nfsd-posix-acl-ownership-3bb3fce46b1c
+Message-Id: <20260824-nfsd-posix-acl-ownership-v1-1-090fffc608ec@kernel.org>
+References: <20260824-nfsd-posix-acl-ownership-v1-0-090fffc608ec@kernel.org>
+In-Reply-To: <20260824-nfsd-posix-acl-ownership-v1-0-090fffc608ec@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>, Lorenzo Bianconi <lorenzo@kernel.org>, 
  Rick Macklem <rmacklem@uoguelph.ca>
 Cc: Prabhakar Pujeri <prabhakar.pujeri@dell.com>, linux-nfs@vger.kernel.org, 
- Chuck Lever <cel@kernel.org>, stable+noautosel@kernel.org
+ Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1450; i=cel@kernel.org;
- h=from:subject:message-id; bh=mNk99gFLo92/ixC/ateQE1izZtkBpzktnLO9HAT5RS0=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqjE975kE+2n/b+CNUFIu2DUpNOF5PNYDCMKoXy
- R+3QRlFPpCJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaoxPewAKCRAzarMzb2Z/
- l7zyEACmIIiFZxRxSZllVOblAb+QdvOBCRQSfAkfgcGhPD1HJetsNJAkucHC5H6YQ57+Y5f/R9I
- LjQmRTqJ9Tfn6xEERIqPbVmodC6YVAwpODIKBbRSMqOa/Hf+d0uNUhVAp4/Gby290YLDZB7XPS1
- IKRDvbI0ZFVBMlQvq1wbbHXsoATDzA20kgE9AMcHFtIY/sF/GruzPzVy6TPPksp4zqe9oiYmO4C
- LsDnUb6DoRD1vbqOkptghK+SbFjsHBsM/xUar2gXbQ19ZpwjPSnmi1/9RFUqlLT8fg31vHRPTgw
- iYjbZdf2kEJ1XZ9pxX26yHN9gsYT15UErEJcyJjiiqc51Xz+KwSltBHHbIjGqL0EHv1reugrPwC
- ejEJ/BpqJjPd7cRU20WiRKdaWZjs2Zm3neRXFfZMBtrg8lvtMWO3vs1oacay3bToLNCJxxbtl4f
- gqfWGcqASOFrjOUaS1XPnu4gIaIF+M/LDBdo4IA2cNSEd/dYCEJsNX6REd4H+fZ9K6wijj5VY8h
- 6QmO4tY1K1XEHdlGiLcIh9OOruoSH7ZyWZvOEw5XLRZIp40J/AXI1Dyk9r4WdUFANJ7239ZPS+t
- RJWopxI/R5h+vMjGItqgG12g7wqHm1Dj0JwmuEYQ4SyWoGRPtcfUyGfSCr92gTUwsnNZsrDpKDG
- gEEHAm3gnTrVbeg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2543; i=cel@kernel.org;
+ h=from:subject:message-id; bh=dm0QEoDqyYPVdycXxqcq65jZs8yIJLWpWaylOb388l8=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqjE+D8k/GjZfS61uZIcaOOBQr0iWN1FOYl7rSC
+ 2iphiNngGSJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaoxPgwAKCRAzarMzb2Z/
+ l60VD/9JKm4fUFkzr/d/qv5dot3H/qRuh2DsJTK195GDJ37A/aJ268hqvaVepfVZFCEau+RBL64
+ 2drRdAPGFxOHHv1Cy3yG1rKEg7GsYnVuLmj7JhrdONLBO4k4HO4o2tYwgU8683gQofXqM6Qcl4S
+ 9Q6BrIh5nRRq4eMU/uvHfhycZ75X9L0VaUqdPrW6wDjkM0yMgOHoPv+Zj9eSbvWPKpkl2Z/UwWX
+ 0rgoYoy/lrThY16R8hFHN0GYFAuWnOBOBQjCmoHykTvohzJZjT9eHUVnyzF4M4FvRKUFyKhpLaJ
+ qfvFQbov5nM8pDG0JXi5VBnBAvnbF9K+XpLz/vuUQofJg+HVYNXMfzsrJzk5/3gokU2t4Bm8FYL
+ 4TjeOqvxq8wwQiHxEsAVcE4xadDGkDfI34sKIqOP/gKqAj/qcEv3/yCUtVsSQQzhiGxo29TPRVG
+ A0GwDP/E0TthDOk/OosnqJBDmoE5SY+ucMHG91WTquafzsxvJWIE8i6Jl2oiWrE0gm9pKbjMy0r
+ QZHCpaLvNs1uovYm5Ymcwv9iDcq2p4nLspbK8KYbx7TUys0DQbeqxo+IyRIXuXaXbbI99gJS9oT
+ ZjEphqwtAbDxEzQVppsKX2chXmr4czaNgvcj9tUJT3KSB9D8LkVSxGSVNpR+u37zxGASkeUCWb3
+ JMY8zTXbXVoEyrQ==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-Prabhakar Pujeri reported both of these defects in a single patch:
+nfsd_nl_rpc_status_get_dumpit() loads args->opcnt and
+args->ops separately, then walks ops[] before rechecking
+rq_status_counter. A COMPOUND that completes between the two loads
+runs nfsd4_release_compoundargs(), which zeroes opcnt and points ops
+back at the eight-entry inline array. A dump that already sampled an
+opcnt of 200 clamps it to the sixteen slots in rq_opnum, then indexes
+iops[0..15]. iops is the last member of struct nfsd4_compoundargs and
+rq_argp is allocated at exactly that size, so the walk runs off the
+end of the allocation. The trailing recheck discards the sampled data,
+but the read has already happened. NFSD_CMD_RPC_STATUS_GET carries
+no GENL_ADMIN_PERM, so an unprivileged local user can repeat the dump
+against a busy server until it lands in the window.
 
-  https://lore.kernel.org/linux-nfs/20260823113255.3417-1-prabhakar.pujeri@dell.com/
+Sample opcnt and ops into locals, then finish the counter recheck
+before dereferencing ops. An unchanged counter means both came from the
+same COMPOUND, where opcnt cannot exceed what ops holds.
 
-They are split here because they need different LTS routing. The
-rpc_status dump requires no privilege and is present in a default
-build. NFSv4 POSIX ACL support is experimental and disabled by
-default, so the ACL-related fix is mainline-only.
-
-In the original proposed fix, the decoder leaves the only reference
-to a decoded ACL in the operation's argument structure, and the
-executing operation transfers that reference to struct nfsd_attrs.
-This is the root cause of leak, so my proposal is to address that
-instead.
-
-After close review, I determined that the argp->opcnt assignments
-address a problem that is currently unreachable. Instead, my fix
-is to block the OOB buffer read during the rpc_status dump.
-
+Fixes: bd9d6a3efa97 ("NFSD: add rpc_status netlink support")
+Reported-by: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
+Closes: https://lore.kernel.org/linux-nfs/20260823113255.3417-1-prabhakar.pujeri@dell.com/
+Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
-Chuck Lever (2):
-      NFSD: Fix out-of-bounds read in the rpc_status dump
-      NFSD: Fix POSIX ACL leak in unexecuted NFSv4 COMPOUND operations
+ fs/nfsd/nfsctl.c | 21 ++++++++++++++++++---
+ 1 file changed, 18 insertions(+), 3 deletions(-)
 
- fs/nfsd/nfs4proc.c | 30 ++++++------------------------
- fs/nfsd/nfs4xdr.c  | 41 +++++++++++++++++++++++++++--------------
- fs/nfsd/nfsctl.c   | 21 ++++++++++++++++++---
- fs/nfsd/xdr4.h     |  1 +
- 4 files changed, 52 insertions(+), 41 deletions(-)
----
-base-commit: 565f77e5882a39bb2b70b9ed580d24e246c49737
-change-id: 20260824-nfsd-posix-acl-ownership-3bb3fce46b1c
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 6e63950a99e1..5331b89c4281 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1588,14 +1588,29 @@ int nfsd_nl_rpc_status_get_dumpit(struct sk_buff *skb,
+ 			    rqstp->rq_proc == NFSPROC4_COMPOUND) {
+ 				/* NFSv4 compound */
+ 				struct nfsd4_compoundargs *args;
++				struct nfsd4_op *ops;
++				u32 opcnt;
+ 				int j;
+ 
+ 				args = rqstp->rq_argp;
+-				genl_rqstp.rq_opcnt = min_t(u32, args->opcnt,
++				opcnt = READ_ONCE(args->opcnt);
++				ops = READ_ONCE(args->ops);
++
++				/*
++				 * Finish the seqcount retry before
++				 * dereferencing ops. An unchanged counter means
++				 * opcnt and ops came from the same COMPOUND,
++				 * where opcnt cannot exceed what ops holds.
++				 */
++				smp_rmb();
++				if (READ_ONCE(rqstp->rq_status_counter) !=
++				    status_counter)
++					continue;
++
++				genl_rqstp.rq_opcnt = min_t(u32, opcnt,
+ 							    ARRAY_SIZE(genl_rqstp.rq_opnum));
+ 				for (j = 0; j < genl_rqstp.rq_opcnt; j++)
+-					genl_rqstp.rq_opnum[j] =
+-						args->ops[j].opnum;
++					genl_rqstp.rq_opnum[j] = ops[j].opnum;
+ 			}
+ #endif /* CONFIG_NFSD_V4 */
+ 
 
-Best regards,
---  
-Chuck Lever
+-- 
+2.54.0
 
