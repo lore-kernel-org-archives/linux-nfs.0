@@ -1,186 +1,106 @@
-Received: from smtpo75.interia.pl (smtpo75.interia.pl [217.74.67.75])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-SHA256 (128/128 bits))
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0472F2BDC1C
-	for <linux-nfs@vger.kernel.org>; Sun, 23 Aug 2026 20:30:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.74.67.75
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0F72F27BF93;
+	Mon, 24 Aug 2026 04:57:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787517036; cv=none; b=j+/6FggtxzHd0gc1VipcG/YL3aGXpytR6WbkaO2uZSQoY+vFUz31TI8665vQMkRorkQ/R6YHgeXk5RM4aQkfcgIHhPXyKXDHYle1WGxHBvnSANR9CQ6MxvxrsfDKZ3Vix3eb7Di0X8mM/PReMjo2qh+Y9OcsZX8JhT8BFO6quOQ=
+	t=1787547476; cv=none; b=jlfCeX5WJpWVDb5ukIlnfWDg2D1TCrItvOiHRVBtIKYYpAoRZzRuuLFFmUcvXbmKaO6iuErmzIc47xGJrUUy+imH/CTRrcjyjdY8z/XHLuhaxY/YSNjkYfCd3PD5qNA5+XPFeVxPq+KnyLsDQ8yqLcCg9N/J0o3Ww4DYE1lyTIY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787517036; c=relaxed/simple;
-	bh=fgX5dIrrngNi8qvboXy2ANyqyboqF/OD5hrSyrnQGxY=;
+	s=arc-20240116; t=1787547476; c=relaxed/simple;
+	bh=NyXRpwdg6yBfVIQOJaMZCcBk4YphL1lGutrtTFJsqTU=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=pTcaW6jm7izsGX7SzBHIDlT7OLqdNs2NsslobjknKWvUy/SllUhvNI+VX5/q1w77N0cQEmi9gemkCwLAJgCgLadblRbtespAdgjiTJRHm0OYhSqCgEnwVKJo/BqDFjk7FrFh2wwnGt+Bvuubt0j/1QDgx2Is8MFMXCPC3xI36iw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=poczta.fm; spf=pass smtp.mailfrom=poczta.fm; dkim=pass (1024-bit key) header.d=poczta.fm header.i=@poczta.fm header.b=CksGZQsQ; arc=none smtp.client-ip=217.74.67.75
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=poczta.fm
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=poczta.fm
+	 Content-Type:Content-Disposition:In-Reply-To; b=MWbxglVFeiNJcz2tIxMtI6+FO3nJ0Ve4vbYR7HYq5p8WzNOYi+COYklaI5pXELvgMzybOinFS9aJQD87lWJDifTmyU/XWENS7TIcgnPb6oDWwTMqUnboyaCE/kpOPV9DcIVBBgIUNtqC8aI3ZKhgijAV0qXjCN6fE3lkpqUcq2A=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=pFpaGsYR; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=poczta.fm header.i=@poczta.fm header.b="CksGZQsQ"
-Received: from nr200 (unknown [80.68.231.31])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (P-256) server-digest SHA256)
-	(No client certificate requested)
-	by poczta.interia.pl (INTERIA.PL) with ESMTPSA;
-	Sun, 23 Aug 2026 22:27:59 +0200 (CEST)
-Date: Sun, 23 Aug 2026 22:27:56 +0200
-From: Slawomir Stepien <sst@poczta.fm>
-To: Jeff Layton <jlayton@kernel.org>
-Cc: syzbot <syzbot@kernel.org>, syzkaller-bugs@googlegroups.com,
-	Chuck Lever <cel@kernel.org>, linux-nfs@vger.kernel.org,
-	Lorenzo Bianconi <lorenzo@kernel.org>, Dai.Ngo@oracle.com,
-	linux-kernel@vger.kernel.org, neil@brown.name, okorniev@redhat.com,
-	syzbot@lists.linux.dev, tom@talpey.com
-Subject: Re: [PATCH] nfsd: prevent hung task in nfsd_nl_listener_set_doit()
-Message-ID: <aotXzLmrd-B89YRg@nr200>
-References: <4601ffd5-c662-4ab1-ab2f-50a67a0a990e@mail.kernel.org>
- <699bacb503758fbe2ebf01f3e8aca95e3eee4128.camel@kernel.org>
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="pFpaGsYR"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Transfer-Encoding
+	:Content-Type:MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:
+	Sender:Reply-To:Content-ID:Content-Description;
+	bh=245p8zrhWKrhjJkSRaqb+oya1mI88yA4bBnC6uq7Br4=; b=pFpaGsYRjmLVq8mzH0rMqhbBhL
+	CGxBtzs9tVUuyLNZGxWdeB4owetFfjY1Y4+wJ1uru2A8UpU+2Zf7VmU9/X7nj5WtBFMVUntQ667bE
+	sCPP9SyGotFKIuJ4JdF3Dtpiw8RJ0Zy3GKGlS4fAC2c5kb820H7W5bnTPyVRymMuWrKHFuEJINc7R
+	630R1bWL1wpNHeLR2ymoyw2U1b+JF9KyUd/Vj/OA9DTGvhiRRt600+Adhes9PObwx5BB6lx1bQrJ3
+	Zztxma1b4WQxCFNJAX+LjvvGPVrTy3nqtWolPSObOIJSkdbJoMCt5K82SkBRXQHizgsG9e3foU6Ao
+	R+B6QsDQ==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
+	id 1wyMki-0000000FvI1-2f6O;
+	Mon, 24 Aug 2026 04:57:44 +0000
+Date: Sun, 23 Aug 2026 21:57:44 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Amir Goldstein <amir73il@gmail.com>
+Cc: Chuck Lever <cel@kernel.org>, Christoph Hellwig <hch@infradead.org>,
+	Ameer Hamza <ameer.hamza@truenas.com>,
+	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Jan Kara <jack@suse.cz>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Christian Brauner <brauner@kernel.org>
+Subject: Re: [PATCH 1/2] NFSD: Fix duplicate fsnotify access events for
+ iterator READs
+Message-ID: <aovPSDE_IGKggzyN@infradead.org>
+References: <20260818225715.572140-1-ameer.hamza@truenas.com>
+ <aoVHBkmPNSRakbYW@infradead.org>
+ <9ad95194-983d-427d-9a07-c9eb0891d1a0@app.fastmail.com>
+ <CAOQ4uxgUOqFv6pVmdT_+4DjA0KQoQDCzN2Xz=xm1FyumewHZXg@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <699bacb503758fbe2ebf01f3e8aca95e3eee4128.camel@kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=poczta.fm; s=dk;
-	t=1787516881; bh=gccscRbE6Dq1I/86KA/cEq4TDd0tJ39N7H/4fIa80Fw=;
-	h=Date:From:To:Subject:Message-ID:MIME-Version:Content-Type;
-	b=CksGZQsQL6M8YDKHfSdrzVAuvBO86rmTt49KitrJ9yLOfCVl2EgtiOQo1cOO5R2Ms
-	 7dpqULGBy4KkENJbnE9y+Q5rdUC0Uk/G6HCI53BqqRZv0V0zR3kHuy7FxgNU+SkET5
-	 ogPlVBkJKP4c3Q8q22P/O7yeF3ydIKOW2r4p833o=
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <CAOQ4uxgUOqFv6pVmdT_+4DjA0KQoQDCzN2Xz=xm1FyumewHZXg@mail.gmail.com>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-On sie 20, 2026 07:37, Jeff Layton wrote:
-> On Thu, 2026-08-20 at 06:55 +0000, syzbot wrote:
-> > From: Slawomir Stepien <sst@poczta.fm>
-> > 
-> > In nfsd_nl_listener_set_doit(), the kernel iterates over all
-> > NFSD_A_SERVER_SOCK_ADDR attributes provided in a netlink message to
-> > configure NFS server listeners. There is currently no limit on the number
-> > of attributes a user can send.
-> > 
-> > For each attribute, svc_xprt_create_from_sa() is called, which may
-> > synchronously invoke request_module() to load the corresponding transport
-> > module. If a user provides a large number of invalid transport names,
-> > request_module() is called sequentially for each, taking a massive amount
-> > of time. Since this entire process occurs while holding the global
-> > nfsd_mutex, it blocks other tasks attempting to acquire the mutex and
-> > triggers a hung task timeout:
-> > 
-> 
-> My LLM latched onto the same explanation, but the request module
-> upcalls are actually quite quick and have some other gates on them that
-> make this problem hard to hit in practice.
+On Sat, Aug 22, 2026 at 12:21:12PM +0200, Amir Goldstein wrote:
+> (1) In this series
+> https://lore.kernel.org/linux-fsdevel/20231122122715.2561213-1-amir73il@gmail.com/
+> we intentionally moved the permission hook outside
+> of the splice iterators because we wanted to avoid calling them
+> with freeze protection held and also there were some duplicate calls
+> for this work.
 
-Oh, OK. Thanks for clearing that up!
+This got me into a little rathole of looking into the other
+do_splice_direct_actor callers.  And I still don't understand why
+taking file_start_write outside the main splice machinery is fine
+for splice_file_range callers, but not for do_splice_direct callers,
+and what consideration exists for potential new callers.
+(and yes, the naming does not help)
 
-> The real problem is rpcbind registration, which can be quite slow. The
-> fix for that is to make the registration asynchronous, and to not
-> trigger errors on rpcbind registration failure. That's a bigger
-> project, but let us know if you're interested!
+> (2) emitting many READ events from an iterator instead of one event for
+> the user's READ request is more noisy and serves no purpose to users.
+> In most cases (but not always) those events could be merged, but at the
+> cost of futile CPU cycles.
 
-I think I'm not that good to do it correctly and in some reasonable time. I might take a 2nd look at
-this and understand the root cause (also, based on your comments in your series) but I think in the
-end it might be too hard for me.
+Yes.
 
-> In any case, I've sent a series that includes a similar fix to this
-> one, along with some others:
-> 
->     https://lore.kernel.org/linux-nfs/20260811-nfsd-nl-hang-v2-0-c0c92b3953c3@kernel.org/
-> 
-> I'll try to get the follow-on series out later today or tomorrow.
+> >From a quick inspection of the code, it looks like:
+> - fsnotify_access() is missing in vfs_splice_read()
 
-Nice series, I've learnt something from it! I will be looking for v3!
+Yes.  Then again I don't really understand vfs_splice_read, it basically
+just forward ->splice_read.  I guess for backing_file this is
+expected and matches what do_backing_file_read_iter does. for
+code it looks weird as the context doesn't change at all.
 
-> >   INFO: task blocked for more than 10 seconds.
-> >   ...
-> >   Call Trace:
-> >    <TASK>
-> >    __schedule+0x17e7/0x5630 kernel/sched/core.c:7234
-> >    schedule+0x164/0x2b0 kernel/sched/core.c:7326
-> >    schedule_preempt_disabled+0x13/0x30 kernel/sched/core.c:7383
-> >    __mutex_lock_common kernel/locking/mutex.c:726 [inline]
-> >    __mutex_lock+0x7bf/0x1550 kernel/locking/mutex.c:821
-> >    nfsd_nl_version_get_doit+0x17c/0xd20 fs/nfsd/nfsctl.c:1889
-> >    genl_family_rcv_msg_doit+0x233/0x340 net/netlink/genetlink.c:1114
-> >    genl_family_rcv_msg net/netlink/genetlink.c:1194 [inline]
-> >    genl_rcv_msg+0x614/0x7a0 net/netlink/genetlink.c:1209
-> >   ...
-> >   2 locks held by task/5864:
-> >    #0: ffffffff90114168 (cb_lock){++++}-{4:4}, at: genl_rcv+0x19/0x40
-> >    net/netlink/genetlink.c:1217
-> >    #1: ffffffff8eeb1a60 (nfsd_mutex){+.+.}-{4:4}, at:
-> >    nfsd_nl_listener_set_doit+0x135/0x1750 fs/nfsd/nfsctl.c:1964
-> > 
-> > Furthermore, the function does not break out of the loop if
-> > svc_xprt_create_from_sa() fails, and it suffers from an O(N^2) complexity
-> > issue because svc_find_listener() iterates over the serv->sv_permsocks list
-> > for each attribute.
-> > 
-> > Address this by introducing a hard limit of 128 NFSD_A_SERVER_SOCK_ADDR
-> > attributes per netlink message. The limit is enforced before acquiring the
-> > nfsd_mutex to prevent lock contention. Additionally, modify the loop to
-> > break immediately if listener creation fails, avoiding needless sequential
-> > request_module() calls for invalid configurations.
-> > 
-> > Fixes: 16a471177496 ("NFSD: add listener-{set,get} netlink command")
-> > Assisted-by: Gemini:gemini-3.6-flash Gemini:gemini-3.1-pro-preview syzbot
-> > Reported-by: syzbot+41bc60511c2884783c27@syzkaller.appspotmail.com
-> > Closes: https://syzkaller.appspot.com/bug?extid=41bc60511c2884783c27
-> > Link: https://syzkaller.appspot.com/ai_job?id=30871f87-7a83-46b8-ab83-919894b0787b
-> > Signed-off-by: Slawomir Stepien <sst@poczta.fm>
-> >
-> > ---
-> > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> > index fa92e31d1..516c04c14 100644
-> > --- a/fs/nfsd/nfsctl.c
-> > +++ b/fs/nfsd/nfsctl.c
-> > @@ -1943,6 +1943,8 @@ int nfsd_nl_version_get_doit(struct sk_buff *skb, struct genl_info *info)
-> >  	return err;
-> >  }
-> >  
-> > +#define NFSD_MAX_LISTENERS 128
-> > +
-> >  /**
-> >   * nfsd_nl_listener_set_doit - set the nfs running sockets
-> >   * @skb: reply buffer
-> > @@ -1955,12 +1957,19 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
-> >  	struct net *net = genl_info_net(info);
-> >  	struct svc_xprt *xprt, *tmp;
-> >  	const struct nlattr *attr;
-> > +	unsigned int count = 0;
-> >  	struct svc_serv *serv;
-> >  	LIST_HEAD(permsocks);
-> >  	struct nfsd_net *nn;
-> >  	bool delete = false;
-> >  	int err, rem;
-> >  
-> > +	nlmsg_for_each_attr_type(attr, NFSD_A_SERVER_SOCK_ADDR, info->nlhdr,
-> > +				 GENL_HDRLEN, rem) {
-> > +		if (++count > NFSD_MAX_LISTENERS)
-> > +			return -EINVAL;
-> > +	}
-> > +
-> >  	mutex_lock(&nfsd_mutex);
-> >  
-> >  	err = nfsd_create_serv(net);
-> > @@ -2073,8 +2082,10 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
-> >  		ret = svc_xprt_create_from_sa(serv, xcl_name, net, sa, 0,
-> >  					      current_cred());
-> >  		/* always save the latest error */
-> > -		if (ret < 0)
-> > +		if (ret < 0) {
-> >  			err = ret;
-> > +			break;
-> > +		}
-> >  	}
-> >  
-> >  	if (!serv->sv_nrthreads && list_empty(&nn->nfsd_serv->sv_permsocks))
-> > 
-> > 
-> > base-commit: 075b74841bd0065a3bda3440873c747938e69b68
-> 
-> I have a patch series in progress for this already, which also 
+> - the naming convention for splice_ do_splice_ vfs_splice_ is a horror
 
--- 
-Slawomir Stepien
+The entire cascade of do_*, *actor* and the whole structure of the
+splіce code is horrible unfortunately.  Part of that is due to the
+mess of inflicting a fake pipe for the fastpath callers that don't
+need it, but paet of it is just self-inflicted bad naming.
+
+> - we could make the low level splice_direct_to_actor() static and possibly
+>   rename it to splice_direct_to_actor_sd() or something
+> - we could export vfs_splice_direct_to_actor() for nfsd which wraps
+>   splice_direct_to_actor() with permission hook and fsnotify_access
+
+The latter is the right thing to do.
+
