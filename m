@@ -1,115 +1,164 @@
-Received: from mail-qk1-f180.google.com (mail-qk1-f180.google.com [209.85.222.180])
+Received: from mail-ed1-f42.google.com (mail-ed1-f42.google.com [209.85.208.42])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3C6AC3EFFD7
-	for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 09:05:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.222.180
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 56EEB3AE712
+	for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 09:27:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.42
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787562360; cv=pass; b=GC2Snp83qISbQHe8Zz+hTejlLbC+hJtSQ6YclS4Z3rV/IPvNNh1GOBsKG5Ch+8xA/HZ/sm81+tqe+tYtUusSOcCvnavC7L5aSOTpiUBj7Bmxw49yEo77ZZGFVb18YQaY3zAjlawAdeJvCnon2OnIMDRT0e/9coGCDBWvWvF2alA=
+	t=1787563625; cv=pass; b=b8QyELFJy94EHAGYws+aYurmH72tvaYzAoKxgnqUhNqJh+UGtm2aV/SY3GpAK3hLTLVHBmI0kgAjXJvIrCYpR/vDRYUJo9U8VDHrCj5hLs7+RicPNqFJGQv2ILRM8ncymd1Tqtsh64PcsqnLcfnRIqm9D3f7d1smh/nUAdK+YmY=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787562360; c=relaxed/simple;
-	bh=k1VcahloVqTMd2bS2EdontwtzK2WJK0zze95i6TSOFk=;
+	s=arc-20240116; t=1787563625; c=relaxed/simple;
+	bh=OA04IjLa+28PYYqa4JgI0QmWP8EUE5rmOrjI2n0Gy+s=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=JDi8qLm8WzK/Iziw9JQMZxXQs43JuxV9lvt9vxen3hYnyD5w/MxT5juW30Ur2hGvsSYbRcOwooRDq/DHdY9Qmy56C4RhBUlc8XZzSBYZZ00X/dHXu4B6VrAVWvZsqvY2GK1GGRIsnrq0jxsXfQNxhEspWizHo05DtJOxiND7xPE=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=szeredi.hu; spf=pass smtp.mailfrom=szeredi.hu; dkim=pass (1024-bit key) header.d=szeredi.hu header.i=@szeredi.hu header.b=Md3V02RB; arc=pass smtp.client-ip=209.85.222.180
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=szeredi.hu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=szeredi.hu
+	 To:Cc:Content-Type; b=HUIlHhE13ynAyP2B/wrZ9Kjn1E30NONKhad1LKRcNThRUU/n+D/iZQWTGSQWN97+ESJOKBK1lS4m7pbWO5Tv6fblL6Ayt+webJQwmIkGWu5ecbKww350DXrsyCuJ7NNNBr3guxD9NVv6hJLuLnP1VuS5TiA9JsP6B2CoW/KE6nc=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=G+jDk0MJ; arc=pass smtp.client-ip=209.85.208.42
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=szeredi.hu header.i=@szeredi.hu header.b="Md3V02RB"
-Received: by mail-qk1-f180.google.com with SMTP id af79cd13be357-93695893ac1so185708885a.0
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 02:05:59 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1787562358; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="G+jDk0MJ"
+Received: by mail-ed1-f42.google.com with SMTP id 4fb4d7f45d1cf-6a3e145e1bfso4209499a12.1
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 02:27:03 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1787563621; cv=none;
         d=google.com; s=arc-20260327;
-        b=MEcaMSzw2M8sliYFvpeiQtUD97xJyq0dtHY4DHOjz0VBXB4vytMxEsEs0VgMqigbMM
-         d+n2m6PBLZ9j2kqess/9N7DakJ+I5ynuer77EQ+oXswxOj9AUFUWXSQMk8DmhSHM7Y8Z
-         bhRb6WyJ+y3gVrLcYua+N8e0+HxaWweBO/5jCwxo1MZ6HEZBvc+tLkBs8hIIB8AMwKbm
-         jp7DQ0ojw3Ud+4vbmbrOzot0rxfU1lnwj9yGEdSePGIJI0eS9T5WMF2pgH0orZH3BHws
-         QtyHbW8aX4QBdMG10SrAGLRR+arDd3Mh4NsaGEbjmtygiVFphmsqaxMDuc8Xh7qDXqXA
-         s4WQ==
+        b=dqBRukUHQ6Wff53wF+nchPeKHBdq9+arBdfy5wK1M2XZ5YF+0UKCkFIJN4Y/NPtMHU
+         ZMu5JTb5SPwpalJXgeRSTwK0GuADQqDc9eTU85aGCXLiQlCrSoSMgXokGXdiz0VcEOHZ
+         8Ob21z+T8iOr8c4X19LOsODiMcCNKGStVvD7Vb2yrB94M/UkFGVuX5N0qUkDlqYJqCO5
+         sPPPaFGLxlLlBPOWlmj7dlqE7p3KIPHsjXtXNEiIUp8hdBO3T3i1rus6uCdNEn/XlIqn
+         +mmb06Huuu9ibrEwOj1YZ0IQRK1rCnAn+r9DrzTH54Lp/XFBVeweNSrc/qeKFVrAi1QP
+         doNA==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:dkim-signature;
-        bh=xjSchm007/sw+2JfMjG96f8T6RE12rgCCudebYixRu4=;
-        fh=nsMtDF4D6D+0UwzF4Oznhqr3KbMjNQza2SM8pHGyMok=;
-        b=iUuayAX0iyG9g/T/qOxqc3H1iEWgogmVv8F051cgWhbKY3If6Y1MEcUFfc8nYfcOqK
-         xoNF+JZsFZ7/fOY03nH4utvZzo+wa/tQD7C/w3SZr6tdEl8F21/onI1uWlFiTm18eTO/
-         tU63Xjk7hfogpcVfM09tYnuE1HU0rkmYpvhwitfPLde3FbvLAJtLu7gH+ZsCnbqYsP6k
-         6u5NglDCIUux1iVxnNgpphnJPlp9W1oFAZ+BMKF0yh23tSEMNR5iiuNgA3HEslHjseWm
-         ajJ67VNcLU6tyOyXu0W6uyozfaYvHPnH2KNpNJDWRhcAzJKRsooExKK1xoW+mtD2kxy2
-         GvLw==;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=6bwjgExHYS2/aeZboO9F4uG83NTdpCfevjwOgza4abU=;
+        fh=T4jCxyoJYa1gjMmHR3I6ACwlQuNwUuvzIRN8vjGV6m4=;
+        b=QEOQx4IixS5HcPDpCm3z7OzOGD7UV34UhBQCKIXUzmYXuOqfVxQAjYcOHME7twDAk1
+         7Uy5IULuvz4XfOad7OOlBvnkY91X6fofEqSuNZYBoYSfURT7nfS2IWRpiG41OdymE9QI
+         i4Y01HibKv1rVUpO5J5/timfzXjAjZZBt1/i1EKr0lqOs6rZbCFKmsPRz6qQuEdxREWW
+         lUcaA8qwW/MbING0Cmz+HI/MaYiOhIpfyzzyY/m88BEMBhGwMhUbvTycAbsZMY/Qxuhk
+         SoqF8+wh/43lfhOzYj/ek0aHtbZW7y9SdBrSBz24qZtYC2YJL0YxC5M6pXqIBCtCtXx+
+         1YMQ==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=szeredi.hu; s=google; t=1787562358; x=1788167158; darn=vger.kernel.org;
-        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
-         :references:mime-version:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=xjSchm007/sw+2JfMjG96f8T6RE12rgCCudebYixRu4=;
-        b=Md3V02RBMrXT7++lZjkapZopD8qkdAFSHpNsSv6QmBIPKOdzQWCNN6AR4kmpFvkadv
-         0WjoUBO4KWY/LQLlyBAjyM8JJ34zje3REjajNVZ3Gow34PJ4FI1D/qOFI4wkzef/51KP
-         WjSj07LC1JS0zXh2vxVUSAXHu2k8KyBR3WWNA=
+        d=gmail.com; s=20251104; t=1787563621; x=1788168421; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=6bwjgExHYS2/aeZboO9F4uG83NTdpCfevjwOgza4abU=;
+        b=G+jDk0MJtLEka+MH0eIbFpAn5RvZUQaB90zqk3z8E2nH9kNb/kLyqWQbMnsZ2YYhee
+         HU+KTrM5kYgrT9HjADyk/6vWX0olzo7EXk202Xrw7SNYZq5gBp8qkCdOM9lQzSziwXqD
+         abQ+/yQHYFswj9zZLyefhPpOkSM5j81F1lF3z0GQGpz/RWn6JQtFTIQ2eFeX9Tz0PyOF
+         Kwdy/uk/ERAGo/FTaQm1inxLaN8mB69uMPE72B4aHgaqPHL0BsEjVVYAp26Kl/cz9GHR
+         K0Ks77UJQnTNtFdv30FV3cPyGpaefVTvy6oBXit6Crgz6NQKLmxL5jvtWyQmYQl8iH+H
+         wubA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787562358; x=1788167158;
-        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
-         :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=xjSchm007/sw+2JfMjG96f8T6RE12rgCCudebYixRu4=;
-        b=ZhwiDvcq8iHXnGsq0GSJdP04yB2RaNcmict0QpHGA6fdhrSL5IkyWp8fUh2e7rS9hE
-         AYGn8aH0KX1mlVD/7sCnU+7mCHd0OoUnrElF1IH6AoOwxJdvalRMmUYIpaBMsXYH3+1C
-         7hliPmWOUHbB+3xhM9UNwqRAlK4JnGv+kffxpugOJDw9JWvrGKgJiarrJPe3PM4auQzd
-         Plxks9Ll8P9zNduba/rWfzLqhrAHrOCEtTHX2v21GWRI5bap/T0YkurSQ+jdmMFhsW+2
-         jb7s4C4mJh46fwVGKM7Po+YHOlnn2TDUCd/AclXLVBREWRAtxDCUrsgLEiYp4dkYipup
-         FHkg==
-X-Forwarded-Encrypted: i=1; AHgh+RqnBBrI9wkJHRF1IUMitKz8JEqKbhgs8eMuzB3Yp6QMrlaE3nArYd4xyqHKKnwTJKyo+CkYa8JhE3o=@vger.kernel.org
-X-Gm-Message-State: AFuF++lbtXLwWi2Q7cfg9Oq7DpCkuMVtdlAlPr9YSmutwRrjxqLfbjdY
-	mpXFmAW8gj3VWPygtRMEVZLvX/w4sRzCsrUAW/jtV7zcWJEWXZG9aKDhISAJ3zS90RdrMQX/6q4
-	7aNOjld86XQ8bYF+kYGSwNx6ZNGXmn5o2LkPGHMI/0Q==
-X-Gm-Gg: AR+sD105eeAmD/v7BWXsL1z7B+VHrn7YBhmglc13qE9ItYN7L2x2apzcNaCnZmkU3Hl
-	mERyb0p6bpY5JmS3e+Hxe3AJFzA/yJLt/gaKfhRUfntqdzJZ+3SI54PO8124dqtLh5BGZpzZKmk
-	CCB+vclOBWUgnUHybrjLH3NLdffMCDu46zQIxl2yj/QeMJK1GIam5xeTYAPNcHs2Q4bQJMuuKLJ
-	/Fik/EkndNJ4ahWtZ53HcM+8riIj6MLHOV7GNZMiMSccsAES3bzLKkjaVugTSK6+YhNDdNLf+6D
-	dK4leNTEjpQoZXsGq4mKtq7M4tqLWpiZExadUgxLDTN/nBKSSWIHXzzZM3xOj8ymFH+LYPpz7Ch
-	RN38=
-X-Received: by 2002:a05:620a:a2c6:10b0:92e:bbd0:260c with SMTP id
- af79cd13be357-9373957655amr1668397485a.36.1787562358062; Mon, 24 Aug 2026
- 02:05:58 -0700 (PDT)
+        d=1e100.net; s=20251104; t=1787563621; x=1788168421;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=6bwjgExHYS2/aeZboO9F4uG83NTdpCfevjwOgza4abU=;
+        b=O+QMr0NmIQ3Hniby6kuKWsmr/S0n67ggytTEFd4YGTSVhqQt6aUSFaXDwWRXqzbbvN
+         +6O4xlDPZqsKhkKaWuHIFJ5saaH44a2JlCm14iv0MuRr1iQxQiNFZy4RJrPGfcz3E/q6
+         AhTpfMCNPQM4FRbB4oeA/8rWavIxlIHhsR/c+gMAV3+zLnkIcYw5AlJzylSgYPyDuSIQ
+         kh5U7xCI5Q6AgSoJkaM0i8HkiJjOcPBuTiIzQLskpQbxDZ+ectWwASSHJs8oVHohhaTP
+         SMfhsTTAJ2Zz773rvk/q0//T/3kU8OghYuA1FZdEB/3XD2q9d0RwtV4BkiJhEPcMDXRW
+         uXFg==
+X-Forwarded-Encrypted: i=1; AHgh+RoS5X8uTm9uHPs15Arlnuk4Sr/ATdD+Ne864cH+N1kjg6sMBioq/zSLR3sjzJuejCUUebSLu60e+dc=@vger.kernel.org
+X-Gm-Message-State: AFuF++ks9O+fjfw1rqrVWgQKN5UDk4VuEDslUNGA1O1bjAqhaX8LZFzK
+	1+Pkk4yQRwgMcdCUToKCheCohg9Be04nc+obSj7xZOHQhwtryAjECOc9EptKkOiZ77I5ZoBrX4t
+	PelKxEoQzI6Aep6eyjqBsLDVhn+5FzE4=
+X-Gm-Gg: AR+sD12GqMntyxQVXygy4LaicfT9xhM463xdMmXlKIBxN3nrsKFTSkldezQk7xnCwtB
+	D67u4i+W0OmrqwVuoW2W7izt9kvydp+MOFknTgII6ls2j4nzN6u15Pyx3mjxBZBGdhXYSfhKd+/
+	LWaV120vwRZ1sfccbeR/lj3c1eqmkoFhIzjL35Dj6p74NIEPOogos1FGQ9rfB1K9GULDZLNlu8X
+	M59q6s7GOkwIhl811N1ufr3g9e1A7+/yFPh+QCeWt5Gx0o8EBg9SypoLH+vevxplyCAqqODHxNQ
+	HMm2J5UOTkKmG3r1Ru+2OHOfeHC/BOdRPwEjIL3VUlGq+A==
+X-Received: by 2002:a05:6402:505b:b0:698:af31:5a9b with SMTP id
+ 4fb4d7f45d1cf-6a42f1e08c0mr27512621a12.9.1787563621344; Mon, 24 Aug 2026
+ 02:27:01 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260820193343.3852967-1-willy@infradead.org> <20260820193343.3852967-3-willy@infradead.org>
-In-Reply-To: <20260820193343.3852967-3-willy@infradead.org>
-From: Miklos Szeredi <miklos@szeredi.hu>
-Date: Mon, 24 Aug 2026 11:05:46 +0200
-X-Gm-Features: AcwNN1VnwXUZIDZ1PfaZZEyLrhKwB3yAlvrDYfoxcRnFp4RHIk-2JE_xMlB98T0
-Message-ID: <CAJfpegvP3i8ZJc2T=+f4rAhZ4E1QcT5+jC6mQPLxtB-yoK9Brw@mail.gmail.com>
-Subject: Re: [PATCH 2/7] fuse: Use filemap_invalidate_pages()
-To: "Matthew Wilcox (Oracle)" <willy@infradead.org>
-Cc: Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, Chris Mason <clm@fb.com>, 
-	David Sterba <dsterba@suse.com>, Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
-	Mike Marshall <hubcap@omnibond.com>, Martin Brandenburg <martin@omnibond.com>, 
-	Alexander Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org, linux-mm@kvack.org, 
-	linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org, 
-	fuse-devel@lists.linux.dev, linux-nfs@vger.kernel.org, 
-	devel@lists.orangefs.org, Pavel Begunkov <asml.silence@gmail.com>
+References: <20260818225715.572140-1-ameer.hamza@truenas.com>
+ <aoVHBkmPNSRakbYW@infradead.org> <9ad95194-983d-427d-9a07-c9eb0891d1a0@app.fastmail.com>
+ <CAOQ4uxgUOqFv6pVmdT_+4DjA0KQoQDCzN2Xz=xm1FyumewHZXg@mail.gmail.com> <aovPSDE_IGKggzyN@infradead.org>
+In-Reply-To: <aovPSDE_IGKggzyN@infradead.org>
+From: Amir Goldstein <amir73il@gmail.com>
+Date: Mon, 24 Aug 2026 11:26:50 +0200
+X-Gm-Features: AcwNN1Ww_-DMhoMsd0BRmy2xbNr7HMtb_CXoB5tNe2ML2jWxM6NYnZnZX0RCcds
+Message-ID: <CAOQ4uxgok6Yk0yp3DcxfD9Cp0ZoFJ7G6a7KasLyhHn6wGuTRyg@mail.gmail.com>
+Subject: Re: [PATCH 1/2] NFSD: Fix duplicate fsnotify access events for
+ iterator READs
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Chuck Lever <cel@kernel.org>, Ameer Hamza <ameer.hamza@truenas.com>, 
+	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
+	Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	Jan Kara <jack@suse.cz>, linux-fsdevel <linux-fsdevel@vger.kernel.org>, 
+	Christian Brauner <brauner@kernel.org>
 Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-On Thu, 20 Aug 2026 at 21:34, Matthew Wilcox (Oracle)
-<willy@infradead.org> wrote:
+On Mon, Aug 24, 2026 at 6:57=E2=80=AFAM Christoph Hellwig <hch@infradead.or=
+g> wrote:
 >
-> FUSE relies on invalidate_inode_pages2() / invalidate_inode_pages2_range()
-> doing writeback by calling fuse_launder_folio().  While this works, it
-> is inefficient as each page is written back and waited for individually.
-> Far better to call filemap_invalidate_pages() which will do a bulk write
-> first, then remove the page cache.
+> On Sat, Aug 22, 2026 at 12:21:12PM +0200, Amir Goldstein wrote:
+> > (1) In this series
+> > https://lore.kernel.org/linux-fsdevel/20231122122715.2561213-1-amir73il=
+@gmail.com/
+> > we intentionally moved the permission hook outside
+> > of the splice iterators because we wanted to avoid calling them
+> > with freeze protection held and also there were some duplicate calls
+> > for this work.
+>
+> This got me into a little rathole of looking into the other
+> do_splice_direct_actor callers.  And I still don't understand why
+> taking file_start_write outside the main splice machinery is fine
+> for splice_file_range callers, but not for do_splice_direct callers,
+> and what consideration exists for potential new callers.
 
-filemap_invalidate_page() suggests to use invalidate_lock to prevent
-races with pages coming back.  I'm not sure that without it the
-behavior is identical.
+Tough question.
+If I can retrace my steps:
+The main consideration in the "Tidy up file permission hooks"
+work was to move permission hooks outside of sb_start_write()
+to avoid "first order deadlocks" from pre-content events (and LSMs),
+but I think we also tried best effort to avoid holding
+file_start_write(out) while
+performing read on file in, to avoid "second order deadlocks" with
+weird setups like:
+https://lore.kernel.org/linux-fsdevel/5lz5jq7gzoejbywmh56ayfkdiuqsjd2s5pl5u=
+vlflfxc5lq4rr@thr4hrkw67d2/
 
-Maybe add a variant that takes that lock?
+For the first order deadlocks, both flavors are fine:
+1. permission + file_start_write() in ceph_copy_file_range() +
+    splice_file_range()
+2. permission + do_splice_direct() in vfs_copy_file_range()
+
+->copy_file_range() are called from vfs_copy_file_range() with
+file_start_write() held so ceph_copy_file_range() needs to use
+the first flavor.
+
+But at least it's holding file_start_write() on ceph fs while reading
+a file from cephfs (maybe not the same sb though).
+
+The use cases of do_splice_direct() from ovl copy up
+nfsd/ksmbd copy_file_range (*) have more potential of hitting the
+second order deadlocks, so they try to avoid them with more
+granular file_start_write().
+
+TBH, I don't think that we proved to what extent this helps avoid
+the second order deadlocks because obviously, those deadlocks
+are still possible.
+
+(*) In the past copy_file_range(2) across different fs was also
+a use case, but we stopped supporting that use case.
+
+Anyway, there could definitely be other reasons for the
+do_splice_direct/splice_file_range split which I do not remember,
+but hey, at least the kerneldoc for these helpers is pretty clear...
 
 Thanks,
-Miklos
+Amir.
