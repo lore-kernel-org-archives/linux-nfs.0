@@ -1,45 +1,44 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6308D40F755;
-	Mon, 24 Aug 2026 12:00:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43082408614
+	for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 12:46:10 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787572808; cv=none; b=XEtC3RZ6ZZ6g+tuu5vkCNtQjx5L5290YIU9SqepaQuBfa4y860ljt/gu8I9KNjrf21e9i/zCH38fBgOYbWE5edrMt0EUFDR1ON7sl9l+5V8kULV2Wi2GI90nfKnJrHgKN4fiLVevImKTWcxqQ38WrQbBqKr7OxWxW/hpVYTUNQU=
+	t=1787575571; cv=none; b=FlSIQYX5osnIa4hgeldGNNsGXp7K+llXxWlrZqcqkH2jHNHb51ZHtYFKiGcg4iHewQHzeGnGdm+XxuIsXtNAU/mLduISrVRUaQLG5CMqt87sxiGbIHWoDL+9MpYJoAXbh2901Nk5sxhPonwmkkRT1Fh16GtpUCcwXPqana1rv8o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787572808; c=relaxed/simple;
-	bh=XO409K0StwpLQ51ttUnysXq9fibcVbJfjW6VngM7GzU=;
+	s=arc-20240116; t=1787575571; c=relaxed/simple;
+	bh=QXWIoSsvoLSJuEWBOM1kDzt8e3iGeCt/t3Tp7g15zKQ=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=NmTlvfJY41+MkzOnnTp3WcfGWPNVjL/cbbgXhf5Uhz1zJU7IFHw+EnKIiUTX7JWlk/NgaBP3zNmyTMTHX7YqzdEjQ6/PaPDYTc+kJCkf6rEk+utm5P9Bemn5Q2jaRY18TYdFhx+ZHEVxPEG6hGKSds0tLicAKG0Ptsbr/cmIXco=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VgLKseqW; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=lOvoK7XNP93yjvsojAQOR+7U8ybVrX1fMPUOvayDQrvZaCXU5QJPYVeh7zzfpok8lxQ5oshynJLe8iRIQMGOROOjNQyRkKj9j15UDp6mlIuZsqAK2c3AW8BrhWEjk41Qe4J+eesdvHpg2NcEWNqYyYU6EQkN3/xkrAm6pXBqEf4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IEkJ0r8N; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VgLKseqW"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1B5B31F000E9;
-	Mon, 24 Aug 2026 12:00:06 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IEkJ0r8N"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1D7761F000E9;
+	Mon, 24 Aug 2026 12:46:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787572807;
-	bh=XO409K0StwpLQ51ttUnysXq9fibcVbJfjW6VngM7GzU=;
+	s=k20260515; t=1787575569;
+	bh=6B4zeReu69Rql46FLq/n6/HegngFjVMrpar8Ac7qB6A=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=VgLKseqWQpqDndGPbJJhdF6YhVpH5QytuXmaGdh/SRH+MRo2X3PIBMOCBhOuc4/37
-	 HnpiQuULhmzGxLyNNruSXMuKxR5yBc8ooVzMwQStM6EcOWjIswJsI2J0sLhVGMFcfp
-	 0vF+ypPMcHJJ9TMTAkvm3mgrwqgY6ZB51FbWhdsL4rS0srugTuJGT1fq2P4wqnAQA5
-	 OAhsu992GxvZYcWJicn/y35giqb4Rufr1BMfnD1YjLnMxW3SgzcZpslAOX5ULCHD1F
-	 e3tfhbzzxttWyDM50BrIAk+eu6MrZW3ee6GQkqPntWqG4VzZSPrzgjwRdCwg3bhVSK
-	 HKRWqiiLNPIhA==
-Message-ID: <15f03f6f3c8a3b0f1d68fcf376fb082e1b4dbc5d.camel@kernel.org>
-Subject: Re: [PATCH] nfsd: prevent hung task in nfsd_nl_listener_set_doit()
+	b=IEkJ0r8N/XaEW9es4xAg/Sgiuukf2Fkgp+9WDqfgm45SjwX7KP+9mSU3FjuzzzFkV
+	 BE4Rh0ctPf9CC1e2tBzq0GBN+eXvjlSWna87lje0f/edjeOULh/Id/5cy3aqzfuNlQ
+	 M8nd+6iL7wF/J3NtVZhZYgJ6zHCRpiVUcaeLpT17HJFOZp6VrE1nb5IapKbcNM3QQr
+	 tBpcQLX6LqU2lDCM0oQhxspdl48yMf79R3o3BtxlIcq5hVKZzzvJEJW3V9FEjdgFSc
+	 DZuZ13BGy5RbspqcRLkU2wrmaIUVdcgtTbfT8hI8+KxlhU98LQxE2uyAmvxzRxdlUo
+	 cQhstV3v3+UUw==
+Message-ID: <40a5b6327dff9aaebb1cf07f75fbed692d4382f6.camel@kernel.org>
+Subject: Re: [PATCH v3 0/2] lockd: Fix two teardown races in the block retry
+ loop
 From: Jeff Layton <jlayton@kernel.org>
-To: Slawomir Stepien <sst@poczta.fm>
-Cc: syzbot <syzbot@kernel.org>, syzkaller-bugs@googlegroups.com, Chuck Lever
-	 <cel@kernel.org>, linux-nfs@vger.kernel.org, Lorenzo Bianconi
- <lorenzo@kernel.org>, 	Dai.Ngo@oracle.com, linux-kernel@vger.kernel.org,
- neil@brown.name, 	okorniev@redhat.com, syzbot@lists.linux.dev,
- tom@talpey.com
-Date: Mon, 24 Aug 2026 08:00:04 -0400
-In-Reply-To: <aotXzLmrd-B89YRg@nr200>
-References: <4601ffd5-c662-4ab1-ab2f-50a67a0a990e@mail.kernel.org>
-	 <699bacb503758fbe2ebf01f3e8aca95e3eee4128.camel@kernel.org>
-	 <aotXzLmrd-B89YRg@nr200>
+To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
+ Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
+ Talpey <tom@talpey.com>, Trond Myklebust <trondmy@kernel.org>, Anna
+ Schumaker <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org, Shuangpeng Bai <shuangpeng.kernel@gmail.com>,
+  sashiko-bot <sashiko-bot@kernel.org>
+Date: Mon, 24 Aug 2026 08:46:07 -0400
+In-Reply-To: <20260822-lockd-retry-blocked-uaf-v3-0-761661eae60c@kernel.org>
+References: <20260822-lockd-retry-blocked-uaf-v3-0-761661eae60c@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -124,52 +123,54 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, 2026-08-23 at 22:27 +0200, Slawomir Stepien wrote:
-> On sie 20, 2026 07:37, Jeff Layton wrote:
-> > On Thu, 2026-08-20 at 06:55 +0000, syzbot wrote:
-> > > From: Slawomir Stepien <sst@poczta.fm>
-> > >=20
-> > > In nfsd_nl_listener_set_doit(), the kernel iterates over all
-> > > NFSD_A_SERVER_SOCK_ADDR attributes provided in a netlink message to
-> > > configure NFS server listeners. There is currently no limit on the nu=
-mber
-> > > of attributes a user can send.
-> > >=20
-> > > For each attribute, svc_xprt_create_from_sa() is called, which may
-> > > synchronously invoke request_module() to load the corresponding trans=
-port
-> > > module. If a user provides a large number of invalid transport names,
-> > > request_module() is called sequentially for each, taking a massive am=
-ount
-> > > of time. Since this entire process occurs while holding the global
-> > > nfsd_mutex, it blocks other tasks attempting to acquire the mutex and
-> > > triggers a hung task timeout:
-> > >=20
-> >=20
-> > My LLM latched onto the same explanation, but the request module
-> > upcalls are actually quite quick and have some other gates on them that
-> > make this problem hard to hit in practice.
+On Sat, 2026-08-22 at 21:40 -0400, Chuck Lever wrote:
+> nlmsvc_retry_blocked() is the only path that operates on a block with
+> nlm_blocked_lock dropped. Both defects live in that window. Shuangpeng
+> Bai's KASAN report catches one of them, a block freed while the retry
+> is still using it. sashiko-bot flagged the other while reviewing v1.
+> The retry re-queues a block that the teardown scan has already
+> retired, so the host that block pins is never reaped.
 >=20
-> Oh, OK. Thanks for clearing that up!
+> Patch 1 fixes the first and applies without patch 2, so it can be
+> backported on its own. Patch 2 is meant for mainline only. The race
+> it closes leaks a host, and closing it widens the f_mutex hold across
+> the retry loop.
 >=20
-> > The real problem is rpcbind registration, which can be quite slow. The
-> > fix for that is to make the registration asynchronous, and to not
-> > trigger errors on rpcbind registration failure. That's a bigger
-> > project, but let us know if you're interested!
+> v2 added a B_DEAD flag that makes nlmsvc_insert_block() refuse to
+> queue a retired block. That appeared to repair the second race, but
+> it doesn't work. Every caller relies on that insert to take the list
+> reference, so a refused insert lets nlmsvc_grant_blocked() drop the
+> last reference to a block whose file_lock the VFS still has queued
+> on a blocker.
 >=20
-> I think I'm not that good to do it correctly and in some reasonable time.=
- I might take a 2nd look at
-> this and understand the root cause (also, based on your comments in your =
-series) but I think in the
-> end it might be too hard for me.
+> Signed-off-by: Chuck Lever <cel@kernel.org>
 >=20
+> ---
+> Changes in v3:
+> - Split the fix in two. Patch 1 is the block reference alone.
+> - Drop B_DEAD. A refused insert could free a live block (sashiko-bot).
+> - Serialize the retry against nlmsvc_traverse_blocks() with f_mutex.
+> - Link to v2: https://lore.kernel.org/r/20260820150831.3291262-1-cel@kern=
+el.org
+>=20
+> Changes in v2:
+> - Add B_DEAD so a retry cannot requeue a retired block (sashiko-bot).
+> - Link to v1: https://lore.kernel.org/r/20260819162247.2970703-1-cel@kern=
+el.org
+>=20
+> ---
+> Chuck Lever (2):
+>       lockd: Fix use-after-free in nlmsvc_retry_blocked
+>       lockd: Serialize block retries against host teardown
+>=20
+>  fs/lockd/svclock.c | 33 ++++++++++++++++++++++++++++++---
+>  1 file changed, 30 insertions(+), 3 deletions(-)
+> ---
+> base-commit: 01c2994ccb0197cb44b0db89aacab460110f6347
+> change-id: 20260820-lockd-retry-blocked-uaf-68f6b50098d9
+>=20
+> Best regards,
+> -- =20
+> Chuck Lever
 
-Fair enough. It's a non-trivial project, and after some discussion with
-Chuck, I'm leaning toward moving most of the rpcbind registration into
-userland. That'll mean having to rev the netlink protocol, etc.
-
-Right now, I don't have a timeline for working on this, so we're
-probably just going to have to suffer with more syzbot reports until
-that can come to fruition.
---=20
-Jeff Layton <jlayton@kernel.org>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
