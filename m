@@ -1,73 +1,73 @@
-Received: from fout-b3-smtp.messagingengine.com (fout-b3-smtp.messagingengine.com [202.12.124.146])
+Received: from flow-b1-smtp.messagingengine.com (flow-b1-smtp.messagingengine.com [202.12.124.136])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 112F637204C
-	for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2026 23:02:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.146
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5D266230BE9;
+	Mon, 24 Aug 2026 23:38:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.136
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787612531; cv=none; b=iSjRFpfLUKekkCP2K9chpZRvfCceS4yoy2iWEQl5nBg7ZDoG42cVECz6ERJeOfs3Nw5fk6e9nQFQmm9yUEzefcHJoFwouPYqaJUCEqQXShP9qJGmQx+Hr8v0dIlHJH8N2Y+5tbhZqTPax/BQ1WVVU2/TrOlSVOKvPjOP+dhIgU8=
+	t=1787614713; cv=none; b=f81l4PuBLf1DTWM6S/1jLrYyr2/KQEWz9PJ5natbKwMmf7D2d5MmIqpOfKOIlPKv95Gzb12MDqzEg3cZsNd69/q51m9cCZXV8eAbllPUEpVMmivGHOx/ziZN6DdY8tCB5PLK44MWqDnlBrsKj1LMmjpgFx/uQ7r23ghMGp4iw8E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787612531; c=relaxed/simple;
-	bh=fjmzTP5fPg23SHWbpY8et+HI5QJRuPUNQaqZY31pEEI=;
+	s=arc-20240116; t=1787614713; c=relaxed/simple;
+	bh=zNXZSfRmtwpy/a/iBRxK6ZOuQXHjxvf/jrS/UpDVoZE=;
 	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=N7VD1RE1rkmjOnRGdLdXMA0GjrNnIlLWaYIg6aySdOvHeC/jaoBi+R1VOFaKMfxU1vY73WMSbpHsFv2oMfKAHzQ6eauCNWkfi6zZ2GKnie3Rhx8LDeAIjqHjuZBsp00KOCZ9Wi+H7i4AypDs2xACVOlv5SZXQjETaJDZLCuLwS8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=MRntv1k1; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=lLTDkHLo; arc=none smtp.client-ip=202.12.124.146
+	 References:Date:Message-id; b=njbh5i0VGCqizvFVGDDzCpIq/E4hgLzSyWm/tWvgvV0kL/PHx/KyhaNxop+Gpp+F2Dun3faTfehE1hZntGIqzxFg9P0KHiUsJIciBJgnkSuw1O2d/erGVV4/2ba5JThegASeQspcwHBb6Je2Kr/FRvoCyDTkyRerdmKtvFFj7TY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=XBhGMGf0; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=IlzNSJWi; arc=none smtp.client-ip=202.12.124.136
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="MRntv1k1";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="lLTDkHLo"
-Received: from phl-compute-01.internal (phl-compute-01.internal [10.202.2.41])
-	by mailfout.stl.internal (Postfix) with ESMTP id 2291D1D0011F;
-	Mon, 24 Aug 2026 19:02:08 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-01.internal (MEProxy); Mon, 24 Aug 2026 19:02:08 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="XBhGMGf0";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="IlzNSJWi"
+Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
+	by mailflow.stl.internal (Postfix) with ESMTP id 2D1D01300083;
+	Mon, 24 Aug 2026 19:38:26 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-06.internal (MEProxy); Mon, 24 Aug 2026 19:38:30 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:content-type:date
 	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:reply-to:subject:subject:to:to; s=fm3; t=
-	1787612527; x=1787698927; bh=NFCiSvqdeF7E/bYe2H+C0fcFirCfCrFgmIZ
-	GrUi7xAE=; b=MRntv1k10v0L1B1N/+mFaaHudp/5B+H+xY2HExBeDAxDRyPaLuv
-	jDS4MXa3SfVHJeDjKLGGg/IfL3hWZ4aH5RWNwScqza9tOi4IQX5a33YlkZE2iiTb
-	yEXXOOmzc/FaKxNXN3Aqg9eOoV6g+8dDGq40wwuwxFC+LmWf3BrrLecYg6M+DMZj
-	7SaOf6gsCcXjjiQmWiNxbrXQdgnuUB/aw+I8N/RRqqeUZCWBHwAb6tv1Wu7/H6FX
-	uj2abc8RJUD9x9iM+dybYb0lYi0R2NC4AVQGNE2tT7oqUEjcUUA0qXK1IBcZarWL
-	nBmiSkSCo+y8RvgUdaKbEwxaPzx3wpAcPIg==
+	1787614706; x=1787621906; bh=1ks+pZPsMFw/dX/SaAC+B9uhzl7GasUHVZ9
+	HfOG6GYI=; b=XBhGMGf07QdE2qp575VTBn2lqjfeSn8rsfkfLCsM/Oyww79wzpr
+	ApE3lQnrKoKXPaR0AbukURBDsEpzjpZweEngjZwwjsdH9qRwACpaeJanhQMFIhCr
+	dL3/dlnRNmyY2j2u+W+CipVxCIJb6vhNXP2C4CkNEGyZlipst9/MLs7k5gSRn+SN
+	0quDrwjC2k2VRQGqs+zwgB/delGuW8VyU+zGtcxaHB1sn6ywd60as4c7iW0EPzSE
+	92xvuUYOrQEshiIW/INtUWY7tI7Bwmm7colbKFqt8Q5QGdrch76Fr7Plgw62Rqyr
+	Jv6QgWDRLEDm/DeYpdwqJ+h+XUAg+043sSw==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:content-type:date:date:feedback-id:feedback-id
 	:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1787612527; x=
-	1787698927; bh=NFCiSvqdeF7E/bYe2H+C0fcFirCfCrFgmIZGrUi7xAE=; b=l
-	LTDkHLovtaqQE97/ENaVtEons8sfpXaitMX+jgVmIs5jH4LM9ZmqtbrqIqudGE3R
-	5h+Xjc5G2E9qI8NvnyQPGAdsutiwXF289+gwXmyySfmHG73eXeSQu9MCLnS9GO5L
-	WGpYv5l2Nqoy+bTWgbJDgcFgF52kb+4t4Uch60Ie3np3dpZ6ViHVKvQn1kcqHvmF
-	YJDAuFcfQwOJWtvVwqrPczzHWT4zVwLi9XEFcxKaM8acicUMCGPhNW+IM2rLK63R
-	sK9f8obgA9yGMcLu0xLZPtd/Bn6xWphBC1nwjKs3V6fc0MVd7v8vG+zdvwmvbrIH
-	rfLj4Y18csX2ZUH0/H67A==
-X-ME-Sender: <xms:b82MamEG3iu_Gzqmoa5BSmB-b-ODcmE5rZNELSM5rCuAH6teoqqhow>
-    <xme:b82MarAeIR6loGytg1P-ZAkyvFj19Lnh-BvmTkKdwJ8OOPgSPE8iiHr30Gna_0tXn
-    xxM5veNtSrnwPBVWmDpve9CfHRexbYWWxMC6hVvqmX4BiIjOvE>
-X-ME-Received: <xmr:b82Map-Lr8hCgIP2LvxnFl7x-H0QzqRSfyVpqD6slTQpub6lo105Zg9OV1QrCa5Tp2YC99FyT44ISgQvTFpWjLrSDI3IPxI>
-X-ME-Proxy-Cause: dmFkZTEQNpmA47tWOQaBAEj+7s7Cpn15hTRZuUyazf6/1YEpiTms/spyubTzZyKXFPOdNI
-    9gar04QYP2oBSs7tO7mHx2Peo4m65EP8TP35fES+v7NjfsSZIBG/51k2JijlsrYfJfOp77
-    LVMXaoAQ1OU/4HKjE9z387iI4FploVrIbNiXT7VKuuXrcR/nSGX3Udu4E7jCKSdrrB4MdZ
-    ZvfKsW+B/8FddXGdYeTFUYvRP6G6jz4xmfPqJyuQu+ToZIaavc51rjjwBn/kgkV/Ayk9zc
-    vWxTUaOBDinoMu9Hu02njRjH62S3yMkdhbvU2iwJQRibTpdAD9/Dp3LVtT3EWGo73WwiB4
-    nNcxw+ysNF5h/rUwPcQ4FElqtGCnh/JkG8C4uP5+iylrHfONs2Sd1u60BeesHp1C/FJGyb
-    TI0Z5CJ1dMWSeR9Ib3c/+Br48p2UW7TKP/nQwyyWKwMpNbozpEZW/KTeyRuk6xOkzeSBdw
-    cWdkBYjck8biiBUP/ZJF7nm7zEcwnz7EgJyzpOVL5tMra/LqThcAof5ERWvwssHnBH6iiw
-    jYaKZgikgedM6QkP8VIl+vFFWAiKprQyoK88LZVB9YeW+58pIwFiZyKHNeoiCKy06onmq5
-    Z/7H5NjlNun+Ay7aeaVR2LEAMK798CTd1EbWqWpVFBqUsue+d+R9s2BMw6eQ
-X-ME-Proxy: <xmx:b82ManC8sKY_zuADfbQXrvFPJ0B2BkB6kLnoewllCRuDBMzMX2WWDg>
-    <xmx:b82MauSqQgAZZqtiIDleJJw8wqSTM1_TYAt6Goz6bxIfaz2Jl2Y_qw>
-    <xmx:b82Mauu5S9P7ADBRa2BbM1PfKMTBNbigmd8MPcTCtFujQumtB3Ep4g>
-    <xmx:b82Maq3B8zyDrckwCPNsIbtC7H1cCcP_2qtmGqm3YTtZ6hzD2osxoQ>
-    <xmx:b82Mark6qMXcV48WQv02h4ZqyNM_Z_8bGcqF549S3yDhTtLey1x-j5xF>
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1787614706; x=
+	1787621906; bh=1ks+pZPsMFw/dX/SaAC+B9uhzl7GasUHVZ9HfOG6GYI=; b=I
+	lzNSJWico+svMdus2gBAc3HIZDjiFr3cckIgnsASVB4TdasKY3A7/axRo3a8Dlu8
+	UmIPoTkwXXQFiIUQavHV3nTdGVcPGawQ+n+YgCa1oiUwsu1VUziOY7oMW0Lvfa2T
+	wmasGsZCKt9ahl1HWHHWhZYKGUMx+a1Fpq8mWL4iBSbnzjAYIsyb/btw0r2MoUh7
+	zvLeWL3H2dn7Kz2xakvXBkOQaQ4rZWbWkpTFHaOEJ6bUsKCCuNX2HfvNCC/w40AJ
+	kMFcNkAPwwJjPvtCGWrAft+YK2E7UoCvGd1cQjqbOm4YgcGP1sXFBqNBvmEIKRgJ
+	cVTPKjQmGCi0BcJWxcFKQ==
+X-ME-Sender: <xms:6tWMao3MGXfEgZ2hm2rhJ71A-6ZVub-9zpOsoFZN2tiw6iThTBuwzQ>
+    <xme:6tWMaj7LeLQe0L41ggA0tcRjTkl9-GpsxTnxiTGYyYN5yIAzniuLbkD6EQECYCsEK
+    7Mzb2xbWmZiJbLOhwCmDXxyCQmmc8ItDh28Twvl1zl3UUIbdA>
+X-ME-Received: <xmr:6tWMaq0AmSmgSL256G9_XnlUhr7KJ5Y6VaebmpSrnHeHBRVqGKgfoc5ceuuKsFRFQtRz2tJPuSvfafSrKm5R8VcBJIxJ-dg>
+X-ME-Proxy-Cause: dmFkZTFrEmQssS56tdgzvy9yebBt5E0gIk2nhGFkQJdPkBb8h8m7nM4ZqL1LHvw+mehMwh
+    SuskV2FjoEkeI+MG8HTwFAriu5Q6OkP/hQVA5ynEUh3wAYbRSBZIsgskB8Fx4Wcz8GJ310
+    UDJQteufz/bw/Bw4Zubkj9pGGvYWCVB2usE09lF2iKKwZ51xN7XwzuON1GjKoLgtSooAPS
+    Z8k0+xsDpc6+7r0zmKuwWWaa04PYjqkjOaRrvBIcWl6EZWvN462VRhzf4aa4qLvSyuJgiX
+    IxiZbGoL6xvgKgowADVQoe0bCo/iQpSX/L/ODuY4BqB3a5cgRS/Pv/It4YpoMEFrrnb4S4
+    xaHdANv5XmZhj5jUtQUM+tbBd3v3vyobnvGmKS8r6iIefPGgdZ6m7FkjfOkUwwxardZIBF
+    ov3rXrrjWY4LqAMHQGxdQF0tf9e2+LhvSHn4O0tUUhDCb7/X1NX7HV0RpQR4HyUwIb2hST
+    /fLf3kKA3KLnmOzPSg1CrvY3neXXPTpIeB4LH2wU8TpCHMiW/VGkYoQvDHsb1+g6V5qAzm
+    w2khMNxTKBB0iEhJ5JIuexGlH+74WbRFJbR2/Yo2fV83CG5jiE1w5XKkTwMMd3XsHCynVm
+    mj24vQMvXowNJqDWzd2Bq4Pbj4dLEIMXsFcPpSxJimaXGcg56pIfSKtLhp/w
+X-ME-Proxy: <xmx:6tWMaufjzla0ip1qs-FrtSacwDRI3EAzO1bOezUmuRVGRnFnBS7RMA>
+    <xmx:6tWMaoU519ST5ee1SE38PMgk1GORN1rpC2xttFjtO_OI0yK7o9XM1A>
+    <xmx:6tWMaglJLrawf2a_NkBTlQ5UlrLCBmgEBzrfq0Yg3tigyBrWdxQ-eg>
+    <xmx:6tWMapZO_qV_XfrR3y1XelcvL6bR7AlBBrT5_bVrVIjnPfrWBW0m0A>
+    <xmx:8tWManlmlHzgk4wctTycNwj4xlJ5R-159qG6IeaQBCmxaIJGdyiqoABK>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Mon,
- 24 Aug 2026 19:02:05 -0400 (EDT)
+ 24 Aug 2026 19:37:38 -0400 (EDT)
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
@@ -77,337 +77,236 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 From: NeilBrown <neilb@ownmail.net>
-To: "Chuck Lever" <cel@kernel.org>
-Cc: "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org,
- "Jeff Layton" <jlayton@kernel.org>
-Subject: Re: [PATCH v5 18/18] nfsd: use do_lookup_open() for non-creating open
- requests too.
-In-reply-to: <91af721c-a6a9-4f34-adb0-8d5982a87efa@app.fastmail.com>
-References: <20260717093001.1972119-1-neilb@ownmail.net>
-  <20260717093001.1972119-19-neilb@ownmail.net>
-  <bb2eb0ef5172cbfc4452f7a8a2afc866f629557f.camel@kernel.org>
-  <00464c46-a4e1-417e-8169-e3b73a6b0717@app.fastmail.com>
-  <178700362567.2852630.944834641016567369@noble.neil.brown.name>
-  <178760852225.3510150.8856836572675365165@noble.neil.brown.name>
-  <91af721c-a6a9-4f34-adb0-8d5982a87efa@app.fastmail.com>
-Date: Tue, 25 Aug 2026 09:02:02 +1000
-Message-id: <178761252217.3510150.9328390760085184935@noble.neil.brown.name>
+To: "David Hildenbrand (Arm)" <david@kernel.org>
+Cc: "Byungchul Park" <byungchul@sk.com>, linux-kernel@vger.kernel.org,
+ max.byungchul.park@gmail.com, kernel_team@skhynix.com,
+ torvalds@linux-foundation.org, linux-ide@vger.kernel.org,
+ adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, mingo@redhat.com,
+ peterz@infradead.org, will@kernel.org, tglx@linutronix.de,
+ rostedt@goodmis.org, joel@joelfernandes.org, sashal@kernel.org,
+ daniel.vetter@ffwll.ch, duyuyang@gmail.com, johannes.berg@intel.com,
+ tj@kernel.org, tytso@mit.edu, willy@infradead.org, david@fromorbit.com,
+ amir73il@gmail.com, gregkh@linuxfoundation.org, kernel-team@lge.com,
+ linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
+ minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com,
+ sj@kernel.org, jglisse@redhat.com, dennis@kernel.org, cl@linux.com,
+ penberg@kernel.org, rientjes@google.com, vbabka@suse.cz,
+ ngupta@vflare.org, linux-block@vger.kernel.org, josef@toxicpanda.com,
+ linux-fsdevel@vger.kernel.org, jack@suse.cz, jlayton@kernel.org,
+ hch@infradead.org, djwong@kernel.org, dri-devel@lists.freedesktop.org,
+ rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
+ hamohammed.sa@gmail.com, harry.yoo@oracle.com, chris.p.wilson@intel.com,
+ gwan-gyeong.mun@intel.com, boqun.feng@gmail.com, longman@redhat.com,
+ yunseong.kim@ericsson.com, ysk@kzalloc.com, yeoreum.yun@arm.com,
+ netdev@vger.kernel.org, matthew.brost@intel.com, her0gyugyu@gmail.com,
+ corbet@lwn.net, catalin.marinas@arm.com, bp@alien8.de, x86@kernel.org,
+ hpa@zytor.com, luto@kernel.org, sumit.semwal@linaro.org,
+ gustavo@padovan.org, christian.koenig@amd.com, andi.shyti@kernel.org,
+ arnd@arndb.de, lorenzo.stoakes@oracle.com, Liam.Howlett@oracle.com,
+ rppt@kernel.org, surenb@google.com, mcgrof@kernel.org,
+ petr.pavlu@suse.com, da.gomez@kernel.org, samitolvanen@google.com,
+ paulmck@kernel.org, frederic@kernel.org, neeraj.upadhyay@kernel.org,
+ joelagnelf@nvidia.com, josh@joshtriplett.org, urezki@gmail.com,
+ mathieu.desnoyers@efficios.com, jiangshanlai@gmail.com,
+ qiang.zhang@linux.dev, juri.lelli@redhat.com, vincent.guittot@linaro.org,
+ dietmar.eggemann@arm.com, bsegall@google.com, mgorman@suse.de,
+ vschneid@redhat.com, chuck.lever@oracle.com, okorniev@redhat.com,
+ Dai.Ngo@oracle.com, tom@talpey.com, trondmy@kernel.org, anna@kernel.org,
+ kees@kernel.org, bigeasy@linutronix.de, clrkwllms@kernel.org,
+ mark.rutland@arm.com, ada.coupriediaz@arm.com,
+ kristina.martsenko@arm.com, wangkefeng.wang@huawei.com,
+ broonie@kernel.org, kevin.brodsky@arm.com, dwmw@amazon.co.uk,
+ shakeel.butt@linux.dev, ast@kernel.org, ziy@nvidia.com,
+ yuzhao@google.com, baolin.wang@linux.alibaba.com, usamaarif642@gmail.com,
+ joel.granados@kernel.org, richard.weiyang@gmail.com,
+ geert+renesas@glider.be, tim.c.chen@linux.intel.com, linux@treblig.org,
+ alexander.shishkin@linux.intel.com, lillian@star-ark.net,
+ chenhuacai@kernel.org, francesco@valla.it, guoweikang.kernel@gmail.com,
+ link@vivo.com, jpoimboe@kernel.org, masahiroy@kernel.org,
+ brauner@kernel.org, thomas.weissschuh@linutronix.de, oleg@redhat.com,
+ mjguzik@gmail.com, andrii@kernel.org, wangfushuai@baidu.com,
+ linux-doc@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+ linux-media@vger.kernel.org, linaro-mm-sig@lists.linaro.org,
+ linux-i2c@vger.kernel.org, linux-arch@vger.kernel.org,
+ linux-modules@vger.kernel.org, rcu@vger.kernel.org,
+ linux-nfs@vger.kernel.org, linux-rt-devel@lists.linux.dev,
+ 2407018371@qq.com, dakr@kernel.org, miguel.ojeda.sandonis@gmail.com,
+ bagasdotme@gmail.com, wsa+renesas@sang-engineering.com,
+ dave.hansen@intel.com, geert@linux-m68k.org, ojeda@kernel.org,
+ alex.gaynor@gmail.com, gary@garyguo.net, bjorn3_gh@protonmail.com,
+ lossin@kernel.org, a.hindborg@kernel.org, aliceryhl@google.com,
+ tmgross@umich.edu, rust-for-linux@vger.kernel.org
+Subject: Re: [PATCH v19 00/40] DEPT(DEPendency Tracker)
+In-reply-to: <3d58eb3c-7a9d-4183-907b-46172664631c@kernel.org>
+References: <20260706061928.66713-1-byungchul@sk.com>
+  <359ea967-9b97-4584-88e6-bddb4044de2e@kernel.org>
+  <20260821042143.GA40890@system.software.com>
+  <825134a8-ceae-430c-b2fc-d1d0c7240f39@kernel.org>
+  <178730572084.2852630.7732425311008244683@noble.neil.brown.name>
+  <3d58eb3c-7a9d-4183-907b-46172664631c@kernel.org>
+Date: Tue, 25 Aug 2026 09:37:34 +1000
+Message-id: <178761465493.3510150.12380729360578969391@noble.neil.brown.name>
 Reply-To: NeilBrown <neil@brown.name>
 
-On Tue, 25 Aug 2026, Chuck Lever wrote:
+On Tue, 25 Aug 2026, David Hildenbrand (Arm) wrote:
+> Hi!
 >=20
-> On Mon, Aug 24, 2026, at 5:55 PM, NeilBrown wrote:
-> > On Tue, 18 Aug 2026, NeilBrown wrote:
-> >> On Tue, 18 Aug 2026, Chuck Lever wrote:
-> >> >=20
-> >> > On Wed, Aug 12, 2026, at 1:12 PM, Jeff Layton wrote:
-> >> > > On Fri, 2026-07-17 at 19:28 +1000, NeilBrown wrote:
-> >> > >> From: NeilBrown <neil@brown.name>
-> >> > >>=20
-> >> > >> Now that we have do_lookup_open() for creating open requests, we ca=
-n use
-> >> > >> it for non-creating too as do_lookup_open() is already able to do t=
-hat.
-> >> > >>=20
-> >> > >> This prepares for switching to vfs_lookup_open() once the VFS provi=
-des
-> >> > >> that.  This will ensure consistent code and fs-interaction with VFS=
- open().
-> >> > >>=20
-> >> > >> The resulting simplification allows fh_fill_pre_attrs_unlocked() to=
- be
-> >> > >> moved into nfsd4_open_file() (renamed from nfsd4_create_file()) so =
-it is
-> >> > >> closer to fh_full_post_attrs and fh_fill_post_noop calls.
-> >> > >>=20
-> >> > >> As ->op_create_mode isn't defined when op_create is zero, we need a
-> >> > >> local create_mode which is -1 (illegal value) when op_create is zer=
-o.
-> >> > >>=20
-> >> > >> The non-create path now doesn't use nfsd_lookup().  As mount-point
-> >> > >> crossing including nfsd_check_access() is already included for exis=
-ting
-> >> > >> names, this does not lose us anything.
-> >> > >>=20
-> >> > >> We now only call mnt_want_write() is there is a flag which indicate=
-s we
-> >> > >> might want write access - previously O_CREAT was always set.
-> >> > >>=20
-> >> > >> Signed-off-by: NeilBrown <neil@brown.name>
-> >> > >> ---
-> >> > >>  fs/nfsd/nfs4proc.c | 113 ++++++++++++++++++++++-------------------=
-----
-> >> > >>  1 file changed, 56 insertions(+), 57 deletions(-)
-> >> > >>=20
-> >> > >> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> >> > >> index b7fdc75c4b81..11d0411dec08 100644
-> >> > >> --- a/fs/nfsd/nfs4proc.c
-> >> > >> +++ b/fs/nfsd/nfs4proc.c
-> >> > >> @@ -204,9 +204,10 @@ static struct file *do_lookup_open(struct path=
- *parent,
-> >> > >>  	struct file *filp =3D NULL;
-> >> > >>  	struct path path;
-> >> > >>  	struct dentry *child;
-> >> > >> -	int want_write_err =3D 0;
-> >> > >> +	int want_write_err =3D -ENOENT;
-> >> > >> =20
-> >> > >> -	want_write_err =3D mnt_want_write(parent->mnt);
-> >> > >> +	if (oflags & (O_CREAT|O_RDONLY|O_RDWR|O_TRUNC))
-> >> > >> +		want_write_err =3D mnt_want_write(parent->mnt);
-> >> > >> =20
-> >> > >>  	child =3D start_creating(&nop_mnt_idmap, parent->dentry, name);
-> >> > >>  	if (IS_ERR(child)) {
-> >> > >> @@ -242,29 +243,30 @@ static struct file *do_lookup_open(struct pat=
-h *parent,
-> >> > >>  }
-> >> > >> =20
-> >> > >>  /*
-> >> > >> - * Implement NFSv4's unchecked, guarded, and exclusive create
-> >> > >> - * semantics for regular files. Open state for this new file is
-> >> > >> - * subsequently fabricated in nfsd4_process_open2().
-> >> > >> - *
-> >> > >> + * Implement NFSv4's open semantics for regular files.
-> >> > >> + * Both create (unchecked, guarded, and exclusive) and non-create.
-> >> > >> + * Open state for this new file is subsequently fabricated in
-> >> > >> + * nfsd4_process_open2().
-> >> > >>   * Upon return, caller must release @fhp and @resfhp.
-> >> > >>   */
-> >> > >>  static __be32
-> >> > >> -nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> >> > >> -		  struct svc_fh *resfhp, struct nfsd4_open *open)
-> >> > >> +nfsd4_open_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> >> > >> +		struct svc_fh *resfhp, struct nfsd4_open *open)
-> >> > >>  {
-> >> > >>  	struct iattr *iap =3D &open->op_iattr;
-> >> > >>  	struct nfsd_attrs attrs =3D {
-> >> > >>  		.na_iattr	=3D iap,
-> >> > >>  		.na_seclabel	=3D &open->op_label,
-> >> > >>  	};
-> >> > >> -	int oflags =3D O_CREAT | O_LARGEFILE;
-> >> > >> +	int oflags =3D O_LARGEFILE;
-> >> > >>  	struct dentry *child =3D ERR_PTR(-EINVAL);
-> >> > >>  	struct path parent =3D {
-> >> > >>  		.mnt =3D fhp->fh_export->ex_path.mnt,
-> >> > >>  		.dentry =3D fhp->fh_dentry,
-> >> > >>  	};
-> >> > >>  	__u32 v_mtime, v_atime;
-> >> > >> -	__be32 status, create_status;
-> >> > >> +	int createmode =3D -1;
-> >> > >> +	__be32 status, create_status =3D 0;
-> >> > >>  	int want_write_err;
-> >> > >> =20
-> >> > >>  	if (name_is_dot_dotdot(open->op_fname, open->op_fnamelen))
-> >> > >> @@ -276,6 +278,10 @@ nfsd4_create_file(struct svc_rqst *rqstp, stru=
-ct svc_fh *fhp,
-> >> > >>  	if (status !=3D nfs_ok)
-> >> > >>  		return status;
-> >> > >> =20
-> >> > >> +	status =3D fh_fill_pre_attrs_unlocked(fhp);
-> >> > >> +	if (status)
-> >> > >> +		return status;
-> >> > >> +
-> >> > >>  	if (open->op_createmode =3D=3D NFS4_CREATE_UNCHECKED) {
-> >> > >>  		/*
-> >> > >>  		 * If name is already in dcache we need to check for mountpoints
-> >> > >> @@ -305,11 +311,15 @@ nfsd4_create_file(struct svc_rqst *rqstp, str=
-uct svc_fh *fhp,
-> >> > >>  	if (!IS_POSIXACL(d_inode(parent.dentry)))
-> >> > >>  		iap->ia_mode &=3D ~current_umask();
-> >> > >> =20
-> >> > >> +	if (open->op_create) {
-> >> > >> +		createmode =3D open->op_createmode;
-> >> > >> +		oflags |=3D O_CREAT;
-> >> > >> +	}
-> >> > >>  	/*
-> >> > >>  	 * For the EXCLUSIVE modes we do our own uniqueness tests
-> >> > >>  	 * so don't want O_EXCL.
-> >> > >>  	 */
-> >> > >> -	if (open->op_createmode =3D=3D NFS4_CREATE_GUARDED)
-> >> > >> +	if (createmode =3D=3D NFS4_CREATE_GUARDED)
-> >> > >>  		oflags |=3D O_EXCL;
-> >> > >> =20
-> >> > >>  	switch (open->op_share_access & NFS4_SHARE_ACCESS_BOTH) {
-> >> > >> @@ -344,7 +354,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struc=
-t svc_fh *fhp,
-> >> > >> =20
-> >> > >>  	v_mtime =3D 0;
-> >> > >>  	v_atime =3D 0;
-> >> > >> -	if (nfsd4_create_is_exclusive(open->op_createmode)) {
-> >> > >> +	if (nfsd4_create_is_exclusive(createmode)) {
-> >> > >>  		u32 *verifier =3D (u32 *)open->op_verf.data;
-> >> > >> =20
-> >> > >>  		/*
-> >> > >> @@ -366,11 +376,11 @@ nfsd4_create_file(struct svc_rqst *rqstp, str=
-uct svc_fh *fhp,
-> >> > >>  		iap->ia_atime.tv_nsec =3D 0;
-> >> > >>  	}
-> >> > >> =20
-> >> > >> -	create_status =3D fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
-> >> > >> -	if (create_status)
-> >> > >> -		/* Might still succeed if no create is needed */
-> >> > >> -		oflags &=3D ~O_CREAT;
-> >> > >> -
-> >> > >> +	if (oflags & O_CREAT) {
-> >> > >> +		create_status =3D fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE=
-);
-> >> > >> +		if (create_status)
-> >> > >> +			oflags &=3D ~O_CREAT;
-> >> > >> +	}
-> >> > >>  	open->op_filp =3D do_lookup_open(&parent,
-> >> > >>  				       &QSTR_LEN(open->op_fname,
-> >> > >>  						 open->op_fnamelen),
-> >> > >> @@ -392,14 +402,15 @@ nfsd4_create_file(struct svc_rqst *rqstp, str=
-uct svc_fh *fhp,
-> >> > >>  		goto out;
-> >> > >> =20
-> >> > >>  	if (!open->op_created &&
-> >> > >> -	    nfsd4_create_is_exclusive(open->op_createmode) &&
-> >> > >> +	    nfsd4_create_is_exclusive(createmode) &&
-> >> > >>  	    inode_get_mtime_sec(d_inode(child)) =3D=3D v_mtime &&
-> >> > >>  	    inode_get_atime_sec(d_inode(child)) =3D=3D v_atime &&
-> >> > >>  	    d_inode(child)->i_size =3D=3D 0)
-> >> > >>  		open->op_created =3D true;
-> >> > >> =20
-> >> > >>  	if (!open->op_created) {
-> >> > >> -		if (open->op_createmode =3D=3D NFS4_CREATE_UNCHECKED) {
-> >> > >> +		if (open->op_create =3D=3D NFS4_OPEN_NOCREATE ||
-> >> > >> +		    createmode =3D=3D NFS4_CREATE_UNCHECKED) {
-> >> > >>  			/* NFSv4 protocol requires change attributes
-> >> > >>  			 * even though no change happened.
-> >> > >>  			 */
-> >> > >> @@ -494,46 +505,34 @@ do_open_lookup(struct svc_rqst *rqstp, struct=
- nfsd4_compound_state *cstate, stru
-> >> > >>  	fh_init(*resfh, NFS4_FHSIZE);
-> >> > >>  	open->op_truncate =3D false;
-> >> > >> =20
-> >> > >> -	status =3D fh_fill_pre_attrs_unlocked(current_fh);
-> >> > >> -	if (status)
-> >> > >> -		goto out;
-> >> > >> -	if (open->op_create) {
-> >> > >> -		/* FIXME: check session persistence and pnfs flags.
-> >> > >> -		 * The nfsv4.1 spec requires the following semantics:
-> >> > >> -		 *
-> >> > >> -		 * Persistent   | pNFS   | Server REQUIRED | Client Allowed
-> >> > >> -		 * Reply Cache  | server |                 |
-> >> > >> -		 * -------------+--------+-----------------+--------------------
-> >> > >> -		 * no           | no     | EXCLUSIVE4_1    | EXCLUSIVE4_1
-> >> > >> -		 *              |        |                 | (SHOULD)
-> >> > >> -		 *              |        | and EXCLUSIVE4  | or EXCLUSIVE4
-> >> > >> -		 *              |        |                 | (SHOULD NOT)
-> >> > >> -		 * no           | yes    | EXCLUSIVE4_1    | EXCLUSIVE4_1
-> >> > >> -		 * yes          | no     | GUARDED4        | GUARDED4
-> >> > >> -		 * yes          | yes    | GUARDED4        | GUARDED4
-> >> > >> -		 */
-> >> > >> +	/* FIXME: check session persistence and pnfs flags.
-> >> > >> +	 * The nfsv4.1 spec requires the following semantics:
-> >> > >> +	 *
-> >> > >> +	 * Persistent   | pNFS   | Server REQUIRED | Client Allowed
-> >> > >> +	 * Reply Cache  | server |                 |
-> >> > >> +	 * -------------+--------+-----------------+--------------------
-> >> > >> +	 * no           | no     | EXCLUSIVE4_1    | EXCLUSIVE4_1
-> >> > >> +	 *              |        |                 | (SHOULD)
-> >> > >> +	 *              |        | and EXCLUSIVE4  | or EXCLUSIVE4
-> >> > >> +	 *              |        |                 | (SHOULD NOT)
-> >> > >> +	 * no           | yes    | EXCLUSIVE4_1    | EXCLUSIVE4_1
-> >> > >> +	 * yes          | no     | GUARDED4        | GUARDED4
-> >> > >> +	 * yes          | yes    | GUARDED4        | GUARDED4
-> >> > >> +	 */
-> >> > >> =20
-> >> > >> -		current->fs->umask =3D open->op_umask;
-> >> > >> -		status =3D nfsd4_create_file(rqstp, current_fh, *resfh, open);
-> >> > >> -		current->fs->umask =3D 0;
-> >> > >> +	current->fs->umask =3D open->op_umask;
-> >> > >> +	status =3D nfsd4_open_file(rqstp, current_fh, *resfh, open);
-> >> > >> +	current->fs->umask =3D 0;
-> >> > >> =20
-> >> > >> -		/*
-> >> > >> -		 * Following rfc 3530 14.2.16, and rfc 5661 18.16.4
-> >> > >> -		 * use the returned bitmask to indicate which attributes
-> >> > >> -		 * we used to store the verifier:
-> >> > >> -		 */
-> >> > >> -		if (nfsd4_create_is_exclusive(open->op_createmode) && status =3D=
-=3D 0)
-> >> > >> -			open->op_bmval[1] |=3D (FATTR4_WORD1_TIME_ACCESS |
-> >> > >> -						FATTR4_WORD1_TIME_MODIFY);
-> >> > >> -	} else {
-> >> > >> -		status =3D nfsd_lookup(rqstp, current_fh,
-> >> > >> -				     open->op_fname, open->op_fnamelen, *resfh);
-> >> > >> -		/*
-> >> > >> -		 * NFSv4 protocol requires change attributes even though
-> >> > >> -		 * no change happened.
-> >> > >> -		 */
-> >> > >> -		fh_fill_post_noop(current_fh);
-> >> > >> -	}
-> >> > >> +	/*
-> >> > >> +	 * Following rfc 3530 14.2.16, and rfc 5661 18.16.4
-> >> > >> +	 * use the returned bitmask to indicate which attributes
-> >> > >> +	 * we used to store the verifier:
-> >> > >> +	 */
-> >> > >> +	if (open->op_create &&
-> >> > >> +	    nfsd4_create_is_exclusive(open->op_createmode) && status =3D=
-=3D 0)
-> >> > >> +		open->op_bmval[1] |=3D (FATTR4_WORD1_TIME_ACCESS |
-> >> > >> +				      FATTR4_WORD1_TIME_MODIFY);
-> >> > >>  	if (status)
-> >> > >>  		goto out;
-> >> > >>  	status =3D nfserrno(nfsd_check_obj_isreg((*resfh)->fh_dentry));
-> >> > >
-> >> > > This patch is making the pynfs DELEG8 test fail. It seems like this
-> >> > > patch breaks the behavior where the server sends back NFS4ERR_DELAY =
-on
-> >> > > an OPEN while waiting for a DELEGRETURN. The server just doesn't sen=
-d a
-> >> > > reply until the delegation times out with it.
-> >> >=20
-> >> > Neil, I need a response from you. How soon do you intend to address th=
-is
-> >> > issue? Can this patch be dropped safely from the series, or do I need =
-to
-> >> > drop the whole series?
-> >> >=20
-> >>=20
-> >> Hi,
-> >>  sorry for not getting to this sooner.
-> >>  I can see the problem.  To fix it we need to somehow get logic similar
-> >>  to nfsd_open_break_lease() into the vfs_lookup_open() path.  I think
-> >>  that'll be possible though not trivial.
-> >>=20
-> >>  It is safe to drop just that patch for now.  I don't need it for the
-> >>  locking work that I am doing.  I think it is still good to have and I
-> >>  will try to rehabilitate it, but not in a hurry.
-> >>=20
-> >>  I'm confident the rest of the series is not implicated in this problem
-> >>  so there is no need to drop the whole series.
-> >
-> > Hi Chuck,
-> >  I notice this series wasn't in your recent pull request and they seem
-> >  to have disappeared from your tree.
+> >>>
+> >>> That's a good news for lockdep.  (And even for DEPT :)
+> >>
+> >> He :) Where do you currently store the additional per-page information?
+> >=20
+> > lockdep doesn't need to store per-page information.  Possibly DEPT
+> > doesn't either.
 >=20
-> I see them in nfsd-testing, where they=E2=80=99ve been since August 10.
+> That would be even better.
 
-uhmm... yes .... none some blind as .... :-(
+A little bit more on this:
+ lockdep *does* store per-lock information - a "struct lockdep_map".
+ I don't fully understand how it is used, but it seems to be mostly
+ for convenience and performance.
+ When you lock something, lockdep need to know what class the lock
+ belongs to.  The lockdep_map maps from the lock to the class so the
+ caller doesn't have to explicitly identify the class every time.
+ The lockdep_map also contains a "name" and some wait_types which I
+ *think* are only used for more descriptive error messages.
+ There is also a "class_cache" which makes it easier (faster) for lockdep to
+ find the target class for different subclasses.
+
+ rhashtables "bucket_table" is an existence proof there there doesn't
+ need to be a lockdep_map for each lock.  Every bucket has its own
+ bit-spin-lock, but there is only one lockdep_map that they all shared.
+
+ You could conceivably put a lockdep_map in each "struct address_space"
+ for folio locks (assuming all lockable folios still belong to some
+ address_space).
+
+>=20
+> [...]
+>=20
+> >=20
+> > maybe you put the folio which is locked on a queue or an lru or
+> > whatever.
+>=20
+> For readahead, I think that queues / lru are not involved. We submit the I/=
+O,
+> and once the I/O is done, we unlock the folio from interrupt context.
+
+"submit the I/O" means "attach the page to a "struct bio" (or similar)
+and attach the struct bio to a transmit queue for the device (or
+similar).  So there really is a queue.
+
+>=20
+> end_buffer_async_read() / iomap_finish_folio_read() end up calling
+> folio_end_read(), where we do the magic
+>=20
+> 	folio_wake_bit(folio, PG_locked);
+
+Exactly where the lock ownership should be reclaimed is not immediately
+clear to me.  bio_endio() might be early enough but there are probably
+better points.
+
+A small difficulty here is that a bio has multiple folios and they are
+all locked.  I cannot see that lockdep has a concept of holding an
+arbitrarily large set of related locks.
+We could just tell lockdep=20
+  "I have some folios locked"=20
+or maybe enhance lockdep to allow
+  "I have N folios locked"
+or even
+  "I have N folios in address-space A with the highest offset being O".
+
+This would allow lockdep to check the validity of locking another folio
+- only allowed if the address space is the same and the offset is larger
+than the previous largest.
+
+>=20
+> It's interesting, that for writeback we never unlock the folio on the I/O p=
+ath,
+> but instead have the dedicated page flag to tell us when writeback is compl=
+ete.
+
+PG_locked and PG_writeback are two different lock-bits with two
+different meanings.
+When a folio is PG_locked the content is invalid and shouldn't be accessed.
+When a folio is in PG_writeback its data is not safe even though
+PG_dirty has been cleared (if I remember correctly).
+
+So these are two separate, though related, lock bits that would both
+need to be tracked.  lockdep would detect how they are related.
+
+>=20
+> >=20
+> > There is no way to say "that queue owns this lock".  Maybe that could
+> > usefully be added - assuming coherent semantics can be designed.
+> >=20
+> > Somewhere else some other task takes responsibility for that folio and
+> > the lock.  maybe it dequeues a page, or maybe an lru callback gives the
+> > locked page to some code.
+> > That code then calls
+> >    lock_map_acquire_try(&the_lock_map)
+>=20
+> I'd assume that's what the unlock path would do from interrupt context.
+
+exactly.
+
+>=20
+> >=20
+> > This says "this task is now holding this lock" (or more accurately "now
+> > holding a lock of this class").
+> > Note the "_try" - that says that the task didn't have to wait for the
+> > lock, it just got it for free, which in fact it did.
+> >=20
+> > Now if that task takes some other lock, lockdep will see a dependency
+> > between the page lock and the new lock, and will accept or reject it as
+> > you would expect.
+>=20
+> I guess on the interrupt path, we primarily unlock the folio lock only. But=
+ we
+> might take some other spinlocks temporarily indeed, like
+> iomap_finish_folio_read() does.
+
+Yes.  It is hard to see there being locking problems in interrupt
+handlers as the folio locks are sleeping locks and an interrupt handler
+can only take atomic locks, so getting the ordering wrong is likely
+impossible.
+
+You would be more likely to see problems in a workqueue which takes the
+completely IO and does something with it, maybe verify a checksum or
+whatever (it is a long time since I've worked in the block layer).
 
 >=20
 >=20
-> >  What do you understand the status of these patches to be?
-> >  I was hoping they would land this merge window.
+> >  But I'd like to see a coherent
+> > explanation of how the functionality offered by DEPT is clearly better.
 >=20
-> Jeff and I discussed this, and we=E2=80=99d like these to get another month
-> or two in linux-next because they modify common paths. When v7.3-rc1
-> opens, they will be at the first patches in nfsd-next for v7.4.
+> Yes, that's also what I am missing.
+>=20
+> Stating that lockdep is stable and should not be destabilized is not really=
+ a
+> good argument.
 
-Ok, thanks.  I should send you another patch to switch from
-do_lookup_open() to vfs_lookup_open() now that is in mainline.
+No it is not.  We change "stable" things all the time.  Replacing one
+big thing with another big thing is almost always rejected.
+Incremental development is the preferred approach.
+So developing something like DEPT to explore and learn and demonstrate
+a cool idea is great.  Making it completely separate can give a
+developer freedom to innovate.
+But the path from there to upstream acceptance is to take the lessons
+learned and to apply them one by one to the existing tools.
+Yes, that takes longer.  Yes it can be frustrating.  Yes you need to
+be able to work with people - not just code - to bring the community
+along with you.
+But the result is generally much better.
 
 Thanks,
 NeilBrown
 
 
 >=20
->=20
 > --=20
-> Chuck Lever
+> Cheers,
 >=20
+> David
 >=20
 
