@@ -1,73 +1,73 @@
 Received: from flow-b8-smtp.messagingengine.com (flow-b8-smtp.messagingengine.com [202.12.124.143])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C994C4908CD;
-	Tue, 25 Aug 2026 22:16:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1A7C949481A;
+	Tue, 25 Aug 2026 22:16:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.143
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787696192; cv=none; b=YlDJUdQHJAOVv2qp64iswkYHzgMQKrVn/BBlm8DupMO19OT4ccceNCMlwDkkEEkcJP73jfzFcMNkZaqHXJUni1W353Dy3Ob+fkCJgagIzNeoVrWHQ9dwZWE+BuVVF3PD8PHbcQVG9D5Sa6Y03qd6U8VlAPq4R0eQVI9XeMFJP1g=
+	t=1787696201; cv=none; b=EErX8FxDktLtH57ESuVv5l6NaZ6/qVSJaQw6wUMQJfLqht5f1IMPkcwqksC+nWOuhv6AS8VRyfWD7xSmeR3+QL8KCGoVHEdjYhT8rygJTvnwQKv3rbNaHr/5iE7DwJRHMoWrRfMwMd5s4y3XPZHeemYluKZDnRgZNrecSaUeQiY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787696192; c=relaxed/simple;
-	bh=6aoCjyg6MIezqiXigoJU19gujPvcZ2a+krqzaN6R7uQ=;
+	s=arc-20240116; t=1787696201; c=relaxed/simple;
+	bh=Q6gqY00KMt9BpOecieK7oAl5ZowGJd4T4zMUkkyPO+s=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=gv1MTt9BuNeN5Mqdg4qY1snP14i83zrMpVkmR28deP+YmOuJk7E/coPy7mEaj5oRlPIeoWy07gi4n46ARDsvss/EvGLqFnPmp9QU42GSGszFzpxb4MTVs2CpfCSDbTLHcGqGKGGTVGa4m83XfScADjzMQM8TGc2ccE+lwI/cIzs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=R8/HMe9t; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=b+IG9EwO; arc=none smtp.client-ip=202.12.124.143
+	 MIME-Version; b=tK9p0W7WCdKLKqGviiDRui5bundaauYw1vGM4BUo+nj6ZDdXv38KQ5KNoR8EVmaH2aKLiXBBCEXi+ArMsut1yAGffhcqo9zOpomLFvnhlZtzMW1s59NviTjun5v7ZjbvYpo/OKzU1jCijZqcHAQrqmVavWm8kLKKJ3iEhwyRXi4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=A0EUfyWG; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=hol5saBk; arc=none smtp.client-ip=202.12.124.143
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="R8/HMe9t";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="b+IG9EwO"
-Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
-	by mailflow.stl.internal (Postfix) with ESMTP id 66845130017A;
-	Tue, 25 Aug 2026 18:16:28 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-06.internal (MEProxy); Tue, 25 Aug 2026 18:16:28 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="A0EUfyWG";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="hol5saBk"
+Received: from phl-compute-05.internal (phl-compute-05.internal [10.202.2.45])
+	by mailflow.stl.internal (Postfix) with ESMTP id B98701300170;
+	Tue, 25 Aug 2026 18:16:37 -0400 (EDT)
+Received: from phl-frontend-04 ([10.202.2.163])
+  by phl-compute-05.internal (MEProxy); Tue, 25 Aug 2026 18:16:38 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1787696188;
-	 x=1787703388; bh=Djw9koOjpUMNVE7yG/oVlhtyHMqwB/kRtf5a4gs2snM=; b=
-	R8/HMe9t0DuC6WhIDn1i3MxG6qvcQ+N7j4Oq3UXORNFBHGhZIbp+mNr/PtwvRiC4
-	Wi9qOzTMEAsytql54wU06pitrO8g5t/c9GvQA6TV4w77YQq9PE5b4sWuOrnJYx+2
-	sqqF4hkdtRR06Ds7ohYF4xpUpCWse3nYdDXWs6wew2khpWNPSSoVaC0FbHF3C9n+
-	Q8sjXgvS7BnMtpFRWRYLm79RrVY5m/AA5+wa3UjY/vBJEtQGxVmTIqcPgEo4jz+X
-	6QYig2CQ0GjEJ4a3A8ribvq4xicbWcs7yYaAujqeDkyZx8XUyA8kuHd1QlzakbYo
-	30j8GOwQYEvkd/ZpDCmY8w==
+	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1787696197;
+	 x=1787703397; bh=c7FhbgUvbUThyOjjJ0ZYThL2VJzjUqdTeoa3w2iC71s=; b=
+	A0EUfyWG8dFhy2RZiOV8tm3iq4vMOeiNSj2bTI/wTVnslqvhWDycPiX02Pm2PnZ5
+	DzxVkyhgNaTPmegqoVaRCh9sKKY447TFH8P0ncb2dZKrcOplzufeXR4ktGKNcEKg
+	aI7qFwrRUcnvTwmh/rmN2Pj1F0yUHXDUsx6wwedy6AfkgY3KWLiA1yT016oxs3Uk
+	NSKuhd+YBAlv/gvV0tj94nYBtMlXqFZoV0lvSon73mAHS4lJnYgWCIIM8sBK06xP
+	JadDtAKV7C+O/VQvLHYQAdwWhgtZcSWruDhWu7+YtFVh+EtohHzjer6nz8lg/os7
+	sUzMibArbljlCr54C5xOuw==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
 	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm3; t=1787696188; x=1787703388; bh=D
-	jw9koOjpUMNVE7yG/oVlhtyHMqwB/kRtf5a4gs2snM=; b=b+IG9EwOYvbw4v5se
-	dbPgqEN9zLtAuQpc1zRKal92aGISj1MOrQlz4mQiSiU+HnRBPJa3Oai1qzDLEdFv
-	k9Ukmp8HgaEArKrfqiwuPRmiM/o7tmgEy3uApooQUNcnZzQhNV4Jo1cdNBRkNPeL
-	zoOyxOJACUx47Ukc28Elwc3nYoUcS1qMt5cO2cHdyvoRb85H4sa6r/bQvDKXWxwq
-	QtvgWHy/o5M7tJ8Qw7v2iBdeTiy9rCSI4YE8DD5w/Qu9qgJHofq2fUOwsjSiVGuu
-	OzO9jCDOD4KCrB78ddQxDIz0SpDcm0WgVs3SWog4fibmNkMYk7DkAk0u8veUGAS2
-	8gN4g==
-X-ME-Sender: <xms:PBSOagjLF-sK1FH536jraB9hMZUaUGy1eteQ-BGKPxV9il0ElRl1aA>
-    <xme:PBSOahP1smO8AjWfKfuTz-Vi59uN59Gw_4zQe2DxH5ceS3612JIxio73VKPpOe96P
-    yl0HBlqhm8uCAha6FnSgBZPaVJ1IoI4YX4QUfG-xM5nWSSnCUM>
-X-ME-Received: <xmr:PBSOavZ8LqJ2bgW9lBp2GaIwnohUfZcdC_VIXapaHwrk2Lkoj7p7M6DTsKHq-aLDP5WEpEIKztQs81Rrnwn4qkN5oFLQ9Lo>
+	:x-me-sender:x-sasl-enc; s=fm3; t=1787696197; x=1787703397; bh=c
+	7FhbgUvbUThyOjjJ0ZYThL2VJzjUqdTeoa3w2iC71s=; b=hol5saBkwwkWe81oT
+	2BS8KzCKALmpcqyCpk0ts3K/uBq7Ropma08hC5AB5VIw0s/j0Cm/1D71F5IeXsqM
+	go9NpOJ3nnWKba9Oj3VJNpuE3Qq71T2iqNaZafW/ZxgVFRw2BLkmKY09ARBrHnDG
+	M7SOWeonNf6iHUlZzPg18E73ZEUWBkQZ2oNM5kk2i498FE6JrOSwDNIkA7GD6Epd
+	8sJW/var+x/xZFrMwTWHpOHIjKtUQXIRvUwDPb/Kghhn+kSkSQ5QU49hpwvyKQKh
+	r21VxKTTr5H0D5fcZkrD1Ipv9zI8eFg0RbMp4L2RpgzFnv8Git60rva40hFrPcms
+	WRfTg==
+X-ME-Sender: <xms:RRSOar6LvBDlqhpSIR5QCZk9iGAZjyQFIv1Tii3dQj8pphjLpJdg-A>
+    <xme:RRSOar5E2I4FcOXUjfZlNSB3edObf9NiN7cTHFlUvu4LqNEmy2CGUzMPGD51Ag9Ip
+    YPj8TSEwtU9fTkOXQnc_Ol0nm3k6dWf7qBbv0OeoiVSzvcQJEI>
+X-ME-Received: <xmr:RRSOapFLyBF0JLLftHG4GQxPk-lulHMSIgdyBXooA4stup1GlQVhhH6k8aEIOrf_h-Aa8JxT8keRtsALkcrWkowrXBa4E8Y>
 X-ME-Proxy-Cause: dmFkZTE1D9RHiQxYEMTZM66ZwYWPXMa5da/YLC+asllp2LW/9AzO59nDbIWZ/WJDafUyFp
     uQaTnJVoM5zeNV7PU3Y5Sxe6sA3KXuzbkNtIeFEk21vnmQNZ++SlHK1xc12Wi6N9bKT3Nd
     l2Jew0OcpEW6pknEcsl3U5kWlcxIcGyDVCcdakxFha864vAOuxadUTtnPo9vV8kQZOtGh4
     t615j3/PJH3yhet8tW8bKj0XWaL55deZWQpLJVbikNK8UvNeSeZ0y75HchjkQdooZXWGuR
-    agEorB2pRIG2wLJFguZ3GUkqAvVfWJvN2myN34TtgOMsQRUTFpr+RStZVbDkRTC4KoXuhX
-    jNd7XF10/oFgci/zNfw6syDIXcdujrrXxcHZeaO6Fb9BRacT/HsWb+a7LnUSfFvEjlvd4z
-    l2cpz2NdTohM0ibINNUxxjkExeO1duYw4JV8c9/RQaQbHyji5kO1Lp+moRS5hO5gWLvsIY
-    h6KJ4ZurLgmmc8sygexVAWAYx1nQhps2aGJ0A8mQBYMq1w5BD6+d7SonVRbu79w5hmMTPa
-    EON5byxmjWA8ypjM8yVIT4fvPeSJXwaElXOo1sp5h88bzrzekF7l9ZZUi8kIWkd6C0c3wT
-    0y0SXbkjNH8z44SWzFfJxWZyOtDbQiNK8GfA59RYMVbkH0cQfwZp7pzmmSVw
-X-ME-Proxy: <xmx:PBSOau9eyai3Oit7ZmNWzAiRNOHnEolUONkZpDN41eIFdSn3IbLcaQ>
-    <xmx:PBSOaq1U_udHiTIi0zwr-iEwisSlFwXu_-NSXMffOVQ0LdIT5v4i9A>
-    <xmx:PBSOav3HI4X10BE5EjQ8QW429HqBIG72MoJzuCSQgQaOm50xLWbSBA>
-    <xmx:PBSOavwPgixKl1ichv873AhL3IdsR5PRrDISB_vSm3h9NlSONcoykg>
-    <xmx:PBSOan4LT4APOIHczozDmYTFixyQ1wPKiiu4LcSUxvDoayaTjRdOgPA8>
+    agEorB2pRIG2wLJFguZ3GUkqAvVfWJvN2myN34TtgOMsQRUTFpr+RStZVbDkRTC4KoXunX
+    0xlSXTBxCkqk1ethAjDseG3XDUQQLyeqyxkYYveRdHUcYUMvEMp6r/HEz9zqlgl+02CypL
+    x6i2oN4xecX8T6niSfnJ+axjOtkNjSh6wPRd/l3FMaxjGqhml+cl+kGJ4kzqGAuJHMUqpk
+    qXy3qoTDqE55BETkiYUXuKyYZAtOwLKfnbFKVCmMQtOSN+iYdEgjjzPTCwuPClfr5xXyAj
+    REoN7MMYPN9Ig5NvddXomPOJgmQvMul7UlIvF9Ze1yF734Cr8BHXqwwmQyQJf/+RVR2Nyt
+    2jZogc7XUho4D+TyHqn2h9eox3MADTGcwVvCRCys6qQk9QsXZWOaYbo9aQgg
+X-ME-Proxy: <xmx:RRSOapyEIe0ioRvcmHjjAizdsLyn2uoshiewSfO6Flu-ZuQcZMLOXQ>
+    <xmx:RRSOap3EKuwq73SNY08mLO8FLEy3RQTBnBWgNELruUpx3grubaQ4fw>
+    <xmx:RRSOasPzOLqZgPBEtLZisFzy0IX52a7JFEvcyho6rAnC2R-dw9e-vA>
+    <xmx:RRSOaltIT29QS8Lijjf63WIlcx9hbu71i90rJyX4spFVgBH2oghUoQ>
+    <xmx:RRSOanTziGoNEfZC06p0f_hQfXPb_DnaVSsU-U6iKV3-H5EP2W_Sdmyn>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
- 25 Aug 2026 18:16:21 -0400 (EDT)
+ 25 Aug 2026 18:16:31 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: Ian Kent <raven@themaw.net>,
 	Chuck Lever <cel@kernel.org>,
@@ -91,9 +91,9 @@ Cc: autofs@vger.kernel.org,
 	codalist@coda.cs.cmu.edu,
 	linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH v3 05/11] Add and use d_for_each_positive_child family of iterators
-Date: Wed, 26 Aug 2026 08:06:22 +1000
-Message-ID: <20260825221459.966875-6-neilb@ownmail.net>
+Subject: [PATCH v3 06/11] fsnotify: don't hold a spin_lock across fsnotify_recalc_mask() calls.
+Date: Wed, 26 Aug 2026 08:06:23 +1000
+Message-ID: <20260825221459.966875-7-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
 In-Reply-To: <20260825221459.966875-1-neilb@ownmail.net>
 References: <20260825221459.966875-1-neilb@ownmail.net>
@@ -108,243 +108,203 @@ Content-Transfer-Encoding: 8bit
 
 From: NeilBrown <neil@brown.name>
 
-Provide iterators for the d_children/d_sib lists.  These iterators only
-report dentries that are positive (though they could be negative by the
-time they are used).  As DCACHE_DENTRY_CURSOR dentries are never
-positive they are never reported.
+fsnotify_recalc_mask() is normally called without any spin_lock held.
+Normally fsnotify_group_lock() is held to keep the connector stable.
 
-d_for_each_positive_child() takes the parent lock and sets the iterator
-to each positive child in turn.
+However dnotify_recalc_inode_mask() does hold a spin_lock
+when calling fsnotify_recalc_mask().  This is problematic as
+fsnotify_recalc_mask() can walk the d_children list which can be long.
+Holding a spin_lock prevents us from using cond_resched() in that walk.
 
-d_for_each_positive_child_continue() can continue after an existing
-dentry, or (when initialised to NULL) behave like
-d_for_each_positive_child().  This requires that something prevent the
-start dentry from being moved before
-d_for_each_positive_child_continue() can take the parent lock -
-typically ->i_rwsem.
+In some cases it is safe to move the
+fsnotify_conn_set_children_dentry_flags() part of fsnotify_recalc_mask()
+out of that spin-locked region providing fsnotify_group_lock() is held.
+In the case of dnotify_handle_event() fsnotify_group_lock() is NOT held,
+but there should be no need to update the child flags as we only need
+to set flags (they are cleared lazily) and dnotify_handle_event()
+only ever clears flags (for one-shot events), never sets them.
 
-The use of scoped_guard() in these macros makes it safe to "break" or
-"goto" out of the loop - the lock will be dropped in that case.
+So create fsnotify_recalc_mask_noupdate() which skips the
+fsnotify_conn_set_children_dentry_flags() part and instead returns %true
+if that is still needed.  Then in places where fsnotify_recalc_mask() is
+called with a spinlock held, call fsnotify_recalc_mask_noupdate()
+instead and if needed call fsnotify_conn_set_children_dentry_flags()
+later when the lock is dropped - except in dnotify_handle_event().
 
-These are then used everywhere outside of dcache.c and libfs.c where
-d_children/d_sib iteration is needed.
+dnotify_recalc_inode_mask() also returns this truth value that that
+dnotify_flush() and fcntl_dirnotify() can act accordingly after
+dropping the mark->lock.
+
+After this change, the only spin_lock held across the d_children walk
+other than the parent's d_lock is the inode's i_lock.  This will be
+addressed in a later patch.
 
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- fs/autofs/expire.c     |  7 +----
- fs/ceph/mds_client.c   | 10 +++-----
- fs/coda/cache.c        |  4 +--
- fs/libfs.c             |  4 +--
- fs/nfs/dir.c           |  7 +----
- fs/notify/fsnotify.c   |  7 +----
- include/linux/dcache.h | 58 ++++++++++++++++++++++++++++++++++++++++++
- 7 files changed, 66 insertions(+), 31 deletions(-)
+ fs/notify/dnotify/dnotify.c      | 32 ++++++++++++++++++++++----------
+ fs/notify/mark.c                 | 15 ++++++++++-----
+ include/linux/fsnotify_backend.h |  3 +++
+ 3 files changed, 35 insertions(+), 15 deletions(-)
 
-diff --git a/fs/autofs/expire.c b/fs/autofs/expire.c
-index bc2be7428158..3a70f861ad32 100644
---- a/fs/autofs/expire.c
-+++ b/fs/autofs/expire.c
-@@ -72,10 +72,7 @@ static int autofs_mount_busy(struct vfsmount *mnt,
- 
- static struct dentry *positive_after(struct dentry *p, struct dentry *child)
+diff --git a/fs/notify/dnotify/dnotify.c b/fs/notify/dnotify/dnotify.c
+index 9fb73bafd41d..156f6f821c29 100644
+--- a/fs/notify/dnotify/dnotify.c
++++ b/fs/notify/dnotify/dnotify.c
+@@ -54,12 +54,13 @@ struct dnotify_mark {
+ /*
+  * When a process starts or stops watching an inode the set of events which
+  * dnotify cares about for that inode may change.  This function runs the
+- * list of everything receiving dnotify events about this directory and calculates
+- * the set of all those events.  After it updates what dnotify is interested in
+- * it calls the fsnotify function so it can update the set of all events relevant
++ * list of everything receiving dnotify events about this directory and
++ * calculates the set of all those events.  After it updates what dnotify is
++ * interested in it returns true if the fsnotify function should be called
++ * (after dropping the lock) so it can update the set of all events relevant
+  * to this inode.
+  */
+-static void dnotify_recalc_inode_mask(struct fsnotify_mark *fsn_mark)
++static bool dnotify_recalc_inode_mask(struct fsnotify_mark *fsn_mark)
  {
--	spin_lock(&p->d_lock);
--	child = child ? d_next_sibling(child) : d_first_child(p);
+ 	__u32 new_mask = 0;
+ 	struct dnotify_struct *dn;
+@@ -72,10 +73,9 @@ static void dnotify_recalc_inode_mask(struct fsnotify_mark *fsn_mark)
+ 	for (dn = dn_mark->dn; dn != NULL; dn = dn->dn_next)
+ 		new_mask |= (dn->dn_mask & ~FS_DN_MULTISHOT);
+ 	if (fsn_mark->mask == new_mask)
+-		return;
++		return false;
+ 	fsn_mark->mask = new_mask;
 -
--	hlist_for_each_entry_from(child, d_sib) {
-+	d_for_each_positive_child_continue(child, p) {
- 		spin_lock_nested(&child->d_lock, DENTRY_D_LOCK_NESTED);
- 		if (simple_positive(child)) {
- 			dget_dlock(child);
-@@ -85,8 +82,6 @@ static struct dentry *positive_after(struct dentry *p, struct dentry *child)
+-	fsnotify_recalc_mask(fsn_mark->connector);
++	return fsnotify_recalc_mask_noupdate(fsn_mark->connector);
+ }
+ 
+ /*
+@@ -116,10 +116,15 @@ static int dnotify_handle_event(struct fsnotify_mark *inode_mark, u32 mask,
+ 		else {
+ 			*prev = dn->dn_next;
+ 			kmem_cache_free(dnotify_struct_cache, dn);
++			/*
++			 * We ignore return value and never call
++			 * fsnotify_conn_set_children_dentry_flags()
++			 * because it shouldn't be needed and we don't
++			 * hold the needed lock.
++			 */
+ 			dnotify_recalc_inode_mask(inode_mark);
  		}
- 		spin_unlock(&child->d_lock);
  	}
--	spin_unlock(&p->d_lock);
 -
- 	return NULL;
- }
+ 	spin_unlock(&inode_mark->lock);
  
-diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
-index 3c692ad02c85..5c4e72c3b110 100644
---- a/fs/ceph/mds_client.c
-+++ b/fs/ceph/mds_client.c
-@@ -2182,14 +2182,10 @@ static bool drop_negative_children(struct dentry *dentry)
- 	if (!d_is_dir(dentry))
- 		goto out;
+ 	return 0;
+@@ -156,6 +161,7 @@ void dnotify_flush(struct file *filp, fl_owner_t id)
+ 	struct dnotify_struct **prev;
+ 	struct inode *inode;
+ 	bool free = false;
++	bool need_recalc = false;
  
--	spin_lock(&dentry->d_lock);
--	hlist_for_each_entry(child, &dentry->d_children, d_sib) {
--		if (d_really_is_positive(child)) {
--			all_negative = false;
--			break;
--		}
-+	d_for_each_positive_child(child, dentry) {
-+		all_negative = false;
-+		break;
+ 	inode = file_inode(filp);
+ 	if (!S_ISDIR(inode->i_mode))
+@@ -174,13 +180,16 @@ void dnotify_flush(struct file *filp, fl_owner_t id)
+ 		if ((dn->dn_owner == id) && (dn->dn_filp == filp)) {
+ 			*prev = dn->dn_next;
+ 			kmem_cache_free(dnotify_struct_cache, dn);
+-			dnotify_recalc_inode_mask(fsn_mark);
++			if (dnotify_recalc_inode_mask(fsn_mark))
++				need_recalc = true;
+ 			break;
+ 		}
+ 		prev = &dn->dn_next;
  	}
--	spin_unlock(&dentry->d_lock);
  
- 	if (all_negative)
- 		shrink_dcache_parent(dentry);
-diff --git a/fs/coda/cache.c b/fs/coda/cache.c
-index 970f0022ec52..dca88d749b86 100644
---- a/fs/coda/cache.c
-+++ b/fs/coda/cache.c
-@@ -92,14 +92,12 @@ static void coda_flag_children(struct dentry *parent, int flag)
- {
- 	struct dentry *de;
+ 	spin_unlock(&fsn_mark->lock);
++	if (need_recalc)
++		fsnotify_conn_set_children_dentry_flags(fsn_mark->connector);
  
--	spin_lock(&parent->d_lock);
--	hlist_for_each_entry(de, &parent->d_children, d_sib) {
-+	d_for_each_positive_child(de, parent) {
- 		struct inode *inode = d_inode_rcu(de);
- 		/* don't know what to do with negative dentries */
- 		if (inode)
- 			coda_flag_inode(inode, flag);
- 	}
--	spin_unlock(&parent->d_lock);
- }
+ 	/* nothing else could have found us thanks to the dnotify_groups
+ 	   mark_mutex */
+@@ -265,6 +274,7 @@ int fcntl_dirnotify(int fd, struct file *filp, unsigned int arg)
+ 	fl_owner_t id = current->files;
+ 	struct file *f = NULL;
+ 	int destroy = 0, error = 0;
++	bool need_recalc = false;
+ 	__u32 mask;
  
- void coda_flag_inode_children(struct inode *inode, int flag)
-diff --git a/fs/libfs.c b/fs/libfs.c
-index 60586fe65895..427f5686decb 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -768,8 +768,7 @@ int simple_empty(struct dentry *dentry)
- 	struct dentry *child;
- 	int ret = 0;
+ 	/* we use these to tell if we need to kfree */
+@@ -377,9 +387,11 @@ int fcntl_dirnotify(int fd, struct file *filp, unsigned int arg)
+ 	else if (error == -EEXIST)
+ 		error = 0;
  
--	spin_lock(&dentry->d_lock);
--	hlist_for_each_entry(child, &dentry->d_children, d_sib) {
-+	d_for_each_positive_child(child, dentry) {
- 		spin_lock_nested(&child->d_lock, DENTRY_D_LOCK_NESTED);
- 		if (simple_positive(child)) {
- 			spin_unlock(&child->d_lock);
-@@ -779,7 +778,6 @@ int simple_empty(struct dentry *dentry)
- 	}
- 	ret = 1;
+-	dnotify_recalc_inode_mask(fsn_mark);
++	need_recalc = dnotify_recalc_inode_mask(fsn_mark);
  out:
--	spin_unlock(&dentry->d_lock);
- 	return ret;
- }
- EXPORT_SYMBOL(simple_empty);
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index ef708bbb8acc..748c8388c4f0 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1494,11 +1494,7 @@ static void nfs_clear_verifier_directory(struct inode *dir)
- 	nfs_unset_verifier_delegated(&this_parent->d_time);
- 	spin_unlock(&this_parent->d_lock);
+ 	spin_unlock(&fsn_mark->lock);
++	if (need_recalc)
++		fsnotify_conn_set_children_dentry_flags(fsn_mark->connector);
  
--	spin_lock(&this_parent->d_lock);
--	dentry = d_first_child(this_parent);
--	hlist_for_each_entry_from(dentry, d_sib) {
--		if (unlikely(dentry->d_flags & DCACHE_DENTRY_CURSOR))
--			continue;
-+	d_for_each_positive_child(dentry, this_parent) {
- 		inode = d_inode_rcu(dentry);
- 		if (inode &&
- 		    NFS_PROTO(inode)->have_delegation(inode, FMODE_READ, 0))
-@@ -1507,7 +1503,6 @@ static void nfs_clear_verifier_directory(struct inode *dir)
- 		nfs_unset_verifier_delegated(&dentry->d_time);
- 		spin_unlock(&dentry->d_lock);
- 	}
--	spin_unlock(&this_parent->d_lock);
+ 	if (destroy)
+ 		fsnotify_detach_mark(fsn_mark);
+diff --git a/fs/notify/mark.c b/fs/notify/mark.c
+index b2640d836a71..fadaec74dbde 100644
+--- a/fs/notify/mark.c
++++ b/fs/notify/mark.c
+@@ -307,8 +307,8 @@ static bool fsnotify_conn_watches_children(
+ 	return fsnotify_inode_watches_children(fsnotify_conn_inode(conn));
  }
  
- /**
-diff --git a/fs/notify/fsnotify.c b/fs/notify/fsnotify.c
-index 7e2f330fd283..90a2121fc54a 100644
---- a/fs/notify/fsnotify.c
-+++ b/fs/notify/fsnotify.c
-@@ -85,16 +85,11 @@ void fsnotify_set_children_dentry_flags(struct inode *inode)
- 		/* run all of the children of the original inode and fix their
- 		 * d_flags to indicate parental interest (their parent is the
- 		 * original inode) */
--		spin_lock(&alias->d_lock);
--		hlist_for_each_entry(child, &alias->d_children, d_sib) {
--			if (!child->d_inode)
--				continue;
--
-+		d_for_each_positive_child(child, alias) {
- 			spin_lock_nested(&child->d_lock, DENTRY_D_LOCK_NESTED);
- 			child->d_flags |= DCACHE_FSNOTIFY_PARENT_WATCHED;
- 			spin_unlock(&child->d_lock);
- 		}
--		spin_unlock(&alias->d_lock);
- 	}
- 	spin_unlock(&inode->i_lock);
- }
-diff --git a/include/linux/dcache.h b/include/linux/dcache.h
-index 3b595adff7b4..010d9d47ac01 100644
---- a/include/linux/dcache.h
-+++ b/include/linux/dcache.h
-@@ -656,6 +656,64 @@ static inline struct dentry *d_next_sibling(const struct dentry *dentry)
- 	return hlist_entry_safe(dentry->d_sib.next, struct dentry, d_sib);
- }
+-static void fsnotify_conn_set_children_dentry_flags(
+-					struct fsnotify_mark_connector *conn)
++void fsnotify_conn_set_children_dentry_flags(
++	struct fsnotify_mark_connector *conn)
+ {
+ 	if (conn->type != FSNOTIFY_OBJ_TYPE_INODE)
+ 		return;
+@@ -322,12 +322,12 @@ static void fsnotify_conn_set_children_dentry_flags(
+  * this by holding a mark->lock or mark->group->mark_mutex for a mark on this
+  * list.
+  */
+-void fsnotify_recalc_mask(struct fsnotify_mark_connector *conn)
++bool fsnotify_recalc_mask_noupdate(struct fsnotify_mark_connector *conn)
+ {
+ 	bool update_children;
  
-+static inline struct dentry *d_next_positive(struct dentry *child)
-+{
-+	do {
-+		child = d_next_sibling(child);
-+	} while (child && !d_really_is_positive(child));
-+	return child;
+ 	if (!conn)
+-		return;
++		return false;
+ 
+ 	spin_lock(&conn->lock);
+ 	update_children = !fsnotify_conn_watches_children(conn);
+@@ -339,7 +339,12 @@ void fsnotify_recalc_mask(struct fsnotify_mark_connector *conn)
+ 	 * When parent stops watching, we clear false positive PARENT_WATCHED
+ 	 * flags lazily in __fsnotify_parent().
+ 	 */
+-	if (update_children)
++	return update_children;
 +}
 +
-+static inline struct dentry *d_first_positive(const struct dentry *parent,
-+					      struct dentry *child)
++void fsnotify_recalc_mask(struct fsnotify_mark_connector *conn)
 +{
-+	if (!child)
-+		child = d_first_child(parent);
-+	else
-+		child = d_next_sibling(child);
-+	if (child && !d_really_is_positive(child))
-+		child = d_next_positive(child);
-+	return child;
-+}
-+
-+/**
-+ * d_for_each_positive_child - iterate over positive children in the dcache
-+ * @child: iterator dentry
-+ * @parent: dentry of parent
-+ *
-+ * Iteratively set @child to each positive child of @parent.
-+ * @parent->d_lock should NOT be held.
-+ * @child may no longer be positive when the caller examines it
-+ * so care is still needed which could involve locking the child
-+ * or using d_inode_rcu() to access the inode.
-+ *
-+ * DCACHE_DENTRY_CURSOR dentries will never be returned, only true children
-+ * which have at some point in the past been positive.
-+ */
-+#define d_for_each_positive_child(child, parent)			\
-+	scoped_guard(spinlock, &parent->d_lock)				\
-+		for (child = d_first_positive(parent, NULL); child;	\
-+		     child = d_next_positive(child))
-+
-+/**
-+ * d_for_each_positive_child_continue - iterate over remaining positive children
-+ * @child: iterator dentry and starting point.
-+ * @parent: dentry of parent
-+ *
-+ * If @child is %NULL this behaves identically to d_for_each_positive_child().
-+ * Otherwise @child must be an existing child of %parent and subsequent children
-+ * in the d_children list of @parent are returned.
-+ *
-+ * Safely using this requires that something prevents @child from being
-+ * renamed to a different directory before we get the lock.  Holding
-+ * i_rwsem on the @parent is sufficient.
-+ *
-+ */
-+#define d_for_each_positive_child_continue(child, parent)		\
-+	scoped_guard(spinlock, &parent->d_lock)				\
-+		for (child = d_first_positive(parent, child); child;	\
-+		     child = d_next_positive(child))
-+
- void set_default_d_op(struct super_block *, const struct dentry_operations *);
- struct dentry *d_make_persistent(struct dentry *, struct inode *);
- void d_make_discardable(struct dentry *dentry);
++	if (fsnotify_recalc_mask_noupdate(conn))
+ 		fsnotify_conn_set_children_dentry_flags(conn);
+ }
+ 
+diff --git a/include/linux/fsnotify_backend.h b/include/linux/fsnotify_backend.h
+index 618eed4d6d72..4e2708e39a2f 100644
+--- a/include/linux/fsnotify_backend.h
++++ b/include/linux/fsnotify_backend.h
+@@ -887,8 +887,11 @@ static inline __u32 fsnotify_calc_mask(struct fsnotify_mark *mark)
+ extern __u32 fsnotify_conn_mask(struct fsnotify_mark_connector *conn);
+ /* Calculate mask of events for a list of marks */
+ extern void fsnotify_recalc_mask(struct fsnotify_mark_connector *conn);
++extern bool fsnotify_recalc_mask_noupdate(struct fsnotify_mark_connector *conn);
+ extern void fsnotify_init_mark(struct fsnotify_mark *mark,
+ 			       struct fsnotify_group *group);
++extern void fsnotify_conn_set_children_dentry_flags(
++	struct fsnotify_mark_connector *conn);
+ /* Find mark belonging to given group in the list of marks */
+ struct fsnotify_mark *fsnotify_find_mark(void *obj, unsigned int obj_type,
+ 					 struct fsnotify_group *group);
 -- 
 2.50.0.107.gf914562f5916.dirty
 
