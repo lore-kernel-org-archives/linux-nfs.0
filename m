@@ -1,33 +1,33 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 49F5F3F44C0;
-	Tue, 25 Aug 2026 10:13:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0B7D81F427C;
+	Tue, 25 Aug 2026 10:16:37 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787652793; cv=none; b=pQB9QqiQFPoMmn5RRe9eZqYHvB+4EV57Eh/VlOKDNP6r32jH5FxeOQfWKPI0+R07qgCVNIc5RV+LH5U3bDhHlpkJQfsscyqtmIAPsfqgpBG9iNf+1rRQ6aPcxbpYWmyzUA9AVowG4uRxYA5oZY1kdIYBNEQAbRBb4GLrzww2MMw=
+	t=1787652999; cv=none; b=VZFwVq8sN7ElG3a4gdnFpp9I49pH1c5Av8eZSovu1uvs0JjpWqiaCENVNcl0p5FdTqai+IIuypFODhTYF1fWDPEZzNpiei/Pkw3rEFG5rPzs+SuZLuEXsbZUgZNOlvlhXfJqpzHa+lS8FBIizfhX+2q7YpIvm9NA6Fh8rOgbXXY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787652793; c=relaxed/simple;
-	bh=UfJ5kyVe/L8dwlXdKiD9vX8hi8ZIUv3kfR2nuBI4OtY=;
+	s=arc-20240116; t=1787652999; c=relaxed/simple;
+	bh=RVV/mwxjuLGrBUkSJzMnPZ+yMiz9yxG7t9J8RNnKi0Q=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=ldFqJSH2D5QjtEgX/9wi/sfEp2hV86fh18ZSO4R57wf35MkUICVnhNdar/h2JsMLXM/rqyDZ3fqhUfqh8jsMNPyWYrZhwN/CtzdP/xmNKRjlx4thDAuYBZXUCEY9zKhro4wL4/pWxtMHQhFoOndhwHPJEQNeiumCWmsNkAqtFNk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LzKXx9vJ; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:Content-Type; b=WCIAhK6gcjUTc9RRC+v5CoSJ3i/OCKvCnkwOtID3n+ga1jQq/c8S44bEAqeXqUyUla/71m4JZg3i+mRLh1/arMp+v7wLYA21OW6ZMSv+amDXjRbQg5A83UMfGDgL4PCP2cQ3nzQTtYxLZaMzfuGTdDt90EUvTjH3t89lJSDCXro=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gOeAChmB; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LzKXx9vJ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A8EBB1F000E9;
-	Tue, 25 Aug 2026 10:12:27 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gOeAChmB"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2BCB51F00A3F;
+	Tue, 25 Aug 2026 10:15:51 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787652791;
-	bh=oc7gcRDbmLeElYFa1mxkM+TkNUeFFxrhZCG8ME+Ws9c=;
+	s=k20260515; t=1787652997;
+	bh=0aICPP46hK3A0wWz/sGRhfqx/SzPeFmU/8o49XOoh1g=;
 	h=Date:Subject:To:Cc:References:From:In-Reply-To;
-	b=LzKXx9vJwSlJcTzT3/alZIDwFBAL7Df+Z6kyUIdfsVhTXycAf+5iP0nEHvJkQn4RU
-	 MKg2oB0u0ClV9drOSG50ZyHACzO6Dux+tDMpo3v3mz95X+h1qdM9d492cx7gozjS3b
-	 PvGrS0E/EzYSeOC1rNKU/Pn2g2h6374GnLDw30zHAOHzb9eTYfXjAULmxbYSOxuu+a
-	 XAwBDvuETjsAUukkXkrcuNufnGwheLM/rQn9tbQQf9wHgIGnE4CzElxJaxV4mUm1W5
-	 wMYYEJadGq+zjC+XnbIubBOgId7dbcnY92eWIgBqExkFZGbsXM2sbHWO1EykTi4/Jq
-	 MwZgZnU5A5YMw==
-Message-ID: <6bc50779-1daa-4d1f-9374-ef784cd6fc0d@kernel.org>
-Date: Tue, 25 Aug 2026 12:12:25 +0200
+	b=gOeAChmBSrTLHzBf87ButvM2PY7Fm604Tdgfyt6xo8MWEtNQIuKsDX0N7WwwT/V9v
+	 fs2UmYjp4ccPpM2hdArDjMMLwGJ4lKhDLy1YiwCddsbEXlJW4n4lJxLKn2Y2Tppd5n
+	 LS+TQs84pDt0E5wbSQQq1+HsAsdLrfBmOWJmvZwX/RLOmpCbYL/mTGNxQIahrh07Ix
+	 cCBxxxz4Vvrj9r02UDwurB5+V1rivg64lw2SPi2IIUr1dmRpgTTZTdRj8/vPr/grRV
+	 8HHV6Qn9rYSK1GTlrv4ifCko3gjohntQseaGJajUrdP0R51eBJVOBIN+j5hMrU+ECI
+	 bAtyejmwvehXQ==
+Message-ID: <7db786d5-5665-44b4-9c1f-a88596be0560@kernel.org>
+Date: Tue, 25 Aug 2026 12:15:49 +0200
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -36,7 +36,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
 Subject: Re: [PATCH v19 00/40] DEPT(DEPendency Tracker)
-To: Matthew Wilcox <willy@infradead.org>, NeilBrown <neil@brown.name>
+To: NeilBrown <neil@brown.name>
 Cc: Byungchul Park <byungchul@sk.com>, linux-kernel@vger.kernel.org,
  max.byungchul.park@gmail.com, kernel_team@skhynix.com,
  torvalds@linux-foundation.org, linux-ide@vger.kernel.org,
@@ -44,12 +44,12 @@ Cc: Byungchul Park <byungchul@sk.com>, linux-kernel@vger.kernel.org,
  peterz@infradead.org, will@kernel.org, tglx@linutronix.de,
  rostedt@goodmis.org, joel@joelfernandes.org, sashal@kernel.org,
  daniel.vetter@ffwll.ch, duyuyang@gmail.com, johannes.berg@intel.com,
- tj@kernel.org, tytso@mit.edu, david@fromorbit.com, amir73il@gmail.com,
- gregkh@linuxfoundation.org, kernel-team@lge.com, linux-mm@kvack.org,
- akpm@linux-foundation.org, mhocko@kernel.org, minchan@kernel.org,
- hannes@cmpxchg.org, vdavydov.dev@gmail.com, sj@kernel.org,
- jglisse@redhat.com, dennis@kernel.org, cl@linux.com, penberg@kernel.org,
- rientjes@google.com, vbabka@suse.cz, ngupta@vflare.org,
+ tj@kernel.org, tytso@mit.edu, willy@infradead.org, david@fromorbit.com,
+ amir73il@gmail.com, gregkh@linuxfoundation.org, kernel-team@lge.com,
+ linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
+ minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com,
+ sj@kernel.org, jglisse@redhat.com, dennis@kernel.org, cl@linux.com,
+ penberg@kernel.org, rientjes@google.com, vbabka@suse.cz, ngupta@vflare.org,
  linux-block@vger.kernel.org, josef@toxicpanda.com,
  linux-fsdevel@vger.kernel.org, jack@suse.cz, jlayton@kernel.org,
  hch@infradead.org, djwong@kernel.org, dri-devel@lists.freedesktop.org,
@@ -101,7 +101,6 @@ References: <20260706061928.66713-1-byungchul@sk.com>
  <178730572084.2852630.7732425311008244683@noble.neil.brown.name>
  <3d58eb3c-7a9d-4183-907b-46172664631c@kernel.org>
  <178761465493.3510150.12380729360578969391@noble.neil.brown.name>
- <ao0AieB7zg5FKD39@casper.infradead.org>
 From: "David Hildenbrand (Arm)" <david@kernel.org>
 Content-Language: en-US
 Autocrypt: addr=david@kernel.org; keydata=
@@ -148,34 +147,36 @@ Autocrypt: addr=david@kernel.org; keydata=
  3iyY2Nsd7JxfKu1PRhCGwXzRw5TlfEsoRI7V9A8isUCoqE2Dzh3FvYHVeX4Us+bRL/oqareJ
  CIFqgYMyvHj7Q06kTKmauOe4Nf0l0qEkIuIzfoLJ3qr5UyXc2hLtWyT9Ir+lYlX9efqh7mOY
  qIws/H2t
-In-Reply-To: <ao0AieB7zg5FKD39@casper.infradead.org>
+In-Reply-To: <178761465493.3510150.12380729360578969391@noble.neil.brown.name>
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
 
->>> It's interesting, that for writeback we never unlock the folio on the I/O path,
->>> but instead have the dedicated page flag to tell us when writeback is complete.
 >>
->> PG_locked and PG_writeback are two different lock-bits with two
->> different meanings.
->> When a folio is PG_locked the content is invalid and shouldn't be accessed.
->> When a folio is in PG_writeback its data is not safe even though
->> PG_dirty has been cleared (if I remember correctly).
+>>>  But I'd like to see a coherent
+>>> explanation of how the functionality offered by DEPT is clearly better.
 >>
->> So these are two separate, though related, lock bits that would both
->> need to be tracked.  lockdep would detect how they are related.
+>> Yes, that's also what I am missing.
+>>
+>> Stating that lockdep is stable and should not be destabilized is not really a
+>> good argument.
 > 
-> Some history ... before we had PG_writeback, we held PG_locked
-> throughout the writeback process.  People argued convincingly that it
-> was fine to map a page into a process's address space (which requires
-> PG_locked) while it was being written back.  And so PG_locked was
-> split.  Now we take PG_locked at the beginning of the writeback process
-> and downgrade to PG_writeback at some point.
+> No it is not.  We change "stable" things all the time.  Replacing one
+> big thing with another big thing is almost always rejected.
+> Incremental development is the preferred approach.
+> So developing something like DEPT to explore and learn and demonstrate
+> a cool idea is great.  Making it completely separate can give a
+> developer freedom to innovate.
+> But the path from there to upstream acceptance is to take the lessons
+> learned and to apply them one by one to the existing tools.
+> Yes, that takes longer.  Yes it can be frustrating.  Yes you need to
+> be able to work with people - not just code - to bring the community
+> along with you.
+> But the result is generally much better.
+I mean, I agree, and that's likely the direction DEPT should take.
 
-Right, conceptually I would have thought we could do something similar on the
-readahead path. PG_uptodate is likely not what we want I suspect.
-
-Not that such a change would be easy, or that we should do it; just one thing
-that came to mind.
+... unless there is something so fundamental different that it cannot possibly
+be integrated into lockdep ... or can but overcomplicates things such that it
+really must stay separate.
 
 -- 
 Cheers,
