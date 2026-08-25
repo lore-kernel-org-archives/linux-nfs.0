@@ -1,73 +1,73 @@
 Received: from flow-b8-smtp.messagingengine.com (flow-b8-smtp.messagingengine.com [202.12.124.143])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E367C495042;
-	Tue, 25 Aug 2026 22:16:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4215848D882;
+	Tue, 25 Aug 2026 22:17:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.143
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787696220; cv=none; b=TcPNia5AY4Zr2+Dy06eeuoHvNNddhKTlFqOaVp7Bqjsfe+CeN8P6IrwbEdT9DJ6kUdY0anouRCvo1Rf7FcrqsTryBtK2O1Q4xI3h63G4x4Z3pRXC3bnEBC9AD63Nfwe2w4ffJgi807wnoJ/0yUlFWV1MtZ/x8ygXpd5EWhX4LwY=
+	t=1787696229; cv=none; b=ENOjg/QlX4p02r7EBjLYek4pFa4jNAj/xjUaW+N2upG5hA8IgWW9kbPup6JwVPrR8xGX+EJP8bph/wy0/GtCVWq8LVqOCY+zq1r0HiKwXvwVLzwS6dmlUsPUVu2A1pWhRAYjhR3c+B8XWM1p3n3X2RcPWRMNVh5WyJPKkKKjPFw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787696220; c=relaxed/simple;
-	bh=HDxxbvnKL+ov/G4Gf+VV6/PKhBoJBh7leGj7TWH7J54=;
+	s=arc-20240116; t=1787696229; c=relaxed/simple;
+	bh=Fm6xHhCkZjtxiXpBHP/xrRjaExSJTlDx8x8+SJ0yzhw=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=sob4nhG6qp3MiHAdfexfxn/rXuPAipLurP8kQ4pbsJTH1MLOEZTe6kDwJhmTeUeuMbtEhl0u+t2JTRJDD4UNGyCqSTtJfuS9u9g5gFw5IMNlERGrlv0zpV6/qifMpaKYuhoDjqTUga6MYyeQW44Q7GLA/h7JhykRYACwdE8pFps=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=Oy9fjj9E; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=kHitmo0G; arc=none smtp.client-ip=202.12.124.143
+	 MIME-Version; b=rArkFd1oBdV0mICiRZI9K3Vn9A7vdlLuZEMgaCLdN32rFeFrpR/Dey8NpwSwGy03J7Cn6p2xft/UMb1rmUVKlZyLm4GS2GANbILXveZVdMt8SwhSbyGD4t+C4kebH7dzk+qmMvHY0gC7Gm3ww/8udC1AepTgHlB0kSk6GeT7oW8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=pnU2LsrX; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=RGuHdiI4; arc=none smtp.client-ip=202.12.124.143
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="Oy9fjj9E";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="kHitmo0G"
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="pnU2LsrX";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="RGuHdiI4"
 Received: from phl-compute-01.internal (phl-compute-01.internal [10.202.2.41])
-	by mailflow.stl.internal (Postfix) with ESMTP id 45AE91300170;
-	Tue, 25 Aug 2026 18:16:56 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-01.internal (MEProxy); Tue, 25 Aug 2026 18:16:56 -0400
+	by mailflow.stl.internal (Postfix) with ESMTP id 5CB1A130017A;
+	Tue, 25 Aug 2026 18:17:05 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-01.internal (MEProxy); Tue, 25 Aug 2026 18:17:05 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1787696216;
-	 x=1787703416; bh=L8BfRwSOcOjHJq96pMoI0xfny+sOYLUqv3Ul5GwElQ8=; b=
-	Oy9fjj9EIB0jkZrxklcpsSo+77j4uQS1o0cjgjEToIB7zryYmr/8B/n/6sBHjrHw
-	w1FkN4xrhPHNy2iRJSMxHkSAVasJrBLhJnqwEhMXM+PQjXih+9iNCSozXR3yr+uj
-	lVaVgi7tx70jlzzylKqcQxIlYy8QnUk9RyzwHlYZ1r1xS8YIkC7SyrWviOI8PWc6
-	9itkifvNpqQ56HIEJbf+GoHhbTR3uz6kL/qlyhZpxBfqNa1b1uSbAFZTVMlaq8xF
-	MMw64J9EEtNrjxaB5IGPfXOWefRgCcELCLcWxkSuUUeHadhjO+y4jtKrRI0Cw4ie
-	69eUAuGwMBhuNeYeA+vSbg==
+	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1787696225;
+	 x=1787703425; bh=gWfvCddiL95g7aF3HuSf7fyTkicRc4rwTmcdcNoKwZY=; b=
+	pnU2LsrXVFhWceDm0Iiv5tsiRbgjqGIEk0grlwIhEiQl2QII8vIdn7gOZ32DobtA
+	delgYe6nF6h8b+I6K48OOvLnOCRBLonvDtN52BZ+XJ3j1zBXK3XnjGkIV6pf6vP7
+	Nn2GXo6+xj59prJlcRAkAPtpGLL/giYD1q0GGLSaBh/fMH0p3ovK4AOYyjeAIjnj
+	9pAbCI6kXS5Gd4XVe/P4wNLLYfVGWVTmmh0L2NYdeep7GzjoiN0v5WheCInI5AJO
+	HCOihDADhnsZB4u2yU1u1JXanu4u+RtwY+tuThyP5ZtkK//FiBZDRjViJvYo2RSt
+	9dxiZrR1SAfD94VzVaGJ7g==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
 	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm3; t=1787696216; x=1787703416; bh=L
-	8BfRwSOcOjHJq96pMoI0xfny+sOYLUqv3Ul5GwElQ8=; b=kHitmo0GwUpMH+RBG
-	JvGKXKPissVedHYjaTOK3+u10FOC/nP3q9P5ZOQJmne89fSi5Rt45nib/oNiW7Tc
-	bXy6G4frSUom42f2WtC/X0t6A/9vEXfWTzolYCJBcD9uyKRBNw/YgxMRzA6TPviC
-	PsHvuzCUIAadg9D+1RSw1MyOVn85z8s1ixN5B9jBWZVOC0QTJIsqyWQEOOF6YvPR
-	Rwd3nlIUBG0czU7DRMZLHcg8568A+0z84UyuPJIwW1c7NwsjCRQqNuPaHmVanlJW
-	rJ07gkLOOJ3OyrHxkDSoKoHf+2fTjbsNDVRb29dMuUlwXXror5qu7PqWFQgZfAQS
-	DrZuA==
-X-ME-Sender: <xms:VxSOakMEifzxvLekVOmzZGyeUkp6XmCL_-EuaMt_9FQj_YkL-p-3Hw>
-    <xme:VxSOal8TyxkvQ6YJLnfi4U_L91YNsF1_hV-5NKIkZ5h-BUDta2JpQRmmmaCiU4asC
-    2auSe6gIjywgZi-B8UddGRcDjV9lzJh8r9G4InooCVKU-rfYBc>
-X-ME-Received: <xmr:VxSOah7sOntGB12GQhYRtb4-BoA9Ro4jlV93IaIsTXM1QLqGisQmoPAYVr4SjCVeprg1ECD5HlfZsiKnaDO5wk9LPXsBJt0>
-X-ME-Proxy-Cause: dmFkZTE1D9RHiQxYEMTZM66ZwYWPXMa5da/YLC+asllp2LW/9AzO59nDbIWZ/WJDafUyFp
-    uQaTnJVoM5zeNV7PU3Y5Sxe6sA3KXuzbkNtIeFEk21vnmQNZ++SlHK1xc12Wi6N9bKT3Nd
-    l2Jew0OcpEW6pknEcsl3U5kWlcxIcGyDVCcdakxFha864vAOuxadUTtnPo9vV8kQZOtGh4
-    t615j3/PJH3yhet8tW8bKj0XWaL55deZWQpLJVbikNK8UvNeSeZ0y75HchjkQdooZXWGuR
-    agEorB2pRIG2wLJFguZ3GUkqAvVfWJvN2myN34TtgOMsQRUTFpr+RStZVbDkRTC4KoXuFx
-    VeC8Yg3v+N0Nu5TlT9cE1lVrtJFrL+tSoJY4P52D+mb0qquFS+9pivvmbtGYac/xucfuf/
-    qpdzgzefP3uqtuCh4QlwWbGkU4wI72E7VUrTS6wqxODDy0kNhRa8JvQr/afZMfJTUARPz0
-    1E19LtPysBCYCtPA898nMtkWlRIOhKSNw5OSF417wBSn2QC9YtvWNF3iUwSGqPYhV9qIwn
-    AX+g5MZcMvNieMDmRATaeCA/GbJKvm3tcXYwTO53NeeNpHHO1bxirjhWsf7y7sj20YbSbv
-    HHYd8U+5bVzM6PeiGhPnDzCVE5owJos1zkpfCDt2LuMnv6bIN2Ck9Nm7vHJg
-X-ME-Proxy: <xmx:VxSOaqWOKhfdL5QkSXk9jt_87gwaMl9gNkBwuKpJ2YwzyjLyD85owg>
-    <xmx:VxSOanIgVP97-i-QG_r93Suns2Awe_xNLysvvYj9syHlNr9-LOnxDg>
-    <xmx:VxSOanRrsmlq-C8IMzqOqF-nw1vu96gq_j_ZviJzrl74mWKNOjvhOg>
-    <xmx:VxSOarhEvBzEiJbIRiQf7Gn66IrlSfBowMrRS_DBfQtzKk7ATgJRLw>
-    <xmx:WBSOarWEYCIUYENU3P3KnxbIOtf6Mku8v1bXNq8Nb2CkYBFKUQdxBzV1>
+	:x-me-sender:x-sasl-enc; s=fm3; t=1787696225; x=1787703425; bh=g
+	WfvCddiL95g7aF3HuSf7fyTkicRc4rwTmcdcNoKwZY=; b=RGuHdiI4bEQhgWrQ3
+	4gMgLCOUOSVYzLelqCVtvO/KQhu9nc7klrvy7a1TBfxC4+IZwvFAS0CGxf51+1PS
+	X3cuqycizh6UAr4kd3pREE8S12+tef84yesd8aCrHItP8cACVIwYiKUpXXEAiJ8P
+	I1tXXEfFO1jAdKDlenxxwnnt4ShdZOa3vDruASXkQQenN6ak2KC73fZUGc7tv6aG
+	uz0cwXVQ+PI6Z/Uk5M65oaVIojPlTJEbN9DWdCxQBhBurtDznznFYQGbQNdeE3Ea
+	VeOJb6A6hU9m9TXwZB4YAgIDqngYSZ82smG4UExqOwqAH+1xo8o6XuE0dDNkb1kK
+	cSdWw==
+X-ME-Sender: <xms:YRSOan5Jpzh7EgPZN9DwuHG_MrysmorJ5AGABJ2c05IqGOIy4-WNHg>
+    <xme:YRSOan6PReFZjizDxjpWeLMTMB4fWlWpSCMJahniL000HeRTX67XPnvY46S5BQoaL
+    HZS3rXzeaVTZ6grgSx_Wx2XQl7TYoIZ-pdtuWMZI0F9pOOl3Q>
+X-ME-Received: <xmr:YRSOalGfecTnKoz8A0uLOWr8zfVOx8Kp9LUN8uL9G9DhgpgGfpPsOAC1NEe5dfTb-1QcfHjdVaIsDcZTSkfvFKbYF5LzQ4A>
+X-ME-Proxy-Cause: dmFkZTEjJ6W0pcv5dKdBouhAeA3W1aBgLlKUugU6GgJEe14GlOW3sqsKABKbiwQbJ/fhnC
+    08rS3L5+nyLVGVEl53EbOBH413gsqznjvALzKGI2w6xxkZTK9kVpUzqbInp2P/zHn32egQ
+    fbo+xbxKrE3W063gtvBfsGJY+4a/GENFrlKN+jgA9PT7gxbetJJs7zoKTbHRWcbnq04XFx
+    Vqogj5GlCQ2eRDL1UggSUnm0pkXFG1ivud2B/ZAs+pu6/L8iCWuNjQj6Wckw9lzCyE4Suh
+    SbIvegTnRH1aMPQmF96L4x1YdiiUn3LaW6be9Due+JczR4uCvQU7J/6xYUWeSTX4maHtXv
+    LdZklf9dq9Q/Jm4OQVtKuWFLlU4aP93Aplm1kF5E0mVUrUbjRDwB01fpkXzGpcUVTcr0tT
+    ieDUvUvkyzMwL6ZN69980eu52IXXTVGihmCCyTjDeXkBJSsG/wgDZNcReh+LGsVW3aykBB
+    /Ow+6yT/mO+WQikDsHsAQKkQZkEWhG4BI+7hOb3lER6IUolF2kEbclHMYijTEPYPcZ5x2l
+    wgkhKrOAGxra6/+TQMIUnqbW+sfhqyYB4eJjTYI7w4kxs2yIfI0nNCKhHnzFe1HmL3o+qn
+    dbIlSdHzLxeCzssJySxA5m7PWguHAbXaj1R0xO3ZfM8OXqgjIwA/0cb5Uarw
+X-ME-Proxy: <xmx:YRSOalyt4AgqtpABnyHwvt5VKLxDCiZ4DB7es2g-Y4Y8KX5RRILx-A>
+    <xmx:YRSOal2eK4zFAW0FYO5_XD7Vi4LDEQkN-sCXkbS_n9VwRItzCl7inA>
+    <xmx:YRSOaoMqONstq5rnkPz2tlZo411pTZ5nZQ3MuD38gHrrRFpzZh5rlw>
+    <xmx:YRSOahsYKsDvhuoPXA6u0ToYW6s17ZPilYojoRfh2q2efb41gFKPiA>
+    <xmx:YRSOajR2F6f69FPPMyvokWXo_YmZppAXUhrQRb58RhLSWwfAAXjrnVbz>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
- 25 Aug 2026 18:16:49 -0400 (EDT)
+ 25 Aug 2026 18:16:59 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: Ian Kent <raven@themaw.net>,
 	Chuck Lever <cel@kernel.org>,
@@ -91,9 +91,9 @@ Cc: autofs@vger.kernel.org,
 	codalist@coda.cs.cmu.edu,
 	linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH v3 08/11] nfs: Don't hold i_lock while walking ->d_children list
-Date: Wed, 26 Aug 2026 08:06:25 +1000
-Message-ID: <20260825221459.966875-9-neilb@ownmail.net>
+Subject: [PATCH v3 09/11] autofs: don't hold ->lookup_lock in get_next_positive_*
+Date: Wed, 26 Aug 2026 08:06:26 +1000
+Message-ID: <20260825221459.966875-10-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
 In-Reply-To: <20260825221459.966875-1-neilb@ownmail.net>
 References: <20260825221459.966875-1-neilb@ownmail.net>
@@ -108,71 +108,62 @@ Content-Transfer-Encoding: 8bit
 
 From: NeilBrown <neil@brown.name>
 
-Instead of taking i_lock in nfs_clear_verifier_delegated(), take it only
-when it is actually needed.
-This means i_lock isn't held while testing the type S_IFMT of the inode,
-but that cannot change so it doesn't matter.
+get_next_positive_subdir() and get_next_positive_dentry() currently hold
+->lookup_lock while walking the d_children list, which a subsequent
+patch will add schedule points to.  So this spinlock will be a problem.
 
-In nfs_clear_verifier_file(), simply take i_lock for the whole function
-while enumerating the aliases.
+The only data structures that a protected by ->lookup_lock are the
+  sbi->expiring and sbi->active_list
+lists of inodes.  Neither of these are accessed in these functions,
+so the lock cannot be needed.
 
-In nfs_clear_verifier_directory(), use d_find_alias() (which takes
-i_lock) to find and get the one alias, then dput() it when we are done.
+I think the presence of these locks is a hold-over from a previous
+locking scheme.
 
-The import result here is that we don't hold any other spinlock when
-walking the d_children list.
-
-Signed-off-by: NeilBrown <neil@brown.name>
+Signed-Off-By: NeilBrown <neil@brown.name>
 ---
- fs/nfs/dir.c | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+ fs/autofs/expire.c | 6 ------
+ 1 file changed, 6 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 748c8388c4f0..a5f6fa57fa39 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1469,6 +1469,7 @@ static void nfs_clear_verifier_file(struct inode *inode)
- 	struct dentry *alias;
- 	struct inode *dir;
- 
-+	guard(spinlock)(&inode->i_lock);
- 	for_each_alias(alias, inode) {
- 		spin_lock(&alias->d_lock);
- 		dir = d_inode_rcu(alias->d_parent);
-@@ -1485,10 +1486,9 @@ static void nfs_clear_verifier_directory(struct inode *dir)
- 	struct dentry *dentry;
- 	struct inode *inode;
- 
--	if (hlist_empty(&dir->i_dentry))
-+	this_parent = d_find_alias(dir);
-+	if (!this_parent)
- 		return;
--	this_parent =
--		hlist_entry(dir->i_dentry.first, struct dentry, d_alias);
- 
- 	spin_lock(&this_parent->d_lock);
- 	nfs_unset_verifier_delegated(&this_parent->d_time);
-@@ -1503,6 +1503,7 @@ static void nfs_clear_verifier_directory(struct inode *dir)
- 		nfs_unset_verifier_delegated(&dentry->d_time);
- 		spin_unlock(&dentry->d_lock);
- 	}
-+	dput(this_parent);
- }
- 
- /**
-@@ -1519,12 +1520,10 @@ void nfs_clear_verifier_delegated(struct inode *inode)
+diff --git a/fs/autofs/expire.c b/fs/autofs/expire.c
+index 3a70f861ad32..330c40a17a74 100644
+--- a/fs/autofs/expire.c
++++ b/fs/autofs/expire.c
+@@ -91,12 +91,9 @@ static struct dentry *positive_after(struct dentry *p, struct dentry *child)
+ static struct dentry *get_next_positive_subdir(struct dentry *prev,
+ 					       struct dentry *root)
  {
- 	if (!inode)
- 		return;
--	spin_lock(&inode->i_lock);
- 	if (S_ISREG(inode->i_mode))
- 		nfs_clear_verifier_file(inode);
- 	else if (S_ISDIR(inode->i_mode))
- 		nfs_clear_verifier_directory(inode);
--	spin_unlock(&inode->i_lock);
+-	struct autofs_sb_info *sbi = autofs_sbi(root->d_sb);
+ 	struct dentry *q;
+ 
+-	spin_lock(&sbi->lookup_lock);
+ 	q = positive_after(root, prev);
+-	spin_unlock(&sbi->lookup_lock);
+ 	dput(prev);
+ 	return q;
  }
- EXPORT_SYMBOL_GPL(nfs_clear_verifier_delegated);
- #endif /* IS_ENABLED(CONFIG_NFS_V4) */
+@@ -107,13 +104,11 @@ static struct dentry *get_next_positive_subdir(struct dentry *prev,
+ static struct dentry *get_next_positive_dentry(struct dentry *prev,
+ 					       struct dentry *root)
+ {
+-	struct autofs_sb_info *sbi = autofs_sbi(root->d_sb);
+ 	struct dentry *p = prev, *ret = NULL, *d = NULL;
+ 
+ 	if (prev == NULL)
+ 		return dget(root);
+ 
+-	spin_lock(&sbi->lookup_lock);
+ 	while (1) {
+ 		struct dentry *parent;
+ 
+@@ -124,7 +119,6 @@ static struct dentry *get_next_positive_dentry(struct dentry *prev,
+ 		d = p;
+ 		p = parent;
+ 	}
+-	spin_unlock(&sbi->lookup_lock);
+ 	dput(prev);
+ 	return ret;
+ }
 -- 
 2.50.0.107.gf914562f5916.dirty
 
