@@ -1,76 +1,71 @@
-Received: from mx0b-00154904.pphosted.com (mx0b-00154904.pphosted.com [148.163.137.20])
+Received: from mx0a-00154904.pphosted.com (mx0a-00154904.pphosted.com [148.163.133.20])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 629D33CF1F9;
-	Tue, 25 Aug 2026 06:52:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.137.20
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6807B3921E9
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2026 06:52:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.133.20
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787640735; cv=none; b=qDGOLKaAitOnDQXvC1n+aXJSFkPg51LLVcolsCevU4l1ypiiggqmnpWKUBhDjqsn09EsgRsL2y3FW394pOf/zKdG2UA7NopH77QkdGK4eHtZENPjPcYZTMZGY4EMN6u7FwBhBl7IWiHp9pSlr2B/XHo3tJksw1RDM7PTgd61Hbw=
+	t=1787640746; cv=none; b=jEwUYKmLuHzzVqX0PpoA0vQUy5KnYbH6YU0F7Q3s/XPbv0OuHOxFyVtI43kFETWCKIM+xGwBuHggPAmVqy6huCB9h5Epghz/J91esQiMSWxWODg1kLsaFZ3pWuR8UG0imDOfp2v/S6fcub9FVrrpI8yC+gmLafmtTAjsc+iM3z4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787640735; c=relaxed/simple;
-	bh=E+dKF71NFjds38t5hc0LkKgCqKsXkmz3y63QTXY+YZk=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=P1bXGIsqV16MVDsH/CQMLtWIzM1Ok5nftLZFLdGjSSBuUfydi5HndVDsJNRwh0VhixEALGa/Kq7X3mDpP7aL1CinrKNNMAloNInG8Eik7locZ8Hzum630URvaCIfwPrH47nWtxnmBz7B1CpkqplROw7afFzxxQTilLkK0ISuMyE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=RvGb2Sn/; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=OsAlwkhW; arc=none smtp.client-ip=148.163.137.20
+	s=arc-20240116; t=1787640746; c=relaxed/simple;
+	bh=73ZsctZhDlTrrCb+Q5HIzgWZUxTSgs5q/M5iuIGz7JQ=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=X92xT4E8Oh3OdZ1odijSZPfzG3oTdgBxEU+OEkqJjP/ZCJ6skPGtnopt7dfEltIlulFaCF4/s7o26ldW9TtU5pOGs9Lahr5kazz64SygsgcWf1RKnZdpx6V2Z1NYPxHHgv5K7WJemrmhcsIeSaSSLfCSMEjcctnhi7SNk17wNNs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=RPjOGYNf; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=Ni7eD5km; arc=none smtp.client-ip=148.163.133.20
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dell.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="RvGb2Sn/";
-	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="OsAlwkhW"
-Received: from pps.filterd (m0170395.ppops.net [127.0.0.1])
-	by mx0b-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67P2RNXw1438105;
-	Tue, 25 Aug 2026 02:52:06 -0400
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="RPjOGYNf";
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="Ni7eD5km"
+Received: from pps.filterd (m0170392.ppops.net [127.0.0.1])
+	by mx0a-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67P2R23W1081241
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2026 02:52:24 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=dell.com; h=cc
-	:content-transfer-encoding:date:from:in-reply-to:message-id
-	:mime-version:references:subject:to; s=smtpout1; bh=Wn7gjBS6uQ38
-	2HqFdF+VtWXb/8VPHvRjM1GM4BY055U=; b=RvGb2Sn/nAENTVz7bout7DMeEAvV
-	11KVZ2dXS1YQBHs7MiMbU+2FY88043mnM9ihBuDpfKmVWxq6IFwhPIcc/b9m9GJb
-	z34WIQIO/y/FNX3750YxsOWTdiwsJzyr0DROu2/RgTRi0jdlNdD4TZVaoLJlcr4z
-	dESx6PXVlYa/iM10/6PiTio5NDACOjydep4UK3mWuZeDyvXS6kFs1hCijiIVVCDQ
-	zDElbbY0HbWrf5cpwHS/nlOlLsJoJKgvY162aUl9vD50eR4L108+JP7eKwSabiGz
-	W+nvx8lflcyPNxxrO6llLka3xM3AruIEj+7Hlsd4lFldkAKuE320Dybpkw==
-Received: from mx0a-00154901.pphosted.com (mx0a-00154901.pphosted.com [67.231.149.39])
-	by mx0b-00154904.pphosted.com (PPS) with ESMTPS id 4g78egstdn-1
-	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
-	Tue, 25 Aug 2026 02:52:05 -0400 (EDT)
-Received: from pps.filterd (m0133268.ppops.net [127.0.0.1])
-	by mx0a-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67P6UCvH2872376;
-	Tue, 25 Aug 2026 02:52:05 -0400
-Received: from esapsmtpat10.us.dell.com (esapsmtpat10.us.dell.com [143.166.211.153])
-	by mx0a-00154901.pphosted.com (PPS) with ESMTPS id 4g91j0jy3f-4
-	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=FAIL);
-	Tue, 25 Aug 2026 02:52:04 -0400 (EDT)
+	:content-transfer-encoding:date:from:message-id:mime-version
+	:subject:to; s=smtpout1; bh=Zg3iYRJh8jtyW+x4oOnypE/48WuL5KAtuUM9
+	UnQDvNw=; b=RPjOGYNfYY9l9ZT2f2dE9l7d91JIHJQSx4fM0pUeITvDGdx9hLmx
+	IpKTTzyRrThGtOlZU691E8owPKaRRREV+MlLr6zZBjTOp3sd4+ykRZpXLr0fV3jb
+	kuIQ/8hcZ+5b1Bn5WSLuN7Uuakz8M1NG89fbnhtU1LcK0InPB3W410D4rBOu3dc+
+	CHbXJrdyHkDApdQAHbI5jaJVKJ/Yt+uSYgw51VvemlXcSfeoVdsJc07y2QtyO4L8
+	nmD4L6OE+gz6GYNaXfdA7i6FWKF/QAUQWWnfRcvgHn1nt2Qf0dRpWftbbdgPFuFS
+	sXxhLNaWPHiQvY5SZhIxxBb5w16pFOccZw==
+Received: from mx0b-00154901.pphosted.com (mx0b-00154901.pphosted.com [67.231.157.37])
+	by mx0a-00154904.pphosted.com (PPS) with ESMTPS id 4g76xd21q6-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2026 02:52:24 -0400 (EDT)
+Received: from pps.filterd (m0144104.ppops.net [127.0.0.1])
+	by mx0b-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67P4bBjg889540
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2026 02:52:23 -0400
+Received: from esapsmtplv08.us.dell.com (esapsmtplv08.us.dell.com [143.166.203.145])
+	by mx0b-00154901.pphosted.com (PPS) with ESMTPS id 4g946b9ahw-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2026 02:52:23 -0400 (EDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=dell.com; i=@dell.com; q=dns/txt; s=smtpdev1;
-  t=1787640725; x=1819176725;
-  h=from:to:cc:subject:date:message-id:in-reply-to:
-   references:mime-version:content-transfer-encoding;
-  bh=Wn7gjBS6uQ382HqFdF+VtWXb/8VPHvRjM1GM4BY055U=;
-  b=OsAlwkhWPUi40wGkPRqy8RSSqFP5GvZdiDzxs/brXhd2b5xQDYSq4nbN
-   HyPfq2XdJx1JirpeAqDeElkI2IBQmj0OnhLny9/qB9ZZxuVitdumTXRHG
-   2S0h8sAkrStAOBRWA7ioHml1tkYXsIRnZDUfpD7T4M4KEJYGfnu+QLoyN
-   QzPykmbLXnIvaAjo3HsAG4+/6tbMXCY/6nFF2J1sKWPeJPv3HWkVuMZil
-   +x9tpbJc6zVCyJbHH6CGXLQKPjyiLrcMrcPcSMRE3eJfy9paSoa3wYt8F
-   chyOOIEa85bm1K2xwa2LLd+xixybGi4+1qeJ/Df4aczFjGl5/xz8/hT5t
-   g==;
-X-CSE-ConnectionGUID: uZekLzY/S7mspt8QAKnHGg==
-X-CSE-MsgGUID: D43lxPSSTIq2Ig6m/kswTQ==
+  t=1787640744; x=1819176744;
+  h=from:to:cc:subject:date:message-id:mime-version:
+   content-transfer-encoding;
+  bh=Zg3iYRJh8jtyW+x4oOnypE/48WuL5KAtuUM9UnQDvNw=;
+  b=Ni7eD5kmWnWXOts5VBLa3qi72nsFj/qwqfjKRJbh9g+I3uCLfrrTp3vb
+   ZmYwwC0ZoNCngN+bpnaxyemQjpnjZFZT4uLql4QxyVdFAFJXKN7qlkjQa
+   4iYcUQAQ4WNndLHg+zZ5hrpoOQywDIu+fRvFLbGYb4FYARpPg0m3v99UO
+   e5Jv6ox4zc4S+LxRxk58X25hyuasPQ/bd5yqt/RdoDJpLQyWwPVhx0VPV
+   bLjcg1p2FGwKFY1HNSk7dT2DczbTaN3uo0i2vYzZ8KZfRtYvdeawWwNmC
+   OGKK2p+dVL/PzcLqpsDeg6dANm4zWtyUwkPwemZ+/TSxaNrl4wPg2nxWT
+   Q==;
+X-CSE-ConnectionGUID: fQpsAkJuSUqJGGca7+Z/cQ==
+X-CSE-MsgGUID: sqSNKRK4RvigyWJSvbzYtg==
 X-LoopCount0: from 10.94.13.48
 X-MS-Exchange-CrossPremises-AuthAs: Internal
 Received: from w-96j1th4.apac.dell.com (HELO W-96J1TH4.blr.amer.dell.com) ([10.94.13.48])
-  by esapsmtpat10.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 25 Aug 2026 06:52:01 +0000
+  by esapsmtplv08.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 25 Aug 2026 06:52:21 +0000
 From: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
-To: cel@kernel.org, jlayton@kernel.org
-Cc: neil@brown.name, okorniev@redhat.com, Dai.Ngo@oracle.com, tom@talpey.com,
-        donald.hunter@gmail.com, kuba@kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
+To: steved@redhat.com
+Cc: cel@kernel.org, jlayton@kernel.org, linux-nfs@vger.kernel.org,
         Prabhakar Pujeri <prabhakar.pujeri@dell.com>
-Subject: [PATCH v1 3/3] nfsd: report per-client NFSv4 state usage through Netlink
-Date: Tue, 25 Aug 2026 06:51:47 +0000
-Message-ID: <245a1ee42d054e280629c9640c8d8225b45639d0.1787638668.git.prabhakar.pujeri@dell.com>
+Subject: [PATCH v1 0/3] nfsdctl: list NFSv4 clients
+Date: Tue, 25 Aug 2026 06:52:12 +0000
+Message-ID: <cover.1787639206.git.prabhakar.pujeri@dell.com>
 X-Mailer: git-send-email 2.53.0
-In-Reply-To: <cover.1787638668.git.prabhakar.pujeri@dell.com>
-References: <cover.1787638668.git.prabhakar.pujeri@dell.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -82,219 +77,80 @@ X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
  definitions=2026-08-25_01,2026-08-24_01,2025-10-01_01
 X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- priorityscore=1501 suspectscore=0 adultscore=0 spamscore=0 lowpriorityscore=0
- phishscore=0 malwarescore=0 clxscore=1015 bulkscore=0 impostorscore=0
+ phishscore=0 suspectscore=0 malwarescore=0 impostorscore=0 adultscore=0
+ clxscore=1015 bulkscore=0 lowpriorityscore=0 spamscore=0 priorityscore=1501
  classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
  reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608250056
-X-Proofpoint-ORIG-GUID: lHa2ODKiB1iiX5lFoLWMMGuyYVOw0zmN
-X-Proofpoint-Spam-Info: AW1haW4tMjYwODI1MDA1NyBTYWx0ZWRfX3l1I51h/KkYB
- mwg1moL2vkqs+Koygkmj03Ku+qsWcjPpVb/M0BMpytK2LU7LocO55conz/FvKP1wZnOmBmKPAdF
- WqhhA44N+iI+fr9zkGVsfoDaLn1tvOQ=
-X-Proofpoint-GUID: lHa2ODKiB1iiX5lFoLWMMGuyYVOw0zmN
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODI1MDA1NyBTYWx0ZWRfX6IHVlKmlwI3I
- xfQr7IbnjiaOuySbBKyAwGZg9OBuYEg3F5n/rABTRyGCJ85r8QLw64FUOM8COv4rHQPvayoGbNd
- pwxGMcoxM6B9vO5rsDPa6At66x4jdv+4sFv7KrItoWOd4iiNHRufD2oDTY7C9VYUCv/2b7+paqq
- c24m4kM5RjmhbtbzgAGyN+UX/O/sxZmeiMzhyhcWOaOAVbO/ogkUJVRgUgASaezz3hkkw2oZnRa
- vH/D/0P40iTMneAdp4p0CjHXSFK1v6XnHuBhNei9MR0z3ZwffZNWz9vViRpPAYXZQiuisWB6It7
- TddxVvYBsNYXf+7oDzlkCxRqZz9TtHhEh+u+cStsAlMrOw/UdOh+Utw8cYXxaD4x8IdGB8Y3dGW
- EhYU0zklOCQfYPqZfsiIJgv7bX+jz0qrEJImHc52L/VlPm+8+1kWgrAde4RqtNXb8Mio9+9gcap
- ZjfHsK3ZL1f1qzSj2BQ==
-X-Authority-Analysis: v=2.4 cv=Z6Hc2nRA c=1 sm=1 tr=0 ts=6a8d3b96 cx=c_pps
- a=j0++y401J6f/BxNAf5EDow==:117 a=zctdXvwhg3EK6xEvKeLW8g==:17
+X-Proofpoint-GUID: sQUsY6d40Fzil0kO4XcI7hwTqrw6E4OX
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODI1MDA1NyBTYWx0ZWRfX/pV3qGLtYYHu
+ NDcc+DSy9BBoghN3MoB4VHZUYzCgMnaH62X3FQV3LaNm9Pjpoc1w3cOnEeTK4UOTY8/jLndac1g
+ iJf0G47oF5655KvjHjoKEe+ZXv7aaBmsDm4KDD/tzquL/5mcFYx/jjy4cNlrV2j9srt28oaxEth
+ XH65iXzQzasLGKggnkjHXnaDC1Abl1Y7nR1oSR9/REpEaY6+0ntmOCEsFq3cP6xHLqa9NDu4uE7
+ quZvWb3X+usEKjCVgkL9UwtgKeeVdMkBIRDLSSO9dHEvN2xaf81U82haf2HV2Uhh9v4g94K6DQj
+ 0XaEXChj4pjOL8asbzAZht4d8NQFQ1F49QCaLsu7pdy0ARB1y4mUs4m3Y35/4SDCuoJGHidUOjk
+ F7DkDOlVd/6YIXjvso0P1uRgrHPbPQFzbBmAVWUDjyPMwLDmkUPaFqO6+IrKzdGOmaDGbsW8Eyj
+ +PYCw8nDaMqXUpi0hYg==
+X-Proofpoint-ORIG-GUID: sQUsY6d40Fzil0kO4XcI7hwTqrw6E4OX
+X-Authority-Analysis: v=2.4 cv=A79c+aWG c=1 sm=1 tr=0 ts=6a8d3ba8 cx=c_pps
+ a=Z2e5DKjA+8LiMDv5v6mwwA==:117 a=7aFXbidJGpJUqALx8qt4zQ==:17
  a=Sv0fKeRqtYgA:10 a=ke5jqHz-1hQA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=6gNNCFAoQcIphELLPWWu:22 a=Qy6CKLcU0MZ4grw4BCWD:22 a=iLNU1ar6AAAA:8
- a=IUJZ_EN-PaMBYXuBGKEA:9 a=gbU3OgOOxF9bX48Letew:22
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0
- clxscore=1015 priorityscore=1501 impostorscore=0 phishscore=0 bulkscore=0
- malwarescore=0 lowpriorityscore=0 adultscore=0 spamscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608250057
+ a=6gNNCFAoQcIphELLPWWu:22 a=m3zZTHMLHbwB7Lmtoed2:22 a=iLNU1ar6AAAA:8
+ a=X3nbaGD60Uun2pRVtKcA:9 a=hlJyneSgMmFPbskH-t2w:22
+X-Proofpoint-Spam-Info: AW1haW4tMjYwODI1MDA1NyBTYWx0ZWRfX9pGmDT2Y2Vnz
+ vxryEPwSB85A7BH13iArz3oOdp4wioVAAuivDVRuxChW+M1U4gbKQn3GrGkFAlhUvojP6rrwNZb
+ xt9W/1wZ7AZ9qO1pl/ec6yRxImwiP2s=
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0
+ priorityscore=1501 clxscore=1015 suspectscore=0 lowpriorityscore=0
+ malwarescore=0 bulkscore=0 impostorscore=0 phishscore=0 adultscore=0
+ spamscore=0 classifier=typeunknown authscore=0 authtc= authcc= route=outbound
+ adjust=0 reason=mlx scancount=1 engine=8.22.0-2606150000
+ definitions=main-2608250057
 
-A client can retain substantial server-side state even when its lease
-and callback channel look healthy. Monitoring tools need compact
-per-client totals to identify which client owns that state before doing
-a detailed inspection through the nfsd filesystem.
+Add the userspace consumer for the companion NFSD Netlink client-state
+series, whose cover Message-ID is:
 
-Extend client-get replies with separate counts for sessions and open,
-lock, delegation, and layout stateid records. A lock stateid represents
-a lock-owner/file pair and can cover multiple byte-range locks, so
-document that these are record counts rather than protocol operation or
-byte-range counts.
+  <cover.1787638668.git.prabhakar.pujeri@dell.com>
 
-Walk both the session list and stateid IDR under cl_lock. free_client()
-already detaches its session list under that lock, so a client pinned by
-the dump cannot race this traversal with session teardown.
+The series mirrors the kernel ABI split:
 
-Signed-off-by: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
----
- .../admin-guide/nfs/nfsd-admin-interfaces.rst |  4 ++
- Documentation/netlink/specs/nfsd.yaml         | 27 ++++++++++++-
- fs/nfsd/nfs4state.c                           | 40 ++++++++++++++++++-
- include/uapi/linux/nfsd_netlink.h             |  5 +++
- 4 files changed, 73 insertions(+), 3 deletions(-)
+  1. Display the explicit recovery-grace value returned by threads-get.
+  2. Add a privileged `nfsdctl clients` table for basic client state.
+  3. Extend the table with session and stateid record counts.
 
-diff --git a/Documentation/admin-guide/nfs/nfsd-admin-interfaces.rst b/Documentation/admin-guide/nfs/nfsd-admin-interfaces.rst
-index bd7a8f71592c..076b20f4bf6a 100644
---- a/Documentation/admin-guide/nfs/nfsd-admin-interfaces.rst
-+++ b/Documentation/admin-guide/nfs/nfsd-admin-interfaces.rst
-@@ -41,6 +41,10 @@ by its server-generated client ID and transport address, then reports its
- minor version, client and callback states, signed lease time remaining, and
- whether an NFSv4.1 or later client sent RECLAIM_COMPLETE.
- 
-+The dump also reports separate counts for sessions and open, lock, delegation,
-+and layout stateids.  A lock stateid represents state for one lock owner and
-+file, not necessarily one byte-range lock.
-+
- The dump is a best-effort snapshot; clients can change between messages.
- 
- The existing ``/proc/fs/nfsd/clients/`` files remain available for inspection.
-diff --git a/Documentation/netlink/specs/nfsd.yaml b/Documentation/netlink/specs/nfsd.yaml
-index 5df329ebe0b1..1707de076d43 100644
---- a/Documentation/netlink/specs/nfsd.yaml
-+++ b/Documentation/netlink/specs/nfsd.yaml
-@@ -480,6 +480,26 @@ attribute-sets:
-         type: u32
-         enum: callback-state
-         doc: Health of the client's callback channel.
-+      -
-+        name: sessions
-+        type: u32
-+        doc: Number of NFSv4.1 or later sessions owned by the client.
-+      -
-+        name: open-stateids
-+        type: u32
-+        doc: Number of open stateid records owned by the client.
-+      -
-+        name: lock-stateids
-+        type: u32
-+        doc: Number of lock-owner/file stateid records, not byte-range locks.
-+      -
-+        name: delegation-stateids
-+        type: u32
-+        doc: Number of delegation stateid records owned by the client.
-+      -
-+        name: layout-stateids
-+        type: u32
-+        doc: Number of pNFS layout stateid records owned by the client.
- 
- operations:
-   list:
-@@ -695,7 +715,7 @@ operations:
-             - proc4cb-ops
-     -
-       name: client-get
--      doc: dump NFSv4 clients
-+      doc: dump NFSv4 clients and their current state usage
-       attribute-set: client
-       flags: [admin-perm]
-       dump:
-@@ -708,6 +728,11 @@ operations:
-             - lease-remaining
-             - reclaim-complete
-             - callback-state
-+            - sessions
-+            - open-stateids
-+            - lock-stateids
-+            - delegation-stateids
-+            - layout-stateids
- 
- mcast-groups:
-   list:
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9add35dfb58b..f023cfff818d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2822,7 +2822,7 @@ free_client(struct nfs4_client *clp)
- {
- 	LIST_HEAD(reaplist);
- 
--	/* client_info_show() walks cl_sessions under cl_lock */
-+	/* Client reporting walks cl_sessions under cl_lock. */
- 	spin_lock(&clp->cl_lock);
- 	list_splice_init(&clp->cl_sessions, &reaplist);
- 	spin_unlock(&clp->cl_lock);
-@@ -3246,6 +3246,11 @@ struct nfsd4_nl_client {
- 	u32			minor_version;
- 	u32			state;
- 	u32			callback_state;
-+	u32			sessions;
-+	u32			open_stateids;
-+	u32			lock_stateids;
-+	u32			delegation_stateids;
-+	u32			layout_stateids;
- 	bool			reclaim_complete;
- };
- 
-@@ -3310,6 +3315,8 @@ static void nfsd4_nl_client_snapshot(struct nfsd_net *nn,
- 				     struct nfs4_client *clp,
- 				     struct nfsd4_nl_client *client)
- {
-+	struct nfs4_stid *stid;
-+	unsigned long id, tmp;
- 	unsigned int state;
- 	time64_t last_renew;
- 	bool confirmed;
-@@ -3332,6 +3339,26 @@ static void nfsd4_nl_client_snapshot(struct nfsd_net *nn,
- 		nfsd4_nl_callback_state(READ_ONCE(clp->cl_cb_state));
- 	client->reclaim_complete =
- 		test_bit(NFSD4_CLIENT_RECLAIM_COMPLETE, &clp->cl_flags);
-+
-+	spin_lock(&clp->cl_lock);
-+	client->sessions = list_count_nodes(&clp->cl_sessions);
-+	idr_for_each_entry_ul(&clp->cl_stateids, stid, tmp, id) {
-+		switch (stid->sc_type) {
-+		case SC_TYPE_OPEN:
-+			client->open_stateids++;
-+			break;
-+		case SC_TYPE_LOCK:
-+			client->lock_stateids++;
-+			break;
-+		case SC_TYPE_DELEG:
-+			client->delegation_stateids++;
-+			break;
-+		case SC_TYPE_LAYOUT:
-+			client->layout_stateids++;
-+			break;
-+		}
-+	}
-+	spin_unlock(&clp->cl_lock);
- }
- 
- static int nfsd4_nl_client_compose_msg(struct sk_buff *skb,
-@@ -3359,7 +3386,16 @@ static int nfsd4_nl_client_compose_msg(struct sk_buff *skb,
- 	    (client->reclaim_complete &&
- 	     nla_put_flag(skb, NFSD_A_CLIENT_RECLAIM_COMPLETE)) ||
- 	    nla_put_u32(skb, NFSD_A_CLIENT_CALLBACK_STATE,
--			client->callback_state))
-+			client->callback_state) ||
-+	    nla_put_u32(skb, NFSD_A_CLIENT_SESSIONS, client->sessions) ||
-+	    nla_put_u32(skb, NFSD_A_CLIENT_OPEN_STATEIDS,
-+			client->open_stateids) ||
-+	    nla_put_u32(skb, NFSD_A_CLIENT_LOCK_STATEIDS,
-+			client->lock_stateids) ||
-+	    nla_put_u32(skb, NFSD_A_CLIENT_DELEGATION_STATEIDS,
-+			client->delegation_stateids) ||
-+	    nla_put_u32(skb, NFSD_A_CLIENT_LAYOUT_STATEIDS,
-+			client->layout_stateids))
- 		goto err_cancel;
- 
- 	genlmsg_end(skb, hdr);
-diff --git a/include/uapi/linux/nfsd_netlink.h b/include/uapi/linux/nfsd_netlink.h
-index ae495382092d..49c9531a98b7 100644
---- a/include/uapi/linux/nfsd_netlink.h
-+++ b/include/uapi/linux/nfsd_netlink.h
-@@ -290,6 +290,11 @@ enum {
- 	NFSD_A_CLIENT_LEASE_REMAINING,
- 	NFSD_A_CLIENT_RECLAIM_COMPLETE,
- 	NFSD_A_CLIENT_CALLBACK_STATE,
-+	NFSD_A_CLIENT_SESSIONS,
-+	NFSD_A_CLIENT_OPEN_STATEIDS,
-+	NFSD_A_CLIENT_LOCK_STATEIDS,
-+	NFSD_A_CLIENT_DELEGATION_STATEIDS,
-+	NFSD_A_CLIENT_LAYOUT_STATEIDS,
- 
- 	__NFSD_A_CLIENT_MAX,
- 	NFSD_A_CLIENT_MAX = (__NFSD_A_CLIENT_MAX - 1)
+Attribute presence remains the compatibility boundary. An older kernel
+omits the grace value, and missing count attributes are displayed as
+dashes. The bundled UAPI header permits building before the new kernel
+header is installed. The configure probe requires the final count
+attribute, so a system header containing only the base client command also
+falls back to the complete bundled copy.
+
+Validation performed:
+
+  - full nfs-utils build at each applicable patch state
+  - final `make check`: no failures; one environment-dependent test skipped
+  - bundled nfsd Netlink UAPI compared byte-for-byte with the kernel copy
+  - two-vCPU QEMU test with a live NFSv4.2 loopback mount
+  - grace yes/no transitions displayed by `nfsdctl threads`
+  - live client row showing one session, open stateid, lock stateid, and
+    delegation stateid; zero layout stateids
+  - callback, reclaim, lease, peer-address, and client-ID fields checked
+
+The series is based on the current nfs-utils master branch. The exact base
+is recorded in the base-commit trailer below.
+
+Prabhakar Pujeri (3):
+  nfsdctl: report NFSv4 grace state
+  nfsdctl: add a command to list NFSv4 clients
+  nfsdctl: display per-client NFSv4 state usage
+
+ configure.ac                   |   2 +-
+ support/include/nfsd_netlink.h |  41 +++++
+ utils/nfsdctl/nfsdctl.8        |  22 ++-
+ utils/nfsdctl/nfsdctl.adoc     |  15 +-
+ utils/nfsdctl/nfsdctl.c        | 268 +++++++++++++++++++++++++++++++++
+ 5 files changed, 345 insertions(+), 3 deletions(-)
+
+
+base-commit: 67ed1bdb1af1c70a5fd3b377a997401b7676b827
 -- 
 2.54.0
-
