@@ -1,73 +1,73 @@
 Received: from flow-b8-smtp.messagingengine.com (flow-b8-smtp.messagingengine.com [202.12.124.143])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BCBEC496914;
-	Tue, 25 Aug 2026 22:16:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D61CA490BE9;
+	Tue, 25 Aug 2026 22:16:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.143
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787696172; cv=none; b=uF5ty1TyXqJ6HyvjODCbnsQkG6P0X2RlrFSUW42oReI03QN3xmKdmXklQW5aWwY3dJXtc+OMBcNTpGZnzDhkI5Z84H/Or1Wiihr2xewUo+bwv1Cqk2nTNXfU1xQ9Mdr/amTfxn2ZF8XP9QECCwyLAsO279b4LRzDL9i5ueGZE7s=
+	t=1787696182; cv=none; b=IHDA1MpHErUXrNeiL67D/vpc9sGQeUPdYchONtwAKgi6jLmhMbWs/AXe392jikBn1F/3VCyZz+WeqEuczxBmMwa5XvjaZTW86UILWdFZWFKhdKhjGPlVFOKBha6sIGcRaoqupvvYqfRjX9H84Gcgw3nbJfuOfzkmLFHG4DEBX0k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787696172; c=relaxed/simple;
-	bh=yIHtNJ55MhE2MaPIfXvzHiwBMs0J+NWpXiu+PMzC4oQ=;
+	s=arc-20240116; t=1787696182; c=relaxed/simple;
+	bh=5KrhxkfmhuYCFp8k0XOx8NDcmyJfXGghu8RtKBBMvWQ=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=M/XyRiulyJH7ypzhzjALG8+h0Cf+xqA28EkgyBSKpwu3xyuDE1+l+b4F1OZD3PIxK4xQEIr1KXdnyNyn9xoUEJaWS/5SKMZDF8xTFeX+iTXjYR6AH1dSUT0C/rNFPPdpAirFza4MeIjLu+0Db4bPnKOvGySawVF/9+gymPTSGlQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=Qc1mAlMd; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=Dn3CPRJb; arc=none smtp.client-ip=202.12.124.143
+	 MIME-Version; b=jKfFahblhT86Xf0gD4dIgEGMU3hOosVk8yg11eQPc2/Xu7Iq2+oi5EuctH9bL76yo7wFPlAT19HMbypS31C80BP66xhWy7DmXvuVi+SMYkgDM4Ug8N78H1Np1qzZvJMY2oaQADUUXgpiArymhgOnIDnpKmRHdYUfjmviBc2Lm50=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=LR0tMSb7; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=YYPKGSSR; arc=none smtp.client-ip=202.12.124.143
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="Qc1mAlMd";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="Dn3CPRJb"
-Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
-	by mailflow.stl.internal (Postfix) with ESMTP id 57038130017A;
-	Tue, 25 Aug 2026 18:16:09 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-04.internal (MEProxy); Tue, 25 Aug 2026 18:16:09 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="LR0tMSb7";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="YYPKGSSR"
+Received: from phl-compute-12.internal (phl-compute-12.internal [10.202.2.52])
+	by mailflow.stl.internal (Postfix) with ESMTP id A048E1300170;
+	Tue, 25 Aug 2026 18:16:18 -0400 (EDT)
+Received: from phl-frontend-04 ([10.202.2.163])
+  by phl-compute-12.internal (MEProxy); Tue, 25 Aug 2026 18:16:19 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1787696169;
-	 x=1787703369; bh=QBxhcF/9xx0fJVzCRbVatWLSoovuhY6RZpsb7+BVY1I=; b=
-	Qc1mAlMd5IaIWN3dP6CN1WK1l6E6INgVITrFBuVLiKxXSAE9cE0moT9cRNwk8mcJ
-	t31yE7l1Ip8TaNx0UumKBiP9vzapL4EaE8+eUsB3iJ9wBPgJBU606xpYdCx2PC/d
-	Yq9pomzsj3c8006YPA8WprD6sLIsS+xYA+FBXSTRhDvD/wTLT29KacwRaSmRy6/c
-	l5Kk6+suPdMiCSFYgdeZ0QCQsCXWTgunJmyuZcmv7d8A1Bd0rFz4fVmGKUTwIolY
-	J/yQw7D9430RGymy4k0FtaFefYDDntPK/MBreCV3LErhxZf+dNLj63URdgC47uRo
-	3lWyFPtEyCB7TLxNotJdlg==
+	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1787696178;
+	 x=1787703378; bh=d8jSa3AAjciJsnljgFzbEoiUesnCHMntledjgHsqTTk=; b=
+	LR0tMSb7OUQhawgtMd3vuUW/p1G2sGx4fH9oDpB+JfjSP2KT1qJVwdmvKScBVrXm
+	XlSHxczcAg0q5eRO1emFv6ff6if4mpgwI8vQWUC7sDdkTOSJ19FxVwt3ngnV/JLx
+	8SkfrwhLMaxPCQ+sBREWxy4VALj9gC3eKd+TY+DvyJCzEI0u+YCwGcDm3I0NYFHj
+	Pfg+ZtBgroTg+5ebQFRW3F98dCK0p7K4uZ/ShS+MQ/pitXzgAHh1f92rHYt2lhDV
+	WGOWWJPTgKaQMH6Offkveu1oJ1v3wVp2cKGEmQ8UEs0979BJh03SAW+HBcaLSt6d
+	pwpLobogqSkU51Db13URgQ==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
 	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm3; t=1787696169; x=1787703369; bh=Q
-	BxhcF/9xx0fJVzCRbVatWLSoovuhY6RZpsb7+BVY1I=; b=Dn3CPRJbdsYQIDuwb
-	/CNxBZ6k5sV5a9vt20sEmXGJg0eb3NMpbOE51s2MXNnmZYbJTFXojWYhY/q80By5
-	I2tjAOfvtlJAdcH4FUGYQwQD1z5zLQvaNONzWvlhE2szDGEzT6xaaOOiupN4GhK9
-	HF0TSkZPDZlfl6ylezFo0VOza4v3XYhvn4ZtS1xcTsNBsRkybYlU9TAqWmwsrW9G
-	a8h5enkX0QCJ2a6cLkhD1Sshx7iHv5cnL0IO/ZbLqI2ukEDnftzA0dfThi+9xJ2p
-	4EuuKJY9HbHzcfJdYGZsFcvguSlnwffFEUEFNefyyfbDh6/VAsR9CTPB3x1K03A2
-	IIsow==
-X-ME-Sender: <xms:KRSOakkvNfr8r667E9bQwO1jmFiMVMcdEDbVhrolC5sUf9sH9eBzTQ>
-    <xme:KRSOau3ISKj8yVf1s1WPQ_sSo133VQaytxhuLYOZaLkUvI5wmvShzgY34l1Y6de-a
-    jNnTE1_H5xR61OyJPC7VPJLrE1_JQuxSfAxMkC9lHnwzYA>
-X-ME-Received: <xmr:KRSOapTNxpr44XvOn8k7o3JKuq2GSpMG9vNfmXaTKUL4r3hXoJf9Uan1QaBSZFGHOFL3Uan9coqstN6FN7SElk35GikZSZg>
+	:x-me-sender:x-sasl-enc; s=fm3; t=1787696178; x=1787703378; bh=d
+	8jSa3AAjciJsnljgFzbEoiUesnCHMntledjgHsqTTk=; b=YYPKGSSRWGOfY5Lrq
+	pE8yuMnoSS/eb6KuZ1MQLGwCc45g1mdDII7dc/8dCQEefJ3+DoYacnmNZ5lHx1CQ
+	ePdCJrM25AGEWS281LEKEamzCCLX6mNvt8wSI47r7ZLl5uawBxAzV07S1dS7rd9x
+	9sI70zWssKaLJmESDmWtaS1nTq2ujGD4tix4MOgCK8toGy0Qpz1WxHNTVGLrg7Yw
+	mJHcdJ1iv1hm4TZjMf1zlcZS6TQFwerqbPf09MFF9qfR08en2rIdsOm2P8C1rwKl
+	3/byMzEyy9Wtlm3ONo+LkwpI5Fppw52AKJXgm0Yg2yKRHNKrMZZp6xVMhOh7d6dH
+	by/NA==
+X-ME-Sender: <xms:MhSOaq--bofTpR9Ziz17HEaLMAhvkQg-pz_1GPkQ8DttSNtuqKe6Kg>
+    <xme:MhSOalt7qCZ6ym6CBHpr1JUtu_F2lu4Nbq2Yy-E_InsnvpeG6w2spPJNUPFtUsXGc
+    AaPik92G5E4tE3cn4ERWAwacx2B9He4Ly4mIdVkdtBC1x8KXw>
+X-ME-Received: <xmr:MhSOamqaPEVaYCZ470tJXAi52DGtryW5Fnqxi3lZDWBleY_oqapcDqX3xT0pxxmv9v9YzDyAwj6zya1G-WZ7RWXo-6e5TdE>
 X-ME-Proxy-Cause: dmFkZTEp9gD1tNJOvQDhtypWMDariy1lQZzyPCbTbVWnxI6bdpy2XSc1MIE8cjy3IG5prk
     7eXXKQ1+AzawqwVafFnkSQVq3nCftIMNELyf+GmUuKYTB18VwsCSA8x1h9bnf7yYLuIe9s
     5/khboCUq8wQeamlgoG70tpcU6O9vPbdw1ApHAaCVlIPXTbjfAhkfSz569KefjxusIkwqg
     JSlqRrJD0X07dcItAiTmSeecqH/sccyG90oRqGAhsyPnna+gbbNa6u+OTNC0+oiLPN9Hl5
-    FMsl0L+8C6nVE/5D5EiMbFYLm13buMsfddxLmGjqhI2v2n1p1xvAzA+rwFt4OQHM6ek8GL
-    e9rrbDQ14nKf3dquBu2TzJSJilvbxCdNj7is/ITM7c8Dt4h8Xt30EdKD0bln2z5Q6Bo7tP
-    J/yt0PQNWAcTycIzGri4Ckg4gyf3nsXROSzyRB6hxabcACL2pxZYIysh9xoqVx4y6VeDub
-    oMOn3VbdtqX8NOHz+c8DzaD3AL7QbChk8Ufbi56osxVyU7AKVKyZsJ6xm091Qq12IgiMHM
-    qs/JW2I3jJ3jB1PsMfg6Xbv/P/3VYTs0YSfV4blY0jyOZmptQ34BMrAWNmNRPC7uJW8AeZ
-    lPdZ5gohfpRZQMb4nBDWEsR3mqJhdf6Qc+PrmgO3d8Pg5iYGnQsrNOmcldNQ
-X-ME-Proxy: <xmx:KRSOauOREV9KICs78J360Y3nWSDB9nJvqXR5jvvwNJ1eqjZZKcfU9A>
-    <xmx:KRSOatg1wuoi3USuhdjCqViwxXdsUDa6HYcUoSrlQef-4c5gmxnE5w>
-    <xmx:KRSOauIr07yQqMPO_BYxZa86Nz97iZWwfKamP3Niq3EIuFIO2Us3fw>
-    <xmx:KRSOao4H-beqxl9dj3N2SNbd5hM_-udr8pepSwK7iUTPY5uyKmnQXg>
-    <xmx:KRSOagPXOM2JLeSq4SB-QxZnyFTe2X7HNVm28UUC6_h44wd2gNNEW-K5>
+    FMsl0L+8C6nVE/5D5EiMbFYLm13buMsfddxLmGjqhI2v2n1p1xvAzA+rwFt4OQHM6ek8uH
+    U0kWh0PSng0n/7kgd88VBnv4FmmolfwPYxMoLALKFpD9myUJvzhPG5+NrIzXHlw55S5gMS
+    RPhsBuJfGgrlpos1CAwVtuIqakLJQGIyvDmYd91NL0MWNGZF4SJrdWA+pjV/B92AxsD6cJ
+    pGkpPmIvE9kVMx+IAmePgwcm8z+0nmkdkP9GBkvl2GagzTWTXouRizUopXo6IINaOlpY7w
+    1BRIqDp/mN38b+Cr8ns3obBbArHjI4LWw6O2DjP82vhfPXPIY1R2DF8F+E3SiI7k2Xz490
+    UUUZOOl17nqMYhju8F6CGQfwTtLydYiQ4xS3EUHQw8fzTqvuT85j+MCSp15g
+X-ME-Proxy: <xmx:MhSOagENijKtlxWWrVWgDd9dIBfByEGeDOruYn3qXR226pNMqfu0jQ>
+    <xmx:MhSOap6VU7fbg-xLyXpyLODOx-k5iCBXZlYgScBz5LHY7Y2vFk9pgw>
+    <xmx:MhSOajDXTHGj7ZscLia6HXLM5Ced-HvERI31PQd-bYwJtZYy7NLwEw>
+    <xmx:MhSOasQLl2-1XOVWjEu6DugBDTQBB5d6ouQx4hsEEiej6pXqUGBuNA>
+    <xmx:MhSOaisRY6d22vrEQjNw4dTF1j0zWqMYihE5EJjoSbj1Sss-sIyzJQc3>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
- 25 Aug 2026 18:16:03 -0400 (EDT)
+ 25 Aug 2026 18:16:12 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: Ian Kent <raven@themaw.net>,
 	Chuck Lever <cel@kernel.org>,
@@ -91,9 +91,9 @@ Cc: autofs@vger.kernel.org,
 	codalist@coda.cs.cmu.edu,
 	linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH v3 03/11] coda: don't take rcu_read_lock() in coda_flag_children()
-Date: Wed, 26 Aug 2026 08:06:20 +1000
-Message-ID: <20260825221459.966875-4-neilb@ownmail.net>
+Subject: [PATCH v3 04/11] nfs: separate locked regions in nfs_clear_verifier_directory()
+Date: Wed, 26 Aug 2026 08:06:21 +1000
+Message-ID: <20260825221459.966875-5-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
 In-Reply-To: <20260825221459.966875-1-neilb@ownmail.net>
 References: <20260825221459.966875-1-neilb@ownmail.net>
@@ -108,35 +108,36 @@ Content-Transfer-Encoding: 8bit
 
 From: NeilBrown <neil@brown.name>
 
-As described in Documentation/RCU/whatisRCU.rst sections on
-rcu_read_lock() and rcu_read_unlock(), spinlocks prevent the RCU grace
-period from ending so there is no need to call rcu_read_lock/unlock
-inside a spinlock protected section of code.
+nfs_clear_verifier_directory() locks the dir to call
+  nfs_unset_verifier_delegated()
+and also to walk the d_children list.
+These are two separate needs and they don't need to both
+be in the same locked region.
+
+Subsequent patches will use a helper for walking the d_children list and
+that helper may drop the lock temporarily.  To simplify this transition,
+split the locked range by dropping and retaking the lock between to make
+two separate locked regions.
 
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- fs/coda/cache.c | 2 --
- 1 file changed, 2 deletions(-)
+ fs/nfs/dir.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/coda/cache.c b/fs/coda/cache.c
-index 245131296300..970f0022ec52 100644
---- a/fs/coda/cache.c
-+++ b/fs/coda/cache.c
-@@ -93,14 +93,12 @@ static void coda_flag_children(struct dentry *parent, int flag)
- 	struct dentry *de;
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 36f2e8588922..ef708bbb8acc 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1492,6 +1492,9 @@ static void nfs_clear_verifier_directory(struct inode *dir)
  
- 	spin_lock(&parent->d_lock);
--	rcu_read_lock();
- 	hlist_for_each_entry(de, &parent->d_children, d_sib) {
- 		struct inode *inode = d_inode_rcu(de);
- 		/* don't know what to do with negative dentries */
- 		if (inode)
- 			coda_flag_inode(inode, flag);
- 	}
--	rcu_read_unlock();
- 	spin_unlock(&parent->d_lock);
- }
- 
+ 	spin_lock(&this_parent->d_lock);
+ 	nfs_unset_verifier_delegated(&this_parent->d_time);
++	spin_unlock(&this_parent->d_lock);
++
++	spin_lock(&this_parent->d_lock);
+ 	dentry = d_first_child(this_parent);
+ 	hlist_for_each_entry_from(dentry, d_sib) {
+ 		if (unlikely(dentry->d_flags & DCACHE_DENTRY_CURSOR))
 -- 
 2.50.0.107.gf914562f5916.dirty
 
