@@ -1,149 +1,205 @@
-Received: from flow-a7-smtp.messagingengine.com (flow-a7-smtp.messagingengine.com [103.168.172.142])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE50E2D9792;
-	Tue, 25 Aug 2026 04:09:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.142
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9E13A2BE644;
+	Tue, 25 Aug 2026 06:20:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787631002; cv=none; b=luAgRr60uFsylVAHUbdQVNr+IemAa20Fn70ioSbFSwryI7uirD8bj621KJt8h9+iUpPqCUDhFV5ggJ1uVFrqudBTxpNjaG4LTn+bECAlvTG3O6FH7xaUFdtb3nicC6YDUY3VdvJIvxgYtHDtv/mVAMozSK1eh+LyjDUs7SOrPz8=
+	t=1787638826; cv=none; b=fvEIY1IDE9iuwHH4U42bwXyBMf+GxCQ47frOnRqXI1rX88motyMfyLdGC8ND9f0frtwNocl/2l+an78oFHlkc9IcWcaydKPh1ldbLbzm3sfOaERaD/Xi7/ldgFSfho5Bcy3xKTBag+UMi2RyVvnRAyh/IEgFPl9Ir5oSqrkNOPE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787631002; c=relaxed/simple;
-	bh=GCKOeqvQQ4h3sLsNo4562hEc6cyczIzgczQh3GCPpv8=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=fhix13fpzYgnPmYKeAxe0DvC+JRVZPgu05v2VSniVMKdQCLbWd0sla8JNCT5wc+yCfviO7r0srkrBillDOzu7vnEUTj0Npg+nk4UYP5ILA0cVxjvbouyHKKdZrvml//kUgtzYNp4rTxpjOR7AXbH6jyOnF+DF6ib2xzUlo2oRuo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=VmOJZsvu; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=EEYEIXQU; arc=none smtp.client-ip=103.168.172.142
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+	s=arc-20240116; t=1787638826; c=relaxed/simple;
+	bh=UwAVE8feyzEEVa7B3YVGRwg0taJTQAUkktooec9JQes=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=cxkW82iHLXaskLxyO6uG3WtZYSnIQsfL6XmcQmcBghhOqGX4sekkA5l0Em7ngxlybEYBw2RtSNg6tlei7KxCLUG2SPOLHT2gngKndlmeurjUymBjugP2xE00btwjE/IWeJIj78LgDQC1YjOi6jzafvS0fktmtUi/Pkh94URTHZY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=b0B4lFod; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="VmOJZsvu";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="EEYEIXQU"
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailflow.phl.internal (Postfix) with ESMTP id CB70A1380104;
-	Tue, 25 Aug 2026 00:09:58 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-02.internal (MEProxy); Tue, 25 Aug 2026 00:09:58 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:content-type:date
-	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to; s=fm3; t=
-	1787630998; x=1787638198; bh=gfzmhiIcB0bekT0CYQojOTQWt5VjQ1DlVCR
-	0Y2kGVR8=; b=VmOJZsvuLMPuT4/XbFzo+7qH8JmIsulFBHvMYvEEAdqZamZAJe0
-	pkSs2rOgyyZsJx/ggcxsQ+m+M8aZ1sloSs8QoLmn1UFg786DgXbv13TpqamsBkDo
-	B29/XjMlqPloGpnIW31haAbfzfcl1/IpAH+joT0c/votgdQPMEfyl0bTOnD1rOLB
-	slUvWgjpCcOQ1dqVlO0cbpoZ2cN8UUfR9iMKNY1M/RU0OkjpAa9fdieoJpBWsugJ
-	cDbs1HJaX6P9PbxL+XG0P6mQ9cqpYC+m9MhkELIl86/9KnkbH2y/JXxKJygmrYs8
-	GSIdVhjxGdiUMnZSZqYiPg2htZAkN2OKMvQ==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:content-type:date:date:feedback-id:feedback-id
-	:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1787630998; x=
-	1787638198; bh=gfzmhiIcB0bekT0CYQojOTQWt5VjQ1DlVCR0Y2kGVR8=; b=E
-	EYEIXQUW2w+IvyjYge8X3DaNB6r0vHv607haJuOez0M4icKrjYT/amTGoqj99PtF
-	n+uK0UCXU50HbHy5oHtqzlJ3TEZCheLxT/aeeVpMW3roYIEku7K6Kznd0vamrz1a
-	ctfjWJC9446Wste/Drgr47i289kvHEMiVa/sFUT9F3MeZwBpXiH0Iq7qIptmbKOa
-	UhVWEV5PLJSbSrpaMUPcZe1/j3+RcsWBKaXlkRnpBtyFQjiRSvtHAqHd9fLTUGxB
-	yxqc8miu+dSasSTCjiqyQ1DT4cgJcs4c0VFeyY8F9b7oyFqRWBIkM4dWl8ZhgnfN
-	gcfoeQUrIQ8bfVrK0VlpQ==
-X-ME-Sender: <xms:lhWNamVF71uR9GJ31G4ZO444p7EgsO1dj34ek-tF-WJF6J79P7kHSw>
-    <xme:lhWNaqycHXt0IAot3O1HBfnlTNd1khShIudtVSEU_c0DeUnS19_VWd6HVRJaGjvo-
-    A2YjabCXuE0B6uFeWi7EFfxP70fG_zSrE2cmydkHtPzl-HyjA>
-X-ME-Received: <xmr:lhWNahtPN5xHk7o7l7R9sLNp-myD4YRQdS_zVXIe4AiabzHsxUVaYVa86HXnfzmiDrBvQvwQVIoKSUBReCAhwgc4Mjm9Ix4>
-X-ME-Proxy-Cause: dmFkZTFb1V9n/Rau2wZjVEeTtHtAjpRLi3Fx7aQyWsyGbHDDpCn5SpctxOLQF1z4Pp6DFa
-    9u5RfEtGY5ExorOrZ2p6AhLPnE7vhM6Wukm+9E/99g9uWhllVzhra78LAV00rcmHXm9CtX
-    sxRThI/CZ7x+k68gPOCgj85/kxGrOXdHKYxGvExhQ+HqpYpim4/DKKQ1VSLuVUGjv+gfFo
-    rcS5ckepksDSIEfOeE2ooDJs4ZksKbVdt0C1d+A5VNZ9Sf0Y9+lAjSsMgyvT1Zhn8vfSTG
-    CrJ7vggwcZjX/4RRVpVYry9/jh3xS9sWT4haWu3+KA2caFajuAOdVITGx0rQWEGbJyIvt6
-    lUmpuZ7Mjjacvy/4gBvxOgsGlI/U5TA778viJUJljUFLcsPJbkTyaBN306CJ1Nut17fdek
-    yoJuvCcWls1Cq9rHbCBQwXKDMxX2R9fUM1jFqWhMjSnTDtTFp6aeqY+lPdLddoh/g5VlpO
-    Tdi72QDIJXlHlpMnc4gzw/MyvbSCFfiC06wLu/qOl8VVA63AGetsUjfPIJRXR5xkwCXaB5
-    8P9ZKEe9ZC5jOcTrlBa4UIXfzS6Dm/W7EGh/UglMBU/3B/KbcHgwl7DILluhJYmiXxXvUW
-    UQ41DKOiUMmF10GuO5ZVQNFgjbHlxjVdIctb3PJx4+ukParWxM+J+OOBLDTg
-X-ME-Proxy: <xmx:lhWNarAWdNtupeRSPBtBuRi1dyk1lF-oTizL-iOjgaQJFtQOnJvT5g>
-    <xmx:lhWNatr3sZ9SNydp2YV53_-YiA3GsLC8mS62XQgHT1Poyaxzz_cNzA>
-    <xmx:lhWNaiawtpRyFqo2DkEmYFoc0IO2MuEFMrV0gJEjTxqbjPhGqL6lVw>
-    <xmx:lhWNanG_b16RRRA4l-9dbuhINdCwX8ze2MCPJ_0ayf1X6Kku5bX0gA>
-    <xmx:lhWNasNK21d0YsdN7RsTP5tPEqFHidkbfkKWJ9DUzicAw2-Cy_4CAMcx>
-Feedback-ID: i9d664b8f:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
- 25 Aug 2026 00:09:52 -0400 (EDT)
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="b0B4lFod"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=ocLSwSEGwFnmhH+Iqzhe0daYm5t7ZVnHocyZcda2cao=; b=b0B4lFodYJY+K2zHiZL5uOLfuO
+	fh0h3Mw4Gc1G8fNJpzblMX0AfnnfJwmXMNJO1cFoHrJ5pfKsz0kXrdoiCQuFD79QYpyXABYcYzKVK
+	NpUr9Nf/4tBmamhCaS9EhjLtjjkomhwHw/9cWtlfcyxlyUcVs65bKcsVFvoeybbTETiBDBKDNkG1Z
+	uqPE99JqqU2W9MajQGyX3ub2osOCJamEtj7LJ7S3pveUaFMgOAP+edmjUBTWQv7691Bd9kqIv2bMD
+	I8bTsbTuWbMQXrxzyIv8aFna4pHy0vsWjbAlcoX00RWn5NiyALwCUqVnn0pfeUsKNRje+KBOINntj
+	S6JWMUgw==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
+	id 1wykWG-00000000Dlq-2s2p;
+	Tue, 25 Aug 2026 06:20:24 +0000
+Date: Mon, 24 Aug 2026 23:20:24 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Chuck Lever <cel@kernel.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>,
+	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	Ameer Hamza <ameer.hamza@truenas.com>,
+	Amir Goldstein <amir73il@gmail.com>
+Subject: Re: [PATCH v1] splice: emit a single fsnotify access event per NFSD
+ READ
+Message-ID: <ao00KJYNtQqHQGhl@infradead.org>
+References: <20260824161021.245575-1-cel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: NeilBrown <neilb@ownmail.net>
-To: "Chuck Lever" <cel@kernel.org>
-Cc: "Ian Kent" <raven@themaw.net>, "Jake Edge" <jake@lwn.net>,
- "Ilya Dryomov" <idryomov@gmail.com>, "Alex Markuze" <amarkuze@redhat.com>,
- "Viacheslav Dubeyko" <slava@dubeyko.com>, "Jan Harkes" <jaharkes@cs.cmu.edu>,
- coda@cs.cmu.edu, "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Christian Brauner" <brauner@kernel.org>, "Jan Kara" <jack@suse.cz>,
- "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
- "Amir Goldstein" <amir73il@gmail.com>,
- "Andrew Morton" <akpm@linux-foundation.org>,
- "Miklos Szeredi" <mszeredi@redhat.com>, autofs@vger.kernel.org,
- linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
- codalist@coda.cs.cmu.edu, linux-fsdevel@vger.kernel.org,
- linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 04/18] nfs: separate locked regions in
- nfs_clear_verifier_directory()
-In-reply-to: <f9d16f36-10e6-4bec-aa8e-b9b3cb3ad872@app.fastmail.com>
-References: <20260815042707.2535717-1-neilb@ownmail.net>
-  <20260815042707.2535717-5-neilb@ownmail.net>
-  <f9d16f36-10e6-4bec-aa8e-b9b3cb3ad872@app.fastmail.com>
-Date: Tue, 25 Aug 2026 14:09:48 +1000
-Message-id: <178763098869.3510150.7453977572617670907@noble.neil.brown.name>
-Reply-To: NeilBrown <neil@brown.name>
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260824161021.245575-1-cel@kernel.org>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-On Tue, 25 Aug 2026, Chuck Lever wrote:
-> On Sat, Aug 15, 2026, at 2:21 PM, NeilBrown wrote:
-> > nfs_clear_verifier_directory() locks the dir to call
-> >   nfs_unset_verifier_delegated()
-> > and also to walk the d_children list.
-> > These are two separate needs and they don't need to both
-> > be in the same locked region.
-> >
-> > Subsequent patches will use a helper for walking the d_children list and
-> > that helper may drop the lock temporarily.  To simplify this transition,
-> > split the locked range by dropping and retaking the lock between to make
-> > two separate locked regions.
+On Mon, Aug 24, 2026 at 12:10:21PM -0400, Chuck Lever wrote:
+> nfsd_finish_read() calls fsnotify_access() on both NFSD read paths,
+> because splice_direct_to_actor() does not emit the event itself. The
+> iterator path reaches nfsd_finish_read() from vfs_iocb_iter_read(),
+> which has already emitted one. A READ served without splice therefore
+> emits two access events.
 > 
-> I hit this running xfstests against tmpfs with the series applied.  The
-> trigger was incidental (an unrelated process chmod'ed a file on an
-> NFSv4 mount while xfstests was running) so it is not deterministic, but
-> the path looks reachable by any SETATTR that returns a delegation on a
-> directory:
+> NFSD does not use splice for the GSS integrity and privacy services, so
+> a READ on a sec=krb5i or sec=krb5p mount takes the iterator. An inotify
+> watch on that file sees the READ twice.
 > 
->   BUG: sleeping function called from invalid context at fs/nfs/dir.c:1497
->   in_atomic(): 1, irqs_disabled(): 0, non_block: 0, pid: 2385380
->   preempt_count: 1, expected: 0
->   Call Trace:
->    __might_resched+0x165/0x180
->    nfs_clear_verifier_delegated+0x112/0x250 [nfs]
->    nfs_start_delegation_return+0xa1/0x130 [nfsv4]
->    nfs4_inode_return_delegation+0x1b/0xf0 [nfsv4]
->    nfs4_inode_make_writeable+0xa9/0x130 [nfsv4]
->    nfs4_proc_setattr+0xa2/0xf0 [nfsv4]
->    nfs_setattr+0x1f2/0x480 [nfs]
->    notify_change+0x321/0x380
->    chmod_common+0x10d/0x1c0
->    do_fchmodat+0x8a/0x110
->    __x64_sys_chmod+0x1d/0x30
+> Reported-by: Ameer Hamza <ameer.hamza@truenas.com>
+> Closes: https://lore.kernel.org/linux-nfs/20260818225715.572140-1-ameer.hamza@truenas.com/
+> Suggested-by: Amir Goldstein <amir73il@gmail.com>
+> Link: https://lore.kernel.org/linux-nfs/CAOQ4uxgUOqFv6pVmdT_+4DjA0KQoQDCzN2Xz=xm1FyumewHZXg@mail.gmail.com/
+> Signed-off-by: Chuck Lever <cel@kernel.org>
+> ---
+>  fs/nfsd/vfs.c          |  7 ++----
+>  fs/splice.c            | 56 +++++++++++++++++++++++++++++++-----------
+>  include/linux/splice.h |  4 +--
+>  3 files changed, 45 insertions(+), 22 deletions(-)
 > 
-> Line 1497 is the d_for_each_positive_child() call.
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index f9131827d391..c134064a1c79 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -1046,7 +1046,6 @@ static __be32 nfsd_finish_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  		nfsd_stats_io_read_add(nn, fhp->fh_export, host_err);
+>  		*eof = nfsd_eof_on_read(file, offset, host_err, *count);
+>  		*count = host_err;
+> -		fsnotify_access(file);
+>  		trace_nfsd_read_io_done(rqstp, fhp, offset, *count);
+>  		return 0;
+>  	} else {
+> @@ -1080,10 +1079,8 @@ __be32 nfsd_splice_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  	ssize_t host_err;
+>  
+>  	trace_nfsd_read_splice(rqstp, fhp, offset, *count);
+> -	host_err = rw_verify_area(READ, file, &offset, *count);
+> -	if (!host_err)
+> -		host_err = splice_direct_to_actor(file, &sd,
+> -						  nfsd_direct_splice_actor);
+> +	host_err = vfs_splice_direct_to_actor(file, &sd,
+> +					      nfsd_direct_splice_actor);
+>  	return nfsd_finish_read(rqstp, fhp, file, offset, count, eof, host_err);
+>  }
+>  
+> diff --git a/fs/splice.c b/fs/splice.c
+> index 9d8f63e2fd1a..42ad712a0f4d 100644
+> --- a/fs/splice.c
+> +++ b/fs/splice.c
+> @@ -1009,21 +1009,14 @@ ssize_t vfs_splice_read(struct file *in, loff_t *ppos,
+>  }
+>  EXPORT_SYMBOL_GPL(vfs_splice_read);
+>  
+> -/**
+> - * splice_direct_to_actor - splices data directly between two non-pipes
+> - * @in:		file to splice from
+> - * @sd:		actor information on where to splice to
+> - * @actor:	handles the data splicing
+> - *
+> - * Description:
+> - *    This is a special case helper to splice directly between two
+> - *    points, without requiring an explicit pipe. Internally an allocated
+> - *    pipe is cached in the process, and reused during the lifetime of
+> - *    that process.
+> - *
+> +/*
+> + * This is a special case helper to splice directly between two
+> + * points, without requiring an explicit pipe. Internally an allocated
+> + * pipe is cached in the process, and reused during the lifetime of
+> + * that process.
+>   */
+> -ssize_t splice_direct_to_actor(struct file *in, struct splice_desc *sd,
+> -			       splice_direct_actor *actor)
+> +static ssize_t splice_direct_to_actor(struct file *in, struct splice_desc *sd,
+> +				      splice_direct_actor *actor)
+>  {
+>  	struct pipe_inode_info *pipe;
+>  	ssize_t ret, bytes;
+> @@ -1147,7 +1140,40 @@ ssize_t splice_direct_to_actor(struct file *in, struct splice_desc *sd,
+>  
+>  	goto done;
+>  }
+> -EXPORT_SYMBOL(splice_direct_to_actor);
+> +
+> +/**
+> + * vfs_splice_direct_to_actor - splice from a file through a caller's actor
 
-Thanks for testing!
+Can we use this to start retiring the really weird direct terminology
+here that is confusing?  I.e. name this vfs_splice_to_actor?
+With that we'll only need to fix up do_splice_direct (which is an event
+worse name) to fix the public API.
 
-nfs_clear_verifier_deleted() holds the inode i_lock across
-nfs_clear_verifier_directory() which walks the the d_children list.
-I'll need to use d_find_alias() to get the dentry like I did in the
-notify code.
-Hopefully I'll send another RFC tomorrow.
+> + * @in:		file to splice from; must be seekable (FMODE_LSEEK)
+> + * @sd:		splice parameters. The caller sets @sd->pos and
+> + *		@sd->total_len. @sd->pos advances as data is consumed,
+> + *		and @sd->total_len is overwritten with the length of
+> + *		each read.
+> + * @actor:	consumes each pipe-full and returns the number of
+> + *		bytes taken
 
-Thanks,
-NeilBrown
+The @ line should just have a short description of the parameter and
+not explain all the details.
+
+> + *
+> + * Description:
+
+And this Description is accepted by te parset, but redundant.
+
+I'd rework the kerneldoc as:
+
+/**
+ * vfs_splice_to_actor - call an actor on data read from a file
+ * @in:		file to read from
+ * @sd:		splice parameter descriptor
+ * @actor:	callback to process a pipes worth of data
+ *
+ * Read up to @sd->total_len worth of data from @in, and call @actor when the
+ * hidden pipe used to buffer the data is full. The caller must set @sd->pos and
+ * @sd->total_len. @sd->pos advances as data is consumed, and @sd->total_len is
+ * overwritten with the length of data read.
+ *
+ * Ensures the read is allowed using rw_verify_area() and emits fsnotify access
+ * events. @in must be seekable (FMODE_LSEEK).
+ *
+ * Return: The number of bytes spliced, or a negative errno.
+ */
+
+And, looking at the weird semantics of the splice_desc, maybe an even
+better idea is to build that inside of vfs_splice_direct_to_actor
+and pass in pos, len, and private_data instead?
+
+I.e.:
+
+/**
+ * vfs_splice_to_actor - call an actor on data read from a file
+ * @in:		file to read from
+ * @pos:	file offset
+ * @count:	maximum number of bytes to read
+ * @actor:	callback to process a pipes worth of data
+ * @private:	private data passed to @actor
+ *
+ * Read up to @count worth of data from @in at @pos, and call @actor when the
+ * hidden pipe used to buffer the data is full.
+ *
+ * Ensures the read is allowed using rw_verify_area() and emits fsnotify access
+ * events. @in must be seekable (FMODE_LSEEK).
+ *
+ * Return: The number of bytes spliced, or a negative errno.
+ */
