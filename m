@@ -1,247 +1,172 @@
 Received: from flow-b8-smtp.messagingengine.com (flow-b8-smtp.messagingengine.com [202.12.124.143])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 726F3231C91;
-	Tue, 25 Aug 2026 21:56:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F013333E36A;
+	Tue, 25 Aug 2026 22:15:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.143
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787694987; cv=none; b=PyfPwjmUlPnF2qkJnCXbt7dVD/QBXe3v7oEcK1KqtvKrIxy/zivlYNlOoRiKQn79FK4ZrImrPDwCervAg8NSKy9kFe6QlGOe+N1RECU7vvA4RqZ6smQlRq3EThhjBz54LX49B7/5unN9RE9g8rDA+7eLUBb2jahWRazABuzHZrY=
+	t=1787696144; cv=none; b=YXmEMXB3de5HBpzx3F0+T1o0buHsrmslg/HkdjGf6dw+igBYOJWjfyDWLQmPv2wvN0lOY6Nf7W0bTXmHeBPtr/yEpB+ke58CKmAEQXtMOLLC3jPGReALe3FoT7Txu8bcpKerGhlrRBIl/dUfd5s0SgZAFCW0NEpqZsZ+hOppCYs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787694987; c=relaxed/simple;
-	bh=dm0QyT7++VWdHaVpCIpFW9MRS1FV5qyVd8f9Z3zLu0I=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=iTIn24QOCqA326IhFFsSxQTHg0e01NdBTM3V8mkq4JULwM2Tpur6LU/lf2DJ89jy+zcjY2RC1VCenlI7BtduZ9snwTwWxAFEm5tORmqyKojit5aHUwKftaoz2TbwFlbgaGcoBz+T9Hy/Jq6KsWFuxMp4FQ0xoWOQVlYSNqJxpeM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=W1zOJXtT; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=F6ZZ5DJl; arc=none smtp.client-ip=202.12.124.143
+	s=arc-20240116; t=1787696144; c=relaxed/simple;
+	bh=guQkIoS1l8htr3RCMoG3z4liCpuh1HCDjdXnUnFnkTI=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=A2BYq/m5axL9IZBtNddj/IOMFVy7wC1yqM+2caqx0WXfzZB65hRXvpf302P+qzz4GViSeL7l9hXn/aAKUeYHRiRr5eLRe+l+++WBIBDv/QtIJ2SZiWx52bbqXOhJkKS4vo+J4e7nhL9IdgY7Jk89JAUUIWNOKtJ1rp3iOejaDjM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=mZggEozW; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=UV6uf/Zl; arc=none smtp.client-ip=202.12.124.143
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="W1zOJXtT";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="F6ZZ5DJl"
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailflow.stl.internal (Postfix) with ESMTP id C451913002CE;
-	Tue, 25 Aug 2026 17:56:23 -0400 (EDT)
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="mZggEozW";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="UV6uf/Zl"
+Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
+	by mailflow.stl.internal (Postfix) with ESMTP id 631B41300170;
+	Tue, 25 Aug 2026 18:15:41 -0400 (EDT)
 Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-02.internal (MEProxy); Tue, 25 Aug 2026 17:56:24 -0400
+  by phl-compute-04.internal (MEProxy); Tue, 25 Aug 2026 18:15:42 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:content-type:date
-	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to; s=fm3; t=
-	1787694983; x=1787702183; bh=K05G7A12ZirkV0S62vCINyB8k2uIdpaSt2c
-	/l5Svrv0=; b=W1zOJXtTY7krqUbI/e2926xA2AI0aonKJm93t8Efmm3sTv4C/55
-	Xlh0fnezDWIjnFiWDsI5KehWguDiDPvz24PomDV6c0NxVOuFjEi7DeJwPqkm1sdU
-	wESvCwK90Is87jd8TJknWHlz9D67gS7ovqI22ibngAABV5+ZXqhsOobu/Od4l2C9
-	OKHgTaFh/ouDlqrlUDzzgtEosWgI9MF3+t10kC83kerjkwEVmMxZWA5f8sVxyiHa
-	BcqPO/XxblPiXDiV5O4V7V5LeiRVYQudbW+85Pt4Sf+NO32s28RIC/XH9+7KAVDc
-	DzfVbZOp1u4yloVE7vfG9SUZ/lzztqTocWw==
+	cc:cc:content-transfer-encoding:content-type:date:date:from:from
+	:in-reply-to:message-id:mime-version:reply-to:reply-to:subject
+	:subject:to:to; s=fm3; t=1787696141; x=1787703341; bh=AGSaqyf8Gr
+	rxzu47IGlioN28N+mexknHz5f3kqFnz5A=; b=mZggEozWsifKGP6AlktFRQEj5x
+	867hO/itD1bb35JaaD6kLHra9pkTrMnyP5g/nZCsKnBPsZiHCiZQS1MpfwDcL1dG
+	FIHXFJawQvm6gu/0gSot4zd+KYVUvA8X/GBox1nuPDQqkSMufBqsu70R1LDeVwur
+	N69fpCFPdew9AQ7ZcnnePBgnhKRYZ3DYHyna2BfuWG50LqPntbBMi1+yf5oTh23k
+	2ZznJHw5bjiPJzEom4yZPqDaVWu07ALrujtEtxX1qltaDX/OOT5dif5EQAZHPNmP
+	d2dCWCwxdLrImNDzk5wK3BcHxbLL0OIuCZBgY4/NKxLETroV7tv/LpydKeUw==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:content-type:date:date:feedback-id:feedback-id
-	:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1787694983; x=
-	1787702183; bh=K05G7A12ZirkV0S62vCINyB8k2uIdpaSt2c/l5Svrv0=; b=F
-	6ZZ5DJl4wrVIGsuat3al6SyTvH3msQ3BCM9jddMk0KsQI7NB2roPOzeyYPEIe8Hf
-	jDIBVTrPqTsVuKwZ7mGq8zeLH0Mj06EtFNS2DFkqtpQfc0gcHkHh3lrvK0NPNSlx
-	TOhuUzE0UT4roBtnrngh+RFxjyIiqY2M13+28jErxmrIqhDUZ51D/h+3Pg7JW7Le
-	yX0wrSbsyI7wDuu9MaMkpGX+HJWPY07KCgsgYVB0Cm1B4623SLA5TwQHou2rBZtS
-	T8vJzKN4gwmq00/PC6XdPghRI/zVegG9MknPqbU1TOimsDFPA/vWHOI6UTsOe6/s
-	X1rmchbkL0elUvZyDLUog==
-X-ME-Sender: <xms:hg-Oam7wzMJUAHNHVmS3kaNBFaCfuHPtUMsyZw21EnOHipVe_AZm_w>
-    <xme:hg-OaoGFdekNRuJqe6y_VfQI7BzoD4yhwwqkeMslmaZTq7JQZ8J9rSPgNzlBnDN5z
-    319Un-MfJPjIT9I3vuNi3CEVD4R142ZMqRKYI9N-RWqei0hiw>
-X-ME-Received: <xmr:hg-OaszPMO38XBb9bOiFudtkeX90c-XU8Hutb5_SqVQG6jRqXJVKADYlzEku_0s73wq752YmdN8gpwO5S-sbToIA03BvXFw>
-X-ME-Proxy-Cause: dmFkZTEinfM2rX6LCiisMyfFt6nycDgH63ScsQwlmXkpkDSM52GqJt93CfJAFgJHAs8+0d
-    YVonLtc/8GUWKH+1AqRTJMeyvQC01F9hFs5SPWJnCnyj38ZpPlB87JP8Y/NZJIPumB7Th5
-    XBNUzkKkK91KeAd2GzBFSUi7z3seDx1P3Vii8PN8s8Z6BMei2iIXjmfJdTVcYdLS79IEIT
-    Cw3VX6P02LXMKO4gRAZUuH6UmBx9aIuViCOWHYgk0fd/RafbHOJLPEzuukpNUD61HJGNhr
-    setVMgw9EzoDFIcT0227/8DIP+AvONFUKeIuMRfMgjYsaqxmdUqsol8Qj1yAguLwwrvNM9
-    9yV/8A6sPKRFqWMEF6fFHNSKYNW+tIOl+6Guhmts0E3A0jF+27ZNJ0NIW7KehybzykK4bb
-    hdeLdKpwVTbvEcLzZn3/KXLa9e0jFLfNli8I+AcoQf7bbkz8Sdkwgs/RVovVHfg0N7P9LJ
-    2V3YIir6Z88Tvm1EkjmQYJ7DOg/vOwaHSFD6XGsEdZWUl14viQUPWcpDylDH4DuaYT9C6i
-    BmfBmlAI2/HTWjSq3i+ch8uDc9JdNk/1YHEzPsku1rJKcfO4iHT7hhkFDY+pOT2L6SfOhw
-    MciJOHiSvlmllnGy3G5MhYpkdwQgaag4obfbyPF5+tbkNzwIoASU7QgxNaVg
-X-ME-Proxy: <xmx:hg-Oag3oeqAdMvo4kL_VpxUf31WN5V3OGquTQ1q1q__0QGJ7g5IdYQ>
-    <xmx:hg-OanOqbkvAVCBKAb0NleNuqMDQ4N2Ck6MEQwjdGrWdreXhxING5Q>
-    <xmx:hg-OaksxkI-BOW8yZuRcrpqE8yFm3DpOVJiKyNdOZddSqOTY4Vby0w>
-    <xmx:hg-OajL6Lrtjz4k8Rq-wTkznr36PQiG7SdA-ovLNqZiiq_fyUxmkog>
-    <xmx:hw-OahS4kme2FlPtj7lTXPgXETDY-0mEaw-zcfQPIdM9nJxHdUJzDJI3>
+	:content-type:date:date:feedback-id:feedback-id:from:from
+	:in-reply-to:message-id:mime-version:reply-to:reply-to:subject
+	:subject:to:to:x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=
+	fm3; t=1787696141; x=1787703341; bh=AGSaqyf8Grrxzu47IGlioN28N+me
+	xknHz5f3kqFnz5A=; b=UV6uf/ZlXG4q+wwvQg8JQxOt8c6Km6/iFmJ8Xc23kRzq
+	SZCWCEja+qQT66XnEFI6Y64KppUrr4eUSRDlkvZWFShJ8f0Ppt/2HID3r/yP6MJn
+	72s8ycZD5d5pLhTWKGykx/zVUd8wyKBj34hZtJFlpQhBj+M2qpokcet//GN/T4b7
+	1DiQHp5CQVX+LNkZIhGwTJ/aoImCmFCDPe3OYkslrkKp1/LwkxTyJrfSwNZeDxHO
+	q0m6ir0NZ9XoF/5DWMNW+U/ExLwDJijgS87/3HKb6dfXPEoblK7R6YVBBfTp0vHI
+	6xWQJa9UyAmdmw3Cjp02MyUWRQ/kyIBF5azYzp3DQQ==
+X-ME-Sender: <xms:DBSOanyIBg-QocKv8rGWGetLG_NuWIvcDLPDNOMEdigrmkGvtZ-1bw>
+    <xme:DBSOanfXf21pHXRJdy2hmu_Cn9aFcOpGxlLeBV7SIptKXeCz8CFGTW0Jc2k7DEaCW
+    Q1dvC2Fut2dI59CarmLOwrn50lIJS9bR2oydkbjO8eDtoOf>
+X-ME-Received: <xmr:DBSOaoq5AE6cUSfzmMjlmDlMvlWCsSblNS7sELz9JHkFcMOkM4ouKa_GWXnecOqg5l1ccvOIwFlGohaIIZQp6VE-DQWV9M4>
+X-ME-Proxy-Cause: dmFkZTErUDoFH+M4+lpIrhtcyslDVxY+x0suG//2hYze5i44iRPP6phuAZVqJlhfR8SZPs
+    xbfCoNkAPIpwOuTn0rAQsq2v1cVQPsRNSSYy7rU8+zALJHx6h6TKSMldu0qN8eIE76wb4L
+    rlMyp9glYXUVggz4tDbupPkd+EETeacDw3lidg54zEyQu6YmfWf4NFqtmaIrp93DBoYgpp
+    Zf9U2MbKFy/PfvneNuFazr+QkumiASiHTribPOFKZ+dYTZ5Siyt+spLt4l4093TzFjt48D
+    rXjRxZOd1PUpayaRKrVxpQlUW7mby6bEOBDztz1HBgHAjnQjWvMMusqCYMImvLvG/FScnL
+    mRLVuYRBEP1x0beOxFDe2DCO7WpP8L7by3E4Ru1ISKTGnSOti+GiciGtppHy01Dn0tj8gZ
+    Wh5UvK7UBP0CjwqqX1BbMBvpQYG7ij5ylpYgQONIKghS+Qf8/btbV5ghQdtPnQ9w3lkMJu
+    GHXnI+qvgoTWatEux/ad9IHWlRhdkKvB2z0k8N4Rdyyi57diQO7ezbFaYgWoWJnTNuVMev
+    edXrV9Y3euwnqgAHskbWqghTp3BjehjJNr3hVvWymnO61RYxM1gEmf7t2rO2c8SxjFIp+K
+    qHcgBDpfmkJMC3c5ZLXKjpOiH8+MsePgSKLUEHkTf3Gi+tBVu6VgqlrxinUw
+X-ME-Proxy: <xmx:DBSOavMhKuRVKJwUCuI-lDzS97pJdJcyx1xWzt9oxN09Neai0-GMOQ>
+    <xmx:DBSOamH1Fl-eROWeAn2Sc-Qcf-3Wbns8x5Sfz5fBWpsJ06jocCE-nQ>
+    <xmx:DBSOaqHs8ZinwwrXTHM47AIRVBoOhAiFQ8OIYn2wLSwDAF_U_h3qXQ>
+    <xmx:DBSOatABY891HCFd3pN0UUD1xVMgibYQAi7vGUlgluzUi2AHIOc6UA>
+    <xmx:DRSOali8gTOkiidAaZjfyDkGEUqrKsfBIV2CnAP1bJLU1AuwlcLeHx3c>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
- 25 Aug 2026 17:56:16 -0400 (EDT)
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+ 25 Aug 2026 18:15:34 -0400 (EDT)
+From: NeilBrown <neilb@ownmail.net>
+To: Ian Kent <raven@themaw.net>,
+	Chuck Lever <cel@kernel.org>,
+	Jake Edge <jake@lwn.net>,
+	Ilya Dryomov <idryomov@gmail.com>,
+	Alex Markuze <amarkuze@redhat.com>,
+	Viacheslav Dubeyko <slava@dubeyko.com>,
+	Jan Harkes <jaharkes@cs.cmu.edu>,
+	coda@cs.cmu.edu,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Christian Brauner <brauner@kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Amir Goldstein <amir73il@gmail.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Miklos Szeredi <mszeredi@redhat.com>
+Cc: autofs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	ceph-devel@vger.kernel.org,
+	codalist@coda.cs.cmu.edu,
+	linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org
+Subject: [PATCH RFC/RFT v3 00/11] Fix easy bits of the negative dentry problem
+Date: Wed, 26 Aug 2026 08:06:17 +1000
+Message-ID: <20260825221459.966875-1-neilb@ownmail.net>
+X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
+Reply-To: NeilBrown <neil@brown.name>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: NeilBrown <neilb@ownmail.net>
-To: "Chuck Lever" <cel@kernel.org>
-Cc: "Ian Kent" <raven@themaw.net>, "Jake Edge" <jake@lwn.net>,
- "Ilya Dryomov" <idryomov@gmail.com>, "Alex Markuze" <amarkuze@redhat.com>,
- "Viacheslav Dubeyko" <slava@dubeyko.com>, "Jan Harkes" <jaharkes@cs.cmu.edu>,
- coda@cs.cmu.edu, "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Christian Brauner" <brauner@kernel.org>, "Jan Kara" <jack@suse.cz>,
- "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
- "Amir Goldstein" <amir73il@gmail.com>,
- "Andrew Morton" <akpm@linux-foundation.org>,
- "Miklos Szeredi" <mszeredi@redhat.com>, autofs@vger.kernel.org,
- linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
- codalist@coda.cs.cmu.edu, linux-fsdevel@vger.kernel.org,
- linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 13/18] VFS: don't move dentries in d_sib list when they
- have the same parent
-In-reply-to: <c3cc4175-1ca3-467d-849b-22462a7514fc@app.fastmail.com>
-References: <20260815042707.2535717-1-neilb@ownmail.net>
-  <20260815042707.2535717-14-neilb@ownmail.net>
-  <c3cc4175-1ca3-467d-849b-22462a7514fc@app.fastmail.com>
-Date: Wed, 26 Aug 2026 07:56:12 +1000
-Message-id: <178769497289.3510150.1755559233711012616@noble.neil.brown.name>
-Reply-To: NeilBrown <neil@brown.name>
+Content-Transfer-Encoding: 8bit
 
-On Thu, 20 Aug 2026, Chuck Lever wrote:
-> 
-> On Sat, Aug 15, 2026, at 12:21 AM, NeilBrown wrote:
-> > From: NeilBrown <neil@brown.name>
-> >
-> > When __d_move() moves or exchanges dentries it currently always moves
-> > both dentries to the head of the ->d_children list of the respective
-> > parents.
-> >
-> > When they have the same parent, this simply moves them from where they
-> > are to the start in the same list.  So it achieves nothing useful.
-> >
-> > A future patch will allow d_for_each_positive_child() to drop and retake
-> > the parent's d_lock during the iteration.  With the current __d_move
-> > behaviour this would allow a dentry to be moved to the front and so
-> > missed, even though it is still in the same directory.  This might be
-> > unexpected.
-> >
-> > With this change the only dentries that d_for_each_positive_child()
-> > might miss are those moved out of the directory, or those moved in after
-> > the iteration started.  These are unavoidable and should not be
-> > unexpected.
-> >
-> > Signed-off-by: NeilBrown <neil@brown.name>
-> > ---
-> >  fs/dcache.c | 20 ++++++++++++++------
-> >  1 file changed, 14 insertions(+), 6 deletions(-)
-> >
-> > diff --git a/fs/dcache.c b/fs/dcache.c
-> > index ae726f3ff0cb..50fbbcceca01 100644
-> > --- a/fs/dcache.c
-> > +++ b/fs/dcache.c
-> > @@ -3052,6 +3052,9 @@ static void copy_name(struct dentry *dentry, 
-> > struct dentry *target)
-> >   * entries should not be moved in this way. Caller must hold 
-> > rename_lock, the
-> >   * i_rwsem of the source and target directories (exclusively), and the 
-> > sb->
-> >   * s_vfs_rename_mutex if they differ. See lock_rename().
-> > + *
-> > + * If @dentry and @target have the same parent, then neither is
-> > + * moved in the d_sib list.
-> >   */
-> >  static void __d_move(struct dentry *dentry, struct dentry *target,
-> >  		     bool exchange)
-> > @@ -3119,15 +3122,20 @@ static void __d_move(struct dentry *dentry, 
-> > struct dentry *target,
-> >  	} else {
-> >  		target->d_parent = old_parent;
-> >  		swap_names(dentry, target);
-> > -		if (!hlist_unhashed(&target->d_sib))
-> > -			__hlist_del(&target->d_sib);
-> > -		hlist_add_head(&target->d_sib, &target->d_parent->d_children);
-> > +		if (target->d_parent != dentry->d_parent) {
-> > +			if (!hlist_unhashed(&target->d_sib))
-> > +				__hlist_del(&target->d_sib);
-> > +			hlist_add_head(&target->d_sib,
-> > +				       &target->d_parent->d_children);
-> > +		}
-> >  		__d_rehash(target);
-> >  		fsnotify_update_flags(target);
-> >  	}
-> > -	if (!hlist_unhashed(&dentry->d_sib))
-> > -		__hlist_del(&dentry->d_sib);
-> > -	hlist_add_head(&dentry->d_sib, &dentry->d_parent->d_children);
-> > +	if (dentry->d_parent != old_parent) {
-> > +		if (!hlist_unhashed(&dentry->d_sib))
-> > +			__hlist_del(&dentry->d_sib);
-> > +		hlist_add_head(&dentry->d_sib, &dentry->d_parent->d_children);
-> > +	}
-> > 
-> >  	/*
-> >  	 * Adjust parent refcounts if either d_children ended up empty.
-> > -- 
-> > 2.50.0.107.gf914562f5916.dirty
-> 
-> Both new guards are correct. In the exchange branch target->d_parent has
-> already been set to old_parent, so testing it against dentry->d_parent
-> asks whether the two dentries started in the same directory. In the
-> common branch dentry->d_parent has been set to target's parent, so
-> testing it against old_parent asks the same question. IS_ROOT()
-> still takes the move, which it needs to because a root dentry has an
-> unhashed d_sib, and the BUG_ON(p) above guarantees target->d_parent
-> is not dentry.
-> 
-> The opening sentence needs a qualifier. For an ordinary move only
-> dentry->d_sib is relocated. target->d_sib is touched only on the
-> exchange path, so "both dentries" describes just that case.
+Here is v3 which I hope will be the last RFC.  I'd like to submit this
+for inclusion in a couple of weeks.
+This version:
+ - drops the changes to libfs.c.  They aren't strictly needed here
+   and serve to bloat the series. I still want to pursue those but
+   will do it separately.
+ - revises the first fsnotify patch to be more cautious about what I take
+   outside of existing locks
+ - fixes the nfs i_lock problem Chuck reported
+ - fixes a few things sashiko.dev found
 
-Thanks, I'll adjust that.
+Thanks for any review and/or testing.
 
-> 
-> This patch also does more for libfs than the patch description claims.
-> I would like the description to say so, because it makes the patch
-> worth applying on its own.
-> 
-> offset_readdir() resolves a stale cookie with mas_find_rev() and then
-> walks d_children from the dentry it lands on. That is correct only
-> while offset order is the reverse of d_children order. d_alloc()
-> inserts at the head and mtree_alloc_cyclic() hands out increasing
-> offsets, so the two agree in a directory that is only created into.
-> 
-> A rename within one directory breaks the agreement today.
-> simple_offset_rename() gives the surviving dentry the offset of the
-> entry it replaced, and d_move() then sends that dentry to the head of
-> d_children. Create a, b and c in that order and the offsets are 3, 4
-> and 5, with d_children holding c, b, a. After rename("a", "b") the
-> dentry for a carries offset 4 and sits at the head, so d_children
-> holds a, c while offset order still says c, a. Stop a readdir with a
-> reported and c pending, remove c, and the next call resolves the
-> cookie to a and reports a a second time.
-> 
-> With this patch a stays where it is, d_children holds c, a, and the
-> two orders agree again. Thus this is a fix for tmpfs readdir, not
-> just preparation for 14/18.
-
-Thanks for the review, but I think the above is a false hope.
-In that particular case my patch helps, but in a different case it
-doesn't.
-Suppose instead of rename("a", "b"), I did rename("a", "c").
-Before the renames d_children holds (name,offset) pairs of
-
- ("c", 5), ("b",4"), ("a",3)
-
-after the rename which with my patch doesn't move dentries but does
-still copy the name and offset from "c" to "a", and unhashes the
-original "c" - which we can show with [] - we have
-
- ["c", -], ("b",4), ("c", 5)
-
-which has the wrong ordering.
-
-Thanks,
 NeilBrown
 
+Original intro - slightly revised:
 
-> 
-> Reviewed-by: Chuck Lever <cel@kernel.org>
-> 
-> 
-> -- 
-> Chuck Lever
-> 
-> 
+ I was reading about the negative dentry problem in
+ https://lwn.net/Articles/1079407/ and thought I would have ago at the
+ easy bits.  Given how involved some of that was I'm glad I didn't try
+ the tricky bits!
 
+ So I didn't try to reduce the number of negative dentries or handle
+ them differently to positive dentries.  I just tried to address
+ specific symptoms.
+
+ This series addresses two reported symptoms.
+  1/ refcounts on parents can potentially overflow if there are billions
+     of (negative) children.  This was the easiest easy bit.  The first
+     patch is all that is needed.
+
+  2/ Walking the ->d_children list can take arbitrarily long and can
+     trigger soft lockups.  I haven't addresses the "arbitrarily long"
+     part, but the "soft lockups" only takes another 11 patches.
+     With these in place I would feel more confident addressing
+     the "arbitrarily long" part.
+
+ The core idea is to use a common helper for all walking of
+ ->d_children, and teach it to drop the lock and schedule when needed,
+ inserting a cursor to keep its place.
+ This simple idea requires:
+   - nothing should be holding any other lock while walking ->d_children
+   - dentries shouldn't be moved around needlessly, else things might
+     get missed.
+
+ so I have probably missed some bits and would be very happy to be told
+ what I have missed.
+ I would also be very happy if someone who can trigger the soft lockups
+ can try this code and confirm that the locks are gone, and nothing bad
+ happens.
+ I have done some basic testing including the "notify" parts of
+ ltp, but that is all.
+
+ I haven't addressed d_walk() or scan_positives() in this series - I
+ thought it was big enough for now.  There are already some
+ cond_reshed() calls in this code so it isn't clear it *needs* fixing.
+
+
+[PATCH v3 01/11] VFS: don't count references through ->d_parent
+[PATCH v3 02/11] autofs: change positive_after() so it takes d_lock
+[PATCH v3 03/11] coda: don't take rcu_read_lock() in
+[PATCH v3 04/11] nfs: separate locked regions in
+[PATCH v3 05/11] Add and use d_for_each_positive_child family of
+[PATCH v3 06/11] fsnotify: don't hold a spin_lock across
+[PATCH v3 07/11] fsnotify: don't hold i_lock while walking d_children
+[PATCH v3 08/11] nfs: Don't hold i_lock while walking ->d_children
+[PATCH v3 09/11] autofs: don't hold ->lookup_lock in
+[PATCH v3 10/11] VFS: don't move dentries in d_sib list when they
+[PATCH v3 11/11] Call cond_reshed() as needed in
