@@ -1,205 +1,173 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+Received: from mx0a-00154904.pphosted.com (mx0a-00154904.pphosted.com [148.163.133.20])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9E13A2BE644;
-	Tue, 25 Aug 2026 06:20:25 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9658D3921E9;
+	Tue, 25 Aug 2026 06:52:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.133.20
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787638826; cv=none; b=fvEIY1IDE9iuwHH4U42bwXyBMf+GxCQ47frOnRqXI1rX88motyMfyLdGC8ND9f0frtwNocl/2l+an78oFHlkc9IcWcaydKPh1ldbLbzm3sfOaERaD/Xi7/ldgFSfho5Bcy3xKTBag+UMi2RyVvnRAyh/IEgFPl9Ir5oSqrkNOPE=
+	t=1787640722; cv=none; b=GH9LTcVwfy1AsSqUD7OTbNMjB5wjw8VZ2ZmG01hlNypjbU616vqcWpxyGvOQhhNhDZaqpDkWRPf8cZ9mklo6xyIx4n7nDGDvM9i5q9ebIlLKDj4uad/tqXa4JkN9BysRF3Wb69UfQQn/5UHctKRPt4ixkqo5viotQZjNO/W7uyc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787638826; c=relaxed/simple;
-	bh=UwAVE8feyzEEVa7B3YVGRwg0taJTQAUkktooec9JQes=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=cxkW82iHLXaskLxyO6uG3WtZYSnIQsfL6XmcQmcBghhOqGX4sekkA5l0Em7ngxlybEYBw2RtSNg6tlei7KxCLUG2SPOLHT2gngKndlmeurjUymBjugP2xE00btwjE/IWeJIj78LgDQC1YjOi6jzafvS0fktmtUi/Pkh94URTHZY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=b0B4lFod; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	s=arc-20240116; t=1787640722; c=relaxed/simple;
+	bh=m4g0Y5SRtu48GYy8jaiFc68FrTAG3GUzDtdu7XmsFSA=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=izv8EdySzcN8LiNRzl4rPb4sqd4Z42pbt5aD129Xywnli9v+OBb2itC35xqwiPyiy2kv0tbupAxCtABDHw8gY+KHq4z32CPkrxf9i+sNrSXcTV+zGDLxJfGICeUquvGoUcus4epLjIvmSp7SOSAn7OPIjD6qnPrX4Y+uTLkCIio=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=CIYhXpAM; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=jHOHcUTY; arc=none smtp.client-ip=148.163.133.20
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dell.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="b0B4lFod"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=ocLSwSEGwFnmhH+Iqzhe0daYm5t7ZVnHocyZcda2cao=; b=b0B4lFodYJY+K2zHiZL5uOLfuO
-	fh0h3Mw4Gc1G8fNJpzblMX0AfnnfJwmXMNJO1cFoHrJ5pfKsz0kXrdoiCQuFD79QYpyXABYcYzKVK
-	NpUr9Nf/4tBmamhCaS9EhjLtjjkomhwHw/9cWtlfcyxlyUcVs65bKcsVFvoeybbTETiBDBKDNkG1Z
-	uqPE99JqqU2W9MajQGyX3ub2osOCJamEtj7LJ7S3pveUaFMgOAP+edmjUBTWQv7691Bd9kqIv2bMD
-	I8bTsbTuWbMQXrxzyIv8aFna4pHy0vsWjbAlcoX00RWn5NiyALwCUqVnn0pfeUsKNRje+KBOINntj
-	S6JWMUgw==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1wykWG-00000000Dlq-2s2p;
-	Tue, 25 Aug 2026 06:20:24 +0000
-Date: Mon, 24 Aug 2026 23:20:24 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Chuck Lever <cel@kernel.org>
-Cc: Al Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	Ameer Hamza <ameer.hamza@truenas.com>,
-	Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [PATCH v1] splice: emit a single fsnotify access event per NFSD
- READ
-Message-ID: <ao00KJYNtQqHQGhl@infradead.org>
-References: <20260824161021.245575-1-cel@kernel.org>
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="CIYhXpAM";
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="jHOHcUTY"
+Received: from pps.filterd (m0170389.ppops.net [127.0.0.1])
+	by mx0a-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67P2R2WZ958732;
+	Tue, 25 Aug 2026 02:51:54 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=dell.com; h=cc
+	:content-transfer-encoding:date:from:message-id:mime-version
+	:subject:to; s=smtpout1; bh=M2tXZvJMLyuVNKtCuS2X5Qi+wYdVIOMVbl/a
+	G/Jsyok=; b=CIYhXpAMRH3lBeicxc4lYIuDlM1yueqtifM/WnnRj/+HXyX2N4Fp
+	CvZ6mATdmG5gNLPkMHHKA5z0VshOUSzZ1O654OzeXlGMOZDrMcDXiN4RcnzTQIRt
+	CJgPTo9f5l99jDn9o6b4e3iC+c4Bqq7qjPUyTyzfa64hZfg62YEd8mo3EKTbXndx
+	vTa16W0TbkzF2KMQ0bS2bKbHy8qI+HsCuW1JkllRaZsOJfYcGp9m6k21CZR7yxEG
+	DDpFTQPm9p5pC0pd0fhu9lBA6sOpk3247UhHODsxf2wsRpwUCoU2nM4Pt1ZKiS9f
+	GYn6cc2LryZH9yAZ98syOrrtbDDgRBeo6w==
+Received: from mx0a-00154901.pphosted.com (mx0a-00154901.pphosted.com [67.231.149.39])
+	by mx0a-00154904.pphosted.com (PPS) with ESMTPS id 4g77se9wsg-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
+	Tue, 25 Aug 2026 02:51:54 -0400 (EDT)
+Received: from pps.filterd (m0133268.ppops.net [127.0.0.1])
+	by mx0a-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67P6UCvB2872376;
+	Tue, 25 Aug 2026 02:51:54 -0400
+Received: from esapsmtpat10.us.dell.com (esapsmtpat10.us.dell.com [143.166.211.153])
+	by mx0a-00154901.pphosted.com (PPS) with ESMTPS id 4g91j0jy3f-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=FAIL);
+	Tue, 25 Aug 2026 02:51:53 -0400 (EDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+  d=dell.com; i=@dell.com; q=dns/txt; s=smtpdev1;
+  t=1787640714; x=1819176714;
+  h=from:to:cc:subject:date:message-id:mime-version:
+   content-transfer-encoding;
+  bh=M2tXZvJMLyuVNKtCuS2X5Qi+wYdVIOMVbl/aG/Jsyok=;
+  b=jHOHcUTYSAtC8Rlx8cAyne1qL7R2YN01anseuCjGLRO0tlTSePcXHqvS
+   03enzxZO4vAffh+xC/FEIos77nZZj2TmvnIZR+96qwFn9xlrMxKKoIWBS
+   /GIKQrRkKxxHf/zjuhQjQlmnod2ACQVuRCd+ARTFpHtSaNo4XA2w3UlE5
+   EZya/1IjaPrI4HWPun76VMoJmlERM2q2OWeReKnWRDCMp51CjA6WvlpXW
+   ml1XVC6L7oAxzhqfUV6HpLVOjHjMr/GvB9BuS5g3L3tRiEQvh5tsPxCVQ
+   lsWM0vWrDf5JIKgDZx0Gsr25zGqLdPSMXh95xo0aV6nKWI0xgSNQtn3EU
+   A==;
+X-CSE-ConnectionGUID: T3Ohx14MQyuvTwlOWo2A5Q==
+X-CSE-MsgGUID: bVCFV0Z6S26ruHS/tECs6g==
+X-LoopCount0: from 10.94.13.48
+X-MS-Exchange-CrossPremises-AuthAs: Internal
+Received: from w-96j1th4.apac.dell.com (HELO W-96J1TH4.blr.amer.dell.com) ([10.94.13.48])
+  by esapsmtpat10.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 25 Aug 2026 06:51:50 +0000
+From: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
+To: cel@kernel.org, jlayton@kernel.org
+Cc: neil@brown.name, okorniev@redhat.com, Dai.Ngo@oracle.com, tom@talpey.com,
+        donald.hunter@gmail.com, kuba@kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Prabhakar Pujeri <prabhakar.pujeri@dell.com>
+Subject: [PATCH v1 0/3] nfsd: expose NFSv4 client state through Netlink
+Date: Tue, 25 Aug 2026 06:51:44 +0000
+Message-ID: <cover.1787638668.git.prabhakar.pujeri@dell.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260824161021.245575-1-cel@kernel.org>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Transfer-Encoding: 8bit
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
+ definitions=2026-08-25_01,2026-08-24_01,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ priorityscore=1501 suspectscore=0 adultscore=0 spamscore=0 lowpriorityscore=0
+ phishscore=0 malwarescore=0 clxscore=1011 bulkscore=0 impostorscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608250056
+X-Proofpoint-GUID: Fgt7TvJ2kQAmZuspJ_pvD80cGDBrxoCp
+X-Authority-Analysis: v=2.4 cv=AobeGu9P c=1 sm=1 tr=0 ts=6a8d3b8a cx=c_pps
+ a=j0++y401J6f/BxNAf5EDow==:117 a=zctdXvwhg3EK6xEvKeLW8g==:17
+ a=Sv0fKeRqtYgA:10 a=ke5jqHz-1hQA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=6gNNCFAoQcIphELLPWWu:22 a=PpEg0BoV_A2aca28hXd0:22 a=I1YeyxFUZiQI-HvKo-oA:9
+ a=gbU3OgOOxF9bX48Letew:22
+X-Proofpoint-ORIG-GUID: Fgt7TvJ2kQAmZuspJ_pvD80cGDBrxoCp
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODI1MDA1NyBTYWx0ZWRfXwoieZUK8oE+y
+ M745nA1n8slK63NdfaYOKSv8FNAlQQuxkRiVHeQnNnel+jxNuCDEG9LxcrXtIxCjqXrZSJIXya4
+ tC5lhXQ/qY0zT4qAram83V4Q3RiNTNDFkkjVrAmYeN87/UbM1N0Uv51qJquTsbEgm6O3ng8v5mY
+ sdx/ZUG3+ZMu+QcfL5MZeWWr6eXtEgkQMi/O5Cg+k663GCP4lRxsfk27fdVrwEu1z6X/QLwdoye
+ /+3YzrKOFWPn2K6DkWP0tC0mXvUfzA0Wyc41+YCEC0zx07Ir1X8n4bCIz8SKhO4YsK7G2EkSoOf
+ icIyqhd7GlSMVTuiwHBccLo3BjNWYkQPUCLX9JQnDNtcHwwoNCuEiBttLJ1cckum0ycytauTi3i
+ lD+idV5Xvqkf2v50bsFTbkblo7CyYnn6dBpZKDuPaZ3BY7H5nZjECTKaNuI+UCmHbFqwmHI2Pf7
+ jHpYiufRuIcc2O64PEA==
+X-Proofpoint-Spam-Info: AW1haW4tMjYwODI1MDA1NyBTYWx0ZWRfX8iERgHy8UnEB
+ eHdlsdBcwYoUTDYx+u6gqE902kpGTRDcB7ICBYfcdCggTw2Hvd0rUjlfSyNOJt2VFnns73aqv81
+ wtMClY2rlxOdU6TkT6dD21/S3ihNtps=
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0
+ adultscore=0 clxscore=1011 phishscore=0 bulkscore=0 spamscore=0
+ impostorscore=0 malwarescore=0 priorityscore=1501 lowpriorityscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608250057
 
-On Mon, Aug 24, 2026 at 12:10:21PM -0400, Chuck Lever wrote:
-> nfsd_finish_read() calls fsnotify_access() on both NFSD read paths,
-> because splice_direct_to_actor() does not emit the event itself. The
-> iterator path reaches nfsd_finish_read() from vfs_iocb_iter_read(),
-> which has already emitted one. A READ served without splice therefore
-> emits two access events.
-> 
-> NFSD does not use splice for the GSS integrity and privacy services, so
-> a READ on a sec=krb5i or sec=krb5p mount takes the iterator. An inotify
-> watch on that file sees the READ twice.
-> 
-> Reported-by: Ameer Hamza <ameer.hamza@truenas.com>
-> Closes: https://lore.kernel.org/linux-nfs/20260818225715.572140-1-ameer.hamza@truenas.com/
-> Suggested-by: Amir Goldstein <amir73il@gmail.com>
-> Link: https://lore.kernel.org/linux-nfs/CAOQ4uxgUOqFv6pVmdT_+4DjA0KQoQDCzN2Xz=xm1FyumewHZXg@mail.gmail.com/
-> Signed-off-by: Chuck Lever <cel@kernel.org>
-> ---
->  fs/nfsd/vfs.c          |  7 ++----
->  fs/splice.c            | 56 +++++++++++++++++++++++++++++++-----------
->  include/linux/splice.h |  4 +--
->  3 files changed, 45 insertions(+), 22 deletions(-)
-> 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index f9131827d391..c134064a1c79 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -1046,7 +1046,6 @@ static __be32 nfsd_finish_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
->  		nfsd_stats_io_read_add(nn, fhp->fh_export, host_err);
->  		*eof = nfsd_eof_on_read(file, offset, host_err, *count);
->  		*count = host_err;
-> -		fsnotify_access(file);
->  		trace_nfsd_read_io_done(rqstp, fhp, offset, *count);
->  		return 0;
->  	} else {
-> @@ -1080,10 +1079,8 @@ __be32 nfsd_splice_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
->  	ssize_t host_err;
->  
->  	trace_nfsd_read_splice(rqstp, fhp, offset, *count);
-> -	host_err = rw_verify_area(READ, file, &offset, *count);
-> -	if (!host_err)
-> -		host_err = splice_direct_to_actor(file, &sd,
-> -						  nfsd_direct_splice_actor);
-> +	host_err = vfs_splice_direct_to_actor(file, &sd,
-> +					      nfsd_direct_splice_actor);
->  	return nfsd_finish_read(rqstp, fhp, file, offset, count, eof, host_err);
->  }
->  
-> diff --git a/fs/splice.c b/fs/splice.c
-> index 9d8f63e2fd1a..42ad712a0f4d 100644
-> --- a/fs/splice.c
-> +++ b/fs/splice.c
-> @@ -1009,21 +1009,14 @@ ssize_t vfs_splice_read(struct file *in, loff_t *ppos,
->  }
->  EXPORT_SYMBOL_GPL(vfs_splice_read);
->  
-> -/**
-> - * splice_direct_to_actor - splices data directly between two non-pipes
-> - * @in:		file to splice from
-> - * @sd:		actor information on where to splice to
-> - * @actor:	handles the data splicing
-> - *
-> - * Description:
-> - *    This is a special case helper to splice directly between two
-> - *    points, without requiring an explicit pipe. Internally an allocated
-> - *    pipe is cached in the process, and reused during the lifetime of
-> - *    that process.
-> - *
-> +/*
-> + * This is a special case helper to splice directly between two
-> + * points, without requiring an explicit pipe. Internally an allocated
-> + * pipe is cached in the process, and reused during the lifetime of
-> + * that process.
->   */
-> -ssize_t splice_direct_to_actor(struct file *in, struct splice_desc *sd,
-> -			       splice_direct_actor *actor)
-> +static ssize_t splice_direct_to_actor(struct file *in, struct splice_desc *sd,
-> +				      splice_direct_actor *actor)
->  {
->  	struct pipe_inode_info *pipe;
->  	ssize_t ret, bytes;
-> @@ -1147,7 +1140,40 @@ ssize_t splice_direct_to_actor(struct file *in, struct splice_desc *sd,
->  
->  	goto done;
->  }
-> -EXPORT_SYMBOL(splice_direct_to_actor);
-> +
-> +/**
-> + * vfs_splice_direct_to_actor - splice from a file through a caller's actor
+Administrators can inspect NFSv4 clients through the nfsd filesystem, but
+collecting a server-wide view requires walking a directory and opening
+multiple files for every client. That is useful for detailed inspection,
+but awkward for monitoring and automation.
 
-Can we use this to start retiring the really weird direct terminology
-here that is confusing?  I.e. name this vfs_splice_to_actor?
-With that we'll only need to fix up do_splice_direct (which is an event
-worse name) to fix the public API.
+Add a compact query interface to the existing nfsd Generic Netlink family:
 
-> + * @in:		file to splice from; must be seekable (FMODE_LSEEK)
-> + * @sd:		splice parameters. The caller sets @sd->pos and
-> + *		@sd->total_len. @sd->pos advances as data is consumed,
-> + *		and @sd->total_len is overwritten with the length of
-> + *		each read.
-> + * @actor:	consumes each pipe-full and returns the number of
-> + *		bytes taken
+  1. Extend threads-get with an explicit NFSv4 recovery-grace value.
+  2. Add a privileged client-get dump with basic identity, lease,
+     confirmation, reclaim, and callback information.
+  3. Extend each client reply with session and stateid record counts.
 
-The @ line should just have a short description of the parameter and
-not explain all the details.
+The split keeps the grace query independent, establishes the minimum useful
+client ABI before adding the more expensive state traversal, and permits
+older user space to ignore the count extension. The existing nfsd
+filesystem files and their output remain unchanged.
 
-> + *
-> + * Description:
+client-get emits one bounded message per client. The dump pins each client,
+uses the existing client and state locks for mutable fields, and serializes
+against server shutdown. Client churn can still make a multi-message dump a
+best-effort snapshot; the interface documentation states this explicitly.
 
-And this Description is accepted by te parset, but redundant.
+The Netlink client ID places cl_boot in the upper 32 bits and cl_id in the
+lower 32 bits. This is an architecture-independent representation matching
+NFSD's logical and tracepoint representation, rather than the legacy procfs
+rendering of the in-memory bytes.
 
-I'd rework the kerneldoc as:
+A companion nfs-utils series adds `nfsdctl clients` and displays the grace
+value from `nfsdctl threads`.
 
-/**
- * vfs_splice_to_actor - call an actor on data read from a file
- * @in:		file to read from
- * @sd:		splice parameter descriptor
- * @actor:	callback to process a pipes worth of data
- *
- * Read up to @sd->total_len worth of data from @in, and call @actor when the
- * hidden pipe used to buffer the data is full. The caller must set @sd->pos and
- * @sd->total_len. @sd->pos advances as data is consumed, and @sd->total_len is
- * overwritten with the length of data read.
- *
- * Ensures the read is allowed using rw_verify_area() and emits fsnotify access
- * events. @in must be seekable (FMODE_LSEEK).
- *
- * Return: The number of bytes spliced, or a negative errno.
- */
+Validation performed:
 
-And, looking at the weird semantics of the splice_desc, maybe an even
-better idea is to build that inside of vfs_splice_direct_to_actor
-and pass in pos, len, and private_data instead?
+  - strict checkpatch on each patch: 0 errors, 0 warnings, 0 checks
+  - YNL regeneration and headers_install
+  - scoped NFS admin and Netlink documentation builds with SPHINXOPTS=-W
+  - W=1 NFSD builds with CONFIG_NFSD_V4=y and CONFIG_NFSD_V4=n
+  - two-vCPU QEMU test with a live NFSv4.2 loopback mount
+  - grace yes/no transition checked through both raw Netlink and nfsdctl
+  - one live client with one session, open stateid, lock stateid, and
+    delegation stateid; zero layout stateids
+  - legacy /proc/fs/nfsd/clients output checked for unchanged fields
 
-I.e.:
+The series is based on the nfsd-testing branch. The exact base is recorded
+in the base-commit trailer below.
 
-/**
- * vfs_splice_to_actor - call an actor on data read from a file
- * @in:		file to read from
- * @pos:	file offset
- * @count:	maximum number of bytes to read
- * @actor:	callback to process a pipes worth of data
- * @private:	private data passed to @actor
- *
- * Read up to @count worth of data from @in at @pos, and call @actor when the
- * hidden pipe used to buffer the data is full.
- *
- * Ensures the read is allowed using rw_verify_area() and emits fsnotify access
- * events. @in must be seekable (FMODE_LSEEK).
- *
- * Return: The number of bytes spliced, or a negative errno.
- */
+Prabhakar Pujeri (3):
+  nfsd: report NFSv4 grace state through Netlink
+  nfsd: add a Netlink dump of NFSv4 clients
+  nfsd: report per-client NFSv4 state usage through Netlink
+
+ .../admin-guide/nfs/nfsd-admin-interfaces.rst |  22 ++
+ Documentation/netlink/specs/nfsd.yaml         | 106 ++++++++
+ fs/nfsd/netlink.c                             |   5 +
+ fs/nfsd/netlink.h                             |   1 +
+ fs/nfsd/nfs4ctl.h                             |  10 +
+ fs/nfsd/nfs4state.c                           | 238 +++++++++++++++++-
+ fs/nfsd/nfsctl.c                              |  22 +-
+ include/uapi/linux/nfsd_netlink.h             |  41 +++
+ 8 files changed, 443 insertions(+), 2 deletions(-)
+
+
+base-commit: 46ff234c7129c7c10ed493413d4f60d0cf4dd1f1
+-- 
+2.54.0
