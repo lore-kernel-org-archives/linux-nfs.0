@@ -1,38 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A24B0448BA9
-	for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2026 13:40:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4CF99418361
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2026 15:02:10 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787665237; cv=none; b=NZoo/kMXLpFbIuMzUdBrFGWrUk7gU1usmLNiEtFoimwE5D42qEtnGMMW5pox8VTEMciPQa0MFOe/Ch3voDQRtE+IZswn6m7PwrlDoY1AQemx5pJaWJCCog1RscEE1i9qp+CjfmgoawQ2Ujz38gMMI+0F5qHXUMaxtHWjMwatgDo=
+	t=1787670132; cv=none; b=GJ7Yh7Y1pkW6cQuMhRuoeaNI/QAPazIdxKa+2QdnxRt8knAXhk+RAsNfUdnvDJJ/AtqPWtZV/eCVWDSsjNEaEx2SgxYprH+I8tCgGYRtsf6fkCZ2rY6mk4CMiKkkMeTyzsiq34qYD5n2ntcAEZRZjDAEVrLgKys0DU5DbYaqyuY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787665237; c=relaxed/simple;
-	bh=oppuXcHBoMiC6YdWAgygUfKjnJZMQLEWFCC/6MTNlMA=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=GoQhFSNmrHTrFG4q4Vxtkb+Nm0YRCOzNbqesGrky2ug+X200UHaScKgwq5ByijHHPK2WLYYAArfkqrHBOv1peVgam2lPTR4ijZc5C6gZWfH1+CkfLZCVcUJCq/vVbnVaSEpoI33E03DqW7lEYqRFBFFi4TcjqxxFjqxmH8khR3k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=K+qm61Uj; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787670132; c=relaxed/simple;
+	bh=z7WInaHYApO6mdUR/VH/uNoG3D4aQUlC55Aex0Q9x/s=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=JHQ5p9z1BGRf+2Jbh1gVljknm2N8it32J6ovX2W8jJOYXmsdJRlXvF3EQj6rtqaEWSNTRvsJLz/VyxpFiD7eVt6u0TH0WWFDM8Qhlly5Kj/5wcJCHH8UyXEVsK5DmPy3AiD7xP/pg/FyL8F03Ny2dogA7k+hnb78XoaCFsGS8ik=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bMmVXl/y; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="K+qm61Uj"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EA2681F000E9;
-	Tue, 25 Aug 2026 13:40:35 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bMmVXl/y"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7E7E71F00A3D;
+	Tue, 25 Aug 2026 15:02:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787665236;
-	bh=J4403p5pYb+no5Jacm7Rqra5FSD1YbRJx56fRKHK4bk=;
+	s=k20260515; t=1787670130;
+	bh=YI3sDaBBouFuwjjyCe99fTqUYOOS+O8MN4CY3++V52s=;
 	h=From:To:Cc:Subject:Date;
-	b=K+qm61UjAoSIjKFDodyVmg9sdXcCx+motERq2M+KY59LnUJQ5EC3OqofOkcddAhF4
-	 xWPG7djaEsj13ykzSGnpYy+Jxs7a1IrgiJsnTmZT8g05M/tP/bl7Xkbjp7+2PtpC0n
-	 LqZhlp5omEFW+TvHgdN8y1k0lDioOdKcF2VKGSJTPCfUyd49BbhVICE7Y9ycnRmdHF
-	 HG3aAHmzkLrvykspSoDAtc0sSMCLjq7YVOMds+Ar6/5Aa828tJ6NepeIkl9nyGtCkf
-	 XajLwCoZjYQ6gQ15ZrphBVrjnCgvq+IQT//8lKV7ac0SAr23XxGf6sGBHs0av4X0mr
-	 1sx4JTHJvJXEA==
-From: Chuck Lever <cel@kernel.org>
-To: Anna Schumaker <anna@kernel.org>
-Cc: <linux-nfs@vger.kernel.org>,
-	Rakesh Bhargava <Rakesh.Bhargava@netapp.com>
-Subject: [RFC PATCH] xprtrdma: Fix Write chunk payload corruption on a short reply header
-Date: Tue, 25 Aug 2026 09:40:33 -0400
-Message-ID: <20260825134033.325599-1-cel@kernel.org>
-X-Mailer: git-send-email 2.54.0
+	b=bMmVXl/y60V34/UCa42EZkI3k+oYZU65r5rHjDSlgCVBiB8ylHfM0y07N3CNTwPbh
+	 0E+xuH71LhpIvv+t5TlrI5swSNAgafP1fKmzT/sqbuiC0EUP0XXgzpItyGtvOyJOGY
+	 vMcRXyfo4fKu8y0exQelUI2JOHp8U/q5bQSycGLqawUVpQlxvwEt2D9ux/TRt9NwQb
+	 NOeprfhV2BlwTM+RXb/bKFgk8B81b1i2xOL8dIswoYGFui1lodMF+xVlCoCIbeFjBn
+	 UCQ2GvQf5mP14sTor0CaoRi7ARtiY2NmR380U0cOFL4vA/J2aPHDVFKHYU+9iE2yA5
+	 o+UF5eM7AykBA==
+From: Anna Schumaker <anna@kernel.org>
+To: linux-nfs@vger.kernel.org,
+	trond.myklebust@hammerspace.com
+Cc: anna@kernel.org
+Subject: [PATCH v2 0/4] NFS: Add directory delegation support for CB_NOTIFY
+Date: Tue, 25 Aug 2026 11:02:05 -0400
+Message-ID: <20260825150209.694646-1-anna@kernel.org>
+X-Mailer: git-send-email 2.55.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -41,64 +41,37 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-RFC 1813 lets an NFSv3 server return READ3resok with
-attributes_follow set to FALSE. The client reserves room in the head
-iovec for the largest possible reply header, so the inline part of
-such a reply falls short of that reservation by the 21 words of the
-omitted fattr3. rpcrdma_inline_fixup() repoints the head iovec at
-the received message but leaves its length at the reservation, so
-the last 84 bytes of the iovec cover stale receive buffer content.
+From: Anna Schumaker <anna.schumaker@hammerspace.com>
 
-xdr_realign_pages() finds a head iovec longer than the decode
-position and takes the difference for reply data.
-xdr_shrink_bufhead() shifts those bytes into the page list, so the
-READ returns transport data where the first 84 bytes of file content
-belong. An ordinary NFSv3 mount corrupts only the first READ,
-because nfs3_read_done() records the shorter header size for
-subsequent calls. A FlexFiles NFSv3 data server corrupts every READ,
-because the layout driver installs its own completion callback and
-nfs3_read_done() skips that bookkeeping.
+These patches add support for the CB_NOTIFY callback operation from NFS
+servers. Editing directory order or placement in our caches isn't easy
+or practical the way things are structured now. Instead, I use CB_NOTIFY
+as an indication that the client needs to refresh its view of the
+directory.
 
-Reduce the head iovec to the number of bytes actually received when
-a Write chunk carried the payload. Commit cb0ae1fbb2f5 ("xprtrdma:
-Do not update {head, tail}.iov_len in rpcrdma_inline_fixup()")
-dropped that adjustment while repairing krb5p reply decoding. An
-authentication flavor that touches the payload cannot use a Write
-chunk, so restoring the adjustment only for Write chunks leaves the
-krb5p repair alone.
+Changes in v2:
+ * Fix signed / unsigned type mixups
+ * Don't try to share lookup code between NOTIFY4_REMOVE and NOTIFY4_ADD
+ * Add handling for the NOTIFY4_ADD 'na_have_old_entry' case
 
-Fixes: cb0ae1fbb2f5 ("xprtrdma: Do not update {head, tail}.iov_len in rpcrdma_inline_fixup()")
-Reported-by: Rakesh Bhargava <Rakesh.Bhargava@netapp.com>
-Closes: https://lore.kernel.org/linux-nfs/SA6PR06MB104695205126871E29444567A8BA02@SA6PR06MB10469.namprd06.prod.outlook.com/
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- net/sunrpc/xprtrdma/rpc_rdma.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
-
-Note: Compile-tested only.
+Thoughts?
+Anna
 
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 1285f04cdac1..42698a2622a4 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -1244,6 +1244,16 @@ rpcrdma_decode_msg(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep,
- 	/* Build the RPC reply's Payload stream in rqst->rq_rcv_buf */
- 	base = (char *)xdr_inline_decode(xdr, 0);
- 	rpclen = xdr_stream_remaining(xdr);
-+
-+	/* The head iovec is sized for a maximum-length reply header.
-+	 * Leaving its length unadjusted lets xdr_realign_pages() shift
-+	 * stale receive buffer bytes over the Write chunk payload.
-+	 */
-+	if (writelist && rpclen < rqst->rq_rcv_buf.head[0].iov_len) {
-+		rqst->rq_rcv_buf.head[0].iov_len = rpclen;
-+		rqst->rq_private_buf.head[0].iov_len = rpclen;
-+	}
-+
- 	r_xprt->rx_stats.fixup_copy_count +=
- 		rpcrdma_inline_fixup(rqst, base, rpclen, writelist & 3);
- 
+Anna Schumaker (4):
+  NFS: Add an outline for the CB_NOTIFY operation
+  NFS: Add support for CB_NOTIFY4_REMOVE_ENTRY
+  NFS: Add support for CB_NOTIFY4_ADD_ENTRY
+  NFS: Add support for CB_NOTIFY4_RENAME_ENTRY
+
+ fs/nfs/callback.h      |  51 ++++++++++++
+ fs/nfs/callback_proc.c | 147 ++++++++++++++++++++++++++++++++++
+ fs/nfs/callback_xdr.c  | 175 ++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/nfs4_fs.h       |   2 +
+ fs/nfs/nfs4xdr.c       |  33 +++++++-
+ include/linux/nfs4.h   |   6 ++
+ 6 files changed, 409 insertions(+), 5 deletions(-)
+
 -- 
-2.54.0
+2.55.0
 
