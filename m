@@ -1,241 +1,191 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BE71A29C328
-	for <linux-nfs@vger.kernel.org>; Wed, 26 Aug 2026 01:45:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1E8C33B6C18;
+	Wed, 26 Aug 2026 07:50:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787708729; cv=none; b=k6RuMyPJmGOKoQi4sg1Y7T/FarrtjDj14ty9FuW+sKcv0Ry0SF6Di0x4OTG3fw/ZaovRKC46TQGXypO0J5uTA2sFqQC0DCl4KytsUotu3YaUdFC3qmhnGtNhKq72wOBl7iV7R5t1HOo8WtqaI8JmOadWrQqczj0ffrws+hLNQSc=
+	t=1787730618; cv=none; b=Bfxc1hkgUiKKiyQ8UoUtBd/3knLWf93DOAeSJ0wpPRM5VU11qr1UB+6fGuYw+75Sdg1t6uXRPzPiXZ5YaJDKPYsq1vavmA8Af359ISIcgvLt+JX6eDq+go5+SmpqrXqL3/HlmmPmP34EvM3KlSeY5uaaBvLL7Q4H2AMrDCqwSMU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787708729; c=relaxed/simple;
-	bh=k78afwVXWljxmfWyY62nNAbWlVUIilUIUP1+NWqxF7o=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=K+h00kYjAJdpUC5CC9XrunhF2mOsEFMz0Iaf0D/CrotMa7FB2AJe0cvCPZsI7/p1JICBXjHTs/bVZ3ZlKH4W+H32Fox1eoUy5kBZqs1a69YZUA3zM5YEkI21jNQkmX1hyYh+7pjKMmFtFybm1NQl3iiwja9uWoo4YgMpL3V/VgQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fNF9JeWc; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787730618; c=relaxed/simple;
+	bh=a2btTeaHPqaWUx1hv3tFSSuWg92+seYqUJqRI+0fmNw=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=HCCxaxDgcwGRwL9F8TKiogW35KZgtnoLfPhl81B/JE3UJDjV90ZPFsa4SeXaIU18Vx1+J3d/GEXFLvo/1d4y5VrPSyYA5wRYCLPQzCXkNWHTWT3QyRZsNRvLtgQyVZ3WlAH2UcRMr07tzOhUyFJ0sd6toeLQ53yD3MDGepBIOKo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=2Z1Tf/yp; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=658bYWki; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=1JuUKAco; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=vA5oIE6L; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fNF9JeWc"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F274A1F00A3D;
-	Wed, 26 Aug 2026 01:45:26 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787708727;
-	bh=2vy5h8IRL/9drb7aiod0XEpXAp/FkZKCcWuNQsPmc2U=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=fNF9JeWcX657yjv1NgSGAUda0cHEUF2IYVcG+NEg3pCEIoqy6IQ6uXvDdWwjAw9YG
-	 8K+HK04YFfIt0nQEmvzquKSCe02Wi9JRAO6VsQtQNAzE+Hf03VCCLMbMSaaO7iLPmS
-	 +VPnO1R7hmHeKHL/mil/6QxG/GMYMNLDgMqp214TZwgP8sLi/MhuzLtXrZ7zzjNtwq
-	 IocDdKHst/JMenRNl+nYaze8Y/BYV8F0GurWC0iUJSRU3G8rmtjE8stMpDgm4r2MsX
-	 PZvaMB54kcGlc5SU1D5+NEk3dNK8adNKWEgL0fwfPGoUc2X7DPU8dvT2ZwuRT+tS8u
-	 IadlAZtDCwuug==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 1EABFF40066;
-	Tue, 25 Aug 2026 21:45:26 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Tue, 25 Aug 2026 21:45:26 -0400
-X-ME-Sender: <xms:NkWOajMb-sus_H7aNy1nvOdmGMnSgkvpAXAk8KCtZ8kBZpMtZ6qxtQ>
-    <xme:NkWOaow6gLYwADX9_oCk2s5iRt0-3PrXfMj074JolwrvzQnFkPTI2ucJAFlBQK_Bh
-    tPq-wXGPR_j9QrWrrSTXKjE8drQiadoYcn_fCxgZBjxoOjYiPfQ>
-X-ME-Proxy-Cause: dmFkZTEVoTDRoSHmD44CVmkhH4Y8ASOktCIL50roejKVJZIr3nwD95sLhpGfQ38COMrkbe
-    erGvCZ+L8qjD+2qplldoIelzYSPmdxHb60bWxf4iOyRmAZnwour7YvCdd7JbOsFCXpCje1
-    5cVs3VIcdVitDvfZcG18HRLpiqJ4Hk0siGcGJloYyFT4AdorQ6HykIJ7AHgXO54+O6CrrX
-    dXrTzVUDmku/D1RwZx60Eo9R/UtRPPn9xLzIp01H/n5gR+9VunuFXB5fhqxXJYmk01ttNy
-    Eu/QMfPiQLQ3nGLDg9GjAaEVbyxlg2KtdOU17zP0FK8JhyauBcH2JOrlNBZ8klc3d7fIYl
-    sUrSSF3D5LrInRkjt8qSUxEvLu6Y2xvHBvF3tE1ZsSmWUuNkmFPMuec82RBP1paPVmJIC0
-    JHLjWlyR+8ZezBcBjb7exkrfDA64vCcEljnyFqwJhWY0bPh5dGV/OqppRGdPX6ciOMvy4x
-    ghEUJHccYb+70u12RzGT3nN3yJgX/R8leneuu1h2VygsIcM69mLjTCa4ZHQy09mQf8nTjZ
-    oH4yvhZuSIFNxCK8M0kZ0wZsWKyyHJ0gy66T4FrMIixhxzeBvEPAFWg4ilhqk0V+r/OtEk
-    rI8EXRfF8C99amS/cZQoMvN9A0/bgwmv5ZSjtt+dbJiLFn/Fcnf0asce9JDw
-X-ME-Proxy: <xmx:NkWOapAjKKiUkbmo9K8Vi8l8m30UzO9OwilVwLvYEyrmX6sJRmLxDA>
-    <xmx:NkWOaoGqu6GJtIhi3Wm8T8ysw-GjdPjZRE56D7NJ9gye19sIm9MFDQ>
-    <xmx:NkWOatetpd38kT_eQJif1y7rvWXGpybLbhGfEWa3J-8Ryt9TtrZ65Q>
-    <xmx:NkWOat96OBaF718IM3ivVUDtR_Kxjx7-gvKCLLyG3gM83tFLmkhgmA>
-    <xmx:NkWOajZGYW8ukeLt5Zsy4LxY1hin93DTC8A2Ocb-04ql6znKiG2bVBny>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id E9AEB7811F0; Tue, 25 Aug 2026 21:45:25 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="2Z1Tf/yp";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="658bYWki";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="1JuUKAco";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="vA5oIE6L"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id E8ADB87217;
+	Wed, 26 Aug 2026 07:50:05 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1787730610; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=V/kDgiqCJ24UzYKi/b0vTHiHEoPucZGyvIT9cCOxpb0=;
+	b=2Z1Tf/ypjBvVk+yBoniYR6BcmnlXWvIf6tUvzYS1LY5lHf1JhccViu7h5BgvZjiNltUVr3
+	kVZDko2QEGnhBIRhDzJcJpdy47Nq1ot2zMLC5+HKo0abzmfnSiXYCYb2wS4daIZJwz6ku+
+	mXaAvocjnmEJfLIojQHOnYh4tlzafKs=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1787730610;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=V/kDgiqCJ24UzYKi/b0vTHiHEoPucZGyvIT9cCOxpb0=;
+	b=658bYWki4AUwyhAOT31qDuMyPna1QbJfz6FjGWQiHbcaSyiSXtc7eETidr9tnt+NHkWzNX
+	zMcpKPXEliEmCtDw==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=1JuUKAco;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=vA5oIE6L
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1787730605; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=V/kDgiqCJ24UzYKi/b0vTHiHEoPucZGyvIT9cCOxpb0=;
+	b=1JuUKAcodENvSgJev1mTdBqYGVNqOhIPDnDRUFHDNNfI+UKF5Hbx66lEdWsfh1WYPiRDz5
+	NdPE4LAktNCQQPyuvR2Cmrbi0lThRccYF7sWAKSpyCYBW2xbtXUPAndVOZ3cFa9a9T+XQJ
+	5SCdZ6uIdEikprCWzSb1uJ1VjbVSklY=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1787730605;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=V/kDgiqCJ24UzYKi/b0vTHiHEoPucZGyvIT9cCOxpb0=;
+	b=vA5oIE6Lxvhb0G4M580CVZeOvk+ZaLTuwbG6zEdGNN79MxFpOzhk69zb4Q8Fq/lk5kzWsE
+	NOc2dZCq8DTfn2CQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id D787713699;
+	Wed, 26 Aug 2026 07:49:55 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id APOYNKOajmodDAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 26 Aug 2026 07:49:55 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 1DB57A13A3; Tue, 25 Aug 2026 17:50:17 +0200 (CEST)
+Date: Tue, 25 Aug 2026 17:50:17 +0200
+From: Jan Kara <jack@suse.cz>
+To: "Matthew Wilcox (Oracle)" <willy@infradead.org>
+Cc: Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
+	Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.com>, 
+	Miklos Szeredi <miklos@szeredi.hu>, Trond Myklebust <trondmy@kernel.org>, 
+	Anna Schumaker <anna@kernel.org>, Mike Marshall <hubcap@omnibond.com>, 
+	Martin Brandenburg <martin@omnibond.com>, Alexander Viro <viro@zeniv.linux.org.uk>, 
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org, linux-block@vger.kernel.org, 
+	linux-btrfs@vger.kernel.org, fuse-devel@lists.linux.dev, linux-nfs@vger.kernel.org, 
+	devel@lists.orangefs.org, Pavel Begunkov <asml.silence@gmail.com>
+Subject: Re: [PATCH 0/7] Remove aops->launder_folio
+Message-ID: <cpxzyq5vdzuwters6mn3irrxvpvvkr6g7cjqbrsckivrupbua3@pzjpyvzqnke4>
+References: <20260820193343.3852967-1-willy@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Date: Tue, 25 Aug 2026 21:45:03 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: NeilBrown <neil@brown.name>
-Cc: "Ian Kent" <raven@themaw.net>, "Jake Edge" <jake@lwn.net>,
- "Ilya Dryomov" <idryomov@gmail.com>, "Alex Markuze" <amarkuze@redhat.com>,
- "Viacheslav Dubeyko" <slava@dubeyko.com>, "Jan Harkes" <jaharkes@cs.cmu.edu>,
- coda@cs.cmu.edu, "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Christian Brauner" <brauner@kernel.org>, "Jan Kara" <jack@suse.cz>,
- "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
- "Amir Goldstein" <amir73il@gmail.com>,
- "Andrew Morton" <akpm@linux-foundation.org>,
- "Miklos Szeredi" <mszeredi@redhat.com>, autofs@vger.kernel.org,
- linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
- codalist@coda.cs.cmu.edu, linux-fsdevel@vger.kernel.org,
- linux-nfs@vger.kernel.org
-Message-Id: <0c46ce23-5a78-40af-8acd-3fcc4504242d@app.fastmail.com>
-In-Reply-To: <178769497289.3510150.1755559233711012616@noble.neil.brown.name>
-References: <20260815042707.2535717-1-neilb@ownmail.net>
- <20260815042707.2535717-14-neilb@ownmail.net>
- <c3cc4175-1ca3-467d-849b-22462a7514fc@app.fastmail.com>
- <178769497289.3510150.1755559233711012616@noble.neil.brown.name>
-Subject: Re: [PATCH v2 13/18] VFS: don't move dentries in d_sib list when they have the
- same parent
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260820193343.3852967-1-willy@infradead.org>
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	RCPT_COUNT_TWELVE(0.00)[19];
+	ARC_NA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from,2a07:de40:b281:106:10:150:64:167:received];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_CC(0.00)[kernel.org,suse.cz,fb.com,suse.com,szeredi.hu,omnibond.com,zeniv.linux.org.uk,vger.kernel.org,kvack.org,lists.linux.dev,lists.orangefs.org,gmail.com];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email]
+X-Spam-Flag: NO
+X-Spam-Score: -2.51
+X-Spam-Level: 
+X-Rspamd-Queue-Id: E8ADB87217
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Action: no action
 
+On Thu 20-08-26 20:33:33, Matthew Wilcox (Oracle) wrote:
+> There's really no reason to implement ->launder_folio.  Most filesystems
+> don't.  The only problem is that some filesystems rely on dirty folios
+> being written back this way, so we need to make sure that folios are
+> written back before invalidating them.  filemap_invalidate_pages()
+> works well for that, once we remove the 'nowait' parameter.
 
+I like the idea (and was myself wondering from time to time whether
+launder_folio is actually needed) but what was putting me off was that when
+using folio_launder() you can clean a folio while keeping folio locked and
+so you can guarantee later eviction without someone messing with the folio
+between writeout & ->release_folio. Maybe nobody actually needs this, which
+would be great, but it would be great to hear more from the folks using
+launder_folio about their reasons...
 
-On Tue, Aug 25, 2026, at 5:56 PM, NeilBrown wrote:
-> On Thu, 20 Aug 2026, Chuck Lever wrote:
->> 
->> On Sat, Aug 15, 2026, at 12:21 AM, NeilBrown wrote:
->> > From: NeilBrown <neil@brown.name>
->> >
->> > When __d_move() moves or exchanges dentries it currently always moves
->> > both dentries to the head of the ->d_children list of the respective
->> > parents.
->> >
->> > When they have the same parent, this simply moves them from where they
->> > are to the start in the same list.  So it achieves nothing useful.
->> >
->> > A future patch will allow d_for_each_positive_child() to drop and retake
->> > the parent's d_lock during the iteration.  With the current __d_move
->> > behaviour this would allow a dentry to be moved to the front and so
->> > missed, even though it is still in the same directory.  This might be
->> > unexpected.
->> >
->> > With this change the only dentries that d_for_each_positive_child()
->> > might miss are those moved out of the directory, or those moved in after
->> > the iteration started.  These are unavoidable and should not be
->> > unexpected.
->> >
->> > Signed-off-by: NeilBrown <neil@brown.name>
->> > ---
->> >  fs/dcache.c | 20 ++++++++++++++------
->> >  1 file changed, 14 insertions(+), 6 deletions(-)
->> >
->> > diff --git a/fs/dcache.c b/fs/dcache.c
->> > index ae726f3ff0cb..50fbbcceca01 100644
->> > --- a/fs/dcache.c
->> > +++ b/fs/dcache.c
->> > @@ -3052,6 +3052,9 @@ static void copy_name(struct dentry *dentry, 
->> > struct dentry *target)
->> >   * entries should not be moved in this way. Caller must hold 
->> > rename_lock, the
->> >   * i_rwsem of the source and target directories (exclusively), and the 
->> > sb->
->> >   * s_vfs_rename_mutex if they differ. See lock_rename().
->> > + *
->> > + * If @dentry and @target have the same parent, then neither is
->> > + * moved in the d_sib list.
->> >   */
->> >  static void __d_move(struct dentry *dentry, struct dentry *target,
->> >  		     bool exchange)
->> > @@ -3119,15 +3122,20 @@ static void __d_move(struct dentry *dentry, 
->> > struct dentry *target,
->> >  	} else {
->> >  		target->d_parent = old_parent;
->> >  		swap_names(dentry, target);
->> > -		if (!hlist_unhashed(&target->d_sib))
->> > -			__hlist_del(&target->d_sib);
->> > -		hlist_add_head(&target->d_sib, &target->d_parent->d_children);
->> > +		if (target->d_parent != dentry->d_parent) {
->> > +			if (!hlist_unhashed(&target->d_sib))
->> > +				__hlist_del(&target->d_sib);
->> > +			hlist_add_head(&target->d_sib,
->> > +				       &target->d_parent->d_children);
->> > +		}
->> >  		__d_rehash(target);
->> >  		fsnotify_update_flags(target);
->> >  	}
->> > -	if (!hlist_unhashed(&dentry->d_sib))
->> > -		__hlist_del(&dentry->d_sib);
->> > -	hlist_add_head(&dentry->d_sib, &dentry->d_parent->d_children);
->> > +	if (dentry->d_parent != old_parent) {
->> > +		if (!hlist_unhashed(&dentry->d_sib))
->> > +			__hlist_del(&dentry->d_sib);
->> > +		hlist_add_head(&dentry->d_sib, &dentry->d_parent->d_children);
->> > +	}
->> > 
->> >  	/*
->> >  	 * Adjust parent refcounts if either d_children ended up empty.
->> > -- 
->> > 2.50.0.107.gf914562f5916.dirty
->> 
->> Both new guards are correct. In the exchange branch target->d_parent has
->> already been set to old_parent, so testing it against dentry->d_parent
->> asks whether the two dentries started in the same directory. In the
->> common branch dentry->d_parent has been set to target's parent, so
->> testing it against old_parent asks the same question. IS_ROOT()
->> still takes the move, which it needs to because a root dentry has an
->> unhashed d_sib, and the BUG_ON(p) above guarantees target->d_parent
->> is not dentry.
->> 
->> The opening sentence needs a qualifier. For an ordinary move only
->> dentry->d_sib is relocated. target->d_sib is touched only on the
->> exchange path, so "both dentries" describes just that case.
->
-> Thanks, I'll adjust that.
->
->> 
->> This patch also does more for libfs than the patch description claims.
->> I would like the description to say so, because it makes the patch
->> worth applying on its own.
->> 
->> offset_readdir() resolves a stale cookie with mas_find_rev() and then
->> walks d_children from the dentry it lands on. That is correct only
->> while offset order is the reverse of d_children order. d_alloc()
->> inserts at the head and mtree_alloc_cyclic() hands out increasing
->> offsets, so the two agree in a directory that is only created into.
->> 
->> A rename within one directory breaks the agreement today.
->> simple_offset_rename() gives the surviving dentry the offset of the
->> entry it replaced, and d_move() then sends that dentry to the head of
->> d_children. Create a, b and c in that order and the offsets are 3, 4
->> and 5, with d_children holding c, b, a. After rename("a", "b") the
->> dentry for a carries offset 4 and sits at the head, so d_children
->> holds a, c while offset order still says c, a. Stop a readdir with a
->> reported and c pending, remove c, and the next call resolves the
->> cookie to a and reports a a second time.
->> 
->> With this patch a stays where it is, d_children holds c, a, and the
->> two orders agree again. Thus this is a fix for tmpfs readdir, not
->> just preparation for 14/18.
->
-> Thanks for the review, but I think the above is a false hope.
-> In that particular case my patch helps, but in a different case it
-> doesn't.
-> Suppose instead of rename("a", "b"), I did rename("a", "c").
-> Before the renames d_children holds (name,offset) pairs of
->
->  ("c", 5), ("b",4"), ("a",3)
->
-> after the rename which with my patch doesn't move dentries but does
-> still copy the name and offset from "c" to "a", and unhashes the
-> original "c" - which we can show with [] - we have
->
->  ["c", -], ("b",4), ("c", 5)
->
-> which has the wrong ordering.
+								Honza
 
-I have a fix for that, I believe, that applies on top of this one.
-I can post it if interested.
-
-
-> Thanks,
-> NeilBrown
->
->
->> 
->> Reviewed-by: Chuck Lever <cel@kernel.org>
->> 
->> 
->> -- 
->> Chuck Lever
->> 
->>
-
+> 
+> Matthew Wilcox (Oracle) (7):
+>   filemap: Export filemap_invalidate_pages() to modules
+>   fuse: Use filemap_invalidate_pages()
+>   btrfs: Use filemap_invalidate_pages()
+>   nfs: Use filemap_invalidate_pages()
+>   orangefs: Use filemap_invalidate_pages()
+>   orangefs: Remove launder_folio implementation
+>   Remove folio_launder()
+> 
+>  Documentation/filesystems/locking.rst |  8 -----
+>  Documentation/filesystems/vfs.rst     |  6 ----
+>  block/ioctl.c                         | 14 +++++---
+>  fs/btrfs/direct-io.c                  |  2 +-
+>  fs/btrfs/disk-io.c                    | 11 ++++---
+>  fs/btrfs/free-space-cache.c           |  4 +--
+>  fs/btrfs/inode.c                      | 12 ++-----
+>  fs/btrfs/volumes.c                    |  4 +--
+>  fs/fuse/dax.c                         | 15 ++-------
+>  fs/fuse/dir.c                         | 12 ++++---
+>  fs/fuse/file.c                        | 46 ++++-----------------------
+>  fs/fuse/inode.c                       | 17 +++-------
+>  fs/nfs/dir.c                          |  7 ++--
+>  fs/nfs/direct.c                       |  5 ++-
+>  fs/nfs/file.c                         | 24 --------------
+>  fs/nfs/inode.c                        |  5 +--
+>  fs/nfs/nfs42proc.c                    |  3 +-
+>  fs/nfs/nfstrace.h                     |  1 -
+>  fs/orangefs/file.c                    |  4 +--
+>  fs/orangefs/inode.c                   |  1 -
+>  include/linux/fs.h                    |  1 -
+>  include/linux/pagemap.h               |  2 +-
+>  mm/filemap.c                          | 42 ++++++++++++++++--------
+>  mm/truncate.c                         | 15 ++-------
+>  24 files changed, 87 insertions(+), 174 deletions(-)
+> 
+> -- 
+> 2.47.3
+> 
 -- 
-Chuck Lever
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
