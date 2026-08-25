@@ -1,38 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0C790486647
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 08517486E60
 	for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2026 15:02:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787670133; cv=none; b=P40eSdmSDGvhN7mk+LbFp/7lnImshK44eZ1diMBhFOn5To8/VwGwITk23Ko+XaOiph29h/15aeg5bvApdrGJGbNt34e52MQfE2YkrJg37Vh6qd9Pxwf7C8lPbTSFFm3EmbnKrWbN05RqkdG54eqvUELPRx4OzR3hi5dUn3Y9jyk=
+	t=1787670135; cv=none; b=ebVs9HH6q4w84hypSqdeiH9xbhYaNmGt1xokYQ0Ya9oDcy+EtAbJjZhUyn7z3+HfX46f8tV0xbEmNIq2Pjn40mwkK9c0v5MmiWn8FmEk36D5IiG1konB6X0eMphOrBbiGxz0kzz25TeDjqwz2G/3bXNyMnonDZ+nywIaVpefmN8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787670133; c=relaxed/simple;
-	bh=OSDPPLzli3SX4hOdWTGswnD0bx5X+fzA9Yqx73JoGXk=;
+	s=arc-20240116; t=1787670135; c=relaxed/simple;
+	bh=1Tre04YfNUU122JicSzGvr7uMCHyehYHBajBDL1Q6wc=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=MnNGVGANf8C9uWMYk4H+ZTSB4UFG4znLXuF06rjQtq67/M+wPRNKZg59vc0yrIQyvq3iPDnWZuth3eMfhX3MrlgY99siU0sCfJK9wECKQ/dVpCb0dAifZ71ixHK4msMYJPlUs7A6TLUh7b2TMwq1MGedeRFdBXYhkFoak/wfqIY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GwiMInWj; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=DUBVdADYGhxNOMwbcHyJcVLUZTJ7G4RycAjJZa0c+B0AnOolZIenOvOPvy1a2JdMU6d5FKYfv/JN89vEYzZBZntfculxU7pN5bOpjUw7fvPSQ2g2TGHmwmFTbR/hWN35+fOm4pYvqQKyYDq4ZzDuBI57b8tlFap/WbJpXQGi6aQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=KFzHxz5/; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GwiMInWj"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 91DF61F00A3E;
-	Tue, 25 Aug 2026 15:02:11 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="KFzHxz5/"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 226B91F00A3A;
+	Tue, 25 Aug 2026 15:02:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787670131;
-	bh=9E3hYNAzwi5VEdeLMiTiatKVhTNI8GCaZTVifB1F9fs=;
+	s=k20260515; t=1787670132;
+	bh=8RrdMlL3HLjiB56l1/OV9mjxcENK5bjpPwbRZE05fWQ=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=GwiMInWjmlN9T8DuJMLbFpHAP6Bpx02ptHJf7qDrtD0rFYigvaZfbMVbyVyoU1Pld
-	 oY8g9oVgO6CQ/G03K/irx7IcWIvcBWeAfDb5aEcgzo/65CIdSeehSdy3ZmTfwxdOiK
-	 wA7wEIorU2NV3tOL7Dc8zs2sAFNs/Sk8y7kzA3c/PgXVvMhgirnJuWngAgSR6HI49M
-	 FJdvn6M599DKuBecwsUoOgtsW3yMgjau1EPTRvSAHbN4EYjdd80xwBkMdTSEF6i9OF
-	 ISBErhbX2gYwQMRbpVsEFkEN9SC9q5ZcMIayf9XvZJgktVODODXGPOoO5JWEHFxBd+
-	 L2HC41ElYeV3g==
+	b=KFzHxz5/aMxH0Y0BS8PlU4nw13Rli87aiwqQTjDN37CzipT5ib5/TK+1ATotiN9kB
+	 GrioDNSSdcilv0b4Er3sBS4lSCaIYTThkZm8g8ZUugjsNXrmjgZqd+ehHwELcNk7JN
+	 vWLNyeJzaYjgqe682TRe7i2RhCS4871n9EYfLoZTOz5NbE/5HXvMK09+Vr18nCUgzo
+	 Un9LEl1A4atUCWoHXvCcrm3P07TNswWEd/o1mn/CYr6MTdaZrYIerIGI9jSUnnbKIb
+	 qYFk+9VnUuRlSG4LdKJ+YFs1Wffm7JTtIIgoLINumTb+q1w5SUrr2AxwzECgUr6X73
+	 EwQlUk//FTJrg==
 From: Anna Schumaker <anna@kernel.org>
 To: linux-nfs@vger.kernel.org,
 	trond.myklebust@hammerspace.com
 Cc: anna@kernel.org
-Subject: [PATCH v2 2/4] NFS: Add support for CB_NOTIFY4_REMOVE_ENTRY
-Date: Tue, 25 Aug 2026 11:02:07 -0400
-Message-ID: <20260825150209.694646-3-anna@kernel.org>
+Subject: [PATCH v2 3/4] NFS: Add support for CB_NOTIFY4_ADD_ENTRY
+Date: Tue, 25 Aug 2026 11:02:08 -0400
+Message-ID: <20260825150209.694646-4-anna@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260825150209.694646-1-anna@kernel.org>
 References: <20260825150209.694646-1-anna@kernel.org>
@@ -46,243 +46,326 @@ Content-Transfer-Encoding: 8bit
 
 From: Anna Schumaker <anna.schumaker@oracle.com>
 
-When the server tells us that a directory entry has been removed then we
-need to take that as an indication that our knowledge of the directory
-has changed and needs to be refreshed.
+When the server tells us that a directory entry has been created, we
+need to instantiate a new dentry and add it to the dcache on the client.
 
 Signed-off-by: Anna Schumaker <anna.schumaker@oracle.com>
 Signed-off-by: Anna Schumaker <anna.schumaker@hammerspace.com>
+
 ---
 v2:
-  * Initialize 'res' to 0 in nfs4_callback_notify()
-  * Add missing error handling
-  * Remove nfs4_cb_notify_lookup()
+ * Handle the na_have_old_entry case
+ * Initialize fattr->valid to 0 before decoding
+ * Properly check the return code from decode_fattr_cb()
+ * Rewrite nfs4_cb_notify_add() to closer resemble nfs_prime_dcache()
 ---
- fs/nfs/callback.h      | 16 ++++++++++-
- fs/nfs/callback_proc.c | 63 +++++++++++++++++++++++++++++++++++++++++-
- fs/nfs/callback_xdr.c  | 62 +++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4xdr.c       |  3 +-
+ fs/nfs/callback.h      | 17 +++++++++++
+ fs/nfs/callback_proc.c | 61 +++++++++++++++++++++++++++++++++++++
+ fs/nfs/callback_xdr.c  | 69 ++++++++++++++++++++++++++++++++++--------
+ fs/nfs/nfs4_fs.h       |  2 ++
+ fs/nfs/nfs4xdr.c       | 29 ++++++++++++++++--
  include/linux/nfs4.h   |  1 +
- 5 files changed, 142 insertions(+), 3 deletions(-)
+ 6 files changed, 164 insertions(+), 15 deletions(-)
 
 diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index f7cc5b6931bf..3740c999bb82 100644
+index 3740c999bb82..d3cc3e5df776 100644
 --- a/fs/nfs/callback.h
 +++ b/fs/nfs/callback.h
-@@ -143,8 +143,22 @@ struct cb_layoutrecallargs {
- extern __be32 nfs4_callback_layoutrecall(void *argp, void *resp,
- 		struct cb_process_state *cps);
- 
-+struct cb_notify_entry {
-+	u32			ne_namelen;
-+	const char		*ne_name;
-+	struct nfs_fattr	ne_attrs;
+@@ -147,6 +147,12 @@ struct cb_notify_entry {
+ 	u32			ne_namelen;
+ 	const char		*ne_name;
+ 	struct nfs_fattr	ne_attrs;
++	struct nfs_fh		ne_fh;
 +};
 +
-+struct cb_notify_remove {
-+	struct cb_notify_entry	nrm_old_entry;
-+	u64			nrm_old_entry_cookie;
++struct cb_notify_prev_entry {
++	struct cb_notify_entry	pe_prev_entry;
++	u64			pe_prev_entry_cookie;
+ };
+ 
+ struct cb_notify_remove {
+@@ -154,10 +160,21 @@ struct cb_notify_remove {
+ 	u64			nrm_old_entry_cookie;
+ };
+ 
++struct cb_notify_add {
++	bool			na_have_old_entry;
++	struct cb_notify_remove	na_old_entry;
++	struct cb_notify_entry	na_new_entry;
++	bool			na_have_new_entry_cookie;
++	u64			na_new_entry_cookie;
++	bool			na_have_prev_entry;
++	bool			na_last_entry;
 +};
 +
  struct cb_notify_changes {
--	u32 notify_mask;
-+	u32	notify_mask;
-+	union {
-+		struct cb_notify_remove notify_remove;
-+	};
+ 	u32	notify_mask;
+ 	union {
+ 		struct cb_notify_remove notify_remove;
++		struct cb_notify_add	notify_add;
+ 	};
  };
  
- struct cb_notifyargs {
 diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 01600d75f2d9..d8ad3cd792df 100644
+index d8ad3cd792df..9ac786f258c2 100644
 --- a/fs/nfs/callback_proc.c
 +++ b/fs/nfs/callback_proc.c
-@@ -9,6 +9,7 @@
- 
- #include <linux/errno.h>
- #include <linux/math.h>
-+#include <linux/namei.h>
- #include <linux/nfs4.h>
- #include <linux/nfs_fs.h>
- #include <linux/slab.h>
-@@ -369,13 +370,73 @@ static void pnfs_recall_all_layouts(struct nfs_client *clp,
- 	do_callback_layoutrecall(clp, &args, cps);
+@@ -390,6 +390,63 @@ static __be32 nfs4_cb_notify_remove(struct cb_process_state *cps,
+ 	return 0;
  }
  
-+static __be32 nfs4_cb_notify_remove(struct cb_process_state *cps,
-+				    struct dentry *parent,
-+				    struct cb_notify_remove *cb_remove)
++static __be32 nfs4_cb_notify_add(struct cb_process_state *cps,
++				 struct dentry *parent,
++				 struct cb_notify_add *cb_add)
 +{
-+	struct qstr filename = QSTR_INIT(cb_remove->nrm_old_entry.ne_name,
-+					 cb_remove->nrm_old_entry.ne_namelen);
-+	struct dentry *child;
++	struct nfs_entry entry = {
++		.cookie = cb_add->na_new_entry_cookie,
++		.name = cb_add->na_new_entry.ne_name,
++		.len = cb_add->na_new_entry.ne_namelen,
++		.eof = cb_add->na_last_entry,
++		.fh = &cb_add->na_new_entry.ne_fh,
++		.fattr = &cb_add->na_new_entry.ne_attrs,
++		.server = NFS_SERVER(d_inode(parent)),
++	};
++	struct qstr filename = QSTR_INIT(entry.name, entry.len);
++	struct dentry *dentry, *alias;
++	struct inode *inode;
++
++	if (cb_add->na_have_old_entry)
++		nfs4_cb_notify_remove(cps, parent, &cb_add->na_old_entry);
 +
 +	filename.hash = full_name_hash(parent, filename.name, filename.len);
-+	child = d_lookup(parent, &filename);
-+	if (IS_ERR_OR_NULL(child))
-+		return htonl(NFS4ERR_BADHANDLE);
++	dentry = d_lookup(parent, &filename);
++	if (!dentry) {
++		dentry = d_alloc_parallel(parent, &filename);
++		if (IS_ERR(dentry))
++			goto out;
++	}
 +
-+	d_drop(child);
-+	dput(child);
++	if (!d_in_lookup(dentry)) {
++		nfs_set_verifier(dentry, parent->d_time);
++		if (!nfs_refresh_inode(d_inode(dentry), entry.fattr))
++			nfs_setsecurity(d_inode(dentry), entry.fattr);
++		goto out;
++	}
 +
++	if (!entry.fh->size) {
++		d_lookup_done(dentry);
++		goto out;
++	}
++
++	nfs_set_verifier(dentry, parent->d_time);
++	inode = nfs_fhget(parent->d_sb, entry.fh, entry.fattr);
++	alias = d_splice_alias(inode, dentry);
++	d_lookup_done(dentry);
++
++	if (IS_ERR_OR_NULL(alias))
++		goto out;
++	nfs_set_verifier(alias, parent->d_time);
++	dput(dentry);
++	dentry = alias;
++
++out:
 +	nfs_set_cache_invalid(parent->d_inode, NFS_INO_INVALID_DATA);
++	dput(dentry);
 +	return 0;
 +}
 +
  __be32 nfs4_callback_notify(void *argp, void *resp,
  			    struct cb_process_state *cps)
  {
- 	struct cb_notifyargs *args = argp;
-+	struct dentry *parent;
-+	struct inode *inode;
-+	unsigned int i;
-+	__be32 res = 0;
- 
-+	if (!cps->clp) {
-+		res = htonl(NFS4ERR_OP_NOT_IN_SESSION);
-+		goto out;
-+	}
-+
-+	inode = nfs_delegation_find_inode(cps->clp, &args->cna_fh);
-+	if (IS_ERR(inode)) {
-+		res = htonl(NFS4ERR_BADHANDLE);
-+		goto out;
-+	}
-+	parent = d_find_alias(inode);
-+	if (!parent)
-+		goto out_iput;
-+
-+	for (i = 0; i < args->cna_n_changes; i++) {
-+		struct cb_notify_changes *change = &args->cna_changes[i];
-+
-+		switch (change->notify_mask) {
-+		case CB_NOTIFY4_REMOVE_ENTRY:
-+			res = nfs4_cb_notify_remove(cps, parent,
-+						    &change->notify_remove);
+@@ -421,6 +478,10 @@ __be32 nfs4_callback_notify(void *argp, void *resp,
+ 			res = nfs4_cb_notify_remove(cps, parent,
+ 						    &change->notify_remove);
+ 			break;
++		case CB_NOTIFY4_ADD_ENTRY:
++			res = nfs4_cb_notify_add(cps, parent,
++						 &change->notify_add);
 +			break;
-+		default:
-+			res = htonl(NFS4ERR_NOTSUPP);
-+			goto out_dput;
-+		}
-+
-+		if (unlikely(res != 0))
-+			break;
-+	}
-+
-+out_dput:
-+	dput(parent);
-+out_iput:
-+	nfs_iput_and_deactive(inode);
-+out:
- 	kfree(args->cna_changes);
--	return 0;
-+	return res;
- }
- 
- __be32 nfs4_callback_devicenotify(void *argp, void *resp,
+ 		default:
+ 			res = htonl(NFS4ERR_NOTSUPP);
+ 			goto out_dput;
 diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 8d822a3ee248..612d215ac66e 100644
+index 612d215ac66e..39a879e82312 100644
 --- a/fs/nfs/callback_xdr.c
 +++ b/fs/nfs/callback_xdr.c
-@@ -252,6 +252,50 @@ static __be32 decode_layoutrecall_args(struct svc_rqst *rqstp,
+@@ -257,26 +257,20 @@ static __be32 decode_notify_entry(struct xdr_stream *xdr,
+ {
+ 	uint32_t bitmap[3] = {0};
+ 	__be32 status;
+-	u32 attrlen;
+-	__be32 *p;
+ 
+ 	status = decode_string(xdr, &args->ne_namelen, &args->ne_name,
+ 				NFS4_OPAQUE_LIMIT);
+ 	if (unlikely(status != 0))
+ 		return status;
+ 
+-	status = decode_bitmap(xdr, bitmap);
++	status = xdr_stream_decode_uint32_array(xdr, bitmap, 3);
++	if (unlikely(status == 0 || status > 3))
++		return htonl(NFS4ERR_BADXDR);
++
++	status = decode_fattr_cb(xdr, bitmap, &args->ne_attrs, &args->ne_fh);
+ 	if (unlikely(status != 0))
+-		return status;
+-
+-	p = xdr_inline_decode(xdr, 4);
+-	if (unlikely(!p))
+ 		return htonl(NFS4ERR_BADXDR);
+-
+-	attrlen = be32_to_cpup(p);
+-	if (attrlen != 0)
+-		return htonl(NFS4ERR_BADXDR);
+-	return 0;
++	return status;
+ }
+ 
+ static __be32 decode_notify_remove(struct xdr_stream *xdr,
+@@ -296,6 +290,54 @@ static __be32 decode_notify_remove(struct xdr_stream *xdr,
  	return 0;
  }
  
-+static __be32 decode_notify_entry(struct xdr_stream *xdr,
-+				  struct cb_notify_entry *args)
++static __be32 decode_notify_add(struct xdr_stream *xdr,
++				struct cb_notify_add *args)
 +{
-+	uint32_t bitmap[3] = {0};
 +	__be32 status;
-+	u32 attrlen;
 +	__be32 *p;
 +
-+	status = decode_string(xdr, &args->ne_namelen, &args->ne_name,
-+				NFS4_OPAQUE_LIMIT);
-+	if (unlikely(status != 0))
-+		return status;
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		return htonl(NFS4ERR_BADXDR);
++	args->na_have_old_entry = ntohl(*p);
 +
-+	status = decode_bitmap(xdr, bitmap);
++	if (args->na_have_old_entry) {
++		status = decode_notify_remove(xdr, &args->na_old_entry);
++		if (unlikely(status != 0))
++			return status;
++	}
++
++	status = decode_notify_entry(xdr, &args->na_new_entry);
 +	if (unlikely(status != 0))
 +		return status;
 +
 +	p = xdr_inline_decode(xdr, 4);
 +	if (unlikely(!p))
 +		return htonl(NFS4ERR_BADXDR);
++	args->na_have_new_entry_cookie = ntohl(*p);
 +
-+	attrlen = be32_to_cpup(p);
-+	if (attrlen != 0)
-+		return htonl(NFS4ERR_BADXDR);
-+	return 0;
-+}
++	if (args->na_have_new_entry_cookie) {
++		p = xdr_inline_decode(xdr, 8);
++		if (unlikely(!p))
++			return htonl(NFS4ERR_BADXDR);
 +
-+static __be32 decode_notify_remove(struct xdr_stream *xdr,
-+				   struct cb_notify_remove *args)
-+{
-+	__be32 status;
-+	__be32 *p;
++		xdr_decode_hyper(p, &args->na_new_entry_cookie);
++	}
 +
-+	status = decode_notify_entry(xdr, &args->nrm_old_entry);
-+	if (unlikely(status != 0))
-+		return status;
-+
-+	p = xdr_inline_decode(xdr, 8);
++	p = xdr_inline_decode(xdr, 4);
 +	if (unlikely(!p))
 +		return htonl(NFS4ERR_BADXDR);
-+	xdr_decode_hyper(p, &args->nrm_old_entry_cookie);
++	args->na_have_prev_entry = ntohl(*p);
++
++	WARN_ONCE(args->na_have_prev_entry, "NFS: Have prev entry unimplemented\n");
++
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		return htonl(NFS4ERR_BADXDR);
++	args->na_last_entry = ntohl(*p);
 +	return 0;
 +}
 +
  static
  __be32 decode_notify_args(struct svc_rqst *rqstp,
  			  struct xdr_stream *xdr,
-@@ -289,6 +333,24 @@ __be32 decode_notify_args(struct svc_rqst *rqstp,
- 						     &change->notify_mask, 1);
- 		if (unlikely(res < 0))
- 			goto err;
-+
-+		/* Decode opaque size */
-+		p = xdr_inline_decode(xdr, 4);
-+		if (unlikely(!p))
-+			goto err;
-+		res = ntohl(*p);
-+
-+		switch (change->notify_mask) {
-+		case CB_NOTIFY4_REMOVE_ENTRY:
-+			status = decode_notify_remove(xdr,
-+						      &change->notify_remove);
+@@ -345,6 +387,9 @@ __be32 decode_notify_args(struct svc_rqst *rqstp,
+ 			status = decode_notify_remove(xdr,
+ 						      &change->notify_remove);
+ 			break;
++		case CB_NOTIFY4_ADD_ENTRY:
++			status = decode_notify_add(xdr, &change->notify_add);
 +			break;
-+		default:
-+			goto err;
-+		}
-+
-+		if (unlikely(status != 0))
-+			goto err;
- 	}
+ 		default:
+ 			goto err;
+ 		}
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index b48e5b87cb2a..b029c9cefc38 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -586,6 +586,8 @@ extern const u32 nfs42_maxlistxattrs_overhead;
+ #endif
  
- 	return 0;
+ struct nfs4_mount_data;
++int decode_fattr_cb(struct xdr_stream *xdr, uint32_t *bitmap,
++		    struct nfs_fattr *fattr, struct nfs_fh *fhandle);
+ 
+ /* callback_xdr.c */
+ extern const struct svc_version nfs4_callback_version1;
 diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 5c51691fff03..e275fbfd395e 100644
+index e275fbfd395e..9a7c4d23aea7 100644
 --- a/fs/nfs/nfs4xdr.c
 +++ b/fs/nfs/nfs4xdr.c
-@@ -2012,7 +2012,8 @@ static void
- encode_get_dir_delegation(struct xdr_stream *xdr, struct compound_hdr *hdr)
+@@ -2013,8 +2013,11 @@ encode_get_dir_delegation(struct xdr_stream *xdr, struct compound_hdr *hdr)
  {
  	struct timespec64 ts = { 0, 0 };
--	u32 notifications[1] = { CB_NOTIFY4_GFLAG_EXTEND };
-+	u32 notifications[1] = { CB_NOTIFY4_REMOVE_ENTRY |
-+				 CB_NOTIFY4_GFLAG_EXTEND };
- 	u32 attributes[1] = { 0 };
+ 	u32 notifications[1] = { CB_NOTIFY4_REMOVE_ENTRY |
++				 CB_NOTIFY4_ADD_ENTRY |
+ 				 CB_NOTIFY4_GFLAG_EXTEND };
+-	u32 attributes[1] = { 0 };
++	u32 child_attrs[1] = { FATTR4_WORD0_FSID | FATTR4_WORD0_FILEID |
++			       FATTR4_WORD0_TYPE | FATTR4_WORD0_FILEHANDLE };
++	u32 dir_attrs[1] = { 0 };
  	__be32 *p;
  
+ 	encode_op_hdr(xdr, OP_GET_DIR_DELEGATION, decode_get_dir_deleg_maxsz, hdr);
+@@ -2030,10 +2033,10 @@ encode_get_dir_delegation(struct xdr_stream *xdr, struct compound_hdr *hdr)
+ 	xdr_encode_nfstime4(p, &ts);
+ 
+ 	/* Requested child attributes */
+-	xdr_encode_bitmap4(xdr, attributes, ARRAY_SIZE(attributes));
++	xdr_encode_bitmap4(xdr, child_attrs, ARRAY_SIZE(child_attrs));
+ 
+ 	/* Requested dir attributes */
+-	xdr_encode_bitmap4(xdr, attributes, ARRAY_SIZE(attributes));
++	xdr_encode_bitmap4(xdr, dir_attrs, ARRAY_SIZE(dir_attrs));
+ }
+ 
+ static void
+@@ -4919,6 +4922,26 @@ static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr,
+ 	return decode_getfattr_generic(xdr, fattr, NULL, NULL, server);
+ }
+ 
++int decode_fattr_cb(struct xdr_stream *xdr, uint32_t *bitmap,
++			     struct nfs_fattr *fattr, struct nfs_fh *fhandle)
++{
++	unsigned int savep;
++	uint32_t attrlen;
++	int status;
++
++	fattr->valid = 0;
++
++	status = decode_attr_length(xdr, &attrlen, &savep);
++	if (status < 0)
++		return status;
++
++	status = decode_getfattr_attrs(xdr, bitmap, fattr, fhandle, NULL, NULL);
++	if (status < 0)
++		return status;
++
++	return verify_attr_len(xdr, savep, attrlen);
++}
++
+ /*
+  * Decode potentially multiple layout types.
+  */
 diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 2e33f2ffdc31..8de3ea283767 100644
+index 8de3ea283767..4b507a93aa38 100644
 --- a/include/linux/nfs4.h
 +++ b/include/linux/nfs4.h
-@@ -492,6 +492,7 @@ enum {
- #define THRESHOLD_WR_IO                 (1UL << 3)
+@@ -493,6 +493,7 @@ enum {
  
  /* Directory Delegation / CB_NOTIFY bits */
-+#define CB_NOTIFY4_REMOVE_ENTRY		(1UL << 2)
+ #define CB_NOTIFY4_REMOVE_ENTRY		(1UL << 2)
++#define CB_NOTIFY4_ADD_ENTRY		(1UL << 3)
  #define CB_NOTIFY4_GFLAG_EXTEND		(1UL << 6)
  
  #define NFSPROC4_NULL 0
