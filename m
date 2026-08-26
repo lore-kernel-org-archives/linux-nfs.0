@@ -1,234 +1,117 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2C039490C0C
-	for <linux-nfs@vger.kernel.org>; Wed, 26 Aug 2026 19:44:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C68F471CE4
+	for <linux-nfs@vger.kernel.org>; Wed, 26 Aug 2026 20:27:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787773510; cv=none; b=lXYhbPsj2JBlEIbH2KN0pVLanltDKuVvUYqo4pbL/jZ43QqEQ9ZvhW24HEKbgQHnwtYx9ZX+rJ1d3xP6vFn17hiGtqtg6WQmYOHO1RlOkMDCxRrxWhZbZGabHCd2ut/HdSt9ZhCo49F8/G9FkXVQR6dGRFlLXdTJAtXrJExjPmY=
+	t=1787776024; cv=none; b=oLLXTvc1N4JkVAomRJNG1jWJ2PLHKWY7Bg/ADawk4iISw4u+lEGzsN0H3oro7n9hRXKucb5FsAq9DVzcu4NTDg6g7OOPixa0JMLVMZWjFF55Tl7Tj1pDnVtRiXFu0bFOiTrCq7RkNxsT6LfjVgj0CbTcYXo42+Jzw+oPMXHuGOw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787773510; c=relaxed/simple;
-	bh=m7Ob3olpljDCCDWWy148CGNOzZnXUSC1FKtYresA8VQ=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=FI9j1oDgHVtMpwaO0rGv+dwx7NDJWNbQHY4rNBbWSzIB8E95ylV6vJeH3n8TwR9IFMvCCXbAK/8UFDSyLRGppssQJNEjHT4rVm/caCE7GnBo+3Rs9JxYr4pSknq7KlxLTxmL+W96RERSIZHlWQTCLibVqs0IaM0WYNjKB01kMFI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=L4NTYCpK; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787776024; c=relaxed/simple;
+	bh=v5q2CrK11HvGT7c12WqSYTZO19dUCuJ/frAdywtlb0c=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=iLy9q7xlm8GgGv2Jz2Ic519SXrQWJl1aYJFqI1vTsKvH32oy//HuYHaY5uUB282/q1dwTrdAjZHKT1Dv+OS6mYOTObIjrich7qvy8gS0RDFMap49T94NzseCJjoNz7ePQLzZ1+hxwf6ouLBt66noKWk04fXrre+DaGQV5GgnmWA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=eg09N9qj; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="L4NTYCpK"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 00CA51F00A3A;
-	Wed, 26 Aug 2026 19:44:45 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="eg09N9qj"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 349F41F000E9;
+	Wed, 26 Aug 2026 20:27:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787773486;
-	bh=ahTZW8AKZ2paZ7qQ9JAqpdNaUJ9B/G8jOBM2zoMcVTc=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=L4NTYCpKU1VNZSga74SqIs7pmQrxp1iTzfP6pAZRWpgiXZGRCZ+QGoHo8RlWLe+1c
-	 by7FVmIqB1OMaQbAUJ4wxKCcQ/T3U02HtupSJahjY80G/oSFofnQCUknIfHBcK5wVC
-	 YFPugiYFkHgSAuuktdtki59e+jKP/eWTGeTSwBKMLkYFNcHisuZWidjPIuvMNE+7Fa
-	 Z0zl5NbiJ94VurSNAwnUXxz091QdWjn50RkBGSmKyJ4WTc2D5yiXPp+a2AgIMYYV4N
-	 ys2o2zIzokcDNPvRZG9kGjWG4n9wSfLPp7osjOHEzzkRmdHfHML7QSsxjfCDnmNw1+
-	 Id/jn4lAsBo/Q==
+	s=k20260515; t=1787776022;
+	bh=SUxwBBUnMq8e++vQll8SP69lAXB1bUoIVsi4Z3zBTgw=;
+	h=From:Subject:Date:To:Cc;
+	b=eg09N9qjGY0rheDtplwCwyuQdrAK9IOOkjwl38TpDe80Xa8KLG+EZo98HVtGrLIBN
+	 WGi2RBN/3XZJntKi5y+L90NEr+mEbthuYnUHFfg/tYxDaZ71drvkdSLA+iZ9Cn6HHK
+	 pAsvHBycniEH0WJRiADO43YI3GeGEEubmTc+CSCmV2OI5ZvGU76cjBVEQ98EZ/O7Kj
+	 /ksTE5gFR+Y43cRyJn/vCrk0wv96imG6VQBGg4+0KgtdIa/P7RllvHpKXPlQxqUL+L
+	 auu7HYx385UIMK+VzSYjhXSaIEHrB4jGWHu4dqaF79Te0sGBJdK0bjbE8CbxkHz64s
+	 Md+DPymk610tA==
 From: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neil@brown.name>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] NFSD: Rework be32 nfserr definitions
-Date: Wed, 26 Aug 2026 15:44:44 -0400
-Message-ID: <20260826194444.148243-2-cel@kernel.org>
-X-Mailer: git-send-email 2.55.0
-In-Reply-To: <20260826194444.148243-1-cel@kernel.org>
-References: <20260826194444.148243-1-cel@kernel.org>
+Subject: [PATCH 0/7] Implied-ACK eviction for NFSD's duplicate reply cache
+Date: Wed, 26 Aug 2026 16:26:50 -0400
+Message-Id: <20260826-duplicate-reply-cache-v1-0-b1d51e1af5c7@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMyw6CMBBFf4XM2okVHyT+inHRDrcwhlTSKUZD+
+ HdBl+fmnjOTISuMrtVMGS81faYVDruKpPepA2u7MtWuvrhjfeZ2GgcVX8AZ4/Bh8dKDo4topAn
+ NyQmt7pgR9f3r3u5/tik8IGWLbY/gDRyyT9Jvk2DYp2gtF1jR1NGyfAGKsHjCnAAAAA==
+X-Change-ID: 20260325-duplicate-reply-cache-f0fe7c7b740c
+To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>
+Cc: Rick Macklem <rmacklem@uoguelph.ca>, linux-nfs@vger.kernel.org, 
+ Chuck Lever <cel@kernel.org>
+X-Mailer: b4 0.16-dev-da966
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2350; i=cel@kernel.org;
+ h=from:subject:message-id; bh=v5q2CrK11HvGT7c12WqSYTZO19dUCuJ/frAdywtlb0c=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqj0wM7YO3+eTB/6jGwzXULVcSg+TdFxd1ck0hw
+ cuRdMY4uPGJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCao9MDAAKCRAzarMzb2Z/
+ l7iUEACY4cRPZ8vWg+3BUKKpq7L5Jw6ujVrC8tPSH8OhGeZ8UFJSUv/ysk/R37C2rp73h7P1uo4
+ acq4T3KdzwWTVJyXbxdJZjrAnhhf5KWJvkidVIs0wJoK5deroPFsYJJICeVYkq/MMHpzYr9FGcZ
+ 5jhUg32uEzF/EGgAEQKhXdM6PkFiUjW0meRcadLlZVL+9lwlNNfb/ejoLSB3feikyg88VIgIwMK
+ ljO8XHkprtBZF+9RAODChGsr62+BNlFIeFljNU86RLtXrgzG3Xs3A4FODtecnFFtc6+H7GUMGqp
+ DSsbqQNpSorRy1MoYooorABmO9LfrleYIZEtnO2/ANo2uH7f06o3UNdJn2s0W4oTwHFoj/HEJ24
+ uRqWEq/W9Q/CH8LC7cxhOPxfwhhKRcV7St9jnU4siU5OBlTd+vMXG2TpACbD3SwTMA44Fb0z9Xu
+ L/+EHH2LCP68Kt/l/L2ZwOjl6/0KQf43zpgp3c1ovATyvJOTlJxsl491Jg1Zz0gUs0yIRnuC8ZU
+ /qD8kLTQ0SEzjzjIWABdWrjbmJAcXeaoyhP0TmdNLgY16iQK2fMYL5PvysnTZ3Swkq8l/Y1/4T8
+ DZT7ZzT9y8sF/rk5qndtq5nAvxM+aL2n+voA9mk5PIwGjZon00Hogk2CzGK/i4is/y+GOz6xK/D
+ AKTpRet/dPEn6Fw==
+X-Developer-Key: i=cel@kernel.org; a=openpgp;
+ fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-fs/nfsd/nfserr.h builds NFSD's internal __be32 nfserr_* values
-by wrapping the version-agnostic NFSERR_* status codes from
-uapi/linux/nfs.h in cpu_to_be32(), which it reaches through its
-include of linux/nfs.h.
+Connection-oriented transports (TCP, RDMA) guarantee in-order
+delivery: arrival of a new request proves every prior reply on that
+connection has been received. This series exploits that property to
+evict completed DRC entries as soon as the next request arrives on
+the same transport, rather than waiting out the 120-second
+RC_EXPIRE timeout.
 
-A subsequent patch replaces that include with the xdrgen-generated
-linux/sunrpc/xdrgen/nfs2.h. The generated header re-supplies
-only the eighteen NFSv2 status codes; the NFSv3 and NFSv4 codes
-that nfserr.h also uses (NFSERR_INVAL, NFSERR_JUKEBOX,
-NFSERR_RESOURCE, and the rest) would be left undeclared.
+Each DRC entry records its originating transport. A new
+xpt_last_recv timestamp on svc_xprt marks when the most recent
+request arrived. During bucket pruning, nfsd_prune_bucket_locked()
+compares the entry's timestamp against xpt_last_recv; a newer
+value on the same transport means the reply was delivered, and the
+entry is evicted immediately.
 
-Respell those definitions in terms of the version-specific
-NFS3ERR_* and NFS4ERR_* codes from linux/nfs3.h and linux/nfs4.h,
-and switch the one bare NFSERR_MOVED in nfs4xdr.c to NFS4ERR_MOVED.
-The wire values are unchanged; NFSD no longer depends on the
-version-agnostic NFSv3 and NFSv4 names.
+Profiled with "perf record -e cycles -e cpu-clock -e LLC-load-misses
+-e branch-misses" during an NFSv3/RDMA 4KB random-write workload.
+nfsd_cache_lookup overhead dropped from 1.53% to 0.76% of CPU
+cycles. The rb-tree operations (rb_erase, rb_insert_color) that
+dominated LLC cache misses fell from a combined 13.2% to 1.1% of all
+LLC-load-misses, because shorter-lived entries keep the per-bucket
+trees small.
 
-Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs4xdr.c |   2 +-
- fs/nfsd/nfserr.h  | 129 +++++++++++++++++++++++-----------------------
- 2 files changed, 66 insertions(+), 65 deletions(-)
+Chuck Lever (7):
+      SUNRPC: Assign a unique identifier to each svc_xprt
+      NFSD: Track transport in DRC entries
+      SUNRPC: Record last-request timestamp on svc_xprt
+      SUNRPC: Mark connection-oriented transports on svc_xprt
+      NFSD: Evict completed DRC entries via implied ACK
+      NFSD: Add tracepoints for DRC entry eviction
+      NFSD: Record DRC population in lookup tracepoints
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 5bfbeb87394e..00ddaac499c6 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3213,7 +3213,7 @@ static __be32 fattr_handle_absent_fs(u32 *bmval0, u32 *bmval1, u32 *bmval2, u32
- 	    *bmval1 & ~WORD1_ABSENT_FS_ATTRS) {
- 		if (*bmval0 & FATTR4_WORD0_RDATTR_ERROR ||
- 	            *bmval0 & FATTR4_WORD0_FS_LOCATIONS)
--			*rdattr_err = NFSERR_MOVED;
-+			*rdattr_err = NFS4ERR_MOVED;
- 		else
- 			return nfserr_moved;
- 	}
-diff --git a/fs/nfsd/nfserr.h b/fs/nfsd/nfserr.h
-index 9b9df7aab220..d1c434b834b2 100644
---- a/fs/nfsd/nfserr.h
-+++ b/fs/nfsd/nfserr.h
-@@ -11,76 +11,77 @@
- #define LINUX_NFSD_NFSERR_H
- 
- #include <linux/nfs.h>
-+#include <linux/nfs3.h>
- #include <linux/nfs4.h>
- 
- /*
-  * These macros provide pre-xdr'ed values for faster operation.
-  */
--#define	nfs_ok			cpu_to_be32(NFS_OK)
--#define	nfserr_perm		cpu_to_be32(NFSERR_PERM)
--#define	nfserr_noent		cpu_to_be32(NFSERR_NOENT)
--#define	nfserr_io		cpu_to_be32(NFSERR_IO)
--#define	nfserr_nxio		cpu_to_be32(NFSERR_NXIO)
--#define	nfserr_acces		cpu_to_be32(NFSERR_ACCES)
--#define	nfserr_exist		cpu_to_be32(NFSERR_EXIST)
--#define	nfserr_xdev		cpu_to_be32(NFSERR_XDEV)
--#define	nfserr_nodev		cpu_to_be32(NFSERR_NODEV)
--#define	nfserr_notdir		cpu_to_be32(NFSERR_NOTDIR)
--#define	nfserr_isdir		cpu_to_be32(NFSERR_ISDIR)
--#define	nfserr_inval		cpu_to_be32(NFSERR_INVAL)
--#define	nfserr_fbig		cpu_to_be32(NFSERR_FBIG)
--#define	nfserr_nospc		cpu_to_be32(NFSERR_NOSPC)
--#define	nfserr_rofs		cpu_to_be32(NFSERR_ROFS)
--#define	nfserr_mlink		cpu_to_be32(NFSERR_MLINK)
--#define	nfserr_nametoolong	cpu_to_be32(NFSERR_NAMETOOLONG)
--#define	nfserr_notempty		cpu_to_be32(NFSERR_NOTEMPTY)
--#define	nfserr_dquot		cpu_to_be32(NFSERR_DQUOT)
--#define	nfserr_stale		cpu_to_be32(NFSERR_STALE)
--#define	nfserr_remote		cpu_to_be32(NFSERR_REMOTE)
--#define	nfserr_wflush		cpu_to_be32(NFSERR_WFLUSH)
--#define	nfserr_badhandle	cpu_to_be32(NFSERR_BADHANDLE)
--#define	nfserr_notsync		cpu_to_be32(NFSERR_NOT_SYNC)
--#define	nfserr_badcookie	cpu_to_be32(NFSERR_BAD_COOKIE)
--#define	nfserr_notsupp		cpu_to_be32(NFSERR_NOTSUPP)
--#define	nfserr_toosmall		cpu_to_be32(NFSERR_TOOSMALL)
--#define	nfserr_serverfault	cpu_to_be32(NFSERR_SERVERFAULT)
--#define	nfserr_badtype		cpu_to_be32(NFSERR_BADTYPE)
--#define	nfserr_jukebox		cpu_to_be32(NFSERR_JUKEBOX)
--#define	nfserr_denied		cpu_to_be32(NFSERR_DENIED)
--#define	nfserr_deadlock		cpu_to_be32(NFSERR_DEADLOCK)
--#define nfserr_expired          cpu_to_be32(NFSERR_EXPIRED)
--#define	nfserr_bad_cookie	cpu_to_be32(NFSERR_BAD_COOKIE)
--#define	nfserr_same		cpu_to_be32(NFSERR_SAME)
--#define	nfserr_clid_inuse	cpu_to_be32(NFSERR_CLID_INUSE)
--#define	nfserr_stale_clientid	cpu_to_be32(NFSERR_STALE_CLIENTID)
--#define	nfserr_resource		cpu_to_be32(NFSERR_RESOURCE)
--#define	nfserr_moved		cpu_to_be32(NFSERR_MOVED)
--#define	nfserr_nofilehandle	cpu_to_be32(NFSERR_NOFILEHANDLE)
--#define	nfserr_minor_vers_mismatch	cpu_to_be32(NFSERR_MINOR_VERS_MISMATCH)
--#define nfserr_share_denied	cpu_to_be32(NFSERR_SHARE_DENIED)
--#define nfserr_stale_stateid	cpu_to_be32(NFSERR_STALE_STATEID)
--#define nfserr_old_stateid	cpu_to_be32(NFSERR_OLD_STATEID)
--#define nfserr_bad_stateid	cpu_to_be32(NFSERR_BAD_STATEID)
--#define nfserr_bad_seqid	cpu_to_be32(NFSERR_BAD_SEQID)
--#define	nfserr_symlink		cpu_to_be32(NFSERR_SYMLINK)
--#define	nfserr_not_same		cpu_to_be32(NFSERR_NOT_SAME)
--#define nfserr_lock_range	cpu_to_be32(NFSERR_LOCK_RANGE)
--#define	nfserr_restorefh	cpu_to_be32(NFSERR_RESTOREFH)
--#define	nfserr_attrnotsupp	cpu_to_be32(NFSERR_ATTRNOTSUPP)
--#define	nfserr_bad_xdr		cpu_to_be32(NFSERR_BAD_XDR)
--#define	nfserr_openmode		cpu_to_be32(NFSERR_OPENMODE)
--#define	nfserr_badowner		cpu_to_be32(NFSERR_BADOWNER)
--#define	nfserr_locks_held	cpu_to_be32(NFSERR_LOCKS_HELD)
--#define	nfserr_op_illegal	cpu_to_be32(NFSERR_OP_ILLEGAL)
--#define	nfserr_grace		cpu_to_be32(NFSERR_GRACE)
--#define	nfserr_no_grace		cpu_to_be32(NFSERR_NO_GRACE)
--#define	nfserr_reclaim_bad	cpu_to_be32(NFSERR_RECLAIM_BAD)
--#define	nfserr_badname		cpu_to_be32(NFSERR_BADNAME)
--#define	nfserr_admin_revoked	cpu_to_be32(NFS4ERR_ADMIN_REVOKED)
--#define	nfserr_cb_path_down	cpu_to_be32(NFSERR_CB_PATH_DOWN)
--#define	nfserr_locked		cpu_to_be32(NFSERR_LOCKED)
--#define	nfserr_wrongsec		cpu_to_be32(NFSERR_WRONGSEC)
-+#define	nfs_ok				cpu_to_be32(NFS_OK)
-+#define	nfserr_perm			cpu_to_be32(NFSERR_PERM)
-+#define	nfserr_noent			cpu_to_be32(NFSERR_NOENT)
-+#define	nfserr_io			cpu_to_be32(NFSERR_IO)
-+#define	nfserr_nxio			cpu_to_be32(NFSERR_NXIO)
-+#define	nfserr_acces			cpu_to_be32(NFSERR_ACCES)
-+#define	nfserr_exist			cpu_to_be32(NFSERR_EXIST)
-+#define	nfserr_xdev			cpu_to_be32(NFS3ERR_XDEV)
-+#define	nfserr_nodev			cpu_to_be32(NFSERR_NODEV)
-+#define	nfserr_notdir			cpu_to_be32(NFSERR_NOTDIR)
-+#define	nfserr_isdir			cpu_to_be32(NFSERR_ISDIR)
-+#define	nfserr_inval			cpu_to_be32(NFS3ERR_INVAL)
-+#define	nfserr_fbig			cpu_to_be32(NFSERR_FBIG)
-+#define	nfserr_nospc			cpu_to_be32(NFSERR_NOSPC)
-+#define	nfserr_rofs			cpu_to_be32(NFSERR_ROFS)
-+#define	nfserr_mlink			cpu_to_be32(NFS3ERR_MLINK)
-+#define	nfserr_nametoolong		cpu_to_be32(NFSERR_NAMETOOLONG)
-+#define	nfserr_notempty			cpu_to_be32(NFSERR_NOTEMPTY)
-+#define	nfserr_dquot			cpu_to_be32(NFSERR_DQUOT)
-+#define	nfserr_stale			cpu_to_be32(NFSERR_STALE)
-+#define	nfserr_remote			cpu_to_be32(NFS3ERR_REMOTE)
-+#define	nfserr_wflush			cpu_to_be32(NFSERR_WFLUSH)
-+#define	nfserr_badhandle		cpu_to_be32(NFS3ERR_BADHANDLE)
-+#define	nfserr_notsync			cpu_to_be32(NFS3ERR_NOT_SYNC)
-+#define	nfserr_badcookie		cpu_to_be32(NFS3ERR_BAD_COOKIE)
-+#define	nfserr_notsupp			cpu_to_be32(NFS3ERR_NOTSUPP)
-+#define	nfserr_toosmall			cpu_to_be32(NFS3ERR_TOOSMALL)
-+#define	nfserr_serverfault		cpu_to_be32(NFS3ERR_SERVERFAULT)
-+#define	nfserr_badtype			cpu_to_be32(NFS3ERR_BADTYPE)
-+#define	nfserr_jukebox			cpu_to_be32(NFS3ERR_JUKEBOX)
- #define nfserr_delay			cpu_to_be32(NFS4ERR_DELAY)
-+#define	nfserr_same			cpu_to_be32(NFS4ERR_SAME)
-+#define	nfserr_denied			cpu_to_be32(NFS4ERR_DENIED)
-+#define	nfserr_deadlock			cpu_to_be32(NFS4ERR_DEADLOCK)
-+#define	nfserr_expired			cpu_to_be32(NFS4ERR_EXPIRED)
-+#define	nfserr_bad_cookie		cpu_to_be32(NFS4ERR_BAD_COOKIE)
-+#define	nfserr_clid_inuse		cpu_to_be32(NFS4ERR_CLID_INUSE)
-+#define	nfserr_stale_clientid		cpu_to_be32(NFS4ERR_STALE_CLIENTID)
-+#define	nfserr_resource			cpu_to_be32(NFS4ERR_RESOURCE)
-+#define	nfserr_moved			cpu_to_be32(NFS4ERR_MOVED)
-+#define	nfserr_nofilehandle		cpu_to_be32(NFS4ERR_NOFILEHANDLE)
-+#define	nfserr_minor_vers_mismatch	cpu_to_be32(NFS4ERR_MINOR_VERS_MISMATCH)
-+#define nfserr_share_denied		cpu_to_be32(NFS4ERR_SHARE_DENIED)
-+#define nfserr_stale_stateid		cpu_to_be32(NFS4ERR_STALE_STATEID)
-+#define nfserr_old_stateid		cpu_to_be32(NFS4ERR_OLD_STATEID)
-+#define nfserr_bad_stateid		cpu_to_be32(NFS4ERR_BAD_STATEID)
-+#define nfserr_bad_seqid		cpu_to_be32(NFS4ERR_BAD_SEQID)
-+#define	nfserr_symlink			cpu_to_be32(NFS4ERR_SYMLINK)
-+#define	nfserr_not_same			cpu_to_be32(NFS4ERR_NOT_SAME)
-+#define nfserr_lock_range		cpu_to_be32(NFS4ERR_LOCK_RANGE)
-+#define	nfserr_restorefh		cpu_to_be32(NFS4ERR_RESTOREFH)
-+#define	nfserr_attrnotsupp		cpu_to_be32(NFS4ERR_ATTRNOTSUPP)
-+#define	nfserr_bad_xdr			cpu_to_be32(NFS4ERR_BADXDR)
-+#define	nfserr_openmode			cpu_to_be32(NFS4ERR_OPENMODE)
-+#define	nfserr_badowner			cpu_to_be32(NFS4ERR_BADOWNER)
-+#define	nfserr_locks_held		cpu_to_be32(NFS4ERR_LOCKS_HELD)
-+#define	nfserr_op_illegal		cpu_to_be32(NFS4ERR_OP_ILLEGAL)
-+#define	nfserr_grace			cpu_to_be32(NFS4ERR_GRACE)
-+#define	nfserr_no_grace			cpu_to_be32(NFS4ERR_NO_GRACE)
-+#define	nfserr_reclaim_bad		cpu_to_be32(NFS4ERR_RECLAIM_BAD)
-+#define	nfserr_badname			cpu_to_be32(NFS4ERR_BADNAME)
-+#define	nfserr_admin_revoked		cpu_to_be32(NFS4ERR_ADMIN_REVOKED)
-+#define	nfserr_cb_path_down		cpu_to_be32(NFS4ERR_CB_PATH_DOWN)
-+#define	nfserr_locked			cpu_to_be32(NFS4ERR_LOCKED)
-+#define	nfserr_wrongsec			cpu_to_be32(NFS4ERR_WRONGSEC)
- #define nfserr_badiomode		cpu_to_be32(NFS4ERR_BADIOMODE)
- #define nfserr_badlayout		cpu_to_be32(NFS4ERR_BADLAYOUT)
- #define nfserr_bad_session_digest	cpu_to_be32(NFS4ERR_BAD_SESSION_DIGEST)
--- 
-2.55.0
+ fs/nfsd/cache.h                          |  1 +
+ fs/nfsd/nfscache.c                       | 88 +++++++++++++++++++++++++++-----
+ fs/nfsd/trace.h                          | 49 ++++++++++++++++--
+ include/linux/sunrpc/svc_xprt.h          |  5 +-
+ include/trace/events/sunrpc.h            |  9 +++-
+ net/sunrpc/netns.h                       |  4 ++
+ net/sunrpc/sunrpc_syms.c                 |  3 ++
+ net/sunrpc/svc_xprt.c                    | 54 ++++++++++++++++++--
+ net/sunrpc/svcsock.c                     | 41 ++++++++++-----
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |  6 ++-
+ 10 files changed, 222 insertions(+), 38 deletions(-)
+---
+base-commit: 3a4d7c7c9466a07fa4176ce35180149709d92c22
+change-id: 20260325-duplicate-reply-cache-f0fe7c7b740c
+
+Best regards,
+--  
+Chuck Lever <cel@kernel.org>
 
