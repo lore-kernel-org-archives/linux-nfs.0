@@ -1,191 +1,146 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from oss.cyber.gouv.fr (oss.cyber.gouv.fr [51.159.188.251])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1E8C33B6C18;
-	Wed, 26 Aug 2026 07:50:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF52B379C32;
+	Wed, 26 Aug 2026 08:10:05 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=51.159.188.251
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787730618; cv=none; b=Bfxc1hkgUiKKiyQ8UoUtBd/3knLWf93DOAeSJ0wpPRM5VU11qr1UB+6fGuYw+75Sdg1t6uXRPzPiXZ5YaJDKPYsq1vavmA8Af359ISIcgvLt+JX6eDq+go5+SmpqrXqL3/HlmmPmP34EvM3KlSeY5uaaBvLL7Q4H2AMrDCqwSMU=
+	t=1787731808; cv=none; b=EFr0000J5ICO0ln+9GRKf7YIFPvSckmpUlJZ9fpNvyMNtpLq+t0pINfIyuM36ldbUfM01/vYstACvrZDCV4aqPFHZpjDG78G2nvqygN3I+7Xk9vWF67dnS75OOEOPLuBq8JWSBLjaasfSwALVs9RTes4RbSfYkqnSI793eFZgo4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787730618; c=relaxed/simple;
-	bh=a2btTeaHPqaWUx1hv3tFSSuWg92+seYqUJqRI+0fmNw=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=HCCxaxDgcwGRwL9F8TKiogW35KZgtnoLfPhl81B/JE3UJDjV90ZPFsa4SeXaIU18Vx1+J3d/GEXFLvo/1d4y5VrPSyYA5wRYCLPQzCXkNWHTWT3QyRZsNRvLtgQyVZ3WlAH2UcRMr07tzOhUyFJ0sd6toeLQ53yD3MDGepBIOKo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=2Z1Tf/yp; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=658bYWki; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=1JuUKAco; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=vA5oIE6L; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1787731808; c=relaxed/simple;
+	bh=VH0JTq0aUrXxVeMX8ruxn6wUXJjklTvxhu+0AZ6/8kk=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type; b=UYfJ2CaAU5yq6xAGef982JDGIPKATbe14x6lA6uqfjrBXlLDvfHx2wpUtJnbdhSATJVKckldTn7AMK1BVQ3cEhsmt9BpZ+A2CQCAus9wzAnkUxZCsq1yojIjR+zBu3ITKAv8CiksaaYUNVb+g2v4tkBJBfNJfgiwp2K7Lh8gmn0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=oss.cyber.gouv.fr; spf=pass smtp.mailfrom=oss.cyber.gouv.fr; dkim=pass (2048-bit key) header.d=oss.cyber.gouv.fr header.i=@oss.cyber.gouv.fr header.b=mjh5KFAN; arc=none smtp.client-ip=51.159.188.251
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=oss.cyber.gouv.fr
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oss.cyber.gouv.fr
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="2Z1Tf/yp";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="658bYWki";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="1JuUKAco";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="vA5oIE6L"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id E8ADB87217;
-	Wed, 26 Aug 2026 07:50:05 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787730610; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=V/kDgiqCJ24UzYKi/b0vTHiHEoPucZGyvIT9cCOxpb0=;
-	b=2Z1Tf/ypjBvVk+yBoniYR6BcmnlXWvIf6tUvzYS1LY5lHf1JhccViu7h5BgvZjiNltUVr3
-	kVZDko2QEGnhBIRhDzJcJpdy47Nq1ot2zMLC5+HKo0abzmfnSiXYCYb2wS4daIZJwz6ku+
-	mXaAvocjnmEJfLIojQHOnYh4tlzafKs=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787730610;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=V/kDgiqCJ24UzYKi/b0vTHiHEoPucZGyvIT9cCOxpb0=;
-	b=658bYWki4AUwyhAOT31qDuMyPna1QbJfz6FjGWQiHbcaSyiSXtc7eETidr9tnt+NHkWzNX
-	zMcpKPXEliEmCtDw==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=1JuUKAco;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=vA5oIE6L
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787730605; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=V/kDgiqCJ24UzYKi/b0vTHiHEoPucZGyvIT9cCOxpb0=;
-	b=1JuUKAcodENvSgJev1mTdBqYGVNqOhIPDnDRUFHDNNfI+UKF5Hbx66lEdWsfh1WYPiRDz5
-	NdPE4LAktNCQQPyuvR2Cmrbi0lThRccYF7sWAKSpyCYBW2xbtXUPAndVOZ3cFa9a9T+XQJ
-	5SCdZ6uIdEikprCWzSb1uJ1VjbVSklY=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787730605;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=V/kDgiqCJ24UzYKi/b0vTHiHEoPucZGyvIT9cCOxpb0=;
-	b=vA5oIE6Lxvhb0G4M580CVZeOvk+ZaLTuwbG6zEdGNN79MxFpOzhk69zb4Q8Fq/lk5kzWsE
-	NOc2dZCq8DTfn2CQ==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id D787713699;
-	Wed, 26 Aug 2026 07:49:55 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id APOYNKOajmodDAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 26 Aug 2026 07:49:55 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 1DB57A13A3; Tue, 25 Aug 2026 17:50:17 +0200 (CEST)
-Date: Tue, 25 Aug 2026 17:50:17 +0200
-From: Jan Kara <jack@suse.cz>
-To: "Matthew Wilcox (Oracle)" <willy@infradead.org>
-Cc: Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
-	Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.com>, 
-	Miklos Szeredi <miklos@szeredi.hu>, Trond Myklebust <trondmy@kernel.org>, 
-	Anna Schumaker <anna@kernel.org>, Mike Marshall <hubcap@omnibond.com>, 
-	Martin Brandenburg <martin@omnibond.com>, Alexander Viro <viro@zeniv.linux.org.uk>, 
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org, linux-block@vger.kernel.org, 
-	linux-btrfs@vger.kernel.org, fuse-devel@lists.linux.dev, linux-nfs@vger.kernel.org, 
-	devel@lists.orangefs.org, Pavel Begunkov <asml.silence@gmail.com>
-Subject: Re: [PATCH 0/7] Remove aops->launder_folio
-Message-ID: <cpxzyq5vdzuwters6mn3irrxvpvvkr6g7cjqbrsckivrupbua3@pzjpyvzqnke4>
-References: <20260820193343.3852967-1-willy@infradead.org>
+	dkim=pass (2048-bit key) header.d=oss.cyber.gouv.fr header.i=@oss.cyber.gouv.fr header.b="mjh5KFAN"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=oss.cyber.gouv.fr; s=default; h=Content-Transfer-Encoding:Content-Type:
+	MIME-Version:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:Content-ID:
+	Content-Description:Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc
+	:Resent-Message-ID:In-Reply-To:References:List-Id:List-Help:List-Unsubscribe:
+	List-Subscribe:List-Post:List-Owner:List-Archive;
+	bh=wjPblfhFmT5W5g5QCeEjBcrjlEX/rBTw3prM8FktCbY=; b=mjh5KFANvm6pRco1PfkkrjyiyD
+	/0BPtlwAQ9QFj09H34h3R26+rd9/tf7OsegFtS4KxdRzuG/k+eecIO8jRowFz8Ohp/v+jd3lMcA3D
+	My8mn9feRIJeJXLfuQunn8QATBJ80ctGYnoHLNqwiS8+pEozxl1ke13+xr5alpqy8TJUmMske1xSQ
+	ElrdzIUoUE2kpi2ueJEjBSfLI4AD04dDbxaBDtzn0oj+8YopmoDMKWdAHsbkdOdnxw7IMFW74nj29
+	5B++UaAfjkeeyTuwetYAUYOkr/XI2ZZfb3O3qaf17x++YzQH/H7vZsB+K7HoRvDa8T3fcEBpnuWQu
+	PclOFbbA==;
+Received: from [151.115.150.205] (port=59492 helo=gepetto..)
+	by pf-012.whm.fr-par.scw.cloud with esmtpsa  (TLS1.3) tls TLS_AES_256_GCM_SHA384
+	(Exim 4.99.5)
+	(envelope-from <Jeremy.Jean@oss.cyber.gouv.fr>)
+	id 1wz8hp-0000000EKrJ-2uLv;
+	Wed, 26 Aug 2026 10:09:57 +0200
+From: =?UTF-8?q?J=C3=A9r=C3=A9my=20Jean?= <Jeremy.Jean@oss.cyber.gouv.fr>
+To: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	=?UTF-8?q?J=C3=A9r=C3=A9my=20Jean?= <Jeremy.Jean@oss.cyber.gouv.fr>,
+	stable@vger.kernel.org
+Subject: [PATCH] NFS: blocklayout: reject oversized SCSI designators
+Date: Wed, 26 Aug 2026 08:07:37 +0000
+Message-ID: <20260826080736.1431809-2-Jeremy.Jean@oss.cyber.gouv.fr>
+X-Mailer: git-send-email 2.47.3
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260820193343.3852967-1-willy@infradead.org>
-X-Spamd-Result: default: False [-2.51 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	RCPT_COUNT_TWELVE(0.00)[19];
-	ARC_NA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_TLS_LAST(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from,2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FREEMAIL_CC(0.00)[kernel.org,suse.cz,fb.com,suse.com,szeredi.hu,omnibond.com,zeniv.linux.org.uk,vger.kernel.org,kvack.org,lists.linux.dev,lists.orangefs.org,gmail.com];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email]
-X-Spam-Flag: NO
-X-Spam-Score: -2.51
-X-Spam-Level: 
-X-Rspamd-Queue-Id: E8ADB87217
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Rspamd-Action: no action
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
+X-AntiAbuse: Primary Hostname - pf-012.whm.fr-par.scw.cloud
+X-AntiAbuse: Original Domain - vger.kernel.org
+X-AntiAbuse: Originator/Caller UID/GID - [47 12] / [47 12]
+X-AntiAbuse: Sender Address Domain - oss.cyber.gouv.fr
+X-Get-Message-Sender-Via: pf-012.whm.fr-par.scw.cloud: authenticated_id: jeremy.jean@oss.cyber.gouv.fr
+X-Authenticated-Sender: pf-012.whm.fr-par.scw.cloud: jeremy.jean@oss.cyber.gouv.fr
+X-Source: 
+X-Source-Args: 
+X-Source-Dir: 
 
-On Thu 20-08-26 20:33:33, Matthew Wilcox (Oracle) wrote:
-> There's really no reason to implement ->launder_folio.  Most filesystems
-> don't.  The only problem is that some filesystems rely on dirty folios
-> being written back this way, so we need to make sure that folios are
-> written back before invalidating them.  filemap_invalidate_pages()
-> works well for that, once we remove the 'nowait' parameter.
+A SCSI GETDEVICEINFO reply can encode designator_len as 0xffffffff.  The
+current signed field turns that into -1, so the size check is bypassed and
+the value is converted to SIZE_MAX for xdr_inline_decode() and memcpy().
 
-I like the idea (and was myself wondering from time to time whether
-launder_folio is actually needed) but what was putting me off was that when
-using folio_launder() you can clean a folio while keeping folio locked and
-so you can guarantee later eviction without someone messing with the folio
-between writeout & ->release_folio. Maybe nobody actually needs this, which
-would be great, but it would be great to hear more from the folks using
-launder_folio about their reasons...
+The attacker model considers a controlled NFSv4.1+ server and a client
+already mounted to that server. An OOB read can be triggered in the client
+on a file read. KASAN reports:
 
-								Honza
+  BUG: KASAN: out-of-bounds in bl_alloc_deviceid_node+0x616/0x1110
+  Read of size 18446744073709551615
+  ...
+  __asan_memcpy+0x23/0x60
+  bl_alloc_deviceid_node+0x616/0x1110
+  nfs4_find_get_deviceid+0x565/0x810
+  bl_alloc_lseg+0x638/0x12d0
+  pnfs_layout_process+0x2b6/0xcf0
+  nfs4_proc_layoutget+0x4b3/0xd30
 
-> 
-> Matthew Wilcox (Oracle) (7):
->   filemap: Export filemap_invalidate_pages() to modules
->   fuse: Use filemap_invalidate_pages()
->   btrfs: Use filemap_invalidate_pages()
->   nfs: Use filemap_invalidate_pages()
->   orangefs: Use filemap_invalidate_pages()
->   orangefs: Remove launder_folio implementation
->   Remove folio_launder()
-> 
->  Documentation/filesystems/locking.rst |  8 -----
->  Documentation/filesystems/vfs.rst     |  6 ----
->  block/ioctl.c                         | 14 +++++---
->  fs/btrfs/direct-io.c                  |  2 +-
->  fs/btrfs/disk-io.c                    | 11 ++++---
->  fs/btrfs/free-space-cache.c           |  4 +--
->  fs/btrfs/inode.c                      | 12 ++-----
->  fs/btrfs/volumes.c                    |  4 +--
->  fs/fuse/dax.c                         | 15 ++-------
->  fs/fuse/dir.c                         | 12 ++++---
->  fs/fuse/file.c                        | 46 ++++-----------------------
->  fs/fuse/inode.c                       | 17 +++-------
->  fs/nfs/dir.c                          |  7 ++--
->  fs/nfs/direct.c                       |  5 ++-
->  fs/nfs/file.c                         | 24 --------------
->  fs/nfs/inode.c                        |  5 +--
->  fs/nfs/nfs42proc.c                    |  3 +-
->  fs/nfs/nfstrace.h                     |  1 -
->  fs/orangefs/file.c                    |  4 +--
->  fs/orangefs/inode.c                   |  1 -
->  include/linux/fs.h                    |  1 -
->  include/linux/pagemap.h               |  2 +-
->  mm/filemap.c                          | 42 ++++++++++++++++--------
->  mm/truncate.c                         | 15 ++-------
->  24 files changed, 87 insertions(+), 174 deletions(-)
-> 
-> -- 
-> 2.47.3
-> 
+
+The fix stores the length as u32 and reject oversized values before decoding.
+The check is moved up before the call to xdr_inline_decode().
+
+Fixes: d9186c039765 ("nfs/blocklayout: add SCSI layout support")
+Cc: stable@vger.kernel.org
+Assisted-by: Codex:gpt-5
+Signed-off-by: Jérémy Jean <Jeremy.Jean@oss.cyber.gouv.fr>
+---
+ fs/nfs/blocklayout/blocklayout.h | 2 +-
+ fs/nfs/blocklayout/dev.c         | 8 ++++----
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 6da40ca19570..db81ef3f9811 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -84,7 +84,7 @@ struct pnfs_block_volume {
+ 		struct {
+ 			enum scsi_code_set		code_set;
+ 			enum scsi_designator_type	designator_type;
+-			int				designator_len;
++			u32				designator_len;
+ 			u8				designator[256];
+ 			u64				pr_key;
+ 		} scsi;
+diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
+index 368d20daf67b..1e6141e79f3f 100644
+--- a/fs/nfs/blocklayout/dev.c
++++ b/fs/nfs/blocklayout/dev.c
+@@ -203,11 +203,11 @@ nfs4_block_decode_volume(struct xdr_stream *xdr, struct pnfs_block_volume *b)
+ 		b->scsi.code_set = be32_to_cpup(p++);
+ 		b->scsi.designator_type = be32_to_cpup(p++);
+ 		b->scsi.designator_len = be32_to_cpup(p++);
++		if (b->scsi.designator_len > sizeof(b->scsi.designator))
++			return -EIO;
+ 		p = xdr_inline_decode(xdr, b->scsi.designator_len);
+ 		if (!p)
+ 			return -EIO;
+-		if (b->scsi.designator_len > 256)
+-			return -EIO;
+ 		memcpy(&b->scsi.designator, p, b->scsi.designator_len);
+ 		p = xdr_inline_decode(xdr, 8);
+ 		if (!p)
+@@ -345,14 +345,14 @@ bl_validate_designator(struct pnfs_block_volume *v)
+ 	case PS_DESIGNATOR_T10:
+ 	case PS_DESIGNATOR_NAME:
+ 		pr_err("pNFS: unsupported designator "
+-			"(code set %d, type %d, len %d.\n",
++			"(code set %d, type %d, len %u.\n",
+ 			v->scsi.code_set,
+ 			v->scsi.designator_type,
+ 			v->scsi.designator_len);
+ 		return false;
+ 	default:
+ 		pr_err("pNFS: invalid designator "
+-			"(code set %d, type %d, len %d.\n",
++			"(code set %d, type %d, len %u.\n",
+ 			v->scsi.code_set,
+ 			v->scsi.designator_type,
+ 			v->scsi.designator_len);
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.47.3
