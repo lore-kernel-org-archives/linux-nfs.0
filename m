@@ -1,78 +1,77 @@
 Received: from mx0a-00154904.pphosted.com (mx0a-00154904.pphosted.com [148.163.133.20])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D66157082D;
-	Thu, 27 Aug 2026 04:51:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7BB872620DE
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 04:59:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.133.20
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787806317; cv=none; b=OtzivX+1jsD9nEJcE753ns+NGg/f2L/xEBtGaznQFxp23XPZbSs0s+akRz9F6bnPnXHUjIrIrMDLLnqY2J6jBSzjwFg3AD+WH65Gn5Rk3RysL1NoNYBuQmjPr86I+lC51zgU0c83Ib6jmIPwaQKYL2khIH719CPkFZ84qNV+Xgs=
+	t=1787806768; cv=none; b=H0GUgXf1ZuWIvY03P7jnWB/wZDSoolaTpchlckCwDERik9qj0HRTKN+1nQ/goXh8HTqNIyUJqxYutwdGRjFF3w6viJE+Mtl1mzxfRQgwLHDi78VlLQgkhjmefz2FffkjIW8iQmTf+8T+UlNi1v1PKwj6t8ZTTnp4WyR/smb8Z08=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787806317; c=relaxed/simple;
-	bh=Xgse6h7bd5lA35XNrEmB9AIxaGP2ov/gYrlT0u3BAWw=;
+	s=arc-20240116; t=1787806768; c=relaxed/simple;
+	bh=1KhsHzpqnDqyZGnr6eNW8QCWOwEw46fvWSe1zHw+V5A=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=QyxkQRJ7l4EtsrDFySt1x3lLAB32qxWt4QbzHVrO7u7IKm7LGLzLkjiOejueQkGs8WXjkZV/DPGalGXOWyhO+/3VD0tr4XzEkglArfp+UiRUcMd0fltZpO1OwFEBrs5KeSYnFnYhYFbEj3Ocz49KQhdsZLO3nEDATtJlJhFibts=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=jBmvrnUd; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=PfGGo5BL; arc=none smtp.client-ip=148.163.133.20
+	 MIME-Version; b=MytxRXJTzt11YI1tkcZH9fDCFPl74UOe/XP8sG4EMzKkQzlk/vuCsPjMQdn/Q1oY5Fck6NOH+U6NtD5DJFSPZd28A5j7jv1ySR7T2NjVmnEC7TKSdoQtABvSZwLAdYMBolUO55V9DXoRoN0XpW9tVL3EPVwn8RDoT28RKh+dAgA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=vTc9R4du; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=Eytpffhh; arc=none smtp.client-ip=148.163.133.20
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dell.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="jBmvrnUd";
-	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="PfGGo5BL"
-Received: from pps.filterd (m0170389.ppops.net [127.0.0.1])
-	by mx0a-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67R3Hcoe3093841;
-	Thu, 27 Aug 2026 00:51:49 -0400
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="vTc9R4du";
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="Eytpffhh"
+Received: from pps.filterd (m0170390.ppops.net [127.0.0.1])
+	by mx0a-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67R3HYgI1513432
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 00:59:26 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=dell.com; h=cc
 	:content-transfer-encoding:date:from:in-reply-to:message-id
-	:mime-version:references:subject:to; s=smtpout1; bh=T2RB/2li44XP
-	m884BMP9QF2DhhDtOGSY5T1bKBnUfFw=; b=jBmvrnUdhVvPEX6r2sOBJJq2ww5y
-	2X1QuXOV3beeMgKLHHkgSe9BWH+nybrv9efbsPXzdXqS6nIDFN4BxGdsMNPCEEGr
-	epPzNYTyqnBPitz5RIb1SNG2tS3Zx/VYVDxlyNgBfwHOGi1hafA2JM7y8/Hd65B7
-	z4NYy2yVgekKV1STme/xb9TxLfMtH/a/5BdV1bTMKQS+3BuTYPpopv2gxR2Kn1tn
-	7rnSo7S7U31mfLcBUF+ziRURhLUJw+TVeFSl7zWXnppsk4D7v7uKKY3CuOXX/NDN
-	T8KDOHHtGeqN0kC7HmE+7SkvOnNuPugfvG4uUxslNlaxipH5jUJID9WwHQ==
-Received: from mx0b-00154901.pphosted.com (mx0b-00154901.pphosted.com [67.231.157.37])
-	by mx0a-00154904.pphosted.com (PPS) with ESMTPS id 4g77sema3b-1
-	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
-	Thu, 27 Aug 2026 00:51:48 -0400 (EDT)
-Received: from pps.filterd (m0089483.ppops.net [127.0.0.1])
-	by mx0b-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67R3eEfc053434;
-	Thu, 27 Aug 2026 00:51:47 -0400
-Received: from esapsmtplv05.us.dell.com (esapsmtplv05.us.dell.com [143.166.203.153])
-	by mx0b-00154901.pphosted.com (PPS) with ESMTPS id 4ga69n5tm2-1
-	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=FAIL);
-	Thu, 27 Aug 2026 00:51:47 -0400 (EDT)
+	:mime-version:references:subject:to; s=smtpout1; bh=8nF11ZanslR7
+	I3IQiCOLtuCjx+lqtM6paKjOiUPX7w4=; b=vTc9R4dumbckddZ0humTGMN5zIJE
+	yMqy60NQv6xyayUifqipnLULH7dUSBW3cyQIqxbUYpr7T/TsHCtUMFMzEP3P2Mkz
+	ufCHqyMtCynIsIUptzXoXstQLBjeJ3R8GkZ1KYHjg8l7bHAXL8zgRWoKgqT9nyHK
+	ubHtY3RMGHyiwavs1Fli96Y6+29Ad7vUsHby6fix6MQHnqbWpCcf5SclvJBq8d+g
+	Xshr2j5PQWlEStWJI/3SYK9zFJywJTT0aHSq78XeR9UgK0n0E8cII982/URJK3oA
+	wRg+N74FBmKeFJqOMhVODirZHkQZDNp3FOWplsV1WypCu0RyrD1YxfLCdA==
+Received: from mx0a-00154901.pphosted.com (mx0a-00154901.pphosted.com [67.231.149.39])
+	by mx0a-00154904.pphosted.com (PPS) with ESMTPS id 4g76tych2m-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 00:59:26 -0400 (EDT)
+Received: from pps.filterd (m0090351.ppops.net [127.0.0.1])
+	by mx0b-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67R4UMx6351941
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 00:59:26 -0400
+Received: from esapsmtplv04.us.dell.com (esapsmtplv04.us.dell.com [143.166.203.152])
+	by mx0b-00154901.pphosted.com (PPS) with ESMTPS id 4gae96g7yj-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 00:59:26 -0400 (EDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=dell.com; i=@dell.com; q=dns/txt; s=smtpdev1;
-  t=1787806307; x=1819342307;
+  t=1787806767; x=1819342767;
   h=from:to:cc:subject:date:message-id:in-reply-to:
    references:mime-version:content-transfer-encoding;
-  bh=T2RB/2li44XPm884BMP9QF2DhhDtOGSY5T1bKBnUfFw=;
-  b=PfGGo5BLcNmjkBe6J/fjJCXf/RjvTKk4/5exbLbqY0M6G6hhKZQb8z5L
-   GhplIxTkv7TJ/aEFRCRpDpjMXootaeUnlPrRyNvAFTyhJd3yW39NQUCNN
-   dZ+BZbsp1kiqvPZHbQIT5ckW1WxjeIJCLA/fTNdkPmNGalxSJJD9Kokxj
-   rCq354bFL8++mzinvl7U7QiePjKyznv2gSUB9ndPe//vr1FTz3HSg9VKc
-   y5Btp9SyJd/b3S3GlN6wDRbW1DPXZ7n/pH8MqKW274HQ1CmuJ8BdWg5kY
-   sPp7MhO9lJJrZrchex/gvXBTsI+YJ9jlKetNaIVQbfo9UBbx9QlCNomJW
-   g==;
-X-CSE-ConnectionGUID: /r5jaFZ+So2BYxY6OnPNIA==
-X-CSE-MsgGUID: GLU43B+qTH2mhIhzNcDxig==
+  bh=8nF11ZanslR7I3IQiCOLtuCjx+lqtM6paKjOiUPX7w4=;
+  b=Eytpffhh8emlk0fz8U4S0jaB4YMNuhFRX4lazrlp7dDFCHOmdcu+DMgj
+   sK+69Dq5D8DuKNIkp8oniBxfoNBxkhCdCX+nK71ZhqBIatls6E6AbzTUG
+   Fn355kWiW/rI/8PwqdWY39//t7XmmERc8VhDEBytaMj9SMMsr8ID+ue/q
+   F2zeO3x35wgE5PKPgCRWDvGjKepmaw2Wqj5YW/CalehB4guKGJcvULUEN
+   QD0mWzLaw4nPLIjZUuCOg5BCHiCdapAFK84H3YMxlEFeDtOQ365/zbf3H
+   0U8AI2RT0SzGLhgJt4idiWl8ZJp01E5mTLX16KVl3RRHlY/khsSaMcIxd
+   Q==;
+X-CSE-ConnectionGUID: ZYSuAv0pRtmtV9w515cXlA==
+X-CSE-MsgGUID: 1J8Wm+0yS7+dVnMGGviHIQ==
 X-LoopCount0: from 10.94.13.48
 X-MS-Exchange-CrossPremises-AuthAs: Internal
 Received: from w-96j1th4.apac.dell.com (HELO W-96J1TH4.blr.amer.dell.com) ([10.94.13.48])
-  by esapsmtplv05.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 27 Aug 2026 04:51:43 +0000
+  by esapsmtplv04.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 27 Aug 2026 04:59:23 +0000
 From: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
-To: Jeff Layton <jlayton@kernel.org>
-Cc: Prabhakar Pujeri <prabhakar.pujeri@dell.com>, Chuck Lever <cel@kernel.org>,
-        NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>,
-        Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
-        Donald Hunter <donald.hunter@gmail.com>,
-        Jakub Kicinski <kuba@kernel.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v1 1/3] nfsd: report NFSv4 grace state through Netlink
-Date: Thu, 27 Aug 2026 04:51:39 +0000
-Message-ID: <20260827045139.4353-1-prabhakar.pujeri@dell.com>
+To: Chuck Lever <cel@kernel.org>
+Cc: Prabhakar Pujeri <prabhakar.pujeri@dell.com>,
+        Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+        Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>,
+        Tom Talpey <tom@talpey.com>, Rick Macklem <rmacklem@uoguelph.ca>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: release POSIX ACLs of unexecuted compound ops
+Date: Thu, 27 Aug 2026 04:59:19 +0000
+Message-ID: <20260827045920.4737-1-prabhakar.pujeri@dell.com>
 X-Mailer: git-send-email 2.53.0
-In-Reply-To: <1046756851d9d7d688ac612a7f175e48745d2b84.camel@kernel.org>
-References: <3fd25e2178458fbb44f57f1b0e068c12a6503d17.1787638668.git.prabhakar.pujeri@dell.com> <1046756851d9d7d688ac612a7f175e48745d2b84.camel@kernel.org>
+In-Reply-To: <2805508b-99b1-4bfd-bdd5-cd07ba0789f5@app.fastmail.com>
+References: <20260823113255.3417-1-prabhakar.pujeri@dell.com> <2805508b-99b1-4bfd-bdd5-cd07ba0789f5@app.fastmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -84,115 +83,92 @@ X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
  definitions=2026-08-27_02,2026-08-26_02,2025-10-01_01
 X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- clxscore=1015 adultscore=0 spamscore=0 malwarescore=0 priorityscore=1501
- phishscore=0 impostorscore=0 bulkscore=0 suspectscore=0 lowpriorityscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608270037
-X-Proofpoint-GUID: nNw38OqJL0HoBlwxVIn1Za71GUCVtCVi
-X-Authority-Analysis: v=2.4 cv=AobeGu9P c=1 sm=1 tr=0 ts=6a8fc264 cx=c_pps
- a=Z2e5DKjA+8LiMDv5v6mwwA==:117 a=t4Iba6VQkoKuxR139xjPXA==:17
+ priorityscore=1501 impostorscore=0 phishscore=0 bulkscore=0
+ lowpriorityscore=0 clxscore=1015 adultscore=0 spamscore=0 malwarescore=0
+ suspectscore=0 classifier=typeunknown authscore=0 authtc= authcc=
+ route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2606150000
+ definitions=main-2608270038
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODI3MDAzOCBTYWx0ZWRfX9RCtE6yq8gUI
+ Ay5tt1cPXDFF/ouG8gbXrG8bosJu1UHVQIXl/37sUO2xOEFUZxNp0tcZlkOqmC3KKkA98Y+1q79
+ MvFEfTQxS8o0On3HWFXiTssnNHD95PouIOx4ytzoBuVoEfaPo97xmxEwFJ3Ewg7xXI0hKfTIPsD
+ e5hcrZgPbNgnLbA/J3UIioNWLS2lZwE/i0RacdQRJlfVri2Yw+7cIQktCPyYlEL+Sr5EBOk4AnB
+ 5SlJxF95vDJ/zvtExQHzMaxOYmE/U/59vAwtNMPKbHXWFL6ZXHCV66cv2+feew5iUTiHLREp1aS
+ wRhq2DLSJEExsQHRJ5Ml6Dp7VVqk0crxCBk6ZUDXUtDgcwGA/wPwbyNS5A3T473RoMOPGSXGVlJ
+ 0oLuPQQu/C9tKyxwkskFw7ls8vY/ck0SYH2OEyvD+auKiQK8xgJ8i+e3tHqam/eS0dmc/3c5FHN
+ Uw/B4p/xHkVcxRDz/yA==
+X-Proofpoint-GUID: iTQfZvJIoY-flLC4Ou4dTbDnmQpC7VK4
+X-Proofpoint-Spam-Info: AW1haW4tMjYwODI3MDAzOCBTYWx0ZWRfX45CvS2vwA3vd
+ fcOfjOnGNqP2AUuMTYBbTwfGWb91p8dfSxO419iOj+g9I7/5R37uR0J3/Iq99zn8uWABMSFG1WZ
+ AOtr+jlfWV14YfNp0G/M2Iv6W5bdh3I=
+X-Proofpoint-ORIG-GUID: iTQfZvJIoY-flLC4Ou4dTbDnmQpC7VK4
+X-Authority-Analysis: v=2.4 cv=BMGDalQG c=1 sm=1 tr=0 ts=6a8fc42e cx=c_pps
+ a=j0++y401J6f/BxNAf5EDow==:117 a=XtseytAk/c9oG0Kwoj6KRQ==:17
  a=Sv0fKeRqtYgA:10 a=ke5jqHz-1hQA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=6gNNCFAoQcIphELLPWWu:22 a=PpEg0BoV_A2aca28hXd0:22 a=iTTXWCemjofwsjQ5oiUA:9
- a=hlJyneSgMmFPbskH-t2w:22
-X-Proofpoint-ORIG-GUID: nNw38OqJL0HoBlwxVIn1Za71GUCVtCVi
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODI3MDAzNyBTYWx0ZWRfX8RGkwRy6CAQg
- mwJjXOPDDBvt4ifH+L7H+0HVeCqsv3VfLOAgozADIZ6XXUQCaJQbCyHJrsXR6sPNxP9KbEWJ5hU
- ZV3TR5Qfs6N/r4A7KePtCN6HRRpDR8uCkxwgWmEe6q1g72/8pMemGO6PUvaolFJwbP+MbEXN5F8
- qdn22OOYWLqSvIpVa6gy9VOy70QtLh0b1wC0Jn3z+ahEbK2L/i1zasED+eE7jo6MnbcZP6Zeclw
- tszeHpmwSGh8v9BU7yu+lL85i0RPCMLglRYwsnX4guz28bk3xN4R9cB2niL0+OA62EuGT9aEG3V
- PVBfz3Kg+gqtFzQnSdFLWrrarfJh5rXBXmPNFkS67yOggPWN7QocrrQ/fyqPayC9iX0JFQft52P
- yYZxC7ypqj/8f1vMU+rmOfEe9+fxbq7ZDDEROyYMRmtiVRKvHUizomA+LyGqp3mppKY9eNPDFFy
- nj9mkKkYdphveA11lTw==
-X-Proofpoint-Spam-Info: AW1haW4tMjYwODI3MDAzNyBTYWx0ZWRfXxAg3zp0yF/DX
- FWPYJc+5fSl50jqQSzqITRBoJKK/zCnJRzA4GLOIPFytEEq0hRt/bcuHiQ0wPLIu2vfTpGhsfud
- jjb515h/1qk9mB/cjdOOqLlLemYGYXQ=
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0
- adultscore=0 clxscore=1015 phishscore=0 bulkscore=0 spamscore=0
- impostorscore=0 malwarescore=0 priorityscore=1501 lowpriorityscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608270037
+ a=6gNNCFAoQcIphELLPWWu:22 a=sEWawkeXllE7TocFc0N_:22 a=sJCFo_cA0p22xgH3cmUA:9
+ a=gbU3OgOOxF9bX48Letew:22
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0
+ lowpriorityscore=0 malwarescore=0 clxscore=1015 spamscore=0
+ priorityscore=1501 adultscore=0 phishscore=0 suspectscore=0 impostorscore=0
+ bulkscore=0 classifier=typeunknown authscore=0 authtc= authcc= route=outbound
+ adjust=0 reason=mlx scancount=1 engine=8.22.0-2606150000
+ definitions=main-2608270038
 
-On Tue, 2026-08-25 at 08:10 -0400, Jeff Layton wrote:
-> What's your interest in reporting this info?
-
-My interest is in making nfsd's operational state observable to
-monitoring and validation tooling without parsing nfsdfs.
-
-Concretely, I'm building a validation harness for NFS server
-restart and failover behaviour: bounce the server, drive reclaim from a
-set of clients, and check that state comes back the way it should. That
-kind of test has to know when the grace period has actually lifted
-before it can move on to the next phase. Polling
-/proc/fs/nfsd/v4_end_grace works, but it is a text interface, it only
-answers for nfsd's v4 lock manager, and new nfsd control and
-observability interfaces are going to the netlink family instead.
-
-So I would rather frame this as parity than as new information: grace
-state is already exported, this puts it on the interface that is
-replacing the one exporting it, and -- per your point below -- fixes
-the semantics on the way over.
-
-> Just because the v4 recovery is done does not mean that you will be
-> able to access files. The overall system grace period is a union of
-> both the NLM and v4 grace periods.
+On Sat, Aug 23, 2026, at 12:17 PM, Chuck Lever wrote:
+> Thanks for the report. I agree with the diagnosis and its status as
+> triggerable by a remote. After careful review, I have decided to
+> split the work into two patches.
 >
-> This patch is reporting just the v4 one. If the goal is for the admin
-> to reliably tell when the grace period has been lifted, then this
-> won't tell us that.
+> Your two opcnt assignments fix something separate from the ACL leak,
+> and that fix needs to be backported to stable kernels.
 
-Agreed, and "has the grace period lifted" is the question I actually
-care about. I mirrored the semantics of /proc/fs/nfsd/v4_end_grace
-without stopping to ask whether those were the useful semantics to
-expose in a new interface. They aren't.
+Thanks, the split makes sense, and separating the opcnt fix so it can
+go to stable on its own is clearly the right call -- it stands
+independent of the ACL question and is the part with the wider blast
+radius.
 
-> Maybe this should just return the result of locks_in_grace() instead?
+> For the ACL half, the underlying issue is that ->set_acl() borrows
+> the caller's reference rather than consuming it. That makes pointer
+> ownership the true root cause, which IMHO needs a different approach
+> than your proposed fix.
+
+Agreed. My sweep in nfsd4_release_compoundargs() cleans up the symptom
+at teardown; putting the fix at the ownership boundary is the more
+durable answer, and it makes the release path idempotent by
+construction rather than by careful pointer-clearing. Happy to defer to
+your version. Since POSIX ACLs in NFSv4 are experimental and off by
+default, treating the ACL half as mainline-only with no backport also
+seems right.
+
+I'll hold my patch and review/test yours once it's posted; please keep
+me on Cc so I can give it a Tested-by against the reproducer below.
+
+> I'll post these as a two-patch series soon for you to review and try
+> out.
 >
-> Or, do you plan to add similar functionality to lockd? Then you can
-> just do the union in userland to figure out if it has been lifted.
+> Can you share the test that generated the 512 crafted compounds?
 
-I don't think lockd needs to grow anything -- fs/nfs_common/grace.c
-already gives us both halves, and nfsd calls into both helpers today:
+Yes. The shape of it:
 
-  - locks_in_grace() is the union you describe: true while any lock
-    manager in the net ns is still in grace.
+  - Build a single NFSv4.1 COMPOUND that decodes an ACL-bearing op
+    (OP_SETATTR with a fattr4 carrying an ACL, or OP_OPEN with an
+    attr set) and then place, immediately after it, an operation that
+    makes compound processing stop before the ACL-bearing op is
+    executed -- so the ACL is allocated during decode but never
+    reaches ->set_acl() and its op_release() never runs.
+  - Fire that compound N times (N=512 in my run) and watch
+    kmalloc-tracked posix_acl allocations climb monotonically with no
+    matching frees, e.g. via the posix_acl slab in /proc/slabinfo or a
+    kmemleak scan.
+  - Baseline vs patched: unpatched leaks one ACL per iteration;
+    patched holds flat.
 
-  - opens_in_grace() is true only while a manager with ->block_opens
-    is in grace, which per the comment on struct lock_manager is the
-    NFSv4-and-up case; NLM doesn't set it.
+I ran it as a small raw-XDR client harness rather than through pynfs;
+I'll clean it up and attach it here (or push it somewhere you can pull)
+so it drops straight into your test setup. If you'd rather I fold it in
+as a pynfs case so it lives with the existing NFSv4 tests, say the word
+and I'll target that instead.
 
-So for v2 I'll report locks_in_grace(), which answers "can this server
-hand out normal locks and opens yet" rather than "is nfsd's v4 lock
-manager done". If it's ever worth distinguishing the two, a second
-attribute carrying opens_in_grace() gets there without touching lockd,
-and userland can derive the NLM-only case as (locks && !opens). I'd
-rather not add that speculatively, but say the word if you'd like both
-in v2.
-
-Two things fall out of the switch, both improvements:
-
-  - The #ifdef CONFIG_NFSD_V4 and the open-coded
-    nfsd_vers()/NFSD_NET_UP/NFSD_NET_GRACE_ENDED test all go away.
-    NFSD selects LOCKD which selects GRACE_PERIOD, so the helper is
-    always available, and a lock manager that isn't running simply
-    isn't on the grace list.
-
-  - It stops being a v4-specific answer that just happens to be served
-    out of the nfsd netlink family.
-
-I'll rename the attribute and fix the yaml and rst wording so the
-union semantics are explicit rather than implied.
-
-One design question while I'm respinning. threads-get otherwise
-reports configuration, and this is dynamic state, so grace could
-equally live in its own operation. My inclination is to keep just this
-boolean on threads-get for now, since that is the direct nfsdfs
-parity, and to grow any richer grace/recovery detail -- elapsed time,
-expected vs completed reclaims, whether grace was extended or
-force-ended -- as a separate operation later rather than widening
-threads-get. But if you'd rather grace not ride on threads-get at all
-and start that separate op now, I'm glad to go that way instead.
-
-Thanks for the review.
+Thanks again for picking this up.
 
 --
 Prabhakar
