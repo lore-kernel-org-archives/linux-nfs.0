@@ -1,787 +1,292 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oa2-f0.google.com (mail-oa2-f0.google.com [74.125.231.64])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE8F13CB548
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 19:45:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD3383AB47E
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 23:06:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.64
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787859955; cv=none; b=ZB9pOuWEMX0n2yRuDqGnSxCahtRTU4kTekjCoRuPIo09Svh/F8J0rKuZpSbzIKiH1WF+5v90hGo+iJmEQ99L7nIYLqYZambDQsKrwthS9NEWij95Ewl1YhXu/2EVe44uPySZkknuV/dMtQMJK/qZoLeUbdEgdD5xj32tRCiroRo=
+	t=1787871990; cv=none; b=oOVtnuF8RXxRNYJnoEOPsdQY1/xr3bIvisnpcq8TCTeWGOt5dG0c4KNa59Du7EJ1CLhAj3vG7MfLEQLcuVIGT+adKtiKuzeVczPyVzh/da0462wLLj6TbRP5LxXjT98Jf2TaKXwPaF9JcbdNd0DNfQDCXoGKkhnMYRvmldAhOYw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787859955; c=relaxed/simple;
-	bh=lNrs2pUrkzbSZ8OTRjNZmgv1L23pIfEvWP9I/4OYNWM=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=pr1qo1ibwwIZuHuyffJ2qZDIe93puuCLg+fkS2taqHFeMdN/VSEd0BrqRL7ZOglYmbIo96opr5AclbmDGSRtyT9ADqAR2F22T08D39idc8jR0I7xjc1haqawaEc3yppD3UcyPld2XFTsZczj9lyfY3V39iSfOh90SAHex7zmhzc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=R8nAI8DX; arc=none smtp.client-ip=170.10.133.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="R8nAI8DX"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1787859951;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=HlTN+fjwlWRAMxdQu7Jm12nfY7GFyuy35CNvZWIz5ug=;
-	b=R8nAI8DXeP0wZJlV4ULwNN/p3ucnjww6yMQfdB7zUeDQQaC0nYHewKlYo6TJ4wBKZV3K5B
-	QVNzlMtnI/IvSrd0nTO8o09ZBAiFugZZ7pXZMf0tYptKVOQDJ8pqmLUEUg5H8lYXJ7h7K+
-	hLqj4on5PHwm+gPoKSld6/SlSHPFqyI=
-Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-382-C-pGabjzOIenEXsT3ZYQIw-1; Thu,
- 27 Aug 2026 15:45:47 -0400
-X-MC-Unique: C-pGabjzOIenEXsT3ZYQIw-1
-X-Mimecast-MFC-AGG-ID: C-pGabjzOIenEXsT3ZYQIw_1787859946
-Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 44BC3185FCF7;
-	Thu, 27 Aug 2026 19:45:46 +0000 (UTC)
-Received: from smayhew-thinkpadp1gen4i.remote.csb (headnet03.pony-001.prod.iad2.dc.redhat.com [10.2.32.114])
-	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id D6D761800642;
-	Thu, 27 Aug 2026 19:45:45 +0000 (UTC)
-Received: from smayhew-thinkpadp1gen4i.redhat.corp (localhost [IPv6:::1])
-	by smayhew-thinkpadp1gen4i.remote.csb (Postfix) with ESMTP id 2ACE05294D30;
-	Thu, 27 Aug 2026 15:45:45 -0400 (EDT)
-From: Scott Mayhew <smayhew@redhat.com>
-To: trondmy@kernel.org,
-	anna@kernel.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs/blocklayout: allow pNFS SCSI layout without pNFS block layout
-Date: Thu, 27 Aug 2026 15:45:44 -0400
-Message-ID: <20260827194544.459315-1-smayhew@redhat.com>
+	s=arc-20240116; t=1787871990; c=relaxed/simple;
+	bh=K3LyyJpRAekmCCOfNQss+bePvxqy+QslfZ/U7ZRt3ls=;
+	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=G2zWWb71zoFKD4ECRD2ULTNHGQpevn6vujj01iDmpWZ346pF7kNh3PliW0XvZala/sd+0HU/Qbag+3KQHBdM9S9XMQA0E15l3T2q0oP4atW/dyGa6zpYaO21cLhXNoXFjJRV278TfzubalN77lHBE6J9KjGhVOGcwBtOZOgkVzE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=74.125.231.64
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oa2-f0.google.com with SMTP id 586e51a60fabf-451e8472960so385505fac.1
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 16:06:28 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787871988; x=1788476788;
+        h=content-type:to:from:subject:message-id:date:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=Qmf06zEQDbnZobpEwdaBR83TxTTiT72v/4d2EBQCVw4=;
+        b=Dl35y83unLFbt2cx8ayefmiFXqCsxh65ankW5xJ7FuZTP/uguw3Z+Cwn3grZy+m7O/
+         qI8MaPrI+DkZ8wfUdseMtI8x6hy6r2eeS+derICzjBoj0mb07IuhhVjX6snLvm4rP2h7
+         CiRvx6HhIZoqhWfWpgcZIHXyZVXKGgey3hy+TWT0I3G8RQfZ5j/LuSBbeXCKBno/ykRo
+         CeU2LEAnd8bmTKSXu4TidTx1BCeNMoLXtahI+FJ4/hb1fczQ50qxL0gKoW3RFF0aA7dx
+         B3EZ1lytGAITwnZNsBawokKnLN14NNCp1aS1yj3r84JlWDV2+PTY3MYHExUwlxYLooJV
+         U8JQ==
+X-Forwarded-Encrypted: i=1; AHgh+RpxdX1uvaCe1z01ShMO/TIdT4AaO2uKnN7SXWhos9M8Q4NL78uGW+9Sk/IL9VMX9j5pbl7/bIOkOqk=@vger.kernel.org
+X-Gm-Message-State: AFuF++kQBDNfyQdQMx/XBBBB4R5mEdumKJSfaSWYu/Dv2b/6f9a2SMz0
+	tUmqpEIC0hzPJqE4JLyAZR7f+X4IHlUS3xNg27a42sIxZM8Taixd8yqqAlJ5IrUoX3sUFfEKQnn
+	FknQnO1nAyCModp5oPeAZYPo2hB/Zgy5NX5/xiPSkXZKTwbUDxkDFGroN3FE=
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
+X-Received: by 2002:a05:6808:1c0e:b0:486:8a11:6e8b with SMTP id
+ 5614622812f47-4b397f9f538mr3445107b6e.2.1787871987840; Thu, 27 Aug 2026
+ 16:06:27 -0700 (PDT)
+Date: Thu, 27 Aug 2026 16:06:27 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6a90c2f3.4d659fcc.734b4.0017.GAE@google.com>
+Subject: [syzbot] [nfs?] INFO: task hung in nfsd_nrthreads
+From: syzbot <syzbot+86a9d43d89b86def6d59@syzkaller.appspotmail.com>
+To: Dai.Ngo@oracle.com, cel@kernel.org, jlayton@kernel.org, 
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, neil@brown.name, 
+	okorniev@redhat.com, syzkaller-bugs@googlegroups.com, tom@talpey.com
+Content-Type: text/plain; charset="UTF-8"
 
-The pNFS block-volume layout (LAYOUT_BLOCK_VOLUME, RFC 5663) and the pNFS
-SCSI layout (LAYOUT_SCSI, RFC 8154) are built from a single blocklayout
-driver.  Until now CONFIG_PNFS_BLOCK was an unprompted symbol that pulled
-in both layout types whenever NFS_V4 and BLK_DEV_DM were enabled, so a
-kernel could not offer SCSI layout without also enabling block layout and
-device-mapper.
+Hello,
 
-Split the two into separate, independently selectable options.  Both types
-share almost the entire driver (read/write path, extent tree, and the
-device tree including the composite SLICE/CONCAT/STRIPE volume types), so
-keep a single blocklayoutdriver module and compile only the type-specific
-pieces in or out:
+syzbot found the following issue on:
 
-  - block.c   SIMPLE volume parsing, which resolves the device via the
-              userspace pipefs daemon (rpc_pipefs.c) - block only.
-  - scsi.c    SCSI leaf volume parsing and persistent-reservation
-              register/unregister - SCSI only.
+HEAD commit:    502d45774af0 Merge tag 'clk-for-linus' of git://git.kernel..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=11d58d49580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=c2d3e2a7997c1d5c
+dashboard link: https://syzkaller.appspot.com/bug?extid=86a9d43d89b86def6d59
+compiler:       gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44
 
-The remaining type-specific call sites in the shared core are guarded with
-IS_ENABLED() so the reference to a not-built symbol is eliminated, and the
-now cross-file helpers (bl_map_simple, bl_parse_simple, bl_parse_scsi,
-bl_register_scsi, bl_unregister_scsi) are made global with prototypes in
-blocklayout.h.
+Unfortunately, I don't have any reproducer for this issue yet.
 
-CONFIG_PNFS_BLOCK and CONFIG_PNFS_SCSI_LAYOUT are now prompted booleans
-that only select which volume types are compiled in.  Module linkage is
-carried by a single internal tristate, CONFIG_PNFS_BLOCK_LAYOUT_DRIVER,
-which follows NFS_V4; making the two options booleans avoids a y/m mismatch
-where a built-in composite would silently drop a module-only object.  SCSI
-layout defaults on and no longer depends on BLK_DEV_DM; block layout now
-defaults off.
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/13c40240edf7/disk-502d4577.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/ccf7e87c89cc/vmlinux-502d4577.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/9feb3a41684b/bzImage-502d4577.xz
 
-blocklayout.h no longer includes device-mapper.h (it was unused); it
-includes blkdev.h for the block_device/sector_t/BLK_OPEN_* definitions used
-in the header.
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+86a9d43d89b86def6d59@syzkaller.appspotmail.com
 
-Assisted-by: Claude:claude-opus-4-8
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+INFO: task syz.5.1942:10848 blocked for more than 143 seconds.
+      Tainted: G             L      syzkaller #0
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:syz.5.1942      state:D stack:27656 pid:10848 tgid:10847 ppid:8546   task_flags:0x400140 flags:0x00080002
+Call Trace:
+ <TASK>
+ context_switch kernel/sched/core.c:5520 [inline]
+ __schedule+0x1259/0x6920 kernel/sched/core.c:7270
+ __schedule_loop kernel/sched/core.c:7347 [inline]
+ schedule+0xdd/0x2c0 kernel/sched/core.c:7362
+ schedule_preempt_disabled+0x13/0x30 kernel/sched/core.c:7419
+ __mutex_lock_common kernel/locking/mutex.c:726 [inline]
+ __mutex_lock+0xcbf/0x1bc0 kernel/locking/mutex.c:821
+ nfsd_nrthreads+0x57/0xd0 fs/nfsd/nfssvc.c:252
+ write_threads+0x34a/0x600 fs/nfsd/nfsctl.c:445
+ nfsctl_transaction_write+0x106/0x1a0 fs/nfsd/nfsctl.c:114
+ vfs_write+0x2aa/0x1050 fs/read_write.c:685
+ ksys_write+0x12a/0x250 fs/read_write.c:739
+ do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
+ do_syscall_64+0x123/0x790 arch/x86/entry/syscall_64.c:84
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7f27b1d9e0d9
+RSP: 002b:00007f27b2bd1028 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+RAX: ffffffffffffffda RBX: 00007f27b2025fa0 RCX: 00007f27b1d9e0d9
+RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000003
+RBP: 00007f27b1e35024 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
+R13: 00007f27b2026038 R14: 00007f27b2025fa0 R15: 00007fffbfec4448
+ </TASK>
+INFO: task syz.5.1942:10849 blocked for more than 143 seconds.
+      Tainted: G             L      syzkaller #0
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:syz.5.1942      state:D stack:28728 pid:10849 tgid:10847 ppid:8546   task_flags:0x400040 flags:0x00080002
+Call Trace:
+ <TASK>
+ context_switch kernel/sched/core.c:5520 [inline]
+ __schedule+0x1259/0x6920 kernel/sched/core.c:7270
+ __schedule_loop kernel/sched/core.c:7347 [inline]
+ schedule+0xdd/0x2c0 kernel/sched/core.c:7362
+ schedule_preempt_disabled+0x13/0x30 kernel/sched/core.c:7419
+ __mutex_lock_common kernel/locking/mutex.c:726 [inline]
+ __mutex_lock+0xcbf/0x1bc0 kernel/locking/mutex.c:821
+ fdget_pos+0x2aa/0x380 fs/file.c:1259
+ class_fd_pos_constructor include/linux/file.h:85 [inline]
+ ksys_read+0x71/0x250 fs/read_write.c:707
+ do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
+ do_syscall_64+0x123/0x790 arch/x86/entry/syscall_64.c:84
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7f27b1d9e0d9
+RSP: 002b:00007f27b2bb0028 EFLAGS: 00000246 ORIG_RAX: 0000000000000000
+RAX: ffffffffffffffda RBX: 00007f27b2026090 RCX: 00007f27b1d9e0d9
+RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000003
+RBP: 00007f27b1e35024 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
+R13: 00007f27b2026128 R14: 00007f27b2026090 R15: 00007fffbfec4448
+ </TASK>
+
+Showing all locks held in the system:
+locks held by khungtaskd/31: 1, last CPU#0:
+ #0: ffffffff8edec060 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:309 [inline]
+ #0: ffffffff8edec060 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:849 [inline]
+ #0: ffffffff8edec060 (rcu_read_lock){....}-{1:3}, at: debug_show_all_locks+0x3d/0x184 kernel/locking/lockdep.c:6793
+locks held by getty/5352: 2, on CPU#0:
+ #0: ffff8880338b20a0 (&tty->ldisc_sem){++++}-{0:0}, at: tty_ldisc_ref_wait+0x24/0x80 drivers/tty/tty_ldisc.c:243
+ #1: ffffc9000321e2e8 (&ldata->atomic_read_lock){+.+.}-{4:4}, at: n_tty_read+0x419/0x14e0 drivers/tty/n_tty.c:2211
+locks held by syz.4.1396/9282: 3, on CPU#1:
+ #0: ffff888020b775f0 (&f->f_pos_lock){+.+.}-{4:4}, at: fdget_pos+0x2aa/0x380 fs/file.c:1259
+ #1: ffff88807db82460 (sb_writers#22){.+.+}-{0:0}, at: ksys_write+0x12a/0x250 fs/read_write.c:739
+ #2: ffffffff8f284440 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xa5/0xcc0 fs/nfsd/nfsctl.c:867
+locks held by syz.5.1942/10848: 3, on CPU#1:
+ #0: ffff88807562deb0 (&f->f_pos_lock){+.+.}-{4:4}, at: fdget_pos+0x2aa/0x380 fs/file.c:1259
+ #1: ffff888040656460 (sb_writers#22){.+.+}-{0:0}, at: ksys_write+0x12a/0x250 fs/read_write.c:739
+ #2: ffffffff8f284440 (nfsd_mutex){+.+.}-{4:4}, at: nfsd_nrthreads+0x57/0xd0 fs/nfsd/nfssvc.c:252
+locks held by syz.5.1942/10849: 1, on CPU#0:
+ #0: ffff88807562deb0 (&f->f_pos_lock){+.+.}-{4:4}, at: fdget_pos+0x2aa/0x380 fs/file.c:1259
+locks held by kworker/u8:14/13269: 4, last CPU#0:
+ #0: ffff88801f3d2940 ((wq_completion)iou_exit){+.+.}-{0:0}, at: process_one_work+0x1466/0x1b10 kernel/workqueue.c:3362
+ #1: ffffc9000611fd08 ((work_completion)(&ctx->exit_work)){+.+.}-{0:0}, at: process_one_work+0xa2c/0x1b10 kernel/workqueue.c:3363
+ #2: ffff88807f4d40a0 (&ctx->uring_lock){+.+.}-{4:4}, at: class_mutex_constructor include/linux/mutex.h:253 [inline]
+ #2: ffff88807f4d40a0 (&ctx->uring_lock){+.+.}-{4:4}, at: io_req_caches_free io_uring/io_uring.c:2150 [inline]
+ #2: ffff88807f4d40a0 (&ctx->uring_lock){+.+.}-{4:4}, at: io_ring_exit_work+0x422/0xd59 io_uring/io_uring.c:2354
+ #3: ffffffff8edec060 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:309 [inline]
+ #3: ffffffff8edec060 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:849 [inline]
+ #3: ffffffff8edec060 (rcu_read_lock){....}-{1:3}, at: class_rcu_constructor include/linux/rcupdate.h:1216 [inline]
+ #3: ffffffff8edec060 (rcu_read_lock){....}-{1:3}, at: unwind_next_frame+0xbd/0x2090 arch/x86/kernel/unwind_orc.c:495
+locks held by kworker/u8:22/14261: 2, on CPU#1:
+ #0: ffff88801c094140 ((wq_completion)events_unbound){+.+.}-{0:0}, at: process_one_work+0x1466/0x1b10 kernel/workqueue.c:3362
+ #1: ffffc90006c9fd08 ((reaper_work).work){+.+.}-{0:0}, at: process_one_work+0xa2c/0x1b10 kernel/workqueue.c:3363
+locks held by syz.0.3240/15025: 3, on CPU#1:
+ #0: ffff8880756840f0 (&f->f_pos_lock){+.+.}-{4:4}, at: fdget_pos+0x2aa/0x380 fs/file.c:1259
+ #1: ffff888037bb8460 (sb_writers#10){.+.+}-{0:0}, at: ksys_write+0x12a/0x250 fs/read_write.c:739
+ #2: ffff888056933080 (&of->mutex){+.+.}-{4:4}, at: kernfs_fop_write_iter+0x2c2/0x5f0 fs/kernfs/file.c:336
+locks held by syz.0.3240/15030: 1, on CPU#1:
+ #0: ffff8880756840f0 (&f->f_pos_lock){+.+.}-{4:4}, at: fdget_pos+0x2aa/0x380 fs/file.c:1259
+locks held by syz-executor/15160: 4, last CPU#0:
+ #0: ffffffff8ef3cab0 (dup_mmap_sem){++++}-{0:0}, at: dup_mm kernel/fork.c:1542 [inline]
+ #0: ffffffff8ef3cab0 (dup_mmap_sem){++++}-{0:0}, at: copy_mm kernel/fork.c:1595 [inline]
+ #0: ffffffff8ef3cab0 (dup_mmap_sem){++++}-{0:0}, at: copy_process+0x4815/0x8370 kernel/fork.c:2307
+ #1: ffff8880504e1d38 (&mm->mmap_lock){++++}-{4:4}, at: mmap_write_lock_killable include/linux/mmap_lock.h:562 [inline]
+ #1: ffff8880504e1d38 (&mm->mmap_lock){++++}-{4:4}, at: dup_mmap+0x127/0x2370 mm/mmap.c:1716
+ #2: ffff8880339829f8 (&mm->mmap_lock/1){+.+.}-{4:4}, at: mmap_write_lock_nested include/linux/mmap_lock.h:552 [inline]
+ #2: ffff8880339829f8 (&mm->mmap_lock/1){+.+.}-{4:4}, at: dup_mmap+0x1c9/0x2370 mm/mmap.c:1723
+ #3: ffffffff8edec060 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:309 [inline]
+ #3: ffffffff8edec060 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:849 [inline]
+ #3: ffffffff8edec060 (rcu_read_lock){....}-{1:3}, at: __pte_offset_map+0x2f/0x310 mm/pgtable-generic.c:290
+locks held by syz.4.3499/15896: 1, last CPU#1:
+ #0: ffff88803306aac8 (&pcm->open_mutex){+.+.}-{4:4}, at: snd_pcm_oss_release+0xfb/0x300 sound/core/oss/pcm_oss.c:2589
+
+=============================================
+
+NMI backtrace for cpu 0
+CPU: 0 UID: 0 PID: 31 Comm: khungtaskd Tainted: G             L      syzkaller #0 PREEMPT(full) 
+Tainted: [L]=SOFTLOCKUP
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 08/05/2026
+Call Trace:
+ <TASK>
+ __dump_stack lib/dump_stack.c:94 [inline]
+ dump_stack_lvl+0x100/0x190 lib/dump_stack.c:120
+ nmi_cpu_backtrace.cold+0x12d/0x151 lib/nmi_backtrace.c:123
+ nmi_trigger_cpumask_backtrace+0x21f/0x2a0 lib/nmi_backtrace.c:66
+ trigger_all_cpu_backtrace include/linux/nmi.h:164 [inline]
+ __sys_info lib/sys_info.c:157 [inline]
+ sys_info+0x141/0x190 lib/sys_info.c:165
+ check_hung_uninterruptible_tasks kernel/hung_task.c:353 [inline]
+ watchdog+0xcb1/0x1030 kernel/hung_task.c:561
+ kthread+0x373/0x450 kernel/kthread.c:436
+ ret_from_fork+0x730/0xd60 arch/x86/kernel/process.c:158
+ ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
+ </TASK>
+Sending NMI from CPU 0 to CPUs 1:
+NMI backtrace for cpu 1
+CPU: 1 UID: 0 PID: 15832 Comm: syz.1.3471 Tainted: G             L      syzkaller #0 PREEMPT(full) 
+Tainted: [L]=SOFTLOCKUP
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 08/05/2026
+RIP: 0010:__sanitizer_cov_trace_pc+0x6b/0x70 kernel/kcov.c:231
+Code: 82 08 17 00 00 83 f8 02 75 20 48 8b 8a 10 17 00 00 8b 92 0c 17 00 00 48 8b 01 48 83 c0 01 48 39 d0 73 07 48 89 01 48 89 34 c1 <e9> 40 e1 c4 09 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 f3
+RSP: 0018:ffffc90004e378f0 EFLAGS: 00000046
+RAX: 0000000000080000 RBX: ffff88802d38a2bc RCX: ffffc9001b780000
+RDX: 0000000000080000 RSI: ffffffff820ec036 RDI: ffff88805a58cb00
+RBP: 0000000000000001 R08: 0000000000000007 R09: 0000000000000000
+R10: 00000000000002ac R11: 0000000000000001 R12: 0000000000000000
+R13: ffffc90004e379a8 R14: 0000000000000000 R15: ffff88801d2bc000
+FS:  00007fb805db56c0(0000) GS:ffff888123c6d000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000001b34422ff8 CR3: 00000000297f8000 CR4: 00000000003526f0
+DR0: 0000000000000000 DR1: 000000000000000a DR2: 0000000000000000
+DR3: 00000000c0f00480 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Call Trace:
+ <TASK>
+ rb_reserve_next_event kernel/trace/ring_buffer.c:4988 [inline]
+ ring_buffer_lock_reserve+0x4b6/0x1220 kernel/trace/ring_buffer.c:5039
+ __trace_buffer_lock_reserve kernel/trace/trace.h:1676 [inline]
+ trace_event_buffer_lock_reserve+0x123/0x6f0 kernel/trace/trace.c:1924
+ trace_event_buffer_reserve+0x1f9/0x350 kernel/trace/trace_events.c:715
+ do_trace_event_raw_event_msr_trace_class arch/x86/include/asm/msr-trace.h:21 [inline]
+ trace_event_raw_event_msr_trace_class+0xe8/0x270 arch/x86/include/asm/msr-trace.h:21
+ __do_trace_write_msr arch/x86/include/asm/msr-trace.h:45 [inline]
+ trace_write_msr+0x160/0x1f0 arch/x86/include/asm/msr-trace.h:45
+ apic_write arch/x86/include/asm/apic.h:405 [inline]
+ lapic_next_event+0x10/0x20 arch/x86/kernel/apic/apic.c:418
+ clockevents_program_event+0x375/0x820 kernel/time/clockevents.c:372
+ tick_program_event+0xa9/0x140 kernel/time/tick-oneshot.c:48
+ hrtimer_rearm_event kernel/time/hrtimer.c:710 [inline]
+ hrtimer_rearm kernel/time/hrtimer.c:2169 [inline]
+ __hrtimer_rearm_deferred+0x234/0x7b0 kernel/time/hrtimer.c:2189
+ hrtimer_rearm_deferred_tif include/linux/hrtimer_rearm.h:58 [inline]
+ hrtimer_rearm_deferred include/linux/hrtimer_rearm.h:67 [inline]
+ irqentry_exit_to_kernel_mode_after_preempt include/linux/irq-entry-common.h:505 [inline]
+ irqentry_exit_to_kernel_mode include/linux/irq-entry-common.h:542 [inline]
+ irqentry_exit+0x5f3/0xa10 kernel/entry/common.c:167
+ asm_sysvec_apic_timer_interrupt+0x1a/0x20 arch/x86/include/asm/idtentry.h:674
+RIP: 0010:__raw_spin_unlock_irq include/linux/spinlock_api_smp.h:220 [inline]
+RIP: 0010:_raw_spin_unlock_irq+0x29/0x50 kernel/locking/spinlock.c:229
+Code: 90 f3 0f 1e fa 53 48 8b 74 24 08 48 89 fb 48 83 c7 18 e8 ca a7 16 f6 48 89 df e8 e2 fd 16 f6 e8 cd b7 43 f6 fb bf 01 00 00 00 <e8> e2 07 06 f6 65 48 83 3d 71 c6 ba 08 00 74 06 5b c3 cc cc cc cc
+RSP: 0018:ffffc90004e37e40 EFLAGS: 00000206
+RAX: 0000000000050741 RBX: ffff88802da61bc0 RCX: 0000000000000000
+RDX: 0000000000000001 RSI: ffffffff8e3eb0b9 RDI: 0000000000000001
+RBP: ffff88805a58d498 R08: 0000000000000001 R09: 0000000000000000
+R10: 0000000000000001 R11: 0000000000000000 R12: ffff88805a58cb00
+R13: 0000000100000000 R14: 0000000000000007 R15: 0000000000000000
+ spin_unlock_irq include/linux/spinlock.h:413 [inline]
+ __set_current_blocked kernel/signal.c:3227 [inline]
+ set_current_blocked+0xdd/0x120 kernel/signal.c:3211
+ __do_sys_rt_sigreturn+0x1a2/0x2c0 arch/x86/kernel/signal_64.c:263
+ do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
+ do_syscall_64+0x123/0x790 arch/x86/entry/syscall_64.c:84
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7fb804f3f459
+Code: 11 06 00 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00 90 66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00 48 c7 c0 0f 00 00 00 0f 05 <0f> 1f 80 00 00 00 00 48 81 ec 48 01 00 00 49 89 d0 64 48 8b 0c 25
+RSP: 002b:00007fb805db4340 EFLAGS: 00000206 ORIG_RAX: 000000000000000f
+RAX: ffffffffffffffda RBX: 00007fb805225fa0 RCX: 00007fb804f3f459
+RDX: 00007fb805db4340 RSI: 00007fb805db4470 RDI: 0000000000000021
+RBP: 00007fb805035024 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000206 R12: 0000000000000000
+R13: 00007fb805226038 R14: 00007fb805225fa0 R15: 00007ffee7eee2b8
+ </TASK>
+
+
 ---
- fs/nfs/Kconfig                   |  20 ++-
- fs/nfs/Makefile                  |   2 +-
- fs/nfs/blocklayout/Makefile      |  12 +-
- fs/nfs/blocklayout/block.c       |  40 ++++++
- fs/nfs/blocklayout/blocklayout.c |  43 ++++---
- fs/nfs/blocklayout/blocklayout.h |  14 ++-
- fs/nfs/blocklayout/dev.c         | 209 +++----------------------------
- fs/nfs/blocklayout/scsi.c        | 175 ++++++++++++++++++++++++++
- 8 files changed, 300 insertions(+), 215 deletions(-)
- create mode 100644 fs/nfs/blocklayout/block.c
- create mode 100644 fs/nfs/blocklayout/scsi.c
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 6bb30543eff0..9166ac623ba8 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -122,9 +122,27 @@ config PNFS_FILE_LAYOUT
- 	default NFS_V4
- 
- config PNFS_BLOCK
--	tristate
-+	bool "pNFS block layout support"
- 	depends on NFS_V4 && BLK_DEV_DM
-+	default n
-+	help
-+	  Enable support for the pNFS block-volume layout type (RFC 5663).
-+
-+config PNFS_SCSI_LAYOUT
-+	bool "pNFS SCSI layout support"
-+	depends on NFS_V4
- 	default NFS_V4
-+	help
-+	  Enable support for the pNFS SCSI layout type (RFC 8154). This does
-+	  not require device-mapper and can be enabled without PNFS_BLOCK.
-+
-+# Internal: the shared block/scsi layout driver module, built when either layout
-+# type is enabled. The two options above are booleans that only select which
-+# volume types are compiled in; this symbol is the single modularity knob and
-+# follows NFS_V4, so the composite module never lands in both obj-y and obj-m.
-+config PNFS_BLOCK_LAYOUT_DRIVER
-+	tristate
-+	default NFS_V4 if PNFS_BLOCK || PNFS_SCSI_LAYOUT
- 
- config PNFS_FLEXFILE_LAYOUT
- 	tristate
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index c895521f27f3..49c06b759b60 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -34,5 +34,5 @@ nfsv4-$(CONFIG_NFS_V4_0)	+= nfs40client.o nfs40proc.o
- nfsv4-$(CONFIG_NFS_V4_2)	+= nfs42proc.o nfs42xattr.o
- 
- obj-$(CONFIG_PNFS_FILE_LAYOUT) += filelayout/
--obj-$(CONFIG_PNFS_BLOCK) += blocklayout/
-+obj-$(CONFIG_PNFS_BLOCK_LAYOUT_DRIVER) += blocklayout/
- obj-$(CONFIG_PNFS_FLEXFILE_LAYOUT) += flexfilelayout/
-diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
-index 7668a1bfb5fa..832012d1c1fc 100644
---- a/fs/nfs/blocklayout/Makefile
-+++ b/fs/nfs/blocklayout/Makefile
-@@ -2,6 +2,14 @@
- #
- # Makefile for the pNFS block layout driver kernel module
- #
--obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
-+obj-$(CONFIG_PNFS_BLOCK_LAYOUT_DRIVER) += blocklayoutdriver.o
- 
--blocklayoutdriver-y += blocklayout.o dev.o extent_tree.o rpc_pipefs.o
-+# Shared core: device tree incl. composite SLICE/CONCAT/STRIPE volumes (used by
-+# both layout types), extent tree, common layout ops, init/exit.
-+blocklayoutdriver-y += blocklayout.o dev.o extent_tree.o
-+
-+# Block-layout-specific: SIMPLE volumes resolved via the userspace pipefs daemon.
-+blocklayoutdriver-$(CONFIG_PNFS_BLOCK) += block.o rpc_pipefs.o
-+
-+# SCSI-layout-specific: SCSI leaf volume parse and PR register/unregister.
-+blocklayoutdriver-$(CONFIG_PNFS_SCSI_LAYOUT) += scsi.o
-diff --git a/fs/nfs/blocklayout/block.c b/fs/nfs/blocklayout/block.c
-new file mode 100644
-index 000000000000..530373a71c98
---- /dev/null
-+++ b/fs/nfs/blocklayout/block.c
-@@ -0,0 +1,40 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (c) 2014-2016 Christoph Hellwig.
-+ */
-+#include <linux/blkdev.h>
-+#include <linux/nfs4.h>
-+#include <linux/nfs_fs.h>
-+#include <linux/nfs_xdr.h>
-+
-+#include "blocklayout.h"
-+
-+#define NFSDBG_FACILITY		NFSDBG_PNFS_LD
-+
-+int
-+bl_parse_simple(struct nfs_server *server, struct pnfs_block_dev *d,
-+		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask)
-+{
-+	struct pnfs_block_volume *v = &volumes[idx];
-+	struct file *bdev_file;
-+	dev_t dev;
-+
-+	dev = bl_resolve_deviceid(server, v, gfp_mask);
-+	if (!dev)
-+		return -EIO;
-+
-+	bdev_file = bdev_file_open_by_dev(dev, BLK_OPEN_READ | BLK_OPEN_WRITE,
-+				       NULL, NULL);
-+	if (IS_ERR(bdev_file)) {
-+		printk(KERN_WARNING "pNFS: failed to open device %d:%d (%ld)\n",
-+			MAJOR(dev), MINOR(dev), PTR_ERR(bdev_file));
-+		return PTR_ERR(bdev_file);
-+	}
-+	d->bdev_file = bdev_file;
-+	d->len = bdev_nr_bytes(file_bdev(bdev_file));
-+	d->map = bl_map_simple;
-+
-+	printk(KERN_INFO "pNFS: using block device %s\n",
-+		file_bdev(bdev_file)->bd_disk->disk_name);
-+	return 0;
-+}
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index d54a141a89b3..8f85849d3e05 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -1005,27 +1005,33 @@ static struct pnfs_layoutdriver_type scsilayout_type = {
- 
- static int __init nfs4blocklayout_init(void)
- {
--	int ret;
-+	int ret = 0;
- 
- 	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
- 
--	ret = bl_init_pipefs();
--	if (ret)
--		goto out;
-+	if (IS_ENABLED(CONFIG_PNFS_BLOCK)) {
-+		ret = bl_init_pipefs();
-+		if (ret)
-+			goto out;
- 
--	ret = pnfs_register_layoutdriver(&blocklayout_type);
--	if (ret)
--		goto out_cleanup_pipe;
-+		ret = pnfs_register_layoutdriver(&blocklayout_type);
-+		if (ret)
-+			goto out_cleanup_pipe;
-+	}
- 
--	ret = pnfs_register_layoutdriver(&scsilayout_type);
--	if (ret)
--		goto out_unregister_block;
-+	if (IS_ENABLED(CONFIG_PNFS_SCSI_LAYOUT)) {
-+		ret = pnfs_register_layoutdriver(&scsilayout_type);
-+		if (ret)
-+			goto out_unregister_block;
-+	}
- 	return 0;
- 
- out_unregister_block:
--	pnfs_unregister_layoutdriver(&blocklayout_type);
-+	if (IS_ENABLED(CONFIG_PNFS_BLOCK))
-+		pnfs_unregister_layoutdriver(&blocklayout_type);
- out_cleanup_pipe:
--	bl_cleanup_pipefs();
-+	if (IS_ENABLED(CONFIG_PNFS_BLOCK))
-+		bl_cleanup_pipefs();
- out:
- 	return ret;
- }
-@@ -1035,13 +1041,20 @@ static void __exit nfs4blocklayout_exit(void)
- 	dprintk("%s: NFSv4 Block Layout Driver Unregistering...\n",
- 	       __func__);
- 
--	pnfs_unregister_layoutdriver(&scsilayout_type);
--	pnfs_unregister_layoutdriver(&blocklayout_type);
--	bl_cleanup_pipefs();
-+	if (IS_ENABLED(CONFIG_PNFS_SCSI_LAYOUT))
-+		pnfs_unregister_layoutdriver(&scsilayout_type);
-+	if (IS_ENABLED(CONFIG_PNFS_BLOCK)) {
-+		pnfs_unregister_layoutdriver(&blocklayout_type);
-+		bl_cleanup_pipefs();
-+	}
- }
- 
-+#if IS_ENABLED(CONFIG_PNFS_BLOCK)
- MODULE_ALIAS("nfs-layouttype4-3");
-+#endif
-+#if IS_ENABLED(CONFIG_PNFS_SCSI_LAYOUT)
- MODULE_ALIAS("nfs-layouttype4-5");
-+#endif
- 
- module_init(nfs4blocklayout_init);
- module_exit(nfs4blocklayout_exit);
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 6da40ca19570..07740bbfeb67 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -32,7 +32,7 @@
- #ifndef FS_NFS_NFS4BLOCKLAYOUT_H
- #define FS_NFS_NFS4BLOCKLAYOUT_H
- 
--#include <linux/device-mapper.h>
-+#include <linux/blkdev.h>
- #include <linux/nfs_fs.h>
- #include <linux/sunrpc/rpc_pipe_fs.h>
- 
-@@ -182,6 +182,18 @@ bool bl_register_dev(struct pnfs_block_dev *d);
- struct nfs4_deviceid_node *bl_alloc_deviceid_node(struct nfs_server *server,
- 		struct pnfs_device *pdev, gfp_t gfp_mask);
- void bl_free_deviceid_node(struct nfs4_deviceid_node *d);
-+bool bl_map_simple(struct pnfs_block_dev *dev, u64 offset,
-+		struct pnfs_block_dev_map *map);
-+
-+/* block.c */
-+int bl_parse_simple(struct nfs_server *server, struct pnfs_block_dev *d,
-+		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask);
-+
-+/* scsi.c */
-+int bl_parse_scsi(struct nfs_server *server, struct pnfs_block_dev *d,
-+		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask);
-+bool bl_register_scsi(struct pnfs_block_dev *dev);
-+void bl_unregister_scsi(struct pnfs_block_dev *dev);
- 
- /* extent_tree.c */
- int ext_tree_insert(struct pnfs_block_layout *bl,
-diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
-index 368d20daf67b..897e3022da3d 100644
---- a/fs/nfs/blocklayout/dev.c
-+++ b/fs/nfs/blocklayout/dev.c
-@@ -4,48 +4,14 @@
-  */
- #include <linux/sunrpc/svc.h>
- #include <linux/blkdev.h>
--#include <linux/fs_struct.h>
- #include <linux/nfs4.h>
- #include <linux/nfs_fs.h>
- #include <linux/nfs_xdr.h>
--#include <linux/pr.h>
- 
- #include "blocklayout.h"
--#include "../nfs4trace.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_PNFS_LD
- 
--static void bl_unregister_scsi(struct pnfs_block_dev *dev)
--{
--	struct block_device *bdev = file_bdev(dev->bdev_file);
--	const struct pr_ops *ops = bdev->bd_disk->fops->pr_ops;
--	int status;
--
--	status = ops->pr_register(bdev, dev->pr_key, 0, false);
--	if (status)
--		trace_bl_pr_key_unreg_err(bdev, dev->pr_key, status);
--	else
--		trace_bl_pr_key_unreg(bdev, dev->pr_key);
--}
--
--static bool bl_register_scsi(struct pnfs_block_dev *dev)
--{
--	struct block_device *bdev = file_bdev(dev->bdev_file);
--	const struct pr_ops *ops = bdev->bd_disk->fops->pr_ops;
--	int status;
--
--	if (test_and_set_bit(PNFS_BDEV_REGISTERED, &dev->flags))
--		return true;
--
--	status = ops->pr_register(bdev, 0, dev->pr_key, true);
--	if (status) {
--		trace_bl_pr_key_reg_err(bdev, dev->pr_key, status);
--		return false;
--	}
--	trace_bl_pr_key_reg(bdev, dev->pr_key);
--	return true;
--}
--
- static void bl_unregister_dev(struct pnfs_block_dev *dev)
- {
- 	u32 i;
-@@ -56,7 +22,8 @@ static void bl_unregister_dev(struct pnfs_block_dev *dev)
- 		return;
- 	}
- 
--	if (dev->type == PNFS_BLOCK_VOLUME_SCSI &&
-+	if (IS_ENABLED(CONFIG_PNFS_SCSI_LAYOUT) &&
-+		dev->type == PNFS_BLOCK_VOLUME_SCSI &&
- 		test_and_clear_bit(PNFS_BDEV_REGISTERED, &dev->flags))
- 		bl_unregister_scsi(dev);
- }
-@@ -76,7 +43,8 @@ bool bl_register_dev(struct pnfs_block_dev *dev)
- 		return true;
- 	}
- 
--	if (dev->type == PNFS_BLOCK_VOLUME_SCSI)
-+	if (IS_ENABLED(CONFIG_PNFS_SCSI_LAYOUT) &&
-+	    dev->type == PNFS_BLOCK_VOLUME_SCSI)
- 		return bl_register_scsi(dev);
- 	return true;
- }
-@@ -222,7 +190,7 @@ nfs4_block_decode_volume(struct xdr_stream *xdr, struct pnfs_block_volume *b)
- 	return 0;
- }
- 
--static bool bl_map_simple(struct pnfs_block_dev *dev, u64 offset,
-+bool bl_map_simple(struct pnfs_block_dev *dev, u64 offset,
- 		struct pnfs_block_dev_map *map)
- {
- 	map->start = dev->start;
-@@ -291,162 +259,6 @@ bl_parse_deviceid(struct nfs_server *server, struct pnfs_block_dev *d,
- 		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask);
- 
- 
--static int
--bl_parse_simple(struct nfs_server *server, struct pnfs_block_dev *d,
--		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask)
--{
--	struct pnfs_block_volume *v = &volumes[idx];
--	struct file *bdev_file;
--	dev_t dev;
--
--	dev = bl_resolve_deviceid(server, v, gfp_mask);
--	if (!dev)
--		return -EIO;
--
--	bdev_file = bdev_file_open_by_dev(dev, BLK_OPEN_READ | BLK_OPEN_WRITE,
--				       NULL, NULL);
--	if (IS_ERR(bdev_file)) {
--		printk(KERN_WARNING "pNFS: failed to open device %d:%d (%ld)\n",
--			MAJOR(dev), MINOR(dev), PTR_ERR(bdev_file));
--		return PTR_ERR(bdev_file);
--	}
--	d->bdev_file = bdev_file;
--	d->len = bdev_nr_bytes(file_bdev(bdev_file));
--	d->map = bl_map_simple;
--
--	printk(KERN_INFO "pNFS: using block device %s\n",
--		file_bdev(bdev_file)->bd_disk->disk_name);
--	return 0;
--}
--
--static bool
--bl_validate_designator(struct pnfs_block_volume *v)
--{
--	switch (v->scsi.designator_type) {
--	case PS_DESIGNATOR_EUI64:
--		if (v->scsi.code_set != PS_CODE_SET_BINARY)
--			return false;
--
--		if (v->scsi.designator_len != 8 &&
--		    v->scsi.designator_len != 10 &&
--		    v->scsi.designator_len != 16)
--			return false;
--
--		return true;
--	case PS_DESIGNATOR_NAA:
--		if (v->scsi.code_set != PS_CODE_SET_BINARY)
--			return false;
--
--		if (v->scsi.designator_len != 8 &&
--		    v->scsi.designator_len != 16)
--			return false;
--
--		return true;
--	case PS_DESIGNATOR_T10:
--	case PS_DESIGNATOR_NAME:
--		pr_err("pNFS: unsupported designator "
--			"(code set %d, type %d, len %d.\n",
--			v->scsi.code_set,
--			v->scsi.designator_type,
--			v->scsi.designator_len);
--		return false;
--	default:
--		pr_err("pNFS: invalid designator "
--			"(code set %d, type %d, len %d.\n",
--			v->scsi.code_set,
--			v->scsi.designator_type,
--			v->scsi.designator_len);
--		return false;
--	}
--}
--
--static struct file *
--bl_open_path(struct pnfs_block_volume *v, const char *prefix)
--{
--	struct file *bdev_file;
--	const char *devname __free(kfree) = NULL;
--
--	devname = kasprintf(GFP_KERNEL, "/dev/disk/by-id/%s%*phN",
--			prefix, v->scsi.designator_len, v->scsi.designator);
--	if (!devname)
--		return ERR_PTR(-ENOMEM);
--
--	if (tsk_is_kthread(current)) {
--		scoped_with_init_fs()
--			bdev_file = bdev_file_open_by_path(devname,
--					BLK_OPEN_READ | BLK_OPEN_WRITE,
--					NULL, NULL);
--	} else {
--		bdev_file = bdev_file_open_by_path(devname,
--				BLK_OPEN_READ | BLK_OPEN_WRITE, NULL, NULL);
--	}
--	if (IS_ERR(bdev_file)) {
--		dprintk("failed to open device %s (%ld)\n",
--			devname, PTR_ERR(bdev_file));
--	} else {
--		pr_info("pNFS: using block device %s\n",
--			file_bdev(bdev_file)->bd_disk->disk_name);
--	}
--
--	return bdev_file;
--}
--
--static int
--bl_parse_scsi(struct nfs_server *server, struct pnfs_block_dev *d,
--		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask)
--{
--	struct pnfs_block_volume *v = &volumes[idx];
--	struct block_device *bdev;
--	const struct pr_ops *ops;
--	struct file *bdev_file;
--	int error;
--
--	if (!bl_validate_designator(v))
--		return -EINVAL;
--
--	/*
--	 * Try to open the RH/Fedora specific dm-mpath udev path first, as the
--	 * wwn- links will only point to the first discovered SCSI device there.
--	 * On other distributions like Debian, the default SCSI by-id path will
--	 * point to the dm-multipath device if one exists.
--	 */
--	bdev_file = bl_open_path(v, "dm-uuid-mpath-0x");
--	if (IS_ERR(bdev_file))
--		bdev_file = bl_open_path(v, "wwn-0x");
--	if (IS_ERR(bdev_file))
--		bdev_file = bl_open_path(v, "nvme-eui.");
--	if (IS_ERR(bdev_file)) {
--		pr_warn("pNFS: no device found for volume %*phN\n",
--			v->scsi.designator_len, v->scsi.designator);
--		return PTR_ERR(bdev_file);
--	}
--	d->bdev_file = bdev_file;
--	bdev = file_bdev(bdev_file);
--
--	d->len = bdev_nr_bytes(bdev);
--	d->map = bl_map_simple;
--	d->pr_key = v->scsi.pr_key;
--
--	if (d->len == 0) {
--		error = -ENODEV;
--		goto out_blkdev_put;
--	}
--
--	ops = bdev->bd_disk->fops->pr_ops;
--	if (!ops) {
--		pr_err("pNFS: block device %s does not support reservations.",
--				bdev->bd_disk->disk_name);
--		error = -EINVAL;
--		goto out_blkdev_put;
--	}
--
--	return 0;
--
--out_blkdev_put:
--	fput(d->bdev_file);
--	return error;
--}
--
- static int
- bl_parse_slice(struct nfs_server *server, struct pnfs_block_dev *d,
- 		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask)
-@@ -529,7 +341,9 @@ bl_parse_deviceid(struct nfs_server *server, struct pnfs_block_dev *d,
- 
- 	switch (d->type) {
- 	case PNFS_BLOCK_VOLUME_SIMPLE:
--		return bl_parse_simple(server, d, volumes, idx, gfp_mask);
-+		if (IS_ENABLED(CONFIG_PNFS_BLOCK))
-+			return bl_parse_simple(server, d, volumes, idx, gfp_mask);
-+		break;
- 	case PNFS_BLOCK_VOLUME_SLICE:
- 		return bl_parse_slice(server, d, volumes, idx, gfp_mask);
- 	case PNFS_BLOCK_VOLUME_CONCAT:
-@@ -537,11 +351,16 @@ bl_parse_deviceid(struct nfs_server *server, struct pnfs_block_dev *d,
- 	case PNFS_BLOCK_VOLUME_STRIPE:
- 		return bl_parse_stripe(server, d, volumes, idx, gfp_mask);
- 	case PNFS_BLOCK_VOLUME_SCSI:
--		return bl_parse_scsi(server, d, volumes, idx, gfp_mask);
-+		if (IS_ENABLED(CONFIG_PNFS_SCSI_LAYOUT))
-+			return bl_parse_scsi(server, d, volumes, idx, gfp_mask);
-+		break;
- 	default:
- 		dprintk("unsupported volume type: %d\n", d->type);
- 		return -EIO;
- 	}
-+
-+	dprintk("unsupported volume type: %d\n", d->type);
-+	return -EIO;
- }
- 
- struct nfs4_deviceid_node *
-diff --git a/fs/nfs/blocklayout/scsi.c b/fs/nfs/blocklayout/scsi.c
-new file mode 100644
-index 000000000000..2a691e5be9a2
---- /dev/null
-+++ b/fs/nfs/blocklayout/scsi.c
-@@ -0,0 +1,175 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (c) 2014-2016 Christoph Hellwig.
-+ */
-+#include <linux/sunrpc/svc.h>
-+#include <linux/blkdev.h>
-+#include <linux/fs_struct.h>
-+#include <linux/nfs4.h>
-+#include <linux/nfs_fs.h>
-+#include <linux/nfs_xdr.h>
-+#include <linux/pr.h>
-+
-+#include "blocklayout.h"
-+#include "../nfs4trace.h"
-+
-+#define NFSDBG_FACILITY		NFSDBG_PNFS_LD
-+
-+void bl_unregister_scsi(struct pnfs_block_dev *dev)
-+{
-+	struct block_device *bdev = file_bdev(dev->bdev_file);
-+	const struct pr_ops *ops = bdev->bd_disk->fops->pr_ops;
-+	int status;
-+
-+	status = ops->pr_register(bdev, dev->pr_key, 0, false);
-+	if (status)
-+		trace_bl_pr_key_unreg_err(bdev, dev->pr_key, status);
-+	else
-+		trace_bl_pr_key_unreg(bdev, dev->pr_key);
-+}
-+
-+bool bl_register_scsi(struct pnfs_block_dev *dev)
-+{
-+	struct block_device *bdev = file_bdev(dev->bdev_file);
-+	const struct pr_ops *ops = bdev->bd_disk->fops->pr_ops;
-+	int status;
-+
-+	if (test_and_set_bit(PNFS_BDEV_REGISTERED, &dev->flags))
-+		return true;
-+
-+	status = ops->pr_register(bdev, 0, dev->pr_key, true);
-+	if (status) {
-+		trace_bl_pr_key_reg_err(bdev, dev->pr_key, status);
-+		return false;
-+	}
-+	trace_bl_pr_key_reg(bdev, dev->pr_key);
-+	return true;
-+}
-+
-+static bool
-+bl_validate_designator(struct pnfs_block_volume *v)
-+{
-+	switch (v->scsi.designator_type) {
-+	case PS_DESIGNATOR_EUI64:
-+		if (v->scsi.code_set != PS_CODE_SET_BINARY)
-+			return false;
-+
-+		if (v->scsi.designator_len != 8 &&
-+		    v->scsi.designator_len != 10 &&
-+		    v->scsi.designator_len != 16)
-+			return false;
-+
-+		return true;
-+	case PS_DESIGNATOR_NAA:
-+		if (v->scsi.code_set != PS_CODE_SET_BINARY)
-+			return false;
-+
-+		if (v->scsi.designator_len != 8 &&
-+		    v->scsi.designator_len != 16)
-+			return false;
-+
-+		return true;
-+	case PS_DESIGNATOR_T10:
-+	case PS_DESIGNATOR_NAME:
-+		pr_err("pNFS: unsupported designator "
-+			"(code set %d, type %d, len %d.\n",
-+			v->scsi.code_set,
-+			v->scsi.designator_type,
-+			v->scsi.designator_len);
-+		return false;
-+	default:
-+		pr_err("pNFS: invalid designator "
-+			"(code set %d, type %d, len %d.\n",
-+			v->scsi.code_set,
-+			v->scsi.designator_type,
-+			v->scsi.designator_len);
-+		return false;
-+	}
-+}
-+
-+static struct file *
-+bl_open_path(struct pnfs_block_volume *v, const char *prefix)
-+{
-+	struct file *bdev_file;
-+	const char *devname __free(kfree) = NULL;
-+
-+	devname = kasprintf(GFP_KERNEL, "/dev/disk/by-id/%s%*phN",
-+			prefix, v->scsi.designator_len, v->scsi.designator);
-+	if (!devname)
-+		return ERR_PTR(-ENOMEM);
-+
-+	if (tsk_is_kthread(current)) {
-+		scoped_with_init_fs()
-+			bdev_file = bdev_file_open_by_path(devname,
-+					BLK_OPEN_READ | BLK_OPEN_WRITE,
-+					NULL, NULL);
-+	} else {
-+		bdev_file = bdev_file_open_by_path(devname,
-+				BLK_OPEN_READ | BLK_OPEN_WRITE, NULL, NULL);
-+	}
-+	if (IS_ERR(bdev_file)) {
-+		dprintk("failed to open device %s (%ld)\n",
-+			devname, PTR_ERR(bdev_file));
-+	} else {
-+		pr_info("pNFS: using block device %s\n",
-+			file_bdev(bdev_file)->bd_disk->disk_name);
-+	}
-+
-+	return bdev_file;
-+}
-+
-+int
-+bl_parse_scsi(struct nfs_server *server, struct pnfs_block_dev *d,
-+		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask)
-+{
-+	struct pnfs_block_volume *v = &volumes[idx];
-+	struct block_device *bdev;
-+	const struct pr_ops *ops;
-+	struct file *bdev_file;
-+	int error;
-+
-+	if (!bl_validate_designator(v))
-+		return -EINVAL;
-+
-+	/*
-+	 * Try to open the RH/Fedora specific dm-mpath udev path first, as the
-+	 * wwn- links will only point to the first discovered SCSI device there.
-+	 * On other distributions like Debian, the default SCSI by-id path will
-+	 * point to the dm-multipath device if one exists.
-+	 */
-+	bdev_file = bl_open_path(v, "dm-uuid-mpath-0x");
-+	if (IS_ERR(bdev_file))
-+		bdev_file = bl_open_path(v, "wwn-0x");
-+	if (IS_ERR(bdev_file))
-+		bdev_file = bl_open_path(v, "nvme-eui.");
-+	if (IS_ERR(bdev_file)) {
-+		pr_warn("pNFS: no device found for volume %*phN\n",
-+			v->scsi.designator_len, v->scsi.designator);
-+		return PTR_ERR(bdev_file);
-+	}
-+	d->bdev_file = bdev_file;
-+	bdev = file_bdev(bdev_file);
-+
-+	d->len = bdev_nr_bytes(bdev);
-+	d->map = bl_map_simple;
-+	d->pr_key = v->scsi.pr_key;
-+
-+	if (d->len == 0) {
-+		error = -ENODEV;
-+		goto out_blkdev_put;
-+	}
-+
-+	ops = bdev->bd_disk->fops->pr_ops;
-+	if (!ops) {
-+		pr_err("pNFS: block device %s does not support reservations.",
-+				bdev->bd_disk->disk_name);
-+		error = -EINVAL;
-+		goto out_blkdev_put;
-+	}
-+
-+	return 0;
-+
-+out_blkdev_put:
-+	fput(d->bdev_file);
-+	return error;
-+}
--- 
-2.55.0
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
 
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
+
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
+
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
+
+If you want to undo deduplication, reply with:
+#syz undup
