@@ -1,149 +1,99 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wr1-f42.google.com (mail-wr1-f42.google.com [209.85.221.42])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2042046E010
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 13:06:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AF72E3E49C1
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 13:21:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.42
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787836011; cv=none; b=n/+1UeiqYJQ/gjtd5W6sykh57xkkKEA1NwzIoX9My0jDoNk6IoX+VvvyK3AT1PL7Tq4zYq+9faSJRn3d76z0GmJ0f8g03zWxnmh96Ti75ZK07OwyqvLr+aJFEnIlUDJ+3HZ71/24wHBSKgDeNgcW8fxU3Nnt2sQUfI2emJAiUHY=
+	t=1787836875; cv=none; b=SjIr+IVKej2GiCx+v46mMSeVtnvxkM7n40WL1uoOotdN1naOhs/Y7xpQ/iRk5AfKMCrbJwf3XkehzcR+SwVr/rOaidQMYXIYqbDEbm2WdlfcqNE8SdvAZUTwI4iuUyZvz3TyIXCrAVSeTfAJwL0wP+9F7kf0MB7uJdjb2+ax8Zc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787836011; c=relaxed/simple;
-	bh=D0HBwAIvzJNMhfik4eK7FAFYtPWgdl8TcYYSAC6k9y4=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=Ohpz1p4ccjoS6/rQn0bYMcU8B1rpGILzEEBTN+q9e6FlrlzeebM5AOY6bM++gL4VUtzF3JxhFBbzXgmXgqaen/ik6+9jW4T5MwFSIA6jVhPb+vq6HzCYGQtfrrRDr9rSOzey/Kpx6H21yzIQltaPjxpgxJhvqNB6p8grMl2cdS0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hRtn/HQc; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787836875; c=relaxed/simple;
+	bh=otkzb/Utnj2sMsei3FnfsBOWIWU1kpxHJ467PHyBctQ=;
+	h=MIME-Version:Content-Type:Subject:From:To:Cc:In-Reply-To:
+	 References:Date:Message-Id; b=fCIMcWIIPk5fmR7Izt5612rqQnTJOhucuoJY3OsFz84HRpi8LCRGa9grbUXFEv7uv+g+0ZgnZdA1PWWn5F7LZez6mptpb+pnu7QO8hcoSEwFPts2oXBm/Fqvh6149wN1XnJIk+dSY8CnUI7j+ZMwzac441bc1lewdIdbbOxqRV4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=NRan3pWL; arc=none smtp.client-ip=209.85.221.42
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hRtn/HQc"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4EAFA1F00A3D;
-	Thu, 27 Aug 2026 13:06:33 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787835993;
-	bh=cJTSlEd68RZuGL06M3/Lyd/r+uxyOtiVJOKCOkVdyrM=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=hRtn/HQc7WBAfrSiwvoiPVfQLcHIPVDgzuajduCSlNfjzVYIjqoI867rH3BEqbn2m
-	 avD5LSfiyAHM7d30P0PLA5EiLlQogePWUlATtiOwJgKE364R1ogA5OHyzQo+Gg0Jtt
-	 t4UzmLtnhZZmqghArpDdMwZdx+bdaAJ6cYVgnJ0FW2o0ox8xQugDE1x16unFfHBOGI
-	 3D9oVsGLpUdSY75gW8Z3r9tGxACRX7NWtJi7A77qaPTNIlTiR/zbgDs/MQjWAfe36Y
-	 y5HXIUyekEEy7IF2oHPuwhn/bPKp5R4wS2VjXGNXUaAeazTOtIcr5CdnWqIeQO7Mw0
-	 FkGfzY5Z0Awvg==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 3B45BF40066;
-	Thu, 27 Aug 2026 09:06:32 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Thu, 27 Aug 2026 09:06:32 -0400
-X-ME-Sender: <xms:WDaQarG5hoYYQLBRNaBeNq6jqahLWHyBWSGuRIfVgwM-jBcqTnfIGQ>
-    <xme:WDaQajLq7NpwhG4peRInKs29aXOLFREdeatRWSipYvTUi95TLEeXnzFgfaWs2DA2C
-    d_XXUD25dSLif17Ak73ndWAKnLRfL1XW85JbUlSG8QxTgwtYscSQw>
-X-ME-Proxy-Cause: dmFkZTFV6UjLByR+IHaYGJ2LqCsZhmTmv9hYxnrT+FBBtmogQP5ZID/Ow/TX+AWKibHNdv
-    o9KTcq7NOn0bJfxy7jxZhcYQR32aHz1Q7ySDS12L5fkj2TmkbqjSWmK64ViLDcOf77yeWy
-    hPWeKtAuSZ1Iw/3mU3EnB8DJZjrQcqpIgVpkiux5uDt8McEPZcjJ8Dz1ZbSoOGVO23HeJr
-    ZABVBZyh1KC3FtvsBSrIBR54Qpurl3HXbAzJeZnHVP5gTfbUK5icQZFQWqj+e4f67sxRY7
-    F/nMoIOPcHnjENN52CmHYK/ulxrCMBN4WsCczUOm6lZDsc4CEpGqNDvMQx7ljPCxfS6GU5
-    6pAeheTngMhXCJj+hxQ5krjp5vJACzB2ByRD8LIgVV8HCM1Bh4zYLl4BpLp2vfQIhxf0Ne
-    IH/KkaIVTN7U9JNAFOmR+SZXvZYPZiNpryLjBIVLM68FgnIggcHzQsak0doP/LLYnVgINn
-    V8AM9Ywa89tJld2alik0jA0dz30xj+5DIeDQj19k2BzJLjT6nrPFB2WNKC6X0eKvuh85Zr
-    FEYDvl3fJJp0614f/ccekjhXn/UH35EJGAQcF7Kcu1PReqt7hX6QIaUUmYmwTnzu0VRCdu
-    jWV1dIWwA1zQ/M7A0l3iPezcJ7Z9whOXFhHGfuciP4RCdcHnhdlvU4IlnDdw
-X-ME-Proxy: <xmx:WDaQavQLtp0iJBgyfoBr4-5AnF0SJ7YUwJqlH1L0oSPy9BlF5aVKBA>
-    <xmx:WDaQamzGMitFRZ1NQwNbh6e_SdVY8LDniQkssfKJSJ7YEcYGYJWOTg>
-    <xmx:WDaQavrsMyo3rCpnKMTO6-l_xS1WBCsUy-aWe6IgaVkLI7UYiewQKQ>
-    <xmx:WDaQah2T7qNfCutUEpwuP4zHnEJfPjzri6GzuSPfJWS9NWx8OHa62A>
-    <xmx:WDaQanxz93IWRNTi7zChd6OQsmV3NZXZTj-Iuo21EKK1zvzYGRuFIJwc>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 0AC7D7811F3; Thu, 27 Aug 2026 09:06:32 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="NRan3pWL"
+Received: by mail-wr1-f42.google.com with SMTP id ffacd0b85a97d-482e257a23aso1187902f8f.0
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 06:21:00 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1787836854; x=1788441654; darn=vger.kernel.org;
+        h=message-id:date:references:in-reply-to:cc:to:from:subject
+         :content-transfer-encoding:content-type:mime-version:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=an9B2mofauJa0deNsX9pImK+/DE4Hcahi53KOOKUS84=;
+        b=NRan3pWLwMB2lKKp71xWXGZSVmMoxcPdhn8hR1dir6BZ5CCqNwU+4YYiplwyGYqq6D
+         rWQNtucNX3NS1HxGulAmsie9m9u3xRVoVW40DW7lCDnkNWNSu9p4SZqJ54ke+4/CId2k
+         byh86msy4ftD4eYMngdxAYbxrPAEyN3+RsAbU0RlKKcawtHnz4rRQYcOUDsCcbFxwhLF
+         zJcmBXbrwkfpzT6YHE1BEMKVsxwfLHvj6qxdNhbO5VzidREZhTZX3M7640FP+shhkQM6
+         acbJjVa450B/PB9tmJe0BMXbGuGiRjqEo8JtjLIsglU5de2z4/iEWjbZAJSAtchEaZB4
+         Kt/w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787836854; x=1788441654;
+        h=message-id:date:references:in-reply-to:cc:to:from:subject
+         :content-transfer-encoding:content-type:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=an9B2mofauJa0deNsX9pImK+/DE4Hcahi53KOOKUS84=;
+        b=kbZkoWsW+rdFK5KLA2e7MyaTMW8BswHH1J5KRD85YYk9P4U/TztXQuLv6FebXCIoBM
+         jtFdYfHQCm0RDaDWTY6r7R7EHFuZwNtWQSEj8+kfNMpYABQNtE/nuejBtCPa+XrVsXZM
+         L0CWVTGcs+3DXbPS0e65owzDXcPlYraQd5JVZY0Rt65fpnMDEp41vOMT7IzYS81ba3Yu
+         rYbzy3oR9in4N1LP1sZ0/l++1PEA9DJk0X3bWcjDGUv5UFf21GRyqLQq11TfhYBi29p+
+         Kmrwe1s+dGtJ+uQAG/2jd4CeVkduXXubsMpLh4Qbhp0aCO8a06D85Fna+unRKyR9OpTv
+         bW6w==
+X-Forwarded-Encrypted: i=1; AHgh+Rpst3+B9hWEu6n6cp8UlQM42e0fkX3zdRrBdSOyaQYqx6qODKzlSlNqDM90aqIT4GQL3KphDMVgI9o=@vger.kernel.org
+X-Gm-Message-State: AFuF++krtZ7/cC/6MKeTg7OpdmUj/FGyUV1vr6luBjoe1vCP31pXSy11
+	pGCjLfXQ2K5L+hN5grFgGQZVdo98jtqmmamvSOOhlVJwG8PgywyfzIni
+X-Gm-Gg: AR+sD13UKZoggp2JSbXyTKAjuR2lkb3w3sIQwjEYnQx8+Si2SfzV7u+kxC+DvK+Kfwk
+	gbBc4npe3PM9h1xnEfIf268HzudYs1xBejfF5TBmFCX0Zk+fkTgm/APQ7lYBBC0rajmMzybNy75
+	+zmPaxESbcmYe8KSB2HgX5vEudzz7bjP8z0Txx2qIzn/a9iy6sxXOnHArJuKnUaEbbUj+k32bup
+	exVa8K5/ipqKp2eM/KLufA53DturS5PJS6SS9ltPyCEVlkPcAY7Ehl5W+EnWJU7osxZ6UYN3Y/E
+	FuaNGdpnd0qPXswdJE8hB0IwtiTJYy8CeKu/edpmivPp6qMZbHQhpbIU8C6MSiNvBcTG+aWiSTw
+	g/RI8ZIH2c+9rIpmdNlWbVEI3OaOPK4aUiBR23ZHnrO/vQGFyDX3rwZKN0ffBYkpi+yiMq53tpk
+	Dk/xZGa3fhu2Kg6a5FT15ka9Wl6SsIoee+3eSLLOqzVY39WAXKm1S8Vsw3R1E7/90xD22wXfk7g
+	IjYblZ4pzbI3lvthM00Hn84FZK4Fw+CwYfqe3ivQV1BzAm1zzW1bKr1DMWyjSlKNg==
+X-Received: by 2002:a05:6000:645:b0:482:dbe5:d12a with SMTP id ffacd0b85a97d-482e26d8217mr16473770f8f.9.1787836853991;
+        Thu, 27 Aug 2026 06:20:53 -0700 (PDT)
+Received: from valmpani.valmpani (ppp-94-67-69-196.home.otenet.gr. [94.67.69.196])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-482e28f6917sm8694744f8f.35.2026.08.27.06.20.51
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 27 Aug 2026 06:20:52 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: A0AurJh4UZM-
-Date: Thu, 27 Aug 2026 09:06:13 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Prabhakar Pujeri" <prabhakar.pujeri@dell.com>,
- "Jeff Layton" <jlayton@kernel.org>
-Cc: NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
- "Donald Hunter" <donald.hunter@gmail.com>,
- "Jakub Kicinski" <kuba@kernel.org>, linux-nfs@vger.kernel.org,
- linux-kernel@vger.kernel.org
-Message-Id: <1c53950d-66ba-490a-872f-b2318c584d3c@app.fastmail.com>
-In-Reply-To: <20260827045139.4353-1-prabhakar.pujeri@dell.com>
-References: 
- <3fd25e2178458fbb44f57f1b0e068c12a6503d17.1787638668.git.prabhakar.pujeri@dell.com>
- <1046756851d9d7d688ac612a7f175e48745d2b84.camel@kernel.org>
- <20260827045139.4353-1-prabhakar.pujeri@dell.com>
-Subject: Re: [PATCH v1 1/3] nfsd: report NFSv4 grace state through Netlink
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
+Subject: Re: [PATCH] NFS: sysfs: fix use-after-free on delayed kobject
+ release
+From: Vasileios Almpanis <vasilisalmpanis@gmail.com>
+To: Vasileios Almpanis <vasilisalmpanis@gmail.com>
+Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+ Benjamin Coddington <bcodding@redhat.com>, 
+ Trond Myklebust <trond.myklebust@hammerspace.com>, 
+ linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+In-Reply-To: <20260803-nfs-v1-1-034176dab4a3@gmail.com>
+References: <20260803-nfs-v1-1-034176dab4a3@gmail.com>
+Date: Thu, 27 Aug 2026 15:20:46 +0200
+Message-Id: <178783684601.144167.6448011883318625857.b4-review@b4>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787836851; l=227;
+ i=vasilisalmpanis@gmail.com; s=20260731; h=from:subject:message-id;
+ bh=otkzb/Utnj2sMsei3FnfsBOWIWU1kpxHJ467PHyBctQ=;
+ b=07QqWqTywTQBT2setq/Vuljo/tf5nYXP4Vo4M9MA0JDQCD7YDR6HLI9vwsTNint1WFTcGWKZv
+ PXGpT0JfPAKBdzlYaA7Nu/F1YGa0sRKfJf3NHwyYZ/BfMqMBDqzypSj
+X-Developer-Key: i=vasilisalmpanis@gmail.com; a=ed25519;
+ pk=gn5Uo6yL8Tlpq5uATxA3nqoq+U8eWLRbjD+bOk0qSpU=
 
+Hello everyone, just checking on this patch. It has received required
+review. Is there anything else needed before it can be merged?
 
-
-On Thu, Aug 27, 2026, at 12:51 AM, Prabhakar Pujeri wrote:
-> On Tue, 2026-08-25 at 08:10 -0400, Jeff Layton wrote:
->> What's your interest in reporting this info?
->
-> My interest is in making nfsd's operational state observable to
-> monitoring and validation tooling without parsing nfsdfs.
->
-> Concretely, I'm building a validation harness for NFS server
-> restart and failover behaviour: bounce the server, drive reclaim from a
-> set of clients, and check that state comes back the way it should. That
-> kind of test has to know when the grace period has actually lifted
-> before it can move on to the next phase. Polling
-> /proc/fs/nfsd/v4_end_grace works, but it is a text interface, it only
-> answers for nfsd's v4 lock manager, and new nfsd control and
-> observability interfaces are going to the netlink family instead.
->
-> So I would rather frame this as parity than as new information: grace
-> state is already exported, this puts it on the interface that is
-> replacing the one exporting it, and -- per your point below -- fixes
-> the semantics on the way over.
->
->> Just because the v4 recovery is done does not mean that you will be
->> able to access files. The overall system grace period is a union of
->> both the NLM and v4 grace periods.
->>
->> This patch is reporting just the v4 one. If the goal is for the admin
->> to reliably tell when the grace period has been lifted, then this
->> won't tell us that.
->
-> Agreed, and "has the grace period lifted" is the question I actually
-> care about. I mirrored the semantics of /proc/fs/nfsd/v4_end_grace
-> without stopping to ask whether those were the useful semantics to
-> expose in a new interface. They aren't.
->
->> Maybe this should just return the result of locks_in_grace() instead?
->>
->> Or, do you plan to add similar functionality to lockd? Then you can
->> just do the union in userland to figure out if it has been lifted.
->
-> I don't think lockd needs to grow anything -- fs/nfs_common/grace.c
-> already gives us both halves, and nfsd calls into both helpers today:
->
->   - locks_in_grace() is the union you describe: true while any lock
->     manager in the net ns is still in grace.
->
->   - opens_in_grace() is true only while a manager with ->block_opens
->     is in grace, which per the comment on struct lock_manager is the
->     NFSv4-and-up case; NLM doesn't set it.
->
-> So for v2 I'll report locks_in_grace(), which answers "can this server
-> hand out normal locks and opens yet" rather than "is nfsd's v4 lock
-> manager done". If it's ever worth distinguishing the two, a second
-> attribute carrying opens_in_grace() gets there without touching lockd,
-> and userland can derive the NLM-only case as (locks && !opens). I'd
-> rather not add that speculatively, but say the word if you'd like both
-> in v2.
-
-Although NFSD does not yet support putting individual exports in
-grace, that is an open possibility for handling things like the
-reboot of a backend NFS server for a re-exported NFS client. I'd
-like any new API to avoid foreclosing the ability to move exports
-in and out of grace individually rather than as a single unit.
-
+Kind regards,
+Vasileios Almpanis
 
 -- 
-Chuck Lever
+Vasileios Almpanis <vasilisalmpanis@gmail.com>
