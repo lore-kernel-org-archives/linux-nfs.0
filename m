@@ -1,324 +1,224 @@
-Received: from mx0a-00154904.pphosted.com (mx0a-00154904.pphosted.com [148.163.133.20])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oa2-f0.google.com (mail-oa2-f0.google.com [74.125.231.64])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0FB63450F2
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 05:14:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.133.20
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 803803E3D86
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 08:33:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.64
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787807661; cv=none; b=scy3q9NcKO03rci0r44ZpWOSKHQaaeS4Q7vNerRFCr0L1b6Sl6hCTJouZBdap26xN/cPgfo6zar5tQcZHUMlSHx6SxHeq0HdjmEHyRdnMIMD/lMYD7zqQndOM2KhifM7ts311LHHEUb6sUCn0EhrUnqFB8sumhszP7iig1NsIGA=
+	t=1787819628; cv=none; b=LmPrep/o7jM2y4arByk7/tnE/2KGr7+STifuFs44g21XQlKcH1YuzaeRM0qQoFMe20yMK9NCTEOAtexKBqzUIz+hIfka05xZmANiIXPSUxa6AOQ6BgX/vkv3PzvVSWY6x6V1YbSVHkoeop2bbA0uihD+CMhT2kU+m2RfIRdutcc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787807661; c=relaxed/simple;
-	bh=oA8vNi4IsOKN8j/DZtiIDDe5s87lRacRs93CyZU15a4=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=qWPI/Xde4GiWvmBalT0hF7iYhP75ad0rEeR4+RlYdwFKkglRKj30EJyMXfKonrgEHdG6UyDorbJ2qinS66QhDLxQkHP6lHcyWeniMJFFOxbynu2TfZZa0Eg2Qpy7SLsE6FUeN5MY7cAepaDqI9NVchgWJg9gsRBJ8+K/6rb4bDg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=Ygn48Pqh; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=LSQvavbw; arc=none smtp.client-ip=148.163.133.20
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dell.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="Ygn48Pqh";
-	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="LSQvavbw"
-Received: from pps.filterd (m0170393.ppops.net [127.0.0.1])
-	by mx0a-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67R3HEjh3095678
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 01:14:19 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=dell.com; h=cc
-	:content-transfer-encoding:content-type:date:from:in-reply-to
-	:message-id:mime-version:references:subject:to; s=smtpout1; bh=x
-	MJa7MqM3OcvKEZNGDHq/YBCg39Q+6UxGYu5nADgXAo=; b=Ygn48PqhWctKnWH3V
-	tcIrA68IWtywZXSIdBqe7oCOUYgw/Tz3IfpZ06P3M3YsNWgjAEii21KfHk4ljo08
-	8djiTpyGoP03+6cgo+onv5O84LaPv60CLIVXXuxgYOBEZRYlWeLqV7ciTYkTLP3I
-	Cg1x9/L3gqZIxXxGl8064dRr+Zb1WlQGEqDuesW+Urp4gICS+ww/x8hW3g0y0a0U
-	4T4SmIKAfRpzUWIm/c6ZRU/o4qBSeEbSnu7YGA4dy2xk+VJXiHQbMUUiGC0PsdUk
-	cRHRGpRy3VmmM1xrbL1B+3hRBqpwz7Nm/dtOp+wm0+4eifEEwMCOc7DU3Cl4ElA8
-	f2/qw==
-Received: from mx0b-00154901.pphosted.com (mx0b-00154901.pphosted.com [67.231.157.37])
-	by mx0a-00154904.pphosted.com (PPS) with ESMTPS id 4g773fvf18-1
-	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 01:14:19 -0400 (EDT)
-Received: from pps.filterd (m0144102.ppops.net [127.0.0.1])
-	by mx0b-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67R4btjZ3436827
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 01:14:18 -0400
-Received: from esapsmtpat02.us.dell.com (esapsmtpat02.us.dell.com [143.166.211.150])
-	by mx0b-00154901.pphosted.com (PPS) with ESMTPS id 4gaecprakv-1
-	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 01:14:17 -0400 (EDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-  d=dell.com; i=@dell.com; q=dns/txt; s=smtpdev1;
-  t=1787807658; x=1819343658;
-  h=from:to:cc:subject:date:message-id:in-reply-to:
-   references:mime-version:content-transfer-encoding;
-  bh=xMJa7MqM3OcvKEZNGDHq/YBCg39Q+6UxGYu5nADgXAo=;
-  b=LSQvavbw6rWOQEI1Xe6dDEgniJu7mQ2z2/DcFVEetbH6hPSglOj4EbQu
-   HPM3YOuok2GcNu00H0nX2NYBeT5esj8a8AVRDIXPV2y0GOG4KpdgxCBIu
-   on/xN9vBqQkHVw2UmTsghE+vFoFUxivp+o/UA2k6sPdMUB5I9l8Z6dADd
-   HRI99UFl00UY63W9EyrqRqmpqe93cDsDDooGt7IxqloXN4+zl1LHVVgax
-   JHIDUUJaT3Ib/fmjmL5PSIj2f9eMoGhAKN6mCGf6rJCePgHZG8eFUpn7u
-   nkDMFLJlFfMXptBEd+VPuYfufDDhprectPszaTMule/fF7zoxghBxwIjR
-   Q==;
-X-CSE-ConnectionGUID: yKqssG5HS2ufIK6prt4IXA==
-X-CSE-MsgGUID: GqHRS4XqTEiwKPAsxwL0yQ==
-X-LoopCount0: from 10.94.13.48
-X-MS-Exchange-CrossPremises-AuthAs: Internal
-Received: from w-96j1th4.apac.dell.com (HELO W-96J1TH4.blr.amer.dell.com) ([10.94.13.48])
-  by esapsmtpat02.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 27 Aug 2026 05:14:15 +0000
-From: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
-To: Chuck Lever <cel@kernel.org>
-Cc: Prabhakar Pujeri <prabhakar.pujeri@dell.com>,
-        Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
-        Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>,
-        Tom Talpey <tom@talpey.com>, Rick Macklem <rmacklem@uoguelph.ca>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: release POSIX ACLs of unexecuted compound ops
-Date: Thu, 27 Aug 2026 05:14:12 +0000
-Message-ID: <20260827051412.5079-1-prabhakar.pujeri@dell.com>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260827045920.4737-1-prabhakar.pujeri@dell.com>
-References: <20260823113255.3417-1-prabhakar.pujeri@dell.com> <2805508b-99b1-4bfd-bdd5-cd07ba0789f5@app.fastmail.com> <20260827045920.4737-1-prabhakar.pujeri@dell.com>
+	s=arc-20240116; t=1787819628; c=relaxed/simple;
+	bh=NgqDcl/yH06Y2+qPvSSVSoKHhTGUH6rGtqU9TFKu15E=;
+	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=HP5HoaZdrIGFYGF5IF12l19PP8lf7htj7Kd6thIwclbVBhc6x10VQQCUVkHPDnAqjiz+2B3DFWLyfDQv50aBukh9fG7SS6qCdvywwHkg/k2S1+ZQHTfQ2ilOrm7Xk6hsxULHAszVIudtyJJWEI9qI7zcFU8GONrB4MsXZsXl6A0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=74.125.231.64
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oa2-f0.google.com with SMTP id 586e51a60fabf-451bde4ab1cso718245fac.1
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 01:33:44 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787819623; x=1788424423;
+        h=content-type:to:from:subject:message-id:date:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=NIotZKdxSe5KTblEX96zuwJ9Zuvss2SCX17qrgz4rGw=;
+        b=nXREMYIE+JOVoh3OoBv0YTLEp8s3Aq+LiGhPXRhdwVXUxVXkADo+zJ3sDoqZ8bAEFN
+         JOxXMY8pIXhZrdC1EN4HUOo3/TrVQofnb0C582rVD3FUHYEZPr77smvp5ArKi59Ah8lb
+         BoAvwg8lHDoD3BzwCTAYYTx+UBJysRFok9+aqpyZ4RmFwM3dxcDX/ZpO+/IHk+JEsDbD
+         p/Gz13AO7OQDvPc8NcSJXFm+IKaaZBrtuICq0qKOJGc3JZCB03hrCt3gVlcTNnvaGtkH
+         N8ctMgu1/FCPLGO0XqOCwmDRdCDWYD8poFnafN+j1tAqkJw77QpiDnE1pXcNDfT8E+CM
+         CUwA==
+X-Forwarded-Encrypted: i=1; AHgh+RrC1U+HbIwKf1rQPRvAiGm6mIRr+0/BKLBG6ArxtwiNDPXAcvjF+wOr2yT65bi3gbVue3udcg/Sdj0=@vger.kernel.org
+X-Gm-Message-State: AFuF++lbz4KWQ02sPZRfznIr7wxQyOqIp8MLmNFshFg5YOSr1WU1cbVe
+	YsBnrfImR4eMf1NIWsZ/gpRr7oprtE/KtTocr21FCZ4JhvYiisAzp/XJv1Dbthh4PjNX3dPCRpC
+	8WXx/KUkdsiMoqP+0AShrB7kDHFcfJLEvzJyhxb3ri9NgGl9sbOFTEwWXYc0=
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
- definitions=2026-08-27_02,2026-08-26_02,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- malwarescore=0 priorityscore=1501 clxscore=1015 adultscore=0 phishscore=0
- lowpriorityscore=0 spamscore=0 impostorscore=0 bulkscore=0 suspectscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608270041
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODI3MDA0MCBTYWx0ZWRfX0i0LJBTSXoqn
- u/1g6DMPC4EIgRL77nSbeJJU4auvDIUDKevM3VQf3XhbTgUMt6M0Lh6+x8hEVdQWMHHHQeJmgEL
- fmmOxFWZWjVTbVJNRjiSzO5dXjmZw6p02gCVCM3hyT8N5felHppCMyAXK+koydp8fiEtIf6rqyq
- +tTcRL/1uX3W1QAVJVUCCZSK3JF0zqBnhmHYH4o14l8w/DEBb5f+QNIOxqyRJMgHHYrVgIfcLXf
- LknZMXZ8lhY7WXQTlAgRVF8bLYvHl3tDOm+k8d2BpzzaxkkQ2MEbs/sdiVCjnTEHqs8ksKeblk2
- RzfY+K4OgIMlDswxJ/7rZUlrus/ykDgYhXnbIwL5lXwZWeD9ms+tAiXrS5JvXfezJxQBGUFLeeu
- DfjeZEmsH8Lg0rpUvWkzFs1XA9YLW2cOOWqAKS4T+3M37Dl3VSs1zgu8zYoVo0/4HM+4NVGBYQ8
- SdR6hqRzyuHeMh8r4KQ==
-X-Proofpoint-ORIG-GUID: rSTk3tvwTxYJzoeEoOz6F-d19JSdYEte
-X-Proofpoint-GUID: rSTk3tvwTxYJzoeEoOz6F-d19JSdYEte
-X-Authority-Analysis: v=2.4 cv=CqmPtH4D c=1 sm=1 tr=0 ts=6a8fc7ab cx=c_pps
- a=Z2e5DKjA+8LiMDv5v6mwwA==:117 a=i8a7nF7jFa3EbZrjgrQYpA==:17
- a=IkcTkHD0fZMA:10 a=Sv0fKeRqtYgA:10 a=ke5jqHz-1hQA:10
- a=VkNPw1HP01LnGYTKEx00:22 a=6gNNCFAoQcIphELLPWWu:22 a=2Lpba0WeoN7BYVdwMO11:22
- a=Q7Pk32MMvI6xH3Y2GMoA:9 a=QEXdDO2ut3YA:10 a=O8hF6Hzn-FEA:10
- a=hlJyneSgMmFPbskH-t2w:22
-X-Proofpoint-Spam-Info: AW1haW4tMjYwODI3MDA0MCBTYWx0ZWRfX47UDdYySpN4p
- fc6B2X3K/T4bgPngr7Y32AFC51uh1oY4N2MebuLfHLIwr44kpC85qhgnNQVfvECpYgKdTnFnfTy
- Qp8lIlxgYuUOtqNZygQ1dwVAcT16sUo=
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0
- suspectscore=0 adultscore=0 spamscore=0 impostorscore=0 clxscore=1015
- bulkscore=0 lowpriorityscore=0 phishscore=0 priorityscore=1501
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608270040
+X-Received: by 2002:a05:6820:81f:b0:6b1:b157:bb50 with SMTP id
+ 006d021491bc7-6b1b157c05amr4621621eaf.27.1787819622727; Thu, 27 Aug 2026
+ 01:33:42 -0700 (PDT)
+Date: Thu, 27 Aug 2026 01:33:42 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6a8ff666.27659fcc.2ceef7.0010.GAE@google.com>
+Subject: [syzbot] [nfs?] INFO: task hung in nfsd_nl_svc_export_get_reqs_dumpit
+From: syzbot <syzbot+e7cea59fd1cb261746b5@syzkaller.appspotmail.com>
+To: Dai.Ngo@oracle.com, cel@kernel.org, jlayton@kernel.org, 
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, neil@brown.name, 
+	okorniev@redhat.com, syzkaller-bugs@googlegroups.com, tom@talpey.com
+Content-Type: text/plain; charset="UTF-8"
 
-A correction to my description of the runtime-abort case in the
-message above:
+Hello,
 
-The invalid PUTFH comes before the ACL-bearing SETATTR. The server
-decodes both operations, allocating the POSIX ACL while decoding
-SETATTR, then execution stops on the earlier PUTFH before SETATTR runs.
-Thus the decoded ACL remains owned by compound-argument cleanup.
+syzbot found the following issue on:
 
-The exact NFSv4.2 runtime shape is:
+HEAD commit:    f9a2394a2348 Merge tag 'mm-hotfixes-stable-2026-08-06-18-4..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=1349cfb9580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=e2828a6233373d18
+dashboard link: https://syzkaller.appspot.com/bug?extid=e7cea59fd1cb261746b5
+compiler:       Debian clang version 22.1.8 (++20260613092233+e80beda6e255-1~exp1~20260613092250.77), Debian LLD 22.1.8
 
-  PUTFH(invalid one-byte filehandle)
-  SETATTR(FATTR4_WORD2_POSIX_ACCESS_ACL)
+Unfortunately, I don't have any reproducer for this issue yet.
 
-The hard-decode case decodes SETATTR, declares a second operation, and
-truncates the request before the second operation number.
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/8a66bf16c228/disk-f9a2394a.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/89268e08fed4/vmlinux-f9a2394a.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/414a08d48dff/bzImage-f9a2394a.xz
 
-Below is the raw-XDR reproducer I used. It defaults to 512 iterations of
-each mode; --mode runtime or --mode hard-decode selects one path.
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+e7cea59fd1cb261746b5@syzkaller.appspotmail.com
 
-Sorry for the reversed wording in my earlier reply.
+INFO: task syz.1.4033:18710 blocked for more than 143 seconds.
+      Tainted: G             L      syzkaller #0
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:syz.1.4033      state:D stack:25520 pid:18710 tgid:18709 ppid:5586   task_flags:0x400140 flags:0x00080002
+Call Trace:
+ <TASK>
+ context_switch kernel/sched/core.c:5510 [inline]
+ __schedule+0x16dc/0x5500 kernel/sched/core.c:7234
+ __schedule_loop kernel/sched/core.c:7311 [inline]
+ rt_mutex_schedule+0x76/0xf0 kernel/sched/core.c:7607
+ rt_mutex_slowlock_block+0x55c/0x680 kernel/locking/rtmutex.c:1670
+ __rt_mutex_slowlock kernel/locking/rtmutex.c:1747 [inline]
+ __rt_mutex_slowlock_locked kernel/locking/rtmutex.c:1787 [inline]
+ rt_mutex_slowlock+0x2d4/0x780 kernel/locking/rtmutex.c:1827
+ __rt_mutex_lock kernel/locking/rtmutex.c:1842 [inline]
+ __mutex_lock_common kernel/locking/rtmutex_api.c:560 [inline]
+ mutex_lock_nested+0x168/0x1d0 kernel/locking/rtmutex_api.c:578
+ nfsd_nl_svc_export_get_reqs_dumpit+0xf7/0xc40 fs/nfsd/export.c:674
+ genl_dumpit+0x10b/0x1b0 net/netlink/genetlink.c:1026
+ netlink_dump+0x711/0xee0 net/netlink/af_netlink.c:2331
+ __netlink_dump_start+0x589/0x7b0 net/netlink/af_netlink.c:2446
+ genl_family_rcv_msg_dumpit+0x213/0x310 net/netlink/genetlink.c:1075
+ genl_family_rcv_msg net/netlink/genetlink.c:1191 [inline]
+ genl_rcv_msg+0x5e1/0x7a0 net/netlink/genetlink.c:1209
+ netlink_rcv_skb+0x226/0x4a0 net/netlink/af_netlink.c:2556
+ genl_rcv+0x28/0x40 net/netlink/genetlink.c:1218
+ netlink_unicast_kernel net/netlink/af_netlink.c:1319 [inline]
+ netlink_unicast+0x7f5/0x990 net/netlink/af_netlink.c:1345
+ netlink_sendmsg+0x813/0xb40 net/netlink/af_netlink.c:1900
+ sock_sendmsg_nosec+0x13a/0x180 net/socket.c:775
+ __sock_sendmsg net/socket.c:790 [inline]
+ ____sys_sendmsg+0x565/0x870 net/socket.c:2684
+ ___sys_sendmsg+0x2a5/0x360 net/socket.c:2738
+ __sys_sendmsg net/socket.c:2770 [inline]
+ __do_sys_sendmsg net/socket.c:2775 [inline]
+ __se_sys_sendmsg net/socket.c:2773 [inline]
+ __x64_sys_sendmsg+0x1b7/0x290 net/socket.c:2773
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7ff1c3a2e0d9
+RSP: 002b:00007ff1c1c86028 EFLAGS: 00000246 ORIG_RAX: 000000000000002e
+RAX: ffffffffffffffda RBX: 00007ff1c3cb5fa0 RCX: 00007ff1c3a2e0d9
+RDX: 00000000040088c0 RSI: 0000200000000000 RDI: 0000000000000003
+RBP: 00007ff1c3ac5024 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
+R13: 00007ff1c3cb6038 R14: 00007ff1c3cb5fa0 R15: 00007ffc5284e4a8
+ </TASK>
 
--- >8 --
-#!/usr/bin/env python3
-"""Exercise NFSD cleanup of decoded POSIX ACL attributes.
+Showing all locks held in the system:
+4 locks held by rcuc/1/28:
+1 lock held by khungtaskd/38:
+ #0: ffffffff8e1c3000 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:300 [inline]
+ #0: ffffffff8e1c3000 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:840 [inline]
+ #0: ffffffff8e1c3000 (rcu_read_lock){....}-{1:3}, at: debug_show_all_locks+0x2e/0x180 kernel/locking/lockdep.c:6775
+2 locks held by udevd/4947:
+2 locks held by getty/5330:
+ #0: ffff8880369bb0a0 (&tty->ldisc_sem){++++}-{0:0}, at: tty_ldisc_ref_wait+0x25/0x70 drivers/tty/tty_ldisc.c:243
+ #1: ffffc90003cb62e0 (&ldata->atomic_read_lock){+.+.}-{4:4}, at: n_tty_read+0x460/0x1360 drivers/tty/n_tty.c:2211
+2 locks held by kworker/u8:30/14883:
+ #0: ffff88801fb40938 ((wq_completion)iou_exit){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3297 [inline]
+ #0: ffff88801fb40938 ((wq_completion)iou_exit){+.+.}-{0:0}, at: process_scheduled_works+0xa20/0x14e0 kernel/workqueue.c:3405
+ #1: ffffc90004897c40 ((work_completion)(&ctx->exit_work)){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3297 [inline]
+ #1: ffffc90004897c40 ((work_completion)(&ctx->exit_work)){+.+.}-{0:0}, at: process_scheduled_works+0xa20/0x14e0 kernel/workqueue.c:3405
+3 locks held by syz-executor/18021:
+2 locks held by syz.7.3941/18296:
+ #0: ffffffff8f61d520 (cb_lock){++++}-{4:4}, at: genl_rcv+0x19/0x40 net/netlink/genetlink.c:1217
+ #1: ffffffff8e4e8ad8 (nfsd_mutex){+.+.}-{4:4}, at: nfsd_nl_listener_set_doit+0x136/0x16e0 fs/nfsd/nfsctl.c:1964
+3 locks held by syz.1.4033/18710:
+ #0: ffffffff8f61d520 (cb_lock){++++}-{4:4}, at: genl_rcv+0x19/0x40 net/netlink/genetlink.c:1217
+ #1: ffff88802b1fc928 (nlk_cb_mutex-GENERIC){+.+.}-{4:4}, at: __netlink_dump_start+0xf4/0x7b0 net/netlink/af_netlink.c:2410
+ #2: ffffffff8e4e8ad8 (nfsd_mutex){+.+.}-{4:4}, at: nfsd_nl_svc_export_get_reqs_dumpit+0xf7/0xc40 fs/nfsd/export.c:674
+2 locks held by syz-executor/18969:
+ #0: ffff888063bb40d0 (&type->s_umount_key#98){+.+.}-{4:4}, at: __super_lock fs/super.c:58 [inline]
+ #0: ffff888063bb40d0 (&type->s_umount_key#98){+.+.}-{4:4}, at: __super_lock_excl fs/super.c:73 [inline]
+ #0: ffff888063bb40d0 (&type->s_umount_key#98){+.+.}-{4:4}, at: deactivate_super+0xa9/0xe0 fs/super.c:509
+ #1: ffffffff8e4e8ad8 (nfsd_mutex){+.+.}-{4:4}, at: nfsd_shutdown_threads+0x4e/0xd0 fs/nfsd/nfssvc.c:576
 
-The runtime-abort request decodes a SETATTR carrying a POSIX access ACL,
-then stops while processing an earlier invalid PUTFH.  The hard-decode
-request decodes the SETATTR and advertises a second operation whose opnum is
-truncated.  Both paths leave the decoded ACL owned by the compound argument
-cleanup code.
-"""
+=============================================
 
-import argparse
-import collections
-import random
-import socket
-import struct
-
-
-NFS_PROGRAM = 100003
-NFS_VERSION = 4
-NFSPROC4_COMPOUND = 1
-OP_PUTFH = 22
-OP_SETATTR = 34
-FATTR4_WORD2_POSIX_ACCESS_ACL = 1 << (92 - 64)
-
-
-def u32(value):
-    return struct.pack(">I", value)
-
-
-def opaque(value):
-    padding = b"\0" * ((-len(value)) & 3)
-    return u32(len(value)) + value + padding
-
-
-def access_acl():
-    # Minimal valid ACL: user::rwx, group::r-x, other::r-x.
-    entries = ((1, 7), (3, 5), (6, 5))
-    result = u32(len(entries))
-    for tag, permissions in entries:
-        result += u32(tag) + u32(permissions) + opaque(b"")
-    return result
-
-
-def setattr():
-    attributes = access_acl()
-    bitmap = (
-        u32(3)
-        + u32(0)
-        + u32(0)
-        + u32(FATTR4_WORD2_POSIX_ACCESS_ACL)
-    )
-    stateid = b"\0" * 16
-    return u32(OP_SETATTR) + stateid + bitmap + opaque(attributes)
-
-
-def compound(mode):
-    header = opaque(b"acl-release-test") + u32(2)
-    if mode == "runtime":
-        # A one-byte filehandle decodes but fails validation at execution.
-        operations = u32(OP_PUTFH) + opaque(b"\0") + setattr()
-        return header + u32(2) + operations
-    if mode == "hard-decode":
-        # opcount says two, but the second operation number is absent.
-        return header + u32(2) + setattr()
-    raise ValueError(mode)
-
-
-def rpc_call(xid, body):
-    rpc_header = b"".join(
-        u32(field)
-        for field in (
-            xid,
-            0,  # CALL
-            2,  # RPC version
-            NFS_PROGRAM,
-            NFS_VERSION,
-            NFSPROC4_COMPOUND,
-            0,  # AUTH_NONE credential
-            0,
-            0,  # AUTH_NONE verifier
-            0,
-        )
-    )
-    payload = rpc_header + body
-    return u32(0x80000000 | len(payload)) + payload
-
-
-def recv_exact(sock, length):
-    chunks = []
-    remaining = length
-    while remaining:
-        chunk = sock.recv(remaining)
-        if not chunk:
-            raise ConnectionError("server closed the RPC connection")
-        chunks.append(chunk)
-        remaining -= len(chunk)
-    return b"".join(chunks)
-
-
-def recv_record(sock):
-    fragments = []
-    while True:
-        marker = struct.unpack(">I", recv_exact(sock, 4))[0]
-        fragments.append(recv_exact(sock, marker & 0x7FFFFFFF))
-        if marker & 0x80000000:
-            return b"".join(fragments)
-
-
-def unpack_u32(data, offset):
-    if offset + 4 > len(data):
-        raise ValueError("short RPC reply")
-    return struct.unpack_from(">I", data, offset)[0], offset + 4
+NMI backtrace for cpu 1
+CPU: 1 UID: 0 PID: 38 Comm: khungtaskd Tainted: G             L      syzkaller #0 PREEMPT_{RT,(full)} 
+Tainted: [L]=SOFTLOCKUP
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/24/2026
+Call Trace:
+ <TASK>
+ dump_stack_lvl+0xe8/0x150 lib/dump_stack.c:120
+ nmi_cpu_backtrace+0x274/0x2d0 lib/nmi_backtrace.c:122
+ nmi_trigger_cpumask_backtrace+0x17a/0x380 lib/nmi_backtrace.c:65
+ trigger_all_cpu_backtrace include/linux/nmi.h:162 [inline]
+ __sys_info lib/sys_info.c:157 [inline]
+ sys_info+0x135/0x170 lib/sys_info.c:165
+ check_hung_uninterruptible_tasks kernel/hung_task.c:353 [inline]
+ watchdog+0xfd7/0x1030 kernel/hung_task.c:561
+ kthread+0x388/0x470 kernel/kthread.c:436
+ ret_from_fork+0x514/0xb70 arch/x86/kernel/process.c:158
+ ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
+ </TASK>
+Sending NMI from CPU 1 to CPUs 0:
+NMI backtrace for cpu 0
+CPU: 0 UID: 0 PID: 0 Comm: swapper/0 Tainted: G             L      syzkaller #0 PREEMPT_{RT,(full)} 
+Tainted: [L]=SOFTLOCKUP
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/24/2026
+RIP: 0010:pv_native_safe_halt+0xf/0x20 arch/x86/kernel/paravirt.c:64
+Code: 0b 70 02 e9 13 cf 03 00 cc cc cc 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 f3 0f 1e fa 66 90 0f 00 2d b3 08 26 00 fb f4 <c3> cc cc cc cc cc cc cc cc cc cc cc cc cc cc cc cc 90 90 90 90 90
+RSP: 0018:ffffffff8de07de0 EFLAGS: 00000246
+RAX: 00000000009c5c99 RBX: ffffffff819a1590 RCX: 0000000080000001
+RDX: 0000000000000001 RSI: ffffffff8d880ab5 RDI: ffffffff8bca5980
+RBP: ffffffff8de07eb8 R08: ffff8880b8633d5b R09: 1ffff110170c67ab
+R10: dffffc0000000000 R11: ffffed10170c67ac R12: 0000000000000000
+R13: 1ffffffff1bdede8 R14: 1ffffffff1bc0fc4 R15: dffffc0000000000
+FS:  0000000000000000(0000) GS:ffff888125c46000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007f9ff4955ff8 CR3: 000000003ca8e000 CR4: 00000000003526f0
+Call Trace:
+ <TASK>
+ arch_safe_halt arch/x86/kernel/process.c:767 [inline]
+ default_idle+0x9/0x20 arch/x86/kernel/process.c:768
+ default_idle_call+0x72/0xb0 kernel/sched/idle.c:122
+ cpuidle_idle_call kernel/sched/idle.c:199 [inline]
+ do_idle+0x2e0/0x540 kernel/sched/idle.c:355
+ cpu_startup_entry+0x43/0x60 kernel/sched/idle.c:454
+ rest_init+0x2de/0x300 init/main.c:717
+ start_kernel+0x392/0x3e0 init/main.c:1175
+ x86_64_start_reservations+0x24/0x30 arch/x86/kernel/head64.c:310
+ x86_64_start_kernel+0x137/0x1b0 arch/x86/kernel/head64.c:291
+ common_startup_64+0x13e/0x157
+ </TASK>
 
 
-def compound_status(reply, expected_xid):
-    xid, offset = unpack_u32(reply, 0)
-    message_type, offset = unpack_u32(reply, offset)
-    reply_status, offset = unpack_u32(reply, offset)
-    if xid != expected_xid or message_type != 1 or reply_status != 0:
-        raise ValueError(
-            f"unexpected RPC reply header: xid={xid:#x}, "
-            f"type={message_type}, status={reply_status}"
-        )
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-    _, offset = unpack_u32(reply, offset)  # verifier flavor
-    verifier_length, offset = unpack_u32(reply, offset)
-    offset += (verifier_length + 3) & ~3
-    accept_status, offset = unpack_u32(reply, offset)
-    if accept_status != 0:
-        return f"RPC accept status {accept_status}"
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
 
-    status, _ = unpack_u32(reply, offset)
-    return f"NFS4 status {status}"
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
 
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
 
-def run_mode(host, port, timeout, mode, count, first_xid):
-    statuses = collections.Counter()
-    with socket.create_connection((host, port), timeout=timeout) as sock:
-        sock.settimeout(timeout)
-        body = compound(mode)
-        for sequence in range(count):
-            xid = (first_xid + sequence) & 0xFFFFFFFF
-            sock.sendall(rpc_call(xid, body))
-            statuses[compound_status(recv_record(sock), xid)] += 1
-    return statuses
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
 
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=2049)
-    parser.add_argument("--count", type=int, default=512)
-    parser.add_argument("--timeout", type=float, default=5.0)
-    parser.add_argument(
-        "--mode",
-        choices=("runtime", "hard-decode", "both"),
-        default="both",
-    )
-    args = parser.parse_args()
-
-    if args.count < 1:
-        parser.error("--count must be positive")
-
-    modes = ("runtime", "hard-decode") if args.mode == "both" else (args.mode,)
-    first_xid = random.SystemRandom().randrange(1, 1 << 32)
-    for index, mode in enumerate(modes):
-        statuses = run_mode(
-            args.host,
-            args.port,
-            args.timeout,
-            mode,
-            args.count,
-            first_xid + index * args.count,
-        )
-        formatted = ", ".join(
-            f"{status}: {seen}" for status, seen in sorted(statuses.items())
-        )
-        print(f"{mode}: sent {args.count}; {formatted}")
-
-
-if __name__ == "__main__":
-    main()
--- 8< --
-
---
-Prabhakar
+If you want to undo deduplication, reply with:
+#syz undup
