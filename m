@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 82AC338DC52;
-	Fri, 28 Aug 2026 16:37:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3365C3A901C;
+	Fri, 28 Aug 2026 16:37:52 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787935071; cv=none; b=P450CogYyNLCHuMbDUXlddzDWdW5jP0SIKvIidr0jd2wpMOdhMJ32mI/7E42kePs/I7CaXFtzlDQaBqNP79T16kDusFYwMSoTgldL6fByTbdE+DtmITQ6S1ljotFgkXjYokpsaTjbGMBU+Z7qaTQRddvdmCDgDn2gx9fk6G14wU=
+	t=1787935073; cv=none; b=XPto/b1i7AZMrYYxVCr2C6CU9hMZc2Z3Y52JdjBp2R/zlDJqzRMEQiCZz4bm7mtUmioUKsBGrBaZRFbJ9z6698GUkqYkDY426cMosKVjqMXaH2IXARbW7fS12ZaIG0U76FOe23YanvcXU7WCStuRNxfhFOo1sXKUBbXLcsNSfZw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787935071; c=relaxed/simple;
-	bh=0/b63pHsH99q59pHXxgWpdCiis0fT0wFTjXendozs0s=;
+	s=arc-20240116; t=1787935073; c=relaxed/simple;
+	bh=hTif5dKJuoIIsVz4dAaSFnhZxibEnCpGcJ3SqDcakyA=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=ltxpDxMQ9xUQlDTD6njjjrLt/EPlCEsDl6uiSsU0bLHedtVFNIH3LDwhDZ8Xxl28KE4OEtnKJS1Ptrg5BwB7O1X7OF4/0EyB4ivYmJLlsHllKwzI9Y7UWFIvZ73uxsw0PA9HYuXVFAeVxxosSuUWNftaWqozbb2CJTSKttCheKQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=EecOYMky; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=Kgv4uVVj9U5fmnP8EFo08L26BHwjjlu5vLeTMKtd87tmH+o0lYmoiXotTvWrfAdA2YuSC9Dv8l5HEtjrsNLUneyD42J63wIIKVNzITessrB9Pz+07ZyL8IxYPyYhjqMycKH0MSxplYhaxcCphNF5LVaJ+5MS1+PRmEOitn0yVnk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=kulLswQ1; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="EecOYMky"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A4B901F00A3D;
-	Fri, 28 Aug 2026 16:37:48 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="kulLswQ1"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 56B1A1F00AC4;
+	Fri, 28 Aug 2026 16:37:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787935070;
-	bh=yBYuY0qF5cKQRzExECF4YXQMQy4ClFSSmJFRGPrU+CQ=;
+	s=k20260515; t=1787935071;
+	bh=NJ+06JLg+zozGY40HFLsiWKPGrZUTJWkSToQO3R8seU=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=EecOYMky7iDMtCaMk7yWVpPRVh9hVl5RaRI/k0GZTuFPqAIiOMBwp+D4lVlQAIcqu
-	 QhIW798nX9/sKvoJZWdAFzvNoIRvQMpIvSC2DSQgrrptF85g7yRFke8iJoYJAt5H82
-	 HOvYphUN3Py2kDE7thUDTd/IWzBoIJe+Fqwrar9RxyPcPoKMcY1DeEgCGonzWudvMc
-	 lxpaCNu9t/XjRXhNPvJaOIII9/r6IW8hJCSJX+8B7lxQfWCFf1adOpjRTDuLpEkODm
-	 LC4mwsWTRarSrDIHGDGd2aMRblWGz4auauvwID3wQQQXWiDDEUZaHCPzgSi1NgNAIs
-	 X0VYfUkF+U9Vw==
+	b=kulLswQ1HCI+8UWo+7s+WEpdrQFJd2KELh0d4kHhzJWttyrzbQAjrMq1SIU9yAUPY
+	 p31W6akUg002vmgc5Bu8K2ZWiQt0vOwL1b9d5U9CGk2ZR8AVbWBqn0v+rXTOY5xVPq
+	 e9l4XWZ5FACSwWSXzptyeTOYbFlsH7rWGpWTZMFxzjEREcD2FNylf2ZHcrZpbyi7QF
+	 Snj4G0zsqsNuHkX/OKH3fd2f6tksV0fC7aUG26f2EOfaAoAtcyMhiEw2jgcCxOlY4k
+	 nQV4cYbSnCquV3qoWOqHofU4u2iisKOzG+wUhmWOXkf1mIqm/TwrkJIE1/mGio8tCX
+	 vI23FMB+E3VPw==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Fri, 28 Aug 2026 12:37:33 -0400
-Subject: [PATCH v3 03/14] SUNRPC: keep the first error in svc_register()
+Date: Fri, 28 Aug 2026 12:37:34 -0400
+Subject: [PATCH v3 04/14] SUNRPC: bound the local rpcbind client timeout to
+ 1s
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260828-nfsd-nl-hang-v3-3-55026685c75d@kernel.org>
+Message-Id: <20260828-nfsd-nl-hang-v3-4-55026685c75d@kernel.org>
 References: <20260828-nfsd-nl-hang-v3-0-55026685c75d@kernel.org>
 In-Reply-To: <20260828-nfsd-nl-hang-v3-0-55026685c75d@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -52,60 +53,92 @@ Cc: Slawomir Stepien <sst@poczta.fm>, linux-nfs@vger.kernel.org,
  Trond Myklebust <trondmy@gmail.com>, linux-kselftest@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1206; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=0/b63pHsH99q59pHXxgWpdCiis0fT0wFTjXendozs0s=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqkblUvEmFdS94dVuTXCNOUtAs56USDL2OGxbpe
- /64bYD1kBuJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCapG5VAAKCRAADmhBGVaC
- FWgYEACccaQGhvRELt+7BtoJgnHmtUHra93CFjuqhYVs8DWbI3nU0wCJGUOMcKmN1iSVj0vh+xZ
- saVsWWaykCacCxZb6HcBfmXiUzsNnq6G9RbRk6bjdbIsiGlZutrxJSBi0+aXxilcU9cQPTYvZo7
- ZYo93zcQm5JD8GH5fOssixKhO78GEUz82VS75mTBp9CBvywCdbPva9dqevIF9C10BqHN/080wJK
- /gHFjqRQAgn8jc9Km6hKRcqxIx5vx5u7WfJRThOlfpFTNWs/7wLqxEytXoK/DhwbJSFvet5IoGz
- cNsin/UrUwsZUKd6nyZYfGwMNk9aExQc+GvkDM2Wu/rl9vcbmFNbBJtTOb8pfQoh9Y/iR8ThjMY
- X8upl5R3VSFxJlG2ofxJ4riZiiwDyNcfUGzdu1BCiRSA0XZqtOWpEqQP9WIYAYoVbZuk8Iuc9oa
- nAXn9RV08W2Ks6k3pqp1tSv/lX21lZxMyYPbVv4dsVOnQM4zh+ZSkKjUEhQ4vi9qwxO6hucqdnc
- qZhtP+4ULhnI/YnSwDXGVsVw+nefxHn1McB16PlLkyTTISjPXJD89Rf9pfrT0oEBLjTtJOhu/d7
- Csd6SRBf6geWb++VmfEhKNLuqQ3rwLP2vKWiP7gg2HJNDgHOVAC8Bkc4cArHAOSLiOalDuWmyq2
- nKeKumSP7QhelPA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2890; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=hTif5dKJuoIIsVz4dAaSFnhZxibEnCpGcJ3SqDcakyA=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqkblUHDqjYv6PZAnEvjHX5MjO5HoX569RBOwNl
+ niJVzhrF16JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCapG5VAAKCRAADmhBGVaC
+ FUZRD/wPBHnDAJHVFDaJhF9bpYcgtqHGvbsHw/7LH8H+B+HyqlMDV8osflcyINFKskP9+LR+/Za
+ XPKowz9396b4DiNFHd/CVpvjWC3QdpXJaV8kvzAQMOHvvOAIZLATS2so9JIzL3abAogwXOyfff3
+ xx0ak/2TXRfhP4jihSAAE7Jovch8LTO1Od8giK9wZk81kuK1clMBrOE3rt8fisD2Ju4kHAYJsB+
+ ovgrQm+mVFQoMzAAB95AyM0u2ieaPocJs0vTkDicFtrEEUnDbqLecM8z/mEKT/LN2PKwuM1DoIL
+ Ytj2KWCO0U1lflPRxiG9yH4D5pXFaFbH64oe2uUaJ8pk8lYL/S9+j1lYEJyfxQ0PJpU7l2+Mo9Q
+ ScWkOFCIlz5Yg1s2JQ7MRK8IEpL4nMf9hKGZdkgavzEVql/SY6IVBKX/vT1t0tIoHpGQMoSOxsQ
+ +90cYkztof7gWvfr9xoxQkn7RFI7hwfCvxOl7vX/j6RT3Ml26KYfesRUo+BrtN2YM/5mhbnzYZ9
+ tReyiYDweUa8f3rOQJuqfYAG+YsQt7D2YYuiVLBXoSQ2FzxY5Fm81vG0M9Gv3b2PHmByp7d5/at
+ 2o6CZ3dRLttQ9xp1Xw3Klz9yHG91g4gHnRi2ljxDxN6Vy4mbhhq0Un6w6LEqQdRAg9mATMedXFE
+ 6YbdHWSa57BCxYQ==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-svc_register() assigns every pg_rpcbind_set() result to the same "error"
-variable and returns the last one, so a later result erases an earlier
-failure.
+The kernel's local rpcbind client uses the transport defaults: a 10s major
+timeout for AF_LOCAL, and 60s for the loopback TCP fallback.
+xprt_calc_majortimeo() returns to_initval when to_increment is 0.
 
-Keep the first error instead of the last.
+Those calls are synchronous, and they run under nfsd_mutex. One operation
+makes several of them. rpcb_create_local() tries up to three client
+creations, and svc_register() sends one call for each program and version.
+A local rpcbind that accepts the connection but never replies stalls every
+one of these calls. The accumulated hold is long enough to trip the
+hung-task watchdog on other NFSD netlink operations. The holder itself
+waits killably and escapes the watchdog:
 
-Fixes: 642ee6b209c2 ("SUNRPC: Allow further customisation of RPC program registration")
+  INFO: task hung in nfsd_nl_cache_flush_doit
+
+The local rpcbind is on loopback or on an AF_LOCAL socket, and it answers
+in microseconds. Bound its client to one attempt of 1s.
+
+This shortens the stall. It does not remove the stall, and it is not free.
+Registration stays synchronous and stays fatal. An rpcb_create_local()
+failure aborts nfsd_create_serv() through svc_bind(), and an
+svc_register() failure makes svc_setup_socket() fail. An rpcbind that is
+merely slow to be scheduled can therefore now fail server startup, where
+it succeeded before. The real fix is to make the registration
+asynchronous.
+
 Assisted-by: LLM
+Link: https://syzkaller.appspot.com/bug?extid=c7eae0eb80858a2dba0f
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- net/sunrpc/svc.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+ net/sunrpc/rpcb_clnt.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 8297bad2b177..4f402bbf97ba 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1208,13 +1208,16 @@ int svc_register(const struct svc_serv *serv, struct net *net,
- 		struct svc_program *progp = &serv->sv_programs[p];
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 6aa372188c86..0aa376b82a52 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -221,6 +221,16 @@ static void rpcb_set_local(struct net *net, struct rpc_clnt *clnt,
+ # define SUN_LEN(ptr) (offsetof(struct sockaddr_un, sun_path)		\
+ 		      + 1 + strlen((ptr)->sun_path + 1))
  
- 		for (i = 0; i < progp->pg_nvers; i++) {
-+			int ret;
- 
--			error = progp->pg_rpcbind_set(net, progp, i,
-+			ret = progp->pg_rpcbind_set(net, progp, i,
- 					family, proto, port);
--			if (error < 0) {
-+			if (ret < 0) {
- 				printk(KERN_WARNING "svc: failed to register "
- 					"%sv%u RPC service (errno %d).\n",
--					progp->pg_name, i, -error);
-+					progp->pg_name, i, -ret);
-+				if (!error)
-+					error = ret;
- 				break;
- 			}
- 		}
++/*
++ * The kernel's rpcbind client talks only to the local rpcbind, over loopback
++ * or a local AF_LOCAL socket, where a healthy rpcbind answers in microseconds.
++ */
++static const struct rpc_timeout rpcb_local_timeout = {
++	.to_initval	= 1 * HZ,
++	.to_maxval	= 1 * HZ,
++	.to_retries	= 0,
++};
++
+ /*
+  * Returns zero on success, otherwise a negative errno value
+  * is returned.
+@@ -238,6 +248,7 @@ static int rpcb_create_af_local(struct net *net,
+ 		.version	= RPCBVERS_2,
+ 		.authflavor	= RPC_AUTH_NULL,
+ 		.cred		= current_cred(),
++		.timeout	= &rpcb_local_timeout,
+ 		/*
+ 		 * We turn off the idle timeout to prevent the kernel
+ 		 * from automatically disconnecting the socket.
+@@ -312,6 +323,7 @@ static int rpcb_create_local_net(struct net *net)
+ 		.version	= RPCBVERS_2,
+ 		.authflavor	= RPC_AUTH_UNIX,
+ 		.cred		= current_cred(),
++		.timeout	= &rpcb_local_timeout,
+ 		.flags		= RPC_CLNT_CREATE_NOPING,
+ 	};
+ 	struct rpc_clnt *clnt, *clnt4;
 
 -- 
 2.55.0
