@@ -1,122 +1,140 @@
-Received: from mail-pl1-f172.google.com (mail-pl1-f172.google.com [209.85.214.172])
+Received: from mail-yx1-f51.google.com (mail-yx1-f51.google.com [74.125.224.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ED8963AB47E
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 23:10:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.214.172
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787872237; cv=pass; b=Ye4vuA8fOhDIgchQIHUg6ze6WpBXMEtfeusjUQN/TL3TIVSt9Occ8z+Hun8BFXGPSv6gWqr851jX/zusR7ZZrIuww9QR5C55yqoH15T9jAFq2NyBdthiMwqLtRx0ceuoAZIhSvvES+91EH3iPXnvpZOCuX13yzqfayGGjPWqWcg=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787872237; c=relaxed/simple;
-	bh=50LdrEoltKdAEooP55W9pVrl0kRy8ytzQq3fAZ0chw0=;
-	h=From:MIME-Version:Date:Message-ID:Subject:To:Cc:Content-Type; b=SDgSKHzUMpqhp5ODgIdcyMZ92b50w9Wcux6Dk4vsXKphanfp15G8RpEYEAGw7BLOwYVC0f2lJjDpZBum1vqxpaEWmwMz6DfTAC7l1nr6MCAjkG7jhtCQB07tW0AguRApRNM/qz9oHzo8dwXaN4xI7OBJ366vwhoyTQcH9GUNFsQ=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=berkeley.edu; spf=pass smtp.mailfrom=berkeley.edu; dkim=pass (2048-bit key) header.d=berkeley.edu header.i=@berkeley.edu header.b=l4Dsvyn9; arc=pass smtp.client-ip=209.85.214.172
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=berkeley.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=berkeley.edu
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3C5239793C
+	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 04:19:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.224.51
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1787890773; cv=none; b=ux3wY4jPCXhzAB5L8SGCfJysjdSTXBg/zGGqXdeZnhxKDXdjxnKyAwzGXaSHmh8/EAYUNEKf9w1TuFQG673QmPvi9x9oZjlLR4eFD+ecKxfnO3HycXZI+1hRMUAIzCnmiu311SKOw2+FSRf+Z3J8piRgY+vQORjbKD5vJ3BDfpM=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1787890773; c=relaxed/simple;
+	bh=8TnsSCO6rRn51bAw5WulNUp6C1eYkXeVIKjsJTUUS5w=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=oXvy5z1NzYW5kVs87PYK2hCRmDoLuKntYu1ADfFyZcBwCVBsg7Bz66i4b2LhieshRn9BsdeBkbIEB6oOJsefR+wsRDgAOkjr6EfdMozvdw0kbfBhFOJvzK/h2ZLnDePCi286dHDDFzIfTmQ8dpSEUcOJUVGouDiT2Y4y3bwAB2g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Kge2OCCp; arc=none smtp.client-ip=74.125.224.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=berkeley.edu header.i=@berkeley.edu header.b="l4Dsvyn9"
-Received: by mail-pl1-f172.google.com with SMTP id d9443c01a7336-2ce7d2adef4so6120865ad.3
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 16:10:35 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1787872235; cv=none;
-        d=google.com; s=arc-20260327;
-        b=NJUIBwvqb2kZsu6i45GtQFtilrRTPNDM2Nr2oM6TfoZQlmerlOVbo3wBrpQbc4gvzZ
-         eQKwwabs/AGWzfImYKh755fnILtBVGtNRl2XozSLE9/SxazTP3uv2JzlQ45FgJUFnOCR
-         5nvn/npmKiynrEl9Fp/YGqFmHmWPOsvoz+hjgATvWOJ4zn7AQ2i6w3FAK6net44I/XII
-         TiUDrBYWrgDaTR3DuaUvpU5/yVG3ExvxUdLtoIOTmlv+0H5b/TwyKt7pBRBBcvkShuuZ
-         prrCeQaJlJEbpqQFgyDj8SQmmwNoABEWsM3Wcz14TK0us77ISxoaFm0aObfRF8wdtGmH
-         Sb7A==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=cc:to:subject:message-id:date:mime-version:from:dkim-signature;
-        bh=0/dlm4IdYFSYRW1eNozPbtx+WAFk89t73wh7qcadLLc=;
-        fh=BcCNQognPdJq70r1x5cpjmSf/bTLdFMV+417VGhhp9Y=;
-        b=hndjCf80WOz9t4aBxMGleILUXyX+a0H5GvF/KKbgBZlrDsKggFQml63weepCGATAx+
-         xcN86KywiTCk7v5MNNS5Qqcp1bl5VLNL/bM74m35MMDLvKMZtL9ZO8u1Rardp3TIDB62
-         ooBPCA4t9sBf7kq6bOFm163tY/SS9bAIgW7W8P1H02RZcGvo4TNa+Kn/a4f5aIbmh8tI
-         8y5/IcT/NHWjlNttgqIkL7WaXMKcnOnlxbncAQQgb9sb7rlwdbK3KMWeGhO3gxnJnedz
-         TEcPX4eUFBWc6Tcq1ymXKINLsswq5L62Hulp1vsoCGwWKl2k819sLw/m2boN3jPCftcg
-         +Jzg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Kge2OCCp"
+Received: by mail-yx1-f51.google.com with SMTP id 956f58d0204a3-66c70cff944so783329d50.0
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2026 21:19:30 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=berkeley.edu; s=google; t=1787872235; x=1788477035; darn=vger.kernel.org;
-        h=content-type:cc:to:subject:message-id:date:mime-version:from:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=0/dlm4IdYFSYRW1eNozPbtx+WAFk89t73wh7qcadLLc=;
-        b=l4Dsvyn9Tc8fNV1Kbou1+W1u4WksRxczZSFT/HrUZM3dZMVe3QC+Wnw0DoPtMxUeH7
-         B5mG/mnIeFkP+qQ90oFuJkxdDrFdiioOoIfiF/UyNuXWCd2ShjRlnNbqEdCfJvTVslsE
-         Xf3VTIlTd5PcAO3kVUkPpSpjxkN1ahAxYk1javpgcJNeabUQJnyqTnvB7zt0ZhqnkW/B
-         SCt6EsdZ+F13Oj82hl4Y/hbdP95CRwnrwjBXxy8jKwYPoffOcsoknOxbdqTPuGoaA5ll
-         LRQRIo1hsuYSEvZDjF8JAzw7wUxITzGhJkmClNWdudCk6zkK2gqh2us7XjrbCETwVowD
-         2PFw==
+        d=gmail.com; s=20251104; t=1787890770; x=1788495570; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=GvQBCeK2pDC31wjSOrIf5IPUWWi4fTFaqcGwpyiTbzo=;
+        b=Kge2OCCpAJlfS2mY5TQhs8VBrmgVktQquCIQS/WcuzK5w68i4eNFFPb/6lQ1YcJX16
+         I29lY6MMqkCSkOR33tEkX7cgLBhvWmkK0RtLvc/iri2HsJAVdmSSS2ueB1YQO8KFsIvm
+         FzuFMt5Iq97VKR0sKlv6mYvdnIBIvZRhG6zo+VkakSjQIkEO01kP7t/E8Emh7jdzEhdj
+         xL3hQRnf/9h1s6JvHGm3rR5wju2dIlEITEwrD13a8ZF+LQ8rIXeImNKdl0XoqpTzLFt6
+         q0Iad1lsL/ypgmFXtolLtr1GOnhTKA6JMYlsIRvUN5JW+vwbh1yUCJlEkloM9LBHFKIx
+         H98g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787872235; x=1788477035;
-        h=content-type:cc:to:subject:message-id:date:mime-version:from
-         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to:content-type;
-        bh=0/dlm4IdYFSYRW1eNozPbtx+WAFk89t73wh7qcadLLc=;
-        b=jc9WhXjqffshkzM3ieZmeA5dHEmZrb0w29lqR2pOtL92VVqFo5pWxuG0Hapq37YUHn
-         oY1A/HOEBz9eEf6b7KIFCz2SgsaEIaNR3bnmh8va84QYWDtsbFjJv1Sq1EdNmnf2lHij
-         hkUML3epPV81EpUSVg/5rHGYoFD7VgCPdiLcGuqGs+UbS4CoViwRDLc23hqn+5yUxwLS
-         gkJqlcC6a3DTXzSmAOnSH4DoWpY9I0JlnsIRFc4oFMQz4dUPrhtpTVJdUo6wttDPyIUc
-         N0s8n+eS//h5VCn4RnCsE6nBnpvAQHhXx6MdapLxMdbhkaFvgRK6KXCuu7Fx6Zaw/wvx
-         KZbg==
-X-Forwarded-Encrypted: i=1; AHgh+Rql/a2uMAoBJSYH5u8/RgbixMzTVEhYKXa0yM9e2/IMkiQW47YP5mFeikwfaLFBos2p+6Hm0PBIWcI=@vger.kernel.org
-X-Gm-Message-State: AFuF++lCHjTQgsHiTUMsvn9SD3d2iRLnQAoBLojUnNhudWF2/0dGLPip
-	MuTuA9FsxDNp872Z+qClgc7pBkzhu0YpqnUx+7dSGiT0jCAWadd08wAlmQZDM8dsj/pAOK1mTGc
-	zhbLcjaV0KcJ9TxK+mJbojHnDV4uFG1dnrrD3qu2w
-X-Gm-Gg: AR+sD11V3Y1fzexE0iThVCFMGP1Gc/KwukTp1th9beEuh+VAXEkPvjC8yUDS1Y7s79T
-	ZaFFCUMmWNHvkX52yHU55wlaX1anhZO5+oxP95KrS9YxK/61/t49p3EQ/RkbDxpR3tfCCobALZg
-	1yZQ+rZYdf8tqsHO9cesgHgeDAA57DNggSwzbi1bFyQwcZ1IqPgdGpmBzup1+B7XlQ4w5Hhk/+S
-	oqH2zXYcm9lZbd9DHVdgu6Rc/CbD0R43Wvz+am7WhJ/ZzaLEs361qKPwx7nINgxcgRJRq8o7X5W
-	OPqMS6SOqA7tlTWFDUJlYV8vf/9cpx1tyW4z+qhkpmZimkqLgSuudYJ3WZ0wOzNBY/c7ixxM/33
-	U3b8OGbeUVu/rYItxvwISxvkIfcPrj7Mw
-X-Received: by 2002:a17:903:15cf:b0:2cf:ccc2:6088 with SMTP id
- d9443c01a7336-2d74dc21be0mr48881315ad.4.1787872234415; Thu, 27 Aug 2026
- 16:10:34 -0700 (PDT)
-Received: from 474444807712 named unknown by gmailapi.google.com with
- HTTPREST; Thu, 27 Aug 2026 16:10:33 -0700
-Received: from 474444807712 named unknown by gmailapi.google.com with
- HTTPREST; Thu, 27 Aug 2026 16:10:33 -0700
-From: Farhad Alemi <farhad.alemi@berkeley.edu>
-X-Mailer: git-send-email 2.53.0
+        d=1e100.net; s=20251104; t=1787890770; x=1788495570;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=GvQBCeK2pDC31wjSOrIf5IPUWWi4fTFaqcGwpyiTbzo=;
+        b=qVKKRhXVieKExIsV2HKD/kDQpLk9BrT8BQok+exH5spZ1UKx/yzbjUkrVYVev4OMzf
+         USKGJ7SlL+Iftnr1YL25HabntTUeD8hNqjCOVc1qMyrtUqRi7Q8Z8JOmnyDMNgp9EdHG
+         nDL61gSv5Kmg1R8QwBa3WtJb+MngHk/tWgjEvQF4FzzQT5y4ZLOda7opVdfsJCr37VWD
+         Ck0nlwwqsidzjTTvMkRfiGYLma9NYbcUl9wpaLgaM8g4b7xkDA06e/rbfg2i4Obuaelk
+         dI8eIGbtsw0j+OtFfa+VC9HDcmJNZ6s538pmJQZ3vN05lONByO6Tm01MSpv3Z6Y2BygN
+         X+Zw==
+X-Forwarded-Encrypted: i=1; AHgh+RohqV3tiwsVN3w0PFiZ3go0ZxEJ2LMznNkKwrLtEeew0ef0ivoxSLox7T0fN8RXzJE7TTz07PqbIhY=@vger.kernel.org
+X-Gm-Message-State: AFuF++lCXeD2JDLqlMkps2QQGZJB9dgW0ibvcRquD2ges0JkYUf96MbO
+	/u5GAK4kxGZqQt5t6Fo0dVGGVYq1CKKuElQ0MCnltA9BRavxTjim9UHP
+X-Gm-Gg: AR+sD13xFRfvnxJI4Eehd4H04IarLLi6faKLuAQnle6adm59gTEzNYpffDMdbt8YCmP
+	3vb/DuTiOsl9LzTGhrcNYIkQY5d/Ga3uqqzBv8K8eYY4xDQaArm96X5jo43Daz//EH6hRR/OciH
+	YZwFQbW5HuVMzuJZBaySI+v3wCjI1dP2hYMlRNi5RlHNHWCxyzX1fQP2lrA8udDfl/7PFPjjniM
+	OVMpyBLOzT3cTwZzqnEiiopf1t5ZGuZNZJKEGzPJWIjCI1r1ovYIgvHa6seT8S1qWpOooWCSM1J
+	sqVbOj8ktgVdDcpu7bW5iHHWu9iqa+qQIYRRYMzaOxA3c+P71fkrQ7nGCSfsO5fIloweTUWdLZX
+	XYiM7Flj+3Ab936vTEKlNi3sJ7vczB6I8NCVwpSxP8/fWWF7BI4Dn4RSn8OZPUVNoOQ+yILT+hy
+	vj55szQrjWTpnxpN20aqXjBA8v4FPMNwaZ1v0M/amo/jP0z4gdjClJn0xvVlhj/zrpZRA=
+X-Received: by 2002:a53:c286:0:b0:667:e855:ecdb with SMTP id 956f58d0204a3-66e4c664521mr905723d50.3.1787890769747;
+        Thu, 27 Aug 2026 21:19:29 -0700 (PDT)
+Received: from mac.lan ([136.55.173.105])
+        by smtp.gmail.com with ESMTPSA id 956f58d0204a3-66e4ed2a78bsm290978d50.20.2026.08.27.21.19.29
+        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
+        Thu, 27 Aug 2026 21:19:29 -0700 (PDT)
+From: "Cen Zhang (Microsoft Security FORGE Labs)" <blbllhy@gmail.com>
+To: cel@kernel.org,
+	jlayton@kernel.org
+Cc: neil@brown.name,
+	okorniev@redhat.com,
+	Dai.Ngo@oracle.com,
+	tom@talpey.com,
+	bfields@fieldses.org,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org,
+	AutonomousCodeSecurity@microsoft.com,
+	xmei5@asu.edu,
+	tgopinath@linux.microsoft.com,
+	kys@microsoft.com,
+	blbllhy@gmail.com
+Subject: [PATCH] nfsd: hold cl_lock in client_has_state()
+Date: Fri, 28 Aug 2026 00:19:25 -0400
+Message-ID: <20260828041925.36758-1-blbllhy@gmail.com>
+X-Mailer: git-send-email 2.55.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Date: Thu, 27 Aug 2026 16:10:33 -0700
-X-Gm-Features: AcwNN1UYjxJ0J4Uy-WWlv_wrxl6FqqhqS4G-Vh8IC2iQfDd3nuMiaGbL8y28Sa0
-Message-ID: <CA+0ovCjVF58WLeen2ctdzHyWUASAAW3Y=Yjihyq0pFApYawtDg@mail.gmail.com>
-Subject: [BUG] sunrpc: rpc_pipe_msg left queued on a stack frame (nfsd cld upcall)
-To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
-	Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
-Cc: falemi@asu.edu, linux-nfs@vger.kernel.org, Tom Talpey <tom@talpey.com>, 
-	Dai Ngo <Dai.Ngo@oracle.com>, Olga Kornievskaia <okorniev@redhat.com>, NeilBrown <neil@brown.name>, 
-	linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 
-Hello Chuck Lever, Jeff Layton,
+client_has_openowners() walks clp->cl_openowners and reads so_stateids
+without clp->cl_lock. nfs4_put_stateowner() unhashes that openowner under
+cl_lock and then frees it, so a concurrent EXCHANGE_ID with mismatched
+creds can use-after-free the nfs4_openowner.
 
-While fuzzing Linux 7.1-rc5 with syzkaller, as part of research at ASU's
-SEFCOM lab, we hit the crash below. Crash reports can be found here:
+BUG: KASAN: slab-use-after-free in client_has_state+0x10a/0x140
+  fs/nfsd/nfs4state.c:3718 client_has_openowners()
+  nfsd4_exchange_id
+  nfsd4_proc_compound
+  nfsd_dispatch
+  svc_process
 
-  https://github.com/farhad-alemi/public_bug_reports/tree/main/118-nfsd-cld-stack-rpc_pipe_msg-left-queued/
+Take clp->cl_lock while client_has_state() walks the openowner list.
 
-  ==================================================================
-  BUG: KASAN: vmalloc-out-of-bounds in
-__list_add_valid_or_report+0x6a/0x130 lib/list_debug.c:32
-  Read of size 8 at addr ffffc90007027950 by task syz.0.96/13066
-  CPU: 0 UID: 0 PID: 13066 Comm: syz.0.96 Not tainted 7.1.0-rc5 #1 PREEMPT(full)
-  Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS
-1.16.3-debian-1.16.3-2 04/01/2014
-  Call Trace:
-  <TASK>
-  dump_stack_lvl+0x94/0xd0 lib/dump_stack.c:120
-  print_address_description+0x55/0x1e0 mm/kasan/report.c:378
+Fixes: 4eaea1342507 ("nfsd: improve client_has_state to check for unused openowners")
+Reported-by: Xiang Mei (Microsoft) <xmei5@asu.edu>
+Cc: AutonomousCodeSecurity@microsoft.com
+Cc: stable@vger.kernel.org
+Signed-off-by: Cen Zhang (Microsoft Security FORGE Labs) <blbllhy@gmail.com>
+---
+ fs/nfsd/nfs4state.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
-Our reproducer.c is available upon request.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 18e17232cf94..8d7a4c2eadbe 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4216,12 +4216,18 @@ nfsd4_set_ex_flags(struct nfs4_client *new, struct nfsd4_exchange_id *clid)
+ static bool client_has_openowners(struct nfs4_client *clp)
+ {
+ 	struct nfs4_openowner *oo;
++	bool found = false;
+ 
++	spin_lock(&clp->cl_lock);
+ 	list_for_each_entry(oo, &clp->cl_openowners, oo_perclient) {
+-		if (!list_empty(&oo->oo_owner.so_stateids))
+-			return true;
++		if (!list_empty(&oo->oo_owner.so_stateids)) {
++			found = true;
++			break;
++		}
+ 	}
+-	return false;
++	spin_unlock(&clp->cl_lock);
++
++	return found;
+ }
+ 
+ static bool client_has_state(struct nfs4_client *clp)
 
-Happy to test a patch if that would help.
+base-commit: 1b78070aaef63512688aebfbc82365ef9d6660f1
+-- 
+2.55.0
 
-Regards,
