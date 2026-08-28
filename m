@@ -1,43 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A9C833B894B
-	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 18:37:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 94EDA372B5A
+	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 18:38:48 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787942278; cv=none; b=ApUjNjy2DMLygtowyvJB9NeAXUd/KMA24N64cxKo2dJTF7F0wX9mK9TRSftX/scjYN7RWSxAUl4AAf0OP172iFeGST/gMjSUk37tKV1vx19GnKwyf3L12ic7krOBbZOEc7BxEenz64X5zCKjQIYtWwhMrz17HvGkaLTglpmC9t0=
+	t=1787942329; cv=none; b=hRm+tcSWkhWT2L52n31ydm/InNSlAMvf00kmBhtybeMTlrMNBVfAo1A1f+P6T6Q0Bs3LXAi+qdjbhtHI4wx900nJzne17nSwMip12Jh5HQJoSPvMuZ7Z4aqe5JFuL3BE+FETce5bYHLZWRsjh+MvvWDwIjIAT+bpy+wgJoXwyG8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787942278; c=relaxed/simple;
-	bh=h8YHEawLJvzd7vWgkgzoZTzOynn28fLfzyKzJbKGp5c=;
+	s=arc-20240116; t=1787942329; c=relaxed/simple;
+	bh=BgDO/d3zcvtpT1zAora1NBFZCte4JWwujkl6MUmaLUI=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=UIA+dTNlg4AZT8uNeRpc537TSg7j/awTASDlkE4CDXS8XAzrLO491Sa/EW4m4FTn1i5mvWv5FY2IO92VbG3K8rQjhNg3Wxwq7J7A7PYVDkJapvWpyZ+YiI/8hVlkbtuGKJvpb1RYoeT7NSXeNHXnSaKY0HTa4IjoI/okshyXwFY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NSeTwgjt; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=SeEmGjGybBuJnS7+KVm/XToCVIIvRVrgDJjZk6eB8NyEGitNWc8SX+zZHM5IUp2U+G05+O408fh/TMCpOinPYxECTAibgsvEqchkjKhlstQKe3CPZVBpPej8eihM8VCFixcG4zPAqx2jzONS46/t6DVXylp6vW9B8cMORS8cKwo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VJAU3Kqk; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NSeTwgjt"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E2C881F000E9;
-	Fri, 28 Aug 2026 18:37:55 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VJAU3Kqk"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4F5A01F00A3D;
+	Fri, 28 Aug 2026 18:38:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787942276;
-	bh=ND2XHLRYjBYiZ+bSHhOLltAMSywv7k80GK7CnHhpP7Y=;
+	s=k20260515; t=1787942327;
+	bh=/dk0KVKUUFLpAMgvwTDx8hVmfpUujBqV3JWRYjb/uMk=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=NSeTwgjtFHTvsHL0nbNtLz/FBFQs0L7kaKWwNVFclasC2qWkk7Nh4BB1QRD9oNDYJ
-	 4gTOwiZ2bfMYOOMmPGt3aRi10sDOCcgKwyy0V4nC/R/GzhYOKNhXjaw9H7UIS7ZIZP
-	 Qii9nqkO/HKwoMXyInv+2r1OkVvKP1Os6LgP65uSLsE7jVAZOU1ReWklwP+xZ5sqaG
-	 C1SCG/JevMURj5q3PR1Sy7Un+WATzdnenvAaTRFN3tRtCClTSI/9PHbzCe/OMU7u1J
-	 gqsX9SW9Oua5XBhKwaJH165jmwsxyH+QM+hbYLORpbHoUkE+62e/qgWW9LthNyHZSO
-	 n8bU7XtPqoV7w==
-Message-ID: <45e98e76b1739b5440f2250a20c922eb0d1bca23.camel@kernel.org>
-Subject: Re: [PATCH v2 1/7] SUNRPC: Assign a unique identifier to each
- svc_xprt
+	b=VJAU3Kqk2VhPwtJTI7OIUZNNIKyrLji7nKP+JqACCCp+VGMJgBgTPW9wxqE1dHLTj
+	 4pdj04dUFFeJJml4YiXidXlDnc1ZcCMAuQzujo3vriUDF1ZpK2CR9Bqma/vfc2TEkB
+	 xgCw5wU5F2qzIrsEvCp/lxvKD7TblbNMEQV2i9NWioFqKgIoHGgTXpW3fDx3ysOUYA
+	 WaLMJhi5dbh+EqRUQwg1L+QRAM1yg79JCliExX3HtG9ArekpxqgRax9SBi7wE/DMOP
+	 VcGJCxr3+5RY9rJVl7pYg912fGmJvL3pLWKDAees5/Ij/M3bClNvdn9Vf/ybtXnuH8
+	 7+om2SUNwG5rA==
+Message-ID: <85acfa01848e5d7829ca18ad8864410fbb5e12b7.camel@kernel.org>
+Subject: Re: [PATCH v2 5/7] NFSD: Evict completed DRC entries via implied ACK
 From: Jeff Layton <jlayton@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
  Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
  Talpey <tom@talpey.com>
 Cc: Rick Macklem <rmacklem@uoguelph.ca>, linux-nfs@vger.kernel.org
-Date: Fri, 28 Aug 2026 14:37:54 -0400
-In-Reply-To: <20260828-duplicate-reply-cache-v2-1-25069e660a7b@kernel.org>
+Date: Fri, 28 Aug 2026 14:38:45 -0400
+In-Reply-To: <20260828-duplicate-reply-cache-v2-5-25069e660a7b@kernel.org>
 References: <20260828-duplicate-reply-cache-v2-0-25069e660a7b@kernel.org>
-	 <20260828-duplicate-reply-cache-v2-1-25069e660a7b@kernel.org>
+	 <20260828-duplicate-reply-cache-v2-5-25069e660a7b@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -123,350 +122,195 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
 On Fri, 2026-08-28 at 12:17 -0400, Chuck Lever wrote:
-> A consumer that associates state with a transport without holding a
-> reference cannot detect ABA collisions: once a transport is freed,
-> SLUB may hand out a new svc_xprt at the same address.
+> A completed DRC entry stays in its bucket until RC_EXPIRE elapses or
+> the cache exceeds max_drc_entries. Entries whose replies the client
+> already holds lengthen the bucket and slow every lookup that hashes
+> there.
 >=20
-> Allocate a per-netns identifier for each transport in svc_xprt_init()
-> from a cyclic IDR, which delays reuse of an identifier after its
-> transport is freed. svc_xprt_init() now returns a boolean, and its
-> callers unwind when allocation fails. The NFSD duplicate reply cache
-> is the first consumer.
->
+> RFC 1813 Section 4.5 observes that on a connection-oriented transport
+> a duplicate request arises from reconnection, not from within a live
+> connection. A fresh request on a live TCP or RDMA connection therefore
+> means the client is not retransmitting an earlier one. UDP clients
+> retransmit on timeout over a shared svc_xprt, so eviction is
+> restricted to transports marked XPT_ORDERED. Even there the evidence
+> is not conclusive, since a client with several requests outstanding
+> sends the next before the previous reply arrives. The cache is
+> advisory: a premature eviction costs a miss and re-execution, the same
+> outcome memory pressure and RC_EXPIRE already produce.
+>=20
+
+No, it's not. The DRC is necessary for proper function, and if we drop
+non-idempotent requests prematurely, then that could cause spurious
+errors.
+
+Or am I misunderstanding what you mean by "The cache" here?
+
+> During bucket pruning, compare each RC_DONE entry's c_timestamp
+> against xpt_last_recv on the transport the current request arrived
+> on, and evict the entry when a later request has arrived. Only that
+> transport is consulted, because it is the one the pruning thread holds
+> a reference to. Entries recorded on other transports wait for a later
+> lookup or a shrinker pass.
+>=20
+> Implied ACK does not evict in age order, so the loop can no longer
+> stop at the first non-evictable entry. A client controls its XIDs and
+> the bucket is chosen by an XID hash, so an unbounded scan lets it pack
+> one bucket and turn every miss into a walk of the whole bucket under
+> cache_lock. Bound the work per call to four times the eviction limit.
+>=20
+
+That said, the basic approach and code itself look OK to me overall
+(modulo some nits). I think you mentioned too that BSD already takes
+this approach?
+
 > Signed-off-by: Chuck Lever <cel@kernel.org>
 > ---
->  include/linux/sunrpc/svc_xprt.h          |  3 +-
->  include/trace/events/sunrpc.h            |  8 ++++--
->  net/sunrpc/netns.h                       |  4 +++
->  net/sunrpc/sunrpc_syms.c                 |  3 ++
->  net/sunrpc/svc_xprt.c                    | 47 ++++++++++++++++++++++++++=
-++----
->  net/sunrpc/svcsock.c                     | 40 +++++++++++++++++++-------=
--
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |  5 +++-
->  7 files changed, 89 insertions(+), 21 deletions(-)
+>  fs/nfsd/nfscache.c | 78 +++++++++++++++++++++++++++++++++++++++++++++---=
+------
+>  1 file changed, 66 insertions(+), 12 deletions(-)
 >=20
-> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_x=
-prt.h
-> index da2a2531e110..88d73da5f46f 100644
-> --- a/include/linux/sunrpc/svc_xprt.h
-> +++ b/include/linux/sunrpc/svc_xprt.h
-> @@ -53,6 +53,7 @@ struct svc_xprt {
->  	struct svc_xprt_class	*xpt_class;
->  	const struct svc_xprt_ops *xpt_ops;
->  	struct kref		xpt_ref;
-> +	unsigned int		xpt_id;
->  	ktime_t			xpt_qtime;
->  	struct list_head	xpt_list;
->  	struct lwq_node		xpt_ready;
-> @@ -159,7 +160,7 @@ static inline bool svc_xprt_is_dead(const struct svc_=
-xprt *xprt)
-> =20
->  int	svc_reg_xprt_class(struct svc_xprt_class *);
->  void	svc_unreg_xprt_class(struct svc_xprt_class *);
-> -void	svc_xprt_init(struct net *, struct svc_xprt_class *, struct svc_xpr=
-t *,
-> +bool	svc_xprt_init(struct net *, struct svc_xprt_class *, struct svc_xpr=
-t *,
->  		      struct svc_serv *);
->  int	svc_xprt_create_from_sa(struct svc_serv *serv, const char *xprt_name=
-,
->  				struct net *net, struct sockaddr *sap,
-> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.=
-h
-> index ff855197880d..180346e520ff 100644
-> --- a/include/trace/events/sunrpc.h
-> +++ b/include/trace/events/sunrpc.h
-> @@ -1986,7 +1986,8 @@ TRACE_EVENT(svc_xprt_create_err,
->  		__sockaddr(server, (x)->xpt_locallen) \
->  		__sockaddr(client, (x)->xpt_remotelen) \
->  		__field(unsigned long, flags) \
-> -		__field(unsigned int, netns_ino)
-> +		__field(unsigned int, netns_ino) \
-> +		__field(unsigned int, xpt_id)
-> =20
->  #define SVC_XPRT_ENDPOINT_ASSIGNMENTS(x) \
->  		do { \
-> @@ -1996,13 +1997,15 @@ TRACE_EVENT(svc_xprt_create_err,
->  					  (x)->xpt_remotelen); \
->  			__entry->flags =3D (x)->xpt_flags; \
->  			__entry->netns_ino =3D (x)->xpt_net->ns.inum; \
-> +			__entry->xpt_id =3D (x)->xpt_id; \
->  		} while (0)
-> =20
->  #define SVC_XPRT_ENDPOINT_FORMAT \
-> -		"server=3D%pISpc client=3D%pISpc flags=3D%s"
-> +		"server=3D%pISpc client=3D%pISpc xpt_id=3D%u flags=3D%s"
-> =20
->  #define SVC_XPRT_ENDPOINT_VARARGS \
->  		__get_sockaddr(server), __get_sockaddr(client), \
-> +		__entry->xpt_id, \
->  		show_svc_xprt_flags(__entry->flags)
-> =20
->  TRACE_EVENT(svc_xprt_enqueue,
-> @@ -2024,6 +2027,7 @@ TRACE_EVENT(svc_xprt_enqueue,
->  				  xprt->xpt_remotelen);
->  		__entry->flags =3D flags;
->  		__entry->netns_ino =3D xprt->xpt_net->ns.inum;
-> +		__entry->xpt_id =3D xprt->xpt_id;
->  	),
-> =20
->  	TP_printk(SVC_XPRT_ENDPOINT_FORMAT, SVC_XPRT_ENDPOINT_VARARGS)
-> diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
-> index 4efb5f28d881..53432d759ae8 100644
-> --- a/net/sunrpc/netns.h
-> +++ b/net/sunrpc/netns.h
-> @@ -2,6 +2,7 @@
->  #ifndef __SUNRPC_NETNS_H__
->  #define __SUNRPC_NETNS_H__
-> =20
-> +#include <linux/idr.h>
->  #include <net/net_namespace.h>
->  #include <net/netns/generic.h>
-> =20
-> @@ -34,6 +35,9 @@ struct sunrpc_net {
->  	atomic_t pipe_users;
->  	struct proc_dir_entry *use_gssp_proc;
->  	struct proc_dir_entry *gss_krb5_enctypes;
-> +
-> +	struct idr	svc_xprt_ids;
-> +	spinlock_t	svc_xprt_ids_lock;
->  };
-> =20
->  extern unsigned int sunrpc_net_id;
-> diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-> index 1a3884a0376a..d9ddf5b716cc 100644
-> --- a/net/sunrpc/sunrpc_syms.c
-> +++ b/net/sunrpc/sunrpc_syms.c
-> @@ -58,6 +58,8 @@ static __net_init int sunrpc_init_net(struct net *net)
->  	spin_lock_init(&sn->rpc_client_lock);
->  	spin_lock_init(&sn->rpcb_clnt_lock);
->  	mutex_init(&sn->gssp_lock);
-> +	idr_init(&sn->svc_xprt_ids);
-> +	spin_lock_init(&sn->svc_xprt_ids_lock);
->  	return 0;
-> =20
->  err_pipefs:
-> @@ -74,6 +76,7 @@ static __net_exit void sunrpc_exit_net(struct net *net)
->  {
->  	struct sunrpc_net *sn =3D net_generic(net, sunrpc_net_id);
-> =20
-> +	idr_destroy(&sn->svc_xprt_ids);
->  	rpc_pipefs_exit_net(net);
->  	unix_gid_cache_destroy(net);
->  	ip_map_cache_destroy(net);
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index 40040af588fb..ca10ef965443 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -21,6 +21,8 @@
->  #include <linux/netdevice.h>
->  #include <trace/events/sunrpc.h>
-> =20
-> +#include "netns.h"
-> +
->  #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
-> =20
->  static unsigned int svc_rpc_per_connection_limit __read_mostly;
-> @@ -167,7 +169,12 @@ static void svc_xprt_free(struct kref *kref)
->  {
->  	struct svc_xprt *xprt =3D
->  		container_of(kref, struct svc_xprt, xpt_ref);
-> +	struct sunrpc_net *sn =3D net_generic(xprt->xpt_net, sunrpc_net_id);
->  	struct module *owner =3D xprt->xpt_class->xcl_owner;
-> +
-> +	spin_lock(&sn->svc_xprt_ids_lock);
-> +	idr_remove(&sn->svc_xprt_ids, xprt->xpt_id);
-> +	spin_unlock(&sn->svc_xprt_ids_lock);
->  	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags))
->  		svcauth_unix_info_release(xprt);
->  	put_cred(xprt->xpt_cred);
-> @@ -188,13 +195,31 @@ void svc_xprt_put(struct svc_xprt *xprt)
+> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> index b25b4f9e92f7..7a09a79a2d6e 100644
+> --- a/fs/nfsd/nfscache.c
+> +++ b/fs/nfsd/nfscache.c
+> @@ -87,6 +87,34 @@ nfsd_hashsize(unsigned int limit)
+>  	return roundup_pow_of_two(limit / TARGET_BUCKET_SIZE);
 >  }
->  EXPORT_SYMBOL_GPL(svc_xprt_put);
 > =20
-> -/*
-> - * Called by transport drivers to initialize the transport independent
-> - * portion of the transport instance.
-> +/**
-> + * svc_xprt_init - initialize transport-independent portion of a transpo=
-rt
-> + * @net: network namespace in which the transport operates
-> + * @xcl: transport class providing operations and metadata
-> + * @xprt: svc_xprt to initialize
-> + * @serv: RPC service that owns this transport
+> +/*
+> + * A later request on @xprt is taken as evidence that the client receive=
+d
+> + * @rp's reply. Only XPT_ORDERED transports qualify: a client does not
+> + * retransmit within a live connection, but a UDP client retransmits on
+> + * timeout and shares one svc_xprt with every other UDP peer, so a
+> + * datagram from any of them would evict another client's reply.
 > + *
-> + * Assigns @xprt->xpt_id, unique among the transports live in @net. The
-> + * value is reused once @xprt is freed.
+> + * The evidence is not conclusive: a pipelined client sends its next
+> + * request before @rp's reply arrives. The cache is advisory, so acting
+> + * early costs no more than a miss and re-execution.
 > + *
-> + * On failure, the caller has only to free @xprt's containing structure.
-> + *
-> + * Context: Process context. May sleep. Takes and releases the
-> + *          per-net svc_xprt_ids_lock.
-> + *
-> + * Return:
-> + *   %true: initialization succeeded
-> + *   %false: initialization failed
->   */
-> -void svc_xprt_init(struct net *net, struct svc_xprt_class *xcl,
-> +bool svc_xprt_init(struct net *net, struct svc_xprt_class *xcl,
->  		   struct svc_xprt *xprt, struct svc_serv *serv)
->  {
-> +	struct sunrpc_net *sn =3D net_generic(net, sunrpc_net_id);
-> +	int id;
+> + * c_timestamp is set after xpt_last_recv was recorded for @rp's own
+> + * request, so a newer xpt_last_recv means a later request arrived.
+> + */
+> +static bool nfsd_cacherep_implied_ack(struct svc_xprt *xprt,
+> +				      struct nfsd_cacherep *rp)
+> +{
+> +	unsigned long last_req;
 > +
->  	memset(xprt, 0, sizeof(*xprt));
->  	xprt->xpt_class =3D xcl;
->  	xprt->xpt_ops =3D xcl->xcl_ops;
-> @@ -206,8 +231,20 @@ void svc_xprt_init(struct net *net, struct svc_xprt_=
-class *xcl,
->  	mutex_init(&xprt->xpt_mutex);
->  	spin_lock_init(&xprt->xpt_lock);
->  	set_bit(XPT_BUSY, &xprt->xpt_flags);
-> -	xprt->xpt_net =3D get_net_track(net, &xprt->ns_tracker, GFP_ATOMIC);
-> +	xprt->xpt_net =3D get_net_track(net, &xprt->ns_tracker, GFP_KERNEL);
->  	strcpy(xprt->xpt_remotebuf, "uninitialized");
+> +	if (!xprt || rp->c_xprt !=3D xprt->xpt_id)
+> +		return false;
+> +	if (!test_bit(XPT_ORDERED, &xprt->xpt_flags))
+> +		return false;
 > +
-> +	idr_preload(GFP_KERNEL);
-> +	spin_lock(&sn->svc_xprt_ids_lock);
-> +	id =3D idr_alloc_cyclic(&sn->svc_xprt_ids, xprt, 1, 0, GFP_NOWAIT);
-> +	spin_unlock(&sn->svc_xprt_ids_lock);
-> +	idr_preload_end();
-> +	if (id < 0) {
-> +		put_net_track(xprt->xpt_net, &xprt->ns_tracker);
-> +		return false;
-> +	}
-> +	xprt->xpt_id =3D id;
-> +	return true;
->  }
->  EXPORT_SYMBOL_GPL(svc_xprt_init);
-> =20
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index ef7ac080fcd3..840bec53e1ee 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -802,10 +802,11 @@ static struct svc_xprt_class svc_udp_class =3D {
->  	.xcl_ident =3D XPRT_TRANSPORT_UDP,
->  };
-> =20
-> -static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
-> +static bool svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
->  {
-> -	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_udp_class,
-> -		      &svsk->sk_xprt, serv);
-> +	if (!svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_udp_class,
-> +			   &svsk->sk_xprt, serv))
-> +		return false;
->  	clear_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
->  	svsk->sk_sk->sk_data_ready =3D svc_data_ready;
->  	svsk->sk_sk->sk_write_space =3D svc_write_space;
-> @@ -832,6 +833,7 @@ static void svc_udp_init(struct svc_sock *svsk, struc=
-t svc_serv *serv)
->  	default:
->  		BUG();
->  	}
-> +	return true;
+> +	last_req =3D READ_ONCE(xprt->xpt_last_recv);
+> +	return time_after(last_req, rp->c_timestamp);
+> +}
+> +
+>  static struct nfsd_cacherep *
+>  nfsd_cacherep_alloc(struct svc_rqst *rqstp, __wsum csum,
+>  		    struct nfsd_net *nn)
+> @@ -257,29 +285,55 @@ nfsd_cache_bucket_find(__be32 xid, struct nfsd_net =
+*nn)
 >  }
 > =20
 >  /*
-> @@ -1475,12 +1477,13 @@ void svc_cleanup_xprt_sock(void)
->  	svc_unreg_xprt_class(&svc_udp_class);
->  }
-> =20
-> -static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
-> +static bool svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
+> - * Remove and return no more than @max expired entries in bucket @b.
+> - * If @max is zero, do not limit the number of removed entries.
+> + * Remove and return no more than @max evictable entries in bucket @b. I=
+f
+> + * @max is zero, do not limit the number of removed entries.
+> + *
+> + * @xprt is the transport the current request arrived on, or NULL when t=
+he
+> + * caller has none.
+>   */
+>  static void
+>  nfsd_prune_bucket_locked(struct nfsd_net *nn, struct nfsd_drc_bucket *b,
+> -			 unsigned int max, struct list_head *dispose)
+> +			 unsigned int max, struct list_head *dispose,
+> +			 struct svc_xprt *xprt)
 >  {
->  	struct sock	*sk =3D svsk->sk_sk;
+>  	unsigned long expiry =3D jiffies - RC_EXPIRE;
+>  	struct nfsd_cacherep *rp, *tmp;
+> -	unsigned int freed =3D 0;
+> +	unsigned int freed =3D 0, visited =3D 0;
 > =20
-> -	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_tcp_class,
-> -		      &svsk->sk_xprt, serv);
-> +	if (!svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_tcp_class,
-> +			   &svsk->sk_xprt, serv))
-> +		return false;
->  	set_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
->  	set_bit(XPT_CONG_CTRL, &svsk->sk_xprt.xpt_flags);
->  	if (sk->sk_state =3D=3D TCP_LISTEN) {
-> @@ -1511,6 +1514,7 @@ static void svc_tcp_init(struct svc_sock *svsk, str=
-uct svc_serv *serv)
->  			svc_xprt_deferred_close(&svsk->sk_xprt);
->  		}
+>  	lockdep_assert_held(&b->cache_lock);
+> =20
+>  	/* The bucket LRU is ordered oldest-first. */
+>  	list_for_each_entry_safe(rp, tmp, &b->lru_head, c_lru) {
+> -		if (atomic_read(&nn->num_drc_entries) <=3D nn->max_drc_entries &&
+> -		    time_before(expiry, rp->c_timestamp))
+> +		if (atomic_read(&nn->num_drc_entries) > nn->max_drc_entries)
+> +			goto evict;
+> +		if (time_before_eq(rp->c_timestamp, expiry))
+> +			goto evict;
+> +		if (rp->c_state =3D=3D RC_DONE &&
+> +		    nfsd_cacherep_implied_ack(xprt, rp))
+> +			goto evict;
+> +		/*
+> +		 * Only implied ACK evicts out of age order, and only on an
+> +		 * ordered transport; otherwise the first non-evictable entry
+> +		 * ends the scan.
+> +		 */
+> +		if (!xprt || !test_bit(XPT_ORDERED, &xprt->xpt_flags))
+>  			break;
+> +		goto next;
+> =20
+> +evict:
+>  		nfsd_cacherep_unlink_locked(nn, b, rp);
+>  		list_add(&rp->c_lru, dispose);
+> +		freed++;
+> =20
+> -		if (max && ++freed >=3D max)
+> +next:
+> +		/*
+> +		 * A client controls its XIDs, so it can pack one bucket with
+> +		 * entries that are not yet evictable and turn each miss into
+> +		 * a full-bucket walk under cache_lock. Cap the work per call;
+> +		 * a skipped entry is reclaimed on a later prune, under
+> +		 * pressure, or at RC_EXPIRE.
+> +		 */
+> +		if (max && (freed >=3D max || ++visited >=3D max * 4))
+>  			break;
 >  	}
-> +	return true;
 >  }
+> @@ -307,9 +361,9 @@ nfsd_reply_cache_count(struct shrinker *shrink, struc=
+t shrink_control *sc)
+>   * @shrink: our registered shrinker context
+>   * @sc: garbage collection parameters
+>   *
+> - * Free expired entries on each bucket's LRU list until we've released
+> - * nr_to_scan freed objects. Nothing will be released if the cache
+> - * has not exceeded it's max_drc_entries limit.
+> + * Free entries on each bucket's LRU list until nr_to_scan objects have =
+been
+> + * released. Entries are evicted when they have expired or the cache exc=
+eeds
+> + * its max_drc_entries limit.
+>   *
+>   * Returns the number of entries released by this call.
+>   */
+> @@ -328,7 +382,7 @@ nfsd_reply_cache_scan(struct shrinker *shrink, struct=
+ shrink_control *sc)
+>  			continue;
 > =20
->  void svc_sock_update_bufs(struct svc_serv *serv)
-> @@ -1553,6 +1557,7 @@ static struct svc_sock *svc_setup_socket(struct svc=
-_serv *serv,
->  	int		pmap_register =3D !(flags & SVC_SOCK_ANONYMOUS);
->  	int		sendpages;
->  	unsigned long	pages;
-> +	int		err;
-
-Why move this variable to the outer scope? ^^^
-
+>  		spin_lock(&b->cache_lock);
+> -		nfsd_prune_bucket_locked(nn, b, 0, &dispose);
+> +		nfsd_prune_bucket_locked(nn, b, 0, &dispose, NULL);
+>  		spin_unlock(&b->cache_lock);
 > =20
->  	sendpages =3D svc_sock_sendpages(serv, sock, flags);
->  	if (sendpages < 0)
-> @@ -1576,8 +1581,6 @@ static struct svc_sock *svc_setup_socket(struct svc=
-_serv *serv,
->  	inet =3D sock->sk;
+>  		freed +=3D nfsd_cacherep_dispose(&dispose);
+> @@ -501,7 +555,7 @@ int nfsd_cache_lookup(struct svc_rqst *rqstp, unsigne=
+d int start,
+>  		goto found_entry;
+>  	*cacherep =3D rp;
+>  	rp->c_state =3D RC_INPROG;
+> -	nfsd_prune_bucket_locked(nn, b, 3, &dispose);
+> +	nfsd_prune_bucket_locked(nn, b, 3, &dispose, rqstp->rq_xprt);
+>  	spin_unlock(&b->cache_lock);
 > =20
->  	if (pmap_register) {
-> -		int err;
-> -
->  		err =3D svc_register(serv, sock_net(sock->sk), inet->sk_family,
->  				     inet->sk_protocol,
->  				     ntohs(inet_sk(inet)->inet_sport));
-> @@ -1602,13 +1605,26 @@ static struct svc_sock *svc_setup_socket(struct s=
-vc_serv *serv,
->  	inet->sk_user_data =3D svsk;
-> =20
->  	/* Initialize the socket */
-> -	if (sock->type =3D=3D SOCK_DGRAM)
-> -		svc_udp_init(svsk, serv);
-> -	else
-> -		svc_tcp_init(svsk, serv);
-> +	if (sock->type =3D=3D SOCK_DGRAM) {
-> +		if (!svc_udp_init(svsk, serv))
-> +			goto out_free;
-> +	} else {
-> +		if (!svc_tcp_init(svsk, serv))
-> +			goto out_free;
-> +	}
-> =20
->  	trace_svcsock_new(svsk, sock);
->  	return svsk;
-> +
-> +out_free:
-> +	/* Port zero asks rpcbind to UNSET the registration made above. */
-> +	if (pmap_register)
-> +		svc_register(serv, sock_net(sock->sk), inet->sk_family,
-> +			     inet->sk_protocol, 0);
-> +	inet->sk_user_data =3D NULL;
-> +	kfree(svsk->sk_bvec);
-> +	kfree(svsk);
-> +	return ERR_PTR(-ENOMEM);
->  }
-> =20
->  /**
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrd=
-ma/svc_rdma_transport.c
-> index 093371f9d245..fabdfd891a41 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> @@ -189,7 +189,10 @@ static struct svcxprt_rdma *svc_rdma_create_xprt(str=
-uct svc_serv *serv,
->  	if (!cma_xprt)
->  		return NULL;
-> =20
-> -	svc_xprt_init(net, &svc_rdma_class, &cma_xprt->sc_xprt, serv);
-> +	if (!svc_xprt_init(net, &svc_rdma_class, &cma_xprt->sc_xprt, serv)) {
-> +		kfree(cma_xprt);
-> +		return NULL;
-> +	}
->  	INIT_LIST_HEAD(&cma_xprt->sc_accept_q);
->  	INIT_LIST_HEAD(&cma_xprt->sc_rq_dto_q);
->  	INIT_LIST_HEAD(&cma_xprt->sc_read_complete_q);
+>  	nfsd_cacherep_dispose(&dispose);
 
 --=20
 Jeff Layton <jlayton@kernel.org>
