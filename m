@@ -1,43 +1,39 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D029A227BB9
-	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 14:33:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E5AB445A2AD
+	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 14:37:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787927634; cv=none; b=ORJjzztYBTKhPfQzTDLNwYpp5nEB1CWYUYCqj1Jqi/4LKpwhTT1+M91d1d/ZscNbsyqoCvVJQA8/VrEbTwY2tAOoUHcXkpQ3Y+zfWl+0vuLzXRoaZTwipCGh/tr7+TD8aMmPekmjhHaHJF2z089RCa7mB4p6o5a9Kg4Q3UT8ykM=
+	t=1787927834; cv=none; b=auotNrKkIT6Eml1vdkHf1hiNJS+rflzbb1WYWpuKQjuONYhR54eiCsiW3SaOeBQF1BidNza1xCjEF0xYC42PO9BqQYc6HkzqES4OsUrM2q9UG1ZDQdDXuRm4qtEBgLzWQe+uVb8MqJk5bT7h0edbJXwR5U0eSQTMwG8Ooa+hpQg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787927634; c=relaxed/simple;
-	bh=vECjwpZJrKD5D1ah0FLTVGe0nrNOa7wfYjFeCDLDrHs=;
+	s=arc-20240116; t=1787927834; c=relaxed/simple;
+	bh=tMVNEI7n6TaBaY+uy6+bnclE0nkb9N73NsNOs16iWA8=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=isnWybFgaDOxnDkDZa6kY9/OSRIlpTwfNO41Ea741k5j01+XEznRaGL1k5rYeIEtd4Yrd7KwWSBir4Uur1nKEhM6Bsrkh9r1Iz/F/eloJ8Je3cijykot8VxB5DT12aXGSq1GQA7MBeKCagBrhG8J2TY+8IVNnbMFX/ymZ9YQ+iY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gFmwuVL5; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=uzayWD4+lVnrJQROrRLOqEnrU2+igyYeH5Ll46fJasOyDSvbt1yC2DvS5XwsrczipV/513Ca/3XTuC5QZa4R9bjk1AjKkZ0Bj6apBQ39TCRRFXW0s1qvftUX9FxUx5ky1LkBuafsjOKWfTivd3HueGwX90n8iT95CjJEDE134/g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LRaU8/2E; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gFmwuVL5"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B2AAA1F000E9;
-	Fri, 28 Aug 2026 14:33:51 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LRaU8/2E"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F316A1F000E9;
+	Fri, 28 Aug 2026 14:37:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787927632;
-	bh=SmLjA2dgzMHtjYfKkOcJCkkkvZ2c6iK2LPRHSR6X+IY=;
+	s=k20260515; t=1787927832;
+	bh=6Zl4wFIPJGjdWbTIe73CseXVTiP6mQeJtX8DgSbTL74=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=gFmwuVL52PNQVDCfDbyXnXspTfbXD7pCGV7aSDXLWvLNpXXCo2zct6ssRe0hTbtNh
-	 C6DevCQEB+hx0Yetqv0FWHl1jrZoDrZWlQYT9wsRxycMQhJIP8bN84A3VlkZP4I5lq
-	 prEn/Nr108Ln89owIiMf/jqGYlh4nYA2289E/yW8yUrvNAFR4QMm5RO7uDqH70myYy
-	 +Nto+7yoCKhwx6HqYLXAOj2BhB5/3UWlVEHIvpEVecPQVIpqNpKV4FL3ilNsIEQ6x0
-	 XMJhSt3lA0vlKT/ESaVKpZ5tPSVfEjzIwSf8OL538vYNmdG7M02yGI6fKa2RUN9Yl7
-	 AXbS9FeZnmkrg==
-Message-ID: <c295b54b116a7eb757dc45ebb71bcaf010cff436.camel@kernel.org>
-Subject: Re: [PATCH 0/2] NFSD: Fixes for NFSv4 COMPOUND argument teardown
+	b=LRaU8/2ESf5U+FSaB+bAIsJY4oECzlmRhDkwHbZjV3213VwO8I5ldJhjAiM9H0hB2
+	 Tr/MjzXJwUXChzV9NoSPhvAae+AQuUSGpjesvS626DvSGvOWlU63PFh730w01PF5Sv
+	 s9wRBNBifqF6bBMyxI0yjzZykjFDKm7vLOkFYyTG+cq/wsK8uy5mv3E5NrLQjAZ+4Z
+	 CyA1Wnva7LmVeKSKHsoidbvauwrvZC42pVX5NZke9XQRspvZPUSBzG9p3alQYg4l2k
+	 HNzdW1WdVA8C/g66c/CoaYteNQDerU1FVO1IzgZomrvdBCwOX3wOf5jiIwf00c5lNQ
+	 C/I0mM0g5x3Fg==
+Message-ID: <b5e772f9d0e0aaae7e36320032518ce57139170d.camel@kernel.org>
+Subject: Re: [PATCH v1 0/3] nfsdctl: list NFSv4 clients
 From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>, Lorenzo Bianconi <lorenzo@kernel.org>, Rick
- Macklem <rmacklem@uoguelph.ca>
-Cc: Prabhakar Pujeri <prabhakar.pujeri@dell.com>, linux-nfs@vger.kernel.org,
- 	stable+noautosel@kernel.org
-Date: Fri, 28 Aug 2026 10:33:49 -0400
-In-Reply-To: <20260824-nfsd-posix-acl-ownership-v1-0-090fffc608ec@kernel.org>
-References: <20260824-nfsd-posix-acl-ownership-v1-0-090fffc608ec@kernel.org>
+To: Prabhakar Pujeri <prabhakar.pujeri@dell.com>, steved@redhat.com
+Cc: cel@kernel.org, linux-nfs@vger.kernel.org
+Date: Fri, 28 Aug 2026 10:37:10 -0400
+In-Reply-To: <cover.1787639206.git.prabhakar.pujeri@dell.com>
+References: <cover.1787639206.git.prabhakar.pujeri@dell.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -122,43 +118,62 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2026-08-24 at 10:04 -0400, Chuck Lever wrote:
-> Prabhakar Pujeri reported both of these defects in a single patch:
+On Tue, 2026-08-25 at 06:52 +0000, Prabhakar Pujeri wrote:
+> Add the userspace consumer for the companion NFSD Netlink client-state
+> series, whose cover Message-ID is:
 >=20
->   https://lore.kernel.org/linux-nfs/20260823113255.3417-1-prabhakar.pujer=
-i@dell.com/
+>   <cover.1787638668.git.prabhakar.pujeri@dell.com>
 >=20
-> They are split here because they need different LTS routing. The
-> rpc_status dump requires no privilege and is present in a default
-> build. NFSv4 POSIX ACL support is experimental and disabled by
-> default, so the ACL-related fix is mainline-only.
+> The series mirrors the kernel ABI split:
 >=20
-> In the original proposed fix, the decoder leaves the only reference
-> to a decoded ACL in the operation's argument structure, and the
-> executing operation transfers that reference to struct nfsd_attrs.
-> This is the root cause of leak, so my proposal is to address that
-> instead.
+>   1. Display the explicit recovery-grace value returned by threads-get.
+>   2. Add a privileged `nfsdctl clients` table for basic client state.
+>   3. Extend the table with session and stateid record counts.
 >=20
-> After close review, I determined that the argp->opcnt assignments
-> address a problem that is currently unreachable. Instead, my fix
-> is to block the OOB buffer read during the rpc_status dump.
+> Attribute presence remains the compatibility boundary. An older kernel
+> omits the grace value, and missing count attributes are displayed as
+> dashes. The bundled UAPI header permits building before the new kernel
+> header is installed. The configure probe requires the final count
+> attribute, so a system header containing only the base client command als=
+o
+> falls back to the complete bundled copy.
 >=20
-> ---
-> Chuck Lever (2):
->       NFSD: Fix out-of-bounds read in the rpc_status dump
->       NFSD: Fix POSIX ACL leak in unexecuted NFSv4 COMPOUND operations
+> Validation performed:
 >=20
->  fs/nfsd/nfs4proc.c | 30 ++++++------------------------
->  fs/nfsd/nfs4xdr.c  | 41 +++++++++++++++++++++++++++--------------
->  fs/nfsd/nfsctl.c   | 21 ++++++++++++++++++---
->  fs/nfsd/xdr4.h     |  1 +
->  4 files changed, 52 insertions(+), 41 deletions(-)
-> ---
-> base-commit: 565f77e5882a39bb2b70b9ed580d24e246c49737
-> change-id: 20260824-nfsd-posix-acl-ownership-3bb3fce46b1c
+>   - full nfs-utils build at each applicable patch state
+>   - final `make check`: no failures; one environment-dependent test skipp=
+ed
+>   - bundled nfsd Netlink UAPI compared byte-for-byte with the kernel copy
+>   - two-vCPU QEMU test with a live NFSv4.2 loopback mount
+>   - grace yes/no transitions displayed by `nfsdctl threads`
+>   - live client row showing one session, open stateid, lock stateid, and
+>     delegation stateid; zero layout stateids
+>   - callback, reclaim, lease, peer-address, and client-ID fields checked
 >=20
-> Best regards,
-> -- =20
-> Chuck Lever
+> The series is based on the current nfs-utils master branch. The exact bas=
+e
+> is recorded in the base-commit trailer below.
+>=20
+> Prabhakar Pujeri (3):
+>   nfsdctl: report NFSv4 grace state
+>   nfsdctl: add a command to list NFSv4 clients
+>   nfsdctl: display per-client NFSv4 state usage
+>=20
+>  configure.ac                   |   2 +-
+>  support/include/nfsd_netlink.h |  41 +++++
+>  utils/nfsdctl/nfsdctl.8        |  22 ++-
+>  utils/nfsdctl/nfsdctl.adoc     |  15 +-
+>  utils/nfsdctl/nfsdctl.c        | 268 +++++++++++++++++++++++++++++++++
+>  5 files changed, 345 insertions(+), 3 deletions(-)
+>=20
+>=20
+> base-commit: 67ed1bdb1af1c70a5fd3b377a997401b7676b827
 
-Reviewe-by: Jeff Layton <jlayton@kernel.org>
+Sashiko has some comments about this that probably need to be addressed
+before we apply these. There is potential for a softlockup in patch #3,
+in particular:
+
+https://sashiko.dev/#/patchset/cover.1787638668.git.prabhakar.pujeri%40dell=
+.com
+--=20
+Jeff Layton <jlayton@kernel.org>
