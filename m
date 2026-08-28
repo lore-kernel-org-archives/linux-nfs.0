@@ -1,159 +1,157 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ot1-f45.google.com (mail-ot1-f45.google.com [209.85.210.45])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 66C1738F930
-	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 20:37:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2CD4D3ABD8F
+	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 20:50:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.45
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787949480; cv=none; b=ceYUSR+18WdViUvSDtOVT3pa+nKxNcionGdmtJyhUE176KVtoPr6CIkep4SHCW1J2Ca6LHpZSMToSOceyfdavyqR57stTh4kX5ohIVUZtj4aMJ7OAePv6VJ3fJXueQmYlYd/2AHEHNjubZdhx2f/Vzg4zY6lmFodL6e3JfxBp7I=
+	t=1787950245; cv=none; b=b6FBA7oNKhMS353Gn1FSeuLYq4qclzcweEAyvRAv3geyE+ASLbLYv0VYnrGKh6EY/IiBX8UWN5MwyGgd8zTD9j5JUOTjzOFcwsPvxyVoqvnoajf9BpQkdKM1o6AoMoILJ+Q0f/fxNgK9Lzo6Q60Pj6Eu7Fy7rLDehT0PVElEij0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787949480; c=relaxed/simple;
-	bh=dZ8AdAUfkVT0+N9y4enHUj+R1+IseGL19arSpvxirPE=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=G7Ayibh8eINBI4D3s4Q3BujXRKrYSCHhvI2mmHUU2pi2cVrOSQSCnCSyoXe6X5gabBG3ex4FUzDxprrqpAdwQV49RzXIAICr8qYswQJfGBWKskskiLffHuOgO253pIFTLLXyzftDP77tjsYHaDxGK6RdsCu9resQfmP39dOe4Zo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QxS7PJuh; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787950245; c=relaxed/simple;
+	bh=I5g9sp7HAckDk+Au3D1bH78cHfeEk+Dzb5TRhrvFKeY=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=XA9+wral8r3aYjjIy6zGxhMYBPZ50nRzpcrkBLak4O61DoxzNy+JcaLbilPuayYx57xKle+/nTY4MHQBiy0JorkjaKOaOIz3mLwf78icPCJ2dyuqdwS9u3FVnRDYq2W0MCuIxX+WT4uKP0DKsU//N5eBBz7SZMETEvgKlAX/MKE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=B+UtcEnl; arc=none smtp.client-ip=209.85.210.45
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QxS7PJuh"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AD9681F000E9;
-	Fri, 28 Aug 2026 20:37:58 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787949478;
-	bh=Y6aOxu/rMALnvS2YWUVO6FxdZbDhZJXCoJ4CNO3Pb6M=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=QxS7PJuhHSkfU+z7RYfW0IwOTPdE85gucWJdt8T2EdVaW7AWxpByOpQiiE/Cqehy1
-	 l1C9y9H8MaY4VHeY+/nMY7QqDFkG7RHw0QviArJQrVP1D3prZo9OmgAciT3GWU9Grd
-	 Kok2WNyG/t0LGE6LKyGsBAiZb70nbFejZBj0wUKoWvRtZ1tGRF+ZeeFXqS2B2SPDrI
-	 qxbkbbakXFt+NrMUlLBuTEBQUJkKa0InZ2Fy0LV2dvyETUJzIHKnFeBxyz0/izsvSP
-	 4N85ahkKNp5MA66oP44GxqVbsiMjIqE2krqskA7zRGKH4oVfSzFRyrbM4T+imZMks2
-	 zrrgZyJJpb+XQ==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 9ADD2F40068;
-	Fri, 28 Aug 2026 16:37:57 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Fri, 28 Aug 2026 16:37:57 -0400
-X-ME-Sender: <xms:pfGRaqgPtFnkgsVV3ESn30JAdxpI5Gehag2FqAQMeX94OE9O0BRwGQ>
-    <xme:pfGRal1uKvJIP5JmcykCiMr-3GYeZukasdgmpOaox4M8foI2TmRFZW7j62e54fIHm
-    7zvufRSixmNzNt5xkkZqqZB2SUmDzs6p0t9A2A7OGStatUaElS1_iZK>
-X-ME-Proxy-Cause: dmFkZTGbTBtTBVmFWnjxoqN9wZqAOMP0d3I7ALvTBDjn/vk6VROJc3gA9yJ7mauR0GKMLi
-    gwMg9BZ5U+wBxtR1140Pkdbvllb0ToP8eGVw7UcKtZrg2nWAMEbJ7HNcf3wbLhSIT8IvaM
-    JcImfLeTq6F/fghtFWK8iY65+JL7PSofKFb8oEhBUj63uEQaMSKgSXD751MyLRIRipxWKJ
-    8zNoBa1UGWl8fXaE/VJpoWbOwIcplpbYM6ql1RVfmxjIq+AUDXPJHiyCII80HtG3NoVP7V
-    sisH3wqb24La1oP5R+hCPTN8hmVYrcbFUsJUCVCuon0oSm5g4e+Y1FuUftvIz79rGFw1a4
-    tvnPuTErCml/5tp0gzYVsY3nnGbtechBjvyBQSteZh8G3HCzjsXsU7EvO8+uZltaQbfDs0
-    R68TmdS83AmU5MDO9bV3KOSPTCJpDJog6WbkcyIdJoZbh7rdx+y4mpAvls3QCz7AhEemDH
-    3R27TjJlKcPzT6dQA2rPFGqsdbfhZl2Vk9D+8XzmnE1fkQEnDIH6oJBA/ITDVFRPOPnPq+
-    hgs5FRVJMYtvFftQyEV2dL1lSQaWQt2kLuSUAqjWEiKoSPqX4SNHdwiqyn1bv5V9SiSC7n
-    7l6SEAICLPJkurf4tNL/VhLF9k5dXeKJW0KV2/CK2tX3BDMnKjx2J5fnP4ow
-X-ME-Proxy: <xmx:pfGRavZl_y2ae4dPsTMMjTKLN_Apw-hf1h_hZ1gmsCJScBIjtYeMZA>
-    <xmx:pfGRavHb0Oxw_ktvC3tY23-USvk3ILTdsBIltLKpsItmcBGiH-Vluw>
-    <xmx:pfGRagIAaYJ6-0DI8aR8mHymC4SUeK4-0Rlr0BalTOWhikLQD7YVmw>
-    <xmx:pfGRaqMs3OyOwXup5DDBXOgbU15S60gzWr91ZtHSZCtEOBUoMkrdSA>
-    <xmx:pfGRagnP951ryJiU_VWCeOCMjCSSuyVzMMXmzQFirVB6gFFgYFfjJKtK>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 767A77811F3; Fri, 28 Aug 2026 16:37:57 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="B+UtcEnl"
+Received: by mail-ot1-f45.google.com with SMTP id 46e09a7af769-7f4cc6797b7so780407a34.0
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 13:50:43 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=hammerspace.com; s=google; t=1787950243; x=1788555043; darn=vger.kernel.org;
+        h=content-type:mime-version:references:in-reply-to:message-id:date
+         :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=x1b9Ked5NePNg7lEm5kzQUXx3dckoLD51FWIAGMmL88=;
+        b=B+UtcEnlAJ9xP9Ssn8RXBBYd1KkTpUvF8cEeZJHjqvYd4vbL5ES257uApwuwyl4fIs
+         +4nB/oIl7dN7PYtiQTbGS8isIsFxjbrxlHb4thAbJsIXkAxXVSGsqj5AtX4tyISw2Tca
+         POmgXy3R/s8y5P0tBgBFlY5oY0megJAQDhc6yJYoOgcgSmW7CGhUwBmtLibFJ6ceTVbH
+         w3AApwuMNLmc2TXPVzWbgmS3qKYR2k3PNtHEGh8DekDSn2xquMmlBjX9QY7lymN17152
+         7YWiQevWsPEKbxIjtRcLH1PKQVWYS2ALIh6PpA0cIo0c/K/mdbgufZTxLgnquoLz+gbN
+         89rg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787950243; x=1788555043;
+        h=content-type:mime-version:references:in-reply-to:message-id:date
+         :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=x1b9Ked5NePNg7lEm5kzQUXx3dckoLD51FWIAGMmL88=;
+        b=aWBsK8XhJoQOV7k8a/A6pCEVlYTOhfH48KgljGBWVP6dRXBPaX3A3/IeJaSHVkBKZh
+         OQANsZOM7yerynkF992/sZepYu60q95v5to4xRK/TstPWLjGx4udUbq0n5tRURzsxSrJ
+         oa4inP1uyDY9vmt3cxMjDN2pcUw5/zWUW1pS/jKPVr3NCEX4a6wiUy4+oXWSZ49dUzn6
+         hGLD0yGrvFvdU7o5vFCXLG4z3zcKG/TN6OMLag0vwC/tRxnijTOS6dFXW4o3dDsJ25jI
+         vTUOKVTk0E1kbkSSWJMiuxreKQq9l2/jj45Dq7wuAw07ooLWostoVEMoJOVpO5KGScrA
+         T9gQ==
+X-Forwarded-Encrypted: i=1; AHgh+RrcrnGoVToRYaWrD8sms3liHrbg5neJC1cNSM1cpp4C/TtWr4O2f5cxCYB9ZIPPqi3TLuu2BcL3O0I=@vger.kernel.org
+X-Gm-Message-State: AFuF++lhaOxjuuUCRcczuUrqSadgB/XH6mpUuULEE+6F+pEvdf67WWqp
+	mA7d2XGCoNd3foT51OZSVuA317mIFA4hOQBATvwxRfpF5Q3HUmHa+0wmz/NQ7JXf9lM=
+X-Gm-Gg: AR+sD10vMmMdzQuKnnOznU3R+cNEZGfzWbFSRhWUt4AaCCNy3ohqAvnVlpgjbEPUQFO
+	OKcfn7vkJiJNUOmTe8F7yA1eR4ElpmlqR/8W7wPcd34KKdEokWwxEtZi2OJdGyeFKuvMMzN0twy
+	tFgoDYpzl/d/9BvsX4G4CXfOUPIgMFKOULrQclTyorgIulQ7j3zh7IyN3cXFCzWJcIe5btR9oTQ
+	r6bm0yzRg0OpfkFPP5zRXZcA1OHpAVMAn8DpXFRkmF1vrvVSKQGWlj7sS3c8ENCRrOLIAFZAJDD
+	0r4DZcoytj8CnRcadsQOupjo/jvpkVHGH2tFxcGlm7rt2vwfiVCvXAb0ThPmD9dnxDVQRBOXqEb
+	vWJIMk9Zme/y/jTN0IRE0MCu7b2/nw2A39+evLwqkNWRSv2LFU2+I3QORTQH7cuhBlg5P/esOik
+	hLLhW0OA3y/ID660gi52peanvdb+yXCt7VMQb6AxdEg2i216zItcyZ5OmGpSAkP3OyYIhYbnTe/
+	fhOW6UX
+X-Received: by 2002:a05:6820:52d5:b0:6b1:3534:a5b8 with SMTP id 006d021491bc7-6b1c66161d9mr7806360eaf.15.1787950242852;
+        Fri, 28 Aug 2026 13:50:42 -0700 (PDT)
+Received: from [192.168.254.51] ([66.97.168.37])
+        by smtp.gmail.com with ESMTPSA id 586e51a60fabf-468a2ef0452sm2530996fac.4.2026.08.28.13.50.41
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 28 Aug 2026 13:50:42 -0700 (PDT)
+From: Benjamin Coddington <ben.coddington@hammerspace.com>
+X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
+To: Anna Schumaker <anna@kernel.org>
+Cc: Benjamin Coddington <ben.coddington@hammerspace.com>,
+ Trond Myklebust <trondmy@kernel.org>, linux-nfs@vger.kernel.org,
+ Jonathan Curley <jcurley@purestorage.com>, Mike Snitzer <snitzer@kernel.org>,
+ Jeff Layton <jlayton@kernel.org>
+Subject: Re: [PATCH v2 14/23] NFSv4/flexfiles: Honor ndc_immediate on
+ CB_NOTIFY_DEVICEID CHANGE
+Date: Fri, 28 Aug 2026 16:50:40 -0400
+X-Mailer: MailMate (2.0r6272)
+Message-ID: <53B11861-643C-4B3F-9634-617736EC7E38@hammerspace.com>
+In-Reply-To: <fdf3cf24-a0b2-4350-961b-028847c47bc9@app.fastmail.com>
+References: <cover.1787327939.git.bcodding@hammerspace.com>
+ <da98de51fe276a11faef6b42d469ed73dd4ff53f.1787327939.git.bcodding@hammerspace.com>
+ <fdf3cf24-a0b2-4350-961b-028847c47bc9@app.fastmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: ASVo6Y-fM8_J
-Date: Fri, 28 Aug 2026 16:37:39 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>
-Cc: "Rick Macklem" <rmacklem@uoguelph.ca>, linux-nfs@vger.kernel.org
-Message-Id: <56384440-7fae-4e40-9c0b-fb2162828522@app.fastmail.com>
-In-Reply-To: <a99df73fc1db0f976da665cfb4ea39682f680118.camel@kernel.org>
-References: <20260828-duplicate-reply-cache-v2-0-25069e660a7b@kernel.org>
- <20260828-duplicate-reply-cache-v2-5-25069e660a7b@kernel.org>
- <85acfa01848e5d7829ca18ad8864410fbb5e12b7.camel@kernel.org>
- <10c97c34-1061-4aa2-a5b5-234e4d01e894@app.fastmail.com>
- <a99df73fc1db0f976da665cfb4ea39682f680118.camel@kernel.org>
-Subject: Re: [PATCH v2 5/7] NFSD: Evict completed DRC entries via implied ACK
 Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
 
+On 28 Aug 2026, at 13:41, Anna Schumaker wrote:
 
-
-On Fri, Aug 28, 2026, at 3:15 PM, Jeff Layton wrote:
-> On Fri, 2026-08-28 at 14:59 -0400, Chuck Lever wrote:
->> On Fri, Aug 28, 2026, at 2:38 PM, Jeff Layton wrote:
->> > On Fri, 2026-08-28 at 12:17 -0400, Chuck Lever wrote:
->> > > A completed DRC entry stays in its bucket until RC_EXPIRE elapses or
->> > > the cache exceeds max_drc_entries. Entries whose replies the client
->> > > already holds lengthen the bucket and slow every lookup that hashes
->> > > there.
->> > > 
->> > > RFC 1813 Section 4.5 observes that on a connection-oriented transport
->> > > a duplicate request arises from reconnection, not from within a live
->> > > connection. A fresh request on a live TCP or RDMA connection therefore
->> > > means the client is not retransmitting an earlier one. UDP clients
->> > > retransmit on timeout over a shared svc_xprt, so eviction is
->> > > restricted to transports marked XPT_ORDERED. Even there the evidence
->> > > is not conclusive, since a client with several requests outstanding
->> > > sends the next before the previous reply arrives. The cache is
->> > > advisory: a premature eviction costs a miss and re-execution, the same
->> > > outcome memory pressure and RC_EXPIRE already produce.
->> > 
->> > No, it's not. The DRC is necessary for proper function, and if we drop
->> > non-idempotent requests prematurely, then that could cause spurious
->> > errors.
->> > 
->> > Or am I misunderstanding what you mean by "The cache" here?
->> 
->> Not talking about the NFSv4.1 session cache. The old DRC has
->> always been best-effort. It cannot be relied upon for proper
->> function, since the DRC is non-deterministic.
->> 
+> On Fri, Aug 21, 2026, at 12:29 PM, Benjamin Coddington wrote:
+>> When a CHANGE notification carries ndc_immediate, RFC 8881 Section
+>> 20.12 says the change is enforced immediately and the client might not
+>> be able to complete pending I/O.  In addition to un-pinning the stripe's
+>> device node, mark the old node unavailable.
+>>
+>> Marking does not recall the references already handed out.  A write
+>> whose DS connection is already up keeps using the old node until that
+>> I/O errors: nfs4_ff_layout_prepare_ds() returns early on a live
+>> ds_clp, and the unavailable flag is only consulted when a connection
+>> is being established.  What the mark does change is that a read skips
+>> the node while another mirror is usable, and that an IOMODE_RW segment
+>> still pinning it stops counting as fully available -- so I/O the
+>> server rejects falls back to the MDS rather than being retried against
+>> a mapping the server has already withdrawn.
+>>
+>> The walk can also exchange out a node that already carries the new
+>> mapping: a re-resolve that completed between the unhash and the walk
+>> reaching the stripe, raced by this walk or by the walk of a later
+>> CHANGE for the same deviceid.  Ripping such a node out is harmless (it
+>> is still hashed, so the next I/O re-pins it from the cache), but it
+>> must not be marked unavailable.  Stale vintages are distinguishable by
+>> hashed-ness: every superseded node was unhashed before its walk began
+>> and is never re-inserted, while a fresh node is inserted before it is
+>> installed.  Only mark nodes that are no longer hashed.
+>>
+>> That test is hlist_unhashed_lockless(): the hook runs under the layout
+>> inode's i_lock and rcu_read_lock(), but not under nfs4_deviceid_lock,
+>> which is what serializes the writers of node.pprev -- and __hlist_del()
+>> stores a neighbour's pprev with WRITE_ONCE(), so removing any other
+>> entry in the same bucket can write the field this test reads.
+>>
+>> Without ndc_immediate, pending I/O drains on the old mapping and only
+>> new I/O re-resolves, as before.
+>>
+>> Assisted-by: Claude:claude-fable-5
+>> Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
+>> ---
+>>  fs/nfs/flexfilelayout/flexfilelayout.c | 8 ++++++++
+>>  1 file changed, 8 insertions(+)
+>>
+>> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c
+>> b/fs/nfs/flexfilelayout/flexfilelayout.c
+>> index 46ca58e8e96b..ebb19a919f9d 100644
+>> --- a/fs/nfs/flexfilelayout/flexfilelayout.c
+>> +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+>> @@ -2541,6 +2541,14 @@ static void ff_layout_reresolve_deviceid(struct
+>> pnfs_layout_hdr *lo,
+>>  				kfree(put);
+>>  				continue;
+>>  			}
+>> +			/* Only mark stale vintages: a node still hashed was
 >
-> Yes, but in this case you can potentially evict this thing well before
-> you actually need it:
+> I don't think I've seen "vintage" used when talking about anything other than
+> wine before.
+
+Not even cheese?
+
 >
-> - client does a v3 RENAME (anything non-idempotent, really)
-> - reply to the RENAME goes out just before a new call comes in (WRITE
-> or something maybe). The RENAME DRC entry's timestamp is a few jiffies
-> earlier so we evict it.
-> - connection drops before client gets the reply and client reconnects
-> and retransmits the v3 RENAME
+>> +			 * fetched after the unhash and carries the new
+>> +			 * mapping.  Lockless -- nfs4_deviceid_lock, which
+>> +			 * serialises pprev, is not held here.
+>> +			 */
 >
-> ...hilarity ensues? Maybe this sort of bad luck never happens in
-> practice, but I don't see what would prevent it.
+> Nit: this comment is pretty wordy. Do we really need to define what "lockless"
+> means here?
 
-The same thing can happen if NFSD is handling a thousand chatty
-clients. With fast networks and fast storage, overrunning the DRC
-is more likely than it ever has been.
+I'll trim it up!
 
-I've got more patches that moderate this behavior some. I could
-post those as well... I was hoping to keep the patch sets narrow
-to avoid overwhelming reviewers.
-
-
->> The point I'm making here is that items already get evicted
->> due to memory pressure or because the DRC size is capped.
->> 
->> In particular, if you are actively removing items that are
->> very unlikely to be hit, that *reduces* the likelihood that
->> other, perhaps more valuable, items will be evicted due to
->> memory pressure.
->> 
->
-> Sure, but usually we evict the oldest stuff first, and we generally
-> keep a big enough cache to get past the point where retransmissions
-> occur. This patchset changes that and will evict things earlier.
->
-> Maybe that's OK in practice.
-
-The reconnect case is the only one I'm really concerned about.
-I'm not brushing aside your concern, but missing a non-idempotent
-reply during a reconnect storm is somewhat rare, and is already
-not 100% deterministic.
-
-And we have NFSv4.1 now. For anyone who is deeply concerned
-about this race, NFSv4.1 is the only total answer.
-
--- 
-Chuck Lever
+Ben
