@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 832DD226D18;
-	Fri, 28 Aug 2026 16:37:45 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24487377558;
+	Fri, 28 Aug 2026 16:37:46 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787935066; cv=none; b=VwFxtfRjTgJq/jUf1jCV+N7SbRIVR8Mh4Nm6/3HgFsJhIRm+Ayv6VzmpwmEwJcPo9PgVA8PTWL+gT0GTx2b/QtBgumiV7dqYAwlGH5jOqvqEIlres1lqoufvxyC1W8s/6Mfr1XuMlrbYo4Bg2/6wNX70qabifDO+BJfwc4xaQJc=
+	t=1787935068; cv=none; b=nfpkRzvLdBegLCFxKipOvz5ceMONV8fEdM+Kamzt+rsPA+yNeJ1IdUTZn2y60kP4lMKWohpTRwiyKbTow4iyfTw5EWjGvTr39lQ63cWVIn9mA+oRMtnxeEqnik9V31PzEm/WuN+Y44Kfx3Rcw6IGYFIQncxsiRgZZ9CUtme+QVw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787935066; c=relaxed/simple;
-	bh=61tVrR/9+eMJoxQJ+/l0z31Br93SumXEC4RvOCZcKts=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=azTVeeA3yotW4hVvUU6SbTpQN0wYffOYx+EtdJWN6KWk3QONkbDSxeUZ8hvLGFSP65RiEbTPiZTQq0gQy4Z+Mfovr/8v4L+XxXC4pNDFQa7SftyPmdZBb/kohoiMsvPj4L7E7uaPcEQoEwNYnZTC3gSeLxQNAmMJgMq77sZuQ1c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gIXr6s7L; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787935068; c=relaxed/simple;
+	bh=tRmgxww+rxzTihIU6XxzVA4+qqOxvEdXskaEQAJ+8Pg=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=Cvf33Y7fVQm8Vj4x2NTA8W5xZeiDOvvbT3gitREpXblXrbM5+22zoydLfbGe/ZN6m4zflPiMObjsm28El56h3Z81eTbgYhMvvXKXVOZz7gs7nrT5pormwKTSUuRJ1J5HNFSWCJ69PUiTlv8uZfUmd1sfVW+g0Gnap9B6hF/KQQA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Pj9R9azD; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gIXr6s7L"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 96A9A1F000E9;
-	Fri, 28 Aug 2026 16:37:43 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Pj9R9azD"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4BCF71F00A3D;
+	Fri, 28 Aug 2026 16:37:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787935065;
-	bh=GOuKrMGilMs3uAevuLs4t7fFjZMRJpYxPv+0djzBtww=;
-	h=From:Subject:Date:To:Cc;
-	b=gIXr6s7LyFkypPVxrlfdcTJh4idKPqA0T2j+xhzBOwHzeJyPDyqdy4DbWnhBpT0Gq
-	 dGdSyZHCLbvG/DKAvPOAZHpa6olodBgXBlXR/8aVUuJCFADDkU58CjX96/yxUK1stI
-	 6mkTpVmkOkmWYzc75LlBflovoMF3/ivOP/Cmu0ClBsfRv+cv4+KcgnQxPaZBwOQ8rZ
-	 1hJRco9EWgHNfHyh2dr8uwZZb/3VefCf4aAP+eiJH4Yi+dQVlUe9XTnyXaZvfcWSmW
-	 VXTq6W4U1qgEw0XhJEVxGgPvO9kGFr0yZ4cvSzksIyTKcwThm1Ql/AVn3kurw5Q2K0
-	 Z4DrNENfArRBA==
+	s=k20260515; t=1787935066;
+	bh=pL3XeMVN1EzXKRu842hzSRvAUH5WEX0PtRHjn0sU1pg=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=Pj9R9azDTzzrP1KJrFA+4ykbFdhQEbvuz4ipsqHyMrKeCKat6BY1Ko8osRoItyigo
+	 1UH3aDIm4et/dfMwWVOcOI+k1O6/zCKfZFt8y4sXcdNX+KVAUQgy7yPMyrOFLhcWv1
+	 g7JKdAkihnOKR6ShG6RQ24EnDL/nLHh+LUy5tFzGyFdAGHctZz3UF2qFqqfNqx55t6
+	 y+0w9HAvfUTeB4ZhjDE/M5Tc2BVPRtI7eV+Oq7g+1QKSQAE2V46i84IhNVCCAPfaOH
+	 NSY+AzHgZXzd5M49cGEqR+ZYclEoH1cMXXh5Gi/Gu6olkxYKoA2HjRMDQ4v+Jqnc+g
+	 IWd/h7k8kECIg==
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH v3 00/14] nfsd/sunrpc: harden the netlink listener set
- interface
-Date: Fri, 28 Aug 2026 12:37:30 -0400
-Message-Id: <20260828-nfsd-nl-hang-v3-0-55026685c75d@kernel.org>
+Date: Fri, 28 Aug 2026 12:37:31 -0400
+Subject: [PATCH v3 01/14] NFSD: cap the number of listeners accepted in
+ listener_set
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,11 +38,9 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/12MwQ7CIBAFf6XZsxgWUiue/A/jgcLSEhvagCGap
- v8urRfrcd7LzAyJoqcEl2qGSNknP4YC8lCB6XXoiHlbGAQXJ95gw4JLloWBrSdDrmUrSUknNBR
- liuT8a8vd7oV7n55jfG/1jOv6DZ2R70MZGWeiRuWsrVuD+vqgGGg4jrGDtZTFr41/tii24UaJV
- qpaGrmzl2X5AMUTMpbnAAAA
-X-Change-ID: 20260717-nfsd-nl-hang-10a3b3e93f2a
+Message-Id: <20260828-nfsd-nl-hang-v3-1-55026685c75d@kernel.org>
+References: <20260828-nfsd-nl-hang-v3-0-55026685c75d@kernel.org>
+In-Reply-To: <20260828-nfsd-nl-hang-v3-0-55026685c75d@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>, Trond Myklebust <trondmy@kernel.org>, 
@@ -55,136 +53,92 @@ Cc: Slawomir Stepien <sst@poczta.fm>, linux-nfs@vger.kernel.org,
  Trond Myklebust <trondmy@gmail.com>, linux-kselftest@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5773; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=61tVrR/9+eMJoxQJ+/l0z31Br93SumXEC4RvOCZcKts=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqkblU0C9QSglGt7FcLmMqM/rYpF4byeM0dkJ1p
- wzi+XTcTqCJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCapG5VAAKCRAADmhBGVaC
- FYIKEACNvwQjVTWF3tDV/OWE1KwL8MOkpFfgpn4R/eEx/tROzqTaLiKDCs2lFordiMoTocd/1Bm
- 6seYgdKk6h0LiBB4jtJCcAOyLoZCTWzjgvEivunW1U6OlKvHlB/vEOwIaZfmT0gKNopORzny/yI
- Pws3/QHaKwRCCAt6iJAL0P7PNSeXro2v4MVQxHXdYtxISE9uAns6lcf4WWhm8Jnc7Loh5yu6R8w
- XVMf3tuPMbUgsgN1KFN8rBMmw3VKDcGwTfoQgyPDtJOzvrZOFhPWqlH4JWQeofR6QgVODDjt3mF
- lywBMg6kqAkB8FT81+D3FXmfeDzlP27m2MnKUfnFlbP0e3amgbUBt3R9ebn93LrF3+gD+NcgTZb
- vxqiRysa8vwI9SKFoxUpIbQmjgJRZCsEUQDP8S7hrP+KiXCrbdbaiRBQuTd5GPtq/AV8c93QnpR
- 8yENEH0DTVosJncasg3XjVgRDSGPgYGBGVLnJ05wDh5wmUbS8PoM0ZhqUMS39FigF2YykgwToI/
- 9Y5jDjDhVofiMxgFa+EYSpUe036L0Rmzopk6BkhgKEGDuxeZzoVBFIV7m4gGoKfqlpmrIxTz+aU
- aqS4xvHtdBc642vz0/4zcuTPvhvq5wjs+G2Em0PpvFCr0UyJpcXvpDsYMKrGxxzZQ4ikDKHyojk
- CRT2PQnU+ZSxwTg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2930; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=tRmgxww+rxzTihIU6XxzVA4+qqOxvEdXskaEQAJ+8Pg=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqkblUIzSNyeqZzNscZsInYOUudHQlI9k7WbpIG
+ xf3hhfVlXeJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCapG5VAAKCRAADmhBGVaC
+ FcEFEADGCBfjmy6pZYyI30IPfmkHH+JOExxOC0g+EbyXlPslIWziP9VyYoSRa7V5Ip7QYZWTlOG
+ dhWEBC+UeOqc/hCz90emMCNrfdmzaYUrAo6kMzIi6pGO0Q1ChPONyZsZWh7ZSbD+Q302hUfasPE
+ OCfnmxKvezEykNZs1foKiaVgAoWB47eTr7gY82v/RhYoGgJ2GgkPh0HAZ9Gaql2255UHQUIVs1n
+ 0wWp6uhYbKj5lXwPhBSGGQ4S3OMUmuc8r9LpEpxa/HzrZUR8jOZbjubLqTcyfV7qUhXrHSWPmp4
+ OcHSL1xqW2Nab3wOFZvBMp1t62RGsO9iXQWFQ/jhy/3gOzuW/D1dOShEbdSeYBDu+pYcucrKx4q
+ oTthHJELzgVCIWAsxBrxdT5ZyptqLBtIQae3A2+X6OV0WpLwARMfjVbEmJ6qKfXJdrt2aaC0DxN
+ pPHxutz424I8mMB81crrt0tkoQKuPJYf/qlpGZPhQXZOEvQrM0NxCyQAH6BDCwQwqZ8G1bML1yC
+ WYVR5+8FrLeAbkZnbmYqjsCgGqgHc9sCLkxmqUNiXvKSeGsdOMFMCiXWbzjW31N2SHXkHtpYeB1
+ kIgpVK04D27lcOxO0wBA7cRMbg2rzhZr+Zpx02RGe44G/0W6Wz8sraZ/zrxZYmqJOWOfunMw/qC
+ NZM62MZ30YkdBIg==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-This series is quite a bit different from v2. First, I cleaned things up
-along the lines of Chuck's review of v2, but then Olga suggested that we
-should just give up on trying to do new rpcbind registrations when one
-fails.
+nfsd_nl_listener_set_doit() matches each requested listener against the
+existing set. The nested loop that does this is O(N * M), where N is the
+requested count and M is the existing count. The loop runs under sv_lock
+with bottom halves disabled. A userland request with a very large listener
+list can therefore spin in atomic context for a long time.
 
-I've added a patches to do that and this now seems to fix the reproducer
-that syzbot provided recently. I have high hopes that it will fix the
-other syzbot hangs that have been reported.
+Reject a request that carries more than NFSD_NL_LISTENER_MAX (1024)
+entries. The check goes in nfsd_nl_validate_listeners(), before the code
+takes any lock. The limit is far above any realistic configuration.
 
-This also sets a foundation for some other work I have that will move
-the rpcbind registration into userland. I'll submit that series
-separately after this one is resolved.
+This patch does not cap M. Only the message size bounded N; real sockets
+bound M. A listener_set result set is the requested set, so that path also
+holds M at the cap, but __write_ports_addxprt() adds two listeners per call
+and removes none, so repeated calls can push M past it. The worst case
+under sv_lock is therefore 1024 * M, plus 1024 nla_parse_nested() calls.
+Both interfaces require CAP_NET_ADMIN.
 
-Please consider these for v7.4.
-
-To: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neil@brown.name>
-To: Olga Kornievskaia <okorniev@redhat.com>
-To: Dai Ngo <Dai.Ngo@oracle.com>
-To: Tom Talpey <tom@talpey.com>
-To: Trond Myklebust <trondmy@kernel.org>
-To: Anna Schumaker <anna@kernel.org>
-To: David S. Miller <davem@davemloft.net>
-To: Eric Dumazet <edumazet@google.com>
-To: Jakub Kicinski <kuba@kernel.org>
-To: Paolo Abeni <pabeni@redhat.com>
-To: Simon Horman <horms@kernel.org>
-To: Shuah Khan <shuah@kernel.org>
-Cc: Slawomir Stepien <sst@poczta.fm>
-Cc: linux-nfs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Cc: netdev@vger.kernel.org
-Cc: Trond Myklebust <trondmy@gmail.com>
-Cc: linux-kselftest@vger.kernel.org
+Fixes: 16a471177496 ("NFSD: add listener-{set,get} netlink command")
+Assisted-by: LLM
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
-
---- Changes in v2:
-- New patch 4: when a later registration failed, svc_register() left the
-  entries that it had already set in rpcbind. Those entries pointed at a
-  port that the caller then closed.
-- Tests: behavioural fixes for several tests. Several assertions checked
-  only an errno that both the fixed kernel and the broken kernel return.
-  val_bad_transport() now also requires that the rpcbind stub saw no
-  traffic. val_second_entry_bad() requires that no listener started.
-  func_empty_destroys requires that the kernel dropped the local rpcbind
-  client and then connected again. The two -EBUSY tests require that the
-  listener set does not change. find_listener() now matches the address
-  too.
-- Tests: the stub read the revents of a newly accepted pollfd that poll()
-  had not written. The stub could therefore start a blocking read with no
-  readiness event.
-- Tests: the config fragment now includes NAMESPACES, SHMEM, TMPFS and
-  UNIX. Without them, every test skipped.
-- Link to v1: https://lore.kernel.org/r/20260810-nfsd-nl-hang-v1-0-2519fdd5bc1a@kernel.org
-
 ---
-Changes in v3:
-- Dropped v2's patch 4, the svc_register() unwind. rpcbind matches an UNSET
-  on [program, version, netid], and the v2 fallback ignores the protocol
-  completely. The unwind could therefore clear entries that belong to other
-  live listeners. Chuck Lever found that.
-- A failed registration stays fatal. Patch 3 makes CONFIG_NFS_LOCALIO=y
-  agree with CONFIG_NFS_LOCALIO=n on that point.
-- Tests: sem_register_refused now reads the listener set back, because
-  -EACCES alone does not show that no listener was created.
-  sem_create_failure_extack is new. The netlink socket now asks for
-  NETLINK_EXT_ACK and NETLINK_CAP_ACK, so that a test can read the extack.
-- Tests: FIXTURE_TEARDOWN removes any listener or thread that a test left
-  behind. Those pinned the netns.
-- Stop attempting to register any more listeners when the first
-  svc_register() call fails.
-- Bound the unregistration side the same way. svc_register(),
-  svc_unregister() and the per-listener teardown in svc_delete_xprt() all
-  give up once the local rpcbind stops answering, so one listener_set pays
-  one timeout in each direction rather than one per listener.
-- Link to v2: https://lore.kernel.org/r/20260811-nfsd-nl-hang-v2-0-c0c92b3953c3@kernel.org
+ fs/nfsd/nfsctl.c | 16 +++++++++++-----
+ 1 file changed, 11 insertions(+), 5 deletions(-)
 
----
-Jeff Layton (14):
-      NFSD: cap the number of listeners accepted in listener_set
-      NFSD: validate transport name in listener_set before serv creation
-      SUNRPC: keep the first error in svc_register()
-      SUNRPC: bound the local rpcbind client timeout to 1s
-      NFSD: report listener creation failures through extack
-      SUNRPC: report local rpcbind calls that get no answer
-      SUNRPC: stop svc_register() once rpcbind stops answering
-      SUNRPC: stop the svc_unregister() sweep once rpcbind stops answering
-      SUNRPC: stop unregistering listeners once rpcbind stops answering
-      NFSD: stop registering with rpcbind after a failure in listener_set
-      selftests/nfsd: exercise listener_set request validation
-      selftests/nfsd: add a per-netns rpcbind stub and the listener round-trips
-      selftests/nfsd: check that listener_set asks rpcbind once
-      selftests/nfsd: check that listener removal asks rpcbind once
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 5331b89c4281..b6f4d66f612a 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1995,21 +1995,22 @@ int nfsd_nl_version_get_doit(struct sk_buff *skb, struct genl_info *info)
+ 	return err;
+ }
+ 
++/* Upper bound on the number of listeners a single request may carry. */
++#define NFSD_NL_LISTENER_MAX	1024
++
+ /**
+  * nfsd_nl_validate_listeners - sanity-check the listener list from userland
+  * @info: netlink metadata and command arguments
+  *
+- * Walk every NFSD_A_SERVER_SOCK_ADDR attribute and confirm that each entry
+- * is well-formed: it parses against the policy, carries both an address and
+- * a transport name, and the address is long enough for its family. Doing
+- * this up front lets the callers below assume every entry is valid and
+- * guarantees we make no changes when the request is malformed.
++ * Walk every NFSD_A_SERVER_SOCK_ADDR attribute and confirm that the list is
++ * not oversized and that each entry is well-formed.
+  *
+  * Return: 0 if every entry is valid, or a negative errno otherwise.
+  */
+ static int nfsd_nl_validate_listeners(struct genl_info *info)
+ {
+ 	const struct nlattr *attr;
++	unsigned int count = 0;
+ 	int rem;
+ 
+ 	nlmsg_for_each_attr_type(attr, NFSD_A_SERVER_SOCK_ADDR, info->nlhdr,
+@@ -2018,6 +2019,11 @@ static int nfsd_nl_validate_listeners(struct genl_info *info)
+ 		struct sockaddr *sa;
+ 		int err;
+ 
++		if (++count > NFSD_NL_LISTENER_MAX) {
++			NL_SET_ERR_MSG(info->extack, "too many listeners");
++			return -E2BIG;
++		}
++
+ 		err = nla_parse_nested(tb, NFSD_A_SOCK_MAX, attr,
+ 				       nfsd_sock_nl_policy, info->extack);
+ 		if (err < 0)
 
- MAINTAINERS                                        |    1 +
- fs/nfsd/nfsctl.c                                   |   87 +-
- include/linux/sunrpc/clnt.h                        |    3 +-
- include/linux/sunrpc/svc.h                         |    7 +-
- net/sunrpc/rpcb_clnt.c                             |   22 +-
- net/sunrpc/svc.c                                   |   65 +-
- net/sunrpc/svc_xprt.c                              |   20 +
- tools/testing/selftests/Makefile                   |    1 +
- tools/testing/selftests/nfsd/.gitignore            |    1 +
- tools/testing/selftests/nfsd/Makefile              |    6 +
- tools/testing/selftests/nfsd/config                |    8 +
- .../testing/selftests/nfsd/nfsd_netlink_listener.c | 1328 ++++++++++++++++++++
- tools/testing/selftests/nfsd/settings              |    1 +
- 13 files changed, 1529 insertions(+), 21 deletions(-)
----
-base-commit: e247236b7ffa1e0940f834787feade8570c5db91
-change-id: 20260717-nfsd-nl-hang-10a3b3e93f2a
-
-Best regards,
 -- 
-Jeff Layton <jlayton@kernel.org>
+2.55.0
 
