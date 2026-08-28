@@ -1,205 +1,110 @@
-Received: from s1.jo-so.de (s1.jo-so.de [37.221.195.157])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ot1-f49.google.com (mail-ot1-f49.google.com [209.85.210.49])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E0FCF21ABD7
-	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 09:07:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=37.221.195.157
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 50924199E89
+	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 11:24:38 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.49
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787908061; cv=none; b=TTSOGAR4w7z0II+KBQEOaq5Fhi27rTfV0EYj4goolDdjVo0knyJwI5J+vHEskS2Dme/RFjaCDe4ddjZX2s1++4qfmG/2V/WTFFM8DtU2b8uPLQj0lTBbgLpmCOlynhoGAXtgf6W8EHaIfG/jURb70OJhM0KXRa02Ct9pBITe0sE=
+	t=1787916279; cv=none; b=Qd6AwgETQSHOOsQe4jMqLOiXQd7UVQ97CeNasJdjiLVO84lEoX/7YIWFbqOXZ7ga26txHdiUjOKTNUDpEuSO/aylCyioVKjAMuKiEqkQT6/nv4zSn0rwiDVgJGiYsN9Ge2fvtD1Y9BrdY1PkJ4pG81kYyUKb7UECp4U0OIgN138=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787908061; c=relaxed/simple;
-	bh=2g3m+7m0K0rQKrM+MN1DRMflJlRbPqoMnO/B7mQM4mI=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=RexGg/btutg6Wks09QaMCpIoQ6EZFVfmJjb77khm1xSyxAHBY3XGSMZ0aInIqqT+t8spnVNEKSyLByxEhC9kANSG6KM38DaLFpG0F0VZVgHg6gUOd1df73BNeseleTs+HxMEOyzbPA11F11BwV+JGuqxMyArtbQ7Lf2boTOn24o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jo-so.de; spf=pass smtp.mailfrom=jo-so.de; arc=none smtp.client-ip=37.221.195.157
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jo-so.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=jo-so.de
-Received: from mail-relay (helo=jo-so.de)
-	by s1.jo-so.de with local-bsmtp (Exim 4.98.2)
-	(envelope-from <joerg@jo-so.de>)
-	id 1wzsGa-00000007yk9-0mfb;
-	Fri, 28 Aug 2026 10:48:52 +0200
-Received: from joerg by tux.jo-so.de with local (Exim 4.100-RC3)
-	(envelope-from <joerg@jo-so.de>)
-	id 1wzsGZ-00000002PRO-2b6s;
-	Fri, 28 Aug 2026 10:48:51 +0200
-Date: Fri, 28 Aug 2026 10:48:51 +0200
-From: =?utf-8?B?SsO2cmc=?= Sommer <joerg@jo-so.de>
-To: Chuck Lever <cel@kernel.org>
-Cc: NeilBrown <neil@brown.name>, Jeff Layton <jlayton@kernel.org>, 
-	Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
-	linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 2/2] NFS: NFSERR_INVAL is not defined by NFSv2
-Message-ID: <apE90ZRZB8IW_AiS@jo-so.de>
-OpenPGP: id=7D2C9A23D1AEA375; url=https://jo-so.de/pgp-key.txt;
- preference=signencrypt
-References: <20251210002850.318350-1-cel@kernel.org>
- <20251210002850.318350-3-cel@kernel.org>
+	s=arc-20240116; t=1787916279; c=relaxed/simple;
+	bh=5oHcRuhCGL0OYCae8aoKaZLaG/pEOakAnQt+ruXqLos=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=mBEythoJh4wTI3yW6AcVbj4EvQuPRtExET2S0xWy42nCAw2u7R8kM+G5fAYlRgzVQKDoG5Ff+iKk3upR384xPtSKdj253jd6+D50WoYOgZaRJi6F1VzxUK0IGmPcEai824wkvFdY7SP27qdU7tZdl5cRgfneQjVjAR1Zje2aQFQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=DhQodndX; arc=none smtp.client-ip=209.85.210.49
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="DhQodndX"
+Received: by mail-ot1-f49.google.com with SMTP id 46e09a7af769-7f4f53975e6so740800a34.3
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 04:24:38 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=hammerspace.com; s=google; t=1787916277; x=1788521077; darn=vger.kernel.org;
+        h=content-type:mime-version:references:in-reply-to:message-id:date
+         :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=KBFxxTo0WJItWcptpVbkyRNZ+ds9M3fpqqLeVQRj4xg=;
+        b=DhQodndXig/k40kc1PqqOjl6iaJoBJmORReglsojymOrnSli/BTCyOiGsFBXkc67wy
+         u4NYG54CnYqrFddDNyEl8jXHGP7XTHRoS78IrXj+Kt66gYLPIdy5OF2HNGP5zIT93IFD
+         goBVEZq5H7jADGLo43Jqp2d+TJK+sqGcskiheatpIizHpNvCI6c4aWYbMHHT9Fr4OUcl
+         3tS7gFvguxCX+qV6OzV7JpDZ5eDAOomSHM+4YsBU4wbPqShCbVEk1vCvh7DZ4O6OBq5+
+         5ENERwu1M2T+3JLWXQBCHnvHkB/5Y6rRkmrnPTcovZGHtBUCrRit+X+KWQGNl/GobRXi
+         8qbw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787916277; x=1788521077;
+        h=content-type:mime-version:references:in-reply-to:message-id:date
+         :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=KBFxxTo0WJItWcptpVbkyRNZ+ds9M3fpqqLeVQRj4xg=;
+        b=GbX+yge02nHnS5X1jpuTrpAowO4tahce1RcsBexWIwvJcI5KD4wAX2OMCrpA33Ull6
+         Fto3ZCLwql9ru+dp4hMOqKQJOxz+FYEk3czU76RY6IBByajHuuyxZF9Tr7fuJEcJVh7I
+         k1YvYgMowrDXTP4kqkj5cjkK9cNy4nbzZQNsXN8frV7JSpFUK00qJs0WXS3VHwlwpCWi
+         xOQ6CKP2DYKIEg7laZ4BJmuSO1Dd8pZMP3a62qb9XmFmUO+BGErptNKo7LilqFOoeA4y
+         VwMH9dgaMY/dzs05k8N0kbDt+bVsK2s/tdCf7txvxUEa9dRPXhLC097uqJtSMjOmL7hF
+         t4ig==
+X-Forwarded-Encrypted: i=1; AHgh+RqB0J1qq3qSAXmlh7v8IoK76JJ31hCQSfS6sbFTWM3yMfUUFyJU6CCXo5v6NlR046tdUhz8jur13gQ=@vger.kernel.org
+X-Gm-Message-State: AFuF++mwh9bjq50ciuMN5NZ18iKZUEx6A24xWHdfyuWFDxrdF4rLCrjY
+	iWYNQk5L7CkoVrEpc+U9bvHvVkvJOQKC0ZHqxMXSkUfiTG1I2mQQGblGgVfhmwozjic=
+X-Gm-Gg: AR+sD12Uk3vPt8YNLKO/tEwfFAFTDMH0pBcLthUXIqVAKSYkHCNQkig7Y+oPaK0XxEZ
+	OyyLwxF2sVWZ4jcjBnGhGCPZjtB0wutt5R7yJw6ut4ZRTLEAuNjDJAvFzVHLMJ50tTYa0qN9FBW
+	c/RQJCS1lEScJ2DQ51ywSeo4nuOF/ALtPT7jQR31Ty11ZD8YlPF/VAN00Y+lduxZ7iddxY+wAeP
+	kxP75vK7VJOu5suZZO9oRZd8V+RNyTzt3p2mNUj0J4zReI6cribyHLbPphotT3+pMDwt2jFY/c9
+	/nkrpT4UTDrV5pwhf3El39QC8mdjt3BjI5BfvJElxhxKSWCV7/s3+lmGa5ahs/gzYoaC5jzzOOX
+	wEiOJB53GRklrJYI1ZizRQ4Gr5Jg3ZJ6UqHDI5cZhR2gJB/eX7+2UQzLXNsK2AWVptIlU6zKlHB
+	B177TU7QrlcJywsrMxT+p2D//mP0kheVPuEnUYAxrrR7hnmLRYKsLR9EhiiGjgAjDdYEh29G+yu
+	4yUQQFb332puyE9Q7I=
+X-Received: by 2002:a05:6830:6f88:b0:7f4:d8f4:8b2d with SMTP id 46e09a7af769-7f4f25596cdmr8210751a34.15.1787916277101;
+        Fri, 28 Aug 2026 04:24:37 -0700 (PDT)
+Received: from [192.168.254.51] ([66.97.168.37])
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-7f4fa96d29esm1082758a34.17.2026.08.28.04.24.36
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 28 Aug 2026 04:24:36 -0700 (PDT)
+From: Benjamin Coddington <ben.coddington@hammerspace.com>
+X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
+To: Anna Schumaker <anna@kernel.org>
+Cc: Benjamin Coddington <ben.coddington@hammerspace.com>,
+ Trond Myklebust <trondmy@kernel.org>, linux-nfs@vger.kernel.org,
+ Jonathan Curley <jcurley@purestorage.com>, Mike Snitzer <snitzer@kernel.org>,
+ Jeff Layton <jlayton@kernel.org>
+Subject: Re: [PATCH v2 01/23] NFSv4/flexfiles: reject a stripe_unit that does
+ not fit 32 bits
+Date: Fri, 28 Aug 2026 07:24:35 -0400
+X-Mailer: MailMate (2.0r6272)
+Message-ID: <7C602108-0528-4B48-B10B-BC9110475F00@hammerspace.com>
+In-Reply-To: <59de74d2-e2bf-457d-a0cc-b3dfedc5b8c8@app.fastmail.com>
+References: <cover.1787327939.git.bcodding@hammerspace.com>
+ <09f50acb9f481b3a9c3716e8f70b9b3dbe81888c.1787327939.git.bcodding@hammerspace.com>
+ <59de74d2-e2bf-457d-a0cc-b3dfedc5b8c8@app.fastmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
-	protocol="application/pgp-signature"; boundary="altxtfjgh3nkdwkx"
-Content-Disposition: inline
-In-Reply-To: <20251210002850.318350-3-cel@kernel.org>
+Content-Type: text/plain
 
+On 27 Aug 2026, at 15:25, Anna Schumaker wrote:
 
---altxtfjgh3nkdwkx
-Content-Type: text/plain; protected-headers=v1; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-Subject: Re: [PATCH 2/2] NFS: NFSERR_INVAL is not defined by NFSv2
-MIME-Version: 1.0
+> Hi Ben,
+>
+> On Fri, Aug 21, 2026, at 12:29 PM, Benjamin Coddington wrote:
+>> ff_layout_alloc_lseg() decodes stripe_unit as the 64-bit value the
+>> protocol defines, but every consumer treats it as a u32:
+>> nfs4_ff_layout_calc_dss_id() divides by it with do_div(), which casts
+>> the divisor, and ff_layout_pg_test() copies it into a u32 first.  A
+>> value that does not fit is silently truncated, so the client stripes on
+>> a unit the server did not specify -- or divides by zero, if the low 32
+>> bits happen to be clear.
+>
+> I've been thinking on this. What would it take to update the users
+> of stripe_unit that you mention above to treat it as a u64 instead of
+> a u32? The calls to do_div() could be replaced with div64_u64() for
+> example. It just feels a little more robust to me than artificially
+> limiting ourselves to a 32-bit value.
+>
+> Thoughts?
 
-Chuck Lever schrieb am Di 09. Dez, 19:28 (-0500):
-> From: Chuck Lever <chuck.lever@oracle.com>
->=20
-> A documenting comment in include/uapi/linux/nfs.h claims incorrectly
-> that NFSv2 defines NFSERR_INVAL. There is no such definition in either
-> RFC 1094 or https://pubs.opengroup.org/onlinepubs/9629799/chap7.htm
->=20
-> NFS3ERR_INVAL is introduced in RFC 1813.
+I agree it would be better that way, storage is already u64.  I don't think
+the division cost is a big deal.  I'll make that change for v3.
 
-Hello,
-
-since this commit 0ac903d1bfdce8ff40657c2b7d996947b72b6645 was added, U-Boot
-2022.04 (I don't know about newer versions) can no longer access symlinks in
-NFS shares. When I revert this commit, U-Boot can load the file behind the
-symlink. Real files are no problem.
-
-The file I want to load is a symlink at the server:
-
-```
-% ls -l /srv/nfs/boot/Image.gz*
-lrwxrwxrwx 1 root root      41  7. Jul 16:29 /srv/nfs-con/boot/Image.gz -> =
-Image.gz-5.15.213-imx8mm+gfffa4b6d4aea+p1
--rw-r--r-- 1 root root 5279373  7. Jul 16:29 /srv/nfs-con/boot/Image.gz-5.1=
-5.213-imx8mm+gfffa4b6d4aea+p1
-```
-
-Without this commit:
-
-```
-u-boot=3D> nfs 0x42000000 /srv/nfs/boot/Image.gz
-Filename '/srv/nfs-con/boot/Image.gz'.
-Load address: 0x42000000
-Loading: #################################################################
-done
-Bytes transferred =3D 5279373 (508e8d hex)
-```
-
-But with this commit:
-
-```
-u-boot=3D> nfs 0x42000000 /srv/nfs/boot/Image.gz
-Filename '/srv/nfs-con/boot/Image.gz'.
-Load address: 0x42000000
-Loading:
-done
-```
-
-This is the network traffic:
-
-```
-No.	Time	Protocol	Length	Info
-3	0.000370	Portmap	98	V2 GETPORT Call (Reply In 4) MOUNT(100005) V:1 UDP
-4	0.000607	Portmap	70	V2 GETPORT Reply (Call In 3) Port:60340
-5	0.000949	Portmap	98	V2 GETPORT Call (Reply In 6) NFS(100003) V:2 UDP
-6	0.001046	Portmap	70	V2 GETPORT Reply (Call In 5) Port:2049
-7	0.001368	MOUNT	126	V2 MNT Call (Reply In 8) /srv/nfs-con/boot
-8	0.008026	MOUNT	102	V2 MNT Reply (Call In 7)
-9	0.008389	NFS	146	V2 LOOKUP Call (Reply In 10), DH: 0x8c279135/Image.gz
-10	0.008754	NFS	170	V2 LOOKUP Reply (Call In 9), FH: 0xcdddf154
-11	0.009095	NFS	146	V2 READ Call (Reply In 12), FH: 0xcdddf154 Offset: 0 Co=
-unt: 1024 TotalCount: 0
-12	0.009189	NFS	70	V2 READ Reply (Call In 11) Error: NFS2ERR_IO
-13	0.009511	MOUNT	102	V2 UMNTALL Call (Reply In 14)
-14	0.010301	MOUNT	66	V2 UMNTALL Reply (Call In 13)
-```
-
-=46rom packet 11 V2 READ Call
-
-```
-Remote Procedure Call, Type:Call XID:0x000050e1
-    XID: 0x000050e1 (20705)
-    Message Type: Call (0)
-    RPC Version: 2
-    Program: NFS (100003)
-    Program Version: 2
-    Procedure: READ (6)
-    [The reply to this request is in frame 12]
-    Credentials
-        Flavor: AUTH_UNIX (1)
-        Length: 20
-        Stamp: 0x00000000
-        Machine Name: <EMPTY>
-        UID: 0
-        GID: 0
-        Auxiliary GIDs (0)
-    Verifier
-        Flavor: AUTH_NULL (0)
-        Length: 0
-Network File System, READ Call FH: 0xcdddf154 Offset: 0 Count: 1024 TotalCo=
-unt: 0
-    [Program Version: 2]
-    [V2 Procedure: READ (6)]
-    file
-        [hash (CRC-32): 0xcdddf154]
-        FileHandle: 010004010100540020bb3809040054002f2edde4000000000000000=
-000000000
-    Offset: 0
-    Count: 1024
-    Total Count: 0
-```
-
-=46rom packet 12 V2 READ Reply
-
-```
-Remote Procedure Call, Type:Reply XID:0x000050e1
-    XID: 0x000050e1 (20705)
-    Message Type: Reply (1)
-    [Program: NFS (100003)]
-    [Program Version: 2]
-    [Procedure: READ (6)]
-    Reply State: accepted (0)
-    [This is a reply to a request in frame 11]
-    [Time from request: 94.000 microseconds]
-    Verifier
-        Flavor: AUTH_NULL (0)
-        Length: 0
-    Accept State: RPC executed successfully (0)
-Network File System, READ Reply  Error: NFS2ERR_IO
-    [Program Version: 2]
-    [V2 Procedure: READ (6)]
-    Status: NFS2ERR_IO (5)
-```
-
-
-I can locally revert this commit in our kernel, but is there any other way
-to get it working again?
-
-
-Thanks in advance.
-
-Best regards J=F6rg
-
---=20
-Optimisten haben gar keine Ahnung von den freudigen =DCberraschungen, die
-Pessimisten erleben.
-                                                (Peter Bramm)
-
---altxtfjgh3nkdwkx
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iHUEABEIAB0WIQS1pYxd0T/67YejVyF9LJoj0a6jdQUCapFLaAAKCRB9LJoj0a6j
-dVgxAP41cf/OWFUWrICZYwHsRmiKEE9gvSEm6Q8ce58sbqWO3QD7BM+UCUAYT39w
-/byeObAW38YjLyIQ/rNoDXMOeDF/eP0=
-=56Kv
------END PGP SIGNATURE-----
-
---altxtfjgh3nkdwkx--
+Ben
