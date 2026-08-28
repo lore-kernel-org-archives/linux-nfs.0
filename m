@@ -1,30 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ABC7B46D543;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E6E95377541;
 	Fri, 28 Aug 2026 13:50:38 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787925039; cv=none; b=qLkN3u190Zm09gz2D4hDhhbZjkrkopgVgBp5iYGAmSJSkUIKzVzEh1mpcqGx+xC1snYZb19+V5azj8DhzbSVjDwc5WR4QN9DfndTzOx0brEZocfEdEJQiM/9JaU8vUxFv0lO2tIYSQsupaUA7A7YC8NoaSGuuPYE1l23Vb25HbI=
+	t=1787925041; cv=none; b=lmyRmWA6BmMt/mcZuhEEyaR5GeEmLolo1MvI15ouqYapLLFv3YdJSAwM+8AELhBkiwzDq8uNGGnrToabB5sK1M4ZmyowTGccw2WuMek1fnAtbpHoYViKO6ppKFDX8yp/bs2bxg8ueQaI1g4EUUvRYNKba+j/RZxohHxFJ1EixL8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787925039; c=relaxed/simple;
-	bh=zSITZ+sDBVwfMVJL6DfXexhqM2yjjr4I99sW59+6T4M=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=MePTtcjdl0rL0Pl00WgbrOUlyrz+d0LsWVVTdpXv4j1Y0y5VMYewiBG1acbOPXGvdijsHkP4iVnxwMajX2qsEuEGepfpNouFnte4RLhk05c7U01tAY5Y1I0r2+MSjY3rElkN/P/PNzdyVWVpMb/Te+0RhuJWSgZ4xlpTThptCrA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ijtSTARa; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787925041; c=relaxed/simple;
+	bh=SsHDE/eEEe5tyULrz5DSpv1ogzyLODBLZZyFn//bQbU=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=D2NIZTw4QkI7ceehztEH5nd/lH7SGes6I+PiiCL1RswhEKhGeBiiaUA0x2Vmd/Isgy6BRv4AuAwgwOtJn1/jsxlnfWRfVuHZJ5OaE8wwLTlUF8pLuPfI/x0vtHX9azayN5mrbwMYgT9BFKq6NJ6yJfOHFRV/aKQ9tnZHs8As83w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=A9C0jb+N; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ijtSTARa"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4FD901F00A3D;
-	Fri, 28 Aug 2026 13:50:37 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="A9C0jb+N"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 333AA1F00A3A;
+	Fri, 28 Aug 2026 13:50:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1787925038;
-	bh=I1itcvWvI5v6xHrt95PdL6sm4ktfl/GDz+05F7LSid0=;
-	h=From:To:Cc:Subject:Date;
-	b=ijtSTARaK8nfN92wf3LtBCcU4dRnV7ysaArZO9kkLH/tbgDdEnMSWfI9kvZyhLzIG
-	 gYZhOCIFTXYo4bodJTkTl76JQspTbMT32IC6Lx6Tf5IBiln8Y5MhYM4cLctuup8ZLn
-	 B7eNmi14m0XlGe0gvV2Gtdk2TdtDw+qXqVskDokrl4S6NtPEb35OUINzbNR+CjFOxL
-	 SZbCYMRKMgQGoSo/8KJc8bTGV9JqMEpLt2Wa0sUJDi+CoRKca8MyHccYvut+4i/NF0
-	 3k1oXibct/0lghsStUp9Ao6KC/1s4jW98Aq5jzSO+k0saGPoY+Aa3h7BLX2syxAfjc
-	 ZbGWNHUPGPPZw==
+	bh=jQ7QZi8FN8/A/wtgHnRKV7v2S/z4T+rjEeS0TO154gY=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=A9C0jb+NeZ+nPNPmEcSglcwoZ06G1mPz4itoahqTIolLyM3VAnr1n45nzWQYnlAfI
+	 Ahcp1njURdY+z7Wgr+5h7iFIGt4N93SqLW7HqoaQk+4LdGZjkj5VW/Uu2mljp6dnkH
+	 ZJT9LOrGv9FJoBprZsKJmo7GwXAKkxWk/XPE966JTGAdyP5lZ4N2VTy54XmByn/Do0
+	 hJzY34Z/81JilWRp+WHYSgRDTrLG3va5Z6HHzeh5O09yS8bJ2YJyYrgoVS8zfOBocC
+	 /D698zgub58QceDFk7USx6R5c1fiOL4SN/5hD8puE378ALuhcTxnyczW7SQSOVWHuU
+	 ZXjU8NFVy2sHQ==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neilb@ownmail.net>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,10 +34,12 @@ To: NeilBrown <neilb@ownmail.net>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>,
 	<linux-rdma@vger.kernel.org>
-Subject: [PATCH 0/3] Minor fixes for svcrdma
-Date: Fri, 28 Aug 2026 09:50:33 -0400
-Message-ID: <20260828135036.796842-1-cel@kernel.org>
+Subject: [PATCH 1/3] svcrdma: Grant credits from the clamped sc_max_requests
+Date: Fri, 28 Aug 2026 09:50:34 -0400
+Message-ID: <20260828135036.796842-2-cel@kernel.org>
 X-Mailer: git-send-email 2.54.0
+In-Reply-To: <20260828135036.796842-1-cel@kernel.org>
+References: <20260828135036.796842-1-cel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -45,21 +48,43 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Rediscovered these while cleaning out old development branches.
-All minor fixes.
+svc_rdma_accept() computes sc_fc_credits from sc_max_requests before
+the Receive Queue depth is checked against the device's max_qp_wr.
+When that check lowers sc_max_requests, the credit grant keeps the
+original value, so the server advertises more credits than it has
+Receives posted. A client that uses the full grant overruns the
+Receive Queue, and the connection is lost with an RNR error.
 
-Chuck Lever (3):
-  svcrdma: Grant credits from the clamped sc_max_requests
-  svcrdma: Clear XPT_DATA when the last receive context is consumed
-  SUNRPC: Skip xpt_reserved accounting for non-UDP transports
+Set sc_fc_credits after the clamp so the grant matches the number
+of Receives the server posts.
 
- include/linux/sunrpc/svc_xprt.h          |  5 +++-
- net/sunrpc/svc_xprt.c                    | 30 +++++++++++++++---------
- net/sunrpc/svcsock.c                     |  1 +
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  | 18 ++++++++++----
- net/sunrpc/xprtrdma/svc_rdma_transport.c |  3 ++-
- 5 files changed, 40 insertions(+), 17 deletions(-)
+Fixes: fc2e69db82c1 ("svcrdma: Clean up comment in svc_rdma_accept()")
+Signed-off-by: Chuck Lever <cel@kernel.org>
+---
+ net/sunrpc/xprtrdma/svc_rdma_transport.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 927269598ac2..f949601b2144 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -471,7 +471,6 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 	newxprt->sc_max_requests = svcrdma_max_requests;
+ 	newxprt->sc_max_bc_requests = svcrdma_max_bc_requests;
+ 	newxprt->sc_recv_batch = RPCRDMA_MAX_RECV_BATCH;
+-	newxprt->sc_fc_credits = cpu_to_be32(newxprt->sc_max_requests);
+ 
+ 	/* Qualify the transport's resource defaults with the
+ 	 * capabilities of this particular device.
+@@ -492,6 +491,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 		newxprt->sc_max_bc_requests = 2;
+ 	}
+ 
++	newxprt->sc_fc_credits = cpu_to_be32(newxprt->sc_max_requests);
++
+ 	/* Estimate the needed number of rdma_rw contexts. The maximum
+ 	 * Read and Write chunks have one segment each. Each request
+ 	 * can involve one Read chunk and either a Write chunk or Reply
 -- 
 2.54.0
 
