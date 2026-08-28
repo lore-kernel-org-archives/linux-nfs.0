@@ -1,166 +1,109 @@
-Received: from fout-a6-smtp.messagingengine.com (fout-a6-smtp.messagingengine.com [103.168.172.149])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 290FA27A47F
-	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 22:36:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.149
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CC9E81DF748
+	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 23:14:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787956605; cv=none; b=l1yj+LFSoiZM7/y6vetDzqH3OyY7zrWAGSb/f3kVfeKr/QGrj+zeGlzH6lqFyeutcnPJgx5eC3LyVP/N280WFefrI+EmXOCS7Uc5EGhTSCBShTCQTaRemIki6kfYVdXJfIML7o13SqKjrf7TfBUoXIdx/nCyni5akJb9KSV3rsA=
+	t=1787958901; cv=none; b=OQBFsA9VVdCOwY5bkkrXDPXZBxwvoeL7MO3SOZJRDs9tBEahzBgdAGlk9iaSjGQh6vFbqVXaeZCHaM+nVra5bdlO+Tz8SdQ/5Ea0u5U0Bg5xlbOCzReTrriwOJYeAVXi5fOFQeaHOQkNOd6B2u+wdPLbaOVwgFm0dyLEOoIqa9U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787956605; c=relaxed/simple;
-	bh=JuN9AbhiRE29Zms/17ZeBGNMHUnfDEEI6WfbVdA4uAI=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=qi0fWttB+X8Z9IGboaofxW0sfij6zUYGjATLtP6lQoaQBJdRfXnqOIj0w3o8JffkNevFkYA1gMq2oc3RA3mFGwnPGT2L+QzVysqEAYuyUEvdsO/Bn2lwQ7lWWnfbU84ikAy0QTHGspak1ZRJ9JiR5hI+hEAlBzbyb8nXAtjhwu0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=eq+wa4H3; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=jg8ugREK; arc=none smtp.client-ip=103.168.172.149
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+	s=arc-20240116; t=1787958901; c=relaxed/simple;
+	bh=3XZ7nG6FDNRPDoRz5soavnxZcl9pRKUBmh0/3xMgLfY=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=u8S54b3IAkB6+dCoIrJdlteCCsN9QOvWM436NJzPkjiHUTmbJNJSMM4fhbs1AKsDfkxPcRfKiYtnicKEPU0Ew5Z0h3UuhqSDZ1aicc5Qmpsc8+oK1SvUl27X9iNI5LytWbxwZLlfyzoeF7FxC7szKRJfYpEJtHg5KWxannC9lA4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VxFwZfyP; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="eq+wa4H3";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="jg8ugREK"
-Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
-	by mailfout.phl.internal (Postfix) with ESMTP id 42925EC023C;
-	Fri, 28 Aug 2026 18:36:42 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-04.internal (MEProxy); Fri, 28 Aug 2026 18:36:42 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:content-type:date
-	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to; s=fm3; t=
-	1787956602; x=1788043002; bh=FCI4JDtsfiLYkeB7osnRz9rXvw+DqL/MmcC
-	Cx1/1dEI=; b=eq+wa4H30MAw3xheYNr2QN8WbLiex2yf1wYnf+vb2M7hd5XydXJ
-	ncG5tKcVz7FJlUkhD9SSd3OxIm9QyFguZC2j8RC7n8XI/iu2gOzfmsq6EQGfKl0n
-	Qlvn1vaq+f6bWU9Vws6TMRu8YK4EAgiOU79tabxdwz97zhnaw3OOKl9EtCXOfxka
-	UfqkFoBRAl05Tb8Rijo3NtQycZfZqUgMQWLAXQlTbbAhOiCtOg9Fg66yApZRW5Pf
-	+W/KNAq7vOyNps711giWgcEIGwcvc4ysWwgPWKlCceve1FLf/Aphr+as82af9pbU
-	p9RFu0+05rXknoJePDjHSiUV0buv3JgFvzg==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:content-type:date:date:feedback-id:feedback-id
-	:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1787956602; x=
-	1788043002; bh=FCI4JDtsfiLYkeB7osnRz9rXvw+DqL/MmcCCx1/1dEI=; b=j
-	g8ugREKUTR/PVVdJHy6eqIsSE1crXkgRYFVcSmqgVddnZaLys9DQLLrTBNspUzyZ
-	OYpQ0HR2LISgy0Ix75rKv1kFobN7HdS46zOqrctHQu1P/A9ub/q5bGcbU/zWwX4N
-	MeIVEKOkGSyEaemdTL/pnwhucY11Xo3HozFjy6MnbVKAmBEPyctcAdHLi1uKa6hI
-	+1vUipHYaMmlQkbsMvaCdtqotKaUOrm0D6N+KXCo/WJjDOB2EVCFxcxSi/2tf+Ud
-	7uOn+3adu4ag/QqF4MLmBU8QkGCp0UaqPTe0CsOSoTYddFcu+cwZdk4OjmnULoyI
-	c0l2aNgCanJi9RrlNDZ5Q==
-X-ME-Sender: <xms:eQ2Sap5PxwARU3nuUplOAKeJOMWL2h9lKCb-URNW6CFtPRwIfjJAUw>
-    <xme:eQ2Sape6wALl3Bnt5fKzPpx-QYSP8oLkT0xQkdjcNENATQUvoyjoOdZFvBjcFpdkJ
-    yREcSYn2ZFA4N1E3_Wt7CfoUvlG5RYgBt8oQqxI8_REO6LZX6I>
-X-ME-Received: <xmr:eQ2SakHxBNBl3TVwbLGSNW4l7pjkkTrCVqimLcGi0GAQ8JdDoGj03dMnKPln86iC0wOUrQB-ZLTUSM36pyO4T0rVS_-xEto>
-X-ME-Proxy-Cause: dmFkZTF3++Y4ujIQ+gxfDizbbKqJHoMa+TDeGyH5lP2mQZQOw8FLVZg8M33D0zJlGn8lIe
-    4NPtkpVJUKBZHrOi5++YLhWSJgN/sVePnn+BAFKyUEzbpFwdE3FSKuHpRhaeTdRkp7vOz0
-    6pq4kTIkYsNIWeh4qPu4y2lydXUzLAC0pmMuTuBOtNU/nvntVaROnEo58QTye8waHYtEmA
-    ed9CMOJAVo+tY80GqM9Aj7yvzNlRKbykDM88V15w/m7J//aMCPPsnihHy+mbG/QhD6xiAy
-    8HQLwcKuJcTX0FAJa6PoVXa9vVHILjcd3WAbDsBjOBuJ7nQZ2lWDDvLibYBQOfhmt3AsYe
-    TTIdSveT0dFdAay524aL5ilMS0zepvJWudTD9UMzIyqjCDfoZRi2rwvCCk7VQYtpbmUGrh
-    K7UAwifWJm6idToY8qFMwSmVPV6Y+QVX8PaEcOI+XBIUnYaCXrO1ZoGKSJyl5Zahb8d8AF
-    c6reEsya3mMV8AzpxTOncWG1IHcr+qjbRLTTp73mP8R+/AbQWWOMTkCILIJzipF9dwZW+D
-    jJ8wNHHSmPm1UdL61wVXptK0BUdGZyRFHoq6heGZpnb1z+D10p3lbuw7jh6bgtQUD8uGmr
-    lwU3F/h9n/PmeQxsb1lPs8VQWFcQXdkTTA/C8Y5lkPc3PIMLhrBpoO8VgeTQ
-X-ME-Proxy: <xmx:eQ2SaiTUU9bhJ3BbID2ChImSzQsWrEAzrVujxPIL1zaIy6VJ6Gygig>
-    <xmx:eQ2Saibb-dxStQBCqWoUfADnodbpHuoBI9fWmcibp-AmsIrO_AuJwQ>
-    <xmx:eQ2Sal0p8J3bFfFkM1ZDvRX3gOOCY4ZNdHavQwBY6cRlT1Fh1LMf0g>
-    <xmx:eQ2SatomLpVfwVjjF5uiKQgN-adxCFIYwxBbCbXF8aCj6UFL0q6GfA>
-    <xmx:eg2Sal6oxaDXnlhLIUy0m1Xpw_AhGF6Dagdrx3DXBbORPR9lGZuyu-yh>
-Feedback-ID: i9d664b8f:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Fri,
- 28 Aug 2026 18:36:39 -0400 (EDT)
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VxFwZfyP"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 26C2B1F000E9;
+	Fri, 28 Aug 2026 23:14:59 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1787958899;
+	bh=Jp638K8rqZwLOUcskYkJeyjIXBjJ9+YWM8O7zh28iG8=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=VxFwZfyPHeFB8deDjIhj45o9mdWZyn5qMpIQuyJpgjnMcURb1LC3eISSQOULbam6b
+	 qDeeE3bvQkeAZedrEZmgOQtBAOPsj74TjBrudrzdtWWmdsDo2tchakjAvV5MJXgeSO
+	 Khc/SaX8yH9CngxGXs6dpdeaoHI+5ntIyW2LLZ9fPLf8qJXH5eABazchl45s/0JyYO
+	 8oM0c8yVxpzUAlQJJj4trRadefxDyCMD199j5IOar1E0R3UJ4AgZDoBgNwOSA0gj7b
+	 TOgiGCXmjiZ0PvoXQxIhJOrygvRU4km/89X1hL3qi8+9+P/zB/XlMvuPk5MfELNDFr
+	 UWsKPfBjQnf0g==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 37770F40066;
+	Fri, 28 Aug 2026 19:14:58 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Fri, 28 Aug 2026 19:14:58 -0400
+X-ME-Sender: <xms:chaSanY-MdZ9eSksLicf-z2HR4qO5eHy_gjVoSM1Ld3pdplRitDNYw>
+    <xme:chaSahNwbDXG_z0oS4bSCYBqpZBJqhT1PJxVR7bmJdxSZsooH573eX6ZjcRqQCa5Z
+    -RJn1ANWa_ttk7uoR6ZvYfJ7OwRXxfbDy0ia5RwGQB0P_qvgXX2rm4m>
+X-ME-Proxy-Cause: dmFkZTGszpJ3TdOte3KPUyGJUs9xdwNETKptCd/tEzRXEumUN9LV9UCj0KBwREzzninqkL
+    VyLW9kE6VYtMfR1SpHGPzIIOGLq2ekThDK2P/uGP/GI5QZ2s38dp1ouXkb00ecK0ncrUzs
+    1KvncMtwASd8VEDQ8LCvIFpT1TllA8iGVw20AGG7tMEAa927UDvIZKdb8WjEnwpxJUrFBM
+    9ipxMpPeSUn9RiODfkSoB8LEmkK6/FttaLRFmH9xxZri+zd6RnXYfzux9xOGc0yeW1oKPW
+    QeunhLK21znaidbTeNhnNJ9tlvmGSjYMn9GHMapOmM4vMllvKZ3u9VFDoxqdTJyhzIsON4
+    2NZUgrjUJmjb/+elEg0XfuDh3DWySces8QjBrT3NpL01efKFYj1F8hslTqrrq1oIJSEifJ
+    yP37UCAGZ8BzHb6n8YCozG9/CebRAguDPf4Qcfe5n9mS/A8YN7i+c+0CE+FdSOGqHDB3Iq
+    qLbifAh5FF8Bj/7VIuEf/2mg6tH2p5ApfYiUKRM4Mw13i/fiejDWS32+h6MJrxF6RDvf21
+    1AijBmN0axz448ml+knrYPbv+oaG/F5wlNkDufb59wi4GzuKkn3M5BnSD8vK3+OChm9rnc
+    BCC1F5gpQ1CVCftmfRcn+5ek4X/R8TAQg86oO3F2mty1St0OrkMs0wZEBSFw
+X-ME-Proxy: <xmx:chaSaqW1FDVVBdiFDLL4F435eAvg1QKV5hQkeDN_2vIwPn4i82i2kA>
+    <xmx:chaSarhKrMyMJPSpTCdMLuiF7ERAkKCx1Qw0D56TOPrXbuX6jyGdNg>
+    <xmx:chaSaipQneOcsXpJVjrwhvgC9aMM7bdDzZqtbYpBx7QD9GMO9IktJA>
+    <xmx:chaSahGUWqQ4JPZE1P1vQUOPBeQwVWMPgutpIYzEFMHvuratWSdEnQ>
+    <xmx:chaSan5NS2I9LWSiwqrPWJ8xnQObIUBYHjduK-eqvT6SBfzifJTxIA8t>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 12C557811F0; Fri, 28 Aug 2026 19:14:58 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: NeilBrown <neilb@ownmail.net>
-To: "Chuck Lever" <cel@kernel.org>
+X-ThreadId: AcUrMSdZQCF-
+Date: Fri, 28 Aug 2026 19:14:40 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: NeilBrown <neil@brown.name>
 Cc: "Tom Rini" <trini@konsulko.com>,
- =?utf-8?q?J=C3=B6rg?= Sommer <joerg@jo-so.de>,
- "Jeff Layton" <jlayton@kernel.org>, "Olga Kornievskaia" <okorniev@redhat.com>,
- "Dai Ngo" <dai.ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
- linux-nfs@vger.kernel.org, "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: [PATCH 2/2] NFS: NFSERR_INVAL is not defined by NFSv2
-In-reply-to: <a832bec6-fdcf-4405-b8ed-87418bc704cf@app.fastmail.com>
+ =?UTF-8?Q?J=C3=B6rg_Sommer?= <joerg@jo-so.de>,
+ "Jeff Layton" <jlayton@kernel.org>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <dai.ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org,
+ "Chuck Lever" <chuck.lever@oracle.com>
+Message-Id: <8eb7450b-70c2-4354-a92a-7a1296cbd118@app.fastmail.com>
+In-Reply-To: 
+ <178795659577.3510150.12183147665128116121@noble.neil.brown.name>
 References: <20251210002850.318350-1-cel@kernel.org>
-  <20251210002850.318350-3-cel@kernel.org>  <apE90ZRZB8IW_AiS@jo-so.de>
-  <178791679053.3510150.70411349578293852@noble.neil.brown.name>
-  <91e02ca3-e985-47fa-aed8-0b50a5d7a3c9@app.fastmail.com>
-  <20260828205116.GA266670@bill-the-cat>
-  <a9a48faa-2663-40d7-86c8-ec2eaa967cdf@app.fastmail.com>
-  <20260828211855.GL3959812@bill-the-cat>
-  <a832bec6-fdcf-4405-b8ed-87418bc704cf@app.fastmail.com>
-Date: Sat, 29 Aug 2026 08:36:35 +1000
-Message-id: <178795659577.3510150.12183147665128116121@noble.neil.brown.name>
-Reply-To: NeilBrown <neil@brown.name>
-
-On Sat, 29 Aug 2026, Chuck Lever wrote:
->=20
-> On Fri, Aug 28, 2026, at 5:18 PM, Tom Rini wrote:
-> > On Fri, Aug 28, 2026 at 05:06:14PM -0400, Chuck Lever wrote:
-> >>=20
-> >>=20
-> >> On Fri, Aug 28, 2026, at 4:51 PM, Tom Rini wrote:
-> >> > On Fri, Aug 28, 2026 at 09:27:41AM -0400, Chuck Lever wrote:
-> >> >>=20
-> >> >>=20
-> >> >> On Fri, Aug 28, 2026, at 7:33 AM, NeilBrown wrote:
->=20
-> >> >> > U-boot has
-> >> >> >
-> >> >> > 		} else if ((rlen =3D=3D -NFSERR_ISDIR) || (rlen =3D=3D -NFSERR_IN=
-VAL)) {
-> >> >> > 			/* symbolic link */
-> >> >> > 			nfs_state =3D STATE_READLINK_REQ;
-> >> >> > 			nfs_send();
-> >> >> >
->=20
-> >> The "deployments can't be updated" also doesn't make sense: if
-> >> they can't be updated, they won't be able to get the revert
-> >> either.
-> >
-> > By deployments I mean U-Boot deployments. It's notoriously hard to
-> > update firmwares most of the time. Some testing labs refuse to because
-> > of the value in testing the firmware most people likely have deployed
-> > rather than the latest and greatest. So most of the time, it's never
-> > updated. Can newer systems take advantage of good and specification
-> > following update mechanisms? Sure. In practice? Only maybe.
->=20
-> I'm talking about changing NFSD to return NFSERR_ISDIR, which would
-> be picked up by the first "if" check above, which already exists
-> in U-Boot.
-
-Good idea.
-That matches what OpenSolaris does, which is the closest thing to a real
-standard for NFSv2.
-
-https://web.archive.org/web/20090216190827/http://src.opensolaris.org/source/=
-xref/onnv/onnv-gate/usr/src/uts/common/fs/nfs/nfs_srv.c
-
-lines 619-624.
-
-Thanks,
-NeilBrown
+ <20251210002850.318350-3-cel@kernel.org> <apE90ZRZB8IW_AiS@jo-so.de>
+ <178791679053.3510150.70411349578293852@noble.neil.brown.name>
+ <91e02ca3-e985-47fa-aed8-0b50a5d7a3c9@app.fastmail.com>
+ <20260828205116.GA266670@bill-the-cat>
+ <a9a48faa-2663-40d7-86c8-ec2eaa967cdf@app.fastmail.com>
+ <20260828211855.GL3959812@bill-the-cat>
+ <a832bec6-fdcf-4405-b8ed-87418bc704cf@app.fastmail.com>
+ <178795659577.3510150.12183147665128116121@noble.neil.brown.name>
+Subject: Re: [PATCH 2/2] NFS: NFSERR_INVAL is not defined by NFSv2
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
 
->=20
-> That addresses the regression and can be backported into the LTS
-> Linux kernels that have commit 0ac903d1bfdc [*]. It does not depend
-> on making changes to U-Boot.
->=20
-> Since the problem was reported on linux-nfs and refers to a
-> specific Linux kernel commit hash, I assumed the only thing on
-> the table is a code change in NFSD.
->=20
->=20
-> --=20
-> Chuck Lever
->=20
-> [*] AFAICT, the only two LTS kernels that are affected are v6.12
->     and v6.18. The stable kernels (v7.1 and v7.2) would also be
->     impacted.
->=20
 
+On Fri, Aug 28, 2026, at 6:36 PM, NeilBrown wrote:
+> On Sat, 29 Aug 2026, Chuck Lever wrote:
+
+>> I'm talking about changing NFSD to return NFSERR_ISDIR, which would
+>> be picked up by the first "if" check above, which already exists
+>> in U-Boot.
+>
+> Good idea.
+> That matches what OpenSolaris does, which is the closest thing to a real
+> standard for NFSv2.
+>
+> https://web.archive.org/web/20090216190827/http://src.opensolaris.org/source/xref/onnv/onnv-gate/usr/src/uts/common/fs/nfs/nfs_srv.c
+>
+> lines 619-624.
+
+Exactly. Patch coming soon.
+
+
+-- 
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
