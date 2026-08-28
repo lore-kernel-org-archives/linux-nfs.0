@@ -1,134 +1,148 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ot1-f46.google.com (mail-ot1-f46.google.com [209.85.210.46])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B4C4336E48C
-	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 22:04:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D66039DBF8
+	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 22:12:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.46
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787954699; cv=none; b=VF91kA993GOri2a1siRb2qDkol8F1Owt2y++NQkc3iLdf82qckOKsf2wxxSX9TrhItdVJXZfJ+tQvE61+u4oHSjjIc6WEg7be2P+8dDTYpqVoqMcpfpb8TKWUutqiVsyLwcJ3R86m5PmZz3RZZaeYztWeQW2IzwUMyOdM1CdTYM=
+	t=1787955176; cv=none; b=BLu1f+If7yV8LT6xYQkWYKRoIrKR/0P1hDN5DmLcK2SkEZlDr73U/nuzZZLxilIuKluA4MCdsAOUYmi1rVUIy86VoVRWILfj8RZFMtiLZ3+O0PddPl+DrO4rcSm59rADIoKcYgVIawy3pvxQbD/obyFpgxhkvDLy1i0hfuop/Vw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787954699; c=relaxed/simple;
-	bh=USFVvhs+4+LOIzDtn/8SxDvspggQYoN8U00U17gWS9A=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=PLD019joftFdKRAvg03YCfoSiApy/O5FU24Q2s23B7Ne37jgK3SMGNYqgBDisjpfBdFLTS9O5jICeIBYm8vlJdI5BnN4ax8rMPqnnvD1g+tS3avZ2TRhiFRJeznAvl9w+Vq6N6Ngc1494Hfx8pH0YFpPgFjds04dGx7JPCBK+Rw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BFWOAyPv; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787955176; c=relaxed/simple;
+	bh=TUmm79BP4CF4NZjSHjc9ODvvyHPF0yCpU1Ji30GezsA=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=SqaqyOOW2VZ3Vy7+3ZzLDjs+vWxH6fZNsqBYQremjpFUisRg9WxdSe3RZUsWTa43lY8n/gY7jIUTLFCW47uiAlzjkaNfvYUYBkUs9Fv+k115tC9ut/wZkrAC+BatXJhpXIv5SaCQCUQNf2BH2RFRcfVs7OMpVP6+0/zgsKKI8o4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=konsulko.com; spf=pass smtp.mailfrom=konsulko.com; dkim=pass (1024-bit key) header.d=konsulko.com header.i=@konsulko.com header.b=jm+3wavJ; arc=none smtp.client-ip=209.85.210.46
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=konsulko.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=konsulko.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BFWOAyPv"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 169281F00A3D;
-	Fri, 28 Aug 2026 22:04:58 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787954698;
-	bh=7CftNfgl4Zvlns4e6S6ql/EYJowzj+xga6e3AM/yM8M=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=BFWOAyPvBKyMK7N5axiDcjYmOOIM96tB4Ijs7Hz35o9XjKS3Fl4tlqnb3CASgl3wn
-	 Is+pAlmW4qJSeEXEHnA9X+7fmeF/Gkyaew+4wmYRcam4D1e8jCSUF5xjSwzc5p9O0d
-	 QUz8pOMRUX/lk6piBXZKDI39e2YYWxk1zTb0+ni925tUvzHd1BZ95L0njJmNf1qwBd
-	 MyY6WzNv+6eeE1+RKY5maLIl+fvAVzOWsl1s64gq3PR+l3aO/QbqnxS1NshNkoxeyT
-	 bacd0IhfU3TpEUfC0rmglHJ5Up8YJ/w3zO0IaqeZ38ApQkaVla1EwJpIBIJEb6Zl8V
-	 H07G8NKHbTosQ==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 4E28BF40066;
-	Fri, 28 Aug 2026 18:04:57 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Fri, 28 Aug 2026 18:04:57 -0400
-X-ME-Sender: <xms:CQaSatEgY2A-3P7YUrGVhrzNlOvUgwVYxC4NZucPMG28FaqJvXfGUA>
-    <xme:CQaSatKS63N4F3fLA48sxpmubrVYm7ZcN_zRFDQ5m7UMYoc9Tn79DUnmmFi31w-_D
-    ltc2Y0htIds5GVYS_R7dFaZASO2i7qQ5PsCyRzfKQ5uMeRWh9dVdHoL>
-X-ME-Proxy-Cause: dmFkZTFBdtWwfcHm9HQoYymaKuepRm9DD1EMwulI9Myk9BEFabC3m3lb1G8w0/TVbkk1if
-    L5Y0886+Jr2WiefLG/gAgdVvro9kejgKmwtgbyn+eKQhWsa4O/9P8sc40kJU8WFmy2ieTu
-    5TOwj44xlMwtb/8T3kgVYXW4yR5TzfnWfGTJKzy7hG8KlMJsussw9v2nfO/bXevnylx0Dd
-    I2Z40pRjo5tQb9zZB7C4m8snNHNAMuE+QrA//fdPNj5r5/zoN4fLe9NDiI0UahMV7h2Pb3
-    9J2rTJV3xpnAf6blUOMyRatLScou40yKTQIgvBVywnI6wyTGY+A/m0kPdlWcX5tz6WWDpM
-    2cbfnIs4eZJ3SqxUAq4EPL0BfnyvP+IpgOkrtOGd9B8z8+hGems//6joR+bEP6Bd82DbvX
-    z+2qQYrf6nlOvsSXNKFBJdLNrCnJfrCkLKXqIVTInpOdXZFO2RoeZIoAILkyIV8ClHebsi
-    SA7LPbLRBbu2kuLq6qUFDKi+6hv+vNZ9wPjQI1tlb3h9IcB8Rx5+ii00UJXXhl1bMpPbx6
-    5JmfHoncQzDkXOABTEKkdD9ldBXzJA+ERuTKKXZXVVx0Kt1u03CxUfKuwKpGakyElnWkHq
-    VmPf3xDanSsc9W3vJ28R+5X/laAFfsPIUnzLwaNgeUXbtWJIWWGAQIJBbJTg
-X-ME-Proxy: <xmx:CQaSapianNlPnsIVybhgvOGSdeekrgIoEf6RwIcPE5yCIz_zmNiJJQ>
-    <xmx:CQaSai8YP7xZxUZn3nrT6UVN0YNRkHI9ertL3IbiTi0c0QdkbnuvDA>
-    <xmx:CQaSatW1a2XM6js5jS4A9dMTWBAhZ8GoO_4HYCzWJx45PhjueaX1HA>
-    <xmx:CQaSauB_N1wrZAGGXrUUgyvPl8bba5n--xS3-yeexDuxAmbAKrcTsA>
-    <xmx:CQaSaqGuCwyT0oy6RP235XzyrF8bMQcy2Qz6h0RAO6QRXxVln_d4-9OJ>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 24E497811F4; Fri, 28 Aug 2026 18:04:57 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (1024-bit key) header.d=konsulko.com header.i=@konsulko.com header.b="jm+3wavJ"
+Received: by mail-ot1-f46.google.com with SMTP id 46e09a7af769-7f0167e59a3so1004345a34.0
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 15:12:54 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=konsulko.com; s=google; t=1787955173; x=1788559973; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=PjupV3Z3MwayfOlBMl+CYawtfOAbm1Qy9xoQ6yqzKV8=;
+        b=jm+3wavJu/QM9T5kdbxe5ky/1MFZ9ETaf+zJHansi46HlL3ekXqKiwoQ1jn7eBlGLE
+         AaMTFgv7a2xxX3Po1Zpc5uhiw5WND+kcSgD8yX7PEImwmmU2VKu11COqvGKsAMv3c9K7
+         SBAebfM+qReXEulCh6ZUAEEHePmseKe4HdzlM=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787955173; x=1788559973;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=PjupV3Z3MwayfOlBMl+CYawtfOAbm1Qy9xoQ6yqzKV8=;
+        b=WIR3SGD++dPVrT+XCXMLl7CIeo6/2p5BTHsUK0mucMjCzTGRUDJKegcMBjTSSkauXB
+         aEFgWWuhmrYVi0RHTvCv4eRkcMasNXLHqAW4SPsmX/6UhNeDW4sn4QnfESdkHPbn5Iw7
+         Fp7cRbfqboty9T7E4UpCsE7+TCoiqpHD3ht3cXhnqW6Fap7/fQQ0+OyjYrzDByzZiFJN
+         K6qfpCmJoOb1EZr4MOVwL4bbEXn4EDjJi3eNpvD7t8JUCrr+QCsjwXzxYSTsGS6MwIWu
+         E31gM+IyYc/NRH6/N8LDXmIHniEvgDxhNtWflHcNJ8wSlPGCc0GZUvPeWrpTS0GZHdA1
+         p+bw==
+X-Forwarded-Encrypted: i=1; AHgh+RoOmfWgRu4u9dlHGAUvMklCkiz6C3zced7UEQRL5hIAUYxONLtcZD5Y+fhUfD94buQ8jR70XcNNdiA=@vger.kernel.org
+X-Gm-Message-State: AFuF++lulPoq90tQLX3MaYW9Mn99T3pcGgwb5VHnViQyQcBdrOez46Lw
+	0kqTWkV7IRbx8YMBv5wm7AMta4pWPeZ0/pQgg2XCVHguYriRCoQW0ZTPkY0J5xJa460=
+X-Gm-Gg: AR+sD11apNa/zn7Rs0OQZ3KiDafu4ztO4iE/haFM5ONQdsYYU2CQIe3KMm6UuDsygs3
+	78TOQUzq7ZZVCxfuOHXGKTygNyOz69T9vdrvjB8KV0TcgmSz9dCFyL1fkSygQ6BBj8mdjxwGpI4
+	kRhPc6TXpAHyfhPtMOPiDEig/bJV2p7h0zKasAxWguwnpZsk2erOY9nIFca2US/m4x92gkqbOe+
+	ssbKC+l9DOJPQmyUO9iy3koV7rNcZDuz0Hwi//lMe48R+Nqqqe8rngHPa5utjj44zkGFKO81cxU
+	q7iKb3+eOTwQzZYdpGDpkXOmQIohCkoULagybPcxqj1EbVwVpE9klFNP5x1NJNRWIT7RtY3lAVH
+	ZmOZHr7pgA0Q/dPweuYbT6ACCk1qu1O68vN3oPxY6btl2tMTbB5u6x6v8rZDGZhj9903qUmPTlc
+	s3ar8ZHJhuAL9sEmUG7W3qjpNYfGKv/0L2lGmoFJbyogATRdgixXv9ebD4eTw0vxXwcuV9rxurC
+	OOGOWqdUYr3B2L1SsYPT3Wm3Jhb2IEO0jfTHngch2lzflxYvw7RuWDEnP852kqyQDRhtVFhH/Am
+	G0DFq9Xtvw==
+X-Received: by 2002:a05:6830:918:b0:7e6:50dc:6512 with SMTP id 46e09a7af769-7f4f238adb2mr12142663a34.6.1787955173287;
+        Fri, 28 Aug 2026 15:12:53 -0700 (PDT)
+Received: from bill-the-cat (fixed-189-203-100-56.totalplay.net. [189.203.100.56])
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-7f4fa96ce0dsm2222852a34.13.2026.08.28.15.12.52
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 28 Aug 2026 15:12:52 -0700 (PDT)
+Date: Fri, 28 Aug 2026 16:12:50 -0600
+From: Tom Rini <trini@konsulko.com>
+To: Chuck Lever <cel@kernel.org>
+Cc: NeilBrown <neil@brown.name>,
+	=?iso-8859-1?Q?J=F6rg?= Sommer <joerg@jo-so.de>,
+	Jeff Layton <jlayton@kernel.org>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <dai.ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 2/2] NFS: NFSERR_INVAL is not defined by NFSv2
+Message-ID: <20260828221250.GM3959812@bill-the-cat>
+References: <20251210002850.318350-1-cel@kernel.org>
+ <20251210002850.318350-3-cel@kernel.org>
+ <apE90ZRZB8IW_AiS@jo-so.de>
+ <178791679053.3510150.70411349578293852@noble.neil.brown.name>
+ <91e02ca3-e985-47fa-aed8-0b50a5d7a3c9@app.fastmail.com>
+ <20260828205116.GA266670@bill-the-cat>
+ <a9a48faa-2663-40d7-86c8-ec2eaa967cdf@app.fastmail.com>
+ <20260828211855.GL3959812@bill-the-cat>
+ <a832bec6-fdcf-4405-b8ed-87418bc704cf@app.fastmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AcUrMSdZQCF-
-Date: Fri, 28 Aug 2026 18:04:39 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Tom Rini" <trini@konsulko.com>
-Cc: NeilBrown <neil@brown.name>,
- =?UTF-8?Q?J=C3=B6rg_Sommer?= <joerg@jo-so.de>,
- "Jeff Layton" <jlayton@kernel.org>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <dai.ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org,
- "Chuck Lever" <chuck.lever@oracle.com>
-Message-Id: <a832bec6-fdcf-4405-b8ed-87418bc704cf@app.fastmail.com>
-In-Reply-To: <20260828211855.GL3959812@bill-the-cat>
-References: <20251210002850.318350-1-cel@kernel.org>
- <20251210002850.318350-3-cel@kernel.org> <apE90ZRZB8IW_AiS@jo-so.de>
- <178791679053.3510150.70411349578293852@noble.neil.brown.name>
- <91e02ca3-e985-47fa-aed8-0b50a5d7a3c9@app.fastmail.com>
- <20260828205116.GA266670@bill-the-cat>
- <a9a48faa-2663-40d7-86c8-ec2eaa967cdf@app.fastmail.com>
- <20260828211855.GL3959812@bill-the-cat>
-Subject: Re: [PATCH 2/2] NFS: NFSERR_INVAL is not defined by NFSv2
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <a832bec6-fdcf-4405-b8ed-87418bc704cf@app.fastmail.com>
+X-Clacks-Overhead: GNU Terry Pratchett
 
+On Fri, Aug 28, 2026 at 06:04:39PM -0400, Chuck Lever wrote:
+> 
+> 
+> On Fri, Aug 28, 2026, at 5:18 PM, Tom Rini wrote:
+> > On Fri, Aug 28, 2026 at 05:06:14PM -0400, Chuck Lever wrote:
+> >> 
+> >> 
+> >> On Fri, Aug 28, 2026, at 4:51 PM, Tom Rini wrote:
+> >> > On Fri, Aug 28, 2026 at 09:27:41AM -0400, Chuck Lever wrote:
+> >> >> 
+> >> >> 
+> >> >> On Fri, Aug 28, 2026, at 7:33 AM, NeilBrown wrote:
+> 
+> >> >> > U-boot has
+> >> >> >
+> >> >> > 		} else if ((rlen == -NFSERR_ISDIR) || (rlen == -NFSERR_INVAL)) {
+> >> >> > 			/* symbolic link */
+> >> >> > 			nfs_state = STATE_READLINK_REQ;
+> >> >> > 			nfs_send();
+> >> >> >
+> 
+> >> The "deployments can't be updated" also doesn't make sense: if
+> >> they can't be updated, they won't be able to get the revert
+> >> either.
+> >
+> > By deployments I mean U-Boot deployments. It's notoriously hard to
+> > update firmwares most of the time. Some testing labs refuse to because
+> > of the value in testing the firmware most people likely have deployed
+> > rather than the latest and greatest. So most of the time, it's never
+> > updated. Can newer systems take advantage of good and specification
+> > following update mechanisms? Sure. In practice? Only maybe.
+> 
+> I'm talking about changing NFSD to return NFSERR_ISDIR, which would
+> be picked up by the first "if" check above, which already exists
+> in U-Boot.
+> 
+> That addresses the regression and can be backported into the LTS
+> Linux kernels that have commit 0ac903d1bfdc [*]. It does not depend
+> on making changes to U-Boot.
+> 
+> Since the problem was reported on linux-nfs and refers to a
+> specific Linux kernel commit hash, I assumed the only thing on
+> the table is a code change in NFSD.
+> 
+> 
+> -- 
+> Chuck Lever
+> 
+> [*] AFAICT, the only two LTS kernels that are affected are v6.12
+>     and v6.18. The stable kernels (v7.1 and v7.2) would also be
+>     impacted.
 
-
-On Fri, Aug 28, 2026, at 5:18 PM, Tom Rini wrote:
-> On Fri, Aug 28, 2026 at 05:06:14PM -0400, Chuck Lever wrote:
->> 
->> 
->> On Fri, Aug 28, 2026, at 4:51 PM, Tom Rini wrote:
->> > On Fri, Aug 28, 2026 at 09:27:41AM -0400, Chuck Lever wrote:
->> >> 
->> >> 
->> >> On Fri, Aug 28, 2026, at 7:33 AM, NeilBrown wrote:
-
->> >> > U-boot has
->> >> >
->> >> > 		} else if ((rlen == -NFSERR_ISDIR) || (rlen == -NFSERR_INVAL)) {
->> >> > 			/* symbolic link */
->> >> > 			nfs_state = STATE_READLINK_REQ;
->> >> > 			nfs_send();
->> >> >
-
->> The "deployments can't be updated" also doesn't make sense: if
->> they can't be updated, they won't be able to get the revert
->> either.
->
-> By deployments I mean U-Boot deployments. It's notoriously hard to
-> update firmwares most of the time. Some testing labs refuse to because
-> of the value in testing the firmware most people likely have deployed
-> rather than the latest and greatest. So most of the time, it's never
-> updated. Can newer systems take advantage of good and specification
-> following update mechanisms? Sure. In practice? Only maybe.
-
-I'm talking about changing NFSD to return NFSERR_ISDIR, which would
-be picked up by the first "if" check above, which already exists
-in U-Boot.
-
-That addresses the regression and can be backported into the LTS
-Linux kernels that have commit 0ac903d1bfdc [*]. It does not depend
-on making changes to U-Boot.
-
-Since the problem was reported on linux-nfs and refers to a
-specific Linux kernel commit hash, I assumed the only thing on
-the table is a code change in NFSD.
-
+Ah, thanks for explaining more, I hadn't quite followed. Yes, something
+that doesn't require changing U-Boot is good, thanks.
 
 -- 
-Chuck Lever
-
-[*] AFAICT, the only two LTS kernels that are affected are v6.12
-    and v6.18. The stable kernels (v7.1 and v7.2) would also be
-    impacted.
+Tom
