@@ -1,39 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E5AB445A2AD
-	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 14:37:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6AA27463B6C;
+	Fri, 28 Aug 2026 14:39:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787927834; cv=none; b=auotNrKkIT6Eml1vdkHf1hiNJS+rflzbb1WYWpuKQjuONYhR54eiCsiW3SaOeBQF1BidNza1xCjEF0xYC42PO9BqQYc6HkzqES4OsUrM2q9UG1ZDQdDXuRm4qtEBgLzWQe+uVb8MqJk5bT7h0edbJXwR5U0eSQTMwG8Ooa+hpQg=
+	t=1787927995; cv=none; b=GhB8Q6VqTiVCWGm2GNtQURzT7lY1Emw3ec9jDDJaCMmnGsxxGVNrpGjCEvrfLF5XoUiATGDEyY7F6VsfuCIzkqB6+rwFB1F8xmuHJeQBYu9sy3IuefMZgqr+Zj8m93QrDtLxL80uLiAYj6nl25Y0kDjore0+OfA4FsnbIRlgl+Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787927834; c=relaxed/simple;
-	bh=tMVNEI7n6TaBaY+uy6+bnclE0nkb9N73NsNOs16iWA8=;
+	s=arc-20240116; t=1787927995; c=relaxed/simple;
+	bh=XZJkabDsz1o/isv8GnlIwvHXCQapvDug2lqh0wzM0uA=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=uzayWD4+lVnrJQROrRLOqEnrU2+igyYeH5Ll46fJasOyDSvbt1yC2DvS5XwsrczipV/513Ca/3XTuC5QZa4R9bjk1AjKkZ0Bj6apBQ39TCRRFXW0s1qvftUX9FxUx5ky1LkBuafsjOKWfTivd3HueGwX90n8iT95CjJEDE134/g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LRaU8/2E; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=bwCw9S9g25UOxHnvmDicGLNQcjsBKkzWw9N7+VdwiV7kEPCtYrtF9+YwYTYRx3G9r/MNTtk1eGSJ/EHSkO1/DH6i9QiouN80QfPc3St9PITJuv+kpmqTa1R5Pnaoojz0MtyOZNlsiqaGDrpPnf/IOtesbHNV7OGXt634Pzp8txA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZOvgczhR; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LRaU8/2E"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F316A1F000E9;
-	Fri, 28 Aug 2026 14:37:11 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZOvgczhR"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3D7D81F000E9;
+	Fri, 28 Aug 2026 14:39:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787927832;
-	bh=6Zl4wFIPJGjdWbTIe73CseXVTiP6mQeJtX8DgSbTL74=;
+	s=k20260515; t=1787927994;
+	bh=WbdV6eyXnQMzQohIWg66E1PllhjkKmNk21VhpQgF4DQ=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=LRaU8/2ESf5U+FSaB+bAIsJY4oECzlmRhDkwHbZjV3213VwO8I5ldJhjAiM9H0hB2
-	 Tr/MjzXJwUXChzV9NoSPhvAae+AQuUSGpjesvS626DvSGvOWlU63PFh730w01PF5Sv
-	 s9wRBNBifqF6bBMyxI0yjzZykjFDKm7vLOkFYyTG+cq/wsK8uy5mv3E5NrLQjAZ+4Z
-	 CyA1Wnva7LmVeKSKHsoidbvauwrvZC42pVX5NZke9XQRspvZPUSBzG9p3alQYg4l2k
-	 HNzdW1WdVA8C/g66c/CoaYteNQDerU1FVO1IzgZomrvdBCwOX3wOf5jiIwf00c5lNQ
-	 C/I0mM0g5x3Fg==
-Message-ID: <b5e772f9d0e0aaae7e36320032518ce57139170d.camel@kernel.org>
-Subject: Re: [PATCH v1 0/3] nfsdctl: list NFSv4 clients
+	b=ZOvgczhRpjakBqo71x01gh2pyyrydUU9UID+2PNXbAeHvJpuuYNdpDGv3gj9a3IeE
+	 M9IRbxEK/Uw4ZD9G46Y+GgX+x/tYk/ujap8MmZIunYM3nGmDvlhLJdeFX/nLXPCC85
+	 5mMAnwD6yXkOGq+qslOaSSkgYPBm9I+YDGLab3drSOYlJZwvd1gkggpgRk/tXxQyR0
+	 Bot0MC+mtwBCTW0mNJm/1p9X39w75wU/3GuEZZqZYBP5i3ybAia9O8bJGyMZ3nC+S+
+	 6uGn27WyqoUs2J2ii/pkHkSe9Jf+DnWPLmDirUfGAYDmvGKdTOEdeODgNs2cj8tJMV
+	 HWZL2pGkD4knA==
+Message-ID: <343cc59a0bf305ea5de8691257930aec4f44cc29.camel@kernel.org>
+Subject: Re: [PATCH] nfsd: don't modify a session slot when replaying its
+ cached reply
 From: Jeff Layton <jlayton@kernel.org>
-To: Prabhakar Pujeri <prabhakar.pujeri@dell.com>, steved@redhat.com
-Cc: cel@kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 28 Aug 2026 10:37:10 -0400
-In-Reply-To: <cover.1787639206.git.prabhakar.pujeri@dell.com>
-References: <cover.1787639206.git.prabhakar.pujeri@dell.com>
+To: Ameer Hamza <ameer.hamza@truenas.com>, cel@kernel.org, neil@brown.name, 
+	okorniev@redhat.com, Dai.Ngo@oracle.com, tom@talpey.com
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	alexander.motin@truenas.com, caleb.stjohn@truenas.com
+Date: Fri, 28 Aug 2026 10:39:51 -0400
+In-Reply-To: <20260824173641.3274260-1-ameer.hamza@truenas.com>
+References: <20260824173641.3274260-1-ameer.hamza@truenas.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -118,62 +121,107 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2026-08-25 at 06:52 +0000, Prabhakar Pujeri wrote:
-> Add the userspace consumer for the companion NFSD Netlink client-state
-> series, whose cover Message-ID is:
+On Mon, 2026-08-24 at 22:36 +0500, Ameer Hamza wrote:
+> nfsd4_sequence() claims a session slot by setting NFSD4_SLOT_INUSE
+> under nn->client_lock. A reply served from the slot's reply cache does
+> not claim it, and that distinction lived only in cstate->status, which
+> nfsd4_sequence() set to nfserr_replay_cache. Commit cc028a10a48c
+> ("NFSD: Hoist status code encoding into XDR encoder functions") moved
+> nfsd4_proc_compound()'s cstate->status assignment below the out:
+> label, and the replay path's goto out was the one path that relied on
+> skipping it. The test in nfsd4_sequence_done() therefore no longer
+> identifies a replay, and every replay now stores its reply and clears
+> NFSD4_SLOT_INUSE as though it owned the slot.
 >=20
->   <cover.1787638668.git.prabhakar.pujeri@dell.com>
+> NFSD4_SLOT_INUSE is the interlock: check_slot_seqid() rejects every
+> sequence id for a slot that is in use, before replay_matches_cache()
+> runs. A replay never sets it, so two replays can be in flight on the
+> same slot at once. One can read slot->sl_cred under nn->client_lock
+> while the other's completion frees and rebuilds it from the XDR
+> encoder without that lock. Two completions can also collide with each
+> other and release the same group_info twice. free_svc_cred() leaves
+> cr_uid, cr_gid and cr_flavor intact, so the reader passes every
+> earlier test in same_creds() and dereferences a NULL cr_group_info.
+> From a 6.12.91 production server:
 >=20
-> The series mirrors the kernel ABI split:
+>   BUG: kernel NULL pointer dereference, address: 0000000000000004
+>   CPU: 63 UID: 0 PID: 39015 Comm: nfsd
+>   RIP: 0010:same_creds+0x38/0xa0 [nfsd]
+>   RDX: 0000000000000000
+>   Call Trace:
+>    nfsd4_sequence+0x6a8/0x910 [nfsd]
+>    nfsd4_proc_compound+0x345/0x670 [nfsd]
+>    nfsd_dispatch+0x100/0x220 [nfsd]
+>    svc_process_common+0x311/0x700 [sunrpc]
+>    svc_process+0x131/0x1c0 [sunrpc]
+>    svc_recv+0x7ef/0x9c0 [sunrpc]
+>    nfsd+0xa3/0x100 [nfsd]
+>   Kernel panic - not syncing: Fatal exception
 >=20
->   1. Display the explicit recovery-grace value returned by threads-get.
->   2. Add a privileged `nfsdctl clients` table for basic client state.
->   3. Extend the table with session and stateid record counts.
+> Since v6.14 a live session's slot table can shrink, and the unowned
+> store becomes a use-after-free write. nfsd4_sequence() defers the
+> shrink while a slot is in use, but it tests NFSD4_SLOT_INUSE, which a
+> replay does not set, so free_session_slots() can kfree() the slot the
+> replay still holds in cstate->slot.
 >=20
-> Attribute presence remains the compatibility boundary. An older kernel
-> omits the grace value, and missing count attributes are displayed as
-> dashes. The bundled UAPI header permits building before the new kernel
-> header is installed. The configure probe requires the final count
-> attribute, so a system header containing only the base client command als=
-o
-> falls back to the complete bundled copy.
+> Record the claim in cstate->slot_owned when nfsd4_sequence() accepts a
+> request and test that in nfsd4_sequence_done(), so only the request
+> that claimed the slot updates its cached reply and clears
+> NFSD4_SLOT_INUSE. svc_generic_init_request() zeroes the compound
+> response before each request, so the flag starts clear.
 >=20
-> Validation performed:
+> Fixes: cc028a10a48c ("NFSD: Hoist status code encoding into XDR encoder f=
+unctions")
+> Assisted-by: Claude:claude-opus-5
+> Signed-off-by: Ameer Hamza <ameer.hamza@truenas.com>
+> ---
+> Reproduced on an unmodified tree with a client that pipelines two
+> copies of a cached request before reading either reply.
 >=20
->   - full nfs-utils build at each applicable patch state
->   - final `make check`: no failures; one environment-dependent test skipp=
-ed
->   - bundled nfsd Netlink UAPI compared byte-for-byte with the kernel copy
->   - two-vCPU QEMU test with a live NFSv4.2 loopback mount
->   - grace yes/no transitions displayed by `nfsdctl threads`
->   - live client row showing one session, open stateid, lock stateid, and
->     delegation stateid; zero layout stateids
->   - callback, reclaim, lease, peer-address, and client-ID fields checked
+>  fs/nfsd/nfs4state.c | 7 ++++++-
+>  fs/nfsd/xdr4.h      | 1 +
+>  2 files changed, 7 insertions(+), 1 deletion(-)
 >=20
-> The series is based on the current nfs-utils master branch. The exact bas=
-e
-> is recorded in the base-commit trailer below.
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 2c1b8b2cbbb5b..a4a75a512e9f0 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -5170,6 +5170,7 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4=
+_compound_state *cstate,
+>  		slot->sl_flags &=3D ~NFSD4_SLOT_CACHETHIS;
+> =20
+>  	cstate->slot =3D slot;
+> +	cstate->slot_owned =3D true;
+>  	cstate->session =3D session;
+>  	cstate->clp =3D clp;
+> =20
+> @@ -5244,7 +5245,11 @@ nfsd4_sequence_done(struct nfsd4_compoundres *resp=
+)
+>  	struct nfsd4_compound_state *cs =3D &resp->cstate;
+> =20
+>  	if (nfsd4_has_session(cs)) {
+> -		if (cs->status !=3D nfserr_replay_cache) {
+> +		/*
+> +		 * Only the request that claimed the slot may update its
+> +		 * cached reply and clear NFSD4_SLOT_INUSE.
+> +		 */
+> +		if (cs->slot_owned) {
+>  			nfsd4_store_cache_entry(resp);
+>  			cs->slot->sl_flags &=3D ~NFSD4_SLOT_INUSE;
+>  		}
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index b841bc462dac8..5b7edf1893e0a 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -62,6 +62,7 @@ struct nfsd4_compound_state {
+>  	struct nfsd4_slot	*slot;
+>  	int			data_offset;
+>  	bool                    spo_must_allowed;
+> +	bool			slot_owned;
+>  	size_t			iovlen;
+>  	u32			minorversion;
+>  	__be32			status;
 >=20
-> Prabhakar Pujeri (3):
->   nfsdctl: report NFSv4 grace state
->   nfsdctl: add a command to list NFSv4 clients
->   nfsdctl: display per-client NFSv4 state usage
->=20
->  configure.ac                   |   2 +-
->  support/include/nfsd_netlink.h |  41 +++++
->  utils/nfsdctl/nfsdctl.8        |  22 ++-
->  utils/nfsdctl/nfsdctl.adoc     |  15 +-
->  utils/nfsdctl/nfsdctl.c        | 268 +++++++++++++++++++++++++++++++++
->  5 files changed, 345 insertions(+), 3 deletions(-)
->=20
->=20
-> base-commit: 67ed1bdb1af1c70a5fd3b377a997401b7676b827
+> base-commit: 46ff234c7129c7c10ed493413d4f60d0cf4dd1f1
 
-Sashiko has some comments about this that probably need to be addressed
-before we apply these. There is potential for a softlockup in patch #3,
-in particular:
-
-https://sashiko.dev/#/patchset/cover.1787638668.git.prabhakar.pujeri%40dell=
-.com
---=20
-Jeff Layton <jlayton@kernel.org>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
