@@ -1,57 +1,57 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3032344AB98
-	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 13:44:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9AFBE46AA9E
+	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 13:45:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787924641; cv=none; b=XAcszmq0QSB8os2zsd28ktF0ueTU1cNYSGURhGP3tzMQxG9Tw0IVTejfSxpm5e22+7vZIQ7u722Kn7dvRZLjL56PuQWiI9JVI6j+FYbRp6nchkyrdXoMKLTErTOE4jHNugGwGDEpOjOj29GAjKQmtm8ie1On/7b7Q47S7aeqasM=
+	t=1787924754; cv=none; b=NnH7hCyyfydqS8YOmkds2soFacwOi/Cm2vQmLb8bv0UwqrwtfzTI8/nMc4Clgq/HDlfggx8psbyY74nwIVjg1RTsrVFlCSDRUwYBCeZzSxJ/lBU244Twqxx4llUaN5mdk1EqNQypKtNPZ/AjuFg+JJR/gfjxo7yRykNx1+lEnQk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787924641; c=relaxed/simple;
-	bh=gT30tbsMhDz5g+0/hURTtIYU4GPAfQ3xC3HFd44lfPQ=;
+	s=arc-20240116; t=1787924754; c=relaxed/simple;
+	bh=NtoB/PwGYi1IYe64mBKhj480/PgADJc+9jlallI3SyA=;
 	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=TwRVxlRLmxbeqnMfdQvol61NeR5evXtjZwWOMTUEtUZD+MI2rx0qj93t0RRL9xvHCRAHSfcCWhJ4pEeV95HZ12B79eGkwXbK02kko48AcQi+TiJIzG6nLV52O/6yoq34GNMmHhi9hwrfgIf7+GevBQJC8YSsPeHkG+1+1FlTq90=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cbY+XoYA; arc=none smtp.client-ip=100.103.45.18
+	 Subject:Content-Type; b=NDv4vgyCBCsEjps1a+T9Iut3sqgltqrsAy6eC1jmRXFbOKdeRm3wzVWhudbgFrwxHUg+1I/C0tZFqfwun22NIMV4TXsJ5OmlTgdguxkRRNXOzBppvSgh/txdevHd2GvUGtXsVZNO24vpgxuU0gPvfDYqN2uaUWRqYR/02jO1Hhg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Jd3LNTY7; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cbY+XoYA"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9BD8D1F00A3A;
-	Fri, 28 Aug 2026 13:43:59 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Jd3LNTY7"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D24231F00A3D;
+	Fri, 28 Aug 2026 13:45:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787924640;
-	bh=SLONH+AoEVkvJHqHSlkrIz7ivop4/NRwBDGMuTUi3L0=;
+	s=k20260515; t=1787924753;
+	bh=UsvEpAxVOXL2c0hrmmniPIkC4Dj3YSJv09HPjKZlAEw=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=cbY+XoYAUhOBpBl8FKdYM5LEJjSHl2r3mQ2wpizV0j8wlY7HICRJGjyJBkQNNXxon
-	 FTvLaov6vpN31A1DhYYlVUFXaA0xqHH9yRNcil5xlYcno42X7sJ1OqaEQDUaHlwqI9
-	 RWOEzzNNnQ/2p11PxPsod9vD6q/DB25150eSh8OkqN2uYJoyI1w4vLknMyQM3rlaWX
-	 A38obhK1pSl9OKiBkfuGfhXQx+4R448Y63snmRVZzo26APvEPXNE76BxMOi/0rVZkO
-	 4UTciBo21WGYx5fcdD4JLGZQaVfaxFS7IOXS5o2c59jOChGVVl9aI3JWJn1+Splrvr
-	 GClo15EsNRa1Q==
+	b=Jd3LNTY7TGms/hgxbxckaqegk4ikmjWerfPrlMa9NL7oroWoLN0n4807k9eB0vrJA
+	 que1DWMlP61RuVIcm2R6xNWZdKtYBxp8H495vdgDH3NTyLpco5YDaCy8WYVDtjOXmb
+	 Y0zccx8xEsA8nIbnnYCz8uk1W0+kQrmqXmzVbpZw0TTiOlTSqDzKcWH3cFf2QtP8G2
+	 IkcJrKH+yYVT6BMh3hrqR0MlTylM/y0vvL1OEUC5houR6wPdLD1cyNrBG3bP/lsUq7
+	 xZ6gwQUMXYtB2BpuLQlAWUADI89rirhAPaI9JvNRV/ag8alOkHQT5FIFOwDSoxdmQr
+	 8yHLT4BPTt9fg==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id BF7CDF40067;
-	Fri, 28 Aug 2026 09:43:58 -0400 (EDT)
+	by mailfauth.phl.internal (Postfix) with ESMTP id F2945F40066;
+	Fri, 28 Aug 2026 09:45:51 -0400 (EDT)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Fri, 28 Aug 2026 09:43:58 -0400
-X-ME-Sender: <xms:npCRarJwul-sx0sGysP2dkBDIWj6Pm8JCsHF7t3j9nvY7SfCK_-cLg>
-    <xme:npCRap-7SF_gdMUu1HMwcDnXqg-2AKGouM3HFp08B0r1ZEHP_Rl0FxvG-w2NsY0GQ
-    qk3lbEneL8--gPqTUelgoTBgJT-ybEFwuFYjr9pD7TDe9_bsPFiSAcW>
-X-ME-Proxy-Cause: dmFkZTFtRjSOGHXDhdlaO+ssepuBQ9bmzOmjvP30tuJtUxE5N22iO5dGfGuCZeIAtfdzSK
-    sV+sEaUtjDTBBqINmNMOXi1vzBhq4QXEZnh+C6DTtFcB3n72wfpQ6k2Vk3ODRhNc1+l7SM
-    4Z9TmDI9wnfK2Hl8vu7LUOlRGVn1b36vCR1sWZkSH6H61xyrCrIUgJcEbKhSPfnmR6ztVu
-    TKRJFKHndEZzLWVbkcBc7OVOyXa3jUn6QO5vzul1d8WokgiVQOzLPjnoY4F4mwhTHvokOe
-    M5omA4NHWXwGAYUhtDwez3r/XX8KvHvxNwo+bUqnd06XA5s5j/F4qIn+gtC8mAgKzAnJCC
-    aD4t+ZrJsniTNMIeTsl9g3pJYPzMGbocp3UDVdQWUu/1C3R4P/w0l/OJX7rJiSopGl1x/S
-    1+9lR/cCEP18I/TZDyNVUyTku7s7cynkRXOZ5EOxFjXUWMb72n0o37rFl8qDeBy+toBREK
-    WjclSAowBwZJFDn6jw07vdx5Th8fJ+9P7JM0JRZyoPVO2MxoL8NLu4l/werMGzTc7J6HKl
-    oW26PHX0minpoGhnzcjxsARL2Y5Ye8mIepiAK2Ge9aLCCxVd8nEOBjIVLmQXNFy/ocE/20
-    SAnAsg6aSSuTTXO/HsDM4Tx70j5qU5u7RxwFwowilYQdFE1g1vJ1AJIhdXvA
-X-ME-Proxy: <xmx:npCRal02jCEWp3Z4OJgOZjiXifq1nbuP-gy5ppNry0i49yaDMur2Ng>
-    <xmx:npCRaiErSd48j3Yz2tbXjDYQ2nwkaHAcu0j_y3NK5GtDSctxjMT-Og>
-    <xmx:npCRagtsE1ZVh5GKn8iXhA4iJnc3VHJ8SCAZcXShO0xQtGqdEjR8pQ>
-    <xmx:npCRalrz7P8K8YHxNEOAoLNyn89HY7rw1WJsRzIsqyBJ_4z8i_IBeA>
-    <xmx:npCRanU7-cYcwaNar2UlRu4WX9EJUoFF9uuiksw3vfqY83DvDQkwW-JB>
+  by phl-compute-10.internal (MEProxy); Fri, 28 Aug 2026 09:45:51 -0400
+X-ME-Sender: <xms:D5GRanm39Wa7GixveWNkcff_QFX0XTOCJ_f8rfECaplHhPqJ9Q4klA>
+    <xme:D5GRalqokIaazroDqr7sflT-e2bhmItFZ7Iy6rVr-1YN40WcXh9x-TwbiqvS6Y_NF
+    jcoGFSacTt2GfPUjqwGfNInWGeRKap-XOVbrN-ermVgDdstkcOrmrv7>
+X-ME-Proxy-Cause: dmFkZTFKxBJg2l7TvJN2an8XJKVS9kOrubOAFSJ7rrbSsvtUMjo7v1UATWVFclqcTvtF3a
+    nI88C+c2UEyrYIagavCGKYoYaC6NMP27bU+k2qqYY/EQHY0zh0IJwwpM/sde0KZ3fts17m
+    CGyDW3MlFBfH0JVja8WlH7pQ4nAeHM8iyT5L7zMGbREJbMHGlLe4Q3siPCFLKqrBrD7DoU
+    Mbfs3jvxB0qIEwmHNpAZM8AKLTVuKImD/0S/L+KRNOldY0hGWa5FoLsArpXlAkHx2YBs6W
+    KuFwNlpLrEAHdTp8ITaLQEBnLLpP28qhfimOmTrfW5phbzjWYzbYNoQ+ZJoynFDuHtrin7
+    TQ6kLo8p1qBo/UBba5GOdhqjyUrxAQpn4qe/q620OW2el20NE0Cc+aVtJsktPBxL3/wGqs
+    G/KPA6+XM4iWJj60tLu9C8GWWJXRs8LwGS1Qghoy5ugz83z76UTKFAq2UlZkSgvOdnuddL
+    PaLuldsWeM5jtvaWKt1O1jw18kQPNnp6dLjdazn412lvC5XI0pggfzS32K9o7Z+LQEBwYg
+    ZkSvHxmCoxhJMryVsWkeQWKQ8rFB90fvExDtXXuezLdlXUhaWUqLMZwEM6e3z5HR/7aFSC
+    BJ8M/m/lYVUfhhDfb6g0hzESDkcr9HnLPTgb5l35k92xMhgX9nyJkwYCVorA
+X-ME-Proxy: <xmx:D5GRasce66aPY7l8GIS9mj-9ZIUWVayYeMKvM63Z67-Z_gC5L5iDuQ>
+    <xmx:D5GRaly0yJdEP32hAdv56XMSmc33j2geh-0znI4-6fDPa_HG9YXgcA>
+    <xmx:D5GRatJ9-hmTOc0LL7bdXY7IYld1t486-bK10w6jGo7atPcURORmNA>
+    <xmx:D5GRauud_ekpLN-Iq9kq81l4ZkeWfs56ZW4p1aHslDm3WBszNY6_FA>
+    <xmx:D5GRavTm0u_dChvKp6X19lE_EfPiTsbgu1XCL4arWmpN1x5wlDzQ4DOf>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 97B417811F0; Fri, 28 Aug 2026 09:43:58 -0400 (EDT)
+	id C671A7811F3; Fri, 28 Aug 2026 09:45:51 -0400 (EDT)
 X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -59,51 +59,57 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: A0AurJh4UZM-
-Date: Fri, 28 Aug 2026 09:43:41 -0400
+X-ThreadId: A2Uxtb9eUQMg
+Date: Fri, 28 Aug 2026 09:45:33 -0400
 From: "Chuck Lever" <cel@kernel.org>
-To: "Prabhakar Pujeri" <prabhakar.pujeri@dell.com>,
- "Jeff Layton" <jlayton@kernel.org>
-Cc: NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
- "Donald Hunter" <donald.hunter@gmail.com>,
- "Jakub Kicinski" <kuba@kernel.org>, linux-nfs@vger.kernel.org,
- linux-kernel@vger.kernel.org
-Message-Id: <be88803f-4932-4b7c-8752-8a228bd67407@app.fastmail.com>
-In-Reply-To: <20260828133351.923-1-prabhakar.pujeri@dell.com>
-References: <cover.1787638668.git.prabhakar.pujeri@dell.com>
- <3fd25e2178458fbb44f57f1b0e068c12a6503d17.1787638668.git.prabhakar.pujeri@dell.com>
- <1046756851d9d7d688ac612a7f175e48745d2b84.camel@kernel.org>
- <20260827045139.4353-1-prabhakar.pujeri@dell.com>
- <1c53950d-66ba-490a-872f-b2318c584d3c@app.fastmail.com>
- <20260828133351.923-1-prabhakar.pujeri@dell.com>
-Subject: Re: [PATCH v1 1/3] nfsd: report NFSv4 grace state through Netlink
+To: "Greg Kroah-Hartman" <gregkh@linuxfoundation.org>,
+ "Cen Zhang (Microsoft Security FORGE Labs)" <blbllhy@gmail.com>
+Cc: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, "J. Bruce Fields" <bfields@fieldses.org>,
+ linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+ stable@vger.kernel.org, AutonomousCodeSecurity@microsoft.com, xmei5@asu.edu,
+ tgopinath@linux.microsoft.com, kys@microsoft.com
+Message-Id: <978293e7-430d-4b11-9a29-1fb479cb0082@app.fastmail.com>
+In-Reply-To: <2026082828-palpable-dingo-241b@gregkh>
+References: <20260828041925.36758-1-blbllhy@gmail.com>
+ <2026082828-palpable-dingo-241b@gregkh>
+Subject: Re: [PATCH] nfsd: hold cl_lock in client_has_state()
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
 
 
-On Fri, Aug 28, 2026, at 9:33 AM, Prabhakar Pujeri wrote:
-> On Thu, 2026-08-27 at 09:06 -0400, Chuck Lever wrote:
->> I'd like any new API to avoid foreclosing the ability to move exports
->> in and out of grace individually.
+On Fri, Aug 28, 2026, at 1:29 AM, Greg KH wrote:
+> On Fri, Aug 28, 2026 at 12:19:25AM -0400, Cen Zhang (Microsoft Security 
+> FORGE Labs) wrote:
+>> client_has_openowners() walks clp->cl_openowners and reads so_stateids
+>> without clp->cl_lock. nfs4_put_stateowner() unhashes that openowner under
+>> cl_lock and then frees it, so a concurrent EXCHANGE_ID with mismatched
+>> creds can use-after-free the nfs4_openowner.
+>> 
+>> BUG: KASAN: slab-use-after-free in client_has_state+0x10a/0x140
+>>   fs/nfsd/nfs4state.c:3718 client_has_openowners()
+>>   nfsd4_exchange_id
+>>   nfsd4_proc_compound
+>>   nfsd_dispatch
+>>   svc_process
+>> 
+>> Take clp->cl_lock while client_has_state() walks the openowner list.
+>> 
+>> Fixes: 4eaea1342507 ("nfsd: improve client_has_state to check for unused openowners")
+>> Reported-by: Xiang Mei (Microsoft) <xmei5@asu.edu>
+>> Cc: AutonomousCodeSecurity@microsoft.com
+>> Cc: stable@vger.kernel.org
+>> Signed-off-by: Cen Zhang (Microsoft Security FORGE Labs) <blbllhy@gmail.com>
 >
-> Thanks, that makes sense. A network-namespace-wide boolean would remain
-> useful as an aggregate, but the current single attribute does not make
-> its scope explicit enough for future per-export grace.
->
-> I will avoid freezing that ABI in this reroll. I'll drop the
-> grace-reporting patch from the client-visibility v2 and post the client
-> dump and state-count patches separately.
->
-> I'll follow up with a dedicated grace-status proposal whose records
-> carry an explicit scope, so it can represent the server-wide state today
-> and individual exports later. I also prefer to get agreement on the
-> export identity before adding that part speculatively.
->
-> Does that direction address your concern?
+> Please use your microsoft.com email address, and not a random gmail.com
+> address.  It's kind of odd that Microsoft would have to rely on Google
+> to send kernel patches :)
 
-WFM!
+Greg, would you prefer that I hold off on applying this to nfsd-testing
+until Cen can post this one again?
+
 
 -- 
 Chuck Lever
