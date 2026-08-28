@@ -1,240 +1,100 @@
-Received: from s1.jo-so.de (s1.jo-so.de [37.221.195.157])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-yw1-f172.google.com (mail-yw1-f172.google.com [209.85.128.172])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF02A40F749
-	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 11:59:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=37.221.195.157
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 00391449B2F
+	for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 12:33:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.172
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787918414; cv=none; b=V1u6sWW+tDJWrWCy02kxN9/OPEgPLN/UJ5hRek5iz40m0uhnf1I6wQ6CmYIPtMzl0yiz0BB/p+nb9JgCt7m79TJCHAM337o0cZF9q3acI9T8DGV3rren3pKBW9SQXiS4MxFT6WIwkYvAmzf/q9pic19kQXvSz6wr9UWvVIIzGj4=
+	t=1787920401; cv=none; b=kg5kZZIrYu46n8nMaqW7pIlCZ6O1M3qM7ArWxEpkHuz3lFU7jWKvWDY/5dGyis377MxC+gj10QAAvbrZDOavWmRJpN5ehw2ITLMDmk9jYgKWFm2d59/HFudfA5jPSW0ufNBrghoJrvUOCQ+/brLunHC8e8tp9oWk5FUM/cpF068=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787918414; c=relaxed/simple;
-	bh=/e9XKwwiusOrZZn9pPc6VeXWYZEO2IA7OZaOMhfGG4E=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=EkZiDDCF2a2a3ROYsbbcXo53Qq/Ve9JxnOiQguqY1wfOwsVb/Z0B18lN/HzaRX5VanE23UKd695O4zXSHItDZMr59bfU0zZ6cswPy9aNP5e8mXLyV8hunOu5seXi+BNfxU2DS1QPwmhLQYEbbdSxfJkcVWS/elW+1s4HBBHdI3c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jo-so.de; spf=pass smtp.mailfrom=jo-so.de; arc=none smtp.client-ip=37.221.195.157
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jo-so.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=jo-so.de
-Received: from mail-relay (helo=jo-so.de)
-	by s1.jo-so.de with local-bsmtp (Exim 4.98.2)
-	(envelope-from <joerg@jo-so.de>)
-	id 1wzvFH-000000081Dk-2Gt8;
-	Fri, 28 Aug 2026 13:59:43 +0200
-Received: from joerg by tux.jo-so.de with local (Exim 4.100-RC3)
-	(envelope-from <joerg@jo-so.de>)
-	id 1wzvFG-00000002Xn3-3jXi;
-	Fri, 28 Aug 2026 13:59:42 +0200
-Date: Fri, 28 Aug 2026 13:59:42 +0200
-From: =?utf-8?B?SsO2cmc=?= Sommer <joerg@jo-so.de>
-To: NeilBrown <neil@brown.name>
-Cc: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
-	Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
-	linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 2/2] NFS: NFSERR_INVAL is not defined by NFSv2
-Message-ID: <apF3Kv66IaDONfqo@jo-so.de>
-OpenPGP: id=7D2C9A23D1AEA375; url=https://jo-so.de/pgp-key.txt;
- preference=signencrypt
-References: <20251210002850.318350-1-cel@kernel.org>
- <20251210002850.318350-3-cel@kernel.org>
- <apE90ZRZB8IW_AiS@jo-so.de>
- <178791679053.3510150.70411349578293852@noble.neil.brown.name>
+	s=arc-20240116; t=1787920401; c=relaxed/simple;
+	bh=bqfJK6AvjcrjKxv8vWiaGOdrwD/fsLSuibq+C9S1YR8=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=Yv+JmBZHLcxaSgNaPUxz3rb7cEUKmaMdgCMgXuNIIOk9Xmhht1++IvmD4Xrogtse9aHFmyCM1pdL8HrXpoXB7RrbWMixdKUOggxqBzqympV0YUIPYlDBnT1+eLHtlio8WPCOJcwepdWmseaeD1HRVWkqPofGKUokbUWmLj5iD20=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=BfVCfqsl; arc=none smtp.client-ip=209.85.128.172
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="BfVCfqsl"
+Received: by mail-yw1-f172.google.com with SMTP id 00721157ae682-836cbcd0a48so12431777b3.1
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2026 05:33:16 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1787920394; x=1788525194; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=bqfJK6AvjcrjKxv8vWiaGOdrwD/fsLSuibq+C9S1YR8=;
+        b=BfVCfqslo3GL69I4crMY3JvAWuL1m8zKifTWvhLHX9ZJ0lvcRnd5tgmPS8Iawn1TAC
+         AyJoMvWzkWa9omMRR+MBal0KqwgbkTGs8QVDnqjjQwwlwgQgw0KFdKTrzDTFz7eKDCwm
+         9/mRXG0nRs59A5rIQjS+D4dCD9dXwbo2m5v9UhjHUCaZLZOIWbmr4fqc9Ol5E4/CrktN
+         TPb1hnJ0EoD494j4suTvjbCFRcAEPUAflFQ1YHVSVNUVoVt428h9r2eiLhrEREumUo6c
+         RCvdaGqCOaULFd5+EgTVuP2WqtyY2Xi9Pba3susZ034rQMDHhvlvldqKoBAUtBlkUGEP
+         HZMA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787920394; x=1788525194;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=bqfJK6AvjcrjKxv8vWiaGOdrwD/fsLSuibq+C9S1YR8=;
+        b=q4P5z5jPKaPpZaWhYRoKF0mXoJFJs3hyewXQu41xg6q9ovg+RlFwaYQdclEI61C27l
+         ojIgDAjD1O7+NSMRMDenOoMyXNorwU5WEJz7KOX2r+K5x353Doa6WXck+b5eCqkc1wDJ
+         qvF5OVaCuAl3JLwd1Ao2qARqxY3datT5/14+QzMZRGqdBKNVT5pO3N8Z0TbsCSFgSfYw
+         g+BGmZyyk3WJuYvE6c81m/cVf7fWf4FwmAC4YwjwnTzN9kCBbvSH6HDmnzURwoSPls0E
+         nVbT3DYjLBfgh1rHhe/BDUghQJBVBiMP3l0OKSDZVYBCeYSuahY3Al1aO31XOwJB8ygj
+         JchA==
+X-Forwarded-Encrypted: i=1; AKwUvByagF+bp2fjlf8bxq24TWwqFvRVkfTKCg5RoVa8DHxbhJq8eKbyCzVH0ucHvRYkqDX9twj3QCcgngY=@vger.kernel.org
+X-Gm-Message-State: AFuF++mZ/HsGLE8ItJcQxlJV+SBrvbE8mG0BRjWsOR+cLlrLuEWuyMrw
+	PIHY/Qdb7cbPlJPANILP0yoGRZ9SGY4fSKAMZU8ETPFQewHM3cxKt3ON
+X-Gm-Gg: AYBFou1N0CV+pFI+W1Du8886P9rncWtqnED0Mr2cOGmF1ClMISE94Wh9uWYwtPhyGEn
+	V6a+Me02fknWjDfOBVBMeKn0fIcXfl43S86oyZQvN6ekV5I48GFKUy0bxm1d4taFp/fgy7bnAdB
+	cUZcgFWeMsBMmHj6E/RDhVvYrZ8V5BpiYFKGPPrtPFbe+4YnsIm0aNcBfgtW2whMOeszcN+w1oo
+	3u4hI8zf2+X7dQbSSYc+hmIzfCywt+3pXgN+xMDSMIGyj9YtmF9VFNAc+5XHF9rClRAHlpSQP+Q
+	M/oxChN36CGAhOG05776BIvQzqeFfqa2i1/O8o7mLVfC7VrcCRXtkBVFytXYZ+35j1IPbQdWFZq
+	tzHijCifjlc4C53EQ1tFzTSGjTJSUwbmYUUGgEgYE5wj1lju6d+RbFU0/K0ZBi9kQWZ0ckHNKA2
+	Ek8yvDd7uWhiXPx3ycGEVxIT5Q4P9BNbOBW/6XnpxJeVaUT/ZBNOkaYUWAm/TYO6ksRfs=
+X-Received: by 2002:a05:690c:6ac6:b0:854:4fdc:cab9 with SMTP id 00721157ae682-85d65ee9995mr32089877b3.6.1787920394110;
+        Fri, 28 Aug 2026 05:33:14 -0700 (PDT)
+Received: from mac.lan ([136.55.173.105])
+        by smtp.gmail.com with ESMTPSA id 00721157ae682-85e5f4f3b6csm5435987b3.20.2026.08.28.05.33.13
+        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
+        Fri, 28 Aug 2026 05:33:13 -0700 (PDT)
+From: "Cen Zhang (Microsoft)" <blbllhy@gmail.com>
+To: gregkh@linuxfoundation.org
+Cc: AutonomousCodeSecurity@microsoft.com,
+	Dai.Ngo@oracle.com,
+	bfields@fieldses.org,
+	blbllhy@gmail.com,
+	cel@kernel.org,
+	jlayton@kernel.org,
+	kys@microsoft.com,
+	linux-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	neil@brown.name,
+	okorniev@redhat.com,
+	stable@vger.kernel.org,
+	tgopinath@linux.microsoft.com,
+	tom@talpey.com,
+	xmei5@asu.edu
+Subject: Re: [PATCH] nfsd: hold cl_lock in client_has_state()
+Date: Fri, 28 Aug 2026 08:33:12 -0400
+Message-ID: <20260828123312.26927-1-blbllhy@gmail.com>
+X-Mailer: git-send-email 2.55.0
+In-Reply-To: <2026082828-palpable-dingo-241b@gregkh>
+References: <2026082828-palpable-dingo-241b@gregkh>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
-	protocol="application/pgp-signature"; boundary="owpsdqwe4h2dwp6f"
-Content-Disposition: inline
-In-Reply-To: <178791679053.3510150.70411349578293852@noble.neil.brown.name>
+Content-Transfer-Encoding: 8bit
 
+> Please use your microsoft.com email address, and not a random gmail.com
+> address.
 
---owpsdqwe4h2dwp6f
-Content-Type: text/plain; protected-headers=v1; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-Subject: Re: [PATCH 2/2] NFS: NFSERR_INVAL is not defined by NFSv2
-MIME-Version: 1.0
+Sorry for making you raise this again. I will hold off on new patch
+submissions until my approved Microsoft email address is available,
+which should be soon.
 
-NeilBrown schrieb am Fr 28. Aug, 21:33 (+1000):
-> On Fri, 28 Aug 2026, J=F6rg Sommer wrote:
-> > Chuck Lever schrieb am Di 09. Dez, 19:28 (-0500):
-> > > From: Chuck Lever <chuck.lever@oracle.com>
-> > >=20
-> > > A documenting comment in include/uapi/linux/nfs.h claims incorrectly
-> > > that NFSv2 defines NFSERR_INVAL. There is no such definition in either
-> > > RFC 1094 or https://pubs.opengroup.org/onlinepubs/9629799/chap7.htm
-> > >=20
-> > > NFS3ERR_INVAL is introduced in RFC 1813.
-> >=20
-> > Hello,
-> >=20
-> > since this commit 0ac903d1bfdce8ff40657c2b7d996947b72b6645 was added, U=
--Boot
-> > 2022.04 (I don't know about newer versions) can no longer access symlin=
-ks in
-> > NFS shares. When I revert this commit, U-Boot can load the file behind =
-the
-> > symlink. Real files are no problem.
-> >=20
-> > The file I want to load is a symlink at the server:
-> >=20
-> > ```
-> > % ls -l /srv/nfs/boot/Image.gz*
-> > lrwxrwxrwx 1 root root      41  7. Jul 16:29 /srv/nfs-con/boot/Image.gz=
- -> Image.gz-5.15.213-imx8mm+gfffa4b6d4aea+p1
-> > -rw-r--r-- 1 root root 5279373  7. Jul 16:29 /srv/nfs-con/boot/Image.gz=
--5.15.213-imx8mm+gfffa4b6d4aea+p1
-> > ```
-> >=20
-> > Without this commit:
-> >=20
-> > ```
-> > u-boot=3D> nfs 0x42000000 /srv/nfs/boot/Image.gz
-> > Filename '/srv/nfs-con/boot/Image.gz'.
-> > Load address: 0x42000000
-> > Loading: ##############################################################=
-###
-> > done
-> > Bytes transferred =3D 5279373 (508e8d hex)
-> > ```
-> >=20
-> > But with this commit:
-> >=20
-> > ```
-> > u-boot=3D> nfs 0x42000000 /srv/nfs/boot/Image.gz
-> > Filename '/srv/nfs-con/boot/Image.gz'.
-> > Load address: 0x42000000
-> > Loading:
-> > done
-> > ```
-> >=20
-> > This is the network traffic:
-> >=20
-> > ```
-> > No.	Time	Protocol	Length	Info
-> > 3	0.000370	Portmap	98	V2 GETPORT Call (Reply In 4) MOUNT(100005) V:1 UDP
-> > 4	0.000607	Portmap	70	V2 GETPORT Reply (Call In 3) Port:60340
-> > 5	0.000949	Portmap	98	V2 GETPORT Call (Reply In 6) NFS(100003) V:2 UDP
-> > 6	0.001046	Portmap	70	V2 GETPORT Reply (Call In 5) Port:2049
-> > 7	0.001368	MOUNT	126	V2 MNT Call (Reply In 8) /srv/nfs-con/boot
-> > 8	0.008026	MOUNT	102	V2 MNT Reply (Call In 7)
-> > 9	0.008389	NFS	146	V2 LOOKUP Call (Reply In 10), DH: 0x8c279135/Image.gz
-> > 10	0.008754	NFS	170	V2 LOOKUP Reply (Call In 9), FH: 0xcdddf154
-> > 11	0.009095	NFS	146	V2 READ Call (Reply In 12), FH: 0xcdddf154 Offset: =
-0 Count: 1024 TotalCount: 0
-> > 12	0.009189	NFS	70	V2 READ Reply (Call In 11) Error: NFS2ERR_IO
-> > 13	0.009511	MOUNT	102	V2 UMNTALL Call (Reply In 14)
-> > 14	0.010301	MOUNT	66	V2 UMNTALL Reply (Call In 13)
-> > ```
-> >=20
-> > From packet 11 V2 READ Call
-> >=20
-> > ```
-> > Remote Procedure Call, Type:Call XID:0x000050e1
-> >     XID: 0x000050e1 (20705)
-> >     Message Type: Call (0)
-> >     RPC Version: 2
-> >     Program: NFS (100003)
-> >     Program Version: 2
-> >     Procedure: READ (6)
-> >     [The reply to this request is in frame 12]
-> >     Credentials
-> >         Flavor: AUTH_UNIX (1)
-> >         Length: 20
-> >         Stamp: 0x00000000
-> >         Machine Name: <EMPTY>
-> >         UID: 0
-> >         GID: 0
-> >         Auxiliary GIDs (0)
-> >     Verifier
-> >         Flavor: AUTH_NULL (0)
-> >         Length: 0
-> > Network File System, READ Call FH: 0xcdddf154 Offset: 0 Count: 1024 Tot=
-alCount: 0
-> >     [Program Version: 2]
-> >     [V2 Procedure: READ (6)]
-> >     file
-> >         [hash (CRC-32): 0xcdddf154]
-> >         FileHandle: 010004010100540020bb3809040054002f2edde400000000000=
-0000000000000
-> >     Offset: 0
-> >     Count: 1024
-> >     Total Count: 0
-> > ```
-> >=20
-> > From packet 12 V2 READ Reply
-> >=20
-> > ```
-> > Remote Procedure Call, Type:Reply XID:0x000050e1
-> >     XID: 0x000050e1 (20705)
-> >     Message Type: Reply (1)
-> >     [Program: NFS (100003)]
-> >     [Program Version: 2]
-> >     [Procedure: READ (6)]
-> >     Reply State: accepted (0)
-> >     [This is a reply to a request in frame 11]
-> >     [Time from request: 94.000 microseconds]
-> >     Verifier
-> >         Flavor: AUTH_NULL (0)
-> >         Length: 0
-> >     Accept State: RPC executed successfully (0)
-> > Network File System, READ Reply  Error: NFS2ERR_IO
-> >     [Program Version: 2]
-> >     [V2 Procedure: READ (6)]
-> >     Status: NFS2ERR_IO (5)
-> > ```
-> >=20
-> >=20
-> > I can locally revert this commit in our kernel, but is there any other =
-way
-> > to get it working again?
->=20
-> This is unfortunate.
-> U-boot has
->=20
-> 		} else if ((rlen =3D=3D -NFSERR_ISDIR) || (rlen =3D=3D -NFSERR_INVAL)) {
-> 			/* symbolic link */
-> 			nfs_state =3D STATE_READLINK_REQ;
-> 			nfs_send();
->=20
-> so we either need nfsdv2 to return NFSERR_ISDIR (for something that
-> isn't a directory) or NFSERR_INVAL (which is not a valid v2 error code),
-> or change u-boot to also check for NFSERR_IO (which is 5).
->=20
-> There is no "good" option.
-> I suspect we should revert this change and document that we violate the
-> RFC for historical compatibility with u-boot.
-
-Maybe not revert the whole change, but add an exception for symlinks.
-
-+++ fs/nfsd/nfsproc.c
-@@ -33,7 +33,7 @@ static __be32 nfsd_map_status(__be32 status)
-           break;
-   case nfserr_symlink:
-+          /* this is invalid, but U-Boot ... */
-+          status =3D nfserr_inval;
-+          break;
-
-   case nfserr_wrong_type:
--          status =3D nfserr_inval;
-+          status =3D nfserr_io;
-
-
---=20
-Es liegt in der Natur des Menschen, vern=FCnftig zu denken und
-unlogisch zu handeln! Das Gesagte ist nicht das Gemeinte und das Geh=F6rte
-nicht das Verstandene!
-
---owpsdqwe4h2dwp6f
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iHUEABEIAB0WIQS1pYxd0T/67YejVyF9LJoj0a6jdQUCapF4KgAKCRB9LJoj0a6j
-dYhpAP9tD8lXsLUaGrE8y5duh2D5Hn9qKVLkdFIqxDKyUn8JjQD/cCZSYIeKMy+n
-Ix78iZ1GbmumdMKbZ5y6QVewQsKNdAA=
-=shks
------END PGP SIGNATURE-----
-
---owpsdqwe4h2dwp6f--
+Thanks,
+Cen
