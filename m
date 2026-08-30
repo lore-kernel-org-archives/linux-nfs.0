@@ -1,34 +1,34 @@
 Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4645F1F12F8;
-	Sun, 30 Aug 2026 04:19:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D9D8525B090;
+	Sun, 30 Aug 2026 04:19:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788063565; cv=none; b=auhvessU6d8jSBDdgQjcQKJA0EGBq9lewSb6Q4ZGqiPARyRthrw9K9R/byyoa2pOz5SXsR/NKhhxEzQ06oEr2QChDP2gh3u5970wRAhkRGHc/3aZQFlUqsmh2NLrgIUwwXVvv5xobAeWXZPhEe0kipdP55JCR73nttAXy3URoYY=
+	t=1788063565; cv=none; b=m1cF1CatlepV0EuwzgDuMN6AZAOHvru+z1B756M/suxEmctGrBnQDWzLI7LARc0/aL++FyUL4tA0CZEzdRebEW/K5NNV/etkbxyraBgQkHMFoWbXfXztrh+UCI4fMUDufYqZzCDUDz4C1YwSNST1A+0SfZzHWgOr6yD/r5M8a1c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1788063565; c=relaxed/simple;
-	bh=C8hUjnmlQCxlKFOFVhkHh9N/nmYL4/89xmS6iyo4pqk=;
+	bh=mBJBVACiLTDSzt30yuy5vMYTlu5/Pc66RyndQwm240o=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ejcSXIPK2lBEKc08v87QGOJV9BtdSpuewctWdxxzHWaPuFDY1eeaS1zfL3VbucMXlhTEaesIv9RMat5qvW7ZUPOAvYUKwse35OgFKeJ6ND8C9g+HsDxSqZWqTxfeplOz3TQJuYyw+y8sG1vKQ5nw/Pk02JvghNFaIEnulPMTXGc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=pass smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=Ia8PDE2J; arc=none smtp.client-ip=90.155.50.34
+	 MIME-Version; b=WPCUR4cA6S6NSkuG48p82vlpQ/k6qVqEj7tZ/RF7yihxBe2E9nxT4BFl0DzmsOgk9+i2D9WhyGB5BsvSjW9ieq4fvhNTyyz6HKiaBQHHSAVEb2/1mbvELfBefkXeHfztFOdNPDW/Bni8gNwKqgD5/G4Fm262CN6lE24GlQUKbZI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=pass smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=dl4JOhdj; arc=none smtp.client-ip=90.155.50.34
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="Ia8PDE2J"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="dl4JOhdj"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
 	References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:
 	Content-Type:Content-ID:Content-Description;
-	bh=HX1YDxtUboff1x1jxC0V0517QCG7T5Er/z3xEiz/4yI=; b=Ia8PDE2J2L592KXDaHpWvWTj85
-	NBPDULnBAmGG3IioI8moIoKt27O8MzhWpiF8X5mkvtK2f3gT2lxyE+rovkiLoGZtaNu8rpXjLzE1X
-	y/qzn8ph0pq9AyJyutBn4yxdtnrIG0I8ie7p7DUyEhGMr3vxcqeAuXOXcrXgJKOhdbS019CrIK8kp
-	ALBRFMAZRUNq78CHH7EUDPXo6vM6jpwZmR2bj/GcxFtVZUjPIQzsV5t3qGR6z1Toj4PBbKVodMH3Q
-	ql0J0/GC6hH8KdGVCXhVvfOwE0SQ+c00DRGQ6Vfe2QpfB0R05sIakJVbP+ObSEpkWWLCLjwX4QaBC
-	GqtlndIg==;
+	bh=E9PhFISLskt0G9jrpDuqAu5vcSeLsmZLZhXWQ4ku/eI=; b=dl4JOhdjy5Ky53MMIMMBSBjxka
+	GMyBrCs+KW2T06hsemYTZsbViVEsYqH6IaNoiFeMIOs23zFgdkh5S85D4oEtrKsHkfOgxzhps21Kh
+	6NpoQaSvy8g3bfy7JVTIHe7QClXeT/eCwfxNkZomI5FDA1vK8kOFGCVOXEqBcAIU07qbwq64YXybZ
+	ZYvDvIoj6CbhKrL2AetEuVzCnYNaBocvwGaeqPf/lQS+EcUHCgTIgf/W9rTKkkPkc/ba67HcDVp4Q
+	9CgcYBOQTK5Du77A8ZYIfso3emJlI1o86I2tmoE58/7/o6UdqqDwrPtwAXs6hbhhEd6NkD7c8n0Yi
+	CDA201oA==;
 Received: from willy by casper.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1x0X0Y-000000000hM-42LV;
-	Sun, 30 Aug 2026 04:19:02 +0000
+	id 1x0X0Z-000000000i7-30zs;
+	Sun, 30 Aug 2026 04:19:03 +0000
 From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To: Christian Brauner <christian@brauner.io>
 Cc: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -48,9 +48,9 @@ Cc: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
 	ntfs@lists.linux.dev,
 	linux-fsdevel@vger.kernel.org,
 	linux-mm@kvack.org
-Subject: [PATCH 1/9] mm: Improve memalloc_nofs_save() documentation
-Date: Sun, 30 Aug 2026 05:18:48 +0100
-Message-ID: <20260830041901.2668-2-willy@infradead.org>
+Subject: [PATCH 9/9] filemap: Remove FGP_NOFS
+Date: Sun, 30 Aug 2026 05:18:56 +0100
+Message-ID: <20260830041901.2668-10-willy@infradead.org>
 X-Mailer: git-send-email 2.54.0
 In-Reply-To: <20260830041901.2668-1-willy@infradead.org>
 References: <20260830041901.2668-1-willy@infradead.org>
@@ -62,101 +62,55 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Talk about why someone should call this function instead of
-what this function does.  This makes the long comment in mm/readahead.c
-obsolete; replace it with a comment about which case we're protecting
-against.
+There are no more users of FGP_NOFS.  Remove it.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- include/linux/sched/mm.h | 31 +++++++++++++++++++++++--------
- mm/readahead.c           | 14 ++------------
- 2 files changed, 25 insertions(+), 20 deletions(-)
+ include/linux/pagemap.h | 10 ++++------
+ mm/filemap.c            |  2 --
+ 2 files changed, 4 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/sched/mm.h b/include/linux/sched/mm.h
-index d7c6a942aa7e..f76be1141b06 100644
---- a/include/linux/sched/mm.h
-+++ b/include/linux/sched/mm.h
-@@ -372,13 +372,26 @@ static inline void memalloc_noio_restore(unsigned int flags)
- }
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 3974b063a049..bff8b7264fb0 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -697,7 +697,6 @@ pgoff_t page_cache_prev_miss(struct address_space *mapping,
+  *   folio is already in cache.  If the folio was allocated, unlock it
+  *   before returning so the caller can do the same dance.
+  * * %FGP_WRITE - The folio will be written to by the caller.
+- * * %FGP_NOFS - __GFP_FS will get cleared in gfp.
+  * * %FGP_NOWAIT - Don't block on the folio lock.
+  * * %FGP_STABLE - Wait for the folio to be stable (finished writeback)
+  * * %FGP_DONTCACHE - Uncached buffered IO
+@@ -710,11 +709,10 @@ typedef unsigned int __bitwise fgf_t;
+ #define FGP_LOCK		((__force fgf_t)0x00000002)
+ #define FGP_CREAT		((__force fgf_t)0x00000004)
+ #define FGP_WRITE		((__force fgf_t)0x00000008)
+-#define FGP_NOFS		((__force fgf_t)0x00000010)
+-#define FGP_NOWAIT		((__force fgf_t)0x00000020)
+-#define FGP_FOR_MMAP		((__force fgf_t)0x00000040)
+-#define FGP_STABLE		((__force fgf_t)0x00000080)
+-#define FGP_DONTCACHE		((__force fgf_t)0x00000100)
++#define FGP_NOWAIT		((__force fgf_t)0x00000010)
++#define FGP_FOR_MMAP		((__force fgf_t)0x00000020)
++#define FGP_STABLE		((__force fgf_t)0x00000040)
++#define FGP_DONTCACHE		((__force fgf_t)0x00000080)
+ #define FGF_GET_ORDER(fgf)	(((__force unsigned)fgf) >> 26)	/* top 6 bits */
  
- /**
-- * memalloc_nofs_save - Marks implicit GFP_NOFS allocation scope.
-+ * memalloc_nofs_save - Prevent recursion into the filesystem.
-  *
-- * This functions marks the beginning of the GFP_NOFS allocation scope.
-- * All further allocations will implicitly drop __GFP_FS flag and so
-- * they are safe for the FS critical section from the allocation recursion
-- * point of view. Use memalloc_nofs_restore to end the scope with flags
-- * returned by this function.
-+ * All memory allocations between calling this function and calling
-+ * memalloc_nofs_restore() will be prevented from calling into filesystems
-+ * to reclaim memory.  Clean page cache memory can still be reclaimed,
-+ * but (for example) inodes will not be.
-+ *
-+ * The primary reason to do this is that the caller has taken a lock
-+ * which would be needed by FS reclaim.  While we could theoretically
-+ * call into a different filesystem in this case, it can be a deep call
-+ * stack so it is better to avoid all filesystems.
-+ *
-+ * Filesystems often choose to incorporate a call to this function as part
-+ * of starting a journal transaction.  While not a lock in the normal
-+ * sense, it has much the same effect as nested journal transactions
-+ * are either prohibited or expensive.
-+ *
-+ * Also call this function if you need to allocate memory while holding
-+ * a file folio locked.  High order allocations (such as those requested
-+ * by slab) can trigger compaction which will attempt to lock the folio.
-  *
-  * Context: This function is safe to be used from any context.
-  * Return: The saved flags to be passed to memalloc_nofs_restore.
-@@ -389,10 +402,12 @@ static inline unsigned int memalloc_nofs_save(void)
- }
+ #define FGP_WRITEBEGIN		(FGP_LOCK | FGP_WRITE | FGP_CREAT | FGP_STABLE)
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 6afec636881f..e6580291f218 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1994,8 +1994,6 @@ struct folio *__filemap_get_folio_mpol(struct address_space *mapping,
  
- /**
-- * memalloc_nofs_restore - Ends the implicit GFP_NOFS scope.
-+ * memalloc_nofs_restore - End filesystem reclaim scope.
-  * @flags: Flags to restore.
-  *
-- * Ends the implicit GFP_NOFS scope started by memalloc_nofs_save function.
-+ * Ends the implicit memory allocation scope started by
-+ * memalloc_nofs_save().  This may not enable access to filesystem reclaim
-+ * if it was already disabled at the time memalloc_nofs_save() was called.
-  * Always make sure that the given flags is the return value from the
-  * pairing memalloc_nofs_save call.
-  */
-diff --git a/mm/readahead.c b/mm/readahead.c
-index 6e5563290287..9c116d4ba963 100644
---- a/mm/readahead.c
-+++ b/mm/readahead.c
-@@ -227,17 +227,7 @@ void page_cache_ra_unbounded(struct readahead_control *ractl,
- 	gfp_t gfp_mask = readahead_gfp_mask(mapping);
- 	unsigned long mark = ULONG_MAX, i = 0;
- 	unsigned int min_nrpages = mapping_min_folio_nrpages(mapping);
--
--	/*
--	 * Partway through the readahead operation, we will have added
--	 * locked pages to the page cache, but will not yet have submitted
--	 * them for I/O.  Adding another page may need to allocate memory,
--	 * which can trigger memory reclaim.  Telling the VM we're in
--	 * the middle of a filesystem operation will cause it to not
--	 * touch file-backed pages, preventing a deadlock.  Most (all?)
--	 * filesystems already specify __GFP_NOFS in their mapping's
--	 * gfp_mask, but let's be explicit here.
--	 */
-+	/* Allocating with locked folios */
- 	unsigned int nofs = memalloc_nofs_save();
- 
- 	lockdep_assert_held(&mapping->invalidate_lock);
-@@ -512,7 +502,7 @@ void page_cache_ra_order(struct readahead_control *ractl,
- 
- 	ra->order = new_order;
- 
--	/* See comment in page_cache_ra_unbounded() */
-+	/* Allocating with locked folios */
- 	nofs = memalloc_nofs_save();
- 	filemap_invalidate_lock_shared(mapping);
- 	/*
+ 		if ((fgp_flags & FGP_WRITE) && mapping_can_writeback(mapping))
+ 			gfp |= __GFP_WRITE;
+-		if (fgp_flags & FGP_NOFS)
+-			gfp &= ~__GFP_FS;
+ 		if (fgp_flags & FGP_NOWAIT) {
+ 			gfp &= ~GFP_KERNEL;
+ 			gfp |= GFP_NOWAIT;
 -- 
 2.47.3
 
