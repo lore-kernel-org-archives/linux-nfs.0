@@ -1,71 +1,71 @@
 Received: from mx0a-00154904.pphosted.com (mx0a-00154904.pphosted.com [148.163.133.20])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D24733E49D5;
-	Mon, 31 Aug 2026 11:48:32 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 114373E7173;
+	Mon, 31 Aug 2026 11:48:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.133.20
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788176914; cv=none; b=T8HFKDUpXtW0BWaAPX1CDsN3bwym7L+mbCuHApaMrsXO2UDgPA9GvG7muhuWIuYLV+DGLNruFGrXyp/GNgxQRul1Tv/LI4k0CawInHV8ewJvevkOodkRPhhsbsGLU+gOYrgTXMYHStiI5QavZOQxH/v/+Sl9/h/7ytwT5elv1ys=
+	t=1788176916; cv=none; b=hBiSTppR+xmo65WgIAKmecO7iQ77TsNZNk0i2Em52L3mVNVqZlOQsRb1fo/CjpcaSsLAhVZPn+2JdYrNGjqJZYLInM/lBdLE7yiHZH8dSumjzJKEwsyh+v4wRvg6Y++AJCZYBDITRN1rUg4Ggf1pECHaYs0TS/6WLdNYsNuA92I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788176914; c=relaxed/simple;
-	bh=LYh4KqKVNmDm/coOX6KXg56Wyb7+W2SRasonnA6EQzQ=;
+	s=arc-20240116; t=1788176916; c=relaxed/simple;
+	bh=GwVbrmgVvOIh6u+SyjwGI5UkGn35iUiQiNRDKY+ZvRU=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=jxPVKIW5eEQcR2KZSeNyJZk59fWZ5NJpKpkWrroXRqJSjWIJYcEfnzX/uRnmYVDWFWWPah6SZifrwvhalaF4gTi10x3FINJ3LNYKdb46eeFFS77g8k1bntQGu3KWqOHLF4ML8aOoYDQ7ljsCPKIOSRNgn9TR+nyo7Z6HLK+fub8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=I1zOICS0; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=fUPaSIpH; arc=none smtp.client-ip=148.163.133.20
+	 MIME-Version; b=dTuApHT44lcGcp2t01sKvQNw0fPk+863cenhSp65PacgABEv1FI+u8uVTyO24OfPOjeJhquNF5bjYioH2wMRzmTTMDnkXjOx8SRexjTjS4oJNKsHAKMGKm/XmdSZtcmiy40T4+NDG4fmlcQUEjTzHGky146y2jrs7jGE5r5N/dQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=F+5+nkpT; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=JzvLf/3c; arc=none smtp.client-ip=148.163.133.20
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dell.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="I1zOICS0";
-	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="fUPaSIpH"
-Received: from pps.filterd (m0170389.ppops.net [127.0.0.1])
-	by mx0a-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67VBAASj3026601;
-	Mon, 31 Aug 2026 07:48:32 -0400
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="F+5+nkpT";
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="JzvLf/3c"
+Received: from pps.filterd (m0170392.ppops.net [127.0.0.1])
+	by mx0a-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67VB9sxm3165501;
+	Mon, 31 Aug 2026 07:48:34 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=dell.com; h=cc
 	:content-transfer-encoding:date:from:in-reply-to:message-id
-	:mime-version:references:subject:to; s=smtpout1; bh=wVgmdZSI0wug
-	LsLKLNeKAjU6b1XDS793a5u1p3WWTOI=; b=I1zOICS0OTw4S485PQ2B9wRt6btr
-	Xz55IVANg2KiU2uO/+iq817wrHc/hvj7ubgmrF53z2fS3Z4gpl67vSHxh2jpdW01
-	otrMN/3Yj/R4RfIi5WR3UsVqlv9KUABOukVlHA/NDio/b+4VHyJR/iGDrbxF/+vE
-	K4p6SC5Jv7BDdaFUJMasnra6Adb0AvHbw6QpaxNhYnW1K5pU8tlTQLDjSSMkbvT7
-	bzH8Yb18rvkV2QXD9hLMiBLUL2H+yZ2/yocyMllG1okyQuPQVa2j7NjS4HDZHEVX
-	i9qJ6tKMgnCLrEFF/jxaDfMMH4Qj6GEaAKvZEZFgQmdhHSkdy2goOt23yQ==
+	:mime-version:references:subject:to; s=smtpout1; bh=Y68l3o/TsK+j
+	AZ9sIea0jbVyIO4x1ujhgknEkQ3ZJWY=; b=F+5+nkpT/IPx5Za3td/lbs+ydPB7
+	MUJ4CglsRT0YCdUioRTDGCUohwM6T1UWKlIlRECsLEAXZGy8WuXiiiZmvhbG1TTS
+	r4APOY23cbP/Zj3LzddzoUezKmG7bV4CYlHsXbrhSs7XFfgF60BUS2LcCDsoWB7H
+	fl0+FGNvMQg+TG8BXKGrRPWFyoKp5UO1OuKLVzb4hfePVQEv07hTLeA1YmFPndLf
+	eITc1eSrTo4BIzWuWswu9xmeYSDElvzKKBrzHmq436ZhxfGO9Jv82+jYrya4deKO
+	1U+v+u1tqs4dFzwzzjHUuF13KZm8JnIFCA5zqL9LK2PLQuOlZ6d7Usztyg==
 Received: from mx0a-00154901.pphosted.com (mx0a-00154901.pphosted.com [67.231.149.39])
-	by mx0a-00154904.pphosted.com (PPS) with ESMTPS id 4gbuedwh8k-1
+	by mx0a-00154904.pphosted.com (PPS) with ESMTPS id 4gbtk6wp1b-1
 	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
-	Mon, 31 Aug 2026 07:48:31 -0400 (EDT)
+	Mon, 31 Aug 2026 07:48:34 -0400 (EDT)
 Received: from pps.filterd (m0142699.ppops.net [127.0.0.1])
-	by mx0a-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67VB9oRs3049667;
-	Mon, 31 Aug 2026 07:48:31 -0400
+	by mx0a-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67VB9oRt3049667;
+	Mon, 31 Aug 2026 07:48:33 -0400
 Received: from esapsmtplv01.us.dell.com (esapsmtplv01.us.dell.com [143.166.203.147])
-	by mx0a-00154901.pphosted.com (PPS) with ESMTPS id 4gd7wp8uqk-4
+	by mx0a-00154901.pphosted.com (PPS) with ESMTPS id 4gd7wp8uqk-5
 	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=FAIL);
-	Mon, 31 Aug 2026 07:48:31 -0400 (EDT)
+	Mon, 31 Aug 2026 07:48:33 -0400 (EDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=dell.com; i=@dell.com; q=dns/txt; s=smtpdev1;
-  t=1788176911; x=1819712911;
+  t=1788176913; x=1819712913;
   h=from:to:cc:subject:date:message-id:in-reply-to:
    references:mime-version:content-transfer-encoding;
-  bh=wVgmdZSI0wugLsLKLNeKAjU6b1XDS793a5u1p3WWTOI=;
-  b=fUPaSIpH9MWdiJ25WKOu5Jcxw4vf19v1/d0qnA8oF7Ur4A5YSq9cpZlp
-   kzti+apS8PFKHufjShRrMKSSmEaSJE0KcdrVkXUvO2JEXeyTpQu0tap8W
-   rE3bBUPQYtQXfavQnTSZ8nmUEmXrUrGKgP7S99s8tUTUV70B116XOR0I8
-   vxKcaogToAqq7f7CZ5FWLC/FGEbR1mwfmc2/Oh/4BRf9W8UJo/TkBg0f0
-   e6NZIMvwJuWeOrJKt8pY5dSJxhz1LwL4iiZFd6IeC28WqeMS1pXNIe+7h
-   FcDUYmvbOOzhC4Z5SWZ+HRnYL9T0gZlNy6ba3DVX2Kp9G+QprCbhypvSe
+  bh=Y68l3o/TsK+jAZ9sIea0jbVyIO4x1ujhgknEkQ3ZJWY=;
+  b=JzvLf/3cbtT4FCRlmyXvmZBMXC2Th8GkdmJjDpyS3VcP/Ff2H81K19wz
+   W44lX+nqa7aUUfKaCOMZEwRAqF/hfXGPMUo3aZdDNypnIp3LlxQz6+cXG
+   AKaJn5ZvwumiqqqnZKo0adFvDxVRycgo154D8eGRM7/M5Ifebx4P0pZy1
+   Ev/QntY7U+tTGqv/lLXFHryVVx/VCQQui/dQQHy2oupJMco+rxQQw2PWG
+   J9eYwcggtNezLSnDkQgzmqd9gz9nexSCZ3rx4bMfPmdcGi+sdQnuvKkFL
+   zuS3ePn9DVL4INwwp5kKphBcEMwTGRSgq+YGB3kttPH96c7dqUQ+XtNbO
    Q==;
-X-CSE-ConnectionGUID: I0g9qFqLRmyROCOWOJc8lQ==
-X-CSE-MsgGUID: 9sXZdxvJRXKZfDiAA/hbSw==
+X-CSE-ConnectionGUID: v8G1Z3cpRNO6+5Pqy25lyg==
+X-CSE-MsgGUID: I9GpNNLIR6qP/Hg+1C2U3g==
 X-LoopCount0: from 10.94.8.206
 X-MS-Exchange-CrossPremises-AuthAs: Internal
 Received: from w-96j1th4.apac.dell.com (HELO W-96J1TH4.blr.amer.dell.com) ([10.94.8.206])
-  by esapsmtplv01.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 31 Aug 2026 11:48:29 +0000
+  by esapsmtplv01.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 31 Aug 2026 11:48:31 +0000
 From: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
 Cc: linux-nfs@vger.kernel.org, Prabhakar Pujeri <prabhakar.pujeri@dell.com>,
         stable@vger.kernel.org
-Subject: [PATCH v2 3/7] NFS: bound flexfiles filehandle version count
-Date: Mon, 31 Aug 2026 11:48:14 +0000
-Message-ID: <e00ed21d7f259b6b609d004c32fb42e02c45906b.1788173789.git.prabhakar.pujeri@dell.com>
+Subject: [PATCH v2 4/7] NFS: validate pNFS data server port octets
+Date: Mon, 31 Aug 2026 11:48:15 +0000
+Message-ID: <5bf0470b45d43c93515dffb286adb9e51db557eb.1788173789.git.prabhakar.pujeri@dell.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1788173789.git.prabhakar.pujeri@dell.com>
 References: <cover.1788173789.git.prabhakar.pujeri@dell.com>
@@ -85,60 +85,144 @@ X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
  clxscore=1015 classifier=typeunknown authscore=0 authtc= authcc=
  route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2606150000
  definitions=main-2608310101
-X-Proofpoint-Spam-Info: AW1haW4tMjYwODMxMDEwMiBTYWx0ZWRfX2iOL0wIN7oCk
- jEdYCETtWkqiZKcqRGnE+MnI84WJzy2EVfmCLtRDO+f2PARVfYVVwg+sT50rAQyLVBKe+3cthqi
- aYoSR48FhwsYPReSQeGdooEOo5n5Yw4=
-X-Authority-Analysis: v=2.4 cv=FbUHAp+6 c=1 sm=1 tr=0 ts=6a956a0f cx=c_pps
+X-Proofpoint-ORIG-GUID: 1_VblvExhCaox7pdijMAcpIyI2ymGqdi
+X-Authority-Analysis: v=2.4 cv=PL0/P/qC c=1 sm=1 tr=0 ts=6a956a12 cx=c_pps
  a=j0++y401J6f/BxNAf5EDow==:117 a=L/h6WUVEnF1aJ0/14Ndw0A==:17
  a=Sv0fKeRqtYgA:10 a=ke5jqHz-1hQA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=6gNNCFAoQcIphELLPWWu:22 a=PpEg0BoV_A2aca28hXd0:22 a=VwQbUJbxAAAA:8
- a=iLNU1ar6AAAA:8 a=R1B-8ATixRUzBlqyqq0A:9 a=gbU3OgOOxF9bX48Letew:22
-X-Proofpoint-GUID: NjIiURy2R3FqMwKNnwSInsfW0UL4NOSm
-X-Proofpoint-ORIG-GUID: NjIiURy2R3FqMwKNnwSInsfW0UL4NOSm
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODMxMDEwMiBTYWx0ZWRfX0TVqsj2z/jhB
- CXRrPiiMNejT0lYqTF5mIyggT6m8IK8qVYKOnxuUzf9dGWN6hRqzOnO8ppR/VdP3ZTdLivaxDfq
- 18wxVFX/G30trOqcQXLzZ/4jmsJMrQDiTaj+rJBw7kO3ahD8HGJwmZwJ0IjAq5gdtA2DwlZiM9z
- YHi4MdTSopp+nQJr5a5/0qg7+4bOt1WFa4M8Uy/bY5xJO1dOJ8/50Ac2KPoe01pdTiDtivc3KPQ
- 6WTwAEtBArWyOjE14QFB40rswwaNUli7ZEDQ7LHRQscTQwgSAJ1d6s3BWOWUlE1zGJ3tfs0KIBj
- fQxZA9ZZA0am5WuQ+6tmjiKq7ZiVvbKieoNAA4CpTQQ0R+KCKdsn9CqOSHofakiIbV1ev6p8+LH
- ePuh7fzneue5WG7LTNK23dlLuv0ftHnaCOSDxdF6aGI2qYW7xLFCr1gu8fuP30NhhqxE+g+S6QQ
- gZZu+g3YxShTPsD0Rdg==
+ a=6gNNCFAoQcIphELLPWWu:22 a=m3zZTHMLHbwB7Lmtoed2:22 a=VwQbUJbxAAAA:8
+ a=iLNU1ar6AAAA:8 a=VZJtwKKvAAAA:8 a=NxIssioeBxkeEXFklJ4A:9
+ a=gbU3OgOOxF9bX48Letew:22 a=vzdIw8kzLcqZOxdJCU6L:22
+X-Proofpoint-Spam-Info: AW1haW4tMjYwODMxMDEwMiBTYWx0ZWRfX7zV+kcx6v3pJ
+ 8JOt0s8k9yQR+q2dVmpK4rzBACHRinmXcK3v0rfawC2I7rk18xDOs8xxa0lg/4wqVUd4elWyrZB
+ YyOdB1RcCUD3nu5d2itLweuShakYA+c=
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODMxMDEwMiBTYWx0ZWRfX1e7R4gJ6CV1L
+ giMNAx1wQ/V/nXnzbLiZ79gJA5ogQm54/S8M4Ji/UhiZopPc+niP6/2c33bvbqu88YHxNbERgN1
+ 7gIU1uyW3U9SkYrI+MdQYHR8gIJYq6Swa3V4/qqLlahmuJWassb2EX8ZWpqPJru7da5PUkfYRs3
+ CzN1HgfLlVRBUb8kPPhw4rmf+SEAHqQnHZ2JfvMCdJAC+RKwTA+3GgJ3Yv3e3Ihn8is3b8NMwYC
+ aawOO9cMesqPMdNQjesN78zDxMvxe48+Ovl5TBgBTXx59EIdMI5JfMZqvB9r2eorgvVb/hK1Gek
+ kH+u3TpBzxCZktosJu9xSR7rMd2tu/Xg6FlhCr+wa0pPcPdpCEDY8ELhGDR1Hj96HUPl7R0HcGZ
+ LUDvma0QXGw/NFOAsNsdAjp0MR5kixBudS8T+CC9ed6u3W9zzbmSIRKfyUUhzG/Qsu0BSo9xwY0
+ dzzy9eQuZEtOdjdVYkw==
+X-Proofpoint-GUID: 1_VblvExhCaox7pdijMAcpIyI2ymGqdi
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0
- phishscore=0 clxscore=1015 suspectscore=0 lowpriorityscore=0
- priorityscore=1501 impostorscore=0 adultscore=0 malwarescore=0 bulkscore=0
+ lowpriorityscore=0 bulkscore=0 malwarescore=0 adultscore=0 impostorscore=0
+ phishscore=0 clxscore=1015 priorityscore=1501 suspectscore=0
  classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
  reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608310102
 
-ff_layout_alloc_lseg() allocates a filehandle-version array from the
-server-provided fh_count before checking that the layout body can contain
-that many filehandles. A large count in a short reply can therefore trigger
-an oversized allocation.
+nfs4_decode_mp_ds_addr() parses the two decimal port octets in a
+server-provided universal address with an unchecked sscanf(). A missing
+or non-numeric field leaves part of the temporary array uninitialized,
+while values outside the octet range are silently folded into the
+resulting port.
 
-Even an empty XDR opaque value consumes a length word. Bound fh_count by
-the number of length words remaining in the stream before allocating the
-array.
+Split the two port fields at their delimiters and parse each with
+kstrtou8(). This rejects missing fields, trailing garbage, integer
+overflow, and values outside 0 through 255 before constructing the data
+server socket address.
 
-Fixes: d67ae825a59d ("pnfs/flexfiles: Add the FlexFile Layout Driver")
+Fixes: 6b7f3cf96364 ("nfs41: pull decode_ds_addr from file layout to generic pnfs")
 Cc: stable@vger.kernel.org
 Signed-off-by: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/nfs/pnfs_nfs.c | 46 ++++++++++++++++++++++++++++------------------
+ 1 file changed, 28 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 7fe8b91fa47c..f94d328b67cd 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -551,7 +551,8 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
- 			if (!p)
- 				goto out_err_free;
- 			fh_count = be32_to_cpup(p);
--			if (fh_count == 0) {
-+			if (fh_count == 0 ||
-+			    fh_count > xdr_stream_remaining(&stream) / XDR_UNIT) {
- 				rc = -EINVAL;
- 				goto out_err_free;
- 			}
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index 33d64287e500..f09826415251 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -8,6 +8,7 @@
+  * Tom Haynes <loghyr@primarydata.com>
+  */
+ 
++#include <linux/ctype.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
+ #include <linux/sunrpc/addr.h>
+@@ -1064,6 +1065,19 @@ int nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
+ }
+ EXPORT_SYMBOL_GPL(nfs4_pnfs_ds_connect);
+ 
++static int
++nfs4_parse_port_octet(const char *str, u8 *port)
++{
++	const char *p;
++
++	if (!*str)
++		return -EINVAL;
++	for (p = str; *p; p++)
++		if (!isdigit(*p))
++			return -EINVAL;
++	return kstrtou8(str, 10, port);
++}
++
+ /*
+  * Currently only supports ipv4, ipv6 and one multi-path address.
+  */
+@@ -1071,10 +1085,10 @@ struct nfs4_pnfs_ds_addr *
+ nfs4_decode_mp_ds_addr(struct net *net, struct xdr_stream *xdr, gfp_t gfp_flags)
+ {
+ 	struct nfs4_pnfs_ds_addr *da = NULL;
+-	char *buf, *portstr;
++	char *buf, *portsep;
+ 	__be16 port;
+ 	ssize_t nlen, rlen;
+-	int tmp[2];
++	u8 porthi, portlo;
+ 	char *netid;
+ 	size_t len;
+ 	char *startsep = "";
+@@ -1094,37 +1108,33 @@ nfs4_decode_mp_ds_addr(struct net *net, struct xdr_stream *xdr, gfp_t gfp_flags)
+ 	if (unlikely(rlen <= 0))
+ 		goto out_free_netid;
+ 
+-	/* replace port '.' with '-' */
+-	portstr = strrchr(buf, '.');
+-	if (!portstr) {
+-		dprintk("%s: Failed finding expected dot in port\n",
+-			__func__);
++	/* Parse the low port octet and remove it from the address string. */
++	portsep = strrchr(buf, '.');
++	if (!portsep || nfs4_parse_port_octet(portsep + 1, &portlo)) {
++		dprintk("%s: Failed parsing low port octet\n", __func__);
+ 		goto out_free_buf;
+ 	}
+-	*portstr = '-';
++	*portsep = '\0';
+ 
+-	/* find '.' between address and port */
+-	portstr = strrchr(buf, '.');
+-	if (!portstr) {
+-		dprintk("%s: Failed finding expected dot between address and "
+-			"port\n", __func__);
++	/* Parse the high port octet and terminate the address string. */
++	portsep = strrchr(buf, '.');
++	if (!portsep || nfs4_parse_port_octet(portsep + 1, &porthi)) {
++		dprintk("%s: Failed parsing high port octet\n", __func__);
+ 		goto out_free_buf;
+ 	}
+-	*portstr = '\0';
++	*portsep = '\0';
+ 
+ 	da = nfs4_pnfs_ds_addr_alloc(gfp_flags);
+ 	if (unlikely(!da))
+ 		goto out_free_buf;
+ 
+-	if (!rpc_pton(net, buf, portstr-buf, (struct sockaddr *)&da->da_addr,
++	if (!rpc_pton(net, buf, portsep - buf, (struct sockaddr *)&da->da_addr,
+ 		      sizeof(da->da_addr))) {
+ 		dprintk("%s: error parsing address %s\n", __func__, buf);
+ 		goto out_free_da;
+ 	}
+ 
+-	portstr++;
+-	sscanf(portstr, "%d-%d", &tmp[0], &tmp[1]);
+-	port = htons((tmp[0] << 8) | (tmp[1]));
++	port = htons((porthi << 8) | portlo);
+ 
+ 	switch (da->da_addr.ss_family) {
+ 	case AF_INET:
 -- 
 2.54.0
 
