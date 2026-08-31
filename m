@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7AAA0550DA4;
-	Mon, 31 Aug 2026 16:15:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7F578550DDA;
+	Mon, 31 Aug 2026 16:15:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788192954; cv=none; b=bTCFckRzpqnBgqyRw0oROgsupeXW5o2ohaA86PWoEuqjieuESn1AA47mqFhQWiegzhoClu7ZODcRqO5aKzenZJSJDKnXX2beUAPbzxFUKgRDFSqxE8tNtRjid8XcioMDe4RcNBravm2Gh6hzdS0W+1qTVIfuPLw9sI9hBy80AwY=
+	t=1788192955; cv=none; b=N0CunRwxNOrwEmsA62/llvwy2ksxeeiocmQ1vXso8BHhZUrUWEbfRb6HNTgqc/5x5oD2ikhXzNLoS5I3Mp2K4Q6/JmUDRV2oDs4HdGIXEhddJHn5x2bz7ISiMmzxQgjc8Ajp//1b5mj1rg+wLY/y9cg/5OXXUA8lepClfzhoAlc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788192954; c=relaxed/simple;
-	bh=FKA2BkMlz5ELGl32gDJPPbAwvFf5JVXLuMfqgnUQM9U=;
+	s=arc-20240116; t=1788192955; c=relaxed/simple;
+	bh=SM2OWu0XleC4V96J3z4sUV5Kxnkpd0r1e2rH1vibgkM=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=Xsi+h/0K9SSq9hbdJndmIzktt5BDfMY79epp9uysl10O6bbQfMU6nHd8tcLySkAmiXlMpU2ENaeAGFNvVW3p2I9e2OJxmHDswI4XMx0xab1zt+fj6NQ8BM+atBSnyym7/Rpzeg7UBJ6bg8HVgNPAjEa3Pu9ibDaehcEyoxWfzLM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=biNYiHdb; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=NGxJaR0IEiifa4JZEy2ZMDdJtU5njNpE2EiQBkYzL6g1Zk2sjFiUVtk45gd4w4khBIWDrg3kF5muHIAefwoBaQCOZQprmOuvicehjkPbY5or6T4J7aA53relNf3XsVewUmA1NlJiN/+PiguHrUVgoAwgPGBMAqTApHF15cExLUk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fwgWil/u; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="biNYiHdb"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E64FF1F000E9;
-	Mon, 31 Aug 2026 16:15:50 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fwgWil/u"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 974FE1F00A3E;
+	Mon, 31 Aug 2026 16:15:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788192952;
-	bh=ockaZEjuUu+8Z8u8Q0PDF9tkO0ak/zH6aUQtKJaJl5Q=;
+	s=k20260515; t=1788192954;
+	bh=l3TJj1IX1HGJ6W0nzGDz0cyAW5MqVKBuV0o+O9iQ0hc=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=biNYiHdbdgMbhjVFrV1bJnvmPqnUXYQWX0oJ+16SWn4zHA/7w6x8oZsmH6FyBgjbI
-	 0sxlVy2lhG+1U4DHHo6BPCUnq60PdsM74iySwbWnurS/NA+6lYi3W8iFLmbBxhrixO
-	 VSKVO56HPuqatyKCbuu5NaSr4wgspf4JsgsDTwTbRl456YTOYw5nJmjOqaM6CL1y2E
-	 eLL/nmTMNAdlJ0vUUc+JGAAxKxp15Im9TSW4FHgMr+YGIc4P0eKzXVGShZdW5/3BaX
-	 5V4N2Kj97gli6A6NuqbB2JqBNoPeLG1T8FZEFYuhikjctZ7sAXla0MJNb9ND11vkFj
-	 4r7JDmq9+tI+A==
+	b=fwgWil/uXxR+/S3jSu34sjWlYb0l5BDlEOdaz3YoyscRflcvp9titEx9DOR7grorE
+	 xSl4A+AS5KTFndvkdewux7XWcS2IWKsRdlnKsTzAZvuCBEQf9VBjpzRD4FkFI3FMD0
+	 ghb7yWZ5E9Iooju6dOkzu4pVFZ5Pu1/s76TmgzyahfeZSmcO65qL13oKgf0KkjYY49
+	 kKh3rVOb2eKXsMo07Deb0uC8/TQMPx2uXcNekK+Y+tNtuL+fV6AooJYsS+pjwoIo4Y
+	 I3UBCekY32qwYmNqxqjD7YLGk92q2FAZTHyCkiFXV8r8Ed1wW7lKwaeJY9Xvqe9fRE
+	 u49Z8tXfViB4w==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Mon, 31 Aug 2026 12:14:51 -0400
-Subject: [PATCH v4 09/14] SUNRPC: stop unregistering listeners once rpcbind
- stops answering
+Date: Mon, 31 Aug 2026 12:14:52 -0400
+Subject: [PATCH v4 10/14] NFSD: stop registering with rpcbind after a
+ failure in listener_set
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260831-nfsd-nl-hang-v4-9-0f4e89139409@kernel.org>
+Message-Id: <20260831-nfsd-nl-hang-v4-10-0f4e89139409@kernel.org>
 References: <20260831-nfsd-nl-hang-v4-0-0f4e89139409@kernel.org>
 In-Reply-To: <20260831-nfsd-nl-hang-v4-0-0f4e89139409@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -53,81 +53,116 @@ Cc: Slawomir Stepien <sst@poczta.fm>, linux-nfs@vger.kernel.org,
  Trond Myklebust <trondmy@gmail.com>, linux-kselftest@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2044; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=FKA2BkMlz5ELGl32gDJPPbAwvFf5JVXLuMfqgnUQM9U=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqlaijZKWaoLymbn17HCs3riwAw/Q5gs0L7Ow8t
- KSwKt1m/vKJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCapWoowAKCRAADmhBGVaC
- FUnID/9Oj3VQce6hrCQ3f+X7W92g9fuGHVHJ+qqG/6ndJv7AxTGQuJWPTRC3cdb0ZZB+6INe9NF
- ri0vt1PvUq5tWeyOvCaA1FfTrtrXucS8IJi4lzSIv9WuCHiZI4csXP6gxKuqsIcWMuCzqm474ks
- RQmS+Uq2gqR0Zy7p4M6Ay7+5ifddBCrPkyukqo8k3HWivnDDNF+NZMsVK4T+mfZ+abnc6yPBuBf
- y4Qg1hwgKStZLUMUkdAJrM8hkazQ3eL+AceKbyEcvy1zy1z59Tn1Iucbv4tqmR14bCKQDC9HKfv
- gq00oMGdooA4+SzNhiOAZe+NjHxnSrYk82YHh8D3S3kAzS6ArKlGyVdZS0VY/am54isLuyZJcMM
- ai4Na5K6qOutMJgfsZv/pELzKdVzc5IXoqhXXiuesDQto/SOXHzExf+/Ih+Zs/tdXf9zRIVN9tN
- N1S4Nps6P3qodgjlxrqApX174OoBKZM59UUZpI/yH/giod585mEsl5Y/SIm1lcSVUQkSEd/GPYg
- Yd9x2iid16Sl0iWm5/xuDLmuZyqeQjqkghI5ID1ZGHSemWAtugqUufqL4mzPseLDx2573TIaV2r
- /7d0fKJBhFhgVTl/eJ4QtJB7VoGTB36jjxras7pwS1LZjcVjJ4PmaRmezslKCMGEkEf0RaW++CX
- UDh8MvnEn9Oa2Bw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3554; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=SM2OWu0XleC4V96J3z4sUV5Kxnkpd0r1e2rH1vibgkM=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqlaik2cLP0QIoCX8xMhRugEP5bcqI8NQHwBqJD
+ 2ifud/oaXGJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCapWopAAKCRAADmhBGVaC
+ FbHqD/4n8xtKqxf+Jrm+xW5wAD4L8iZtiqwD6FUrIjN0Zo33HX8pI+kRYNQL0JNQM8NSP4yyhk+
+ soE/gRW72iqlRh2r1gw0kUkGQgWNA+jTe69QEgTnKV1yL3m9dGfCtnpRJa2FNsa9mx5KMzVz7jJ
+ ZNB0otZlK2qZaiX1u4MWhqpq6qFSLaynws+IeNCRHW1m+LoU85olYwFedjfuSrJZniUDZOj0u1l
+ iV/EQFjTpSTvq5toKQBX0QUMzLp1uN/eDnuhBJAyyAncsfOMg0OO9TsU0uoV/8oN7XmDp/qKK8S
+ L/e2PZV2PYlGdsdl/7aR2C3MyxCM+a5WRuut6HDG3wymtiudusczR+5gRex7b4uD5LEYG+Rvr5l
+ A/eqQKMWJi53Z+YPGhe2mLuCBZAWIGVhY05IF5DC3ZdXWe20J+zjf1lSCTRAUsVcR7iddUz4gOY
+ NuNJx+gVDeiLE9EF0bhCXGnnyozmGDcmiq7ZoPkQYChsxgOQKGmnITjxoA1koQs2oNP1FU4pbQB
+ LVyH/YoW70RvZSFWEv5dQUfcK97xSH6cWq7fG1wD727ao7DzoYO9s3jgyugrryTONnvzrT51RBX
+ HmWdkUitjPnLB7KDQf5DZGpEHgipdFyZEeHKOvua62lsERmxVVNQOcF2zH0FUsouEVAJnW6V/ci
+ iwdwC7tildwEhuQ==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-svc_delete_xprt() unregisters each listener it destroys. One
-NFSD_CMD_LISTENER_SET that removes listeners therefore pays one local
-rpcbind timeout for each of them, under nfsd_mutex, on top of the one the
-create loop already bounds.
+nfsd_nl_listener_set_doit() calls svc_xprt_create_from_sa() once for each
+requested listener and passes flags of 0, so every listener registers with
+rpcbind on its own. A rpcbind that accepts the connection and never replies
+therefore costs one timeout for each entry. With the cap of 1024 entries
+the request can hold nfsd_mutex for about 34 minutes, which is roughly 17
+times the hung-task threshold.
 
-One failure is enough to know that the rest of the teardown will not fare
-better. When the call gets no answer, clear XPT_RPCB_UNREG on every
-remaining transport in the same net.
+One failure is enough to know that the next call will not fare better.
+Read svc_rpcb_failure_count() before the create loop, and pass
+SVC_SOCK_ANONYMOUS for the rest of the request once the count moves.
 
+Fixes: 16a471177496 ("NFSD: add listener-{set,get} netlink command")
 Assisted-by: LLM
+Link: https://syzkaller.appspot.com/bug?extid=c7eae0eb80858a2dba0f
+Suggested-by: Olga Kornievskaia <okorniev@redhat.com>
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- net/sunrpc/svc_xprt.c | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+ fs/nfsd/nfsctl.c | 33 +++++++++++++++++++++++++++++----
+ 1 file changed, 29 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 40040af588fb..7e471c92f23a 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -1101,6 +1101,22 @@ static void call_xpt_users(struct svc_xprt *xprt)
- 	spin_unlock(&xprt->xpt_lock);
- }
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 6cbdcee4b733..2256c53277b8 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -2092,7 +2092,9 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
+ 	const struct nlattr *bad_attr = NULL;
+ 	struct svc_xprt *xprt, *tmp;
+ 	const char *bad_xprt = NULL;
++	unsigned int rpcb_failures;
+ 	const struct nlattr *attr;
++	bool skipped_rpcb = false;
+ 	struct svc_serv *serv;
+ 	LIST_HEAD(permsocks);
+ 	struct nfsd_net *nn;
+@@ -2182,13 +2184,15 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
+ 	if (delete)
+ 		svc_xprt_destroy_all(serv, net, false);
  
-+/*
-+ * If rpcbind stops answering, every listener still to be destroyed would
-+ * only wait out the same timeout again. Drop the flag on all of the
-+ * remaining listeners.
-+ */
-+static void svc_xprt_clear_rpcb_unreg(struct svc_serv *serv, struct net *net)
-+{
-+	struct svc_xprt *xprt;
++	rpcb_failures = svc_rpcb_failure_count(serv);
 +
-+	spin_lock_bh(&serv->sv_lock);
-+	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list)
-+		if (xprt->xpt_net == net)
-+			clear_bit(XPT_RPCB_UNREG, &xprt->xpt_flags);
-+	spin_unlock_bh(&serv->sv_lock);
-+}
-+
- /*
-  * Remove a dead transport
-  */
-@@ -1115,11 +1131,15 @@ static void svc_delete_xprt(struct svc_xprt *xprt)
- 		struct svc_sock *svsk = container_of(xprt, struct svc_sock,
- 						     sk_xprt);
- 		struct socket *sock = svsk->sk_sock;
-+		unsigned int failures = svc_rpcb_failure_count(serv);
+ 	/* walk list of addrs again, open any that still don't exist */
+ 	nlmsg_for_each_attr_type(attr, NFSD_A_SERVER_SOCK_ADDR, info->nlhdr,
+ 				 GENL_HDRLEN, rem) {
+ 		struct nlattr *tb[NFSD_A_SOCK_MAX + 1];
+ 		const char *xcl_name;
+ 		struct sockaddr *sa;
+-		int ret;
++		int flags, ret;
  
- 		if (svc_register(serv, xprt->xpt_net, sock->sk->sk_family,
- 				 sock->sk->sk_protocol, 0) < 0)
- 			pr_warn("failed to unregister %s with rpcbind\n",
- 				xprt->xpt_class->xcl_name);
+ 		/* validated up front in nfsd_nl_validate_listeners() */
+ 		if (nla_parse_nested(tb, NFSD_A_SOCK_MAX, attr,
+@@ -2207,8 +2211,20 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
+ 			continue;
+ 		}
+ 
+-		ret = svc_xprt_create_from_sa(serv, xcl_name, net, sa, 0,
++		flags = skipped_rpcb ? SVC_SOCK_ANONYMOUS : 0;
++		ret = svc_xprt_create_from_sa(serv, xcl_name, net, sa, flags,
+ 					      current_cred());
 +
-+		if (svc_rpcb_failure_count(serv) != failures)
-+			svc_xprt_clear_rpcb_unreg(serv, xprt->xpt_net);
++		if (!skipped_rpcb &&
++		    svc_rpcb_failure_count(serv) != rpcb_failures) {
++			skipped_rpcb = true;
++			if (ret < 0)
++				ret = svc_xprt_create_from_sa(serv, xcl_name,
++							      net, sa,
++							      SVC_SOCK_ANONYMOUS,
++							      current_cred());
++		}
++
+ 		/* always save the latest error */
+ 		if (ret < 0) {
+ 			bad_attr = attr;
+@@ -2224,8 +2240,17 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
+ 	 */
+ 	if (err) {
+ 		NL_SET_BAD_ATTR(info->extack, bad_attr);
+-		NL_SET_ERR_MSG_FMT(info->extack, "cannot create %s listener",
+-				   bad_xprt);
++		if (skipped_rpcb)
++			NL_SET_ERR_MSG_FMT(info->extack,
++					   "cannot create %s listener; rpcbind did not answer",
++					   bad_xprt);
++		else
++			NL_SET_ERR_MSG_FMT(info->extack,
++					   "cannot create %s listener",
++					   bad_xprt);
++	} else if (skipped_rpcb) {
++		NL_SET_ERR_MSG(info->extack,
++			       "rpcbind did not answer, some listeners are not registered");
  	}
  
- 	if (test_and_set_bit(XPT_DEAD, &xprt->xpt_flags))
+ 	if (!serv->sv_nrthreads && list_empty(&nn->nfsd_serv->sv_permsocks))
 
 -- 
 2.55.0
