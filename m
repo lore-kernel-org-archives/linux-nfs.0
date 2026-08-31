@@ -1,73 +1,70 @@
 Received: from mx0a-00154904.pphosted.com (mx0a-00154904.pphosted.com [148.163.133.20])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4EE4F344D99
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 10:42:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E3385339395
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 10:42:28 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.133.20
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788172944; cv=none; b=QVWCJetOl77D01Nd3s4eNnNYvXPwYerYj0R67b+4TzAPFfOUKTxyuSm8CgJNm5AUs9iKcCwHQQdhG2zFU6hZFRjolkTOzUhAyNtqxkVfYusfxVggA3JR3sRyTzcMPWm6kWjahXWqjtFt/xdUCJzyLH9lTJVuo6JaLAPjdjCfRek=
+	t=1788172950; cv=none; b=J7JzrHwu0FlZ2v1+QEkQ0Rj+HSVEh/rqVWk1qHBX46qtqwcVJqGGPnrbLLFFg59UkP/XHcVz0xkX+NXMKCI4qp8H+rAV6DXpMSJW86wkVOOVYeJEGML/aRyprjIaSNDluRS9VhvYugqMas/MQI4dRMY0reT+OfiXCuKmIUNEmOY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788172944; c=relaxed/simple;
-	bh=pVxKnyMx7g5auDuKPqHQqfOCcOiavYfV+KevlxrkAyQ=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=EbIpTcGO3opW8T02TNr0ctp1GyMYQoQm9wtzUTK21JG8eJNoKIKPULwIum7AwQC4olQhfd3yvCqJBM+20Hhv4DD1700p9tWKlSVGECRHn/bAzesjlIoVeo3hYEKueS2Fc+hzW+mBr1FMz02xunabxcTD4BigEluKZrWxrjujUAk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=QJ+d9S7g; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=cE2eXIr/; arc=none smtp.client-ip=148.163.133.20
+	s=arc-20240116; t=1788172950; c=relaxed/simple;
+	bh=3u1HXnIo1n//m8L9w1iYT3/v4TP4y8ymKTPSSmIhYAg=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=t6IlYU+TxUreY3oaFF3t9AP/GAgzgFANbCHqWuL7bp+C9DxH2yjMABfsg4r6AtWTun1YV0UfCPhRw89VuHqJwp9RwvF+yvQdj7/SLBxcnO1/Ym9UupIcIIYQeHLP9Ryo+2J35v/3l800WSqwk2q4/1AtdQRdhzqYus4im7Fay8E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=W7/vommV; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=NEZYQxwK; arc=none smtp.client-ip=148.163.133.20
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dell.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="QJ+d9S7g";
-	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="cE2eXIr/"
-Received: from pps.filterd (m0170390.ppops.net [127.0.0.1])
-	by mx0a-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67V7x1bd1070249
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 06:42:22 -0400
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="W7/vommV";
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="NEZYQxwK"
+Received: from pps.filterd (m0170391.ppops.net [127.0.0.1])
+	by mx0a-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67V80NCS2700740
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 06:42:28 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=dell.com; h=cc
-	:content-transfer-encoding:date:from:in-reply-to:message-id
-	:mime-version:references:subject:to; s=smtpout1; bh=5gkr5NO3n5A3
-	qTG42DpHm3dTr1ODWlNH3Mf6fRH6yzo=; b=QJ+d9S7gIHfjG5p0jxHlivy/bhSP
-	UK/ijvTRI8dEQjkE39xFNi6OXlgE1B2QAVfP5HDbjgnqhmrUjWlVr6xoSUF+V0xM
-	b3XSI5T2k/DkjrkZhw6E3z8EwPyT16sMDZ44RMFT3lls9FcxTJhOTIdWD+z+wf2T
-	R1gIrDxzL7UI/6S4huvF8CSSzmGhmQ4QnAah2VxtscRN5CV3ywwwNuyNoaJB6Ihh
-	QTbWIOv6IJhhr15n2TKFfKyCHUl+F17fz9DM6GvgA/EGOvUBcsqtyCzpL8Kb7GxU
-	sBvpCPhVHAr7wS0uRPpvrAUMKacti4c9anGnwmHyyEWb832cRJkmvvHVoQ==
+	:content-transfer-encoding:date:from:message-id:mime-version
+	:subject:to; s=smtpout1; bh=SvrB1QKImXkD/MIpcxBeh3LoHUZUx/G2vMYp
+	vgLTRs0=; b=W7/vommVKR/kDmZ90Ceg7KrpV27QOADzuW8Hj3VeHYnOuVVDZZQq
+	gRJgWNM7k36K1I73ZNZVADIA66bSdEmLFkyR1QZdZPTiYkuUiYrzZDP0ikJr18oh
+	51swJLOoElMvXIEV0BtG+IR1G8llPa0cYRUbqOMVwCk7hoyK4tEQZSI0A1W5cMyX
+	XKcvzFPNIK/3N+UmC8W7kBPZhcQzlO1sAc9rhtpwGEpNJfOgYz1CIvjIhXm34DkM
+	YUqO2fAb8VcEMHtsViKVcUPu1CnkTskSDP0HrE1BqZopQbOBHprVRW8ECWN9YqOl
+	O212Y1y52h8Qb4wXf9WU62e8v03xEQHCwA==
 Received: from mx0a-00154901.pphosted.com (mx0b-00154901.pphosted.com [67.231.157.37])
-	by mx0a-00154904.pphosted.com (PPS) with ESMTPS id 4gbtfwdf34-1
+	by mx0a-00154904.pphosted.com (PPS) with ESMTPS id 4gbtjsde56-1
 	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 06:42:22 -0400 (EDT)
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 06:42:27 -0400 (EDT)
 Received: from pps.filterd (m0089484.ppops.net [127.0.0.1])
-	by mx0b-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67V80NH64129968
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 06:42:21 -0400
-Received: from esapsmtplv05.us.dell.com (esapsmtplv05.us.dell.com [143.166.203.153])
-	by mx0b-00154901.pphosted.com (PPS) with ESMTPS id 4gd4xnjaxv-4
+	by mx0b-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67V80NH84129968
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 06:42:26 -0400
+Received: from esapsmtplv04.us.dell.com (esapsmtplv04.us.dell.com [143.166.203.152])
+	by mx0b-00154901.pphosted.com (PPS) with ESMTPS id 4gd4xnjb1c-1
 	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 06:42:21 -0400 (EDT)
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 06:42:26 -0400 (EDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=dell.com; i=@dell.com; q=dns/txt; s=smtpdev1;
-  t=1788172941; x=1819708941;
-  h=from:to:cc:subject:date:message-id:in-reply-to:
-   references:mime-version:content-transfer-encoding;
-  bh=5gkr5NO3n5A3qTG42DpHm3dTr1ODWlNH3Mf6fRH6yzo=;
-  b=cE2eXIr/Ix5kgJC/9O+Ice9wLt6gOhPmaQS+voRGuhd7wWYwZMdiVFzd
-   f1sY0YekfQ4trvUiX7L8tlaotwEASkiAaYUyVbeAttmITyJ2UmrFplv1s
-   l77PclKQSGVbcKct7S290ppEAmiMb5UJ23agg6q/RhLGRKmpgXw79PUr5
-   aRVriD8y/osjCF4ZXqPcr4wJFAK9VfvPZUli0RMiYaoh1RjPDkfTHccwb
-   mYJTyVydBqG8vPtlAmzBNW1j97/bWFKdElqYGzVjIJpPMK68jA6XFnRtq
-   On/EMniObmTQ304Kbt7XQoAVEBEl/nh3h4Evh6+K63khL88llM4WAhb8F
-   w==;
-X-CSE-ConnectionGUID: yxym3LyCTGGi1XBf/IBN5Q==
-X-CSE-MsgGUID: ySwVzOFgS+yoUKA1WlOpYQ==
+  t=1788172947; x=1819708947;
+  h=from:to:cc:subject:date:message-id:mime-version:
+   content-transfer-encoding;
+  bh=SvrB1QKImXkD/MIpcxBeh3LoHUZUx/G2vMYpvgLTRs0=;
+  b=NEZYQxwKAtYG5TBgkPH6tqQ+BLXDwshYDqnOpyDoYIjtbb0nSoHv1J9r
+   dcSfmVkSs2QJmZ/ZSCEIVWXIyF2lD/+tfLhim+elwZbGu/WXaPzR1kiUD
+   /Zoa8rdz0Xsd1QKXpKXmh33lwL7qBAagfo/fXnC0MegbI3JgeDUKWhf0a
+   RCF5ho+zuqhOczR2R7DYMOOxTU+uiKh+9WDSZrp1fqir8FLXl2iRF9xue
+   taVmmh4IzjAGeBARZ/7cQ6dX+CkWeNQoFNE5kWenGxLHDcwjvCKXgRzGm
+   XdUEEmo7/+kVtIFrCsDpo3w6Z4DTlrW3HjO27bArh671J+RkXfr0Aub+Z
+   g==;
+X-CSE-ConnectionGUID: BZqeQLMPT0ixpvG7E74Yig==
+X-CSE-MsgGUID: zpYj1LwUQqWifdAsqi1x1w==
 X-LoopCount0: from 10.94.8.206
 X-MS-Exchange-CrossPremises-AuthAs: Internal
 Received: from w-96j1th4.apac.dell.com (HELO W-96J1TH4.blr.amer.dell.com) ([10.94.8.206])
-  by esapsmtplv05.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 31 Aug 2026 10:42:20 +0000
+  by esapsmtplv04.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 31 Aug 2026 10:42:25 +0000
 From: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
 To: linux-nfs@vger.kernel.org
 Cc: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
-Subject: [PATCH 3/3] gssd: reject server hostnames that do not fit
-Date: Mon, 31 Aug 2026 10:42:11 +0000
-Message-ID: <20260831104211.2297-4-prabhakar.pujeri@dell.com>
+Subject: [PATCH 0/2] gssd, statd: correct command help text
+Date: Mon, 31 Aug 2026 10:42:19 +0000
+Message-ID: <20260831104221.2310-1-prabhakar.pujeri@dell.com>
 X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260831104211.2297-1-prabhakar.pujeri@dell.com>
-References: <20260831104211.2297-1-prabhakar.pujeri@dell.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -84,63 +81,47 @@ X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
  phishscore=0 classifier=typeunknown authscore=0 authtc= authcc=
  route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2606150000
  definitions=main-2608310091
-X-Authority-Analysis: v=2.4 cv=BdToFLt2 c=1 sm=1 tr=0 ts=6a955a8e cx=c_pps
- a=Z2e5DKjA+8LiMDv5v6mwwA==:117 a=t4Iba6VQkoKuxR139xjPXA==:17
+X-Authority-Analysis: v=2.4 cv=R9Yz39RX c=1 sm=1 tr=0 ts=6a955a93 cx=c_pps
+ a=Z2e5DKjA+8LiMDv5v6mwwA==:117 a=XtseytAk/c9oG0Kwoj6KRQ==:17
  a=Sv0fKeRqtYgA:10 a=ke5jqHz-1hQA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=6gNNCFAoQcIphELLPWWu:22 a=sEWawkeXllE7TocFc0N_:22 a=iLNU1ar6AAAA:8
- a=XvIGpVyiO-i08diihGsA:9 a=hlJyneSgMmFPbskH-t2w:22
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODMxMDA5MiBTYWx0ZWRfX7jxg1jieaYTR
- wn3olSHgo55NmpOPQYsIRsBPbk8wtG4jb41LS/DleSveAcCOU68/hw7BEK84RmoV2eZYVb7QzJ8
- cKfBYsc413u4JBvw6FC1elVQafKhPmLAbOEyGZ4NP06uPOC2UhLbNM6407PmzUFHdOWdBjOWltB
- uHTQwZTjeCYSALMJbJqxgMZaun1ump8pSF8MlYm6Xp0ZMafCxipw5i+k0ePnKw59eO7CzAUuILz
- qo2x6CCIIfCEkVOJ2Vw+eBI0HBQ9dbKCEjSXTgtzATo9SjFg2T0nJK34DOvtOko/Qf4pRYKvfBb
- Lb4pz7322as8hfIco2KOCzW7uae4fZBmCRD1pTk69l4BIXMmGXYX2kyjJuGsYf6FVuUT/L8uwqK
- zGFazYOOY35VVum+XWwOEc6gvmm/Plwy6f43k/vbd+KATIwAJyZtuj0sbs56Fy2ZsLvVmjKu77L
- Sz288C4imBU+HpN9mYw==
-X-Proofpoint-Spam-Info: AW1haW4tMjYwODMxMDA5MiBTYWx0ZWRfXzJZ74M6VwOs6
- oOa5MLOUiHZaWeEz6KV1JnqFDriL982I9ksXO4VsL642kr2rNrjufet2FL4HVxb+oIFRwfvny0D
- UIXSGzDdiVShpnPyfk1+QlMJJ9XN0t8=
-X-Proofpoint-GUID: hl83hYYabO6DciGaxiB6zsrzGgDNrqLb
-X-Proofpoint-ORIG-GUID: hl83hYYabO6DciGaxiB6zsrzGgDNrqLb
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0
- lowpriorityscore=0 suspectscore=0 bulkscore=0 impostorscore=0
- priorityscore=1501 adultscore=0 phishscore=0 spamscore=0 clxscore=1015
+ a=6gNNCFAoQcIphELLPWWu:22 a=aNt9FJNJ8fZyd9HhltU_:22 a=0F21_NOdGHfHwvXvrbAA:9
+ a=hlJyneSgMmFPbskH-t2w:22
+X-Proofpoint-ORIG-GUID: 9mSa9EjJCr6SL3hjL4xl4abG73uNuMT-
+X-Proofpoint-GUID: 9mSa9EjJCr6SL3hjL4xl4abG73uNuMT-
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODMxMDA5MiBTYWx0ZWRfX0G2/C/U03Gsp
+ TC3BgLn174Dm41qDzAL8JFQ4hL9N5DBm8BsZ0wuBRPAv3Oos4yDstJ8gOsi/gN924SziVJMNoqS
+ hJ+JBGqCPBui538/ec5G5T6lQyGTE0AikOy9DvHdffr6yVVhEPrPsWfcEGpwm2CBA/RQnDDSHZy
+ 6SpVOVJ9Q1Y9p9komXa4gcBUGb5B7k11Ljde+eyL/BlF813v39+1h0Allhr0jqsbKzmsmWyFXoK
+ /izliqb1WAfnOdgiJFBjkIo6+Viarzvx5tR/aV2AhvqMd1WtwF7HDrHROGjOet7Vlm1+Zq+pOiO
+ oSMVw7JBMAP3UlqGcRZdgy46figozIzRU5qzDalK/n/fWdpAUsh8q+Baui5d4aWx98uY3znq3KT
+ bgqEMBoBUhoDl+wjxjsx+UaLqcldNoxc/aDTJ8SvhXlYse6H+1mRctVNmNh0P9YU5z8WxI2Fw4N
+ dmJsHNs3pjCIQT+Feog==
+X-Proofpoint-Spam-Info: AW1haW4tMjYwODMxMDA5MiBTYWx0ZWRfX4qvt2O8jkDo/
+ gEwpZh6OTkEVvzAoVeyEO+RmoGXoyj3SWuAdG+3Y80rfuJ6BXACljhTwjS3iC8Qg/cTER7gmupn
+ m5js9sJeUgoPBzFNuz8JZi1ml/UXSOw=
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 clxscore=1015
+ priorityscore=1501 impostorscore=0 lowpriorityscore=0 adultscore=0
+ suspectscore=0 phishscore=0 spamscore=0 malwarescore=0 bulkscore=0
  classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
  reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608310092
 
-find_keytab_entry() copies a hostname from the kernel upcall into a fixed
-NI_MAXHOST buffer with strcpy(), allowing an overlong name to overwrite
-the stack.
+Bring the command help in line with the options accepted by rpc.gssd and
+rpc.statd.  The first patch removes a stale rpc.gssd option and adds its
+timeout option.  The second adds the existing NLM port options to rpc.statd
+usage output.
 
-Use snprintf() and check its result.  Reject a truncated hostname with
-ENAMETOOLONG instead of performing a keytab lookup with a different name.
-The verified string also fits in the following myhostad copy.
+The series is based on current nfs-utils master.  A fresh autotools build
+and make check complete successfully; the statd integration test is skipped
+when its required service environment is unavailable.
 
-Signed-off-by: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
----
- utils/gssd/krb5_util.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+Prabhakar Pujeri (2):
+  gssd: sync usage() and man page synopsis with actual options
+  statd: document the NLM port options in usage()
 
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index bc063a8b..7ad67131 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -841,8 +841,13 @@ find_keytab_entry(krb5_context context, krb5_keytab kt,
- 
- 	/* Get full local hostname */
- 	if (srchost) {
--		strcpy(myhostname, srchost);
--	        strcpy(myhostad, myhostname);
-+		retval = snprintf(myhostname, sizeof(myhostname), "%s", srchost);
-+		if (retval < 0 || (size_t)retval >= sizeof(myhostname)) {
-+			retval = ENAMETOOLONG;
-+			printerr(1, "source hostname is too long\n");
-+			goto out;
-+		}
-+		strcpy(myhostad, myhostname);
- 	} else {
- 		/* Borrow myhostad for gethostname(), we need it later anyways */
- 		if (gethostname(myhostad, sizeof(myhostad)-1) == -1) {
+ utils/gssd/gssd.c   | 2 +-
+ utils/gssd/gssd.man | 2 +-
+ utils/statd/statd.c | 2 ++
+ 3 files changed, 4 insertions(+), 2 deletions(-)
+
 -- 
 2.55.0
-
