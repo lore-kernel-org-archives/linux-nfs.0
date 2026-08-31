@@ -1,71 +1,71 @@
-Received: from mx0b-00154904.pphosted.com (mx0b-00154904.pphosted.com [148.163.137.20])
+Received: from mx0a-00154904.pphosted.com (mx0a-00154904.pphosted.com [148.163.133.20])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 034533DEAEB
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 09:27:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.137.20
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9C7313D6CC4
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 09:28:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.133.20
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788168476; cv=none; b=jQ+7zMblbfcVWeASWZVzih8JykHtngobVuXEYl8rmrfMpHlTakKXipPEHARG0I4vuUw4nwbkRrw5zK8RLHKUWeL7PynE97Ebj5N153GX61BjBpJtbVdlK9BeSF+UeFpno/0bSo++e62vBCt2l8kQB3dyQK2LNVblTWYW+hTZV00=
+	t=1788168482; cv=none; b=ZVl0rpn/jTWRKyhCQdTIgairoc4ZUo5UXvneBmh2LJtz/E+PZbiHoQuwgY+iWnL4gGqwEr8unDGdFI6MJxvl7UPQpPoY1948to+08nrmD0tFDjKieah8hknOoAVA/l+mO4ar8E02wZqMpcYNjs7W/SVqVRetCwRAR/ZIlN3/20U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788168476; c=relaxed/simple;
-	bh=n9gUms+NvSrc5RR/DTZzZ2Vm+gofQJbq8gk9cehcD6A=;
+	s=arc-20240116; t=1788168482; c=relaxed/simple;
+	bh=GukMwV2+NZibEr0vBXYl/D79zo/zILBKMq2pThiS6qA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=oOAwKJuDWWsUJADe0V8WHkqxZb2M/gIVuIxw/dc42h7lAZUcm9LRqc3aexzJ4QbRBfMcWTOBi4cMTjrk3M+4uSkrD9wiVgd1yZ17IJ6kV7GMD38MHNKqOnriGZWJeuyh1bZGaHU7KYqhNmJYzuPEfx41U/Er78YS4v3PNhkMzw0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=R1gUFipZ; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=QK2asoBp; arc=none smtp.client-ip=148.163.137.20
+	 MIME-Version; b=coxRVk7Untplyuh/QDaYmUSDxp4pH6kprEq85LGohKTXqlYNt3qndncLhWkv3S8ttwuJdvfhYmh1fxIVNSAvx15k/sc68PU4ctUzf4zRsoj9nxFymxDvD9Ma8samhS94Hy6QoXSMk5MRWefxCiVoVHRN3w4wPpB0mz12N1RVghk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=JSbjfB5B; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=GGIxbGwc; arc=none smtp.client-ip=148.163.133.20
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dell.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="R1gUFipZ";
-	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="QK2asoBp"
-Received: from pps.filterd (m0170394.ppops.net [127.0.0.1])
-	by mx0b-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67V7xFSP2785210
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 05:27:52 -0400
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="JSbjfB5B";
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="GGIxbGwc"
+Received: from pps.filterd (m0170391.ppops.net [127.0.0.1])
+	by mx0a-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67V80Na02700832
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 05:27:54 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=dell.com; h=cc
 	:content-transfer-encoding:date:from:in-reply-to:message-id
-	:mime-version:references:subject:to; s=smtpout1; bh=NZUSe7ln1mT3
-	hAnAEGFiu+liOp4yFpLUqkkZDQ2ICuo=; b=R1gUFipZiH8OE94SoFc08EvyJ3Vq
-	46BYktCn7OH8HTyvmwocpG4LVt5GZ1IDOyGdnscp4NUFpuCvWiPeI/ZQkc/jMs9g
-	QcVl3vzYRjXPkYYzYJEYz6Q5RncGPn3M7gkePSNWvb6QXSbK0v4fqPo+d0cDI0AB
-	e7Q00rnXDofOdw+rcvq3+jz8ac+ShnrpRGA5KPYF2uiLqj3KwHLuJncmC4FLD5Ty
-	dawuBBPdxF7q6ouA6qeBKyRUpEfDoJjKZ5fJaK+bSi4SJPJCqJ/6dv+Z/TdAtQS6
-	48x0KQq0CsTTjltEGDyjWkRO24/TiLbnzxDdOE6sVjzEH5xrlDgZ41QLpw==
+	:mime-version:references:subject:to; s=smtpout1; bh=cOtw30DPqtNa
+	GMTS+fV+1BAaXdugCLYrnlgRs5e8H+8=; b=JSbjfB5BE2l/bsnnpYujQ3r1WxBC
+	EfhHK++L0p+9g/b8DD5x8UR+PZbhxghZShfVgnhhdFNu8hwaGb33RHicAI58mRxw
+	ZvqOSjEk5O6CveEkZaSbDZ9BanEOF9iucJGkMuGK3J82fO2BiJBzMlCisC0lpDbs
+	7TA/N4BgD2IMNCWoot47fEd4Pd0vbFVKQe6/ZOo0I+GmPblFknG+P4vd7ldzVa36
+	0Bzbz9iFROVQu1BKxIBFx3NWLAd3E7GFsjHolvrxyDBmMHfrBAURxperWiWSiTM/
+	xtXkkh1UYhtj1tdZgeKgDZZvSVkl+l1VBXsMM7P3p9KCYuOWw90yu7JdaA==
 Received: from mx0a-00154901.pphosted.com (mx0a-00154901.pphosted.com [67.231.149.39])
-	by mx0b-00154904.pphosted.com (PPS) with ESMTPS id 4gbt01d8a9-1
+	by mx0a-00154904.pphosted.com (PPS) with ESMTPS id 4gbtjsd63a-1
 	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 05:27:52 -0400 (EDT)
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 05:27:54 -0400 (EDT)
 Received: from pps.filterd (m0142693.ppops.net [127.0.0.1])
-	by mx0a-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67V90T6c2842117
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 05:27:51 -0400
+	by mx0a-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67V90T6d2842117
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 05:27:54 -0400
 Received: from esapsmtplv05.us.dell.com (esapsmtplv05.us.dell.com [143.166.203.153])
-	by mx0a-00154901.pphosted.com (PPS) with ESMTPS id 4gd3pk2f8b-2
+	by mx0a-00154901.pphosted.com (PPS) with ESMTPS id 4gd3pk2f8b-3
 	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 05:27:51 -0400 (EDT)
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 05:27:53 -0400 (EDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=dell.com; i=@dell.com; q=dns/txt; s=smtpdev1;
-  t=1788168471; x=1819704471;
+  t=1788168474; x=1819704474;
   h=from:to:cc:subject:date:message-id:in-reply-to:
    references:mime-version:content-transfer-encoding;
-  bh=NZUSe7ln1mT3hAnAEGFiu+liOp4yFpLUqkkZDQ2ICuo=;
-  b=QK2asoBpVeraL+WbWzZ6kyJNc5mcplsbl1cCR+AmFmtaxbYbPr94mxx8
-   UnnxxUpd6RWUaWErMux4VfmyGNVS/ZgwyTlZySilJoinB2JvyUDua6K7k
-   QYhl7M+kzTXyuVqJNjJmJxjvCUS+lZjFCZi7z2D29Zfo1ElfuUH2MjN24
-   tYOc6fx5MlZvxx1gxo3lbt5U7lsK77d3sC7XCxzawt2bnuNkPFJMfJto4
-   SL7nZt3IskJFM0LB0kuwAe0s2fasedBfTcJODJ4wlXeGnuc3hc7GVQcKc
-   GkY61x7d3DX81ubbDwfLEDaLIF/VUh2uw7FGIQ7ZF+mzlzgH28BCt0QB4
-   Q==;
-X-CSE-ConnectionGUID: 7TF0pXwdSESn69dotcrGfA==
-X-CSE-MsgGUID: xaulqXYTTEC2k3+VeMj00A==
+  bh=cOtw30DPqtNaGMTS+fV+1BAaXdugCLYrnlgRs5e8H+8=;
+  b=GGIxbGwck4AfLPeC+tYHCfPjqFFGLIC90x7vbzQw0VW6tP9WHSBan5oy
+   OplxACZTSsb7/GytyD561m12zp36foplJWVDnEIkKe1G7bq14i51cMuMD
+   QendbhEWI+PMAuRbQigQPqwzdmfwLKkGrSvVK3CanQ0GCj3J3gIk0fJdm
+   aS3qgvX3S5VcDbA0Q4EpzuRlSf6q2KtzP9dJU+zQ9Mp5Kr7o2JZ1Ygtvl
+   nvZ3Q+RIPFCMXTT4gMLDk2prRVKPEvBDAScu9qrmkleUurnztWpS2jsUg
+   VOZukpImok0q39+aYoxY5LJamEbq9gwYy7z0B2M3zLO1HMuowjWZRxQBj
+   w==;
+X-CSE-ConnectionGUID: hib3OLsRTb6IDJYGb5XKbg==
+X-CSE-MsgGUID: wVG0hs9/Qsmn5lLpdNpa2Q==
 X-LoopCount0: from 10.94.8.206
 X-MS-Exchange-CrossPremises-AuthAs: Internal
 Received: from w-96j1th4.apac.dell.com (HELO W-96J1TH4.blr.amer.dell.com) ([10.94.8.206])
-  by esapsmtplv05.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 31 Aug 2026 09:27:48 +0000
+  by esapsmtplv05.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 31 Aug 2026 09:27:51 +0000
 From: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
 To: steved@redhat.com
 Cc: Prabhakar Pujeri <prabhakar.pujeri@dell.com>, cel@kernel.org,
         jlayton@kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/2] nfsdctl: add a command to list NFSv4 clients
-Date: Mon, 31 Aug 2026 09:27:40 +0000
-Message-ID: <b78de46043798e926a9c01427a9ec6a7b90820e4.1787988918.git.prabhakar.pujeri@dell.com>
+Subject: [PATCH v2 2/2] nfsdctl: display per-client NFSv4 state usage
+Date: Mon, 31 Aug 2026 09:27:41 +0000
+Message-ID: <8c01bc79b768be1a2824b4691d80fd1c7d1384d7.1787988918.git.prabhakar.pujeri@dell.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1787988918.git.prabhakar.pujeri@dell.com>
 References: <cover.1787988918.git.prabhakar.pujeri@dell.com>
@@ -84,536 +84,245 @@ X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
  clxscore=1015 malwarescore=0 impostorscore=0 spamscore=0 adultscore=0
  classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
  reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608310080
-X-Proofpoint-ORIG-GUID: mcOt3pbwI-iBB7p7dgVKP3Kf3hCl2k9h
-X-Proofpoint-GUID: mcOt3pbwI-iBB7p7dgVKP3Kf3hCl2k9h
-X-Authority-Analysis: v=2.4 cv=H67rBeYi c=1 sm=1 tr=0 ts=6a954918 cx=c_pps
+X-Authority-Analysis: v=2.4 cv=R9Yz39RX c=1 sm=1 tr=0 ts=6a95491a cx=c_pps
  a=j0++y401J6f/BxNAf5EDow==:117 a=t4Iba6VQkoKuxR139xjPXA==:17
  a=Sv0fKeRqtYgA:10 a=ke5jqHz-1hQA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=6gNNCFAoQcIphELLPWWu:22 a=gLxAKuEMs0EQMVFiDJnH:22 a=VwQbUJbxAAAA:8
- a=iLNU1ar6AAAA:8 a=ukApeBBUpQeWXRKlOlYA:9 a=gbU3OgOOxF9bX48Letew:22
-X-Proofpoint-Spam-Info: AW1haW4tMjYwODMxMDA4MSBTYWx0ZWRfX5ZtOp88nDKjn
- b58aV8/nD6rYnMbJxX8WsJ2XcFXWLZ8OK3lqvAny81k1FqfpCeHYE18tWgPPitm9wThPVqumKy+
- XKc9onLYHAb4DfC4n+nayQiTkguE2RQ=
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODMxMDA4MSBTYWx0ZWRfX0mcOitSPzL8D
- 5GquUiBc2q0ttE0khNcrVeEuB2UnPHkFFqo9hFO7KxaFuY0ijWDWxR5NvpgXj+zHOpccnItLUUj
- f+BKGPUoByPpfOv9Thsu2+WCGwvGHXrfe6VGEFa0z10koCd56vzTbrqsgQOlKgLZ2HR2WbDil8B
- I9RWiqIibvQ6bXCMjyL3p+N2GZjOZMiJl+b3ON/TeqUKcRMCbnmwia6t1PrNjKJfQgpAg1bWkTX
- Z4H/iue5OtUos6jP33MXTkcK8jATbJNU6wTc7eXSa0WTqtLCzT/csG78/wu9CGmaVLfTHvBMKtG
- dw/3c27bY6ijeTBc2XwzJKS6SVcWdhXuJ1NHjdDOqgkNsBuXjShDaKKsCrnapJXccuNCcOMNRB1
- fSpSYov+BXsIyQ9BRBqf4tFxtfF0k0Ig5YBXdpZyKeON0uF6GmahWrNXd5zDhLQDUMf3gJqhXsu
- 8BM0sihkVi8LnMqce4A==
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 bulkscore=0
- priorityscore=1501 spamscore=0 clxscore=1015 lowpriorityscore=0
- suspectscore=0 phishscore=0 impostorscore=0 malwarescore=0 adultscore=0
+ a=6gNNCFAoQcIphELLPWWu:22 a=aNt9FJNJ8fZyd9HhltU_:22 a=VwQbUJbxAAAA:8
+ a=iLNU1ar6AAAA:8 a=oZIGi6-CDSk9Cc5Qcs8A:9 a=gbU3OgOOxF9bX48Letew:22
+X-Proofpoint-ORIG-GUID: N5yHcxXGRsyE-JNLLXTrYo5W5nCVOH1B
+X-Proofpoint-GUID: N5yHcxXGRsyE-JNLLXTrYo5W5nCVOH1B
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODMxMDA4MSBTYWx0ZWRfX2aOymo3KM//V
+ tMEtrzWJ7+H9H8Unq0V4aSTW/+KRPJI3A49BkDXx0w2nfI8SDDcOvjRCtGibXHuDeC/68KSXX9i
+ RPRh46jgROV3Sz6iYc7wy2fqhG3nWvJ6Xrs/wWTvKNz6oXrr12QGNgJsGIo6ZcXcko5I9ir1ssr
+ ZUetS54xVFVs05ZOp5Z3GFlREkKXV4vCSG/iBfjTZEaklGmMuLNY+J3EPPrIKZKw/OCYwbe3jgH
+ 6NeiSmFKTbxqkjmkTUtdA8QNZEYmnTqQwluQKv1O6Ev2/EkRAZ3ZPGPF2KsS79WVwjZbPPc4rFj
+ CqP+NhMHb80iB37CsyWtFOxapfphWCn0ocGGqaCaB9sFV73NIZRMoGl4PWkPA8e3tq6A0I6Dukd
+ DWfy/fV/YNtCCnnb4awLvoYibM6wg1Wzc/4XK3vlYjMNTFqHTFsTjSgahDX4U6kN5UqaVxF1H0n
+ 7KIMgyDg63ri2Wni9ow==
+X-Proofpoint-Spam-Info: AW1haW4tMjYwODMxMDA4MSBTYWx0ZWRfXz9cqKF4b9bHq
+ 8Aa+NeaQVyfswgm9+UxNM7QY79cmZfcXsPqxZkyi9laFoYoX+5F/0is0CeEWNf9PGau7SI1BPVu
+ xWl98CsYsoiCqVrULxonQASTrxdzsBw=
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 clxscore=1015
+ priorityscore=1501 impostorscore=0 lowpriorityscore=0 adultscore=0
+ suspectscore=0 phishscore=0 spamscore=0 malwarescore=0 bulkscore=0
  classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
  reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608310081
 
-Monitoring NFSv4 clients currently requires walking the nfsd filesystem
-and parsing a separate info file for every client. Add a clients command
-that consumes the new NFSD_CMD_CLIENT_GET Netlink dump and presents one
-row per client.
+Extend the clients table with the session and stateid record counts
+exported by NFSD. These totals help an operator identify which client is
+retaining server-side state before using the detailed nfsd filesystem
+views.
 
-Report the server-generated client ID, peer address, minor version,
-client state, lease time remaining, reclaim status, and callback state.
-Decode the peer from separate IPv4 or IPv6 address, port, and scope-ID
-attributes. Keep unknown enum values visible as "unknown" so newer
-kernels remain usable with this client.
+Decode both four-byte and eight-byte representations of the Netlink uint
+attributes and display the complete u64 value. Display a dash when a
+count attribute is absent or malformed. This keeps the command accurate
+when a new nfsdctl is used with a kernel that supports the base client
+dump but not the count extension.
 
-Detect NLM_F_DUMP_INTR on both client records and NLMSG_DONE. Report an
-error instead of silently presenting a client list that may have skipped
-or repeated a record.
-
-Update the bundled UAPI header and require NFSD_CMD_CLIENT_GET before
-selecting a system copy of that header.
+Require the last count attribute before selecting the system UAPI header
+so building against a header with only the base command still uses the
+bundled copy.
 
 Assisted-by: LLM
 Signed-off-by: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
 ---
 Changes since v1:
 
-  - decode separate address, port, and scope-ID attributes
-  - reject interrupted dumps and ask the administrator to retry
+  - decode 32-bit and 64-bit variable-width uint count attributes
+  - store and format all counts as uint64_t values
 
-v1: https://lore.kernel.org/r/b595db7a74fb55fc4c6b3b200c7970e4bb06007b.1787639206.git.prabhakar.pujeri@dell.com
+v1: https://lore.kernel.org/r/05399eaee964c52a935f65b2c793f77cb8a2a97a.1787639206.git.prabhakar.pujeri@dell.com
 
- configure.ac                   |   2 +-
- support/include/nfsd_netlink.h |  38 +++++
- utils/nfsdctl/nfsdctl.8        |  19 +++
- utils/nfsdctl/nfsdctl.adoc     |  12 ++
- utils/nfsdctl/nfsdctl.c        | 255 +++++++++++++++++++++++++++++++++
- 5 files changed, 325 insertions(+), 1 deletion(-)
+ configure.ac                   |  2 +-
+ support/include/nfsd_netlink.h |  5 +++
+ utils/nfsdctl/nfsdctl.8        |  8 +++--
+ utils/nfsdctl/nfsdctl.adoc     |  8 +++--
+ utils/nfsdctl/nfsdctl.c        | 63 +++++++++++++++++++++++++++++++---
+ 5 files changed, 75 insertions(+), 11 deletions(-)
 
 diff --git a/configure.ac b/configure.ac
-index 2ce1e12..66330d0 100644
+index 66330d0..0b22523 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -259,7 +259,7 @@ AC_CHECK_HEADERS(linux/nfsd_netlink.h)
  
  # ensure the system netlink headers have the latest features
  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <linux/nfsd_netlink.h>]],
--			                   [[int foo = NFSD_CMD_SERVER_STATS_GET;]])],
-+			                   [[int foo = NFSD_CMD_CLIENT_GET;]])],
+-			                   [[int foo = NFSD_CMD_CLIENT_GET;]])],
++			                   [[int foo = NFSD_A_CLIENT_LAYOUT_STATEIDS;]])],
  			   [AC_DEFINE([USE_SYSTEM_NFSD_NETLINK_H], 1,
  				      ["Use system's linux/nfsd_netlink.h"])])
  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <linux/lockd_netlink.h>]],
 diff --git a/support/include/nfsd_netlink.h b/support/include/nfsd_netlink.h
-index 87da1d0..715acb4 100644
+index 715acb4..d977833 100644
 --- a/support/include/nfsd_netlink.h
 +++ b/support/include/nfsd_netlink.h
-@@ -50,6 +50,26 @@ enum nfsd_xprtsec_mode {
- 	NFSD_XPRTSEC_MODE_MTLS = 4,
- };
+@@ -292,6 +292,11 @@ enum {
+ 	NFSD_A_CLIENT_LEASE_REMAINING,
+ 	NFSD_A_CLIENT_RECLAIM_COMPLETE,
+ 	NFSD_A_CLIENT_CALLBACK_STATE,
++	NFSD_A_CLIENT_SESSIONS,
++	NFSD_A_CLIENT_OPEN_STATEIDS,
++	NFSD_A_CLIENT_LOCK_STATEIDS,
++	NFSD_A_CLIENT_DELEGATION_STATEIDS,
++	NFSD_A_CLIENT_LAYOUT_STATEIDS,
  
-+/*
-+ * State of an NFSv4 client record.
-+ */
-+enum nfsd_client_state {
-+	NFSD_CLIENT_STATE_UNCONFIRMED,
-+	NFSD_CLIENT_STATE_ACTIVE,
-+	NFSD_CLIENT_STATE_COURTESY,
-+	NFSD_CLIENT_STATE_EXPIRABLE,
-+};
-+
-+/*
-+ * State of an NFSv4 client's callback channel.
-+ */
-+enum nfsd_callback_state {
-+	NFSD_CALLBACK_STATE_UP,
-+	NFSD_CALLBACK_STATE_UNKNOWN,
-+	NFSD_CALLBACK_STATE_DOWN,
-+	NFSD_CALLBACK_STATE_FAULT,
-+};
-+
- enum {
- 	NFSD_A_CACHE_NOTIFY_CACHE_TYPE = 1,
- 
-@@ -260,6 +280,23 @@ enum {
- 	NFSD_A_SERVER_STATS_MAX = (__NFSD_A_SERVER_STATS_MAX - 1)
- };
- 
-+enum {
-+	NFSD_A_CLIENT_CLIENTID = 1,
-+	NFSD_A_CLIENT_PAD,
-+	NFSD_A_CLIENT_ADDRESS4,
-+	NFSD_A_CLIENT_ADDRESS6,
-+	NFSD_A_CLIENT_ADDRESS_PORT,
-+	NFSD_A_CLIENT_ADDRESS_SCOPE_ID,
-+	NFSD_A_CLIENT_MINOR_VERSION,
-+	NFSD_A_CLIENT_STATE,
-+	NFSD_A_CLIENT_LEASE_REMAINING,
-+	NFSD_A_CLIENT_RECLAIM_COMPLETE,
-+	NFSD_A_CLIENT_CALLBACK_STATE,
-+
-+	__NFSD_A_CLIENT_MAX,
-+	NFSD_A_CLIENT_MAX = (__NFSD_A_CLIENT_MAX - 1)
-+};
-+
- enum {
- 	NFSD_CMD_RPC_STATUS_GET = 1,
- 	NFSD_CMD_THREADS_SET,
-@@ -280,6 +317,7 @@ enum {
- 	NFSD_CMD_UNLOCK_FILESYSTEM,
- 	NFSD_CMD_UNLOCK_EXPORT,
- 	NFSD_CMD_SERVER_STATS_GET,
-+	NFSD_CMD_CLIENT_GET,
- 
- 	__NFSD_CMD_MAX,
- 	NFSD_CMD_MAX = (__NFSD_CMD_MAX - 1)
+ 	__NFSD_A_CLIENT_MAX,
+ 	NFSD_A_CLIENT_MAX = (__NFSD_A_CLIENT_MAX - 1)
 diff --git a/utils/nfsdctl/nfsdctl.8 b/utils/nfsdctl/nfsdctl.8
-index 1f526e7..18a7a56 100644
+index 18a7a56..e4e823e 100644
 --- a/utils/nfsdctl/nfsdctl.8
 +++ b/utils/nfsdctl/nfsdctl.8
-@@ -81,6 +81,15 @@ This subcommand takes no arguments. Note that if a "threads=" value is not set i
- nfs.conf, 16 server threads will be brought online.
+@@ -85,9 +85,11 @@ nfs.conf, 16 server threads will be brought online.
+ .RS 4
+ List NFSv4 clients known to the server. The output reports each client\(cqs
+ server-generated client ID, peer address, minor version, lease and callback
+-states, lease time remaining, and reclaim status. This subcommand requires
+-elevated privileges. If the client set changes in a way that interrupts the
+-dump, the command reports an error and should be retried.
++states, lease time remaining, reclaim status, session count, and counts of
++open, lock, delegation, and layout stateids. This subcommand requires elevated
++privileges.
++If the client set changes in a way that interrupts the dump, the command
++reports an error and should be retried.
  .RE
  .sp
-+\fBclients\fP
-+.RS 4
-+List NFSv4 clients known to the server. The output reports each client\(cqs
-+server-generated client ID, peer address, minor version, lease and callback
-+states, lease time remaining, and reclaim status. This subcommand requires
-+elevated privileges. If the client set changes in a way that interrupts the
-+dump, the command reports an error and should be retried.
-+.RE
-+.sp
  \fBlistener\fP
- .RS 4
- Get/set the listening sockets for the server. Run this without arguments to
-@@ -259,6 +268,16 @@ nfsdctl listener
- .fi
- .if n .RE
- .sp
-+Show the NFSv4 clients known to the server:
-+.sp
-+.if n .RS 4
-+.nf
-+.fam C
-+nfsdctl clients
-+.fam
-+.fi
-+.if n .RE
-+.sp
- Show the supported and enabled NFS versions:
- .sp
- .if n .RS 4
 diff --git a/utils/nfsdctl/nfsdctl.adoc b/utils/nfsdctl/nfsdctl.adoc
-index e85348e..d227562 100644
+index d227562..a25dc0a 100644
 --- a/utils/nfsdctl/nfsdctl.adoc
 +++ b/utils/nfsdctl/nfsdctl.adoc
-@@ -46,6 +46,14 @@ Each subcommand can also accept its own set of options and arguments. The
-   This subcommand takes no arguments. Note that if a "threads=" value is not set in
-   nfs.conf, 16 server threads will be brought online.
+@@ -50,9 +50,11 @@ Each subcommand can also accept its own set of options and arguments. The
  
-+*clients*::
-+
-+  List NFSv4 clients known to the server. The output reports each client's
-+  server-generated client ID, peer address, minor version, lease and callback
-+  states, lease time remaining, and reclaim status. This subcommand requires
-+  elevated privileges. If the client set changes in a way that interrupts the
-+  dump, the command reports an error and should be retried.
-+
+   List NFSv4 clients known to the server. The output reports each client's
+   server-generated client ID, peer address, minor version, lease and callback
+-  states, lease time remaining, and reclaim status. This subcommand requires
+-  elevated privileges. If the client set changes in a way that interrupts the
+-  dump, the command reports an error and should be retried.
++  states, lease time remaining, reclaim status, session count, and counts of
++  open, lock, delegation, and layout stateids. This subcommand requires elevated
++  privileges.
++  If the client set changes in a way that interrupts the dump, the command
++  reports an error and should be retried.
+ 
  *listener*::
  
-   Get/set the listening sockets for the server. Run this without arguments to
-@@ -138,6 +146,10 @@ Get a list of current listening sockets:
- 
-   nfsdctl listener
- 
-+Show the NFSv4 clients known to the server:
-+
-+  nfsdctl clients
-+
- Show the supported and enabled NFS versions:
- 
-   nfsdctl version
 diff --git a/utils/nfsdctl/nfsdctl.c b/utils/nfsdctl/nfsdctl.c
-index c712674..c0a6d5f 100644
+index c0a6d5f..096714f 100644
 --- a/utils/nfsdctl/nfsdctl.c
 +++ b/utils/nfsdctl/nfsdctl.c
-@@ -8,6 +8,7 @@
- #include <linux/version.h>
- #include <netlink/genl/genl.h>
- #include <errno.h>
-+#include <inttypes.h>
- #include <stdio.h>
- #include <stdlib.h>
- #include <stdarg.h>
-@@ -84,6 +85,31 @@ struct server_socket {
- 	bool active;
+@@ -101,6 +101,11 @@ struct nfsd_client {
+ 	bool		have_address4;
+ 	bool		have_address6;
+ 	bool		have_address_port;
++	uint64_t	sessions;
++	uint64_t	open_stateids;
++	uint64_t	lock_stateids;
++	uint64_t	delegation_stateids;
++	uint64_t	layout_stateids;
+ 	bool		reclaim_complete;
  };
  
-+#define MAX_CLIENT_ADDRESS_LEN	80
-+
-+struct nfsd_client {
-+	char		address[MAX_CLIENT_ADDRESS_LEN];
-+	struct in_addr	address4;
-+	struct in6_addr	address6;
-+	uint64_t	clientid;
-+	int64_t		lease_remaining;
-+	uint32_t	address_scope_id;
-+	uint32_t	minor_version;
-+	uint32_t	state;
-+	uint32_t	callback_state;
-+	uint16_t	address_port;
-+	bool		have_address4;
-+	bool		have_address6;
-+	bool		have_address_port;
-+	bool		reclaim_complete;
-+};
-+
-+struct client_dump_ctx {
-+	int *ret;
-+	bool header_printed;
-+	bool dump_interrupted;
-+};
-+
- #define MAX_NFSD_SOCKETS		256
- 
- int nfsd_socket_count;
-@@ -184,6 +210,16 @@ static int finish_handler(struct nl_msg *msg, void *arg)
- 	return NL_SKIP;
+@@ -309,6 +314,26 @@ static const char *callback_state_name(uint32_t state)
+ 	}
  }
  
-+static int client_finish_handler(struct nl_msg *msg, void *arg)
++static void parse_client_uint(const struct nlattr *attr, uint64_t *value)
 +{
-+	struct client_dump_ctx *ctx = arg;
-+
-+	if (nlmsg_hdr(msg)->nlmsg_flags & NLM_F_DUMP_INTR)
-+		ctx->dump_interrupted = true;
-+	*ctx->ret = 0;
-+	return NL_SKIP;
-+}
-+
- static int ack_handler(struct nl_msg *msg, void *arg)
- {
- 	int *ret = arg;
-@@ -241,6 +277,145 @@ static void parse_rpc_status_get(struct genlmsghdr *gnlh)
- 	printf("\n");
- }
- 
-+static const char *client_state_name(uint32_t state)
-+{
-+	switch (state) {
-+	case NFSD_CLIENT_STATE_UNCONFIRMED:
-+		return "unconfirmed";
-+	case NFSD_CLIENT_STATE_ACTIVE:
-+		return "active";
-+	case NFSD_CLIENT_STATE_COURTESY:
-+		return "courtesy";
-+	case NFSD_CLIENT_STATE_EXPIRABLE:
-+		return "expirable";
-+	default:
-+		return "unknown";
-+	}
-+}
-+
-+static const char *callback_state_name(uint32_t state)
-+{
-+	switch (state) {
-+	case NFSD_CALLBACK_STATE_UP:
-+		return "up";
-+	case NFSD_CALLBACK_STATE_UNKNOWN:
-+		return "unknown";
-+	case NFSD_CALLBACK_STATE_DOWN:
-+		return "down";
-+	case NFSD_CALLBACK_STATE_FAULT:
-+		return "fault";
-+	default:
-+		return "unknown";
-+	}
-+}
-+
-+static void format_client_address(const struct nfsd_client *client, char *buf,
-+				  size_t buflen)
-+{
-+	char host[INET6_ADDRSTRLEN];
-+
-+	snprintf(buf, buflen, "%s", "unknown");
-+	if (!client->have_address_port ||
-+	    client->have_address4 == client->have_address6)
-+		return;
-+
-+	if (client->have_address4) {
-+		if (!inet_ntop(AF_INET, &client->address4, host, sizeof(host)))
-+			return;
-+		snprintf(buf, buflen, "%s:%u", host,
-+			 ntohs(client->address_port));
-+		return;
-+	}
-+
-+	if (!inet_ntop(AF_INET6, &client->address6, host, sizeof(host)))
-+		return;
-+	if (client->address_scope_id)
-+		snprintf(buf, buflen, "[%s%%%u]:%u", host,
-+			 client->address_scope_id, ntohs(client->address_port));
-+	else
-+		snprintf(buf, buflen, "[%s]:%u", host,
-+			 ntohs(client->address_port));
-+}
-+
-+static void parse_client_get(struct genlmsghdr *gnlh,
-+			     struct client_dump_ctx *ctx)
-+{
-+	struct nfsd_client client = {
-+		.address = "unknown",
-+		.state = UINT32_MAX,
-+		.callback_state = UINT32_MAX,
-+	};
-+	struct nlattr *attr;
-+	int rem;
-+
-+	nla_for_each_attr(attr, genlmsg_attrdata(gnlh, 0),
-+			  genlmsg_attrlen(gnlh, 0), rem) {
-+		switch (nla_type(attr)) {
-+		case NFSD_A_CLIENT_CLIENTID:
-+			client.clientid = nla_get_u64(attr);
-+			break;
-+		case NFSD_A_CLIENT_ADDRESS4:
-+			if (nla_len(attr) == sizeof(client.address4)) {
-+				memcpy(&client.address4, nla_data(attr),
-+				       sizeof(client.address4));
-+				client.have_address4 = true;
-+			}
-+			break;
-+		case NFSD_A_CLIENT_ADDRESS6:
-+			if (nla_len(attr) == sizeof(client.address6)) {
-+				memcpy(&client.address6, nla_data(attr),
-+				       sizeof(client.address6));
-+				client.have_address6 = true;
-+			}
-+			break;
-+		case NFSD_A_CLIENT_ADDRESS_PORT:
-+			if (nla_len(attr) == sizeof(client.address_port)) {
-+				memcpy(&client.address_port, nla_data(attr),
-+				       sizeof(client.address_port));
-+				client.have_address_port = true;
-+			}
-+			break;
-+		case NFSD_A_CLIENT_ADDRESS_SCOPE_ID:
-+			if (nla_len(attr) == sizeof(client.address_scope_id))
-+				client.address_scope_id = nla_get_u32(attr);
-+			break;
-+		case NFSD_A_CLIENT_MINOR_VERSION:
-+			client.minor_version = nla_get_u32(attr);
-+			break;
-+		case NFSD_A_CLIENT_STATE:
-+			client.state = nla_get_u32(attr);
-+			break;
-+		case NFSD_A_CLIENT_LEASE_REMAINING:
-+			client.lease_remaining = nla_get_s64(attr);
-+			break;
-+		case NFSD_A_CLIENT_RECLAIM_COMPLETE:
-+			client.reclaim_complete = true;
-+			break;
-+		case NFSD_A_CLIENT_CALLBACK_STATE:
-+			client.callback_state = nla_get_u32(attr);
-+			break;
-+		default:
-+			break;
-+		}
-+	}
-+	format_client_address(&client, client.address, sizeof(client.address));
-+
-+	if (!ctx->header_printed) {
-+		printf("%-18s %-47s %-4s %-11s %8s %7s %8s\n",
-+		       "clientid", "address", "vers", "state", "lease",
-+		       "reclaim", "callback");
-+		ctx->header_printed = true;
-+	}
-+
-+	printf("0x%016" PRIx64 " %-47s 4.%-2u %-11s %8" PRId64
-+	       " %7s %8s\n",
-+	       client.clientid, client.address, client.minor_version,
-+	       client_state_name(client.state), client.lease_remaining,
-+	       client.minor_version ?
-+		(client.reclaim_complete ? "yes" : "no") : "-",
-+	       callback_state_name(client.callback_state));
-+}
-+
- static void parse_version_get(struct genlmsghdr *gnlh)
- {
- 	struct nlattr *attr;
-@@ -410,6 +585,11 @@ static int recv_handler(struct nl_msg *msg, void *arg)
- 	case NFSD_CMD_POOL_MODE_GET:
- 		parse_pool_mode_get(gnlh);
- 		break;
-+	case NFSD_CMD_CLIENT_GET:
-+		if (nlmsg_hdr(msg)->nlmsg_flags & NLM_F_DUMP_INTR)
-+			((struct client_dump_ctx *)arg)->dump_interrupted = true;
-+		parse_client_get(gnlh, arg);
++	switch (nla_len(attr)) {
++	case sizeof(uint32_t):
++		*value = nla_get_u32(attr);
 +		break;
- 	case LOCKD_CMD_SERVER_GET:
- 		parse_lockd_get(gnlh);
- 		break;
-@@ -639,6 +819,76 @@ out:
- 	return ret;
- }
- 
-+static void clients_usage(void)
-+{
-+	printf("Usage: %s clients\n", taskname);
-+	printf("    Display NFSv4 clients and their current state.\n");
++	case sizeof(uint64_t):
++		*value = nla_get_u64(attr);
++		break;
++	}
 +}
 +
-+static int clients_func(struct nl_sock *sock, int argc, char **argv)
++static void format_client_count(uint64_t count, char *buf, size_t buflen)
 +{
-+	struct client_dump_ctx ctx = {};
-+	struct genlmsghdr *ghdr;
-+	struct nlmsghdr *nlh;
-+	struct nl_msg *msg;
-+	struct nl_cb *cb;
-+	int opt, ret;
-+
-+	optind = 1;
-+	while ((opt = getopt_long(argc, argv, "h", help_only_options, NULL)) != -1) {
-+		switch (opt) {
-+		case 'h':
-+			clients_usage();
-+			return 0;
-+		}
-+	}
-+
-+	if (!nfsd_nl_family_setup(sock))
-+		return 1;
-+
-+	msg = netlink_msg_alloc(sock, nfsd_nl_family);
-+	if (!msg)
-+		return 1;
-+
-+	nlh = nlmsg_hdr(msg);
-+	nlh->nlmsg_flags |= NLM_F_DUMP;
-+	ghdr = nlmsg_data(nlh);
-+	ghdr->cmd = NFSD_CMD_CLIENT_GET;
-+
-+	cb = nl_cb_alloc(NL_CB_CUSTOM);
-+	if (!cb) {
-+		xlog(L_ERROR, "failed to allocate netlink callbacks");
-+		ret = 1;
-+		goto out;
-+	}
-+
-+	ret = nl_send_auto(sock, msg);
-+	if (ret < 0)
-+		goto out_cb;
-+
-+	ret = 1;
-+	ctx.ret = &ret;
-+	nl_cb_err(cb, NL_CB_CUSTOM, error_handler, &ret);
-+	nl_cb_set(cb, NL_CB_FINISH, NL_CB_CUSTOM, client_finish_handler, &ctx);
-+	nl_cb_set(cb, NL_CB_ACK, NL_CB_CUSTOM, ack_handler, &ret);
-+	nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, recv_handler, &ctx);
-+
-+	while (ret > 0)
-+		nl_recvmsgs(sock, cb);
-+	if (ret < 0) {
-+		xlog(L_ERROR, "Error: %s", strerror(-ret));
-+		ret = 1;
-+	} else if (ctx.dump_interrupted) {
-+		xlog(L_ERROR, "NFSv4 client list changed during dump; retry");
-+		ret = 1;
-+	}
-+out_cb:
-+	nl_cb_put(cb);
-+out:
-+	nlmsg_free(msg);
-+	return ret;
++	if (count == UINT64_MAX)
++		snprintf(buf, buflen, "%s", "-");
++	else
++		snprintf(buf, buflen, "%" PRIu64, count);
 +}
 +
- static int threads_doit(struct nl_sock *sock, int cmd, int grace, int lease,
- 			int pool_count, int *pool_threads, char *scope, int minthreads,
- 			uuid_t fh_key)
-@@ -1942,6 +2192,7 @@ static int nlm_func(struct nl_sock *sock, int argc, char ** argv)
- 
- enum nfsdctl_commands {
- 	NFSDCTL_STATUS,
-+	NFSDCTL_CLIENTS,
- 	NFSDCTL_THREADS,
- 	NFSDCTL_VERSION,
- 	NFSDCTL_LISTENER,
-@@ -1954,6 +2205,8 @@ static int parse_command(char *str)
+ static void format_client_address(const struct nfsd_client *client, char *buf,
+ 				  size_t buflen)
  {
- 	if (!strcmp(str, "status"))
- 		return NFSDCTL_STATUS;
-+	if (!strcmp(str, "clients"))
-+		return NFSDCTL_CLIENTS;
- 	if (!strcmp(str, "threads"))
- 		return NFSDCTL_THREADS;
- 	if (!strcmp(str, "version"))
-@@ -1973,6 +2226,7 @@ typedef int (*nfsdctl_func)(struct nl_sock *sock, int argc, char **argv);
+@@ -344,7 +369,13 @@ static void parse_client_get(struct genlmsghdr *gnlh,
+ 		.address = "unknown",
+ 		.state = UINT32_MAX,
+ 		.callback_state = UINT32_MAX,
++		.sessions = UINT64_MAX,
++		.open_stateids = UINT64_MAX,
++		.lock_stateids = UINT64_MAX,
++		.delegation_stateids = UINT64_MAX,
++		.layout_stateids = UINT64_MAX,
+ 	};
++	char sessions[21], opens[21], locks[21], delegations[21], layouts[21];
+ 	struct nlattr *attr;
+ 	int rem;
  
- static nfsdctl_func func[] = {
- 	[NFSDCTL_STATUS] = status_func,
-+	[NFSDCTL_CLIENTS] = clients_func,
- 	[NFSDCTL_THREADS] = threads_func,
- 	[NFSDCTL_VERSION] = version_func,
- 	[NFSDCTL_LISTENER] = listener_func,
-@@ -1997,6 +2251,7 @@ static void usage(void)
- 	printf("    threads              get/set nfsd thread settings\n");
- 	printf("    nlm                  get current nlm settings\n");
- 	printf("    status               get current RPC processing info\n");
-+	printf("    clients              get current NFSv4 client information\n");
- 	printf("    autostart            start server with settings from /etc/nfs.conf\n");
+@@ -394,23 +425,47 @@ static void parse_client_get(struct genlmsghdr *gnlh,
+ 		case NFSD_A_CLIENT_CALLBACK_STATE:
+ 			client.callback_state = nla_get_u32(attr);
+ 			break;
++		case NFSD_A_CLIENT_SESSIONS:
++			parse_client_uint(attr, &client.sessions);
++			break;
++		case NFSD_A_CLIENT_OPEN_STATEIDS:
++			parse_client_uint(attr, &client.open_stateids);
++			break;
++		case NFSD_A_CLIENT_LOCK_STATEIDS:
++			parse_client_uint(attr, &client.lock_stateids);
++			break;
++		case NFSD_A_CLIENT_DELEGATION_STATEIDS:
++			parse_client_uint(attr, &client.delegation_stateids);
++			break;
++		case NFSD_A_CLIENT_LAYOUT_STATEIDS:
++			parse_client_uint(attr, &client.layout_stateids);
++			break;
+ 		default:
+ 			break;
+ 		}
+ 	}
+ 	format_client_address(&client, client.address, sizeof(client.address));
+ 
++	format_client_count(client.sessions, sessions, sizeof(sessions));
++	format_client_count(client.open_stateids, opens, sizeof(opens));
++	format_client_count(client.lock_stateids, locks, sizeof(locks));
++	format_client_count(client.delegation_stateids, delegations,
++			    sizeof(delegations));
++	format_client_count(client.layout_stateids, layouts, sizeof(layouts));
++
+ 	if (!ctx->header_printed) {
+-		printf("%-18s %-47s %-4s %-11s %8s %7s %8s\n",
++		printf("%-18s %-47s %-4s %-11s %8s %5s %5s %5s %5s %6s %7s %8s\n",
+ 		       "clientid", "address", "vers", "state", "lease",
+-		       "reclaim", "callback");
++		       "sess", "open", "lock", "deleg", "layout", "reclaim",
++		       "callback");
+ 		ctx->header_printed = true;
+ 	}
+ 
+ 	printf("0x%016" PRIx64 " %-47s 4.%-2u %-11s %8" PRId64
+-	       " %7s %8s\n",
++	       " %5s %5s %5s %5s %6s %7s %8s\n",
+ 	       client.clientid, client.address, client.minor_version,
+ 	       client_state_name(client.state), client.lease_remaining,
++	       sessions, opens, locks, delegations, layouts,
+ 	       client.minor_version ?
+ 		(client.reclaim_complete ? "yes" : "no") : "-",
+ 	       callback_state_name(client.callback_state));
+@@ -822,7 +877,7 @@ out:
+ static void clients_usage(void)
+ {
+ 	printf("Usage: %s clients\n", taskname);
+-	printf("    Display NFSv4 clients and their current state.\n");
++	printf("    Display NFSv4 clients and their current state usage.\n");
  }
  
+ static int clients_func(struct nl_sock *sock, int argc, char **argv)
 -- 
 2.54.0
