@@ -1,77 +1,78 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0FDDB400998;
-	Mon, 31 Aug 2026 09:59:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 99D9B1DDC35;
+	Mon, 31 Aug 2026 10:04:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788170392; cv=none; b=kkUq/ktcgKT1euIv10ei66XFUEe11wbBAwBl6OF5EoVip4XuH3shTv8px/BP3e4gbAZ2Wx/8Ei+Xkxcxip0z4wSh/pFFp5pabyahWnWggdt1ypgF8pR+3sszyYSQN7E9rei2ZcEbfGs+cxzzFKhj0m4Q2h124I+Q9dWG3ufhjW0=
+	t=1788170654; cv=none; b=RHXDr1hVKY1g+Ibcmeo+G0oV6kiWvWsTcRQKy134XAwDK3deq8X/Nyy/yVbKczb+imsMTnBOclQJfSQ/wYTaS3G5BgG2GspCGFuz90nw8MbpvTxU18JrhrvsNQlMlTLdruClwbkm4v+inBZynlK0jjNDu7GVaHs+iZgzO6GZ5fg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788170392; c=relaxed/simple;
-	bh=PqIa7f4joQ6Ewq8ZNwNRH9LrYTiWA+ynmpnFW7z1oPI=;
+	s=arc-20240116; t=1788170654; c=relaxed/simple;
+	bh=8Qil+blX2Vys0m1WkWdMdauSItajlkEciU8YD5f+BdQ=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=TCOd/wmiUtE5msfJyK9aUb3L5fv1FwgT2enw/D8U+YoW/8uB0K3KQnUIJPUBFxdLJieTQ2kQ1YGUq655PJrWGAlfZVOCuLgt/0WPziLeh25HpelWNgpZAYYx2gWSGPnzwfypcVi/NphEPMSCkXnIJg0fy2e+Qu2wbHtZj0cjYHY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=dW2nKgD/; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=KmcOhO0z; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=r9+5dkfj; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=vayhPUMM; arc=none smtp.client-ip=195.135.223.131
+	 Content-Type:Content-Disposition:In-Reply-To; b=KEvaiatLMqESozN1MozdkqkhraxcIB8FU9XGSkQg3Nc1nkfaGYYzoCRIdtRJH2xJxlW804qjb7Rs48J5ATjcMF1ZAcO7B1eYWdA3FFHvb1n35KivXVKcLAH9Z2Bd21u6LVjj5eXRxwuxijH6HdbBXtBOCLtb24inxQsXoQYdSU0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=cAtqCcip; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=6/9fk+PB; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=YgbfcsDp; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=yumPuaO2; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="dW2nKgD/";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="KmcOhO0z";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="r9+5dkfj";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="vayhPUMM"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="cAtqCcip";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="6/9fk+PB";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="YgbfcsDp";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="yumPuaO2"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id BCE4E1FAAB;
-	Mon, 31 Aug 2026 09:59:39 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 792D821C14;
+	Mon, 31 Aug 2026 10:04:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1788170383; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1788170646; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=9NwnR8kMEaTJTYkoxBQW5G3izVgqGS7StBEwaJ2omhE=;
-	b=dW2nKgD/72GHfPDPSkIXHWa4TQlW9zo4m5ZJZt18et8r8SpFKwl3fSOhDCUde4WrGHhX1k
-	HthafQUnqSZwcZK8Hdcs9U36lkHKEFP7wcuFYQxjwio2w5aV+Vt72W3ZXcuri1mhWwTdMf
-	dP+uDJvuZa7oiZHnAx8jWbEbvlydq4E=
+	bh=oyFzMlxgate4gjFGu5K3no73l6hUgvfdm1xyDOSnRmk=;
+	b=cAtqCcip6HDenN5TRFnC/XPhcQv5gdoaz8Ok2U50IAQj3SX1CuS9sFqJmqSRpb+FIyn2fN
+	gajMWVYj1XtHejho+hg3Th3u5G5gnwSUplrtIzgIxN/eCr2YbJvaaYjlj1KYM+04mGg2Bv
+	3dRUEswlM7b9RhycLaR3jPF5QbvXVS0=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1788170383;
+	s=susede2_ed25519; t=1788170646;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=9NwnR8kMEaTJTYkoxBQW5G3izVgqGS7StBEwaJ2omhE=;
-	b=KmcOhO0zo72Y4OHAa8RvceB+zt8rPD1OtYKdTL75AERgXOIdssNGME6lJ09SSLwG+HwP6H
-	WPniXvtYYYJ7buDA==
-Authentication-Results: smtp-out2.suse.de;
-	none
+	bh=oyFzMlxgate4gjFGu5K3no73l6hUgvfdm1xyDOSnRmk=;
+	b=6/9fk+PBGsOFnCAEU1mzxFXa8bZulZX9hJ4MRCNmLZ4tT2kN/Zy0zEalwTYdlxOrAUAzqB
+	oeMe8PXX+Wj2GECQ==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=YgbfcsDp;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=yumPuaO2
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1788170379; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1788170642; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=9NwnR8kMEaTJTYkoxBQW5G3izVgqGS7StBEwaJ2omhE=;
-	b=r9+5dkfj5zv2zJtacQf2HZljTAw/25dZVX8yvLicsAhmPie/8z4lpxN7aqnWa4UN22X30z
-	VqtIUOoyqHhMMot3U+vyaxuyjejWrLJMumjOQ8E3Br8VcDxJXDazwa4lekbK2hbqemViUC
-	LVdcCgmonttzkdd8su0ehz6W1kl120w=
+	bh=oyFzMlxgate4gjFGu5K3no73l6hUgvfdm1xyDOSnRmk=;
+	b=YgbfcsDpuiXPiRIJdk3sH/1wYb0GIddDnfKVTwGD3EL77DPlCjg+FWTfIaeMp12lSUdcwf
+	nsqyL4qPWnI9F5hq74OI9whxfEq1Jm/g29+Agylh05ek03C2l3C1TQHSuoOASOe0lxiz4e
+	dtAQ/DmdSHTv04EzbgLd6SlFA/ZHlrk=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1788170379;
+	s=susede2_ed25519; t=1788170642;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=9NwnR8kMEaTJTYkoxBQW5G3izVgqGS7StBEwaJ2omhE=;
-	b=vayhPUMMZNg3rW2xgsNzuc/IUtzfsyNI4zFxAL3JrlK7XeBEytvIqcNyZdaxkU8YXY20/9
-	vR13eZLPIsgFyYDQ==
+	bh=oyFzMlxgate4gjFGu5K3no73l6hUgvfdm1xyDOSnRmk=;
+	b=yumPuaO28o0zyWL7v7hocRihppgP5ARlKe7lPmvvV0N7jRCyaOfDO7JjUmzKqCCnO2tQj4
+	H3+cxdBhjGLPN1CA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 98AE413694;
-	Mon, 31 Aug 2026 09:59:39 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 5B15C13515;
+	Mon, 31 Aug 2026 10:04:02 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 2pBAJYtQlWp8cAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 31 Aug 2026 09:59:39 +0000
+	id eEZGFpJRlWpudQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 31 Aug 2026 10:04:02 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 29D40A13B5; Mon, 31 Aug 2026 11:59:35 +0200 (CEST)
-Date: Mon, 31 Aug 2026 11:59:35 +0200
+	id E49C7A13B5; Mon, 31 Aug 2026 12:03:53 +0200 (CEST)
+Date: Mon, 31 Aug 2026 12:03:53 +0200
 From: Jan Kara <jack@suse.cz>
 To: "Matthew Wilcox (Oracle)" <willy@infradead.org>
 Cc: Christian Brauner <christian@brauner.io>, Jan Kara <jack@suse.cz>, 
@@ -81,10 +82,10 @@ Cc: Christian Brauner <christian@brauner.io>, Jan Kara <jack@suse.cz>,
 	Phillip Lougher <phillip@squashfs.org.uk>, linux-erofs@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
 	linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org, ntfs@lists.linux.dev, 
 	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [PATCH 1/9] mm: Improve memalloc_nofs_save() documentation
-Message-ID: <wriwrbwg3sx5kpl6s7yggam5x7ljml2sul5rz4dm7ftbyyoqyu@yqjepgxxtd3g>
+Subject: Re: [PATCH 2/9] ext4: Remove uses of FGP_NOFS
+Message-ID: <pfgtqekyfsprme6htklelwrvuiazrm45oimome6a3h3fhuvalo@p4mridqzxu42>
 References: <20260830041901.2668-1-willy@infradead.org>
- <20260830041901.2668-2-willy@infradead.org>
+ <20260830041901.2668-3-willy@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -93,137 +94,83 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260830041901.2668-2-willy@infradead.org>
+In-Reply-To: <20260830041901.2668-3-willy@infradead.org>
+X-Spam-Score: -2.51
+X-Rspamd-Queue-Id: 792D821C14
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
 X-Spam-Level: 
-X-Spam-Score: -2.30
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.30 / 50.00];
+X-Rspamd-Action: no action
+X-Spamd-Result: default: False [-2.51 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
+	MX_GOOD(-0.01)[];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
 	RCPT_COUNT_TWELVE(0.00)[18];
-	TAGGED_RCPT(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[brauner.io,suse.cz,kernel.org,mit.edu,gmail.com,squashfs.org.uk,lists.ozlabs.org,vger.kernel.org,lists.linux.dev,kvack.org];
+	ARC_NA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
 	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	RCVD_TLS_LAST(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,imap1.dmz-prg2.suse.org:helo,suse.com:email]
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	MISSING_XM_UA(0.00)[];
+	FREEMAIL_CC(0.00)[brauner.io,suse.cz,kernel.org,mit.edu,gmail.com,squashfs.org.uk,lists.ozlabs.org,vger.kernel.org,lists.linux.dev,kvack.org];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[infradead.org:email,suse.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.cz:dkim,suse.cz:email]
+X-Spam-Flag: NO
 
-On Sun 30-08-26 05:18:48, Matthew Wilcox (Oracle) wrote:
-> Talk about why someone should call this function instead of
-> what this function does.  This makes the long comment in mm/readahead.c
-> obsolete; replace it with a comment about which case we're protecting
-> against.
+On Sun 30-08-26 05:18:49, Matthew Wilcox (Oracle) wrote:
+> Both of these locations are called while a transaction is in progress.
+> Starting a transaction uses memalloc_nofs_save(), so we are already
+> prevented from recursing into the filesystem and using GFP_NOFS was
+> unnecessary.
 > 
 > Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 
-Yeah, I think the documentation is better. Feel free to add:
+Looks good. Feel free to add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > ---
->  include/linux/sched/mm.h | 31 +++++++++++++++++++++++--------
->  mm/readahead.c           | 14 ++------------
->  2 files changed, 25 insertions(+), 20 deletions(-)
+>  fs/ext4/inline.c | 6 ++----
+>  1 file changed, 2 insertions(+), 4 deletions(-)
 > 
-> diff --git a/include/linux/sched/mm.h b/include/linux/sched/mm.h
-> index d7c6a942aa7e..f76be1141b06 100644
-> --- a/include/linux/sched/mm.h
-> +++ b/include/linux/sched/mm.h
-> @@ -372,13 +372,26 @@ static inline void memalloc_noio_restore(unsigned int flags)
->  }
+> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+> index ceee69a66482..1884abb09614 100644
+> --- a/fs/ext4/inline.c
+> +++ b/fs/ext4/inline.c
+> @@ -601,9 +601,7 @@ static int ext4_convert_inline_data_to_extent(struct address_space *mapping,
+>  		goto out;
+>  	}
 >  
->  /**
-> - * memalloc_nofs_save - Marks implicit GFP_NOFS allocation scope.
-> + * memalloc_nofs_save - Prevent recursion into the filesystem.
->   *
-> - * This functions marks the beginning of the GFP_NOFS allocation scope.
-> - * All further allocations will implicitly drop __GFP_FS flag and so
-> - * they are safe for the FS critical section from the allocation recursion
-> - * point of view. Use memalloc_nofs_restore to end the scope with flags
-> - * returned by this function.
-> + * All memory allocations between calling this function and calling
-> + * memalloc_nofs_restore() will be prevented from calling into filesystems
-> + * to reclaim memory.  Clean page cache memory can still be reclaimed,
-> + * but (for example) inodes will not be.
-> + *
-> + * The primary reason to do this is that the caller has taken a lock
-> + * which would be needed by FS reclaim.  While we could theoretically
-> + * call into a different filesystem in this case, it can be a deep call
-> + * stack so it is better to avoid all filesystems.
-> + *
-> + * Filesystems often choose to incorporate a call to this function as part
-> + * of starting a journal transaction.  While not a lock in the normal
-> + * sense, it has much the same effect as nested journal transactions
-> + * are either prohibited or expensive.
-> + *
-> + * Also call this function if you need to allocate memory while holding
-> + * a file folio locked.  High order allocations (such as those requested
-> + * by slab) can trigger compaction which will attempt to lock the folio.
->   *
->   * Context: This function is safe to be used from any context.
->   * Return: The saved flags to be passed to memalloc_nofs_restore.
-> @@ -389,10 +402,12 @@ static inline unsigned int memalloc_nofs_save(void)
->  }
+> -	/* We cannot recurse into the filesystem as the transaction is already
+> -	 * started */
+> -	folio = __filemap_get_folio(mapping, 0, FGP_WRITEBEGIN | FGP_NOFS,
+> +	folio = __filemap_get_folio(mapping, 0, FGP_WRITEBEGIN,
+>  			mapping_gfp_mask(mapping));
+>  	if (IS_ERR(folio)) {
+>  		ret = PTR_ERR(folio);
+> @@ -734,7 +732,7 @@ int ext4_generic_write_inline_data(struct address_space *mapping,
+>  		goto out_release_bh;
+>  	}
 >  
->  /**
-> - * memalloc_nofs_restore - Ends the implicit GFP_NOFS scope.
-> + * memalloc_nofs_restore - End filesystem reclaim scope.
->   * @flags: Flags to restore.
->   *
-> - * Ends the implicit GFP_NOFS scope started by memalloc_nofs_save function.
-> + * Ends the implicit memory allocation scope started by
-> + * memalloc_nofs_save().  This may not enable access to filesystem reclaim
-> + * if it was already disabled at the time memalloc_nofs_save() was called.
->   * Always make sure that the given flags is the return value from the
->   * pairing memalloc_nofs_save call.
->   */
-> diff --git a/mm/readahead.c b/mm/readahead.c
-> index 6e5563290287..9c116d4ba963 100644
-> --- a/mm/readahead.c
-> +++ b/mm/readahead.c
-> @@ -227,17 +227,7 @@ void page_cache_ra_unbounded(struct readahead_control *ractl,
->  	gfp_t gfp_mask = readahead_gfp_mask(mapping);
->  	unsigned long mark = ULONG_MAX, i = 0;
->  	unsigned int min_nrpages = mapping_min_folio_nrpages(mapping);
-> -
-> -	/*
-> -	 * Partway through the readahead operation, we will have added
-> -	 * locked pages to the page cache, but will not yet have submitted
-> -	 * them for I/O.  Adding another page may need to allocate memory,
-> -	 * which can trigger memory reclaim.  Telling the VM we're in
-> -	 * the middle of a filesystem operation will cause it to not
-> -	 * touch file-backed pages, preventing a deadlock.  Most (all?)
-> -	 * filesystems already specify __GFP_NOFS in their mapping's
-> -	 * gfp_mask, but let's be explicit here.
-> -	 */
-> +	/* Allocating with locked folios */
->  	unsigned int nofs = memalloc_nofs_save();
->  
->  	lockdep_assert_held(&mapping->invalidate_lock);
-> @@ -512,7 +502,7 @@ void page_cache_ra_order(struct readahead_control *ractl,
->  
->  	ra->order = new_order;
->  
-> -	/* See comment in page_cache_ra_unbounded() */
-> +	/* Allocating with locked folios */
->  	nofs = memalloc_nofs_save();
->  	filemap_invalidate_lock_shared(mapping);
->  	/*
+> -	folio = __filemap_get_folio(mapping, 0, FGP_WRITEBEGIN | FGP_NOFS,
+> +	folio = __filemap_get_folio(mapping, 0, FGP_WRITEBEGIN,
+>  					mapping_gfp_mask(mapping));
+>  	if (IS_ERR(folio)) {
+>  		ret = PTR_ERR(folio);
 > -- 
 > 2.47.3
 > 
