@@ -1,177 +1,165 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8EFE35908CC;
-	Mon, 31 Aug 2026 13:50:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B23DE35F5E4;
+	Mon, 31 Aug 2026 16:15:37 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788184253; cv=none; b=dpyQk2PL/W+BXnuYskdDKWHdpwUkVJAV7Rz81ZvrhLiVrdid7MQdKqBbxroIhGKbTXDJtKdn/EvZc0WBvIvv6Wbzk2QUansKH2g5GlgoEBg73tZPq78UpVTMfGjRHlR9OFV894uF+Csf2TFESoHM514YP5Dqa8dYLm3X2XXonIg=
+	t=1788192938; cv=none; b=bMDvNktbS7JXUjQZrNofqBqUXrK5xxi0z0a9KmjooEXSSe+B4E3ov1kCZPXfcBRcMhBwJNNr7DBMA+BRVrn0sjQcyixDQIAHwk75ADtwSI8/NzZjXSR5oIZCza/rGtbMmxx/Z6ZnJARyeTNh+efNrhMyk4Phd33P5e0ODtdWFjE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788184253; c=relaxed/simple;
-	bh=PkqGFDZvt+6xZYDQSUx2D60iODeeggFTAdrlvo3ZwCA=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=N0gawGOtbkGCY8C1nS4AUgMweDzWyOa8IVzBwKGjoaW58Y9j5wXjOD4l7BrnR1VLwYktZVRMOyqFf6LWKuUQBZhimtFEqr0sAjzyohq+1macDLHz3/a/WbwCJuoA+KTqT40HTeNIzlXGJ47TrXZmo5x1/D6i2gmoTmbB4F5sWRA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nvpIikDj; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788192938; c=relaxed/simple;
+	bh=QAGP/pNts3HKwJWpnuBWM4rH7U5GpfDlzxNgBzphlz4=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=jXdyo+byUuCkX0rrex1yFJjBVsPJpjQWTPStNoB7VeYbwq4uzcHxVsME78ExjGCMF6DVevtm+GP+3iH7QQNSLnQN6QxOhkf60ZRlXnlHtC/l/OWcDCF0kKjJ2ZuWI5qv0PmX1HQOSIs0ekSVsnE2u7jzIhv8zuBTRt14JSuNoJI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IOQCyAMs; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nvpIikDj"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D77201F00A3D;
-	Mon, 31 Aug 2026 13:50:50 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IOQCyAMs"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D1D341F000E9;
+	Mon, 31 Aug 2026 16:15:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788184252;
-	bh=dBOtDHH7hlwTXkTD/XQmhI8sc8ZZt+wc+uJZsmVWgrE=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=nvpIikDjdwVYL/AGEZ7f94DqUITgqDNEC4pMM6nIKBLaTo6gyPenP69jZrrWEpNQh
-	 Wyu7er5euskvO14wAFadQRABPHu9jKf65ylxQvR54etRPzsrdpVICMkUvsbo+3n4uw
-	 wVAk3f3/tJiyoXSMgrTIFeUqeipcQgExR/HyFh/E5ujPeRJH1+6JAgzcyldD0wnvcR
-	 hWCLyQJltfxZqeN+1dRuem6yGB1uLCesjEgBall3HK1tWr+qUL9e7R0TPnDkIvs1Pb
-	 E2qyTY5watxVsDtauA7FN6g0OHtd+yoFx8aILuobWD/bPoDPsmXzQ+LXO06uiJdqU8
-	 D+muzpe3GsE3A==
-From: Sasha Levin <sashal@kernel.org>
-To: patches@lists.linux.dev,
-	stable@vger.kernel.org
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	Anna Schumaker <anna.schumaker@hammerspace.com>,
-	Sasha Levin <sashal@kernel.org>,
-	trondmy@kernel.org,
-	anna@kernel.org,
-	cel@kernel.org,
-	jlayton@kernel.org,
-	davem@davemloft.net,
-	edumazet@google.com,
-	kuba@kernel.org,
-	pabeni@redhat.com,
-	linux-nfs@vger.kernel.org,
-	netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH AUTOSEL 6.18-5.10] xprtrdma: Add request-pool slack for delayed recycling
-Date: Mon, 31 Aug 2026 09:30:10 -0400
-Message-ID: <20260831133314.4125787-582-sashal@kernel.org>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260831133314.4125787-1-sashal@kernel.org>
-References: <20260831133314.4125787-1-sashal@kernel.org>
+	s=k20260515; t=1788192937;
+	bh=7tWoQZ79h9sJLCSvK9G/4oz2RxwI9/ppYTFxwZXymWQ=;
+	h=From:Subject:Date:To:Cc;
+	b=IOQCyAMsWkbgv2EPGIxS7lSkkQYjmOwjHbKnklZtXXrkQNaW9AWFhjH67NbqprC1G
+	 sf7VS7+xmLxLlcSvulQT1H2wHrPIyJDszLeBMAnpjhrd/o8BH9AtpnHnemxsdSYynM
+	 UMPkraNCBbjE2YXBDYlu0CgU9i6qRJ6fnvGi2Q50AbAactHVs0xvyWSzjse3RMF1g/
+	 I6Wbg6f/8MRS1oMfL0HLmn/3hKs1ujFPtVCbWNYdr90El2SIUM5gWEvCLOva87hVkB
+	 Q7juf7tPyKKUadBam8eFefNCydHq7IuYCWR97Ewgd2yoCMhhmkai6VpIYG9YPQPk4J
+	 J/Z6V6nNXf11Q==
+From: Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH v4 00/14] nfsd/sunrpc: harden the netlink listener set
+ interface
+Date: Mon, 31 Aug 2026 12:14:42 -0400
+Message-Id: <20260831-nfsd-nl-hang-v4-0-0f4e89139409@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-X-stable-base: Linux 6.18.48
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2XMTQ7CIBCG4asY1mKAkf648h7GBYWhJTbUgCGap
+ neX1k1bl99MnnckEYPDSC6HkQRMLrrB53E+HojulG+ROpM3EUwUrOQl9TYa6ns6PylnChrAGqx
+ QJJNnQOveS+52z7tz8TWEz1JPfL7+QhVn21DilFEheW2NkY3m6vrA4LE/DaElcymJteY7LbLWT
+ NeigVqChj8NKy2qnYaspcy/opK6lGajp2n6Aghrq+QlAQAA
+X-Change-ID: 20260717-nfsd-nl-hang-10a3b3e93f2a
+To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>, Trond Myklebust <trondmy@kernel.org>, 
+ Anna Schumaker <anna@kernel.org>, "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Shuah Khan <shuah@kernel.org>
+Cc: Slawomir Stepien <sst@poczta.fm>, linux-nfs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
+ Trond Myklebust <trondmy@gmail.com>, linux-kselftest@vger.kernel.org, 
+ Jeff Layton <jlayton@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4846; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=QAGP/pNts3HKwJWpnuBWM4rH7U5GpfDlzxNgBzphlz4=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqlaiWJxzbe9SBQEdHgzOVbgjgnsjjvAjUppleu
+ mgTrsJLlGuJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCapWolgAKCRAADmhBGVaC
+ FbiSD/4y930WW53/S7uT/di9w/UDXW1Ee8oXR6yFXYbEA7TElLlnjisihURzxVJ5xjL3hSmMoFA
+ JNSBHib8Q1fl4LEosazFKJ43f0goMG2gyYRYbymsKAoOsKVw/9H3LnvX/sBJiwLCpAzyoROY2SX
+ gCbXQvlD0etkPZF3EJmW6GbIM7N4gAWsnSJctGFg/qCDvhqC9V0K9ICyvbXX1gd2DRnFQj44P9J
+ imigEItCoT3IaizFRRPwHaY8XUzoioRiS6YKPuXujCj7zlqDqv5XOrU3SPnAwfkjLxPVedsyvZE
+ ZAiwpZzHn/yiOO6207F3nTJDaMHM+vXGodDdRQ0Yt3Pt/fCv95UjBQRu1V2gKTdfwz1dM/x/9/P
+ vTql63B79FMjIgL9PJBWt4pagaMusnN4M8dYjFtEE6g3Yjmd0FwP9PJwquhjbC2+9EEkI52eUY2
+ XbDZ45FJLXt87y/FfXCdr/xkOq2SK1gPYc6hDGxUXHSpSDTeo7KFx3lpkZzmQjRCU5jH/7N37KM
+ kIpgWL2KspxZz4XmGBTRTAi90+4Z5ozHyToORKd85QI2RM4afCjhkn5OIPyS8cI41eLRYhetO8n
+ Bd3lfofUtC4lixNLFmJ1RT4yLp6MBCbFMGT4KRdjXUo4+A06X0YswUskec6mFX43x9eusguvPA/
+ 6+ojblgEkHwg7Mg==
+X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
+ fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-From: Chuck Lever <chuck.lever@oracle.com>
+This version just fixes up some errno handling confusion that was in v3
+that Chuck pointed out. This version also drops ENAVAIL as a special
+error code -- we can use EIO for that instead.
 
-[ Upstream commit 64bf6892057b746c55bcc045b9492741b72d8d27 ]
+Please consider these for v7.4.
 
-After the previous patch gates req recycling on Send completion,
-a completed RPC's rpcrdma_req can remain pinned by the sendctx
-ring until the next signaled Send completion releases it. The
-transmitted-RPC ceiling is unchanged: xprt_request_get_cong()
-gates Sends against xprt->cwnd, the RPC/RDMA credit window fed
-by server-granted credits and capped at re_max_requests. The
-req pool, however, must exceed max_reqs by enough that this
-recycle delay does not stall a slot allocation that the credit
-window would admit.
-
-The headroom is bounded. frwr_open() sets re_send_batch to
-re_max_requests >> 3 -- one in every eight Sends is signaled --
-so at most re_send_batch unsignaled Sends can be outstanding
-before the next signaled completion releases them. That equals
-max_reqs / 8 reqs in the worst case, with a one-slot floor for
-small max_reqs values where the right-shift rounds to zero.
-
-The sendctx ring and the hardware Send Queue are not enlarged
-to match. Both are sized in rpcrdma_sendctxs_create() and
-frwr_query_device() for re_max_requests in-flight Sends, which
-is the ceiling the credit window enforces. The pool slack does
-not raise that ceiling -- it only lets allocation keep pace
-with the credit window during the brief interval in which
-earlier reqs are pinned waiting for the next signaled
-completion. At any moment, at most re_send_batch sendctxes are
-held by unswept unsignaled Sends, leaving the rest of the ring
-available for newly admitted Sends.
-
-Allocate max_reqs + DIV_ROUND_UP(max_reqs, 8) request objects
-and name the slack calculation at the allocation site so the
-1/8 bound stays tied to the Send-signaling batch size.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Anna Schumaker <anna.schumaker@hammerspace.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
+Changes in v4:
+- Use EIO instead of ENAVAIL to represent an unrecoverable rpcbind error
+- Link to v3: https://lore.kernel.org/r/20260828-nfsd-nl-hang-v3-0-55026685c75d@kernel.org
 
-LLM Generated explanations, may be completely bogus:
+Changes in v3:
+- Dropped v2's patch 4, the svc_register() unwind. rpcbind matches an UNSET
+  on [program, version, netid], and the v2 fallback ignores the protocol
+  completely. The unwind could therefore clear entries that belong to other
+  live listeners. Chuck Lever found that.
+- A failed registration stays fatal. Patch 3 makes CONFIG_NFS_LOCALIO=y
+  agree with CONFIG_NFS_LOCALIO=n on that point.
+- Tests: sem_register_refused now reads the listener set back, because
+  -EACCES alone does not show that no listener was created.
+  sem_create_failure_extack is new. The netlink socket now asks for
+  NETLINK_EXT_ACK and NETLINK_CAP_ACK, so that a test can read the extack.
+- Tests: FIXTURE_TEARDOWN removes any listener or thread that a test left
+  behind. Those pinned the netns.
+- Stop attempting to register any more listeners when the first
+  svc_register() call fails.
+- Bound the unregistration side the same way. svc_register(),
+  svc_unregister() and the per-listener teardown in svc_delete_xprt() all
+  give up once the local rpcbind stops answering, so one listener_set pays
+  one timeout in each direction rather than one per listener.
+- Link to v2: https://lore.kernel.org/r/20260811-nfsd-nl-hang-v2-0-c0c92b3953c3@kernel.org
 
-Connection lost, reconnecting to https://agentn.us.api5.cursor.sh
-(attempt 1)...
-Retry attempt 1...
-Connection lost, reconnecting to https://agentn.us.api5.cursor.sh
-(attempt 2)...
-Retry attempt 2...
-The background git searches finished and match the earlier analysis:
+Changes in v2:
+- New patch 4: when a later registration failed, svc_register() left the
+  entries that it had already set in rpcbind. Those entries pointed at a
+  port that the caller then closed.
+- Tests: behavioural fixes for several tests. Several assertions checked
+  only an errno that both the fixed kernel and the broken kernel return.
+  val_bad_transport() now also requires that the rpcbind stub saw no
+  traffic. val_second_entry_bad() requires that no listener started.
+  func_empty_destroys requires that the kernel dropped the local rpcbind
+  client and then connected again. The two -EBUSY tests require that the
+  listener set does not change. find_listener() now matches the address
+  too.
+- Tests: the stub read the revents of a newly accepted pollfd that poll()
+  had not written. The stub could therefore start a blocking read with no
+  readiness event.
+- Tests: the config fragment now includes NAMESPACES, SHMEM, TMPFS and
+  UNIX. Without them, every test skipped.
+- Link to v1: https://lore.kernel.org/r/20260810-nfsd-nl-hang-v1-0-2519fdd5bc1a@kernel.org
 
-- **No slack commit in this tree** — searches for `"request-pool
-  slack"`, `req_pool_slack`, and `rpcrdma_req_pool_slack` all came back
-  empty.
-- **Prerequisite is present** — `53442c7d0c888` ("Decouple req recycling
-  from RPC completion") is in v6.18.44; patches 1, 2, 4, and 5 of the
-  series are there, but patch 3 (pool slack) is missing.
-- **`verbs.c` still allocates exactly `max_reqs`** — the regression from
-  the incomplete backport is real in this tree.
+---
+Jeff Layton (14):
+      NFSD: cap the number of listeners accepted in listener_set
+      NFSD: validate transport name in listener_set before serv creation
+      SUNRPC: keep the first error in svc_register()
+      SUNRPC: bound the local rpcbind client timeout to 1s
+      NFSD: report listener creation failures through extack
+      SUNRPC: report local rpcbind calls that get no answer
+      SUNRPC: stop svc_register() once rpcbind stops answering
+      SUNRPC: stop the svc_unregister() sweep once rpcbind stops answering
+      SUNRPC: stop unregistering listeners once rpcbind stops answering
+      NFSD: stop registering with rpcbind after a failure in listener_set
+      selftests/nfsd: exercise listener_set request validation
+      selftests/nfsd: add a per-netns rpcbind stub and the listener round-trips
+      selftests/nfsd: check that listener_set asks rpcbind once
+      selftests/nfsd: check that listener removal asks rpcbind once
 
-Verdict unchanged: **YES** for backport to v6.18.44.
+ MAINTAINERS                                        |    1 +
+ fs/nfsd/nfsctl.c                                   |   87 +-
+ include/linux/sunrpc/clnt.h                        |    3 +-
+ include/linux/sunrpc/svc.h                         |    7 +-
+ net/sunrpc/rpcb_clnt.c                             |   33 +-
+ net/sunrpc/svc.c                                   |   65 +-
+ net/sunrpc/svc_xprt.c                              |   20 +
+ tools/testing/selftests/Makefile                   |    1 +
+ tools/testing/selftests/nfsd/.gitignore            |    1 +
+ tools/testing/selftests/nfsd/Makefile              |    6 +
+ tools/testing/selftests/nfsd/config                |    8 +
+ .../testing/selftests/nfsd/nfsd_netlink_listener.c | 1328 ++++++++++++++++++++
+ tools/testing/selftests/nfsd/settings              |    1 +
+ 13 files changed, 1540 insertions(+), 21 deletions(-)
+---
+base-commit: e247236b7ffa1e0940f834787feade8570c5db91
+change-id: 20260717-nfsd-nl-hang-10a3b3e93f2a
 
- net/sunrpc/xprtrdma/verbs.c | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index e2d3cee825cd7..8449107b2a095 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1123,6 +1123,22 @@ static void rpcrdma_reps_destroy(struct rpcrdma_buffer *buf)
- 	spin_unlock(&buf->rb_lock);
- }
- 
-+static unsigned int rpcrdma_req_pool_slack(unsigned int max_reqs)
-+{
-+	/* The sendctx ring can hold up to one Send-signaling batch
-+	 * (re_send_batch, set by frwr_open() to re_max_requests >> 3)
-+	 * of unfinished Sends. Each pins its req until a signaled Send
-+	 * completion releases the sendctx. Size the pool above max_reqs
-+	 * by that batch so the recycle delay does not stall a slot
-+	 * allocation that the RPC/RDMA credit window would admit.
-+	 *
-+	 * Round up: re_max_requests >> 3 is zero when max_reqs < 8, but
-+	 * a single unsignaled Send is still enough to pin one req. One
-+	 * slack slot covers that case.
-+	 */
-+	return DIV_ROUND_UP(max_reqs, 8);
-+}
-+
- /**
-  * rpcrdma_buffer_create - Create initial set of req/rep objects
-  * @r_xprt: transport instance to (re)initialize
-@@ -1132,6 +1148,7 @@ static void rpcrdma_reps_destroy(struct rpcrdma_buffer *buf)
- int rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
- {
- 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
-+	unsigned int max_reqs;
- 	int i, rc;
- 
- 	buf->rb_bc_srv_max_requests = 0;
-@@ -1145,7 +1162,9 @@ int rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
- 	INIT_LIST_HEAD(&buf->rb_all_reps);
- 
- 	rc = -ENOMEM;
--	for (i = 0; i < r_xprt->rx_xprt.max_reqs; i++) {
-+	max_reqs = r_xprt->rx_xprt.max_reqs;
-+	max_reqs += rpcrdma_req_pool_slack(max_reqs);
-+	for (i = 0; i < max_reqs; i++) {
- 		struct rpcrdma_req *req;
- 
- 		req = rpcrdma_req_create(r_xprt,
+Best regards,
 -- 
-2.53.0
+Jeff Layton <jlayton@kernel.org>
 
