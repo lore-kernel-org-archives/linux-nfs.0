@@ -1,124 +1,150 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 42E2D397343
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 23:03:01 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B18AF3C1D42
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 23:06:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788217383; cv=none; b=FC3jnDE9DdCPDzeZ2rFhxTwhSlKjBr6TruauXOhDvfBrfnyPuuMKC/MrWXPXVKaAWtLz8UCsAnqK6LR0uz2PUyBS248WpAQin8ouH/Am9PeIQReTIFoTM/qmQFpb0a4VWeFpjrI/1xO8YhoZSkNG17U4FIA2sovjN0tkxmm27r8=
+	t=1788217609; cv=none; b=uu5Is4U3ENqmY1wE5hf1r01v2P4DeOdQwnmRrkQuZFeKvdWcbu9yDmuG00VjfO1SibwIfCxBDnlQA0sh7KwgPtjTUnpSjr3bByFKZQuVkEyOmFAUaoyFu2EAE/MjS5ofN/BUQow5OzFCDwfErQDmuMtw9BniaR8jBhyOxGLkv4E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788217383; c=relaxed/simple;
-	bh=FlDDWiRSelJau5qmyDsb+4YM4uhDrhzX50oXA3qft0w=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=jHOfcE+Q6ToXgl2HoHL7WgIs9HGC/IwQB7EmUqiZCS0bCseJzYTJLG5fDYRuYXHxTAUCqjhWmiI+FNMDCFLVP9sdWEme/JYnRox7Dh15ArLNtydvjszzF8jmHgDWvp5rlWx1C8zjoxJ5WeqvQoz0Qb/7KlALKXVIvR+O+j2v3lo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=JmWzQIat; arc=none smtp.client-ip=170.10.129.124
+	s=arc-20240116; t=1788217609; c=relaxed/simple;
+	bh=gGfsdft4JZGKmDdCAl4PA1gQW5JOQwl+HLxCk+t7TNQ=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=uyTd0TbQnxkzGkMOmqF8zpMFzQYyrucduDvzwuG+1mpJ/rsN2dtkHgy+E3/6dFsDwJK2KRcrmvAXAiBOBRm4JyPIoQE4OE22mLYaNEYEYg98DxGhW0+YY5KZIm/W7MMTDycKx6jctS+4gxAUhr+RXS3iTthvwfZcvDLVQffICBw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=EKXa3NuM; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=UBOKeb/h; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="JmWzQIat"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="EKXa3NuM";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="UBOKeb/h"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1788217380;
+	s=mimecast20190719; t=1788217606;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=AFlnAYkTzWxhBfsAsW14aG2XLujsocrbqMu51D1BaP4=;
-	b=JmWzQIatuHjtPXzM5Us0DrsXiRJ/gP/jmlBvZCRRqfVJ+G4pX0zOss0ZXp9iXrcYoBDrql
-	wB5jiNqds6s6hbjiv5FhhITwN9fspe6N4pXlt+P1de8oP3M27P9HuqMSlpqiGYE4nYbm/p
-	Oz5wTtOEoavYUdqM8rfrInB0me4chfU=
-Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-569-QNdYTe_hOG27BxsDzfWZ7w-1; Mon,
- 31 Aug 2026 19:02:59 -0400
-X-MC-Unique: QNdYTe_hOG27BxsDzfWZ7w-1
-X-Mimecast-MFC-AGG-ID: QNdYTe_hOG27BxsDzfWZ7w_1788217378
-Received: from mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.95])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 60C711933F83
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 23:02:58 +0000 (UTC)
-Received: from smayhew-thinkpadp1gen4i.remote.csb (headnet03.pony-001.prod.iad2.dc.redhat.com [10.2.32.114])
-	by mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 2A6F45B1;
-	Mon, 31 Aug 2026 23:02:58 +0000 (UTC)
-Received: from smayhew-thinkpadp1gen4i.redhat.corp (localhost [IPv6:::1])
-	by smayhew-thinkpadp1gen4i.remote.csb (Postfix) with ESMTP id 0146B52FFF39;
-	Mon, 31 Aug 2026 19:02:57 -0400 (EDT)
-From: Scott Mayhew <smayhew@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH] gssd: fix upcall_* leak when re-reading service info
-Date: Mon, 31 Aug 2026 19:02:56 -0400
-Message-ID: <20260831230256.814412-1-smayhew@redhat.com>
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=nBoJDrhF51UEUeziZ4wXsNXkJA2meB0g5FlYvHgjq10=;
+	b=EKXa3NuMH++yrHRSvS+663WVZ4bqQO5wIvuqV+mhniuMIza+FFN7clokx3exiVjwspJbeg
+	ljLCrwozdg8farzVIq5+BRTKAmFCGAXJjJgzrF38h0Qe1FZ26hQbwYNwQ5BpbHMdzK8kSN
+	5rbhdocRQYJawQTTWf/yXp31UeLI2A4=
+Received: from mail-qv1-f72.google.com (mail-qv1-f72.google.com
+ [209.85.219.72]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-695-ZyhVyEbIMD-UUMVWGsXQIg-1; Mon, 31 Aug 2026 19:06:42 -0400
+X-MC-Unique: ZyhVyEbIMD-UUMVWGsXQIg-1
+X-Mimecast-MFC-AGG-ID: ZyhVyEbIMD-UUMVWGsXQIg_1788217602
+Received: by mail-qv1-f72.google.com with SMTP id 6a1803df08f44-90cd16a0bc1so94368636d6.0
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 16:06:42 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1788217602; x=1788822402; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=nBoJDrhF51UEUeziZ4wXsNXkJA2meB0g5FlYvHgjq10=;
+        b=UBOKeb/hLMMu2v5XSCV2uwmYerj1Ynxyc+2pAdbz31WKTecAXCi9XY5IKtim0tz4i4
+         jtqFafPt3g6B05O9T356FAhqDUINgDjLRVPuo6icuvKyq7fvyPmPE9Rb3jdNLcP3qpYn
+         9YLHm2HIbLXyz3vqJnnOywtO8Hn0WFv21JDC8u+s4d/HRqJtpXSDKKjORa9j2QHEW9Jt
+         S8tH8Zn/IDhKIHqbi+uCKpTMuQQwYO+qW9AmNsS1S1wovBcqTuSnU34xPMt2hqAlpBn/
+         dn8XaSoaRbnO6sCpknz+wXXCe5txnf2j1KrDqbDZN2Zxw9M2MvSMCPHbSE7aWIPi7OQu
+         5ITA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1788217602; x=1788822402;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=nBoJDrhF51UEUeziZ4wXsNXkJA2meB0g5FlYvHgjq10=;
+        b=dUixeY707VTZ1zDY4pMMuxUVG7ShXXAYIXhRL1d3Oc30NrPXGU/O0uwJKSYbHI4la+
+         TzDz6Z45mO6S2SAZbgWG24pWZkils4thauSL7CA21KJEf+rZ5OD2W33MFCdlt2+KMOt6
+         Kt3PaagLCBvTayPKE2DBBXybuGBIt4NqWZoj9qs2TZhnBZsC+Fds8VEqJupVfL1Hmetl
+         BlwsOuYavG2wW7VXb11DxAO7+zI5tSWZgEL9VFnTRPUiFBHzqLmS88umEDGys94ROSYT
+         /S/UbvUUOM21hF9GheMnTF9OK3+vIbzCW1sDkFTB3KxIAHZQTAGsPDmcaeRYYeJph9NG
+         y5UQ==
+X-Forwarded-Encrypted: i=1; AKwUvBxykkCTIUX5IvsdgyDvCFCQuaOxfJHDR3gg82VBDI3ofdZNyVu8vFk3JO4WrVPd1a1bwJn6j+NxfEM=@vger.kernel.org
+X-Gm-Message-State: AFuF++nvkaPnufBGlL1Ek9v1GGAloz/MHkwagPOtzlySORqYsroLLAW5
+	xukGSKo2/PUscBEV3r6lIazrZ6o1VH9m7scFfqKM3LToo7jdBBIe9twfZa1JWkt7Fgc3XYFeizt
+	WS+B9kjDzMyLU8w3QmKSfGyV6uNIoiypZNi+gUuAGSGdudLps3z1JKQpa0WURNrJPHk8zfw==
+X-Gm-Gg: AYBFou10RsBdEQQfbl5hKacldqq8khFpEqK773yeOYuvLXb4ZmZQuW5PJMtZyOpD76E
+	JHcOM+Roy5iB9rNJOYlVVZbzEBzj9SevX+eyoRydLRR8z05yG82OwGPYsjJYEEked7Ej8gs4JtI
+	okxYPZMH2XzGIvsgWiGlwvA4S8aD5uI+L4EA4uGHQe0LfsPLk96oliVISSI1p1uSj0fHtUvTirW
+	MoRGj2CXC58ABGuIVpPBiHyH4Lafx+Mqklp796hehY0Vy5knkXljAsak2GZemVCR4r8191t7AgR
+	IJ3tIUV1yx/nJNrT2N2xYZAOgWo2ECbnNpAY3XSqc41SzHLpwUxHj+pmBVYAsMXJng4rZ2RBPkO
+	dh82CqO8VCfLteL/BjB9/CbNudV7uc6AGCl8VETVhhEGTv3RE
+X-Received: by 2002:a05:6214:3ca0:b0:90c:4422:84d1 with SMTP id 6a1803df08f44-90ce0f6cf64mr420722676d6.30.1788217602325;
+        Mon, 31 Aug 2026 16:06:42 -0700 (PDT)
+X-Received: by 2002:a05:6214:3ca0:b0:90c:4422:84d1 with SMTP id 6a1803df08f44-90ce0f6cf64mr420722126d6.30.1788217601947;
+        Mon, 31 Aug 2026 16:06:41 -0700 (PDT)
+Received: from ?IPV6:2603:6000:1d40:9300:d6cc:b253:d867:f7d1? ([2603:6000:1d40:9300:d6cc:b253:d867:f7d1])
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-90ce4515130sm94779056d6.39.2026.08.31.16.06.40
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Mon, 31 Aug 2026 16:06:41 -0700 (PDT)
+Message-ID: <60c1127f-56e2-41f7-9a34-5bcb784a750a@redhat.com>
+Date: Mon, 31 Aug 2026 18:06:40 -0500
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.6 on 10.30.177.95
+User-Agent: Mozilla Thunderbird
+Subject: Re: [FTBFS,PATCH,nfs-utils 1/1] getport: Fix switch case on old
+ compilers
+To: Petr Vorel <petr.vorel@gmail.com>, linux-nfs@vger.kernel.org
+Cc: Giulio Benetti <giulio.benetti@benettiengineering.com>,
+ Julien Olivain <ju.o@free.fr>
+References: <20260819232049.438643-1-petr.vorel@gmail.com>
+Content-Language: en-US
+From: Steve Dickson <steved@redhat.com>
+In-Reply-To: <20260819232049.438643-1-petr.vorel@gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-gssd_scan_clnt() calls gssd_read_service_info() whenever clp->prog == 0,
-and the function's fail path leaves clp->prog == 0. If an initial read
-fails (e.g. the "info" file is not fully populated when inotify fires),
-the fail path strdup()s the parsed values into clp->upcall_address,
-upcall_port, upcall_protoname and upcall_service. A subsequent re-scan
-then calls gssd_read_service_info() again and overwrites those fields
-without freeing them first: the success path sets them to NULL and the
-fail path strdup()s fresh copies, leaking the previous allocations.
 
-Free the upcall_* fields at the top of the function before repopulating.
-clp is calloc()'d so the fields are NULL on the first call, making the
-free() calls safe.
 
-This fixes the following leak:
+On 8/19/26 7:20 PM, Petr Vorel wrote:
+> Buildroot distro compiles with fairly old compilers, which defaults to
+> old C11 standard (some of still used compilers don't even have newer
+> standard than C11). Workaround code which requires C23 with using { }.
+> 
+> This fixes error:
+> 
+>      getport.c:460:3: error: a label can only be part of a statement and a declaration is not a statement
+>         size_t path_len = len - offsetof(struct sockaddr_un, sun_path);
+>         ^~~~~~
+> 
+> Fixes: 1a6dcd74 ("Removed warnings in nfs_sockaddr2universal()")
+> Signed-off-by: Petr Vorel <petr.vorel@gmail.com>
+Committed... (tag: nfs-utils-2-9-3-rc2)
 
-==1300== 5 bytes in 1 blocks are definitely lost in loss record 13 of 929
-==1300==    at 0x4877826: malloc (vg_replace_malloc.c:447)
-==1300==    by 0x4B7B9FE: strdup (strdup.c:42)
-==1300==    by 0x400D08D: gssd_read_service_info (gssd.c:373)
-==1300==    by 0x400D08D: gssd_scan_clnt (gssd.c:734)
-==1300==    by 0x400D7C6: gssd_inotify_clnt (gssd.c:922)
-==1300==    by 0x400D7C6: gssd_inotify_cb (gssd.c:988)
-==1300==    by 0x48B9D9B: event_persist_closure (event.c:1623)
-==1300==    by 0x48B9D9B: event_process_active_single_queue (event.c:1682)
-==1300==    by 0x48BA5BE: event_process_active (event.c:1783)
-==1300==    by 0x48BA5BE: event_base_loop (event.c:2006)
-==1300==    by 0x400A431: main (gssd.c:1292)
-==1300==
+steved.
 
-Assisted-by: Claude Opus 4.8 <noreply@anthropic.com>
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- utils/gssd/gssd.c | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
-
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index e381c0f2..223d5dfe 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -276,6 +276,21 @@ gssd_read_service_info(int dirfd, struct clnt_info *clp)
- 	char *port = NULL;
- 	char *servername = NULL;
- 
-+	/*
-+	 * This may be a re-scan of a client whose previous read failed
-+	 * (gssd_scan_clnt only calls us while clp->prog == 0, which the fail
-+	 * path below leaves set).  Free any upcall_* values left over from that
-+	 * attempt so we don't leak them when we repopulate the fields below.
-+	 */
-+	free(clp->upcall_address);
-+	free(clp->upcall_port);
-+	free(clp->upcall_protoname);
-+	free(clp->upcall_service);
-+	clp->upcall_address = NULL;
-+	clp->upcall_port = NULL;
-+	clp->upcall_protoname = NULL;
-+	clp->upcall_service = NULL;
-+
- 	fd = openat(dirfd, "info", O_RDONLY);
- 	if (fd < 0) {
- 		printerr(0, "ERROR: can't open %s/info: %s\n",
--- 
-2.55.0
+> ---nfs-utils-2-9-3-rc2
+> Steve, other option would be to use ';'. Not sure which one you prefer.
+> 
+> Found with Buildroot, which still uses:
+> 
+> $ aarch64-linux-gcc --version
+> aarch64-linux-gcc.br_real (Buildroot 2017.05) 6.3.0
+> Copyright (C) 2016 Free Software Foundation, Inc.
+> 
+>   support/nfs/getport.c | 3 ++-
+>   1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/support/nfs/getport.c b/support/nfs/getport.c
+> index 6bd2f713..18ea0777 100644
+> --- a/support/nfs/getport.c
+> +++ b/support/nfs/getport.c
+> @@ -456,9 +456,10 @@ char *nfs_sockaddr2universal(const struct sockaddr *sap)
+>   	int len = sizeof(struct sockaddr);
+>   
+>   	switch (sap->sa_family) {
+> -	case AF_LOCAL:
+> +	case AF_LOCAL: {
+>   		size_t path_len = len - offsetof(struct sockaddr_un, sun_path);
+>   		return strndup(sun->sun_path, path_len);
+> +	}
+>   	case AF_INET:
+>   		if (inet_ntop(AF_INET, (const void *)&sin->sin_addr.s_addr,
+>   					buf, (socklen_t)sizeof(buf)) == NULL)
 
