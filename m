@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 64C1E4CC269;
-	Mon, 31 Aug 2026 16:15:49 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1F0C152ED47;
+	Mon, 31 Aug 2026 16:15:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788192950; cv=none; b=ZSnWQL7bKqH/yjyquUczYtd7QcFwe65oGoaLDgGBdFszqLdcYZHXx0AELYdHjKO8HRgMriGRdu3hpC0yhQJNvIsek6LQ64hwJfkHbah0wcuQ9rXMaQvHKV+thyDxMmbbL9XvigCinMWtiSsYyYR3eHsCK8pxIe8TqYovMjDADJA=
+	t=1788192952; cv=none; b=M/Ttggxsjk2GP42fHGUb+EoQ3uZojxjQBA4be6XTyHp1RgazgfSkXJy8nSF85FcDIVjzVh4PXw77lV+SVxQQ3OPvWBLADw10KsAq5IYbZAoETY+O6m120uLPcnTITKAduz7H+MkNoPfCXqTIArbhIrw4gS3qkW2CZ23W+u9/IUo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788192950; c=relaxed/simple;
-	bh=8BqEPxMa2y9rgo4Ng7eAaQpEsvFB9iEfXzOAyL/uhig=;
+	s=arc-20240116; t=1788192952; c=relaxed/simple;
+	bh=Vw2juZXxW1XGzKvHC8nm1c9dSoC5XkIh5qWoA10eTLw=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=Sh/838wXV/CYyOugesxihuaJFpO4TE/tYWCbWVJR/Ysq0gwcYRjAQWXOdJ3QCuAkPQ8bXoDeQlXhpKytg+pSUpsDxPzqVYZISXopQVfKJWCw3MNCYsdh7dVPkUO6JJ/gNN5S06FQOOFp1jO0X7Kg1ZAczg3LijTHSAfiMbMavGo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LSAdOfd4; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=M2Z7R3S92dTIXMr/WJnyuaNTtATOM2TY82l6SBw2SpYokxyhcfOXn4M+Xdi7MDDNXz6EfIYYaV2kPDsK0ZsVHUTttIEbl9eA78fgOlzQpzr1zQ6GaL6252+9k3IjjEUSX3fdZG0BTp+/vh4qtRDjIEUUQnwangEIpIo0JecAThU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nYwnXvDe; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LSAdOfd4"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 919631F00A3F;
-	Mon, 31 Aug 2026 16:15:47 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nYwnXvDe"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 42C7D1F00A3E;
+	Mon, 31 Aug 2026 16:15:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788192949;
-	bh=ifq9Lngr/8+mD4QMqfJpZRugAPFghjpAp6yjOdVsVA0=;
+	s=k20260515; t=1788192950;
+	bh=RdNHHoYSmK/P1zLPHbwRiPWF9TcaXaL7Lr+awobKfL8=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=LSAdOfd4hUN8xnnN/MBA0LCDhRfwJOUJW8hC+glODpH5HKd6SyQtMfIUzyLDD7xbG
-	 FQUVPnKqeWJtwIYEnngVbU7KVlERXcysIlu35LVg2VrJ4ig1sJYFNH5GPCi1RMAgiv
-	 5mClqKBP99/lhWDfPD+nzcax1RTHtI7Oj6UpuuZ4Gy+sRgkgw6fkkGgCFq8ernzJnS
-	 8vj8H/qZ8PcNwer0qte60GgzpitI3RchOSSUEZ92npqpX9JFBy69nZe2vhXjvpHYx+
-	 WPkp3X2m00JRCUlmsavbAbyzgerX/fmYpt9SGyFtIoZrjiFBANC8s/LP+wzkFVWxFY
-	 cnLhuhNgIfmag==
+	b=nYwnXvDegk+uG59BVwZEAYSPfhyGUgpMb5M6L5MYqncBgAPhtW8YdPtBxgJbeTRdd
+	 ZAlmMB+HFDcFFqnmYu5g/LYgySUA84i1QZDMv/534IAwA+FXMujyews/pTWB8Y63+/
+	 GJe/ctNb7N4881hThOLo/0NYLsoZWtUOb+Rke93LMkaWSadhSAkUtO194i8Auad2pi
+	 KLAk7JU7BiL1c6EIoBOdbVwvhnPGoGRH7Np0RmGP5eyZqaMwHntWCqPI+9V/eCWyp8
+	 9aoWBlHvNHexwRe1KpfcCaXpfzvyQyNiRfXH92EsIQSlgX1Toe+hBwa117En6Y3Khc
+	 HDFjp0L3WpAtw==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Mon, 31 Aug 2026 12:14:49 -0400
-Subject: [PATCH v4 07/14] SUNRPC: stop svc_register() once rpcbind stops
- answering
+Date: Mon, 31 Aug 2026 12:14:50 -0400
+Subject: [PATCH v4 08/14] SUNRPC: stop the svc_unregister() sweep once
+ rpcbind stops answering
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260831-nfsd-nl-hang-v4-7-0f4e89139409@kernel.org>
+Message-Id: <20260831-nfsd-nl-hang-v4-8-0f4e89139409@kernel.org>
 References: <20260831-nfsd-nl-hang-v4-0-0f4e89139409@kernel.org>
 In-Reply-To: <20260831-nfsd-nl-hang-v4-0-0f4e89139409@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -53,52 +53,76 @@ Cc: Slawomir Stepien <sst@poczta.fm>, linux-nfs@vger.kernel.org,
  Trond Myklebust <trondmy@gmail.com>, linux-kselftest@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=931; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=8BqEPxMa2y9rgo4Ng7eAaQpEsvFB9iEfXzOAyL/uhig=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqlaiiWxMMgCV7IlQMOBuB3P0Db+l/hnVE7SU75
- 0xNu8+sN6CJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCapWoogAKCRAADmhBGVaC
- FXQ7EACwuSNXhbor7Pmvw7kc3yzB8T2qBADcLXIdHGNrr45LHlSxnrV94O6R8HyTvKa8Zfkn7Fh
- 9pZ9AcR+NiZUEyRsjzvFTMtDpOJofkc3BE0KF+Uzn+hWGciNxpN7Cw2RXhAiKGg6QuMtwyMx/Sa
- Yheo+/eRCURqi12JmGNVR2K37UUOgT5LjOLeIrM0VmuGe3XpE/IXxKeHaqaxK/yq2RVLnlkrJX2
- WLUALmYoB8/myMKE0YUipkMBrGZ397AtNYB97nUzwxX39T/J+kapJ/iYRW2RVW/7qy1Qvs2MF55
- qNmHBPV8ZVMWCUz/3yiQPU/PzlvKsk+1VJaQ9mgJKa7UxfFrBgzt7ybCsv8XADtyLciGJDRd59m
- RweNDLcEp7FozGfWe8adgLlJ9NWdpkgXnrXkbTbm6WHFWHZ5l0Gna0zqMgYsaxuxHz7H1NRP3E+
- R0j7cTBeoC8OE80FioSTtLOeGuwKqG0FwLeMR2tNwo9XH5QpQN9HZ+O3b0YEIG4HpwJoJEu+K8K
- 39Gvojr7PI/LABeP7vKm1eVyjS2kbS8EBSbBUiQeIJwbQXSmbJSUU4H+YBNx12V4m93vfHn5Btt
- 1gfWkdHzSTvm2I6N7jDxCR9i1obHkbt40Lulv7QEykkyERtWZt4J6TPKwuCCKNOGYAyghci+Vm2
- c9bJN0S5yRkf6sQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1958; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=Vw2juZXxW1XGzKvHC8nm1c9dSoC5XkIh5qWoA10eTLw=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqlaiiaOjU+QLp3yCH/2ydQJVR8F50jJqzsUlBU
+ qfgLe3MpTGJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCapWoogAKCRAADmhBGVaC
+ FRN3EACxNoqfr1IHfCblEgeUtzryynMs/16Jgn/qXZI8yd8nft3EXvRJ+vF6frw80WpNYU6v29I
+ P1Vyd4N1ouVl3b9T6I6gNx1QaFIX7Tu/d2I/fx+N2rryOQjYRuDGjQAF8SJU26uO4zKb82nIXTf
+ szDHAlYQCdQQbL2oBnPB7FtUdhRAAfq/Hq6q17747S+3slrMgxdlvg5nzk3BJMet6NrSqhoAuOt
+ 5tmJXSH+4L4BEZv8diVdd2qXtPr0KG50DmrJraeTxMjMcNoiAyJhLl22P0p3KEekk7oRg9VSyAt
+ uVf1sB10RoafwRG9zxlNKlmm+PP7YZEB+n1PdP1J1GYGWUkdWAZaPWzFWNng+Cpb0DIvamAUQSW
+ EZ0GbwKxgG1W5eMU/6d/yOxseDiDlsEoES66XtO04cZXglsHNXtm8kHjATpl68ZbcDGymU6cot7
+ LmMfZyreDrm/riG68Xs6bIOuRABUUN4VCJovdkHQDE2fTS6400mn8+UNFxJ8A97C0fWjBTCIKa9
+ dQ21wNB6l+/2zhq0Zu5szzQY495ECYCUj3R47QkXfzuSAOKlb5ZNWw4TaSvMapmNdUjPIk1rs78
+ XwC54Mv1rADS7p9ipAnPEIE60zgrKxti+6ffoF+3UK/EHAcsjyTRHzNm+E3uG1R4t+BI54AlKNy
+ s8Y++tyOHZRlHww==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-svc_register() walks every program and every version. The break on error
-leaves the version loop only, so a program whose call to the local rpcbind
-timed out is followed by the next program timing out in the same way. With
-the 1s bound on the local rpcbind client, an nfsd serv pays 2s for that,
-once for nfsd and once for nfsacl.
+svc_unregister() clears the rpcbind entry for every non-hidden program and
+version. svc_rpcb_setup() runs it to drop stale entries when a serv binds,
+and svc_rpcb_cleanup() runs it when one goes away. An nfsd serv with v3 and
+v4 enabled sweeps four or five entries, so a local rpcbind that never
+replies costs that many timeouts, twice per NFSD_CMD_LISTENER_SET, all
+under nfsd_mutex.
 
-Stop the program loop too, but only when the call got no answer.
+Give up after the first call that gets no answer.
 
 Assisted-by: LLM
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- net/sunrpc/svc.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ net/sunrpc/svc.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
 
 diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index ca6f90653327..24fd18bb8770 100644
+index 24fd18bb8770..c00ae00b6a12 100644
 --- a/net/sunrpc/svc.c
 +++ b/net/sunrpc/svc.c
-@@ -1258,6 +1258,10 @@ int svc_register(struct svc_serv *serv, struct net *net,
- 				break;
- 			}
+@@ -1277,8 +1277,8 @@ int svc_register(struct svc_serv *serv, struct net *net,
+  * any "inet6" entries anyway.  So a PMAP_UNSET should be sufficient
+  * in this case to clear all existing entries for [program, version].
+  */
+-static void __svc_unregister(struct net *net, const u32 program, const u32 version,
+-			     const char *progname)
++static int __svc_unregister(struct net *net, const u32 program, const u32 version,
++			    const char *progname)
+ {
+ 	int error;
+ 
+@@ -1292,6 +1292,7 @@ static void __svc_unregister(struct net *net, const u32 program, const u32 versi
+ 		error = rpcb_register(net, program, version, 0, 0);
+ 
+ 	trace_svc_unregister(progname, version, error);
++	return error;
+ }
+ 
+ /*
+@@ -1318,10 +1319,13 @@ static void svc_unregister(const struct svc_serv *serv, struct net *net)
+ 				continue;
+ 			if (progp->pg_vers[i]->vs_hidden)
+ 				continue;
+-			__svc_unregister(net, progp->pg_prog, i, progp->pg_name);
++			if (__svc_unregister(net, progp->pg_prog, i,
++					     progp->pg_name) == -EIO)
++				goto out;
  		}
-+
-+		/* Give up on trying to register anything if it didn't respond */
-+		if (noanswer)
-+			break;
  	}
  
- 	if (noanswer)
++out:
+ 	rcu_read_lock();
+ 	sighand = rcu_dereference(current->sighand);
+ 	spin_lock_irqsave(&sighand->siglock, flags);
 
 -- 
 2.55.0
