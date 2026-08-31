@@ -1,328 +1,232 @@
-Received: from mx0a-00154904.pphosted.com (mx0a-00154904.pphosted.com [148.163.133.20])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9C7313D6CC4
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 09:28:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.133.20
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0FDDB400998;
+	Mon, 31 Aug 2026 09:59:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788168482; cv=none; b=ZVl0rpn/jTWRKyhCQdTIgairoc4ZUo5UXvneBmh2LJtz/E+PZbiHoQuwgY+iWnL4gGqwEr8unDGdFI6MJxvl7UPQpPoY1948to+08nrmD0tFDjKieah8hknOoAVA/l+mO4ar8E02wZqMpcYNjs7W/SVqVRetCwRAR/ZIlN3/20U=
+	t=1788170392; cv=none; b=kkUq/ktcgKT1euIv10ei66XFUEe11wbBAwBl6OF5EoVip4XuH3shTv8px/BP3e4gbAZ2Wx/8Ei+Xkxcxip0z4wSh/pFFp5pabyahWnWggdt1ypgF8pR+3sszyYSQN7E9rei2ZcEbfGs+cxzzFKhj0m4Q2h124I+Q9dWG3ufhjW0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788168482; c=relaxed/simple;
-	bh=GukMwV2+NZibEr0vBXYl/D79zo/zILBKMq2pThiS6qA=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=coxRVk7Untplyuh/QDaYmUSDxp4pH6kprEq85LGohKTXqlYNt3qndncLhWkv3S8ttwuJdvfhYmh1fxIVNSAvx15k/sc68PU4ctUzf4zRsoj9nxFymxDvD9Ma8samhS94Hy6QoXSMk5MRWefxCiVoVHRN3w4wPpB0mz12N1RVghk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=JSbjfB5B; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=GGIxbGwc; arc=none smtp.client-ip=148.163.133.20
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dell.com
+	s=arc-20240116; t=1788170392; c=relaxed/simple;
+	bh=PqIa7f4joQ6Ewq8ZNwNRH9LrYTiWA+ynmpnFW7z1oPI=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=TCOd/wmiUtE5msfJyK9aUb3L5fv1FwgT2enw/D8U+YoW/8uB0K3KQnUIJPUBFxdLJieTQ2kQ1YGUq655PJrWGAlfZVOCuLgt/0WPziLeh25HpelWNgpZAYYx2gWSGPnzwfypcVi/NphEPMSCkXnIJg0fy2e+Qu2wbHtZj0cjYHY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=dW2nKgD/; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=KmcOhO0z; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=r9+5dkfj; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=vayhPUMM; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="JSbjfB5B";
-	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="GGIxbGwc"
-Received: from pps.filterd (m0170391.ppops.net [127.0.0.1])
-	by mx0a-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67V80Na02700832
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 05:27:54 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=dell.com; h=cc
-	:content-transfer-encoding:date:from:in-reply-to:message-id
-	:mime-version:references:subject:to; s=smtpout1; bh=cOtw30DPqtNa
-	GMTS+fV+1BAaXdugCLYrnlgRs5e8H+8=; b=JSbjfB5BE2l/bsnnpYujQ3r1WxBC
-	EfhHK++L0p+9g/b8DD5x8UR+PZbhxghZShfVgnhhdFNu8hwaGb33RHicAI58mRxw
-	ZvqOSjEk5O6CveEkZaSbDZ9BanEOF9iucJGkMuGK3J82fO2BiJBzMlCisC0lpDbs
-	7TA/N4BgD2IMNCWoot47fEd4Pd0vbFVKQe6/ZOo0I+GmPblFknG+P4vd7ldzVa36
-	0Bzbz9iFROVQu1BKxIBFx3NWLAd3E7GFsjHolvrxyDBmMHfrBAURxperWiWSiTM/
-	xtXkkh1UYhtj1tdZgeKgDZZvSVkl+l1VBXsMM7P3p9KCYuOWw90yu7JdaA==
-Received: from mx0a-00154901.pphosted.com (mx0a-00154901.pphosted.com [67.231.149.39])
-	by mx0a-00154904.pphosted.com (PPS) with ESMTPS id 4gbtjsd63a-1
-	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 05:27:54 -0400 (EDT)
-Received: from pps.filterd (m0142693.ppops.net [127.0.0.1])
-	by mx0a-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67V90T6d2842117
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 05:27:54 -0400
-Received: from esapsmtplv05.us.dell.com (esapsmtplv05.us.dell.com [143.166.203.153])
-	by mx0a-00154901.pphosted.com (PPS) with ESMTPS id 4gd3pk2f8b-3
-	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 05:27:53 -0400 (EDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-  d=dell.com; i=@dell.com; q=dns/txt; s=smtpdev1;
-  t=1788168474; x=1819704474;
-  h=from:to:cc:subject:date:message-id:in-reply-to:
-   references:mime-version:content-transfer-encoding;
-  bh=cOtw30DPqtNaGMTS+fV+1BAaXdugCLYrnlgRs5e8H+8=;
-  b=GGIxbGwck4AfLPeC+tYHCfPjqFFGLIC90x7vbzQw0VW6tP9WHSBan5oy
-   OplxACZTSsb7/GytyD561m12zp36foplJWVDnEIkKe1G7bq14i51cMuMD
-   QendbhEWI+PMAuRbQigQPqwzdmfwLKkGrSvVK3CanQ0GCj3J3gIk0fJdm
-   aS3qgvX3S5VcDbA0Q4EpzuRlSf6q2KtzP9dJU+zQ9Mp5Kr7o2JZ1Ygtvl
-   nvZ3Q+RIPFCMXTT4gMLDk2prRVKPEvBDAScu9qrmkleUurnztWpS2jsUg
-   VOZukpImok0q39+aYoxY5LJamEbq9gwYy7z0B2M3zLO1HMuowjWZRxQBj
-   w==;
-X-CSE-ConnectionGUID: hib3OLsRTb6IDJYGb5XKbg==
-X-CSE-MsgGUID: wVG0hs9/Qsmn5lLpdNpa2Q==
-X-LoopCount0: from 10.94.8.206
-X-MS-Exchange-CrossPremises-AuthAs: Internal
-Received: from w-96j1th4.apac.dell.com (HELO W-96J1TH4.blr.amer.dell.com) ([10.94.8.206])
-  by esapsmtplv05.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 31 Aug 2026 09:27:51 +0000
-From: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
-To: steved@redhat.com
-Cc: Prabhakar Pujeri <prabhakar.pujeri@dell.com>, cel@kernel.org,
-        jlayton@kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/2] nfsdctl: display per-client NFSv4 state usage
-Date: Mon, 31 Aug 2026 09:27:41 +0000
-Message-ID: <8c01bc79b768be1a2824b4691d80fd1c7d1384d7.1787988918.git.prabhakar.pujeri@dell.com>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <cover.1787988918.git.prabhakar.pujeri@dell.com>
-References: <cover.1787988918.git.prabhakar.pujeri@dell.com>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="dW2nKgD/";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="KmcOhO0z";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="r9+5dkfj";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="vayhPUMM"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id BCE4E1FAAB;
+	Mon, 31 Aug 2026 09:59:39 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1788170383; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=9NwnR8kMEaTJTYkoxBQW5G3izVgqGS7StBEwaJ2omhE=;
+	b=dW2nKgD/72GHfPDPSkIXHWa4TQlW9zo4m5ZJZt18et8r8SpFKwl3fSOhDCUde4WrGHhX1k
+	HthafQUnqSZwcZK8Hdcs9U36lkHKEFP7wcuFYQxjwio2w5aV+Vt72W3ZXcuri1mhWwTdMf
+	dP+uDJvuZa7oiZHnAx8jWbEbvlydq4E=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1788170383;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=9NwnR8kMEaTJTYkoxBQW5G3izVgqGS7StBEwaJ2omhE=;
+	b=KmcOhO0zo72Y4OHAa8RvceB+zt8rPD1OtYKdTL75AERgXOIdssNGME6lJ09SSLwG+HwP6H
+	WPniXvtYYYJ7buDA==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1788170379; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=9NwnR8kMEaTJTYkoxBQW5G3izVgqGS7StBEwaJ2omhE=;
+	b=r9+5dkfj5zv2zJtacQf2HZljTAw/25dZVX8yvLicsAhmPie/8z4lpxN7aqnWa4UN22X30z
+	VqtIUOoyqHhMMot3U+vyaxuyjejWrLJMumjOQ8E3Br8VcDxJXDazwa4lekbK2hbqemViUC
+	LVdcCgmonttzkdd8su0ehz6W1kl120w=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1788170379;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=9NwnR8kMEaTJTYkoxBQW5G3izVgqGS7StBEwaJ2omhE=;
+	b=vayhPUMMZNg3rW2xgsNzuc/IUtzfsyNI4zFxAL3JrlK7XeBEytvIqcNyZdaxkU8YXY20/9
+	vR13eZLPIsgFyYDQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 98AE413694;
+	Mon, 31 Aug 2026 09:59:39 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id 2pBAJYtQlWp8cAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 31 Aug 2026 09:59:39 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 29D40A13B5; Mon, 31 Aug 2026 11:59:35 +0200 (CEST)
+Date: Mon, 31 Aug 2026 11:59:35 +0200
+From: Jan Kara <jack@suse.cz>
+To: "Matthew Wilcox (Oracle)" <willy@infradead.org>
+Cc: Christian Brauner <christian@brauner.io>, Jan Kara <jack@suse.cz>, 
+	Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>, Theodore Tso <tytso@mit.edu>, 
+	Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+	Namjae Jeon <linkinjeon@kernel.org>, Hyunchul Lee <hyc.lee@gmail.com>, 
+	Phillip Lougher <phillip@squashfs.org.uk>, linux-erofs@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+	linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org, ntfs@lists.linux.dev, 
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
+Subject: Re: [PATCH 1/9] mm: Improve memalloc_nofs_save() documentation
+Message-ID: <wriwrbwg3sx5kpl6s7yggam5x7ljml2sul5rz4dm7ftbyyoqyu@yqjepgxxtd3g>
+References: <20260830041901.2668-1-willy@infradead.org>
+ <20260830041901.2668-2-willy@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
- definitions=2026-08-31_03,2026-08-27_02,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- phishscore=0 lowpriorityscore=0 bulkscore=0 suspectscore=0 priorityscore=1501
- clxscore=1015 malwarescore=0 impostorscore=0 spamscore=0 adultscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608310080
-X-Authority-Analysis: v=2.4 cv=R9Yz39RX c=1 sm=1 tr=0 ts=6a95491a cx=c_pps
- a=j0++y401J6f/BxNAf5EDow==:117 a=t4Iba6VQkoKuxR139xjPXA==:17
- a=Sv0fKeRqtYgA:10 a=ke5jqHz-1hQA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=6gNNCFAoQcIphELLPWWu:22 a=aNt9FJNJ8fZyd9HhltU_:22 a=VwQbUJbxAAAA:8
- a=iLNU1ar6AAAA:8 a=oZIGi6-CDSk9Cc5Qcs8A:9 a=gbU3OgOOxF9bX48Letew:22
-X-Proofpoint-ORIG-GUID: N5yHcxXGRsyE-JNLLXTrYo5W5nCVOH1B
-X-Proofpoint-GUID: N5yHcxXGRsyE-JNLLXTrYo5W5nCVOH1B
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODMxMDA4MSBTYWx0ZWRfX2aOymo3KM//V
- tMEtrzWJ7+H9H8Unq0V4aSTW/+KRPJI3A49BkDXx0w2nfI8SDDcOvjRCtGibXHuDeC/68KSXX9i
- RPRh46jgROV3Sz6iYc7wy2fqhG3nWvJ6Xrs/wWTvKNz6oXrr12QGNgJsGIo6ZcXcko5I9ir1ssr
- ZUetS54xVFVs05ZOp5Z3GFlREkKXV4vCSG/iBfjTZEaklGmMuLNY+J3EPPrIKZKw/OCYwbe3jgH
- 6NeiSmFKTbxqkjmkTUtdA8QNZEYmnTqQwluQKv1O6Ev2/EkRAZ3ZPGPF2KsS79WVwjZbPPc4rFj
- CqP+NhMHb80iB37CsyWtFOxapfphWCn0ocGGqaCaB9sFV73NIZRMoGl4PWkPA8e3tq6A0I6Dukd
- DWfy/fV/YNtCCnnb4awLvoYibM6wg1Wzc/4XK3vlYjMNTFqHTFsTjSgahDX4U6kN5UqaVxF1H0n
- 7KIMgyDg63ri2Wni9ow==
-X-Proofpoint-Spam-Info: AW1haW4tMjYwODMxMDA4MSBTYWx0ZWRfXz9cqKF4b9bHq
- 8Aa+NeaQVyfswgm9+UxNM7QY79cmZfcXsPqxZkyi9laFoYoX+5F/0is0CeEWNf9PGau7SI1BPVu
- xWl98CsYsoiCqVrULxonQASTrxdzsBw=
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 clxscore=1015
- priorityscore=1501 impostorscore=0 lowpriorityscore=0 adultscore=0
- suspectscore=0 phishscore=0 spamscore=0 malwarescore=0 bulkscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608310081
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260830041901.2668-2-willy@infradead.org>
+X-Spam-Level: 
+X-Spam-Score: -2.30
+X-Spam-Flag: NO
+X-Spamd-Result: default: False [-2.30 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	MISSING_XM_UA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[18];
+	TAGGED_RCPT(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[brauner.io,suse.cz,kernel.org,mit.edu,gmail.com,squashfs.org.uk,lists.ozlabs.org,vger.kernel.org,lists.linux.dev,kvack.org];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,imap1.dmz-prg2.suse.org:helo,suse.com:email]
 
-Extend the clients table with the session and stateid record counts
-exported by NFSD. These totals help an operator identify which client is
-retaining server-side state before using the detailed nfsd filesystem
-views.
+On Sun 30-08-26 05:18:48, Matthew Wilcox (Oracle) wrote:
+> Talk about why someone should call this function instead of
+> what this function does.  This makes the long comment in mm/readahead.c
+> obsolete; replace it with a comment about which case we're protecting
+> against.
+> 
+> Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 
-Decode both four-byte and eight-byte representations of the Netlink uint
-attributes and display the complete u64 value. Display a dash when a
-count attribute is absent or malformed. This keeps the command accurate
-when a new nfsdctl is used with a kernel that supports the base client
-dump but not the count extension.
+Yeah, I think the documentation is better. Feel free to add:
 
-Require the last count attribute before selecting the system UAPI header
-so building against a header with only the base command still uses the
-bundled copy.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Assisted-by: LLM
-Signed-off-by: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
----
-Changes since v1:
+								Honza
 
-  - decode 32-bit and 64-bit variable-width uint count attributes
-  - store and format all counts as uint64_t values
-
-v1: https://lore.kernel.org/r/05399eaee964c52a935f65b2c793f77cb8a2a97a.1787639206.git.prabhakar.pujeri@dell.com
-
- configure.ac                   |  2 +-
- support/include/nfsd_netlink.h |  5 +++
- utils/nfsdctl/nfsdctl.8        |  8 +++--
- utils/nfsdctl/nfsdctl.adoc     |  8 +++--
- utils/nfsdctl/nfsdctl.c        | 63 +++++++++++++++++++++++++++++++---
- 5 files changed, 75 insertions(+), 11 deletions(-)
-
-diff --git a/configure.ac b/configure.ac
-index 66330d0..0b22523 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -259,7 +259,7 @@ AC_CHECK_HEADERS(linux/nfsd_netlink.h)
- 
- # ensure the system netlink headers have the latest features
- AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <linux/nfsd_netlink.h>]],
--			                   [[int foo = NFSD_CMD_CLIENT_GET;]])],
-+			                   [[int foo = NFSD_A_CLIENT_LAYOUT_STATEIDS;]])],
- 			   [AC_DEFINE([USE_SYSTEM_NFSD_NETLINK_H], 1,
- 				      ["Use system's linux/nfsd_netlink.h"])])
- AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <linux/lockd_netlink.h>]],
-diff --git a/support/include/nfsd_netlink.h b/support/include/nfsd_netlink.h
-index 715acb4..d977833 100644
---- a/support/include/nfsd_netlink.h
-+++ b/support/include/nfsd_netlink.h
-@@ -292,6 +292,11 @@ enum {
- 	NFSD_A_CLIENT_LEASE_REMAINING,
- 	NFSD_A_CLIENT_RECLAIM_COMPLETE,
- 	NFSD_A_CLIENT_CALLBACK_STATE,
-+	NFSD_A_CLIENT_SESSIONS,
-+	NFSD_A_CLIENT_OPEN_STATEIDS,
-+	NFSD_A_CLIENT_LOCK_STATEIDS,
-+	NFSD_A_CLIENT_DELEGATION_STATEIDS,
-+	NFSD_A_CLIENT_LAYOUT_STATEIDS,
- 
- 	__NFSD_A_CLIENT_MAX,
- 	NFSD_A_CLIENT_MAX = (__NFSD_A_CLIENT_MAX - 1)
-diff --git a/utils/nfsdctl/nfsdctl.8 b/utils/nfsdctl/nfsdctl.8
-index 18a7a56..e4e823e 100644
---- a/utils/nfsdctl/nfsdctl.8
-+++ b/utils/nfsdctl/nfsdctl.8
-@@ -85,9 +85,11 @@ nfs.conf, 16 server threads will be brought online.
- .RS 4
- List NFSv4 clients known to the server. The output reports each client\(cqs
- server-generated client ID, peer address, minor version, lease and callback
--states, lease time remaining, and reclaim status. This subcommand requires
--elevated privileges. If the client set changes in a way that interrupts the
--dump, the command reports an error and should be retried.
-+states, lease time remaining, reclaim status, session count, and counts of
-+open, lock, delegation, and layout stateids. This subcommand requires elevated
-+privileges.
-+If the client set changes in a way that interrupts the dump, the command
-+reports an error and should be retried.
- .RE
- .sp
- \fBlistener\fP
-diff --git a/utils/nfsdctl/nfsdctl.adoc b/utils/nfsdctl/nfsdctl.adoc
-index d227562..a25dc0a 100644
---- a/utils/nfsdctl/nfsdctl.adoc
-+++ b/utils/nfsdctl/nfsdctl.adoc
-@@ -50,9 +50,11 @@ Each subcommand can also accept its own set of options and arguments. The
- 
-   List NFSv4 clients known to the server. The output reports each client's
-   server-generated client ID, peer address, minor version, lease and callback
--  states, lease time remaining, and reclaim status. This subcommand requires
--  elevated privileges. If the client set changes in a way that interrupts the
--  dump, the command reports an error and should be retried.
-+  states, lease time remaining, reclaim status, session count, and counts of
-+  open, lock, delegation, and layout stateids. This subcommand requires elevated
-+  privileges.
-+  If the client set changes in a way that interrupts the dump, the command
-+  reports an error and should be retried.
- 
- *listener*::
- 
-diff --git a/utils/nfsdctl/nfsdctl.c b/utils/nfsdctl/nfsdctl.c
-index c0a6d5f..096714f 100644
---- a/utils/nfsdctl/nfsdctl.c
-+++ b/utils/nfsdctl/nfsdctl.c
-@@ -101,6 +101,11 @@ struct nfsd_client {
- 	bool		have_address4;
- 	bool		have_address6;
- 	bool		have_address_port;
-+	uint64_t	sessions;
-+	uint64_t	open_stateids;
-+	uint64_t	lock_stateids;
-+	uint64_t	delegation_stateids;
-+	uint64_t	layout_stateids;
- 	bool		reclaim_complete;
- };
- 
-@@ -309,6 +314,26 @@ static const char *callback_state_name(uint32_t state)
- 	}
- }
- 
-+static void parse_client_uint(const struct nlattr *attr, uint64_t *value)
-+{
-+	switch (nla_len(attr)) {
-+	case sizeof(uint32_t):
-+		*value = nla_get_u32(attr);
-+		break;
-+	case sizeof(uint64_t):
-+		*value = nla_get_u64(attr);
-+		break;
-+	}
-+}
-+
-+static void format_client_count(uint64_t count, char *buf, size_t buflen)
-+{
-+	if (count == UINT64_MAX)
-+		snprintf(buf, buflen, "%s", "-");
-+	else
-+		snprintf(buf, buflen, "%" PRIu64, count);
-+}
-+
- static void format_client_address(const struct nfsd_client *client, char *buf,
- 				  size_t buflen)
- {
-@@ -344,7 +369,13 @@ static void parse_client_get(struct genlmsghdr *gnlh,
- 		.address = "unknown",
- 		.state = UINT32_MAX,
- 		.callback_state = UINT32_MAX,
-+		.sessions = UINT64_MAX,
-+		.open_stateids = UINT64_MAX,
-+		.lock_stateids = UINT64_MAX,
-+		.delegation_stateids = UINT64_MAX,
-+		.layout_stateids = UINT64_MAX,
- 	};
-+	char sessions[21], opens[21], locks[21], delegations[21], layouts[21];
- 	struct nlattr *attr;
- 	int rem;
- 
-@@ -394,23 +425,47 @@ static void parse_client_get(struct genlmsghdr *gnlh,
- 		case NFSD_A_CLIENT_CALLBACK_STATE:
- 			client.callback_state = nla_get_u32(attr);
- 			break;
-+		case NFSD_A_CLIENT_SESSIONS:
-+			parse_client_uint(attr, &client.sessions);
-+			break;
-+		case NFSD_A_CLIENT_OPEN_STATEIDS:
-+			parse_client_uint(attr, &client.open_stateids);
-+			break;
-+		case NFSD_A_CLIENT_LOCK_STATEIDS:
-+			parse_client_uint(attr, &client.lock_stateids);
-+			break;
-+		case NFSD_A_CLIENT_DELEGATION_STATEIDS:
-+			parse_client_uint(attr, &client.delegation_stateids);
-+			break;
-+		case NFSD_A_CLIENT_LAYOUT_STATEIDS:
-+			parse_client_uint(attr, &client.layout_stateids);
-+			break;
- 		default:
- 			break;
- 		}
- 	}
- 	format_client_address(&client, client.address, sizeof(client.address));
- 
-+	format_client_count(client.sessions, sessions, sizeof(sessions));
-+	format_client_count(client.open_stateids, opens, sizeof(opens));
-+	format_client_count(client.lock_stateids, locks, sizeof(locks));
-+	format_client_count(client.delegation_stateids, delegations,
-+			    sizeof(delegations));
-+	format_client_count(client.layout_stateids, layouts, sizeof(layouts));
-+
- 	if (!ctx->header_printed) {
--		printf("%-18s %-47s %-4s %-11s %8s %7s %8s\n",
-+		printf("%-18s %-47s %-4s %-11s %8s %5s %5s %5s %5s %6s %7s %8s\n",
- 		       "clientid", "address", "vers", "state", "lease",
--		       "reclaim", "callback");
-+		       "sess", "open", "lock", "deleg", "layout", "reclaim",
-+		       "callback");
- 		ctx->header_printed = true;
- 	}
- 
- 	printf("0x%016" PRIx64 " %-47s 4.%-2u %-11s %8" PRId64
--	       " %7s %8s\n",
-+	       " %5s %5s %5s %5s %6s %7s %8s\n",
- 	       client.clientid, client.address, client.minor_version,
- 	       client_state_name(client.state), client.lease_remaining,
-+	       sessions, opens, locks, delegations, layouts,
- 	       client.minor_version ?
- 		(client.reclaim_complete ? "yes" : "no") : "-",
- 	       callback_state_name(client.callback_state));
-@@ -822,7 +877,7 @@ out:
- static void clients_usage(void)
- {
- 	printf("Usage: %s clients\n", taskname);
--	printf("    Display NFSv4 clients and their current state.\n");
-+	printf("    Display NFSv4 clients and their current state usage.\n");
- }
- 
- static int clients_func(struct nl_sock *sock, int argc, char **argv)
+> ---
+>  include/linux/sched/mm.h | 31 +++++++++++++++++++++++--------
+>  mm/readahead.c           | 14 ++------------
+>  2 files changed, 25 insertions(+), 20 deletions(-)
+> 
+> diff --git a/include/linux/sched/mm.h b/include/linux/sched/mm.h
+> index d7c6a942aa7e..f76be1141b06 100644
+> --- a/include/linux/sched/mm.h
+> +++ b/include/linux/sched/mm.h
+> @@ -372,13 +372,26 @@ static inline void memalloc_noio_restore(unsigned int flags)
+>  }
+>  
+>  /**
+> - * memalloc_nofs_save - Marks implicit GFP_NOFS allocation scope.
+> + * memalloc_nofs_save - Prevent recursion into the filesystem.
+>   *
+> - * This functions marks the beginning of the GFP_NOFS allocation scope.
+> - * All further allocations will implicitly drop __GFP_FS flag and so
+> - * they are safe for the FS critical section from the allocation recursion
+> - * point of view. Use memalloc_nofs_restore to end the scope with flags
+> - * returned by this function.
+> + * All memory allocations between calling this function and calling
+> + * memalloc_nofs_restore() will be prevented from calling into filesystems
+> + * to reclaim memory.  Clean page cache memory can still be reclaimed,
+> + * but (for example) inodes will not be.
+> + *
+> + * The primary reason to do this is that the caller has taken a lock
+> + * which would be needed by FS reclaim.  While we could theoretically
+> + * call into a different filesystem in this case, it can be a deep call
+> + * stack so it is better to avoid all filesystems.
+> + *
+> + * Filesystems often choose to incorporate a call to this function as part
+> + * of starting a journal transaction.  While not a lock in the normal
+> + * sense, it has much the same effect as nested journal transactions
+> + * are either prohibited or expensive.
+> + *
+> + * Also call this function if you need to allocate memory while holding
+> + * a file folio locked.  High order allocations (such as those requested
+> + * by slab) can trigger compaction which will attempt to lock the folio.
+>   *
+>   * Context: This function is safe to be used from any context.
+>   * Return: The saved flags to be passed to memalloc_nofs_restore.
+> @@ -389,10 +402,12 @@ static inline unsigned int memalloc_nofs_save(void)
+>  }
+>  
+>  /**
+> - * memalloc_nofs_restore - Ends the implicit GFP_NOFS scope.
+> + * memalloc_nofs_restore - End filesystem reclaim scope.
+>   * @flags: Flags to restore.
+>   *
+> - * Ends the implicit GFP_NOFS scope started by memalloc_nofs_save function.
+> + * Ends the implicit memory allocation scope started by
+> + * memalloc_nofs_save().  This may not enable access to filesystem reclaim
+> + * if it was already disabled at the time memalloc_nofs_save() was called.
+>   * Always make sure that the given flags is the return value from the
+>   * pairing memalloc_nofs_save call.
+>   */
+> diff --git a/mm/readahead.c b/mm/readahead.c
+> index 6e5563290287..9c116d4ba963 100644
+> --- a/mm/readahead.c
+> +++ b/mm/readahead.c
+> @@ -227,17 +227,7 @@ void page_cache_ra_unbounded(struct readahead_control *ractl,
+>  	gfp_t gfp_mask = readahead_gfp_mask(mapping);
+>  	unsigned long mark = ULONG_MAX, i = 0;
+>  	unsigned int min_nrpages = mapping_min_folio_nrpages(mapping);
+> -
+> -	/*
+> -	 * Partway through the readahead operation, we will have added
+> -	 * locked pages to the page cache, but will not yet have submitted
+> -	 * them for I/O.  Adding another page may need to allocate memory,
+> -	 * which can trigger memory reclaim.  Telling the VM we're in
+> -	 * the middle of a filesystem operation will cause it to not
+> -	 * touch file-backed pages, preventing a deadlock.  Most (all?)
+> -	 * filesystems already specify __GFP_NOFS in their mapping's
+> -	 * gfp_mask, but let's be explicit here.
+> -	 */
+> +	/* Allocating with locked folios */
+>  	unsigned int nofs = memalloc_nofs_save();
+>  
+>  	lockdep_assert_held(&mapping->invalidate_lock);
+> @@ -512,7 +502,7 @@ void page_cache_ra_order(struct readahead_control *ractl,
+>  
+>  	ra->order = new_order;
+>  
+> -	/* See comment in page_cache_ra_unbounded() */
+> +	/* Allocating with locked folios */
+>  	nofs = memalloc_nofs_save();
+>  	filemap_invalidate_lock_shared(mapping);
+>  	/*
+> -- 
+> 2.47.3
+> 
 -- 
-2.54.0
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
