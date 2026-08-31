@@ -1,70 +1,70 @@
 Received: from mx0a-00154904.pphosted.com (mx0a-00154904.pphosted.com [148.163.133.20])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 923252F363F
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 10:42:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4EE4F344D99
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 10:42:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.133.20
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788172942; cv=none; b=tK7SuK5v5yXcSP0Di1PZSmYf8Da9YEV6HPjxtZOkEhwWZceE/G4kRfI928/X+hLWAo/hzCqqFD5ExwC6CjqEofegdwzzGzO5zUGEMakdwN2bN9Ant6Ehvr9f04VeONT00vJE0bPJAFwilTC3ooxgjssIKWrAMNEKKZUwZEizZCI=
+	t=1788172944; cv=none; b=QVWCJetOl77D01Nd3s4eNnNYvXPwYerYj0R67b+4TzAPFfOUKTxyuSm8CgJNm5AUs9iKcCwHQQdhG2zFU6hZFRjolkTOzUhAyNtqxkVfYusfxVggA3JR3sRyTzcMPWm6kWjahXWqjtFt/xdUCJzyLH9lTJVuo6JaLAPjdjCfRek=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788172942; c=relaxed/simple;
-	bh=XGdG62evDnDOCDyTLdLsQVc4oJaCzd9B2duGNUQNj+U=;
+	s=arc-20240116; t=1788172944; c=relaxed/simple;
+	bh=pVxKnyMx7g5auDuKPqHQqfOCcOiavYfV+KevlxrkAyQ=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=hf6/klMjJPlP6Ws+nnkt2a3EYG0Qn3hiJiEDueO3FkDLXl7V2BB5hWclcprmnu5xM90uGAf7IjmW9xPHBYavK43rfvnhjxiWAJpuo6cYNrhliemyee9GgWzUIg4wFphczqKT0dR/IVDfx+JwjH1dhRMd4RIqZ8Ek5qGkbc6Yojs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=fmMTdS9s; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=QXmrNWOv; arc=none smtp.client-ip=148.163.133.20
+	 MIME-Version; b=EbIpTcGO3opW8T02TNr0ctp1GyMYQoQm9wtzUTK21JG8eJNoKIKPULwIum7AwQC4olQhfd3yvCqJBM+20Hhv4DD1700p9tWKlSVGECRHn/bAzesjlIoVeo3hYEKueS2Fc+hzW+mBr1FMz02xunabxcTD4BigEluKZrWxrjujUAk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=QJ+d9S7g; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=cE2eXIr/; arc=none smtp.client-ip=148.163.133.20
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dell.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="fmMTdS9s";
-	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="QXmrNWOv"
-Received: from pps.filterd (m0170393.ppops.net [127.0.0.1])
-	by mx0a-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67V7wtR72648192
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 06:42:20 -0400
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="QJ+d9S7g";
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="cE2eXIr/"
+Received: from pps.filterd (m0170390.ppops.net [127.0.0.1])
+	by mx0a-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67V7x1bd1070249
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 06:42:22 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=dell.com; h=cc
 	:content-transfer-encoding:date:from:in-reply-to:message-id
-	:mime-version:references:subject:to; s=smtpout1; bh=q0LVYO3cn/Xf
-	fbiLEOi82Q7X0oKIr7ECvy5J92K93xY=; b=fmMTdS9st/a0p8UEa31otlkoFFn6
-	Iy/bCfx8E5/sHXQMciWf46KdMjEOlcrlPMbzZBOQBIWRcuq/zTCRL0uVgZ0xTFhI
-	BHwnb3s1DWawk7gRW1yg92eiAshjHdck05OvZYIlfWdHZLs5OMjLxZdobyE2nNye
-	41OTQ3aW+jXoe94yVgcLunlGrcXJ1tw54+UGsQ18HO1wbBCIWb+MyNCpPNT19AG9
-	A47VpxcndNOQqG7x3Bhs2iZD9yLLElCIdV8f59tOv6bAnsoeLwLdWi7+yFyq/mu0
-	q81bKSDKgPuC6uH60thl8WHsQy5wv/c7KsZC3G01Kw+MPmKlFfarxVLWKA==
+	:mime-version:references:subject:to; s=smtpout1; bh=5gkr5NO3n5A3
+	qTG42DpHm3dTr1ODWlNH3Mf6fRH6yzo=; b=QJ+d9S7gIHfjG5p0jxHlivy/bhSP
+	UK/ijvTRI8dEQjkE39xFNi6OXlgE1B2QAVfP5HDbjgnqhmrUjWlVr6xoSUF+V0xM
+	b3XSI5T2k/DkjrkZhw6E3z8EwPyT16sMDZ44RMFT3lls9FcxTJhOTIdWD+z+wf2T
+	R1gIrDxzL7UI/6S4huvF8CSSzmGhmQ4QnAah2VxtscRN5CV3ywwwNuyNoaJB6Ihh
+	QTbWIOv6IJhhr15n2TKFfKyCHUl+F17fz9DM6GvgA/EGOvUBcsqtyCzpL8Kb7GxU
+	sBvpCPhVHAr7wS0uRPpvrAUMKacti4c9anGnwmHyyEWb832cRJkmvvHVoQ==
 Received: from mx0a-00154901.pphosted.com (mx0b-00154901.pphosted.com [67.231.157.37])
-	by mx0a-00154904.pphosted.com (PPS) with ESMTPS id 4gbtrfwd9s-1
+	by mx0a-00154904.pphosted.com (PPS) with ESMTPS id 4gbtfwdf34-1
 	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 06:42:20 -0400 (EDT)
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 06:42:22 -0400 (EDT)
 Received: from pps.filterd (m0089484.ppops.net [127.0.0.1])
-	by mx0b-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67V80NH54129968
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 06:42:19 -0400
+	by mx0b-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67V80NH64129968
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 06:42:21 -0400
 Received: from esapsmtplv05.us.dell.com (esapsmtplv05.us.dell.com [143.166.203.153])
-	by mx0b-00154901.pphosted.com (PPS) with ESMTPS id 4gd4xnjaxv-3
+	by mx0b-00154901.pphosted.com (PPS) with ESMTPS id 4gd4xnjaxv-4
 	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 06:42:19 -0400 (EDT)
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2026 06:42:21 -0400 (EDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=dell.com; i=@dell.com; q=dns/txt; s=smtpdev1;
-  t=1788172940; x=1819708940;
+  t=1788172941; x=1819708941;
   h=from:to:cc:subject:date:message-id:in-reply-to:
    references:mime-version:content-transfer-encoding;
-  bh=q0LVYO3cn/XffbiLEOi82Q7X0oKIr7ECvy5J92K93xY=;
-  b=QXmrNWOviQ6GwMS0I4Mr0lp+0zaARoNk/5sSneHd4tnydQ5pB1dTz1O1
-   /VPq68v5d7n8eOFxZKj4tj/DihuUO70IbNdUrL4s7zB5llJjcFtXMfPB3
-   yHt0mcWgkYQeG6S5M7lWQR3apkrDqbHeKe2KYLkdDZTaEeU2drs9gDzmU
-   G2ITDZTc8hRcg7I1oGdo1zPy1Zz/EZhqjNnpDouWmadK3KAJnnkMkr2Un
-   LPLVL2T+hM2Zjsi3t9u9iUDNwDI2FCV17a67CA/SyIJN4UFFFufV1EABT
-   8SviLUSxbTQF4lWqoq0UjsTAt3+QXHACicZyJu5lzcrp5tY9qImtfOL4W
+  bh=5gkr5NO3n5A3qTG42DpHm3dTr1ODWlNH3Mf6fRH6yzo=;
+  b=cE2eXIr/Ix5kgJC/9O+Ice9wLt6gOhPmaQS+voRGuhd7wWYwZMdiVFzd
+   f1sY0YekfQ4trvUiX7L8tlaotwEASkiAaYUyVbeAttmITyJ2UmrFplv1s
+   l77PclKQSGVbcKct7S290ppEAmiMb5UJ23agg6q/RhLGRKmpgXw79PUr5
+   aRVriD8y/osjCF4ZXqPcr4wJFAK9VfvPZUli0RMiYaoh1RjPDkfTHccwb
+   mYJTyVydBqG8vPtlAmzBNW1j97/bWFKdElqYGzVjIJpPMK68jA6XFnRtq
+   On/EMniObmTQ304Kbt7XQoAVEBEl/nh3h4Evh6+K63khL88llM4WAhb8F
    w==;
-X-CSE-ConnectionGUID: WOYA6+YzTdiHJVwZHZhL8w==
-X-CSE-MsgGUID: MV/8sziSSXiGVKUoR8YUuw==
+X-CSE-ConnectionGUID: yxym3LyCTGGi1XBf/IBN5Q==
+X-CSE-MsgGUID: ySwVzOFgS+yoUKA1WlOpYQ==
 X-LoopCount0: from 10.94.8.206
 X-MS-Exchange-CrossPremises-AuthAs: Internal
 Received: from w-96j1th4.apac.dell.com (HELO W-96J1TH4.blr.amer.dell.com) ([10.94.8.206])
-  by esapsmtplv05.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 31 Aug 2026 10:42:18 +0000
+  by esapsmtplv05.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 31 Aug 2026 10:42:20 +0000
 From: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
 To: linux-nfs@vger.kernel.org
 Cc: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
-Subject: [PATCH 2/3] idmapd: validate NAMETOID names within their fixed-size field
-Date: Mon, 31 Aug 2026 10:42:10 +0000
-Message-ID: <20260831104211.2297-3-prabhakar.pujeri@dell.com>
+Subject: [PATCH 3/3] gssd: reject server hostnames that do not fit
+Date: Mon, 31 Aug 2026 10:42:11 +0000
+Message-ID: <20260831104211.2297-4-prabhakar.pujeri@dell.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20260831104211.2297-1-prabhakar.pujeri@dell.com>
 References: <20260831104211.2297-1-prabhakar.pujeri@dell.com>
@@ -84,71 +84,63 @@ X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
  phishscore=0 classifier=typeunknown authscore=0 authtc= authcc=
  route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2606150000
  definitions=main-2608310091
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODMxMDA5MiBTYWx0ZWRfX57KFR6rs1KTo
- vXW/mHJuggnebRvBjJQRSi0qhIneczIokjbX43xiAHcBTfN7wvZXVbQyYOI8ApXHo8M1LY42Ccn
- nvqcG4vGyPte9K688bmy25rY71KSdk3qaz6ioArRzKdefN2Gc7gtesgvv4eHRTMjXqMal8XKcuE
- XbIBclbApAN9tNWxRReQpBxoVJaCJMGBF/Mvp//aauh8K1JGkk0nNke0Za9yLt22ZZ2nDqd71MD
- X27/NsdlAZcSg4zMSG81IsBR7uxoTAMjhrq/WYt2c8gzLmhvL6iftcAAUT+AlkQVqK7EHehnNXD
- nvIvp+9PqFNeBjFTSLJXuB7ED7r6dvbfL50i11tyJA21NL5I8RSrDWVp7MFJh/vTGk15NGY074y
- 2umtyX+tnQvDypbw/Zr9smcerm2tL0dPrvyoE7esVaXPG9xxT78zLIcZxIV5SnXcBL5PAUkOH1Q
- LvxDZTVg6IJRYhCAMKQ==
-X-Authority-Analysis: v=2.4 cv=SeXHsPRu c=1 sm=1 tr=0 ts=6a955a8c cx=c_pps
+X-Authority-Analysis: v=2.4 cv=BdToFLt2 c=1 sm=1 tr=0 ts=6a955a8e cx=c_pps
  a=Z2e5DKjA+8LiMDv5v6mwwA==:117 a=t4Iba6VQkoKuxR139xjPXA==:17
  a=Sv0fKeRqtYgA:10 a=ke5jqHz-1hQA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=6gNNCFAoQcIphELLPWWu:22 a=2Lpba0WeoN7BYVdwMO11:22 a=iLNU1ar6AAAA:8
- a=84mBGd5ajIh6WywAL50A:9 a=hlJyneSgMmFPbskH-t2w:22
-X-Proofpoint-GUID: Zu8Jxe6GdZIkf0-XToKVdNEKEHt6v1HZ
-X-Proofpoint-Spam-Info: AW1haW4tMjYwODMxMDA5MiBTYWx0ZWRfX/N/g/QFvdypw
- K/tfwILnE6F3lnGT9nYfuzGgRy9iCvlu3yDtY5MyB9+uiPk/C68Xi8JPvlMAU9UKvgS6DelGM8a
- 9VApf9+y/9SdfYIfk6xrGTpbdBiU35o=
-X-Proofpoint-ORIG-GUID: Zu8Jxe6GdZIkf0-XToKVdNEKEHt6v1HZ
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0
- lowpriorityscore=0 malwarescore=0 clxscore=1015 priorityscore=1501
- suspectscore=0 adultscore=0 phishscore=0 impostorscore=0 spamscore=0
- bulkscore=0 classifier=typeunknown authscore=0 authtc= authcc= route=outbound
- adjust=0 reason=mlx scancount=1 engine=8.22.0-2606150000
- definitions=main-2608310092
+ a=6gNNCFAoQcIphELLPWWu:22 a=sEWawkeXllE7TocFc0N_:22 a=iLNU1ar6AAAA:8
+ a=XvIGpVyiO-i08diihGsA:9 a=hlJyneSgMmFPbskH-t2w:22
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODMxMDA5MiBTYWx0ZWRfX7jxg1jieaYTR
+ wn3olSHgo55NmpOPQYsIRsBPbk8wtG4jb41LS/DleSveAcCOU68/hw7BEK84RmoV2eZYVb7QzJ8
+ cKfBYsc413u4JBvw6FC1elVQafKhPmLAbOEyGZ4NP06uPOC2UhLbNM6407PmzUFHdOWdBjOWltB
+ uHTQwZTjeCYSALMJbJqxgMZaun1ump8pSF8MlYm6Xp0ZMafCxipw5i+k0ePnKw59eO7CzAUuILz
+ qo2x6CCIIfCEkVOJ2Vw+eBI0HBQ9dbKCEjSXTgtzATo9SjFg2T0nJK34DOvtOko/Qf4pRYKvfBb
+ Lb4pz7322as8hfIco2KOCzW7uae4fZBmCRD1pTk69l4BIXMmGXYX2kyjJuGsYf6FVuUT/L8uwqK
+ zGFazYOOY35VVum+XWwOEc6gvmm/Plwy6f43k/vbd+KATIwAJyZtuj0sbs56Fy2ZsLvVmjKu77L
+ Sz288C4imBU+HpN9mYw==
+X-Proofpoint-Spam-Info: AW1haW4tMjYwODMxMDA5MiBTYWx0ZWRfXzJZ74M6VwOs6
+ oOa5MLOUiHZaWeEz6KV1JnqFDriL982I9ksXO4VsL642kr2rNrjufet2FL4HVxb+oIFRwfvny0D
+ UIXSGzDdiVShpnPyfk1+QlMJJ9XN0t8=
+X-Proofpoint-GUID: hl83hYYabO6DciGaxiB6zsrzGgDNrqLb
+X-Proofpoint-ORIG-GUID: hl83hYYabO6DciGaxiB6zsrzGgDNrqLb
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0
+ lowpriorityscore=0 suspectscore=0 bulkscore=0 impostorscore=0
+ priorityscore=1501 adultscore=0 phishscore=0 spamscore=0 clxscore=1015
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608310092
 
-imconv() limits len to IDMAP_NAMESZ - 1 and then reads
-im_name[len + 1].  An unterminated name makes this read beyond im_name,
-while a terminated name can be rejected based on the unrelated byte after
-its NUL character.
+find_keytab_entry() copies a hostname from the kernel upcall into a fixed
+NI_MAXHOST buffer with strcpy(), allowing an overlong name to overwrite
+the stack.
 
-Use strnlen() to require a terminator within im_name.  Mark an
-unterminated request as invalid before returning it to the kernel.
+Use snprintf() and check its result.  Reject a truncated hostname with
+ENAMETOOLONG instead of performing a keytab lookup with a different name.
+The verified string also fits in the following myhostad copy.
 
 Signed-off-by: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
 ---
- utils/idmapd/idmapd.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ utils/gssd/krb5_util.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
-index 5231f56d..c41ae1f0 100644
---- a/utils/idmapd/idmapd.c
-+++ b/utils/idmapd/idmapd.c
-@@ -767,8 +767,6 @@ nfsdcb(int UNUSED(fd), short which, void *data)
- static void
- imconv(struct idmap_client *ic, struct idmap_msg *im)
- {
--	u_int32_t len;
--
- 	switch (im->im_conv) {
- 	case IDMAP_CONV_IDTONAME:
- 		idtonameres(im);
-@@ -779,10 +777,11 @@ imconv(struct idmap_client *ic, struct idmap_msg *im)
- 			    im->im_id, im->im_name);
- 		break;
- 	case IDMAP_CONV_NAMETOID:
--		len = strnlen(im->im_name, IDMAP_NAMESZ - 1);
- 		/* Check for NULL termination just to be careful */
--		if (im->im_name[len+1] != '\0')
-+		if (strnlen(im->im_name, IDMAP_NAMESZ) == IDMAP_NAMESZ) {
-+			im->im_status |= IDMAP_STATUS_INVALIDMSG;
- 			return;
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index bc063a8b..7ad67131 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -841,8 +841,13 @@ find_keytab_entry(krb5_context context, krb5_keytab kt,
+ 
+ 	/* Get full local hostname */
+ 	if (srchost) {
+-		strcpy(myhostname, srchost);
+-	        strcpy(myhostad, myhostname);
++		retval = snprintf(myhostname, sizeof(myhostname), "%s", srchost);
++		if (retval < 0 || (size_t)retval >= sizeof(myhostname)) {
++			retval = ENAMETOOLONG;
++			printerr(1, "source hostname is too long\n");
++			goto out;
 +		}
- 		nametoidres(im);
- 		if (verbose > 1)
- 			xlog_warn("%s %s: (%s) name \"%s\" -> id \"%d\"",
++		strcpy(myhostad, myhostname);
+ 	} else {
+ 		/* Borrow myhostad for gethostname(), we need it later anyways */
+ 		if (gethostname(myhostad, sizeof(myhostad)-1) == -1) {
 -- 
 2.55.0
 
