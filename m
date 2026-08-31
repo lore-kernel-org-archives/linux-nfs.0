@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD1AF47127D;
-	Mon, 31 Aug 2026 18:22:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 563F8471279;
+	Mon, 31 Aug 2026 18:22:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788200530; cv=none; b=WI6Qzf+V0w7NiSVDGsDAf+P0risLHsUCakx2fl5h7IADykGUjfYJSad6nlI3V6oiC5QdjEVk/UVZP5XK75CZH+HB4zl65lvzt/9ARFmHb4+YJxV7q3UvsyTsCTM0+mdSQDuGgDAjHY0Fn/umSkdxGI+3SHOfcLwbWOMjZ7O3L80=
+	t=1788200530; cv=none; b=msplIMFFnx6Ry/eobw70F5mSYEjO4MTGOMIHXLEQ2farzCLJQWdYV6UEaLV3ThpxZiiNvqKuEVBgSFtjR1gqfyG+sFj4dlmDhOqX/EeviIju66QG7sbMLeA7lnSpwDRiWVqEtfe7Svt9CP6Yr7MAOK9UWNneUXOr/UaZE84LT90=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1788200530; c=relaxed/simple;
-	bh=yj3EvYCLzjKFhv+Rquuc/IuVpIQmgnORf07dZ1mEddk=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=faJsnUihaBfMMJORsMVJqTVpfFeqhfXlCCkIA/RolEiYftE8MUJtODsumSLXsiCA8FZFPcfuashhTHy6eVa4hEEhB6CywljMZ2aCIUAeRS2RUtLvHVRrf77qNFpyX93XVIbN2MZGNbGJIAJjDPUEEy+mlJs5cdNGeTu91PW4t8Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IpmR2gMe; arc=none smtp.client-ip=100.103.45.18
+	bh=ab7jO6lz+XT+Bcp3r5CMowTvoccAdGfKY8J7aGSj2o8=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=u/x6K1trxHTigNS6sD9dAZ2zNg5BV+6i0627hR6reHT2BBgaqlasQU4rQsCx98w8POmIe6IlzHrBOYErG3307yJxHnshKsoTqqbM+FnbcdjhNNysQm8UfGr+EBFC47IAhd+dEMIr8Reo0dDjJpn1nuqQb1fi3/ol7Gi0YgKwiTc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bReXodlq; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IpmR2gMe"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E24BB1F000E9;
-	Mon, 31 Aug 2026 18:22:07 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bReXodlq"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A4BE21F00A3F;
+	Mon, 31 Aug 2026 18:22:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788200528;
-	bh=zdqiXvRTRVGzU0oGBApGif3Z6ViM1kOSdvfLnJu8eI4=;
-	h=From:Subject:Date:To:Cc;
-	b=IpmR2gMeJvzM2MxYBF13noOT3Ke4X3vXNGDtHuNxv5AJiMt9lGR8XrwGfQ2bzp6UH
-	 Aa7s0jd4K5fWT+2kSnmjgY09CJsTuZVLHGJNVcJRby+rHOR5ls3AXxJQog+Qy6KP6a
-	 cZkfxe5D2gCNm3DKSb+nQZ86g6iAi2Oxc9m9zif2xC6ymYiqFo9tBbkRMTZProbMMZ
-	 b64XU9mpVFbDWebMMnCkTvOnGX303+Afui4FYZoMLIDHmxIWVbiSFq3Q3SKz/2NsLR
-	 i/SRrBnURY4Q7blXrJGT9kC8z7deMXFzbGhtMgkbmHqIuBPAHxJdPbts0gnulEs3dm
-	 E9dIW33nFK+mg==
+	s=k20260515; t=1788200529;
+	bh=UntNAVVE5PcFzEZfDLpbTIVU+V+Nb8NqweMsWPYgcwc=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=bReXodlq25mp/gElXliLrUsPb+wRRGhh1X8ya5lkUo418ChxWXgJJpQZVncJ5zMgm
+	 8nHl5KFEmGFNtCzZy/UY3zllU7GSXfM95PljV/BOTo74uoe89qc8HMSISVJXb5QW7A
+	 XhiqgU5yiSQ/N95QMeTObstW3SrFvtxiQyEPdHcUW/yaaSW2+RaYKN4NqCXl2i9Beo
+	 heXnY+OHfFEUND2IJZw2ODK4h9UhYhhYCUgquDogys7NygoFdEiLOCbPS1S4BFIxYQ
+	 id/VxzPV50wc4PUwMQzguIL0SFSc2oAfgrFw5vK2qpfy7Uek4g0c/lupZt5FpAv5fU
+	 HPiQ3Gw0UkJlQ==
 From: Chuck Lever <cel@kernel.org>
-Subject: [PATCH RFC 0/8] Reduce lock contention in the NFS client
-Date: Mon, 31 Aug 2026 14:21:56 -0400
-Message-Id: <20260831-performance-v1-0-8d9fd9b67f96@kernel.org>
+Date: Mon, 31 Aug 2026 14:21:57 -0400
+Subject: [PATCH RFC 1/8] SUNRPC: Use atomic_t for XID allocation
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,79 +37,86 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQrCMBREr1L+2mATNYhbwQO4FRdJnLZfaFJ+q
- gildzfR5XvMvIUyhJHp1CwkeHPmFAvoTUNhcLGH4kdhMq2x7XGn1QTpkowuBijs7QHW6KBDS+U
- xCTr+/Go3ul7OdP/L/PJPhLl26sy7DOWlJIaqknDPcTu6PENoXb/oQy/ilAAAAA==
-X-Change-ID: 20260831-performance-e465e621c1c0
+Message-Id: <20260831-performance-v1-1-8d9fd9b67f96@kernel.org>
+References: <20260831-performance-v1-0-8d9fd9b67f96@kernel.org>
+In-Reply-To: <20260831-performance-v1-0-8d9fd9b67f96@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
  Tejun Heo <tj@kernel.org>
 Cc: Lai Jiangshan <jiangshanlai@gmail.com>, linux-nfs@vger.kernel.org, 
  open list <linux-kernel@vger.kernel.org>, Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2190; i=cel@kernel.org;
- h=from:subject:message-id; bh=yj3EvYCLzjKFhv+Rquuc/IuVpIQmgnORf07dZ1mEddk=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqlcZGbBbJadZ+pucCIr8Cp41aEhLVCUfC7wIuj
- CPMNEdeV42JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCapXGRgAKCRAzarMzb2Z/
- lzo7EAC/CA4xxI4g+rXaULp8hb50Ku1/8ijKNmFJmnTHB0ngNgo4uiVTiBPpj1J+xXAahUn7hEr
- ckUWgq35eR8iBEu1HXvD4atjE9Xw7SbQQk7XHwGkyG9GKHHly47hN/nucZJBo2KWjeby4j1jvRO
- KaY3NI22F+jMSgWQUeXkUjdNKx4oAgJruIID9vEK1EhuKfVvCxdFdSiVZoXg/jPgnnAfrupyL/w
- E/kAOqua96DkPQ0hyCt6eS3RkAiit/EZ9HtvdRiQGpGb0blvWLdk2olm+j7Y2gZiFKQmtSUgLI5
- Eg5zg1I89Y1M6Ph87V0yh0TvGQ8KbXnhTiyUH5F9SuOML01yAEviQglALhW0UstxwBiKd+T/l8T
- t9mCu46AcrIMcincXCFd9c79j90S3JoA5MWfLiPtZJFG6taA7ycfV/r/gNWyK/AhtwgIpMNrdaG
- rhcpPDVqaoSE5UCVCM0SjENljiotEgm0HVCRI9UUqJgddokU9Wu8amasg+4AziVwXHF6uH/ABT7
- FZ27Ciiz6RvYqJAUfzi+00PyEdP4TqIANatFu7ma/xb250h5CpsXjrs+zxXbvNOg2fw4hO4Q94z
- subiwKXjfsrOGmFeOKqElT2mqalLHNL1dg3XLp7bM/3diqN3KtD3mpHK1oUBEUoF2mgpl2ob/4P
- A5YX0swC2hYv93A==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1882; i=cel@kernel.org;
+ h=from:subject:message-id; bh=ab7jO6lz+XT+Bcp3r5CMowTvoccAdGfKY8J7aGSj2o8=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqlcZPctMWEWCC5MfvrJN8bSSrTeVCWbkEI1pj8
+ OzYvj4qjb2JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCapXGTwAKCRAzarMzb2Z/
+ lx+YD/kB6vVbL7dpS/6cajJoFDwTigMndT/3/XvsiUD4N1cCzPlDce1+UVpFaI9qKekfHVgJedc
+ cAR9TEsl4VEpUQlH1skk1AXPtvS7wU5nUEMMKadZqewVOwQ9dlzLXKptkcPfq05avbjz/H6nqHQ
+ 3oDGpbzTj1opbVTF6+ShfVSI2w10hpoDub1WgL7VfsxNKVftKc3XVFab63L0bcYcUl1njjp6v1C
+ jHO9wHwsY8AnMF2oN/W+fSimiEwvVWVFPo1ZCMgEKhw+0oceBTHfYHv/obiCcjPuY5A2OUsHqX5
+ UlkquBq0JkXa2JIw49s1vKOVDqAEYcJw9Cb8ptb67I9zYI0a+6hFP6CiDNr4y4reAug0ZRjZ35o
+ w3DJAN/2Skj1pkypq/6iF6rxZna8DxY5h3Mo2h7XxUTabVQaMwDj6hWAdDt00Qar1wE7QAJNle2
+ 581p+Vlvrn/anXX1/dEC4bSwta5VcqvuS+cam41yFwWNICCBJDDypkiiWNRslpBqsTqPjrWtBbv
+ FU+rWzHscGdOsqzoCgK7oBwh08LTDj05NDBJPioPyb+7fio+aGKY6z5F1ZqlQQ8ZFwwwLCy4C28
+ iiACbkU9D7+UF31nb1Rokd8IkgIN2yIM78IFS9d+EYJw7CcFmarcznAxgpFkNKEGoOVoOSTo/dC
+ nHiQ41DwpyyRDlg==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-Under a 4KB NFSv3 workload on 100GbE RDMA, roughly 150 RPC worker
-threads drive the client, and lock contention dominates its CPU
-profile: up to 53% of non-idle cycles are spent in
-native_queued_spin_lock_slowpath.
+xprt_alloc_xid() acquires reserve_lock to increment a simple
+counter. Under a high-IOPS NFSv3 workload on 100GbE RDMA,
+profiling shows 1.06% of system-wide CPU cycles contending on
+this lock in xprt_request_init, as ~150 RPC worker threads
+serialize on the counter.
 
-An earlier RFC put this fix in the workqueue core, falling back
-automatically to a finer scope when the configured scope
-degenerates to a single pod. Tejun rejected a finer default for
-unbound workqueues and suggested two alternatives: a sharded
-scope between CACHE and SMT, and a scope change on the NFS
-workqueues themselves [1]. The first became the
-WQ_AFFN_CACHE_SHARD default, whose 8-core shards still leave a
-12-core single-LLC system with only two pools. This series does
-the second.
+reserve_lock protects the slot table and backlog queue, but
+XID allocation is an independent operation that does not require
+synchronization with either.
 
-My test harness is transport-limited, so the freed cycles appear as
-reduced submission latency variance and lower tail completion
-latency rather than higher IOPS.
-
-[1] https://lore.kernel.org/all/aYUVVuIidMpuYy3j@slm.duckdns.org/
-
+Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
-Chuck Lever (8):
-      SUNRPC: Use atomic_t for XID allocation
-      SUNRPC: Execute initial async RPC states in caller's context
-      SUNRPC: Split recv_lock out of xprt->queue_lock
-      Set WQ_SYSFS on key NFS-related workqueues
-      workqueue: Export the functions needed for WQ attribute modification
-      SUNRPC: Reduce rpciod workqueue contention
-      NFS: Reduce nfsiod workqueue contention
-      SUNRPC: Reduce xprtiod workqueue contention
+ include/linux/sunrpc/xprt.h | 2 +-
+ net/sunrpc/xprt.c           | 9 ++-------
+ 2 files changed, 3 insertions(+), 8 deletions(-)
 
- fs/nfs/inode.c                             | 18 ++++++++-
- include/linux/sunrpc/xprt.h                |  8 +++-
- kernel/workqueue.c                         |  3 ++
- net/sunrpc/sched.c                         | 42 ++++++++++++++------
- net/sunrpc/svcsock.c                       |  6 +--
- net/sunrpc/xprt.c                          | 63 +++++++++++++++---------------
- net/sunrpc/xprtrdma/rpc_rdma.c             | 14 +++----
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |  8 ++--
- net/sunrpc/xprtsock.c                      | 18 ++++-----
- 9 files changed, 111 insertions(+), 69 deletions(-)
----
-base-commit: cee9395acd8043be0644b25c34bfa86623f2b935
-change-id: 20260831-performance-e465e621c1c0
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index a82045804d34..0d6c3f6bf97e 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -273,7 +273,7 @@ struct rpc_xprt {
+ 	spinlock_t		transport_lock;	/* lock transport info */
+ 	spinlock_t		reserve_lock;	/* lock slot table */
+ 	spinlock_t		queue_lock;	/* send/receive queue lock */
+-	u32			xid;		/* Next XID value to use */
++	atomic_t		xid;		/* Most recently issued XID */
+ 	struct rpc_task *	snd_task;	/* Task blocked in send */
+ 
+ 	struct list_head	xmit_queue;	/* Send queue */
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 48a3618cbb29..186c14f0f928 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1882,18 +1882,13 @@ xprt_init_connect_cookie(struct rpc_rqst *req, struct rpc_xprt *xprt)
+ static __be32
+ xprt_alloc_xid(struct rpc_xprt *xprt)
+ {
+-	__be32 xid;
+-
+-	spin_lock(&xprt->reserve_lock);
+-	xid = (__force __be32)xprt->xid++;
+-	spin_unlock(&xprt->reserve_lock);
+-	return xid;
++	return (__force __be32)atomic_inc_return(&xprt->xid);
+ }
+ 
+ static void
+ xprt_init_xid(struct rpc_xprt *xprt)
+ {
+-	xprt->xid = get_random_u32();
++	atomic_set(&xprt->xid, get_random_u32());
+ }
+ 
+ static void
 
-Best regards,
---  
-Chuck Lever <cel@kernel.org>
+-- 
+2.55.0
 
