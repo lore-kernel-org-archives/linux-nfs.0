@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 582D84A2A53
-	for <linux-nfs@vger.kernel.org>; Tue,  1 Sep 2026 20:20:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5B9884A2A62
+	for <linux-nfs@vger.kernel.org>; Tue,  1 Sep 2026 20:20:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788294003; cv=none; b=obzIkaAW9oM6tWfQ38T0fPf0lZYDyL+2mLu7JjAQh+ZO7IwcwdErSZkHFdxDRwLe144AaZ9zzU2o0O5J4P6lCBNvCbQMWwTwP5BlTOkEK1IeDp5zFbb6wtXpANpGdzSUnGLDYARC3yEQ6Kakq0xxiem6KAGof4XG45hDIcD6ir0=
+	t=1788294004; cv=none; b=kowAgj3vWkR+1O5wV2xkp5v0JQC10buB2I0bacRX/a3iq07bDZONrDDNZ/Ws/N0wdmPM3yHB+xbS8ifJOESxA/CnAZ4mQsocVG/wOeQJCJKbHjWj3KGKgmhuIU3qWXC12fLdrxHV3dBXrNTHTnw4hHapRYXYeGFBOGgOJnHo37Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788294003; c=relaxed/simple;
-	bh=KfPCQ7SbXG3HuPdDLEh5W6blYBJ/8LBBB59mhE8sKdA=;
+	s=arc-20240116; t=1788294004; c=relaxed/simple;
+	bh=wZ4AS6SxQXuwfyXnJXgKQS8NkrLF+8yVWKvZBEaJyVc=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=l6IPalq5AySIZ6qwnYc4DknkqE7+kkLtXBoVncBbYUWvf/kEOGU+7cl64oytZsU7ZM+5HOF/QGj4Puv+imQOJLWoaMWX0AAc7QT6A5Ab/TSAWwk6tmLMK9bVdVw4AfzTjj5mS8ukkLWNckeCMCtOjS8kCySkZeii4t0S/b7RldA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LEPKD7du; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=HTBprQnsH7fT4C8CkDZUtSeer2aCSF7zygbsTjhMkVgzfwxYS9dyHwjYPVdQCY0MUWVeK/swoBHphZA1Uhn9NIgd1Z4sfjrf7Vu0Kld7Q72p4FpZddKwOQu4dxQ99cWMIIppF+bVmYTvRfTNGBPGQwW2vXB08f8FWZLAGnf6EDc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HJv795kd; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LEPKD7du"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 748191F00ACF;
-	Tue,  1 Sep 2026 20:20:01 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HJv795kd"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7EA5B1F00A3A;
+	Tue,  1 Sep 2026 20:20:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788294002;
-	bh=8DMMKzP6xk6ILEFBLi3qEaXPqVfBAPiNnA9LDCLbMiE=;
+	s=k20260515; t=1788294003;
+	bh=wxOAltMg+6yG/Aa1L/WpkDV8Pz9HUfYbJiSl0okfHc4=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=LEPKD7duDlSFwrhk1T26W9EX0nucF0xy2tajSFQ1sMen/RJzlLWIN3vrEAqqqgh9Y
-	 mpJRE4LcD3UpiaM0JU2eKP+RAhaGhGwR2BmkC+UBFRfT9b/Xttw2RRHlcay3bDmq3L
-	 tOpQju+lrYf3Kj/BlFSjFdSNs8XrrBWQ9b066425Xjssrwk9HeYyhJp4bQDm6qe3F4
-	 2OyBNNcXGLj6c1Sio8q34QObJMxNRctR/a/6o5/mg/Sn8RINxGLLsdBMjcjY4NMrGG
-	 5ZkMTankaMNWWdYIxSB4FovwRjnPi4CD7hd4Krz5RN5WgybzhjDCvKPSBAQudJNe3X
-	 Il0Ea+CLTdLHA==
+	b=HJv795kdu2jbXZ52SoolvUXKADmU3ugmoaOGYzmtHypdHbmGrm403Gq25mWrcaLTO
+	 6GcMW4K5Ix/wk8qlMkRWjbHaFaVL7rpHcDbmobgeuUp9ZI7fJVveYpY4T3z8BNYWCl
+	 MQpThZQtGskeoUQ60TQy9HEYz5NX0Rl0XlYt2zs6exe6rpsuuRe/O/m/2hb4ulN946
+	 WxlVjf1zbBedTCGOziuQ4z+GDPUL4N7C5z6bgBMyIGJ0UgkbzlN4qoGENPIGnCuIlT
+	 i/jxnOqgV3dA9/hzf2NBk7vikF/ss71RwCHr/jiJFZF7r2sqeYCyANrdwqaRUQVzpt
+	 9sO20Xig4Gi2A==
 From: Chuck Lever <cel@kernel.org>
-Date: Tue, 01 Sep 2026 16:19:45 -0400
-Subject: [PATCH v2 5/8] pnfs/blocklayout: Complete a device upcall only on
- its own reply
+Date: Tue, 01 Sep 2026 16:19:46 -0400
+Subject: [PATCH v2 6/8] NFSD: Set nn->cld_net before registering the cld
+ pipe
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260901-alemi-v2-5-e163f94a3a6e@kernel.org>
+Message-Id: <20260901-alemi-v2-6-e163f94a3a6e@kernel.org>
 References: <20260901-alemi-v2-0-e163f94a3a6e@kernel.org>
 In-Reply-To: <20260901-alemi-v2-0-e163f94a3a6e@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -47,205 +47,72 @@ To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
  Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
 Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6348; i=cel@kernel.org;
- h=from:subject:message-id; bh=KfPCQ7SbXG3HuPdDLEh5W6blYBJ/8LBBB59mhE8sKdA=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqlzNrglfaCpcW6eYeRG+w1Jpf8noM2BzFDexsf
- BvOSTufn/yJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCapczawAKCRAzarMzb2Z/
- lwDKD/wNBrOni4aXJW6yX2absl3q0eDVvWb1/tEQz0C5yv1Lycobk5oiEEzg2KMpCwfCafHPjSQ
- vAHSZbEJN9ep7P4H38StK1SlRIOL+hh1kinBV5uiSQHeddgmerVU4MG5O/uJTF7KUu7a+waJCvR
- GTmvmJ6rjUAz9sV6Awlc/pLXq2eWxeJZVjGcvdR96x4elhXJld5VkDtzFN59Y5yZP3tlhagzyED
- 9GAVZqiVG8NtOk5vd9nbRWQwTLTsy8+ATppW9yP0zh7JA2CYphbYtTDuLJEMr3pkqMmrYPccwen
- ualNf0LtX66BkeYm9uCoZ6r3VH7cvdhGW4gAgxzMZ/m2w8qN3epPbyaALEKCvVnurxreGxfXi9w
- 6FGdkC469gHSgHtf3wkwmIyGok/7y3lGTcRkO0CDwB/1DPk1SyInaAyHMqX8Hy3CUvU+cCLO3Jd
- wn+05oiNF5FBwVQOdMv8FR0yXoATMtdl/YezmfnyDtxFHsxlnfBPJWOn3AUw3T17Bxud6uO/Jh1
- rMS5pGdGbkICW7pN0zqKq/aYC1I5djTnh9cSdv7yLlxkM4pe7xUsfG/N3czRNSoYMy6dvmx/o5p
- uePI1I0KaBLWIfPS9ZWYpLKjW4WpW2FLpWSsWwWTYU99J+YK6v29Y/jUxeHUs7mBFEJb+SW3KpH
- 2nzs5/hNAv1vhVg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1613; i=cel@kernel.org;
+ h=from:subject:message-id; bh=wZ4AS6SxQXuwfyXnJXgKQS8NkrLF+8yVWKvZBEaJyVc=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqlzNr1zrXLBWEDSzSJ25lUg3pD8MDoiVqu44lQ
+ nuJY8UpJeOJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCapczawAKCRAzarMzb2Z/
+ lzYnEACJBTre+7qUyDVzwZHbZpKIPNPDJ8oocfk4Sd6UfYFHo4PKMi1Ti8bXQOUBmREKI4V7gXe
+ CCeMdtNJqOzqOZ6T4H0W3JOvOaa3xzU7c0yAG6MBVgIq2/PildMbngDuMsfEd+CgLC0uNpQZk4s
+ 3yawsR7WzMQmI9+vNmSo6j4zOSWT+Tr4JVB1ok4Q1HJ9k5cz2sXj1jx9Jf8d+ylQSh/r5wmKwUP
+ 7XEuiEtufnW8P8mqSnGm9kcfFFjFCh85tpC8UmBdTd6ox0HphWDeFBwEcR2yI3bN0zkthCQlWj2
+ e7LL1kHw/icgi4rnRqv2edCC0mjVuJpPiF2zEqhKEyrZB2AaosqgbNCyX/t5HkQXyrVDTzbGTuD
+ ZXtALrvfBz1JT/ZRmdlz4e1FuWK8g91YT9SfdfBI3FuKrBdwTMpbOcG5ERpodAW0DdAhGXt2bmu
+ rOBB5A/NRYf5r371E0Ifa2bL++wkal4g19nFAhXpgySsUqNc3s9QxjoKEiaOD8KrkPtTZK7jPDn
+ iGW6cPNaUKNHVFj8IRjUxTyBBbsz9aDdOKqB51OG9qIUHrgzvvfcqb+jTBZRJhOG8jmzs9noW4a
+ jdsjtKJ9ingv4XqW71HqRPvoOf1BVcSSmEtRTEO5VpIHpReE5Yiu/aMAw/k9g0FgM9aNGHCH6iP
+ jtUGxw0MEJaZDcg==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-bl_pipe_downcall() wakes bl_resolve_deviceid() on any write of the
-right size, without checking that blkmapd has read the upcall being
-replied to. A write that arrives first returns the waiter while its
-struct rpc_pipe_msg is still queued on the pipe, which then holds a
-list_head into a dead stack frame. Reaching the pipe takes root, so
-the trigger is a broken or hostile blkmapd.
+rpc_mkpipe_dentry() instantiates the pipe's dentry before it returns,
+so the cld pipe can be opened as soon as nfsd4_cld_register_net() has
+run. __nfsd4_init_cld_pipe() does not store the new cld_net in
+nn->cld_net until after that call. cld_pipe_downcall() reaches the
+cld_net only through that pointer and takes cn_lock without checking
+it, so a write() that lands in the window oopses.
 
-The wait has two further defects. bl_resolve_deviceid() sets
-TASK_UNINTERRUPTIBLE only after rpc_queue_upcall() has made the
-message visible, so a reply that lands in between wakes a running
-task and the schedule() that follows sleeps forever holding
-bl_mutex. And nn->bl_mount_reply is never reset, so when the pipe
-purges an unread upcall the waiter takes the previous reply as its
-own.
+Store nn->cld_net once @cn is fully initialized and before the pipe is
+registered, and clear it again when registration fails.
 
-Move the message into struct nfs_net, where bl_mutex already limits
-the pipe to one upcall per net namespace. Accept a reply only while
-blkmapd has read the whole message and no earlier reply has been
-taken, and reject any other write with -EINVAL. Wait for that reply
-on a completion so it cannot slip past the sleep, and check
-msg->errno before trusting it.
-
-Fixes: fe0a9b740881 ("pnfsblock: add device operations")
+Fixes: f3f8014862d8 ("nfsd: add the infrastructure to handle the cld upcall")
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfs/blocklayout/blocklayout.h |  5 ----
- fs/nfs/blocklayout/rpc_pipefs.c  | 58 +++++++++++++++++++++++++---------------
- fs/nfs/netns.h                   |  5 +++-
- 3 files changed, 41 insertions(+), 27 deletions(-)
+ fs/nfsd/nfs4recover.c | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 6da40ca19570..e242b1d5b4bd 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -161,11 +161,6 @@ BLK_LSEG2EXT(struct pnfs_layout_segment *lseg)
- 	return BLK_LO2EXT(lseg->pls_layout);
- }
- 
--struct bl_pipe_msg {
--	struct rpc_pipe_msg msg;
--	wait_queue_head_t *bl_wq;
--};
--
- struct bl_msg_hdr {
- 	u8  type;
- 	u16 totallen; /* length of entire message, including hdr itself */
-diff --git a/fs/nfs/blocklayout/rpc_pipefs.c b/fs/nfs/blocklayout/rpc_pipefs.c
-index d526f5ba7887..50f276a90527 100644
---- a/fs/nfs/blocklayout/rpc_pipefs.c
-+++ b/fs/nfs/blocklayout/rpc_pipefs.c
-@@ -55,17 +55,15 @@ bl_resolve_deviceid(struct nfs_server *server, struct pnfs_block_volume *b,
- 	struct net *net = server->nfs_client->cl_net;
- 	struct nfs_net *nn = net_generic(net, nfs_net_id);
- 	struct bl_dev_msg *reply = &nn->bl_mount_reply;
--	struct bl_pipe_msg bl_pipe_msg;
--	struct rpc_pipe_msg *msg = &bl_pipe_msg.msg;
-+	struct rpc_pipe_msg *msg = &nn->bl_pipe_msg;
-+	struct rpc_pipe *pipe = nn->bl_device_pipe;
- 	struct bl_msg_hdr *bl_msg;
--	DECLARE_WAITQUEUE(wq, current);
- 	dev_t dev = 0;
- 	int rc;
- 
- 	dprintk("%s CREATING PIPEFS MESSAGE\n", __func__);
- 
- 	mutex_lock(&nn->bl_mutex);
--	bl_pipe_msg.bl_wq = &nn->bl_wq;
- 
- 	b->simple.len += 4;	/* single volume */
- 	if (b->simple.len > PAGE_SIZE)
-@@ -83,17 +81,15 @@ bl_resolve_deviceid(struct nfs_server *server, struct pnfs_block_volume *b,
- 	nfs4_encode_simple(msg->data + sizeof(*bl_msg), b);
- 
- 	dprintk("%s CALLING USERSPACE DAEMON\n", __func__);
--	add_wait_queue(&nn->bl_wq, &wq);
--	rc = rpc_queue_upcall(nn->bl_device_pipe, msg);
--	if (rc < 0) {
--		remove_wait_queue(&nn->bl_wq, &wq);
-+	reinit_completion(&nn->bl_done);
-+	rc = rpc_queue_upcall(pipe, msg);
-+	if (rc < 0)
- 		goto out_free_data;
--	}
- 
--	set_current_state(TASK_UNINTERRUPTIBLE);
--	schedule();
--	remove_wait_queue(&nn->bl_wq, &wq);
-+	wait_for_completion(&nn->bl_done);
- 
-+	if (msg->errno < 0)
-+		goto out_free_data;
- 	if (reply->status != BL_DEVICE_REQUEST_PROC) {
- 		printk(KERN_WARNING "%s failed to decode device: %d\n",
- 			__func__, reply->status);
-@@ -113,26 +109,46 @@ static ssize_t bl_pipe_downcall(struct file *filp, const char __user *src,
- {
- 	struct nfs_net *nn = net_generic(file_inode(filp)->i_sb->s_fs_info,
- 					 nfs_net_id);
-+	struct rpc_pipe *pipe = nn->bl_device_pipe;
-+	struct bl_dev_msg reply;
-+	bool accepted;
- 
--	if (mlen != sizeof (struct bl_dev_msg))
-+	if (mlen != sizeof(reply))
- 		return -EINVAL;
--
--	if (copy_from_user(&nn->bl_mount_reply, src, mlen) != 0)
-+	if (copy_from_user(&reply, src, mlen) != 0)
- 		return -EFAULT;
- 
--	wake_up(&nn->bl_wq);
--
-+	/*
-+	 * Accept a reply only after blkmapd has read the whole upcall.
-+	 * Completion retires the message, here and in
-+	 * bl_pipe_destroy_msg(), so a later reply finds nothing in
-+	 * flight.
-+	 */
-+	spin_lock(&pipe->lock);
-+	accepted = rpc_msg_is_inflight(&nn->bl_pipe_msg);
-+	if (accepted) {
-+		nn->bl_pipe_msg.copied = 0;
-+		nn->bl_mount_reply = reply;
-+		complete(&nn->bl_done);
-+	}
-+	spin_unlock(&pipe->lock);
-+	if (!accepted)
-+		return -EINVAL;
- 	return mlen;
- }
- 
- static void bl_pipe_destroy_msg(struct rpc_pipe_msg *msg)
- {
--	struct bl_pipe_msg *bl_pipe_msg =
--		container_of(msg, struct bl_pipe_msg, msg);
-+	struct nfs_net *nn = container_of(msg, struct nfs_net, bl_pipe_msg);
-+	struct rpc_pipe *pipe = nn->bl_device_pipe;
- 
- 	if (msg->errno >= 0)
- 		return;
--	wake_up(bl_pipe_msg->bl_wq);
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 8af935ed0c4e..1a9ea6393740 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -941,18 +941,24 @@ __nfsd4_init_cld_pipe(struct net *net)
+ 	}
+ 	spin_lock_init(&cn->cn_lock);
+ 	INIT_LIST_HEAD(&cn->cn_list);
++#ifdef CONFIG_NFSD_LEGACY_CLIENT_TRACKING
++	cn->cn_has_legacy = false;
++#endif
 +
-+	spin_lock(&pipe->lock);
-+	msg->copied = 0;
-+	spin_unlock(&pipe->lock);
-+	complete(&nn->bl_done);
- }
++	/*
++	 * The pipe's methods reach @cn through nn->cld_net, so set
++	 * it before the pipe can be opened.
++	 */
++	nn->cld_net = cn;
  
- static const struct rpc_pipe_ops bl_upcall_ops = {
-@@ -221,7 +237,7 @@ static int nfs4blocklayout_net_init(struct net *net)
- 	int err;
+ 	ret = nfsd4_cld_register_net(net, cn->cn_pipe);
+ 	if (unlikely(ret))
+ 		goto err_destroy_data;
  
- 	mutex_init(&nn->bl_mutex);
--	init_waitqueue_head(&nn->bl_wq);
-+	init_completion(&nn->bl_done);
- 	nn->bl_device_pipe = rpc_mkpipe_data(&bl_upcall_ops, 0);
- 	if (IS_ERR(nn->bl_device_pipe))
- 		return PTR_ERR(nn->bl_device_pipe);
-diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
-index 36658579100d..e1decff366d4 100644
---- a/fs/nfs/netns.h
-+++ b/fs/nfs/netns.h
-@@ -10,6 +10,8 @@
- #include <net/net_namespace.h>
- #include <net/netns/generic.h>
- #include <linux/sunrpc/stats.h>
-+#include <linux/sunrpc/rpc_pipe_fs.h>
-+#include <linux/completion.h>
+-#ifdef CONFIG_NFSD_LEGACY_CLIENT_TRACKING
+-	cn->cn_has_legacy = false;
+-#endif
+-	nn->cld_net = cn;
+ 	return 0;
  
- struct bl_dev_msg {
- 	int32_t status;
-@@ -21,8 +23,9 @@ struct nfs_netns_client;
- struct nfs_net {
- 	struct cache_detail *nfs_dns_resolve;
- 	struct rpc_pipe *bl_device_pipe;
-+	struct rpc_pipe_msg bl_pipe_msg;
- 	struct bl_dev_msg bl_mount_reply;
--	wait_queue_head_t bl_wq;
-+	struct completion bl_done;
- 	struct mutex bl_mutex;
- 	struct list_head nfs_client_list;
- 	struct list_head nfs_volume_list;
+ err_destroy_data:
++	nn->cld_net = NULL;
+ 	rpc_destroy_pipe_data(cn->cn_pipe);
+ err:
+ 	kfree(cn);
 
 -- 
 2.54.0
