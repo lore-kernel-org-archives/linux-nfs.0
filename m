@@ -1,78 +1,72 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from sg-3-45.ptr.tlmpb.com (sg-3-45.ptr.tlmpb.com [101.45.255.45])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 12C614CCDDA;
-	Tue,  1 Sep 2026 05:56:10 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B13B476CC2
+	for <linux-nfs@vger.kernel.org>; Tue,  1 Sep 2026 09:21:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=101.45.255.45
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788242172; cv=none; b=T35RYxcdbItE1SgqAJzuFG9mde8FRRpgDrsr5QDhVwUjqpd8hUMCvPP/syGJNGwVlv7BBXMkSZJk6DtochVOs9gmVi+EbYkubLHOve8KFtfaKy0bHns1JCQFBVZL3+J/E8lv2LM9db7zJxFj2uLCB5dKctF0bVYbkSh/nNu/8L0=
+	t=1788254476; cv=none; b=GFXszV4a9uqtIkvNVB4vQKl5oep+jGPFgdAg4FzSkVsBd4fBmRatOu4PlCD2n9jNXTF778TslR8cSCVUDgsN4QwCND7SeBTa1s764pPOrxfSSi469df976dVCUcH9lDSvVxZ77+8JaD9j5lgjXtVEw4kchLditndW4SDzllRfKE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788242172; c=relaxed/simple;
-	bh=LkbQnBSJdNkMGaC3eCjTS5kmvOrXhJ6A+gBOsGc98mk=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=tKgNwpFSNpF2Ey6TLm9yQQjdwqqrYOLC16YzESheBmWScv2T2f4Q2EYP1I2b5+XfLrpF3Vn+Y9HL6GXSeChFxm4G6kujLHcUnzg10tf5QlxuDSqmNTp9eNeB+7xNtFn7u6pLGILmtpn/OkfKHH3hIXYBgGKvKyoi9azd7PqKZHY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Ou7BODbI; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788254476; c=relaxed/simple;
+	bh=LLXr5FcNvDy/RdGzCJf5UhcVHvnVt4BkF3ZcqPJTojA=;
+	h=Cc:Mime-Version:Content-Type:To:Subject:From:Message-Id:Date; b=cQRCN2Ap8nS1U1/VXx8e7tiRUGDdVG4pQD35WLE10k8A5b9evXKmF7BvhQna+1y8aELXPfOo+NCItvEJq8Z+wgeB96IzRJjXMBwPUy3aoCaVYVaAv6qcIcgRgAWQUCscwE/nx0xmAa0NImjKjxf2OjIofTpT6mUNp0AfuH0l1i8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=moonshot.ai; spf=pass smtp.mailfrom=moonshot.ai; dkim=pass (2048-bit key) header.d=moonshot.ai header.i=@moonshot.ai header.b=jpQFNJ9q; arc=none smtp.client-ip=101.45.255.45
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=moonshot.ai
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=moonshot.ai
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Ou7BODbI"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 494581F000E9;
-	Tue,  1 Sep 2026 05:56:01 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788242170;
-	bh=3Mnj837MmtIz++Lx3CjViaHZJuFNdZX481goDRHR5Jo=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=Ou7BODbIZicrSpeSM00EfOJQrJABefs9Kuf2EhFYV6gK2dq64CXKdSuL3RyZbLucK
-	 TPg17Tyz0+5ncdV6c1HL6WGWK3QRh4+wm6tY9EoV1ldMeb65SaokB3SYllaBh+BMU+
-	 k3fxxYQqKpob1eGKNeK6NERFb4+ExYOKE40Jru2B8rYntpuKlNuC0j8YO4qOVeoRfS
-	 0Gai2YDP4tJxaz3XlpWyH0B+gdt6KErKtSPMpBpFla9M4/VF7fFDFR9rb7sXCytJmv
-	 hvNVEuFK2QwrR66uR+fQsxbPPuwkUO9XsB0pubH/TfXp4lry7WXlo5qdiAM9FijGEM
-	 OmAyFu0d6q/4A==
-Date: Tue, 1 Sep 2026 13:55:42 +0800
-From: Gao Xiang <xiang@kernel.org>
-To: "Matthew Wilcox (Oracle)" <willy@infradead.org>
-Cc: Christian Brauner <christian@brauner.io>, Jan Kara <jack@suse.cz>,
-	Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>,
-	Theodore Tso <tytso@mit.edu>, Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Namjae Jeon <linkinjeon@kernel.org>,
-	Hyunchul Lee <hyc.lee@gmail.com>,
-	Phillip Lougher <phillip@squashfs.org.uk>,
-	linux-erofs@lists.ozlabs.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
-	ntfs@lists.linux.dev, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org
-Subject: Re: [PATCH 3/9] erofs: Remove redundant FGP_NOFS
-Message-ID: <apZo3lDaDp3hQhRq@XiangdeMacBook-Pro.local>
-Mail-Followup-To: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-	Christian Brauner <christian@brauner.io>, Jan Kara <jack@suse.cz>,
-	Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>,
-	Theodore Tso <tytso@mit.edu>, Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Namjae Jeon <linkinjeon@kernel.org>,
-	Hyunchul Lee <hyc.lee@gmail.com>,
-	Phillip Lougher <phillip@squashfs.org.uk>,
-	linux-erofs@lists.ozlabs.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
-	ntfs@lists.linux.dev, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org
-References: <20260830041901.2668-1-willy@infradead.org>
- <20260830041901.2668-4-willy@infradead.org>
+	dkim=pass (2048-bit key) header.d=moonshot.ai header.i=@moonshot.ai header.b="jpQFNJ9q"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+ s=feishu2510091218; d=moonshot.ai; t=1788254422; h=from:subject:
+ mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
+ mime-version:in-reply-to:message-id;
+ bh=+jnjpemoraglH/gEmaQQrk0zuAg+OHmzGE5T/oqUVpo=;
+ b=jpQFNJ9qlHGMJvzJ9WO/DYZzcgecF5GZmuUWPJVn3drFLb0SvZ11eHUnKrHTqFBqXmLpOL
+ YRYXG8vwDfftJPiwOpeASUwDzV1rCk3rzlPKShMvo+b08+uZidsWEZeNCk07isyzL6G2sV
+ Owahs1sr1jg+w7slKtIADtF0xfDP9pwJJig18T2GdTNhMjtHNuEgp/uAvltzbK9t0Ki2rl
+ YvWyMgjLGStIOEfl1omdAEvP2Ip3ZRW3jBB1Fh1lRoDytqYeGresq/zeQCL3f/WL0saGwj
+ KoWKS9iu2QTO/D6o+RQVJ6Rpsd8pkGLGBv+zkWgLT2AddSZAzpP6LDC6UE/0FA==
+Cc: "Yilin Zhang" <yilinzhang@moonshot.ai>, <linux-nfs@vger.kernel.org>, 
+	<linux-kernel@vger.kernel.org>, 
+	"Kimi Security Team" <bug-report@moonshot.ai>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <20260830041901.2668-4-willy@infradead.org>
+Mime-Version: 1.0
+Received: from dev.msh-dev.svc.cluster.local ([117.157.206.135]) by smtp.feishu.cn with ESMTPS; Tue, 01 Sep 2026 17:20:18 +0800
+X-Mailer: git-send-email 2.34.1
+Content-Type: text/plain; charset=UTF-8
+To: "Chuck Lever" <cel@kernel.org>, "Jeff Layton" <jlayton@kernel.org>
+X-Lms-Return-Path: <lba+26a9698d4+e5e81d+vger.kernel.org+yilinzhang@moonshot.ai>
+X-Original-From: Yilin Zhang <yilinzhang@moonshot.ai>
+Subject: [PATCH] SUNRPC: reject deferral when rq_arg.len < head[0].iov_len
+Content-Transfer-Encoding: 7bit
+From: "Yilin Zhang" <yilinzhang@moonshot.ai>
+Message-Id: <20260901092001.2026287-1-yilinzhang@moonshot.ai>
+Date: Tue,  1 Sep 2026 17:20:01 +0800
 
-On Sun, Aug 30, 2026 at 05:18:50AM +0100, Matthew Wilcox (Oracle) wrote:
-> The flags already include FGP_NOWAIT which prohibits all reclaim, not
-> just reclaiming from the filesystem.
-> 
-> Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+svc_defer() misses the rq_arg.len vs head[0].iov_len check, so a
+crafted RPCSEC_GSS packet can make the deferred snapshot no longer be
+the original request.
 
-Reviewed-by: Gao Xiang <xiang@kernel.org>
+Since deferred replays skip GSS verification, this may lead to an
+authentication bypass.
 
-Thanks,
-Gao Xiang
+Reported-by: Kimi Security Team <bug-report@moonshot.ai>
+Signed-off-by: Yilin Zhang <yilinzhang@moonshot.ai>
+---
+ net/sunrpc/svc_xprt.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -1282,5 +1282,7 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ 	if (rqstp->rq_arg.page_len || !test_bit(RQ_USEDEFERRAL, &rqstp->rq_flags))
+ 		return NULL; /* if more than a page, give up FIXME */
++	if (rqstp->rq_arg.len < rqstp->rq_arg.head[0].iov_len)
++		return NULL; /* inconsistent lengths */
+ 	if (rqstp->rq_deferred) {
+ 		dr = rqstp->rq_deferred;
+ 		rqstp->rq_deferred = NULL;
