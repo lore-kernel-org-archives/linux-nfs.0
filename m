@@ -1,35 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DC9662F3C18;
-	Tue,  1 Sep 2026 13:40:06 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AA8A9476CCF;
+	Tue,  1 Sep 2026 13:40:08 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788270008; cv=none; b=g2B89950Pp/uGE7V+37C4m9bjoD6RAr6YESHG203VjnChZXcqKRZTdBI5dSEWTfMJ/D922KwlOUVRicNZZrT70y0SYHPwAvYYIyOAcKQFHcnHfFXyyoOgfpraNkSkA6a3GmkT54evth26FLdRPrOpV60yU+QUvAS2RXjeZP1pu8=
+	t=1788270009; cv=none; b=NzNIaGiG7vgQJZdETOGFmy/TYdzmKJqYKBnJOlB9o8CjfDLBKQI/g9pVnBEbpse7TFI0ROpLbuBGNdx3wLk5xf8n7Y4MLjhUuULQSvKzhT+6vackO5nKK4J+xYTXkTsy8b/MS1NSn45Z5/S4aqr7BfC0s6CxCGOUrAUuEziJQfU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788270008; c=relaxed/simple;
-	bh=aJetiop332TzGMjtNxCwp2osCzOlN1SMdSvmKASa+aI=;
+	s=arc-20240116; t=1788270009; c=relaxed/simple;
+	bh=0/b63pHsH99q59pHXxgWpdCiis0fT0wFTjXendozs0s=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=NXOC8IiC6+cbiIoxRgrYIQoxPaxBhHRex0tdNgNAiHQRtfb69ArL4NSaUeatOZ+zFs0XlGz+JFe2zs7mno7BnHPqV+ltf3ZKZ1Pa4R2DkaVgVt4wIYlW3yIVyPRT70hphg5dsa+HF9k4nmNouSr1JslI0QlkqDSJ6DfaG4IOLsQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BnKW3vZx; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=suOHlBePPFdbZho5+2SW1Z16LQ7NyDQTRd7NuhFeOQpvtZVAkMN+OnbG+mbbBGsi7NYmaxLiQaIHrN/q0aFBDVnGfaM7/qAyNZN7Egiy1/3pXghn9ucknrqAb5CFEEqWHYw3GYNNUexL9hmsrtiJramH9lz9jyVuX2cnoJcCIdI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=htSmE64q; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BnKW3vZx"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 33E451F00A3D;
-	Tue,  1 Sep 2026 13:40:05 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="htSmE64q"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D55E61F00A3E;
+	Tue,  1 Sep 2026 13:40:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788270006;
-	bh=f7DIO5UFdyzmop+0FickQyJR+upbMPxvd7WYzoH5UvM=;
+	s=k20260515; t=1788270008;
+	bh=yBYuY0qF5cKQRzExECF4YXQMQy4ClFSSmJFRGPrU+CQ=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=BnKW3vZxrxuHwWNycigqeLIWzN/bOxUePAv20ekKVg76KgBoSO/CBbZap98SVdTAP
-	 TOOT3FJ4yUOpqU+VHTt4a0apDE7wd3cOt8Cx2Pmb0eNUPhhkpuLNv2aSFrZnLMYrs3
-	 5ViPncRorCJG8+qMrpSfEMLz8JhPWjXe6pDVtxG1/IEhTrxKJkY9FuHxksW0phQH5w
-	 nfaDoiyG+80XdfrK8KawpejLGFFYfc1j6a9SKI1M9pZKlKKwqxwR6dZVT8t05hncEa
-	 zYHrIukzZNdvDVF07inmaZhEXuZM/BN+JQ+a451444JdPFrbWHeNO9wjVC/Y5xNs+4
-	 nenTP95lMWdDg==
+	b=htSmE64q3fC4iWTwmrjYUzjhlxQP+2ZM3ufi3PUvYqLBvyHNKCukNgVV/nxlEWX+W
+	 5mBYTTFexmUJ7ZU1L0jeZD62h6saaAygYcn4Sy5kVbqBrgwFs0j6PG/CpRuvn7YBSt
+	 eD0OD3Fe6a85fIw99LuQilH7zBJhuqK5t5OHVBLmuVBcxM1/5mh+NDdLtQDx6yM/rd
+	 ZjPghyE9BNEsPFrwkTFoc1SwcSm0TxnyHgi4zyTyulFJOHPNuv4IlRGRwBtGSxNYyz
+	 wFAoQM2ihlvOOaUiPHdadjkNZIF1Zn8ZOB+K+OPs9XihOg+5KZyC2b6ajqoTMWiyaF
+	 THrinhIQ72+bg==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Tue, 01 Sep 2026 09:39:40 -0400
-Subject: [PATCH v5 02/15] NFSD: validate transport name in listener_set
- before serv creation
+Date: Tue, 01 Sep 2026 09:39:41 -0400
+Subject: [PATCH v5 03/15] SUNRPC: keep the first error in svc_register()
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +37,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260901-nfsd-nl-hang-v5-2-a540d86668b0@kernel.org>
+Message-Id: <20260901-nfsd-nl-hang-v5-3-a540d86668b0@kernel.org>
 References: <20260901-nfsd-nl-hang-v5-0-a540d86668b0@kernel.org>
 In-Reply-To: <20260901-nfsd-nl-hang-v5-0-a540d86668b0@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -53,91 +52,60 @@ Cc: Slawomir Stepien <sst@poczta.fm>, linux-nfs@vger.kernel.org,
  Trond Myklebust <trondmy@gmail.com>, linux-kselftest@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2761; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=aJetiop332TzGMjtNxCwp2osCzOlN1SMdSvmKASa+aI=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqltWuaHsNrR6zYYfSMArd5NsyaG532BAv1IbcP
- lDaHurfePSJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCapbVrgAKCRAADmhBGVaC
- FSz3D/9mEWvGywz0hP/R1Ypu96onbBI6AKRDb48NcEZ6LdvoAVUbRrNw3GEr3fydzFtiQF50XLu
- zJBrs1AxMLlUvQYklx0Ihe3Zr0xFuYWdU0YKefxx6fkyClVTkDuh+E7MEm3/7FtPYiT9KWK5N5L
- 7iPFYSH8ax0v880YAmEWSew/+VqIJZRlF7PbxTwq4VsqevLPl8bcXRf67A5k/4s6MvNmEXraweG
- s7Hojn1Q3j8+bAzRKH3qcKVbHFRI1h8ocdCCZq3e3XMqy5oUyd1ONJRpYPE50nDcTSgpn4g9ips
- HsDWHCqLPOP1O5HtUqNK4bvlu0vJo1W+Etv5vewWHzJhIXkIc8RrcyUJClZtEgi02zaAfBTYrS4
- 7ttN9eQdQsClk8bKcKPU3ToKh04KtXJFBkTal6W2NKKOOe8odfoSIXU4s+BoHIIG9b37HczowCE
- bmVJz+yqB3K/DKIvap/CJOM0c1aCXDsV3da15QJ3+xto8Ray+vQLsmWx5yUhasIIwQ5jdmgUJLk
- mtibP9A1SRG1Ch1rxxhkZDXdcYVOIUILyTpzHt0VG8QVnfrtyaUHKyWpfRUpW5D1FxMhqRzYFJ2
- uGEy2mauYPQrFOtZV/3xmVu1LPG3T2mNAcgl1mPfvd9ahRHVylf4jYCV89wmu6vJigAJQXi/s+G
- JOibkyb9UzgQIUQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1206; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=0/b63pHsH99q59pHXxgWpdCiis0fT0wFTjXendozs0s=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqltWuGrYPAMgfxAOn/iOdOtkSUH386teawscqI
+ YllYO1KZiyJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCapbVrgAKCRAADmhBGVaC
+ FVu3D/9a6ti55iWJsHI0pwGN8SrUgxqjRPylCcyyd2jNm7tU07QTHQ8M9PueVVGY2Disa5ACXka
+ L/ezVVrKL3q6Mt+o3B6t6f139OEs/nFZEfonPatA5ojo5sM3O3K9qWGgdhwH5FZa5qCjXLwidBg
+ 6BtFVH96UqeoVHQTKp4frd/Q984qwJ8eO3ONuhmhUAGJVbdg10D3W3S3GQSb6fzWwaG8tg6kauT
+ MjhH3nnrjINwRp5letgeBPK/ckXpNsQZStnz8BC4aiDVPLCdyDgZDmgtw6O7wrjNlKWqrhyTBC4
+ ngCth155C3R3ziviO2c9Ump+d1cKKfPxWZ2LNkxHJLrixDSVu7dXWaNGgXhh1N/woNG4lIPQtBw
+ D9gJgkgJgnlXY8gs+kwWR1Tytm2AtU/Vm1ImCQpnYDK90oUL/6WV0DPg74yzYbp6SSLN0c8lCSW
+ /UZRAJIHj2s0zJyR5xVL/TGnfYaZ1zXnaZ1Twr7B6GIoLimwlCxDrYq0xim9bSjg4nRMNeSV6FY
+ AUk5HJFHofAL6blQH+lIEcsX/er0UssDHNOlDJVnHduZc5GNQXOjWvqzTfnNWsSYzq5L45pcr1D
+ qgBrNXx8g/8mzPk9tgEolLfKZbD83uHRRtj5N+FGL8azk7PSGWZC6CmcWh7xVZgHD7pZyn2sJZ0
+ ivOft0iLXuL8e6Q==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-nfsd_nl_listener_set_doit() holds nfsd_mutex for the whole listener
-teardown and rebuild. The code checks NFSD_A_SOCK_TRANSPORT_NAME for
-presence only, and not for content. An arbitrary name therefore reaches
-svc_xprt_create_from_sa(). There, a name that matches no registered class
-calls request_module("svc%s", name). That call is a TASK_KILLABLE usermode
-helper upcall, and it runs under nfsd_mutex.
+svc_register() assigns every pg_rpcbind_set() result to the same "error"
+variable and returns the last one, so a later result erases an earlier
+failure.
 
-Check the name against the classes that NFSD can create: tcp, udp and
-rdma. The check goes in nfsd_nl_validate_listeners(), which runs before
-the code takes nfsd_mutex. The rejection names the offending attribute
-through extack, since -EPROTONOSUPPORT on its own does not say which
-entry carried the bad name.
+Keep the first error instead of the last.
 
-This narrows the upcall. It does not remove it. NFSD accepts "rdma"
-without a condition, so on a kernel that does not build svcrdma the name
-still reaches request_module("svcrdma") under nfsd_mutex. That is
-necessary for the modular case, where the autoload is legitimate.
-
-Fixes: 16a471177496 ("NFSD: add listener-{set,get} netlink command")
+Fixes: 642ee6b209c2 ("SUNRPC: Allow further customisation of RPC program registration")
 Assisted-by: LLM
-Link: https://syzkaller.appspot.com/bug?extid=c7eae0eb80858a2dba0f
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfsctl.c | 24 ++++++++++++++++++++++++
- 1 file changed, 24 insertions(+)
+ net/sunrpc/svc.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index b6f4d66f612a..d8135f38e69f 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1995,6 +1995,23 @@ int nfsd_nl_version_get_doit(struct sk_buff *skb, struct genl_info *info)
- 	return err;
- }
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 8297bad2b177..4f402bbf97ba 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1208,13 +1208,16 @@ int svc_register(const struct svc_serv *serv, struct net *net,
+ 		struct svc_program *progp = &serv->sv_programs[p];
  
-+/*
-+ * Transport classes NFSD knows how to instantiate. Vetting the name here
-+ * keeps a bogus string from reaching svc_xprt_create_from_sa(), where an
-+ * unknown name triggers a request_module("svc%s", name) upcall under
-+ * nfsd_mutex.
-+ */
-+static bool nfsd_nl_transport_supported(const char *name)
-+{
-+	static const char * const supported[] = { "tcp", "udp", "rdma" };
-+	int i;
-+
-+	for (i = 0; i < ARRAY_SIZE(supported); i++)
-+		if (!strcmp(name, supported[i]))
-+			return true;
-+	return false;
-+}
-+
- /* Upper bound on the number of listeners a single request may carry. */
- #define NFSD_NL_LISTENER_MAX	1024
+ 		for (i = 0; i < progp->pg_nvers; i++) {
++			int ret;
  
-@@ -2032,6 +2049,13 @@ static int nfsd_nl_validate_listeners(struct genl_info *info)
- 		if (!tb[NFSD_A_SOCK_ADDR] || !tb[NFSD_A_SOCK_TRANSPORT_NAME])
- 			return -EINVAL;
- 
-+		if (!nfsd_nl_transport_supported(nla_data(tb[NFSD_A_SOCK_TRANSPORT_NAME]))) {
-+			NL_SET_ERR_MSG_ATTR(info->extack,
-+					    tb[NFSD_A_SOCK_TRANSPORT_NAME],
-+					    "unsupported transport name");
-+			return -EPROTONOSUPPORT;
-+		}
-+
- 		sa = nla_data(tb[NFSD_A_SOCK_ADDR]);
- 		if (nla_len(tb[NFSD_A_SOCK_ADDR]) < sizeof(sa->sa_family))
- 			return -EINVAL;
+-			error = progp->pg_rpcbind_set(net, progp, i,
++			ret = progp->pg_rpcbind_set(net, progp, i,
+ 					family, proto, port);
+-			if (error < 0) {
++			if (ret < 0) {
+ 				printk(KERN_WARNING "svc: failed to register "
+ 					"%sv%u RPC service (errno %d).\n",
+-					progp->pg_name, i, -error);
++					progp->pg_name, i, -ret);
++				if (!error)
++					error = ret;
+ 				break;
+ 			}
+ 		}
 
 -- 
 2.55.0
