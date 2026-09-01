@@ -1,833 +1,295 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9EEB438734E;
-	Tue,  1 Sep 2026 14:02:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 16E33248880;
+	Tue,  1 Sep 2026 14:27:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788271330; cv=none; b=YxFSr95SmNfdhH7hDzgQW9jlUzIjmt4rw5sJ+fBD4JkGO2fZAS3cbM0QsdBGSHuW9t7IyoRyTY7Cp/y2/o+GY6YLC/nFrRtMrPxbkFWHF4XVcx/SQwaQ9pL2ax/mWt/TjWlMFPS4fdHeJh02OyWnOH7nhxLVdTNoCIetDwdJkgY=
+	t=1788272876; cv=none; b=r1vwrTjOwBhxmEQPbI6YWwjxhp6gbTBnj30alxI0vAmkQCWIVaBqbe9lAxkA24WEEr6cPnk9IQbwDW8iQyeIgw15zlW1KRvJe7eS2OlSM6cPhrmJ2gthDZzwp4tWapEmv9vNTrYmKmQWMNC7CKFP3sOtJwXCgynFf1XNAeVITLE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788271330; c=relaxed/simple;
-	bh=ezyJoBMCno5pRbu4MD9YOIxvPbE/t9HalooSBLf2IvY=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=HWkRf9YfWx58clWhxl26uzkPP8z2qN7K1XF2YpXAjLYIj0ayuBpmSO/c0YOEJGtObO60ra+ots+yT7cM7588FGudaUzuSjlWMEk5yXOXAWwbo1qkOHNEVcn7XMWooBS7eFmamqW0K49Ef6deIeLRtmyMrpJa3vMVgqWlTCg5oAk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=e5IrTPv8; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788272876; c=relaxed/simple;
+	bh=3Pi2wWfe/B8XATiTV+wQhps3hbtFcclQ395AN4b4qhA=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=eTBTI1MOUm3QNSWETmVOgEi9voT6hEsuRLOs4pQhmLa304z+79Se15ePT7Gn8N/UPv/n/E3ooAzCZnUkuRi6TQ5oNCXAdm20OaKFGBwQJP245ljXCP9Jl9M024j/1WC9C7vRBxVzm0RQX1s5nzp6ZWZexXx2m+7V0MoCK0xj2c0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=UbwZqe8M; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=enZJ5C/L; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=LsA8xA1p; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=0wkh7VHm; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="e5IrTPv8"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2509B1F000E9;
-	Tue,  1 Sep 2026 14:02:07 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788271328;
-	bh=9oNOE/4a2EfjkARSUK+1hfsN2eNNmmCpmyeZ9vhhvO4=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=e5IrTPv8Y/fiCAowsk/LuaqbgxRXCQTdN2V9HrDccUi9uopD2sQsjZ9o3w5trg4Hu
-	 uqbafZBNCsQlzAuKJkKKnQ2P0T2KLujS+AR/Qt04d08MDVsO5HjRY8xvVsBn52lhCa
-	 71IDozX0+Ju0RWbTA2IETDsSRg6/Wn72TTLbdmKjNKNR3GuDudB/LQZvAZ3giFlA8g
-	 e28MYjaRxCEjLTJYMvczJCINTbcPWP75raqvN6uPCKlOvLT9TBzQWhLAzblq4ooRe8
-	 xpj2kzcnyJ4Bu3Q5xZaCr4EZ8C8/tPnHSXnmjWdiT6lsJqJoAgt41HsNjoPoWwPpAg
-	 PExZtA2OlKqdQ==
-Message-ID: <31530d8e7bc120ae48d018001e126ad345995d9c.camel@kernel.org>
-Subject: Re: [PATCH v2 1/2] nfsd: add a Netlink dump of NFSv4 clients
-From: Jeff Layton <jlayton@kernel.org>
-To: Prabhakar Pujeri <prabhakar.pujeri@dell.com>, cel@kernel.org
-Cc: neil@brown.name, okorniev@redhat.com, Dai.Ngo@oracle.com,
- tom@talpey.com, 	donald.hunter@gmail.com, kuba@kernel.org,
- linux-nfs@vger.kernel.org, 	linux-kernel@vger.kernel.org
-Date: Tue, 01 Sep 2026 10:02:05 -0400
-In-Reply-To: <2d682b47dca234b5c270b0b1ea03022c28bbeaa3.1787988917.git.prabhakar.pujeri@dell.com>
-References: <cover.1787988917.git.prabhakar.pujeri@dell.com>
-	 <2d682b47dca234b5c270b0b1ea03022c28bbeaa3.1787988917.git.prabhakar.pujeri@dell.com>
-Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
- keydata=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
- QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="UbwZqe8M";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="enZJ5C/L";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="LsA8xA1p";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="0wkh7VHm"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id AF6A61F397;
+	Tue,  1 Sep 2026 14:27:44 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1788272868; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=KPK49wVZdID7g9/Zu62nmPqeg16U/FWpi177Sp1FYrI=;
+	b=UbwZqe8MQxl8+WVG+cpWWpvqA1IilkP/aK+NohF0wOsHXLqtV1LtM06kTZkS5NI3nz03qx
+	s+GkeHvIhe3RYznTkFXu8RI2i7yFUOcnqF1Tc9zPuTJIuqXG38AkUxNhLIQrIZvTKaIlPn
+	4Iu24V8a5UYy8T71PdKoZr36EXLJx4k=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1788272868;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=KPK49wVZdID7g9/Zu62nmPqeg16U/FWpi177Sp1FYrI=;
+	b=enZJ5C/LtQrS2x7LiUMPAaEa7LglF2BOKxPyzuhjQygF2lQh6CARXSVgID1gEszSCkGIuI
+	lnLobIYMSDpzm2BQ==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=LsA8xA1p;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=0wkh7VHm
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1788272864; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=KPK49wVZdID7g9/Zu62nmPqeg16U/FWpi177Sp1FYrI=;
+	b=LsA8xA1p2HbQ02wSWqdklX6eO0MmZMBOakWDeWhNVu7I1/YuRzMLQaKBTdCLI4s5YhJ5VY
+	ipHTAoIhxakLKC2aUOwJI0mdvmWX+lR9Sacdm+eouSSDMsAPoV6jeNNx9T8TcB5QHjXjl7
+	IbeXMnWSwxIIVjFkjxBppZamkWohweA=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1788272864;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=KPK49wVZdID7g9/Zu62nmPqeg16U/FWpi177Sp1FYrI=;
+	b=0wkh7VHmTJ9YLZHWCGHwsGLmpx1vSOPRNuEhZEQ1kU7+RO0T4V3Gdl7WBQ9REDA337jqRc
+	kJYUPdYV2XIXkPCg==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 85F5F1369E;
+	Tue,  1 Sep 2026 14:27:44 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id 92OuIODglmrQcQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 01 Sep 2026 14:27:44 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 1668FA13B2; Tue, 01 Sep 2026 16:27:40 +0200 (CEST)
+Date: Tue, 1 Sep 2026 16:27:40 +0200
+From: Jan Kara <jack@suse.cz>
+To: Chuck Lever <cel@kernel.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, 
+	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org, 
+	linux-nfs@vger.kernel.org, Ameer Hamza <ameer.hamza@truenas.com>, 
+	Amir Goldstein <amir73il@gmail.com>
+Subject: Re: [PATCH v2] splice: emit a single fsnotify access event per NFSD
+ READ
+Message-ID: <wvcczks7hv3ks7xfavizwszge3ncy36ceupk42owzjvpjnie2t@uo4rphyxlwry>
+References: <20260901135329.487666-1-cel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260901135329.487666-1-cel@kernel.org>
+X-Spam-Score: -4.01
+X-Rspamd-Queue-Id: AF6A61F397
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Spam-Level: 
+X-Rspamd-Action: no action
+X-Spamd-Result: default: False [-4.01 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	TO_DN_SOME(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	ARC_NA(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	FREEMAIL_CC(0.00)[zeniv.linux.org.uk,kernel.org,suse.cz,vger.kernel.org,truenas.com,gmail.com];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from,2a07:de40:b281:106:10:150:64:167:received];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCPT_COUNT_SEVEN(0.00)[8];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[truenas.com:email,suse.cz:dkim,suse.cz:email,suse.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns]
+X-Spam-Flag: NO
 
-On Mon, 2026-08-31 at 09:27 +0000, Prabhakar Pujeri wrote:
-> Administrators currently have to walk one nfsd filesystem directory per
-> client to correlate basic NFSv4 identity, lease, and callback
-> information. That interface is useful for detailed inspection, but it
-> is awkward for monitoring tools and provides no atomic way to enumerate
-> the client set.
->=20
-> Add a privileged client-get dump to the nfsd Generic Netlink family.
-> Emit one bounded message per confirmed or unconfirmed client with its
-> server-generated client ID, peer address, minor version, client and
-> callback states, signed lease time remaining, and RECLAIM_COMPLETE
-> status.
->=20
-> Represent the peer as separate IPv4 or IPv6 address, port, and optional
-> scope-ID attributes instead of exposing a raw sockaddr structure.
->=20
-> Pin each client while taking a snapshot, protect mutable lease and
-> confirmation fields with the per-net client lock, and serialize against
-> server shutdown with nfsd_mutex. Track client-table changes with a
-> nonzero generation counter and use genl_dump_check_consistent() so a
-> dump that can skip or repeat a client is marked NLM_F_DUMP_INTR. Leave
-> the existing nfsd filesystem interface unchanged.
->=20
-> Assisted-by: LLM sparse
-> Signed-off-by: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
+On Tue 01-09-26 09:53:29, Chuck Lever wrote:
+> nfsd_finish_read() calls fsnotify_access() on both NFSD read paths,
+> because splice_direct_to_actor() does not emit the event itself. The
+> iterator path reaches nfsd_finish_read() from vfs_iocb_iter_read(),
+> which has already emitted one. A READ served without splice therefore
+> emits two access events.
+> 
+> NFSD does not use splice for the GSS integrity and privacy services, so
+> a READ on a sec=krb5i or sec=krb5p mount takes the iterator. An inotify
+> watch on that file sees the READ twice.
+> 
+> Reported-by: Ameer Hamza <ameer.hamza@truenas.com>
+> Closes: https://lore.kernel.org/linux-nfs/20260818225715.572140-1-ameer.hamza@truenas.com/
+> Suggested-by: Amir Goldstein <amir73il@gmail.com>
+> Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+> Link: https://lore.kernel.org/linux-nfs/CAOQ4uxgUOqFv6pVmdT_+4DjA0KQoQDCzN2Xz=xm1FyumewHZXg@mail.gmail.com/
+> Signed-off-by: Chuck Lever <cel@kernel.org>
+
+Looks good. Feel free to add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
+
 > ---
-> Changes since v1:
->=20
->   - split raw sockaddr data into address, port, and scope-ID attributes
->   - detect client-table churn with a generation counter and
->     NLM_F_DUMP_INTR
->=20
-> v1: https://lore.kernel.org/r/6b42a390ce3ea9a5930e2704137fd435c6f7d27e.17=
-87638668.git.prabhakar.pujeri@dell.com
->=20
->  .../admin-guide/nfs/nfsd-admin-interfaces.rst |  16 ++
->  Documentation/netlink/specs/nfsd.yaml         |  93 +++++++
->  fs/nfsd/netlink.c                             |   5 +
->  fs/nfsd/netlink.h                             |   1 +
->  fs/nfsd/netns.h                               |   1 +
->  fs/nfsd/nfs4ctl.h                             |  10 +
->  fs/nfsd/nfs4state.c                           | 248 ++++++++++++++++++
->  fs/nfsd/nfsctl.c                              |  13 +
->  include/uapi/linux/nfsd_netlink.h             |  38 +++
->  9 files changed, 425 insertions(+)
->=20
-> diff --git a/Documentation/admin-guide/nfs/nfsd-admin-interfaces.rst b/Do=
-cumentation/admin-guide/nfs/nfsd-admin-interfaces.rst
-> index c05926f79054..de2a54025874 100644
-> --- a/Documentation/admin-guide/nfs/nfsd-admin-interfaces.rst
-> +++ b/Documentation/admin-guide/nfs/nfsd-admin-interfaces.rst
-> @@ -29,6 +29,22 @@ Between startup and shutdown, the number of threads ma=
-y be adjusted up
->  or down by additional writes to nfsd/threads or by writes to
->  nfsd/pool_threads.
-> =20
-> +NFSv4 client visibility
-> +=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> +
-> +The privileged ``client-get`` dump in the ``nfsd`` Generic Netlink famil=
-y
-> +emits one message for each NFSv4 client.  Each message identifies the cl=
-ient
-> +by its server-generated client ID and transport address, then reports it=
-s
-> +minor version, client and callback states, signed lease time remaining, =
-and
-> +whether an NFSv4.1 or later client sent RECLAIM_COMPLETE.
-> +
-> +Clients can change between messages.  If that can make the dump skip or =
-repeat
-> +a record, the kernel sets ``NLM_F_DUMP_INTR`` and userspace should retry=
-.
-> +
-> +The existing ``/proc/fs/nfsd/clients/`` files remain available for inspe=
-ction.
-> +The ``states`` file contains individual stateids, and writing ``expire``=
- to
-> +``ctl`` forcibly removes the client and all state it owns.
-> +
->  For more detail about files under nfsd/ and what they control, see
->  fs/nfsd/nfsctl.c; most of them have detailed comments.
-> =20
-> diff --git a/Documentation/netlink/specs/nfsd.yaml b/Documentation/netlin=
-k/specs/nfsd.yaml
-> index 642268819c6f..9207a96fe594 100644
-> --- a/Documentation/netlink/specs/nfsd.yaml
-> +++ b/Documentation/netlink/specs/nfsd.yaml
-> @@ -42,6 +42,24 @@ definitions:
->        - none
->        - tls
->        - mtls
-> +  -
-> +    type: enum
-> +    name: client-state
-> +    doc: State of an NFSv4 client record.
-> +    entries:
-> +      - unconfirmed
-> +      - active
-> +      - courtesy
-> +      - expirable
-> +  -
-> +    type: enum
-> +    name: callback-state
-> +    doc: State of an NFSv4 client's callback channel.
-> +    entries:
-> +      - up
-> +      - unknown
-> +      - down
-> +      - fault
-> =20
->  attribute-sets:
->    -
-> @@ -415,6 +433,63 @@ attribute-sets:
->          type: nest
->          nested-attributes: server-proc-entry
->          multi-attr: true
-> +  -
-> +    name: client
-> +    attributes:
-> +      -
-> +        name: clientid
-> +        type: u64
-> +        doc: >-
-> +          Server-generated NFSv4 client ID, with the boot value in the u=
-pper
-> +          32 bits and the per-boot ID in the lower 32 bits.
-> +      -
-> +        name: pad
-> +        type: pad
-> +      -
-> +        name: address4
-> +        type: u32
-> +        byte-order: big-endian
-> +        display-hint: ipv4
-> +        doc: IPv4 peer address recorded when the client was created.
-> +      -
-> +        name: address6
-> +        type: binary
-> +        byte-order: big-endian
-> +        display-hint: ipv6
-> +        checks:
-> +          exact-len: 16
-> +        doc: IPv6 peer address recorded when the client was created.
-> +      -
-> +        name: address-port
-> +        type: u16
-> +        byte-order: big-endian
-> +        doc: Transport peer port recorded when the client was created.
-> +      -
-> +        name: address-scope-id
-> +        type: u32
-> +        doc: IPv6 scope ID recorded when the client was created, when no=
-nzero.
-> +      -
-> +        name: minor-version
-> +        type: u32
-> +        doc: Negotiated NFSv4 minor version.
-> +      -
-> +        name: state
-> +        type: u32
-> +        enum: client-state
-> +        doc: Confirmation and courtesy-state status of the client record=
-.
-> +      -
-> +        name: lease-remaining
-> +        type: s64
-> +        doc: Signed seconds until the client's lease expires; negative m=
-eans overdue.
-> +      -
-> +        name: reclaim-complete
-> +        type: flag
-> +        doc: The NFSv4.1 or later client sent RECLAIM_COMPLETE.
-> +      -
-> +        name: callback-state
-> +        type: u32
-> +        enum: callback-state
-> +        doc: Health of the client's callback channel.
-> =20
->  operations:
->    list:
-> @@ -627,6 +702,24 @@ operations:
->              - proc4-ops
->              - proc4ops-ops
->              - proc4cb-ops
-> +    -
-> +      name: client-get
-> +      doc: dump NFSv4 clients
-> +      attribute-set: client
-> +      flags: [admin-perm]
-> +      dump:
-> +        reply:
-> +          attributes:
-> +            - clientid
-> +            - address4
-> +            - address6
-> +            - address-port
-> +            - address-scope-id
-> +            - minor-version
-> +            - state
-> +            - lease-remaining
-> +            - reclaim-complete
-> +            - callback-state
-> =20
->  mcast-groups:
->    list:
-> diff --git a/fs/nfsd/netlink.c b/fs/nfsd/netlink.c
-> index eba8b353f412..48bc499136b5 100644
-> --- a/fs/nfsd/netlink.c
-> +++ b/fs/nfsd/netlink.c
-> @@ -230,6 +230,11 @@ static const struct genl_split_ops nfsd_nl_ops[] =3D=
- {
->  		.dumpit	=3D nfsd_nl_server_stats_get_dumpit,
->  		.flags	=3D GENL_CMD_CAP_DUMP,
->  	},
-> +	{
-> +		.cmd	=3D NFSD_CMD_CLIENT_GET,
-> +		.dumpit	=3D nfsd_nl_client_get_dumpit,
-> +		.flags	=3D GENL_ADMIN_PERM | GENL_CMD_CAP_DUMP,
-> +	},
->  };
-> =20
->  static const struct genl_multicast_group nfsd_nl_mcgrps[] =3D {
-> diff --git a/fs/nfsd/netlink.h b/fs/nfsd/netlink.h
-> index 027e2953db26..de7593e64082 100644
-> --- a/fs/nfsd/netlink.h
-> +++ b/fs/nfsd/netlink.h
-> @@ -44,6 +44,7 @@ int nfsd_nl_unlock_filesystem_doit(struct sk_buff *skb,=
- struct genl_info *info);
->  int nfsd_nl_unlock_export_doit(struct sk_buff *skb, struct genl_info *in=
-fo);
->  int nfsd_nl_server_stats_get_dumpit(struct sk_buff *skb,
->  				    struct netlink_callback *cb);
-> +int nfsd_nl_client_get_dumpit(struct sk_buff *skb, struct netlink_callba=
-ck *cb);
-> =20
->  enum {
->  	NFSD_NLGRP_NONE,
-> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-> index 0ce7da20aba3..d30af86cf78a 100644
-> --- a/fs/nfsd/netns.h
-> +++ b/fs/nfsd/netns.h
-> @@ -105,6 +105,7 @@ struct nfsd_net {
->  	struct list_head *unconf_id_hashtbl;
->  	struct rb_root unconf_name_tree;
->  	struct list_head *sessionid_hashtbl;
-> +	u32 nfs4_client_generation;	/* protected by client_lock, never zero */
->  	/*
->  	 * client_lru holds client queue ordered by nfs4_client.cl_time
->  	 * for lease renewal.
-> diff --git a/fs/nfsd/nfs4ctl.h b/fs/nfsd/nfs4ctl.h
-> index bcec4c4ef1d5..44cbb0fac588 100644
-> --- a/fs/nfsd/nfs4ctl.h
-> +++ b/fs/nfsd/nfs4ctl.h
-> @@ -20,8 +20,10 @@
->  struct net;
->  struct inode;
->  struct dentry;
-> +struct sk_buff;
->  struct svc_rqst;
->  struct nfsd_net;
-> +struct netlink_callback;
-> =20
->  #ifdef CONFIG_NFSD_V4
->  extern unsigned long max_delegations;
-> @@ -37,6 +39,8 @@ bool nfsd4_spo_must_allow(struct svc_rqst *rqstp);
->  int nfsd4_create_laundry_wq(void);
->  void nfsd4_destroy_laundry_wq(void);
->  bool nfsd_wait_for_delegreturn(struct svc_rqst *rqstp, struct inode *ino=
-de);
-> +int nfsd4_nl_client_get_dumpit(struct sk_buff *skb,
-> +			       struct netlink_callback *cb);
-> =20
->  extern int nfsd4_is_junction(struct dentry *dentry);
->  extern int register_cld_notifier(void);
-> @@ -68,6 +72,12 @@ static inline bool nfsd_wait_for_delegreturn(struct sv=
-c_rqst *rqstp,
->  	return false;
->  }
-> =20
-> +static inline int nfsd4_nl_client_get_dumpit(struct sk_buff *skb,
-> +					     struct netlink_callback *cb)
-> +{
-> +	return 0;
-> +}
-> +
->  static inline int nfsd4_is_junction(struct dentry *dentry)
+> Changes in v2:
+> - Rename the new helper to vfs_splice_to_actor()
+> - Take pos, count, and actor data, not a splice_desc
+> - Link to v1: https://lore.kernel.org/r/20260824161021.245575-1-cel@kernel.org
+> ---
+>  fs/nfsd/vfs.c          | 13 ++--------
+>  fs/splice.c            | 58 +++++++++++++++++++++++++++++++-----------
+>  include/linux/splice.h |  4 +--
+>  3 files changed, 47 insertions(+), 28 deletions(-)
+> 
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index f9131827d391..4789f2ec2078 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -1046,7 +1046,6 @@ static __be32 nfsd_finish_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  		nfsd_stats_io_read_add(nn, fhp->fh_export, host_err);
+>  		*eof = nfsd_eof_on_read(file, offset, host_err, *count);
+>  		*count = host_err;
+> -		fsnotify_access(file);
+>  		trace_nfsd_read_io_done(rqstp, fhp, offset, *count);
+>  		return 0;
+>  	} else {
+> @@ -1071,19 +1070,11 @@ __be32 nfsd_splice_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  			struct file *file, loff_t offset, unsigned long *count,
+>  			u32 *eof)
 >  {
->  	return 0;
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index a4a75a512e9f..d96e73275b74 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -59,6 +59,7 @@
->  #include "pnfs.h"
->  #include "filecache.h"
->  #include "nfs4xdr_gen.h"
-> +#include "netlink.h"
->  #include "trace.h"
-> =20
->  #define NFSDDBG_FACILITY                NFSDDBG_PROC
-> @@ -2842,6 +2843,14 @@ free_client(struct nfs4_client *clp)
->  	nfsd4_put_client(clp);
+> -	struct splice_desc sd = {
+> -		.len		= 0,
+> -		.total_len	= *count,
+> -		.pos		= offset,
+> -		.u.data		= rqstp,
+> -	};
+>  	ssize_t host_err;
+>  
+>  	trace_nfsd_read_splice(rqstp, fhp, offset, *count);
+> -	host_err = rw_verify_area(READ, file, &offset, *count);
+> -	if (!host_err)
+> -		host_err = splice_direct_to_actor(file, &sd,
+> -						  nfsd_direct_splice_actor);
+> +	host_err = vfs_splice_to_actor(file, offset, *count,
+> +				       nfsd_direct_splice_actor, rqstp);
+>  	return nfsd_finish_read(rqstp, fhp, file, offset, count, eof, host_err);
 >  }
-> =20
-> +static void nfsd4_bump_client_generation(struct nfsd_net *nn)
-> +{
-> +	lockdep_assert_held(&nn->client_lock);
-> +
-> +	if (++nn->nfs4_client_generation =3D=3D 0)
-> +		nn->nfs4_client_generation++;
-> +}
-> +
->  /* must be called under the client_lock */
->  static void
->  unhash_client_locked(struct nfs4_client *clp)
-> @@ -2856,6 +2865,7 @@ unhash_client_locked(struct nfs4_client *clp)
->  	/* Make it invisible */
->  	if (!list_empty(&clp->cl_idhash)) {
->  		list_del_init(&clp->cl_idhash);
-> +		nfsd4_bump_client_generation(nn);
->  		if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
->  			rb_erase(&clp->cl_namenode, &nn->conf_name_tree);
->  		else
-> @@ -3232,6 +3242,241 @@ static const char *cb_state2str(int state)
->  	return "UNDEFINED";
+>  
+> diff --git a/fs/splice.c b/fs/splice.c
+> index 9d8f63e2fd1a..96cff31d97e1 100644
+> --- a/fs/splice.c
+> +++ b/fs/splice.c
+> @@ -1009,21 +1009,14 @@ ssize_t vfs_splice_read(struct file *in, loff_t *ppos,
 >  }
-> =20
-> +enum nfsd4_nl_client_table {
-> +	NFSD4_NL_CLIENT_CONFIRMED,
-> +	NFSD4_NL_CLIENT_UNCONFIRMED,
-> +	NFSD4_NL_CLIENT_DONE,
-> +};
-> +
-> +struct nfsd4_nl_client {
-> +	struct sockaddr_storage	address;
-> +	u64			clientid;
-> +	s64			lease_remaining;
-> +	u32			minor_version;
-> +	u32			state;
-> +	u32			callback_state;
-> +	bool			reclaim_complete;
-> +};
-> +
-> +static u32 nfsd4_nl_client_state(bool confirmed, unsigned int state)
-> +{
-> +	if (!confirmed)
-> +		return NFSD_CLIENT_STATE_UNCONFIRMED;
-> +
-> +	switch (state) {
-> +	case NFSD4_COURTESY:
-> +		return NFSD_CLIENT_STATE_COURTESY;
-> +	case NFSD4_EXPIRABLE:
-> +		return NFSD_CLIENT_STATE_EXPIRABLE;
-> +	default:
-> +		return NFSD_CLIENT_STATE_ACTIVE;
-> +	}
-> +}
-> +
-> +static u32 nfsd4_nl_callback_state(int state)
-> +{
-> +	switch (state) {
-> +	case NFSD4_CB_UP:
-> +		return NFSD_CALLBACK_STATE_UP;
-> +	case NFSD4_CB_DOWN:
-> +		return NFSD_CALLBACK_STATE_DOWN;
-> +	case NFSD4_CB_FAULT:
-> +		return NFSD_CALLBACK_STATE_FAULT;
-> +	default:
-> +		return NFSD_CALLBACK_STATE_UNKNOWN;
-> +	}
-> +}
-> +
-> +static struct nfs4_client *
-> +nfsd4_nl_get_client(struct nfsd_net *nn, enum nfsd4_nl_client_table tabl=
-e,
-> +		    unsigned long bucket, unsigned long skip,
-> +		    struct netlink_callback *cb)
-
-I'd call this nfsd_nl_find_client() as we usually use "get" in terms of
-reference counting.
-=20
-> +{
-> +	struct nfs4_client *clp =3D NULL;
-> +	struct nfs4_client *pos;
-> +	struct list_head *head;
-> +	unsigned long index =3D 0;
-> +
-> +	lockdep_assert_held(&nfsd_mutex);
-> +
-> +	if (table =3D=3D NFSD4_NL_CLIENT_CONFIRMED)
-> +		head =3D &nn->conf_id_hashtbl[bucket];
-> +	else
-> +		head =3D &nn->unconf_id_hashtbl[bucket];
-
-This means that table =3D=3D NFSD4_NL_CLIENT_DONE means the same an
-"UNCONFIRMED". The caller shouldn't call it in that case I guess, but
-this is a lack of defensive programming.
-
-> +
-> +	spin_lock(&nn->client_lock);
-> +	cb->seq =3D nn->nfs4_client_generation;
-> +	list_for_each_entry(pos, head, cl_idhash) {
-> +		if (index++ !=3D skip)
-> +			continue;
-> +		kref_get(&pos->cl_nfsdfs.cl_ref);
-> +		clp =3D pos;
-> +		break;
-> +	}
-> +	spin_unlock(&nn->client_lock);
-> +	return clp;
-> +}
-> +
-> +static void nfsd4_nl_client_snapshot(struct nfsd_net *nn,
-> +				     struct nfs4_client *clp,
-> +				     struct nfsd4_nl_client *client)
-> +{
-> +	unsigned int state;
-> +	time64_t last_renew;
-> +	bool confirmed;
-> +
-> +	spin_lock(&nn->client_lock);
-> +	last_renew =3D clp->cl_time;
-> +	confirmed =3D test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags);
-> +	state =3D READ_ONCE(clp->cl_state);
-> +	spin_unlock(&nn->client_lock);
-> +
-> +	memcpy(&client->address, &clp->cl_addr, sizeof(client->address));
-> +	client->clientid =3D (u64)clp->cl_clientid.cl_boot << 32 |
-> +			   clp->cl_clientid.cl_id;
-> +	client->lease_remaining =3D last_renew ?
-> +		last_renew + READ_ONCE(nn->nfsd4_lease) -
-> +		ktime_get_boottime_seconds() : 0;
-> +	client->minor_version =3D clp->cl_minorversion;
-> +	client->state =3D nfsd4_nl_client_state(confirmed, state);
-> +	client->callback_state =3D
-> +		nfsd4_nl_callback_state(READ_ONCE(clp->cl_cb_state));
-> +	client->reclaim_complete =3D
-> +		test_bit(NFSD4_CLIENT_RECLAIM_COMPLETE, &clp->cl_flags);
-> +}
-> +
-> +static int
-> +nfsd4_nl_client_put_address(struct sk_buff *skb,
-> +			    const struct sockaddr_storage *address)
-
-In nfsd, we often use "put" with reference counting, so looking at this
-cold, this is confusingly named. Maybe change this to be named
-nfsd4_nl_client_marshal_address() ?
-
-> +{
-> +	switch (address->ss_family) {
-> +	case AF_INET: {
-> +		const struct sockaddr_in *sin =3D
-> +			(const struct sockaddr_in *)address;
-> +
-> +		if (nla_put_in_addr(skb, NFSD_A_CLIENT_ADDRESS4,
-> +				    sin->sin_addr.s_addr) ||
-> +		    nla_put_be16(skb, NFSD_A_CLIENT_ADDRESS_PORT,
-> +				 sin->sin_port))
-> +			return -EMSGSIZE;
-> +		break;
-> +	}
-> +	case AF_INET6: {
-> +		const struct sockaddr_in6 *sin6 =3D
-> +			(const struct sockaddr_in6 *)address;
-> +
-> +		if (nla_put_in6_addr(skb, NFSD_A_CLIENT_ADDRESS6,
-> +				     &sin6->sin6_addr) ||
-> +		    nla_put_be16(skb, NFSD_A_CLIENT_ADDRESS_PORT,
-> +				 sin6->sin6_port) ||
-> +		    (sin6->sin6_scope_id &&
-> +		     nla_put_u32(skb, NFSD_A_CLIENT_ADDRESS_SCOPE_ID,
-> +				 sin6->sin6_scope_id)))
-> +			return -EMSGSIZE;
-> +		break;
-> +	}
-> +	}
-> +	return 0;
-> +}
-> +
-> +static int nfsd4_nl_client_compose_msg(struct sk_buff *skb,
-> +				       struct netlink_callback *cb,
-> +				       const struct nfsd4_nl_client *client)
-> +{
-> +	void *hdr;
-> +
-> +	hdr =3D genlmsg_put(skb, NETLINK_CB(cb->skb).portid,
-> +			  cb->nlh->nlmsg_seq, &nfsd_nl_family, NLM_F_MULTI,
-> +			  NFSD_CMD_CLIENT_GET);
-> +	if (!hdr)
-> +		return -EMSGSIZE;
-> +	genl_dump_check_consistent(cb, hdr);
-> +
-> +	if (nla_put_u64_64bit(skb, NFSD_A_CLIENT_CLIENTID, client->clientid,
-> +			      NFSD_A_CLIENT_PAD) ||
-> +	    nfsd4_nl_client_put_address(skb, &client->address) ||
-> +	    nla_put_u32(skb, NFSD_A_CLIENT_MINOR_VERSION,
-> +			client->minor_version) ||
-> +	    nla_put_u32(skb, NFSD_A_CLIENT_STATE, client->state) ||
-> +	    nla_put_s64(skb, NFSD_A_CLIENT_LEASE_REMAINING,
-> +			client->lease_remaining, NFSD_A_CLIENT_PAD) ||
-> +	    (client->reclaim_complete &&
-> +	     nla_put_flag(skb, NFSD_A_CLIENT_RECLAIM_COMPLETE)) ||
-> +	    nla_put_u32(skb, NFSD_A_CLIENT_CALLBACK_STATE,
-> +			client->callback_state))
-> +		goto err_cancel;
-> +
-> +	genlmsg_end(skb, hdr);
-> +	return 0;
-> +
-> +err_cancel:
-> +	genlmsg_cancel(skb, hdr);
-> +	return -EMSGSIZE;
-> +}
+>  EXPORT_SYMBOL_GPL(vfs_splice_read);
+>  
+> -/**
+> - * splice_direct_to_actor - splices data directly between two non-pipes
+> - * @in:		file to splice from
+> - * @sd:		actor information on where to splice to
+> - * @actor:	handles the data splicing
+> - *
+> - * Description:
+> - *    This is a special case helper to splice directly between two
+> - *    points, without requiring an explicit pipe. Internally an allocated
+> - *    pipe is cached in the process, and reused during the lifetime of
+> - *    that process.
+> - *
+> +/*
+> + * This is a special case helper to splice directly between two
+> + * points, without requiring an explicit pipe. Internally an allocated
+> + * pipe is cached in the process, and reused during the lifetime of
+> + * that process.
+>   */
+> -ssize_t splice_direct_to_actor(struct file *in, struct splice_desc *sd,
+> -			       splice_direct_actor *actor)
+> +static ssize_t splice_direct_to_actor(struct file *in, struct splice_desc *sd,
+> +				      splice_direct_actor *actor)
+>  {
+>  	struct pipe_inode_info *pipe;
+>  	ssize_t ret, bytes;
+> @@ -1147,7 +1140,42 @@ ssize_t splice_direct_to_actor(struct file *in, struct splice_desc *sd,
+>  
+>  	goto done;
+>  }
+> -EXPORT_SYMBOL(splice_direct_to_actor);
 > +
 > +/**
-> + * nfsd4_nl_client_get_dumpit - dump NFSv4 client information
-> + * @skb: reply buffer
-> + * @cb: netlink metadata and command arguments
+> + * vfs_splice_to_actor - call an actor on data read from a file
+> + * @in:		file to read from
+> + * @pos:	file offset
+> + * @count:	maximum number of bytes to read
+> + * @actor:	callback to process a pipe's worth of data
+> + * @private:	private data passed to @actor
 > + *
-> + * One netlink message is emitted for each client. cb->args tracks the c=
-lient
-> + * table, hash bucket, and offset within that bucket. Client table chang=
-es can
-> + * cause an object to be skipped or repeated between calls; in that case=
- the
-> + * affected message or NLMSG_DONE is marked with NLM_F_DUMP_INTR.
+> + * Read up to @count worth of data from @in at @pos, and call @actor
+> + * when the hidden pipe used to buffer the data is full. Ensures the
+> + * read is allowed using rw_verify_area() and emits fsnotify access
+> + * events. @in must be seekable (FMODE_LSEEK).
 > + *
-> + * Returns the size of the reply or a negative errno.
+> + * Return: The number of bytes spliced, or a negative errno.
 > + */
-> +int nfsd4_nl_client_get_dumpit(struct sk_buff *skb,
-> +			       struct netlink_callback *cb)
+> +ssize_t vfs_splice_to_actor(struct file *in, loff_t pos, size_t count,
+> +			    splice_direct_actor *actor, void *private)
 > +{
-> +	struct nfsd4_nl_client client;
-> +	struct nfs4_client *clp;
-> +	struct nfsd_net *nn;
-> +	struct net *net;
-> +	int ret =3D 0;
+> +	struct splice_desc sd = {
+> +		.total_len	= count,
+> +		.pos		= pos,
+> +		.u.data		= private,
+> +	};
+> +	ssize_t ret;
 > +
-> +	net =3D sock_net(skb->sk);
-> +	nn =3D net_generic(net, nfsd_net_id);
-> +	mutex_lock(&nfsd_mutex);
-> +	if (!test_bit(NFSD_NET_UP, &nn->flags)) {
-> +		ret =3D -ENODEV;
-> +		goto out_unlock;
-> +	}
+> +	ret = rw_verify_area(READ, in, &sd.pos, sd.total_len);
+> +	if (ret < 0)
+> +		return ret;
 > +
-> +	while (cb->args[0] < NFSD4_NL_CLIENT_DONE) {
-> +		if (cb->args[1] >=3D CLIENT_HASH_SIZE) {
-> +			cb->args[0]++;
-
-This while loop is a bit too clever for our own good. cb->args[0] is
-effectively a state enum, so why are we incrementing through its
-values?
-
-It's looking at confirmed, then unconfirmed clients, but that's not
-evident here.
-
-
-> +			cb->args[1] =3D 0;
-> +			cb->args[2] =3D 0;
-> +			continue;
-> +		}
-> +
-> +		clp =3D nfsd4_nl_get_client(nn, cb->args[0], cb->args[1],
-> +					  cb->args[2], cb);
-> +		if (!clp) {
-> +			cb->args[1]++;
-> +			cb->args[2] =3D 0;
-> +			continue;
-> +		}
-> +
-> +		memset(&client, 0, sizeof(client));
-> +		nfsd4_nl_client_snapshot(nn, clp, &client);
-> +		ret =3D nfsd4_nl_client_compose_msg(skb, cb, &client);
-> +		nfsd4_put_client(clp);
-> +		if (ret) {
-> +			if (skb->len)
-> +				ret =3D skb->len;
-> +			goto out_unlock;
-> +		}
-> +		cb->args[2]++;
-> +	}
-> +	ret =3D skb->len;
-> +
-> +out_unlock:
-> +	mutex_unlock(&nfsd_mutex);
+> +	ret = splice_direct_to_actor(in, &sd, actor);
+> +	if (ret >= 0)
+> +		fsnotify_access(in);
 > +	return ret;
 > +}
-> +
->  static int client_info_show(struct seq_file *m, void *v)
->  {
->  	struct inode *inode =3D file_inode(m->file);
-> @@ -4026,6 +4271,7 @@ add_to_unconfirmed(struct nfs4_client *clp)
->  	add_clp_to_name_tree(clp, &nn->unconf_name_tree);
->  	idhashval =3D clientid_hashval(clp->cl_clientid.cl_id);
->  	list_add(&clp->cl_idhash, &nn->unconf_id_hashtbl[idhashval]);
-> +	nfsd4_bump_client_generation(nn);
->  	renew_client_locked(clp);
->  }
-> =20
-> @@ -4038,6 +4284,7 @@ move_to_confirmed(struct nfs4_client *clp)
->  	lockdep_assert_held(&nn->client_lock);
-> =20
->  	list_move(&clp->cl_idhash, &nn->conf_id_hashtbl[idhashval]);
-> +	nfsd4_bump_client_generation(nn);
->  	rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
->  	add_clp_to_name_tree(clp, &nn->conf_name_tree);
->  	set_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags);
-> @@ -10154,6 +10401,7 @@ static int nfs4_state_create_net(struct net *net)
->  	INIT_LIST_HEAD(&nn->del_recall_lru);
->  	spin_lock_init(&nn->deleg_lock);
->  	spin_lock_init(&nn->client_lock);
-> +	nn->nfs4_client_generation =3D 1;
->  	spin_lock_init(&nn->s2s_cp_lock);
->  	idr_init(&nn->s2s_cp_stateids);
->  	atomic_set(&nn->pending_async_copies, 0);
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 5331b89c4281..fe060029ed5f 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -1649,6 +1649,19 @@ int nfsd_nl_rpc_status_get_dumpit(struct sk_buff *=
-skb,
->  	return ret;
->  }
-> =20
-> +/**
-> + * nfsd_nl_client_get_dumpit - dump NFSv4 client information
-> + * @skb: reply buffer
-> + * @cb: netlink metadata and command arguments
-> + *
-> + * Returns the size of the reply or a negative errno.
-> + */
-> +int nfsd_nl_client_get_dumpit(struct sk_buff *skb,
-> +			      struct netlink_callback *cb)
-> +{
-> +	return nfsd4_nl_client_get_dumpit(skb, cb);
-> +}
-> +
->  /**
->   * nfsd_nl_fh_key_set - helper to copy fh_key from userspace
->   * @attr: nlattr NFSD_A_SERVER_FH_KEY
-> diff --git a/include/uapi/linux/nfsd_netlink.h b/include/uapi/linux/nfsd_=
-netlink.h
-> index 87da1d0bb21e..715acb4104c1 100644
-> --- a/include/uapi/linux/nfsd_netlink.h
-> +++ b/include/uapi/linux/nfsd_netlink.h
-> @@ -50,6 +50,26 @@ enum nfsd_xprtsec_mode {
->  	NFSD_XPRTSEC_MODE_MTLS =3D 4,
->  };
-> =20
-> +/*
-> + * State of an NFSv4 client record.
-> + */
-> +enum nfsd_client_state {
-> +	NFSD_CLIENT_STATE_UNCONFIRMED,
-> +	NFSD_CLIENT_STATE_ACTIVE,
-> +	NFSD_CLIENT_STATE_COURTESY,
-> +	NFSD_CLIENT_STATE_EXPIRABLE,
-> +};
-> +
-> +/*
-> + * State of an NFSv4 client's callback channel.
-> + */
-> +enum nfsd_callback_state {
-> +	NFSD_CALLBACK_STATE_UP,
-> +	NFSD_CALLBACK_STATE_UNKNOWN,
-> +	NFSD_CALLBACK_STATE_DOWN,
-> +	NFSD_CALLBACK_STATE_FAULT,
-> +};
-> +
->  enum {
->  	NFSD_A_CACHE_NOTIFY_CACHE_TYPE =3D 1,
-> =20
-> @@ -260,6 +280,23 @@ enum {
->  	NFSD_A_SERVER_STATS_MAX =3D (__NFSD_A_SERVER_STATS_MAX - 1)
->  };
-> =20
-> +enum {
-> +	NFSD_A_CLIENT_CLIENTID =3D 1,
-> +	NFSD_A_CLIENT_PAD,
-> +	NFSD_A_CLIENT_ADDRESS4,
-> +	NFSD_A_CLIENT_ADDRESS6,
-> +	NFSD_A_CLIENT_ADDRESS_PORT,
-> +	NFSD_A_CLIENT_ADDRESS_SCOPE_ID,
-> +	NFSD_A_CLIENT_MINOR_VERSION,
-> +	NFSD_A_CLIENT_STATE,
-> +	NFSD_A_CLIENT_LEASE_REMAINING,
-> +	NFSD_A_CLIENT_RECLAIM_COMPLETE,
-> +	NFSD_A_CLIENT_CALLBACK_STATE,
-> +
-> +	__NFSD_A_CLIENT_MAX,
-> +	NFSD_A_CLIENT_MAX =3D (__NFSD_A_CLIENT_MAX - 1)
-> +};
-> +
->  enum {
->  	NFSD_CMD_RPC_STATUS_GET =3D 1,
->  	NFSD_CMD_THREADS_SET,
-> @@ -280,6 +317,7 @@ enum {
->  	NFSD_CMD_UNLOCK_FILESYSTEM,
->  	NFSD_CMD_UNLOCK_EXPORT,
->  	NFSD_CMD_SERVER_STATS_GET,
-> +	NFSD_CMD_CLIENT_GET,
-> =20
->  	__NFSD_CMD_MAX,
->  	NFSD_CMD_MAX =3D (__NFSD_CMD_MAX - 1)
-
-The rest looks pretty sane though.
---=20
-Jeff Layton <jlayton@kernel.org>
+> +EXPORT_SYMBOL(vfs_splice_to_actor);
+>  
+>  static int direct_splice_actor(struct pipe_inode_info *pipe,
+>  			       struct splice_desc *sd)
+> diff --git a/include/linux/splice.h b/include/linux/splice.h
+> index 9dec4861d09f..0e6c955dc6ff 100644
+> --- a/include/linux/splice.h
+> +++ b/include/linux/splice.h
+> @@ -79,8 +79,8 @@ ssize_t add_to_pipe(struct pipe_inode_info *pipe, struct pipe_buffer *buf);
+>  ssize_t vfs_splice_read(struct file *in, loff_t *ppos,
+>  			struct pipe_inode_info *pipe, size_t len,
+>  			unsigned int flags);
+> -ssize_t splice_direct_to_actor(struct file *file, struct splice_desc *sd,
+> -			       splice_direct_actor *actor);
+> +ssize_t vfs_splice_to_actor(struct file *file, loff_t pos, size_t count,
+> +			    splice_direct_actor *actor, void *private);
+>  ssize_t do_splice(struct file *in, loff_t *off_in, struct file *out,
+>  		  loff_t *off_out, size_t len, unsigned int flags);
+>  ssize_t do_splice_direct(struct file *in, loff_t *ppos, struct file *out,
+> -- 
+> 2.55.0
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
