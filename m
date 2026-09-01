@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5F51E3B7772;
-	Tue,  1 Sep 2026 13:09:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B36D42D7398;
+	Tue,  1 Sep 2026 13:40:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788268198; cv=none; b=l5U50EINrm+k7snhkyIsQKEpKarJtz3lYHWHjzHJZnEeyYB+HM0/u6+Yvj9aJ3fKvxw78GHX9vB/LXNjv3W3rKCpxxnuRTL6/KYC+chz4phMKHMORteoUfiekrg84TnfbjyNQ9hCh6ioCMxnibtH3LZXkJgXYlcnOMP6edyax1o=
+	t=1788270005; cv=none; b=r0Yyadrj/EVqgzZxeHiMARvDfXMbsf5Lkyt3F2ujLY2wdZZ9gXIRCPyVbDk12rB44tsxZesk48o+hGo3udKp26lhNyxMHdxRmqOtK4K6ibEsnYhCo/1gK8OJ01WY5haK5vYjTx106yONLT8zya8Hjft0a02YLfLOdXttY/g56M0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788268198; c=relaxed/simple;
-	bh=X3/9YKE3xBinmEV1GhMgbWWOEofArSRsmpCB4eh3SG0=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=nNCh2yE92MsKU+CEJcSdTVLWW/A5+WM653ZC7XgsHRJ6UqJ3vRjq0tSRkwztFUizIOiM7xsE6bvg0KKMy5477HAVcpewnwST6sGXtwCSxlNqFg5zj3/45WKLXQkseB1y/2s/U+khtBAB9k6igwASBKMGKEkGqshV8m9ozoeb/6c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=l2LKEPcr; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788270005; c=relaxed/simple;
+	bh=N5yKQaFVQe6GXWwZ+9H08X22PIpp7LBs6+RjgPe7Xsc=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=caeRXtUt85Fvt0tjhUoeI55hqABaMQ5Swd6BiBo1AKF3KyTIZItqlsT3uvHQuhN4YO447ELVgO6woXaM5z2O1dvD8XvRiuuNj636Lwprw8PwZcspL7yBVOL5jGVqk5OxdljyQBdtKGW02PK5xxZ22wbZc38nKN75yKQaxYY8J74=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VALfStqp; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="l2LKEPcr"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4C9481F000E9;
-	Tue,  1 Sep 2026 13:09:56 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VALfStqp"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D33181F000E9;
+	Tue,  1 Sep 2026 13:40:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788268197;
-	bh=fcZJwXoy1vxhyp3/EHTEhV3TKVx2/a3XYBdOKnUnH00=;
-	h=From:Date:Subject:To:Cc;
-	b=l2LKEPcrRxFxtVBkhim/FhfqcPE7cNryj8kQ7GW4c2No39IrHb73JE52nveGMruPs
-	 4Sg7E7nB7xegDtf3Lgk2PuDrcv8ANDyQXUq91yT6HODZGlCA/UEQlmAjP0NwZ5bKt1
-	 0VPAMUpkuM6M+dUHYytwbyIcd5BFx+6HbuQhgws1Yyko/KJbN/M2azPCOk1JgXg0SH
-	 PaQn+Eo/ant6HfPlaE3xDLmJFedPVqHVFqgCEKud0l4+q/rmJedhN7kXUIg8YH4c9z
-	 gSSX9B5mEDDyNo8wHGYwYDQe7lN2W+KkZPlDRxLN2/ZrORtvHDctIwgeid9hSa/+XA
-	 cL/qZ2JADlvhw==
+	s=k20260515; t=1788270003;
+	bh=lms0tzSA0n2BQdltdEEcmrmpFLcMApSRdNKIGPWfDrk=;
+	h=From:Subject:Date:To:Cc;
+	b=VALfStqpiSj8DA2KsxV6K+AhrBbVrCIXQMtRjZDV4WBJW+BGV6Iyh7yovNwyMwAJT
+	 DR0WtEwKwoTT2GM1X3+YnTj7v6gRw0Y1s78A/IoHO/yP6MCcs7a8+6/jR7b7d9cCao
+	 +3LG/li1ydIjuMN5t/ooOspMYMp6FYWNrovKUvHEKQtc6evGGR4T73mmQhIAdq4Nnx
+	 JsQmz8riMXSnzADdif3gZBt9Iw4D49FfqJD2KS/lLZtdrFvopCUNeaRnFqAJMQaaO4
+	 2PUjfiu5+FoeUZX6VCDoTORjVRgK/Uy0SFQgq5ADyBSr2g/KHi+MB9o8qOTwE0Ev15
+	 MvbzzRhH3Uffg==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Tue, 01 Sep 2026 09:09:43 -0400
-Subject: [PATCH] nfsd: accept a backdated timestamp from a delegation
- holder
+Subject: [PATCH v5 00/15] nfsd/sunrpc: harden the netlink listener set
+ interface
+Date: Tue, 01 Sep 2026 09:39:38 -0400
+Message-Id: <20260901-nfsd-nl-hang-v5-0-a540d86668b0@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,151 +38,142 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260901-delegts-v1-1-9937f7ee4370@kernel.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDSwND3ZTUnNT0kmLdVEvDRDMTizRDEyNzJaDqgqLUtMwKsEnRsbW1AGk
- LXr9ZAAAA
-X-Change-ID: 20260901-delegts-e91a648f1427
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2XNQQ7CIBCF4asY1mIYprTFlfcwLloYWmJDDZhGY
+ 3p3qW5qXT4m38+LJYqeEjvuXizS5JMfQx5qv2Omb0JH3Nu8mRSyFBVUPLhkeRj4cuQgGmyRNDr
+ ZsExukZx/fHLnS969T/cxPj/1CZbXb6gG8RuagAsuFWhnrWoNNKcrxUDDYYwdW0qTXGvYaJm1E
+ UbLFrVCg38aV1rWG41ZK5VvZa1MpeyfLlYat38XWQtXUK0BdSH0j57n+Q28kBojYwEAAA==
+X-Change-ID: 20260717-nfsd-nl-hang-10a3b3e93f2a
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>
-Cc: Thomas Haynes <loghyr@gmail.com>, linux-nfs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
+ Tom Talpey <tom@talpey.com>, Trond Myklebust <trondmy@kernel.org>, 
+ Anna Schumaker <anna@kernel.org>, "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Shuah Khan <shuah@kernel.org>
+Cc: Slawomir Stepien <sst@poczta.fm>, linux-nfs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
+ Trond Myklebust <trondmy@gmail.com>, linux-kselftest@vger.kernel.org, 
+ Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5040; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=X3/9YKE3xBinmEV1GhMgbWWOEofArSRsmpCB4eh3SG0=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqls6fHAJqUA/5PG2cikuzcfp2wcvblXuXbCWgn
- jqoe5l+L1mJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCapbOnwAKCRAADmhBGVaC
- FRsfD/0U0PVqe3WFr9WPr3/pqSi5Kl5X1kimR43J5yBB/vaMJMUw8GN2F80u4zkQP+MAIvEUahc
- 0Rf/rXsshM2OzQH7ZICc+BCrbpOuL+WoGnOyxl32J5wf8p0F2Hb4yWnRdbs6GkZ1NUqeb8F2joF
- +1noiUMqUCW48ddlS7M/uv3GAkrkzHxDaz/hDB4QC3WtLo3tGY68GETTRNrdC+vYhIhIrTl7stb
- k6AZTUZEy+WaU3Nkjx1MSLClkuUVpzLSnN8AyT75QDZss2EzpwDMQc8yqZ7Rd4BPtxvqcJSag5J
- KFeL7Ju1UHtcRJbNRea68cohxNvaDTVE3pT4QyFj0vul5bVhb0oxkKpWxE/QDy4kFivENZtynts
- DIMnhdxfZPHNmF2i3bWvMDqfABoSPM1F21ShtF19UCrx0+zCOQgyZUSMXwqBWcR5DfgRDhma5dQ
- /KxY8efMuYENFYPl6iRBwGDgmJX+vuSulxG3flglQN+QwWwkLkp1Y/eEN/lIbVVaPvdQOzfwH81
- 9esU+S594TLjlS0UkzcG8a7/LUWJjBvxIdTvpTPo3rWCqoz1rR574bgPBwcqlw9ZYO/5uKa+xdK
- U+X7pftEqzUA2h8kW0fkIVVNbzmyoCa01yZwCL/rnzYRCaqSMUiyhtUmwj1dStwJS9UOC6PW7Ni
- WH0TurdRSr2voKA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5744; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=N5yKQaFVQe6GXWwZ+9H08X22PIpp7LBs6+RjgPe7Xsc=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqltWo4EoE1L3B1BZRLAT9B4dJrymBhaabnU7zu
+ ZxYQ0Rn+0iJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCapbVqAAKCRAADmhBGVaC
+ FX0sEAC7GPSIwmC1AZ5MsuEAThenosjRcn4UcGONdh1FxxqMLF4J3hXTTewtvXHvB/2ItqPH+e0
+ YSLh4W9Qye4da8FiH6fDfvbTlHSmJMciVEvWWM/uXCO5YkpATf2NNUD9zpa/eHGPwMSewzr2FBp
+ 6nwfemyiqCoPviCWR6MtcbJzmo3CszzDG5LeZhFNGizMJVd0QiVtdzjHlppp7v8z/xFCTwLrDvH
+ 2Wqnl1AMMTe4KJUho1y0z5GegPIvrhOkSwt6Bl3w9WrvbaM1dYkVerFsZf/2VsbC7vSyY8cK39E
+ 6LR3Xk6LbuwOfsB7JlyW81QiI3TuDJuimXUAgK5t3xmT60Jmw2QgHUh4eBhk/O54FccMqh1Ng+A
+ gS59C9LQBdQzQzI2wNTuNNYAVdNUXNoVkdvt8qBPHwYltAm7LhuL1ep96VxhFXeo1r1U/DPdgmw
+ kUvvRHPMoJBB2OzSN+MHerIgyB7Fr9UaclYqvEbH9ZpixQ89iA/sdtZxWpP40F/rZEXeWPr5Vol
+ 4DiQI7OUzbDikNqLcVr/YNHoRNu/AHbPzF6aZUHuLt8HsIIVC3pAG5J6QdTOK8JGyoKI81hD4/m
+ jiuMlXFq7yuDp6f7ElZDFtZGmHSmI4/vBNnpPRLHZtskRwd0GuRPYbGD8M+LSvc4hl6jvnh+kjT
+ IJ9KgaFpBkbgi8A==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-A client with an attribute delegation reports the file times in a
-SETATTR at DELEGRETURN. nfsd ignores a time that moves backwards. It
-then stamps the c/mtime with the current time, so the file keeps the
-DELEGRETURN time. cp -p, rsync -t and tar -x lose timestamps.
+This version just fixes up some errno handling confusion that was in v3
+that Chuck pointed out. This version also drops ENAVAIL as a special
+error code -- we can use EIO for that instead.
 
-The client applies an explicit utimensat() to its own inode. It sends no
-SETATTR while it holds the delegation, so the backdated value reaches
-nfsd only as TIME_DELEG_MODIFY. The client can send an RPC for each time
-change instead. That also works, but it loses the caching that the
-delegation allows.
+Please consider these for v7.4.
 
-The delegation makes the client the authority for these times, so treat
-its SETATTR as a statement of fact. The client can set the same value
-with an ordinary SETATTR, which nfsd applies without a check.
-
-- nfsd accepts a backwards atime or mtime.
-- An mtime that moves backwards sets the ctime to the current time.
-  The ctime never moves backwards.
-- nfsd still clamps a future time.
-- The CB_GETATTR path keeps the old rule. A backwards time there shows
-  a stale report.
-
-RFC 9754 says that the server ignores a time before the original time.
-This patch does not follow that sentence. The same section also says
-that the server MUST accept the change or MUST reject it with
-NFS4ERR_DELAY. A silent discard does neither. A retry after
-NFS4ERR_DELAY carries the same backdated value, so that option cannot
-succeed.
-
-There is still one gap: nfsd cannot tell an explicit utimensat() from a
-report of a write. An mtime after the delegation and before the current
-time therefore sets the ctime to that mtime, instead of to "now". RFC
-9754 requires this. Fixing that would require the client to issue an RPC
-for the mtime.
-
-Fixes: 3952f1cbcbc4 ("nfsd: fix SETATTR updates for delegated timestamps")
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
-Assisted-by: Claude:claude-opus-5
 ---
-We could fix this more correctly on the client by making it always issue
-an RPC for a utimensat(), but I think that would hurt untar-type
-workloads (which often backdate timestamps).
----
- fs/nfsd/nfs4proc.c | 47 +++++++++++++++++++++++++++++++----------------
- 1 file changed, 31 insertions(+), 16 deletions(-)
+Changes in v5 (all from the Sashiko review of v4):
+- svc_xprt_clear_rpcb_unreg(): only clear listeners already marked for
+  close, instead of every permsock in the net
+- svc_register(): stop the version loop as soon as rpcbind goes quiet,
+  even when vs_rpcb_optnl discarded the error
+- listener_set: only blame rpcbind in the extack for the entry that
+  actually hit it
+- rpcb_register_call(): -ERESTARTSYS is not a "never reached the wire"
+  case; the task can be signalled after RPC_TASK_SENT
+- Tests: use linux/nfsd_netlink.h rather than open-coded ids, skip when
+  the loopback ioctls fail, add NFSD's Kconfig deps to the fragment
+- New patch: rpcb_register_inet{4,6}() NULL-deref when
+  rpc_sockaddr2uaddr() fails
+- Link to v4: https://lore.kernel.org/r/20260831-nfsd-nl-hang-v4-0-0f4e89139409@kernel.org
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index bb74eef43938..fa3a43c20e95 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1292,9 +1292,22 @@ nfsd4_secinfo_no_name_release(union nfsd4_op_u *u)
- }
- 
- /*
-- * Validate that the requested timestamps are within the acceptable range. If
-- * timestamp appears to be in the future, then it will be clamped to
-- * current_time().
-+ * A client holding a delegation with delegated timestamps is the authority for
-+ * the file's timestamps, so a SETATTR from it asserts what they are rather than
-+ * reporting that they have advanced. Honor a value that moves a timestamp
-+ * backwards: the client could set the same value with an ordinary SETATTR, so
-+ * refusing it here only loses data. Clamp a value in the future to the current
-+ * time, as RFC 9754 permits.
-+ */
-+static void
-+clamp_deleg_time(struct timespec64 *req, const struct timespec64 *now)
-+{
-+	if (timespec64_compare(req, now) > 0)
-+		*req = *now;
-+}
-+
-+/*
-+ * Apply the timestamps that a delegation holder supplied in a SETATTR.
-  */
- static void
- vet_deleg_attrs(struct nfsd4_setattr *setattr, struct nfs4_delegation *dp)
-@@ -1302,21 +1315,23 @@ vet_deleg_attrs(struct nfsd4_setattr *setattr, struct nfs4_delegation *dp)
- 	struct timespec64 now = current_time(dp->dl_stid.sc_file->fi_inode);
- 	struct iattr *iattr = &setattr->sa_iattr;
- 
--	if ((setattr->sa_bmval[2] & FATTR4_WORD2_TIME_DELEG_ACCESS) &&
--	    !nfsd4_vet_deleg_time(&iattr->ia_atime, &dp->dl_atime, &now))
--		iattr->ia_valid &= ~(ATTR_ATIME | ATTR_ATIME_SET);
-+	if (setattr->sa_bmval[2] & FATTR4_WORD2_TIME_DELEG_ACCESS)
-+		clamp_deleg_time(&iattr->ia_atime, &now);
- 
- 	if (setattr->sa_bmval[2] & FATTR4_WORD2_TIME_DELEG_MODIFY) {
--		if (nfsd4_vet_deleg_time(&iattr->ia_mtime, &dp->dl_mtime, &now)) {
--			iattr->ia_ctime = iattr->ia_mtime;
--			if (nfsd4_vet_deleg_time(&iattr->ia_ctime, &dp->dl_ctime, &now))
--				dp->dl_setattr = true;
--			else
--				iattr->ia_valid &= ~(ATTR_CTIME | ATTR_CTIME_SET);
--		} else {
--			iattr->ia_valid &= ~(ATTR_CTIME | ATTR_CTIME_SET |
--					     ATTR_MTIME | ATTR_MTIME_SET);
--		}
-+		clamp_deleg_time(&iattr->ia_mtime, &now);
-+
-+		/*
-+		 * The ctime must not move backwards. Carry the mtime into it
-+		 * only when that advances it; otherwise clear ATTR_CTIME_SET so
-+		 * that notify_change() stamps the ctime with the current time,
-+		 * which is what a local utimensat() would do.
-+		 */
-+		iattr->ia_ctime = iattr->ia_mtime;
-+		if (!nfsd4_vet_deleg_time(&iattr->ia_ctime, &dp->dl_ctime, &now))
-+			iattr->ia_valid &= ~ATTR_CTIME_SET;
-+
-+		dp->dl_setattr = true;
- 	}
- }
- 
+Changes in v4:
+- Use EIO instead of ENAVAIL to represent an unrecoverable rpcbind error
+- Link to v3: https://lore.kernel.org/r/20260828-nfsd-nl-hang-v3-0-55026685c75d@kernel.org
+
+Changes in v3:
+- Dropped v2's patch 4, the svc_register() unwind. rpcbind matches an UNSET
+  on [program, version, netid], and the v2 fallback ignores the protocol
+  completely. The unwind could therefore clear entries that belong to other
+  live listeners. Chuck Lever found that.
+- A failed registration stays fatal. Patch 3 makes CONFIG_NFS_LOCALIO=y
+  agree with CONFIG_NFS_LOCALIO=n on that point.
+- Tests: sem_register_refused now reads the listener set back, because
+  -EACCES alone does not show that no listener was created.
+  sem_create_failure_extack is new. The netlink socket now asks for
+  NETLINK_EXT_ACK and NETLINK_CAP_ACK, so that a test can read the extack.
+- Tests: FIXTURE_TEARDOWN removes any listener or thread that a test left
+  behind. Those pinned the netns.
+- Stop attempting to register any more listeners when the first
+  svc_register() call fails.
+- Bound the unregistration side the same way. svc_register(),
+  svc_unregister() and the per-listener teardown in svc_delete_xprt() all
+  give up once the local rpcbind stops answering, so one listener_set pays
+  one timeout in each direction rather than one per listener.
+- Link to v2: https://lore.kernel.org/r/20260811-nfsd-nl-hang-v2-0-c0c92b3953c3@kernel.org
+
+Changes in v2:
+- New patch 4: when a later registration failed, svc_register() left the
+  entries that it had already set in rpcbind. Those entries pointed at a
+  port that the caller then closed.
+- Tests: behavioural fixes for several tests. Several assertions checked
+  only an errno that both the fixed kernel and the broken kernel return.
+  val_bad_transport() now also requires that the rpcbind stub saw no
+  traffic. val_second_entry_bad() requires that no listener started.
+  func_empty_destroys requires that the kernel dropped the local rpcbind
+  client and then connected again. The two -EBUSY tests require that the
+  listener set does not change. find_listener() now matches the address
+  too.
+- Tests: the stub read the revents of a newly accepted pollfd that poll()
+  had not written. The stub could therefore start a blocking read with no
+  readiness event.
+- Tests: the config fragment now includes NAMESPACES, SHMEM, TMPFS and
+  UNIX. Without them, every test skipped.
+- Link to v1: https://lore.kernel.org/r/20260810-nfsd-nl-hang-v1-0-2519fdd5bc1a@kernel.org
 
 ---
-base-commit: cfebfd3db73d82143ac54b1b6c6dad1d13952d59
-change-id: 20260901-delegts-e91a648f1427
+Jeff Layton (15):
+      NFSD: cap the number of listeners accepted in listener_set
+      NFSD: validate transport name in listener_set before serv creation
+      SUNRPC: keep the first error in svc_register()
+      SUNRPC: bound the local rpcbind client timeout to 1s
+      NFSD: report listener creation failures through extack
+      SUNRPC: report local rpcbind calls that get no answer
+      SUNRPC: stop svc_register() once rpcbind stops answering
+      SUNRPC: stop the svc_unregister() sweep once rpcbind stops answering
+      SUNRPC: stop unregistering listeners once rpcbind stops answering
+      NFSD: stop registering with rpcbind after a failure in listener_set
+      SUNRPC: check rpc_sockaddr2uaddr() for failure when registering
+      selftests/nfsd: exercise listener_set request validation
+      selftests/nfsd: add a per-netns rpcbind stub and the listener round-trips
+      selftests/nfsd: check that listener_set asks rpcbind once
+      selftests/nfsd: check that listener removal asks rpcbind once
+
+ MAINTAINERS                                        |    1 +
+ fs/nfsd/nfsctl.c                                   |   96 +-
+ include/linux/sunrpc/clnt.h                        |    3 +-
+ include/linux/sunrpc/svc.h                         |    7 +-
+ net/sunrpc/rpcb_clnt.c                             |   38 +-
+ net/sunrpc/svc.c                                   |   67 +-
+ net/sunrpc/svc_xprt.c                              |   21 +
+ tools/testing/selftests/Makefile                   |    1 +
+ tools/testing/selftests/nfsd/.gitignore            |    1 +
+ tools/testing/selftests/nfsd/Makefile              |    6 +
+ tools/testing/selftests/nfsd/config                |   14 +
+ .../testing/selftests/nfsd/nfsd_netlink_listener.c | 1323 ++++++++++++++++++++
+ tools/testing/selftests/nfsd/settings              |    1 +
+ 13 files changed, 1558 insertions(+), 21 deletions(-)
+---
+base-commit: e247236b7ffa1e0940f834787feade8570c5db91
+change-id: 20260717-nfsd-nl-hang-10a3b3e93f2a
 
 Best regards,
 -- 
