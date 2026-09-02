@@ -1,70 +1,43 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AAAD7499F13
-	for <linux-nfs@vger.kernel.org>; Wed,  2 Sep 2026 12:51:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CACC44A0F02
+	for <linux-nfs@vger.kernel.org>; Wed,  2 Sep 2026 13:31:04 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788353494; cv=none; b=E3UF5exE/xJdQCSh5kF7L425L/uHTeWfHRiyxr8N7miiyKCGRbMrcFTZQQKxgcWQ9A3cplywOVeaNIfPFojI/unwobXdPMKiAn2dVYjUs68y97Zy+0uM7uHRftM6z90Om3E7gmNrMtDUvyyA46aT1oVSX7VIAF00o4JXGvrVfH8=
+	t=1788355866; cv=none; b=qGMAr/J0CASt4RgQeENRffq04Butxyuj6yi+e3wS08VRSKFOdXyLbD7POnrrxdOIJvxEEK3T3TMPuMr0xeev+y2pvp8VOrtEm4z29UxrONZABq3/V9I5YAYBScR8ftfZ6SA/ayYUY5gNMK/5ta2bDw1+dS6ZopV30B//nHKee/g=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788353494; c=relaxed/simple;
-	bh=W2kJtw4O5e76N7BAD/qieLlPtSIegOOZE5GoZ8N5R1w=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=HTxq7M2Nf0wWg/dtqdtXX3Iw3ZYOnb4huIIqX8Ws+BoQClXOCE+xMfVNmzoQdLuLimZyo/P4/qO3TJXp92sYc68FkPFhPCG+M8n47cTOHmI9NzEyi1CBhhEjE5Ku8vYUoKQ4MX1SAHEBrNhFCM4cjnpg1MD1XJBKgcVpDNbVdG4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=QiimVbQ/; arc=none smtp.client-ip=170.10.133.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	s=arc-20240116; t=1788355866; c=relaxed/simple;
+	bh=Edzmxryj49vjuuf2qbctJaSwCVbmbnLZX+eB4wq+lek=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=X1LwYWgJkAumuDvwfiXDSNH2DtmyEpyGe3ENd3oLzO1ZWXXyutWqpvnmyiIdiZsFNRmCo3hBtgF9jDpzWpJlNuoG1DwR7CO5KP6rKnKSi7jA31mrXrZZ448DgLHPJSS0Roz3JKUo1nlbyF5Ub1tF5Msg562XnO5wjL8T71TBEyo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ewCQMZ+6; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="QiimVbQ/"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1788353491;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=U94jvVdcc6M9sU+UqV//7PJqOhUXEq707LDKv62Ascg=;
-	b=QiimVbQ/Yp8NPrKYfVsILS4fN6AVy+UKIjHxvlOuoHkvap2RMJQc2ThrtXZts0/bicfmbF
-	Ny9CSMXu1aAmQCCJ6PupLlE3jUSFZ6IY95II568GqDi6GhDfEfdmU67Bu1MAyNxn1fqdAN
-	Bf0S2Vb1ZUzD09pOWCUBx5EOgXDiWhs=
-Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-674-gRM1hhEVPAWA3Yxmuxs9oQ-1; Wed,
- 02 Sept 2026 08:51:30 -0400
-X-MC-Unique: gRM1hhEVPAWA3Yxmuxs9oQ-1
-X-Mimecast-MFC-AGG-ID: gRM1hhEVPAWA3Yxmuxs9oQ_1788353487
-Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 377F11830517;
-	Wed,  2 Sep 2026 12:51:27 +0000 (UTC)
-Received: from warthog.com (unknown [10.44.32.158])
-	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id C33C93000223;
-	Wed,  2 Sep 2026 12:51:21 +0000 (UTC)
-From: David Howells <dhowells@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <christian@brauner.io>
-Cc: David Howells <dhowells@redhat.com>,
-	Marc Dionne <marc.dionne@auristor.com>,
-	Jeffrey Altman <jaltman@auristor.com>,
-	Paulo Alcantara <pc@manguebit.org>,
-	linux-afs@lists.infradead.org,
-	openafs-devel@openafs.org,
-	linux-cifs@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Etienne Champetier <champetier.etienne@gmail.com>,
-	Chet Ramey <chet.ramey@case.edu>,
-	Cheyenne Wills <cwills@sinenomine.net>,
-	Christian Brauner <brauner@kernel.org>,
-	Steve French <sfrench@samba.org>
-Subject: [PATCH v4 2/2] afs, bash: Fix open(O_CREAT) on an extant AFS file in a sticky dir
-Date: Wed,  2 Sep 2026 13:50:51 +0100
-Message-ID: <20260902125054.3380685-3-dhowells@redhat.com>
-In-Reply-To: <20260902125054.3380685-1-dhowells@redhat.com>
-References: <20260902125054.3380685-1-dhowells@redhat.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ewCQMZ+6"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A4F1B1F000E9;
+	Wed,  2 Sep 2026 13:31:03 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1788355864;
+	bh=A/aSx8kTUAEZpYyOSosw0A9O5hC8yTur9wj0L4SSh5g=;
+	h=From:To:Cc:Subject:Date;
+	b=ewCQMZ+6Oyk4l4mFmpNwYutTuFWoDevlI4lL9U+S6J5QW1OXAknSERKaDT+nB9lbu
+	 LffwQbE0f78AfT1scRDP/uKzF3TtaVK7lluGohUeA5vMsgkBKeciAADmNyeqEvVVb4
+	 5sXUaaFDY0ooLU7G9s+YmY2m6AbR2t2I3BaycqE8Ta3DxaV8diLOPd2fOU22TUE2HQ
+	 L+xNjBS45jLxnpp2gMb3FQDapUBA5lJeWHP4CuAD0pq4V0ItJ1M0zr6ZwUBdIlcEXQ
+	 BemKqE7C6v7SKbBqbBMPEBBPCx5/bNe2UYb9a3z4U7LagMHY+4Q37MikS/P92B7ULX
+	 +c0H/aCKdDEFw==
+From: Chuck Lever <cel@kernel.org>
+To: NeilBrown <neil@brown.name>,
+	Jeff Layton <jlayton@kernel.org>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <dai.ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>
+Cc: <linux-nfs@vger.kernel.org>,
+	Kimi Security Team <bug-report@moonshot.ai>,
+	Yilin Zhang <yilinzhang@moonshot.ai>
+Subject: [PATCH v1] SUNRPC: Copy the deferred RPC Call from the head buffer
+Date: Wed,  2 Sep 2026 09:31:01 -0400
+Message-ID: <20260902133101.48914-1-cel@kernel.org>
+X-Mailer: git-send-email 2.55.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -72,221 +45,101 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
 
-Since version 1.11 (January 1992) Bash has a work around in redir_open()
-that causes open(O_CREAT) of a file to be retried without O_CREAT if open()
-fails with an EACCES error if bash was built with AFS workarounds
-configured:
+svc_defer() snapshots the RPC Call for replay once a pending cache
+upcall resolves. It copies the Call starting (rq_arg.len -
+head[0].iov_len) bytes before head[0].iov_base, a back-up that once
+covered a transport header. No transport has had one since commit
+983084b2672c ("SUNRPC: Remove svc_rqst::rq_xprt_hlen"), so the two
+lengths are meant to be equal.
 
-        #if defined (AFS)
-              if ((fd < 0) && (errno == EACCES))
-            {
-              fd = open (filename, flags & ~O_CREAT, mode);
-              errno = EACCES;    /* restore errno */
-            }
+An RPCSEC_GSS Call breaks that assumption. Unwrapping the integrity
+service truncates rq_arg.len by the length of the trailing checksum,
+and unwrapping the privacy service leaves rq_arg.len short by an
+amount the client sets with trailing bytes after the wrap token.
+Neither adjusts head[0].iov_len. Both lengths are size_t, so the
+subtraction underflows and the copy starts past head[0].iov_base.
+Every deferred integrity Call replays a shifted snapshot.
 
-        #endif /* AFS */
+A deferred replay skips GSS verification, so a shifted snapshot runs
+as an authenticated Call. With the privacy service the offset is
+client-chosen. A forged Call placed in that window, naming another
+user's GSS context handle, runs under that identity.
 
-The ~O_CREAT fallback logic was introduced to workaround a bug[1] in the
-IBM AFS 3.1 cache manager and server which can return EACCES in preference
-to EEXIST if the requested file exists but the caller is neither granted
-explicit PRSFS_READ permission nor is the file owner and is granted
-PRSFS_INSERT permission on the directory.  IBM AFS 3.2 altered the cache
-manager permission checks but failed to correct the permission checks in
-the AFS server.  As of this writing, all IBM AFS derived servers continue
-to return EACCES in preference to EEXIST when these conditions are met.
-Bug reports have been filed with all implementations.
+Copy the Call from head[0].iov_base. Refuse to defer a Call whose
+length runs past the head buffer, so the copy cannot read out of
+bounds.
 
-As an unintended side effect, the Bash fallback logic also undermines the
-Linux kernel protections against O_CREAT opening FIFOs and regular files
-not owned by the user in world writeable sticky directories - unless the
-owner is the same as that of the directory - as was added in commit
-30aba6656f61e ("namei: allow restricted O_CREAT of FIFOs and regular
-files").
-
-As a result the Bash fallback logic masks an incompatibility between the
-ownership checks performed by may_create_in_sticky() and network
-filesystems such as AFS where the uid namespace is disjoint from the uid
-namespace of the local system.
-
-However, the bash work around has been removed in bash-5.3[2].
-
-Fix this in the kernel by using a preceding patch that allows the user ID
-comparisons to be overridden by:
-
- (1) Implement the ->is_owned_by_me() inode op for kafs to determine if the
-     caller owns the file by checking to see if the server indicated the
-     ADMINISTER bit was set in the access rights returned by the
-     FS.FetchStatus and suchlike instead of checking the i_uid to
-     current_fsuid().
-
-     Unfortunately, this check doesn't work for directories, but none of
-     the ops should require that.
-
-     Note that anonymous accesses to AFS will never see the ADMINISTER bit
-     being set and so will not be perceived as owning an anonymously-owned
-     file.
-
- (2) Implement the ->have_same_owner() inode op, for kafs to compare the
-     AFS owner IDs retrieved by FS.FetchStatus (which are 64-bit integers
-     with AuriStor's YFS server and, as such, won't fit in a kuid_t).
-
-     Note that whilst an anonymously-owned file will match an
-     anonymously-owned parent directory, an anonymously-owned directory
-     cannot have the sticky bit set.
-
-This can be tested by creating a sticky directory (the user must have a
-token to do this) and creating a file in it.  Then strace bash doing "echo
-foo >>file" and look at whether bash does a single, successful O_CREAT open
-on the file or whether that one fails and then bash does one without
-O_CREAT that succeeds.
-
-Fixes: 30aba6656f61 ("namei: allow restricted O_CREAT of FIFOs and regular files")
-Reported-by: Etienne Champetier <champetier.etienne@gmail.com>
-Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Marc Dionne <marc.dionne@auristor.com>
-cc: Jeffrey Altman <jaltman@auristor.com>
-cc: Chet Ramey <chet.ramey@case.edu>
-cc: Cheyenne Wills <cwills@sinenomine.net>
-cc: Alexander Viro <viro@zeniv.linux.org.uk>
-cc: Christian Brauner <brauner@kernel.org>
-cc: Steve French <sfrench@samba.org>
-cc: linux-afs@lists.infradead.org
-cc: openafs-devel@openafs.org
-cc: linux-cifs@vger.kernel.org
-cc: linux-fsdevel@vger.kernel.org
-Link: https://groups.google.com/g/gnu.bash.bug/c/6PPTfOgFdL4/m/2AQU-S1N76UJ [1]
-Link: https://git.savannah.gnu.org/cgit/bash.git/tree/redir.c?h=bash-5.3-rc1#n733 [2]
+Fixes: 260c1d1298f6 ("svc: Add transport hdr size for defer/revisit")
+Reported-by: Kimi Security Team <bug-report@moonshot.ai>
+Reported-by: Yilin Zhang <yilinzhang@moonshot.ai>
+Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/afs/dir.c      |  2 ++
- fs/afs/file.c     |  2 ++
- fs/afs/inode.c    |  1 +
- fs/afs/internal.h |  3 +++
- fs/afs/security.c | 46 ++++++++++++++++++++++++++++++++++++++++++++++
- fs/afs/symlink.c  |  2 ++
- 6 files changed, 56 insertions(+)
+ net/sunrpc/svc_xprt.c | 22 +++++++---------------
+ 1 file changed, 7 insertions(+), 15 deletions(-)
 
-diff --git a/fs/afs/dir.c b/fs/afs/dir.c
-index 81565366d937..013030b64a55 100644
---- a/fs/afs/dir.c
-+++ b/fs/afs/dir.c
-@@ -69,6 +69,8 @@ const struct inode_operations afs_dir_inode_operations = {
- 	.permission	= afs_permission,
- 	.getattr	= afs_getattr,
- 	.setattr	= afs_setattr,
-+	.is_owned_by_me	= afs_is_owned_by_me,
-+	.have_same_owner = afs_have_same_owner,
- };
- 
- const struct address_space_operations afs_dir_aops = {
-diff --git a/fs/afs/file.c b/fs/afs/file.c
-index 0467742bfeee..ba44493ccaf6 100644
---- a/fs/afs/file.c
-+++ b/fs/afs/file.c
-@@ -49,6 +49,8 @@ const struct inode_operations afs_file_inode_operations = {
- 	.getattr	= afs_getattr,
- 	.setattr	= afs_setattr,
- 	.permission	= afs_permission,
-+	.is_owned_by_me	= afs_is_owned_by_me,
-+	.have_same_owner = afs_have_same_owner,
- };
- 
- const struct address_space_operations afs_file_aops = {
-diff --git a/fs/afs/inode.c b/fs/afs/inode.c
-index 14f39a9bea6c..af85a88d943d 100644
---- a/fs/afs/inode.c
-+++ b/fs/afs/inode.c
-@@ -91,6 +91,7 @@ static int afs_inode_init_from_status(struct afs_operation *op,
- 	inode->i_flags |= S_NOATIME;
- 	inode->i_uid = make_kuid(&init_user_ns, status->owner);
- 	inode->i_gid = make_kgid(&init_user_ns, status->group);
-+	inode->i_opflags |= IOP_OWNERSHIP_OVERRIDE;
- 	set_nlink(&vnode->netfs.inode, status->nlink);
- 
- 	i_size_write(inode, status->size);
-diff --git a/fs/afs/internal.h b/fs/afs/internal.h
-index 290873bac89b..f15dbbc8dd26 100644
---- a/fs/afs/internal.h
-+++ b/fs/afs/internal.h
-@@ -1531,6 +1531,9 @@ extern struct key *afs_request_key(struct afs_cell *);
- extern struct key *afs_request_key_rcu(struct afs_cell *);
- extern int afs_check_permit(struct afs_vnode *, struct key *, afs_access_t *);
- extern int afs_permission(struct mnt_idmap *, struct inode *, int);
-+int afs_is_owned_by_me(struct mnt_idmap *idmap, struct inode *inode);
-+int afs_have_same_owner(struct mnt_idmap *idmap, struct inode *inode1,
-+			struct inode *inode2);
- extern void __exit afs_clean_up_permit_cache(void);
- 
- /*
-diff --git a/fs/afs/security.c b/fs/afs/security.c
-index 6d00d62a65ed..7092f5acdcd6 100644
---- a/fs/afs/security.c
-+++ b/fs/afs/security.c
-@@ -510,6 +510,52 @@ int afs_permission(struct mnt_idmap *idmap, struct inode *inode,
- 	return ret;
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 77e28dcc4d2a..7f1c6bdd8425 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -1278,13 +1278,8 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
  }
  
-+/*
-+ * Determine if an inode is owned by 'me' - whatever that means for the
-+ * filesystem.  In the case of AFS, this means that the file is owned by the
-+ * AFS user represented by the Rx Security Class token held in a key.  Returns
-+ * 0 if owned by me, 1 if not; can also return an error.
-+ */
-+int afs_is_owned_by_me(struct mnt_idmap *idmap, struct inode *inode)
-+{
-+	struct afs_vnode *vnode = AFS_FS_I(inode);
-+	afs_access_t access;
-+	struct key *key;
-+	int ret;
-+
-+	if (S_ISDIR(inode->i_mode))
-+		return 1; /* The ADMIN right check doesn't work for directories. */
-+
-+	key = afs_request_key(vnode->volume->cell);
-+	if (IS_ERR(key))
-+		return PTR_ERR(key);
-+
-+	/* Get the access rights for the key on this file. */
-+	ret = afs_check_permit(vnode, key, &access);
-+	if (ret < 0)
-+		goto error;
-+
-+	/* We get the ADMINISTER bit if we own the file. */
-+	ret = (access & AFS_ACE_ADMINISTER) ? 0 : 1;
-+error:
-+	key_put(key);
-+	return ret;
-+}
-+
-+/*
-+ * Determine if a file has the same owner as its parent - whatever that means
-+ * for the filesystem.  In the case of AFS, this means comparing their AFS
-+ * UIDs.  Returns 0 if same, 1 if not same; can also return an error.
-+ */
-+int afs_have_same_owner(struct mnt_idmap *idmap, struct inode *inode1,
-+			struct inode *inode2)
-+{
-+	const struct afs_vnode *vnode1 = AFS_FS_I(inode1);
-+	const struct afs_vnode *vnode2 = AFS_FS_I(inode2);
-+
-+	return vnode1->status.owner != vnode2->status.owner;
-+}
-+
- void __exit afs_clean_up_permit_cache(void)
+ /*
+- * Save the request off for later processing. The request buffer looks
+- * like this:
+- *
+- * <xprt-header><rpc-header><rpc-pagelist><rpc-tail>
+- *
+- * This code can only handle requests that consist of an xprt-header
+- * and rpc-header.
++ * Save the request off for later processing. Only a Call that fits
++ * entirely in rq_arg.head[0] can be deferred.
+  */
+ static struct cache_deferred_req *svc_defer(struct cache_req *req)
  {
- 	int i;
-diff --git a/fs/afs/symlink.c b/fs/afs/symlink.c
-index 16b4823cb7b7..ed834ba90e85 100644
---- a/fs/afs/symlink.c
-+++ b/fs/afs/symlink.c
-@@ -271,6 +271,8 @@ int afs_symlink_writepages(struct address_space *mapping,
- const struct inode_operations afs_symlink_inode_operations = {
- 	.get_link	= afs_get_link,
- 	.readlink	= afs_readlink,
-+	.is_owned_by_me	= afs_is_owned_by_me,
-+	.have_same_owner = afs_have_same_owner,
- };
+@@ -1297,8 +1292,11 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ 		dr = rqstp->rq_deferred;
+ 		rqstp->rq_deferred = NULL;
+ 	} else {
+-		size_t skip;
+ 		size_t size;
++
++		if (rqstp->rq_arg.len > rqstp->rq_arg.head[0].iov_len)
++			return NULL;
++
+ 		/* FIXME maybe discard if size too large */
+ 		size = sizeof(struct svc_deferred_req) + rqstp->rq_arg.len;
+ 		dr = kmalloc(size, GFP_KERNEL);
+@@ -1312,9 +1310,7 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ 		dr->daddr = rqstp->rq_daddr;
+ 		dr->argslen = rqstp->rq_arg.len >> 2;
  
- const struct address_space_operations afs_symlink_aops = {
+-		/* back up head to the start of the buffer and copy */
+-		skip = rqstp->rq_arg.len - rqstp->rq_arg.head[0].iov_len;
+-		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base - skip,
++		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base,
+ 		       dr->argslen << 2);
+ 	}
+ 	dr->xprt_ctxt = rqstp->rq_xprt_ctxt;
+@@ -1337,17 +1333,13 @@ static noinline int svc_deferred_recv(struct svc_rqst *rqstp)
+ 
+ 	trace_svc_defer_recv(dr);
+ 
+-	/* setup iov_base past transport header */
+ 	rqstp->rq_arg.head[0].iov_base = dr->args;
+-	/* The iov_len does not include the transport header bytes */
+ 	rqstp->rq_arg.head[0].iov_len = dr->argslen << 2;
+ 	rqstp->rq_arg.page_len = 0;
+-	/* The rq_arg.len includes the transport header bytes */
+ 	rqstp->rq_arg.len     = dr->argslen << 2;
+ 	rqstp->rq_prot        = dr->prot;
+ 	memcpy(&rqstp->rq_addr, &dr->addr, dr->addrlen);
+ 	rqstp->rq_addrlen     = dr->addrlen;
+-	/* Save off transport header len in case we get deferred again */
+ 	rqstp->rq_daddr       = dr->daddr;
+ 	rqstp->rq_xprt_ctxt   = dr->xprt_ctxt;
+ 
+-- 
+2.55.0
 
