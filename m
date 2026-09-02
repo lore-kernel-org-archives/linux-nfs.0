@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 741ED4AA3EE;
-	Wed,  2 Sep 2026 18:54:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A3BDD4AA1C9;
+	Wed,  2 Sep 2026 18:54:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788375283; cv=none; b=kO8rTf/d2XwH7TevkY/omERNC37u/shqrfF3qpWlRyIg9Kaio/3Fu5SMFBC6Y5NUgsORKLMjEUuA9CCElbzFM4s4chpYWPqKCLeF7f40qfG5tqlHJpwq9UiB1DYSyc3m7bTYOA4bOWt3zhNOLj2PL4gbh7sKW2Mv3367gm3+6+M=
+	t=1788375284; cv=none; b=bHBd8Puiqi4kOfv68TMQZyALsCoI3Z7e7zurAUiVvPqxljX2QWNEGr3M2Pvp6Ym6l57zABUX1XOPnS416lVlgXHGnOYol4ZBOVZd7ClA0S5HGhfyTWnBE+Zc2KtFmNHOm5kcl+6c4YJNlxQy80fa9kb2aFMZEP6RYHkwYa2vBhk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788375283; c=relaxed/simple;
-	bh=VWgUMRv5aJ2zjeS6YKsq3e8KbhjttMaS/aYVwuLYaKM=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=f0zfDcyhIztopwNPZ1R7yZHvMvzXx1DcPSCNQSpNDDwT486ihhvOi3qYjESHhMZnQAqmpw9vJsKR6ciFRhsjyAw14QCMB7h+YhGnCYoUU+o5wnjnKcdiI16BkCzGFT24E6IXwZmmYrqA33XbyP0KSLBUtRUzoFMQ+zAcx3FhJdE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nefYLobx; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788375284; c=relaxed/simple;
+	bh=N5ee7KGNPzugi2BNjQP/0HQr9KUtY/6LU5GWKanWZPA=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=kMMSKyhRnQPqKJLNrRFdiO/cnE9ClU7DQ1yJyleH2opMLLas4vtNErCtMVEa9mw71gjKBTu4lvT4JxXagGnPzGscJerVAGjK+jVo8/6vBORV/9mabdy16fTVb33PjXcXVr1HacSlrykvbm23pRFnSvfPfAqaAjYPk/t9LnH3/ig=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=O9K3zdLf; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nefYLobx"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 39F071F000E9;
-	Wed,  2 Sep 2026 18:54:37 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="O9K3zdLf"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 606651F00A3D;
+	Wed,  2 Sep 2026 18:54:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788375278;
-	bh=QFNn0+4QGU00NAAtvmof5gk2veLhV+oZ9VVmbEJ3P/g=;
-	h=From:Subject:Date:To:Cc;
-	b=nefYLobx0m9CGX/fsjrt4ygYygVL1Yg1by1oNuBPJ/PS4f05YC5ChwCdUMIxEg5ZM
-	 +AgvJcAQMmRjqiX5Rob5lfMYFUQehE2n8a9DGMgUNZkLtt+O51ixXm5dG1Rhl6/GHG
-	 H315XIOfvn7PZmH9rnlhgLVDhiQz7/1/Sb8Y/uU2NT0qR/JD1IxTV1KQHnGhIq4I/t
-	 823V7MlS6SN5sOoG+KDhJTeWgwDDOIDgoya+XH56pJcX3ZS2cS7ex725t6vNJbzBPd
-	 eLEg837//aa0ZGk4WfiPURx/p+JTAVk/w3lQpw7Mo5zjNGawl8le/k68Ley5NNno7v
-	 ifr+5FqHvqa/A==
+	s=k20260515; t=1788375279;
+	bh=x7xZ8LbQwQ3si4CNL3UMJiQVkPBI+q4WfYx464B0eMs=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=O9K3zdLfaZt3XQRDvycxiMoqheMvgYRQa6pLFZuanfVP7TIrncL6z7HDLr5ZhnRaA
+	 wLgjeiMbNpTUQckduBDA6b0JYcRuAutCmGuHDlY59e1xG0BHDkBfGqz1EtDVw96Pt2
+	 AufKp9miuUSZbnsDozOH2M0irETW+yUgc8KS/H/oeDP0v3HVAfVn1naRQOTZPpX1uY
+	 zZkB2f3ktZQj5QDZUUcrdo9peXZhYZojZ4j2asF973U1REmB6vw0nDSuBeLI8cqlEG
+	 rH0RNBef5tfcEfhm5juGp6BIWGSOInwpm1aG4SXbms/Ae47Dyzepyp89jktH0XyQkI
+	 ZZao8QKGVFUrw==
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH v2 0/3] fs/nfsd: accept a backdated timestamp from a
- delegation holder
-Date: Wed, 02 Sep 2026 14:54:13 -0400
-Message-Id: <20260902-delegts-v2-0-383cb289ce88@kernel.org>
+Date: Wed, 02 Sep 2026 14:54:14 -0400
+Subject: [PATCH v2 1/3] fs: stamp the current time for a stale delegated
+ ctime update
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,10 +38,9 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2XMQQ7CIBCF4as0sxbDUFLElfcwXTR2oBMbMNAQT
- cPdxW5d/i8v3w6ZElOGa7dDosKZY2ihTh08lil4Ejy3BiXVIK1EMdNKfsuCLE6DvjjUykB7vxI
- 5fh/SfWy9cN5i+hxwwd/6bxQUKKztjTNEujfy9qQUaD3H5GGstX4BOsfMCJ8AAAA=
-X-Change-ID: 20260901-delegts-e91a648f1427
+Message-Id: <20260902-delegts-v2-1-383cb289ce88@kernel.org>
+References: <20260902-delegts-v2-0-383cb289ce88@kernel.org>
+In-Reply-To: <20260902-delegts-v2-0-383cb289ce88@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>, Alexander Viro <viro@zeniv.linux.org.uk>, 
@@ -50,67 +49,77 @@ Cc: Thomas Haynes <loghyr@gmail.com>, linux-nfs@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1911; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=VWgUMRv5aJ2zjeS6YKsq3e8KbhjttMaS/aYVwuLYaKM=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqmHDnL6hKHcWD5eBuA+RCSO4OqpRWJvo0HQ4nH
- kJDb+AuVQmJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaphw5wAKCRAADmhBGVaC
- FQVYEADSQgFPnkQEOvGA2reWex1OlWPAU8ib9UtQ1ZzqD+B2G91AHFsYWS2+LuQiaEsd7/BIP91
- REr/ekspNWmfnxkLGc56JVZ2zoSiCdxcylNa4aEqz4ghpcVIDUI4f2xJSRI1HxVTu2fsY315nV3
- l3V1OyE+Wc7hrw2BwW08z6uJROurKPbPZGP7+4YY7cBic/R3KGKjpJ18ORf+EbEPbN4SFFmm6u9
- 0AHjQFtNft6YijoN4D3h2iz3nRnsWwIA5qtdabFMBmJrROLlD0UZoWhN3qrhPs6ALmeHV+BMMKX
- sfLs87jriZtzOwIhI+DFcL55qcJuU9AidBneeTJuyQm+5ZLkIXGU00WDcCa0ZhdxgQqSGQXJA01
- iodfMv8au1/ts6TEmUlj3Q9IAUw0LtoW8hKHCXitza8X8hLimuZYVQ5M5ar1IbJ9kprONXOiwws
- iT4httCeEgA+Ka8Bxf/EV6TdqFIzlzpP5femhra1azc5NfIZZ5vjYnZGyWshA6TvdYEvHQFL6zk
- m1Lr6YBUuBi9YeEj3rjzPHVWbL2v5AoBYaglL8goS7hTnDCF7KjHPUJXDnTt1lgw8mRKy8xODBa
- uHUUZxstVZ3yN0K/3vuPzG8eJs7roGfbceGCgmI9zK5i5mJLiiBj0NdpUstjgX2M1juAI1fb/EZ
- kc57WkhluA8GsBA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2153; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=N5ee7KGNPzugi2BNjQP/0HQr9KUtY/6LU5GWKanWZPA=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqmHDszj9DcXjDFsTtMXtmabGNDkLD021g6MCxB
+ AgdTMwa9KiJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaphw7AAKCRAADmhBGVaC
+ FS+DEACuPM63Pa6/22CxbYrgNFwDDbMczouqfbcymKzKqh0luqIW2JtqUtSv6EGvxrhuDjk10Nt
+ N2oqBWN+IKepLXZbCPOr4juzd2wmq27rULnKSRvA28DT3fWuGlyMK9kfKvkYKJuO10dvGQfPtyU
+ aOUH8Y+0C9HJ6VtT24Rv5oACCyku7NQVEKEUanQcr0LSSrYHAcWabiUD/XXEVv8wqeYtKZHBVVy
+ 0rGP8TS5AVghCKwDDyUsiTZlLU4XueldZt5k41G51LW9VtIu1LlNU5oYZrpCwEYLqeGYqnv0B2i
+ J4JMP7niS+ps+F55UEK+CvddSWlhb51K7jNluYPI8gQGPxLrqNJ5yqBtGIqTxiujnifAEeceY6i
+ HahdiSXpwFUtiBqDietxkMZRZB8tiv2S2N9B+xqghwc5qF6xqSNDv1TQa6nxTp3DcF0FT0BG6DX
+ wD/U+RYqn7Kiy1Iot60SgSU95Lnu3giMa09lNVIo3ygFtM5tPiWdc2SokRnFNnsI8rqOK4rEPHA
+ iU6ujrrvT1mWkyOR2ZeCk1RJ8iUqnRQmfhNYAcJwNVvS477PlV7OYjlGWVoRc7P7+xq35XkQGqd
+ uSC0UH5Gham6EUvrC/q+i8hVesDr2CcGyCllU4mRF9q1/ux4Np7kNZ1hinqytS1SPPfVxfvyPKB
+ 3wUfukT4HIY5+Ow==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-The main problem is that an attribute delegation has strict rules about
-updates can be done, and that prevents applications that backdate
-timestamps on files after writing them, (e.g. tar -x, cp -p, etc.) from
-setting them properly.
+inode_set_ctime_deleg() drops an update that does not advance the ctime.
+That is correct when a client reports a timestamp that it advanced on its
+own. It is wrong when the client moves the timestamp backwards on purpose,
+as utimensat() does.
 
-We could fix this on the client by making it always issue an RPC for the
-SETATTR, but that would harm performance in these common use-cases.
-This set allows the server to accept some of these backdated mtime
-updates, by changing how the ctime is handled.
+Stamp the current time in that case. The ctime still never moves backwards.
 
-It'd be nice to see this in v7.4.
-
+Fixes: 3952f1cbcbc4 ("nfsd: fix SETATTR updates for delegated timestamps")
+Assisted-by: LLM
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
-Changes in v2:
-- Split the change into three patches
-- Stamp now in inode_set_ctime_deleg() for a stale update, so nfsd need
-  not compare
-- Drop a SETATTR report that matches the inode, so an untouched file
-  keeps its change attribute
-- Set dl_setattr only on the branch that carries a c/mtime update
-- Compare against the inode, not the grant-time snapshots (Chuck)
-- Set the ctime whenever a CB_GETATTR moves the mtime
-- Take i_rwsem before the CB_GETATTR comparison
-- Drop the unused dl_atime, dl_mtime and dl_ctime, and make
-  nfsd4_vet_deleg_time() static
-- Link to v1: https://lore.kernel.org/r/20260901-delegts-v1-1-9937f7ee4370@kernel.org
+ fs/inode.c | 17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
 
----
-Jeff Layton (3):
-      fs: stamp the current time for a stale delegated ctime update
-      nfsd: accept a backdated timestamp from a delegation holder
-      nfsd: compare CB_GETATTR times against the inode
+diff --git a/fs/inode.c b/fs/inode.c
+index ba7da39be4a3..8391814a4016 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -2959,11 +2959,17 @@ EXPORT_SYMBOL(inode_set_ctime_current);
+  * inode attributes, including the mtime. When updating the mtime, update
+  * the ctime to a value at least equal to that.
+  *
+- * This can race with concurrent updates to the inode, in which
+- * case the update is skipped.
++ * The ctime never moves backwards. An @update that does not advance the ctime
++ * records the current time instead, so that the delegated change is still
++ * visible in the ctime.
++ *
++ * This can still race with a concurrent update to the inode. That stamp takes
++ * precedence, and is at least as recent as the one it displaces.
+  *
+  * Note that this works even when multigrain timestamps are not enabled,
+  * so it is used in either case.
++ *
++ * Returns the resulting ctime.
+  */
+ struct timespec64 inode_set_ctime_deleg(struct inode *inode, struct timespec64 update)
+ {
+@@ -2975,9 +2981,12 @@ struct timespec64 inode_set_ctime_deleg(struct inode *inode, struct timespec64 u
+ 	cur_ts.tv_nsec = cur & ~I_CTIME_QUERIED;
+ 	cur_ts.tv_sec = inode_get_ctime_sec(inode);
+ 
+-	/* If the update is older than the existing value, skip it. */
++	/*
++	 * The update does not advance the ctime. Stamp the current time, so
++	 * that the delegated change is still visible in the ctime.
++	 */
+ 	if (timespec64_compare(&update, &cur_ts) <= 0)
+-		return cur_ts;
++		return inode_set_ctime_current(inode);
+ 
+ 	ktime_get_coarse_real_ts64_mg(&now);
+ 
 
- fs/inode.c          | 17 +++++++++++----
- fs/nfsd/nfs4proc.c  | 63 +++++++++++++++++++++++++++++++++++++++++++----------
- fs/nfsd/nfs4state.c | 49 ++++++++++++++++++++++++++---------------
- fs/nfsd/state.h     |  8 -------
- 4 files changed, 95 insertions(+), 42 deletions(-)
----
-base-commit: ac579868af0c900d8fd9c8cfe9e10db46ccc5a75
-change-id: 20260901-delegts-e91a648f1427
-
-Best regards,
 -- 
-Jeff Layton <jlayton@kernel.org>
+2.55.0
 
