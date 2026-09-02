@@ -1,47 +1,47 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0427437EFE4
-	for <linux-nfs@vger.kernel.org>; Wed,  2 Sep 2026 17:38:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A2EF74A5EDD
+	for <linux-nfs@vger.kernel.org>; Wed,  2 Sep 2026 17:38:18 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788370694; cv=none; b=k9pa4kkDiisRLalfQIn58ecDUTfrs0wCPAx4QXxgqZil/2Ay/u3vei9adSk8Ix1boV5FOA5wYBrA7w5ClcqI8DOPqCaBbj/rG9ZR/iZ/bVmC4kCLQAAEh3biMRq7ohN+6eIQzFcAw/U0KBCIbJQUNGxlBjYDOEnLfYzpwUEa3Nw=
+	t=1788370701; cv=none; b=j6g6cfYKk4pUKFGeG7wGQDY8iudj8ww4+zyT3HrWuPcOsrwYDToeCIqUdWs7Dmj6LYpjxCfcm721K3ovfHKmBuKU8ZXmLmAtVvF7XgunKL9TOthujBmI43BqXPnkBLK4QzqID/MTHu0LwDY3qVkJlru9d2nAAOgWpVUDgMU4F1A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788370694; c=relaxed/simple;
-	bh=ehdJ46KUuu6vgydNc7aTnfx0kdluipRSzyFBLRqutIg=;
+	s=arc-20240116; t=1788370701; c=relaxed/simple;
+	bh=Dp0PxSPdblV0gtzORq9zt8fStL5zMiPgGlx4d9YEJrI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=sWB3B/AbpkIOk6g0mIhLsGAYtJKMGUNA3H2hpzp0mkbywNhwD9EIq5MlKReJCwCzwZMC+DEEOu+F8T8J52XzAUiGb8VVlMm/7IWv3qQtBAByfwmLD6GJV2FE17BmRctyxyqx6y457r6ipdGJmbHO7U/Bgu6WWWmaDVTMsY42V+s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=CM41KKTP; arc=none smtp.client-ip=170.10.129.124
+	 MIME-Version; b=VEjdljPjf0b+lLrbjLLEGbxuddGJHuxTYX4iWzQBmXWzdqfrxMgQMZVQshuq3AEqZEwU7Wjg4OrX9x/kQgDFCYfUtRBFKKl3dtVrpJxgIry0a38rRHPw+Niq6xp8vNeSecEdFQPIE1SMwAbrYx3c4M5Ghcm9TKUuu+nQmR4/C5M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=GWl/omxg; arc=none smtp.client-ip=170.10.133.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="CM41KKTP"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="GWl/omxg"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1788370692;
+	s=mimecast20190719; t=1788370697;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=FuK4SHGkgyeyAMFNuAIR9NMGMpbuILYiN5I+Qlu1IU8=;
-	b=CM41KKTPKPyk1rJn6YEolN96j3N54YJUM1WYlkbwGQiR/OhCSXKp1acJwz4N9ycfzXru1z
-	wuaGILLmDhTesLl+avX8h7I2dqdjZouLVrZ4h/iOC6nG4I9KE6KzD5N0VSrcCNPZm1GNyZ
-	3ftsw9pCQWIdUDvY43B9gqdhw0+znJI=
-Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+	bh=PgUaOruzM3gTrxP/FUzkFBc3sCUqw+GZ3wsVbtDth8o=;
+	b=GWl/omxgxi9OxMveMOkczKTZvnw2y8w5GkEN9amBSJkGgbTSKZ8ypvWSVWJAqOg/2wFu5e
+	5Z248YVkbY7L+alW5hrp743qnKHrl30unQvvCQcHAX9XmhOJEgfGidWkE0tAYfJwCIscDt
+	B/gQsTT91cMIXnTBY6bVtVWwzKzjZ+U=
+Received: from mx-prod-mc-01.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-569-ZAzP__-jN7CXIvFQ3LCOyg-1; Wed,
- 02 Sep 2026 13:38:06 -0400
-X-MC-Unique: ZAzP__-jN7CXIvFQ3LCOyg-1
-X-Mimecast-MFC-AGG-ID: ZAzP__-jN7CXIvFQ3LCOyg_1788370683
-Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-648-rNPXuPFHN3K3aN_qxlm5cQ-1; Wed,
+ 02 Sep 2026 13:38:14 -0400
+X-MC-Unique: rNPXuPFHN3K3aN_qxlm5cQ-1
+X-Mimecast-MFC-AGG-ID: rNPXuPFHN3K3aN_qxlm5cQ_1788370691
+Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 94D911802562;
-	Wed,  2 Sep 2026 17:38:03 +0000 (UTC)
+	by mx-prod-mc-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 4AADD19540E6;
+	Wed,  2 Sep 2026 17:38:11 +0000 (UTC)
 Received: from warthog.com (unknown [10.44.32.158])
-	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id AE5A41955D8D;
-	Wed,  2 Sep 2026 17:37:57 +0000 (UTC)
+	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 4ABF53000DA3;
+	Wed,  2 Sep 2026 17:38:05 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Paulo Alcantara <pc@manguebit.org>
 Cc: David Howells <dhowells@redhat.com>,
@@ -66,9 +66,9 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-erofs@lists.ozlabs.org,
 	linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v11 30/36] netfs: Check for too much data being read
-Date: Wed,  2 Sep 2026 18:33:42 +0100
-Message-ID: <20260902173350.3468672-31-dhowells@redhat.com>
+Subject: [PATCH v11 31/36] netfs: Add a method to get an estimate of the amount that can be written
+Date: Wed,  2 Sep 2026 18:33:43 +0100
+Message-ID: <20260902173350.3468672-32-dhowells@redhat.com>
 In-Reply-To: <20260902173350.3468672-1-dhowells@redhat.com>
 References: <20260902173350.3468672-1-dhowells@redhat.com>
 Precedence: bulk
@@ -78,74 +78,271 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
 
-Put in a check in read subreq termination to detect more data being read
-for a subrequest than was requested.  In the event that this happens, abort
-the rest of the read request on the basis that some of the read buffer may
-have been corrupted and return -EIO.
+Add a method, both to the netfs cache API and the netfs filesystem API,
+that allows netfslib to query how much can be written to a stream in one
+go.  A filesystem like Ceph can use this to limit writes to object
+boundaries.
+
+This is part of the replacement for ->prepare_write() and will be made use
+of in a later patch.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: Paulo Alcantara <pc@manguebit.org>
+cc: Matthew Wilcox <willy@infradead.org>
+cc: Christoph Hellwig <hch@infradead.org>
 cc: netfs@lists.linux.dev
 cc: linux-fsdevel@vger.kernel.org
 ---
- fs/netfs/read_collect.c      | 24 ++++++++++++++++++++++++
- include/trace/events/netfs.h |  1 +
- 2 files changed, 25 insertions(+)
+ fs/9p/vfs_addr.c       | 17 +++++++++++++++++
+ fs/afs/file.c          |  2 +-
+ fs/afs/internal.h      |  3 +++
+ fs/afs/write.c         | 17 +++++++++++++++++
+ fs/cachefiles/io.c     | 15 ++++++++++++++-
+ fs/netfs/write_issue.c |  2 ++
+ fs/smb/client/file.c   | 14 ++++++++++++++
+ include/linux/netfs.h  | 22 ++++++++++++++++++++++
+ 8 files changed, 90 insertions(+), 2 deletions(-)
 
-diff --git a/fs/netfs/read_collect.c b/fs/netfs/read_collect.c
-index fddeae4161e0..11cc1ac37fc5 100644
---- a/fs/netfs/read_collect.c
-+++ b/fs/netfs/read_collect.c
-@@ -353,6 +353,15 @@ static void netfs_collect_read_results(struct netfs_io_request *rreq)
- 			notes |= HIT_PENDING;
+diff --git a/fs/9p/vfs_addr.c b/fs/9p/vfs_addr.c
+index 2129fcb0f65c..9b163a13ec3f 100644
+--- a/fs/9p/vfs_addr.c
++++ b/fs/9p/vfs_addr.c
+@@ -48,6 +48,22 @@ static void v9fs_begin_writeback(struct netfs_io_request *wreq)
+ 	wreq->io_streams[0].avail = true;
+ }
  
- 		transferred = READ_ONCE(front->transferred);
-+		if (unlikely(transferred > front->len)) {
-+			/* Ugh...  A subreq overran its allotted length.  It
-+			 * may have corrupted the read buffer.
-+			 */
-+			stream->failed = true;
-+			stream->error = -EIO;
-+			rreq->error = -EIO;
-+			goto abandon_request;
-+		}
- 
- 		/* If we can collect the next folio from a pending op, do so,
- 		 * but we should only do it if we don't otherwise need to wait
-@@ -663,6 +672,21 @@ void netfs_read_subreq_terminated(struct netfs_io_subrequest *subreq)
- 		break;
- 	}
- 
-+	/* If the subrequest read more than it was supposed to, abort
-+	 * the request with EIO as we may have clobbered other parts
-+	 * of the buffer that are already read.
-+	 */
-+	if (subreq->transferred > subreq->len) {
-+		trace_netfs_sreq(subreq, netfs_sreq_trace_too_much);
-+		__set_bit(NETFS_SREQ_FAILED, &subreq->flags);
-+		__clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags);
-+		subreq->error = -EIO;
-+		trace_netfs_failure(rreq, subreq, subreq->error, netfs_fail_read);
-+		trace_netfs_rreq(rreq, netfs_rreq_trace_set_pause);
-+		set_bit(NETFS_RREQ_PAUSE, &rreq->flags);
-+		goto skip_error_checks;
-+	}
++/*
++ * Estimate how much data should be accumulated before we start issuing
++ * write subrequests.
++ */
++static int v9fs_estimate_write(struct netfs_io_request *wreq,
++			       struct netfs_io_stream *stream,
++			       struct netfs_write_estimate *estimate)
++{
++	struct p9_fid *fid = wreq->netfs_priv;
++	unsigned long long limit = ULLONG_MAX - stream->issue_from;
++	unsigned long long max_len = fid->clnt->msize - P9_IOHDRSZ;
 +
- 	/* Deal with retry requests, short reads and errors.  If we retry
- 	 * but don't make progress, we abandon the attempt.
- 	 */
-diff --git a/include/trace/events/netfs.h b/include/trace/events/netfs.h
-index 006bd2c73670..d098978623f7 100644
---- a/include/trace/events/netfs.h
-+++ b/include/trace/events/netfs.h
-@@ -133,6 +133,7 @@
- 	EM(netfs_sreq_trace_submit,		"SUBMT")	\
- 	EM(netfs_sreq_trace_superfluous,	"SPRFL")	\
- 	EM(netfs_sreq_trace_terminated,		"TERM ")	\
-+	EM(netfs_sreq_trace_too_much,		"!TOOM")	\
- 	EM(netfs_sreq_trace_wait_for,		"_WAIT")	\
- 	EM(netfs_sreq_trace_write,		"WRITE")	\
- 	EM(netfs_sreq_trace_write_skip,		"SKIP ")	\
++	estimate->issue_at = stream->issue_from + umin(max_len, limit);
++	return 0;
++}
++
+ /*
+  * Issue a subrequest to write to the server.
+  */
+@@ -185,6 +201,7 @@ const struct netfs_request_ops v9fs_req_ops = {
+ 	.free_request		= v9fs_free_request,
+ 	.issue_read		= v9fs_issue_read,
+ 	.begin_writeback	= v9fs_begin_writeback,
++	.estimate_write		= v9fs_estimate_write,
+ 	.issue_write		= v9fs_issue_write,
+ };
+ 
+diff --git a/fs/afs/file.c b/fs/afs/file.c
+index 11695be8c4a5..4a412e0472ec 100644
+--- a/fs/afs/file.c
++++ b/fs/afs/file.c
+@@ -469,7 +469,7 @@ const struct netfs_request_ops afs_req_ops = {
+ 	.update_i_size		= afs_update_i_size,
+ 	.invalidate_cache	= afs_netfs_invalidate_cache,
+ 	.begin_writeback	= afs_begin_writeback,
+-	.prepare_write		= afs_prepare_write,
++	.estimate_write		= afs_estimate_write,
+ 	.issue_write		= afs_issue_write,
+ 	.retry_request		= afs_retry_request,
+ };
+diff --git a/fs/afs/internal.h b/fs/afs/internal.h
+index 556e7e7777f2..ae2bc699bfde 100644
+--- a/fs/afs/internal.h
++++ b/fs/afs/internal.h
+@@ -1698,6 +1698,9 @@ extern int afs_check_volume_status(struct afs_volume *, struct afs_operation *);
+ /*
+  * write.c
+  */
++int afs_estimate_write(struct netfs_io_request *wreq,
++		       struct netfs_io_stream *stream,
++		       struct netfs_write_estimate *estimate);
+ void afs_prepare_write(struct netfs_io_subrequest *subreq);
+ void afs_issue_write(struct netfs_io_subrequest *subreq);
+ void afs_begin_writeback(struct netfs_io_request *wreq);
+diff --git a/fs/afs/write.c b/fs/afs/write.c
+index 7f34b939706a..a0c9916f594b 100644
+--- a/fs/afs/write.c
++++ b/fs/afs/write.c
+@@ -82,6 +82,23 @@ static const struct afs_operation_ops afs_store_data_operation = {
+ 	.success	= afs_store_data_success,
+ };
+ 
++/*
++ * Estimate the maximum size of a write we can send to the server.
++ */
++int afs_estimate_write(struct netfs_io_request *wreq,
++		       struct netfs_io_stream *stream,
++		       struct netfs_write_estimate *estimate)
++{
++	unsigned long long limit = ULLONG_MAX - stream->issue_from;
++	unsigned long long max_len = 256 * 1024 * 1024;
++
++	//if (test_bit(NETFS_SREQ_RETRYING, &subreq->flags))
++	//	max_len = 512 * 1024;
++
++	estimate->issue_at = stream->issue_from + umin(max_len, limit);
++	return 0;
++}
++
+ /*
+  * Prepare a subrequest to write to the server.  This sets the max_len
+  * parameter.
+diff --git a/fs/cachefiles/io.c b/fs/cachefiles/io.c
+index 23007f450ef4..91b69be78c6b 100644
+--- a/fs/cachefiles/io.c
++++ b/fs/cachefiles/io.c
+@@ -26,7 +26,10 @@ struct cachefiles_kiocb {
+ 	};
+ 	struct cachefiles_object *object;
+ 	netfs_io_terminated_t	term_func;
+-	void			*term_func_priv;
++	union {
++		struct netfs_io_subrequest *subreq;
++		void			*term_func_priv;
++	};
+ 	bool			was_async;
+ 	unsigned int		inval_counter;	/* Copy of cookie->inval_counter */
+ 	u64			b_writing;
+@@ -611,6 +614,15 @@ static int cachefiles_prepare_write(struct netfs_cache_resources *cres,
+ 	return ret;
+ }
+ 
++static int cachefiles_estimate_write(struct netfs_io_request *wreq,
++				     struct netfs_io_stream *stream,
++				     struct netfs_write_estimate *estimate)
++{
++	estimate->issue_at = stream->issue_from + MAX_RW_COUNT;
++	estimate->max_segs = BIO_MAX_VECS;
++	return 0;
++}
++
+ static void cachefiles_prepare_write_subreq(struct netfs_io_subrequest *subreq)
+ {
+ 	struct netfs_io_request *wreq = subreq->rreq;
+@@ -898,6 +910,7 @@ static const struct netfs_cache_ops cachefiles_netfs_cache_ops = {
+ 	.issue_write		= cachefiles_issue_write,
+ 	.prepare_write		= cachefiles_prepare_write,
+ 	.prepare_write_subreq	= cachefiles_prepare_write_subreq,
++	.estimate_write		= cachefiles_estimate_write,
+ 	.query_occupancy	= cachefiles_query_occupancy,
+ 	.collect_write		= cachefiles_collect_write,
+ };
+diff --git a/fs/netfs/write_issue.c b/fs/netfs/write_issue.c
+index 086869bd0db1..061d41284deb 100644
+--- a/fs/netfs/write_issue.c
++++ b/fs/netfs/write_issue.c
+@@ -114,6 +114,7 @@ struct netfs_io_request *netfs_create_write_req(struct address_space *mapping,
+ 
+ 	wreq->io_streams[0].stream_nr		= 0;
+ 	wreq->io_streams[0].source		= NETFS_UPLOAD_TO_SERVER;
++	wreq->io_streams[0].estimate_write	= ictx->ops->estimate_write;
+ 	wreq->io_streams[0].prepare_write	= ictx->ops->prepare_write;
+ 	wreq->io_streams[0].issue_write		= ictx->ops->issue_write;
+ 	wreq->io_streams[0].collected_to	= start;
+@@ -126,6 +127,7 @@ struct netfs_io_request *netfs_create_write_req(struct address_space *mapping,
+ 	if (fscache_resources_valid(&wreq->cache_resources)) {
+ 		wreq->io_streams[1].avail	= true;
+ 		wreq->io_streams[1].active	= true;
++		wreq->io_streams[1].estimate_write = wreq->cache_resources.ops->estimate_write;
+ 		wreq->io_streams[1].prepare_write = wreq->cache_resources.ops->prepare_write_subreq;
+ 		wreq->io_streams[1].issue_write = wreq->cache_resources.ops->issue_write;
+ 	}
+diff --git a/fs/smb/client/file.c b/fs/smb/client/file.c
+index ac89c1ba56b1..7ad464782439 100644
+--- a/fs/smb/client/file.c
++++ b/fs/smb/client/file.c
+@@ -39,6 +39,19 @@
+ 
+ static int cifs_reopen_file(struct cifsFileInfo *cfile, bool can_flush);
+ 
++/*
++ * Estimate the amount of data that can be written in one RPC op.
++ */
++static int cifs_estimate_write(struct netfs_io_request *wreq,
++			       struct netfs_io_stream *stream,
++			       struct netfs_write_estimate *estimate)
++{
++	struct cifs_sb_info *cifs_sb = CIFS_SB(wreq->inode->i_sb);
++
++	estimate->issue_at = stream->issue_from + cifs_sb->ctx->wsize;
++	return 0;
++}
++
+ /*
+  * Prepare a subrequest to upload to the server.  We need to allocate credits
+  * so that we know the maximum amount of data that we can include in it.
+@@ -362,6 +375,7 @@ const struct netfs_request_ops cifs_req_ops = {
+ 	.issue_read		= cifs_issue_read,
+ 	.done			= cifs_rreq_done,
+ 	.begin_writeback	= cifs_begin_writeback,
++	.estimate_write		= cifs_estimate_write,
+ 	.prepare_write		= cifs_prepare_write,
+ 	.issue_write		= cifs_issue_write,
+ 	.invalidate_cache	= cifs_netfs_invalidate_cache,
+diff --git a/include/linux/netfs.h b/include/linux/netfs.h
+index c3f5c010ed52..2cd8f6a9c440 100644
+--- a/include/linux/netfs.h
++++ b/include/linux/netfs.h
+@@ -144,6 +144,16 @@ struct netfs_writeback {
+ 	size_t			len;		/* Total size (can increase) */
+ };
+ 
++/*
++ * Estimate of maximum write subrequest for writeback.  The filesystem is
++ * responsible for filling this in when called from ->estimate_write(), though
++ * netfslib will preset infinite defaults.
++ */
++struct netfs_write_estimate {
++	uoff_t			issue_at;	/* Point at which we must submit */
++	int			max_segs;	/* Max number of segments in a single RPC */
++};
++
+ /*
+  * Stream of I/O subrequests going to a particular destination, such as the
+  * server or the local cache.  This is mainly intended for writing where we may
+@@ -152,10 +162,14 @@ struct netfs_writeback {
+ struct netfs_io_stream {
+ 	/* Submission tracking */
+ 	struct netfs_io_subrequest *construct;	/* Op being constructed */
++	uoff_t			issue_from;	/* Current issue point */
+ 	size_t			sreq_max_len;	/* Maximum size of a subrequest */
+ 	unsigned int		sreq_max_segs;	/* 0 or max number of segments in an iterator */
+ 	unsigned int		submit_off;	/* Folio offset we're submitting from */
+ 	unsigned int		submit_len;	/* Amount of data left to submit */
++	int (*estimate_write)(struct netfs_io_request *wreq,
++			      struct netfs_io_stream *stream,
++			      struct netfs_write_estimate *estimate);
+ 	void (*prepare_write)(struct netfs_io_subrequest *subreq);
+ 	void (*issue_write)(struct netfs_io_subrequest *subreq);
+ 	/* Collection tracking */
+@@ -340,6 +354,9 @@ struct netfs_request_ops {
+ 
+ 	/* Write request handling */
+ 	void (*begin_writeback)(struct netfs_io_request *wreq);
++	int (*estimate_write)(struct netfs_io_request *wreq,
++			      struct netfs_io_stream *stream,
++			      struct netfs_write_estimate *estimate);
+ 	void (*prepare_write)(struct netfs_io_subrequest *subreq);
+ 	void (*issue_write)(struct netfs_io_subrequest *subreq);
+ 	void (*retry_request)(struct netfs_io_request *wreq, struct netfs_io_stream *stream);
+@@ -376,6 +393,11 @@ struct netfs_cache_ops {
+ 		     netfs_io_terminated_t term_func,
+ 		     void *term_func_priv);
+ 
++	/* Estimate the amount of data that can be written in an op. */
++	int (*estimate_write)(struct netfs_io_request *wreq,
++			      struct netfs_io_stream *stream,
++			      struct netfs_write_estimate *estimate);
++
+ 	/* Write data to the cache from a netfs subrequest. */
+ 	void (*issue_write)(struct netfs_io_subrequest *subreq);
+ 
 
