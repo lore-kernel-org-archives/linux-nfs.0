@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7BF3F39EF12;
-	Wed,  2 Sep 2026 19:29:09 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E6D113A5430;
+	Wed,  2 Sep 2026 19:29:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788377364; cv=none; b=NTEA7xTFmNA4VILp0CLz1VSFGm1no7FSbylBrC5X+9JPCsVPoLzqMTSLP4KSQrYa6/5Ubc+WovgPl/K/Dt2Fz/wxIh0v2Mo54A3T43cNp757SCAhTYX3rLMu2D9mqWHjB8W/7Yny9OKor5C1A7IJ2P6j7Q/Cwq4CkyT3GZgwu3Y=
+	t=1788377364; cv=none; b=HoLkreqe2Nr2TanDme5PO8yoyjPxe/zVGBPdPPvIMkb/BgNZlIkWqvKv6vep9UzbYJ6f+YMQF640SetZOq0x8/AJKw+jHnwPwUo1tkr58WIj/2OzOGLqOQdyFe2N8nzObK51D2c/3AQaeNjrIoEIJZmXLF4TGTOdNqo86V53yf4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1788377364; c=relaxed/simple;
-	bh=8U0XBPRVxSfOU0obQjD1fxaP88zM2TcU5L4hYzBluvY=;
+	bh=l59kSsqmbSZKGr3a44xK8gQJ6X/HbwJ7DhjoK/lpYxk=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=M2o9aYjyMmxEssCmGBBls/ebmKS7h6QdpCbVn7zTNyldsbsXugKNxXwEQfHxn2dbriQDUX2NjBaiqip6X8uYyAvdnblEcUYtXLOpqlN3u2uw3h3N5/X+OZK1LLWhDgDZA9wwhmBNsEkHjzp05t6x0B7fX1Q/yyFcuJNUKTR5TBo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jsz9pgy4; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=Dd6Qw5WMDclUTGMnJZ3xSDleUs8AQ0ylcdHxf3WDjz/ehfhS0VwRCVKoiZI4NesNtLUy7Fguys46rOORJbh53tLZHj++vJwmQ3ExBshNjmWbPA1nqY+BMiSHbieh5vHW6XNXkTVmX6yzfbj7dgLU/l8efLFy4p8CeqvMmbF7Gbk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GvMZDG49; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jsz9pgy4"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 576AE1F00ADB;
-	Wed,  2 Sep 2026 19:29:07 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GvMZDG49"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A9BE61F00AC4;
+	Wed,  2 Sep 2026 19:29:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788377347;
-	bh=Oqjf36SDCKS8VzDfnH6ImhAmZ1KHIl0D7LfeOiVeArU=;
+	s=k20260515; t=1788377350;
+	bh=F+29SWxzE93hqeHEyD2uBD9Y99JfUFtqyMqz2TIF/bU=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=jsz9pgy44s5jK9Y2y4/YAXiy5MO8jxZYQYPRwjI2g0AevKdQQX7deLJJXFaizYAUU
-	 yWODiwzzbsd/sxEtLnIXex3eyseuT3+720gfoJAdXv1pqpCl6UtzlEztAKskzy/eaD
-	 TWX35QTRdwddwnQUQEt69VzOpfdvZRm2Uuj/RtzHIGeXMr+rB/JzpzjK/GCeykJ1M/
-	 fuRm+sY/vr7WmdqLorobbf0UJ/sI1Z+Qjni2K8crOfAOw6f8mQcZKzrnPTe6IyAUhP
-	 S5cfrgmID7zMN7zd96J7rkJmgKKTqQcVA1WW9aDNYE9broJ6E7vKnz+W9/2ECra3a1
-	 s5l1ao363lMdQ==
+	b=GvMZDG49+gshP3N0gr7l7iWiIo8xAaIMSQhpHGdi1w7jJKn0oVfkTxdGUbqbHU2bt
+	 7XSiBPAn0cPs3FOknNGg9EL/RCikuJV+C6xwB5IXnR8qv6o3/e0Akhlb2Of+RMcnea
+	 w5vqyT8YuvWPREY/spKtvFiHVqPq7yUu6ZSs5WnPioq6MGUkXjkmuMUruB7HKCwIkl
+	 Xxjw9GXmatyPR0+Ht6HYcnDZI82bUU91C5GVYf0jWvwNMniOeU1PA1GokwGiskw5ut
+	 Jh90el0iyOI0MmGBxWZYo4mS5nTfEbsW3qf71/OOmFdtsVVfIE/BhNzmpJLzkBrwz/
+	 I0nz6NxgnmipQ==
 From: Chuck Lever <cel@kernel.org>
-Date: Wed, 02 Sep 2026 15:28:48 -0400
-Subject: [PATCH RFC v2 3/8] SUNRPC: Set WQ_SYSFS on rpciod and xprtiod
+Date: Wed, 02 Sep 2026 15:28:51 -0400
+Subject: [PATCH RFC v2 6/8] SUNRPC: Reduce rpciod workqueue contention
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +37,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260902-performance-v2-3-b71c0c082f9d@kernel.org>
+Message-Id: <20260902-performance-v2-6-b71c0c082f9d@kernel.org>
 References: <20260902-performance-v2-0-b71c0c082f9d@kernel.org>
 In-Reply-To: <20260902-performance-v2-0-b71c0c082f9d@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
@@ -45,60 +45,77 @@ To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
 Cc: Lai Jiangshan <jiangshanlai@gmail.com>, linux-nfs@vger.kernel.org, 
  open list <linux-kernel@vger.kernel.org>, Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1248; i=cel@kernel.org;
- h=from:subject:message-id; bh=8U0XBPRVxSfOU0obQjD1fxaP88zM2TcU5L4hYzBluvY=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqmHkAhBl6UAuyLi+KpB+/ch9lI+aI4JqgbZp0X
- KBAopwQNamJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaph5AAAKCRAzarMzb2Z/
- l/R4D/42tBmmj06EEIB22lTVPWqgLgbbtgF8+INJsb2G/+x7ezyxQUbuGbDGqV3br5hvaSAaIMb
- ZCc/G1MdvrGZ1BS209jCQA9OoKR5vju8lHHVNUJtuMKKwyl5H2kCjVRJmpsKcgpc9TbSie+fiF+
- efOdJKU4ysZc9QF9Imd4fen8qVurJiUh7FEhwYBebOPikL7KaPYuQ5fzJErPrloL8OFK/cSOSFu
- r/f5F5PJ+yGfd1GeV76YG4li04SiijtJmJ4TzAPODI+hu9fSts7PabFXlQBmOpov3QAq58qJYS1
- i92VQjtlwscjOV9E82RLfjx2UzROiAloylYpZMT52FtLaMSCr6d/yjL6yBohj4zA6JBpzytyJBc
- Q8R98wTfY+z0xhzGDdSz86MO3XQ55juFdqnradvNzhDSM3HOv7DCD4ueI42RcMr2pUc/IMiozpV
- MoTjaUIFgIRW3/dwjtEsZEVDMeIWIbgamS3VYr5skZWbMxwFcb2ntvDONVyFuqf5NHunIeX8B6G
- mP1rp5NE/uqedhCHXerYPCikyAqZDByDO6X6EtO/uJ/1dgFJrfEcoVKK7WDpfXmEu6COa9nc6ie
- efV8zw0CQqHrjpgJ8nwBPcClsVILZG3BLNmNCdmICXcnif9W7GHKTMvgDJRuYxk4RBSHU55n9sY
- ncELwmij1zstWtg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1957; i=cel@kernel.org;
+ h=from:subject:message-id; bh=l59kSsqmbSZKGr3a44xK8gQJ6X/HbwJ7DhjoK/lpYxk=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqmHkA4sLiyTjxed1Izc24igQEahb7QkOSFINBz
+ +X/iqeEX2CJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaph5AAAKCRAzarMzb2Z/
+ lybuD/9tp8KGHNRFVt/2vYUlP6AunckvY/o4VXVQ3KXIiJL1RLPhi/Ly9jmyYrYRlM63Dn0d8vx
+ VcVFVc+bkXIIv/1mLdecdpf7yAxVY9MCQc8z9fcwXAlkzuV8/onpWskafje89nekFATmVWSZKKN
+ ynNMG40WEtKVfjUd3e0hunstTScjpYnTm3FKDEgGSbKzrGUbJtWTKeTV839PVTmKmsE8OGX/dSW
+ w9NQcirpwpHC+5dzaC0y8TsU0Ii7U2TY/gCLuf4JlOmxEUs8bmmFN0LVIUwE3pkQ481bis0S7bI
+ f8TNtLB11M/Hw1eVKVxgWJkTDjb4xLOZXFSFUyPN2L1ykwJeSB9a/SZkFPtgv6STf7ZJnmOuLQV
+ y2qmYbNOt8TOKc3n7sJg3M+A6F1LrE3wV0k06XEE69nUGfCzFWYJ3281ji0WUYBw/3ag0Nz2WbS
+ r6HNW8q4ZjIyw2U1KAxqiGacA2rOkHxev57RyBzZjuT9f10dXp9unPxpQMzgtgZj+HLDca4gyw3
+ Bb/hssu88VSex6mc0L4Us2LE1QfDFkof8ddVUsgKki1ZFpLNTxi8ap+i+OMzgUBcfRAPbpArH73
+ 5pM5dO2w7xNMcc1dce6levRe0SPsZrXfF11wm2BTt0xN9hnsnBus4dPTwD9d32Q8UGS6ozQPrE0
+ v+19BAI7gTYebQA==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-An unbound workqueue's attributes can be changed at run time only
-through /sys/devices/virtual/workqueue/, and a workqueue appears
-there only when it is created with WQ_SYSFS. rpciod and xprtiod are
-created without it, so their affinity scope cannot be tuned without
-reloading the sunrpc module.
+rpciod drives the RPC client state machine. Under heavy NFS
+workloads, multiple CPUs queue RPC task completions concurrently and
+contend on the UNBOUND worker pool lock. perf profiles on a 12-core
+system show 30-40% of cycles lost to
+native_queued_spin_lock_slowpath in the rpciod pool at the
+WQ_AFFN_CACHE scope (one pool per LLC). The WQ_AFFN_CACHE_SHARD
+default helps little here, because its 8-core shards split this
+system into just two pools of six cores each.
 
-Create both with WQ_SYSFS.
+Set WQ_AFFN_SMT on rpciod so each SMT group gets its own pool and
+lock. Most UNBOUND workqueues never contend on the pool lock and
+profit from a coarser scope's cache locality. rpciod's sustained
+completion traffic makes the lock a first-order bottleneck, so the
+override belongs on this workqueue rather than in the system-wide
+default. The cost is one pool per SMT group, or per CPU on a system
+without SMT, and each pool keeps up to two idle kworkers rather than
+culling its last ones.
 
+Suggested-by: Tejun Heo <tj@kernel.org>
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- net/sunrpc/sched.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ net/sunrpc/sched.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
 diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 016f16ca5779..e81419aa553c 100644
+index e81419aa553c..2a1938b9e41e 100644
 --- a/net/sunrpc/sched.c
 +++ b/net/sunrpc/sched.c
-@@ -1273,16 +1273,17 @@ void rpciod_down(void)
-  */
- static int rpciod_start(void)
- {
-+	const unsigned int wq_flags = WQ_MEM_RECLAIM | WQ_UNBOUND | WQ_SYSFS;
- 	struct workqueue_struct *wq;
+@@ -1268,6 +1268,17 @@ void rpciod_down(void)
+ 	module_put(THIS_MODULE);
+ }
  
- 	/*
- 	 * Create the rpciod thread and wait for it to start.
- 	 */
--	wq = alloc_workqueue("rpciod", WQ_MEM_RECLAIM | WQ_UNBOUND, 0);
-+	wq = alloc_workqueue("rpciod", wq_flags, 0);
++static void rpc_set_wq_smt_affinity(struct workqueue_struct *wq,
++				    const char *name)
++{
++	int err;
++
++	err = workqueue_set_affn_scope(wq, WQ_AFFN_SMT);
++	if (err)
++		pr_warn("%s: failed to set SMT affinity scope: %d\n",
++			name, err);
++}
++
+ /*
+  * Start up the rpciod workqueue.
+  */
+@@ -1282,6 +1293,7 @@ static int rpciod_start(void)
+ 	wq = alloc_workqueue("rpciod", wq_flags, 0);
  	if (!wq)
  		goto out_failed;
++	rpc_set_wq_smt_affinity(wq, "rpciod");
  	rpciod_workqueue = wq;
--	wq = alloc_workqueue("xprtiod", WQ_UNBOUND | WQ_MEM_RECLAIM, 0);
-+	wq = alloc_workqueue("xprtiod", wq_flags, 0);
+ 	wq = alloc_workqueue("xprtiod", wq_flags, 0);
  	if (!wq)
- 		goto free_rpciod;
- 	xprtiod_workqueue = wq;
 
 -- 
 2.55.0
