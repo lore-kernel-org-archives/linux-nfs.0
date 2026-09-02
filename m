@@ -1,226 +1,268 @@
-Received: from SN4PR2101CU001.outbound.protection.outlook.com (mail-southcentralusazon11012039.outbound.protection.outlook.com [40.93.195.39])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1FA093AAF62;
-	Wed,  2 Sep 2026 11:19:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=40.93.195.39
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788347984; cv=fail; b=onxqKfg5l10sSChYCKVA+w561BsdadbJssydEzdp127nVg8Xt74um//dmMUUYhdtgzvgBLvaIz2QBqBIKdO36w69fSRfgzijQLr4ldX9V2hpWa0UMPoaxGJBxnIM4dFAWM6MRAxLqWT7xKJsHCzGd659MBxdMkbzoV1bbTYMpi8=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788347984; c=relaxed/simple;
-	bh=lF2CjMtGkLotObvf148MSQxhKgfXFbAl0A/EfyUbpPM=;
-	h=From:To:CC:Subject:Date:Message-ID:References:In-Reply-To:
-	 Content-Type:MIME-Version; b=pIgLFvv0gjAKW39xTqqwsoR+gleOWuwlx264wWPZ4jitq7NKY1NF+ytO+nw0GNnqLk6RAxS3ifK64cvhcabv/8DPUCUYiVjibIl/Is1f9y4MHPAkqDqOmdA7FzSXjvooY0coPUUjnnvAvQ4uL+8GNwiciz6BS1Mbwu9oyVtOe9A=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=amd.com; spf=fail smtp.mailfrom=amd.com; dkim=pass (1024-bit key) header.d=amd.com header.i=@amd.com header.b=JEVMkraW; arc=fail smtp.client-ip=40.93.195.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=amd.com
-Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=amd.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 23415493642
+	for <linux-nfs@vger.kernel.org>; Wed,  2 Sep 2026 12:40:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1788352859; cv=none; b=U0w9UNDVtZyAvzByJcyGgXh8E1djm1epN9wNtiwxjYikSfpBJYqexywa0prupY613/gzZwRapBFT5g3C2rdbRCaV3aYwxs8JySZWw86VYJ4pTj8CAxGyoi4ludUqydCGVdEA9EhCHk5bhvpxyzUzKxspEAdec+ZvXfXTjEkoahg=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1788352859; c=relaxed/simple;
+	bh=yxGj2Wl0Tzgg9qadszNqRvS0ycDJ+XGCVEfMchMGKGU=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=YtG5SHGkJhgVZ7n2/wnzeZjUdp2UaAhJkVZ2qWJWYuMGyRYk6h/rRUvejeW41mgInq+hHhhOu7tUfMhidfOKzhVPfdC7Fjs5U2RgVTJ5NAzcMb7VYG3b0H9Z2kqdagFTTvFnOFAiNAVSicasAWuHBjmKtqRecGhTJAgp4MfLYSc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Yvo5OB2j; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=amd.com header.i=@amd.com header.b="JEVMkraW"
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=aPz7I8sOGf1NyMjzrEGTZSXSA3XGgcittYVG4J0qhS1G175cQBEJ47Gb/YK/1oECZoVNEfE+r+ShjPKP8Z/4CGXcjwqso8hAf1fSdJvcQKVhFAFd2obbXwbH/SZSMWSgSDm+SQB94vKgMUC2bBBvGGQYG1RLzCxIdodX7Qcp/8kmN3oaBYA/SZu/+tLP7xKUX21ojPUUWwlcxR+pR/C2S7Gw6zfpT5DqZ6aujxrb3+OxxpyjLMzPCiCvzN2+z3TziF346V2wKeyqBDel3OyfhT3XpGHBzDc4RtmFfcty9TwS2PtBQXBRcg1AegoINpgPRlMw+KpaXekmnAjg8syuGw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=lF2CjMtGkLotObvf148MSQxhKgfXFbAl0A/EfyUbpPM=;
- b=h0OJCh5KRtHBJa9K0X1Te4Xbvvy9w5Em8OZLwwb7CPad3vpJtTzx5PoJsewVqKSeq9jiUrZHhtrCgienzY8FEto5AsZYO6XS9NKvdcPtrULVXvuSzlnqcvW3n3axVGwYakjeyACSG/NK0w2YlC7/TFF7kO6TXKwQl7BeKszwa9svfMDRLr6CN5hzkP7kLb4S6F6X5brCkQH2wafbYzoVzTNRShqgiJ9DUj3jxTYi3m8iKzQEoohXieO3wNWxtFda64F6NJ9ZdIw/ZB8s/pHa79JyMl1PYN734W8fwIAWB1N915FGSHu/GYBWZUcf5FoXxSq7ncHSh68Py4H7XGPuew==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=amd.com; dmarc=pass action=none header.from=amd.com; dkim=pass
- header.d=amd.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=amd.com; s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=lF2CjMtGkLotObvf148MSQxhKgfXFbAl0A/EfyUbpPM=;
- b=JEVMkraWy6c4Rt8z3Co5cFcXrPwzge3nF+QYXzZR5SpRxzuhRqLF6bCVd2nuLj1oi9bB08Gp36f52vUC4D4VoZApFlv95jYxRYMuDBD4ezCydh5eYyMgv/9kADX9BaVdYxYDzFBhAvuUr0JSKKVsosOQkGQYzFn/viegJu4pvqo=
-Received: from BN9PR12MB5259.namprd12.prod.outlook.com (2603:10b6:408:100::17)
- by MN0PR12MB6031.namprd12.prod.outlook.com (2603:10b6:208:3cd::7) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.360.13; Wed, 2 Sep
- 2026 11:19:37 +0000
-Received: from BN9PR12MB5259.namprd12.prod.outlook.com
- ([fe80::122c:cca7:c2b3:90ed]) by BN9PR12MB5259.namprd12.prod.outlook.com
- ([fe80::122c:cca7:c2b3:90ed%2]) with mapi id 15.21.0360.008; Wed, 2 Sep 2026
- 11:19:37 +0000
-From: "Garg, Shivank" <shivankg@amd.com>
-To: "ying.huang@linux.alibaba.com" <ying.huang@linux.alibaba.com>,
-	"sj@kernel.org" <sj@kernel.org>, "shakeel.butt@linux.dev"
-	<shakeel.butt@linux.dev>, "joshua.hahnjy@gmail.com"
-	<joshua.hahnjy@gmail.com>, "david@kernel.org" <david@kernel.org>,
-	"mhocko@suse.com" <mhocko@suse.com>, "viro@zeniv.linux.org.uk"
-	<viro@zeniv.linux.org.uk>, "hannes@cmpxchg.org" <hannes@cmpxchg.org>,
-	"jack@suse.cz" <jack@suse.cz>, "kasong@tencent.com" <kasong@tencent.com>,
-	"rientjes@google.com" <rientjes@google.com>, "anna@kernel.org"
-	<anna@kernel.org>, "weixugc@google.com" <weixugc@google.com>, "jgg@ziepe.ca"
-	<jgg@ziepe.ca>, "corbet@lwn.net" <corbet@lwn.net>, "gourry@gourry.net"
-	<gourry@gourry.net>, "Rao, Bharata Bhasker" <bharata@amd.com>,
-	"byungchul@sk.com" <byungchul@sk.com>, "yuanchu@google.com"
-	<yuanchu@google.com>, "rdunlap@infradead.org" <rdunlap@infradead.org>,
-	"axelrasmussen@google.com" <axelrasmussen@google.com>, "rppt@kernel.org"
-	<rppt@kernel.org>, "seanjc@google.com" <seanjc@google.com>, "bcrl@kvack.org"
-	<bcrl@kvack.org>, "nao.horiguchi@gmail.com" <nao.horiguchi@gmail.com>,
-	"willy@infradead.org" <willy@infradead.org>, "osalvador@suse.de"
-	<osalvador@suse.de>, "surenb@google.com" <surenb@google.com>,
-	"jhubbard@nvidia.com" <jhubbard@nvidia.com>, "matthew.brost@intel.com"
-	<matthew.brost@intel.com>, "peterx@redhat.com" <peterx@redhat.com>,
-	"skhan@linuxfoundation.org" <skhan@linuxfoundation.org>, "brauner@kernel.org"
-	<brauner@kernel.org>, "clm@fb.com" <clm@fb.com>, "qi.zheng@linux.dev"
-	<qi.zheng@linux.dev>, "baohua@kernel.org" <baohua@kernel.org>,
-	"rakie.kim@sk.com" <rakie.kim@sk.com>, "brendan.jackman@linux.dev"
-	<brendan.jackman@linux.dev>, "dsterba@suse.com" <dsterba@suse.com>,
-	"apopple@nvidia.com" <apopple@nvidia.com>, "ziy@nvidia.com" <ziy@nvidia.com>,
-	"vbabka@kernel.org" <vbabka@kernel.org>, "pbonzini@redhat.com"
-	<pbonzini@redhat.com>, "ljs@kernel.org" <ljs@kernel.org>,
-	"linmiaohe@huawei.com" <linmiaohe@huawei.com>, "muchun.song@linux.dev"
-	<muchun.song@linux.dev>, "akpm@linux-foundation.org"
-	<akpm@linux-foundation.org>, "yiannis@zptcorp.com" <yiannis@zptcorp.com>,
-	"shaggy@kernel.org" <shaggy@kernel.org>, "trondmy@kernel.org"
-	<trondmy@kernel.org>
-CC: "jfs-discussion@lists.sourceforge.net"
-	<jfs-discussion@lists.sourceforge.net>, "damon@lists.linux.dev"
-	<damon@lists.linux.dev>, "linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"linux-cxl@vger.kernel.org" <linux-cxl@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-	"linux-aio@kvack.org" <linux-aio@kvack.org>, "linux-doc@vger.kernel.org"
-	<linux-doc@vger.kernel.org>, "linux-nfs@vger.kernel.org"
-	<linux-nfs@vger.kernel.org>, "kvm@vger.kernel.org" <kvm@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [sos-linux-ext-patches] [PATCH RFC 09/11] mm/migrate: thread
- migration policy through a control struct
-Thread-Topic: [sos-linux-ext-patches] [PATCH RFC 09/11] mm/migrate: thread
- migration policy through a control struct
-Thread-Index: AQHdOsmT+W0LNheKIkurwO1qDEWLzLa7JEwA
-Date: Wed, 2 Sep 2026 11:19:37 +0000
-Message-ID: <1508939ba49c28e06b9cec344ec6a69ab57ce8ac.camel@amd.com>
-References: <20260902-migrate-refactor-shivank-v1-0-9dcca87669c4@amd.com>
-	 <20260902-migrate-refactor-shivank-v1-9-9dcca87669c4@amd.com>
-In-Reply-To: <20260902-migrate-refactor-shivank-v1-9-9dcca87669c4@amd.com>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach:
-X-MS-TNEF-Correlator:
-authentication-results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=amd.com;
-x-ms-publictraffictype: Email
-x-ms-traffictypediagnostic: BN9PR12MB5259:EE_|MN0PR12MB6031:EE_
-x-ms-office365-filtering-correlation-id: 6dbeaf07-8e93-4a9d-4d97-08df08e41323
-x-ms-exchange-senderadcheck: 1
-x-ms-exchange-antispam-relay: 0
-x-microsoft-antispam:
- BCL:0;ARA:13230040|366016|376014|1800799024|23010399003|7416014|38070700021|56012099006|921020|4143699003|6133799003|10067099003|22082099003|18002099003|11063799006;
-x-microsoft-antispam-message-info:
- 9MJApMCkHPveInhHy/FrmUSZyELPqKJ8H6hemBG8eH14jwWDo9g2mQpBVnpD06O29ttdWpNgJNW5cd1z50r7bRhatKvTN6xcjS2UcphxhWwxrR7aaw5Hyk9fvKhMIBIfvtbjSTMIBuB4ygY8Vc66cpkNhufYjx3OtvZJmagryfcVvDD9WUKHs/tVnzw5RU12DM17xTnUqj/CVJeoI+82H5MFyFG7LyOMPcNEuiRSHCC2PhCsE3ENHzP2GDqfaAYaJq1Cvlm7EpprNRVlzhniKpaRbcgLdpPokph6Wfj8YTW15vIG711hItbzCxttN92ccoT2hIHBziEd/zrseQuIm4W5Rakw8H7pD1+fc9WzIMqga8SA3VqkU8NpHMJQtNGOHjqe3Cyv3npElN6y7JiqxRj5aLbAm1u9tVZ0osd0aEBriwzhPo1VTkBxhRH9jwzsgLr93EZ4dTY9LmcZ91yXWQ/+CWTWK5m9/stPSzHl+z3y50uJnfSaQTEqr7wpEcREiw24pzFSdYCPEDJ1z7LBK5oCM6jCfaljdJ6/LtdsKpcsyAEtepvpzXHpnWTHerHHpSgLBfhEtw3q26MPK37sWmiz+Yc38sCYztKyC+5sMZVzLX448E2y4CJj6qsgonFYh0b3oSA9smYH/ijEev+3Ed9BEWYIfuGOzSt6+mFDd5c23+2gTb7asdVX1v6NWmBVh/KFx1FTS/C9Op9fpxvd4jLqGy2ZyVwitB2sj2UZurI=
-x-forefront-antispam-report:
- CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN9PR12MB5259.namprd12.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(366016)(376014)(1800799024)(23010399003)(7416014)(38070700021)(56012099006)(921020)(4143699003)(6133799003)(10067099003)(22082099003)(18002099003)(11063799006);DIR:OUT;SFP:1101;
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0:
- =?utf-8?B?K2ZscTh1Uyt4bm5oMzg0NnN0dFBtL0JRZFR4OXVWeDJ1ZWNKd0NIdmNJbGtr?=
- =?utf-8?B?RXZFU0NuVCt5endIdmdRVm51cmF6NUdjTWZvdjhQQW9xM2NLSG01SUM4UHNG?=
- =?utf-8?B?YnprT2xNWkJLTUdzS3NWV2JocnQ0MEhWcUFHakpkd3RCWGQySUZhNVczaXdH?=
- =?utf-8?B?UWx0VWJxVDZXakdyS0tGR3dCTW53TThoWFMzeG00SjgzVzlRS1dyOFpBbG42?=
- =?utf-8?B?VFlPVVRaNnczNTV4ZU5iMTA4NkJPTVpPak5nZFlNRlFRckFNTVFWbWFyalZI?=
- =?utf-8?B?aHdxcks5V2d1RXFaTHpNb0JVc1pjbTd1QUk5MkllYlU5bjVLSEZKY1RxM3dX?=
- =?utf-8?B?Zk1rOUxaTXJJSzZ6MjJPUExsZ0tibTFqZEg3eEdlWXlRTVBnU1h0YjAzQlN4?=
- =?utf-8?B?UElTWDNEeFY4TlBOa1hwVHE1K1Q4NFJIYXFPcEtTU0crVDBRa0N2RjJZVnRX?=
- =?utf-8?B?R3NNVExOTExOUS8yQUlzS1l4aWJuRUkydGxpSGl3RE14emU1SmVhQ084Zm5N?=
- =?utf-8?B?MDN0U1E5VVEzRzNhSG9Fc2d1ejFKMTFxTHpwdlQ5K2dZNkhnWmJ1WWkzTjNR?=
- =?utf-8?B?Uk1sU2ttdDhSYUZLenpUT1BGNkxkR2s2WE5KWGFrMEtNWS9BNG8zNUJjdllV?=
- =?utf-8?B?MzAzUisvOE01dlltS1JNTmFka2liais2cjdCUVROQXFwWHRMMzFTYkw0YVZ1?=
- =?utf-8?B?dlM3ZWRiR0RldDFRVHZic2NXbGZyZDRlV3BPWUFQN2svY0RQM2txNjQ5VjZ0?=
- =?utf-8?B?eWN5T2ZiS0pvblpGaUhuTitPY0tVamJsSndzWThaNTQzZUluQzR2d2NaRE00?=
- =?utf-8?B?dUJOWDBBSjFDVE5QbWhSdzBsV2pZQzFyTTUzRzNYbzRybmFFZk8xdkFnNlNw?=
- =?utf-8?B?TnNFcFpaRTV6RW43UVlJcTlDQjJ2TUhEYTRmSEliTEMxc1J1SS9lWUswMWxu?=
- =?utf-8?B?TEFqRFdQRjJJQTI2MS9ka3BibTFvYWRzMkpBeXI4YTB3a1pRaVNLcDkrNXhz?=
- =?utf-8?B?cW1VbE1RdjN1L2NDQ0hndWc3RndlMGI3cStWd2tqUHJDQ2JkT01pVUF1YmVU?=
- =?utf-8?B?aGZlZ2tqNGFNZ3djSlVSQUpvTVZKZEtZaCtRUEtjZjVrakhkbnNnZ2dBRGhj?=
- =?utf-8?B?SzBqRGxlUlFLVjJLc2ZTYXU3VHYwcDFiQjRNZ09TbXUxbkRQUFRRblRXOStr?=
- =?utf-8?B?SXVrSjF2MTJMcjMrVURKWUZvWExJNG9ISzdmVUhjeEZzVmNJWVdaN0MvWk00?=
- =?utf-8?B?Z2gvV0RURnp6ZzdWWWg5RzNiOFBwcVVFN0ZNL2Urejg0cmxabWl2emR3NFhP?=
- =?utf-8?B?M0V2cjFucXYwSElMTGI4c0R1OUlaOHVFYmtsZENHVzdtaGNNZ1JnaktPVWlB?=
- =?utf-8?B?SEs0em1NZ1NLRkJzMUdJZFNJeEpKRUNFQkh6VkZxc3hZSWpwQldUYzlRb05J?=
- =?utf-8?B?OVBjYU0yNVdaZVU5a2NTdzdUTlk3S3FudHRDa05lNHI5djJleTlZMkZ0Z2s4?=
- =?utf-8?B?T0VVMzlxaWUxaCtaY0NkM2c5SXp0VUoyb1NhN082eUEvQ1NLbGkza3RnWUY1?=
- =?utf-8?B?TGFFN0hxYlBIMk9RM2lPditoSXVqc1JaTC9JbmJ2dDNaRm5yU1M3S25jNlI1?=
- =?utf-8?B?SHgwNUxBalZuOFBjK2ZyOW1LeUNhSXQ0ZG5DU3pJTHRwVGE5RjBNbk9ZUHFu?=
- =?utf-8?B?N3J0V0YwYXNDZlBFNHBnUXdPR3RrTGlqdnFQeG50RFdhL0g1VWFuWHAySkRa?=
- =?utf-8?B?MEpqQzhCcUhDQmtXNVQ2dEtiMXlsUjBmd2RVb0lIdlBjTFhSVU0vbGJLenoy?=
- =?utf-8?B?NkZhdUFSZTJ2d3FtVlpDZXF2WVJYOXUxOXBRdWxSaVcyaHRvR0pwUzdoZ3VV?=
- =?utf-8?B?VkV6RUhnam8xbTN3QlFnbVFyMWt0UXRvdmNGOHFjcU9WNTI4WHo1Vi8xY2xl?=
- =?utf-8?B?WjlpSXhKVDlQWXpPQnUxbWFxSElSc0w2YjJ0by92Sjhya1BOaXhyOTBOUCsv?=
- =?utf-8?B?NzUwQ1lTekFoZm5SZHd3b2xUbkNacVdtMEc5UXJGRU9COGhPRktkUVQwT3d3?=
- =?utf-8?B?UElSQTVaT2xNNUNBVGV0Y05xRm1BSnNWZXVwRmo1WnJKVGNwUnI0OHNGa3VH?=
- =?utf-8?B?U0RiTGhGQm9XaEIvU3J3QU81VzNiTTFsWEJwUzRQTXRRZE5wY1FXREhSdndz?=
- =?utf-8?B?bU1ibXZISFBheXhZS1lLNnFKbE54QkphbzJpL2R0aElzTGd4d2gydzdGQ2hs?=
- =?utf-8?B?b1Q3REFtdTFQM0dLaHozdHhlNjA1VzhTWkZiRCtPTDN3T3VzclEyQXlhNWRG?=
- =?utf-8?B?VVNuV2IrOHAyRHY5b2JwY3pYUGVwRTI2V3BEbXc2SlRHazZkcGRVUT09?=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <217DE4CD07644847BDA0C6B26664D329@namprd12.prod.outlook.com>
-Content-Transfer-Encoding: base64
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Yvo5OB2j"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 635BB1F00A3A;
+	Wed,  2 Sep 2026 12:40:57 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1788352857;
+	bh=UUmNrwmO6AKpqtNeD6KjbxQQM4fIdhGvt368xOqmFd4=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=Yvo5OB2jlZTUBLH0Z1h2mhnG04ngBGJ3Rj45FoKyz+WYj30bpjuq4qc05biXuuyiZ
+	 N3x4u8+0Ust4MorEtWWNbPMMb1SB69TwXFQ2DQDvWYbRuk4Dq5Apw2GsoYsGo3CwB2
+	 q0AANjUgiJUJqWVNMSu9IZmIHvphWEV+Rqnl1MoqGrVO5FJeYmYZRg8qN/gmdQRwn8
+	 DPekfD5jWdZIVOoQQ9XADT8C20iRGYGUoQi8CQR3u6V4/Z3qkMSnxvYcx/jig6USt7
+	 EjukzqOheGWb5LW14tyahk45Rh18RhlGLXT4Ee0ua0+VlqOKIMrcNBeAUM9um6AvV/
+	 TJaJzFn3hF7FA==
+Message-ID: <35959e0bcd4223ccf8e258962e56bdb1ad6d48f9.camel@kernel.org>
+Subject: Re: [PATCH] nfsd: switch nfsd4_open() to use vfs_lookup_open()
+From: Jeff Layton <jlayton@kernel.org>
+To: NeilBrown <neil@brown.name>, Chuck Lever <chuck.lever@oracle.com>
+Cc: Christian Brauner <brauner@kernel.org>, linux-nfs@vger.kernel.org
+Date: Wed, 02 Sep 2026 08:40:55 -0400
+In-Reply-To: <178831622346.3510150.10735958308429473076@noble.neil.brown.name>
+References: 
+	<178831622346.3510150.10735958308429473076@noble.neil.brown.name>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-OriginatorOrg: amd.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: BN9PR12MB5259.namprd12.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 6dbeaf07-8e93-4a9d-4d97-08df08e41323
-X-MS-Exchange-CrossTenant-originalarrivaltime: 02 Sep 2026 11:19:37.6233
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 3dd8961f-e488-4e60-8e11-a82d994e183d
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: 5Nvb0cIybsmkBU6v0uXZYTWszLIMxbAoAQK/H/MT8Lm/Ts7tp80wxSzfcLdJEEs8eKNyMNcRWe7TSXRSeEYvbg==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: MN0PR12MB6031
 
-T24gV2VkLCAyMDI2LTA5LTAyIGF0IDEwOjUyICswMDAwLCBTaGl2YW5rIEdhcmcgd3JvdGU6DQo+
-IE1pZ3JhdGlvbiBtb2RlIGFuZCByZWFzb24gZGVzY3JpYmUgb25lIG1pZ3JhdGlvbiBpbnZvY2F0
-aW9uLCBidXQgYXJlIHBhc3NlZA0KPiANCg0KWy4uLl0NCg0KPiBAQCAtMjE4OSwyNyArMjE4OCwy
-OSBAQCBzdGF0aWMgaW50IG1pZ3JhdGVfZm9saW9zX2JhdGNoKHN0cnVjdCBsaXN0X2hlYWQgKmZy
-b20sDQo+ICAgKi8NCj4gIHN0YXRpYyBpbnQgX19taWdyYXRlX2xydV9mb2xpb3Moc3RydWN0IGxp
-c3RfaGVhZCAqZnJvbSwgbmV3X2ZvbGlvX3QgZ2V0X25ld19mb2xpbywNCj4gIAkJZnJlZV9mb2xp
-b190IHB1dF9uZXdfZm9saW8sIHVuc2lnbmVkIGxvbmcgcHJpdmF0ZSwNCj4gLQkJZW51bSBtaWdy
-YXRlX21vZGUgbW9kZSwgZW51bSBtaWdyYXRlX3JlYXNvbiByZWFzb24sDQo+IC0JCXN0cnVjdCBs
-aXN0X2hlYWQgKnJldF9mb2xpb3MsDQo+ICsJCWNvbnN0IHN0cnVjdCBtaWdyYXRlX2NvbnRyb2wg
-KmN0bCwgc3RydWN0IGxpc3RfaGVhZCAqcmV0X2ZvbGlvcywNCj4gIAkJc3RydWN0IG1pZ3JhdGVf
-cGFnZXNfc3RhdHMgKnN0YXRzKQ0KPiAgew0KPiAgCWludCByYywgbnJfZmFpbGVkID0gMDsNCj4g
-IAlMSVNUX0hFQUQoZm9saW9zKTsNCj4gIAlMSVNUX0hFQUQoc3BsaXRfZm9saW9zKTsNCj4gIAlz
-dHJ1Y3QgbWlncmF0ZV9wYWdlc19zdGF0cyBhc3RhdHM7DQo+ICsJc3RydWN0IG1pZ3JhdGVfY29u
-dHJvbCBhc3luY19jdGw7DQo+ICANCj4gLQlpZiAobW9kZSA9PSBNSUdSQVRFX0FTWU5DKSB7DQo+
-ICsJaWYgKGN0bC0+bW9kZSA9PSBNSUdSQVRFX0FTWU5DKSB7DQo+ICAJCXJjID0gbWlncmF0ZV9m
-b2xpb3NfYmF0Y2goZnJvbSwgZ2V0X25ld19mb2xpbywgcHV0X25ld19mb2xpbywNCj4gLQkJCQlw
-cml2YXRlLCBtb2RlLCByZWFzb24sIHJldF9mb2xpb3MsDQo+ICsJCQkJcHJpdmF0ZSwgY3RsLCBy
-ZXRfZm9saW9zLA0KPiAgCQkJCSZzcGxpdF9mb2xpb3MsIHN0YXRzLA0KPiAgCQkJCU5SX01BWF9N
-SUdSQVRFX1BBR0VTX1JFVFJZKTsNCj4gIAkJZ290byBvdXQ7DQo+ICAJfQ0KPiAgDQo+ICsJYXN5
-bmNfY3RsID0gKmN0bDsNCj4gKwlhc3luY19jdGwubW9kZSA9IE1JR1JBVEVfQVNZTkM7DQo+ICAJ
-bWVtc2V0KCZhc3RhdHMsIDAsIHNpemVvZihhc3RhdHMpKTsNCj4gIAkvKiBUcnkgdG8gbWlncmF0
-ZSBpbiBiYXRjaCB3aXRoIE1JR1JBVEVfQVNZTkMgbW9kZSBmaXJzdGx5ICovDQoNCg0KDQpTYXNo
-aWtvOg0KQ2FuIHRoaXMgbGVhZCB0byBhbiB1bmluaXRpYWxpemVkIHN0YWNrIHZhcmlhYmxlIGJl
-aW5nIHVzZWQ/DQpJZiBfX21pZ3JhdGVfbHJ1X2ZvbGlvcygpIGlzIGNhbGxlZCB3aXRoIGN0bC0+
-bW9kZSA9PSBNSUdSQVRFX0FTWU5DLCB0aGUNCmVhcmx5IGNoZWNrIGp1bXBzIGRpcmVjdGx5IHRv
-IHRoZSBvdXQgbGFiZWwsIGJ5cGFzc2luZyB0aGUgaW5pdGlhbGl6YXRpb24NCm9mIGFzeW5jX2N0
-bC4gSWYgbGFyZ2UgZm9saW9zIHdlcmUgc3BsaXQgZHVyaW5nIHRoYXQgZmlyc3QgcGFzcywgdGhl
-DQohbGlzdF9lbXB0eSgmc3BsaXRfZm9saW9zKSBjaGVjayB3aWxsIGJlIHRydWUuDQpDb3VsZCB0
-aGlzIGNhdXNlIG1pZ3JhdGVfZm9saW9zX2JhdGNoKCkgdG8gZXhlY3V0ZSB3aXRoIGdhcmJhZ2Ug
-cG9saWN5PyBGb3INCmV4YW1wbGUsIGl0IG1pZ2h0IGludGVycHJldCB0aGUgdW5pbml0aWFsaXpl
-ZCBhc3luY19jdGwubW9kZSBhcyBNSUdSQVRFX1NZTkMsDQpjYXVzaW5nIHVuaW50ZW5kZWQgYmxv
-Y2tpbmcgYW5kIHNsZWVwaW5nIGR1cmluZyB3aGF0IHNob3VsZCBiZSBhbiBhc3luY2hyb25vdXMN
-Cm1pZ3JhdGlvbi4NCi0tDQoNClllcywgdGhpcyBpcyB2YWxpZCBpc3N1ZS4gSSBzaG91bGQgaW5p
-dGlhbGl6ZSBhc3luY19jdGwgZWFybHkgYmVmb3JlIGl0IG1ha2UNCmdvdG8ganVtcC4NCg0KLS0t
-DQogbW0vbWlncmF0ZS5jIHwgNSArKy0tLQ0KIDEgZmlsZSBjaGFuZ2VkLCAyIGluc2VydGlvbnMo
-KyksIDMgZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9tbS9taWdyYXRlLmMgYi9tbS9taWdy
-YXRlLmMNCmluZGV4IDczMTgzNjY2NGE4Ni4uYzc1MzAwZTAwMzg4IDEwMDY0NA0KLS0tIGEvbW0v
-bWlncmF0ZS5jDQorKysgYi9tbS9taWdyYXRlLmMNCkBAIC0yMTk5LDggKzIxOTksOSBAQCBzdGF0
-aWMgaW50IF9fbWlncmF0ZV9scnVfZm9saW9zKHN0cnVjdCBsaXN0X2hlYWQgKmZyb20sIG5ld19m
-b2xpb190IGdldF9uZXdfZm9saQ0KIAlMSVNUX0hFQUQoZm9saW9zKTsNCiAJTElTVF9IRUFEKHNw
-bGl0X2ZvbGlvcyk7DQogCXN0cnVjdCBtaWdyYXRlX3BhZ2VzX3N0YXRzIGFzdGF0czsNCi0Jc3Ry
-dWN0IG1pZ3JhdGVfY29udHJvbCBhc3luY19jdGw7DQorCXN0cnVjdCBtaWdyYXRlX2NvbnRyb2wg
-YXN5bmNfY3RsID0gKmN0bDsNCiANCisJYXN5bmNfY3RsLm1vZGUgPSBNSUdSQVRFX0FTWU5DOw0K
-IAlpZiAoY3RsLT5tb2RlID09IE1JR1JBVEVfQVNZTkMpIHsNCiAJCXJjID0gbWlncmF0ZV9mb2xp
-b3NfYmF0Y2goZnJvbSwgZ2V0X25ld19mb2xpbywgcHV0X25ld19mb2xpbywNCiAJCQkJcHJpdmF0
-ZSwgY3RsLCByZXRfZm9saW9zLA0KQEAgLTIyMDksOCArMjIxMCw2IEBAIHN0YXRpYyBpbnQgX19t
-aWdyYXRlX2xydV9mb2xpb3Moc3RydWN0IGxpc3RfaGVhZCAqZnJvbSwgbmV3X2ZvbGlvX3QgZ2V0
-X25ld19mb2xpDQogCQlnb3RvIG91dDsNCiAJfQ0KIA0KLQlhc3luY19jdGwgPSAqY3RsOw0KLQlh
-c3luY19jdGwubW9kZSA9IE1JR1JBVEVfQVNZTkM7DQogCW1lbXNldCgmYXN0YXRzLCAwLCBzaXpl
-b2YoYXN0YXRzKSk7DQogCS8qIFRyeSB0byBtaWdyYXRlIGluIGJhdGNoIHdpdGggTUlHUkFURV9B
-U1lOQyBtb2RlIGZpcnN0bHkgKi8NCiAJcmMgPSBtaWdyYXRlX2ZvbGlvc19iYXRjaChmcm9tLCBn
-ZXRfbmV3X2ZvbGlvLCBwdXRfbmV3X2ZvbGlvLCBwcml2YXRlLA0KLS0gDQoyLjQzLjANCg0K
+On Wed, 2026-09-02 at 12:30 +1000, NeilBrown wrote:
+> From: NeilBrown <neil@brown.name>
+>=20
+> The functionality that was recently gathered into do_lookup_open() is
+> now available from the vfs as vfs_lookup_open().
+>=20
+> This implementation shares more code with syscall open paths and so uses
+> some filesystem interfaces slightly more correctly.  It also takes the
+> responsibility for locking out of nfsd so that planned changes can
+> happen entirely in VFS code.
+>=20
+> One difference is that do_lookup_open() would use nfsd_check_obj_isreg()
+> to get an error when the name exists but is not a regular file.
+> vfs_lookup_open() uses slightly different error code, particularly
+> returning -ENODEV when a device-special file is found.  So we need
+> to map that error to -EFTYPE.
+>=20
+> Unfortunately vfs_lookup_open() doesn't allow O_LARGEFILE so we need
+> to patch it to avoid a warning.
+>=20
+> Signed-off-by: NeilBrown <neil@brown.name>
+> ---
+>  fs/namei.c         |  2 +-
+>  fs/nfsd/nfs4proc.c | 66 ++++++++++------------------------------------
+>  2 files changed, 15 insertions(+), 53 deletions(-)
+>=20
+> This patch is against nfsd-test.  I would like it to land there so it
+> best good nfsd testing over the coming weeks.
+> Thanks,
+> NeilBrown
+>=20
+>=20
+> diff --git a/fs/namei.c b/fs/namei.c
+> index d95249dd527c..85fd5e8221e2 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -4632,7 +4632,7 @@ struct file *vfs_lookup_open(struct path *parent, s=
+truct qstr *last,
+>  	int error =3D 0;
+> =20
+>  	WARN_ONCE(mode & ~S_IALLUGO, "mode must only have permission bits");
+> -	WARN_ONCE(open_flag & ~(O_ACCMODE|O_CREAT|O_EXCL|O_TRUNC|__O_REGULAR),
+> +	WARN_ONCE(open_flag & ~(O_ACCMODE|O_CREAT|O_EXCL|O_TRUNC|__O_REGULAR|O_=
+LARGEFILE),
+>  		  "open_flag has unsupported flags");
+> =20
+>  	mode |=3D S_IFREG;
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 33dc92d48ce0..ae70f7489d95 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -213,52 +213,6 @@ static inline bool nfsd4_create_is_exclusive(int cre=
+atemode)
+>  		createmode =3D=3D NFS4_CREATE_EXCLUSIVE4_1;
+>  }
+> =20
+> -static struct file *do_lookup_open(struct path *parent,
+> -				   struct qstr *name,
+> -				   unsigned int oflags,
+> -				   umode_t mode)
+> -{
+> -	struct file *filp =3D NULL;
+> -	struct path path;
+> -	struct dentry *child;
+> -	int want_write_err =3D 0;
+> -
+> -	want_write_err =3D mnt_want_write(parent->mnt);
+> -
+> -	child =3D start_creating(&nop_mnt_idmap, parent->dentry, name);
+> -	if (IS_ERR(child)) {
+> -		filp =3D ERR_CAST(child);
+> -		goto out;
+> -	}
+> -	path.mnt =3D parent->mnt;
+> -	path.dentry =3D child;
+> -
+> -	if (d_really_is_positive(child)) {
+> -		/*
+> -		 * open the file so that we consistently have a valid
+> -		 * op_filp and consequently a valid ->f_path.dentry.
+> -		 */
+> -		int err =3D nfsd_check_obj_isreg(child);
+> -
+> -		if (err)
+> -			filp =3D ERR_PTR(err);
+> -		else
+> -			filp =3D dentry_open(&path, oflags, current_cred());
+> -	} else if (!(oflags & O_CREAT)) {
+> -		filp =3D ERR_PTR(-ENOENT);
+> -	} else if (want_write_err) {
+> -		filp =3D ERR_PTR(want_write_err);
+> -	} else {
+> -		filp =3D dentry_create(&path, oflags, mode, current_cred());
+> -		child =3D path.dentry;
+> -	}
+> -	end_creating(child);
+> -out:
+> -	if (!want_write_err)
+> -		mnt_drop_write(parent->mnt);
+> -	return filp;
+> -}
+> -
+>  /*
+>   * Implement NFSv4's unchecked, guarded, and exclusive create
+>   * semantics for regular files. Open state for this new file is
+> @@ -390,13 +344,21 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct sv=
+c_fh *fhp,
+>  		/* Might still succeed if no create is needed */
+>  		oflags &=3D ~O_CREAT;
+> =20
+> -	open->op_filp =3D do_lookup_open(&parent,
+> -				       &QSTR_LEN(open->op_fname,
+> -						 open->op_fnamelen),
+> -				       oflags,
+> -				       open->op_iattr.ia_mode);
+> +	open->op_filp =3D vfs_lookup_open(&parent,
+> +					&QSTR_LEN(open->op_fname,
+> +						  open->op_fnamelen),
+> +					oflags,
+> +					open->op_iattr.ia_mode);
+>  	if (IS_ERR(open->op_filp)) {
+> -		status =3D nfserrno(PTR_ERR(open->op_filp));
+> +		int hosterr =3D PTR_ERR(open->op_filp);
+> +
+> +		/*
+> +		 * NFS doesn't differentiate between device files and
+> +		 * sock/fifo when reporting an error.
+> +		 */
+> +		if (hosterr =3D=3D -ENODEV)
+> +			hosterr =3D -EFTYPE;
+> +		status =3D nfserrno(hosterr);
+>  		open->op_filp =3D NULL;
+>  		if (status =3D=3D nfserr_noent && create_status)
+>  			status =3D create_status;
+>=20
+> base-commit: f5dc2038906bb0c9627c99bea06dd7786b5ac2d1
+
+
+This looks good to me, but sashiko noted a lockdep issue you probably
+want to address:
+
+    https://sashiko.dev/#/patchset/178831622346.3510150.1073595830842947307=
+6%40noble.neil.brown.name
+
+Other than that though, this looks good to me. Much less "fiddly".
+
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
