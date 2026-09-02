@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F3DD74A9D5D;
-	Wed,  2 Sep 2026 18:54:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B29DE4AA1DF;
+	Wed,  2 Sep 2026 18:54:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788375287; cv=none; b=UQJiLZaipFh/VXazFw2wYp241sxWlgbLnBh9DPWlPQi+q3DGNNCEOgrb81f5GHHwDyt83SyH4BChnXmc/CakFxrdXSWPLWofBDMf/yW62CO8GcRKK8QxToL0ljUkvHAMm83sq7gKqK2MEKgD1KzodtBGyFX0Kkifcz2MgUNySOw=
+	t=1788375288; cv=none; b=UtJTd3IyyuOo0FPKawmfVR8i1ZY2V6hvMJYD7t+ER/r7otj9YEJNT8hvsq8bQdDVigTa9/kxhIxherDptlDLAI7qU8zhkZRkN8/xfVasGHoXCFLerAOyyLBANLKB5nXmY9ZjX2SfeNyXq9vPaU/SrF/HPo3aGV3ygshamLDe7KQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788375287; c=relaxed/simple;
-	bh=/eD5cyT7CirSAi0kMLU3XK8j24Z3auA6vy+6YQ9zn4E=;
+	s=arc-20240116; t=1788375288; c=relaxed/simple;
+	bh=zpOnJGCqrB02h1B0d3zznq9I/x9ePX3EJZB75zgYoog=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=K2Z/mWDKaZq3wVxvj258GSCNBy5kePkLPDNf3CSHBB0I7+g+uP1jrCasdS0zE27gzhi9xAUVVTCplfsD47pazOfbOPyVf/SgxGSecQe7aHN7mMD3AzlmnwtPVG8Zh2hh3KxGIqOslJO8/zDB7eL4SYaM85Fz/iZvGCEChGX+nSI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=J9r+364W; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=oJTpr1AXzowRB/YiHZFNB7bSQdsMHK8fsE9Q14vFmBia4FGHXFxOA+wx9V2u86DfK/J8cDanC4s2y2AHg0+3Qi2Z21oP1+kUj3rzlSv63q6viPNQaMoxY3aBiy74WLtoE0JyEXWIA1495GbJel072rA5JYOZ7aBmuW5qpR5POIQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jbplDDe6; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="J9r+364W"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A9F691F00A3F;
-	Wed,  2 Sep 2026 18:54:40 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jbplDDe6"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8567E1F00A3E;
+	Wed,  2 Sep 2026 18:54:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788375281;
-	bh=AXswzJOFdj80SowRy9NB1ZtK77r2HhR7iPANbiNaBd8=;
+	s=k20260515; t=1788375280;
+	bh=S3QnQC4IINb1+lU+a8EnNno4pHTc1k1fQ6VDr+Wyy2Y=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=J9r+364WUUPc3rrYszMq5IC8h1T+nqaZ3jLuTG+15PX6C1Lqy9oGeKaQpDqBm2aet
-	 qYz/fYqdZinz/bJlh7bDPNXu+Hc/PY0HTPB4NqeDCRuDZumxtkKaRZA9CgpFGR8yrQ
-	 B+uniqE80q0vXLsAveYzoz6eq4d2Ey0Q6NR+rTM1McFKL6hTwTVkYcS9rINAl3Ykn/
-	 RoF2o4cSLj9mBvVaJL16pRWPWJhZZrqNpTpWRcNj69ViyI9HPzHnHsR4kGPs9sKq1E
-	 LPxthAUiAuXi6uBzKmiG0lVSKD0dUQpUIsZ6ZCa/bB+03gDgtJD+6rYaQ7H4UBKu1L
-	 LKUG/jMpifu2g==
+	b=jbplDDe6JZWLUyinm/XwQ17joUyEIcqL3R776mr6pL6KSzIqYbl3oZJJGzTZNnWz/
+	 lY3MxKXtMkerRMNWQ9vi+3zRJi83TZKS2qKVe4qFVrUPVQoq4XQ+EXVo1FADxWvNMT
+	 pWrRNr6Ai6n48vgMgzPDtAQsQe2blXHPEVyqYSQ1jP4/5r5RUdeY+VbfIHm+fjHMu8
+	 lUuorjQJyOKia6bJQji2jXj+5kLSdIdiqu1HN3Wxe85whtn/LogjZfc0yjixcBRA/l
+	 goyDFRuVzBVB2Zv9b9oc5KqzZy/PvN8k+O0KA+oKypLwLrUYza/F9k5B+Z1tM7b27m
+	 x3WERaX6m5nNg==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Wed, 02 Sep 2026 14:54:16 -0400
-Subject: [PATCH v2 3/3] nfsd: compare CB_GETATTR times against the inode
+Date: Wed, 02 Sep 2026 14:54:15 -0400
+Subject: [PATCH v2 2/3] nfsd: accept a backdated timestamp from a
+ delegation holder
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260902-delegts-v2-3-383cb289ce88@kernel.org>
+Message-Id: <20260902-delegts-v2-2-383cb289ce88@kernel.org>
 References: <20260902-delegts-v2-0-383cb289ce88@kernel.org>
 In-Reply-To: <20260902-delegts-v2-0-383cb289ce88@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -48,186 +49,161 @@ Cc: Thomas Haynes <loghyr@gmail.com>, linux-nfs@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6438; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=/eD5cyT7CirSAi0kMLU3XK8j24Z3auA6vy+6YQ9zn4E=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqmHDsvUxEmF21iOjcL0cc46wT8vHGMDG9R1Puj
- YPhNJDWD6CJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaphw7AAKCRAADmhBGVaC
- FY0/D/0UQ/2/VjuIczmJvRL5q8xt2mkGAir7LpQF7oQSTIvYcJNaiAA9zM2rzIhsgsh8heq4/oG
- FZH+IkZxkkopXKsFm3fMH+xJJoemKBwOwCsW8kSO1WljrjUCdnAGQudvwpOX66vaogGQsPKzS5F
- y4ALYkE9iR8HC7dWoT/VjdXArQ2IvO+TFedrOjxJ5NmqzasWK0A44esdZl5s+lfdPGBwI59dO8n
- 4UC3emRMSz3Ddqz8k0Js5vHFGvPDSZ+B+iTAaHD312oiHwJVD8rzT3SEJFK6OkSEbp4e19dTIjR
- oyye+Let06f7vDpaK0oDCB+nObh0PJu+ncxru0CFQK/KGPJ1nmKw+I8FhqcckmTezdYSiK/h/BM
- jRbkjXm0PuLVNg9tgoN5JrIlvEDQgh2iBX7OXYyIi/vCOld2V8fXW8GI7VqVGOHdgyp8pxB4SVj
- VhzkPZSTduxsMF62Es4ZHxS1ckFQWzRzQjH1qycaTu3/i7fuXmg1c39Yos2Rk0zAa7WswBuZMll
- zdf+c00Aw8h+W9q1GXmWemnwL8blqGefd6g2uJdW+7fkubl3Fyb3Qhh3AY6zrNhupF/htc31rqA
- /0CO4ROSPDYfMhi8qmw1yYcKFdSv70R1VM+llP1UiMrT32zpwxwtOFwq60cy1hekDS+ykDPVMxS
- vfEvTzrgxnLp5Bg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6270; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=zpOnJGCqrB02h1B0d3zznq9I/x9ePX3EJZB75zgYoog=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqmHDsQgSkvFxr2DA2fKK9iipK+tQzITNNguwn2
+ D9SrBDaDLWJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaphw7AAKCRAADmhBGVaC
+ FRRoD/9XNn5IsikH7EfTaQXG37tHQVDyNQsLJmJZDzyAupdYefGKJSH/Fa/wHwqw+YP9blwVuau
+ R/5FyCfm6Nbj1BUfJEV4mQjPaYsLYrvWtRzKzZvUHs06acLgyhYU4sAxK1HCfuIDUNLAPsyz836
+ oVVXwK5zQZXFl6HgnkM5ZyfcHWt9C+mi3nOPZfZwPFWnpjJaI5Q3NnmNFGoEOz4cvpMVAlCGY7Q
+ n13G2OXRYf5hQBEiL8B6HST2R/mOj7Ze+ASEYXTg+D8UpdBtSZlgUDqXRHYyrFah/dz3yk7xWYX
+ VTduRIfhEpB1BT4andfb9/Gp/BdHG6FHRtGLPoOUm720AhBqvzahdaF252vo16XT7AkWyzU7f/m
+ 3Rhi3J372Ricir+RSFYC/t9987S5R4Yi2aBw0dnuhNeWCMn83hlGmPYVpLnjTpQPzh3BT8hm0y9
+ BHj+TLzP/2Iv6p3YHhT6H3i8K4xVfH3AZvn9VhVnNaQ/dubW4Yav5NxNa4oAaTJWCZou/mDtRwN
+ DxTIV8y9xPvFhj0NqA1WfNoTzyivUERXYsI1vU3iemsfm5Bp6EBtD2ZJ3zewr3lofyLSupqkwcY
+ eOjn/YTB8CaHsGRSAhjTMPyIB1cmTzx0qDI0iH97ntP2XkgICc6QGoyHOss18HuIhaP5DJRYkBC
+ 2n2HEpb+rHsw4yw==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-cb_getattr_update_times() vets the times that a client reports in a
-CB_GETATTR against dl_atime, dl_mtime and dl_ctime. nfsd samples those
-three when it grants the delegation, and nothing refreshes them. An
-earlier CB_GETATTR or SETATTR can move the inode past them.
+A client with an attribute delegation reports the file times in a
+SETATTR at DELEGRETURN. nfsd ignores a time that moves backwards. If the
+file was written, nfsd4_finalize_deleg_timestamps() then stamps the
+c/mtime with the current time, so the file keeps the DELEGRETURN time.
+cp -p, rsync -t and tar -x lose timestamps. The SETATTR returns NFS4_OK.
 
-The vetting then compares against a stale value and accepts a report
-that it must reject. setattr_copy() applies the atime and the mtime with
-no check of the current value, so both move backwards. That is the
-result the vetting exists to prevent.
+The client applies an explicit utimensat() to its own inode. It sends no
+SETATTR while it holds the delegation, so the backdated value reaches
+nfsd only as TIME_DELEG_MODIFY. The client can send an RPC for each time
+change instead. That also works, but it loses the caching that the
+delegation allows.
 
-Compare against the inode instead. Take the inode lock before the
-comparison, so that a setattr from a concurrent delegation break cannot
-land before notify_change() runs.
+The delegation makes the client the authority for these times, so treat
+its SETATTR as a statement of fact. The client can set the same value
+with an ordinary SETATTR, which nfsd applies without a check.
 
-With this change, there is no longer a need to keep dl_atime/mtime/ctime
-in the delegation. Drop those fields as well. That also drops a read of
-an uninitialized struct kstat: the read-delegation arm assigned
-stat.atime to dl_atime even when nfs4_delegation_stat() had not run.
-Nothing consumed the value, since dl_atime is only read under
-deleg_attrs_deleg().
+- nfsd accepts a backwards atime or mtime.
+- An mtime that moves backwards sets the ctime to the current time.
+  inode_set_ctime_deleg() does that, so nfsd does not compare against the
+  ctime here. The ctime never moves backwards.
+- The client reports the times at every DELEGRETURN, changed or not. Drop
+  a report that already matches the inode, and leave the ctime alone when
+  neither the mtime nor the data moved. Otherwise an untouched file gets a
+  new change attribute every time a delegation comes back and every other
+  client drops its cache, notify_change() runs for nothing, and a holder
+  that does not own the file gets -EPERM out of setattr_prepare() where it
+  used to get NFS4_OK.
+- dl_setattr stops nfsd4_finalize_deleg_timestamps() from stamping over
+  the reported times, so only the branch that carries a c/mtime update may
+  set it. A write that follows a no-op SETATTR would otherwise lose its
+  timestamps.
+- nfsd still clamps a future time.
+- The CB_GETATTR path keeps the old rule. A backwards time there shows
+  a stale report.
+
+RFC 9754 says that the server ignores a time before the original time.
+This patch does not follow that sentence. The same section also says
+that the server MUST accept the change or MUST reject it with
+NFS4ERR_DELAY. A silent discard does neither. A retry after
+NFS4ERR_DELAY carries the same backdated value, so that option cannot
+succeed.
+
+There is still one gap: nfsd cannot tell an explicit utimensat() from a
+report of a write. An mtime after the ctime and before the current time
+therefore sets the ctime to that mtime, instead of to "now". RFC 9754
+requires this. Fixing that would require the client to issue an RPC for
+the mtime.
 
 Fixes: 3952f1cbcbc4 ("nfsd: fix SETATTR updates for delegated timestamps")
 Assisted-by: LLM
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4state.c | 49 +++++++++++++++++++++++++++++++------------------
- fs/nfsd/state.h     |  8 --------
- 2 files changed, 31 insertions(+), 26 deletions(-)
+ fs/nfsd/nfs4proc.c | 63 +++++++++++++++++++++++++++++++++++++++++++-----------
+ 1 file changed, 51 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ae0af9490fb1..b2b8d3a8030b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -7307,9 +7307,6 @@ nfs4_open_delegation(struct svc_rqst *rqstp, struct nfsd4_open *open,
- 		open->op_delegate_type = deleg_ts ? OPEN_DELEGATE_WRITE_ATTRS_DELEG :
- 						    OPEN_DELEGATE_WRITE;
- 		dp->dl_cb_fattr.ncf_initial_cinfo = nfsd4_change_attribute(&stat);
--		dp->dl_atime = stat.atime;
--		dp->dl_ctime = stat.ctime;
--		dp->dl_mtime = stat.mtime;
- 		spin_lock(&f->f_lock);
- 		if (deleg_ts)
- 			f->f_mode |= FMODE_NOCMTIME;
-@@ -7318,7 +7315,6 @@ nfs4_open_delegation(struct svc_rqst *rqstp, struct nfsd4_open *open,
- 	} else {
- 		open->op_delegate_type = deleg_ts && nfs4_delegation_stat(dp, currentfh, &stat) ?
- 					 OPEN_DELEGATE_READ_ATTRS_DELEG : OPEN_DELEGATE_READ;
--		dp->dl_atime = stat.atime;
- 		trace_nfsd_deleg_read(&dp->dl_stid.sc_stateid);
- 	}
- 	nfs4_put_stid(&dp->dl_stid);
-@@ -10447,7 +10443,7 @@ nfsd4_get_writestateid(struct nfsd4_compound_state *cstate,
- /**
-  * nfsd4_vet_deleg_time - vet and set the timespec for a delegated timestamp update
-  * @req: timestamp from the client
-- * @orig: original timestamp in the inode
-+ * @cur: current timestamp in the inode
-  * @now: current time
-  *
-  * Given a timestamp from the client response, check it against the
-@@ -10455,15 +10451,17 @@ nfsd4_get_writestateid(struct nfsd4_compound_state *cstate,
-  * if the inode's timestamp needs to be updated, and false otherwise.
-  * @req may also be changed if the timestamp needs to be clamped.
-  */
--bool nfsd4_vet_deleg_time(struct timespec64 *req, const struct timespec64 *orig,
--			  const struct timespec64 *now)
-+static bool nfsd4_vet_deleg_time(struct timespec64 *req,
-+				 const struct timespec64 *cur,
-+				 const struct timespec64 *now)
- {
--
- 	/*
--	 * "When the time presented is before the original time, then the
--	 *  update is ignored." Also no need to update if there is no change.
-+	 * RFC 9754 has the server ignore a time that is before the original
-+	 * one. Compare against the value in the inode rather than the original:
-+	 * an earlier CB_GETATTR or SETATTR may have moved it, and a report that
-+	 * does not advance it is stale.
- 	 */
--	if (timespec64_compare(req, orig) <= 0)
-+	if (timespec64_compare(req, cur) <= 0)
- 		return false;
- 
- 	/*
-@@ -10484,30 +10482,45 @@ static int cb_getattr_update_times(struct dentry *dentry, struct nfs4_delegation
- 	struct iattr attrs = { };
- 	int ret;
- 
-+	/*
-+	 * Take the inode lock first, so that a setattr from a delegation break
-+	 * cannot land between the comparison and notify_change(). The atime can
-+	 * still move under us: touch_atime() takes no lock, and FMODE_NOCMTIME
-+	 * does not cover it.
-+	 */
-+	inode_lock(inode);
-+
- 	if (deleg_attrs_deleg(dp->dl_type)) {
- 		struct timespec64 now = current_time(inode);
-+		struct timespec64 atime = inode_get_atime(inode);
-+		struct timespec64 mtime = inode_get_mtime(inode);
- 
- 		attrs.ia_atime = ncf->ncf_cb_atime;
- 		attrs.ia_mtime = ncf->ncf_cb_mtime;
- 
--		if (nfsd4_vet_deleg_time(&attrs.ia_atime, &dp->dl_atime, &now))
-+		if (nfsd4_vet_deleg_time(&attrs.ia_atime, &atime, &now))
- 			attrs.ia_valid |= ATTR_ATIME | ATTR_ATIME_SET;
- 
--		if (nfsd4_vet_deleg_time(&attrs.ia_mtime, &dp->dl_mtime, &now)) {
--			attrs.ia_valid |= ATTR_MTIME | ATTR_MTIME_SET;
-+		/*
-+		 * A change to the mtime must show in the ctime.
-+		 * inode_set_ctime_deleg() takes the mtime when it advances the
-+		 * ctime, and stamps the current time otherwise.
-+		 */
-+		if (nfsd4_vet_deleg_time(&attrs.ia_mtime, &mtime, &now)) {
-+			attrs.ia_valid |= ATTR_MTIME | ATTR_MTIME_SET |
-+					  ATTR_CTIME | ATTR_CTIME_SET;
- 			attrs.ia_ctime = attrs.ia_mtime;
--			if (nfsd4_vet_deleg_time(&attrs.ia_ctime, &dp->dl_ctime, &now))
--				attrs.ia_valid |= ATTR_CTIME | ATTR_CTIME_SET;
- 		}
- 	} else {
- 		attrs.ia_valid |= ATTR_MTIME | ATTR_CTIME;
- 	}
- 
--	if (!attrs.ia_valid)
-+	if (!attrs.ia_valid) {
-+		inode_unlock(inode);
- 		return 0;
-+	}
- 
- 	attrs.ia_valid |= ATTR_DELEG;
--	inode_lock(inode);
- 	ret = notify_change(&nop_mnt_idmap, dentry, &attrs, NULL);
- 	inode_unlock(inode);
- 	return ret;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index cd9294f024bb..e7fe2af45f53 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -330,11 +330,6 @@ struct nfs4_delegation {
- 		struct nfsd4_cb_notify	dl_cb_notify;
- 	};
- 
--	/* For delegated timestamps */
--	struct timespec64	dl_atime;
--	struct timespec64	dl_mtime;
--	struct timespec64	dl_ctime;
--
- 	/* For dir delegations */
- 	u32			dl_notify_mask;
- 	u32			dl_child_attrs[2];
-@@ -357,9 +352,6 @@ static inline bool deleg_attrs_deleg(u32 dl_type)
- 	       dl_type == OPEN_DELEGATE_WRITE_ATTRS_DELEG;
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index bb74eef43938..36fead027fce 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1292,27 +1292,66 @@ nfsd4_secinfo_no_name_release(union nfsd4_op_u *u)
  }
  
--bool nfsd4_vet_deleg_time(struct timespec64 *cb, const struct timespec64 *orig,
--			  const struct timespec64 *now);
--
- #define cb_to_delegation(cb) \
- 	container_of(cb, struct nfs4_delegation, dl_recall)
+ /*
+- * Validate that the requested timestamps are within the acceptable range. If
+- * timestamp appears to be in the future, then it will be clamped to
+- * current_time().
++ * A client holding a delegation with delegated timestamps is the authority for
++ * the file's timestamps, so a SETATTR from it asserts what they are rather than
++ * reporting that they have advanced. Honor a value that moves a timestamp
++ * backwards: the client could set the same value with an ordinary SETATTR, so
++ * refusing it here only loses data. Clamp a value in the future to the current
++ * time, as RFC 9754 permits.
++ */
++static void
++clamp_deleg_time(struct timespec64 *req, const struct timespec64 *now)
++{
++	if (timespec64_compare(req, now) > 0)
++		*req = *now;
++}
++
++/*
++ * Apply the timestamps that a delegation holder supplied in a SETATTR.
+  */
+ static void
+ vet_deleg_attrs(struct nfsd4_setattr *setattr, struct nfs4_delegation *dp)
+ {
+-	struct timespec64 now = current_time(dp->dl_stid.sc_file->fi_inode);
++	struct inode *inode = dp->dl_stid.sc_file->fi_inode;
++	struct timespec64 now = current_time(inode);
+ 	struct iattr *iattr = &setattr->sa_iattr;
  
+-	if ((setattr->sa_bmval[2] & FATTR4_WORD2_TIME_DELEG_ACCESS) &&
+-	    !nfsd4_vet_deleg_time(&iattr->ia_atime, &dp->dl_atime, &now))
+-		iattr->ia_valid &= ~(ATTR_ATIME | ATTR_ATIME_SET);
++	/*
++	 * The client reports the times at every DELEGRETURN, changed or not.
++	 * Drop a report that matches the inode. An untouched file then keeps its
++	 * change attribute, and nfsd_setattr() skips the call into the
++	 * filesystem.
++	 *
++	 * The times are read without i_rwsem. A conflicting writer must break
++	 * the delegation first, and FMODE_NOCMTIME stops the holder's own writes
++	 * from stamping the c/mtime. touch_atime() and a CB_GETATTR can still
++	 * move them here. A stale read then costs at most one extra update.
++	 */
++	if (setattr->sa_bmval[2] & FATTR4_WORD2_TIME_DELEG_ACCESS) {
++		struct timespec64 atime = inode_get_atime(inode);
++
++		clamp_deleg_time(&iattr->ia_atime, &now);
++
++		if (timespec64_equal(&iattr->ia_atime, &atime))
++			iattr->ia_valid &= ~(ATTR_ATIME | ATTR_ATIME_SET);
++	}
+ 
+ 	if (setattr->sa_bmval[2] & FATTR4_WORD2_TIME_DELEG_MODIFY) {
+-		if (nfsd4_vet_deleg_time(&iattr->ia_mtime, &dp->dl_mtime, &now)) {
++		struct timespec64 mtime = inode_get_mtime(inode);
++
++		clamp_deleg_time(&iattr->ia_mtime, &now);
++
++		if (dp->dl_written ||
++		    !timespec64_equal(&iattr->ia_mtime, &mtime)) {
+ 			iattr->ia_ctime = iattr->ia_mtime;
+-			if (nfsd4_vet_deleg_time(&iattr->ia_ctime, &dp->dl_ctime, &now))
+-				dp->dl_setattr = true;
+-			else
+-				iattr->ia_valid &= ~(ATTR_CTIME | ATTR_CTIME_SET);
++
++			/*
++			 * Keep nfsd4_finalize_deleg_timestamps() from stamping
++			 * over the values the client just supplied. Only the
++			 * branch that carries a c/mtime update may set this, or
++			 * a write after a no-op SETATTR loses its timestamps.
++			 */
++			dp->dl_setattr = true;
+ 		} else {
+ 			iattr->ia_valid &= ~(ATTR_CTIME | ATTR_CTIME_SET |
+ 					     ATTR_MTIME | ATTR_MTIME_SET);
 
 -- 
 2.55.0
