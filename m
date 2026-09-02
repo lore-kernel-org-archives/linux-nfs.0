@@ -1,667 +1,226 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from SN4PR2101CU001.outbound.protection.outlook.com (mail-southcentralusazon11012039.outbound.protection.outlook.com [40.93.195.39])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9549A463B97;
-	Wed,  2 Sep 2026 11:10:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788347449; cv=none; b=MU6zbMH1+uboHAn/v0Zn3Hy34Blzhfc/QCu/BjycTTDl5IlDvL2oM9GB5s8XAVeYKBdmQJTVtRHK3KghHgX17kv0IXZJQSpm1aC6wIyd9C8ELn3DROTYrwvR+ggcIfkae9G0e7SeXmunkUWn5DRrPMS0rsvOHaimC+4vQyLy3Tg=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788347449; c=relaxed/simple;
-	bh=7fgBuZLiNimVvrD80umRECR/8moutXANtquWFazfRuI=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=VbunE86OpCPfEu+lVRbF4oDlSoYf+Fz5x+AvSUat9wPHwlUus0HaEEhlZdMYg2JGodPzImtFCOTLsydfoVnw3mThXCN8qISsK+15R8wzLqyYA1xtjE1xXI/5unXSaGW3Ecfsf2eYxYLUhSho1hOeUYTj/Pf0jagufgz+Cu9UJjw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=g+I5jb3a; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=5f+kPJ/G; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=i4awXZwZ; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=2t8d14Fr; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1FA093AAF62;
+	Wed,  2 Sep 2026 11:19:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=40.93.195.39
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1788347984; cv=fail; b=onxqKfg5l10sSChYCKVA+w561BsdadbJssydEzdp127nVg8Xt74um//dmMUUYhdtgzvgBLvaIz2QBqBIKdO36w69fSRfgzijQLr4ldX9V2hpWa0UMPoaxGJBxnIM4dFAWM6MRAxLqWT7xKJsHCzGd659MBxdMkbzoV1bbTYMpi8=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1788347984; c=relaxed/simple;
+	bh=lF2CjMtGkLotObvf148MSQxhKgfXFbAl0A/EfyUbpPM=;
+	h=From:To:CC:Subject:Date:Message-ID:References:In-Reply-To:
+	 Content-Type:MIME-Version; b=pIgLFvv0gjAKW39xTqqwsoR+gleOWuwlx264wWPZ4jitq7NKY1NF+ytO+nw0GNnqLk6RAxS3ifK64cvhcabv/8DPUCUYiVjibIl/Is1f9y4MHPAkqDqOmdA7FzSXjvooY0coPUUjnnvAvQ4uL+8GNwiciz6BS1Mbwu9oyVtOe9A=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=amd.com; spf=fail smtp.mailfrom=amd.com; dkim=pass (1024-bit key) header.d=amd.com header.i=@amd.com header.b=JEVMkraW; arc=fail smtp.client-ip=40.93.195.39
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=amd.com
+Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=amd.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="g+I5jb3a";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="5f+kPJ/G";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="i4awXZwZ";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="2t8d14Fr"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 926EF21B42;
-	Wed,  2 Sep 2026 11:10:28 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1788347432; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=BITWzZNmeMDjm8k0eeXsWYV9IVxG5MPwzg3kkMKHdxQ=;
-	b=g+I5jb3asJP+DKcimiRb8lMZ++xAI7e2WzajCxek4Z+naQuPfb2i9zf4BHDq3y15JYnD1f
-	XaKdLVhStJe1q+eQ5OeU0m5V/KeBEMECj268oDP1ucvfy+ou4G0z+JfdR4fS9q0MvrVTq/
-	Z56Zzzej/Q7g2n0BWYU2WJuvjrN0YiM=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1788347432;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=BITWzZNmeMDjm8k0eeXsWYV9IVxG5MPwzg3kkMKHdxQ=;
-	b=5f+kPJ/GQDsaj2GCpHy4ZaJNjwGFHwHsHw1le0uJQISQShyVz6yOKrkx6j+Ws1glwGHb48
-	g53IwnZ75eVvcNBA==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1788347428; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=BITWzZNmeMDjm8k0eeXsWYV9IVxG5MPwzg3kkMKHdxQ=;
-	b=i4awXZwZDEbDUKl5PuZMLuv4fAG+zxQkSnvzxiBitiZMMBsf0g1cE8MpV4/h5lo3tnJlXQ
-	piujfbimJHaAft5lg/W49LZ8XMj4hnQCy9a+22z2Oxmq39X/GkBMaiTj2O48BKNbvPG+YP
-	xcFwWCUicCIDIFUhQ+fmFn92PXHbDJw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1788347428;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=BITWzZNmeMDjm8k0eeXsWYV9IVxG5MPwzg3kkMKHdxQ=;
-	b=2t8d14Frtqy5p5X0Qwz58MNM/6zuEg4VBi6uFTJX3734DPJBg7Fs3T6g4+sYLLGvl2ILAo
-	Os2B7K3OBp4bp9CA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 6E93713515;
-	Wed,  2 Sep 2026 11:10:28 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 82D2GiQEmGqBSQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 02 Sep 2026 11:10:28 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id E0738A13B5; Wed, 02 Sep 2026 13:10:27 +0200 (CEST)
-Date: Wed, 2 Sep 2026 13:10:27 +0200
-From: Jan Kara <jack@suse.cz>
-To: Shivank Garg <shivankg@amd.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>, 
-	David Hildenbrand <david@kernel.org>, Zi Yan <ziy@nvidia.com>, Matthew Brost <matthew.brost@intel.com>, 
-	Joshua Hahn <joshua.hahnjy@gmail.com>, Rakie Kim <rakie.kim@sk.com>, Byungchul Park <byungchul@sk.com>, 
-	Gregory Price <gourry@gourry.net>, Ying Huang <ying.huang@linux.alibaba.com>, 
-	Alistair Popple <apopple@nvidia.com>, Vlastimil Babka <vbabka@kernel.org>, 
-	Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, 
-	Brendan Jackman <brendan.jackman@linux.dev>, Johannes Weiner <hannes@cmpxchg.org>, SJ Park <sj@kernel.org>, 
-	Jason Gunthorpe <jgg@ziepe.ca>, John Hubbard <jhubbard@nvidia.com>, Peter Xu <peterx@redhat.com>, 
-	Miaohe Lin <linmiaohe@huawei.com>, Naoya Horiguchi <nao.horiguchi@gmail.com>, 
-	Oscar Salvador <osalvador@suse.de>, Kairui Song <kasong@tencent.com>, Qi Zheng <qi.zheng@linux.dev>, 
-	Shakeel Butt <shakeel.butt@linux.dev>, Barry Song <baohua@kernel.org>, 
-	Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>, 
-	Lorenzo Stoakes <ljs@kernel.org>, "Matthew Wilcox (Oracle)" <willy@infradead.org>, 
-	Jan Kara <jack@suse.cz>, Jonathan Corbet <corbet@lwn.net>, 
-	Shuah Khan <skhan@linuxfoundation.org>, Randy Dunlap <rdunlap@infradead.org>, 
-	Alexander Viro <viro@zeniv.linux.org.uk>, Christian Brauner <brauner@kernel.org>, 
-	Benjamin LaHaise <bcrl@kvack.org>, Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.com>, 
-	Muchun Song <muchun.song@linux.dev>, Dave Kleikamp <shaggy@kernel.org>, 
-	Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
-	Mike Rapoport <rppt@kernel.org>, Sean Christopherson <seanjc@google.com>, 
-	Paolo Bonzini <pbonzini@redhat.com>, Bharata B Rao <bharata@amd.com>, 
-	David Rientjes <rientjes@google.com>, Yiannis Nikolakopoulos <yiannis@zptcorp.com>, linux-mm@kvack.org, 
-	linux-kernel@vger.kernel.org, damon@lists.linux.dev, linux-cxl@vger.kernel.org, 
-	linux-fsdevel@vger.kernel.org, linux-doc@vger.kernel.org, linux-aio@kvack.org, 
-	linux-btrfs@vger.kernel.org, jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org, 
-	kvm@vger.kernel.org
-Subject: Re: [PATCH RFC 11/11] mm/migrate: pass migrate_control to
- migrate_folio()
-Message-ID: <gz3vibrercrujs6oykvlsyrgwaslpzjgmegnouthmkjaswznzg@haaqpwmacdwc>
+	dkim=pass (1024-bit key) header.d=amd.com header.i=@amd.com header.b="JEVMkraW"
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=aPz7I8sOGf1NyMjzrEGTZSXSA3XGgcittYVG4J0qhS1G175cQBEJ47Gb/YK/1oECZoVNEfE+r+ShjPKP8Z/4CGXcjwqso8hAf1fSdJvcQKVhFAFd2obbXwbH/SZSMWSgSDm+SQB94vKgMUC2bBBvGGQYG1RLzCxIdodX7Qcp/8kmN3oaBYA/SZu/+tLP7xKUX21ojPUUWwlcxR+pR/C2S7Gw6zfpT5DqZ6aujxrb3+OxxpyjLMzPCiCvzN2+z3TziF346V2wKeyqBDel3OyfhT3XpGHBzDc4RtmFfcty9TwS2PtBQXBRcg1AegoINpgPRlMw+KpaXekmnAjg8syuGw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=lF2CjMtGkLotObvf148MSQxhKgfXFbAl0A/EfyUbpPM=;
+ b=h0OJCh5KRtHBJa9K0X1Te4Xbvvy9w5Em8OZLwwb7CPad3vpJtTzx5PoJsewVqKSeq9jiUrZHhtrCgienzY8FEto5AsZYO6XS9NKvdcPtrULVXvuSzlnqcvW3n3axVGwYakjeyACSG/NK0w2YlC7/TFF7kO6TXKwQl7BeKszwa9svfMDRLr6CN5hzkP7kLb4S6F6X5brCkQH2wafbYzoVzTNRShqgiJ9DUj3jxTYi3m8iKzQEoohXieO3wNWxtFda64F6NJ9ZdIw/ZB8s/pHa79JyMl1PYN734W8fwIAWB1N915FGSHu/GYBWZUcf5FoXxSq7ncHSh68Py4H7XGPuew==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=amd.com; dmarc=pass action=none header.from=amd.com; dkim=pass
+ header.d=amd.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=amd.com; s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=lF2CjMtGkLotObvf148MSQxhKgfXFbAl0A/EfyUbpPM=;
+ b=JEVMkraWy6c4Rt8z3Co5cFcXrPwzge3nF+QYXzZR5SpRxzuhRqLF6bCVd2nuLj1oi9bB08Gp36f52vUC4D4VoZApFlv95jYxRYMuDBD4ezCydh5eYyMgv/9kADX9BaVdYxYDzFBhAvuUr0JSKKVsosOQkGQYzFn/viegJu4pvqo=
+Received: from BN9PR12MB5259.namprd12.prod.outlook.com (2603:10b6:408:100::17)
+ by MN0PR12MB6031.namprd12.prod.outlook.com (2603:10b6:208:3cd::7) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.360.13; Wed, 2 Sep
+ 2026 11:19:37 +0000
+Received: from BN9PR12MB5259.namprd12.prod.outlook.com
+ ([fe80::122c:cca7:c2b3:90ed]) by BN9PR12MB5259.namprd12.prod.outlook.com
+ ([fe80::122c:cca7:c2b3:90ed%2]) with mapi id 15.21.0360.008; Wed, 2 Sep 2026
+ 11:19:37 +0000
+From: "Garg, Shivank" <shivankg@amd.com>
+To: "ying.huang@linux.alibaba.com" <ying.huang@linux.alibaba.com>,
+	"sj@kernel.org" <sj@kernel.org>, "shakeel.butt@linux.dev"
+	<shakeel.butt@linux.dev>, "joshua.hahnjy@gmail.com"
+	<joshua.hahnjy@gmail.com>, "david@kernel.org" <david@kernel.org>,
+	"mhocko@suse.com" <mhocko@suse.com>, "viro@zeniv.linux.org.uk"
+	<viro@zeniv.linux.org.uk>, "hannes@cmpxchg.org" <hannes@cmpxchg.org>,
+	"jack@suse.cz" <jack@suse.cz>, "kasong@tencent.com" <kasong@tencent.com>,
+	"rientjes@google.com" <rientjes@google.com>, "anna@kernel.org"
+	<anna@kernel.org>, "weixugc@google.com" <weixugc@google.com>, "jgg@ziepe.ca"
+	<jgg@ziepe.ca>, "corbet@lwn.net" <corbet@lwn.net>, "gourry@gourry.net"
+	<gourry@gourry.net>, "Rao, Bharata Bhasker" <bharata@amd.com>,
+	"byungchul@sk.com" <byungchul@sk.com>, "yuanchu@google.com"
+	<yuanchu@google.com>, "rdunlap@infradead.org" <rdunlap@infradead.org>,
+	"axelrasmussen@google.com" <axelrasmussen@google.com>, "rppt@kernel.org"
+	<rppt@kernel.org>, "seanjc@google.com" <seanjc@google.com>, "bcrl@kvack.org"
+	<bcrl@kvack.org>, "nao.horiguchi@gmail.com" <nao.horiguchi@gmail.com>,
+	"willy@infradead.org" <willy@infradead.org>, "osalvador@suse.de"
+	<osalvador@suse.de>, "surenb@google.com" <surenb@google.com>,
+	"jhubbard@nvidia.com" <jhubbard@nvidia.com>, "matthew.brost@intel.com"
+	<matthew.brost@intel.com>, "peterx@redhat.com" <peterx@redhat.com>,
+	"skhan@linuxfoundation.org" <skhan@linuxfoundation.org>, "brauner@kernel.org"
+	<brauner@kernel.org>, "clm@fb.com" <clm@fb.com>, "qi.zheng@linux.dev"
+	<qi.zheng@linux.dev>, "baohua@kernel.org" <baohua@kernel.org>,
+	"rakie.kim@sk.com" <rakie.kim@sk.com>, "brendan.jackman@linux.dev"
+	<brendan.jackman@linux.dev>, "dsterba@suse.com" <dsterba@suse.com>,
+	"apopple@nvidia.com" <apopple@nvidia.com>, "ziy@nvidia.com" <ziy@nvidia.com>,
+	"vbabka@kernel.org" <vbabka@kernel.org>, "pbonzini@redhat.com"
+	<pbonzini@redhat.com>, "ljs@kernel.org" <ljs@kernel.org>,
+	"linmiaohe@huawei.com" <linmiaohe@huawei.com>, "muchun.song@linux.dev"
+	<muchun.song@linux.dev>, "akpm@linux-foundation.org"
+	<akpm@linux-foundation.org>, "yiannis@zptcorp.com" <yiannis@zptcorp.com>,
+	"shaggy@kernel.org" <shaggy@kernel.org>, "trondmy@kernel.org"
+	<trondmy@kernel.org>
+CC: "jfs-discussion@lists.sourceforge.net"
+	<jfs-discussion@lists.sourceforge.net>, "damon@lists.linux.dev"
+	<damon@lists.linux.dev>, "linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"linux-cxl@vger.kernel.org" <linux-cxl@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
+	"linux-aio@kvack.org" <linux-aio@kvack.org>, "linux-doc@vger.kernel.org"
+	<linux-doc@vger.kernel.org>, "linux-nfs@vger.kernel.org"
+	<linux-nfs@vger.kernel.org>, "kvm@vger.kernel.org" <kvm@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: [sos-linux-ext-patches] [PATCH RFC 09/11] mm/migrate: thread
+ migration policy through a control struct
+Thread-Topic: [sos-linux-ext-patches] [PATCH RFC 09/11] mm/migrate: thread
+ migration policy through a control struct
+Thread-Index: AQHdOsmT+W0LNheKIkurwO1qDEWLzLa7JEwA
+Date: Wed, 2 Sep 2026 11:19:37 +0000
+Message-ID: <1508939ba49c28e06b9cec344ec6a69ab57ce8ac.camel@amd.com>
 References: <20260902-migrate-refactor-shivank-v1-0-9dcca87669c4@amd.com>
- <20260902-migrate-refactor-shivank-v1-11-9dcca87669c4@amd.com>
+	 <20260902-migrate-refactor-shivank-v1-9-9dcca87669c4@amd.com>
+In-Reply-To: <20260902-migrate-refactor-shivank-v1-9-9dcca87669c4@amd.com>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach:
+X-MS-TNEF-Correlator:
+authentication-results: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=amd.com;
+x-ms-publictraffictype: Email
+x-ms-traffictypediagnostic: BN9PR12MB5259:EE_|MN0PR12MB6031:EE_
+x-ms-office365-filtering-correlation-id: 6dbeaf07-8e93-4a9d-4d97-08df08e41323
+x-ms-exchange-senderadcheck: 1
+x-ms-exchange-antispam-relay: 0
+x-microsoft-antispam:
+ BCL:0;ARA:13230040|366016|376014|1800799024|23010399003|7416014|38070700021|56012099006|921020|4143699003|6133799003|10067099003|22082099003|18002099003|11063799006;
+x-microsoft-antispam-message-info:
+ 9MJApMCkHPveInhHy/FrmUSZyELPqKJ8H6hemBG8eH14jwWDo9g2mQpBVnpD06O29ttdWpNgJNW5cd1z50r7bRhatKvTN6xcjS2UcphxhWwxrR7aaw5Hyk9fvKhMIBIfvtbjSTMIBuB4ygY8Vc66cpkNhufYjx3OtvZJmagryfcVvDD9WUKHs/tVnzw5RU12DM17xTnUqj/CVJeoI+82H5MFyFG7LyOMPcNEuiRSHCC2PhCsE3ENHzP2GDqfaAYaJq1Cvlm7EpprNRVlzhniKpaRbcgLdpPokph6Wfj8YTW15vIG711hItbzCxttN92ccoT2hIHBziEd/zrseQuIm4W5Rakw8H7pD1+fc9WzIMqga8SA3VqkU8NpHMJQtNGOHjqe3Cyv3npElN6y7JiqxRj5aLbAm1u9tVZ0osd0aEBriwzhPo1VTkBxhRH9jwzsgLr93EZ4dTY9LmcZ91yXWQ/+CWTWK5m9/stPSzHl+z3y50uJnfSaQTEqr7wpEcREiw24pzFSdYCPEDJ1z7LBK5oCM6jCfaljdJ6/LtdsKpcsyAEtepvpzXHpnWTHerHHpSgLBfhEtw3q26MPK37sWmiz+Yc38sCYztKyC+5sMZVzLX448E2y4CJj6qsgonFYh0b3oSA9smYH/ijEev+3Ed9BEWYIfuGOzSt6+mFDd5c23+2gTb7asdVX1v6NWmBVh/KFx1FTS/C9Op9fpxvd4jLqGy2ZyVwitB2sj2UZurI=
+x-forefront-antispam-report:
+ CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN9PR12MB5259.namprd12.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(366016)(376014)(1800799024)(23010399003)(7416014)(38070700021)(56012099006)(921020)(4143699003)(6133799003)(10067099003)(22082099003)(18002099003)(11063799006);DIR:OUT;SFP:1101;
+x-ms-exchange-antispam-messagedata-chunkcount: 1
+x-ms-exchange-antispam-messagedata-0:
+ =?utf-8?B?K2ZscTh1Uyt4bm5oMzg0NnN0dFBtL0JRZFR4OXVWeDJ1ZWNKd0NIdmNJbGtr?=
+ =?utf-8?B?RXZFU0NuVCt5endIdmdRVm51cmF6NUdjTWZvdjhQQW9xM2NLSG01SUM4UHNG?=
+ =?utf-8?B?YnprT2xNWkJLTUdzS3NWV2JocnQ0MEhWcUFHakpkd3RCWGQySUZhNVczaXdH?=
+ =?utf-8?B?UWx0VWJxVDZXakdyS0tGR3dCTW53TThoWFMzeG00SjgzVzlRS1dyOFpBbG42?=
+ =?utf-8?B?VFlPVVRaNnczNTV4ZU5iMTA4NkJPTVpPak5nZFlNRlFRckFNTVFWbWFyalZI?=
+ =?utf-8?B?aHdxcks5V2d1RXFaTHpNb0JVc1pjbTd1QUk5MkllYlU5bjVLSEZKY1RxM3dX?=
+ =?utf-8?B?Zk1rOUxaTXJJSzZ6MjJPUExsZ0tibTFqZEg3eEdlWXlRTVBnU1h0YjAzQlN4?=
+ =?utf-8?B?UElTWDNEeFY4TlBOa1hwVHE1K1Q4NFJIYXFPcEtTU0crVDBRa0N2RjJZVnRX?=
+ =?utf-8?B?R3NNVExOTExOUS8yQUlzS1l4aWJuRUkydGxpSGl3RE14emU1SmVhQ084Zm5N?=
+ =?utf-8?B?MDN0U1E5VVEzRzNhSG9Fc2d1ejFKMTFxTHpwdlQ5K2dZNkhnWmJ1WWkzTjNR?=
+ =?utf-8?B?Uk1sU2ttdDhSYUZLenpUT1BGNkxkR2s2WE5KWGFrMEtNWS9BNG8zNUJjdllV?=
+ =?utf-8?B?MzAzUisvOE01dlltS1JNTmFka2liais2cjdCUVROQXFwWHRMMzFTYkw0YVZ1?=
+ =?utf-8?B?dlM3ZWRiR0RldDFRVHZic2NXbGZyZDRlV3BPWUFQN2svY0RQM2txNjQ5VjZ0?=
+ =?utf-8?B?eWN5T2ZiS0pvblpGaUhuTitPY0tVamJsSndzWThaNTQzZUluQzR2d2NaRE00?=
+ =?utf-8?B?dUJOWDBBSjFDVE5QbWhSdzBsV2pZQzFyTTUzRzNYbzRybmFFZk8xdkFnNlNw?=
+ =?utf-8?B?TnNFcFpaRTV6RW43UVlJcTlDQjJ2TUhEYTRmSEliTEMxc1J1SS9lWUswMWxu?=
+ =?utf-8?B?TEFqRFdQRjJJQTI2MS9ka3BibTFvYWRzMkpBeXI4YTB3a1pRaVNLcDkrNXhz?=
+ =?utf-8?B?cW1VbE1RdjN1L2NDQ0hndWc3RndlMGI3cStWd2tqUHJDQ2JkT01pVUF1YmVU?=
+ =?utf-8?B?aGZlZ2tqNGFNZ3djSlVSQUpvTVZKZEtZaCtRUEtjZjVrakhkbnNnZ2dBRGhj?=
+ =?utf-8?B?SzBqRGxlUlFLVjJLc2ZTYXU3VHYwcDFiQjRNZ09TbXUxbkRQUFRRblRXOStr?=
+ =?utf-8?B?SXVrSjF2MTJMcjMrVURKWUZvWExJNG9ISzdmVUhjeEZzVmNJWVdaN0MvWk00?=
+ =?utf-8?B?Z2gvV0RURnp6ZzdWWWg5RzNiOFBwcVVFN0ZNL2Urejg0cmxabWl2emR3NFhP?=
+ =?utf-8?B?M0V2cjFucXYwSElMTGI4c0R1OUlaOHVFYmtsZENHVzdtaGNNZ1JnaktPVWlB?=
+ =?utf-8?B?SEs0em1NZ1NLRkJzMUdJZFNJeEpKRUNFQkh6VkZxc3hZSWpwQldUYzlRb05J?=
+ =?utf-8?B?OVBjYU0yNVdaZVU5a2NTdzdUTlk3S3FudHRDa05lNHI5djJleTlZMkZ0Z2s4?=
+ =?utf-8?B?T0VVMzlxaWUxaCtaY0NkM2c5SXp0VUoyb1NhN082eUEvQ1NLbGkza3RnWUY1?=
+ =?utf-8?B?TGFFN0hxYlBIMk9RM2lPditoSXVqc1JaTC9JbmJ2dDNaRm5yU1M3S25jNlI1?=
+ =?utf-8?B?SHgwNUxBalZuOFBjK2ZyOW1LeUNhSXQ0ZG5DU3pJTHRwVGE5RjBNbk9ZUHFu?=
+ =?utf-8?B?N3J0V0YwYXNDZlBFNHBnUXdPR3RrTGlqdnFQeG50RFdhL0g1VWFuWHAySkRa?=
+ =?utf-8?B?MEpqQzhCcUhDQmtXNVQ2dEtiMXlsUjBmd2RVb0lIdlBjTFhSVU0vbGJLenoy?=
+ =?utf-8?B?NkZhdUFSZTJ2d3FtVlpDZXF2WVJYOXUxOXBRdWxSaVcyaHRvR0pwUzdoZ3VV?=
+ =?utf-8?B?VkV6RUhnam8xbTN3QlFnbVFyMWt0UXRvdmNGOHFjcU9WNTI4WHo1Vi8xY2xl?=
+ =?utf-8?B?WjlpSXhKVDlQWXpPQnUxbWFxSElSc0w2YjJ0by92Sjhya1BOaXhyOTBOUCsv?=
+ =?utf-8?B?NzUwQ1lTekFoZm5SZHd3b2xUbkNacVdtMEc5UXJGRU9COGhPRktkUVQwT3d3?=
+ =?utf-8?B?UElSQTVaT2xNNUNBVGV0Y05xRm1BSnNWZXVwRmo1WnJKVGNwUnI0OHNGa3VH?=
+ =?utf-8?B?U0RiTGhGQm9XaEIvU3J3QU81VzNiTTFsWEJwUzRQTXRRZE5wY1FXREhSdndz?=
+ =?utf-8?B?bU1ibXZISFBheXhZS1lLNnFKbE54QkphbzJpL2R0aElzTGd4d2gydzdGQ2hs?=
+ =?utf-8?B?b1Q3REFtdTFQM0dLaHozdHhlNjA1VzhTWkZiRCtPTDN3T3VzclEyQXlhNWRG?=
+ =?utf-8?B?VVNuV2IrOHAyRHY5b2JwY3pYUGVwRTI2V3BEbXc2SlRHazZkcGRVUT09?=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <217DE4CD07644847BDA0C6B26664D329@namprd12.prod.outlook.com>
+Content-Transfer-Encoding: base64
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260902-migrate-refactor-shivank-v1-11-9dcca87669c4@amd.com>
-X-Spam-Level: 
-X-Spam-Score: -2.30
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	FREEMAIL_CC(0.00)[linux-foundation.org,kernel.org,nvidia.com,intel.com,gmail.com,sk.com,gourry.net,linux.alibaba.com,google.com,suse.com,linux.dev,cmpxchg.org,ziepe.ca,redhat.com,huawei.com,suse.de,tencent.com,infradead.org,suse.cz,lwn.net,linuxfoundation.org,zeniv.linux.org.uk,kvack.org,fb.com,amd.com,zptcorp.com,vger.kernel.org,lists.linux.dev,lists.sourceforge.net];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	TO_DN_SOME(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	RCPT_COUNT_GT_50(0.00)[62];
-	FROM_HAS_DN(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_SOME(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,imap1.dmz-prg2.suse.org:helo,suse.com:email,amd.com:email]
+X-OriginatorOrg: amd.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: BN9PR12MB5259.namprd12.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 6dbeaf07-8e93-4a9d-4d97-08df08e41323
+X-MS-Exchange-CrossTenant-originalarrivaltime: 02 Sep 2026 11:19:37.6233
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 3dd8961f-e488-4e60-8e11-a82d994e183d
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: 5Nvb0cIybsmkBU6v0uXZYTWszLIMxbAoAQK/H/MT8Lm/Ts7tp80wxSzfcLdJEEs8eKNyMNcRWe7TSXRSeEYvbg==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: MN0PR12MB6031
 
-On Wed 02-09-26 10:52:25, Shivank Garg wrote:
-> The migration core now carries policy in struct migrate_control, but
-> migrate_folio() and the address_space migrate_folio callback still receive
-> only the migration mode. This prevents additional policy, such as
-> copy-cache hints, from reaching folio-specific migration code.
-> 
-> Pass the control as const through migrate_folio(), the common migration
-> helpers, and the address_space callback. Update all implementations and
-> documentation accordingly. Existing callbacks continue to make their
-> decisions from ctl->mode only, none changes behavior yet.
-> 
-> No functional change intended.
-> 
-> Signed-off-by: Shivank Garg <shivankg@amd.com>
-
-The changes to FS interface look good to me. Feel free to add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  Documentation/filesystems/locking.rst |  2 +-
->  Documentation/filesystems/vfs.rst     |  7 +++--
->  fs/aio.c                              |  2 +-
->  fs/btrfs/disk-io.c                    |  5 ++--
->  fs/btrfs/inode.c                      |  6 ++---
->  fs/hugetlbfs/inode.c                  |  4 +--
->  fs/jfs/jfs_metapage.c                 | 14 +++++-----
->  fs/nfs/internal.h                     |  2 +-
->  fs/nfs/write.c                        |  8 +++---
->  include/linux/buffer_head.h           |  6 +++--
->  include/linux/fs.h                    |  6 ++---
->  include/linux/migrate.h               |  2 +-
->  include/linux/pagemap.h               |  2 +-
->  mm/migrate.c                          | 50 +++++++++++++++++++----------------
->  mm/secretmem.c                        |  3 ++-
->  virt/kvm/guest_memfd.c                |  2 +-
->  16 files changed, 66 insertions(+), 55 deletions(-)
-> 
-> diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
-> index 844d65eb47a5..b406df403b4a 100644
-> --- a/Documentation/filesystems/locking.rst
-> +++ b/Documentation/filesystems/locking.rst
-> @@ -260,7 +260,7 @@ prototypes::
->  	void (*free_folio)(struct folio *);
->  	int (*direct_IO)(struct kiocb *, struct iov_iter *iter);
->  	int (*migrate_folio)(struct address_space *, struct folio *dst,
-> -			struct folio *src, enum migrate_mode);
-> +			struct folio *src, const struct migrate_control *ctl);
->  	int (*launder_folio)(struct folio *);
->  	bool (*is_partially_uptodate)(struct folio *, size_t from, size_t count);
->  	int (*error_remove_folio)(struct address_space *, struct folio *);
-> diff --git a/Documentation/filesystems/vfs.rst b/Documentation/filesystems/vfs.rst
-> index d3a93eec3945..8e1404723db1 100644
-> --- a/Documentation/filesystems/vfs.rst
-> +++ b/Documentation/filesystems/vfs.rst
-> @@ -767,7 +767,8 @@ cache in your filesystem.  The following members are defined:
->  		void (*free_folio)(struct folio *);
->  		ssize_t (*direct_IO)(struct kiocb *, struct iov_iter *iter);
->  		int (*migrate_folio)(struct mapping *, struct folio *dst,
-> -				struct folio *src, enum migrate_mode);
-> +				struct folio *src,
-> +				const struct migrate_control *ctl);
->  		int (*launder_folio) (struct folio *);
->  
->  		bool (*is_partially_uptodate) (struct folio *, size_t from,
-> @@ -939,7 +940,9 @@ cache in your filesystem.  The following members are defined:
->  	wants to relocate a folio (maybe from a memory device that is
->  	signalling imminent failure) it will pass a new folio and an old
->  	folio to this function.  migrate_folio should transfer any private
-> -	data across and update any references that it has to the folio.
-> +	data across and update any references that it has to the folio.  The
-> +	control describes the blocking mode and the reason for migration.  If
-> +	the mode is ``MIGRATE_ASYNC``, the callback must not block.
->  
->  ``launder_folio``
->  	Called before freeing a folio - it writes back the dirty folio.
-> diff --git a/fs/aio.c b/fs/aio.c
-> index d78acc69f487..58ee9d0845dd 100644
-> --- a/fs/aio.c
-> +++ b/fs/aio.c
-> @@ -458,7 +458,7 @@ static const struct file_operations aio_ring_fops = {
->  
->  #if IS_ENABLED(CONFIG_MIGRATION)
->  static int aio_migrate_folio(struct address_space *mapping, struct folio *dst,
-> -			struct folio *src, enum migrate_mode mode)
-> +			     struct folio *src, const struct migrate_control *ctl)
->  {
->  	struct kioctx *ctx;
->  	struct aio_inode_info *ai = AIO_I(mapping->host);
-> diff --git a/fs/btrfs/disk-io.c b/fs/btrfs/disk-io.c
-> index 819727460bcf..509651577a1c 100644
-> --- a/fs/btrfs/disk-io.c
-> +++ b/fs/btrfs/disk-io.c
-> @@ -460,7 +460,8 @@ int btrfs_validate_extent_buffer(struct extent_buffer *eb,
->  
->  #ifdef CONFIG_MIGRATION
->  static int btree_migrate_folio(struct address_space *mapping,
-> -		struct folio *dst, struct folio *src, enum migrate_mode mode)
-> +		struct folio *dst, struct folio *src,
-> +		const struct migrate_control *ctl)
->  {
->  	/*
->  	 * we can't safely write a btree page from here,
-> @@ -475,7 +476,7 @@ static int btree_migrate_folio(struct address_space *mapping,
->  	if (folio_get_private(src) &&
->  	    !filemap_release_folio(src, GFP_KERNEL))
->  		return -EAGAIN;
-> -	return migrate_folio(mapping, dst, src, mode);
-> +	return migrate_folio(mapping, dst, src, ctl);
->  }
->  #else
->  #define btree_migrate_folio NULL
-> diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
-> index 3c10a0ef0002..9f1e567fa5ed 100644
-> --- a/fs/btrfs/inode.c
-> +++ b/fs/btrfs/inode.c
-> @@ -7653,10 +7653,10 @@ static bool btrfs_release_folio(struct folio *folio, gfp_t gfp_flags)
->  
->  #ifdef CONFIG_MIGRATION
->  static int btrfs_migrate_folio(struct address_space *mapping,
-> -			     struct folio *dst, struct folio *src,
-> -			     enum migrate_mode mode)
-> +			       struct folio *dst, struct folio *src,
-> +			       const struct migrate_control *ctl)
->  {
-> -	int ret = filemap_migrate_folio(mapping, dst, src, mode);
-> +	int ret = filemap_migrate_folio(mapping, dst, src, ctl);
->  
->  	if (ret)
->  		return ret;
-> diff --git a/fs/hugetlbfs/inode.c b/fs/hugetlbfs/inode.c
-> index 7611a8470ea2..367148251689 100644
-> --- a/fs/hugetlbfs/inode.c
-> +++ b/fs/hugetlbfs/inode.c
-> @@ -1022,8 +1022,8 @@ static int hugetlbfs_symlink(struct mnt_idmap *idmap,
->  
->  #ifdef CONFIG_MIGRATION
->  static int hugetlbfs_migrate_folio(struct address_space *mapping,
-> -				struct folio *dst, struct folio *src,
-> -				enum migrate_mode mode)
-> +				   struct folio *dst, struct folio *src,
-> +				   const struct migrate_control *ctl)
->  {
->  	int rc;
->  
-> diff --git a/fs/jfs/jfs_metapage.c b/fs/jfs/jfs_metapage.c
-> index 41fe12e641ce..7958edacb497 100644
-> --- a/fs/jfs/jfs_metapage.c
-> +++ b/fs/jfs/jfs_metapage.c
-> @@ -155,7 +155,7 @@ static inline void dec_io(struct folio *folio, blk_status_t status,
->  #ifdef CONFIG_MIGRATION
->  static int __metapage_migrate_folio(struct address_space *mapping,
->  				    struct folio *dst, struct folio *src,
-> -				    enum migrate_mode mode)
-> +				    const struct migrate_control *ctl)
->  {
->  	struct meta_anchor *src_anchor = src->private;
->  	struct metapage *mps[MPS_PER_PAGE] = {0};
-> @@ -168,7 +168,7 @@ static int __metapage_migrate_folio(struct address_space *mapping,
->  			return -EAGAIN;
->  	}
->  
-> -	rc = filemap_migrate_folio(mapping, dst, src, mode);
-> +	rc = filemap_migrate_folio(mapping, dst, src, ctl);
->  	if (rc)
->  		return rc;
->  
-> @@ -231,7 +231,7 @@ static inline void remove_metapage(struct folio *folio, struct metapage *mp)
->  #ifdef CONFIG_MIGRATION
->  static int __metapage_migrate_folio(struct address_space *mapping,
->  				    struct folio *dst, struct folio *src,
-> -				    enum migrate_mode mode)
-> +				    const struct migrate_control *ctl)
->  {
->  	struct metapage *mp;
->  	int page_offset;
-> @@ -241,7 +241,7 @@ static int __metapage_migrate_folio(struct address_space *mapping,
->  	if (metapage_locked(mp))
->  		return -EAGAIN;
->  
-> -	rc = filemap_migrate_folio(mapping, dst, src, mode);
-> +	rc = filemap_migrate_folio(mapping, dst, src, ctl);
->  	if (rc)
->  		return rc;
->  
-> @@ -645,18 +645,18 @@ static bool metapage_release_folio(struct folio *folio, gfp_t gfp_mask)
->   */
->  static int metapage_migrate_folio(struct address_space *mapping,
->  				  struct folio *dst, struct folio *src,
-> -				  enum migrate_mode mode)
-> +				  const struct migrate_control *ctl)
->  {
->  	int expected_count;
->  
->  	if (!src->private)
-> -		return filemap_migrate_folio(mapping, dst, src, mode);
-> +		return filemap_migrate_folio(mapping, dst, src, ctl);
->  
->  	/* Check whether page does not have extra refs before we do more work */
->  	expected_count = folio_expected_ref_count(src) + 1;
->  	if (folio_ref_count(src) != expected_count)
->  		return -EAGAIN;
-> -	return __metapage_migrate_folio(mapping, dst, src, mode);
-> +	return __metapage_migrate_folio(mapping, dst, src, ctl);
->  }
->  #else
->  #define metapage_migrate_folio NULL
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index abc81f5ae578..e1f366cff2c0 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -673,7 +673,7 @@ void nfs_clear_pnfs_ds_commit_verifiers(struct pnfs_ds_commit_info *cinfo)
->  
->  #ifdef CONFIG_MIGRATION
->  int nfs_migrate_folio(struct address_space *, struct folio *dst,
-> -		struct folio *src, enum migrate_mode);
-> +		struct folio *src, const struct migrate_control *);
->  #else
->  #define nfs_migrate_folio NULL
->  #endif
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 623e7ef1f73d..159135900399 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -2112,7 +2112,7 @@ int nfs_wb_folio(struct inode *inode, struct folio *folio)
->  
->  #ifdef CONFIG_MIGRATION
->  int nfs_migrate_folio(struct address_space *mapping, struct folio *dst,
-> -		struct folio *src, enum migrate_mode mode)
-> +		struct folio *src, const struct migrate_control *ctl)
->  {
->  	/*
->  	 * If the private flag is set, the folio is currently associated with
-> @@ -2123,19 +2123,19 @@ int nfs_migrate_folio(struct address_space *mapping, struct folio *dst,
->  	 *        the folio lock.
->  	 */
->  	if (folio_test_private(src)) {
-> -		if (mode == MIGRATE_SYNC)
-> +		if (ctl->mode == MIGRATE_SYNC)
->  			nfs_wb_folio(src->mapping->host, src);
->  		if (folio_test_private(src))
->  			return -EBUSY;
->  	}
->  
->  	if (folio_test_private_2(src)) { /* [DEPRECATED] */
-> -		if (mode == MIGRATE_ASYNC)
-> +		if (ctl->mode == MIGRATE_ASYNC)
->  			return -EBUSY;
->  		folio_wait_private_2(src);
->  	}
->  
-> -	return migrate_folio(mapping, dst, src, mode);
-> +	return migrate_folio(mapping, dst, src, ctl);
->  }
->  #endif
->  
-> diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-> index fd2c7115c054..e4476596c9b6 100644
-> --- a/include/linux/buffer_head.h
-> +++ b/include/linux/buffer_head.h
-> @@ -277,9 +277,11 @@ int block_truncate_page(struct address_space *, loff_t, get_block_t *);
->  
->  #ifdef CONFIG_MIGRATION
->  extern int buffer_migrate_folio(struct address_space *,
-> -		struct folio *dst, struct folio *src, enum migrate_mode);
-> +		struct folio *dst, struct folio *src,
-> +		const struct migrate_control *);
->  extern int buffer_migrate_folio_norefs(struct address_space *,
-> -		struct folio *dst, struct folio *src, enum migrate_mode);
-> +		struct folio *dst, struct folio *src,
-> +		const struct migrate_control *);
->  #else
->  #define buffer_migrate_folio NULL
->  #define buffer_migrate_folio_norefs NULL
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index f9d1e05e8ae6..93ba6054c478 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -423,11 +423,11 @@ struct address_space_operations {
->  	void (*free_folio)(struct folio *folio);
->  	ssize_t (*direct_IO)(struct kiocb *, struct iov_iter *iter);
->  	/*
-> -	 * migrate the contents of a folio to the specified target. If
-> -	 * migrate_mode is MIGRATE_ASYNC, it must not block.
-> +	 * Migrate the contents of a folio to the specified target.  The
-> +	 * callback must not block when ctl->mode is MIGRATE_ASYNC.
->  	 */
->  	int (*migrate_folio)(struct address_space *, struct folio *dst,
-> -			struct folio *src, enum migrate_mode);
-> +			struct folio *src, const struct migrate_control *ctl);
->  	int (*launder_folio)(struct folio *);
->  	bool (*is_partially_uptodate) (struct folio *, size_t from,
->  			size_t count);
-> diff --git a/include/linux/migrate.h b/include/linux/migrate.h
-> index cec5713944e3..123111e7abd3 100644
-> --- a/include/linux/migrate.h
-> +++ b/include/linux/migrate.h
-> @@ -55,7 +55,7 @@ extern const char *migrate_reason_names[MR_TYPES];
->  
->  void putback_movable_pages(struct list_head *l);
->  int migrate_folio(struct address_space *mapping, struct folio *dst,
-> -		struct folio *src, enum migrate_mode mode);
-> +		struct folio *src, const struct migrate_control *ctl);
->  int migrate_pages(struct list_head *l, new_folio_t new, free_folio_t free,
->  		unsigned long private, const struct migrate_control *ctl,
->  		unsigned int *ret_succeeded);
-> diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-> index 0adfa6605653..455d57307f88 100644
-> --- a/include/linux/pagemap.h
-> +++ b/include/linux/pagemap.h
-> @@ -1327,7 +1327,7 @@ bool noop_dirty_folio(struct address_space *mapping, struct folio *folio);
->  
->  #ifdef CONFIG_MIGRATION
->  int filemap_migrate_folio(struct address_space *mapping, struct folio *dst,
-> -		struct folio *src, enum migrate_mode mode);
-> +		struct folio *src, const struct migrate_control *ctl);
->  #else
->  #define filemap_migrate_folio NULL
->  #endif
-> diff --git a/mm/migrate.c b/mm/migrate.c
-> index 549f8b57092c..731836664a86 100644
-> --- a/mm/migrate.c
-> +++ b/mm/migrate.c
-> @@ -869,7 +869,7 @@ EXPORT_SYMBOL(folio_migrate_flags);
->  
->  static int __migrate_folio(struct address_space *mapping, struct folio *dst,
->  			   struct folio *src, void *src_private,
-> -			   enum migrate_mode mode)
-> +			   const struct migrate_control *ctl)
->  {
->  	int rc, expected_count = folio_expected_ref_count(src) + 1;
->  
-> @@ -897,7 +897,7 @@ static int __migrate_folio(struct address_space *mapping, struct folio *dst,
->   * @mapping: The address_space containing the folio.
->   * @dst: The folio to migrate the data to.
->   * @src: The folio containing the current data.
-> - * @mode: How to migrate the folio.
-> + * @ctl: Migration policy for this folio.
->   *
->   * Common logic to directly migrate a single LRU folio suitable for
->   * folios that do not have private data.
-> @@ -905,10 +905,10 @@ static int __migrate_folio(struct address_space *mapping, struct folio *dst,
->   * Folios are locked upon entry and exit.
->   */
->  int migrate_folio(struct address_space *mapping, struct folio *dst,
-> -		  struct folio *src, enum migrate_mode mode)
-> +		  struct folio *src, const struct migrate_control *ctl)
->  {
->  	BUG_ON(folio_test_writeback(src));	/* Writeback must be complete */
-> -	return __migrate_folio(mapping, dst, src, NULL, mode);
-> +	return __migrate_folio(mapping, dst, src, NULL, ctl);
->  }
->  EXPORT_SYMBOL(migrate_folio);
->  
-> @@ -947,8 +947,8 @@ static bool buffer_migrate_lock_buffers(struct buffer_head *head,
->  }
->  
->  static int __buffer_migrate_folio(struct address_space *mapping,
-> -		struct folio *dst, struct folio *src, enum migrate_mode mode,
-> -		bool check_refs)
-> +		struct folio *dst, struct folio *src,
-> +		const struct migrate_control *ctl, bool check_refs)
->  {
->  	struct buffer_head *bh, *head;
->  	int rc;
-> @@ -956,14 +956,14 @@ static int __buffer_migrate_folio(struct address_space *mapping,
->  
->  	head = folio_buffers(src);
->  	if (!head)
-> -		return migrate_folio(mapping, dst, src, mode);
-> +		return migrate_folio(mapping, dst, src, ctl);
->  
->  	/* Check whether page does not have extra refs before we do more work */
->  	expected_count = folio_expected_ref_count(src) + 1;
->  	if (folio_ref_count(src) != expected_count)
->  		return -EAGAIN;
->  
-> -	if (!buffer_migrate_lock_buffers(head, mode))
-> +	if (!buffer_migrate_lock_buffers(head, ctl->mode))
->  		return -EAGAIN;
->  
->  	if (check_refs) {
-> @@ -995,7 +995,7 @@ static int __buffer_migrate_folio(struct address_space *mapping,
->  		}
->  	}
->  
-> -	rc = filemap_migrate_folio(mapping, dst, src, mode);
-> +	rc = filemap_migrate_folio(mapping, dst, src, ctl);
->  	if (rc)
->  		goto unlock_buffers;
->  
-> @@ -1022,7 +1022,7 @@ static int __buffer_migrate_folio(struct address_space *mapping,
->   * @mapping: The address space containing @src.
->   * @dst: The folio to migrate to.
->   * @src: The folio to migrate from.
-> - * @mode: How to migrate the folio.
-> + * @ctl: Migration policy for this folio.
->   *
->   * This function can only be used if the underlying filesystem guarantees
->   * that no other references to @src exist. For example attached buffer
-> @@ -1033,9 +1033,10 @@ static int __buffer_migrate_folio(struct address_space *mapping,
->   * Return: 0 on success or a negative errno on failure.
->   */
->  int buffer_migrate_folio(struct address_space *mapping,
-> -		struct folio *dst, struct folio *src, enum migrate_mode mode)
-> +		struct folio *dst, struct folio *src,
-> +		const struct migrate_control *ctl)
->  {
-> -	return __buffer_migrate_folio(mapping, dst, src, mode, false);
-> +	return __buffer_migrate_folio(mapping, dst, src, ctl, false);
->  }
->  EXPORT_SYMBOL(buffer_migrate_folio);
->  
-> @@ -1044,7 +1045,7 @@ EXPORT_SYMBOL(buffer_migrate_folio);
->   * @mapping: The address space containing @src.
->   * @dst: The folio to migrate to.
->   * @src: The folio to migrate from.
-> - * @mode: How to migrate the folio.
-> + * @ctl: Migration policy for this folio.
->   *
->   * Like buffer_migrate_folio() except that this variant is more careful
->   * and checks that there are also no buffer head references. This function
-> @@ -1054,17 +1055,19 @@ EXPORT_SYMBOL(buffer_migrate_folio);
->   * Return: 0 on success or a negative errno on failure.
->   */
->  int buffer_migrate_folio_norefs(struct address_space *mapping,
-> -		struct folio *dst, struct folio *src, enum migrate_mode mode)
-> +		struct folio *dst, struct folio *src,
-> +		const struct migrate_control *ctl)
->  {
-> -	return __buffer_migrate_folio(mapping, dst, src, mode, true);
-> +	return __buffer_migrate_folio(mapping, dst, src, ctl, true);
->  }
->  EXPORT_SYMBOL_GPL(buffer_migrate_folio_norefs);
->  #endif /* CONFIG_BUFFER_HEAD */
->  
->  int filemap_migrate_folio(struct address_space *mapping,
-> -		struct folio *dst, struct folio *src, enum migrate_mode mode)
-> +		struct folio *dst, struct folio *src,
-> +		const struct migrate_control *ctl)
->  {
-> -	return __migrate_folio(mapping, dst, src, folio_get_private(src), mode);
-> +	return __migrate_folio(mapping, dst, src, folio_get_private(src), ctl);
->  }
->  EXPORT_SYMBOL_GPL(filemap_migrate_folio);
->  
-> @@ -1072,7 +1075,8 @@ EXPORT_SYMBOL_GPL(filemap_migrate_folio);
->   * Default handling if a filesystem does not provide a migration function.
->   */
->  static int fallback_migrate_folio(struct address_space *mapping,
-> -		struct folio *dst, struct folio *src, enum migrate_mode mode)
-> +		struct folio *dst, struct folio *src,
-> +		const struct migrate_control *ctl)
->  {
->  	WARN_ONCE(mapping->a_ops->writepages,
->  			"%ps does not implement migrate_folio\n",
-> @@ -1085,9 +1089,9 @@ static int fallback_migrate_folio(struct address_space *mapping,
->  	 * can't migrate automatically.
->  	 */
->  	if (!filemap_release_folio(src, GFP_KERNEL))
-> -		return mode == MIGRATE_SYNC ? -EAGAIN : -EBUSY;
-> +		return ctl->mode == MIGRATE_SYNC ? -EAGAIN : -EBUSY;
->  
-> -	return migrate_folio(mapping, dst, src, mode);
-> +	return migrate_folio(mapping, dst, src, ctl);
->  }
->  
->  /*
-> @@ -1112,7 +1116,7 @@ static int move_to_new_folio(struct folio *dst, struct folio *src,
->  	VM_BUG_ON_FOLIO(!folio_test_locked(dst), dst);
->  
->  	if (!mapping)
-> -		rc = migrate_folio(mapping, dst, src, ctl->mode);
-> +		rc = migrate_folio(mapping, dst, src, ctl);
->  	else if (mapping_inaccessible(mapping))
->  		rc = -EOPNOTSUPP;
->  	else if (mapping->a_ops->migrate_folio)
-> @@ -1123,9 +1127,9 @@ static int move_to_new_folio(struct folio *dst, struct folio *src,
->  		 * migrate_folio callback. This is the most common path
->  		 * for page migration.
->  		 */
-> -		rc = mapping->a_ops->migrate_folio(mapping, dst, src, ctl->mode);
-> +		rc = mapping->a_ops->migrate_folio(mapping, dst, src, ctl);
->  	else
-> -		rc = fallback_migrate_folio(mapping, dst, src, ctl->mode);
-> +		rc = fallback_migrate_folio(mapping, dst, src, ctl);
->  
->  	if (!rc) {
->  		/*
-> diff --git a/mm/secretmem.c b/mm/secretmem.c
-> index d29865075b6e..5c81833981d2 100644
-> --- a/mm/secretmem.c
-> +++ b/mm/secretmem.c
-> @@ -144,7 +144,8 @@ static const struct file_operations secretmem_fops = {
->  };
->  
->  static int secretmem_migrate_folio(struct address_space *mapping,
-> -		struct folio *dst, struct folio *src, enum migrate_mode mode)
-> +		struct folio *dst, struct folio *src,
-> +		const struct migrate_control *ctl)
->  {
->  	return -EBUSY;
->  }
-> diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-> index 625e62e1a031..0a9af8c4768d 100644
-> --- a/virt/kvm/guest_memfd.c
-> +++ b/virt/kvm/guest_memfd.c
-> @@ -457,7 +457,7 @@ static struct file_operations kvm_gmem_fops = {
->  
->  static int kvm_gmem_migrate_folio(struct address_space *mapping,
->  				  struct folio *dst, struct folio *src,
-> -				  enum migrate_mode mode)
-> +				  const struct migrate_control *ctl)
->  {
->  	WARN_ON_ONCE(1);
->  	return -EINVAL;
-> 
-> -- 
-> 2.43.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+T24gV2VkLCAyMDI2LTA5LTAyIGF0IDEwOjUyICswMDAwLCBTaGl2YW5rIEdhcmcgd3JvdGU6DQo+
+IE1pZ3JhdGlvbiBtb2RlIGFuZCByZWFzb24gZGVzY3JpYmUgb25lIG1pZ3JhdGlvbiBpbnZvY2F0
+aW9uLCBidXQgYXJlIHBhc3NlZA0KPiANCg0KWy4uLl0NCg0KPiBAQCAtMjE4OSwyNyArMjE4OCwy
+OSBAQCBzdGF0aWMgaW50IG1pZ3JhdGVfZm9saW9zX2JhdGNoKHN0cnVjdCBsaXN0X2hlYWQgKmZy
+b20sDQo+ICAgKi8NCj4gIHN0YXRpYyBpbnQgX19taWdyYXRlX2xydV9mb2xpb3Moc3RydWN0IGxp
+c3RfaGVhZCAqZnJvbSwgbmV3X2ZvbGlvX3QgZ2V0X25ld19mb2xpbywNCj4gIAkJZnJlZV9mb2xp
+b190IHB1dF9uZXdfZm9saW8sIHVuc2lnbmVkIGxvbmcgcHJpdmF0ZSwNCj4gLQkJZW51bSBtaWdy
+YXRlX21vZGUgbW9kZSwgZW51bSBtaWdyYXRlX3JlYXNvbiByZWFzb24sDQo+IC0JCXN0cnVjdCBs
+aXN0X2hlYWQgKnJldF9mb2xpb3MsDQo+ICsJCWNvbnN0IHN0cnVjdCBtaWdyYXRlX2NvbnRyb2wg
+KmN0bCwgc3RydWN0IGxpc3RfaGVhZCAqcmV0X2ZvbGlvcywNCj4gIAkJc3RydWN0IG1pZ3JhdGVf
+cGFnZXNfc3RhdHMgKnN0YXRzKQ0KPiAgew0KPiAgCWludCByYywgbnJfZmFpbGVkID0gMDsNCj4g
+IAlMSVNUX0hFQUQoZm9saW9zKTsNCj4gIAlMSVNUX0hFQUQoc3BsaXRfZm9saW9zKTsNCj4gIAlz
+dHJ1Y3QgbWlncmF0ZV9wYWdlc19zdGF0cyBhc3RhdHM7DQo+ICsJc3RydWN0IG1pZ3JhdGVfY29u
+dHJvbCBhc3luY19jdGw7DQo+ICANCj4gLQlpZiAobW9kZSA9PSBNSUdSQVRFX0FTWU5DKSB7DQo+
+ICsJaWYgKGN0bC0+bW9kZSA9PSBNSUdSQVRFX0FTWU5DKSB7DQo+ICAJCXJjID0gbWlncmF0ZV9m
+b2xpb3NfYmF0Y2goZnJvbSwgZ2V0X25ld19mb2xpbywgcHV0X25ld19mb2xpbywNCj4gLQkJCQlw
+cml2YXRlLCBtb2RlLCByZWFzb24sIHJldF9mb2xpb3MsDQo+ICsJCQkJcHJpdmF0ZSwgY3RsLCBy
+ZXRfZm9saW9zLA0KPiAgCQkJCSZzcGxpdF9mb2xpb3MsIHN0YXRzLA0KPiAgCQkJCU5SX01BWF9N
+SUdSQVRFX1BBR0VTX1JFVFJZKTsNCj4gIAkJZ290byBvdXQ7DQo+ICAJfQ0KPiAgDQo+ICsJYXN5
+bmNfY3RsID0gKmN0bDsNCj4gKwlhc3luY19jdGwubW9kZSA9IE1JR1JBVEVfQVNZTkM7DQo+ICAJ
+bWVtc2V0KCZhc3RhdHMsIDAsIHNpemVvZihhc3RhdHMpKTsNCj4gIAkvKiBUcnkgdG8gbWlncmF0
+ZSBpbiBiYXRjaCB3aXRoIE1JR1JBVEVfQVNZTkMgbW9kZSBmaXJzdGx5ICovDQoNCg0KDQpTYXNo
+aWtvOg0KQ2FuIHRoaXMgbGVhZCB0byBhbiB1bmluaXRpYWxpemVkIHN0YWNrIHZhcmlhYmxlIGJl
+aW5nIHVzZWQ/DQpJZiBfX21pZ3JhdGVfbHJ1X2ZvbGlvcygpIGlzIGNhbGxlZCB3aXRoIGN0bC0+
+bW9kZSA9PSBNSUdSQVRFX0FTWU5DLCB0aGUNCmVhcmx5IGNoZWNrIGp1bXBzIGRpcmVjdGx5IHRv
+IHRoZSBvdXQgbGFiZWwsIGJ5cGFzc2luZyB0aGUgaW5pdGlhbGl6YXRpb24NCm9mIGFzeW5jX2N0
+bC4gSWYgbGFyZ2UgZm9saW9zIHdlcmUgc3BsaXQgZHVyaW5nIHRoYXQgZmlyc3QgcGFzcywgdGhl
+DQohbGlzdF9lbXB0eSgmc3BsaXRfZm9saW9zKSBjaGVjayB3aWxsIGJlIHRydWUuDQpDb3VsZCB0
+aGlzIGNhdXNlIG1pZ3JhdGVfZm9saW9zX2JhdGNoKCkgdG8gZXhlY3V0ZSB3aXRoIGdhcmJhZ2Ug
+cG9saWN5PyBGb3INCmV4YW1wbGUsIGl0IG1pZ2h0IGludGVycHJldCB0aGUgdW5pbml0aWFsaXpl
+ZCBhc3luY19jdGwubW9kZSBhcyBNSUdSQVRFX1NZTkMsDQpjYXVzaW5nIHVuaW50ZW5kZWQgYmxv
+Y2tpbmcgYW5kIHNsZWVwaW5nIGR1cmluZyB3aGF0IHNob3VsZCBiZSBhbiBhc3luY2hyb25vdXMN
+Cm1pZ3JhdGlvbi4NCi0tDQoNClllcywgdGhpcyBpcyB2YWxpZCBpc3N1ZS4gSSBzaG91bGQgaW5p
+dGlhbGl6ZSBhc3luY19jdGwgZWFybHkgYmVmb3JlIGl0IG1ha2UNCmdvdG8ganVtcC4NCg0KLS0t
+DQogbW0vbWlncmF0ZS5jIHwgNSArKy0tLQ0KIDEgZmlsZSBjaGFuZ2VkLCAyIGluc2VydGlvbnMo
+KyksIDMgZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9tbS9taWdyYXRlLmMgYi9tbS9taWdy
+YXRlLmMNCmluZGV4IDczMTgzNjY2NGE4Ni4uYzc1MzAwZTAwMzg4IDEwMDY0NA0KLS0tIGEvbW0v
+bWlncmF0ZS5jDQorKysgYi9tbS9taWdyYXRlLmMNCkBAIC0yMTk5LDggKzIxOTksOSBAQCBzdGF0
+aWMgaW50IF9fbWlncmF0ZV9scnVfZm9saW9zKHN0cnVjdCBsaXN0X2hlYWQgKmZyb20sIG5ld19m
+b2xpb190IGdldF9uZXdfZm9saQ0KIAlMSVNUX0hFQUQoZm9saW9zKTsNCiAJTElTVF9IRUFEKHNw
+bGl0X2ZvbGlvcyk7DQogCXN0cnVjdCBtaWdyYXRlX3BhZ2VzX3N0YXRzIGFzdGF0czsNCi0Jc3Ry
+dWN0IG1pZ3JhdGVfY29udHJvbCBhc3luY19jdGw7DQorCXN0cnVjdCBtaWdyYXRlX2NvbnRyb2wg
+YXN5bmNfY3RsID0gKmN0bDsNCiANCisJYXN5bmNfY3RsLm1vZGUgPSBNSUdSQVRFX0FTWU5DOw0K
+IAlpZiAoY3RsLT5tb2RlID09IE1JR1JBVEVfQVNZTkMpIHsNCiAJCXJjID0gbWlncmF0ZV9mb2xp
+b3NfYmF0Y2goZnJvbSwgZ2V0X25ld19mb2xpbywgcHV0X25ld19mb2xpbywNCiAJCQkJcHJpdmF0
+ZSwgY3RsLCByZXRfZm9saW9zLA0KQEAgLTIyMDksOCArMjIxMCw2IEBAIHN0YXRpYyBpbnQgX19t
+aWdyYXRlX2xydV9mb2xpb3Moc3RydWN0IGxpc3RfaGVhZCAqZnJvbSwgbmV3X2ZvbGlvX3QgZ2V0
+X25ld19mb2xpDQogCQlnb3RvIG91dDsNCiAJfQ0KIA0KLQlhc3luY19jdGwgPSAqY3RsOw0KLQlh
+c3luY19jdGwubW9kZSA9IE1JR1JBVEVfQVNZTkM7DQogCW1lbXNldCgmYXN0YXRzLCAwLCBzaXpl
+b2YoYXN0YXRzKSk7DQogCS8qIFRyeSB0byBtaWdyYXRlIGluIGJhdGNoIHdpdGggTUlHUkFURV9B
+U1lOQyBtb2RlIGZpcnN0bHkgKi8NCiAJcmMgPSBtaWdyYXRlX2ZvbGlvc19iYXRjaChmcm9tLCBn
+ZXRfbmV3X2ZvbGlvLCBwdXRfbmV3X2ZvbGlvLCBwcml2YXRlLA0KLS0gDQoyLjQzLjANCg0K
