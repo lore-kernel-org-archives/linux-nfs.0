@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5FB174C77D1
-	for <linux-nfs@vger.kernel.org>; Thu,  3 Sep 2026 15:04:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2AFEF4C8FFE
+	for <linux-nfs@vger.kernel.org>; Thu,  3 Sep 2026 15:04:01 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788447841; cv=none; b=ReURLzzFHhL4eBVOfSZ9fD3+seXZZYtlf8rKys5dVRVOu5MIgLZEVhGgG7k2tuMLTYYOhnV1CR3RhgwmNz1yzE5XB4WF0CIXZhj1gOoY3tzDE7ze43EsbWH8jwinodoi/HMV9xA41mD20qtUKLOzTqRCRBM5p0jVk/8GfqyRVdc=
+	t=1788447842; cv=none; b=kFarciqnKh2CuDbhbOvT8RDKcb4nXvOVDaVVkX5ppjV6NoswMCy6i+de+Oa8y3W+x7SQcR6LxMNCK9gdDfZa9kfwoaosOB4td1xVVqa9QyTVqx7bfQu5zfFJ0Zh/7UrARjV3RU/qx6nIfd+8q1pFYq1RLcfBABeuBVg2GioFP1Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788447841; c=relaxed/simple;
-	bh=Aig21jw8e0TW0lZhy9GX7uMhoU3Snx/XF8NRNttiyEY=;
+	s=arc-20240116; t=1788447842; c=relaxed/simple;
+	bh=ElxLIbZi1wPQY8N0ps+afLQYwYWXEMmDPJo9IND+3Ms=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=jzUBRdOK5lpx9liicICt6QVfCdDLmygDLUwWTMPPcZm/3h4ijzwSgrQXiaADY3nkoKP1i41OEJ1For9b+T/sVOWwi6D6yMCgqpSqmTEDUkJMdfBESfCn8ywMyH3T0Xha8eBnuRJkLbWUfLJkJ2HaXVhCgZM4DkUSGbHgKJ+84sU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=A/3PA9Mi; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=u5NoFtEKLDmWqz/0YkY/nGPPatR7D/mMMPdVn1fA53ofnCFwBYKw7ZCZNXr3dPPODyNwtuRg9d4JVecnRfUyXl2bwpyXZ5iPerUvh2TEVfv8DCSMcvm8XS1b+b8vVumIel9yq8zvTh2FftUrikaYNI8nkb+guevzH7V9aoHz8eU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LLG57jqO; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="A/3PA9Mi"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B80931F000E9;
-	Thu,  3 Sep 2026 15:03:59 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LLG57jqO"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 82FFF1F00A3D;
+	Thu,  3 Sep 2026 15:04:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788447840;
-	bh=kb1vbkloqR6fhhdHUEqI5ATM8COyLLlLgI2lv0cAcd0=;
+	s=k20260515; t=1788447841;
+	bh=aWmNUCHiruWy+yb8ofyiinpe6rEdlyUcn4Jjn2hkFI8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=A/3PA9MiXUYiHt4HdLuRvkAX9tg/f174Kcf/hEXNOqF38+EIOLMOUiUTsCUD3xb+j
-	 1CThl+1a+14KonwnVSdS643Cg4VZAHhpUgTlTsagiYUrnpebrz5dzsuncwzBICDmHR
-	 Hh45OQpBbKgcZIOWH9itFiRsBNALOYOKHxdWRLgnmj3zYAsV8m3MlKIdNuscNqZVH5
-	 ly6uJegsdwRn6xC57KHkiNkqZkDh4yH5Ub17eINVB+HU5vRf7P9Lhf9+dtm+pc9rhq
-	 eYychla8eIxkfO4ybBiPAmKY6RCCn6WzVyEVBe7CP6wP5tGuCNxmUcs446daeu1+5f
-	 mRqSA/beaixWw==
+	b=LLG57jqOR9Xg4WH0sysAdz/7bKqidk6Q/+w6zH1xEzc1tyqZXW/a2DAJqz/RNoLk2
+	 4zSLF35ry+1Pwc6Lq59LPb9QeQ4RVQM3vTR7dXTjYMKu6Cr+I/tNNa9OgG74lGMURF
+	 TBsLkpGlygUlLZdBRMwreWAYexCkp78n47cpOj7sQjWyUfybrpGFAUsoym3GVWoWV/
+	 +cGWd0GUwpzNDnqci+bAVvVpzH5mlNLYNjAGg1PsomD4eOkT1gizqZGZBBdeDoL/mA
+	 cvvItdm4wviw6tQ1Z2oMjAlG8Bk21dFwEzQT9gufIkfFc7bnNbMm/0roXUhY4mMlId
+	 YE6q7PoxRg3UA==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 09/10] xdrgen: Extend the aggregate codec to optional-data list members
-Date: Thu,  3 Sep 2026 11:03:50 -0400
-Message-ID: <20260903150351.9572-10-cel@kernel.org>
+Subject: [PATCH v1 10/10] xdrgen: Stream optional-data aggregate lists during encode
+Date: Thu,  3 Sep 2026 11:03:51 -0400
+Message-ID: <20260903150351.9572-11-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260903150351.9572-1-cel@kernel.org>
 References: <20260903150351.9572-1-cel@kernel.org>
@@ -47,233 +47,113 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The hook-driven aggregate codec emits only the counted-array wire
-form. XDR list types built on the optional-data idiom ("type *name")
-carry no count and cannot be expressed that way. NFSv2 READDIR's
-entry list is one such type.
+The optional-data aggregate encoder loops cursor.count times, so the
+begin hook must report the element count before the first element is
+written.  A producer that reads its elements while the reply is
+encoded -- NFSv2 READDIR streaming directory entries straight into the
+send buffer -- does not know that count in advance, and would have to
+materialize the whole list just to satisfy the loop bound.
 
-Accept an optional-data member under "pragma aggregate" and emit
-value-follows framing in place of the counted array. The element
-type's existing single-node encoder already writes its own
-value-follows boolean, so the loop calls it once per element and
-once more with a NULL element to write the terminator. The struct C
-definitions are untouched; only the marked member's framing changes.
+An optional-data list carries no count on the wire, so nothing forces
+one on the encoder.  Drive it from the item hook instead: a false
+return ends the list, and the framing writes the terminator.
 
-The generated decoder is present for linkage only. Decoding a
-value-follows list needs a presence-reporting element decoder, which
-this change does not add. NFSv2 READDIR only encodes its entry list,
-so the decode path is never exercised.
+The counted-array form and its hook contract are unchanged.  No
+in-tree spec marks an optional-data member yet, so no generated code
+changes here.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- tools/net/sunrpc/xdrgen/README                | 23 +++++++---
- tools/net/sunrpc/xdrgen/generators/struct.py  | 42 +++++++++++++++++++
- .../C/struct/decoder/aggregate_optional.j2    | 31 ++++++++++++++
- .../C/struct/encoder/aggregate_optional.j2    | 31 ++++++++++++++
- tools/net/sunrpc/xdrgen/xdr_ast.py            | 12 +++---
- 5 files changed, 128 insertions(+), 11 deletions(-)
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/decoder/aggregate_optional.j2
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/encoder/aggregate_optional.j2
+ include/linux/sunrpc/xdrgen/_defs.h           | 25 ++++++++++++-------
+ tools/net/sunrpc/xdrgen/README                | 11 +++++---
+ .../C/struct/encoder/aggregate_optional.j2    |  6 ++---
+ 3 files changed, 26 insertions(+), 16 deletions(-)
 
+diff --git a/include/linux/sunrpc/xdrgen/_defs.h b/include/linux/sunrpc/xdrgen/_defs.h
+index f4375d73c5ca..be77e9c57296 100644
+--- a/include/linux/sunrpc/xdrgen/_defs.h
++++ b/include/linux/sunrpc/xdrgen/_defs.h
+@@ -30,15 +30,22 @@ typedef struct {
+ } opaque;
+ 
+ /*
+- * Cursor a hook-driven aggregate codec hands to its application hooks,
+- * one element at a time, in place of a materialized C array. The
+- * generated framing owns it. @xdr is the RPC layer's stream; @ctx is
+- * that stream's xdrgen_ctx, the svc_rqst on the server. @index is
+- * the current element and @count the wire array length: a decoder
+- * fills @count from the wire before the begin hook runs, an
+- * encoder's begin hook sets it. @member_id selects among a type's
+- * marked members. The begin/item/end contract is under "Pragma
+- * aggregate" in tools/net/sunrpc/xdrgen/README.
++ * Cursor a hook-driven aggregate codec hands to its begin/item/end
++ * hooks, one element at a time, in place of a materialized C array.
++ * The generated framing owns it. @xdr is the RPC layer's stream and
++ * @ctx its xdrgen_ctx, the svc_rqst on the server. @index is the
++ * current element; @member_id selects among a type's marked members.
++ * For a counted array @count is the wire length: a decoder fills it
++ * before the begin hook runs, an encoder's begin hook sets it. The
++ * hook contract is under "Pragma aggregate" in
++ * tools/net/sunrpc/xdrgen/README.
++ *
++ * An optional-data list ("type *name") carries no count. Its encoder
++ * pulls elements until the item hook returns false. False ends the
++ * list rather than failing the encode: the framing writes the
++ * value-follows terminator, so a producer that stops early leaves a
++ * valid truncated list on the wire. A producer that stops for a
++ * mid-list error reports that error through @ctx.
+  */
+ struct xdrgen_aggregate_cursor {
+ 	struct xdr_stream	*xdr;
 diff --git a/tools/net/sunrpc/xdrgen/README b/tools/net/sunrpc/xdrgen/README
-index 92578671b5e9..ae8a8050698b 100644
+index ae8a8050698b..958d068bcad0 100644
 --- a/tools/net/sunrpc/xdrgen/README
 +++ b/tools/net/sunrpc/xdrgen/README
-@@ -163,9 +163,18 @@ wasted work. This directive marks such a member so that xdrgen emits a
- codec that owns only the wire framing (the length prefix, the bound
- check, and the per-element codec) and drives the application
- through begin/item/end hooks, processing one element at a time with
--no staged array. The marked member must be a variable-length
--array member of a struct; xdrgen rejects a directive naming
--anything else, and generates the codec for the server side only.
-+no staged array. The marked member must be a struct member
-+declared either as a variable-length array or as an optional-data
-+list ("type *name"); xdrgen rejects a directive naming anything
-+else, and generates the codec for the server side only.
-+
-+The two forms differ only in framing. A variable-length array
-+carries a u32 element count, so the framing writes that count and
-+bound-checks it. An optional-data list carries no count: each
-+element is prefixed by a value-follows TRUE and the sequence is
-+closed by a FALSE, which the framing writes after the last
-+element. For the optional-data form xdrgen generates a working
-+encoder only; the decoder it emits does not decode the list.
+@@ -173,8 +173,13 @@ carries a u32 element count, so the framing writes that count and
+ bound-checks it. An optional-data list carries no count: each
+ element is prefixed by a value-follows TRUE and the sequence is
+ closed by a FALSE, which the framing writes after the last
+-element. For the optional-data form xdrgen generates a working
+-encoder only; the decoder it emits does not decode the list.
++element. That form has no count to loop on, so its encoder pulls
++elements until the item hook returns false. False ends the list
++rather than failing the encode: a producer stops when its source
++is exhausted or when a reply budget fills. For the optional-data
++form xdrgen
++generates a working encoder only; the decoder it emits does not
++decode the list.
  
  For example:
  
-@@ -185,9 +194,11 @@ member:
-   nfs_acl2_secattr_decode()
-   nfs_acl2_secattr_decode_end()
- 
--A decoder fills the cursor's count from the wire before calling the
--begin hook; an encoder's begin hook sets that count, and the framing
--then bound-checks it and emits the length prefix. Once a begin hook
-+For a variable-length array, a decoder fills the cursor's count from
-+the wire before calling the begin hook, and an encoder's begin hook
-+sets that count for the framing to bound-check and emit. An
-+optional-data list's encoder begin hook sets the count as well; its
-+decoder never fills it. Once a begin hook
+@@ -197,7 +202,7 @@ member:
+ For a variable-length array, a decoder fills the cursor's count from
+ the wire before calling the begin hook, and an encoder's begin hook
+ sets that count for the framing to bound-check and emit. An
+-optional-data list's encoder begin hook sets the count as well; its
++optional-data list's encoder does not read the count and its
+ decoder never fills it. Once a begin hook
  has succeeded its end hook runs, so that it can release what begin
  took; the end hook receives the running success flag.
- 
-diff --git a/tools/net/sunrpc/xdrgen/generators/struct.py b/tools/net/sunrpc/xdrgen/generators/struct.py
-index 41030403b759..945b9c36a701 100644
---- a/tools/net/sunrpc/xdrgen/generators/struct.py
-+++ b/tools/net/sunrpc/xdrgen/generators/struct.py
-@@ -178,6 +178,27 @@ def emit_struct_member_decoder(
-             )
-         )
-         return
-+    if isinstance(field, _XdrOptionalData) and (
-+        (struct_name, field.name) in aggregate_members
-+    ):
-+        if peer != "server":
-+            raise NotImplementedError(
-+                "pragma aggregate is server-side only; "
-+                + peer
-+                + " generation is not yet supported"
-+            )
-+        template = get_jinja2_template(environment, "decoder", "aggregate_optional")
-+        print(
-+            template.render(
-+                name=field.name,
-+                type=field.spec.type_name,
-+                c_type=kernel_c_type(field.spec),
-+                classifier=field.spec.c_classifier,
-+                hook=aggregate_hook_base(struct_name),
-+                member_sym=aggregate_member_symbol(struct_name, field.name),
-+            )
-+        )
-+        return
-     if isinstance(field, _XdrBasic):
-         template = get_jinja2_template(environment, "decoder", field.template)
-         print(
-@@ -285,6 +306,27 @@ def emit_struct_member_encoder(
-             )
-         )
-         return
-+    if isinstance(field, _XdrOptionalData) and (
-+        (struct_name, field.name) in aggregate_members
-+    ):
-+        if peer != "server":
-+            raise NotImplementedError(
-+                "pragma aggregate is server-side only; "
-+                + peer
-+                + " generation is not yet supported"
-+            )
-+        template = get_jinja2_template(environment, "encoder", "aggregate_optional")
-+        print(
-+            template.render(
-+                name=field.name,
-+                type=field.spec.type_name,
-+                c_type=kernel_c_type(field.spec),
-+                classifier=field.spec.c_classifier,
-+                hook=aggregate_hook_base(struct_name),
-+                member_sym=aggregate_member_symbol(struct_name, field.name),
-+            )
-+        )
-+        return
-     if (struct_name, field.name) in pages_members:
-         if peer != "server":
-             raise NotImplementedError(
-diff --git a/tools/net/sunrpc/xdrgen/templates/C/struct/decoder/aggregate_optional.j2 b/tools/net/sunrpc/xdrgen/templates/C/struct/decoder/aggregate_optional.j2
-new file mode 100644
-index 000000000000..add4813aa803
---- /dev/null
-+++ b/tools/net/sunrpc/xdrgen/templates/C/struct/decoder/aggregate_optional.j2
-@@ -0,0 +1,31 @@
-+{# SPDX-License-Identifier: GPL-2.0 #}
-+{# Placeholder: cannot decode value-follows framing, because the
-+   element decoder does not report presence. #}
-+{% if annotate %}
-+	/* member {{ name }} (aggregate list) */
-+{% endif %}
-+	{
-+		struct xdrgen_aggregate_cursor cursor = {
-+			.xdr = xdr,
-+			.member_id = {{ member_sym }},
-+			.ctx = xdr->xdrgen_ctx,
-+		};
-+		bool ok = true;
-+
-+		if (!{{ hook }}_decode_begin(&cursor))
-+			return false;
-+		for (cursor.index = 0; cursor.index < cursor.count; cursor.index++) {
-+			{{ classifier }}{{ c_type }} element = {};
-+
-+			if (!xdrgen_decode_{{ type }}(xdr, &element)) {
-+				ok = false;
-+				break;
-+			}
-+			if (!{{ hook }}_decode(&cursor, &element)) {
-+				ok = false;
-+				break;
-+			}
-+		}
-+		if (!{{ hook }}_decode_end(&cursor, ok) || !ok)
-+			return false;
-+	}
 diff --git a/tools/net/sunrpc/xdrgen/templates/C/struct/encoder/aggregate_optional.j2 b/tools/net/sunrpc/xdrgen/templates/C/struct/encoder/aggregate_optional.j2
-new file mode 100644
-index 000000000000..d45b823225f7
---- /dev/null
+index d45b823225f7..4f35b6976109 100644
+--- a/tools/net/sunrpc/xdrgen/templates/C/struct/encoder/aggregate_optional.j2
 +++ b/tools/net/sunrpc/xdrgen/templates/C/struct/encoder/aggregate_optional.j2
-@@ -0,0 +1,31 @@
-+{# SPDX-License-Identifier: GPL-2.0 #}
-+{% if annotate %}
-+	/* member {{ name }} (aggregate list) */
-+{% endif %}
-+	{
-+		struct xdrgen_aggregate_cursor cursor = {
-+			.xdr = xdr,
-+			.member_id = {{ member_sym }},
-+			.ctx = xdr->xdrgen_ctx,
-+		};
-+		bool ok = true;
-+
-+		if (!{{ hook }}_encode_begin(&cursor))
-+			return false;
-+		for (cursor.index = 0; cursor.index < cursor.count; cursor.index++) {
-+			{{ classifier }}{{ c_type }} element = {};
-+
-+			if (!{{ hook }}_encode(&cursor, &element)) {
-+				ok = false;
-+				break;
-+			}
-+			if (!xdrgen_encode_{{ type }}(xdr, &element)) {
-+				ok = false;
-+				break;
-+			}
-+		}
-+		if (ok && !xdrgen_encode_{{ type }}(xdr, NULL))
-+			ok = false;
-+		if (!{{ hook }}_encode_end(&cursor, ok) || !ok)
-+			return false;
-+	}
-diff --git a/tools/net/sunrpc/xdrgen/xdr_ast.py b/tools/net/sunrpc/xdrgen/xdr_ast.py
-index 680a87e3bb39..1fbfae49e0cd 100644
---- a/tools/net/sunrpc/xdrgen/xdr_ast.py
-+++ b/tools/net/sunrpc/xdrgen/xdr_ast.py
-@@ -1207,12 +1207,14 @@ def check_aggregate_directives(root: "Specification") -> None:
-                     meta,
-                 )
-             field = fields[marked[1]]
--            # Only the counted-array framing is generated, so any other
--            # member form would emit hook prototypes that nothing calls.
--            if not isinstance(field, _XdrVariableLengthArray):
-+            # Any other member form would emit hook prototypes that
-+            # nothing calls.
-+            if not isinstance(
-+                field, (_XdrVariableLengthArray, _XdrOptionalData)
-+            ):
-                 raise XdrSemanticError(
--                    f"'{value.name}.{marked[1]}' is not a variable-length"
--                    " array",
-+                    f"'{value.name}.{marked[1]}' is neither a"
-+                    " variable-length array nor an optional-data list",
-                     meta,
-                 )
-             if element_type is None:
+@@ -12,13 +12,11 @@
+ 
+ 		if (!{{ hook }}_encode_begin(&cursor))
+ 			return false;
+-		for (cursor.index = 0; cursor.index < cursor.count; cursor.index++) {
++		for (cursor.index = 0; ; cursor.index++) {
+ 			{{ classifier }}{{ c_type }} element = {};
+ 
+-			if (!{{ hook }}_encode(&cursor, &element)) {
+-				ok = false;
++			if (!{{ hook }}_encode(&cursor, &element))
+ 				break;
+-			}
+ 			if (!xdrgen_encode_{{ type }}(xdr, &element)) {
+ 				ok = false;
+ 				break;
 -- 
 2.55.0
 
