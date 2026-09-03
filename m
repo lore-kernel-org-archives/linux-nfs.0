@@ -1,212 +1,258 @@
-Received: from mail-oo2-f7.google.com (mail-oo2-f7.google.com [74.125.231.135])
+Received: from mail-pj1-f100.google.com (mail-pj1-f100.google.com [209.85.216.100])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2B4EF2BCF4C
-	for <linux-nfs@vger.kernel.org>; Thu,  3 Sep 2026 22:38:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.135
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C0C0633F8C1
+	for <linux-nfs@vger.kernel.org>; Thu,  3 Sep 2026 23:50:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.100
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788475122; cv=none; b=s2WxUh3FjzNx5WMC5l17xmCH/7yx7oy95HORKyz+X1D0qgFzDuqwkZIq1h2MY/wX9X7MVCnZlGiYVtG3wN6tridJBrxmuUrycInOZ0n+ZVOLALHSz4lMp4hBqcXaTg2dt0f/yeU7CAGzFqbb3NZEqTHBZxNYVcaxC7t9W4gm0Ew=
+	t=1788479436; cv=none; b=J9XyKWU1AY6UuUlGU9w4BpqghrDayArMfrGRn6RanpD1pUJEVjUwKT37PETp3P9RFjwNjdBYV6NIzgsZB37xxFkF0nLi1Q3LYHJp5Z9eBM8GuJBciGGXMPJeTNGceHakoaqJbGxdg0P9Jv+9xwfBZpAYX5bNMzo/YzBp9zFVxKc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788475122; c=relaxed/simple;
-	bh=srKtBN7YiWfEJnHZlCVPhTL+BXHoTKstoVhYCmwaebM=;
-	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=spYWgPmN6ol1BOcbRZ9pYR/OeL0N5FthoW6wxHCznlCtDvrFCETHXqGxQ38k+dH701mNKv9/El7qP4QWfwC8UhU62OpXeL8eKiCKtgfq/34Lwb/qxTodtOi449rbwq1rMZ2aHyRRSTirE+d88gGMF51VTyul5S1czgxMgHZWmz4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=74.125.231.135
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oo2-f7.google.com with SMTP id 006d021491bc7-6b137c364c5so74180eaf.1
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Sep 2026 15:38:41 -0700 (PDT)
+	s=arc-20240116; t=1788479436; c=relaxed/simple;
+	bh=ktXBKo9qRrHQGe9ioJQ+KZslRf9Yl8uhcjxXZRkrkts=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=kXVkj6skIQPJMqIiHoVbNmrWlqM5M3eJC98LKeEbY7wrYCfDV7akRhc0wQz4VXu30V8AvsCCdiZPgjsvu51IpgW6jOJHLW0hBAbF2km/Lci+VPEj46B8ECJkc9iEJSCkUQWkxxW/RswQhRX9W/qEXG3OSamtGz2vPCI8LJZmkqA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com; spf=pass smtp.mailfrom=everpuredata.com; dkim=pass (2048-bit key) header.d=everpuredata.com header.i=@everpuredata.com header.b=2S4cFN2W; arc=none smtp.client-ip=209.85.216.100
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=everpuredata.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=everpuredata.com header.i=@everpuredata.com header.b="2S4cFN2W"
+Received: by mail-pj1-f100.google.com with SMTP id 98e67ed59e1d1-38a0c7e841fso559338a91.2
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Sep 2026 16:50:34 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=everpuredata.com; s=google; t=1788479434; x=1789084234; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=Mcb1FmSMiMhe6mHwcvPWRPOaUi1fkweD2+2nkEYu3ww=;
+        b=2S4cFN2Wxd7j1hNt7ymMU/ICD4hEC3tnekwfemdo3JGZfsrRG9Ypk2NZmeM7hI3EdT
+         FJmwzH0rYAfDyl6gBaa7UKHVkfcLfhzcJJVEe93BtlUxjfqAEd/n6H6V7labbZJmfoU6
+         jkQad145VvpNlcbM5zdSNKs7hJVQuE4ylSAomXM5vfeF27ZBm/qyOU3I6iJdFA+hVd8H
+         8AShXFTY2UgwGnzKDxL8JfN0teGii0MIFxKK2dVP9c0INPWdXLwk5lrEEpqH3Ev0MNxc
+         8HFHAW4Y5gy6U6/gHj+gFnrK9dkkbT0+yzlC73W2ITQi6beLk3BNOW04BGo2eBRM2Fh7
+         wvFw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788475120; x=1789079920;
-        h=content-type:to:from:subject:message-id:date:mime-version
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=XSguvTv0VEWmcSNYt7WY8UZQpYNnQc+lL3sqxL8n/LE=;
-        b=GUk5p1fnd1UBE+u7Xv6Yi3Ju2zZXxqF0yPrMwD7w/EQYvpqo4S2M8lWCmH3o9Zb9Fz
-         syCMQB2A5YJsfGBLsGW8YLrYI33T+h9UCt60rVB71/QWEUiHRuKYmcyMyMBE4jPOHz0o
-         JzH+t5IUCEJx6BS+8nRNCAzAi5LSRlgFdFPn1lz9vrzLmmjDRwwHx2zcynNL79+wBSjB
-         NpwvlUdCqpF+iu/9woaCF8hAEQLY6tWnognaVV8R1mQtI+cTNsPx4U9mG+IUkCbSvEkh
-         0xxCnjUnQ3Mg1jiqYrNrv9F73vxTjktHEfS7vDT3iHmBZjuaMZs89YTQo6aqXZkVRezb
-         s3ag==
-X-Forwarded-Encrypted: i=1; AKwUvBzepyuEuWJaiyaYCKxvrHPC3krbwPamuxhaTQ8xYNCy6jTWRRST9nHWJglsOeZ2g2Xpt4RNy5RXRVI=@vger.kernel.org
-X-Gm-Message-State: AFuF++l34W4Jit/r0LEZScw6KTZysm41FatuEhEh1FffU7AADtkkvjl2
-	GhPtZryfWsNQyzVSOfUosNcMK+MN5dOXP1paVkCzDrGERo+YX8qlycrsxIML8+JaOuxsK4+FXFw
-	U7EA/r0nGaCJIfnq/sruc2YMntuOhSk8oq//gcGG3ymz2G9weKk7kJCLhRnM=
+        d=1e100.net; s=20251104; t=1788479434; x=1789084234;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=Mcb1FmSMiMhe6mHwcvPWRPOaUi1fkweD2+2nkEYu3ww=;
+        b=i2sM4NF4Y1rUuwzKMIIG2tgBV8itsem0DIJc/cwpz8kQmfSeUrK+reN+uGUSSIVQ+C
+         RzNZBgSJJ7JTsm/LkterHiQdAsUTyugE8ReCv8Eg/p3K3lH2BBW3KkpG3pXEzLsk192u
+         +M1vRsKSr9p5lnPqSduPGVKzQNNmkHcEru6/Cnb8UUXc4zqLRwqBC1iffvbittNyKH6A
+         JIzcg4UNJo56+A+LGLh118bgilzaRzJjcrBDDGIucCItm/LtvmiJuV+9cSDEas8EPp3e
+         ztrwcGbyTr3cIkveOsifzhZIuhCMI3l/CkyV6FJgi92tsZOe/Af04o4ZLLrv9lbhIWjm
+         8nCg==
+X-Forwarded-Encrypted: i=1; AKwUvBzC07EooigPuXBBJ4IPvH2ONqyiEu3W5H/D1M6Gskq4PTR2JpufuPmnPcaW6BfwRTpmXlZIT23mzC0=@vger.kernel.org
+X-Gm-Message-State: AFuF++neCWoVqP+del8OjZVqdohce4TwS/QbJ4v7hjX1U9XsYjGY93ov
+	Y4nAbNceUjvO/4pcdDZEVmgWOuhl8t1VfvlExcjRVaAZeU9XGju0gCvhzp6vtibjEBNc8LezQ+H
+	9UMQt3aamCcrrxP4K3qmAPlQekhlE9Qbsnzbp
+X-Gm-Gg: AYBFou16iL+C1vYzsUrNtgVZTN2ttfNFZ6J/MT0JsEb2Fsfe2MD8nXPiu3X6tyc3o0Z
+	0v7cqUImwRZst0P084aOIRfkNfY38GeScjhKEWi0CQLMt1T6VeYNcN8A+Jf91KeZJE+1VbUs5PS
+	jlUONSBiwvaEU+LsroydBrLe/9qyrr9o7LFR+Kqi+HKx3WOvJP14w5goPY7YslLO29d+nhFh8Pt
+	/PpC0VdKUaPlkIOPLvvlL/0KBGXHT1gv1B/YPcLUoujWgp4d8VATtDWjAdqbXCbGlV/hNyefZdR
+	qDRUnEd9sizJWi++DNu6Xz3yVUJics+OYdA5NlFZrNdA5gXK6jQlfCSR6RhuYghx2osDs2eJWXo
+	cEm9Y93hfqie5ezyHh8x0I4vXHTnCoLGC6QD4qaY=
+X-Received: by 2002:a17:90b:2e0e:b0:398:9be5:b419 with SMTP id 98e67ed59e1d1-39b2622bfecmr3473262a91.20.1788479433717;
+        Thu, 03 Sep 2026 16:50:33 -0700 (PDT)
+Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.129])
+        by smtp-relay.gmail.com with ESMTPS id 98e67ed59e1d1-39b15aca3fcsm1783706a91.0.2026.09.03.16.50.33
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 03 Sep 2026 16:50:33 -0700 (PDT)
+X-Relaying-Domain: everpuredata.com
+Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
+	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id 0CCDE340ACC;
+	Thu,  3 Sep 2026 16:50:33 -0700 (PDT)
+From: Tim Menninger <tmenninger@everpuredata.com>
+To: Chuck Lever <cel@kernel.org>
+Cc: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Tejun Heo <tj@kernel.org>,
+	Lai Jiangshan <jiangshanlai@gmail.com>,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Eric Badger <ebadger@everpuredata.com>,
+	Jon Curley <jcurley@everpuredata.com>
+Subject: Re: [PATCH RFC 6/8] SUNRPC: Reduce rpciod workqueue contention
+Date: Thu,  3 Sep 2026 23:50:32 +0000
+Message-Id: <20260903235032.960219-1-tmenninger@everpuredata.com>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <dc18f84a-f53f-440f-b0cb-f27b44e090eb@app.fastmail.com>
+References: <dc18f84a-f53f-440f-b0cb-f27b44e090eb@app.fastmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a4a:ec4a:0:b0:6b7:46fc:1dd with SMTP id
- 006d021491bc7-6b746fc025cmr152867eaf.60.1788475120144; Thu, 03 Sep 2026
- 15:38:40 -0700 (PDT)
-Date: Thu, 03 Sep 2026 15:38:40 -0700
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6a99f6f0.2e567484.299ffc.000c.GAE@google.com>
-Subject: [syzbot] [nfs?] INFO: task hung in nfsd4_cld_tracking_init
-From: syzbot <syzbot+edbebd898142ee5e24ce@syzkaller.appspotmail.com>
-To: Dai.Ngo@oracle.com, cel@kernel.org, jlayton@kernel.org, 
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, neil@brown.name, 
-	okorniev@redhat.com, syzkaller-bugs@googlegroups.com, tom@talpey.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 
-Hello,
+Thanks. I did some more testing with v2 and collected the requested
+information.
 
-syzbot found the following issue on:
+> 1. Does v2 of the series behave the same way? v2 dropped the
+>    patch that ran the first RPC states in the submitter's
+>    context, so the rpciod traffic pattern differs from v1.
+>    The same smt -> cache_shard -> smt toggle on v2 would tell
+>    us whether that matters.
 
-HEAD commit:    940de590b839 Merge tag 'hardening-v7.3-rc2' of git://git.k..
-git tree:       upstream
-console+strace: https://syzkaller.appspot.com/x/log.txt?x=12c6b39e580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=8c5c3949d762a91f
-dashboard link: https://syzkaller.appspot.com/bug?extid=edbebd898142ee5e24ce
-compiler:       gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=14872125580000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=12b8cb49580000
+The v2 series behaves similarly insofar as some runs see ~15 GB/s and
+other runs see ~45 GB/s, but the low-throughput state no longer appears
+to be directly controlled by the rpciod affinity scope.
 
-Downloadable assets:
-disk image: https://storage.googleapis.com/syzbot-assets/75055d1d5648/disk-940de590.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/419590aed71c/vmlinux-940de590.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/c51c5e853b44/bzImage-940de590.xz
+I have started runs with both smt and cache_shard, and with both scopes
+I have seen all three of:
 
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+edbebd898142ee5e24ce@syzkaller.appspotmail.com
+    1. start and remain at ~45 GB/s
+    2. start and remain at ~15 GB/s
+    3. start at ~45 GB/s, then abruptly drop to ~15 GB/s
 
-INFO: task syz-executor22
-INFO: task syz-executor224:5626 blocked for more than 143 seconds.
-      Not tainted syzkaller #0
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-task:syz-executor224 state:D stack:24312 pid:5626  tgid:5625  ppid:5624   task_flags:0x400140 flags:0x00080802
-Call Trace:
- <TASK>
- context_switch kernel/sched/core.c:5520 [inline]
- __schedule+0x1259/0x6920 kernel/sched/core.c:7270
- __schedule_loop kernel/sched/core.c:7347 [inline]
- schedule+0xdd/0x2c0 kernel/sched/core.c:7362
- schedule_timeout+0x1b2/0x280 kernel/time/sleep_timeout.c:75
- do_wait_for_common kernel/sched/completion.c:100 [inline]
- __wait_for_common+0x2e7/0x4c0 kernel/sched/completion.c:121
- __cld_pipe_upcall fs/nfsd/nfs4recover.c:673 [inline]
- cld_pipe_upcall fs/nfsd/nfs4recover.c:691 [inline]
- nfsd4_cld_get_version fs/nfsd/nfs4recover.c:1425 [inline]
- nfsd4_cld_tracking_init+0x4be/0x10f0 fs/nfsd/nfs4recover.c:1490
- nfsd4_client_tracking_init+0xe5/0x1c0 fs/nfsd/nfs4recover.c:1941
- nfs4_state_start_net.cold+0xb7/0x480 fs/nfsd/nfs4state.c:9838
- nfsd_startup_net fs/nfsd/nfssvc.c:391 [inline]
- nfsd_svc+0x54a/0x7d0 fs/nfsd/nfssvc.c:775
- write_threads+0x316/0x600 fs/nfsd/nfsctl.c:438
- nfsctl_transaction_write+0x106/0x1a0 fs/nfsd/nfsctl.c:114
- vfs_write+0x2aa/0x1050 fs/read_write.c:685
- ksys_write+0x12a/0x250 fs/read_write.c:739
- do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
- do_syscall_64+0x123/0x790 arch/x86/entry/syscall_64.c:84
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7fbfd3713269
-RSP: 002b:00007fbfd36eb1d8 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
-RAX: ffffffffffffffda RBX: 00007fbfd37c3b68 RCX: 00007fbfd3713269
-RDX: 0000000000000002 RSI: 0000200000000100 RDI: 0000000000000005
-RBP: 00007fbfd37c3b60 R08: 35203a6b63617473 R09: 35203a6b63617473
-R10: 35203a6b63617473 R11: 0000000000000246 R12: 00007fbfd3795378
-R13: 0000200000000200 R14: 0000200000000500 R15: 00002000000000c0
- </TASK>
+I have not found a discernible pattern for how long a run remains at
+~45 GB/s before dropping.
 
-Showing all locks held in the system:
-locks held by kworker/u8:1/13: 2, on CPU#0:
- #0: ffff88801c094140 ((wq_completion)events_unbound){+.+.}-{0:0}, at: process_one_work+0x1466/0x1b10 kernel/workqueue.c:3371
- #1: ffffc90000127d08 ((work_completion)(&(&kfence_timer)->work)){+.+.}-{0:0}, at: process_one_work+0xa2c/0x1b10 kernel/workqueue.c:3372
-locks held by pr/ttyS0/16: 2, last CPU#0:
- #0: ffffffff8edd8338 (console_srcu){....}-{0:0}, at: rcu_try_lock_acquire include/linux/rcupdate.h:314 [inline]
- #0: ffffffff8edd8338 (console_srcu){....}-{0:0}, at: srcu_read_lock_nmisafe include/linux/srcu.h:439 [inline]
- #0: ffffffff8edd8338 (console_srcu){....}-{0:0}, at: console_srcu_read_lock+0x49/0x60 kernel/printk/printk.c:291
- #1: ffffffff9bc63c78 (&port_lock_key){-.-.}-{3:3}, at: __uart_port_lock_irqsave include/linux/serial_core.h:613 [inline]
- #1: ffffffff9bc63c78 (&port_lock_key){-.-.}-{3:3}, at: univ8250_console_device_lock+0x64/0xc0 drivers/tty/serial/8250/8250_core.c:413
-locks held by khungtaskd/32: 1, last CPU#1:
- #0: ffffffff8edec060 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:309 [inline]
- #0: ffffffff8edec060 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:849 [inline]
- #0: ffffffff8edec060 (rcu_read_lock){....}-{1:3}, at: debug_show_all_locks+0x3d/0x184 kernel/locking/lockdep.c:6837
-locks held by getty/5360: 2, on CPU#1:
- #0: ffff888029f520a0 (&tty->ldisc_sem){++++}-{0:0}, at: tty_ldisc_ref_wait+0x24/0x80 drivers/tty/tty_ldisc.c:243
- #1: ffffc900032262e8 (&ldata->atomic_read_lock){+.+.}-{4:4}, at: n_tty_read+0x419/0x14e0 drivers/tty/n_tty.c:2211
-locks held by syz-executor224/5626: 3, on CPU#1:
- #0: ffff88802b935970 (&f->f_pos_lock){+.+.}-{4:4}, at: fdget_pos+0x2aa/0x380 fs/file.c:1259
- #1: ffff888035040460 (sb_writers#9){.+.+}-{0:0}, at: ksys_write+0x12a/0x250 fs/read_write.c:739
- #2: ffffffff8f287680 (nfsd_mutex){+.+.}-{4:4}, at: write_threads+0x288/0x600 fs/nfsd/nfsctl.c:436
+cache_shard does still seem somewhat more likely to give me a ~45 GB/s
+run, particularly as uptime increases, but unlike v1 I can reproduce
+both good and bad runs with either scope. The deterministic live
+smt -> cache_shard -> smt behavior I reported for v1 is no longer
+present in v2.
 
-=============================================
+So the low-throughput state remains with v2, but it no longer seems to be
+from the SMT affinity change alone.
 
-NMI backtrace for cpu 1
-CPU: 1 UID: 0 PID: 32 Comm: khungtaskd Not tainted syzkaller #0 PREEMPT(full) 
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 08/05/2026
-Call Trace:
- <TASK>
- __dump_stack lib/dump_stack.c:94 [inline]
- dump_stack_lvl+0x100/0x190 lib/dump_stack.c:120
- nmi_cpu_backtrace.cold+0x12d/0x151 lib/nmi_backtrace.c:123
- nmi_trigger_cpumask_backtrace+0x21f/0x2a0 lib/nmi_backtrace.c:66
- trigger_all_cpu_backtrace include/linux/nmi.h:164 [inline]
- __sys_info lib/sys_info.c:157 [inline]
- sys_info+0x141/0x190 lib/sys_info.c:165
- check_hung_uninterruptible_tasks kernel/hung_task.c:353 [inline]
- watchdog+0xcb1/0x1030 kernel/hung_task.c:561
- kthread+0x373/0x450 kernel/kthread.c:436
- ret_from_fork+0x730/0xd60 arch/x86/kernel/process.c:158
- ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
- </TASK>
-Sending NMI from CPU 1 to CPUs 0:
-NMI backtrace for cpu 0
-CPU: 0 UID: 0 PID: 16 Comm: pr/ttyS0 Not tainted syzkaller #0 PREEMPT(full) 
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 08/05/2026
-RIP: 0010:io_serial_in+0x87/0xb0 drivers/tty/serial/8250/8250_port.c:410
-Code: 07 5c fc 48 8d 7d 40 44 89 e1 48 b8 00 00 00 00 00 fc ff df 48 89 fa d3 e3 48 c1 ea 03 80 3c 02 00 75 1a 66 03 5d 40 89 da ec <5b> 0f b6 c0 5d 41 5c c3 cc cc cc cc e8 48 1a cf fc eb a2 e8 d1 1a
-RSP: 0018:ffffc90000157958 EFLAGS: 00000002
-RAX: dffffc0000000000 RBX: 00000000000003fd RCX: 0000000000000000
-RDX: 00000000000003fd RSI: ffffffff85afe8d0 RDI: ffffffff9bc63ca0
-RBP: ffffffff9bc63c60 R08: 0000000000000001 R09: 000000000000001f
-R10: 0000000000000000 R11: 205d323354202020 R12: 0000000000000000
-R13: 0000000000000020 R14: fffffbfff378c7e9 R15: dffffc0000000000
-FS:  0000000000000000(0000) GS:ffff888123b61000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 0000561b47b0e660 CR3: 000000000eb96000 CR4: 00000000003526f0
-Call Trace:
- <TASK>
- serial_in drivers/tty/serial/8250/8250.h:128 [inline]
- serial_lsr_in drivers/tty/serial/8250/8250.h:150 [inline]
- wait_for_lsr+0x13a/0x210 drivers/tty/serial/8250/8250_port.c:2013
- serial8250_fifo_wait_for_lsr_thre+0x5f/0xd0 drivers/tty/serial/8250/8250_port.c:3270
- __serial8250_console_fifo_write+0xa5/0x290 drivers/tty/serial/8250/8250_port.c:3345
- serial8250_console_fifo_write drivers/tty/serial/8250/8250_port.c:3378 [inline]
- __serial8250_console_write drivers/tty/serial/8250/8250_port.c:3429 [inline]
- serial8250_console_write+0xf46/0x1330 drivers/tty/serial/8250/8250_port.c:3493
- nbcon_emit_next_record+0x8f7/0xa70 kernel/printk/nbcon.c:1070
- nbcon_emit_one+0x1a8/0x2b0 kernel/printk/nbcon.c:1157
- nbcon_kthread_func+0x613/0x7d0 kernel/printk/nbcon.c:1271
- kthread+0x373/0x450 kernel/kthread.c:436
- ret_from_fork+0x730/0xd60 arch/x86/kernel/process.c:158
- ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
- </TASK>
+All captures below are from separate runs with the scope set as indicated.
 
+> 2. How are the RDMA device's completion interrupts placed?
+>    Please share, on a bad run:
+>
+>    * /proc/interrupts lines for the device's completion vectors
+>    * the smp_affinity_list for each of those IRQs
+>    * whether irqbalance is running, and whether you've pinned
+>      the IRQs by hand
 
----
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+There are two ConnectX-7 devices:
 
-syzbot will keep track of this issue. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+    mlx5_0 port 1 ==> ens3np0
+    mlx5_1 port 1 ==> ens6np0
 
-If the report is already addressed, let syzbot know by replying with:
-#syz fix: exact-commit-title
+at PCI addresses 0000:2a:00.0 and 0000:ab:00.0 respectively.
 
-If you want syzbot to run the reproducer, reply with:
-#syz test: git://repo/address.git branch-or-commit-hash
-If you attach or paste a git patch, syzbot will apply it before testing.
+The substantial completion traffic in these captures is on
+0000:2a:00.0. Its mlx5 completion IRQs are individually affinitized to
+CPUs. For example:
 
-If you want to overwrite report's subsystems, reply with:
-#syz set subsystems: new-subsystem
-(See the list of subsystem names on the web dashboard)
+    mlx5_comp0   -> CPU 0
+    mlx5_comp1   -> CPU 1
+    ...
+    mlx5_comp23  -> CPU 23
+    mlx5_comp24  -> CPU 48
+    ...
+    mlx5_comp47  -> CPU 71
+    mlx5_comp48  -> CPU 24
+    ...
+    mlx5_comp62  -> CPU 38
 
-If the report is a duplicate of another one, reply with:
-#syz dup: exact-subject-of-another-report
+The affinity mapping was the same in the good and bad captures I took.
 
-If you want to undo deduplication, reply with:
-#syz undup
+I have not manually pinned any IRQs, and irqbalance is inactive.
+
+I have the complete /proc/interrupts and smp_affinity_list captures
+available if there are particular vectors or deltas that would be useful
+to see.
+
+> 3. Where is CPU time going on a bad run versus a good one?
+>    A short capture of each would help:
+>    perf record -a -g -- sleep 10
+>    perf report --sort comm,cpu --stdio | head -80
+>    In particular I'm interested in which CPUs the kworker
+>    threads for rpciod and the ib-comp-wq threads run on under
+>    each scope.
+
+The perf results aren't showing anything useful yet. With the requested
+--sort comm,cpu, the top of the report is dominated by perf itself. Without
+that sort, the top entries are things like cpuidle_enter_state and
+cpuidle_enter.
+
+I'll keep working on the perf capture and follow up if/when I get something
+useful, but I didn't want to hold up the rest of this on that.
+
+> 4. tools/workqueue/wq_monitor.py rpciod, sampled for a few
+>    seconds under each scope, would show whether the pools are
+>    evenly loaded.
+
+I captured rpciod monitoring data from four v2 runs. Here are windows from
+each.
+
+cache_shard good (~46 GB/s):
+                     total  infl  CPUtime CPUitsv CMW/RPR  mayday rescued
+    rpciod        27613426     3    534.5       - 1699488      16       0 
+
+                     total  infl  CPUtime CPUitsv CMW/RPR  mayday rescued
+    rpciod        27817822     5    537.3       - 1713539      16       0 
+
+                     total  infl  CPUtime CPUitsv CMW/RPR  mayday rescued
+    rpciod        28027937     2    540.1       - 1728063      16       0 
+
+cache_shard bad (~15 GB/s):
+                     total  infl  CPUtime CPUitsv CMW/RPR  mayday rescued
+    rpciod        71754056     2    932.1       - 4767531       0       0 
+
+                     total  infl  CPUtime CPUitsv CMW/RPR  mayday rescued
+    rpciod        71825047     0    933.9       - 4771333       0       0 
+
+                     total  infl  CPUtime CPUitsv CMW/RPR  mayday rescued
+    rpciod        71901102     3    935.8       - 4775677       0       0 
+
+smt good (~46 GB/s):
+                     total  infl  CPUtime CPUitsv CMW/RPR  mayday rescued
+    rpciod        17036137     2    144.9       - 4993757       0       0
+
+                     total  infl  CPUtime CPUitsv CMW/RPR  mayday rescued
+    rpciod        17220514     0    146.8       - 5064827       0       0
+
+                     total  infl  CPUtime CPUitsv CMW/RPR  mayday rescued
+    rpciod        17397194     3    148.8       - 5132231       0       0
+
+smt bad (~26 GB/s):
+                     total  infl  CPUtime CPUitsv CMW/RPR  mayday rescued
+    rpciod         4937072     1     43.2       - 1407321       0       0 
+
+                     total  infl  CPUtime CPUitsv CMW/RPR  mayday rescued
+    rpciod         5037193     4     44.0       - 1432686       0       0 
+
+                     total  infl  CPUtime CPUitsv CMW/RPR  mayday rescued
+    rpciod         5138509     4     44.8       - 1458079       0       0 
+
+> 5. The workload itself: thread count, I/O size and direction,
+>    number of mounts and RDMA connections, and the mount
+>    options (nconnect in particular).
+
+Workload:
+    elbencho --iter 1 --threads 160 --files 16 --size 256G \
+        --block 1m --dropcache --iodepth 64 --direct --read \
+        --lat --latpercent --log 1 ...
+
+Mount options:
+    /home/ir/exapurity from 10.71.61.129:/exapurity
+     Flags:	rw,relatime,vers=4.1,rsize=524288,wsize=524288,namlen=255,hard,fatal_neterrors=none,proto=tcp,nconnect=16,timeo=600,retrans=2,sec=sys,clientaddr=10.230.36.66,local_lock=none,write=eager,addr=10.71.61.129
+
+It's pNFS over RDMA with one client, one MDS, one DS.
+
+This is a pNFS flexfiles workload. The MDS connection is TCP, and I see
+16 RDMA rpc_xprt instances for the data-server traffic during these
+tests.
+
+> 6. The base kernel the series was applied to, and the RDMA
+>    device and driver.
+
+For all of the data above, I applied the full v2 series on top of:
+
+    940de590b839 Merge tag 'hardening-v7.3-rc2' of git://git.kernel.org/pub/scm/linux/kernel/git/kees/linux
+
+The RDMA hardware is NVIDIA/Mellanox ConnectX-7 (MT2910, PCI ID
+15b3:1021), using mlx5_core/mlx5_ib.
+
+For the active interface:
+
+    driver: mlx5_core
+    version: 7.3.0-rc1-mainline-bad-v2+
+    firmware-version: 28.47.2682 (MT_0000000838)
+    bus-info: 0000:2a:00.0
