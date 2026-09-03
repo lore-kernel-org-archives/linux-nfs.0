@@ -1,257 +1,184 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from mx0b-00154904.pphosted.com (mx0b-00154904.pphosted.com [148.163.137.20])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 753F832A3DA
-	for <linux-nfs@vger.kernel.org>; Thu,  3 Sep 2026 03:05:10 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F0ED227A91D
+	for <linux-nfs@vger.kernel.org>; Thu,  3 Sep 2026 05:31:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.137.20
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788404712; cv=none; b=H4o0Xw9T4LESWbeTGd2vUVaTk108pgvfocPmhA10UbVX4AwhHAikSyEKi65qT8XVunePBgrwbP1qBn5CJRj0sLryLh/z5lZAPXfFiHQFlGiq6q6a2dbTXvxSJAZ4TeitvtMNDsxEngzwWgc4QEJzKDTshoJBg+U0EhRHsddPNMg=
+	t=1788413511; cv=none; b=X+4FfRyoAeiTFcO934TkBTsYBRMRBrNrFA4lCjss2A33hAOHoG/EwO8inSlN6L7nZGyAVEeM67bbUkddf08UElb/8PyVNX6/vGjOcRoRagWs7Yx6KJYvZBYiphLH2P1iRXjN9s8YcaQIKIqWmSTXXiMNxdWs2ScUbZ9NQkefrpc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788404712; c=relaxed/simple;
-	bh=uaguCkxOVO9IVzqr4gnjeWbaVqDvbplfpywozD6yR1g=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=N6pUAJWrfGjwJxAO96JgliO8lLJZUexHMDQawlKzcpJ/gT6cLfnAqCfQFOOpqq+H8L9OrR+fErdR2vbY5148OAChftRKgVh630LkZrbGx8wd4rraVjsU9nrPdQX0UH+iJ7MCTYYjOUEzRC9+7KUzfvawE66ngk1vmczAQT7WSvU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=annN4BIc; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788413511; c=relaxed/simple;
+	bh=EjsMjXALJQ3Lvd1JcCawwt8OqDrKrctTb2jlRhFXvHg=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=eDiDMkSLGY2oBrsWdCiDnIFEMHwbUVvWasJ28BG7Lu2LrdTf0oQa02SL25HxBKUsO/hCbXBdlpETkCIldKlkewF7s7Bb2R4ORooPDt2D7bZDLA1FNII1CapJEj9dvThbpAs7qK6hx3AyM2bjTXPcSeZgPpLJpHdHJrF+HojRLCE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=A2ZZTFfr; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=pAFdBw93; arc=none smtp.client-ip=148.163.137.20
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dell.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="annN4BIc"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 55E581F000E9;
-	Thu,  3 Sep 2026 03:05:10 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788404710;
-	bh=fpUOfjVn9WpWb1wcXjffcslvbj6PGFeMzNqr03wDIyA=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=annN4BIc0AXiwhdeWMm2gded5ueWIY4to20SGiSiKiPjo0aMhxzKqW2xBMI+JgaDu
-	 kGJJ0LMGDSRo0xpgDDm9aQZiaRtLVXMAkg0pUlBoI/Hf4sIno25HiFSphTFqNVsyMz
-	 ng+pi5LH4TvCYbgxKxb4tw2KHCVEqLDbu7awclS1bCYAz+xVwxlZNxzhQH3VNUbqJD
-	 gSN6CfTAMS/uQv6kFToxom5IyiUmWGyM4cc2aNyFuSH40lB5mgWu1LVsLKRt7nXomr
-	 7qReP4GiQvV6sd88BhAppHIH/CwpfzT9kcR/iWk081YFwFH4k+EYL5sSuhC0NPdYeG
-	 fPo7gfOKiFG7g==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 5E5C8F40066;
-	Wed,  2 Sep 2026 23:05:09 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Wed, 02 Sep 2026 23:05:09 -0400
-X-ME-Sender: <xms:5eOYapXe7BOvP1vqSY93XB1WN29sMDPyLqAkjvpsN4hSADi-PudEcQ>
-    <xme:5eOYakZ3v44mr98qy1EwDAHV8hlDU07Vr3N0E7K7ARNvtsEDs7DBGo7hn-lF8sL_0
-    4RG4ajiAxNLADFOkFUeATJPtLqvIyR_LudoBssrl4Z-vA43alteTqc>
-X-ME-Proxy-Cause: dmFkZTGgX89dtOQLdhk+AsX9Kx6VU25BnGdUQ0x5nh0wZT7Ss1R9gKR8lJ6guSwE+W+GZq
-    5NzvUXzDkG5oSsp6P3RWLT0ZcmAyQt8gtCDG8z52ex43+N9QQrjVU4MVq3H71bYOGfBI0u
-    gYGTze7wXTGu/r2gOllJCr+8OtCooJSFW1sbIf9Ag4L21E78cSF42aMDcilBFz9CLiWR6s
-    L+8yY6uMTGUAlaQr/9JOv7wskHGaYleKPaUrqpRx0eyRZ4VvZ27TtiMPhQuG50zrGKQtcW
-    SVt8comJ8VieH3ZjntllD+YqMc0epSEoEWjggrUT5Gu9gBGrtIoGoGUeuvbKusN5hkyQZt
-    HxOsBo0I4w/m27Htcy2DcXGoyMDumwR6oWmTzCgPH55QjGkSfMuZM/+8PCVKulXcWkm/wa
-    fyN0cp6ZhK0SNYPzn5oI8if/OOPIULxk8QkBckx30zwEQtDL2bSC0Q7pw+dqBvgbmQeWYR
-    YFpAc0vTTYQXdM6gsszn4xquP8uZ0hdfFZB+kW3CXh8GVZg+n2Nnajp8m7Lul9MkWBHiOE
-    BYZQ6ZHlMicGy8oO7uX8yIneu9EE3bNgaXoknQh5AnJt9EngUvjIlwMfiUlVku0rhTdOcQ
-    uJf/eCEYplWYd3RBf4+2sKUY5jsK8ppwPPhp85gwnyUHw8D9heRGjYdl50SQ
-X-ME-Proxy: <xmx:5eOYau5rx__LQMOcsI4ZOa8xPmBQfELqoX5Kuwos8_1U9O-jpbzaqA>
-    <xmx:5eOYapby6Xs6VoRyLiWWRSUPQuyZjRCRRq9j7ePWd-K8T4qBcANEtQ>
-    <xmx:5eOYatjK7N2-T8EuNrZV87LDfmXdomnBz3nzN-ML448_Fd0vk39CLg>
-    <xmx:5eOYaq_HLI8EiJEwc-oDJCI752CIG2QbT5cE3gVf9txNOtgXqJj0lA>
-    <xmx:5eOYaoqHBV-vKJLu-kgF7-hd9MRdvmyZgjEYVO81ZUncL6LZXZ6meKHU>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 373667811F0; Wed,  2 Sep 2026 23:05:09 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="A2ZZTFfr";
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="pAFdBw93"
+Received: from pps.filterd (m0170395.ppops.net [127.0.0.1])
+	by mx0b-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 6832w37H3152397
+	for <linux-nfs@vger.kernel.org>; Thu, 3 Sep 2026 01:31:48 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=dell.com; h=cc
+	:content-transfer-encoding:date:from:message-id:mime-version
+	:subject:to; s=smtpout1; bh=JsH1atEAmRICMlKPjIu4a+0+pz6ETmZJgOvN
+	X5stA0g=; b=A2ZZTFfrV0hBpuZ6fGhYTtvxiLXkjgTj8nPGXOR2CBc7mHd/9Dqq
+	AzX0s7pdUftPdsmpae7l8oOIpXD6aoDq35Nte/oP5Lx8/SV0MkcYU6C0b2ph6Q5E
+	/0K2goFgx5Nyv1WDxBv1ocyl4h+e03qGxJZcE26Bwi1nL7dRfPhYdgiuopUpnGQD
+	PDl4J/lNhXzKo5Um75pBwMlxbL9LjsL93ZJ6jgnNDsIxWhx5alrQ7BYrF9jkuScn
+	DWnGuN97GunBV9Gx8Tj8YlN9suWYnSrFyKqbZCKUYhXxSN6ht4+Wy5UfmGFWlk13
+	F/MfuBp3BQgrSRGM9HsYlUpfluZDyG40FA==
+Received: from mx0a-00154901.pphosted.com (mx0a-00154901.pphosted.com [67.231.149.39])
+	by mx0b-00154904.pphosted.com (PPS) with ESMTPS id 4gbv3gn0uc-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Thu, 03 Sep 2026 01:31:48 -0400 (EDT)
+Received: from pps.filterd (m0134746.ppops.net [127.0.0.1])
+	by mx0a-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 6833wteC3474327
+	for <linux-nfs@vger.kernel.org>; Thu, 3 Sep 2026 01:31:47 -0400
+Received: from esapsmtplv06.us.dell.com (esapsmtplv06.us.dell.com [143.166.203.146])
+	by mx0a-00154901.pphosted.com (PPS) with ESMTPS id 4gf1fa0u7k-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Thu, 03 Sep 2026 01:31:47 -0400 (EDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+  d=dell.com; i=@dell.com; q=dns/txt; s=smtpdev1;
+  t=1788413507; x=1819949507;
+  h=from:to:cc:subject:date:message-id:mime-version:
+   content-transfer-encoding;
+  bh=JsH1atEAmRICMlKPjIu4a+0+pz6ETmZJgOvNX5stA0g=;
+  b=pAFdBw93tMh+OKY11aJr6s0MD0U3lEtJfp+SL7ZcpoWIqKAvllt71yKF
+   +XXCofLVbAWn11NiVVR96ylFNLd4RhWzLg6056pzJ3RfAMG8RGKenLw2G
+   CL7cKdCwrf6sGOyHTDBlZyiNlfoI9gMxlvbHQkpW6elm0YsMfN8hlfNPf
+   V4OED5mMWb0VHfboc4g5mkzoMFUQ2zBEsKa4Man8CnXJjah4jimePl4WQ
+   u12JnZqX1NuB6HZn/Su81K5XAy6PseRM1mCsyJ03dJ12qc2owQX5NDAvY
+   dbxPb27wZX4i//oxDSSbubVASXkdOr43guWSqWHfMhAg49y6zIurTBQUv
+   Q==;
+X-CSE-ConnectionGUID: WGBJj806SzmL/21Wy+ExPg==
+X-CSE-MsgGUID: XX5S1nToRqW4MEFeEKqDrA==
+X-LoopCount0: from 10.94.14.196
+X-MS-Exchange-CrossPremises-AuthAs: Internal
+Received: from w-96j1th4.apac.dell.com (HELO W-96J1TH4.blr.amer.dell.com) ([10.94.14.196])
+  by esapsmtplv06.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 03 Sep 2026 05:31:45 +0000
+From: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
+To: linux-nfs@vger.kernel.org
+Cc: jlayton@kernel.org, chuck.lever@oracle.com,
+        Prabhakar Pujeri <prabhakar.pujeri@dell.com>
+Subject: [PATCH v3 0/2] nfsd: expose NFSv4 client state through Netlink
+Date: Thu,  3 Sep 2026 05:31:39 +0000
+Message-ID: <20260903053141.1241-1-prabhakar.pujeri@dell.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Date: Wed, 02 Sep 2026 23:04:49 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: NeilBrown <neil@brown.name>, "Chuck Lever" <chuck.lever@oracle.com>,
- "Jeff Layton" <jlayton@kernel.org>
-Cc: "Christian Brauner" <brauner@kernel.org>, linux-nfs@vger.kernel.org
-Message-Id: <8212e77c-fced-476b-ba64-3b8defcc65ad@app.fastmail.com>
-In-Reply-To: 
- <178831622346.3510150.10735958308429473076@noble.neil.brown.name>
-References: <178831622346.3510150.10735958308429473076@noble.neil.brown.name>
-Subject: Re: [PATCH] nfsd: switch nfsd4_open() to use vfs_lookup_open()
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
+ definitions=2026-09-03_01,2026-09-02_04,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ lowpriorityscore=0 priorityscore=1501 suspectscore=0 clxscore=1015
+ phishscore=0 bulkscore=0 adultscore=0 impostorscore=0 spamscore=0
+ malwarescore=0 classifier=typeunknown authscore=0 authtc= authcc=
+ route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2606150000
+ definitions=main-2609030046
+X-Proofpoint-ORIG-GUID: c_bKsJdTlR5fFZlaboKD5d-H9lckQN0B
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwOTAzMDA0OCBTYWx0ZWRfXyBtMq4QuAqqh
+ 8m3LQMtP6d/4DVd3p4tXYjpxEFuy7YCYaAtuqPNBvgHDv37EHkxStfrmRMx3ET515r9SEckFOtU
+ HPv1B6eGNhSOcrdI3SKfgPpeo2kk/O23BfIVaFGDe+lsJhoaEuzexnP4dnBzkamhhdz/uc7eTJ5
+ 7cr92a2SbAjhHnsa58r38+UomMEaxwcSE+F7D8RYkF6XoUQ6ymtM3SEBDmqsLsXoYErS63eLbd+
+ qW+FVV1u3RTfC/WWTOJLXHdNMrkJut/r+FLAdd4MihNlmTX4vA7xHECJSu+v3l9xpa9NLnmVkYe
+ TvF+VgfQhbJOJk/yh3RXp0zennMMhPM/LvlWwJbpKYjro1pPM29Vdt7XNawPU+816g/6iGrDQYV
+ iufu93luHHhKbXCUSVN3zWYK3c66qAeXNfLB2VVnUNAuAi8cDIK5C3QDHKtz0vnLQeQuPH+pfqP
+ kaDX7YAwtXA7fcKy4GA==
+X-Proofpoint-GUID: c_bKsJdTlR5fFZlaboKD5d-H9lckQN0B
+X-Authority-Analysis: v=2.4 cv=B7SJFutM c=1 sm=1 tr=0 ts=6a990644 cx=c_pps
+ a=j0++y401J6f/BxNAf5EDow==:117 a=in+AvElAwLqdjTPPAWhuvg==:17
+ a=VdqzKS8jKosA:10 a=ke5jqHz-1hQA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=6gNNCFAoQcIphELLPWWu:22 a=Qy6CKLcU0MZ4grw4BCWD:22 a=VwQbUJbxAAAA:8
+ a=iLNU1ar6AAAA:8 a=-y_wPE8gx4dmNtE7TfYA:9 a=gbU3OgOOxF9bX48Letew:22
+X-Proofpoint-Spam-Info: AW1haW4tMjYwOTAzMDA0OCBTYWx0ZWRfX02hPM6qmhihn
+ i808o2qHWiL2SrkEWzaAukt4y/qH4DVB3/jmdW8UmuO9wjYKZvYr5x2BvNwT2jJmUCVRXJ+BmOA
+ TP7C6MnD2lib6W9NGtDyKqGucFcEOoM=
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 clxscore=1015
+ suspectscore=0 spamscore=0 lowpriorityscore=0 bulkscore=0 impostorscore=0
+ priorityscore=1501 malwarescore=0 phishscore=0 adultscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2609030048
 
-=E2=80=9Cnfsd: switch nfsd4_open() =E2=80=A6=E2=80=9D
+Administrators can inspect NFSv4 clients through the nfsd filesystem, but
+collecting a server-wide view requires walking one directory and opening
+multiple files for every client. That interface remains useful for detailed
+inspection, but it is awkward for monitoring and automation.
 
-IIUC the patch modifies nfsd4_create_file(), not nfsd4_open() ?
+Add a compact, privileged query to the existing nfsd Generic Netlink family:
 
-Several more issues below.
+  1. Dump basic NFSv4 client identity, address, lease, confirmation,
+     reclaim, and callback state.
+  2. Add O(1) snapshots of per-client session and stateid record counts.
 
-On Tue, Sep 1, 2026, at 10:30 PM, NeilBrown wrote:
-> From: NeilBrown <neil@brown.name>
->
-> The functionality that was recently gathered into do_lookup_open() is
-> now available from the vfs as vfs_lookup_open().
->
-> This implementation shares more code with syscall open paths and so us=
-es
-> some filesystem interfaces slightly more correctly.  It also takes the
-> responsibility for locking out of nfsd so that planned changes can
-> happen entirely in VFS code.
->
-> One difference is that do_lookup_open() would use nfsd_check_obj_isreg=
-()
-> to get an error when the name exists but is not a regular file.
-> vfs_lookup_open() uses slightly different error code, particularly
-> returning -ENODEV when a device-special file is found.  So we need
-> to map that error to -EFTYPE.
->
-> Unfortunately vfs_lookup_open() doesn't allow O_LARGEFILE so we need
-> to patch it to avoid a warning.
->
-> Signed-off-by: NeilBrown <neil@brown.name>
-> ---
->  fs/namei.c         |  2 +-
->  fs/nfsd/nfs4proc.c | 66 ++++++++++------------------------------------
->  2 files changed, 15 insertions(+), 53 deletions(-)
->
-> This patch is against nfsd-test.  I would like it to land there so it
-> best good nfsd testing over the coming weeks.
+The existing nfsd filesystem files and their output remain unchanged. A
+companion nfs-utils v2 series adds `nfsdctl clients`; its cover Message-ID is:
 
-Since it touches fs/namei.c, Christian will want to take this through
-the VFS tree. To get the testing you requested, I=E2=80=99ll have to mer=
-ge the
-VFS tree into nfsd-next / nfsd-testing when it is ready for exposure.
-That might be a while.
+  <cover.1787988918.git.prabhakar.pujeri@dell.com>
 
+This reroll intentionally drops the grace-status patch. As discussed with
+Chuck, that interface needs an explicitly scoped design that can represent
+both current server-wide grace and possible per-export grace in the future.
+I will address it in a separate proposal.
 
-> Thanks,
-> NeilBrown
->
->
-> diff --git a/fs/namei.c b/fs/namei.c
-> index d95249dd527c..85fd5e8221e2 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -4632,7 +4632,7 @@ struct file *vfs_lookup_open(struct path *parent=
-,=20
-> struct qstr *last,
->  	int error =3D 0;
->=20
->  	WARN_ONCE(mode & ~S_IALLUGO, "mode must only have permission bits");
-> -	WARN_ONCE(open_flag & ~(O_ACCMODE|O_CREAT|O_EXCL|O_TRUNC|__O_REGULAR=
-),
-> +	WARN_ONCE(open_flag &=20
-> ~(O_ACCMODE|O_CREAT|O_EXCL|O_TRUNC|__O_REGULAR|O_LARGEFILE),
->  		  "open_flag has unsupported flags");
+Changes since v2 (feedback from Jeff Layton):
 
-Two subtle behavior changes here. Were these intentional?
+  - rename the client lookup helper to nfsd_nl_find_client() ("get"
+    connotes refcounting)
+  - validate the client-table argument explicitly in nfsd_nl_find_client()
+    instead of aliasing NFSD4_NL_CLIENT_DONE to "unconfirmed"
+  - rename nfsd4_nl_client_put_address() to
+    nfsd4_nl_client_marshal_address() ("put" connotes refcounting)
+  - document the confirmed-then-unconfirmed table ordering in the dump loop
+    comments
+  - rebase onto nfsd-testing at ac579868af0c
 
-A client sending mode 0040755 gets an inode created with S_IFSOCK|0755 a=
-nd
-trips this WARN_ONCE. The old code clamped the incoming mode with S_IALL=
-UGO.
+Changes since v1:
 
-Looks like a GUARDED4 create over a non-regular name now returns NFS4ERR=
-_EXIST.
-The old code returned ISDIR or SYMLINK. Does this match NFSv3=E2=80=99s =
-behavior? Should
-the commit message provide a rational that this is intended, or is a type
-check needed?
+  - replace the raw sockaddr attribute with separate IPv4/IPv6 address,
+    port, and optional IPv6 scope-ID attributes
+  - add a nonzero client-table generation and
+    genl_dump_check_consistent(), so churn marks the dump NLM_F_DUMP_INTR
+  - replace session-list and stateid-IDR walks under cl_lock with maintained
+    u64 counters, making every per-client snapshot O(1)
+  - encode counts as variable-width Netlink uint attributes
+  - drop the grace-status patch for a separately scoped design
+  - rebase onto nfsd-testing at 65b583e874b3
+
+Validation performed:
+
+  - strict checkpatch on both patches
+  - focused NFSD W=1 build of fs/nfsd on nfsd-testing at ac579868af0c
+
+v1: https://lore.kernel.org/r/cover.1787638668.git.prabhakar.pujeri@dell.com
+v2: https://lore.kernel.org/r/cover.1787988917.git.prabhakar.pujeri@dell.com
 
 
->  	mode |=3D S_IFREG;
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 33dc92d48ce0..ae70f7489d95 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -213,52 +213,6 @@ static inline bool nfsd4_create_is_exclusive(int=20
-> createmode)
->  		createmode =3D=3D NFS4_CREATE_EXCLUSIVE4_1;
->  }
->=20
-> -static struct file *do_lookup_open(struct path *parent,
-> -				   struct qstr *name,
-> -				   unsigned int oflags,
-> -				   umode_t mode)
-> -{
-> -	struct file *filp =3D NULL;
-> -	struct path path;
-> -	struct dentry *child;
-> -	int want_write_err =3D 0;
-> -
-> -	want_write_err =3D mnt_want_write(parent->mnt);
-> -
-> -	child =3D start_creating(&nop_mnt_idmap, parent->dentry, name);
-> -	if (IS_ERR(child)) {
-> -		filp =3D ERR_CAST(child);
-> -		goto out;
-> -	}
-> -	path.mnt =3D parent->mnt;
-> -	path.dentry =3D child;
-> -
-> -	if (d_really_is_positive(child)) {
-> -		/*
-> -		 * open the file so that we consistently have a valid
-> -		 * op_filp and consequently a valid ->f_path.dentry.
-> -		 */
-> -		int err =3D nfsd_check_obj_isreg(child);
-> -
-> -		if (err)
-> -			filp =3D ERR_PTR(err);
-> -		else
-> -			filp =3D dentry_open(&path, oflags, current_cred());
-> -	} else if (!(oflags & O_CREAT)) {
-> -		filp =3D ERR_PTR(-ENOENT);
-> -	} else if (want_write_err) {
-> -		filp =3D ERR_PTR(want_write_err);
-> -	} else {
-> -		filp =3D dentry_create(&path, oflags, mode, current_cred());
-> -		child =3D path.dentry;
-> -	}
-> -	end_creating(child);
-> -out:
-> -	if (!want_write_err)
-> -		mnt_drop_write(parent->mnt);
-> -	return filp;
-> -}
-> -
->  /*
->   * Implement NFSv4's unchecked, guarded, and exclusive create
->   * semantics for regular files. Open state for this new file is
-> @@ -390,13 +344,21 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct=20
-> svc_fh *fhp,
->  		/* Might still succeed if no create is needed */
->  		oflags &=3D ~O_CREAT;
->=20
-> -	open->op_filp =3D do_lookup_open(&parent,
-> -				       &QSTR_LEN(open->op_fname,
-> -						 open->op_fnamelen),
-> -				       oflags,
-> -				       open->op_iattr.ia_mode);
-> +	open->op_filp =3D vfs_lookup_open(&parent,
-> +					&QSTR_LEN(open->op_fname,
-> +						  open->op_fnamelen),
-> +					oflags,
-> +					open->op_iattr.ia_mode);
->  	if (IS_ERR(open->op_filp)) {
-> -		status =3D nfserrno(PTR_ERR(open->op_filp));
-> +		int hosterr =3D PTR_ERR(open->op_filp);
-> +
-> +		/*
-> +		 * NFS doesn't differentiate between device files and
-> +		 * sock/fifo when reporting an error.
-> +		 */
-> +		if (hosterr =3D=3D -ENODEV)
-> +			hosterr =3D -EFTYPE;
-> +		status =3D nfserrno(hosterr);
->  		open->op_filp =3D NULL;
->  		if (status =3D=3D nfserr_noent && create_status)
->  			status =3D create_status;
->
+Prabhakar Pujeri (2):
+  nfsd: add a Netlink dump of NFSv4 clients
+  nfsd: report per-client NFSv4 state usage through Netlink
 
-Since NFSD threads now sleep on directory delegation recalls, if lookup_=
-open()
-passes a real delegated_inode, it waits in break_deleg_wait() and retrie=
-s for
-up to lease_break_time.
-
-The old path called vfs_create(..., NULL), so the client got NFS4ERR_DEL=
-AY
-instead. NFSD needs to continue to work this way, otherwise a client can
-cause all the NFSD threads to block.
+ .../admin-guide/nfs/nfsd-admin-interfaces.rst |  22 ++
+ Documentation/netlink/specs/nfsd.yaml         | 118 ++++++
+ fs/nfsd/netlink.c                             |   5 +
+ fs/nfsd/netlink.h                             |   1 +
+ fs/nfsd/netns.h                               |   1 +
+ fs/nfsd/nfs4ctl.h                             |  10 +
+ fs/nfsd/nfs4layouts.c                         |   2 +-
+ fs/nfsd/nfs4state.c                           | 353 +++++++++++++++++-
+ fs/nfsd/nfsctl.c                              |  13 +
+ fs/nfsd/state.h                               |   7 +
+ include/uapi/linux/nfsd_netlink.h             |  43 +++
+ 11 files changed, 565 insertions(+), 10 deletions(-)
 
 
---=20
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+base-commit: ac579868af0c900d8fd9c8cfe9e10db46ccc5a75
+-- 
+2.55.0
+
