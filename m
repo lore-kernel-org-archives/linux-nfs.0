@@ -1,298 +1,212 @@
-Received: from mail-ej1-f54.google.com (mail-ej1-f54.google.com [209.85.218.54])
+Received: from mail-oo2-f7.google.com (mail-oo2-f7.google.com [74.125.231.135])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 745294E8DF0
-	for <linux-nfs@vger.kernel.org>; Thu,  3 Sep 2026 21:33:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.54
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788471215; cv=pass; b=cT+KYr2BbaJhdWKEDfLLUwVCVsROERBjKJpJgyL32SAXXd+CY00jgteK2w6xry9urvv3L3Op7hyRpDkNIB4mbQWE04DU3ZKg2X/xeHGXoo/J1yf5MmlYwv36Y48vCld/OBJXzf9C3g4KT4ewuGXb8udA/V50LLoPa7ky3z1bVUc=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788471215; c=relaxed/simple;
-	bh=4sV5o2LnLacmH1bmfW2THh/q+hBIFXcB4YpirQ0rJ9Q=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Content-Type; b=SNAS1dpOyjrvSlQ6eVNtRVPEvWV7d3iXQfQ1UJeIrMHYjNaAlmQlB+5dx8LzMUwe4hvdzdEJzKn3U8Xcvbp8z/GrBwlGUNtBY1mJ5YL1LKZwop09UOK2l5MJSTJ9JxFAwmdLuhjzMg/1HJPuhRsUdo8PN37zntSz09WGN9ZVZek=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=r8b3Te3F; arc=pass smtp.client-ip=209.85.218.54
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="r8b3Te3F"
-Received: by mail-ej1-f54.google.com with SMTP id a640c23a62f3a-c25344a8c6cso40331566b.0
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Sep 2026 14:33:33 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1788471211; cv=none;
-        d=google.com; s=arc-20260327;
-        b=kxCM9LIf0GEZWgPbAkoH8C1PTIbA1ubeGp6b2Z9l0ndDBBWuU/YvuXGXEFjJEkRghB
-         xjaIX3IJrMlN94XLOY4cRkf0COb0qaM20FzsTk17XdpzvJMFCVFk6/tyFaKCMcoPB2k9
-         /vk/viuv5bu097nRV3/KNPkc6e3Z0pvp0o7ztDZoSM1HT6aUW2Ks0hhCR4EyKAj6AGMf
-         GzwERmjXN0lFjhwUG7v+B/lI6NtFc4By+WIZPTMOmZi3f9vgRkXkl2O/GqWH2Xl4TMLO
-         X/yI0QzvAzdgIS7NIawPfFJa4V5L+RAeJGH05yKrqqOY1Nf/R0wV5VD9NiSXqonIVb19
-         dK4g==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=buYAkWy9TJavT3HNO3fmaixq5C4x3pWIIbhCvYFZwPc=;
-        fh=A3pMOUK00huGibGCZBFsLekFLVbB5hHGKjUNNKwO+5E=;
-        b=eSfUkueGetfgTErkyVZsu8ce+EiZqo7+8Bxty+wzO1adCjWeS69lAJBUm/iRRROFxh
-         8+4mRgdeQtQHJDFlUcMST8otK4olt+mikLmxnKzyBzOORiSj9GFgqsO7p8/CBgdYVG06
-         k81VzHIMOMnyg4oBXzg76nSU9pW8sCa50V5uBbvOEahHW8ZT5YOEtb242Z0g+035jwDI
-         PB3r9M6XwOKsWreQemDFR6NhxMBWmIu3b23mypqKqNPaG3TG2SYYd7pYdGPJ+2aEET/5
-         l0vbQb/imrKsLS6ntpkZsfcG8YFHbC2ws6i7m+DXiSScsICduL4cKYCITXa7nW1VTi2F
-         JQWw==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1788471211; x=1789076011; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:to:subject:message-id:date
-         :from:in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=buYAkWy9TJavT3HNO3fmaixq5C4x3pWIIbhCvYFZwPc=;
-        b=r8b3Te3FygDRwZydiwyYbPilH9tkNpHVwid6b0RNlgcu/f0udednuAeIZ8BTOEH9vB
-         kWslE2dgoaEzJQn/963JInLsQ6vwFBNVg/95HLfUzj8eE2kBmFwbwQ31Z48PIPdc/f7L
-         fpFqeELvM1aIecb5bbn7KI8p4NbST3RBLg1gqHg4uKKqHqAtbIVof/GNu7ap4rk/3RwO
-         EYhP8+E8wV85VUReFS6T/lY0VlFwjW5VAmBE+Ti5cSAUW2CVAQ2uAcNFDLKdl4zqqdB7
-         pzNdjz2XqpftZmiEyZYj+8GHzHjpyGsxc8JheTZ5UoWKHObngRWT1eIUw5rj5Mz48Jca
-         pXYg==
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2B4EF2BCF4C
+	for <linux-nfs@vger.kernel.org>; Thu,  3 Sep 2026 22:38:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.135
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1788475122; cv=none; b=s2WxUh3FjzNx5WMC5l17xmCH/7yx7oy95HORKyz+X1D0qgFzDuqwkZIq1h2MY/wX9X7MVCnZlGiYVtG3wN6tridJBrxmuUrycInOZ0n+ZVOLALHSz4lMp4hBqcXaTg2dt0f/yeU7CAGzFqbb3NZEqTHBZxNYVcaxC7t9W4gm0Ew=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1788475122; c=relaxed/simple;
+	bh=srKtBN7YiWfEJnHZlCVPhTL+BXHoTKstoVhYCmwaebM=;
+	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=spYWgPmN6ol1BOcbRZ9pYR/OeL0N5FthoW6wxHCznlCtDvrFCETHXqGxQ38k+dH701mNKv9/El7qP4QWfwC8UhU62OpXeL8eKiCKtgfq/34Lwb/qxTodtOi449rbwq1rMZ2aHyRRSTirE+d88gGMF51VTyul5S1czgxMgHZWmz4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=74.125.231.135
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oo2-f7.google.com with SMTP id 006d021491bc7-6b137c364c5so74180eaf.1
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Sep 2026 15:38:41 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788471211; x=1789076011;
-        h=content-transfer-encoding:content-type:to:subject:message-id:date
-         :from:in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=buYAkWy9TJavT3HNO3fmaixq5C4x3pWIIbhCvYFZwPc=;
-        b=OlJQxsLbcB2HT9LkKD0r6tFVTDy2droQKpXEWeG0ItLFdOvFDvSukousLFkP961lK2
-         PMgInnOgAUJYe+lygqWJi5mVOKupp6igzPaq77kMwH56npZKvWFGHRa/Uq/L73VUFo/a
-         NpEbLntdSO/cokRyHJMBxARC6n4BaCk/rxEndWZ7N8EZQ96zP5ooM2h5ELCKWcOStwlf
-         CIhfc9EbOWxWiyBuu3m05ExeQc4IJN0Aeqhsu7zyxxyMHHyDENBpSVvaUBBb0ZMBSPS1
-         Ou810nBeRJWIQk3wuUc+1QlhdQ9wIJiwUx5F7N4k+ctcdr9ffARk7JJKegMqMIq4amoh
-         OcCw==
-X-Gm-Message-State: AFuF++nIrij2jPFOqZeyjCIyHlYq2syk24qauxkiH8pDqk4RHzAWfGNY
-	iCV9lcznqQY0Bq8qliKAQSb5WBsy0munnc+AZfLVeGo//0o8ASNB98iekClI9oKou/CRNK1B6cA
-	EMKtfUvY/9lJeOoCLgcKoYQv8NoN4H2eASGY/
-X-Gm-Gg: AYBFou3PuTjZckyLQlxSadQjoKOTgPCmv4lvmWbEaKD6v9knBv2xOx4oCjTRchhs6v2
-	SbQnEAm3EQRd6QcTwhuuJ726jxFmCowO4Gc7p16OzPJV95k7qjnoHsYQwNzVaXfkEauchObxZEO
-	CAn1+wmotAtvRC7iFuHwOfNGDWmw235hRTfFyLi5IIXGurEe7CN7ldQbbjvXAd4JkSPpr6KBxBC
-	9HOC09oCUnkCbdeRmtek5ahWCi6tr6Pl/nwrPxKf4UK0Iqv5U/+4WIblfTiIkKjqRWPhXcYyZG1
-	RKhFrIghftEhOLagGfhVaDumhhw65u+pAn73c5RJSgKxvA==
-X-Received: by 2002:a17:906:f591:b0:c20:f529:2d6a with SMTP id
- a640c23a62f3a-c260ca339fdmr88922766b.22.1788471211246; Thu, 03 Sep 2026
- 14:33:31 -0700 (PDT)
+        d=1e100.net; s=20251104; t=1788475120; x=1789079920;
+        h=content-type:to:from:subject:message-id:date:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=XSguvTv0VEWmcSNYt7WY8UZQpYNnQc+lL3sqxL8n/LE=;
+        b=GUk5p1fnd1UBE+u7Xv6Yi3Ju2zZXxqF0yPrMwD7w/EQYvpqo4S2M8lWCmH3o9Zb9Fz
+         syCMQB2A5YJsfGBLsGW8YLrYI33T+h9UCt60rVB71/QWEUiHRuKYmcyMyMBE4jPOHz0o
+         JzH+t5IUCEJx6BS+8nRNCAzAi5LSRlgFdFPn1lz9vrzLmmjDRwwHx2zcynNL79+wBSjB
+         NpwvlUdCqpF+iu/9woaCF8hAEQLY6tWnognaVV8R1mQtI+cTNsPx4U9mG+IUkCbSvEkh
+         0xxCnjUnQ3Mg1jiqYrNrv9F73vxTjktHEfS7vDT3iHmBZjuaMZs89YTQo6aqXZkVRezb
+         s3ag==
+X-Forwarded-Encrypted: i=1; AKwUvBzepyuEuWJaiyaYCKxvrHPC3krbwPamuxhaTQ8xYNCy6jTWRRST9nHWJglsOeZ2g2Xpt4RNy5RXRVI=@vger.kernel.org
+X-Gm-Message-State: AFuF++l34W4Jit/r0LEZScw6KTZysm41FatuEhEh1FffU7AADtkkvjl2
+	GhPtZryfWsNQyzVSOfUosNcMK+MN5dOXP1paVkCzDrGERo+YX8qlycrsxIML8+JaOuxsK4+FXFw
+	U7EA/r0nGaCJIfnq/sruc2YMntuOhSk8oq//gcGG3ymz2G9weKk7kJCLhRnM=
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <CAKAoaQmueOn57kBhXxCqky2w_fUpaTjPyBgt0mfn7RGLY3eL9g@mail.gmail.com>
-In-Reply-To: <CAKAoaQmueOn57kBhXxCqky2w_fUpaTjPyBgt0mfn7RGLY3eL9g@mail.gmail.com>
-From: Martin Wege <martin.l.wege@gmail.com>
-Date: Thu, 3 Sep 2026 23:32:00 +0200
-X-Gm-Features: AcwNN1XxL70Sm5kjbhOFpfvt_41aQk9xmKBwBxUANlMcp_T4BQfmFfNCEaHRlNU
-Message-ID: <CANH4o6NXhHCzYXFS12LJeDWOpD5RnneW0iUp=sHM0DaRmAmHew@mail.gmail.com>
-Subject: Fwd: [Ms-nfs41-client-devel] [Announcement] NFSv4.2/NFSv4.1
- filesystem client Windows driver binaries for Windows 10/11+WindowsServer
- 2019/2022/2025 for testing, 2026-09-03 ...
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+X-Received: by 2002:a4a:ec4a:0:b0:6b7:46fc:1dd with SMTP id
+ 006d021491bc7-6b746fc025cmr152867eaf.60.1788475120144; Thu, 03 Sep 2026
+ 15:38:40 -0700 (PDT)
+Date: Thu, 03 Sep 2026 15:38:40 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6a99f6f0.2e567484.299ffc.000c.GAE@google.com>
+Subject: [syzbot] [nfs?] INFO: task hung in nfsd4_cld_tracking_init
+From: syzbot <syzbot+edbebd898142ee5e24ce@syzkaller.appspotmail.com>
+To: Dai.Ngo@oracle.com, cel@kernel.org, jlayton@kernel.org, 
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, neil@brown.name, 
+	okorniev@redhat.com, syzkaller-bugs@googlegroups.com, tom@talpey.com
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 
 Hello,
 
-Please test the binaries. The NFSv4.2/4.1 client is for Windows 10/11
-ARM64+AMD64+x86 and Windows Server 2019+2022+2025/AMD64, but
-Interoperability feedback with NFSv4.1/NFSv4.2 servers based on Linux
-6.6+ LTS and 6.19+/7.2 would be great.
+syzbot found the following issue on:
 
-News:
-See announcement below; New idmapper which maps any NFS user/group to
-any Windows user/group, support for Linux 7.2 case-insensitive NFS
-filesystems, Windows Alternate Streams (Win32 streams) support
-(requires NFSv4 named stream support),
-xcopy.exe/cmd.exe copy/MS Explorer file copy acceleration via NFS
-server side copies, and copy-by-block-cloning are IMO the most
-interesting new features.
+HEAD commit:    940de590b839 Merge tag 'hardening-v7.3-rc2' of git://git.k..
+git tree:       upstream
+console+strace: https://syzkaller.appspot.com/x/log.txt?x=12c6b39e580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=8c5c3949d762a91f
+dashboard link: https://syzkaller.appspot.com/bug?extid=edbebd898142ee5e24ce
+compiler:       gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=14872125580000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=12b8cb49580000
 
-PS: Windows x86-64 users can now use the kernel module without the
-kernel testsigning mode, just execute bash
-/lib/msnfs41client/contrib/opensource_driver_bb/opensource_driver_bootbypas=
-s.bash
-after /sbin/msnfs41client install
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/75055d1d5648/disk-940de590.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/419590aed71c/vmlinux-940de590.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/c51c5e853b44/bzImage-940de590.xz
 
-Thanks,
-Martin
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+edbebd898142ee5e24ce@syzkaller.appspotmail.com
 
----------- Forwarded message ---------
-From: Roland Mainz <roland.mainz@nrubsig.org>
-Date: Thu, Sep 3, 2026 at 12:49=E2=80=AFPM
-Subject: [Ms-nfs41-client-devel] [Announcement] NFSv4.2/NFSv4.1
-filesystem client Windows driver binaries for Windows
-10/11+WindowsServer 2019/2022/2025 for testing, 2026-09-03 ...
-To: <ms-nfs41-client-devel@lists.sourceforge.net>
+INFO: task syz-executor22
+INFO: task syz-executor224:5626 blocked for more than 143 seconds.
+      Not tainted syzkaller #0
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:syz-executor224 state:D stack:24312 pid:5626  tgid:5625  ppid:5624   task_flags:0x400140 flags:0x00080802
+Call Trace:
+ <TASK>
+ context_switch kernel/sched/core.c:5520 [inline]
+ __schedule+0x1259/0x6920 kernel/sched/core.c:7270
+ __schedule_loop kernel/sched/core.c:7347 [inline]
+ schedule+0xdd/0x2c0 kernel/sched/core.c:7362
+ schedule_timeout+0x1b2/0x280 kernel/time/sleep_timeout.c:75
+ do_wait_for_common kernel/sched/completion.c:100 [inline]
+ __wait_for_common+0x2e7/0x4c0 kernel/sched/completion.c:121
+ __cld_pipe_upcall fs/nfsd/nfs4recover.c:673 [inline]
+ cld_pipe_upcall fs/nfsd/nfs4recover.c:691 [inline]
+ nfsd4_cld_get_version fs/nfsd/nfs4recover.c:1425 [inline]
+ nfsd4_cld_tracking_init+0x4be/0x10f0 fs/nfsd/nfs4recover.c:1490
+ nfsd4_client_tracking_init+0xe5/0x1c0 fs/nfsd/nfs4recover.c:1941
+ nfs4_state_start_net.cold+0xb7/0x480 fs/nfsd/nfs4state.c:9838
+ nfsd_startup_net fs/nfsd/nfssvc.c:391 [inline]
+ nfsd_svc+0x54a/0x7d0 fs/nfsd/nfssvc.c:775
+ write_threads+0x316/0x600 fs/nfsd/nfsctl.c:438
+ nfsctl_transaction_write+0x106/0x1a0 fs/nfsd/nfsctl.c:114
+ vfs_write+0x2aa/0x1050 fs/read_write.c:685
+ ksys_write+0x12a/0x250 fs/read_write.c:739
+ do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
+ do_syscall_64+0x123/0x790 arch/x86/entry/syscall_64.c:84
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7fbfd3713269
+RSP: 002b:00007fbfd36eb1d8 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+RAX: ffffffffffffffda RBX: 00007fbfd37c3b68 RCX: 00007fbfd3713269
+RDX: 0000000000000002 RSI: 0000200000000100 RDI: 0000000000000005
+RBP: 00007fbfd37c3b60 R08: 35203a6b63617473 R09: 35203a6b63617473
+R10: 35203a6b63617473 R11: 0000000000000246 R12: 00007fbfd3795378
+R13: 0000200000000200 R14: 0000200000000500 R15: 00002000000000c0
+ </TASK>
 
+Showing all locks held in the system:
+locks held by kworker/u8:1/13: 2, on CPU#0:
+ #0: ffff88801c094140 ((wq_completion)events_unbound){+.+.}-{0:0}, at: process_one_work+0x1466/0x1b10 kernel/workqueue.c:3371
+ #1: ffffc90000127d08 ((work_completion)(&(&kfence_timer)->work)){+.+.}-{0:0}, at: process_one_work+0xa2c/0x1b10 kernel/workqueue.c:3372
+locks held by pr/ttyS0/16: 2, last CPU#0:
+ #0: ffffffff8edd8338 (console_srcu){....}-{0:0}, at: rcu_try_lock_acquire include/linux/rcupdate.h:314 [inline]
+ #0: ffffffff8edd8338 (console_srcu){....}-{0:0}, at: srcu_read_lock_nmisafe include/linux/srcu.h:439 [inline]
+ #0: ffffffff8edd8338 (console_srcu){....}-{0:0}, at: console_srcu_read_lock+0x49/0x60 kernel/printk/printk.c:291
+ #1: ffffffff9bc63c78 (&port_lock_key){-.-.}-{3:3}, at: __uart_port_lock_irqsave include/linux/serial_core.h:613 [inline]
+ #1: ffffffff9bc63c78 (&port_lock_key){-.-.}-{3:3}, at: univ8250_console_device_lock+0x64/0xc0 drivers/tty/serial/8250/8250_core.c:413
+locks held by khungtaskd/32: 1, last CPU#1:
+ #0: ffffffff8edec060 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:309 [inline]
+ #0: ffffffff8edec060 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:849 [inline]
+ #0: ffffffff8edec060 (rcu_read_lock){....}-{1:3}, at: debug_show_all_locks+0x3d/0x184 kernel/locking/lockdep.c:6837
+locks held by getty/5360: 2, on CPU#1:
+ #0: ffff888029f520a0 (&tty->ldisc_sem){++++}-{0:0}, at: tty_ldisc_ref_wait+0x24/0x80 drivers/tty/tty_ldisc.c:243
+ #1: ffffc900032262e8 (&ldata->atomic_read_lock){+.+.}-{4:4}, at: n_tty_read+0x419/0x14e0 drivers/tty/n_tty.c:2211
+locks held by syz-executor224/5626: 3, on CPU#1:
+ #0: ffff88802b935970 (&f->f_pos_lock){+.+.}-{4:4}, at: fdget_pos+0x2aa/0x380 fs/file.c:1259
+ #1: ffff888035040460 (sb_writers#9){.+.+}-{0:0}, at: ksys_write+0x12a/0x250 fs/read_write.c:739
+ #2: ffffffff8f287680 (nfsd_mutex){+.+.}-{4:4}, at: write_threads+0x288/0x600 fs/nfsd/nfsctl.c:436
 
-Hi!
+=============================================
 
-
-----
-
-We've created a set of test binaries for the NFSv4.2/NFSv4.1
-filesystem client driver for Windows 10 (32bit x86, x86-64, ARM64),
-Windows 11 (x86-64, ARM64)+Windows Server 2019/2022/2025 (x86-64,
-ARM64), based on https://github.com/kofemann/ms-nfs41-client (commit
-id #448d4492cd7075bccdda94fc013f2af80c78d8d0, git bundle in tarball),
-for testing and feedback.
-
-** FULL release readme:
-http://www.nrubsig.org/people/gisburn/work/msnfs41client/releases/testing/m=
-snfs41client_cygwin_64bit32bit_binaries_20260903_10h14m_git448d449.html
-http://www.nrubsig.org/people/gisburn/work/msnfs41client/releases/testing/m=
-snfs41client_cygwin_64bit32bit_binaries_20260903_10h14m_git448d449.readme
-
-** Download URL (all architectures+platforms):
-http://www.nrubsig.org/people/gisburn/work/msnfs41client/releases/testing/m=
-snfs41client_cygwin_64bit32bit_binaries_20260903_10h14m_git448d449.tar.bz2
-
-** Download hash sums:
-SHA2-256(msnfs41client_cygwin_64bit32bit_binaries_20260903_10h14m_git448d44=
-9.html)=3D
-3f7dba4d602bb00a161554ed688e23cabb852be4c3a13254464f423868928fa4
-SHA2-256(msnfs41client_cygwin_64bit32bit_binaries_20260903_10h14m_git448d44=
-9.readme)=3D
-1d049e25b52f154f49621405771dc6ba6895e511d7fed6cf28450905db0676d7
-SHA2-256(msnfs41client_cygwin_64bit32bit_binaries_20260903_10h14m_git448d44=
-9.tar.bz2)=3D
-0a38545458257cac50daf111eb7c6bcdf9636c618d1574eec39de0c8d2f6d081
-
-
-** Major changes since the 2026-08-01 release:
-- many NFSv4.1 callback fixes
-- many Network Provider fixes
-- cleanup in XDR code for better stability
-- the Network Provider no longer depends on debug *.dll and now should
-work reliable in Win11 Explorer&co
-- krb5/SSPI fixes
-- Creating virtual disks from (sparse) files on a NFSv4.1 filesystem
-now works with OFSMount
-- ms-nfs41-client can now be *build* on Win10 with a 32bit
-kernel+32bit VS2019 (previous versions worked on Windows with 32bit
-kernels, but building the sources required a 64bit Windows)
-
-** Major changes since the 2026-06-01 release:
-- UNC tag numbers (experimetal), to give mounts an unique UNC path
-(and separate NFS server connection) via $ /sbin/nfs_mount -o
-unctagnum=3D4000 ... #)
-- New winfsinfo subcmd "fsctlnfs41queryidmapinfo" to query the
-idmapper data (Win32 user/group names+Cygwin/UWIN/SFU uid/gid, mapped
-NFSv4 fatt4_owner/fattr4_owner_group data etc) for a file. This is
-intended as diagnostics aid for administrators.
-- Idmapper configuration is now obtained via "cygwin_idmapper.ksh"
-- New idmapper, which allows to map any NFS server { uid, gid,
-fattr4_owner, fattr4_owner_group } to any Windows user/group account.
-Mapping is done per mount, so Windows user "abc@windomain" can be user
-"def@nfslinux1" on NFS server "linux1" and "xyz@otherlinux2" on NFS
-server "otherlinux2". Same applies to groups. Windows localised
-builtin accounts are also supported, to handle situations like a
-German Window client connecting to a French WindowServer NFSv4.1
-server.
-Idmapping itself is done with a shell script (for maximum flexibility,
-as attemps to handle this with builtin code could NOT cover all
-compliciated site setups, including Windows localised account names,
-and NFS clients which have to connect to multiple different sites with
-completely different NFS server account setups), and also provides
-uid/gid values for Cygwin/MSYS2/UWIN (which can now be fully
-independent from uid/gid values used by the NFS server)
-- Added support for FreeBSD 16.0 NFS server
-- More fixes for case-insensitive NFS filesystems (requires FreeBSD
-n>=3D 16.0 NFS server, Linux >=3D 7.1 NFS server or Windows Server NFS
-server with a case-insensitive filesystem)
-- Bugfixes to enable compilation of ReactOS on a NFSv4.1 filesystem
-- Support for Win32 named streams/Alternate Data Streams (ADS), if the
-NFSv4.x server supports NFS named attributes (e.g. Solaris >=3D 11.4,
-Illumos, FreeBSD >=3D 15.0, ...), including NTFS-style renaming support.
-This also includes new utilities (e.g. winstreamsutil.exe) to find,
-list, create, rename, delete etc. Win32 named streams
-- Support for Windows "SRVOpen collapsing", which enables file handles
-with the access/permission/etc attributes to share one NFS file handle
-(saving open/close round trips to the NFS server)
-- Symlinks are now using the group defined by Win32 PrimaryGroup
-(which can be set via Cygwin newgrp(1)/|setgid()| or winsg(1))
-- Added support for Windows "Extended Create Parameters" |ECP
-QUERY_ON_CREATE| |QoCFileStatInformation| and |QoCFileLxInformation|
-- Added support for setting a file's ACL at file creation time
-- Fixed issues probing sparse files when using the nfs-ganesha NFS server
-- Disk and CDROM/DVD images can now be mounted via
-https://github.com/gisburn/filedisk-sparse/
-- UNC path format changed to <hostname>@<protocol>@<port>, e.g.
-ournfsserver@NFS@2049, to support future transport+mount options (e.g.
-RDMA , TLS/SSL etc.)
-- Window 11/ARM64 is now supported (native aarch64 kernel module and
-nfs*.exe userland utilities)
-- /sbin/nfs_globalmount, a new tool for Administrators to manage
-global/machine-wide mounts which are available to all Windows
-users/services/logons
-- New "nfsclientdctl" utility to change the NFS client daemon
-parameters at runtime
-- support for case-insensitive filesystems (e.g. Windows Server NTFS)
-- NFS referrals now work with custom (non-TCP/2049) port numbers
-- Implemented |FSCTL_OFFLOAD_READ|+|FSCTL_OFFLOAD_WRITE| (e.g. used by
-Windows 10 xcopy, Windows Explorer etc) for server-side NFSv4.2 COPY
-- Better FreeBSD 14.x/15.0 nfsd compatibility
-- More software tested for compatibility: MariaDB, Microsoft Office
-2016, Visual Studio 2022 work with msnfs41client
-- Volume label is now the nfs://-URL to the server (up to 31
-characters for Windows Explorer compatibility)
-- Support for user and group names with non-ASCII (e.g. Unicode) names
-(like German umlauts) in ms-nfs41-client, winsg.exe etc.
-- winsg.exe now has a /P option to run powershell.exe with the requested gr=
-oup
-- nfs_mount.exe now enforces that normal mounts need nfs://-URLs with
-absolute paths, and "public NFS" mounts need relative paths in a
-nfs://-URL
-- sec=3Dnone support
-- Improved /sbin/cygwinaccount2nfs4account script to better handle
-creation of Windows Domain accounts on the NFS server side
-- *.(exe|dll) executables are now signed with a WDK test signature,
-helping with *rare* cases that Windows Defender with paranoid settings
-wrongly recognising the binaries as potential threads. A *.cer
-certificate file is supplied which can be imported into the Windows
-Defender to whitelist the binaries if this happens.
-- Support for |FSCTL_DUPLICATE_EXTENTS_TO_FILE|, which allows Windows
-11 applications which use |CopyFile2()| (like cmd.exe  copy, xcopy.exe
-etc) to copy files via block cloning. Requires NFSv4.2 NFS server with
-{ CLONE, SEEK, DEALLOCATE } support, exporting a filesystem which
-supports block cloning (e.g. btrfs, xfs). This includes correct
-cloning of sparse files.
-- Sparse file support (requires NFSv4.2 server { SEEK, ALLOCATE,
-DEALLOCATE } and the |FATTR4_WORD1_SPACE_USED| attr), including
-hole/data range enumeration, punching holes etc., e.g. $ fsutil sparse
-queryrange mysparsefile # and Win32 named stream support
-- Improved Windows Extended Attribute (EA) support (requires NFS named
-attributes support in the NFS server (e.g. Solaris >=3D 11.4, Illumos,
-FreeBSD >=3D 15.0, ...)), including create/read/write/delete
-- Support for Storage32-API (e.g. enables use of *.msi installer files
-on NFS filesystems)
-- Cygwin /usr/bin/svn and Windows '/cygdrive/c/Program
-Files/Git/cmd/git' now work
-- Illumos NFSv4.2+Solaris 11.4 NFSv4.1 server is now supported
-- Windows Server 2022 NFSv4.1 server is now supported (compared to
-WS2019 this NFS server version has ACL support)
-
-** Please send comments, bugs, test reports, complaints etc. to the
-MailMan mailing list at
-https://sourceforge.net/projects/ms-nfs41-client/lists/ms-nfs41-client-deve=
-l
-
-----
-
-Bye,
-Roland
-
---
-  __ .  . __
- (o.\ \/ /.o) roland.mainz@nrubsig.org
-  \__\/\/__/  MPEG specialist, C&&JAVA&&Sun&&Unix programmer
-  /O /=3D=3D\ O\  TEL +49 641 3992797
- (;O/ \/ \O;)
+NMI backtrace for cpu 1
+CPU: 1 UID: 0 PID: 32 Comm: khungtaskd Not tainted syzkaller #0 PREEMPT(full) 
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 08/05/2026
+Call Trace:
+ <TASK>
+ __dump_stack lib/dump_stack.c:94 [inline]
+ dump_stack_lvl+0x100/0x190 lib/dump_stack.c:120
+ nmi_cpu_backtrace.cold+0x12d/0x151 lib/nmi_backtrace.c:123
+ nmi_trigger_cpumask_backtrace+0x21f/0x2a0 lib/nmi_backtrace.c:66
+ trigger_all_cpu_backtrace include/linux/nmi.h:164 [inline]
+ __sys_info lib/sys_info.c:157 [inline]
+ sys_info+0x141/0x190 lib/sys_info.c:165
+ check_hung_uninterruptible_tasks kernel/hung_task.c:353 [inline]
+ watchdog+0xcb1/0x1030 kernel/hung_task.c:561
+ kthread+0x373/0x450 kernel/kthread.c:436
+ ret_from_fork+0x730/0xd60 arch/x86/kernel/process.c:158
+ ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
+ </TASK>
+Sending NMI from CPU 1 to CPUs 0:
+NMI backtrace for cpu 0
+CPU: 0 UID: 0 PID: 16 Comm: pr/ttyS0 Not tainted syzkaller #0 PREEMPT(full) 
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 08/05/2026
+RIP: 0010:io_serial_in+0x87/0xb0 drivers/tty/serial/8250/8250_port.c:410
+Code: 07 5c fc 48 8d 7d 40 44 89 e1 48 b8 00 00 00 00 00 fc ff df 48 89 fa d3 e3 48 c1 ea 03 80 3c 02 00 75 1a 66 03 5d 40 89 da ec <5b> 0f b6 c0 5d 41 5c c3 cc cc cc cc e8 48 1a cf fc eb a2 e8 d1 1a
+RSP: 0018:ffffc90000157958 EFLAGS: 00000002
+RAX: dffffc0000000000 RBX: 00000000000003fd RCX: 0000000000000000
+RDX: 00000000000003fd RSI: ffffffff85afe8d0 RDI: ffffffff9bc63ca0
+RBP: ffffffff9bc63c60 R08: 0000000000000001 R09: 000000000000001f
+R10: 0000000000000000 R11: 205d323354202020 R12: 0000000000000000
+R13: 0000000000000020 R14: fffffbfff378c7e9 R15: dffffc0000000000
+FS:  0000000000000000(0000) GS:ffff888123b61000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000561b47b0e660 CR3: 000000000eb96000 CR4: 00000000003526f0
+Call Trace:
+ <TASK>
+ serial_in drivers/tty/serial/8250/8250.h:128 [inline]
+ serial_lsr_in drivers/tty/serial/8250/8250.h:150 [inline]
+ wait_for_lsr+0x13a/0x210 drivers/tty/serial/8250/8250_port.c:2013
+ serial8250_fifo_wait_for_lsr_thre+0x5f/0xd0 drivers/tty/serial/8250/8250_port.c:3270
+ __serial8250_console_fifo_write+0xa5/0x290 drivers/tty/serial/8250/8250_port.c:3345
+ serial8250_console_fifo_write drivers/tty/serial/8250/8250_port.c:3378 [inline]
+ __serial8250_console_write drivers/tty/serial/8250/8250_port.c:3429 [inline]
+ serial8250_console_write+0xf46/0x1330 drivers/tty/serial/8250/8250_port.c:3493
+ nbcon_emit_next_record+0x8f7/0xa70 kernel/printk/nbcon.c:1070
+ nbcon_emit_one+0x1a8/0x2b0 kernel/printk/nbcon.c:1157
+ nbcon_kthread_func+0x613/0x7d0 kernel/printk/nbcon.c:1271
+ kthread+0x373/0x450 kernel/kthread.c:436
+ ret_from_fork+0x730/0xd60 arch/x86/kernel/process.c:158
+ ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
+ </TASK>
 
 
-_______________________________________________
-Ms-nfs41-client-devel mailing list
-Ms-nfs41-client-devel@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/ms-nfs41-client-devel
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
+
+If you want syzbot to run the reproducer, reply with:
+#syz test: git://repo/address.git branch-or-commit-hash
+If you attach or paste a git patch, syzbot will apply it before testing.
+
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
+
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
+
+If you want to undo deduplication, reply with:
+#syz undup
