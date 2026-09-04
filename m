@@ -1,53 +1,53 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4B7433D1AA6
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3671443AB8
 	for <linux-nfs@vger.kernel.org>; Fri,  4 Sep 2026 09:39:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788514757; cv=none; b=Vvag38byRJHMMGWp2vtME0WFxCubUSc9fih6U9szUgwRwRebfM2yQllyU7jE0SdmfhX1SJPgUVCDW7pU+8yZX/5DcuRIycVkKV0HMskPeRGAAODqfC/8OYE0n2uniOFYTzCZLfG1N7F/boEHlQl1SrwlHN7z/0j146rey1UgjBM=
+	t=1788514757; cv=none; b=eXxgRgB+3jjmWnKvxQgyHgw74Dnz0LGaXlRub4EYyuh/YpMIGpJlJoX7CAo/DaYqFLOT6Ut0pDf/psLmu53Z/C6HsJun1sAs2u/u6HeCQQJsz3zhZwAtoJFAdpro4mGAZq0uest12e4iz/4yp9+R4UYABVgXtVyLzffVVfmEwc4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1788514757; c=relaxed/simple;
-	bh=57RKGrkddAsIdTUIe7pr1pJj0OWQX89LCbxFhB7lzHw=;
+	bh=zmI+WziJ1VyK0y3wBmBMHboKX8wzF2D42vQGF+cawXw=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=YDDNMLLjHN/FEWEHcq+GBRdT27PTMYRIXy6faRO25wf8rb2lw7/rYSFBxvOy+NGtsaUJCKqDbV6nJnpJlVZE31e2fEOpvaTRWcTVBEaN9MATHnmpeoIRhPkMsk9pwRsdwJ32b9I0/Q/gKEwGmP+H0LkMB4KUlmUnVZzMqmXm4BY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=WAaEsIBv; arc=none smtp.client-ip=170.10.133.124
+	 MIME-Version; b=p8jcNMwAPp2gGdc4Y1zMEXt24zgrAe+shKbvQgt2S5TC7Tr4Q+jqT0pRb8aQtONRW/RMDz073jprvej/xwkjOeqtMxUFbUEBPfdHNlrYIjtcwdL8MqhTkKg/QmOUTw1t2yXGym4qvHzBhv9+7ivS2yprh6OHhq3AikV06rYUSTw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=GvxzvtR5; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="WAaEsIBv"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="GvxzvtR5"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
 	s=mimecast20190719; t=1788514754;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=YS/dmskY4YKT1HBwMYRBeoZ8Nq/PmEk7XLf13jMCHek=;
-	b=WAaEsIBvqnF1qTyDjClk+vfANzVGxXe9MTOcUmdC3arbziM8/zDBadNI2mvOXXttA2Nj3T
-	TMaO+D9X+dJqVP2aphvBkZXTWmzaLg5KxlgvUMsNcqqZX35Gi2OB8wZKNZzBs4IxARSZfc
-	rMcdznd55L4Xyt2RvLHHEda1gKjz50g=
-Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+	bh=D46Z61HMooq2v8mhRm4jvILAJyQ6E4yUY2NkG6rq+2c=;
+	b=GvxzvtR578LVDzbfp54/FjpeYIqrxSZnl9tJ2Bo5GYF3ElOShndg94+i7YIY3TJZK8WOZD
+	kGPd/vZYFFjeudx/VYRqsGtHK5u75F54+BamoVys366DYvWv3eLvgGENNlVAEEo/aqIv4c
+	4oaVJws4BLsHivRGBMvayWiA5w+vwBQ=
+Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-670-5Qt4eR8wPH20kyiNqmFNrQ-1; Fri,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-345-3Y8ZAWQmM82Z5d_qQvXKfA-1; Fri,
  04 Sep 2026 05:39:13 -0400
-X-MC-Unique: 5Qt4eR8wPH20kyiNqmFNrQ-1
-X-Mimecast-MFC-AGG-ID: 5Qt4eR8wPH20kyiNqmFNrQ_1788514752
+X-MC-Unique: 3Y8ZAWQmM82Z5d_qQvXKfA-1
+X-Mimecast-MFC-AGG-ID: 3Y8ZAWQmM82Z5d_qQvXKfA_1788514752
 Received: from mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.17])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 28B541955D5E
+	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id BA7C818CC49F
 	for <linux-nfs@vger.kernel.org>; Fri,  4 Sep 2026 09:39:12 +0000 (UTC)
 Received: from fs-i40c-01.fast.eng.rdu2.dc.redhat.com (fs-i40c-01.fast.eng.rdu2.dc.redhat.com [10.6.54.119])
-	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id BD3111955F01;
-	Fri,  4 Sep 2026 09:39:11 +0000 (UTC)
+	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 51CB91955F70;
+	Fri,  4 Sep 2026 09:39:12 +0000 (UTC)
 From: Roberto Bergantinos Corpas <rbergant@redhat.com>
 To: steved@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [nfs4-acl-tools PATCH 2/3] libnfs4acl: fix various bound checkings against NFS4_MAX_PRINCIPALSIZE
-Date: Fri,  4 Sep 2026 05:39:08 -0400
-Message-ID: <20260904093909.2881028-3-rbergant@redhat.com>
+Subject: [nfs4-acl-tools PATCH 3/3] nfs4_setacl: do not follow symlinks on do_apply_action/nfs4_setacl_byname
+Date: Fri,  4 Sep 2026 05:39:09 -0400
+Message-ID: <20260904093909.2881028-4-rbergant@redhat.com>
 In-Reply-To: <20260904093909.2881028-1-rbergant@redhat.com>
 References: <20260904093909.2881028-1-rbergant@redhat.com>
 Precedence: bulk
@@ -59,56 +59,33 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 3.0 on 10.30.177.17
 
-We have some missing bound checkings against NFS4_MAX_PRINCIPALSIZE
-around wholen/who field from payload that may cause oob or off-by-one
-read/writes. Add/fix these bound checks.
+We use nftw+FTW_PHYS on nfs4_setacl to avoid following symlinks, however
+during do_apply_action/nfs4_setacl_byname we use setxattr that may
+follow symlinks. As a consequence, there is a race window where if a
+file turned into a symlink we may end up applying, during recursive walks,
+an ACL to an unintended part of the tree.
+
+Use lsetxattr instead of setxattr on nfs4_setacl_byname to avoid this
+chance.
 
 Signed-off-by: Roberto Bergantinos Corpas <rbergant@redhat.com>
 ---
- libnfs4acl/acl_nfs4_set_who.c     | 2 +-
- libnfs4acl/acl_nfs4_xattr_load.c  | 2 +-
- libnfs4acl/nfs4_ace_from_string.c | 2 +-
- 3 files changed, 3 insertions(+), 3 deletions(-)
+ libnfs4acl/nfs4_setacl.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/libnfs4acl/acl_nfs4_set_who.c b/libnfs4acl/acl_nfs4_set_who.c
-index 07b73de..53ec343 100644
---- a/libnfs4acl/acl_nfs4_set_who.c
-+++ b/libnfs4acl/acl_nfs4_set_who.c
-@@ -72,7 +72,7 @@ int acl_nfs4_set_who(struct nfs4_ace* ace, int type, char* who)
- 	}
+diff --git a/libnfs4acl/nfs4_setacl.c b/libnfs4acl/nfs4_setacl.c
+index d684502..8a6cae2 100644
+--- a/libnfs4acl/nfs4_setacl.c
++++ b/libnfs4acl/nfs4_setacl.c
+@@ -30,7 +30,7 @@ static int nfs4_setacl_byname(const char *path, const char *xattr_name,
  
- 	wholen = strlen(iwho);
--	if (wholen < 1)
-+	if (wholen < 1 || wholen >= NFS4_MAX_PRINCIPALSIZE)
- 		goto inval_failed;
- 
- 	memset(ace->who, '\0', NFS4_MAX_PRINCIPALSIZE);
-diff --git a/libnfs4acl/acl_nfs4_xattr_load.c b/libnfs4acl/acl_nfs4_xattr_load.c
-index c747e8d..638b9e2 100644
---- a/libnfs4acl/acl_nfs4_xattr_load.c
-+++ b/libnfs4acl/acl_nfs4_xattr_load.c
-@@ -141,7 +141,7 @@ struct nfs4_acl *acl_nfs41_xattr_load(char *xattr_v, int xattr_size, u32 is_dir,
- 		bufs -= d_ptr;
- 
- 		/* Get the who string */
--		if (bufs <= 0) {
-+		if (bufs <= 0 || wholen > (u32)bufs || wholen >= NFS4_MAX_PRINCIPALSIZE) {
- 			errno = EINVAL;
- 			goto err1;
- 		}
-diff --git a/libnfs4acl/nfs4_ace_from_string.c b/libnfs4acl/nfs4_ace_from_string.c
-index 7f13154..8e0e887 100644
---- a/libnfs4acl/nfs4_ace_from_string.c
-+++ b/libnfs4acl/nfs4_ace_from_string.c
-@@ -158,7 +158,7 @@ struct nfs4_ace * nfs4_ace_from_string(char *ace_buf, int is_dir)
- 	if (ret < 0) {
- 		fprintf(stderr,"Scanning ACE string '%s' failed.\n", ace_buf);
- 		goto out;
--	} else if (strlen(fields[WHO_INDEX]) > NFS4_MAX_PRINCIPALSIZE) {
-+	} else if (strlen(fields[WHO_INDEX]) >= NFS4_MAX_PRINCIPALSIZE) {
- 		fprintf(stderr,"Principal \'%s\' is too large.\n",fields[WHO_INDEX]);
- 		goto out_free;
- 	}
+ 	ret = acl_nfs41_xattr_pack(acl, &xdrbuf, type);
+ 	if (ret != -1)
+-		ret = setxattr(path, xattr_name, xdrbuf, ret, XATTR_REPLACE);
++		ret = lsetxattr(path, xattr_name, xdrbuf, ret, XATTR_REPLACE);
+ 	free(xdrbuf);
+ 	return ret;
+ }
 -- 
 2.55.0
 
