@@ -1,63 +1,63 @@
-Received: from mail-qk1-f176.google.com (mail-qk1-f176.google.com [209.85.222.176])
+Received: from mail-qk1-f180.google.com (mail-qk1-f180.google.com [209.85.222.180])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9CE4150EC0B
-	for <linux-nfs@vger.kernel.org>; Fri,  4 Sep 2026 16:53:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.176
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 28F23477291
+	for <linux-nfs@vger.kernel.org>; Fri,  4 Sep 2026 16:53:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.180
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788540830; cv=none; b=sOqxOWJIQScJhc5UcAJd/g+alGTeIr2YkuotNAH/JY2TlFMXbXFg8e3ykMeNOC+e3PWwvgJB//0sWs8Ul1hkozT3vLxMpBDK1cVjZQHnMK/Qqloo2QJMNB0uHnVho6qyF0fisSVCOV3+ay1+FhTdtENnmH4cnOrJEZGMNQ8IwO0=
+	t=1788540831; cv=none; b=aPzJMhokTB3iy2QBWiLOhv2cZt57l+cEkFU2Mn+oFei5EUJRpaH2/H/ON8hUCY+ZGaa+ARG/Gp3V28yEd3gQg/l4JMQ5y6jFmZhFkknacmr2DPemisEjDzgRBPm42ub72kT3X+bCqwHNN44PViOAqbyQXaqxzsGMn4D1kRnFZ5k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788540830; c=relaxed/simple;
-	bh=EsH8Peom1tAOgtjdjLHuzJZHSNQOS6hni8nl8rr4zAk=;
+	s=arc-20240116; t=1788540831; c=relaxed/simple;
+	bh=Q1qMDK1btzvRVKgGZtKQWVi+F+RmIBrqbRWz94I716w=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=pHdc2B6Hsnu7Z+x6izveAEQIz+4XolQv6i5tmin9y0R0PRzuoYJRqptWFMprNZXZFezyDrAYZeqb/gOXTeHZIUARXidejkb94T2UVWdF4Rly4/JONezwUD4jyq+qzHxCCay3A2Bznw5f98AzWFagxbfIDs0oj0/7eAlgMgfuQoU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=XyYW1QpL; arc=none smtp.client-ip=209.85.222.176
+	 MIME-Version; b=G+vr8YFpvlPe0xNmKo1j1GDexiZnPy0eTFDDtyQDgJpLLpG5FEUuZt0+bCQRhFIaT+uAHRbo6sOu+SXchtbukEhiSFOkCspULTmrb+WuHAF0NTOA+O9CjQEnHh3azdZf+HdQk1iu2tKS2MOeW3jpdPZcHm/MSqD8dfWRVdiTr9I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=mLFYkFVz; arc=none smtp.client-ip=209.85.222.180
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="XyYW1QpL"
-Received: by mail-qk1-f176.google.com with SMTP id af79cd13be357-936c02e58dfso123877585a.3
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Sep 2026 09:53:48 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="mLFYkFVz"
+Received: by mail-qk1-f180.google.com with SMTP id af79cd13be357-92e99ef0902so103436785a.2
+        for <linux-nfs@vger.kernel.org>; Fri, 04 Sep 2026 09:53:49 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1788540827; x=1789145627; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1788540829; x=1789145629; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=4k9eVkI4A12rmuGKAgoZZekbl21MNnPeg4s4iebeUnY=;
-        b=XyYW1QpLxqn3fHTXx35zIGZF6VkJnc5jS1hKkeKcIEw8PJNbIiyPHm1S1sjBHjw9Oc
-         5UXvebNTXxmQwMOlA7DHdepoR6Zy5EYqz7UWwpiwW33zdlZ4kUQ3FQjpX1ywy63D33sO
-         YZC2SGs2HLDaMOQdRSNdb3Xl4i4s3lBTt3kAqqKctBfqgGt4VQZjQL6G5hTDibDxMp0f
-         VM7ntkd/SLdQtmpmSpuivbpxEloLQoUSppT1b46+lrTRb4GJ1xZ12y0NQNokDk7VtBpv
-         akzJVpU5NsyDI+oiY78ZRKDtOM6N9AU1JIDoe829avzFknvt6xSkPUEwrQm6syRt+QtC
-         hb9Q==
+        bh=30zpz/hp9h99J4b3MazAYDutlBZi1+6lyhFcAVUUo9g=;
+        b=mLFYkFVz4EWuPfz5yMF3L8y6m/SDVI2y3fdQliPSRXGCtAEYf3ZAh/c6n1iyctrP/p
+         ULkTmTjw7ZDhOGTJl42Wel96gDcz/othhOV5Uclasfdudjez5nRvjxd8Puy2QbI1nKN/
+         qu311e0nNp4f6KfyI5wqZQErc0BA3ef0bv8NgGhfLbA+2SVBnDctTWjvM/HwG/dw6tqT
+         HEB6qDLZMTsjCU8tNyCu+nJvNCyU+QIbaqbjwOXIZTQEEnI2GmYKw3CJ13jDSs79AKVg
+         WHYEFiOhwXLTIFzEKyZnoaJC6H7wnMZCuQVc912dRiE9gBrQTNAxB9DI4SD8bR9DCIGo
+         VTbw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788540827; x=1789145627;
+        d=1e100.net; s=20251104; t=1788540829; x=1789145629;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=4k9eVkI4A12rmuGKAgoZZekbl21MNnPeg4s4iebeUnY=;
-        b=dGg3mCt8O6OtAhY3PPm/tE33YdBM/5mFIDWgQLZNrXLOFbB9Ksv+o9I58B7gVi2XKl
-         7afdPSp/M9rI/8LoTohL6o9Wvr2obXhpnwTCYPGNFIMd71RMx+S5WwQgqNy8dyGIBJdj
-         Hwp4NZ63RGle9KBa+RVuJh+9zF2ER6uSX6q7E4CdOdE86CrkZKSHB5R/tPFGUKIozHnr
-         pjjoEy/gUGjMsR25yJGHWPG+PuuOhKjl2H6H4hVENXz4rx/fx+Y65g8yc+fwtYEqlU+/
-         bZtHLzXxGHQaUanpaKSwU5yj4V9HbXQFV+KB//7MJ82dr3wE+AtyWnuw7Ac7170e9JTT
-         aRag==
-X-Gm-Message-State: AFuF++lGI3l1cirm2PVXYInJMKE2ECSz7UUg2Nb7Z2SzB17g5MjXohr5
-	7yRxFI31rstFm2YAm66UIRxZxJGDPNiYCcxJG5XfsfIZLxjVPDEFpUHbAgpZHA+UalU=
-X-Gm-Gg: AYBFou1KfKH9ZFDicchbflT9MsnBc6MigE4eGKjaszX5+puPxulIipAxszxB6h5Ck4Y
-	7b0X3903oTmCN6wBIuuM+tAvC3YDdh3KF+IfP5+PQ/0zsRRFhAjwAhlTziqP0Ab3jw0fCSrwJB+
-	FNZt4PpYQJDsG/9P51e4SSDti1IZJ29eBPFPxpC5SQYgpw6kXSA6IW5ouJETHCQx+HMbhE3sOxl
-	9jcXikm7Yty6zkUyY0VRflxejoKjIKtZK2+TGUKfm7QDx+nOxSwbq/DMSuTx+ZMJSh2+Sb32m2U
-	/Mj3mMTQPcoHdsBpo11tUifn84tHsZlln2rejGXAjt6TJabCS8OBjgg2rp/OrJuc33lO81Ui6dd
-	tMtWzh+8wGhwPM+wqTBfRvfK6B+NCWKCqTvCgTavKxGWPtUdNKVa5kdyLqowXgts6g6QoDA9zjW
-	rhLQEYMykIt8O0Yi7q9VW7BM3PJbiwR/KYHPyV3k0DgDN1Wl9IvweN7JUiW6+yl/r9gs1JO/pzd
-	nXD7nh8DUz6QyOJcTWoBP8a
-X-Received: by 2002:a05:620a:2805:b0:939:49f1:f972 with SMTP id af79cd13be357-93980377d24mr733361785a.23.1788540822612;
-        Fri, 04 Sep 2026 09:53:42 -0700 (PDT)
+        bh=30zpz/hp9h99J4b3MazAYDutlBZi1+6lyhFcAVUUo9g=;
+        b=Tnsg5n+ltMd+LgJIwYB+cZW1AcQ+4NbbyFbCbyvhTVUUbsxRBMc77xlZDL0k6ZQWjY
+         CkjANidxVbMInpYnErT5n34HK3Jlu0sf60c8/0NIaMHAELJbJgv0rKMNOlQuAgjmudHJ
+         6HeiLFSpZzRqas3GCXNm/CNWSmOyEaI6DJbNFkcs9oClQ9d4v5OjDRJpNU+718Su+vLo
+         B0ZW8hrjutEdnn1rIFCQzOHcdVgMW8c6OMaqBXMrJrz0ka5ypGmdHTZI6St8DEHzdY/B
+         UMWtTKVgTRPcD8roqISMSoqSCQkRU3g2C2RKs8lBFeMCksya9LPS41E2Zc/VsQx1Zy5K
+         kM1g==
+X-Gm-Message-State: AFuF++mPRVvAdvZpeaMZVIzVI5eG8HD382APPVEqM8Zldln/nU0nMIj1
+	m/BpWj0Qsm6rOZWWZjb0xCnydDIv09KUL/6dXEPtZEpk0PXUesWfsmlaesgT7wUAM5s=
+X-Gm-Gg: AYBFou3TPa6qSpQ46vUZXVMfN6y2kZRNPJyVm7/GGW989I7MHWDC/EVaN6r17EOcsMH
+	LY+IvzhN9v+hkj/6+WlpoUiQOzMdjYo/fr2xD7RfGavDpoldqlmH0k5wMi73bPOqsdMRCSm8fIo
+	xdTom+379yb9mDnY8zPI/HrNRcMDY7VQcJ6vPYC5HhPip5T9biohy6dslCUaj2KYeVeIs9hl6Hx
+	YoAAwRzENy5yN6tNOcATqd7ZgXALGnwBB+cZxskOAVf7srTUmjioejmPKYZ1oP4gCfw2Ohacvup
+	6JO8dIyCHB9nYoiX0NSwJlgnPjxAtoOex7CGQsm2ARUF+lu63nzfys/7O7vOA99uNjzecnsjL8o
+	V4Ptem5Gy9ko5Dp2qdi21oM+cdEZ7gJFezpEsnnoheXfyNdP7Oa95z+eLE91hgVVL2yBUsnTDDU
+	YYN3MnTg61ti+3QJry+CEA04Z2EX9LFYw9cPyxPu9l2ngoLL/dBrWBmBNMCBr9Jj6ipLInaf3lc
+	jM4py5ekG6gRSMgpcV2tblO
+X-Received: by 2002:a05:620a:6209:b0:937:3a1d:175a with SMTP id af79cd13be357-93980328b7bmr561285585a.3.1788540824042;
+        Fri, 04 Sep 2026 09:53:44 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-9397fbf7c78sm248145485a.47.2026.09.04.09.53.41
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-9397fbf7c78sm248145485a.47.2026.09.04.09.53.43
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 04 Sep 2026 09:53:42 -0700 (PDT)
+        Fri, 04 Sep 2026 09:53:43 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
@@ -67,9 +67,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Mike Snitzer <snitzer@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>,
 	Junrui Luo <moonafterrain@outlook.com>
-Subject: [PATCH v3 20/24] NFSv4/pnfs: Dispatch CB_NOTIFY_DEVICEID DELETE to race recovery
-Date: Fri,  4 Sep 2026 12:53:19 -0400
-Message-ID: <81e30687fcbd99ae41813742afcd5667de42e735.1788530385.git.bcodding@hammerspace.com>
+Subject: [PATCH v3 22/24] NFSv4/pnfs: Re-home the data-server cache onto hash buckets
+Date: Fri,  4 Sep 2026 12:53:21 -0400
+Message-ID: <dc8f4679d2cc78d9392eb07b9d480586d89c620c.1788530385.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1788530385.git.bcodding@hammerspace.com>
 References: <cover.1788530385.git.bcodding@hammerspace.com>
@@ -81,91 +81,140 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Turn on the RFC 8881 Section 18.40.4 DELETE handling: a DELETE for a
-deviceID that no live layout references keeps today's cheap behavior
-(drop the cached device, no state-manager wake).  A DELETE for a
-deviceID that live layouts still reference is deferred to the state
-manager, which TEST_STATEIDs the referring layouts, recovers revoked
-ones, and confirms or refutes the delete with GETDEVICEINFO.
+The per-net data-server cache is a single list, and every
+GETDEVICEINFO decode walks all of it looking for a match, so filling
+the cache costs O(n^2) in the number of data servers -- which a
+striping mount does in one burst, at the same scale the deviceid
+cache was just sized for.  Key it by the DS address set instead.
 
-The deferred case no longer unhashes the device immediately: if the
-recovery concludes the DELETE was erroneous (the deviceID still
-exists and a referring layout is still valid), the client keeps
-using the cached device.
+This patch is the mechanical half: nfs4_pnfs_ds.ds_node becomes an
+hlist_node, netns init and teardown cover every bucket, and removal
+uses hlist_del_init (which needs no bucket reference).  Insertion
+still targets bucket 0 and lookup still scans every entry, so
+behavior is unchanged; the key comes next.  Splitting it this way
+keeps a bisect able to tell a list-conversion bug from a hash-key
+bug.
 
-Re-arm the state manager afterwards, as the delegation return above it
-does.  The recovery issues synchronous RPCs, and a manager thread that
-starts and exits while it runs clears NFS4CLNT_RUN_MANAGER on its way
-out.
-
-Bump the deviceid change epoch for both notification types rather
-than only for CHANGE.  A GETDEVICEINFO whose reply is already in
-flight can otherwise re-cache a device the notification has just
-invalidated; that is as true of a delete as of a change, and Section
-18.40.4 opens by describing the race for the delete case.
+The buckets live in struct nfs_net, so this costs 2KB per network
+namespace on 64-bit, paid once nfs.ko is loaded whether or not that
+namespace ever mounts NFS.
 
 Assisted-by: Claude:claude-fable-5
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/callback_proc.c | 24 +++++++++++++++---------
- fs/nfs/nfs4state.c     |  4 +++-
- 2 files changed, 18 insertions(+), 10 deletions(-)
+ fs/nfs/client.c   |  6 ++++--
+ fs/nfs/netns.h    |  5 ++++-
+ fs/nfs/pnfs.h     |  2 +-
+ fs/nfs/pnfs_nfs.c | 19 +++++++++++--------
+ 4 files changed, 20 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index ea8c558b07b6..c9b71dbae9ea 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -392,19 +392,25 @@ __be32 nfs4_callback_devicenotify(void *argp, void *resp,
- 				continue;
- 		}
- 		/*
--		 * Unhash the cached device first so re-resolution cannot
--		 * re-pin the stale node, then re-point any references
--		 * pinned under live layouts (RFC 8881 Section 12.2.10).
--		 * The epoch bump lets an in-flight GETDEVICEINFO detect
--		 * that its reply may predate the change.
-+		 * Bump the epoch before touching the cache so a
-+		 * GETDEVICEINFO already in flight can detect that it
-+		 * predates the notification.  A referenced DELETE may be
-+		 * racing revocation, so defer it to the state manager --
-+		 * this thread cannot issue fore-channel RPCs.
- 		 */
--		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
--			nfs4_deviceid_bump_change_epoch(cps->clp);
--		nfs4_delete_deviceid(ld, cps->clp, &dev->cbd_dev_id);
--		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
-+		nfs4_deviceid_bump_change_epoch(cps->clp);
-+		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE) {
-+			nfs4_delete_deviceid(ld, cps->clp, &dev->cbd_dev_id);
- 			pnfs_layout_reresolve_deviceid_byclid(cps->clp, ld,
- 							&dev->cbd_dev_id,
- 							dev->cbd_immediate);
-+		} else if (pnfs_layout_deviceid_referenced_byclid(cps->clp,
-+						ld, &dev->cbd_dev_id)) {
-+			pnfs_deviceid_delete_mark(cps->clp, ld,
-+						  &dev->cbd_dev_id);
-+		} else {
-+			nfs4_delete_deviceid(ld, cps->clp, &dev->cbd_dev_id);
-+		}
- 	}
- 	pnfs_put_layoutdriver(ld);
- out:
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 4c085c00abb1..b5d6daa2c416 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -2670,8 +2670,10 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 			}
- 			nfs4_layoutreturn_any_run(clp);
- 			if (test_and_clear_bit(NFS4CLNT_DEVICEID_DELETE,
--					       &clp->cl_state))
-+					       &clp->cl_state)) {
- 				nfs4_deviceid_delete_recover_run(clp);
-+				set_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state);
-+			}
- 			clear_bit(NFS4CLNT_RECALL_RUNNING, &clp->cl_state);
- 		}
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 60386330aeec..dbb5131375f8 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1295,7 +1295,8 @@ void nfs_clients_init(struct net *net)
+ 	INIT_LIST_HEAD(&nn->nfs_volume_list);
+ #if IS_ENABLED(CONFIG_NFS_V4)
+ 	idr_init(&nn->cb_ident_idr);
+-	INIT_LIST_HEAD(&nn->nfs4_data_server_cache);
++	for (int i = 0; i < NFS4_DS_CACHE_HASH_SIZE; i++)
++		INIT_HLIST_HEAD(&nn->nfs4_data_server_cache[i]);
+ 	spin_lock_init(&nn->nfs4_data_server_lock);
+ #endif /* CONFIG_NFS_V4 */
+ 	spin_lock_init(&nn->nfs_client_lock);
+@@ -1315,7 +1316,8 @@ void nfs_clients_exit(struct net *net)
+ 	WARN_ON_ONCE(!list_empty(&nn->nfs_client_list));
+ 	WARN_ON_ONCE(!list_empty(&nn->nfs_volume_list));
+ #if IS_ENABLED(CONFIG_NFS_V4)
+-	WARN_ON_ONCE(!list_empty(&nn->nfs4_data_server_cache));
++	for (int i = 0; i < NFS4_DS_CACHE_HASH_SIZE; i++)
++		WARN_ON_ONCE(!hlist_empty(&nn->nfs4_data_server_cache[i]));
+ #endif /* CONFIG_NFS_V4 */
+ }
  
+diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
+index 36658579100d..560fa95726b0 100644
+--- a/fs/nfs/netns.h
++++ b/fs/nfs/netns.h
+@@ -31,7 +31,10 @@ struct nfs_net {
+ 	unsigned short nfs_callback_tcpport;
+ 	unsigned short nfs_callback_tcpport6;
+ 	int cb_users[NFS4_MAX_MINOR_VERSION + 1];
+-	struct list_head nfs4_data_server_cache;
++#define NFS4_DS_CACHE_HASH_BITS 8
++#define NFS4_DS_CACHE_HASH_SIZE (1 << NFS4_DS_CACHE_HASH_BITS)
++	/* every entry is still in bucket 0 until the key is added */
++	struct hlist_head nfs4_data_server_cache[NFS4_DS_CACHE_HASH_SIZE];
+ 	spinlock_t nfs4_data_server_lock;
+ #endif /* CONFIG_NFS_V4 */
+ 	struct nfs_netns_client *nfs_client;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 734f8531c819..8b612f3679a3 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -57,7 +57,7 @@ struct nfs4_pnfs_ds_addr {
+ };
+ 
+ struct nfs4_pnfs_ds {
+-	struct list_head	ds_node;  /* nfs4_pnfs_dev_hlist dev_dslist */
++	struct hlist_node	ds_node;  /* nfs_net nfs4_data_server_cache */
+ 	char			*ds_remotestr;	/* comma sep list of addrs */
+ 	struct list_head	ds_addrs;
+ 	const struct net	*ds_net;
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index e0e3fc7414e6..f88a9784988a 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -604,7 +604,7 @@ _same_data_server_addrs_locked(const struct list_head *dsaddrs1,
+ }
+ 
+ /*
+- * Lookup DS by addresses and NFS version.  nfs4_ds_cache_lock is held
++ * Lookup DS by addresses and NFS version.  nfs4_data_server_lock is held
+  */
+ static struct nfs4_pnfs_ds *
+ _data_server_lookup_locked(const struct nfs_net *nn,
+@@ -612,10 +612,13 @@ _data_server_lookup_locked(const struct nfs_net *nn,
+ {
+ 	struct nfs4_pnfs_ds *ds;
+ 
+-	list_for_each_entry(ds, &nn->nfs4_data_server_cache, ds_node)
+-		if (ds->ds_version == version &&
+-		    _same_data_server_addrs_locked(&ds->ds_addrs, dsaddrs))
+-			return ds;
++	for (int i = 0; i < NFS4_DS_CACHE_HASH_SIZE; i++)
++		hlist_for_each_entry(ds, &nn->nfs4_data_server_cache[i],
++				     ds_node)
++			if (ds->ds_version == version &&
++			    _same_data_server_addrs_locked(&ds->ds_addrs,
++							   dsaddrs))
++				return ds;
+ 	return NULL;
+ }
+ 
+@@ -666,7 +669,7 @@ void nfs4_pnfs_ds_put(struct nfs4_pnfs_ds *ds)
+ 	struct nfs_net *nn = net_generic(ds->ds_net, nfs_net_id);
+ 
+ 	if (refcount_dec_and_lock(&ds->ds_count, &nn->nfs4_data_server_lock)) {
+-		list_del_init(&ds->ds_node);
++		hlist_del_init(&ds->ds_node);
+ 		spin_unlock(&nn->nfs4_data_server_lock);
+ 		destroy_ds(ds);
+ 	}
+@@ -753,11 +756,11 @@ nfs4_pnfs_ds_add(const struct net *net, struct list_head *dsaddrs, u32 version,
+ 		list_splice_init(dsaddrs, &ds->ds_addrs);
+ 		ds->ds_remotestr = remotestr;
+ 		refcount_set(&ds->ds_count, 1);
+-		INIT_LIST_HEAD(&ds->ds_node);
++		INIT_HLIST_NODE(&ds->ds_node);
+ 		ds->ds_net = net;
+ 		ds->ds_clp = NULL;
+ 		ds->ds_version = version;
+-		list_add(&ds->ds_node, &nn->nfs4_data_server_cache);
++		hlist_add_head(&ds->ds_node, &nn->nfs4_data_server_cache[0]);
+ 		dprintk("%s add new data server %s\n", __func__,
+ 			ds->ds_remotestr);
+ 	} else {
 -- 
 2.53.0
 
