@@ -1,63 +1,63 @@
-Received: from mail-qk1-f175.google.com (mail-qk1-f175.google.com [209.85.222.175])
+Received: from mail-qv1-f51.google.com (mail-qv1-f51.google.com [209.85.219.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 31CE050C2AB
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D4A5850C2B7
 	for <linux-nfs@vger.kernel.org>; Fri,  4 Sep 2026 16:53:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.175
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788540828; cv=none; b=nT5KJUe2p3bWhl1PdH1SF4nuHmHzAUld0Bc4pqK4dKn7pja/n0tbki9C+K+G7S3/dvGGDEfcQV6hsaxDhcEjs6Nmy6MbmFbZuq4aRo5jyCVL0K5c59EXfPb4LsUzH5N5GN2OsSkS+C1mlZpbSgGqzRx52LwxI4ygNJrYZQOPjFA=
+	t=1788540828; cv=none; b=oWfvpez/3sduf2Ibowd6utOCcRkU47z52TYxKY32e3dHfMRbFGzfQPFwQryAhoUR4bfETUAkH5DjAR/K4Syojk7ajN6iwFnOzU4kYg9DkrwNH4PwODmq1vRTTC6YqzSppMuvplQNI4W/frt2WwHS1CP+GRK/SF0PL335JBu8FTk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1788540828; c=relaxed/simple;
-	bh=eXTXL5jlPkdoTAwvZdsnFub2O+qWfeyz3corhkng+QY=;
+	bh=zpuWsi6PdIsiYk944ZULr2yruM3l58CchMh9COalT20=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=RPFgPaGBpLcaLrOdfVXQ8QMdcuMrPVy6RwzVsf99eA2Hye5rgDspqjGwwI0Zc6eqosPw+yagVPbAAKhV8ptpy1MeO2H7qxbDlr4jFyRcORLrAFeO7UrejH4rBtzM+TKmm0RI7ScQe763QEtvMQxx9H9MFKiFDDSfE/H7gBtvwLQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=ghNnBbr6; arc=none smtp.client-ip=209.85.222.175
+	 MIME-Version; b=EKuUG25uXWk1mbhca/C1/kEG2kAxngSqfByh0zfz0V1D1TTlr3PmXPas5LJUefD+O8tJjYFEQbOmwf4ilSP5soKV9wFHMSLu+nYNxoCHiE30g98t4wE7JaULnONyQDy2bfXQ6pXcqiYUHNdWzYzfkr1osHBDv4QlPlKQ6Advvdo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=YKIPK3Aw; arc=none smtp.client-ip=209.85.219.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="ghNnBbr6"
-Received: by mail-qk1-f175.google.com with SMTP id af79cd13be357-930f618435cso135032185a.3
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="YKIPK3Aw"
+Received: by mail-qv1-f51.google.com with SMTP id 6a1803df08f44-91041ee9230so10479066d6.2
         for <linux-nfs@vger.kernel.org>; Fri, 04 Sep 2026 09:53:46 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1788540825; x=1789145625; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1788540826; x=1789145626; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=WhIDUqCxY72rbVmzp0JWOsLXFIG8Z/WzlMUO1ZM8BMY=;
-        b=ghNnBbr6w3VDuqUS56CLHuJ/IRXfugkzO765IrDP/fIUFN54G6i8Spw7POEK5K8BDU
-         ERhqONZLVSI5A5saqWfQz8/7Ec3A3Qc9SGHhzpQ5o5eCkzsSgOhsGj84ztkbf3c1YOf1
-         DzBFWdWnOGL/nTtmo9SG4oOGxLttiW+aA/4yeR/lA9deoAzKO8y72PJUvA6uGLD7tx+U
-         8utIYP/ERX58Fr8piEDfSopeMZ6uuwvq0G56IR28U/QnfYrE6ScDoST2H+XGb81TD0wq
-         6XFLz75PBNUwchCiCWAf5NfPQa1KpNFI3V68Rix+6V68K9hIA6uQeXasHD+rFytAxzfn
-         hjYg==
+        bh=rJ0+oPOLTVa8t9ZHme2u/Xf4Q6Cr/mHIPWqXq/z/8eQ=;
+        b=YKIPK3Aw3mAA/CccM5VoVNs9SlcoDs5S5L346fJvgOnTscp1MNF7AEIepH/SLqZcBL
+         fZxFlXsXIRVWt3ulFDMmhuKvjmrcXN8UQqj5MY5nRrc7yq76GN6THkMNVYKsyZpgkRsN
+         d4k6+V2lLchMKCWhYQW9DDIDld3BhBB1rrA2h59RU3e6LSOF/vJ/uWkUVhu98x3G7F0T
+         HEphDjhP8ghXpd2fgs4N+H2kjhlDxBSQad14py+/l5P1rSat2uPGSothljm5Y/gdQpJ1
+         UUTvwDInDsHlgfCJAuCt8IC6Fn8vbc6c1t476djI48o1ivanKqoWpQmNL6ECRcQATyXy
+         KhWA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788540825; x=1789145625;
+        d=1e100.net; s=20251104; t=1788540826; x=1789145626;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=WhIDUqCxY72rbVmzp0JWOsLXFIG8Z/WzlMUO1ZM8BMY=;
-        b=rydlPUh+gFPTLb97c1zLo89mTHriDbjvlLSC31Ww1enSWC3uRqa0I+8FaT+SMVUGIK
-         KjA5zNRj4ofYHEqxXpM/+/hp8rNmhx+LqA6HvmJPQPy19IFHLWItDoJiqYr0xU2z/KNe
-         A/+WiqbUnvQ1RlIlnH/6mfeDtIqQodJvYS0fOpsjjOrKK5OW3qN9KjtdNvnu8vrS6uRb
-         6EIGCG+zzPI/wJCtiyZlNVDiDZZZH50IeRKPjJAzmsnuljl2Y1kpfmK1AU1G8btn1A+0
-         Z43SCU2eVUmLPiH6BnitRZUZLGHQoA1hOkOlo8XOjs/9ZWFRBqnYUmL3J+bOZ+vOPBgm
-         Evfw==
-X-Gm-Message-State: AFuF++kbndg5Vcmxk2/Z16tRovW2nHu6hIiPpEQnsqO6+25+jlDXRO8J
-	ZJbu14+vr95OqvtZNJJC7/EEu+hQWHQ+VTNc1gXGd7sx77l6f/l99z7q/r5FE2gSI5k=
-X-Gm-Gg: AYBFou3nSyoVPySfdj2NQ2zcztW/M+H0rvM792AlFXBSMyJ1rS28BCEgh/7n6qV2ThW
-	N2oGUc1AeE4DCYRJiqY1XkiJjdVrzFL2wmDDMR/Ic76px78390vWoXGJIJFvKlNFboA37pU/c+9
-	bV5Gs+7UGflU34cLlfc4XxlWPeu57YpasGtvpw9INVC7wiTSoq8LIA22qPMf1x7VmKw58/E4iMj
-	4jDNtMLCI67ZcM5wIxqP+v/2DRULXV1hAgqvbKDZZA/nV3cVJi+IpALgvoMx7jj1jqRW4NVymdQ
-	GwcCBZFfSCYMSeZxsR2uwsO+n9/MgrqKgx8d6xLQTuYcZof8X3gpzv+3ZE0Y0NUEqapAEN53yLH
-	c5tOH9aOk7io10an9OOARe/qcoDw/OYGPBXSYHOeqQEauHjaNA7+SzhbR6jtlJybAKmMoMLI5uT
-	JmvmLxd/Dr/WkanlBzLEnAIJfADuaFj4Kp69ur5Dn7t+42TQt6ZcBz7Z5rITbdWEpDxIZPt5Lfc
-	7lEkBqG8bLUkrWjbXrvqkNT
-X-Received: by 2002:a05:620a:3725:b0:937:3aae:1385 with SMTP id af79cd13be357-939803241c0mr602945285a.11.1788540819950;
-        Fri, 04 Sep 2026 09:53:39 -0700 (PDT)
+        bh=rJ0+oPOLTVa8t9ZHme2u/Xf4Q6Cr/mHIPWqXq/z/8eQ=;
+        b=OR+OQEAYhtDKNiNCLlHG8cHKSSRR4YX4iYOlHVCZW+qMnZr0kOHcja9mcRF9fxyCyC
+         W+i5MYEvftgPTx6jIyb82mGuLl1Qpq0cSqZrnmYsAiChM7veAKufcrWVTWiUfedWYtio
+         xMgXgVN/M+34b8FEPpA+ZsmnYJwvyGpr/GqCHHtcd0mISJ7CNqxxH4orr1A3mdwP2UTD
+         ugky6ZiXKyONW4VxtptEpk2dJMPFq++KE91+G1zXSKQxxyPXJyHm/NWReOWXT/O+jnzJ
+         6iZufADlfE/8nDjPHc3IoiDdzAqHWepYHuL+hEAYmiMBzaQJGpZoVE+1fg2+AlhDo0Mh
+         3OnQ==
+X-Gm-Message-State: AFuF++md6EFyexQk9M+i9DH8bKfLt1vGzUJ+jeIzzqGkFD6nGzfJLGh1
+	jw4qj9aX1BJRJZ2bN39BoLPDdlTShXhigkjcuZpO6XUlcCFoIWW3uRAqYtJFRlCLSj8=
+X-Gm-Gg: AYBFou2lOuuIUoCbAsC5E509MSVkkIaZnM2PV1ZUPAEDWc3TbFSsW+PzJtpihSmA21Y
+	lsYLLvAq9hvxXuU0QCrFdBW2XnPa57noxhR1hOMUza7FpTpvMhy7+A2+oP5CbAUkyC2aZXaNQJH
+	QYxe7TYiDFuXwSVE6VbA55LfugPyrFu4fa0Gm2CFdnpBlDvSpv/5b1BkYM4oM64b3Fs8ggCZTBI
+	zsNUhhsorQCIwMZyGocMysv2ptx7ISfnjkVZXHr6xFC2cxSbww1hpShb945NE1WUYWMu5uwvnhV
+	oLWj5VJmPr3a0jmB4kBtKRkYV/+Tj+MUkt6TdORslZsWDk6770AvYJs1ZJurYZ8hq6W4o5o2aO8
+	RSzL6jEntt5CItYOaCbRYKDT25fX4K6s7dROHhoUGkOBl/YUeW5UcM0eRI9PJP188iW7Fii91Gj
+	Sv7G/izdTVI+ZGRD1CG22f/bp1Vee2qsc29/rYPBi0HyjElOq+Hw/VXuBOSKERgj5WEpf5zy0FW
+	Wlefsf1NM2g6bxURhrA2RxF
+X-Received: by 2002:a05:620a:454d:b0:939:5c62:fddd with SMTP id af79cd13be357-9398033d274mr636955085a.19.1788540825669;
+        Fri, 04 Sep 2026 09:53:45 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-9397fbf7c78sm248145485a.47.2026.09.04.09.53.39
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-9397fbf7c78sm248145485a.47.2026.09.04.09.53.45
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 04 Sep 2026 09:53:39 -0700 (PDT)
+        Fri, 04 Sep 2026 09:53:45 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
@@ -67,9 +67,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Mike Snitzer <snitzer@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>,
 	Junrui Luo <moonafterrain@outlook.com>
-Subject: [PATCH v3 17/24] pNFS: Add deviceid reference query and collection walkers
-Date: Fri,  4 Sep 2026 12:53:16 -0400
-Message-ID: <e23b6124f8236b2f71976507e140b33df5918b7c.1788530385.git.bcodding@hammerspace.com>
+Subject: [PATCH v3 24/24] NFSv4/flexfiles: Add a dataserver_nconnect cap
+Date: Fri,  4 Sep 2026 12:53:23 -0400
+Message-ID: <eb088e5acf06883c2ac21418c39143905b2c2dec.1788530385.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1788530385.git.bcodding@hammerspace.com>
 References: <cover.1788530385.git.bcodding@hammerspace.com>
@@ -81,317 +81,238 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The CB_NOTIFY_DEVICEID DELETE race recovery (RFC 8881 Section
-18.40.4) needs to ask whether any live layout still references a
-deviceID, and to enumerate those layouts for TEST_STATEID.  Add a
-layout_references_deviceid hook (sibling of reresolve_deviceid; the
-flexfiles implementation memcmps each mirror stripe's decoded devid,
-valid independent of the pinned device node) and two walkers over
-the byserver pattern:
+Data-server clients inherit the MDS nconnect setting.  A striping
+mount multiplies that by every distinct data server: at the
+anticipated scale of 1024 and nconnect=16 the client opens 16k
+sockets plus their sunrpc slot tables, and striping already spreads
+I/O across the data servers, so a high per-DS transport count buys
+little for that workload.
 
-- pnfs_layout_deviceid_referenced_byclid(): boolean existence query,
-  early-stopping, entirely under i_lock.
-- pnfs_layout_collect_deviceid_refs(): collects each matching layout
-  with the hdr pinned, the inode grabbed with its superblock active
-  (a pinned hdr does not hold its inode -- same discipline as the
-  bulk-destroy walker), and the layout stateid and cred snapshotted
-  under i_lock, so the caller can issue sleeping RPCs against the
-  collection.
-
-The collection walker pins each matching header with a plain
-pnfs_get_layout_hdr(), which cannot resurrect a dying header because
-the walker holds i_lock and has checked NFS_I()->layout == lo.
-pnfs_put_layout_hdr() drops the last reference under i_lock --
-refcount_dec_and_lock() only decrements one to zero once it holds the
-lock -- and clears NFS_I()->layout in that same critical section,
-before it unlocks and frees.  So a header still installed on its inode
-cannot have reached a zero refcount.
-
-That argument deliberately does not rest on NFS_LAYOUT_INVALID_STID.
-A header can reach its final put while still valid: a full
-LAYOUTRETURN ends in pnfs_layoutreturn_free_lsegs(), which resets the
-layout stateid rather than invalidating it, and that is the ordinary
-end of life for a return-on-close layout.  The validity check the
-walkers do apply is a policy filter, not a lifetime guarantee.
-
-Because pnfs_put_layout_hdr() can send a layoutreturn and sleep, a
-header pinned for a layout whose inode can no longer be grabbed is put
-after the RCU read-side critical section, not within it.
-
-Both ways the walk can end early report it.  A GFP_ATOMIC allocation
-failure aborts with -ENOMEM, and an inode that can no longer be
-grabbed -- igrab() fails from I_FREEING on, while the layout may still
-be valid and still name the deviceID -- aborts with -EAGAIN.  Either
-way the caller is told the collection is partial instead of receiving
-a short list it would read as "no references".
-
-No callers yet; no behavior change.
+Add a dataserver_nconnect module parameter to the flexfiles layout
+driver alongside its existing dataserver_timeo and dataserver_retrans
+knobs, and thread the value through nfs4_pnfs_ds_connect() to both
+the v3 and v4 data-server client setup paths.  The default of 0
+preserves today's inherit-from-MDS behavior, so the cap is opt-in
+and non-regressing.  The files layout passes 0, unchanged.
 
 Assisted-by: Claude:claude-fable-5
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c |  17 +++
- fs/nfs/pnfs.c                          | 164 +++++++++++++++++++++++++
- fs/nfs/pnfs.h                          |  29 +++++
- 3 files changed, 210 insertions(+)
+ fs/nfs/filelayout/filelayoutdev.c         |  2 +-
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c |  7 +++++++
+ fs/nfs/internal.h                         |  3 ++-
+ fs/nfs/nfs3client.c                       |  9 +++++++--
+ fs/nfs/nfs4client.c                       |  6 +++++-
+ fs/nfs/pnfs.h                             |  3 ++-
+ fs/nfs/pnfs_nfs.c                         | 21 ++++++++++++++-------
+ 7 files changed, 38 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 9caf4b3b45ae..12b7be95a9c3 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -2527,6 +2527,22 @@ static void ff_layout_cancel_io(struct pnfs_layout_segment *lseg)
- 	}
- }
+diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/filelayoutdev.c
+index 57e0654cd98c..5995f32f07ec 100644
+--- a/fs/nfs/filelayout/filelayoutdev.c
++++ b/fs/nfs/filelayout/filelayoutdev.c
+@@ -267,7 +267,7 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+ 		goto out_test_devid;
  
-+/* Called under @lo's inode i_lock. */
-+static bool ff_layout_references_deviceid(struct pnfs_layout_hdr *lo,
-+					  const struct nfs4_deviceid *id)
-+{
-+	struct nfs4_flexfile_layout *flo = FF_LAYOUT_FROM_HDR(lo);
-+	struct nfs4_ff_layout_mirror *mirror;
-+	u32 dss_id;
-+
-+	list_for_each_entry(mirror, &flo->mirrors, mirrors)
-+		for (dss_id = 0; dss_id < mirror->dss_count; dss_id++)
-+			if (memcmp(&mirror->dss[dss_id].devid, id,
-+				   sizeof(*id)) == 0)
-+				return true;
-+	return false;
-+}
-+
- /*
-  * Un-pin every stripe node resolved from @id: in-flight I/O drains on the
-  * old node through its own reference, the next I/O re-resolves.
-@@ -3155,6 +3171,7 @@ static struct pnfs_layoutdriver_type flexfilelayout_type = {
- 	.get_ds_info		= ff_layout_get_ds_info,
- 	.free_deviceid_node	= ff_layout_free_deviceid_node,
- 	.reresolve_deviceid	= ff_layout_reresolve_deviceid,
-+	.layout_references_deviceid = ff_layout_references_deviceid,
- 	.read_pagelist		= ff_layout_read_pagelist,
- 	.write_pagelist		= ff_layout_write_pagelist,
- 	.alloc_deviceid_node    = ff_layout_alloc_deviceid_node,
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 2f54b22d0e21..23f12eec99d7 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -2937,6 +2937,170 @@ pnfs_layout_reresolve_deviceid_byclid(struct nfs_client *clp,
- 	}
- }
+ 	status = nfs4_pnfs_ds_connect(s, ds, devid, dataserver_timeo,
+-			     dataserver_retrans, 4,
++			     dataserver_retrans, 0, 4,
+ 			     s->nfs_client->cl_minorversion, true);
+ 	if (status) {
+ 		nfs4_mark_deviceid_unavailable(devid);
+diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+index 5cb09e5e2138..d52f485d0650 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
++++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+@@ -20,6 +20,7 @@
  
-+struct pnfs_deviceid_ref_args {
-+	const struct pnfs_layoutdriver_type *ld;
-+	const struct nfs4_deviceid *id;
-+	struct list_head *result;
-+	bool found;
-+};
-+
-+static int pnfs_layout_deviceid_referenced_byserver(
-+		struct nfs_server *server, void *data)
-+{
-+	struct pnfs_deviceid_ref_args *args = data;
-+	struct pnfs_layout_hdr *lo;
-+	struct inode *inode;
-+
-+	if (server->pnfs_curr_ld != args->ld)
-+		return 0;
-+
-+	rcu_read_lock();
-+	list_for_each_entry_rcu(lo, &server->layouts, plh_layouts) {
-+		inode = lo->plh_inode;
-+		if (!inode)
-+			continue;
-+		spin_lock(&inode->i_lock);
-+		if (NFS_I(inode)->layout == lo && pnfs_layout_is_valid(lo) &&
-+		    args->ld->layout_references_deviceid(lo, args->id))
-+			args->found = true;
-+		spin_unlock(&inode->i_lock);
-+		if (args->found)
-+			break;
-+	}
-+	rcu_read_unlock();
-+	return args->found;
-+}
-+
-+/*
-+ * pnfs_layout_deviceid_referenced_byclid - does any live layout of
-+ * @clp's servers using @ld still reference deviceid @id?
-+ */
-+bool
-+pnfs_layout_deviceid_referenced_byclid(struct nfs_client *clp,
-+				const struct pnfs_layoutdriver_type *ld,
-+				const struct nfs4_deviceid *id)
-+{
-+	struct pnfs_deviceid_ref_args args = {
-+		.ld = ld,
-+		.id = id,
-+	};
-+
-+	if (!ld->layout_references_deviceid)
-+		return false;
-+
-+	nfs_client_for_each_server(clp,
-+			pnfs_layout_deviceid_referenced_byserver, &args);
-+	return args.found;
-+}
-+
-+static int pnfs_layout_collect_deviceid_refs_byserver(
-+		struct nfs_server *server, void *data)
-+{
-+	struct pnfs_deviceid_ref_args *args = data;
-+	struct nfs4_deviceid_ref *ref, *tmp;
-+	struct pnfs_layout_hdr *lo;
-+	struct inode *inode;
-+	LIST_HEAD(putme);
-+	bool matched;
-+	int ret = 0;
-+
-+	if (server->pnfs_curr_ld != args->ld)
-+		return 0;
-+
-+	rcu_read_lock();
-+	list_for_each_entry_rcu(lo, &server->layouts, plh_layouts) {
-+		inode = lo->plh_inode;
-+		if (!inode)
-+			continue;
-+
-+		spin_lock(&inode->i_lock);
-+		matched = NFS_I(inode)->layout == lo &&
-+			  pnfs_layout_is_valid(lo) &&
-+			  args->ld->layout_references_deviceid(lo, args->id);
-+		if (!matched) {
-+			spin_unlock(&inode->i_lock);
-+			continue;
-+		}
-+		ref = kzalloc_obj(*ref, GFP_ATOMIC);
-+		if (!ref) {
-+			spin_unlock(&inode->i_lock);
-+			ret = -ENOMEM;
-+			break;
-+		}
-+		/* NFS_I()->layout == lo under i_lock means the refcount has
-+		 * not reached zero: pnfs_put_layout_hdr() decrements to zero
-+		 * and detaches in the same critical section.
-+		 */
-+		pnfs_get_layout_hdr(lo);
-+		ref->lo = lo;
-+		nfs4_stateid_copy(&ref->stateid, &lo->plh_stateid);
-+		ref->cred = get_cred(lo->plh_lc_cred);
-+		spin_unlock(&inode->i_lock);
-+
-+		/* the pinned hdr does not hold the inode: grab it (and
-+		 * keep the superblock active) for use across RPCs
-+		 */
-+		ref->inode = nfs_igrab_and_active(inode);
-+		if (!ref->inode) {
-+			/* The layout may still name the deviceID, so report a
-+			 * partial list rather than silently shortening it.
-+			 * Defer the put: it can layoutreturn and sleep.
-+			 */
-+			list_add(&ref->node, &putme);
-+			ret = -EAGAIN;
-+			break;
-+		}
-+		list_add_tail(&ref->node, args->result);
-+	}
-+	rcu_read_unlock();
-+
-+	list_for_each_entry_safe(ref, tmp, &putme, node) {
-+		list_del(&ref->node);
-+		pnfs_put_layout_hdr(ref->lo);
-+		put_cred(ref->cred);
-+		kfree(ref);
-+	}
-+	return ret;
-+}
-+
-+/*
-+ * Collect @clp's layouts referencing @id onto @result as entries usable
-+ * across sleeping RPCs; release with pnfs_layout_put_deviceid_refs().
-+ * A negative return means @result is only a partial set.
-+ */
-+int
-+pnfs_layout_collect_deviceid_refs(struct nfs_client *clp,
-+				const struct pnfs_layoutdriver_type *ld,
-+				const struct nfs4_deviceid *id,
-+				struct list_head *result)
-+{
-+	struct pnfs_deviceid_ref_args args = {
-+		.ld = ld,
-+		.id = id,
-+		.result = result,
-+	};
-+
-+	if (!ld->layout_references_deviceid)
-+		return 0;
-+
-+	return nfs_client_for_each_server(clp,
-+			pnfs_layout_collect_deviceid_refs_byserver, &args);
-+}
-+
-+void
-+pnfs_layout_put_deviceid_refs(struct list_head *result)
-+{
-+	struct nfs4_deviceid_ref *ref, *tmp;
-+
-+	list_for_each_entry_safe(ref, tmp, result, node) {
-+		list_del(&ref->node);
-+		put_cred(ref->cred);
-+		pnfs_put_layout_hdr(ref->lo);
-+		nfs_iput_and_deactive(ref->inode);
-+		kfree(ref);
-+	}
-+}
-+
- /* Check if we have we have a valid layout but if there isn't an intersection
-  * between the request and the pgio->pg_lseg, put this pgio->pg_lseg away.
+ static unsigned int dataserver_timeo = NFS_DEF_TCP_TIMEO;
+ static unsigned int dataserver_retrans;
++static unsigned int dataserver_nconnect;
+ 
+ static bool ff_layout_has_available_ds(struct pnfs_layout_segment *lseg);
+ 
+@@ -418,6 +419,7 @@ nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg,
+ 	 */
+ 	status = nfs4_pnfs_ds_connect(s, ds, &mirror_ds->id_node,
+ 			     dataserver_timeo, dataserver_retrans,
++			     dataserver_nconnect,
+ 			     mirror_ds->ds_versions[0].version,
+ 			     mirror_ds->ds_versions[0].minor_version,
+ 			     mirror_ds->ds_versions[0].tightly_coupled);
+@@ -676,3 +678,8 @@ module_param(dataserver_timeo, uint, 0644);
+ MODULE_PARM_DESC(dataserver_timeo, "The time (in tenths of a second) the "
+ 			"NFSv4.1  client  waits for a response from a "
+ 			" data server before it retries an NFS request.");
++module_param(dataserver_nconnect, uint, 0644);
++MODULE_PARM_DESC(dataserver_nconnect, "The maximum number of connections "
++			"the NFSv4.1 client opens to each data server, "
++			"capping the value inherited from the MDS nconnect "
++			"mount option.  0 (default) applies no cap.");
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index abc81f5ae578..48f7c0e25da1 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -251,6 +251,7 @@ extern struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
+ 					     int ds_addrlen, int ds_proto,
+ 					     unsigned int ds_timeo,
+ 					     unsigned int ds_retrans,
++					     unsigned int ds_nconnect,
+ 					     u32 minor_version,
+ 					     bool tightly_coupled);
+ extern struct rpc_clnt *nfs4_find_or_create_ds_client(struct nfs_client *,
+@@ -260,7 +261,7 @@ extern void nfs4_session_limit_xasize(struct nfs_server *server);
+ extern struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
+ 			const struct sockaddr_storage *ds_addr, int ds_addrlen,
+ 			int ds_proto, unsigned int ds_timeo,
+-			unsigned int ds_retrans);
++			unsigned int ds_retrans, unsigned int ds_nconnect);
+ #ifdef CONFIG_PROC_FS
+ extern int __init nfs_fs_proc_init(void);
+ extern void nfs_fs_proc_exit(void);
+diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
+index 5d97c1d38bb6..cf2f7be4b435 100644
+--- a/fs/nfs/nfs3client.c
++++ b/fs/nfs/nfs3client.c
+@@ -84,7 +84,8 @@ struct nfs_server *nfs3_clone_server(struct nfs_server *source,
   */
+ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
+ 		const struct sockaddr_storage *ds_addr, int ds_addrlen,
+-		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans)
++		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans,
++		unsigned int ds_nconnect)
+ {
+ 	struct rpc_timeout ds_timeout;
+ 	unsigned long connect_timeout = ds_timeo * (ds_retrans + 1) * HZ / 10;
+@@ -124,8 +125,12 @@ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
+ 		fallthrough;
+ 	case XPRT_TRANSPORT_RDMA:
+ 	case XPRT_TRANSPORT_TCP:
+-		if (mds_clp->cl_nconnect > 1)
++		if (mds_clp->cl_nconnect > 1) {
+ 			cl_init.nconnect = mds_clp->cl_nconnect;
++			if (ds_nconnect)
++				cl_init.nconnect = min(cl_init.nconnect,
++						       ds_nconnect);
++		}
+ 	}
+ 
+ 	if (mds_srv->flags & NFS_MOUNT_NORESVPORT)
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index e6a589913666..fe779fb2ec72 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -794,7 +794,8 @@ static int nfs4_set_client(struct nfs_server *server,
+ struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
+ 		const struct sockaddr_storage *ds_addr, int ds_addrlen,
+ 		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans,
+-		u32 minor_version, bool tightly_coupled)
++		unsigned int ds_nconnect, u32 minor_version,
++		bool tightly_coupled)
+ {
+ 	struct rpc_timeout ds_timeout;
+ 	struct nfs_client *mds_clp = mds_srv->nfs_client;
+@@ -832,6 +833,9 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
+ 	case XPRT_TRANSPORT_TCP:
+ 		if (mds_clp->cl_nconnect > 1) {
+ 			cl_init.nconnect = mds_clp->cl_nconnect;
++			if (ds_nconnect)
++				cl_init.nconnect = min(cl_init.nconnect,
++						       ds_nconnect);
+ 			cl_init.max_connect = NFS_MAX_TRANSPORTS;
+ 		}
+ 	}
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 2c0f5d4d38ab..d1bc4d1d8d4c 100644
+index 8b612f3679a3..719657f3f4e1 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -184,6 +184,12 @@ struct pnfs_layoutdriver_type {
- 				   const struct nfs4_deviceid *id,
- 				   bool immediate,
- 				   struct list_head *put_list);
-+	/*
-+	 * Does @lo hold any reference to deviceid @id?  Called under
-+	 * @lo's inode i_lock; must not sleep.
-+	 */
-+	bool (*layout_references_deviceid)(struct pnfs_layout_hdr *lo,
-+					   const struct nfs4_deviceid *id);
+@@ -504,7 +504,8 @@ struct nfs4_pnfs_ds *nfs4_pnfs_ds_add(const struct net *net,
+ void nfs4_pnfs_v3_ds_connect_unload(void);
+ int nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
+ 			  struct nfs4_deviceid_node *devid, unsigned int timeo,
+-			  unsigned int retrans, u32 version, u32 minor_version,
++			  unsigned int retrans, unsigned int nconnect,
++			  u32 version, u32 minor_version,
+ 			  bool tightly_coupled);
+ struct nfs4_pnfs_ds_addr *nfs4_decode_mp_ds_addr(struct net *net,
+ 						 struct xdr_stream *xdr,
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index c9bbcb765f4a..7adb6f941cf2 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -844,7 +844,8 @@ static struct nfs_client *(*get_v3_ds_connect)(
+ 			int ds_addrlen,
+ 			int ds_proto,
+ 			unsigned int ds_timeo,
+-			unsigned int ds_retrans);
++			unsigned int ds_retrans,
++			unsigned int ds_nconnect);
  
- 	int (*prepare_layoutreturn) (struct nfs4_layoutreturn_args *);
+ static bool load_v3_ds_connect(void)
+ {
+@@ -867,7 +868,8 @@ void nfs4_pnfs_v3_ds_connect_unload(void)
+ static int _nfs4_pnfs_v3_ds_connect(struct nfs_server *mds_srv,
+ 				 struct nfs4_pnfs_ds *ds,
+ 				 unsigned int timeo,
+-				 unsigned int retrans)
++				 unsigned int retrans,
++				 unsigned int nconnect)
+ {
+ 	struct nfs_client *clp = ERR_PTR(-EIO);
+ 	struct nfs_client *mds_clp = mds_srv->nfs_client;
+@@ -919,7 +921,7 @@ static int _nfs4_pnfs_v3_ds_connect(struct nfs_server *mds_srv,
+ 			ds_proto = XPRT_TRANSPORT_TCP_TLS;
  
-@@ -371,6 +377,29 @@ void pnfs_layout_reresolve_deviceid_byclid(struct nfs_client *clp,
- 				const struct pnfs_layoutdriver_type *ld,
- 				const struct nfs4_deviceid *id,
- 				bool immediate);
-+bool pnfs_layout_deviceid_referenced_byclid(struct nfs_client *clp,
-+				const struct pnfs_layoutdriver_type *ld,
-+				const struct nfs4_deviceid *id);
-+
-+/*
-+ * One live layout referencing a deviceID, collected for the
-+ * CB_NOTIFY_DEVICEID DELETE recovery: the hdr is pinned, the inode
-+ * igrab'd with its superblock active, and the layout stateid and
-+ * cred snapshotted for TEST_STATEID.
-+ */
-+struct nfs4_deviceid_ref {
-+	struct list_head node;
-+	struct pnfs_layout_hdr *lo;
-+	struct inode *inode;
-+	nfs4_stateid stateid;
-+	const struct cred *cred;
-+};
-+
-+int pnfs_layout_collect_deviceid_refs(struct nfs_client *clp,
-+				const struct pnfs_layoutdriver_type *ld,
-+				const struct nfs4_deviceid *id,
-+				struct list_head *result);
-+void pnfs_layout_put_deviceid_refs(struct list_head *result);
- int pnfs_layout_handle_reboot(struct nfs_client *clp);
+ 		clp = get_v3_ds_connect(mds_srv, &da->da_addr, da->da_addrlen,
+-					ds_proto, timeo, retrans);
++					ds_proto, timeo, retrans, nconnect);
+ 		if (IS_ERR(clp))
+ 			continue;
+ 		clp->cl_rpcclient->cl_softerr = 0;
+@@ -942,6 +944,7 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
+ 				 struct nfs4_pnfs_ds *ds,
+ 				 unsigned int timeo,
+ 				 unsigned int retrans,
++				 unsigned int nconnect,
+ 				 u32 minor_version,
+ 				 bool tightly_coupled)
+ {
+@@ -1033,7 +1036,8 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
  
- /* nfs4_deviceid_flags */
+ 			clp = nfs4_set_ds_client(mds_srv, &da->da_addr,
+ 						 da->da_addrlen, ds_proto,
+-						 timeo, retrans, minor_version,
++						 timeo, retrans, nconnect,
++						 minor_version,
+ 						 tightly_coupled);
+ 			if (IS_ERR(clp))
+ 				continue;
+@@ -1068,7 +1072,8 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
+  */
+ int nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
+ 			  struct nfs4_deviceid_node *devid, unsigned int timeo,
+-			  unsigned int retrans, u32 version, u32 minor_version,
++			  unsigned int retrans, unsigned int nconnect,
++			  u32 version, u32 minor_version,
+ 			  bool tightly_coupled)
+ {
+ 	int err;
+@@ -1088,11 +1093,13 @@ int nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
+ 
+ 	switch (version) {
+ 	case 3:
+-		err = _nfs4_pnfs_v3_ds_connect(mds_srv, ds, timeo, retrans);
++		err = _nfs4_pnfs_v3_ds_connect(mds_srv, ds, timeo, retrans,
++					       nconnect);
+ 		break;
+ 	case 4:
+ 		err = _nfs4_pnfs_v4_ds_connect(mds_srv, ds, timeo, retrans,
+-					       minor_version, tightly_coupled);
++					       nconnect, minor_version,
++					       tightly_coupled);
+ 		break;
+ 	default:
+ 		dprintk("%s: unsupported DS version %d\n", __func__, version);
 -- 
 2.53.0
 
