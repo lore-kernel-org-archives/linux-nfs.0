@@ -1,63 +1,63 @@
-Received: from mail-qv1-f51.google.com (mail-qv1-f51.google.com [209.85.219.51])
+Received: from mail-qk1-f176.google.com (mail-qk1-f176.google.com [209.85.222.176])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D4A5850C2B7
-	for <linux-nfs@vger.kernel.org>; Fri,  4 Sep 2026 16:53:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9CE4150EC0B
+	for <linux-nfs@vger.kernel.org>; Fri,  4 Sep 2026 16:53:48 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.176
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788540828; cv=none; b=oWfvpez/3sduf2Ibowd6utOCcRkU47z52TYxKY32e3dHfMRbFGzfQPFwQryAhoUR4bfETUAkH5DjAR/K4Syojk7ajN6iwFnOzU4kYg9DkrwNH4PwODmq1vRTTC6YqzSppMuvplQNI4W/frt2WwHS1CP+GRK/SF0PL335JBu8FTk=
+	t=1788540830; cv=none; b=sOqxOWJIQScJhc5UcAJd/g+alGTeIr2YkuotNAH/JY2TlFMXbXFg8e3ykMeNOC+e3PWwvgJB//0sWs8Ul1hkozT3vLxMpBDK1cVjZQHnMK/Qqloo2QJMNB0uHnVho6qyF0fisSVCOV3+ay1+FhTdtENnmH4cnOrJEZGMNQ8IwO0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788540828; c=relaxed/simple;
-	bh=zpuWsi6PdIsiYk944ZULr2yruM3l58CchMh9COalT20=;
+	s=arc-20240116; t=1788540830; c=relaxed/simple;
+	bh=EsH8Peom1tAOgtjdjLHuzJZHSNQOS6hni8nl8rr4zAk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=EKuUG25uXWk1mbhca/C1/kEG2kAxngSqfByh0zfz0V1D1TTlr3PmXPas5LJUefD+O8tJjYFEQbOmwf4ilSP5soKV9wFHMSLu+nYNxoCHiE30g98t4wE7JaULnONyQDy2bfXQ6pXcqiYUHNdWzYzfkr1osHBDv4QlPlKQ6Advvdo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=YKIPK3Aw; arc=none smtp.client-ip=209.85.219.51
+	 MIME-Version; b=pHdc2B6Hsnu7Z+x6izveAEQIz+4XolQv6i5tmin9y0R0PRzuoYJRqptWFMprNZXZFezyDrAYZeqb/gOXTeHZIUARXidejkb94T2UVWdF4Rly4/JONezwUD4jyq+qzHxCCay3A2Bznw5f98AzWFagxbfIDs0oj0/7eAlgMgfuQoU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=XyYW1QpL; arc=none smtp.client-ip=209.85.222.176
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="YKIPK3Aw"
-Received: by mail-qv1-f51.google.com with SMTP id 6a1803df08f44-91041ee9230so10479066d6.2
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Sep 2026 09:53:46 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="XyYW1QpL"
+Received: by mail-qk1-f176.google.com with SMTP id af79cd13be357-936c02e58dfso123877585a.3
+        for <linux-nfs@vger.kernel.org>; Fri, 04 Sep 2026 09:53:48 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1788540826; x=1789145626; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1788540827; x=1789145627; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=rJ0+oPOLTVa8t9ZHme2u/Xf4Q6Cr/mHIPWqXq/z/8eQ=;
-        b=YKIPK3Aw3mAA/CccM5VoVNs9SlcoDs5S5L346fJvgOnTscp1MNF7AEIepH/SLqZcBL
-         fZxFlXsXIRVWt3ulFDMmhuKvjmrcXN8UQqj5MY5nRrc7yq76GN6THkMNVYKsyZpgkRsN
-         d4k6+V2lLchMKCWhYQW9DDIDld3BhBB1rrA2h59RU3e6LSOF/vJ/uWkUVhu98x3G7F0T
-         HEphDjhP8ghXpd2fgs4N+H2kjhlDxBSQad14py+/l5P1rSat2uPGSothljm5Y/gdQpJ1
-         UUTvwDInDsHlgfCJAuCt8IC6Fn8vbc6c1t476djI48o1ivanKqoWpQmNL6ECRcQATyXy
-         KhWA==
+        bh=4k9eVkI4A12rmuGKAgoZZekbl21MNnPeg4s4iebeUnY=;
+        b=XyYW1QpLxqn3fHTXx35zIGZF6VkJnc5jS1hKkeKcIEw8PJNbIiyPHm1S1sjBHjw9Oc
+         5UXvebNTXxmQwMOlA7DHdepoR6Zy5EYqz7UWwpiwW33zdlZ4kUQ3FQjpX1ywy63D33sO
+         YZC2SGs2HLDaMOQdRSNdb3Xl4i4s3lBTt3kAqqKctBfqgGt4VQZjQL6G5hTDibDxMp0f
+         VM7ntkd/SLdQtmpmSpuivbpxEloLQoUSppT1b46+lrTRb4GJ1xZ12y0NQNokDk7VtBpv
+         akzJVpU5NsyDI+oiY78ZRKDtOM6N9AU1JIDoe829avzFknvt6xSkPUEwrQm6syRt+QtC
+         hb9Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788540826; x=1789145626;
+        d=1e100.net; s=20251104; t=1788540827; x=1789145627;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=rJ0+oPOLTVa8t9ZHme2u/Xf4Q6Cr/mHIPWqXq/z/8eQ=;
-        b=OR+OQEAYhtDKNiNCLlHG8cHKSSRR4YX4iYOlHVCZW+qMnZr0kOHcja9mcRF9fxyCyC
-         W+i5MYEvftgPTx6jIyb82mGuLl1Qpq0cSqZrnmYsAiChM7veAKufcrWVTWiUfedWYtio
-         xMgXgVN/M+34b8FEPpA+ZsmnYJwvyGpr/GqCHHtcd0mISJ7CNqxxH4orr1A3mdwP2UTD
-         ugky6ZiXKyONW4VxtptEpk2dJMPFq++KE91+G1zXSKQxxyPXJyHm/NWReOWXT/O+jnzJ
-         6iZufADlfE/8nDjPHc3IoiDdzAqHWepYHuL+hEAYmiMBzaQJGpZoVE+1fg2+AlhDo0Mh
-         3OnQ==
-X-Gm-Message-State: AFuF++md6EFyexQk9M+i9DH8bKfLt1vGzUJ+jeIzzqGkFD6nGzfJLGh1
-	jw4qj9aX1BJRJZ2bN39BoLPDdlTShXhigkjcuZpO6XUlcCFoIWW3uRAqYtJFRlCLSj8=
-X-Gm-Gg: AYBFou2lOuuIUoCbAsC5E509MSVkkIaZnM2PV1ZUPAEDWc3TbFSsW+PzJtpihSmA21Y
-	lsYLLvAq9hvxXuU0QCrFdBW2XnPa57noxhR1hOMUza7FpTpvMhy7+A2+oP5CbAUkyC2aZXaNQJH
-	QYxe7TYiDFuXwSVE6VbA55LfugPyrFu4fa0Gm2CFdnpBlDvSpv/5b1BkYM4oM64b3Fs8ggCZTBI
-	zsNUhhsorQCIwMZyGocMysv2ptx7ISfnjkVZXHr6xFC2cxSbww1hpShb945NE1WUYWMu5uwvnhV
-	oLWj5VJmPr3a0jmB4kBtKRkYV/+Tj+MUkt6TdORslZsWDk6770AvYJs1ZJurYZ8hq6W4o5o2aO8
-	RSzL6jEntt5CItYOaCbRYKDT25fX4K6s7dROHhoUGkOBl/YUeW5UcM0eRI9PJP188iW7Fii91Gj
-	Sv7G/izdTVI+ZGRD1CG22f/bp1Vee2qsc29/rYPBi0HyjElOq+Hw/VXuBOSKERgj5WEpf5zy0FW
-	Wlefsf1NM2g6bxURhrA2RxF
-X-Received: by 2002:a05:620a:454d:b0:939:5c62:fddd with SMTP id af79cd13be357-9398033d274mr636955085a.19.1788540825669;
-        Fri, 04 Sep 2026 09:53:45 -0700 (PDT)
+        bh=4k9eVkI4A12rmuGKAgoZZekbl21MNnPeg4s4iebeUnY=;
+        b=dGg3mCt8O6OtAhY3PPm/tE33YdBM/5mFIDWgQLZNrXLOFbB9Ksv+o9I58B7gVi2XKl
+         7afdPSp/M9rI/8LoTohL6o9Wvr2obXhpnwTCYPGNFIMd71RMx+S5WwQgqNy8dyGIBJdj
+         Hwp4NZ63RGle9KBa+RVuJh+9zF2ER6uSX6q7E4CdOdE86CrkZKSHB5R/tPFGUKIozHnr
+         pjjoEy/gUGjMsR25yJGHWPG+PuuOhKjl2H6H4hVENXz4rx/fx+Y65g8yc+fwtYEqlU+/
+         bZtHLzXxGHQaUanpaKSwU5yj4V9HbXQFV+KB//7MJ82dr3wE+AtyWnuw7Ac7170e9JTT
+         aRag==
+X-Gm-Message-State: AFuF++lGI3l1cirm2PVXYInJMKE2ECSz7UUg2Nb7Z2SzB17g5MjXohr5
+	7yRxFI31rstFm2YAm66UIRxZxJGDPNiYCcxJG5XfsfIZLxjVPDEFpUHbAgpZHA+UalU=
+X-Gm-Gg: AYBFou1KfKH9ZFDicchbflT9MsnBc6MigE4eGKjaszX5+puPxulIipAxszxB6h5Ck4Y
+	7b0X3903oTmCN6wBIuuM+tAvC3YDdh3KF+IfP5+PQ/0zsRRFhAjwAhlTziqP0Ab3jw0fCSrwJB+
+	FNZt4PpYQJDsG/9P51e4SSDti1IZJ29eBPFPxpC5SQYgpw6kXSA6IW5ouJETHCQx+HMbhE3sOxl
+	9jcXikm7Yty6zkUyY0VRflxejoKjIKtZK2+TGUKfm7QDx+nOxSwbq/DMSuTx+ZMJSh2+Sb32m2U
+	/Mj3mMTQPcoHdsBpo11tUifn84tHsZlln2rejGXAjt6TJabCS8OBjgg2rp/OrJuc33lO81Ui6dd
+	tMtWzh+8wGhwPM+wqTBfRvfK6B+NCWKCqTvCgTavKxGWPtUdNKVa5kdyLqowXgts6g6QoDA9zjW
+	rhLQEYMykIt8O0Yi7q9VW7BM3PJbiwR/KYHPyV3k0DgDN1Wl9IvweN7JUiW6+yl/r9gs1JO/pzd
+	nXD7nh8DUz6QyOJcTWoBP8a
+X-Received: by 2002:a05:620a:2805:b0:939:49f1:f972 with SMTP id af79cd13be357-93980377d24mr733361785a.23.1788540822612;
+        Fri, 04 Sep 2026 09:53:42 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-9397fbf7c78sm248145485a.47.2026.09.04.09.53.45
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-9397fbf7c78sm248145485a.47.2026.09.04.09.53.41
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 04 Sep 2026 09:53:45 -0700 (PDT)
+        Fri, 04 Sep 2026 09:53:42 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
@@ -67,9 +67,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Mike Snitzer <snitzer@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>,
 	Junrui Luo <moonafterrain@outlook.com>
-Subject: [PATCH v3 24/24] NFSv4/flexfiles: Add a dataserver_nconnect cap
-Date: Fri,  4 Sep 2026 12:53:23 -0400
-Message-ID: <eb088e5acf06883c2ac21418c39143905b2c2dec.1788530385.git.bcodding@hammerspace.com>
+Subject: [PATCH v3 20/24] NFSv4/pnfs: Dispatch CB_NOTIFY_DEVICEID DELETE to race recovery
+Date: Fri,  4 Sep 2026 12:53:19 -0400
+Message-ID: <81e30687fcbd99ae41813742afcd5667de42e735.1788530385.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1788530385.git.bcodding@hammerspace.com>
 References: <cover.1788530385.git.bcodding@hammerspace.com>
@@ -81,238 +81,91 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Data-server clients inherit the MDS nconnect setting.  A striping
-mount multiplies that by every distinct data server: at the
-anticipated scale of 1024 and nconnect=16 the client opens 16k
-sockets plus their sunrpc slot tables, and striping already spreads
-I/O across the data servers, so a high per-DS transport count buys
-little for that workload.
+Turn on the RFC 8881 Section 18.40.4 DELETE handling: a DELETE for a
+deviceID that no live layout references keeps today's cheap behavior
+(drop the cached device, no state-manager wake).  A DELETE for a
+deviceID that live layouts still reference is deferred to the state
+manager, which TEST_STATEIDs the referring layouts, recovers revoked
+ones, and confirms or refutes the delete with GETDEVICEINFO.
 
-Add a dataserver_nconnect module parameter to the flexfiles layout
-driver alongside its existing dataserver_timeo and dataserver_retrans
-knobs, and thread the value through nfs4_pnfs_ds_connect() to both
-the v3 and v4 data-server client setup paths.  The default of 0
-preserves today's inherit-from-MDS behavior, so the cap is opt-in
-and non-regressing.  The files layout passes 0, unchanged.
+The deferred case no longer unhashes the device immediately: if the
+recovery concludes the DELETE was erroneous (the deviceID still
+exists and a referring layout is still valid), the client keeps
+using the cached device.
+
+Re-arm the state manager afterwards, as the delegation return above it
+does.  The recovery issues synchronous RPCs, and a manager thread that
+starts and exits while it runs clears NFS4CLNT_RUN_MANAGER on its way
+out.
+
+Bump the deviceid change epoch for both notification types rather
+than only for CHANGE.  A GETDEVICEINFO whose reply is already in
+flight can otherwise re-cache a device the notification has just
+invalidated; that is as true of a delete as of a change, and Section
+18.40.4 opens by describing the race for the delete case.
 
 Assisted-by: Claude:claude-fable-5
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/filelayout/filelayoutdev.c         |  2 +-
- fs/nfs/flexfilelayout/flexfilelayoutdev.c |  7 +++++++
- fs/nfs/internal.h                         |  3 ++-
- fs/nfs/nfs3client.c                       |  9 +++++++--
- fs/nfs/nfs4client.c                       |  6 +++++-
- fs/nfs/pnfs.h                             |  3 ++-
- fs/nfs/pnfs_nfs.c                         | 21 ++++++++++++++-------
- 7 files changed, 38 insertions(+), 13 deletions(-)
+ fs/nfs/callback_proc.c | 24 +++++++++++++++---------
+ fs/nfs/nfs4state.c     |  4 +++-
+ 2 files changed, 18 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/filelayoutdev.c
-index 57e0654cd98c..5995f32f07ec 100644
---- a/fs/nfs/filelayout/filelayoutdev.c
-+++ b/fs/nfs/filelayout/filelayoutdev.c
-@@ -267,7 +267,7 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
- 		goto out_test_devid;
- 
- 	status = nfs4_pnfs_ds_connect(s, ds, devid, dataserver_timeo,
--			     dataserver_retrans, 4,
-+			     dataserver_retrans, 0, 4,
- 			     s->nfs_client->cl_minorversion, true);
- 	if (status) {
- 		nfs4_mark_deviceid_unavailable(devid);
-diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index 5cb09e5e2138..d52f485d0650 100644
---- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-@@ -20,6 +20,7 @@
- 
- static unsigned int dataserver_timeo = NFS_DEF_TCP_TIMEO;
- static unsigned int dataserver_retrans;
-+static unsigned int dataserver_nconnect;
- 
- static bool ff_layout_has_available_ds(struct pnfs_layout_segment *lseg);
- 
-@@ -418,6 +419,7 @@ nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg,
- 	 */
- 	status = nfs4_pnfs_ds_connect(s, ds, &mirror_ds->id_node,
- 			     dataserver_timeo, dataserver_retrans,
-+			     dataserver_nconnect,
- 			     mirror_ds->ds_versions[0].version,
- 			     mirror_ds->ds_versions[0].minor_version,
- 			     mirror_ds->ds_versions[0].tightly_coupled);
-@@ -676,3 +678,8 @@ module_param(dataserver_timeo, uint, 0644);
- MODULE_PARM_DESC(dataserver_timeo, "The time (in tenths of a second) the "
- 			"NFSv4.1  client  waits for a response from a "
- 			" data server before it retries an NFS request.");
-+module_param(dataserver_nconnect, uint, 0644);
-+MODULE_PARM_DESC(dataserver_nconnect, "The maximum number of connections "
-+			"the NFSv4.1 client opens to each data server, "
-+			"capping the value inherited from the MDS nconnect "
-+			"mount option.  0 (default) applies no cap.");
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index abc81f5ae578..48f7c0e25da1 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -251,6 +251,7 @@ extern struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
- 					     int ds_addrlen, int ds_proto,
- 					     unsigned int ds_timeo,
- 					     unsigned int ds_retrans,
-+					     unsigned int ds_nconnect,
- 					     u32 minor_version,
- 					     bool tightly_coupled);
- extern struct rpc_clnt *nfs4_find_or_create_ds_client(struct nfs_client *,
-@@ -260,7 +261,7 @@ extern void nfs4_session_limit_xasize(struct nfs_server *server);
- extern struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
- 			const struct sockaddr_storage *ds_addr, int ds_addrlen,
- 			int ds_proto, unsigned int ds_timeo,
--			unsigned int ds_retrans);
-+			unsigned int ds_retrans, unsigned int ds_nconnect);
- #ifdef CONFIG_PROC_FS
- extern int __init nfs_fs_proc_init(void);
- extern void nfs_fs_proc_exit(void);
-diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-index 5d97c1d38bb6..cf2f7be4b435 100644
---- a/fs/nfs/nfs3client.c
-+++ b/fs/nfs/nfs3client.c
-@@ -84,7 +84,8 @@ struct nfs_server *nfs3_clone_server(struct nfs_server *source,
-  */
- struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
- 		const struct sockaddr_storage *ds_addr, int ds_addrlen,
--		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans)
-+		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans,
-+		unsigned int ds_nconnect)
- {
- 	struct rpc_timeout ds_timeout;
- 	unsigned long connect_timeout = ds_timeo * (ds_retrans + 1) * HZ / 10;
-@@ -124,8 +125,12 @@ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
- 		fallthrough;
- 	case XPRT_TRANSPORT_RDMA:
- 	case XPRT_TRANSPORT_TCP:
--		if (mds_clp->cl_nconnect > 1)
-+		if (mds_clp->cl_nconnect > 1) {
- 			cl_init.nconnect = mds_clp->cl_nconnect;
-+			if (ds_nconnect)
-+				cl_init.nconnect = min(cl_init.nconnect,
-+						       ds_nconnect);
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index ea8c558b07b6..c9b71dbae9ea 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -392,19 +392,25 @@ __be32 nfs4_callback_devicenotify(void *argp, void *resp,
+ 				continue;
+ 		}
+ 		/*
+-		 * Unhash the cached device first so re-resolution cannot
+-		 * re-pin the stale node, then re-point any references
+-		 * pinned under live layouts (RFC 8881 Section 12.2.10).
+-		 * The epoch bump lets an in-flight GETDEVICEINFO detect
+-		 * that its reply may predate the change.
++		 * Bump the epoch before touching the cache so a
++		 * GETDEVICEINFO already in flight can detect that it
++		 * predates the notification.  A referenced DELETE may be
++		 * racing revocation, so defer it to the state manager --
++		 * this thread cannot issue fore-channel RPCs.
+ 		 */
+-		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
+-			nfs4_deviceid_bump_change_epoch(cps->clp);
+-		nfs4_delete_deviceid(ld, cps->clp, &dev->cbd_dev_id);
+-		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
++		nfs4_deviceid_bump_change_epoch(cps->clp);
++		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE) {
++			nfs4_delete_deviceid(ld, cps->clp, &dev->cbd_dev_id);
+ 			pnfs_layout_reresolve_deviceid_byclid(cps->clp, ld,
+ 							&dev->cbd_dev_id,
+ 							dev->cbd_immediate);
++		} else if (pnfs_layout_deviceid_referenced_byclid(cps->clp,
++						ld, &dev->cbd_dev_id)) {
++			pnfs_deviceid_delete_mark(cps->clp, ld,
++						  &dev->cbd_dev_id);
++		} else {
++			nfs4_delete_deviceid(ld, cps->clp, &dev->cbd_dev_id);
 +		}
  	}
- 
- 	if (mds_srv->flags & NFS_MOUNT_NORESVPORT)
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index e6a589913666..fe779fb2ec72 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -794,7 +794,8 @@ static int nfs4_set_client(struct nfs_server *server,
- struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
- 		const struct sockaddr_storage *ds_addr, int ds_addrlen,
- 		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans,
--		u32 minor_version, bool tightly_coupled)
-+		unsigned int ds_nconnect, u32 minor_version,
-+		bool tightly_coupled)
- {
- 	struct rpc_timeout ds_timeout;
- 	struct nfs_client *mds_clp = mds_srv->nfs_client;
-@@ -832,6 +833,9 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
- 	case XPRT_TRANSPORT_TCP:
- 		if (mds_clp->cl_nconnect > 1) {
- 			cl_init.nconnect = mds_clp->cl_nconnect;
-+			if (ds_nconnect)
-+				cl_init.nconnect = min(cl_init.nconnect,
-+						       ds_nconnect);
- 			cl_init.max_connect = NFS_MAX_TRANSPORTS;
+ 	pnfs_put_layoutdriver(ld);
+ out:
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 4c085c00abb1..b5d6daa2c416 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -2670,8 +2670,10 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			}
+ 			nfs4_layoutreturn_any_run(clp);
+ 			if (test_and_clear_bit(NFS4CLNT_DEVICEID_DELETE,
+-					       &clp->cl_state))
++					       &clp->cl_state)) {
+ 				nfs4_deviceid_delete_recover_run(clp);
++				set_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state);
++			}
+ 			clear_bit(NFS4CLNT_RECALL_RUNNING, &clp->cl_state);
  		}
- 	}
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 8b612f3679a3..719657f3f4e1 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -504,7 +504,8 @@ struct nfs4_pnfs_ds *nfs4_pnfs_ds_add(const struct net *net,
- void nfs4_pnfs_v3_ds_connect_unload(void);
- int nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
- 			  struct nfs4_deviceid_node *devid, unsigned int timeo,
--			  unsigned int retrans, u32 version, u32 minor_version,
-+			  unsigned int retrans, unsigned int nconnect,
-+			  u32 version, u32 minor_version,
- 			  bool tightly_coupled);
- struct nfs4_pnfs_ds_addr *nfs4_decode_mp_ds_addr(struct net *net,
- 						 struct xdr_stream *xdr,
-diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index c9bbcb765f4a..7adb6f941cf2 100644
---- a/fs/nfs/pnfs_nfs.c
-+++ b/fs/nfs/pnfs_nfs.c
-@@ -844,7 +844,8 @@ static struct nfs_client *(*get_v3_ds_connect)(
- 			int ds_addrlen,
- 			int ds_proto,
- 			unsigned int ds_timeo,
--			unsigned int ds_retrans);
-+			unsigned int ds_retrans,
-+			unsigned int ds_nconnect);
  
- static bool load_v3_ds_connect(void)
- {
-@@ -867,7 +868,8 @@ void nfs4_pnfs_v3_ds_connect_unload(void)
- static int _nfs4_pnfs_v3_ds_connect(struct nfs_server *mds_srv,
- 				 struct nfs4_pnfs_ds *ds,
- 				 unsigned int timeo,
--				 unsigned int retrans)
-+				 unsigned int retrans,
-+				 unsigned int nconnect)
- {
- 	struct nfs_client *clp = ERR_PTR(-EIO);
- 	struct nfs_client *mds_clp = mds_srv->nfs_client;
-@@ -919,7 +921,7 @@ static int _nfs4_pnfs_v3_ds_connect(struct nfs_server *mds_srv,
- 			ds_proto = XPRT_TRANSPORT_TCP_TLS;
- 
- 		clp = get_v3_ds_connect(mds_srv, &da->da_addr, da->da_addrlen,
--					ds_proto, timeo, retrans);
-+					ds_proto, timeo, retrans, nconnect);
- 		if (IS_ERR(clp))
- 			continue;
- 		clp->cl_rpcclient->cl_softerr = 0;
-@@ -942,6 +944,7 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
- 				 struct nfs4_pnfs_ds *ds,
- 				 unsigned int timeo,
- 				 unsigned int retrans,
-+				 unsigned int nconnect,
- 				 u32 minor_version,
- 				 bool tightly_coupled)
- {
-@@ -1033,7 +1036,8 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
- 
- 			clp = nfs4_set_ds_client(mds_srv, &da->da_addr,
- 						 da->da_addrlen, ds_proto,
--						 timeo, retrans, minor_version,
-+						 timeo, retrans, nconnect,
-+						 minor_version,
- 						 tightly_coupled);
- 			if (IS_ERR(clp))
- 				continue;
-@@ -1068,7 +1072,8 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
-  */
- int nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
- 			  struct nfs4_deviceid_node *devid, unsigned int timeo,
--			  unsigned int retrans, u32 version, u32 minor_version,
-+			  unsigned int retrans, unsigned int nconnect,
-+			  u32 version, u32 minor_version,
- 			  bool tightly_coupled)
- {
- 	int err;
-@@ -1088,11 +1093,13 @@ int nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
- 
- 	switch (version) {
- 	case 3:
--		err = _nfs4_pnfs_v3_ds_connect(mds_srv, ds, timeo, retrans);
-+		err = _nfs4_pnfs_v3_ds_connect(mds_srv, ds, timeo, retrans,
-+					       nconnect);
- 		break;
- 	case 4:
- 		err = _nfs4_pnfs_v4_ds_connect(mds_srv, ds, timeo, retrans,
--					       minor_version, tightly_coupled);
-+					       nconnect, minor_version,
-+					       tightly_coupled);
- 		break;
- 	default:
- 		dprintk("%s: unsupported DS version %d\n", __func__, version);
 -- 
 2.53.0
 
