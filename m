@@ -1,100 +1,125 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0402D3DFC8C
-	for <linux-nfs@vger.kernel.org>; Fri,  4 Sep 2026 16:37:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7BBF633D6FA
+	for <linux-nfs@vger.kernel.org>; Fri,  4 Sep 2026 16:50:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788539832; cv=none; b=DSkt4huHGW1S7CriesnjCOZnlLTEmgghzg8/BiXqqKiAnNUfAmqrJ3xtmHVVXzQJuFzuT9NZbjc7JNvDuEs4hE2fHWmSVphdhMGzNf9hY3BJ6Zu9T7juFNtmre31Pn40GfF9zmG+bh1SpkKx9ipeggAs2BkY5NCp3o9HwXIY4/E=
+	t=1788540655; cv=none; b=dYufy/WUmyKzYFA+O8qCCNN14LQsAFmSZEokzvKGJdhpDN/z9D9+Qf4HcZ6RTS6kkuCj6c/xIz2eLjcAT6+e5KP7fNpDm05vW5XN4zqGdt8bXiMMR6mNS1jAzNcyHompp1d+WPP9YAGZSeDPO8Ucs7/BIHC3bxqlI9g1WgL+JTo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788539832; c=relaxed/simple;
-	bh=Bkr8IRbbnhw66KtUv4N4Gjt+JVioGNpVucfqD8XeFh4=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=gs6NEE2OS7rZ+G4Up1Q2TSgUUI8m16SPrXJzeLYhrFpFGJ6Ttdq+DMWn+7j7gmN2aQDsVgfBFeonBB7oWn/A7ftHuJh6zTdKC9BoyFFk9KEayJ6Sd3UxjMaoWzruIhz5f4vRHATYAJg5DwCOcJL/GFiWbWFjAws+7Eog6vj8WwQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OY/1o0hp; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788540655; c=relaxed/simple;
+	bh=jjkOzmC/HoFRAjDM3V+YDuR5j0H8Dkiutn3fc0sXpNE=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=a0aRON/3bN3vdRorC4X/j/P42d+WNgZ5FIf+EBUN33JfO/zLmC01FwUYIAD7a3hqVG4Ck+XtgVLQTjwIHLI/7MTkZ6rRIxq3xoYRiJggWXP6e87arph9ExA7YZDa89MPsa6REoPMVMyqM40tftewzdHjEU5XO0/dt0lcpOXPRQ8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=kkncUhtM; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OY/1o0hp"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3E3391F00A3D;
-	Fri,  4 Sep 2026 16:37:10 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="kkncUhtM"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BF9BD1F00A3E;
+	Fri,  4 Sep 2026 16:50:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788539830;
-	bh=O9tUCDYI4OUd+aaUzV45aMgp13zXJF/zoMyIMMAxa0I=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=OY/1o0hpE59qgVaMscsrMbNne3ePseeTCc9uf3qUxMc4ffypW6b4ipon9xySDWMDM
-	 ZG7SXbNQzm7LpOpeseUHCLfC8Ax+9fRLx2f2g4zHD31gL4fT5zn03qwqwykk5cidxW
-	 5wvvWW6d16K4YUZSjpysrWQbLnOoVPCGt6lqXzG0wdeytEJjlTqsI1ffKyCavE8gjf
-	 Q9mZvGpflEv1IP0YOT6iaralfZJCW4nIj+CfuddmnzNzxzhmOBfM9w2LAag214QHWc
-	 iJ1FLTO0FbEf2WR0KgQ8T8Bck8qIc0YNjxOU7jvak4i3JAGID40jetq+4iOU35Cu+2
-	 AE1s4P0vyAI6g==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 35006F40066;
-	Fri,  4 Sep 2026 12:37:09 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Fri, 04 Sep 2026 12:37:09 -0400
-X-ME-Sender: <xms:tfOaat4uOyxEwWfoUOn1URtqN7jLpSr4sz4wC6cxoWFnQm3eRPH8sQ>
-    <xme:tfOaals8hZVIgAGn7Zdg3YLnFQvhkAYyn8PWikBNdDBI1klw7jjua7cDyd19Gc3Ig
-    hb4vxo-J8yW5y2PH8rRBWr0r-6LdsBhF0auW0b81heCH3ChB-ksLLLx>
-X-ME-Proxy-Cause: dmFkZTFiWN1mgEv64BBLiF6aIDEmvw5PIqHtniSSrsJjg2PAqmAO9figg6MA/VWRne5neh
-    U5CNdGHJwKekhwt1mOh9EuIm4mMns3Pdoq7NR+FoqYhqVYBrm818GasLgF9tRX/DFuBzy9
-    BHj7eG3vIoPcdLIez/zFQcF8q1D92FU4UAB2rCrA4cdEbWpv45xBXMTisUHgLtjGDzu0bF
-    ajw/2UclNNr6lLwd/5gp7e7EiZ5d7wXG7v80LxEcQz+fbKQpD5ahPwl8LroeNZfMg7tJiB
-    mmRSkJGReleKrjr0SSQ/MuNoCCKr8AxfYeX3qcXHjwolbs/rM2mVVsPQN6BhYBv2Ha/Wbe
-    ExDig03093Gx1r6xej4sVIkrCisnRoJqE5BawgSeT5c6Lycpb8pmiZKbI4z7tJDTvtJs/6
-    FjHhMUwEEbEJ8eBnwM85B7Hzuz3SKom08Gp0dtzemGkfPDMxmAmG8FmEuVNEOeI0knVmzq
-    Z7bkxFldpJXWSTt/tS0BW5gozSae9cd5Lpp9PUVH4InxPKA4sCRPH4FrNy0BLbz9zOBzKG
-    GLx18tThJ9l1K4VGdmjjHATRK2lC7rOpIG2Tb2LMF3OZFVsJmwuJEKEFC4fIUCRqjKZmC3
-    W1DhvMe7fmwwYeJoMij1J0ZQToYMkIKqMona5bgpfBqweD6qtANzjkLWXFIQ
-X-ME-Proxy: <xmx:tfOaao_pNKlqc1Lug2cLEfN3XPe26apLcE9bwkh7k4iNxJnpyLWFqg>
-    <xmx:tfOaamRL5ZpPack-5gvn6EabE7F8FO4CQm45inWuMGJNiKaO-HkAzg>
-    <xmx:tfOaanl53kESLI6he1HOaOJhx1bb6agodagUO4wbMBr8txpJZ1QStQ>
-    <xmx:tfOaapWs7rU7wHj0e94V92NIfleRrWYdHdCVmjYHy888RGx0M9b_aw>
-    <xmx:tfOaakd1Batdkobbc4vDpwZVdjew-_G6mBnjtCWhhlqd6aBYTE2dpd_e>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 04D057811F0; Fri,  4 Sep 2026 12:37:09 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1788540654;
+	bh=enR5tbwtigYMJjb7h21IL31YeNPWyPdyyZkqR2Gf6GA=;
+	h=From:To:Cc:Subject:Date;
+	b=kkncUhtMSGaUYiEkuwsnpEskHGVsjTYSZ0bWDSd6K7raFrvMIdbPBlXlVK/QaBFu4
+	 L6Jh+SbDYrXUucpMhIbdXt3CN14Sq55PT9Qxbq7qNKX4eVmARzjH6xoA/UREtFNdIZ
+	 RzMjpzkIAQzJ3QCDVrRgV6D4pVwlg0JRru1HF4P6hIIuJ4I8oqYRTkSdajQLnO5nqk
+	 etdz61oRl8+2ORdibAtucNCWBl9qUkToQ6kL8u2YfBwEl0Oq7Z+HIRxuKwUckfygEO
+	 BBr7WVDENYGlPE2+bkZZbsI0EQuKIF2AqTbSwU1ItUyObaJ4D2ar+rYqlJc0SlC4MX
+	 qOdVnbzyjIEWA==
+From: Chuck Lever <cel@kernel.org>
+To: NeilBrown <neil@brown.name>,
+	Jeff Layton <jlayton@kernel.org>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <dai.ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>
+Cc: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 00/10] New pragmas for the xdrgen tool
+Date: Fri,  4 Sep 2026 12:50:42 -0400
+Message-ID: <20260904165052.153327-1-cel@kernel.org>
+X-Mailer: git-send-email 2.55.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: A2Uxtb9eUQMg
-Date: Fri, 04 Sep 2026 12:36:47 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: 
- "Cen Zhang (Microsoft Security FORGE Labs)" <cenzhang@linux.microsoft.com>,
- "Greg Kroah-Hartman" <gregkh@linuxfoundation.org>
-Cc: AutonomousCodeSecurity@microsoft.com, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "J. Bruce Fields" <bfields@fieldses.org>, "Jeff Layton" <jlayton@kernel.org>,
- kys@microsoft.com, linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
- NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
- stable@vger.kernel.org, tgopinath@linux.microsoft.com,
- "Tom Talpey" <tom@talpey.com>, xmei5@asu.edu
-Message-Id: <6962f43d-10c4-4530-807a-def951c4eb9c@app.fastmail.com>
-In-Reply-To: <20260904151213.44891-1-cenzhang@linux.microsoft.com>
-References: <2026082828-palpable-dingo-241b@gregkh>
- <20260904151213.44891-1-cenzhang@linux.microsoft.com>
-Subject: Re: [PATCH] nfsd: hold cl_lock in client_has_state()
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
+The NFSv2, NFSv3, and NFS_ACL conversions to xdrgen-generated codecs
+need two important new features in the xdrgen tool to deal with a
+few of the more complex structures that XDR can express.
 
+The first is a payload that resides in the Linux page cache.
+Currently the generated codec for a variable-length opaque copies
+through a data pointer, but a READ result already sits in the pages
+of rq_res and a WRITE payload arrives in the pages of the Receive
+buffer. Marshaling and unmarshaling this type of payload needs to
+avoid copying the payload's content.
 
-On Fri, Sep 4, 2026, at 11:12 AM, Cen Zhang (Microsoft Security FORGE Labs) wrote:
-> On Fri, Aug 28, 2026 at 07:29:11AM +0200, Greg KH wrote:
->> Please use your microsoft.com email address, and not a random gmail.com
->> address.  It's kind of odd that Microsoft would have to rely on Google
->> to send kernel patches :)
->
-> Thanks for pointing this out. I now have cenzhang@linux.microsoft.com
-> set up and will use it for future kernel submissions.
->
-> Chuck, since the patch is already in nfsd-testing, please let me know if
-> I should send a v2 from this address to update the author email.
+The second is an array of non-scalar objects. Examples include the
+NFS_ACL aclent<> list, which is the on-the-wire form of the kernel's
+posix_acl, and the READDIR entry list, which is produced from a VFS
+iteration.
 
-I don't see a need to resend, but I'm sure someone will explain it to
-me if I'm incorrect. :-)
+No in-tree XDR specification applies either directive yet, so the
+generated output remains unchanged across the whole series.
+
+---
+Changes in v2:
+- Reject a type whose members reach more than one "pages" payload.
+- Reject an aggregate element type with nested variable-length storage.
+- Require a pointer element type for an optional-data aggregate.
+- Reject an optional-data aggregate in an RPC argument type.
+- Document how a producer reports an error that stops the list.
+- Link to v1: https://lore.kernel.org/r/20260903150351.9572-1-cel@kernel.org
+
+Chuck Lever (10):
+  SUNRPC: Carry a generated-codec context pointer in struct xdr_stream
+  SUNRPC: Bind the svc_rqst to its XDR streams
+  SUNRPC: Add svcxdr_encode_opaque_payload()
+  xdrgen: Pass the containing struct name to member codec emitters
+  xdrgen: Add a "pragma pages" directive
+  SUNRPC: Add svcxdr_decode_opaque_payload()
+  xdrgen: Extend the pages directive to page-resident arguments
+  xdrgen: Add hook-driven aggregate codec for variable-length arrays
+  xdrgen: Extend the aggregate codec to optional-data list members
+  xdrgen: Stream optional-data aggregate lists during encode
+
+ fs/nfsd/nfs4xdr.c                             |   1 +
+ include/linux/sunrpc/svc.h                    |  77 +++
+ include/linux/sunrpc/xdr.h                    |   1 +
+ include/linux/sunrpc/xdrgen/_defs.h           |  34 ++
+ net/sunrpc/xdr.c                              |   3 +
+ tools/net/sunrpc/xdrgen/README                | 146 +++++-
+ tools/net/sunrpc/xdrgen/generators/pointer.py |  68 ++-
+ tools/net/sunrpc/xdrgen/generators/struct.py  | 197 +++++++-
+ tools/net/sunrpc/xdrgen/generators/union.py   |  69 ++-
+ tools/net/sunrpc/xdrgen/grammars/xdr.lark     |   2 +
+ .../C/pointer/decoder/pages_opaque.j2         |   6 +
+ .../C/pointer/definition/pages_opaque.j2      |   5 +
+ .../C/pointer/encoder/pages_opaque.j2         |  10 +
+ .../C/struct/declaration/aggregate_hooks.j2   |  14 +
+ .../C/struct/decoder/aggregate_array.j2       |  35 ++
+ .../C/struct/decoder/aggregate_optional.j2    |  31 ++
+ .../C/struct/decoder/pages_opaque.j2          |   6 +
+ .../C/struct/definition/pages_opaque.j2       |   5 +
+ .../C/struct/encoder/aggregate_array.j2       |  39 ++
+ .../C/struct/encoder/aggregate_optional.j2    |  29 ++
+ .../C/struct/encoder/pages_opaque.j2          |  10 +
+ .../templates/C/union/encoder/pages_opaque.j2 |  10 +
+ tools/net/sunrpc/xdrgen/xdr_ast.py            | 473 ++++++++++++++++++
+ 23 files changed, 1228 insertions(+), 43 deletions(-)
+ create mode 100644 tools/net/sunrpc/xdrgen/templates/C/pointer/decoder/pages_opaque.j2
+ create mode 100644 tools/net/sunrpc/xdrgen/templates/C/pointer/definition/pages_opaque.j2
+ create mode 100644 tools/net/sunrpc/xdrgen/templates/C/pointer/encoder/pages_opaque.j2
+ create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/declaration/aggregate_hooks.j2
+ create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/decoder/aggregate_array.j2
+ create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/decoder/aggregate_optional.j2
+ create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/decoder/pages_opaque.j2
+ create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/definition/pages_opaque.j2
+ create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/encoder/aggregate_array.j2
+ create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/encoder/aggregate_optional.j2
+ create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/encoder/pages_opaque.j2
+ create mode 100644 tools/net/sunrpc/xdrgen/templates/C/union/encoder/pages_opaque.j2
 
 -- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+2.55.0
