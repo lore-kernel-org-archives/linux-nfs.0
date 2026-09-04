@@ -1,250 +1,214 @@
-Received: from mail-qv1-f46.google.com (mail-qv1-f46.google.com [209.85.219.46])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 03D2550EBFA
-	for <linux-nfs@vger.kernel.org>; Fri,  4 Sep 2026 16:53:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.46
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 56D76511188
+	for <linux-nfs@vger.kernel.org>; Fri,  4 Sep 2026 17:04:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788540832; cv=none; b=h6BPClUNR1+X7bGbdjDQ7vehmBel8b4ElrX9bSIbSnN70rX8h0QcElkygCTiGJiNQfvvPvax8M7SRKwU27ASpYEvpI9A5zVnTQH5Rai9CUrfhm2kE1AE7GLzgXiUk6cba64GJ8l4KF9ohTFJEZrJw94zBhF5loX3I2qKhj7TJdc=
+	t=1788541491; cv=none; b=aWBn+jKq/MJr7pjP9PsL2oViKigbEiAC/Gh3R8y5dY/6SnFkLAhImyW/pRelVfRNM3doXWqdoFzTEGyMDxpFH5/ojWZaR8J4ULDZUQwwH408wxn70Dicd1ZJpkEe10LxvTnjHtrhuT0ePUJJp2zD/6MGflgYXqvRlrGyq0tHbBA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788540832; c=relaxed/simple;
-	bh=kY2jVUPNMqyezi/ui6zAR2vgUN+Ly8EHCwOx1d3dTZc=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=GG5knpAf+JW7lRAY1TzMLz/q/YPWW7HfCWFxZYESx2ct8Z9kfOac34OWidkXRVroW13JTMufPCczIg7DxicMurf5OAtHdAm7NROup839vmdv9TcE0S3QxGh2+tSy7KcWolUg20GT2urxoKxeIp2d1YKVwFUbJbZ37zgOpcZD0Ns=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=oQnJyler; arc=none smtp.client-ip=209.85.219.46
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	s=arc-20240116; t=1788541491; c=relaxed/simple;
+	bh=JawlKx5ocbJaKPOAFOmXK0jRWUF4dCy+2Q/9jlwrOas=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=fA2PxejgDWcsyMCG3jxFngFMyx1WdAAb3S7Rc3tFBWtbaOECCEwIjpxb63lRUwmnj2Oc71LaIo74XyjiF98v0OwLlMlwRQXkXIEcbkwpC+3RtEBLUkdeJJVlrfgc3bQknIHmIAdBjoSesQOl9DzOk0SIdKZL9/JgDcZgjPe6344=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NFBE50JI; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="oQnJyler"
-Received: by mail-qv1-f46.google.com with SMTP id 6a1803df08f44-90cc39e06bdso14689336d6.0
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Sep 2026 09:53:50 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1788540830; x=1789145630; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=sXoIxHWiMtP7LFlsZQEQeiwBMzIv2lWeDy2CgjqxjRo=;
-        b=oQnJylerCXVYGAMn5s+yEt4UKfDl98YzaUdVbmdZQzX3ZZmXb4619rfZo2pBEDrG7c
-         pcOoAx2FjBrORkJ9NiyP1vjypbXjk3tyWk8d918qMQh8HRlAMacBJwL0KQzMYK7/FUVV
-         IvigNWcMpITDa2umtFpy2PfrLQZyiRCFig5M0t/6smzUpCf+Wd3baVsYIHkLqG9Go1pS
-         VwmG+VJ3C9K8/fDok8JPAVMbekuttSYB9ekpx4Izy/r0/30K1hXjcTzGbuYGDsl32Hey
-         hSBzujhU12ywicL011PQl2LtUjz53yTcR7nWTdFNc/WShN5XhKtS+0yYej2geNlLMRCh
-         ZwCQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788540830; x=1789145630;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=sXoIxHWiMtP7LFlsZQEQeiwBMzIv2lWeDy2CgjqxjRo=;
-        b=G33Gt1bJPbfVTcQ+5nFS77oqNG6Sj/5nR3RBF9tFvyUccESLdiv5p4ui0uZi4fA157
-         nBmYj/GOzEX+MVj6OgZsctxDrC0fvw5P/BwmFb4uecueCpdSJ/JubwnqYV4vHfh/uhSz
-         t3oNyvrrpKUS01rBpWwR780J3nY7xnz0Xu0fpMlcx7aoACFRIt5UX+z4ERWT2r78DHaU
-         Ab9t6ANfgUVV1a9Aom6HNJoB2xpYWN+z0o891Louapl6ES5mFWS2+tu4sM1Fm7dbPUx+
-         nGOg95A9IjwfDJ4pxtb4JryWCcGbOEgj1GGzeG8O44jwuvyq/nQvsIBeI1M+pXpPLR/q
-         ZJXA==
-X-Gm-Message-State: AFuF++nN+NSqWxgMBa0cN1H1RURJGHk6yAHuqHGFg4kgN6c5I5bI0pF2
-	2Jm8lBfX+ouFQjbDFUS1m3dc3JdTuZxJGMr4R2RPojHC3I++rSWnJ2bRK85QK5dVoLM=
-X-Gm-Gg: AYBFou3rQuRx8P7KLVNeShXTGbc8Hw7WIPoh6u3xffa0AZGSMNkqRe/vNs8MNJBIpn9
-	lsR3g51GgeUCE5LDR9hJwMBsXrScP00HWXfl6qP+q+tqHr+FKDmL3aeIpmOf/PO36oWZoDsGoy9
-	JuD/MzIT96VjE3QovxRJ1nev+98K+Y5cXrMTTiH32atfmdk287qU7DpI4Wi7eQcNK+WdmiZGHtC
-	pA8EFRBLoM3Jx5RbAwZPPzwahTXfOluzcSbGIlBZu+8BKO1iXYCc5DBWm+Cg0kl8JqP58Phjtgq
-	sCIegbM64NMLeO25Wj8q0/pMi+D9WAPp7AF75SAWIerClUlmmzRrwQzAUW3fHjuIoXMOA8oN0e+
-	IxswmOuSwIE8+tsnjFeVvwYmBcCB+TK6XcONg/EXbAwXFENBGyV5/UBo7zV0jrShuLU64KPYzs6
-	kRpM1yixDwLa4P9JHfXMyyPYaI6Ja7KytMruMrDddllvliYSTseuPWMZMMwhur5oEfz8Dn53m77
-	K2tKYxemLnwbcePBKUkcBFfdSh3caxribw=
-X-Received: by 2002:a05:620a:a90a:b0:939:6dfa:48fc with SMTP id af79cd13be357-939804fae28mr625851785a.50.1788540824808;
-        Fri, 04 Sep 2026 09:53:44 -0700 (PDT)
-Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-9397fbf7c78sm248145485a.47.2026.09.04.09.53.44
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 04 Sep 2026 09:53:44 -0700 (PDT)
-From: Benjamin Coddington <ben.coddington@hammerspace.com>
-X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	Jonathan Curley <jcurley@purestorage.com>,
-	Mike Snitzer <snitzer@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	Junrui Luo <moonafterrain@outlook.com>
-Subject: [PATCH v3 23/24] NFSv4/pnfs: Key the data-server cache by its address set and version
-Date: Fri,  4 Sep 2026 12:53:22 -0400
-Message-ID: <afcf61827c76091a7fde7a27a2537b5d647016cc.1788530385.git.bcodding@hammerspace.com>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <cover.1788530385.git.bcodding@hammerspace.com>
-References: <cover.1788530385.git.bcodding@hammerspace.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NFBE50JI"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B37421F00A3D;
+	Fri,  4 Sep 2026 17:04:48 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1788541489;
+	bh=6IwnI09Ijk4r1zrzt6Eja8D/76i7/oA6RqD5yJqaHAo=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=NFBE50JI57+yzpmLf+KfGLCsb+/uRDylmLJyWJ4CvmPk6/WSMvL8zVwreDHaFH8ek
+	 u6g2JHVk7PQumT449BANKYmO69iqlGjnMTITzOnyhvXgqD4txURuXlaKOmmUBSkFVu
+	 Xyk3Am+gTrSyMSnKjITfpRjPyWhNQ+Q0y7iXXShOHgP9wkyhoIiR0yGwPm+vi7u4nf
+	 bnKSoe+5zmJvQU2BLY5hny8tvw4dOtP33WAx2UtwhD24hNHH+e+Drh4LMiaShMKavH
+	 dka6mAZjqOSPmbvhQUWGPn9rmWJIAhfzZ4qJqZvs+3Hxrh2RKKG4OtYvRREXZOH7K7
+	 AKVRDIczfggPQ==
+Message-ID: <f089f788ab03bdd941954be29fc1fe968a8c689e.camel@kernel.org>
+Subject: Re: [PATCH v2 00/10] New pragmas for the xdrgen tool
+From: Jeff Layton <jlayton@kernel.org>
+To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
+ Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
+ Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 04 Sep 2026 13:04:46 -0400
+In-Reply-To: <20260904165052.153327-1-cel@kernel.org>
+References: <20260904165052.153327-1-cel@kernel.org>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-Populating the data-server cache was quadratic: every GETDEVICEINFO
-decode scanned the whole per-net cache under one spinlock.  At the
-anticipated scale of 1024 data servers a striping mount pays that in a
-burst at first access, and again on notification-driven re-resolution.
+On Fri, 2026-09-04 at 12:50 -0400, Chuck Lever wrote:
+> The NFSv2, NFSv3, and NFS_ACL conversions to xdrgen-generated codecs
+> need two important new features in the xdrgen tool to deal with a
+> few of the more complex structures that XDR can express.
+>=20
+> The first is a payload that resides in the Linux page cache.
+> Currently the generated codec for a variable-length opaque copies
+> through a data pointer, but a READ result already sits in the pages
+> of rq_res and a WRITE payload arrives in the pages of the Receive
+> buffer. Marshaling and unmarshaling this type of payload needs to
+> avoid copying the payload's content.
+>=20
+> The second is an array of non-scalar objects. Examples include the
+> NFS_ACL aclent<> list, which is the on-the-wire form of the kernel's
+> posix_acl, and the READDIR entry list, which is produced from a VFS
+> iteration.
+>=20
+> No in-tree XDR specification applies either directive yet, so the
+> generated output remains unchanged across the whole series.
+>=20
+> ---
+> Changes in v2:
+> - Reject a type whose members reach more than one "pages" payload.
+> - Reject an aggregate element type with nested variable-length storage.
+> - Require a pointer element type for an optional-data aggregate.
+> - Reject an optional-data aggregate in an RPC argument type.
+> - Document how a producer reports an error that stops the list.
+> - Link to v1: https://lore.kernel.org/r/20260903150351.9572-1-cel@kernel.=
+org
+>=20
+> Chuck Lever (10):
+>   SUNRPC: Carry a generated-codec context pointer in struct xdr_stream
+>   SUNRPC: Bind the svc_rqst to its XDR streams
+>   SUNRPC: Add svcxdr_encode_opaque_payload()
+>   xdrgen: Pass the containing struct name to member codec emitters
+>   xdrgen: Add a "pragma pages" directive
+>   SUNRPC: Add svcxdr_decode_opaque_payload()
+>   xdrgen: Extend the pages directive to page-resident arguments
+>   xdrgen: Add hook-driven aggregate codec for variable-length arrays
+>   xdrgen: Extend the aggregate codec to optional-data list members
+>   xdrgen: Stream optional-data aggregate lists during encode
+>=20
+>  fs/nfsd/nfs4xdr.c                             |   1 +
+>  include/linux/sunrpc/svc.h                    |  77 +++
+>  include/linux/sunrpc/xdr.h                    |   1 +
+>  include/linux/sunrpc/xdrgen/_defs.h           |  34 ++
+>  net/sunrpc/xdr.c                              |   3 +
+>  tools/net/sunrpc/xdrgen/README                | 146 +++++-
+>  tools/net/sunrpc/xdrgen/generators/pointer.py |  68 ++-
+>  tools/net/sunrpc/xdrgen/generators/struct.py  | 197 +++++++-
+>  tools/net/sunrpc/xdrgen/generators/union.py   |  69 ++-
+>  tools/net/sunrpc/xdrgen/grammars/xdr.lark     |   2 +
+>  .../C/pointer/decoder/pages_opaque.j2         |   6 +
+>  .../C/pointer/definition/pages_opaque.j2      |   5 +
+>  .../C/pointer/encoder/pages_opaque.j2         |  10 +
+>  .../C/struct/declaration/aggregate_hooks.j2   |  14 +
+>  .../C/struct/decoder/aggregate_array.j2       |  35 ++
+>  .../C/struct/decoder/aggregate_optional.j2    |  31 ++
+>  .../C/struct/decoder/pages_opaque.j2          |   6 +
+>  .../C/struct/definition/pages_opaque.j2       |   5 +
+>  .../C/struct/encoder/aggregate_array.j2       |  39 ++
+>  .../C/struct/encoder/aggregate_optional.j2    |  29 ++
+>  .../C/struct/encoder/pages_opaque.j2          |  10 +
+>  .../templates/C/union/encoder/pages_opaque.j2 |  10 +
+>  tools/net/sunrpc/xdrgen/xdr_ast.py            | 473 ++++++++++++++++++
+>  23 files changed, 1228 insertions(+), 43 deletions(-)
+>  create mode 100644 tools/net/sunrpc/xdrgen/templates/C/pointer/decoder/p=
+ages_opaque.j2
+>  create mode 100644 tools/net/sunrpc/xdrgen/templates/C/pointer/definitio=
+n/pages_opaque.j2
+>  create mode 100644 tools/net/sunrpc/xdrgen/templates/C/pointer/encoder/p=
+ages_opaque.j2
+>  create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/declaratio=
+n/aggregate_hooks.j2
+>  create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/decoder/ag=
+gregate_array.j2
+>  create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/decoder/ag=
+gregate_optional.j2
+>  create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/decoder/pa=
+ges_opaque.j2
+>  create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/definition=
+/pages_opaque.j2
+>  create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/encoder/ag=
+gregate_array.j2
+>  create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/encoder/ag=
+gregate_optional.j2
+>  create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/encoder/pa=
+ges_opaque.j2
+>  create mode 100644 tools/net/sunrpc/xdrgen/templates/C/union/encoder/pag=
+es_opaque.j2
 
-Hash each DS to a bucket keyed on the whole cache key -- per-address
-jhash over exactly the fields same_sockaddr() compares, combined by
-addition so multipath ordering cannot change the bucket, then the NFS
-version folded in -- with the existing comparator as the in-bucket
-tiebreaker.  Lookup and insert now touch one bucket; teardown is
-unchanged (hlist_del_init needs no bucket).
-
-Keying on the whole set requires the comparator to test set equality,
-so it is tightened from the subset test it did before -- a subset
-match would hash to a different bucket and simply never be found.
-That test was also wrong in a way worth naming.  It answered "is
-dsaddrs1 a subset of dsaddrs2", and the caller passes the cached list
-first, so a cached data server whose address set was contained in an
-incoming one was returned for that incoming set.  The aliasing was
-therefore one-directional: cache {A,B} first and an incoming {A} did
-not match, but cache {A} first and an incoming {A,B} did.
-
-The consequence was mild, which is why it went unnoticed: every
-address on one device's multipath list names the same data server, so
-a merged entry's addresses are all paths that server also advertised.
-The effect is lost path diversity and a truncated ds_remotestr (and
-the netaddr flexfiles reports in layoutstats), not I/O sent to the
-wrong server.
-
-Assisted-by: Claude:claude-fable-5
-Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
----
- fs/nfs/pnfs_nfs.c | 68 ++++++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 58 insertions(+), 10 deletions(-)
-
-diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index f88a9784988a..c9bbcb765f4a 100644
---- a/fs/nfs/pnfs_nfs.c
-+++ b/fs/nfs/pnfs_nfs.c
-@@ -15,6 +15,8 @@
- 
- #include "nfs4session.h"
- #include "internal.h"
-+#include <linux/hash.h>
-+#include <linux/jhash.h>
- #include "pnfs.h"
- #include "netns.h"
- #include "nfs4trace.h"
-@@ -577,8 +579,8 @@ same_sockaddr(struct sockaddr *addr1, struct sockaddr *addr2)
- }
- 
- /*
-- * Checks if 'dsaddrs1' contains a subset of 'dsaddrs2'. If it does,
-- * declare a match.
-+ * Checks if 'dsaddrs1' and 'dsaddrs2' hold the same set of addresses.
-+ * If they do, declare a match.
-  */
- static bool
- _same_data_server_addrs_locked(const struct list_head *dsaddrs1,
-@@ -588,6 +590,10 @@ _same_data_server_addrs_locked(const struct list_head *dsaddrs1,
- 	struct sockaddr *sa1, *sa2;
- 	bool match = false;
- 
-+	if (list_count_nodes((struct list_head *)dsaddrs1) !=
-+	    list_count_nodes((struct list_head *)dsaddrs2))
-+		return false;
-+
- 	list_for_each_entry(da1, dsaddrs1, da_node) {
- 		sa1 = (struct sockaddr *)&da1->da_addr;
- 		match = false;
-@@ -603,6 +609,47 @@ _same_data_server_addrs_locked(const struct list_head *dsaddrs1,
- 	return match;
- }
- 
-+/* Hash family, address bytes, and port - as same_sockaddr() */
-+static u32
-+nfs4_ds_addr_hash(const struct sockaddr *sa)
-+{
-+	u32 h = sa->sa_family;
-+
-+	switch (sa->sa_family) {
-+	case AF_INET: {
-+		const struct sockaddr_in *a = (const struct sockaddr_in *)sa;
-+
-+		h = jhash(&a->sin_addr.s_addr, sizeof(a->sin_addr.s_addr), h);
-+		h = jhash(&a->sin_port, sizeof(a->sin_port), h);
-+		break;
-+	}
-+	case AF_INET6: {
-+		const struct sockaddr_in6 *a = (const struct sockaddr_in6 *)sa;
-+
-+		h = jhash(&a->sin6_addr, sizeof(a->sin6_addr), h);
-+		h = jhash(&a->sin6_port, sizeof(a->sin6_port), h);
-+		break;
-+	}
-+	}
-+	return h;
-+}
-+
-+/*
-+ * Bucket index for a DS cache key.  Per-address hashes combine by
-+ * addition so the multipath list order cannot change the bucket,
-+ * matching the order-independent set comparison above.
-+ */
-+static u32
-+nfs4_ds_cache_hash(const struct list_head *dsaddrs, u32 version)
-+{
-+	const struct nfs4_pnfs_ds_addr *da;
-+	u32 h = 0;
-+
-+	list_for_each_entry(da, dsaddrs, da_node)
-+		h += nfs4_ds_addr_hash((const struct sockaddr *)&da->da_addr);
-+	return hash_32(jhash_1word(version, h), NFS4_DS_CACHE_HASH_BITS);
-+}
-+
- /*
-  * Lookup DS by addresses and NFS version.  nfs4_data_server_lock is held
-  */
-@@ -611,14 +658,12 @@ _data_server_lookup_locked(const struct nfs_net *nn,
- 			   const struct list_head *dsaddrs, u32 version)
- {
- 	struct nfs4_pnfs_ds *ds;
-+	u32 bucket = nfs4_ds_cache_hash(dsaddrs, version);
- 
--	for (int i = 0; i < NFS4_DS_CACHE_HASH_SIZE; i++)
--		hlist_for_each_entry(ds, &nn->nfs4_data_server_cache[i],
--				     ds_node)
--			if (ds->ds_version == version &&
--			    _same_data_server_addrs_locked(&ds->ds_addrs,
--							   dsaddrs))
--				return ds;
-+	hlist_for_each_entry(ds, &nn->nfs4_data_server_cache[bucket], ds_node)
-+		if (ds->ds_version == version &&
-+		    _same_data_server_addrs_locked(&ds->ds_addrs, dsaddrs))
-+			return ds;
- 	return NULL;
- }
- 
-@@ -735,6 +780,7 @@ nfs4_pnfs_ds_add(const struct net *net, struct list_head *dsaddrs, u32 version,
- {
- 	struct nfs_net *nn = net_generic(net, nfs_net_id);
- 	struct nfs4_pnfs_ds *tmp_ds, *ds = NULL;
-+	struct hlist_head *bucket;
- 	char *remotestr;
- 
- 	if (list_empty(dsaddrs)) {
-@@ -748,6 +794,8 @@ nfs4_pnfs_ds_add(const struct net *net, struct list_head *dsaddrs, u32 version,
- 
- 	/* this is only used for debugging, so it's ok if its NULL */
- 	remotestr = nfs4_pnfs_remotestr(dsaddrs, gfp_flags);
-+	/* @dsaddrs is empty after the splice below. */
-+	bucket = &nn->nfs4_data_server_cache[nfs4_ds_cache_hash(dsaddrs, version)];
- 
- 	spin_lock(&nn->nfs4_data_server_lock);
- 	tmp_ds = _data_server_lookup_locked(nn, dsaddrs, version);
-@@ -760,7 +808,7 @@ nfs4_pnfs_ds_add(const struct net *net, struct list_head *dsaddrs, u32 version,
- 		ds->ds_net = net;
- 		ds->ds_clp = NULL;
- 		ds->ds_version = version;
--		hlist_add_head(&ds->ds_node, &nn->nfs4_data_server_cache[0]);
-+		hlist_add_head(&ds->ds_node, bucket);
- 		dprintk("%s add new data server %s\n", __func__,
- 			ds->ds_remotestr);
- 	} else {
--- 
-2.53.0
-
+Acked-by: Jeff Layton <jlayton@kernel.org>
