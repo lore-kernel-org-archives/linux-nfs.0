@@ -1,46 +1,47 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9758846EF65;
-	Fri,  4 Sep 2026 11:10:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6555F3F20FC;
+	Fri,  4 Sep 2026 11:12:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788520215; cv=none; b=quz/PTdnI9UzeA1e2B2fJ/PJn2tdA7260I2IV0Ty+wdyCh+zpc/zUBgTf211lr7rrQ67ypS+VOBAwXA4FApy0estYh8/x+23JKnLKjTtUmELrBkdvBtPRBwaHKfR6RntJcPLuZAXqxH8u/9C43jpv4Kz0SZydrBzzpxRcs3m+5k=
+	t=1788520348; cv=none; b=rZKwZCf6ERSzuPECc0VpCUmHI6cCsA3g2vwqxDoAK7kdA6DrTRAdpO/Y7GVzQj4/EsEBhOJGgrFbIsDvMQZVEss+Zzb69KCTjo999f80NsI8BC0NT1RTapcEkqQYXSGruic4fMdKGo72r+Hjzl9paZ8nezotH8aU9XzvHgW3SnU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788520215; c=relaxed/simple;
-	bh=S/N8X0olqgIuvm5TEKT/ecaSIFFf+gVxBlrgPdNGVxk=;
+	s=arc-20240116; t=1788520348; c=relaxed/simple;
+	bh=WQVw7FBR44WPQxcmJQEHjMxvvR4ufPeYZ6ukA9OiR6k=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=gSwj1rO20xahYZ1JGgp7D4nmfKSrs+5YqJPeXkoikpTwLpdIBRZyEzry/EnrGZT8ncC+LxQGjh82o/nLQGulYxrpVt0Cwph7QZFX6Vn9M7VfQW0o5i9kkVuPIeDszCfi/cfOixiiZbh/1wtiTd6Tgnjg71OBqXH0v5yrALz/xt0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AAkxeaMG; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=NqZr/fpIDhQ2vBDLCkO6/jZ/hF3GUQtaWpb8+KVF0JLqDK04FZQePRIh25XUOtQ1GAtN71SfCSE33mijDWTW8nu/n2QgtGq5y5Kcd+O0emXDpIf3yaYeK+F5+o85/3nN/0CZDM6ig8lekuH0VWl4zW4Z82de1LT/BTe9+tqS+F0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AUMdwSlo; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AAkxeaMG"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4D21D1F00A3D;
-	Fri,  4 Sep 2026 11:10:13 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AUMdwSlo"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E60371F00A3D;
+	Fri,  4 Sep 2026 11:12:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788520214;
-	bh=S/N8X0olqgIuvm5TEKT/ecaSIFFf+gVxBlrgPdNGVxk=;
+	s=k20260515; t=1788520347;
+	bh=RmFih5EzQu3+g73ku7Q5h3CzjyzGJvaiQ/e6vKR7zf4=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=AAkxeaMGnkse3xHLEHwpidOHakOU7X4smuP/DmPSUcF871Bi4DNnlAqlWIZZRHS+s
-	 i/aYOGlB+hCziEeQuAmBxy56S1/CrpXBh/PheEkd8hqbSwFZ7DmjuaZVq1WWOas+vp
-	 CImadP44gnF4zBoxUwhDEkcU8bw/WX+rhbTSMIK6N6/O0lRmTWVUJsjkGkulvJC8vj
-	 Zr0wGAZt8FPcZIvQ5rOQmfYxJ2wICO+ytg1oUSe8F09uXNJCc7sS54+eJctNEzZnDb
-	 gIAzM1QdPA4dDkTXvGByRw/Ddhr03cJB0iZQlmf89HBLVnwewzwsQxmjherG4EtbtU
-	 3M2M5vd5z1ZJQ==
-Message-ID: <932876f491f436d622f3c365cfe6fda1225833c5.camel@kernel.org>
-Subject: Re: [PATCH v2 0/3] fs/nfsd: accept a backdated timestamp from a
- delegation holder
+	b=AUMdwSloIv0XV40Q+ZkX5GUGBDZemKaynDBfkJREFeVSRtlSQzX/OdFTib9erjG5v
+	 gLTNx273R3ZkrpBfjeZoR0hlOQ2zksMXZsA7o/C8kbuNfJ/IpjZW4EoubjpoQvZbWp
+	 1HjH/LQh4H2rT55j4roRRgSnre3bwv7H4xZSoZWlFFQdS4YfYWEBl3FphXnNlI3vy0
+	 dqtMqiHR1XG0vXk8HjpT+5fcTrgWzQXLCuWSOM9u+wutOlf7YdnnaxpRVB6xqOP3xw
+	 0g0dY0Qs9/L0RzYqNFCew8Gne0pZ3vQcUWz5jSNPcrfO5qasLhnEvjqapNBiuj5vih
+	 c++2dqnlYc/sw==
+Message-ID: <328d2c5179e9bc272276ce25b13de21a274030d7.camel@kernel.org>
+Subject: Re: [PATCH 1/2] net: sunrpc: fix typo "miliseconds" in comment
 From: Jeff Layton <jlayton@kernel.org>
-To: Christian Brauner <brauner@kernel.org>
-Cc: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>, Alexander Viro	 <viro@zeniv.linux.org.uk>, Jan
- Kara <jack@suse.cz>, Thomas Haynes	 <loghyr@gmail.com>,
- linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	linux-fsdevel@vger.kernel.org
-Date: Fri, 04 Sep 2026 07:10:11 -0400
-In-Reply-To: <20260904-abreibung-schnupfen-texten-3120c46b6d23@brauner>
-References: <20260902-delegts-v2-0-383cb289ce88@kernel.org>
-	 <20260904-abreibung-schnupfen-texten-3120c46b6d23@brauner>
+To: Hemanth Selam <hemanth.selam@gmail.com>, Chuck Lever <cel@kernel.org>, 
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai
+ Ngo <Dai.Ngo@oracle.com>,  Tom Talpey <tom@talpey.com>, Trond Myklebust
+ <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,  "David S. Miller"
+ <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Jakub Kicinski
+ <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, Simon Horman
+ <horms@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, 
+	netdev@vger.kernel.org
+Date: Fri, 04 Sep 2026 07:12:24 -0400
+In-Reply-To: <20260904110519.15207-2-hemanth.selam@gmail.com>
+References: <20260904110519.15207-1-hemanth.selam@gmail.com>
+	 <20260904110519.15207-2-hemanth.selam@gmail.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -125,29 +126,39 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2026-09-04 at 12:50 +0200, Christian Brauner wrote:
-> > The main problem is that an attribute delegation has strict rules about
-> > updates can be done, and that prevents applications that backdate
-> > timestamps on files after writing them, (e.g. tar -x, cp -p, etc.) from
-> > setting them properly.
-> >=20
-> > We could fix this on the client by making it always issue an RPC for th=
-e
-> > SETATTR, but that would harm performance in these common use-cases.
-> > This set allows the server to accept some of these backdated mtime
-> > updates, by changing how the ctime is handled.
-> >=20
-> > It'd be nice to see this in v7.4.
-> >=20
-> > Signed-off-by: Jeff Layton <jlayton@kernel.org>
-> > ---
+On Fri, 2026-09-04 at 16:35 +0530, Hemanth Selam wrote:
+> Correct "miliseconds" to "milliseconds", reported by scripts/checkpatch.p=
+l
+> using the misspelling list in scripts/spelling.txt.  Only touches comment=
+s,
+> no code changes.
 >=20
-> There's a bunch of Sashiko comments outstanding, Jeff. Let me know, if I
-> can ignore them.
+> Assisted-by: Cursor:claude-opus-5
+> Signed-off-by: Hemanth Selam <hemanth.selam@gmail.com>
+> ---
+>  net/sunrpc/auth_gss/auth_gss.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+>=20
+> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gs=
+s.c
+> index 8ddc65e894da..8de85da8ee42 100644
+> --- a/net/sunrpc/auth_gss/auth_gss.c
+> +++ b/net/sunrpc/auth_gss/auth_gss.c
+> @@ -1468,7 +1468,7 @@ gss_stringify_acceptor(struct rpc_cred *cred)
+> =20
+>  /*
+>   * Returns -EACCES if GSS context is NULL or will expire within the
+> - * timeout (miliseconds)
+> + * timeout (milliseconds)
+>   */
+>  static int
+>  gss_key_timeout(struct rpc_cred *rc)
 
 
-At least one of them looks valid. I'll plan to send a v3.
-
-Thanks,
+We often don't take these sorts of patches because they tend to create
+merge conflicts when other patches alter code in the same area. If
+you're making real code changes in the area, then sure, go ahead and
+fix nearby comments, but making typo fixes in isolation is usually more
+trouble than it's worth.
 --=20
 Jeff Layton <jlayton@kernel.org>
