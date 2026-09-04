@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 530EF50AC39
-	for <linux-nfs@vger.kernel.org>; Fri,  4 Sep 2026 16:50:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E7EF633D6FA
+	for <linux-nfs@vger.kernel.org>; Fri,  4 Sep 2026 16:50:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788540660; cv=none; b=C2utadt/tXtE+aAbLV7DRVvOAROqdQ9bdcyYVCV4dp46SS3i2nTs6hRcm9y7zUsHZJh2oFwAWvUvdMbwcWGG1rpQpQVbWEGm7B68+z55YMq6A1KnQAkJB5sxjIzkFsuCUXjfVO9Qs2/+74ILWc6EdPS7qa27R5WxftpYoD40hZY=
+	t=1788540662; cv=none; b=Y8SZ3AH84VVVonOGZcRXrF4Hry+yVCsiy2CcvpgrgVkc9GgM3vB3q9+TY2nG8n2vA+GDMZNMlTeHIjb4TcRrBjJ3Bop97zpppiaHXBvU9kIKsMftBLuCcVEV0BiZeumzcVVkbKlCczzNMaW0Aiu9V9jwJY31h2/nZy1J94lELnE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788540660; c=relaxed/simple;
-	bh=XIlM3dX3eiXYwVhhwxbWEGy36b2Adq0o5HBBKqwwKtw=;
+	s=arc-20240116; t=1788540662; c=relaxed/simple;
+	bh=w3X6klUu+pkff0VImxXtVZSq2B3+BFjNClBZsjesq+Q=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=LppBCpPUrrshnA3XHsWsX9kVC0szaM+MOEcs2lX7q2XIctbRtZeFA8mSquF6wM1T3W6o7lR1v3Q8jYyJcZ2zBaXHh1bQ1JJ81KBHId/1HoupNO5roroKozuFlBHZD2+NJ3V6wpe1MfHflRJJ3qv0aaY1fAbkh++xSmddHaMjgRY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=F7hxqj9A; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=av9suxveCPM9Xk5zxDfcG47qEcq6b7VNe4v8DXp3IGq4WEnssQY5fGFrwiPu2QAKb7EhPM/GtfDQN4y4RJlfdyIziZ/8vjUFTBrra8ohqRqPLxlXreO7VzOX5M2BLCPfHDqC/x3jwNjUyFGmMSB5kcK0qnXM9+sSLXEdxmY9adQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OY0X/IdG; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="F7hxqj9A"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9DE0F1F00AC4;
-	Fri,  4 Sep 2026 16:50:57 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OY0X/IdG"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3E2BC1F00A3D;
+	Fri,  4 Sep 2026 16:50:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788540658;
-	bh=/LLhER6eLxxsNe88ULEAzwPXRgYoE1WD71992yyP9SE=;
+	s=k20260515; t=1788540659;
+	bh=Y+c6KKk2DYovtzfdTY/ajG7P0m8QOpmctOe5A0i4nBw=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=F7hxqj9AqAzqKanGoq641SnDxamCef93FkRpmV50LwRcIErQmuS4/5dVxnGRmUs68
-	 rWNaYFYRPIRzoW5Z17VDr2Aj0AfRvvvYRpcPkmnIzAy/knOxNcDEKz4yD3x94SWHMM
-	 HY2BwO4ia8N3ojCSCgHXccXhEneu9pVt1oSyS4IsLIgehpBDKPlSpDoi/psxn9bf7B
-	 QPpiP8RoUzBCuW717y+iQjms6Dm6jYvFVl1oEHLYo5L8z0eLi1P+XDj76NJ7pwP/J5
-	 7bDRxXchfedixQibyJrEn4U9EVQvsKTAIWIsht+i8KWSBZuaUmGcnmSkD3YVR+UZjF
-	 jIdg71BifbU9A==
+	b=OY0X/IdGioIHlCqayGAz+rQroEA3iMQ1Xw3cmFVtJY77EmnFG1SsuHza/udDE9vq1
+	 KBlXZPNHv2mhCRHIXCIg+aZp1KtCXdfQjFgR0nNjsuO4LXr1WnH9rz6D6wtHLAsOeA
+	 ZFS1qSBqUL2kBSTd69KUDcmB+OoFtBfAaIZiMbdoerjIcpuLjGIbjivWQdZct+YKSn
+	 jXFN/V3cgtdKQNZzBEsQN3AoL8qdJbT1CKKoa3rbPC4G47S/cVFG9Dh4j2QINeqvuL
+	 coYjiwXoZ4rrUlli96SaNQQSAPMskX4QUUYIWfMp+T1SszHiQzJy/YjzGk9x4nG9F1
+	 uIwm52ROK+rDg==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 05/10] xdrgen: Add a "pragma pages" directive
-Date: Fri,  4 Sep 2026 12:50:47 -0400
-Message-ID: <20260904165052.153327-6-cel@kernel.org>
+Subject: [PATCH v2 07/10] xdrgen: Extend the pages directive to page-resident arguments
+Date: Fri,  4 Sep 2026 12:50:49 -0400
+Message-ID: <20260904165052.153327-8-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260904165052.153327-1-cel@kernel.org>
 References: <20260904165052.153327-1-cel@kernel.org>
@@ -47,201 +47,169 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The generated encoder for a variable-length opaque or string
-member copies its content into the Reply buffer via
-xdr_stream_encode_opaque(). A bulk payload such as an NFS READ
-result never resides at the member's data pointer: the server
-deposits it directly in the pages of the Reply buffer. Until now
-the containing procedure encoder had to be hand-rolled.
+The pages directive so far drives only the encoder. A bulk argument
+such as the payload of an NFS WRITE arrives in the pages of the
+server's Receive buffer, but the generated opaque decoder copies it
+into a contiguous data pointer. The copy wastes memory bandwidth and
+forces the containing procedure decoder to be hand-rolled.
 
-Add a per-member directive that makes the emitted encoder call
-svcxdr_encode_opaque_payload() for the marked member. The README
-documents its syntax and the members it may name. Beyond the
-struct and union cases described there, the directive also applies
-to a member of a self-referential struct, which xdrgen generates
-as an XDR pointer type.
-
-A directive that binds to nothing would degrade silently to the
-copying encoder, so the front end rejects one that names an
-undeclared type or member, or a member that cannot carry a
-payload. It also rejects a second marked member of the same type,
-and a type whose members reach more than one marked member:
-svcxdr_encode_opaque_payload() consumes the whole page vector and
-moves the stream into the tail, so one encoder carries at most one
-payload.
-
-Generated code is unchanged until a specification applies the
-directive.
+Let the directive drive the decoder as well. Whether a marked member
+is decoded in place or encoded by reference follows from whether its
+containing type is reachable from an RPC procedure argument. Record
+that set during parsing, then close it over nested aggregates and
+typedef aliases before the directives are checked. A decoded
+page-resident member is represented as a struct xdr_buf so that the
+payload can be handed on without a copy. A marked union arm of an
+argument type is rejected, since the union generator still emits
+only the copying decoder.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- tools/net/sunrpc/xdrgen/README                |  42 +++-
- tools/net/sunrpc/xdrgen/generators/pointer.py |  25 ++-
- tools/net/sunrpc/xdrgen/generators/struct.py  |  23 +-
- tools/net/sunrpc/xdrgen/generators/union.py   |  69 ++++--
- .../C/pointer/encoder/pages_opaque.j2         |  10 +
- .../C/struct/encoder/pages_opaque.j2          |  10 +
- .../templates/C/union/encoder/pages_opaque.j2 |  10 +
- tools/net/sunrpc/xdrgen/xdr_ast.py            | 205 ++++++++++++++++++
- 8 files changed, 372 insertions(+), 22 deletions(-)
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/pointer/encoder/pages_opaque.j2
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/encoder/pages_opaque.j2
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/union/encoder/pages_opaque.j2
+ include/linux/sunrpc/xdrgen/_defs.h           |  6 ++
+ tools/net/sunrpc/xdrgen/README                | 32 +++++--
+ tools/net/sunrpc/xdrgen/generators/pointer.py | 39 ++++++--
+ tools/net/sunrpc/xdrgen/generators/struct.py  | 39 ++++++--
+ tools/net/sunrpc/xdrgen/generators/union.py   |  2 +-
+ .../C/pointer/decoder/pages_opaque.j2         |  6 ++
+ .../C/pointer/definition/pages_opaque.j2      |  5 +
+ .../C/struct/decoder/pages_opaque.j2          |  6 ++
+ .../C/struct/definition/pages_opaque.j2       |  5 +
+ tools/net/sunrpc/xdrgen/xdr_ast.py            | 93 ++++++++++++++++++-
+ 10 files changed, 204 insertions(+), 29 deletions(-)
+ create mode 100644 tools/net/sunrpc/xdrgen/templates/C/pointer/decoder/pages_opaque.j2
+ create mode 100644 tools/net/sunrpc/xdrgen/templates/C/pointer/definition/pages_opaque.j2
+ create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/decoder/pages_opaque.j2
+ create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/definition/pages_opaque.j2
 
+diff --git a/include/linux/sunrpc/xdrgen/_defs.h b/include/linux/sunrpc/xdrgen/_defs.h
+index 8f3776ef3229..1e183b9d1c1d 100644
+--- a/include/linux/sunrpc/xdrgen/_defs.h
++++ b/include/linux/sunrpc/xdrgen/_defs.h
+@@ -5,11 +5,17 @@
+  * This header defines XDR data type primitives specified in
+  * Section 4 of RFC 4506, used by RPC programs implemented
+  * in the Linux kernel.
++ *
++ * A generated definition can also embed a struct xdr_buf, which
++ * carries a page-resident payload captured by reference, so this
++ * header pulls in the kernel's XDR types as well.
+  */
+ 
+ #ifndef _SUNRPC_XDRGEN__DEFS_H_
+ #define _SUNRPC_XDRGEN__DEFS_H_
+ 
++#include <linux/sunrpc/xdr.h>
++
+ #define TRUE	(true)
+ #define FALSE	(false)
+ 
 diff --git a/tools/net/sunrpc/xdrgen/README b/tools/net/sunrpc/xdrgen/README
-index 2cf05d1e4cd9..5af9cf506637 100644
+index 5af9cf506637..40bfa1c27f04 100644
 --- a/tools/net/sunrpc/xdrgen/README
 +++ b/tools/net/sunrpc/xdrgen/README
-@@ -230,6 +230,43 @@ Adds these prototypes in the generated header:
- And, in the generated source code, both of these functions appear
- without the "static __maybe_unused" modifiers.
+@@ -259,13 +259,31 @@ The first marks the opaque data member of struct READ3resok; the
+ second marks the path arm of union readlinkres, where path is
+ "typedef string path<NFS_MAXPATHLEN>".
  
-+Pragma pages
-+------ -----
++Whether the directive drives the encoder or the decoder follows
++from how the containing type is used. A server decodes arguments
++and encodes results, so the directive on a member of a result type
++(such as READ3resok) marks a payload to encode by reference, while
++the directive on a member of an argument type (such as the data
++member of an NFS WRITE argument) marks a payload to decode in place.
 +
-+  pragma pages <type> <member> ;
++An argument type here is the struct named as an RPC procedure
++argument, any aggregate reachable from it, and any typedef alias of
++either. The directive on a union arm of such a type is rejected:
++the union generator emits only the ordinary copying decoder, so a
++page-resident union arm needs generator support that does not yet
++exist.
 +
-+A variable-length opaque or string member is normally encoded by
-+copying its content into the Reply buffer. When the member carries
-+a bulk payload that a server-side read operation has already
-+deposited in the pages of the Reply buffer, that copy is wasted
-+work, and it prevents a transport capable of direct data placement
-+from conveying the payload separately from the rest of the Reply.
-+This directive marks such a member so that the emitted encoder
-+inserts the payload pages into the encoding stream by reference and
-+marks the byte range as a result payload.
+ The emitted encoder reads only the marked member's length field to
+ determine how many octets of page content to insert; the member's
+-data pointer is not read. The server and client manage payload
+-pages differently, so this directive applies only to server-side
+-code generation, and so far only to the encoding direction.
+-Decode-side handling of a page-resident argument (for example, the
+-payload of an NFS WRITE) remains hand-coded.
++data pointer is not read. The emitted decoder reads the length
++prefix and captures the payload octets by reference, leaving them in
++the pages of the Receive buffer. A decoded page-resident member is
++represented as a struct xdr_buf so that a later stage can hand the
++payload to the server's file system without a copy.
 +
-+The marked member may be a member of a struct or an arm of a union,
-+and its type may be named directly or reached through a typedef. A
-+union arm declared directly as a string is the one exception: xdrgen
-+generates such an arm as a char *, which carries no length field, so
-+the directive is rejected there and the arm has to be declared
-+through a typedef. For example:
-+
-+  pragma pages READ3resok data;
-+  pragma pages readlinkres data;
-+
-+The first marks the opaque data member of struct READ3resok; the
-+second marks the path arm of union readlinkres, where path is
-+"typedef string path<NFS_MAXPATHLEN>".
-+
-+The emitted encoder reads only the marked member's length field to
-+determine how many octets of page content to insert; the member's
-+data pointer is not read. The server and client manage payload
-+pages differently, so this directive applies only to server-side
-+code generation, and so far only to the encoding direction.
-+Decode-side handling of a page-resident argument (for example, the
-+payload of an NFS WRITE) remains hand-coded.
-+
++The server and client manage payload pages differently, so this
++directive applies only to server-side code generation. Client-side
++handling of a page-resident member remains future work.
+ 
  
  Future Work
- -----------
-@@ -242,11 +279,12 @@ Expand the README into a user guide similar to rpcgen(1)
- 
- Add more pragma directives:
- 
--  * @pages -- use xdr_read/write_pages() for the specified opaque
--    field
+@@ -282,8 +300,8 @@ Add more pragma directives:
    * @skip -- do not decode, but rather skip, the specified argument
      field
  
-+Extend pragma pages to the decoding direction and to
-+client-side code generation
-+
+-Extend pragma pages to the decoding direction and to
+-client-side code generation
++Extend pragma pages to client-side code generation, and to union
++arms of RPC procedure arguments
+ 
  Enable something like a #include to dynamically insert the content
  of other specification files
- 
 diff --git a/tools/net/sunrpc/xdrgen/generators/pointer.py b/tools/net/sunrpc/xdrgen/generators/pointer.py
-index 9a540e125786..448ebd684212 100644
+index 448ebd684212..aae78b42d717 100644
 --- a/tools/net/sunrpc/xdrgen/generators/pointer.py
 +++ b/tools/net/sunrpc/xdrgen/generators/pointer.py
-@@ -13,6 +13,7 @@ from xdr_ast import _XdrFixedLengthOpaque, _XdrVariableLengthOpaque
+@@ -13,7 +13,7 @@ from xdr_ast import _XdrFixedLengthOpaque, _XdrVariableLengthOpaque
  from xdr_ast import _XdrFixedLengthArray, _XdrVariableLengthArray
  from xdr_ast import _XdrOptionalData, _XdrPointer, _XdrDeclaration
  from xdr_ast import public_apis, get_header_name
-+from xdr_ast import pages_members, pages_member_maxsize
+-from xdr_ast import pages_members, pages_member_maxsize
++from xdr_ast import pages_members, pages_member_maxsize, pages_member_is_decoded
  
  
  def emit_pointer_declaration(environment: Environment, node: _XdrPointer) -> None:
-@@ -176,8 +177,24 @@ def emit_pointer_member_encoder(
-     environment: Environment,
-     field: _XdrDeclaration,
-     struct_name: str,
-+    peer: str,
+@@ -24,9 +24,13 @@ def emit_pointer_declaration(environment: Environment, node: _XdrPointer) -> Non
+ 
+ 
+ def emit_pointer_member_definition(
+-    environment: Environment, field: _XdrDeclaration
++    environment: Environment, field: _XdrDeclaration, struct_name: str, peer: str
  ) -> None:
-     """Emit an encoder for one field in a XDR pointer"""
-+    if (struct_name, field.name) in pages_members:
-+        if peer != "server":
-+            raise NotImplementedError(
-+                "pragma pages is server-side encode-only; "
-+                + peer
-+                + " generation is not yet supported"
-+            )
-+        template = get_jinja2_template(environment, "encoder", "pages_opaque")
-+        print(
-+            template.render(
-+                name=field.name,
-+                maxsize=pages_member_maxsize(field),
-+            )
-+        )
+     """Emit a definition for one field in an XDR struct"""
++    if peer == "server" and pages_member_is_decoded(struct_name, field.name):
++        template = get_jinja2_template(environment, "definition", "pages_opaque")
++        print(template.render(name=field.name))
 +        return
      if isinstance(field, _XdrBasic):
-         template = get_jinja2_template(environment, "encoder", field.template)
+         template = get_jinja2_template(environment, "definition", field.template)
          print(
-@@ -239,13 +256,15 @@ def emit_pointer_member_encoder(
+@@ -79,13 +83,15 @@ def emit_pointer_member_definition(
          )
  
  
--def emit_pointer_encoder(environment: Environment, node: _XdrPointer) -> None:
-+def emit_pointer_encoder(
+-def emit_pointer_definition(environment: Environment, node: _XdrPointer) -> None:
++def emit_pointer_definition(
 +    environment: Environment, node: _XdrPointer, peer: str
 +) -> None:
-     """Emit one encoder function for an XDR pointer type"""
-     template = get_jinja2_template(environment, "encoder", "open")
+     """Emit a definition for an XDR pointer type"""
+     template = get_jinja2_template(environment, "definition", "open")
      print(template.render(name=node.name))
  
      for field in node.fields[0:-1]:
--        emit_pointer_member_encoder(environment, field, node.name)
-+        emit_pointer_member_encoder(environment, field, node.name, peer)
+-        emit_pointer_member_definition(environment, field)
++        emit_pointer_member_definition(environment, field, node.name, peer)
  
-     template = get_jinja2_template(environment, "encoder", "close")
-     print(template.render())
-@@ -285,7 +304,7 @@ class XdrPointerGenerator(SourceGenerator):
- 
-     def emit_encoder(self, node: _XdrPointer) -> None:
-         """Emit one encoder function for an XDR pointer type"""
--        emit_pointer_encoder(self.environment, node)
-+        emit_pointer_encoder(self.environment, node, self.peer)
- 
-     def emit_maxsize(self, node: _XdrPointer) -> None:
-         """Emit one maxsize macro for an XDR pointer type"""
-diff --git a/tools/net/sunrpc/xdrgen/generators/struct.py b/tools/net/sunrpc/xdrgen/generators/struct.py
-index 91da3863c166..76fd3afbeea0 100644
---- a/tools/net/sunrpc/xdrgen/generators/struct.py
-+++ b/tools/net/sunrpc/xdrgen/generators/struct.py
-@@ -13,6 +13,7 @@ from xdr_ast import _XdrFixedLengthOpaque, _XdrVariableLengthOpaque
- from xdr_ast import _XdrFixedLengthArray, _XdrVariableLengthArray
- from xdr_ast import _XdrOptionalData, _XdrStruct, _XdrDeclaration
- from xdr_ast import public_apis, get_header_name
-+from xdr_ast import pages_members, pages_member_maxsize
- 
- 
- def emit_struct_declaration(environment: Environment, node: _XdrStruct) -> None:
-@@ -176,8 +177,24 @@ def emit_struct_member_encoder(
+     template = get_jinja2_template(environment, "definition", "close")
+     print(template.render(name=node.name))
+@@ -95,8 +101,18 @@ def emit_pointer_member_decoder(
      environment: Environment,
      field: _XdrDeclaration,
      struct_name: str,
 +    peer: str,
  ) -> None:
-     """Emit an encoder for one field in an XDR struct"""
-+    if (struct_name, field.name) in pages_members:
-+        if peer != "server":
-+            raise NotImplementedError(
-+                "pragma pages is server-side encode-only; "
-+                + peer
-+                + " generation is not yet supported"
-+            )
-+        template = get_jinja2_template(environment, "encoder", "pages_opaque")
+     """Emit a decoder for one field in an XDR pointer"""
++    if peer == "server" and pages_member_is_decoded(struct_name, field.name):
++        template = get_jinja2_template(environment, "decoder", "pages_opaque")
 +        print(
 +            template.render(
 +                name=field.name,
@@ -250,471 +218,363 @@ index 91da3863c166..76fd3afbeea0 100644
 +        )
 +        return
      if isinstance(field, _XdrBasic):
-         template = get_jinja2_template(environment, "encoder", field.template)
+         template = get_jinja2_template(environment, "decoder", field.template)
          print(
-@@ -239,13 +256,13 @@ def emit_struct_member_encoder(
+@@ -161,13 +177,15 @@ def emit_pointer_member_decoder(
          )
  
  
--def emit_struct_encoder(environment: Environment, node: _XdrStruct) -> None:
-+def emit_struct_encoder(environment: Environment, node: _XdrStruct, peer: str) -> None:
-     """Emit one encoder function for an XDR struct type"""
-     template = get_jinja2_template(environment, "encoder", "open")
+-def emit_pointer_decoder(environment: Environment, node: _XdrPointer) -> None:
++def emit_pointer_decoder(
++    environment: Environment, node: _XdrPointer, peer: str
++) -> None:
+     """Emit one decoder function for an XDR pointer type"""
+     template = get_jinja2_template(environment, "decoder", "open")
+     print(template.render(name=node.name))
+ 
+     for field in node.fields[0:-1]:
+-        emit_pointer_member_decoder(environment, field, node.name)
++        emit_pointer_member_decoder(environment, field, node.name, peer)
+ 
+     template = get_jinja2_template(environment, "decoder", "close")
+     print(template.render())
+@@ -183,10 +201,13 @@ def emit_pointer_member_encoder(
+     if (struct_name, field.name) in pages_members:
+         if peer != "server":
+             raise NotImplementedError(
+-                "pragma pages is server-side encode-only; "
++                "pragma pages is server-side only; "
+                 + peer
+                 + " generation is not yet supported"
+             )
++        # Both representations carry the length field, which is all the
++        # pages encoder reads, so pages_member_is_decoded() does not
++        # gate this site.
+         template = get_jinja2_template(environment, "encoder", "pages_opaque")
+         print(
+             template.render(
+@@ -296,11 +317,11 @@ class XdrPointerGenerator(SourceGenerator):
+ 
+     def emit_definition(self, node: _XdrPointer) -> None:
+         """Emit one declaration for an XDR pointer type"""
+-        emit_pointer_definition(self.environment, node)
++        emit_pointer_definition(self.environment, node, self.peer)
+ 
+     def emit_decoder(self, node: _XdrPointer) -> None:
+         """Emit one decoder function for an XDR pointer type"""
+-        emit_pointer_decoder(self.environment, node)
++        emit_pointer_decoder(self.environment, node, self.peer)
+ 
+     def emit_encoder(self, node: _XdrPointer) -> None:
+         """Emit one encoder function for an XDR pointer type"""
+diff --git a/tools/net/sunrpc/xdrgen/generators/struct.py b/tools/net/sunrpc/xdrgen/generators/struct.py
+index 76fd3afbeea0..e71f8126806d 100644
+--- a/tools/net/sunrpc/xdrgen/generators/struct.py
++++ b/tools/net/sunrpc/xdrgen/generators/struct.py
+@@ -13,7 +13,7 @@ from xdr_ast import _XdrFixedLengthOpaque, _XdrVariableLengthOpaque
+ from xdr_ast import _XdrFixedLengthArray, _XdrVariableLengthArray
+ from xdr_ast import _XdrOptionalData, _XdrStruct, _XdrDeclaration
+ from xdr_ast import public_apis, get_header_name
+-from xdr_ast import pages_members, pages_member_maxsize
++from xdr_ast import pages_members, pages_member_maxsize, pages_member_is_decoded
+ 
+ 
+ def emit_struct_declaration(environment: Environment, node: _XdrStruct) -> None:
+@@ -24,9 +24,13 @@ def emit_struct_declaration(environment: Environment, node: _XdrStruct) -> None:
+ 
+ 
+ def emit_struct_member_definition(
+-    environment: Environment, field: _XdrDeclaration
++    environment: Environment, field: _XdrDeclaration, struct_name: str, peer: str
+ ) -> None:
+     """Emit a definition for one field in an XDR struct"""
++    if peer == "server" and pages_member_is_decoded(struct_name, field.name):
++        template = get_jinja2_template(environment, "definition", "pages_opaque")
++        print(template.render(name=field.name))
++        return
+     if isinstance(field, _XdrBasic):
+         template = get_jinja2_template(environment, "definition", field.template)
+         print(
+@@ -79,13 +83,15 @@ def emit_struct_member_definition(
+         )
+ 
+ 
+-def emit_struct_definition(environment: Environment, node: _XdrStruct) -> None:
++def emit_struct_definition(
++    environment: Environment, node: _XdrStruct, peer: str
++) -> None:
+     """Emit one definition for an XDR struct type"""
+     template = get_jinja2_template(environment, "definition", "open")
      print(template.render(name=node.name))
  
      for field in node.fields:
--        emit_struct_member_encoder(environment, field, node.name)
-+        emit_struct_member_encoder(environment, field, node.name, peer)
+-        emit_struct_member_definition(environment, field)
++        emit_struct_member_definition(environment, field, node.name, peer)
  
-     template = get_jinja2_template(environment, "encoder", "close")
+     template = get_jinja2_template(environment, "definition", "close")
+     print(template.render(name=node.name))
+@@ -95,8 +101,18 @@ def emit_struct_member_decoder(
+     environment: Environment,
+     field: _XdrDeclaration,
+     struct_name: str,
++    peer: str,
+ ) -> None:
+     """Emit a decoder for one field in an XDR struct"""
++    if peer == "server" and pages_member_is_decoded(struct_name, field.name):
++        template = get_jinja2_template(environment, "decoder", "pages_opaque")
++        print(
++            template.render(
++                name=field.name,
++                maxsize=pages_member_maxsize(field),
++            )
++        )
++        return
+     if isinstance(field, _XdrBasic):
+         template = get_jinja2_template(environment, "decoder", field.template)
+         print(
+@@ -161,13 +177,15 @@ def emit_struct_member_decoder(
+         )
+ 
+ 
+-def emit_struct_decoder(environment: Environment, node: _XdrStruct) -> None:
++def emit_struct_decoder(
++    environment: Environment, node: _XdrStruct, peer: str
++) -> None:
+     """Emit one decoder function for an XDR struct type"""
+     template = get_jinja2_template(environment, "decoder", "open")
+     print(template.render(name=node.name))
+ 
+     for field in node.fields:
+-        emit_struct_member_decoder(environment, field, node.name)
++        emit_struct_member_decoder(environment, field, node.name, peer)
+ 
+     template = get_jinja2_template(environment, "decoder", "close")
      print(template.render())
-@@ -285,7 +302,7 @@ class XdrStructGenerator(SourceGenerator):
+@@ -183,10 +201,13 @@ def emit_struct_member_encoder(
+     if (struct_name, field.name) in pages_members:
+         if peer != "server":
+             raise NotImplementedError(
+-                "pragma pages is server-side encode-only; "
++                "pragma pages is server-side only; "
+                 + peer
+                 + " generation is not yet supported"
+             )
++        # Both representations carry the length field, which is all the
++        # pages encoder reads, so pages_member_is_decoded() does not
++        # gate this site.
+         template = get_jinja2_template(environment, "encoder", "pages_opaque")
+         print(
+             template.render(
+@@ -294,11 +315,11 @@ class XdrStructGenerator(SourceGenerator):
+ 
+     def emit_definition(self, node: _XdrStruct) -> None:
+         """Emit one definition for an XDR struct type"""
+-        emit_struct_definition(self.environment, node)
++        emit_struct_definition(self.environment, node, self.peer)
+ 
+     def emit_decoder(self, node: _XdrStruct) -> None:
+         """Emit one decoder function for an XDR struct type"""
+-        emit_struct_decoder(self.environment, node)
++        emit_struct_decoder(self.environment, node, self.peer)
  
      def emit_encoder(self, node: _XdrStruct) -> None:
          """Emit one encoder function for an XDR struct type"""
--        emit_struct_encoder(self.environment, node)
-+        emit_struct_encoder(self.environment, node, self.peer)
- 
-     def emit_maxsize(self, node: _XdrStruct) -> None:
-         """Emit one maxsize macro for an XDR struct type"""
 diff --git a/tools/net/sunrpc/xdrgen/generators/union.py b/tools/net/sunrpc/xdrgen/generators/union.py
-index d15837dae651..47d63236f88f 100644
+index 47d63236f88f..e1e7d38fdf44 100644
 --- a/tools/net/sunrpc/xdrgen/generators/union.py
 +++ b/tools/net/sunrpc/xdrgen/generators/union.py
-@@ -9,7 +9,8 @@ from generators import SourceGenerator
- from generators import create_jinja2_environment, get_jinja2_template
- 
- from xdr_ast import _XdrBasic, _XdrUnion, _XdrVoid, _XdrString, get_header_name
--from xdr_ast import _XdrDeclaration, _XdrCaseSpec, public_apis, big_endian
-+from xdr_ast import _XdrDeclaration, _XdrCaseSpec
-+from xdr_ast import public_apis, big_endian, pages_members, pages_member_maxsize
- 
- 
- def emit_union_declaration(environment: Environment, node: _XdrUnion) -> None:
-@@ -214,13 +215,41 @@ def emit_union_switch_spec_encoder(
-     print(template.render(name=node.name, type=node.spec.type_name))
- 
- 
-+def emit_union_pages_arm_encoder(
-+    environment: Environment, union_name: str, arm: _XdrDeclaration, peer: str
-+) -> bool:
-+    """Emit a page-resident encoder for a "pragma pages" union arm
-+
-+    Return True when the arm is pages-marked and was emitted here, so
-+    the caller skips the ordinary arm encoder.
-+    """
-+    if (union_name, arm.name) not in pages_members:
-+        return False
-+    if peer != "server":
-+        raise NotImplementedError(
-+            "pragma pages is server-side encode-only; "
-+            + peer
-+            + " generation is not yet supported"
-+        )
-+    template = get_jinja2_template(environment, "encoder", "pages_opaque")
-+    print(
-+        template.render(
-+            name=arm.name,
-+            maxsize=pages_member_maxsize(arm),
-+        )
-+    )
-+    return True
-+
-+
- def emit_union_arm_encoder(
--    environment: Environment, node: _XdrCaseSpec
-+    environment: Environment, node: _XdrCaseSpec, union_name: str, peer: str
- ) -> None:
-     """Emit encoder for an XDR union's arm (data only, no case/break)"""
- 
-     if isinstance(node.arm, _XdrVoid):
-         return
-+    if emit_union_pages_arm_encoder(environment, union_name, node.arm, peer):
-+        return
-     if isinstance(node.arm, _XdrString):
-         type_name = "char *"
-     else:
-@@ -237,7 +266,11 @@ def emit_union_arm_encoder(
- 
- 
- def emit_union_case_spec_encoder(
--    environment: Environment, node: _XdrCaseSpec, big_endian_discriminant: bool
-+    environment: Environment,
-+    node: _XdrCaseSpec,
-+    big_endian_discriminant: bool,
-+    union_name: str,
-+    peer: str,
- ) -> None:
-     """Emit encoder functions for an XDR union's case arm"""
- 
-@@ -254,19 +287,22 @@ def emit_union_case_spec_encoder(
-     for case in node.values:
-         print(template.render(case=case))
- 
--    template = get_jinja2_template(environment, "encoder", node.arm.template)
--    print(
--        template.render(
--            name=node.arm.name,
--            type=type_name,
-+    if not emit_union_pages_arm_encoder(environment, union_name, node.arm, peer):
-+        template = get_jinja2_template(environment, "encoder", node.arm.template)
-+        print(
-+            template.render(
-+                name=node.arm.name,
-+                type=type_name,
-+            )
+@@ -227,7 +227,7 @@ def emit_union_pages_arm_encoder(
+         return False
+     if peer != "server":
+         raise NotImplementedError(
+-            "pragma pages is server-side encode-only; "
++            "pragma pages is server-side only; "
+             + peer
+             + " generation is not yet supported"
          )
--    )
- 
-     template = get_jinja2_template(environment, "encoder", "break")
-     print(template.render())
- 
- 
--def emit_union_default_spec_encoder(environment: Environment, node: _XdrUnion) -> None:
-+def emit_union_default_spec_encoder(
-+    environment: Environment, node: _XdrUnion, peer: str
-+) -> None:
-     """Emit an encoder function for an XDR union's default arm"""
-     default_case = node.default
- 
-@@ -282,6 +318,9 @@ def emit_union_default_spec_encoder(environment: Environment, node: _XdrUnion) -
-         print(template.render())
-         return
- 
-+    if emit_union_pages_arm_encoder(environment, node.name, default_case.arm, peer):
-+        return
-+
-     template = get_jinja2_template(environment, "encoder", default_case.arm.template)
-     print(
-         template.render(
-@@ -291,7 +330,7 @@ def emit_union_default_spec_encoder(environment: Environment, node: _XdrUnion) -
-     )
- 
- 
--def emit_union_encoder(environment, node: _XdrUnion) -> None:
-+def emit_union_encoder(environment, node: _XdrUnion, peer: str) -> None:
-     """Emit one XDR union encoder"""
-     template = get_jinja2_template(environment, "encoder", "open")
-     print(template.render(name=node.name))
-@@ -304,7 +343,7 @@ def emit_union_encoder(environment, node: _XdrUnion) -> None:
-         # Find and emit the TRUE case
-         for case in node.cases:
-             if case.values and case.values[0] == "TRUE":
--                emit_union_arm_encoder(environment, case)
-+                emit_union_arm_encoder(environment, case, node.name, peer)
-                 break
- 
-         template = get_jinja2_template(environment, "encoder", "close")
-@@ -317,9 +356,11 @@ def emit_union_encoder(environment, node: _XdrUnion) -> None:
-                 environment,
-                 case,
-                 node.discriminant.spec.type_name in big_endian,
-+                node.name,
-+                peer,
-             )
- 
--        emit_union_default_spec_encoder(environment, node)
-+        emit_union_default_spec_encoder(environment, node, peer)
- 
-         template = get_jinja2_template(environment, "encoder", "close")
-         print(template.render())
-@@ -359,7 +400,7 @@ class XdrUnionGenerator(SourceGenerator):
- 
-     def emit_encoder(self, node: _XdrUnion) -> None:
-         """Emit one encoder function for an XDR union"""
--        emit_union_encoder(self.environment, node)
-+        emit_union_encoder(self.environment, node, self.peer)
- 
-     def emit_maxsize(self, node: _XdrUnion) -> None:
-         """Emit one maxsize macro for an XDR union"""
-diff --git a/tools/net/sunrpc/xdrgen/templates/C/pointer/encoder/pages_opaque.j2 b/tools/net/sunrpc/xdrgen/templates/C/pointer/encoder/pages_opaque.j2
+diff --git a/tools/net/sunrpc/xdrgen/templates/C/pointer/decoder/pages_opaque.j2 b/tools/net/sunrpc/xdrgen/templates/C/pointer/decoder/pages_opaque.j2
 new file mode 100644
-index 000000000000..e868220a59f6
+index 000000000000..3b5ca6a5d977
 --- /dev/null
-+++ b/tools/net/sunrpc/xdrgen/templates/C/pointer/encoder/pages_opaque.j2
-@@ -0,0 +1,10 @@
++++ b/tools/net/sunrpc/xdrgen/templates/C/pointer/decoder/pages_opaque.j2
+@@ -0,0 +1,6 @@
 +{# SPDX-License-Identifier: GPL-2.0 #}
 +{% if annotate %}
 +	/* member {{ name }} (page-resident variable-length opaque) */
 +{% endif %}
-+{% if maxsize != "0" %}
-+	if (value->{{ name }}.len > {{ maxsize }})
++	if (!svcxdr_decode_opaque_payload(xdr, &ptr->{{ name }}, {{ maxsize }}))
 +		return false;
-+{% endif %}
-+	if (!svcxdr_encode_opaque_payload(xdr, value->{{ name }}.len))
-+		return false;
-diff --git a/tools/net/sunrpc/xdrgen/templates/C/struct/encoder/pages_opaque.j2 b/tools/net/sunrpc/xdrgen/templates/C/struct/encoder/pages_opaque.j2
+diff --git a/tools/net/sunrpc/xdrgen/templates/C/pointer/definition/pages_opaque.j2 b/tools/net/sunrpc/xdrgen/templates/C/pointer/definition/pages_opaque.j2
 new file mode 100644
-index 000000000000..e868220a59f6
+index 000000000000..6e1a344d6665
 --- /dev/null
-+++ b/tools/net/sunrpc/xdrgen/templates/C/struct/encoder/pages_opaque.j2
-@@ -0,0 +1,10 @@
++++ b/tools/net/sunrpc/xdrgen/templates/C/pointer/definition/pages_opaque.j2
+@@ -0,0 +1,5 @@
 +{# SPDX-License-Identifier: GPL-2.0 #}
 +{% if annotate %}
 +	/* member {{ name }} (page-resident variable-length opaque) */
 +{% endif %}
-+{% if maxsize != "0" %}
-+	if (value->{{ name }}.len > {{ maxsize }})
-+		return false;
-+{% endif %}
-+	if (!svcxdr_encode_opaque_payload(xdr, value->{{ name }}.len))
-+		return false;
-diff --git a/tools/net/sunrpc/xdrgen/templates/C/union/encoder/pages_opaque.j2 b/tools/net/sunrpc/xdrgen/templates/C/union/encoder/pages_opaque.j2
++	struct xdr_buf {{ name }};
+diff --git a/tools/net/sunrpc/xdrgen/templates/C/struct/decoder/pages_opaque.j2 b/tools/net/sunrpc/xdrgen/templates/C/struct/decoder/pages_opaque.j2
 new file mode 100644
-index 000000000000..7fe3108a44c0
+index 000000000000..3b5ca6a5d977
 --- /dev/null
-+++ b/tools/net/sunrpc/xdrgen/templates/C/union/encoder/pages_opaque.j2
-@@ -0,0 +1,10 @@
++++ b/tools/net/sunrpc/xdrgen/templates/C/struct/decoder/pages_opaque.j2
+@@ -0,0 +1,6 @@
 +{# SPDX-License-Identifier: GPL-2.0 #}
 +{% if annotate %}
-+		/* member {{ name }} (page-resident variable-length opaque) */
++	/* member {{ name }} (page-resident variable-length opaque) */
 +{% endif %}
-+{% if maxsize != "0" %}
-+		if (ptr->u.{{ name }}.len > {{ maxsize }})
-+			return false;
++	if (!svcxdr_decode_opaque_payload(xdr, &ptr->{{ name }}, {{ maxsize }}))
++		return false;
+diff --git a/tools/net/sunrpc/xdrgen/templates/C/struct/definition/pages_opaque.j2 b/tools/net/sunrpc/xdrgen/templates/C/struct/definition/pages_opaque.j2
+new file mode 100644
+index 000000000000..6e1a344d6665
+--- /dev/null
++++ b/tools/net/sunrpc/xdrgen/templates/C/struct/definition/pages_opaque.j2
+@@ -0,0 +1,5 @@
++{# SPDX-License-Identifier: GPL-2.0 #}
++{% if annotate %}
++	/* member {{ name }} (page-resident variable-length opaque) */
 +{% endif %}
-+		if (!svcxdr_encode_opaque_payload(xdr, ptr->u.{{ name }}.len))
-+			return false;
++	struct xdr_buf {{ name }};
 diff --git a/tools/net/sunrpc/xdrgen/xdr_ast.py b/tools/net/sunrpc/xdrgen/xdr_ast.py
-index 9dab8bc545b0..044b697a55ef 100644
+index 044b697a55ef..ea8082bb134e 100644
 --- a/tools/net/sunrpc/xdrgen/xdr_ast.py
 +++ b/tools/net/sunrpc/xdrgen/xdr_ast.py
-@@ -19,6 +19,21 @@ public_apis = []
- structs = set()
+@@ -20,14 +20,23 @@ structs = set()
  pass_by_reference = set()
  
-+# (type_name, member_name) pairs marked "pragma pages": the member's
-+# content resides in the pages of the Reply buffer, so the emitted
-+# encoder inserts those pages by reference instead of copying.
-+pages_members = set()
+ # (type_name, member_name) pairs marked "pragma pages": the member's
+-# content resides in the pages of the Reply buffer, so the emitted
+-# encoder inserts those pages by reference instead of copying.
++# content resides in the pages of the Receive or Reply buffer, so
++# the emitted codec captures or inserts those pages by reference
++# instead of copying.
+ pages_members = set()
+ 
+ # The same pairs, keyed to the directive's identifier node so a
+ # diagnostic can point at the directive rather than at the type.
+ pages_member_meta = {}
+ 
++# Names of types reachable from an RPC procedure argument, closed over
++# the types their members reach. A "pragma pages" member of one is
++# decoded in place rather than encoded by reference, and the two need
++# different C representations; see pages_member_is_decoded(). A type
++# reached from both an argument and a result takes the argument
++# representation on both paths.
++argument_types = set()
 +
-+# The same pairs, keyed to the directive's identifier node so a
-+# diagnostic can point at the directive rather than at the type.
-+pages_member_meta = {}
+ # Typedefs of a variable-length opaque or string, mapped to the length
+ # bound. A "pragma pages" member declared through one ("path data;"
+ # with "typedef string path<NFS_MAXPATHLEN>") reaches the AST as a
+@@ -470,6 +479,20 @@ def pages_member_maxsize(field: _XdrDeclaration):
+     return None
+ 
+ 
++def pages_member_is_decoded(struct_name: str, member_name: str) -> bool:
++    """Return True when a "pragma pages" member is decoded in place.
 +
-+# Typedefs of a variable-length opaque or string, mapped to the length
-+# bound. A "pragma pages" member declared through one ("path data;"
-+# with "typedef string path<NFS_MAXPATHLEN>") reaches the AST as a
-+# basic type reference, so the bound must be recovered from here.
-+varlen_object_typedefs = {}
-+
- constants = {}
- 
- 
-@@ -427,15 +442,34 @@ class _XdrTypedef(_XdrAst):
-         return self.declaration.symbolic_width()
- 
-     def __post_init__(self):
-+        if isinstance(self.declaration, (_XdrVariableLengthOpaque, _XdrString)):
-+            varlen_object_typedefs[self.declaration.name] = self.declaration.maxsize
-         if isinstance(self.declaration, _XdrBasic):
-             new_type = self.declaration
-             if isinstance(new_type.spec, _XdrDefinedType):
-                 if new_type.spec.type_name in pass_by_reference:
-                     pass_by_reference.add(new_type.name)
-+                if new_type.spec.type_name in varlen_object_typedefs:
-+                    varlen_object_typedefs[new_type.name] = varlen_object_typedefs[
-+                        new_type.spec.type_name
-+                    ]
-                 max_widths[new_type.name] = self.max_width()
-                 symbolic_widths[new_type.name] = self.symbolic_width()
- 
- 
-+def pages_member_maxsize(field: _XdrDeclaration):
-+    """Return the length bound of a "pragma pages" member.
-+
-+    Return None when FIELD is neither a variable-length opaque nor a
-+    string, whether declared inline or through a typedef.
++    A server decodes arguments and encodes results. A page-resident
++    member of an argument type is decoded from the pages of the
++    Receive buffer into an xdr_buf that captures the content by
++    reference; one of a result type is encoded from the Reply buffer's
++    pages and keeps the ordinary opaque or string representation.
 +    """
-+    if isinstance(field, (_XdrVariableLengthOpaque, _XdrString)):
-+        return field.maxsize
-+    if isinstance(field, _XdrBasic) and field.spec.type_name in varlen_object_typedefs:
-+        return varlen_object_typedefs[field.spec.type_name]
-+    return None
++    return (struct_name, member_name) in pages_members and (
++        struct_name in argument_types
++    )
 +
 +
  @dataclass
  class _XdrCaseSpec(_XdrAst):
      """One case in an XDR union"""
-@@ -791,6 +825,15 @@ class ParseToAst(Transformer):
-                 header_name = children[1].symbol
-             case "public_directive":
-                 public_apis.append(children[1].symbol)
-+            case "pages_directive":
-+                if children[2] is None:
-+                    raise XdrSemanticError(
-+                        "pragma pages requires a type name and a member name",
-+                        children[1],
-+                    )
-+                marked = (children[1].symbol, children[2].symbol)
-+                pages_members.add(marked)
-+                pages_member_meta[marked] = children[2]
-             case _:
-                 raise NotImplementedError("Directive not supported")
-         return _Pragma()
-@@ -990,12 +1033,174 @@ def check_rpc_number_range(root: "Specification") -> None:
+@@ -783,6 +806,7 @@ class ParseToAst(Transformer):
+         argument = children[2]
+         number = children[3].value
+ 
++        argument_types.add(argument.type_name)
+         return _RpcProcedure(
+             ident.symbol,
+             number,
+@@ -1062,7 +1086,7 @@ def check_pages_directives(root: "Specification") -> None:
+     Run in the front end so the diagnostic carries the directive's own
+     source position rather than surfacing as a traceback from whichever
+     emitter reaches the member. A directive that binds to nothing would
+-    otherwise degrade silently to the copying encoder.
++    otherwise degrade silently to the copying codec.
+     """
+     payloads = {}
+     resolved = set()
+@@ -1093,6 +1117,17 @@ def check_pages_directives(root: "Specification") -> None:
+                     " declare it through a typedef instead",
+                     meta,
                  )
++            # The union generator does not consult
++            # pages_member_is_decoded(), so a marked arm would reach the
++            # copying decoder and pull the payload through the bounded
++            # scratch buffer.
++            if isinstance(container, _XdrUnion) and type_name in argument_types:
++                raise XdrSemanticError(
++                    f"union arm '{type_name}.{marked[1]}' cannot be"
++                    " decoded in place; declare a page-resident member"
++                    " of an argument type in a struct instead",
++                    meta,
++                )
+             if pages_member_maxsize(field) is None:
+                 raise XdrSemanticError(
+                     f"'{type_name}.{marked[1]}' is neither a"
+@@ -1194,12 +1229,64 @@ def _check_pages_containment(root: "Specification", payloads: dict) -> None:
+             )
  
  
-+def _pages_candidate_members(value):
-+    """Yield (member_name, declaration, container) for a type's members.
-+
-+    CONTAINER is the AST node holding the declaration; it decides how
-+    the member is rendered in the target language.
-+    """
-+    if isinstance(value, _XdrStruct):
-+        for field in value.fields:
-+            yield field.name, field, value
-+    elif isinstance(value, _XdrPointer):
-+        # The trailing field is the self-reference that makes this an
-+        # XDR pointer type; the emitter does not encode it.
-+        for field in value.fields[0:-1]:
-+            yield field.name, field, value
-+    elif isinstance(value, _XdrUnion):
-+        cases = list(value.cases)
-+        if value.default is not None:
-+            cases.append(value.default)
-+        for case in cases:
-+            if not isinstance(case.arm, _XdrVoid):
-+                yield case.arm.name, case.arm, value
-+
-+
-+def check_pages_directives(root: "Specification") -> None:
-+    """Reject a "pragma pages" directive that cannot be honored.
-+
-+    Run in the front end so the diagnostic carries the directive's own
-+    source position rather than surfacing as a traceback from whichever
-+    emitter reaches the member. A directive that binds to nothing would
-+    otherwise degrade silently to the copying encoder.
-+    """
-+    payloads = {}
-+    resolved = set()
-+    for definition in root.definitions:
-+        value = definition.value
-+        type_name = getattr(value, "name", None)
-+        members = dict(
-+            (name, (field, container))
-+            for name, field, container in _pages_candidate_members(value)
-+        )
-+        for marked in sorted(pages_members):
-+            if marked[0] != type_name:
-+                continue
-+            meta = pages_member_meta.get(marked)
-+            if marked[1] not in members:
-+                raise XdrSemanticError(
-+                    f"type '{type_name}' has no member '{marked[1]}'",
-+                    meta,
-+                )
-+            field, container = members[marked[1]]
-+            # A union arm declared directly as a string is generated as
-+            # a char *, with no length field for the page encoder to
-+            # read; inside a struct it becomes a { len, data } object.
-+            if isinstance(container, _XdrUnion) and isinstance(field, _XdrString):
-+                raise XdrSemanticError(
-+                    f"union arm '{type_name}.{marked[1]}' is declared"
-+                    " directly as a string and carries no length field;"
-+                    " declare it through a typedef instead",
-+                    meta,
-+                )
-+            if pages_member_maxsize(field) is None:
-+                raise XdrSemanticError(
-+                    f"'{type_name}.{marked[1]}' is neither a"
-+                    " variable-length opaque nor a string",
-+                    meta,
-+                )
-+            # svcxdr_encode_opaque_payload() consumes the whole page
-+            # vector and moves the stream into the tail; a second
-+            # payload would overwrite the first one's framing.
-+            first = payloads.get(type_name)
-+            if first is not None:
-+                raise XdrSemanticError(
-+                    f"'{type_name}' already marks member '{first}' as"
-+                    " page-resident; an encoder emits at most one"
-+                    " page-resident payload",
-+                    meta,
-+                )
-+            payloads[type_name] = marked[1]
-+            resolved.add(marked)
-+
-+    for marked in sorted(pages_members - resolved):
-+        raise XdrSemanticError(
-+            f"pragma pages names unknown type '{marked[0]}'",
-+            pages_member_meta.get(marked),
-+        )
-+
-+    _check_pages_containment(root, payloads)
-+
-+
-+def _member_type_names(value) -> list:
-+    """Return the type names a definition's members reference, one
-+    entry per member so a type used twice is counted twice."""
-+    if isinstance(value, _XdrStruct):
++def _referenced_type_names(value) -> set:
++    """Return the type names an aggregate references through its
++    members."""
++    if isinstance(value, (_XdrStruct, _XdrPointer)):
 +        fields = value.fields
-+    elif isinstance(value, _XdrPointer):
-+        # The trailing self-reference is list framing that the
-+        # caller's loop walks, not a member the pointer's own
-+        # encoder emits.
-+        fields = value.fields[0:-1]
 +    elif isinstance(value, _XdrUnion):
 +        fields = [case.arm for case in value.cases]
 +        if value.default:
 +            fields.append(value.default.arm)
-+    elif isinstance(value, _XdrTypedef):
-+        fields = [value.declaration]
 +    else:
-+        return []
-+    names = []
++        return set()
++    names = set()
 +    for field in fields:
 +        spec = getattr(field, "spec", None)
 +        if spec is not None:
-+            names.append(spec.type_name)
++            names.add(spec.type_name)
 +    return names
 +
 +
-+def _reachable_payloads(type_name, members, payloads, active) -> list:
-+    """Return the marked members an encoder for TYPE_NAME emits, one
-+    entry per path that reaches one, so a marked type held by two
-+    members appears twice."""
-+    if type_name in active:
-+        return []
-+    active.add(type_name)
-+    found = []
-+    if type_name in payloads:
-+        found.append((type_name, payloads[type_name]))
-+    for member_type in members.get(type_name, ()):
-+        found += _reachable_payloads(member_type, members, payloads, active)
-+    active.discard(type_name)
-+    return found
++def _expand_argument_types(root: "Specification") -> None:
++    """Close argument_types over the types reachable from an RPC
++    argument.
 +
-+
-+def _check_pages_containment(root: "Specification", payloads: dict) -> None:
-+    """Reject a type whose encoder reaches more than one page-resident
-+    payload through the types its members contain.
-+
-+    The one-payload check in check_pages_directives() sees only the
-+    directly marked type. A type that holds two members of a marked
-+    type, or members of two marked types, would call
-+    svcxdr_encode_opaque_payload() once per member and overwrite the
-+    first payload's framing just as a second marked member would.
++    A "pragma pages" member decoded in place can sit in a struct nested
++    within an argument type (symlinkdata3 within SYMLINK3args), so the
++    top-level argument types alone do not suffice.
 +    """
-+    members = {}
++    references = {}
 +    for definition in root.definitions:
 +        value = definition.value
 +        name = getattr(value, "name", None)
-+        if name is None and isinstance(value, _XdrTypedef):
-+            name = value.declaration.name
 +        if name is not None:
-+            members[name] = _member_type_names(value)
++            references[name] = _referenced_type_names(value)
++        elif isinstance(value, _XdrTypedef):
++            # An argument named through an alias reaches whatever
++            # aggregate the alias resolves to.
++            declaration = value.declaration
++            spec = getattr(declaration, "spec", None)
++            if spec is not None:
++                references[declaration.name] = {spec.type_name}
 +
-+    for name in members:
-+        reached = _reachable_payloads(name, members, payloads, set())
-+        if len(reached) > 1:
-+            raise XdrSemanticError(
-+                f"'{name}' reaches {len(reached)} page-resident payloads"
-+                " through its members; an encoder emits at most one"
-+                " page-resident payload",
-+                pages_member_meta.get(reached[1]),
-+            )
++    worklist = list(argument_types)
++    while worklist:
++        for referenced in references.get(worklist.pop(), ()):
++            if referenced in references and referenced not in argument_types:
++                argument_types.add(referenced)
++                worklist.append(referenced)
 +
 +
  def transform_parse_tree(parse_tree):
@@ -723,9 +583,11 @@ index 9dab8bc545b0..044b697a55ef 100644
      ast.definitions = _merge_consecutive_passthru(ast.definitions)
      check_duplicate_definitions(ast)
      check_rpc_number_range(ast)
-+    check_pages_directives(ast)
++    # The pages checks consult argument_types, so close that set over
++    # the nested aggregates before the directives are validated.
++    _expand_argument_types(ast)
+     check_pages_directives(ast)
      return ast
- 
  
 -- 
 2.55.0
