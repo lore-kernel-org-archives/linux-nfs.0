@@ -1,113 +1,156 @@
-Received: from mail-pf1-f225.google.com (mail-pf1-f225.google.com [209.85.210.225])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2447238E8AB
-	for <linux-nfs@vger.kernel.org>; Fri,  4 Sep 2026 23:23:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.225
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A741B19AD90
+	for <linux-nfs@vger.kernel.org>; Sat,  5 Sep 2026 09:51:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788564226; cv=none; b=ORhOhidc3y6JWHsM/VLKZSIMja5rYrXATpQt1Kh1/7sYJmvl+BQrbjtfMYcXBbLm12EWSdepfHHAC5und5VuLOA54ToIEcCi8cEFDazrOU8hYuVtBMp+0C81raM+4r28+8Z2EwQLCpN3mBDldjYk7+mLCZSX/Zlj7ZzKTXijIPY=
+	t=1788601864; cv=none; b=G3l3VrH7PBVspiWj86qXbES0HSD0nwsSWEi+eMQfVzS9Vk9g0egUSBsa06DPeUsdB6dlda541ykVC+ijfoy6yNSowbyO7KC51qkm6xDD0d9GCLu90h+ld5If1T3wuyY3ECxLe7fhGAuaASzICcH3rn5X8Vq8qY/IsH6D7YhVAg8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788564226; c=relaxed/simple;
-	bh=1D/6Tr5xBcXUuHizxCrM5fO+eUcmJoNR2aK9tSGyl/k=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=s8mcADI1EeMH2bubjHvFJk3oQarEDc/NBH3dffMOBcr+E2jeL9hfu3cLX4Z9nAyhdR+jDL+0a3Y5L5mOzKaOERiDVPy8RQ3A4zeBLO5nzZTbHZSetjKtUfUb7wRSXOvdBczw0lqS+mwfMpEOkQDH4xAj38APUqCrUaoieO1y+qM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com; spf=pass smtp.mailfrom=everpuredata.com; dkim=pass (2048-bit key) header.d=everpuredata.com header.i=@everpuredata.com header.b=yAE/0u7+; arc=none smtp.client-ip=209.85.210.225
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=everpuredata.com
+	s=arc-20240116; t=1788601864; c=relaxed/simple;
+	bh=DN2yPFSWcEMVlzdvJxHM+5bk+vzr1MDzXVLcKkbGkwk=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=cZ9upJP29GIX+wIXNmZpOZ1ndJOiUOVeb5xiIpOPOH/t4iegt0mROjLBFl3CiifIx0IWLujX/02PMo1dxROgilRXXijwj4ciGnA+ZxPktoiwFtCqS7zYi8XeLJoICrJ4EvyEez+3hh+R7FjGMoBeXUf64GQHrwUntBy9oJOtjE4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=Cs3u1a+V; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=jAN/PRVi; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=everpuredata.com header.i=@everpuredata.com header.b="yAE/0u7+"
-Received: by mail-pf1-f225.google.com with SMTP id d2e1a72fcca58-84e27035206so1377999b3a.3
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Sep 2026 16:23:45 -0700 (PDT)
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Cs3u1a+V";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="jAN/PRVi"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1788601861;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=AN44RWddFKay0gRa8cvRWtXAizMwFJDgvkTOe5+GMRo=;
+	b=Cs3u1a+VEGhEmLdEjhEh1NLIYgHOuimPZWa4PnCKmR+dOQu0oaaV3xdeeJ+29f72HtRntD
+	fL51Aj5RohkxW0RCTqyiwJ4j+SMgpkvzghnYJzD6h/eBV9Z00rjiaLZbePD2V5GaIN7DtN
+	5qwm3PnZqdPsf8ZSSMUOvmzbc4+ox44=
+Received: from mail-qt1-f200.google.com (mail-qt1-f200.google.com
+ [209.85.160.200]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-75-W9YH1q9zOSS9fow4Ts4E6g-1; Sat, 05 Sep 2026 05:50:59 -0400
+X-MC-Unique: W9YH1q9zOSS9fow4Ts4E6g-1
+X-Mimecast-MFC-AGG-ID: W9YH1q9zOSS9fow4Ts4E6g_1788601859
+Received: by mail-qt1-f200.google.com with SMTP id d75a77b69052e-51c1d137a68so58113711cf.3
+        for <linux-nfs@vger.kernel.org>; Sat, 05 Sep 2026 02:50:59 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=everpuredata.com; s=google; t=1788564224; x=1789169024; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=1D/6Tr5xBcXUuHizxCrM5fO+eUcmJoNR2aK9tSGyl/k=;
-        b=yAE/0u7+VHGr4bWCbQNrzOItj33W7N4Ee3rgPgfi/NnNKw+gYNmyJq2lHHmN3sYeHe
-         Q1Dcm/52Vb+E02e+3DQbMRaOP+JPdOVFYG9tCL3NTjqjfTdF20tJtbCf/rltRTykSCXP
-         qfULlKkb/ljU8wRa/Oy0bZhOcqEOaZYohIDCLW5LfoDrYpkzR+D+rWCmn3SbKSa1uL2t
-         1bS4sPJ0Tq1C25Skc+Pq5qBZVnUJWN0urOdSDND4y1aV8rRww3bDYdbwlflanwa67mGP
-         AQ62U+H7Spc7pfbS0NEmODLfl4nob17Vc7H2T+oQ4j0BBrtzMohC418QFNNbWzapLMYZ
-         nqCw==
+        d=redhat.com; s=google; t=1788601859; x=1789206659; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=AN44RWddFKay0gRa8cvRWtXAizMwFJDgvkTOe5+GMRo=;
+        b=jAN/PRViW7m6arCuqmqESTNpZw1oxxX2GILngG4uPCYLLarBqzS47+aEycKxphhw8m
+         xqp5pE6F1UIz9uo/EUvJcAXzpfjXt5HnWuJMZiVCnik+1S6FIy1Itg4oUVHjlQFvDCfD
+         8uXX4niTVLxrcjD3TxMHeAsj5miP+fhzMgJg0nEqY8EaYjE98Xo+/826bbaOZs+RiQ+E
+         BPR/8cgDO5R4lFJaS/inK/dsjHU6USONwFTGh21lqr1hZZ7AhTrAynoxzPjLv8E/sFG7
+         u9Hh+dc32hOOolrrZh2FJXa+NiK0hGbRUMyo7C8D9mIIkX/sJBaVvX8fKiPaXXPqB/0Y
+         ZTYQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788564224; x=1789169024;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=1D/6Tr5xBcXUuHizxCrM5fO+eUcmJoNR2aK9tSGyl/k=;
-        b=SLrT0B/XHBEQvT4Q1yrG2hvy/tvVRYGMZGq6q+NKr89Zzf3GY73QwH3FEJeLdrjCOi
-         6E8DyrSNkhcGgmPeTJ2QC0FL0vNwicud24XVsPKBcNeWo8HVMJlFcLKwFxAO25VHJpBT
-         0GvrvXsEsv5tWC1b9/AVE7gDXzVs/5Qx2NOU0hOVQrdz0PrBljPGv3PyZinnq7d0bw+O
-         dHh08zsXd8PnwgObbGIh2yTBqlRalpgMAn5LAE9U2vYfE8FB05LnnQqX+0xIFdoKnRtf
-         y1pjixljYY8gxsYe5PIBRsPt5WD0T8EIpcQhngHshLySCg4pSKKYwSY3b5soWETi+tMY
-         5JvA==
-X-Forwarded-Encrypted: i=1; AKwUvBxKLETgFAQcm4Dj7YXRr+t7anjlb7Af8Qw/0LOsZeHfgpRFE4ISMDNHfbSDVtdkr1u6x7DvGp5MmCQ=@vger.kernel.org
-X-Gm-Message-State: AFuF++lydDVzAh3k0YVeGmeRkcQrPdokbTTcZ2VdDkZQU0z2tQKyj85x
-	j5C64UxOUx8k/eHLSCOsV3Kqq6gYf3J2bp+9phQ1Tbm/Qh8pUkXWqtQ8DC5km78V+o+Zrm6uB2G
-	HN6AkjZ72hDPPkORyR1i8jONRNfYA7regpC0Z
-X-Gm-Gg: AYBFou2rdL69C+hZFgsq7vtxhqUk5g77b3Y9/cyoPV/ULXbS7xTMOwIuGKH6JInq/+N
-	NTKRAMauNGWOBOBlSL3rRzPUJ6feSsyJeOJbTCeOwmmINmrQGp6Sn/HqUTObbyGZmG68fao3Wxd
-	szHypahjh5Uaqwc27yjWiVfM2N49j16rYNiDkKeXQTLMZHdzZX1mWpUW8/tzebSAv4RA0Zd0Ozi
-	VXV/d6bTytfdEi7GwB7Cp8kMO7gt3ilQ42zJe4/k49GrS+2gl6KRix7cRDmb2bZEhpkxSsKis0M
-	ttaalNGjahvpcAM7jiINYQilwl59EhE+CmFa8W8EtgTc70VG/UXT9dYkyZu+WBfkgXxAh5HqOrQ
-	MF53OaWMw5CFkKChfM8TRQTWp9KyJ5mqX+yDI31A=
-X-Received: by 2002:a05:6a00:2c94:b0:848:3f07:c5a2 with SMTP id d2e1a72fcca58-86167aab584mr11848768b3a.4.1788564224491;
-        Fri, 04 Sep 2026 16:23:44 -0700 (PDT)
-Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.129])
-        by smtp-relay.gmail.com with ESMTPS id d2e1a72fcca58-86150750808sm1257514b3a.4.2026.09.04.16.23.43
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 04 Sep 2026 16:23:44 -0700 (PDT)
-X-Relaying-Domain: everpuredata.com
-Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
-	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id 0239C340200;
-	Fri,  4 Sep 2026 16:23:43 -0700 (PDT)
-From: Tim Menninger <tmenninger@everpuredata.com>
-To: Chuck Lever <cel@kernel.org>
-Cc: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Tejun Heo <tj@kernel.org>,
-	Lai Jiangshan <jiangshanlai@gmail.com>,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Eric Badger <ebadger@everpuredata.com>,
-	Jon Curley <jcurley@everpuredata.com>
-Subject: Re: [PATCH RFC 6/8] SUNRPC: Reduce rpciod workqueue contention
-Date: Fri,  4 Sep 2026 23:23:42 +0000
-Message-Id: <20260904232342.1907377-1-tmenninger@everpuredata.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <336623df-ead4-4802-91c5-aa3e785f2971@slotpi15m67>
-References: <336623df-ead4-4802-91c5-aa3e785f2971@slotpi15m67>
+        d=1e100.net; s=20251104; t=1788601859; x=1789206659;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=AN44RWddFKay0gRa8cvRWtXAizMwFJDgvkTOe5+GMRo=;
+        b=UYmMfGAlvbgvRPAWuJexPu6CqeKv1wdMS56LiFpAwTVfxxbmEHeDvXTzkKBMAlr5CZ
+         tt1pzsWCwliWO+YkW5T7I10I0mN0ro+S/DV54S0iBTT9sxNO8uzzqVbDeF7ClvfHfKa0
+         zEcznLoOgbAvxJlaRmzCUKSe/MqbXEkCXCC8PnnWc2op0kO+Y/pWJ8JI0QEEd1pI7bTL
+         oCHYnzMMTG+P9gbUsyJ5fldtfHczYJ2u4FPP4urYP9MbsO2Q02mv7lkCguXqrV0q3X7p
+         SYcmqf7752ATq56zBCx0uObo6U6bfC0T9iikQPE0esx3ZKbU1HdFj6JVHYB3n0tF0xmw
+         LVng==
+X-Gm-Message-State: AFuF++lqhO6BEk6+6tqsmPdPXFluphfwp1EMr/bq5t2RxePHTMCy11kB
+	8gNXWBVfVn1H1N1xiqNmiqjf89cA2k41FFoRYuFzP5Oam/aKvwcUDO69or1wmj5kUJgkUf2eg4d
+	jmfGC3t5/OxVGxN3YxYONhljiNndXONNLjb9tdyzLku8r44DoLZZ1X5uN8DpV/A==
+X-Gm-Gg: AYBFou3mkGsCibIoZI9ur6pVAubjVS7bUocs0j7976Z7GhZuirSW40vsy0HATTMm2UZ
+	36yQUVAyIPKPABR2l1+bBw9VPpxtTfqF3vstn95v9dqpp01pl50XoiCg4q5FiXI6Q1GbMd6mPuI
+	C7ChNAOQT/FEfl6P+AGky3e+1+06NgCaN1MMiv53xnP14Og2oGaPNd3LPszCfCJmR2zM+1Cizw4
+	jBT1noNVn3x1FVtGi9h6CtDMhPc2q/2fufYRJeUjS4Kmh0ox9if1O4Y5eS1j7eXCQCRuiPz/8k1
+	o7CVre6PimPzALd0bdoSDGo1Xqk6jXoQ4gLjsSzGUVyx9VDZ+vF3CVdjQV/CgFqBiheyRHP+p98
+	=
+X-Received: by 2002:a05:622a:652:b0:52f:a2b2:2dcb with SMTP id d75a77b69052e-530547c8236mr127181781cf.18.1788601859160;
+        Sat, 05 Sep 2026 02:50:59 -0700 (PDT)
+X-Received: by 2002:a05:622a:652:b0:52f:a2b2:2dcb with SMTP id d75a77b69052e-530547c8236mr127181641cf.18.1788601858727;
+        Sat, 05 Sep 2026 02:50:58 -0700 (PDT)
+Received: from [172.31.1.12] ([70.105.245.121])
+        by smtp.gmail.com with ESMTPSA id d75a77b69052e-5305413d7f8sm40390481cf.14.2026.09.05.02.50.55
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sat, 05 Sep 2026 02:50:56 -0700 (PDT)
+Message-ID: <c0d9ec4d-7f3b-4546-b0da-bafc76f14194@redhat.com>
+Date: Sat, 5 Sep 2026 05:50:54 -0400
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 1/1] libtirpc: fix rpc_gss_get_principal_name to allocate
+ memory correctly
+To: Olga Kornievskaia <okorniev@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+References: <20260821145813.27891-1-okorniev@redhat.com>
+Content-Language: en-US
+From: Steve Dickson <steved@redhat.com>
+In-Reply-To: <20260821145813.27891-1-okorniev@redhat.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
 
-I realized the bad state correlates with where the RDMA CQs' completion
-work runs.
 
-This client has 16 RDMA transports and 32 CQs. The CQs receive 32
-consecutive completion vectors out of the mlx5 device's 63-vector ring.
-Depending on the global round-robin starting point, all 32 CQ workers can
-execute on NUMA node 0, or they can split 17/15 between the two NUMA nodes.
 
-On unpatched mainline (940de590b839 without your patch set), I tested five
-consecutive allocation windows. On three of those, all 32 CQs executed on
-NUMA node 0. On the other two they fell with a 17/15 split. All five
-sustained ~46 GB/s.
+On 8/21/26 10:58 AM, Olga Kornievskaia wrote:
+> The calculation for `namebuf.length` correctly accounts for the separator
+> characters ("/" and "@") via the +1 in `nodelen` and `secdomlen`, but does
+> NOT include space for the C string NUL terminator. The subsequent
+> `strcpy()` and `strcat()` calls write a NUL terminator that overflows the
+> buffer by exactly 1 byte in all cases:
+> 
+> - **node=NULL, secdomain=NULL:** allocates `strlen(user_name)`, writes
+>    `strlen(user_name) + 1` bytes. Overflow: 1 byte.
+> - **node="host", secdomain=NULL:** allocates
+>    `strlen(user_name) + strlen(node) + 1`, writes
+>    `strlen(user_name) + 1 + strlen(node) + 1` bytes. Overflow: 1 byte.
+> - **Both non-NULL:** same pattern, always 1 byte short.
+> 
+> The `namebuf.length` value is intentionally the *payload* length (without
+> NUL) for the subsequent `gss_import_name()` call, so the bug is specifically
+> in the allocation size, not in the length field itself. The proposed fix
+> correctly introduces a separate `alloclen = namebuf.length + 1` for the
+> allocation while preserving `namebuf.length` semantics.
+> 
+> Fixes: dec8d9775ded ("Finish server-side rpc_gss_*() APIs")
+> Signed-off-by: Olga Kornievskaia <okorniev@redhat.com>
+Committed... (tag: libtirpc-1-3-8-rc1)
 
-With your v2 applied, all-local windows fall to roughly 24-28 GB/s while
-split windows sustain ~46 GB/s.
+steved.
 
-I also tested this by changing only mlx5 IRQ affinity. I redirected
-completion vectors 20-34 from node 0 to CPUs 24-38 on node 1. CQ allocation
-windows 5-36 and 6-37, which would otherwise be entirely local and slow,
-then sustained ~46 GB/s with their CQs split 17/15 across the nodes.
+> ---
+>   src/svc_auth_gss.c | 5 +++--
+>   1 file changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff --git a/src/svc_auth_gss.c b/src/svc_auth_gss.c
+> index de2993f..dd7db56 100644
+> --- a/src/svc_auth_gss.c
+> +++ b/src/svc_auth_gss.c
+> @@ -1117,7 +1117,7 @@ rpc_gss_get_principal_name(rpc_gss_principal_t *principal, char *mechanism,
+>   {
+>   	OM_uint32 maj_stat, min_stat;
+>   	rpc_gss_principal_t result;
+> -	size_t nodelen, secdomlen;
+> +	size_t nodelen, secdomlen, alloclen;
+>   	gss_name_t name, mechname;
+>   	gss_buffer_desc namebuf;
+>   	rpc_gss_OID oid;
+> @@ -1135,7 +1135,8 @@ rpc_gss_get_principal_name(rpc_gss_principal_t *principal, char *mechanism,
+>   	if (secdomain != NULL)
+>   		secdomlen = strlen(secdomain) + 1;
+>   	namebuf.length = strlen(user_name) + nodelen + secdomlen;
+> -	namebuf.value = calloc(1, namebuf.length);
+> +	alloclen = namebuf.length + 1; /* include terminating NULL for C-string ops */
+> +	namebuf.value = calloc(1, alloclen);
+>   	if (namebuf.value == NULL)
+>   		return FALSE;
+>   	(void)strcpy(namebuf.value, user_name);
 
-So the CQ allocation determines whether the regression is exposed, but
-mainline is insensitive to that placement. The series introduces the
-performance sensitivity. This also explains why v2 appeared
-nondeterministic with respect to the rpciod affinity scope alone.
