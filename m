@@ -1,126 +1,118 @@
-Received: from mail-oa1-f46.google.com (mail-oa1-f46.google.com [209.85.160.46])
+Received: from mail-oa1-f48.google.com (mail-oa1-f48.google.com [209.85.160.48])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BAA2E3A3E88
-	for <linux-nfs@vger.kernel.org>; Mon,  7 Sep 2026 06:24:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.160.46
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8D237401A33
+	for <linux-nfs@vger.kernel.org>; Mon,  7 Sep 2026 07:04:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.160.48
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788762304; cv=pass; b=SkgOJID1tz0oOO3qi9gIMGHJslez6TvGlH2Z6ikWjVrBn+LlKU1Im88Xd3f5lm/TN4/XT37RF7MIytP0qCRYWFFTGtcodiOsJa0Skzqoqbb5Wb1kc3v1EubdjbLkgiqqdbY8BlP9BbZxpgYg3OCaz+uoybeKmHWEir0/sYmx9KI=
+	t=1788764700; cv=pass; b=Ud8TzNmBcUa+1ebk7/C6cWpyPYEaGP3490Z5U//wo2oBqO9Xht9OtrqlOz5+DC+6XFqByyyPXoXu7P8ryqqBirxNq+Xbf+E3ZGmbFH0B7aQPc89+3Oy2l/EZh2rPN8qapJFDCOeXC4xUCUf5zS4h60YYP2sGH4Epg1/nz/hTQ/4=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788762304; c=relaxed/simple;
-	bh=MdsdBUsDhf5aTWX2O8HoUCr1+cAZBa6BE2RS4oGDGCs=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Content-Type; b=lRQa50vX4FXLzu0oKuIJZx8FvcwFIx/2SX05AnZK1yGQgGgCgYGs4EF4koOzxlrfSDxfKnso9huWdiRkS7arW8UjvnQIPi0M86bSgjz/akWk6vjYuUU8kfjoAS6qhSjO2o626mv47gwDl9WTEBTd3Qgf5b/6S424E5j6GkOO1Ms=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=UwyXikwN; arc=pass smtp.client-ip=209.85.160.46
+	s=arc-20240116; t=1788764700; c=relaxed/simple;
+	bh=0CCGiiIeWvPb4311KaiE6hW5g0F/hpyy4lrowmZQ8TI=;
+	h=MIME-Version:From:Date:Message-ID:Subject:To:Content-Type; b=TQlTsGH0WOwXnrCvIZl4UdxrGWYAb7AeDWt3F1sIJWHLIiIyFYV4aJkaX5yMfrWKXydLAK639s3TNu84j3sngu6XAMc91V2fqV9eHCf14QdSpP09kfG5rCthvIBMIGP/t56o3LCp9coeEOkTTaoo3CNTiDgDKoZeeERhRin02xM=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=EAY1doR0; arc=pass smtp.client-ip=209.85.160.48
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UwyXikwN"
-Received: by mail-oa1-f46.google.com with SMTP id 586e51a60fabf-476ef1870a1so755061fac.0
-        for <linux-nfs@vger.kernel.org>; Sun, 06 Sep 2026 23:24:58 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1788762295; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="EAY1doR0"
+Received: by mail-oa1-f48.google.com with SMTP id 586e51a60fabf-46adfc81112so1886515fac.3
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Sep 2026 00:04:58 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1788764697; cv=none;
         d=google.com; s=arc-20260327;
-        b=lPTPmxLb9jymrRAAOp0VeGssisMsMf38tfkvwWDQj4O2GzBCGYntlcdaXOx+Go+d8E
-         VOa63a6qaDwmTweqFTdyaQvIr8kHPYuwdP47Hy6gZTJLAZMRIeYo/VZ6Fbg2VKeMhSUB
-         atYWePW5TQ8YTS/mSZzSZsJgHzG2qZgBzqrDYL2fAwTiibCzzNGqvKnijY7gH66bXp9x
-         Dz5eGBY5Uwm1Y+qssjijWLNhzUr/nCu9COr5lyAdx2yxo/cyf0p49hA+tld/aqKVOR+9
-         Qug+0LPoheV+neG8tQGkqoCymOATBagAWyfPXkuRnbvFWlAXHcmrfGf7PWYFHBDUqY6G
-         ngKg==
+        b=KMpKvKn3zblpB2YSgC0mwCC1xDNFF+cAhr8E+HCtHKGKRxQUxknSqlHiPs5TFWiVRv
+         YsVqZxkbzAhOJWs7TuH1HAFEiZBBfdbQDPbcD6myqfSwJSz5Y1SjHDO87GomPFF5oVqv
+         ucSsGDkExaHUwhu8hMgsn7NzIuscdmTQkfREHw5c6V1jpFzcD/ZcTf2wMCFQbLlunkjk
+         ek7B39EAay+DJu79e5dzvaWDtcZzLBbTNAWxsIAHSkvElqdpa8NW9sK8TG7NfRggKjAI
+         gPPmO7WTPBbFUnqS6Frlf+/tSLyP1bCEb1PlcD1m8mVdLOPYDkom8NU/4CSYvTSZcXx8
+         wzqg==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
-         :dkim-signature;
-        bh=hx7jggmKybVj+OOLmKakwLti2He5E8fSm4mMZ3lacqQ=;
-        fh=A3pMOUK00huGibGCZBFsLekFLVbB5hHGKjUNNKwO+5E=;
-        b=bGNoHZjbnxIUpjxtt+XGGwHAs9Gi2rswfG2iZnppFZPo5AS0WpJ7oaPomA2d5CrRIU
-         nZbdOW0YaI7WHtj1Bnn80F1hCN0VZ0J/uOWtOt9MWu/KaZPVvjXJngKdqQBZfM/MUkr8
-         QRgnSjEMvwy5xFcbhVbIlRY5Ch/PCXhKaZ+Kwhgaq8TU+AQK0gaKlByTFu0R35KNZikm
-         kxIKh0sdnGfoN+ITfRVrZ7DAcMWrE7OipKxM7GxSKdw6TAk24gWG/ZdhiN+lokKyx9XB
-         iB5Cjo34dTTN/6va0Y4GrCnEzyW4Zz1nSajEu3dQEE40Dvq6EvlWLh76wxO80TGG5h1l
-         +FpA==;
+        h=to:subject:message-id:date:from:mime-version:dkim-signature;
+        bh=0CCGiiIeWvPb4311KaiE6hW5g0F/hpyy4lrowmZQ8TI=;
+        fh=iH8IFx3HN3IphP1osPc0S1Tkr8PGuPvup4sf6JWGuQk=;
+        b=pMyGKtwMasDAAsPQY0bjbvyVrxQcGA2fS6ReJ6Vmd4rXk77O2ua4QCaUqTkslfAS2c
+         8JciENNSjwhqtQweLwVA+/lKSuuZw+2qvp4BYivcUEtDk7Zu7BOo15VdauS90jVAT+dE
+         QX3URCl01Tn0Mtt7UWgfR5T/9QD8Tkut77aPSMD+IrJPaW3dlQhm9SYfqZhdMDqfgvs3
+         AAKOSVA1QGbQXdBxwDkhvUzgrY+rY/EX5YXNzz7FcBNG6s6WDmLBOcrdiJaBamw9tMzj
+         LPTq0jzfHZZ6oyfc7CMdS+SBG4H8pWquqEMmcoMdACZwr5V6fV/smfHAcxXfGbAmaOCm
+         jaSg==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1788762295; x=1789367095; darn=vger.kernel.org;
-        h=content-type:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=hx7jggmKybVj+OOLmKakwLti2He5E8fSm4mMZ3lacqQ=;
-        b=UwyXikwNBZCxyBvaoEUsd3qXs/aZk22wlTUztEzySeRJ5ODN5jEJQ/YZhs5BSgCafb
-         9xtHBV3NAs7zNysaqMQ7eSSgh8vlXP0UAhCGU9Z072aUd0qteAN7o9ylUAJNcgJV8LEc
-         PoyNWixfK7K6bD9sntJWKa5tLdcc4Rv7giZyTKzGYw3lRPIT/7WVyy0KoMgxXook4EDH
-         HShHPgWQlm93ga3UfETsTU9JiIe45hjw3jHZXv1pzRQiO8LSZ7AuM2rONZIsPp5hS4kd
-         AyjntayDk5UgeLHMerDSw5MHrmYht0kFEAH8QkE1qm6Kyyx88mwhf8tI5Wa/oRjq3Yqf
-         Rdgw==
+        d=gmail.com; s=20251104; t=1788764697; x=1789369497; darn=vger.kernel.org;
+        h=content-type:to:subject:message-id:date:from:mime-version:from:to
+         :cc:subject:date:message-id:reply-to:content-type;
+        bh=0CCGiiIeWvPb4311KaiE6hW5g0F/hpyy4lrowmZQ8TI=;
+        b=EAY1doR0vKrpWYpSiaBF8N8ri23sVrcKuYybaKmUXn18GgOEvsycCDz0FjumUC0rEX
+         rvYizNu/pUos5814olQY2eHLlvdMG7ZND8i2E93LhG7eSpbd02NjIE1QprW4axHNHUhY
+         dCEYCpIvVHTVidZdnSXlfSgGyS9aYeM5Vbha6MElqpL4QK8MorRJ+snj16BW7NTdw1zS
+         j4qfbAUokwl/dVpqailJF5/4QxeSoZ68lLuNwnocX6bh8FeUF9GqWNtgBBKkUBImNXOy
+         H+jHdeN4n42zizYK6N3EHi89O+eQURIkQX4caOG4mVSdkHnJyZAO1sQBaLWqk+vhuHx3
+         qpIQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788762295; x=1789367095;
-        h=content-type:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=hx7jggmKybVj+OOLmKakwLti2He5E8fSm4mMZ3lacqQ=;
-        b=TXVDAxiRuBtZEJBT1iNAY1OTiocRNaZUy1lda9HBkwoMWgwhN2M2dgzJDkmkRZPC9C
-         NIEDOLuU9i9p1BEUETGy5XElT/Jk0sQq+EbLk05wvdNZSAjBTpH+Z/g437c9JGAi1jXR
-         VvX35K01/PqDxzApC9596sTTGrlEMjAtTht3PR1JhdW3JayzUHArirOHzr2YwlnRego1
-         +RqepCm1AfscrsjBzSiMVNFo6vaEFBjfA1VxMbcluHwFRFtd9LcGcbic80iGx8n6gDeh
-         at0zSRpPCqXD+SDzo7M5pRpZyMY1fV5vtzfq659QrLi2+NOa3gFXNbJ7Sxv82SHQssqY
-         mScg==
-X-Gm-Message-State: AFuF++nTtThnkUY4fTFF2UWUEnf8UxZ+axRG6T8UpczhsQfDruUwkzGu
-	gUa5NdofcopeDu6qSR35WUcg9d0P9G1MQF+M3AmBY81f/hxYagedB4aVz3/SLhw6gcULuhPEOgo
-	e+sQbm6yjK8YqlmKPIyuGW5WbRBWMKGFwAw==
-X-Gm-Gg: AYBFou0M6ttmJIuOe1Uyp9gsCQolt7S4u35ARb6XvIh9VAA2nka0gIpeZaCZqILJPj8
-	ouqtMNRGpSVK0y0VbZArOXhXnY8qXpL8YMlppnc1M+SerUmMPnp0TbykEYVCCju0VInRDFbM59P
-	Sm0SAtHq+LrUNnD+NOqQ4KwgA4Nqpl2UFdrwHzHWOGus9lLOz6EJeDmh85m3B3tfeqVVm/Hw1sU
-	/ave/4Z68p97xBVrsvz3wQx/FU0T2N26hkYZSypENtU/y3fOlCKhkNpZ1KtcGvDb4P9mTSo1UV5
-	RUpFv5ful4h9jsLMmI0aWQRgok4Hjg3WfL/8w9YsRV5QglU=
-X-Received: by 2002:a05:6871:3401:b0:428:27a4:ada with SMTP id
- 586e51a60fabf-475513525e1mr21561895fac.10.1788762295497; Sun, 06 Sep 2026
- 23:24:55 -0700 (PDT)
+        d=1e100.net; s=20251104; t=1788764697; x=1789369497;
+        h=content-type:to:subject:message-id:date:from:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=0CCGiiIeWvPb4311KaiE6hW5g0F/hpyy4lrowmZQ8TI=;
+        b=MFBStXCq9AOzwSbOpEcXx2A1Gl/Up+tBOj1NUNqDL0TCsZPP1EBLFpcQGnfoTm3rbc
+         DO5TrZUqPA1dnQuHgdoVwgKorGfSukqw3nW7VgrH+19TyC+vXwFtKUpP7AQyoQG9CZf7
+         1f/tSWl5gH0+M2za4wa1JVIBgtSlNiaEEUFjUfQ9eEigkexW6El4FG4KzP7W6LerBicw
+         iOPyK6lEgrRhfQNtDZjUl3mBanz47rEG3/LnJJFazrrm+w7dtS+yz4EjVBZ4UasMVJhe
+         NlolODNPfneyjV7U2+ZMHzC3Q+WHI3AptsMovGjkKP39/nvK5EFxNQUloIfhV8zZL/gg
+         +a8g==
+X-Forwarded-Encrypted: i=1; AKwUvBy9YyHzq2LQNi4kg3VNZtkB/za7a9bYx3in2zbbQWqPZFLRyordgCiykK0O9y9aor80MvQYC+KgyDw=@vger.kernel.org
+X-Gm-Message-State: AFuF++ksFgrg5Wh8NLMjdvAd9GvyYZgfqHmFBXLZFZ5kjlGmtB7BBYUt
+	/uFdvFjTJRFrNdI3R8LWfJ0bzGUS/Ul4m7c2+GR2idISK3REpvlJ7gpIDkwgFlnSxhQS4U5PhWo
+	wYCUUU2SwOYq9uiImE/hM7ztxrhzrYsyKzA==
+X-Gm-Gg: AYBFou1Zs/0Vj9ThPRW+ItUbnL5VD26R9LWdegaI8qYrspw0LGA/21ebwgeT6cpwUqy
+	cL/v5lLkXxeXrHjXr28brtyOzm9XnASnUXkfPecHgCAdsQtaUcs0/o+pOdDK55vJ0TiUlEuIdVx
+	BH0YmFhczgCC2Q6I+O1TUqqs3hxl55MZxxT0wLr5261J5BytIlh6JLbnlvC+Kdl2tw6SmE7hFmq
+	kAeMZeKxBuD//QX9/SyE8EOUv9IMZEngWODbg9Z5VfNjJFvuvFi7m+zem016TCIAJXzuQGWx6KU
+	m2iPWVhJf0trteqkhJu44ZOdsTDn8cn8dlD6vfkYAe36Iv2zyDL2+ZNa
+X-Received: by 2002:a05:6870:1d1:b0:463:aaa2:3b8b with SMTP id
+ 586e51a60fabf-4754e35c295mr15228955fac.0.1788764697367; Mon, 07 Sep 2026
+ 00:04:57 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <CAHvsQGNj4UxG3YWk6JZeuAFfnYPEBZHHhjxA81g-Ko3vStryPw@mail.gmail.com>
-In-Reply-To: <CAHvsQGNj4UxG3YWk6JZeuAFfnYPEBZHHhjxA81g-Ko3vStryPw@mail.gmail.com>
 From: Cedric Blancher <cedric.blancher@gmail.com>
-Date: Mon, 7 Sep 2026 08:23:00 +0200
-X-Gm-Features: AcwNN1WqRLoVGyACWaAhfbYcIs8Vwx0v1CiA9Ldfc63IfX-Ie92zPZMJbDBtDxg
-Message-ID: <CALXu0Ue5YXWWhTuUhtWx-ZA87YRiFE6mtg3pqsPRkU+se1VgmA@mail.gmail.com>
-Subject: Linux /bin/getconf test whether filesystem is case-insensitive or case-sensitive?
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date: Mon, 7 Sep 2026 09:04:00 +0200
+X-Gm-Features: AcwNN1WX3ynF3X-j5HJRN244xmyDUXV8w1aYNehSUD95Bn5SbhY5Vc28pCQPFXI
+Message-ID: <CALXu0UcHNQMV0nfuGKypCM+rR0t5Jovj+f+h50yffQyj0eO+EA@mail.gmail.com>
+Subject: Linux VFS layer+nfsd name cache case-insensitive filename matching?
+To: linux-fsdevel <linux-fsdevel@vger.kernel.org>, 
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 
 Good morning!
 
 Below is a FreeBSD question, but I think this applies to Linux too:
-How can a Linux shell script find out whether a filesystem is
-case-insensitive or case-sensitve?
+How does the Linux VFS layer handle case-insensitive matching in the
+name cache? And as an extension, how does nfsd handle name matching -
+callback into VFS layer?
 
 Ced
 
 ---------- Forwarded message ---------
 From: Jasmin Dave <jasmin.dave.math@gmail.com>
-Date: Mon, 7 Sept 2026 at 00:01
-Subject: FreeBSD /bin/getconf test whether filesystem is
-case-insensitive or case-sensitive?
+Date: Mon, 7 Sept 2026 at 00:54
+Subject: FreeBSD VFS layer name cache case-insensitive filename matching?
 To: <freebsd-hackers@freebsd.org>
 
 
 Hello,
 
-I recall that filesystem properties can be queried with POSIX
-/bin/getconf if you provide the "key" to the query and a path.
-
-Does FreeBSD /bin/getconf have a test whether the filesystem for a
-provided path is case-insensitive or case-sensitive?
+Does the FreeBSD VFS layer name cache support case-insensitive
+filename matching?
 
 Thanks, Jasmin
 --
 Jasmin Dave - Math (Quaternions!), Coding, Simulations
 
-
-
--- 
+--
 Cedric Blancher <cedric.blancher@gmail.com>
 [https://plus.google.com/u/0/+CedricBlancher/]
 Institute Pasteur
