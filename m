@@ -1,114 +1,135 @@
-Received: from mail-ed2-f12.google.com (mail-ed2-f12.google.com [74.125.228.76])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 72F0D43B3D5
-	for <linux-nfs@vger.kernel.org>; Mon,  7 Sep 2026 11:53:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.228.76
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788781997; cv=pass; b=B+PgUXwwvoqK82eJffEtDJhLGu7vpTPorsE/ySicDSeqVygVXRUGt0KoSN+7yO8gqvAIcXmIOfOUbyKw5ImVedVTY++GdQLRLD144Zr/BQEDZuAyUWohwgXFapXe19seCB1wOURIUDQkdQ4FAJ+UgDkPmwCvSledYKn2NP7In5Y=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788781997; c=relaxed/simple;
-	bh=iZnY1Ei37rZ7msN5aXR3cHW03yILS3CqMQdflPo9YR8=;
-	h=MIME-Version:From:Date:Message-ID:Subject:To:Content-Type; b=MRfd6tE8FJjInD3RZgtTgB/2SYS1q9B+emr21FQqx6Efhzuj+5whXu11mfJ93+XUOleM2bW2OHUXs9c1Op/bwTia5ftbsxPFRpH7MwMkZObcKH7Mq9u0Hi4EURe/hEo+dY3iYOi1rDvauKTbXPECFNT7eG5j6KIqousYHbEsaog=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=fR5yLjh1; arc=pass smtp.client-ip=74.125.228.76
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4AB5E382F35
+	for <linux-nfs@vger.kernel.org>; Mon,  7 Sep 2026 17:33:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1788802391; cv=none; b=VMMBvs2xls2KbaWJfaJEf1u89roaNuKySIQIj2UK0Azpe3+Z315NwuYP30VPkYK0b0myOMFDNuCxTPC+fFcGbaGWfVuTScvLbet8HS08WlHowfvhoYRpJp8owiDhp9E2BqYAKcaV339MiGsUL4gWHvOc53nJiLUK4fA0GZQBfZk=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1788802391; c=relaxed/simple;
+	bh=ql4xasVER74XmdnUzxCMUHlw8bfo2Miwjn954Ajssrw=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=I3s6fudxy3/hTSiB40vY6+SX4nTRjrlm/XDZVNBuLqnsv8HokMuU+xmJuImU7BbhlPFNEPi7s58JATdzDHl3k2s1UsDG2PBzwKIqxRxBcRGKw4iSffWW/BX8lhXXCrn6Qyzh7eNHI7qPAvWeQQhWmLWvPzYypN8/ekVtxjH0iCA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=klENLq5R; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="fR5yLjh1"
-Received: by mail-ed2-f12.google.com with SMTP id 4fb4d7f45d1cf-6a6056be4d1so68706a12.0
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Sep 2026 04:53:16 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1788781995; cv=none;
-        d=google.com; s=arc-20260327;
-        b=AsApMxR72kSwVjI0sFSALg8/tFJ7XY5enY83sTAf/qyh1Gnh+jBzhyoUcRupVFJAns
-         K3YpMalyS0VKensYKgZAVaaG1YBY1Qwvi7MUDkTyBomrghCt9ubhR1KfidsD17QKlkwn
-         cb/S+DOmOlf9/6Pa+5NdHwTPW2GjfYWxS6FhXirr39sOnrV1nfwqZklxkKpkUhqW2Olo
-         VSV5g8eR1DW6fSuQTe6FBybRccKnobhqvPJwfvJ2yDgLqawJyPtd+V3CAFWbrcLDDnSP
-         uHqbA5DvU0GvoKFOtrj3a/q48S9dQEK9ggehzVFMHkZHVk4+ZAyy/nh+1N3Nfqhfk3/r
-         xNwA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=to:subject:message-id:date:from:mime-version:dkim-signature;
-        bh=k8pP7sJ8201wtS3KMZULVp5ue2oDKolayxqMvoEbAUw=;
-        fh=MSjvmYgxjxAFPAmh8KDxavAuZVLcrdWDy6bDneDgDXA=;
-        b=KedVzUng32S4xALZh3JgNpZNE9DHPXylZMfM9R3IhjbA0seci2ANjujKkFewoN8RG+
-         arLCQ5/3cHfrGY+m9EnJp+JEJdOcQyP4rfQi0GPnpVbweIddhtu22zL1UmZxgh4ybNwf
-         vqbRuyv6prUCdwElracss92rHTGCyvJhLZOkyjLrBAJt7kzPJo45XaAtYbSVGTctYzHu
-         h2nhJxrImUaVqRH+oinmW0rpYDEz9ByPlN/f2wd0Uy6NzMgpNpzg3YElS/LfTX5MZRAi
-         1k3dk8a3ITrRRCbWgLAJyXm3cBGrVrf7R1XWg2zgfqz3k6j4vIdMP2AYRlC6CJ6m3btq
-         PE0A==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1788781995; x=1789386795; darn=vger.kernel.org;
-        h=content-type:to:subject:message-id:date:from:mime-version:from:to
-         :cc:subject:date:message-id:reply-to:content-type;
-        bh=k8pP7sJ8201wtS3KMZULVp5ue2oDKolayxqMvoEbAUw=;
-        b=fR5yLjh1XzJlu60DTS5k7Hl/9OzQlr2dcp4vaVgbIiIZpZZwcucc9shF0LIvKXaLtB
-         hETAnhq4hGGuHBeu0OilU2x5/ff8GQ5/LQnoXsiYKIfGg0XSA5/X9dt7LY/S6DQBdCDu
-         b1KYZdsE9QHJmcTiZxEdPiAB1hygm5uU6Yn9xMYRm8HE8bFwuFUDl1tAr3eyMSM2Hv8I
-         oxOwySyZdHWQAaDjmOEWMDEhRCrQaKTxPssEqGtAakJm2DEYmaL9nUgENVub3IwdGIoQ
-         OShry9x/1ZBcFfubHEFS1iSy8HBSo2lI8xoFjvFDxWMMk1joyPTibDn1ncu4UaN9hNvP
-         mMBw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788781995; x=1789386795;
-        h=content-type:to:subject:message-id:date:from:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=k8pP7sJ8201wtS3KMZULVp5ue2oDKolayxqMvoEbAUw=;
-        b=dAUDC8MzI10W23d6R7PernZEikf5NH9oCvcFuxN3PCqQeWaWUmzdhOGKMBL0N8a1nP
-         60XbEhYcNWNPqLtNrJVzoHskL9wODiohhG2De5itDapkR+AJQJETt59elVbiPl6OfWba
-         2ucnDcXIe/obcJJS38G2bzZiDk7IQK0SBEVwISULbHe0O+/bajWZQN6GXnEKVjQNg+GX
-         dLZ4eSzAjWQcsBfcqHfkAzTMvm7O4GDPgHQr8llDpYU26fXl5lr5CrUFbmhGUBmEQ+GM
-         BuBqjEHE4QCrDa9w1iAUPONlTv+iAw05oodNO4fO61qj/6RRPAiZXhqYXOeovRHg1rHR
-         QC6g==
-X-Gm-Message-State: AFuF++lS4bkMlv611SaLVJCC1AfcINngivrq3juyacLW7TaTcYk98ZGV
-	we5FTFAhRvSIZlEAg9svr44Vk9B9tuuYAtkqJMFUFwTIt4Rh6BL413sQuID30o3pVHa/enzsW7d
-	bFrNpXZ0KM3k9S9Vqg+dOtYn5M9tH2lyOwg==
-X-Gm-Gg: AYBFou0vaXX0Hs2rGvVY+NvkJY6TDMQtPYeAXi68oHE7Oq2dCMz1oesSsdsCzDoR4cy
-	BgGsheQlM/BrK7adHS8HuRpbkVD8EH9t1EmLPJunLxIpj1763QuIwz7JmYDbLoz5B55rhNEGsCx
-	ovw/ynpMgDrPpoB23ipBASEkoD/pmXv1xv2kpp2BfAcdJRfA9o03HQX+YJyTGtKsY1GstDxV5PI
-	3405V0/mEY3Ur8wbdnOfc9omOGdU+26b525oqv8b417EEKF7PXiRXBWGCqUc/xIyKYhM7UuUJ/Z
-	1OqSbKFGndxG8FWY95OSkGNoV02xhOl56QO/m7Q4Ulg=
-X-Received: by 2002:a05:6402:1906:b0:6a6:b2b9:61fc with SMTP id
- 4fb4d7f45d1cf-6a82fa3b6f1mr196179a12.16.1788781994524; Mon, 07 Sep 2026
- 04:53:14 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="klENLq5R"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EA20E1F00A3A;
+	Mon,  7 Sep 2026 17:33:09 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1788802390;
+	bh=XQWY1g9lIO9mEGNw5MFNGZrUA7xWdL6ep3r/5QZGyGM=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=klENLq5Reo8fK9aBNnA7oeTbSLIgQlR7C6XHnhFgFesdgUKgJ2glg/px/Lj5oP0SJ
+	 F3yjctKosPBGz5a1JMnWmsdxUQRT8s8GnZ4WKtZaqo4lZgaFh4Y8HkQMFKNrp5VyqQ
+	 awltFryvjYFbbMoL/HFK54BUJ7+ABCpi2vzJN+Wx9Enqn9h9N016lVcQZiYnFAH7dR
+	 TDmfkgWVzyICZQ70JTNbCC9QLfyQDnL9IF/7zxmKw/miKm1Vd2N/b3ZHKP0PU3cjGa
+	 tq2swJKPpCgCp4MKEIDnlxDjxehE2uKbadTdTd/xawPYVElDzZP1rEq2NXb1KdZs5V
+	 hrrtaoqupCT3g==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 0F684F40066;
+	Mon,  7 Sep 2026 13:33:09 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Mon, 07 Sep 2026 13:33:09 -0400
+X-ME-Sender: <xms:VPWeaoKqeVp5r6qU_gZHyUVM6U1jYe7sLKckKqOI9qGSWpuknVwbwg>
+    <xme:VPWeai85ZZycjyZH6OXaabPx8dVNVGK69YJJFP2t16aKMnJnoWfPBSO294qD-t8Gv
+    e-cQvAN2Ar3llh8DsR18NL2ZINik0PbPmbx5a0ZIYt-KnZlLEehcOXS>
+X-ME-Proxy-Cause: dmFkZTFdwSik+4bzEbIDFlEEm5PlxFEQy6AZxuh3Vk6QHXmr26JSv3WFWuDE6DAAS7ZNvy
+    4wcvVz4HZx3nxYQ2R4oFCKcjsWETXXnT9LXn0Bpma+IC5ES+tqUe7RZxvyxvlmjH/0DTgG
+    4UP5Ih7GCqRgRaTWOyg6H8LBqZLq0AnL9q9SxQmjOWro0rR14inedj4WnQtm3b5NPpdrNH
+    iB55Ocf+Uweno2aSR/jsyrFLhxvdm6vuZi2Jc2OcJ5cF9fwOQbEXzm/ggTRPrM2z58uMpj
+    JGlFDkGV22v1ANK+2yjJuZ4ZgNnDu+goD9VnKS6hSR0gaosYepiqzK5dVkzKS+awxLrADx
+    6pOIUMp93vY95Rq+iRLL3q6xMuxID7mtEgIkUMaKZIWBvIb/F2vyQlQE42SDg99bZ9mp6C
+    R9/HcHcUIJJspLKCjMlLNcKa7KHxjxzYg4qnUOgjFlqSJG4LSLn/nKAFvWyQsjhVvZoHp1
+    z4intXUIgIf/wnWbZQcwmrm92XqBm4HkIMIC9Str45Rj7X4FvvHICWaMo2AnbEB72KpVuE
+    OchyUESbnq8A5S4hJXl+lwhy+lgsq1B/P0JT9sZVHXAEV0eGMG2eqjdYqfFM4/CPQZX3fk
+    6k4gX9vDeTZqhOu382OYZYgAs1PJ6s/gXRWSvcTBjsHZNRHfGg/096nUu57g
+X-ME-Proxy: <xmx:VfWean3mYBfgTHLzLSOBYBIAIsDCax7YDRSY2g7QBIdd_alZ6-Xv3Q>
+    <xmx:VfWeavbgf8iZzq1TCkSjHp9bl8R8Yn5MBo2dQsK7ct239fPSxb1cwA>
+    <xmx:VfWeavKbzV90PXWWdMfHWGMZmKZud72zKelYXv5owThrHTcWcXi_4Q>
+    <xmx:VfWeauHw7rIxWv6x1i4QHc3DDzG_NpTWdSJc8DQihtgneeH_8eKaNw>
+    <xmx:VfWeamssmxdJlO1HDLXY7Yzlk5KUiXbbOU7j375c2gTQQ2AK42w3482d>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id E59317811F0; Mon,  7 Sep 2026 13:33:08 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: Shyam Prasad N <nspmangalore@gmail.com>
-Date: Mon, 7 Sep 2026 17:23:03 +0530
-X-Gm-Features: AcwNN1W5kJ-vw1BkW7IlUfU1L9-26NFwyplssvlZWvOgxfjaJw1PHOi5z8ZWcC8
-Message-ID: <CANT5p=rb=HJsFPrD0swPi8D8LzaodTvKK=M6xwR0SvtK_YaLRA@mail.gmail.com>
-Subject: NFS strategy for large number of file opens
-To: linux-nfs@vger.kernel.org, Trond Myklebust <trondmy@kernel.org>, 
-	Anna Schumaker <anna@kernel.org>, Jeff Layton <jlayton@kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+X-ThreadId: AxchwvwWr9Mk
+Date: Mon, 07 Sep 2026 13:32:45 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: NeilBrown <neil@brown.name>
+Cc: "Jeff Layton" <jlayton@kernel.org>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <dai.ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org
+Message-Id: <c0c96e2f-ba29-4b46-915b-23399810d384@app.fastmail.com>
+In-Reply-To: <178876623368.207413.16768374723232216468@noble.neil.brown.name>
+References: <178876623368.207413.16768374723232216468@noble.neil.brown.name>
+Subject: Re: [PATCH] NFSD: return NFS4ERR_EXIST for a guarded OPEN of a non-regular
+ object
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-Hi all,
 
-I'm starting this email thread to understand how NFS deals (or plans
-to deal with) workloads that serially do open/close calls to a large
-number of files in a directory? Think about a use case of tar of Linux
-kernel source code on NFS shares.
 
-AFAIK, local filesystems fare well for this workload compared to
-network filesystems, as file opens are local, and file state is
-maintained locally. For network filesystems, each open needs to go
-over the wire to the server.
+On Mon, Sep 7, 2026, at 3:30 AM, NeilBrown wrote:
+> From: NeilBrown <neil@brown.name>
+>
+> Commit db8b567ffa98 ("nfsd: (almost) always open file in
+> nfsd4_create_file()") moved the regular-file type check ahead of the
+> createmode logic.  A GUARDED4, EXCLUSIVE4, or EXCLUSIVE4_1 OPEN that
+> finds a directory or symbolic link under the requested name now fails
+> with NFS4ERR_ISDIR or NFS4ERR_SYMLINK instead of NFS4ERR_EXIST.
+>
+> RFC 8881 Section 18.16.3 requires NFS4ERR_EXIST when a guarded create
+> finds any object under that name, or when an exclusive create's
+> verifier does not match. The type-specific errors in Section 18.16.4
+> apply to opening an existing file, which only UNCHECKED4 does.
+>
+> do_lookup_open() is passed O_EXCL precisely when UNCHECKED4 is
+> requested, so it can choose whether to return NFS4ERR_EXIST or
+> one of the other errors.
+>
+> Fixes: db8b567ffa98 ("nfsd: (almost) always open file in nfsd4_create_file()")
+> Signed-off-by: NeilBrown <neil@brown.name>
+> ---
+>  fs/nfsd/nfs4proc.c | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
+>
+> Hi Chuck,
+>  I took the liberty of reusing your commit message - thanks!
+>
+> NeilBrown
+>
+>
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 33dc92d48ce0..067e24514dad 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -240,7 +240,9 @@ static struct file *do_lookup_open(struct path *parent,
+>  		 */
+>  		int err = nfsd_check_obj_isreg(child);
+> 
+> -		if (err)
+> +		if (oflags & O_EXCL)
+> +			filp = ERR_PTR(-EEXIST);
+> +		else if (err)
+>  			filp = ERR_PTR(err);
+>  		else
+>  			filp = dentry_open(&path, oflags, current_cred());
+>
+> -- 
+> 2.50.0.107.gf914562f5916.dirty
 
-Has there been any proposals to improve perf for such workloads?
-Could there be possible extensions to directory delegations, that
-could allow the client to make opens async and batch them together to
-the server in the background? IMO, the challenge is that such open
-calls can fail. But can the clients be enabled to do many of these
-failure checks (for example, the client could be allocated quota for
-how many files it can create, be allowed to cache file permissions by
-delegating them etc.)?
+Hi Neil -
 
-Looking forward to the responses. Thanks in advance.
+O_EXCL is set for GUARDED4 only, so this logic leaves EXCLUSIVE4 and
+EXCLUSIVE4_1 still returning the incorrect type-specific errors.
+
 
 -- 
-Regards,
-Shyam
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
