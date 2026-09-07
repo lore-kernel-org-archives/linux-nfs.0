@@ -1,109 +1,96 @@
-Received: from jasonwiebedairy.com (jasonwiebedairy.com [45.79.9.129])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 732FB3A254C;
-	Mon,  7 Sep 2026 18:57:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.79.9.129
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 199EB3A7198
+	for <linux-nfs@vger.kernel.org>; Mon,  7 Sep 2026 19:15:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788807471; cv=none; b=PnzW/pnHbbqYlj8u40T2iliaCwLzuY2RW5+UV2UEOho2RxJuJ0xRxQUmB2G2A3THOAQNioJo8D6M5ZI9L0cXA013/gQ3ulV+fnrZEx/+Jm6nlb8+lvStcxEp0QlIf245HVcmOHtqFuLecjCrwBBjWeVBuREK+mZINK1j8Ch4Sdc=
+	t=1788808546; cv=none; b=hN1okJif6llSuXqKB1XJ4ps4wGySpaNd4YLDQQZTtB/ujygkTJ2m1wtq+twslQc8tO4ZnbU9YmlWpTxGUZjwKt7jZfZ9lI8uXM8+fGhBvDdecgsVAT0+yVGMP+7AUN08xh+HZ6v+cfyGd25fFEa7AC1zo5J1K14ZFfEl7jtDkOY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788807471; c=relaxed/simple;
-	bh=A1BEhn4OuvvbXx9z9acOPhoqdJmT0xQz1QCSBNLAdFY=;
-	h=Message-ID:Date:Subject:To:Cc:References:From:In-Reply-To:
-	 Content-Type; b=KwyxBpEutGYcxIaWjGco/VujRv1phS4hKhgWWEWcPwT8/0T3kbTaLtnrsEuo5veibS2AGXtq0gH1m9ppLWxwczaH92lAJOvE6TTNaPRvpU2mmgOlt/7+tD+Na+mv8Ps7iaU3nyroGhSqBImHGeHUMPG/UBqujbIYRUkYnwwGrl0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=benjiwiebe.com; spf=pass smtp.mailfrom=benjiwiebe.com; dkim=pass (1024-bit key) header.d=benjiwiebe.com header.i=@benjiwiebe.com header.b=JpmDYyIB; arc=none smtp.client-ip=45.79.9.129
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=benjiwiebe.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=benjiwiebe.com
+	s=arc-20240116; t=1788808546; c=relaxed/simple;
+	bh=XQXhzDCg2dhhu1WnZjNPmpaah8H+eGUxRVpDiA9aivE=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=YGhhKNqOQZCneZAZxjNbWx1p2Ojl8nv8BQ50L7nTDX8fSu3N42i2D7Ph6MuEsRxgFkezivOOmBP5O+B2TNnEg+BvZkokq8Gm6Nw+6d1TiP348rDLGRdKE4YeF5HAyGMGepocbJKlvStehg2nl6hPD0Es3TZIFMAljnblhjM6LRw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=g0cSj6gQ; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=benjiwiebe.com header.i=@benjiwiebe.com header.b="JpmDYyIB"
-Message-ID: <b5134cbf-f73e-4326-8969-5d8ac070b3eb@benjiwiebe.com>
-DKIM-Filter: OpenDKIM Filter v2.11.0 jasonwiebedairy.com 752BBC05DD
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=benjiwiebe.com;
-	s=default; t=1788807464;
-	bh=X47q27yWTGaHqcyll6KHKra5gQ+HkE6+FI/4j9i5MpA=;
-	h=Date:Subject:To:Cc:References:From:In-Reply-To:From;
-	b=JpmDYyIBSxmfiv+E96fJfu5qF6oL2qAUsyuQ3GlImEhXdfwxeW9QTulNTFEQ80qOu
-	 Dfs9I3XoWGT1bDT5O9Lz0gHo2N1fZHGusIeDbnVHvThucBA6RQwkywScV+BqDRV9ZQ
-	 NVwP08DL4IMJ6tZc5jKGVIdMbVazdhzBz0QZgDZs=
-Date: Mon, 7 Sep 2026 13:57:43 -0500
-User-Agent: Mozilla Thunderbird
-Subject: Re: [REGRESSION] reads and writes hang if NFS server has v3 disabled
-To: Jeff Layton <jlayton@kernel.org>, Chuck Lever <cel@kernel.org>
-Cc: Linux kernel regressions list <regressions@lists.linux.dev>,
- linux-nfs@vger.kernel.org, stable@vger.kernel.org
-References: <c26ff09f-48d6-4ef3-9feb-8a8e6d6f37ba@benjiwiebe.com>
- <c3d06b9f-7da5-479f-be4f-9c0136631ce9@oracle.com>
- <c734eeb8-8486-4491-bb4d-b9656cbaffbe@app.fastmail.com>
- <52ddb3307fcc0893cc20ed63c4dc924f6bcaa8fd.camel@kernel.org>
-Content-Language: en-US
-From: Benji Wiebe <itsme@benjiwiebe.com>
-In-Reply-To: <52ddb3307fcc0893cc20ed63c4dc924f6bcaa8fd.camel@kernel.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="g0cSj6gQ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A31F41F00A3A
+	for <linux-nfs@vger.kernel.org>; Mon,  7 Sep 2026 19:15:44 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1788808544;
+	bh=tiXZzvH6IH4UX6JC04NiKtmHUrGl1MNxToT35sq2QiQ=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=g0cSj6gQKa4854Tbs8A/nuK08z6ueEgBcypPe2TwH7Pp+7XezeFSk0v9b2PylfX1N
+	 qA2XYtaXaENWsL+MUBCUOwhuOAb1rwDcctCbyOk/V5lf3Cs8DyV43+s8izbRPhHCGA
+	 wvj89PqNljsWxUK0NXjAcZyDjjaazUOnDKET1k8DB3SFT6iZ/1U1Rh/UNF//DcUTaC
+	 4UnHufSBMBiIn6KeBdHqH2RQhAcT9lNtOMeDOzvuktBqxrrIMqccXZH3OtuTt+1TV2
+	 vrTJrDj1tYzXICXpVo4GFiq4Rtf0p2yobo1QVth7lzPXEGsotujHKFYGEPAMeV6UH2
+	 mHYjobaVPCdyw==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id B0AA4F40066;
+	Mon,  7 Sep 2026 15:15:43 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Mon, 07 Sep 2026 15:15:43 -0400
+X-ME-Sender: <xms:Xw2fakR5KFhVaI_OeCrdv_MVw1BFQTsCKj-SR4ohyRdQ_YVLMMjJkg>
+    <xme:Xw2fasmNbYQW6TQ_iccyb3_kPzA3DEHRnjNB2tbXIADDNg-rFKF3xdMNc3JyYZ1Hr
+    kWfzUBSxl_6GlgY_6CkMcrJ4EUOTs-MQ7GGuJg-MEXYWkfoz7lI94od>
+X-ME-Proxy-Cause: dmFkZTE31xTmpyx5/rgzD8Yn08Xp4dnoKBm2ae8X5WOcf4Nj45ZwRG470q1Aox5KXGeh2t
+    TpsnHVsFD9kjkEUj23D6SUarxwbsP724jABoOSS7UY7pOOSC1/xhrO4PYgof1WiFCNzoEO
+    YC1TkKYWR2ITL9s0/4H/qHdmiEyBPEj913Xs4vPyibFri5o823i0tDIUGLhAXEiy2YHE2a
+    tsG8h2sxphjOCFk/THMegNieNjeNq5/m6dcMeEL62dKB12/bb62uOpwgk+Imjp11GMOWGv
+    W+XPF3l5A8zuc4n011G4Aj30S/jpsEHsenFcS/7SeGknsYjPS+PyAlK5t9mzuRGRbG8di7
+    36oVOC0Sh0DwvT9KNs7RBOWA9S367K/s+xIRQ3KKfPRa8mLHTTWyKXau45EXIuO8uwtWVw
+    ckea5qv9mioeT7GoFpwXDr5bODsdJSh0lR3YCcnDYD9HZ6J/iQVuG/KHYEYA8AIE9k3WIE
+    qRwe0mQhCYLRxw0nebiKp7uM21PuWuBzC8Do06rl+E5Z3hHSRx2dqFJ9c+D7nd1yIobZ6n
+    4Po1Wg+/hlZTgJlQzOwPkOm7+lSppg9QFKefQB75DEOj9ZqeLqu7gpi5AhE14w2+kxZEOS
+    w4VeUuS0AqtISQbAj6oLq1LIgMgwFvXvMvgnd2oDtx4lDqB2UIJ449LGBdrw
+X-ME-Proxy: <xmx:Xw2fan-0rlntAvegWvXUU4z1huJmpBB1_ev7Ti9D9ETFIrFTQHwFFg>
+    <xmx:Xw2fatBjjpA8Py1MmdmiWCqFEOdpeNNcaXasdzVAwkt_K8O9hezVUQ>
+    <xmx:Xw2fasQug0R97reVNhSK-iDNbVhpGOc6BX50C-wvGfKIUG_e4cL-yA>
+    <xmx:Xw2faksgv6uw04VL1nwNIogOy8mE6yT7XTet71q2_2cPhGBRliLOmg>
+    <xmx:Xw2fao2YkLTqQcWqqsORg8zmuIfuMgmktjhCL4eJLJU3xLOvd8qD6lYQ>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 8E4C37811F3; Mon,  7 Sep 2026 15:15:43 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+X-ThreadId: AGBspSFnGaaV
+Date: Mon, 07 Sep 2026 15:15:20 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: syzbot <syzbot+d5c77cabf7a3492aa650@syzkaller.appspotmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+ netdev@vger.kernel.org, syzkaller-bugs@googlegroups.com
+Message-Id: <4c018446-e4c0-457a-b2d1-a5bf856d0e2e@slotpi15m67>
+In-Reply-To: <6a9ef807.2bb5a69c.24b23c.0007.GAE@google.com>
+References: <6a9ef807.2bb5a69c.24b23c.0007.GAE@google.com>
+Subject: Re: [syzbot] [nfs?] [net?] KASAN: vmalloc-out-of-bounds Read in
+ rpc_queue_upcall
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-On 9/4/26 8:45 AM, Jeff Layton wrote:
-> On Fri, 2026-09-04 at 09:09 -0400, Chuck Lever wrote:
->> [ Adding correct addresses from MAINTAINERS ]
->>
->> On Fri, Sep 4, 2026, at 9:05 AM, Chuck Lever wrote:
->>> I'm using a minimal Fedora 45 VM (kvm) for testing.   I export a
->>> directory with rw and mount it from my personal computer running Fedora
->>> 45 as well. If /etc/nfs. conf has vers3=n, then reads and writes hang in
->>> D+ state, and there's a continuous
->>>
->>>
->>> I'm using a minimal Fedora 45 VM (kvm) for testing.  I export a
->>> directory with rw and mount it from my personal computer running Fedora
->>> 45 as well.
->>> If /etc/nfs.conf has vers3=n, then reads and writes hang in D+ state,
->>> and there's a continuous loop of V3 NULL calls, with the server replying
->>> that it only supports v4.
->>> If nfs.conf has vers3=y, then the reads and writes succeed.
->>> Introduced in 70b7e3526c53d9dd, still present in the latest
->>> mainline/master (841e384b841a).
->>>
->>> The hung state can be rescued by changing the setting and restarting
->>> nfs-server, at which point the read/write will complete.
->>>
->>> I can do more testing / get more information as needed.
->>>
->>> Here's links to pcap files with it working/bugged:
->>> http://grepper.net/lkml-files/nfs-working.pcap
->>> http://grepper.net/lkml-files/nfs-bugged.pcap
->>> http://grepper.net/lkml-files/nfs-bug-kernel.config
->>>
->>> #regzbot introduced:  70b7e3526c53d9dd7caccdbeff5b0485640d8cf1
->>
->> It's not immediately obvious to me why 70b7e3526c53d9dd should
->> cause this kind of behavior regression.
->>
->> Jeff, it's a netlink change. Can you triage?
->>
+On 9/7/26 1:44 PM, syzbot wrote:
+> Hello,
 > 
-> Sure.
+> syzbot found the following issue on:
 > 
-> Looking at the captures, it looks like the server is handing out a
-> flexfiles v3 pNFS layout for the trivial server, and that's (of course)
-> failing in this situation.
-> 
-> So we have at least one server bug there -- it shouldn't advertise a
-> flexfiles v3 layout when it's not serving v3! I'll plan to fix that
-> soon.
-> 
-> That doesn't seem to have anything to do with commit 70b7e3526c53d9dd
-> though. I'm not sure why a bisect would have landed there.
-I checked and rechecked several times (and again now!) and 
-70b7e3526c53d9dd always had the bug present and 565ee23ea2374 did not 
-have the bug present.>
-> What does the /etc/exports entry for this export look like? Disabling
-> pnfs should work around this for now too if you have it explicitly
-> enabled here.
+> HEAD commit:    df2908090cda Linux 7.3-rc2
+> git tree:       git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+> console output: https://syzkaller.appspot.com/x/log.txt?x=1416cc8e580000
+> kernel config:  https://syzkaller.appspot.com/x/.config?x=8c5c3949d762a91f
+> dashboard link: https://syzkaller.appspot.com/bug?extid=d5c77cabf7a3492aa650
+> compiler:       gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44
+> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=14daa071580000
 
-The /etc/exports entry I'm using:
-/home/export *(rw,no_root_squash)
+The fix is already queued in nfsd-testing:
 
-I'm new to the kernel development process; is there a patch I can apply 
-now to see if it fixes the bug?
+  https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git/commit/?id=8e5890ef0296
+
+#syz test: git://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git nfsd-testing
+
+-- 
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
