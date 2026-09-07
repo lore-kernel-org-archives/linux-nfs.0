@@ -1,172 +1,126 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oa1-f46.google.com (mail-oa1-f46.google.com [209.85.160.46])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B8B1238D6B5
-	for <linux-nfs@vger.kernel.org>; Mon,  7 Sep 2026 06:14:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788761701; cv=none; b=fA9X7As/5Q7t0FjQDljPCQdvZ6IvsP7pGEa2/cKPQsqxC8FlexEMd8flv3qr5kPaU3SLSgXTEIV7cfl9Wz5Nut51YvKppPshYyZ1vG+hOFkrcQMwW+MxaizmnX/RJr7QHMLNhUuQ90OhXY2lw6EyYEof6eFze83LDtLEwl6z5WQ=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788761701; c=relaxed/simple;
-	bh=zAMM3vEbDBISwB6UydnFAceeVzKLfZHWlY9Pio8hbmo=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=RDWFJcrSiBy5gKChZC1QWy5YUJDyPyLqg9mUC056+PvSLWaohQ+dyv1DxNnkeT3PO4OdTPKUIkE1qvSqNGg/kCEkaYlhHzKkF074+lYh4ZnUea+JJzkQBFg71fwW39YNs0lUWorCf7cCOCQeXdWZPl6+0FPNxInTsuGuCuMIrcU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=a4Hgz+ej; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BAA2E3A3E88
+	for <linux-nfs@vger.kernel.org>; Mon,  7 Sep 2026 06:24:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.160.46
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1788762304; cv=pass; b=SkgOJID1tz0oOO3qi9gIMGHJslez6TvGlH2Z6ikWjVrBn+LlKU1Im88Xd3f5lm/TN4/XT37RF7MIytP0qCRYWFFTGtcodiOsJa0Skzqoqbb5Wb1kc3v1EubdjbLkgiqqdbY8BlP9BbZxpgYg3OCaz+uoybeKmHWEir0/sYmx9KI=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1788762304; c=relaxed/simple;
+	bh=MdsdBUsDhf5aTWX2O8HoUCr1+cAZBa6BE2RS4oGDGCs=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Content-Type; b=lRQa50vX4FXLzu0oKuIJZx8FvcwFIx/2SX05AnZK1yGQgGgCgYGs4EF4koOzxlrfSDxfKnso9huWdiRkS7arW8UjvnQIPi0M86bSgjz/akWk6vjYuUU8kfjoAS6qhSjO2o626mv47gwDl9WTEBTd3Qgf5b/6S424E5j6GkOO1Ms=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=UwyXikwN; arc=pass smtp.client-ip=209.85.160.46
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="a4Hgz+ej"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=4fA10CrLCC+VWZwQM9C6adN24oc9Ojpf2WnVfEFKh8c=; b=a4Hgz+ejNHfLc7FJOgUU65pCI/
-	CJIqHsAlLf4oLAdtnEq/UisHAqNzEglc6B7TwJUBROX6kwNZz4XIpOzMebHSS/Uqxns16uug8t7yk
-	QBpEF6I9Xd/NUDf/EpSn4KICkclN2uBVmdxvHXL5LHEByjOkPySfK7Vgd4/KrKc/SfIw+UHFYzE1v
-	8QD+E5JeFaALjnNHzUnKgUIiLfHMjVZXS46AeeAhPST49mDD2+pAL693IwP52WiToSynNCnnf0yKc
-	EktflBH+bq3wkYIR+BB+Q0N4VWX6sM354bat8rDo5nkapsyxWMcJhQVyuQlD3BvUxOOr43/34QhNB
-	w7f1h8qQ==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1x3Sd8-000000060En-1Fmf;
-	Mon, 07 Sep 2026 06:14:58 +0000
-Date: Sun, 6 Sep 2026 23:14:58 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: trondmy@kernel.org, anna@kernel.org, hch@infradead.org,
-	linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] nfs: split up block layout and SCSI layout support
-Message-ID: <ap5WYtPbQYD0oPvW@infradead.org>
-References: <20260904172627.1347637-1-smayhew@redhat.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UwyXikwN"
+Received: by mail-oa1-f46.google.com with SMTP id 586e51a60fabf-476ef1870a1so755061fac.0
+        for <linux-nfs@vger.kernel.org>; Sun, 06 Sep 2026 23:24:58 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1788762295; cv=none;
+        d=google.com; s=arc-20260327;
+        b=lPTPmxLb9jymrRAAOp0VeGssisMsMf38tfkvwWDQj4O2GzBCGYntlcdaXOx+Go+d8E
+         VOa63a6qaDwmTweqFTdyaQvIr8kHPYuwdP47Hy6gZTJLAZMRIeYo/VZ6Fbg2VKeMhSUB
+         atYWePW5TQ8YTS/mSZzSZsJgHzG2qZgBzqrDYL2fAwTiibCzzNGqvKnijY7gH66bXp9x
+         Dz5eGBY5Uwm1Y+qssjijWLNhzUr/nCu9COr5lyAdx2yxo/cyf0p49hA+tld/aqKVOR+9
+         Qug+0LPoheV+neG8tQGkqoCymOATBagAWyfPXkuRnbvFWlAXHcmrfGf7PWYFHBDUqY6G
+         ngKg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :dkim-signature;
+        bh=hx7jggmKybVj+OOLmKakwLti2He5E8fSm4mMZ3lacqQ=;
+        fh=A3pMOUK00huGibGCZBFsLekFLVbB5hHGKjUNNKwO+5E=;
+        b=bGNoHZjbnxIUpjxtt+XGGwHAs9Gi2rswfG2iZnppFZPo5AS0WpJ7oaPomA2d5CrRIU
+         nZbdOW0YaI7WHtj1Bnn80F1hCN0VZ0J/uOWtOt9MWu/KaZPVvjXJngKdqQBZfM/MUkr8
+         QRgnSjEMvwy5xFcbhVbIlRY5Ch/PCXhKaZ+Kwhgaq8TU+AQK0gaKlByTFu0R35KNZikm
+         kxIKh0sdnGfoN+ITfRVrZ7DAcMWrE7OipKxM7GxSKdw6TAk24gWG/ZdhiN+lokKyx9XB
+         iB5Cjo34dTTN/6va0Y4GrCnEzyW4Zz1nSajEu3dQEE40Dvq6EvlWLh76wxO80TGG5h1l
+         +FpA==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1788762295; x=1789367095; darn=vger.kernel.org;
+        h=content-type:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=hx7jggmKybVj+OOLmKakwLti2He5E8fSm4mMZ3lacqQ=;
+        b=UwyXikwNBZCxyBvaoEUsd3qXs/aZk22wlTUztEzySeRJ5ODN5jEJQ/YZhs5BSgCafb
+         9xtHBV3NAs7zNysaqMQ7eSSgh8vlXP0UAhCGU9Z072aUd0qteAN7o9ylUAJNcgJV8LEc
+         PoyNWixfK7K6bD9sntJWKa5tLdcc4Rv7giZyTKzGYw3lRPIT/7WVyy0KoMgxXook4EDH
+         HShHPgWQlm93ga3UfETsTU9JiIe45hjw3jHZXv1pzRQiO8LSZ7AuM2rONZIsPp5hS4kd
+         AyjntayDk5UgeLHMerDSw5MHrmYht0kFEAH8QkE1qm6Kyyx88mwhf8tI5Wa/oRjq3Yqf
+         Rdgw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1788762295; x=1789367095;
+        h=content-type:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=hx7jggmKybVj+OOLmKakwLti2He5E8fSm4mMZ3lacqQ=;
+        b=TXVDAxiRuBtZEJBT1iNAY1OTiocRNaZUy1lda9HBkwoMWgwhN2M2dgzJDkmkRZPC9C
+         NIEDOLuU9i9p1BEUETGy5XElT/Jk0sQq+EbLk05wvdNZSAjBTpH+Z/g437c9JGAi1jXR
+         VvX35K01/PqDxzApC9596sTTGrlEMjAtTht3PR1JhdW3JayzUHArirOHzr2YwlnRego1
+         +RqepCm1AfscrsjBzSiMVNFo6vaEFBjfA1VxMbcluHwFRFtd9LcGcbic80iGx8n6gDeh
+         at0zSRpPCqXD+SDzo7M5pRpZyMY1fV5vtzfq659QrLi2+NOa3gFXNbJ7Sxv82SHQssqY
+         mScg==
+X-Gm-Message-State: AFuF++nTtThnkUY4fTFF2UWUEnf8UxZ+axRG6T8UpczhsQfDruUwkzGu
+	gUa5NdofcopeDu6qSR35WUcg9d0P9G1MQF+M3AmBY81f/hxYagedB4aVz3/SLhw6gcULuhPEOgo
+	e+sQbm6yjK8YqlmKPIyuGW5WbRBWMKGFwAw==
+X-Gm-Gg: AYBFou0M6ttmJIuOe1Uyp9gsCQolt7S4u35ARb6XvIh9VAA2nka0gIpeZaCZqILJPj8
+	ouqtMNRGpSVK0y0VbZArOXhXnY8qXpL8YMlppnc1M+SerUmMPnp0TbykEYVCCju0VInRDFbM59P
+	Sm0SAtHq+LrUNnD+NOqQ4KwgA4Nqpl2UFdrwHzHWOGus9lLOz6EJeDmh85m3B3tfeqVVm/Hw1sU
+	/ave/4Z68p97xBVrsvz3wQx/FU0T2N26hkYZSypENtU/y3fOlCKhkNpZ1KtcGvDb4P9mTSo1UV5
+	RUpFv5ful4h9jsLMmI0aWQRgok4Hjg3WfL/8w9YsRV5QglU=
+X-Received: by 2002:a05:6871:3401:b0:428:27a4:ada with SMTP id
+ 586e51a60fabf-475513525e1mr21561895fac.10.1788762295497; Sun, 06 Sep 2026
+ 23:24:55 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260904172627.1347637-1-smayhew@redhat.com>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+References: <CAHvsQGNj4UxG3YWk6JZeuAFfnYPEBZHHhjxA81g-Ko3vStryPw@mail.gmail.com>
+In-Reply-To: <CAHvsQGNj4UxG3YWk6JZeuAFfnYPEBZHHhjxA81g-Ko3vStryPw@mail.gmail.com>
+From: Cedric Blancher <cedric.blancher@gmail.com>
+Date: Mon, 7 Sep 2026 08:23:00 +0200
+X-Gm-Features: AcwNN1WqRLoVGyACWaAhfbYcIs8Vwx0v1CiA9Ldfc63IfX-Ie92zPZMJbDBtDxg
+Message-ID: <CALXu0Ue5YXWWhTuUhtWx-ZA87YRiFE6mtg3pqsPRkU+se1VgmA@mail.gmail.com>
+Subject: Linux /bin/getconf test whether filesystem is case-insensitive or case-sensitive?
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 
-On Fri, Sep 04, 2026 at 01:26:27PM -0400, Scott Mayhew wrote:
-> Add two new config options PNFS_BLOCK_LAYOUT and PNFS_SCSI_LAYOUT so
-> that SCSI layouts can be enabled without requiring block layouts.
-> Since block layouts are considered deprecated, PNFS_BLOCK_LAYOUT
-> defaults to n.
-> 
-> The original PNFS_BLOCK config is now invisible and gets set whenever
-> either of PNFS_BLOCK_LAYOUT or PNFS_SCSI_LAYOUT are enabled.
+Good morning!
 
-Much better, thanks!
+Below is a FreeBSD question, but I think this applies to Linux too:
+How can a Linux shell script find out whether a filesystem is
+case-insensitive or case-sensitve?
 
->  config PNFS_BLOCK
->  	tristate
-> +	default NFS_V4 if PNFS_BLOCK_LAYOUT || PNFS_SCSI_LAYOUT
+Ced
 
-This is only used in the two Makefiles, where we could just build
-the objects for both symbols.  But if you stick to the extra symbol,
-I'd not use default but instead select it from the other two options.
+---------- Forwarded message ---------
+From: Jasmin Dave <jasmin.dave.math@gmail.com>
+Date: Mon, 7 Sept 2026 at 00:01
+Subject: FreeBSD /bin/getconf test whether filesystem is
+case-insensitive or case-sensitive?
+To: <freebsd-hackers@freebsd.org>
 
-> +config PNFS_BLOCK_LAYOUT
-> +	bool "NFS client support for pNFS block layouts"
->  	depends on NFS_V4 && BLK_DEV_DM
-> +	default n
 
-n is the default default, so you can remove this line.
+Hello,
 
-> @@ -470,17 +470,21 @@ static struct pnfs_layout_hdr *__bl_alloc_layout_hdr(struct inode *inode,
->  	return &bl->bl_layout;
->  }
->  
-> +#ifdef CONFIG_PNFS_BLOCK_LAYOUT
->  static struct pnfs_layout_hdr *bl_alloc_layout_hdr(struct inode *inode,
->  						   gfp_t gfp_flags)
->  {
->  	return __bl_alloc_layout_hdr(inode, gfp_flags, false);
->  }
-> +#endif /* CONFIG_PNFS_BLOCK_LAYOUT */
->  
-> +#ifdef CONFIG_PNFS_SCSI_LAYOUT
->  static struct pnfs_layout_hdr *sl_alloc_layout_hdr(struct inode *inode,
->  						   gfp_t gfp_flags)
->  {
->  	return __bl_alloc_layout_hdr(inode, gfp_flags, true);
->  }
-> +#endif /* CONFIG_PNFS_SCSI_LAYOUT */
+I recall that filesystem properties can be queried with POSIX
+/bin/getconf if you provide the "key" to the query and a path.
 
-Let's move the alloc_layout_hdr helpers down next to the ops, to remove
-the number of ifdef blocks.
+Does FreeBSD /bin/getconf have a test whether the filesystem for a
+provided path is case-insensitive or case-sensitive?
 
-> +#ifdef CONFIG_PNFS_BLOCK_LAYOUT
->  	ret = bl_init_pipefs();
->  	if (ret)
->  		goto out;
-> @@ -1016,18 +1025,31 @@ static int __init nfs4blocklayout_init(void)
->  	ret = pnfs_register_layoutdriver(&blocklayout_type);
->  	if (ret)
->  		goto out_cleanup_pipe;
-> +#endif /* CONFIG_PNFS_BLOCK_LAYOUT */
->  
-> +#ifdef CONFIG_PNFS_SCSI_LAYOUT
->  	ret = pnfs_register_layoutdriver(&scsilayout_type);
->  	if (ret)
-> +#ifdef CONFIG_PNFS_BLOCK_LAYOUT
->  		goto out_unregister_block;
-> +#else
-> +		return ret;
-> +#endif /* CONFIG_PNFS_BLOCK_LAYOUT */
-> +#endif /* CONFIG_PNFS_SCSI_LAYOUT */
->  	return 0;
->  
-> +#ifdef CONFIG_PNFS_SCSI_LAYOUT
-> +#ifdef CONFIG_PNFS_BLOCK_LAYOUT
->  out_unregister_block:
->  	pnfs_unregister_layoutdriver(&blocklayout_type);
-> +#endif /* CONFIG_PNFS_BLOCK_LAYOUT */
-> +#endif /* CONFIG_PNFS_SCSI_LAYOUT */
-> +#ifdef CONFIG_PNFS_BLOCK_LAYOUT
->  out_cleanup_pipe:
->  	bl_cleanup_pipefs();
->  out:
->  	return ret;
-> +#endif /* CONFIG_PNFS_BLOCK_LAYOUT */
->  }
+Thanks, Jasmin
+--
+Jasmin Dave - Math (Quaternions!), Coding, Simulations
 
-This is a bit of a mess still.  I think the best is to have separate init
-and exit helper for block vs scsi in the ifdef block above that have
-stubs and then call them here and in the exit handler without all the
-micro-ifdefs.
 
-> +#ifdef CONFIG_PNFS_BLOCK_LAYOUT
->  MODULE_ALIAS("nfs-layouttype4-3");
-> +#endif /* CONFIG_PNFS_BLOCK_LAYOUT */
-> +#ifdef CONFIG_PNFS_SCSI_LAYOUT
->  MODULE_ALIAS("nfs-layouttype4-5");
-> +#endif /* CONFIG_PNFS_SCSI_LAYOUT */
 
-Please also move this into existing ifdef blocks.
-
-> +#ifdef CONFIG_PNFS_BLOCK_LAYOUT
->  #include <linux/sunrpc/rpc_pipe_fs.h>
-> +#endif /* CONFIG_PNFS_BLOCK_LAYOUT */
-
-Extract unused includes are generall harmless and preferred over
-conditional ones.
-
->  
->  #include "../nfs4_fs.h"
->  #include "../pnfs.h"
-> @@ -46,7 +48,9 @@
->  
->  struct pnfs_block_dev;
->  
-> +#ifdef CONFIG_PNFS_BLOCK_LAYOUT
->  #define PNFS_BLOCK_MAX_UUIDS	4
-> +#endif /* CONFIG_PNFS_BLOCK_LAYOUT */
-
-There is no point in hiding defines (or union arms below).
-
-This still looks like overzealous agent work.  Please try to use your
-own brain cells, the output tends to be much better than that from
-stupud machines.
-
+-- 
+Cedric Blancher <cedric.blancher@gmail.com>
+[https://plus.google.com/u/0/+CedricBlancher/]
+Institute Pasteur
