@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 68177579839;
-	Tue,  8 Sep 2026 16:34:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B87FC57F72F;
+	Tue,  8 Sep 2026 16:34:51 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788885291; cv=none; b=a2if2nD++sUUmyXgJCry3++UzK3AaEGkesNd57Cn4RVhpmNawdYVk9nykNXGgaKaWZGMHJEiW8E1D/l7VQ7d+iBn6BcyCb3MuWheYeK3cispWiTFQvRSJmLmnvanKpFtFXwARMCcawLzM3WZF+UaXDn+TXYIhnflnXPHtehOlso=
+	t=1788885293; cv=none; b=i4SQTHDdcJ9JbRkEUDYbEOeXB7qbrXbmHx8gVPFXH+iJ+Y/mvw+YzL6vgfA11ubkDRp7HCGEyG7ml1IG/TzqYpdQpGKuhA16a9Bj3c3nBWxNtgHYeq6zmYZCbEKEtFDGKVfLeDVQZpg3dowmEaecsw43tZLxXP4G6xz2moFbynw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788885291; c=relaxed/simple;
-	bh=XX6rU9AXcLahomsQVLdjJ+9Cqt0a2cXjYI+5BXbnZ00=;
+	s=arc-20240116; t=1788885293; c=relaxed/simple;
+	bh=3VKlBFe+x8WGFZmVDefMmcUeOHpmqZfAKP6qTmYA9w0=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=gqUHQHH9S05yyGx+zWuoEGeY84Nqw/mIxCgQD2RJrGmPI2EmkbouvP1svBo/NPkVUV+81XPC3Db+CMHDXSKtOdpoqyld5ojSo5HCozP3hjXfKeJZSwWDR8P7mcb+QDXZGVNp0coM3FZzV1gvw8zJ7ubSat06jjTQrEKjqV4g69k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=D4L2Zkot; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=aIFbeIaYESj6NokVcOh6Pl0ZS6pGrkGL9NI1dgT0KzsXIS+ToZSdjmwy+wkmtvMsWL2M+OZlUdjdGtHMONdpFl3O01u/imMhlvvVsTcSw1vBFQ4D+dzSvPf5rE8PYbygi2vHvrPiY6OJ25aRc/SRT96bKoKgGPmK6xtdzOWGLuw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=m03+FlSN; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="D4L2Zkot"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1BA951F00A3A;
-	Tue,  8 Sep 2026 16:34:50 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="m03+FlSN"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5AF571F00A3D;
+	Tue,  8 Sep 2026 16:34:51 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788885290;
-	bh=efnCfQHpikgWrQThhbZWuGy0HSmCAahwMimpqUFqCT8=;
+	s=k20260515; t=1788885291;
+	bh=AgO/ir7uwrG0++/T5HeOPy6QXU+5Ubmmn+fOgIVMqVk=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=D4L2Zkotqj+us21cMVV0relguxs3k3PcVTSlQSYQOpaMb2uAzc5AxGW36l0mw77bY
-	 sHFrlGYybNj2hEhuCz85hedwMihwEL/Bwtr1d8aPtEZjiRRDAWDRBGZyY16MDCMfjw
-	 szHZKuU2N4DiW82B3+SUKnwlvPAbUCh+IsnBaR55Mzsx1WWUeHJDEV/T5Qmb2z/ELS
-	 yqRsfg6e7KCo3iLwwq9OtaqIHNqZo4T3thUQxMFJ7yGwL/T4GIs7MYj7xvb+6yPY6r
-	 pC5klX7vB/CteGxaDemeadtWGdcTa7PD+K8UdsekkOIxXQqnJ73nsGad+83ZsAdEPQ
-	 K1cXkItuti5fg==
+	b=m03+FlSN8Z/RaaOO3FRnLpCqk+ncAVwNEKg/G+/PdlMdfYGPlwy9yS0EL74FPpNBo
+	 ftmMX4XH25w5uYLOnJhE6Ws/n8y3xE9vOlqKaGh9pAyAIK0iHxBOSxxeJTT+i+1iYf
+	 oVaDuTPSBysoY8R1TNVEQuZjn2H5uBcgrkMZclpYNEQSwem9eKwC1LqIgyzKmDxGi+
+	 dFCrL93EroTwAMUlTNipnWfve1A7LjZSS8pxOS5US4FSJ+s4n6E6/ve6VsM8R1nU9w
+	 VpOS4wYJrv//QXL2tJvokCsGuAC4UOjGXwJmX28DMRy/ovXwuuSyekamdSSx2p6Tt2
+	 +PsTtH1GotSWw==
 From: Mike Snitzer <snitzer@kernel.org>
 To: linux-nfs@vger.kernel.org,
 	linux-block@vger.kernel.org
@@ -34,9 +34,9 @@ Cc: dm-devel@lists.linux.dev,
 	cel@kernel.org,
 	jlayton@kernel.org,
 	david.flynn@hammerspace.com
-Subject: [PATCH 1/4] brd: iterate the bio by byte position, not bi_sector
-Date: Tue,  8 Sep 2026 12:34:36 -0400
-Message-ID: <20260908163448.30841-2-snitzer@kernel.org>
+Subject: [PATCH 2/4] zram: handle sub-page bvec segments without corrupting data
+Date: Tue,  8 Sep 2026 12:34:37 -0400
+Message-ID: <20260908163448.30841-3-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20260908163448.30841-1-snitzer@kernel.org>
 References: <20260908163232.30774-1-snitzer@kernel.org>
@@ -49,115 +49,145 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-brd_rw_bvec() takes the device position from bio->bi_iter.bi_sector,
-which bio_advance_iter_single() advances by bytes >> SECTOR_SHIFT. For
-a bvec whose length is not a multiple of the sector size the sector
-cursor silently loses the sub-sector residue while the data cursor
-(bi_bvec_done/bi_size) consumes the full length -- from that segment
-on, data is written at a device offset short of where it belongs, and
-every subsequent byte lands shifted with no error reported anywhere.
+zram's submit loops have two independent defects for a bvec whose
+length is not PAGE_SIZE, and on a 4K-page kernel they compound into
+silent full-page corruption for any ITER_BVEC direct I/O submitter
+whose bio_vec array carries sub-page segments (bio_iov_bvec_set()
+passes the caller's array through as-is).
 
-Such bvec geometry is legal at the submitter: ITER_BVEC direct I/O
-passes the caller's bio_vec array through as-is (bio_iov_bvec_set()),
-so e.g. NFSD's NFSD_IO_DIRECT write path hands XFS/iomap a payload
-whose first fragment starts mid-page (the RPC header precedes it in
-the receive buffer) and whose fragment lengths are not sector
-multiples. A 1 MiB write arriving as bv0=(160,16224) + 63x(0,16384) +
-(0,160) reproduces on brd as: first 15872 = ALIGN_DOWN(16224, 512)
-bytes correct, everything after shifted forward by 352 = 16224 - 15872
-bytes -- while the write completes successfully. Any NFSD_IO_DIRECT
-(or other kernel bvec direct I/O) write to a brd-backed filesystem is
-exposed; request-based drivers are unaffected because nothing in the
-request path does per-bvec sector arithmetic.
+First, on PAGE_SIZE == 4096 is_partial_io() is hardwired to false, on
+the reasoning that logical_block_size == PAGE_SIZE guarantees
+whole-page bvecs. It guarantees no such thing: queue limits constrain
+a bio's starting sector and total size, not individual bvec lengths.
+Every sub-page segment then takes the full-page fast path --
+zram_write_page(zram, bvec->bv_page, index) consumes the entire page
+and ignores bv_offset/bv_len completely -- so consecutive segments
+that map to the same page index each rewrite the whole slot, and a
+1 MiB write arriving as bv0=(684,3412) + 255x(0,4096) + (0,684) reads
+back with every byte wrong while the write reports success. The read
+side is equally exposed: zram_read_page() lands a full page in
+bvec->bv_page, clobbering reader memory outside the bvec. Make
+is_partial_io() honest on every page size; the partial-IO helpers it
+routes to already exist and honor bv_offset/bv_len.
 
-Track the device position as a byte offset owned by the submit loop
-and advanced by the number of bytes each segment actually processed,
-instead of re-deriving it from the skewed bi_sector. Verified with a
-synthetic-bio reproducer over brd directly and through nvme-loop:
-mid-page-offset geometries and the page-aligned control now all read
-back byte-identical, and 20 fresh NFS connections x 16 MiB of O_DIRECT
-writes over an XFS-on-nvme-loop-on-brd export complete with zero data
-mismatches (previously most connections corrupted).
+Second, the loops re-derive each segment's target page index and
+in-page offset from iter.bi_sector, which bio_advance_iter_single()
+advances by bytes >> SECTOR_SHIFT -- a sub-sector residue in any
+segment length skews every subsequent segment's position while the
+data cursor consumes the full length (the same defect just fixed in
+brd). With partial detection made honest this would still misplace
+data through the read-modify-write path. Track the device position as
+a byte offset owned by the submit loop and advanced by the bytes each
+segment actually processed.
 
-Fixes: 3185444f0504 ("brd: split I/O at page boundaries")
+Verified with a synthetic-bio reproducer: mid-page-offset geometries
+(684, 160, 512) and the page-aligned control now all read back
+byte-identical on a 4K-page kernel; before the fix the unaligned
+geometries corrupted all 1 MiB silently.
+
+With partial IO possible on every page size, the ZRAM_PARTIAL_IO
+guard in read_from_bdev() is dead code -- drop it along with the
+define.
+
+Fixes: 1f7319c74275 ("zram: partial IO refactoring")
+Fixes: 82ca875d2549 ("zram: refactor highlevel read and write handling")
 Assisted-by: Claude:claude-fable-5
 Signed-off-by: Mike Snitzer <snitzer@kernel.org>
 ---
- drivers/block/brd.c | 29 +++++++++++++++++++++++------
- 1 file changed, 23 insertions(+), 6 deletions(-)
+ drivers/block/zram/zram_drv.c | 36 +++++++++++++++++------------------
+ 1 file changed, 18 insertions(+), 18 deletions(-)
 
-diff --git a/drivers/block/brd.c b/drivers/block/brd.c
-index 00cc8122068f..4011538cecaf 100644
---- a/drivers/block/brd.c
-+++ b/drivers/block/brd.c
-@@ -134,12 +134,24 @@ static void brd_free_pages(struct brd_device *brd)
- /*
-  * Process a single segment.  The segment is capped to not cross page boundaries
-  * in both the bio and the brd backing memory.
-+ *
-+ * The device position is @pos, a byte offset maintained by the caller --
-+ * not bio->bi_iter.bi_sector: bio_advance_iter_single() advances bi_sector
-+ * by bytes >> SECTOR_SHIFT, so a bvec whose length is not a multiple of the
-+ * sector size silently skews bi_sector against the bytes actually consumed
-+ * and corrupts everything that follows.  Byte-granular bvec boundaries
-+ * reach us from ITER_BVEC direct I/O submitters whose caller's bio_vec
-+ * array is passed through as-is (bio_iov_bvec_set()).
-+ *
-+ * Returns the number of bytes processed, or 0 on error (the bio has then
-+ * been completed).
-  */
--static bool brd_rw_bvec(struct brd_device *brd, struct bio *bio)
-+static unsigned int brd_rw_bvec(struct brd_device *brd, struct bio *bio,
-+				loff_t pos)
- {
- 	struct bio_vec bv = bio_iter_iovec(bio, bio->bi_iter);
--	sector_t sector = bio->bi_iter.bi_sector;
--	u32 offset = (sector & (PAGE_SECTORS - 1)) << SECTOR_SHIFT;
-+	sector_t sector = pos >> SECTOR_SHIFT;
-+	u32 offset = pos & (PAGE_SIZE - 1);
- 	blk_opf_t opf = bio->bi_opf;
- 	struct page *page;
- 	void *kaddr;
-@@ -167,14 +179,14 @@ static bool brd_rw_bvec(struct brd_device *brd, struct bio *bio)
- 	bio_advance_iter_single(bio, &bio->bi_iter, bv.bv_len);
- 	if (page)
- 		put_page(page);
--	return true;
-+	return bv.bv_len;
- 
- out_error:
- 	if (PTR_ERR(page) == -ENOMEM && (opf & REQ_NOWAIT))
- 		bio_wouldblock_error(bio);
- 	else
- 		bio_io_error(bio);
--	return false;
-+	return 0;
+diff --git a/drivers/block/zram/zram_drv.c b/drivers/block/zram/zram_drv.c
+index 789c76dc8613..6c5ba814ba5b 100644
+--- a/drivers/block/zram/zram_drv.c
++++ b/drivers/block/zram/zram_drv.c
+@@ -217,18 +217,19 @@ static bool zram_can_store_page(struct zram *zram)
+ 	return !zram->limit_pages || alloced_pages <= zram->limit_pages;
  }
  
- static void brd_do_discard(struct brd_device *brd, sector_t sector, u32 size)
-@@ -202,6 +214,7 @@ static void brd_do_discard(struct brd_device *brd, sector_t sector, u32 size)
- static void brd_submit_bio(struct bio *bio)
+-#if PAGE_SIZE != 4096
++/*
++ * A whole-page bvec is required for the full-page fast paths, which
++ * consume bv_page outright and ignore bv_offset/bv_len.  The queue's
++ * logical_block_size == PAGE_SIZE only constrains a bio's starting
++ * sector and total size -- individual bvec lengths are not constrained
++ * by any queue limit, and ITER_BVEC direct I/O submitters pass the
++ * caller's bio_vec array through as-is (bio_iov_bvec_set()), so
++ * sub-page segments reach us on every PAGE_SIZE.
++ */
+ static inline bool is_partial_io(struct bio_vec *bvec)
  {
- 	struct brd_device *brd = bio->bi_bdev->bd_disk->private_data;
-+	loff_t pos;
+ 	return bvec->bv_len != PAGE_SIZE;
+ }
+-#define ZRAM_PARTIAL_IO		1
+-#else
+-static inline bool is_partial_io(struct bio_vec *bvec)
+-{
+-	return false;
+-}
+-#endif
  
- 	if (unlikely(op_is_discard(bio->bi_opf))) {
- 		brd_do_discard(brd, bio->bi_iter.bi_sector,
-@@ -210,9 +223,13 @@ static void brd_submit_bio(struct bio *bio)
- 		return;
- 	}
+ #if defined CONFIG_ZRAM_WRITEBACK || defined CONFIG_ZRAM_MULTI_COMP
+ struct zram_pp_slot {
+@@ -1510,11 +1511,8 @@ static int read_from_bdev(struct zram *zram, struct page *page,
+ 			  struct bio *parent)
+ {
+ 	atomic64_inc(&zram->stats.bd_reads);
+-	if (!parent) {
+-		if (WARN_ON_ONCE(!IS_ENABLED(ZRAM_PARTIAL_IO)))
+-			return -EIO;
++	if (!parent)
+ 		return read_from_bdev_sync(zram, page, index, blk_idx);
+-	}
+ 	return read_from_bdev_async(zram, page, index, blk_idx, parent);
+ }
+ #else
+@@ -2718,11 +2716,11 @@ static void zram_bio_read(struct zram *zram, struct bio *bio)
+ {
+ 	unsigned long start_time = bio_start_io_acct(bio);
+ 	struct bvec_iter iter = bio->bi_iter;
++	loff_t pos = (loff_t)iter.bi_sector << SECTOR_SHIFT;
  
-+	pos = (loff_t)bio->bi_iter.bi_sector << SECTOR_SHIFT;
  	do {
--		if (!brd_rw_bvec(brd, bio))
-+		unsigned int len = brd_rw_bvec(brd, bio, pos);
-+
-+		if (!len)
- 			return;
-+		pos += len;
- 	} while (bio->bi_iter.bi_size);
+-		unsigned long index = iter.bi_sector >> SECTORS_PER_PAGE_SHIFT;
+-		u32 offset = (iter.bi_sector & (SECTORS_PER_PAGE - 1)) <<
+-				SECTOR_SHIFT;
++		unsigned long index = pos >> PAGE_SHIFT;
++		u32 offset = pos & (PAGE_SIZE - 1);
+ 		struct bio_vec bv = bio_iter_iovec(bio, iter);
  
- 	bio_endio(bio);
+ 		bv.bv_len = min_t(u32, bv.bv_len, PAGE_SIZE - offset);
+@@ -2738,6 +2736,7 @@ static void zram_bio_read(struct zram *zram, struct bio *bio)
+ 		mark_slot_accessed(zram, index);
+ 		slot_unlock(zram, index);
+ 
++		pos += bv.bv_len;
+ 		bio_advance_iter_single(bio, &iter, bv.bv_len);
+ 	} while (iter.bi_size);
+ 
+@@ -2749,11 +2748,11 @@ static void zram_bio_write(struct zram *zram, struct bio *bio)
+ {
+ 	unsigned long start_time = bio_start_io_acct(bio);
+ 	struct bvec_iter iter = bio->bi_iter;
++	loff_t pos = (loff_t)iter.bi_sector << SECTOR_SHIFT;
+ 
+ 	do {
+-		unsigned long index = iter.bi_sector >> SECTORS_PER_PAGE_SHIFT;
+-		u32 offset = (iter.bi_sector & (SECTORS_PER_PAGE - 1)) <<
+-				SECTOR_SHIFT;
++		unsigned long index = pos >> PAGE_SHIFT;
++		u32 offset = pos & (PAGE_SIZE - 1);
+ 		struct bio_vec bv = bio_iter_iovec(bio, iter);
+ 
+ 		bv.bv_len = min_t(u32, bv.bv_len, PAGE_SIZE - offset);
+@@ -2768,6 +2767,7 @@ static void zram_bio_write(struct zram *zram, struct bio *bio)
+ 		mark_slot_accessed(zram, index);
+ 		slot_unlock(zram, index);
+ 
++		pos += bv.bv_len;
+ 		bio_advance_iter_single(bio, &iter, bv.bv_len);
+ 	} while (iter.bi_size);
+ 
 -- 
 2.52.0
 
