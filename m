@@ -1,19 +1,19 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C528854EEA8
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C515D54EEA3
 	for <linux-nfs@vger.kernel.org>; Tue,  8 Sep 2026 13:42:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788874969; cv=none; b=AHWhJ7tX3Nogguj6Az+DRGOfRNt8TGcA4sxgvjdxmw6o7YQ0qik2ZWbe29v5PuWQ3LHaGYVigX80Xn5pg4YGbTH9jmeR57E2KrXGugpNI37sbphfq/EMxnpPOLsrg26n+B804iWjfcVYBkdg/AoMlERXaApgDyupTX72Hxey0ZQ=
+	t=1788874970; cv=none; b=UhVhdIjXYLbG80D/tnvkDoxhSgkPTPYWnBuYll0Gn0uhniMkvKsmnsFyBFe3nHhbutRuj7guLPBDy8uzi2/0r1yF2Ek163tUqM+Xg44BUsiq2/F+YrG79N5YmwrTGAxgMk2deXtY88W1fsUoVxIN1N9lvfm4XSrcZvAb6GVB7SI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788874969; c=relaxed/simple;
-	bh=tiPQRXJXepFS7Wwezf/LZGEOgECpEXCZuGRugVWRFYE=;
+	s=arc-20240116; t=1788874970; c=relaxed/simple;
+	bh=XMQMUdbO7ucmKm1omDdPHBrUYm0CE78z3mSjzNRbttA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=W74SWvkqdeu+OTKl7zFYnVCE3spnMiPjDT5MjUMLc/dUzC2q+vQ3R+PMELr7L4DvlN5y9QQ+HSdZ1UkdImGFOdoM9sXTs5s70ysIZfDFjqROQKwkxtkJD7/GEcJdm7QUHwNhI1oAXPOLSRD6qXoEMIHMCbgR7Wh8xxKxT7l4AvA=
+	 MIME-Version; b=PIPhIeQRDVoeR7F7KRUFZ/W6GLAXqjhqd5vPoow4D5+apfK6b+RIcGabUgOF3I4dGYX0k+j2otK7Z1DBH8Htx/fdKskYPFvfCU01t8+USa7C1/mQrahniDkuepEq6TVfl1k24sPaPCA2Y+U5qwkUBoFsPJx7AHNwWSCPs7KxdUw=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0C6181F00AC4;
-	Tue,  8 Sep 2026 13:42:39 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8B4DC1F00A3D;
+	Tue,  8 Sep 2026 13:42:38 +0000 (UTC)
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -21,9 +21,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 03/10] SUNRPC: Add svcxdr_encode_opaque_payload()
-Date: Tue,  8 Sep 2026 09:42:27 -0400
-Message-ID: <20260908134234.512312-4-cel@kernel.org>
+Subject: [PATCH v3 01/10] SUNRPC: Carry a generated-codec context pointer in struct xdr_stream
+Date: Tue,  8 Sep 2026 09:42:25 -0400
+Message-ID: <20260908134234.512312-2-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260908134234.512312-1-cel@kernel.org>
 References: <20260908134234.512312-1-cel@kernel.org>
@@ -35,76 +35,94 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The encoder functions that xdrgen emits handle a variable-length
-opaque with xdr_stream_encode_opaque(), which copies the opaque
-content into the RPC buffer. On the server, an NFS READ payload
-already resides in the pages of rqstp->rq_res, placed there by an
-underlying file system read. Copying that payload into the RPC
-Reply buffer adds a data copy on every READ and prevents a
-transport capable of direct data placement from conveying the
-payload separately from the rest of the Reply.
+A generated XDR codec function receives only an xdr_stream, yet
+some codecs need state that the stream does not carry. Passing
+that state as an additional argument changes the signature of
+every function on the path from the program entry point down to
+the one that consumes it, and for generated code it makes each
+function's argument list depend on an analysis of the entire
+specification.
 
-Add a helper that encodes a page-resident opaque by reference: it
-encodes the length, inserts the payload pages into the XDR stream,
-then marks the byte range as a result payload.
-
-Generated code calls this helper, so its parameters are limited to
-the xdr_stream and the payload length. It recovers the svc_rqst
-with svcxdr_rqst(), and takes the reply's page array from the
-stream's buffer.
+Add xdrgen_ctx to struct xdr_stream, a pointer that the layer
+initializing the stream sets aside for generated codecs to find,
+following the precedent of seq_file->private and
+netlink_callback->data. Every xdr_stream initializer clears it, so
+a codec never reads a residual value left in a stream that was
+allocated on the stack or taken from a transport's free pool.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 Acked-by: Jeff Layton <jlayton@kernel.org>
 ---
- include/linux/sunrpc/svc.h | 35 +++++++++++++++++++++++++++++++++++
- 1 file changed, 35 insertions(+)
+ fs/nfsd/nfs4xdr.c          | 1 +
+ include/linux/sunrpc/svc.h | 1 +
+ include/linux/sunrpc/xdr.h | 1 +
+ net/sunrpc/xdr.c           | 3 +++
+ 4 files changed, 6 insertions(+)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index e69aeb864a8d..7950a2ce0a27 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -608,6 +608,41 @@ static inline void svcxdr_encode_opaque_pages(struct svc_rqst *rqstp,
- 	xdr->page_ptr = rqstp->rq_next_page - 1;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 00ddaac499c6..6ea6cb0632f8 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -4609,6 +4609,7 @@ static void svcxdr_init_encode_from_buffer(struct xdr_stream *xdr,
+ 	xdr->p = p;
+ 	xdr->end = (void *)p + bytes;
+ 	buf->buflen = bytes;
++	xdr->xdrgen_ctx = NULL;
  }
  
-+/**
-+ * svcxdr_encode_opaque_payload - Encode a page-resident opaque data item
-+ * @xdr: xdr_stream to be updated
-+ * @len: number of octets of content in the data item
-+ *
-+ * Context: Process context. @xdr must have been initialized by
-+ *	    svcxdr_init_encode() and still be positioned in the reply
-+ *	    head.
-+ *
-+ * Return:
-+ *   %true: Success
-+ *   %false: The reply head cannot hold the length prefix and XDR
-+ *   padding, or the transport could not accommodate the result payload
-+ */
-+static inline bool svcxdr_encode_opaque_payload(struct xdr_stream *xdr, u32 len)
-+{
-+	struct svc_rqst *rqstp = svcxdr_rqst(xdr);
-+	struct xdr_buf *buf = xdr->buf;
-+
-+	/*
-+	 * The length prefix and any pad word must land in the reply
-+	 * head. A prefix that spills into the first Reply page lands
-+	 * on the payload itself, and xdr_write_pages() BUGs when the
-+	 * pad word does not fit.
-+	 */
-+	if ((xdr->end - xdr->p) * XDR_UNIT < XDR_UNIT + xdr_pad_size(len))
-+		return false;
-+	if (xdr_stream_encode_u32(xdr, len) < 0)
-+		return false;
-+	svcxdr_encode_opaque_pages(rqstp, xdr, buf->pages, buf->page_base, len);
-+	if (svc_encode_result_payload(rqstp, buf->head->iov_len, len) < 0)
-+		return false;
-+	return true;
-+}
-+
+ __be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 5fa9417e034d..b80161b849ce 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -567,6 +567,7 @@ static inline void svcxdr_init_encode(struct svc_rqst *rqstp)
+ 	xdr->page_ptr = buf->pages - 1;
+ 	buf->buflen = PAGE_SIZE * (rqstp->rq_page_end - buf->pages);
+ 	xdr->rqst = NULL;
++	xdr->xdrgen_ctx = NULL;
+ }
+ 
  /**
-  * svcxdr_set_auth_slack -
-  * @rqstp: RPC transaction
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index b102b4f21e6b..2b33fc64be17 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -244,6 +244,7 @@ struct xdr_stream {
+ 	unsigned int nwords;	/* Remaining decode buffer length */
+ 
+ 	struct rpc_rqst *rqst;	/* For debugging */
++	void *xdrgen_ctx;	/* Context for generated codecs */
+ };
+ 
+ /*
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index cb2ef428651f..d95e80d85a89 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -1162,6 +1162,7 @@ void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p,
+ 		iov->iov_len += len;
+ 	}
+ 	xdr->rqst = rqst;
++	xdr->xdrgen_ctx = NULL;
+ }
+ EXPORT_SYMBOL_GPL(xdr_init_encode);
+ 
+@@ -1181,6 +1182,7 @@ void xdr_init_encode_pages(struct xdr_stream *xdr, struct xdr_buf *buf)
+ 	xdr->p = page_address(*xdr->page_ptr);
+ 	xdr->end = (void *)xdr->p + min_t(u32, buf->buflen, PAGE_SIZE);
+ 	xdr->rqst = NULL;
++	xdr->xdrgen_ctx = NULL;
+ }
+ EXPORT_SYMBOL_GPL(xdr_init_encode_pages);
+ 
+@@ -1619,6 +1621,7 @@ void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p,
+ 		xdr->p = p;
+ 	}
+ 	xdr->rqst = rqst;
++	xdr->xdrgen_ctx = NULL;
+ }
+ EXPORT_SYMBOL_GPL(xdr_init_decode);
+ 
 -- 
 2.55.0
 
