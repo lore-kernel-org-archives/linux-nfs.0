@@ -1,19 +1,19 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B0E4E4A64CA
-	for <linux-nfs@vger.kernel.org>; Tue,  8 Sep 2026 13:42:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6BB8054DADB
+	for <linux-nfs@vger.kernel.org>; Tue,  8 Sep 2026 13:42:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788874978; cv=none; b=RIceUesduAGpA71v55tAG1aX1ozlq5ERx8VB4CBMY9WoFh/3hubdmakNaWllnVfCr2CJI/euCRc6w/HezFk9BaNOMobTtBKeKgghcdsbYhvjsQ7axXt+Bjul4k6LnR/BmNGIqSQnSyEu/kDPiGCoyCUH+rCsaR4eSSd8BeM4kaQ=
+	t=1788874982; cv=none; b=bi8ptmVBreK9rfCsMjfRhv4nKcowfa0LtJbj3AN0frPFYuOr2HehDoaayNk9z/lyqAs14MrkgeN5t5leQwQ84r7HmuWre78JyObfMXK6qISDrkq2gzwhnfrcvw00rNxRpAZsJCAbAQLzHXJT4LvsFKIrlHWB9LyfAj7cVy1LxiM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788874978; c=relaxed/simple;
-	bh=vq1sFO8iKw9TzYm3C1KWEkKCFLW7Q2I/AZZPvbMD9o4=;
+	s=arc-20240116; t=1788874982; c=relaxed/simple;
+	bh=CQbSbrRa7e4pvMdUS1HY36Es8L6mzdtosVrXjt6grDQ=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=m63BtNlzDC6hcASE3sc2y9lUnEhJQIgeQm4X78DBTP7wdHfSAAXwhe+XoHYv92WP6g6lbccMQReQsDVmljVu6x2cguhHeqvlC/HRasNOsacgO8rQChRuUb6YcuZ2Byd0LzIIhRDpGk1pLECABeDCihfAk/O/+qe5XmpTg9m9bPY=
+	 MIME-Version; b=uRMR7/mme71rPbCPkC5YA7ejEsj0XQwBpTBxOHB2N8w7L/JKQTT+v+qS+WHfq4fpPwatas0VhckG8LUe3AsD+cG4plNgrP3poWHV1nVFUE9ZPasarbpS9i3oyW50JPjBePY+9wLEL1taZV5yVa4KEOt75s7Wh4tIPNUW+xsOKZI=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 54A6B1F00ADB;
-	Tue,  8 Sep 2026 13:42:42 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 602391F01559;
+	Tue,  8 Sep 2026 13:42:45 +0000 (UTC)
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -21,9 +21,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 06/10] SUNRPC: Add svcxdr_decode_opaque_payload()
-Date: Tue,  8 Sep 2026 09:42:30 -0400
-Message-ID: <20260908134234.512312-7-cel@kernel.org>
+Subject: [PATCH v3 10/10] xdrgen: Stream optional-data aggregate lists during encode
+Date: Tue,  8 Sep 2026 09:42:34 -0400
+Message-ID: <20260908134234.512312-11-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260908134234.512312-1-cel@kernel.org>
 References: <20260908134234.512312-1-cel@kernel.org>
@@ -35,68 +35,115 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-A bulk argument payload such as the content of an NFS WRITE request
-arrives in the pages of the server's Receive buffer. Copying it into
-a contiguous data pointer wastes memory bandwidth and defeats a
-transport capable of direct data placement, so a server decodes such
-an item in place: it reads the length prefix and captures the payload
-octets by reference in an xdr_buf that later stages hand to the VFS.
+The optional-data aggregate encoder loops cursor.count times, so the
+begin hook must report the element count before the first element is
+written.  A producer that reads its elements while the reply is
+encoded -- NFSv2 READDIR streaming directory entries straight into the
+send buffer -- does not know that count in advance, and would have to
+materialize the whole list just to satisfy the loop bound.
 
-svcxdr_encode_opaque_payload() already provides the encode-side
-counterpart for a page-resident result payload. Add the decode-side
-helper so a generated decoder can express the same in-place handling
-for a page-resident argument.
+An optional-data list carries no count on the wire, so nothing forces
+one on the encoder.  Drive it from the item hook instead: a false
+return ends the list, and the framing writes the terminator.
+
+The counted-array form and its hook contract are unchanged.  No
+in-tree spec marks an optional-data member yet, so no generated code
+changes here.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 Acked-by: Jeff Layton <jlayton@kernel.org>
 ---
- include/linux/sunrpc/svc.h | 33 +++++++++++++++++++++++++++++++++
- 1 file changed, 33 insertions(+)
+ include/linux/sunrpc/xdrgen/_defs.h           | 27 ++++++++++++-------
+ tools/net/sunrpc/xdrgen/README                | 10 +++++--
+ .../C/struct/encoder/aggregate_optional.j2    |  6 ++---
+ 3 files changed, 28 insertions(+), 15 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 7950a2ce0a27..24698856eb40 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -643,6 +643,39 @@ static inline bool svcxdr_encode_opaque_payload(struct xdr_stream *xdr, u32 len)
- 	return true;
- }
+diff --git a/include/linux/sunrpc/xdrgen/_defs.h b/include/linux/sunrpc/xdrgen/_defs.h
+index f4375d73c5ca..d767206feea4 100644
+--- a/include/linux/sunrpc/xdrgen/_defs.h
++++ b/include/linux/sunrpc/xdrgen/_defs.h
+@@ -30,15 +30,24 @@ typedef struct {
+ } opaque;
  
-+/**
-+ * svcxdr_decode_opaque_payload - Decode a page-resident opaque data item
-+ * @xdr: xdr_stream to be decoded
-+ * @payload: on success, describes the octets of the data item's content
-+ * @maxlen: largest data item length the caller will accept, or zero for
-+ *	    no limit
+ /*
+- * Cursor a hook-driven aggregate codec hands to its application hooks,
+- * one element at a time, in place of a materialized C array. The
+- * generated framing owns it. @xdr is the RPC layer's stream; @ctx is
+- * that stream's xdrgen_ctx, the svc_rqst on the server. @index is
+- * the current element and @count the wire array length: a decoder
+- * fills @count from the wire before the begin hook runs, an
+- * encoder's begin hook sets it. @member_id selects among a type's
+- * marked members. The begin/item/end contract is under "Pragma
+- * aggregate" in tools/net/sunrpc/xdrgen/README.
++ * Cursor a hook-driven aggregate codec hands to its begin/item/end
++ * hooks, one element at a time, in place of a materialized C array.
++ * The generated framing owns it. @xdr is the RPC layer's stream and
++ * @ctx its xdrgen_ctx, the svc_rqst on the server. @index is the
++ * current element; @member_id selects among a type's marked members.
++ * For a counted array @count is the wire length: a decoder fills it
++ * before the begin hook runs, an encoder's begin hook sets it. The
++ * hook contract is under "Pragma aggregate" in
++ * tools/net/sunrpc/xdrgen/README.
 + *
-+ * A bulk payload such as the content of an NFS WRITE request resides in
-+ * the pages of the Receive buffer. Rather than copy it, set @payload to
-+ * describe the item's content in place.
-+ *
-+ * Context: Process context. @xdr must have been initialized by
-+ *	    svcxdr_init_decode().
-+ *
-+ * Return:
-+ *   %true: @payload describes the item in place and @xdr has advanced
-+ *	    past it
-+ *   %false: a bounds error occurred, or the length prefix exceeds
-+ *	     @maxlen; @payload is undefined
-+ */
-+static inline bool svcxdr_decode_opaque_payload(struct xdr_stream *xdr,
-+						struct xdr_buf *payload,
-+						u32 maxlen)
-+{
-+	u32 len;
-+
-+	if (xdr_stream_decode_u32(xdr, &len) < 0)
-+		return false;
-+	if (maxlen && len > maxlen)
-+		return false;
-+	return xdr_stream_subsegment(xdr, payload, len);
-+}
-+
- /**
-  * svcxdr_set_auth_slack -
-  * @rqstp: RPC transaction
++ * An optional-data list ("type *name") carries no count. Its encoder
++ * pulls elements until the item hook returns false. False ends the
++ * list rather than failing the encode: the framing writes the
++ * value-follows terminator, so a producer that stops early leaves a
++ * valid truncated list on the wire. A producer that stops for a
++ * mid-list error records it in the application state @ctx reaches,
++ * and either returns false from the end hook, which fails the
++ * encode, or reports it in the procedure status.
+  */
+ struct xdrgen_aggregate_cursor {
+ 	struct xdr_stream	*xdr;
+diff --git a/tools/net/sunrpc/xdrgen/README b/tools/net/sunrpc/xdrgen/README
+index 2e230c43de2f..9f9a4d8bc7ae 100644
+--- a/tools/net/sunrpc/xdrgen/README
++++ b/tools/net/sunrpc/xdrgen/README
+@@ -182,7 +182,13 @@ no count: each element is prefixed by a value-follows TRUE and the
+ sequence is closed by a FALSE, which the framing writes after the
+ last element. The element type must therefore be a pointer type,
+ whose codec owns that framing; xdrgen rejects any other element
+-type. For the optional-data form xdrgen generates a working
++type. That form has no count to loop on, so its encoder pulls
++elements until the item hook returns false. False ends the list
++rather than failing the encode: a producer stops when its source
++is exhausted or when a reply budget fills. A producer that stops
++for an error records it in its own state and either fails the
++encode from the end hook or reports it in the procedure status.
++For the optional-data form xdrgen generates a working
+ encoder only; the decoder it emits fails without consuming the
+ list, so xdrgen also rejects the directive when the struct is
+ reachable from an RPC argument.
+@@ -208,7 +214,7 @@ member:
+ For a variable-length array, a decoder fills the cursor's count from
+ the wire before calling the begin hook, and an encoder's begin hook
+ sets that count for the framing to bound-check and emit. An
+-optional-data list's encoder begin hook sets the count as well; its
++optional-data list's encoder does not read the count and its
+ decoder never fills it. Once a begin hook
+ has succeeded its end hook runs, so that it can release what begin
+ took; the end hook receives the running success flag.
+diff --git a/tools/net/sunrpc/xdrgen/templates/C/struct/encoder/aggregate_optional.j2 b/tools/net/sunrpc/xdrgen/templates/C/struct/encoder/aggregate_optional.j2
+index d45b823225f7..4f35b6976109 100644
+--- a/tools/net/sunrpc/xdrgen/templates/C/struct/encoder/aggregate_optional.j2
++++ b/tools/net/sunrpc/xdrgen/templates/C/struct/encoder/aggregate_optional.j2
+@@ -12,13 +12,11 @@
+ 
+ 		if (!{{ hook }}_encode_begin(&cursor))
+ 			return false;
+-		for (cursor.index = 0; cursor.index < cursor.count; cursor.index++) {
++		for (cursor.index = 0; ; cursor.index++) {
+ 			{{ classifier }}{{ c_type }} element = {};
+ 
+-			if (!{{ hook }}_encode(&cursor, &element)) {
+-				ok = false;
++			if (!{{ hook }}_encode(&cursor, &element))
+ 				break;
+-			}
+ 			if (!xdrgen_encode_{{ type }}(xdr, &element)) {
+ 				ok = false;
+ 				break;
 -- 
 2.55.0
 
