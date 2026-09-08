@@ -1,32 +1,40 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1F4C851993E;
-	Tue,  8 Sep 2026 09:49:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B02B370D5E
+	for <linux-nfs@vger.kernel.org>; Tue,  8 Sep 2026 09:54:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788860950; cv=none; b=F+C47nBHHi+ur7cu2ZjNeJ73wj5nrIxoLuc3IuHLhfhfHtxIvWJXtp+97dGmlEe7L50QhyYwVIoB+p5Q1BLLRz5U7BMzXti5uuEfPQg2fRmRQ2S8JkYlugSyxJsTYV/vjtXIxBWCVvDm1Kt0l6iHDeUX+iEuY9bJ0TPfVb8Nrnc=
+	t=1788861300; cv=none; b=UZMU82X80kFOIG5OdOqdn+XH5oYx08dvKo0cpCOzeSNVCfHceR/d6BwzeFPyF/hjzC2u4vnrHkOT1FjVQ+ALwGelBtC/gymIJzX05pSNKp/hs9u+yo2RxgYPnc4EJoiKF4QcNXbzCZzfsGs5FFgViTiQVp8kBCOOpUZ1qNkBRL4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788860950; c=relaxed/simple;
-	bh=DeONDPrlwaO0nZcfKM6QnKtDw9x47qDXSFM8M1+Kqsg=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=gt78pvXDeAfFlhsmPRmZPMLcee9WT46Grr1NEqxlbb8suMUziIiHw0z2MOcVSFoezeFB2k5vF1spjsIiu/H735UW1MHpzzwqM82LeZjmAO8PEXw62lNloJ3dmi2WgOXnLgCgA+8X/Zpq/llmpTB2ucvTw7UkqYMjJT+eeRC337E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 055911F00A3D;
-	Tue,  8 Sep 2026 09:49:07 +0000 (UTC)
-Message-ID: <4a4a2c6522a0574af0bd0925aad9bd75987e933a.camel@kernel.org>
-Subject: Re: [REGRESSION] reads and writes hang if NFS server has v3 disabled
+	s=arc-20240116; t=1788861300; c=relaxed/simple;
+	bh=70dh2683AV9IOlzj3WwxSVYA1xQCmHNXOu9H3UYT0i8=;
+	h=Message-ID:Subject:From:To:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=a5LyF6TKbaWmiRoE5IXC8uTdhVxXlkQ65KfsfQi2Mj1g38dVF51kII0Pz6aVRXvcXkAamEs4G7RM0j+GeJeY04eM80DNdzKOvMSrLjja7QYofGNJ5OeHArLAecp4Axo0Ipo/Sj7it7IbJC/zma8nZqUyeEvUDlD/2+pEfpsPAE0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=FJn0jET7; arc=none smtp.client-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="FJn0jET7"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C0D491F00A3A;
+	Tue,  8 Sep 2026 09:54:58 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1788861299;
+	bh=70dh2683AV9IOlzj3WwxSVYA1xQCmHNXOu9H3UYT0i8=;
+	h=Subject:From:To:Date:In-Reply-To:References;
+	b=FJn0jET7fsN/308Eu5rKCrPlCC+8y7j5flcf3/93IfqZ9xa4Bi6syRUBAU0JM7vtv
+	 gFEd/gf5xbAkRvuBIzIMyOVuUlCRRR+cTnCCYbUkhnpVBRE1IZCWbqTm9hTFrppo52
+	 e5Wf5W3jLxlEPrd22br7D0XMY3Ngo2aDLZSC7THQOLG3/cmg0IBYnhWFk6a8q2nwSH
+	 X/DKJ9jP3PiV4SEbGjoSbHIHPCecIP4jiOL59PdDvI2Uj8AQDo0MhC65e9XDqS9WaY
+	 lYWeSnf7cF7w9HKOrk0uwt7Quv/eoZri/IN+xQ8qsd+A6mifuUxQ1+bcgUfCZuCYzG
+	 qkrXH2iAhqjWQ==
+Message-ID: <c4a59806a92d2afdeceed1da3190e232f1beb7b4.camel@kernel.org>
+Subject: Re: NFS strategy for large number of file opens
 From: Jeff Layton <jlayton@kernel.org>
-To: Benji Wiebe <itsme@benjiwiebe.com>, Chuck Lever <cel@kernel.org>
-Cc: Linux kernel regressions list <regressions@lists.linux.dev>, 
-	linux-nfs@vger.kernel.org, stable@vger.kernel.org
-Date: Tue, 08 Sep 2026 05:49:06 -0400
-In-Reply-To: <b5134cbf-f73e-4326-8969-5d8ac070b3eb@benjiwiebe.com>
-References: <c26ff09f-48d6-4ef3-9feb-8a8e6d6f37ba@benjiwiebe.com>
-	 <c3d06b9f-7da5-479f-be4f-9c0136631ce9@oracle.com>
-	 <c734eeb8-8486-4491-bb4d-b9656cbaffbe@app.fastmail.com>
-	 <52ddb3307fcc0893cc20ed63c4dc924f6bcaa8fd.camel@kernel.org>
-	 <b5134cbf-f73e-4326-8969-5d8ac070b3eb@benjiwiebe.com>
+To: Shyam Prasad N <nspmangalore@gmail.com>, linux-nfs@vger.kernel.org, 
+ Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
+Date: Tue, 08 Sep 2026 05:54:57 -0400
+In-Reply-To: <CANT5p=rb=HJsFPrD0swPi8D8LzaodTvKK=M6xwR0SvtK_YaLRA@mail.gmail.com>
+References: 
+	<CANT5p=rb=HJsFPrD0swPi8D8LzaodTvKK=M6xwR0SvtK_YaLRA@mail.gmail.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -111,90 +119,33 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2026-09-07 at 13:57 -0500, Benji Wiebe wrote:
-> On 9/4/26 8:45 AM, Jeff Layton wrote:
-> > On Fri, 2026-09-04 at 09:09 -0400, Chuck Lever wrote:
-> > > [ Adding correct addresses from MAINTAINERS ]
-> > >=20
-> > > On Fri, Sep 4, 2026, at 9:05 AM, Chuck Lever wrote:
-> > > > I'm using a minimal Fedora 45 VM (kvm) for testing.=E2=80=8A=C2=A0 =
-I export a
-> > > > directory with rw and mount it from my personal computer running Fe=
-dora
-> > > > 45 as well. If /etc/nfs.=E2=80=8Aconf has vers3=3Dn, then reads and=
- writes hang in
-> > > > D+ state, and there's a continuous
-> > > >=20
-> > > >=20
-> > > > I'm using a minimal Fedora 45 VM (kvm) for testing.=C2=A0 I export =
-a
-> > > > directory with rw and mount it from my personal computer running Fe=
-dora
-> > > > 45 as well.
-> > > > If /etc/nfs.conf has vers3=3Dn, then reads and writes hang in D+ st=
-ate,
-> > > > and there's a continuous loop of V3 NULL calls, with the server rep=
-lying
-> > > > that it only supports v4.
-> > > > If nfs.conf has vers3=3Dy, then the reads and writes succeed.
-> > > > Introduced in 70b7e3526c53d9dd, still present in the latest
-> > > > mainline/master (841e384b841a).
-> > > >=20
-> > > > The hung state can be rescued by changing the setting and restartin=
-g
-> > > > nfs-server, at which point the read/write will complete.
-> > > >=20
-> > > > I can do more testing / get more information as needed.
-> > > >=20
-> > > > Here's links to pcap files with it working/bugged:
-> > > > http://grepper.net/lkml-files/nfs-working.pcap
-> > > > http://grepper.net/lkml-files/nfs-bugged.pcap
-> > > > http://grepper.net/lkml-files/nfs-bug-kernel.config
-> > > >=20
-> > > > #regzbot introduced:=C2=A0 70b7e3526c53d9dd7caccdbeff5b0485640d8cf1
-> > >=20
-> > > It's not immediately obvious to me why 70b7e3526c53d9dd should
-> > > cause this kind of behavior regression.
-> > >=20
-> > > Jeff, it's a netlink change. Can you triage?
-> > >=20
-> >=20
-> > Sure.
-> >=20
-> > Looking at the captures, it looks like the server is handing out a
-> > flexfiles v3 pNFS layout for the trivial server, and that's (of course)
-> > failing in this situation.
-> >=20
-> > So we have at least one server bug there -- it shouldn't advertise a
-> > flexfiles v3 layout when it's not serving v3! I'll plan to fix that
-> > soon.
-> >=20
-> > That doesn't seem to have anything to do with commit 70b7e3526c53d9dd
-> > though. I'm not sure why a bisect would have landed there.
-> I checked and rechecked several times (and again now!) and=20
-> 70b7e3526c53d9dd always had the bug present and 565ee23ea2374 did not=20
-> have the bug present.>
-
-The bug is in 565ee23ea2374, but until 70b7e3526c53d9dd is applied, the
-code it's in is not used, so that explains why you're seeing it there.
-=20
-> > What does the /etc/exports entry for this export look like? Disabling
-> > pnfs should work around this for now too if you have it explicitly
-> > enabled here.
+On Mon, 2026-09-07 at 17:23 +0530, Shyam Prasad N wrote:
+> Hi all,
 >=20
-> The /etc/exports entry I'm using:
-> /home/export *(rw,no_root_squash)
+> I'm starting this email thread to understand how NFS deals (or plans
+> to deal with) workloads that serially do open/close calls to a large
+> number of files in a directory? Think about a use case of tar of Linux
+> kernel source code on NFS shares.
 >=20
-> I'm new to the kernel development process; is there a patch I can apply=
-=20
-> now to see if it fixes the bug?
+> AFAIK, local filesystems fare well for this workload compared to
+> network filesystems, as file opens are local, and file state is
+> maintained locally. For network filesystems, each open needs to go
+> over the wire to the server.
+>
+> Has there been any proposals to improve perf for such workloads?
+> Could there be possible extensions to directory delegations, that
+> could allow the client to make opens async and batch them together to
+> the server in the background? IMO, the challenge is that such open
+> calls can fail. But can the clients be enabled to do many of these
+> failure checks (for example, the client could be allocated quota for
+> how many files it can create, be allowed to cache file permissions by
+> delegating them etc.)?
+>=20
+> Looking forward to the responses. Thanks in advance.
 
-You want commit f76017a7663c4ce5e379f8a8d39f032bdb1fd865 from Chuck's
-nfsd-fixes branch. Basically, what's happening is that pnfs is being
-enabled even though you haven't requested it:
+You should resend this and cc linux-nfs@vger.kernel.org.
 
-https://lore.kernel.org/linux-nfs/20260414-pnfs-exp-fix-v1-1-9face14c16c2@k=
-ernel.org/
-
+The big problem for untar workloads is that they are serialized at the
+VFS layer on the client. Neil Brown has been working on changing that.
 --=20
 Jeff Layton <jlayton@kernel.org>
