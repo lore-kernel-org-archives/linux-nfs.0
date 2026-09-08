@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DC220583ACB;
-	Tue,  8 Sep 2026 16:34:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 27DBE58125D;
+	Tue,  8 Sep 2026 16:34:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788885299; cv=none; b=TtROcoRN8ByjLIvUFRwu7JTLMTTmjK63ojTXlZlFW2Q4zPhfGVcRTT6FZ4xZPRGwMNyeZqVZ0QtSOx1jHPp93c++2T6OM0wwseA0Qo5D6jKiIkT0/ZnUr70I/5PlHP4YzXUoqfyiQFZEUHTzzRdFN/fXZXAvmcv534JrjM9WI0Q=
+	t=1788885300; cv=none; b=KnqxCwTn0bXzNaYmLpyFWbbs1PIbJNroEQvNrVO7hk4j7V8Jgd38c82k3QcRZvJeohdUBfhABhUS63fJ46fAak5sJfwY3Ah6khmJJpOpDXouwXCPWt2SXEPkLVMRDm3YVoIoHoEMHb2nmOruni4Xm0MOa6H5r2l1OrabmgEE19Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788885299; c=relaxed/simple;
-	bh=3VKlBFe+x8WGFZmVDefMmcUeOHpmqZfAKP6qTmYA9w0=;
+	s=arc-20240116; t=1788885300; c=relaxed/simple;
+	bh=0Not1TXFbFmnqHx64sOVTMcYgwsAjN+xwkbeGUos++U=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=B6F0xEwMZTscn18Xvv2RVXivXmbYcOPFy/n2UWm5DNpHMf9qof6ImP62MHdIebGmQWG85xqe6yPU/zr7Yvr3ykcb3rvRHtEX/zaPmuxOL8fNcEop7Kus34WIutl78hniCivfGJJrSS8DeAz2EZJKrulBPXiMvplZVg90MwEGpUg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=J0uzuq9x; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=odOua/V6rAd2gEPZ9tYsac90XBWY9n5qYb4DDEAy2eU0lxdj3yHC6BZCpso3xRQI3LPTvRLsFNW/4Uc4UVx3TJqt7n4US8p9TldxM/70YFyNDUGTBM5B00hTV0MjQOJ8T2OEn0S7Mfpr9QUR6edxZVj01SLw6VRMbfgrFbd3klo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=l6k/CdR0; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="J0uzuq9x"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 93F471F00A3D;
-	Tue,  8 Sep 2026 16:34:57 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="l6k/CdR0"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D21911F00A3A;
+	Tue,  8 Sep 2026 16:34:58 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788885297;
-	bh=AgO/ir7uwrG0++/T5HeOPy6QXU+5Ubmmn+fOgIVMqVk=;
+	s=k20260515; t=1788885299;
+	bh=CgfInR4bNBFp08djpHdR7qiQM69GVpLcw8tBDqFMA8c=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=J0uzuq9xtIeo6vxq72CKa7C6X1EFNmvgCTLxwO0jgTC+bbGx7voRQBkf8aRR2VEJ9
-	 nEnm33ERUH/kGB/os1TtBCOf2R3bnRNbkW83D3fifVtQdRCAPK4sJ3Zu9xg0Mrlv6d
-	 6oYmVdsJif03lw63UsQhT+DcvC460WhaJCWSUKXUS9SqgOtmozIi0oj7LycdU1lEKp
-	 loKWqSnFYyW5GpxTG/zgktNWjOV7ew1Eg8RyLEEeQwdMUSzGkfQzrOLFp5znz9e5jp
-	 BcJMXWpJQLIAleV6nAbl9meVzBOoTdqlpXEHzSO8DKaWpGSHQoWKH384hOPTbxYcRz
-	 dFKwhSGCoLq5A==
+	b=l6k/CdR0JLXOIQKsolwMYA5Qe5KyW2bSPHeXrk35YOfD9UtpMVc7xg8rsg9u/1FM2
+	 CBUgle0q7O4sVRVRHk+RgAs8tToFQPfkYspyX5qSW6dRdRsrg+eG+crpvQPlmOJQAU
+	 2ZRNEGgK5mTY+yJlHIL9DCr0kY79Qjxx/WLXJhelM3URehypWeKV0dDHwqxV9lXnTk
+	 gKG04Do63P1ogMm3cljTNE9Z0j5IEMYQ276f3MyCY84hJcUJPWj02oCkr92qk/+QMZ
+	 iFGNaV2zrWjIl3Yy0xFrbwNrGB3zmdzDXHVfGSt2GB25Y4Si/bxLhdQIBoyST2vtzc
+	 cqZ/jeWaqiszg==
 From: Mike Snitzer <snitzer@kernel.org>
 To: linux-nfs@vger.kernel.org,
 	linux-block@vger.kernel.org
@@ -34,9 +34,9 @@ Cc: dm-devel@lists.linux.dev,
 	cel@kernel.org,
 	jlayton@kernel.org,
 	david.flynn@hammerspace.com
-Subject: [PATCH 2/4] zram: handle sub-page bvec segments without corrupting data
-Date: Tue,  8 Sep 2026 12:34:42 -0400
-Message-ID: <20260908163448.30841-8-snitzer@kernel.org>
+Subject: [PATCH 3/4] nfsd: fetch direct I/O alignment for files handed to the filecache
+Date: Tue,  8 Sep 2026 12:34:43 -0400
+Message-ID: <20260908163448.30841-9-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20260908163448.30841-1-snitzer@kernel.org>
 References: <20260908163232.30774-1-snitzer@kernel.org>
@@ -49,145 +49,57 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-zram's submit loops have two independent defects for a bvec whose
-length is not PAGE_SIZE, and on a 4K-page kernel they compound into
-silent full-page corruption for any ITER_BVEC direct I/O submitter
-whose bio_vec array carries sub-page segments (bio_iov_bvec_set()
-passes the caller's array through as-is).
+From: David Flynn <david.flynn@hammerspace.com>
 
-First, on PAGE_SIZE == 4096 is_partial_io() is hardwired to false, on
-the reasoning that logical_block_size == PAGE_SIZE guarantees
-whole-page bvecs. It guarantees no such thing: queue limits constrain
-a bio's starting sector and total size, not individual bvec lengths.
-Every sub-page segment then takes the full-page fast path --
-zram_write_page(zram, bvec->bv_page, index) consumes the entire page
-and ignores bv_offset/bv_len completely -- so consecutive segments
-that map to the same page index each rewrite the whole slot, and a
-1 MiB write arriving as bv0=(684,3412) + 255x(0,4096) + (0,684) reads
-back with every byte wrong while the write reports success. The read
-side is equally exposed: zram_read_page() lands a full page in
-bvec->bv_page, clobbering reader memory outside the bvec. Make
-is_partial_io() honest on every page size; the partial-IO helpers it
-routes to already exist and honor bv_offset/bv_len.
+nfsd_file_do_acquire() fetches a file's direct I/O alignment
+attributes (nf_dio_mem_align, nf_dio_offset_align and
+nf_dio_read_offset_align) only on the branch where NFSD opens the
+file itself. The other branch, taken when the caller supplies an
+already-open struct file, stores that file in the nfsd_file and
+leaves the three alignment fields zero.
 
-Second, the loops re-derive each segment's target page index and
-in-page offset from iter.bi_sector, which bio_advance_iter_single()
-advances by bytes >> SECTOR_SHIFT -- a sub-sector residue in any
-segment length skews every subsequent segment's position while the
-data cursor consumes the full length (the same defect just fixed in
-brd). With partial detection made honest this would still misplace
-data through the read-modify-write path. Track the device position as
-a byte offset owned by the submit loop and advanced by the bytes each
-segment actually processed.
+NFSv4 OPEN with CREATE takes the supplied-file branch:
+nfsd4_create_file() creates the file with dentry_create() and passes
+the resulting struct file as open->op_filp, which nfs4_get_vfs_file()
+hands to nfsd_file_acquire_opened(). The cached nfsd_file therefore
+keeps zero alignment for its whole life, and
+nfsd_write_dio_iters_init() refuses direct I/O for every WRITE to a
+file the client has just created.
 
-Verified with a synthetic-bio reproducer: mid-page-offset geometries
-(684, 160, 512) and the page-aligned control now all read back
-byte-identical on a 4K-page kernel; before the fix the unaligned
-geometries corrupted all 1 MiB silently.
+Observed on an export whose backing device reports a dio_mem_align of
+4: all 16 of 16 1 MiB NFSv4.2 writes that followed an OPEN(CREATE)
+took the buffered path, while 16 of 16 writes to the same file
+reopened without CREATE went direct.
 
-With partial IO possible on every page size, the ZRAM_PARTIAL_IO
-guard in read_from_bdev() is dead code -- drop it along with the
-define.
+Hoist the nfsd_file_get_dio_attrs() call out of the open branch so
+that it runs once, for both branches, whenever the acquire has
+otherwise succeeded. A getattr failure now fails the acquire on the
+supplied-file branch exactly as it already does on the open branch.
 
-Fixes: 1f7319c74275 ("zram: partial IO refactoring")
-Fixes: 82ca875d2549 ("zram: refactor highlevel read and write handling")
-Assisted-by: Claude:claude-fable-5
+Fixes: d11f6cd1bb4a ("NFSD: filecache: add STATX_DIOALIGN and STATX_DIO_READ_ALIGN support")
+Assisted-by: Claude:claude-fable-5.1
+Signed-off-by: David Flynn <david.flynn@hammerspace.com>
 Signed-off-by: Mike Snitzer <snitzer@kernel.org>
 ---
- drivers/block/zram/zram_drv.c | 36 +++++++++++++++++------------------
- 1 file changed, 18 insertions(+), 18 deletions(-)
+ fs/nfsd/filecache.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/block/zram/zram_drv.c b/drivers/block/zram/zram_drv.c
-index 789c76dc8613..6c5ba814ba5b 100644
---- a/drivers/block/zram/zram_drv.c
-+++ b/drivers/block/zram/zram_drv.c
-@@ -217,18 +217,19 @@ static bool zram_can_store_page(struct zram *zram)
- 	return !zram->limit_pages || alloced_pages <= zram->limit_pages;
- }
- 
--#if PAGE_SIZE != 4096
-+/*
-+ * A whole-page bvec is required for the full-page fast paths, which
-+ * consume bv_page outright and ignore bv_offset/bv_len.  The queue's
-+ * logical_block_size == PAGE_SIZE only constrains a bio's starting
-+ * sector and total size -- individual bvec lengths are not constrained
-+ * by any queue limit, and ITER_BVEC direct I/O submitters pass the
-+ * caller's bio_vec array through as-is (bio_iov_bvec_set()), so
-+ * sub-page segments reach us on every PAGE_SIZE.
-+ */
- static inline bool is_partial_io(struct bio_vec *bvec)
- {
- 	return bvec->bv_len != PAGE_SIZE;
- }
--#define ZRAM_PARTIAL_IO		1
--#else
--static inline bool is_partial_io(struct bio_vec *bvec)
--{
--	return false;
--}
--#endif
- 
- #if defined CONFIG_ZRAM_WRITEBACK || defined CONFIG_ZRAM_MULTI_COMP
- struct zram_pp_slot {
-@@ -1510,11 +1511,8 @@ static int read_from_bdev(struct zram *zram, struct page *page,
- 			  struct bio *parent)
- {
- 	atomic64_inc(&zram->stats.bd_reads);
--	if (!parent) {
--		if (WARN_ON_ONCE(!IS_ENABLED(ZRAM_PARTIAL_IO)))
--			return -EIO;
-+	if (!parent)
- 		return read_from_bdev_sync(zram, page, index, blk_idx);
--	}
- 	return read_from_bdev_async(zram, page, index, blk_idx, parent);
- }
- #else
-@@ -2718,11 +2716,11 @@ static void zram_bio_read(struct zram *zram, struct bio *bio)
- {
- 	unsigned long start_time = bio_start_io_acct(bio);
- 	struct bvec_iter iter = bio->bi_iter;
-+	loff_t pos = (loff_t)iter.bi_sector << SECTOR_SHIFT;
- 
- 	do {
--		unsigned long index = iter.bi_sector >> SECTORS_PER_PAGE_SHIFT;
--		u32 offset = (iter.bi_sector & (SECTORS_PER_PAGE - 1)) <<
--				SECTOR_SHIFT;
-+		unsigned long index = pos >> PAGE_SHIFT;
-+		u32 offset = pos & (PAGE_SIZE - 1);
- 		struct bio_vec bv = bio_iter_iovec(bio, iter);
- 
- 		bv.bv_len = min_t(u32, bv.bv_len, PAGE_SIZE - offset);
-@@ -2738,6 +2736,7 @@ static void zram_bio_read(struct zram *zram, struct bio *bio)
- 		mark_slot_accessed(zram, index);
- 		slot_unlock(zram, index);
- 
-+		pos += bv.bv_len;
- 		bio_advance_iter_single(bio, &iter, bv.bv_len);
- 	} while (iter.bi_size);
- 
-@@ -2749,11 +2748,11 @@ static void zram_bio_write(struct zram *zram, struct bio *bio)
- {
- 	unsigned long start_time = bio_start_io_acct(bio);
- 	struct bvec_iter iter = bio->bi_iter;
-+	loff_t pos = (loff_t)iter.bi_sector << SECTOR_SHIFT;
- 
- 	do {
--		unsigned long index = iter.bi_sector >> SECTORS_PER_PAGE_SHIFT;
--		u32 offset = (iter.bi_sector & (SECTORS_PER_PAGE - 1)) <<
--				SECTOR_SHIFT;
-+		unsigned long index = pos >> PAGE_SHIFT;
-+		u32 offset = pos & (PAGE_SIZE - 1);
- 		struct bio_vec bv = bio_iter_iovec(bio, iter);
- 
- 		bv.bv_len = min_t(u32, bv.bv_len, PAGE_SIZE - offset);
-@@ -2768,6 +2767,7 @@ static void zram_bio_write(struct zram *zram, struct bio *bio)
- 		mark_slot_accessed(zram, index);
- 		slot_unlock(zram, index);
- 
-+		pos += bv.bv_len;
- 		bio_advance_iter_single(bio, &iter, bv.bv_len);
- 	} while (iter.bi_size);
- 
+diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
+index b9548eb17c77..e80f88787ef7 100644
+--- a/fs/nfsd/filecache.c
++++ b/fs/nfsd/filecache.c
+@@ -1285,9 +1285,9 @@ nfsd_file_do_acquire(struct svc_rqst *rqstp, struct net *net,
+ 			}
+ 			status = nfserrno(ret);
+ 			trace_nfsd_file_open(nf, status);
+-			if (status == nfs_ok)
+-				status = nfsd_file_get_dio_attrs(fhp, nf);
+ 		}
++		if (status == nfs_ok)
++			status = nfsd_file_get_dio_attrs(fhp, nf);
+ 	} else
+ 		status = nfserr_jukebox;
+ 	/*
 -- 
 2.52.0
 
