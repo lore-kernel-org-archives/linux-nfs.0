@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3BC27560AD7;
-	Tue,  8 Sep 2026 16:34:49 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 68177579839;
+	Tue,  8 Sep 2026 16:34:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788885290; cv=none; b=UJZL6kFqia7c66sQVNOKtQgT2cm3DAQ6zkmaRNbVFPthOYXyTG7H1VUfB5LdlQ2Uk3SDTgWaPhZlkzlNKS0OhZotTf+iTYEO1tzFqLz+C+3W2ZrAyA5rLA+eEleIhMBOWx+ELcoZj3xc4v14E4JroihxV8N0PsMeSWVtbbUWj6A=
+	t=1788885291; cv=none; b=a2if2nD++sUUmyXgJCry3++UzK3AaEGkesNd57Cn4RVhpmNawdYVk9nykNXGgaKaWZGMHJEiW8E1D/l7VQ7d+iBn6BcyCb3MuWheYeK3cispWiTFQvRSJmLmnvanKpFtFXwARMCcawLzM3WZF+UaXDn+TXYIhnflnXPHtehOlso=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788885290; c=relaxed/simple;
-	bh=tGu/gKn3bAhi5s7Tl/toqEb6jcrVVQoi6O83bRyx9S0=;
+	s=arc-20240116; t=1788885291; c=relaxed/simple;
+	bh=XX6rU9AXcLahomsQVLdjJ+9Cqt0a2cXjYI+5BXbnZ00=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Po8fRqpfotwP6BOqjboSY1hG3rgxGcBoFqnPEKGhGACfjh1PibzFCmaHetlWjzGVqLzWrI0z0yYK9mApgfmm0u6QVF5BU59RgfzYxIirc3uixRYIZNZr3mniicZ5oXNrLlnVxLJMAaC4AxbXvsCv8poP6onIHST9ngcjH39H/KI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nWRFSWrc; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=gqUHQHH9S05yyGx+zWuoEGeY84Nqw/mIxCgQD2RJrGmPI2EmkbouvP1svBo/NPkVUV+81XPC3Db+CMHDXSKtOdpoqyld5ojSo5HCozP3hjXfKeJZSwWDR8P7mcb+QDXZGVNp0coM3FZzV1gvw8zJ7ubSat06jjTQrEKjqV4g69k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=D4L2Zkot; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nWRFSWrc"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D59AB1F00A3E;
-	Tue,  8 Sep 2026 16:34:48 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="D4L2Zkot"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1BA951F00A3A;
+	Tue,  8 Sep 2026 16:34:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788885289;
-	bh=xsarEBQz83oy13kJ3SZ3R6K9bssRVn1ez842Rktmuhs=;
+	s=k20260515; t=1788885290;
+	bh=efnCfQHpikgWrQThhbZWuGy0HSmCAahwMimpqUFqCT8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=nWRFSWrcX2wzyvITPe5chEehHKwUI/2PqzKTcBnludgpOOa0Udq44AU3tv1d4MJVO
-	 FNjopdZewMXVeqp30uuGVoH/B5uR1VZVj2KWFnVQQ0qoz2+WGy7OsGIorZS6FvRJGT
-	 c4y8ya8UzV+xellXwG5ad4gcGgYxhCR260ywrw0WoYOEvMDQupso3WzVJNbT+9Q7aZ
-	 tBxNGl15FHEelLZOhASO+m/Hc2HIpmZR3ifQ7QJSqCtmoDjPYZ0sTqDcwXtgsIym7e
-	 zGEAmo52U4N8qTtZs8o/OMYSREkb0X+72JLP5HYkAL4y7EYjrdLQo/lEjYw3G+5uIx
-	 FAWtnWti7ZAAQ==
+	b=D4L2Zkotqj+us21cMVV0relguxs3k3PcVTSlQSYQOpaMb2uAzc5AxGW36l0mw77bY
+	 sHFrlGYybNj2hEhuCz85hedwMihwEL/Bwtr1d8aPtEZjiRRDAWDRBGZyY16MDCMfjw
+	 szHZKuU2N4DiW82B3+SUKnwlvPAbUCh+IsnBaR55Mzsx1WWUeHJDEV/T5Qmb2z/ELS
+	 yqRsfg6e7KCo3iLwwq9OtaqIHNqZo4T3thUQxMFJ7yGwL/T4GIs7MYj7xvb+6yPY6r
+	 pC5klX7vB/CteGxaDemeadtWGdcTa7PD+K8UdsekkOIxXQqnJ73nsGad+83ZsAdEPQ
+	 K1cXkItuti5fg==
 From: Mike Snitzer <snitzer@kernel.org>
 To: linux-nfs@vger.kernel.org,
 	linux-block@vger.kernel.org
@@ -34,12 +34,13 @@ Cc: dm-devel@lists.linux.dev,
 	cel@kernel.org,
 	jlayton@kernel.org,
 	david.flynn@hammerspace.com
-Subject: [PATCH 0/4] block, nfsd: fixes for sub-sector bvec direct I/O
-Date: Tue,  8 Sep 2026 12:34:35 -0400
-Message-ID: <20260908163448.30841-1-snitzer@kernel.org>
+Subject: [PATCH 1/4] brd: iterate the bio by byte position, not bi_sector
+Date: Tue,  8 Sep 2026 12:34:36 -0400
+Message-ID: <20260908163448.30841-2-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
-In-Reply-To: <20260908163232.30774-1-snitzer@kernel.org>
+In-Reply-To: <20260908163448.30841-1-snitzer@kernel.org>
 References: <20260908163232.30774-1-snitzer@kernel.org>
+ <20260908163448.30841-1-snitzer@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -48,65 +49,115 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-While qualifying NFSD's NFSD_IO_DIRECT write path with byte-level data
-verification, it was found that the ITER_BVEC payloads nfsd submits 
-expose silent data corruption in two bio-based block drivers and
-two defects in nfsd itself. Example problematic payloads is the first
-fragment starts mid-page because the RPC header precedes it in the
-receive buffer, and fragment lengths need not be sector multiples.
-bio_iov_bvec_set() passes such an array to the queue as-is; nothing
-below it validates per-bvec sector alignment.
+brd_rw_bvec() takes the device position from bio->bi_iter.bi_sector,
+which bio_advance_iter_single() advances by bytes >> SECTOR_SHIFT. For
+a bvec whose length is not a multiple of the sector size the sector
+cursor silently loses the sub-sector residue while the data cursor
+(bi_bvec_done/bi_size) consumes the full length -- from that segment
+on, data is written at a device offset short of where it belongs, and
+every subsequent byte lands shifted with no error reported anywhere.
 
-Patches 1-2 fix silent corruption (write completes successfully, data
-lands wrong) and are stable candidates:
+Such bvec geometry is legal at the submitter: ITER_BVEC direct I/O
+passes the caller's bio_vec array through as-is (bio_iov_bvec_set()),
+so e.g. NFSD's NFSD_IO_DIRECT write path hands XFS/iomap a payload
+whose first fragment starts mid-page (the RPC header precedes it in
+the receive buffer) and whose fragment lengths are not sector
+multiples. A 1 MiB write arriving as bv0=(160,16224) + 63x(0,16384) +
+(0,160) reproduces on brd as: first 15872 = ALIGN_DOWN(16224, 512)
+bytes correct, everything after shifted forward by 352 = 16224 - 15872
+bytes -- while the write completes successfully. Any NFSD_IO_DIRECT
+(or other kernel bvec direct I/O) write to a brd-backed filesystem is
+exposed; request-based drivers are unaffected because nothing in the
+request path does per-bvec sector arithmetic.
 
-- brd re-derives each segment's device position from
-  bio->bi_iter.bi_sector, which bio_advance_iter_single() advances by
-  whole sectors only, so a sub-sector segment length skews everything
-  that follows.
+Track the device position as a byte offset owned by the submit loop
+and advanced by the number of bytes each segment actually processed,
+instead of re-deriving it from the skewed bi_sector. Verified with a
+synthetic-bio reproducer over brd directly and through nvme-loop:
+mid-page-offset geometries and the page-aligned control now all read
+back byte-identical, and 20 fresh NFS connections x 16 MiB of O_DIRECT
+writes over an XFS-on-nvme-loop-on-brd export complete with zero data
+mismatches (previously most connections corrupted).
 
-- zram hardwires is_partial_io() to false on 4K-page kernels, sending
-  sub-page bvecs down a whole-page path that ignores bv_offset/bv_len
-  entirely, and has the same sector-cursor skew.
+Fixes: 3185444f0504 ("brd: split I/O at page boundaries")
+Assisted-by: Claude:claude-fable-5
+Signed-off-by: Mike Snitzer <snitzer@kernel.org>
+---
+ drivers/block/brd.c | 29 +++++++++++++++++++++++------
+ 1 file changed, 23 insertions(+), 6 deletions(-)
 
-Both are verified with a synthetic-bio reproducer (stamped pattern,
-write, read back, compare) across mid-page and page-aligned
-geometries.
-
-Patches 3-4 fix nfsd: the filecache never fetches DIO alignment
-attributes on the supplied-file acquire branch, so every WRITE to a
-file created via NFSv4 OPEN(CREATE) is refused direct I/O for the
-file's cached lifetime; and nfsd's statx-based DIO gate is weaker than
-bio_split_io_at()'s split-time checks, so an admitted iterator can
-still be rejected by the block layer -- retry the segment buffered
-instead of failing a valid WRITE with NFS4ERR_INVAL.
-
-One open question for the iomap/block maintainers: should ITER_BVEC
-direct I/O with sub-sector bvec boundaries be validated or bounced
-centrally rather than trusted to every driver's iteration?  An audit
-of in-tree bio-based drivers found the same bi_sector-derived position
-pattern in dm-io, dm-log-writes, dm-writecache (pmem path) and
-dm-integrity -- unreachable through nfsd today only because dm queues
-advertise dma_alignment >= 511, which nfsd's alignment gate refuses.
-
-Tested with the reproducer matrix on brd, zram and nvme-loop at 4K and
-16K page size (aarch64) and 4K (x86_64), plus 30-connection NFS write
-rigs comparing source against export byte-for-byte: clean with the
-fixes, corrupting or erroring without them.
-
-Mike Snitzer (3):
-  brd: iterate the bio by byte position, not bi_sector
-  zram: handle sub-page bvec segments without corrupting data
-  nfsd: fall back to buffered I/O when a direct write gets -EINVAL
-
-David Flynn (1):
-  nfsd: fetch direct I/O alignment for files handed to the filecache
-
- drivers/block/brd.c           | 29 +++++++++++++++++++++++------
- drivers/block/zram/zram_drv.c | 36 +++++++++++++++++------------------
- fs/nfsd/filecache.c           |  4 ++--
- fs/nfsd/vfs.c                 | 29 +++++++++++++++++++++++++++++
- 4 files changed, 77 insertions(+), 31 deletions(-)
-
---
+diff --git a/drivers/block/brd.c b/drivers/block/brd.c
+index 00cc8122068f..4011538cecaf 100644
+--- a/drivers/block/brd.c
++++ b/drivers/block/brd.c
+@@ -134,12 +134,24 @@ static void brd_free_pages(struct brd_device *brd)
+ /*
+  * Process a single segment.  The segment is capped to not cross page boundaries
+  * in both the bio and the brd backing memory.
++ *
++ * The device position is @pos, a byte offset maintained by the caller --
++ * not bio->bi_iter.bi_sector: bio_advance_iter_single() advances bi_sector
++ * by bytes >> SECTOR_SHIFT, so a bvec whose length is not a multiple of the
++ * sector size silently skews bi_sector against the bytes actually consumed
++ * and corrupts everything that follows.  Byte-granular bvec boundaries
++ * reach us from ITER_BVEC direct I/O submitters whose caller's bio_vec
++ * array is passed through as-is (bio_iov_bvec_set()).
++ *
++ * Returns the number of bytes processed, or 0 on error (the bio has then
++ * been completed).
+  */
+-static bool brd_rw_bvec(struct brd_device *brd, struct bio *bio)
++static unsigned int brd_rw_bvec(struct brd_device *brd, struct bio *bio,
++				loff_t pos)
+ {
+ 	struct bio_vec bv = bio_iter_iovec(bio, bio->bi_iter);
+-	sector_t sector = bio->bi_iter.bi_sector;
+-	u32 offset = (sector & (PAGE_SECTORS - 1)) << SECTOR_SHIFT;
++	sector_t sector = pos >> SECTOR_SHIFT;
++	u32 offset = pos & (PAGE_SIZE - 1);
+ 	blk_opf_t opf = bio->bi_opf;
+ 	struct page *page;
+ 	void *kaddr;
+@@ -167,14 +179,14 @@ static bool brd_rw_bvec(struct brd_device *brd, struct bio *bio)
+ 	bio_advance_iter_single(bio, &bio->bi_iter, bv.bv_len);
+ 	if (page)
+ 		put_page(page);
+-	return true;
++	return bv.bv_len;
+ 
+ out_error:
+ 	if (PTR_ERR(page) == -ENOMEM && (opf & REQ_NOWAIT))
+ 		bio_wouldblock_error(bio);
+ 	else
+ 		bio_io_error(bio);
+-	return false;
++	return 0;
+ }
+ 
+ static void brd_do_discard(struct brd_device *brd, sector_t sector, u32 size)
+@@ -202,6 +214,7 @@ static void brd_do_discard(struct brd_device *brd, sector_t sector, u32 size)
+ static void brd_submit_bio(struct bio *bio)
+ {
+ 	struct brd_device *brd = bio->bi_bdev->bd_disk->private_data;
++	loff_t pos;
+ 
+ 	if (unlikely(op_is_discard(bio->bi_opf))) {
+ 		brd_do_discard(brd, bio->bi_iter.bi_sector,
+@@ -210,9 +223,13 @@ static void brd_submit_bio(struct bio *bio)
+ 		return;
+ 	}
+ 
++	pos = (loff_t)bio->bi_iter.bi_sector << SECTOR_SHIFT;
+ 	do {
+-		if (!brd_rw_bvec(brd, bio))
++		unsigned int len = brd_rw_bvec(brd, bio, pos);
++
++		if (!len)
+ 			return;
++		pos += len;
+ 	} while (bio->bi_iter.bi_size);
+ 
+ 	bio_endio(bio);
+-- 
 2.52.0
+
