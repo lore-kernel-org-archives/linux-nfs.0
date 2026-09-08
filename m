@@ -1,19 +1,19 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 28D334CC278
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C502D54DAFB
 	for <linux-nfs@vger.kernel.org>; Tue,  8 Sep 2026 13:42:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788874969; cv=none; b=oPqHfmEBKB7kBaB8z0EiMqIO+DXftgxxdMJCiooZOZ71/9C0iG9Z4zKwcweSxvbUElcPlEspyS2KqYXPYTmUlih0L0jZkIi5S5HzJej4fgty32nutFHHDCax1pXfidLbs88zJzE4dwodg7vFIudzymXm4EBHwbzybnIP/PVED64=
+	t=1788874977; cv=none; b=SAaT8H02jvW0l6twQ0ibHaIlJGUJamkk0luNxpU1g53zSDo1H8nD+pw2LtM3+RcPRUSH/5g3kY27kSapXJyo3Nq26twdVJjprO0yLy3j8ezBoX13eYlfLQv0ZDYIaOv+KySsj8K8/hPouadSZ0P97iVwP3iTSdoVkJ2+IoPWVBQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788874969; c=relaxed/simple;
-	bh=sO1AUzXN3DK3QM0C4vOE5+HDcEoLmpq3gXjaNLnNzSQ=;
+	s=arc-20240116; t=1788874977; c=relaxed/simple;
+	bh=i6lOljogfuwoWbuVx+HGIhGGL/tPTgcCHoXPiJbJ8yQ=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Xu1B3Z71ulsFCxpdIAq6mFbOfnD0IKdgs00dqynyE+ZrEV4N0rQ5Wcco0ZF7L5qwHqNPsWeFRv2RM8r7up0Uz6WMaipWoDAZj6Wa4UOTr+kwxpedwAY2FbKZfcEyNmhW3cYJB/sda2D355SFrLCZoU9hYPXgyfZWZlxnzhRNPrQ=
+	 MIME-Version; b=hvaLbyMiPqpj9w3zfF14l7zLn8RJYCMT1HsTLnCtGqqARmorX/lyUVEWJ/TkxwwE0H/Zh0+i2M6HdSrVaxtk/dNSxLtnUueA1nEKXS8OV2822fIYgb+rWfSKLiyRzcQFzmwCuD+HtZlXToUWhHyH46dWYPP471Tv2zS5L01jMp4=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4BDA71F00A3E;
-	Tue,  8 Sep 2026 13:42:39 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C20541F00ACA;
+	Tue,  8 Sep 2026 13:42:40 +0000 (UTC)
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -21,9 +21,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 02/10] SUNRPC: Bind the svc_rqst to its XDR streams
-Date: Tue,  8 Sep 2026 09:42:26 -0400
-Message-ID: <20260908134234.512312-3-cel@kernel.org>
+Subject: [PATCH v3 04/10] xdrgen: Pass the containing struct name to member codec emitters
+Date: Tue,  8 Sep 2026 09:42:28 -0400
+Message-ID: <20260908134234.512312-5-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260908134234.512312-1-cel@kernel.org>
 References: <20260908134234.512312-1-cel@kernel.org>
@@ -35,80 +35,112 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-A generated XDR codec function receives only an xdr_stream, but
-some codecs need the RPC transaction the stream belongs to: to
-reach the procedure's argument and result structures, or to mark
-a page-resident byte range as a result payload. A client stream
-already records its transaction in the rqst field; a server
-stream records nothing, so each generated codec that needs the
-svc_rqst would have to store it in xdrgen_ctx itself, and every
-such site would decide on its own what the pointer means.
+A per-member code generation directive keyed on the (struct, member)
+pair needs the name of the containing struct, but
+emit_struct_member_encoder() and emit_struct_member_decoder()
+receive only the member declaration.
 
-Store the svc_rqst in xdrgen_ctx from svcxdr_init_decode() and
-svcxdr_init_encode() instead, and read it back through
-svcxdr_rqst() so that no codec open-codes the cast from void *.
-A codec running on a stream either of those initialized reaches
-the transaction, and through it rq_argp and rq_resp. Every other
-initializer leaves xdrgen_ctx NULL, so svcxdr_rqst() returns NULL
-there and the guarantee is scoped to those two entry points; a
-codec that needs the svc_rqst names them in its Context: line.
+Pass the containing struct's name to emit_struct_member_encoder() and
+emit_struct_member_decoder(), and to the matching emitters in
+pointer.py, as a required argument. A struct whose last field refers
+to its own type is an _XdrPointer rather than an _XdrStruct, so
+pointer.py takes the same argument. No emitter renders the new value
+yet, so generated output is byte-identical. A subsequent patch keys
+the "pragma pages" encoder on it.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 Acked-by: Jeff Layton <jlayton@kernel.org>
 ---
- include/linux/sunrpc/svc.h | 19 ++++++++++++++++++-
- 1 file changed, 18 insertions(+), 1 deletion(-)
+ tools/net/sunrpc/xdrgen/generators/pointer.py | 12 ++++++++----
+ tools/net/sunrpc/xdrgen/generators/struct.py  | 12 ++++++++----
+ 2 files changed, 16 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index b80161b849ce..e69aeb864a8d 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -532,6 +532,8 @@ static inline void svc_reserve_auth(struct svc_rqst *rqstp, int space)
-  * svcxdr_init_decode - Prepare an xdr_stream for Call decoding
-  * @rqstp: controlling server RPC transaction context
-  *
-+ * The stream records @rqstp, so a codec running on it reaches the
-+ * transaction with svcxdr_rqst().
-  */
- static inline void svcxdr_init_decode(struct svc_rqst *rqstp)
- {
-@@ -544,12 +546,15 @@ static inline void svcxdr_init_decode(struct svc_rqst *rqstp)
+diff --git a/tools/net/sunrpc/xdrgen/generators/pointer.py b/tools/net/sunrpc/xdrgen/generators/pointer.py
+index 6dbda60ad2db..9a540e125786 100644
+--- a/tools/net/sunrpc/xdrgen/generators/pointer.py
++++ b/tools/net/sunrpc/xdrgen/generators/pointer.py
+@@ -91,7 +91,9 @@ def emit_pointer_definition(environment: Environment, node: _XdrPointer) -> None
  
- 	xdr_init_decode(xdr, buf, argv->iov_base, NULL);
- 	xdr_set_scratch_folio(xdr, rqstp->rq_scratch_folio);
-+	xdr->xdrgen_ctx = rqstp;
- }
  
- /**
-  * svcxdr_init_encode - Prepare an xdr_stream for svc Reply encoding
-  * @rqstp: controlling server RPC transaction context
-  *
-+ * The stream records @rqstp, so a codec running on it reaches the
-+ * transaction with svcxdr_rqst().
-  */
- static inline void svcxdr_init_encode(struct svc_rqst *rqstp)
- {
-@@ -567,7 +572,19 @@ static inline void svcxdr_init_encode(struct svc_rqst *rqstp)
- 	xdr->page_ptr = buf->pages - 1;
- 	buf->buflen = PAGE_SIZE * (rqstp->rq_page_end - buf->pages);
- 	xdr->rqst = NULL;
--	xdr->xdrgen_ctx = NULL;
-+	xdr->xdrgen_ctx = rqstp;
-+}
-+
-+/**
-+ * svcxdr_rqst - Retrieve the transaction bound to an xdr_stream
-+ * @xdr: stream to query
-+ *
-+ * Return: the controlling svc_rqst when @xdr was initialized by
-+ * svcxdr_init_decode() or svcxdr_init_encode(), otherwise NULL.
-+ */
-+static inline struct svc_rqst *svcxdr_rqst(struct xdr_stream *xdr)
-+{
-+	return xdr->xdrgen_ctx;
- }
+ def emit_pointer_member_decoder(
+-    environment: Environment, field: _XdrDeclaration
++    environment: Environment,
++    field: _XdrDeclaration,
++    struct_name: str,
+ ) -> None:
+     """Emit a decoder for one field in an XDR pointer"""
+     if isinstance(field, _XdrBasic):
+@@ -164,14 +166,16 @@ def emit_pointer_decoder(environment: Environment, node: _XdrPointer) -> None:
+     print(template.render(name=node.name))
  
- /**
+     for field in node.fields[0:-1]:
+-        emit_pointer_member_decoder(environment, field)
++        emit_pointer_member_decoder(environment, field, node.name)
+ 
+     template = get_jinja2_template(environment, "decoder", "close")
+     print(template.render())
+ 
+ 
+ def emit_pointer_member_encoder(
+-    environment: Environment, field: _XdrDeclaration
++    environment: Environment,
++    field: _XdrDeclaration,
++    struct_name: str,
+ ) -> None:
+     """Emit an encoder for one field in a XDR pointer"""
+     if isinstance(field, _XdrBasic):
+@@ -241,7 +245,7 @@ def emit_pointer_encoder(environment: Environment, node: _XdrPointer) -> None:
+     print(template.render(name=node.name))
+ 
+     for field in node.fields[0:-1]:
+-        emit_pointer_member_encoder(environment, field)
++        emit_pointer_member_encoder(environment, field, node.name)
+ 
+     template = get_jinja2_template(environment, "encoder", "close")
+     print(template.render())
+diff --git a/tools/net/sunrpc/xdrgen/generators/struct.py b/tools/net/sunrpc/xdrgen/generators/struct.py
+index 64911de46f62..91da3863c166 100644
+--- a/tools/net/sunrpc/xdrgen/generators/struct.py
++++ b/tools/net/sunrpc/xdrgen/generators/struct.py
+@@ -91,7 +91,9 @@ def emit_struct_definition(environment: Environment, node: _XdrStruct) -> None:
+ 
+ 
+ def emit_struct_member_decoder(
+-    environment: Environment, field: _XdrDeclaration
++    environment: Environment,
++    field: _XdrDeclaration,
++    struct_name: str,
+ ) -> None:
+     """Emit a decoder for one field in an XDR struct"""
+     if isinstance(field, _XdrBasic):
+@@ -164,14 +166,16 @@ def emit_struct_decoder(environment: Environment, node: _XdrStruct) -> None:
+     print(template.render(name=node.name))
+ 
+     for field in node.fields:
+-        emit_struct_member_decoder(environment, field)
++        emit_struct_member_decoder(environment, field, node.name)
+ 
+     template = get_jinja2_template(environment, "decoder", "close")
+     print(template.render())
+ 
+ 
+ def emit_struct_member_encoder(
+-    environment: Environment, field: _XdrDeclaration
++    environment: Environment,
++    field: _XdrDeclaration,
++    struct_name: str,
+ ) -> None:
+     """Emit an encoder for one field in an XDR struct"""
+     if isinstance(field, _XdrBasic):
+@@ -241,7 +245,7 @@ def emit_struct_encoder(environment: Environment, node: _XdrStruct) -> None:
+     print(template.render(name=node.name))
+ 
+     for field in node.fields:
+-        emit_struct_member_encoder(environment, field)
++        emit_struct_member_encoder(environment, field, node.name)
+ 
+     template = get_jinja2_template(environment, "encoder", "close")
+     print(template.render())
 -- 
 2.55.0
 
