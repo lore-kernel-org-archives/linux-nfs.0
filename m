@@ -1,86 +1,109 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D9E76559CBF;
-	Tue,  8 Sep 2026 15:21:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9766757C72D;
+	Tue,  8 Sep 2026 16:32:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788880925; cv=none; b=EgG0AjyvEX0BaktWw4iALeqpum02mR+pRbzKanqhdPbtrXzS/ZQjZDmalZ8QUHFRY333YHEDU0Ud7hkdGBI8YMBPTS5T8nQMvKJCgJEOxOsNcgc5Be2ZcL8C3sJpr79KY+kJ7uS7kM0H5eC1osch0jnOX5S5d97CrVaV/zuqEBo=
+	t=1788885156; cv=none; b=efMLIviTN4QERfOR+n6FOKg69/NABPcJZURkVrXLv7xEZMTZ4tlg79xLd06+8S+q+hAXs3j4K7SzmZHxJk8dq9H/nBIK2r0e9M1q91TnHq0UO1oqP/lwXq7cqXHAl8uWgER9mXw0QBbKZ8IC9RVpm8Kx0kpPNaBQxhfxr032zFo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788880925; c=relaxed/simple;
-	bh=rbfmehDEFzg/ycRTgJBA3rdTQM7ssLuLHm8jEY9EJ4c=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=fudgoYSn52/8YZ0PWI0sE95GDCgclzNHLrsrT01/atWgkgYKFySmbLi0IMtHKHSQqHgv7R4tRGnhOSYvZ/24Emm60IWZKGE1Y4YrqqH9XVtrtlfL33P0WgXu5O8uadUM6vOm34lbjKx1U1rr5J2Qi2aOXB/Y7LH/JM+VcBgYamQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GW9jjMAs; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788885156; c=relaxed/simple;
+	bh=tGu/gKn3bAhi5s7Tl/toqEb6jcrVVQoi6O83bRyx9S0=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=HuPDx0r8W47hKciNEDxNNLN236MCjhp63KeULd18xypBcEDRg++HUHeW/sZsNdKkQskbwCRYazGroG6LCkiTMcndPfsmRhSLv8aM+DDBGi+6w73Hl7EJKXYZpOhVPfE2gHpSQWBFsBbTzx1AIQcmpxprTGy+vOwTULK+W2wxi28=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Ne9aIc8x; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GW9jjMAs"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C8B2A1F00A3A;
-	Tue,  8 Sep 2026 15:21:49 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Ne9aIc8x"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A46251F00A3A;
+	Tue,  8 Sep 2026 16:32:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788880910;
-	bh=2QHkLoRC32cvs9UQOAOacyMx5Mxt/hDh/1zoxM4kHmo=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=GW9jjMAsulzD31AxJhp56UlQypaS0cZMoFOaZLI/2FBulHMFL9CnEDNYdxeb6aDcU
-	 2rU/Crrh44bLOjHoUL4AKYeogyWeukL8tM7hXLt9VgDR9zaOPsn6aWlNPeQqMyaaoW
-	 qlA/y0s6MnPDkNS9YiGBJAanpvZMbvj8cFe5+VHhOx2FOrQJYu59ATrvVBftdZtC5K
-	 q6eWihYpBOx/RmjKQouSplsEXRVVLRqhHocWkQgyIrWCil2TmTGQ3ylE54ZG7izpYy
-	 Aov2cLGkdu5hlX2kKFyqd0u+HV0YCNinTKR0GqL8nvYiOqmtidqVxGjsRH7wx3/4x4
-	 sG1HVGm/TEbTw==
-From: Chuck Lever <cel@kernel.org>
-To: Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	Zijing Yin <yzjaurora@gmail.com>
-Cc: linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] SUNRPC: fix netns use-after-free in write_gssp()
-Date: Tue,  8 Sep 2026 11:21:45 -0400
-Message-ID: <178888089920.3705723.2420109779573308650.b4-ty@b4>
-X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20260907085435.644076-1-yzjaurora@gmail.com>
-References: <20260907085435.644076-1-yzjaurora@gmail.com>
+	s=k20260515; t=1788885153;
+	bh=xsarEBQz83oy13kJ3SZ3R6K9bssRVn1ez842Rktmuhs=;
+	h=From:To:Cc:Subject:Date;
+	b=Ne9aIc8xchnzTruY1Tu60hFVLz3L1UFR+Jv3r5JvfPnSuZ/eTcd7B8cPb0jtV0DPH
+	 3STgQs41BncK8OE/tkuf1geZngrYAQmdKgStjmcRQCxmGQlaV0k7h8AOegCQ3Yi06L
+	 356HHRwkvv2+a0UtRrGmotpUjAwIVHUlumkf54+zCLsca1QvWOJGsndJUWgNvbDgYt
+	 2B55z3Mf4nhmIg8ohsoCwVFB/bNaKzkasnjy3GKceHqqgjW7E4gC/7hxF0vkr7kMMO
+	 isVX6fKr45MSYHANOWo6DtbDfD3cMn2/kRJfX/usD8ZzzO2/nYhtnCRDW34SknHCY9
+	 CwOMB8uuPSYyQ==
+From: Mike Snitzer <snitzer@kernel.org>
+To: linux-nfs@vger.kernel.org,
+	linux-block@vger.kernel.org
+Cc: dm-devel@lists.linux.dev,
+	axboe@kernel.dk,
+	cel@kernel.org,
+	jlayton@kernel.org,
+	david.flynn@hammerspace.com
+Subject: [PATCH 0/4] block, nfsd: fixes for sub-sector bvec direct I/O
+Date: Tue,  8 Sep 2026 12:32:18 -0400
+Message-ID: <20260908163232.30774-1-snitzer@kernel.org>
+X-Mailer: git-send-email 2.44.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
-On Mon, 07 Sep 2026 01:54:35 -0700, Zijing Yin wrote:
-> While fuzzing with a customized syzkaller, I hit a refcount warning in
-> xprt_alloc(), reached from a write to /proc/net/rpc/use-gss-proxy:
-> 
->   refcount_t: addition on 0; use-after-free.
->   WARNING: lib/refcount.c:25 at refcount_warn_saturate+0xf8/0x120
->   CPU: 0 PID: 10404 Comm: syz.0.17 Not tainted 7.3.0-rc1-00096-gcfebfd3db73d
->   Call Trace:
->    <TASK>
->    xprt_alloc+0x83f/0x9d0
->    xs_setup_xprt+0xaf/0x3c0
->    xs_setup_local+0x47/0x7f0
->    xprt_create_transport+0x16c/0x730
->    rpc_create+0x38e/0x7f0
->    gssp_rpc_create+0xe2/0x180
->    set_gssp_clnt+0xba/0x1b0
->    write_gssp+0x200/0x310
->    proc_reg_write+0x240/0x330
->    vfs_write+0x2aa/0x1050
->    ksys_write+0x12a/0x250
->    do_syscall_64+0x117/0x750
->    entry_SYSCALL_64_after_hwframe+0x77/0x7f
->    </TASK>
-> 
-> [...]
+While qualifying NFSD's NFSD_IO_DIRECT write path with byte-level data
+verification, it was found that the ITER_BVEC payloads nfsd submits 
+expose silent data corruption in two bio-based block drivers and
+two defects in nfsd itself. Example problematic payloads is the first
+fragment starts mid-page because the RPC header precedes it in the
+receive buffer, and fragment lengths need not be sector multiples.
+bio_iov_bvec_set() passes such an array to the queue as-is; nothing
+below it validates per-bvec sector alignment.
 
-Applied to nfsd-testing, thanks!
+Patches 1-2 fix silent corruption (write completes successfully, data
+lands wrong) and are stable candidates:
 
-[1/1] SUNRPC: fix netns use-after-free in write_gssp()
-      commit: 85b91a0bdc1c38c97fb17449e6c0990104ebf66f
+- brd re-derives each segment's device position from
+  bio->bi_iter.bi_sector, which bio_advance_iter_single() advances by
+  whole sectors only, so a sub-sector segment length skews everything
+  that follows.
+
+- zram hardwires is_partial_io() to false on 4K-page kernels, sending
+  sub-page bvecs down a whole-page path that ignores bv_offset/bv_len
+  entirely, and has the same sector-cursor skew.
+
+Both are verified with a synthetic-bio reproducer (stamped pattern,
+write, read back, compare) across mid-page and page-aligned
+geometries.
+
+Patches 3-4 fix nfsd: the filecache never fetches DIO alignment
+attributes on the supplied-file acquire branch, so every WRITE to a
+file created via NFSv4 OPEN(CREATE) is refused direct I/O for the
+file's cached lifetime; and nfsd's statx-based DIO gate is weaker than
+bio_split_io_at()'s split-time checks, so an admitted iterator can
+still be rejected by the block layer -- retry the segment buffered
+instead of failing a valid WRITE with NFS4ERR_INVAL.
+
+One open question for the iomap/block maintainers: should ITER_BVEC
+direct I/O with sub-sector bvec boundaries be validated or bounced
+centrally rather than trusted to every driver's iteration?  An audit
+of in-tree bio-based drivers found the same bi_sector-derived position
+pattern in dm-io, dm-log-writes, dm-writecache (pmem path) and
+dm-integrity -- unreachable through nfsd today only because dm queues
+advertise dma_alignment >= 511, which nfsd's alignment gate refuses.
+
+Tested with the reproducer matrix on brd, zram and nvme-loop at 4K and
+16K page size (aarch64) and 4K (x86_64), plus 30-connection NFS write
+rigs comparing source against export byte-for-byte: clean with the
+fixes, corrupting or erroring without them.
+
+Mike Snitzer (3):
+  brd: iterate the bio by byte position, not bi_sector
+  zram: handle sub-page bvec segments without corrupting data
+  nfsd: fall back to buffered I/O when a direct write gets -EINVAL
+
+David Flynn (1):
+  nfsd: fetch direct I/O alignment for files handed to the filecache
+
+ drivers/block/brd.c           | 29 +++++++++++++++++++++++------
+ drivers/block/zram/zram_drv.c | 36 +++++++++++++++++------------------
+ fs/nfsd/filecache.c           |  4 ++--
+ fs/nfsd/vfs.c                 | 29 +++++++++++++++++++++++++++++
+ 4 files changed, 77 insertions(+), 31 deletions(-)
 
 --
-Chuck Lever
-
+2.52.0
