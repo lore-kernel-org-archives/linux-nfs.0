@@ -1,111 +1,77 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5D75A563299;
-	Wed,  9 Sep 2026 13:45:01 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 20941560AD1;
+	Wed,  9 Sep 2026 14:04:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788961502; cv=none; b=pU6QRaL26MxVpgIY/+xxllrPAHsTlrF3FadWgTOnW2Bypr86lp5vyA8JeRUxboyG0EdRLmfXVRdO1uLDUOP5jSnEdat2Lz+6+lIOhSouBbKvdBsyIS9gr5Xk3GPs520ZxzSCogxSDxn0cVwl36XZ1CWmzvjp3WBwxihKAvD7wTw=
+	t=1788962675; cv=none; b=Hagdf1zMoPm70LBOJo5y5RbmxzDP1dqmoZQhBVLWHOnZqtpMEJorqr3KhpNkcalrhOy1UWhm11NynZYsZ9a4eDN55XGeFMKXgGhUGhLfI9thC32Xk+eTj6dFUlJiAgvwNpjHRUwVJxPcarcU2ZnbajsO6AfciiPBuOl6FhGQVfY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788961502; c=relaxed/simple;
-	bh=hyvyFx3Hrp8AftpAe7Lv1fh0M0Fz8ztoCuKn9jiiQXM=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=Fh1ABlW460nc7RBAsWXvKR/tMuqTMH59MBYDFPmwgL+qjWBmKE56C76+q+O8vlBBGQU+ETiPwvjPG1KtJqgjFWXnwX+Qz9689DNtwZDTu/9+AqfQshrkV608uIOBj690ztkP6xomHZXYKon3k+5Pky/BUmlUT2qTSdeYwzWvMDQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=k8yedqaJ; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788962675; c=relaxed/simple;
+	bh=OJD87lMkLHMi6HkTdkYnT32+c3WlOXdiUwjXZ9pd1LA=;
+	h=Message-ID:Subject:From:To:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=OVt0FAI9lZpBEMCYdg8CGCi7HfqD+MLq30fYdTTGDsc2hFlBl01gzb/JNQSJgEymN9tdboMcUdrY2ZVpdp7p56ufqAaGImz4Fkv0RCXSgHuufMkzCTSOfgFXB0SP9efjkHoRRVVzz4txZT0WnkUl7dBg+iipUArO08kYNuAacQ0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=EBZYD+Zt; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="k8yedqaJ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 829F41F00A3D;
-	Wed,  9 Sep 2026 13:45:00 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="EBZYD+Zt"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6BAC61F00A3A;
+	Wed,  9 Sep 2026 14:04:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788961501;
-	bh=hyvyFx3Hrp8AftpAe7Lv1fh0M0Fz8ztoCuKn9jiiQXM=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=k8yedqaJgOTFkjLsyKu1ZDe87lRhmSqEDREp+KgeI8srQL310iFWMVnwntR26otOH
-	 eHerCGJ3TBKZrIBFo+PtmgPeDZYPCNbxhktk+G0m9CGpSbk3o7U07D3Q07PyF/W71V
-	 psd4jFcXVyY8al92TTahW66EQSIsJtZc6Eetq+XtDN9xW5CCYSnsBaofeQp6G5FhnY
-	 oXbpF/NzMhuJn89p9yg9lFnemouI97forL68yBKaWYTIU0pQ/BD41LmTQHCLkgytnR
-	 GS3uBF1wzV4xCrhGkkjFnn0nDzYlk0kiLOOvLvcLNit0FKqjS0ReIqJKhYlaHlu6em
-	 Bo1z2bcdl5KbQ==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 9EC78F40066;
-	Wed,  9 Sep 2026 09:44:59 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Wed, 09 Sep 2026 09:44:59 -0400
-X-ME-Sender: <xms:22KhalRvF3fMXjShW40zzwYEM4tnWZnw2cvGjPTlDOytKBXeBXns-A>
-    <xme:22Khapmy_heSYFGidmFx5nXgNBZ1-Ed6aVIFgMlEYFusff8PTJomeeXd_WqsxxT6J
-    uODSDGc5qHYb6ccXbS7rR40lA7XKtjeG1qeO-kf1kP3XKRvy5E7eZey>
-X-ME-Proxy-Cause: dmFkZTG4WUQZMwjYCLD9UlI1qeoOgcX4SggFe6FfyVpgRNu0o1E1aksAGydR67sMY+0OGa
-    RTqopGe06ybSCoNb42xWFYTDl844DaicJ69GlNKqRl7UDGv9EqOxPRoqbL2cBSwbhd2842
-    LNr+QCzUDKiltbMEt0cdc53YPoLakn+/GOrhbMi0lHTD2Y2rohbkUSvM/Y699QnxO9kEf5
-    /LQJhWfFwu3fup8DC0wto9X8B8tu3KG/F5tJ027uzrefvdorq/UL+gq/CijU+rrwojygbx
-    g7V6cn/foyjyuZqpjPYnl5XVd8STcA6Q9799FYV15HPJHONG+jG3f4pzMlqohMRsUGGeU6
-    05NjnjL+fcQF6gLHuAeSejclel8grItfxJhogEe1lRwcOguQYr1S/Y/oTibUnXn+Igfotq
-    ew0M3USENR0IL9usvarajnJwDHyUHKgq5zH4+ceuJMdFS0pM55OWlyQk5BBzxDRvNtKi1m
-    WtQAXL6ZmJb4Wp9vTVbUTznWZ4Z7DmRcGMGhKbJiipUaAFHsX0nDXJWc6IpKUhoO3AdQG+
-    ecWrls4bPeB/WIiAYDnOxCaecuyg2ukxZDzUILlsFIOmdm4IpVl0Z1O87jlfW1f0GqEBR7
-    zfhKBWI7/SMUpFvusVfO5Gm2Q+LAhZzFPDNLYNvRzHKAuIFvtnFJzGQ1ZzWA
-X-ME-Proxy: <xmx:22KhapV1Lil2llXfGcwSPJIrnqw8Le7NfL8MRO5rkz9zrPb7mBp8FQ>
-    <xmx:22KhaorpMHDfYyNXmotXjFnT3gBS5T8WJGoWHCUsqRBe2DDPWfRp4Q>
-    <xmx:22KharkpakE4TGEI4rbEMut3EG-nQvdL1T1nKwNi2CbBEKLzndZPuw>
-    <xmx:22Khao0XJZXI_sgFIMpP3t5_BPiZG8BaEs-RwfZcIDqZjzfjOGqTzA>
-    <xmx:22KhaoRDLviMzShlqbvqZbCAXp35O4M2uHZBPpGdb_QVZZ6OW5PK_nvN>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 792FD7811F4; Wed,  9 Sep 2026 09:44:59 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1788962674;
+	bh=J5CYiXhnzzWfqnVyuOqYfQ2GCCsXntkBBPpvhU0KG9U=;
+	h=Subject:From:To:Date:In-Reply-To:References;
+	b=EBZYD+ZtOU7lMsSmSTLz3bh9TnVBlUVqkxGZ7wbKXipbdA82N1RH27rqP6A38FWRU
+	 t68vXYIJRKRxlA8HZnYFeE8aavPtMrhDe4BwS2cKShEgLhsWkQ18NTtGcQg2kEbmnp
+	 3V/SQ7bg6GPmj5pSyDxXSHvTNVdmRhbugnz8nihGCKRLwSf3mt54FgHorYDtHP/Ohx
+	 5gZOq8HaM/unool5vBlwtTsWQeB/0AX15/YTtGO34zIxMqSWSC8RxrOICdaHZjFQgW
+	 x+gwY2VUK50Sg4D30RTzvyNN6e4TjAsKOIkeQKtDqV+RbC/v3riNLaT1xwL/2OOJXp
+	 lUnqSHpqkSpbw==
+Message-ID: <af38d347c93f00a5524de00dddef5ba54f692b87.camel@kernel.org>
+Subject: Re: [PATCH] NFS: replace sprintf() with snprintf() in nfs_root_setup
+From: Trond Myklebust <trondmy@kernel.org>
+To: Lalit Shankar Chowdhury <lalitshankarch@gmail.com>, Anna Schumaker
+	 <anna@kernel.org>, "open list:NFS, SUNRPC, AND LOCKD CLIENTS"
+	 <linux-nfs@vger.kernel.org>, open list <linux-kernel@vger.kernel.org>
+Date: Wed, 09 Sep 2026 10:04:32 -0400
+In-Reply-To: <20260908183444.183687-1-lalitshankarch@gmail.com>
+References: <20260908183444.183687-1-lalitshankarch@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AvkNhIlgtVI3
-Date: Wed, 09 Sep 2026 09:44:37 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "David Flynn" <david.flynn@hammerspace.com>
-Cc: "Mike Snitzer" <snitzer@kernel.org>, linux-nfs@vger.kernel.org,
- "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
- dm-devel@lists.linux.dev, "Jens Axboe" <axboe@kernel.dk>,
- "Jeff Layton" <jlayton@kernel.org>
-Message-Id: <701e1251-bd73-49a9-b8c9-8e299b959df6@app.fastmail.com>
-In-Reply-To: <B3A1EA3A-00AA-4A56-A644-9AC77FF50CAF@hammerspace.com>
-References: <20260908163232.30774-1-snitzer@kernel.org>
- <20260908163448.30841-1-snitzer@kernel.org>
- <20260908163448.30841-5-snitzer@kernel.org>
- <995a853c-2c54-4bd0-9708-f6e0c1be7fd5@slotpi15m67>
- <B3A1EA3A-00AA-4A56-A644-9AC77FF50CAF@hammerspace.com>
-Subject: Re: [PATCH 4/4] nfsd: fall back to buffered I/O when a direct write gets
- -EINVAL
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
 
+On Tue, 2026-09-08 at 18:34 +0000, Lalit Shankar Chowdhury wrote:
+> Replace sprintf() with snprintf() to perform bounds checking when
+> formatting.
+>=20
+> Signed-off-by: Lalit Shankar Chowdhury <lalitshankarch@gmail.com>
+> ---
+> =C2=A0fs/nfs/nfsroot.c | 2 +-
+> =C2=A01 file changed, 1 insertion(+), 1 deletion(-)
+>=20
+> diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
+> index 432612d22437..d2c26d5378a6 100644
+> --- a/fs/nfs/nfsroot.c
+> +++ b/fs/nfs/nfsroot.c
+> @@ -144,7 +144,7 @@ static int __init nfs_root_setup(char *line)
+> =C2=A0		size_t n =3D strlen(line) + sizeof(NFS_ROOT) - 1;
+> =C2=A0		if (n >=3D sizeof(nfs_root_parms))
+> =C2=A0			line[sizeof(nfs_root_parms) -
+> sizeof(NFS_ROOT) - 2] =3D '\0';
+> -		sprintf(nfs_root_parms, NFS_ROOT, line);
+> +		snprintf(nfs_root_parms, sizeof(nfs_root_parms),
+> NFS_ROOT, line);
+> =C2=A0	}
+> =C2=A0
+> =C2=A0	/*
 
-
-On Tue, Sep 8, 2026, at 11:57 PM, David Flynn wrote:
-> (Sorry in advance if I=E2=80=99m posting this wrong in some way - litt=
-le new to=20
-> posting here=E2=80=A6)
->
-> Totally agree that NFSD must not interpret generic -EINVAL as an=20
-> alignment rejection... But, a boundary check would also excludes=20
-> geometries that capable storage stacks could write directly. We want=20
-> the actual filesystem/block decision to distinguish unsupported=20
-> geometry from a real error, while retaining every working zero-copy=20
-> case.
-
-Fair enough, but that's a filesystem-community question, outside
-of NFSD's domain. If they can agree to an API contract that NFSD
-can use, then I don't have a quibble.
-
-To make your argument, of course, you will need to provide a
-real-world use case with an existing in-tree filesystem or device
-that can demonstrate what you need.
-
-In the meantime, I'd like to see the narrow issue that Mike
-reported addressed in the current code. Fixing the current gate
-is not fraught with these deeper architectural issues, and the
-fix should be backported to LTS kernels.
-
-
+Please see the two lines immediately above the one you're replacing.
 --=20
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+Trond Myklebust
+Linux NFS client maintainer, Hammerspace
+trondmy@kernel.org, trond.myklebust@hammerspace.com
