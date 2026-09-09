@@ -1,163 +1,175 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5472957F725;
-	Wed,  9 Sep 2026 16:14:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 079FE5678D6;
+	Wed,  9 Sep 2026 16:40:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788970476; cv=none; b=O1lJCfKUF8DrL3bnMyOIiz9aFW+nEZVdrXKvtkD9ye5+evTeuqrePY7t6QQA30VrA7EDgalWVdy3asyAsqFJXYFOXTJP5geY1wBrQyNCkd0SuH4aOWN5VYec84D8bFboCU9mqIC1F0s70Z+CQFRUMYIwshQ3XMuH/jlZ6GFQorU=
+	t=1788972008; cv=none; b=ikVE0m4uvnLSNcF3gSPCJHswDPY4YNIXQYMHtv6L05UpoxAKsOHF4e/rNxZF8vDOMtLnlp4pgu626Wcg2+PXAUPNattIG7J7R6nX6BIAJroBohJFEePMHOrNxzc6f8I50vP6hPzHqb/AdNwzpJRyFRf1/Fbl31f2wyNO17buvnA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788970476; c=relaxed/simple;
-	bh=IXErDTOJX0z/AMq180l0c18g+M8CufxZ9WK3gzKH554=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=cdKhwSClUxt93s7TBIKbDIgKTmPxaZHj9Kw1LIB3Sh+KcJaJ0QfSLqH6RJ9rHFAUqMOYUMHp+ooW2uVmJ5A3E2VOqMihsjQPDSSG3gKXOrMHR/LiFO5Qwyx8fimVFFis7PmMDJrxp9rPRvkpvzavL0VEMdO89TzydK9ayxTk8QE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mEox8JA4; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788972008; c=relaxed/simple;
+	bh=Q3a62DITx6p2rpjCsPoBsEChxkVRkk+RHPga/49RWJ0=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=MsINJWZ2CUeUQ2JJ2GNv09tiyyXI1x9Y4k3TpL5/h30kXJcoujepyQwkZ9M0B2JaqIwmgia4wOr1Tg53DvmVGTpNxFLUeE4RdBgRsnVDQA3wuvv7yorJXkQj2BMfVuKvxjAnKIwaKm0H4JLgrBYcR2L5GoEicyKg/Y/3we7h6RY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QZZp+vqF; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mEox8JA4"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C95911F00899;
-	Wed,  9 Sep 2026 16:14:34 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QZZp+vqF"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9BA0F1F000FF;
+	Wed,  9 Sep 2026 16:40:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788970475;
-	bh=JIKlN1u+EuU1sjWnG21tJwavPZttAEOlYhNsImizttI=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=mEox8JA4S9UJ0KZnk2buy2vrl1u9xAGy349gsGmIyt/s8Zvgq98CjxnFIGdolJTVZ
-	 Zn31IsxPUpRbMSxXybdhcO3Cc8XDaI55BNxAx2JydVxgE6TTSGvX6znIe2JyGe0Yjp
-	 iuEavPQFYtAK7NexCUhM4a/tU4j8D0xmf2s38ZkGQMVLwtH8vVuHjD+NB4QFEX/UjV
-	 hD2ixZgse0D4fJ3wnXp5YVIyMRmvF83F7zsbFVfntANAg5L0xHU5MyIveRnrPYLnIe
-	 fDEmEFPmj0ltUrXmtGjaYsV79/yTOdEIRT+uBNftMdy1S6LCl8pnrKNNuOv5EhQWl5
-	 ieUGNwWChi6Eg==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id F0D7BF40066;
-	Wed,  9 Sep 2026 12:14:33 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Wed, 09 Sep 2026 12:14:33 -0400
-X-ME-Sender: <xms:6YWhakEL7c43YIbwXjza4GNKYXb1g69n3Z-aDHEVGnXLpcUOABP8Ig>
-    <xme:6YWhaoIEhayIeyR_OWaGMgN3s-srA_-Qs9lCBOBoPyGVM75oIbNYIk78s6l0Ebby3
-    OkRB_j9K68nAhejfGPg1e7NrHNvY-b3xKmao5uKtsGkpZuN98uWpTbe>
-X-ME-Proxy-Cause: dmFkZTGmMpjcal9FL2mtojiBdLp60Q5rxctvqWiVLQ8omWVH5OoEkL+u+vJFQ5C70v5g/S
-    yF6OxH2VhvWXUuJe/kPJvFWFgHw3094AjfLrUbFGisNDnkW668nvkF8NhKCScn7J4EJh77
-    ahSS5V1ETo2CzYQH+jCMmm4y1/uXBcdLDLVcijg+NXRiCjJHZEB41E1YQSe2+xQZttasxC
-    qEDiFyZXjD0GpAfhLPGq94CxzTD0vLrefcy7f7W3Jo2PLM+jZnoD7430dkGV0UsLpQNqtV
-    bgfk06njCCOv9aQn9MgbzNo1veUyssmjSyq4m3Myw49ygqsHNk2G6L5GO5426F7NG2SmUX
-    wOmpm/tAT93UInr0UoCxyENOjkyIUfCYHrFY/3JTKSTFtB8symNH4vgTr+cppsBuohah5Q
-    9N+PEiLz1TR/R6foJuSSDYvbOMvvxgV9SDHRN/Oq4zsEbU7DjnrzIQNR0xPTtqOqjSS5m+
-    eg1cOI47B0jy3o1p4Ump4XAgp6mlNgQOmqMxABvASpry5wvyDNDA9cmkdDElY/VSawMiDw
-    n1npDvvSL1lcnT4hrQ5LsYVhj9RhQjMOAuUE1OZtZZo/F5ozy0PlXWF3MxmntE88B/Tv5D
-    2US8KQ1mhbxy9hgXrbhbzkcnq7jGnx5I/xnDRp/X4LqPUlw05RgZGIjQYUNg
-X-ME-Proxy: <xmx:6YWhakXJJWibP5GdnZ9G1Rg7xZSPur7L-vyteIp3samdwy1ln0XoMA>
-    <xmx:6YWhapBmKL6MTkTprNL1vVWov2Wl4E_d29_eEfRh26KVAUrUulymqA>
-    <xmx:6YWhapEHIHlWB2XCrzVhC9PKe5F9RFeH7R-W1PketxpVrnlsNTEciQ>
-    <xmx:6YWhaq5l54jA6UpYRvp-KbEnQihEV4C9N4VzaHFbLAX5mH6DzNNYVA>
-    <xmx:6YWhavnX7kM6X_K8mdfi9xjl509ryFRu4NOdvg3xGtK0GfmWXmZ4C_iZ>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id D3F297811F4; Wed,  9 Sep 2026 12:14:33 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1788972006;
+	bh=KAHGFtRlrN1CWVcp9pjnFt0Ka/bdEYDhMQxnAwazJz0=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=QZZp+vqFGZPC7ofO92os4qIlPml8/fTYJ4NQeVBx82dhuBpuh75VYQ2lGnj862die
+	 Tjj00SuiHsS7qkNJXthX6EtOJU/5G53vSP2knbWQQLPUBSQQ0+jK1xqHQMPHEzaCBf
+	 R249TFSGXvrdOaDQyXLOwsJndHrz0G1p79oE9p5M535Cfd+E6EWenTAuxxzqXrBecS
+	 ZdalF2rirAvbVu5NIwG4zSCTI0IaLDaLOhINkDsRSxgKnh3Ea6KzvGLLsNeVVH+rdu
+	 e5VlTIv6LzAyycAb3XN09HgVT6tqpOe6btfIBJtyDQ9TXzEQzB3VYUL3lBfVkTZL6F
+	 OwqraDlEyrlMQ==
+Date: Wed, 9 Sep 2026 12:40:05 -0400
+From: Mike Snitzer <snitzer@kernel.org>
+To: Chuck Lever <cel@kernel.org>
+Cc: linux-nfs@vger.kernel.org, linux-block@vger.kernel.org,
+	dm-devel@lists.linux.dev, axboe@kernel.dk, jlayton@kernel.org,
+	david.flynn@hammerspace.com
+Subject: Re: [PATCH 4/4] nfsd: fall back to buffered I/O when a direct write
+ gets -EINVAL
+Message-ID: <aqGL5dh49toktgBI@kernel.org>
+References: <20260908163232.30774-1-snitzer@kernel.org>
+ <20260908163448.30841-1-snitzer@kernel.org>
+ <20260908163448.30841-5-snitzer@kernel.org>
+ <995a853c-2c54-4bd0-9708-f6e0c1be7fd5@slotpi15m67>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AgpFG2YqzZmg
-Date: Wed, 09 Sep 2026 12:14:12 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: tmenninger@purestorage.com
-Cc: "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>, "Tejun Heo" <tj@kernel.org>,
- "Lai Jiangshan" <jiangshanlai@gmail.com>, linux-nfs@vger.kernel.org,
- linux-kernel@vger.kernel.org, "Eric Badger" <ebadger@everpuredata.com>,
- "Jon Curley" <jcurley@everpuredata.com>
-Message-Id: <48e8b6c6-dc62-4630-b7c9-19cdcc5cbf11@slotpi15m67>
-In-Reply-To: <20260908233952.983071-1-tmenninger@purestorage.com>
-References: <e485f23d-896d-4c01-9d24-eb3784a10dc2@slotpi15m67>
- <20260908233952.983071-1-tmenninger@purestorage.com>
-Subject: Re: [PATCH RFC 6/8] SUNRPC: Reduce rpciod workqueue contention
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+In-Reply-To: <995a853c-2c54-4bd0-9708-f6e0c1be7fd5@slotpi15m67>
 
-On Tue, 8 Sep 2026, Tim Menninger wrote:
-> Strict makes it worse. Across five runs, the three all-local CQ
-> placements ran at 38, 36, and 39 GB/s, while the two split placements
-> both ran at 46 GB/s.
->
->     cpu:         37 GBps
->     smt:         43 GBps
->     cache:       47 GBps
->     cache_shard: 47 GBps
->     numa:        47 GBps
+On Tue, Sep 08, 2026 at 02:25:32PM -0400, Chuck Lever wrote:
+> On 9/8/26 12:34 PM, Mike Snitzer wrote:
+> > nfsd_dio_iter_is_aligned() approves a write iterator against the
+> > file's STATX_DIOALIGN attributes (a whole-iterator iov_iter_alignment()
+> > test against dio_mem_align), but the block stack applies stricter
+> > geometry tests at bio split time: bio_split_io_at() checks each bvec's
+> > offset and length against the queue's dma_alignment and may find no
+> > valid block-size-aligned split at all. An ITER_BVEC WRITE payload can
+> > pass the former and fail the latter: bio_iov_bvec_set() hands nfsd's
+> > bvec array to the queue as-is, and the payload's first fragment starts
+> > mid-page (the RPC header precedes it in the receive buffer), so the
+> > iterator's interior page boundaries need not be logical-block aligned
+> > and a bio the queue must split may have no valid split point. When
+> > that happens, nfsd_direct_write() returned the -EINVAL to the client
+> > as a failed WRITE (NFS4ERR_INVAL) -- for a perfectly valid request.
+> >
+> > Observed against a brd-backed nvme-loop XFS export (dio_mem_align=4)
+> > with 1 MiB WRITEs, e.g. arriving as 65 bvecs with bv0=(408,15976):
+> > the gate admits the iterator, the block layer rejects it, and every
+> > large write on the affected connection errors out (dd: Invalid
+> > argument).
+> 
+> Thanks for chasing this down. The bv0 numbers make the gate defect
+> clear: 15976 is not a multiple of the logical block size, so the
+> direct segment's first interior bvec boundary lands mid-sector. The
+> boundaries after that are page boundaries, which are fine.
+> 
+> A small correction for the commit message: nfsd_dio_iter_is_aligned()
+> doesn't exist. The gate is the first-bvec offset test in
+> nfsd_write_dio_iters_init(), and it checks only that one offset
+> against nf_dio_mem_align. Likewise bio_iov_bvec_set() is now
+> bio_iov_iter_set().
 
-Thanks, that settles the scope question. Anything at LLC size or
-larger is OK on your box, finer is worse, and the pool-lock cost
-the series was after does not show up there at all. I'll drop the
-patches that change the WQ affinity, for now.
+As I'm sure you inferred, this patch was pulled out to the front as an
+"upstream fixes" section -- of a broader series of changes David and I
+have been developing to enhance SUNRPC to allow for wider use of
+NFSD_DIRECT with TCP.  So that explains the inconsistency in functions
+referenced.
 
+> > Treat -EINVAL from the direct attempt as "not direct-able": restore the
+> > segment's iterator and retry it as (uncached when FOP_DONTCACHE)
+> > buffered I/O, the same fallback nfsd_write_dio_iters_init() picks for
+> > geometries it rejects itself.
+> 
+> [ ... ]
+> 
+> > @@ -1467,6 +1469,33 @@ nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> >  		expected = iov_iter_count(&segments[i].iter);
+> >
+> >  		host_err = vfs_iocb_iter_write(file, kiocb, &segments[i].iter);
+> > +		if (unlikely(host_err == -EINVAL &&
+> > +			     (kiocb->ki_flags & IOCB_DIRECT))) {
+> 
+> [ ... ]
+> 
+> > +			segments[i].iter = saved_iter;
+> > +			kiocb->ki_flags &= ~IOCB_DIRECT;
+> > +			if (file->f_op->fop_flags & FOP_DONTCACHE)
+> > +				kiocb->ki_flags |= IOCB_DONTCACHE;
+> > +			trace_nfsd_write_vector(rqstp, fhp, kiocb->ki_pos,
+> > +						segments[i].iter.count);
+> > +			host_err = vfs_iocb_iter_write(file, kiocb,
+> > +						       &segments[i].iter);
+> > +		}
+> 
+> Per our discussion last October:
+> 
+>   https://lore.kernel.org/linux-nfs/aPXihwGTiA7bqTsN@infradead.org/
+> 
+> The conclusion then was that -EINVAL from ->write_iter can come from
+> a number of conditions in the filesystem, so NFSD can't treat it as
+> meaning only that the I/O was misaligned. That still holds, so I'd
+> rather not use -EINVAL to signal a retry. An -EINVAL that really is
+> the filesystem rejecting the request would now cost a second full
+> write attempt before surfacing anyway.
 
-> The lock profile is dominated by __slab_free in both cases.
-> ...
->     __slab_free:
->         2.07M contentions
->         3.83 minutes aggregate wait
->         111 us average wait
+Yes, I do recall that exchange now thanks for the reminder!
 
-That is on the order of twenty CPUs on node 0 doing nothing but
-spinning on one lock, in every configuration you measured. It is a
-much bigger target than the workqueue scope.
+> nfsd_write_dio_iters_init() already has the segment start and
+> nf_dio_offset_align, and after the first bvec every boundary is
+> page-aligned. If it also requires the first bvec's remaining length
+> (from the segment start) to be a multiple of offset_align and takes
+> the no_dio path otherwise, that rejects bv0=(408,15976) up front
+> using only data NFSD already has.
 
-The lock is the SLUB per-node list_lock for the nfs_page cache.
-Since 7.3-rc1, every ordinary kmem_cache gets per-CPU sheaves by
-default (for nfs_page, 60 objects per sheaf), and a plain free
-lands in the local sheaf without touching list_lock. It reaches
-__slab_free only when a CPU's sheaves are full and the per-node
-barn, which holds at most ten full sheaves, is full too. Then the
-whole sheaf gets flushed to the slabs under list_lock.
+Turns out the gate in nfsd_write_dio_iters_init() is perfectly fine
+for existing upstream SUNRPC TCP, copied rq_pages payloads are always
+one contiguous page-tiled run, and contiguous runs always split
+validly.
 
-Your workload appears to defeat that optimization: nfs_page
-objects are allocated on the application CPUs across both nodes and
-freed in bursts by rpciod on the CQ CPUs. The freeing CPUs never
-allocate, so their sheaves stay full, and a 600-object barn is
-microseconds of buffering at your free rate. If that is what is
-going on, it is an allocator scaling issue rather than an NFS one,
-and the right place to take it is linux-mm and Vlastimil.
+It is only with the broader set of SUNRPC TCP changes, that are
+actively in development, where the gate needs to be tightened up.
+ 
+> What would help me understand the failure even better:
+> 
+> - Which -EINVAL in bio_split_io_at() fired: the per-bvec dma_alignment
+>   test, or the zero-length result after ALIGN_DOWN()?
 
-Before that, I'd like to confirm this analysis. Could you:
+It's the ALIGN_DOWN-to-zero branch - the per-bvec dma_alignment test
+provably can't fire on gate-admitted iterators. The trigger is an
+interior bvec discontinuity that was made possible by our
+in-development changes.
 
-1. Check that sheaves are actually on for that cache:
+> - On the reproducer, how does stx_dio_offset_align compare with the
+>   queue's logical_block_size?
 
-       cat /sys/kernel/slab/nfs_page/sheaf_capacity
+They are equal, dio_offset_align=512 == logical_block_size=512
+(dio_mem_align=4 from dma_alignment=3).
 
-   A zero means your kernel predates sheaves or the cache has debug
-   flags, and the contention is the older remote-free slab
-   transition path. That is a different report.
+> If there turn out to be cases the gate can't predict from the statx
+> data, that seems like a question for the block and fs folks about
+> what error the filesystem should surface, rather than something to
+> work around in NFSD.
 
-2. Build with CONFIG_SLUB_STATS=y and sample these before and after
-   a 10-second all-local window:
+There isn't anything that needs a more sweeping review/decision from
+the community. Basically Claude got it wrong that this was an existing
+upstream problem that needed fixing. Please drop this patch 4/4.
 
-       cd /sys/kernel/slab/nfs_page
-       grep . free_fastpath free_slowpath sheaf_flush barn_put \
-           barn_put_fail barn_get barn_get_fail alloc_slowpath
+I'll tighten up the gate in the broader patchset that is in
+development. I'll keep iterating on it and hopefully be able to share
+it soon.
 
-   If barn_put_fail and sheaf_flush track the contention count, the
-   barn limit is the bottleneck. If free_slowpath dominates and the
-   sheaf counters are quiet, the frees are bypassing sheaves
-   entirely and my analysis is wrong.
-
-3. Run perf lock contention with -l on the same window so the lock
-   shows up by address, and note whether the callers under
-   list_lock are sheaf_flush_unused / __kmem_cache_free_bulk or
-   direct __slab_free from kmem_cache_free.
-
-4. Tell me the I/O pattern: direct reads, I assume, but the I/O
-   size, number of threads, and how they are spread across the two
-   nodes. I would like to attempt to reproduce the
-   alloc-here-free-there imbalance rather than speculate.
-
-I don't have a NUMA system in my lab, so I cannot recreate the
-per-node barn directly. What I do have is a 24-core/48-thread Ryzen,
-which is a single node but has several CCDs. The per-CPU part of the
-imbalance exists without NUMA. If barn_put_fail climbs there too, I
-would have a reproducer that does not need specialist hardware.
-
-
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+Thanks,
+Mike
