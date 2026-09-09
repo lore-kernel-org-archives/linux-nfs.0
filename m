@@ -1,45 +1,48 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7687F55D882;
-	Wed,  9 Sep 2026 14:11:39 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F0541424D48;
+	Wed,  9 Sep 2026 14:12:05 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788963100; cv=none; b=RLburTCb0rStikXeyYNlDnoKtcZKXny6dyflrEwxXQhGTHBuvvKfkbp1SBdNQ5kUeb/TBVh+Fix4xcY4TKifpmtTFFhZQBsJPNKbqewEVrZbZxKZ8PPxjJqtsDyD0sys3uYsF4N2v8IxNxGyLCVPtcwF31he3yo0Jx0HusKQKEI=
+	t=1788963127; cv=none; b=Am+iiW7PCQ8qfbheSEY3zdqyK/euI+4oykchaj23LHomuZtgL0Vsp3lI1Zu5zsjM7mksmhcbF1Zqkj/pr4tGx/LwOkS+Zl+g8JcYLREvGsdV7clC/SYrMkOdhQSTxT/4NqajWbwPHFVwaBGOWBWi6x1Z0mYNMqMC/Iw99aoxjjE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788963100; c=relaxed/simple;
-	bh=tRwaTQimLd6eGE7ImLxFJ1HKcqfP6Yn3Y3qF/ymXPvw=;
+	s=arc-20240116; t=1788963127; c=relaxed/simple;
+	bh=pf91o4e5Dn4A7902LfUiY3zXyRT6Ww66qXPAuHyLIBA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=UZ93JC5+1qAI05n7BS+dhLQySEt+0okhIzqDE+J1CWV3f1FzZw/xgndft0ZWq5mMT16nOOEIVQMpQTDtJ1CxIDBfZQ2cRVRU5Gk2O8HT5jjQy74fH6V7vjRDyV1aLqSwjZDV+58IE0ThF5hN8X1yAbi2gP89fQL0gmQ1Z4i0I2Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=n0uNeOzQ; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version:Content-Type; b=GuvbsaBrZTDTsJjdYmccGRd/qict1WR8OJHiLFiMpoLlFKmGd8HxA5iEJ2K5cKqLJrNtAK3LgWWU/0evHGL/MrbqKWmgtP3RJKhAOHTmLQAR4dghXo7bEAb387cHU/nepTfHh7wP+fLw44i9kHHyPr4IvgATWAJ8mc4NDVM0zrc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=H2OaCIMH; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="n0uNeOzQ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9AF781F00A3D;
-	Wed,  9 Sep 2026 14:11:38 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="H2OaCIMH"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0A0F61F00A3E;
+	Wed,  9 Sep 2026 14:12:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788963099;
-	bh=4ji3RhL9WeK3LjyjqzmSB/Da4XA+vDhbClieLz5uYaU=;
+	s=k20260515; t=1788963125;
+	bh=EP8eMN7GZtt9E2RjYW7ghfREkdRA84DrQeFmz1/7vHA=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=n0uNeOzQ2lVP4aEdhCKW31ZcSs80k2l33b8WMdVg2OHELVc6AxG2LSs8l0+piugrN
-	 HCHbi0zBLKXXjwPGZ/xMuwXwDPNfWvumZwak+Wir6HKszZUjjuzBJWcRbZ1ElPq7O1
-	 arxRWkmDeTsAjEL40kqBAMd7iloP7Ey6LfhPHzkKMDakGrdfrtainLue+rszk22Csy
-	 jHZ1BeeXmsHPMsILRRSoczlhkRUsTLrVIk0rsM2HX2ll0zeGjSJDXpVO43PRm/7i61
-	 P8PwNqyPKRNh3aZA0WsCWxMl0jyCUUuNy2dewl50xxTbZZnrD/1b7nC//ivZzuDYSp
-	 O3dwGQTiSj22Q==
+	b=H2OaCIMHxv4FbemUiAtd0de7toL2/JcQnF3gg0ryUddz5PuSHlUllQg3T13pkCg8n
+	 hU2ilYDdEl+eVDzch2OabvvkY11v2pN9KQ9rZE0LbcazYgv3wfQOL2aRMQ2wIJ2Gl8
+	 6nRF2KfHna72ZiGk9CgHUmFsJBk6AaSox6e1Yar+N/KKlWF8s5f/t1uwXELnYSlWIz
+	 p86hckprDCfV7TBsF4S9dSN/+cj24EWCrQog1pDn9LYSWXX8evNsUmwwi6E2Tzi1qD
+	 yeHBdfFvPGZ90hhzqd/2gEtSj0n4VaKQXm+KiGP4HP59+xTW3kefywe6DissZoyEHg
+	 Bk53sKypd18Gw==
 From: Chuck Lever <cel@kernel.org>
-To: linux-nfs@vger.kernel.org,
-	linux-block@vger.kernel.org,
-	Mike Snitzer <snitzer@kernel.org>
-Cc: dm-devel@lists.linux.dev,
-	axboe@kernel.dk,
-	jlayton@kernel.org,
-	david.flynn@hammerspace.com
-Subject: Re: [PATCH 3/4] nfsd: fetch direct I/O alignment for files handed to the filecache
-Date: Wed,  9 Sep 2026 10:11:35 -0400
-Message-ID: <178896306557.22359.10853351140425933199.b4-ty@b4>
+To: Karl Mehltretter <kmehltretter@gmail.com>
+Cc: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] svcrdma: Fix svc_rdma_recv_cid_init() kernel-doc
+Date: Wed,  9 Sep 2026 10:12:01 -0400
+Message-ID: <178896311384.26504.12567759404043090829.b4-ty@b4>
 X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20260908163448.30841-4-snitzer@kernel.org>
-References: <20260908163448.30841-4-snitzer@kernel.org>
+In-Reply-To: <20260909064343.90437-1-kmehltretter@gmail.com>
+References: <20260909064343.90437-1-kmehltretter@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -49,20 +52,20 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
-On Tue, 08 Sep 2026 12:34:38 -0400, Mike Snitzer wrote:
-> nfsd_file_do_acquire() fetches a file's direct I/O alignment
-> attributes (nf_dio_mem_align, nf_dio_offset_align and
-> nf_dio_read_offset_align) only on the branch where NFSD opens the
-> file itself. The other branch, taken when the caller supplies an
-> already-open struct file, stores that file in the nfsd_file and
-> leaves the three alignment fields zero.
+On Wed, 09 Sep 2026 08:43:43 +0200, Karl Mehltretter wrote:
+> svc_rdma_recv_cid_init() initializes a Receive Queue completion ID,
+> but its kernel-doc heading names svc_rdma_send_cid_init(). The latter is
+> a separate helper immediately below it, so kernel-doc cannot match this
+> comment to the receive helper.
+> 
+> Fix the copied function name.
 > 
 > [...]
 
 Applied to nfsd-testing, thanks!
 
-[3/4] nfsd: fetch direct I/O alignment for files handed to the filecache
-      commit: abf2077ee32058e60d3f49ecab265d3c4bd953d9
+[1/1] svcrdma: Fix svc_rdma_recv_cid_init() kernel-doc
+      (no commit info)
 
 --
 Chuck Lever
