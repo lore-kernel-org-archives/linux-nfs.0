@@ -1,125 +1,110 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2C05C57EDA8;
-	Wed,  9 Sep 2026 14:27:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 02F2B569F04;
+	Wed,  9 Sep 2026 16:13:43 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788964059; cv=none; b=cqSxjMMTo+kc8IPr6qfA+J2mlxV82DNlV5FEyxDNwjRfvXgkdOaJT+Ke6dPMgBMRBF2qbETdH+knxUp78UOWvsButxbOhqDxPs/vgs+SMHduhhT8PzI1fmYdQW6bk9SLMiEnlTO90cBA/b5juj4Q6fBiOaVsOpCZqzPwszoW6MQ=
+	t=1788970424; cv=none; b=bcJP8+4C/D7sW1vBJWJ5jr1ZTMlQ9krA2OnChW3BKNl75Pb6Z2DZgCaPxmrfx7187JnjJtZeJlTY53Ai3vI3Z32zxqouwpCVLlZYXxSnERDV6++cVzzXFZsxXDUJLlecW7/ZuntLCv3e0q9WhD2Gv3S9lt7fnqYXWsdgQ45hIHc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788964059; c=relaxed/simple;
-	bh=hIS16POuM1Haqi4SGeM+duiPiWeiTh9uFuyc67q4V2Y=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=mXIEdchtxxT/Qs5k8eFqmg9DoLEW/EOoCG9sCRyT/oQKqZIjX2xuW7hAzKW8SZbXwwRY6eq/JQ7Yr6ZqlnfbDP6bcbl0pd8nLdEDHot9Rur9qbNGsGYEXqy8uXl9FIErIcEVDn627rKHrsLX7B7aOXgecG9j8mlpcC4dvXlynd8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=n6q/LoUS; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788970424; c=relaxed/simple;
+	bh=RBJxlg/idykcuwi3HDJDLPf7t991+IfOkI0IzHDwDN0=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=KQJI9tUU4Zmq8RxcVzme1dPPl6xgBxYcyu/ISOBFlSsXdUPxGNclfEUw5xfc6FR0wWPbQA7fxHTxW/y47irocicOoWSQ+G7teSmcg2JrYlkiS+pEty2cN2kBiHz5tfYhjV5jF+u+opAio2rBad5VSnIQtZkCe3cvMHNx42PMV4o=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=JIOzgYYJ; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="n6q/LoUS"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8AE051F00A3A;
-	Wed,  9 Sep 2026 14:27:27 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="JIOzgYYJ"
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id D0D381F00A3A;
+	Wed,  9 Sep 2026 16:13:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788964058;
-	bh=3fyzwBci/JI68L7GwljQF21lnUjBdIooTvCklPk/4zM=;
-	h=Date:Subject:To:Cc:References:From:In-Reply-To;
-	b=n6q/LoUS3HGC8qKWePM8SnXWE0lNaHny4wIGqHSjRoyNo0zUqlsiOuyWi2K9bEt1t
-	 oG8G4YvYN+SmaNv6lebTPFdeADBRq30olOOE5SMDG9x7RoHZuvpjDkM92fX/qOHFCo
-	 wZrrM8xsnKc957fBPsH3qd492I9+/MUfrm7e7o0wkSF3veqh2D3BBzNrYgdxx7Rhru
-	 DM5XqE/t+kWc9+vFnMPdLZgPR9SOCvb7UAdEwRYBBOZqzuFwubxWFQoK7oSL3nfZss
-	 9FCL5PAVYeWd96n3cuX8xbXyrmRlsgP5Ix+XzxCjGW2sgeR5llV4n0JYK/gkvIE1ks
-	 j+2Ca2K0ybKgg==
-Message-ID: <54a48bae-aa0e-4833-91a2-5b5908356255@kernel.org>
-Date: Wed, 9 Sep 2026 16:27:25 +0200
+	s=k20260515; t=1788970422;
+	bh=9R6n5gAut7J0vGQO3tV0Eu91YgLXk3i204riuAduC7c=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=JIOzgYYJf7ydObpr+295j/CRPFkQFFADV+Ly/dnEZKE84U9LyQlCFRJZ8wjlNMUFu
+	 bzk8eNhiMGhm2xTAAXrDc1PULzuwncWdbej6HyMHoZxta2LNRfir98IhM/b1+Vuy+r
+	 VtO3DYMehjPlwOdFtctDpItoXnm6wy+47cpGo9Fus5nDmJ06ehTacjjHLMfpWl04+7
+	 7u1b4ywO+ZfwyCErQK1tWmIpQCvi7rgyQ8Oo5dIVbmJmjV/wDhFaV0trzmJ4mjF2Ax
+	 PtJEKVuO+QPj7EufEGaPjS6jIqu43BvoE+TEj89LgI5IL6hikDwKAv6KdToTRnYeUn
+	 8sroh8oOa4BoQ==
+Date: Wed, 9 Sep 2026 09:13:42 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: cem@kernel.org, zlang@kernel.org, linux-xfs@vger.kernel.org,
+	fstests@vger.kernel.org, jack@suse.cz, Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
+Subject: Re: [RFC PATCH 1/2] common/nfs: add management helpers
+Message-ID: <20260909161342.GM839663@frogsfrogsfrogs>
+References: <20260907164054.111393-1-cem@kernel.org>
+ <20260907164054.111393-2-cem@kernel.org>
+ <20260908142226.GL839663@frogsfrogsfrogs>
+ <aqD4zBD06P1LJKM2@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v3 13/14] treewide: adjust comments on PagePrivate and
- PG_private
-To: Zi Yan <ziy@nvidia.com>, "Matthew Wilcox (Oracle)" <willy@infradead.org>,
- Andrew Morton <akpm@linux-foundation.org>,
- Muchun Song <muchun.song@linux.dev>, Lorenzo Stoakes <ljs@kernel.org>,
- "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>,
- Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>,
- Michal Hocko <mhocko@suse.com>, Baolin Wang <baolin.wang@linux.alibaba.com>,
- Nico Pache <nico.pache@linux.dev>, Ryan Roberts <ryan.roberts@arm.com>,
- Dev Jain <dev.jain@arm.com>, Barry Song <baohua@kernel.org>,
- Lance Yang <lance.yang@linux.dev>, Usama Arif <usama.arif@linux.dev>,
- Gregory Price <gourry@gourry.net>, Ying Huang
- <ying.huang@linux.alibaba.com>, Alistair Popple <apopple@nvidia.com>,
- Johannes Weiner <hannes@cmpxchg.org>, Qi Zheng <qi.zheng@linux.dev>,
- Shakeel Butt <shakeel.butt@linux.dev>, Kairui Song <kasong@tencent.com>
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
- Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>,
- Viacheslav Dubeyko <slava@dubeyko.com>, Trond Myklebust
- <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
- Richard Weinberger <richard@nod.at>, Zhihao Cheng <chengzhihao1@huawei.com>,
- ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
- linux-mtd@lists.infradead.org
-References: <20260907-remove-pg_private-v3-0-6ae22f9d9272@nvidia.com>
- <20260907-remove-pg_private-v3-13-6ae22f9d9272@nvidia.com>
-From: "David Hildenbrand (Arm)" <david@kernel.org>
-Content-Language: en-US
-Autocrypt: addr=david@kernel.org; keydata=
- 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
- qIws/H2t
-In-Reply-To: <20260907-remove-pg_private-v3-13-6ae22f9d9272@nvidia.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <aqD4zBD06P1LJKM2@infradead.org>
 
-On 9/8/26 04:56, Zi Yan wrote:
-> PG_private is going to be deleted. Adjust related comments to refer to
-> page/folio->private instead.
+On Tue, Sep 08, 2026 at 11:12:28PM -0700, Christoph Hellwig wrote:
+> On Tue, Sep 08, 2026 at 07:22:26AM -0700, Darrick J. Wong wrote:
+> > > +# Start rpcbind if it is not already running.
+> > > +_start_rpcbind()
+> > > +{
+> > > +	rpcinfo -p localhost > /dev/null 2>&1 && return 0
+> > > +	rpcbind 2>> $seqres.full || _notrun "Cannot start rpcbind"
+> > > +	/usr/sbin/rpc.statd 2>> $seqres.full || _notrun "Cannot start rpc.statd"
+> > > +	/usr/sbin/rpc.idmapd 2>> $seqres.full || _notrun "Cannot start rpc.idmapd"
+> > > +	/usr/sbin/nfsdcld 2>> $seqres.full || _notrun "Cannot start nfsdcld"
+> > 
+> > Aren't these daemons usually configured as system services?
+> > 
+> > # service rpcbind start
+> > 
+> > etc?
+> 
+> They usually are, but doing that as part of a test feels wrong.
+> Adding the relevant maintainers and list.
 
-Thinking again, I think this is misleading.
+<nod> I guess for this test we actually want to launch our own nfs
+daemons in a separate pid / network namespace so that they don't
+interfere with nfs operations outside of the test (e.g. testing nfs
+itself, nfsboot, etc)
 
-PG_private is defectively already unused for all of these cases, no? In that
-case it's rather a documentation fix. (could some of that go into patches that
-convert away from PagePrivate, like in the previous patch?)
+> > 
+> > > +}
+> > > +
+> > > +# Stop rpcbind.
+> > > +_stop_rpcbind()
+> > > +{
+> > > +	pkill rpcbind 2>/dev/null
+> > > +}
+> > > +
+> > > +# Start the NFS server if not already running.
+> > > +_start_nfsd()
+> > > +{
+> > > +	rpcinfo -p localhost 2>/dev/null | grep -q nfs && return 0
+> > > +	rpc.nfsd 2>> $seqres.full || _notrun "Cannot start rpc.nfsd"
+> > > +	rpc.mountd 2>> $seqres.full || _notrun "Cannot start rpc.mountd"
+> > > +}
+> > > +
+> > > +# Stop the NFS server.
+> > > +_stop_nfsd()
+> > > +{
+> > > +	rpc.nfsd 0 2>/dev/null
+> > > +	pkill rpc.mountd 2>/dev/null
+> > 
+> > If the system under test has nfs filesystems mounted, won't killing
+> > those daemons also break the mounts?
+> > 
+> > I think that might break testing of nfs itself, and nfs-booted testing
+> > nodes as well?
+> 
+> Possibly.  I guess if we want to save we need to launch a container
+> or at least a network namespace this is bound too. 
 
--- 
-Cheers,
+Agreed, some isolation from the main system is necessary.
 
-David
+--D
