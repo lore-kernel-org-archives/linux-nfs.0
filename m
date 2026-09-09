@@ -1,79 +1,68 @@
-Received: from mail-wr1-f48.google.com (mail-wr1-f48.google.com [209.85.221.48])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ACE0F3B0AE6
-	for <linux-nfs@vger.kernel.org>; Wed,  9 Sep 2026 06:45:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.48
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D7C1A37CD3A
+	for <linux-nfs@vger.kernel.org>; Wed,  9 Sep 2026 07:21:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788936306; cv=none; b=SDe3lhMrWf/vuhfKftP1Wyxbf4SbBQ+FuvbXlC4HjNOoe/8iCc3n7q+7SVciFzTi/hXQGnHrVVMs7liJCR8Rl9lO4yl8N93vHMeQpWx8zL+5v5QdFRdAZBrTvw9pdmomvMWMiZA1UKFxeSc3WH3ECsnhMaqrluB0EncK1VyT4nI=
+	t=1788938499; cv=none; b=nN3j46L8II6dLiHNkY4dScxGTkabGrkYt5GSpgaG0qi1GCkQt8BXK7PYp5Q5AWPFvOG0f5jQyyF3VVGtFZjo+7c8eFwp7OumeTVLDVHOfwNIXFZPCqnyWLSXUr3BOYYYWhGxCvFSyfCdrMWAddGDmTtKK3+PKk3nx6aW4iC9XDY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788936306; c=relaxed/simple;
-	bh=DanluAYLKGnSSr8y1+7HZ6AUnVzsPNVwXGZvF4Qstfk=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=RLWIjY6BWsp4Ctok0U3N5QoGgDnGfRtwCxRYtnFODztvgo0CpWOH/1/wD1xXwOJOdBeZaZMGDjGpSM5Kjv6/LLPL6jgn7STEvjgLo0ha1iYI3oObfFyK1XKi+6+aYef11H5wOwmc6W5/SvWPLcWcdvWVB67A9XyJZA3fOT008T4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=rZzwWbx2; arc=none smtp.client-ip=209.85.221.48
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1788938499; c=relaxed/simple;
+	bh=Dq9QzC4Rw+uS4zcZFxnG/iQOlbmorYFisIjxewZuk38=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Rbd2ckhknbC+FPAC8dOz9BiRLksJqpJWaRpvjr/nhMXeI6XyTfhQrFWXzL8Mq0X7AwSpk4JlKigK6YN0wqhFgIhn4ugnVkgQJlLXlKHdR6H329lW9CCbZ8RvrephnfbmTl29Nt0D26w+lte+4RLfnuHtB+WaugiXk537k8FSVQU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=OhMgmFoI; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="rZzwWbx2"
-Received: by mail-wr1-f48.google.com with SMTP id ffacd0b85a97d-4843f205a5bso3456655f8f.1
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Sep 2026 23:45:04 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1788936303; x=1789541103; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=e0E6YoepVX602+BZgbZmpihibucX2fS9462FnPD7Cgw=;
-        b=rZzwWbx2sH4d/qXVZKNVxq08MnLLftOjjcT2cbATDTP2kvqWwSayrt/deiN6L/lyZP
-         BOafq7gp2gma07KgA2FtbZocta3Obs0REa+qcCDl7OIabpc09XqM1TTaQcE04rd56B1d
-         RVBOojzXobjRbMnPS9hS9WQAyLJ3OsBzZpBm4JmpHbveOvnPVNIMJFJORdD+1yE269Y1
-         B0L9agqSKqLdslZ883bQQ/gqz6DwCs0kiVEftNW/o6BQh3yr8qQXu+OkPK555nNbhT6q
-         UuqNpONmMK72JfZ3WjzEOAbe2AJawNw81YyBvpWSsSvSgOZ556IaMN8mH0BDsyJnvJYN
-         fRSg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788936303; x=1789541103;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=e0E6YoepVX602+BZgbZmpihibucX2fS9462FnPD7Cgw=;
-        b=CS+XXrqEpCsHOdpgWRoNZzmBHU8o4vbY/S/WPGMmy+fPKjaue8/Qk/PQ0IZ845EbrV
-         6WTCX1Kls8de7KwsibUzo7zMjJUk9/ZxQMNLADV7942UA52MA9QKLOTTxxh0bGTWSuOc
-         BB5VD4jbi+3Z2U20A5LhIQThiaJ+siwi41OIaVplAW1Y/MUueXgBVS33eW4M8gs6Zwer
-         76qHrDS2G4fANYJtscZsbkBKFM/mc7FI+4f7LUDvZhxfW87fu7QLDJoQCQY+l/3FxDl8
-         9Xs7BjaqvuLrSaI/BVGa9YG5HHLPGZCcUIziJUJU9HNTp4f/p4/gmhe8YHt15tFY08rw
-         aKRg==
-X-Forwarded-Encrypted: i=1; AKwUvBzaTWMkY19vKBrw4cppYq01wklUsoIm024nrHUu2UcZxZyN4+t0evQgtrs6dRS0q2SfJg0RCHCKxHQ=@vger.kernel.org
-X-Gm-Message-State: AFuF++lKbPRj9A8jLlxiYAtR10BVZ0xw88iJLB2GCyYMCN/vxE30sOdD
-	62Q+Vkkb7V8yUNRzbVbEekmptbxevKnIh1y7soqFUPtOH1MO68dwEx0B
-X-Gm-Gg: AYBFou2FhYsrv5ruKGqxsO62cEFyvLGoG0Jq0Lw21wM0ETVH6qs2B4sFERuNLYLNT28
-	b0Ea020OXEe9m1xBHmcuoQCFZZaxhpotrs/Tz7GvPGXJ51ubs5nFX/d7b1SNt+2kc0BclwGIwKp
-	TK+Z4REdYJYiTh2qXYPlY+gtkZdTHo2+BqfZsV7KZNvMBskB6JLyPKIfpOOAjmqycoASxZaoxsw
-	QgmLuCtpnZ2l7CJ+DVR6/VZ8BSCLTZE5ueDQ2RuR+68ZwImjcMH7hzsh4yF0Y8x5yZsXCAtKEXj
-	bAY4QVX+WAjQk0F/RJikCY5xt1HFId42NH5rZyGMswaZmLcAr7kiWf5Zz1voRrNmrX0G2LAsfhh
-	wfFlVChWQah54eRG+7vGrNR27C64VNbmDhOBn9lWrSle76XTdO1oTTgdSGXRkHdlKJ1Ab1TEn6h
-	S21ojnbrsiT/1qNFIkcfgxox7acEH2K5cDgTOOho7CQF92zOHKJ4tj5ZHOMRRAQ7oGxoSQDgQMs
-	snRxj7hlKn7l/EEjagR9nx1ZLMzUMLzN7uBnqmUY2Pbll/ZgZ10Ua9cz5cgHCBrEcsNWLsKnrk6
-	GP8fgPfKt+D4n/yLqhrhnhc8RW0xRGRw82RuskPzwc0Zq4LBxDqZAFkK8Z2vm6w=
-X-Received: by 2002:a05:6000:608:b0:485:8e4b:3d34 with SMTP id ffacd0b85a97d-4858e4b3ed7mr31596984f8f.5.1788936302679;
-        Tue, 08 Sep 2026 23:45:02 -0700 (PDT)
-Received: from MacBook-Pro-von-Karl.localdomain (dynamic-095-114-212-219.95.114.pool.telefonica.de. [95.114.212.219])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-4859207c28fsm36579522f8f.5.2026.09.08.23.45.01
-        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
-        Tue, 08 Sep 2026 23:45:02 -0700 (PDT)
-From: Karl Mehltretter <kmehltretter@gmail.com>
-To: Chuck Lever <cel@kernel.org>
-Cc: Karl Mehltretter <kmehltretter@gmail.com>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="OhMgmFoI"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1788938491;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=NwTohl+L3wBgxbiNt8Qf67OZRjLUf9WteY3EfU1JFtw=;
+	b=OhMgmFoIu3SCWLjofDcycAHdxj6fMHF61pVluPaaBdM1jN3FM+hjyGw20Lac1TfsG+ivgN
+	4J9thndbSpNrTIlfRdyfGdCks0+MgvGdvq52phD+6wsVZf/rk46LyOXXiCCC/jcKhthr2Z
+	+gpMcZ6mtdACQc8lhRaOmOQhn445jNk=
+Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-608-5zXez9ViMRWllKQjIz_I_A-1; Wed,
+ 09 Sep 2026 03:21:28 -0400
+X-MC-Unique: 5zXez9ViMRWllKQjIz_I_A-1
+X-Mimecast-MFC-AGG-ID: 5zXez9ViMRWllKQjIz_I_A_1788938486
+Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 97D8218005B3;
+	Wed,  9 Sep 2026 07:21:24 +0000 (UTC)
+Received: from warthog.com (unknown [10.44.32.158])
+	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id C1CB01800446;
+	Wed,  9 Sep 2026 07:21:16 +0000 (UTC)
+From: David Howells <dhowells@redhat.com>
+To: Christian Brauner <christian@brauner.io>
+Cc: David Howells <dhowells@redhat.com>,
+	Paulo Alcantara <pc@manguebit.org>,
+	Matthew Wilcox <willy@infradead.org>,
+	Namjae Jeon <linkinjeon@kernel.org>,
+	Marc Dionne <marc.dionne@auristor.com>,
+	Stefan Metzmacher <metze@samba.org>,
+	Eric Van Hensbergen <ericvh@kernel.org>,
+	Dominique Martinet <asmadeus@codewreck.org>,
+	Ilya Dryomov <idryomov@gmail.com>,
+	netfs@lists.linux.dev,
+	linux-afs@lists.infradead.org,
+	linux-cifs@vger.kernel.org,
 	linux-nfs@vger.kernel.org,
+	ceph-devel@vger.kernel.org,
+	v9fs@lists.linux.dev,
+	linux-erofs@lists.ozlabs.org,
+	linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH] svcrdma: Fix svc_rdma_recv_cid_init() kernel-doc
-Date: Wed,  9 Sep 2026 08:43:43 +0200
-Message-Id: <20260909064343.90437-1-kmehltretter@gmail.com>
-X-Mailer: git-send-email 2.39.5 (Apple Git-154)
+Subject: [PATCH v13 0/8] netfs: Miscellaneous preparatory changes
+Date: Wed,  9 Sep 2026 08:20:54 +0100
+Message-ID: <20260909072105.1663687-1-dhowells@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -81,35 +70,108 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.4.1 on 127.0.0.2
 
-svc_rdma_recv_cid_init() initializes a Receive Queue completion ID,
-but its kernel-doc heading names svc_rdma_send_cid_init(). The latter is
-a separate helper immediately below it, so kernel-doc cannot match this
-comment to the receive helper.
+Hi Christian,
 
-Fix the copied function name.
+Could you pull these patches please for -next?  This is the first of four
+batches.  This is based on your vfs.fixes as there are some prerequisite
+patches there.  This was split from v11 of a larger series[1].
 
-Fixes: 28ee0ec8948a ("svcrdma: De-duplicate completion ID initialization helpers")
-Assisted-by: LLM
-Signed-off-by: Karl Mehltretter <kmehltretter@gmail.com>
----
- include/linux/sunrpc/svc_rdma.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+This a collection of miscellaneous modifications to netfslib that I want to
+make ahead of bigger changes, including:
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 76aa5ec4ab40..5ccb13bf906f 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -142,7 +142,7 @@ enum {
- #define RPCSVC_MAXPAYLOAD_RDMA	RPCSVC_MAXPAYLOAD
- 
- /**
-- * svc_rdma_send_cid_init - Initialize a Receive Queue completion ID
-+ * svc_rdma_recv_cid_init - Initialize a Receive Queue completion ID
-  * @rdma: controlling transport
-  * @cid: completion ID to initialize
-  */
+ (1) Convert "unsigned long long" to "uoff_t".  This makes it a little more
+     obvious as to the meaning of the value.  Also convert some "loff_t" to
+     "uoff_t" as most of the time it's used the value really should never
+     be negative.
 
-base-commit: 893e11787f78e43b534e252249ac3fff4d1333f8
--- 
-2.53.0
+ (2) Remove the writethrough code as the locking is really tricky to get
+     right and it looks like it could deadlock with Ceph if snapshots are
+     used.
+
+ (3) Adjust some tracepoints, including adding the cache object ID to
+     certain tracepoinits.
+
+ (4) Make use of PG_private_2 opt-in.  Use of PG_private_2 is deprecated
+     and the MM people would like their page bit back, so we need to stop
+     using it soon.
+
+ (5) Add some helper functions to handle the barriering needed for the
+     NETFS_RREQ_ALL_QUEUED flag.
+
+ (6) Set the subrequest type at allocation time so that the allocation
+     trace records the proposed type.
+
+The patches can also be found here:
+
+	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=netfs-next-1
+
+Thanks,
+David
+
+Changes
+=======
+ver #13)
+- Fixed some sashiko-raised issues:
+  - Fixed netfs_mark_copy_to_cache() to use netfs_using_pgpriv2() rather
+    than checking NETFS_RREQ_USE_PGPRIV2.
+  - Fixed netfs_all_subreqs_queued() to do smp_mb__after_atomic() after
+    setting the NETFS_RREQ_ALL_QUEUED bit.
+  - Fixed netfs_single_dispatch_read() to not immediately contradict its
+    own initialisation of subreq->source.
+
+ver #12)
+- Split from v11 of "netfs: Keep track of folios in a segmented bio_vec[]
+  chain"[1]
+
+[1] https://lore.kernel.org/r/20260902173350.3468672-1-dhowells@redhat.com/
+[2] https://sashiko.dev/#/patchset/20260908091031.1506798-1-dhowells%40redhat.com
+
+David Howells (8):
+  netfs: Use uoff_t instead of unsigned long long and loff_t
+  netfs: Remove the writethrough code
+  netfs: trace: Change the "clear" folio traces to "endwb"
+  netfs: trace: Rejig a couple of the tracepoints
+  netfs: Add the cache object ID to netfs_read/write tracepoints
+  netfs: Make deprecated PG_private_2 support opt-in
+  netfs: Add some functions to wrap the all-queued handling
+  netfs: Set subrequest->source at alloc before trace emission
+
+ fs/9p/vfs_addr.c                  |   1 -
+ fs/afs/file.c                     |   5 +-
+ fs/cachefiles/interface.c         |  10 +--
+ fs/cachefiles/internal.h          |   4 +-
+ fs/cachefiles/io.c                |  25 +++---
+ fs/ceph/Kconfig                   |   1 +
+ fs/ceph/addr.c                    |   4 +-
+ fs/netfs/Kconfig                  |   3 +
+ fs/netfs/Makefile                 |   2 +-
+ fs/netfs/buffered_read.c          |  37 ++++-----
+ fs/netfs/buffered_write.c         |  66 +++------------
+ fs/netfs/direct_read.c            |  14 ++--
+ fs/netfs/direct_write.c           |   8 +-
+ fs/netfs/fscache_cookie.c         |   8 +-
+ fs/netfs/fscache_io.c             |  10 +--
+ fs/netfs/internal.h               |  68 ++++++++++++---
+ fs/netfs/iterator.c               |   2 +-
+ fs/netfs/main.c                   |   1 -
+ fs/netfs/misc.c                   |  10 +--
+ fs/netfs/objects.c                |   6 +-
+ fs/netfs/read_collect.c           |  14 ++--
+ fs/netfs/read_pgpriv2.c           |  13 ++-
+ fs/netfs/read_retry.c             |   5 +-
+ fs/netfs/read_single.c            |  12 +--
+ fs/netfs/stats.c                  |   4 +-
+ fs/netfs/write_collect.c          |  25 +++---
+ fs/netfs/write_issue.c            | 123 ++-------------------------
+ fs/netfs/write_retry.c            |   5 +-
+ fs/nfs/Kconfig                    |   1 +
+ include/linux/fscache-cache.h     |   2 +-
+ include/linux/fscache.h           |  36 ++++----
+ include/linux/netfs.h             |  80 +++++++++---------
+ include/trace/events/cachefiles.h |  30 +++----
+ include/trace/events/fscache.h    |  10 +--
+ include/trace/events/netfs.h      | 134 +++++++++++++++---------------
+ 35 files changed, 326 insertions(+), 453 deletions(-)
+
