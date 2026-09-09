@@ -1,47 +1,47 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6C1E743E49A
-	for <linux-nfs@vger.kernel.org>; Wed,  9 Sep 2026 07:22:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2CEF53DCD85
+	for <linux-nfs@vger.kernel.org>; Wed,  9 Sep 2026 07:22:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788938538; cv=none; b=B4kF+C/ruwgYhFF7qd/hw8IQqQoGpgBocThap27TR5mIbtHmtTXkGD6oOAHyH7m85SJoJ3QyghCy0RhZcIkqfg8PD+pAIYcBwwISuO0/7azyh99p4UvyOV/cXhz73V+zmBw3cId18JaA4HNFWvjRskGZ68eYWQM9rh3R1BwffGQ=
+	t=1788938540; cv=none; b=NwQX/gmZn0LgdhoQUp/oj2tzpqa9EAoFZUNzzpsQHBVU3b1bYr4vNkKbDC0wv3zRlDVl1f2FX9dOs8ZWiHk84ks8GK+IG0vUz8YLXW1C4hFr3YZ8zTiiwo7mLXdOnD2RR6EVMGMWtlgLykujtunT2tHfa4gE4TbS6U4TYi3t7F0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788938538; c=relaxed/simple;
-	bh=0IkU36lM2/887n2GlIbcF98M1ZBi6/OJZliwRLEeR0s=;
+	s=arc-20240116; t=1788938540; c=relaxed/simple;
+	bh=7rE0XL+t+4LBrfuBkszL6wwQg4qQIm6f3z1FAcuAs6E=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=oGhZIZDVFtv+/okrQqH1L0jKHjLX2wH7ufUxZufKwtaz4TpkNGqbs0wow7C0Z/rY8KVblghNRUH/bALpCHI5fGYg1FMCIzLoKlRrdBeOQKr3eFTGxBuyfwpcOvJznt96ZE3LrIYRdpYGpsnujnqw9cI1qEhW/Vedar8dIEp4qJA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=NI09WwLL; arc=none smtp.client-ip=170.10.133.124
+	 MIME-Version; b=eJPo21PgcZiEOFqm1ncaGpn+YuQR9K0oeqce/errBQrB5tIqM8LtcsvlkQgzItxDyq0QeIJQo2LwMsZVijAFuRpldULMny2Lt25xiJKX9Hms/1Wb40HvyuS8XHEBfO5YuADQKWzn5hvPf8YncVXkUug7Ltkr1zluCBy/Dl3q0jk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=VVvMPTVq; arc=none smtp.client-ip=170.10.133.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="NI09WwLL"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="VVvMPTVq"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1788938530;
+	s=mimecast20190719; t=1788938536;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=p1mDwxZ1LnJ55G7jnnc/zLXcplu6e9EZLDtgfjC8YTQ=;
-	b=NI09WwLLJd9pohjMB9Mur9v6w8jl8VUShgw5lhuU+rNiQifLObbRnowXro+NSCnQUnsgoE
-	KzkdvR+mPTGPXLavXHkZRuJeI1nMnw3lwo9n8rKcf2/zrSKOAceBwCv2mMXzPpxd+odE/F
-	P7xujvLtHrntmvBCXKvRlnAMuRlujDc=
-Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+	bh=TN3BjUFT/Rn1kLbehCLwDsBl8cqyCMqhJ+b1AToBOH8=;
+	b=VVvMPTVqnW3dS7yfDwOQHDtVNxVkus4JjJVmngcl3E+NepZQ2ahpfkqmeB7HV9RQ1bKVAo
+	3QQ5DhpCgUvEtgy+bv8wu4Mk6zncgrIEaL7bclI7pBuuks8Oxf2Dq1bhj+SkIp9rP3R7RK
+	DRVWR1c5GyGfQ9mF66XIkYIBWNgwatU=
+Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-604-RJwoWBJcOl2_hgfCSLm8cA-1; Wed,
- 09 Sep 2026 03:22:04 -0400
-X-MC-Unique: RJwoWBJcOl2_hgfCSLm8cA-1
-X-Mimecast-MFC-AGG-ID: RJwoWBJcOl2_hgfCSLm8cA_1788938521
-Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-620-9xl01ZGCMAK74ylbvMxq_g-1; Wed,
+ 09 Sep 2026 03:22:13 -0400
+X-MC-Unique: 9xl01ZGCMAK74ylbvMxq_g-1
+X-Mimecast-MFC-AGG-ID: 9xl01ZGCMAK74ylbvMxq_g_1788938530
+Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id AE98F1800676;
-	Wed,  9 Sep 2026 07:22:01 +0000 (UTC)
+	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id ADEA11954AE7;
+	Wed,  9 Sep 2026 07:22:09 +0000 (UTC)
 Received: from warthog.com (unknown [10.44.32.158])
-	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 8306E1800446;
-	Wed,  9 Sep 2026 07:21:56 +0000 (UTC)
+	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 77EAB195608C;
+	Wed,  9 Sep 2026 07:22:03 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>
 Cc: David Howells <dhowells@redhat.com>,
@@ -61,10 +61,14 @@ Cc: David Howells <dhowells@redhat.com>,
 	v9fs@lists.linux.dev,
 	linux-erofs@lists.ozlabs.org,
 	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH v13 5/8] netfs: Add the cache object ID to netfs_read/write tracepoints
-Date: Wed,  9 Sep 2026 08:20:59 +0100
-Message-ID: <20260909072105.1663687-6-dhowells@redhat.com>
+	linux-kernel@vger.kernel.org,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Alex Markuze <amarkuze@redhat.com>,
+	Viacheslav Dubeyko <slava@dubeyko.com>
+Subject: [PATCH v13 6/8] netfs: Make deprecated PG_private_2 support opt-in
+Date: Wed,  9 Sep 2026 08:21:00 +0100
+Message-ID: <20260909072105.1663687-7-dhowells@redhat.com>
 In-Reply-To: <20260909072105.1663687-1-dhowells@redhat.com>
 References: <20260909072105.1663687-1-dhowells@redhat.com>
 Precedence: bulk
@@ -74,156 +78,181 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 127.0.0.2
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
 
-Add the cache object debug ID to netfs_read/write tracepoints to make
-debugging easier as there's now a direct cross-reference with the
-cachefiles tracepoints that only log that debug ID.
+Make the deprecated PG_private_2 support opt-in, requiring it to be
+selected by the filesystems that might want to use it.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 Reviewed-by: Paulo Alcantara <pc@manguebit.org>
+cc: Trond Myklebust <trondmy@kernel.org>
+cc: Anna Schumaker <anna@kernel.org>
+cc: Ilya Dryomov <idryomov@gmail.com>
+cc: Alex Markuze <amarkuze@redhat.com>
+cc: Viacheslav Dubeyko <slava@dubeyko.com>
 cc: netfs@lists.linux.dev
+cc: linux-nfs@vger.kernel.org
+cc: ceph-devel@vger.kernel.org
 cc: linux-fsdevel@vger.kernel.org
 ---
- fs/cachefiles/io.c           |  1 +
- fs/netfs/fscache_io.c        |  2 +-
- include/linux/netfs.h        |  3 ++-
- include/trace/events/netfs.h | 27 +++++++++++++++------------
- 4 files changed, 19 insertions(+), 14 deletions(-)
+ fs/ceph/Kconfig          |  1 +
+ fs/netfs/Kconfig         |  3 +++
+ fs/netfs/Makefile        |  2 +-
+ fs/netfs/buffered_read.c |  2 +-
+ fs/netfs/internal.h      | 28 ++++++++++++++++++++++++++++
+ fs/netfs/read_collect.c  |  4 ++--
+ fs/nfs/Kconfig           |  1 +
+ include/linux/netfs.h    |  2 ++
+ 8 files changed, 39 insertions(+), 4 deletions(-)
 
-diff --git a/fs/cachefiles/io.c b/fs/cachefiles/io.c
-index 7de8069d15b6..e61e885784d6 100644
---- a/fs/cachefiles/io.c
-+++ b/fs/cachefiles/io.c
-@@ -721,6 +721,7 @@ bool cachefiles_begin_operation(struct netfs_cache_resources *cres,
+diff --git a/fs/ceph/Kconfig b/fs/ceph/Kconfig
+index 3d64a316ca31..aa6ccd7794d2 100644
+--- a/fs/ceph/Kconfig
++++ b/fs/ceph/Kconfig
+@@ -4,6 +4,7 @@ config CEPH_FS
+ 	depends on INET
+ 	select CEPH_LIB
+ 	select NETFS_SUPPORT
++	select NETFS_PGPRIV2
+ 	select FS_ENCRYPTION_ALGS if FS_ENCRYPTION
+ 	default n
+ 	help
+diff --git a/fs/netfs/Kconfig b/fs/netfs/Kconfig
+index 7701c037c328..d0e7b0971fa3 100644
+--- a/fs/netfs/Kconfig
++++ b/fs/netfs/Kconfig
+@@ -22,6 +22,9 @@ config NETFS_STATS
+ 	  between CPUs.  On the other hand, the stats are very useful for
+ 	  debugging purposes.  Saying 'Y' here is recommended.
  
- 	if (!cachefiles_cres_file(cres)) {
- 		cres->ops = &cachefiles_netfs_cache_ops;
-+		cres->object_id = object->debug_id;
- 		if (object->file) {
- 			spin_lock(&object->lock);
- 			if (!cres->cache_priv2 && object->file)
-diff --git a/fs/netfs/fscache_io.c b/fs/netfs/fscache_io.c
-index 8bca63721eeb..056a2bae5d99 100644
---- a/fs/netfs/fscache_io.c
-+++ b/fs/netfs/fscache_io.c
-@@ -79,7 +79,7 @@ static int fscache_begin_operation(struct netfs_cache_resources *cres,
- 	cres->ops		= NULL;
- 	cres->cache_priv	= cookie;
- 	cres->cache_priv2	= NULL;
--	cres->debug_id		= cookie->debug_id;
-+	cres->cookie_id		= cookie->debug_id;
- 	cres->inval_counter	= cookie->inval_counter;
++config NETFS_PGPRIV2
++	bool
++
+ config NETFS_DEBUG
+ 	bool "Enable dynamic debugging netfslib and FS-Cache"
+ 	depends on NETFS_SUPPORT
+diff --git a/fs/netfs/Makefile b/fs/netfs/Makefile
+index b43188d64bd8..54834cde7e56 100644
+--- a/fs/netfs/Makefile
++++ b/fs/netfs/Makefile
+@@ -11,7 +11,6 @@ netfs-y := \
+ 	misc.o \
+ 	objects.o \
+ 	read_collect.o \
+-	read_pgpriv2.o \
+ 	read_retry.o \
+ 	read_single.o \
+ 	rolling_buffer.o \
+@@ -19,6 +18,7 @@ netfs-y := \
+ 	write_issue.o \
+ 	write_retry.o
  
- 	if (!fscache_begin_cookie_access(cookie, why)) {
++netfs-$(CONFIG_NETFS_PGPRIV2) += read_pgpriv2.o
+ netfs-$(CONFIG_NETFS_STATS) += stats.o
+ 
+ netfs-$(CONFIG_FSCACHE) += \
+diff --git a/fs/netfs/buffered_read.c b/fs/netfs/buffered_read.c
+index 61cf82b4b60d..54287a8ef0f8 100644
+--- a/fs/netfs/buffered_read.c
++++ b/fs/netfs/buffered_read.c
+@@ -242,7 +242,7 @@ static void netfs_mark_copy_to_cache(struct netfs_io_request *rreq,
+ 
+ 		if (overlap > 0 && copy) {
+ 			folio = folioq_folio(*fq, *slot);
+-			if (unlikely(test_bit(NETFS_RREQ_USE_PGPRIV2, &rreq->flags))) {
++			if (netfs_using_pgpriv2(rreq)) {
+ 				if (!folio_test_private_2(folio))
+ 					folio_start_private_2(folio);
+ 			} else {
+diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
+index a4c834e32214..3aebe4a4f7b0 100644
+--- a/fs/netfs/internal.h
++++ b/fs/netfs/internal.h
+@@ -120,9 +120,37 @@ void netfs_cache_read_terminated(void *priv, ssize_t transferred_or_error);
+ /*
+  * read_pgpriv2.c
+  */
++#ifdef CONFIG_NETFS_PGPRIV2
++int netfs_prepare_pgpriv2_write_buffer(struct netfs_io_subrequest *subreq,
++				       unsigned int max_segs);
+ void netfs_pgpriv2_copy_to_cache(struct netfs_io_request *rreq, struct folio *folio);
+ void netfs_pgpriv2_end_copy_to_cache(struct netfs_io_request *rreq);
+ bool netfs_pgpriv2_unlock_copied_folios(struct netfs_io_request *wreq);
++static inline bool netfs_using_pgpriv2(const struct netfs_io_request *rreq)
++{
++	return unlikely(test_bit(NETFS_RREQ_USE_PGPRIV2, &rreq->flags));
++}
++#else
++static inline int netfs_prepare_pgpriv2_write_buffer(struct netfs_io_subrequest *subreq,
++						     unsigned int max_segs)
++{
++	return -EIO;
++}
++static inline void netfs_pgpriv2_copy_to_cache(struct netfs_io_request *rreq, struct folio *folio)
++{
++}
++static inline void netfs_pgpriv2_end_copy_to_cache(struct netfs_io_request *rreq)
++{
++}
++static inline bool netfs_pgpriv2_unlock_copied_folios(struct netfs_io_request *wreq)
++{
++	return true;
++}
++static inline bool netfs_using_pgpriv2(const struct netfs_io_request *rreq)
++{
++	return false;
++}
++#endif
+ 
+ /*
+  * read_retry.c
+diff --git a/fs/netfs/read_collect.c b/fs/netfs/read_collect.c
+index 61f2664de6d3..01ea1ddae04b 100644
+--- a/fs/netfs/read_collect.c
++++ b/fs/netfs/read_collect.c
+@@ -38,7 +38,7 @@ static void netfs_clear_unread(struct netfs_io_subrequest *subreq)
+  */
+ void netfs_cancel_copy_to_cache(struct netfs_io_request *rreq, struct folio *folio)
+ {
+-	if (!test_bit(NETFS_RREQ_USE_PGPRIV2, &rreq->flags)) {
++	if (!netfs_using_pgpriv2(rreq)) {
+ 		if (folio_get_private(folio) == NETFS_FOLIO_COPY_TO_CACHE) {
+ 			folio_detach_private(folio);
+ 			trace_netfs_folio(folio, netfs_folio_trace_cancel_copy);
+@@ -81,7 +81,7 @@ static void netfs_unlock_read_folio(struct netfs_io_request *rreq,
+ 	if (unlikely(test_bit(NETFS_RREQ_CANCEL_CACHING, &rreq->flags)))
+ 		netfs_cancel_copy_to_cache(rreq, folio);
+ 
+-	if (!test_bit(NETFS_RREQ_USE_PGPRIV2, &rreq->flags)) {
++	if (!netfs_using_pgpriv2(rreq)) {
+ 		if (netfs_folio_group(folio) == NETFS_FOLIO_COPY_TO_CACHE)  {
+ 			trace_netfs_folio(folio, netfs_folio_trace_sched_copy);
+ 			folio_mark_dirty(folio);
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 6bb30543eff0..e7862f35b72c 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -174,6 +174,7 @@ config NFS_FSCACHE
+ 	bool "Provide NFS client caching support"
+ 	depends on NFS_FS
+ 	select NETFS_SUPPORT
++	select NETFS_PGPRIV2
+ 	select FSCACHE
+ 	help
+ 	  Say Y here if you want NFS data to be cached locally on disc through
 diff --git a/include/linux/netfs.h b/include/linux/netfs.h
-index a3ef0e983a86..f2b3e61c1891 100644
+index f2b3e61c1891..71fdd6ef43a7 100644
 --- a/include/linux/netfs.h
 +++ b/include/linux/netfs.h
-@@ -161,7 +161,8 @@ struct netfs_cache_resources {
- 	const struct netfs_cache_ops	*ops;
- 	void				*cache_priv;
- 	void				*cache_priv2;
--	unsigned int			debug_id;	/* Cookie debug ID */
-+	unsigned int			cookie_id;	/* Cache cookie debug ID */
-+	unsigned int			object_id;	/* Cache object debug ID */
- 	unsigned int			inval_counter;	/* object->inval_counter at begin_op */
+@@ -279,8 +279,10 @@ struct netfs_io_request {
+ #define NETFS_RREQ_UPLOAD_TO_SERVER	11	/* Need to write to the server */
+ #define NETFS_RREQ_USE_IO_ITER		12	/* Use ->io_iter rather than ->i_pages */
+ #define NETFS_RREQ_NEED_PUT_RA_REFS	17	/* Need to put the folio refs RA gave us */
++#ifdef CONFIG_NETFS_PGPRIV2
+ #define NETFS_RREQ_USE_PGPRIV2		31	/* [DEPRECATED] Use PG_private_2 to mark
+ 						 * write to cache on read */
++#endif
+ 	const struct netfs_request_ops *netfs_ops;
  };
- 
-diff --git a/include/trace/events/netfs.h b/include/trace/events/netfs.h
-index 21a661cd1ca4..c9ec4da97f0b 100644
---- a/include/trace/events/netfs.h
-+++ b/include/trace/events/netfs.h
-@@ -305,6 +305,7 @@ TRACE_EVENT(netfs_read,
- 	    TP_STRUCT__entry(
- 		    __field(unsigned int,		rreq)
- 		    __field(unsigned int,		cookie)
-+		    __field(unsigned int,		object)
- 		    __field(uoff_t,			i_size)
- 		    __field(uoff_t,			start)
- 		    __field(size_t,			len)
-@@ -314,7 +315,8 @@ TRACE_EVENT(netfs_read,
- 
- 	    TP_fast_assign(
- 		    __entry->rreq	= rreq->debug_id;
--		    __entry->cookie	= rreq->cache_resources.debug_id;
-+		    __entry->cookie	= rreq->cache_resources.cookie_id;
-+		    __entry->object	= rreq->cache_resources.object_id;
- 		    __entry->i_size	= rreq->i_size;
- 		    __entry->start	= start;
- 		    __entry->len	= len;
-@@ -322,10 +324,10 @@ TRACE_EVENT(netfs_read,
- 		    __entry->netfs_inode = rreq->inode->i_ino;
- 			   ),
- 
--	    TP_printk("R=%08x %s c=%08x ni=%llx s=%llx l=%zx sz=%llx",
-+	    TP_printk("R=%08x %s c=%08x o=%08x ni=%llx s=%llx l=%zx sz=%llx",
- 		      __entry->rreq,
- 		      __print_symbolic(__entry->what, netfs_read_traces),
--		      __entry->cookie,
-+		      __entry->cookie, __entry->object,
- 		      __entry->netfs_inode,
- 		      __entry->start, __entry->len, __entry->i_size)
- 	    );
-@@ -549,6 +551,7 @@ TRACE_EVENT(netfs_write,
- 	    TP_STRUCT__entry(
- 		    __field(unsigned int,		wreq)
- 		    __field(unsigned int,		cookie)
-+		    __field(unsigned int,		object)
- 		    __field(unsigned int,		ino)
- 		    __field(enum netfs_write_trace,	what)
- 		    __field(uoff_t,			start)
-@@ -556,20 +559,19 @@ TRACE_EVENT(netfs_write,
- 			     ),
- 
- 	    TP_fast_assign(
--		    struct netfs_inode *__ctx = netfs_inode(wreq->inode);
--		    struct fscache_cookie *__cookie = netfs_i_cookie(__ctx);
- 		    __entry->wreq	= wreq->debug_id;
--		    __entry->cookie	= __cookie ? __cookie->debug_id : 0;
-+		    __entry->cookie	= wreq->cache_resources.cookie_id;
-+		    __entry->object	= wreq->cache_resources.object_id;
- 		    __entry->ino	= wreq->inode->i_ino;
- 		    __entry->what	= what;
- 		    __entry->start	= wreq->start;
- 		    __entry->len	= wreq->len;
- 			   ),
- 
--	    TP_printk("R=%08x %s c=%08x i=%x by=%llx-%llx",
-+	    TP_printk("R=%08x %s c=%08x o=%08x i=%x by=%llx-%llx",
- 		      __entry->wreq,
- 		      __print_symbolic(__entry->what, netfs_write_traces),
--		      __entry->cookie,
-+		      __entry->cookie, __entry->object,
- 		      __entry->ino,
- 		      __entry->start, __entry->start + __entry->len - 1)
- 	    );
-@@ -584,22 +586,23 @@ TRACE_EVENT(netfs_copy2cache,
- 		    __field(unsigned int,	rreq)
- 		    __field(unsigned int,	creq)
- 		    __field(unsigned int,	cookie)
-+		    __field(unsigned int,	object)
- 		    __field(unsigned int,	ino)
- 			     ),
- 
- 	    TP_fast_assign(
--		    struct netfs_inode *__ctx = netfs_inode(rreq->inode);
--		    struct fscache_cookie *__cookie = netfs_i_cookie(__ctx);
- 		    __entry->rreq	= rreq->debug_id;
- 		    __entry->creq	= creq->debug_id;
--		    __entry->cookie	= __cookie ? __cookie->debug_id : 0;
-+		    __entry->cookie	= rreq->cache_resources.cookie_id;
-+		    __entry->object	= rreq->cache_resources.object_id;
- 		    __entry->ino	= rreq->inode->i_ino;
- 			   ),
- 
--	    TP_printk("R=%08x CR=%08x c=%08x i=%x ",
-+	    TP_printk("R=%08x CR=%08x c=%08x o=%08x i=%x ",
- 		      __entry->rreq,
- 		      __entry->creq,
- 		      __entry->cookie,
-+		      __entry->object,
- 		      __entry->ino)
- 	    );
  
 
