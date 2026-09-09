@@ -1,240 +1,145 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ed1-f47.google.com (mail-ed1-f47.google.com [209.85.208.47])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B0920471246
-	for <linux-nfs@vger.kernel.org>; Wed,  9 Sep 2026 07:22:31 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788938554; cv=none; b=QDmbZSLK0aRHYDpQqL9i80d1jaCb6D5vjWP8f1MNuqi6uWd5S2fTajkNpYWngE6Pw+B58zfWyuq2y+n98Dp5VsybsyKlKhZb2yuJm3mXMB7qJgWrOXsCiCNCe0UxVxndGVuWKmaFDy/pKp4ju6qwhQSCDLKt7GugzbnyGeokdHU=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788938554; c=relaxed/simple;
-	bh=LZ2hS8A6llV8NkvAufdH9wFQBoDVrgr/5hAQg36CjfM=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=GZK/1TXjnq2izety1WOef7eriwf7F/HHH1JQjbmA5roZfohPq3wIben6n+Ut5lPZEpcQ2hCAkMEY2WdRbovpvycSDWAdppwUC2TdRCwrIffRhak0xefP2pPXXei/+TgzQWKaOlufYwXzuwQOFLupRnLIzfoYjC1X+Ir1LBJNcz8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=a/o7Clzu; arc=none smtp.client-ip=170.10.133.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B526943BDB8
+	for <linux-nfs@vger.kernel.org>; Wed,  9 Sep 2026 09:35:46 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.47
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1788946554; cv=pass; b=cUVZ0NzsX8d6WDt/16bxFH4459nhFeGMzW4SHPgovfWto6U82pkD30SSNWWeoqSfMM5rBzNWa8WqbjgFNimBdm847iVAbZ8ElMdG7m8FN0tbv1BKuPcQqPqg51Zrvii2adgle13MeATKOh4XDk8WC58xHnxXNEDxE9G/8oh0wGY=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1788946554; c=relaxed/simple;
+	bh=29MUHrGaHyPL+Y0iVPPzvmOfz5y95o8akYNmcTLdfEw=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=MFo10bDBrdFWvxK5nFuqCsLbLnpehQE/AaHhqLskyCSEAJdPOP0Q6H489m+vAiuc6wC7UBLQ9ufLQ7woUTKIyIDcTh09qojhSOAr+QfXeQKG2mJdXXWAqSscEtWh3m7pmmzFJA+wJ7CaoWnd522S7JAlv16jMZ6kZ7fhBraNK1Y=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=mWzRV343; arc=pass smtp.client-ip=209.85.208.47
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="a/o7Clzu"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1788938550;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=/xgppktK1ya3AHkXZxi9vPI0IjVoDDvwcSOEfPSvP+w=;
-	b=a/o7Clzulgr1l1xPXLDoyhKGV2nAdW4nd7EeU9Rh7ugVBF3LpSbnFSj899G0GCdROjqRzX
-	kQ7V08U6MaUejg/WS0BChKgP1KkYqZSqjgtRc91y6f6j7MACF85rNGz21TaLvtimX1+YBz
-	SP9LGoDJIOO9vH2DGeNa0dWH2LeBrFk=
-Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-488-jc9DiHqrPbe-2bcDCqYZSQ-1; Wed,
- 09 Sep 2026 03:22:27 -0400
-X-MC-Unique: jc9DiHqrPbe-2bcDCqYZSQ-1
-X-Mimecast-MFC-AGG-ID: jc9DiHqrPbe-2bcDCqYZSQ_1788938544
-Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id D94681800598;
-	Wed,  9 Sep 2026 07:22:23 +0000 (UTC)
-Received: from warthog.com (unknown [10.44.32.158])
-	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 57C9A195608C;
-	Wed,  9 Sep 2026 07:22:18 +0000 (UTC)
-From: David Howells <dhowells@redhat.com>
-To: Christian Brauner <christian@brauner.io>
-Cc: David Howells <dhowells@redhat.com>,
-	Paulo Alcantara <pc@manguebit.org>,
-	Matthew Wilcox <willy@infradead.org>,
-	Namjae Jeon <linkinjeon@kernel.org>,
-	Marc Dionne <marc.dionne@auristor.com>,
-	Stefan Metzmacher <metze@samba.org>,
-	Eric Van Hensbergen <ericvh@kernel.org>,
-	Dominique Martinet <asmadeus@codewreck.org>,
-	Ilya Dryomov <idryomov@gmail.com>,
-	netfs@lists.linux.dev,
-	linux-afs@lists.infradead.org,
-	linux-cifs@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	ceph-devel@vger.kernel.org,
-	v9fs@lists.linux.dev,
-	linux-erofs@lists.ozlabs.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org
-Subject: [PATCH v13 8/8] netfs: Set subrequest->source at alloc before trace emission
-Date: Wed,  9 Sep 2026 08:21:02 +0100
-Message-ID: <20260909072105.1663687-9-dhowells@redhat.com>
-In-Reply-To: <20260909072105.1663687-1-dhowells@redhat.com>
-References: <20260909072105.1663687-1-dhowells@redhat.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="mWzRV343"
+Received: by mail-ed1-f47.google.com with SMTP id 4fb4d7f45d1cf-6a0de062db5so8136341a12.1
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Sep 2026 02:35:45 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1788946543; cv=none;
+        d=google.com; s=arc-20260327;
+        b=sR/1hSHZGnbIlHW0UPVG1UZa4HHOqs+r2jGYUPBz4Ycu7eCjZLTDasusI4PLpzwlBq
+         tNt3nmeEQpK1Gj9YhZPybCO355vfCCyfnU9VwMx5XVi7Ivha4bHLCHwrH7v25yc3qqgx
+         DzTV8TwBgzimnaY3kdndAUTQfQjzrUDKsK4SuQA/2SurRK+Fg6/IotLI7rDs6kSI1SXR
+         Q+JbHsBP/l90MqwaSzEiIYakIq3FQO1OilAEeB1j9TfRDoe50vptAPFYvihxW1jzyBgz
+         SjIePdXiXe2SvOihmYNCE7eDsRZwh4M2ktQIl+nBp7LKZuoQyBRneCroY7Qh/SHEqY9D
+         UzJQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=29MUHrGaHyPL+Y0iVPPzvmOfz5y95o8akYNmcTLdfEw=;
+        fh=aamp+i0+ZvrLpgw7WQ3vvhS1MirpCwH62Y/7GUFdvKc=;
+        b=VhDvorZEYo1ITh9vsimkN/W03u6oBzQZnMjKiV+pDytY/NWNAz6IixEEpxKitm4+JM
+         XzCcHaGSAKMFR5XtK5vd3LYTPCRh3N1jklYj8scdyc0YboKjWVY9WjrFk5fzYMvpZ9K7
+         U6GeDbj5aNtKAZ6cP1dv6d0Oifm4ravdejt83TwUaOhWU9YiaPcXPf4WxMo9O4Ace0ti
+         X3V8nY5Hf9DWGkyDoOImF0JvHLhqjrCvOfXQeN+PReuQiyATzHbxHvbALdiiVv91qHnc
+         spLq7SRYieOksJk/WJT8VmvhEKQ3VY3nHwVvgq2OQVkYHn5d0gCzpdrRx204bdSVjcAn
+         6mRA==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1788946543; x=1789551343; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=29MUHrGaHyPL+Y0iVPPzvmOfz5y95o8akYNmcTLdfEw=;
+        b=mWzRV343fQIvsY+v1+fg62BmLBC7FiTn2d0RZT+DHCOXAJ3OfBcpDM0NmWRCcAHDf1
+         a3Wn2iMQhmjPeyqMJMYT2EXg/SJqqgRnV5zoB3dgmyZQYC264da638pIDkbohxjWOPK/
+         l07aUFrNErdn+s2pOtDPKOpk1Rdh6C7TbfmUqxNGBa3jNSR6fwzwv2yp9typNlsdrJJu
+         El38P/LkeuABPnWrAJ1ANLszZozdo73neo1qHhWOqRGammNK4j7LBs34vb+o6+sky7J8
+         eK4o1tBSRyxDRu103Bg284RITTcWoWrNfOQ3yqUKjWVWdl+5zcNfqryhcwDsMRsKgQDb
+         i7Qg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1788946543; x=1789551343;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=29MUHrGaHyPL+Y0iVPPzvmOfz5y95o8akYNmcTLdfEw=;
+        b=cWiOazWwRPWZZAqI/MjIxZTzL6yt+3TAjO7dFY8JF0z/8A3J2RyUfHPIeCe8vR+XL4
+         IWjOiBb1n2ThpNyzriOf/lkcHgdrca8HoXXIu2tVAEBZ4PbCAee7fKd21h4rjwIeRmjV
+         tbXc7Dxxbxc+t2RVjRT6DCqCdGh77WFr/07oZvBWiZJO4ySyJIH/juMOmJ2T8tvvrwZC
+         Mns5z7gYwPini3hjTXi2CRAUlOhBVYVhWMdJxzn0WAvfWz6P0I6UOH9B1aWWCS+bD/Xa
+         HReYJjSyDkFUrRFYb9fc00ox1WelDlOU4IgmWE0Qg/XCZ8TIqxC6VB0hc6XSuC7OaJEI
+         h8bw==
+X-Gm-Message-State: AFuF++mHSEZ7UEmGx1E4axXYlPYwjlGHQpoTvoRWqrUieP5wZdGN9ru6
+	eiF7nmb8J7MqAkQKRXw1c+Tb22bqQfWFyV+D07727YL19ZYcz60R3H70OHOMJD8ABiqTklVcbUs
+	XNsTDQfxy2tjpxJJHcwdDcODchiEPIHk=
+X-Gm-Gg: AYBFou2/fJRQ6bpyMN7W0Yk+S6qSVzZyiJ64xfkQNYTTS6GEyz5+2crECqBkpjwBc9x
+	2Hk1QSnMOM4NyfX0RxoG/LBzO+O1ye3ZzzDOkwNuOwFhqVcTJOVDqjzJl+wnMtPaBO4Sd+WjGDq
+	U10GAHuPsZtIQrxs0njSWn4+BzAm1UBwaERerTzpjBwQ8nIeH4hKe611fqTfx2wzY9xsDoxJqzS
+	sQ2NjWor/8mUumpztK8QQEC20cGzGLY0MPlIjEj4yhE2rN/hC1Jt5xsMHa4wBtJG85JNYLCEGQL
+	4Y9U+NppbszgKDtq1iY4fTpMTGearShkpQK5Ll/Gba9JF9ekix7gvA==
+X-Received: by 2002:a05:6402:3509:b0:6a9:93cf:2367 with SMTP id
+ 4fb4d7f45d1cf-6a993cf25ccmr1017392a12.41.1788946543182; Wed, 09 Sep 2026
+ 02:35:43 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
+References: <CANT5p=rb=HJsFPrD0swPi8D8LzaodTvKK=M6xwR0SvtK_YaLRA@mail.gmail.com>
+ <c4a59806a92d2afdeceed1da3190e232f1beb7b4.camel@kernel.org>
+In-Reply-To: <c4a59806a92d2afdeceed1da3190e232f1beb7b4.camel@kernel.org>
+From: Shyam Prasad N <nspmangalore@gmail.com>
+Date: Wed, 9 Sep 2026 15:05:31 +0530
+X-Gm-Features: AcwNN1V63iUPxsMWW6y06YIbFpWz7qtvlN2rCEYJtxkpOUEbXKtiSWcX5b4K2pI
+Message-ID: <CANT5p=q_1y0yMXyDu-kYpi5zitnL0M+h2ixq2ve6UEbHrfOmPA@mail.gmail.com>
+Subject: Re: NFS strategy for large number of file opens
+To: Jeff Layton <jlayton@kernel.org>
+Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trondmy@kernel.org>, 
+	Anna Schumaker <anna@kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Set subrequest->source in netfs_alloc_subrequest() before we emit the trace
-line indicating we allocated the subrequest.  Note that this requires the
-allocation of the subreq in netfs_read_to_pagecache() to be pushed to after
-the decision about what sort of subreq it should be.
+On Tue, Sep 8, 2026 at 3:24=E2=80=AFPM Jeff Layton <jlayton@kernel.org> wro=
+te:
+>
+> On Mon, 2026-09-07 at 17:23 +0530, Shyam Prasad N wrote:
+> > Hi all,
+> >
+> > I'm starting this email thread to understand how NFS deals (or plans
+> > to deal with) workloads that serially do open/close calls to a large
+> > number of files in a directory? Think about a use case of tar of Linux
+> > kernel source code on NFS shares.
+> >
+> > AFAIK, local filesystems fare well for this workload compared to
+> > network filesystems, as file opens are local, and file state is
+> > maintained locally. For network filesystems, each open needs to go
+> > over the wire to the server.
+> >
+> > Has there been any proposals to improve perf for such workloads?
+> > Could there be possible extensions to directory delegations, that
+> > could allow the client to make opens async and batch them together to
+> > the server in the background? IMO, the challenge is that such open
+> > calls can fail. But can the clients be enabled to do many of these
+> > failure checks (for example, the client could be allocated quota for
+> > how many files it can create, be allowed to cache file permissions by
+> > delegating them etc.)?
+> >
+> > Looking forward to the responses. Thanks in advance.
+>
+> You should resend this and cc linux-nfs@vger.kernel.org.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Paulo Alcantara <pc@manguebit.org>
-cc: netfs@lists.linux.dev
-cc: linux-fsdevel@vger.kernel.org
-cc: linux-mm@kvack.org
----
- fs/netfs/buffered_read.c | 4 ++--
- fs/netfs/direct_read.c   | 3 +--
- fs/netfs/internal.h      | 3 ++-
- fs/netfs/objects.c       | 4 +++-
- fs/netfs/read_retry.c    | 3 +--
- fs/netfs/read_single.c   | 3 +--
- fs/netfs/write_issue.c   | 3 +--
- fs/netfs/write_retry.c   | 3 +--
- 8 files changed, 12 insertions(+), 14 deletions(-)
+Hi Jeff,
 
-diff --git a/fs/netfs/buffered_read.c b/fs/netfs/buffered_read.c
-index 887d45f3745a..68496e1a171f 100644
---- a/fs/netfs/buffered_read.c
-+++ b/fs/netfs/buffered_read.c
-@@ -276,10 +276,10 @@ static void netfs_read_to_pagecache(struct netfs_io_request *rreq)
- 
- 	do {
- 		struct netfs_io_subrequest *subreq;
--		enum netfs_io_source source = NETFS_SOURCE_UNKNOWN;
-+		enum netfs_io_source source;
- 		ssize_t slice;
- 
--		subreq = netfs_alloc_subrequest(rreq);
-+		subreq = netfs_alloc_subrequest(rreq, NETFS_SOURCE_UNKNOWN);
- 		if (!subreq) {
- 			ret = -ENOMEM;
- 			break;
-diff --git a/fs/netfs/direct_read.c b/fs/netfs/direct_read.c
-index 5405e108b7a3..8c15f3079723 100644
---- a/fs/netfs/direct_read.c
-+++ b/fs/netfs/direct_read.c
-@@ -55,7 +55,7 @@ static void netfs_dispatch_unbuffered_reads(struct netfs_io_request *rreq)
- 		struct netfs_io_subrequest *subreq;
- 		ssize_t slice;
- 
--		subreq = netfs_alloc_subrequest(rreq);
-+		subreq = netfs_alloc_subrequest(rreq, NETFS_DOWNLOAD_FROM_SERVER);
- 		if (!subreq) {
- 			/* Stash the error in the request if there's not
- 			 * already an error set.
-@@ -64,7 +64,6 @@ static void netfs_dispatch_unbuffered_reads(struct netfs_io_request *rreq)
- 			break;
- 		}
- 
--		subreq->source	= NETFS_DOWNLOAD_FROM_SERVER;
- 		subreq->start	= start;
- 		subreq->len	= size;
- 
-diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
-index d579c5d79609..4891e6e3c5db 100644
---- a/fs/netfs/internal.h
-+++ b/fs/netfs/internal.h
-@@ -92,7 +92,8 @@ void netfs_get_request(struct netfs_io_request *rreq, enum netfs_rreq_ref_trace
- void netfs_clear_subrequests(struct netfs_io_request *rreq);
- void netfs_put_request(struct netfs_io_request *rreq, enum netfs_rreq_ref_trace what);
- void netfs_put_failed_request(struct netfs_io_request *rreq);
--struct netfs_io_subrequest *netfs_alloc_subrequest(struct netfs_io_request *rreq);
-+struct netfs_io_subrequest *netfs_alloc_subrequest(struct netfs_io_request *rreq,
-+						   enum netfs_io_source source);
- 
- static inline void netfs_see_request(struct netfs_io_request *rreq,
- 				     enum netfs_rreq_ref_trace what)
-diff --git a/fs/netfs/objects.c b/fs/netfs/objects.c
-index 3460aa1c4af1..9c6ea718692a 100644
---- a/fs/netfs/objects.c
-+++ b/fs/netfs/objects.c
-@@ -207,7 +207,8 @@ void netfs_put_failed_request(struct netfs_io_request *rreq)
- /*
-  * Allocate and partially initialise an I/O request structure.
-  */
--struct netfs_io_subrequest *netfs_alloc_subrequest(struct netfs_io_request *rreq)
-+struct netfs_io_subrequest *netfs_alloc_subrequest(struct netfs_io_request *rreq,
-+						   enum netfs_io_source source)
- {
- 	struct netfs_io_subrequest *subreq;
- 	mempool_t *mempool = rreq->netfs_ops->subrequest_pool ?: &netfs_subrequest_pool;
-@@ -224,6 +225,7 @@ struct netfs_io_subrequest *netfs_alloc_subrequest(struct netfs_io_request *rreq
- 	INIT_WORK(&subreq->work, NULL);
- 	INIT_LIST_HEAD(&subreq->rreq_link);
- 	refcount_set(&subreq->ref, 2);
-+	subreq->source = source;
- 	subreq->rreq = rreq;
- 	subreq->debug_index = atomic_inc_return(&rreq->subreq_counter);
- 	netfs_get_request(rreq, netfs_rreq_trace_get_subreq);
-diff --git a/fs/netfs/read_retry.c b/fs/netfs/read_retry.c
-index 46810d29f0c0..396a05432a7e 100644
---- a/fs/netfs/read_retry.c
-+++ b/fs/netfs/read_retry.c
-@@ -195,12 +195,11 @@ static void netfs_retry_read_subrequests(struct netfs_io_request *rreq)
- 		 * and insert them after.
- 		 */
- 		do {
--			subreq = netfs_alloc_subrequest(rreq);
-+			subreq = netfs_alloc_subrequest(rreq, NETFS_DOWNLOAD_FROM_SERVER);
- 			if (!subreq) {
- 				subreq = to;
- 				goto abandon_after;
- 			}
--			subreq->source		= NETFS_DOWNLOAD_FROM_SERVER;
- 			subreq->start		= start;
- 			subreq->len		= len;
- 			subreq->stream_nr	= stream->stream_nr;
-diff --git a/fs/netfs/read_single.c b/fs/netfs/read_single.c
-index ccb5fc809d99..81295c055ced 100644
---- a/fs/netfs/read_single.c
-+++ b/fs/netfs/read_single.c
-@@ -92,11 +92,10 @@ static int netfs_single_dispatch_read(struct netfs_io_request *rreq)
- 	struct netfs_io_subrequest *subreq;
- 	int ret = 0;
- 
--	subreq = netfs_alloc_subrequest(rreq);
-+	subreq = netfs_alloc_subrequest(rreq, NETFS_SOURCE_UNKNOWN);
- 	if (!subreq)
- 		return -ENOMEM;
- 
--	subreq->source	= NETFS_SOURCE_UNKNOWN;
- 	subreq->start	= 0;
- 	subreq->len	= rreq->len;
- 	subreq->io_iter	= rreq->buffer.iter;
-diff --git a/fs/netfs/write_issue.c b/fs/netfs/write_issue.c
-index 9a528da4bf9f..e7cb496f6324 100644
---- a/fs/netfs/write_issue.c
-+++ b/fs/netfs/write_issue.c
-@@ -168,10 +168,9 @@ void netfs_prepare_write(struct netfs_io_request *wreq,
- 	    wreq_iter->folioq_slot >= folioq_nr_slots(wreq_iter->folioq))
- 		rolling_buffer_make_space(&wreq->buffer, wreq->gfp);
- 
--	subreq = netfs_alloc_subrequest(wreq);
-+	subreq = netfs_alloc_subrequest(wreq, stream->source);
- 	if (!subreq)
- 		return;
--	subreq->source		= stream->source;
- 	subreq->start		= start;
- 	subreq->stream_nr	= stream->stream_nr;
- 	subreq->io_iter		= *wreq_iter;
-diff --git a/fs/netfs/write_retry.c b/fs/netfs/write_retry.c
-index 6cd584242af2..d7d5348496fc 100644
---- a/fs/netfs/write_retry.c
-+++ b/fs/netfs/write_retry.c
-@@ -149,8 +149,7 @@ static void netfs_retry_write_stream(struct netfs_io_request *wreq,
- 		 * and insert them after.
- 		 */
- 		do {
--			subreq = netfs_alloc_subrequest(wreq);
--			subreq->source		= to->source;
-+			subreq = netfs_alloc_subrequest(wreq, stream->source);
- 			subreq->start		= start;
- 			subreq->stream_nr	= to->stream_nr;
- 			subreq->retry_count	= 1;
+linux-cifs mailing list is already in the cc. :)
 
+>
+> The big problem for untar workloads is that they are serialized at the
+> VFS layer on the client. Neil Brown has been working on changing that.
+
+Has this been discussed in the mailing list? Could you point me to
+that discussion?
+
+> --
+> Jeff Layton <jlayton@kernel.org>
+
+
+
+--=20
+Regards,
+Shyam
