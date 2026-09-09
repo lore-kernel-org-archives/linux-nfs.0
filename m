@@ -1,103 +1,115 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wr1-f48.google.com (mail-wr1-f48.google.com [209.85.221.48])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B0BE302CC1;
-	Wed,  9 Sep 2026 06:12:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ACE0F3B0AE6
+	for <linux-nfs@vger.kernel.org>; Wed,  9 Sep 2026 06:45:04 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.48
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788934350; cv=none; b=UwOaPIXTx2NIxCiwX0Oel1tqBFJ/kZmIM63Pxd91UZ/WaKBfBU09YqWnEaZSM53eYiN8vsnk7FnJFM6Fm1ee2Qm7olvrkpyZCkam1nEBxYRJ2k67vH6Baoma5AnmmjEau5MFx9Ogw8myEi3Geu7Fx0dHm9HkFiT2GYOPmd0VNyE=
+	t=1788936306; cv=none; b=SDe3lhMrWf/vuhfKftP1Wyxbf4SbBQ+FuvbXlC4HjNOoe/8iCc3n7q+7SVciFzTi/hXQGnHrVVMs7liJCR8Rl9lO4yl8N93vHMeQpWx8zL+5v5QdFRdAZBrTvw9pdmomvMWMiZA1UKFxeSc3WH3ECsnhMaqrluB0EncK1VyT4nI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788934350; c=relaxed/simple;
-	bh=/HSGzhhCGfAKOr0ksyK5rCyWeTHFO6fV07hOmKs+MHw=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=F5XbZ8NQl2fleRe8S5cxpPh1WNdYhHjh3nA4hHm9D1CgXj6/gwWX6C39bwb5Pj2yN5Ch71xzXYhQlkICOVSaKSPKGwCBffpMKmw+862TRkOFDkdH69KdQ5dZ1GturNYzcj71QznvCqQdO54kD8ZntoBHB1n5LuUznYFFmng7tDM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=ZCII80jm; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	s=arc-20240116; t=1788936306; c=relaxed/simple;
+	bh=DanluAYLKGnSSr8y1+7HZ6AUnVzsPNVwXGZvF4Qstfk=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=RLWIjY6BWsp4Ctok0U3N5QoGgDnGfRtwCxRYtnFODztvgo0CpWOH/1/wD1xXwOJOdBeZaZMGDjGpSM5Kjv6/LLPL6jgn7STEvjgLo0ha1iYI3oObfFyK1XKi+6+aYef11H5wOwmc6W5/SvWPLcWcdvWVB67A9XyJZA3fOT008T4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=rZzwWbx2; arc=none smtp.client-ip=209.85.221.48
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="ZCII80jm"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=5RTlTTuTGuZI8S4XM7VIrtv7XQ6b3ZOyGtBEq4+Q7N4=; b=ZCII80jmHC7kLXJW6qYVWEJheg
-	zTqXpVZj2uq8lJZqB63d/VyG/nMkP+allHu+cqis6iUT7aG5WK2WH+l2nduz09BByCjayA5zXh8YJ
-	C/hb1xWuS99ItmAYRLtCfLKVRAbeeMoBapRB7SfF/6Hk27D3f4COXmmwxfGioZq5R7wPAQMTN3/RM
-	qdZptBpyRn7bNBKbka3+5HibDZPnilBD6DExQzzkSMeDPmfECI5nNrgPWJL3QB3juqjLg6lS6iNDJ
-	EbWQEAbKG3sKs2kntplY+k/w/qdmaPst2elzRaemYHzTCkqILyspaW9egHrH0ug9NZtthROHyh77B
-	ivgAjf4g==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1x4BXo-0000000ArD8-3vsN;
-	Wed, 09 Sep 2026 06:12:28 +0000
-Date: Tue, 8 Sep 2026 23:12:28 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "Darrick J. Wong" <djwong@kernel.org>
-Cc: cem@kernel.org, zlang@kernel.org, linux-xfs@vger.kernel.org,
-	fstests@vger.kernel.org, jack@suse.cz, Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
-Subject: Re: [RFC PATCH 1/2] common/nfs: add management helpers
-Message-ID: <aqD4zBD06P1LJKM2@infradead.org>
-References: <20260907164054.111393-1-cem@kernel.org>
- <20260907164054.111393-2-cem@kernel.org>
- <20260908142226.GL839663@frogsfrogsfrogs>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="rZzwWbx2"
+Received: by mail-wr1-f48.google.com with SMTP id ffacd0b85a97d-4843f205a5bso3456655f8f.1
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Sep 2026 23:45:04 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1788936303; x=1789541103; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=e0E6YoepVX602+BZgbZmpihibucX2fS9462FnPD7Cgw=;
+        b=rZzwWbx2sH4d/qXVZKNVxq08MnLLftOjjcT2cbATDTP2kvqWwSayrt/deiN6L/lyZP
+         BOafq7gp2gma07KgA2FtbZocta3Obs0REa+qcCDl7OIabpc09XqM1TTaQcE04rd56B1d
+         RVBOojzXobjRbMnPS9hS9WQAyLJ3OsBzZpBm4JmpHbveOvnPVNIMJFJORdD+1yE269Y1
+         B0L9agqSKqLdslZ883bQQ/gqz6DwCs0kiVEftNW/o6BQh3yr8qQXu+OkPK555nNbhT6q
+         UuqNpONmMK72JfZ3WjzEOAbe2AJawNw81YyBvpWSsSvSgOZ556IaMN8mH0BDsyJnvJYN
+         fRSg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1788936303; x=1789541103;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=e0E6YoepVX602+BZgbZmpihibucX2fS9462FnPD7Cgw=;
+        b=CS+XXrqEpCsHOdpgWRoNZzmBHU8o4vbY/S/WPGMmy+fPKjaue8/Qk/PQ0IZ845EbrV
+         6WTCX1Kls8de7KwsibUzo7zMjJUk9/ZxQMNLADV7942UA52MA9QKLOTTxxh0bGTWSuOc
+         BB5VD4jbi+3Z2U20A5LhIQThiaJ+siwi41OIaVplAW1Y/MUueXgBVS33eW4M8gs6Zwer
+         76qHrDS2G4fANYJtscZsbkBKFM/mc7FI+4f7LUDvZhxfW87fu7QLDJoQCQY+l/3FxDl8
+         9Xs7BjaqvuLrSaI/BVGa9YG5HHLPGZCcUIziJUJU9HNTp4f/p4/gmhe8YHt15tFY08rw
+         aKRg==
+X-Forwarded-Encrypted: i=1; AKwUvBzaTWMkY19vKBrw4cppYq01wklUsoIm024nrHUu2UcZxZyN4+t0evQgtrs6dRS0q2SfJg0RCHCKxHQ=@vger.kernel.org
+X-Gm-Message-State: AFuF++lKbPRj9A8jLlxiYAtR10BVZ0xw88iJLB2GCyYMCN/vxE30sOdD
+	62Q+Vkkb7V8yUNRzbVbEekmptbxevKnIh1y7soqFUPtOH1MO68dwEx0B
+X-Gm-Gg: AYBFou2FhYsrv5ruKGqxsO62cEFyvLGoG0Jq0Lw21wM0ETVH6qs2B4sFERuNLYLNT28
+	b0Ea020OXEe9m1xBHmcuoQCFZZaxhpotrs/Tz7GvPGXJ51ubs5nFX/d7b1SNt+2kc0BclwGIwKp
+	TK+Z4REdYJYiTh2qXYPlY+gtkZdTHo2+BqfZsV7KZNvMBskB6JLyPKIfpOOAjmqycoASxZaoxsw
+	QgmLuCtpnZ2l7CJ+DVR6/VZ8BSCLTZE5ueDQ2RuR+68ZwImjcMH7hzsh4yF0Y8x5yZsXCAtKEXj
+	bAY4QVX+WAjQk0F/RJikCY5xt1HFId42NH5rZyGMswaZmLcAr7kiWf5Zz1voRrNmrX0G2LAsfhh
+	wfFlVChWQah54eRG+7vGrNR27C64VNbmDhOBn9lWrSle76XTdO1oTTgdSGXRkHdlKJ1Ab1TEn6h
+	S21ojnbrsiT/1qNFIkcfgxox7acEH2K5cDgTOOho7CQF92zOHKJ4tj5ZHOMRRAQ7oGxoSQDgQMs
+	snRxj7hlKn7l/EEjagR9nx1ZLMzUMLzN7uBnqmUY2Pbll/ZgZ10Ua9cz5cgHCBrEcsNWLsKnrk6
+	GP8fgPfKt+D4n/yLqhrhnhc8RW0xRGRw82RuskPzwc0Zq4LBxDqZAFkK8Z2vm6w=
+X-Received: by 2002:a05:6000:608:b0:485:8e4b:3d34 with SMTP id ffacd0b85a97d-4858e4b3ed7mr31596984f8f.5.1788936302679;
+        Tue, 08 Sep 2026 23:45:02 -0700 (PDT)
+Received: from MacBook-Pro-von-Karl.localdomain (dynamic-095-114-212-219.95.114.pool.telefonica.de. [95.114.212.219])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-4859207c28fsm36579522f8f.5.2026.09.08.23.45.01
+        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
+        Tue, 08 Sep 2026 23:45:02 -0700 (PDT)
+From: Karl Mehltretter <kmehltretter@gmail.com>
+To: Chuck Lever <cel@kernel.org>
+Cc: Karl Mehltretter <kmehltretter@gmail.com>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH] svcrdma: Fix svc_rdma_recv_cid_init() kernel-doc
+Date: Wed,  9 Sep 2026 08:43:43 +0200
+Message-Id: <20260909064343.90437-1-kmehltretter@gmail.com>
+X-Mailer: git-send-email 2.39.5 (Apple Git-154)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260908142226.GL839663@frogsfrogsfrogs>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Transfer-Encoding: 8bit
 
-On Tue, Sep 08, 2026 at 07:22:26AM -0700, Darrick J. Wong wrote:
-> > +# Start rpcbind if it is not already running.
-> > +_start_rpcbind()
-> > +{
-> > +	rpcinfo -p localhost > /dev/null 2>&1 && return 0
-> > +	rpcbind 2>> $seqres.full || _notrun "Cannot start rpcbind"
-> > +	/usr/sbin/rpc.statd 2>> $seqres.full || _notrun "Cannot start rpc.statd"
-> > +	/usr/sbin/rpc.idmapd 2>> $seqres.full || _notrun "Cannot start rpc.idmapd"
-> > +	/usr/sbin/nfsdcld 2>> $seqres.full || _notrun "Cannot start nfsdcld"
-> 
-> Aren't these daemons usually configured as system services?
-> 
-> # service rpcbind start
-> 
-> etc?
+svc_rdma_recv_cid_init() initializes a Receive Queue completion ID,
+but its kernel-doc heading names svc_rdma_send_cid_init(). The latter is
+a separate helper immediately below it, so kernel-doc cannot match this
+comment to the receive helper.
 
-They usually are, but doing that as part of a test feels wrong.
-Adding the relevant maintainers and list.
+Fix the copied function name.
 
-> 
-> > +}
-> > +
-> > +# Stop rpcbind.
-> > +_stop_rpcbind()
-> > +{
-> > +	pkill rpcbind 2>/dev/null
-> > +}
-> > +
-> > +# Start the NFS server if not already running.
-> > +_start_nfsd()
-> > +{
-> > +	rpcinfo -p localhost 2>/dev/null | grep -q nfs && return 0
-> > +	rpc.nfsd 2>> $seqres.full || _notrun "Cannot start rpc.nfsd"
-> > +	rpc.mountd 2>> $seqres.full || _notrun "Cannot start rpc.mountd"
-> > +}
-> > +
-> > +# Stop the NFS server.
-> > +_stop_nfsd()
-> > +{
-> > +	rpc.nfsd 0 2>/dev/null
-> > +	pkill rpc.mountd 2>/dev/null
-> 
-> If the system under test has nfs filesystems mounted, won't killing
-> those daemons also break the mounts?
-> 
-> I think that might break testing of nfs itself, and nfs-booted testing
-> nodes as well?
+Fixes: 28ee0ec8948a ("svcrdma: De-duplicate completion ID initialization helpers")
+Assisted-by: LLM
+Signed-off-by: Karl Mehltretter <kmehltretter@gmail.com>
+---
+ include/linux/sunrpc/svc_rdma.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Possibly.  I guess if we want to save we need to launch a container
-or at least a network namespace this is bound too. 
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 76aa5ec4ab40..5ccb13bf906f 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -142,7 +142,7 @@ enum {
+ #define RPCSVC_MAXPAYLOAD_RDMA	RPCSVC_MAXPAYLOAD
+ 
+ /**
+- * svc_rdma_send_cid_init - Initialize a Receive Queue completion ID
++ * svc_rdma_recv_cid_init - Initialize a Receive Queue completion ID
+  * @rdma: controlling transport
+  * @cid: completion ID to initialize
+  */
+
+base-commit: 893e11787f78e43b534e252249ac3fff4d1333f8
+-- 
+2.53.0
