@@ -1,33 +1,33 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 96B47569F2A;
-	Wed,  9 Sep 2026 14:20:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2C05C57EDA8;
+	Wed,  9 Sep 2026 14:27:38 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788963644; cv=none; b=gJ4pxddT/edX9hlMw8vtdcq8010umVJqLiX1Atjq+FLkj5ET3IXPXmCMbQhf6YLWGPGb9VvHw+QnI4CaI7qK+VMXnQ+WEuHoxbRNtrM2rOoOONbuRxd6OX0odBerAzJpO5s7cJOdgm0LrrXHFcoK7+mascTrvrJgCRbzDMRTw+Y=
+	t=1788964059; cv=none; b=cqSxjMMTo+kc8IPr6qfA+J2mlxV82DNlV5FEyxDNwjRfvXgkdOaJT+Ke6dPMgBMRBF2qbETdH+knxUp78UOWvsButxbOhqDxPs/vgs+SMHduhhT8PzI1fmYdQW6bk9SLMiEnlTO90cBA/b5juj4Q6fBiOaVsOpCZqzPwszoW6MQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788963644; c=relaxed/simple;
-	bh=s7VQOlOU7AwSJjyzkINg2SJi2bbn+hMYGgE/73HTq+4=;
+	s=arc-20240116; t=1788964059; c=relaxed/simple;
+	bh=hIS16POuM1Haqi4SGeM+duiPiWeiTh9uFuyc67q4V2Y=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=HbuwsLO+cfRfbzwPUpokRx4CctlagIKPqywv5Ki0hU1U41hVV81nkxbb3nhWTh99T5c76lYfSDkd9Ivvn+LuJvjQSkVKwoXUXBMeHgK1akAm8QO6xWOStc7s5sKvaXF5gTNHYkXp4VfTDimseBfxoehkWvIuQtxL0zEhFZu1RWY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=lnHLaMAo; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:Content-Type; b=mXIEdchtxxT/Qs5k8eFqmg9DoLEW/EOoCG9sCRyT/oQKqZIjX2xuW7hAzKW8SZbXwwRY6eq/JQ7Yr6ZqlnfbDP6bcbl0pd8nLdEDHot9Rur9qbNGsGYEXqy8uXl9FIErIcEVDn627rKHrsLX7B7aOXgecG9j8mlpcC4dvXlynd8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=n6q/LoUS; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="lnHLaMAo"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 844AF1F00A3D;
-	Wed,  9 Sep 2026 14:20:32 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="n6q/LoUS"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8AE051F00A3A;
+	Wed,  9 Sep 2026 14:27:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788963643;
-	bh=pNa+R32oRzIlggZcI4nA479nmzN6Ja3e5lLkInWTr24=;
+	s=k20260515; t=1788964058;
+	bh=3fyzwBci/JI68L7GwljQF21lnUjBdIooTvCklPk/4zM=;
 	h=Date:Subject:To:Cc:References:From:In-Reply-To;
-	b=lnHLaMAopxlt4KS67LLWDWspk5zG17ntY3H9Pe2yIVsiFSE2BRoYW00yJg+xHoh10
-	 vuNVVQC2bfNK0nyBX1v9GN1Psf3WbkOKPt/kAIud/e0yPLkq0JCsdntmOD5i+4fY/Y
-	 Ml2/4whKkbL2iUhms0DZo9w4Hej2h47PsPoV74ZUvFvumYQzyJ4Z8ZXNQSLwcAc2a7
-	 kcdfu2aCv2kKeEPe/X0okGepxzVjumyPE0sHnCzfrTf8KARGjVRH66h7+/8ZjOKTGa
-	 kk2sXnk6fjbWqOFkprZPu77oQxxro0cxZu5khxthAUAiRK9hcw7Lb8/S3rgn407qQ6
-	 2GycK1VAQOOXA==
-Message-ID: <e31d07a6-52b3-46bd-8a1e-03238428a0d0@kernel.org>
-Date: Wed, 9 Sep 2026 16:20:30 +0200
+	b=n6q/LoUS3HGC8qKWePM8SnXWE0lNaHny4wIGqHSjRoyNo0zUqlsiOuyWi2K9bEt1t
+	 oG8G4YvYN+SmaNv6lebTPFdeADBRq30olOOE5SMDG9x7RoHZuvpjDkM92fX/qOHFCo
+	 wZrrM8xsnKc957fBPsH3qd492I9+/MUfrm7e7o0wkSF3veqh2D3BBzNrYgdxx7Rhru
+	 DM5XqE/t+kWc9+vFnMPdLZgPR9SOCvb7UAdEwRYBBOZqzuFwubxWFQoK7oSL3nfZss
+	 9FCL5PAVYeWd96n3cuX8xbXyrmRlsgP5Ix+XzxCjGW2sgeR5llV4n0JYK/gkvIE1ks
+	 j+2Ca2K0ybKgg==
+Message-ID: <54a48bae-aa0e-4833-91a2-5b5908356255@kernel.org>
+Date: Wed, 9 Sep 2026 16:27:25 +0200
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -113,8 +113,11 @@ On 9/8/26 04:56, Zi Yan wrote:
 > PG_private is going to be deleted. Adjust related comments to refer to
 > page/folio->private instead.
 
+Thinking again, I think this is misleading.
 
-Acked-by: David Hildenbrand (Arm) <david@kernel.org>
+PG_private is defectively already unused for all of these cases, no? In that
+case it's rather a documentation fix. (could some of that go into patches that
+convert away from PagePrivate, like in the previous patch?)
 
 -- 
 Cheers,
