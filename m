@@ -1,57 +1,57 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D19DE4A5C45;
-	Thu, 10 Sep 2026 15:41:54 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2B7C6493643;
+	Thu, 10 Sep 2026 15:47:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789054916; cv=none; b=Dsa2XCn+1dFBJGG0a4pJOiJpsFkRu8J/kdzI0Xh4kkvS9FD5VyZBPbpq/ZFJVVutuyU2Ogm3PWsoopQ5I3WBNCGait4BO14DLIwBdaNjug6Ja7SVKqYrRmcTd/w4CMKBa/fgpUuJy6XPFjJwYLfIIsArAqUP9z44ZIsCYFVjuHk=
+	t=1789055275; cv=none; b=m4NWC2oVmVG/0mPve4+jy5h4J3uflfRG+LDMc85rwKQoTRc3/I8/NgTJNEWxbp5LRuCOkOWHJasfnMz/iVXvUTOL3BcFgN7oicry1o9bgWGg182soukLDjlXYLg8P+urMjMZPN1ZqyuP0ENhokJqgPXm/Xhi9E8RXn54+X8li5U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789054916; c=relaxed/simple;
-	bh=Cv83Y2cxQRifUNTWe9xbJvJO6VwFOAjdqwlHnX674oo=;
+	s=arc-20240116; t=1789055275; c=relaxed/simple;
+	bh=TOy7SBm/fegV4EjRORkQ0GXT9NCChYqEFIBs+C2vk1g=;
 	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=Ka6OJUoinIW0wqe0lBzUJeA6o5WyPz/d7YJ2EqlNmApY1Z4p7hC9CSYl0r6o9ggoG6p202nMHov4p3boDWQS0jE5PD7uLOEeO+WUCmFMO6S+rwj4TtyB5VqCy6vz2odi3LYEl5nhnqs9DbFSAa0ciZJKHMpL9mfvFaKSKjKnETY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Sw35lEYj; arc=none smtp.client-ip=100.103.45.18
+	 Subject:Content-Type; b=VcmVdnmNH4QcW/TTNnukZ2cdCG4pX03zFIDzGqvgX7Knl8rGBfdZpUKLKLU2Hh52LWt+GR3LxJ1HvuWxVjF4JeShy5dXJsC7tqy6juS0y3thISpxwKfiNqqKYVbt5FBKZaEyygWYFvmly3eNtiVYcxUE87MzCahMBpCwlSB9Chk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IFPNhcOV; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Sw35lEYj"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 59E0B1F00898;
-	Thu, 10 Sep 2026 15:41:54 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IFPNhcOV"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8F5861F000FF;
+	Thu, 10 Sep 2026 15:47:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789054914;
-	bh=0QcbBzUrFpfzDPq8LltXH9cRcxoNNQvpvYbHvP4XDKk=;
+	s=k20260515; t=1789055273;
+	bh=cgIP0eykI6dWly7Eh5U3U35ajrz0x3t8mRSUn9cHag0=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=Sw35lEYj0dssbRfLXJ6497t9W0rPwS0N/We7qEMWfRhz41Zp1QuI8iOQ8a8WXvC+5
-	 ljRMgn1Iuu/6wjkWWpL0BL2oXu3nMohReaPGx+/TGlffPDWrtfN+YHUR3C1ZkAMeb+
-	 /FopKqu7UTxMWcMirvYqh7Dw2LSI1uTxs9bzU1PCQDrwrCHlIXKpxCoe3tWgzt7I0b
-	 eOZ2qFXljWjMurnewKcg5ES0GUdOy54NoJpMx5tkwFhjfoIuelBHGAXNcusKAKmNUG
-	 X6TV6ZIFnSOYO5vB8rgw4uqN9lkgGeHQIGpFkrwH0nOOrjI3AQ5c+K4l4t8Dc9jxpX
-	 t1Om2FQesH+aw==
+	b=IFPNhcOVA6LQue/UQpT13Z8nNqIVS9UTvGfGvmYu/WylQswmD7eq5WFA4YQgsJryT
+	 8Smf+uMTdvLdY2J2hZmvXzVv6Mu+S83vQ0kuOQfcUyCm1yg4OeXaP091maTZoBEeHW
+	 K8UREgl6I1nHT9v5tYG34GKIArJ5rTQAjLNrWfalNoOzPtzzoyxdB+lG5zyx4CGjWk
+	 2GrgwcpEnNmiKNn/t/6QQwN4YaCB5ejDRD7ZeiXO6jsNKwA/n4NkBlfNmLLQQhxYIW
+	 I9c2pfHeUS4P5O1vJEi8dcigW/Vy3riu88VlgJFrrolk4YzO+bDSdma+3ngonFgGoI
+	 C2wVXVPri6oxg==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 80DE9F40068;
-	Thu, 10 Sep 2026 11:41:53 -0400 (EDT)
+	by mailfauth.phl.internal (Postfix) with ESMTP id CA217F40066;
+	Thu, 10 Sep 2026 11:47:52 -0400 (EDT)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Thu, 10 Sep 2026 11:41:53 -0400
-X-ME-Sender: <xms:wc-iapjM0lA8G7RPlIRdvKnuRVSDtZeDgOPvsqFVaJLP2jbt02cfUw>
-    <xme:wc-iao2AQBVKvZpGIgG-X1AnuD4N5T6D5tEyFEXFYaUcBkIC6KWKALohrpoycXyfR
-    yLcl8n3VPbUeebjgInV5pPcOsqxTfRkjhl4D2I2v6-3H8lekf0qETFM>
-X-ME-Proxy-Cause: dmFkZTGFWIFasjoDmcN0ZdVfwPz1V2eKZ4EdNrvQlWrrdHijKpjhJt57pa0IDwthBJpBLP
-    hp0rkARqFV0J8wXxnws3vIuNnizwSseM56cP+IHkMHHwJUeedx6ZpXg4LhE5DKw0nbrRiD
-    FknH2tSI170eCdxRW232ZB4avKsd5r1TS4jlcee4PuEgE2P8sBpiR+U99D1ig6xfJVhtc0
-    VPqeB33Rj55uDmKAlSgH9EAUmdu6uP4XXDx6yrI8M+MW2f2Nzfe3s2M7eBd0GeJAETKTgY
-    V7RyH88sgBustPmcBYw5TLs4ZI0NIis3jz+22fAUVuXxcwoKQzICZ4yKIL3RllbEHIt2EY
-    IvrRjm/mBwGW0HRQn/8lEWPPcy9dif7p2Crs3JSZpdmnFsSO7BY6LRo04PlaHR8FhrakIt
-    nfNmzL32cfFiviLD1PmL2KhOdBNwny/z2UzQqmNv8CnQ3T+cbhJ+8lSE1sS7iYNYmB4U6e
-    6+RpVU/SG2iIz8ZSSj/A464oaE3iVZRNj+ExAq+Yec/m6GIWBM3PowFnzEnzz7DusAEXEo
-    TeVLTBOzV/fvpllYTEM5GveIktK3qN2wfGL/Iu7Uii+96Se1JDBQ4YCo/ArUrVS4RQ5TOJ
-    QEkY6Fr6PqaDv6htxBculf+fwj4MofUotAY1+Q/m+mgNcfkmIH3qg/TirRkA
-X-ME-Proxy: <xmx:wc-iamZxn_KCobl2g3AFfkB2-GALSdRRdVF90fjHRzKVBB-43V-GPw>
-    <xmx:wc-iaqFafBodbpnbCLBORcsFcyMcHOFt4yuhBKQna5k_im5-dIpxEQ>
-    <xmx:wc-iavIQgHLnveL6TrrwH32IvT7WU8nzV_0YkXXpfhylqfJ67SNFSw>
-    <xmx:wc-iatMCJp0-IZSJhRuxNzgQPiT1iQ-f8yCvJy9HSP-9vDtrWCgPgw>
-    <xmx:wc-iankhFxhfPv-B5q_RIJUe2QchJwmMW5R9Eoo1zZG29YWCEWVlRX0P>
+  by phl-compute-10.internal (MEProxy); Thu, 10 Sep 2026 11:47:52 -0400
+X-ME-Sender: <xms:KNGiaq0jN0s5x8O7SDUJ981ONIuT0KYH74iC20dsHm5KK7BH8eqNOA>
+    <xme:KNGian5yklVj6KmFMw9wFFSWclgcgeWChmc5DoK56rqk00PONixxEk-PHM6UjTYr_
+    zG4GH2XM7Z1hIGd50WLAcvJw_zP4P9N1CLfy3QhtLebocg1-ahI8f1_>
+X-ME-Proxy-Cause: dmFkZTGLvw3BleNJxEKuZlwh5rnA9tSzk4DbRhIdVQ7IpZvqY4oqAW0CpC6J75T3eJHFWf
+    7W6saxzq1yy94XM2kHBdQpeomKZ2mah6nM/7J3WQwUX8O2bRvFDNYkrD47uKXmgE3pq/UP
+    Wrc9P9gxf2k8XmOHNXfaZQGgEjqSC4nqM/2JSPHUVLXN52v41mqPzolKbr3RzFxhyIE46F
+    YrXcmbJJR+lA+qrP0ZsBA5dz3WnnZ9I+M4fJ79BfKIemM6EKBXRTTvr45mB8ANLOG1F6HN
+    +kPWMoOvAsjRoXoPul7Z9X6kgHCNqhH/G+7OlQVgN7AtEtWvB9HLVtJGneiI58dN63Y/gA
+    dlsfYfH/opZLVE/falcnVW7dA7ka9fkzH8XJ7K/Q5oRIE3sIHvcpmkrpGM/g069bbR/Dc3
+    Iw2PfFEH0kaczBr+ZCCCOHPMKzs1lFuSG3gh7bWylYjgja2eRqfPMYRKGJWTGBsoD5Lpok
+    MRAbcWIy62XnEbjja2YpsMgL3rqcnGzCNYGOUK/6J/+46sLz7v015R6Xi0mp4WmxVi7jup
+    DQE6ngtWoCW+YNMUXzpzfEY3QkBeyTCRGKJSFOFtg+HvCBQZWkxrMu23zl4/YTdObbIOP4
+    gwzRvGBLP/FWitrtv/4kXkaA2KyBmI70CPLQbFiwh+yEbBQ7SrhiT54DXNhg
+X-ME-Proxy: <xmx:KNGiavPi-ELwRADVCPrjxfzvXhjVWTNOyLieLogsFFkCqfbNlFod6g>
+    <xmx:KNGiaqphkqDxhMyQ1LKRnvISV1Wg46m47hC4TaWHn2QtdElRbYzptg>
+    <xmx:KNGiasclf55qc4gEHVvqpW1cNnqosSA9GoozCPszi31tGrWTOCYm5w>
+    <xmx:KNGiaoQ_1W9OkE46XuS9GI_RQENKrdHMLT52f2txbRsapULmUHLY4w>
+    <xmx:KNGiatb-Zq5Hv8aTvVBWxG3AGtdTIEpbCp6vEhquqIloR3X_LKk49HlY>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 5AFBD7811F0; Thu, 10 Sep 2026 11:41:53 -0400 (EDT)
+	id AD7D57811F3; Thu, 10 Sep 2026 11:47:52 -0400 (EDT)
 X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -59,172 +59,200 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AQ0ownMfFdNZ
-Date: Thu, 10 Sep 2026 11:41:31 -0400
+X-ThreadId: AHW2aQSR1Px3
+Date: Thu, 10 Sep 2026 11:47:30 -0400
 From: "Chuck Lever" <cel@kernel.org>
 To: NeilBrown <neil@brown.name>
 Cc: "Alexander Viro" <viro@zeniv.linux.org.uk>,
  "Christian Brauner" <brauner@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
  linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Message-Id: <e36532d5-e37f-4d71-b83a-c8d19d87811f@slotpi15m67>
-In-Reply-To: <20260910002934.192979-6-neilb@ownmail.net>
+Message-Id: <f64c2391-2810-406c-8c31-7f80cdde0832@slotpi15m67>
+In-Reply-To: <20260910002934.192979-8-neilb@ownmail.net>
 References: <20260910002934.192979-1-neilb@ownmail.net>
- <20260910002934.192979-6-neilb@ownmail.net>
-Subject: Re: [PATCH 5/7] nfsd: switch NFS4 OPEN to use vfs_lookup_open()
+ <20260910002934.192979-8-neilb@ownmail.net>
+Subject: Re: [PATCH 7/7] nfsd: use vfs_lookup_open() for non-creating open requests
+ too.
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
->     This implementation shares more code with syscall open paths and so uses
->     some filesystem interfaces slightly more correctly.  It also takes the
+On Thu, 10 Sep 2026, NeilBrown wrote:
 
-Which interfaces? The concrete difference I can see is that lookup_open()
-honors ->atomic_open, which do_lookup_open() never called. Naming that
-would be clearer than "slightly more correctly".
-
-
->     We need to pass O_NONBLOCK so that that EWOULDBLOCK errors from
-
-Repeated word: "that that".
-
-
->     vfs_lookup_open() always returns -EFTYPE if a non-regular-file was
->     found, and provides the dentry in parent.dentry.  We can use
->     nfsd_check_obj_is_reg() to turn this into an error.
+> nfsd: use vfs_lookup_open() for non-creating open requests too.
 >
->     As parent.dentry could be NULL, we enhance nfsd_check_obj_is_reg() to
->     cope with that.
+> Now that we have vfs_lookup_open() for open requests which create, we
+> can use it for non-creating requests too as vfs_lookup_open() is already
+> able to do that.  nfsd4_create_file() is renamed to nfsd4_open_file()
+> and enhanced to not always create, and is then used for all OPEN
+> requests.
+>
+> The resulting simplification allows fh_fill_pre_attrs_unlocked() to be
+> moved into nfsd4_open_file() so it is closer to fh_full_post_attrs and
+> fh_fill_post_noop calls.
 
-The function is nfsd_check_obj_isreg(), in both places.
-
-
->     vfs_lookup_open() will return -EEXIST if required for
->     NFS_CREATE_GUARDED4 as O_EXCL is passed in.  Other checks for
->     and existing object need only test for nfsd4_create_is_exclusive().
-
-s/and existing/an existing/, and the identifier is NFS4_CREATE_GUARDED.
-
-The -EEXIST claim holds only on the path through the tail of
-vfs_lookup_open(), where the O_EXCL test runs before the d_is_reg()
-test. When lookup_open() itself returns -EFTYPE, vfs_lookup_open()
-returns before either test. See below.
+fh_full_post_attrs is fh_fill_post_attrs().
 
 
+> As ->op_create_mode isn't defined when op_create is zero, we need a
+> local create_mode which is -1 (illegal value) when op_create is zero.
+
+The field is ->op_createmode and the local is createmode.
+
+
+> The non-create path now doesn't use nfsd_lookup().  As mount-point
+> crossing including nfsd_check_access() is already included for existing
+> names, this does not lose us anything.
+
+The function is check_nfsd_access(), reached through nfsd_cross_mnt().
+
+Is "already included for existing names" accurate? The only mount-point
+crossing left in nfsd4_open_file() is the try_lookup_noperm() block,
+and that consults only the dcache. More on that below.
+
+
+> Signed-off-by: NeilBrown <neil@brown.name>
+> ---
+>  fs/nfsd/nfs4proc.c | 109 ++++++++++++++++++++++++++---------------------------
+>  1 file changed, 53 insertions(+), 56 deletions(-)
+>
 > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 3a82af381a8d..0fd5a6411ed3 100644
+> index a6ba7618a307..1f3096486565 100644
 > --- a/fs/nfsd/nfs4proc.c
 > +++ b/fs/nfsd/nfs4proc.c
+> @@ -251,29 +251,30 @@ static inline bool nfsd4_create_is_exclusive(int createmode)
+>  }
+>
+>  /*
+> - * Implement NFSv4's unchecked, guarded, and exclusive create
+> - * semantics for regular files. Open state for this new file is
+> - * subsequently fabricated in nfsd4_process_open2().
+> - *
+> + * Implement NFSv4's open semantics for regular files.
+> + * Both create (unchecked, guarded, and exclusive) and non-create.
+> + * Open state for this new file is subsequently fabricated in
+> + * nfsd4_process_open2().
+>   * Upon return, caller must release @fhp and @resfhp.
+>   */
 
-[ ... ]
+"Both create ... and non-create." is a fragment, and "this new file" no
+longer fits when the file may already exist. Perhaps:
 
-> @@ -312,7 +269,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
->  		.na_iattr	= iap,
->  		.na_seclabel	= &open->op_label,
->  	};
-> -	int oflags = O_CREAT | O_LARGEFILE;
-> +	int oflags = O_CREAT | O_LARGEFILE | O_NONBLOCK;
-
-Nit: do_dentry_open() strips O_CREAT, O_EXCL and O_TRUNC from f_flags
-and leaves O_NONBLOCK in place, so op_filp now carries O_NONBLOCK into
-the filecache entry that nfsd_file_acquire_opened() builds from it.
-Files opened through __nfsd_open() do not. Is that divergence
-intended?
-
-
->  	struct dentry *child = ERR_PTR(-EINVAL);
->  	struct path parent = {
->  		.mnt = fhp->fh_export->ex_path.mnt,
-> @@ -424,28 +381,29 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
->  		/* Might still succeed if no create is needed */
->  		oflags &= ~O_CREAT;
->  
-> -	open->op_filp = do_lookup_open(&parent,
-> -				       &QSTR_LEN(open->op_fname,
-> -						 open->op_fnamelen),
-> -				       oflags,
-> -				       open->op_iattr.ia_mode);
-> +	dget(parent.dentry);
-> +	open->op_filp = vfs_lookup_open(&parent,
-> +					&QSTR_LEN(open->op_fname,
-> +						  open->op_fnamelen),
-> +					oflags,
-> +					open->op_iattr.ia_mode & S_IALLUGO);
-
-Nit: after this call "parent.dentry" is the child (or NULL), while a
-few lines up IS_POSIXACL(d_inode(parent.dentry)) reads the same
-expression as the parent directory. The VFS patch renamed its parameter
-to @path for this reason. Would renaming the local here avoid the same
-trap?
+ * Implement NFSv4 OPEN semantics for regular files, both non-creating
+ * and creating (unchecked, guarded, and exclusive). Open state for the
+ * file is subsequently fabricated in nfsd4_process_open2().
+ *
+ * Upon return, caller must release @fhp and @resfhp.
 
 
->  	if (IS_ERR(open->op_filp)) {
->  		int hosterr = PTR_ERR(open->op_filp);
->  
-> -		if (open->op_createmode != NFS4_CREATE_UNCHECKED) {
-> -			switch (hosterr) {
-> -			case -EISDIR:
-> -			case -ELOOP:
-> -			case -EFTYPE:
-> +		if (hosterr == -EFTYPE) {
-> +			if (nfsd4_create_is_exclusive(open->op_createmode))
->  				hosterr = -EEXIST;
-> -			}
-> +			else
-> +				hosterr = nfsd_check_obj_isreg(parent.dentry);
->  		}
+> @@ -285,6 +286,10 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  	if (status != nfs_ok)
+>  		return status;
+>
+> +	status = fh_fill_pre_attrs_unlocked(fhp);
+> +	if (status)
+> +		return status;
+> +
+>  	if (open->op_createmode == NFS4_CREATE_UNCHECKED) {
+>  		/*
+>  		 * If name is already in dcache we need to check for mountpoints
 
-Does this drop the NFS4ERR_EXIST mapping for GUARDED4?
+First, the test reads open->op_createmode, which the commit message says
+is undefined when op_create is zero. It works because
+nfsd4_decode_open() zeroes the whole struct, so a non-creating OPEN
+sees NFS4_CREATE_UNCHECKED here. Could the op_create test that sets
+createmode be hoisted above this block, and the condition become
 
-The old test covered GUARDED as well as the two EXCLUSIVE modes.
-nfsd4_create_is_exclusive() covers only EXCLUSIVE4 and EXCLUSIVE4_1, so
-a GUARDED open that finds a non-regular object now takes the else arm
-and returns NFS4ERR_ISDIR, NFS4ERR_WRONG_TYPE, and so on. RFC 8881
-section 18.16.3 says a GUARDED4 duplicate is NFS4ERR_EXIST.
+	if (!open->op_create || createmode == NFS4_CREATE_UNCHECKED) {
 
-Keeping "open->op_createmode != NFS4_CREATE_UNCHECKED" here would
-restore the old mapping without depending on the ordering of checks
-inside each filesystem's ->atomic_open.
+so the non-create path does not depend on that zero?
 
-Separately, can this arm return nfs_ok? nfsd_check_obj_isreg() returns
-0 for a regular file, and vfs_lookup_open() can leave a regular file in
-parent.dentry when the d_lookup() it does after an -EFTYPE races with a
-rename (the VFS marks that case with a WARN_ON_ONCE rather than
-excluding it). nfserrno(0) is nfs_ok, op_filp is then set to NULL, and
-nfsd4_create_file() returns success with resfhp never composed. It only
-fails safely today because do_open_lookup() then calls
-nfsd_check_obj_isreg() on the NULL fh_dentry. Something like
+Second, nfsd_lookup_dentry() did a real lookup and then called
+nfsd_cross_mnt() whenever nfsd_mountpoint() was true. try_lookup_noperm()
+returns NULL when the name is not cached. In that case vfs_lookup_open()
+opens whatever it finds on the parent's mount and fh_compose() uses the
+parent's export.
 
-		if (!hosterr)
-			hosterr = -EFTYPE;
+For a referral junction (a regular file carrying the junction xattr),
+nfsd_cross_mnt() would have swapped in the referral export. On a cold
+dcache the client instead gets an ordinary filehandle for the junction
+file, and a second OPEN of the same name, now cached, takes the
+crossing path. The same applies to a bind-mounted file whose mount
+target has its own export.
 
-would address that.
+The Linux client sends OPEN by name without a preceding LOOKUP, so the
+first access after a server reboot reaches this. Could the block do a
+real lookup of the name, as nfsd_lookup_dentry() does, before deciding
+whether to cross?
 
 
->  		status = nfserrno(hosterr);
->  		open->op_filp = NULL;
->  		if (status == nfserr_noent && create_status)
->  			status = create_status;
-> +		dput(parent.dentry);
->  		goto out;
+> @@ -373,11 +382,11 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  		iap->ia_atime.tv_nsec = 0;
 >  	}
-> +	dput(parent.dentry);
->  
->  	child = open->op_filp->f_path.dentry;
->  	open->op_created = open->op_filp->f_mode & FMODE_CREATED;
-> @@ -462,7 +420,9 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
->  		open->op_created = true;
->  
->  	if (!open->op_created) {
-> -		if (open->op_createmode == NFS4_CREATE_UNCHECKED) {
-> +		if (nfsd4_create_is_exclusive(open->op_createmode)) {
-> +			status = nfserr_exist;
-> +		} else {
+>
+> -	create_status = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
+> -	if (create_status)
+> -		/* Might still succeed if no create is needed */
+> -		oflags &= ~O_CREAT;
+> -
+> +	if (oflags & O_CREAT) {
 
-Same question here. GUARDED used to get nfserr_exist from this branch
-and now gets the "no change happened" arm. It is unreachable for GUARDED
-today only because vfs_lookup_open() returns -EEXIST whenever O_EXCL is
-set and nothing was created. Should this also stay as
-"!= NFS4_CREATE_UNCHECKED" so the protocol rule is enforced here rather
-than relying on that ordering?
+Nit: O_CREAT is set only from open->op_create a few lines up. Would
+testing open->op_create here read more directly?
+
+
+> +		create_status = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
+> +		if (create_status)
+> +			oflags &= ~O_CREAT;
+> +	}
+>  	dget(parent.dentry);
+>  	open->op_filp = vfs_lookup_open(&parent,
+>  					&QSTR_LEN(open->op_fname,
+
+This changes when a delegation is recalled relative to the access
+check. oflags carries O_WRONLY or O_RDWR from op_share_access, and
+vfs_lookup_open() opens the child with those flags. do_dentry_open()
+does no permission check of its own and calls break_lease() on the
+inode, so a conflicting delegation held by another client is recalled
+here. Only afterwards does do_open_lookup() call do_open_permission()
+and return NFS4ERR_ACCESS.
+
+Before this patch a non-creating OPEN went through nfsd_lookup() and
+do_open_permission() first, and the open that breaks the lease
+happened later in nfsd_file_do_acquire(), where fh_verify() precedes
+nfsd_open_break_lease(). So a client that can search the directory
+but has no write permission on the file can now recall other clients'
+write delegations on it by sending OPEN with SHARE_ACCESS_WRITE.
+
+The create path has had this ordering since nfsd4_create_file() started
+opening the file itself, but it was limited to opens that pass
+NFSD_MAY_CREATE on the directory. Extending it to every OPEN makes it
+reachable from any client with lookup access.
+
+Could the access check move ahead of the open for the non-creating
+case, or could the open be done O_RDONLY for the type check and the
+share-access open deferred to the filecache as before?
+
+
+> @@ -387,7 +396,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  	if (IS_ERR(open->op_filp)) {
+>  		status = nfserrno(PTR_ERR(open->op_filp));
+>  		if (status == nfserr_wrong_type) {
+> -			if (nfsd4_create_is_exclusive(open->op_createmode))
+> +			if (nfsd4_create_is_exclusive(createmode))
+>  				status = nfserr_exist;
+>  			else
+>  				status = nfsd_check_obj_isreg(parent.dentry);
+
+On a re-export this arm changes the status a non-creating OPEN of a
+directory returns. nfsd_check_obj_isreg(NULL) returns
+nfserr_wrong_type, where nfsd_lookup() used to return nfserr_isdir.
+
+The Linux client has no mapping for NFS4ERR_WRONG_TYPE, so
+nfs4_map_errors() turns it into EIO. A "cat" of a re-exported directory
+that is not yet in the server's dcache now fails with EIO instead of
+EISDIR. NFSv4.0 clients are covered by the nfserr_symlink conversion in
+do_open_lookup() and recover through a LOOKUP; v4.1 and later see the
+change. Ceph splices before returning -EFTYPE, so it is not affected,
+but nfs, gfs2 and smb all return -EFTYPE before instantiating anything.
 
 
 -- 
