@@ -1,72 +1,57 @@
-Received: from fout-b5-smtp.messagingengine.com (fout-b5-smtp.messagingengine.com [202.12.124.148])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 20C0D38A73B;
-	Thu, 10 Sep 2026 15:37:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.148
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D19DE4A5C45;
+	Thu, 10 Sep 2026 15:41:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789054652; cv=none; b=NR+lglqAzqKMjnNF6fqxmKWEMCNwj6QJcUpunJ8UEOnK5ZFZSoK5O0mFie8TsDYsMzETp1M7k6vhqaOa9ipa62H6PiKDGnBJHaru8Y5YGiB2UymmAFnaP0nDa8ukMlIs6ON49iqcQr1dqjvN0GHdYUH3JSCMRtXc1ZN8phStC5k=
+	t=1789054916; cv=none; b=Dsa2XCn+1dFBJGG0a4pJOiJpsFkRu8J/kdzI0Xh4kkvS9FD5VyZBPbpq/ZFJVVutuyU2Ogm3PWsoopQ5I3WBNCGait4BO14DLIwBdaNjug6Ja7SVKqYrRmcTd/w4CMKBa/fgpUuJy6XPFjJwYLfIIsArAqUP9z44ZIsCYFVjuHk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789054652; c=relaxed/simple;
-	bh=tzfrxLbW18XBupQQO4Z4sOHkODX/2tTbZQV7+HM+Wto=;
+	s=arc-20240116; t=1789054916; c=relaxed/simple;
+	bh=Cv83Y2cxQRifUNTWe9xbJvJO6VwFOAjdqwlHnX674oo=;
 	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=o9gmHhbgfS7YaE4d0/rGWIVWtnCsIpAuTCOi80iM60upLPJl+eLqSYqlWQu3fdF8kQUFKHiVs/0jLYiyddPJ2vWPiAB20pr57UevVvmPxNozPvHqsuUrfa9zl2pLe0VSbdM99a7FcMbN87ERQ1qtZcucDjs/yl5xO9Djaiz2tUI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=arndb.de; spf=pass smtp.mailfrom=arndb.de; dkim=pass (2048-bit key) header.d=arndb.de header.i=@arndb.de header.b=ikywC8+h; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=R8SmDbAP; arc=none smtp.client-ip=202.12.124.148
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=arndb.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=arndb.de
+	 Subject:Content-Type; b=Ka6OJUoinIW0wqe0lBzUJeA6o5WyPz/d7YJ2EqlNmApY1Z4p7hC9CSYl0r6o9ggoG6p202nMHov4p3boDWQS0jE5PD7uLOEeO+WUCmFMO6S+rwj4TtyB5VqCy6vz2odi3LYEl5nhnqs9DbFSAa0ciZJKHMpL9mfvFaKSKjKnETY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Sw35lEYj; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=arndb.de header.i=@arndb.de header.b="ikywC8+h";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="R8SmDbAP"
-Received: from ams-compute-02.internal (ams-compute-02.internal [10.64.2.62])
-	by mailfout.stl.internal (Postfix) with ESMTP id 92D541D00107;
-	Thu, 10 Sep 2026 11:37:25 -0400 (EDT)
-Received: from ams-imap-03 ([10.64.2.23])
-  by ams-compute-02.internal (MEProxy); Thu, 10 Sep 2026 11:37:29 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=arndb.de; h=cc
-	:cc:content-transfer-encoding:content-type:content-type:date
-	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:subject:subject:to:to; s=fm3; t=1789054644;
-	 x=1789141044; bh=VJHi3AALrojUsaiH2K9JRyFh6yN6vM9XW4bo5EfCLvk=; b=
-	ikywC8+hP0FbgWYJ7JpppZwhmFT+TaVIwwfxZl3vKzlLdmM0Nux3yd+Im/GnBBxf
-	IsZhMPrU2CfaPOS3llPqcCh1/W6YupvRhqHnEPijgkiGE9FTjWByE5rH7xSz2+YS
-	+dblIgCXim5mQ79MRnnVj+HTE2oO78sbNkVr8Q34RjdHugoTrgiFbcREeHekftYd
-	aasBFCSTYq2bdjS9VoWdHFfCLjJ+zkroUH2SWQzQIfie7Rv6jWKaRIke0inoGzby
-	3B6POzhhAouDRYljXpkPjgMNSje743iQ78SiKVtE7Ge4+Dx7VPOmk/C6xBZz2BmT
-	VpnxDlhl6rU/FOoxhy83wA==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:content-type:date:date:feedback-id:feedback-id
-	:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1789054644; x=
-	1789141044; bh=VJHi3AALrojUsaiH2K9JRyFh6yN6vM9XW4bo5EfCLvk=; b=R
-	8SmDbAPjSEISBwANGL6NRU+VAUlWXrSQUFPgdkRsPNjMk/TQ6vTirkIvq0MISnMb
-	JKylqUisx/ovnCt8n5NY8n38p8Z0r7qneBX+3zXxCDi2CJwC02WhAFRI2seVrGL3
-	Dht2ceJo7GLlQMaxoAoPjc+jE/IjH4l6GZIuGYTnjn702MzCG2sJXfo7DJD6Mu+D
-	GdeuLOmK0EtS1BFwVrocZNEiHVquy2r7T6MQ/O53GTtfpHRB1FMWSHdFtJfVd492
-	huhQSYBkjqtlp54u32TtmpwCcuYi2jrpIaJFlHxn0OmcDjswJ7KPJQwv8vayUgpM
-	tlajKtuLqV1QATBx5g5yg==
-X-ME-Sender: <xms:qs6iaoxcZdBS5-tZ6559r51Ysxn8ibK0iu94a23oAy3L7zkGsUDSIA>
-    <xme:qs6ianED7WC-Q5vvqjBq8s_u2Wqo8da3kDi_H8X5KWUsVSaHxUeQXmRrU2dFDuKW5
-    iSmQx6sT9tJCQ5Fwo1WTe4NJLY27B0TnB0PK74fvos-BO3OvrbH46Csjw>
-X-ME-Proxy-Cause: dmFkZTGzGT8QWaj5+IaF+j+BCEPEbeETmKmrh3i3QL1egfRXUvJOsOFxmKhTHJ5EJ0IvJ/
-    yrlbR57KqxmsqFYmHcxuNy7TxmyGimBY78fjpHyUy7vT/Q0OO0SF55UVJhaG/0alhtMMXP
-    gjrK4qv4Oymi20VFNGCTKHWPZM5dFQKAOC2iaHsd5PeiJ4bs06wqZiiNHoe9XtdI3wlCFz
-    dEvEW43MKZZojMIQ8Q2c5X4bpnwolr0T0c9O2qf0ntNk3rSE8d6qS+QV3WNpllSo8oIEPE
-    0cc52GAipoXJvmvdUNZM110yBhTc2CiUmuHzJTc3cgyXm93V2vumdIDzmA8tmt3nNU7Ug9
-    6+EvyqPEl/qJxhZSe/GxKdDq3P6XS8ocwRwYw1486eMhQ8woArvfJmN4iQRnrsRc0L86xi
-    FUFH72TMYxAZF+4RLrewGwWAm7BC/aWgYoMWJVSKwJbmsjXvsdGICOjD+m5FtnEZ/5B3FP
-    ahodQdjEW2UaaKlW69gdjKCiX5d3NjOm/upXNL0N5y/EL6C6fZpWiYQwvfBSI0XAN/+wiA
-    Cg1M8xRvHSmGMT5y0DNGWni2mwje4hoY8BKcu/+UhH04cABAYvBHYbSRHFVgnSoVo66ZEv
-    OhpSnSjBxC5zHMZ3qKuAHlvC9yX9G19i9o4NyzQqHNi8cGyFHrxA19niVE+A
-X-ME-Proxy: <xmx:r86iavuQaXSkajUGbGTxZOGm2llWg7fiaco8bOamAUQDeRL2Pd6HAQ>
-    <xmx:r86iavvdlBlZMz41c6a0PxU_zWsdsuHayQoajn_EtgnSKkrZC7QCwA>
-    <xmx:r86iau-ali-YMTcHW9nYfAeB8WFBwz4N3Kf6nVVNyNffsE_5Xex2YA>
-    <xmx:r86iao_ql0S4UwfTN7PSvF8rKrygtY-dHqzr4ZJBcaIKblcgxjNTZw>
-    <xmx:tM6iaqEzjEAmXefpeuCydSJA9LXJ7HlJinKnl2fmwVfK7B-jCn25-y5y>
-Feedback-ID: i56a14606:Fastmail
-Received: by mailuser.ams.internal (Postfix, from userid 501)
-	id A91DC32A007B; Thu, 10 Sep 2026 11:37:14 -0400 (EDT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Sw35lEYj"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 59E0B1F00898;
+	Thu, 10 Sep 2026 15:41:54 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789054914;
+	bh=0QcbBzUrFpfzDPq8LltXH9cRcxoNNQvpvYbHvP4XDKk=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=Sw35lEYj0dssbRfLXJ6497t9W0rPwS0N/We7qEMWfRhz41Zp1QuI8iOQ8a8WXvC+5
+	 ljRMgn1Iuu/6wjkWWpL0BL2oXu3nMohReaPGx+/TGlffPDWrtfN+YHUR3C1ZkAMeb+
+	 /FopKqu7UTxMWcMirvYqh7Dw2LSI1uTxs9bzU1PCQDrwrCHlIXKpxCoe3tWgzt7I0b
+	 eOZ2qFXljWjMurnewKcg5ES0GUdOy54NoJpMx5tkwFhjfoIuelBHGAXNcusKAKmNUG
+	 X6TV6ZIFnSOYO5vB8rgw4uqN9lkgGeHQIGpFkrwH0nOOrjI3AQ5c+K4l4t8Dc9jxpX
+	 t1Om2FQesH+aw==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 80DE9F40068;
+	Thu, 10 Sep 2026 11:41:53 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Thu, 10 Sep 2026 11:41:53 -0400
+X-ME-Sender: <xms:wc-iapjM0lA8G7RPlIRdvKnuRVSDtZeDgOPvsqFVaJLP2jbt02cfUw>
+    <xme:wc-iao2AQBVKvZpGIgG-X1AnuD4N5T6D5tEyFEXFYaUcBkIC6KWKALohrpoycXyfR
+    yLcl8n3VPbUeebjgInV5pPcOsqxTfRkjhl4D2I2v6-3H8lekf0qETFM>
+X-ME-Proxy-Cause: dmFkZTGFWIFasjoDmcN0ZdVfwPz1V2eKZ4EdNrvQlWrrdHijKpjhJt57pa0IDwthBJpBLP
+    hp0rkARqFV0J8wXxnws3vIuNnizwSseM56cP+IHkMHHwJUeedx6ZpXg4LhE5DKw0nbrRiD
+    FknH2tSI170eCdxRW232ZB4avKsd5r1TS4jlcee4PuEgE2P8sBpiR+U99D1ig6xfJVhtc0
+    VPqeB33Rj55uDmKAlSgH9EAUmdu6uP4XXDx6yrI8M+MW2f2Nzfe3s2M7eBd0GeJAETKTgY
+    V7RyH88sgBustPmcBYw5TLs4ZI0NIis3jz+22fAUVuXxcwoKQzICZ4yKIL3RllbEHIt2EY
+    IvrRjm/mBwGW0HRQn/8lEWPPcy9dif7p2Crs3JSZpdmnFsSO7BY6LRo04PlaHR8FhrakIt
+    nfNmzL32cfFiviLD1PmL2KhOdBNwny/z2UzQqmNv8CnQ3T+cbhJ+8lSE1sS7iYNYmB4U6e
+    6+RpVU/SG2iIz8ZSSj/A464oaE3iVZRNj+ExAq+Yec/m6GIWBM3PowFnzEnzz7DusAEXEo
+    TeVLTBOzV/fvpllYTEM5GveIktK3qN2wfGL/Iu7Uii+96Se1JDBQ4YCo/ArUrVS4RQ5TOJ
+    QEkY6Fr6PqaDv6htxBculf+fwj4MofUotAY1+Q/m+mgNcfkmIH3qg/TirRkA
+X-ME-Proxy: <xmx:wc-iamZxn_KCobl2g3AFfkB2-GALSdRRdVF90fjHRzKVBB-43V-GPw>
+    <xmx:wc-iaqFafBodbpnbCLBORcsFcyMcHOFt4yuhBKQna5k_im5-dIpxEQ>
+    <xmx:wc-iavIQgHLnveL6TrrwH32IvT7WU8nzV_0YkXXpfhylqfJ67SNFSw>
+    <xmx:wc-iatMCJp0-IZSJhRuxNzgQPiT1iQ-f8yCvJy9HSP-9vDtrWCgPgw>
+    <xmx:wc-iankhFxhfPv-B5q_RIJUe2QchJwmMW5R9Eoo1zZG29YWCEWVlRX0P>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 5AFBD7811F0; Thu, 10 Sep 2026 11:41:53 -0400 (EDT)
 X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -74,149 +59,173 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: Ay04W235egbV
-Date: Thu, 10 Sep 2026 17:36:54 +0200
-From: "Arnd Bergmann" <arnd@arndb.de>
-To: "Nicolai Buchwitz" <nb@tipi-net.de>,
- "Fernando Fernandez Mancera" <fmancera@suse.de>
-Cc: Netdev <netdev@vger.kernel.org>, "Simon Horman" <horms@kernel.org>,
- "Jakub Kicinski" <kuba@kernel.org>, "Paolo Abeni" <pabeni@redhat.com>,
- "Eric Dumazet" <edumazet@google.com>,
- "David S . Miller" <davem@davemloft.net>,
- "Jason Gunthorpe" <jgg@ziepe.ca>, "Leon Romanovsky" <leon@kernel.org>,
- "Andrew Lunn" <andrew+netdev@lunn.ch>,
- "Anthony L Nguyen" <anthony.l.nguyen@intel.com>,
- "Przemek Kitszel" <przemyslaw.kitszel@intel.com>,
- "Elad Nachman" <enachman@marvell.com>,
- "Saeed Mahameed" <saeedm@nvidia.com>, "Tariq Toukan" <tariqt@nvidia.com>,
- "Mark Bloch" <mbloch@nvidia.com>, "Ido Schimmel" <idosch@nvidia.com>,
- "Petr Machata" <petrm@nvidia.com>,
- "Edward Cree" <ecree.xilinx@gmail.com>,
- "Maxime Chevallier" <maxime.chevallier@bootlin.com>,
- "Maxime Coquelin" <mcoquelin.stm32@gmail.com>,
- "Alexandre Torgue" <alexandre.torgue@foss.st.com>,
- "Arend van Spriel" <arend.vanspriel@broadcom.com>,
- "Miri Korenblit" <miriam.rachel.korenblit@intel.com>,
- "Keith Busch" <kbusch@kernel.org>, "Jens Axboe" <axboe@kernel.dk>,
- "Christoph Hellwig" <hch@lst.de>, "Sagi Grimberg" <sagi@grimberg.me>,
- "Chaitanya Kulkarni" <kch@nvidia.com>,
- "Saurav Kashyap" <skashyap@marvell.com>,
- "Javed Hasan" <jhasan@marvell.com>,
- GR-QLogic-Storage-Upstream@marvell.com,
- "James E . J . Bottomley" <James.Bottomley@hansenpartnership.com>,
- "Martin K. Petersen" <mkp@kernel.org>,
- "Nilesh Javali" <njavali@marvell.com>,
- "Manish Rangankar" <mrangankar@marvell.com>,
- "Varun Prakash" <varun@chelsio.com>,
- "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Christian Brauner" <brauner@kernel.org>, "Jan Kara" <jack@suse.cz>,
- "David Howells" <dhowells@redhat.com>,
- "Marc Dionne" <marc.dionne@auristor.com>,
- "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>, "Chuck Lever" <cel@kernel.org>,
- "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
- "Marek Lindner" <marek.lindner@mailbox.org>,
- "Simon Wunderlich" <sw@simonwunderlich.de>,
- "Antonio Quartulli" <antonio@mandelbit.com>,
- "Sven Eckelmann" <sven@narfation.org>,
- "Nikolay Aleksandrov" <razor@blackwall.org>,
- "Pablo Neira Ayuso" <pablo@netfilter.org>,
- "Florian Westphal" <fw@strlen.de>, "Phil Sutter" <phil@nwl.cc>,
- "Johannes Berg" <johannes@sipsolutions.net>,
- "Matthieu Baerts" <matttbe@kernel.org>,
- "Mat Martineau" <martineau@kernel.org>,
- "Geliang Tang" <geliang@kernel.org>, "Julian Anastasov" <ja@ssi.bg>,
- "Aaron Conole" <aconole@redhat.com>,
- "Eelco Chaudron" <echaudro@redhat.com>,
- "Ilya Maximets" <i.maximets@ovn.org>,
- "Allison Henderson" <achender@kernel.org>,
- "Jamal Hadi Salim" <jhs@mojatatu.com>, "Jiri Pirko" <jiri@resnulli.us>,
- "Marcelo Ricardo Leitner" <marcelo.leitner@gmail.com>,
- "Xin Long" <lucien.xin@gmail.com>,
- "D. Wythe" <alibuda@linux.alibaba.com>,
- "Dust Li" <dust.li@linux.alibaba.com>,
- "Sidraya Jayagond" <sidraya@linux.ibm.com>,
- "Mahanta Jambigi" <mjambigi@linux.ibm.com>,
- "Tony Lu" <tonylu@linux.alibaba.com>, "Wen Gu" <guwen@linux.alibaba.com>,
- "Jon Maloy" <jmaloy@redhat.com>,
- "Tung Quang Nguyen" <tung.quang.nguyen@est.tech>,
- "Steffen Klassert" <steffen.klassert@secunet.com>,
- "Herbert Xu" <herbert@gondor.apana.org.au>,
- "Casey Schaufler" <casey@schaufler-ca.com>,
- "Paul Moore" <paul@paul-moore.com>, "James Morris" <jmorris@namei.org>,
- "Serge E. Hallyn" <serge@hallyn.com>,
- "Vikas Gupta" <vikas.gupta@broadcom.com>,
- "Bhargava Marreddy" <bhargava.marreddy@broadcom.com>,
- "Rajashekar Hudumula" <rajashekar.hudumula@broadcom.com>,
- =?UTF-8?Q?Markus_Bl=C3=B6chl?= <markus@blochl.de>,
- "Heiner Kallweit" <hkallweit1@gmail.com>,
- "Florian Fainelli" <florian.fainelli@broadcom.com>,
- "Krzysztof Kozlowski" <krzk@kernel.org>,
- "Qingfang Deng" <qingfang.deng@linux.dev>,
- "Julian Braha" <julianbraha@gmail.com>,
- "Ethan Nelson-Moore" <enelsonmoore@gmail.com>,
- "Greg Kroah-Hartman" <gregkh@linuxfoundation.org>,
- "Eric Biggers" <ebiggers@kernel.org>, "Ard Biesheuvel" <ardb@kernel.org>,
- "Neal Cardwell" <ncardwell@google.com>,
- "Kuniyuki Iwashima" <kuniyu@google.com>,
- "Willem de Bruijn" <willemb@google.com>, "Alyssa Ross" <hi@alyssa.is>,
- "Joel Granados" <joel.granados@kernel.org>,
- "Oleg Nesterov" <oleg@redhat.com>, linux-rdma@vger.kernel.org,
- linux-kernel@vger.kernel.org,
- "intel-wired-lan@lists.osuosl.org" <intel-wired-lan@lists.osuosl.org>,
- "open list:NETRONOME ETHERNET DRIVERS" <oss-drivers@corigine.com>,
- linux-net-drivers@amd.com, linux-stm32@st-md-mailman.stormreply.com,
- linux-arm-kernel@lists.infradead.org, linux-wireless@vger.kernel.org,
- brcm80211@lists.linux.dev, brcm80211-dev-list.pdl@broadcom.com,
- linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org,
- target-devel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
- b.a.t.m.a.n@lists.open-mesh.org,
- "open list:ETHERNET BRIDGE" <bridge@lists.linux.dev>,
- netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
- mptcp@lists.linux.dev, lvs-devel@vger.kernel.org, dev@openvswitch.org,
- rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org,
- linux-s390@vger.kernel.org,
- "open list:TIPC NETWORK LAYER" <tipc-discussion@lists.sourceforge.net>,
- linux-security-module@vger.kernel.org
-Message-Id: <cda5d4e9-49a5-4d6f-93d4-fb50d74ed5ce@app.fastmail.com>
-In-Reply-To: <aeb37452e976f5d44540ac3a0999d07b@tipi-net.de>
-References: <20260910144914.8025-1-fmancera@suse.de>
- <20260910144914.8025-2-fmancera@suse.de>
- <aeb37452e976f5d44540ac3a0999d07b@tipi-net.de>
-Subject: Re: [PATCH 01/13 net-next] net: ipv4: introduce CONFIG_IPV4 to decouple the
- IPv4 stack
+X-ThreadId: AQ0ownMfFdNZ
+Date: Thu, 10 Sep 2026 11:41:31 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: NeilBrown <neil@brown.name>
+Cc: "Alexander Viro" <viro@zeniv.linux.org.uk>,
+ "Christian Brauner" <brauner@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
+ linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Message-Id: <e36532d5-e37f-4d71-b83a-c8d19d87811f@slotpi15m67>
+In-Reply-To: <20260910002934.192979-6-neilb@ownmail.net>
+References: <20260910002934.192979-1-neilb@ownmail.net>
+ <20260910002934.192979-6-neilb@ownmail.net>
+Subject: Re: [PATCH 5/7] nfsd: switch NFS4 OPEN to use vfs_lookup_open()
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
-On Thu, Sep 10, 2026, at 17:11, Nicolai Buchwitz wrote:
->> diff --git a/net/packet/Kconfig b/net/packet/Kconfig
->> index 2997382d597c..00fda9e08cb0 100644
->> --- a/net/packet/Kconfig
->> +++ b/net/packet/Kconfig
->> @@ -5,6 +5,7 @@
->> 
->>  config PACKET
->>  	tristate "Packet socket"
->> +	depends on IPV4
+>     This implementation shares more code with syscall open paths and so uses
+>     some filesystem interfaces slightly more correctly.  It also takes the
+
+Which interfaces? The concrete difference I can see is that lookup_open()
+honors ->atomic_open, which do_lookup_open() never called. Naming that
+would be clearer than "slightly more correctly".
+
+
+>     We need to pass O_NONBLOCK so that that EWOULDBLOCK errors from
+
+Repeated word: "that that".
+
+
+>     vfs_lookup_open() always returns -EFTYPE if a non-regular-file was
+>     found, and provides the dentry in parent.dentry.  We can use
+>     nfsd_check_obj_is_reg() to turn this into an error.
 >
->    depends on IPV4 || !INET
->
-> Otherwise this would break existing configs with INET=n. The same 
-> applies to other affected options that currently permit INET=n.
+>     As parent.dentry could be NULL, we enhance nfsd_check_obj_is_reg() to
+>     cope with that.
 
-Since that's a lot of symbols that all need the same dependency,
-maybe we could have an intermediate symbol for it:
+The function is nfsd_check_obj_isreg(), in both places.
 
-config IPV4_IF_INET # or any better name you can think of
-      def_bool IPV4 || !INET
 
-Similarly, everything that currently has 'depends on INET && IPV4'
-could be simplified to just 'depends on IPV4', and the leftover
-'depends on INET && IPV6' from the days of modular IPV6 can now
-become 'depends on IPV4'. We only needed to list both in the past
-to deal with the IPV6=m case.
+>     vfs_lookup_open() will return -EEXIST if required for
+>     NFS_CREATE_GUARDED4 as O_EXCL is passed in.  Other checks for
+>     and existing object need only test for nfsd4_create_is_exclusive().
 
-       Arnd
+s/and existing/an existing/, and the identifier is NFS4_CREATE_GUARDED.
+
+The -EEXIST claim holds only on the path through the tail of
+vfs_lookup_open(), where the O_EXCL test runs before the d_is_reg()
+test. When lookup_open() itself returns -EFTYPE, vfs_lookup_open()
+returns before either test. See below.
+
+
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 3a82af381a8d..0fd5a6411ed3 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+
+[ ... ]
+
+> @@ -312,7 +269,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  		.na_iattr	= iap,
+>  		.na_seclabel	= &open->op_label,
+>  	};
+> -	int oflags = O_CREAT | O_LARGEFILE;
+> +	int oflags = O_CREAT | O_LARGEFILE | O_NONBLOCK;
+
+Nit: do_dentry_open() strips O_CREAT, O_EXCL and O_TRUNC from f_flags
+and leaves O_NONBLOCK in place, so op_filp now carries O_NONBLOCK into
+the filecache entry that nfsd_file_acquire_opened() builds from it.
+Files opened through __nfsd_open() do not. Is that divergence
+intended?
+
+
+>  	struct dentry *child = ERR_PTR(-EINVAL);
+>  	struct path parent = {
+>  		.mnt = fhp->fh_export->ex_path.mnt,
+> @@ -424,28 +381,29 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  		/* Might still succeed if no create is needed */
+>  		oflags &= ~O_CREAT;
+>  
+> -	open->op_filp = do_lookup_open(&parent,
+> -				       &QSTR_LEN(open->op_fname,
+> -						 open->op_fnamelen),
+> -				       oflags,
+> -				       open->op_iattr.ia_mode);
+> +	dget(parent.dentry);
+> +	open->op_filp = vfs_lookup_open(&parent,
+> +					&QSTR_LEN(open->op_fname,
+> +						  open->op_fnamelen),
+> +					oflags,
+> +					open->op_iattr.ia_mode & S_IALLUGO);
+
+Nit: after this call "parent.dentry" is the child (or NULL), while a
+few lines up IS_POSIXACL(d_inode(parent.dentry)) reads the same
+expression as the parent directory. The VFS patch renamed its parameter
+to @path for this reason. Would renaming the local here avoid the same
+trap?
+
+
+>  	if (IS_ERR(open->op_filp)) {
+>  		int hosterr = PTR_ERR(open->op_filp);
+>  
+> -		if (open->op_createmode != NFS4_CREATE_UNCHECKED) {
+> -			switch (hosterr) {
+> -			case -EISDIR:
+> -			case -ELOOP:
+> -			case -EFTYPE:
+> +		if (hosterr == -EFTYPE) {
+> +			if (nfsd4_create_is_exclusive(open->op_createmode))
+>  				hosterr = -EEXIST;
+> -			}
+> +			else
+> +				hosterr = nfsd_check_obj_isreg(parent.dentry);
+>  		}
+
+Does this drop the NFS4ERR_EXIST mapping for GUARDED4?
+
+The old test covered GUARDED as well as the two EXCLUSIVE modes.
+nfsd4_create_is_exclusive() covers only EXCLUSIVE4 and EXCLUSIVE4_1, so
+a GUARDED open that finds a non-regular object now takes the else arm
+and returns NFS4ERR_ISDIR, NFS4ERR_WRONG_TYPE, and so on. RFC 8881
+section 18.16.3 says a GUARDED4 duplicate is NFS4ERR_EXIST.
+
+Keeping "open->op_createmode != NFS4_CREATE_UNCHECKED" here would
+restore the old mapping without depending on the ordering of checks
+inside each filesystem's ->atomic_open.
+
+Separately, can this arm return nfs_ok? nfsd_check_obj_isreg() returns
+0 for a regular file, and vfs_lookup_open() can leave a regular file in
+parent.dentry when the d_lookup() it does after an -EFTYPE races with a
+rename (the VFS marks that case with a WARN_ON_ONCE rather than
+excluding it). nfserrno(0) is nfs_ok, op_filp is then set to NULL, and
+nfsd4_create_file() returns success with resfhp never composed. It only
+fails safely today because do_open_lookup() then calls
+nfsd_check_obj_isreg() on the NULL fh_dentry. Something like
+
+		if (!hosterr)
+			hosterr = -EFTYPE;
+
+would address that.
+
+
+>  		status = nfserrno(hosterr);
+>  		open->op_filp = NULL;
+>  		if (status == nfserr_noent && create_status)
+>  			status = create_status;
+> +		dput(parent.dentry);
+>  		goto out;
+>  	}
+> +	dput(parent.dentry);
+>  
+>  	child = open->op_filp->f_path.dentry;
+>  	open->op_created = open->op_filp->f_mode & FMODE_CREATED;
+> @@ -462,7 +420,9 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  		open->op_created = true;
+>  
+>  	if (!open->op_created) {
+> -		if (open->op_createmode == NFS4_CREATE_UNCHECKED) {
+> +		if (nfsd4_create_is_exclusive(open->op_createmode)) {
+> +			status = nfserr_exist;
+> +		} else {
+
+Same question here. GUARDED used to get nfserr_exist from this branch
+and now gets the "no change happened" arm. It is unreachable for GUARDED
+today only because vfs_lookup_open() returns -EEXIST whenever O_EXCL is
+set and nothing was created. Should this also stay as
+"!= NFS4_CREATE_UNCHECKED" so the protocol rule is enforced here rather
+than relying on that ordering?
+
+
+-- 
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
