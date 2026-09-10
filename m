@@ -1,107 +1,120 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B84C341D659;
-	Thu, 10 Sep 2026 08:11:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4F6FB3C3F56;
+	Thu, 10 Sep 2026 09:45:52 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789027900; cv=none; b=Ra8gYRe6ss+lBA32ycWdJVbb/i1cOY97R1n14RReNMXJQnfO3OzSid0Oj9NN10CGiyM453xw1RICHoSAhufwliPLDESJkbDsetW7vooHBOfL1N6qwBZ7llUEvS+Ykf1dvV3fJD2B2Xt94hYImfLdR/s00UT4SMzVapV0dzRwGcM=
+	t=1789033555; cv=none; b=s4Wdov0YcLeOIbENo5g3g+uwmEBrjfzJlme9QsFB+HWmCFf2vHZPn4dPPycOeHzqCJdJleM81FLhtoG+CvPx+grFZ9nuG1Nbcbt4xBB+fw0lbU2SqJYLx1mGcs220UbE1I6dmY25lxrARBiIcq2S5CE/WtxPSJZ00GMactChKGo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789027900; c=relaxed/simple;
-	bh=PSYLbShhpWiv3aVB2nJrOHdeh7Z3k4zELmiY4CjG9uE=;
-	h=From:To:Cc:In-Reply-To:References:Subject:Message-Id:Date:
-	 MIME-Version:Content-Type; b=APz4CCiH+scFj5VaY5yCvC3vSP3RkakrrQqCN0KZJxQqOQRl9O8N8PvOv3WJ5sDVO3a3lyzW4l3fMMYMy/azwITyD5I/W4ZJ1O9lioVpnGUkkI94lQKNvaZwiMHjn5vg600ILmXr7WfEKx56KAqU3h0QGGIZKe3Lqkdm3He+LXM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=DAqb16Lh; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789033555; c=relaxed/simple;
+	bh=csESozxErtQjNOPRbAd1+0bBzb9dIpicyIwuiqnP10A=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=lp6CR1IUpmYfwDJ61qOjGFwxwIzU6oiIsk3RwD6JgIr1J2IFq0vP3FRFpVBHMjFfWir4ZVqidODH/k9/GTS30y4fUuktSYj1Kzbt5ITQKS2G0sW/PKgR5dK+WqGjp3g/fNY3w562C1Y4CgXE85/KoXBHJ19jJDx6VzBA2RJGg/o=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UEYdSSOs; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="DAqb16Lh"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 06D241F000FF;
-	Thu, 10 Sep 2026 08:11:33 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UEYdSSOs"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4A0131F000FF;
+	Thu, 10 Sep 2026 09:45:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789027898;
-	bh=Bl2jWTajUKdkFTVEmaIsZckt4uMF6UIWmGeyLi3kFQg=;
-	h=From:To:Cc:In-Reply-To:References:Subject:Date;
-	b=DAqb16LhXA4V3x2MEBgyebklpieMD75ealCT6F60CkFf+1FpmPAJyTfsmtGyVFhzC
-	 Eekvf46yp132dC4zoRl85r5FXyUpUdsWXVUh08Xcz1+9bOVObP5c6h1fXfZmlaxrzM
-	 P2tKsaJycMsQjasylX2DwThvMnSOubkKYXSyhG5k+ZOmCTZPVPkzq9xY4H9AAtgM2+
-	 bv/gFqBICa+dxei6mzc0FdAoQcLhta8R015Ur710MTEVpZDuYI8huu5pliRpIvykY1
-	 PM3ORUCluTaMjr1OPi/LRpzglnTOCs6cwf/AQvzv4pOZJCfOVOQQWJkrVBZxdVs+Io
-	 bpZbmlO4+cExw==
-From: Christian Brauner <brauner@kernel.org>
-To: Christian Brauner <brauner@kernel.org>, 
- David Howells <dhowells@redhat.com>
-Cc: Paulo Alcantara <pc@manguebit.org>, 
- Matthew Wilcox <willy@infradead.org>, Namjae Jeon <linkinjeon@kernel.org>, 
- Marc Dionne <marc.dionne@auristor.com>, Stefan Metzmacher <metze@samba.org>, 
- Eric Van Hensbergen <ericvh@kernel.org>, 
- Dominique Martinet <asmadeus@codewreck.org>, 
- Ilya Dryomov <idryomov@gmail.com>, netfs@lists.linux.dev, 
- linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, 
- linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, v9fs@lists.linux.dev, 
- linux-erofs@lists.ozlabs.org, linux-fsdevel@vger.kernel.org, 
- linux-kernel@vger.kernel.org
-In-Reply-To: <20260909072105.1663687-1-dhowells@redhat.com>
-References: <20260909072105.1663687-1-dhowells@redhat.com>
-Subject: Re: [PATCH v13 0/8] netfs: Miscellaneous preparatory changes
-Message-Id: <20260910-rohrkrepierer-clinchen-affront-100171384452@brauner>
-Date: Thu, 10 Sep 2026 10:11:29 +0200
+	s=k20260515; t=1789033552;
+	bh=VyWNnrPW/HP25ItR9KF1992mjUCoCMkFMvf3FwtLiI0=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=UEYdSSOsH+1gdsAvcElFZKtXkZho4L7TCrJ1zGphMgNcst3uLprux2fCTW6r+nTZY
+	 z86AB9LyV8ZCIsTNw9ttNVgCRvJvZ923wRKYOBhw27XWdtj5VGGFjVNStdCjNSrvR3
+	 Ow/CBUaqli9kbYDv+Mw57xf2Qe6uP9uD/D2LmppOlYCnL1PavAtIu8VPh/mEMfRRDC
+	 Y92JNrEHG4uliV73f5J9RoWER9F6TumKag0ng7NwCtXpIIYYmkSansW/T4NGxmXnq8
+	 i/Szf/njGyC7CWm6IVKEsRvDeIVyKXj1ZmRGyMSak7BXwygckYt6Bf9QButrhVZwAP
+	 xSpGsLEQBu8/Q==
+Date: Thu, 10 Sep 2026 11:45:47 +0200
+From: Carlos Maiolino <cem@kernel.org>
+To: "Darrick J. Wong" <djwong@kernel.org>
+Cc: Christoph Hellwig <hch@infradead.org>, zlang@kernel.org, 
+	linux-xfs@vger.kernel.org, fstests@vger.kernel.org, jack@suse.cz, 
+	Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
+Subject: Re: [RFC PATCH 1/2] common/nfs: add management helpers
+Message-ID: <aqJ8BdzSlasSNXRd@andromeda.toxiclabs.cc>
+References: <20260907164054.111393-1-cem@kernel.org>
+ <20260907164054.111393-2-cem@kernel.org>
+ <20260908142226.GL839663@frogsfrogsfrogs>
+ <aqD4zBD06P1LJKM2@infradead.org>
+ <20260909161342.GM839663@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-Mailer: b4 0.17-dev-db0b7
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1938; i=brauner@kernel.org;
- h=from:subject:message-id; bh=PSYLbShhpWiv3aVB2nJrOHdeh7Z3k4zELmiY4CjG9uE=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWQtSjPOTU++uvzGNKGtX+59+bbANNaqinHmG+kZFS+fz
- imr/6Fl01HKwiDGxSArpsji0G4SLrecp2KzUaYGzBxWJpAhDFycAjCRiX6MDLNL9Jr6i6ZfcHJI
- 5Zibue9R84UHvjxep8JUI2eX/pB/28/IcMBbawZXzeYHH6JTJjpNWJb77J//i10b/F5X3sh6F7u
- ilg0A
-X-Developer-Key: i=brauner@kernel.org; a=openpgp;
- fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260909161342.GM839663@frogsfrogsfrogs>
 
-On Wed, 09 Sep 2026 08:20:54 +0100, David Howells wrote:
-> netfs: Miscellaneous preparatory changes
+On Wed, Sep 09, 2026 at 09:13:42AM -0700, Darrick J. Wong wrote:
+> On Tue, Sep 08, 2026 at 11:12:28PM -0700, Christoph Hellwig wrote:
+> > On Tue, Sep 08, 2026 at 07:22:26AM -0700, Darrick J. Wong wrote:
+> > > > +# Start rpcbind if it is not already running.
+> > > > +_start_rpcbind()
+> > > > +{
+> > > > +	rpcinfo -p localhost > /dev/null 2>&1 && return 0
+> > > > +	rpcbind 2>> $seqres.full || _notrun "Cannot start rpcbind"
+> > > > +	/usr/sbin/rpc.statd 2>> $seqres.full || _notrun "Cannot start rpc.statd"
+> > > > +	/usr/sbin/rpc.idmapd 2>> $seqres.full || _notrun "Cannot start rpc.idmapd"
+> > > > +	/usr/sbin/nfsdcld 2>> $seqres.full || _notrun "Cannot start nfsdcld"
+> > > 
+> > > Aren't these daemons usually configured as system services?
+> > > 
+> > > # service rpcbind start
+> > > 
+> > > etc?
+> > 
+> > They usually are, but doing that as part of a test feels wrong.
+> > Adding the relevant maintainers and list.
 > 
-> Hi Christian,
+> <nod> I guess for this test we actually want to launch our own nfs
+> daemons in a separate pid / network namespace so that they don't
+> interfere with nfs operations outside of the test (e.g. testing nfs
+> itself, nfsboot, etc)
 > 
-> Could you pull these patches please for -next?  This is the first of four
-> batches.  This is based on your vfs.fixes as there are some prerequisite
-> patches there.  This was split from v11 of a larger series[1].
+> > > 
+> > > > +}
+> > > > +
+> > > > +# Stop rpcbind.
+> > > > +_stop_rpcbind()
+> > > > +{
+> > > > +	pkill rpcbind 2>/dev/null
+> > > > +}
+> > > > +
+> > > > +# Start the NFS server if not already running.
+> > > > +_start_nfsd()
+> > > > +{
+> > > > +	rpcinfo -p localhost 2>/dev/null | grep -q nfs && return 0
+> > > > +	rpc.nfsd 2>> $seqres.full || _notrun "Cannot start rpc.nfsd"
+> > > > +	rpc.mountd 2>> $seqres.full || _notrun "Cannot start rpc.mountd"
+> > > > +}
+> > > > +
+> > > > +# Stop the NFS server.
+> > > > +_stop_nfsd()
+> > > > +{
+> > > > +	rpc.nfsd 0 2>/dev/null
+> > > > +	pkill rpc.mountd 2>/dev/null
+> > > 
+> > > If the system under test has nfs filesystems mounted, won't killing
+> > > those daemons also break the mounts?
+> > > 
+> > > I think that might break testing of nfs itself, and nfs-booted testing
+> > > nodes as well?
+> > 
+> > Possibly.  I guess if we want to save we need to launch a container
+> > or at least a network namespace this is bound too. 
 > 
-> [...]
+> Agreed, some isolation from the main system is necessary.
 
-Applied to the vfs-7.4.netfs branch of the vfs/vfs.git tree.
-Patches in the vfs-7.4.netfs branch should appear in linux-next soon.
+Perhaps couldn't we just:
+	- start nfs server if not started
+	- only stop nfs server if we started it
 
-Please report any outstanding bugs that were missed during review in a
-new review to the original patch series allowing us to drop it.
+And just take advantage of the server running if one is already there?
 
-It's encouraged to provide Acked-bys and Reviewed-bys even though the
-patch has now been applied. If possible patch trailers will be updated.
-
-Note that commit hashes shown below are subject to change due to rebase,
-trailer updates or similar. If in doubt, please check the listed branch.
-
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
-branch: vfs-7.4.netfs
-
-[1/8] netfs: Use uoff_t instead of unsigned long long and loff_t
-      https://git.kernel.org/vfs/vfs/c/0447d3e7ca81
-[2/8] netfs: Remove the writethrough code
-      https://git.kernel.org/vfs/vfs/c/1c167be3e3f3
-[3/8] netfs: trace: Change the "clear" folio traces to "endwb"
-      https://git.kernel.org/vfs/vfs/c/b4c9fce24e25
-[4/8] netfs: trace: Rejig a couple of the tracepoints
-      https://git.kernel.org/vfs/vfs/c/80fe2005dc3c
-[5/8] netfs: Add the cache object ID to netfs_read/write tracepoints
-      https://git.kernel.org/vfs/vfs/c/b1abd92147b1
-[6/8] netfs: Make deprecated PG_private_2 support opt-in
-      https://git.kernel.org/vfs/vfs/c/e5c67dd3bbf7
-[7/8] netfs: Add some functions to wrap the all-queued handling
-      https://git.kernel.org/vfs/vfs/c/a38f37509940
-[8/8] netfs: Set subrequest->source at alloc before trace emission
-      https://git.kernel.org/vfs/vfs/c/3df7501ad939
-
+> 
+> --D
+> 
