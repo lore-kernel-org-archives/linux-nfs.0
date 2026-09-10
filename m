@@ -1,57 +1,57 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3DE4B58F061;
-	Thu, 10 Sep 2026 19:45:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E77FE58FD39;
+	Thu, 10 Sep 2026 19:47:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789069506; cv=none; b=UQIy+EambDXFPJdRSDJy7q7/PwUkqZ4alc+AB/dCOOoRQqCUborDhX9vwGQO3eB8gWUVVQeHXtOxRF4lF6zFGnSqw+eeRapNPkbakNVgyz6UVEbC5sxKISH/iFlHFGoKT7wfUesWvgLo1at9Z9dAVKbxhqMuzY8EngoHQrNDHsk=
+	t=1789069634; cv=none; b=rjg179qRIVmkC2n6wae1c7j0uZ/8mk+vrSVbyxasId6HQkG5aVSeSThl5/Mz1t3ueOrnG7dJ8RtK6EuPNX2L+M/83CULf373OVfw4RAVELp06yPLdQt3KnOlFzEMtoiZokH5aO5uZtbTonjHft9ZQCVux64YJHAMBSoooO+fG94=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789069506; c=relaxed/simple;
-	bh=BROin2cVz4hRIBHaEMllo6eYnTKB/R1C/XpIlxqCDJQ=;
+	s=arc-20240116; t=1789069634; c=relaxed/simple;
+	bh=RX071a9PQBNiEQBheV1K3UmyIzBezfZtMt1I3s6KoNQ=;
 	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=vEtYiiIEEH7w6LY24tsgEJHt1Xtfcwanv7zqOnXMQdUkZw25O5kaTWAoOSeHK8QEr7QxRowwmIIrXGTgDTHqQMcbOZTI71XlIhD/N315YXWCzu0dUE/pKrbqri1v4gEUr1M4w8DKBIK1/8Hb/tfjkZosduVpKRq/1/fvsrPRpMg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Un9EkA0F; arc=none smtp.client-ip=100.103.45.18
+	 Subject:Content-Type; b=Cl7jTkafSKQjn5BGJrv1YluqamgIk3VpoBrnr9IDHiaqWGdVhiJiZtJjCL/ATEURHhIodKQJkqTnNt8cIW1Bg/N4YL33y79DRBkFTjyiYIM79gpN9RNyYL5PF+dl+Em/eavIcdt1QZsXupaGeyyt3id8bcWUVjA3VSgOyUPuaC4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mdhD67lL; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Un9EkA0F"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6B8C21F000FF;
-	Thu, 10 Sep 2026 19:45:04 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mdhD67lL"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DE59B1F000FF;
+	Thu, 10 Sep 2026 19:47:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789069504;
-	bh=3iRs/EjoPnXZlmJC+DNw6FSMcHs3NCeQuUhPy36UbpU=;
+	s=k20260515; t=1789069632;
+	bh=ZffiQYbGLW+VYKyj9G1IXT3ZIe+gXXWyt3eyqmXRCyU=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=Un9EkA0FwmwZfNR3lp0RmRPF4Mn+cNo2ZP/WnJs+Ps+HSWqOzVxbLZM1Y10SGsodX
-	 7uwyyhknNydibl/3T2nXoMh+y7wb0wyYBN5eOS0XDMHIF1/emkcrQUsfS2CBiXdgMK
-	 GaLUykL7gqKckB13vbUzYkZu9lr/Nr/FEAKYdnPHoRGDJAnMB4lB1qhKKIRu/7XR7r
-	 FmcW6bc6FrkvhHWaTLbi0xa937uSi8CHBSjjwrhsKw4vApJG7v+iV0sfeKFNin12hF
-	 XXQR59fkwjB6ARPOySDhdTaeXZb20BEsYVpZyAUjH2fvl/q5+/3Q5GjxlYk9Po9qau
-	 gioHWcCKplYCQ==
+	b=mdhD67lL5P9YOgg7HpKq7NpzrhFf/GCIbmiP+NTpjV8tpFlau2/lwecpkzHaFxN0U
+	 tDMXsD1CYFoQ984ZfHJKyNlmfKACwYZGuUEeNbmynEcx6UwBeiv1tzA9eAzGNCBNHJ
+	 PkcBZmODfEcA1z70YMCpVdM6OU9ZeExU3l+/4zKNyxVTr1noGrmvlOSkDpmw3AP7N7
+	 RG3Fw/U657sLA1k1y2Kq6ieGbMjBzy0OHXhrZwJbid8WnB450kL7P8YNWlYuxJ8MVt
+	 N6CoICjthgca24MsutXZ1+rbuCHbG7yWo15wLppk3JY+yf7P760SE0tqu/LDbjQAoD
+	 5gqFBE2m9Yl4g==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id A0590F40066;
-	Thu, 10 Sep 2026 15:45:03 -0400 (EDT)
+	by mailfauth.phl.internal (Postfix) with ESMTP id 21509F4006C;
+	Thu, 10 Sep 2026 15:47:11 -0400 (EDT)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Thu, 10 Sep 2026 15:45:03 -0400
-X-ME-Sender: <xms:vwijalmySYNU8vmQjwk2ZUGdYRFzvKDAPoeAZbzdYCQqfr6UNi3RQQ>
-    <xme:vwijarq5N5DF2ZgfP9ed3Vs4pdjjKCkMMkuIQcSH_Gm69yl3XS7bHsCYVcNRzPCYD
-    xyBuihwvUldii1qQCN0xKWYiRc0i8xxgy_KRtbx4qlHRmBJtpxpydHt>
-X-ME-Proxy-Cause: dmFkZTFsSQI6puzxGTFuElVXBVrDBPKpLl68RN/U+uHZUWvFxx/LcQxPM2Osx4tCE80LTc
-    HAeM+eCNOYBHdMl9Ol5Rzt1gE9x2fUwud8WbFoYfnNvglvXCIco2MZQRQ1ZTGWe+HG/KlQ
-    EcsWWOMFVL+BgAWQpE1mqa/FFMgPd0etSh1IoCXjDaHWqNzT5/CYb+hqwT9vFz+RiVU6N8
-    2L2k0SZpvflfQZeNvSYyDWSQy7MkQIXiBs7KtMyVVgOeYZIlQ+/vUK5OND7iHYZW7MExAc
-    1EtqM9pBx2UnFkTGz0p07WmYNzlxbUSRBgOXY90J5QwA8SvF9FU3+hwQo+nZsA3gsxqwBU
-    AaZqolcFzn5i7f0vkRw39tm4Tyft8Tuirx9sskLczdnyKPaq9lEvL/DmLPDwUH4OgO+i+k
-    pvgLKQx53o/WA0q8dw6qkegIN40nPD6WLxOgLCVbgWLy3pXeKcSLDNQZ9OTq6M4sN0qbWa
-    fRVR5aFVg0lBxrhrcmVjTfPioEgwcK2uiKKVOtgd5FVzjqrhbjS9LmZYE6shMoOk1oRlJO
-    NT490Te6GZdSX0Jh/LKAI+DjN3+Pao3OzPbjQPsl7oTOegY+L/7Lm4d+ZAjfvhdWtK+Glm
-    +IZexPy6IwU/y1teXFSlXdnu63LXUPqlNpKkq4lYc2HXE9Lm3xP8Hej7mo0Q
-X-ME-Proxy: <xmx:vwijasZVByI07pUtncwdXrSNj_JcJD2JDX-3rP-Jf7XlZ2255Penmw>
-    <xmx:vwijaowA0jw_7d_BXVyrLL9xO2n1AOik0owjeqQgU8fC_YdCs71uyQ>
-    <xmx:vwijagPDrhYkpMfbqbq5qk6mW25ZAAp0Wuy_ppI59zNMUa4qtHUOzg>
-    <xmx:vwijau5wWBDjoYnIVOpnv-AnxWfL3EFVsSMLzxTlLymk9JKlHHUBzA>
-    <xmx:vwijaufyKwBFOOhPRiPGpsV-NSwCSiNlOBqeL1y8jvwLlTPak60EKXiI>
+  by phl-compute-10.internal (MEProxy); Thu, 10 Sep 2026 15:47:11 -0400
+X-ME-Sender: <xms:PwmjaiY31azRpJ6WADEzOrGS_RzT1Q3vFRbos7NSwGYTI6i-VKOlrw>
+    <xme:PwmjagNz68zilixW2T8i9z2DfPvfhNaD125l1Esn4lYtlW9_Oy93qhBRlc00WGf13
+    AZCnNDiafNM8gzACms2X54H8DkW5UbzhHIxGq7J4uzO-Wub0K_fMmfC>
+X-ME-Proxy-Cause: dmFkZTEk5kidKWEsHw6tcAwcrd1DRhsdAEyJmVHoXJViIP9MoT6XSLAEa3dgVU3vDQ8PCt
+    3uJlxew+vCHxhjCEkGB9K4q4YvNCll78mINsejPAPv2f7A8rx/by5L/wMOPhr7GgdojMGl
+    mnXqZ7t8u3NY1AQw1jfsoZ59E/bWTRtZObQpdgTWwdMBGhUhoqsL8YIgTQx00JG6UNMEuO
+    8Ilamerm2V5Ga6H1/BtEHiTodTCvmooX/eYaJ9uiRYrohmMRz+u0jwptMcXqk692iU72AF
+    2IAfu11hEWQXgQaACAaJ1zgeFVG6i3giL9wLCXq+tMouNh1Q0Ts4gaNy3CJ5PY4BJWSjEN
+    wV1yA8EUAkJq24vw5ZK1PqUABbUE45Jyg4HUKo4vURKNuFukUSqpXRlfUj/T6lIRK4Z3rP
+    LROp/epZKJ1HtPGSy8tVmNtvDfzmWjAyZfsmiJWPWqndxj/D24BXFdDsiWIfBGo60lfSHk
+    Wxz7T+YuOToXqN4B9eBLXaI4Df54I0migMCTEAPJAzAWkfjjJoRm1qtndXNG2pvdsu12KN
+    vf33lKc0tvW8es7Hzby4tIPPMk3sQClj48jktF9IpaChQ5kT3RM5KwsnB0aYf2FqHx5wZj
+    32YCr0zgdIUFiYai7TniZpsmXsN6jhPVbB4GzBQIoEdaWiY6EWSfApy+nvzQ
+X-ME-Proxy: <xmx:PwmjauuCiMSXhZhNP8ifBcYQ7zc9_iKBcn34uyIwncDCHRdoBroGIA>
+    <xmx:Pwmjak13fTAkrEM6MXrIaINyRc1fbgxhdHLhYghLe_luwH9hDKef3A>
+    <xmx:PwmjajC5TbuogHWJqY8F8YR5xYmL1VXnwv-9m65-Ine3Xs4UDFjX8g>
+    <xmx:Pwmjahewr_C6xThl1vZw9YGaAVeQWw798YZwO7LUKUqN3tPe2fBctw>
+    <xmx:Pwmjalyt3K9f9BCJTopE8HUD0znOpmJP2LgZcpJwVO32A2zygfmaPOmd>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 7D4767811F0; Thu, 10 Sep 2026 15:45:03 -0400 (EDT)
+	id 027437811F0; Thu, 10 Sep 2026 15:47:11 -0400 (EDT)
 X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -59,8 +59,8 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AUcfVFBzQN6c
-Date: Thu, 10 Sep 2026 15:44:41 -0400
+X-ThreadId: ADEgH0paMfes
+Date: Thu, 10 Sep 2026 15:46:48 -0400
 From: "Chuck Lever" <cel@kernel.org>
 To: "Jeff Layton" <jlayton@kernel.org>
 Cc: "Trond Myklebust" <trondmy@kernel.org>,
@@ -72,11 +72,11 @@ Cc: "Trond Myklebust" <trondmy@kernel.org>,
  "Donald Hunter" <donald.hunter@gmail.com>, "Shuah Khan" <shuah@kernel.org>,
  linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
  netdev@vger.kernel.org, linux-kselftest@vger.kernel.org
-Message-Id: <937d96b5-0163-40a0-af2e-76c0ce9c0834@slotpi15m67>
-In-Reply-To: <20260910-nfsd-norpcb-v1-3-b4d5182d634c@kernel.org>
+Message-Id: <a9efbd67-4a73-49f5-b65e-ea37074e419d@slotpi15m67>
+In-Reply-To: <20260910-nfsd-norpcb-v1-4-b4d5182d634c@kernel.org>
 References: <20260910-nfsd-norpcb-v1-0-b4d5182d634c@kernel.org>
- <20260910-nfsd-norpcb-v1-3-b4d5182d634c@kernel.org>
-Subject: Re: [PATCH 3/5] NFSD: honour the userspace-rpcbind flag in listener_set
+ <20260910-nfsd-norpcb-v1-4-b4d5182d634c@kernel.org>
+Subject: Re: [PATCH 4/5] NFSD: report registerable programs in the listener_set reply
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
@@ -84,38 +84,111 @@ On Thu, 10 Sep 2026, Jeff Layton wrote:
 
 > --- a/fs/nfsd/nfsctl.c
 > +++ b/fs/nfsd/nfsctl.c
-> @@ -2111,15 +2112,25 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
-> +	userspace_rpcbind = nla_get_flag(info->attrs[NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND]);
-> +
->  	mutex_lock(&nfsd_mutex);
->  
-> -	err = nfsd_create_serv(net);
-> +	nn = net_generic(net, nfsd_net_id);
-> +
-> +	if (nn->nfsd_serv && nn->nfsd_serv->sv_no_rpcbind != userspace_rpcbind) {
-> +		NL_SET_ERR_MSG(info->extack,
-> +			       "cannot change rpcbind ownership while a server exists");
-> +		mutex_unlock(&nfsd_mutex);
-> +		return -EBUSY;
+> @@ -2273,12 +2396,28 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
+> +	/*
+> +	 * Build the reply before the serv can go away, and only on success.
+> +	 * A caller that got an errno has nothing to register.
+> +	 */
+> +	if (!err && userspace_rpcbind) {
+> +		rskb = nfsd_nl_listener_set_msg(info, net, serv);
+> +		if (IS_ERR(rskb)) {
+> +			err = PTR_ERR(rskb);
+> +			rskb = NULL;
+> +		}
 > +	}
+
+The second sentence of the comment is not true after a partial
+failure. Take a request with userspace-rpcbind carrying {tcp:2049,
+tcp:<port already in use>}. The creation loop continues past the
+second failure and keeps only the last errno. The 2049 xprt is on
+sv_permsocks, so the serv survives the list_empty() check below, but
+this gate skips the reply and the caller sees -EADDRINUSE. nfsd is
+now serving on 2049 with nothing registered in rpcbind, and the caller
+was never told which listeners came up or which programs to register.
+The same end state results when nfsd_nl_listener_set_msg() itself
+fails with -ENOMEM.
+
+In kernel-owned mode the survivor would already have been registered
+inside svc_xprt_create_from_sa(), so this is a behavioral gap specific
+to the new mode. Either tear down the listeners that were created when
+any of them fails, or send the reply whenever at least one listener
+exists on the serv, regardless of err. The second keeps the existing
+partial-success semantics; the caller can then act on what it got.
+
+
+> +static size_t nfsd_nl_listener_set_msgsize(struct svc_serv *serv)
+> +{
+> +	size_t size = GENL_HDRLEN +		    /* genlmsg_iput() */
+> +		      nla_total_size(0);	    /* userspace-rpcbind */
+
+genlmsg_new() already adds GENL_HDRLEN via genlmsg_total_size(), so
+this term double-counts it. Harmless, but the comment will mislead the
+next person sizing a reply. Pass only the attribute payload here.
+
+
+> +	spin_lock_bh(&serv->sv_lock);
+> +	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
+> +		struct nlattr *attr;
 > +
-> +	err = nfsd_create_serv(net, userspace_rpcbind);
+> +		if (!test_bit(XPT_RPCB_UNREG, &xprt->xpt_flags))
+> +			continue;
+> +
+> +		attr = nla_nest_start(skb, NFSD_A_SERVER_SOCK_ADDR);
+> +		if (!attr) {
+> +			err = -EMSGSIZE;
+> +			goto err_serv_unlock;
+> +		}
+> +
+> +		if (nla_put_string(skb, NFSD_A_SOCK_TRANSPORT_NAME,
+> +				   xprt->xpt_class->xcl_name) ||
+> +		    nla_put(skb, NFSD_A_SOCK_ADDR,
+> +			    sizeof(struct sockaddr_storage),
+> +			    &xprt->xpt_local)) {
+> +			err = -EMSGSIZE;
+> +			goto err_serv_unlock;
+> +		}
+> +
+> +		nla_nest_end(skb, attr);
+> +	}
 
-This ownership check lives only in the netlink path, so it is
-enforced in one direction. Consider: the serv is created here with
-userspace-rpcbind, then an old rpc.nfsd writes a socket fd to
-/proc/fs/nfsd/portlist. __write_ports_addfd() calls
-nfsd_create_serv(net, false), which returns 0 at the existing
-"if (nn->nfsd_serv) return 0;" without looking at the flag.
-svc_addsock() then goes through svc_setup_socket() with pmap_register
-set, and svc_register() returns 0 early because sv_no_rpcbind is set.
-The write succeeds, and the new listener is neither registered by the
-kernel nor reported to the userspace owner. The reverse order gets
--EBUSY from the check above.
+This is the same nest emission as the loop in
+nfsd_nl_listener_get_doit(), apart from the XPT_RPCB_UNREG filter and
+the errno (that one returns -EINVAL). A small helper that emits one
+addr nest for an xprt, called from both loops, would keep the two from
+drifting, with the size accounting above as the third place to keep
+in step.
 
-Moving the mismatch test into nfsd_create_serv(), where every creator
-already funnels, would make both paths agree. The extack message would
-need a different home, but the errno is the important part.
+Also, as noted on patch 2, this filter selects TCP and UDP only; the
+spec doc should match.
+
+
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -859,12 +842,44 @@ nfsd_acl_init_request(struct svc_rqst *rqstp,
+> +bool nfsd_version_registerable(struct net *net,
+> +			       const struct svc_program *progp, u32 version)
+> +{
+> +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+> +
+> +	if (version >= progp->pg_nvers || !progp->pg_vers[version])
+> +		return false;
+> +
+> +	/* nfslocalio is hidden and never reaches rpcbind. */
+> +	if (progp->pg_vers[version]->vs_hidden)
+> +		return false;
+> +
+> +#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+> +	if (progp->pg_prog == NFS_ACL_PROGRAM &&
+> +	    !nfsd_support_acl_version(version))
+> +		return false;
+> +#endif
+
+The ACL block is redundant with the first test. The ACL program has
+pg_nvers = NFSD_ACL_NRVERS and pg_vers = nfsd_acl_version, whose
+slots 0 and 1 and any compiled-out version are NULL, and
+nfsd_support_acl_version() checks exactly that range and that array.
+Dropping the block removes the function's only program-number special
+case and the #if with it.
 
 
 -- 
