@@ -1,61 +1,107 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 740D63C09E4;
-	Thu, 10 Sep 2026 07:14:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B84C341D659;
+	Thu, 10 Sep 2026 08:11:38 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789024476; cv=none; b=qkFkFnlSJCeE23UTc6scjdioZvRr/8DVaGJmL9ivKSYdLkbmtBCxlJcwr9V6WzZA9fn1IZnFOU8qRvuICaluSpz/Cdfl2TcUNpXdOqeomQzYxJLA7tRT7wSJ03nLsB/ZBd5VbX12sP7JfgDem/eHw/VNBlZdq7Wxu5qiitadpjk=
+	t=1789027900; cv=none; b=Ra8gYRe6ss+lBA32ycWdJVbb/i1cOY97R1n14RReNMXJQnfO3OzSid0Oj9NN10CGiyM453xw1RICHoSAhufwliPLDESJkbDsetW7vooHBOfL1N6qwBZ7llUEvS+Ykf1dvV3fJD2B2Xt94hYImfLdR/s00UT4SMzVapV0dzRwGcM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789024476; c=relaxed/simple;
-	bh=Thk0WpRybF+dmcauY2m19M72ihu1ldfX/TxSxZ/61bM=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=dteeolQTIE6jgbwPU/C+bPBhaN5GUZG2TFEcKAwFOKiJWOC0IaJG0Yb0e0qSsyuEkcdTPkNod3sEYsKCOPCjQ9zc3hp0G2YU23T+FKfj+B1S8gyqPRhe5b+z01YocDEodJ7zUd/YmQ83pnVPo9lVuX3LmPFFBX5Vbtp3NjX+5hM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=ULnIYf0A; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	s=arc-20240116; t=1789027900; c=relaxed/simple;
+	bh=PSYLbShhpWiv3aVB2nJrOHdeh7Z3k4zELmiY4CjG9uE=;
+	h=From:To:Cc:In-Reply-To:References:Subject:Message-Id:Date:
+	 MIME-Version:Content-Type; b=APz4CCiH+scFj5VaY5yCvC3vSP3RkakrrQqCN0KZJxQqOQRl9O8N8PvOv3WJ5sDVO3a3lyzW4l3fMMYMy/azwITyD5I/W4ZJ1O9lioVpnGUkkI94lQKNvaZwiMHjn5vg600ILmXr7WfEKx56KAqU3h0QGGIZKe3Lqkdm3He+LXM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=DAqb16Lh; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="ULnIYf0A"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=SYD3VMiXbpdpZ22/Tg+CfHJAwLvgdRa6D0M7uCmd7cw=; b=ULnIYf0AFmn73VVROHfiJzH1tl
-	UGHn7ISL0KKM99Vidd6OgKsOA/gLny9bkDHLXebd0osDemRXBhg62yMxMuc29F3FM1uu50NkAe5gm
-	EhyyI40yb/+RitrgFGiLf+8hJ5URCwH5GBVVwCzQul9l6WGVojNxXLtg3wqbp2vyHDHT7KH6igxaf
-	/hXt/s1wOG9enCGYp1oib/ZVdd6lQ/m5rd1UCdLZIb5JWBD87FkvvqW6dbnkB6YZEBCKPCB1WRifG
-	lfQ8ry02lenE7yZnvOwd7OJ9rQXQ0JDAgCIB+oeyJcd7OoYMi8UFD+iF67hB+F2Z8RnZelAEiO368
-	RL6v1IDg==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1x4YzP-0000000DbWw-1K02;
-	Thu, 10 Sep 2026 07:14:31 +0000
-Date: Thu, 10 Sep 2026 00:14:31 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Mike Snitzer <snitzer@kernel.org>
-Cc: linux-nfs@vger.kernel.org, linux-block@vger.kernel.org,
-	dm-devel@lists.linux.dev, axboe@kernel.dk, cel@kernel.org,
-	jlayton@kernel.org, david.flynn@hammerspace.com
-Subject: Re: [PATCH 0/4] block, nfsd: fixes for sub-sector bvec direct I/O
-Message-ID: <aqJY16I2Zc2PRlCH@infradead.org>
-References: <20260908163232.30774-1-snitzer@kernel.org>
- <20260908163448.30841-1-snitzer@kernel.org>
- <aqA5qgfUTbNi0nHJ@kernel.org>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="DAqb16Lh"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 06D241F000FF;
+	Thu, 10 Sep 2026 08:11:33 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789027898;
+	bh=Bl2jWTajUKdkFTVEmaIsZckt4uMF6UIWmGeyLi3kFQg=;
+	h=From:To:Cc:In-Reply-To:References:Subject:Date;
+	b=DAqb16LhXA4V3x2MEBgyebklpieMD75ealCT6F60CkFf+1FpmPAJyTfsmtGyVFhzC
+	 Eekvf46yp132dC4zoRl85r5FXyUpUdsWXVUh08Xcz1+9bOVObP5c6h1fXfZmlaxrzM
+	 P2tKsaJycMsQjasylX2DwThvMnSOubkKYXSyhG5k+ZOmCTZPVPkzq9xY4H9AAtgM2+
+	 bv/gFqBICa+dxei6mzc0FdAoQcLhta8R015Ur710MTEVpZDuYI8huu5pliRpIvykY1
+	 PM3ORUCluTaMjr1OPi/LRpzglnTOCs6cwf/AQvzv4pOZJCfOVOQQWJkrVBZxdVs+Io
+	 bpZbmlO4+cExw==
+From: Christian Brauner <brauner@kernel.org>
+To: Christian Brauner <brauner@kernel.org>, 
+ David Howells <dhowells@redhat.com>
+Cc: Paulo Alcantara <pc@manguebit.org>, 
+ Matthew Wilcox <willy@infradead.org>, Namjae Jeon <linkinjeon@kernel.org>, 
+ Marc Dionne <marc.dionne@auristor.com>, Stefan Metzmacher <metze@samba.org>, 
+ Eric Van Hensbergen <ericvh@kernel.org>, 
+ Dominique Martinet <asmadeus@codewreck.org>, 
+ Ilya Dryomov <idryomov@gmail.com>, netfs@lists.linux.dev, 
+ linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, 
+ linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, v9fs@lists.linux.dev, 
+ linux-erofs@lists.ozlabs.org, linux-fsdevel@vger.kernel.org, 
+ linux-kernel@vger.kernel.org
+In-Reply-To: <20260909072105.1663687-1-dhowells@redhat.com>
+References: <20260909072105.1663687-1-dhowells@redhat.com>
+Subject: Re: [PATCH v13 0/8] netfs: Miscellaneous preparatory changes
+Message-Id: <20260910-rohrkrepierer-clinchen-affront-100171384452@brauner>
+Date: Thu, 10 Sep 2026 10:11:29 +0200
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <aqA5qgfUTbNi0nHJ@kernel.org>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-Mailer: b4 0.17-dev-db0b7
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1938; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=PSYLbShhpWiv3aVB2nJrOHdeh7Z3k4zELmiY4CjG9uE=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWQtSjPOTU++uvzGNKGtX+59+bbANNaqinHmG+kZFS+fz
+ imr/6Fl01HKwiDGxSArpsji0G4SLrecp2KzUaYGzBxWJpAhDFycAjCRiX6MDLNL9Jr6i6ZfcHJI
+ 5Zibue9R84UHvjxep8JUI2eX/pB/28/IcMBbawZXzeYHH6JTJjpNWJb77J//i10b/F5X3sh6F7u
+ ilg0A
+X-Developer-Key: i=brauner@kernel.org; a=openpgp;
+ fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-On Tue, Sep 08, 2026 at 12:36:58PM -0400, Mike Snitzer wrote:
-> Apologies for the git-send-email misfire.. still not sure what
-> happened, but will sort it out for future.
+On Wed, 09 Sep 2026 08:20:54 +0100, David Howells wrote:
+> netfs: Miscellaneous preparatory changes
+> 
+> Hi Christian,
+> 
+> Could you pull these patches please for -next?  This is the first of four
+> batches.  This is based on your vfs.fixes as there are some prerequisite
+> patches there.  This was split from v11 of a larger series[1].
+> 
+> [...]
 
-When you do that please also don't mix unrelated bits.  The two
-block driver fixes should go to linux-block, Jens and the relevant
-maintainers and re pretty much unrelated to the nfsd bits.
+Applied to the vfs-7.4.netfs branch of the vfs/vfs.git tree.
+Patches in the vfs-7.4.netfs branch should appear in linux-next soon.
+
+Please report any outstanding bugs that were missed during review in a
+new review to the original patch series allowing us to drop it.
+
+It's encouraged to provide Acked-bys and Reviewed-bys even though the
+patch has now been applied. If possible patch trailers will be updated.
+
+Note that commit hashes shown below are subject to change due to rebase,
+trailer updates or similar. If in doubt, please check the listed branch.
+
+tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
+branch: vfs-7.4.netfs
+
+[1/8] netfs: Use uoff_t instead of unsigned long long and loff_t
+      https://git.kernel.org/vfs/vfs/c/0447d3e7ca81
+[2/8] netfs: Remove the writethrough code
+      https://git.kernel.org/vfs/vfs/c/1c167be3e3f3
+[3/8] netfs: trace: Change the "clear" folio traces to "endwb"
+      https://git.kernel.org/vfs/vfs/c/b4c9fce24e25
+[4/8] netfs: trace: Rejig a couple of the tracepoints
+      https://git.kernel.org/vfs/vfs/c/80fe2005dc3c
+[5/8] netfs: Add the cache object ID to netfs_read/write tracepoints
+      https://git.kernel.org/vfs/vfs/c/b1abd92147b1
+[6/8] netfs: Make deprecated PG_private_2 support opt-in
+      https://git.kernel.org/vfs/vfs/c/e5c67dd3bbf7
+[7/8] netfs: Add some functions to wrap the all-queued handling
+      https://git.kernel.org/vfs/vfs/c/a38f37509940
+[8/8] netfs: Set subrequest->source at alloc before trace emission
+      https://git.kernel.org/vfs/vfs/c/3df7501ad939
 
