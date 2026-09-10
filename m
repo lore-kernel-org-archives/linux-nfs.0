@@ -1,195 +1,158 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E77FE58FD39;
-	Thu, 10 Sep 2026 19:47:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BB65E3B0AE1
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Sep 2026 22:03:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789069634; cv=none; b=rjg179qRIVmkC2n6wae1c7j0uZ/8mk+vrSVbyxasId6HQkG5aVSeSThl5/Mz1t3ueOrnG7dJ8RtK6EuPNX2L+M/83CULf373OVfw4RAVELp06yPLdQt3KnOlFzEMtoiZokH5aO5uZtbTonjHft9ZQCVux64YJHAMBSoooO+fG94=
+	t=1789077784; cv=none; b=XGaISwRmsjqqZA+8FDQmoFepCZkALac2/Jj1T74NH1tJh4ldzqsHF1Te+Ep36cL8W8MmPE3kUBIueseUS4UIJVE2e7F5sfqmdW4hVjViVo0W1KzKkFVPvJUfMAdWqnNxW69iJBwwDXId+167WmQR6DapH8HbLhpFfE1fk5f+TPM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789069634; c=relaxed/simple;
-	bh=RX071a9PQBNiEQBheV1K3UmyIzBezfZtMt1I3s6KoNQ=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=Cl7jTkafSKQjn5BGJrv1YluqamgIk3VpoBrnr9IDHiaqWGdVhiJiZtJjCL/ATEURHhIodKQJkqTnNt8cIW1Bg/N4YL33y79DRBkFTjyiYIM79gpN9RNyYL5PF+dl+Em/eavIcdt1QZsXupaGeyyt3id8bcWUVjA3VSgOyUPuaC4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mdhD67lL; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789077784; c=relaxed/simple;
+	bh=BAAZhzk0dAIbmeXmLPZxSGD54t3+SbzTRmNSo8PYBJs=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=iVzfrTL/pRDCL5sXST0iD1Y0h/1aw2u3StMLlkc4Q+TyzJzmISfrw3GutqxFfmdStuHPGTzKH6gIKmynOTdwmAyBDveROQYYLig5+qWt72gehG3fkYKeY6LeR4Dt0ussJObNI6UsduiFLW4XsYpdWNKeg+3+P9dVRtMa1bGuKoA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=R0Ahc5ke; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mdhD67lL"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DE59B1F000FF;
-	Thu, 10 Sep 2026 19:47:11 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789069632;
-	bh=ZffiQYbGLW+VYKyj9G1IXT3ZIe+gXXWyt3eyqmXRCyU=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=mdhD67lL5P9YOgg7HpKq7NpzrhFf/GCIbmiP+NTpjV8tpFlau2/lwecpkzHaFxN0U
-	 tDMXsD1CYFoQ984ZfHJKyNlmfKACwYZGuUEeNbmynEcx6UwBeiv1tzA9eAzGNCBNHJ
-	 PkcBZmODfEcA1z70YMCpVdM6OU9ZeExU3l+/4zKNyxVTr1noGrmvlOSkDpmw3AP7N7
-	 RG3Fw/U657sLA1k1y2Kq6ieGbMjBzy0OHXhrZwJbid8WnB450kL7P8YNWlYuxJ8MVt
-	 N6CoICjthgca24MsutXZ1+rbuCHbG7yWo15wLppk3JY+yf7P760SE0tqu/LDbjQAoD
-	 5gqFBE2m9Yl4g==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 21509F4006C;
-	Thu, 10 Sep 2026 15:47:11 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Thu, 10 Sep 2026 15:47:11 -0400
-X-ME-Sender: <xms:PwmjaiY31azRpJ6WADEzOrGS_RzT1Q3vFRbos7NSwGYTI6i-VKOlrw>
-    <xme:PwmjagNz68zilixW2T8i9z2DfPvfhNaD125l1Esn4lYtlW9_Oy93qhBRlc00WGf13
-    AZCnNDiafNM8gzACms2X54H8DkW5UbzhHIxGq7J4uzO-Wub0K_fMmfC>
-X-ME-Proxy-Cause: dmFkZTEk5kidKWEsHw6tcAwcrd1DRhsdAEyJmVHoXJViIP9MoT6XSLAEa3dgVU3vDQ8PCt
-    3uJlxew+vCHxhjCEkGB9K4q4YvNCll78mINsejPAPv2f7A8rx/by5L/wMOPhr7GgdojMGl
-    mnXqZ7t8u3NY1AQw1jfsoZ59E/bWTRtZObQpdgTWwdMBGhUhoqsL8YIgTQx00JG6UNMEuO
-    8Ilamerm2V5Ga6H1/BtEHiTodTCvmooX/eYaJ9uiRYrohmMRz+u0jwptMcXqk692iU72AF
-    2IAfu11hEWQXgQaACAaJ1zgeFVG6i3giL9wLCXq+tMouNh1Q0Ts4gaNy3CJ5PY4BJWSjEN
-    wV1yA8EUAkJq24vw5ZK1PqUABbUE45Jyg4HUKo4vURKNuFukUSqpXRlfUj/T6lIRK4Z3rP
-    LROp/epZKJ1HtPGSy8tVmNtvDfzmWjAyZfsmiJWPWqndxj/D24BXFdDsiWIfBGo60lfSHk
-    Wxz7T+YuOToXqN4B9eBLXaI4Df54I0migMCTEAPJAzAWkfjjJoRm1qtndXNG2pvdsu12KN
-    vf33lKc0tvW8es7Hzby4tIPPMk3sQClj48jktF9IpaChQ5kT3RM5KwsnB0aYf2FqHx5wZj
-    32YCr0zgdIUFiYai7TniZpsmXsN6jhPVbB4GzBQIoEdaWiY6EWSfApy+nvzQ
-X-ME-Proxy: <xmx:PwmjauuCiMSXhZhNP8ifBcYQ7zc9_iKBcn34uyIwncDCHRdoBroGIA>
-    <xmx:Pwmjak13fTAkrEM6MXrIaINyRc1fbgxhdHLhYghLe_luwH9hDKef3A>
-    <xmx:PwmjajC5TbuogHWJqY8F8YR5xYmL1VXnwv-9m65-Ine3Xs4UDFjX8g>
-    <xmx:Pwmjahewr_C6xThl1vZw9YGaAVeQWw798YZwO7LUKUqN3tPe2fBctw>
-    <xmx:Pwmjalyt3K9f9BCJTopE8HUD0znOpmJP2LgZcpJwVO32A2zygfmaPOmd>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 027437811F0; Thu, 10 Sep 2026 15:47:11 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="R0Ahc5ke"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1789077781;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=DVKw1I3EmpaGgSZ8G5JtCSfBramlAPLtWqMErVRVz5g=;
+	b=R0Ahc5ke+gGmynvib6dz+msXGlfbHWDGUfDaJ+aFg3bnD1H1q80F5Z3pz1q3BjItZbaSHK
+	aCL4HRnWFRkKvIujUy6R393m9oBsIn3sXOdpZUY+GyC8PVfZkKUBdPrD/8UWrxzmAm/iWc
+	zCKGkOY/ac2vitMcHJGW7vtEHCoHA3o=
+Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-662-Cwu28Ar4P3K9AulwJN_yhQ-1; Thu,
+ 10 Sep 2026 18:02:58 -0400
+X-MC-Unique: Cwu28Ar4P3K9AulwJN_yhQ-1
+X-Mimecast-MFC-AGG-ID: Cwu28Ar4P3K9AulwJN_yhQ_1789077775
+Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 93F0E1800EFA;
+	Thu, 10 Sep 2026 22:02:53 +0000 (UTC)
+Received: from warthog.com (unknown [10.44.32.54])
+	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id CBB3230002D1;
+	Thu, 10 Sep 2026 22:02:46 +0000 (UTC)
+From: David Howells <dhowells@redhat.com>
+To: Christian Brauner <christian@brauner.io>
+Cc: David Howells <dhowells@redhat.com>,
+	Paulo Alcantara <pc@manguebit.org>,
+	Matthew Wilcox <willy@infradead.org>,
+	Namjae Jeon <linkinjeon@kernel.org>,
+	Marc Dionne <marc.dionne@auristor.com>,
+	Stefan Metzmacher <metze@samba.org>,
+	Eric Van Hensbergen <ericvh@kernel.org>,
+	Dominique Martinet <asmadeus@codewreck.org>,
+	Ilya Dryomov <idryomov@gmail.com>,
+	netfs@lists.linux.dev,
+	linux-afs@lists.infradead.org,
+	linux-cifs@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	ceph-devel@vger.kernel.org,
+	v9fs@lists.linux.dev,
+	linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v12 0/5] netfs, cachefiles: Changes for next, primarily occupancy tracking-related
+Date: Thu, 10 Sep 2026 23:02:35 +0100
+Message-ID: <20260910220242.2165023-1-dhowells@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: ADEgH0paMfes
-Date: Thu, 10 Sep 2026 15:46:48 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Jeff Layton" <jlayton@kernel.org>
-Cc: "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "David S. Miller" <davem@davemloft.net>,
- "Eric Dumazet" <edumazet@google.com>, "Jakub Kicinski" <kuba@kernel.org>,
- "Paolo Abeni" <pabeni@redhat.com>, "Simon Horman" <horms@kernel.org>,
- "Donald Hunter" <donald.hunter@gmail.com>, "Shuah Khan" <shuah@kernel.org>,
- linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
- netdev@vger.kernel.org, linux-kselftest@vger.kernel.org
-Message-Id: <a9efbd67-4a73-49f5-b65e-ea37074e419d@slotpi15m67>
-In-Reply-To: <20260910-nfsd-norpcb-v1-4-b4d5182d634c@kernel.org>
-References: <20260910-nfsd-norpcb-v1-0-b4d5182d634c@kernel.org>
- <20260910-nfsd-norpcb-v1-4-b4d5182d634c@kernel.org>
-Subject: Re: [PATCH 4/5] NFSD: report registerable programs in the listener_set reply
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
 
-On Thu, 10 Sep 2026, Jeff Layton wrote:
+Hi Christian,
 
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -2273,12 +2396,28 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
-> +	/*
-> +	 * Build the reply before the serv can go away, and only on success.
-> +	 * A caller that got an errno has nothing to register.
-> +	 */
-> +	if (!err && userspace_rpcbind) {
-> +		rskb = nfsd_nl_listener_set_msg(info, net, serv);
-> +		if (IS_ERR(rskb)) {
-> +			err = PTR_ERR(rskb);
-> +			rskb = NULL;
-> +		}
-> +	}
+Could you pull these patches please into your vfs-7.4.netfs branch?  This
+is the second of four batches, in this case dealing with cachefiles, and is
+based upon the aforementioned branch.  This was split from v11 of a larger
+netfslib series[1].
 
-The second sentence of the comment is not true after a partial
-failure. Take a request with userspace-rpcbind carrying {tcp:2049,
-tcp:<port already in use>}. The creation loop continues past the
-second failure and keeps only the last errno. The 2049 xprt is on
-sv_permsocks, so the serv survives the list_empty() check below, but
-this gate skips the reply and the caller sees -EADDRINUSE. nfsd is
-now serving on 2049 with nothing registered in rpcbind, and the caller
-was never told which listeners came up or which programs to register.
-The same end state results when nfsd_nl_listener_set_msg() itself
-fails with -ENOMEM.
+Cachefiles is modified to better implement caching for the class of files
+that are opened new/truncated, written once sequentially with no seeking
+and then closed (ie. the most common class):
 
-In kernel-owned mode the survivor would already have been registered
-inside svc_xprt_create_from_sa(), so this is a behavioral gap specific
-to the new mode. Either tear down the listeners that were created when
-any of them fails, or send the reply whenever at least one listener
-exists on the serv, regardless of err. The second keeps the existing
-partial-success semantics; the caller can then act on what it got.
+ (1) The object type in the cachefiles file xattr is now correctly set to
+     CACHEFILES_CONTENT_{SINGLE,ALL,BACKFS_MAP} rather than just being 0,
+     to indicate whether we have one of: a single monolithic blob, all the
+     data up to cache i_size with no holes or a sparse file with the data
+     mapped by the backing file system (as currently upstream).
 
+ (2) For "ALL" type files, the cache's i_size is used to track how much
+     data is saved in the cache and no longer bears any relation to the
+     netfs i_size.  The actual object size is stored in the xattr.
 
-> +static size_t nfsd_nl_listener_set_msgsize(struct svc_serv *serv)
-> +{
-> +	size_t size = GENL_HDRLEN +		    /* genlmsg_iput() */
-> +		      nla_total_size(0);	    /* userspace-rpcbind */
+ (3) For most typical files which are contiguous and written progressively,
+     the object type is now set to "ALL".  For anything else, cachefiles
+     uses SEEK_DATA/HOLE to find extent outlines at before (this is the
+     current behaviour and needs to be fixed, but in a separate set of
+     patches as it's not trivial).
 
-genlmsg_new() already adds GENL_HDRLEN via genlmsg_total_size(), so
-this term double-counts it. Harmless, but the comment will mislead the
-next person sizing a reply. Pass only the attribute payload here.
+ (4) Reads of "ALL" type files can then skip the SEEK_DATA/HOLE step to
+     determine the occupancy; backing file i_size and the object size field
+     stored in the state xattr suffice.
 
+Other changes are also made:
 
-> +	spin_lock_bh(&serv->sv_lock);
-> +	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
-> +		struct nlattr *attr;
-> +
-> +		if (!test_bit(XPT_RPCB_UNREG, &xprt->xpt_flags))
-> +			continue;
-> +
-> +		attr = nla_nest_start(skb, NFSD_A_SERVER_SOCK_ADDR);
-> +		if (!attr) {
-> +			err = -EMSGSIZE;
-> +			goto err_serv_unlock;
-> +		}
-> +
-> +		if (nla_put_string(skb, NFSD_A_SOCK_TRANSPORT_NAME,
-> +				   xprt->xpt_class->xcl_name) ||
-> +		    nla_put(skb, NFSD_A_SOCK_ADDR,
-> +			    sizeof(struct sockaddr_storage),
-> +			    &xprt->xpt_local)) {
-> +			err = -EMSGSIZE;
-> +			goto err_serv_unlock;
-> +		}
-> +
-> +		nla_nest_end(skb, attr);
-> +	}
+ (1) cachefile_do_prepare_read() is merged into cachefiles_prepare_read()
+     now that the ondemand mode stuff got removed.
 
-This is the same nest emission as the loop in
-nfsd_nl_listener_get_doit(), apart from the XPT_RPCB_UNREG filter and
-the errno (that one returns -EINVAL). A small helper that emits one
-addr nest for an xprt, called from both loops, would keep the two from
-drifting, with the size accounting above as the third place to keep
-in step.
+ (2) Some extra traces are added for write failure and insufficient space.
 
-Also, as noted on patch 2, this filter selects TCP and UDP only; the
-spec doc should match.
+ (3) The state xattr on a cachefile is pre-set to try to avoid having to
+     deal with ENOSPC from setxattr when committing the object.
 
+The patches can also be found here:
 
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -859,12 +842,44 @@ nfsd_acl_init_request(struct svc_rqst *rqstp,
-> +bool nfsd_version_registerable(struct net *net,
-> +			       const struct svc_program *progp, u32 version)
-> +{
-> +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-> +
-> +	if (version >= progp->pg_nvers || !progp->pg_vers[version])
-> +		return false;
-> +
-> +	/* nfslocalio is hidden and never reaches rpcbind. */
-> +	if (progp->pg_vers[version]->vs_hidden)
-> +		return false;
-> +
-> +#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-> +	if (progp->pg_prog == NFS_ACL_PROGRAM &&
-> +	    !nfsd_support_acl_version(version))
-> +		return false;
-> +#endif
+	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=netfs-next-2
 
-The ACL block is redundant with the first test. The ACL program has
-pg_nvers = NFSD_ACL_NRVERS and pg_vers = nfsd_acl_version, whose
-slots 0 and 1 and any compiled-out version are NULL, and
-nfsd_support_acl_version() checks exactly that range and that array.
-Dropping the block removes the function's only program-number special
-case and the #if with it.
+Thanks,
+David
 
+Changes
+=======
 
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+ver #12)
+- Split from v11 of "netfs: Keep track of folios in a segmented bio_vec[]
+  chain"[1]
+
+[1] https://lore.kernel.org/r/20260902173350.3468672-1-dhowells@redhat.com/
+
+David Howells (5):
+  cachefiles: Clean up cachefiles_do_prepare_read()
+  netfs, cachefiles: Add a couple of traces for write failure
+  cachefiles: Add a tracepoint to log insufficient space errors
+  cachefiles: Don't rely on backing fs storage map for most use cases
+  cachefiles: Preset the state xattr when creating a new file
+
+ fs/afs/file.c                     |   1 -
+ fs/cachefiles/interface.c         |  90 ++----
+ fs/cachefiles/internal.h          |  14 +-
+ fs/cachefiles/io.c                | 461 +++++++++++++++++++-----------
+ fs/cachefiles/namei.c             |  34 +--
+ fs/cachefiles/xattr.c             |  82 +++++-
+ fs/netfs/buffered_read.c          | 188 +++++++-----
+ fs/netfs/buffered_write.c         |   3 -
+ fs/netfs/internal.h               |   2 +
+ fs/netfs/objects.c                |   1 +
+ fs/netfs/read_retry.c             |   2 +
+ fs/netfs/read_single.c            |  40 +--
+ fs/netfs/write_collect.c          | 132 +++++++--
+ fs/netfs/write_issue.c            |  18 ++
+ fs/netfs/write_retry.c            |   3 +
+ include/linux/fscache.h           |  17 ++
+ include/linux/netfs.h             |  38 ++-
+ include/trace/events/cachefiles.h |  51 +++-
+ include/trace/events/netfs.h      |  11 +-
+ 19 files changed, 785 insertions(+), 403 deletions(-)
+
