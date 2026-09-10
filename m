@@ -1,259 +1,240 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2B7C6493643;
-	Thu, 10 Sep 2026 15:47:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D8BFF4BB266;
+	Thu, 10 Sep 2026 16:23:13 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789055275; cv=none; b=m4NWC2oVmVG/0mPve4+jy5h4J3uflfRG+LDMc85rwKQoTRc3/I8/NgTJNEWxbp5LRuCOkOWHJasfnMz/iVXvUTOL3BcFgN7oicry1o9bgWGg182soukLDjlXYLg8P+urMjMZPN1ZqyuP0ENhokJqgPXm/Xhi9E8RXn54+X8li5U=
+	t=1789057395; cv=none; b=haMolN8rbO1mMZgO4r2FIgpdkICMoE6AmIdsK9mQ2HBDOPeoJiDNvgTPvyYJL//d009N5HuF7kSO7jah8ukernb5z0S3Kv0ZQARFag4M162UATZmZ6bUzXbWgwyPAbzOW59Ekw/iIkDOFBdh5hiPTdB/eUEjcgK7CeTLevGV5Zs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789055275; c=relaxed/simple;
-	bh=TOy7SBm/fegV4EjRORkQ0GXT9NCChYqEFIBs+C2vk1g=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=VcmVdnmNH4QcW/TTNnukZ2cdCG4pX03zFIDzGqvgX7Knl8rGBfdZpUKLKLU2Hh52LWt+GR3LxJ1HvuWxVjF4JeShy5dXJsC7tqy6juS0y3thISpxwKfiNqqKYVbt5FBKZaEyygWYFvmly3eNtiVYcxUE87MzCahMBpCwlSB9Chk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IFPNhcOV; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789057395; c=relaxed/simple;
+	bh=WFJwA7rFedD+sut2fLamdfjds/NqKNm8sVMMEXUIAfk=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=aompMycqtlfYeULoGZlV/vGh3Wsoduxon0i042Q/tmNIvFSWd+TF3O8VOYFju05JAxVMLnoYt5tN/KwQeV9OvvaEyXCH2r7WyGSPmCY8z8Z3N0U0x4PiJYHOZAO6hmcsfDz8ntKiWNNllnr/Ym9FmcSXk3RzqjnQY8kYe4db+pk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=Di6J4ooq; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=2EKGAeF5; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=v9LNypzg; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=iqVfo1Lk; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IFPNhcOV"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8F5861F000FF;
-	Thu, 10 Sep 2026 15:47:53 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789055273;
-	bh=cgIP0eykI6dWly7Eh5U3U35ajrz0x3t8mRSUn9cHag0=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=IFPNhcOVA6LQue/UQpT13Z8nNqIVS9UTvGfGvmYu/WylQswmD7eq5WFA4YQgsJryT
-	 8Smf+uMTdvLdY2J2hZmvXzVv6Mu+S83vQ0kuOQfcUyCm1yg4OeXaP091maTZoBEeHW
-	 K8UREgl6I1nHT9v5tYG34GKIArJ5rTQAjLNrWfalNoOzPtzzoyxdB+lG5zyx4CGjWk
-	 2GrgwcpEnNmiKNn/t/6QQwN4YaCB5ejDRD7ZeiXO6jsNKwA/n4NkBlfNmLLQQhxYIW
-	 I9c2pfHeUS4P5O1vJEi8dcigW/Vy3riu88VlgJFrrolk4YzO+bDSdma+3ngonFgGoI
-	 C2wVXVPri6oxg==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id CA217F40066;
-	Thu, 10 Sep 2026 11:47:52 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Thu, 10 Sep 2026 11:47:52 -0400
-X-ME-Sender: <xms:KNGiaq0jN0s5x8O7SDUJ981ONIuT0KYH74iC20dsHm5KK7BH8eqNOA>
-    <xme:KNGian5yklVj6KmFMw9wFFSWclgcgeWChmc5DoK56rqk00PONixxEk-PHM6UjTYr_
-    zG4GH2XM7Z1hIGd50WLAcvJw_zP4P9N1CLfy3QhtLebocg1-ahI8f1_>
-X-ME-Proxy-Cause: dmFkZTGLvw3BleNJxEKuZlwh5rnA9tSzk4DbRhIdVQ7IpZvqY4oqAW0CpC6J75T3eJHFWf
-    7W6saxzq1yy94XM2kHBdQpeomKZ2mah6nM/7J3WQwUX8O2bRvFDNYkrD47uKXmgE3pq/UP
-    Wrc9P9gxf2k8XmOHNXfaZQGgEjqSC4nqM/2JSPHUVLXN52v41mqPzolKbr3RzFxhyIE46F
-    YrXcmbJJR+lA+qrP0ZsBA5dz3WnnZ9I+M4fJ79BfKIemM6EKBXRTTvr45mB8ANLOG1F6HN
-    +kPWMoOvAsjRoXoPul7Z9X6kgHCNqhH/G+7OlQVgN7AtEtWvB9HLVtJGneiI58dN63Y/gA
-    dlsfYfH/opZLVE/falcnVW7dA7ka9fkzH8XJ7K/Q5oRIE3sIHvcpmkrpGM/g069bbR/Dc3
-    Iw2PfFEH0kaczBr+ZCCCOHPMKzs1lFuSG3gh7bWylYjgja2eRqfPMYRKGJWTGBsoD5Lpok
-    MRAbcWIy62XnEbjja2YpsMgL3rqcnGzCNYGOUK/6J/+46sLz7v015R6Xi0mp4WmxVi7jup
-    DQE6ngtWoCW+YNMUXzpzfEY3QkBeyTCRGKJSFOFtg+HvCBQZWkxrMu23zl4/YTdObbIOP4
-    gwzRvGBLP/FWitrtv/4kXkaA2KyBmI70CPLQbFiwh+yEbBQ7SrhiT54DXNhg
-X-ME-Proxy: <xmx:KNGiavPi-ELwRADVCPrjxfzvXhjVWTNOyLieLogsFFkCqfbNlFod6g>
-    <xmx:KNGiaqphkqDxhMyQ1LKRnvISV1Wg46m47hC4TaWHn2QtdElRbYzptg>
-    <xmx:KNGiasclf55qc4gEHVvqpW1cNnqosSA9GoozCPszi31tGrWTOCYm5w>
-    <xmx:KNGiaoQ_1W9OkE46XuS9GI_RQENKrdHMLT52f2txbRsapULmUHLY4w>
-    <xmx:KNGiatb-Zq5Hv8aTvVBWxG3AGtdTIEpbCp6vEhquqIloR3X_LKk49HlY>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id AD7D57811F3; Thu, 10 Sep 2026 11:47:52 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="Di6J4ooq";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="2EKGAeF5";
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="v9LNypzg";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="iqVfo1Lk"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id AECA721DBF;
+	Thu, 10 Sep 2026 16:23:03 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1789057387; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=kr4VsGry+oKuFNSODwNOT1epFYC6cWJFJntIrCTTAgc=;
+	b=Di6J4ooqj0YNM6hFl2R0QAoPrCYY+xDjaKsB/WTlQC30AvF58wJ5hQ4YlqziTkzbp4Og/P
+	8AcvpOg7/YbzCaNQKLMjJzQSURihPuWeFViFE2uYafcYTpIJsnzxU0jfqNtUgZDKRihBvk
+	pYIPz0zwPXel13Wvwc81TgwYDG7qh4I=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1789057387;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=kr4VsGry+oKuFNSODwNOT1epFYC6cWJFJntIrCTTAgc=;
+	b=2EKGAeF5UM0IQsTGyBtJtEWymjFLkfNM5dLWFz+lLgh2k1z7sVyu3GnjZh/Iff2EshTqjl
+	zkhxcxPvZmXVVUCw==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=v9LNypzg;
+	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=iqVfo1Lk
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1789057383; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=kr4VsGry+oKuFNSODwNOT1epFYC6cWJFJntIrCTTAgc=;
+	b=v9LNypzgtLQ7CRKOmN6anD0VC81kX2iC2c1SQxxlO7XxDyaAXrKGQnx0CFuoDpq/1g1LaR
+	hObqfjDhrjmgyzypfatp8LsaPwXkXxB2ihx1FCBkjtbMfwpf1V/hcaC8BtjYX60RUsjQj/
+	bDSH8rzm6F/OyuAqSiUg6LmxSUgiqRY=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1789057383;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=kr4VsGry+oKuFNSODwNOT1epFYC6cWJFJntIrCTTAgc=;
+	b=iqVfo1LkEJDI3/oHuqx6Tkqp4cn5U3OeTC5em8w4cwZF+bn7rC/JxfARvjPvNOJVeIQ8TR
+	9p+8O0KpqpnPZYAA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 1530E137FD;
+	Thu, 10 Sep 2026 16:22:57 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id ehFfAmHZompxSgAAD6G6ig
+	(envelope-from <fmancera@suse.de>); Thu, 10 Sep 2026 16:22:57 +0000
+Message-ID: <bee1e0e0-6114-462b-975c-62ca2e448e8e@suse.de>
+Date: Thu, 10 Sep 2026 18:22:21 +0200
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AHW2aQSR1Px3
-Date: Thu, 10 Sep 2026 11:47:30 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: NeilBrown <neil@brown.name>
-Cc: "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Christian Brauner" <brauner@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
- linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Message-Id: <f64c2391-2810-406c-8c31-7f80cdde0832@slotpi15m67>
-In-Reply-To: <20260910002934.192979-8-neilb@ownmail.net>
-References: <20260910002934.192979-1-neilb@ownmail.net>
- <20260910002934.192979-8-neilb@ownmail.net>
-Subject: Re: [PATCH 7/7] nfsd: use vfs_lookup_open() for non-creating open requests
- too.
-Content-Type: text/plain
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 01/13 net-next] net: ipv4: introduce CONFIG_IPV4 to
+ decouple the IPv4 stack
+To: netdev@vger.kernel.org
+Cc: horms@kernel.org, kuba@kernel.org, pabeni@redhat.com,
+ edumazet@google.com, davem@davemloft.net, Jason Gunthorpe <jgg@ziepe.ca>,
+ Leon Romanovsky <leon@kernel.org>, Andrew Lunn <andrew+netdev@lunn.ch>,
+ Tony Nguyen <anthony.l.nguyen@intel.com>,
+ Przemek Kitszel <przemyslaw.kitszel@intel.com>,
+ Elad Nachman <enachman@marvell.com>, Saeed Mahameed <saeedm@nvidia.com>,
+ Tariq Toukan <tariqt@nvidia.com>, Mark Bloch <mbloch@nvidia.com>,
+ Ido Schimmel <idosch@nvidia.com>, Petr Machata <petrm@nvidia.com>,
+ Edward Cree <ecree.xilinx@gmail.com>,
+ Maxime Chevallier <maxime.chevallier@bootlin.com>,
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>,
+ Alexandre Torgue <alexandre.torgue@foss.st.com>,
+ Arend van Spriel <arend.vanspriel@broadcom.com>,
+ Miri Korenblit <miriam.rachel.korenblit@intel.com>,
+ Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>,
+ Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>,
+ Chaitanya Kulkarni <kch@nvidia.com>, Saurav Kashyap <skashyap@marvell.com>,
+ Javed Hasan <jhasan@marvell.com>, GR-QLogic-Storage-Upstream@marvell.com,
+ "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>,
+ "Martin K. Petersen" <mkp@kernel.org>, Nilesh Javali <njavali@marvell.com>,
+ Manish Rangankar <mrangankar@marvell.com>, Varun Prakash
+ <varun@chelsio.com>, Alexander Viro <viro@zeniv.linux.org.uk>,
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
+ David Howells <dhowells@redhat.com>, Marc Dionne <marc.dionne@auristor.com>,
+ Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
+ Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>,
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+ Marek Lindner <marek.lindner@mailbox.org>,
+ Simon Wunderlich <sw@simonwunderlich.de>,
+ Antonio Quartulli <antonio@mandelbit.com>,
+ Sven Eckelmann <sven@narfation.org>,
+ Nikolay Aleksandrov <razor@blackwall.org>,
+ Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
+ Phil Sutter <phil@nwl.cc>, Johannes Berg <johannes@sipsolutions.net>,
+ Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>,
+ Geliang Tang <geliang@kernel.org>, Julian Anastasov <ja@ssi.bg>,
+ Aaron Conole <aconole@redhat.com>, Eelco Chaudron <echaudro@redhat.com>,
+ Ilya Maximets <i.maximets@ovn.org>, Allison Henderson <achender@kernel.org>,
+ Jamal Hadi Salim <jhs@mojatatu.com>, Jiri Pirko <jiri@resnulli.us>,
+ Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+ Xin Long <lucien.xin@gmail.com>, "D. Wythe" <alibuda@linux.alibaba.com>,
+ Dust Li <dust.li@linux.alibaba.com>, Sidraya Jayagond
+ <sidraya@linux.ibm.com>, Mahanta Jambigi <mjambigi@linux.ibm.com>,
+ Tony Lu <tonylu@linux.alibaba.com>, Wen Gu <guwen@linux.alibaba.com>,
+ Jon Maloy <jmaloy@redhat.com>, Tung Quang Nguyen
+ <tung.quang.nguyen@est.tech>, Steffen Klassert
+ <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>,
+ Casey Schaufler <casey@schaufler-ca.com>, Paul Moore <paul@paul-moore.com>,
+ James Morris <jmorris@namei.org>, "Serge E. Hallyn" <serge@hallyn.com>,
+ Vikas Gupta <vikas.gupta@broadcom.com>,
+ Bhargava Marreddy <bhargava.marreddy@broadcom.com>,
+ Rajashekar Hudumula <rajashekar.hudumula@broadcom.com>,
+ Nicolai Buchwitz <nb@tipi-net.de>, =?UTF-8?Q?Markus_Bl=C3=B6chl?=
+ <markus@blochl.de>, Arnd Bergmann <arnd@arndb.de>,
+ Heiner Kallweit <hkallweit1@gmail.com>,
+ Florian Fainelli <florian.fainelli@broadcom.com>,
+ Krzysztof Kozlowski <krzk@kernel.org>,
+ Qingfang Deng <qingfang.deng@linux.dev>, Julian Braha
+ <julianbraha@gmail.com>, Ethan Nelson-Moore <enelsonmoore@gmail.com>,
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+ Eric Biggers <ebiggers@kernel.org>, Ard Biesheuvel <ardb@kernel.org>,
+ Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>,
+ Willem de Bruijn <willemb@google.com>, Alyssa Ross <hi@alyssa.is>,
+ Joel Granados <joel.granados@kernel.org>, Oleg Nesterov <oleg@redhat.com>,
+ linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
+ intel-wired-lan@lists.osuosl.org, oss-drivers@corigine.com,
+ linux-net-drivers@amd.com, linux-stm32@st-md-mailman.stormreply.com,
+ linux-arm-kernel@lists.infradead.org, linux-wireless@vger.kernel.org,
+ brcm80211@lists.linux.dev, brcm80211-dev-list.pdl@broadcom.com,
+ linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org,
+ target-devel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
+ b.a.t.m.a.n@lists.open-mesh.org, bridge@lists.linux.dev,
+ netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
+ mptcp@lists.linux.dev, lvs-devel@vger.kernel.org, dev@openvswitch.org,
+ rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org,
+ linux-s390@vger.kernel.org, tipc-discussion@lists.sourceforge.net,
+ linux-security-module@vger.kernel.org
+References: <20260910144914.8025-1-fmancera@suse.de>
+ <20260910144914.8025-2-fmancera@suse.de>
+Content-Language: en-US
+From: Fernando Fernandez Mancera <fmancera@suse.de>
+In-Reply-To: <20260910144914.8025-2-fmancera@suse.de>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
+X-Spam-Level: 
+X-Rspamd-Action: no action
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Queue-Id: AECA721DBF
+X-Spamd-Result: default: False [-1.01 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	FORGED_RECIPIENTS(2.00)[m:horms@kernel.org,m:kuba@kernel.org,m:edumazet@google.com,m:davem@davemloft.net,m:leon@kernel.org,m:andrew+netdev@lunn.ch,m:anthony.l.nguyen@intel.com,m:przemyslaw.kitszel@intel.com,m:enachman@marvell.com,m:saeedm@nvidia.com,m:tariqt@nvidia.com,m:mbloch@nvidia.com,m:idosch@nvidia.com,m:petrm@nvidia.com,m:ecree.xilinx@gmail.com,m:maxime.chevallier@bootlin.com,m:mcoquelin.stm32@gmail.com,m:alexandre.torgue@foss.st.com,m:arend.vanspriel@broadcom.com,m:miriam.rachel.korenblit@intel.com,m:kbusch@kernel.org,m:axboe@kernel.dk,m:hch@lst.de,m:sagi@grimberg.me,m:kch@nvidia.com,m:skashyap@marvell.com,m:jhasan@marvell.com,m:GR-QLogic-Storage-Upstream@marvell.com,m:James.Bottomley@HansenPartnership.com,m:mkp@kernel.org,m:njavali@marvell.com,m:mrangankar@marvell.com,m:varun@chelsio.com,m:brauner@kernel.org,m:marc.dionne@auristor.com,m:trondmy@kernel.org,m:anna@kernel.org,m:cel@kernel.org,m:jlayton@kernel.org,m:neil@brown.name,m:Dai.Ngo@oracle.com,m:marek.lindner@mailbox.o
+ rg,m:antonio@mandelbit.com,m:sven@narfation.org,m:razor@blackwall.org,m:pablo@netfilter.org,m:phil@nwl.cc,m:matttbe@kernel.org,m:martineau@kernel.org,m:geliang@kernel.org,m:i.maximets@ovn.org,m:achender@kernel.org,m:jhs@mojatatu.com,m:marcelo.leitner@gmail.com,m:lucien.xin@gmail.com,m:alibuda@linux.alibaba.com,m:dust.li@linux.alibaba.com,m:sidraya@linux.ibm.com,m:mjambigi@linux.ibm.com,m:tonylu@linux.alibaba.com,m:guwen@linux.alibaba.com,m:tung.quang.nguyen@est.tech,m:herbert@gondor.apana.org.au,m:paul@paul-moore.com,m:jmorris@namei.org,m:serge@hallyn.com,m:vikas.gupta@broadcom.com,m:bhargava.marreddy@broadcom.com,m:rajashekar.hudumula@broadcom.com,m:markus@blochl.de,m:arnd@arndb.de,m:hkallweit1@gmail.com,m:florian.fainelli@broadcom.com,m:krzk@kernel.org,m:qingfang.deng@linux.dev,m:julianbraha@gmail.com,m:enelsonmoore@gmail.com,m:gregkh@linuxfoundation.org,m:ebiggers@kernel.org,m:ardb@kernel.org,s:oleg@redhat.com,s:linux-stm32@st-md-mailman.stormreply.com,s:linux-fsdevel@vger.kernel
+ .org,s:linux-kernel@vger.kernel.org,s:linux-nfs@vger.kernel.org,s:linux-rdma@vger.kernel.org,s:linux-s390@vger.kernel.org,s:linux-scsi@vger.kernel.org,s:linux-sctp@vger.kernel.org,s:linux-security-module@vger.kernel.org,s:linux-wireless@vger.kernel.org,s:lvs-devel@vger.kernel.org,s:netfilter-devel@vger.kernel.org,s:target-devel@vger.kernel.org];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	FROM_HAS_DN(0.00)[];
+	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	MIME_TRACE(0.00)[0:+];
+	FREEMAIL_CC(0.00)[kernel.org,redhat.com,google.com,davemloft.net,ziepe.ca,lunn.ch,intel.com,marvell.com,nvidia.com,gmail.com,bootlin.com,foss.st.com,broadcom.com,kernel.dk,lst.de,grimberg.me,HansenPartnership.com,chelsio.com,zeniv.linux.org.uk,suse.cz,auristor.com,brown.name,oracle.com,talpey.com,mailbox.org,simonwunderlich.de,mandelbit.com,narfation.org,blackwall.org,netfilter.org,strlen.de,nwl.cc,sipsolutions.net,ssi.bg,ovn.org,mojatatu.com,resnulli.us,linux.alibaba.com,linux.ibm.com,est.tech,secunet.com,gondor.apana.org.au,schaufler-ca.com,paul-moore.com,namei.org,hallyn.com,tipi-net.de,blochl.de,arndb.de,linux.dev,linuxfoundation.org,alyssa.is,vger.kernel.org,lists.osuosl.org,corigine.com,amd.com,st-md-mailman.stormreply.com,lists.infradead.org,lists.linux.dev,lists.open-mesh.org,openvswitch.org,oss.oracle.com,lists.sourceforge.net];
+	ARC_NA(0.00)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCVD_TLS_ALL(0.00)[];
+	R_RATELIMIT(0.00)[to_ip_from(RLdey6otz8cz7qhffota9ydd97)];
+	TO_DN_SOME(0.00)[];
+	TO_MATCH_ENVRCPT_SOME(0.00)[];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RCVD_COUNT_TWO(0.00)[2];
+	FROM_EQ_ENVFROM(0.00)[];
+	DKIM_TRACE(0.00)[suse.de:+];
+	RCPT_COUNT_GT_50(0.00)[133];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	MID_RHS_MATCH_FROM(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TAGGED_RCPT(0.00)[netdev];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.de:dkim,suse.de:email,suse.de:mid]
+X-Spam-Flag: NO
+X-Spam-Score: -1.01
 
-On Thu, 10 Sep 2026, NeilBrown wrote:
+On 9/10/26 4:48 PM, Fernando Fernandez Mancera wrote:
+> Historically, the IPv4 protocol has been linked to the core INET
+> subsystem. Because shared infrastructure like the TCP/UDP engine,
+> routing or INET hashtables live inside net/ipv4/, it has been impossible
+> to compile a kernel with only IPv6 support.
+> 
+> This patch introduces the CONFIG_IPV4 Kconfig symbol, which is set to
+> 'def_bool y' for now. This does not allow to completely disable the
+> IPv4 stack yet but it lays the necessary build-system work for that
+> goal.
+> 
+> In addition, multiple subsystems Kconfig symbols across networking
+> features like tunnels, drivers and filesystems have been adjusted to
+> depend on IPv4. Keep on mind that follow-up work is required to convert
+> the Kconfig symbol to bool and remove the dependency on IPv4 where it
+> makes sense.
+> 
+> Signed-off-by: Fernando Fernandez Mancera <fmancera@suse.de>
+FWIW, I just checked and the following symbols that are currently marked 
+as "depends on IPV4" can already be compiled without IPV4:
 
-> nfsd: use vfs_lookup_open() for non-creating open requests too.
->
-> Now that we have vfs_lookup_open() for open requests which create, we
-> can use it for non-creating requests too as vfs_lookup_open() is already
-> able to do that.  nfsd4_create_file() is renamed to nfsd4_open_file()
-> and enhanced to not always create, and is then used for all OPEN
-> requests.
->
-> The resulting simplification allows fh_fill_pre_attrs_unlocked() to be
-> moved into nfsd4_open_file() so it is closer to fh_full_post_attrs and
-> fh_fill_post_noop calls.
+IPV6_MIP6, IPV6_ILA and IPV6_MROUTE
 
-fh_full_post_attrs is fh_fill_post_attrs().
+They will be adjusted on the next revision of the series. A re-check for 
+all the symbols will be performed.
 
-
-> As ->op_create_mode isn't defined when op_create is zero, we need a
-> local create_mode which is -1 (illegal value) when op_create is zero.
-
-The field is ->op_createmode and the local is createmode.
-
-
-> The non-create path now doesn't use nfsd_lookup().  As mount-point
-> crossing including nfsd_check_access() is already included for existing
-> names, this does not lose us anything.
-
-The function is check_nfsd_access(), reached through nfsd_cross_mnt().
-
-Is "already included for existing names" accurate? The only mount-point
-crossing left in nfsd4_open_file() is the try_lookup_noperm() block,
-and that consults only the dcache. More on that below.
-
-
-> Signed-off-by: NeilBrown <neil@brown.name>
-> ---
->  fs/nfsd/nfs4proc.c | 109 ++++++++++++++++++++++++++---------------------------
->  1 file changed, 53 insertions(+), 56 deletions(-)
->
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index a6ba7618a307..1f3096486565 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -251,29 +251,30 @@ static inline bool nfsd4_create_is_exclusive(int createmode)
->  }
->
->  /*
-> - * Implement NFSv4's unchecked, guarded, and exclusive create
-> - * semantics for regular files. Open state for this new file is
-> - * subsequently fabricated in nfsd4_process_open2().
-> - *
-> + * Implement NFSv4's open semantics for regular files.
-> + * Both create (unchecked, guarded, and exclusive) and non-create.
-> + * Open state for this new file is subsequently fabricated in
-> + * nfsd4_process_open2().
->   * Upon return, caller must release @fhp and @resfhp.
->   */
-
-"Both create ... and non-create." is a fragment, and "this new file" no
-longer fits when the file may already exist. Perhaps:
-
- * Implement NFSv4 OPEN semantics for regular files, both non-creating
- * and creating (unchecked, guarded, and exclusive). Open state for the
- * file is subsequently fabricated in nfsd4_process_open2().
- *
- * Upon return, caller must release @fhp and @resfhp.
-
-
-> @@ -285,6 +286,10 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
->  	if (status != nfs_ok)
->  		return status;
->
-> +	status = fh_fill_pre_attrs_unlocked(fhp);
-> +	if (status)
-> +		return status;
-> +
->  	if (open->op_createmode == NFS4_CREATE_UNCHECKED) {
->  		/*
->  		 * If name is already in dcache we need to check for mountpoints
-
-First, the test reads open->op_createmode, which the commit message says
-is undefined when op_create is zero. It works because
-nfsd4_decode_open() zeroes the whole struct, so a non-creating OPEN
-sees NFS4_CREATE_UNCHECKED here. Could the op_create test that sets
-createmode be hoisted above this block, and the condition become
-
-	if (!open->op_create || createmode == NFS4_CREATE_UNCHECKED) {
-
-so the non-create path does not depend on that zero?
-
-Second, nfsd_lookup_dentry() did a real lookup and then called
-nfsd_cross_mnt() whenever nfsd_mountpoint() was true. try_lookup_noperm()
-returns NULL when the name is not cached. In that case vfs_lookup_open()
-opens whatever it finds on the parent's mount and fh_compose() uses the
-parent's export.
-
-For a referral junction (a regular file carrying the junction xattr),
-nfsd_cross_mnt() would have swapped in the referral export. On a cold
-dcache the client instead gets an ordinary filehandle for the junction
-file, and a second OPEN of the same name, now cached, takes the
-crossing path. The same applies to a bind-mounted file whose mount
-target has its own export.
-
-The Linux client sends OPEN by name without a preceding LOOKUP, so the
-first access after a server reboot reaches this. Could the block do a
-real lookup of the name, as nfsd_lookup_dentry() does, before deciding
-whether to cross?
-
-
-> @@ -373,11 +382,11 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
->  		iap->ia_atime.tv_nsec = 0;
->  	}
->
-> -	create_status = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
-> -	if (create_status)
-> -		/* Might still succeed if no create is needed */
-> -		oflags &= ~O_CREAT;
-> -
-> +	if (oflags & O_CREAT) {
-
-Nit: O_CREAT is set only from open->op_create a few lines up. Would
-testing open->op_create here read more directly?
-
-
-> +		create_status = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
-> +		if (create_status)
-> +			oflags &= ~O_CREAT;
-> +	}
->  	dget(parent.dentry);
->  	open->op_filp = vfs_lookup_open(&parent,
->  					&QSTR_LEN(open->op_fname,
-
-This changes when a delegation is recalled relative to the access
-check. oflags carries O_WRONLY or O_RDWR from op_share_access, and
-vfs_lookup_open() opens the child with those flags. do_dentry_open()
-does no permission check of its own and calls break_lease() on the
-inode, so a conflicting delegation held by another client is recalled
-here. Only afterwards does do_open_lookup() call do_open_permission()
-and return NFS4ERR_ACCESS.
-
-Before this patch a non-creating OPEN went through nfsd_lookup() and
-do_open_permission() first, and the open that breaks the lease
-happened later in nfsd_file_do_acquire(), where fh_verify() precedes
-nfsd_open_break_lease(). So a client that can search the directory
-but has no write permission on the file can now recall other clients'
-write delegations on it by sending OPEN with SHARE_ACCESS_WRITE.
-
-The create path has had this ordering since nfsd4_create_file() started
-opening the file itself, but it was limited to opens that pass
-NFSD_MAY_CREATE on the directory. Extending it to every OPEN makes it
-reachable from any client with lookup access.
-
-Could the access check move ahead of the open for the non-creating
-case, or could the open be done O_RDONLY for the type check and the
-share-access open deferred to the filecache as before?
-
-
-> @@ -387,7 +396,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
->  	if (IS_ERR(open->op_filp)) {
->  		status = nfserrno(PTR_ERR(open->op_filp));
->  		if (status == nfserr_wrong_type) {
-> -			if (nfsd4_create_is_exclusive(open->op_createmode))
-> +			if (nfsd4_create_is_exclusive(createmode))
->  				status = nfserr_exist;
->  			else
->  				status = nfsd_check_obj_isreg(parent.dentry);
-
-On a re-export this arm changes the status a non-creating OPEN of a
-directory returns. nfsd_check_obj_isreg(NULL) returns
-nfserr_wrong_type, where nfsd_lookup() used to return nfserr_isdir.
-
-The Linux client has no mapping for NFS4ERR_WRONG_TYPE, so
-nfs4_map_errors() turns it into EIO. A "cat" of a re-exported directory
-that is not yet in the server's dcache now fails with EIO instead of
-EISDIR. NFSv4.0 clients are covered by the nfserr_symlink conversion in
-do_open_lookup() and recover through a LOOKUP; v4.1 and later see the
-change. Ceph splices before returning -EFTYPE, so it is not affected,
-but nfs, gfs2 and smb all return -EFTYPE before instantiating anything.
-
-
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+Thanks,
+Fernando.
