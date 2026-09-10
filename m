@@ -1,218 +1,267 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B88953C0625
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Sep 2026 15:13:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8691B4A3F25;
+	Thu, 10 Sep 2026 15:33:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789053242; cv=none; b=HsTX/Rg7Qm8yr4k9WlS2KTLjMqysMIIPO0sUtleVbxF3iw/B0ZnVDSr0r4C8dSIuyFEbIZbSEZAeyKIJPQuNpVk1Z1+xh5x/lQCXOgNlAP8Liv09yOMjdDQx+7GmCuhchAAVUNYnwKoSgum0g2gdMuNQ/tJA0oV6iSTlHy4r6TA=
+	t=1789054382; cv=none; b=NzlbS1VOFzD8NYUKBtXIzAzRssDhXFUma9fY0uk2VQE9yKOoiWlLcMpBMI/MUf8LJkXirfSv3BCNpnIkewyz066f8PJfYxR3BU9DOL3Rntpxy8RNqMH8tI76XNzzhpo/VaNju4NxvGJHjDVrxQKj67KLFX2o2OERqsoMAqT0X5o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789053242; c=relaxed/simple;
-	bh=et2hVQjnM3BQKhnb3J6REZkdT7yFdOxFX6XEa2xybFs=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=t+joYlAxT+IeNFyjsNMC8efLZYFthQ/OBMgBw1sey13VsPcPFGC7cFH5NQYRfQsO5EGfPYjSfDD8TJfrKlSxKB8FvXOEA/0XnJbqYmVT2/KALtEzQuhFb+gWGm69Cr8GnaE9VwCglTQQ186ZCFepbD4hOzHYrts55AE6A4AgsnU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VGyENCSb; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789054382; c=relaxed/simple;
+	bh=TfSrgWUYYJwahSa+FbSacbR0Qt4tsvku6lQjbRGnV3U=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=sta0EEi+1KEf81XNOVMZLw1zk5cY7QdHvH/qrnfujv1UIeNY7NjtYYK0Kkjgjs1PvbEGU8dXcHrZtU0SI1jeKbTq/qlAv11GbM5CzagS7VyEhRoQqfFVUeunJK9PLMfBlvJx/ZdETWG5/Q+E087xJ2ibdO1ElggZ34CogdSXiuA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=Ye0ZfhhC; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=CFJEDO+G; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=XJXdvWaF; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=X/YemN1Z; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VGyENCSb"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BA8551F00893;
-	Thu, 10 Sep 2026 15:13:56 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789053237;
-	bh=STMMdUEc/iUSoMKNtrSK7nMg+cH+09G+OqLnjouKKhE=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=VGyENCSb0963ksb2NyQgs94Cg54k1tnv/11NJ97GsYZHKIKr3g1a70shoOpIiAbG+
-	 SMwKJKVOiRB4LLpjkBvcoqE5BeyF9V6BO1bZnWzFiWOHnS36KjZv6G1xMdO6dJAXWG
-	 5SnrrVCrVT2/aLv6wXjythcKeINDHp78tlfWq8OFsbAEGCcAOzzRZUDhWU6ytam8mk
-	 jV8ceudX9f7agkIBBNivJOte8ygGwruSMZ/qr8A/hHpwTtdlLPdAY874rCO8ldz0HF
-	 IAMnNKIrubs8ATee0l/ntDNmKKzHKF7kUvIWheVqRQ8NNErruEw/Gq7nkJxl+GgjMs
-	 RjN3yegRg3ztw==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id CE955F40066;
-	Thu, 10 Sep 2026 11:13:55 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Thu, 10 Sep 2026 11:13:55 -0400
-X-ME-Sender: <xms:M8miarJGn9aB7FD0nHqJXzL3E_iJQAAOnQM0IudC2g_KPu70VWq3Ng>
-    <xme:M8miap_Z-95FjU4uZUYs0W7GMSjqUv33NQOdtzd6EK14uEHwQ7H7HgpIqikqAnSfv
-    Qs-BLaD7TegSz9rbe0g6AK5TVe8xN03n6sYpD739nMiflNsURakc2KY>
-X-ME-Proxy-Cause: dmFkZTGz9yw37NiNxrgu68qp72mc4Kby7FBaBgVSY0w80MkGDnRS/8x8dHDXvpiAILXD3u
-    8RQyI3A6mi4Z0nOlYWyIIIfB/1JDEtsuRAYSt3HgEYjGr+Pu8kygX5GJiiNt085sZ6daBh
-    TLIu4zi4gj3I6Ae0e2ObL4H+HVTIuPF0E2D9NFl0Bb+QPRgFSj/VyJUmDuU8HGmXxcuwDn
-    k7Ye8JShhEUmxe1NunLTAtqkALH0rvcX1rZwm3Fa6HfCazplLgOiZ5DHxnJWpgTgkJZU+2
-    DCq6hLZcAf98jS97YeWrBm5oG3KWr7CIwcW6/qx4wrCAlrTW6xnkEwkwUmpoBPJq9fkSC3
-    USGDVDayF+HHnhyIwSGHIik3i9UMoIOTK8qV1Fcrh40MFzxJMMSKi/yE/wvb3m2AHaVBce
-    R5P5+7KmPXbXdd2tM4WT3Y7pkm8Z3MUFAM8YdnkX3hGiPKNSTyeAFQaRLQqtM4bzaab7SO
-    kNuxAh2N9+hC4NQORuSqS2nQ9JZvrWZWWy4mIK0rxUTv4dFLnxo7U1Ap+yfbYWR9zgckhK
-    KfvvwgiQXiDFu8zzQdF8dCY6PxWFBANGzogUL6asFmyUqw/y5WN6R/sWjajcDMlmwV+T2l
-    CGE1Fl2rLmFvR/UScexOhTP1+ta3IfXiHq89jiaT3gjT4V7winXXIgV7j7Ig
-X-ME-Proxy: <xmx:M8miavBWarfUa6D6IysT9CYKeQgrJNTUSTo-A0zpUg3D7UuL_IKAPg>
-    <xmx:M8miamMSUnZ5QmvI7-jdEMuVM3QTHpBb_LNb3Qy1xf6yakZigGAtIw>
-    <xmx:M8miaoyabzKC_ovDCCXPzXA0EZ5JT0xi6L9AcbqfdjeOhbEbaqi2aQ>
-    <xmx:M8miamX1u_GmC_DleDZppdcDY86ZeRV8OwSxVy-bc2VY_7EiR8n9vQ>
-    <xmx:M8miaqOVdg7HbofQAz-FwQk74bIbe-o7H30cUdv7Q17rOeKRKEdGFkdD>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id A8E4C7811F0; Thu, 10 Sep 2026 11:13:55 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="Ye0ZfhhC";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="CFJEDO+G";
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="XJXdvWaF";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="X/YemN1Z"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 21A11219A0;
+	Thu, 10 Sep 2026 15:32:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1789054374; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=u+K7ooVeSqRxjIANte2bbg3RZ65EwBMeUVjE/SVMc5A=;
+	b=Ye0ZfhhC5Lmz/BxATsM2B+JzJtLa8HYRZzjN2qTnCWADRr6tpIkldt5l15o0L5el79nBz2
+	oxOoqtQd2ouUdCLsphREEXlorloZZHY2/rFncCrdsARA22zuA49YjggNQYafpgpHqYkRO6
+	j9whO/q1716g3jKwYWpPYf+drdXl+x8=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1789054374;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=u+K7ooVeSqRxjIANte2bbg3RZ65EwBMeUVjE/SVMc5A=;
+	b=CFJEDO+GQCFf0ce6h7Qw97LPvPGntfnxuuvt147Evijut8os4kPxwuboU+JLN1tLWEGHXC
+	YKBKJGAx7Xn6d0BA==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=XJXdvWaF;
+	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b="X/YemN1Z"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1789054370; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=u+K7ooVeSqRxjIANte2bbg3RZ65EwBMeUVjE/SVMc5A=;
+	b=XJXdvWaFFLx8zFfzQHInjvc/ynoER3OZ5wux2JpT5ct+UqLpqlLniDhzvJOip6EDunwaDq
+	quHk2QHvF40YLVGOA+vgEf/w+GlazRd7eXPybgJfxPkseGWQhtjkNr2+S3AMlkX3w5EE5W
+	oM0GMnKUGclL7NeHFKYCPmbRMvs3VrQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1789054370;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=u+K7ooVeSqRxjIANte2bbg3RZ65EwBMeUVjE/SVMc5A=;
+	b=X/YemN1ZpByULvRUTvR6JHpWh1rpkcxrIY4nd4XWcdtghJ/BM/ZPQz32A8R3KZxhdbyfKL
+	v4PU0Kq3UpVylZBg==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 757391326D;
+	Thu, 10 Sep 2026 15:32:43 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id bsfdGZvNomr8FQAAD6G6ig
+	(envelope-from <fmancera@suse.de>); Thu, 10 Sep 2026 15:32:43 +0000
+Message-ID: <5a4d00a9-65ba-4f58-8c0f-9d6ce97f6bad@suse.de>
+Date: Thu, 10 Sep 2026 17:32:04 +0200
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: A5RAmHdl2Lqc
-Date: Thu, 10 Sep 2026 11:13:33 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: NeilBrown <neil@brown.name>
-Cc: "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Christian Brauner" <brauner@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
- linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Message-Id: <61fedba0-78f4-403f-9f74-0795ccbfaf52@slotpi15m67>
-In-Reply-To: <20260910002934.192979-5-neilb@ownmail.net>
-References: <20260910002934.192979-1-neilb@ownmail.net>
- <20260910002934.192979-5-neilb@ownmail.net>
-Subject: Re: [PATCH 4/7] vfs: change vfs_lookup_open() to return found dentry in
- path.dentry.
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 01/13 net-next] net: ipv4: introduce CONFIG_IPV4 to
+ decouple the IPv4 stack
+To: Nicolai Buchwitz <nb@tipi-net.de>
+Cc: netdev@vger.kernel.org, horms@kernel.org, kuba@kernel.org,
+ pabeni@redhat.com, edumazet@google.com, davem@davemloft.net,
+ Jason Gunthorpe <jgg@ziepe.ca>, Leon Romanovsky <leon@kernel.org>,
+ Andrew Lunn <andrew+netdev@lunn.ch>, Tony Nguyen
+ <anthony.l.nguyen@intel.com>, Przemek Kitszel
+ <przemyslaw.kitszel@intel.com>, Elad Nachman <enachman@marvell.com>,
+ Saeed Mahameed <saeedm@nvidia.com>, Tariq Toukan <tariqt@nvidia.com>,
+ Mark Bloch <mbloch@nvidia.com>, Ido Schimmel <idosch@nvidia.com>,
+ Petr Machata <petrm@nvidia.com>, Edward Cree <ecree.xilinx@gmail.com>,
+ Maxime Chevallier <maxime.chevallier@bootlin.com>,
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>,
+ Alexandre Torgue <alexandre.torgue@foss.st.com>,
+ Arend van Spriel <arend.vanspriel@broadcom.com>,
+ Miri Korenblit <miriam.rachel.korenblit@intel.com>,
+ Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>,
+ Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>,
+ Chaitanya Kulkarni <kch@nvidia.com>, Saurav Kashyap <skashyap@marvell.com>,
+ Javed Hasan <jhasan@marvell.com>, GR-QLogic-Storage-Upstream@marvell.com,
+ "James E.J. Bottomley" <James.Bottomley@hansenpartnership.com>,
+ "Martin K. Petersen" <mkp@kernel.org>, Nilesh Javali <njavali@marvell.com>,
+ Manish Rangankar <mrangankar@marvell.com>, Varun Prakash
+ <varun@chelsio.com>, Alexander Viro <viro@zeniv.linux.org.uk>,
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
+ David Howells <dhowells@redhat.com>, Marc Dionne <marc.dionne@auristor.com>,
+ Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
+ Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>,
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+ Marek Lindner <marek.lindner@mailbox.org>,
+ Simon Wunderlich <sw@simonwunderlich.de>,
+ Antonio Quartulli <antonio@mandelbit.com>,
+ Sven Eckelmann <sven@narfation.org>,
+ Nikolay Aleksandrov <razor@blackwall.org>,
+ Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
+ Phil Sutter <phil@nwl.cc>, Johannes Berg <johannes@sipsolutions.net>,
+ Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>,
+ Geliang Tang <geliang@kernel.org>, Julian Anastasov <ja@ssi.bg>,
+ Aaron Conole <aconole@redhat.com>, Eelco Chaudron <echaudro@redhat.com>,
+ Ilya Maximets <i.maximets@ovn.org>, Allison Henderson <achender@kernel.org>,
+ Jamal Hadi Salim <jhs@mojatatu.com>, Jiri Pirko <jiri@resnulli.us>,
+ Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+ Xin Long <lucien.xin@gmail.com>, "D. Wythe" <alibuda@linux.alibaba.com>,
+ Dust Li <dust.li@linux.alibaba.com>, Sidraya Jayagond
+ <sidraya@linux.ibm.com>, Mahanta Jambigi <mjambigi@linux.ibm.com>,
+ Tony Lu <tonylu@linux.alibaba.com>, Wen Gu <guwen@linux.alibaba.com>,
+ Jon Maloy <jmaloy@redhat.com>, Tung Quang Nguyen
+ <tung.quang.nguyen@est.tech>, Steffen Klassert
+ <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>,
+ Casey Schaufler <casey@schaufler-ca.com>, Paul Moore <paul@paul-moore.com>,
+ James Morris <jmorris@namei.org>, "Serge E. Hallyn" <serge@hallyn.com>,
+ Vikas Gupta <vikas.gupta@broadcom.com>,
+ Bhargava Marreddy <bhargava.marreddy@broadcom.com>,
+ Rajashekar Hudumula <rajashekar.hudumula@broadcom.com>,
+ =?UTF-8?Q?Markus_Bl=C3=B6chl?= <markus@blochl.de>,
+ Arnd Bergmann <arnd@arndb.de>, Heiner Kallweit <hkallweit1@gmail.com>,
+ Florian Fainelli <florian.fainelli@broadcom.com>,
+ Krzysztof Kozlowski <krzk@kernel.org>,
+ Qingfang Deng <qingfang.deng@linux.dev>, Julian Braha
+ <julianbraha@gmail.com>, Ethan Nelson-Moore <enelsonmoore@gmail.com>,
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+ Eric Biggers <ebiggers@kernel.org>, Ard Biesheuvel <ardb@kernel.org>,
+ Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>,
+ Willem de Bruijn <willemb@google.com>, Alyssa Ross <hi@alyssa.is>,
+ Joel Granados <joel.granados@kernel.org>, Oleg Nesterov <oleg@redhat.com>,
+ linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
+ intel-wired-lan@lists.osuosl.org, oss-drivers@corigine.com,
+ linux-net-drivers@amd.com, linux-stm32@st-md-mailman.stormreply.com,
+ linux-arm-kernel@lists.infradead.org, linux-wireless@vger.kernel.org,
+ brcm80211@lists.linux.dev, brcm80211-dev-list.pdl@broadcom.com,
+ linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org,
+ target-devel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
+ b.a.t.m.a.n@lists.open-mesh.org, bridge@lists.linux.dev,
+ netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
+ mptcp@lists.linux.dev, lvs-devel@vger.kernel.org, dev@openvswitch.org,
+ rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org,
+ linux-s390@vger.kernel.org, tipc-discussion@lists.sourceforge.net,
+ linux-security-module@vger.kernel.org
+References: <20260910144914.8025-1-fmancera@suse.de>
+ <20260910144914.8025-2-fmancera@suse.de>
+ <aeb37452e976f5d44540ac3a0999d07b@tipi-net.de>
+Content-Language: en-US
+From: Fernando Fernandez Mancera <fmancera@suse.de>
+In-Reply-To: <aeb37452e976f5d44540ac3a0999d07b@tipi-net.de>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
+X-Spam-Level: 
+X-Rspamd-Action: no action
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Queue-Id: 21A11219A0
+X-Spamd-Result: default: False [-1.01 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	FORGED_RECIPIENTS(2.00)[m:horms@kernel.org,m:kuba@kernel.org,m:edumazet@google.com,m:davem@davemloft.net,m:leon@kernel.org,m:andrew+netdev@lunn.ch,m:anthony.l.nguyen@intel.com,m:przemyslaw.kitszel@intel.com,m:enachman@marvell.com,m:saeedm@nvidia.com,m:tariqt@nvidia.com,m:mbloch@nvidia.com,m:idosch@nvidia.com,m:petrm@nvidia.com,m:ecree.xilinx@gmail.com,m:maxime.chevallier@bootlin.com,m:mcoquelin.stm32@gmail.com,m:alexandre.torgue@foss.st.com,m:arend.vanspriel@broadcom.com,m:miriam.rachel.korenblit@intel.com,m:kbusch@kernel.org,m:axboe@kernel.dk,m:hch@lst.de,m:sagi@grimberg.me,m:kch@nvidia.com,m:skashyap@marvell.com,m:jhasan@marvell.com,m:GR-QLogic-Storage-Upstream@marvell.com,m:James.Bottomley@hansenpartnership.com,m:mkp@kernel.org,m:njavali@marvell.com,m:mrangankar@marvell.com,m:varun@chelsio.com,m:brauner@kernel.org,m:marc.dionne@auristor.com,m:trondmy@kernel.org,m:anna@kernel.org,m:cel@kernel.org,m:jlayton@kernel.org,m:neil@brown.name,m:Dai.Ngo@oracle.com,m:marek.lindner@mailbox.o
+ rg,m:antonio@mandelbit.com,m:sven@narfation.org,m:razor@blackwall.org,m:pablo@netfilter.org,m:phil@nwl.cc,m:matttbe@kernel.org,m:martineau@kernel.org,m:geliang@kernel.org,m:i.maximets@ovn.org,m:achender@kernel.org,m:jhs@mojatatu.com,m:marcelo.leitner@gmail.com,m:lucien.xin@gmail.com,m:alibuda@linux.alibaba.com,m:dust.li@linux.alibaba.com,m:sidraya@linux.ibm.com,m:mjambigi@linux.ibm.com,m:tonylu@linux.alibaba.com,m:guwen@linux.alibaba.com,m:tung.quang.nguyen@est.tech,m:herbert@gondor.apana.org.au,m:paul@paul-moore.com,m:jmorris@namei.org,m:serge@hallyn.com,m:vikas.gupta@broadcom.com,m:bhargava.marreddy@broadcom.com,m:rajashekar.hudumula@broadcom.com,m:markus@blochl.de,m:arnd@arndb.de,m:hkallweit1@gmail.com,m:florian.fainelli@broadcom.com,m:krzk@kernel.org,m:qingfang.deng@linux.dev,m:julianbraha@gmail.com,m:enelsonmoore@gmail.com,m:gregkh@linuxfoundation.org,m:ebiggers@kernel.org,m:ardb@kernel.org,s:oleg@redhat.com,s:linux-stm32@st-md-mailman.stormreply.com,s:linux-fsdevel@vger.kernel
+ .org,s:linux-kernel@vger.kernel.org,s:linux-nfs@vger.kernel.org,s:linux-rdma@vger.kernel.org,s:linux-s390@vger.kernel.org,s:linux-scsi@vger.kernel.org,s:linux-sctp@vger.kernel.org,s:linux-security-module@vger.kernel.org,s:linux-wireless@vger.kernel.org,s:lvs-devel@vger.kernel.org,s:netfilter-devel@vger.kernel.org,s:target-devel@vger.kernel.org];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	FROM_HAS_DN(0.00)[];
+	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	MIME_TRACE(0.00)[0:+];
+	FREEMAIL_CC(0.00)[vger.kernel.org,kernel.org,redhat.com,google.com,davemloft.net,ziepe.ca,lunn.ch,intel.com,marvell.com,nvidia.com,gmail.com,bootlin.com,foss.st.com,broadcom.com,kernel.dk,lst.de,grimberg.me,hansenpartnership.com,chelsio.com,zeniv.linux.org.uk,suse.cz,auristor.com,brown.name,oracle.com,talpey.com,mailbox.org,simonwunderlich.de,mandelbit.com,narfation.org,blackwall.org,netfilter.org,strlen.de,nwl.cc,sipsolutions.net,ssi.bg,ovn.org,mojatatu.com,resnulli.us,linux.alibaba.com,linux.ibm.com,est.tech,secunet.com,gondor.apana.org.au,schaufler-ca.com,paul-moore.com,namei.org,hallyn.com,blochl.de,arndb.de,linux.dev,linuxfoundation.org,alyssa.is,lists.osuosl.org,corigine.com,amd.com,st-md-mailman.stormreply.com,lists.infradead.org,lists.linux.dev,lists.open-mesh.org,openvswitch.org,oss.oracle.com,lists.sourceforge.net];
+	ARC_NA(0.00)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCVD_TLS_ALL(0.00)[];
+	R_RATELIMIT(0.00)[to_ip_from(RLdey6otz8cz7qhffota9ydd97)];
+	TO_DN_SOME(0.00)[];
+	TO_MATCH_ENVRCPT_SOME(0.00)[];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RCVD_COUNT_TWO(0.00)[2];
+	FROM_EQ_ENVFROM(0.00)[];
+	DKIM_TRACE(0.00)[suse.de:+];
+	RCPT_COUNT_GT_50(0.00)[133];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	MID_RHS_MATCH_FROM(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TAGGED_RCPT(0.00)[netdev];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:dkim,suse.de:email,suse.de:mid,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo]
+X-Spam-Flag: NO
+X-Spam-Score: -1.01
 
-On Thu, 10 Sep 2026, NeilBrown wrote:
+On 9/10/26 5:11 PM, Nicolai Buchwitz wrote:
+> Hi Fernando,
+> 
+> Thanks for the patch - after nearly 30 years IPv6 should be mature 
+> enough :)
+> 
+> On 10.9.2026 16:48, Fernando Fernandez Mancera wrote:
+>> Historically, the IPv4 protocol has been linked to the core INET
+>> subsystem. Because shared infrastructure like the TCP/UDP engine,
+>> routing or INET hashtables live inside net/ipv4/, it has been impossible
+>> to compile a kernel with only IPv6 support.
+>>
+>> This patch introduces the CONFIG_IPV4 Kconfig symbol, which is set to
+>> 'def_bool y' for now. This does not allow to completely disable the
+>> IPv4 stack yet but it lays the necessary build-system work for that
+>> goal.
+>>
+>> In addition, multiple subsystems Kconfig symbols across networking
+>> features like tunnels, drivers and filesystems have been adjusted to
+>> depend on IPv4. Keep on mind that follow-up work is required to convert
+>> the Kconfig symbol to bool and remove the dependency on IPv4 where it
+>> makes sense.
+>>
+>> Signed-off-by: Fernando Fernandez Mancera <fmancera@suse.de>
+>> ---
+> 
+>> [...]
+> 
+>> diff --git a/net/packet/Kconfig b/net/packet/Kconfig
+>> index 2997382d597c..00fda9e08cb0 100644
+>> --- a/net/packet/Kconfig
+>> +++ b/net/packet/Kconfig
+>> @@ -5,6 +5,7 @@
+>>
+>>  config PACKET
+>>      tristate "Packet socket"
+>> +    depends on IPV4
+> 
+>    depends on IPV4 || !INET
+> 
+> Otherwise this would break existing configs with INET=n. The same applies
+> to other affected options that currently permit INET=n.
 
-> vfs: change vfs_lookup_open() to return found dentry in path.dentry.
->
-> The caller - nfsd - needs to know the type of object found when a
-> non-regular file was found to exist.  This is most easily done
-> by passing back the dentry.
->
-> So change calling pattern so that the path (now called "path") contains
-> the parent dentry on entry and the child dentry on exit.
-> vfs_lookup_open() will dput() the parent and caller must dput() the
-> child.
->
-> If lookup_open() returns -EFTYPE (from ->atomic_open()) we need to
-> use d_lookup() to find the dentry.  If ->atomic_open() didn't add a
-> dentry to the dcache we return %NULL in %path->dentry.
->
-> Signed-off-by: NeilBrown <neil@brown.name>
+That is a good point. I will review the other configs too.
 
-"vfs_lookup_open() will dput() the parent and caller must dput() the
-child."
+Thanks!
+Fernando.
 
-Is that the whole contract? When lookup_noperm_common() or
-alloc_empty_file() fails, path->dentry still holds the parent on return:
+> 
+>> [...]
+> 
+> Thanks,
+> Nicolai
+> 
 
-	error = lookup_noperm_common(last, path->dentry);
-	if (error)
-		return ERR_PTR(error);
-
-	file = alloc_empty_file(open_flag, current_cred());
-	if (IS_ERR(file))
-		return file;
-
-The parent is replaced only after lookup_open() returns. Could the
-message say that on success and on -EFTYPE the parent is replaced by
-the child and its reference dropped, and that on any other error @path
-is untouched?
-
-
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -4606,7 +4606,7 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
->
->  /**
->   * vfs_lookup_open - open and possibly create a regular file
-> - * @parent: directory to contain file
-> + * @path: directory to contain file
-
-Now that @path is in/out, could this say what it holds on return as
-well? Something like "on entry, the directory to contain the file; on
-return, the dentry found".
-
-The prototype in include/linux/namei.h still names this parameter
-"parent".
-
-> @@ -4619,9 +4619,15 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
->   * If the fs object found is not a regular file then -EFTYPE is
->   * returned.
->   *
-> + * @path is updated to contain the dentry that was found if possible.
-> + * In particular, if -EFTYPE is returned, then @path.dentry will be the
-> + * object that is not a regular file, or %NULL.
-> + * Consequently the caller must be prepared for @path.dentry to be
-> + * dput(), an it must dput() whatever is in @path.dentry after the call.
-
-"an it must dput()" -> "and it must dput()".
-
-"if possible" leaves the reader guessing which paths update @path. As
-above, it is updated on success and on -EFTYPE, and untouched on every
-other error. Since the caller cannot tell the two cases apart from the
-return value alone, is that worth stating here?
-
-
-> @@ -4658,9 +4664,18 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
->  	op.mode = mode;
->  	dentry = lookup_open(&nd, file, &op);
->
-> -	if (IS_ERR(dentry))
-> +	if (IS_ERR(dentry)) {
-> +		if (dentry == -EFTYPE) {
-
-dentry is a struct dentry * and -EFTYPE is an int. Both compilers warn:
-
-warning: comparison between pointer and integer ('struct dentry *' and
-'int') [-Wpointer-integer-compare]
-
-and with CONFIG_WERROR (the default for COMPILE_TEST builds) fs/namei.c
-no longer compiles. It evaluates as intended only because the int is
-converted to a pointer with the same bits as ERR_PTR(-EFTYPE). Should
-this be:
-
-		if (PTR_ERR(dentry) == -EFTYPE) {
-
-
-> +			/* Try to determine what was found */
-> +			struct dentry *child = d_lookup(path->dentry, &nd.last);
-> +			dput(path->dentry);
-> +			path->dentry = child;
-> +			WARN_ON_ONCE(child && d_is_reg(child));
-
-lookup_open() drops the parent's inode lock before returning, so this
-d_lookup() runs unlocked. Between ->atomic_open() rejecting a
-non-regular object and this lookup, another task can unlink it and
-create a regular file with the same name. d_lookup() can also return a
-hashed negative dentry.
-
-Either way @path.dentry is then neither "the object that is not a
-regular file" nor NULL, and the WARN fires on a race that ordinary
-concurrent activity (remote, over nfsd) can drive. Could this store
-NULL when the child is negative or regular, and drop the WARN, so the
-documented contract always holds?
-
-Does this recovery find anything for most ->atomic_open()
-implementations? lookup_open() only reaches ->atomic_open() with a
-negative or in-lookup dentry, and atomic_open() dputs it on error, so
-what d_lookup() sees is whatever the filesystem hashed before failing.
-
-The NFS client d_drop()s the dentry before returning -EFTYPE:
-
-fs/nfs/dir.c:nfs_atomic_open() {
-	...
-		d_drop(dentry);
-		switch (err) {
-		...
-		case -EISDIR:
-		case -ENOTDIR:
-			if (open_flags & __O_REGULAR) {
-				err = -EFTYPE;
-				break;
-			}
-
-gfs2 and cifs return -EFTYPE before instantiating anything. Only ceph
-checks d_is_reg() on a dentry it has already spliced. So on gfs2, cifs
-and a re-exported NFS mount, path->dentry is always NULL here, and the
-caller cannot distinguish a directory from a symlink. That might not
-be acceptable for what nfsd needs. The found type needs to come
-back from ->atomic_open() itself, probably.
-
-
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
