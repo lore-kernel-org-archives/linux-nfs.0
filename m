@@ -1,57 +1,57 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 407A258E2C6;
-	Thu, 10 Sep 2026 18:55:45 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E4C5158FD3D
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Sep 2026 19:44:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789066546; cv=none; b=qI04ZCD/mffz8cpWqepYGMFV8Mp+SckjY1mMcAa6rsDe9kbC0stcfx2zD+J7+I3u1JbuCYOfprkKBtOdQXCzDaRdWO8wC3s07a4U34v1gZM4aPdg96uWmghvXCkFNLpDqk3ix6QSKvlbeFommd9l3PlW59y1YVogEyWBeklnOxg=
+	t=1789069449; cv=none; b=tWH3XFUTxhS5/TK1QmSd/6tRbAj7tJG7L4PrqIuHiL+1iWS9ML8zkWimtj74UWKrAvtC1P3VA2+wkh839baEZjsIQIFTG7ieaOYPFQ4nff7EL8nZLcAvV/0Spl8p2d9sL21jc9TqmT9OULuvIcpg7QysulgFWTE/j7qVXn3Ehxs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789066546; c=relaxed/simple;
-	bh=jA1OIjMBwv91UuOt5Tn56hy+6IGDF/xyXBVDc+O0W7c=;
+	s=arc-20240116; t=1789069449; c=relaxed/simple;
+	bh=NDSmdLHNLWZfPpisRsXI3ev57yKL/qz1yWxAPWKXxb8=;
 	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=A+ac7OsFdCSk2ZgjggUEYNyk4qABfHooj+hlO9MbViUc0WCRtXI5eLFkxpk7W9dQ5JYKjN2SCapwFEuOSIMOYCeUAUznU6rWrRcXDK+Uv8sJjOm3BmsrZD6qMF1fS9r9KQgw8cQJYtc7xANVQGzoX0yYNcmROoSIKr0IrqWz3ac=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=F6i3O5AT; arc=none smtp.client-ip=100.103.45.18
+	 Subject:Content-Type; b=uC5FIXk/8x/b5lG9jXHWeCjMcJ9B0Uqb0fWnNsnocDejKx3CFolZWYO02c3xGGKEz5AjK2CruVWx0K7Cx4iXPc9GRHGbiD3sy59iLpaHTKTtDptUaynsEmSJeKK+fpJl69bDQCAxrmX0vDWFIeoWPqpmOJ/Ha9eT4ucONJsyZt8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Jsk4fAD/; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="F6i3O5AT"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C4DDF1F008A1;
-	Thu, 10 Sep 2026 18:55:43 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Jsk4fAD/"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 253221F00893;
+	Thu, 10 Sep 2026 19:44:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789066544;
-	bh=CrpBp6UrC3ldEa5GcKmmPo3oz74G2RAnpQBvJ2o9k1k=;
+	s=k20260515; t=1789069447;
+	bh=ttSVIgdk6jH8bW95abHDSQ4zzL4XFOk8AZIYRLz2bPA=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=F6i3O5AT5R2f9Yx+JsX4oi2MbBVZy6vhmuah8fyZ7HoRM4fcwu9ko/hMOipVkG55B
-	 1Zmg31PLcmFyjN/6qwvx+Gi14CUmpNgqwIW3GIcgTV8r/HdYjj80cmHBvTlnPKg5uR
-	 OFZIpZsE3LqRG10E9rSuJaexxU9wT5CasLzhcaoOUlc1HtwpM6VduzyZ+RCbNEeTCG
-	 7mnywN+8+H6LvsHwXafWrsaQmZDzIueYYyazPefKJGcMkw5e44QHRXV4epY9oIt8b/
-	 VxUYOa++vQ7n7D+qHzq2qnf380yDhptkzXHvt9CgqRKD1Qe5yMUYoD9jvQW061SukA
-	 KzIemnQ3+sQfA==
+	b=Jsk4fAD/stluB1otq6yPS0SNLTbCJA2CIqJZtGYg7zwlzgerDQuFvdRC5k/9pogI6
+	 Op+gjIm2ap7jFtls92KxzMMX4h66bvSMmMHp07SddWref3JyG7EsVhl/BqkbRfeE0q
+	 BL01XzG0qLRqtyzFCynTkhSuzV7TCo5m8RVlaTjrBPa/UTd9md7FUfu5TUYhwqgYUh
+	 Lq3HbAonsOOtlosDUF/72Q3LRkF0tK7mQyj9BeEUqKmEGuYJBp9ZgYHAhP6j3f0uOK
+	 O+1RZcLt/JsL59F3767CRBkRJPf7YgclstfN637mKvYg2LMHbSKQwvnsm0NoqWju3o
+	 iGYnUcCXSjkag==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id C451EF40069;
-	Thu, 10 Sep 2026 14:55:42 -0400 (EDT)
+	by mailfauth.phl.internal (Postfix) with ESMTP id 5409CF40066;
+	Thu, 10 Sep 2026 15:44:06 -0400 (EDT)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Thu, 10 Sep 2026 14:55:42 -0400
-X-ME-Sender: <xms:Lv2iajO020W1DUB7kxvyyEY7DfRl-e2BIJTX073yLiFUhMClSPWBiA>
-    <xme:Lv2iaoxfBFeDEd_VmLtT0qd94HDtXRhhpDvUfHkJM_m66XDNqrBNS-B2koOqMN4lP
-    Sa0Ug9f_2FH0Kq2r3-yqf79TNecZT6-Lakr_OXpOKrFWd9sWBuPoBo>
-X-ME-Proxy-Cause: dmFkZTF4DbH3FZ3dPjetu62giaNH+KK3h7Vnr+fEg85PysIt/4nck/4imrawKEp8DsE6Pr
-    r0whIQLHunubPaHCLLANlXfZ8RvcApjV2EH4HvJnIa7IIlTjW/aieFsEYioNdVnIC1pGZ7
-    r7+Be7rv47aINSOQmPbhGzYvhtHf8def9lEg4PtjWAs9LAnZxAA8HHEDG0Nu5Q4D+ErnGo
-    wbL3v3GuUBm9m4647OHl9jiHICZ+8M7+WaOVrci5hxhVfG9CY47ExztZrbckd1/ZxcD0FZ
-    vwDE7nYg/E3N/QLZgdrUVACuceWMJkJ6Wb+Z2hJc7h8HgoI8f/4b+gnUnlKGDgCx/5CDPJ
-    po6DIC9Q8yofj6Gyo3f7FKL5mt0EHv82L6g17/YO3gWxVRbIFJetz+YWg8fgbv7WuFfefm
-    hnLsmWUjBQVBzx6B9SMuUsPATs4OJtGO1f+mnt0J/1peJ5Nq63D3J9EC8B1PaX5BKnWN5n
-    NTUc5qHazXKrxzCndz85zJiyINbeiTNLTCeRjTR7RMcNSUFcXqheUFmGnh70f88dysYIhz
-    x/wWpwuzN1bBTEbUGCyOiSyCxaCxeioaasg+88aeLfS3v1QhYfc5bHYGwrmHrU/cjZ20YX
-    SgmgetWptaxFGpGrTy/DDcJdYBDIVEtFh7oH120w4eOuhoZaxlVn3LGzD7xQ
-X-ME-Proxy: <xmx:Lv2iagKDhe4ENuyDEBPe0XuX5JV95iH3pOzVxXrfT1HwGt5hmy731g>
-    <xmx:Lv2iavY0YWPFwc5heNSQaejsEbm3T9Hzm9qfGqn3H3Ql0pmX2TgP2A>
-    <xmx:Lv2ias4lIQtLaB1oGx0UNzfhFXq0OCShC-yE9ybCKPEj_MhGksso3A>
-    <xmx:Lv2iaoJl7Z6wMLyQsn5RJgRWdIhUrImOwvxM7EqgPgmRZWBE2AuVGw>
-    <xmx:Lv2iaqawY0GSonv8zq4bA_iHkDoRcvBDh1ekvmmQAljAmwqWH4krgir7>
+  by phl-compute-10.internal (MEProxy); Thu, 10 Sep 2026 15:44:06 -0400
+X-ME-Sender: <xms:hgijatKendLiks4omkEsjnbVtgo8EeL0t5PHiSRnAqNLmocqac1yoA>
+    <xme:hgijaj8f9KryBBd-Wa3prBy92nayzUYhelSCOwricspCMOg5bfW-mba8zM4qRvrez
+    U5YYCpax1-2_n8TdPt1hDacRBqEsZw4KOgIYyVt7UyELf8tetUbXTOF>
+X-ME-Proxy-Cause: dmFkZTGl8jAL90lzK/34eQf8aVRvno66hAYp5+OuxVRYrHeZj1EltiDgZxZbX4j9X1xw7k
+    SoKl5QPlUS+u8UrRf1KPVt4jdN9AANu828pfpIMkeRllfJ+7HG8/JI8w6brtq194NzYinV
+    u5blyXe0ylJHsfEYsXHoaxQgjVKzPJAg49SIu+SCENSCEiPLVFVfNMLVH8aAN7KiDlwCOP
+    yKPHMZfJJl70l9hUFhc6YwD1YmIR0xxMCKRf5fjxpDJWyx341zYE4hzg2kGIg9BW+huVLQ
+    9+PY7GtVQU83wwyn//1C+rZq14X6lnn8AL14atGkw6lb0xazizBtCtvca5KD6we0iXRZfM
+    GmueDg922+WBGaUl7iADNOf+v4OHV0QzqvDQWWC1Usl+BkndA8l8BIN7PEK6OAHC8U79zO
+    3YmHSKZWiN4nD4wEqf18qQDnkkl/QYW5f5/YIanHr0CneYb5COkyu6C4A3NRg4j2XbRpCy
+    5pJYcEoalPrQiGALxrG5vUXDGi1/dnrH0dQCHXSZmoAN9W3q4B6Wv/owivCIOSXDxZfdcT
+    PJeSDnnLzhbUYLYcESavzlWi2yNsEvgdZuL+DDGDGylxCH36TUMDuY8d1VMLQvFFNnhBG+
+    pEcI7PWyCCK4Xdsre9NdGKBsHGyKvjYCRjI328qfIzzBUGE16RDQhFCQFCZA
+X-ME-Proxy: <xmx:hgijajd6FF1IlyAVes_htyHZEd2DaE7sO4PziFrGBxXbpZ19_rmC_Q>
+    <xmx:hgijaqkKVMayF8TgopXoOFOCtfTLxVJ3h72gHUEF9NuBHt7JeH2FUg>
+    <xmx:hgijalwf3_A8mcCnPrvwbkn3mKPwx9uNyneXwsZa681UQr8c8DtCcw>
+    <xmx:hgijatO487koBTqhmn2KY2r8RXeT7_Qet85bg4ml4BzVXIeTdqOczA>
+    <xmx:hgijamhN_ZaxHCung245f-VzSxKMi-XmvHdi1y5irVLyA5PW7HYQsL6e>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 8F75E7811F0; Thu, 10 Sep 2026 14:55:42 -0400 (EDT)
+	id 27E987811F0; Thu, 10 Sep 2026 15:44:06 -0400 (EDT)
 X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -59,155 +59,72 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AHIlAaKAQArc
-Date: Thu, 10 Sep 2026 14:55:20 -0400
+X-ThreadId: AU_HLaoPh8kZ
+Date: Thu, 10 Sep 2026 15:43:44 -0400
 From: "Chuck Lever" <cel@kernel.org>
-To: "Fernando Fernandez Mancera" <fmancera@suse.de>, netdev@vger.kernel.org
-Cc: "Simon Horman" <horms@kernel.org>, "Jakub Kicinski" <kuba@kernel.org>,
- "Paolo Abeni" <pabeni@redhat.com>, edumazet@google.com,
- davem@davemloft.net, "Jason Gunthorpe" <jgg@ziepe.ca>,
- "Leon Romanovsky" <leon@kernel.org>,
- "Andrew Lunn" <andrew+netdev@lunn.ch>,
- "Tony Nguyen" <anthony.l.nguyen@intel.com>,
- "Przemek Kitszel" <przemyslaw.kitszel@intel.com>,
- "Elad Nachman" <enachman@marvell.com>,
- "Saeed Mahameed" <saeedm@nvidia.com>, "Tariq Toukan" <tariqt@nvidia.com>,
- "Mark Bloch" <mbloch@nvidia.com>, "Ido Schimmel" <idosch@nvidia.com>,
- "Petr Machata" <petrm@nvidia.com>,
- "Edward Cree" <ecree.xilinx@gmail.com>,
- "Maxime Chevallier" <maxime.chevallier@bootlin.com>,
- "Maxime Coquelin" <mcoquelin.stm32@gmail.com>,
- "Alexandre Torgue" <alexandre.torgue@foss.st.com>,
- "Arend van Spriel" <arend.vanspriel@broadcom.com>,
- "Miri Korenblit" <miriam.rachel.korenblit@intel.com>,
- "Keith Busch" <kbusch@kernel.org>, "Jens Axboe" <axboe@kernel.dk>,
- "Christoph Hellwig" <hch@lst.de>, "Sagi Grimberg" <sagi@grimberg.me>,
- "Chaitanya Kulkarni" <kch@nvidia.com>,
- "Saurav Kashyap" <skashyap@marvell.com>,
- "Javed Hasan" <jhasan@marvell.com>,
- GR-QLogic-Storage-Upstream@marvell.com,
- "James Bottomley" <James.Bottomley@hansenpartnership.com>,
- "Martin K. Petersen" <mkp@kernel.org>,
- "Nilesh Javali" <njavali@marvell.com>,
- "Manish Rangankar" <mrangankar@marvell.com>,
- "Varun Prakash" <varun@chelsio.com>,
- "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Christian Brauner" <brauner@kernel.org>, "Jan Kara" <jack@suse.cz>,
- "David Howells" <dhowells@redhat.com>,
- "Marc Dionne" <marc.dionne@auristor.com>,
- "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
- NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
- "Marek Lindner" <marek.lindner@mailbox.org>,
- "Simon Wunderlich" <sw@simonwunderlich.de>,
- "Antonio Quartulli" <antonio@mandelbit.com>,
- "Sven Eckelmann" <sven@narfation.org>,
- "Nikolay Aleksandrov" <razor@blackwall.org>,
- "Pablo Neira Ayuso" <pablo@netfilter.org>,
- "Florian Westphal" <fw@strlen.de>, "Phil Sutter" <phil@nwl.cc>,
- "Johannes Berg" <johannes@sipsolutions.net>,
- "Matthieu Baerts" <matttbe@kernel.org>,
- "Mat Martineau" <martineau@kernel.org>,
- "Geliang Tang" <geliang@kernel.org>, "Julian Anastasov" <ja@ssi.bg>,
- "Aaron Conole" <aconole@redhat.com>,
- "Eelco Chaudron" <echaudro@redhat.com>,
- "Ilya Maximets" <i.maximets@ovn.org>,
- "Allison Henderson" <achender@kernel.org>,
- "Jamal Hadi Salim" <jhs@mojatatu.com>, "Jiri Pirko" <jiri@resnulli.us>,
- "Marcelo Ricardo Leitner" <marcelo.leitner@gmail.com>,
- "Xin Long" <lucien.xin@gmail.com>,
- "D. Wythe" <alibuda@linux.alibaba.com>,
- "Dust Li" <dust.li@linux.alibaba.com>,
- "Sidraya Jayagond" <sidraya@linux.ibm.com>,
- "Mahanta Jambigi" <mjambigi@linux.ibm.com>,
- "Tony Lu" <tonylu@linux.alibaba.com>, "Wen Gu" <guwen@linux.alibaba.com>,
- "Jon Maloy" <jmaloy@redhat.com>,
- "Tung Quang Nguyen" <tung.quang.nguyen@est.tech>,
- "Steffen Klassert" <steffen.klassert@secunet.com>,
- "Herbert Xu" <herbert@gondor.apana.org.au>,
- "Casey Schaufler" <casey@schaufler-ca.com>,
- "Paul Moore" <paul@paul-moore.com>, "James Morris" <jmorris@namei.org>,
- "Serge E. Hallyn" <serge@hallyn.com>,
- "Vikas Gupta" <vikas.gupta@broadcom.com>,
- "Bhargava Marreddy" <bhargava.marreddy@broadcom.com>,
- "Rajashekar Hudumula" <rajashekar.hudumula@broadcom.com>,
- "Nicolai Buchwitz" <nb@tipi-net.de>,
- =?UTF-8?Q?Markus_Bl=C3=B6chl?= <markus@blochl.de>,
- "Arnd Bergmann" <arnd@arndb.de>,
- "Heiner Kallweit" <hkallweit1@gmail.com>,
- "Florian Fainelli" <florian.fainelli@broadcom.com>,
- "Krzysztof Kozlowski" <krzk@kernel.org>,
- "Qingfang Deng" <qingfang.deng@linux.dev>,
- "Julian Braha" <julianbraha@gmail.com>,
- "Ethan Nelson-Moore" <enelsonmoore@gmail.com>,
- "Greg Kroah-Hartman" <gregkh@linuxfoundation.org>,
- "Eric Biggers" <ebiggers@kernel.org>, "Ard Biesheuvel" <ardb@kernel.org>,
- "Neal Cardwell" <ncardwell@google.com>,
- "Kuniyuki Iwashima" <kuniyu@google.com>,
- "Willem de Bruijn" <willemb@google.com>, "Alyssa Ross" <hi@alyssa.is>,
- "Joel Granados" <joel.granados@kernel.org>,
- "Oleg Nesterov" <oleg@redhat.com>, linux-rdma@vger.kernel.org,
- linux-kernel@vger.kernel.org, intel-wired-lan@lists.osuosl.org,
- oss-drivers@corigine.com, linux-net-drivers@amd.com,
- linux-stm32@st-md-mailman.stormreply.com,
- linux-arm-kernel@lists.infradead.org, linux-wireless@vger.kernel.org,
- brcm80211@lists.linux.dev, brcm80211-dev-list.pdl@broadcom.com,
- linux-nvme@lists.infradead.org,
- "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
- target-devel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
- b.a.t.m.a.n@lists.open-mesh.org, bridge@lists.linux.dev,
- netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
- mptcp@lists.linux.dev, lvs-devel@vger.kernel.org, dev@openvswitch.org,
- rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org,
- linux-s390@vger.kernel.org, tipc-discussion@lists.sourceforge.net,
- linux-security-module@vger.kernel.org
-Message-Id: <ff6ff699-e942-455f-8816-49af24afb370@app.fastmail.com>
-In-Reply-To: <20260910144914.8025-2-fmancera@suse.de>
-References: <20260910144914.8025-1-fmancera@suse.de>
- <20260910144914.8025-2-fmancera@suse.de>
-Subject: Re: [PATCH 01/13 net-next] net: ipv4: introduce CONFIG_IPV4 to decouple the
- IPv4 stack
+To: "Jeff Layton" <jlayton@kernel.org>
+Cc: "Trond Myklebust" <trondmy@kernel.org>,
+ "Anna Schumaker" <anna@kernel.org>, NeilBrown <neil@brown.name>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, "David S. Miller" <davem@davemloft.net>,
+ "Eric Dumazet" <edumazet@google.com>, "Jakub Kicinski" <kuba@kernel.org>,
+ "Paolo Abeni" <pabeni@redhat.com>, "Simon Horman" <horms@kernel.org>,
+ "Donald Hunter" <donald.hunter@gmail.com>, "Shuah Khan" <shuah@kernel.org>,
+ linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+ netdev@vger.kernel.org, linux-kselftest@vger.kernel.org
+Message-Id: <73066b7b-119a-47f4-9ca1-2f2432c3c6a3@slotpi15m67>
+In-Reply-To: <20260910-nfsd-norpcb-v1-2-b4d5182d634c@kernel.org>
+References: <20260910-nfsd-norpcb-v1-0-b4d5182d634c@kernel.org>
+ <20260910-nfsd-norpcb-v1-2-b4d5182d634c@kernel.org>
+Subject: Re: [PATCH 2/5] NFSD: add a userspace-rpcbind flag to listener_set
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
+On Thu, 10 Sep 2026, Jeff Layton wrote:
+> Describe the interface that lets a caller take over rpcbind registration.
+
+> --- a/Documentation/netlink/specs/nfsd.yaml
+> +++ b/Documentation/netlink/specs/nfsd.yaml
+> @@ -483,13 +527,22 @@ operations:
+>      -
+>        name: listener-set
+> -      doc: set nfs running sockets
+> +      doc: >-
+> +        set nfs running sockets. A request that carries userspace-rpcbind
+> +        is answered with a reply rather than a bare ack, and the addr list
+> +        in that reply names only the listeners that have an rpcbind netid.
+
+"listeners that have an rpcbind netid" overstates the set. RDMA
+listeners have netids (rdma, rdma6) but are omitted from the
+reply.
+
+Following the way Solaris handles RDMA transport, NFSD never
+registered RDMA itself, so that is not a regression, but the doc
+should say what your filter actually selects.
 
 
-On Thu, Sep 10, 2026, at 10:48 AM, Fernando Fernandez Mancera wrote:
-> Historically, the IPv4 protocol has been linked to the core INET
-> subsystem. Because shared infrastructure like the TCP/UDP engine,
-> routing or INET hashtables live inside net/ipv4/, it has been impossible
-> to compile a kernel with only IPv6 support.
->
-> This patch introduces the CONFIG_IPV4 Kconfig symbol, which is set to
-> 'def_bool y' for now. This does not allow to completely disable the
-> IPv4 stack yet but it lays the necessary build-system work for that
-> goal.
->
-> In addition, multiple subsystems Kconfig symbols across networking
-> features like tunnels, drivers and filesystems have been adjusted to
-> depend on IPv4. Keep on mind that follow-up work is required to convert
-> the Kconfig symbol to bool and remove the dependency on IPv4 where it
-> makes sense.
->
-> Signed-off-by: Fernando Fernandez Mancera <fmancera@suse.de>
+>        attribute-set: server-sock
+>        flags: [admin-perm]
+>        do:
+>          request:
+>            attributes:
+>              - addr
+> +            - userspace-rpcbind
+> +        reply:
+> +          attributes:
+> +            - addr
+> +            - userspace-rpcbind
+> +            - rpcbind
 
-> diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
-> index e7808e5714dc..58e6f6db3100 100644
-> --- a/net/sunrpc/Kconfig
-> +++ b/net/sunrpc/Kconfig
-> @@ -1,7 +1,7 @@
->  # SPDX-License-Identifier: GPL-2.0-only
->  config SUNRPC
->  	tristate
-> -	depends on MULTIUSER
-> +	depends on MULTIUSER && IPV4
-> 
->  config SUNRPC_GSS
->  	tristate
+The spec declares an unconditional reply, but patch 4 sends one only
+when the request carried userspace-rpcbind. ynl has no way to express
+a conditional reply, and no other in-tree spec does this.
 
-Acked-by: Chuck Lever <cel@kernel.org>
+Either always send the reply (drop the userspace_rpcbind gate in
+patch 4, so a plain caller simply ignores it), or leave listener-set
+without a reply and put the registration data in a separate get
+operation. I lean toward always replying; that's is a little more
+"declarative".
 
 
 -- 
