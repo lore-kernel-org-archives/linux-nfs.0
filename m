@@ -1,73 +1,73 @@
-Received: from fout-b3-smtp.messagingengine.com (fout-b3-smtp.messagingengine.com [202.12.124.146])
+Received: from fhigh-b5-smtp.messagingengine.com (fhigh-b5-smtp.messagingengine.com [202.12.124.156])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE15725F7A9;
-	Thu, 10 Sep 2026 00:30:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.146
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7EA322DCC13;
+	Thu, 10 Sep 2026 00:30:15 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.156
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789000211; cv=none; b=G9Ex4V1zqgICytniBdWTRC0Nbc3+vNkeT7g5Nkm0zz5R5TlqBFf+lO8E4Ixn7ZRWfxBoKB8MQriduM8iAgPw+XE2uoHVkAnkNVK9Lgya/WsU4UQF/sTTiVAh2QMDf1Ckl5KwHjbBAKKS4sVhO2jqLykV4EUjg433CvtkNTswo3o=
+	t=1789000216; cv=none; b=We19aLlejn3AYEiYZSqwcCpsFvKfzQts4y3hcr1J3/AeDiX1AXx3+NHMlLAsl9gpvNFsTp4Z15N2YP866eg9E4fzzE/faHLDMSL+TqwWf7UPz5bGKoSllJcQ0tA4e5zBtQDFKXBkVy08WRRGsCTIKR5SwAUnFJS5KA36RbZq4RY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789000211; c=relaxed/simple;
-	bh=zdkQKSyd0kovnMaP0eMA1slZLU4vHeG2b16aLUm3Vr4=;
+	s=arc-20240116; t=1789000216; c=relaxed/simple;
+	bh=IbJBUsp9Nw7KlNIE4wEWER+J6Yf82Pbs6ARS989tNHc=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=LkXusN30lIk2FJjH2hI6oubvixt56PIbopOM2hBmTwkD4uO17/VzKwfRrL+l8i4ZgMWksvRn4k0d/v4iOAC797wIvO0b0JfGXpjy8RKnJrzMUqWxXzLnZ4SjKRkBXiB9TC6pnd0403uuEBZmXFJzuGXKylEVZghgFZGLAXX+vbg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=ea52vt3S; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=l0lQV1Ij; arc=none smtp.client-ip=202.12.124.146
+	 MIME-Version; b=KuLpNW7pE39KZfyyRwDZxUQHisU63GpIz18Au0EVwDEZF63RQTz56+uQd5EKWE6Y+EtXn6q88OkC92KjADzl4MvNREehxtlt349aCXHAUVH2NLS4wnpi6of46HWxpFsLDf9rBKoIZejhPNv+lr1XeJxJZPUEw7V1wltK5TLgpPE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=lxsvNHsF; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=YnwWmXUW; arc=none smtp.client-ip=202.12.124.156
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="ea52vt3S";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="l0lQV1Ij"
-Received: from phl-compute-08.internal (phl-compute-08.internal [10.202.2.48])
-	by mailfout.stl.internal (Postfix) with ESMTP id C60031D000AC;
-	Wed,  9 Sep 2026 20:30:08 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-08.internal (MEProxy); Wed, 09 Sep 2026 20:30:08 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="lxsvNHsF";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="YnwWmXUW"
+Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
+	by mailfhigh.stl.internal (Postfix) with ESMTP id 6E34E7A00BD;
+	Wed,  9 Sep 2026 20:30:14 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-02.internal (MEProxy); Wed, 09 Sep 2026 20:30:14 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1789000208;
-	 x=1789086608; bh=O5AQGENYa5LEnebPXCtFAydy9fJkCthU+mbJWDwHxic=; b=
-	ea52vt3SFSEFPqeSwsL43kdU2qBk04woNUvXiPp1/ov5xQA4DyqH8iI9+QLwp54f
-	GvLZMW3f2//ax8Ayogn/0e2PPeNFrUWt3ioKg3m+p7JAsvHJd+hlSlkFPuxf7OFK
-	XqR1I/pTySIgWa2TQX+vGPZI+a3c3Kd2wDiEu3LYPXUEEBeYgqIrvRS+FGIdxX5X
-	SP7wiTlybZM/I4paHklLkXqrfGcUpZPZ57cVm4vBsuXxeTTdr56eXNTczxBXJDfV
-	eQQzXGG+IfSjAmULEoHFWpErc61a9NiixSB6mMsdJdLpH+uT1uywZs1cOT//kU4V
-	cTmnxB/52U6104IpL0S22A==
+	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1789000214;
+	 x=1789086614; bh=EMpr5mGZT82FtVXHwnHmc5JMIQUGs+9eDWqeOE1D7x4=; b=
+	lxsvNHsFVT7fFtz6CnP97kRYlTwqlbxBCSvH9lbFMXADwGYovJMCVRP5cgqupgHO
+	OzeqwtHr659gosbaOHZP+SXrSY7G+ztWBdY+J3HzWLs6/BQf/ZOhQNrjX/Suak4f
+	cyDI/0G4cD0lcBfGXrVX2RF36Z9/jsLfp8a3cDQU2Gs95Jy29aMUuYG6BwHteYI1
+	pe//0mRVzLK2SWVXJTMfApRkyMd8zY7oz2HjHQ8DmaXurSr40ylKqwRKrPVdJiTM
+	ilZgEGINLASne3qzJkRvp/o5/4/fPQk4GiO734yPvDCPtvbVXnf84zh4LGaWUNPL
+	Eyz9mbnTjbRbjEpSDU7rkA==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
 	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm1; t=1789000208; x=1789086608; bh=O
-	5AQGENYa5LEnebPXCtFAydy9fJkCthU+mbJWDwHxic=; b=l0lQV1Ij536TxJc+D
-	LLdKjTIpNtrIt3+KBwaDhqxt/1DRJlyPl6UO7jGra8ho5pfsJRrYJT2kZOdFa5Ji
-	z/awbVAQLOJ+VgUm75yPrLRWl9KJQg39K2ay7bCnqJiWHzIec7N2qYKRVmDkAicU
-	amwJrpsQWPdc5798mmWoUXZij8lV4aWjgcg9W96feWDO0XqP4sM7CCsYtHgrunfg
-	jSAVNbH8E9tIissm1mwQLZhcW/jv//Db9lW5qT3jXOhsPXQiD2JpEZYor+jnywty
-	WzglkrTuLQN7SV9mhC4sl3HkMGMOm4peJTiptzFa9w3Xz53MoY1+tWNndaa01fMx
-	FI5fw==
-X-ME-Sender: <xms:EPqharvyZATul-V65XXB0y7LF0FvNLxkO4hNV9JS4TPePbRAfbXkDA>
-    <xme:EPqhautfQX6n5tug0uYWaEecwhgK7DSl6xgY7p2p4NAdFUaCS3E4wych5Z2LN2TRT
-    GzhPTW7iWDuZZ1nh29BhI9g8bVexRggbFZC94AxLqnzwwFT2SQ>
-X-ME-Received: <xmr:EPqhahDV6p_BPnXbTzNSeSzXiukDqe6LDgRwn9C-PQ8qHP1XHutiTyGRrzIL0KuKgH2m6xt4h8nhwnqAMjzDtAjaiaQtZRY>
-X-ME-Proxy-Cause: dmFkZTG2ZuPEN34R+utP3ESxb9Vdcejdvq1qn0GN2MsSCwESAHSyvwppLG2Yu+T030L2Os
-    C8wXU3PxCkVzFW4dp/42EieFv6R0T70CdXif1RWlK2b+xBeP4D18DTQhJEghKWlRjrKyUb
-    GdlNnxTgZ+lDp+o1Kz2BsylhbrNhfAZgPcMxHnaH8xn6D8vPLCsNPSG5ApS8ATGgHc/HWj
-    wRdbCBCalK8qL4He0aXC4Lyqu1cVz74DhCxPFDqYj/33GFHQ6XxHNgTamDOpUZSq1ebJcO
-    0bZ7djSj1c7whFp8Heq+QUaxe+WPB/b+6uiBLPfuZqukj1/5KZnVgOb+3nKerXH+iKGBkd
-    hB8//2uopdyi5zK+/zviyfqGO1hTHUsgLzew25Q7Z1C9CCrcP8FBEjp7sOMcn82EhA5ooF
-    hXWnkvzD/hqpPnzeSLhHnjD36BOLkMyFWAzcr66yOn1hq/8ohbKc6yOmgMDD4OeFGqU9KN
-    dKW12NzIstT87XfU8XK7PyB51T3ZE5nLWXAFOg8KSW2Gpt0JrLPexGWXqSxCZ+YuEWj4RX
-    NQlb69gTmn9DnxDD7W2t0+s/Nfnxz6uOlLN+4ISHdx59DSTuPUKLpFzoUqcn1HROeQlRJs
-    1K79l5A2yvsnp23mBoTTpfF0LtJFC5VQoitXv15rgaYoDd26Yo3H+IugwdYw
-X-ME-Proxy: <xmx:EPqhagOG2Osj2G_j5LrHvIt6J5xRl3JSuPFjSVABh5K1C3rEGqQC7g>
-    <xmx:EPqhaqyVEGB1vjgegTnKgbpRoAxUoEdG4oUmK-YklNlYeZFwZj8fcg>
-    <xmx:EPqhagWiZULtGbuyoVf3aMV3gmpdOp0-t0igxKnUGo-3YwW6-eoqAQ>
-    <xmx:EPqhasPVTLsxhXvoaY4i3xZRUrz5k_bbFBwWsrTxrZ05nq3aWxVcHQ>
-    <xmx:EPqhaobtki2mh37AWWtJdTwz5Nyvoa6OUSaEef6XR7p-Oihw5RtgbyS7>
+	:x-me-sender:x-sasl-enc; s=fm1; t=1789000214; x=1789086614; bh=E
+	Mpr5mGZT82FtVXHwnHmc5JMIQUGs+9eDWqeOE1D7x4=; b=YnwWmXUWApTWuNnP9
+	HF3hJrpcgH7Sl5vddNHLE/zxV1+DwZERv036uwck6T3YwXWgR020GFDEPVBQWT1P
+	R2XiaFzoZHo/A7j+ZaylMMLs0+qcquDsBWFe60BE84ZJQLTFotRVmIgoKBiXjDeQ
+	1wS0Svs+A3wdV7nmE4ru41fHWQ+rZJ2a+sDuZd4/v6y+llFDdsf6FibPvu4dLBIq
+	j7CzgCZw5XcNBvxUIFNoAmwcdoA2Vq3mMi3TfCICfdKh7X1WJFQx1RpCw2xqlowV
+	am0qihdJ5IPGOuXwjUpT3FJfzHDC8EIC819VA+3a5yBWyseXYIR4rBBVbR84O9Bj
+	4+4uA==
+X-ME-Sender: <xms:FvqhatzL3ayVhrE3DMMCIu_XQWblNsMJLejt1bbbF_QT5CUaDq3ATg>
+    <xme:Fvqhavh4NZX90qL6_zmRVSvd2XFD6uryvCGi0H86nMPDf6HE8C0ptveQtfNjHO9fb
+    m0-vdaogWOK5Bl7QW5Bq_6rz7iSKSLMZsNF_S-hLukTg4J8fN8>
+X-ME-Received: <xmr:FvqhapktVxIOMgAQoeyHVBXS3178YACvnFT05ES6ljlaTZbd45sHuw2j-7zSKaQCvRNVBqEpHRV5zb-uk0skrSSxZkb8SBM>
+X-ME-Proxy-Cause: dmFkZTGYQd2RN1ulbB62MDmsv4b7I9OGIR3hW4ak9IKw5pML8nIEjTlSAF9R6jHmb3QIpw
+    z9ohaTHUOnSA778n/SiVuqQSaGAyDLCMok4eORfyo1vBrNXNtYg+f8iGYDh3/z6H68l9VJ
+    jIUhwU/KT4dqP9BLd8k03tX6pmVPpQV85MtYzO/XIOQXODUtxRpDBDaL7mQnaNVwTm9jZw
+    jRSk18lM8Ziwpjvv+awvUu0neEaEeDukbZh2PFJ8Fyc8V1Tu5Oe1TuggeC2yZ7vLgtPIjZ
+    uVXXNIbwhSxWoKZinIOIY84cun0U8/Y7Jmbl+c6fTOlG9suLSvFTEX7qg5RXRjU+v+5yJR
+    /SZfTno/W2hf7D3nrtg2txr5TMB4NICI81dL4CE9AQP4O36xOgEkwpejMZvpk4kCyfm7Ed
+    rTFqUouIFZ0R/vzOdgap+Fj4kwvhIhXxsrX4gySfiwzzgQwD5F+ydXo2mlJKM3Q6SS06Di
+    uYcRJj9wBlZuO8IzjUMypB8Oyx+XDXGt25zRf8gBJJC6wAdNMP6YBXCBi0hQjQ2TowwsCN
+    V5EXp8fbPEPbj9mBLzD8Vzyj3ckqtptplt0GuM6+ZCy6TUcrX48OG0OEdxNuIs0PbLbQiC
+    uVGUZMsO9q+6RFU9qDeIMBoql3EfQgPwjELjYwT7SAgn+MDrTh46BWaLdi+g
+X-ME-Proxy: <xmx:FvqhalhO0WdAMnh-IUpKNtaPCj9qbp3Fa3jqCyJ3-I6dsfqT9Sk64A>
+    <xmx:Fvqhat0_VhGz-UcnmaVA4oRdyNruH7H_tw1JcaDiDkUga3sZV-Cydw>
+    <xmx:FvqhauIeI7f7SyuVLNjsgWpWtbjCpHyVGPJet-AHWBIIJqZHAaI-ng>
+    <xmx:FvqhatyN5W8av0M8TuSFoGyZZDXOAA3N08qHNzy9rZYSWlEPk3sCqQ>
+    <xmx:Fvqhas-StTy_nAyMskm-0D9V3ji6UXNI5uPxf9jsRJg8ndy3J37_tdlw>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Wed,
- 9 Sep 2026 20:30:06 -0400 (EDT)
+ 9 Sep 2026 20:30:12 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Christian Brauner <brauner@kernel.org>,
@@ -75,9 +75,9 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Jeff Layton <jlayton@kernel.org>
 Cc: linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH 4/7] vfs: change vfs_lookup_open() to return found dentry in path.dentry.
-Date: Thu, 10 Sep 2026 10:20:50 +1000
-Message-ID: <20260910002934.192979-5-neilb@ownmail.net>
+Subject: [PATCH 5/7] nfsd: switch NFS4 OPEN to use vfs_lookup_open()
+Date: Thu, 10 Sep 2026 10:20:51 +1000
+Message-ID: <20260910002934.192979-6-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
 In-Reply-To: <20260910002934.192979-1-neilb@ownmail.net>
 References: <20260910002934.192979-1-neilb@ownmail.net>
@@ -92,105 +92,178 @@ Content-Transfer-Encoding: 8bit
 
 From: NeilBrown <neil@brown.name>
 
-The caller - nfsd - needs to know the type of object found when a
-non-regular file was found to exist.  This is most easily done
-by passing back the dentry.
+The functionality that was recently gathered into do_lookup_open() is
+now available from the vfs as vfs_lookup_open().  So nfsd4_create_file()
+can call that, with a few adjustments.
 
-So change calling pattern so that the path (now called "path") contains
-the parent dentry on entry and the child dentry on exit.
-vfs_lookup_open() will dput() the parent and caller must dput() the
-child.
+This implementation shares more code with syscall open paths and so uses
+some filesystem interfaces slightly more correctly.  It also takes the
+responsibility for locking out of nfsd so that planned changes can
+happen entirely in VFS code.
 
-If lookup_open() returns -EFTYPE (from ->atomic_open()) we need to
-use d_lookup() to find the dentry.  If ->atomic_open() didn't add a
-dentry to the dcache we return %NULL in %path->dentry.
+We need to pass O_NONBLOCK so that that EWOULDBLOCK errors from
+break_lease of try_break_deleg() get passed back.
+
+We need to mask any type out of "mode" else vfs_lookup_open() will warn.
+
+vfs_lookup_open() always returns -EFTYPE if a non-regular-file was
+found, and provides the dentry in parent.dentry.  We can use
+nfsd_check_obj_is_reg() to turn this into an error.
+
+As parent.dentry could be NULL, we enhance nfsd_check_obj_is_reg() to
+cope with that.
+
+vfs_lookup_open() will return -EEXIST if required for
+NFS_CREATE_GUARDED4 as O_EXCL is passed in.  Other checks for
+and existing object need only test for nfsd4_create_is_exclusive().
+Make both these tests (for non-regular and for regular) the same.
 
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- fs/namei.c | 31 ++++++++++++++++++++++---------
- 1 file changed, 22 insertions(+), 9 deletions(-)
+ fs/nfsd/nfs4proc.c | 83 ++++++++++++----------------------------------
+ 1 file changed, 21 insertions(+), 62 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 0c787363b101..30ccc0c2f02f 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -4606,7 +4606,7 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 3a82af381a8d..0fd5a6411ed3 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -225,8 +225,11 @@ do_open_permission(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfs
  
- /**
-  * vfs_lookup_open - open and possibly create a regular file
-- * @parent: directory to contain file
-+ * @path: directory to contain file
-  * @last: final component of file name
-  * @open_flag: O_flags
-  * @mode: initial permissions for file
-@@ -4619,9 +4619,15 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
-  * If the fs object found is not a regular file then -EFTYPE is
-  * returned.
-  *
-+ * @path is updated to contain the dentry that was found if possible.
-+ * In particular, if -EFTYPE is returned, then @path.dentry will be the
-+ * object that is not a regular file, or %NULL.
-+ * Consequently the caller must be prepared for @path.dentry to be
-+ * dput(), an it must dput() whatever is in @path.dentry after the call.
-+ *
-  * Returns: the opened struct file, or an error.
-  */
--struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
-+struct file *vfs_lookup_open(struct path *path, struct qstr *last,
- 			     int open_flag, umode_t mode)
+ static int nfsd_check_obj_isreg(struct dentry *child)
  {
- 	struct file *file __free(fput) = NULL;
-@@ -4638,7 +4644,7 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
- 	mode |= S_IFREG;
- 	open_flag |= __O_REGULAR;
+-	umode_t mode = d_inode(child)->i_mode;
++	umode_t mode;
  
--	error = lookup_noperm_common(last, parent->dentry);
-+	error = lookup_noperm_common(last, path->dentry);
- 	if (error)
- 		return ERR_PTR(error);
++	if (!child || !d_inode(child))
++		return -EFTYPE;
++	mode = d_inode(child)->i_mode;
+ 	if (S_ISREG(mode))
+ 		return 0;
+ 	if (S_ISDIR(mode))
+@@ -250,52 +253,6 @@ static inline bool nfsd4_create_is_exclusive(int createmode)
+ 		createmode == NFS4_CREATE_EXCLUSIVE4_1;
+ }
  
-@@ -4646,7 +4652,7 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
- 	if (IS_ERR(file))
- 		return file;
- 
--	nd.path = *parent;
-+	nd.path = *path;
- 	nd.last = *last;
- 	nd.flags = LOOKUP_OPEN;
- 	if (open_flag & O_CREAT) {
-@@ -4658,9 +4664,18 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
- 	op.mode = mode;
- 	dentry = lookup_open(&nd, file, &op);
- 
--	if (IS_ERR(dentry))
-+	if (IS_ERR(dentry)) {
-+		if (dentry == -EFTYPE) {
-+			/* Try to determine what was found */
-+			struct dentry *child = d_lookup(path->dentry, &nd.last);
-+			dput(path->dentry);
-+			path->dentry = child;
-+			WARN_ON_ONCE(child && d_is_reg(child));
-+		}
- 		return ERR_CAST(dentry);
+-static struct file *do_lookup_open(struct path *parent,
+-				   struct qstr *name,
+-				   unsigned int oflags,
+-				   umode_t mode)
+-{
+-	struct file *filp = NULL;
+-	struct path path;
+-	struct dentry *child;
+-	int want_write_err = 0;
 -
-+	}
-+	dput(path->dentry);
-+	path->dentry = dentry;
- 	if (d_really_is_negative(dentry)) {
- 		error = -ENOENT;
- 	} else if (!(file->f_mode & FMODE_CREATED) && (open_flag & O_EXCL)) {
-@@ -4668,10 +4683,8 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
- 	} else if (!d_is_reg(dentry)) {
- 		error = -EFTYPE;
- 	} else if (!(file->f_mode & FMODE_OPENED)) {
--		nd.path.dentry = dentry;
--		error = vfs_open(&nd.path, file);
-+		error = vfs_open(path, file);
- 	}
--	dput(dentry);
+-	want_write_err = mnt_want_write(parent->mnt);
+-
+-	child = start_creating(&nop_mnt_idmap, parent->dentry, name);
+-	if (IS_ERR(child)) {
+-		filp = ERR_CAST(child);
+-		goto out;
+-	}
+-	path.mnt = parent->mnt;
+-	path.dentry = child;
+-
+-	if (d_really_is_positive(child)) {
+-		/*
+-		 * open the file so that we consistently have a valid
+-		 * op_filp and consequently a valid ->f_path.dentry.
+-		 */
+-		int err = nfsd_check_obj_isreg(child);
+-
+-		if (err)
+-			filp = ERR_PTR(err);
+-		else
+-			filp = dentry_open(&path, oflags, current_cred());
+-	} else if (!(oflags & O_CREAT)) {
+-		filp = ERR_PTR(-ENOENT);
+-	} else if (want_write_err) {
+-		filp = ERR_PTR(want_write_err);
+-	} else {
+-		filp = dentry_create(&path, oflags, mode, current_cred());
+-		child = path.dentry;
+-	}
+-	end_creating(child);
+-out:
+-	if (!want_write_err)
+-		mnt_drop_write(parent->mnt);
+-	return filp;
+-}
+-
+ /*
+  * Implement NFSv4's unchecked, guarded, and exclusive create
+  * semantics for regular files. Open state for this new file is
+@@ -312,7 +269,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		.na_iattr	= iap,
+ 		.na_seclabel	= &open->op_label,
+ 	};
+-	int oflags = O_CREAT | O_LARGEFILE;
++	int oflags = O_CREAT | O_LARGEFILE | O_NONBLOCK;
+ 	struct dentry *child = ERR_PTR(-EINVAL);
+ 	struct path parent = {
+ 		.mnt = fhp->fh_export->ex_path.mnt,
+@@ -424,28 +381,29 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		/* Might still succeed if no create is needed */
+ 		oflags &= ~O_CREAT;
  
- 	if (error)
- 		return ERR_PTR(error);
+-	open->op_filp = do_lookup_open(&parent,
+-				       &QSTR_LEN(open->op_fname,
+-						 open->op_fnamelen),
+-				       oflags,
+-				       open->op_iattr.ia_mode);
++	dget(parent.dentry);
++	open->op_filp = vfs_lookup_open(&parent,
++					&QSTR_LEN(open->op_fname,
++						  open->op_fnamelen),
++					oflags,
++					open->op_iattr.ia_mode & S_IALLUGO);
+ 	if (IS_ERR(open->op_filp)) {
+ 		int hosterr = PTR_ERR(open->op_filp);
+ 
+-		if (open->op_createmode != NFS4_CREATE_UNCHECKED) {
+-			switch (hosterr) {
+-			case -EISDIR:
+-			case -ELOOP:
+-			case -EFTYPE:
++		if (hosterr == -EFTYPE) {
++			if (nfsd4_create_is_exclusive(open->op_createmode))
+ 				hosterr = -EEXIST;
+-			}
++			else
++				hosterr = nfsd_check_obj_isreg(parent.dentry);
+ 		}
+ 		status = nfserrno(hosterr);
+ 		open->op_filp = NULL;
+ 		if (status == nfserr_noent && create_status)
+ 			status = create_status;
++		dput(parent.dentry);
+ 		goto out;
+ 	}
++	dput(parent.dentry);
+ 
+ 	child = open->op_filp->f_path.dentry;
+ 	open->op_created = open->op_filp->f_mode & FMODE_CREATED;
+@@ -462,7 +420,9 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		open->op_created = true;
+ 
+ 	if (!open->op_created) {
+-		if (open->op_createmode == NFS4_CREATE_UNCHECKED) {
++		if (nfsd4_create_is_exclusive(open->op_createmode)) {
++			status = nfserr_exist;
++		} else {
+ 			/* NFSv4 protocol requires change attributes
+ 			 * even though no change happened.
+ 			 */
+@@ -477,8 +437,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 			open->op_truncate = (d_is_reg(child) &&
+ 					     (iap->ia_valid & ATTR_SIZE) &&
+ 					     !iap->ia_size);
+-		} else
+-			status = nfserr_exist;
++		}
+ 		goto out;
+ 	}
+ 	/* file was created */
 -- 
 2.50.0.107.gf914562f5916.dirty
 
