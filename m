@@ -1,44 +1,48 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4F6FB3C3F56;
-	Thu, 10 Sep 2026 09:45:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 25FAC3D5244;
+	Thu, 10 Sep 2026 09:53:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789033555; cv=none; b=s4Wdov0YcLeOIbENo5g3g+uwmEBrjfzJlme9QsFB+HWmCFf2vHZPn4dPPycOeHzqCJdJleM81FLhtoG+CvPx+grFZ9nuG1Nbcbt4xBB+fw0lbU2SqJYLx1mGcs220UbE1I6dmY25lxrARBiIcq2S5CE/WtxPSJZ00GMactChKGo=
+	t=1789034016; cv=none; b=BW1UYuolTeXCa9hmPuZqVe0zBAeP1q0pLfF0Q6wU48ZfP2w4PpJ5kgUXWH2o+SqGuSW3I1WoSCsB7+m3kgJ1P8fWlzsow3U3OpVrUB0lNvb4sWSV53EzqkQQC+ZQtLa+reyQDbc1JGmtDahcpaFOAfwL3TPDen9A9Isc8pW8i7M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789033555; c=relaxed/simple;
-	bh=csESozxErtQjNOPRbAd1+0bBzb9dIpicyIwuiqnP10A=;
+	s=arc-20240116; t=1789034016; c=relaxed/simple;
+	bh=11/jkJK+JY/3w/Rt0fWznUZ6DzBqgpeIedZHKeL+0qU=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=lp6CR1IUpmYfwDJ61qOjGFwxwIzU6oiIsk3RwD6JgIr1J2IFq0vP3FRFpVBHMjFfWir4ZVqidODH/k9/GTS30y4fUuktSYj1Kzbt5ITQKS2G0sW/PKgR5dK+WqGjp3g/fNY3w562C1Y4CgXE85/KoXBHJ19jJDx6VzBA2RJGg/o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UEYdSSOs; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:Content-Disposition:In-Reply-To; b=HHhlfelvRsCUi9wRCvEftjh7C6cbygWus9h1n7tJCajjYHRQQ5hBtSexUUgPp9so5y/YWo1gD3+MiHOHun2vyALqL13s+HPavhBZ2kmVtt/D+fn6EtHsPYue+f0ZXVq0TWgh+3h7TgCVo/7uc7OK/kuQh2JIw33sprWHp8JbIig=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=Q/ognF2H; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UEYdSSOs"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4A0131F000FF;
-	Thu, 10 Sep 2026 09:45:50 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789033552;
-	bh=VyWNnrPW/HP25ItR9KF1992mjUCoCMkFMvf3FwtLiI0=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=UEYdSSOsH+1gdsAvcElFZKtXkZho4L7TCrJ1zGphMgNcst3uLprux2fCTW6r+nTZY
-	 z86AB9LyV8ZCIsTNw9ttNVgCRvJvZ923wRKYOBhw27XWdtj5VGGFjVNStdCjNSrvR3
-	 Ow/CBUaqli9kbYDv+Mw57xf2Qe6uP9uD/D2LmppOlYCnL1PavAtIu8VPh/mEMfRRDC
-	 Y92JNrEHG4uliV73f5J9RoWER9F6TumKag0ng7NwCtXpIIYYmkSansW/T4NGxmXnq8
-	 i/Szf/njGyC7CWm6IVKEsRvDeIVyKXj1ZmRGyMSak7BXwygckYt6Bf9QButrhVZwAP
-	 xSpGsLEQBu8/Q==
-Date: Thu, 10 Sep 2026 11:45:47 +0200
-From: Carlos Maiolino <cem@kernel.org>
-To: "Darrick J. Wong" <djwong@kernel.org>
-Cc: Christoph Hellwig <hch@infradead.org>, zlang@kernel.org, 
-	linux-xfs@vger.kernel.org, fstests@vger.kernel.org, jack@suse.cz, 
-	Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
-Subject: Re: [RFC PATCH 1/2] common/nfs: add management helpers
-Message-ID: <aqJ8BdzSlasSNXRd@andromeda.toxiclabs.cc>
-References: <20260907164054.111393-1-cem@kernel.org>
- <20260907164054.111393-2-cem@kernel.org>
- <20260908142226.GL839663@frogsfrogsfrogs>
- <aqD4zBD06P1LJKM2@infradead.org>
- <20260909161342.GM839663@frogsfrogsfrogs>
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="Q/ognF2H"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=nG7hVY9Cs3GLSwRLL9rzd2+XNS+c829T7n2VxQwN1Ew=; b=Q/ognF2Hwav1d6YZsZcqqcPBYD
+	v9JBCnNqV1a7ET/Qp43casBsubMh/toAHpvduU1NodIb5LdoyyIVixzzkWjzvZQIyLSAA14FB180M
+	wHxLUg+bXpVC72JC30FSB0ubUBgZv42MMqeNp51cK/Gyb5mUPj2E0wkvv2QqRcHvgckrc/Dp5cMe/
+	i4mMzkE+g0sAhCHJ2KsgS3SmtuX9jTwRHhkJfqGaf5eEfPfNOo0M/VF8TH7+9mllIrLWEUXimbhZq
+	KhtUrE7mzWbJEIpf84iMXrL+rbtXtominoUKlpJnbDLYdmcHkx1EdlEx7oS7HzwX3QuYStxJroDQE
+	5FdW4cLQ==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
+	id 1x4bTB-0000000Dwjg-2RJs;
+	Thu, 10 Sep 2026 09:53:25 +0000
+Date: Thu, 10 Sep 2026 02:53:25 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Chuck Lever <cel@kernel.org>
+Cc: Mike Snitzer <snitzer@kernel.org>, linux-nfs@vger.kernel.org,
+	linux-block@vger.kernel.org, dm-devel@lists.linux.dev,
+	axboe@kernel.dk, jlayton@kernel.org, david.flynn@hammerspace.com,
+	Keith Busch <kbusch@kernel.org>
+Subject: Re: [PATCH 4/4] nfsd: fall back to buffered I/O when a direct write
+ gets -EINVAL
+Message-ID: <aqJ-FZ1IAMaRB7gP@infradead.org>
+References: <20260908163232.30774-1-snitzer@kernel.org>
+ <20260908163448.30841-1-snitzer@kernel.org>
+ <20260908163448.30841-5-snitzer@kernel.org>
+ <995a853c-2c54-4bd0-9708-f6e0c1be7fd5@slotpi15m67>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -47,74 +51,39 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260909161342.GM839663@frogsfrogsfrogs>
+In-Reply-To: <995a853c-2c54-4bd0-9708-f6e0c1be7fd5@slotpi15m67>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-On Wed, Sep 09, 2026 at 09:13:42AM -0700, Darrick J. Wong wrote:
-> On Tue, Sep 08, 2026 at 11:12:28PM -0700, Christoph Hellwig wrote:
-> > On Tue, Sep 08, 2026 at 07:22:26AM -0700, Darrick J. Wong wrote:
-> > > > +# Start rpcbind if it is not already running.
-> > > > +_start_rpcbind()
-> > > > +{
-> > > > +	rpcinfo -p localhost > /dev/null 2>&1 && return 0
-> > > > +	rpcbind 2>> $seqres.full || _notrun "Cannot start rpcbind"
-> > > > +	/usr/sbin/rpc.statd 2>> $seqres.full || _notrun "Cannot start rpc.statd"
-> > > > +	/usr/sbin/rpc.idmapd 2>> $seqres.full || _notrun "Cannot start rpc.idmapd"
-> > > > +	/usr/sbin/nfsdcld 2>> $seqres.full || _notrun "Cannot start nfsdcld"
-> > > 
-> > > Aren't these daemons usually configured as system services?
-> > > 
-> > > # service rpcbind start
-> > > 
-> > > etc?
-> > 
-> > They usually are, but doing that as part of a test feels wrong.
-> > Adding the relevant maintainers and list.
+On Tue, Sep 08, 2026 at 02:25:32PM -0400, Chuck Lever wrote:
+> Per our discussion last October:
 > 
-> <nod> I guess for this test we actually want to launch our own nfs
-> daemons in a separate pid / network namespace so that they don't
-> interfere with nfs operations outside of the test (e.g. testing nfs
-> itself, nfsboot, etc)
+>   https://lore.kernel.org/linux-nfs/aPXihwGTiA7bqTsN@infradead.org/
 > 
-> > > 
-> > > > +}
-> > > > +
-> > > > +# Stop rpcbind.
-> > > > +_stop_rpcbind()
-> > > > +{
-> > > > +	pkill rpcbind 2>/dev/null
-> > > > +}
-> > > > +
-> > > > +# Start the NFS server if not already running.
-> > > > +_start_nfsd()
-> > > > +{
-> > > > +	rpcinfo -p localhost 2>/dev/null | grep -q nfs && return 0
-> > > > +	rpc.nfsd 2>> $seqres.full || _notrun "Cannot start rpc.nfsd"
-> > > > +	rpc.mountd 2>> $seqres.full || _notrun "Cannot start rpc.mountd"
-> > > > +}
-> > > > +
-> > > > +# Stop the NFS server.
-> > > > +_stop_nfsd()
-> > > > +{
-> > > > +	rpc.nfsd 0 2>/dev/null
-> > > > +	pkill rpc.mountd 2>/dev/null
-> > > 
-> > > If the system under test has nfs filesystems mounted, won't killing
-> > > those daemons also break the mounts?
-> > > 
-> > > I think that might break testing of nfs itself, and nfs-booted testing
-> > > nodes as well?
-> > 
-> > Possibly.  I guess if we want to save we need to launch a container
-> > or at least a network namespace this is bound too. 
-> 
-> Agreed, some isolation from the main system is necessary.
+> The conclusion then was that -EINVAL from ->write_iter can come from
+> a number of conditions in the filesystem, so NFSD can't treat it as
+> meaning only that the I/O was misaligned. That still holds, so I'd
+> rather not use -EINVAL to signal a retry. An -EINVAL that really is
+> the filesystem rejecting the request would now cost a second full
+> write attempt before surfacing anyway.
 
-Perhaps couldn't we just:
-	- start nfs server if not started
-	- only stop nfs server if we started it
+Exactly.
 
-And just take advantage of the server running if one is already there?
+> What would help me understand the failure even better:
+> 
+> - Which -EINVAL in bio_split_io_at() fired: the per-bvec dma_alignment
+>   test, or the zero-length result after ALIGN_DOWN()?
+> 
+> - On the reproducer, how does stx_dio_offset_align compare with the
+>   queue's logical_block_size?
+> 
+> If there turn out to be cases the gate can't predict from the statx
+> data, that seems like a question for the block and fs folks about
+> what error the filesystem should surface, rather than something to
+> work around in NFSD.
 
-> 
-> --D
-> 
+We shouldn't have such a case, but if we have we need to have a clear
+API to discover it.  Note that Keith has been looking into a proper
+uapi to discover all the alignment pitfalls, which I hope we can
+land rather sooner or later.  nfsd could consume it the same way
+as userspace, and we could write userspace reproducer for any
+corner cases we need to clarify.
