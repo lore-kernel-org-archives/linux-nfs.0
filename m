@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2CBD157981A
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Sep 2026 18:22:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 641BB57268E
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Sep 2026 18:22:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789064531; cv=none; b=qT7UAtUlMkia8cSn6NQQMRN8sm5kbvFua7Y2DfWeFTN+w3rVxwhIRwbtiYIIiJXdLi3tXl9HgPwtCoLUtYGLS+cTZxMoYCL8pxESOJu3ChROKFLGVc8CE6ZZXViykqGwr7ma2sW7NfEsf3+fMK6ValX1ZFU7LGEFewGrT+9cHWw=
+	t=1789064533; cv=none; b=duN6QuMnHfvc5puaCSulJCkWqrxkx3GEmnzufwdHfQTbpIDKK8f6AS0T6VTDYENIhjkPcAT6UBIvC/3pRJCnbayoSai9nBhGQFpECmTTyDRTOzVITNC4Ytj/mcSjzr4wpGu+ItWtreCeOox9/rw9Ddvk7pl4+3Hf2V4WMHt0Yhw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789064531; c=relaxed/simple;
-	bh=ckqggx6H/f+0tDxpRpkezlF28bjTwU+ugWPNOVc9Wso=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=RJjOXTcuUG3Rzd8YhPrNM62dnjk6iotXqSY2yPzw2uIPT7iMvkh//8vGs551F2lEg2AfNbMtHWYJXykNwoYNhVPkzZi0VT8GI2IQWvZN3y6rC5wHkV9cP6GnnPY/4bKq4jpcvS6HA+NrNhSg4DjZjd1P5ZZO7IwG5JVtltmPEuI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=T5C2SWIK; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789064533; c=relaxed/simple;
+	bh=wv2OccFFKLkXr+YGWy2rzbry5U+NwLKxDOIg6uFw+yo=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=XBCMSRVse1P60DGeaxSN5v2ffdRh+43V/woDeVHCSi9kj8vCNbyf6RSf3y8e4GnVFN2KlLpYKMv8E54cDP3c7evJGIVLLzO62gbOufAydISC/0GkIngYd3p4LucFUzFIvSjjd2r2T6cJ8IyrVzuh/hCTSWOfgMy/u/UKhnXyZd4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=A/DOHiAz; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="T5C2SWIK"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 42A7E1F000FF;
-	Thu, 10 Sep 2026 18:22:09 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="A/DOHiAz"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3F8E71F0089A;
+	Thu, 10 Sep 2026 18:22:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789064530;
-	bh=zyCP8GKCer+IhLH8h+9b/eKyLEInmXbvsP3Yhgmjo1s=;
-	h=From:Subject:Date:To:Cc;
-	b=T5C2SWIKIOvAuk0HOwLmjrXzxtp+6VFIjDhVa/19OnYXcy8ZZL0547GcJQyc+XZHJ
-	 aYhU8PQNbDTGjxO2BJAMmDDEFynNcDVyAzeppNMoeufUwk5OSkzTxyMMNRO/Sx9XJ+
-	 WYK1BTNJsQ6xgzUJG2+MQ19vc9rGUfiY1Id+pJ2LnSasendC3KtiFCWWek1a5/+FTE
-	 7c43OGZLU08YJpt8Y3uQvltxyMH25aFK5BbHgMgtSwrmB9QuJqz5974Zn7e/gjSW28
-	 lLTlxd9K5OIhzx0Rog/eoVNwSpGB3Rv7ABjiXEcZH9FN2TeFBtsGvKuEYEzb5KX5EF
-	 0o7JqgATFNGRw==
+	s=k20260515; t=1789064531;
+	bh=UQzN4TV7ckJxcZ7ca7fcnls/GAnQC+zrrLButiexJIo=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=A/DOHiAzlJGaVkUWsAbUFRKMBb0dva8p0sac0a4b90WzkaOjXXFSp9hBpYAfk+yc2
+	 9pMiCKWqoiFso2VgdZUNtING7810MG8Tv1O4VX0F0FcO9CfPEjqhe4g2G4mjjisIpc
+	 b+atIB1CCIQOZ1zfs7ymHURM0Zo1cphXnJfCIsvh2gMRhAx0fvWA3Ej/bsgy+7lPBy
+	 RwwWv8xQcKU2X6Zmb02P8DErFYW/zcllqKjTPz9xnBxknRXfFgH564vwud4j1XCVdl
+	 OLrN8YfmCIYp6jpbh6lOwkc2vnv9Yi3R8yNkZpHbZnZjaNi6cZqDY6OpXoO4pPLQbA
+	 gY4uTlM3LhWQw==
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH RFC nfs-utils 0/7] nfsdctl: allow it to handle rpcbind
- registration and deregistration
-Date: Thu, 10 Sep 2026 14:22:01 -0400
-Message-Id: <20260910-nfsdctl-rpcb-v1-0-4bba1e7a3a43@kernel.org>
+Date: Thu, 10 Sep 2026 14:22:02 -0400
+Subject: [PATCH RFC nfs-utils 1/7] nfsdctl: sync nfsd_netlink.h with the
+ kernel
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,66 +38,103 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDSwML3by04pTkkhzdooLkJN3ElGTTRMO0ZKBMkhJQS0FRalpmBdi4aKU
- gN2cFoGrd0pLMnGKl2NpaAHXKk/VtAAAA
-X-Change-ID: 20260908-nfsdctl-rpcb-adc5a1fc090b
+Message-Id: <20260910-nfsdctl-rpcb-v1-1-4bba1e7a3a43@kernel.org>
+References: <20260910-nfsdctl-rpcb-v1-0-4bba1e7a3a43@kernel.org>
+In-Reply-To: <20260910-nfsdctl-rpcb-v1-0-4bba1e7a3a43@kernel.org>
 To: Steve Dickson <steved@redhat.com>, Trond Myklebust <trondmy@kernel.org>, 
  Anna Schumaker <anna@kernel.org>, Chuck Lever <cel@kernel.org>, 
  NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1464; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=ckqggx6H/f+0tDxpRpkezlF28bjTwU+ugWPNOVc9Wso=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqovVPpmnItxjSrlyPRxRhnkpZKPA1UsUZhmfnz
- kgo6R1e7A2JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaqL1TwAKCRAADmhBGVaC
- FZtOD/9Rg69TVEJLAjH4cimZMujmlAxRUwCGIhwicF2sURkmDSOb53aHjmeHXxb75TxgiXJNZyv
- bZxoOAP3RvmfQyiZ79YD+VobAPIpB9LRASQJzFJey8LX/QG+f5MayCJLu2/vZ+C6MmnpACOLv5G
- 0ARlK/RNNyCUkbez4dI2WDqZ2NYI2lISSENeM88PiYI/oso7cLD9OLayYKVrqqci9+hNOjmoZTe
- 6d14/SBil4sRH2gcgbBoBtquKiBEDt3hqyNqW02Vn/kpIMGuhR85BnYJe9RraBDCRqE1he16L3D
- rNHZe1Y4KcDgnJxkuF0tExG0oTA9QyzhpLIu0uV9K9dbqDbQpXJCOeTAq+y1SLF4myaRUS3HlgC
- TiYG8/VIUC29FiIjNYVOOeFQMy262Gc++S3OgWXIWuvmZ+9gMleNO+pjUQi2wEGePfJ5/f7B5UW
- eLhy1yYXdZkFSVv6+7ldMvcEdh/LOMtNnGEuk764oCOhrwMSO2Pfl/INqAivpd9oId6V0/wxK6M
- rqyfIFC0OZ3/7hUlZEw91MAVEdeJxdDYGMDddMjWDycfTsGZ3lKeS/H24qqBn+VBvtcMoW2/DM3
- MXWynwXsJ/L45sZVzfUKll84vrKS9G7MA4Is7SNJDLsVOqJCbjwkphPcOilNaO6uLVtEiSaxIDR
- 5pkxYr4431Ohlog==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2351; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=wv2OccFFKLkXr+YGWy2rzbry5U+NwLKxDOIg6uFw+yo=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqovVPgbTDh5xidmcLwbq/SoEi6F3Axvd1+ia/0
+ Wo2+AaeiHWJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaqL1TwAKCRAADmhBGVaC
+ FTa/D/9WcvPSPvvUAplnswwCRulOQVYWxJIv3ur1c/IK6f6iFsk0ETrL9z+f6bOdeytH5QuIGc8
+ EKY9yxaykcc8wcOSM+wm6yy7b5HGfrOEvDy08j9cGPWseko2+1XwKJgjZNvtPCSyrR+gvq5jO/2
+ GRMKRD9BmzzBtGinnIMw/9CNKcjmuGHIVH++b3V61ZllXuA6i4CUmF3OZ4dAGkun1qpM8Nx9w/4
+ yH+RtRYkEjNE+c4lkugL8pfNQfw38RIf2jThxir0UnRwlmDH1efx1dzHdPVqcgp8gpUZvn68eoO
+ 97ecbTem162Ee4DmUsNt8DyXhliJVLkA3/JKkS64Zqkz6gVxVUGHEm9dHesHgdnJ1pitf+rBny/
+ 8WxXlNISCF9no3poWbSiXid5AYyXDc8F+5i/GNdrHbNv79TnL61fCOOhhIuF4OiV/GKu8IfxmIn
+ MAnFCWhrSyC1ktAcWHuetdAb+qyeHhKyY+aOFJB5WZKuZk873R8t1M3EHDNxgqlrb0IZ8Y9Aans
+ j5EKhEUYzX6dIQjKtO1it3afndq2IDqigUzilyKMTy2r422F0kf8+f5i/DiHvb8r8iq5I6QjltD
+ bOEl+PHRfX9Mh32bDpLOqLafVwut6NfJchtyGLO07IskweO88omyRphu0LnuSVRJOTPK/tm6bLF
+ s+tknpAvhIAFRWw==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-This patchset adds support for NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND,
-which tells the kernel to not do rpcbind registration and to instead
-allow userland to handle it. After setting listeners, nfsdctl will then
-call out to rpcbind using the normal libtirpc client interfaces.
+Import the attributes that let a caller own rpcbind registration:
 
-This is a companion set to the kernel set I recently posted (and which
-also should have been marked RFC).
+- NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND on the request
+- NFSD_A_SERVER_SOCK_RPCBIND, and the NFSD_A_RPCBIND_* nest, on the reply
+
+The file comes from include/uapi/linux/nfsd_netlink.h. No code reads the
+new attributes yet.
+
+Bump the USE_SYSTEM_NFSD_NETLINK_H probe to one of the new attributes.
+It tested NFSD_CMD_SERVER_STATS_GET, which has been in the uapi header
+since v6.9, so any host with headers that new picks the system copy and
+loses everything imported here.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
-Jeff Layton (7):
-      nfsdctl: sync nfsd_netlink.h with the kernel
-      nfsdctl: probe the policy of any command
-      nfsdctl: share the listener nest parser
-      nfsdctl: add rpcbind registration helpers
-      nfsdctl: register nfsd listeners with rpcbind
-      nfsdctl: clear rpcbind entries when the last thread stops
-      nfsdctl: add missing break in update_listeners()
+ configure.ac                   |  2 +-
+ support/include/nfsd_netlink.h | 18 ++++++++++++++++++
+ 2 files changed, 19 insertions(+), 1 deletion(-)
 
- configure.ac                   |   2 +-
- support/include/nfsd_netlink.h |  18 +++
- utils/nfsdctl/Makefile.am      |  10 +-
- utils/nfsdctl/nfsdctl.8        |  16 +++
- utils/nfsdctl/nfsdctl.adoc     |  17 +++
- utils/nfsdctl/nfsdctl.c        | 194 +++++++++++++++++++++++++------
- utils/nfsdctl/rpcbind.c        | 251 +++++++++++++++++++++++++++++++++++++++++
- utils/nfsdctl/rpcbind.h        |  42 +++++++
- 8 files changed, 510 insertions(+), 40 deletions(-)
----
-base-commit: 630393e9c73667b3fda6a7507cb5171ec0ec38dc
-change-id: 20260908-nfsdctl-rpcb-adc5a1fc090b
+diff --git a/configure.ac b/configure.ac
+index 2ce1e129e5d4..d9d268975d7d 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -259,7 +259,7 @@ AC_CHECK_HEADERS(linux/nfsd_netlink.h)
+ 
+ # ensure the system netlink headers have the latest features
+ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <linux/nfsd_netlink.h>]],
+-			                   [[int foo = NFSD_CMD_SERVER_STATS_GET;]])],
++			                   [[int foo = NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND;]])],
+ 			   [AC_DEFINE([USE_SYSTEM_NFSD_NETLINK_H], 1,
+ 				      ["Use system's linux/nfsd_netlink.h"])])
+ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <linux/lockd_netlink.h>]],
+diff --git a/support/include/nfsd_netlink.h b/support/include/nfsd_netlink.h
+index 87da1d0bb21e..400322857d16 100644
+--- a/support/include/nfsd_netlink.h
++++ b/support/include/nfsd_netlink.h
+@@ -50,6 +50,13 @@ enum nfsd_xprtsec_mode {
+ 	NFSD_XPRTSEC_MODE_MTLS = 4,
+ };
+ 
++/*
++ * Constraints that apply to an rpcbind registration.
++ */
++enum nfsd_rpcbind_flags {
++	NFSD_RPCBIND_FLAGS_NO_UDP = 1,
++};
++
+ enum {
+ 	NFSD_A_CACHE_NOTIFY_CACHE_TYPE = 1,
+ 
+@@ -113,8 +120,19 @@ enum {
+ 	NFSD_A_SOCK_MAX = (__NFSD_A_SOCK_MAX - 1)
+ };
+ 
++enum {
++	NFSD_A_RPCBIND_PROGRAM = 1,
++	NFSD_A_RPCBIND_VERSION,
++	NFSD_A_RPCBIND_FLAGS,
++
++	__NFSD_A_RPCBIND_MAX,
++	NFSD_A_RPCBIND_MAX = (__NFSD_A_RPCBIND_MAX - 1)
++};
++
+ enum {
+ 	NFSD_A_SERVER_SOCK_ADDR = 1,
++	NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND,
++	NFSD_A_SERVER_SOCK_RPCBIND,
+ 
+ 	__NFSD_A_SERVER_SOCK_MAX,
+ 	NFSD_A_SERVER_SOCK_MAX = (__NFSD_A_SERVER_SOCK_MAX - 1)
 
-Best regards,
 -- 
-Jeff Layton <jlayton@kernel.org>
+2.55.0
 
