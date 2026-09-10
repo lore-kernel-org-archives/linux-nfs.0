@@ -1,192 +1,407 @@
-Received: from dvalin.narfation.org (dvalin.narfation.org [213.160.73.56])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D1BE63AB287;
-	Thu, 10 Sep 2026 16:56:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.160.73.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C1F57524AF1
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Sep 2026 16:59:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789059398; cv=none; b=HJKzcnIDFkhoe2QBCp4RxSTXdLSZklQ9lA/9o3r4EJbU4/6sH5UwhYUuVXrQEoO7fSrNWea+cHCIxc/Qfqf4pPUi/8oDOJm80RXR1yFLHOzpz4m8v/isCThWEb1l8zYTYfsxrA6srBeImTyMR3QOedjgMUC9SYR2HoN4BBpWtKU=
+	t=1789059568; cv=none; b=YSKtKcn7CVHXIiQteXwgvn7KC2utE1OHEDdeQKVgxEpu6yqAdgWxxkExEEypgl3/04kzu8iVc1g4qTkQLPTm8BHqF+dTw3sCE77rNJGMq7pUNXUj6HHTYP9SzYYA2NKnDwy62zstBSFWUPFvacaDvOGUYZdBg/Ps2z0z4fI8m2Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789059398; c=relaxed/simple;
-	bh=ScSG9WBXfS4Wo/8HDgWfWshTRFigOP1Fj1R22XjxUT0=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=UWG/PNPJ3BOcvwcfagXSU5JivU87sfjf2cx6FcYoTCFWl0wNuwEZSLwW9sLabzu0qLR28NYvsJY6cGHLkvWU1j69BJreRSEeS0xdeIr2+UJX2LF43AjAHYCjZ9j+XGhTmUCUJ5k9HqQ7O96L32Mp19IDj55B/oD4tCFgd68PayU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=narfation.org; spf=pass smtp.mailfrom=narfation.org; dkim=pass (1024-bit key) header.d=narfation.org header.i=@narfation.org header.b=nwEXBdcA; arc=none smtp.client-ip=213.160.73.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=narfation.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=narfation.org
+	s=arc-20240116; t=1789059568; c=relaxed/simple;
+	bh=lhB32S0LBg4AjlNBmkDq0m+rOhc7Svr7nscr01Ts9qM=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=KpW0Ad2TCU/1eApZclfcOBJS4obTZQp2u6kPb0MQIqBpkIy3M1jcg9qpNYDpBe67x44NCDlT0evRURXa6qOOoHoseZWoF4sd8U7WhVjq4ExC8SBx03wsnUPqvK3zlYlvzfujGYwAsd8+AGExcD11PgoLyST+mOCjg3/tdUhhfsM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nuzWlr9c; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=narfation.org header.i=@narfation.org header.b="nwEXBdcA"
-Received: by dvalin.narfation.org (Postfix) id 2356320394;
-	Thu, 10 Sep 2026 16:56:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=narfation.org;
-	s=20121; t=1789059391;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=jpfKdfRhIDieddP8CnPCmiOpHujz9qF8RTfexgVbXU8=;
-	b=nwEXBdcAy3Bpov4VOY4e9xQIUo1PQ2X9HlwxbfnLeQfMjABTkXF73qIcnksvyZ+lcbcS0g
-	2rPkDRnl7UQZFmPrLPM9uczBVt0vyDhtL/31BVXskbZBb26AOMkMrYm6WaedfzaSpjh5hq
-	RYBqqwgy91rok1+/oD3mlpj7KKJQqzg=
-From: Sven Eckelmann <sven@narfation.org>
-To: netdev@vger.kernel.org, Fernando Fernandez Mancera <fmancera@suse.de>
-Cc: horms@kernel.org, kuba@kernel.org, pabeni@redhat.com, edumazet@google.com,
- davem@davemloft.net, Fernando Fernandez Mancera <fmancera@suse.de>,
- Jason Gunthorpe <jgg@ziepe.ca>, Leon Romanovsky <leon@kernel.org>,
- Andrew Lunn <andrew+netdev@lunn.ch>,
- Tony Nguyen <anthony.l.nguyen@intel.com>,
- Przemek Kitszel <przemyslaw.kitszel@intel.com>,
- Elad Nachman <enachman@marvell.com>, Saeed Mahameed <saeedm@nvidia.com>,
- Tariq Toukan <tariqt@nvidia.com>, Mark Bloch <mbloch@nvidia.com>,
- Ido Schimmel <idosch@nvidia.com>, Petr Machata <petrm@nvidia.com>,
- Edward Cree <ecree.xilinx@gmail.com>,
- Maxime Chevallier <maxime.chevallier@bootlin.com>,
- Maxime Coquelin <mcoquelin.stm32@gmail.com>,
- Alexandre Torgue <alexandre.torgue@foss.st.com>,
- Arend van Spriel <arend.vanspriel@broadcom.com>,
- Miri Korenblit <miriam.rachel.korenblit@intel.com>,
- Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>,
- Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>,
- Chaitanya Kulkarni <kch@nvidia.com>, Saurav Kashyap <skashyap@marvell.com>,
- Javed Hasan <jhasan@marvell.com>, GR-QLogic-Storage-Upstream@marvell.com,
- "James E.J. Bottomley" <James.Bottomley@hansenpartnership.com>,
- "Martin K. Petersen" <mkp@kernel.org>, Nilesh Javali <njavali@marvell.com>,
- Manish Rangankar <mrangankar@marvell.com>, Varun Prakash <varun@chelsio.com>,
- Alexander Viro <viro@zeniv.linux.org.uk>,
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
- David Howells <dhowells@redhat.com>, Marc Dionne <marc.dionne@auristor.com>,
- Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
- Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
- NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>,
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
- Marek Lindner <marek.lindner@mailbox.org>,
- Simon Wunderlich <sw@simonwunderlich.de>,
- Antonio Quartulli <antonio@mandelbit.com>,
- Nikolay Aleksandrov <razor@blackwall.org>,
- Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
- Phil Sutter <phil@nwl.cc>, Johannes Berg <johannes@sipsolutions.net>,
- Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>,
- Geliang Tang <geliang@kernel.org>, Julian Anastasov <ja@ssi.bg>,
- Aaron Conole <aconole@redhat.com>, Eelco Chaudron <echaudro@redhat.com>,
- Ilya Maximets <i.maximets@ovn.org>, Allison Henderson <achender@kernel.org>,
- Jamal Hadi Salim <jhs@mojatatu.com>, Jiri Pirko <jiri@resnulli.us>,
- Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
- Xin Long <lucien.xin@gmail.com>, "D. Wythe" <alibuda@linux.alibaba.com>,
- Dust Li <dust.li@linux.alibaba.com>,
- Sidraya Jayagond <sidraya@linux.ibm.com>,
- Mahanta Jambigi <mjambigi@linux.ibm.com>, Tony Lu <tonylu@linux.alibaba.com>,
- Wen Gu <guwen@linux.alibaba.com>, Jon Maloy <jmaloy@redhat.com>,
- Tung Quang Nguyen <tung.quang.nguyen@est.tech>,
- Steffen Klassert <steffen.klassert@secunet.com>,
- Herbert Xu <herbert@gondor.apana.org.au>,
- Casey Schaufler <casey@schaufler-ca.com>, Paul Moore <paul@paul-moore.com>,
- James Morris <jmorris@namei.org>, "Serge E. Hallyn" <serge@hallyn.com>,
- Vikas Gupta <vikas.gupta@broadcom.com>,
- Bhargava Marreddy <bhargava.marreddy@broadcom.com>,
- Rajashekar Hudumula <rajashekar.hudumula@broadcom.com>,
- Nicolai Buchwitz <nb@tipi-net.de>,
- Markus =?UTF-8?B?QmzDtmNobA==?= <markus@blochl.de>,
- Arnd Bergmann <arnd@arndb.de>, Heiner Kallweit <hkallweit1@gmail.com>,
- Florian Fainelli <florian.fainelli@broadcom.com>,
- Krzysztof Kozlowski <krzk@kernel.org>,
- Qingfang Deng <qingfang.deng@linux.dev>,
- Julian Braha <julianbraha@gmail.com>,
- Ethan Nelson-Moore <enelsonmoore@gmail.com>,
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
- Eric Biggers <ebiggers@kernel.org>, Ard Biesheuvel <ardb@kernel.org>,
- Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>,
- Willem de Bruijn <willemb@google.com>, Alyssa Ross <hi@alyssa.is>,
- Joel Granados <joel.granados@kernel.org>, Oleg Nesterov <oleg@redhat.com>,
- linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
- intel-wired-lan@lists.osuosl.org, oss-drivers@corigine.com,
- linux-net-drivers@amd.com, linux-stm32@st-md-mailman.stormreply.com,
- linux-arm-kernel@lists.infradead.org, linux-wireless@vger.kernel.org,
- brcm80211@lists.linux.dev, brcm80211-dev-list.pdl@broadcom.com,
- linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org,
- target-devel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
- b.a.t.m.a.n@lists.open-mesh.org, bridge@lists.linux.dev,
- netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
- mptcp@lists.linux.dev, lvs-devel@vger.kernel.org, dev@openvswitch.org,
- rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org,
- linux-s390@vger.kernel.org, tipc-discussion@lists.sourceforge.net,
- linux-security-module@vger.kernel.org
-Subject:
- Re: [PATCH 01/13 net-next] net: ipv4: introduce CONFIG_IPV4 to decouple the
- IPv4 stack
-Date: Thu, 10 Sep 2026 18:56:26 +0200
-Message-ID: <2927239.BEx9A2HvPv@ripper>
-In-Reply-To: <20260910144914.8025-2-fmancera@suse.de>
-References:
- <20260910144914.8025-1-fmancera@suse.de>
- <20260910144914.8025-2-fmancera@suse.de>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nuzWlr9c"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 378391F000FF;
+	Thu, 10 Sep 2026 16:59:19 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789059559;
+	bh=plkd5PwZIY8N63q1wDj2AOmda4D46EWB8wfyAbkZPh8=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=nuzWlr9cLmJDZnFVLePLPHz0BeSsbiyGBxFGziaBzXNVv5gJpX9jU7YqPEoOnoyqh
+	 MXgnTB+xRtD6Zi9ncvP6ku8Uk9z2u5yCVDG3EDUQZlB7G9PSzDF/n5K+WtaUVVORhZ
+	 KLcEYr6rHb82pI9v6HXZ9zGRyrDBHxYvrNx0DSsjJidCPUdrYMtffU6kkk1P34FJ/e
+	 p+1W8doA2md/aq58Jx4aD1LWKL12VQcxw5QNVKcpYLLwo5m9JnW82j1uJs8fd6D4II
+	 +05aBzHSwtJeZ+MPDlVb9amaeTOPp+DURoplsaMp8hN7JgGcgDKNW7dVqnS0T3CdEs
+	 Rd0jUIPl1rsEA==
+Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 45F20F40066;
+	Thu, 10 Sep 2026 12:59:18 -0400 (EDT)
+Received: from phl-imap-04 ([10.202.2.82])
+  by phl-compute-02.internal (MEProxy); Thu, 10 Sep 2026 12:59:18 -0400
+X-ME-Sender: <xms:5uGiaruSK55lXR2ifdNM-mj7H9E6G8dgZh0XZYismpn-8lg4KNPwgQ>
+    <xme:5uGianRPVMi2gzpcxY857ZvU0820XMYLq--_FWAI8hXV5xCylPKZTwVGfcqQI4FFc
+    7RDP3CxDsqbc3e45xaak2o9oxOUNOL-eTgmMGONikeWxr9UrWHPHtw>
+X-ME-Proxy-Cause: dmFkZTEgS13n5Llb4ggrpj7LX4lv0VIpYLaXSoP85a3yt8bbUACgGJ8ZqorKGfZLzZwplh
+    rwwMbIl20TOP6HGy5nMa03PuteRcq1U4pWSMHVtLVInR57Kr0cHuO73wIcytjBpf+lbi6P
+    E8xqwI5YFGeD2LhLobNvIgHlkF/AHNKbOMsF7dcZwPo9vPPzlbPQ8s5DcoVXmRm1QwAZhA
+    dIiiEYwxQ03zaIUYX8oWiaEaYzbhZ02d794WXNerxCvhBMCsNEx2+epSrwxl/KLLO00iPF
+    De1fxCt6NKQvbwn8I2vNoA/Epgc+H7wkxyuztVypmy4bUs3S5xMV66HgHeuzOVukV1RBNs
+    6VgGbhvwgQmzWv90CowgRpPdfHNXazWNCpYolE95+wAuVU/iZUPvQatNbyeoAdPsdyT5lJ
+    FIRuZPW1OTDenQ9MbKGJdfrVVLhao4Dax7lSABGwOPvvgQw16WsMHZpzTbKD02g8XyiHkl
+    GOPWJnZbO6ESCPmMFoTod7MEJu6pujNjZ2PkIFJS7SjPCF7qHJsBQFJg48JQqmSHaVeQse
+    T3uc+OvKdfSCJ5yY2V1pcW6bF8UvVZuqMzv18Atz0Wy3V0B6iIaP25jrTrDvqbExv6JDJq
+    ZCXYaJNg7t138paDz1AYrYOjApWq8Y/k98FFZdqUXyP3hSgvGrpFs55qK0ow
+X-ME-Proxy: <xmx:5uGialGGy9mRel8Cn6kMd--oFUtqqv6ehy38gixtQhgmAGpW_IOoXQ>
+    <xmx:5uGiarBksDVI2MR9EoA05oiHIFwJhHnX4p63WNN38oN0-HrdczuSYQ>
+    <xmx:5uGialXThRBjxlsQNx2rHEcfZup5ZGCfTNK-qXx4-nKI_qykeL3gAg>
+    <xmx:5uGiavq4gh8OZNlhPk62UKnLFSaMhdCd-07aiv0aSxZgC1pEvC7f8Q>
+    <xmx:5uGiahS6K6OYu-62ZX8WcM0exaq-EdyOsLP9OOkhRooEaIz7ca2FNwnr>
+Feedback-ID: i20964851:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 1506DB6006E; Thu, 10 Sep 2026 12:59:18 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="nextPart15836323.tv2OnDr8pf";
- micalg="pgp-sha512"; protocol="application/pgp-signature"
+X-ThreadId: AYX8IyvXV9bc
+Date: Thu, 10 Sep 2026 12:58:57 -0400
+From: "Anna Schumaker" <anna@kernel.org>
+To: "Benjamin Coddington" <ben.coddington@hammerspace.com>,
+ "Trond Myklebust" <trondmy@kernel.org>
+Cc: linux-nfs@vger.kernel.org, "Jonathan Curley" <jcurley@purestorage.com>,
+ "Mike Snitzer" <snitzer@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
+ "Junrui Luo" <moonafterrain@outlook.com>
+Message-Id: <fdea855d-9921-44ef-9e0a-e7e253696c91@app.fastmail.com>
+In-Reply-To: 
+ <e23b6124f8236b2f71976507e140b33df5918b7c.1788530385.git.bcodding@hammerspace.com>
+References: <cover.1788530385.git.bcodding@hammerspace.com>
+ <e23b6124f8236b2f71976507e140b33df5918b7c.1788530385.git.bcodding@hammerspace.com>
+Subject: Re: [PATCH v3 17/24] pNFS: Add deviceid reference query and collection walkers
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
---nextPart15836323.tv2OnDr8pf
-Content-Transfer-Encoding: 7Bit
-Content-Type: text/plain; charset="utf-8"; protected-headers="v1"
-From: Sven Eckelmann <sven@narfation.org>
-Date: Thu, 10 Sep 2026 18:56:26 +0200
-Message-ID: <2927239.BEx9A2HvPv@ripper>
-In-Reply-To: <20260910144914.8025-2-fmancera@suse.de>
-MIME-Version: 1.0
+Hi Ben,
 
-On Thursday, 10 September 2026 16:48:26 CEST Fernando Fernandez Mancera wrote:
-> diff --git a/net/batman-adv/Kconfig b/net/batman-adv/Kconfig
-> index 58c408b7a7d9..60ad4b09be6e 100644
-> --- a/net/batman-adv/Kconfig
-> +++ b/net/batman-adv/Kconfig
-> @@ -9,6 +9,7 @@
->  
->  config BATMAN_ADV
->         tristate "B.A.T.M.A.N. Advanced Meshing Protocol"
-> +       depends on IPV4
->         select CRC32
->         help
->           B.A.T.M.A.N. (better approach to mobile ad-hoc networking) is
+On Fri, Sep 4, 2026, at 12:53 PM, Benjamin Coddington wrote:
+> The CB_NOTIFY_DEVICEID DELETE race recovery (RFC 8881 Section
+> 18.40.4) needs to ask whether any live layout still references a
+> deviceID, and to enumerate those layouts for TEST_STATEID.  Add a
+> layout_references_deviceid hook (sibling of reresolve_deviceid; the
+> flexfiles implementation memcmps each mirror stripe's decoded devid,
+> valid independent of the pinned device node) and two walkers over
+> the byserver pattern:
+>
+> - pnfs_layout_deviceid_referenced_byclid(): boolean existence query,
+>   early-stopping, entirely under i_lock.
+> - pnfs_layout_collect_deviceid_refs(): collects each matching layout
+>   with the hdr pinned, the inode grabbed with its superblock active
+>   (a pinned hdr does not hold its inode -- same discipline as the
+>   bulk-destroy walker), and the layout stateid and cred snapshotted
+>   under i_lock, so the caller can issue sleeping RPCs against the
+>   collection.
+>
+> The collection walker pins each matching header with a plain
+> pnfs_get_layout_hdr(), which cannot resurrect a dying header because
+> the walker holds i_lock and has checked NFS_I()->layout == lo.
+> pnfs_put_layout_hdr() drops the last reference under i_lock --
+> refcount_dec_and_lock() only decrements one to zero once it holds the
+> lock -- and clears NFS_I()->layout in that same critical section,
+> before it unlocks and frees.  So a header still installed on its inode
+> cannot have reached a zero refcount.
+>
+> That argument deliberately does not rest on NFS_LAYOUT_INVALID_STID.
+> A header can reach its final put while still valid: a full
+> LAYOUTRETURN ends in pnfs_layoutreturn_free_lsegs(), which resets the
+> layout stateid rather than invalidating it, and that is the ordinary
+> end of life for a return-on-close layout.  The validity check the
+> walkers do apply is a policy filter, not a lifetime guarantee.
+>
+> Because pnfs_put_layout_hdr() can send a layoutreturn and sleep, a
+> header pinned for a layout whose inode can no longer be grabbed is put
+> after the RCU read-side critical section, not within it.
+>
+> Both ways the walk can end early report it.  A GFP_ATOMIC allocation
+> failure aborts with -ENOMEM, and an inode that can no longer be
+> grabbed -- igrab() fails from I_FREEING on, while the layout may still
+> be valid and still name the deviceID -- aborts with -EAGAIN.  Either
+> way the caller is told the collection is partial instead of receiving
+> a short list it would read as "no references".
+>
+> No callers yet; no behavior change.
+>
+> Assisted-by: Claude:claude-fable-5
+> Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
+> ---
+>  fs/nfs/flexfilelayout/flexfilelayout.c |  17 +++
+>  fs/nfs/pnfs.c                          | 164 +++++++++++++++++++++++++
+>  fs/nfs/pnfs.h                          |  29 +++++
+>  3 files changed, 210 insertions(+)
+>
+> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c 
+> b/fs/nfs/flexfilelayout/flexfilelayout.c
+> index 9caf4b3b45ae..12b7be95a9c3 100644
+> --- a/fs/nfs/flexfilelayout/flexfilelayout.c
+> +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+> @@ -2527,6 +2527,22 @@ static void ff_layout_cancel_io(struct 
+> pnfs_layout_segment *lseg)
+>  	}
+>  }
+> 
+> +/* Called under @lo's inode i_lock. */
+> +static bool ff_layout_references_deviceid(struct pnfs_layout_hdr *lo,
+> +					  const struct nfs4_deviceid *id)
+> +{
+> +	struct nfs4_flexfile_layout *flo = FF_LAYOUT_FROM_HDR(lo);
+> +	struct nfs4_ff_layout_mirror *mirror;
+> +	u32 dss_id;
+> +
+> +	list_for_each_entry(mirror, &flo->mirrors, mirrors)
+> +		for (dss_id = 0; dss_id < mirror->dss_count; dss_id++)
+> +			if (memcmp(&mirror->dss[dss_id].devid, id,
+> +				   sizeof(*id)) == 0)
+> +				return true;
+> +	return false;
+> +}
+> +
+>  /*
+>   * Un-pin every stripe node resolved from @id: in-flight I/O drains on 
+> the
+>   * old node through its own reference, the next I/O re-resolves.
+> @@ -3155,6 +3171,7 @@ static struct pnfs_layoutdriver_type 
+> flexfilelayout_type = {
+>  	.get_ds_info		= ff_layout_get_ds_info,
+>  	.free_deviceid_node	= ff_layout_free_deviceid_node,
+>  	.reresolve_deviceid	= ff_layout_reresolve_deviceid,
+> +	.layout_references_deviceid = ff_layout_references_deviceid,
+>  	.read_pagelist		= ff_layout_read_pagelist,
+>  	.write_pagelist		= ff_layout_write_pagelist,
+>  	.alloc_deviceid_node    = ff_layout_alloc_deviceid_node,
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 2f54b22d0e21..23f12eec99d7 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -2937,6 +2937,170 @@ pnfs_layout_reresolve_deviceid_byclid(struct 
+> nfs_client *clp,
+>  	}
+>  }
+> 
+> +struct pnfs_deviceid_ref_args {
+> +	const struct pnfs_layoutdriver_type *ld;
+> +	const struct nfs4_deviceid *id;
+> +	struct list_head *result;
+> +	bool found;
+> +};
+> +
+> +static int pnfs_layout_deviceid_referenced_byserver(
+> +		struct nfs_server *server, void *data)
+> +{
+> +	struct pnfs_deviceid_ref_args *args = data;
+> +	struct pnfs_layout_hdr *lo;
+> +	struct inode *inode;
+> +
+> +	if (server->pnfs_curr_ld != args->ld)
+> +		return 0;
+> +
+> +	rcu_read_lock();
+> +	list_for_each_entry_rcu(lo, &server->layouts, plh_layouts) {
+> +		inode = lo->plh_inode;
+> +		if (!inode)
+> +			continue;
+> +		spin_lock(&inode->i_lock);
+> +		if (NFS_I(inode)->layout == lo && pnfs_layout_is_valid(lo) &&
+> +		    args->ld->layout_references_deviceid(lo, args->id))
+> +			args->found = true;
+> +		spin_unlock(&inode->i_lock);
+> +		if (args->found)
+> +			break;
+> +	}
+> +	rcu_read_unlock();
+> +	return args->found;
+> +}
+> +
+> +/*
+> + * pnfs_layout_deviceid_referenced_byclid - does any live layout of
+> + * @clp's servers using @ld still reference deviceid @id?
+> + */
+> +bool
+> +pnfs_layout_deviceid_referenced_byclid(struct nfs_client *clp,
+> +				const struct pnfs_layoutdriver_type *ld,
+> +				const struct nfs4_deviceid *id)
+> +{
+> +	struct pnfs_deviceid_ref_args args = {
+> +		.ld = ld,
+> +		.id = id,
+> +	};
 
-This doesn't make a lot of sense to me IPV4 is not a requirement for 
-batman-adv. Only very specific features will require symbols from IPv4:
+I was wondering if we could go with different names for the members
+of this struct? "ld" and "id" look very similar, and at first glance
+I thought you were assigning the same values twice here.
 
-* CONFIG_BATMAN_ADV_BLA
+Anna
 
-  - arp_create
-
-* CONFIG_BATMAN_ADV_DAT
-
-  - arp_create
-
-* CONFIG_BATMAN_ADV_MCAST
-
-  - ip_mc_check_igmp
-
-
-Basically things which currently depend on INET in net/batman-adv/Kconfig
-
-Or am I missing something here?
-
-Regards,
-	Sven
---nextPart15836323.tv2OnDr8pf
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part.
-Content-Transfer-Encoding: 7Bit
-
------BEGIN PGP SIGNATURE-----
-
-iHUEABYKAB0WIQS81G/PswftH/OW8cVND3cr0xT1ywUCaqLhOgAKCRBND3cr0xT1
-y0QVAQCluQcX0gr2MIQxC1VBX8WP3ecVDFqIOBKX04RTLEdoGQD+LCZ3LWDtGBbG
-zKG3h3F96XOApdHINtJ4L0x6nSSviww=
-=kxMI
------END PGP SIGNATURE-----
-
---nextPart15836323.tv2OnDr8pf--
-
-
-
+> +
+> +	if (!ld->layout_references_deviceid)
+> +		return false;
+> +
+> +	nfs_client_for_each_server(clp,
+> +			pnfs_layout_deviceid_referenced_byserver, &args);
+> +	return args.found;
+> +}
+> +
+> +static int pnfs_layout_collect_deviceid_refs_byserver(
+> +		struct nfs_server *server, void *data)
+> +{
+> +	struct pnfs_deviceid_ref_args *args = data;
+> +	struct nfs4_deviceid_ref *ref, *tmp;
+> +	struct pnfs_layout_hdr *lo;
+> +	struct inode *inode;
+> +	LIST_HEAD(putme);
+> +	bool matched;
+> +	int ret = 0;
+> +
+> +	if (server->pnfs_curr_ld != args->ld)
+> +		return 0;
+> +
+> +	rcu_read_lock();
+> +	list_for_each_entry_rcu(lo, &server->layouts, plh_layouts) {
+> +		inode = lo->plh_inode;
+> +		if (!inode)
+> +			continue;
+> +
+> +		spin_lock(&inode->i_lock);
+> +		matched = NFS_I(inode)->layout == lo &&
+> +			  pnfs_layout_is_valid(lo) &&
+> +			  args->ld->layout_references_deviceid(lo, args->id);
+> +		if (!matched) {
+> +			spin_unlock(&inode->i_lock);
+> +			continue;
+> +		}
+> +		ref = kzalloc_obj(*ref, GFP_ATOMIC);
+> +		if (!ref) {
+> +			spin_unlock(&inode->i_lock);
+> +			ret = -ENOMEM;
+> +			break;
+> +		}
+> +		/* NFS_I()->layout == lo under i_lock means the refcount has
+> +		 * not reached zero: pnfs_put_layout_hdr() decrements to zero
+> +		 * and detaches in the same critical section.
+> +		 */
+> +		pnfs_get_layout_hdr(lo);
+> +		ref->lo = lo;
+> +		nfs4_stateid_copy(&ref->stateid, &lo->plh_stateid);
+> +		ref->cred = get_cred(lo->plh_lc_cred);
+> +		spin_unlock(&inode->i_lock);
+> +
+> +		/* the pinned hdr does not hold the inode: grab it (and
+> +		 * keep the superblock active) for use across RPCs
+> +		 */
+> +		ref->inode = nfs_igrab_and_active(inode);
+> +		if (!ref->inode) {
+> +			/* The layout may still name the deviceID, so report a
+> +			 * partial list rather than silently shortening it.
+> +			 * Defer the put: it can layoutreturn and sleep.
+> +			 */
+> +			list_add(&ref->node, &putme);
+> +			ret = -EAGAIN;
+> +			break;
+> +		}
+> +		list_add_tail(&ref->node, args->result);
+> +	}
+> +	rcu_read_unlock();
+> +
+> +	list_for_each_entry_safe(ref, tmp, &putme, node) {
+> +		list_del(&ref->node);
+> +		pnfs_put_layout_hdr(ref->lo);
+> +		put_cred(ref->cred);
+> +		kfree(ref);
+> +	}
+> +	return ret;
+> +}
+> +
+> +/*
+> + * Collect @clp's layouts referencing @id onto @result as entries usable
+> + * across sleeping RPCs; release with pnfs_layout_put_deviceid_refs().
+> + * A negative return means @result is only a partial set.
+> + */
+> +int
+> +pnfs_layout_collect_deviceid_refs(struct nfs_client *clp,
+> +				const struct pnfs_layoutdriver_type *ld,
+> +				const struct nfs4_deviceid *id,
+> +				struct list_head *result)
+> +{
+> +	struct pnfs_deviceid_ref_args args = {
+> +		.ld = ld,
+> +		.id = id,
+> +		.result = result,
+> +	};
+> +
+> +	if (!ld->layout_references_deviceid)
+> +		return 0;
+> +
+> +	return nfs_client_for_each_server(clp,
+> +			pnfs_layout_collect_deviceid_refs_byserver, &args);
+> +}
+> +
+> +void
+> +pnfs_layout_put_deviceid_refs(struct list_head *result)
+> +{
+> +	struct nfs4_deviceid_ref *ref, *tmp;
+> +
+> +	list_for_each_entry_safe(ref, tmp, result, node) {
+> +		list_del(&ref->node);
+> +		put_cred(ref->cred);
+> +		pnfs_put_layout_hdr(ref->lo);
+> +		nfs_iput_and_deactive(ref->inode);
+> +		kfree(ref);
+> +	}
+> +}
+> +
+>  /* Check if we have we have a valid layout but if there isn't an intersection
+>   * between the request and the pgio->pg_lseg, put this pgio->pg_lseg away.
+>   */
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 2c0f5d4d38ab..d1bc4d1d8d4c 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -184,6 +184,12 @@ struct pnfs_layoutdriver_type {
+>  				   const struct nfs4_deviceid *id,
+>  				   bool immediate,
+>  				   struct list_head *put_list);
+> +	/*
+> +	 * Does @lo hold any reference to deviceid @id?  Called under
+> +	 * @lo's inode i_lock; must not sleep.
+> +	 */
+> +	bool (*layout_references_deviceid)(struct pnfs_layout_hdr *lo,
+> +					   const struct nfs4_deviceid *id);
+> 
+>  	int (*prepare_layoutreturn) (struct nfs4_layoutreturn_args *);
+> 
+> @@ -371,6 +377,29 @@ void pnfs_layout_reresolve_deviceid_byclid(struct 
+> nfs_client *clp,
+>  				const struct pnfs_layoutdriver_type *ld,
+>  				const struct nfs4_deviceid *id,
+>  				bool immediate);
+> +bool pnfs_layout_deviceid_referenced_byclid(struct nfs_client *clp,
+> +				const struct pnfs_layoutdriver_type *ld,
+> +				const struct nfs4_deviceid *id);
+> +
+> +/*
+> + * One live layout referencing a deviceID, collected for the
+> + * CB_NOTIFY_DEVICEID DELETE recovery: the hdr is pinned, the inode
+> + * igrab'd with its superblock active, and the layout stateid and
+> + * cred snapshotted for TEST_STATEID.
+> + */
+> +struct nfs4_deviceid_ref {
+> +	struct list_head node;
+> +	struct pnfs_layout_hdr *lo;
+> +	struct inode *inode;
+> +	nfs4_stateid stateid;
+> +	const struct cred *cred;
+> +};
+> +
+> +int pnfs_layout_collect_deviceid_refs(struct nfs_client *clp,
+> +				const struct pnfs_layoutdriver_type *ld,
+> +				const struct nfs4_deviceid *id,
+> +				struct list_head *result);
+> +void pnfs_layout_put_deviceid_refs(struct list_head *result);
+>  int pnfs_layout_handle_reboot(struct nfs_client *clp);
+> 
+>  /* nfs4_deviceid_flags */
+> -- 
+> 2.53.0
