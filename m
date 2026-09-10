@@ -1,200 +1,126 @@
 Received: from fout-b3-smtp.messagingengine.com (fout-b3-smtp.messagingengine.com [202.12.124.146])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3106C49AA55
-	for <linux-nfs@vger.kernel.org>; Wed,  9 Sep 2026 23:32:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F168C2AD00;
+	Thu, 10 Sep 2026 00:29:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.146
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788996728; cv=none; b=ee8Kr9krZU3TJk5JO6Dx7hhr8MsgXpO4JgZJMJxjCeoceVE+0tUoBsn7mvfOOZo3I0HHLwt891RS/HME+Am4y9/n5TZte1sGAF0kVue2piGmnnc2vCdrX+PD4jraNqQkhODkrRYWS8vBhWAPiMJuobYIcp2Ku8Ig0M9sj4Y9emc=
+	t=1789000189; cv=none; b=XJFECNqDGSZPoMRGXRpe5hcXzBvESDQrS4bPwAewkhqzdGUdeS5HCHYdL4ZcHlg1osgQmybHgUNRcRKWBEk7IgwiS1sIIl3eW/HRe4I8hV+VOC39JD8CkPBcH1yXwU2QyNU/aN1UJOow9myuvEX4C5h1vJ37bYNrOvHg0zEiwpk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788996728; c=relaxed/simple;
-	bh=7PS6WNkGqdOtEQCVi45Z157xMJUipDyFoL7TmLSVOqk=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=sUyJhGGBhvLkGkKW/0QPDasMDxs+T5VbBZODYofKtEW8xugQuSnWqY5oXtftq6hOHcHye++dYwDkLhDiNOF2i9yQv8Ea7HCVHqrz6Eku/VtG4ApX9MZLghTMDnlw+WB1h6oo5/8rLfPBXgPQk3oBzR+tq//tA720LZObOkIC6l0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=j9kZQ+ju; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=fAzR7feh; arc=none smtp.client-ip=202.12.124.146
+	s=arc-20240116; t=1789000189; c=relaxed/simple;
+	bh=aPjjTcqF2XeYLTM41nA3YHEPSk3Ah9fEOqrE6jzMgUY=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=ownjad+ELTK39W12vXQ0KwJlSVdBBU1yYvQES56ec+iHsKUDV3gVDoc+XFgNxWdvKhyhRhxTE3VbvQDzsRCjpcdeGNJQDy2yNbQb8PlbOD42jUkCAzTf13eP3G35EivUqzE5Q7+wyOq10TeHaigJ9LviNUbDGJ0/edlOg13rKQg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=U+2JYhu+; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=Fy8D1O/I; arc=none smtp.client-ip=202.12.124.146
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="j9kZQ+ju";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="fAzR7feh"
-Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
-	by mailfout.stl.internal (Postfix) with ESMTP id 3CCF11D000F1;
-	Wed,  9 Sep 2026 19:32:05 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-06.internal (MEProxy); Wed, 09 Sep 2026 19:32:05 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="U+2JYhu+";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="Fy8D1O/I"
+Received: from phl-compute-07.internal (phl-compute-07.internal [10.202.2.47])
+	by mailfout.stl.internal (Postfix) with ESMTP id E808B1D00091;
+	Wed,  9 Sep 2026 20:29:46 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-07.internal (MEProxy); Wed, 09 Sep 2026 20:29:47 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:content-type:date
-	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to; s=fm1; t=
-	1788996725; x=1789083125; bh=y7KoC6RC9BVdYOUuZgM0dPpsQafBY6QbFDJ
-	bIo7HcNE=; b=j9kZQ+jufsvHsu9FQ4ERWE+90HZNQsKOxONjKpIl0R8M11me4R/
-	31dOLw+ufjByML7cpg5qfVsIT3B4bTsfcDoKIu5d0bU3LQFqvrEIvPGgBe0SVX+C
-	yGXMJwpQSkq0iw+Gjn6UlsQLCifaVwFJAQWwCjoQIZgkcxNWfWBi9B9qvIZXvWYU
-	ZUOyvmQwiod7OTUQa/uX0+qg9TceokE6TCjc5ltdCFDDTAUwZlWlHJxez/JjWWsW
-	zgL1XBai9eM6VIjp5lL6VP6euKaH2j7BeKNLMALHwIjboQzxzyIuTcZlczUkD+0w
-	zg/OxZJjj8/P8DC8zHP9yfWACRNH17jdfNQ==
+	cc:cc:content-transfer-encoding:content-type:date:date:from:from
+	:in-reply-to:message-id:mime-version:reply-to:reply-to:subject
+	:subject:to:to; s=fm1; t=1789000186; x=1789086586; bh=2lQ2pka3FW
+	U4UnyW8EvfdzmcWknbIDD+gKd/6rbH00Q=; b=U+2JYhu+QuDOU3iNolY89E0Jmy
+	yWazQrwJdqWkfEckpAqOOvFChZHbTDlcKzTeL/KIGgsHDXV1rzr9v4XlsxOCnZv0
+	7d8vD2Vhfy19ow7Q36MJ2nOHL0wmz30GwYleKGLtCCIGZ1xfqSIXTuiSUo6Y+TRY
+	xwC6WP9GfiC1s2hoBB8+ShYSpB1EjD4HUDAfEWI+wA6/8FG0AA5dG9okvCUtCV+s
+	67GeEk+2S3+AyTq/kJMR4Ow7XACMXlEcb0u6mvue3earXBm5wGEzPNJjLmgtaRje
+	ERatuArm3FITL0gZ69qdpwgeD6zfLai5q8dlzoaXXr8lQx+W1hCuet8P/q6Q==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:content-type:date:date:feedback-id:feedback-id
-	:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1788996725; x=
-	1789083125; bh=y7KoC6RC9BVdYOUuZgM0dPpsQafBY6QbFDJbIo7HcNE=; b=f
-	AzR7fehHRP0BNgFOoUPyyjiIhd3LmhTl8mk8w95BsZBsvBOg+uNujVTw8GO8ijlv
-	P9LGlamF8kK/XCy6qgwE8UWDOUJRg7k64lu8R6rBJtp9LsyWVGZX52xl4004ne/n
-	4yTzOOCpCsExVDlDuDenAlIISrETfAvFY9iAWRJEwm18enapKdTqMXP44LsNjR0q
-	cWngL3qdjiLILcuzX5+Bo8eDf1clnlDp82kA+ZQ2mHGLdFWTw3L8pT/CdzoR/k0p
-	/x1ROu0CeYAxBiR3q6bk+tQ6C6eXIlebsuq1vLWRM8cnzSRAE7/zZQZ5L4FOjg7P
-	esnlftmoNewb0FiVAoZdQ==
-X-ME-Sender: <xms:dOyhapO9WO9qT68dvumrQGcuh_2HGRnE5DJKC7bkqAkQz336QDbodg>
-    <xme:dOyhavoKENgmmmjJtD2c9yb64mzUzT_ezw9FwqbL9xYxzqGlbPwzBtK2DAe4BVT1b
-    j1lYPSVFUh4g_r_W7i3nKkX8amI-650dN_CwW2EAtUrUPhEV0li>
-X-ME-Received: <xmr:dOyhaiGj7JscxD5fsP8qf9j_Nxpe99saZ3KlZz3URT368u7YfGnqARJhMXM1ViEuCd5jSAljLpixfNOy0Sy91dAU02Dry4s>
-X-ME-Proxy-Cause: dmFkZTF7PHGi5aYZAdrbzn/TtEDcIx27eRlwAGFpkf9sdZLSF7u9bD92iQqmHOC3KTCxbG
-    IQSRrG/8IrFGh7V2B5LPsBdPio6OJ+GI72mQbqd0C2gximondBtF++s2oZcQGsT9QgzKez
-    f7syc1LqYwPq/jVaAuerfUkUtomT6TSHvDsnQq9rVDqWFhV4H5jQ59y7bfdMXQmaiQTfXu
-    /AVeBmxZDFEy1SrVHKFtzalBAO8GrwrcdHmVk+2e0NLyIa8YOW9LlMRWff3P5jjtGhQkFC
-    GDQ3BCaVxvLXg85TYWz/WLQiIYe1zlY8nfU72eXzTIH08hsy88aIb0plB9G9jS1RCe6ZQJ
-    YE8h3QT7mverW8qvtOY1nn/05zBmNQNPsSO5632yRuZze+3UeFheexkSoC5Sbudbr+MBIR
-    hI3Xp2BXzRsXI4T4XMHpMeR2vJ9LrMikYelba3yHiXJrz267LpOdg0eSTsbMBc6MRaKQJE
-    Dp9OZpe4NmWvQF5rDjNMXO06mwD8B9jIqNPbDgvGv5DUkfAEqsV/oNzRohxBM1qbwfkZAl
-    M9s+i4pjOCyPbzwgDLIMP7tQgQ+CR+jUuYxLFzVdwRd4gNXA17ES0G3YiPmaukTvaC3/HC
-    g+CwvTdGH7FETmzO/e1leVkqtvBqyde4ikWtYJ0SGemYV6HJa9Hyr9Pchi4A
-X-ME-Proxy: <xmx:dOyhasqKquKrWE5MrFBNiCPPZPFkNDNMlo0hpxoTjplrq53KfF5jzg>
-    <xmx:dOyhajZj_D_VsvW4B1pI9aV_A3CWdgzJExv3FLSFv950BVFgRAGlpA>
-    <xmx:dOyhatXgkNjY9gpskfgtq55YhH1gtnxt9uXlvz00wUbCDKnuXoOoXw>
-    <xmx:dOyhak-PE2gQPzR7-XjUB93nOCi1SjF91SEqia3W-J1Hi1y3EpSTdA>
-    <xmx:deyhamski04HWODH7awzRyPOK7MYbDvD-KcPUgeeO3cU3sMSlIe0ILV1>
+	:content-type:date:date:feedback-id:feedback-id:from:from
+	:in-reply-to:message-id:mime-version:reply-to:reply-to:subject
+	:subject:to:to:x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=
+	fm1; t=1789000186; x=1789086586; bh=2lQ2pka3FWU4UnyW8EvfdzmcWknb
+	IDD+gKd/6rbH00Q=; b=Fy8D1O/IrrozSvLaAPWJYkLvgtRpAJJLBwraxUpjlWmE
+	yM+SjxgwvVeRAXcMWF+2mHUAlKdQlF4Ah+vlzX+R+qgJ6QWzCPWz+Oztlj3go+RC
+	+5eyNajgnBmodHlSmBhndbGG1FJdkj/hbCBaSQ94jJZoNkWqp5B94yEt/36C0KhN
+	NTJeTRwX/vEsP3+fJEpI8RO3Y6lAeyAlu8KRrm9nvBdzGjHgv3weEdXCUC2wrb6f
+	LJw7u9UPaNv+2IbnP2Ru8RRf6xULra/CnwUa028IN80OU8XzdtaWWuVzId1FS09x
+	fYi2t0AMSLY3cFQTt9IgfZUF8ZJtRuGEUgrFXr25BA==
+X-ME-Sender: <xms:-vmhamYx-s9u6sg629eSlS4-TXfFqFrTeio5o-GDBN1kcBL_Frk2HA>
+    <xme:-vmharqwvlKHSZjB2GkXyfQTCQmjg4MgDHqs94Z9W4z6kSf0Ai2LeHYp1mP31Q3Pn
+    2sBxo1_Qi2jfLAQFicimQIPAG-vp-atvPAkpbn1h5VYS3clZA>
+X-ME-Received: <xmr:-vmhajM3tLDiKXZ7CrfcR6zUzxV6WMbm5jmckgsDEsGN_Gdazhe2DpEkjNt77qtAXoZ9LFCevMkllETj7sGmGVDhwXtKq8c>
+X-ME-Proxy-Cause: dmFkZTGeZS4Tz1kwsfzPjKE2MC0aSlZicXXI3+baH1XMHVs4sUVRzBIYjnndtn/0+ifDxl
+    pir+10r4WsWsobcPoZcStx9jeKonSKGYWhx5h0hW3Japu/x3w404MWl8A6hgXkW472G/zZ
+    w8+lYz+G2nFurdh/pQU7wCDvOeD3sBiizp4+7JMbdltNs1GJoCm2yBtoTJEUYSxWKGSYvs
+    9lQIUFQNKZkK6dJrCgr5PfJ27d61bjeqfZwImhizn4nHm5UgrkuxodVav6Erqicbn05aAr
+    L3FonvXPUSFkUfSJzXVaOeloV9igILnJAQ15t0InvGPmafRRschsQhAB0aoPoJz3Rkeztl
+    V3mVrANoYQ2OR1QP3mkoGdhcLYAaNJxdmr5DZro0hEks1qW8L2W9L/H1q72Z8f1RdSahnC
+    moHTH3guca52EAM0nqgB5fUXBFyVKNgN3TRR87AJksaqtPugunJMBOndA3nzqDmHbxaipY
+    UPRKwfifev1KhJgkYE5FXjl2+oD1Oj3JjG3Andwr7hJOHSF6oFW9TwT6SbT+L+EIUrRBtu
+    C9DvShoh1jtEPoPkxOllOKOMn/CGCbXiIQFb7f1SQ2iD32dxO9WJgcCBPkbvFlhzVQGqzt
+    aHJKMW4dHRvWLmHe6BR1p0TEmHnYgeGeiJQQgzW1rVoxtRAahDSwVOdXJKhg
+X-ME-Proxy: <xmx:-vmhaurABtLvRkaxWH8i9qOBAPOW8Xpe9FeAthLJrLlra2SinVETmg>
+    <xmx:-vmhagc0n4nO1O4FtNXHaso0Eg0Lv5GHoh7tFFnth2qttG0t1QWmpw>
+    <xmx:-vmhasTQSPzVi1YLJFPW-qGSQfTcw48uER2YZmYgVnCLkbZ3_XGEmg>
+    <xmx:-vmhahZXG7f1IgEo5RfDoX4D7c-dOs2er0fD_zwp2R2qasyYcBjN3w>
+    <xmx:-vmhaulLZgh_o8fnjvELHcntoPbq4Vc78FtY2xY7RI7SwyyE_IeVCx3o>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Wed,
- 9 Sep 2026 19:32:02 -0400 (EDT)
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+ 9 Sep 2026 20:29:44 -0400 (EDT)
+From: NeilBrown <neilb@ownmail.net>
+To: Alexander Viro <viro@zeniv.linux.org.uk>,
+	Christian Brauner <brauner@kernel.org>,
+	Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org
+Subject: [PATCH 0/7 RFC] fixes for vfs_lookup_open, and integration with nfsd
+Date: Thu, 10 Sep 2026 10:20:46 +1000
+Message-ID: <20260910002934.192979-1-neilb@ownmail.net>
+X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
+Reply-To: NeilBrown <neil@brown.name>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: NeilBrown <neilb@ownmail.net>
-To: "Chuck Lever" <cel@kernel.org>
-Cc: "Jeff Layton" <jlayton@kernel.org>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <dai.ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 01/10] SUNRPC: Carry a generated-codec context pointer
- in struct xdr_stream
-In-reply-to: <20260908134234.512312-2-cel@kernel.org>
-References: <20260908134234.512312-1-cel@kernel.org>
-  <20260908134234.512312-2-cel@kernel.org>
-Date: Thu, 10 Sep 2026 09:31:59 +1000
-Message-id: <178899671901.207413.7637003261420249464@noble.neil.brown.name>
-Reply-To: NeilBrown <neil@brown.name>
+Content-Transfer-Encoding: 8bit
 
-On Tue, 08 Sep 2026, Chuck Lever wrote:
-> A generated XDR codec function receives only an xdr_stream, yet
-> some codecs need state that the stream does not carry. Passing
-> that state as an additional argument changes the signature of
-> every function on the path from the program entry point down to
-> the one that consumes it, and for generated code it makes each
-> function's argument list depend on an analysis of the entire
-> specification.
->=20
-> Add xdrgen_ctx to struct xdr_stream, a pointer that the layer
-> initializing the stream sets aside for generated codecs to find,
-> following the precedent of seq_file->private and
-> netlink_callback->data. Every xdr_stream initializer clears it, so
-> a codec never reads a residual value left in a stream that was
-> allocated on the stack or taken from a transport's free pool.
+I've been looking at the problems Chuck and Jeff found with my
+vfs_lookup_open() work for opening files in nfsd and think the following
+patches address the issues.
 
-It seems it could almost be worth having and common xdr_init()
-which call xdr_reset_scratch_buffer() and clears xdrgen_ctrx and
-possibly a few other pointers.
+I have labeled this an RFC because:
+1/ Patch 2/7 changes user-visible behaviour - in a good way I think.
+   Currently O_NONBLOCK avoids waiting for a leases but doesn't
+   avoid waiting for a directory delegation.  I think it should do both. 
+2/ vfs_lookup_open() is changed to update the 'dentry' in the path arg
+   to report what was found.  On success this is identical to the
+   returned file->f_path.dentry. On -EFTYPE failure it is useful
+   to report the actual type to the NFS client as required.
 
-Reviewed-by: NeilBrown <neil@brown.name>
+As an aside - what would people think of changing ->atomic_open
+functions to *not* return -EFTYPE.  If they find a non-regular file they
+should use finish_no_open() and let the caller decide if a non-regular
+is an error.  ->atomic_open can still honour O_DIRECTORY if a network
+filesystem does that some special way, but if it find a non-regular when
+O_DIRECTORY wasn't requested, it is best to report what it found and let
+others deal with it.  As it is we need an extra d_lookup() in
+vfs_lookup_open() to find the dentry that ->atomic_open refused to
+return.
 
+Or maybe we shouldn't pass __O_REGULAR because that only affects "open",
+and lookup_open() doesn't even try to open non-regular files.
+
+I'm keen to read your thoughts on the above.
+
+Thanks,
 NeilBrown
 
->=20
-> Signed-off-by: Chuck Lever <cel@kernel.org>
-> Acked-by: Jeff Layton <jlayton@kernel.org>
-> ---
->  fs/nfsd/nfs4xdr.c          | 1 +
->  include/linux/sunrpc/svc.h | 1 +
->  include/linux/sunrpc/xdr.h | 1 +
->  net/sunrpc/xdr.c           | 3 +++
->  4 files changed, 6 insertions(+)
->=20
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 00ddaac499c6..6ea6cb0632f8 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -4609,6 +4609,7 @@ static void svcxdr_init_encode_from_buffer(struct xdr=
-_stream *xdr,
->  	xdr->p =3D p;
->  	xdr->end =3D (void *)p + bytes;
->  	buf->buflen =3D bytes;
-> +	xdr->xdrgen_ctx =3D NULL;
->  }
-> =20
->  __be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index 5fa9417e034d..b80161b849ce 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -567,6 +567,7 @@ static inline void svcxdr_init_encode(struct svc_rqst *=
-rqstp)
->  	xdr->page_ptr =3D buf->pages - 1;
->  	buf->buflen =3D PAGE_SIZE * (rqstp->rq_page_end - buf->pages);
->  	xdr->rqst =3D NULL;
-> +	xdr->xdrgen_ctx =3D NULL;
->  }
-> =20
->  /**
-> diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-> index b102b4f21e6b..2b33fc64be17 100644
-> --- a/include/linux/sunrpc/xdr.h
-> +++ b/include/linux/sunrpc/xdr.h
-> @@ -244,6 +244,7 @@ struct xdr_stream {
->  	unsigned int nwords;	/* Remaining decode buffer length */
-> =20
->  	struct rpc_rqst *rqst;	/* For debugging */
-> +	void *xdrgen_ctx;	/* Context for generated codecs */
->  };
-> =20
->  /*
-> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-> index cb2ef428651f..d95e80d85a89 100644
-> --- a/net/sunrpc/xdr.c
-> +++ b/net/sunrpc/xdr.c
-> @@ -1162,6 +1162,7 @@ void xdr_init_encode(struct xdr_stream *xdr, struct x=
-dr_buf *buf, __be32 *p,
->  		iov->iov_len +=3D len;
->  	}
->  	xdr->rqst =3D rqst;
-> +	xdr->xdrgen_ctx =3D NULL;
->  }
->  EXPORT_SYMBOL_GPL(xdr_init_encode);
-> =20
-> @@ -1181,6 +1182,7 @@ void xdr_init_encode_pages(struct xdr_stream *xdr, st=
-ruct xdr_buf *buf)
->  	xdr->p =3D page_address(*xdr->page_ptr);
->  	xdr->end =3D (void *)xdr->p + min_t(u32, buf->buflen, PAGE_SIZE);
->  	xdr->rqst =3D NULL;
-> +	xdr->xdrgen_ctx =3D NULL;
->  }
->  EXPORT_SYMBOL_GPL(xdr_init_encode_pages);
-> =20
-> @@ -1619,6 +1621,7 @@ void xdr_init_decode(struct xdr_stream *xdr, struct x=
-dr_buf *buf, __be32 *p,
->  		xdr->p =3D p;
->  	}
->  	xdr->rqst =3D rqst;
-> +	xdr->xdrgen_ctx =3D NULL;
->  }
->  EXPORT_SYMBOL_GPL(xdr_init_decode);
-> =20
-> --=20
-> 2.55.0
->=20
->=20
 
+ [PATCH 1/7] vfs: add some allowed open flags to vfs_lookup_open()
+ [PATCH 2/7] vfs: O_NONBLOCK|O_CREAT open shouldn't wait for directory
+ [PATCH 3/7] vfs: vfs_lookup_open() should only return -EFTYPE for
+ [PATCH 4/7] vfs: change vfs_lookup_open() to return found dentry in
+ [PATCH 5/7] nfsd: switch NFS4 OPEN to use vfs_lookup_open()
+ [PATCH 6/7] nfsd: nfsd_check_obj_isreg() to use nfs error codes.
+ [PATCH 7/7] nfsd: use vfs_lookup_open() for non-creating open
