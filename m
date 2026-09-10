@@ -1,73 +1,73 @@
-Received: from fhigh-b5-smtp.messagingengine.com (fhigh-b5-smtp.messagingengine.com [202.12.124.156])
+Received: from fout-b3-smtp.messagingengine.com (fout-b3-smtp.messagingengine.com [202.12.124.146])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DAA5C2DECA8;
-	Thu, 10 Sep 2026 00:30:02 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.156
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE15725F7A9;
+	Thu, 10 Sep 2026 00:30:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.146
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789000204; cv=none; b=km4/u7WCfLltYZHMBqrhAdnSGszwVQyMWYZRpQFNvcv3ZKM+mBcOfsyPsQEiuQUPcKUld9ouYZ8gEor68FRQuWA2J0p+bzSukckzkWKOnguwKhbf6tNOhTfzyt3MAQtTzepFBqZxOqXvuKIASBdVUEuRByqwIQRmcABJ4aKXtf0=
+	t=1789000211; cv=none; b=G9Ex4V1zqgICytniBdWTRC0Nbc3+vNkeT7g5Nkm0zz5R5TlqBFf+lO8E4Ixn7ZRWfxBoKB8MQriduM8iAgPw+XE2uoHVkAnkNVK9Lgya/WsU4UQF/sTTiVAh2QMDf1Ckl5KwHjbBAKKS4sVhO2jqLykV4EUjg433CvtkNTswo3o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789000204; c=relaxed/simple;
-	bh=uX9P96TvFS6Z1moeFupw9yyxsHMY9YyUPTsR+DJP3bE=;
+	s=arc-20240116; t=1789000211; c=relaxed/simple;
+	bh=zdkQKSyd0kovnMaP0eMA1slZLU4vHeG2b16aLUm3Vr4=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=NL416fC2EhRVXPBS57I2PeeMOPMSX2Z9lsdPf1U4dXyXWdEm1KUZ4ATmb3GTYytJIaBG4N3SM+RJ31u2m63t9QybS0IH+MIdY4WtDBBd/WV431B9f7BSs4Cb4iLUhvXkd8hQ9+u/VmMWdlqYAS2gX8/n/ADs5cQ1mpBLvxk+f7o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=YJ5PSaw4; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=nWB2xx7L; arc=none smtp.client-ip=202.12.124.156
+	 MIME-Version; b=LkXusN30lIk2FJjH2hI6oubvixt56PIbopOM2hBmTwkD4uO17/VzKwfRrL+l8i4ZgMWksvRn4k0d/v4iOAC797wIvO0b0JfGXpjy8RKnJrzMUqWxXzLnZ4SjKRkBXiB9TC6pnd0403uuEBZmXFJzuGXKylEVZghgFZGLAXX+vbg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=ea52vt3S; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=l0lQV1Ij; arc=none smtp.client-ip=202.12.124.146
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="YJ5PSaw4";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="nWB2xx7L"
-Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
-	by mailfhigh.stl.internal (Postfix) with ESMTP id 0AB417A00DC;
-	Wed,  9 Sep 2026 20:30:02 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-04.internal (MEProxy); Wed, 09 Sep 2026 20:30:02 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="ea52vt3S";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="l0lQV1Ij"
+Received: from phl-compute-08.internal (phl-compute-08.internal [10.202.2.48])
+	by mailfout.stl.internal (Postfix) with ESMTP id C60031D000AC;
+	Wed,  9 Sep 2026 20:30:08 -0400 (EDT)
+Received: from phl-frontend-04 ([10.202.2.163])
+  by phl-compute-08.internal (MEProxy); Wed, 09 Sep 2026 20:30:08 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1789000201;
-	 x=1789086601; bh=c2GNI1HV5qqkMXUCaVzKanPM9GBQu5cCm0cyORdHlH4=; b=
-	YJ5PSaw4zbds+IVLlI1Nd91la9y7gRXwFKMKx16YKFWZc3z5TEeQ5uTv/bTbD7Ny
-	mK+051VVVH0iyfe8ikthKS6h9j8DIVPpxwP+zKvMAGbysE8JTTZXVkgEfbC943Pq
-	s2m0d7xPtqnwQe7jDYXEv3bTIwWGYU0epV0MhJOyN8oqddQRHjtNqS5S0DL80rzr
-	0/GNtFNym2gTBoJ+S9AviQgeLmvO7dd06H2+vKKfbVS5+4sUNSwcwrPZeV6BY9Vl
-	wCWcX7r8GXRhEiAyJLIO3XCQDoDZq7vC5tIGL/jRsTWxiVVeAK+XxZ3wM5mIVBCL
-	MrXIDsX8Hf703mdrBlQtdg==
+	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1789000208;
+	 x=1789086608; bh=O5AQGENYa5LEnebPXCtFAydy9fJkCthU+mbJWDwHxic=; b=
+	ea52vt3SFSEFPqeSwsL43kdU2qBk04woNUvXiPp1/ov5xQA4DyqH8iI9+QLwp54f
+	GvLZMW3f2//ax8Ayogn/0e2PPeNFrUWt3ioKg3m+p7JAsvHJd+hlSlkFPuxf7OFK
+	XqR1I/pTySIgWa2TQX+vGPZI+a3c3Kd2wDiEu3LYPXUEEBeYgqIrvRS+FGIdxX5X
+	SP7wiTlybZM/I4paHklLkXqrfGcUpZPZ57cVm4vBsuXxeTTdr56eXNTczxBXJDfV
+	eQQzXGG+IfSjAmULEoHFWpErc61a9NiixSB6mMsdJdLpH+uT1uywZs1cOT//kU4V
+	cTmnxB/52U6104IpL0S22A==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
 	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm1; t=1789000201; x=1789086601; bh=c
-	2GNI1HV5qqkMXUCaVzKanPM9GBQu5cCm0cyORdHlH4=; b=nWB2xx7LfSvvUMfSM
-	ttFaqN8n7nKNc0KfQ0tHcFjbphQBL9xmg1/306OH0YlNU8E/eyKCI6+1Sn/4kdWO
-	LNjDBB1ji0Yd38z/TTiAKMMP9k5mJZnJ5kbsNBFOsfrO6NKnrpdUKsR33sooCORf
-	JITNq68KhlAHRLNPHeQ87gk+mprARyrdksDfalyL7u+IeMiT7zKgqpSJb4kEd0/F
-	P71V059b6GsoxAi2bmol9rHa9Y0EBbKUH3rTMOYUzzI9IpZMIAr+2EOzRaMUmxB9
-	ZaNFgD+zOw5Z7RB/8K4g90jJHm3CkvCKG3/1BaLREaAgo02wBnNa+bO5WukjaUna
-	4trgA==
-X-ME-Sender: <xms:CfqhamHFihOiyxqzRiiGCONK56-QSRUWQFApoPyCGTIcinTXEMmo-w>
-    <xme:Cfqhapk0pREI8145MWdkY3ZHHRm_ezSUtpdJ1ho6iOiiA4OwvFXQkeNrUVJ0sc6RH
-    j2f-WKzx3qBVVwGqqkBA5H-dFj_eN7vmqlwjYihmg1qKV4uxvA>
-X-ME-Received: <xmr:Cfqhaia36AZs-RxwDQO5-cSlchkGDsTPOKw7EZ1K16TmXAO0jI3zTaXrOGvJeT9XAXqDIiZtYQwDJl3EAm5Jo1thKRCN6LY>
+	:x-me-sender:x-sasl-enc; s=fm1; t=1789000208; x=1789086608; bh=O
+	5AQGENYa5LEnebPXCtFAydy9fJkCthU+mbJWDwHxic=; b=l0lQV1Ij536TxJc+D
+	LLdKjTIpNtrIt3+KBwaDhqxt/1DRJlyPl6UO7jGra8ho5pfsJRrYJT2kZOdFa5Ji
+	z/awbVAQLOJ+VgUm75yPrLRWl9KJQg39K2ay7bCnqJiWHzIec7N2qYKRVmDkAicU
+	amwJrpsQWPdc5798mmWoUXZij8lV4aWjgcg9W96feWDO0XqP4sM7CCsYtHgrunfg
+	jSAVNbH8E9tIissm1mwQLZhcW/jv//Db9lW5qT3jXOhsPXQiD2JpEZYor+jnywty
+	WzglkrTuLQN7SV9mhC4sl3HkMGMOm4peJTiptzFa9w3Xz53MoY1+tWNndaa01fMx
+	FI5fw==
+X-ME-Sender: <xms:EPqharvyZATul-V65XXB0y7LF0FvNLxkO4hNV9JS4TPePbRAfbXkDA>
+    <xme:EPqhautfQX6n5tug0uYWaEecwhgK7DSl6xgY7p2p4NAdFUaCS3E4wych5Z2LN2TRT
+    GzhPTW7iWDuZZ1nh29BhI9g8bVexRggbFZC94AxLqnzwwFT2SQ>
+X-ME-Received: <xmr:EPqhahDV6p_BPnXbTzNSeSzXiukDqe6LDgRwn9C-PQ8qHP1XHutiTyGRrzIL0KuKgH2m6xt4h8nhwnqAMjzDtAjaiaQtZRY>
 X-ME-Proxy-Cause: dmFkZTG2ZuPEN34R+utP3ESxb9Vdcejdvq1qn0GN2MsSCwESAHSyvwppLG2Yu+T030L2Os
     C8wXU3PxCkVzFW4dp/42EieFv6R0T70CdXif1RWlK2b+xBeP4D18DTQhJEghKWlRjrKyUb
     GdlNnxTgZ+lDp+o1Kz2BsylhbrNhfAZgPcMxHnaH8xn6D8vPLCsNPSG5ApS8ATGgHc/HWj
     wRdbCBCalK8qL4He0aXC4Lyqu1cVz74DhCxPFDqYj/33GFHQ6XxHNgTamDOpUZSq1ebJcO
-    0bZ7djSj1c7whFp8Heq+QUaxe+WPB/b+6uiBLPfuZqukj1/5KZnVgOb+3nKerXH+iKGBEO
-    JNH5oc2pBY7vnpy3gOYAM9x/cwSqcKYTGSXMfOgKCMFlVG4uSvf6XhiRwgmGA3ponezgOE
-    KV0xjFhJ4cfMSR7OrafsKzffGdc5jvjfOAvSgz02mbCeXb7r9bYj7kucZuC+FIGbi6bZVI
-    2u3Hsd+L3D7gNAmUJqn5czC6Q/1RzKlCfF5Gz6R3FT3gEfA+gl/PSWChcvv5/Tq3PuncgR
-    Od5ffuv5FX4Qf38Nduz0qr1mbYh9sfuSjG5SmafIQGGL+6SUAUvSmMrEh/sFNRJ2RBvAIu
-    LMYVZzhGBVNhX6D/YquSyL/zdKAsaY2EPD8PfRYS9xVjDx9jhjYz4kXAwU9g
-X-ME-Proxy: <xmx:CfqhamGNWV906pBx-QxE7qUT0lM2NqHmUU6TiEDh1ZjhK85vZ3Qn8A>
-    <xmx:CfqharIsR8n2i5b__ZjLBgONMCyJ0-BWeDgYbTR6bs4zpXB1IjK4ug>
-    <xmx:CfqhapNT24dAkgNdnrTW60zCNh25xbhRQHnjCwdnofjmqlyCH_IV4Q>
-    <xmx:CfqhajkD194EdcZw76mq-a-XkRWcmcuFhSWqdSlLkTNPTDvvndoa1Q>
-    <xmx:CfqhahwEdQy73SFwlPhOrGgzNL1l6B3Cqc7SkQZlxy22ESgvDYRD_RBo>
+    0bZ7djSj1c7whFp8Heq+QUaxe+WPB/b+6uiBLPfuZqukj1/5KZnVgOb+3nKerXH+iKGBkd
+    hB8//2uopdyi5zK+/zviyfqGO1hTHUsgLzew25Q7Z1C9CCrcP8FBEjp7sOMcn82EhA5ooF
+    hXWnkvzD/hqpPnzeSLhHnjD36BOLkMyFWAzcr66yOn1hq/8ohbKc6yOmgMDD4OeFGqU9KN
+    dKW12NzIstT87XfU8XK7PyB51T3ZE5nLWXAFOg8KSW2Gpt0JrLPexGWXqSxCZ+YuEWj4RX
+    NQlb69gTmn9DnxDD7W2t0+s/Nfnxz6uOlLN+4ISHdx59DSTuPUKLpFzoUqcn1HROeQlRJs
+    1K79l5A2yvsnp23mBoTTpfF0LtJFC5VQoitXv15rgaYoDd26Yo3H+IugwdYw
+X-ME-Proxy: <xmx:EPqhagOG2Osj2G_j5LrHvIt6J5xRl3JSuPFjSVABh5K1C3rEGqQC7g>
+    <xmx:EPqhaqyVEGB1vjgegTnKgbpRoAxUoEdG4oUmK-YklNlYeZFwZj8fcg>
+    <xmx:EPqhagWiZULtGbuyoVf3aMV3gmpdOp0-t0igxKnUGo-3YwW6-eoqAQ>
+    <xmx:EPqhasPVTLsxhXvoaY4i3xZRUrz5k_bbFBwWsrTxrZ05nq3aWxVcHQ>
+    <xmx:EPqhaobtki2mh37AWWtJdTwz5Nyvoa6OUSaEef6XR7p-Oihw5RtgbyS7>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Wed,
- 9 Sep 2026 20:29:59 -0400 (EDT)
+ 9 Sep 2026 20:30:06 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Christian Brauner <brauner@kernel.org>,
@@ -75,9 +75,9 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Jeff Layton <jlayton@kernel.org>
 Cc: linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH 3/7] vfs: vfs_lookup_open() should only return -EFTYPE for non-regular files
-Date: Thu, 10 Sep 2026 10:20:49 +1000
-Message-ID: <20260910002934.192979-4-neilb@ownmail.net>
+Subject: [PATCH 4/7] vfs: change vfs_lookup_open() to return found dentry in path.dentry.
+Date: Thu, 10 Sep 2026 10:20:50 +1000
+Message-ID: <20260910002934.192979-5-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
 In-Reply-To: <20260910002934.192979-1-neilb@ownmail.net>
 References: <20260910002934.192979-1-neilb@ownmail.net>
@@ -92,72 +92,105 @@ Content-Transfer-Encoding: 8bit
 
 From: NeilBrown <neil@brown.name>
 
-Decoding the non-regular type into over-loaded error codes doesn't
-really help nfsd much and it isn't particularly elegant.
-It also isn't reliable as some filesystems may return -EFTYPE
-from their atomic_open() for any non-regular file, given that
-__O_REGULAR was passed.
+The caller - nfsd - needs to know the type of object found when a
+non-regular file was found to exist.  This is most easily done
+by passing back the dentry.
 
-So change to only return -EFTYPE for non-regular files.
-Also use d_is_reg() to detect this case.
+So change calling pattern so that the path (now called "path") contains
+the parent dentry on entry and the child dentry on exit.
+vfs_lookup_open() will dput() the parent and caller must dput() the
+child.
 
-Caller can repeat the lookup in the dcache to determine what sort of
-object was there.  This might find a different dentry if there is a
-race, but that is not significant.
+If lookup_open() returns -EFTYPE (from ->atomic_open()) we need to
+use d_lookup() to find the dentry.  If ->atomic_open() didn't add a
+dentry to the dcache we return %NULL in %path->dentry.
 
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- fs/namei.c | 30 ++++--------------------------
- 1 file changed, 4 insertions(+), 26 deletions(-)
+ fs/namei.c | 31 ++++++++++++++++++++++---------
+ 1 file changed, 22 insertions(+), 9 deletions(-)
 
 diff --git a/fs/namei.c b/fs/namei.c
-index c4be59213352..0c787363b101 100644
+index 0c787363b101..30ccc0c2f02f 100644
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -4616,14 +4616,8 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
-  * nfsd.
-  * It uses ->atomic_open or ->lookup / ->create / ->open as appropriate.
+@@ -4606,7 +4606,7 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
+ 
+ /**
+  * vfs_lookup_open - open and possibly create a regular file
+- * @parent: directory to contain file
++ * @path: directory to contain file
+  * @last: final component of file name
+  * @open_flag: O_flags
+  * @mode: initial permissions for file
+@@ -4619,9 +4619,15 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
+  * If the fs object found is not a regular file then -EFTYPE is
+  * returned.
   *
-- * If the fs object found is not a regular file then an error is returned.
-- * In some cases, related errors are repurposed so that the caller can
-- * determine the type of file found from the error.
-- * -EISDIR : a directory was found
-- * -ELOOP  : a symlink was found
-- * -ENODEV : a block or character device special file was found
-- * -EFTYPE : any other non-regular file was found, such as FIFO or SOCK.
-- *           or ->atomic_open responded to __O_REGULAR.
-+ * If the fs object found is not a regular file then -EFTYPE is
-+ * returned.
-  *
++ * @path is updated to contain the dentry that was found if possible.
++ * In particular, if -EFTYPE is returned, then @path.dentry will be the
++ * object that is not a regular file, or %NULL.
++ * Consequently the caller must be prepared for @path.dentry to be
++ * dput(), an it must dput() whatever is in @path.dentry after the call.
++ *
   * Returns: the opened struct file, or an error.
   */
-@@ -4671,24 +4665,8 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
+-struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
++struct file *vfs_lookup_open(struct path *path, struct qstr *last,
+ 			     int open_flag, umode_t mode)
+ {
+ 	struct file *file __free(fput) = NULL;
+@@ -4638,7 +4644,7 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
+ 	mode |= S_IFREG;
+ 	open_flag |= __O_REGULAR;
+ 
+-	error = lookup_noperm_common(last, parent->dentry);
++	error = lookup_noperm_common(last, path->dentry);
+ 	if (error)
+ 		return ERR_PTR(error);
+ 
+@@ -4646,7 +4652,7 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
+ 	if (IS_ERR(file))
+ 		return file;
+ 
+-	nd.path = *parent;
++	nd.path = *path;
+ 	nd.last = *last;
+ 	nd.flags = LOOKUP_OPEN;
+ 	if (open_flag & O_CREAT) {
+@@ -4658,9 +4664,18 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
+ 	op.mode = mode;
+ 	dentry = lookup_open(&nd, file, &op);
+ 
+-	if (IS_ERR(dentry))
++	if (IS_ERR(dentry)) {
++		if (dentry == -EFTYPE) {
++			/* Try to determine what was found */
++			struct dentry *child = d_lookup(path->dentry, &nd.last);
++			dput(path->dentry);
++			path->dentry = child;
++			WARN_ON_ONCE(child && d_is_reg(child));
++		}
+ 		return ERR_CAST(dentry);
+-
++	}
++	dput(path->dentry);
++	path->dentry = dentry;
+ 	if (d_really_is_negative(dentry)) {
  		error = -ENOENT;
  	} else if (!(file->f_mode & FMODE_CREATED) && (open_flag & O_EXCL)) {
- 		error = -EEXIST;
--	} else if ((dentry->d_inode->i_mode & S_IFMT) != S_IFREG) {
--		switch (dentry->d_inode->i_mode & S_IFMT) {
--		case S_IFDIR:
--			error = -EISDIR;
--			break;
--		case S_IFLNK:
--			error = -ELOOP;
--			break;
--		case S_IFBLK:
--		case S_IFCHR:
--			error = -ENODEV;
--			break;
--		case S_IFIFO:
--		case S_IFSOCK:
--		default:
--			error = -EFTYPE;
--			break;
--		}
-+	} else if (!d_is_reg(dentry)) {
-+		error = -EFTYPE;
+@@ -4668,10 +4683,8 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
+ 	} else if (!d_is_reg(dentry)) {
+ 		error = -EFTYPE;
  	} else if (!(file->f_mode & FMODE_OPENED)) {
- 		nd.path.dentry = dentry;
- 		error = vfs_open(&nd.path, file);
+-		nd.path.dentry = dentry;
+-		error = vfs_open(&nd.path, file);
++		error = vfs_open(path, file);
+ 	}
+-	dput(dentry);
+ 
+ 	if (error)
+ 		return ERR_PTR(error);
 -- 
 2.50.0.107.gf914562f5916.dirty
 
