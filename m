@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 11AF63ACF01
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Sep 2026 18:22:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3D089562609
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Sep 2026 18:22:15 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789064535; cv=none; b=tiPyaICCv+ElUsfCY4jXhOm77Q+lxOVHqsY2o0470YuSAdKubYYwhQtncD+dIMjOJBDO2YkieAL1mMfO9fyrGnuho5OPnyjDZKXFpYjo/Dpmhc5yFVoCUvaxkDkUbWCVkSW1UvY+h0jcrH4weZdBZ+dZ6alJRn3aJs3CsLsq3p0=
+	t=1789064536; cv=none; b=jo0blmBZnFkX15uRxWkO47w/6GN71TazgFcY1S1JqiTy7dhKH3JI2cN/3S3h2YVDRCyE8IXtXWtU8MGjEghtKZgDgevGjSTAvvdZuXVvjPqqd3fEAQ1uM1SCDcM/dVoVomC+Xw19/XcFbfy+1JiId/m7fU3C5M901TXtKwr/2Z4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789064535; c=relaxed/simple;
-	bh=HLaTVxITECMP5SR5Dwc8g9G8b90lOZ+vjhYsOCcyE6Y=;
+	s=arc-20240116; t=1789064536; c=relaxed/simple;
+	bh=YUcARV8TeG9DkrFHWLUAvKYOVLfV5Gix6cQ9ZEKhOUw=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=IWtwspJfcpftfNCwe+75m8KhHKtyUbkISv/64ttP2SkQVEL3QUnStI7xbGXfE5d14sxe4ehHDpbzn8Lts3xLfTpjPY3CUy2V4BZ8eXODNqmO2rK89yc6gYBltlnTWnvs47eVfjkDO1x7Ovf3gAc/4PdKZdzC8YeAIJ6k3NenaEU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BDTQ8oe1; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=s/JaGoQG6a7NU09iKjGOsrJwvc2TtJcBKg7Zppu9NN2R8r/sRxNCJ6b2YQIc+gjycS7vUXtM0m5dXD0RxtfXgvnJg7AmVP0KXe5xDhGVpTVXmsTSXSWHResI7c/7fkYYrvnq2+TKkhw8dUzpxJ9JcO9C/d94jiYYh3z3BMP/PI4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CmOvlvbn; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BDTQ8oe1"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 338E81F0089A;
-	Thu, 10 Sep 2026 18:22:13 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CmOvlvbn"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 303DF1F000FF;
+	Thu, 10 Sep 2026 18:22:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1789064534;
-	bh=4pKSZF+A2xnFhRw0BUgjH4wak7LVpM2Gc0ulHuc0d28=;
+	bh=3nqh0XwF9QWlS2pqE2PTzoY9aidEwBRZdw9Dpj5KATQ=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=BDTQ8oe1SdO0ighhZGY5ZyATKgnGA89iK+uG6cslO21N4QKB4zRh2NBKjQZqZhjdl
-	 p2eFczPhEhGN6e00tjwi733pAwdJrNqdtIPVPDr0mYdMjx+8bQhdr9q58Pu8epySL9
-	 E7tfRIl9+DT6/K39oTqAkCqEEPXxzIs4wpGTwk/mrDzv5n7RsJdyg5Rluerc0w+kek
-	 goh7cqCmqSF0xBhs4lZqqaXbI6Ji0Wo854nTFJOQL9bcwP/Q3kxl048do/Zi7iboSc
-	 VsR4y7qnNYmxGtYqhGLotMCg1DvH6EIbcDUhNomR6mV7AZEta2fHl/2gciRhRQpowp
-	 wqRagMbjqKNtQ==
+	b=CmOvlvbnM3xO2oyJtBkA8B5hLj75mcAuDInLkhmK/qqXNFYyD6ASL0v0JRxC4r/Mb
+	 CXbfD8Yyf822JiLG3eEPAbQsUhCzuGFi1jvSVNMr9cUKTykGjLIkw/wDAXzUqbGJSZ
+	 9nuOoMlpDYIEGK8QY499TTudYTt+9o2itKAg/GZQiHf90iM71YUDGPE1sWwgN8ADs3
+	 soUrleto8NNuqTmdF3XJ1qEjs0YG68cd3s4wFYSyig8drM6F1jAfquymoWp9UpeWB1
+	 GnCIO/kSbrLgz+fK1ScAyQVQm+NJIgwX0WvNSMFzSYrikajyzhkpenA3LJBu/pES4P
+	 6fBa9yhA37yNA==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Thu, 10 Sep 2026 14:22:05 -0400
-Subject: [PATCH RFC nfs-utils 4/7] nfsdctl: add rpcbind registration
- helpers
+Date: Thu, 10 Sep 2026 14:22:06 -0400
+Subject: [PATCH RFC nfs-utils 5/7] nfsdctl: register nfsd listeners with
+ rpcbind
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260910-nfsdctl-rpcb-v1-4-4bba1e7a3a43@kernel.org>
+Message-Id: <20260910-nfsdctl-rpcb-v1-5-4bba1e7a3a43@kernel.org>
 References: <20260910-nfsdctl-rpcb-v1-0-4bba1e7a3a43@kernel.org>
 In-Reply-To: <20260910-nfsdctl-rpcb-v1-0-4bba1e7a3a43@kernel.org>
 To: Steve Dickson <steved@redhat.com>, Trond Myklebust <trondmy@kernel.org>, 
@@ -47,420 +47,276 @@ To: Steve Dickson <steved@redhat.com>, Trond Myklebust <trondmy@kernel.org>,
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=11825; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=HLaTVxITECMP5SR5Dwc8g9G8b90lOZ+vjhYsOCcyE6Y=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqovVQshQ4Rl6YwFAluydM1JTri1/jdcSwi9OC7
- sh24I187duJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaqL1UAAKCRAADmhBGVaC
- FWwSD/40oDYI7EEVJgD9zTEcKiCZ5tytW8E4bY4P2Jl1y1vWab23eHezIfiFlGpwGVJcFmBdUys
- CeqPTCQH5n5GVhqv943oVcpp6o+wUn8XOhBzLqcFB1e8iDJjam3p2jXscHGjrM4/hftAxkHGTu/
- 782aNl9oY858GjBXfGB0r+7dMS+VxGSBYhaytc6eR9P9asmmT9WRFlykPtjE++Wo1W05bBciQ+f
- 0kwhB1KbV1oh0VEjZ7tDxvb0mw+LDoVxiicqE1dN215yRzik+hAUF8Iqg4Omf6MLorTja50yy0N
- oLiofhFgWr96RMumqY5I8HidB/oZjGh27ttKDHQGUVWlP8cRnbLwtkgimAZuXXhW825PU4dv7cD
- WJu77TibfeYFnPWvn0QD+IrCeAKeBcWeoNn+N21cXLXZ4GMZAPpK0XSMBINPgHAWDeo5GFrwOPv
- tv3zhWtrCAVptcU52eBua0/j2sdss86rR1Wnxd3KQKFC+TbLmJhP20H/4vXMXtiBwIVFbE6QZ+Y
- ZPz+R5WSiZ11VignhXbjLzd/hTA/OPShDbDEwJqAWeDPsiATjNXJXkzbw6S0RtfeHOvm9PKiYr7
- yEE8TXWGIf8d2uIBR1HJqUSQxcvt41cDUKLR5xtjcTMIRdCz3tv4xgRvZ2T9wnUtQ40BxkvDa3w
- kY110FPhMmM3/PQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8933; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=YUcARV8TeG9DkrFHWLUAvKYOVLfV5Gix6cQ9ZEKhOUw=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqovVQ+e+WxNqYwC/ngSYqrHhmP+KaIzTB/SNXy
+ boEcQx+Q/yJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaqL1UAAKCRAADmhBGVaC
+ FRFMEACC0Xnhzqc8/xjmS8WA8Jtxzp0zGU9tRw9J//C94l06OwwcLTFh8j2DFb/KM7suTRz40vf
+ TsP47z4Nk6V+HQCI1Wk9sREyMVnIkqNiZggLMaHc6IlhYSBPWx0ivt+3KGGr6/cHisjqV3ihsjQ
+ Ji2GlndLDQOpVRiimiIMbIqdNtcZ7/qvFlhx+nOJH+5/M6dViwXvKw3RzFg4z/RH6ghYW0fidOy
+ oSYIm6GW+646C9YHrB0CVpIrzgBDtsSGT+hPnYZ4XbdhloOZwDnxqpJmKESw/XkOSbwHcuJ/vMt
+ 54nmqjWhZC/qeawQq1GMSmQEs57NI+7Hf/MkHKC/voL3Bn7/wI4tWRgDcaawbnB8vG/DG50ezXg
+ Stxa40QKCKOmHILp1hba3y6RIINSzbYvGku4pjU5YwLSEtnTC+Mm0iRg13AJBbwslZOGW62UZFk
+ ZFeiRwJVvYgag6C7SCV/9TLBwhofh8dXHNNMH5ww9y6mRc9N6aXXMBpSxLoXTTyuceUM29BLik0
+ qnoUGR1thGdVVOa6f/SJKVDzX2Nof5L+wr5WY8of/iV8ki4wDyeZyYMityRIaPVeiMuTIjuQSei
+ c94Z2TKytoGnfyG3kI0ixJI4r9jqGpKig/VJH1zhEXZiRWke7hUFsfmU973d8llapPq5osyOGF6
+ EhdiOLxmqOYlluw==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Add the code that calls the local rpcbind. The callers come next.
+The kernel registered NFS and NFSACL under nfsd_mutex. Every call was
+synchronous. A local rpcbind that never replied therefore blocked every
+other NFSD netlink command, and tripped the hung-task watchdog.
 
-nfsd_rpcb_register() matches each listener against each program that the
-kernel reported. It calls rpcb_set() for every pair.
+A kernel that offers NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND makes no
+rpcbind call of its own. It answers a listener_set that carries the flag
+with the programs to register and the listeners that started. This
+program now does three steps instead:
 
-nfsd_rpcb_unset_all() clears every nfsd entry with nfs_svc_unregister().
-That helper calls rpcb_unset() with no netconfig, so one call covers
-every netid.
+  1: send the flag
+  2: read the reply
+  3: register the listeners, where nothing holds a lock
 
-Three rules match what the kernel did:
+Read the maximum attribute of LISTENER_SET to detect support. This adds
+no configuration. An older kernel does not offer the attribute, so that
+kernel keeps the registration. A build without TI-RPC has no rpcb_set(),
+so it reports no support either and leaves the kernel in charge.
 
-- nfsdctl registers the wildcard address with the listener's port. It
-  does not register the address that the listener uses.
-  __svc_rpcb_register4() and __svc_rpcb_register6() did the same.
-- nfsdctl does not register an RDMA listener. svc_register() runs only
-  from svc_setup_socket(), so an RDMA listener never reached rpcbind.
-- nfsdctl does not register a program that carries the no-udp flag on
-  udp or udp6. NFSv4 sets vs_need_cong_ctrl, so the kernel never
-  advertised NFSv4 there.
+nfsdctl clears every nfsd entry before it registers. rpcbind matches an
+unset on [program, version, netid] and takes no address, so an unset
+cannot drop one of two TCP ports. The sweep also replaces the
+svc_unregister() that svc_rpcb_setup() ran at serv creation. An
+sv_no_rpcbind serv no longer reaches that call.
 
-A failed call writes a warning and does not stop the caller. NFSv4 does
-not need rpcbind. A v2 or v3 client that already knows the port does not
-need it either.
-
-rpcb_set() and the netconfig database are TI-RPC only, so the
-registration side sits under HAVE_LIBTIRPC with a warning stub, matching
-getport.c and rpc_socket.c. nfsd_rpcb_unset_all() needs neither and
-stays unconditional; nfs_svc_unregister() has a pmap_unset() variant.
-
-struct server_socket moves to the new header, because both files read it.
-The netlink spec generates nfsdctl.h, so the definition cannot live
-there.
+The reply names only the listeners that started. A request that failed
+part way therefore registers what exists, not what the caller asked for.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- utils/nfsdctl/Makefile.am |  10 +-
- utils/nfsdctl/nfsdctl.c   |  13 +--
- utils/nfsdctl/rpcbind.c   | 251 ++++++++++++++++++++++++++++++++++++++++++++++
- utils/nfsdctl/rpcbind.h   |  42 ++++++++
- 4 files changed, 300 insertions(+), 16 deletions(-)
+ utils/nfsdctl/nfsdctl.8    |  16 +++++++
+ utils/nfsdctl/nfsdctl.adoc |  17 ++++++++
+ utils/nfsdctl/nfsdctl.c    | 104 ++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 135 insertions(+), 2 deletions(-)
 
-diff --git a/utils/nfsdctl/Makefile.am b/utils/nfsdctl/Makefile.am
-index 89c7ecd6f30b..1390c43c855d 100644
---- a/utils/nfsdctl/Makefile.am
-+++ b/utils/nfsdctl/Makefile.am
-@@ -5,9 +5,11 @@ EXTRA_DIST      = $(man8_MANS)
+diff --git a/utils/nfsdctl/nfsdctl.8 b/utils/nfsdctl/nfsdctl.8
+index 1f526e77bebf..d90f1eb96a41 100644
+--- a/utils/nfsdctl/nfsdctl.8
++++ b/utils/nfsdctl/nfsdctl.8
+@@ -337,6 +337,22 @@ interface to achieve the same goals.
+ Most of the commands that query the NFS server can be run as an unprivileged
+ user, but configuring the server typically requires an account with elevated
+ privileges.
++.SS "rpcbind registration"
++.sp
++On a kernel that supports it, nfsdctl registers the NFS and NFSACL programs
++with the local rpcbind itself. The kernel made those calls while it held an
++internal mutex, where a slow rpcbind blocked every other NFSD netlink
++command. nfsdctl detects support and needs no configuration.
++.sp
++nfsdctl registers the listeners after it sets them, and it clears the
++entries when the last thread stops. A failed registration is not fatal. The
++server starts, but a client that looks the server up in rpcbind cannot find
++it. NFSv4 does not need rpcbind, and a v2 or v3 client that already knows
++the port does not need it either.
++.sp
++RDMA listeners are not registered, which matches what the kernel did.
++.sp
++lockd still registers NLM itself on every kernel.
+ .SH "SEE ALSO"
+ .sp
+ nfs.conf(5), rpc.nfsd(8), rpc.mountd(8), exports(5), exportfs(8), rpc.rquotad(8), nfsstat(8), netconfig(5)
+diff --git a/utils/nfsdctl/nfsdctl.adoc b/utils/nfsdctl/nfsdctl.adoc
+index e85348e29ed8..bd21234b0d9d 100644
+--- a/utils/nfsdctl/nfsdctl.adoc
++++ b/utils/nfsdctl/nfsdctl.adoc
+@@ -176,6 +176,23 @@ Most of the commands that query the NFS server can be run as an unprivileged
+ user, but configuring the server typically requires an account with elevated
+ privileges.
  
- sbin_PROGRAMS	= nfsdctl
++=== rpcbind registration
++
++On a kernel that supports it, nfsdctl registers the NFS and NFSACL programs
++with the local rpcbind itself. The kernel made those calls while it held an
++internal mutex, where a slow rpcbind blocked every other NFSD netlink
++command. nfsdctl detects support and needs no configuration.
++
++nfsdctl registers the listeners after it sets them, and it clears the
++entries when the last thread stops. A failed registration is not fatal. The
++server starts, but a client that looks the server up in rpcbind cannot find
++it. NFSv4 does not need rpcbind, and a v2 or v3 client that already knows
++the port does not need it either.
++
++RDMA listeners are not registered, which matches what the kernel did.
++
++lockd still registers NLM itself on every kernel.
++
+ == SEE ALSO
  
--noinst_HEADERS = nfsdctl.h
--nfsdctl_SOURCES = nfsdctl.c
--nfsdctl_CFLAGS = $(LIBNL3_CFLAGS) $(LIBNLGENL3_CFLAGS) $(LIBREADLINE_CFLAGS)
--nfsdctl_LDADD = ../../support/nfs/libnfs.la $(LIBNL3_LIBS) $(LIBNLGENL3_LIBS) $(LIBREADLINE_LIBS)
-+noinst_HEADERS = nfsdctl.h rpcbind.h
-+nfsdctl_SOURCES = nfsdctl.c rpcbind.c
-+nfsdctl_CFLAGS = $(LIBNL3_CFLAGS) $(LIBNLGENL3_CFLAGS) $(LIBREADLINE_CFLAGS) \
-+		 $(TIRPC_CFLAGS)
-+nfsdctl_LDADD = ../../support/nfs/libnfs.la $(LIBNL3_LIBS) $(LIBNLGENL3_LIBS) \
-+		$(LIBREADLINE_LIBS) $(LIBTIRPC)
- 
- MAINTAINERCLEANFILES = Makefile.in
+ nfs.conf(5), rpc.nfsd(8), rpc.mountd(8), exports(5), exportfs(8), rpc.rquotad(8), nfsstat(8), netconfig(5)
 diff --git a/utils/nfsdctl/nfsdctl.c b/utils/nfsdctl/nfsdctl.c
-index dd815ac53489..860ea9c09ad2 100644
+index 860ea9c09ad2..370784e8fe8c 100644
 --- a/utils/nfsdctl/nfsdctl.c
 +++ b/utils/nfsdctl/nfsdctl.c
-@@ -46,6 +46,7 @@
+@@ -59,6 +59,9 @@ static int nfsd_nl_family;
+ /* The highest attribute index supported by NFSD_CMD_THREADS_SET on this kernel */
+ int nfsd_threads_max_nlattr;
  
- #include "nfslib.h"
- #include "nfsdctl.h"
-+#include "rpcbind.h"
- #include "conffile.h"
- #include "xlog.h"
- 
-@@ -72,18 +73,6 @@ struct nfs_version {
- 
- struct nfs_version nfsd_versions[MAX_NFS_VERSIONS];
- 
--/*
-- * All of the existing netids are short strings (3-4 chars), but let's allow
-- * for up to 16.
-- */
--#define MAX_CLASS_NAME_LEN	16
--
--struct server_socket {
--	struct sockaddr_storage	ss;
--	char name[MAX_CLASS_NAME_LEN];
--	bool active;
--};
--
- #define MAX_NFSD_SOCKETS		256
- 
++/* The same for NFSD_CMD_LISTENER_SET */
++int nfsd_listener_max_nlattr;
++
+ struct nfs_version {
+ 	uint8_t	major;
+ 	uint8_t	minor;
+@@ -78,6 +81,12 @@ struct nfs_version nfsd_versions[MAX_NFS_VERSIONS];
  int nfsd_socket_count;
-diff --git a/utils/nfsdctl/rpcbind.c b/utils/nfsdctl/rpcbind.c
-new file mode 100644
-index 000000000000..23034097b485
---- /dev/null
-+++ b/utils/nfsdctl/rpcbind.c
-@@ -0,0 +1,251 @@
+ struct server_socket nfsd_sockets[MAX_NFSD_SOCKETS];
+ 
++/* Programs the kernel reported in the last LISTENER_SET reply. */
++#define MAX_RPCB_PROGS			16
++
++static int nfsd_rpcb_prog_count;
++static struct nfsd_rpcb_prog nfsd_rpcb_progs[MAX_RPCB_PROGS];
++
+ const char *taskname;
+ 
+ static const struct option help_only_options[] = {
+@@ -304,6 +313,56 @@ static void parse_listener_get(struct genlmsghdr *gnlh)
+ 	nfsd_socket_count = idx;
+ }
+ 
 +/*
-+ * rpcbind.c -- register nfsd listeners with the local rpcbind
-+ *
-+ * A kernel that accepts NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND makes no
-+ * rpcbind call of its own, so this program makes them instead. The kernel
-+ * used to do this under nfsd_mutex, where a slow rpcbind stalled every
-+ * other NFSD netlink operation.
-+ *
-+ * lockd still registers NLM itself, so nothing here touches it.
++ * A LISTENER_SET that asked to own rpcbind answers with the programs to
++ * register and the listeners that came up.
 + */
-+
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#include <errno.h>
-+#include <netinet/in.h>
-+#include <string.h>
-+#include <sys/socket.h>
-+
-+#include <rpc/rpc.h>
-+
-+#ifdef HAVE_LIBTIRPC
-+#include <rpc/rpcb_clnt.h>
-+#include <netconfig.h>
-+#endif	/* HAVE_LIBTIRPC */
-+
-+#include "nfslib.h"
-+#include "rpcmisc.h"
-+#include "sockaddr.h"
-+#include "xlog.h"
-+#include "rpcbind.h"
-+
-+#ifdef USE_SYSTEM_NFSD_NETLINK_H
-+#include <linux/nfsd_netlink.h>
-+#else
-+#include "nfsd_netlink.h"
-+#endif
-+
-+#ifndef ARRAY_SIZE
-+#define ARRAY_SIZE(x)		(sizeof(x) / sizeof((x)[0]))
-+#endif
-+
-+/*
-+ * Programs to clear at shutdown. There is no reply to read at that point,
-+ * so clear a superset. rpcb_unset() of an absent entry does nothing.
-+ */
-+static const struct {
-+	rpcprog_t	program;
-+	rpcvers_t	version;
-+} nfsd_rpcb_all[] = {
-+	{ NFS_PROGRAM,		2 },
-+	{ NFS_PROGRAM,		3 },
-+	{ NFS_PROGRAM,		4 },
-+	{ NFS_ACL_PROGRAM,	2 },
-+	{ NFS_ACL_PROGRAM,	3 },
-+};
-+
-+/**
-+ * nfsd_rpcb_unset_all - remove every nfsd entry from the local rpcbind
-+ *
-+ * rpcb_unset() matches [program, version, netid] and takes no address, so
-+ * one call clears every netid. This mirrors the svc_unregister() sweep that
-+ * svc_rpcb_setup() used to run, which an sv_no_rpcbind serv no longer does.
-+ */
-+void nfsd_rpcb_unset_all(void)
++static void parse_listener_set(struct genlmsghdr *gnlh)
 +{
-+	unsigned int i;
++	struct nlattr *attr;
++	int rem, idx = 0;
 +
-+	for (i = 0; i < ARRAY_SIZE(nfsd_rpcb_all); i++)
-+		nfs_svc_unregister(nfsd_rpcb_all[i].program,
-+				   nfsd_rpcb_all[i].version);
++	memset(nfsd_sockets, '\0', sizeof(*nfsd_sockets) * MAX_NFSD_SOCKETS);
++	nfsd_rpcb_prog_count = 0;
++
++	nla_for_each_attr(attr, genlmsg_attrdata(gnlh, 0),
++			  genlmsg_attrlen(gnlh, 0), rem) {
++		struct nfsd_rpcb_prog *p;
++		struct nlattr *a;
++		int i;
++
++		switch (nla_type(attr)) {
++		case NFSD_A_SERVER_SOCK_ADDR:
++			if (idx >= MAX_NFSD_SOCKETS)
++				break;
++			parse_sock_nest(attr, &nfsd_sockets[idx]);
++			++idx;
++			break;
++		case NFSD_A_SERVER_SOCK_RPCBIND:
++			if (nfsd_rpcb_prog_count >= MAX_RPCB_PROGS)
++				break;
++			p = &nfsd_rpcb_progs[nfsd_rpcb_prog_count];
++			memset(p, '\0', sizeof(*p));
++			nla_for_each_nested(a, attr, i) {
++				switch (nla_type(a)) {
++				case NFSD_A_RPCBIND_PROGRAM:
++					p->program = nla_get_u32(a);
++					break;
++				case NFSD_A_RPCBIND_VERSION:
++					p->version = nla_get_u32(a);
++					break;
++				case NFSD_A_RPCBIND_FLAGS:
++					p->flags = nla_get_u32(a);
++					break;
++				}
++			}
++			++nfsd_rpcb_prog_count;
++			break;
++		}
++	}
++	nfsd_socket_count = idx;
 +}
 +
-+#ifdef HAVE_LIBTIRPC
+ static void parse_threads_get(struct genlmsghdr *gnlh)
+ {
+ 	struct nlattr *attr;
+@@ -405,6 +464,9 @@ static int recv_handler(struct nl_msg *msg, void *arg)
+ 	case NFSD_CMD_LISTENER_GET:
+ 		parse_listener_get(gnlh);
+ 		break;
++	case NFSD_CMD_LISTENER_SET:
++		parse_listener_set(gnlh);
++		break;
+ 	case NFSD_CMD_POOL_MODE_GET:
+ 		parse_pool_mode_get(gnlh);
+ 		break;
+@@ -576,8 +638,29 @@ out:
+ 
+ static int query_nfsd_nl_policy(struct nl_sock *sock)
+ {
+-	return query_nfsd_nl_cmd_policy(sock, NFSD_CMD_THREADS_SET,
+-					&nfsd_threads_max_nlattr);
++	int ret;
 +
-+/*
-+ * Map a transport name and address family to an rpcbind netid.
-+ *
-+ * Returns NULL for a transport that the kernel never registered. RDMA is
-+ * the case that matters: svc_register() is only reached from
-+ * svc_setup_socket(), so an RDMA listener was always absent from rpcbind.
-+ */
-+static const char *nfsd_rpcb_netid(const char *transport, int family)
-+{
-+	bool v6 = (family == AF_INET6);
-+
-+	if (!strcmp(transport, "tcp"))
-+		return v6 ? "tcp6" : "tcp";
-+	if (!strcmp(transport, "udp"))
-+		return v6 ? "udp6" : "udp";
-+	return NULL;
-+}
-+
-+/*
-+ * Build the address to register. The kernel registered the wildcard address
-+ * with the listener's port, not the address the listener is bound to, so
-+ * match that.
-+ */
-+static bool nfsd_rpcb_wildcard(const struct sockaddr_storage *ss,
-+			       struct sockaddr_storage *out, socklen_t *len)
-+{
-+	memset(out, 0, sizeof(*out));
-+
-+	switch (ss->ss_family) {
-+	case AF_INET: {
-+		struct sockaddr_in *s4 = (struct sockaddr_in *)out;
-+
-+		s4->sin_family = AF_INET;
-+		s4->sin_addr.s_addr = htonl(INADDR_ANY);
-+		s4->sin_port = ((const struct sockaddr_in *)ss)->sin_port;
-+		*len = sizeof(*s4);
-+		return true;
-+	}
-+	case AF_INET6: {
-+		struct sockaddr_in6 *s6 = (struct sockaddr_in6 *)out;
-+
-+		s6->sin6_family = AF_INET6;
-+		s6->sin6_addr = in6addr_any;
-+		s6->sin6_port = ((const struct sockaddr_in6 *)ss)->sin6_port;
-+		*len = sizeof(*s6);
-+		return true;
-+	}
-+	}
-+	return false;
-+}
-+
-+static bool nfsd_rpcb_set_one(rpcprog_t program, rpcvers_t version,
-+			      const char *netid,
-+			      const struct sockaddr_storage *ss)
-+{
-+	struct sockaddr_storage wild;
-+	struct netconfig *nconf;
-+	struct netbuf nb;
-+	socklen_t len;
-+	bool ok;
-+
-+	if (!nfsd_rpcb_wildcard(ss, &wild, &len))
-+		return false;
-+
-+	nconf = getnetconfigent(netid);
-+	if (!nconf) {
-+		xlog(L_WARNING, "no netconfig entry for %s", netid);
-+		return false;
-+	}
-+
-+	nb.buf = &wild;
-+	nb.len = len;
-+	nb.maxlen = len;
-+
-+	ok = (rpcb_set(program, version, nconf, &nb) == TRUE);
-+	freenetconfigent(nconf);
-+	return ok;
-+}
-+
-+/**
-+ * nfsd_rpcb_register - register the listeners the kernel reported
-+ * @listeners: listeners that came up, from the listener_set reply
-+ * @nlisteners: number of entries in @listeners
-+ * @progs: programs and versions the kernel would have registered
-+ * @nprogs: number of entries in @progs
-+ *
-+ * A failure is not fatal. NFSv4 does not need rpcbind, and a v2/v3 client
-+ * that already knows the port does not need it either, so an unadvertised
-+ * server is better than no server.
-+ */
-+void nfsd_rpcb_register(const struct server_socket *listeners, int nlisteners,
-+			const struct nfsd_rpcb_prog *progs, int nprogs)
-+{
-+	unsigned int failed = 0;
-+	int i, j, k;
++	ret = query_nfsd_nl_cmd_policy(sock, NFSD_CMD_THREADS_SET,
++				       &nfsd_threads_max_nlattr);
++	if (ret)
++		return ret;
 +
 +	/*
-+	 * Clear first. rpcbind cannot express "drop one of two TCP ports",
-+	 * and the kernel no longer sweeps stale entries at serv creation.
++	 * A kernel that offers NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND expects
++	 * this program to register the listeners itself.
 +	 */
-+	nfsd_rpcb_unset_all();
-+
-+	for (i = 0; i < nlisteners; i++) {
-+		const struct server_socket *l = &listeners[i];
-+		const char *netid;
-+		bool dup = false;
-+
-+		netid = nfsd_rpcb_netid(l->name, l->ss.ss_family);
-+		if (!netid)
-+			continue;
-+
-+		/*
-+		 * The address registered is the wildcard, so two listeners
-+		 * that share a netid and port produce the same entry.
-+		 */
-+		for (k = 0; k < i; k++) {
-+			const struct server_socket *o = &listeners[k];
-+			const char *other;
-+
-+			other = nfsd_rpcb_netid(o->name, o->ss.ss_family);
-+			if (other && !strcmp(other, netid) &&
-+			    nfs_get_port((const struct sockaddr *)&o->ss) ==
-+			    nfs_get_port((const struct sockaddr *)&l->ss)) {
-+				dup = true;
-+				break;
-+			}
-+		}
-+		if (dup)
-+			continue;
-+
-+		for (j = 0; j < nprogs; j++) {
-+			const struct nfsd_rpcb_prog *p = &progs[j];
-+
-+			/*
-+			 * NFSv4 needs congestion control, so the kernel
-+			 * never advertised it over UDP.
-+			 */
-+			if ((p->flags & NFSD_RPCBIND_FLAGS_NO_UDP) &&
-+			    !strncmp(netid, "udp", 3))
-+				continue;
-+
-+			if (nfsd_rpcb_set_one(p->program, p->version, netid,
-+					      &l->ss))
-+				continue;
-+
-+			xlog(L_WARNING,
-+			     "cannot register program %u version %u on %s port %u",
-+			     p->program, p->version, netid,
-+			     nfs_get_port((const struct sockaddr *)&l->ss));
-+			failed++;
-+		}
-+	}
-+
-+	if (failed)
-+		xlog(L_WARNING,
-+		     "some rpcbind registrations failed. Clients that look up the server in rpcbind cannot find it.");
++	return query_nfsd_nl_cmd_policy(sock, NFSD_CMD_LISTENER_SET,
++					&nfsd_listener_max_nlattr);
 +}
 +
-+#else	/* !HAVE_LIBTIRPC */
-+
-+/*
-+ * rpcb_set() and the netconfig database are TI-RPC only, so a build
-+ * without it cannot own the registration. userspace_rpcbind_supported()
-+ * answers false there and the kernel keeps doing the calls itself, which
-+ * leaves this unreachable.
-+ */
-+void nfsd_rpcb_register(const struct server_socket *UNUSED(listeners),
-+			int UNUSED(nlisteners),
-+			const struct nfsd_rpcb_prog *UNUSED(progs),
-+			int UNUSED(nprogs))
++static bool userspace_rpcbind_supported(void)
 +{
-+	xlog(L_WARNING, "built without TI-RPC: cannot register with rpcbind");
-+}
-+
-+#endif	/* !HAVE_LIBTIRPC */
-diff --git a/utils/nfsdctl/rpcbind.h b/utils/nfsdctl/rpcbind.h
-new file mode 100644
-index 000000000000..46145da6ed99
---- /dev/null
-+++ b/utils/nfsdctl/rpcbind.h
-@@ -0,0 +1,42 @@
-+/*
-+ * rpcbind.h -- register nfsd listeners with the local rpcbind
-+ */
-+
-+#ifndef _UTILS_NFSDCTL_RPCBIND_H
-+#define _UTILS_NFSDCTL_RPCBIND_H
-+
-+#include <stdbool.h>
-+#include <stdint.h>
-+#include <sys/socket.h>
-+
-+#ifndef NFS_PROGRAM
-+#define NFS_PROGRAM		100003
++#ifdef HAVE_LIBTIRPC
++	return nfsd_listener_max_nlattr >= NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND;
++#else
++	/* No rpcb_set() here, so leave the registration to the kernel. */
++	return false;
 +#endif
-+#ifndef NFS_ACL_PROGRAM
-+#define NFS_ACL_PROGRAM		100227
-+#endif
+ }
+ 
+ static void status_usage(void)
+@@ -1340,6 +1423,7 @@ out_inval:
+ 
+ static int set_listeners(struct nl_sock *sock)
+ {
++	bool userspace_rpcbind = userspace_rpcbind_supported();
+ 	struct genlmsghdr *ghdr;
+ 	struct nlmsghdr *nlh;
+ 	struct nl_msg *msg;
+@@ -1382,6 +1466,14 @@ static int set_listeners(struct nl_sock *sock)
+ 		nla_nest_end(msg, a);
+ 	}
+ 
++	/*
++	 * Take rpcbind registration off the kernel. It made those calls
++	 * under nfsd_mutex, where a slow rpcbind stalled every other NFSD
++	 * netlink operation.
++	 */
++	if (userspace_rpcbind)
++		nla_put_flag(msg, NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND);
 +
-+/*
-+ * All of the existing netids are short strings (3-4 chars), but let's allow
-+ * for up to 16.
-+ */
-+#define MAX_CLASS_NAME_LEN	16
+ 	ghdr = nlmsg_data(nlh);
+ 	ghdr->cmd = NFSD_CMD_LISTENER_SET;
+ 
+@@ -1410,6 +1502,14 @@ static int set_listeners(struct nl_sock *sock)
+ 		xlog(L_ERROR, "Error: %s", strerror(-ret));
+ 		ret = 1;
+ 	}
 +
-+struct server_socket {
-+	struct sockaddr_storage	ss;
-+	char name[MAX_CLASS_NAME_LEN];
-+	bool active;
-+};
-+
-+/* One [program, version] that the kernel would have registered. */
-+struct nfsd_rpcb_prog {
-+	uint32_t	program;
-+	uint32_t	version;
-+	uint32_t	flags;
-+};
-+
-+void nfsd_rpcb_unset_all(void);
-+void nfsd_rpcb_register(const struct server_socket *listeners, int nlisteners,
-+			const struct nfsd_rpcb_prog *progs, int nprogs);
-+
-+#endif /* _UTILS_NFSDCTL_RPCBIND_H */
++	/*
++	 * recv_handler() filled nfsd_sockets and nfsd_rpcb_progs from the
++	 * reply, which names only the listeners that came up.
++	 */
++	if (!ret && userspace_rpcbind)
++		nfsd_rpcb_register(nfsd_sockets, nfsd_socket_count,
++				   nfsd_rpcb_progs, nfsd_rpcb_prog_count);
+ out_cb:
+ 	nl_cb_put(cb);
+ out:
 
 -- 
 2.55.0
