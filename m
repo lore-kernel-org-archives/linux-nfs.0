@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2DBCD4A3867
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D187E49B5DE
 	for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2026 16:25:43 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789143945; cv=none; b=kRPejGlH27D5MrC2cilE3ZQfHuoq1AdYs+2rf47Nqk9MX7FhtRSpfaDCFyvgh7CX9Dx+8rx6Fk5GzLq1Rgpb6dx23lv3V7S1s5R5FHSG3LduhjV5SM/cMqiHBceiCkY8PKFQSzFIrJdaIxEpqIPV7Jb+Gr7XMUuwyBCYa2HO9eo=
+	t=1789143945; cv=none; b=LT3Q/X08FkUwc0fd1sPg0VFzFfTEx2OhNVecBK+XJZ1DOPJfGfcLD1tiiB0Vp3Kvwh3qjzhf3TbZFxAoX73ugN5etCCT9jEPV/SCaOQlagL1R3LsCoM1+3RXqOmHNdvlBwGPaCznRDBppdah01aoOk4CS5+r2Oh14fCmaJQSxJw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1789143945; c=relaxed/simple;
-	bh=QYlf+JesxBlJSYauupuIY/ODUtZ3uo3pez2Y2EJfcm0=;
+	bh=8goL1RQdDbeZkXO1unzn6SCmi4z+Wb57UjvW4rck+34=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=txRTPLeApZZbLipO8sGQ83hC5aVEoq3ujhG2fkSEyM5PCA1v7X/0Vws4VE1IAfyzsAxzsxlMNB2qFkyEr4Hx5SSL0+XUjcKty62+6Zyl7K5HHcK37k7f+vyDevbZfXAkbblmsFfqdbzVAUyt1K6kYwZZi8irTTy1ylSkE+6x+0c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=guG2TAWR; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=VjHDBniv9/uKE7XFCy4VotMtQMob8nSK5IzaCEqheyH7NiRu8PHYqlHBIQXSSjHSzlMB1BiPkR0Rdjy8BiqOhzrDLMPbi3B1k/OBa5FPJQyAEC2wXRCmkcXhqYdPySIQ2BMvMcmby/I+ckRQVFVZcGHcg5IvEnsDhO81yx9hwTQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=M9BwZbMy; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="guG2TAWR"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 878221F0089A;
-	Fri, 11 Sep 2026 16:25:42 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="M9BwZbMy"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2935E1F00898;
+	Fri, 11 Sep 2026 16:25:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789143942;
-	bh=+O+MoTCqoo37+x56CACMyxN7wU2AAWtuDfrRWVBgcQk=;
+	s=k20260515; t=1789143943;
+	bh=HTbQTzPYLwd6pJkj+gYkylWltoXLoNT8SNRg0zBgcHw=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=guG2TAWRqJMvYWMeQUp1UHFfb65efl8Xk0b9zmQ99opE4ZfSAzRn9ofFxdv1gw/le
-	 hharhUyNMGeNlbORIoDvYOvxT3fZTFE2yVKDtOHFNfnAJKV7KD4JFsweS2kLUQBbRu
-	 kf2/GU9n89s9KQXZLIRcpD42OSQZpSvor41ndmPJioYgGbC80XWbAF3PodxjOS1lYH
-	 SdbXT+PKAw8XlGmGEuv6+sZaCOYn+pmF3aPSXfbyarTbS2Fh1t7pXg8H3W79mNJonC
-	 pkKNLbO+wPePhbd9RSiWP8ifN3Uo2QI7C6beCS6LiCyvagbKlpId0M7qQDtmxNDlNE
-	 KNccN8l/oL4KA==
+	b=M9BwZbMygiXjhmUMjFo9Bm9DQPYeeuPQM9tpeZZ4A7HS04enwh7ShgngIgClH+WGa
+	 lkxUkMH1Xou/B4lLtLr/xlbbJa+c0r6pEmF8muqSqjLBqUVzbQsjKXGSWGlCk+id1k
+	 hAJh0/KzJzoLylGKeTXiVPtkM85mPtb+BmK4vdOHa+FL/GWfeqRf8qa9FFp26K2h4Z
+	 oyqougTx31pAQOdbqCKhPMDYTSY4WUrmCuIGa5i5Aiq3UolfB1NOsLWn3uZcyJaxbk
+	 vDJe5I0ZobSBOE+qQl5HQ07Rzv4Re2l/UQHcCt/qGu9UjvdGmNnXWZTILYYPotx/io
+	 rYp+WljmYyvDA==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Fri, 11 Sep 2026 12:25:27 -0400
-Subject: [PATCH nfs-utils v2 02/10] mountd: handle unmountable paths and
- junctions in the netlink downcall
+Date: Fri, 11 Sep 2026 12:25:28 -0400
+Subject: [PATCH nfs-utils v2 03/10] mountd: answer requests the kernel
+ rejects on the netlink downcall
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260911-nl-crossmnt-v2-2-f4d869951c5e@kernel.org>
+Message-Id: <20260911-nl-crossmnt-v2-3-f4d869951c5e@kernel.org>
 References: <20260911-nl-crossmnt-v2-0-f4d869951c5e@kernel.org>
 In-Reply-To: <20260911-nl-crossmnt-v2-0-f4d869951c5e@kernel.org>
 To: Steve Dickson <steved@redhat.com>, 
@@ -46,447 +46,528 @@ To: Steve Dickson <steved@redhat.com>,
 Cc: Chuck Lever <cel@kernel.org>, linux-nfs@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=11825; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=QYlf+JesxBlJSYauupuIY/ODUtZ3uo3pez2Y2EJfcm0=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqpCuDTMaTimKCZuGVT+q8Up6WToqKvesZBbhwG
- H9esVOi9MKJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaqQrgwAKCRAADmhBGVaC
- Fa1OD/9mi3R+Awz9D6GGJs0giOl37iSExAXPMsExPo9+RuBatt0COsxfX8H41dxuZq7RZCrtJrB
- ZZJ1muzQtxt71y7mAkFHd6HQMP8u8zkQ9cRLNht99IdOYjQzEdBHnyw5XFqEKlpxOX8RmspyB0v
- NulauDYh+Elifyw+TVV8Df8gWRLF2lfAEIfX44/NDVc+qCXQxE2vaSzTaxsASV95r9FChBoGLwd
- J3XuHWIFnRxRYC/PceTTkHnv6Fdn+ogJu0ILlItNoTPByypiPtMvfalu1gEb7xvTXRM9IzBeNRb
- IBaH/Cyc+zB9FnN3U9rz3hjngyegznsaZrWLU8jZ5q7yJu/a13szEIUTWe3r8jt6NsvWMVN16f/
- mMpogT7FyBcxxOY3rnIHXr3b/iuxa0WDKiYeOpbWdrzH9BstFGdLCtTGy8ri5R5ogVbpzlMqz4g
- 2TP9/fHuZE0X1avTU3gBm5iJm7RkxWgu/Vsj4Deq2w5CCJuU1u+FcyxXgRWbhwZn5O5NxRYxWL0
- o6aCchDan8LtxvloFdOJwUGC8WfeWRLGOaL/+U01T4KEhP9/Jp+8Lz2O7fbLvOqs4I6V/dhqL1Z
- x+MIW5UpU0PJIoK+ef6BNNKc7zzPBp4p+TtKD4Cy4r4lAMuyrc2t0bND7+jPZ6X0dUh8E/zezpe
- lyJdi0giC//ritg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=15890; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=8goL1RQdDbeZkXO1unzn6SCmi4z+Wb57UjvW4rck+34=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqpCuD/SVq0P4NVF1apbHvMKISss0Cw+f8loWV4
+ nYaIVQKaguJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaqQrgwAKCRAADmhBGVaC
+ FbrjD/460sCdZjUgWibUFHUyfOkVNGj06K9D3lU48KTwLQMn/miygqEfYpeyJU4OmpyE7a23jGf
+ pBiZiqSAoVjCCgxGdwbofEw1itdjH4FwGHUzqYuy0ZHbVWkWeX+i4cGkCNtAZhTHXFvpohj2S1H
+ 9YBQWf+X8DHWjGga/BlM0xsehxT1cOtwxrV+eA0WaPmxqJTS1kbXV+dEV42CkPGWCTuf0V59T+l
+ h2nd9xqvLRJob2X0Lpmoapl/zaqcPzuuocBXbdQMEwZDgzpifISmtYAt6hUQodoKDYGkdNZ1thp
+ Om2VpppP8/8kL2umLqBv0X/bxc5o9qmDP7cdKP80RN+YbFC+bofKAn3f8DLi64momU5CVu+StfE
+ SChO5IYi43thCswqSIPzbY33wi0pgzRY/aWHaukE7gqJ8IeW2Vq3at1yrJ3Qp957B0qoandNW7w
+ qN98Cogqg7amC0Eesksr0g+9G+1EkFG1ne7P7MZ0crangxGmsv5ryxPfOc8Uc1P9CHqt/MrNuGU
+ W+iMx1H3C0T2XuZYwVEpCpq1e6FwsiMO+g09mux9VPjea+AGR4MQSWvdYDNoMdW2f9Tb1cj9HAt
+ kD4pzC0WkNincBFG/iA6nGViKayUGyVxNruyYeaxul4hHp8yIhsmPZM5o7wtnBlE/plYEC43+/4
+ p+du+d+qA5n00sA==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Two things nfsd_export() does that cache_nl_process_export() did not:
+The kernel refuses an svc_export it cannot build a filehandle for - a 9p
+submount picked up by crossmnt, say - and it fails the whole SET_REQS
+message when it does.  cache_nl_process_export() batches every pending
+request into one message and never looks at the result, so:
 
- - If is_mountpoint() fails with an error that isn't a plain lookup
-   failure, we can't tell whether the export is available.  Defer the
-   request instead of answering "not exported".
+ - every entry queued behind the bad one is dropped
+ - nothing downgrades the bad path to a negative entry
+ - the request stays pending and the client hangs on the lookup
 
- - When no export matches, check for a junction before denying, so
-   referrals still work.  Only when the client resolved, as nfsd_export()
-   does: client_check() dereferences the addrinfo for wildcard and
-   netgroup clients.
+Pending requests then pile up on each notification:
 
-Split lookup_nonexport() so both downcalls share the junction lookup, and
-factor the per-request work into nl_add_export_req() so the deferred path
-can reuse it.  Deferred requests go on their own list, deduped on
-(client, path) and retried from cache_process() every RETRY_SEC.  The
-kernel keeps the upcall pending in the meantime.
+  cache_nl_process_export: 5 pending export requests
+  cache_nl_set_reqs: SET_REQS failed: -7
+
+nfsd_export() has no such hole: a rejected dump_to_cache() write returns
+-1 and it answers negative instead.
+
+Keep the batch for the fast path, but resubmit it one entry at a time
+when the kernel rejects it, and answer negative for whichever entries it
+still refuses.  nfsd_nl_svc_export_set_reqs_doit() commits each entry as
+it parses it and stops at the first failure, so the resubmit re-sends
+some entries the kernel already took; that is harmless, as the update is
+idempotent, and it is the only way to find the one that failed.
+nl_add_export_req() no longer flushes the message itself; the caller
+owns the batch so it knows what to resubmit.
+
+Only fall back to a negative entry when the kernel actually answered.
+libnl folds its own errors into the same NLE_* space as the kernel's, so
+cache_nl_set_reqs() now reports the kernel's errno separately: a broken
+socket must not cache "not exported" for default_ttl.  A negative entry
+the kernel already refused - the path or the client's auth_domain went
+away - is not resent as another negative either.
+
+An entry too large for a message of its own is a third case.  mountd
+never sent it, so the kernel never refused it.  Log the size failure and
+answer negative, rather than blame the filesystem for it.
 
 Assisted-by: LLM
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- support/export/cache.c | 324 +++++++++++++++++++++++++++++++++++++++----------
- 1 file changed, 258 insertions(+), 66 deletions(-)
+ support/export/cache.c | 318 ++++++++++++++++++++++++++++++++++++++-----------
+ 1 file changed, 246 insertions(+), 72 deletions(-)
 
 diff --git a/support/export/cache.c b/support/export/cache.c
-index e8b13409ad7a..0ad98c539407 100644
+index 0ad98c539407..9be6659cc3f2 100644
 --- a/support/export/cache.c
 +++ b/support/export/cache.c
-@@ -784,6 +784,18 @@ struct delayed {
- 	struct delayed *next;
- } *delayed;
- 
-+/* Fold one retry queue head's deadline into the running minimum */
-+static time_t retry_delay(time_t *last_attempt, time_t now, time_t delay)
-+{
-+	time_t d;
-+
-+	if (*last_attempt > now)
-+		/* Clock updated - retry immediately */
-+		*last_attempt = now - RETRY_SEC;
-+	d = *last_attempt + RETRY_SEC - now;
-+	return d < delay ? d : delay;
-+}
-+
- static int nfsd_handle_fh(int f, char *bp, int blen)
- {
- 	/* request are:
-@@ -1162,8 +1174,18 @@ static int export_attrs_build(struct export_attrs *ea, char *path,
-  * NFSD_CMD_SVC_EXPORT_SET_REQS.
-  */
- static nfs_export *lookup_export(char *dom, char *path, struct addrinfo *ai);
-+static struct exportent *lookup_nonexport_ent(char *dom, char *path,
-+					      struct addrinfo *ai);
- static struct nl_msg *cache_nl_new_msg(int family, int cmd, int flags);
- 
-+static void free_junction(struct exportent *eep)
-+{
-+	if (!eep)
-+		return;
-+	exportent_release(eep);
-+	free(eep);
-+}
-+
- static struct nl_sock *nfsd_nl_notify_sock;	/* multicast notifications */
- static struct nl_sock *nfsd_nl_cmd_sock;	/* GET_REQS / SET_REQS commands */
- static int nfsd_nl_family;
-@@ -1632,6 +1654,197 @@ static int cache_nl_set_reqs(struct nl_sock *sock, struct nl_msg *msg)
- 	return ret;
+@@ -1623,18 +1623,55 @@ static struct nl_msg *cache_nl_new_msg(int family, int cmd, int flags)
+ 	return msg;
  }
  
-+static bool nl_msg_has_reqs(struct nl_msg *msg)
-+{
-+	return genlmsg_attrlen(nlmsg_data(nlmsg_hdr(msg)), 0) > 0;
-+}
-+
-+enum export_result {
-+	EXPORT_ANSWERED,
-+	EXPORT_RETRY,		/* not resolvable yet, ask again later */
-+	EXPORT_NOMEM,		/* *msgp is gone, caller must give up */
+-static int cache_nl_set_reqs(struct nl_sock *sock, struct nl_msg *msg)
++/* State for one SET_REQS round trip */
++struct set_reqs_status {
++	int	done;
++	int	kern_err;	/* errno the kernel answered with */
 +};
 +
-+/*
-+ * Resolve one svc_export request and append the answer to *msgp, sending
-+ * and replacing the message if it fills up.
-+ */
-+static enum export_result nl_add_export_req(struct nl_msg **msgp, char *dom,
-+					    char *path)
++static int nl_set_reqs_finish_cb(struct nl_msg *UNUSED(msg), void *arg)
 +{
-+	struct addrinfo *ai = NULL;
-+	nfs_export *found = NULL;
-+	struct exportent *epp = NULL;
-+	struct exportent *junction = NULL;
-+	enum export_result res = EXPORT_ANSWERED;
-+	int ttl = 0;
++	struct set_reqs_status *st = arg;
 +
-+	if (is_ipaddr_client(dom)) {
-+		ai = lookup_client_addr(dom);
-+		if (!ai)
-+			xlog(D_AUTH, "%s: failed to resolve client %s",
-+			     __func__, dom);
-+	}
++	st->done = 1;
++	return NL_STOP;
++}
 +
-+	if (ai || !is_ipaddr_client(dom)) {
-+		found = lookup_export(dom, path, ai);
-+		if (!found) {
-+			junction = lookup_nonexport_ent(dom, path, ai);
-+			epp = junction;
-+		}
-+	}
++static int nl_set_reqs_error_cb(struct sockaddr_nl *UNUSED(nla),
++				struct nlmsgerr *nlerr, void *arg)
++{
++	struct set_reqs_status *st = arg;
 +
-+	if (found) {
-+		char *mp = found->m_export.e_mountpoint;
-+
-+		if (mp && !*mp)
-+			mp = found->m_export.e_path;
-+		errno = 0;
-+		if (mp && !is_mountpoint(mp)) {
-+			/*
-+			 * A strange error means we can't tell whether it is a
-+			 * mountpoint.  Retry later rather than answer wrongly.
-+			 */
-+			if (errno != 0 && !path_lookup_error(errno)) {
-+				res = EXPORT_RETRY;
-+				goto out;
-+			}
-+			/* Exportpoint is not mounted, so tell kernel it
-+			 * is not available.  This will cause it not to
-+			 * appear in the V4 Pseudo-root, so a "mount" of
-+			 * this path will fail, just like with V3.
-+			 */
-+			xlog(L_WARNING,
-+			     "Cannot export path '%s': not a mountpoint", path);
-+			ttl = 60;
-+		} else {
-+			epp = &found->m_export;
-+		}
-+	}
-+
-+	if (nfsd_nl_add_export(*msgp, dom, path, epp, ttl) < 0) {
-+		cache_nl_set_reqs(nfsd_nl_cmd_sock, *msgp);
-+		nlmsg_free(*msgp);
-+		*msgp = cache_nl_new_msg(nfsd_nl_family,
-+					 NFSD_CMD_SVC_EXPORT_SET_REQS, 0);
-+		if (!*msgp) {
-+			res = EXPORT_NOMEM;
-+			goto out;
-+		}
-+		if (nfsd_nl_add_export(*msgp, dom, path, epp, ttl) < 0)
-+			xlog(L_WARNING, "%s: skipping oversized entry for %s",
-+			     __func__, path);
-+	}
-+out:
-+	free_junction(junction);
-+	nfs_freeaddrinfo(ai);
-+	return res;
++	st->done = 1;
++	st->kern_err = nlerr->error;
++	return NL_STOP;
 +}
 +
 +/*
-+ * is_mountpoint() can fail with a strange error - the ETIMEDOUT a re-exported
-+ * "softerr" NFS mount can give, say - leaving us unable to say whether the
-+ * path is exportable.  Set the request aside and try again later.
++ * Send @msg and wait for the kernel to ack it.  Returns 0 on success.
++ *
++ * libnl folds the kernel's errno into its own NLE_* space, and a local
++ * failure lands in the same space, so the return value cannot say whether
++ * the kernel looked at the message at all.  When @kern_errp is given it is
++ * set to the negative errno the kernel replied with, or left at 0 if it
++ * never got that far.
 + */
-+struct delayed_export {
-+	char			*client;
-+	char			*path;
-+	time_t			last_attempt;
-+	struct delayed_export	*next;
-+};
++static int cache_nl_set_reqs(struct nl_sock *sock, struct nl_msg *msg,
++			     int *kern_errp)
+ {
++	struct set_reqs_status st = {};
+ 	struct nl_cb *cb;
+-	int done = 0;
+ 	int ret;
+ 
++	if (kern_errp)
++		*kern_errp = 0;
 +
-+static struct delayed_export *delayed_export;
-+
-+static void delayed_export_enqueue(struct delayed_export *d)
-+{
-+	struct delayed_export **dp = &delayed_export;
-+
-+	d->last_attempt = time(NULL);
-+	d->next = NULL;
-+	while (*dp)
-+		dp = &(*dp)->next;
-+	*dp = d;
-+}
-+
-+static void delayed_export_free(struct delayed_export *d)
-+{
-+	free(d->client);
-+	free(d->path);
-+	free(d);
-+}
-+
-+static void delayed_export_flush(void)
-+{
-+	while (delayed_export) {
-+		struct delayed_export *d = delayed_export;
-+
-+		delayed_export = d->next;
-+		delayed_export_free(d);
-+	}
-+}
-+
-+static void nl_delay_export(char *dom, char *path)
-+{
-+	struct delayed_export *d;
-+
-+	for (d = delayed_export; d; d = d->next)
-+		if (!strcmp(d->client, dom) && !strcmp(d->path, path))
-+			return;
-+
-+	d = calloc(1, sizeof(*d));
-+	if (!d)
-+		return;
-+
-+	d->client = strdup(dom);
-+	d->path = strdup(path);
-+	if (!d->client || !d->path) {
-+		delayed_export_free(d);
-+		return;
-+	}
-+
-+	delayed_export_enqueue(d);
-+}
-+
+ 	cb = nl_cb_alloc(NL_CB_DEFAULT);
+ 	if (!cb)
+ 		return -ENOMEM;
+ 
+-	nl_cb_set(cb, NL_CB_ACK, NL_CB_CUSTOM, nl_finish_cb, &done);
+-	nl_cb_err(cb, NL_CB_CUSTOM, nl_error_cb, &done);
++	nl_cb_set(cb, NL_CB_ACK, NL_CB_CUSTOM, nl_set_reqs_finish_cb, &st);
++	nl_cb_err(cb, NL_CB_CUSTOM, nl_set_reqs_error_cb, &st);
+ 
+ 	ret = nl_send_auto(sock, msg);
+ 	if (ret < 0) {
+@@ -1642,13 +1679,15 @@ static int cache_nl_set_reqs(struct nl_sock *sock, struct nl_msg *msg)
+ 		return ret;
+ 	}
+ 
+-	while (!done) {
++	while (!st.done) {
+ 		ret = nl_recvmsgs(sock, cb);
+ 		if (ret < 0)
+ 			break;
+ 	}
+ 
+ 	nl_cb_put(cb);
++	if (kern_errp)
++		*kern_errp = st.kern_err;
+ 	if (ret < 0)
+ 		xlog(L_WARNING, "%s: SET_REQS failed: %d", __func__, ret);
+ 	return ret;
+@@ -1660,23 +1699,21 @@ static bool nl_msg_has_reqs(struct nl_msg *msg)
+ }
+ 
+ enum export_result {
+-	EXPORT_ANSWERED,
++	EXPORT_ANSWERED,	/* positive entry added */
++	EXPORT_DENIED,		/* negative entry added */
+ 	EXPORT_RETRY,		/* not resolvable yet, ask again later */
+-	EXPORT_NOMEM,		/* *msgp is gone, caller must give up */
++	EXPORT_FULL,		/* did not fit, flush the message and re-add */
+ };
+ 
+-/*
+- * Resolve one svc_export request and append the answer to *msgp, sending
+- * and replacing the message if it fills up.
+- */
+-static enum export_result nl_add_export_req(struct nl_msg **msgp, char *dom,
++/* Resolve one svc_export request and append the answer to @msg */
++static enum export_result nl_add_export_req(struct nl_msg *msg, char *dom,
+ 					    char *path)
+ {
+ 	struct addrinfo *ai = NULL;
+ 	nfs_export *found = NULL;
+ 	struct exportent *epp = NULL;
+ 	struct exportent *junction = NULL;
+-	enum export_result res = EXPORT_ANSWERED;
++	enum export_result res;
+ 	int ttl = 0;
+ 
+ 	if (is_ipaddr_client(dom)) {
+@@ -1722,25 +1759,135 @@ static enum export_result nl_add_export_req(struct nl_msg **msgp, char *dom,
+ 		}
+ 	}
+ 
+-	if (nfsd_nl_add_export(*msgp, dom, path, epp, ttl) < 0) {
+-		cache_nl_set_reqs(nfsd_nl_cmd_sock, *msgp);
+-		nlmsg_free(*msgp);
+-		*msgp = cache_nl_new_msg(nfsd_nl_family,
+-					 NFSD_CMD_SVC_EXPORT_SET_REQS, 0);
+-		if (!*msgp) {
+-			res = EXPORT_NOMEM;
+-			goto out;
+-		}
+-		if (nfsd_nl_add_export(*msgp, dom, path, epp, ttl) < 0)
+-			xlog(L_WARNING, "%s: skipping oversized entry for %s",
+-			     __func__, path);
+-	}
++	if (nfsd_nl_add_export(msg, dom, path, epp, ttl) < 0)
++		res = EXPORT_FULL;
++	else
++		res = epp ? EXPORT_ANSWERED : EXPORT_DENIED;
+ out:
+ 	free_junction(junction);
+ 	nfs_freeaddrinfo(ai);
+ 	return res;
+ }
+ 
 +/*
-+ * Retry the oldest deferred request if it is due.  Entries are queued in
-+ * time order, so only the head can be ready.
++ * Answer @path negative in a message of its own.  Returns EXPORT_ANSWERED once
++ * the kernel has seen the answer - including when it refused it, as a second
++ * attempt would fare no better - and EXPORT_RETRY when the answer never got
++ * that far and is worth sending again.
 + */
-+static void nl_retry_export(void)
++static enum export_result nl_export_negative(char *dom, char *path)
 +{
-+	struct delayed_export *d = delayed_export;
 +	struct nl_msg *msg;
-+
-+	if (!d || d->last_attempt + RETRY_SEC > time(NULL))
-+		return;
-+
-+	delayed_export = d->next;
-+	d->next = NULL;
-+
-+	auth_reload();
++	int kern_err = 0;
++	int ret;
 +
 +	msg = cache_nl_new_msg(nfsd_nl_family,
 +			       NFSD_CMD_SVC_EXPORT_SET_REQS, 0);
-+	if (!msg) {
-+		delayed_export_enqueue(d);
-+		return;
++	if (!msg)
++		return EXPORT_RETRY;
++
++	if (nfsd_nl_add_export(msg, dom, path, NULL, 0) < 0) {
++		nlmsg_free(msg);
++		return EXPORT_RETRY;
 +	}
 +
-+	switch (nl_add_export_req(&msg, d->client, d->path)) {
-+	case EXPORT_ANSWERED:
-+		if (nl_msg_has_reqs(msg))
-+			cache_nl_set_reqs(nfsd_nl_cmd_sock, msg);
-+		delayed_export_free(d);
-+		break;
-+	case EXPORT_RETRY:
-+		delayed_export_enqueue(d);
-+		break;
-+	case EXPORT_NOMEM:
-+		delayed_export_enqueue(d);
-+		return;			/* msg is already gone */
-+	}
++	ret = cache_nl_set_reqs(nfsd_nl_cmd_sock, msg, &kern_err);
 +	nlmsg_free(msg);
++
++	if (ret < 0 && !kern_err)
++		return EXPORT_RETRY;
++	return EXPORT_ANSWERED;
 +}
 +
++/*
++ * Errors the kernel gives for an export it can never accept.  check_export()
++ * answers EINVAL for a filesystem with no export ops, one that needs an fsid=
++ * and has none, and an idmapped mount; ENOTDIR is an inode that is neither a
++ * directory, a symlink, nor a regular file.  Anything else it can return -
++ * ENOENT for an auth_domain or a path that is not there yet, ENOMEM, ENODEV
++ * while nfsd shuts down - may well work on the next try.
++ */
++static bool kernel_refused_for_good(int kern_err)
++{
++	switch (kern_err) {
++	case -EINVAL:
++	case -ENOTDIR:
++		return true;
++	}
++	return false;
++}
++
++/*
++ * Answer one request in a message of its own.  The kernel rejects an export
++ * it cannot build a filehandle for - a 9p or other filesystem with no export
++ * ops, say - so fall back to a negative entry rather than leaving the request
++ * pending, which is what dump_to_cache() does when the channel write fails.
++ */
++static enum export_result nl_export_one(char *dom, char *path)
++{
++	enum export_result res;
++	struct nl_msg *msg;
++	int kern_err = 0;
++	bool sent;
++
++	msg = cache_nl_new_msg(nfsd_nl_family,
++			       NFSD_CMD_SVC_EXPORT_SET_REQS, 0);
++	if (!msg)
++		return EXPORT_RETRY;
++
++	res = nl_add_export_req(msg, dom, path);
++	if (res == EXPORT_RETRY) {
++		nlmsg_free(msg);
++		return res;
++	}
++
++	/*
++	 * An entry that does not fit a message of its own can never be sent,
++	 * and this is not the kernel refusing it.  Answer negative rather
++	 * than leave the client hung on a request we cannot satisfy.
++	 */
++	if (res == EXPORT_FULL) {
++		nlmsg_free(msg);
++		xlog(L_WARNING, "%s: entry for %s is too large to send",
++		     __func__, path);
++		return nl_export_negative(dom, path);
++	}
++
++	sent = cache_nl_set_reqs(nfsd_nl_cmd_sock, msg, &kern_err) == 0;
++	nlmsg_free(msg);
++
++	if (sent)
++		return EXPORT_ANSWERED;
++
++	/*
++	 * The kernel never answered - a broken socket, or a message we could
++	 * not send - so we cannot tell whether the export is usable.  Retry
++	 * rather than cache a negative entry for default_ttl.
++	 */
++	if (!kern_err)
++		return EXPORT_RETRY;
++
++	/*
++	 * It may recover from this one.  Denying the path would hide a working
++	 * export for default_ttl, and a negative entry needs the very
++	 * auth_domain the kernel may have just failed to find, so it would
++	 * likely be refused as well.  Ask again later instead.
++	 */
++	if (!kernel_refused_for_good(kern_err)) {
++		xlog(D_GENERAL, "%s: kernel refused %s: %d, will retry",
++		     __func__, path, kern_err);
++		return EXPORT_RETRY;
++	}
++
++	/* It refused a negative entry; a second one will fare no better */
++	if (res == EXPORT_DENIED)
++		return EXPORT_ANSWERED;
++
++	xlog(L_WARNING, "Cannot export %s, possibly unsupported filesystem"
++	     " or fsid= required", path);
++	return nl_export_negative(dom, path);
++}
++
+ /*
+  * is_mountpoint() can fail with a strange error - the ETIMEDOUT a re-exported
+  * "softerr" NFS mount can give, say - leaving us unable to say whether the
+@@ -1783,6 +1930,23 @@ static void delayed_export_flush(void)
+ 	}
+ }
+ 
++/* Forget any deferred request for @dom and @path; it has been answered */
++static void delayed_export_remove(char *dom, char *path)
++{
++	struct delayed_export **dp = &delayed_export;
++
++	while (*dp) {
++		struct delayed_export *d = *dp;
++
++		if (!strcmp(d->client, dom) && !strcmp(d->path, path)) {
++			*dp = d->next;
++			delayed_export_free(d);
++			return;
++		}
++		dp = &d->next;
++	}
++}
++
+ static void nl_delay_export(char *dom, char *path)
+ {
+ 	struct delayed_export *d;
+@@ -1812,7 +1976,6 @@ static void nl_delay_export(char *dom, char *path)
+ static void nl_retry_export(void)
+ {
+ 	struct delayed_export *d = delayed_export;
+-	struct nl_msg *msg;
+ 
+ 	if (!d || d->last_attempt + RETRY_SEC > time(NULL))
+ 		return;
+@@ -1822,35 +1985,33 @@ static void nl_retry_export(void)
+ 
+ 	auth_reload();
+ 
+-	msg = cache_nl_new_msg(nfsd_nl_family,
+-			       NFSD_CMD_SVC_EXPORT_SET_REQS, 0);
+-	if (!msg) {
++	if (nl_export_one(d->client, d->path) == EXPORT_RETRY)
+ 		delayed_export_enqueue(d);
+-		return;
+-	}
+-
+-	switch (nl_add_export_req(&msg, d->client, d->path)) {
+-	case EXPORT_ANSWERED:
+-		if (nl_msg_has_reqs(msg))
+-			cache_nl_set_reqs(nfsd_nl_cmd_sock, msg);
++	else
+ 		delayed_export_free(d);
+-		break;
+-	case EXPORT_RETRY:
+-		delayed_export_enqueue(d);
+-		break;
+-	case EXPORT_NOMEM:
+-		delayed_export_enqueue(d);
+-		return;			/* msg is already gone */
+-	}
+-	nlmsg_free(msg);
++}
++
++/*
++ * Answer [@start, @end) one at a time.  Building the batch may already have
++ * deferred some of these, so an entry that resolves this time has to come back
++ * off the retry queue, or it gets answered a second time.
++ */
++static void nl_export_singly(struct export_req *reqs, int start, int end)
++{
++	int i;
++
++	for (i = start; i < end; i++)
++		if (nl_export_one(reqs[i].client, reqs[i].path) == EXPORT_RETRY)
++			nl_delay_export(reqs[i].client, reqs[i].path);
++		else
++			delayed_export_remove(reqs[i].client, reqs[i].path);
+ }
+ 
  static void cache_nl_process_export(void)
  {
  	struct export_req *reqs = NULL;
-@@ -1657,57 +1870,19 @@ static void cache_nl_process_export(void)
- 		goto out_free;
+ 	int nreqs = 0;
+-	struct nl_msg *msg;
+-	int i;
++	int i = 0;
  
- 	for (i = 0; i < nreqs; i++) {
--		char *dom = reqs[i].client;
--		char *path = reqs[i].path;
--		struct addrinfo *ai = NULL;
--		nfs_export *found = NULL;
--		struct exportent *epp = NULL;
--		int ttl = 0;
--
--		if (is_ipaddr_client(dom)) {
--			ai = lookup_client_addr(dom);
--			if (!ai)
--				xlog(D_AUTH, "cache_nl_process_export: "
--				     "failed to resolve client %s", dom);
--		}
--
--		if (ai || !is_ipaddr_client(dom))
--			found = lookup_export(dom, path, ai);
--
--		if (found) {
--			char *mp = found->m_export.e_mountpoint;
--
--			if (mp && !*mp)
--				mp = found->m_export.e_path;
--			if (mp && !is_mountpoint(mp)) {
--				xlog(L_WARNING,
--				     "Cannot export path '%s': not a mountpoint",
--				     path);
--				ttl = 60;
--			} else {
--				epp = &found->m_export;
--			}
--		}
--
--		if (nfsd_nl_add_export(msg, dom, path, epp, ttl) < 0) {
--			cache_nl_set_reqs(nfsd_nl_cmd_sock, msg);
--			nlmsg_free(msg);
--			msg = cache_nl_new_msg(nfsd_nl_family,
--					       NFSD_CMD_SVC_EXPORT_SET_REQS, 0);
--			if (!msg) {
--				nfs_freeaddrinfo(ai);
--				goto out_free;
--			}
--			if (nfsd_nl_add_export(msg, dom, path,
--					       epp, ttl) < 0)
--				xlog(L_WARNING, "%s: skipping oversized "
--				     "entry for %s", __func__, path);
-+		switch (nl_add_export_req(&msg, reqs[i].client, reqs[i].path)) {
-+		case EXPORT_ANSWERED:
-+			break;
-+		case EXPORT_RETRY:
-+			nl_delay_export(reqs[i].client, reqs[i].path);
-+			break;
-+		case EXPORT_NOMEM:
-+			goto out_free;
+ 	/* Fetch all pending requests from the kernel */
+ 	if (cache_nl_get_export_reqs(&reqs, &nreqs)) {
+@@ -1863,29 +2024,42 @@ static void cache_nl_process_export(void)
+ 
+ 	xlog(D_CALL, "cache_nl_process_export: %d pending export requests", nreqs);
+ 
+-	/* Build the SET_REQS response */
+-	msg = cache_nl_new_msg(nfsd_nl_family,
+-			       NFSD_CMD_SVC_EXPORT_SET_REQS, 0);
+-	if (!msg)
+-		goto out_free;
++	while (i < nreqs) {
++		int start = i;
++		struct nl_msg *msg;
+ 
+-	for (i = 0; i < nreqs; i++) {
+-		switch (nl_add_export_req(&msg, reqs[i].client, reqs[i].path)) {
+-		case EXPORT_ANSWERED:
+-			break;
+-		case EXPORT_RETRY:
+-			nl_delay_export(reqs[i].client, reqs[i].path);
++		msg = cache_nl_new_msg(nfsd_nl_family,
++				       NFSD_CMD_SVC_EXPORT_SET_REQS, 0);
++		if (!msg)
+ 			break;
+-		case EXPORT_NOMEM:
+-			goto out_free;
++
++		for (; i < nreqs; i++) {
++			enum export_result res;
++
++			res = nl_add_export_req(msg, reqs[i].client,
++						reqs[i].path);
++			if (res == EXPORT_FULL)
++				break;
++			if (res == EXPORT_RETRY)
++				nl_delay_export(reqs[i].client, reqs[i].path);
  		}
--
--		nfs_freeaddrinfo(ai);
+-	}
+ 
+-	if (nl_msg_has_reqs(msg))
+-		cache_nl_set_reqs(nfsd_nl_cmd_sock, msg);
+-	nlmsg_free(msg);
++		/*
++		 * One bad entry fails the whole message, so resubmit the
++		 * batch singly to find out which and answer the rest.
++		 */
++		if (nl_msg_has_reqs(msg) &&
++		    cache_nl_set_reqs(nfsd_nl_cmd_sock, msg, NULL) < 0)
++			nl_export_singly(reqs, start, i);
++		nlmsg_free(msg);
++
++		/* First entry did not fit an empty message: answer it alone */
++		if (i == start) {
++			nl_export_singly(reqs, i, i + 1);
++			i++;
++		}
++	}
+ 
+-out_free:
+ 	for (i = 0; i < nreqs; i++) {
+ 		free(reqs[i].client);
+ 		free(reqs[i].path);
+@@ -2155,7 +2329,7 @@ static void cache_nl_process_expkey(void)
+ do_add_expkey:
+ 		if (nfsd_nl_add_expkey(msg, dom, fsidtype, fsid,
+ 				       fsidlen, found_path) < 0) {
+-			cache_nl_set_reqs(nfsd_nl_cmd_sock, msg);
++			cache_nl_set_reqs(nfsd_nl_cmd_sock, msg, NULL);
+ 			nlmsg_free(msg);
+ 			msg = cache_nl_new_msg(nfsd_nl_family,
+ 					       NFSD_CMD_EXPKEY_SET_REQS, 0);
+@@ -2176,7 +2350,7 @@ do_add_expkey:
+ 		nfs_freeaddrinfo(ai);
  	}
  
 -	cache_nl_set_reqs(nfsd_nl_cmd_sock, msg);
-+	if (nl_msg_has_reqs(msg))
-+		cache_nl_set_reqs(nfsd_nl_cmd_sock, msg);
++	cache_nl_set_reqs(nfsd_nl_cmd_sock, msg, NULL);
  	nlmsg_free(msg);
  
  out_free:
-@@ -2971,29 +3146,32 @@ out:
- 	return exp;
- }
+@@ -2466,7 +2640,7 @@ static void cache_nl_process_ip_map(void)
+ 		}
  
--static void lookup_nonexport(int f, char *buf, int buflen, char *dom, char *path,
-+static struct exportent *lookup_nonexport_ent(char *dom, char *path,
- 		struct addrinfo *ai)
- {
--	struct exportent *eep;
--
--	eep = lookup_junction(dom, path, ai);
--	dump_to_cache(f, buf, buflen, dom, path, eep, 0);
--	if (eep == NULL)
--		return;
--	exportent_release(eep);
--	free(eep);
-+	return lookup_junction(dom, path, ai);
- }
+ 		if (nl_add_ip_map(msg, class, ipaddr, domain) < 0) {
+-			cache_nl_set_reqs(sunrpc_nl_cmd_sock, msg);
++			cache_nl_set_reqs(sunrpc_nl_cmd_sock, msg, NULL);
+ 			nlmsg_free(msg);
+ 			msg = cache_nl_new_msg(sunrpc_nl_family,
+ 					       SUNRPC_CMD_IP_MAP_SET_REQS, 0);
+@@ -2496,7 +2670,7 @@ static void cache_nl_process_ip_map(void)
+ 		nfs_freeaddrinfo(tmp);
+ 	}
  
- #else	/* !HAVE_JUNCTION_SUPPORT */
+-	cache_nl_set_reqs(sunrpc_nl_cmd_sock, msg);
++	cache_nl_set_reqs(sunrpc_nl_cmd_sock, msg, NULL);
+ 	nlmsg_free(msg);
  
--static void lookup_nonexport(int f, char *buf, int buflen, char *dom, char *path,
--		struct addrinfo *UNUSED(ai))
-+static struct exportent *lookup_nonexport_ent(char *UNUSED(dom),
-+		char *UNUSED(path), struct addrinfo *UNUSED(ai))
- {
--	dump_to_cache(f, buf, buflen, dom, path, NULL, 0);
-+	return NULL;
- }
+ out_free:
+@@ -2714,7 +2888,7 @@ static void cache_nl_process_unix_gid(void)
  
- #endif	/* !HAVE_JUNCTION_SUPPORT */
- 
-+static void lookup_nonexport(int f, char *buf, int buflen, char *dom, char *path,
-+		struct addrinfo *ai)
-+{
-+	struct exportent *eep;
-+
-+	eep = lookup_nonexport_ent(dom, path, ai);
-+	dump_to_cache(f, buf, buflen, dom, path, eep, 0);
-+	free_junction(eep);
-+}
-+
- static void nfsd_export(int f)
- {
- 	/* requests are:
-@@ -3201,13 +3379,15 @@ int cache_process(fd_set *readfds)
- 	cache_set_fds(readfds);
- 	v4clients_set_fds(readfds);
- 
--	if (delayed) {
-+	if (delayed || delayed_export) {
- 		time_t now = time(NULL);
--		time_t delay;
--		if (delayed->last_attempt > now)
--			/* Clock updated - retry immediately */
--			delayed->last_attempt = now - RETRY_SEC;
--		delay = delayed->last_attempt + RETRY_SEC - now;
-+		time_t delay = RETRY_SEC;
-+
-+		if (delayed)
-+			delay = retry_delay(&delayed->last_attempt, now, delay);
-+		if (delayed_export)
-+			delay = retry_delay(&delayed_export->last_attempt, now,
-+					    delay);
- 		if (delay < 0)
- 			delay = 0;
- 		tv.tv_sec = delay;
-@@ -3225,6 +3405,8 @@ int cache_process(fd_set *readfds)
+ 		if (ret < 0) {
+ 			/* Flush current message and retry with a fresh one */
+-			cache_nl_set_reqs(sunrpc_nl_cmd_sock, msg);
++			cache_nl_set_reqs(sunrpc_nl_cmd_sock, msg, NULL);
+ 			nlmsg_free(msg);
+ 			msg = cache_nl_new_msg(sunrpc_nl_family,
+ 					       SUNRPC_CMD_UNIX_GID_SET_REQS, 0);
+@@ -2731,7 +2905,7 @@ static void cache_nl_process_unix_gid(void)
  		}
  	}
  
-+	nl_retry_export();
-+
- 	switch (selret) {
- 	case -1:
- 		if (errno == EINTR || errno == ECONNREFUSED
-@@ -3430,6 +3612,16 @@ cache_fork_workers(char *prog, int num_threads)
- 		if (pid == 0) {
- 			/* worker child */
+-	cache_nl_set_reqs(sunrpc_nl_cmd_sock, msg);
++	cache_nl_set_reqs(sunrpc_nl_cmd_sock, msg, NULL);
+ 	nlmsg_free(msg);
  
-+			/*
-+			 * cache_open() drains the netlink downcalls before we
-+			 * get here, so anything it deferred is now on the retry
-+			 * queue of every worker.  Let the first worker own
-+			 * those, or they get answered once per worker over the
-+			 * shared command socket.
-+			 */
-+			if (i > 0)
-+				delayed_export_flush();
-+
- 			/* Re-enable the default action on SIGTERM et al
- 			 * so that workers die naturally when sent them.
- 			 * Only the parent unregisters with pmap and
+ out_free:
 
 -- 
 2.55.0
