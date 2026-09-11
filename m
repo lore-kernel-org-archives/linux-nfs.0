@@ -1,57 +1,57 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4920534252D;
-	Fri, 11 Sep 2026 14:42:19 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1CA1634CFD0
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2026 14:42:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789137740; cv=none; b=DK3bxtl8hsPCLJ1WqVLBA0PeTWMSgfLGlf91senLlM5dZ9daDJpExLMguCsOVsxSoTLPH5aJ3daNMPwKFUn2bP9XrkJ8ZIe6djqDYNIqAHUH+ZkgBOcZr6DYcbholhi6vJxaK/+nnVfPUw4oDNrZiDjZGIcI4BciVPx/XcjltPQ=
+	t=1789137754; cv=none; b=HlpKoNPe1JCmzvj3RnRnH9MF+aodP9snLuni+bvX/X+uBaWKY+5MhRJDCui2QM22B9KIvikzcmMxornDKqVRnqARgkV3polYA/LTJKcziOlX37GHOGwwMMXR1kYedWwSC7gcPsJ0lmctF61wbHDOQy1fO9ITSYnSTw5EpJzdXjw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789137740; c=relaxed/simple;
-	bh=ZJvILFXfqLrN6MWpCkkcmbMEe17Lgrao+NuI5sGdMUc=;
+	s=arc-20240116; t=1789137754; c=relaxed/simple;
+	bh=EGgCsshfuDCrKeThEeIJoX/moOH6gxfaQRsjf0igk1w=;
 	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=UNanHPE5xLsa5Q6PQ6ZgXu4afZwnyVr+e+NZAYeK5wduTZP2Yql532i3CfrFyB9L6F+q4CzHKP+3xWCmsab6//gCh1NwiKAUWScmnzz8tDnHo6kMtDnRiHKI8y4IyWF3UVx7BozdMwpyp4T9BhKnxpD6jQBZQ1h0VPh8r90rhSs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UTODIENp; arc=none smtp.client-ip=100.103.45.18
+	 Subject:Content-Type; b=dZj1S61pZByvHqGZwaS0YH36pYMJAWjiRH4hpF9aApfdt3790zJcKXf3vGuEJQUMPPgOryxnclyxnFvjOnCyodeYAXJblkckCm33OD5gah3uIo0GiX11JFgFhnnQs5oIxQf+VJb0nPlHEPoslPxtcP3ZjvNHokgXokPLo2cASUI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=di9gXzN4; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UTODIENp"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6C6A21F00898;
-	Fri, 11 Sep 2026 14:42:18 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="di9gXzN4"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7FECA1F000FF;
+	Fri, 11 Sep 2026 14:42:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789137738;
-	bh=jzIVeIhjtNFySoQ9axI4l0d2pzod0TfXsrojah0kEAs=;
+	s=k20260515; t=1789137752;
+	bh=Am565XyNmbKWUvjW+npkDTEqJi/oWfkJ01amBFPdArA=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=UTODIENpMxVF5/nkgtBCeTavAEBfMZziPNDkRjSwD9xUzvnVpC2SmvzQCQC3WP2gj
-	 PZn9p835lFxhDLzj7sgQFHr46TEcfvp9hBINTe8xqT5zQcRs94Th+Riw20RwXkzBGM
-	 qEQww4NWThp8IoieX5/ZfSHf4Ct11aoKIGQz1IAx2Sm+rDyBZ+vYPzCm/Jm+aipWoO
-	 7SB7fmfwRyEC0fmTToGKFPd2mlIY3e4hxXz0fVjp2zU6esIWKB0nwD5T6NG3LryneM
-	 WlDz1jyN0mg9bhC5Ifrlfap5kBZ8OZNUSqVS61aN5sVF21+KYoTlIgyuQhSEcO0rSg
-	 t0zOBPzb17BTQ==
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 89C63F40066;
-	Fri, 11 Sep 2026 10:42:17 -0400 (EDT)
-Received: from phl-imap-04 ([10.202.2.82])
-  by phl-compute-02.internal (MEProxy); Fri, 11 Sep 2026 10:42:17 -0400
-X-ME-Sender: <xms:SROkakMqrIKnZKA8ifh_ITqnOnrFMXXeuJQgiJCyxVMkTnKhg5T40g>
-    <xme:SROkalwEmTx8K1Xx4vQv0h3s2UTjaaqQ4AwRIkZ0T_PixneJRXTLMtEYPKjukZomF
-    ReWuhmkZXayGr3VY5cmXhZfEphhnp2zNzYa5rRCr1FJudWtfqBgqjya>
-X-ME-Proxy-Cause: dmFkZTEwmORBrOBGy3zchLvhuyGMAGTNVOECzxDrR6LbMQMVkgoaTCjPOw4U4v1oZJFECR
-    J5nc2ImjfZ3truW5TFVoBJ/YtRlHp/w2gOxNqxczC2gtjk2FDKorhF0eWgTXNl8EUKy5fB
-    eLYd2Eej7ETDvX4odSByPV5jK4c0zSowsiKDs27uNcR0Z56aPbvV2F/K7h/5bh0xTYzJLT
-    6hR7RULlogRzJNZeFfozIciyXTQlF6H1uEEJaMFqomteqSukJyX6V0qvfgH6n4YwTNAjEB
-    hs6fgnwLmyV1NK/nAhyBzcODyHJaO80K6rlzJG3yyVeBG7nOOusgbCKRAohqZeWe+de6HU
-    200eRNK6fbBySudA4kwzYmpzx7fGQ7/I+ksXOi8YlZmE9TN8Sk8V/QJmFPft6oCqsyb0a9
-    04kzrsn3vWL1hMmmbjFLP6Del8QRl9HM+C50AW/MiP/bIfrRJ7o1FzBhaEqgtwlg1tcaSF
-    dkNFyxkfkMVLtTsdqEhCOu+sE7ZnClEgfhSMVlq7m5RhqK+Iq7UXBtu0cyBaTciw8Lo5KY
-    kNu+aC6KDiEd/ijkVdLhAWx3BBNj2jgUIREEJSJsNqSwEYXiM5VQPQy+nCpPQYC8oKch0V
-    04WEx8KoiQHyi+U9mqg22OCp8zZRxHlu5qhMrsGAXb3o1jsov58D9EWPitdQ
-X-ME-Proxy: <xmx:SROkag_8z9uP_9JLO5ZduPwGRTlpUP9N0WB5xIHVgk2nZGa7B4Gsxg>
-    <xmx:SROkavNrRTmFmfEeqPy2L_agaH8-t6TyapvNg0J1L37FYLLpkX3Nsg>
-    <xmx:SROkakBTeZg_vTh0vALjOVczFdGXjF4Zr3i9wkyVu45qysK6cBKkww>
-    <xmx:SROkajM-HjnNKkhhbrnzPCnppt0i5UIffb_nUUfSBxFV6_5dhpKHbQ>
-    <xmx:SROkarcwtIhmUVQd1bpKyDgzOjqhiVgafjQoFG157NF0xl7QXNk3G0lT>
-Feedback-ID: i20964851:Fastmail
+	b=di9gXzN4f5RzqLCOLT9NvO24hJnH+m/Cp4JUx8RpaKmbWE7A5IKKx1CDZkC76dVdj
+	 WwMK1FqqmsmjZ14V7EHqD+S1+6dk3R2f/sK1F8IbeMuNd5utZyybuIbYhTuTqmIkbZ
+	 KwgADnCuJ8PPUJfiCG+6aPs50UJe1hoQPXSpF9yo8DuayV3ZbXN/Taves134ssMcdA
+	 FgBwXj4wnxsyEHmOWmsD7v6uD1FERJC3uGLVk+wX34azzDWEElzBJgmxD9NIHl+YaG
+	 mqB8VBxXcmRur0FmTrM2xEoorEFHBvI3BWr1b2synugdwaYguji2uSl/PA3BjnmqQv
+	 /JzR/WDtLrd4w==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id BB529F40066;
+	Fri, 11 Sep 2026 10:42:31 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Fri, 11 Sep 2026 10:42:31 -0400
+X-ME-Sender: <xms:VxOkakvD9R4wFSP8b1z7pu9tMiRPhpDWA2esZEP2qXevzX-KhQDgCA>
+    <xme:VxOkasRczOqW5a2ltUXvPY5YY4HRPd-IW91vVEoGVm7ZzV2Sl7d4qY7BTL4UwCPjj
+    3f3Y97_sHBxBo7Ao_Gzg61bRHCmnqnkUWHihmtUUBsfaWrRxtVBfF0>
+X-ME-Proxy-Cause: dmFkZTE2cjtoV0DIqNNgXUWyCncbg4bZLSovApzDGeDdpUylWfRUXxmS8VCQVLNa5RNHQk
+    I1lUC01n32RvCtyyd7wL+bUTq1W3dDqA8cTVW7QIAgryISvcjMlKRh8S32cmGfEhrNZ67c
+    AfODzapILalhmaCmiSkDw9XLdXJJcJ2dAu6X67/+gvfYKg2jlqSetwZJCaWh/SDJ4WSmF2
+    dfjIMRV0YkDJB0/5wRL3pmMQr8S5fVjZDQSdsU3Vvzm4gBq+MGiq7grmmxhXZf5Qbx/RC2
+    2THugWFRN51iMkDB5dg+ROMnbaT80Rb+xiPyPobbQngM0BawQgnrvfj/tJC6wlF1+UZJUp
+    uJ6ByM5HIaZJae7X3JXneEgRiVhAOXP/UjXZd3wH27oqUUFAAP07viH/rTzTZAaL9oy2nX
+    VD3anJBKYfTDimedXbyUgZq05FPlq1DSxJ53nVSvEXNcVmdlcPkbL/N1VLDSHyKJcvZeaO
+    GqS9XSUE9gfqCCDr7fzh+jzcs4s+aU7Y0nFco7cJz6nPk4oQoTeMOq9hgykg8770S58iCx
+    EIZublXdfdFUM5i5fXpzWF7SW1a2u1skSNsidpDvWtl3/0J8um6B75QMw4Dm3TJGoUZzS7
+    Zu69IFnw++RElc0L3iyfU+7xuVdl+ABsFOrd7L4TKWKHF4mkxYR6W1mKjpRw
+X-ME-Proxy: <xmx:VxOkamFsPqPK7E-lf5vEL9OTUUjmVKUNNhyvz_jOWimatXS96W3Z3w>
+    <xmx:VxOkaoC5Di0ykZ12k-j3uqjC2nhB30LZb-Vwpo98F9J7eQTZqfTXIQ>
+    <xmx:VxOkauXPorMc8Y-dmlMxJeK8mYZQMDcKnDdJqOehceNdFFGkZwA7rQ>
+    <xmx:VxOkakqig1LeW6vngMV8vGS3s9UgwcT4Jd-6_SCNN9tMfyI3G5MlHg>
+    <xmx:VxOkaiTx7KHnEjVcfva51wsZD-SnxfRJSiorpoIWDftwDbcR5BS04iId>
+Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 6D9A7B6006E; Fri, 11 Sep 2026 10:42:17 -0400 (EDT)
+	id 944237811F0; Fri, 11 Sep 2026 10:42:31 -0400 (EDT)
 X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -59,70 +59,87 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AyyZ_jHnZjjs
-Date: Fri, 11 Sep 2026 10:41:57 -0400
-From: "Anna Schumaker" <anna@kernel.org>
-To: "Pranjal Shrivastava" <praan@google.com>, linux-nfs@vger.kernel.org,
- "Trond Myklebust" <trondmy@kernel.org>
-Cc: "Chuck Lever" <cel@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
- linux-kernel@vger.kernel.org, "Christoph Hellwig" <hch@lst.de>,
- "Logan Gunthorpe" <logang@deltatee.com>, "Jason Gunthorpe" <jgg@ziepe.ca>,
- linux-pci@vger.kernel.org, linux-rdma@vger.kernel.org,
- "Shivaji Kant" <shivajikant@google.com>
-Message-Id: <0b3d8f13-e691-411a-a507-d3e6bd1608c6@app.fastmail.com>
-In-Reply-To: <aqP6nM7OSX087UCs@google.com>
-References: <20260814143255.861084-1-praan@google.com>
- <aqP6nM7OSX087UCs@google.com>
-Subject: Re: [PATCH v6 0/5] nfs: modernize direct I/O path
+X-ThreadId: AJxlnPHrJ3iN
+Date: Fri, 11 Sep 2026 10:42:08 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: NeilBrown <neil@brown.name>
+Cc: "Jeff Layton" <jlayton@kernel.org>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, "Rick Macklem" <rmacklem@uoguelph.ca>,
+ linux-nfs@vger.kernel.org
+Message-Id: <f5e4a7ef-43fb-4209-a2ef-34135c1333cb@slotpi15m67>
+In-Reply-To: <178908135551.207413.11072935643340240963@noble.neil.brown.name>
+References: <20260910-duplicate-reply-cache-v3-0-31532a4c7449@kernel.org>
+ <178908135551.207413.11072935643340240963@noble.neil.brown.name>
+Subject: Re: [PATCH v3 00/12] Improve the scalability of NFSD's classic DRC
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
-Hi Pranjal,
+On Fri, 11 Sep 2026, NeilBrown wrote:
+> On Thu, 10 Sep 2026, Chuck Lever wrote:
+> > 1. The transport reports delivery outright where it can. TCP now
+> >    reports when snd_una passes the reply's sequence number, and RDMA
+> >    reports on each Send completion.
+>
+> As you note in the relevant patch, the TCP ack can arrive before the NFS
+> client has seen the reply.  But I don't think you drop the cached reply
+> immediately, so that probably don't matter.
 
-On Fri, Sep 11, 2026, at 8:57 AM, Pranjal Shrivastava wrote:
-> On Fri, Aug 14, 2026 at 02:32:50PM +0000, Pranjal Shrivastava wrote:
->> Modernize the NFS Direct I/O path as a preparatory step to enable PCI
->> Peer-to-Peer DMA (P2PDMA) support. Following feedback on the initial
->> RFC [1], the modernization and architectural changes are split into
->> different series. Additionally, based on the discussion in the v2 [2]
->> of this series, the migration of NFS Direct I/O to folios would be
->> handled in a separate follow-up series.
->> 
->> Currently, NFS O_DIRECT relies on the legacy iov_iter_get_pages_alloc2()
->> API which does not support the pinning requirements for P2P memory.
->> The implementation moves NFS to the modern iov_iter_extract_pages() API.
->> 
->
-> Gentle ping on this series. 
-> (I realized that I sent it close to the merge window, Apologies).
->
-> Please let me know if anything else needs to be done for this..
+Right. The ACK marks the entry, and the next prune of that bucket
+evicts it.
 
-Thanks for the ping! The plan right now is to send it along as part of
-the 7.4 merge window. I haven't pushed out a public linux-next branch
-yet, but when I do these patches will be included.
 
-I hope this helps!
-Anna
+> > 2. Where no report will come, a later request on the same connection
+> >    stands in as an implied ACK, since a client on a live TCP or RDMA
+> >    connection does not retransmit within it (RFC 1813 Section 4.5).
+>
+> I don't follow this.  Why would no report come?  TCP will always send
+> and ACK.
 
->
-> [...]
->
->> 
->> [v6]
->>  - Fixed double unpin bugs pointed out by Sashiko:
->>    https://sashiko.dev/#/patchset/20260810195040.2877784-1-praan%40google.com
->>  - Added R-bs from Christoph (due since v4)
->> 
->> [v5]
->>  - https://lore.kernel.org/all/20260810195040.2877784-1-praan@google.com/
->>  - Fixed an iov_iter_revert oops in nfs_direct_extract_pages().
->>  - Fixed a refcount underflow in nfs_direct_release_pages() during
->>    swap-over-NFS by ensuring we do not call put_page() on unpinned memory.
->>  - Rebased on fs-next
->> 
->
-> [...]
->
-> Thanks,
-> Praan
+The cover letter was unclear. TCP always ACKs, but svc_tcp_sendto()
+does not always track the reply. The per-socket ring is fixed-size,
+so a burst overflows it. A kTLS send that leaves part of the record
+unsent is not recorded, and neither is a failed send. Each of those
+is reported as untracked right away, so the DRC entry has no report
+to wait for.
+
+Implied ACK was meant to retire those entries early. Without it, an
+untracked entry is handled the way every entry is handled today. The
+untracked entries just sit in their buckets for the full two minutes,
+lengthening each lookup that hashes there, which is the cost this
+series set out to remove.
+
+
+> And I don't read RFC 1813 4.5 as saying a client does NOT retransmit on
+> a live connection, only that it DOES on a re-opened connection.
+> I believe that when an NFS client gets a timeout (6 minutes on TCP?) it
+> will resend without re-opening the TCP connection.
+
+Section 4.5 says that a connection break with automatic reestablishment
+requires duplicate request processing. I misread that as naming the only
+way a duplicate reaches a server over a connection-oriented transport,
+and then reasoned that a request arriving on a live connection could not
+be one. Re-reading, I see that text supports no such exclusion. It only
+gives one case that a DRC must handle, and says nothing about what a
+client does while the connection remains healthy.
+
+
+> And as you say it is possible (I would say "likely") that a client will
+> have multiple requests outstanding.  Even multiple non-idempotent
+> requests.  So I cannot see that a later request tells us anything about
+> receiving an earlier reply.
+
+Agreed.
+
+
+> So I'm perplexed as to why point 2 is needed, or how it is justified.
+
+With the explicit reports in place I expect implied ACK to fire
+rarely: svcrdma reports every reply, and on TCP only a ring overflow
+leaves a reply untracked. Shall I drop implied ACK from v4 of the
+series, measure the untracked rate under load, and size the ring from
+that instead?
+
+
+-- 
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
