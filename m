@@ -1,38 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0FAD45A515C
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2026 20:43:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A5B715921F5
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2026 20:43:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789159424; cv=none; b=FmGUfR8Tmq6HZvLNA1dxjKgqChm6lPHmiUYpALqKodnXm01hHiBWydWFHMIsSJG5nNAp0ZE+K3EqgFZz4oljxzABOTSQNNIfYpeSGN1NioX6L5V1PDDzFpBKfm4xdzjhsq7jHwSThHnDlun8HSGjPiYfi16VojDrOsx1F259lOg=
+	t=1789159424; cv=none; b=kGNrQ4i9Np7t6XkD4YopwS+bVEbAdS3d8XsWomlQABDaMzOcDlTSOcJO5CjLIGOXPGaCmH5iJeqDjzbOJI0D4mzKKRFh/ic4eS4eoH6nr4OyyLOc2T8W+zsuc8wQYdukt0lquhvIiuKFg7/W7OnQNGaSvURR/PT0OzEGn6ePGXM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1789159424; c=relaxed/simple;
-	bh=2SFzuI/ewHd31Cr+t33D9TZDYpfgU2h4VbJHD3t0lf4=;
+	bh=AKO0iY+hB+oITlx/VS450ecynEcGBOLmawFoaosgWlg=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=QzMgF+FYkCZc1k93bSNYGJZi0GhlNOON1KIj5dgjXPZ8EsaExbcG64OjxjCL4oNMSadrYmPdYJZ2CwzKQGN79+fWYHzdm2jKBOF3OQvmJ2reoyEV1VAOy2ntbCIKwsLF/Ox3ai3inxd4zJBD7JFzkkZMmS248+sq7bTvkfT70QI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=c6TEFKQY; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=KiiniOUpmnPV9DzHOoKK0PWaTeG8UAlymn8uOHYHtFLWL0I6sY3pl8KPS0cIY+YYERWKGKf5FaM0De/Hq+hYE0mrUnBDtE0rq1V9zokoCPoCVsw4mP79YyETbwQstoSnugSA9oYsj0gkOKtarAXu1A1d/tsSoZfqleKPgOa0Tlc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NwSghtrH; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="c6TEFKQY"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 458EE1F0089B;
-	Fri, 11 Sep 2026 20:43:42 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NwSghtrH"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 397EA1F00899;
+	Fri, 11 Sep 2026 20:43:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789159422;
-	bh=WtKrg59YZurqZCY2YromxL1lmVkTL8eOtORptcx9lms=;
+	s=k20260515; t=1789159421;
+	bh=Ot3sfIyEQp4zTHXbh80u4qdUuGkImRqXKUIY+VzDg8Q=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=c6TEFKQYYUnhT3kPWdsExNb1FdCcWyHpNQG74ZJixY5rBOvEV0+XDiWr2bWu56W7G
-	 vlT0OpuHItvfUI2wpEEFJ/nD0nAJq83n0LAWuNEPRwwWr0pP9fKb79eXZcn9bXwdTs
-	 VkUCT3Ms4wb2cyUJkVqpgtnSwALX6/06an7KlL2Q+Xh5Ilk8qGHrdmYXWvziCUCwyT
-	 HT03nbTb23iSkUKwSEC2ZbHekcly2wy9noQDrj/5GLrOiUXh1STaTf7O1BrujAC3mh
-	 fzpeXh7Og+ODrEXxF1IUj7y1iFguaa7XcB2rw6h8fMq5QA4+SZb05ZRDqg4bYNQEBD
-	 DwlrCct95dP4g==
+	b=NwSghtrHS4FcF2fgarHedrOoMk6znJn4MDNGNRBkhkDrpNi3k9S/JVA189QLkgRLh
+	 qIPdlDcfHba8UEynXa1lE9In40KkOzWSoRDnmd5+Wir2k5y8Is68jxAgpaoR2SgFV1
+	 J812gu0AMegojtMEMwxu2VzBpejB+gjxlKo3tMo055+6JMWy3tbxnRU5T0wHEZ8ge3
+	 i2kCOtcfumVMM+mVrNXMjo9Ct8NmMsWfLrmeWzWO80G216wFM5nfUwt6jsIlwPofaY
+	 xFSr7OsONJiOiBYclLIlJGEBHxAVUoKiva5+Q4T4sVwCDxw13ZRhimlGcdi3iCHEHz
+	 SdfFSy2s5YsRA==
 From: Anna Schumaker <anna@kernel.org>
 To: linux-nfs@vger.kernel.org,
 	trond.myklebust@hammerspace.com
 Cc: anna@kernel.org
-Subject: [PATCH v3 4/4] NFS: Add support for CB_NOTIFY4_RENAME_ENTRY
-Date: Fri, 11 Sep 2026 16:43:39 -0400
-Message-ID: <20260911204339.1183500-5-anna@kernel.org>
+Subject: [PATCH v3 2/4] NFS: Add support for CB_NOTIFY4_REMOVE_ENTRY
+Date: Fri, 11 Sep 2026 16:43:37 -0400
+Message-ID: <20260911204339.1183500-3-anna@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260911204339.1183500-1-anna@kernel.org>
 References: <20260911204339.1183500-1-anna@kernel.org>
@@ -46,129 +46,245 @@ Content-Transfer-Encoding: 8bit
 
 From: Anna Schumaker <anna.schumaker@oracle.com>
 
-Renaming an entry essentially combines a remove with an add, allowing us
-to reuse most of the code from the previous patches to do the work for
-us.
+When the server tells us that a directory entry has been removed then we
+need to take that as an indication that our knowledge of the directory
+has changed and needs to be refreshed.
 
 Signed-off-by: Anna Schumaker <anna.schumaker@oracle.com>
 Signed-off-by: Anna Schumaker <anna.schumaker@hammerspace.com>
 ---
- fs/nfs/callback.h      |  6 ++++++
- fs/nfs/callback_proc.c | 16 ++++++++++++++++
- fs/nfs/callback_xdr.c  | 14 ++++++++++++++
- fs/nfs/nfs4xdr.c       |  1 +
+v3:
+  * Convert the removed dentry into a negative dentry
+v2:
+  * Initialize 'res' to 0 in nfs4_callback_notify()
+  * Add missing error handling
+  * Remove nfs4_cb_notify_lookup()
+---
+ fs/nfs/callback.h      | 16 ++++++++++-
+ fs/nfs/callback_proc.c | 63 +++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/callback_xdr.c  | 62 +++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4xdr.c       |  3 +-
  include/linux/nfs4.h   |  1 +
- 5 files changed, 38 insertions(+)
+ 5 files changed, 142 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index d3cc3e5df776..019ee9eed9fe 100644
+index f7cc5b6931bf..3740c999bb82 100644
 --- a/fs/nfs/callback.h
 +++ b/fs/nfs/callback.h
-@@ -170,11 +170,17 @@ struct cb_notify_add {
- 	bool			na_last_entry;
- };
+@@ -143,8 +143,22 @@ struct cb_layoutrecallargs {
+ extern __be32 nfs4_callback_layoutrecall(void *argp, void *resp,
+ 		struct cb_process_state *cps);
  
-+struct cb_notify_rename {
-+	struct cb_notify_remove	nrn_old_entry;
-+	struct cb_notify_add	nrn_new_entry;
++struct cb_notify_entry {
++	u32			ne_namelen;
++	const char		*ne_name;
++	struct nfs_fattr	ne_attrs;
++};
++
++struct cb_notify_remove {
++	struct cb_notify_entry	nrm_old_entry;
++	u64			nrm_old_entry_cookie;
 +};
 +
  struct cb_notify_changes {
- 	u32	notify_mask;
- 	union {
- 		struct cb_notify_remove notify_remove;
- 		struct cb_notify_add	notify_add;
-+		struct cb_notify_rename	notify_rename;
- 	};
+-	u32 notify_mask;
++	u32	notify_mask;
++	union {
++		struct cb_notify_remove notify_remove;
++	};
  };
  
+ struct cb_notifyargs {
 diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 71be5b750490..5cc064968360 100644
+index 01600d75f2d9..77be03b96fe7 100644
 --- a/fs/nfs/callback_proc.c
 +++ b/fs/nfs/callback_proc.c
-@@ -447,6 +447,18 @@ static __be32 nfs4_cb_notify_add(struct cb_process_state *cps,
- 	return 0;
+@@ -9,6 +9,7 @@
+ 
+ #include <linux/errno.h>
+ #include <linux/math.h>
++#include <linux/namei.h>
+ #include <linux/nfs4.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/slab.h>
+@@ -369,13 +370,73 @@ static void pnfs_recall_all_layouts(struct nfs_client *clp,
+ 	do_callback_layoutrecall(clp, &args, cps);
  }
  
-+static __be32 nfs4_cb_notify_rename(struct cb_process_state *cps,
++static __be32 nfs4_cb_notify_remove(struct cb_process_state *cps,
 +				    struct dentry *parent,
-+				    struct cb_notify_rename *cb_rename)
++				    struct cb_notify_remove *cb_remove)
 +{
-+	__be32 status;
++	struct qstr filename = QSTR_INIT(cb_remove->nrm_old_entry.ne_name,
++					 cb_remove->nrm_old_entry.ne_namelen);
++	struct dentry *child;
 +
-+	status = nfs4_cb_notify_remove(cps, parent, &cb_rename->nrn_old_entry);
-+	if (status != 0)
-+		return status;
-+	return nfs4_cb_notify_add(cps, parent, &cb_rename->nrn_new_entry);
++	filename.hash = full_name_hash(parent, filename.name, filename.len);
++	child = d_lookup(parent, &filename);
++	if (IS_ERR_OR_NULL(child) || d_is_negative(child))
++		return htonl(NFS4ERR_BADHANDLE);
++
++	d_delete(child);
++	dput(child);
++
++	nfs_set_cache_invalid(parent->d_inode, NFS_INO_INVALID_DATA);
++	return 0;
 +}
 +
  __be32 nfs4_callback_notify(void *argp, void *resp,
  			    struct cb_process_state *cps)
  {
-@@ -482,6 +494,10 @@ __be32 nfs4_callback_notify(void *argp, void *resp,
- 			res = nfs4_cb_notify_add(cps, parent,
- 						 &change->notify_add);
- 			break;
-+		case CB_NOTIFY4_RENAME_ENTRY:
-+			res = nfs4_cb_notify_rename(cps, parent,
-+						    &change->notify_rename);
+ 	struct cb_notifyargs *args = argp;
++	struct dentry *parent;
++	struct inode *inode;
++	unsigned int i;
++	__be32 res = 0;
+ 
++	if (!cps->clp) {
++		res = htonl(NFS4ERR_OP_NOT_IN_SESSION);
++		goto out;
++	}
++
++	inode = nfs_delegation_find_inode(cps->clp, &args->cna_fh);
++	if (IS_ERR(inode)) {
++		res = htonl(NFS4ERR_BADHANDLE);
++		goto out;
++	}
++	parent = d_find_alias(inode);
++	if (!parent)
++		goto out_iput;
++
++	for (i = 0; i < args->cna_n_changes; i++) {
++		struct cb_notify_changes *change = &args->cna_changes[i];
++
++		switch (change->notify_mask) {
++		case CB_NOTIFY4_REMOVE_ENTRY:
++			res = nfs4_cb_notify_remove(cps, parent,
++						    &change->notify_remove);
 +			break;
- 		default:
- 			res = htonl(NFS4ERR_NOTSUPP);
- 			goto out_dput;
++		default:
++			res = htonl(NFS4ERR_NOTSUPP);
++			goto out_dput;
++		}
++
++		if (unlikely(res != 0))
++			break;
++	}
++
++out_dput:
++	dput(parent);
++out_iput:
++	nfs_iput_and_deactive(inode);
++out:
+ 	kfree(args->cna_changes);
+-	return 0;
++	return res;
+ }
+ 
+ __be32 nfs4_callback_devicenotify(void *argp, void *resp,
 diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 5c89efebccd4..268efd527eae 100644
+index 49515f362bc8..bcac75fa1b18 100644
 --- a/fs/nfs/callback_xdr.c
 +++ b/fs/nfs/callback_xdr.c
-@@ -338,6 +338,17 @@ static __be32 decode_notify_add(struct xdr_stream *xdr,
+@@ -252,6 +252,50 @@ static __be32 decode_layoutrecall_args(struct svc_rqst *rqstp,
  	return 0;
  }
  
-+static __be32 decode_notify_rename(struct xdr_stream *xdr,
-+				   struct cb_notify_rename *args)
++static __be32 decode_notify_entry(struct xdr_stream *xdr,
++				  struct cb_notify_entry *args)
 +{
++	uint32_t bitmap[3] = {0};
 +	__be32 status;
++	u32 attrlen;
++	__be32 *p;
 +
-+	status = decode_notify_remove(xdr, &args->nrn_old_entry);
++	status = decode_string(xdr, &args->ne_namelen, &args->ne_name,
++				NFS4_OPAQUE_LIMIT);
 +	if (unlikely(status != 0))
 +		return status;
-+	return decode_notify_add(xdr, &args->nrn_new_entry);
++
++	status = decode_bitmap(xdr, bitmap);
++	if (unlikely(status != 0))
++		return status;
++
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		return htonl(NFS4ERR_BADXDR);
++
++	attrlen = be32_to_cpup(p);
++	if (attrlen != 0)
++		return htonl(NFS4ERR_BADXDR);
++	return 0;
++}
++
++static __be32 decode_notify_remove(struct xdr_stream *xdr,
++				   struct cb_notify_remove *args)
++{
++	__be32 status;
++	__be32 *p;
++
++	status = decode_notify_entry(xdr, &args->nrm_old_entry);
++	if (unlikely(status != 0))
++		return status;
++
++	p = xdr_inline_decode(xdr, 8);
++	if (unlikely(!p))
++		return htonl(NFS4ERR_BADXDR);
++	xdr_decode_hyper(p, &args->nrm_old_entry_cookie);
++	return 0;
 +}
 +
  static
  __be32 decode_notify_args(struct svc_rqst *rqstp,
  			  struct xdr_stream *xdr,
-@@ -390,6 +401,9 @@ __be32 decode_notify_args(struct svc_rqst *rqstp,
- 		case CB_NOTIFY4_ADD_ENTRY:
- 			status = decode_notify_add(xdr, &change->notify_add);
- 			break;
-+		case CB_NOTIFY4_RENAME_ENTRY:
-+			status = decode_notify_rename(xdr, &change->notify_rename);
-+			break;
- 		default:
+@@ -289,6 +333,24 @@ __be32 decode_notify_args(struct svc_rqst *rqstp,
+ 						     &change->notify_mask, 1);
+ 		if (unlikely(res < 0))
  			goto err;
- 		}
++
++		/* Decode opaque size */
++		p = xdr_inline_decode(xdr, 4);
++		if (unlikely(!p))
++			goto err;
++		res = ntohl(*p);
++
++		switch (change->notify_mask) {
++		case CB_NOTIFY4_REMOVE_ENTRY:
++			status = decode_notify_remove(xdr,
++						      &change->notify_remove);
++			break;
++		default:
++			goto err;
++		}
++
++		if (unlikely(status != 0))
++			goto err;
+ 	}
+ 
+ 	return 0;
 diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 9a7c4d23aea7..6d102ebf5e6d 100644
+index 5c51691fff03..e275fbfd395e 100644
 --- a/fs/nfs/nfs4xdr.c
 +++ b/fs/nfs/nfs4xdr.c
-@@ -2014,6 +2014,7 @@ encode_get_dir_delegation(struct xdr_stream *xdr, struct compound_hdr *hdr)
+@@ -2012,7 +2012,8 @@ static void
+ encode_get_dir_delegation(struct xdr_stream *xdr, struct compound_hdr *hdr)
+ {
  	struct timespec64 ts = { 0, 0 };
- 	u32 notifications[1] = { CB_NOTIFY4_REMOVE_ENTRY |
- 				 CB_NOTIFY4_ADD_ENTRY |
-+				 CB_NOTIFY4_RENAME_ENTRY |
- 				 CB_NOTIFY4_GFLAG_EXTEND };
- 	u32 child_attrs[1] = { FATTR4_WORD0_FSID | FATTR4_WORD0_FILEID |
- 			       FATTR4_WORD0_TYPE | FATTR4_WORD0_FILEHANDLE };
+-	u32 notifications[1] = { CB_NOTIFY4_GFLAG_EXTEND };
++	u32 notifications[1] = { CB_NOTIFY4_REMOVE_ENTRY |
++				 CB_NOTIFY4_GFLAG_EXTEND };
+ 	u32 attributes[1] = { 0 };
+ 	__be32 *p;
+ 
 diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 4b507a93aa38..27f083546421 100644
+index 2e33f2ffdc31..8de3ea283767 100644
 --- a/include/linux/nfs4.h
 +++ b/include/linux/nfs4.h
-@@ -494,6 +494,7 @@ enum {
+@@ -492,6 +492,7 @@ enum {
+ #define THRESHOLD_WR_IO                 (1UL << 3)
+ 
  /* Directory Delegation / CB_NOTIFY bits */
- #define CB_NOTIFY4_REMOVE_ENTRY		(1UL << 2)
- #define CB_NOTIFY4_ADD_ENTRY		(1UL << 3)
-+#define CB_NOTIFY4_RENAME_ENTRY		(1UL << 4)
++#define CB_NOTIFY4_REMOVE_ENTRY		(1UL << 2)
  #define CB_NOTIFY4_GFLAG_EXTEND		(1UL << 6)
  
  #define NFSPROC4_NULL 0
