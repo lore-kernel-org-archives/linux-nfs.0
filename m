@@ -1,235 +1,225 @@
-Received: from sonic309-27.consmr.mail.ne1.yahoo.com (sonic309-27.consmr.mail.ne1.yahoo.com [66.163.184.153])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9DE0240DB5F
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2026 18:59:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=66.163.184.153
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91E5D3E3D90;
+	Fri, 11 Sep 2026 19:20:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789153199; cv=none; b=BahQyQVGZG8rT5arJxX3cOO6TZGhAXRO/oomVPGCrM3gHJ8PNNeY6DuTpMI4h6erDgXN5hhuexLAQA3vh/sS5GsVsgsya4jtIa5IoOhZQpQE4uS6aL9NKMbmkdwjTuWw2KhmHg1/M9/2vVZJEZsFY8BsGiywN/gQDxChkA8I8oI=
+	t=1789154449; cv=none; b=s39qnJs8gp39woTpQQXZ1bp+Y7RnGMENM9OxIxXjULfk1h4hlreZrJ2OY+F/kwMEP6QY8z/x1GbsONeDk+B0nxUgvTx3/vsumHeRGEAzCiAUqgbYNHF4nCthicPKhpwRLsZPDgYCDot0xjeb4FxM7Xjse54iorh8IGcOQmHDw3M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789153199; c=relaxed/simple;
-	bh=j2KmhlXONrKBmB8LioVo80v7kvdpDGCasJKpOD3AEpI=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=dVcVVNH0jd3Mhuu/fo7S1orwos0KtO6LVZFvT9a9jGNiCnsDpu4cB6qpbkxlV8EoSFK/xfHwKf9fZzvd6G2n1ULeI2WJk4tzVf2cyPvwehwswzg4/i6Kq8Krsf6Lo/Ez80UtFheHtiP9LUBCIMM8US9Y/yFBx+i8vyij4uKzk2Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=schaufler-ca.com; spf=none smtp.mailfrom=schaufler-ca.com; dkim=pass (2048-bit key) header.d=yahoo.com header.i=@yahoo.com header.b=mtnVsO1V; arc=none smtp.client-ip=66.163.184.153
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=schaufler-ca.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=schaufler-ca.com
+	s=arc-20240116; t=1789154449; c=relaxed/simple;
+	bh=yefhN7ALNAdmFE1+pt89DVZcY/uhZRYBgm1cECQbHC4=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=VuWXZHliftpXn08M+xuN1L1MaYEwNanB3XoQtJmCpgW0OUabjITyKOJA9k0/Z6dggz2r0abEmGAI5cVTfdFcYyd3l0xMIUDb9NY3lclS4tFyOuLKVsNV0b3ZlbDf3ikZZiXOKPiJb4ecjSH0p50+Uy4y3d/JqJgy0mBz3clcjso=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=aUCb4uXg; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=yahoo.com header.i=@yahoo.com header.b="mtnVsO1V"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1789153195; bh=zPVAGvXA6BnDWmfJT3hQO0CB11Qqf66yZudh5n1EjA4=; h=Date:Subject:To:Cc:References:From:In-Reply-To:From:Subject:Reply-To; b=mtnVsO1VgKbez7SKzhsZplk6k0C9XTTXVlxzDnocNXEcQseScGzBI7NWgOkXr4UILYLp6xbh3FIHjwLdF+94WxMDb6ujNlEcAFFKECqG920WYAFTuiITuNW7RthvaIhN2AGu1tuq2GVpBfCumq35u7066l2/TlrAMDkZmZlUvAigViqjupi7aBGwM9ZfIWBkvefsp7nBcyrkSTSqOsa7ztb5+NPXMFhRnRdMy9gfukC2ZSMaXT2zEFTPBCWkqYo2lirWEQBy5QRK0sCqVkOeCrTj8u7fNeZOIN/CP0VXPWlqAHIOyz7yk4QRsYpt/9dz6e+97O94sev9f7/GzTpfMA==
-X-SONIC-DKIM-SIGN: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1789153195; bh=8D6wX+F6GVfY3825euMFl9WpyXMjynR9Yldv18g8cqJ=; h=X-Sonic-MF:Date:Subject:To:From:From:Subject; b=bu4h9TPqgz2/xWApTNwcDeX3xsfNIFng8n/Rtz3yUlQCrPCz+m2kDMyd3M9a6Pms/kzWOPV43nupzqMml3jzOYsaiLLPly+AkpJFunibZo005zZSyijIaAunEVowe0JkVkRQWqOp3EyjFNwnYUBwktLOD74qKN3sUJjX3iT+AbTuQVUXuxCWnSHC8A/cGDFK6WSahfUHLR5Es1J3SpdWDOemGlmdMRQbZ7mhtYCUeOSYpeLQzl3jnYI9DzlW5RN8oiwsfwkf4cKnC3dFl7o/M6y2kWAU4NLhB44efnNs/WkreEBGwafOavMDhpRceTX4GcgwwjSW0pqGP8TqOam0tQ==
-X-YMail-OSG: 8IyxdVsVM1mOeDHP02iAS1e9vux4wp6Hm34349yjZZrE7KsVj4bJUTR76BW4BsK
- t19TLIIWTyEsL_xO6KYI6B3mIpTeWkCM7DlTvfoOQfuCsksf_DXfrnK4xY9kwKnB_FwtGMbXBVdX
- AwHEtPMyDd0o.V_n5VGZNusTss9eVCLkYUnExyioYPyx.Ad4XLy1Yhw66DZ6.cR7ayiSRijYW.xl
- 305XtUrCNu_HX0zlFhl1UhhhGTmHJWDT71o9fTQtscG7_EeuKRlbSitXpH3h2TWZBa1RvmugXEHt
- NXIrMOJrZi6l.PxmX8gxMKPF7q1N60fwVrVibI3BInE.6oUKBezs64Ge8lnfaH6urMLx_mS7NELj
- fXVYAq93FCVN6TNK0NO4G.DDrLjcDRa6hhwWgZ6gQzEbJo2rpUwMXusCpi7RZb5Xl3sf4c2Idq5Z
- 0YImN5yN2Urf87vmiFS8KvS6LQ8PAxxZyfXHUJ3TEbGILnbZXPD5AE_DFX2IpeDORzsdcSFaaNsu
- PJkDjGDNOOvznQ5FlWaMAh4HXH3i3.mQ0coMj6GUf4QwkG4eANVdkaMTdWJZeTV84xjq7hqr6XKn
- o1scllR7Z5GUkeTy8KNCbUrtqv5E7kUADSyywm2a.wUqCoxo5Q3A_YP0K0NZvpEKIs__FnlhdUI.
- q6m1Q09A2eYBeXmEIYZVeEkeB6sdw07Xxs8UUJuHZE0QHuKHXMrXD_xXTsGItQCvTPP8CDbX0kKe
- ImJUDil.4vy3ev72uHxHJEEWTnnuXYA_JydfBvosMnQg1N3bxdnWSWbU2Hkt3TqOn6I.FzGn6QG_
- wsFBAfZcXdPDj4v8n_Tn.11J7xLNj.C3Aoi_G63Dg8IjAO6.e7VyY4IIR7JohfOWwH7InWSPpd09
- L29Cgia4I5UJL8gTvOEtfAvKgJVnNCz.yi5pOsZY4j1II_vQDkb6oXyLuPEDAyPzDAFFnOiaNrKy
- x__Q1X.5B_1hlU32VDdlR0ZzLRLA1TJ22OXVHP7afTQZ2CEoO7JYf46la6agBDr8b5v6ACnNyYi0
- GhQZCLFp11jCoUSoTlX.swZ.VjvjiKiFxK1Ye.Y6beRQedZ1ShvRS3cGHZHLn0swNHUkffkG9fb3
- wOfjV.FBc9wUaDKFQWfxyDbjXO0IH0ejj1F4V87qTPUt2sRlRHwco_cjX6g8TQk3W1CWHZtJA8Pg
- tO3nnFPJrvQPKZpn49aFsX1c5K2ek4fcHTXgnHk4H1.HrFvV3xEMDEis4jnnSAlsgA8Rm6LvLdIz
- lUg33b0GLbxZzg0mpAIxtqrcQSofu5UyShBm.JhuDp9auiAWoHUZSz0qhhAGEt_GOhTOREfqCBZC
- G6fI4Yi.C177vKFVtiV63RCPKV3rxhhPlhyBZpV1ZUxEcqMjslksyvWTd6aT7vgXecZzbEB6Bbui
- PugKq5FvUYO.LajsfrgW6MxwegEMCwQHnJMQsa2Iiv_WjPIMQuqDSEH9zrUbp_k8Xt_MeBiTqXQs
- nXvD7ppdbgFMJjhFv1sbwFcotEUmdosnZNJTFj_.B9RbrhQTms0KTlTxt_kE8.NgiydL256Tokh1
- HbALEC9RtboqkogXmLNqhc9AtDZczzRhCNRn7Z2X3503NCMm88agdrjLobSs1H5d7xBdfXfFzDWy
- Nz0tAs4FjfupGpoHER0xGTafNDNwQhDzAsAi3Ns1zjs3AtY5PvuGfAWSa8fMSFBU03tXksZYFxo1
- ciJ0G1CvL1rd97I47QzrDWZ_28XKoUL8AUG1lo9hZdautcKmTjHBsHXCLAZuNOQ3VbTsaUcfqmee
- .irw7XZlKDpogx7TQrdIKjc686.9W3GLbec8PuplPYGKvHJJhuSP9jlcnM383VDSt8cLbmPuXq9q
- UfjAsSbY4zvrKu6HdDJcxvB8cx34WFQXftbm93mMXhuwnptgfKF5CDKWcQBHwqRHYsXSxAFpKM8S
- qTa3rFjIKqr1IO0XflZkb9XFSArGJix7oo_Xxz5tbTfxDmTZDSh6g_DFbDgKseITvTHLKJIf.Srg
- zVnCjD4ejDk1_J0rl97idNrtwcyBVrtsm8.34xwlrjrR25Rurg9citobqWcZ.BDfjnhc_fKhZQyb
- r8KhLp1zYO8PYT1BKGbEHUeMHroTq.j3oed5iHJ6xgxNJfL4MoCriV4lpnAthSrrU4GyoV4x2VqX
- oF_R8TC4LfHd6y98CdJloF.SZ2BtSQy89uStonDjpuGCXoEaZ98PKpIPceNx_hW37SyYRbmrBaKQ
- gu6._.5jHmTHesUwGqpIpKbbNaYhF7Q3yiS79YqO5LS7oubsSfX7dqeASC8h1m47H6U5NdATLY3r
- Y73pK8ITPNSGyICENKhMFqA--
-X-Sonic-MF: <casey@schaufler-ca.com>
-X-Sonic-ID: 155296a8-f4ef-4124-9fbd-d64e0f082663
-Received: from sonic.gate.mail.ne1.yahoo.com by sonic309.consmr.mail.ne1.yahoo.com with HTTP; Fri, 11 Sep 2026 18:59:55 +0000
-Received: by hermes--production-gq1-678d9dd684-n95jq (Yahoo Inc. Hermes SMTP Server) with ESMTPA ID 54d69622036feeec9e5203b92a9973ac;
-          Fri, 11 Sep 2026 18:59:50 +0000 (UTC)
-Message-ID: <6f01eff3-20c9-488b-84f4-8c6456f2e54d@schaufler-ca.com>
-Date: Fri, 11 Sep 2026 11:59:47 -0700
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="aUCb4uXg"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 63F191F000FF;
+	Fri, 11 Sep 2026 19:20:37 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789154437;
+	bh=45vQuW3fEnS+Twcp9KK28/woSlfpJBVSqnWEQe4/344=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=aUCb4uXgH/yV1/Imu7s3tNnnNjxxh/ONdpnfXF1pjq0s28Pl4dSSZs1bz6Q5hjCax
+	 YDHwyLzJrEDrr5h+giMwJ6MKCLLgLXYX1V4hImcxCNRtPVuLBFscliRXYuSHa1mADO
+	 P4wwFJzt/Sr8C0oPPBj8WAtkbvb8UOTo2kvjreWkfN+IyR6QWf3p7ERxOJbODDgEwc
+	 k2naaK4D4tXlKeHe0DXN7qipgWaGHpVuQlepdJl+au1SiWlWhXZFnCyyr7kvETfmGP
+	 GUI32TpfSimhPtdu3WhsXHUUqOGb/Ca5pjOquoyGl96kyIwFnKlC1f4S0Lkti8AYZl
+	 tHe59hzRvnwTw==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 8FA92F40066;
+	Fri, 11 Sep 2026 15:20:36 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Fri, 11 Sep 2026 15:20:36 -0400
+X-ME-Sender: <xms:hFSkanBzVQR8-HXGmo_RtKhNK01uLBxfbz3o41Pc8w9DjQGqj7L0dg>
+    <xme:hFSkaoWa5wQtRkAths7DKImqZigQkiSpGCF81KxcjIsW0v5NRyhYkEPbSGlKGTw-5
+    ggt4wGgnL9vNRbZukc8pVvGbXvN8_gnG6111mWmrkqp593Yn4X8sw>
+X-ME-Proxy-Cause: dmFkZTEpEUe4YXurW9eP1e3ccFausWbjIwRHxX7YDsLWBp0FZ6TfMLJv0AorTlnkGuJyfL
+    JRhJ9FVOTLJdQNylA3LQ8kBHs/xPD+lnbSaJ8JZImnnxr+GucaShA8hPI9NBAjm9gQlPN7
+    5C1WZesEzQ0/C6x06PHapwSZqMFGoCbF6OA5Qpxgdb9c4xcLfE8ZfOKU9t3LFdfUIoScin
+    dBo9PJRAQD4N4URHe0ZhzPJnIl5UJTLKIW7wbvrp0GpcGsiYjiOErXfcHqwtED+S7SphiZ
+    Gu9/OrRUjvNVPOHUauGfm4mUcgJH3LNvs9CNZ5XLEIMSn6AU8z+o5EbOwEX7R8xX1Xekmw
+    ALRAkb07R+DrTfDzMQbZAX8o+dxjid5+5xEpelbb9JgGvKSyT9SnlwNMhJRneZmLcUckUQ
+    EztpL9M9Dg+cESHSd6Z1uAR3J/vIHyvoDbj2//Lm5Oz6OmshPqtrwWAfqlmobQloM/os+d
+    UIjY1RrXSeX0i4pVDIW3Wv9BF2EEOxP6P+TnKpQd8g6oSEufbBSU7Z4HdTLfHD/FV05Qnb
+    dyXAEPMnwql5AjhU4JPTvUcZsmMtNVZ1CXbPz4Vqlnc5V7zWqIiFuHVjR2zHhKGAxVzhGX
+    ypz8H0SHz7ns6N5KC+/srBoYBs+BMiWw5orN1BGbVCNvbwkT7OU5OYP+UnOg
+X-ME-Proxy: <xmx:hFSkasRFh5oC1BQxgZUssni22QBqECc01hBalai8E4GCLjPopKktwg>
+    <xmx:hFSkagRsZAKgK7OpzTFAbu3Sz01AOZAuC95rWYp9NicxQtinF-iWOw>
+    <xmx:hFSkan2gZ-KaubyrF9FwalFYKQTiAoCnzdaTm6NmMCPOvriTxAs2Ig>
+    <xmx:hFSkaizvNeedtwcZqMIoskBwh2Q4_HuQr0tspabIwqcKnGP9F0odog>
+    <xmx:hFSkarxAVgVJ34_UnIpGis94UCPISEb5dBjxhjr1QWRS20rrXQ8J6nQY>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 6CF647811F0; Fri, 11 Sep 2026 15:20:36 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 01/13 net-next] net: ipv4: introduce CONFIG_IPV4 to
- decouple the IPv4 stack
-To: Fernando Fernandez Mancera <fmancera@suse.de>, netdev@vger.kernel.org
-Cc: horms@kernel.org, kuba@kernel.org, pabeni@redhat.com,
- edumazet@google.com, davem@davemloft.net, Jason Gunthorpe <jgg@ziepe.ca>,
- Leon Romanovsky <leon@kernel.org>, Andrew Lunn <andrew+netdev@lunn.ch>,
- Tony Nguyen <anthony.l.nguyen@intel.com>,
- Przemek Kitszel <przemyslaw.kitszel@intel.com>,
- Elad Nachman <enachman@marvell.com>, Saeed Mahameed <saeedm@nvidia.com>,
- Tariq Toukan <tariqt@nvidia.com>, Mark Bloch <mbloch@nvidia.com>,
- Ido Schimmel <idosch@nvidia.com>, Petr Machata <petrm@nvidia.com>,
- Edward Cree <ecree.xilinx@gmail.com>,
- Maxime Chevallier <maxime.chevallier@bootlin.com>,
- Maxime Coquelin <mcoquelin.stm32@gmail.com>,
- Alexandre Torgue <alexandre.torgue@foss.st.com>,
- Arend van Spriel <arend.vanspriel@broadcom.com>,
- Miri Korenblit <miriam.rachel.korenblit@intel.com>,
- Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>,
- Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>,
- Chaitanya Kulkarni <kch@nvidia.com>, Saurav Kashyap <skashyap@marvell.com>,
- Javed Hasan <jhasan@marvell.com>, GR-QLogic-Storage-Upstream@marvell.com,
- "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>,
- "Martin K. Petersen" <mkp@kernel.org>, Nilesh Javali <njavali@marvell.com>,
- Manish Rangankar <mrangankar@marvell.com>, Varun Prakash
- <varun@chelsio.com>, Alexander Viro <viro@zeniv.linux.org.uk>,
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
- David Howells <dhowells@redhat.com>, Marc Dionne <marc.dionne@auristor.com>,
- Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
- Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
- NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>,
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
- Marek Lindner <marek.lindner@mailbox.org>,
- Simon Wunderlich <sw@simonwunderlich.de>,
- Antonio Quartulli <antonio@mandelbit.com>,
- Sven Eckelmann <sven@narfation.org>,
- Nikolay Aleksandrov <razor@blackwall.org>,
- Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
- Phil Sutter <phil@nwl.cc>, Johannes Berg <johannes@sipsolutions.net>,
- Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>,
- Geliang Tang <geliang@kernel.org>, Julian Anastasov <ja@ssi.bg>,
- Aaron Conole <aconole@redhat.com>, Eelco Chaudron <echaudro@redhat.com>,
- Ilya Maximets <i.maximets@ovn.org>, Allison Henderson <achender@kernel.org>,
- Jamal Hadi Salim <jhs@mojatatu.com>, Jiri Pirko <jiri@resnulli.us>,
- Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
- Xin Long <lucien.xin@gmail.com>, "D. Wythe" <alibuda@linux.alibaba.com>,
- Dust Li <dust.li@linux.alibaba.com>, Sidraya Jayagond
- <sidraya@linux.ibm.com>, Mahanta Jambigi <mjambigi@linux.ibm.com>,
- Tony Lu <tonylu@linux.alibaba.com>, Wen Gu <guwen@linux.alibaba.com>,
- Jon Maloy <jmaloy@redhat.com>, Tung Quang Nguyen
- <tung.quang.nguyen@est.tech>, Steffen Klassert
- <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>,
- Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>,
- "Serge E. Hallyn" <serge@hallyn.com>, Vikas Gupta
- <vikas.gupta@broadcom.com>,
- Bhargava Marreddy <bhargava.marreddy@broadcom.com>,
- Rajashekar Hudumula <rajashekar.hudumula@broadcom.com>,
- Nicolai Buchwitz <nb@tipi-net.de>, =?UTF-8?Q?Markus_Bl=C3=B6chl?=
- <markus@blochl.de>, Arnd Bergmann <arnd@arndb.de>,
- Heiner Kallweit <hkallweit1@gmail.com>,
- Florian Fainelli <florian.fainelli@broadcom.com>,
- Krzysztof Kozlowski <krzk@kernel.org>,
- Qingfang Deng <qingfang.deng@linux.dev>, Julian Braha
- <julianbraha@gmail.com>, Ethan Nelson-Moore <enelsonmoore@gmail.com>,
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
- Eric Biggers <ebiggers@kernel.org>, Ard Biesheuvel <ardb@kernel.org>,
- Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>,
- Willem de Bruijn <willemb@google.com>, Alyssa Ross <hi@alyssa.is>,
- Joel Granados <joel.granados@kernel.org>, Oleg Nesterov <oleg@redhat.com>,
- linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
- intel-wired-lan@lists.osuosl.org, oss-drivers@corigine.com,
- linux-net-drivers@amd.com, linux-stm32@st-md-mailman.stormreply.com,
- linux-arm-kernel@lists.infradead.org, linux-wireless@vger.kernel.org,
- brcm80211@lists.linux.dev, brcm80211-dev-list.pdl@broadcom.com,
- linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org,
- target-devel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
- b.a.t.m.a.n@lists.open-mesh.org, bridge@lists.linux.dev,
- netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
- mptcp@lists.linux.dev, lvs-devel@vger.kernel.org, dev@openvswitch.org,
- rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org,
- linux-s390@vger.kernel.org, tipc-discussion@lists.sourceforge.net,
- linux-security-module@vger.kernel.org,
- Casey Schaufler <casey@schaufler-ca.com>
-References: <20260910144914.8025-1-fmancera@suse.de>
- <20260910144914.8025-2-fmancera@suse.de>
- <ee89e26c-3dad-450b-8861-badf19afa141@schaufler-ca.com>
- <dfd9590c-e029-4432-9a13-c789f708cfee@suse.de>
-Content-Language: en-US
-From: Casey Schaufler <casey@schaufler-ca.com>
-In-Reply-To: <dfd9590c-e029-4432-9a13-c789f708cfee@suse.de>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-X-Mailer: WebService/1.1.26525 mail.backend.jedi.jws.acl:role.jedi.acl.token.atz.jws.hermes.yahoo
+X-ThreadId: AAPZyXKTxCYB
+Date: Fri, 11 Sep 2026 15:20:13 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Hannes Reinecke" <hare@suse.de>, "Christian Brauner" <brauner@kernel.org>
+Cc: keyrings@vger.kernel.org, kernel-tls-handshake@lists.linux.dev,
+ netdev@vger.kernel.org, "Trond Myklebust" <trondmy@kernel.org>,
+ "Anna Schumaker" <anna@kernel.org>, "Christoph Hellwig" <hch@lst.de>,
+ "David Howells" <dhowells@redhat.com>, "Jarkko Sakkinen" <jarkko@kernel.org>,
+ "Sagi Grimberg" <sagi@grimberg.me>, linux-nfs@vger.kernel.org
+Message-Id: <4ff29ed1-e963-4010-a7a1-73b229cc8bd0@app.fastmail.com>
+In-Reply-To: <bb9a872a-d4aa-467a-b4c9-7bca174a6bbc@suse.de>
+References: <20260602154740.49861-1-cel@kernel.org>
+ <bb9a872a-d4aa-467a-b4c9-7bca174a6bbc@suse.de>
+Subject: Re: [RFC] NFS: named client identities for mTLS mounts and a per-namespace
+ .nfs keyring
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-On 9/11/2026 11:31 AM, Fernando Fernandez Mancera wrote:
-> On 9/11/26 7:46 PM, Casey Schaufler wrote:
->> On 9/10/2026 7:48 AM, Fernando Fernandez Mancera wrote:
->>> Historically, the IPv4 protocol has been linked to the core INET
->>> subsystem. Because shared infrastructure like the TCP/UDP engine,
->>> routing or INET hashtables live inside net/ipv4/, it has been
->>> impossible
->>> to compile a kernel with only IPv6 support.
->>>
->>> This patch introduces the CONFIG_IPV4 Kconfig symbol, which is set to
->>> 'def_bool y' for now. This does not allow to completely disable the
->>> IPv4 stack yet but it lays the necessary build-system work for that
->>> goal.
->>>
->>> In addition, multiple subsystems Kconfig symbols across networking
->>> features like tunnels, drivers and filesystems have been adjusted to
->>> depend on IPv4. Keep on mind that follow-up work is required to convert
->>> the Kconfig symbol to bool and remove the dependency on IPv4 where it
->>> makes sense.
->>>
->>> Signed-off-by: Fernando Fernandez Mancera <fmancera@suse.de>
->>> ---
->>>   
->>
->> ...
->>
->>
->>>   security/smack/Kconfig                        |  1 +
->>>   54 files changed, 126 insertions(+), 66 deletions(-)
->>>
->> ...
->>
->>> diff --git a/security/smack/Kconfig b/security/smack/Kconfig
->>> index 5a8dfad469c3..b4e6d0168bd1 100644
->>> --- a/security/smack/Kconfig
->>> +++ b/security/smack/Kconfig
->>> @@ -3,6 +3,7 @@ config SECURITY_SMACK
->>>       bool "Simplified Mandatory Access Control Kernel Support"
->>>       depends on NET
->>>       depends on INET
->>> +    depends on IPV4
->>>       depends on SECURITY
->>>       select NETLABEL
->>>       select SECURITY_NETWORK
->>
->> Why would this make sense? You're introducing the capability to use
->> IP6 by itself, which is admirable, but you're disallowing that
->> configuration
->> with the Smack LSM. It appears that you've done a mechanical lookup
->> in the
->> Kconfig files and applied the minimal change to make the kernel compile,
->> which probably works for most cases. It does not work for Smack. Unless
->> there's a strong argument that Smack with IPv6 and without IPv4 is
->> and always
->> will be a pointless configuration you have my NAK.
->>
->>
->
-> Right, that was kind of the point. The idea was to be able to compile
-> core networking without IPv4. There are still plenty of modules that
-> depends on IPv4. It does not mean that they will remain like that
-> forever as I mentioned my idea was a follow-up on the series to avoid
-> having a too long series.
->
-> Anyway, I can make Smack to do not depend on IPv4 on this series if
-> that could grant an ACK.
+Christian, we're interested in the question below about user-ns
+versus net-ns for keyring ownership.
 
-Yes, that would be acceptable. I apologize in advance for the Smack IPv6
-implementation. Replacing it with a proper CALIPSO stack has been on the
-todo list since CALIPSO was introduced.
 
+On Tue, Jun 2, 2026, at 9:39 PM, Hannes Reinecke wrote:
+> On 6/2/26 17:47, Chuck Lever wrote:
+>> Today, exactly one x.509 certificate and private key pair can be
+>> used at a time for all NFS mounts. The location of that pair is
+>> set in /etc/tlshd/config.
+>>=20
+>> We currently have an awkward experimental mechanism for specifying
+>> an alternative x.509 certificate and private key for an xprtsec=3Dmtls
+>> NFS mount, but it needs to be completed so it can be documented and
+>> advertised for use.
+>>=20
+>> I asked Claude to write a rough draft of a design document that
+>> outlines what needs to be done to finish the work. I would like
+>> input on the kernel-side mechanism in particular for the
+>> per-network-namespace keyring and the way userspace reaches it.
+>>=20
+>>=20
+>> Problem
+>> =3D=3D=3D=3D=3D=3D=3D
+>>=20
+>> NFS mutual-TLS mounts (xprtsec=3Dmtls) need the client to present an
+>> x.509 certificate and prove possession of its private key. The
+>> handshake runs in userspace in tlshd; the kernel hands tlshd the
+>> credentials by keyring serial number over the handshake genetlink
+>> upcall.
+>>=20
+>> The only front end today is two undocumented integer mount options:
+>>=20
+>>      mount -o xprtsec=3Dmtls,cert_serial=3D723847,privkey_serial=3D72=
+3848 \
+>>            server:/export /mnt
+>>=20
+>> The administrator must load the cert and key into the keyring out of
+>> band, discover the integer serials, and paste them onto the command
+>> line. Serials are opaque, non-reproducible across boots, and easy to
+>> transpose. There is also no isolation: nfs_tls_key_verify() does a
+>> global key_lookup() on the serial, and the .nfs keyring created in
+>> fs/nfs/inode.c is module-global and never referenced again -- any tls=
+hd
+>> that learns a serial can read the key.
+>>=20
+>> This RFC proposes a named, per-mount client-identity interface backed
+>> by a provisioning CLI, and fixes the keyring to isolate credentials p=
+er
+>> network namespace. The kernel handshake ABI (integer serials over
+>> genetlink) does not change.
+>>=20
+>>=20
+>> The cross-subsystem ask: a per-netns .nfs keyring
+>> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D
+>>=20
+>> Network namespace is the correct isolation domain. tlshd is bound to a
+>> network namespace, not a user namespace: it services sockets passed up
+>> from the kernel over the per-netns handshake genetlink socket, and one
+>> tlshd runs per network namespace that needs TLS-protected mounts.
+>>=20
+>>    - Replace the dead module-global .nfs keyring with one keyring per
+>>      network namespace, held in struct nfs_net (fs/nfs/netns.h) and
+>>      allocated at nfs_net_init(). The keys subsystem otherwise
+>>      namespaces on user_namespace, so this is a kernel-held object
+>>      referenced from nfs_net (like today's global keyring, but one per
+>>      netns). The DNS resolver's per-netns key scoping (net->key_domai=
+n,
+>>      request_key_net()) is precedent that netns-scoped key handling is
+>>      acceptable.
+>>=20
+>>    - tlshd attaches at handshake time, not at launch. This matters: t=
+he
+>>      keyring may be empty or freshly created when tlshd starts, so
+>>      linking it by name at startup is the wrong model. Instead NFS se=
+ts
+>>      ta_keyring to the netns .nfs keyring serial in
+>>      xs_tls_handshake_sync(), the kernel sends it as
+>>      HANDSHAKE_A_ACCEPT_KEYRING, and tlshd links that serial into its
+>>      session keyring per handshake -- the path tlshd already implemen=
+ts.
+>>      Linking grants tlshd possession of the keyring and, through it, =
+of
+>>      the possessor-scoped cert and privkey keys.
+>>=20
+>>    - Credential keys are created possessor-readable only (no
+>>      KEY_USR_READ). That is what makes isolation enforceable rather
+>>      than advisory: a key provisioned in namespace A is absent from B=
+'s
+>>      keyring and unreadable by B's tlshd even if its serial leaks.
+>>=20
+>> Open question, and where I most want input: userspace -- the
+>> provisioning CLI and mount.nfs -- needs to name the kernel-held netns
+>> keyring in order to add and search keys. Candidates, modeled on
+>> KEYCTL_GET_PERSISTENT (security/keys/persistent.c):
+>>=20
+>>    (a) a new keyctl command that links the caller's netns .nfs keyring
+>>        into a destination keyring and returns its serial;
+>>    (b) an NFS-specific request_key key type the module instantiates to
+>>        point at the netns keyring;
+>>    (c) a per-netns serial exported via procfs or netlink.
+>>=20
+>> The per-netns keyring decision itself I consider settled; the retriev=
+al
+>> primitive is the open one. There is also a user_namespace accounting
+>> nuance: keys added by userspace are quota-charged against a key_user
+>> keyed by user_namespace even though the keyring lives in nfs_net. I
+>> would like the keyrings folks to confirm the quota and ownership
+>> interaction is sane when the user_ns and net_ns boundaries do not
+>> coincide.
+>>
 >
-> Thanks,
-> Fernando.
+> I am all for making keyrings namespace-aware. Logically I _think_ they
+> should be tagged per user-namespace, as this really is about the=20
+> filesystem (and as such would warrant to be tagged per mount ns).
+> Tagging it per net-namespace is not a great fit (well, for me, at=20
+> least), as also block devices might require keys to present the
+> bdev (eg nvme authentication)
 >
+> I might be okay to have it tagged per net-namespace, though, as all
+> current users are in some shape or form being network related.
+> But I'm not sure if that stays that way, so I am worried if we're
+> not restricting ourselves to much by that choice.
+> As really, the question is: what is the driving the namespace selectio=
+n?
+> Is it the _requesting_ layer, ie the layer issuing the mount() call?
+> Or is it the _providing_ layer, ie the layer providing the=20
+> devices/interfaces where the mount() call is operating on?
+> If it's the former, then we need to tag is as
+> net-namespace. If it's the latter, then we need to tag it as a
+> user-namespace / mount-ns.
+>
+> We should probably ask Christian ...
+>
+> Cheers,
+>
+> Hannes
+> --=20
+> Dr. Hannes Reinecke                  Kernel Storage Architect
+> hare@suse.de                                +49 911 74053 688
+> SUSE Software Solutions GmbH, Frankenstr. 146, 90461 N=C3=BCrnberg
+> HRB 36809 (AG N=C3=BCrnberg), GF: I. Totev, A. McDonald, W. Knoblich
+
+--=20
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
