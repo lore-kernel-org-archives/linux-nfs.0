@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 199544A093F
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BB216472091
 	for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2026 16:25:46 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789143947; cv=none; b=nYRwlj8rAiVn04LTFjiXXWTotn48ao3RVdX58BzgZWHTNOetdM1zXfAJ+MW1AMAb3l7GnFbvCf9juSLcBQJ6KfC1cZRxVCaCgxhHVPJc9gHWnogLhM1e3Vi31DWC+VPP/iRVzn7OSBUMNHMyZOwkJHzXdAKed0Fu6DF05Liqb7w=
+	t=1789143948; cv=none; b=QtDfVEHEaqUouG9LUsRAGE7xj184I/PvfdP2c9bQJRB4dPsOvGmZQkxu6Bc/T543FuJuK+Y+cr+24OipUbPPuVCUXCZ9NLBlp916MtXhydsqTTwYE5Nb8pZh5TUGf7q6hCuZ12l1aQXjsqFKPypTUNCq4RNbXvWhmXcXI2aTsU4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789143947; c=relaxed/simple;
-	bh=8Y/ChX4hr7/ZO4f2b3KpDeihWFmlylYfoNhx4eArgdQ=;
+	s=arc-20240116; t=1789143948; c=relaxed/simple;
+	bh=+PdaxVcvGIrChrEokPIR0w3thnNDA6bJOuoydoA1cKY=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=iu36eNZDxJFqqR0//WsFEk0MK44+Lr01BpY81KI4/QqL/MgwIkMLL1OyDv/YKJ3TCA971wPxYrzNlvKIL2gvooNxZJ65xv0fmA+ikjtnXvS0X4QEg+uAlCZcye1cftsqmLwDsnRds6iIkK/8PUMsS88hpG/CN3lkqD2NQvqkb8g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=K1IrOoS/; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=VBx0c5TsBpZKKfzdzJJrbUJV4hvrSi5XkCIZ/kiVUwrdl5c3iB1nzj8GRPCRpS0rBSHW6KBOqwFskeb6AAReyxozGu4zze9WgD/n9a4xzCI2B1/EI4eJO3wG9Yf/ZrRahqqTwE1+kl4T6g5JeSvs/xIriO3bgG9iW4KOL5/f4KI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=SEoapiBQ; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="K1IrOoS/"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 98D991F00899;
-	Fri, 11 Sep 2026 16:25:45 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="SEoapiBQ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3AFB51F0089A;
+	Fri, 11 Sep 2026 16:25:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1789143946;
-	bh=F7ym+o5d9eIkcfXspsRqo97apcl0owxtxLK+g/w7gbA=;
+	bh=S3E8vd3S7nZzh1gsKg/mFkXyK9B9p7NpTu7/30tBtgU=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=K1IrOoS/c9Ez4F/be5zerTw6Xr3Eq/V6yB35uFDpXs8aqvQ6xOdG1jrztai7SKWkW
-	 j8vmyNvkQB+qALMHBCGevCCKum3i1+uONIA0w8QaSCqfQ/Aki+fZLdGKsyPZkNJ7Nm
-	 B1ff8/ir2fLn6RiChTzBwH3dbn/5aZjlRDie/U+Ny8ldm+0GJZsnIe26g7F3DhCdJ8
-	 qxtRw/Hp2e24CHAaa01Lrqt8CqyIPYojrCVxs0K6Ym32NgrKtBrF1Zvz1L/PJe6kQ+
-	 PUvaJb/ppICOhwsHq3NCdvz3YYhNglg/GV31CqRDIiOpFEORMuknZAedk/oH2QA1Wr
-	 YJrrl931EUCqw==
+	b=SEoapiBQeSmxkrP4tKzLtwsrj+BIrBfoH+048WlSvDImShzS821/XpXqbPw7U+LgC
+	 mxCptBBA4RbLMXzk8x9wrpcvd+LHamvBKPujwi76wb5JWqXDxfufkTzde7spqwk+yR
+	 BHM4JsTA3yrAupqBYjaotZL2Hpve9bi+ocyPlMr/VpXLG20vcm5jVhUmw9dC+/srHc
+	 3kCctsripQgv5W5ZQ0LA9DCnKN7nHtCYhJegTjywo8BV07KE25ZSuVIwPn1hh/fPH3
+	 PNXHMQJTCiio2ynTq7dDTm4gbyOUi1EQx55kSXGjgtBAytvXvFpIcDAJh4rwFcVWXq
+	 vzT3Y/bT7Bu6g==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Fri, 11 Sep 2026 12:25:32 -0400
-Subject: [PATCH nfs-utils v2 07/10] mountd: give each worker its own
- netlink command socket
+Date: Fri, 11 Sep 2026 12:25:33 -0400
+Subject: [PATCH nfs-utils v2 08/10] mountd: retry export attributes that
+ fail to resolve for a passing reason
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260911-nl-crossmnt-v2-7-f4d869951c5e@kernel.org>
+Message-Id: <20260911-nl-crossmnt-v2-8-f4d869951c5e@kernel.org>
 References: <20260911-nl-crossmnt-v2-0-f4d869951c5e@kernel.org>
 In-Reply-To: <20260911-nl-crossmnt-v2-0-f4d869951c5e@kernel.org>
 To: Steve Dickson <steved@redhat.com>, 
@@ -46,106 +46,135 @@ To: Steve Dickson <steved@redhat.com>,
 Cc: Chuck Lever <cel@kernel.org>, linux-nfs@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2989; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=8Y/ChX4hr7/ZO4f2b3KpDeihWFmlylYfoNhx4eArgdQ=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqpCuEw/d+oKdrUGoKfwY1xLbsunLr9EOLgYyYv
- uSJ/6+ju0GJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaqQrhAAKCRAADmhBGVaC
- FSkWD/9etNhUvDh2eGY/ZgOfa96YAdxGrzSyZlXs6kU3DMZF+o3y36VLGwJZUUVTeOye2iuj5ny
- 0Y2hq4xSM3HYo8r/8VaXfTmmYoWLJrHKau+6/6kprJ7Y3DEEMRyPwOxp8l7KvjPD1GrnB2lGVLL
- 8QNw9j8IevTi+objomK6vmPu08VTyCkjFOFCy1L6b64f9Rm/eTOcAT/093FJBuPy1x6vaV4Hf2E
- n6Uq+4/43npRwmNupTQnWwwTmX93A5AudwfEA+aTdbicEndOekC21MRAfCGu2eN1HJ8ZimAcGQ+
- bcNmPcxypAf+E7J/WurCAWOXs+hOxDueOUj91qMZtv0ztAVwuUZdnGAKg8tcaqENwaXH9v3IHXW
- iYNFJRfb5aOctbADo5M5fZo3NOqnyTfdz7kpL8mEXeSBSXldaYZQNmc3shVuK83b7uKU0MdSMj5
- o2ZsWypYukIHdJwKb6CqmNhAwdDz4U6EcR/pdnb07qM/AHeLpi1hH76vfKgdVLfQueZiN5BipPQ
- qL5M47t2gizCiD4fj81p9jtiDAbkqO6WZf6MezbepbRZYcB3b7+CkRLlL+buHYS5deyK+qKmqsn
- 6HOKLFDkHCILRgj6+8yObS9eD5F501DusLzqrxOkoGqXXwXE+OQ5/6ETPt7+HEzzy1yEmdwnxIM
- ga3iNZhZQx6SdGA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4468; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=+PdaxVcvGIrChrEokPIR0w3thnNDA6bJOuoydoA1cKY=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqpCuEi9fJAnzgYK0YNBFwR5ose9c63drIOQZH7
+ YP18oQlJJ6JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaqQrhAAKCRAADmhBGVaC
+ FQDnD/44RiVP5PYh4s9DVg0WgA9GyJVzUI8oG1Eo02ZJQhK8d19CSn1y2tNEjbPnkt6eEE0LTup
+ TKHXzGuTmDtfP5gr9wA3CH977l1fem1d2YFIa33usmWHcVJrZsdI7bCXeq+KusPbt3VPI0vXs8G
+ 17sJQHPiGU9yytAG8qy0C6XR0/161ALXT6MzLjBIm1jMz9J0YPVd74zeQQ8hCix0MmY0fLejKu1
+ t4QpEzgyXXkKuChv02Mj05X5V7yk7KF2VF2UX0eQQwgWevlkmCBBnuGLR7r+S5xCN+5xto1SVrD
+ QNHp4jwrIEYZHe7SKopCTmHU/YQNHCoFjJLtf8KuGorv6wDOLVf5MKdA0XQVOgbMk3wy8kdr+TD
+ hicMb3qyZk7CpjShXPQArygJzSdTjRl3yCQ5D4TqsshvWfSi5qvhAow67exL8LycGgT0KlbJ0gi
+ //EJ0P4raq8cheGHO/qtm4vWFLP541YznqRjoGYy7lVline6StZqSY+rBOsIUT45PTBjIp6k65q
+ wa+04Ysk5PuCszAixFBnF1v8l4vMONfPSpPmvgqTk4/FucnZTP23KVpW/T1Fh0KGs3yHzMTZpZM
+ /SaiOu5LntPaQEFD9IHd+if/C30xM2L4xG54RLbbJzqPO/hoVklnkMHWvc2QGCz4QEuSId8JBTf
+ 10tzohUgDH0iwtg==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-cache_open() opens the nfsd and sunrpc command sockets before
-cache_fork_workers() forks, so every worker shares one fd, and a
-copy-on-write struct nl_sock carrying the same s_seq_next/s_seq_expect.
-Only the notify sockets get nl_socket_disable_seq_check(); the command
-sockets keep libnl's default sequence check, which each worker will
-happily pass on the other's reply.
+export_attrs_build() answers -1 both for a filesystem that can never be
+exported and for one it could not measure this time:
 
-Two workers in a command/reply round trip can therefore take each other's
-ack or NLMSG_ERROR.  cache_nl_set_reqs() then reports the wrong outcome
-and the caller answers the wrong client and path - marking it exported,
-retryable, or negatively cached.
+ - nfsd_path_statfs() on a re-exported NFS mount can give ETIMEDOUT with
+   "softerr", or EIO with plain "soft"
+ - fsidnum_get_by_path() returns the same false whether fsidd is
+   restarting, answered with nonsense, or has no fsid for the path
 
-Reopen both command sockets in the worker child.  genl_connect() binds a
-fresh port id, so each worker gets its own reply stream.  The notify
-sockets stay shared: they are receive-only, have the sequence check
-disabled, and are nonblocking, so whichever worker gets there first takes
-the notification.
+Both then set errno to EINVAL, so both downcalls deny the path for
+default_ttl.  An fsidd restart takes a working re-export offline until the
+negative entry expires.
+
+Report EAGAIN for the cases we cannot decide and keep EINVAL for the rest.
+The netlink path turns EAGAIN into EXPORT_RETRY, and nfsd_export() leaves
+the request for the next upcall, which is what both already do when
+is_mountpoint() fails oddly.
+
+statfs errors are sorted with path_lookup_error(), the same test
+is_mountpoint() callers use, plus two that are decidable even though it
+does not name them:
+
+ - ENOSYS: a filesystem with no statfs will never answer
+ - 0: a chrooted worker thread ran the stat and its errno never reached
+   us, which is how the is_mountpoint() callers already read it
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 Assisted-by: LLM
 ---
- support/export/cache.c | 37 +++++++++++++++++++++++++++++++++++--
- 1 file changed, 35 insertions(+), 2 deletions(-)
+ support/export/cache.c | 41 ++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 38 insertions(+), 3 deletions(-)
 
 diff --git a/support/export/cache.c b/support/export/cache.c
-index 78b050ae9d71..7b2ad3ca1611 100644
+index 7b2ad3ca1611..1a734a4f61f4 100644
 --- a/support/export/cache.c
 +++ b/support/export/cache.c
-@@ -3939,6 +3939,29 @@ cache_wait_for_workers(char *prog)
- 	}
- }
+@@ -1145,7 +1145,9 @@ struct export_attrs {
+  * it must not inherit the parent's fsid= or uuid= - if it does, both end up
+  * claiming the same filehandles and the client sees ESTALE.
+  *
+- * Returns 0, or -1 with errno set if @path cannot be exported at all.
++ * Returns 0, or -1 with errno set: EAGAIN if we could not work the attributes
++ * out this time and the caller should ask again, anything else if @path is
++ * genuinely not exportable.
+  */
+ static int export_attrs_build(struct export_attrs *ea, char *path,
+ 			      struct exportent *exp)
+@@ -1161,8 +1163,24 @@ static int export_attrs_build(struct export_attrs *ea, char *path,
+ 		struct statfs st;
  
-+/*
-+ * Replace a command socket inherited across fork().  Returns @old if a new one
-+ * cannot be had; sharing it is worse than having one, but not by as much as
-+ * having none.
-+ */
-+static struct nl_sock *nl_cmd_sock_reopen(struct nl_sock *old)
-+{
-+	struct nl_sock *sock;
+ 		if (nfsd_path_statfs(path, &st)) {
++			int err = errno;
 +
-+	if (!old)
-+		return NULL;
-+
-+	sock = nl_sock_setup();
-+	if (!sock) {
-+		xlog(L_WARNING, "%s: cannot reopen netlink command socket,"
-+		     " sharing the inherited one", __func__);
-+		return old;
-+	}
-+
-+	nl_socket_free(old);
-+	return sock;
-+}
-+
- /* Fork num_threads worker children and wait for them */
- int
- cache_fork_workers(char *prog, int num_threads)
-@@ -3960,12 +3983,22 @@ cache_fork_workers(char *prog, int num_threads)
- 		if (pid == 0) {
- 			/* worker child */
- 
+ 			xlog(L_WARNING, "unable to statfs %s", path);
+-			errno = EINVAL;
 +			/*
-+			 * A command socket carries a reply back to the process
-+			 * that sent the request, so it cannot be shared.  Every
-+			 * worker inherits the same fd and the same copied
-+			 * sequence counters, and two of them mid-round-trip
-+			 * will take each other's ack.
++			 * A strange error - the ETIMEDOUT a "softerr" NFS
++			 * re-export gives, or the EIO a plain "soft" one gives
++			 * - leaves us unable to say whether the path is
++			 * exportable, so ask again later.  Two errors are not
++			 * of that kind: ENOSYS, because a filesystem with no
++			 * statfs will never answer, and 0, which means a
++			 * chrooted worker thread ran the statfs and we never
++			 * saw its errno - is_mountpoint() callers read that as
++			 * definitive too.
 +			 */
-+			nfsd_nl_cmd_sock = nl_cmd_sock_reopen(nfsd_nl_cmd_sock);
-+			sunrpc_nl_cmd_sock =
-+				nl_cmd_sock_reopen(sunrpc_nl_cmd_sock);
-+
- 			/*
- 			 * cache_open() drains the netlink downcalls before we
- 			 * get here, so anything it deferred is now on the retry
- 			 * queues of every worker.  Let the first worker own
--			 * those, or they get answered once per worker over the
--			 * shared command socket.
-+			 * those, or they get answered once per worker.
- 			 */
- 			if (i > 0) {
- 				delayed_export_flush();
++			if (err != 0 && err != ENOSYS && !path_lookup_error(err))
++				errno = EAGAIN;
++			else
++				errno = EINVAL;
+ 			return -1;
+ 		}
+ 
+@@ -1179,7 +1197,13 @@ static int export_attrs_build(struct export_attrs *ea, char *path,
+ 		if (exp->e_reexport != REEXP_NONE &&
+ 		    reexpdb_fsidnum_by_path(path, &search_fsidnum,
+ 			    exp->e_reexport == REEXP_AUTO_FSIDNUM) == 0) {
+-			errno = EINVAL;
++			/*
++			 * fsidnum_get_by_path() answers the same way whether
++			 * fsidd is unreachable, gave us nonsense, or has no
++			 * fsid for this path.  A restarting fsidd must not
++			 * deny a working re-export, so ask again later.
++			 */
++			errno = EAGAIN;
+ 			return -1;
+ 		}
+ 		ea->fsidnum = search_fsidnum;
+@@ -1802,6 +1826,10 @@ static enum export_result nl_add_export_req(struct nl_msg *msg, char *dom,
+ 	}
+ 
+ 	if (epp && export_attrs_build(&ea, path, epp) < 0) {
++		if (errno == EAGAIN) {
++			res = EXPORT_RETRY;
++			goto out;
++		}
+ 		xlog(L_WARNING, "Cannot export %s, possibly unsupported"
+ 		     " filesystem or fsid= required", path);
+ 		epp = NULL;
+@@ -3582,6 +3610,13 @@ static void nfsd_export(int f)
+ 				      NULL, 60);
+ 		} else if (dump_to_cache(f, buf, sizeof(buf), dom, path,
+ 					 &found->m_export, 0) < 0) {
++			/*
++			 * We could not work out the attributes this time.
++			 * Leave the request for the next upcall rather than
++			 * denying an export that is probably fine.
++			 */
++			if (errno == EAGAIN)
++				goto out;
+ 			xlog(L_WARNING,
+ 			     "Cannot export %s, possibly unsupported filesystem"
+ 			     " or fsid= required", path);
 
 -- 
 2.55.0
