@@ -1,138 +1,85 @@
-Received: from mx1.manguebit.org (mx1.manguebit.org [143.255.12.172])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5AA0459E35D;
-	Fri, 11 Sep 2026 20:21:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=143.255.12.172
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D6F2363C6A
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2026 20:43:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789158113; cv=none; b=VtyMnC5xDEb39UrZawTfV5AO5HBQrfmeOULD5kEtQ9oLhceoHRwc6XRKbx7ZpgVyUatnGy3di9CF3clGcKcv9fNQP6vV/wLYjt1FqS5QC7tqoIU4B2KTa1FNo46QzMOs+CQ23WeGDPw1THmb/H4z8bidQ2jt/8c0wBF+dub5DR8=
+	t=1789159422; cv=none; b=CfeeSrv/Q6dOjN049choKxjzCD3S3XBj/rkgY7SYvnoB9v1ZK/TWjrjAEb1lPXPuBlC3J+GB0zgtS7HdNFit4MHMVOBiNsIY75dt4KkmErCe4BnlcadNsTkVkLvbsVEAnF7ktV6uUyUCcMkSpZAnIg6L9YJAJBCwM0avmZwI9mM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789158113; c=relaxed/simple;
-	bh=Gda/p45mn0eDZ98/49FQRJN55Cd0HHPAXWHYrDruXPk=;
-	h=Message-ID:From:To:Cc:Subject:In-Reply-To:References:Date:
-	 MIME-Version:Content-Type; b=eV+G2U8O9/uQXeKW8gVCKQlSXZCiC57rtpQ4zwwLy4Lnxpv1dtC8xnGa8Ecepy5rkLhXbGZXLsq7Y+R/w3LXP7qsVD6H3+udUsviAOYUY7M637wL1aWwWXxCmy+MdGqAcQ0/1SJPirdQi9ffUx7OGpARD13XrvVHX2lppZ0vfag=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=manguebit.org; spf=pass smtp.mailfrom=manguebit.org; dkim=pass (2048-bit key) header.d=manguebit.org header.i=@manguebit.org header.b=Ul0TTLRS; arc=none smtp.client-ip=143.255.12.172
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=manguebit.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=manguebit.org
+	s=arc-20240116; t=1789159422; c=relaxed/simple;
+	bh=0QVIwTFNLwMHwDXHPYfG547vB9c4pc3jxBBdB0yNXaA=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=hDTK0ev2nvGMvYvCPicIeib6ULmMPh1yKXP0a02Ivu6Z6Jl6dmpvqYMuE6t66ehjvH7Zg/u6CNP8tYX4wi5hlFldj8akREIOPZIlH6wBOKCsaRg22PwjZae+D4REs3i/Xi/QDrsxwKBoK0lZx2j2wHmdMAp49dogotUc86XA0/k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=m97MH+kO; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=manguebit.org header.i=@manguebit.org header.b="Ul0TTLRS"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=manguebit.org; s=dkim; h=Content-Type:MIME-Version:Date:References:
-	In-Reply-To:Subject:Cc:To:From:Message-ID:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=tdC+eeHQ2/y5B3/a3WDCCd1iGftUlGNNEOZKxfjw6Y8=; b=Ul0TTLRSppbnaeKmw4fCK2ft1x
-	F34mxzOMJUI0cVF9k/fXLnBWQgRO3UeJzWuhRYtK1KaZ8BnrVVFf6IZ8pWFPGAfyyz3lKhFN1UBsv
-	AhadtmlzpndrOPRm6lPyp0tyHYNEmMYUcq/tuyKNB5uS91toVwMIoiqZKtDHBnxt3vSHyfL0K+PCw
-	+SjgtXfNotNqhkNOwgjOzxOPKMftYOcwjSPDk3IaYWoAKYXMQXM9OA8ZrYyfpk6n1C6EwR3TZ6QKM
-	scYOL0wrM48BLSc4OLEb6vcHRx6dsk0wX5A40eNqhsDsU/oDu3KS8Ihsemii5xwg19/ZlnAwO9sdP
-	xO+iBfJA==;
-Received: from pc by mx1.manguebit.org with local (Exim 4.99.5)
-	id 1x57kh-00000001Exp-194l;
-	Fri, 11 Sep 2026 17:21:39 -0300
-Message-ID: <920f0b50480231f1af8a9c8e7f118f5c@manguebit.org>
-From: Paulo Alcantara <pc@manguebit.org>
-To: David Howells <dhowells@redhat.com>, Christian Brauner
- <christian@brauner.io>
-Cc: David Howells <dhowells@redhat.com>, Matthew Wilcox
- <willy@infradead.org>, Namjae Jeon <linkinjeon@kernel.org>, Marc Dionne
- <marc.dionne@auristor.com>, Stefan Metzmacher <metze@samba.org>, Eric Van
- Hensbergen <ericvh@kernel.org>, Dominique Martinet
- <asmadeus@codewreck.org>, Ilya Dryomov <idryomov@gmail.com>,
- netfs@lists.linux.dev, linux-afs@lists.infradead.org,
- linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
- ceph-devel@vger.kernel.org, v9fs@lists.linux.dev,
- linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v12 5/5] cachefiles: Preset the state xattr when
- creating a new file
-In-Reply-To: <20260910220242.2165023-6-dhowells@redhat.com>
-References: <20260910220242.2165023-1-dhowells@redhat.com>
- <20260910220242.2165023-6-dhowells@redhat.com>
-Date: Fri, 11 Sep 2026 17:21:38 -0300
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="m97MH+kO"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2E37B1F000FF;
+	Fri, 11 Sep 2026 20:43:40 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789159420;
+	bh=LrhGUuIkKacZxKKfCqFsOoB+UhCfSQBVouk2H1SMDsk=;
+	h=From:To:Cc:Subject:Date;
+	b=m97MH+kOIs1Le8b3MAuvtJ4SuBCwR+L9H1+3w5M/aEW7ZnmrrOTDXATVqgH4bjSTw
+	 SuSwKiwdOPi0l27PbvzKBMvB6TVuKtfJ8oFnwi4qfeKZiNZAkntovLyENJhCHmhaCt
+	 I58GC3alhqk4leeNAPRk5uZGvDLuvc7spPUqWJy0NLCDqNXbFJWlIt9uk9TBy6YwFG
+	 spUFryJaG577bltBf1/7JHJy9fQbIV50sew3md+F9xKqjr6PnCm8Ub4BPeep2l5MBU
+	 ViEFe5JCPlVxardxggQ80AoAXlAWq5q1POzXDbNsUjsaKyR7a0iSu+/3JfDVKBpkg1
+	 DLB5vzrflgZkg==
+From: Anna Schumaker <anna@kernel.org>
+To: linux-nfs@vger.kernel.org,
+	trond.myklebust@hammerspace.com
+Cc: anna@kernel.org
+Subject: [PATCH v3 0/4] NFS: Add client side support for CB_NOTIFY
+Date: Fri, 11 Sep 2026 16:43:35 -0400
+Message-ID: <20260911204339.1183500-1-anna@kernel.org>
+X-Mailer: git-send-email 2.55.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Transfer-Encoding: 8bit
 
-David Howells <dhowells@redhat.com> writes:
+From: Anna Schumaker <anna.schumaker@hammerspace.com>
 
-> With a really small cache, cachefiles is likely to see a lot of writes
-> hitting ENOSPC - and this can include setxattr that sets the state xattr on
-> a cachefile - but we don't really want to successfully fill a cache file
-> only to have to scrap it because we can't set the xattr.
->
-> Instead, preset the xattr when we create the tmpfile we're going to use,
-> and scrap the file at that point if we get ENOSPC.  Only if setxattr
-> succeeds do we allow data to be written to the file.
->
-> Note that there is a potential performance loss in that writes to the cache
-> have to be delayed until this is completed - but we do the tmpfile/setxattr
-> in parallel, starting when the file is opened and only have to wait once
-> writeback occurs.
->
-> Signed-off-by: David Howells <dhowells@redhat.com>
-> cc: Marc Dionne <marc.dionne@auristor.com>
-> cc: Paulo Alcantara <pc@manguebit.org>
-> cc: netfs@lists.linux.dev
-> cc: linux-fsdevel@vger.kernel.org
-> ---
->  fs/cachefiles/internal.h |  1 +
->  fs/cachefiles/namei.c    |  5 ++++
->  fs/cachefiles/xattr.c    | 59 +++++++++++++++++++++++++++++++++++++++-
->  3 files changed, 64 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
-> index b2605111fd56..664be64ab538 100644
-> --- a/fs/cachefiles/internal.h
-> +++ b/fs/cachefiles/internal.h
-> @@ -283,6 +283,7 @@ void cachefiles_withdraw_volume(struct cachefiles_volume *volume);
->  /*
->   * xattr.c
->   */
-> +int cachefiles_preset_object_xattr(struct cachefiles_object *object, struct file *file);
->  extern int cachefiles_set_object_xattr(struct cachefiles_object *object);
->  extern int cachefiles_check_auxdata(struct cachefiles_object *object,
->  				    struct file *file);
-> diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-> index ca093840e577..ef656a319ede 100644
-> --- a/fs/cachefiles/namei.c
-> +++ b/fs/cachefiles/namei.c
-> @@ -450,6 +450,11 @@ struct file *cachefiles_create_tmpfile(struct cachefiles_object *object)
->  		pr_notice("Cache does not support read_iter and write_iter\n");
->  		goto err_unuse;
->  	}
-> +
-> +	/* Preallocate space for the xattr. */
-> +	ret = cachefiles_preset_object_xattr(object, file);
-> +	if (ret < 0)
-> +		goto err_unuse;
->  out:
->  	cachefiles_end_secure(cache, saved_cred);
->  	object->content_info = CACHEFILES_CONTENT_ALL;
-> diff --git a/fs/cachefiles/xattr.c b/fs/cachefiles/xattr.c
-> index 551a3b0069c2..8ebb713482e3 100644
-> --- a/fs/cachefiles/xattr.c
-> +++ b/fs/cachefiles/xattr.c
-> @@ -34,6 +34,57 @@ struct cachefiles_vol_xattr {
->  	__u8	data[];		/* netfs volume coherency data */
->  } __packed;
->  
-> +/*
-> + * Preset the state xattr on a cache file to allocate space for it.
-> + */
-> +int cachefiles_preset_object_xattr(struct cachefiles_object *object, struct file *file)
-> +{
-> +	struct cachefiles_xattr *buf;
-> +	struct dentry *dentry = file->f_path.dentry;
-> +	unsigned int len = object->cookie->aux_len;
-> +	int ret;
-> +
-> +	buf = kzalloc(sizeof(struct cachefiles_xattr) + min(len, sizeof(__be64)), GFP_KERNEL);
+These patches add support for the CB_NOTIFY callback operation from NFS
+servers. Editing directory order or placement in our caches isn't easy
+or practical the way things are structured now. Instead, I use CB_NOTIFY
+as an indication that the client needs to refresh its view of the
+directory.
 
-You should use max() here.
+Changed in v3:
+ * Change NOTIFY4_REMOVE to create a negative dentry
 
-Otherwise looks good,
+Changes in v2:
+ * Fix signed / unsigned type mixups
+ * Don't try to share lookup code between NOTIFY4_REMOVE and NOTIFY4_ADD
+ * Add handling for the NOTIFY4_ADD 'na_have_old_entry' case
 
-Reviewed-by: Paulo Alcantara <pc@manguebit.org>
+Thoughts?
+Anna
+
+
+
+*** SUBJECT HERE ***
+
+*** BLURB HERE ***
+
+Anna Schumaker (4):
+  NFS: Add an outline for the CB_NOTIFY operation
+  NFS: Add support for CB_NOTIFY4_REMOVE_ENTRY
+  NFS: Add support for CB_NOTIFY4_ADD_ENTRY
+  NFS: Add support for CB_NOTIFY4_RENAME_ENTRY
+
+ fs/nfs/callback.h      |  51 ++++++++++++
+ fs/nfs/callback_proc.c | 147 ++++++++++++++++++++++++++++++++++
+ fs/nfs/callback_xdr.c  | 175 ++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/nfs4_fs.h       |   2 +
+ fs/nfs/nfs4xdr.c       |  33 +++++++-
+ include/linux/nfs4.h   |   6 ++
+ 6 files changed, 409 insertions(+), 5 deletions(-)
+
+-- 
+2.55.0
+
