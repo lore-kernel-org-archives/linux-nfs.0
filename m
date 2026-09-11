@@ -1,145 +1,216 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wm1-f54.google.com (mail-wm1-f54.google.com [209.85.128.54])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1CA1634CFD0
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2026 14:42:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9BAEC3515D6
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2026 14:46:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.54
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789137754; cv=none; b=HlpKoNPe1JCmzvj3RnRnH9MF+aodP9snLuni+bvX/X+uBaWKY+5MhRJDCui2QM22B9KIvikzcmMxornDKqVRnqARgkV3polYA/LTJKcziOlX37GHOGwwMMXR1kYedWwSC7gcPsJ0lmctF61wbHDOQy1fO9ITSYnSTw5EpJzdXjw=
+	t=1789138022; cv=none; b=Ekf1RtYlvYdlsFMJ2Bz+8kPrOLqH1+SfwG8aexLkY4kETXrSBPXJ+5WmtZOERoDACT7emEGTbEUd5KpFcWksFw9WLcm1eycft3wWFqCrlomwfjjZTBeKNa7CsyFPb8P5Eu5MB22KauvlF8HTLbP2EGPf3npCORwTIpoV83mchsc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789137754; c=relaxed/simple;
-	bh=EGgCsshfuDCrKeThEeIJoX/moOH6gxfaQRsjf0igk1w=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=dZj1S61pZByvHqGZwaS0YH36pYMJAWjiRH4hpF9aApfdt3790zJcKXf3vGuEJQUMPPgOryxnclyxnFvjOnCyodeYAXJblkckCm33OD5gah3uIo0GiX11JFgFhnnQs5oIxQf+VJb0nPlHEPoslPxtcP3ZjvNHokgXokPLo2cASUI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=di9gXzN4; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789138022; c=relaxed/simple;
+	bh=DmDN6UHtKvikcXdajHKVO+yHNn5RNaijR4wIa+sYjRU=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type; b=Vh/RuTzi38lcvfnjkI42Ahcfm5TKdl4J+J2EeBCaeuMwOujXshR92Z4KxBnkdEHXXB9D8wusAtGz+SfstkYZ1dyM94rts8/xQxN0j0QC6MbwrFSwHy5/LVJrAcKnw71DCo78Wfs7z+/wOiBoMrNHKqAaAedtT/iTFlfHr88feh0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=suse.com; spf=pass smtp.mailfrom=suse.com; dkim=pass (2048-bit key) header.d=suse.com header.i=@suse.com header.b=B4uAGCpW; arc=none smtp.client-ip=209.85.128.54
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=suse.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="di9gXzN4"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7FECA1F000FF;
-	Fri, 11 Sep 2026 14:42:32 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789137752;
-	bh=Am565XyNmbKWUvjW+npkDTEqJi/oWfkJ01amBFPdArA=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=di9gXzN4f5RzqLCOLT9NvO24hJnH+m/Cp4JUx8RpaKmbWE7A5IKKx1CDZkC76dVdj
-	 WwMK1FqqmsmjZ14V7EHqD+S1+6dk3R2f/sK1F8IbeMuNd5utZyybuIbYhTuTqmIkbZ
-	 KwgADnCuJ8PPUJfiCG+6aPs50UJe1hoQPXSpF9yo8DuayV3ZbXN/Taves134ssMcdA
-	 FgBwXj4wnxsyEHmOWmsD7v6uD1FERJC3uGLVk+wX34azzDWEElzBJgmxD9NIHl+YaG
-	 mqB8VBxXcmRur0FmTrM2xEoorEFHBvI3BWr1b2synugdwaYguji2uSl/PA3BjnmqQv
-	 /JzR/WDtLrd4w==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id BB529F40066;
-	Fri, 11 Sep 2026 10:42:31 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Fri, 11 Sep 2026 10:42:31 -0400
-X-ME-Sender: <xms:VxOkakvD9R4wFSP8b1z7pu9tMiRPhpDWA2esZEP2qXevzX-KhQDgCA>
-    <xme:VxOkasRczOqW5a2ltUXvPY5YY4HRPd-IW91vVEoGVm7ZzV2Sl7d4qY7BTL4UwCPjj
-    3f3Y97_sHBxBo7Ao_Gzg61bRHCmnqnkUWHihmtUUBsfaWrRxtVBfF0>
-X-ME-Proxy-Cause: dmFkZTE2cjtoV0DIqNNgXUWyCncbg4bZLSovApzDGeDdpUylWfRUXxmS8VCQVLNa5RNHQk
-    I1lUC01n32RvCtyyd7wL+bUTq1W3dDqA8cTVW7QIAgryISvcjMlKRh8S32cmGfEhrNZ67c
-    AfODzapILalhmaCmiSkDw9XLdXJJcJ2dAu6X67/+gvfYKg2jlqSetwZJCaWh/SDJ4WSmF2
-    dfjIMRV0YkDJB0/5wRL3pmMQr8S5fVjZDQSdsU3Vvzm4gBq+MGiq7grmmxhXZf5Qbx/RC2
-    2THugWFRN51iMkDB5dg+ROMnbaT80Rb+xiPyPobbQngM0BawQgnrvfj/tJC6wlF1+UZJUp
-    uJ6ByM5HIaZJae7X3JXneEgRiVhAOXP/UjXZd3wH27oqUUFAAP07viH/rTzTZAaL9oy2nX
-    VD3anJBKYfTDimedXbyUgZq05FPlq1DSxJ53nVSvEXNcVmdlcPkbL/N1VLDSHyKJcvZeaO
-    GqS9XSUE9gfqCCDr7fzh+jzcs4s+aU7Y0nFco7cJz6nPk4oQoTeMOq9hgykg8770S58iCx
-    EIZublXdfdFUM5i5fXpzWF7SW1a2u1skSNsidpDvWtl3/0J8um6B75QMw4Dm3TJGoUZzS7
-    Zu69IFnw++RElc0L3iyfU+7xuVdl+ABsFOrd7L4TKWKHF4mkxYR6W1mKjpRw
-X-ME-Proxy: <xmx:VxOkamFsPqPK7E-lf5vEL9OTUUjmVKUNNhyvz_jOWimatXS96W3Z3w>
-    <xmx:VxOkaoC5Di0ykZ12k-j3uqjC2nhB30LZb-Vwpo98F9J7eQTZqfTXIQ>
-    <xmx:VxOkauXPorMc8Y-dmlMxJeK8mYZQMDcKnDdJqOehceNdFFGkZwA7rQ>
-    <xmx:VxOkakqig1LeW6vngMV8vGS3s9UgwcT4Jd-6_SCNN9tMfyI3G5MlHg>
-    <xmx:VxOkaiTx7KHnEjVcfva51wsZD-SnxfRJSiorpoIWDftwDbcR5BS04iId>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 944237811F0; Fri, 11 Sep 2026 10:42:31 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=suse.com header.i=@suse.com header.b="B4uAGCpW"
+Received: by mail-wm1-f54.google.com with SMTP id 5b1f17b1804b1-4980fe6b3beso9238915e9.0
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2026 07:46:59 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=suse.com; s=google; t=1789138018; x=1789742818; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:mime-version:message-id:date
+         :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=6DAY0H524IPnoUin0wM315IyLKxNaVBFm7h+DvdUw5U=;
+        b=B4uAGCpWL5jpC8i1sY5F+3M4833A8BFjWN6LmY6MP4JQjZc5Ifb4szZU4q47YDSqFg
+         8rB2pBsDFN9ddgmA17zUhtJZ1cf3mqkYsQLmNEBfx9DTq/fR9pctpKx3oJmWcJIKvjYa
+         Qjk3RbZvRdMMoAJ1riJU9GXdTRspE4CFCh8IywRMw6mcdiUTiq8zo9HLQ14sJcYvP+U2
+         jsI7GZUnhFf/4QIhvNo87/no0MO7ukavX183hQ/Kzo9m6UaUzjwlLpD+u/WtXjXLgF81
+         ykuaNCSAQ20shbx+xhRJpuFrMy+jxtaqz7wF74dTLC5ehrikNnbBMK0QFxP/CeUEt6IB
+         Fz/Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1789138018; x=1789742818;
+        h=content-transfer-encoding:content-type:mime-version:message-id:date
+         :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=6DAY0H524IPnoUin0wM315IyLKxNaVBFm7h+DvdUw5U=;
+        b=eqHwEkPP78lGyvYjg3RDm5VaqRSiyQCGYbAmkj5Hflue1Rps63vyDaYa4GhbVdpE1R
+         zqQtCY+yhI0cFGPZb0M3zqkBsK4vmqNPqMftc3vowUNNdDrAAYD9fS9tQXCGFB15K63e
+         a0P7LeiNI7j9Gf3ddOwIuVR40eTbMHEPR+6ayjk63Vp0zyjY+W3hTS7eKAFxAtZlpsk4
+         4cIFUA3FN8tsiuljxDxe1zzgDXne0qxMRt4o5/ECYmP8xciKhcH+uLD7tvd/kh0eqJDh
+         pFN3eOmfvwC4j02pmvSHzvaGaJLSN8DXxHYCVz8BtqXQuiDOX5d4RTP/T2x7YOQ3j23W
+         KWVA==
+X-Forwarded-Encrypted: i=1; AKwUvBylYLlBue92M3whVZ/0GygmiTG578ZNpFYOOXNUHzrHgQWs1PkCCxkGj7VbYwFTM5nO7x6Tsic4d6o=@vger.kernel.org
+X-Gm-Message-State: AFuF++k+eTFFuX6NVThznG0BE6YJnHNEytgiKNQ8tSVFW6bEWE+JIN8L
+	jNOCblYlAHZ0XryysomHty+RghDKQm3uRj8hdqkXU7ptWtjQbSKr4X4kh20+8f4OdYI=
+X-Gm-Gg: AYBFou0oFBQxeOTYtyeMJJtXE6AQO3V4zJfUIpR5Cmd1PVDJApCHWUTMq6pvkMgPg2i
+	nfMOqz7Y8BLUO6Yp5HwCbrj0qt02Ii+tAZ5XceXU/wQ1oFC9XM/SGTdNSfsx5TwGVVGEefPlPU/
+	SMQBdWWvEg6xLemZkGWWQlQnAhCm+8ssun7QCYCdhaJ+Gu/vmx4NwDGIxypncvZdoXzCEb63P3G
+	oCtFudV6X/Ro3ZZkUjBwvRPLMv6XzqrEg5w/2/7w+nzNMn09CJxDVuiipaI0MnAmEjmlYPJeahT
+	ja9XZ3jWtdqw2K1mIhjIIhSCLiUWD3crX2TB7Szj8ECJqjNjGr+lsK4xjSqhmwsKQBuGkzeJyop
+	vubzfgGW6WxGAWq9+8MENHV6BBbWSK/f9gqs6sC69u7FWFv+Qh2l3Q+yzyBr/q2oFNcVz5ATyms
+	OlO5K9YjyyOps1b4ziM7Q4NvuhsvQWZd4dqJHM6MRszkL03G3Q/tTkKeBfCJvL2oMp2SvqP3V3f
+	9FWUA==
+X-Received: by 2002:a05:600d:8444:20b0:49d:27ee:79c9 with SMTP id 5b1f17b1804b1-49d27ee7af0mr93376655e9.8.1789138017731;
+        Fri, 11 Sep 2026 07:46:57 -0700 (PDT)
+Received: from localhost.localdomain ([2001:af0:8000:1409:193:86:92:181])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-486eb32e8d1sm6328068f8f.11.2026.09.11.07.46.55
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 11 Sep 2026 07:46:57 -0700 (PDT)
+From: Petr Pavlu <petr.pavlu@suse.com>
+To: Tony Luck <tony.luck@intel.com>,
+	Borislav Petkov <bp@alien8.de>,
+	Thomas Gleixner <tglx@kernel.org>,
+	Ingo Molnar <mingo@redhat.com>,
+	Dave Hansen <dave.hansen@linux.intel.com>,
+	x86@kernel.org,
+	"H. Peter Anvin" <hpa@zytor.com>,
+	Philipp Reisner <philipp.reisner@linbit.com>,
+	Lars Ellenberg <lars.ellenberg@linbit.com>,
+	=?UTF-8?q?Christoph=20B=C3=B6hmwalder?= <christoph.boehmwalder@linbit.com>,
+	Jens Axboe <axboe@kernel.dk>,
+	Johan Hovold <johan@kernel.org>,
+	Alex Elder <elder@kernel.org>,
+	Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+	"Rafael J. Wysocki" <rafael@kernel.org>,
+	Michal Januszewski <spock@gentoo.org>,
+	Helge Deller <deller@gmx.de>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Christian Brauner <brauner@kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	Mark Fasheh <mark@fasheh.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	Joseph Qi <joseph.qi@linux.alibaba.com>,
+	Tejun Heo <tj@kernel.org>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	=?UTF-8?q?Michal=20Koutn=C3=BD?= <mkoutny@suse.com>,
+	Luis Chamberlain <mcgrof@kernel.org>,
+	Petr Pavlu <petr.pavlu@suse.com>,
+	Daniel Gomez <da.gomez@kernel.org>,
+	Sami Tolvanen <samitolvanen@google.com>,
+	Aaron Tomlin <atomlin@atomlin.com>,
+	Pavel Machek <pavel@kernel.org>,
+	Len Brown <lenb@kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Danilo Krummrich <dakr@kernel.org>,
+	Nikolay Aleksandrov <razor@blackwall.org>,
+	Ido Schimmel <idosch@nvidia.com>,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>,
+	David Howells <dhowells@redhat.com>,
+	Jarkko Sakkinen <jarkko@kernel.org>,
+	Paul Moore <paul@paul-moore.com>,
+	James Morris <jmorris@namei.org>,
+	"Serge E. Hallyn" <serge@hallyn.com>,
+	Kentaro Takeda <takedakn@nttdata.co.jp>,
+	Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+Cc: linux-edac@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	drbd-dev@lists.linux.dev,
+	linux-block@vger.kernel.org,
+	greybus-dev@lists.linaro.org,
+	linuxppc-dev@lists.ozlabs.org,
+	linux-acpi@vger.kernel.org,
+	linux-fbdev@vger.kernel.org,
+	dri-devel@lists.freedesktop.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	ocfs2-devel@lists.linux.dev,
+	cgroups@vger.kernel.org,
+	linux-modules@vger.kernel.org,
+	linux-pm@vger.kernel.org,
+	driver-core@lists.linux.dev,
+	bridge@lists.linux.dev,
+	netdev@vger.kernel.org,
+	keyrings@vger.kernel.org,
+	linux-security-module@vger.kernel.org
+Subject: [PATCH v3 0/3] Bring includes in linux/kmod.h up to date
+Date: Fri, 11 Sep 2026 14:46:13 +0000
+Message-ID: <20260911-module-include-kmod-v3-0-6ebccc3e0731@suse.com>
+X-Mailer: git-send-email 2.55.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AJxlnPHrJ3iN
-Date: Fri, 11 Sep 2026 10:42:08 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: NeilBrown <neil@brown.name>
-Cc: "Jeff Layton" <jlayton@kernel.org>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Rick Macklem" <rmacklem@uoguelph.ca>,
- linux-nfs@vger.kernel.org
-Message-Id: <f5e4a7ef-43fb-4209-a2ef-34135c1333cb@slotpi15m67>
-In-Reply-To: <178908135551.207413.11072935643340240963@noble.neil.brown.name>
-References: <20260910-duplicate-reply-cache-v3-0-31532a4c7449@kernel.org>
- <178908135551.207413.11072935643340240963@noble.neil.brown.name>
-Subject: Re: [PATCH v3 00/12] Improve the scalability of NFSD's classic DRC
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+X-Change-ID: 20260816-module-include-kmod-14d1a0e19462
+Content-Transfer-Encoding: 8bit
 
-On Fri, 11 Sep 2026, NeilBrown wrote:
-> On Thu, 10 Sep 2026, Chuck Lever wrote:
-> > 1. The transport reports delivery outright where it can. TCP now
-> >    reports when snd_una passes the reply's sequence number, and RDMA
-> >    reports on each Send completion.
->
-> As you note in the relevant patch, the TCP ack can arrive before the NFS
-> client has seen the reply.  But I don't think you drop the cached reply
-> immediately, so that probably don't matter.
+The usermode helper declarations were previously provided by linux/kmod.h
+but commit c1f3fa2a4fde ("kmod: split off umh headers into its own file")
+moved them to linux/umh.h in 2017. Add explicit includes of linux/umh.h to
+files that use usermode helpers and remove linux/kmod.h where it is no
+longer needed.
 
-Right. The ACK marks the entry, and the next prune of that bucket
-evicts it.
+Also add a missing include of linux/sysctl.h to kernel/time/jiffies.c.
 
+Finally, clean up linux/kmod.h so that it includes only the headers that it
+actually requires, importantly removing the compat linux/umh.h include.
 
-> > 2. Where no report will come, a later request on the same connection
-> >    stands in as an implied ACK, since a client on a live TCP or RDMA
-> >    connection does not retransmit within it (RFC 1813 Section 4.5).
->
-> I don't follow this.  Why would no report come?  TCP will always send
-> and ACK.
+This cleanup is motivated by trying to reduce the preprocessed size of
+linux/module.h, which includes linux/kmod.h. linux/module.h appears in
+roughly 15k #include directives across the kernel. This makes it a "hot"
+header, so it should avoid pulling in unnecessary definitions. Note that
+this series doesn't immediately improve the situation, since most of the
+files included by linux/kmod.h are, for now, also included by
+linux/module.h through other paths.
 
-The cover letter was unclear. TCP always ACKs, but svc_tcp_sendto()
-does not always track the reply. The per-socket ring is fixed-size,
-so a burst overflows it. A kTLS send that leaves part of the record
-unsent is not recorded, and neither is a failed send. Each of those
-is reported as untracked right away, so the DRC entry has no report
-to wait for.
+Apologies for the wide distribution. Acked-bys are appreciated.
 
-Implied ACK was meant to retire those entries early. Without it, an
-untracked entry is handled the way every entry is handled today. The
-untracked entries just sit in their buckets for the full two minutes,
-lengthening each lookup that hashes there, which is the cost this
-series set out to remove.
+---
+Changes in v3:
+- Rebase on top of v7.3-rc2.
+- Clean up commit descriptions.
+- Link to v2: https://patch.msgid.link/20260721131207.803760-1-petr.pavlu@suse.com
 
+Changes in v2:
+- Remove the linux/kmod.h include from kernel/cgroup/cgroup-v1.c.
+- Add a missing include of linux/sysctl.h to kernel/time/jiffies.c.
+- Link to v1: https://patch.msgid.link/20260708154510.6794-1-petr.pavlu@suse.com
 
-> And I don't read RFC 1813 4.5 as saying a client does NOT retransmit on
-> a live connection, only that it DOES on a re-opened connection.
-> I believe that when an NFS client gets a timeout (6 minutes on TCP?) it
-> will resend without re-opening the TCP connection.
+---
+Petr Pavlu (3):
+      umh, treewide: Explicitly include linux/umh.h where needed
+      time/jiffies: Include linux/sysctl.h for proc_int_u2k_conv_uop(), ...
+      module: Bring includes in linux/kmod.h up to date
 
-Section 4.5 says that a connection break with automatic reestablishment
-requires duplicate request processing. I misread that as naming the only
-way a duplicate reaches a server over a connection-oriented transport,
-and then reasoned that a request arriving on a live connection could not
-be one. Re-reading, I see that text supports no such exclusion. It only
-gives one case that a DRC must handle, and says nothing about what a
-client does while the connection remains healthy.
-
-
-> And as you say it is possible (I would say "likely") that a client will
-> have multiple requests outstanding.  Even multiple non-idempotent
-> requests.  So I cannot see that a later request tells us anything about
-> receiving an earlier reply.
-
-Agreed.
-
-
-> So I'm perplexed as to why point 2 is needed, or how it is justified.
-
-With the explicit reports in place I expect implied ACK to fire
-rarely: svcrdma reports every reply, and on TCP only a ring overflow
-leaves a reply untracked. Shall I drop implied ACK from v4 of the
-series, measure the untracked rate under load, and size the ring from
-that instead?
-
-
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+ arch/x86/kernel/cpu/mce/dev-mcelog.c |  2 +-
+ drivers/block/drbd/drbd_nl.c         |  1 +
+ drivers/greybus/svc_watchdog.c       |  1 +
+ drivers/macintosh/windfarm_core.c    |  1 +
+ drivers/pnp/pnpbios/core.c           |  2 +-
+ drivers/video/fbdev/uvesafb.c        |  1 +
+ fs/coredump.c                        |  2 +-
+ fs/nfs/cache_lib.c                   |  2 +-
+ fs/nfsd/nfs4layouts.c                |  2 +-
+ fs/nfsd/nfs4recover.c                |  1 +
+ fs/ocfs2/stackglue.c                 |  1 +
+ include/linux/kmod.h                 | 12 ++----------
+ kernel/cgroup/cgroup-v1.c            |  2 +-
+ kernel/module/kmod.c                 |  1 +
+ kernel/power/process.c               |  2 +-
+ kernel/reboot.c                      |  2 +-
+ kernel/time/jiffies.c                |  1 +
+ kernel/umh.c                         |  2 +-
+ lib/kobject_uevent.c                 |  2 +-
+ net/bridge/br_stp_if.c               |  2 +-
+ security/keys/request_key.c          |  2 +-
+ security/tomoyo/common.h             |  2 +-
+ 22 files changed, 23 insertions(+), 23 deletions(-)
+---
+base-commit: df2908090cda368b01ff43709f51890076c56157
+change-id: 20260816-module-include-kmod-14d1a0e19462
