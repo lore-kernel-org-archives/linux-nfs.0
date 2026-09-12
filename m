@@ -1,126 +1,133 @@
-Received: from mail-pl1-f177.google.com (mail-pl1-f177.google.com [209.85.214.177])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B8F29374A12
-	for <linux-nfs@vger.kernel.org>; Sat, 12 Sep 2026 13:56:28 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.177
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D66182FD67D
+	for <linux-nfs@vger.kernel.org>; Sat, 12 Sep 2026 14:32:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789221390; cv=none; b=nWkz2tM5vgPImBEBV+OKMO4RXi6ulN9HpoDByG5eYVpfFjdgAy6/r8GsvU38IDXWZeJthEDcr2iIu9eC3lPKzl08aFH40uUHO5172PpZjNVLy/r7Sxwa9A+ylXYX2+roX2Gr1buW5rbKpSbG1ntoWUDQOpQqPjb3w0ykrL8tmd0=
+	t=1789223536; cv=none; b=SuxSp0eK+u4AOjkiFQ6sVUB3ZbWINRSGiZLZgVnNYDaARsM1LWKKGk6QBV++pseQAFPazQgs3uL0tMnCji1EvT4E96l1XeBUusxmlbjEn+tdcJY/dTA0+EJIi7JUXYTBdTi9YPbCOoAdFMi9vVKhUpMiTZqj1ny3jtdzsfMttlk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789221390; c=relaxed/simple;
-	bh=r4qr1atOhqzJgVEOo1uT7xsHaD3qDrrY/KwK5TvOYyk=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=LOjDQNhLuu2LYLbYMUbzSgsy1Z/7xZiCZwg39BJZ7vzrI+7vaTAwGKwz7wJvjMouhkakwArO8z/LqKOZ5e9dz6LCWx12B6alqhg7BStUeLQ8ObjQlBrfAPTUfoxIItJEuSsxgQ+7D4MUBXxh+hrHs0iSuBgCPmZzxxj3X3KpgWE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=nebusec.ai; spf=pass smtp.mailfrom=nebusec.ai; dkim=pass (2048-bit key) header.d=nebusec.ai header.i=@nebusec.ai header.b=kOcOcjPx; arc=none smtp.client-ip=209.85.214.177
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=nebusec.ai
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nebusec.ai
+	s=arc-20240116; t=1789223536; c=relaxed/simple;
+	bh=D1xVcOyFbnJt+kPfw69TJZZSpZW+Lrht9+VuWgQGaeA=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=WGjAk52pi44LijQU655zv+Ho5/iEQctIdipD6jMlsGk+DhzM8fxQFt9Xbqq0rKoinJTO1Wa/zbV1aPiHxuun6sSXBevkDSQULiPDddAploUn81Hnc6mJKKH8QxHcJ3R+m8S57nb+bUEOmWhfjfWw+4OokE+3jEKd4dkO846TI3M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=EDu5iGbq; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=DMPiQ6CM; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=nebusec.ai header.i=@nebusec.ai header.b="kOcOcjPx"
-Received: by mail-pl1-f177.google.com with SMTP id d9443c01a7336-2db858d60e0so17797885ad.0
-        for <linux-nfs@vger.kernel.org>; Sat, 12 Sep 2026 06:56:28 -0700 (PDT)
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="EDu5iGbq";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="DMPiQ6CM"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1789223533;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=gvk5L2v5+pHUzFfM6MFbGKcQ1T6ijEfFhnUw0e5ucZ0=;
+	b=EDu5iGbqctW28G9QDRc55xGsWGMAvbHdf3kpqBmayYhWsTFXxSEAfm3BPgpKNH3UKCcaCW
+	No1YVwrL79gox/jduMOynuf1xIJqsqTcEjDQgaYyjIIc8KxyQF07PGVXsOOjy4fHsFqhsz
+	HtkbB7+k5ZqhfZn3ppOdSTviUs2iul0=
+Received: from mail-qt1-f200.google.com (mail-qt1-f200.google.com
+ [209.85.160.200]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-678-8PoEnIe0PGiAIUWHdOoqUw-1; Sat, 12 Sep 2026 10:32:12 -0400
+X-MC-Unique: 8PoEnIe0PGiAIUWHdOoqUw-1
+X-Mimecast-MFC-AGG-ID: 8PoEnIe0PGiAIUWHdOoqUw_1789223532
+Received: by mail-qt1-f200.google.com with SMTP id d75a77b69052e-530d86d40abso29444391cf.1
+        for <linux-nfs@vger.kernel.org>; Sat, 12 Sep 2026 07:32:12 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=nebusec.ai; s=google; t=1789221388; x=1789826188; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=z8PisNlwgdN5z8oDrbfsU7/ISYrUrPGO/VaKKGw0ObA=;
-        b=kOcOcjPx/ZeLEKNNSDRVp6GB7/jn9JbSi9KSqVRbeHVUtwc1s/ir/T2rYngf3iXpYK
-         X1OAR1vct2zntnVmdP9ojVX/Liuast9YncwylLiyx6+5RzOl1zdMZjlx+cLbYHjKSQCg
-         +y4MtXBKoCUuCQMy7eiL7vnQuIQbVngYkfWHSiRirv6J/RvFvRudc5NFxdP58xMUoco+
-         Sbajo/SdKX0nYUX4ntCH8g85A9+CTi90CdYCQbGRj3hHpB25ua9OUPaJA6dxhQ9A0C27
-         g1MMGcrqtCwgETbxgmXw6F5LDsT3RG73Obg1keQuih57K8L9RWXHUGaYYOi6ScLRfZcq
-         FM2w==
+        d=redhat.com; s=google; t=1789223532; x=1789828332; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=gvk5L2v5+pHUzFfM6MFbGKcQ1T6ijEfFhnUw0e5ucZ0=;
+        b=DMPiQ6CMOrdrZLPci+NOPiTOSmWpeDcb8s8cOM6VeM2fWMwkvFx9oUqM025E+dVzJW
+         3LXlOSobexry8aJJ750Z/5LfKctHU9uzSkbLBmw/GVXBzaO6i+4BDJBEiZagesR72hhE
+         +HSClZXYB3yqvJ8fgKkVDNwhZcSd7TU3NGxYxdvBRma3BOx3BJOojWlJ8cqf0K6MEVAv
+         WWYQwx9M6/wZOfgYW+Ve3SRLuiUAInbzqamxmyzOxP+kb+Ip3CJ1UwoiczDn5jQM1geG
+         gnY2MiYSUT/669ZUgQ7F5/uFzg1KWuKir3vtSy+gTNjLX0RMrk66bil34F2sCScqBKKJ
+         wSOw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1789221388; x=1789826188;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=z8PisNlwgdN5z8oDrbfsU7/ISYrUrPGO/VaKKGw0ObA=;
-        b=GKz+t13Zjj8G90zde4zy2Lb6l+HJF7Ops3BrYLFQDTxhCrBn2Y6U/DCMCLtn5FSl1N
-         11tiXWEQporO79skTKNMzvHB1+dpDUyj16yrQO3RW3bw8ufwG8rlkty/4QkQM6K261Eq
-         3CGH34vT0WaSNIwzznIBpnRfUFXiE6Sc+Rsg7PbLaG8bWAIe/Tot+Nx3IMtCzAb80HOE
-         uiWOdTxP4NVbbujG2bbvYTA1rg49lBdBtrFLHGsEHi6YzogFeZA0PQ3G9iNK68WO4j4d
-         QzdQXt0ktSO4WCnOIr/d6cpJ5hnAE9wKrqJZbXafS50M9I82zrQNs5A9QBdv2PrT35mp
-         4oXQ==
-X-Gm-Message-State: AFuF++kHd6QpH+FQGt9MHsdB9mRFmWs3ag+7tnI/kwfw0bbEA/DSw7rd
-	Fbz9OmRQe4W7RD787YCgMCko5+jJ4aaHzfPPHtgPcs7r5fDRW2thJcXH56FcrTPDEW+Tp82SPbY
-	qnwYgrOa0X0k=
-X-Gm-Gg: AYBFou2HkIXL2bhlFtmH6cYvSz5vDEzBRnZxtbPX2TNqKQTVHcDXVLNNQoFZaP07N9B
-	89RbgXxMdCfvmkyTbHrusU5/WJEORDmXAQtyNrbKYrPcPm0gA/AC9B1ufYDM7e2UonJpVBvwfkQ
-	Vr12JNBsYn2CrbWzHegBMvLoI6Q3ejprukrT9VRwkf/HVRzHrHbZX10m5IXDOPVyFVpePp525Ns
-	xDFx4xrJ31I9d9z84kPNU8GqDpEaUQBBHHjQdx6rMRANRU7fnwVB29V237IdRD6yiGVTTbvcy8/
-	IbmUQSbHl62yNDk/i65+JlvV2BKK69yyGHJbTk5Q7E0/uCZlyejkIiudvw2V6NVPhX/dreMVopY
-	PTCRxpKdwg2IPVAYkSn0JjjsF8eMAKDYTrow8jbQYmLhIrQ+KUJsmTU5sQr4e7+EDWxTUuOFk7z
-	3naR8hQrLiIvg15oOE0kIqPds8qWuUELV6bPqQf/TF0V3UybJ1/iDVNUMp5LAMTMtoenQQ77qhl
-	AWZiNo=
-X-Received: by 2002:a17:903:178e:b0:2cf:b68a:340 with SMTP id d9443c01a7336-2dd2a336572mr174031925ad.10.1789221388042;
-        Sat, 12 Sep 2026 06:56:28 -0700 (PDT)
-Received: from Roxy.sysu.edu.cn ([2602:feda:30:ae86:295:dff:fe84:68f4])
-        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-33ba4f1e434sm13947833eec.22.2026.09.12.06.56.23
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 12 Sep 2026 06:56:27 -0700 (PDT)
-From: Zhiling Zou <zhilinz@nebusec.ai>
-To: linux-nfs@vger.kernel.org,
-	netdev@vger.kernel.org
-Cc: trondmy@kernel.org,
-	anna@kernel.org,
-	cel@kernel.org,
-	jlayton@kernel.org,
-	neil@brown.name,
-	okorniev@redhat.com,
-	Dai.Ngo@oracle.com,
-	tom@talpey.com,
-	davem@davemloft.net,
-	edumazet@google.com,
-	pabeni@redhat.com,
-	horms@kernel.org,
-	vega@nebusec.ai,
-	zhilinz@nebusec.ai
-Subject: [PATCH net 1/1] SUNRPC: hold a reference while tracing accepted transports
-Date: Sat, 12 Sep 2026 21:56:09 +0800
-Message-ID: <d15495bff2247e3f9d4f9ef36df8e246a3898380.1789220778.git.zhilinz@nebusec.ai>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <cover.1789220778.git.zhilinz@nebusec.ai>
-References: <cover.1789220778.git.zhilinz@nebusec.ai>
+        d=1e100.net; s=20251104; t=1789223532; x=1789828332;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=gvk5L2v5+pHUzFfM6MFbGKcQ1T6ijEfFhnUw0e5ucZ0=;
+        b=oTYhDGghC2TwGz164+o6mhXJOU9RSXoLjdHAQ3QGXngHUWgdQqPhBPOP7FFRTlpacR
+         10B6e+HAZAY21pKqfCl3SeWXB0H4iefOMpIJ96Ts4+3ma5eSyRb4S06csZv+YZXmhL7a
+         gmZGqlEE/0cmTK8X0ED5OoekQeTUCdxzkXdDooxDNMy+SbRIFtA12i4rKlQ17a8kzvFb
+         DQpS9DGwq07cdpkd4GJij8MPWSn9pzR4R37lA6st7xVjQxjdXUc7EZtdVjUGEBt2fySy
+         nHfQUiuejFaQr+JvFkAWnVsC7ExXzGjnbaY72dK98nxV1RQjjWSbOv3L/rGlDd5SSylI
+         uRlQ==
+X-Gm-Message-State: AFuF++maZt3tkrZ02A0FrdgK1Dy15fp7XPFMGkBNEVaRUpYl6MO933F/
+	o3gTuLqU7GlH3xc2SMXivQlI0ab7BR7MHQyYuj0+9ItPPvtIqRAKjbCrnXDrmIDS0Wp30c3z0bn
+	kvX2BOtpz6PTyQWn9fuLqM5UQ0rQ334EvTLlQrbcvZNNNDTjlHGU3BIfPN/IP/w==
+X-Gm-Gg: AYBFou0Sn+wtCY4vKOooyuk1Ilv9RMFW9jD1QP5isc6xovO6G7Y0AzRdgT9Q/aG9E0m
+	F+KQIbmEJUP/u+SI9yeVCmbgabcZSaY9RMStmapBCz7O5VbkpiZQUxGKMvq42jkk0Cl5h0hvocE
+	2IhFourHVIi+jlrdYN+hTFoBFj6BZP0V8Mw1CXr1qshiJ4SA9Nr8Urg5YxwLEZNE+BCA0KUhYqR
+	nZwJ50AdJ1Kji9TVel1rivdhagqNZ3uBQ/WYq/qDEzr+53skPv+WeLcGXShFZf7WUTUzLVh7yip
+	rg6RNcmiWWRv5X+6Yj0TQAsuD9kRO7ozh9y5tc4zqcF3OuKz1CyQozootYPB+WKkQ+LDZpdt5Us
+	=
+X-Received: by 2002:a05:622a:420a:b0:517:5b2c:6aae with SMTP id d75a77b69052e-530c851081bmr163051851cf.13.1789223531590;
+        Sat, 12 Sep 2026 07:32:11 -0700 (PDT)
+X-Received: by 2002:a05:622a:420a:b0:517:5b2c:6aae with SMTP id d75a77b69052e-530c851081bmr163051071cf.13.1789223531162;
+        Sat, 12 Sep 2026 07:32:11 -0700 (PDT)
+Received: from [172.31.1.12] ([70.105.244.208])
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-9120f45f1fdsm47566436d6.16.2026.09.12.07.32.08
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sat, 12 Sep 2026 07:32:10 -0700 (PDT)
+Message-ID: <ddf3ee0e-7647-49a0-8f18-e3b8314eeab4@redhat.com>
+Date: Sat, 12 Sep 2026 10:32:06 -0400
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [rpcbind PATCH 0/6] rpcbind: various hardening fixes
+To: Scott Mayhew <smayhew@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+References: <20260903174245.1213147-1-smayhew@redhat.com>
+Content-Language: en-US
+From: Steve Dickson <steved@redhat.com>
+In-Reply-To: <20260903174245.1213147-1-smayhew@redhat.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-svc_handle_xprt() publishes a newly accepted transport before tracing it.
-The publication can make the transport available to another worker, which
-may close and free it before the tracepoint has finished reading it.
 
-Take an extra reference before publication and drop it after the tracepoint
-so the accepted transport remains alive for the tracepoint dereferences.
 
-Fixes: 11bbb0f76e99 ("SUNRPC: Trace a few more generic svc_xprt events")
-Cc: stable@vger.kernel.org
-Reported-by: VEGA <vega@nebusec.ai>
-Assisted-by: LLM
-Signed-off-by: Zhiling Zou <zhilinz@nebusec.ai>
----
- net/sunrpc/svc_xprt.c | 2 ++
- 1 file changed, 2 insertions(+)
+On 9/3/26 1:42 PM, Scott Mayhew wrote:
+> Various hardening fixes for rpcbind.  Many of these are related to
+> CALLIT/BCAST/INDIRECT processing, which in theory should be disabled
+> when --enable-rmtcalls was not passed to the configure script, except
+> currently that only prevents the forwarding port from being created.
+> Patch 3/6 addresses this by completely disabling remote call
+> functionality when --enable-rmtcalls is unset.
+> 
+> Scott Mayhew (6):
+>    rpcbind: only log failures in check_callit() if connection logging is
+>      enabled
+>    rpcbind: bound stats lists in rpcbs_getaddr() and rpcbs_rmtcall()
+>    rpcbind: fully disable remote calls when --enable-rmtcalls is unset
+>    rpcbind: restrict RPCBPROC_GETSTAT to loopback callers
+>    rpcbind: check for null netmask in addrmerge()
+>    rpcbind: only free the forward slot if the reply xid matched the
+>      request xid
+> 
+>   src/pmap_svc.c     |  2 ++
+>   src/rpcb_stat.c    | 37 ++++++++++++++++++++++++++++++++++---
+>   src/rpcb_svc.c     |  2 ++
+>   src/rpcb_svc_4.c   |  2 ++
+>   src/rpcb_svc_com.c | 24 ++++++++++++++++++++----
+>   src/rpcbind.h      |  5 +++++
+>   src/security.c     | 16 +++++++++++-----
+>   src/util.c         |  3 ++-
+>   8 files changed, 78 insertions(+), 13 deletions(-)
+> 
+Committed... (tag: rpcbind-1_2_9-rc3)
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 40040af588fb2..9370401463b6a 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -852,8 +852,10 @@ static void svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
- 		newxpt = xprt->xpt_ops->xpo_accept(xprt);
- 		if (newxpt) {
- 			newxpt->xpt_cred = get_cred(xprt->xpt_cred);
-+			svc_xprt_get(newxpt);
- 			svc_add_new_temp_xprt(serv, newxpt);
- 			trace_svc_xprt_accept(newxpt, serv->sv_name);
-+			svc_xprt_put(newxpt);
- 		} else {
- 			module_put(xprt->xpt_class->xcl_owner);
- 		}
--- 
-2.43.0
+steved.
 
