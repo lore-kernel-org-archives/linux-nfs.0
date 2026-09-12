@@ -1,73 +1,73 @@
-Received: from fhigh-b4-smtp.messagingengine.com (fhigh-b4-smtp.messagingengine.com [202.12.124.155])
+Received: from fhigh-b5-smtp.messagingengine.com (fhigh-b5-smtp.messagingengine.com [202.12.124.156])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 027F71E1024;
-	Sat, 12 Sep 2026 02:59:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.155
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5469933FE0A;
+	Sat, 12 Sep 2026 03:22:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.156
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789181980; cv=none; b=K91raxKRcKlfVoJSQji7/rtuRc8pquraQkRDrol0JJPPCs3feeutUBwESi5tpXUPdsWqvYdFr/jfu1ik2Zkm104Rz6ZvzdbessO5A2mtTbwfrN4FQFfOU3T3vqWFRn+Qrx3qKcrvEg76yMupgv58y1LusnYWrTy5lQujpbUD3S4=
+	t=1789183367; cv=none; b=pv4h9hAxMoe65q84ZAbUWSDCqN4XRY55zhkY71E23xNB9HwCj2W5yXr0sR1wNXd79hDfVMnsjnYqVtrL7FYGAGSMFtQ5a8hIsUFu+/oNc86Smblb1yjOZo2KmZggARugWb+vzxuM0brBx0i/bYqyBTW+FL9PN4Z+diW2ultf60M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789181980; c=relaxed/simple;
-	bh=yIU2CRNgmzJweC9RLYMbDaF7MKPxliyBuuloFxZebMk=;
+	s=arc-20240116; t=1789183367; c=relaxed/simple;
+	bh=rHyj8nq9SdrAr2DUo80gEqH/12gyneM1TuNITgfQrTs=;
 	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=CkROG00NqhjFfiBl5BPkAyYnEJhtyZvOXYCZFSBy2TJ/smd7UsqaBgpll10RFKfEvRxDpstvz5Y5TwtaIPKThB1JANXXlVuDs5x+a5gihJgCgiUJeODZ8hkHFHND1wyc3v7NYU01G+BbofxGiXkSJwjicrMxgYxC6K1fdjczHTI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=gHNIMKYB; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=gwolIUG0; arc=none smtp.client-ip=202.12.124.155
+	 References:Date:Message-id; b=mIWUnAs7aWOP2LgHXRVwc3oYHlsXKcUJPhsdSfPDImaINouYxFHjIENmUgkVQ+QF3RMBO/271OnaSp74Va10uJ5339o0RQOGVmoOCxge3EeiF4Za5Zctt0AROnKBkH0Y9sNAqqDefzpWuaOat7GRCN1midOlM69nlackJuB4LEA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=I9/6UaqO; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=ayFVm+5c; arc=none smtp.client-ip=202.12.124.156
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="gHNIMKYB";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="gwolIUG0"
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailfhigh.stl.internal (Postfix) with ESMTP id 0D0937A0096;
-	Fri, 11 Sep 2026 22:59:37 -0400 (EDT)
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="I9/6UaqO";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="ayFVm+5c"
+Received: from phl-compute-08.internal (phl-compute-08.internal [10.202.2.48])
+	by mailfhigh.stl.internal (Postfix) with ESMTP id 5EFF27A00F8;
+	Fri, 11 Sep 2026 23:22:44 -0400 (EDT)
 Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-02.internal (MEProxy); Fri, 11 Sep 2026 22:59:37 -0400
+  by phl-compute-08.internal (MEProxy); Fri, 11 Sep 2026 23:22:44 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:content-type:date
 	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:reply-to:subject:subject:to:to; s=fm1; t=
-	1789181976; x=1789268376; bh=LHH08Lbxk3CBjSEXN6sXmXPpvve6CmbUsn9
-	fOOpErTE=; b=gHNIMKYBigwtdatUfynE5mV8rHYCiR+bHEKW2yfmLKG6rBSk/h7
-	bjXl8UVR76ddEhQC1SMlugaiy8FSTK5JNXd8d+InwEyYo6C3KzWqJABlsKdqFFXv
-	a+13KTNqJ2iN0JS13c1nkMjaXayUD1ZLVeqNna+NmyJON3dpraNq9nMLAFuqcG3b
-	+r830XYcvvo/SyH3v6Gi7ViWfRkXrjzyV9+J2JYhsm87MzvEbTDGbK9KMIwS5YO8
-	lzfvWJ/lOGFJ+bSskF+NFIEx7H/SPn0csrpnyqodOWtQzQtv2BOAKk3ESm+PQIl3
-	7cd7Hhi13jmDUpH/p1oIUVcR+uB+aLGspcQ==
+	1789183364; x=1789269764; bh=Jvxm21li6FThkcO5YWEXqyyO/3eSjsqM6Kr
+	qScf4LbE=; b=I9/6UaqOsTyZVMRNip2KQma9PpgNBBe53waVm2ujlEOE6e2HC2Z
+	imYEUeuFCd4KDhNOuYzRhcrjG/F+Ph9aALvqy/VKHfrAiOp9UOceCsSeX6L2yfck
+	aTIwnCCxTAgixc9CbftEUYFkniMI97o/Gr95GT6RyEg8VRo7ZLnmNUEe2pbq1IbS
+	N4Lz4pd4V2owOQkTkR/TI1XH42ABd5v20injcoUmlTO11CfTdnS+jXDVZmtUfnvt
+	j6HsqYZqD2VGrVeJwdHLsmzvhOQu2/yp60yHSqJiUPbki6b9YzGldJ18gE9VTY25
+	xO+G0wLlIUNajDHVx/kH0Xlf1Wy4rLikhmQ==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:content-type:date:date:feedback-id:feedback-id
 	:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1789181976; x=
-	1789268376; bh=LHH08Lbxk3CBjSEXN6sXmXPpvve6CmbUsn9fOOpErTE=; b=g
-	wolIUG0Xm7JAI/cWO5vMHlissMPV5/fjT89MvZjD/vWsvar+JZTLzsUelZweU/yL
-	1C+Jtuzltf3l2/h1IQnUntR5s0E7ZXdDqmwTnqc4LEO8+SfkYiu3GEEq/1aGw/pD
-	nJL/ByopOACPfyZIdLG03T2HG7zrMvpJjsYLwEEFHdG9zGakocIMTeFE6UTbV9Oh
-	3YQrU0Wt1Nlqt6EfGcp0cEfZiT6zMNmQg9l56y4+HBwkaAP0gwIX7OPchHcMqkBh
-	cN8h74jzHNNzgaDMryspjpeUsTZ4CvEefJgfnt7BFlelP0V5FcPblxa1OG0LGwur
-	r8Fn8ETVoXdnReKBImA8Q==
-X-ME-Sender: <xms:GMCkahxdmUDIBooS-rR_F2pMK-lsnv2nS2NVaXrD-Mz0wujstPHpxw>
-    <xme:GMCkajjRkWfwAAn0gevUH9uuawQ4UXkhjH3T6246Jy7yLd3AAfiwBx3fofuQRnGTH
-    sWXvudn4pY2wgBX7ojhmheMAUI4Lc3caAcL_V1JA3ZoaeRlKJQi>
-X-ME-Received: <xmr:GMCkatlA8nVcgCSQM8zkmk2Mtbks2oOdqIqb--qkGppB-52IXh3KGobQdQqf6OxVfxVBDd5it-l31ZhKn4CBG1uH4_8PI48>
-X-ME-Proxy-Cause: dmFkZTGxQb0JYXgbUJZqXdXKxGmOez554xmHAImfaYx8EcilyXYGz0JiKw5VrrSFbZM6lJ
-    7PCDMieqkvnLv8rgP6KU9qGTZJi6UmJa8TV3xK76Jzpxm5nWbDeSfdQ4xo5j9AVfHaEEyM
-    tjN/DaxMPj2DxBfIQLHFcRQoRvUPUCgJtaGQxQCE/xJCq0WZLiQGxmbejGoNTLYrruAhNn
-    Zg/6gbvneMRNDsZ1VmxV/bmnPmwcbjArm79smObm2SaURjJscE6wxZZbIjj25T8WkN8AXd
-    LGd7jZFtM9hnf2QtYbmPVAi5jEcvyN4peoV2RctEx//73m1DqurxbhRHDe8DdZFdmMcGcm
-    BowePH0y7Ud90w5+XQDsnLo1mAc+biKFbKUAUnliSccWmhupbW8Vv469obs0rNfeFbGCT/
-    BdwZxwVLnUHLIkE78R4IFdCxGSY9avdPrJQDBRPpOXmonyuVeIQXtqNJGR1AnNBA93Rjaz
-    ZZBr8Ss5Lx615KX4NToGGS3ekfOQFsWEZXGcXzV/Eyjkq3mOTLcBrz2bEybHZpwr50eGmF
-    +NOUDoyNLTHrQdWeqUv5rdGnqd17GgTaMC5b82r2ZE7veZzwjPqjxg1xjA8ai6ObBJzXFi
-    q+Ky2UMwVOM1fQ1W/8uIbP1xuwdpNdiqPhesOV0f1WYopMAMXwnvtyi/pVvg
-X-ME-Proxy: <xmx:GMCkapgAJGOfyHn2JUnaYJriGmF2SUCDu5xZB7K_s3jOFDRaNfgy6Q>
-    <xmx:GMCkah2lsTL4fqVHTqjshGAXDKqwy2xIK_GXbZ2gzpl4aMfG_Ya4dw>
-    <xmx:GMCkaiK7BN8qZbLvLsc7UJ3vYNpNY03NETj8sk4Tv9QTtEiN8fMv_A>
-    <xmx:GMCkahyVVqiIGI2lUVdyEgzDJEfaaazDZ_h1HBV5x3TQz9DGyJ21Fw>
-    <xmx:GMCkag-WbhvbDTyZf89DsA0cjK4iJE-maNmmZprcPGapJpE0ZFqokuQY>
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1789183364; x=
+	1789269764; bh=Jvxm21li6FThkcO5YWEXqyyO/3eSjsqM6KrqScf4LbE=; b=a
+	yFVm+5cCrvRnOM8KSK2pdPLq7peJZPq0vZmEq83q1Cv9vrdHriErv/lSDu7iDfx9
+	4vLCHoyIuGEKQObF7J1aXaDiEm0WtWzdfIGqvNie38oDxQyxs5xsNySeQxBeMlz+
+	o1i62ZdGNVC3rDsz2UeHjMPAtF9lCg8UiL8pIl63vxNEQO3DmzzGC4rvh62HRP0X
+	YyDOOu6h0hstiDSYo0F/AyBiK9phkDtMbLIy8Z975gTvJ6tt68Bh657F8VaF1AGE
+	qPvrE/tR0SOvTIydNPjrh51bnkR1ivRsiclXyp/cjMkgc8GiRtobLRddxI1pALy9
+	FQklsQVugzTVdZO+RJKhA==
+X-ME-Sender: <xms:hMWkaq2WFov-FWp3NNAxTSTairZfIZ9Rg0OFiSdVEi5hAtK0m7F9MA>
+    <xme:hMWkavWZR3DcyhvnUYYDTBo59NMzUYvrp7GTwI2zHB_aA0st24NG2gqJOB5nWYk2U
+    EpgyQQeOSb_aMgO5XH4jXgUwQgj5ANsPihzCVk8eJ1QkC6_jfY>
+X-ME-Received: <xmr:hMWkalKH7nHAKEU-5j6X_K2j9X_X_R_p0VE3uHQyR6qZXn-lBFNl5oTGc04F7yM5mAdAwNyccG9siXTUfcX4OyxR7CHZOI0>
+X-ME-Proxy-Cause: dmFkZTFhrcs22ggi7R9L8CbrlUewdX7Wk0XephWPGw7sKWHxPvm2UjXaKqLMcd/yfhxTGp
+    rKasg2mk9G6xr2uy6ePW3iEjCkbeRxg69FpCj08fvXcFNcRLGR+K5iXS7Ok8M5hRt+Pehc
+    NNt9Sp1TTrrdLj+zoWZXOU6uQuZgHxgtnW9B5ArTgvWyCqytfEUYASZtwcipBDyETB4TiZ
+    jCYQcHEMybYP4D0dnVO8Lsw4ZkrW2IEp3TWGv5eHOW7AbOVt9r9AyciKAhcSDi6ucOKs6u
+    wH4F0lOwu9fhQJTUnabq16Sn4yd5d0BNjQRROweD9KB2LSp0UPDWXB0iU4PQLVRqYAdCgY
+    brE4lFHXDNFU1JeIytY9yLNVTN9xYpKNimvwmQubYRC8rs564wnLBftNiu1fDGeuq8nRMD
+    TzNsGIK8mueCvA+VIltKb65xoU/IrbO554p3vn0o2SxCOx33/qKOzhIUn4xTkNtaVsdf0A
+    6kV+2BY4oKj2gI2qn0tJTLE4pAAVf3u5JfuRGz8MNm1YlDiCuyFGMfw3rseHYAGqhfYgMU
+    uhE3ZN1IkcYWCvOSEx51d8uBrZPMl1SVPUI3rB4NSnx2zWgMDOU3XKToGnRGLCYhnts962
+    1x/BfCFfcVPMeQVEGEbYHKqqSXNGV+gV3pVfhFAZ0QaFOEccS3vH6+Ap8RXQ
+X-ME-Proxy: <xmx:hMWkah24ajoV5JkmzsVIuq2AnslfpTxhohna7wZFlvQrKoRSxUbq3Q>
+    <xmx:hMWkar5GS-mYgptDvM2bvywqvGYGEOxWQHhXehh_G5-vpq4MYce2wQ>
+    <xmx:hMWkaq8yEUQqO_IfbQj5e-g2h-JDrP2nXe7fPQepjFY5ja4jC53gFA>
+    <xmx:hMWkaiUqCl7qUzz5cAh1t_AeDsiJwg-vSQhQkbSonohVkW2DHyjc-A>
+    <xmx:hMWkakg9VAE2VWOT5u0A4KJzin2dSZKeoei7e6nl4SYQ0xvP3b-IDrhl>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Fri,
- 11 Sep 2026 22:59:34 -0400 (EDT)
+ 11 Sep 2026 23:22:41 -0400 (EDT)
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
@@ -81,215 +81,216 @@ To: "Chuck Lever" <cel@kernel.org>
 Cc: "Alexander Viro" <viro@zeniv.linux.org.uk>,
  "Christian Brauner" <brauner@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
  linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/7] vfs: change vfs_lookup_open() to return found dentry
- in path.dentry.
-In-reply-to: <61fedba0-78f4-403f-9f74-0795ccbfaf52@slotpi15m67>
+Subject: Re: [PATCH 5/7] nfsd: switch NFS4 OPEN to use vfs_lookup_open()
+In-reply-to: <e36532d5-e37f-4d71-b83a-c8d19d87811f@slotpi15m67>
 References: <20260910002934.192979-1-neilb@ownmail.net>
-  <20260910002934.192979-5-neilb@ownmail.net>
-  <61fedba0-78f4-403f-9f74-0795ccbfaf52@slotpi15m67>
-Date: Sat, 12 Sep 2026 12:59:30 +1000
-Message-id: <178918197027.207413.88835240014013392@noble.neil.brown.name>
+  <20260910002934.192979-6-neilb@ownmail.net>
+  <e36532d5-e37f-4d71-b83a-c8d19d87811f@slotpi15m67>
+Date: Sat, 12 Sep 2026 13:22:38 +1000
+Message-id: <178918335830.207413.5617836439117097761@noble.neil.brown.name>
 Reply-To: NeilBrown <neil@brown.name>
 
 On Fri, 11 Sep 2026, Chuck Lever wrote:
-> On Thu, 10 Sep 2026, NeilBrown wrote:
+> >     This implementation shares more code with syscall open paths and so u=
+ses
+> >     some filesystem interfaces slightly more correctly.  It also takes the
 >=20
-> > vfs: change vfs_lookup_open() to return found dentry in path.dentry.
+> Which interfaces? The concrete difference I can see is that lookup_open()
+> honors ->atomic_open, which do_lookup_open() never called. Naming that
+> would be clearer than "slightly more correctly".
+
+It is more subtle than that.
+do_lookup_open() calls dentry_create() which calls ->lookup_open().
+But do_lookup_open() calls start_creating() first, which might call
+->lookup.
+
+So a NFSv4 OPEN for name that isn't in cache will (before this change)
+call ->lookup() and if that fails, will call ->atomic_open().
+After this change the ->lookup() will be skipped because it isn't
+needed, ->atomic_open will do the equivalent.
+
+Also the start_creating() in do_lookup_open() doesn't pass LOOKUP_OPEN
+to d_revalidate so that revalidate does more work (I think).
+
+Also do_lookup_open() will always exclusively lock the directory, while
+vfs_lookup_open() will only do that if the name isn't in the dcache
+
+So they are subtle differences, and only slight.  And I might have
+missed some.  Maybe I could summarise them better.  The main point,
+though, is to use the same code path as syscalls.=20
+
+>=20
+>=20
+> >     We need to pass O_NONBLOCK so that that EWOULDBLOCK errors from
+>=20
+> Repeated word: "that that".
+>=20
+>=20
+> >     vfs_lookup_open() always returns -EFTYPE if a non-regular-file was
+> >     found, and provides the dentry in parent.dentry.  We can use
+> >     nfsd_check_obj_is_reg() to turn this into an error.
 > >
-> > The caller - nfsd - needs to know the type of object found when a
-> > non-regular file was found to exist.  This is most easily done
-> > by passing back the dentry.
-> >
-> > So change calling pattern so that the path (now called "path") contains
-> > the parent dentry on entry and the child dentry on exit.
-> > vfs_lookup_open() will dput() the parent and caller must dput() the
-> > child.
-> >
-> > If lookup_open() returns -EFTYPE (from ->atomic_open()) we need to
-> > use d_lookup() to find the dentry.  If ->atomic_open() didn't add a
-> > dentry to the dcache we return %NULL in %path->dentry.
-> >
-> > Signed-off-by: NeilBrown <neil@brown.name>
+> >     As parent.dentry could be NULL, we enhance nfsd_check_obj_is_reg() to
+> >     cope with that.
 >=20
-> "vfs_lookup_open() will dput() the parent and caller must dput() the
-> child."
+> The function is nfsd_check_obj_isreg(), in both places.
 >=20
-> Is that the whole contract? When lookup_noperm_common() or
-> alloc_empty_file() fails, path->dentry still holds the parent on return:
 >=20
-> 	error =3D lookup_noperm_common(last, path->dentry);
-> 	if (error)
-> 		return ERR_PTR(error);
+> >     vfs_lookup_open() will return -EEXIST if required for
+> >     NFS_CREATE_GUARDED4 as O_EXCL is passed in.  Other checks for
+> >     and existing object need only test for nfsd4_create_is_exclusive().
 >=20
-> 	file =3D alloc_empty_file(open_flag, current_cred());
-> 	if (IS_ERR(file))
-> 		return file;
+> s/and existing/an existing/, and the identifier is NFS4_CREATE_GUARDED.
 >=20
-> The parent is replaced only after lookup_open() returns. Could the
-> message say that on success and on -EFTYPE the parent is replaced by
-> the child and its reference dropped, and that on any other error @path
-> is untouched?
+> The -EEXIST claim holds only on the path through the tail of
+> vfs_lookup_open(), where the O_EXCL test runs before the d_is_reg()
+> test. When lookup_open() itself returns -EFTYPE, vfs_lookup_open()
+> returns before either test. See below.
+>=20
+>=20
+> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> > index 3a82af381a8d..0fd5a6411ed3 100644
+> > --- a/fs/nfsd/nfs4proc.c
+> > +++ b/fs/nfsd/nfs4proc.c
+>=20
+> [ ... ]
+>=20
+> > @@ -312,7 +269,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_=
+fh *fhp,
+> >  		.na_iattr	=3D iap,
+> >  		.na_seclabel	=3D &open->op_label,
+> >  	};
+> > -	int oflags =3D O_CREAT | O_LARGEFILE;
+> > +	int oflags =3D O_CREAT | O_LARGEFILE | O_NONBLOCK;
+>=20
+> Nit: do_dentry_open() strips O_CREAT, O_EXCL and O_TRUNC from f_flags
+> and leaves O_NONBLOCK in place, so op_filp now carries O_NONBLOCK into
+> the filecache entry that nfsd_file_acquire_opened() builds from it.
+> Files opened through __nfsd_open() do not. Is that divergence
+> intended?
 
-The "contract" is in the kdoc comment:
-
- * Consequently the caller must be prepared for @path.dentry to be
- * dput(), and it must dput() whatever is in @path.dentry after the
- * call.
-
-plus the statement above that about -EFTYPE.  But I'll improve the
-commit message to match.
-
-
->=20
->=20
-> > --- a/fs/namei.c
-> > +++ b/fs/namei.c
-> > @@ -4606,7 +4606,7 @@ static struct dentry *lookup_open(struct nameidata =
-*nd, struct file *file,
-> >
-> >  /**
-> >   * vfs_lookup_open - open and possibly create a regular file
-> > - * @parent: directory to contain file
-> > + * @path: directory to contain file
->=20
-> Now that @path is in/out, could this say what it holds on return as
-> well? Something like "on entry, the directory to contain the file; on
-> return, the dentry found".
->=20
-> The prototype in include/linux/namei.h still names this parameter
-> "parent".
->=20
-> > @@ -4619,9 +4619,15 @@ static struct dentry *lookup_open(struct nameidata=
- *nd, struct file *file,
-> >   * If the fs object found is not a regular file then -EFTYPE is
-> >   * returned.
-> >   *
-> > + * @path is updated to contain the dentry that was found if possible.
-> > + * In particular, if -EFTYPE is returned, then @path.dentry will be the
-> > + * object that is not a regular file, or %NULL.
-> > + * Consequently the caller must be prepared for @path.dentry to be
-> > + * dput(), an it must dput() whatever is in @path.dentry after the call.
->=20
-> "an it must dput()" -> "and it must dput()".
->=20
-> "if possible" leaves the reader guessing which paths update @path. As
-> above, it is updated on success and on -EFTYPE, and untouched on every
-> other error. Since the caller cannot tell the two cases apart from the
-> return value alone, is that worth stating here?
-
-The current code also may update on -ENOENT and -EEXIST, depending on
-whether the filesystem provided ->atomic_open.  I guess it would be
-cleaner to updated it precisely on success and -EFTYPE.
+No, but it should be harmless.  O_NONBLOCK doesn't affect IO to regular
+files, only the act of opening them.  This new behaviour is the same
+outcome as opening a regular file with O_NONBLOCK from user-space, and
+consistency is good.
 
 >=20
 >=20
-> > @@ -4658,9 +4664,18 @@ struct file *vfs_lookup_open(struct path *parent, =
-struct qstr *last,
-> >  	op.mode =3D mode;
-> >  	dentry =3D lookup_open(&nd, file, &op);
-> >
-> > -	if (IS_ERR(dentry))
-> > +	if (IS_ERR(dentry)) {
-> > +		if (dentry =3D=3D -EFTYPE) {
+> >  	struct dentry *child =3D ERR_PTR(-EINVAL);
+> >  	struct path parent =3D {
+> >  		.mnt =3D fhp->fh_export->ex_path.mnt,
+> > @@ -424,28 +381,29 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct sv=
+c_fh *fhp,
+> >  		/* Might still succeed if no create is needed */
+> >  		oflags &=3D ~O_CREAT;
+> > =20
+> > -	open->op_filp =3D do_lookup_open(&parent,
+> > -				       &QSTR_LEN(open->op_fname,
+> > -						 open->op_fnamelen),
+> > -				       oflags,
+> > -				       open->op_iattr.ia_mode);
+> > +	dget(parent.dentry);
+> > +	open->op_filp =3D vfs_lookup_open(&parent,
+> > +					&QSTR_LEN(open->op_fname,
+> > +						  open->op_fnamelen),
+> > +					oflags,
+> > +					open->op_iattr.ia_mode & S_IALLUGO);
 >=20
-> dentry is a struct dentry * and -EFTYPE is an int. Both compilers warn:
->=20
-> warning: comparison between pointer and integer ('struct dentry *' and
-> 'int') [-Wpointer-integer-compare]
->=20
-> and with CONFIG_WERROR (the default for COMPILE_TEST builds) fs/namei.c
-> no longer compiles. It evaluates as intended only because the int is
-> converted to a pointer with the same bits as ERR_PTR(-EFTYPE). Should
-> this be:
+> Nit: after this call "parent.dentry" is the child (or NULL), while a
+> few lines up IS_POSIXACL(d_inode(parent.dentry)) reads the same
+> expression as the parent directory. The VFS patch renamed its parameter
+> to @path for this reason. Would renaming the local here avoid the same
+> trap?
 
-I didn't know about CONFIG_WERROR ... I've enabled it for future builds.
-
->=20
-> 		if (PTR_ERR(dentry) =3D=3D -EFTYPE) {
->=20
->=20
-> > +			/* Try to determine what was found */
-> > +			struct dentry *child =3D d_lookup(path->dentry, &nd.last);
-> > +			dput(path->dentry);
-> > +			path->dentry =3D child;
-> > +			WARN_ON_ONCE(child && d_is_reg(child));
->=20
-> lookup_open() drops the parent's inode lock before returning, so this
-> d_lookup() runs unlocked. Between ->atomic_open() rejecting a
-> non-regular object and this lookup, another task can unlink it and
-> create a regular file with the same name. d_lookup() can also return a
-> hashed negative dentry.
->=20
-> Either way @path.dentry is then neither "the object that is not a
-> regular file" nor NULL, and the WARN fires on a race that ordinary
-> concurrent activity (remote, over nfsd) can drive. Could this store
-> NULL when the child is negative or regular, and drop the WARN, so the
-> documented contract always holds?
-
-Yes, it could race, couldn't it.  Doing that lookup in atomic_open()
-in the locked region might be possible, but I don't think it would be a
-good idea.
-
-I wonder if I could drop __O_REGULAR and just check the dentry returned...
+Probably sensible - yes.
 
 >=20
-> Does this recovery find anything for most ->atomic_open()
-> implementations? lookup_open() only reaches ->atomic_open() with a
-> negative or in-lookup dentry, and atomic_open() dputs it on error, so
-> what d_lookup() sees is whatever the filesystem hashed before failing.
+>=20
+> >  	if (IS_ERR(open->op_filp)) {
+> >  		int hosterr =3D PTR_ERR(open->op_filp);
+> > =20
+> > -		if (open->op_createmode !=3D NFS4_CREATE_UNCHECKED) {
+> > -			switch (hosterr) {
+> > -			case -EISDIR:
+> > -			case -ELOOP:
+> > -			case -EFTYPE:
+> > +		if (hosterr =3D=3D -EFTYPE) {
+> > +			if (nfsd4_create_is_exclusive(open->op_createmode))
+> >  				hosterr =3D -EEXIST;
+> > -			}
+> > +			else
+> > +				hosterr =3D nfsd_check_obj_isreg(parent.dentry);
+> >  		}
+>=20
+> Does this drop the NFS4ERR_EXIST mapping for GUARDED4?
 
-Hmmm...
-I think that if cephfs return -EFTYPE then there will be a dentry in the
-dcache.  In other cases there wan't.
-As if we don't pass __O_REGULAR to ceph it will happily open whatever
-it finds - device or pipe or whatever.  So that isn't good.
+GUARDED4 causes O_EXCL to be set so we never get -EFTYPE, only -EEXIST.
 
 >=20
-> The NFS client d_drop()s the dentry before returning -EFTYPE:
+> The old test covered GUARDED as well as the two EXCLUSIVE modes.
+> nfsd4_create_is_exclusive() covers only EXCLUSIVE4 and EXCLUSIVE4_1, so
+> a GUARDED open that finds a non-regular object now takes the else arm
+> and returns NFS4ERR_ISDIR, NFS4ERR_WRONG_TYPE, and so on. RFC 8881
+> section 18.16.3 says a GUARDED4 duplicate is NFS4ERR_EXIST.
 >=20
-> fs/nfs/dir.c:nfs_atomic_open() {
-> 	...
-> 		d_drop(dentry);
-> 		switch (err) {
-> 		...
-> 		case -EISDIR:
-> 		case -ENOTDIR:
-> 			if (open_flags & __O_REGULAR) {
-> 				err =3D -EFTYPE;
-> 				break;
-> 			}
+> Keeping "open->op_createmode !=3D NFS4_CREATE_UNCHECKED" here would
+> restore the old mapping without depending on the ordering of checks
+> inside each filesystem's ->atomic_open.
+
+I would argue that returned -EFTYPE when O_EXCL was given is not just an
+ordering issue, it is an error.
+
+Maybe defensive programming is more sensible - but I didn't like the
+noise of testing multiple cases...
+
 >=20
-> gfs2 and cifs return -EFTYPE before instantiating anything. Only ceph
-> checks d_is_reg() on a dentry it has already spliced. So on gfs2, cifs
-> and a re-exported NFS mount, path->dentry is always NULL here, and the
-> caller cannot distinguish a directory from a symlink. That might not
-> be acceptable for what nfsd needs. The found type needs to come
-> back from ->atomic_open() itself, probably.
+> Separately, can this arm return nfs_ok? nfsd_check_obj_isreg() returns
+> 0 for a regular file, and vfs_lookup_open() can leave a regular file in
+> parent.dentry when the d_lookup() it does after an -EFTYPE races with a
+> rename (the VFS marks that case with a WARN_ON_ONCE rather than
+> excluding it). nfserrno(0) is nfs_ok, op_filp is then set to NULL, and
+> nfsd4_create_file() returns success with resfhp never composed. It only
+> fails safely today because do_open_lookup() then calls
+> nfsd_check_obj_isreg() on the NULL fh_dentry. Something like
+>=20
+> 		if (!hosterr)
+> 			hosterr =3D -EFTYPE;
+>=20
+> would address that.
+>=20
+>=20
+> >  		status =3D nfserrno(hosterr);
+> >  		open->op_filp =3D NULL;
+> >  		if (status =3D=3D nfserr_noent && create_status)
+> >  			status =3D create_status;
+> > +		dput(parent.dentry);
+> >  		goto out;
+> >  	}
+> > +	dput(parent.dentry);
+> > =20
+> >  	child =3D open->op_filp->f_path.dentry;
+> >  	open->op_created =3D open->op_filp->f_mode & FMODE_CREATED;
+> > @@ -462,7 +420,9 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_=
+fh *fhp,
+> >  		open->op_created =3D true;
+> > =20
+> >  	if (!open->op_created) {
+> > -		if (open->op_createmode =3D=3D NFS4_CREATE_UNCHECKED) {
+> > +		if (nfsd4_create_is_exclusive(open->op_createmode)) {
+> > +			status =3D nfserr_exist;
+> > +		} else {
+>=20
+> Same question here. GUARDED used to get nfserr_exist from this branch
+> and now gets the "no change happened" arm. It is unreachable for GUARDED
+> today only because vfs_lookup_open() returns -EEXIST whenever O_EXCL is
+> set and nothing was created. Should this also stay as
+> "!=3D NFS4_CREATE_UNCHECKED" so the protocol rule is enforced here rather
+> than relying on that ordering?
 
-gfs2_atomic_open() does a lookup which will return whatever is found.
-Then it call gfs2_create_inode() which gets an exclusive lock on the
-directory and repeats the lookup - the second time it checks __O_REGULAR
-as you say, before instantiating anything.
-
-Maybe I should start by tidying up the __O_REGULAR handling.
-I think the inode, if available, should always be instantiated, and
-non-regular files should always go to finish_no_open() - finish_open()
-should only be called on regular files and (maybe) directories.
-VFS code should be responsible for __O_REGULAR handling.
-
-I agree that getting the found type back, when possible, would be an
-improvement.  I don't know how best to do it...
-We *could* get NFSv4 to make a bad inode (make_bad_inode()?), set the
-type, unhash the dentry and attach the inode, and pass that to
-finish_no_open().   It would be ugly.
-
-And I wonder if it is important at all.  Linux NFS client doesn't seem
-to handle there error from OPEN at all - except maybe in
-flexfilelayout.c.
+I'll think more on this...
 
 Thanks,
 NeilBrown
-
 
 
 >=20
