@@ -1,110 +1,123 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 681974BEE5E
-	for <linux-nfs@vger.kernel.org>; Sat, 12 Sep 2026 15:31:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB399309F08;
+	Sat, 12 Sep 2026 15:50:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789227116; cv=none; b=Hp7N9HEik0AwRxnwKqsHfTIt+atoZNwcTbBdA7d427DS5o5BZPUNA5v3lHGlmIYADDpbL2d5eeZkxnKPshhRwejMwJARRrilhgVyEzP5zs9Z0AQgh7KHdhoWYjfIzywcgFhOsCSvO2IBcHepWbCYka706/U8B26aYtmXLbWuHAY=
+	t=1789228211; cv=none; b=sftykAY9VGIIEg2ljpx5nETcRrbqXyeMUUZCEFFKrrOkMhQ2R63PX68jB3yOnP6P0K9ida4+mVNAv8U+6EIdvr5esX3w5U52mg7LdY2BzD4FAqmFAj5NN2lrP2lyrdNGu6vHLVDUmDmohPO42GiaiLl8cWNpXIt2Y99qMPltmHY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789227116; c=relaxed/simple;
-	bh=waDtqor00ivUS/FUxM9do2EXFOYSH+ErmqzWsplr6yI=;
-	h=Message-ID:Date:MIME-Version:From:Subject:To:Cc:Content-Type; b=Hd9qu+ADm2ER6mx4ZKqbR4aPcPB6wWfbAfWOSVv9AC5ciM6phlE2hUR5nyxAVJYCOk4GtU7JUYA3vQxuNz7HgG03PSskUNe9//M2DBuv2pf6SAQjIsFxqd5LoEKXVDBoKKgaGHILbZensJnu34lrmgiW2qqwBYPMMxTScg0I2kw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=KyOWOu0h; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=ZGlnlEjs; arc=none smtp.client-ip=170.10.133.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	s=arc-20240116; t=1789228211; c=relaxed/simple;
+	bh=SqX45cSexAwma2sfoPrWq11l59nyG2V0B5+reMu3PpI=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=GpVCqIthr6/E6EYO3YP3OCS7hoOjCBWTLS8tGOouAT2mtLhe8QgRgqRODMxV3v3T3PPIvL53hObRZ2u8Ikp95Q6910DYIOBWQvDW+z+3LinV/KmKMKBEx1svljv51ytW21DRigHpkw9TRSJS+/T/quRHwOsu837rD6AhxOzuzjU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZHy6FG+0; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="KyOWOu0h";
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="ZGlnlEjs"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1789227114;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=tZHZIr8nt1xjTkUQonIeH2+sNdcuc3AFD+c39WFtFCs=;
-	b=KyOWOu0homSXUAF2i/IYETql43fy46qQghDElpT6WMM9AMkTdZwPjRSdmpKNl9Mbxw2VFg
-	vC3xUYQmfMK+BIirsrYB379UIaPzHQjGA4cwCFnxZu/7GviydLa+1x2rnonB+z6KzlNjX4
-	t7sA1HCkAHlyicHFWJFUplsU5Cxi1XU=
-Received: from mail-oa1-f70.google.com (mail-oa1-f70.google.com
- [209.85.160.70]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-354-7ywj8mgwOs6g2F4gs_F0Wg-1; Sat, 12 Sep 2026 11:31:52 -0400
-X-MC-Unique: 7ywj8mgwOs6g2F4gs_F0Wg-1
-X-Mimecast-MFC-AGG-ID: 7ywj8mgwOs6g2F4gs_F0Wg_1789227112
-Received: by mail-oa1-f70.google.com with SMTP id 586e51a60fabf-456ab1a7f2cso2745540fac.3
-        for <linux-nfs@vger.kernel.org>; Sat, 12 Sep 2026 08:31:52 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1789227112; x=1789831912; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:content-language:cc:to
-         :subject:from:user-agent:mime-version:date:message-id:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=tZHZIr8nt1xjTkUQonIeH2+sNdcuc3AFD+c39WFtFCs=;
-        b=ZGlnlEjsO9rEBSPvXE++VI1AP77uFLVq1pxMup2gHrNDCvnsbidfEYVbqqFLohmPS6
-         U6L3EdXu0b2nm++JCpFqJw36G8fDIUjTG9RwvbNt5LArFIJJKn0oyy4AIAV6oDUnxZm5
-         QxzWzvlWfooLQ10BUeciUGcZXC5cMSGkbnt5yCHctmOtifrjuxNILQaENqnz+YEumnxE
-         w+j0R7LyxcP85UneK0Rst79ihxO1cCZRHkniF9rI5NN/LBV3iiVXEIju41OBD3FlObfe
-         idSjh2R4WLKyqI+B/UY/Lom8+9u1LkZ1tukLMalrAiZTPhA2+FrYrMSFemuBEfQv2//5
-         ztTQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1789227112; x=1789831912;
-        h=content-transfer-encoding:content-type:content-language:cc:to
-         :subject:from:user-agent:mime-version:date:message-id:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=tZHZIr8nt1xjTkUQonIeH2+sNdcuc3AFD+c39WFtFCs=;
-        b=Q9HIK92Im5lz07ZnPIOT1UmzUqmD3bDWrBCLryk49QrdgR1FK3Qf5BalgipGJrNiO1
-         Wi6IV/H5FIf/5VIllrhtTvFCEF99Poo42R8ChnovsZzAqfKDHJxhTldsh3Q9XgasyW+G
-         CCwwAg9uoVTimwS7rpiQw62cbXpCJc5fRXGlfK/Lxez+fN+E6mcN3IT/y/t4axi8sL+9
-         2hDhAKWCerGGJh6TSjcnzh+7xBBm087S0K2IHtcsEt2FQcCTT0xDKfHXTAUqqIrfxM4d
-         RbFuojljeW5X88DGlbMSgzXvZ1THuUjMyDEQBnHhTKwSk+solLKr2/3T3BD6Cm96OAXQ
-         8YnQ==
-X-Gm-Message-State: AFuF++kHVnCh6EBSIRrYon7/PruyR+wrLDtxXgo7gM0zcRoHQh5668XF
-	AC8Alr2I93LdIDiAJFiuf5Ee2xxFQeD2kHNxtxNWPqMbyMyQO4vK9XYUKUBPeKYAk2pNpYhILqh
-	nJHTP193VhK+AJ6HAHS2sZuSmBihjnL6PVmyyo0OxACYGTdTTHe3TNIGOzdDSv+IqAwRt+g==
-X-Gm-Gg: AYBFou3ERVStSd27IKaog7AKElbX+doNun7lF9kLIWb0UuaKG6/FKiRAqpWXDDzanEM
-	mNmPRmMGo8F1ET4JVyVu8QKcFKCcvfRfzGBQbbXb/a4ugfc6gZtQ6Ss+cNpMk+mlgCkTA8Ars/8
-	9ZNgby8HX0hTgoNI2FD2SJfd9KfBC/Y6y5h28nMPQEpHpcXajHbApt6Z0gX/fW559rGeldotgEN
-	ZhZex4ZXtUyLa1ZAqXkL/WOdGK/piyxlFIdXmfNyxY7Ad5lSsqqd0pYlAuFckX7cDbfqH5qTcgO
-	9ccGxCbnkRgjglHXsEDLsVXB+0YHP+hB8XQG0X0B1uijKSg6vc+CW4IjJpG7vBfFEty+xBhh3hQ
-	=
-X-Received: by 2002:a05:6808:4f26:b0:4c2:63b:e5f6 with SMTP id 5614622812f47-4c319d49dd9mr8021002b6e.19.1789227112064;
-        Sat, 12 Sep 2026 08:31:52 -0700 (PDT)
-X-Received: by 2002:a05:6123:45:b0:5c6:64ac:d6f3 with SMTP id 71dfb90a1353d-5c8462832a9mr3225923e0c.3.1789227085060;
-        Sat, 12 Sep 2026 08:31:25 -0700 (PDT)
-Received: from [172.31.1.12] ([70.105.240.165])
-        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-9120f4dd2f2sm49326926d6.44.2026.09.12.08.31.24
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sat, 12 Sep 2026 08:31:24 -0700 (PDT)
-Message-ID: <d99e5b38-262d-49a3-998f-3650e52e5889@redhat.com>
-Date: Sat, 12 Sep 2026 11:31:23 -0400
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZHy6FG+0"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 29A321F00893;
+	Sat, 12 Sep 2026 15:50:10 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789228210;
+	bh=/jXriT0LBtwCGebid8xL0Vq86DNF4IhBfxaOu4ms12I=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=ZHy6FG+0D3RiiTN34quBEaXnPhDsjAWhcGGC4gz4xAQpBtkR8JLcv8MOObe50K0EM
+	 hcwoWhUzKwrdxHrT+GAdpBnMTGvlRMd6tgonKD+0akNqB+uDelwxI6NEunQQK0+KOy
+	 x3oVQWYGAJyT7PlnkD70deRlTr9Y+VppggvuuKzprEMLxendYw3XHDIKCYwNzskQCt
+	 AOiqkIAWMR8cdXu4fiE7BlF+ppcNfuiVpJKGH/fxNTDTNLlfIS5e2C4sv4FeFk2r/R
+	 xTCOcqkZ7YlOzhDIucv8NTwlJyit8a/vdFFBJZayD8CQOOQqcbRaZSyiq3VpT9lOmJ
+	 uKvTadc4prWVw==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 31B7CF40066;
+	Sat, 12 Sep 2026 11:50:09 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Sat, 12 Sep 2026 11:50:09 -0400
+X-ME-Sender: <xms:sXSlag3tcFvmghcP65QibBbGsPDdXf1xkzm7nSaJEdqUJ-b8crBq-w>
+    <xme:sXSlal5wmQ3wrTgJg3HX0QRCETODFUilRjGsi38tsBqfpwJwmaUhMcsfjOFNxYgRH
+    qVbiEeBij7vScFZxH9zHVjjx430QtEVfQvIowYXyqHT_kHhBHmQVyA>
+X-ME-Proxy-Cause: dmFkZTGVwn5kOo/uZq5shYrwT5pZn57c9Il78RFXvR5MxG768BWMf/RLTlbjYvwXrP8YQ/
+    h6GERoCOfwWttJd5YXoYzG9wB18+8l2OESXiJuUEYWP5yyKxmC2RTfebu1tyICZVB+B4uO
+    N5EReYOc7B6A4vAHr0yG8hWP521B0URtKfu9qv/7jf7wbBXr3toPZ05SmlgDPb/1KtJZbe
+    W/1h0AkqQ5nZ+eMNpiEnXfvCQgPZnyy50PY0RvRmPcnUPV0gr/RUSLofw9KlG5LHmPGIbp
+    PT4Do6FnynEUeUy4wcmU0FOHiIphVaR8UUSt6mPy0ltnITNASiGND7hXLJDY2I41GVpoUo
+    fCU8bvYQaPiqDsyLVTJVm+QzUJQTNaUAXxPMzkv8vfgrkj3zeGWZYjAPmTz0iTKG74RMSZ
+    rweK2d94PMf+pkBsH1mzrF2IuVhozxW5GSAkL0p40+DIouR+rFb9nnL4//9Og4K1pXAfcq
+    jMPL9qoatgxEqDxMvYooPUG1YOHcWPyEj3YfRPWjlVrtCFFpyC2cvdWBA42j3exYJNvKgF
+    pDtYLkLQw0b5i/MIxgkCMuuUR4AZ/L+WLNgD3VRSPj3JfMcJt3f0Rf3i/5x+UMceiDphdD
+    hfZPrAKiL0Sqpjc2b/USuAdvz6ZV9aOmard8Oby8hTITNlxuLkf7saWzO54g
+X-ME-Proxy: <xmx:sXSlalFSejhhpqfpF45vdQ6eHaBGGoQD0jXwHb7NuhaGjgG3LjarDQ>
+    <xmx:sXSlaqyIVyT79WKmsSoJWxGuDX8ddmB3gCGQoj4dauZP6R3h2dZDxw>
+    <xmx:sXSlan21pg2xn4juRn15Lrji9TgEGFAHxd4z54K7M8QcUCzcdnkrnQ>
+    <xmx:sXSlaip7EcTNXhmnOjDj9Y6PwU6h6wZfE004m3nZ8EuhdKxeki3Lqw>
+    <xmx:sXSlasVld5rwPWyBdWEphnweQ2FjPf1Ju5Qd97Vkz_biaLKV_vSTHZM7>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 05333780070; Sat, 12 Sep 2026 11:50:09 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-From: Steve Dickson <steved@redhat.com>
-Subject: ANNOUNCE: rpcbind-1.3.1 released.
-To: libtirpc <libtirpc-devel@lists.sourceforge.net>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Content-Language: en-US
-Content-Type: text/plain; charset=UTF-8; format=flowed
+X-ThreadId: AgpFG2YqzZmg
+Date: Sat, 12 Sep 2026 11:49:44 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: tmenninger@purestorage.com
+Cc: "Trond Myklebust" <trondmy@kernel.org>,
+ "Anna Schumaker" <anna@kernel.org>, "Tejun Heo" <tj@kernel.org>,
+ "Lai Jiangshan" <jiangshanlai@gmail.com>, linux-nfs@vger.kernel.org,
+ linux-kernel@vger.kernel.org, "Eric Badger" <ebadger@everpuredata.com>,
+ "Jon Curley" <jcurley@everpuredata.com>
+Message-Id: <e18e121c-5c05-4caa-96ea-e0886594ee07@slotpi15m67>
+In-Reply-To: <20260912145926.208269-1-tmenninger@purestorage.com>
+References: <48e8b6c6-dc62-4630-b7c9-19cdcc5cbf11@slotpi15m67>
+ <20260912145926.208269-1-tmenninger@purestorage.com>
+Subject: Re: [PATCH RFC 6/8] SUNRPC: Reduce rpciod workqueue contention
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
-This release contains:
-     - Full tuning off remote calls when --enable-rmtcalls is not set
-     - Restrict RPCBPROC_GETSTAT to loopback callers
-     - A couple buffer overflow fixes.
+On Sat, 12 Sep 2026, Tim Menninger wrote:
+> 10-second deltas:
+>
+>     free_fastpath:    +49,161,373
+>     free_slowpath:    +70,391,872
+>     sheaf_flush:       +1,582,440
+>     barn_put:            +673,877
+>     barn_put_fail:        +26,374
+>     barn_get:            +673,860
+>     barn_get_fail:     +1,199,576
+>     alloc_slowpath:             0
 
-Both the tarball and change log can be found at
-   http://sourceforge.net/projects/rpcbind
+Thanks. No worries on the delayed response, IMO there is something
+here worth digging out.
 
-The git tree was moved to:
-    git://linux-nfs.org/~steved/rpcbind.git
+Your results confirm the barn-limit theory was wrong. The frees are
+bypassing the sheaves.
 
-Please send comments/bugs to linux-nfs@vger.kernel.org and/or
-libtirpc-devel@lists.sourceforge.net
+can_free_to_pcs() refuses any object whose slab is on a different
+NUMA node than the freeing CPU. A remote free goes directly to
+__slab_free and never refills a barn. With elbencho unpinned and
+every CQ on node 0, rpciod on node 0 frees every nfs_page object
+that a node 1 thread allocated. That is the 59% slowpath share.
+Node 1's barn stays empty, so its allocators refill from partial
+slabs via __refill_objects_node and get_partial_node_bulk, the
+other two callers under the contended lock. The contention count
+fits as well: __slab_free takes list_lock only on a full-to-partial
+or partial-to-empty transition, and the bulk refills keep slabs
+full.
 
-steved.
+Still unknown is whether this lock bounds throughput or only
+absorbs idle CPU time. __slab_free led the lock profile in both
+placements, and the split placement still ran at 46 GB/s.
 
+To separate the two, keep the all-local CQ placement and pin the
+workload to node 0:
+
+    numactl --cpunodebind=0 --membind=0 elbencho <same args>
+
+Sample the same nfs_page counters and perf lock -l over the same
+10-second window. free_slowpath should drop toward zero.
+
+
+-- 
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
