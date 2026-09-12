@@ -1,75 +1,75 @@
-Received: from fhigh-a8-smtp.messagingengine.com (fhigh-a8-smtp.messagingengine.com [103.168.172.159])
+Received: from fhigh-b4-smtp.messagingengine.com (fhigh-b4-smtp.messagingengine.com [202.12.124.155])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 93330377EC5
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2026 23:20:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.159
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 027F71E1024;
+	Sat, 12 Sep 2026 02:59:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.155
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789168848; cv=none; b=XarJe3GMs0g0J0ZUcaGbNccUUZQHTByTkULLo971PEYEQVeAKJHClJCzrZRuKhu3YXkOPDjvzB0GJmZftUs6c9SNPhEIEMsPW001fI+h5EbFMb1mluoAJ/LTONJVnb77bKYIQLELDX4ZVZbsP1YP2BpBYR3AvKZMj2T2zMXRPfs=
+	t=1789181980; cv=none; b=K91raxKRcKlfVoJSQji7/rtuRc8pquraQkRDrol0JJPPCs3feeutUBwESi5tpXUPdsWqvYdFr/jfu1ik2Zkm104Rz6ZvzdbessO5A2mtTbwfrN4FQFfOU3T3vqWFRn+Qrx3qKcrvEg76yMupgv58y1LusnYWrTy5lQujpbUD3S4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789168848; c=relaxed/simple;
-	bh=85gRERJPlEN4Fp0NSep077tXdIZ4JTDlbw2OQgGtuqc=;
+	s=arc-20240116; t=1789181980; c=relaxed/simple;
+	bh=yIU2CRNgmzJweC9RLYMbDaF7MKPxliyBuuloFxZebMk=;
 	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=nEkL/hegpBAfV6w/R/vsyqfSFaAj7qAasjI/IzKWERvixv8BCRj54OjPJQja0DomX2w3SGDq3XHMq2xuzkMUiYeBQvHp05VeO+cur8z1b7/EJxf0MNd52XFmrXcfATLIc25F26rcDeoTaPQ2rDL/LQVxybeoVVNhuWSJfXUtRaA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=OxCcTwiw; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=xt+5aU1w; arc=none smtp.client-ip=103.168.172.159
+	 References:Date:Message-id; b=CkROG00NqhjFfiBl5BPkAyYnEJhtyZvOXYCZFSBy2TJ/smd7UsqaBgpll10RFKfEvRxDpstvz5Y5TwtaIPKThB1JANXXlVuDs5x+a5gihJgCgiUJeODZ8hkHFHND1wyc3v7NYU01G+BbofxGiXkSJwjicrMxgYxC6K1fdjczHTI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=gHNIMKYB; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=gwolIUG0; arc=none smtp.client-ip=202.12.124.155
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="OxCcTwiw";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="xt+5aU1w"
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="gHNIMKYB";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="gwolIUG0"
 Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailfhigh.phl.internal (Postfix) with ESMTP id 041F41400182;
-	Fri, 11 Sep 2026 19:20:44 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-02.internal (MEProxy); Fri, 11 Sep 2026 19:20:44 -0400
+	by mailfhigh.stl.internal (Postfix) with ESMTP id 0D0937A0096;
+	Fri, 11 Sep 2026 22:59:37 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-02.internal (MEProxy); Fri, 11 Sep 2026 22:59:37 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:content-type:date
 	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:reply-to:subject:subject:to:to; s=fm1; t=
-	1789168844; x=1789255244; bh=OKoJIQy0M+Jl3STOAk9+1WJzRj9VWM9hYmg
-	315gjhvo=; b=OxCcTwiwPz7Ay5YvYe5OzgiagerRYg5fMSEGJOhlGTp8lPqhxXE
-	mAoFfORzIYGqxjwbQ2o6XcxdKKnaEiLZwAkDpl7NYNvRlzYd77NDvtzuyc5WWYn5
-	gLFi58vf2+7uirLm6X/fqi3C3jcuRBSqeqzu5m9UWZ7GiA3xPUQVjXWfRW0ntmJY
-	y3tjOzWoZc3aXAqKNEl228GeNCJp63b99vQ6sW4i9HYdz9o2H3j1D1OCdmExfCur
-	mXLcSudD3K8S5Fja5Y0HQdMeBodCQ38xl7KsZ+IhR7zf3Bj5C/aBzFf+R+ysn5va
-	QCmvxqQBgjk+3K1Hr44on7f2ILo9OJLDtPg==
+	1789181976; x=1789268376; bh=LHH08Lbxk3CBjSEXN6sXmXPpvve6CmbUsn9
+	fOOpErTE=; b=gHNIMKYBigwtdatUfynE5mV8rHYCiR+bHEKW2yfmLKG6rBSk/h7
+	bjXl8UVR76ddEhQC1SMlugaiy8FSTK5JNXd8d+InwEyYo6C3KzWqJABlsKdqFFXv
+	a+13KTNqJ2iN0JS13c1nkMjaXayUD1ZLVeqNna+NmyJON3dpraNq9nMLAFuqcG3b
+	+r830XYcvvo/SyH3v6Gi7ViWfRkXrjzyV9+J2JYhsm87MzvEbTDGbK9KMIwS5YO8
+	lzfvWJ/lOGFJ+bSskF+NFIEx7H/SPn0csrpnyqodOWtQzQtv2BOAKk3ESm+PQIl3
+	7cd7Hhi13jmDUpH/p1oIUVcR+uB+aLGspcQ==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:content-type:date:date:feedback-id:feedback-id
 	:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1789168844; x=
-	1789255244; bh=OKoJIQy0M+Jl3STOAk9+1WJzRj9VWM9hYmg315gjhvo=; b=x
-	t+5aU1wY+eaeBs8JmNtYPhLSfyz/lEsY7XZ8I7dn3U+YKmUoKtSt6PqybzU7G1xs
-	wdqIjpOICVOlUzOT0wdFHLovNDxHHG7aL8dSTObCAnWqDQrHeZVRD2Z7yRZfQqvL
-	i2Mex8/jvwk6LRxGENhfmY44pVqun4Cxy8r5DnVN1oWqd85EeqsTujJoCmg3gIh2
-	Y0Gzs8tbTN/le5HZqoPUyRhlkuY5cYsTEkAKgkUHutDvwoNWl0Yl844cOcZOSkov
-	R9mZzaWL7ilpP8YlSq9nUYgUxizV47n7XRq5Uy7CWKG43NyySAeyoUE2SWE/V1Bp
-	HX1BcbF4ZelgjZ0fG7Zhg==
-X-ME-Sender: <xms:y4ykapeNqfERcOrYLGZtmclaSTL-g_yJKWdAV9cbyfUkHB9EqZ_A-A>
-    <xme:y4ykapf3aLJrVVXJneJTXTpur82Gu6LcY3tgGjmChJ95MYf3we1Rm9WriyVUFKQWx
-    Kn7T4MQqGjDxRsL0EGol6gUhOM7GrPvg-tm7RHLvH08nwalA0Y>
-X-ME-Received: <xmr:y4ykakzxmmFAl9OxEOv28FiPuv6ZfT9CELTYCDnwg1b0miLL3Tam_DsU1YtTeFQO92ATZ9Su2crpCEKkd3J9mma6s8sx7Xk>
-X-ME-Proxy-Cause: dmFkZTFZkAVqykqDYySgAa1y/Ir0DqGT+0QH1jQha6XzvrsRuzHz6EIjHYfYAyxCLT6uP8
-    oa2e93IIiqxGghs1PIgi2Yq1QIQNVogFZyG28XYQfQZEvb+/sY9gNCRl3SRKt4034O5a7e
-    dashHFxPPUR3b/o1Ky2A623kCK7Th9YY/k+b+ph16LcKc28m5Dg3CgC/ox3CdPCfJ2AoL4
-    Lh3CP4nZf5iueeRCsIx2Veb5k9m2K4OgbmuZi/uGpgvCj+YM9Um0771eqHnOQa3deFAT99
-    5ULGBjRW3oRjb3HpscSHJLO6DlP+4keDD0Go6vtcj66RS+aW+wkf1QSAkiEKfLCBzNguXg
-    aIKSQ5ZpMosHbqtW9QE/XYS55ueElvjaN/GIbsPTu/b0pQ4iRs9OsBvw4OaS9hG3n+SSjH
-    btSs4wCUuG07cOy3UIyS6sNY2XeXFib0Aoe2nWhIwGcH5N6rDT320ya3yt/bgLUyl+Ati5
-    IRiqt1vPB3DfIK8+958DBMfikxdSJMgfqnrLA8hfDeyQRSUi5rntIj8uLq3Gq4sbxhMGQX
-    gIIvFWc0aZNPEsKLdSkpAQl0C7YlXF5Rj/oSZ3nXfiofJCIDkWvlf2MRWnKhLfASJ09R8C
-    XuYJalR5zuVJ25h+04hzOh+l0Gme5VXqZ4v4CuyZIooRM0Ge6QCU4jos05Qg
-X-ME-Proxy: <xmx:y4ykao9zgqzliQJpTqcCgwzzLSeUxkMAvhDsDjo_-lhwiU7SAKpJtQ>
-    <xmx:y4ykakiC5niSugZLj2fpcryrfd5h8dV9e1fYeC5p9AoqV5Oj16-gKg>
-    <xmx:y4ykanGI32-cfrxOUnLkBEgfoKsfp9032d2R5wTBc0ZLfVpd8HpLSw>
-    <xmx:y4ykar_5yLA9abeg0FyXFxktXYGzvcCVLykpgxqfcB4rQc8kBNsZhw>
-    <xmx:zIykauqulTPtFFBtxUdklsao0HXBzMLIg93t7k2oYbWmiYJCzviQzkR4>
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1789181976; x=
+	1789268376; bh=LHH08Lbxk3CBjSEXN6sXmXPpvve6CmbUsn9fOOpErTE=; b=g
+	wolIUG0Xm7JAI/cWO5vMHlissMPV5/fjT89MvZjD/vWsvar+JZTLzsUelZweU/yL
+	1C+Jtuzltf3l2/h1IQnUntR5s0E7ZXdDqmwTnqc4LEO8+SfkYiu3GEEq/1aGw/pD
+	nJL/ByopOACPfyZIdLG03T2HG7zrMvpJjsYLwEEFHdG9zGakocIMTeFE6UTbV9Oh
+	3YQrU0Wt1Nlqt6EfGcp0cEfZiT6zMNmQg9l56y4+HBwkaAP0gwIX7OPchHcMqkBh
+	cN8h74jzHNNzgaDMryspjpeUsTZ4CvEefJgfnt7BFlelP0V5FcPblxa1OG0LGwur
+	r8Fn8ETVoXdnReKBImA8Q==
+X-ME-Sender: <xms:GMCkahxdmUDIBooS-rR_F2pMK-lsnv2nS2NVaXrD-Mz0wujstPHpxw>
+    <xme:GMCkajjRkWfwAAn0gevUH9uuawQ4UXkhjH3T6246Jy7yLd3AAfiwBx3fofuQRnGTH
+    sWXvudn4pY2wgBX7ojhmheMAUI4Lc3caAcL_V1JA3ZoaeRlKJQi>
+X-ME-Received: <xmr:GMCkatlA8nVcgCSQM8zkmk2Mtbks2oOdqIqb--qkGppB-52IXh3KGobQdQqf6OxVfxVBDd5it-l31ZhKn4CBG1uH4_8PI48>
+X-ME-Proxy-Cause: dmFkZTGxQb0JYXgbUJZqXdXKxGmOez554xmHAImfaYx8EcilyXYGz0JiKw5VrrSFbZM6lJ
+    7PCDMieqkvnLv8rgP6KU9qGTZJi6UmJa8TV3xK76Jzpxm5nWbDeSfdQ4xo5j9AVfHaEEyM
+    tjN/DaxMPj2DxBfIQLHFcRQoRvUPUCgJtaGQxQCE/xJCq0WZLiQGxmbejGoNTLYrruAhNn
+    Zg/6gbvneMRNDsZ1VmxV/bmnPmwcbjArm79smObm2SaURjJscE6wxZZbIjj25T8WkN8AXd
+    LGd7jZFtM9hnf2QtYbmPVAi5jEcvyN4peoV2RctEx//73m1DqurxbhRHDe8DdZFdmMcGcm
+    BowePH0y7Ud90w5+XQDsnLo1mAc+biKFbKUAUnliSccWmhupbW8Vv469obs0rNfeFbGCT/
+    BdwZxwVLnUHLIkE78R4IFdCxGSY9avdPrJQDBRPpOXmonyuVeIQXtqNJGR1AnNBA93Rjaz
+    ZZBr8Ss5Lx615KX4NToGGS3ekfOQFsWEZXGcXzV/Eyjkq3mOTLcBrz2bEybHZpwr50eGmF
+    +NOUDoyNLTHrQdWeqUv5rdGnqd17GgTaMC5b82r2ZE7veZzwjPqjxg1xjA8ai6ObBJzXFi
+    q+Ky2UMwVOM1fQ1W/8uIbP1xuwdpNdiqPhesOV0f1WYopMAMXwnvtyi/pVvg
+X-ME-Proxy: <xmx:GMCkapgAJGOfyHn2JUnaYJriGmF2SUCDu5xZB7K_s3jOFDRaNfgy6Q>
+    <xmx:GMCkah2lsTL4fqVHTqjshGAXDKqwy2xIK_GXbZ2gzpl4aMfG_Ya4dw>
+    <xmx:GMCkaiK7BN8qZbLvLsc7UJ3vYNpNY03NETj8sk4Tv9QTtEiN8fMv_A>
+    <xmx:GMCkahyVVqiIGI2lUVdyEgzDJEfaaazDZ_h1HBV5x3TQz9DGyJ21Fw>
+    <xmx:GMCkag-WbhvbDTyZf89DsA0cjK4iJE-maNmmZprcPGapJpE0ZFqokuQY>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Fri,
- 11 Sep 2026 19:20:41 -0400 (EDT)
+ 11 Sep 2026 22:59:34 -0400 (EDT)
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -78,83 +78,223 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 From: NeilBrown <neilb@ownmail.net>
 To: "Chuck Lever" <cel@kernel.org>
-Cc: "Jeff Layton" <jlayton@kernel.org>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Rick Macklem" <rmacklem@uoguelph.ca>,
- linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 00/12] Improve the scalability of NFSD's classic DRC
-In-reply-to: <f5e4a7ef-43fb-4209-a2ef-34135c1333cb@slotpi15m67>
-References: <20260910-duplicate-reply-cache-v3-0-31532a4c7449@kernel.org>
-  <178908135551.207413.11072935643340240963@noble.neil.brown.name>
-  <f5e4a7ef-43fb-4209-a2ef-34135c1333cb@slotpi15m67>
-Date: Sat, 12 Sep 2026 09:20:36 +1000
-Message-id: <178916883696.207413.18145968545647470391@noble.neil.brown.name>
+Cc: "Alexander Viro" <viro@zeniv.linux.org.uk>,
+ "Christian Brauner" <brauner@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
+ linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/7] vfs: change vfs_lookup_open() to return found dentry
+ in path.dentry.
+In-reply-to: <61fedba0-78f4-403f-9f74-0795ccbfaf52@slotpi15m67>
+References: <20260910002934.192979-1-neilb@ownmail.net>
+  <20260910002934.192979-5-neilb@ownmail.net>
+  <61fedba0-78f4-403f-9f74-0795ccbfaf52@slotpi15m67>
+Date: Sat, 12 Sep 2026 12:59:30 +1000
+Message-id: <178918197027.207413.88835240014013392@noble.neil.brown.name>
 Reply-To: NeilBrown <neil@brown.name>
 
-On Sat, 12 Sep 2026, Chuck Lever wrote:
-> On Fri, 11 Sep 2026, NeilBrown wrote:
-> > On Thu, 10 Sep 2026, Chuck Lever wrote:
-> > > 1. The transport reports delivery outright where it can. TCP now
-> > >    reports when snd_una passes the reply's sequence number, and RDMA
-> > >    reports on each Send completion.
+On Fri, 11 Sep 2026, Chuck Lever wrote:
+> On Thu, 10 Sep 2026, NeilBrown wrote:
+>=20
+> > vfs: change vfs_lookup_open() to return found dentry in path.dentry.
 > >
-> > As you note in the relevant patch, the TCP ack can arrive before the NFS
-> > client has seen the reply.  But I don't think you drop the cached reply
-> > immediately, so that probably don't matter.
-> 
-> Right. The ACK marks the entry, and the next prune of that bucket
-> evicts it.
-> 
-> 
-> > > 2. Where no report will come, a later request on the same connection
-> > >    stands in as an implied ACK, since a client on a live TCP or RDMA
-> > >    connection does not retransmit within it (RFC 1813 Section 4.5).
+> > The caller - nfsd - needs to know the type of object found when a
+> > non-regular file was found to exist.  This is most easily done
+> > by passing back the dentry.
 > >
-> > I don't follow this.  Why would no report come?  TCP will always send
-> > and ACK.
-> 
-> The cover letter was unclear. TCP always ACKs, but svc_tcp_sendto()
-> does not always track the reply. The per-socket ring is fixed-size,
-> so a burst overflows it. A kTLS send that leaves part of the record
-> unsent is not recorded, and neither is a failed send. Each of those
-> is reported as untracked right away, so the DRC entry has no report
-> to wait for.
+> > So change calling pattern so that the path (now called "path") contains
+> > the parent dentry on entry and the child dentry on exit.
+> > vfs_lookup_open() will dput() the parent and caller must dput() the
+> > child.
+> >
+> > If lookup_open() returns -EFTYPE (from ->atomic_open()) we need to
+> > use d_lookup() to find the dentry.  If ->atomic_open() didn't add a
+> > dentry to the dcache we return %NULL in %path->dentry.
+> >
+> > Signed-off-by: NeilBrown <neil@brown.name>
+>=20
+> "vfs_lookup_open() will dput() the parent and caller must dput() the
+> child."
+>=20
+> Is that the whole contract? When lookup_noperm_common() or
+> alloc_empty_file() fails, path->dentry still holds the parent on return:
+>=20
+> 	error =3D lookup_noperm_common(last, path->dentry);
+> 	if (error)
+> 		return ERR_PTR(error);
+>=20
+> 	file =3D alloc_empty_file(open_flag, current_cred());
+> 	if (IS_ERR(file))
+> 		return file;
+>=20
+> The parent is replaced only after lookup_open() returns. Could the
+> message say that on success and on -EFTYPE the parent is replaced by
+> the child and its reference dropped, and that on any other error @path
+> is untouched?
 
-I don't see the need for the per-socket ring.
-When a reply is sent - record the TCP sequence number in the DRC.
-When pruning the DRC, get the TCP ack number first and compare it
-against sequence numbers.
-Do this often enough that that entries are pruned before the sequence
-wraps past them.
+The "contract" is in the kdoc comment:
 
-kTLS is clearly more subtle but there must be some way record an
-approximate seq number for an incomplete send ..  maybe current seq +
-header-size + queued size ??
+ * Consequently the caller must be prepared for @path.dentry to be
+ * dput(), and it must dput() whatever is in @path.dentry after the
+ * call.
 
-Unsent replies will never get an ack, but presumably the client will
-resend, be answered using the cached reply, and we can then get an ack
-on the new connection.  I think it would be wrong to drop an unsent
-reply before the timeout, unless it gets re-sent and transport-acked
-before then.
+plus the statement above that about -EFTYPE.  But I'll improve the
+commit message to match.
 
-I think the opaque cookie aspect of the design is a mistake.  Everything
-is fully sequenced over a network connection so a sequence number
-(clearly paired with xpt_id) makes more sense...
-Or does RDMA not sequence replies?  If so then it can only ack a single
-reply at a time, not a range of replies.  But that needn't be a barrier.
 
-When a message is transmitted the transport hands a seq-number (and
-xpt_id) to the cache.  When it gets an ack it hands a range of
-seq-numbers to the cache.  For a transport that had out-of-order acks,
-this range would always be of length one (that transport might need a
-private atomic_t to generate the sequence numbers).  For a transport
-that batches acks (like TCP) the range could be much longer.
+>=20
+>=20
+> > --- a/fs/namei.c
+> > +++ b/fs/namei.c
+> > @@ -4606,7 +4606,7 @@ static struct dentry *lookup_open(struct nameidata =
+*nd, struct file *file,
+> >
+> >  /**
+> >   * vfs_lookup_open - open and possibly create a regular file
+> > - * @parent: directory to contain file
+> > + * @path: directory to contain file
+>=20
+> Now that @path is in/out, could this say what it holds on return as
+> well? Something like "on entry, the directory to contain the file; on
+> return, the dentry found".
+>=20
+> The prototype in include/linux/namei.h still names this parameter
+> "parent".
+>=20
+> > @@ -4619,9 +4619,15 @@ static struct dentry *lookup_open(struct nameidata=
+ *nd, struct file *file,
+> >   * If the fs object found is not a regular file then -EFTYPE is
+> >   * returned.
+> >   *
+> > + * @path is updated to contain the dentry that was found if possible.
+> > + * In particular, if -EFTYPE is returned, then @path.dentry will be the
+> > + * object that is not a regular file, or %NULL.
+> > + * Consequently the caller must be prepared for @path.dentry to be
+> > + * dput(), an it must dput() whatever is in @path.dentry after the call.
+>=20
+> "an it must dput()" -> "and it must dput()".
+>=20
+> "if possible" leaves the reader guessing which paths update @path. As
+> above, it is updated on success and on -EFTYPE, and untouched on every
+> other error. Since the caller cannot tell the two cases apart from the
+> return value alone, is that worth stating here?
 
-Also, I wonder if the xpt_id should be 64bit assigned sequentially with no
-xa keeping track of used one.  64bits never wraps.
+The current code also may update on -ENOENT and -EEXIST, depending on
+whether the filesystem provided ->atomic_open.  I guess it would be
+cleaner to updated it precisely on success and -EFTYPE.
 
-I think that with this design the implied ACK would add no value.
+>=20
+>=20
+> > @@ -4658,9 +4664,18 @@ struct file *vfs_lookup_open(struct path *parent, =
+struct qstr *last,
+> >  	op.mode =3D mode;
+> >  	dentry =3D lookup_open(&nd, file, &op);
+> >
+> > -	if (IS_ERR(dentry))
+> > +	if (IS_ERR(dentry)) {
+> > +		if (dentry =3D=3D -EFTYPE) {
+>=20
+> dentry is a struct dentry * and -EFTYPE is an int. Both compilers warn:
+>=20
+> warning: comparison between pointer and integer ('struct dentry *' and
+> 'int') [-Wpointer-integer-compare]
+>=20
+> and with CONFIG_WERROR (the default for COMPILE_TEST builds) fs/namei.c
+> no longer compiles. It evaluates as intended only because the int is
+> converted to a pointer with the same bits as ERR_PTR(-EFTYPE). Should
+> this be:
+
+I didn't know about CONFIG_WERROR ... I've enabled it for future builds.
+
+>=20
+> 		if (PTR_ERR(dentry) =3D=3D -EFTYPE) {
+>=20
+>=20
+> > +			/* Try to determine what was found */
+> > +			struct dentry *child =3D d_lookup(path->dentry, &nd.last);
+> > +			dput(path->dentry);
+> > +			path->dentry =3D child;
+> > +			WARN_ON_ONCE(child && d_is_reg(child));
+>=20
+> lookup_open() drops the parent's inode lock before returning, so this
+> d_lookup() runs unlocked. Between ->atomic_open() rejecting a
+> non-regular object and this lookup, another task can unlink it and
+> create a regular file with the same name. d_lookup() can also return a
+> hashed negative dentry.
+>=20
+> Either way @path.dentry is then neither "the object that is not a
+> regular file" nor NULL, and the WARN fires on a race that ordinary
+> concurrent activity (remote, over nfsd) can drive. Could this store
+> NULL when the child is negative or regular, and drop the WARN, so the
+> documented contract always holds?
+
+Yes, it could race, couldn't it.  Doing that lookup in atomic_open()
+in the locked region might be possible, but I don't think it would be a
+good idea.
+
+I wonder if I could drop __O_REGULAR and just check the dentry returned...
+
+>=20
+> Does this recovery find anything for most ->atomic_open()
+> implementations? lookup_open() only reaches ->atomic_open() with a
+> negative or in-lookup dentry, and atomic_open() dputs it on error, so
+> what d_lookup() sees is whatever the filesystem hashed before failing.
+
+Hmmm...
+I think that if cephfs return -EFTYPE then there will be a dentry in the
+dcache.  In other cases there wan't.
+As if we don't pass __O_REGULAR to ceph it will happily open whatever
+it finds - device or pipe or whatever.  So that isn't good.
+
+>=20
+> The NFS client d_drop()s the dentry before returning -EFTYPE:
+>=20
+> fs/nfs/dir.c:nfs_atomic_open() {
+> 	...
+> 		d_drop(dentry);
+> 		switch (err) {
+> 		...
+> 		case -EISDIR:
+> 		case -ENOTDIR:
+> 			if (open_flags & __O_REGULAR) {
+> 				err =3D -EFTYPE;
+> 				break;
+> 			}
+>=20
+> gfs2 and cifs return -EFTYPE before instantiating anything. Only ceph
+> checks d_is_reg() on a dentry it has already spliced. So on gfs2, cifs
+> and a re-exported NFS mount, path->dentry is always NULL here, and the
+> caller cannot distinguish a directory from a symlink. That might not
+> be acceptable for what nfsd needs. The found type needs to come
+> back from ->atomic_open() itself, probably.
+
+gfs2_atomic_open() does a lookup which will return whatever is found.
+Then it call gfs2_create_inode() which gets an exclusive lock on the
+directory and repeats the lookup - the second time it checks __O_REGULAR
+as you say, before instantiating anything.
+
+Maybe I should start by tidying up the __O_REGULAR handling.
+I think the inode, if available, should always be instantiated, and
+non-regular files should always go to finish_no_open() - finish_open()
+should only be called on regular files and (maybe) directories.
+VFS code should be responsible for __O_REGULAR handling.
+
+I agree that getting the found type back, when possible, would be an
+improvement.  I don't know how best to do it...
+We *could* get NFSv4 to make a bad inode (make_bad_inode()?), set the
+type, unhash the dentry and attach the inode, and pass that to
+finish_no_open().   It would be ugly.
+
+And I wonder if it is important at all.  Linux NFS client doesn't seem
+to handle there error from OPEN at all - except maybe in
+flexfilelayout.c.
 
 Thanks,
 NeilBrown
+
+
+
+>=20
+>=20
+> --=20
+> Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+>=20
 
