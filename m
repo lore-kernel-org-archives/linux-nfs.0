@@ -1,217 +1,138 @@
-Received: from mail-wm2-f12.google.com (mail-wm2-f12.google.com [74.125.225.140])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B17D61FC0EA
-	for <linux-nfs@vger.kernel.org>; Sun, 13 Sep 2026 15:15:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.225.140
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 20D3B368D51;
+	Sun, 13 Sep 2026 16:05:55 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789312546; cv=none; b=PUAo/dny5RmsPSLTvP1dO8ttSjlmzs/OL0WkroYfL1TenR6jZW8z4uQJzIXZoEXyrojtzKdD8nCdNvoS5f0m/6Q4Lm8A6TUfk7M77vM1yUwushmmramb2SrnROr1Q9/vPbwQ1K3mHZweGJj+2u06ZgfgeQSHyAOs4trPUAPFV4I=
+	t=1789315558; cv=none; b=FHjChH2c+WiVEVA/CAqrTqI5rWAfp1x/c+G2u2l6ux7iPs/Y5yQahv2w4/bpCSgoWqIocNg5d4AroLqfhToRLsvr5/v04rUL3i0+KYGp88CjkT92cN5LeOmkdmeAg8WUSTXnEfxjo/1JyjRVvgr6WQI7UxFxtcYJItoue208SPY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789312546; c=relaxed/simple;
-	bh=dEKz0PzGiux9Qf8eTTrPhDJKNcQFepLZ/wXcnPI5k1Q=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=APvRsMcDXe6vhu4NA4OqKqeD5NL9nSv+c68jAmyeursKdXx9FuOCEuwTMyMKpO76K+JBCQBtl5vNDHHKQHUMTrtv5tSza1Vgx2W+DqT10vizlIJ18mQjJAjT8gIgUT68lONmCpUu/aG9BjpH51E6j1QXEL69vnQq/1IiP/vpovo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=BpT3cc5+; arc=none smtp.client-ip=74.125.225.140
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1789315558; c=relaxed/simple;
+	bh=9MnzZ5c/GPTeMPuSywpbP4+Si4gXx+i7tnpD+xDMoRU=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=Y0Q879Oqja3WIMnJD7Pod8/KGMLElGEwrz3prarsO6KOjH4mtqVrp0mlGA5pfwNMgnfWDVUoXiI4ydm1s34JK5e5GRK5c+ShaBtN0OMjDmU1+CjcckdUpWXIw2KpO4rzf6Vz/ClShEehjqLyQ7Ee+8LqESyrRBcRhv+xin0U/0M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=TFyF4wg8; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="BpT3cc5+"
-Received: by mail-wm2-f12.google.com with SMTP id 5b1f17b1804b1-49e69b9e16aso10678135e9.1
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Sep 2026 08:15:44 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1789312543; x=1789917343; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=K65DQ7/mv19GPFstsuzavHNy0KooVpltR7HBiL1fu1w=;
-        b=BpT3cc5+4bbaDzeVXEyIgHZLqMLad7+6W70gxJM7xfIVtYK8ohIG3JNi8bt6sBYOD1
-         nShect9D72clDLIj9XV1CdvufcC9Drt/kPafLHzS93AGgEkB6GNhBpmrvoUBETuxEWpz
-         qTIQmZtQMTSHuAHBDl1u6it7fveCvdrsImmZYh/Hx8rRSujCDPDshDeBnhXeAJ/b2Uj8
-         pHCwI9Qvm7NSJbhVZ3Z/l4ARZiDJQw9oz9CGObmk71R1GiPo0GThrxdImFQQh/SrBRy5
-         QRSx5z0+8uISpvUf7+RouevVSp0vageSF/qbB8WaL+N2EsC67nfVIvt5hHSooCg7HUE9
-         ShQQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1789312543; x=1789917343;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=K65DQ7/mv19GPFstsuzavHNy0KooVpltR7HBiL1fu1w=;
-        b=Jfknogfg9TCn8iajO0GKR8i+CSGKRE3ZWcbwrZ8GaFZlHjOVsZtvMgki4+iI85jV32
-         eoUP5+TSTAZbJmHbc7ROFFMeTZD1YLkh+p+qnF68VqIFPUHDp7So4b3pc900WweJ0JTi
-         XjwRBzgC11SxjnzRPMtFgyN36Pr26CxP0tlrILTRqIf8ONhDcsLP5GlDUrKPSRODMvSL
-         UVG9HY78dMIAVYHlPyHdTJAof3nrZYwEOABAK0KLJySRrJtDWUIeW+0RyldYlNZsE5l0
-         /XPN060GzbZiwlAPVQyhCSNmAI2zG6q9x8rQD05TiA43/uVgvBFpOxzQmypl5+ggJ4El
-         yAbA==
-X-Forwarded-Encrypted: i=1; AKwUvBwKbhcJMajudLDDOwlKmUk+ds2ghvxbPqkC4MhTLxZmBk9Db/EJ9S/HCycjSUT1J8ufisGGrU4vhkc=@vger.kernel.org
-X-Gm-Message-State: AFuF++lTfibKk4DY0GmHU1yVY44fP7KfpKW237ot7DNJ1vLDW28m56If
-	Z54s2wJKhgechrSdO0rSz9uqHh6upB9OhKgt4XZ957u8kfYxGaXA9OWQ
-X-Gm-Gg: AYBFou0UnmC46+q53i60NW3xxfPezhWlAV7k9LsyjA4bSHVJDKsBTt1QIPdm6NqK2mn
-	xjCT6hhKjWK+McF1oeGWwZd6kNgRO9nZgx8ntSXhMvYb+JW7JtBsTf5X4hCC+lqtP059DlXMvmk
-	1hBi2umMTQO/0llMSOqq0PAgTGr2WtdQOfn7j/83Qid5QGWhxrguVt6fsY62x7z64sR/A4JsGop
-	++LWVSxD8O9pkltYFmdsp3ouQdeLs+reNTPtG47FxCC6e3Nipe9s5w8F6sqpHj/0rAylEZJzCPh
-	ij5QazWXV0nhoL5LrX0h6nAaxgaAzGOGl8TajC5gP+g0rItQc9liX7c7CLQaW37IkBhudGZf4Px
-	BpdLb0oeOhDQ8raPZL2MxLG3FWorSEG+HnlirkPnV1DteoJajOK09Qp4hDy/TSZk9dr3ynxSSHj
-	RYIeyBHW9FkAaQ7m4Yxpb91x4vhIJDDg5+sCJbM/Ab83AlUNy1Yy2g2E+gq8DLukkr7ooCon9xQ
-	NtezIQlYneCpDpBAqivRIgS2t6Xmj2+rrIzmpT3
-X-Received: by 2002:a05:600c:3554:b0:49c:fa21:1c81 with SMTP id 5b1f17b1804b1-49e6cbfbfb1mr62189835e9.22.1789312542853;
-        Sun, 13 Sep 2026 08:15:42 -0700 (PDT)
-Received: from f (cst-prg-84-1.cust.vodafone.cz. [46.135.84.1])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-49e60acff8bsm244462855e9.9.2026.09.13.08.15.41
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 13 Sep 2026 08:15:42 -0700 (PDT)
-Date: Sun, 13 Sep 2026 17:15:33 +0200
-From: Mateusz Guzik <mjguzik@gmail.com>
-To: NeilBrown <neil@brown.name>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, 
-	Christian Brauner <brauner@kernel.org>, Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/7] vfs: change vfs_lookup_open() to return found dentry
- in path.dentry.
-Message-ID: <2mr6afww7r67o2hjblafhdwqffg3zicsqjkddnquunfaalolpd@yq54r5nlqftm>
-References: <20260910002934.192979-1-neilb@ownmail.net>
- <20260910002934.192979-5-neilb@ownmail.net>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="TFyF4wg8"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 720651F00893;
+	Sun, 13 Sep 2026 16:05:55 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789315555;
+	bh=5YCpCgr7wN6BRngUrHQuusuhHt9EZlKC0MCMR65I/Wk=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=TFyF4wg8t1JVUlkOZtO5/xJjB6918d1JKyW0zLDhhrHy8L5A7spT7wKHu/A8D+pKa
+	 Oexy/7syyAHdliF2NYFzCFyozozVipJuqGnBXq0RNF0UHOZWT+dMAm/16U1r0gxoaX
+	 wQgJGyp2oyX6uB99O5OLlrnWUMWaEhGA1pOnjvQxxS+dEFr7LRfICNYnpCrCx7G0Mx
+	 f4RWRrRtyxljJROYOcZIGErq0NWCHzt8BwfR6eKStKZMhzL3ajP6av2VCTjYq0toBe
+	 Pxj8nzZVFeiaVf3SR2kNWUR8ruuMm5Z6i4eZlx/2ep9lxni+oF6Xfv7BQv/W1qmOVx
+	 UYJBojTjgRcLw==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 83650F40066;
+	Sun, 13 Sep 2026 12:05:54 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Sun, 13 Sep 2026 12:05:54 -0400
+X-ME-Sender: <xms:4smmal1B8TFbjoWMJrfJ5FhRf8BSKoXx-jo-mnyHgeLV6pZ86fhsJQ>
+    <xme:4smmam42vccNsHlMdMphoub0O9Mt6SBLGSdJAqR0B7Q4mBQmIfZ4aR1zcpnD4pZeQ
+    aCW82fJ6xaX4NSHKVHSiyP6kCrHz9au6jfWs54SSNnyB4IPTF6K1zrZ>
+X-ME-Proxy-Cause: dmFkZTEuqnInwcZIkp3LZsOKtysl7pel0EoEBfW5y/sKAQwXh8kf6FPGOaVTkGtuxdR5/h
+    ZGAYoQdVo1yKWRzC8fkocQNj1y2i9F/PUs93rVn5UsXeFWGMglFjiCNx7lEm5RdcmEceY/
+    U2En6IgIKw6P+/TAqV7JGISUxgDWrjNyemNEFnokNDHC34LKB7sUZquBqOU1uQk9jU04I2
+    D8wgimrXmhbhirlb4990OPurrA7zdrV9t2Yu4XohTmGeP9loP5fgWa9G7IG1wkLC0thrnU
+    caz3D2RzkyB4bstm/zqDyEodkkbYPjxEw7m/xFpknoRehRrC66QFtPGZs7PWi3iPO2JuO8
+    3bqDcl/niTrOt9fypPTFRg1DNqvnrj6NZQiMp4GgrStpzxyuMAqTXE62NkzpzaPtetoEAu
+    bTG7grwrfh5iemoTClsDhnUo/ThXRqJ4ZD65LnkjscpP8QDEdn3x14DICEmcMGurUhvvGo
+    xESXAocLzoLXRw5cMyLG2o3CY+he8QNkzMMZD4elgLM8ORKR0A5a8ZAvwYVwjNi3MEnjV6
+    3AoGONWflhPGf90eVn4obalU+CoS89vKt00uTnHRL1iUrZGgHqFxG3wPeD7pWy+n5w4fhP
+    JiGOv897ElJBvTxs2rkXZRVYOUvF3J4qRQa8Aouti1l5T4TsnGqgXcBDjbNQ
+X-ME-Proxy: <xmx:4smmatYUSxOOxVRfDNKBwj3YJk6lBCqmROiE-DepGz1EAqhRtlI5xA>
+    <xmx:4smmal9gpqdvZVSLreJsYibhKRSeJYBA-skBXLO7wRavRIxd3xAmDQ>
+    <xmx:4smmavP4ilzY9sverMsE3g46lL6oi4GbHaAsXjBnO-LESvhQu68CrA>
+    <xmx:4smmaiEj2adrdRz-E8fKny65h2Wol5BH1ClFKZw8aEB0nkiliF-hOQ>
+    <xmx:4smmatyoCFcbCvS-JOQ4RN43Qu6tQZJ-mo5jSLKe4ZBhXTE-MKpGGd1H>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 5A64A780070; Sun, 13 Sep 2026 12:05:54 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <20260910002934.192979-5-neilb@ownmail.net>
-
-On Thu, Sep 10, 2026 at 10:20:50AM +1000, NeilBrown wrote:
-> From: NeilBrown <neil@brown.name>
-> 
-> The caller - nfsd - needs to know the type of object found when a
-> non-regular file was found to exist.  This is most easily done
-> by passing back the dentry.
-> 
-> So change calling pattern so that the path (now called "path") contains
-> the parent dentry on entry and the child dentry on exit.
-> vfs_lookup_open() will dput() the parent and caller must dput() the
-> child.
-> 
-> If lookup_open() returns -EFTYPE (from ->atomic_open()) we need to
-> use d_lookup() to find the dentry.  If ->atomic_open() didn't add a
-> dentry to the dcache we return %NULL in %path->dentry.
-> 
-> Signed-off-by: NeilBrown <neil@brown.name>
-> ---
->  fs/namei.c | 31 ++++++++++++++++++++++---------
->  1 file changed, 22 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 0c787363b101..30ccc0c2f02f 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -4606,7 +4606,7 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
->  
->  /**
->   * vfs_lookup_open - open and possibly create a regular file
-> - * @parent: directory to contain file
-> + * @path: directory to contain file
->   * @last: final component of file name
->   * @open_flag: O_flags
->   * @mode: initial permissions for file
-> @@ -4619,9 +4619,15 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
->   * If the fs object found is not a regular file then -EFTYPE is
->   * returned.
->   *
-> + * @path is updated to contain the dentry that was found if possible.
-> + * In particular, if -EFTYPE is returned, then @path.dentry will be the
-> + * object that is not a regular file, or %NULL.
-> + * Consequently the caller must be prepared for @path.dentry to be
-> + * dput(), an it must dput() whatever is in @path.dentry after the call.
-> + *
->   * Returns: the opened struct file, or an error.
->   */
-> -struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
-> +struct file *vfs_lookup_open(struct path *path, struct qstr *last,
->  			     int open_flag, umode_t mode)
->  {
->  	struct file *file __free(fput) = NULL;
-> @@ -4638,7 +4644,7 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
->  	mode |= S_IFREG;
->  	open_flag |= __O_REGULAR;
->  
-> -	error = lookup_noperm_common(last, parent->dentry);
-> +	error = lookup_noperm_common(last, path->dentry);
->  	if (error)
->  		return ERR_PTR(error);
->  
-> @@ -4646,7 +4652,7 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
->  	if (IS_ERR(file))
->  		return file;
->  
-> -	nd.path = *parent;
-> +	nd.path = *path;
->  	nd.last = *last;
->  	nd.flags = LOOKUP_OPEN;
->  	if (open_flag & O_CREAT) {
-> @@ -4658,9 +4664,18 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
->  	op.mode = mode;
->  	dentry = lookup_open(&nd, file, &op);
->  
-> -	if (IS_ERR(dentry))
-> +	if (IS_ERR(dentry)) {
-> +		if (dentry == -EFTYPE) {
-> +			/* Try to determine what was found */
-> +			struct dentry *child = d_lookup(path->dentry, &nd.last);
-> +			dput(path->dentry);
-> +			path->dentry = child;
-> +			WARN_ON_ONCE(child && d_is_reg(child));
-> +		}
-
-Does anything prevent the child from flipping over to regular?
-
->  		return ERR_CAST(dentry);
-> -
-> +	}
-> +	dput(path->dentry);
-> +	path->dentry = dentry;
->  	if (d_really_is_negative(dentry)) {
->  		error = -ENOENT;
->  	} else if (!(file->f_mode & FMODE_CREATED) && (open_flag & O_EXCL)) {
-> @@ -4668,10 +4683,8 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
->  	} else if (!d_is_reg(dentry)) {
->  		error = -EFTYPE;
->  	} else if (!(file->f_mode & FMODE_OPENED)) {
-> -		nd.path.dentry = dentry;
-> -		error = vfs_open(&nd.path, file);
-> +		error = vfs_open(path, file);
->  	}
-> -	dput(dentry);
->  
->  	if (error)
->  		return ERR_PTR(error);
+X-ThreadId: AAPZyXKTxCYB
+Date: Sun, 13 Sep 2026 12:05:30 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: linux-nfs@vger.kernel.org, "Sagi Grimberg" <sagi@grimberg.me>
+Cc: keyrings@vger.kernel.org, kernel-tls-handshake@lists.linux.dev,
+ netdev@vger.kernel.org, "Trond Myklebust" <trondmy@kernel.org>,
+ "Anna Schumaker" <anna@kernel.org>, "Christoph Hellwig" <hch@lst.de>,
+ "Hannes Reinecke" <hare@suse.de>, "David Howells" <dhowells@redhat.com>,
+ "Jarkko Sakkinen" <jarkko@kernel.org>
+Message-Id: <8ddb29a7-28e7-4c90-8d6c-5ab2976fa53a@app.fastmail.com>
+In-Reply-To: <20260602154740.49861-1-cel@kernel.org>
+References: <20260602154740.49861-1-cel@kernel.org>
+Subject: Re: [RFC] NFS: named client identities for mTLS mounts and a per-namespace
+ .nfs keyring
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
 
-I would say this is the wrong approach to the API. The path dentry
-switching is a massive hack and should be avoidable. So happens I was
-working on cleaning up the overall handling and you convinced me to post
-the patchset early, see:
 
-https://lore.kernel.org/linux-fsdevel/20260913144918.1606123-1-mjguzik@gmail.com/
+On Tue, Jun 2, 2026, at 11:47 AM, Chuck Lever wrote:
 
-On top of that the routine as is has avoidable refcount traffic and it
-seems you are adding to it. Instead it can switch to vfs_open_consume.
+> Userspace front end
+> ===================
+>
+> With the keyring in place the front end is straightforward and follows
+> the nvme-cli / cifscreds pattern.
+>
+> A new nfs-utils tool -- working name nfstlskey, fitting the nfsidmap /
+> nfsconf family -- manages x.509 client identities:
+>
+>     nfstlskey add  <identity> --cert cert.pem --key key.pem
+>     nfstlskey list
+>     nfstlskey remove <identity>
+>
+> The add subcommand reads the PEM cert and key, converts each to DER,
+> and creates two "user" keys on the netns .nfs keyring ("user" because
+> tlshd consumes raw DER via keyctl_read_alloc()), with possessor-only
+> read. Description convention:
+>
+>     nfs:x509:<identity>:cert
+>     nfs:x509:<identity>:privkey
+>
+> The mount command names the identity:
+>
+>     mount -o xprtsec=mtls,tls_identity=<identity> server:/export /mnt
+>
+> mount.nfs runs in the caller's namespace, searches the .nfs keyring for
+> the two descriptions, and passes the existing cert_serial= and
+> privkey_serial= options to the kernel. tls_identity= is purely a
+> userspace convenience that resolves a name to the serials the kernel
+> already accepts; the raw serial options remain as a documented escape
+> hatch. Both get documented in nfs(5), with a new nfstlskey(8) page.
+>
+> tlshd changes are minimal: confirm the per-handshake link of the passed
+> keyring happens before the cert and privkey serials are read, and
+> retire the now-unnecessary .nfs entry in the keyrings= startup path.
 
-On cursory reading of the nfs patch, the following should do the trick instead: split the
-helper into 2 parts (say vfs_open_lookup + vfs_open_lookup_finish, maybe add
-vfs_open_lookup_abort should the caller decide to not go through with
-the open).
+I've created an nfstlskey tool and pushed it to the nfs-mtls-identity
+branch of https://github.com/oracle/ktls-utils/ . It compiles, but I
+haven't otherwise tested it. There is a nfstlskey(8) man page.
 
-Then in nfsd you could have something like this:
-struct vfs_open_lookup_arg v;
+There is a change to tlshd so that the handshake children processes
+pick up the .nfs keyring instead of picking .nfs up at tlshd start-up
+time. This avoids the ordering problem of starting tlshd before the
+NFS client module is loaded.
 
-vfs_open_lookup(&v, parent_path, ....);
-[ child dentry is in v->path->dentry, do arbitrary work with it]
-if (ok)
-	file = vfs_open_lookup_finish(&v);
-else
-	vfs_open_lookup_abort(&v);
+I'm hoping this new tool can be used with current kernels, though
+all of this is missing proper namespace support at the moment, so
+it should work in the init net-ns only. Kernel patches for namespace
+support are in the works.
 
-The new struct would hide 'struct file' and whatever else
-vfs_open_lookup might want to allocate first.
+Please kick the tires. Is this the kind of administrative UX you
+expect?
+
+
+-- 
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
