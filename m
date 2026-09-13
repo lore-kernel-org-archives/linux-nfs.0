@@ -1,152 +1,120 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj2-f12.google.com (mail-pj2-f12.google.com [74.125.227.140])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B1F736B93E
-	for <linux-nfs@vger.kernel.org>; Sun, 13 Sep 2026 16:40:28 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 56F483B7747
+	for <linux-nfs@vger.kernel.org>; Sun, 13 Sep 2026 19:07:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.140
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789317629; cv=none; b=XU7iOAmUcfTRAhWBmXnQuwUhKlFOIs+fO7X6Z5tYarE2VMM22Pt0xeeNlmCpbevH0bZb5bGZ/UcM2rSSdQ54aJyydtSQg27jZyo5vmLESK/h9NkoZoyheNvKq6CdpkO8KhSsI9LXIqirsco+f0MEB2UTEUp/HzVK5t0Juz4Ckac=
+	t=1789326468; cv=none; b=M8g3NtTOv3SJL4MZXUO5hMNZ/lkqyaJW2c/uBkj8rJXehZZCVie60F6zbDeNY0iVWDl/xc6ESwmSmUp2YM0OAwTaGiuArIqW4tm7WlZEyo0NO/ycqwPVqUp/pLVBPjqeT5yJk8GrtDo8tKtM9guMF4VhLnEqpzzy/lIsEXLhApE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789317629; c=relaxed/simple;
-	bh=tMfD4U8sXM1Kdp3Gt8o9CUjZGm0VMF0SmC9x8z4SEAU=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=JzJweNPixh3uObbxmpW4wL6nkmo4qCC4iuuNnb3ZaiSOGa0V/fYdIi6x/CQDiNJSMbor+kxljClofAKzHwKYv3XrZONsk6/NWNy04CdP8DKkurjTsYQhiui5u4f3ETM8WykTbUSNioLpI1YrROQLKl33xZdsoNXOHefHJgTwKms=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=V+vcUQKe; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789326468; c=relaxed/simple;
+	bh=FJuNyLY/pzbcykVKwcXUGco3PIus266cOgV5iuyaxpQ=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=obpM7OfiBPGbJoDIcjBCf9wmelQ6/Zhmb+4kVQ67YIXL8GJB3o5oNOYxjd5t3hcbAParutaacRHzQXYuVvrp219YxpohFS6k6/eAgiFu2cKHWoyJNR1evgE1BwMzMse0Bddb1hYpPsG8PeyeKSRpRQiUNff8ja5m35Qv0laCq04=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=UpFx2Y5g; arc=none smtp.client-ip=74.125.227.140
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="V+vcUQKe"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E65091F00893;
-	Sun, 13 Sep 2026 16:40:27 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789317628;
-	bh=WKlFA/1iKCmyKjjNE4oSRzDeTGJ9jpqkUqBXMGoOSiQ=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=V+vcUQKeAxi7Nnlm3js33pq5dRbZp37ih4xUp05G8kQNKBOa55xIa7D+6RJL/0zdU
-	 6vIaqW4yS9C1Goqp48iz7Rp+88C8q61RTHcpQhkXEY+xgz7xiZgMeMnIo8jPLzZeJO
-	 LuRxzPaqQgy2OT5Oa3opK5ziWzP4Uti4D7uIkg6NwHPyhZ8/4hEJNRaXILPmSux/eL
-	 XpalKQYKXlL5LGD9aU/hsoxkcYLM/CDfWAwSXAraD+isC8/qXINjIOeUxaeTjDjTjS
-	 E8paifR9DS0ez5gcx4GpaUpIMrhRmhEdhuAPTSsK1MOGrDS4RlN8SfarwHjpddLaMt
-	 HMaaWkB4zILGQ==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 15507F40066;
-	Sun, 13 Sep 2026 12:40:27 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Sun, 13 Sep 2026 12:40:27 -0400
-X-ME-Sender: <xms:-9GmasjarLVvzQE8qZqJL7oT8jhUDyyMjyp-tmhx_Ne-HuEsdbLyRQ>
-    <xme:-9Gmav2qF6NotYxFqbirB-2Y10CcYbKi4eRQgwhXGRE3tstgUmGeNYqau5Hl5Xf5O
-    LA5cuel7BOXXb-rDCw2mXKvDZx6gkBEVkPOejmHgFuyzcCJe21CC6Hk>
-X-ME-Proxy-Cause: dmFkZTFwQ3pVX8I60PtLIlwa3RkSKxgH5rzc9PfJEjDCzY4yxubKJ+nbUXmK5RAEsUipnN
-    VrRVM5oDgt+YzecNtjGoAqVrXyK+Wmdb3SPfjyqXCuQJh7gPswT4IArUfqsyp3I8fG/3Or
-    Z5rjxkAbcfm40AteikWxylerL8Y4v9fB0rmlPRXtj5YEcc8yr2zfkpQM30hN9tCTbQvlWj
-    d5E5Pdv64ZOA2hdvRfrDaxI1mgHyqc/+lSED8RLK2zrGU/RiMne/YPyrIczk7aG7S6h8uJ
-    CZwDtAORV6bojvWiNYcIAKfapfDiY02WtRBxKJi25RoYrfSjK2QvGOnp7kR3dVfci4t4gS
-    0Cy5gQxtfCDadKU+Pi2k7qFmVdSu5pB+FZ9w6iWntbvvjOFQzDRizLgv5gz+73eOHhhqbr
-    NrWok4FZzXIIM+BhdQPIMPZoOjmcYHK9ZdbB0HWO8t3rS+3GnU/GLFh2jiDWVvjLj17Gpr
-    w3oFlAOwyJKTFLhDqtu0MJhW1KXqn40nHnJcD738P6fflUaGn4vbBo+QXkMLRI/UhTzoR3
-    8QzcxOzdaw7lXOz/mMklF3ej2JrwSg7w7Q44A85D8L99OTyaTQyGd+9PHrP5wYD8k+8Qzi
-    iNl/QezlycYAws9ZgR6h6JrDkaOZhtCg0QnJVJXPdyCEnN4a3C9dPI7NUE0g
-X-ME-Proxy: <xmx:-9GmalwtR6g4Qvh-M_MVOgaH_F4SRyUfJpWrBL0-mZC9IfHn-DUUYQ>
-    <xmx:-9GmaluugEO7pByUYHuKOuXWGgSmFj2ml7QUY6BF0HDkcywb6BZ6lA>
-    <xmx:-9GmagD7WsnczHrNqdIkN8T9DSUuHGF--1GUqsxQcwJ_FMkmEyRIEQ>
-    <xmx:-9GmavHFClVBgndgnLicb2Qu1SHIBSTnOGY03RwG2lo1PAvT3uqTBQ>
-    <xmx:-9GmaoAGP8-F3MaRoEdh4WQhjVn5HHhWu4H_hVZoxtArCKbKfNAmipbt>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id EBF41780070; Sun, 13 Sep 2026 12:40:26 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="UpFx2Y5g"
+Received: by mail-pj2-f12.google.com with SMTP id d9443c01a7336-2db425c9050so61285ad.0
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Sep 2026 12:07:47 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20251104; t=1789326467; x=1789931267; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=wLKsYyHDEIG+EScQ7Yc5Jy2hjjtWSDf1s+mRpjU6xek=;
+        b=UpFx2Y5gAkORqOCg0ondjxyMYemkeXHMcY/8BA0HDzEXWssbfiuUknCX9RUbtgUcyk
+         Allx2sc6EJn5jRlmTFx1R4v0pAhRJEfSjglepLf2uT4JpzBRc/kNyugJssNbOjNYaQXS
+         S+oBM5nrfWDdXsdqWLfGxvgBxrS8899Fv1fKllPUUTJP6TN1z6kZKUw9dVc5pwn8D+1X
+         JocU9DUkWM5cvFhaWiDLJnQt/gZehtTjhc4mIrApW1fGC/uDoCEVN4IE6IkQy1OwGk1e
+         fEcPynMhQzqX21IGpWKsOuaZguGQgDf8P0oUkrxP5uwIq2HwcLVDiVSAAzXsKPSC1D3v
+         UGIg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1789326467; x=1789931267;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=wLKsYyHDEIG+EScQ7Yc5Jy2hjjtWSDf1s+mRpjU6xek=;
+        b=FVdGODJY2Z4kcfsSSUgqJZQUj03knxWnJFbGR5YCwMtCA0FUcg+UE0Ik2aIN8ceg5w
+         akh5iDZWqI1is6EzedN7q7q4Ge+79rK+GYkF5w4BdKapYJ7p2tUCHORkOH+6WsZS7Kx4
+         8frhE8OZMKRFoA25L/gEN7PJ519r1ZojNHtWTiNU5s+TEaDAO9YpQSFfpEIplnuiiTJy
+         OSdSmuO85RyjytgXmnxHELnio/hEgxC1hfPUpl4JK0GZ2qBfXJgFDepEnA846W59y8pB
+         GK/o4ZMYJ/xuFs4Dfx3nd25E6IPlYtQi8Z6OK8FedWAzG3gm2IxKUc/fPqEw5xefmFlp
+         u2Kw==
+X-Gm-Message-State: AFuF++mvT22FTdlt2bjtW1iTL/KtZBHBeDVRawzh7HGeM9DRzbjGq9AF
+	uX5ywcIMPnOGJ/Am4YB1NOz52Lx4CV7b7DKo/uc3TQx1FjZpNawJgbvf966fTPJRwLwegLvXQfZ
+	D6Yw+txW2
+X-Gm-Gg: AYBFou3MITWv/qnoyz9vsb1HlRRRohKPpB7nr2sv/cUfz20K4pb+F0/2tjUYcf58Zal
+	rK72UM7az2x0f+C3ZrbNc452jWYoABXcw+tNCz3GGj5bgdK0/NiswhhL+Sqrlmo8i6QAJ0MexUy
+	Txe4izTOzLebSc9xSgCWdyFPGqYLLWgxFrUILEGziyn2HOczeoQjxBLmfhxkK3HjgimrLOIFp+l
+	EpG445APZHrQnDGPLYrmTf9w987koDKlfHkZaf5BbPkrEc5NR5amsI6znwSYyAz7P0ilo8sLfd5
+	eUhLAWut8uAvtM9c2ov1YDvF4z4GGPR2DlfGnx0js10mqodmROX6+4U5B7nAxybnj6Jg8R4Tfdh
+	0aZX0FK4IlZBYLpZWf9gqBBlTYRkasTOREWVsS3Eg8h3zgQ0pYnSSCNYibvoTIvwwpjIDvJkRtk
+	LytC/gaQ4CkjrH3a6wkqeqJ2OtIDy8XNb1XT1M0c8gZNpc8Ym3hSoPL1BimcAtQFFVK/8a7VGpE
+	u+fi90pDzhc7XOPwyn2gZal4Pt9z2KQC4KamTgA0tu8WUI=
+X-Received: by 2002:a17:902:ce8a:b0:2ce:b436:272a with SMTP id d9443c01a7336-2dd5e385cb3mr1616295ad.3.1789326466028;
+        Sun, 13 Sep 2026 12:07:46 -0700 (PDT)
+Received: from google.com (164.210.142.34.bc.googleusercontent.com. [34.142.210.164])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2dd561e2af6sm14996025ad.70.2026.09.13.12.07.42
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 13 Sep 2026 12:07:45 -0700 (PDT)
+Date: Sun, 13 Sep 2026 19:07:38 +0000
+From: Pranjal Shrivastava <praan@google.com>
+To: Anna Schumaker <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trondmy@kernel.org>,
+	Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+	linux-kernel@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
+	Logan Gunthorpe <logang@deltatee.com>,
+	Jason Gunthorpe <jgg@ziepe.ca>, linux-pci@vger.kernel.org,
+	linux-rdma@vger.kernel.org, Shivaji Kant <shivajikant@google.com>
+Subject: Re: [PATCH v6 0/5] nfs: modernize direct I/O path
+Message-ID: <aqb0ejwzD8citck6@google.com>
+References: <20260814143255.861084-1-praan@google.com>
+ <aqP6nM7OSX087UCs@google.com>
+ <0b3d8f13-e691-411a-a507-d3e6bd1608c6@app.fastmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AgpFG2YqzZmg
-Date: Sun, 13 Sep 2026 12:40:02 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: tmenninger@purestorage.com
-Cc: "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>, "Tejun Heo" <tj@kernel.org>,
- "Lai Jiangshan" <jiangshanlai@gmail.com>, linux-nfs@vger.kernel.org,
- linux-kernel@vger.kernel.org, "Eric Badger" <ebadger@everpuredata.com>,
- "Jon Curley" <jcurley@everpuredata.com>
-Message-Id: <611738b5-e115-4531-8d08-62607dc7f8ff@slotpi15m67>
-In-Reply-To: <20260913131354.1026639-1-tmenninger@purestorage.com>
-References: <e18e121c-5c05-4caa-96ea-e0886594ee07@slotpi15m67>
- <20260913131354.1026639-1-tmenninger@purestorage.com>
-Subject: Re: [PATCH RFC 6/8] SUNRPC: Reduce rpciod workqueue contention
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <0b3d8f13-e691-411a-a507-d3e6bd1608c6@app.fastmail.com>
 
-On Sun, 13 Sep 2026, Tim Menninger wrote:
->                         unpinned       node0 pinned
->     free_fastpath:     +49,161,373    +119,680,629
->     free_slowpath:     +70,391,872          +8,999
->     sheaf_flush:        +1,582,440     +13,436,760
->     barn_put:             +673,877      +1,596,175
->     barn_put_fail:         +26,374        +223,950
->     barn_get:             +673,860      +1,596,219
->     barn_get_fail:      +1,199,576        +224,090
->     alloc_slowpath:              0               0
->
-> So free_slowpath does in fact drop essentially to zero when allocation
-> and completion/freeing are kept on the same NUMA node.
+On Fri, Sep 11, 2026 at 10:41:57AM -0400, Anna Schumaker wrote:
+> Hi Pranjal,
+> 
+> On Fri, Sep 11, 2026, at 8:57 AM, Pranjal Shrivastava wrote:
+> > On Fri, Aug 14, 2026 at 02:32:50PM +0000, Pranjal Shrivastava wrote:
+> >> Modernize the NFS Direct I/O path as a preparatory step to enable PCI
+> >> Peer-to-Peer DMA (P2PDMA) support. Following feedback on the initial
+> >> RFC [1], the modernization and architectural changes are split into
+> >> different series. Additionally, based on the discussion in the v2 [2]
+> >> of this series, the migration of NFS Direct I/O to folios would be
+> >> handled in a separate follow-up series.
+> >> 
+> >> Currently, NFS O_DIRECT relies on the legacy iov_iter_get_pages_alloc2()
+> >> API which does not support the pinning requirements for P2P memory.
+> >> The implementation moves NFS to the modern iov_iter_extract_pages() API.
+> >> 
+> >
+> > Gentle ping on this series. 
+> > (I realized that I sent it close to the merge window, Apologies).
+> >
+> > Please let me know if anything else needs to be done for this..
+> 
+> Thanks for the ping! The plan right now is to send it along as part of
+> the 7.4 merge window. I haven't pushed out a public linux-next branch
+> yet, but when I do these patches will be included.
+> 
+> I hope this helps!
+> Anna
+> 
 
-Thanks, that settles the remote-free question.
+Thanks a lot for responding, quite helpful! :)
 
-
-> The dominant slab lock was still heavily contended in that run.
-> Filtering it by caller gave:
->
->     2,907,948   __slab_free+0x126
->       269,174   get_partial_node_bulk+0x9c
->       175,965   __refill_objects_node+0x4d0
-
-Set beside the unpinned profile from your Sep 12 mail:
-
-                            unpinned    node0 pinned
-    __slab_free            2,845,710       2,907,948
-    get_partial_node_bulk    318,458         269,174
-    __refill_objects_node    181,842         175,965
-
-The lock profile did not move. free_slowpath fell by four orders
-of magnitude and __slab_free took list_lock just as often. So the
-list_lock contention is not the remote frees, and it never was!
-
-The counters show where it comes from instead. sheaf_flush rose to
-13,436,760 objects, and 13,436,760 / 60 = 223,946, which is your
-barn_put_fail. That is the barn-full path in free_to_pcs: once the
-node's barn holds MAX_FULL_SHEAVES (10) full sheaves, a put fails,
-the spare sheaf is flushed through sheaf_flush_unused and
-__kmem_cache_free_bulk, and __slab_free takes list_lock for each
-slab in the flush. That route never increments FREE_SLOWPATH,
-which is why the counter went quiet while the lock did not. It is
-also why sheaf_flush_unused and __kmem_cache_free_bulk never
-appeared as callers: perf lock charges the acquisition to
-__slab_free on both routes.
-
-barn_get_fail matches barn_put_fail almost exactly, and barn_get
-matches barn_put. The barn is a bounded buffer between the CPUs
-that allocate nfs_page objects and the rpciod CPUs that free them,
-and about 12% of the time it is over- or underflowing.
-
-So the cross-node placement adds roughly 2-4 GB/s of penalty, some
-of which is node 0 itself (45 vs 46-47 with balanced CQs), while
-the lock profile is unchanged. That points at the per-object cost
-of 70M individual remote __slab_free calls, not at list_lock
-queueing.
-
-Three numbers you likely already have on disk would help clarify
-this... no new runs needed:
-
-- Total and average wait for the list_lock address in the pinned
-  run. The unpinned run showed 5.05 min and 90 us average; if the
-  pinned run is similar, the lock absorbs the same time whichever
-  way the frees go.
-- mpstat idle for node 0 in both runs, to tell whether that wait
-  is idle time being spent or throughput being lost.
-- Throughput for the node 0 / node 0 run that produced the counter
-  table above. It is the one configuration missing from your
-  throughput table.
-
-
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+Best,
+Praan
