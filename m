@@ -1,151 +1,156 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0ADA929992B
-	for <linux-nfs@vger.kernel.org>; Sat, 12 Sep 2026 16:22:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A844B3016F5
+	for <linux-nfs@vger.kernel.org>; Sun, 13 Sep 2026 03:47:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789230155; cv=none; b=tLqeM3V6hKRm/96DpyI1eDuj0hv3wX7nTJ6V5BkNjvVRNY2Ew60hq4UtDQCBX8Mob8J5Tz44TEPSKT3aOFEWnT7Mw2KD405TG/j6w//Ogd4ebkS4cRyMI7vwfCuWLqy9A2A3U432DH8o09qZrNk4jnjP0rni+KrvN6NGzXNS7Hs=
+	t=1789271259; cv=none; b=aJgm6w91CC1CjWipfRssm8uusUXFYgygOozy80D0kMuxspvxx2J9CUP970BC83iyb7Xms/uoRxDODlc7+eQUEMhYSWEm6MyWO1s3aeUkRgD8duJ4AZFaPkDoxChE9rennrzu+GlQceiPPHhyRfs2JDpl0vL62NwEpsJnWCSz1eE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789230155; c=relaxed/simple;
-	bh=ty1oTuIhWyfYJq9im7BgfkTSxTZIzRTmrfc6YPXAPxM=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=pwLl1h6JWuvHrn/0hs9beyQEwmRwQsHNQyDXGKyOTJYIpfbqAtNVTWJn0xy5ECvbcRaJZ3IANd5YfBniOyrfKFTxo6HdAXb1NZmYHaPGAG+TJhQwTDcDIEju48C/1EntmoygK5MWGtuF/OpW628IViMmJkUtyPvlVRA4GnxTubk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gzpdl5qW; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789271259; c=relaxed/simple;
+	bh=FZ5P57mheenGExd1yxhqqQdOsLpeBLxbWlOxjD7FAds=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=AW9WOD9CGT3PXvqrln/sM7vpLwKjA0wWATSjW7E7WCB/efBjTwYhYilMFFFz6Whozk88EPi14C3erl99Cc1rBKiwR+SMA4MbPuB8CqfxvrawJZDJRu21dAr+P92nMIDWn5qf39KIhD2FIKUIWvxjmNs7aJN+v+1xJR01WiMrx5k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=DnRCFlrV; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=UDSbg4XQ; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gzpdl5qW"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 797E31F00893;
-	Sat, 12 Sep 2026 16:22:33 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789230153;
-	bh=mC494RNCXrNNmg/2W3A/mUCS62LoCv9xQl44oxacO/g=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=gzpdl5qWu9dA7pQV9gVaowaNFru+iUlXNTERv3wpuDy56EWT49ueB2gqBJfDz1TFH
-	 XQAqnjI2709d6t3geammq8toxu30hX2TlbkkZD93TF+Llr8Z8H3jb4STeTsfLnQEiu
-	 CjhOr3Y3Fje3Vug1dNs7psKxCFthuUCu2pKtZhlWE+fxnVsyKY7rOYImycBonZEwYO
-	 piQWOyf518x3lnCSx+DXAhR+/6rR9hduW+cqyrzTTRFJIO7KeKK9Sgjo/qJAbLD8I0
-	 6zTP5wwy+1qzNJmVj0+zCHKObFyJ9uWEQ1nGCzcqr5X8hr+u8mOd7XYUOVL7Sn05U3
-	 KRkafOLaqhLfQ==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id A3ABFF40066;
-	Sat, 12 Sep 2026 12:22:32 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Sat, 12 Sep 2026 12:22:32 -0400
-X-ME-Sender: <xms:SHylakSzUy1PeFm4bU7Dju4PT6-kfAmeF74EnDs6WlYi8BV37sePcA>
-    <xme:SHylask_8ZVGacDDcbM-i1d80S9SrOFu6nodcCHkT_qU6up_DukKP7a5zfo5az_P8
-    GALi7HhDWmQ9u45uzsrglamzFxZV4e22URgTOvqIsDqDP3WXrkDIUU>
-X-ME-Proxy-Cause: dmFkZTEmHOCxqxUiPyomvazu/RN9tX15LrGQtoEx5KHkyteOsrW+/0DFl3zOz9zBKN5xQt
-    z9six/gDDZ49GhxmujD8t6k52FpA5OH+pp6HM7ogfKJ+V6ZrLqAXVrmA4RX3uuamCqsFwm
-    r/dwt1GkvNr58pbX9KsrUS0nJ8/e2Lcs4qyUYZUUlPh+0/YBqOud7Uo3/QFWoFg8jr1n5h
-    246SRsRRS/oV2Bk1rZw0QM4C8V0YVnBloQWlWjoDHRZm9cCqNXxljalNgaC8NnnkePVGBE
-    aBJ3K9H9AAqXgS6vr0Pok+GIoMCD/6z9a6LALbId/hT3IHt21vcTSLowCdpF+q5CTGE7E5
-    YWMg2H7sWAcH9W/qc8V6rLZpWTvcnS/gekW0CHgdMkd3lKtkqlOm+EP5xWX2z46XZtGKJH
-    B79GyAkzLjnAWg1zm66i0no8OvhwZ1iI2UmeoM3/BHMF23DBRl7rRtKJFIRVp6vAsgSwVr
-    fDz1ddRZtP8qAIs7wxqem1mFa9ICJtOBPRTXVrjL3lJ8veslgUqFKTg5PNOSnjaM78ZD+o
-    51wUZ6Lu7EwOcaHLwItX6Vi/Ygj06VfxCHOIdAZXpG+T0LoO+ZDvQCidVsmSR8ab9Z4bnK
-    0VjHd+x/S8Lao+yMCbE3xWgbyMVrkZL9YwCtbzcywwDg+wAlMuFLAsQgbclA
-X-ME-Proxy: <xmx:SHylan3tztsFl5kuAEXuwmeCcWotpC3xjavmDF7Lqa0bM-IH1YAMqQ>
-    <xmx:SHylap5Aah0zt5Ucwt3QRbXMuvHtLCBkNEE3f5jsPnUZID-KAq9PjA>
-    <xmx:SHylag_XQOQ17Us_O2ryA45Iglwsyh7JMAE77jybkWunUWLhlUXZQw>
-    <xmx:SHylagVngShFjyUsHTPrMyJcyWDIFknD5cLVvjKmY0GGndfh_fHW1g>
-    <xmx:SHylajpWrF7JBSfw1vN-cTJTLuhD22t5EAlD0TcWyqHGZyovJDbcqa7f>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 866D3780070; Sat, 12 Sep 2026 12:22:32 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="DnRCFlrV";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="UDSbg4XQ"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1789271256;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=C8F42YVVcKlU9z6QhRa60rhSkrM5LDKh8dQ8JhN+bO4=;
+	b=DnRCFlrV882WvoCUIlSH/AKQJIdzWiQMbpyK0M6l7bYvlKF//ZjOXAUU0BCywV8eXuI9xB
+	AsAJeNpQjlAcUjQy9JBBCLcnF2M45vVo4JCWZA9auqpcLG3hMxPPSXMjx+13f3B7jPn/vl
+	zZ4stc2/0mR7aVn/0yXQd7srQols35Q=
+Received: from mail-qt1-f200.google.com (mail-qt1-f200.google.com
+ [209.85.160.200]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-257-uy9vsS-yPrWQP3774XPBRA-1; Sat, 12 Sep 2026 23:47:34 -0400
+X-MC-Unique: uy9vsS-yPrWQP3774XPBRA-1
+X-Mimecast-MFC-AGG-ID: uy9vsS-yPrWQP3774XPBRA_1789271254
+Received: by mail-qt1-f200.google.com with SMTP id d75a77b69052e-5304f2b5946so44763451cf.3
+        for <linux-nfs@vger.kernel.org>; Sat, 12 Sep 2026 20:47:34 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1789271254; x=1789876054; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=C8F42YVVcKlU9z6QhRa60rhSkrM5LDKh8dQ8JhN+bO4=;
+        b=UDSbg4XQzaD4UutFzw+53q9pmT3nWIMPKGGtezJlOwzCiEPNYwEYGlKKuxX2X+KPD0
+         JrfU0CuWRHQ2e1CbHG/4bb+mltEzx+aLkGM3dJvjSg1b1/+VUvyEFF9oaFqPMfxM4cwW
+         ARxffDBcN1qelY+4fPd3L+P9qCDdyOepRzUcEYz2BR3r/eU0uj9tD+GANxyk0bPGMqHp
+         fKa6qwwq2f3BY6wpq57LY4vRXhxieJP/KqAKQz178G07yVsfrn1vwC9E6PkqsGOlxhYN
+         Fokf2agmfdhxtsu/XUV9V685rNA7M5ITDHOQwHHIFm51H9o7/oWCHCS4ZZwfFZporsAA
+         ha9A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1789271254; x=1789876054;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=C8F42YVVcKlU9z6QhRa60rhSkrM5LDKh8dQ8JhN+bO4=;
+        b=RcrNA6f39JR/y35AS211aQqO5txWLKprnbH6fpf/f51+xb2tIc5WpXe7zpUENvp8JS
+         Go642xT4TQWB6hoROJWNePKXCjvDW0SS+K5soIRsgdfttD3PxxOlqLgmEOr0jyvwBRA1
+         +KiUtLFy4q0Ww/bOd77+S4cTQFk7/ZVymeqjcOiVv0ETICaRlfnqVRTuYE5kqRXRjHIe
+         7lkyjFcyQorQpC0BSYvQJYV+pmLNZmhVTfvQ6VYeGCmoEoNs7POnrJdziqPx+5Y9JxPL
+         TPNhnZGG7xtIlhBw8Z8c/8lgg5I4YmzPPLnfyPX01AEs5Hri3/0XDoOQ+lyU0FOoaIcj
+         uFvQ==
+X-Gm-Message-State: AFuF++lNwYQXJ/FMVnZ6V+HIPfWpm1MI7ajBwPht3GPzAHmUIhtbTl6E
+	f+6UyVuYQac7+pJE5WZUEot79vQy2N6WihCHcfhcB3pmJKsuAer5jauOng0b/1XEz4dOlMOFHiw
+	4OvdC07OuhyoWrzgelfMtWrxBCOPuxeXO0+vM1eRPy6zvRzI0IqXOX9E4sRmuND6vHCR12g==
+X-Gm-Gg: AYBFou1K04mWubBEPYxHOtvS/hpTxXAx/rOlFRi61ZogcpX1Yi8w2hrXkU/cFLJ19x5
+	ZrZoDTK4gIMeCl0rc6zr8ogRBsNBg+kA/+mLePa5+bs2OtaEbmhs9+nM70Yccw/ILSZFsX5DuS5
+	B1+Lcn3jzwj5l2IDg//jIMdnE54m3OX9k2Y5HZ/Li2TwtgX9mKrqdg6/gfZuwl+KxhYqU7/7WM6
+	GweJ7P25B1ctaQSSSdOQpg5u9wE5bfhbIo/LDwFamhS51Ov4vk91FKmCzrCCntHnGtxiYUQbooL
+	t4pjaGOzDaU0VuUpBwR9r6cqdIjHxNzvbLLQs27uNebuMMV4RQwJMkXkmPM0tVw+WmQu50kR2js
+	=
+X-Received: by 2002:a05:622a:1c0e:b0:530:f84c:efc7 with SMTP id d75a77b69052e-530f84cfebbmr32873281cf.25.1789271254307;
+        Sat, 12 Sep 2026 20:47:34 -0700 (PDT)
+X-Received: by 2002:a05:622a:1c0e:b0:530:f84c:efc7 with SMTP id d75a77b69052e-530f84cfebbmr32873081cf.25.1789271253860;
+        Sat, 12 Sep 2026 20:47:33 -0700 (PDT)
+Received: from [172.31.1.12] ([70.105.247.246])
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-9120f2032d4sm60952136d6.5.2026.09.12.20.47.32
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sat, 12 Sep 2026 20:47:33 -0700 (PDT)
+Message-ID: <8fb9c70b-bb77-4dd5-8939-6116eb99ec25@redhat.com>
+Date: Sat, 12 Sep 2026 23:47:24 -0400
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AJxlnPHrJ3iN
-Date: Sat, 12 Sep 2026 12:22:08 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: NeilBrown <neil@brown.name>
-Cc: "Jeff Layton" <jlayton@kernel.org>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Rick Macklem" <rmacklem@uoguelph.ca>,
- linux-nfs@vger.kernel.org
-Message-Id: <6293796e-8a68-4032-90f3-2adfc1386e55@app.fastmail.com>
-In-Reply-To: <178916883696.207413.18145968545647470391@noble.neil.brown.name>
-References: <20260910-duplicate-reply-cache-v3-0-31532a4c7449@kernel.org>
- <178908135551.207413.11072935643340240963@noble.neil.brown.name>
- <f5e4a7ef-43fb-4209-a2ef-34135c1333cb@slotpi15m67>
- <178916883696.207413.18145968545647470391@noble.neil.brown.name>
-Subject: Re: [PATCH v3 00/12] Improve the scalability of NFSD's classic DRC
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 1/1] fsidd: require root credentials on abstract socket
+To: Olga Kornievskaia <okorniev@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+References: <20260907011328.21425-1-okorniev@redhat.com>
+Content-Language: en-US
+From: Steve Dickson <steved@redhat.com>
+In-Reply-To: <20260907011328.21425-1-okorniev@redhat.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
 
 
 
-On Fri, Sep 11, 2026, at 7:20 PM, NeilBrown wrote:
-> On Sat, 12 Sep 2026, Chuck Lever wrote:
->> On Fri, 11 Sep 2026, NeilBrown wrote:
->> > On Thu, 10 Sep 2026, Chuck Lever wrote:
->> > > 1. The transport reports delivery outright where it can. TCP now
->> > >    reports when snd_una passes the reply's sequence number, and RDMA
->> > >    reports on each Send completion.
->> >
->> > As you note in the relevant patch, the TCP ack can arrive before the NFS
->> > client has seen the reply.  But I don't think you drop the cached reply
->> > immediately, so that probably don't matter.
->> 
->> Right. The ACK marks the entry, and the next prune of that bucket
->> evicts it.
->> 
->> 
->> > > 2. Where no report will come, a later request on the same connection
->> > >    stands in as an implied ACK, since a client on a live TCP or RDMA
->> > >    connection does not retransmit within it (RFC 1813 Section 4.5).
->> >
->> > I don't follow this.  Why would no report come?  TCP will always send
->> > and ACK.
->> 
->> The cover letter was unclear. TCP always ACKs, but svc_tcp_sendto()
->> does not always track the reply. The per-socket ring is fixed-size,
->> so a burst overflows it. A kTLS send that leaves part of the record
->> unsent is not recorded, and neither is a failed send. Each of those
->> is reported as untracked right away, so the DRC entry has no report
->> to wait for.
->
-> I don't see the need for the per-socket ring.
-> When a reply is sent - record the TCP sequence number in the DRC.
-> When pruning the DRC, get the TCP ack number first and compare it
-> against sequence numbers.
-> Do this often enough that that entries are pruned before the sequence
-> wraps past them.
->
-> kTLS is clearly more subtle but there must be some way record an
-> approximate seq number for an incomplete send ..  maybe current seq +
-> header-size + queued size ??
->
-> Unsent replies will never get an ack, but presumably the client will
-> resend, be answered using the cached reply, and we can then get an ack
-> on the new connection.  I think it would be wrong to drop an unsent
-> reply before the timeout, unless it gets re-sent and transport-acked
-> before then.
->
-> I think the opaque cookie aspect of the design is a mistake.  Everything
-> is fully sequenced over a network connection so a sequence number
-> (clearly paired with xpt_id) makes more sense...
-> Or does RDMA not sequence replies?  If so then it can only ack a single
-> reply at a time, not a range of replies.  But that needn't be a barrier.
->
-> When a message is transmitted the transport hands a seq-number (and
-> xpt_id) to the cache.  When it gets an ack it hands a range of
-> seq-numbers to the cache.  For a transport that had out-of-order acks,
-> this range would always be of length one (that transport might need a
-> private atomic_t to generate the sequence numbers).  For a transport
-> that batches acks (like TCP) the range could be much longer.
->
-> Also, I wonder if the xpt_id should be 64bit assigned sequentially with no
-> xa keeping track of used one.  64bits never wraps.
->
-> I think that with this design the implied ACK would add no value.
+On 9/6/26 9:13 PM, Olga Kornievskaia wrote:
+> fsidd listens on an abstract UNIX domain socket which has no
+> filesystem-level access control.  Any local unprivileged user can
+> connect and issue mutating commands (get_or_create_fsidnum) that
+> grow the reexport database without limit, degrading mountd
+> performance.
+> 
+> Add a SO_PEERCRED check to reject connections from non-root
+> clients.  The only legitimate client is mountd, which runs as root.
+> 
+> Fixes: 6fd2732d ("export: Add fsidd")
+> Signed-off-by: Olga Kornievskaia <okorniev@redhat.com>
+> ---
+>   support/reexport/fsidd.c | 9 +++++++++
+>   1 file changed, 9 insertions(+)
+> 
+> diff --git a/support/reexport/fsidd.c b/support/reexport/fsidd.c
+> index 9b80b451..c714386e 100644
+> --- a/support/reexport/fsidd.c
+> +++ b/support/reexport/fsidd.c
+> @@ -7,6 +7,7 @@
+>   #include <dlfcn.h>
+>   #endif
+>   #include <event2/event.h>
+> +#include <sys/socket.h>
+>   #include <sys/un.h>
+>   #include <unistd.h>
+>   
+> @@ -147,6 +148,8 @@ static void srv_cb(evutil_socket_t fd, short ev, void *d)
+>   {
+>   	int cl = accept4(fd, NULL, NULL, SOCK_NONBLOCK);
+>   	struct event *client_ev;
+> +	struct ucred cred;
+> +	socklen_t clen = sizeof(cred);
+>   
+>   	if (cl == -1) {
+>   		if (errno == EMFILE || errno == ENFILE || errno == ENOMEM ||
+> @@ -162,6 +165,12 @@ static void srv_cb(evutil_socket_t fd, short ev, void *d)
+>   	(void)ev;
+>   	(void)d;
+>   
+> +	if (getsockopt(cl, SOL_SOCKET, SO_PEERCRED, &cred, &clen) < 0 ||
+> +	    cred.uid != 0) {
+> +		close(cl);
+> +		return;
+> +	}
+> +
+>   	client_ev = event_new(evbase, cl, EV_READ | EV_PERSIST | EV_CLOSED, client_cb, event_self_cbarg());
+>   	if (!client_ev || event_add(client_ev, NULL) == -1) {
+>   		if (client_ev)
+This didn't apply cleanly... so I'll deal with it with some other
+upcoming fsidd patches
 
-Thanks, all makes sense to me and reduces code complexity.
+steved.
 
-
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
