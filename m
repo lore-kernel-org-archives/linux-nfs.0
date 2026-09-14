@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3C13D47F791;
-	Mon, 14 Sep 2026 15:21:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D03DC49F12C;
+	Mon, 14 Sep 2026 15:21:13 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789399274; cv=none; b=i9eKRow7z8Y7BgR0j6QQD8QcvHEZbfTcSivhElYQ4cnm6cB4pPDCu9ORBazKkgCRcg5QwtFokMM3B8d7cjuyWRaseYtMB7lGm1NDZ4pV0S2dTepxRvwupckmky2aUA90zRyqHB6r2Cy1ZXdG1j9iX7xQeU9wXVIdo57KD0Sn3os=
+	t=1789399276; cv=none; b=Rw9mCZgppkYbIv8W6erekJ95cdi4yjSaMWFuDHKRsrLWTwEwVoktFgeAM5303+9KLsdegtxBraHvceyt+ea/FEtOma/2xKI4qGUehlsSgj2e7dIwX2ZrvAO5FXvc4wdxRXBXz6b6v4mGp33CaiJmCdMXQKlZM7zkVG7UzHhUG8w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789399274; c=relaxed/simple;
-	bh=C3xajPKbFSHFqX0Wtv9izib5A53bSMe1dMWdnMH5wSM=;
+	s=arc-20240116; t=1789399276; c=relaxed/simple;
+	bh=RQ8w37NXo6F8DQ9ATeocKHRDTpN6zbWjY1zPMWT6VNU=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=oc5YFLFJqzDQs+XMrKOUwPAKAJoKDwN+R8aVjkgO4X6eNP7YWLpeBOZpVUqWmkx4xXwOaEGRrLONvoBL/aDW7k12ShWeRYsdyB4dC+zVVPPQCmHserwERi3Vdhp9Y3KnDWk3+ct/V5E+PtT19G2QGXH6o24A1pgYZUjMWwGgbzQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nrLc6nQo; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=HC2FPF7qvObQ0vkGKUp4HhTcRKpz/W9fDqzFCU8GHvCln2LxB+lGbp4QC1cMRlZzWdQm41jrUCrHviAjscQiJJB2aL1VUVTFnImPBGi8Any9ZANg/VNjlpToo0miXAj44Qv39BWM/g+Uj3sPF6oJYnHdFaS7gx2DkpdtQGX+40Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Udx5O5m5; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nrLc6nQo"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1C4A61F00899;
-	Mon, 14 Sep 2026 15:21:10 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Udx5O5m5"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B2C3F1F0089A;
+	Mon, 14 Sep 2026 15:21:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789399271;
-	bh=VRH/H/+N8Z/Vfxv9jNxARCyZVqpjG1luBuWidiJcDi8=;
+	s=k20260515; t=1789399273;
+	bh=JcHrfNRy0FCOPdZ8/DfjR5IHyK2uId9GxDpiWccxoB8=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=nrLc6nQoC18zeNhjb/yn7dGI8EjwLR1G2/cdp53Fn4bpi6ZmZjCLDbZdV2pCO6tzg
-	 FMnDHIIdWhrIzIgwYxkyETW8vBh8kHop2UC8AMmOfbU8z/Hto8U2nH4CC6rTerzYYz
-	 bW/e3dlJMzdSqdb2jExGAQPuoX82w3KKKlNOdLI6PcVdAq5xYbfJQSJSKOA/N4Gmug
-	 wSYhWszT3dJLLdTMyRUiQTrQa8VRzt/8uqrmSZFKYeFe7kp0G54y5GdxwYQOQeFzKN
-	 2/aDcHEytlGGqe2V/9XtFlMkrGjt4boJ3+vidS6TsrJuMngpvxYlPTG5zJyUp7U3H2
-	 MgwJHBwi2uXDw==
+	b=Udx5O5m5iLGGhh0brl6e+gBNoblmUMe6tKMSSvBna0Yf0vFDP2XTwSIjloXSp0BLK
+	 s4shz7r03DnoTlDpuIoamL5E6jFIfByMAuN4oPhUlHM2U9MY4zt4jTdoeEkGIcxQ/2
+	 zNJY7EgDKW1Gwfua1JQWYTVas2o+aPKukxk0CbPAwxrJQ5YxQn/JxEO2KIg41DEaVR
+	 hHNSqZGRG1m+HUnvsr/XgazhNdzyrZr2EMxBm3Gfd5eOCsBxdxfTK78aYI0u2SLLvc
+	 EtSLrHk3rQJfm9lBs6mBfrRdzb9UxuJOMxtbnnUnF1xpUQDq9i7CD6zyyqLZKrm9WY
+	 ftt1bn/qMVGKQ==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Mon, 14 Sep 2026 11:20:40 -0400
-Subject: [PATCH v2 3/5] NFSD: honour the userspace-rpcbind flag in
- listener_set
+Date: Mon, 14 Sep 2026 11:20:41 -0400
+Subject: [PATCH v2 4/5] NFSD: report registerable programs in the
+ listener_set reply
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260914-nfsd-norpcb-v2-3-38263c6f59b2@kernel.org>
+Message-Id: <20260914-nfsd-norpcb-v2-4-38263c6f59b2@kernel.org>
 References: <20260914-nfsd-norpcb-v2-0-38263c6f59b2@kernel.org>
 In-Reply-To: <20260914-nfsd-norpcb-v2-0-38263c6f59b2@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
@@ -52,176 +52,314 @@ Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
  netdev@vger.kernel.org, linux-kselftest@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5333; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=C3xajPKbFSHFqX0Wtv9izib5A53bSMe1dMWdnMH5wSM=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqqBDg7RdvDBI+ET24j/jZku3r+TJNeYS1JTYzK
- QYG/FZNmnKJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaqgQ4AAKCRAADmhBGVaC
- FSVLD/0TwpxojxIrLEjzGxYZ9zNCaljn7UBiyvs0jDXCmnK0JnGgPXRJAQLeCANi6OzyW1dxzIT
- NyBAsTfkx4fK2fs+i0qkwZ3bVTn0LsGdokJHMqZJoRElRHx8BX4jlHbOgAUpQHXnFkZLJpWK+sR
- kVtc3N4Mtf1Xx7O51MIKS7/bpTDnrmhFqu2i+jLzFZat5ScLu+CFPlz39eI6f6whFFqLCLlmgye
- kbTZhNQQROiqY87YeNfQtVxhQ/rJ5LmflVKoJtViYjDPtVRjR/MYoW2PBBm9qHTsMHDnv+MY3+c
- EymtDR7D8TejIPu+qGqXylTvlkWXNIbr00wqMEJBSe2rPASoDDJZylHRfl00sURKJV4N9FxADfB
- 1WqlgvbGQMarVw1iqbiq0SzgniOIKmRlAvQiXBqyby+aN2T7sm06/X8jJWLGSbR26kSd4jIcZGY
- rjiHKQl35wwJAtVexy1BMSJtdThJltnQWZm44JrRbOaQPHsA0pidGm1e+ViPhy7V/V7E1QBV/FI
- 08GIBDow96D/+TkDMUMQZTaFX2N3lF1jEbGlLaiYN0jLxuHFqeu1FIEBwzpeNR0XBRXw9I/l3v9
- KbmREU7ByzLIOA3pOMHttMbleGKlZzKE2gzCfOkec2YHus2eZnE44rduy+ZDxWIURA8gOtVMqC3
- bu9761WAQ3I7mZw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=9145; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=RQ8w37NXo6F8DQ9ATeocKHRDTpN6zbWjY1zPMWT6VNU=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqqBDg6F3/asIR3F0d1ICNQ2kpvnxgct3JcCjTB
+ cCmyYFonpWJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaqgQ4AAKCRAADmhBGVaC
+ Fd7oEACMolsvvmf0kGQw3rReJt9q2h3YIvu2J0gUevJCTqm9MJTPayIb5vkwvFI1U0SPs6xxVzd
+ R84KiL1WIDRCYPs49QsBfPw07igYN4ZU8OLYTzGIXEGl+dOL+NNIYT6AyKU5RDoKRroEHYzzwiU
+ o/O6OvDYqPqnTTjJHQ+18G74TJfSi939QqOB6rqh8gJCEShoap8OMQOHnEauHNvPd6ZT0acvQAn
+ ReI2g7aOo3KlS/AFSxAcCPhNprHmWBYn7h0+8lXIFoC4Nroc9PHtkN3oXwyL2h4xgu4TanRIvf9
+ iR5u8XIKdv9JZ19RN5tmfcyv729H07h3OU9RDLdv5mVhHHrAc8JncD60tkeUwVnHfnENzpJeHV5
+ fvbxPbsXZILpXgbQZkaPzV5j2t0cbZ6ocXgH6GyAJy5boaRBRKABDKXDOOapSCmKynLyJLy5jOz
+ 524EOSnKZ8PvA1Z5ixyaviC76IXwDoz+HDcFn/crQYFgEztlny/6ZK5JMspvPPk1JaoaZ0hQbIK
+ 8di8/UZCH6W1IOnima1lE8gFG++v7xKkbuTBmgUUFk5WcFyQ/Y4B55/z0LGpfcLhYNLEny62/wZ
+ jzu0qUIgbi8ThVvUZI2rugxRPwu4LB7Xo5elEqFCnBiPYoitNSk2BS8vQeVDtbCmGrzxcOW5j3k
+ WWcgvMgVV9Ayl8Q==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-A listener_set request that carries userspace-rpcbind now sets
-sv_no_rpcbind on the serv. The kernel then makes no rpcbind call at all,
-avoiding synchronous rpcbind RPCs under nfsd_mutex.
+A caller that owns rpcbind must know what to register. It cannot work
+that out for itself: nfsd_support_acl_version() reads nfsd_acl_version[],
+which CONFIG_NFSD_V2_ACL and CONFIG_NFSD_V3_ACL build, and no netlink
+command reports that.
 
-The legacy portlist add-fd interface refuses to run against such a serv.
-nfsd_create_serv() returns early when the serv exists, so it cannot flip
-ownership back, svc_addsock() does not pass SVC_SOCK_ANONYMOUS and so
-expects svc_register() to register the listener, and there is no way to
-tell the rpcbind owner about it. -EBUSY, matching listener_set. add-xprt
-already passes SVC_SOCK_ANONYMOUS and never registered anything.
-
-lockd is unaffected. It owns a separate svc_serv and still registers NLM.
+Reply to a listener_set that carried userspace-rpcbind with the programs
+and versions that nfsd would have registered, plus the listeners to
+register them for. Send the reply only when the request asked for it, so
+an older caller still gets a bare ack.
 
 Assisted-by: LLM
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfsctl.c | 30 ++++++++++++++++++++++++------
- fs/nfsd/nfsd.h   |  2 +-
- fs/nfsd/nfssvc.c | 14 ++++++++++++--
- 3 files changed, 37 insertions(+), 9 deletions(-)
+ fs/nfsd/nfsctl.c | 139 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfsd.h   |   2 +
+ fs/nfsd/nfssvc.c |  53 +++++++++++++--------
+ 3 files changed, 175 insertions(+), 19 deletions(-)
 
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 1be8f98a293d..207a1bed3928 100644
+index 207a1bed3928..bb09d89e860e 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -748,7 +748,14 @@ static ssize_t __write_ports_addfd(char *buf, struct net *net, const struct cred
- 		return -EINVAL;
- 	trace_nfsd_ctl_ports_addfd(net, fd);
+@@ -2086,6 +2086,128 @@ static int nfsd_nl_validate_listeners(struct genl_info *info)
+ 	return 0;
+ }
  
--	err = nfsd_create_serv(net);
-+	/*
-+	 * svc_register() is a no-op once userland owns rpcbind, and this
-+	 * interface has no way to hand the new listener to that owner.
-+	 */
-+	if (nn->nfsd_serv && nn->nfsd_serv->sv_no_rpcbind)
-+		return -EBUSY;
++static size_t nfsd_nl_listener_set_msgsize(struct svc_serv *serv)
++{
++	size_t size = GENL_HDRLEN +		    /* genlmsg_iput() */
++		      nla_total_size(0);	    /* userspace-rpcbind */
++	struct svc_xprt *xprt;
++	unsigned int p;
 +
-+	err = nfsd_create_serv(net, false);
- 	if (err != 0)
- 		return err;
- 
-@@ -780,7 +787,7 @@ static ssize_t __write_ports_addxprt(char *buf, struct net *net, const struct cr
- 		return -EINVAL;
- 	trace_nfsd_ctl_ports_addxprt(net, transport, port);
- 
--	err = nfsd_create_serv(net);
-+	err = nfsd_create_serv(net, false);
- 	if (err != 0)
- 		return err;
- 
-@@ -2095,6 +2102,7 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
++	lockdep_assert_held(&nfsd_mutex);
++
++	for (p = 0; p < serv->sv_nprogs; p++)
++		size += serv->sv_programs[p].pg_nvers *
++			(nla_total_size(0) +		    /* rpcbind nest */
++			 nla_total_size(sizeof(u32)) +	    /* program */
++			 nla_total_size(sizeof(u32)) +	    /* version */
++			 nla_total_size(sizeof(u32)));	    /* flags */
++
++	spin_lock_bh(&serv->sv_lock);
++	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
++		if (!test_bit(XPT_RPCB_UNREG, &xprt->xpt_flags))
++			continue;
++		size += nla_total_size(0) +		    /* addr nest */
++			nla_total_size(strlen(xprt->xpt_class->xcl_name) + 1) +
++			nla_total_size(sizeof(struct sockaddr_storage));
++	}
++	spin_unlock_bh(&serv->sv_lock);
++
++	return size;
++}
++
++static struct sk_buff *
++nfsd_nl_listener_set_msg(struct genl_info *info, struct net *net,
++			 struct svc_serv *serv)
++{
++	struct svc_xprt *xprt;
++	struct sk_buff *skb;
++	unsigned int p, i;
++	void *hdr;
++	int err;
++
++	lockdep_assert_held(&nfsd_mutex);
++
++	skb = genlmsg_new(nfsd_nl_listener_set_msgsize(serv), GFP_KERNEL);
++	if (!skb)
++		return ERR_PTR(-ENOMEM);
++
++	hdr = genlmsg_iput(skb, info);
++	if (!hdr) {
++		err = -EMSGSIZE;
++		goto err_free_msg;
++	}
++
++	if (nla_put_flag(skb, NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND)) {
++		err = -EMSGSIZE;
++		goto err_free_msg;
++	}
++
++	for (p = 0; p < serv->sv_nprogs; p++) {
++		const struct svc_program *progp = &serv->sv_programs[p];
++
++		for (i = 0; i < progp->pg_nvers; i++) {
++			struct nlattr *attr;
++			u32 flags = 0;
++
++			if (!nfsd_version_registerable(net, progp, i))
++				continue;
++
++			if (progp->pg_vers[i]->vs_need_cong_ctrl)
++				flags |= NFSD_RPCBIND_FLAGS_NO_UDP;
++
++			attr = nla_nest_start(skb, NFSD_A_SERVER_SOCK_RPCBIND);
++			if (!attr) {
++				err = -EMSGSIZE;
++				goto err_free_msg;
++			}
++			if (nla_put_u32(skb, NFSD_A_RPCBIND_PROGRAM,
++					progp->pg_prog) ||
++			    nla_put_u32(skb, NFSD_A_RPCBIND_VERSION, i) ||
++			    (flags && nla_put_u32(skb, NFSD_A_RPCBIND_FLAGS,
++						  flags))) {
++				err = -EMSGSIZE;
++				goto err_free_msg;
++			}
++			nla_nest_end(skb, attr);
++		}
++	}
++
++	spin_lock_bh(&serv->sv_lock);
++	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
++		struct nlattr *attr;
++
++		if (!test_bit(XPT_RPCB_UNREG, &xprt->xpt_flags))
++			continue;
++
++		attr = nla_nest_start(skb, NFSD_A_SERVER_SOCK_ADDR);
++		if (!attr) {
++			err = -EMSGSIZE;
++			goto err_serv_unlock;
++		}
++
++		if (nla_put_string(skb, NFSD_A_SOCK_TRANSPORT_NAME,
++				   xprt->xpt_class->xcl_name) ||
++		    nla_put(skb, NFSD_A_SOCK_ADDR,
++			    sizeof(struct sockaddr_storage),
++			    &xprt->xpt_local)) {
++			err = -EMSGSIZE;
++			goto err_serv_unlock;
++		}
++
++		nla_nest_end(skb, attr);
++	}
++	spin_unlock_bh(&serv->sv_lock);
++
++	genlmsg_end(skb, hdr);
++	return skb;
++
++err_serv_unlock:
++	spin_unlock_bh(&serv->sv_lock);
++err_free_msg:
++	nlmsg_free(skb);
++	return ERR_PTR(err);
++}
++
+ /**
+  * nfsd_nl_listener_set_doit - set the nfs running sockets
+  * @skb: reply buffer
+@@ -2099,6 +2221,7 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
+ 	const struct nlattr *bad_attr = NULL;
+ 	struct svc_xprt *xprt, *tmp;
+ 	const char *bad_xprt = NULL;
++	struct sk_buff *rskb = NULL;
  	unsigned int rpcb_failures;
  	const struct nlattr *attr;
  	bool skipped_rpcb = false;
-+	bool userspace_rpcbind;
- 	bool bad_rpcb = false;
- 	struct svc_serv *serv;
- 	LIST_HEAD(permsocks);
-@@ -2111,15 +2119,25 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
- 	if (err)
- 		return err;
+@@ -2280,12 +2403,28 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
+ 			       "rpcbind did not answer, some listeners are not registered");
+ 	}
  
-+	userspace_rpcbind = nla_get_flag(info->attrs[NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND]);
-+
- 	mutex_lock(&nfsd_mutex);
- 
--	err = nfsd_create_serv(net);
-+	nn = net_generic(net, nfsd_net_id);
-+
-+	if (nn->nfsd_serv && nn->nfsd_serv->sv_no_rpcbind != userspace_rpcbind) {
-+		NL_SET_ERR_MSG(info->extack,
-+			       "cannot change rpcbind ownership while a server exists");
-+		mutex_unlock(&nfsd_mutex);
-+		return -EBUSY;
++	/*
++	 * Build the reply before the serv can go away, and only on success.
++	 * A caller that got an errno has nothing to register.
++	 */
++	if (!err && userspace_rpcbind) {
++		rskb = nfsd_nl_listener_set_msg(info, net, serv);
++		if (IS_ERR(rskb)) {
++			err = PTR_ERR(rskb);
++			rskb = NULL;
++		}
 +	}
 +
-+	err = nfsd_create_serv(net, userspace_rpcbind);
- 	if (err) {
- 		mutex_unlock(&nfsd_mutex);
- 		return err;
- 	}
+ 	if (!serv->sv_nrthreads && list_empty(&nn->nfsd_serv->sv_permsocks))
+ 		nfsd_destroy_serv(net);
  
--	nn = net_generic(net, nfsd_net_id);
- 	serv = nn->nfsd_serv;
+ out_unlock_mtx:
+ 	mutex_unlock(&nfsd_mutex);
  
- 	spin_lock_bh(&serv->sv_lock);
-@@ -2213,12 +2231,12 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
- 			continue;
- 		}
- 
--		flags = skipped_rpcb ? SVC_SOCK_ANONYMOUS : 0;
-+		flags = (userspace_rpcbind || skipped_rpcb) ? SVC_SOCK_ANONYMOUS : 0;
- 		ret = svc_xprt_create_from_sa(serv, xcl_name, net, sa, flags,
- 					      current_cred());
- 
- 		hit_rpcb = false;
--		if (!skipped_rpcb &&
-+		if (!userspace_rpcbind && !skipped_rpcb &&
- 		    svc_rpcb_failure_count(serv) != rpcb_failures) {
- 			skipped_rpcb = true;
- 			hit_rpcb = true;
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index a145294c59c8..dcce45d58322 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -119,7 +119,7 @@ enum vers_op {NFSD_SET, NFSD_CLEAR, NFSD_TEST, NFSD_AVAIL };
- int nfsd_vers(struct nfsd_net *nn, int vers, enum vers_op change);
- int nfsd_minorversion(struct nfsd_net *nn, u32 minorversion, enum vers_op change);
- void nfsd_reset_versions(struct nfsd_net *nn);
--int nfsd_create_serv(struct net *net);
-+int nfsd_create_serv(struct net *net, bool no_rpcbind);
- void nfsd_destroy_serv(struct net *net);
- 
- #ifdef CONFIG_DEBUG_FS
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index c04ef9d180ce..ef520d0562d6 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -607,7 +607,14 @@ struct svc_rqst *nfsd_current_rqst(void)
- 	return NULL;
++	/* rskb is only built once err is known to be zero. */
++	if (rskb)
++		return genlmsg_reply(rskb, info);
++
+ 	return err;
  }
  
--int nfsd_create_serv(struct net *net)
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index dcce45d58322..69e3e92b3ec1 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -117,6 +117,8 @@ extern const struct svc_version localio_version1;
+ 
+ enum vers_op {NFSD_SET, NFSD_CLEAR, NFSD_TEST, NFSD_AVAIL };
+ int nfsd_vers(struct nfsd_net *nn, int vers, enum vers_op change);
++bool nfsd_version_registerable(struct net *net,
++			       const struct svc_program *progp, u32 version);
+ int nfsd_minorversion(struct nfsd_net *nn, u32 minorversion, enum vers_op change);
+ void nfsd_reset_versions(struct nfsd_net *nn);
+ int nfsd_create_serv(struct net *net, bool no_rpcbind);
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index ef520d0562d6..890458c08f2e 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -41,11 +41,6 @@
+ atomic_t			nfsd_th_cnt = ATOMIC_INIT(0);
+ static int			nfsd(void *vrqstp);
+ #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+-static int			nfsd_acl_rpcbind_set(struct net *,
+-						     const struct svc_program *,
+-						     u32, int,
+-						     unsigned short,
+-						     unsigned short);
+ static __be32			nfsd_acl_init_request(struct svc_rqst *,
+ 						const struct svc_program *,
+ 						struct svc_process_info *);
+@@ -127,7 +122,7 @@ struct svc_program		nfsd_programs[] = {
+ 	.pg_class		= "nfsd",
+ 	.pg_authenticate	= svc_set_client,
+ 	.pg_init_request	= nfsd_acl_init_request,
+-	.pg_rpcbind_set		= nfsd_acl_rpcbind_set,
++	.pg_rpcbind_set		= nfsd_rpcbind_set,
+ 	},
+ #endif /* defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL) */
+ #if IS_ENABLED(CONFIG_NFS_LOCALIO)
+@@ -813,18 +808,6 @@ nfsd_support_acl_version(int vers)
+ 	return false;
+ }
+ 
+-static int
+-nfsd_acl_rpcbind_set(struct net *net, const struct svc_program *progp,
+-		     u32 version, int family, unsigned short proto,
+-		     unsigned short port)
+-{
+-	if (!nfsd_support_acl_version(version) ||
+-	    !nfsd_vers(net_generic(net, nfsd_net_id), version, NFSD_TEST))
+-		return 0;
+-	return svc_generic_rpcbind_set(net, progp, version, family,
+-			proto, port);
+-}
+-
+ static __be32
+ nfsd_acl_init_request(struct svc_rqst *rqstp,
+ 		      const struct svc_program *progp,
+@@ -859,12 +842,44 @@ nfsd_acl_init_request(struct svc_rqst *rqstp,
+ }
+ #endif
+ 
 +/**
-+ * nfsd_create_serv - create the svc_serv for a namespace if it has none
-+ * @net: network namespace to operate within
-+ * @no_rpcbind: true if the caller registers the listeners with rpcbind
++ * nfsd_version_registerable - would nfsd register [@progp, @version]?
++ * @net: network namespace to query
++ * @progp: RPC program to query
++ * @version: RPC version to query
 + *
-+ * Return: 0 on success or a negative errno.
++ * Answers the question for a listener of any protocol. A caller that asks
++ * about one listener must apply vs_need_cong_ctrl itself.
++ *
++ * Return: true when the version is a candidate for rpcbind registration.
 + */
-+int nfsd_create_serv(struct net *net, bool no_rpcbind)
- {
- 	int error;
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-@@ -635,6 +642,9 @@ int nfsd_create_serv(struct net *net)
- 		return -ENOMEM;
- 	}
- 
-+	/* svc_bind() reads this, so set it first. */
-+	serv->sv_no_rpcbind = no_rpcbind;
++bool nfsd_version_registerable(struct net *net,
++			       const struct svc_program *progp, u32 version)
++{
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
 +
- 	error = svc_bind(serv, net);
- 	if (error < 0) {
- 		svc_destroy(&serv);
-@@ -775,7 +785,7 @@ nfsd_svc(int n, int *nthreads, struct net *net, const struct cred *cred, const c
- 	strscpy(nn->nfsd_name, scope ? scope : utsname()->nodename,
- 		sizeof(nn->nfsd_name));
- 
--	error = nfsd_create_serv(net);
-+	error = nfsd_create_serv(net, false);
- 	if (error)
- 		goto out;
- 	serv = nn->nfsd_serv;
++	if (version >= progp->pg_nvers || !progp->pg_vers[version])
++		return false;
++
++	/* nfslocalio is hidden and never reaches rpcbind. */
++	if (progp->pg_vers[version]->vs_hidden)
++		return false;
++
++#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
++	if (progp->pg_prog == NFS_ACL_PROGRAM &&
++	    !nfsd_support_acl_version(version))
++		return false;
++#endif
++
++	return nfsd_vers(nn, version, NFSD_TEST);
++}
++
+ static int
+ nfsd_rpcbind_set(struct net *net, const struct svc_program *progp,
+ 		 u32 version, int family, unsigned short proto,
+ 		 unsigned short port)
+ {
+-	if (!nfsd_vers(net_generic(net, nfsd_net_id), version, NFSD_TEST))
++	if (!nfsd_version_registerable(net, progp, version))
+ 		return 0;
+ 	return svc_generic_rpcbind_set(net, progp, version, family,
+ 			proto, port);
 
 -- 
 2.55.0
