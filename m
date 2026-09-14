@@ -1,96 +1,143 @@
-Received: from sender-of-o50.zoho.eu (sender-of-o50.zoho.eu [136.143.169.50])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wm1-f97.google.com (mail-wm1-f97.google.com [209.85.128.97])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1521D496D31
-	for <linux-nfs@vger.kernel.org>; Mon, 14 Sep 2026 17:26:03 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=136.143.169.50
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789406766; cv=pass; b=M/wr2EcyGwJCV+1BFT0f+6doCMAccgoXc2+hBBYaDRK4BKOK+s5VABdKbQc9VxPWyNWTKyyzgJ//Wya1znhCHz90kepDzwqIV/RJBAPSLOPcia7nCL7dEALBBXe0mbnhYTFfBwfzUBAZUM5Bl1LEUxphPIMdHyavs905XpN16NU=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789406766; c=relaxed/simple;
-	bh=uJ84wZr9oXOD9k1Po5OyPlYQVrrRveDZ/oyMxYe6KLU=;
-	h=Message-ID:Subject:From:To:Cc:Date:Content-Type:MIME-Version; b=VXR/T896xGRrNcwXmC5vmhGWgLw60ZMM/70DoAB6Tt8zEumSE96gp93uY19MrlMBVe361PLyLXU/+hnlbnUux4G7km80Yl6JFEuT+GEuFtNho5Egufcz+PjebXX2OkXMKYuGidcNFcCxIJmZNSIDKUE8TI2DkVahAK5GNn2++IQ=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=uvos.xyz; spf=pass smtp.mailfrom=uvos.xyz; dkim=pass (1024-bit key) header.d=uvos.xyz header.i=carl@uvos.xyz header.b=BJQSGA90; arc=pass smtp.client-ip=136.143.169.50
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=uvos.xyz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uvos.xyz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 79665475340
+	for <linux-nfs@vger.kernel.org>; Mon, 14 Sep 2026 17:40:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.97
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1789407605; cv=none; b=t06ybW9vVtQFT7pe28By9MREGKd2PgkWfxkxAPZR1QltOM4ilKyUeaC+0U0cAlXj/HczVlExzGV2cfVGUbjvfV/4z5/go7wYNpODErk1QX+BkVxZBehundWiA9QpEecqNmFOfHs7XkUFrQEErw0DLLajLsF74sbCgk1Q6dms4hw=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1789407605; c=relaxed/simple;
+	bh=MFBfT6hbrBgjaLc6AiG9tP3lKhRG5kGH+1HdxloStAk=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=sfSA/FJhAFLLcxdOERGvFmr2XXe9lkTXWh3oIVICsr61VU7M+lKougtWut/N+0iLGRSK+mxqsrOReWOiEBJM9yNHQqXTXZWnCFjbSxDVPnWR7z17AQs6kfoLUwqV2KwXXm3+/crMDAJITAcSTNbkWsfZHvpEv+sOU0lZ0U1L+gQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=purestorage.com; spf=pass smtp.mailfrom=purestorage.com; dkim=pass (2048-bit key) header.d=purestorage.com header.i=@purestorage.com header.b=JYPSfC0T; arc=none smtp.client-ip=209.85.128.97
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=purestorage.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=purestorage.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=uvos.xyz header.i=carl@uvos.xyz header.b="BJQSGA90"
-ARC-Seal: i=1; a=rsa-sha256; t=1789406751; cv=none; 
-	d=zohomail.eu; s=zohoarc; 
-	b=DwaYE0uZ1AZjIQTDIxoMACzufCobgVOBp9SsVNf7UU3VkwkNc4ccEND3zTX3dXA53zX3uoFxXDOgc+/mxfqe0u7Ky8yGtWic8xqoWCvSzlYROYs6NavjSb9D4zG2wzbSspwemcip+1lSM/sbaJsppH3q98lHNvfSalb3a5MpOEk=
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zohomail.eu; s=zohoarc; 
-	t=1789406751; h=Content-Type:Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:MIME-Version:Message-ID:Reply-To:Reply-To:Subject:Subject:To:To:Message-Id; 
-	bh=uJ84wZr9oXOD9k1Po5OyPlYQVrrRveDZ/oyMxYe6KLU=; 
-	b=bI6qEOYx65MzHa/uACwtx63mocs939oBCx65AcTkZVkXJh3XwJthANUnHqeMMmu41t8sSZEyIN6ociDqPxYNTxcpWcI4Wghsj+IoOx6md/QX6UfRxMak6or5TBurjtLcvHPUN/lP7jf8VRokvSPp93fMIXq5s7qYxP6PcQVXjFE=
-ARC-Authentication-Results: i=1; mx.zohomail.eu;
-	dkim=pass  header.i=uvos.xyz;
-	spf=pass  smtp.mailfrom=carl@uvos.xyz;
-	dmarc=pass header.from=<carl@uvos.xyz>
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1789406751;
-	s=ideal; d=uvos.xyz; i=carl@uvos.xyz;
-	h=Message-ID:Subject:Subject:From:From:Reply-To:Reply-To:To:To:Cc:Cc:Date:Date:Content-Type:Content-Transfer-Encoding:MIME-Version:Message-Id;
-	bh=uJ84wZr9oXOD9k1Po5OyPlYQVrrRveDZ/oyMxYe6KLU=;
-	b=BJQSGA90675T8yrHWGI41STW603Qjb5X3m6pkBmpr2o1ohLg3lB1FulwO2cr+nx5
-	UH+gip3srPCrSGjKCZwI50+QbD0uLPSV0PKDhjVOnO/WtKV7X0YTsOGplUJQjAiWqUn
-	GzYsmGHezOwU07JimBZO70e8s5NNUn0f4lw0l5eE=
-Received: by mx.zoho.eu with SMTPS id 17894067486961.3739293054071595;
-	Mon, 14 Sep 2026 19:25:48 +0200 (CEST)
-Message-ID: <d60e48bfc7f084fb697a33733a4818fcd7abb05c.camel@uvos.xyz>
-Subject: RE: FS-Cache/cachefiles not writing data in v7.2
-From: Carl Klemm <carl@uvos.xyz>
-Reply-To: CAPt2mGO-08X5h-v2Nm9m8E4y5X9V3BpCcoSZiqW6rd-siBBAmg@mail.gmail.com
-To: linux-nfs@vger.kernel.org
-Cc: daire@dneg.com
-Date: Mon, 14 Sep 2026 19:25:47 +0200
-Autocrypt: addr=carl@uvos.xyz; prefer-encrypt=mutual;
- keydata=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
- w5ijy8wHvtcyjBGzDVlK5a32/If3wKotN4eQYPQ==
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 
+	dkim=pass (2048-bit key) header.d=purestorage.com header.i=@purestorage.com header.b="JYPSfC0T"
+Received: by mail-wm1-f97.google.com with SMTP id 5b1f17b1804b1-49b9320423cso17651485e9.0
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Sep 2026 10:40:02 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=purestorage.com; s=google2022; t=1789407600; x=1790012400; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=/okP47x+ZZHs6SOk2K8F3sWioEiHJE7O4RkNBoUH35Y=;
+        b=JYPSfC0Tc33gAqqjyXIB7BwjYEDsu6Nv6QsjLdwO5P4jjmXDfnSh2PiQsNFtB9X2Ml
+         NVjbCcKBbkqCmn86uwCpNoySWG3fL9CTj++ZC8TW4ubqkrGOSyMM6SFS0aNuk5kPnkxG
+         ZIKaGMHg753DEs7ZyJFlcbc4c2GzEkXDU+fRYu9ZqYqGyU/PerRT2DumMM637mcMj/h4
+         Rb9av3GinlpedYO42pETbQ0W5P8bSUEl5P5Yac1QwZ6aWtTdFQY77YVOQDBW8i52wXZ/
+         9tho8fop0JCqamA52nbFmNkVKHrwZliR5Lqvx49AMTJRSYoVRnZDjtf8uPHm1UrBACZJ
+         quHA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1789407600; x=1790012400;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=/okP47x+ZZHs6SOk2K8F3sWioEiHJE7O4RkNBoUH35Y=;
+        b=HLrdgG1DaBicjNlkk/ebPz+1QNGiIheHCNx40Vt3gA0WxwUl3FCukCH/ovYfsnRPwe
+         vd4AmkstPCKto0PcsN2OfoxOUa/cBjBhjld1+iTFlKDlU7SHswFv+GZHqJ/vvQznld87
+         7QB4dyZC7zAD3LLaSMuR+Su1mePgJa6Y0ve+AZm8yOb5R4pk/zZNm5QgJ2Cq1wLxuXOz
+         Y2QKMv364j/2QY687X8kV55nV3xiwKv4V27wooRf5U70Cjjr2dUKgWjwA+KQC5zJfBHi
+         Cf5zh+xkUQbO0Y6FcyqjzkUe+oX4eAQHzYrifjX8/vH7fvKjUCn+6/ZVSsz1QIycgIj8
+         KXFA==
+X-Forwarded-Encrypted: i=1; AKwUvByChLCOivR6HxjKdQGQAxeTc5nl2EO1fIG/jr34pVpM1uMRnT4oMhP/K8U/y385985+HdeB2CoDK9c=@vger.kernel.org
+X-Gm-Message-State: AFuF++mcVVjJ37MDBIFhyDNhiKAqzOSbAV9YZ/22MSdBrXLy4s6C36x2
+	Y/q9UQ4k3e51wQ3sGwQ70hFCBbptVMbhjLHyPhC/eW/tlnkWOd3u8lq5A/k+lxu3PdnAMmivAxm
+	aedH9h4ckLx/Xl9W8t0vw7+FhMljH3KEt/Hyp
+X-Gm-Gg: AYBFou1StBxhmY4qHbUsxWNdbcW+g+0Zc1MxoNTZgNEdhOiSMmWxe+79MZ7ic7Tv32P
+	mlDj5o8dQHR71p7IJ57YL+RyPBt8fxuK3geYc9CIplV23VRLmMARlT2iBCBlPct6+JX+DWN5g/7
+	oiUrI+1Nshy+crw/XKh9iQFvhYuATgMmvRf3/ozCCElzNMZgrf7scYIiVL9JWFU8uwcRNpgRXD3
+	YAt8HFsXhvlIM1o6q2mArNVYLC5QVNYCTHIrarnnrSeDKnvs8pK9JtOOALyaHBTNGbdrH3z4Tc8
+	yXuH+/sqRwaWMiPtDPdWfYBOHS3aJ6iPC3b9dIo6cWNLe5WGA6NPY9hYn8A3casmM0wg2wE9VBc
+	RttPaANlaUaY0NmEMfsh6+/Tq2gZ6Z3Xb6HDsoQ==
+X-Received: by 2002:a05:600c:698e:b0:499:a277:e8b5 with SMTP id 5b1f17b1804b1-49e7a638778mr91528085e9.3.1789407600452;
+        Mon, 14 Sep 2026 10:40:00 -0700 (PDT)
+Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.128])
+        by smtp-relay.gmail.com with ESMTPS id 5b1f17b1804b1-49e7d678034sm826955e9.5.2026.09.14.10.40.00
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 14 Sep 2026 10:40:00 -0700 (PDT)
+X-Relaying-Domain: purestorage.com
+Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
+	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id 0736C340245;
+	Mon, 14 Sep 2026 10:39:59 -0700 (PDT)
+From: tmenninger@purestorage.com
+To: Chuck Lever <cel@kernel.org>
+Cc: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Tejun Heo <tj@kernel.org>,
+	Lai Jiangshan <jiangshanlai@gmail.com>,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Eric Badger <ebadger@everpuredata.com>,
+	Jon Curley <jcurley@everpuredata.com>
+Subject: Re: [PATCH RFC 6/8] SUNRPC: Reduce rpciod workqueue contention
+Date: Mon, 14 Sep 2026 17:39:58 +0000
+Message-Id: <20260914173958.2045683-1-tmenninger@purestorage.com>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <611738b5-e115-4531-8d08-62607dc7f8ff@slotpi15m67>
+References: <611738b5-e115-4531-8d08-62607dc7f8ff@slotpi15m67>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ZohoMailClient: External
+Content-Transfer-Encoding: 8bit
 
-Hi,
+> The lock profile did not move. free_slowpath fell by four orders
+> of magnitude and __slab_free took list_lock just as often. So the
+> list_lock contention is not the remote frees, and it never was!
 
-I can confirm that fs-cache is broken in 7.2.4, and narrow the width
-that would have to be bisected, as i just upgraded from 7.1.5 where fs-
-cache still worked.
+Aha! Okay, thank you for all of your time and help with this.
 
-Regards
-Carl
+If I am understanding correctly, the SLUB/barn/sheaf behavior we are
+looking at here is pre-existing rather than introduced by this series.
+The SMT affinity change is what changes the placement enough to expose
+the remote-free cost on this workload.
+
+> - Total and average wait for the list_lock address in the pinned
+>   run. The unpinned run showed 5.05 min and 90 us average; if the
+>   pinned run is similar, the lock absorbs the same time whichever
+>   way the frees go.
+
+For the node0-pinned run, filtering the dominant lock gave:
+
+    2,907,948   3.37 min   69.62 us   __slab_free
+      269,174  23.00 sec   85.46 us   get_partial_node_bulk
+      175,965  15.17 sec   86.22 us   __refill_objects_node
+
+So in total that is about 3.353M contentions, 4.01 minutes of
+aggregate wait, and roughly 71.8 us average wait.
+
+Compared with the unpinned run:
+
+                        unpinned       node0 pinned
+    contentions         3.346M         3.353M
+    aggregate wait      5.05 min       ~4.01 min
+    average wait        90.48 us       ~71.8 us
+
+So the contention count is essentially unchanged even though
+free_slowpath drops from ~70M to ~9K. The pinned case does have
+somewhat lower wait time per contention.
+
+> - mpstat idle for node 0 in both runs, to tell whether that wait
+>   is idle time being spent or throughput being lost.
+
+Averaging the node0 CPUs (0-23,48-71) in that sample gives about 66% idle.
+In the earlier unpinned/all-local bad-state samples, those CPUs were nearly
+saturated, generally around 0-2% idle.
+
+> - Throughput for the node 0 / node 0 run that produced the counter
+>   table above. It is the one configuration missing from your
+>   throughput table.
+
+Oh yeah, it was the same trend as the workload table below: unpinned was
+43.4 GB/s and node 0 pinned was 46.5 GB/s.
+
+At this point I think we have a reasonably clear separation between the
+pre-existing allocator behavior and the regression introduced by the
+SMT affinity change. I don't have any additional data I think would
+materially change that conclusion, but I'm happy to run any targeted
+follow-up you think would still be useful.
