@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E32092264A7
-	for <linux-nfs@vger.kernel.org>; Mon, 14 Sep 2026 14:45:53 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 38FF649E5F4;
+	Mon, 14 Sep 2026 15:21:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789397157; cv=none; b=JLWCFYaYpJccFCP7cOKCQXyUhl2kDkrrEzTE4dJ2fD01OjdlwcXAQ4T6+U+epeazkhPN7T0dC0Xe5SLLBdoKoWn+Ag7dL7PTGo3uMznGL3USu9Vk3N2m8Lgsb3KM8ea3fpK1rpV4gdhvg++vm+UotACHe3nV+LrAx0/LYPdDAyk=
+	t=1789399269; cv=none; b=kihvcIFKgmMVFxFz5pa4Z3AinaPEJFt3WPNtdVe5SmfD9ETMC9vRjAIx1K7LMAf+nSL0S+RQBvXzxcwSy7uAvnnwuRCCt3StGobZyvvxgN0YhwWXf1l4eOqY0FZ8NTNGh8oqoJCrUzZuRTqIjjm43A5JQpD6xAEPVJqGlgWuDro=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789397157; c=relaxed/simple;
-	bh=tJxAxKay1MgjciCxcMXQpJiYOvqL9w2lsRW9KhAl7aY=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=k+rZLnlbUsYE3JsNRDi3rbBVa0LSgvHAeihstlDnLbm66E4p+aGoknqtSTxSetqCBeCRok/9G/EBU8S7rRx5aVyN71dDya6iky4D/qG0RczHrOJu6gPxaPguThEtbttxloIeO4B3yClBvkn5Jm7ld0c4ck8tp9MT6IzOZTiVX6E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=FFAhYT9e; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789399269; c=relaxed/simple;
+	bh=JDQnKeBhyelMOHap5q0SRgGeEMA2zjD6piPqsVucWnY=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=oYbyObPytQtZGbOS6IGNRA3w7kOcnB11JwdA05C1LZCfKT5xjGzqL+ngXMUCeRpRBklihpphnkREPHhDTKCYgqW7WkJORLW1bSjCiWVw0C5d+SpBTECXKuKXNjzjWJOjaCYrB9jZZlz4DORZsCDWAFWCXQ+wOl9wyqe+H5tNxzY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IlPgOMpa; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="FFAhYT9e"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A08331F00899;
-	Mon, 14 Sep 2026 14:45:52 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IlPgOMpa"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3FF851F000FF;
+	Mon, 14 Sep 2026 15:21:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789397153;
-	bh=f28CVtOhLknQoB2HBBNA2uIEdAmslBJaR3pp1+XoYHs=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=FFAhYT9ey7/w2Rzic5E5luKhsZ1+hDOzmhInzhtQWMoEbfzn1WhivuKwFOULjzr/k
-	 RCuOMi4clmQU5xRkVqSQ0F7BFbk6IkXtMmTUUG3a+w7JeNP8r0o8LAt0Ae0Cqzkhay
-	 AWr1ty22JRNweJEA+QbzaihFEvfd1sw36xxwHkBcUjPeZ0lxnF3JIJ3DjDtLwobiCX
-	 5lDi7tVxHvqq5zil/nX8FEhSwwy6ZWuuYwNfH0d/jsAde2rofwPEL+CLzqluWd+zoe
-	 M8BP7kNFSOeQ0paBqTfJQSnxiKyGiiKuy+/WPHgBJFv+vdt4sofE5UYniE/q7k08ST
-	 u9dOCBs7/3XxQ==
-From: Chuck Lever <cel@kernel.org>
-Date: Mon, 14 Sep 2026 10:45:41 -0400
-Subject: [PATCH v4 11/11] NFSD: Remove hard cap on duplicate reply cache
- size
+	s=k20260515; t=1789399266;
+	bh=mf+XES2ZUk7yeQaTog3nz8x6PuFt1EviOHy7iRinyEs=;
+	h=From:Subject:Date:To:Cc;
+	b=IlPgOMpai6S4JRH0s6RSmwPSYBGkT6FBrgzlNmWB3vPxVK2hfJmFrBpMRNnEJwQkl
+	 bh5hAsg82bqwe3rJ/ZDQp2Bb1X5QKO8kWZMfdYtQ1Oqv65p93n1XcvrURg9JyXA6Jt
+	 288ZQdGFNOnfEOJoHeXwh8UfG/faHJWh6i+BhJShlVyL4EPqcmCj5a3VmIHBR0PBpA
+	 MuLx76ibx9MXnrSZ+CPEw27oLLNfgHVNgGjED3OC5f+bNMkDtDfRk8UkZ5K37pHtvu
+	 xnTk9wc01S2TItv2J/csozpTL5NMSFIwWBK8uU8d4UNH0b7i+fkeKh/QDA+kiGCiCg
+	 D3uBVF8saOdxw==
+From: Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH v2 0/5] nfsd/sunrpc: allow userland to handle rpcbind
+ registration
+Date: Mon, 14 Sep 2026 11:20:37 -0400
+Message-Id: <20260914-nfsd-norpcb-v2-0-38263c6f59b2@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,125 +38,89 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260914-duplicate-reply-cache-v4-11-bcf9d2628a94@kernel.org>
-References: <20260914-duplicate-reply-cache-v4-0-bcf9d2628a94@kernel.org>
-In-Reply-To: <20260914-duplicate-reply-cache-v4-0-bcf9d2628a94@kernel.org>
-To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1XMQQ7CIBCF4as0sxYDFIm66j1MFwWGlmigGQzRN
+ NxdbNy4/F/yvg0yUsAM124DwhJySLGFPHRglynOyIJrDZJLzS+8Z9Fnx2Ki1RomhXV28lJpY6A
+ 9VkIfXrt2G1svIT8TvXe8iO/6cwT/c4pgnBnlTuIsne6VHe5IER/HRDOMtdYPJqLbv6cAAAA=
+X-Change-ID: 20260903-nfsd-norpcb-21cdcaf246bb
+To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+ Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>
-Cc: Rick Macklem <rmacklem@uoguelph.ca>, linux-nfs@vger.kernel.org, 
- Chuck Lever <cel@kernel.org>
-X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3643; i=cel@kernel.org;
- h=from:subject:message-id; bh=tJxAxKay1MgjciCxcMXQpJiYOvqL9w2lsRW9KhAl7aY=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqqAiXzPPxZRM+/01gw4XL1eLoEXeMXn8ou5MAp
- oXFyD8EwnGJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaqgIlwAKCRAzarMzb2Z/
- l/nZD/49MQxdkAlGZ+Ph2AEDjfbYRI/QHES/xgmIWXqD9+dni6EaDL+CtAHCNiN2Hh5ahz1BP8p
- sGYteaXn0mdX3NegnD7TYhKnfoA43X+FjMGMnqIvVSKV9S19PixDaAN/CekySpSkwbMLwvgBcqw
- FT2f87Xl8b2uiH8I4aS/VmkrsuocHABrb5HuZNm+rniuEeMijLWVvl1QRXTSfEW5rjpjn2mgO0t
- ce0O4LfsPAH+I3bu+Hs9G3KFbN5n60bq08cSyK/nRVhZiwzrkDBQDub2kpJ+G6q0+DgbZJ+G+LJ
- Gs8CEbI/g87cpbhPe0MxHKbDbclYGw72F2GctEzcfGAFaKNHWO4XpjdgiZYYHchNZfygoLlJFLl
- 8sqajorMuCPkalrNj7geGkwkUBmE/T/iqEglWSImScAil33tuvGd0CwutLapPMLcfrJATY7cK9K
- 5gM+/1CNTzm5dPlplGM/9SJMxZv24fn0EoMd8csQrYwmFLCCfgJ6fAHlFqI6JSyWr4rR9AehZlp
- /r0gVuR0RHiQLEkrdXMekMPRIFpmOZhvBjlH4H2b6xXZNCtMPtp9DrrRwlCLomq3KW0mWkNRAYQ
- eK/VWEfe95IFqZusiTcgtDn4Yvde0xGbm4pixPJPsh7bNEJVBc3ahNfVuA9zLS22Bm+RZPdw6K2
- qkivfhmx3P2sDqA==
-X-Developer-Key: i=cel@kernel.org; a=openpgp;
- fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
+ Tom Talpey <tom@talpey.com>, "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Donald Hunter <donald.hunter@gmail.com>, Shuah Khan <shuah@kernel.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ netdev@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ Jeff Layton <jlayton@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2406; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=JDQnKeBhyelMOHap5q0SRgGeEMA2zjD6piPqsVucWnY=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqqBDbwrwKCmwNluYpKyelofIU6b0VSze5pATBz
+ 5HXg3Hj2zKJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaqgQ2wAKCRAADmhBGVaC
+ FSKQD/9LaHQSBmyve0uP3m9n7m9hebi0xu1/RXiYG9P5LHJTcZUQA3VZKdB3TOmPIR7kQzNBv68
+ wm6y5CtWCVDF+iLNUp88YTyXfdXBMXqcSBXW4CNT6NZAO4TrzADOYCRPgs14EVpL6AB8QUfGTXZ
+ iKQCJwoUDBxru0vacyBskYuLebL7H1Lrt11NCPn5zsfFW2n0mPEF/eB6r3/uSEADQxEety8F8wJ
+ 6cz35D3uqHHy8a3pyUqVtuSdybeIgwlVZz0z+Tyooh+eMtM4chLPaMI+osKgL5lZdTeKqBd2oNj
+ O+5V54KaJoat9uCkYFa78XmnC/IPngcEMJDu67RrBpgeVcoWPdTRATRNQHQw2O1h0+Un/l8QxxK
+ Tmh2mqCDyRj93B/tRJWOe/gQo0bBkmAWjJ7r9YWdvBvASzjK8dZB0E17tfw0RraGDN5vYLEi5Um
+ +YN+rOMMKQUDLDnrWjG7p6jxTwbiAQ347+KxUn5ica3RrJ1CPhMyS4wSt+jcr6CCMOTt/kob+m7
+ n7tfW0Y2F9Ft4kMBqJ6Dx2m8KVjS+Sp4jlFIpM2u3pgn+xRVAmJA7pK+E0O+NooxNbiXnIToO+r
+ MjYkueBHyaqa9UccOBbbhqbZw+ZXCCEqmEbCYjVa+is07pbb38ENCq8v9Oj47pHn/yvS/8XaFnf
+ Ge+TrbbuAFxGwiQ==
+X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
+ fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-The DRC matters most during a network partition, when clients cannot
-receive replies and NFSD must hold them for retransmission after
-reconnect. Acknowledgment-based eviction is inactive then, leaving
-only RC_EXPIRE, and a 256k entry ceiling can be too small for a
-large client cohort through a long partition.
+While working on the recent hardening patches for the nfsd listener
+netlink interface, Chuck mentioned that we could allow userland to
+handle rpcbind registation itself.
 
-During normal operation over TCP and RDMA, acknowledgment-based
-eviction is bucket-local. A lookup evicts acknowledged entries only
-from the bucket it lands in, and only those that arrived on its own
-connection. Each active connection keeps about one entry per bucket
-resident, the calls it issued since it last visited that bucket,
-which is an eighth of the maximum. With more than a handful of busy
-connections the maximum governs in normal operation as well, and
-pressure eviction then removes oldest-first entries that are already
-acknowledged. The cap bounds memory in normal operation and starves
-the partition case. The formula's maximum serves both. UDP entries
-wait out RC_EXPIRE as before, and the maximum bounds a UDP workload
-as it always has.
+This adds such a mechanism to the netlink listener set interface. The
+main idea is to add a new optional flag to the netlink downcall that
+tells the kernel to skip rpcbind registration altogether for the nfsd
+listeners.
 
-Remove the cap and let the square-root formula govern sizing. It
-scales sub-linearly with memory, and the hash table already uses
-kvzalloc, so larger sizes need no physical contiguity. The limit is
-unchanged at 16 GB and below. At 1 TB the formula yields 1048576
-entries, four times the old cap. Even at 1 KB per entry, the worst
-case the old comment assumed, a full cache is 1 GB, 0.1% of that
-host's memory. That memory is not reclaimable: the shrinker frees
-only entries older than RC_EXPIRE, and each net namespace sizes its
-own cache.
+Note that NLM registration is not affected and is still handled by the
+kernel.  Handling that is trickier since it can be started by the
+client.
 
-Assisted-by: LLM
-Signed-off-by: Chuck Lever <cel@kernel.org>
+Patches to nfsdctl will follow.
+
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfscache.c | 33 ++++++++++++++++++---------------
- 1 file changed, 18 insertions(+), 15 deletions(-)
+Changes in v2:
+- Refuse the legacy portlist add-fd write against a userspace-rpcbind
+  serv. nfsd_create_serv() cannot flip ownership back for an existing
+  serv, svc_addsock() expects svc_register() to register the listener,
+  and there is no way to tell the rpcbind owner about it.
+- selftests: require NFSv3 in the reply and skip where NFSv4 is not
+  built, rather than passing when neither is present.
+- selftests: cover the portlist refusal.
+- Link to v1: https://lore.kernel.org/r/20260910-nfsd-norpcb-v1-0-b4d5182d634c@kernel.org
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index f1e6dc0fa95f..0d11cbf1cb05 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -45,34 +45,37 @@ static unsigned long nfsd_reply_cache_scan(struct shrinker *shrink,
- 					   struct shrink_control *sc);
- 
- /*
-- * Put a cap on the size of the DRC based on the amount of available
-- * low memory in the machine.
-+ * Size the DRC by the amount of low memory in the machine. The
-+ * limit scales with the square root of available pages; with 4 KB
-+ * pages:
-  *
-  *  64MB:    8192
-- * 128MB:   11585
-+ * 128MB:   11584
-  * 256MB:   16384
-- * 512MB:   23170
-+ * 512MB:   23168
-  *   1GB:   32768
-- *   2GB:   46340
-+ *   2GB:   46336
-  *   4GB:   65536
-- *   8GB:   92681
-+ *   8GB:   92672
-  *  16GB:  131072
-+ *  32GB:  185344
-+ *  64GB:  262144
-+ * 128GB:  370688
-+ * 256GB:  524288
-+ * 512GB:  741440
-+ *   1TB: 1048576
-  *
-- * ...with a hard cap of 256k entries. In the worst case, each entry will be
-- * ~1k, so the above numbers should give a rough max of the amount of memory
-- * used in k.
-- *
-- * XXX: these limits are per-container, so memory used will increase
-- * linearly with number of containers.  Maybe that's OK.
-+ * These limits are per-net-namespace, so memory used increases
-+ * linearly with the number of namespaces. The shrinker frees only
-+ * entries older than RC_EXPIRE, so a cache below its limit is not
-+ * reclaimable under memory pressure.
-  */
- static unsigned int
- nfsd_cache_size_limit(void)
- {
--	unsigned int limit;
- 	unsigned long low_pages = totalram_pages() - totalhigh_pages();
- 
--	limit = (16 * int_sqrt(low_pages)) << (PAGE_SHIFT-10);
--	return min_t(unsigned int, limit, 256*1024);
-+	return (16 * int_sqrt(low_pages)) << (PAGE_SHIFT - 10);
- }
- 
- /*
+---
+Jeff Layton (5):
+      SUNRPC: allow a service to opt out of rpcbind registration
+      NFSD: add a userspace-rpcbind flag to listener_set
+      NFSD: honour the userspace-rpcbind flag in listener_set
+      NFSD: report registerable programs in the listener_set reply
+      selftests/nfsd: exercise the userspace-rpcbind listener_set flag
 
+ Documentation/netlink/specs/nfsd.yaml              |  55 +++-
+ fs/nfsd/netlink.c                                  |   5 +-
+ fs/nfsd/nfsctl.c                                   | 169 +++++++++-
+ fs/nfsd/nfsd.h                                     |   4 +-
+ fs/nfsd/nfssvc.c                                   |  67 ++--
+ include/linux/sunrpc/svc.h                         |   2 +
+ include/uapi/linux/nfsd_netlink.h                  |  20 ++
+ net/sunrpc/svc.c                                   |   5 +
+ net/sunrpc/svc_xprt.c                              |   2 +-
+ .../testing/selftests/nfsd/nfsd_netlink_listener.c | 361 ++++++++++++++++++++-
+ 10 files changed, 655 insertions(+), 35 deletions(-)
+---
+base-commit: 4d46e877c21d07ddcad03da7f3b05ad2cc22b5b3
+change-id: 20260903-nfsd-norpcb-21cdcaf246bb
+
+Best regards,
 -- 
-2.55.0
+Jeff Layton <jlayton@kernel.org>
 
