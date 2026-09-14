@@ -1,267 +1,157 @@
-Received: from fhigh-b6-smtp.messagingengine.com (fhigh-b6-smtp.messagingengine.com [202.12.124.157])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ej1-f44.google.com (mail-ej1-f44.google.com [209.85.218.44])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 07A5C423E99;
-	Mon, 14 Sep 2026 22:00:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.157
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789423220; cv=none; b=o1UkGrcDXDWeDknYQWkGzYoDKIWNBXhhmDmZLQrfXzzZF/7ggwCv45Xm64fnnfJy5NHX9izH3+nDugQReq6PMfjJGot5lIIGe99yiEYQCQ8WUnU1/0QA5y7hF+2RRqGZLU9gEyO6F3mmTZ0f/cGyEU7nie8O6TiY28PydX06XoI=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789423220; c=relaxed/simple;
-	bh=U7Po3XIGmD5WnXqODiveJImEONA04vUf7bVEZasXpzg=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=MzCY/gQ0vgoK1Wr/3n4FRyl2ZU0jitFN/RkLee9GHLeHwv9EGiQPzeQGGRLIGcn+eysu0EdFtDiIcMVfCTI4FLbpArgv18e9soHbKpO+3JfDKtI8h4faTeqktcCl2TazHnoVyxNfypiKu3/CHIhMHG4H1GfP7OWVFt0yEOjGQbk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=ncIxh6Y/; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=GgGqNKrV; arc=none smtp.client-ip=202.12.124.157
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C9BDC3630AC
+	for <linux-nfs@vger.kernel.org>; Mon, 14 Sep 2026 22:47:26 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.44
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1789426048; cv=pass; b=n4NfFJT95rGcJk+MzwOjGurMRFFpZIhGSOtUBHws/+eNpvnl82q2d7E9bAeMGlSx1hWHgsHxLb7mQRLmobipizdQdDzdGGvLAwn3fVWqYyk0D0iKhWjgtWybFMBcl/PfVOFV8G5gAOP3lscTmT2DkY5N5CB4s1jgbNWTxLuBdyM=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1789426048; c=relaxed/simple;
+	bh=smjPe3RajYQPH5VvyxqOK7x6E6M4GeW/od7bmiPh1SY=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=Klt9qgchZH/hXtoR2A1Qu8rbSPgKbFFuYjb6YTvpljg9p4UsciOAcnCl50BboQ6hZT5/zyiMa6/k0tkNBYDgo0fSu6G9By/8mB/tCk+jMpGlbIHotESfMbxLyLIBjSr7gz+qMXVsze5AKIc6/SEySmT0DW99fQMt8EKMl88DZn8=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brahma.io; spf=pass smtp.mailfrom=dneg.com; dkim=pass (2048-bit key) header.d=dneg-com.20251104.gappssmtp.com header.i=@dneg-com.20251104.gappssmtp.com header.b=Lhiw9YXp; arc=pass smtp.client-ip=209.85.218.44
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brahma.io
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dneg.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="ncIxh6Y/";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="GgGqNKrV"
-Received: from phl-compute-03.internal (phl-compute-03.internal [10.202.2.43])
-	by mailfhigh.stl.internal (Postfix) with ESMTP id E93D67A0126;
-	Mon, 14 Sep 2026 18:00:16 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-03.internal (MEProxy); Mon, 14 Sep 2026 18:00:17 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:content-type:date
-	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to; s=fm1; t=
-	1789423216; x=1789509616; bh=+/O8cbNK7AneUbK5Khhf+8X4M22FDfN6jAN
-	vhHXMEtg=; b=ncIxh6Y/mmjJ9anGMcT1UxYIdtFQGIsJNQatei7dj+EM2PVW16r
-	46mWcEGw7E3wnG5yR6Dahu+lCD3Nz9txkr7BEgBW9NWvkJl2WChb72SzjrwMJuNO
-	ugYj9Q0aAC6qvA/ROjzMuPBRARuWG4ceQ6iqNTngEZT2uH2eqHy8M0YiuNtKvUGC
-	jGOsAdayUPX7MyxGUrpiV6LCgDFtYY5JmoUfp2qJ9HNu/K0590+peVQs+iy4rVKS
-	FfsIl6obmilAcFo4MuRLx9FkUrxI6KoEhjj2RdWDQWVkpV86xSF9Ralsgtb9DgM6
-	KgIadJE0uYBePe+dX+SX8GTjL4ORMMiJIWg==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:content-type:date:date:feedback-id:feedback-id
-	:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1789423216; x=
-	1789509616; bh=+/O8cbNK7AneUbK5Khhf+8X4M22FDfN6jANvhHXMEtg=; b=G
-	gGqNKrVZzNaXTzvwvnm3tVqF2fvyNOWpPyJ/+TqfL8HIhr2LLj2LFGVUOF1j3v3x
-	jeBxDTYYD+Dp6W/qvPrueadnjjkY0HnwPD/PiaXRPZbnOcZ8Q84SoC2ah1aLPECt
-	x5TSCpKrCNF4zMKLJn+yOgtome8M8joDPUoAlVYwHEJ2klmbcQtV85XLAasQ6aeL
-	LHWB0GaY014vWljdJcB1F7Xw/GWYB61/JyBcsGZra5s5qeyYfIc+Ok3TcmWZsK6M
-	tUrjGewtUtjESGFk+PYtSxJ5jQKaJGHnYdj242wnuaUpOG8mXQVVKgrwlv6nXCnV
-	Rpb1XbU4GruhrY3+uV8zw==
-X-ME-Sender: <xms:cG6oanKKjFzyiAdXYDIubUldEqX011r_nrmU6C_Ff50R8OyebEPivA>
-    <xme:cG6oaqNZurdu8qrdnAKEQfe8KQN2CLlowJ-Veewmw8SiLmFkk3L3888saYNcMCHxq
-    1xO6hsN6gFINvIO5Aif3N9md_2G5PQIC8JJtbkTiSbm4-bNH5A>
-X-ME-Received: <xmr:cG6oal5asTbQQN8pvrXiD4n_YO3GekLci1QMVAV1u5urtIef7PIbzCTi2V5_gEsiEg>
-X-ME-Proxy-Cause: dmFkZTF5ra8BkwsnAzYDhslg7HdOA3tTnHthlvzeQuHExsImqvTgVv9/gOouS2+xoVvdKO
-    57spt1qyTccCTZKBGZ9pvgYVm/2Glg2TAz4q8IZKT1a23BO2k+CmuposyGjfGrQvBy/3hd
-    Iegl71s4i6f0albXieII/mcSxTgFyjCN7SOtUIBwUrB7kMtxQPCekkSGiyj8pYVyx6hg/V
-    cuwWE/Q7cWa1HMUsb08ugZ8LxP7GvsF4Y2U1Uu9FNYtYLSltKTMwTNvJwmqtcctipl8d5l
-    GB/HwcKc6t/GvHxd/1btSPE1eh2zDDO/MeYB8JvQjuAmyTAnS2sTtiYlK+c7VRuRdfr0E9
-    2CYQE7cVESGl4tdozHHslg5xJz82EWVsJLXEn9vmgG/oCi0VIpeIu3NALl8HsFvgslV8/U
-    7zNiGGrpH1BiFLIeCNaTMF+u+HmA+21S10OHgSFXykYyJLgHL5mLOwJSNyLOIWC0OR2vlx
-    GqOR3dpRk1tEL4ypaZiDKYAfF0tDGibwVSjIZvng7jK6p25m/N32VgZGsUf1wZtUAne+TQ
-    vPph0EFrY8vtmHM3//9bUDMDYdth9XhBp61NmKiEBbOj0A85tERRP0ci1wD6cU2oUHz8XO
-    05Al2oRDH2WqkPWv83J0YE2heYgWQQKOa+FzWCMnl6PSborzPmdo1DFishuQ
-X-ME-Proxy: <xmx:cG6oas4LRehjSseb6Jy7U1tR7nOe4bN9pLcrOEFydhJlRuRgEDt3bw>
-    <xmx:cG6oajGpJ5yTa4OPozs4559vu1pIf-vQEcv5xS5ESLTYoy3lxLdisQ>
-    <xmx:cG6oasUNyXbCOyKTmJnVBPFQlSZK7Rowu34ZhlD0bk7tnz7Wr_BYdg>
-    <xmx:cG6oanUrWUCMR2IGHnoifGJ4427Ik8-D20S4fxFlybU4O5NlxsqJDw>
-    <xmx:cG6oaptJyjQ2qsrfWu0eDCzTagaUTPv8JSOyTFB7bM7UIypF-C5aBlmd>
-Feedback-ID: i9d664b8f:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Mon,
- 14 Sep 2026 18:00:13 -0400 (EDT)
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+	dkim=pass (2048-bit key) header.d=dneg-com.20251104.gappssmtp.com header.i=@dneg-com.20251104.gappssmtp.com header.b="Lhiw9YXp"
+Received: by mail-ej1-f44.google.com with SMTP id a640c23a62f3a-c20ce3c118aso47412366b.0
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Sep 2026 15:47:26 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1789426045; cv=none;
+        d=google.com; s=arc-20260327;
+        b=OpySxcrW2H2vFmG+BK4KhdEjrMAAZkMNylL4bB98sn4o/2LynGsr5MfXaLAbGh5pJ6
+         mgsc+Box8X38eUXKoN8enoaQYrw0kQ0z32TV//yx/F2TL3wumqPLjILwsK+HVBpGUUvY
+         vgWe/I0ghINsvXJZI9QJyXZXceVZ5793sfps7p//xHhhPXyM7ItncN0SV4CfVHE9bRhr
+         MnQ6BW1JYebrqwwjlgUhriiWFaAVWK+8tiaDbIxXbV2ISR8SyHFKSy5dgLrk9VstY1F2
+         /0sm7ccXDLzeQajgnyA5DnRKkdOd8IFUb6PJIvxRyW8x3rXiYgoq0HTjPtPE/QOzj6O4
+         2boA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:dkim-signature;
+        bh=9Ri+vR4mGUVhZPO5xpqE+Ep8OB3oPRVY/6sA8yCIDjM=;
+        fh=JtCcliMZLxE1I7hL92of/xH2uZCs72AXByoBzkAxhm0=;
+        b=UB7SnyPlnKYqskuj++FopWBExax3e916I/YTdNtpvq6+UPfS96WBHhCsTQSD2t7Kxk
+         KOPGy1sYKZLpXplXr/2i8iHYX9kqzrE6Z+gXTjGmJmZVF1Q7Yxh33YuEUJ5SNpRJQaRW
+         P6EFRobtdLDo0q0SDKsah2fcwZXryewa657YQQno2+V2KN9VjJNpJ5SymFuRccs4q5bt
+         th7hE0I0bXKMAOyyzAls6420imO+41FtyHDNabMdi4GrGrxNRePYUydVD0FfRfM8JupM
+         FuY+/4rEZaC4LKSq+SZ75LPgtuVuzpj2u1+c962sCHllBV8FIleI2TT24/lhp9ogH4CU
+         LvBw==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dneg-com.20251104.gappssmtp.com; s=20251104; t=1789426045; x=1790030845; darn=vger.kernel.org;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=9Ri+vR4mGUVhZPO5xpqE+Ep8OB3oPRVY/6sA8yCIDjM=;
+        b=Lhiw9YXploXEQvhqwCNH9pw4rXKo12aawGb8s5sPgIkTE61qEo25DeFXG2trvNSakj
+         F3jiXABQLzWSawFcNdYubvkJPTYXbZ5m/2CYkOduOC1o8I/NCRGn0+WsXvqZysyLae79
+         oVSzenR4cMrjFh9BNIhVXNGJCEvJGJty/dRZGXo+cUjCWojY24CZjyH/yJpB0DXqtRDo
+         NlZwjmOCM7ADZrcx0+wdMsO2qZxlCwweUJlaSdqgXZxPxVMJplCwxIUoNfySbSK7x6dX
+         Cme5eo4VXvMpSshDqgTSWM5pvHMTXt0DhzfIREeu38W8nujtWDIkGwkz5i0J3czzmd2p
+         D8Xw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1789426045; x=1790030845;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=9Ri+vR4mGUVhZPO5xpqE+Ep8OB3oPRVY/6sA8yCIDjM=;
+        b=ZI37RLYZ+rs6PcJSd3DLVzkDBjO8jSiYqif03c1PVMxi/QC4dhLHasXWGEQ9kB110Z
+         wgEJSYmPfpMZjQSnQYQDYQqSZ+6gpPKrMI/LYlwaNdXEeMQsTAiXaBW+HXC8P0qf3TtL
+         KhhQzRgjOWD2xgoSiDuB/aCMPRi/cS9F8YiKG6qEZIkk3RkwRBvZIYf2LHTZlWhSHaIU
+         +Xepo+urP51y16ZeS1RbTvLiRUPXaVyyDA3j3f6YOQgcGkMa2GTbpIJHnA2epwfeeUvO
+         DEJWblyztB8KsZeIbs1qLuEfYoqm8XNjVlqqWYeI/iRFfQVqqlVSMOWIQ9wUonLY3Qpa
+         ObQA==
+X-Gm-Message-State: AFuF++l1mmDXX9JhVX+n7oQHwrrfXe314pPGe5deHV7qQKBqDVqpDbhE
+	WBj+Eli5uOzyoOnG1QJP+CqKcYQkMf59Gih2y0RQNBnA8wvPcbM6497DlWTADactcHxGrzAd5y+
+	bAORr4Vuz6nU/Jcp34nYejXyyqZXetfJhylrIgL6uXz08QjyenfZZ
+X-Gm-Gg: AYBFou0JK8eIy86vEH0nhdk18oRFqz3OmNWk+JsaKWg51gNi1a6k4UkzrkugrsiS+m3
+	fHES7pEFJazj2oH8D5c7trJRMEL4ZOci2uVnSMWeS+ixD0Fr0w91ame8ODuHOwFA92lMXjN8Llr
+	qU2ZaFBRG7KesSR+vjc28UvFKXO2RhDkVnSLwTRk5GZDm6otJDroNPxdEaDRm4iwtyo6aTcVt0t
+	bnY63PefrdmR061ObN8tmaR4i/ccFuSNIPp/JYJUYbqHs6K2u6cURPlNdV2XfZSHNPu5junJkUK
+	v/ARcyv9jk9DviZBfYiOs0IOnno7zQqyVC7f1ktPkCVw/aRYtF0OswugrOVLpFkUdvpXjpVkdOi
+	yF2UkDIleqS8=
+X-Received: by 2002:a17:906:4792:b0:c26:1cfd:4244 with SMTP id
+ a640c23a62f3a-c29c89688d6mr94916266b.11.1789426044921; Mon, 14 Sep 2026
+ 15:47:24 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: NeilBrown <neilb@ownmail.net>
-To: "Mateusz Guzik" <mjguzik@gmail.com>
-Cc: "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Christian Brauner" <brauner@kernel.org>, "Chuck Lever" <cel@kernel.org>,
- "Jeff Layton" <jlayton@kernel.org>, linux-fsdevel@vger.kernel.org,
- linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/7] vfs: change vfs_lookup_open() to return found dentry
- in path.dentry.
-In-reply-to:
- <CAGudoHG59N0Fen0-Wh+yz+OMA_HcX+Bu-dx+7J0QnypyK_b3ZQ@mail.gmail.com>
-References: <20260910002934.192979-1-neilb@ownmail.net>
-  <20260910002934.192979-5-neilb@ownmail.net>
-  <2mr6afww7r67o2hjblafhdwqffg3zicsqjkddnquunfaalolpd@yq54r5nlqftm>
-  <178933378203.207413.6142548185484898062@noble.neil.brown.name>
-  <CAGudoHG59N0Fen0-Wh+yz+OMA_HcX+Bu-dx+7J0QnypyK_b3ZQ@mail.gmail.com>
-Date: Tue, 15 Sep 2026 08:00:10 +1000
-Message-id: <178942321010.207413.739445924462882192@noble.neil.brown.name>
-Reply-To: NeilBrown <neil@brown.name>
+References: <CAPt2mGO-08X5h-v2Nm9m8E4y5X9V3BpCcoSZiqW6rd-siBBAmg@mail.gmail.com>
+ <420a86d7-d911-4d20-8150-703a94f36314@gmail.com>
+In-Reply-To: <420a86d7-d911-4d20-8150-703a94f36314@gmail.com>
+From: Daire Byrne <daire@brahma.io>
+Date: Mon, 14 Sep 2026 23:46:47 +0100
+X-Gm-Features: AcwNN1XttWliKFp0e9C_i1ou_SjamVsu5tiT3y_lXPIOgaxoiGc9K-x8KaRWhgw
+Message-ID: <CAPt2mGPfwmFAARgKGQ35WpiBPK4=EFSqyS9+16KE9MOEgnAGgg@mail.gmail.com>
+Subject: Re: FS-Cache/cachefiles not writing data in v7.2
+To: "Owen, Mike" <mjnowen@gmail.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>, dhowells@redhat.com
+Content-Type: text/plain; charset="UTF-8"
 
-On Tue, 15 Sep 2026, Mateusz Guzik wrote:
-> On Sun, Sep 13, 2026 at 11:09=E2=80=AFPM NeilBrown <neilb@ownmail.net> wrot=
-e:
-> >
-> > On Mon, 14 Sep 2026, Mateusz Guzik wrote:
-> > > On Thu, Sep 10, 2026 at 10:20:50AM +1000, NeilBrown wrote:
-> > > > From: NeilBrown <neil@brown.name>
-> > > >
-> > > > The caller - nfsd - needs to know the type of object found when a
-> > > > non-regular file was found to exist.  This is most easily done
-> > > > by passing back the dentry.
-> > > >
-> > > > So change calling pattern so that the path (now called "path") contai=
-ns
-> > > > the parent dentry on entry and the child dentry on exit.
-> > > > vfs_lookup_open() will dput() the parent and caller must dput() the
-> > > > child.
-> > > >
-> > > > If lookup_open() returns -EFTYPE (from ->atomic_open()) we need to
-> > > > use d_lookup() to find the dentry.  If ->atomic_open() didn't add a
-> > > > dentry to the dcache we return %NULL in %path->dentry.
-> > > >
-> > > > Signed-off-by: NeilBrown <neil@brown.name>
-> > > > ---
-> > > >  fs/namei.c | 31 ++++++++++++++++++++++---------
-> > > >  1 file changed, 22 insertions(+), 9 deletions(-)
-> > > >
-> > > > diff --git a/fs/namei.c b/fs/namei.c
-> > > > index 0c787363b101..30ccc0c2f02f 100644
-> > > > --- a/fs/namei.c
-> > > > +++ b/fs/namei.c
-> > > > @@ -4606,7 +4606,7 @@ static struct dentry *lookup_open(struct nameid=
-ata *nd, struct file *file,
-> > > >
-> > > >  /**
-> > > >   * vfs_lookup_open - open and possibly create a regular file
-> > > > - * @parent: directory to contain file
-> > > > + * @path: directory to contain file
-> > > >   * @last: final component of file name
-> > > >   * @open_flag: O_flags
-> > > >   * @mode: initial permissions for file
-> > > > @@ -4619,9 +4619,15 @@ static struct dentry *lookup_open(struct namei=
-data *nd, struct file *file,
-> > > >   * If the fs object found is not a regular file then -EFTYPE is
-> > > >   * returned.
-> > > >   *
-> > > > + * @path is updated to contain the dentry that was found if possible.
-> > > > + * In particular, if -EFTYPE is returned, then @path.dentry will be =
-the
-> > > > + * object that is not a regular file, or %NULL.
-> > > > + * Consequently the caller must be prepared for @path.dentry to be
-> > > > + * dput(), an it must dput() whatever is in @path.dentry after the c=
-all.
-> > > > + *
-> > > >   * Returns: the opened struct file, or an error.
-> > > >   */
-> > > > -struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
-> > > > +struct file *vfs_lookup_open(struct path *path, struct qstr *last,
-> > > >                          int open_flag, umode_t mode)
-> > > >  {
-> > > >     struct file *file __free(fput) =3D NULL;
-> > > > @@ -4638,7 +4644,7 @@ struct file *vfs_lookup_open(struct path *paren=
-t, struct qstr *last,
-> > > >     mode |=3D S_IFREG;
-> > > >     open_flag |=3D __O_REGULAR;
-> > > >
-> > > > -   error =3D lookup_noperm_common(last, parent->dentry);
-> > > > +   error =3D lookup_noperm_common(last, path->dentry);
-> > > >     if (error)
-> > > >             return ERR_PTR(error);
-> > > >
-> > > > @@ -4646,7 +4652,7 @@ struct file *vfs_lookup_open(struct path *paren=
-t, struct qstr *last,
-> > > >     if (IS_ERR(file))
-> > > >             return file;
-> > > >
-> > > > -   nd.path =3D *parent;
-> > > > +   nd.path =3D *path;
-> > > >     nd.last =3D *last;
-> > > >     nd.flags =3D LOOKUP_OPEN;
-> > > >     if (open_flag & O_CREAT) {
-> > > > @@ -4658,9 +4664,18 @@ struct file *vfs_lookup_open(struct path *pare=
-nt, struct qstr *last,
-> > > >     op.mode =3D mode;
-> > > >     dentry =3D lookup_open(&nd, file, &op);
-> > > >
-> > > > -   if (IS_ERR(dentry))
-> > > > +   if (IS_ERR(dentry)) {
-> > > > +           if (dentry =3D=3D -EFTYPE) {
-> > > > +                   /* Try to determine what was found */
-> > > > +                   struct dentry *child =3D d_lookup(path->dentry, &=
-nd.last);
-> > > > +                   dput(path->dentry);
-> > > > +                   path->dentry =3D child;
-> > > > +                   WARN_ON_ONCE(child && d_is_reg(child));
-> > > > +           }
-> > >
-> > > Does anything prevent the child from flipping over to regular?
-> >
-> > Yes.  An inode is never allow to changes its type.
-> > And while you hold a reference on a positive dentry, the inode is that
-> > dentry is not allowed to change (a negative dentry may become positive,
-> > but a positive dentry must keep the same inode).
-> >
->=20
-> Let me restate: what prevents the repeated lookup from finding a
-> different dentry, which also happens to be regular?
->=20
-> I don't see any locks held here to prevent it, so AFAICS in the time
-> window between lookup_open() and d_lookup() someone else could have
-> for example unlinked the target and linked something else.
+Yes, that was exactly the issue and that patch does indeed fix the
+problem on v7.2.
 
-Sorry for misunderstanding - Chuck reported that problem too.
-I think I have a solution involving a small change in the ->atomic_open
-contract.=20
+Thanks for the pointer and I'll try to search better next time!
 
->=20
-> But that's a side remark, the real criticism was later in the e-mail
-> and it is present in the quotation below.
+Back to testing v7.2 and v7.3 then...
 
-Sorry I missed that :-(
+Cheers,
 
->=20
-> > > I would say this is the wrong approach to the API. The path dentry
-> > > switching is a massive hack and should be avoidable. So happens I was
-> > > working on cleaning up the overall handling and you convinced me to post
-> > > the patchset early, see:
+Daire
 
-"massive hack" is in the eye of the beholder.  Updating a path->dentry
-while walking down a path component is a common pattern in in namei.c.
+On Mon, 14 Sept 2026 at 16:29, Owen, Mike <mjnowen@gmail.com> wrote:
+>
+> Hi Daire,
+>
+> Does O_DIRECT work but Buffered does not?
+>
+> This thread with David Howells:
+>
+> https://lore.kernel.org/linux-fsdevel/2319644.1789132399@warthog.procyon.org.uk/
+>
+> cites this fix:
+>
+> https://lore.kernel.org/linux-block/1667275.1788941191@warthog.procyon.org.uk/
+>
+> If so, the above patch has not yet been included as of 7.2.6 (today/14th Sept)
+>
+> -Mike
+>
+>
+> On 14/09/2026 13:44, Daire Byrne wrote:
+>
+> Hi,
+>
+> I was keen to start testing the various scalability improvements since
+> v6.18 and so jumped straight to v7.2.
+>
+> But there seems to be an issue with fscache/cachefiles (mount -o
+> vers=3,fsc) whereby it is creating the sparse files on disk, but is
+> not actually populating them with data.
+>
+> I checked v7.1 but that seems to be working fine. The only related
+> merge in v7.2 I could see was the removal of fscache as a backend for
+> EROFS.
+>
+> Maybe that took with it something that is affecting the NFS case too?
+>
+> Daire
 
 
-> > >
-> > > https://lore.kernel.org/linux-fsdevel/20260913144918.1606123-1-mjguzik@=
-gmail.com/
-> > >
-> > > On top of that the routine as is has avoidable refcount traffic and it
-> > > seems you are adding to it. Instead it can switch to vfs_open_consume.
 
-That argument is somewhat less "in the eye of the beholder".
+-- 
+Daire Byrne
+www.brahma.io
+Follow us on: LinkedIn | Twitter | Facebook | Instagram
 
-> > >
-> > > On cursory reading of the nfs patch, the following should do the trick =
-instead: split the
-> > > helper into 2 parts (say vfs_open_lookup + vfs_open_lookup_finish, mayb=
-e add
-> > > vfs_open_lookup_abort should the caller decide to not go through with
-> > > the open).
-> > >
-> > > Then in nfsd you could have something like this:
-> > > struct vfs_open_lookup_arg v;
-> > >
-> > > vfs_open_lookup(&v, parent_path, ....);
-> > > [ child dentry is in v->path->dentry, do arbitrary work with it]
-> > > if (ok)
-> > >       file =3D vfs_open_lookup_finish(&v);
-> > > else
-> > >       vfs_open_lookup_abort(&v);
-> > >
-> > > The new struct would hide 'struct file' and whatever else
-> > > vfs_open_lookup might want to allocate first.
-> > >
-> >
->=20
-
-Thanks for the suggestion.  I'll consider it and the patch set you
-mentioned above.
-
-Thanks,
-NeilBrown
+This email (including attachments) may contain material that is
+confidential and/or privileged for the sole use of the intended
+recipient. Any review, disclosure, reliance or distribution by others
+or forwarding without express permission is strictly prohibited. If
+you are not the intended recipient, please contact the sender and
+delete all copies including any attachments. Thank you.
