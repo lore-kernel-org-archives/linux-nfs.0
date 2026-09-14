@@ -1,105 +1,194 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8B29F367B84
-	for <linux-nfs@vger.kernel.org>; Mon, 14 Sep 2026 16:01:01 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 75A28328267
+	for <linux-nfs@vger.kernel.org>; Mon, 14 Sep 2026 16:05:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789401662; cv=none; b=lP//+slZWtH8bBuUYn1KveKlraUQgsxtzFcu0wK0fhos8isRxo9Vyh+WYreqbWKJ2v2AZC6Cfj/mQY/OlNAcYFl0VZAoj0dXl+ojFTNz+9ZIWLraLJtW3wxGYfeghBAeUY1LKYmC4qoYbUW4ifQmtkLVvE1jyi6uCtnvKzD2HpQ=
+	t=1789401933; cv=none; b=dxsBzr/iBKbY93vaS8mq9K7Hp0Tl1L149qaT/I46VM2zT9PWDQI0HA2LsbmO4BrqKayLYQp47u+hq0IRG7A+e33ONjyVj0KDgVeo4Peyn3k7fhPFFLsN6Jwl9+8TcJ9P/CxccPq2CLqtHdwNp972PYQMK2D977gpkrIqhdu2eC0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789401662; c=relaxed/simple;
-	bh=KgVpp8IztTSK+6VYdnCzD2ZD8paGKABVfZF90grzQzI=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=fMNjkxOwi8sPHGElOb05M4XZOUcLeZAftU5tNUJyVAoju0G8nlF6VQn1C+KK3cjYCjP9ZLvs+ZwO6sAVBdgOWlfWtn4U9Tz+FP6OY/pWcEPrLEnFXP+FA17yp5mEeqK/fjcqx5BNqK595N5RaTbYMurcAPyCgCmb54WryuDpc3Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=i6JLHo6A; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789401933; c=relaxed/simple;
+	bh=yoUzQpBun4Zy5lU1QCg2N4ncUuQmoc+N18OyRZq4aWA=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=Qxi4+ZAG7cr7cv33eEeUHt0Z/L/ZKvRkgPOGfBwO92VSPu3DPsa55n1EQZvbSo7gJyAhX9oWEGLz2dTPxjm59OTjRqGJIzKJKp7WNsgJfqFq1DMLoNIpnTar1XvDTHfqsRJI3vaDFCr+gfDhBs39MK561S0oYLVEYIw8N6XZGas=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=H3o/zyYQ; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="i6JLHo6A"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B0E081F000FF;
-	Mon, 14 Sep 2026 16:01:00 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="H3o/zyYQ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2A6C31F000FF;
+	Mon, 14 Sep 2026 16:05:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789401661;
-	bh=iGX7uze2o1LDjnfQ6rxoQA0XGyDFnNG6eSEOCwyZCh0=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=i6JLHo6A1zAHVgJfg4b95pSPk4WMLXq8Wo6hZ2NhDOg5PQuEKT0Uu3f16MD7UpPGW
-	 wnFMHtc9tR/8Uv5umHCfxll532N7mNwxUD0sp/0cBPC1tvqqyRZzEjRyIJ5Jt1Z0nn
-	 pqOCQzhplx63PpHlPj8OOH/u7xNiEU25nlYO8PrhCJzF1H+2MTXFWlk2G50h2eR7o/
-	 lZ9SkJIZgGLroAmPSYWaf5roUVxq5DopkmXLlPU8cGtkCaVyX6hPAAavt37LVr8aUI
-	 gdC/eZD9EF7vznBMR1Jo6HVKkfFP5bWP3tl1psifRvut2TPz5H2hu49E94AmtN3ovQ
-	 pnW5PRxOhEbDg==
+	s=k20260515; t=1789401931;
+	bh=M43NlvwUhmIjav1M3L2xJwjUeYV7HQ1tbBmlXOrioDw=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=H3o/zyYQwPUr67lUPUxTXrD8bKB87SF01tYyBjedkH1lxvfCE8lsRDbJZawOB7+S3
+	 0qyUKCcL5k/bDES9zMWmTkEXnwYT36kO/cbFbKZ5vKR4WaE9cOh1bYETUx6BBTsG9N
+	 sFqA2cpxt8hacvo/ook7mtSYHLJrlxmwun+/FPMM4/d/BJH+ahDc21WZ4UfQMgTNnO
+	 GxQw9lXMUKxNI5WFqnG+7n8LI5gQRASCdAHga8LYaOEKQRpCxF+xxXbY0yoZO6NNuA
+	 Q1AMM4Iyck3ot9BX192nQMNx3ci4zd/LMAaITP1xIeh33eB+xrXBFBuWCvHFO2DiG3
+	 Z7LKrmc1Qpuiw==
+Message-ID: <29a7f920f67b8fe151b140a714774581845a5f17.camel@kernel.org>
+Subject: Re: [PATCH RFC nfs-utils v2 00/10] nfsdctl: allow it to handle
+ rpcbind registration and deregistration
 From: Jeff Layton <jlayton@kernel.org>
-Date: Mon, 14 Sep 2026 12:00:38 -0400
-Subject: [PATCH RFC nfs-utils v2 10/10] nfsdctl: check the netlink
- attribute puts in set_listeners()
+To: Steve Dickson <steved@redhat.com>, Trond Myklebust <trondmy@kernel.org>,
+  Anna Schumaker	 <anna@kernel.org>, Chuck Lever <cel@kernel.org>, NeilBrown
+ <neil@brown.name>,  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo
+ <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 14 Sep 2026 12:05:29 -0400
+In-Reply-To: <20260914-nfsdctl-rpcb-v2-0-b2c679ac0107@kernel.org>
+References: <20260914-nfsdctl-rpcb-v2-0-b2c679ac0107@kernel.org>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260914-nfsdctl-rpcb-v2-10-b2c679ac0107@kernel.org>
-References: <20260914-nfsdctl-rpcb-v2-0-b2c679ac0107@kernel.org>
-In-Reply-To: <20260914-nfsdctl-rpcb-v2-0-b2c679ac0107@kernel.org>
-To: Steve Dickson <steved@redhat.com>, Trond Myklebust <trondmy@kernel.org>, 
- Anna Schumaker <anna@kernel.org>, Chuck Lever <cel@kernel.org>, 
- NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1294; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=KgVpp8IztTSK+6VYdnCzD2ZD8paGKABVfZF90grzQzI=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqqBoyeO+uMa7hfrhReyR2QRWmxkLJ21Lf4JMiU
- W+RG88mD5aJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaqgaMgAKCRAADmhBGVaC
- FdXyD/9BAvk8WN9hCA4QjJ+RtGLmDL08TZgaFfO2SINrh8WtCVdzEJFerw4At8aPDY4ZR2tIySw
- p82MKGF6HXmue70ZvSm4nM8uQGuZ4/GvPlyslXGlliKZO0Ea29J4LX7y/I6t+PM6nnbTsik/Fk0
- H8Nno1pXqZw5tg37T3GuX9k0h5MgadKvIhfCHXaJwqkWa49aAamkmcWuZHR7aLbVDQ+fElPEAAq
- Nzmm2c66M4hrVrZRZS+LCjGDZs8ejFXFYXhLI2XRDNuBGEUJE7osY8hb6R3CftH3JA7r0zunu5G
- iUjhxR8im0sobjWJOuboU/44jLh5C8KL9aDCzBX9y6ho/bRa+qaYLtTNXeA9aYo3UxlKmxSSa5b
- nOZ28RwrNp36J/to9k3nC4OY1aJtlaUk26+H6O6N/LrFU8D2sSr+osmeMGYjTPDQWeTJSJ+xMQI
- f1TBUz7f6yK/xIs7oQ8vUmIQA6O3ScGhNPWfSMppGlw845Gf+6+wTxhodi2HIEppZqNKjOF8D3p
- w82vUId9iCs1rJJtuCIN+PtPNDk6TX2OvkJkjdIVFRBiPuEZ3s6KhHBh3h3ojzRaW9TIBuO4qP+
- OMjYgjD2cY0JYbDh45R85rund/qC0YmuxbV7p2+qQTd8kPAB8shubTnL5NlO8uYGgGUrmREGy0Q
- HoJBl2iOKAxnpzQ==
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-nla_nest_start() only reserves a 4-byte header, so it still succeeds on
-a message that has no room for the 128-byte sockaddr that follows. The
-puts inside the nest went unchecked, so an over-full message was sent
-with silently truncated listener nests. The kernel then rejects it with
-EINVAL, which says nothing about what went wrong.
+On Mon, 2026-09-14 at 12:00 -0400, Jeff Layton wrote:
+> This version fixes some problems that Sashiko flagged in review.
+>=20
+> This patchset adds support for NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND,
+> which tells the kernel to not do rpcbind registration and to instead
+> allow userland to handle it. After setting listeners, nfsdctl will then
+> call out to rpcbind using the normal libtirpc client interfaces.
+>=20
+> This is a companion set to the kernel set I recently posted (and which
+> also should have been marked RFC).
+>=20
+> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> ---
+> Changes in v2:
+> - Fixes for bugs v1 introduced are folded into the patches that
+>   introduced them. Three pre-existing bugs found along the way are
+>   separate patches at the end, so the set is 10 patches instead of 7.
+> - "register nfsd listeners with rpcbind": register only once the
+>   listener_set reply has been parsed. On a reply carrying no rpcbind
+>   attributes the sweep cleared every NFS and NFSACL entry and put
+>   nothing back, leaving a running server advertising nothing. Also
+>   abort rather than send a listener_set that lost the ownership flag.
+> - "clear rpcbind entries when the serv is torn down" (was "... when the
+>   last thread stops"): also sweep on the autostart teardown path.
+> - New, pre-existing: fix a heap overflow in autostart_func(). A failed
+>   listener set zeroed the pool count before the thread array was sized,
+>   but the array is filled from the nfs.conf list, so any [nfsd] threads
+>   setting wrote past the allocation.
+> - New, pre-existing: reject a listener insertion when the table is full,
+>   instead of writing one element past nfsd_sockets[].
+> - New, pre-existing: check the nla_put() calls in set_listeners().
+> - Link to v1: https://lore.kernel.org/r/20260910-nfsdctl-rpcb-v1-0-4bba1e=
+7a3a43@kernel.org
+>=20
+> ---
+> Jeff Layton (10):
+>       nfsdctl: sync nfsd_netlink.h with the kernel
+>       nfsdctl: probe the policy of any command
+>       nfsdctl: share the listener nest parser
+>       nfsdctl: add rpcbind registration helpers
+>       nfsdctl: register nfsd listeners with rpcbind
+>       nfsdctl: clear rpcbind entries when the serv is torn down
+>       nfsdctl: add missing break in update_listeners()
+>       nfsdctl: fix heap overflow in autostart_func() listener cleanup
+>       nfsdctl: reject a listener insertion when the table is full
+>       nfsdctl: check the netlink attribute puts in set_listeners()
+>=20
+>  configure.ac                   |   2 +-
+>  support/include/nfsd_netlink.h |  18 +++
+>  utils/nfsdctl/Makefile.am      |  10 +-
+>  utils/nfsdctl/nfsdctl.8        |  16 +++
+>  utils/nfsdctl/nfsdctl.adoc     |  17 +++
+>  utils/nfsdctl/nfsdctl.c        | 256 +++++++++++++++++++++++++++++++++--=
+------
+>  utils/nfsdctl/rpcbind.c        | 251 +++++++++++++++++++++++++++++++++++=
++++++
+>  utils/nfsdctl/rpcbind.h        |  42 +++++++
+>  8 files changed, 562 insertions(+), 50 deletions(-)
+> ---
+> base-commit: 630393e9c73667b3fda6a7507cb5171ec0ec38dc
+> change-id: 20260908-nfsdctl-rpcb-adc5a1fc090b
+>=20
+> Best regards,
 
-MAX_NFSD_SOCKETS is 256 and nlmsg_alloc() defaults to one page, so
-roughly 28 listeners overflow.
+Forgot to remove the "RFC" from the subject line for this one. Consider
+this an "official" submission.
 
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- utils/nfsdctl/nfsdctl.c | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
-
-diff --git a/utils/nfsdctl/nfsdctl.c b/utils/nfsdctl/nfsdctl.c
-index 7464baad279f..505b38d695ab 100644
---- a/utils/nfsdctl/nfsdctl.c
-+++ b/utils/nfsdctl/nfsdctl.c
-@@ -1493,8 +1493,14 @@ static int set_listeners(struct nl_sock *sock)
- 			goto out;
- 		}
- 
--		nla_put(msg, NFSD_A_SOCK_ADDR, sizeof(sock->ss), &sock->ss);
--		nla_put_string(msg, NFSD_A_SOCK_TRANSPORT_NAME, sock->name);
-+		if (nla_put(msg, NFSD_A_SOCK_ADDR, sizeof(sock->ss),
-+			    &sock->ss) ||
-+		    nla_put_string(msg, NFSD_A_SOCK_TRANSPORT_NAME,
-+				   sock->name)) {
-+			xlog(L_ERROR, "Too many listeners for one netlink message");
-+			ret = 1;
-+			goto out;
-+		}
- 		nla_nest_end(msg, a);
- 	}
- 
-
--- 
-2.55.0
-
+Thanks,
+--=20
+Jeff Layton <jlayton@kernel.org>
