@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E5E1549C4AD;
-	Mon, 14 Sep 2026 15:21:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3C13D47F791;
+	Mon, 14 Sep 2026 15:21:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789399273; cv=none; b=A+ieZS+im2mvzl1gwG2RGBGPA6szUpe8+aWnPZrhaH+8wsdiSLfaVsLz1+EeumkpMkOt3Tf1vn1Gj4444yZ490g7H+rHak3jeGOFqjXx1/N60G6nSq53XhFM/huposBLxY3I2BXGLGp8YPgCZUWqRtDg9KyJHazWmzP9DH4DVvc=
+	t=1789399274; cv=none; b=i9eKRow7z8Y7BgR0j6QQD8QcvHEZbfTcSivhElYQ4cnm6cB4pPDCu9ORBazKkgCRcg5QwtFokMM3B8d7cjuyWRaseYtMB7lGm1NDZ4pV0S2dTepxRvwupckmky2aUA90zRyqHB6r2Cy1ZXdG1j9iX7xQeU9wXVIdo57KD0Sn3os=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789399273; c=relaxed/simple;
-	bh=dYm5b7B6dTvNKjVYzuF7/FkF8IDWphASM2cJV/5trG4=;
+	s=arc-20240116; t=1789399274; c=relaxed/simple;
+	bh=C3xajPKbFSHFqX0Wtv9izib5A53bSMe1dMWdnMH5wSM=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=BMYYKI0ffrhN0areAZmPRUnE59KJOJnHrc36oXPKzB88xDsx0f6R/q54X9D5I6FXwywUbfdwJeGFoElZFAP07AJL9wTxS3AOM5Vv6dk7VKsFZwaZef8hl+uKuYE2gy7PeNutrj5GuU3E3IeTJBs+oaVSS8SEvE7JI71tYnblb0k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WZULdT1Z; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=oc5YFLFJqzDQs+XMrKOUwPAKAJoKDwN+R8aVjkgO4X6eNP7YWLpeBOZpVUqWmkx4xXwOaEGRrLONvoBL/aDW7k12ShWeRYsdyB4dC+zVVPPQCmHserwERi3Vdhp9Y3KnDWk3+ct/V5E+PtT19G2QGXH6o24A1pgYZUjMWwGgbzQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nrLc6nQo; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WZULdT1Z"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7AD641F008A0;
-	Mon, 14 Sep 2026 15:21:08 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nrLc6nQo"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1C4A61F00899;
+	Mon, 14 Sep 2026 15:21:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789399269;
-	bh=QH3G09fgNYNq57/vr1pk3tneJpQFCpXfha0cp9uQYVE=;
+	s=k20260515; t=1789399271;
+	bh=VRH/H/+N8Z/Vfxv9jNxARCyZVqpjG1luBuWidiJcDi8=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=WZULdT1ZFMIxjMQVyXq2Ppc0Hc+mXve0GEqQ4lG57+ogcFAof/O6c1Op+2SWlw/YT
-	 p0wbgGx/Mf43Xm10kRceJ8DoFdPbyLmw1MzprqbtFN8tkwpOMPLy72pEYXexIhJOTL
-	 ZXuXNlCnWquJdHXKeNvvlfcylhjs1QzjBKhgaqzi+xOr3KYwGfaJ9G/Xc+MwE5FLyB
-	 01R3LATGI0njFWWLOXCo2kpCjLe1DUAbrquIN3P0KNmyIZzhQEbEKck690aWmyboYw
-	 bA8XzL/ujyDgkPn+XpC9n0EB1Pitr9A67vkPCDqi7wqE+DJGVa0OInD6UuI0pevzAl
-	 iaaH6i7UfAEfg==
+	b=nrLc6nQoC18zeNhjb/yn7dGI8EjwLR1G2/cdp53Fn4bpi6ZmZjCLDbZdV2pCO6tzg
+	 FMnDHIIdWhrIzIgwYxkyETW8vBh8kHop2UC8AMmOfbU8z/Hto8U2nH4CC6rTerzYYz
+	 bW/e3dlJMzdSqdb2jExGAQPuoX82w3KKKlNOdLI6PcVdAq5xYbfJQSJSKOA/N4Gmug
+	 wSYhWszT3dJLLdTMyRUiQTrQa8VRzt/8uqrmSZFKYeFe7kp0G54y5GdxwYQOQeFzKN
+	 2/aDcHEytlGGqe2V/9XtFlMkrGjt4boJ3+vidS6TsrJuMngpvxYlPTG5zJyUp7U3H2
+	 MgwJHBwi2uXDw==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Mon, 14 Sep 2026 11:20:39 -0400
-Subject: [PATCH v2 2/5] NFSD: add a userspace-rpcbind flag to listener_set
+Date: Mon, 14 Sep 2026 11:20:40 -0400
+Subject: [PATCH v2 3/5] NFSD: honour the userspace-rpcbind flag in
+ listener_set
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260914-nfsd-norpcb-v2-2-38263c6f59b2@kernel.org>
+Message-Id: <20260914-nfsd-norpcb-v2-3-38263c6f59b2@kernel.org>
 References: <20260914-nfsd-norpcb-v2-0-38263c6f59b2@kernel.org>
 In-Reply-To: <20260914-nfsd-norpcb-v2-0-38263c6f59b2@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
@@ -51,196 +52,176 @@ Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
  netdev@vger.kernel.org, linux-kselftest@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5624; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=dYm5b7B6dTvNKjVYzuF7/FkF8IDWphASM2cJV/5trG4=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqqBDgM9UnOJtjs+kmrTDh8zNwvUige3pJq4Oqd
- ZsKfiFIXyOJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaqgQ4AAKCRAADmhBGVaC
- FYNJEADAlpItC3535KsCrdoevvITcjyiwz1zQCVli0gAjR8t8pbpAykgE0B/RTqhz0PRerbDWCC
- /sZZvRkPrjmVtHsIi3YRF6j9jQjGwCI9YVXbMfRuDQ7ufqMtZ8cXrH9LISvveduEj5LXYSxaPeF
- XPyETfggB5rwm7j1B6jq/DQSWWgzr5IqNMIs+lV6Tdk3PFxapyeJ50A8eBtFMdNC+asKXqqmkKw
- uHQ9tPMPPxnAWv3FhA5HYQ1gbKPHAbBmX/38vxn5BSrUqduW/lu2MzxybdY30S2WcEDANNbogtA
- jSNPFQaGsCiA6L6M2JTpSysgq35SYY3e4pbiwL7qoN7zP/5/4TS/XAiaLX1XREbDM8gPonbMs9J
- IwKOf9FpeMD4yGhwf8qZ/qyvA0UmaYskAkPmQyMqIZpxUBD5FxaFqYRXmKyE88P14W0fIuF+IyJ
- aGWDT4O6DGGw1NGsGY2BoiYVSD1FeqAKJw7I2b6fYum+GYYo41CL1YLEXNLO0JFOs/Fuxu0Xvep
- uIRdLn6lgmu4+6zrFthR94Ayf3MfuyT+Brd1RcY24gGq3aThIhYw2z4tJQCI4UpQe2nCFLFoWpP
- emZeFJOo83s8LQa3S/HWvoUuWLWyQdfe+bSFzdpkWbpTDOn8HANVPv9BPLD9FR17jth4ig3/Dt2
- nr8839tjnWRmSWw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5333; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=C3xajPKbFSHFqX0Wtv9izib5A53bSMe1dMWdnMH5wSM=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqqBDg7RdvDBI+ET24j/jZku3r+TJNeYS1JTYzK
+ QYG/FZNmnKJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaqgQ4AAKCRAADmhBGVaC
+ FSVLD/0TwpxojxIrLEjzGxYZ9zNCaljn7UBiyvs0jDXCmnK0JnGgPXRJAQLeCANi6OzyW1dxzIT
+ NyBAsTfkx4fK2fs+i0qkwZ3bVTn0LsGdokJHMqZJoRElRHx8BX4jlHbOgAUpQHXnFkZLJpWK+sR
+ kVtc3N4Mtf1Xx7O51MIKS7/bpTDnrmhFqu2i+jLzFZat5ScLu+CFPlz39eI6f6whFFqLCLlmgye
+ kbTZhNQQROiqY87YeNfQtVxhQ/rJ5LmflVKoJtViYjDPtVRjR/MYoW2PBBm9qHTsMHDnv+MY3+c
+ EymtDR7D8TejIPu+qGqXylTvlkWXNIbr00wqMEJBSe2rPASoDDJZylHRfl00sURKJV4N9FxADfB
+ 1WqlgvbGQMarVw1iqbiq0SzgniOIKmRlAvQiXBqyby+aN2T7sm06/X8jJWLGSbR26kSd4jIcZGY
+ rjiHKQl35wwJAtVexy1BMSJtdThJltnQWZm44JrRbOaQPHsA0pidGm1e+ViPhy7V/V7E1QBV/FI
+ 08GIBDow96D/+TkDMUMQZTaFX2N3lF1jEbGlLaiYN0jLxuHFqeu1FIEBwzpeNR0XBRXw9I/l3v9
+ KbmREU7ByzLIOA3pOMHttMbleGKlZzKE2gzCfOkec2YHus2eZnE44rduy+ZDxWIURA8gOtVMqC3
+ bu9761WAQ3I7mZw==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Describe the interface that lets a caller take over rpcbind registration.
+A listener_set request that carries userspace-rpcbind now sets
+sv_no_rpcbind on the serv. The kernel then makes no rpcbind call at all,
+avoiding synchronous rpcbind RPCs under nfsd_mutex.
 
-The request gains a userspace-rpcbind flag. The reply echoes the flag,
-lists the programs and versions that the caller should register, and
-names the listeners that came up.
+The legacy portlist add-fd interface refuses to run against such a serv.
+nfsd_create_serv() returns early when the serv exists, so it cannot flip
+ownership back, svc_addsock() does not pass SVC_SOCK_ANONYMOUS and so
+expects svc_register() to register the listener, and there is no way to
+tell the rpcbind owner about it. -EBUSY, matching listener_set. add-xprt
+already passes SVC_SOCK_ANONYMOUS and never registered anything.
 
-NLM is absent. lockd owns its own svc_serv and still registers itself.
+lockd is unaffected. It owns a separate svc_serv and still registers NLM.
 
 Assisted-by: LLM
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- Documentation/netlink/specs/nfsd.yaml | 55 ++++++++++++++++++++++++++++++++++-
- fs/nfsd/netlink.c                     |  5 ++--
- include/uapi/linux/nfsd_netlink.h     | 20 +++++++++++++
- 3 files changed, 77 insertions(+), 3 deletions(-)
+ fs/nfsd/nfsctl.c | 30 ++++++++++++++++++++++++------
+ fs/nfsd/nfsd.h   |  2 +-
+ fs/nfsd/nfssvc.c | 14 ++++++++++++--
+ 3 files changed, 37 insertions(+), 9 deletions(-)
 
-diff --git a/Documentation/netlink/specs/nfsd.yaml b/Documentation/netlink/specs/nfsd.yaml
-index 642268819c6f..9ae37bf3ea71 100644
---- a/Documentation/netlink/specs/nfsd.yaml
-+++ b/Documentation/netlink/specs/nfsd.yaml
-@@ -42,6 +42,15 @@ definitions:
-       - none
-       - tls
-       - mtls
-+  -
-+    type: flags
-+    name: rpcbind-flags
-+    doc: >-
-+      Constraints that apply to an rpcbind registration. no-udp means the
-+      kernel would not have registered this program and version over UDP,
-+      so the caller must skip the udp and udp6 netids for it.
-+    entries:
-+      - no-udp
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 1be8f98a293d..207a1bed3928 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -748,7 +748,14 @@ static ssize_t __write_ports_addfd(char *buf, struct net *net, const struct cred
+ 		return -EINVAL;
+ 	trace_nfsd_ctl_ports_addfd(net, fd);
  
- attribute-sets:
-   -
-@@ -159,6 +168,23 @@ attribute-sets:
-       -
-         name: transport-name
-         type: string
-+  -
-+    name: rpcbind
-+    attributes:
-+      -
-+        name: program
-+        type: u32
-+        doc: RPC program number to register.
-+      -
-+        name: version
-+        type: u32
-+        doc: RPC version number to register.
-+      -
-+        name: flags
-+        type: u32
-+        enum: rpcbind-flags
-+        enum-as-flags: true
-+        doc: Constraints on the listeners this entry applies to.
-   -
-     name: server-sock
-     attributes:
-@@ -167,6 +193,24 @@ attribute-sets:
-         type: nest
-         nested-attributes: sock
-         multi-attr: true
-+      -
-+        name: userspace-rpcbind
-+        type: flag
-+        doc: >-
-+          The caller registers the listeners with rpcbind itself, so the
-+          kernel must not do it. The kernel echoes this attribute in the
-+          reply when it accepts the request. Ownership cannot change while
-+          a server exists.
-+      -
-+        name: rpcbind
-+        type: nest
-+        nested-attributes: rpcbind
-+        multi-attr: true
-+        doc: >-
-+          A program and version that the caller should register for every
-+          listener reported in the same reply, except the netids that flags
-+          rules out. Reply only. NLM is absent because lockd still
-+          registers itself.
-   -
-     name: pool-mode
-     attributes:
-@@ -483,13 +527,22 @@ operations:
-             - version
-     -
-       name: listener-set
--      doc: set nfs running sockets
-+      doc: >-
-+        set nfs running sockets. A request that carries userspace-rpcbind
-+        is answered with a reply rather than a bare ack, and the addr list
-+        in that reply names only the listeners that have an rpcbind netid.
-       attribute-set: server-sock
-       flags: [admin-perm]
-       do:
-         request:
-           attributes:
-             - addr
-+            - userspace-rpcbind
-+        reply:
-+          attributes:
-+            - addr
-+            - userspace-rpcbind
-+            - rpcbind
-     -
-       name: listener-get
-       doc: get nfs running listeners
-diff --git a/fs/nfsd/netlink.c b/fs/nfsd/netlink.c
-index eba8b353f412..88a4a4ffcb7f 100644
---- a/fs/nfsd/netlink.c
-+++ b/fs/nfsd/netlink.c
-@@ -79,8 +79,9 @@ static const struct nla_policy nfsd_version_set_nl_policy[NFSD_A_SERVER_PROTO_VE
- };
+-	err = nfsd_create_serv(net);
++	/*
++	 * svc_register() is a no-op once userland owns rpcbind, and this
++	 * interface has no way to hand the new listener to that owner.
++	 */
++	if (nn->nfsd_serv && nn->nfsd_serv->sv_no_rpcbind)
++		return -EBUSY;
++
++	err = nfsd_create_serv(net, false);
+ 	if (err != 0)
+ 		return err;
  
- /* NFSD_CMD_LISTENER_SET - do */
--static const struct nla_policy nfsd_listener_set_nl_policy[NFSD_A_SERVER_SOCK_ADDR + 1] = {
-+static const struct nla_policy nfsd_listener_set_nl_policy[NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND + 1] = {
- 	[NFSD_A_SERVER_SOCK_ADDR] = NLA_POLICY_NESTED(nfsd_sock_nl_policy),
-+	[NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND] = { .type = NLA_FLAG, },
- };
+@@ -780,7 +787,7 @@ static ssize_t __write_ports_addxprt(char *buf, struct net *net, const struct cr
+ 		return -EINVAL;
+ 	trace_nfsd_ctl_ports_addxprt(net, transport, port);
  
- /* NFSD_CMD_POOL_MODE_SET - do */
-@@ -153,7 +154,7 @@ static const struct genl_split_ops nfsd_nl_ops[] = {
- 		.cmd		= NFSD_CMD_LISTENER_SET,
- 		.doit		= nfsd_nl_listener_set_doit,
- 		.policy		= nfsd_listener_set_nl_policy,
--		.maxattr	= NFSD_A_SERVER_SOCK_ADDR,
-+		.maxattr	= NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND,
- 		.flags		= GENL_ADMIN_PERM | GENL_CMD_CAP_DO,
- 	},
- 	{
-diff --git a/include/uapi/linux/nfsd_netlink.h b/include/uapi/linux/nfsd_netlink.h
-index 87da1d0bb21e..c125af0cc6a5 100644
---- a/include/uapi/linux/nfsd_netlink.h
-+++ b/include/uapi/linux/nfsd_netlink.h
-@@ -50,6 +50,15 @@ enum nfsd_xprtsec_mode {
- 	NFSD_XPRTSEC_MODE_MTLS = 4,
- };
+-	err = nfsd_create_serv(net);
++	err = nfsd_create_serv(net, false);
+ 	if (err != 0)
+ 		return err;
  
-+/*
-+ * Constraints that apply to an rpcbind registration. no-udp means the kernel
-+ * would not have registered this program and version over UDP, so the caller
-+ * must skip the udp and udp6 netids for it.
+@@ -2095,6 +2102,7 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
+ 	unsigned int rpcb_failures;
+ 	const struct nlattr *attr;
+ 	bool skipped_rpcb = false;
++	bool userspace_rpcbind;
+ 	bool bad_rpcb = false;
+ 	struct svc_serv *serv;
+ 	LIST_HEAD(permsocks);
+@@ -2111,15 +2119,25 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
+ 	if (err)
+ 		return err;
+ 
++	userspace_rpcbind = nla_get_flag(info->attrs[NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND]);
++
+ 	mutex_lock(&nfsd_mutex);
+ 
+-	err = nfsd_create_serv(net);
++	nn = net_generic(net, nfsd_net_id);
++
++	if (nn->nfsd_serv && nn->nfsd_serv->sv_no_rpcbind != userspace_rpcbind) {
++		NL_SET_ERR_MSG(info->extack,
++			       "cannot change rpcbind ownership while a server exists");
++		mutex_unlock(&nfsd_mutex);
++		return -EBUSY;
++	}
++
++	err = nfsd_create_serv(net, userspace_rpcbind);
+ 	if (err) {
+ 		mutex_unlock(&nfsd_mutex);
+ 		return err;
+ 	}
+ 
+-	nn = net_generic(net, nfsd_net_id);
+ 	serv = nn->nfsd_serv;
+ 
+ 	spin_lock_bh(&serv->sv_lock);
+@@ -2213,12 +2231,12 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb, struct genl_info *info)
+ 			continue;
+ 		}
+ 
+-		flags = skipped_rpcb ? SVC_SOCK_ANONYMOUS : 0;
++		flags = (userspace_rpcbind || skipped_rpcb) ? SVC_SOCK_ANONYMOUS : 0;
+ 		ret = svc_xprt_create_from_sa(serv, xcl_name, net, sa, flags,
+ 					      current_cred());
+ 
+ 		hit_rpcb = false;
+-		if (!skipped_rpcb &&
++		if (!userspace_rpcbind && !skipped_rpcb &&
+ 		    svc_rpcb_failure_count(serv) != rpcb_failures) {
+ 			skipped_rpcb = true;
+ 			hit_rpcb = true;
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index a145294c59c8..dcce45d58322 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -119,7 +119,7 @@ enum vers_op {NFSD_SET, NFSD_CLEAR, NFSD_TEST, NFSD_AVAIL };
+ int nfsd_vers(struct nfsd_net *nn, int vers, enum vers_op change);
+ int nfsd_minorversion(struct nfsd_net *nn, u32 minorversion, enum vers_op change);
+ void nfsd_reset_versions(struct nfsd_net *nn);
+-int nfsd_create_serv(struct net *net);
++int nfsd_create_serv(struct net *net, bool no_rpcbind);
+ void nfsd_destroy_serv(struct net *net);
+ 
+ #ifdef CONFIG_DEBUG_FS
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index c04ef9d180ce..ef520d0562d6 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -607,7 +607,14 @@ struct svc_rqst *nfsd_current_rqst(void)
+ 	return NULL;
+ }
+ 
+-int nfsd_create_serv(struct net *net)
++/**
++ * nfsd_create_serv - create the svc_serv for a namespace if it has none
++ * @net: network namespace to operate within
++ * @no_rpcbind: true if the caller registers the listeners with rpcbind
++ *
++ * Return: 0 on success or a negative errno.
 + */
-+enum nfsd_rpcbind_flags {
-+	NFSD_RPCBIND_FLAGS_NO_UDP = 1,
-+};
-+
- enum {
- 	NFSD_A_CACHE_NOTIFY_CACHE_TYPE = 1,
++int nfsd_create_serv(struct net *net, bool no_rpcbind)
+ {
+ 	int error;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+@@ -635,6 +642,9 @@ int nfsd_create_serv(struct net *net)
+ 		return -ENOMEM;
+ 	}
  
-@@ -113,8 +122,19 @@ enum {
- 	NFSD_A_SOCK_MAX = (__NFSD_A_SOCK_MAX - 1)
- };
- 
-+enum {
-+	NFSD_A_RPCBIND_PROGRAM = 1,
-+	NFSD_A_RPCBIND_VERSION,
-+	NFSD_A_RPCBIND_FLAGS,
++	/* svc_bind() reads this, so set it first. */
++	serv->sv_no_rpcbind = no_rpcbind;
 +
-+	__NFSD_A_RPCBIND_MAX,
-+	NFSD_A_RPCBIND_MAX = (__NFSD_A_RPCBIND_MAX - 1)
-+};
-+
- enum {
- 	NFSD_A_SERVER_SOCK_ADDR = 1,
-+	NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND,
-+	NFSD_A_SERVER_SOCK_RPCBIND,
+ 	error = svc_bind(serv, net);
+ 	if (error < 0) {
+ 		svc_destroy(&serv);
+@@ -775,7 +785,7 @@ nfsd_svc(int n, int *nthreads, struct net *net, const struct cred *cred, const c
+ 	strscpy(nn->nfsd_name, scope ? scope : utsname()->nodename,
+ 		sizeof(nn->nfsd_name));
  
- 	__NFSD_A_SERVER_SOCK_MAX,
- 	NFSD_A_SERVER_SOCK_MAX = (__NFSD_A_SERVER_SOCK_MAX - 1)
+-	error = nfsd_create_serv(net);
++	error = nfsd_create_serv(net, false);
+ 	if (error)
+ 		goto out;
+ 	serv = nn->nfsd_serv;
 
 -- 
 2.55.0
