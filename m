@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F34453D7D86
-	for <linux-nfs@vger.kernel.org>; Mon, 14 Sep 2026 13:14:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 68848476040
+	for <linux-nfs@vger.kernel.org>; Mon, 14 Sep 2026 13:14:36 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789391677; cv=none; b=mnibcPFbdK77NeNFOHIhOXyppR+4li2y1fGqNfogNpy471zibXCiOgQxNr98idoWCVZKDhfXQX0+6y0aDAXXHVTFSS2mtUJOqqE86YoaZnpjLQyxSfXglur3WXiFndtW270QAl54CSQ7vHptHH4do1sLcWAnW4dpAfsgtK9NfbY=
+	t=1789391677; cv=none; b=let3QHI/uiGwUpKsl3FVlS3qOCrpAayDndWWj9h/6BUio/sQmx0AH1kerw0Cry54dMLN99xlptWIUoBzicul/rm/oeVpcCMk2oCBuw4Kuo85PGSwwxt96PMpwEUzTMVg8eLK50p8FK/Pi7N0oW1BH6PDD+/bWomDWw6xtd7Bb8s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1789391677; c=relaxed/simple;
-	bh=WzMMz7RUefxyolD+IUc9iY91At6SJ1VgiPYTNJpWIlY=;
+	bh=w0RsmikSFQo/zU5YjmjUnojH6ZS05HjBP7EMA088xv8=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=ojHznuTN6JUvjpQ6oQE8zpwGEHkr6sfDp83+x4P8Qwi5K4f1YB/frtJpGO4jjWN6uWDyozekRQ5/i7zXGST2ymZlfjlNcWrB69ZA5tlIoxOmQT8PkDC+JYV6XFFrwbXNlcVZ1tpuImmj3ktAdQab7WKOdmxg5gyvkE1bFxziol8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=k7ljE1YV; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=jidkpMzcCSV+sMNxm3xcrSMSORNVe9Dmwjhzu2WUjn6qSDtj92Iwy0DwRr2JMfcyNwBowvFefyMQaJZPIvroQjy4JWYKv2RTmdmYPognrrLJ6oF6wjpc6En2xtvkwGvMglizR4hfz5vF2zOGO4s76cldhc1bsdYp1I/QYEW/ELI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OoJVEUe4; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="k7ljE1YV"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 542D11F00893;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OoJVEUe4"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E97621F0089D;
 	Mon, 14 Sep 2026 13:14:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789391675;
-	bh=kpsQpFSRtuqt57stfKhxJcadUEclx4dsUVby2zPTGiE=;
+	s=k20260515; t=1789391676;
+	bh=l+vIgdV2SPnuwSUW3I62WSfvce0Gax650KUVNjuXIKU=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=k7ljE1YVzynyV+Emd+HA/3wHauGH/iXNyiOEG4bmF31F2XdNxchqEwPpxOdIyrfpC
-	 W33QAQP842fc/gKaghNgWn314BioUUKyqPZrqHZ+pEp+veUjS+NTJ1uFuhZHkKWjVe
-	 bNOsW5nz+Sy+djJr1kueUjJN71bslWSKCKbKkW3eohI/jaE8gNF8bDfsSEtmUn5NnT
-	 BNtUJQKHbfT2P1yCcUKj7TGWCOKvC2KllpAcFFw2X36r3aCrW3osjbX+fBST7HF6b3
-	 SDwXd1aUnkZtbfiUdnnf44zYUztfJqWRkpz+maPG2ahsqptbNcTLyja8QsSxiM0gm1
-	 HtACSoNqoleRg==
+	b=OoJVEUe4v8a1Ekniu/oHjRr8txTmroZDUUMkpf3Yt3cPqYE7w4MpufJzEnQ/6gA3Z
+	 y5JxB25IcndIbeCJxF16Y1VOljmwcQQYu27iVa9AY8sbARtkwi9GzFpcj6vtytjqCX
+	 1wgRQJtPG9E46ttyqhcOBg4eEjXIwY1xZa4xXz7jZkR1zmG/jUvIxzgW7xw1aGkDEH
+	 gbI3RM/HqE3dvX/dmtxNRrtdCEDy5VcrK0hus3KfyAWwmJs50lmgB/7p08AZskiVLC
+	 aH20mkkjSsdXR1DEllSZd/S7zkBIMXVD7oUn69QUte85A4TaXdclx8L87f5VY5JI9j
+	 06XocE8cb/QBA==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Mon, 14 Sep 2026 09:14:19 -0400
-Subject: [PATCH nfs-utils v3 10/11] mountd: bound the retry queues
+Date: Mon, 14 Sep 2026 09:14:20 -0400
+Subject: [PATCH nfs-utils v3 11/11] mountd: don't warn about pipefs
+ submounts nobody asked to export
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260914-nl-crossmnt-v3-10-a984a6c94829@kernel.org>
+Message-Id: <20260914-nl-crossmnt-v3-11-a984a6c94829@kernel.org>
 References: <20260914-nl-crossmnt-v3-0-a984a6c94829@kernel.org>
 In-Reply-To: <20260914-nl-crossmnt-v3-0-a984a6c94829@kernel.org>
 To: Steve Dickson <steved@redhat.com>, 
@@ -45,169 +46,51 @@ To: Steve Dickson <steved@redhat.com>,
 Cc: Chuck Lever <cel@kernel.org>, linux-nfs@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4953; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=WzMMz7RUefxyolD+IUc9iY91At6SJ1VgiPYTNJpWIlY=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqp/M0fAQtGXkX9aSCny+oekLZPCb/ZL1S/+phC
- ZDxSKKxeWOJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaqfzNAAKCRAADmhBGVaC
- FaUsEACnvA8edBuO0BzASzCA2p8AqnRZ8vSdfoMY7GszRVvfwST9EitBlqTmldofU782+EBJ4u7
- 9kOBpqI6zbrihczwW9WD3D6y/hDeJJvFxHkme9fJbEv915JEgenOUnlPYSL27Z3Z83dk4JfdUO6
- pLwGYtgXutsU1zlTP/Q6w271guav0seE0EHCXElwerlcEA0vYlOVbsh+FrECnY72FX5BEEe0VKR
- sk9jIni6nRd54wTzV8kxwNWBB7/Q/2jdBwflbyL4jOMshNTsZAVEO7/xi887+ZE/wCV4dB8YO68
- DQ4dH3llEAB/F/xQDDcL80EToJFzOAv4Wd2IWe+ahg/KVaVJHJuzYNXxal31EZycTkBOIMZXc4b
- ZG1BqUTNySj+Ur0yFzMZAnjCJjzAXeHCRCZNZFSe+pEMLs/cs3o5sNWKo5Wcyukmkdb9XcN1k+2
- llduRRVGkofkLyNfhO+AzzFVfiqknz2xWbuqWGsrWYK2jUHCPEtufg/cRH+OROHicyBgGZtP4oj
- 2aOcpnU1LafytErdGDSrFxQ3iPbtu7RAmhmh3OgpbIWsSv60AQr0rWaw+5pFEL9sKMPW90VeCQH
- ZrDnVY28zFvPM43owTr7su0T+DQVVOJeS9brujtWvuAX8WKuHAuU9YivGUrNYc22w99zsS/9wD8
- chmQBSChtJywU5g==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1102; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=w0RsmikSFQo/zU5YjmjUnojH6ZS05HjBP7EMA088xv8=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqp/M0//JSIwMvBA7oh5pGGK6veh8VWq+iF0iIq
+ oIO3JjvEquJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaqfzNAAKCRAADmhBGVaC
+ FbTdEACkInNuqJwPiF+HaA/Ts2dIcAtyfqeYypcAXvEHtZVunqs/zSNcBm2V63xzaQ2M6phXdOk
+ 9rLyVjG6CXVShEh7vbFfE5UebyBRbK6zemNOciPLtM/tb4NfDSn9TDRSZx9OJDjocGJFN6/+NRo
+ Poprz/w0FAvstNn8/dEXPkFEF7eOpyjQWqApH8u7QDLaS3aNchrnTfvyKbbOhPYogOn6yVWFTu9
+ Yv1mR3xOAg2pUaD1JHBWlba8OBrAyISKaqPC0cA0rJbJw4ufQkRPkhdEbCSiA1fkXaHC6O/eRsq
+ Q2mzvJL1HJTNc/HDP22Xcvwl8/lD8paMS/LwF16p5KaQ1lC0xxOf+AOPW/KswsBiP9viPCDaLI+
+ s6GwYpXdQcSOGHDdBi3E9LUXPCPWMFCghtlMui5SHrboAhAfIoR42L4tiZXWzqYOvFhTl/bOjDJ
+ ZvtCuY2f1QkWilPRh/9s+BebfPaJSQMFggrT0mXDN7lKdCbkxLtKgUgDCyiNGOtAF/cSgvi0ORU
+ Wh0gSjreZbh5R/UBxlVu02Ba1UTiQFrQGQNDF4hJLgQZ0/+8/T9glup0nwy39V9rqS4dIN4+XNk
+ Rf108ywJNsGaJmYV6dnhHMl2PsYwKpzjwi4ZzeabeWgLE0UtXxFC25uLvAzbc/8RaX3m0Wy8jHr
+ giUxngpPM89TWkg==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-A request is deferred when we cannot yet say whether its path or fsid is
-exportable.  lookup_fsid() defers on "!found && dev_missing", and
-dev_missing counts any export whose "mountpoint" is not mounted, whatever
-fsid was asked for.  The fsid comes out of the filehandle the client sent,
-so on a server with one unmounted mountpoint= export - the case this retry
-logic exists for - every fsid a client invents gets a queue entry.
+nfsd_export() warns whenever dump_to_cache() cannot work out the
+attributes for a path, including a crossmnt submount the admin never
+asked to export.  With "/" exported crossmnt that is one warning per
+proc, sys or autofs mount per TTL, and nothing the admin can act on.
 
-None of the three queues has a limit.  The pre-existing "delayed" queue
-nfsd_fh() feeds is the worst: it strndup()s the whole upcall message and
-does not deduplicate at all, so even a repeated fsid allocates again.
-delayed_export and delayed_expkey dedup, but still grow without end, and
-the dedup walk makes each insertion O(n).
+Use the same test the netlink downcall now uses: warn only when the
+request is for a path exported in its own right.
 
-Cap all three at MAX_DELAYED and drop the new request once full.  Queuing
-is only an optimisation: the kernel repeats the upcall when the client
-retries, so a dropped deferral costs latency, not correctness - the same
-trade the existing allocation-failure paths already make.
-
-The cap applies only where a record is created.  nfsd_retry_fh(),
-nl_retry_export() and nl_retry_expkey() re-queue a record they already
-dequeued and own, and must not be refused.
-
-nfsd_fh() had no dedup walk, so it gets a counting one; it ends at the tail
-the append needs anyway.
-
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
 Assisted-by: LLM
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- support/export/cache.c | 57 +++++++++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 52 insertions(+), 5 deletions(-)
+ support/export/cache.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/support/export/cache.c b/support/export/cache.c
-index 6c887cd50327..d1fef23a6c0f 100644
+index d1fef23a6c0f..c1201f24bfd4 100644
 --- a/support/export/cache.c
 +++ b/support/export/cache.c
-@@ -777,6 +777,38 @@ static struct addrinfo *lookup_client_addr(char *dom)
- }
- 
- #define RETRY_SEC 120
-+
-+/*
-+ * Cap on each retry queue.  A request is deferred when we cannot yet say
-+ * whether its path or fsid is exportable, and the client picks the fsid out of
-+ * the filehandle it sends, so the queues are reachable from the network: any
-+ * export with an unmounted "mountpoint" makes lookup_fsid() defer every fsid it
-+ * cannot match, invented ones included.  Queuing is only an optimisation - the
-+ * kernel repeats the upcall when the client retries - so refusing to grow past
-+ * this costs latency, not correctness.
-+ */
-+#define MAX_DELAYED 1024
-+
-+/*
-+ * Has the queue holding @count entries hit the cap?  Warns once when it fills,
-+ * and arms the warning again only once it has properly drained, so a queue
-+ * sitting at the limit does not turn into a stream of log messages.
-+ */
-+static bool delayed_is_full(unsigned int count, bool *warned, const char *what)
-+{
-+	if (count < MAX_DELAYED / 2)
-+		*warned = false;
-+	if (count < MAX_DELAYED)
-+		return false;
-+
-+	if (!*warned) {
-+		*warned = true;
-+		xlog(L_WARNING, "%s retry queue is full (%u), dropping requests;"
-+		     " the kernel will ask again", what, MAX_DELAYED);
-+	}
-+	return true;
-+}
-+
- struct delayed {
- 	char *message;
- 	time_t last_attempt;
-@@ -1008,8 +1040,10 @@ out:
- 
- static void nfsd_fh(int f)
- {
-+	static bool queue_full_warned;
- 	struct delayed *d, **dp;
- 	char inbuf[RPC_CHAN_BUF_SIZE];
-+	unsigned int count = 0;
- 	int blen;
- 
- 	blen = cache_read(f, inbuf, sizeof(inbuf));
-@@ -1029,6 +1063,11 @@ static void nfsd_fh(int f)
- 	 * We cannot tell the kernel to retry, so we have to
- 	 * retry ourselves.
- 	 */
-+	for (dp = &delayed; *dp; dp = &(*dp)->next)
-+		count++;
-+	if (delayed_is_full(count, &queue_full_warned, "filehandle"))
-+		return;
-+
- 	d = malloc(sizeof(*d));
- 
- 	if (!d)
-@@ -1041,9 +1080,7 @@ static void nfsd_fh(int f)
- 	d->f = f;
- 	d->last_attempt = time(NULL);
- 	d->next = NULL;
--	dp = &delayed;
--	while (*dp)
--		dp = &(*dp)->next;
-+	/* the count above left dp at the tail */
- 	*dp = d;
- }
- 
-@@ -2072,12 +2109,17 @@ static void delayed_export_remove(char *dom, char *path)
- 
- static void nl_delay_export(char *dom, char *path)
- {
-+	static bool queue_full_warned;
-+	unsigned int count = 0;
- 	struct delayed_export *d;
- 
--	for (d = delayed_export; d; d = d->next)
-+	for (d = delayed_export; d; d = d->next, count++)
- 		if (!strcmp(d->client, dom) && !strcmp(d->path, path))
- 			return;
- 
-+	if (delayed_is_full(count, &queue_full_warned, "export"))
-+		return;
-+
- 	d = calloc(1, sizeof(*d));
- 	if (!d)
- 		return;
-@@ -2428,12 +2470,17 @@ static void delayed_expkey_remove(struct expkey_req *req)
- 
- static void nl_delay_expkey(struct expkey_req *req)
- {
-+	static bool queue_full_warned;
-+	unsigned int count = 0;
- 	struct delayed_expkey *d;
- 
--	for (d = delayed_expkey; d; d = d->next)
-+	for (d = delayed_expkey; d; d = d->next, count++)
- 		if (delayed_expkey_matches(d, req))
- 			return;
- 
-+	if (delayed_is_full(count, &queue_full_warned, "fsid"))
-+		return;
-+
- 	d = calloc(1, sizeof(*d));
- 	if (!d)
- 		return;
+@@ -3750,7 +3750,8 @@ static void nfsd_export(int f)
+ 			 */
+ 			if (errno == EAGAIN)
+ 				goto out;
+-			xlog(L_WARNING,
++			xlog(export_is_explicit(found, path) ? L_WARNING
++							     : D_GENERAL,
+ 			     "Cannot export %s, possibly unsupported filesystem"
+ 			     " or fsid= required", path);
+ 			dump_to_cache(f, buf, sizeof(buf), dom, path, NULL, 0);
 
 -- 
 2.55.0
