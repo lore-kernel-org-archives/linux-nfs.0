@@ -1,35 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A3F374825A5
-	for <linux-nfs@vger.kernel.org>; Mon, 14 Sep 2026 14:45:46 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB2D94825BF
+	for <linux-nfs@vger.kernel.org>; Mon, 14 Sep 2026 14:45:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789397148; cv=none; b=ASPggWtdwjl/exf4/YJbTTI2/4rBECaFsR0nurb0l0VENjELd/j3rojquYh+vllcjItWQhRfsIj9V71Y76jqGy2zuwJ2YUGpU/9DjzQFVpM9WZJ5Gc291qxNC3dLvkRVmxf4/i/KeDHU1PrEcxDIUIqsYV/TeuL2Mc3r+6ayx8o=
+	t=1789397150; cv=none; b=lEmp2NOlqGzj+e6T7u0mnunU9ZjxwcGq2yEBUTADAftZUBrEDyPlYlD+ky6YmnyXq/iBO/ZwqsCoHQbYO6bnhYMLQt/qiPFQISp/L7MSpEfMzik2DndWGk6rk4wi2+oZqJdQv95lCUbe+Ois+l6hAVG6w9AvnB6AmaoaJM4gLVA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789397148; c=relaxed/simple;
-	bh=Xm/Aeds6biHxvWISLUJVl/54HEa4o+fcF78y3792wnA=;
+	s=arc-20240116; t=1789397150; c=relaxed/simple;
+	bh=qFgSD11t32KVJ00Y+T4g7GeZyz1nU+ZxupJl3n7K2Q4=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=Co7xOYmGkEs6IoVsVuimGAhpJrJ5ACdISLgr8wJJXLhMSPbhL2Zwshc0xITC/r/MgVGoh5Ofq1ipBAVOWQ1mRqK9IwOTw6JdRpFABK0YZkD/uAgIz1G2uhKFQJ5xoJyCHMxT5NWOCGz40Ft22H9OKJSK10eXAjvQnU1+f+i+mdI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=iox2PrZ3; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=ECbUyExtsCvmN23a+H5nNnZSk5jAgTnoTGRXyGIGxBGCxl31l+L+jFv3Mzi3SgklACmHtCPLM5EYyGJ33b5NWiGjeX9HyqUeUcOac8ey9X3dE4viiYOrTOpjdLFeVDHXyKc7syyiTXWo7ehKPaKnqHzgm5xMU+GurXNVXRauV00=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=eUPWKIED; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="iox2PrZ3"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E9DA61F00899;
-	Mon, 14 Sep 2026 14:45:45 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="eUPWKIED"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C20051F0089B;
+	Mon, 14 Sep 2026 14:45:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789397146;
-	bh=f3SyxinprMu13hKpBX+hyR/FKQXVmc1s73VRszawaf4=;
+	s=k20260515; t=1789397147;
+	bh=XnKUfKjNzVT3HSt4csUcsZ2ZDd5vQQWkThKqaJ07Xu8=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=iox2PrZ3QGrcisIOQqd7QvUT1iaQnIM/ncZl/fub6pG4F0H5pFcO/FsuEuMiyfxiC
-	 hZW9mbPBQxMxSoztz1TwlouMWePnDhX81C6BBh3iutM4/+xMxoaKdBZEghGpZb4U9n
-	 HAA7c/T+y0CbfMx/U14Ty0FL1NJvIZ1Z3IlVaCXcOPNUXbi/y8ee+8h0RwD+0s6sUW
-	 N6nkOR39km1hB6Qo3O3XetagFWOKGxEk5Ie5fi5o4ybCzPGVMUzaEwg17h8iOcjtiq
-	 bFJlNCro1dmxgpOwhYkwZBgxPSv4nkZ+A/kqlBHYzh/sn+GJAKB93YLBPHkuUX4E1F
-	 tVogs8+jPMnjw==
+	b=eUPWKIEDyh618WMWrjjkVB4X2VN/Ll383PN3qjkl9kS9AkIuQTt4LnXjQCM362AR3
+	 zZwuoQNYtSNetbcxzF13fYKWtkbeAz67zUdFks3k23frZldV92IrCHLdUdH+4gi15P
+	 z6FPJmxwbDDhnEEF6utpg3POzwhamHgka3CQGqdkxC1jRl1dDXwKTda5CYYllpELSw
+	 9g3EpvXDl3gkX3FanUSXHGNn/pl+QzoZkuKfpN1DPZuTtpA3gXWb5/hKVnFGEi8c71
+	 gnZr/cuEP8cAaONbJTW+ZE6c6L6pnPhIPxYY1gTFLiW2My3RUamCf7cscdt96HIKMH
+	 0ewI/0jKNr7TA==
 From: Chuck Lever <cel@kernel.org>
-Date: Mon, 14 Sep 2026 10:45:33 -0400
-Subject: [PATCH v4 03/11] NFSD: Prepare bucket pruning for out-of-order
- eviction
+Date: Mon, 14 Sep 2026 10:45:34 -0400
+Subject: [PATCH v4 04/11] NFSD: Add tracepoints for DRC entry eviction
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +37,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260914-duplicate-reply-cache-v4-3-bcf9d2628a94@kernel.org>
+Message-Id: <20260914-duplicate-reply-cache-v4-4-bcf9d2628a94@kernel.org>
 References: <20260914-duplicate-reply-cache-v4-0-bcf9d2628a94@kernel.org>
 In-Reply-To: <20260914-duplicate-reply-cache-v4-0-bcf9d2628a94@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -47,120 +46,108 @@ To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
 Cc: Rick Macklem <rmacklem@uoguelph.ca>, linux-nfs@vger.kernel.org, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3597; i=cel@kernel.org;
- h=from:subject:message-id; bh=Xm/Aeds6biHxvWISLUJVl/54HEa4o+fcF78y3792wnA=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqqAiWs4TPLUnExa3nVWd3pJluurXt6fQc47NQm
- GlS9H1xoWiJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaqgIlgAKCRAzarMzb2Z/
- l3MlD/4o+Zt5f5iRyl05+XOxFIL0LzO7GQMzZMc3K0qdLlYQAz71j0pW9Tfmua0Av04GgyH3ofK
- 3KNW/FgOgfQuK0vI5v8xBTlbdNC8LK7UAY4qEoKAX1eolIbEQ27cG0KKMMiH0cdFJDWzjot2IdM
- aH9v6F9ecaQVpYCgcrr+J5SyiyU1SHytZLpo+JldNCzW/qw/dE00h+o38eizvT4FE2Q87pbayMN
- vtL5UFDZC0V1kSpMP14aRNjnbM8ByNOPN+YCCz+Dtys3iVOVg7psOjfeZvLFLlN6/ZDPFrcnxgF
- HD2actFm8m8aRS10NvFsKmz73Zh6PZbgydQgAE5QqB/WJ2bXcGhKSYZW3om3Bt4uqUrb3kxtgpG
- vpVNVXP9DquzsZCxImNZyKgWbi9u7XZJ7nepdZkpmsou8cbijkTZpepHfMb7ncBoRLzCNj3CnbW
- RC1QudEkOzQZtShR2PU8LALv9mBhhE+vOLt73Gopk4oLA8kNf4hcSAkmAw1A3gWFCLhC/aoWTXr
- tt8oNyQj/Zl8dMexJEsBoTjTFuvsK2AVsZoMZM/cMKrswOpUYRwN80/EzQPD5zdAdgGP9rEvr5Q
- rI/L9H0x7ku4eVxNpEdLUFkgpH/zRi4OdBVZutZrDYaLxh9bdz8DFFArDQ4glHVKsJhtVF1gL3I
- xdpJp2k+e6N9GxA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2841; i=cel@kernel.org;
+ h=from:subject:message-id; bh=qFgSD11t32KVJ00Y+T4g7GeZyz1nU+ZxupJl3n7K2Q4=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqqAiW+f3xWrA9zeFcTA7D6xTxVYV+ODS9ypeF+
+ ZGJNsHfFn6JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaqgIlgAKCRAzarMzb2Z/
+ l1ymD/9U0wiuDLxR9giTEc//wetcGO2WcOEwB0niAvRnWVZjga1nyuLhbKVvflgzeOW6nDLgZbp
+ jGX1l9iWmnlGOkQn7kOle5DFJDRbfKd9Mx5ZRrF/veOzo1aK6LgNrhx9rSYGZw3PzQPeF2xXEYW
+ C0PYwhnGgiivd9dJWXy76OwqKDJiVCnI/mtSs/yr0ib3EKOoUTnWwHmYZGDS190KkaXlRZlVPEu
+ ueJsahW6pj3t+16mHbbnMevR8N5NDJPVpI4CwDXFqES/KQRW/9T5YU79owo05wVFD62NT9RA7le
+ 1rZCyVjT+qzFo1C5pL/XWZkxg4yi7k28km9GPML3IsgkZdECD2cJHxPUJTZgjVyuLv1D1+2M0zm
+ WSRcq5w3ozIpUC7STp9tYIZLlNF9eDrpDspcix94xANBzNEYlcM+JFuCG4vybKrRpvIyCd+sWAx
+ nfyEBQY7TS8l8UBY86AOQ3Zh0wIDsyzKu7XOcHuq5h8JS2VbL7stMvOCYeK8cszIxO66yeQSBIU
+ j8iK1olWmCd9eIWKNtgmY8/hbKAZ6joDy/a81/dNP8MXylVXvMzWyjOH/ms9yanQy0gx+YNdzA1
+ gZBa2iEBs0aJ2LFza5s1mc7+rJzyIyWw8+lEpf3aKunZI9VpFmYgtF8ly2g1AiU6KsXY5Plg4Cr
+ u9I8wOLtRWVJn+Q==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-nfsd_prune_bucket_locked() evicts for memory pressure and RC_EXPIRE.
-Each reason, once it holds for an entry, holds for every older one,
-so the walk stops at the first entry it cannot evict. A reason that
-applies to one entry but not to an older one, such as confirmation
-that a particular reply reached the client, cannot be added to that
-loop.
+The DRC pruning path evicts entries for memory pressure and expiry,
+and neither emits a trace event, so there is no way to see which
+reason is retiring entries or how old they are when it happens. A
+further eviction reason needs the same visibility.
 
-Continue the walk past an entry no reason applies to. The scan no
-longer stops at the first entry it cannot evict, so bound the work
-per call to four times the eviction limit, and pass the shrinker's
-remaining nr_to_scan budget as that limit.
+Add an event class that records the cache population, the XID, the
+transport, and the entry's age, and define an event for each
+eviction reason.
 
 Assisted-by: LLM
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfscache.c | 35 +++++++++++++++++++++++------------
- 1 file changed, 23 insertions(+), 12 deletions(-)
+ fs/nfsd/nfscache.c |  8 ++++++--
+ fs/nfsd/trace.h    | 37 +++++++++++++++++++++++++++++++++++++
+ 2 files changed, 43 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index b25b4f9e92f7..716605dbc788 100644
+index 716605dbc788..b9fe9662dcf0 100644
 --- a/fs/nfsd/nfscache.c
 +++ b/fs/nfsd/nfscache.c
-@@ -257,8 +257,8 @@ nfsd_cache_bucket_find(__be32 xid, struct nfsd_net *nn)
- }
- 
- /*
-- * Remove and return no more than @max expired entries in bucket @b.
-- * If @max is zero, do not limit the number of removed entries.
-+ * Remove and return no more than @max evictable entries in bucket @b,
-+ * visiting at most 4 * @max entries. @max must not be zero.
-  */
- static void
- nfsd_prune_bucket_locked(struct nfsd_net *nn, struct nfsd_drc_bucket *b,
-@@ -266,20 +266,30 @@ nfsd_prune_bucket_locked(struct nfsd_net *nn, struct nfsd_drc_bucket *b,
- {
- 	unsigned long expiry = jiffies - RC_EXPIRE;
- 	struct nfsd_cacherep *rp, *tmp;
--	unsigned int freed = 0;
-+	unsigned int freed = 0, visited = 0;
- 
- 	lockdep_assert_held(&b->cache_lock);
+@@ -272,10 +272,14 @@ nfsd_prune_bucket_locked(struct nfsd_net *nn, struct nfsd_drc_bucket *b,
  
  	/* The bucket LRU is ordered oldest-first. */
  	list_for_each_entry_safe(rp, tmp, &b->lru_head, c_lru) {
--		if (atomic_read(&nn->num_drc_entries) <= nn->max_drc_entries &&
--		    time_before(expiry, rp->c_timestamp))
--			break;
-+		if (atomic_read(&nn->num_drc_entries) > nn->max_drc_entries)
-+			goto evict;
-+		if (time_before_eq(rp->c_timestamp, expiry))
-+			goto evict;
-+		goto next;
+-		if (atomic_read(&nn->num_drc_entries) > nn->max_drc_entries)
++		if (atomic_read(&nn->num_drc_entries) > nn->max_drc_entries) {
++			trace_nfsd_drc_evict_pressure(nn, rp);
+ 			goto evict;
+-		if (time_before_eq(rp->c_timestamp, expiry))
++		}
++		if (time_before_eq(rp->c_timestamp, expiry)) {
++			trace_nfsd_drc_evict_expired(nn, rp);
+ 			goto evict;
++		}
+ 		goto next;
  
-+evict:
- 		nfsd_cacherep_unlink_locked(nn, b, rp);
- 		list_add(&rp->c_lru, dispose);
-+		freed++;
+ evict:
+diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+index 2ae7f150a72c..c92863027896 100644
+--- a/fs/nfsd/trace.h
++++ b/fs/nfsd/trace.h
+@@ -1557,6 +1557,43 @@ TRACE_EVENT(nfsd_drc_mismatch,
+ 		__entry->ingress)
+ );
  
--		if (max && ++freed >= max)
-+next:
-+		/*
-+		 * A client controls its XIDs, so it can pack one bucket with
-+		 * entries that are not yet evictable and turn each miss into
-+		 * a full-bucket walk under cache_lock.
-+		 */
-+		if (freed >= max || ++visited >= max * 4)
- 			break;
- 	}
- }
-@@ -307,9 +317,9 @@ nfsd_reply_cache_count(struct shrinker *shrink, struct shrink_control *sc)
-  * @shrink: our registered shrinker context
-  * @sc: garbage collection parameters
-  *
-- * Free expired entries on each bucket's LRU list until we've released
-- * nr_to_scan freed objects. Nothing will be released if the cache
-- * has not exceeded it's max_drc_entries limit.
-+ * Free entries on each bucket's LRU list until nr_to_scan objects have been
-+ * released. Entries are evicted when they have expired or the cache exceeds
-+ * its max_drc_entries limit.
-  *
-  * Returns the number of entries released by this call.
-  */
-@@ -328,11 +338,12 @@ nfsd_reply_cache_scan(struct shrinker *shrink, struct shrink_control *sc)
- 			continue;
- 
- 		spin_lock(&b->cache_lock);
--		nfsd_prune_bucket_locked(nn, b, 0, &dispose);
-+		nfsd_prune_bucket_locked(nn, b, sc->nr_to_scan - freed,
-+					 &dispose);
- 		spin_unlock(&b->cache_lock);
- 
- 		freed += nfsd_cacherep_dispose(&dispose);
--		if (freed > sc->nr_to_scan)
-+		if (freed >= sc->nr_to_scan)
- 			break;
- 	}
- 	return freed;
++DECLARE_EVENT_CLASS(nfsd_drc_entry_class,
++	TP_PROTO(
++		const struct nfsd_net *nn,
++		const struct nfsd_cacherep *rp
++	),
++	TP_ARGS(nn, rp),
++	TP_STRUCT__entry(
++		__field(unsigned long long, boot_time)
++		__field(unsigned int, num_drc_entries)
++		__field(u32, xid)
++		__field(u32, xprt)
++		__field(unsigned long, age)
++	),
++	TP_fast_assign(
++		__entry->boot_time = nn->boot_time;
++		__entry->num_drc_entries = atomic_read(&nn->num_drc_entries);
++		__entry->xid = be32_to_cpu(rp->c_key.k_xid);
++		__entry->xprt = rp->c_xprt;
++		__entry->age = time_is_after_jiffies(rp->c_timestamp) ?
++				1 : jiffies - rp->c_timestamp;
++	),
++	TP_printk("boot_time=%16llx entries=%u xid=0x%08x xprt=%u age=%lu",
++		__entry->boot_time, __entry->num_drc_entries,
++		__entry->xid, __entry->xprt, __entry->age)
++);
++
++#define DEFINE_NFSD_DRC_ENTRY_EVENT(name)			\
++DEFINE_EVENT(nfsd_drc_entry_class, nfsd_drc_##name,		\
++	TP_PROTO(						\
++		const struct nfsd_net *nn,			\
++		const struct nfsd_cacherep *rp			\
++	),							\
++	TP_ARGS(nn, rp))
++
++DEFINE_NFSD_DRC_ENTRY_EVENT(evict_pressure);
++DEFINE_NFSD_DRC_ENTRY_EVENT(evict_expired);
++
+ TRACE_EVENT(nfsd_cb_args,
+ 	TP_PROTO(
+ 		const struct nfs4_client *clp,
 
 -- 
 2.55.0
