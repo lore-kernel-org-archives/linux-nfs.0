@@ -1,63 +1,63 @@
-Received: from mail-oi2-f13.google.com (mail-oi2-f13.google.com [74.125.231.205])
+Received: from mail-oi1-f169.google.com (mail-oi1-f169.google.com [209.85.167.169])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E37423BADB1
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 12:22:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.205
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 285823B95FA
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 12:22:55 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.169
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789474976; cv=none; b=ofb+/YAyFr5NCg30wAbm8Hesyc/FHYQIF8RMKg2sEVi5CKozj6iGaQhLHaKro737URvM0ZHlRxS8YEk9p4pmd+nePuixd3uPYrFfCwMupMyf+HnwJIVPYoABxcSdWVcjR9/kCHvbtYo9EwMAjcGy7FmE2GcqJ5TPQbwIriruAQ8=
+	t=1789474977; cv=none; b=WFxXbQTTGJl9vm1VbendN5UfhS+NOv4aRdLxxjTPtQfu0VHjBFqzrrt72GGS+P4gWmYu2LfpOGbic9D+uDpUaGoCXlUy/BRwvmfCGA910Seh1mawgAK7+O8LAuZdX1LxGehyQscearofsM7pgrZ1MbXMw1PBqk+V3ye32pEWr24=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789474976; c=relaxed/simple;
-	bh=q44DsGR75xbeoUEhLZmW6W77Th4UYHtWiOgg0DyI8DM=;
+	s=arc-20240116; t=1789474977; c=relaxed/simple;
+	bh=EsH8Peom1tAOgtjdjLHuzJZHSNQOS6hni8nl8rr4zAk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=MQ2CeX5p9CPRH0i0EzN4LE9dLi3tGMn47BJyuhwdzwkOsVmGHZF0ToypM+PCU1EL9sm8NaWoE9z1kzj6n7SduL898BX6x9HC5tNm4Lb22w0pl2IaaTKDdfQ3TG6UrIIz65pCPwwDfU8RBXThoeftcvntdTtkQNrBS+GxROyjzgY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=YOWaIzYp; arc=none smtp.client-ip=74.125.231.205
+	 MIME-Version; b=lBiPoSZaIMEAMWzRmzpOvl4eLw9Z+1otV52U8nWWd6chu9dxOWvGCSTF0oQ0LfC4M9zUxBV8OVoYoC5iYxnKmXuNuzPNfG2kPHGRIO5h/JiHb8WO+o+vmEdGxgrlfFLj51Jqml4RDc4UEXGCDxqVTfmC7sAXH9Q40kDvrABgmts=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=JZwrUrnW; arc=none smtp.client-ip=209.85.167.169
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="YOWaIzYp"
-Received: by mail-oi2-f13.google.com with SMTP id 5614622812f47-4c0776592e3so95557b6e.1
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 05:22:54 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="JZwrUrnW"
+Received: by mail-oi1-f169.google.com with SMTP id 5614622812f47-4b28d9537bcso606921b6e.0
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 05:22:55 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1789474974; x=1790079774; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1789474975; x=1790079775; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=iHHZe83R3XmB0WtI+frrm3XyScFEkBqGdrTvrAvVhoQ=;
-        b=YOWaIzYpwcKA0QOzmaGvkFEECqRBtGgn7v862H+RiJIehgfDM/TOmXwCopMOJiuBKI
-         Q9v9ZHpYgulKaK29Go82tIN3MQqvBCZc8aGGJxMiF3trbZyfVqLjBwUsfMyj1F0Us9pu
-         yPaPPlv4T8KQ7l6cDYEP66VM7O5cbhuCy6Jo70hJJz0e8x3w6tNIffxdcn6Y4Q36LnF8
-         o2LP+B2MX9A7THES4MwLc0E+VxCs6xA8wRJEYIVhvLUkja0OdUqqV//2au/CfczBOHpx
-         1SLgfYCqzQq+6/2e1xAMXsHlf2gHfg83NbGBCPFOz8kK5WQa5ZH+swajFxvxawgcii5s
-         SKwA==
+        bh=4k9eVkI4A12rmuGKAgoZZekbl21MNnPeg4s4iebeUnY=;
+        b=JZwrUrnWHPSd8sA04htU8HO/J2gr5JLyAG9WxOuAm32s8cI2lfMnBVn+XMpk/hl8qo
+         2AwdGYARVOZj8s26oJXA7AgMAlWyw/T8dHPjT0JtfDaudsYZdAKyeOeg40Q0uWMPFQCW
+         HYtp7O8BP/9uv35Bq7rbogy72sqMXfyVO5mw0jcQ6EoaGa+86W6cTbG0Ckc7jsSRHPoY
+         OmWHAANeyxIRBnvchL2WaIN1vBpdPH9wfwgTbaH7jh7WvmDeVqJGgyZwfhaE/OCDyQgi
+         ZJC0tnpo48A7LJFyHdziFj+mEHCxj/afs1yHGYGUXQiLw9kWUDU4+eCVUpomgaFjc4ZN
+         lSwA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789474974; x=1790079774;
+        d=1e100.net; s=20260707; t=1789474975; x=1790079775;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=iHHZe83R3XmB0WtI+frrm3XyScFEkBqGdrTvrAvVhoQ=;
-        b=ZLpBeYwaUPQvInB5jFs5wmqMRfh73ZORATN39vzmb1V7vHOT/aM5fDjIAnq+y9lh7s
-         xQFI9Q2iFvFen82OJHN/tBLRpp7mLQP9CxxiTuczscg6MgMk7Buzwcn60bhEZUbzvrEK
-         wQm+mxy1AnX/eQWTqQ4kon0/fH1UPBQ693Gz5blpu55pBx2sgXlNLl4j1u2jKxJ0ooWE
-         Wv1zC9bDDd34SztrZKmeuGyicWORg3SGCRvQGNl0fvp0A84kwDdATy+NFWqS4yUPm+Mb
-         nV78JqpZpsdG/BjbwxIfrE9y53Kzt36Q1+Tf55I/+jT+W22XXMgbDtnNy4tNBlLmItiV
-         MdEQ==
-X-Gm-Message-State: AFuF++l749YOrI1w8453sgrfA95rdZQEyEBxwHzz1fyIIKyCWa55q7Rn
-	9JKA9g7Z7eTsrg+83qTKKAo4grTHQ+hIwZmlb/BTUjFJjB12jh1PjJyHnF0IwRVFiZI=
-X-Gm-Gg: AYBFou3KSDgAoNzB52m9zOsRriesF2guDhZIh+x0MfRxgelHR3m20J+fIFS3b/fkVeG
-	Ddo46tGk4rgVWZPMluoMaUo/k+j7rKG3WBjydObMMSVfrPJITMGNwhDTRp5DVfZ4B+1syHaB9Cr
-	nNBz9Idw7Ano6ydpxTngMqJ+tMxO7bP5vniEtP/AqM/EMmjH5wswey6LYB2UJNp1fU9dZQwDx/m
-	d6xd6z2iux+cqdxEGuhr+auGTGANdSIgI7WLSqpongeHzKKcfJkgpY4LJM46pJiFELraZ9iHazc
-	Rtv7HZ8nvlJnvuXo4vYxHk2eqNDG96BsUQk6+dbWcoq07bd1qK5jtEo5G93418UqUKkVD6Pl1qL
-	fV3A8vNIghcqViWAXL2wTJTzkQf4qbW0d841gjEau0nm5rETAsPG5PJNOdW9kQbeWvudKN7ZMVb
-	rGKqOmAB+qUxlmfIrRiEdvItmAMKlaYLw0Q8nV2yEX+gTvKYeVrXm+iCg2Jy478nc2YbfWYhtPs
-	6F7fmnHUgn00wB5f+rHze4xFsMEUgSchR4=
-X-Received: by 2002:a05:6808:198a:b0:495:ff85:d33d with SMTP id 5614622812f47-4c9ab0af001mr544660b6e.12.1789474973683;
-        Tue, 15 Sep 2026 05:22:53 -0700 (PDT)
+        bh=4k9eVkI4A12rmuGKAgoZZekbl21MNnPeg4s4iebeUnY=;
+        b=spY9bU15T0KtFYLpMeeJpekspibhw2WEQsJb+x3iVUfYfaa09FtY4SoROg2Sbu2Rqe
+         OG/EEmUYJsHvlj+MZkWwPNfn0/r6tW3n+nhALsCLe6VsIER9Isx1KJfjsmyr5rcvUz44
+         bYIFy+7ts6kUY+BOgwIKUPFPhro0AZ2MoWvkMoe0H5k9YqztF7o1lxMLKOD8Ysfwf9/A
+         AX9WNnLM+rQofdQ1cXRbj3DXqKge8zHxwue8kOf3+8i0R2K/Xkg8kOqSMAw88Nk4JVxV
+         zXDDHk4vstraaG0iXzL4c4T27XzUnZoA2VA2owIB0lRg+/Lp+6gifHc/E7o6O7ECncrT
+         5wPA==
+X-Gm-Message-State: AFuF++nc3AylXUDkURmDOJ7/Vfxrr4ezzv3tm3oImehN4Ov/PwEhXHbn
+	ijytC2T9bJJ7u7C56GHb3bqoj3wuaB1Bf0kZGd9BYuex8juTJDMNUEGNDxpDIYxYukQ=
+X-Gm-Gg: AYBFou30EJ3Izp9HK+g57taT426fzHcwn6MntE/Lpo8uom9R9Rx52rggqmNEUvMq1TB
+	xtCXN3wCYKhNQq9qAgOiN6V0Hn7GV+F5sAqjAYkpYFFjR5PArOSUgFQZCkIJzHZEY1IkXlHWCHb
+	UuX+B8MSXFmcOcIyjIrIMLR3anGDgQ8eSKrWHf45VtRAvJaBi71MJa5pi+X0q86aBsnfP3Aefib
+	o5PQowRhZD0nWqsngo6paFyxDPMqthS1klBka0s5RJ3YEVA7uR9FW/Q8fAippcVm9urBDRystII
+	4/OkY6K+Zuwt1GUYH2JkXSSIXfttGp1kXdNeOMI5e8XsVjaiQyEypkQ7cdPNiA2nn9SwmphcRYi
+	guJDpGNR+S1PGDy53NYo51eBw/7S0FprehqkrWVSx2BQQp/43qseIZ+fX5WeGPuAOM6aEZbrAEi
+	XISY10rrnYglgWdvM8H+2E6q6rgjVL94GpaArqvVL2JSTR8Ho9oxIk+jm9rcpfT24HhQIEaGcvq
+	jWwPDMaZyFhK12Gzd5yScFvf5hpJIlIlpeK9rYpmmwtjw==
+X-Received: by 2002:a05:6808:1482:b0:4af:9364:b5a9 with SMTP id 5614622812f47-4c89ef83e00mr1744157b6e.6.1789474974802;
+        Tue, 15 Sep 2026 05:22:54 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-4c32eb4274dsm13058260b6e.1.2026.09.15.05.22.52
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-4c32eb4274dsm13058260b6e.1.2026.09.15.05.22.53
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 15 Sep 2026 05:22:53 -0700 (PDT)
+        Tue, 15 Sep 2026 05:22:54 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
@@ -67,9 +67,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Mike Snitzer <snitzer@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>,
 	Junrui Luo <moonafterrain@outlook.com>
-Subject: [PATCH v4 19/24] NFSv4/pnfs: Confirm a deviceID delete via GETDEVICEINFO
-Date: Tue, 15 Sep 2026 08:22:21 -0400
-Message-ID: <b8175d2844b5a305c6f5e0d65a8056e5d1646520.1789474702.git.bcodding@hammerspace.com>
+Subject: [PATCH v4 20/24] NFSv4/pnfs: Dispatch CB_NOTIFY_DEVICEID DELETE to race recovery
+Date: Tue, 15 Sep 2026 08:22:22 -0400
+Message-ID: <f91ff1777d0c320f00607ab7e3dee1b049f56067.1789474702.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1789474702.git.bcodding@hammerspace.com>
 References: <cover.1789474702.git.bcodding@hammerspace.com>
@@ -81,176 +81,91 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-RFC 8881 Section 18.40.4: if TEST_STATEID says at least one layout
-referring to the deleted deviceID is still valid, the delete cannot
-be trusted -- verify it with GETDEVICEINFO.  The device really being
-gone while the server also considers a referring layout valid means
-the server is faulty; recover by re-establishing the client ID and
-drop the cached device.  Any other answer -- including the device
-existing, i.e. an erroneous DELETE -- keeps the cached device and
-the layout intact.
+Turn on the RFC 8881 Section 18.40.4 DELETE handling: a DELETE for a
+deviceID that no live layout references keeps today's cheap behavior
+(drop the cached device, no state-manager wake).  A DELETE for a
+deviceID that live layouts still reference is deferred to the state
+manager, which TEST_STATEIDs the referring layouts, recovers revoked
+ones, and confirms or refutes the delete with GETDEVICEINFO.
 
-Re-establishing the client ID is nfs4_reset_all_state(), which sets
-NFS4CLNT_PURGE_STATE so the state manager runs nfs4_purge_lease():
-a fresh EXCHANGE_ID, then state reclaim with no grace period.  The
-grace-less reclaim is the point -- the server has not rebooted, so
-there is nothing to reclaim under CLAIM_PREVIOUS, and the new client
-ID orphans the state held under the old one.  The obvious-looking
-nfs4_schedule_lease_recovery() is not the right call here: it sets
-NFS4CLNT_CHECK_LEASE, which the state manager turns into a lease
-renewal, and on a healthy session -- which this one is, the server
-having just answered TEST_STATEID and GETDEVICEINFO on it -- that
-renewal succeeds and no EXCHANGE_ID is ever sent.
+The deferred case no longer unhashes the device immediately: if the
+recovery concludes the DELETE was erroneous (the deviceID still
+exists and a referring layout is still valid), the client keeps
+using the cached device.
 
-This is the only path on which a device notification can escalate to
-a full client-ID reset, and every open, lock and delegation on the
-client is reclaimed as a result.  From userspace that is
-indistinguishable from a spontaneous lease expiry, so the escalation
-is announced with a rate-limited warning naming the server.
+Re-arm the state manager afterwards, as the delegation return above it
+does.  The recovery issues synchronous RPCs, and a manager thread that
+starts and exits while it runs clears NFS4CLNT_RUN_MANAGER on its way
+out.
 
-The raw-status probe calls nfs4_proc_getdeviceinfo() directly
-because nfs4_get_device_info() swallows the RPC status and cannot
-distinguish NFS4ERR_NOENT from a transient failure.  A one-page
-reply buffer is enough: a device too large for it fails with
-something other than -ENOENT, which still proves existence.
-
-Still nothing enqueues suspects; no behavior change.
+Bump the deviceid change epoch for both notification types rather
+than only for CHANGE.  A GETDEVICEINFO whose reply is already in
+flight can otherwise re-cache a device the notification has just
+invalidated; that is as true of a delete as of a change, and Section
+18.40.4 opens by describing the race for the delete case.
 
 Assisted-by: Claude:claude-fable-5
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/nfs4_fs.h   |  1 +
- fs/nfs/nfs4proc.c  | 59 ++++++++++++++++++++++++++++++++++++++++------
- fs/nfs/nfs4state.c |  2 +-
- 3 files changed, 54 insertions(+), 8 deletions(-)
+ fs/nfs/callback_proc.c | 24 +++++++++++++++---------
+ fs/nfs/nfs4state.c     |  4 +++-
+ 2 files changed, 18 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index d642aca0adc3..76dae699d4d7 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -511,6 +511,7 @@ extern void nfs_inode_find_state_and_recover(struct inode *inode,
- 		const nfs4_stateid *stateid);
- extern int nfs4_state_mark_reclaim_nograce(struct nfs_client *, struct nfs4_state *);
- extern void nfs4_schedule_lease_recovery(struct nfs_client *);
-+extern void nfs4_reset_all_state(struct nfs_client *);
- extern int nfs4_wait_clnt_recover(struct nfs_client *clp);
- extern int nfs4_client_recover_expired_lease(struct nfs_client *clp);
- extern void nfs4_schedule_state_manager(struct nfs_client *);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 02df5f4f5d84..75545294ebb1 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -10498,19 +10498,50 @@ static int nfs41_free_stateid(struct nfs_server *server,
- 	return ret;
- }
- 
-+/*
-+ * GETDEVICEINFO surfacing the raw status; nfs4_get_device_info()
-+ * swallows it.  A device too large for one page fails with something
-+ * other than -ENOENT, which still proves existence.
-+ */
-+static int nfs4_deviceid_validate(struct nfs_server *server,
-+		const struct pnfs_layoutdriver_type *ld,
-+		const struct nfs4_deviceid *id, const struct cred *cred)
-+{
-+	struct pnfs_device pdev;
-+	struct page *page;
-+	int status;
-+
-+	page = alloc_page(GFP_KERNEL);
-+	if (!page)
-+		return -ENOMEM;
-+
-+	memset(&pdev, 0, sizeof(pdev));
-+	memcpy(&pdev.dev_id, id, sizeof(pdev.dev_id));
-+	pdev.layout_type = ld->id;
-+	pdev.pages = &page;
-+	pdev.pglen = PAGE_SIZE;
-+	pdev.maxcount = PAGE_SIZE - nfs41_maxgetdevinfo_overhead;
-+
-+	status = nfs4_proc_getdeviceinfo(server, &pdev, cred);
-+	__free_page(page);
-+	return status;
-+}
-+
- /*
-  * A DELETE for a deviceID we still hold layouts on implies the server
-- * revoked them: run the RFC 8881 Section 18.40.4 recovery.
-+ * revoked them: run the RFC 8881 Section 18.40.4 recovery.  A layout the
-+ * server still calls valid leaves the revocations unable to confirm the
-+ * delete, so verify it with GETDEVICEINFO.
-  */
- static void nfs4_deviceid_delete_recover(struct nfs_client *clp,
- 		const struct pnfs_layoutdriver_type *ld,
- 		const struct nfs4_deviceid *id)
- {
- 	LIST_HEAD(layouts);
--	struct nfs4_deviceid_ref *ref;
-+	struct nfs4_deviceid_ref *ref, *confirm = NULL;
- 	bool revoked = false;
--	bool referenced = false;
- 	bool inconclusive = false;
-+	int status;
- 
- 	if (pnfs_layout_collect_deviceid_refs(clp, ld, id, &layouts)) {
- 		/* Only a partial list -- an allocation failed, or an inode is
-@@ -10531,14 +10562,14 @@ static void nfs4_deviceid_delete_recover(struct nfs_client *clp,
- 		struct inode *inode = ref->inode;
- 		bool invalidated = false;
- 		LIST_HEAD(head);
--		int status;
- 
- 		status = nfs41_test_stateid(NFS_SERVER(inode), &ref->stateid,
- 					    ref->cred);
- 		switch (status) {
- 		case NFS_OK:
- 		case -NFS4ERR_OLD_STATEID:
--			referenced = true;
-+			if (!confirm)
-+				confirm = ref;
- 			break;
- 		case -NFS4ERR_ADMIN_REVOKED:
- 		case -NFS4ERR_DELEG_REVOKED:
-@@ -10564,10 +10595,24 @@ static void nfs4_deviceid_delete_recover(struct nfs_client *clp,
- 			break;
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index ea8c558b07b6..c9b71dbae9ea 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -392,19 +392,25 @@ __be32 nfs4_callback_devicenotify(void *argp, void *resp,
+ 				continue;
  		}
- 	}
--	pnfs_layout_put_deviceid_refs(&layouts);
- 
--	if (revoked && !referenced && !inconclusive)
-+	if (confirm) {
-+		status = nfs4_deviceid_validate(NFS_SERVER(confirm->inode),
-+						ld, id, confirm->cred);
-+		if (status == -ENOENT) {
-+			/* Section 18.40.4 prescribes EXCHANGE_ID here;
-+			 * nfs4_schedule_lease_recovery() would only renew
-+			 * the existing lease.
-+			 */
-+			pr_warn_ratelimited("NFS: server %s deleted a deviceID referred to by a layout it still considers valid; re-establishing the client ID\n",
-+					    clp->cl_hostname);
-+			nfs4_reset_all_state(clp);
-+			nfs4_delete_deviceid(ld, clp, id);
+ 		/*
+-		 * Unhash the cached device first so re-resolution cannot
+-		 * re-pin the stale node, then re-point any references
+-		 * pinned under live layouts (RFC 8881 Section 12.2.10).
+-		 * The epoch bump lets an in-flight GETDEVICEINFO detect
+-		 * that its reply may predate the change.
++		 * Bump the epoch before touching the cache so a
++		 * GETDEVICEINFO already in flight can detect that it
++		 * predates the notification.  A referenced DELETE may be
++		 * racing revocation, so defer it to the state manager --
++		 * this thread cannot issue fore-channel RPCs.
+ 		 */
+-		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
+-			nfs4_deviceid_bump_change_epoch(cps->clp);
+-		nfs4_delete_deviceid(ld, cps->clp, &dev->cbd_dev_id);
+-		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
++		nfs4_deviceid_bump_change_epoch(cps->clp);
++		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE) {
++			nfs4_delete_deviceid(ld, cps->clp, &dev->cbd_dev_id);
+ 			pnfs_layout_reresolve_deviceid_byclid(cps->clp, ld,
+ 							&dev->cbd_dev_id,
+ 							dev->cbd_immediate);
++		} else if (pnfs_layout_deviceid_referenced_byclid(cps->clp,
++						ld, &dev->cbd_dev_id)) {
++			pnfs_deviceid_delete_mark(cps->clp, ld,
++						  &dev->cbd_dev_id);
++		} else {
++			nfs4_delete_deviceid(ld, cps->clp, &dev->cbd_dev_id);
 +		}
-+	} else if (revoked && !inconclusive) {
- 		nfs4_delete_deviceid(ld, clp, id);
-+	}
-+	pnfs_layout_put_deviceid_refs(&layouts);
- }
- 
- void nfs4_deviceid_delete_recover_run(struct nfs_client *clp)
+ 	}
+ 	pnfs_put_layoutdriver(ld);
+ out:
 diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 1faf9dafd331..4c085c00abb1 100644
+index 4c085c00abb1..b5d6daa2c416 100644
 --- a/fs/nfs/nfs4state.c
 +++ b/fs/nfs/nfs4state.c
-@@ -2354,7 +2354,7 @@ void nfs41_notify_server(struct nfs_client *clp)
- 	nfs4_schedule_state_manager(clp);
- }
+@@ -2670,8 +2670,10 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			}
+ 			nfs4_layoutreturn_any_run(clp);
+ 			if (test_and_clear_bit(NFS4CLNT_DEVICEID_DELETE,
+-					       &clp->cl_state))
++					       &clp->cl_state)) {
+ 				nfs4_deviceid_delete_recover_run(clp);
++				set_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state);
++			}
+ 			clear_bit(NFS4CLNT_RECALL_RUNNING, &clp->cl_state);
+ 		}
  
--static void nfs4_reset_all_state(struct nfs_client *clp)
-+void nfs4_reset_all_state(struct nfs_client *clp)
- {
- 	if (test_and_set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) == 0) {
- 		set_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state);
 -- 
 2.53.0
 
