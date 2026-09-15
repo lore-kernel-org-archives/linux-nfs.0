@@ -1,57 +1,57 @@
-Received: from mail-pl1-f199.google.com (mail-pl1-f199.google.com [209.85.214.199])
+Received: from mail-pg1-f198.google.com (mail-pg1-f198.google.com [209.85.215.198])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2CAD246D550
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 976FD440659
 	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 08:20:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.199
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.198
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789460450; cv=none; b=k8jxhf2S7y7+cBVGBHCai9RmE/XypjNZVuBfXiEyD7UFZaP146nMZgKf9Rbx7x2vKs0BfFCYinDjSUbUtVHepf16O9sHCYB5vIW93HrgscC0MDMXcW8kpFMy3k0AL5yGeoft/P7eH2mUqmvQFhp/Rxq9tsiXL7iVJ1/DozeDnlM=
+	t=1789460452; cv=none; b=AevoKKA1XO9smGi+nnTXPThAhnn15IGbsifm25t6gMjHFnnPC/GjgJBfFWvuFK/rd6+vQEUxgFL1kiTSpn3IuJPkCgja8m4SHOlGW+3DyqfVETh79ZQFJwqDAFjc5J4UCLWOCuX2U1nS9Er1FV8JIgBFNppAGa+VIPgM9mSewn4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789460450; c=relaxed/simple;
-	bh=EN6EGME+huegbOxDBjKH7V67mh976lOmZoZq43U+s0w=;
+	s=arc-20240116; t=1789460452; c=relaxed/simple;
+	bh=NfZ3UTUNDbDjVdxNaJ9EQv1Rzk566CEKZbIH1K+eaM8=;
 	h=Date:In-Reply-To:Mime-Version:References:Message-ID:Subject:From:
-	 To:Cc:Content-Type; b=RYIOlbfSc8SIU+S1z+dDbjzMbu5PQc9R86t1InvAqLrHiY+5B4dEp1/VhreshLpmMQRoeQ51UI7jSktOJJcUGN5SL7kc88cCjCQU2pTRkdk9m4mvjpYA4voOh/dIexS5Bp7tHE7dxTwIxcU381mUXTg/axUQX8LYriTJqEuh+2w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=flex--morbo.bounces.google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=IN7mFECf; arc=none smtp.client-ip=209.85.214.199
+	 To:Cc:Content-Type; b=NWViMX8qFz8QAYob63qhWkzW7NosMB1F4fpKEdYo7sodwNffWtb5xJ+/I7/aIUv/3dIXhIigSnZVzxTnEEC1YS4BqpJ/l0a5wxQFkil5EAj9VHObA51dgJQJHdT9hzdJKJox6E1PJ/xkA/go/AtFb/fE6XojNmpWMKO2R9L66l0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=flex--morbo.bounces.google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=LJSA2of3; arc=none smtp.client-ip=209.85.215.198
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=flex--morbo.bounces.google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="IN7mFECf"
-Received: by mail-pl1-f199.google.com with SMTP id d9443c01a7336-2db3d832827so52312725ad.2
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="LJSA2of3"
+Received: by mail-pg1-f198.google.com with SMTP id 41be03b00d2f7-cc4b524ce78so3181354a12.2
         for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 01:20:01 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20251104; t=1789460399; x=1790065199; darn=vger.kernel.org;
+        d=google.com; s=20251104; t=1789460394; x=1790065194; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:from:subject
          :message-id:references:mime-version:in-reply-to:date:from:to:cc
          :subject:date:message-id:reply-to:content-type;
-        bh=EgFMWIs3mUJyaWhldMFLFql9frpSc6deV3MqyJ0yzUw=;
-        b=IN7mFECf+lQARLCCu20shBJaZb8YTnUewxaKE/yWKSD5Vbgf9UY3RdZ3rRDjLRVZaE
-         yK7wbGvW4DIK+Vg0pjnsTrq22hbGV2BRSba/TrVdqeWM1/jsTbhFlUQkcZVvberBxd1d
-         SaDNtYVCwLgiVRfYGfpGb254t+/EUVUSeEWbVrLCcxNClqxguZ20/H8WwMKCwQ+moQgN
-         YX7dmX/fn5/SKtLJ+iwgTCzv3y5aPqff1Ajewyb3RPZpBd9ZPzG21xtxZqD0s6WsVYTN
-         wMYLfnEDv0wRIJ75lLG2IgBPGu//T9hW+jeC8Cxg2o/3gR1///x0IMDj8zJgaRJkqvIT
-         FCYg==
+        bh=fp8wJxWuumatGVjI+YCt9Q6O6hUP8tXGtI5nMGsUbio=;
+        b=LJSA2of3W8P6+BjUV7LwgYXsac3nhvfffLX0uzCdrZluKDCqjXp1K6p2EcaZJWjx/r
+         p7MKXClnpW3/vqLPzq/LsbDTlG52UR6g+Pkbt2trNgt6AKOCTrOaydEDHsRlTWgwmCtC
+         g4PlYKVGyIcqkHgEGFCBmDscXK/7iHIUpWENlhgSJajsyuA02I+zHVX2U6amJMaUuxYz
+         zGWelncx6qbI+rTAn6tGSsG0EvLSfQDAIKxsu5L0jDz5mk2MaI1Khf16SCRgE0Zm2d5T
+         3tZls0Nl+SI6YP1eQcVEWWnFCUb/ZoWesXQLqE9PU5TJr5wjKC7HD3VPlQtPv7CIKgaF
+         euMQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789460399; x=1790065199;
+        d=1e100.net; s=20260707; t=1789460394; x=1790065194;
         h=content-transfer-encoding:content-type:cc:to:from:subject
          :message-id:references:mime-version:in-reply-to:date
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=EgFMWIs3mUJyaWhldMFLFql9frpSc6deV3MqyJ0yzUw=;
-        b=HyycLwRMQ2EVNlZC8z6JX0bMbV2EA6Ka5IPj8ZP8Uxv2jMTexudxJzmTs0NnAayGYh
-         5Qn5MIerSsppS/W1IwpbLwJo/eZ53SdTfit0uUXAFUlm6Z1RIfgepnyNtGlB5eK49Zvb
-         yZ3DQAtJMmZI7ZbF5ryHOh0HxzjR1aemWUVvnfWCx98bnOUeFV3nKpMX4QRHDfoSTNUm
-         CRgOcfw8cRAJpnNRYLU6hRo0/ZAZ1ZqnwZU5tGsryVszpMfAEcc3i1biZZI3eqOe43OD
-         Zz+Vzar0hvlhl2/r3hxxcbkB5yGECthxDkZm4Sn+aiE8oYcPeRillIgm2xZVQW3sLHrx
-         iNLw==
-X-Forwarded-Encrypted: i=1; AKwUvByXJ4J5DB1BoD9WzECkdC4MMzK9jh1Zlc4qTWQNxIsh0mlXS/hZTLDyMPJYrRW2i5o/Xbkx45u/1c4=@vger.kernel.org
-X-Gm-Message-State: AFuF++k/EobatIkwKND1oNAxiBwTCtZkz0TRkrIrGDTKERmpeqzmrWtn
-	H2UxttaQv6BG5+WEN2Wu2P3nqBjW4PSVh7M71qmYo5J43W5BU4nb7TK/C/1S1G+lQp2kdGjyYCt
-	k
-X-Received: from plrf13.prod.google.com ([2002:a17:902:ab8d:b0:2d9:21a2:1910])
- (user=morbo job=prod-delivery.src-stubby-dispatcher) by 2002:a17:903:32cc:b0:2db:3d84:effc
- with SMTP id d9443c01a7336-2dd6c5d600fmr121011565ad.6.1789460398023; Tue, 15
- Sep 2026 01:19:58 -0700 (PDT)
-Date: Tue, 15 Sep 2026 08:18:28 +0000
+        bh=fp8wJxWuumatGVjI+YCt9Q6O6hUP8tXGtI5nMGsUbio=;
+        b=sIfY4ohgor+i0gZG0V8j76fe24WxH1Oaj2p/JXxF+KKX0bFOV2gW03xfrApsUvawoq
+         OlDzVI+xoHzSwO1qHEs76mCuCpWJV+w4rzbMZWHp2S5DXD/8ZuajyY/WPk+lG1u9p42j
+         KFdspVBLsFriPSHMjCZccCSRqxobUpbQEOrFzLtNMUEzkagqX+duwgrJw5E10F3bOhB3
+         qBrIv/HzEC2VnD5d1FZKseSm0WE90uS+L+G53AnYFiGmGsWhllsk2mEca7JMys7PWXeB
+         At7WYW+qPtVpfM0WS1cVpOpEIjLQyo9mLssshzv4n/p8RRguJYjLHN8Zr5072BTD4Qao
+         PpDg==
+X-Forwarded-Encrypted: i=1; AKwUvBydHunBO3bVyl0xUlcmJpTDPlW/1Xdn9Zd3pp/2RWuXmAxJ4LG5YOOywiUewEeLmuiR7+XltvMSdBI=@vger.kernel.org
+X-Gm-Message-State: AFuF++ntHli32Y/KHGButE18jiaksvEE70Oq7xVyKLzCgxVsawNofoyw
+	nEEqf4/u0IbtMAOfstTNDDpb6V2VkOyAAf6o3zOVV/QcyqC3H3UAz15755lworjBIH6tU8jT/sG
+	j
+X-Received: from plbkw15.prod.google.com ([2002:a17:902:f90f:b0:2db:5cac:a627])
+ (user=morbo job=prod-delivery.src-stubby-dispatcher) by 2002:a17:902:ffd0:b0:2bf:27b2:4b80
+ with SMTP id d9443c01a7336-2dd8384ce53mr639785ad.14.1789460393875; Tue, 15
+ Sep 2026 01:19:53 -0700 (PDT)
+Date: Tue, 15 Sep 2026 08:18:23 +0000
 In-Reply-To: <20260915081910.4142719-1-morbo@google.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -61,8 +61,8 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 Mime-Version: 1.0
 References: <20260915081910.4142719-1-morbo@google.com>
 X-Mailer: git-send-email 2.55.0.1032.g73a4cd73de-goog
-Message-ID: <20260915081910.4142719-12-morbo@google.com>
-Subject: [PATCH 11/28] wifi: brcmfmac: Replace strlcat() with snprintf() in brcmf_fw_alloc_request()
+Message-ID: <20260915081910.4142719-7-morbo@google.com>
+Subject: [PATCH 06/28] comedi: comedi_bond: Refactor strlcat() to seq_buf in do_dev_config()
 From: Bill Wendling <morbo@google.com>
 To: linux-kernel@vger.kernel.org
 Cc: Bill Wendling <morbo@google.com>, codemender-patching+linux@google.com, 
@@ -123,17 +123,19 @@ Cc: Bill Wendling <morbo@google.com>, codemender-patching+linux@google.com,
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-brcmf_fw_alloc_request() constructs firmware file paths by chaining
-strscpy() and multiple strlcat() calls for the module parameter path,
-separator, base name, and extension.
+do_dev_config() builds a space-separated list of bonded devices in
+devpriv->name by formatting each "minor:subdev " pair into a temporary
+stack buffer with snprintf() and appending it with strlcat() in a loop.
 
-In preparation for removing the deprecated strlcat() API[1], format the
-complete firmware path in a single snprintf() call.
+In preparation for removing the deprecated strlcat() API[1], use struct
+seq_buf and seq_buf_printf() to format each entry directly into
+devpriv->name. This avoids repeated rescanning of devpriv->name and
+eliminates the temporary buffer.
 
 Link: https://github.com/KSPP/linux/issues/370 [1]
 Cc: codemender-patching+linux@google.com
-Assisted-by: SecurityEngineer:GPT-4o [editor_update_file, make_kernel_build=
-_single_file, shell_command_run]
+Assisted-by: SecurityEngineerAgent:Gemini2.5 [editor_update_file, make_kern=
+el_build_single_file]
 Signed-off-by: Bill Wendling <morbo@google.com>
 ---
 Cc: Russell King <linux@armlinux.org.uk>
@@ -247,44 +249,64 @@ Cc: devel@lists.orangefs.org
 Cc: linux-hardening@vger.kernel.org
 Cc: linux-sound@vger.kernel.org
 ---
- .../broadcom/brcm80211/brcmfmac/firmware.c    | 21 +++++++------------
- 1 file changed, 8 insertions(+), 13 deletions(-)
+ drivers/comedi/drivers/comedi_bond.c | 16 +++++++---------
+ 1 file changed, 7 insertions(+), 9 deletions(-)
 
-diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/firmware.c b/=
-drivers/net/wireless/broadcom/brcm80211/brcmfmac/firmware.c
-index 22ff326f1924..2f74a952599e 100644
---- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/firmware.c
-+++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/firmware.c
-@@ -845,22 +845,17 @@ brcmf_fw_alloc_request(u32 chip, u32 chiprev,
- 	fwreq->n_items =3D n_fwnames;
+diff --git a/drivers/comedi/drivers/comedi_bond.c b/drivers/comedi/drivers/=
+comedi_bond.c
+index 8e10ecab4f0d..a10cfbd04c72 100644
+--- a/drivers/comedi/drivers/comedi_bond.c
++++ b/drivers/comedi/drivers/comedi_bond.c
+@@ -39,6 +39,7 @@
 =20
- 	for (j =3D 0; j < n_fwnames; j++) {
--		fwreq->items[j].path =3D fwnames[j].path;
--		fwnames[j].path[0] =3D '\0';
- 		/* check if firmware path is provided by module parameter */
- 		if (brcmf_mp_global.firmware_path[0] !=3D '\0') {
--			strscpy(fwnames[j].path, mp_path,
--				BRCMF_FW_NAME_LEN);
--
--			if (end !=3D '/') {
--				strlcat(fwnames[j].path, "/",
--					BRCMF_FW_NAME_LEN);
+ #include <linux/module.h>
+ #include <linux/string.h>
++#include <linux/seq_buf.h>
+ #include <linux/slab.h>
+ #include <linux/comedi.h>
+ #include <linux/comedi/comedilib.h>
+@@ -170,10 +171,11 @@ static int do_dev_config(struct comedi_device *dev, s=
+truct comedi_devconfig *it)
+ {
+ 	struct comedi_bond_private *devpriv =3D dev->private;
+ 	DECLARE_BITMAP(devs_opened, COMEDI_NUM_BOARD_MINORS);
++	struct seq_buf s;
+ 	int i;
+=20
+ 	memset(&devs_opened, 0, sizeof(devs_opened));
+-	devpriv->name[0] =3D 0;
++	seq_buf_init(&s, devpriv->name, sizeof(devpriv->name));
+ 	/*
+ 	 * Loop through all comedi devices specified on the command-line,
+ 	 * building our device list.
+@@ -250,15 +252,9 @@ static int do_dev_config(struct comedi_device *dev, st=
+ruct comedi_devconfig *it)
+ 			}
+ 			devpriv->devs =3D devs;
+ 			devpriv->devs[devpriv->ndevs++] =3D bdev;
+-			{
+-				/* Append dev:subdev to devpriv->name */
+-				char buf[20];
+=20
+-				snprintf(buf, sizeof(buf), "%u:%u ",
+-					 bdev->minor, bdev->subdev);
+-				strlcat(devpriv->name, buf,
+-					sizeof(devpriv->name));
 -			}
-+			snprintf(fwnames[j].path, BRCMF_FW_NAME_LEN, "%s%s%s%s",
-+				 mp_path, (end =3D=3D '/') ? "" : "/",
-+				 mapping_table[i].fw_base,
-+				 fwnames[j].extension);
-+		} else {
-+			snprintf(fwnames[j].path, BRCMF_FW_NAME_LEN, "%s%s",
-+				 mapping_table[i].fw_base,
-+				 fwnames[j].extension);
++			/* Append dev:subdev to devpriv->name */
++			seq_buf_printf(&s, "%u:%u ", bdev->minor, bdev->subdev);
  		}
--		strlcat(fwnames[j].path, mapping_table[i].fw_base,
--			BRCMF_FW_NAME_LEN);
--		strlcat(fwnames[j].path, fwnames[j].extension,
--			BRCMF_FW_NAME_LEN);
- 		fwreq->items[j].path =3D fwnames[j].path;
  	}
+=20
+@@ -267,6 +263,8 @@ static int do_dev_config(struct comedi_device *dev, str=
+uct comedi_devconfig *it)
+ 		return -EINVAL;
+ 	}
+=20
++	seq_buf_str(&s);
++
+ 	return 0;
+ }
 =20
 --=20
 2.55.0.1032.g73a4cd73de-goog
