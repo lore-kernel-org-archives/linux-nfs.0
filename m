@@ -1,157 +1,221 @@
-Received: from mail-ej1-f44.google.com (mail-ej1-f44.google.com [209.85.218.44])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from fout-b7-smtp.messagingengine.com (fout-b7-smtp.messagingengine.com [202.12.124.150])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C9BDC3630AC
-	for <linux-nfs@vger.kernel.org>; Mon, 14 Sep 2026 22:47:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.44
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789426048; cv=pass; b=n4NfFJT95rGcJk+MzwOjGurMRFFpZIhGSOtUBHws/+eNpvnl82q2d7E9bAeMGlSx1hWHgsHxLb7mQRLmobipizdQdDzdGGvLAwn3fVWqYyk0D0iKhWjgtWybFMBcl/PfVOFV8G5gAOP3lscTmT2DkY5N5CB4s1jgbNWTxLuBdyM=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789426048; c=relaxed/simple;
-	bh=smjPe3RajYQPH5VvyxqOK7x6E6M4GeW/od7bmiPh1SY=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=Klt9qgchZH/hXtoR2A1Qu8rbSPgKbFFuYjb6YTvpljg9p4UsciOAcnCl50BboQ6hZT5/zyiMa6/k0tkNBYDgo0fSu6G9By/8mB/tCk+jMpGlbIHotESfMbxLyLIBjSr7gz+qMXVsze5AKIc6/SEySmT0DW99fQMt8EKMl88DZn8=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brahma.io; spf=pass smtp.mailfrom=dneg.com; dkim=pass (2048-bit key) header.d=dneg-com.20251104.gappssmtp.com header.i=@dneg-com.20251104.gappssmtp.com header.b=Lhiw9YXp; arc=pass smtp.client-ip=209.85.218.44
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brahma.io
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dneg.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A7A523F9F28
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 05:13:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.150
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1789449207; cv=none; b=Kivw7vsNEbUoM2bfk4ajyvZTE3xD/i+RS3shD2exxME6u1qVhCUdQGVioO7dSnFL2L43wtalxBnyiEdt4WLJv871TPazhEI3lKYtGvjgNC5knjDn8l3qkDzEF5lNTJR5MEm7eMTPe9twX/xAg6PjlqJUlz/xFGnwfVpLHwCNUBA=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1789449207; c=relaxed/simple;
+	bh=j/HHidvu0B2UL7366P0wMsUpCcvNNdkz+Z/JB76A01M=;
+	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
+	 References:Date:Message-id; b=dk21vi/OeVcpQHmUGYJ0r/cm5ENyNPNP4O/DZI93O2bZtmSuU8HOcOZ0pFcPg+mv2UcoHE5p++3/ym4409ITxJGkeEqTp5chaQsXE9JKtgHUpdFlLab8pU1fgxaIuOKhoX2GtO1tgo7qjknavIzgAysHM59dpDKoqcjmJj2HpUo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=HnYPdKvh; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=OMxtqHgX; arc=none smtp.client-ip=202.12.124.150
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dneg-com.20251104.gappssmtp.com header.i=@dneg-com.20251104.gappssmtp.com header.b="Lhiw9YXp"
-Received: by mail-ej1-f44.google.com with SMTP id a640c23a62f3a-c20ce3c118aso47412366b.0
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Sep 2026 15:47:26 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1789426045; cv=none;
-        d=google.com; s=arc-20260327;
-        b=OpySxcrW2H2vFmG+BK4KhdEjrMAAZkMNylL4bB98sn4o/2LynGsr5MfXaLAbGh5pJ6
-         mgsc+Box8X38eUXKoN8enoaQYrw0kQ0z32TV//yx/F2TL3wumqPLjILwsK+HVBpGUUvY
-         vgWe/I0ghINsvXJZI9QJyXZXceVZ5793sfps7p//xHhhPXyM7ItncN0SV4CfVHE9bRhr
-         MnQ6BW1JYebrqwwjlgUhriiWFaAVWK+8tiaDbIxXbV2ISR8SyHFKSy5dgLrk9VstY1F2
-         /0sm7ccXDLzeQajgnyA5DnRKkdOd8IFUb6PJIvxRyW8x3rXiYgoq0HTjPtPE/QOzj6O4
-         2boA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:dkim-signature;
-        bh=9Ri+vR4mGUVhZPO5xpqE+Ep8OB3oPRVY/6sA8yCIDjM=;
-        fh=JtCcliMZLxE1I7hL92of/xH2uZCs72AXByoBzkAxhm0=;
-        b=UB7SnyPlnKYqskuj++FopWBExax3e916I/YTdNtpvq6+UPfS96WBHhCsTQSD2t7Kxk
-         KOPGy1sYKZLpXplXr/2i8iHYX9kqzrE6Z+gXTjGmJmZVF1Q7Yxh33YuEUJ5SNpRJQaRW
-         P6EFRobtdLDo0q0SDKsah2fcwZXryewa657YQQno2+V2KN9VjJNpJ5SymFuRccs4q5bt
-         th7hE0I0bXKMAOyyzAls6420imO+41FtyHDNabMdi4GrGrxNRePYUydVD0FfRfM8JupM
-         FuY+/4rEZaC4LKSq+SZ75LPgtuVuzpj2u1+c962sCHllBV8FIleI2TT24/lhp9ogH4CU
-         LvBw==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dneg-com.20251104.gappssmtp.com; s=20251104; t=1789426045; x=1790030845; darn=vger.kernel.org;
-        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
-         :references:mime-version:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=9Ri+vR4mGUVhZPO5xpqE+Ep8OB3oPRVY/6sA8yCIDjM=;
-        b=Lhiw9YXploXEQvhqwCNH9pw4rXKo12aawGb8s5sPgIkTE61qEo25DeFXG2trvNSakj
-         F3jiXABQLzWSawFcNdYubvkJPTYXbZ5m/2CYkOduOC1o8I/NCRGn0+WsXvqZysyLae79
-         oVSzenR4cMrjFh9BNIhVXNGJCEvJGJty/dRZGXo+cUjCWojY24CZjyH/yJpB0DXqtRDo
-         NlZwjmOCM7ADZrcx0+wdMsO2qZxlCwweUJlaSdqgXZxPxVMJplCwxIUoNfySbSK7x6dX
-         Cme5eo4VXvMpSshDqgTSWM5pvHMTXt0DhzfIREeu38W8nujtWDIkGwkz5i0J3czzmd2p
-         D8Xw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789426045; x=1790030845;
-        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
-         :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=9Ri+vR4mGUVhZPO5xpqE+Ep8OB3oPRVY/6sA8yCIDjM=;
-        b=ZI37RLYZ+rs6PcJSd3DLVzkDBjO8jSiYqif03c1PVMxi/QC4dhLHasXWGEQ9kB110Z
-         wgEJSYmPfpMZjQSnQYQDYQqSZ+6gpPKrMI/LYlwaNdXEeMQsTAiXaBW+HXC8P0qf3TtL
-         KhhQzRgjOWD2xgoSiDuB/aCMPRi/cS9F8YiKG6qEZIkk3RkwRBvZIYf2LHTZlWhSHaIU
-         +Xepo+urP51y16ZeS1RbTvLiRUPXaVyyDA3j3f6YOQgcGkMa2GTbpIJHnA2epwfeeUvO
-         DEJWblyztB8KsZeIbs1qLuEfYoqm8XNjVlqqWYeI/iRFfQVqqlVSMOWIQ9wUonLY3Qpa
-         ObQA==
-X-Gm-Message-State: AFuF++l1mmDXX9JhVX+n7oQHwrrfXe314pPGe5deHV7qQKBqDVqpDbhE
-	WBj+Eli5uOzyoOnG1QJP+CqKcYQkMf59Gih2y0RQNBnA8wvPcbM6497DlWTADactcHxGrzAd5y+
-	bAORr4Vuz6nU/Jcp34nYejXyyqZXetfJhylrIgL6uXz08QjyenfZZ
-X-Gm-Gg: AYBFou0JK8eIy86vEH0nhdk18oRFqz3OmNWk+JsaKWg51gNi1a6k4UkzrkugrsiS+m3
-	fHES7pEFJazj2oH8D5c7trJRMEL4ZOci2uVnSMWeS+ixD0Fr0w91ame8ODuHOwFA92lMXjN8Llr
-	qU2ZaFBRG7KesSR+vjc28UvFKXO2RhDkVnSLwTRk5GZDm6otJDroNPxdEaDRm4iwtyo6aTcVt0t
-	bnY63PefrdmR061ObN8tmaR4i/ccFuSNIPp/JYJUYbqHs6K2u6cURPlNdV2XfZSHNPu5junJkUK
-	v/ARcyv9jk9DviZBfYiOs0IOnno7zQqyVC7f1ktPkCVw/aRYtF0OswugrOVLpFkUdvpXjpVkdOi
-	yF2UkDIleqS8=
-X-Received: by 2002:a17:906:4792:b0:c26:1cfd:4244 with SMTP id
- a640c23a62f3a-c29c89688d6mr94916266b.11.1789426044921; Mon, 14 Sep 2026
- 15:47:24 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="HnYPdKvh";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="OMxtqHgX"
+Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
+	by mailfout.stl.internal (Postfix) with ESMTP id 88A961D00408;
+	Tue, 15 Sep 2026 01:13:23 -0400 (EDT)
+Received: from phl-frontend-04 ([10.202.2.163])
+  by phl-compute-06.internal (MEProxy); Tue, 15 Sep 2026 01:13:23 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
+	cc:cc:content-transfer-encoding:content-type:content-type:date
+	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to; s=fm1; t=
+	1789449203; x=1789535603; bh=/Z1isgpwdbzrZY4s/K2w3kRE570WdDeRQWD
+	0meg5DOE=; b=HnYPdKvhLNa6ylZllwt4GN+26ombAYsu6TylMBTPlTeogRVF6zi
+	8KAZ4jGjC7nDPKvmTelOAAF8XedFoXXUE2RhmdazAkXDYVrPAvvfdpOaX0MyYjjF
+	6Ah51b46+aek+iOXd2XUNFfyaxwrBuAmN1IMUHrbvWIA1giPMFinqNPpl6Xq/Fen
+	mmfEcD4z4bTudoyVZMB0a3fxKn8T4b19ZS9c1BDhI17A/WrEGV3BOOR59iPhgO2H
+	jhyn56OWmX1O5D03GjoydOoGlC9v7JK7YMPxOu1h6HRzEeaEeQDzWuhjkAmipBMD
+	CqUgUzP56Q/VcPdGUUyULmm7lryVTpZL2xA==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1789449203; x=
+	1789535603; bh=/Z1isgpwdbzrZY4s/K2w3kRE570WdDeRQWD0meg5DOE=; b=O
+	MxtqHgXZ5iYzd+QyFipbwvuwFw/3B/ydmzL5p3jmZnhNNZdLllWQNdhMddRbwZVW
+	EnHPqjWBsAnAQVsQ8+4L5mTCi+UeTzXTEEzam7H6j9YCiMvMwC3evcFEGbhGfTZt
+	wa5fHacnxmOWZ+oEhqmtQouUQWrvXp40AvElrVlqjwaANjWl1FIM41fLy+oGqvHY
+	OV3WdtPtFTm7OBRXUk+VKmteQAvL6zm6a88iJqNTN0GYugq9yDKXoPjdCgFmEvb1
+	K5UNGmBCBq90Nu+bAtFVHoC46SCbi9762ah1SM9tcEGuUeYsDDU4lYHWbWXz9HKm
+	hdULz5UYmG3NIG5FtBwCA==
+X-ME-Sender: <xms:89Ooapau2bwwf876EAyfbWr-pgzhzYVJbTOGtLCeSil4zmQ4k0H2lw>
+    <xme:89OoaioeoAA7EtjD9bSkOGqUh9tLE1YW9x0q4ZP79Zm-Qq89olnBvkTw_TSb7sVxB
+    K6MDVbPPXmDRTDK--IBwAIuVo9cIPpHBYbpNX4ECQGrpUds5SI>
+X-ME-Received: <xmr:89OoauNvQkVQddH5NT5SK97J2jt--Z5ikWUR9jyQyiIKdX7BP_hAZJlFrSBgP6lxhwkeBP1ZhtAHKiEs5GDbNl1iF5z0dsQ>
+X-ME-Proxy-Cause: dmFkZTG0br20/WuEdj1Ujzzq8d1zfszGl/bBz0TqFqzLRqW663MwMz9MQiCWqqxs1OFGj6
+    6mE7gXcMA9bSAGATWhp1i/RAdxTDXUv5+q5+bY0j+hAIb70P7iV8fdDXVFGPS5Z1raHHfr
+    5PTYhWgi7f2GydPyNjjSj5zT5b4Z6HhuqCwlhgOwgRsCqjZ1qfb1xYFFHlHLMzXSMuuORT
+    eHztHJrDaKxpzH1zpq6yq/xbvzwtnhYpnLqBbNDASip1DlsQCtbSbZ7F1jKxs4OO0V9rmK
+    U4ukJrhYrOW13F6UxFwHp8RYV27YVf1PGDHFnnj9Ju6o03ybt6Qj3G5jbBgI1CofKIJNnY
+    IzNit9eDaDRFFaJLa3SP7wt/tRZpClADVw49Eox4a2EDrm76ajCNJ95bvbIogmrWy2iJjA
+    s2fB9Qbp7rJ+fdEodjLQsIBjSrbgbL/3MNj5Jg44ADhnSojcfpEYXqh4cHqhoSosNNsLtd
+    6kEyiMCjrUHm8ttlukjmr8BA5agSCBSzitIAU+yeF+7O0UTfVWIKluJVWSULb2w3yn2PhY
+    weQ0b8S3YxnsceIkHZ4M4w9CsMUHuAWu0hqt29Xfpgdt9ZYKqS/TZ642iNAOTSv8TSVHO3
+    erMMrzfeIRVwPSsLhFbCpFING9Tm3Jbp+eWtkJa1U48/JtQnzf5pJOlupXrw
+X-ME-Proxy: <xmx:89OoatoDw7txxpBXztnQKbL7Po_hrPIEcPQcz67lYYOElx8I1EdFrA>
+    <xmx:89OoajdUKwgcrTNm8189FoYuGA_KrFs9SmABrkXFwLRmd4aD7WPbYw>
+    <xmx:89OoajSlHQ_vAWFB6rQ0ELtonKsxBHcwVvhRwcypR81kDETzSZdZKg>
+    <xmx:89OoasZq1ukZmfgKCsGvGhOWOh_CEAHtOzaXAmL6x7r7TPE8OtDsOQ>
+    <xmx:89OoalXBX5_nNY_P1kUa2gbYHl_FHy7mvyJ2-MwAMdXJjNahyXQzQ-_x>
+Feedback-ID: i9d664b8f:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
+ 15 Sep 2026 01:13:20 -0400 (EDT)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <CAPt2mGO-08X5h-v2Nm9m8E4y5X9V3BpCcoSZiqW6rd-siBBAmg@mail.gmail.com>
- <420a86d7-d911-4d20-8150-703a94f36314@gmail.com>
-In-Reply-To: <420a86d7-d911-4d20-8150-703a94f36314@gmail.com>
-From: Daire Byrne <daire@brahma.io>
-Date: Mon, 14 Sep 2026 23:46:47 +0100
-X-Gm-Features: AcwNN1XttWliKFp0e9C_i1ou_SjamVsu5tiT3y_lXPIOgaxoiGc9K-x8KaRWhgw
-Message-ID: <CAPt2mGPfwmFAARgKGQ35WpiBPK4=EFSqyS9+16KE9MOEgnAGgg@mail.gmail.com>
-Subject: Re: FS-Cache/cachefiles not writing data in v7.2
-To: "Owen, Mike" <mjnowen@gmail.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>, dhowells@redhat.com
-Content-Type: text/plain; charset="UTF-8"
+From: NeilBrown <neilb@ownmail.net>
+To: "Chuck Lever" <cel@kernel.org>
+Cc: "Jeff Layton" <jlayton@kernel.org>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, "Rick Macklem" <rmacklem@uoguelph.ca>,
+ linux-nfs@vger.kernel.org, "Chuck Lever" <cel@kernel.org>
+Subject: Re: [PATCH v4 00/11] Improve the scalability of NFSD's classic DRC
+In-reply-to: <20260914-duplicate-reply-cache-v4-0-bcf9d2628a94@kernel.org>
+References: <20260914-duplicate-reply-cache-v4-0-bcf9d2628a94@kernel.org>
+Date: Tue, 15 Sep 2026 15:13:16 +1000
+Message-id: <178944919634.207413.1627415312248503752@noble.neil.brown.name>
+Reply-To: NeilBrown <neil@brown.name>
 
-Yes, that was exactly the issue and that patch does indeed fix the
-problem on v7.2.
+On Tue, 15 Sep 2026, Chuck Lever wrote:
+> A completed DRC entry currently stays in its bucket for 120 seconds
+> whether or not the client already holds the reply. On a busy server
+> those entries lengthen every bucket walk, and under pressure they
+> crowd out entries a retransmit could still hit.
+>=20
+> After this series, the DRC retires an entry once the server transport
+> has seen the client peer acknowledge its reply. Each transport
+> publishes two positions, the reply it has just sent and the point up
+> to which the peer has acknowledged, and the DRC compares only the
+> two (patch 6). Nothing else about transport state is exposed to
+> fs/nfsd. UDP entries and replies sent over a TLS session keep the
+> time-based eviction.
+>=20
+> Retention now ends at delivery rather than at consumption. A client
+> whose RPC timer fires after the reply was acknowledged but before
+> its RPC layer read it retransmits, and NFSD executes the call again.
+> The client completes with the first reply and discards the second.
+> Patch 9 works through the cases.
+>=20
+> The XID checksum and the 256k entry cap were both sized for a cache
+> full of stale replies. With acknowledged entries retired, the
+> checksum guards only entries that wait out RC_EXPIRE, and the cap
+> starves the partition case it was never meant for (patches 10-11).
+> The "payload misses" line disappears from reply_cache_stats.
+>=20
+> ---
+> Changes in v4:
+> - Track reply positions instead of ack cookies (per Neil's review).
+> - Make xpt_id a 64-bit counter and drop the xarray (per Neil's review).
 
-Thanks for the pointer and I'll try to search better next time!
+You actually made the xpt_id 32-bit and the reply-position 64 bit.
+I would swap those, or at least make them 48bits each.
 
-Back to testing v7.2 and v7.3 then...
+As a connection can exist for an arbitrarily long time, if the xpt_id
+counter ever wraps you can get a collision.  The age of cache entries
+isn't the important age - it is the age of the connection.
+2^32 seconds is 136 years, so it probably won't wrap (connections tend
+to last minutes to hours, not seconds).
+2^48 milliseconds is nearly 9 millennia so that certainly won't wrap.
 
-Cheers,
+The reply position only needs to outlast the cache entry, not the
+connection.  But it counts in bytes.
+10Gbit is 1Gbyte/sec so 32 bits could cycle in 4 seconds :-)
+(but that is what TCP uses!)
+Your code doesn't depend on the underlying size, which is nice.
+48 bits would only cycle after 3 days at 10Gbit, which is much longer
+than the cache residency time.
 
-Daire
+(I haven't properly looked at the pruning algorithms yet, but I will).
 
-On Mon, 14 Sept 2026 at 16:29, Owen, Mike <mjnowen@gmail.com> wrote:
->
-> Hi Daire,
->
-> Does O_DIRECT work but Buffered does not?
->
-> This thread with David Howells:
->
-> https://lore.kernel.org/linux-fsdevel/2319644.1789132399@warthog.procyon.org.uk/
->
-> cites this fix:
->
-> https://lore.kernel.org/linux-block/1667275.1788941191@warthog.procyon.org.uk/
->
-> If so, the above patch has not yet been included as of 7.2.6 (today/14th Sept)
->
-> -Mike
->
->
-> On 14/09/2026 13:44, Daire Byrne wrote:
->
-> Hi,
->
-> I was keen to start testing the various scalability improvements since
-> v6.18 and so jumped straight to v7.2.
->
-> But there seems to be an issue with fscache/cachefiles (mount -o
-> vers=3,fsc) whereby it is creating the sparse files on disk, but is
-> not actually populating them with data.
->
-> I checked v7.1 but that seems to be working fine. The only related
-> merge in v7.2 I could see was the removal of fscache as a backend for
-> EROFS.
->
-> Maybe that took with it something that is affecting the NFS case too?
->
-> Daire
+Thanks,
+NeilBrown
 
 
+> - Drop implied ACK and the last-request timestamp (per Neil's review).
+> - Keep an unsent reply until RC_EXPIRE (per Neil's review).
+> - Pin a DRC entry against eviction until its reply has been sent.
+> - svcrdma: Serialize Send posting so positions match completion order.
+> - Drop the nfsd_drc_reply_acked tracepoint.
+> - Link to v3: https://patch.msgid.link/20260910-duplicate-reply-cache-v3-0-=
+31532a4c7449@kernel.org
+>=20
+> Changes in v3:
+> - Add the reply-acknowledged callback and its TCP and RDMA reporters
+>   ahead of implied ACK, which now defers to a pending report.
+> - Split the prune-loop restructure into its own patch.
+> - Move the eviction tracepoints ahead of the ack patches; the
+>   implied-ACK event now lands with implied ACK.
+> - Keep err local to the pmap_register block in svc_setup_socket()
+>   (per Jeff's review).
+> - Never move xpt_last_recv backwards when nfsd threads race.
+> - Fold the XPT_ORDERED patch into its consumer (per Jeff's review).
+> - State the re-execution exposure of implied-ACK eviction instead of
+>   calling the DRC advisory (per Jeff's review).
+> - New patch: remove the DRC request checksum and payload_misses stat.
+> - New patch: remove the 256k-entry cap on the DRC size.
+> - Link to v2: https://patch.msgid.link/20260828-duplicate-reply-cache-v2-0-=
+25069e660a7b@kernel.org
+>=20
+> Changes in v2:
+> - Print the DRC eviction tracepoints' age field as unsigned.
+> - Link to v1: https://patch.msgid.link/20260826-duplicate-reply-cache-v1-0-=
+b1d51e1af5c7@kernel.org
+>=20
+> ---
+> Chuck Lever (11):
+>       SUNRPC: Assign a unique identifier to each svc_xprt
+>       NFSD: Track transport in DRC entries
+>       NFSD: Prepare bucket pruning for out-of-order eviction
+>       NFSD: Add tracepoints for DRC entry eviction
+>       NFSD: Record DRC population in lookup tracepoints
+>       SUNRPC: Publish reply positions for upper-layer consumers
+>       SUNRPC: Publish TCP reply positions
+>       svcrdma: Publish RDMA reply positions
+>       NFSD: Evict acknowledged DRC entries
+>       NFSD: Remove DRC checksum and payload_misses stat
+>       NFSD: Remove hard cap on duplicate reply cache size
+>=20
+>  .../ABI/testing/procfs-nfsd-reply_cache_stats      |  11 +-
+>  fs/nfsd/cache.h                                    |  16 +-
+>  fs/nfsd/netns.h                                    |   2 -
+>  fs/nfsd/nfscache.c                                 | 243 +++++++++++------=
+----
+>  fs/nfsd/nfsd.h                                     |   3 +
+>  fs/nfsd/nfssvc.c                                   |  11 +-
+>  fs/nfsd/stats.h                                    |   5 -
+>  fs/nfsd/trace.h                                    |  47 ++--
+>  include/linux/sunrpc/svc.h                         |  16 ++
+>  include/linux/sunrpc/svc_rdma.h                    |   5 +-
+>  include/linux/sunrpc/svc_xprt.h                    |   3 +
+>  include/linux/sunrpc/svcsock.h                     |   3 +
+>  include/trace/events/sunrpc.h                      |   8 +-
+>  net/sunrpc/svc.c                                   |   3 +
+>  net/sunrpc/svc_xprt.c                              |  19 +-
+>  net/sunrpc/svcsock.c                               |  29 +++
+>  net/sunrpc/xprtrdma/svc_rdma_backchannel.c         |   2 +-
+>  net/sunrpc/xprtrdma/svc_rdma_sendto.c              |  27 ++-
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c           |   1 +
+>  19 files changed, 286 insertions(+), 168 deletions(-)
+> ---
+> base-commit: abf2077ee32058e60d3f49ecab265d3c4bd953d9
+> change-id: 20260325-duplicate-reply-cache-f0fe7c7b740c
+>=20
+> Best regards,
+> -- =20
+> Chuck Lever <cel@kernel.org>
+>=20
+>=20
 
--- 
-Daire Byrne
-www.brahma.io
-Follow us on: LinkedIn | Twitter | Facebook | Instagram
-
-This email (including attachments) may contain material that is
-confidential and/or privileged for the sole use of the intended
-recipient. Any review, disclosure, reliance or distribution by others
-or forwarding without express permission is strictly prohibited. If
-you are not the intended recipient, please contact the sender and
-delete all copies including any attachments. Thank you.
