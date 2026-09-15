@@ -1,35 +1,36 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 884214A6CDF;
-	Tue, 15 Sep 2026 18:05:30 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 05C6A41A4F5;
+	Tue, 15 Sep 2026 18:25:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789495532; cv=none; b=scEk3jaJqbfeet0JDqfFF0hblNplzvmS+1lPz5NwnsVrm4u1kVOCfExiYi/g6Hcz/08l4v56diz5hEAm6GLeiPHgwD5vF0ECUh6ZHM6V+9zH5qgIzxHNOxKGwTLx8eYsV+cO0V34F90js4GWpfA4rKUMxDgVeEre50pX0LwffPE=
+	t=1789496721; cv=none; b=H9z9+A46kDrNU1dmgQUGEb3e72nXTnSwbP2wJXWBwOdRSsAYSXLIFXv6tgoFqX93e+iG630YEgUW1Nt0P38B8hvWE9wXXMZhZFZESSyxhA8r+F8axzDbqxyu2BRU8ZJ3hVSMoL4R4eL2xt7SYiHTBxq3AQT1HnVY/+0maPBH8Xw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789495532; c=relaxed/simple;
-	bh=V6K4OlMCnUsCbDMREVaUa2vUImH9KQWys0wgaxngXJA=;
+	s=arc-20240116; t=1789496721; c=relaxed/simple;
+	bh=rPLWglI5Wlm9mIFu4gjr7+scAMhxrET8MSmLgiSFf/8=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=gfuPf03J7lxn0tqT5OuVYHZ4DS/aVd4KrSy2EDRM8b982EshWCpuzHWUr+D9KdPANs83cOFX09kIsaIw7aDm2lEcsp6xot0jmqiCR0NzNGmwbnunVarZnX3eiEP4fnf2GnWnQ/YsopuMzFiqjYgckczMy+23ng8N45508TCOPxI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jTo4X3Om; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:Content-Disposition:In-Reply-To; b=aaAwsf0h4WISv+4rXl0wVGkJDfXc5ZGgCXw/6m7P40gyfbMKAFFvI6nHMAgDJdztsZQO/R7137IGnCM19/fPLE7OGz250h/4w7QfsZGcVT3YBx992VYL4JiLlhCXv/Or+ZSK6F2iPoHueD3/NE1+A0VJyGMgvZ4Y3gd3YFZOgTg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=L8f94G9m; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jTo4X3Om"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C9A331F000FF;
-	Tue, 15 Sep 2026 18:05:29 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="L8f94G9m"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 124D51F00893;
+	Tue, 15 Sep 2026 18:25:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789495529;
-	bh=mPeI+6lTU/Y8EitQI5ZfnrfapFmX8wWN22xo6A7UJaE=;
+	s=k20260515; t=1789496719;
+	bh=hTpYvUrNZYIcwT2p8Kp9xxQTu0Fq/HJPfq19mi+/XYs=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=jTo4X3Om6pjYJxMpPsXGw742bcwi+fNKt1WirPMCjMB3CN4+QeGCMAad0HowUYo27
-	 zkPX73/bpXrtYTMe0XsfHOKvy0auvvNyZSnejxr33FwP5Y4EAzd8YeVUzA5p/dgDEw
-	 5cFlE/iE3GLNGT0ByRP+/biS9WQfT2P4HJ97Jm9P9K/qgKyfL5uH3H46GOijU3awQE
-	 U05QkDGXb1dMAlMiuCtrF46H69n28W2iJaBayGHH26y3LSBp2/268of5pUNUCjMz6C
-	 lP5HOIiL9QmsIGugbJJQ+XSzW3eNNY7uy3+IQE3mKC77JsHqvgv78X1PoCadcnYcJG
-	 U7RPeBeWp4lDg==
-Date: Tue, 15 Sep 2026 11:05:29 -0700
+	b=L8f94G9mzSlNx9J6peH2jq3tNsTcUAybrSOzdJm5ksOR557E4eGHcMVdBvQoWXcMq
+	 oYUWohx4rX6UR3J8jBc8XVQjQr+ber6bJ2vp50tNPAhHXUhxRHLXdtKpPq0X+kq2PU
+	 gS7xFPkE8iTk1ZUf6F23/XNJ6TOWElkc+PU1etQ49xAX2Mcf5D6gOEjjFrhGeHYmwr
+	 quZO6YQ0w3g8MteVh8aIX9AaqG/9TfYwvtfMkvsA6bgIrhU7eO551to4fm0v6bfd4/
+	 BM4spkKqe45r4JjrhXiFS+HNsR69yIhfKoowbJLuXi0Q2cu8W8a4U8wu0elxPZcyTv
+	 CP6MLWz/FZBtQ==
+Date: Tue, 15 Sep 2026 11:25:18 -0700
 From: Kees Cook <kees@kernel.org>
 To: Bill Wendling <morbo@google.com>
-Cc: linux-kernel@vger.kernel.org, Russell King <linux@armlinux.org.uk>,
+Cc: linux-kernel@vger.kernel.org, codemender-patching+linux@google.com,
+	Russell King <linux@armlinux.org.uk>,
 	Huacai Chen <chenhuacai@kernel.org>,
 	WANG Xuerui <kernel@xen0n.name>,
 	Thomas Bogendoerfer <tsbogend@alpha.franken.de>,
@@ -102,22 +103,22 @@ Cc: linux-kernel@vger.kernel.org, Russell King <linux@armlinux.org.uk>,
 	Cen Zhang <zzzccc427@gmail.com>,
 	=?iso-8859-1?Q?C=E1ssio?= Gabriel <cassiogabrielcontato@gmail.com>,
 	Rong Zhang <i@rong.moe>, Arun Raghavan <arunr@valvesoftware.com>,
-	nikitash.mariiaw@gmail.com, linux-arm-kernel@lists.infradead.org,
-	loongarch@lists.linux.dev, linux-mips@vger.kernel.org,
-	linux-parisc@vger.kernel.org, linux-edac@vger.kernel.org,
-	dri-devel@lists.freedesktop.org, intel-xe@lists.freedesktop.org,
-	linux-input@vger.kernel.org, linux-media@vger.kernel.org,
-	intel-wired-lan@lists.osuosl.org, netdev@vger.kernel.org,
-	linux-wireless@vger.kernel.org, brcm80211@lists.linux.dev,
-	brcm80211-dev-list.pdl@broadcom.com, devicetree@vger.kernel.org,
-	linux-samsung-soc@vger.kernel.org, linux-gpio@vger.kernel.org,
-	linux-scsi@vger.kernel.org, linux-nfs@vger.kernel.org,
-	devel@lists.orangefs.org, linux-hardening@vger.kernel.org,
-	linux-sound@vger.kernel.org
-Subject: Re: [PATCH 00/28] Replace remaining strlcat() call sites with
- snprintf()/seq_buf()
-Message-ID: <202609151055.AFC6267@keescook>
+	linux-arm-kernel@lists.infradead.org, loongarch@lists.linux.dev,
+	linux-mips@vger.kernel.org, linux-parisc@vger.kernel.org,
+	linux-edac@vger.kernel.org, dri-devel@lists.freedesktop.org,
+	intel-xe@lists.freedesktop.org, linux-input@vger.kernel.org,
+	linux-media@vger.kernel.org, intel-wired-lan@lists.osuosl.org,
+	netdev@vger.kernel.org, linux-wireless@vger.kernel.org,
+	brcm80211@lists.linux.dev, brcm80211-dev-list.pdl@broadcom.com,
+	devicetree@vger.kernel.org, linux-samsung-soc@vger.kernel.org,
+	linux-gpio@vger.kernel.org, linux-scsi@vger.kernel.org,
+	linux-nfs@vger.kernel.org, devel@lists.orangefs.org,
+	linux-hardening@vger.kernel.org, linux-sound@vger.kernel.org
+Subject: Re: [PATCH 27/28] drm/xe/pf: Convert strlcat() to seq_buf in
+ control_read()
+Message-ID: <202609151115.33A35B7098@keescook>
 References: <20260915081910.4142719-1-morbo@google.com>
+ <20260915081910.4142719-28-morbo@google.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -126,48 +127,52 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260915081910.4142719-1-morbo@google.com>
+In-Reply-To: <20260915081910.4142719-28-morbo@google.com>
 
-On Tue, Sep 15, 2026 at 08:18:17AM +0000, Bill Wendling wrote:
-> strlcat() is deprecated: like strcat(), it requires re-scanning the
-> destination string from the beginning on every call, which is O(n^2)
-> when used to build up a string incrementally, and its truncation
-> behavior is easy to get wrong. See:
-> 
->   https://github.com/KSPP/linux/issues/370
-> 
-> This series removes the remaining strlcat() call sites in the tree
-> (plus the one inside fortify-string.h's strcat() implementation
-> itself), replacing each with snprintf(), scnprintf(), or the seq_buf()
-> API, whichever best fits the surrounding code.
+On Tue, Sep 15, 2026 at 08:18:44AM +0000, Bill Wendling wrote:
+> diff --git a/drivers/gpu/drm/xe/xe_gt_sriov_pf_debugfs.c b/drivers/gpu/drm/xe/xe_gt_sriov_pf_debugfs.c
+> index 0f242db775e1..5db7fc067c4d 100644
+> --- a/drivers/gpu/drm/xe/xe_gt_sriov_pf_debugfs.c
+> +++ b/drivers/gpu/drm/xe/xe_gt_sriov_pf_debugfs.c
+> @@ -4,6 +4,7 @@
+>   */
+>  
+>  #include <linux/debugfs.h>
+> +#include <linux/seq_buf.h>
+>  
+>  #include <drm/drm_print.h>
+>  #include <drm/drm_debugfs.h>
+> @@ -663,15 +664,15 @@ static ssize_t control_write(struct file *file, const char __user *buf, size_t c
+>  static ssize_t control_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
+>  {
+>  	char help[128];
+> +	struct seq_buf s;
+>  	size_t n;
+>  
+> -	help[0] = '\0';
+> +	seq_buf_init(&s, help, sizeof(help));
+>  	for (n = 0; n < ARRAY_SIZE(control_cmds); n++) {
+> -		strlcat(help, control_cmds[n].cmd, sizeof(help));
+> -		strlcat(help, "\n", sizeof(help));
+> +		seq_buf_printf(&s, "%s\n", control_cmds[n].cmd);
+>  	}
 
-Thanks for tackling this!
+Yay seq_buf! I would tweak the 3 init stack variable lines into just
+using the single DECLARE_SEQ_BUF:
 
-A few global notes:
+DECLARE_SEQ_BUF(s, 128);
 
-- This series almost certainly needs to be sent as separate single
-  patches to each subsystem maintainer (rather than a giant CC list).
+>  
+> -	return simple_read_from_buffer(buf, count, ppos, help, strlen(help));
+> +	return simple_read_from_buffer(buf, count, ppos, help, seq_buf_used(&s));
 
-- As others noted already, we don't want to do anything as just an
-  open-coded strlen/sprintf; this doesn't gain us anything. If we can't
-  use seq_buf or some other solution, we need to figure out what we _can_
-  do for a given use.
-
-- There are some collisions with other in-flight patches, e.g.  Mariia's[1]
-
-- The "Assisted-by:" trailer doesn't need the level of detail you've
-  got, which changed recently[2]. Now the desired trailer would just be:
-    Assisted-by: LLM
-
-- Please avoid including the Cc list in the email body (above or below
-  the "---" line), as it ends up being redundant.
-
-I'll go look through the individual patches...
+seq_buf_used() isn't correct in the case of full-buffer use. e.g. if
+the help buffer ends up filled with 127 chars and a NUL terminator,
+seq_buf_used() returns 128, but you want 127 here. Using strlen() ends up
+being redundant, though. I think we need to add seq_buf_strlen() which
+handles the same logic that seq_buf_str() does.
 
 -Kees
-
-[1] https://lore.kernel.org/all/27956255dde39f58d73a7b51cb53cbe3d7804f54.1786411026.git.mariianikitash@google.com/
-[2] https://git.kernel.org/linus/816d9992d9ed ("coding-assistants: simplify attribution")
 
 -- 
 Kees Cook
