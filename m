@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 47D314BD7B2;
-	Tue, 15 Sep 2026 16:58:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 932254BE454;
+	Tue, 15 Sep 2026 16:58:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789491509; cv=none; b=hJysyLaQpDZ2iDQxU7evhfo6sAzPbtAO7cHIjbthb00nzk660oeJu8DcVvccoFBknKdi5KtjJpuzmbWm6zp2lwCWrogBV/ga2atv6NGHs22vuasWdaDlc9GgBkU3hBphik168hmYFFKQdoVPlQnha209wuVmPPBnWxnZ3x3Ti1g=
+	t=1789491512; cv=none; b=JEKPK/vy4rJalgVagDQUGaHuGKm567IpzFMm9LAFkNnPf1kZPUnx1pMgRhcS4DQ5mGu6l++nY+0HBcg86ehww5//1WUq6XEYBEYpaejx52V/LHMhLjZ83v53BZU3FitfRo+47pNedi115H301Y2PeAFsySpqAJcNBaz4OjI1bX0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789491509; c=relaxed/simple;
-	bh=dYm5b7B6dTvNKjVYzuF7/FkF8IDWphASM2cJV/5trG4=;
+	s=arc-20240116; t=1789491512; c=relaxed/simple;
+	bh=QXI42khHV6az/md+69/vAfb5zIB4FyDI0xaH4hch+D0=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=qQI3IAF5XerXeH4lAunpf8U0wvUd5NGajfGy233/ZqDjTT8tH2guvOTuwaK2wmQ0kk+fzSJtJ+9JhcVBv9h9KKmrD3t0cnR/ZqMOzJvZmp7qRT3OzPFpaG8mALptTWYt5KFHWgygbhCb+k6JYUtcxPoCiPIr1vs+cv3kwtI7WqU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QwEPeT1G; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=JCbyPQz1Uwh58PyFmnHEh9NeX4mP/OLZQ6o8vBMePRYgSOefqr8XsqLxhEyy1T/rUiB5cRwPGUStDA5S2ilgKmoAs5EiuSczl6auNKlrTgiigeoDfSzH7B91GVuk7f5rqisaz9Vu4cMM/sLm9G0G0Ykyp57NoDM7rOVqmwzq/2g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MCucyq/e; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QwEPeT1G"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9A7F91F000FF;
-	Tue, 15 Sep 2026 16:58:22 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MCucyq/e"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 76B671F00898;
+	Tue, 15 Sep 2026 16:58:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789491504;
-	bh=QH3G09fgNYNq57/vr1pk3tneJpQFCpXfha0cp9uQYVE=;
+	s=k20260515; t=1789491508;
+	bh=tsPUyFUbEv2OEChg9oIxZjltAFG13HxiE4JiMI1YBTA=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=QwEPeT1G5yzGOEs6JBwSCHBG5dch1Tzz+85h6zZC6Y9IOenhqyKSHxCVbgWShAQ7c
-	 +4nDgaITsiy85liG7dSftQxK1PnIZrPOC1Bnmct2AmkPiqZ/+I0UgJNEhpSYSNzqLx
-	 /nM/fCeyF3Gx/4ezfkATRc3p2fEzsOfUILq4do8Turr27QK1tFAg77HHiCZE8kEIIG
-	 UJGex8TjaaEVkwY3e1ingNct0b65ii5qmCgUrryBrtCjApcgACH32fmYb0LG9dk5wP
-	 t9ht3FG+QMdF6plIWzgsHNf+31hD4513TCNwuLlh5QfroLA9sBVd10rnnR/y3uNlvs
-	 4ij+RtQo8Xvmw==
+	b=MCucyq/eN9XZPFfCA3tpIGVy/N6EbkJEZ2QrNqvduijMJ7KnU6dfnGOBhrmDOjaQN
+	 H0egufeYgQ5WnGhiGTB6sKUWCkp5486Ad4oc8RagxohnywlE6teQOfIMXQTnPnV0gf
+	 VQFgEhFgmH3C4W8htsF86uZPr94YSNUl5QCOFowyEwAmYv6V40VOte5YVW8auiJHob
+	 PsLgbZXbBvquiglvFDkfhmw6LfozXlEwjWdndGKv9DcFMgeAcYSR4Y9Vbixdox4op2
+	 ska9tf9IHQiM458cnyfFGCinDwHbp4lvY7jnqpPaD8yrVM84JS4r7ZjbqDlOJcQ3pe
+	 rKoVbs1v878Bw==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Tue, 15 Sep 2026 12:57:43 -0400
-Subject: [PATCH v3 2/5] NFSD: add a userspace-rpcbind flag to listener_set
+Date: Tue, 15 Sep 2026 12:57:46 -0400
+Subject: [PATCH v3 5/5] selftests/nfsd: exercise the userspace-rpcbind
+ listener_set flag
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260915-nfsd-norpcb-v3-2-3c60d49ade02@kernel.org>
+Message-Id: <20260915-nfsd-norpcb-v3-5-3c60d49ade02@kernel.org>
 References: <20260915-nfsd-norpcb-v3-0-3c60d49ade02@kernel.org>
 In-Reply-To: <20260915-nfsd-norpcb-v3-0-3c60d49ade02@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
@@ -51,196 +52,525 @@ Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
  netdev@vger.kernel.org, linux-kselftest@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5624; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=dYm5b7B6dTvNKjVYzuF7/FkF8IDWphASM2cJV/5trG4=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqqXkqChjh9OPXC2JsyxmEeUx1A2eWY/elWVW6R
- SSUZwFwGLGJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaql5KgAKCRAADmhBGVaC
- FfTuEAC67d83B7EffeZGDCzLcuZCZZgVK4eV7V7YF6icKZXxv9AFBm8Q9JF2h2uopkG9CsrOwLm
- g58HbXcSqzT+5M7mm8giNhgkxQObJAPXRGODJRNwOVOR8oDLBu+mFOUl025eGV5veYWmeWVn7nq
- rJfIo/sm38QCaSi8/p2HhjppXvU1/K4nRyRrS5Yzu0SlKh+cLBh4o6MU+Lq4z01+vRu220Oe/8y
- znndLfYBUcPIfBz7vNsMxQu2aohTR5D9hpVr6F80I2nUea7KwsrvdFG9jyPGwm2JdPZO8rab1Gw
- WQfBqKBCKKvakUCw9nH0AYFjM+d5K3p9zQnwFkPNHZ061ak7xG6YlHCy6eisO8sWC8ZXC5HySB3
- wo7ejcuEyrjg4KFHxGAUCRzB0DSramQ5Q7oaTwlRLXFebpAJ1TFtLGGDyOlwPRzX7reEFuNTHxt
- V+f/PlbNz0rEthOnhzOsWIsMl7M8qSVS8XfuGIqz3CtppXT8BuSiD7H40VEspSLP/kQe3jgfdqb
- rfv2DK8UpId7XPuoZTAnKM4SbJC4SbhSi/ipVEQt8/gBd5tBjfqdzzHbG4tr1LP84d2upHdcz13
- ACaoIO0IsiQ/JTHPpiQoI90HF2Pmb6f8cyL44QtezeCrToFZpSNs/8XFHXt+Uq9tF6FdSNhesDu
- qs3G5VdlHRj8Zug==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=16445; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=QXI42khHV6az/md+69/vAfb5zIB4FyDI0xaH4hch+D0=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqqXkrdBcAp4Q/O1XVBvkHr1lnWXat5SBLHBBUR
+ EnzmPB+OcKJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaql5KwAKCRAADmhBGVaC
+ FUSKEAC64TiU/LxdainQ3mDms/2ccoftMhYLZpY3IxDEKX6P+VIT2bxe7ywEBsZHo4dygNOgan2
+ MEcMo7FbLrRVZnwOCmcwLifgy8VOcjcz4Ozvj/TIz5WVwEtsE76lW5VEE2xjd1xaAMZRNd1bRhG
+ ucB50RcIs38xfUmXuruQVmtwU3MssN5VSTwwmAoFDCGeDKxVEeMHfyUJ/dmgbtLcfDC/ga+d/ms
+ yGmW892IzYS9Uw3z+uf79t4UrPSokpRimr5kSexe6vc4lab3mev9xFjdW73fEPOyYwtSjwiMYVk
+ qeYvgnhgGarRPUBgQvOI5F2rjAUHm3nyGvUJsN+5ti3/Hnk/od96ieaC108QtoMtDwSlJrk4VfZ
+ 8FeYkTueimRL12wu36PyI59cREswxUTDDVHJqzCLkqJXVJQ/5D5QkITsA3rCtGBqr9fiW7ERMAF
+ 5/2KtYhpmL3PlIacfQ/HR+1KfsvSF8ofxDLBzUknLXr32OmF84+xbsEAzljzG0flgwX3TFwW4uB
+ a/3ADm600ezUAtJg4wRoLCwltBBORCMjFuX+68cGuNRfDJa+D32bWCOaWkJRSmXtbUFtUq4hNiM
+ Em4E88A5FjvYG019z/LSg4u6USL56rPUnGdBZLSdsve7EeMpzuhDvr1pzQywQ+GjslUjxBluelr
+ 3OomgWTbkKQyC6g==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Describe the interface that lets a caller take over rpcbind registration.
+Cover the flag that moves rpcbind registration to the caller.
 
-The request gains a userspace-rpcbind flag. The reply echoes the flag,
-lists the programs and versions that the caller should register, and
-names the listeners that came up.
+rpcb_userspace_no_traffic is the one that matters. The errno says nothing
+about whether the kernel talked to rpcbind, but the stub counters do: a
+request that carries the flag must leave both at zero, which is what shows
+that svc_bind() and svc_register() were both skipped.
 
-NLM is absent. lockd owns its own svc_serv and still registers itself.
+The rest cover the reply and the ownership rule:
+
+- rpcb_userspace_reply. The ack flag, a non-empty program list, and the
+  listener that came up. nfslocalio is hidden, so it must be absent.
+- rpcb_userspace_no_v4_udp. NFSv3 must be offered and must not carry
+  no-udp; NFSv4 carries it, or the test skips where v4 is not built.
+- rpcb_userspace_nfsacl_follows_nfs. CONFIG_NFSD_V3_ACL is invisible to the
+  test, so assert only that nfsacl v3 implies nfs v3.
+- rpcb_userspace_busy and rpcb_userspace_busy_reverse. Ownership cannot
+  change under a live serv, in either direction.
+- rpcb_userspace_unflagged_teardown and its reverse. Teardown destroys the
+  serv, so it is exempt from that rule in both directions. The follow-on
+  listener_set is what proves the old serv went away rather than merely
+  losing its listeners.
+- rpcb_userspace_portlist_busy. The legacy portlist add-fd write is
+  refused against a flagged serv and still works against a kernel-owned
+  one. nfsdfs is mounted in the test's netns, so the write cannot reach
+  the host's nfsd.
+- rpcb_userspace_teardown. Create and destroy a flagged serv three times,
+  then confirm that a kernel-owned serv still reaches rpcbind. An
+  unbalanced rpcb_put_local() would break the last step.
+- rpcb_userspace_many_listeners. Forty listeners, which is more than
+  GENLMSG_DEFAULT_SIZE would have held. A reply sized from that constant
+  instead of from its contents returns -EMSGSIZE with every listener
+  already up.
+
+genl_request_reply() grew an attribute argument, because listener_set now
+answers with a reply message rather than a bare ack.
+
+listener_set_rpcb() checks nlmsg_len against the recv() count before
+parsing. Forty listeners fit in its buffer, but a reply near
+NFSD_NL_LISTENER_MAX would not, and the parse loops trust nlmsg_len.
 
 Assisted-by: LLM
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- Documentation/netlink/specs/nfsd.yaml | 55 ++++++++++++++++++++++++++++++++++-
- fs/nfsd/netlink.c                     |  5 ++--
- include/uapi/linux/nfsd_netlink.h     | 20 +++++++++++++
- 3 files changed, 77 insertions(+), 3 deletions(-)
+ .../testing/selftests/nfsd/nfsd_netlink_listener.c | 404 ++++++++++++++++++++-
+ 1 file changed, 401 insertions(+), 3 deletions(-)
 
-diff --git a/Documentation/netlink/specs/nfsd.yaml b/Documentation/netlink/specs/nfsd.yaml
-index 642268819c6f..9ae37bf3ea71 100644
---- a/Documentation/netlink/specs/nfsd.yaml
-+++ b/Documentation/netlink/specs/nfsd.yaml
-@@ -42,6 +42,15 @@ definitions:
-       - none
-       - tls
-       - mtls
-+  -
-+    type: flags
-+    name: rpcbind-flags
-+    doc: >-
-+      Constraints that apply to an rpcbind registration. no-udp means the
-+      kernel would not have registered this program and version over UDP,
-+      so the caller must skip the udp and udp6 netids for it.
-+    entries:
-+      - no-udp
+diff --git a/tools/testing/selftests/nfsd/nfsd_netlink_listener.c b/tools/testing/selftests/nfsd/nfsd_netlink_listener.c
+index 106360f87b99..bef7e8b1ee71 100644
+--- a/tools/testing/selftests/nfsd/nfsd_netlink_listener.c
++++ b/tools/testing/selftests/nfsd/nfsd_netlink_listener.c
+@@ -20,6 +20,7 @@
+  */
+ #define _GNU_SOURCE
+ #include <errno.h>
++#include <fcntl.h>
+ #include <poll.h>
+ #include <sched.h>
+ #include <signal.h>
+@@ -46,6 +47,9 @@
  
- attribute-sets:
-   -
-@@ -159,6 +168,23 @@ attribute-sets:
-       -
-         name: transport-name
-         type: string
-+  -
-+    name: rpcbind
-+    attributes:
-+      -
-+        name: program
-+        type: u32
-+        doc: RPC program number to register.
-+      -
-+        name: version
-+        type: u32
-+        doc: RPC version number to register.
-+      -
-+        name: flags
-+        type: u32
-+        enum: rpcbind-flags
-+        enum-as-flags: true
-+        doc: Constraints on the listeners this entry applies to.
-   -
-     name: server-sock
-     attributes:
-@@ -167,6 +193,24 @@ attribute-sets:
-         type: nest
-         nested-attributes: sock
-         multi-attr: true
-+      -
-+        name: userspace-rpcbind
-+        type: flag
-+        doc: >-
-+          The caller registers the listeners with rpcbind itself, so the
-+          kernel must not do it. The kernel echoes this attribute in the
-+          reply when it accepts the request. Ownership cannot change while
-+          a server exists.
-+      -
-+        name: rpcbind
-+        type: nest
-+        nested-attributes: rpcbind
-+        multi-attr: true
-+        doc: >-
-+          A program and version that the caller should register for every
-+          listener reported in the same reply, except the netids that flags
-+          rules out. Reply only. NLM is absent because lockd still
-+          registers itself.
-   -
-     name: pool-mode
-     attributes:
-@@ -483,13 +527,22 @@ operations:
-             - version
-     -
-       name: listener-set
--      doc: set nfs running sockets
-+      doc: >-
-+        set nfs running sockets. A request that carries userspace-rpcbind
-+        is answered with a reply rather than a bare ack, and the addr list
-+        in that reply names only the listeners that have an rpcbind netid.
-       attribute-set: server-sock
-       flags: [admin-perm]
-       do:
-         request:
-           attributes:
-             - addr
-+            - userspace-rpcbind
-+        reply:
-+          attributes:
-+            - addr
-+            - userspace-rpcbind
-+            - rpcbind
-     -
-       name: listener-get
-       doc: get nfs running listeners
-diff --git a/fs/nfsd/netlink.c b/fs/nfsd/netlink.c
-index eba8b353f412..88a4a4ffcb7f 100644
---- a/fs/nfsd/netlink.c
-+++ b/fs/nfsd/netlink.c
-@@ -79,8 +79,9 @@ static const struct nla_policy nfsd_version_set_nl_policy[NFSD_A_SERVER_PROTO_VE
- };
+ #include "../kselftest_harness.h"
  
- /* NFSD_CMD_LISTENER_SET - do */
--static const struct nla_policy nfsd_listener_set_nl_policy[NFSD_A_SERVER_SOCK_ADDR + 1] = {
-+static const struct nla_policy nfsd_listener_set_nl_policy[NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND + 1] = {
- 	[NFSD_A_SERVER_SOCK_ADDR] = NLA_POLICY_NESTED(nfsd_sock_nl_policy),
-+	[NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND] = { .type = NLA_FLAG, },
- };
++#define NFS_PROGRAM			100003
++#define NFS_ACL_PROGRAM			100227
++
+ #define NLA_ALIGN4(len)			(((len) + 3) & ~3)
+ #define TEST_PORT			20049
+ #define MAX_LISTENERS			8
+@@ -173,15 +177,24 @@ static int genl_request(uint8_t cmd, const char *attrs, int attrs_len)
+ 	return ret;
+ }
  
- /* NFSD_CMD_POOL_MODE_SET - do */
-@@ -153,7 +154,7 @@ static const struct genl_split_ops nfsd_nl_ops[] = {
- 		.cmd		= NFSD_CMD_LISTENER_SET,
- 		.doit		= nfsd_nl_listener_set_doit,
- 		.policy		= nfsd_listener_set_nl_policy,
--		.maxattr	= NFSD_A_SERVER_SOCK_ADDR,
-+		.maxattr	= NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND,
- 		.flags		= GENL_ADMIN_PERM | GENL_CMD_CAP_DO,
- 	},
- 	{
-diff --git a/include/uapi/linux/nfsd_netlink.h b/include/uapi/linux/nfsd_netlink.h
-index 87da1d0bb21e..c125af0cc6a5 100644
---- a/include/uapi/linux/nfsd_netlink.h
-+++ b/include/uapi/linux/nfsd_netlink.h
-@@ -50,6 +50,15 @@ enum nfsd_xprtsec_mode {
- 	NFSD_XPRTSEC_MODE_MTLS = 4,
- };
- 
+-/* Send a command and return the full reply message; -errno on failure. */
+-static int genl_request_reply(uint8_t cmd, char *rbuf, size_t rlen)
 +/*
-+ * Constraints that apply to an rpcbind registration. no-udp means the kernel
-+ * would not have registered this program and version over UDP, so the caller
-+ * must skip the udp and udp6 netids for it.
++ * Send a command with attributes and return the full reply message; -errno
++ * on failure. NLM_F_ACK is left off: the kernel reports an error either way,
++ * so the first message back is the reply whenever there is one.
 + */
-+enum nfsd_rpcbind_flags {
-+	NFSD_RPCBIND_FLAGS_NO_UDP = 1,
++static int genl_request_reply_attrs(uint8_t cmd, const char *attrs,
++				    int attrs_len, char *rbuf, size_t rlen)
+ {
+-	char buf[256];
++	char buf[1 << 20];
+ 	struct nlmsghdr *nlh = (void *)buf;
+ 	int fd = genl_open();
+ 	int off, n, ret;
+ 
+ 	off = genl_hdr(buf, nfsd_family, NLM_F_REQUEST, cmd);
++	if (attrs_len) {
++		memcpy(buf + off, attrs, attrs_len);
++		off += attrs_len;
++	}
+ 	nlh->nlmsg_len = off;
+ 
+ 	if (send(fd, buf, off, 0) < 0)
+@@ -198,6 +211,11 @@ static int genl_request_reply(uint8_t cmd, char *rbuf, size_t rlen)
+ 	return ret;
+ }
+ 
++static int genl_request_reply(uint8_t cmd, char *rbuf, size_t rlen)
++{
++	return genl_request_reply_attrs(cmd, NULL, 0, rbuf, rlen);
++}
++
+ /* Resolve the "nfsd" genl family id; -1 if not registered. */
+ static int genl_resolve_nfsd(void)
+ {
+@@ -383,6 +401,119 @@ static int version_set_only(uint32_t major, uint32_t minor)
+ 	return genl_request(NFSD_CMD_VERSION_SET, attrs, NLA_ALIGN4(inner));
+ }
+ 
++/* ------------------- userspace-rpcbind ------------------- */
++
++struct rpcb_ent {
++	uint32_t program;
++	uint32_t version;
++	uint32_t flags;
 +};
 +
- enum {
- 	NFSD_A_CACHE_NOTIFY_CACHE_TYPE = 1,
- 
-@@ -113,8 +122,19 @@ enum {
- 	NFSD_A_SOCK_MAX = (__NFSD_A_SOCK_MAX - 1)
- };
- 
-+enum {
-+	NFSD_A_RPCBIND_PROGRAM = 1,
-+	NFSD_A_RPCBIND_VERSION,
-+	NFSD_A_RPCBIND_FLAGS,
++/* More listeners than GENLMSG_DEFAULT_SIZE would have held. */
++#define RPCB_MANY_LISTENERS		40
 +
-+	__NFSD_A_RPCBIND_MAX,
-+	NFSD_A_RPCBIND_MAX = (__NFSD_A_RPCBIND_MAX - 1)
++struct rpcb_reply {
++	int acked;			/* saw NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND */
++	int nprog;
++	struct rpcb_ent prog[16];
++	int naddr;			/* every addr nest, not just the stored ones */
++	int nlistener;
++	struct listener_ent listener[MAX_LISTENERS];
 +};
 +
- enum {
- 	NFSD_A_SERVER_SOCK_ADDR = 1,
-+	NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND,
-+	NFSD_A_SERVER_SOCK_RPCBIND,
++/* Append the userspace-rpcbind request flag. */
++static int put_userspace_rpcbind(char *buf, int off)
++{
++	return put_attr(buf, off, NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND, NULL, 0);
++}
++
++static void parse_rpcb_nest(const struct nlattr *na, struct rpcb_ent *e)
++{
++	const struct nlattr *in = (const void *)((const char *)na + NLA_HDRLEN);
++	int ileft = na->nla_len - NLA_HDRLEN;
++
++	memset(e, 0, sizeof(*e));
++	while (ileft >= (int)NLA_HDRLEN) {
++		const void *d = (const char *)in + NLA_HDRLEN;
++
++		switch (in->nla_type & NLA_TYPE_MASK) {
++		case NFSD_A_RPCBIND_PROGRAM:
++			e->program = *(const uint32_t *)d;
++			break;
++		case NFSD_A_RPCBIND_VERSION:
++			e->version = *(const uint32_t *)d;
++			break;
++		case NFSD_A_RPCBIND_FLAGS:
++			e->flags = *(const uint32_t *)d;
++			break;
++		}
++		ileft -= NLA_ALIGN4(in->nla_len);
++		in = (const void *)((const char *)in + NLA_ALIGN4(in->nla_len));
++	}
++}
++
++/*
++ * Send a listener_set that asks to own rpcbind, and parse the reply.
++ * Returns 0 on success or -errno.
++ */
++static int listener_set_rpcb(char *attrs, int off, struct rpcb_reply *out)
++{
++	char rbuf[64 * 1024];
++	const struct nlmsghdr *nlh = (const void *)rbuf;
++	const struct nlattr *na;
++	int left, n;
++
++	off = put_userspace_rpcbind(attrs, off);
++	memset(out, 0, sizeof(*out));
++
++	n = genl_request_reply_attrs(NFSD_CMD_LISTENER_SET, attrs, off,
++				     rbuf, sizeof(rbuf));
++	if (n < 0)
++		return n;
++
++	/*
++	 * A reply at NFSD_NL_LISTENER_MAX outgrows rbuf, and the parse loops
++	 * below trust nlmsg_len. Refuse a short read rather than walk off it.
++	 */
++	if (n < (int)(NLMSG_HDRLEN + GENL_HDRLEN) ||
++	    nlh->nlmsg_len > (unsigned int)n)
++		return -EMSGSIZE;
++
++	out->nlistener = parse_listener_get(rbuf, n, out->listener,
++					    MAX_LISTENERS);
++
++	na = (const void *)(rbuf + NLMSG_HDRLEN + GENL_HDRLEN);
++	left = nlh->nlmsg_len - NLMSG_HDRLEN - GENL_HDRLEN;
++	while (left >= (int)NLA_HDRLEN) {
++		switch (na->nla_type & NLA_TYPE_MASK) {
++		case NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND:
++			out->acked = 1;
++			break;
++		case NFSD_A_SERVER_SOCK_ADDR:
++			out->naddr++;
++			break;
++		case NFSD_A_SERVER_SOCK_RPCBIND:
++			if (out->nprog < (int)ARRAY_SIZE(out->prog))
++				parse_rpcb_nest(na, &out->prog[out->nprog++]);
++			break;
++		}
++		left -= NLA_ALIGN4(na->nla_len);
++		na = (const void *)((const char *)na + NLA_ALIGN4(na->nla_len));
++	}
++	return 0;
++}
++
++static struct rpcb_ent *find_rpcb(struct rpcb_reply *r, uint32_t prog,
++				  uint32_t vers)
++{
++	int i;
++
++	for (i = 0; i < r->nprog; i++)
++		if (r->prog[i].program == prog && r->prog[i].version == vers)
++			return &r->prog[i];
++	return NULL;
++}
++
+ /* Fetch the current listeners; returns count (>=0) or -errno. */
+ static int listener_get(struct listener_ent *out, int max)
+ {
+@@ -1282,6 +1413,273 @@ TEST_F(nfsd_listener, rpcb_unreg_stop_after_failure)
+ 	EXPECT_LE(three, one);
+ }
  
- 	__NFSD_A_SERVER_SOCK_MAX,
- 	NFSD_A_SERVER_SOCK_MAX = (__NFSD_A_SERVER_SOCK_MAX - 1)
++/* ===================== userspace rpcbind ===================== */
++
++/*
++ * The point of the flag: nfsd must make no rpcbind call at all. svc_bind()
++ * pings rpcbind at client creation and svc_register() calls it once per
++ * program and version, so a silent stub is what proves both were skipped.
++ */
++TEST_F(nfsd_listener, rpcb_userspace_no_traffic)
++{
++	struct rpcb_reply r;
++	char attrs[64];
++	int off = put_listener(attrs, 0, "tcp", TEST_PORT);
++
++	ASSERT_EQ(0, rpcb_conns());
++	ASSERT_EQ(0, listener_set_rpcb(attrs, off, &r));
++	EXPECT_EQ(0, rpcb_conns());
++	EXPECT_EQ(0, rpcb_calls());
++}
++
++/*
++ * The reply has to tell the caller what to register. Without the program
++ * list it cannot know whether nfsacl is built in.
++ */
++TEST_F(nfsd_listener, rpcb_userspace_reply)
++{
++	struct rpcb_reply r;
++	char attrs[64];
++	int off = put_listener(attrs, 0, "tcp", TEST_PORT);
++
++	ASSERT_EQ(0, listener_set_rpcb(attrs, off, &r));
++	EXPECT_EQ(1, r.acked);
++	EXPECT_GT(r.nprog, 0);
++	/* the listener came up and is named, so the caller knows the port */
++	ASSERT_EQ(1, r.nlistener);
++	EXPECT_NE(NULL, find_listener(r.listener, r.nlistener, "tcp",
++				      AF_INET, TEST_PORT));
++	/* nfslocalio is hidden and must never be offered for registration */
++	EXPECT_EQ(NULL, find_rpcb(&r, 400122, 1));
++}
++
++/*
++ * nfsd_nl_validate_listeners() allows far more listeners than the default
++ * genl buffer holds, so the reply has to be sized from its contents. If it
++ * is not, the listeners all come up and the caller still sees -EMSGSIZE.
++ */
++TEST_F(nfsd_listener, rpcb_userspace_many_listeners)
++{
++	char attrs[RPCB_MANY_LISTENERS * 64];
++	struct rpcb_reply r;
++	int off = 0, i;
++
++	for (i = 0; i < RPCB_MANY_LISTENERS; i++)
++		off = put_listener(attrs, off, "tcp", TEST_PORT + i);
++
++	ASSERT_EQ(0, listener_set_rpcb(attrs, off, &r));
++	EXPECT_EQ(1, r.acked);
++	EXPECT_GT(r.nprog, 0);
++	EXPECT_EQ(RPCB_MANY_LISTENERS, r.naddr);
++}
++
++/*
++ * NFSv4 sets vs_need_cong_ctrl, so the kernel never registered it on UDP.
++ * The reply cannot filter it out, because the rule depends on the listener,
++ * so it must carry the flag instead.
++ */
++TEST_F(nfsd_listener, rpcb_userspace_no_v4_udp)
++{
++	struct rpcb_ent *v4, *v3;
++	struct rpcb_reply r;
++	char attrs[64];
++	int off = put_listener(attrs, 0, "tcp", TEST_PORT);
++
++	ASSERT_EQ(0, listener_set_rpcb(attrs, off, &r));
++
++	/* v3 is always built in and on by default, so it must be offered */
++	v3 = find_rpcb(&r, NFS_PROGRAM, 3);
++	ASSERT_NE(NULL, v3);
++	EXPECT_EQ(0, v3->flags & NFSD_RPCBIND_FLAGS_NO_UDP);
++
++	v4 = find_rpcb(&r, NFS_PROGRAM, 4);
++	if (!v4)
++		SKIP(return, "NFSv4 is not enabled");
++	EXPECT_EQ(NFSD_RPCBIND_FLAGS_NO_UDP,
++		  v4->flags & NFSD_RPCBIND_FLAGS_NO_UDP);
++}
++
++/*
++ * nfsacl is the value userland cannot derive: CONFIG_NFSD_V3_ACL is not
++ * visible over netlink. Only assert self-consistency -- if the kernel
++ * offers nfsacl v3 then it must also offer nfs v3, since both gate on the
++ * same enabled version.
++ */
++TEST_F(nfsd_listener, rpcb_userspace_nfsacl_follows_nfs)
++{
++	struct rpcb_reply r;
++	char attrs[64];
++	int off = put_listener(attrs, 0, "tcp", TEST_PORT);
++
++	ASSERT_EQ(0, listener_set_rpcb(attrs, off, &r));
++	if (find_rpcb(&r, NFS_ACL_PROGRAM, 3))
++		EXPECT_NE(NULL, find_rpcb(&r, NFS_PROGRAM, 3));
++}
++
++/*
++ * svc_bind() decided whether to take the rpcb_users reference that teardown
++ * drops, so ownership cannot flip under a live serv.
++ */
++TEST_F(nfsd_listener, rpcb_userspace_busy)
++{
++	struct rpcb_reply r;
++	char attrs[64], plain[64];
++	int off = put_listener(attrs, 0, "tcp", TEST_PORT);
++	int poff = put_listener(plain, 0, "tcp", TEST_PORT);
++
++	ASSERT_EQ(0, listener_set_rpcb(attrs, off, &r));
++
++	/* same listeners, but now asking the kernel to own rpcbind */
++	EXPECT_EQ(-EBUSY, listener_set(plain, poff));
++	EXPECT_STRNE("", last_extack);
++}
++
++/* And the same the other way round. */
++TEST_F(nfsd_listener, rpcb_userspace_busy_reverse)
++{
++	struct rpcb_reply r;
++	char attrs[64], plain[64];
++	int poff = put_listener(plain, 0, "tcp", TEST_PORT);
++	int off = put_listener(attrs, 0, "tcp", TEST_PORT);
++
++	ASSERT_EQ(0, listener_set(plain, poff));
++	EXPECT_EQ(-EBUSY, listener_set_rpcb(attrs, off, &r));
++}
++
++#define NFSDFS_DIR	"/run/nfsdfs"
++
++/* nfsdfs binds to the netns it is mounted in, so mount a private one */
++static int mount_nfsdfs(void)
++{
++	if (mkdir(NFSDFS_DIR, 0700) < 0 && errno != EEXIST)
++		return -1;
++	return mount("nfsd", NFSDFS_DIR, "nfsd", 0, NULL);
++}
++
++/* simple_transaction allows one write per open, so open every time */
++static int write_portlist(int sock)
++{
++	char buf[32];
++	int fd, len, ret = 0;
++
++	fd = open(NFSDFS_DIR "/portlist", O_WRONLY);
++	if (fd < 0)
++		return -errno;
++	len = snprintf(buf, sizeof(buf), "%d\n", sock);
++	if (write(fd, buf, len) < 0)
++		ret = -errno;
++	close(fd);
++	return ret;
++}
++
++static int tcp_listener(int port)
++{
++	struct sockaddr_in sa = {
++		.sin_family = AF_INET,
++		.sin_addr.s_addr = htonl(INADDR_LOOPBACK),
++		.sin_port = htons(port),
++	};
++	int fd = socket(AF_INET, SOCK_STREAM, 0);
++
++	if (fd < 0)
++		return -1;
++	if (bind(fd, (struct sockaddr *)&sa, sizeof(sa)) < 0 ||
++	    listen(fd, 1) < 0) {
++		close(fd);
++		return -1;
++	}
++	return fd;
++}
++
++/*
++ * The legacy portlist interface cannot hand a listener to the rpcbind owner
++ * and svc_register() will not register it, so it has to refuse.
++ */
++TEST_F(nfsd_listener, rpcb_userspace_portlist_busy)
++{
++	struct rpcb_reply r;
++	char attrs[64], plain[64];
++	int off = put_listener(attrs, 0, "tcp", TEST_PORT);
++	int poff = put_listener(plain, 0, "tcp", TEST_PORT);
++	int sock;
++
++	if (mount_nfsdfs() < 0)
++		SKIP(return, "cannot mount nfsdfs: %s", strerror(errno));
++
++	sock = tcp_listener(TEST_PORT + 1);
++	ASSERT_GE(sock, 0);
++
++	ASSERT_EQ(0, listener_set_rpcb(attrs, off, &r));
++	EXPECT_EQ(-EBUSY, write_portlist(sock));
++
++	/* the same write against a kernel-owned serv still works */
++	ASSERT_EQ(0, listener_set_rpcb(attrs, 0, &r));	/* destroys the serv */
++	ASSERT_EQ(0, listener_set(plain, poff));
++	EXPECT_EQ(0, write_portlist(sock));
++
++	close(sock);
++}
++
++/*
++ * rpcb_create_local() increments sn->rpcb_users and rpcb_put_local()
++ * decrements it. A serv that never took the reference must not drop it, or
++ * the next serv finds the count wrong. Cycle a few times, then confirm a
++ * kernel-owned serv can still reach rpcbind.
++ */
++TEST_F(nfsd_listener, rpcb_userspace_teardown)
++{
++	struct rpcb_reply r;
++	char attrs[64], plain[64];
++	int off, poff, i;
++
++	for (i = 0; i < 3; i++) {
++		off = put_listener(attrs, 0, "tcp", TEST_PORT);
++		ASSERT_EQ(0, listener_set_rpcb(attrs, off, &r));
++		/* empty list with no threads destroys the serv */
++		ASSERT_EQ(0, listener_set_rpcb(attrs, 0, &r));
++		ASSERT_EQ(0, rpcb_conns());
++	}
++
++	poff = put_listener(plain, 0, "tcp", TEST_PORT);
++	ASSERT_EQ(0, listener_set(plain, poff));
++	EXPECT_GT(rpcb_conns(), 0);
++}
++
++/*
++ * Teardown destroys the serv, so it is not an ownership change. A caller
++ * that never learned about the flag has to be able to shut nfsd down.
++ */
++TEST_F(nfsd_listener, rpcb_userspace_unflagged_teardown)
++{
++	struct listener_ent got[MAX_LISTENERS];
++	char attrs[64], plain[64];
++	struct rpcb_reply r;
++	int off = put_listener(attrs, 0, "tcp", TEST_PORT);
++	int poff = put_listener(plain, 0, "tcp", TEST_PORT);
++
++	ASSERT_EQ(0, listener_set_rpcb(attrs, off, &r));
++	ASSERT_EQ(1, r.nlistener);
++
++	/* no flag, no listeners */
++	EXPECT_EQ(0, listener_set(NULL, 0));
++	EXPECT_EQ(0, listener_get(got, MAX_LISTENERS));
++
++	/* the serv is gone, so kernel ownership can be taken */
++	EXPECT_EQ(0, listener_set(plain, poff));
++}
++
++/* And the same the other way round. */
++TEST_F(nfsd_listener, rpcb_userspace_flagged_teardown_of_kernel_serv)
++{
++	char attrs[64], plain[64];
++	struct rpcb_reply r;
++	int poff = put_listener(plain, 0, "tcp", TEST_PORT);
++
++	ASSERT_EQ(0, listener_set(plain, poff));
++	EXPECT_EQ(0, listener_set_rpcb(attrs, 0, &r));
++	EXPECT_EQ(0, listener_set(plain, poff));
++}
++
+ /* ===================== threads / -EBUSY semantics ===================== */
+ 
+ TEST_F(nfsd_listener, sem_busy_on_change)
 
 -- 
 2.55.0
