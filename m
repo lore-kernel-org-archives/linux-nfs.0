@@ -1,41 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9C3824A3F37
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 14:47:40 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E03213546EB;
+	Tue, 15 Sep 2026 14:50:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789483664; cv=none; b=ZQfRcgP2/c93xOMnWQuJGyqKvVxXXyCFhG9XJIfG+LgMV6GDa5q2nuxVvZ82f1roRSm+BzLZzrlp3RPoLRY1pu2C02+VWNID7Pjql73TXzh0kef+bEAyYiTaKkdOH7CpJctz761ehRCGefCNhDgQpHz3rxchFECeDZTVrtExNPY=
+	t=1789483804; cv=none; b=YV3rGa9jrlPb7z1z9L/AaQbgC5C500Kc0s++ZhtVI/3zIOji0/dbEIVkJeqyXzbWZ+tKO7gu/QM5U8iPaY3wh6jTbZ1dydAgbwKBQAdR7g/9UKJYkW+s+G0a5cc8INGlZkqdRLWXqgquY93okJ06CRqJ2aKosCul7/t/HKpAI6A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789483664; c=relaxed/simple;
-	bh=Dz504NV6RDiyHHkGauubdQ70HAZ2cN+AH7yOZD6VKog=;
+	s=arc-20240116; t=1789483804; c=relaxed/simple;
+	bh=4A9A3hR1WKTcyEVPLyAwjlzeAYK4rdx77bbKQx/pghw=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=ChMM5tXqtLg2rQKBU+BJrqMqSiTzQVkQr63go1wofRsh1J6lUQR1kuynZ6fdcX11ExJ3dbN4ikGkN1f8VKVjtrA/QQmQft6eAsEGZNiaPRAShJ3yQ2Nmd5ObO8+5IkT753RDNIv8alHrAN8GxY6ZRBrOjP19QyP9fkporpsSkUU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=A78gJzuB; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=GITrHJVV4HsIf5KVktMmfg79JLCy7XQJR/MAKKSjKSYAExy+icKC/XmXuXZKjznHBWXk9kw1rpVExtH4WniIXOz+q50s2J9lKgnNZ+9j0nyXjq5iEIeIVel9YMWNClEX3eimsvXV1dGBAo3XhiQYlDdtzrIEk3wo5aTuSIXsmxc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=YpHBmBli; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="A78gJzuB"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E68FD1F000FF;
-	Tue, 15 Sep 2026 14:47:37 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="YpHBmBli"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A35A81F000FF;
+	Tue, 15 Sep 2026 14:50:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789483658;
-	bh=tIUaKZfocY+FVEv6gkr5Kcw7WCJNddaw5O3DiJWYivY=;
+	s=k20260515; t=1789483802;
+	bh=qPczooQUOvj610WKXgPZ6pJIJrriNp/5eVio72+yK30=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=A78gJzuBh5TEw/7559dMFIEr0IkKMOrs3L8CroGFk09LNOCMKjCMFD8zXYpvu+JAK
-	 eIWABnnE3W/WszvPVMO+wS6s5Q22olma5b6ngTmFyeB/UK+o9fmIXFxx08T4zdqKfU
-	 R6ifoaHhSXfxbGce9JWh0MdW6NDVFOO2JdygezOMuAr9hS6uho1YmxJ/X+afz3+d7E
-	 TvJYBkvFdJDk8YJmBTk+Mo6Sooduu380atN8HjGoCHglVfDSt9hHd9ntHO3DxzGX9h
-	 Amvjmc7MHE6+sIiilO8yJZJ6Hnpkh6sLhJFXVamiIOwO6er1a9jC4oKbuqaFUVtOCw
-	 9pgq+R0JmGUyA==
-Message-ID: <200c2ed6b9c089b228f6c86a56d8973fd3efd720.camel@kernel.org>
-Subject: Re: [PATCH v1] sunrpc: pin gss module across auth_domain RCU free
+	b=YpHBmBliW53KUrKlsNrgzdy6wJ9/tOuXSsUsXd3Yaesp+PPjd3N1+D07ImLQ3bqSV
+	 +bQBfymRkdBgd0zmPlgNSTMiVLjQ2WAuyv78q9XXtYLg/rp1q3h04h2YzPDVj4e1a3
+	 TIEJS1lhESge1WPZTRNaHP6M/fdgeu3rZugHMeUvR2vyVzqnybYQf/oQ3YaRybRF2O
+	 lLc7rNjYkzGPyvcZ5VoGuRvPKXN6oR6B7u602+NcmhrWlxeGLu6qwXNwqhbvyjtbBU
+	 sCmOPv1tikInrjHdYSb1VRM/pE7hAQ1g0aWWOk6p+dbd8+lcwjVNPdimjjfDD4zVTz
+	 4i2QUBk7TJ9qA==
+Message-ID: <987d991af67bda38b98c7e0f9a50e78cfa3d2c3f.camel@kernel.org>
+Subject: Re: [PATCH v3 0/4] Reduce lock contention in the NFS client
 From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org, Chris Mason <clm@meta.com>
-Date: Tue, 15 Sep 2026 10:47:36 -0400
-In-Reply-To: <20260913160706.384180-1-cel@kernel.org>
-References: <20260913160706.384180-1-cel@kernel.org>
+To: Chuck Lever <cel@kernel.org>, Trond Myklebust <trondmy@kernel.org>, Anna
+ Schumaker <anna@kernel.org>
+Cc: NeilBrown <neil@brown.name>, Tim Menninger <tmenninger@purestorage.com>,
+ 	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Tue, 15 Sep 2026 10:49:59 -0400
+In-Reply-To: <20260915-performance-v3-0-ae26d460bfd3@kernel.org>
+References: <20260915-performance-v3-0-ae26d460bfd3@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -120,89 +120,70 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, 2026-09-13 at 12:07 -0400, Chuck Lever wrote:
-> From: Chris Mason <clm@meta.com>
+On Tue, 2026-09-15 at 10:20 -0400, Chuck Lever wrote:
+> Under a 4KB NFSv3 workload on 100GbE RDMA, roughly 150 RPC worker
+> threads drive the client, and lock contention dominates its CPU
+> profile: up to 53% of non-idle cycles are spent in
+> native_queued_spin_lock_slowpath.
 >=20
-> A gss auth_domain stores a raw pointer to svcauthops_gss in
-> dom->flavour, and its release queues svcauth_gss_domain_release_rcu()
-> via call_rcu(). Both live in auth_rpcgss.ko text, and nothing pins the
-> module while a domain referencing it is reachable. rmmod auth_rpcgss
-> can therefore unmap that text while an NFSD export still holds a
-> reference to the domain.
+> Three locks account for that: reserve_lock on every XID
+> allocation, queue_lock on every submit and completion, and the
+> unbound worker pool lock on every enqueue and dequeue for rpciod,
+> nfsiod, and xprtiod.
 >=20
-> The export cache is one such holder. When the export is finally
-> released, the domain reference drops from module text:
+> This series addresses the first two. v2 also moved the three
+> workqueues to the WQ_AFFN_SMT scope. Tim Menninger reported an
+> intermittent throughput regression on a 96-CPU two-socket
+> NFS/RDMA client and bisected it to the rpciod scope change [1].
+> The cause is still being worked out in that thread, so the scope
+> patches are withdrawn until it is understood. Until then, WQ_SYSFS
+> on all three workqueues lets an administrator set the scope from
+> user space.
 >=20
->     svc_export_put()
->       auth_domain_put(exp->ex_client)
->         auth_domain_release()
->           dom->flavour->domain_release(dom)   /* into module text */
->             svcauth_gss_domain_release()
->               call_rcu(&dom->rcu_head,
->                        svcauth_gss_domain_release_rcu)
+> [1] https://lore.kernel.org/linux-nfs/20260902204048.4100864-1-tmenninger=
+@everpuredata.com/
 >=20
-> Once auth_rpcgss is unloaded, the domain_release call lands in
-> unmapped memory. The rcu_barrier() in exit_rpcsec_gss() does not
-> help: it waits only for callbacks already queued, and this one is
-> not queued until the export goes away.
->=20
-> NFSD's NFSv4 objects import symbols from auth_rpcgss.ko, so only a
-> server built without CONFIG_NFSD_V4 can unload auth_rpcgss while
-> exports still name a gss domain.
->=20
-> Take a module reference in svcauth_gss_register_pseudoflavor() before
-> publishing the domain and drop it at the end of
-> svcauth_gss_domain_release_rcu(). The rcu_barrier() then holds the
-> module image until this callback has returned.
->=20
-> Fixes: 608a0ab2f54a ("SUNRPC: Add lockless lookup of the server's auth do=
-main")
-> Assisted-by: kres:claude-opus-4-7
-> Signed-off-by: Chris Mason <clm@meta.com>
-> [ cel: rewrote description ]
-> Signed-off-by: Chuck Lever <cel@kernel.org>
 > ---
->  net/sunrpc/auth_gss/svcauth_gss.c | 8 ++++++++
->  1 file changed, 8 insertions(+)
+> Changes in v3:
+> - Drop the WQ_AFFN_SMT scope patches (Tim Menninger's regression report)
+> - Rebase on v7.3-rc2
+> - Link to v2: https://patch.msgid.link/20260902-performance-v2-0-b71c0c08=
+2f9d@kernel.org
 >=20
-> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svca=
-uth_gss.c
-> index b319c4423d78..43839e805531 100644
-> --- a/net/sunrpc/auth_gss/svcauth_gss.c
-> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-> @@ -824,12 +824,18 @@ svcauth_gss_register_pseudoflavor(u32 pseudoflavor,=
- char * name)
->  	new->h.flavour =3D &svcauthops_gss;
->  	new->pseudoflavor =3D pseudoflavor;
-> =20
-> +	if (!try_module_get(svcauthops_gss.owner)) {
-> +		stat =3D -ENODEV;
-> +		goto out_free_name;
-> +	}
-> +
->  	test =3D auth_domain_lookup(name, &new->h);
->  	if (test !=3D &new->h) {
->  		pr_warn("svc: duplicate registration of gss pseudo flavour %s.\n",
->  			name);
->  		stat =3D -EADDRINUSE;
->  		auth_domain_put(test);
-> +		module_put(svcauthops_gss.owner);
->  		goto out_free_name;
->  	}
->  	return test;
-> @@ -2004,9 +2010,11 @@ svcauth_gss_domain_release_rcu(struct rcu_head *he=
-ad)
->  {
->  	struct auth_domain *dom =3D container_of(head, struct auth_domain, rcu_=
-head);
->  	struct gss_domain *gd =3D container_of(dom, struct gss_domain, h);
-> +	struct module *owner =3D dom->flavour->owner;
-> =20
->  	kfree(dom->name);
->  	kfree(gd);
-> +	module_put(owner);
->  }
-> =20
->  static void
+> Changes in v2:
+> - Fix send bvec use-after-free in xprt_request_dequeue_xprt() (sashiko)
+> - Replace the three workqueue exports with workqueue_set_affn_scope()
+> - Split the WQ_SYSFS patch into SUNRPC and NFS patches
+> - Drop v1 patch 2: async completions in the submitter can deadlock
+> - Correct the pool cost and SMT group wording in the scope patches
+> - Link to v1: https://patch.msgid.link/20260831-performance-v1-0-8d9fd9b6=
+7f96@kernel.org
+>=20
+> ---
+> Chuck Lever (4):
+>       SUNRPC: Use atomic_t for XID allocation
+>       SUNRPC: Split recv_lock out of xprt->queue_lock
+>       SUNRPC: Set WQ_SYSFS on rpciod and xprtiod
+>       NFS: Set WQ_SYSFS on nfsiod
+>=20
+>  fs/nfs/inode.c                             |  3 +-
+>  include/linux/sunrpc/xprt.h                |  8 ++-
+>  net/sunrpc/sched.c                         |  5 +-
+>  net/sunrpc/svcsock.c                       |  6 +--
+>  net/sunrpc/xprt.c                          | 85 ++++++++++++++++++------=
+------
+>  net/sunrpc/xprtrdma/rpc_rdma.c             | 14 ++---
+>  net/sunrpc/xprtrdma/svc_rdma_backchannel.c |  8 +--
+>  net/sunrpc/xprtsock.c                      | 18 +++----
+>  8 files changed, 85 insertions(+), 62 deletions(-)
+> ---
+> base-commit: df2908090cda368b01ff43709f51890076c56157
+> change-id: 20260831-performance-e465e621c1c0
+>=20
+> Best regards,
+> -- =20
+> Chuck Lever
+
+Nice, straightforward performance wins!
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
