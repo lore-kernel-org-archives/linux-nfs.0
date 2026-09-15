@@ -1,41 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2E6794052A5;
-	Tue, 15 Sep 2026 17:04:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E3A9B43B3EA;
+	Tue, 15 Sep 2026 17:15:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789491845; cv=none; b=CwQ8pMvOykCNFZWo+dPaz/BFOHNlccjJrNmEosa4Anc83dLbm2J6qt83RS1QYm486voIiXsq3bb8T51Z4qKerlUyIbSP4MR3Xt/rj/LmxI/y74BjbsZqn4xFqeXD85l7PZHy86wrA1ADKywHCfAgsAJ8bE5+/YRYHzV0fYTxt58=
+	t=1789492521; cv=none; b=H0DbZ4MfEfWFxAKpe4IWDrsu04HqIsn3qgBNqbeopFDF4k2VH3IsNU/STuagbEHijuVL2WGqcYVxUKrK1qllAb//jKRB40FuAfjU8qJhqpULc3mZNcO4CkcdIn2KEZoF+dR5QmMTMIEzq7zyS5XMZhe1F5lgkVYwO6e5gbAQjWE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789491845; c=relaxed/simple;
-	bh=UyZy4b1CE42/1ejl3vNXBVTya1Q6k+zMpGkKomKrCPM=;
+	s=arc-20240116; t=1789492521; c=relaxed/simple;
+	bh=unMy31IdG5khzUOUmIkpeDX6j7oGeu5JtyZsrcaovK4=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=r482BYvTvVym4+v8sMKH3ORs0VQuBVtZZcYo+wvkA72yEBJe/QwJST6JgUyatZRU3Hu3OwViHyutjExfTGuWrXf37lNESR0zQS8u4RWagfme7GP8FbyUV+F6hCasBmZjXlU+agKMQOsVX9OcAR/PYmfV+Dhe8o8XesjtdUsMY/U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jVmOSQSR; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=kvgEZf/X4J8lGoBFEgeJUx2cjCNzRX8Z7Cgm8Bu5Kuyvk5Rf8/BnR2ilPx3Ppw0HGU3G0NDL7YEEhM4GAulWFvPxsTtxf8hmPrat8DaKReQ0AWaNJR0h1UH03BvLcoacDuIhvj2bFtPgq/xZw+794pvHI2zSXbsaK8VgENX6rS8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=k03JjuG0; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jVmOSQSR"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 550811F00898;
-	Tue, 15 Sep 2026 17:04:03 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="k03JjuG0"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 055E21F000FF;
+	Tue, 15 Sep 2026 17:15:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789491843;
-	bh=5MbreCHXimUJkSLoDYYJizdFSm4FvFvhiicr4qn3UBA=;
+	s=k20260515; t=1789492519;
+	bh=K++Zi4/bTTk6/7EYbeuTRbzck4cD6j5m6E2jjL9wd5A=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=jVmOSQSRRQTZuOSKAH7K1M1t7oLHywuANQaoJn81vc/lZDG0oZ0cOm6W1avzIxEiK
-	 2AYKoI7HdywPmpQx7IOlqj7lSFfMGZV+MSvj/I6y9avMkkyh7o6El2TlBL3NahaJSR
-	 7VQi3z6gB7AIzUZq3HTaiqhLMQ5X5sKpwQ1M4ytfoha6P3ae1r2UdA9d/ZkXAsghZq
-	 v8zGEE9ZPLafSY9biGEOAPCmgX3zyEKUei5099Ddin3equcy9ojBNYxBcA2FmJ4GMX
-	 eUQQlqVwTO8cpdDnqzzPE1JjlKrPJTJF4Ng5I6nEUpgNwajYM8z0uUj8hsIYhlJXXG
-	 sNeg9eivL2RoA==
-Message-ID: <194104884e59817d5fb479aa6254046b7034735a.camel@kernel.org>
-Subject: Re: [PATCH] nfsd: zero NFSv4 COMPOUND tag padding
+	b=k03JjuG0gToM+n9r6AsX60YUewohiJl+4Jnm2aBupZenvJdlW8o8sRJ0m0Y/Vk4eu
+	 qJzKT4xXCuGNKIYBgqhmIDB4F+A6ia8H6u9UY8UsyqSvE/0iAj5oBQ12rTb+7fjhmb
+	 8Qh+xa4E+9cE0ypU+tOXOI+MTYVJio7Bwy24eU2g5ILXB7aSzwc+cQafzD8UPFawld
+	 /5V7XeZtUzQZgwxoo6nKpe5FCmpQfNKSADk9PX1cLSQfYf8txyeMFnWaEkzv21CahJ
+	 H0Vou3olKOqMTuat5ITX52WF1aZHzbGqzyC8s6obonwfBZFjwOqYO5v9GUSUcr/xYE
+	 xD6DJy73ewVbA==
+Message-ID: <88d95708cf53eb1a79240ffb92ef54193a9a076a.camel@kernel.org>
+Subject: Re: [PATCH] nfsd: clear XDR padding in GETXATTR replies
 From: Jeff Layton <jlayton@kernel.org>
 To: Aldo Ariel Panzardo <qwe.aldo@gmail.com>, Chuck Lever
 	 <chuck.lever@oracle.com>
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
 	stable@vger.kernel.org
-Date: Tue, 15 Sep 2026 13:04:01 -0400
-In-Reply-To: <20260915160049.3105481-1-qwe.aldo@gmail.com>
-References: <20260915160049.3105481-1-qwe.aldo@gmail.com>
+Date: Tue, 15 Sep 2026 13:15:17 -0400
+In-Reply-To: <20260915160119.3105745-1-qwe.aldo@gmail.com>
+References: <20260915160119.3105745-1-qwe.aldo@gmail.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -120,38 +120,45 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2026-09-15 at 13:00 -0300, Aldo Ariel Panzardo wrote:
-> nfs4svc_encode_compoundres() copies the tag bytes into reserved XDR space
-> and skips directly to the aligned end of the field. xdr_reserve_space()
-> rounds the reservation up but does not initialize the padding bytes.
+On Tue, 2026-09-15 at 13:01 -0300, Aldo Ariel Panzardo wrote:
+> nfsd4_vbuf_to_stream() uses a raw memcpy() for the first fragment of an
+> attribute value. xdr_reserve_space() aligns the reservation but does not
+> initialize the extra bytes. If the complete value fits in that fragment,
+> the loop that clears padding for the final fragment is never entered.
 >=20
-> A remote client can choose a tag length that is not a multiple of four,
-> causing one to three stale bytes from the response page to be returned in
-> the COMPOUND reply.
+> A remote client reading an attribute whose length is not a multiple of
+> four can therefore receive one to three stale bytes from the response
+> page.
 >=20
-> Use xdr_encode_opaque_fixed() to copy the tag and clear its XDR padding.
+> Encode the first fragment with xdr_encode_opaque_fixed(), matching the
+> final-fragment path and ensuring that any XDR padding is zeroed.
 >=20
-> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+> Fixes: 23e50fe3a5e6 ("nfsd: implement the xattr functions and en/decode l=
+ogic")
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Aldo Ariel Panzardo <qwe.aldo@gmail.com>
 > ---
->  fs/nfsd/nfs4xdr.c | 3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
+>  fs/nfsd/nfs4xdr.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 >=20
 > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index e17488a911..9377f42dfd 100644
+> index e17488a911..51ab68ffdf 100644
 > --- a/fs/nfsd/nfs4xdr.c
 > +++ b/fs/nfsd/nfs4xdr.c
-> @@ -6480,8 +6480,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, =
-struct xdr_stream *xdr)
+> @@ -5953,7 +5953,7 @@ nfsd4_vbuf_to_stream(struct xdr_stream *xdr, char *=
+buf, u32 buflen)
+>  	if (!p)
+>  		return nfserr_resource;
 > =20
->  	*p++ =3D resp->cstate.status;
->  	*p++ =3D htonl(resp->taglen);
-> -	memcpy(p, resp->tag, resp->taglen);
-> -	p +=3D XDR_QUADLEN(resp->taglen);
-> +	p =3D xdr_encode_opaque_fixed(p, resp->tag, resp->taglen);
->  	*p++ =3D htonl(resp->opcnt);
+> -	memcpy(p, buf, cplen);
+> +	xdr_encode_opaque_fixed(p, buf, cplen);
+>  	buf +=3D cplen;
+>  	buflen -=3D cplen;
 > =20
->  	nfsd4_sequence_done(resp);
+
+Looks good. There is another memcpy() inside the loop just after this
+that probably ought to be converted this way too, but it's not strictly
+required to fix this bug. Maybe send a follow-on patch if you're
+inclined?
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
