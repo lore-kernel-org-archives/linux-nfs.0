@@ -1,32 +1,32 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 216D643BDB0;
-	Tue, 15 Sep 2026 18:30:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7A40E4C0402;
+	Tue, 15 Sep 2026 18:39:36 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789497023; cv=none; b=UrbuLHUZ/DWUitNC2KlhDW+TWonkBWZFuB2UDs3s3+1mnqscNoa7FBlWmzUqxW4iYlL/WVVsD8uarFny6RJLhosVi5veBMEZK5s1O61LPjAFODZA8E1xLuZzOHQbi/2x+veueZs/6Z7zvAk5n0zEmOKrcqB0xCGBjR0g+0xhhgA=
+	t=1789497578; cv=none; b=ZSo2N/Px8h9PJHPSksLBT1WNksharmCQrODCCUJqMiIiBAvqLAvpec7ML/GUal7GPpXZ8bEwc7vtutGWj/8TArt913vYSb003kJRHRiMTUfkYh9b7f6DOMNaGGx1uNIaGzbAQTYWqLmOYnNbV2iZextnkKNuvc1clcTG/UTtbUA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789497023; c=relaxed/simple;
-	bh=pKH8xO25YwnfpC2mXfUbhQkwTcYQqjJEajFuWg/A4u8=;
+	s=arc-20240116; t=1789497578; c=relaxed/simple;
+	bh=fqNgNFoBnVpjdChn8APMESaJQLsxtky82BWgen0Gj/g=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=nQ+nuCzFOZKDcvdE/W2DtkdCK07ZQ9EOB7PXALXokMT9HzIlJBXxT/IyCvPHxHCEEiNXsM7hCCDg1Pw9IYFKz0ONc5yTNZFh/LYBT6qVQkKe7LblnsNkXqdFHd9pgXj/loAgW2Uyum8X98wS2Q9A6j3bQ7M6PiqnDWKBSnqn5Lc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=FtG1AIAh; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:Content-Disposition:In-Reply-To; b=RF/O7VZDROr9ZUzflp51il0JmTEc9bXArRHsODGwwRSgmlK4PxnNe0oc6W4/sEJ23fXQJ4XqozwmYuiscW4wBLvQCc1tW43cK8y9eVAOntxbyCOLD1eKUvVKZVXccdRKLtlbV0eWf7qqU64uGansZKTceRef+lPggKwYlKm2w34=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=iOL9B39Y; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="FtG1AIAh"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CC7911F00893;
-	Tue, 15 Sep 2026 18:30:21 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="iOL9B39Y"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 103FE1F0089B;
+	Tue, 15 Sep 2026 18:39:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789497021;
-	bh=zCJx1lMoPaoDeiIN5oezRLV8MqYpA3JhuUg8Z+dhoag=;
+	s=k20260515; t=1789497575;
+	bh=GJPdbx3D50uXJoO9DA6FVACvDwK6YiddMGPdvjxQNDI=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=FtG1AIAh8Ifu90TvPASnvJLKq/3hHoybYyG8CBtKd2A3Tko5EoQZmhxlykHybSWCY
-	 H6+cZEX9BUB3VzICpj+OZxPJ673u94nnolr9H+SDA6dBcoGGYAc9yHJcjV+Ep8BP0l
-	 el5biVBlyvnMpvBBdnmFKteUXHpcuI8Bb8Pu3nE8NtDNIpu6JJu8fFsiOvrLa3Qrgq
-	 NkHBRSaDsJkBM6eE9SQ++npMsQoPqmrvJCP6/7TZu7tvF19A4a5+2+kwcqpI8v/iuX
-	 YN51bg9WV0sHN4tZ47tD/7Vxl/N2tA6azTTrtrat6edEQApqlwzt/pVbGgznFVhGNY
-	 okL3wnYQoU9Ng==
-Date: Tue, 15 Sep 2026 11:30:21 -0700
+	b=iOL9B39YLpHi8j/xTA9excdhrKO592Vs8pzjMn2WO6qs93YmBgp8kN456Jg5lMCy6
+	 XJQGOVecXRri/3bcjHRJ3V1TxEOLZnGLdxEXkLCo61bSiTSWlhwLyfpSdI0g6XHGN0
+	 zfnbSiswF6ZzNw024O4YR4IzccqeFVoDS+eKWav2JzrUR3XY+RCD/1Z1ycqZximCTE
+	 FGEgiuUWvhoS17iVeOKscTJDytdCI3y1YEfkgwLeB5MYcxUTTV2RL6qSmZ8QgffJ33
+	 paW7DU7d8WC2zDUgoqcOdITAZn2TffzdgN/2BZFlDYJ2xE6SZwoaQlfH4TZExND7F7
+	 8sLdcjP8y9Ayw==
+Date: Tue, 15 Sep 2026 11:39:34 -0700
 From: Kees Cook <kees@kernel.org>
 To: Bill Wendling <morbo@google.com>
 Cc: linux-kernel@vger.kernel.org, codemender-patching+linux@google.com,
@@ -114,11 +114,11 @@ Cc: linux-kernel@vger.kernel.org, codemender-patching+linux@google.com,
 	linux-gpio@vger.kernel.org, linux-scsi@vger.kernel.org,
 	linux-nfs@vger.kernel.org, devel@lists.orangefs.org,
 	linux-hardening@vger.kernel.org, linux-sound@vger.kernel.org
-Subject: Re: [PATCH 28/28] drm/xe/pf: Refactor strlcat() to seq_buf in
- sched_group_engines_read()
-Message-ID: <202609151126.29464A5E1@keescook>
+Subject: Re: [PATCH 01/28] ALSA: ac97: Refactor snd_ac97_get_name() to use
+ snprintf()
+Message-ID: <202609151134.361FEA04@keescook>
 References: <20260915081910.4142719-1-morbo@google.com>
- <20260915081910.4142719-29-morbo@google.com>
+ <20260915081910.4142719-2-morbo@google.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -127,57 +127,38 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260915081910.4142719-29-morbo@google.com>
+In-Reply-To: <20260915081910.4142719-2-morbo@google.com>
 
-On Tue, Sep 15, 2026 at 08:18:45AM +0000, Bill Wendling wrote:
-> diff --git a/drivers/gpu/drm/xe/xe_gt_sriov_pf_debugfs.c b/drivers/gpu/drm/xe/xe_gt_sriov_pf_debugfs.c
-
-This is the same file touched as
-https://lore.kernel.org/all/20260915081910.4142719-28-morbo@google.com/
-and doing the same thing, roughly? I think it'd be best to combine
-these, especially since one depends on the other's addition of seq_buf.h
-
-> index 5db7fc067c4d..548a50f74422 100644
-> --- a/drivers/gpu/drm/xe/xe_gt_sriov_pf_debugfs.c
-> +++ b/drivers/gpu/drm/xe/xe_gt_sriov_pf_debugfs.c
-> @@ -377,8 +377,10 @@ static ssize_t sched_group_engines_read(struct file *file, char __user *buf,
->  	struct xe_hw_engine *hwe;
->  	enum xe_hw_engine_id id;
->  	char engines[128];
-> +	struct seq_buf s;
-> +	const char *s_str;
+On Tue, Sep 15, 2026 at 08:18:18AM +0000, Bill Wendling wrote:
+> --- a/sound/pci/ac97/ac97_codec.c
+> +++ b/sound/pci/ac97/ac97_codec.c
+> @@ -1850,10 +1850,12 @@ void snd_ac97_get_name(struct snd_ac97 *ac97, unsigned int id, char *name,
 >  
-> -	engines[0] = '\0';
-> +	seq_buf_init(&s, engines, sizeof(engines));
-
-As with the others, DECLARE_SEQ_BUF should be used.
-
->  	if (group < num_groups) {
->  		for_each_hw_engine(hwe, gt, id) {
-> @@ -386,15 +388,14 @@ static ssize_t sched_group_engines_read(struct file *file, char __user *buf,
->  			u16 guc_logical_instance = xe_hwe_guc_logical_instance(hwe);
->  			u32 mask = groups[group].engines[guc_class];
->  
-> -			if (mask & BIT(guc_logical_instance)) {
-> -				strlcat(engines, hwe->name, sizeof(engines));
-> -				strlcat(engines, " ", sizeof(engines));
-> -			}
-> +			if (mask & BIT(guc_logical_instance))
-> +				seq_buf_printf(&s, "%s ", hwe->name);
+>  	pid = look_for_codec_id(snd_ac97_codec_ids, id);
+>  	if (pid) {
+> -		strlcat(name, " ", maxlen);
+> -		strlcat(name, pid->name, maxlen);
+> +		int l = strlen(name);
+> +
+>  		if (pid->mask != 0xffffffff)
+> -			sprintf(name + strlen(name), " rev %u", id & ~pid->mask);
+> +			snprintf(name + l, maxlen - l, " %s rev %u", pid->name, id & ~pid->mask);
+> +		else
+> +			snprintf(name + l, maxlen - l, " %s", pid->name);
+>  		if (ac97 && pid->patch) {
+>  			if ((modem && (pid->flags & AC97_MODEM_PATCH)) ||
+>  			    (! modem && ! (pid->flags & AC97_MODEM_PATCH)))
+> @@ -1861,6 +1863,7 @@ void snd_ac97_get_name(struct snd_ac97 *ac97, unsigned int id, char *name,
 >  		}
-> -		strlcat(engines, "\n", sizeof(engines));
-> +		seq_buf_puts(&s, "\n");
+>  	} else {
+>  		int l = strlen(name);
+> +
+>  		snprintf(name + l, maxlen - l, " id %x", id & 0xff);
 >  	}
->  
-> -	return simple_read_from_buffer(buf, count, ppos, engines, strlen(engines));
-> +	s_str = seq_buf_str(&s);
-> +	return simple_read_from_buffer(buf, count, ppos, s_str, strlen(s_str));
+>  }
 
-While this is the correct length, it does illustrate why I think we need
-a new seq_buf helper to get the strlen result detected from NUL
-termination like seq_buf_str().
-
--Kees
+I'd rather not open-code the length math here. Can't we use seq_buf()
+instead?
 
 -- 
 Kees Cook
