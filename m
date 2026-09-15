@@ -1,181 +1,366 @@
-Received: from mail-ej2-f12.google.com (mail-ej2-f12.google.com [74.125.228.140])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF6392EC0A4
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 09:24:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.228.140
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 67B5A46EC6E;
+	Tue, 15 Sep 2026 10:17:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789464282; cv=none; b=KrqOSyvcivPI8+ZbHMQO/2Av2bbLp8KFTVi9I1Bm522uJMZSj7IuwYx1AEYcFd60+8XQfts71Hn/XGdCQrkD2DtAVudTpYGUozBTvxUU6isDaczG/K8R5r8W8TCek+yToLkeXa6nQrjKzQgYLatkPb013Zykb4Oe4jw/44x33+4=
+	t=1789467457; cv=none; b=tq7F96NkxXFxz8jMklGzs75dLA8m18fcUfqH0BOeC1fivEcBIXo/fh3EWFV7nFmqXFCKQuHu7tDGtYlXk5okgMUTzhXmp2DRxIeEOWvCZX0Z5NVZOYvoXX9wXvfzeCxNypgkXjaPGd5A4EIoVHyHKL+anXFpFnrbfU0RytHGD0E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789464282; c=relaxed/simple;
-	bh=LeWsE4Ym8dcNFdY6OjjewfNmmzj98HHc/aocsOyIln0=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=UgU8HwaF/6W/xxjO5LA3Q+d0+ejMjKdleEo39yiqcCf7LSYZNYo3pMO4Wl8mUA67Gt5Ip8SWdqG9698WA1bNX+cnBQ98rg/Ft+h8qSloW+d4LDZkKeYjVHDUj+KiEjc6KG4UNwzGLtgq75m0PQGL+chHBaNi8WtTWlmn/dYApIw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ecC7zqQp; arc=none smtp.client-ip=74.125.228.140
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1789467457; c=relaxed/simple;
+	bh=N7eYIO6h/d/6bfA2J/f31iT743jo/Vm/RuwX1ltgmQ8=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=U4yfxl1IYf/1U/4uT65Xcqf+sGIUbjB5812mkxDMA1tkV15cOX6sctC4JnRXggnP/wI8kqbKod2mYKIQHCMqLgqBKoNT7a0LKSc1LMaXz5HTxeLa6nhf9gnXsPV968lpj2+asODHLDUwbrs7vZnK2yoepJUsCpuEmD9ykfeBTBo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=EmlXJTu5; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ecC7zqQp"
-Received: by mail-ej2-f12.google.com with SMTP id a640c23a62f3a-c254f8694aeso202013966b.0
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 02:24:40 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1789464279; x=1790069079; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:autocrypt:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=rWZ4/DK9pUInU6dyI/H/f7xQ7BIPcjohphBT1g9rFnY=;
-        b=ecC7zqQpeJUvDokdH8qTfFa+3k3QMcr6ypTrv+vO75WcIVYtQUPCZ7vgOz69KD0BfS
-         4rN3IMVuXn3buxgvz+LwfFhxePG+DasQjB5z3z629cNtdAH4ds9KAm/1tHyAl/LuF/5v
-         R5QqPSm74V34sawJMkqbOixttpv6YIy+xhd2wbyL1mHC5q9hrrX8JrvctkXAgABh0sgl
-         zXvFQaRO8cmHXSzMOWJiW2yGPtZeh03qpxZFVI7AKpF+OBIBnD4Kq5QH2fQ+42ImnYtm
-         Q7mNuSB94+uRJeoEqszf8itfB1FWPHKDFCZt6H2EjPjs9lMsXfggY7Yxk/LykfY/pKhF
-         ytGA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789464279; x=1790069079;
-        h=content-transfer-encoding:content-type:in-reply-to:autocrypt:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=rWZ4/DK9pUInU6dyI/H/f7xQ7BIPcjohphBT1g9rFnY=;
-        b=EFJj3dk0c3eeltxIPQ4Ufs7dijV6CWbUn/U/D8MFpVDLdMJyVwagt9dkojaU7XR7SO
-         4Yqbc6Zx+olGCGjxztJAB99kGTpdJcJKzizQcD3d4wlxZDWES/Cn7ssSvTE78RBp4gDl
-         Yni7wHlTxwqoFG3oqPmhyx5eRJeyGwYZLJOYHM7N+jGgnBtqMU15YM0MmI5Viy0NrvPR
-         jGWijhR3ZCKQOhIBGNI8/F/uzfmZYOKLtNNySXR1610akVzGOR9x6rdFBTHYai9SG2Gk
-         pBFmasiXaKoNYJh7SczRi6DNEzNgfpmb01f8+Q2ipzuuB40xaCryfWpMYzXn5cnbdWIL
-         KBBQ==
-X-Forwarded-Encrypted: i=1; AKwUvBxT6KDuhWbNSVR6cdLIEHel3cdIswSAShj6sm6MDMoyRB5G49QdnzTz0cIKgqk5BBoZX/DKAkPfQdU=@vger.kernel.org
-X-Gm-Message-State: AFuF++mT3EITARteW4cymYCjOo48u9aelAhJra1j09zUx+WQGxKYQ+0U
-	UARGVt0xS5e8/IDocOYSxMzGN9dqi7fOKk+MeabUMFswwsa8F+QAVdkcTIVe7tza
-X-Gm-Gg: AYBFou2keoG8wvNioFbSQm4GWLvyOEBmvwCrmsX/kgp4/0FEwK/H+7IZgyZEd3Ls7bK
-	zZDGxHKxICraZfv1nx2U0edWEVcNZv8As5aenRTUc5Kv3EgOahFL+839ETX41R2buiCh1hIhlNl
-	WxUYlSrpj4R38710ptmmfv7zvN1VePIdi0AbY7vmjJecvH0p+8todwrZCyYXGB/nlB+4wEOBUsu
-	dqFTYqOGXFdhFTfu23GbQdhqfguvSF9lWkV5IlcqdkWfhCNI+X78lxObFd9wbwlQjn/v6XxjLJy
-	/PamRlD4YXuSkHBbPKSHB/yi35kePrq5XdLFL2tWPFF2uOYGqsIfaorf/OWlYeKIVnBlhzmbuz6
-	igwRmEubVblDUvwbOkzHVsBFRguFJfHK5W8GPke1M5cF7yX1jnZlyhNq3KvDUVBX0ExP/DyJdl9
-	AXTm1ZH/JVBXmhzsTThindc29ZyeFzKoqwFXGgQ+uLHmeawg6QwXpDi+toYjVv6SJlcWB2g4DAK
-	hC3zyJtu9iJrTsiEcCU+TeTPJYe8Y6qjbcSzj4Cu5iCCBgouXe6000YDJm7ds/Vo5wxdpnI0Q==
-X-Received: by 2002:a17:907:6d17:b0:c24:6382:2648 with SMTP id a640c23a62f3a-c29c8914764mr234816666b.5.1789464278765;
-        Tue, 15 Sep 2026 02:24:38 -0700 (PDT)
-Received: from ?IPV6:2001:778:e27f:a20:8aa4:c2ff:fe18:16a3? ([2001:778:e27f:a20:8aa4:c2ff:fe18:16a3])
-        by smtp.gmail.com with ESMTPSA id a640c23a62f3a-c296598e8b0sm541419366b.0.2026.09.15.02.24.37
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 15 Sep 2026 02:24:38 -0700 (PDT)
-Message-ID: <fc05f07a-9f88-48b7-8b2a-40c44e886985@gmail.com>
-Date: Tue, 15 Sep 2026 12:24:36 +0300
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="EmlXJTu5"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D06521F000FF;
+	Tue, 15 Sep 2026 10:17:26 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789467454;
+	bh=HyDScdwCUnZ6enJgBgFDn7eANm9IMu9XwvWhbn13gM8=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=EmlXJTu5VbhJ7/WBqBdUKhfW0RYldQ+P4RsoXoiLYeYBAjdlVTQ6GyoH+XTkgQI2S
+	 WHQZbEdSrmH7QSqlPxuEctAsY2uMqY2BrHi/SCAdbUiWL8AUnsGcpzYgMZOSTw1DsO
+	 o/4EhLlu0B8UUVBMFP/3cy+fQYlxbzkEsXqCF1a5D20wSvtOe8Sdwwly6fSrwVIaA1
+	 tSSyvEUOAbcCKIZaCDGrcZinqWae1nLhlDwywEeBeIeB1CGOUPh8JdVOyxQQ4FFkGM
+	 jY4ArBiG+Y5rmPz5vraDDGwnYrENRcaMfGycxKYMdA1niw7qswA0sKbcAacKqViyjs
+	 16wfSo0FVH8Vw==
+Message-ID: <8a9fe28336742405a5cb02a5c343371f32568fbd.camel@kernel.org>
+Subject: Re: [PATCH 02/28] sunrpc: Refactor rpc_sockaddr2uaddr() to use
+ snprintf() instead of strlcat()
+From: Jeff Layton <jlayton@kernel.org>
+To: Bill Wendling <morbo@google.com>, linux-kernel@vger.kernel.org
+Cc: codemender-patching+linux@google.com, Russell King
+ <linux@armlinux.org.uk>,  Huacai Chen <chenhuacai@kernel.org>, WANG Xuerui
+ <kernel@xen0n.name>, Thomas Bogendoerfer	 <tsbogend@alpha.franken.de>,
+ "James E.J. Bottomley"	 <James.Bottomley@HansenPartnership.com>, Helge
+ Deller <deller@gmx.de>,  Thomas Gleixner	 <tglx@kernel.org>, Ingo Molnar
+ <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>,  Dave Hansen
+ <dave.hansen@linux.intel.com>, x86@kernel.org, "H. Peter Anvin"
+ <hpa@zytor.com>, Ian Abbott	 <abbotti@mev.co.uk>, H Hartley Sweeten
+ <hsweeten@visionengravers.com>, Tony Luck <tony.luck@intel.com>, Maarten
+ Lankhorst <maarten.lankhorst@linux.intel.com>,  Maxime Ripard
+ <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, David Airlie
+ <airlied@gmail.com>,  Simona Vetter <simona@ffwll.ch>, Matthew Brost
+ <matthew.brost@intel.com>, Thomas =?ISO-8859-1?Q?Hellstr=F6m?=	
+ <thomas.hellstrom@linux.intel.com>, Rodrigo Vivi <rodrigo.vivi@intel.com>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, Matthias Schwarzott
+ <zzam@gentoo.org>, Mauro Carvalho Chehab	 <mchehab@kernel.org>, Tony Nguyen
+ <anthony.l.nguyen@intel.com>, Przemek Kitszel	
+ <przemyslaw.kitszel@intel.com>, Andrew Lunn <andrew+netdev@lunn.ch>, "David
+ S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Jakub
+ Kicinski <kuba@kernel.org>,  Paolo Abeni <pabeni@redhat.com>, Arend van
+ Spriel <arend.vanspriel@broadcom.com>, Rob Herring	 <robh@kernel.org>,
+ Saravana Kannan <saravanak@kernel.org>, Krzysztof Kozlowski	
+ <krzk@kernel.org>, Sylwester Nawrocki <s.nawrocki@samsung.com>, Peter
+ Griffin	 <peter.griffin@linaro.org>, Alim Akhtar <alim.akhtar@samsung.com>,
+ Linus Walleij <linusw@kernel.org>, Anil Gurumurthy
+ <anil.gurumurthy@qlogic.com>, Sudarsana Kalluru	
+ <sudarsana.kalluru@qlogic.com>, "Martin K. Petersen" <mkp@kernel.org>,
+ Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
+ Mike Marshall <hubcap@omnibond.com>,  Martin Brandenburg	
+ <martin@omnibond.com>, Kees Cook <kees@kernel.org>, Jiri Pirko
+ <jiri@resnulli.us>,  Simon Horman <horms@kernel.org>, Chuck Lever
+ <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga Kornievskaia	
+ <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey
+ <tom@talpey.com>,  Jaroslav Kysela	 <perex@perex.cz>, Takashi Iwai
+ <tiwai@suse.com>, Andrew Morton	 <akpm@linux-foundation.org>, "Mike
+ Rapoport (Microsoft)" <rppt@kernel.org>,  Kanglong Wang
+ <wangkanglong@loongson.cn>, Tiezhu Yang <yangtiezhu@loongson.cn>, Qiang Ma	
+ <maqianga@uniontech.com>, Randy Dunlap <rdunlap@infradead.org>, Pengpeng
+ Hou	 <pengpeng@iscas.ac.cn>, Ard Biesheuvel <ardb@kernel.org>, Breno Leitao
+	 <leitao@debian.org>, Thorsten Blum <blum@kernel.org>, Harshit Mogalapalli	
+ <harshit.m.mogalapalli@oracle.com>, Greg Kroah-Hartman	
+ <gregkh@linuxfoundation.org>, Lyude Paul <lyude@redhat.com>, Ashutosh Desai
+	 <ashutoshdesai993@gmail.com>, Imre Deak <imre.deak@intel.com>, Dmitry
+ Baryshkov	 <dmitry.baryshkov@oss.qualcomm.com>, Johan Hovold
+ <johan@kernel.org>,  Johannes Berg <johannes.berg@intel.com>, Miri
+ Korenblit <miriam.rachel.korenblit@intel.com>, Alexander Stein	
+ <alexander.stein@ew.tq-group.com>, Cryolitia PukNgae
+ <cryolitia@uniontech.com>,  Jiaming Zhang <r772577952@gmail.com>, Will
+ Porter <mrwillporter@gmail.com>, Cen Zhang <zzzccc427@gmail.com>, 
+ =?ISO-8859-1?Q?C=E1ssio?= Gabriel	 <cassiogabrielcontato@gmail.com>, Rong
+ Zhang <i@rong.moe>, Arun Raghavan	 <arunr@valvesoftware.com>,
+ linux-arm-kernel@lists.infradead.org, 	loongarch@lists.linux.dev,
+ linux-mips@vger.kernel.org, 	linux-parisc@vger.kernel.org,
+ linux-edac@vger.kernel.org, 	dri-devel@lists.freedesktop.org,
+ intel-xe@lists.freedesktop.org, 	linux-input@vger.kernel.org,
+ linux-media@vger.kernel.org, 	intel-wired-lan@lists.osuosl.org,
+ netdev@vger.kernel.org, 	linux-wireless@vger.kernel.org,
+ brcm80211@lists.linux.dev, 	brcm80211-dev-list.pdl@broadcom.com,
+ devicetree@vger.kernel.org, 	linux-samsung-soc@vger.kernel.org,
+ linux-gpio@vger.kernel.org, 	linux-scsi@vger.kernel.org,
+ linux-nfs@vger.kernel.org, devel@lists.orangefs.org, 
+	linux-hardening@vger.kernel.org, linux-sound@vger.kernel.org
+Date: Tue, 15 Sep 2026 06:17:25 -0400
+In-Reply-To: <20260915081910.4142719-3-morbo@google.com>
+References: <20260915081910.4142719-1-morbo@google.com>
+	 <20260915081910.4142719-3-morbo@google.com>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH nfs-utils v3 00/11] mountd: bugfixes for up/downcall
- interfaces
-To: Jeff Layton <jlayton@kernel.org>
-Cc: Chuck Lever <cel@kernel.org>, linux-nfs@vger.kernel.org,
- Steve Dickson <steved@redhat.com>
-References: <20260914-nl-crossmnt-v3-0-a984a6c94829@kernel.org>
-Content-Language: en-US, lt-LT
-From: =?UTF-8?Q?Mantas_Mikul=C4=97nas?= <grawity@gmail.com>
-Autocrypt: addr=grawity@gmail.com; keydata=
- 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
- aETxZy4lQ+jpsbG/q9fvS/sAZA==
-In-Reply-To: <20260914-nl-crossmnt-v3-0-a984a6c94829@kernel.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
 
-On 14/09/2026 16.14, Jeff Layton wrote:
-> The main difference in this version is some cleanup to the warning
-> messages, so that we don't warn about internal events. Mantas, if you're
-> able to test this version too, that would be great.
->
-> Mantas reported a problem with his configuration that was using crossmnt
-> and autofs to export a number of btrfs filesystems. Some analysis with
-> Claude also uncovered a few other bugs. This version also fixes a
-> number of problems that Sashiko flagged. Some of them were preexisting
-> but seemed like good things to fix.
->
-> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+On Tue, 2026-09-15 at 08:18 +0000, Bill Wendling wrote:
+> rpc_sockaddr2uaddr() formats the IP address into "addrbuf", formats the
+> port into a temporary "portbuf" buffer with snprintf(), and then appends
+> "portbuf" to "addrbuf" using strlcat().
+>=20
+> In preparation for removing the deprecated strlcat() API[1], capture the
+> length returned by rpc_ntop4() and rpc_ntop6_noscopeid() and format the
+> port directly onto the end of "addrbuf" with snprintf(). This eliminates
+> the strlcat() call and the temporary "portbuf" buffer.
+>=20
+> Link: https://github.com/KSPP/linux/issues/370 [1]
+> Cc: codemender-patching+linux@google.com
+> Assisted-by: CoPilot:3.5-sonnet [editor_update_file, shell_command_run]
+> Signed-off-by: Bill Wendling <morbo@google.com>
 > ---
-> Changes in v3:
-> - Stop warning twice per unexportable path
-> - Keep a warning for the ip_map and unix_gid answers, which have no fallback
-> - Don't warn about a submount nobody asked to export
-> - Quieten the same message on the pipefs downcall (preexisting)
-> - Link to v2: https://lore.kernel.org/r/20260911-nl-crossmnt-v2-0-f4d869951c5e@kernel.org
->
-> Changes in v2:
-> - Retry instead of caching a negative when the failure may be transient:
->    kernel errno, statfs, fsidd, and an undelivered negative fallback
-> - Drop a deferred request once it has been answered
-> - Bound the junction path copied into exportent.e_path (preexisting)
-> - Give each worker its own netlink command socket (preexisting)
-> - Bound the retry queues (preexisting)
-> - Link to v1: https://lore.kernel.org/r/20260909-nl-crossmnt-v1-0-4064b5a3bd85@kernel.org
->
+> Cc: Russell King <linux@armlinux.org.uk>
+> Cc: Huacai Chen <chenhuacai@kernel.org>
+> Cc: WANG Xuerui <kernel@xen0n.name>
+> Cc: Thomas Bogendoerfer <tsbogend@alpha.franken.de>
+> Cc: "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>
+> Cc: Helge Deller <deller@gmx.de>
+> Cc: Thomas Gleixner <tglx@kernel.org>
+> Cc: Ingo Molnar <mingo@redhat.com>
+> Cc: Borislav Petkov <bp@alien8.de>
+> Cc: Dave Hansen <dave.hansen@linux.intel.com>
+> Cc: x86@kernel.org
+> Cc: "H. Peter Anvin" <hpa@zytor.com>
+> Cc: Ian Abbott <abbotti@mev.co.uk>
+> Cc: H Hartley Sweeten <hsweeten@visionengravers.com>
+> Cc: Tony Luck <tony.luck@intel.com>
+> Cc: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>
+> Cc: Maxime Ripard <mripard@kernel.org>
+> Cc: Thomas Zimmermann <tzimmermann@suse.de>
+> Cc: David Airlie <airlied@gmail.com>
+> Cc: Simona Vetter <simona@ffwll.ch>
+> Cc: Matthew Brost <matthew.brost@intel.com>
+> Cc: "Thomas Hellstr=C3=B6m" <thomas.hellstrom@linux.intel.com>
+> Cc: Rodrigo Vivi <rodrigo.vivi@intel.com>
+> Cc: Dmitry Torokhov <dmitry.torokhov@gmail.com>
+> Cc: Matthias Schwarzott <zzam@gentoo.org>
+> Cc: Mauro Carvalho Chehab <mchehab@kernel.org>
+> Cc: Tony Nguyen <anthony.l.nguyen@intel.com>
+> Cc: Przemek Kitszel <przemyslaw.kitszel@intel.com>
+> Cc: Andrew Lunn <andrew+netdev@lunn.ch>
+> Cc: "David S. Miller" <davem@davemloft.net>
+> Cc: Eric Dumazet <edumazet@google.com>
+> Cc: Jakub Kicinski <kuba@kernel.org>
+> Cc: Paolo Abeni <pabeni@redhat.com>
+> Cc: Arend van Spriel <arend.vanspriel@broadcom.com>
+> Cc: Rob Herring <robh@kernel.org>
+> Cc: Saravana Kannan <saravanak@kernel.org>
+> Cc: Krzysztof Kozlowski <krzk@kernel.org>
+> Cc: Sylwester Nawrocki <s.nawrocki@samsung.com>
+> Cc: Peter Griffin <peter.griffin@linaro.org>
+> Cc: Alim Akhtar <alim.akhtar@samsung.com>
+> Cc: Linus Walleij <linusw@kernel.org>
+> Cc: Anil Gurumurthy <anil.gurumurthy@qlogic.com>
+> Cc: Sudarsana Kalluru <sudarsana.kalluru@qlogic.com>
+> Cc: "Martin K. Petersen" <mkp@kernel.org>
+> Cc: Trond Myklebust <trondmy@kernel.org>
+> Cc: Anna Schumaker <anna@kernel.org>
+> Cc: Mike Marshall <hubcap@omnibond.com>
+> Cc: Martin Brandenburg <martin@omnibond.com>
+> Cc: Kees Cook <kees@kernel.org>
+> Cc: Jiri Pirko <jiri@resnulli.us>
+> Cc: Simon Horman <horms@kernel.org>
+> Cc: Chuck Lever <cel@kernel.org>
+> Cc: Jeff Layton <jlayton@kernel.org>
+> Cc: NeilBrown <neil@brown.name>
+> Cc: Olga Kornievskaia <okorniev@redhat.com>
+> Cc: Dai Ngo <Dai.Ngo@oracle.com>
+> Cc: Tom Talpey <tom@talpey.com>
+> Cc: Jaroslav Kysela <perex@perex.cz>
+> Cc: Takashi Iwai <tiwai@suse.com>
+> Cc: Bill Wendling <morbo@google.com>
+> Cc: Andrew Morton <akpm@linux-foundation.org>
+> Cc: "Mike Rapoport (Microsoft)" <rppt@kernel.org>
+> Cc: Kanglong Wang <wangkanglong@loongson.cn>
+> Cc: Tiezhu Yang <yangtiezhu@loongson.cn>
+> Cc: Qiang Ma <maqianga@uniontech.com>
+> Cc: Randy Dunlap <rdunlap@infradead.org>
+> Cc: Pengpeng Hou <pengpeng@iscas.ac.cn>
+> Cc: Ard Biesheuvel <ardb@kernel.org>
+> Cc: Breno Leitao <leitao@debian.org>
+> Cc: Thorsten Blum <blum@kernel.org>
+> Cc: Harshit Mogalapalli <harshit.m.mogalapalli@oracle.com>
+> Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+> Cc: Lyude Paul <lyude@redhat.com>
+> Cc: Ashutosh Desai <ashutoshdesai993@gmail.com>
+> Cc: Imre Deak <imre.deak@intel.com>
+> Cc: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+> Cc: Johan Hovold <johan@kernel.org>
+> Cc: Johannes Berg <johannes.berg@intel.com>
+> Cc: Miri Korenblit <miriam.rachel.korenblit@intel.com>
+> Cc: Alexander Stein <alexander.stein@ew.tq-group.com>
+> Cc: Cryolitia PukNgae <cryolitia@uniontech.com>
+> Cc: Jiaming Zhang <r772577952@gmail.com>
+> Cc: Will Porter <mrwillporter@gmail.com>
+> Cc: Cen Zhang <zzzccc427@gmail.com>
+> Cc: "C=C3=A1ssio Gabriel" <cassiogabrielcontato@gmail.com>
+> Cc: Rong Zhang <i@rong.moe>
+> Cc: Arun Raghavan <arunr@valvesoftware.com>
+> Cc: linux-arm-kernel@lists.infradead.org
+> Cc: linux-kernel@vger.kernel.org
+> Cc: loongarch@lists.linux.dev
+> Cc: linux-mips@vger.kernel.org
+> Cc: linux-parisc@vger.kernel.org
+> Cc: linux-edac@vger.kernel.org
+> Cc: dri-devel@lists.freedesktop.org
+> Cc: intel-xe@lists.freedesktop.org
+> Cc: linux-input@vger.kernel.org
+> Cc: linux-media@vger.kernel.org
+> Cc: intel-wired-lan@lists.osuosl.org
+> Cc: netdev@vger.kernel.org
+> Cc: linux-wireless@vger.kernel.org
+> Cc: brcm80211@lists.linux.dev
+> Cc: brcm80211-dev-list.pdl@broadcom.com
+> Cc: devicetree@vger.kernel.org
+> Cc: linux-samsung-soc@vger.kernel.org
+> Cc: linux-gpio@vger.kernel.org
+> Cc: linux-scsi@vger.kernel.org
+> Cc: linux-nfs@vger.kernel.org
+> Cc: devel@lists.orangefs.org
+> Cc: linux-hardening@vger.kernel.org
+> Cc: linux-sound@vger.kernel.org
 > ---
-> Jeff Layton (11):
->        mountd: factor out the per-path export attribute computation
->        mountd: handle unmountable paths and junctions in the netlink downcall
->        mountd: answer requests the kernel rejects on the netlink downcall
->        mountd: don't leak the parent export's fsid onto crossmnt submounts
->        mountd: retry unresolvable fsid lookups on the netlink downcall
->        mountd: bound the junction path before copying it into e_path
->        mountd: give each worker its own netlink command socket
->        mountd: retry export attributes that fail to resolve for a passing reason
->        mountd: drop a deferred fsid lookup once it has been answered
->        mountd: bound the retry queues
->        mountd: don't warn about pipefs submounts nobody asked to export
->
->   support/export/cache.c | 1391 +++++++++++++++++++++++++++++++++++++-----------
->   1 file changed, 1084 insertions(+), 307 deletions(-)
-> ---
-> base-commit: 630393e9c73667b3fda6a7507cb5171ec0ec38dc
-> change-id: 20260908-nl-crossmnt-85584b71c721
->
-> Best regards,
+>  net/sunrpc/addr.c | 16 ++++++++--------
+>  1 file changed, 8 insertions(+), 8 deletions(-)
+>=20
+> diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
+> index 97ff11973c49..a1e4173e5a53 100644
+> --- a/net/sunrpc/addr.c
+> +++ b/net/sunrpc/addr.c
+> @@ -264,18 +264,20 @@ EXPORT_SYMBOL_GPL(rpc_pton);
+>   */
+>  char *rpc_sockaddr2uaddr(const struct sockaddr *sap, gfp_t gfp_flags)
+>  {
+> -	char portbuf[RPCBIND_MAXUADDRPLEN];
+>  	char addrbuf[RPCBIND_MAXUADDRLEN];
+>  	unsigned short port;
+> +	size_t len;
+> =20
+>  	switch (sap->sa_family) {
+>  	case AF_INET:
+> -		if (rpc_ntop4(sap, addrbuf, sizeof(addrbuf)) =3D=3D 0)
+> +		len =3D rpc_ntop4(sap, addrbuf, sizeof(addrbuf));
+> +		if (len =3D=3D 0 || len >=3D sizeof(addrbuf))
+>  			return NULL;
+>  		port =3D ntohs(((struct sockaddr_in *)sap)->sin_port);
+>  		break;
+>  	case AF_INET6:
+> -		if (rpc_ntop6_noscopeid(sap, addrbuf, sizeof(addrbuf)) =3D=3D 0)
+> +		len =3D rpc_ntop6_noscopeid(sap, addrbuf, sizeof(addrbuf));
+> +		if (len =3D=3D 0 || len >=3D sizeof(addrbuf))
+>  			return NULL;
+>  		port =3D ntohs(((struct sockaddr_in6 *)sap)->sin6_port);
+>  		break;
+> @@ -283,11 +285,8 @@ char *rpc_sockaddr2uaddr(const struct sockaddr *sap,=
+ gfp_t gfp_flags)
+>  		return NULL;
+>  	}
+> =20
+> -	if (snprintf(portbuf, sizeof(portbuf),
+> -		     ".%u.%u", port >> 8, port & 0xff) >=3D (int)sizeof(portbuf))
+> -		return NULL;
+> -
+> -	if (strlcat(addrbuf, portbuf, sizeof(addrbuf)) >=3D sizeof(addrbuf))
+> +	if (snprintf(addrbuf + len, sizeof(addrbuf) - len,
+> +		     ".%u.%u", port >> 8, port & 0xff) >=3D sizeof(addrbuf) - len)
+>  		return NULL;
+> =20
+>  	return kstrdup(addrbuf, gfp_flags);
+> @@ -352,3 +351,4 @@ size_t rpc_uaddr2sockaddr(struct net *net, const char=
+ *uaddr,
+>  	return 0;
+>  }
+>  EXPORT_SYMBOL_GPL(rpc_uaddr2sockaddr);
+> +
 
-I tested the v3 now, and it seems to be working well.
 
+The last blank line here is not needed. The rest looks fine though.
 
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
