@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 045FC4CA775;
-	Tue, 15 Sep 2026 18:52:30 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B64FB4B5157;
+	Tue, 15 Sep 2026 19:00:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789498351; cv=none; b=alcDSUINcR6GrxpLQFSP6Uaj/3gp1BpXx133odrAtc5dn49un4Lrmr9h4xByNYw43xnHPpMM6SzoL56HIK7DUBS+zTXwDXL7qsa20eO/yM4USvvLcdXK04lchJRLxGhr+R26aaI5jhlDa+i5ayzgvXLm+FTK9zF86S4k2dKiXzA=
+	t=1789498821; cv=none; b=FDnaBcsFlabd+XjBfgNOIYpWDjq4fsMeJcCcRdIhS3FE9sFf3sgcUQKBMyISt/3VNFJPj7U8TcFTBm6JNFwksv4l2lHKtlVjZKI16YaJpZU1fp/S19Kw/HR2ZGY1GhHMjoWIkVCCr+koSVaE0jHp6A00snK8EFN8pwY2KDRYlis=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789498351; c=relaxed/simple;
-	bh=Prs0G2qMbzM31E2yP359tw1C4Ebd+MCYjUJPZTIyZus=;
+	s=arc-20240116; t=1789498821; c=relaxed/simple;
+	bh=/pxPtBDRL/rubNz3T85ru1lxCUdEgL1csnJGWfVKvsw=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=jg/dibIZRwVrsyCfTynz3YocUmAmsWk3l9tHn2ehBGvCN2zY+YTKR7AFGGvM9ABdqlAqKfC0kWBnHeED7jqoeMSw90Un2c2KaKgJkR3b5QQRKb5OJSofdRNevrqduFPatoPnMbII33nUDxsb6atVhzW6A6FNDand+se+mRXN8Wc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=dj46Dqgm; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:Content-Disposition:In-Reply-To; b=GqmGZ+D+b0m16WrZ+LAU4nCNq7ZeqY8/MkYDWu7U8ZexwCzwKZMJHnBobpJLv1Y7OedjvbrLV4gt3JE5DLSw1kPRr7qVLfc/fQ1o+XSlxmD98yWl+6iUXp7iCHF8kKIPpRvIieZi+ah2VKfvPPY2DtWTTyfIVZV3L5Jv22r+pR0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=j0iSBaet; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="dj46Dqgm"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DC8B51F0089A;
-	Tue, 15 Sep 2026 18:52:29 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="j0iSBaet"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 48ECC1F00893;
+	Tue, 15 Sep 2026 19:00:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789498349;
-	bh=72tlQhpdmngB3szUrALiHxqSz5LmQFAfQZTFPwAJsm8=;
+	s=k20260515; t=1789498819;
+	bh=bH9D6fx46WAVM8PGx4wEKkSYBjKGmw5AvziupNUvWGk=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=dj46DqgmsACSwFq9HJ3ISBz0v7KQClcuynuO9qvwXog58wO/ScSuYdaGZKHgXWvfQ
-	 MNIiLR6/CWGcs2B0MhbCRK2aMTRY6dtK71/bGZdxyT8HaMz+gX3i3TsfrQcfD9O/2g
-	 F9R5HI4ZwuLIC/dDLbKGewTrvAWtmj2/uWtbnlwRjy3UiF9zVvG3Q4LlI0NpvD8aAJ
-	 DJrMkybpP4frmHg9A0BF8idW56jNNHHMO4Q37zU7dBONYMBSpnYs1SU5pr9ZdsZbOO
-	 Z8bm6ke0y1pxqCSk41Eg0cXZYLGeU6SHZOeCpu7UYnxm14Kt0coiGxiIX/45p1elM6
-	 JGYqDbDSmP+rQ==
-Date: Tue, 15 Sep 2026 11:52:29 -0700
+	b=j0iSBaetC/3YCi18xNuSeB+n+7VnOF+QOgAvJx7ktLSNyWzdoyXHzZ/YPBs5rtm+n
+	 WA6gaCeYDOM7G68qSWfRsHvbbAN1voKYHzwbAYckQsRPEBWlfdZePBmdFPmQ1OMU/N
+	 sUCxn5+r/cR7FN5oCIcXoHFsLztawdQ7lZ2pVlHqL5qvTKh/9Qqc0Ta8A275Irt74k
+	 zf/eAGrgknulaZr5ylmpMNiuL5cL1xjelXuos4e0Xj/d9MPGQhh5E4WSCnRmy8X7rs
+	 HaD3mC4eIWM8qko0PgiUDZhDxobQu7+Yi4Weeos/5iSyNoUm6TMJqr9E5mfS6sKjxo
+	 y4BshIH81fNpw==
+Date: Tue, 15 Sep 2026 12:00:19 -0700
 From: Kees Cook <kees@kernel.org>
-To: Bill Wendling <morbo@google.com>, nikitash.mariiaw@gmail.com
+To: Bill Wendling <morbo@google.com>
 Cc: linux-kernel@vger.kernel.org, codemender-patching+linux@google.com,
 	Russell King <linux@armlinux.org.uk>,
 	Huacai Chen <chenhuacai@kernel.org>,
@@ -114,11 +114,11 @@ Cc: linux-kernel@vger.kernel.org, codemender-patching+linux@google.com,
 	linux-gpio@vger.kernel.org, linux-scsi@vger.kernel.org,
 	linux-nfs@vger.kernel.org, devel@lists.orangefs.org,
 	linux-hardening@vger.kernel.org, linux-sound@vger.kernel.org
-Subject: Re: [PATCH 21/28] NFS: nfsroot: Refactor root_nfs_cat() to use
- snprintf()
-Message-ID: <202609151147.C5B45CB@keescook>
+Subject: Re: [PATCH 03/28] ARM: atags: Replace strlcat() with snprintf() for
+ cmdline extend
+Message-ID: <202609151155.CC22827@keescook>
 References: <20260915081910.4142719-1-morbo@google.com>
- <20260915081910.4142719-22-morbo@google.com>
+ <20260915081910.4142719-4-morbo@google.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -127,25 +127,44 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260915081910.4142719-22-morbo@google.com>
+In-Reply-To: <20260915081910.4142719-4-morbo@google.com>
 
-On Tue, Sep 15, 2026 at 08:18:38AM +0000, Bill Wendling wrote:
->  fs/nfs/nfsroot.c | 11 +++++++----
->  1 file changed, 7 insertions(+), 4 deletions(-)
+On Tue, Sep 15, 2026 at 08:18:20AM +0000, Bill Wendling wrote:
+> --- a/arch/arm/kernel/atags_parse.c
+> +++ b/arch/arm/kernel/atags_parse.c
+> @@ -121,9 +121,10 @@ __tagtable(ATAG_REVISION, parse_tag_revision);
+>  static int __init parse_tag_cmdline(const struct tag *tag)
+>  {
+>  #if defined(CONFIG_CMDLINE_EXTEND)
+> -	strlcat(default_command_line, " ", COMMAND_LINE_SIZE);
+> -	strlcat(default_command_line, tag->u.cmdline.cmdline,
+> -		COMMAND_LINE_SIZE);
+> +	size_t len = strlen(default_command_line);
+> +
+> +	snprintf(default_command_line + len, COMMAND_LINE_SIZE - len,
+> +		 " %s", tag->u.cmdline.cmdline);
+>  #elif defined(CONFIG_CMDLINE_FORCE)
+>  	pr_warn("Ignoring tag cmdline (using the default kernel command line)\n");
+>  #else
 
-This collides with:
-https://lore.kernel.org/all/27956255dde39f58d73a7b51cb53cbe3d7804f54.1786411026.git.mariianikitash@google.com/
+It's pretty clear we have a pattern of "simple append" that is needed,
+and while strlcat() does that, it's horrible. I feel like we need an
+appending scnprintf(), and it needs to return like strscpy() does (i.e.
+-E2BIG on truncation).
 
-> +	ret = snprintf(dest + len, destlen - len, "%s%s",
-> +		       (len && dest[len - 1] != ',') ? "," : "", src);
+My goal would be:
 
-I prefer Mariia's version because this inline ternary is difficult
-to read.
+- don't open-code string length math
+- never leave the destination unterminated
+- allow for format strings
+- yes/no return indication for "did this truncate?"
 
-I was expecting to land hers soon if the NFS folks don't pipe up. It is
-one of the rare cases of still being open-coded, but the strlen() usage
-was pre-existing to check for the trailing comma, so it's not a clean
-seq_buf() conversion candidate...
+Initializing a whole seq_buf struct for these small cases is too much
+overhead...
+
+For both cases (small without seq_buf, large with seq_buf), it is also
+frequently needed to know the resulting strlen. seq_buf doesn't do this
+right today, and a strscpy-style return value also doesn't tell us. :(
 
 -- 
 Kees Cook
