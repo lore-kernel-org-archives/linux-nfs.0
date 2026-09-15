@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 28F274B0CAA;
-	Tue, 15 Sep 2026 19:08:30 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE16C4052AF;
+	Tue, 15 Sep 2026 19:08:31 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789499312; cv=none; b=GP4UNXrCxk1RgY2/7e5oheB4N9MkKCucq4MGSgCaIPGaIoc0lu3xk97aM+0IPEpyLsG8UTImREJBROmltmOQ7iqzL9Ywf67s8946WdeXS8/qRjIZOT3ATi5dL75kmardQ/KRyI01GUhEFcp3vcs836I9tdw4fwVIORtqEWzQinw=
+	t=1789499312; cv=none; b=e1fSlpQ7wQqVFI90L1z8r3WGIpMF0I9ULIBYxWETyuXxd/QidcKy5Xb1IL0Tb1/3mWkc+jYqSnHP4zn+gsH8sGWYam9A10L+Y1eTreCT98Xpefr5Ziu8ht7gEWj6r6eFYV4dGuH4mzIawC5CvcA/lRDifAlVOIsDbOxKnhjp7WQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1789499312; c=relaxed/simple;
-	bh=RXQ/MnkwklGCqiLSyrrVBvJhVbHPPmEkxw1+FzuI8D8=;
+	bh=KKohnUc77AADdttc9Tnbx0MRiy6ZF0unB90rxq2hiog=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=PznWV72yf7Vp2hmW3ZRX4A8iGqoq4OBIgV34R3pHfJK/Fh/MpM/5Ss3gTiw8D6zFGzf5quNj07UDS+YGbaLtH9RP64rlhIrXOCKTWR0ZockjXIDDxT39SnCHSLnN/txD5gfTPSeXLFKjcZ0vH9pOUwDL+2mYA7FKufjH3QGTcwU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=RePqDtfR; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version:Content-Type; b=PDQq6ItG7Bfc0f5Hyb+G7Ens2y+rPDpYjvVhxuof9ocI9jROC9M3OcqSzAksusMEnAbQw2F/7P4yzVqJ9oTnb4Lhm1whpDe/9Zg8zhEiWVGhHj7LJLZ1JpsP8jK8WNlfA8k20Kq+uPdWz8v1S/KAC6AsjCBvyWg5pTAEqD42lDU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Yg3VrGuj; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="RePqDtfR"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3CC4A1F000FF;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Yg3VrGuj"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0C0431F00893;
 	Tue, 15 Sep 2026 19:08:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789499310;
-	bh=tffMPwkY7qNDZKlEudkFMsJ00vzmBe5ME9dit8HXbaM=;
+	s=k20260515; t=1789499311;
+	bh=yRqZazuQGXHRUMoa7dMlMDOODjX6tkzEEDYB7tqTYlg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=RePqDtfRTavuM4FWsMuZD/b5TbYXe8GDd1Jle3HUiULc/xX8oWLm2mFF16w274M4P
-	 H1cVcezz5kU52B7dXHBlbI1wq2UESo/nop7Qt2Ar+HBbiex50FDLnK+XVZzz6icUrS
-	 4Fc8zHpc0IWcBvjSq8J5wNFleTRq9R+JbUGQt0QAqsO6XNQEJx98zoZl2YwQcpLoD2
-	 H2+Ajf0YFHWQJPXT8yd7pt1GvTuLfLUiOuTXf0ide6MalAc/OIivnOBxHbnh84HaFb
-	 NarMTimgDRLcWvNYJlmIVi58uq4D4a60eM3/HyZ6pZ5IPSAzuV7lBAeKOE9KQjX7rk
-	 Pmk+Xz+LQE+Pg==
+	b=Yg3VrGujWTK9KnG2i40KwgeI3rPyC9yl43xxjOLZSH1s4Qo7jMgCOP4zYZx+0j67m
+	 Fknp6PK7Izj7dYvrhDeuwyM0bl0NxaDa8CIFWZ83Ek+6OCiPrrbiBTLRSso45CAeKj
+	 auQnOievPJ8zQ117i5qisKZsexvAZQv7DRXOeg/BwRJWm8CJ1hP+26lpg4uR9+4h0o
+	 cl4rroe5OIe5syLhH6b4xL2OhJjLgu/6Zq+S5xa3K8kCXVCrftrLdJ47ma1IBEJXG9
+	 8J2JeCcdT+0DiSIvPBe5kzQ4+ZtX6HzCKqTzF1u9TgUbRv4YvmNzsIKMRIogAXcfoz
+	 bnBel/A1SlwmQ==
 From: Chuck Lever <cel@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>,
 	Chuck Lever <cel@kernel.org>,
@@ -33,12 +33,12 @@ To: Jeff Layton <jlayton@kernel.org>,
 Cc: linux-nfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
 	stable@vger.kernel.org
-Subject: Re: [PATCH] nfsd: clear XDR padding in GETXATTR replies
-Date: Tue, 15 Sep 2026 15:08:23 -0400
-Message-ID: <178949928866.1538756.14948071313409220825.b4-ty@b4>
+Subject: Re: [PATCH] NFSD: copy SETXATTR data from all XDR buffer segments
+Date: Tue, 15 Sep 2026 15:08:24 -0400
+Message-ID: <178949928861.1538756.15155939147455990311.b4-ty@b4>
 X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20260915160119.3105745-1-qwe.aldo@gmail.com>
-References: <20260915160119.3105745-1-qwe.aldo@gmail.com>
+In-Reply-To: <20260915160022.3105295-1-qwe.aldo@gmail.com>
+References: <20260915160022.3105295-1-qwe.aldo@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -48,22 +48,24 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
-On Tue, 15 Sep 2026 13:01:19 -0300, Aldo Ariel Panzardo wrote:
-> nfsd4_vbuf_to_stream() uses a raw memcpy() for the first fragment of an
-> attribute value. xdr_reserve_space() aligns the reservation but does not
-> initialize the extra bytes. If the complete value fits in that fragment,
-> the loop that clears padding for the final fragment is never entered.
+On Tue, 15 Sep 2026 13:00:22 -0300, Aldo Ariel Panzardo wrote:
+> nfsd4_vbuf_from_vector() manually copies the head followed by whole
+> pages starting at offset zero. This assumes that all remaining data
+> starts at the beginning of the page array and that no data is stored
+> in the tail.
 > 
-> A remote client reading an attribute whose length is not a multiple of
-> four can therefore receive one to three stale bytes from the response
-> page.
+> However, nfsd4_decode_setxattr() passes an xdr_buf returned by
+> xdr_stream_subsegment(). Such a sub-buffer can have a nonzero
+> page_base and can span its page and tail segments. Ignoring that
+> layout can copy the wrong bytes into the value passed to
+> vfs_setxattr().
 > 
 > [...]
 
 Applied to nfsd-testing, thanks!
 
-[1/1] nfsd: clear XDR padding in GETXATTR replies
-      commit: 37f0c2bea92e2c37a3ea0bb93a357336883a84a4
+[1/1] NFSD: copy SETXATTR data from all XDR buffer segments
+      commit: e551e7dde7b82be0d3e6b848c9c5fef728d020dd
 
 --
 Chuck Lever
