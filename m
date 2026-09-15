@@ -1,95 +1,179 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from ewsoutbound.kpnmail.nl (ewsoutbound.kpnmail.nl [195.121.94.186])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C73D630566F;
-	Tue, 15 Sep 2026 14:20:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AAC0739EF0B
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 14:38:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.121.94.186
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789482060; cv=none; b=onljl2Pqygmhl2PyBdsfk5gEXWC48EehS2Cb74ZIhv83ctbwj6n3eo1vYQuQNNc/xX96UXgnjTzJYteSL4xm+dg4LTeW8OTthIAF1wH/oyXry7YHX7fUnlFUUdKZdc/DpdVNiDuMf7XlSDeDxH96CJAzv4OPgEgtsdalzjrCmtw=
+	t=1789483103; cv=none; b=t5NzSoJuITzFtX1nRXrkVi6Y1NcdgMyx17zSI7GmoyxZO1tX680291tYe7QgvIyHCe3LJAG4uy2vY6SrzoaLWa80uCqcyYeBYR5Bz1Woa+HB/LOu/f9hli3yQwZwVUauPZ9bLSKN+CIeMNhFO0qY6Lk2ZwDetAp8dvWZ4Vr8+Yk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789482060; c=relaxed/simple;
-	bh=oa5dEyn9Zsa38Ku+33+tf3H2bkwRDudrZYcsIqPtcXc=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=USj2pKGXn2krz4nwP66oIl2lXIKekPHizJgnTCtGAPCgtz6mmEWElo87752oKw49rse3/SUxCWgBQHE/k/z9RS7h3f5VmbE1cXq95zEu3S0dwNMIeBRYthcL1/D0sOhL8Z8/3Vv4CGvZv93JnySG1K8MKILIpl4BL2dXf+r1pQg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Pqa2FD/H; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789483103; c=relaxed/simple;
+	bh=3sMwBj6EjpnIrW/YR3z/pEEMTvg1+HdBxjrQkcnDtp4=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=hnJYnWJNFbHNW9/faocYJ05+fRdvf0B7vNaK7tQMjaj0YiS+m5PRmAqphCWfUYCLkpS5zFkH3ICGpdpvEnLl0YkSaaU9YTj91ZAWIcL0dUSr/h+5uqLksM6mT3MmCFDMWMDyDzOZK1FB9yrEIYTEjJSGQnscRp8N/ruxciTDWqU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=xs4all.nl; spf=pass smtp.mailfrom=xs4all.nl; dkim=pass (2048-bit key) header.d=xs4all.nl header.i=@xs4all.nl header.b=H6hRwvbC; arc=none smtp.client-ip=195.121.94.186
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=xs4all.nl
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=xs4all.nl
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Pqa2FD/H"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 161361F00893;
-	Tue, 15 Sep 2026 14:20:58 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789482058;
-	bh=u3d1LqkKFumaGM48TyrGDB6bAw4mkY3a4wCUIMlrbQw=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=Pqa2FD/HWBn+vYm2bueBmQ01QSVFAY5GeT9OG3H72xc+O78I0e5EK2ZCm42XpYcfU
-	 xCKlWUjVxBtgPs7sJptTV14EnCxjHzOUeZvI2ev3DI1X9ACSErnYa0yG6xmDqraKht
-	 YpyN1Hd64TH4wfQdb7xhq/Oeq84Qf9NKeaBrzPnBrHqNbLZ7d7PTCSukWZhu0IsBCM
-	 GNKY3+dy+5BueUNI38nHHJA7ZtHwm0UDlpM+uZXk/dGXkwj5nzkX7xdSUKov+QwbHK
-	 t+xWjB0rBt2ViMZdCqFtxU5kEetqREbflOk7WaR3FNcw0vki6NB8+5/lHg+QRthoaD
-	 CKd8W2/r1zVYQ==
-From: Chuck Lever <cel@kernel.org>
-Date: Tue, 15 Sep 2026 10:20:44 -0400
-Subject: [PATCH v3 4/4] NFS: Set WQ_SYSFS on nfsiod
+	dkim=pass (2048-bit key) header.d=xs4all.nl header.i=@xs4all.nl header.b="H6hRwvbC"
+X-KPN-MessageId: 12677b7b-b113-11f1-bfbc-00505699b430
+Received: from smtp.kpnmail.nl (unknown [10.31.155.8])
+	by ewsoutbound.so.kpn.org (Halon) with ESMTPS
+	id 12677b7b-b113-11f1-bfbc-00505699b430;
+	Tue, 15 Sep 2026 16:38:09 +0200 (CEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=xs4all.nl; s=xs4all01;
+	h=content-type:mime-version:message-id:subject:to:from:date;
+	bh=iPBqovkglEv0AxkNg3xAZJuxtCsm++aFDQ+7iUhryAE=;
+	b=H6hRwvbCswId+aT1A/vy38KSFElUOfhVJuFPrwOHI3UyM++QkTaDxvnYNBMc04jyS/1uIgGLCb9dW
+	 hGCjPoBpgzs+EzHQXwvnyltU+hgyzdwO5iKQPr+04w+T89ndR28MAgEunp/jX2lvlZXHr9ZvKe5/oC
+	 aUE/eJ56W2kKmge6Bc4bVTnPU1mUxeK/VHjLCVQsvjg5LLvnj8Z/qmVfvWpOuqID6xbS4lAJP+heCi
+	 Rs73G6ROHlzMiohfV7vRxd/xEz9SYHHXl0CO6jfiDj06ifIfu8F+kFLf+xyPiLZ3WEfhJqm2cofXvf
+	 NXOa/j+5lT3bfp0KmlR3EFJgT/WEMKQ==
+X-KPN-MID: 33|ATKdb7AXREEm7alqU6HuTsDyxI+kHOHxtlCbpw7rhwy84dcZvdBn/7lyupQRHcK
+ OSTS7kdpbaI52qLPZiOLMzMrEKj+QnMWj+ERr4awtgA4=
+X-KPN-VerifiedSender: Yes
+X-CMASSUN: 33|JTvtUtOH1oSL1LiKbqEWSp+1QgWJwXyDMYVvZMj2ow1Vqpo9yaYK2NR+0i5hZRi
+ 0Wwx8ud9EPu32WrWej1egvg==
+Received: from localhost (unknown [178.226.150.234])
+	by smtp.xs4all.nl (Halon) with ESMTPSA
+	id 11ff81e6-b113-11f1-8ddf-00505699d6e5;
+	Tue, 15 Sep 2026 16:38:09 +0200 (CEST)
+Date: Tue, 15 Sep 2026 16:38:03 +0200
+From: Jori Koolstra <jkoolstra@xs4all.nl>
+To: NeilBrown <neil@brown.name>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, 
+	Christian Brauner <brauner@kernel.org>, Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/7] vfs: change vfs_lookup_open() to return found dentry
+ in path.dentry.
+Message-ID: <aqlXZ7Gunepk_4uV@lt-jori.localdomain>
+References: <20260910002934.192979-1-neilb@ownmail.net>
+ <20260910002934.192979-5-neilb@ownmail.net>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260915-performance-v3-4-ae26d460bfd3@kernel.org>
-References: <20260915-performance-v3-0-ae26d460bfd3@kernel.org>
-In-Reply-To: <20260915-performance-v3-0-ae26d460bfd3@kernel.org>
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
-Cc: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
- Tim Menninger <tmenninger@purestorage.com>, linux-nfs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Chuck Lever <cel@kernel.org>
-X-Mailer: b4 0.16-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1001; i=cel@kernel.org;
- h=from:subject:message-id; bh=oa5dEyn9Zsa38Ku+33+tf3H2bkwRDudrZYcsIqPtcXc=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqqVRGivV37ULv2+5zcW1uIWejGnkKzI0uQAKQx
- DljsowLsomJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaqlURgAKCRAzarMzb2Z/
- l9leD/4mBER0/xhNXqQ3QdyYXNH20NOLhnGQHH7LdsZj+zNBxrlEZLDNKqs2pvhWkHJdzBNegdy
- m3rAHy2VngPBv3u5qOlyzMoInrgbH8qIGo/Mp3SbuwVvT+XlzLrdtO+WaQZ1C5D/DErSz9Xjbnh
- sz/skBlHYonU/pkr2N/QBx9jDX9HkQspd6E2eZechQ26YaBCOGEiotJWQ+wzpKhoNoeJkKbdBL7
- WLSQHMX0Wb6Kg0vMABgZQO6ni2dhj1/Uy7sVyLderIxcBfqy66rSYt6iMw1KZ8X2Me1ppBIw7vX
- 7At32tZLdVxpJbaBYu76gfnRkR+QpVBvGvVliflhhJaI/Q+kweEe2GDdpch8niE9H3oCvol/nQx
- tAwVMpDRHVAiAOlOv/IV0ucFYmc3xW7Cc4zttb0u/yy3iZ/3WjFMkmiDrYIuxhizvP5T5w5O1K9
- N5ZhuJeVVLG2O0k6z9UK4mg/VHyOvivQtU46cJAVkSMs1SrgFYzoJZo3Qt7hPIW/T5jYKB7V4TA
- KY0UL1ulOe+/TCgbnEBnYySCaZTSDoAuH5lysB8Bar+YEt3KRh9s1wL0evt38ZaeMWGfsuu+3Yb
- fuD+7MwVjKi5SjkMyeoQwOzj+AseuJcgZZqhNEvR8XqEK0O3phmy8X+pjuUhNQOkpgNUzJPnT+m
- VsrcqG4DuH3Tlig==
-X-Developer-Key: i=cel@kernel.org; a=openpgp;
- fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260910002934.192979-5-neilb@ownmail.net>
 
-An unbound workqueue's attributes can be changed at run time only
-through /sys/devices/virtual/workqueue/, and a workqueue appears
-there only when it is created with WQ_SYSFS. nfsiod is created
-without it, so its affinity scope cannot be tuned without reloading
-the nfs module.
+On Thu, Sep 10, 2026 at 10:20:50AM +1000, NeilBrown wrote:
+> From: NeilBrown <neil@brown.name>
+> 
+> The caller - nfsd - needs to know the type of object found when a
+> non-regular file was found to exist.  This is most easily done
+> by passing back the dentry.
+> 
+> So change calling pattern so that the path (now called "path") contains
+> the parent dentry on entry and the child dentry on exit.
+> vfs_lookup_open() will dput() the parent and caller must dput() the
+> child.
+> 
+> If lookup_open() returns -EFTYPE (from ->atomic_open()) we need to
+> use d_lookup() to find the dentry.  If ->atomic_open() didn't add a
+> dentry to the dcache we return %NULL in %path->dentry.
+> 
+> Signed-off-by: NeilBrown <neil@brown.name>
+> ---
+>  fs/namei.c | 31 ++++++++++++++++++++++---------
+>  1 file changed, 22 insertions(+), 9 deletions(-)
+> 
+> diff --git a/fs/namei.c b/fs/namei.c
+> index 0c787363b101..30ccc0c2f02f 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -4606,7 +4606,7 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
+>  
+>  /**
+>   * vfs_lookup_open - open and possibly create a regular file
+> - * @parent: directory to contain file
+> + * @path: directory to contain file
+>   * @last: final component of file name
+>   * @open_flag: O_flags
+>   * @mode: initial permissions for file
+> @@ -4619,9 +4619,15 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
+>   * If the fs object found is not a regular file then -EFTYPE is
+>   * returned.
+>   *
+> + * @path is updated to contain the dentry that was found if possible.
+> + * In particular, if -EFTYPE is returned, then @path.dentry will be the
+> + * object that is not a regular file, or %NULL.
+> + * Consequently the caller must be prepared for @path.dentry to be
+> + * dput(), an it must dput() whatever is in @path.dentry after the call.
+> + *
+>   * Returns: the opened struct file, or an error.
+>   */
+> -struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
+> +struct file *vfs_lookup_open(struct path *path, struct qstr *last,
+>  			     int open_flag, umode_t mode)
+>  {
+>  	struct file *file __free(fput) = NULL;
+> @@ -4638,7 +4644,7 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
+>  	mode |= S_IFREG;
+>  	open_flag |= __O_REGULAR;
+>  
+> -	error = lookup_noperm_common(last, parent->dentry);
+> +	error = lookup_noperm_common(last, path->dentry);
+>  	if (error)
+>  		return ERR_PTR(error);
+>  
+> @@ -4646,7 +4652,7 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
+>  	if (IS_ERR(file))
+>  		return file;
+>  
+> -	nd.path = *parent;
+> +	nd.path = *path;
+>  	nd.last = *last;
+>  	nd.flags = LOOKUP_OPEN;
+>  	if (open_flag & O_CREAT) {
+> @@ -4658,9 +4664,18 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
+>  	op.mode = mode;
+>  	dentry = lookup_open(&nd, file, &op);
+>  
+> -	if (IS_ERR(dentry))
+> +	if (IS_ERR(dentry)) {
+> +		if (dentry == -EFTYPE) {
+> +			/* Try to determine what was found */
+> +			struct dentry *child = d_lookup(path->dentry, &nd.last);
+> +			dput(path->dentry);
+> +			path->dentry = child;
+> +			WARN_ON_ONCE(child && d_is_reg(child));
+> +		}
+>  		return ERR_CAST(dentry);
+> -
+> +	}
+> +	dput(path->dentry);
+> +	path->dentry = dentry;
+>  	if (d_really_is_negative(dentry)) {
+>  		error = -ENOENT;
+>  	} else if (!(file->f_mode & FMODE_CREATED) && (open_flag & O_EXCL)) {
+> @@ -4668,10 +4683,8 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
+>  	} else if (!d_is_reg(dentry)) {
+>  		error = -EFTYPE;
+>  	} else if (!(file->f_mode & FMODE_OPENED)) {
+> -		nd.path.dentry = dentry;
+> -		error = vfs_open(&nd.path, file);
+> +		error = vfs_open(path, file);
+>  	}
+> -	dput(dentry);
+>  
+>  	if (error)
+>  		return ERR_PTR(error);
+> -- 
+> 2.50.0.107.gf914562f5916.dirty
+> 
 
-Create nfsiod with WQ_SYSFS.
+OK, so if I understand the problem correctly: the current implementation
+does not work for the purposes of NFS because ->atomic_open() may return
+EFTYPE on O_REGULAR and then you still don't know what that found dentry
+was.
 
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- fs/nfs/inode.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+An arugument with such specific calling conventions feels kinda yucky
+and easier to get wrong. Why not an out enum arg that specifies the
+found dentry type? Seems at least a bit cleaner. What do you think?
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 3022454f7698..107a2135029d 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -2619,7 +2619,8 @@ static void nfsiod_stop(void)
- static int nfsiod_start(void)
- {
- 	dprintk("RPC:       creating workqueue nfsiod\n");
--	nfsiod_workqueue = alloc_workqueue("nfsiod", WQ_MEM_RECLAIM | WQ_UNBOUND, 0);
-+	nfsiod_workqueue = alloc_workqueue("nfsiod",
-+				WQ_MEM_RECLAIM | WQ_UNBOUND | WQ_SYSFS, 0);
- 	if (nfsiod_workqueue == NULL)
- 		return -ENOMEM;
- #if IS_ENABLED(CONFIG_NFS_LOCALIO)
-
--- 
-2.54.0
-
+Best,
+Jori.
