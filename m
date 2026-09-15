@@ -1,111 +1,138 @@
-Received: from mail-vs2-f12.google.com (mail-vs2-f12.google.com [74.125.227.12])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 928213E0C4F
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 16:01:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.12
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3232137DAA9;
+	Tue, 15 Sep 2026 16:58:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789488096; cv=none; b=AwpWO86v90n1sQLKzczFWcNYn3H6Sr7KX61DYeukokFPUo7ht2q+kbc/GTOoLYz65Jt95pNaG24PJivXTNcTdsIXPlW9ZRo7sn8xLOmJxdYGlN1NSXWTRB0p5lAbQEja/cdM97PLo2vjLwoEDrr+gqcrC6aH15Y3gokOWBpaCow=
+	t=1789491502; cv=none; b=JDufRno4VDwcaLFxfyQ92vxqFoWKyEviiM3RVrC4s7dpO4nDqEViKRyZ2kaX4U8PXMU3ei3iR6CIHAtYMxK3vYXmk0ys4cyNmHZD+X7xMR9soa0ohhA6obuX2oBL16Itp/N6mKYGtubsGje97+DeQySSCn5Jcea1eA/KfY3dP78=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789488096; c=relaxed/simple;
-	bh=l1wdurB+pidV4AILXrT+tLTz7zo3y2Q6OKy1w1aG1kQ=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=S0v5JTAsEmmD0PQI9/8+V+bDOe5oUXc5WIsxc9ZJ0ohA+DboBlRYI3arRHX1iA2YWyK5ylfX42SC6gBdzrBmsQ5BcnO3YXqIUZQs3fiFaOVPCe+9EZfSgjSQqeYSYDZjTrTJna1DC1PELCCI4ff1DW2KTVmQV8pBgwKB5Cuxxy8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=hdu+kAFk; arc=none smtp.client-ip=74.125.227.12
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1789491502; c=relaxed/simple;
+	bh=i4/iwR4TYPYiKzsSzezhQodaLtViQj+bGNSvh82u/Zc=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=aysJ1hofdc4IICWwZwQ2c1dQR9UhbNLfRN1Wq0P8bre8GP9PKyZz6f9P9NxXqTSyRpnQxKzvRyxDRR2gmjIAwxKYuZ8hRvKlR8NgNpqG2HdZxVUBeZfD0ZgfnZ1Hw96RKQqPdQvXy0H5YmbE2A2Z239d2YJsHsN12dJPM8FuNvM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Dwj1QLWW; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="hdu+kAFk"
-Received: by mail-vs2-f12.google.com with SMTP id ada2fe7eead31-79022baa364so791576137.1
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 09:01:34 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1789488093; x=1790092893; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=s20q7T542NAQUDk9biMPbZxXmVhh38LLJCMfX8DFltU=;
-        b=hdu+kAFk17kuJfjDPLx2/MBTd28lL+xe7nxB82TLgOJIzSQQ9PflXqtUhltCEi7rv9
-         IpNh+SuqiOwipQMoH8pHplDpAa5y59vFqX/bc3pic9FA1EQXrjM6KgPsgz6U981Gh/7M
-         VC8dqehDfynG9TzXpozl5euKgsgNnN4mqQ/8cgn8NVgLw8iehJVq2o+z2rV1yfDkSCfO
-         aUK3lpL8PVnF6CxZ7XJLnR7f9nmtR+kUn9BeGosQa+HzpGAbXDIsIraJWIn0VKACfMAQ
-         8/JvVgBZc7wm6eEUmeM6GluMW4NJfuu7yVfsWBzdo8LUtegPtlLFlxeOesPdlRc4thGb
-         E0nw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789488093; x=1790092893;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=s20q7T542NAQUDk9biMPbZxXmVhh38LLJCMfX8DFltU=;
-        b=w5XjVYBb4xYfhFy80+7T2ybVgJHd5r09xT59qKZasP0/SpGlBYi+6R6vhNptrPr7iV
-         o5BL/kwxzGNBWdd9nY7KZj0Rlh9IVx0QJIptB30uxSx5G3H76P3s5JnGm0K39D5nMVsB
-         FfeIhdlQlLY4bvm4oadIgKBpukRsFRsLZa+RyoOAqtIFBdbqZ/0rCbdhRavh9JHU7CCb
-         9XALKiUthS4sPBvDQ5zQyVXl89iSxoH7/k0BdbZ6mnvnEvSjBOqwXEm4VEBUGa9BWBdx
-         757tzDBQoba4KEp4svpf8ltRIU1v64BnNN68wizJElEUkBvnAZYy4sT8BcgFK/y7tQ2l
-         BzQg==
-X-Gm-Message-State: AFuF++l6DQvKBLQ1BnuW7lOS7VH8INtQvxF1GZFGtFEFPb58VNsH2bYo
-	7Yr7WKt5OhRguewztRnXoxr1BA7Q0ZrIv79INNxickfxInzSyb05xZCA
-X-Gm-Gg: AYBFou0Id01wBsmUmQ3ac5/yn6HNTMfxnt9KI1/0GWX+nsHeajc7M7TWiCbKnSfttLS
-	hQKjBNy8jZd4tqHQpqiGnUVeFfPGUu36lT/bMRADOJlvVvwtAb/X4vE1FqHuW1D0gt9O7i3He/a
-	jsH698G3YkVw/5VFTdhqCig3KbpHdBE1p9llxTgduBVL2vLhm1Abnx5q1LEnhrQFPcS7N/mcyOv
-	z+oDRDGp0JTkLZflWZgNwXnGP67aYtH4gaMdS0NLAuiLNtIDClC8toCJcMGZWWMnJo4SHgGzClh
-	ECj7MWUyucmtRfILre45rO6FeLMqLA04H1JjMHwgCaBtefu9QOe3i7LD0GSpVKVXFkgYfiSBmtN
-	5NcZ2Ua/OwICEuzD6RinLVcYV1IP0Zx9qiQiKREmmdxBesf6em6t4Usf6TbzWysYu8BrJxa74oI
-	aQtGl/rmToHWmdERQ6T/MppKJBxuFj6Gb3FLj1RqVmCD0OTi4Sgqyr65HAJK0w8Dr7
-X-Received: by 2002:a05:6102:5f0c:b0:779:328:8a2e with SMTP id ada2fe7eead31-79d24d179bfmr613801137.5.1789488091386;
-        Tue, 15 Sep 2026 09:01:31 -0700 (PDT)
-Received: from beelink.. ([187.13.206.89])
-        by smtp.gmail.com with ESMTPSA id ada2fe7eead31-79facab39basm114393137.2.2026.09.15.09.01.29
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 15 Sep 2026 09:01:31 -0700 (PDT)
-From: Aldo Ariel Panzardo <qwe.aldo@gmail.com>
-To: Chuck Lever <chuck.lever@oracle.com>,
-	Jeff Layton <jlayton@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	stable@vger.kernel.org,
-	Aldo Ariel Panzardo <qwe.aldo@gmail.com>
-Subject: [PATCH] nfsd: clear XDR padding in GETXATTR replies
-Date: Tue, 15 Sep 2026 13:01:19 -0300
-Message-ID: <20260915160119.3105745-1-qwe.aldo@gmail.com>
-X-Mailer: git-send-email 2.43.0
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Dwj1QLWW"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 65CC21F000FF;
+	Tue, 15 Sep 2026 16:58:19 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789491500;
+	bh=DhhkI+gCW/CKJwCKSjhSiYlpELpksTa48mZKJjz6KQU=;
+	h=From:Subject:Date:To:Cc;
+	b=Dwj1QLWWrUs9kpawpZzG55uPG/buJNut9cFxs+/Q5PapdBb379ALSG1IiwrRK1GOT
+	 CQ9CLl5C+fXocAVoBv9ecpBNX4pBk2NePcsnI13DGPwFgussL0GE73JkhJDQUOpD4b
+	 rz6h+oLe0rPhG3obcxl0XdoEE/iaI85Sq+06OEOK5ThF3cV8UpKJA3nbEHqHdSPyh0
+	 rqP9Et+VcINOj+83UeIEIh5b5gg4QNvDNZVNFbuJLs9dID9e84Yub0FeHL8hG0VEFm
+	 28dO1hS3yJ/cx8bv0XrxylV2Kg/yGuJkeq3vUVXPDbQ6camk33jj3QSMYO1iB+FiEs
+	 oxK+pFmVHQ4SA==
+From: Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH v3 0/5] nfsd/sunrpc: allow userland to handle rpcbind
+ registration
+Date: Tue, 15 Sep 2026 12:57:41 -0400
+Message-Id: <20260915-nfsd-norpcb-v3-0-3c60d49ade02@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1XMSwrDIBSF4a2EO65Fr0aSjrqP0kF8JdKiQYu0h
+ Oy9JnTQDM+B/1sg2+RthkuzQLLFZx9DHfzUgJ6GMFriTd2AFCXtKSfBZUNCTLNWBJk2enAopFJ
+ QizlZ59+7drvXPfn8iumz44Vt789h9OAURihRwrSsQyO50NeHTcE+zzGNsEEF/2NxjLHGvEPJt
+ XRtr/AQr+v6BeLAowLkAAAA
+X-Change-ID: 20260903-nfsd-norpcb-21cdcaf246bb
+To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+ Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>, "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Donald Hunter <donald.hunter@gmail.com>, Shuah Khan <shuah@kernel.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ netdev@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ Jeff Layton <jlayton@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2955; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=i4/iwR4TYPYiKzsSzezhQodaLtViQj+bGNSvh82u/Zc=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqqXkl99V3efaeRQtByxE0NWUcZmZ439lWk42EP
+ LrTG9WWZ+mJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaql5JQAKCRAADmhBGVaC
+ Fa0ZD/96M6aYJf+0JxvHX9ddfzEQMrQDsqC+ckxGxzCIoM63qWto9YYLaCGPLRIAsTpe4caghb6
+ I1ibNqPrU+vD3Gh7/jz/h1BKLs59z2S6oCg7x/uc8fBG89f/uAjDctKLKVNlfiBDSrbGAQUadEB
+ ZA7l94aTrZOM61G8Uge9/gjhkkHbD4ZYn354W9eA/kmZ1wvTwfL/6VpUoJNZSlplCEIUxNzultY
+ YlbzJizwB21Bfo3rd8lBEzAqShAYnSw3rLSLzOJdFHM0oqwh+KgQ+GDDFv1BGN1lhdQemXOzgcI
+ v1x99TcO1uJjO9btaKk1FVNvjZLllzH9wDiCTL4L+tHIC0j6fgr6dHF5kynfftgGKMmfo9z6dm6
+ /mFcc6FjInxPwWAFyedeLwKk7Klurye3VyVC4krAUy+iF+2IXXAAvc60+f1XDs7XERmYxuQkW92
+ toDsKR5KHbNE9dPUUn8GsMLyxxrQPsggIWD4o1tmDHJWKIVYvsy+V7L+Vt07j5aeNqpqr98WGu8
+ IlP51r16pA4j4CRYCXO5KHB5TDTF7Wr6bWNGDlXRwmcH1xmjgfyVlFEyj9pN304ZFFX6AYDS6sL
+ JR2ovSVNu0lQUfOk8slsRf1vxe4xP/bry+3M5zuBWVFU1fwP6caNe0fMoTq14zxwNVxOTHBXBI3
+ fR27Jfe2DqwajOw==
+X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
+ fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-nfsd4_vbuf_to_stream() uses a raw memcpy() for the first fragment of an
-attribute value. xdr_reserve_space() aligns the reservation but does not
-initialize the extra bytes. If the complete value fits in that fragment,
-the loop that clears padding for the final fragment is never entered.
+This version fixes a few problems that Chuck and agentic review pointed
+out. Original cover letter follows:
 
-A remote client reading an attribute whose length is not a multiple of
-four can therefore receive one to three stale bytes from the response
-page.
+While working on the recent hardening patches for the nfsd listener
+netlink interface, Chuck mentioned that we could allow userland to
+handle rpcbind registation itself.
 
-Encode the first fragment with xdr_encode_opaque_fixed(), matching the
-final-fragment path and ensuring that any XDR padding is zeroed.
+This adds such a mechanism to the netlink listener set interface. The
+main idea is to add a new optional flag to the netlink downcall that
+tells the kernel to skip rpcbind registration altogether for the nfsd
+listeners.
 
-Fixes: 23e50fe3a5e6 ("nfsd: implement the xattr functions and en/decode logic")
-Cc: stable@vger.kernel.org
-Signed-off-by: Aldo Ariel Panzardo <qwe.aldo@gmail.com>
+Note that NLM registration is not affected and is still handled by the
+kernel.  Handling that is trickier since it can be started by the
+client.
+
+Patches to nfsdctl will follow.
+
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4xdr.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v3:
+- Exempt an empty listener list from the rpcbind ownership check.
+- Drop the dead nfsacl test in nfsd_version_registerable().
+- Set an extack when the listener_set reply cannot be built.
+- selftests: check nlmsg_len against the recv() count before parsing the reply.
+- selftests: cover teardown in both ownership directions.
+- Link to v2: https://lore.kernel.org/r/20260914-nfsd-norpcb-v2-0-38263c6f59b2@kernel.org
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index e17488a911..51ab68ffdf 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -5953,7 +5953,7 @@ nfsd4_vbuf_to_stream(struct xdr_stream *xdr, char *buf, u32 buflen)
- 	if (!p)
- 		return nfserr_resource;
- 
--	memcpy(p, buf, cplen);
-+	xdr_encode_opaque_fixed(p, buf, cplen);
- 	buf += cplen;
- 	buflen -= cplen;
- 
+Changes in v2:
+- Refuse the legacy portlist add-fd write against a userspace-rpcbind
+  serv. nfsd_create_serv() cannot flip ownership back for an existing
+  serv, svc_addsock() expects svc_register() to register the listener,
+  and there is no way to tell the rpcbind owner about it.
+- selftests: require NFSv3 in the reply and skip where NFSv4 is not
+  built, rather than passing when neither is present.
+- selftests: cover the portlist refusal.
+- Link to v1: https://lore.kernel.org/r/20260910-nfsd-norpcb-v1-0-b4d5182d634c@kernel.org
+
+---
+Jeff Layton (5):
+      SUNRPC: allow a service to opt out of rpcbind registration
+      NFSD: add a userspace-rpcbind flag to listener_set
+      NFSD: honour the userspace-rpcbind flag in listener_set
+      NFSD: report registerable programs in the listener_set reply
+      selftests/nfsd: exercise the userspace-rpcbind listener_set flag
+
+ Documentation/netlink/specs/nfsd.yaml              |  55 ++-
+ fs/nfsd/netlink.c                                  |   5 +-
+ fs/nfsd/nfsctl.c                                   | 195 +++++++++-
+ fs/nfsd/nfsd.h                                     |   4 +-
+ fs/nfsd/nfssvc.c                                   |  66 ++--
+ include/linux/sunrpc/svc.h                         |   2 +
+ include/uapi/linux/nfsd_netlink.h                  |  20 +
+ net/sunrpc/svc.c                                   |   5 +
+ net/sunrpc/svc_xprt.c                              |   2 +-
+ .../testing/selftests/nfsd/nfsd_netlink_listener.c | 404 ++++++++++++++++++++-
+ 10 files changed, 718 insertions(+), 40 deletions(-)
+---
+base-commit: 4d46e877c21d07ddcad03da7f3b05ad2cc22b5b3
+change-id: 20260903-nfsd-norpcb-21cdcaf246bb
+
+Best regards,
 -- 
-2.43.0
+Jeff Layton <jlayton@kernel.org>
 
