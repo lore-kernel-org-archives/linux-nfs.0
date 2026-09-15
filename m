@@ -1,63 +1,63 @@
 Received: from mail-oi2-f12.google.com (mail-oi2-f12.google.com [74.125.231.204])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D9E7B3B95FA
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 12:22:46 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2094F3B8BA4
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 12:22:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.204
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789474968; cv=none; b=Mc4Td9XY4EbNsAzHgzjyZ2tBQAp0HmVGYGm7LVJxvkoxU9xSfZohfZqvgYYwg6tu2mQColh6vfs3uZd6xlpexvU5VSVLgBCa0ZWZSy2b6uWSUR00WfqHmY2gy0PtPaZYcwyUUa5cdfJpbBfpiS2Xcq1LbjlL7RVUF950kw6R1uM=
+	t=1789474969; cv=none; b=o6SDmG1jl+ra3TZLM3xIwJRyIJ9MSb+krcihaF/EaEVLma2xVDOKyrzIRN96xKX83vIGmHR4n+0xMuLf2oXstFsB6HOKKWpEWhroyfZow5fLW2UM7+LIyzkfQPLayYBKwl0X+swCMSpsc+CUHZge2hIDsLlFAUD7NUWaouqukXw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789474968; c=relaxed/simple;
-	bh=9lKEsN0Yv29O80ET7xR6K/BPp8zAC/tpybI43dgT6so=;
+	s=arc-20240116; t=1789474969; c=relaxed/simple;
+	bh=C3O0MFF7TKmLE/o+2+WO3u/2tWTZ9Hz3bJuv6kUSa6I=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=odlb+WIa5AhOiPYjzlZInjJEQX86RyRSlL1KltSWs35JCRJJnNrZwL6EhgKjcB27FxaQUC08o0rHHg3QyGzknY7sMxrncaNF2XrL2HtiZahL/VOVmx2mbggGJHxoQpS87DMy2BrYeIsbmODDsXwHeNA+YByYBrBc9fAuxACLH5A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=eIq5nc0b; arc=none smtp.client-ip=74.125.231.204
+	 MIME-Version; b=r6CqSy0vXKeB55ghLvtlIIJL+/MJCiLQ6jDJCQmuVpL1DmFxtDIqkdtdKKwXbsTNioUgGEe1OD2jICfhYz1iN3aDkGyauNOeQcGin2i4b6dwiOFv13qHYD336d9iLsOUGFungvOIUY+5hyd5DdQg4HE1rI2z8w7rUrs3LdpX/Bs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=i4n7tjhx; arc=none smtp.client-ip=74.125.231.204
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="eIq5nc0b"
-Received: by mail-oi2-f12.google.com with SMTP id 5614622812f47-4b37a3ed715so2265729b6e.3
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 05:22:46 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="i4n7tjhx"
+Received: by mail-oi2-f12.google.com with SMTP id 5614622812f47-4b37a3ed715so2265753b6e.3
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 05:22:47 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1789474966; x=1790079766; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1789474967; x=1790079767; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=e1HAQpEFVFuGxrtpysATc8xN1pv4Bf/Fmcn/QcCIfAE=;
-        b=eIq5nc0b7QpXBtyf6VkauljAnUXGvK/Lmcfn1q0PMr950fyHBjlEHzPx3s/Q67J1oZ
-         9XKl8fo/2FmtcLmWZZAXwkSorzGlfsW3Zmhcg7M632AW6We6Z4M7yWsZ+pcx6q2jFc/M
-         xlyF/qfJj5U7CcOCJdCLXGhWs/NaLdDHiNNKWY682h+5SCcuoa5vtzSDeNQQCrjI2KSc
-         Oeo2LPfFg+rVie396FHiVywtCdHEjsodg28cDJuHulLkN1+MHmPCoy/Fwlzc07ik7LA/
-         G9QwZXSf3xeiNu6GmhREjzsxj8TlfX7xrZdLbZL24h0ENpGEEgyz4zfixhkMNYuIqOtK
-         cBbw==
+        bh=NgxyBvFT8VoZVt+8f5R7jUMZNOLCROid4aZgQjIXM+c=;
+        b=i4n7tjhx0RIkYgH/7F0et/tQIv0G5ljnU7cVGIKhlsIA9k/m8qcdktEXtQTPezkw3U
+         vjlVY+Vf6rjuKI8Oc30o5byIsp0E3X3uvxByrLsRqN+TmCXpDGrLqtdwpK+QXuobDPPg
+         1ijZSA5js8A7VK81oyayUrMywIPOSM2EmxB0Q8hS0s0CWqLVKPwjDbsSSgLw0NcPWWsF
+         8bxsJchNC3NlRuUD0QN6XmRYe1ckuds0uUOJfeYv0O8BNaDCjwCplNRv5yqoF5eloB50
+         D+p12+Q85OslvPbeciZ5MR8VrxbN6QryWVjgRStKJ04Dp1B/uUYSg94crA02cTsX5ENY
+         DbRA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789474966; x=1790079766;
+        d=1e100.net; s=20260707; t=1789474967; x=1790079767;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=e1HAQpEFVFuGxrtpysATc8xN1pv4Bf/Fmcn/QcCIfAE=;
-        b=kQKb+lPboXEKsm1OuOiz++bdPuExdMnqLJijLpVkQMEUH7rh5YdoSqjZ9ZgmUkK6W/
-         FsbMLnOMO9Fnx0ua+Vk0YocB073pNtv6AIh3diG2f9cNwflml3nXu1Ps9dPIlrgQMl81
-         LCze2aUbM2JS97tU6z4sratToHcm/5m6ggNoTQ71ZE964T9QbHDRl5LIiz+tIZ3hkar2
-         C2/BIq3eh1tHDrzb+7noR6waAfBp4Pzi6gPH9pQvimwcO9pSjGj4rAwIBMsvFVq47zGe
-         lbh6KIXhtNTOceIZz6ZdnyxdiDcIxAKUMH8R7vpM+XEipVDVcJZtw96PIKs0SMmBoHv1
-         C/+w==
-X-Gm-Message-State: AFuF++nGL5Bs8njPIc2g8Es6Ns9ANJ7DvAuChOKItS3MCjB7GCk68U3j
-	CgouA39QWRf/SUBGwq2kHUEhtESfn6BaOA7DLFxmGpc8QSaxrpKq/MWdvuXsWDBVysE=
-X-Gm-Gg: AYBFou2AvbCzwXmovrsMjd/lHC7C5y4HRY6xsM6cPpVofrtymtoJNcCtDoBuueqOEKh
-	c+mv/ARb1BMVinJSVE6HRiZEulgb2F80rZLW61QGF1tkcb8VQGyVPavVCsjzgrRSxYXSFl5caD6
-	i9RnJBJQT6zYpSLov/nIT1OZOjDLAmEj44PkkmijlA4T2UvmWG1rfACB7qUtwgvrUd9ZTaCXeW5
-	Vczv7LCedwT05rwpgshvLCkmLmRQuSeEB6NxVeMj/ATm3BJqfOnGogKbQACYhy4wotRyHxs6KEU
-	AtcA4Mex+C3zE7aUwVAyCZU+PutqThKaGXn02lmPRDbNZXyxm+wBmZtKq+9ShXcRPZgMC+Kw832
-	7NPxD4deHpR51bgDPmAMX7DtP6inXY5mtFVkmd8a40c1rGZerZgsXHL9VW+Jh3LyG2greQ/vPFJ
-	YTkvwKjm4g/ys/2JHOixx8NSAprLD/t0f1DhA66l38qNTU5boo447u1WCUnwpvP1l6LnC0w7R8k
-	b4mn28NU/DQ73sffZllUYE2XIc7uN11y7sft2iWCLSUBA==
-X-Received: by 2002:a05:6808:528e:b0:4b9:a829:f012 with SMTP id 5614622812f47-4c7b579df59mr4482298b6e.30.1789474965547;
-        Tue, 15 Sep 2026 05:22:45 -0700 (PDT)
+        bh=NgxyBvFT8VoZVt+8f5R7jUMZNOLCROid4aZgQjIXM+c=;
+        b=qPKaAf/PeJvv1moWwtUZPWfknZmo/nlazhETCP7oiXXgZL919WtQrNGZFRKvHVkJr+
+         oTNHIh2iUKw+mYqCN+Yrs3vQo+LpvHqxRQNMyenHJLYHb6v/1qpJwI6AZU8FB7V4gtO5
+         ZI4satoLyRDehE/q04GkTbqiSpAZV4yzT+cuScu8mS7HbgV/c9xwHClwLyRW2yDBh5LV
+         NK/82J1DsbQm45q7EJwNQSKWbx3f02X4sv6Ld3Xeff/qys/nJPmPCrJ21vJOS1CrpUzJ
+         Hq/zJ20JWlncaegrIWBIJSH2BD4QlFSSDRty25eMy9KjES4qgVNzeg48p+kiNwdWJW+I
+         mKnA==
+X-Gm-Message-State: AFuF++kNh7m+6dgJGWgcMimDUEP3+/3xv/cpqABaj8R5oUWScPkwNXGL
+	08+0VVAKK9WrpnnAAG72iW5IhMUjD9r+ByLRZKxUzqsy0Ut62BoW/Gq+eRrvVNOEnn4=
+X-Gm-Gg: AYBFou1sPJCpcLKI811zIpuvExdSQsNM2WDZcKn7FQPu5z5l7h/F4dnIQHyHPcQmbmF
+	NCXRAyajYArrgHpHAajGRoJPBkVZDEeIWDJfWVbAKLtiGkxdhXj5tlk1NOw+NOWU1heE/3o7N9D
+	C2y38OncsJAn2VosziaeGwFGGtoPMA3jihiB6lj/x7RGSVdFMWbhbeQgJi5bvKXp6lb87CPNnDT
+	JO1RpxcihclqxBiEKxnQFVRi4b/EdxQp6NITVyhFy70nGbMnlFOrm5Z0YZ/aJ2UU+VMvUu0tIOz
+	1PyT2lAFat5AaEFBKpolW3cXI3SEes25xSRz1pgYoCfrt17lO7MixQgEazazKQmlbgO5dCSFGZq
+	n/bgaOKULV02QiHTUPchy9DjWkHcXKK6tKwF0HU6t7wHnoHLvZPmybFmSbKYgIb0r7VVY8S9N9N
+	eqXHtB79owaTQTYyXW7U9SUwGOjUKbaNcPOqj21ZsMkHJyQAgAP+/XmKAkLlzEVqdni8vH4HGVe
+	d2rQWhjQWf3jTWhimJOP4CP/PQOIcOBhOYr
+X-Received: by 2002:a05:6808:151e:b0:489:93ff:9ea0 with SMTP id 5614622812f47-4c7b2df8c0dmr4881142b6e.2.1789474966836;
+        Tue, 15 Sep 2026 05:22:46 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-4c32eb4274dsm13058260b6e.1.2026.09.15.05.22.44
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-4c32eb4274dsm13058260b6e.1.2026.09.15.05.22.45
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 15 Sep 2026 05:22:44 -0700 (PDT)
+        Tue, 15 Sep 2026 05:22:46 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
@@ -67,9 +67,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Mike Snitzer <snitzer@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>,
 	Junrui Luo <moonafterrain@outlook.com>
-Subject: [PATCH v4 13/24] NFSv4/flexfiles: Implement in-place device re-resolve on CHANGE
-Date: Tue, 15 Sep 2026 08:22:15 -0400
-Message-ID: <a928b6405c249d1cf6eb200e23d053e482e73ebd.1789474702.git.bcodding@hammerspace.com>
+Subject: [PATCH v4 14/24] NFSv4: Dispatch CB_NOTIFY_DEVICEID CHANGE to an in-place refresh
+Date: Tue, 15 Sep 2026 08:22:16 -0400
+Message-ID: <739aef0590ca182a067535d93ea05dffea7e628d.1789474702.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1789474702.git.bcodding@hammerspace.com>
 References: <cover.1789474702.git.bcodding@hammerspace.com>
@@ -81,85 +81,54 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Implement the reresolve_deviceid hook: walk the layout's mirrors and,
-for every stripe whose raw deviceid matches the changed one, exchange
-the pinned device node out for NULL.  In-flight I/O completes on the old
-node through its own reference; the next I/O to the stripe re-resolves
-via ff_layout_get_mirror_ds() and picks up the server's new mapping
-with a fresh GETDEVICEINFO.  The un-pinned references are handed back
-on the walker's list to be put outside the locks.
+nfs4_callback_devicenotify() treated CHANGE identically to DELETE: both
+only unhashed the cached device, so references pinned under live
+layouts kept sending I/O to the old mapping until the layouts were
+freed.  Per RFC 8881 Section 12.2.10, CHANGE exists precisely so a
+server can change a mapping without recalling the layouts.
 
-Matching uses the raw deviceid decoded from the layout (dss[].devid), so
-a stripe that was never resolved, or already exchanged, is left alone.
-A stripe whose resolution previously failed holds an ERR_PTR sentinel
-rather than a node; that is cleared too, so the stripe retries
-GETDEVICEINFO on its next I/O.  Nothing dispatches CHANGE to the walker
-yet: no behavior change.
+For CHANGE, after unhashing the stale cache entry (so re-resolution
+cannot re-pin it), invoke the layout driver's re-resolve walker.  The
+walker does not install the new mapping itself: it un-pins the stale
+node so the next I/O to that stripe re-resolves and fetches the new
+one, while I/O already in flight completes on the old node through its
+own reference.  DELETE is unchanged, and drivers without a
+reresolve_deviceid hook see no change.
+
+Re-resolution is best effort.  A lookup that hit the cache just before
+the unhash can still install that node after the walk has passed the
+stripe, and the walk skips nothing else; such a stripe keeps the old
+mapping until the next notification.  Nothing is left inconsistent by
+that -- the old mapping is a valid address the server published -- so
+the race is tolerated rather than serialised against.
 
 Assisted-by: Claude:claude-fable-5
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 40 ++++++++++++++++++++++++++
- 1 file changed, 40 insertions(+)
+ fs/nfs/callback_proc.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index eeda084d20dd..a7fda4422c5f 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -2527,6 +2527,45 @@ static void ff_layout_cancel_io(struct pnfs_layout_segment *lseg)
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 3fb10c8e4271..01372d8548e1 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -391,7 +391,16 @@ __be32 nfs4_callback_devicenotify(void *argp, void *resp,
+ 			if (!ld)
+ 				continue;
+ 		}
++		/*
++		 * Unhash the cached device first so re-resolution cannot
++		 * re-pin the stale node, then re-point any references
++		 * pinned under live layouts (RFC 8881 Section 12.2.10).
++		 */
+ 		nfs4_delete_deviceid(ld, cps->clp, &dev->cbd_dev_id);
++		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
++			pnfs_layout_reresolve_deviceid_byclid(cps->clp, ld,
++							&dev->cbd_dev_id,
++							dev->cbd_immediate);
  	}
- }
- 
-+/*
-+ * Un-pin every stripe node resolved from @id: in-flight I/O drains on the
-+ * old node through its own reference, the next I/O re-resolves.
-+ */
-+static void ff_layout_reresolve_deviceid(struct pnfs_layout_hdr *lo,
-+					 const struct nfs4_deviceid *id,
-+					 bool immediate,
-+					 struct list_head *head)
-+{
-+	struct nfs4_flexfile_layout *flo = FF_LAYOUT_FROM_HDR(lo);
-+	struct nfs4_ff_layout_mirror *mirror;
-+	struct nfs4_ff_layout_ds *old;
-+	struct nfs4_deviceid_put *put;
-+	u32 dss_id;
-+
-+	list_for_each_entry(mirror, &flo->mirrors, mirrors) {
-+		for (dss_id = 0; dss_id < mirror->dss_count; dss_id++) {
-+			if (memcmp(&mirror->dss[dss_id].devid, id,
-+				   sizeof(*id)) != 0)
-+				continue;
-+			/* Allocate before un-pinning: on failure the reference
-+			 * stays put rather than being dropped here, where the
-+			 * final put may not sleep.
-+			 */
-+			put = kzalloc_obj(*put, GFP_ATOMIC);
-+			if (!put)
-+				continue;
-+			old = unrcu_pointer(
-+				xchg(&mirror->dss[dss_id].mirror_ds, NULL));
-+			if (IS_ERR_OR_NULL(old)) {
-+				kfree(put);
-+				continue;
-+			}
-+			put->dev = &old->id_node;
-+			list_add(&put->node, head);
-+		}
-+	}
-+}
-+
- static struct pnfs_ds_commit_info *
- ff_layout_get_ds_info(struct inode *inode)
- {
-@@ -3108,6 +3147,7 @@ static struct pnfs_layoutdriver_type flexfilelayout_type = {
- 	.pg_write_ops		= &ff_layout_pg_write_ops,
- 	.get_ds_info		= ff_layout_get_ds_info,
- 	.free_deviceid_node	= ff_layout_free_deviceid_node,
-+	.reresolve_deviceid	= ff_layout_reresolve_deviceid,
- 	.read_pagelist		= ff_layout_read_pagelist,
- 	.write_pagelist		= ff_layout_write_pagelist,
- 	.alloc_deviceid_node    = ff_layout_alloc_deviceid_node,
+ 	pnfs_put_layoutdriver(ld);
+ out:
 -- 
 2.53.0
 
