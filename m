@@ -1,69 +1,74 @@
-Received: from mail-pg1-f197.google.com (mail-pg1-f197.google.com [209.85.215.197])
+Received: from mail-pl1-f200.google.com (mail-pl1-f200.google.com [209.85.214.200])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 360113D1AA6
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 08:19:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.197
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5BA4F3CA497
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 08:19:55 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.200
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789460396; cv=none; b=qhXsoYVfjfdVrUwyQXSt4xzCFADhfk/Jbcnprk40xSpkHUeswO0NUG/LafYtG+SHy/VINBn6tXzUzbKzelUBjdvq4R1gL+BX/s1/FGLGn+EeRjSpaO4NvLTi4B71+dyv2+FIwnuA2uCSf748GzR0nPjH5eZ5OGrrMVqJpoD9d+Q=
+	t=1789460401; cv=none; b=jjX/BvVz/TwlfcQdK+FWDmjmAj6Ne6SNFjxKOQd7IoTv60gRqKq28FrME7VqxhWO/uNbUbveq6G9xxMBmOCtpXcm1bkhOp/aDW81F4Qla7EIFcoVleRE4HdeoLMNfumc5OQRQ4ypzcRm9X2BOUlD3XRSty9UvGgUISftfUITZcc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789460396; c=relaxed/simple;
-	bh=hwfRqXyDJjrWnLmHCCnSyQ5c6I5VKxxwWvdwR4gczDI=;
-	h=Date:Mime-Version:Message-ID:Subject:From:To:Cc:Content-Type; b=lT6eEycvs3Ld/AtwwUKwMr08yMUhyfeR06djddLXC61Fj0ED3HunmbeLSQUptPjQtDWVqdu/t5F1mDzomep1RVqNPEvFKVv5T8W+vKerZsrrDXX1eI5vPEk4+0zYC8cGwWelfAN0BZuoy5rA752TFkktqhQXMxhb07WA1y3E3+w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=flex--morbo.bounces.google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=kFStyNsf; arc=none smtp.client-ip=209.85.215.197
+	s=arc-20240116; t=1789460401; c=relaxed/simple;
+	bh=aFG0xUCnVhRmh5AZ+6xtqf07JXQFbTflRFt4CKN6Is8=;
+	h=Date:In-Reply-To:Mime-Version:References:Message-ID:Subject:From:
+	 To:Cc:Content-Type; b=Rr3p41BjYNh+jOakfgQBZb9XosYcXtNAABxNdajkHVUJcvR5Qp3GMmY1nFR0wFb0J974fP/ea8eR0ei7m93/39lFncNNMXkRlkSsp45UCtnRKjjC2DyPkLXX/rs9ERb6JeA5VECgSuxTM0q8cmZTxpbq2rNYJMMnS++D6zGXJWM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=flex--morbo.bounces.google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=LjMJS6E4; arc=none smtp.client-ip=209.85.214.200
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=flex--morbo.bounces.google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="kFStyNsf"
-Received: by mail-pg1-f197.google.com with SMTP id 41be03b00d2f7-cc4216aee8fso5333279a12.1
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 01:19:51 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="LjMJS6E4"
+Received: by mail-pl1-f200.google.com with SMTP id d9443c01a7336-2dd188e16a2so48871585ad.2
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 01:19:55 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20251104; t=1789460390; x=1790065190; darn=vger.kernel.org;
+        d=google.com; s=20251104; t=1789460392; x=1790065192; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:from:subject
-         :message-id:mime-version:date:from:to:cc:subject:date:message-id
-         :reply-to:content-type;
-        bh=cTJ+iDaVRz+oQczzBBEu9x7Pp5Lm2h3B0iGAZglcmy4=;
-        b=kFStyNsf6no/miZzS9f9e0bO+LbLlx0nALsKxyWWFxRsfeWL4uq54zP/54wKmdnETs
-         JN6+GIzvVSSoy0wHCDekSB2YCv/Q4L3cDh7T/w4TP9GVWYWDoLdns/B+Un0epV6L8yRw
-         xCHA+NayFImP2wwXOZrL7HyXmPEyzDrV0R2ZwHZ1jOpUfNkSEjbgXDcOs13Ty3xfcI/z
-         jNWMggNlw/e20k1m4NQfDF7+hjJAPr3+U1awQi+C1Rajk+IrxjV6vzYuAlBs+HPzOGu7
-         Df1YM916Vv17Ue4q+ylkCKnNZIt1wsePHKdGVoP8bsJhgUOMlEKy6MReKjTz7SCij8mt
-         cpyw==
+         :message-id:references:mime-version:in-reply-to:date:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=e1xTXUdJBJy44H7rwXmvsQjBVl/r1YS8CWHRr4HN54c=;
+        b=LjMJS6E47N0MZyuMYHfNfyIaxDcUwZDWgBKHnRFRdd9GfRbihImJwYpvaaFR2FeoO5
+         Jc9Yr50cKixjulQ05Md3u0ZMCSBRG4a87A2NcziWVkFwnsariIO6txmat3sAgMcGyRvT
+         i38yMtnPWXpG6cxx2LzMSCiCvaQzBoX0o4uQZumZjTaDXktlJ7wsW6N+yvwvRNef7Rz5
+         zIJzi8/Tv6LNjgko6yZbp3u9mM26U8+ovuxNj3zTKM7MfR67EcU1VzD2aVoAHHsmS5/r
+         3uxP+5dUk1Bw4RGOutMyKALYaqjB1pnVlNndyhLJ4KgAyTRIwmgZcONltt+X+GPHCzcp
+         p64w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789460390; x=1790065190;
+        d=1e100.net; s=20260707; t=1789460392; x=1790065192;
         h=content-transfer-encoding:content-type:cc:to:from:subject
-         :message-id:mime-version:date:x-gm-message-state:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=cTJ+iDaVRz+oQczzBBEu9x7Pp5Lm2h3B0iGAZglcmy4=;
-        b=RHaf+MrcjSZAJxGxdnrs+29WUzkBuvHd4Gb/mGKOhzN2zlnCap4oqMkJCDnYtzRbV5
-         aTTZdWhzKzIch5lwmP15GlJzXUiPfYLb1EG/VpiCCOOD6lrz5op9y3uu96Bv86k8upCf
-         x4BQtrilXgFcz6MwrEnWvAy9YYD21MU1RB2WLF/nQwUPBPf6Noe2BcQeanfekZfjTCOx
-         n+HjGuEeAuATMqE2tY/8UIktVfCMQDZOmH1T7YfQqAHYbG/cloxmGZhBF6/K3/pPJfXd
-         Khj/tIDHeW8aQGi+Q78VGwv19aXo5nnr6YrYvtpjDCdcCheBE+eB/tESDcLYbuFEwkpz
-         Y7Pg==
-X-Forwarded-Encrypted: i=1; AKwUvBwHyJeWE4N3Ne3s4/i5RAziz6TIYG9f9p1E8gQL5nhe+qAhQW6VyzirwFL3IOpW12TGPo7eN4nN7lE=@vger.kernel.org
-X-Gm-Message-State: AFuF++miIh9lHw0rl87ZJA5NARO3CrLncemqS11/f3AAdobXbO27rZN4
-	cBBEj65l+8EELeItd2Qky0smEgIyDgiSdSBEVtu75kzPrsee+ZSaKYirtgutjlNrGMCiDhz5OaW
-	z
-X-Received: from pgbo14.prod.google.com ([2002:a63:5a0e:0:b0:cc4:337f:e10f])
- (user=morbo job=prod-delivery.src-stubby-dispatcher) by 2002:a05:6a20:7d9f:b0:3b4:61f:1fec
- with SMTP id adf61e73a8af0-3db4038ec7cmr15429477637.2.1789460388838; Tue, 15
- Sep 2026 01:19:48 -0700 (PDT)
-Date: Tue, 15 Sep 2026 08:18:17 +0000
+         :message-id:references:mime-version:in-reply-to:date
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=e1xTXUdJBJy44H7rwXmvsQjBVl/r1YS8CWHRr4HN54c=;
+        b=ctEaeOObN6NSR+a//R5JvY1t+wIizFe9CUBXj/c+dAh1QLPJIpx9ywe1I4nd3aKf+s
+         gVtYtZo6/83AygxQ4Tu5Ch++9jk7gtFfYws3OdCsohgVJTbvOfLPSGZbs2+UW+BCfNZQ
+         nHd8oIlSe2pWCSAXbcfQZR9goNO2Ab07UCWybJeIMP4BGYJ+266HI5aCLUSScLqSGH8J
+         TRxi9XdqAxDEQpGuxKvzchmtfUVapbTZ4riLvSrp0zHIM01+at/5FJXr8jgLb4YF3qO9
+         TyaLTLCxgw0rsMPJiEQFSoXpeV5aZ16ozvATqhLPeTG1kYGMnQ2CYdM4KrqFq1c1Vb11
+         Qszw==
+X-Forwarded-Encrypted: i=1; AKwUvBzrufpjejUwNyOKSZnuqKsCwcksP2FUCJD9ZlN01zUI0s5w+xA6Ek3mhFIf/jEqckU22pu9Sqqvz3U=@vger.kernel.org
+X-Gm-Message-State: AFuF++mRZ1DWjxNOO1DE+vl8AtmPrVzN7ecd7YAQGpPSNNZRB+GLCctD
+	Kz5vzq9k/81gdM3VM9UyUzjJ7U95Yt5FDEDor079O23W7EJ87Zo4Povx0090CvaoAjF3b8zlUIv
+	W
+X-Received: from plty2.prod.google.com ([2002:a17:902:8642:b0:2d8:da84:22a9])
+ (user=morbo job=prod-delivery.src-stubby-dispatcher) by 2002:a17:903:b8e:b0:2d8:d4d3:3fbb
+ with SMTP id d9443c01a7336-2dd6c73445amr126364165ad.15.1789460391377; Tue, 15
+ Sep 2026 01:19:51 -0700 (PDT)
+Date: Tue, 15 Sep 2026 08:18:20 +0000
+In-Reply-To: <20260915081910.4142719-1-morbo@google.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 Mime-Version: 1.0
+References: <20260915081910.4142719-1-morbo@google.com>
 X-Mailer: git-send-email 2.55.0.1032.g73a4cd73de-goog
-Message-ID: <20260915081910.4142719-1-morbo@google.com>
-Subject: [PATCH 00/28] Replace remaining strlcat() call sites with snprintf()/seq_buf()
+Message-ID: <20260915081910.4142719-4-morbo@google.com>
+Subject: [PATCH 03/28] ARM: atags: Replace strlcat() with snprintf() for
+ cmdline extend
 From: Bill Wendling <morbo@google.com>
 To: linux-kernel@vger.kernel.org
-Cc: Bill Wendling <morbo@google.com>, Russell King <linux@armlinux.org.uk>, 
-	Huacai Chen <chenhuacai@kernel.org>, WANG Xuerui <kernel@xen0n.name>, 
-	Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
+Cc: Bill Wendling <morbo@google.com>, codemender-patching+linux@google.com, 
+	Russell King <linux@armlinux.org.uk>, Huacai Chen <chenhuacai@kernel.org>, 
+	WANG Xuerui <kernel@xen0n.name>, Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
 	"James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, Helge Deller <deller@gmx.de>, 
 	Thomas Gleixner <tglx@kernel.org>, Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>, 
 	Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
@@ -119,91 +124,18 @@ Cc: Bill Wendling <morbo@google.com>, Russell King <linux@armlinux.org.uk>,
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-strlcat() is deprecated: like strcat(), it requires re-scanning the
-destination string from the beginning on every call, which is O(n^2)
-when used to build up a string incrementally, and its truncation
-behavior is easy to get wrong. See:
+When CONFIG_CMDLINE_EXTEND is enabled, parse_tag_cmdline() uses two
+strlcat() calls to append a space and the bootloader tag command line to
+default_command_line.
 
-  https://github.com/KSPP/linux/issues/370
+In preparation for removing the deprecated strlcat() API[1], compute the
+length of default_command_line once and append the space and tag command
+line in a single snprintf() call.
 
-This series removes the remaining strlcat() call sites in the tree
-(plus the one inside fortify-string.h's strcat() implementation
-itself), replacing each with snprintf(), scnprintf(), or the seq_buf()
-API, whichever best fits the surrounding code.
-
-One unrelated fix is included. While auditing drivers/edac/thunderx_edac.c
-for its strlcat() conversion, "EDAC/thunderx: Fix stale error context in
-thunderx_l2c_threaded_isr()" addresses a pre-existing bug, present since
-the driver's original 2017 commit: thunderx_l2c_threaded_isr() computes
-its ring "tail"/"ctx" once before its drain loop and never recomputes
-them per iteration, unlike the analogous OCX handlers in the same file,
-so it re-reports the same ring entry for every queued error instead of
-draining the ring. It's split out as its own patch, ahead of the
-strlcat() conversion for that file, so it can be reviewed and
-backported independently of the rest of this series.
-
-Bill Wendling (28):
-  ALSA: ac97: Refactor snd_ac97_get_name() to use snprintf()
-  sunrpc: Refactor rpc_sockaddr2uaddr() to use snprintf() instead of
-    strlcat()
-  ARM: atags: Replace strlcat() with snprintf() for cmdline extend
-  scsi: bfa: Use snprintf() in bfa_fcs_fabric_nsymb_init()
-  ALSA: usb-audio: Refactor usb_audio_make_longname() to use seq_buf
-  comedi: comedi_bond: Refactor strlcat() to seq_buf in do_dev_config()
-  scsi: bfa: Use snprintf() in bfa_fcs_fabric_psymb_init()
-  devlink: Refactor strlcat() to seq_buf in
-    __devlink_compat_running_version()
-  drm/dp_mst: Refactor build_mst_prop_path() to use seq_buf
-  of/fdt: Replace strlcat() with snprintf() in
-    early_init_dt_scan_chosen()
-  wifi: brcmfmac: Replace strlcat() with snprintf() in
-    brcmf_fw_alloc_request()
-  fortify: Convert strlcat() to snprintf() in strcat()
-  i40e: Replace strlcat() with snprintf() in i40e_nvm_version_str()
-  ALSA: usb-audio: Refactor append_ctl_name() to use snprintf()
-  orangefs: Use seq_buf for debug help string generation
-  pinctrl: samsung: Use snprintf() to construct pin bank names
-  MIPS: cmdline: Refactor bootcmdline_append() to use snprintf()
-  LoongArch: Refactor bootcmdline_init() to use seq_buf instead of
-    strlcat()
-  x86/setup: Use snprintf() to concatenate builtin and boot command
-    lines
-  parisc: Refactor strlcat() to seq_buf in setup_cmdline()
-  NFS: nfsroot: Refactor root_nfs_cat() to use snprintf()
-  media: si2165: Use snprintf() to format frontend name
-  Input: synaptics_usb - use seq_buf and snprintf() for name and phys
-  EDAC/thunderx: Fix stale error context in thunderx_l2c_threaded_isr()
-  EDAC/thunderx: Replace strlcat() with seq_buf
-  wifi: wil6210: Refactor resume_triggers2string() to use seq_buf
-  drm/xe/pf: Convert strlcat() to seq_buf in control_read()
-  drm/xe/pf: Refactor strlcat() to seq_buf in sched_group_engines_read()
-
- arch/arm/kernel/atags_parse.c                 |  7 +-
- arch/loongarch/kernel/setup.c                 | 22 +++--
- arch/mips/kernel/setup.c                      | 21 ++++-
- arch/parisc/kernel/setup.c                    | 16 ++--
- arch/x86/kernel/setup.c                       |  8 +-
- drivers/comedi/drivers/comedi_bond.c          | 16 ++--
- drivers/edac/thunderx_edac.c                  | 67 ++++++++++------
- drivers/gpu/drm/display/drm_dp_mst_topology.c | 15 ++--
- drivers/gpu/drm/xe/xe_gt_sriov_pf_debugfs.c   | 24 +++---
- drivers/input/mouse/synaptics_usb.c           | 29 ++++---
- drivers/media/dvb-frontends/si2165.c          | 17 ++--
- drivers/net/ethernet/intel/i40e/i40e.h        | 15 +++-
- drivers/net/wireless/ath/wil6210/wmi.c        | 38 +++++----
- .../broadcom/brcm80211/brcmfmac/firmware.c    | 21 ++---
- drivers/of/fdt.c                              | 11 ++-
- drivers/pinctrl/samsung/pinctrl-samsung.c     |  3 +-
- drivers/scsi/bfa/bfa_fcs.c                    | 80 +++++--------------
- fs/nfs/nfsroot.c                              | 11 ++-
- fs/orangefs/orangefs-debugfs.c                | 36 ++++-----
- include/linux/fortify-string.h                |  7 +-
- net/devlink/dev.c                             |  8 +-
- net/sunrpc/addr.c                             | 16 ++--
- sound/pci/ac97/ac97_codec.c                   |  9 ++-
- sound/usb/card.c                              | 58 +++++++++-----
- sound/usb/mixer.c                             |  8 +-
- 25 files changed, 309 insertions(+), 254 deletions(-)
+Link: https://github.com/KSPP/linux/issues/370 [1]
+Cc: codemender-patching+linux@google.com
+Assisted-by: developer:gpt-4o [editor_update_file, shell_command_run]
+Signed-off-by: Bill Wendling <morbo@google.com>
 ---
 Cc: Russell King <linux@armlinux.org.uk>
 Cc: Huacai Chen <chenhuacai@kernel.org>
@@ -315,7 +247,29 @@ Cc: linux-nfs@vger.kernel.org
 Cc: devel@lists.orangefs.org
 Cc: linux-hardening@vger.kernel.org
 Cc: linux-sound@vger.kernel.org
+---
+ arch/arm/kernel/atags_parse.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
+diff --git a/arch/arm/kernel/atags_parse.c b/arch/arm/kernel/atags_parse.c
+index 4ec591bde3df..21140b44d96e 100644
+--- a/arch/arm/kernel/atags_parse.c
++++ b/arch/arm/kernel/atags_parse.c
+@@ -121,9 +121,10 @@ __tagtable(ATAG_REVISION, parse_tag_revision);
+ static int __init parse_tag_cmdline(const struct tag *tag)
+ {
+ #if defined(CONFIG_CMDLINE_EXTEND)
+-	strlcat(default_command_line, " ", COMMAND_LINE_SIZE);
+-	strlcat(default_command_line, tag->u.cmdline.cmdline,
+-		COMMAND_LINE_SIZE);
++	size_t len =3D strlen(default_command_line);
++
++	snprintf(default_command_line + len, COMMAND_LINE_SIZE - len,
++		 " %s", tag->u.cmdline.cmdline);
+ #elif defined(CONFIG_CMDLINE_FORCE)
+ 	pr_warn("Ignoring tag cmdline (using the default kernel command line)\n")=
+;
+ #else
 --=20
-2.47.3
+2.55.0.1032.g73a4cd73de-goog
 
