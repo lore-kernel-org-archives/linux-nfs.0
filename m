@@ -1,63 +1,63 @@
-Received: from mail-oi1-f177.google.com (mail-oi1-f177.google.com [209.85.167.177])
+Received: from mail-oi2-f13.google.com (mail-oi2-f13.google.com [74.125.231.205])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ABE482931CC
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 12:22:31 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.177
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE83B3B42E1
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 12:22:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.205
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789474953; cv=none; b=YLXqJbBJPZEV/zqYW8yWgWLjaq2N37XYEZsq0Hziv41hMUKGFdV3ilWn/tjkC82MkrT+JEHy6UtKWNqusbhe9JzJeyfDlDCNr27P63dqdmbzicx+bxXpEJMJSA0LHsqKd+q5Ew5ZZjoVxOM4im2FRq7mWqPA1PTYIZ6oc6umqI8=
+	t=1789474954; cv=none; b=AUfmg3P2DUU2/qlAHRmfiQCuvqLgQhA9hx+NrYu5pb00cqA5HrLuIDwj/eVwl7J4tHltmc2Q141wrAaGpSLn/cpjZ6y6qOKrY1FhLQFc6IUPvPzB+HPyQua00yJ2afniXGc9AgyqVC7tEk7tkikLPFDEk0PfvmwJXw9KierjLwM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789474953; c=relaxed/simple;
-	bh=UL8KFNWk7lNJYm0ZnrWATxloH4b6T+ed7rGFAQbjp/k=;
+	s=arc-20240116; t=1789474954; c=relaxed/simple;
+	bh=pNGgs541mK4q4GyN4bc7XAJd5dCZ2Ax6HAdwx6li7Qs=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=jzXe66ZHlR8AuOIobzeeJJEwqoF+WGzK15ktCrtDbDDHBkr737p1PaxIjb0ef6nsMtP+w0mJgEPce5Nb2LCSI2CId9jiZ7rrwPNrq4SMmXYBWNcMZO6bR/FGLhkPbHp01tcQXdtV5fv4la1WSzHRRSlsLLQBInrOpomkx2xPTQ0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=jeBD781P; arc=none smtp.client-ip=209.85.167.177
+	 MIME-Version; b=IxFYrSMhdVwlWYJ92xkblv8gWKcxNrOVug1vj15N6+GMhux4o+qu5Nyglj2dQYJIyWt1Wy1O4CiLJyJur2dpL8SNiAT2qDImLtwahv2Df/ukSZt9x163593M9VmMRJM7N5tpz9z/cXKdi+JMDnBDPnuEOaS0QiyDhaJgf9fuvo8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=c5pLbid3; arc=none smtp.client-ip=74.125.231.205
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="jeBD781P"
-Received: by mail-oi1-f177.google.com with SMTP id 5614622812f47-4be07e7c54dso677924b6e.1
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 05:22:31 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="c5pLbid3"
+Received: by mail-oi2-f13.google.com with SMTP id 5614622812f47-4c6d6660191so1560117b6e.2
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 05:22:32 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1789474950; x=1790079750; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1789474951; x=1790079751; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=oHQ8BbMYCaCngVy3DUvFYsHhavmNY+fsgd9aZs+DdME=;
-        b=jeBD781P0t+wdtljZe7vC1Hz5ciZHp7/HWQY9ow2R7XbIwFaEwgviAWakTZ9hWDvuZ
-         6C8Q5CVsmEf0geVH2bIA6J63RaGGvq1p+Gq9GamoZZmHp0UJtMJlisbfunFNMFSx8cer
-         itt4X4IkJffEpMpI0UHXC7Mye2RnsiOdsuQl1VxH4zfzJPVl+NkD7eFGf13Br6vmmJf2
-         hnbKXceCAOHdpXzQSHOKFGuit6o5gksqfOR3N5tfwbIa2toZn8ViYsunTTx7lCsbtAwn
-         9W4APoRDEaWb7/+KLgrEJyRz5CZ8TbHknqPXgRqANWSJ2SipqHE3iUA6982o00wgPR3+
-         Qysw==
+        bh=jxHtlsw+kQepZhFpBSMgUw0/pZ1fEQpYZ38PLW/x1wk=;
+        b=c5pLbid34v2yT54LJZnLGxtdFdUVCTSGVY0sd+Bb3glx2dBa7v6L0iU5KMkm40sLmh
+         1ha2g8iF84IJbDyPr+LIvZAeasyp9RhUjV4nAmLENM8ed8xrOEZ0QhBQmH1C7gSVcU5t
+         pSeMmB2mCDkHQxhzI47yZrWLwwaGw4OlWlg56OOyHrbgxFQP+ypV1PI9jOJjP+vZnI2j
+         Wlxeu75dMlpEUs/Lcy49zEQlvlHqR43Zwnmc0ux4kNj47k21o/RylJHc5Mi/rJi3plvb
+         2wSrymtBa2O9znL+q9GcARqX7vhYHbThgGFmJbL0HkEFRvc8JMy52I9mqJcaz1Pg7PSd
+         TV8Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789474950; x=1790079750;
+        d=1e100.net; s=20260707; t=1789474951; x=1790079751;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=oHQ8BbMYCaCngVy3DUvFYsHhavmNY+fsgd9aZs+DdME=;
-        b=CFrOTpJMlZp8ec18ILg2GF0pXF0A3CHG3BjsALfxAYDzKkocvA61X9d8IFXtc6mq+b
-         3YKocMksmvCZTD/QEcSAXq0JehBA2/i8/QRuX1TdC1bjNgwnCv55n4aLdTqLVrrr3cq4
-         FVulg7luQ40gb2IAneFCcUrXJdArFjAVceXMcSqAOSPdPt43BNw50RRNxToFBc8crrKI
-         w8TD5rv24UVgFmrfjJsz2rM79N+eH8sCdwTbKMsia44sJnmCvwGuPLIscZ5VGEZLfhCn
-         SpLqSrAIPp6zpo0A3MEQ1aA5OX48ncEYxuMwiha8msKqPEBuEaKb4AgsAvy5Ovz3LeAG
-         xwow==
-X-Gm-Message-State: AFuF++kMcD/ARBbpQ2u/5TAlxDG1VdTvZGwF5lCQKLWGmyNJlt9Gdfyh
-	0Pn1J93Zii77cs9lyGUuJ0qGyEsmelo07Yo6LBN1wHnaPTM9cHnveKB+ygf0uPk2Rh0=
-X-Gm-Gg: AYBFou0PZwzz5etKVm3WMtvFLLUA7WnmYlouwGbHB2vMPXHBgzhOFNgWInJZxv3Q+Tj
-	0J2OOYhhAiGHLGxr4pf7UDZd2dbKLczFiqc45MDz7D6raQmUS2K+B5Outv2BqMoemK4SMNFPPiZ
-	Kx3I/oSkVShuLwxxUWRImuEdFSfzkHesBXrDHuWDOy7YJyDiVe2zQU4FK+YkHIrUeCHw75sz6z+
-	6hw7vshbdfQfQoTfDT2AKOG4OdGBF1wTF5UYh2V+l6U4BAUPwJmKLMa/2UBMUAA1J5vbWLcThAG
-	XJE6lWRbakbm7Z2Z6ZJ/gQ/VSBn40gyyWNcRgLlr/mJEr1YlTyi08TeB8SVvykuUlgB/01TgbWS
-	uVaYs2jBBg01qtHSx7EvwegrbXYYmpMhtfCJnrgvIjPJyJYF5EppOGaqspYTr3tJl2E6Seujwd2
-	222tFYpVsCwAwGfjZ38Xa9VxOWYHm8jmQUEPOQD7IasuNEwPa2/vGi4mgJraCX1RnG7oJZfzSWf
-	0IlB/w7qOM+QBVtW+MIuBGoS5BYS1ww06Y=
-X-Received: by 2002:a05:6808:1482:b0:4af:9364:b5a9 with SMTP id 5614622812f47-4c89ef83e00mr1743349b6e.6.1789474950362;
-        Tue, 15 Sep 2026 05:22:30 -0700 (PDT)
+        bh=jxHtlsw+kQepZhFpBSMgUw0/pZ1fEQpYZ38PLW/x1wk=;
+        b=FPqLgiIZN1VRaRGxerg6M5t3cMke1kbGj9hS8vCs124DvfOPKp5ydKrJ6r3R8i3lJm
+         Cymw6sqiUbMzYID5J471YY32WbaBHa+Qc5ehKsUvCk+WqX9EooCGfeXkXJAccmmFStLW
+         jZzRguGrYrsehLPNLs9OEOdtoYk3uNliPDDhKRz6osr6Rch/NtpGCFra2o63UXV+8k+s
+         pc9QJ7QYxhaO1CEMUFV1jxY+erRm8W/+uGLMzLbfpTeQbaz0uC/OA2kyGBnPHa0yrfV2
+         XPwuc0qbECkg60tOpx5OtHk+ocaxyeScZ7e0uYtUvEfKliuu2KDvWuQX5VVJQVBjlWfU
+         uoUQ==
+X-Gm-Message-State: AFuF++lqQLZ52oLEVBSqhneZMqqOoy2QU9cLunJSuUI6F+CSdR78IqVt
+	KbW36RYn9dv3hYuLyhtFhZBFLDsZJgd5l5qKne++Fg1cmLryjD+TsEn5xIRAu9iZJys=
+X-Gm-Gg: AYBFou3NIl3hbafbVTFqYJf/WJyvZG52j2OUNDkj3eqrpvjRfCXw+X2aJvj0JJvBRa2
+	cYkEYyzGEDZ7PTkGEFQw3YtDKj6cMohNFVan3ijwkulRF33YGszyqRDpZhJBroHe5aKZX1ZDOZU
+	LLqaizblGla0Bd2IqlLvEuZOpsHWvAF9Te1PKqSHYE6LNfQjvCiI9djkys9CDh/XWkBBLschip4
+	yPY6XF+X7RI1nM3/k4GYp7DQFevq3Lvsi2U7jzyog8GEX+BIe2A3RshL0KYgsxOv/L+KwMmpSWg
+	t3KvCZar4yuUxLX8ZrzJ4mLMvBBqoRMQxAn7DFcemhGf/F6wyBJBlEVq0yfMk3vnEvYbCgpOplC
+	YaASE6XKQtCIqlhPf6+gSbak2JjBTzzkWGQHlymgZCSR2S5s1LDY4h325CvFYbWOYpHEIjVjsRe
+	hSaWD7+JMx/DBWb3Q3IBbAKgLdTaJVN6AqqgbiFzWCmjvfSgHhePBQ8lb/xShFC0uL58tTiUsoU
+	liifDOwo8bEBBXcvGS/pymp2WEJ7el35Uw=
+X-Received: by 2002:a05:6808:150c:b0:4b3:8323:8cd8 with SMTP id 5614622812f47-4c7b2df8993mr4803313b6e.5.1789474951380;
+        Tue, 15 Sep 2026 05:22:31 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-4c32eb4274dsm13058260b6e.1.2026.09.15.05.22.29
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-4c32eb4274dsm13058260b6e.1.2026.09.15.05.22.30
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 15 Sep 2026 05:22:30 -0700 (PDT)
+        Tue, 15 Sep 2026 05:22:31 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
@@ -67,9 +67,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Mike Snitzer <snitzer@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>,
 	Junrui Luo <moonafterrain@outlook.com>
-Subject: [PATCH v4 01/24] NFSv4/pnfs: Free the netid when draining a data-server address list
-Date: Tue, 15 Sep 2026 08:22:03 -0400
-Message-ID: <a632abafa316914b7e4f979e6cc3b83d42341137.1789474702.git.bcodding@hammerspace.com>
+Subject: [PATCH v4 02/24] NFSv4/flexfiles: Use the full 64-bit stripe_unit
+Date: Tue, 15 Sep 2026 08:22:04 -0400
+Message-ID: <1a3e67cb84b077078b4f57425c1475744cc820d2.1789474702.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1789474702.git.bcodding@hammerspace.com>
 References: <cover.1789474702.git.bcodding@hammerspace.com>
@@ -81,148 +81,80 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-nfs4_pnfs_ds_addr_free() releases all three of an address entry's
-allocations, but the four sites that drain a decoded list before it
-reaches a data server open-code the loop and free only da_remotestr and
-the entry, leaking da_netid.  Both layout drivers drain that list when
-nfs4_pnfs_ds_add() returned a data server already in the cache, and
-again on their error exits.
+ff_layout_alloc_lseg() decodes stripe_unit as the 64-bit value the
+protocol defines and struct nfs4_ff_layout_segment stores it as one, but
+both consumers narrow it back to 32 bits: nfs4_ff_layout_calc_dss_id()
+divides with do_div(), which casts the divisor, and ff_layout_pg_test()
+copies it into a u32 first.  A stripe_unit that does not fit is silently
+truncated, so the client stripes on a unit the server did not specify --
+or divides by zero, if the low 32 bits happen to be clear.
 
-Lift the drain into nfs4_pnfs_ds_addr_list_free() so an address list has
-one owner.  A striping mount reaches the cached case on nearly every
-GETDEVICEINFO, since many deviceIDs name the same data servers.
+Divide by the full value, with div64_u64() and div64_u64_rem().
 
-Fixes: 4be78d26810b ("NFSv4/pNFS: Store the transport type in struct nfs4_pnfs_ds_addr")
+Fixes: 20b1d75fb840 ("NFSv4/flexfiles: Add support for striped layouts")
 Cc: stable@vger.kernel.org
-Assisted-by: Claude:claude-opus-5
+Assisted-by: Claude:claude-fable-5
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/filelayout/filelayoutdev.c         | 17 ++---------------
- fs/nfs/flexfilelayout/flexfilelayoutdev.c | 17 ++---------------
- fs/nfs/pnfs.h                             |  1 +
- fs/nfs/pnfs_nfs.c                         | 21 +++++++++++++--------
- 4 files changed, 18 insertions(+), 38 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 12 ++++++------
+ fs/nfs/flexfilelayout/flexfilelayout.h |  2 +-
+ 2 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/filelayoutdev.c
-index 88bc79ec3459..57e0654cd98c 100644
---- a/fs/nfs/filelayout/filelayoutdev.c
-+++ b/fs/nfs/filelayout/filelayoutdev.c
-@@ -177,27 +177,14 @@ nfs4_fl_alloc_deviceid_node(struct nfs_server *server, struct pnfs_device *pdev,
- 		trace_fl_getdevinfo(server, &pdev->dev_id, dsaddr->ds_list[i]->ds_remotestr);
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 7fe8b91fa47c..54ee8f6051ee 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -995,9 +995,9 @@ ff_layout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ {
+ 	unsigned int size;
+ 	u64 p_stripe, r_stripe;
+-	u32 stripe_offset;
++	u64 stripe_offset;
+ 	u64 segment_offset = pgio->pg_lseg->pls_range.offset;
+-	u32 stripe_unit = FF_LAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
++	u64 stripe_unit = FF_LAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
  
- 		/* If DS was already in cache, free ds addrs */
--		while (!list_empty(&dsaddrs)) {
--			da = list_first_entry(&dsaddrs,
--					      struct nfs4_pnfs_ds_addr,
--					      da_node);
--			list_del_init(&da->da_node);
--			kfree(da->da_remotestr);
--			kfree(da);
--		}
-+		nfs4_pnfs_ds_addr_list_free(&dsaddrs);
+ 	/* calls nfs_generic_pg_test */
+ 	size = pnfs_generic_pg_test(pgio, prev, req);
+@@ -1010,21 +1010,21 @@ ff_layout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	if (prev) {
+ 		p_stripe = (u64)req_offset(prev) - segment_offset;
+ 		r_stripe = (u64)req_offset(req) - segment_offset;
+-		do_div(p_stripe, stripe_unit);
+-		do_div(r_stripe, stripe_unit);
++		p_stripe = div64_u64(p_stripe, stripe_unit);
++		r_stripe = div64_u64(r_stripe, stripe_unit);
+ 
+ 		if (p_stripe != r_stripe)
+ 			return 0;
  	}
  
- 	folio_put(scratch);
- 	return dsaddr;
- 
- out_err_drain_dsaddrs:
--	while (!list_empty(&dsaddrs)) {
--		da = list_first_entry(&dsaddrs, struct nfs4_pnfs_ds_addr,
--				      da_node);
--		list_del_init(&da->da_node);
--		kfree(da->da_remotestr);
--		kfree(da);
--	}
-+	nfs4_pnfs_ds_addr_list_free(&dsaddrs);
- out_err_free_deviceid:
- 	nfs4_fl_free_deviceid(dsaddr);
- 	/* stripe_indicies was part of dsaddr */
-diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index 5c0216bd5fce..6cd3859d4a24 100644
---- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-@@ -159,26 +159,13 @@ nfs4_ff_alloc_deviceid_node(struct nfs_server *server, struct pnfs_device *pdev,
- 		goto out_err_drain_dsaddrs;
- 
- 	/* If DS was already in cache, free ds addrs */
--	while (!list_empty(&dsaddrs)) {
--		da = list_first_entry(&dsaddrs,
--				      struct nfs4_pnfs_ds_addr,
--				      da_node);
--		list_del_init(&da->da_node);
--		kfree(da->da_remotestr);
--		kfree(da);
--	}
-+	nfs4_pnfs_ds_addr_list_free(&dsaddrs);
- 
- 	folio_put(scratch);
- 	return new_ds;
- 
- out_err_drain_dsaddrs:
--	while (!list_empty(&dsaddrs)) {
--		da = list_first_entry(&dsaddrs, struct nfs4_pnfs_ds_addr,
--				      da_node);
--		list_del_init(&da->da_node);
--		kfree(da->da_remotestr);
--		kfree(da);
--	}
-+	nfs4_pnfs_ds_addr_list_free(&dsaddrs);
- 
- 	kfree(ds_versions);
- out_scratch:
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 70d20f779678..5725ea06efc2 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -427,6 +427,7 @@ int nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
- struct nfs4_pnfs_ds_addr *nfs4_decode_mp_ds_addr(struct net *net,
- 						 struct xdr_stream *xdr,
- 						 gfp_t gfp_flags);
-+void nfs4_pnfs_ds_addr_list_free(struct list_head *dsaddrs);
- void pnfs_layout_mark_request_commit(struct nfs_page *req,
- 				     struct pnfs_layout_segment *lseg,
- 				     struct nfs_commit_info *cinfo,
-diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index 93d63f75a355..5bd014b981bf 100644
---- a/fs/nfs/pnfs_nfs.c
-+++ b/fs/nfs/pnfs_nfs.c
-@@ -633,23 +633,28 @@ static void nfs4_pnfs_ds_addr_free(struct nfs4_pnfs_ds_addr *da)
- 	kfree(da);
+ 	/* calculate remaining bytes in the current stripe */
+-	div_u64_rem((u64)req_offset(req) - segment_offset,
++	div64_u64_rem((u64)req_offset(req) - segment_offset,
+ 			stripe_unit,
+ 			&stripe_offset);
+ 	WARN_ON_ONCE(stripe_offset > stripe_unit);
+ 	if (stripe_offset >= stripe_unit)
+ 		return 0;
+-	return min(stripe_unit - (unsigned int)stripe_offset, size);
++	return min_t(u64, stripe_unit - stripe_offset, size);
  }
  
--static void destroy_ds(struct nfs4_pnfs_ds *ds)
-+void nfs4_pnfs_ds_addr_list_free(struct list_head *dsaddrs)
- {
- 	struct nfs4_pnfs_ds_addr *da;
+ static void
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
+index a5bd00f69e82..ec69cd1c3ae9 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.h
++++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+@@ -220,7 +220,7 @@ nfs4_ff_layout_calc_dss_id(const u64 stripe_unit, const u32 dss_count, const lof
+ 	if (dss_count == 1 || stripe_unit == 0)
+ 		return 0;
  
-+	while (!list_empty(dsaddrs)) {
-+		da = list_first_entry(dsaddrs, struct nfs4_pnfs_ds_addr,
-+				      da_node);
-+		list_del_init(&da->da_node);
-+		nfs4_pnfs_ds_addr_free(da);
-+	}
-+}
-+EXPORT_SYMBOL_GPL(nfs4_pnfs_ds_addr_list_free);
-+
-+static void destroy_ds(struct nfs4_pnfs_ds *ds)
-+{
- 	dprintk("--> %s\n", __func__);
- 	ifdebug(FACILITY)
- 		print_ds(ds);
+-	do_div(tmp, stripe_unit);
++	tmp = div64_u64(tmp, stripe_unit);
  
- 	nfs_put_client(ds->ds_clp);
- 
--	while (!list_empty(&ds->ds_addrs)) {
--		da = list_first_entry(&ds->ds_addrs,
--				      struct nfs4_pnfs_ds_addr,
--				      da_node);
--		list_del_init(&da->da_node);
--		nfs4_pnfs_ds_addr_free(da);
--	}
-+	nfs4_pnfs_ds_addr_list_free(&ds->ds_addrs);
- 
- 	kfree(ds->ds_remotestr);
- 	kfree(ds);
+ 	return do_div(tmp, dss_count);
+ }
 -- 
 2.53.0
 
