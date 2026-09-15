@@ -1,160 +1,208 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0EF043B27EA;
-	Tue, 15 Sep 2026 14:42:34 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9C3824A3F37
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 14:47:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789483355; cv=none; b=qHh1KdDbiLFf0xUdmSysSLVeQe2TGm+LIXParwDEtp3pgfsNqdR7ZgpxL7vxt4LDsh5Iq7iTnc8Hjeg2XoEWbLLVyGnTFi8qtym1mn5/CYEZytft8Mtv3kDdMIMJRB7vIyRjzXzGtoFUkdDNXx5emdE17mqtj3gH44Ub5YzJWcI=
+	t=1789483664; cv=none; b=ZQfRcgP2/c93xOMnWQuJGyqKvVxXXyCFhG9XJIfG+LgMV6GDa5q2nuxVvZ82f1roRSm+BzLZzrlp3RPoLRY1pu2C02+VWNID7Pjql73TXzh0kef+bEAyYiTaKkdOH7CpJctz761ehRCGefCNhDgQpHz3rxchFECeDZTVrtExNPY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789483355; c=relaxed/simple;
-	bh=ickl+2zDfTQbjyaPL4Rh/8CQDgE18ecbV/IT3WBI/i0=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=W/tGK5dhcRN5KTQM9JPMjqp7wwJ6uV7+eIZYhMYeNL8gNigzAYfOSdIrlJCyuS2imDFx2lY4/MFgt3Je2JSLH86X/15ph3GrigcZRsKl0WW/GkPB2mFy3x3CBzRG2w3t2tGShdOgZpq+t9Qg91xOHvY2jpz9csOiVFOH87C12Hk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=T3ZYfESF; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789483664; c=relaxed/simple;
+	bh=Dz504NV6RDiyHHkGauubdQ70HAZ2cN+AH7yOZD6VKog=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=ChMM5tXqtLg2rQKBU+BJrqMqSiTzQVkQr63go1wofRsh1J6lUQR1kuynZ6fdcX11ExJ3dbN4ikGkN1f8VKVjtrA/QQmQft6eAsEGZNiaPRAShJ3yQ2Nmd5ObO8+5IkT753RDNIv8alHrAN8GxY6ZRBrOjP19QyP9fkporpsSkUU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=A78gJzuB; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="T3ZYfESF"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 89A101F000FF;
-	Tue, 15 Sep 2026 14:42:33 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="A78gJzuB"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E68FD1F000FF;
+	Tue, 15 Sep 2026 14:47:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789483354;
-	bh=R6Sn9tHS94dBebsyQrNShHgYeNRxf1P570SRdVTEfsA=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=T3ZYfESFeN2nLeIfXS8QQoEGhu2itZJHHviQfmFLOXArzRHVflQCcNG1RXNRs8K7m
-	 jgNQpwgB+QpzhfAelVIxIA0NkOqP20iXKw5g8+VlBLKmOhPo+qV1FuC6s+bZZG9jBG
-	 gR4bjplbawqiFTimJTng0MVzCzE6kgA9Athf9/gb48y307UbzbGFqWycl4HN5wxDdb
-	 vboQUJ2Y4prtV0I0k17184QFMFmMzjT6WB+rgAVdiU8dI7LY2a2XPpBfWpwcSe98D4
-	 cJVr+69wbgqhEFkfDIetrAR55X10XCK04DLIrrBRC7Juy2xQcMBtdOlaqF89wRSbpH
-	 TctXK19IueJ5Q==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id A7D72F40067;
-	Tue, 15 Sep 2026 10:42:32 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Tue, 15 Sep 2026 10:42:32 -0400
-X-ME-Sender: <xms:WFmpapq-fTX069gJK3zZD5sx2V8KfEoFKNRSzWSAXlpZst3k2F74tA>
-    <xme:WFmpamdXT92d_jcCAIewSWQOtS7BqnBJAz5rHcr4iJ0prWCbifJ7vX1_fASlTuUIz
-    B4nwTUaDA_NKEAAoJfHFkWByeGH8lNofSORZLvxsOsnsCh5pnOhqi2E>
-X-ME-Proxy-Cause: dmFkZTFnQKWruoqqk1Bu2jqcyymJE52r+NTfuwTFKG9wmdAefwZ9tdYJWthsdezA2zXjdR
-    OUp48kSA6gqHI4cH2fJttWlxE44bW1k3jMj8YW7+h+6Pc+ebDHVTxjvf2QIlrKQmBOM2as
-    B1sfAA1OUJ8RWS8+wK+7GC3g5u9XLJ3Ek1vgugYzWxMVMAoISMxZAdj08CcR42qMbCQi/u
-    Z/VMDmpsPvmKRgOCYtXVLpRw5Cr3+rsEkMmgk812uRzxvplzr8W+ZcBKZanhN2ZoZT1WIa
-    hvEYoXMCxLzWgM/Q5daeLVqN8/VOyfHFtVtKpkkOQbQd20Av5rOZ1d0V7bcAD19sMwR3Zf
-    NME+qQIe2JpqbZq7VCLxNymNDM94nEFSRiFeu3gHE8QC9aSaP96cvQhBAhBT6S/6/m+izS
-    2agdldUlMFpY3Kcia4NRlVWkEMXQDjIw762y9lAm4x5K8nsC2xhO8y9EUWn7fLwgnx0ZWv
-    OpraxYvSIU3UZfQxQ7DaHRR89mqElQZiahMMOXHVDE1IS0RpoLL4q11jXVX8tXIGaHuxsh
-    TUfAOOkSxymxXzSWtvHsqhQNE1j7e/5OfISOfEtN5CgKBs8gnlqzWIzRR/2C2Ju61bBGze
-    TdyYoJLCwSTZT1PSj0dUwlWOS8p/6HpguVUanzB+FJ8aGT17tN6li4EfVytA
-X-ME-Proxy: <xmx:WFmpag5a5ETMFasqV-whpO_--49bSM9UwOX8rqKxb0qPbJMA4GstfA>
-    <xmx:WFmpaiWirLiQK3N4tUauf_PkE8qyDUS72K1EZ36goNynVH6EqdKJjg>
-    <xmx:WFmpagJEURR9eInt93df1ehLo4iSj83tXTu6O3J3K7tAtktykWZsOQ>
-    <xmx:WFmpasunV48NH90HhZhEoFFlYURwAmoXlxHmZbaWdiUqdQnDZat3YQ>
-    <xmx:WFmpalIM3fUMmxhmVV5TkAqntIfMltPV-XRveh7yAkWTdLD97sSZ_6JI>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 7C712780070; Tue, 15 Sep 2026 10:42:32 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1789483658;
+	bh=tIUaKZfocY+FVEv6gkr5Kcw7WCJNddaw5O3DiJWYivY=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=A78gJzuBh5TEw/7559dMFIEr0IkKMOrs3L8CroGFk09LNOCMKjCMFD8zXYpvu+JAK
+	 eIWABnnE3W/WszvPVMO+wS6s5Q22olma5b6ngTmFyeB/UK+o9fmIXFxx08T4zdqKfU
+	 R6ifoaHhSXfxbGce9JWh0MdW6NDVFOO2JdygezOMuAr9hS6uho1YmxJ/X+afz3+d7E
+	 TvJYBkvFdJDk8YJmBTk+Mo6Sooduu380atN8HjGoCHglVfDSt9hHd9ntHO3DxzGX9h
+	 Amvjmc7MHE6+sIiilO8yJZJ6Hnpkh6sLhJFXVamiIOwO6er1a9jC4oKbuqaFUVtOCw
+	 9pgq+R0JmGUyA==
+Message-ID: <200c2ed6b9c089b228f6c86a56d8973fd3efd720.camel@kernel.org>
+Subject: Re: [PATCH v1] sunrpc: pin gss module across auth_domain RCU free
+From: Jeff Layton <jlayton@kernel.org>
+To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
+ Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
+ Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org, Chris Mason <clm@meta.com>
+Date: Tue, 15 Sep 2026 10:47:36 -0400
+In-Reply-To: <20260913160706.384180-1-cel@kernel.org>
+References: <20260913160706.384180-1-cel@kernel.org>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
+ n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
+ egyjnSsFt7EGoDjdKqr1TS9syJYFjagYtvWk/UfHlW09X+jOh4vYtfX7iYSx/NfqV3W1D7EDi0PqV
+ T2h6v8i8YqsATFPwO4nuiTmL6I40ZofxVd+9wdRI4Db8yUNA4ZSP2nqLcLtFjClYRBoJvRWvsv4lm
+ 0OX6MYPtv76hka8lW4mnRmZqqx3UtfHX/hF/zH24Gj7A6sYKYLCU3YrI2Ogiu7/ksKcl7goQjpvtV
+ YrOOI5VGLHge0awt7bhMCTM9KAfPc+xL/ZxAMVWd3NCk5SamL2cE99UWgtvNOIYU8m6EjTLhsj8sn
+ VluJH0/RcxEeFbnSaswVChNSGa7mXJrTR22lRL6ZPjdMgS2Km90haWPRc8Wolcz07Y2se0xpGVLEQ
+ cDEsvv5IMmeMe1/qLZ6NaVkNuL3WOXvxaVT9USW1+/SGipO2IpKJjeDZfehlB/kpfF24+RrK+seQf
+ CBYyUE8QJpvTZyfUHNYldXlrjO6n5MdOempLqWpfOmcGkwnyNRBR46g/jf8KnPRwXs509yAqDB6sE
+ LZH+yWr9LQZEwARAQABtCVKZWZmIExheXRvbiA8amxheXRvbkBwb29jaGllcmVkcy5uZXQ+iQI7BB
+ MBAgAlAhsDBgsJCAcDAgYVCAIJCgsEFgIDAQIeAQIXgAUCTpXWPAIZAQAKCRAADmhBGVaCFc65D/4
+ gBLNMHopQYgG/9RIM3kgFCCQV0pLv0hcg1cjr+bPI5f1PzJoOVi9s0wBDHwp8+vtHgYhM54yt43uI
+ 7Htij0RHFL5eFqoVT4TSfAg2qlvNemJEOY0e4daljjmZM7UtmpGs9NN0r9r50W82eb5Kw5bc/r0km
+ R/arUS2st+ecRsCnwAOj6HiURwIgfDMHGPtSkoPpu3DDp/cjcYUg3HaOJuTjtGHFH963B+f+hyQ2B
+ rQZBBE76ErgTDJ2Db9Ey0kw7VEZ4I2nnVUY9B5dE2pJFVO5HJBMp30fUGKvwaKqYCU2iAKxdmJXRI
+ ONb7dSde8LqZahuunPDMZyMA5+mkQl7kpIpR6kVDIiqmxzRuPeiMP7O2FCUlS2DnJnRVrHmCljLkZ
+ Wf7ZUA22wJpepBligemtSRSbqCyZ3B48zJ8g5B8xLEntPo/NknSJaYRvfEQqGxgk5kkNWMIMDkfQO
+ lDSXZvoxqU9wFH/9jTv1/6p8dHeGM0BsbBLMqQaqnWiVt5mG92E1zkOW69LnoozE6Le+12DsNW7Rj
+ iR5K+27MObjXEYIW7FIvNN/TQ6U1EOsdxwB8o//Yfc3p2QqPr5uS93SDDan5ehH59BnHpguTc27Xi
+ QQZ9EGiieCUx6Zh2ze3X2UW9YNzE15uKwkkuEIj60NvQRmEDfweYfOfPVOueC+iFifbQgSmVmZiBM
+ YXl0b24gPGpsYXl0b25AcmVkaGF0LmNvbT6JAjgEEwECACIFAk6V0q0CGwMGCwkIBwMCBhUIAgkKC
+ wQWAgMBAh4BAheAAAoJEAAOaEEZVoIViKUQALpvsacTMWWOd7SlPFzIYy2/fjvKlfB/Xs4YdNcf9q
+ LqF+lk2RBUHdR/dGwZpvw/OLmnZ8TryDo2zXVJNWEEUFNc7wQpl3i78r6UU/GUY/RQmOgPhs3epQC
+ 3PMJj4xFx+VuVcf/MXgDDdBUHaCTT793hyBeDbQuciARDJAW24Q1RCmjcwWIV/pgrlFa4lAXsmhoa
+ c8UPc82Ijrs6ivlTweFf16VBc4nSLX5FB3ls7S5noRhm5/Zsd4PGPgIHgCZcPgkAnU1S/A/rSqf3F
+ LpU+CbVBDvlVAnOq9gfNF+QiTlOHdZVIe4gEYAU3CUjbleywQqV02BKxPVM0C5/oVjMVx3bri75n1
+ TkBYGmqAXy9usCkHIsG5CBHmphv9MHmqMZQVsxvCzfnI5IO1+7MoloeeW/lxuyd0pU88dZsV/riHw
+ 87i2GJUJtVlMl5IGBNFpqoNUoqmvRfEMeXhy/kUX4Xc03I1coZIgmwLmCSXwx9MaCPFzV/dOOrju2
+ xjO+2sYyB5BNtxRqUEyXglpujFZqJxxau7E0eXoYgoY9gtFGsspzFkVNntamVXEWVVgzJJr/EWW0y
+ +jNd54MfPRqH+eCGuqlnNLktSAVz1MvVRY1dxUltSlDZT7P2bUoMorIPu8p7ZCg9dyX1+9T6Muc5d
+ Hxf/BBP/ir+3e8JTFQBFOiLNdFtB9KZWZmIExheXRvbiA8amxheXRvbkBzYW1iYS5vcmc+iQI4BBM
+ BAgAiBQJOldK9AhsDBgsJCAcDAgYVCAIJCgsEFgIDAQIeAQIXgAAKCRAADmhBGVaCFWgWD/0ZRi4h
+ N9FK2BdQs9RwNnFZUr7JidAWfCrs37XrA/56olQl3ojn0fQtrP4DbTmCuh0SfMijB24psy1GnkPep
+ naQ6VRf7Dxg/Y8muZELSOtsv2CKt3/02J1BBitrkkqmHyni5fLLYYg6fub0T/8Kwo1qGPdu1hx2BQ
+ RERYtQ/S5d/T0cACdlzi6w8rs5f09hU9Tu4qV1JLKmBTgUWKN969HPRkxiojLQziHVyM/weR5Reu6
+ FZVNuVBGqBD+sfk/c98VJHjsQhYJijcsmgMb1NohAzwrBKcSGKOWJToGEO/1RkIN8tqGnYNp2G+aR
+ 685D0chgTl1WzPRM6mFG1+n2b2RR95DxumKVpwBwdLPoCkI24JkeDJ7lXSe3uFWISstFGt0HL8Eew
+ P8RuGC8s5h7Ct91HMNQTbjgA+Vi1foWUVXpEintAKgoywaIDlJfTZIl6Ew8ETN/7DLy8bXYgq0Xzh
+ aKg3CnOUuGQV5/nl4OAX/3jocT5Cz/OtAiNYj5mLPeL5z2ZszjoCAH6caqsF2oLyAnLqRgDgR+wTQ
+ T6gMhr2IRsl+cp8gPHBwQ4uZMb+X00c/Amm9VfviT+BI7B66cnC7Zv6Gvmtu2rEjWDGWPqUgccB7h
+ dMKnKDthkA227/82tYoFiFMb/NwtgGrn5n2vwJyKN6SEoygGrNt0SI84y6hEVbQlSmVmZiBMYXl0b
+ 24gPGpsYXl0b25AcHJpbWFyeWRhdGEuY29tPokCOQQTAQIAIwUCU4xmKQIbAwcLCQgHAwIBBhUIAg
+ kKCwQWAgMBAh4BAheAAAoJEAAOaEEZVoIV1H0P/j4OUTwFd7BBbpoSp695qb6HqCzWMuExsp8nZjr
+ uymMaeZbGr3OWMNEXRI1FWNHMtcMHWLP/RaDqCJil28proO+PQ/yPhsr2QqJcW4nr91tBrv/MqItu
+ AXLYlsgXqp4BxLP67bzRJ1Bd2x0bWXurpEXY//VBOLnODqThGEcL7jouwjmnRh9FTKZfBDpFRaEfD
+ FOXIfAkMKBa/c9TQwRpx2DPsl3eFWVCNuNGKeGsirLqCxUg5kWTxEorROppz9oU4HPicL6rRH22Ce
+ 6nOAON2vHvhkUuO3GbffhrcsPD4DaYup4ic+DxWm+DaSSRJ+e1yJvwi6NmQ9P9UAuLG93S2MdNNbo
+ sZ9P8k2mTOVKMc+GooI9Ve/vH8unwitwo7ORMVXhJeU6Q0X7zf3SjwDq2lBhn1DSuTsn2DbsNTiDv
+ qrAaCvbsTsw+SZRwF85eG67eAwouYk+dnKmp1q57LDKMyzysij2oDKbcBlwB/TeX16p8+LxECv51a
+ sjS9TInnipssssUDrHIvoTTXWcz7Y5wIngxDFwT8rPY3EggzLGfK5Zx2Q5S/N0FfmADmKknG/D8qG
+ IcJE574D956tiUDKN4I+/g125ORR1v7bP+OIaayAvq17RP+qcAqkxc0x8iCYVCYDouDyNvWPGRhbL
+ UO7mlBpjW9jK9e2fvZY9iw3QzIPGKtClKZWZmIExheXRvbiA8amVmZi5sYXl0b25AcHJpbWFyeWRh
+ dGEuY29tPokCOQQTAQIAIwUCU4xmUAIbAwcLCQgHAwIBBhUIAgkKCwQWAgMBAh4BAheAAAoJEAAOa
+ EEZVoIVzJoQALFCS6n/FHQS+hIzHIb56JbokhK0AFqoLVzLKzrnaeXhE5isWcVg0eoV2oTScIwUSU
+ apy94if69tnUo4Q7YNt8/6yFM6hwZAxFjOXR0ciGE3Q+Z1zi49Ox51yjGMQGxlakV9ep4sV/d5a50
+ M+LFTmYSAFp6HY23JN9PkjVJC4PUv5DYRbOZ6Y1+TfXKBAewMVqtwT1Y+LPlfmI8dbbbuUX/kKZ5d
+ dhV2736fgyfpslvJKYl0YifUOVy4D1G/oSycyHkJG78OvX4JKcf2kKzVvg7/Rnv+AueCfFQ6nGwPn
+ 0P91I7TEOC4XfZ6a1K3uTp4fPPs1Wn75X7K8lzJP/p8lme40uqwAyBjk+IA5VGd+CVRiyJTpGZwA0
+ jwSYLyXboX+Dqm9pSYzmC9+/AE7lIgpWj+3iNisp1SWtHc4pdtQ5EU2SEz8yKvDbD0lNDbv4ljI7e
+ flPsvN6vOrxz24mCliEco5DwhpaaSnzWnbAPXhQDWb/lUgs/JNk8dtwmvWnqCwRqElMLVisAbJmC0
+ BhZ/Ab4sph3EaiZfdXKhiQqSGdK4La3OTJOJYZphPdGgnkvDV9Pl1QZ0ijXQrVIy3zd6VCNaKYq7B
+ AKidn5g/2Q8oio9Tf4XfdZ9dtwcB+bwDJFgvvDYaZ5bI3ln4V3EyW5i2NfXazz/GA/I/ZtbsigCFc
+ 8ftCBKZWZmIExheXRvbiA8amxheXRvbkBrZXJuZWwub3JnPokCOAQTAQIAIgUCWe8u6AIbAwYLCQg
+ HAwIGFQgCCQoLBBYCAwECHgECF4AACgkQAA5oQRlWghUuCg/+Lb/xGxZD2Q1oJVAE37uW308UpVSD
+ 2tAMJUvFTdDbfe3zKlPDTuVsyNsALBGclPLagJ5ZTP+Vp2irAN9uwBuacBOTtmOdz4ZN2tdvNgozz
+ uxp4CHBDVzAslUi2idy+xpsp47DWPxYFIRP3M8QG/aNW052LaPc0cedYxp8+9eiVUNpxF4SiU4i9J
+ DfX/sn9XcfoVZIxMpCRE750zvJvcCUz9HojsrMQ1NFc7MFT1z3MOW2/RlzPcog7xvR5ENPH19ojRD
+ CHqumUHRry+RF0lH00clzX/W8OrQJZtoBPXv9ahka/Vp7kEulcBJr1cH5Wz/WprhsIM7U9pse1f1g
+ Yy9YbXtWctUz8uvDR7shsQxAhX3qO7DilMtuGo1v97I/Kx4gXQ52syh/w6EBny71CZrOgD6kJwPVV
+ AaM1LRC28muq91WCFhs/nzHozpbzcheyGtMUI2Ao4K6mnY+3zIuXPygZMFr9KXE6fF7HzKxKuZMJO
+ aEZCiDOq0anx6FmOzs5E6Jqdpo/mtI8beK+BE7Va6ni7YrQlnT0i3vaTVMTiCThbqsB20VrbMjlhp
+ f8lfK1XVNbRq/R7GZ9zHESlsa35ha60yd/j3pu5hT2xyy8krV8vGhHvnJ1XRMJBAB/UYb6FyC7S+m
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AgpFG2YqzZmg
-Date: Tue, 15 Sep 2026 10:42:07 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: tmenninger@purestorage.com
-Cc: "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>, "Tejun Heo" <tj@kernel.org>,
- "Lai Jiangshan" <jiangshanlai@gmail.com>, linux-nfs@vger.kernel.org,
- linux-kernel@vger.kernel.org, "Eric Badger" <ebadger@everpuredata.com>,
- "Jon Curley" <jcurley@everpuredata.com>
-Message-Id: <0e2f9688-097c-4bb9-a7ec-82b41bdb3653@slotpi15m67>
-In-Reply-To: <20260914173958.2045683-1-tmenninger@purestorage.com>
-References: <611738b5-e115-4531-8d08-62607dc7f8ff@slotpi15m67>
- <20260914173958.2045683-1-tmenninger@purestorage.com>
-Subject: Re: [PATCH RFC 6/8] SUNRPC: Reduce rpciod workqueue contention
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
 
-On Mon, 14 Sep 2026, Tim Menninger wrote:
-> If I am understanding correctly, the SLUB/barn/sheaf behavior we are
-> looking at here is pre-existing rather than introduced by this series.
-> The SMT affinity change is what changes the placement enough to expose
-> the remote-free cost on this workload.
+On Sun, 2026-09-13 at 12:07 -0400, Chuck Lever wrote:
+> From: Chris Mason <clm@meta.com>
+>=20
+> A gss auth_domain stores a raw pointer to svcauthops_gss in
+> dom->flavour, and its release queues svcauth_gss_domain_release_rcu()
+> via call_rcu(). Both live in auth_rpcgss.ko text, and nothing pins the
+> module while a domain referencing it is reachable. rmmod auth_rpcgss
+> can therefore unmap that text while an NFSD export still holds a
+> reference to the domain.
+>=20
+> The export cache is one such holder. When the export is finally
+> released, the domain reference drops from module text:
+>=20
+>     svc_export_put()
+>       auth_domain_put(exp->ex_client)
+>         auth_domain_release()
+>           dom->flavour->domain_release(dom)   /* into module text */
+>             svcauth_gss_domain_release()
+>               call_rcu(&dom->rcu_head,
+>                        svcauth_gss_domain_release_rcu)
+>=20
+> Once auth_rpcgss is unloaded, the domain_release call lands in
+> unmapped memory. The rcu_barrier() in exit_rpcsec_gss() does not
+> help: it waits only for callbacks already queued, and this one is
+> not queued until the export goes away.
+>=20
+> NFSD's NFSv4 objects import symbols from auth_rpcgss.ko, so only a
+> server built without CONFIG_NFSD_V4 can unload auth_rpcgss while
+> exports still name a gss domain.
+>=20
+> Take a module reference in svcauth_gss_register_pseudoflavor() before
+> publishing the domain and drop it at the end of
+> svcauth_gss_domain_release_rcu(). The rcu_barrier() then holds the
+> module image until this callback has returned.
+>=20
+> Fixes: 608a0ab2f54a ("SUNRPC: Add lockless lookup of the server's auth do=
+main")
+> Assisted-by: kres:claude-opus-4-7
+> Signed-off-by: Chris Mason <clm@meta.com>
+> [ cel: rewrote description ]
+> Signed-off-by: Chuck Lever <cel@kernel.org>
+> ---
+>  net/sunrpc/auth_gss/svcauth_gss.c | 8 ++++++++
+>  1 file changed, 8 insertions(+)
+>=20
+> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svca=
+uth_gss.c
+> index b319c4423d78..43839e805531 100644
+> --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> @@ -824,12 +824,18 @@ svcauth_gss_register_pseudoflavor(u32 pseudoflavor,=
+ char * name)
+>  	new->h.flavour =3D &svcauthops_gss;
+>  	new->pseudoflavor =3D pseudoflavor;
+> =20
+> +	if (!try_module_get(svcauthops_gss.owner)) {
+> +		stat =3D -ENODEV;
+> +		goto out_free_name;
+> +	}
+> +
+>  	test =3D auth_domain_lookup(name, &new->h);
+>  	if (test !=3D &new->h) {
+>  		pr_warn("svc: duplicate registration of gss pseudo flavour %s.\n",
+>  			name);
+>  		stat =3D -EADDRINUSE;
+>  		auth_domain_put(test);
+> +		module_put(svcauthops_gss.owner);
+>  		goto out_free_name;
+>  	}
+>  	return test;
+> @@ -2004,9 +2010,11 @@ svcauth_gss_domain_release_rcu(struct rcu_head *he=
+ad)
+>  {
+>  	struct auth_domain *dom =3D container_of(head, struct auth_domain, rcu_=
+head);
+>  	struct gss_domain *gd =3D container_of(dom, struct gss_domain, h);
+> +	struct module *owner =3D dom->flavour->owner;
+> =20
+>  	kfree(dom->name);
+>  	kfree(gd);
+> +	module_put(owner);
+>  }
+> =20
+>  static void
 
-That is the basic idea, but there are nuances. Split it into
-three pieces with different owners:
-
-1. The list_lock contention is pre-existing and does not bound
-throughput. Your numbers show it directly:
-
-                            unpinned    node0 pinned
-    contentions             3.346M         3.353M
-    aggregate wait          5.05 min       4.01 min
-    node 0 idle             0-2%           66%
-    throughput              43.4 GB/s      46.5 GB/s
-
-The lock is taken just as often in the run that has full
-throughput and two thirds of node 0 idle.
-
-I have since reproduced the acquisition rate here, on a single-node
-EPYC 8224P (24c/48t) reading direct 1M blocks over NFS/RDMA at
-12 GB/s, with the barn depth made a runtime knob and
-CONFIG_SLUB_STATS on. At depth 1, 28% of barn puts fail and
-free_add_partial takes list_lock 5.0M times per 10 seconds, the
-same order as your 3.35M contended acquisitions. Total wait on the
-lock in that window was 36 ms, and throughput did not change at any
-depth from 1 to 64, nor with the work spread across all 48 CPUs,
-nor with 16x the in-flight population at iodepth 256.
-
-So the acquisition rate is ordinary. What is not ordinary is your
-72 us average wait, against about 7 ns here. That is an allocator
-question, and I'd like to take it to linux-mm with your numbers.
-More on that below.
-
-2. The throughput loss in the all-local placement comes from the
-70M remote frees per 10 seconds, not from the lock. Pinning the
-workload to node 0 removed the remote frees, returned 3 GB/s, and
-left node 0 two thirds idle with the lock profile unchanged. That
-cost is a function of where the CQs land relative to the
-application threads, which the RDMA core decides at connect time,
-and it exists with or without this series.
-
-3. The smt scope costs a further 4 GB/s in that same placement
-(43 vs 47 on your scope ladder), and nothing in the slab data
-explains it: the frees stay on node 0 under both smt and
-cache_shard, so the scope is not what moves them across nodes. I
-don't have an explanation.
-
-Since you have a robust reproducer, can you take this to the
-linux-mm list (cc me) with the following three items (no new runs
-needed for the first two):
-
-- The debug config. Any of these lengthens every list_lock hold
-  without disabling sheaves:
-
-      zcat /proc/config.gz | grep -E \
-          'DEBUG_SPINLOCK|DEBUG_LIST|PROVE_LOCKING|LOCK_STAT|KASAN'
-
-- The CPU model and socket count.
-
-- A cmpxchg_double_fail delta from /sys/kernel/slab/nfs_page over
-  the same 10-second window as your other counters. __slab_free
-  drops list_lock and retries when the freelist cmpxchg fails, so
-  a large number there means each logical free costs several lock
-  acquisitions. Mine was under a hundred.
-
-One more thing I can't reconcile: 4.01 minutes of wait inside a
-10-second window is 240 CPU-seconds, half of node 0's 48 threads
-for the whole window, which does not fit 66% idle. Were the perf
-lock capture and the mpstat sample the same 10 seconds, and did
-perf lock cover all 96 CPUs or only node 0? If the wait is real,
-node 0 spends half its time spinning even in the good run, and
-the lock is where the headroom goes once the remote frees load
-the node. If it is an artifact of the window, the lock costs less
-than the profile says, and the report to linux-mm is a simpler
-one.
-
-
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
