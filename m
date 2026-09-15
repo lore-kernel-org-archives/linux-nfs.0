@@ -1,233 +1,405 @@
-Received: from SN4PR0501CU005.outbound.protection.outlook.com (mail-southcentralusazon11011048.outbound.protection.outlook.com [40.93.194.48])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 27F7F430797;
-	Tue, 15 Sep 2026 17:16:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=40.93.194.48
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789492601; cv=fail; b=Pu0Mero69KwtzqwA4giaUb6Qe+8/hGklkaMC0WAltUFsuD4/1UcmDo3UasDXffvXOCx8dpc6ktukGqBXxi3FybUsuZbSuhdbHAG2jtv39fqZypo6ta/8+zlFztiEDHuKL8IWgrOMcjid27DqwRIlXa6DUjMDxhtYpRbEJLaSnBo=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789492601; c=relaxed/simple;
-	bh=lAG5PWlEvtkrE2F/SVDUQjPZ8tQfnncU/ewAzv1Uupg=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=dGdp3sWlQxO0yVRAdIJn5KFjqxi42FiV+fK4HiBT1U+2CbCQ9eXSoB6QAoEtIhD3Sh5kW/m69lCWgVzhpYLQUt/MHX3s1CzTFqNG8TRXL0arXWCmxii1ENZdeU/BQ/qSw1++s0IXXblEBC2XLnrezcY98qN9JNxu9mJVDfglSfM=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=nvidia.com; spf=fail smtp.mailfrom=nvidia.com; dkim=pass (2048-bit key) header.d=Nvidia.com header.i=@Nvidia.com header.b=qdjnEuZm; arc=fail smtp.client-ip=40.93.194.48
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=nvidia.com
-Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=nvidia.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4D5714A4413
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 17:30:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1789493408; cv=none; b=rpvX2xaxhBZUR8Qp24h8MtaLZX/WWoEtEYogcnEyLodlRC1ipOmxU9x5TKWJmhcC51Q183uvoKLy8jgXOY9ys35QwNRUrj0I6RbgD/5OIwL3QvQTBvMZDJQogPPGgAMx2zGhf4pKIMkvkIRYDRGOmqoG1cUQbjpyo5nnimBRvoQ=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1789493408; c=relaxed/simple;
+	bh=22iV3pgmTpfFmHkwzGyyha0eRrjW4KKS7l+8F5rU/n8=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=nTYQ5hmrWtvaIZVcRVpyklS744ajdjVglB9QhhT8WUxKcVPK4QK4Fsm3qMxUt46fSvcrRuKe+AU1u3vFHqFmcAKeKWLrj8CLlQgySUGE6tGe1x9RpxEjN2t8M7wrR5flt6Je3sYOvsqBv0zI5Fa8nE/U9yXjNbstvpg9t8mTGmw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=DiEJKGM2; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=Nvidia.com header.i=@Nvidia.com header.b="qdjnEuZm"
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=iwwFsvFOloHx4altECsYutAjbApJwPPXiD6QFXUizuENJtzyIE8exaKrZDcNq5I7j1CLZzN3u3ISD6WbMfmpsUQmCJN4RckcRofY0QshFZrbmhoHbkvQRop+h5YKS4kEBvdfiak61L/wb9hjmyJeZtvcGY5jTfRGI+aULIZfGXZZgbhOIgFJ3Jo0saNgmRlfEd7RZFz3v9ZPsHti4brKICSnAb8UPjO1ocO8ZFz49Dd2j8K+ZJviXuuGfO78cqEl0vyoC0pMRQ0iUke1SRVEdlfpkGjgpoL5TUmVYOmDQUI/Rod8n93gL5h8XE6gRHEW1s66fNlcnu8KTVQAGxqagQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=gm4A0dC/cSIZYi95VVuBQCnE1WnlU3ZJPlPGzxqmmdc=;
- b=izs3jKvQd2SPtIHCbqSzFGoF/iXmI728U1Xlv4NuvE2aWCWp99y+/8UF7Z4R9btCS7XEV6S7MzB5QgrnbKYyDjDw4I22mF0e9yYLUWo6LsxQeAotR+60Ij38OCq8+Xxs9bPppAHUMkXoVgQtJLufv3wqxE/Q1NhsjkzA/WYubFdA+bGMA3TPA64vVgRIvjsPkXsQ4+qsoih20yCJz5VqC5FsmYVrVMuzBh42bO6fXBfbrwwwx5Vbn9AOUQ8vukhRFj86KXZuvZ5X3d85hIbyOAHQVN14MjH1edvzJfPG0QWrkK4uKQP3TT+UFB9yeLBGWXmT7WGnN2xRkrx9vaAV5w==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=nvidia.com; dmarc=pass action=none header.from=nvidia.com;
- dkim=pass header.d=nvidia.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=Nvidia.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=gm4A0dC/cSIZYi95VVuBQCnE1WnlU3ZJPlPGzxqmmdc=;
- b=qdjnEuZm+PoCkspfNOFNWfGpWz5qPUaQuoTEkOpTbi+fqdQpJTQt+C4lxiilcFDnbfSiq+FGTV+fRSmCE/TCUpCLM6y/p2UBuSMu0zsZ3TVemN8SDX3CAV2s4+WZnt7LA6f2dTjX2Cyu/P/qopUr95wEH9C9IV+34J9UMfEdRrJ6BVu2Nuxo524O9pQxU/y5dJDMca7N0gyUn0b+XTcLZfM0vuag7Io98Q0jH5Ll6bqWVefpOdaDuKZvyIJkomyuTSTVq/N2StADM738facGw9b6wKIZeOjGvklwX1BS5eUtzGbKAADcRCCRvX30ruvmlVg4sgMNeiqiuzwDIZ++Lg==
-Authentication-Results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=nvidia.com;
-Received: from DS7PR12MB8371.namprd12.prod.outlook.com (2603:10b6:8:e9::18) by
- PH7PR12MB9102.namprd12.prod.outlook.com (2603:10b6:510:2f8::14) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.406.12; Tue, 15 Sep
- 2026 17:16:14 +0000
-Received: from DS7PR12MB8371.namprd12.prod.outlook.com
- ([fe80::23d7:9e07:1de8:d80a]) by DS7PR12MB8371.namprd12.prod.outlook.com
- ([fe80::23d7:9e07:1de8:d80a%3]) with mapi id 15.21.0406.007; Tue, 15 Sep 2026
- 17:16:14 +0000
-From: Zi Yan <ziy@nvidia.com>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: David Hildenbrand <david@kernel.org>,
- "Matthew Wilcox (Oracle)" <willy@infradead.org>,
- Muchun Song <muchun.song@linux.dev>, Lorenzo Stoakes <ljs@kernel.org>,
- "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>,
- Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>,
- Michal Hocko <mhocko@suse.com>, Baolin Wang <baolin.wang@linux.alibaba.com>,
- Nico Pache <nico.pache@linux.dev>, Ryan Roberts <ryan.roberts@arm.com>,
- Dev Jain <dev.jain@arm.com>, Barry Song <baohua@kernel.org>,
- Lance Yang <lance.yang@linux.dev>, Usama Arif <usama.arif@linux.dev>,
- Gregory Price <gourry@gourry.net>, Ying Huang <ying.huang@linux.alibaba.com>,
- Alistair Popple <apopple@nvidia.com>, Johannes Weiner <hannes@cmpxchg.org>,
- Qi Zheng <qi.zheng@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>,
- Kairui Song <kasong@tencent.com>, linux-mm@kvack.org,
- linux-kernel@vger.kernel.org, Minchan Kim <minchan@kernel.org>,
- Sergey Senozhatsky <senozhatsky@chromium.org>,
- Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
- Arnaldo Carvalho de Melo <acme@kernel.org>,
- Namhyung Kim <namhyung@kernel.org>, Thomas Gleixner <tglx@kernel.org>,
- Borislav Petkov <bp@alien8.de>, Dave Hansen <dave.hansen@linux.intel.com>,
- x86@kernel.org, Mark Rutland <mark.rutland@arm.com>,
- Alexander Shishkin <alexander.shishkin@linux.intel.com>,
- Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>,
- Adrian Hunter <adrian.hunter@intel.com>,
- James Clark <james.clark@linaro.org>, "H. Peter Anvin" <hpa@zytor.com>,
- linux-perf-users@vger.kernel.org, Juergen Gross <jgross@suse.com>,
- Stefano Stabellini <sstabellini@kernel.org>,
- Oleksandr Tyshchenko <oleksandr_tyshchenko@epam.com>,
- xen-devel@lists.xenproject.org, Eric Biggers <ebiggers@kernel.org>,
- "Theodore Y. Ts'o" <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>,
- linux-fscrypt@vger.kernel.org, Oscar Salvador <osalvador@suse.de>,
- Chao Yu <chao@kernel.org>, linux-f2fs-devel@lists.sourceforge.net,
- Tal Zussman <tz2294@columbia.edu>, Gao Xiang <xiang@kernel.org>,
- Jan Kara <jack@suse.cz>, Yue Hu <zbestahu@gmail.com>,
- Jeffle Xu <jefflexu@linux.alibaba.com>, Sandeep Dhavale <dhavale@google.com>,
- Hongbo Li <hongbohbli@tencent.com>, Chunhai Guo <guochunhai@vivo.com>,
- linux-erofs@lists.ozlabs.org, linux-fsdevel@vger.kernel.org,
- Steven Rostedt <rostedt@goodmis.org>, Masami Hiramatsu <mhiramat@kernel.org>,
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
- Matthew Brost <matthew.brost@intel.com>,
- Joshua Hahn <joshua.hahnjy@gmail.com>, Rakie Kim <rakie.kim@sk.com>,
- Byungchul Park <byungchul@sk.com>, Axel Rasmussen <axelrasmussen@google.com>,
- Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>,
- linux-trace-kernel@vger.kernel.org, Trond Myklebust <trondmy@kernel.org>,
- Anna Schumaker <anna@kernel.org>, linux-nfs@vger.kernel.org,
- Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>,
- Viacheslav Dubeyko <slava@dubeyko.com>, ceph-devel@vger.kernel.org,
- Song Liu <song@kernel.org>, Yu Kuai <yukuai@fygo.io>,
- Li Nan <magiclinan@didiglobal.com>, Xiao Ni <xiao@kernel.org>,
- linux-raid@vger.kernel.org, Richard Weinberger <richard@nod.at>,
- Zhihao Cheng <chengzhihao1@huawei.com>, linux-mtd@lists.infradead.org,
- Baoquan He <baoquan.he@linux.dev>,
- Pasha Tatashin <pasha.tatashin@soleen.com>,
- Pratyush Yadav <pratyush@kernel.org>, Jonathan Corbet <corbet@lwn.net>,
- Dave Young <ruirui.yang@linux.dev>, Shuah Khan <skhan@linuxfoundation.org>,
- kexec@lists.infradead.org, linux-doc@vger.kernel.org
-Subject: Re: [PATCH v4 00/16] Remove PG_private by using page/folio->private
- checks instead
-Date: Tue, 15 Sep 2026 13:16:07 -0400
-X-Mailer: MailMate (3.0r7032)
-Message-ID: <C87F746D-D3CD-4FB9-A50F-A2835DB750DF@nvidia.com>
-In-Reply-To: <20260913203959.6b46b0b5a052aec818a7f267@linux-foundation.org>
-References: <20260913-remove-pg_private-v4-0-848550f7574e@nvidia.com>
- <20260913203959.6b46b0b5a052aec818a7f267@linux-foundation.org>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-X-MS-Reactions: disallow
-X-ClientProxiedBy: BN9P220CA0024.NAMP220.PROD.OUTLOOK.COM
- (2603:10b6:408:13e::29) To DS7PR12MB8371.namprd12.prod.outlook.com
- (2603:10b6:8:e9::18)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="DiEJKGM2"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 784371F00893;
+	Tue, 15 Sep 2026 17:30:05 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789493405;
+	bh=HgkRgyzAbDgPKR8WZJ99oi3V2I/fpp7TfML0IqA7ixI=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=DiEJKGM2YfP8aiLZm3UpeXglhs77bSl3gCgw1qD5c31Wnnx04TF/76ap5tYTDtj+Z
+	 /JaRAgL1P3QNwV+UyDw116E5uZONOBeJsc46aX1G6TLewv7aw+CaZ63U3rC0LG0Hvg
+	 kERE8ypJoUUBYQaMc/e1L+ldShaDg4pm9RlSGtTiY5jgNdy3wWL5kZmIx7hJ4T7vKT
+	 K+1LpjfcaOvJcvRjotP6IfF0zEZ1LEnJocEwCuH83JHjpsHh53YNsm1OLX8GyrFALS
+	 3P90Wrwot+8rDF3Qj5wHGoAdZW0maT3/wKU1Nxlp4aefIsaTeZv8r53ESAHLkmn8gB
+	 qMSQkJOk0syiw==
+Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 8D3D3F4006B;
+	Tue, 15 Sep 2026 13:30:04 -0400 (EDT)
+Received: from phl-imap-04 ([10.202.2.82])
+  by phl-compute-02.internal (MEProxy); Tue, 15 Sep 2026 13:30:04 -0400
+X-ME-Sender: <xms:nICpagZ6TDmDKT_HxCYyS9J6w7kXV_mlqJJQHuL-Q2o6OLqC6k6Wng>
+    <xme:nICpamMsSKgZrnMv0nd_WOTwU4Gd8RsaEWtdRM4DzFrG4Uaf3KXU8H6BwYzw9IQwj
+    WlEiQZINd_9WeECUVij2HvcybYA-Uy28esBaGr0qb4ye-rQU_K_nb6f>
+X-ME-Proxy-Cause: dmFkZTEMtq0xipwbd8Z3VIVNuuuibyTVjlAW8ErOTu/Uwx50NfKD8sJWbUqV0sMth1v8pe
+    C2HAYTT5nIfSwDF0k0OJmjauBkMOMQBIDa6hm4ROazzYGsbvqHSyc9XH2Il1zzAmaTsg1t
+    cXnuN0yRleWdDLmHCSMM6p4ECdkPq7yCWPQcIqeWm4B3sL29B81hnimRz/xphN7GrUyApS
+    TNLok+Df3aQvAftCBWEConmoIsHQ3S8E//W4uooV02mEyt4nZ0Kx7UW8d5Kn3K/IIY9Zhm
+    gxyk/Vbr3ku2eQd2BdbZpqZC1aUX50bFdUnc4sr6nlnFjJAt3lQrMPUpowm40Wpsqwb3dz
+    hme25iR9hRzWW8+mwWpClF3AUXG6SjnR1z6FJES3/lnoLGU3rHHV0CLGCyopmFpwlDnV0E
+    KSyCcTnv+5Z5obzPcT4f28qplvDf6H+UMR7qh62FcgqXSCs5smJnpCKNYFSJZfg/0cAbrP
+    +GL3izlnJTJLez66nKotz62q9VlCNNKi1aX+5eetT+rzwAiMrHALWKcepQ0Y53QyJrzQrR
+    Q8rG7aUu9eny6kHYlaf5RIjvxF+nRixnNxTHZIkP8+/P1bkeUtfYG525pP62w3d3bDS3u3
+    2Jbbk3niQ/HtjiVKDSvO5YA8kwkwume+7ULY5yM834rd3Vbu+rXa1xhFWnTw
+X-ME-Proxy: <xmx:nICpaiSc9djj6PcIUIpVPQsOTPTo7oNmHQyTju3COPa9dt42Cvze1A>
+    <xmx:nICpaodBu8JDzXbQxf9nS3pR5ziSZSoxxyPrS8dU-bKyFewJzk5OHw>
+    <xmx:nICpauAEw-g2zQngDl7sDjPYD9raNGZW0ePkriU5-yzH0C3XmBAGvA>
+    <xmx:nICpaimzN2JQP1GpZEDXM3S87v-nuPlqDfR30y5Og0t8nJlLPFDzsg>
+    <xmx:nICpahd6VAg4Wip7GngM5eNvE5Q0gqu8xXegO0IAdUvNPQdjKH5tQuca>
+Feedback-ID: i20964851:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 5AE83B6006E; Tue, 15 Sep 2026 13:30:04 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: DS7PR12MB8371:EE_|PH7PR12MB9102:EE_
-X-MS-Office365-Filtering-Correlation-Id: 040b751e-5a2a-4578-d517-08df134d0be6
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam:
-	BCL:0;ARA:13230040|366016|1800799024|23010399003|376014|7416014|10067099003|4143699003|22082099003|18002099003|11063799006|56012099006;
-X-Microsoft-Antispam-Message-Info:
-	EdmOT4SZggvXel11Uhh1H9mF8pJyToiZ4vo+EaL4dQpqpSiRPlv1r32Dgz69iVxRKeRQA2Ast0fMgp+dtSul+ssZ/kJs2D95hmspE8OQmcfALuUDnDqNeKbNVO83v2iXLX1TgKyRNG512daoHu/3lsvC7YFuT9syyAMKYcc8Cj7sRTVCwf7hiclEtUz9K+WYpQE60SsB9HMKu1aGNd+rOH4FuYpR0yN0pEZ9QMKTScul+Ork7mxnVj5Reie3mU3RZve/Igx+fzCyG74c/PU8IYeO3UC6228cv7SfuZEYjtTK3KsezbygJexMLYcjShKX3igAX2GXZzGSorl7Mi9BPwIm77+Sj1aax9f/Sy8vPMzVa8cLugoy5vYsGLC2OtrPq6Qpg8JuCZ2tbHicv6TteAmWCBgMe4ITXR/1Q2OTVdMrlua3hQfyZvShF0+Lt/pkcoExAwGghOwaNgsKpt68C3YDegf81smiqhANEWkXKOR/pLOE7NVTzz6IGCHYv0NPj0srvj9cGTgi+w88gmqAg0OWELisn+6fTDEmj3nFvk2ZKGneX4EdIAGOAHWtDBQTiEdFxiiQtE+G0uXNbgHPDiyTqEXJ97gGwJGOZSqGQ3tTkLHMw6dlf647AS9ptFS1i40d0Stx1d8ifCCWC48sIvnPF7yU5MgpaGtihLIlJP8=
-X-Forefront-Antispam-Report:
-	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:DS7PR12MB8371.namprd12.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(366016)(1800799024)(23010399003)(376014)(7416014)(10067099003)(4143699003)(22082099003)(18002099003)(11063799006)(56012099006);DIR:OUT;SFP:1101;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
-	=?utf-8?B?V3VZVW84WlRLMThCTE10TGpMWXpHUEFQclpFRGgwYjJRQ1luV1BrS0dOcFRZ?=
- =?utf-8?B?a3ZtdnQ1YUNNdXJPSFZyOHY4UHhpRktvOUpXZEVqVVN6c1BoOU95RElsY1Iw?=
- =?utf-8?B?RGpRQXVCZy9Pd01tWDIrdXZnMlB2WEFYRDYvb01QRnViQW9nTmRtYUYvbDM2?=
- =?utf-8?B?dm11N2tIeGVTaFRpMk4xdzlnMFJpUjdoc2lCRlBVK29zdHBFbVNmekhXWHg2?=
- =?utf-8?B?cXRDbi9odVA4cTFWdjFHSURLWDhsamU3NWxtVmNFeUFvc3dNUGsrNHpVWjgy?=
- =?utf-8?B?bVRkWHFQTWdWVGQ4VTRTQTY5MG9reUpLU1RndEg1b0wyNW5aM1NnNVhicmJu?=
- =?utf-8?B?RWVQTytCNmZYSlYzVXkwcm85UDFMSnZrdmRMS2k2QWxIc1dkN2ovd2swNG5E?=
- =?utf-8?B?c01GRVRUcmdCWFhXRHo3UjlyN2Q1K0xLdTdkOFRocUpmMWRFdE5tcU5Tczho?=
- =?utf-8?B?QlNmYXVJd3NFeHliRjlZS3dQUDJYeGpEbk4xUmc5ZTZyb0tRWkVJNElJbHNa?=
- =?utf-8?B?UTZoa1YxWitOOS9lMFZoM0ErZS9ZQ0RjdU9tRHdadVZ6a2h2WVBqNVZudFhX?=
- =?utf-8?B?WEFiZkRsdVpuTStVT0J3bVZRcmt2OVdZa0JMQTY5cm5Yam9ObnVIVG14Tm5m?=
- =?utf-8?B?T05uLzBrQitWWElDdFViR0NiZkhUTExhZzBuV1R0MUVIdEVIY3dKclR0WmpU?=
- =?utf-8?B?SUlYUG1ZNnpMejRZUlVvQTZ2V2tqK0hxSTZFT25kdE5FaFdNZDNsS0dQZXlB?=
- =?utf-8?B?Z0hZeldiNzZDdDhoeWg2OXVUMHI2UWh3dmpmZC81c2hJcmdybHFTbk1PaFh6?=
- =?utf-8?B?elBuMm5LK2Zka0RoUnQraGdMb0hVN0JGUkRsU1RxdVJpWG1OU2VQemU0eTFC?=
- =?utf-8?B?V2pBYWJnSjQ3WlVMMnphQVN1ekQ2RmtuY3NZUWVpcytGSUMwUm5NeFAra2tC?=
- =?utf-8?B?eTcrZG9qVmlLbFM0SnVUdjc1WGIrMGZKVUlhNmg5U0N6ZkZuVzJpbktjSitk?=
- =?utf-8?B?ZWlXU1BKNE1OcDVySWFzcTRmY0pZak1JTWVMak13dzBCRjBuSGMzM3U1WDNM?=
- =?utf-8?B?ZENLQnlPVno1ZUpEMFRmRnh5a1YvMGFQc1E1Q1dTTEZ1QlUxSzI5d2dKM0Np?=
- =?utf-8?B?S3JrcnRpRTVKeDllbVhEK3h2U0Q0OGN1ZUQxOHZGWlcyZ2NFMHA4N0xJM0pm?=
- =?utf-8?B?empNendDUkI3d3J0TXQ2WnJBQm40dEw4dmFpMWNYd09RUXJ6MU9iZjBOOS9S?=
- =?utf-8?B?VHpCQXFVUE9iWXRnVW9ibDdRdDNBTGRncExmNjFBdkdrT3NOdGtDMUs5dzc1?=
- =?utf-8?B?SktIN0dhWXl3cGt3ejl6S2lST1I5KzVpNHlvSFZLaDlQa1NyWHhvS2NoQ1k1?=
- =?utf-8?B?ajVVUzNpcUpPZ0FGdlNSTXk1Y20rNmU5QjNFN1pzT1FuSzBycnhreGJpbmdJ?=
- =?utf-8?B?QVMzbnZ3anExa3J5aVJLK2RGYVFwUEZEUHE0aFJlQlpDYlZ6aWxCd2IreWYz?=
- =?utf-8?B?MnJxOTJsc21naEJjaG8wcWR1U2NJdUg3UERBZEpZbmlTS25TWlhaeExwTU5J?=
- =?utf-8?B?Ti94c2ZEa2VIWTNQS3dpck1zeGhRajlKQnNCSnhRS2Y1Vmo4SmVnd3FUNmcz?=
- =?utf-8?B?d3VZR3VtbFFRbU5JdTkycCtrMTc3SkEyc2tzSWhuYjh3ei9FWllkRUtKcUZj?=
- =?utf-8?B?VkVHRnBpZkprbTB6Q0Y5OWJsUThJcUg4b3hmejhoWkN2ZWFXK1FkM3V2djN4?=
- =?utf-8?B?SDN0bUdvd2h1NWVHZFgraU5leFVVMXR6UGxPVjA1ZzdjRGxycXNqTDQ3MlB6?=
- =?utf-8?B?MVBMWGxyTFF6RTk3SDBySmdvZ2dHRDBKK2lROWF0cGJYZnlteFpwOWIxVEtG?=
- =?utf-8?B?MWEydVdIc2hOLzlxaWQzTzhjck5zajVaSVhpcVU4QmtzV1VZb081Q0lUK2ht?=
- =?utf-8?B?Y0ozMnAzTDFMeWJzWDhwK2QwL1JjNkZONExrY2RFM3VpQkwzRzlYTG94amx4?=
- =?utf-8?B?RXhGZ3R3SzBFeGs1Z2F4dE5FZlh5WXIwQzJYNEw1L2JXU3FCYUQ2MkV4ODNl?=
- =?utf-8?B?cGkyWmxnbHh6R1B3K0krbzgvVHVWbHVwbXZDQzNWKy9TWjVacERyZjRxc0J0?=
- =?utf-8?B?VHBFUW9kNVFhUVZOTWVldlFkVjRQZjNVUjZBam9YM3dBKzViSGFmVEFkOTFs?=
- =?utf-8?B?QmlIZHVFdXcreUdIeWwrT0hma0oxOE1VNjVHeXFMMTJRYXlQUWJ1UStNOFdD?=
- =?utf-8?B?ek1Rd1YzbGxvM1lneHJWaC9UOEcxV0xjS1l5TUJ4V1hmTHM2d0lEUWNWMlMx?=
- =?utf-8?Q?1XlVQwkgpA6kYbW734?=
-X-OriginatorOrg: Nvidia.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 040b751e-5a2a-4578-d517-08df134d0be6
-X-MS-Exchange-CrossTenant-AuthSource: DS7PR12MB8371.namprd12.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 15 Sep 2026 17:16:14.4277
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 43083d15-7273-40c1-b7db-39efd9ccc17a
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: yP9mlXsqTt1fzeF09feTD+wBnvQ4TzeslAIXm2l/hTA0PyUaCtr/LSo5CBpsWAAX
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: PH7PR12MB9102
+X-ThreadId: A6a0J3mWMfhJ
+Date: Tue, 15 Sep 2026 13:29:44 -0400
+From: "Anna Schumaker" <anna@kernel.org>
+To: "Benjamin Coddington" <ben.coddington@hammerspace.com>,
+ "Trond Myklebust" <trondmy@kernel.org>
+Cc: linux-nfs@vger.kernel.org, "Jonathan Curley" <jcurley@purestorage.com>,
+ "Mike Snitzer" <snitzer@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
+ "Junrui Luo" <moonafterrain@outlook.com>
+Message-Id: <44832269-c734-4734-8e53-2ca7c846d1cc@app.fastmail.com>
+In-Reply-To: 
+ <657aa7a3a78899efdaedb0acfd9ad17d075d133a.1789474702.git.bcodding@hammerspace.com>
+References: <cover.1789474702.git.bcodding@hammerspace.com>
+ <657aa7a3a78899efdaedb0acfd9ad17d075d133a.1789474702.git.bcodding@hammerspace.com>
+Subject: Re: [PATCH v4 17/24] pNFS: Add deviceid reference query and collection walkers
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-On 13 Sep 2026, at 23:39, Andrew Morton wrote:
 
-> On Sun, 13 Sep 2026 22:23:58 -0400 Zi Yan <ziy@nvidia.com> wrote:
->
->> This patchset removes PG_private to make space for upcoming PG_folio for
->> identifying pages from a folio (more details in Note below). Instead of
->> checking PG_private, all code is changed to check page/folio->private !=
-=3D
->> NULL instead.
->>
->> MM people are cc'd on all patches and subsystem people are cc'd on the
->> cover letter and corresponding patches.
->>
->> Patch 6 is picked up separately in f2fs tree, but since mm-new does not
->> have it yet, it is sent for MM testing.
->
-> AI review claims to have found a pre-existing critical level deadlock
-> in f2fs:
->
-> 	https://sashiko.dev/#/patchset/20260913-remove-pg_private-v4-0-848550f75=
-74e@nvidia.com
->
-> it also had a few things to say about this patchset and, as always,
-> hugetlb.c.
 
-It seems that Sashiko overwrote my patch reviews with the reviews to
-Matthew=E2=80=99s md patches. :/ I wonder if there is a way of recovering t=
-hem.
+On Tue, Sep 15, 2026, at 8:22 AM, Benjamin Coddington wrote:
+> The CB_NOTIFY_DEVICEID DELETE race recovery (RFC 8881 Section
+> 18.40.4) needs to ask whether any live layout still references a
+> deviceID, and to enumerate those layouts for TEST_STATEID.  Add a
+> layout_references_deviceid hook (sibling of reresolve_deviceid; the
+> flexfiles implementation memcmps each mirror stripe's decoded devid,
+> valid independent of the pinned device node) and two walkers over
+> the byserver pattern:
+>
+> - pnfs_layout_deviceid_referenced_byclid(): boolean existence query,
+>   early-stopping, entirely under i_lock.
+> - pnfs_layout_collect_deviceid_refs(): collects each matching layout
+>   with the hdr pinned, the inode grabbed with its superblock active
+>   (a pinned hdr does not hold its inode -- same discipline as the
+>   bulk-destroy walker), and the layout stateid and cred snapshotted
+>   under i_lock, so the caller can issue sleeping RPCs against the
+>   collection.
+>
+> The collection walker pins each matching header with a plain
+> pnfs_get_layout_hdr(), which cannot resurrect a dying header because
+> the walker holds i_lock and has checked NFS_I()->layout == lo.
+> pnfs_put_layout_hdr() drops the last reference under i_lock --
+> refcount_dec_and_lock() only decrements one to zero once it holds the
+> lock -- and clears NFS_I()->layout in that same critical section,
+> before it unlocks and frees.  So a header still installed on its inode
+> cannot have reached a zero refcount.
+>
+> That argument deliberately does not rest on NFS_LAYOUT_INVALID_STID.
+> A header can reach its final put while still valid: a full
+> LAYOUTRETURN ends in pnfs_layoutreturn_free_lsegs(), which resets the
+> layout stateid rather than invalidating it, and that is the ordinary
+> end of life for a return-on-close layout.  The validity check the
+> walkers do apply is a policy filter, not a lifetime guarantee.
+>
+> Because pnfs_put_layout_hdr() can send a layoutreturn and sleep, a
+> header pinned for a layout whose inode can no longer be grabbed is put
+> after the RCU read-side critical section, not within it.
+>
+> Both ways the walk can end early report it.  A GFP_ATOMIC allocation
+> failure aborts with -ENOMEM, and an inode that can no longer be
+> grabbed -- igrab() fails from I_FREEING on, while the layout may still
+> be valid and still name the deviceID -- aborts with -EAGAIN.  Either
+> way the caller is told the collection is partial instead of receiving
+> a short list it would read as "no references".
+>
+> No callers yet; no behavior change.
+>
+> Assisted-by: Claude:claude-fable-5
+> Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
+> ---
+>  fs/nfs/flexfilelayout/flexfilelayout.c |  17 +++
+>  fs/nfs/pnfs.c                          | 164 +++++++++++++++++++++++++
+>  fs/nfs/pnfs.h                          |  29 +++++
+>  3 files changed, 210 insertions(+)
+>
+> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c 
+> b/fs/nfs/flexfilelayout/flexfilelayout.c
+> index 9caf4b3b45ae..12b7be95a9c3 100644
+> --- a/fs/nfs/flexfilelayout/flexfilelayout.c
+> +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+> @@ -2527,6 +2527,22 @@ static void ff_layout_cancel_io(struct 
+> pnfs_layout_segment *lseg)
+>  	}
+>  }
+> 
+> +/* Called under @lo's inode i_lock. */
+> +static bool ff_layout_references_deviceid(struct pnfs_layout_hdr *lo,
+> +					  const struct nfs4_deviceid *id)
+> +{
+> +	struct nfs4_flexfile_layout *flo = FF_LAYOUT_FROM_HDR(lo);
+> +	struct nfs4_ff_layout_mirror *mirror;
+> +	u32 dss_id;
+> +
+> +	list_for_each_entry(mirror, &flo->mirrors, mirrors)
+> +		for (dss_id = 0; dss_id < mirror->dss_count; dss_id++)
+> +			if (memcmp(&mirror->dss[dss_id].devid, id,
+> +				   sizeof(*id)) == 0)
+> +				return true;
+> +	return false;
+> +}
+> +
+>  /*
+>   * Un-pin every stripe node resolved from @id: in-flight I/O drains on 
+> the
+>   * old node through its own reference, the next I/O re-resolves.
+> @@ -3155,6 +3171,7 @@ static struct pnfs_layoutdriver_type 
+> flexfilelayout_type = {
+>  	.get_ds_info		= ff_layout_get_ds_info,
+>  	.free_deviceid_node	= ff_layout_free_deviceid_node,
+>  	.reresolve_deviceid	= ff_layout_reresolve_deviceid,
+> +	.layout_references_deviceid = ff_layout_references_deviceid,
+>  	.read_pagelist		= ff_layout_read_pagelist,
+>  	.write_pagelist		= ff_layout_write_pagelist,
+>  	.alloc_deviceid_node    = ff_layout_alloc_deviceid_node,
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index d9a181ed1eae..5ddc57b7db57 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -2937,6 +2937,170 @@ pnfs_layout_reresolve_deviceid_byclid(struct 
+> nfs_client *clp,
+>  	}
+>  }
+> 
+> +struct pnfs_deviceid_ref_args {
+> +	const struct pnfs_layoutdriver_type *ld;
+> +	const struct nfs4_deviceid *devid;
+> +	struct list_head *result;
+> +	bool found;
+> +};
+> +
+> +static int pnfs_layout_deviceid_referenced_byserver(
+> +		struct nfs_server *server, void *data)
+> +{
+> +	struct pnfs_deviceid_ref_args *args = data;
+> +	struct pnfs_layout_hdr *lo;
+> +	struct inode *inode;
+> +
+> +	if (server->pnfs_curr_ld != args->ld)
+> +		return 0;
+> +
+> +	rcu_read_lock();
+> +	list_for_each_entry_rcu(lo, &server->layouts, plh_layouts) {
+> +		inode = lo->plh_inode;
+> +		if (!inode)
+> +			continue;
+> +		spin_lock(&inode->i_lock);
+> +		if (NFS_I(inode)->layout == lo && pnfs_layout_is_valid(lo) &&
+> +		    args->ld->layout_references_deviceid(lo, args->devid))
+> +			args->found = true;
+> +		spin_unlock(&inode->i_lock);
+> +		if (args->found)
+> +			break;
+> +	}
+> +	rcu_read_unlock();
+> +	return args->found;
+> +}
+> +
+> +/*
+> + * pnfs_layout_deviceid_referenced_byclid - does any live layout of
+> + * @clp's servers using @ld still reference deviceid @devid?
+> + */
+> +bool
+> +pnfs_layout_deviceid_referenced_byclid(struct nfs_client *clp,
+> +				const struct pnfs_layoutdriver_type *ld,
+> +				const struct nfs4_deviceid *devid)
+> +{
+> +	struct pnfs_deviceid_ref_args args = {
+> +		.ld = ld,
+> +		.devid = devid,
+> +	};
 
->
->
-> Thanks, The MM bits appear adequately reviewed and review of the non-MM
-> bits are, as usual:
->
->   Great to have but I won't permit lack of other-than-MM review to
->   block MM improvements.
->
-> So I'll queue it all up and shall push it into -next after a few days.
->
-> Acks from non-MM maintainers are appreciated.
->
-> If a non-MM patch appears in linux-next I'll autodrop the mm.git copy
-> of that patch.
+I like how this looks much better. Thanks for changing it!
 
-Thanks.
+Anna
 
-Best Regards,
-Yan, Zi
+> +
+> +	if (!ld->layout_references_deviceid)
+> +		return false;
+> +
+> +	nfs_client_for_each_server(clp,
+> +			pnfs_layout_deviceid_referenced_byserver, &args);
+> +	return args.found;
+> +}
+> +
+> +static int pnfs_layout_collect_deviceid_refs_byserver(
+> +		struct nfs_server *server, void *data)
+> +{
+> +	struct pnfs_deviceid_ref_args *args = data;
+> +	struct nfs4_deviceid_ref *ref, *tmp;
+> +	struct pnfs_layout_hdr *lo;
+> +	struct inode *inode;
+> +	LIST_HEAD(putme);
+> +	bool matched;
+> +	int ret = 0;
+> +
+> +	if (server->pnfs_curr_ld != args->ld)
+> +		return 0;
+> +
+> +	rcu_read_lock();
+> +	list_for_each_entry_rcu(lo, &server->layouts, plh_layouts) {
+> +		inode = lo->plh_inode;
+> +		if (!inode)
+> +			continue;
+> +
+> +		spin_lock(&inode->i_lock);
+> +		matched = NFS_I(inode)->layout == lo &&
+> +			  pnfs_layout_is_valid(lo) &&
+> +			  args->ld->layout_references_deviceid(lo, args->devid);
+> +		if (!matched) {
+> +			spin_unlock(&inode->i_lock);
+> +			continue;
+> +		}
+> +		ref = kzalloc_obj(*ref, GFP_ATOMIC);
+> +		if (!ref) {
+> +			spin_unlock(&inode->i_lock);
+> +			ret = -ENOMEM;
+> +			break;
+> +		}
+> +		/* NFS_I()->layout == lo under i_lock means the refcount has
+> +		 * not reached zero: pnfs_put_layout_hdr() decrements to zero
+> +		 * and detaches in the same critical section.
+> +		 */
+> +		pnfs_get_layout_hdr(lo);
+> +		ref->lo = lo;
+> +		nfs4_stateid_copy(&ref->stateid, &lo->plh_stateid);
+> +		ref->cred = get_cred(lo->plh_lc_cred);
+> +		spin_unlock(&inode->i_lock);
+> +
+> +		/* the pinned hdr does not hold the inode: grab it (and
+> +		 * keep the superblock active) for use across RPCs
+> +		 */
+> +		ref->inode = nfs_igrab_and_active(inode);
+> +		if (!ref->inode) {
+> +			/* The layout may still name the deviceID, so report a
+> +			 * partial list rather than silently shortening it.
+> +			 * Defer the put: it can layoutreturn and sleep.
+> +			 */
+> +			list_add(&ref->node, &putme);
+> +			ret = -EAGAIN;
+> +			break;
+> +		}
+> +		list_add_tail(&ref->node, args->result);
+> +	}
+> +	rcu_read_unlock();
+> +
+> +	list_for_each_entry_safe(ref, tmp, &putme, node) {
+> +		list_del(&ref->node);
+> +		pnfs_put_layout_hdr(ref->lo);
+> +		put_cred(ref->cred);
+> +		kfree(ref);
+> +	}
+> +	return ret;
+> +}
+> +
+> +/*
+> + * Collect @clp's layouts referencing @devid onto @result as entries usable
+> + * across sleeping RPCs; release with pnfs_layout_put_deviceid_refs().
+> + * A negative return means @result is only a partial set.
+> + */
+> +int
+> +pnfs_layout_collect_deviceid_refs(struct nfs_client *clp,
+> +				const struct pnfs_layoutdriver_type *ld,
+> +				const struct nfs4_deviceid *devid,
+> +				struct list_head *result)
+> +{
+> +	struct pnfs_deviceid_ref_args args = {
+> +		.ld = ld,
+> +		.devid = devid,
+> +		.result = result,
+> +	};
+> +
+> +	if (!ld->layout_references_deviceid)
+> +		return 0;
+> +
+> +	return nfs_client_for_each_server(clp,
+> +			pnfs_layout_collect_deviceid_refs_byserver, &args);
+> +}
+> +
+> +void
+> +pnfs_layout_put_deviceid_refs(struct list_head *result)
+> +{
+> +	struct nfs4_deviceid_ref *ref, *tmp;
+> +
+> +	list_for_each_entry_safe(ref, tmp, result, node) {
+> +		list_del(&ref->node);
+> +		put_cred(ref->cred);
+> +		pnfs_put_layout_hdr(ref->lo);
+> +		nfs_iput_and_deactive(ref->inode);
+> +		kfree(ref);
+> +	}
+> +}
+> +
+>  /* Check if we have we have a valid layout but if there isn't an intersection
+>   * between the request and the pgio->pg_lseg, put this pgio->pg_lseg away.
+>   */
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 9a5b8070f595..8dd892d875e3 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -184,6 +184,12 @@ struct pnfs_layoutdriver_type {
+>  				   const struct nfs4_deviceid *id,
+>  				   bool immediate,
+>  				   struct list_head *put_list);
+> +	/*
+> +	 * Does @lo hold any reference to deviceid @id?  Called under
+> +	 * @lo's inode i_lock; must not sleep.
+> +	 */
+> +	bool (*layout_references_deviceid)(struct pnfs_layout_hdr *lo,
+> +					   const struct nfs4_deviceid *id);
+> 
+>  	int (*prepare_layoutreturn) (struct nfs4_layoutreturn_args *);
+> 
+> @@ -371,6 +377,29 @@ void pnfs_layout_reresolve_deviceid_byclid(struct 
+> nfs_client *clp,
+>  				const struct pnfs_layoutdriver_type *ld,
+>  				const struct nfs4_deviceid *devid,
+>  				bool immediate);
+> +bool pnfs_layout_deviceid_referenced_byclid(struct nfs_client *clp,
+> +				const struct pnfs_layoutdriver_type *ld,
+> +				const struct nfs4_deviceid *devid);
+> +
+> +/*
+> + * One live layout referencing a deviceID, collected for the
+> + * CB_NOTIFY_DEVICEID DELETE recovery: the hdr is pinned, the inode
+> + * igrab'd with its superblock active, and the layout stateid and
+> + * cred snapshotted for TEST_STATEID.
+> + */
+> +struct nfs4_deviceid_ref {
+> +	struct list_head node;
+> +	struct pnfs_layout_hdr *lo;
+> +	struct inode *inode;
+> +	nfs4_stateid stateid;
+> +	const struct cred *cred;
+> +};
+> +
+> +int pnfs_layout_collect_deviceid_refs(struct nfs_client *clp,
+> +				const struct pnfs_layoutdriver_type *ld,
+> +				const struct nfs4_deviceid *devid,
+> +				struct list_head *result);
+> +void pnfs_layout_put_deviceid_refs(struct list_head *result);
+>  int pnfs_layout_handle_reboot(struct nfs_client *clp);
+> 
+>  /* nfs4_deviceid_flags */
+> -- 
+> 2.53.0
