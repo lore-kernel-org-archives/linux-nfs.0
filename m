@@ -1,63 +1,63 @@
 Received: from mail-oi2-f13.google.com (mail-oi2-f13.google.com [74.125.231.205])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ABB443BB132
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 12:22:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BC4A83BB69F
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 12:23:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.205
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789474981; cv=none; b=NsNMj9V7oZ4OPMHhjWJyTPJPB+kxfjYB5LgcCfqjyzSFaLEzDlFGdUkZgFumhrJ8S35U/PKfI2eistCddb2RJK21vxlM2nrOmQDbaOPPJqGjyRCo1SRkvvQT1DcV0ddRQveBbtVFjgPqzo9PSqrqFOvVKTtYrYJntIDl65/ObI4=
+	t=1789474982; cv=none; b=Ga+771YvevvfKnUMxwJy5kwmU8GStO6V6gKH6OwYrHi3skan8EfdQzwJEDeA2N8ZOboNIgdNjlcSd1aYTaPoVwGxeiWKv5Sas2rxGTp5RBE+wwUPZ7sQIOCXF2I6ODetpKoU6doJJHNTIGctKIjglkZXQVl5wp3vIv90+vI3HuU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789474981; c=relaxed/simple;
-	bh=kY2jVUPNMqyezi/ui6zAR2vgUN+Ly8EHCwOx1d3dTZc=;
+	s=arc-20240116; t=1789474982; c=relaxed/simple;
+	bh=2J7MUY4/hzAHfzwdJcLP5Fs/ndxWMPATRwZPrMhB5sA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Ebzl9iUyvoDrumrf6SUYZEjvoWd5lBWdqgYorKQAdbR4J+NhauM8JQje5jCbv7b5q5OdmGz2VmrjR0/DVhfEfqvCPBxRzKO9S5/NRfrIerUU+LhN3aQ4WPOikhVeF7P6Tm1sm3/ktpzTCV5grdr8NFO/uSSlkP9knG67cDEVtmg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=OdWLjFzx; arc=none smtp.client-ip=74.125.231.205
+	 MIME-Version; b=D6w95hdW/115dc3wqkx6wcWkPXaWgJ7v8AykPSsNzUPXnsx25pe8ydl37i9acdmyza9oCPYFPxD6SXG1XCmGVoNrK+3hTmVOHMN6i5YlRO2+yWDRLWcI/46CDYrTHmtqYw+tCoBeJLw/yv+hi3jir2qofWBQVyi2tzVNjwru3/0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=Gc8TG/GM; arc=none smtp.client-ip=74.125.231.205
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="OdWLjFzx"
-Received: by mail-oi2-f13.google.com with SMTP id 5614622812f47-4b37a2ffef2so1295922b6e.3
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 05:22:59 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="Gc8TG/GM"
+Received: by mail-oi2-f13.google.com with SMTP id 5614622812f47-4b37dcfe9b2so1585974b6e.2
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2026 05:23:00 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1789474978; x=1790079778; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1789474979; x=1790079779; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=sXoIxHWiMtP7LFlsZQEQeiwBMzIv2lWeDy2CgjqxjRo=;
-        b=OdWLjFzxtBHHmq9eTvRdeD4JAEZo9JGubiXjl8ABhEYN2bS7undUUxJLjNeh8jRRrs
-         LnAXZ+iRYaZXqWStYZx5k6nfkab9ULeSN1WKsgGZ/4jDQ8o7uc/iAImsazwqsdkHC6gD
-         teSD3xp9/B9CsqRQG88vB1E0RBUZlsDXJAMKQQVbBhVUSartkyXvlhHXIZLa1ZCuuzH2
-         shOUVqspb1bnTSj/f+AguqnQ3CQUDL6pWdlFx6f5caEAD3GL2RXjD4sCS/XAQRK20+7W
-         doRUyAfxvc3QMmC0sM4+nlE3E8YpUmKuW1IcwGvLM8TWNZsm3Jn1hD90wD0u5XNJgvGU
-         I5BQ==
+        bh=253fxZQrJzL5zMKkSAHeVCnWoAvPnADIh2Yl5y2oqhE=;
+        b=Gc8TG/GM/hoKCQU3R13Kh7bqTZz+amOq3sGJJeYChJZiq1ADcnqY+dQ21x6vTtcrhI
+         3NZns/weOTAgGurObJRfxs9JhqDgUTn9+R05u7OSStO1y+BmArrQu5qdZkzBnu6EiL1e
+         ov/FmWlCshC6Que7aBQKywoF1HywCeGYsg6vIklewS62YpC/XhXzEaq47fGrvPgVZ8+U
+         hRE8Na19lmR3RrxfTHOd4/9/W+RIxvuyDPu3F7oOdWlzKZxVZgFwSy8z+4f27JJK9eSw
+         MaZhwCjRvfnV2n7V5qL+X5KM87toltvygCUN2v9dTAFADIB2iPxtWBtdGJMAU8Gq3eLE
+         SGEA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789474978; x=1790079778;
+        d=1e100.net; s=20260707; t=1789474979; x=1790079779;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=sXoIxHWiMtP7LFlsZQEQeiwBMzIv2lWeDy2CgjqxjRo=;
-        b=pC6dO/upTALq65DWkCE2M6MUeJCRpxrQxsbStlUd9r5lNXP2lhrBXNDU01OSPigs+M
-         yqmORpHlg0SPaHnoefAuBycLXgTjA2BnbjTxYkk6gLw3VHz2r280F3gFA/XsYdyBPgLH
-         gs0sv/lsPHzPq1EmXisVVQ2nHd/O6F8bRMBvHk5mxh7NfXYnYCIv6LNwiRbYellfMP6N
-         LrxbisUFEMObObJW9qUopwtlbuIzj+Tuo4lG3rbJb1wT/dYENjt0Cc0SPWVmPlyvtZds
-         WhhBLWQQ3aMyOqLfCZSsG71/HboQ4J3B3B0T/rqc5LK/CRuZfMXOZarRiSQgMd0DopfI
-         fmzQ==
-X-Gm-Message-State: AFuF++mx0Y9RapxOxYvjmTvzvL/HZu04RgmSxlq2FWhHG56wpFhejEUT
-	xZVKz4APMQ91/YL9vlf8bt4HwcqUdv+3+ORssQWGD8bHzWsZUAPeRZqqJPwsOYDM8qo=
-X-Gm-Gg: AYBFou3FMO0lNTkJTNgm4L3LcNRmw8iS53b38/huuEtSA9p3P+8Koj5jMoTJCv7FjrU
-	0x+9RalM2OleZndC8BpjgW1u1oLNrzGrlpGk7phWFTHYV/tAz3+0lERJBHPeDFgIA7UBoV1w+Xx
-	mgxVrBWB7mlep7NMutG3Frz3SlVLMsIdkam9/MSAmqpQmc8g+xiKpm0Oz/o27yvqnYQdOLCTZOu
-	jm25leIvKICNzocSv40KjPl1LPA778A31g1pJ6gauUnHKDZuUVR6FnWHp+K/R5FvLUwEsHNwSSG
-	cciz54yWdqDeeHQSX1ygPn+XUExWnqoIiUSApcDk3P7TbzT2zxI9g5Zr89TnHX+4IaO9yrejDh7
-	3wLDeMq8Yq//fWBlw0wNRVXpD4TvtPlfw74RTR3EsWpDbdxMx1bONdJT5aWP6VcweY3dPmgR+Pa
-	PiVBwiDgvEAdBm4XKZCQd33wMsnztCLGJhEDdMq35zBmNbc0d9iNThsijXoQDaA7Pgvlx58au50
-	WF5+jqIW1QtwW2ePKmxKxIDK2r2MDg7Uhw=
-X-Received: by 2002:a05:6808:1994:b0:4c3:a091:52f9 with SMTP id 5614622812f47-4c7b32dd937mr5266414b6e.2.1789474978282;
-        Tue, 15 Sep 2026 05:22:58 -0700 (PDT)
+        bh=253fxZQrJzL5zMKkSAHeVCnWoAvPnADIh2Yl5y2oqhE=;
+        b=Y8umNn31exRBnfS14VWGsLl+9pgBIQAP0NM6RjBa/fM4F+3O8dbcf2cEdUHrJOUxwS
+         9snX0K+n0mxUHhVPwqumYg3k1dXDDAajnRJfoRlwTy3eEIm5Zz2/C9fneQwOtdxGYlTy
+         TO/TnIQevmda1+lYhA3l0YjfB+dpGHECcaB/bPsxsU389ruRuQSxX3iAyiPftDCn/N45
+         QyAAVa+wU9b/hBU374lyUQLrX5GUrEhntzXXezMz8D2P74Q1A7tfN9ol5OvWUxS9Ra4G
+         RpMAR6UFU1qM+NR/rb34m7rdxrUB8EVYCf1A7YJqbS2Y5L0h2NO/LVUqAYVGM+qIau4F
+         jwUA==
+X-Gm-Message-State: AFuF++mbEy91lNJT7KkbzYiYecC+EEtOJV5Wxpm6/W6rUqg+LiVIX30H
+	GrXoe2GKoP1chik+CRQTJM4mqE7elHwGbrJfeYCRODPmHI+QbMxbaT3eOfWE5tgaKeg=
+X-Gm-Gg: AYBFou338TjfecOhpD6fTKNwRCCo7euFo1JzgdBhxPNa0sWztJexvvOyjacMipUtUHr
+	rIV3Broc33z3rWRSn82O3WiH/gSumLfYBKkWzmRJoSpaOX1S2aQA5QWUUmc2Y9gVkH5cZBpzzed
+	Q3BXum/TFz0VDVc0413A0gsqmwVNSdSOfKCyDnePQoVZNtat02MMPOBbDtOF0UpNo8bsIGlCYnD
+	UxhRu0jw+LvzHRzduPmjQGEianelftWpzFIQg0mXVaYYA/ZuelOM8vz1+YN1hI+Fj7ksNWAkAbu
+	CEvTNlcyZPwYBdTUr0TZa4/9g2zPF7dBIJVqEI+qG2jaCMsKHONsiFo5xQCeeNVT/wvI6Ti20BL
+	JoISVOKDJgIz/iZYmBx5qYoXezNel2uDNedVuVYXwrJCia1cX/GuO717oPgLlP6DYyQn79EUTon
+	tUy1AW82rDWDFu9fI4Ih2fgq/+UACiKn40bd80OrPhF5usqvk50zW0kR2Urq3TZZZ7n+jvXL4ek
+	q9uhWKJzcX5XEWyCh1n72J2E4brbhvBJ8s=
+X-Received: by 2002:a05:6808:f94:b0:4c1:2b62:35a4 with SMTP id 5614622812f47-4c7b36da270mr7548230b6e.5.1789474979394;
+        Tue, 15 Sep 2026 05:22:59 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-4c32eb4274dsm13058260b6e.1.2026.09.15.05.22.57
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-4c32eb4274dsm13058260b6e.1.2026.09.15.05.22.58
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 15 Sep 2026 05:22:57 -0700 (PDT)
+        Tue, 15 Sep 2026 05:22:58 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
@@ -67,9 +67,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Mike Snitzer <snitzer@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>,
 	Junrui Luo <moonafterrain@outlook.com>
-Subject: [PATCH v4 23/24] NFSv4/pnfs: Key the data-server cache by its address set and version
-Date: Tue, 15 Sep 2026 08:22:25 -0400
-Message-ID: <e97aee2e9ea53df9d7ae784033597d20b7a5eb69.1789474702.git.bcodding@hammerspace.com>
+Subject: [PATCH v4 24/24] NFSv4/flexfiles: Add a dataserver_nconnect cap
+Date: Tue, 15 Sep 2026 08:22:26 -0400
+Message-ID: <53c45be8b220b23b496d5ffcd942e94e59629f35.1789474702.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1789474702.git.bcodding@hammerspace.com>
 References: <cover.1789474702.git.bcodding@hammerspace.com>
@@ -81,170 +81,238 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Populating the data-server cache was quadratic: every GETDEVICEINFO
-decode scanned the whole per-net cache under one spinlock.  At the
-anticipated scale of 1024 data servers a striping mount pays that in a
-burst at first access, and again on notification-driven re-resolution.
+Data-server clients inherit the MDS nconnect setting.  A striping
+mount multiplies that by every distinct data server: at the
+anticipated scale of 1024 and nconnect=16 the client opens 16k
+sockets plus their sunrpc slot tables, and striping already spreads
+I/O across the data servers, so a high per-DS transport count buys
+little for that workload.
 
-Hash each DS to a bucket keyed on the whole cache key -- per-address
-jhash over exactly the fields same_sockaddr() compares, combined by
-addition so multipath ordering cannot change the bucket, then the NFS
-version folded in -- with the existing comparator as the in-bucket
-tiebreaker.  Lookup and insert now touch one bucket; teardown is
-unchanged (hlist_del_init needs no bucket).
-
-Keying on the whole set requires the comparator to test set equality,
-so it is tightened from the subset test it did before -- a subset
-match would hash to a different bucket and simply never be found.
-That test was also wrong in a way worth naming.  It answered "is
-dsaddrs1 a subset of dsaddrs2", and the caller passes the cached list
-first, so a cached data server whose address set was contained in an
-incoming one was returned for that incoming set.  The aliasing was
-therefore one-directional: cache {A,B} first and an incoming {A} did
-not match, but cache {A} first and an incoming {A,B} did.
-
-The consequence was mild, which is why it went unnoticed: every
-address on one device's multipath list names the same data server, so
-a merged entry's addresses are all paths that server also advertised.
-The effect is lost path diversity and a truncated ds_remotestr (and
-the netaddr flexfiles reports in layoutstats), not I/O sent to the
-wrong server.
+Add a dataserver_nconnect module parameter to the flexfiles layout
+driver alongside its existing dataserver_timeo and dataserver_retrans
+knobs, and thread the value through nfs4_pnfs_ds_connect() to both
+the v3 and v4 data-server client setup paths.  The default of 0
+preserves today's inherit-from-MDS behavior, so the cap is opt-in
+and non-regressing.  The files layout passes 0, unchanged.
 
 Assisted-by: Claude:claude-fable-5
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/pnfs_nfs.c | 68 ++++++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 58 insertions(+), 10 deletions(-)
+ fs/nfs/filelayout/filelayoutdev.c         |  2 +-
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c |  7 +++++++
+ fs/nfs/internal.h                         |  3 ++-
+ fs/nfs/nfs3client.c                       |  9 +++++++--
+ fs/nfs/nfs4client.c                       |  6 +++++-
+ fs/nfs/pnfs.h                             |  3 ++-
+ fs/nfs/pnfs_nfs.c                         | 21 ++++++++++++++-------
+ 7 files changed, 38 insertions(+), 13 deletions(-)
 
+diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/filelayoutdev.c
+index 57e0654cd98c..5995f32f07ec 100644
+--- a/fs/nfs/filelayout/filelayoutdev.c
++++ b/fs/nfs/filelayout/filelayoutdev.c
+@@ -267,7 +267,7 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+ 		goto out_test_devid;
+ 
+ 	status = nfs4_pnfs_ds_connect(s, ds, devid, dataserver_timeo,
+-			     dataserver_retrans, 4,
++			     dataserver_retrans, 0, 4,
+ 			     s->nfs_client->cl_minorversion, true);
+ 	if (status) {
+ 		nfs4_mark_deviceid_unavailable(devid);
+diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+index 5cb09e5e2138..d52f485d0650 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
++++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+@@ -20,6 +20,7 @@
+ 
+ static unsigned int dataserver_timeo = NFS_DEF_TCP_TIMEO;
+ static unsigned int dataserver_retrans;
++static unsigned int dataserver_nconnect;
+ 
+ static bool ff_layout_has_available_ds(struct pnfs_layout_segment *lseg);
+ 
+@@ -418,6 +419,7 @@ nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg,
+ 	 */
+ 	status = nfs4_pnfs_ds_connect(s, ds, &mirror_ds->id_node,
+ 			     dataserver_timeo, dataserver_retrans,
++			     dataserver_nconnect,
+ 			     mirror_ds->ds_versions[0].version,
+ 			     mirror_ds->ds_versions[0].minor_version,
+ 			     mirror_ds->ds_versions[0].tightly_coupled);
+@@ -676,3 +678,8 @@ module_param(dataserver_timeo, uint, 0644);
+ MODULE_PARM_DESC(dataserver_timeo, "The time (in tenths of a second) the "
+ 			"NFSv4.1  client  waits for a response from a "
+ 			" data server before it retries an NFS request.");
++module_param(dataserver_nconnect, uint, 0644);
++MODULE_PARM_DESC(dataserver_nconnect, "The maximum number of connections "
++			"the NFSv4.1 client opens to each data server, "
++			"capping the value inherited from the MDS nconnect "
++			"mount option.  0 (default) applies no cap.");
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index abc81f5ae578..48f7c0e25da1 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -251,6 +251,7 @@ extern struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
+ 					     int ds_addrlen, int ds_proto,
+ 					     unsigned int ds_timeo,
+ 					     unsigned int ds_retrans,
++					     unsigned int ds_nconnect,
+ 					     u32 minor_version,
+ 					     bool tightly_coupled);
+ extern struct rpc_clnt *nfs4_find_or_create_ds_client(struct nfs_client *,
+@@ -260,7 +261,7 @@ extern void nfs4_session_limit_xasize(struct nfs_server *server);
+ extern struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
+ 			const struct sockaddr_storage *ds_addr, int ds_addrlen,
+ 			int ds_proto, unsigned int ds_timeo,
+-			unsigned int ds_retrans);
++			unsigned int ds_retrans, unsigned int ds_nconnect);
+ #ifdef CONFIG_PROC_FS
+ extern int __init nfs_fs_proc_init(void);
+ extern void nfs_fs_proc_exit(void);
+diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
+index 5d97c1d38bb6..cf2f7be4b435 100644
+--- a/fs/nfs/nfs3client.c
++++ b/fs/nfs/nfs3client.c
+@@ -84,7 +84,8 @@ struct nfs_server *nfs3_clone_server(struct nfs_server *source,
+  */
+ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
+ 		const struct sockaddr_storage *ds_addr, int ds_addrlen,
+-		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans)
++		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans,
++		unsigned int ds_nconnect)
+ {
+ 	struct rpc_timeout ds_timeout;
+ 	unsigned long connect_timeout = ds_timeo * (ds_retrans + 1) * HZ / 10;
+@@ -124,8 +125,12 @@ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
+ 		fallthrough;
+ 	case XPRT_TRANSPORT_RDMA:
+ 	case XPRT_TRANSPORT_TCP:
+-		if (mds_clp->cl_nconnect > 1)
++		if (mds_clp->cl_nconnect > 1) {
+ 			cl_init.nconnect = mds_clp->cl_nconnect;
++			if (ds_nconnect)
++				cl_init.nconnect = min(cl_init.nconnect,
++						       ds_nconnect);
++		}
+ 	}
+ 
+ 	if (mds_srv->flags & NFS_MOUNT_NORESVPORT)
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index e6a589913666..fe779fb2ec72 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -794,7 +794,8 @@ static int nfs4_set_client(struct nfs_server *server,
+ struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
+ 		const struct sockaddr_storage *ds_addr, int ds_addrlen,
+ 		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans,
+-		u32 minor_version, bool tightly_coupled)
++		unsigned int ds_nconnect, u32 minor_version,
++		bool tightly_coupled)
+ {
+ 	struct rpc_timeout ds_timeout;
+ 	struct nfs_client *mds_clp = mds_srv->nfs_client;
+@@ -832,6 +833,9 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
+ 	case XPRT_TRANSPORT_TCP:
+ 		if (mds_clp->cl_nconnect > 1) {
+ 			cl_init.nconnect = mds_clp->cl_nconnect;
++			if (ds_nconnect)
++				cl_init.nconnect = min(cl_init.nconnect,
++						       ds_nconnect);
+ 			cl_init.max_connect = NFS_MAX_TRANSPORTS;
+ 		}
+ 	}
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 3a1c012ba18e..5cde5db63d29 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -504,7 +504,8 @@ struct nfs4_pnfs_ds *nfs4_pnfs_ds_add(const struct net *net,
+ void nfs4_pnfs_v3_ds_connect_unload(void);
+ int nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
+ 			  struct nfs4_deviceid_node *devid, unsigned int timeo,
+-			  unsigned int retrans, u32 version, u32 minor_version,
++			  unsigned int retrans, unsigned int nconnect,
++			  u32 version, u32 minor_version,
+ 			  bool tightly_coupled);
+ struct nfs4_pnfs_ds_addr *nfs4_decode_mp_ds_addr(struct net *net,
+ 						 struct xdr_stream *xdr,
 diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index f88a9784988a..c9bbcb765f4a 100644
+index c9bbcb765f4a..7adb6f941cf2 100644
 --- a/fs/nfs/pnfs_nfs.c
 +++ b/fs/nfs/pnfs_nfs.c
-@@ -15,6 +15,8 @@
+@@ -844,7 +844,8 @@ static struct nfs_client *(*get_v3_ds_connect)(
+ 			int ds_addrlen,
+ 			int ds_proto,
+ 			unsigned int ds_timeo,
+-			unsigned int ds_retrans);
++			unsigned int ds_retrans,
++			unsigned int ds_nconnect);
  
- #include "nfs4session.h"
- #include "internal.h"
-+#include <linux/hash.h>
-+#include <linux/jhash.h>
- #include "pnfs.h"
- #include "netns.h"
- #include "nfs4trace.h"
-@@ -577,8 +579,8 @@ same_sockaddr(struct sockaddr *addr1, struct sockaddr *addr2)
- }
- 
- /*
-- * Checks if 'dsaddrs1' contains a subset of 'dsaddrs2'. If it does,
-- * declare a match.
-+ * Checks if 'dsaddrs1' and 'dsaddrs2' hold the same set of addresses.
-+ * If they do, declare a match.
-  */
- static bool
- _same_data_server_addrs_locked(const struct list_head *dsaddrs1,
-@@ -588,6 +590,10 @@ _same_data_server_addrs_locked(const struct list_head *dsaddrs1,
- 	struct sockaddr *sa1, *sa2;
- 	bool match = false;
- 
-+	if (list_count_nodes((struct list_head *)dsaddrs1) !=
-+	    list_count_nodes((struct list_head *)dsaddrs2))
-+		return false;
-+
- 	list_for_each_entry(da1, dsaddrs1, da_node) {
- 		sa1 = (struct sockaddr *)&da1->da_addr;
- 		match = false;
-@@ -603,6 +609,47 @@ _same_data_server_addrs_locked(const struct list_head *dsaddrs1,
- 	return match;
- }
- 
-+/* Hash family, address bytes, and port - as same_sockaddr() */
-+static u32
-+nfs4_ds_addr_hash(const struct sockaddr *sa)
-+{
-+	u32 h = sa->sa_family;
-+
-+	switch (sa->sa_family) {
-+	case AF_INET: {
-+		const struct sockaddr_in *a = (const struct sockaddr_in *)sa;
-+
-+		h = jhash(&a->sin_addr.s_addr, sizeof(a->sin_addr.s_addr), h);
-+		h = jhash(&a->sin_port, sizeof(a->sin_port), h);
-+		break;
-+	}
-+	case AF_INET6: {
-+		const struct sockaddr_in6 *a = (const struct sockaddr_in6 *)sa;
-+
-+		h = jhash(&a->sin6_addr, sizeof(a->sin6_addr), h);
-+		h = jhash(&a->sin6_port, sizeof(a->sin6_port), h);
-+		break;
-+	}
-+	}
-+	return h;
-+}
-+
-+/*
-+ * Bucket index for a DS cache key.  Per-address hashes combine by
-+ * addition so the multipath list order cannot change the bucket,
-+ * matching the order-independent set comparison above.
-+ */
-+static u32
-+nfs4_ds_cache_hash(const struct list_head *dsaddrs, u32 version)
-+{
-+	const struct nfs4_pnfs_ds_addr *da;
-+	u32 h = 0;
-+
-+	list_for_each_entry(da, dsaddrs, da_node)
-+		h += nfs4_ds_addr_hash((const struct sockaddr *)&da->da_addr);
-+	return hash_32(jhash_1word(version, h), NFS4_DS_CACHE_HASH_BITS);
-+}
-+
- /*
-  * Lookup DS by addresses and NFS version.  nfs4_data_server_lock is held
-  */
-@@ -611,14 +658,12 @@ _data_server_lookup_locked(const struct nfs_net *nn,
- 			   const struct list_head *dsaddrs, u32 version)
+ static bool load_v3_ds_connect(void)
  {
- 	struct nfs4_pnfs_ds *ds;
-+	u32 bucket = nfs4_ds_cache_hash(dsaddrs, version);
- 
--	for (int i = 0; i < NFS4_DS_CACHE_HASH_SIZE; i++)
--		hlist_for_each_entry(ds, &nn->nfs4_data_server_cache[i],
--				     ds_node)
--			if (ds->ds_version == version &&
--			    _same_data_server_addrs_locked(&ds->ds_addrs,
--							   dsaddrs))
--				return ds;
-+	hlist_for_each_entry(ds, &nn->nfs4_data_server_cache[bucket], ds_node)
-+		if (ds->ds_version == version &&
-+		    _same_data_server_addrs_locked(&ds->ds_addrs, dsaddrs))
-+			return ds;
- 	return NULL;
- }
- 
-@@ -735,6 +780,7 @@ nfs4_pnfs_ds_add(const struct net *net, struct list_head *dsaddrs, u32 version,
+@@ -867,7 +868,8 @@ void nfs4_pnfs_v3_ds_connect_unload(void)
+ static int _nfs4_pnfs_v3_ds_connect(struct nfs_server *mds_srv,
+ 				 struct nfs4_pnfs_ds *ds,
+ 				 unsigned int timeo,
+-				 unsigned int retrans)
++				 unsigned int retrans,
++				 unsigned int nconnect)
  {
- 	struct nfs_net *nn = net_generic(net, nfs_net_id);
- 	struct nfs4_pnfs_ds *tmp_ds, *ds = NULL;
-+	struct hlist_head *bucket;
- 	char *remotestr;
+ 	struct nfs_client *clp = ERR_PTR(-EIO);
+ 	struct nfs_client *mds_clp = mds_srv->nfs_client;
+@@ -919,7 +921,7 @@ static int _nfs4_pnfs_v3_ds_connect(struct nfs_server *mds_srv,
+ 			ds_proto = XPRT_TRANSPORT_TCP_TLS;
  
- 	if (list_empty(dsaddrs)) {
-@@ -748,6 +794,8 @@ nfs4_pnfs_ds_add(const struct net *net, struct list_head *dsaddrs, u32 version,
+ 		clp = get_v3_ds_connect(mds_srv, &da->da_addr, da->da_addrlen,
+-					ds_proto, timeo, retrans);
++					ds_proto, timeo, retrans, nconnect);
+ 		if (IS_ERR(clp))
+ 			continue;
+ 		clp->cl_rpcclient->cl_softerr = 0;
+@@ -942,6 +944,7 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
+ 				 struct nfs4_pnfs_ds *ds,
+ 				 unsigned int timeo,
+ 				 unsigned int retrans,
++				 unsigned int nconnect,
+ 				 u32 minor_version,
+ 				 bool tightly_coupled)
+ {
+@@ -1033,7 +1036,8 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
  
- 	/* this is only used for debugging, so it's ok if its NULL */
- 	remotestr = nfs4_pnfs_remotestr(dsaddrs, gfp_flags);
-+	/* @dsaddrs is empty after the splice below. */
-+	bucket = &nn->nfs4_data_server_cache[nfs4_ds_cache_hash(dsaddrs, version)];
+ 			clp = nfs4_set_ds_client(mds_srv, &da->da_addr,
+ 						 da->da_addrlen, ds_proto,
+-						 timeo, retrans, minor_version,
++						 timeo, retrans, nconnect,
++						 minor_version,
+ 						 tightly_coupled);
+ 			if (IS_ERR(clp))
+ 				continue;
+@@ -1068,7 +1072,8 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
+  */
+ int nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
+ 			  struct nfs4_deviceid_node *devid, unsigned int timeo,
+-			  unsigned int retrans, u32 version, u32 minor_version,
++			  unsigned int retrans, unsigned int nconnect,
++			  u32 version, u32 minor_version,
+ 			  bool tightly_coupled)
+ {
+ 	int err;
+@@ -1088,11 +1093,13 @@ int nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
  
- 	spin_lock(&nn->nfs4_data_server_lock);
- 	tmp_ds = _data_server_lookup_locked(nn, dsaddrs, version);
-@@ -760,7 +808,7 @@ nfs4_pnfs_ds_add(const struct net *net, struct list_head *dsaddrs, u32 version,
- 		ds->ds_net = net;
- 		ds->ds_clp = NULL;
- 		ds->ds_version = version;
--		hlist_add_head(&ds->ds_node, &nn->nfs4_data_server_cache[0]);
-+		hlist_add_head(&ds->ds_node, bucket);
- 		dprintk("%s add new data server %s\n", __func__,
- 			ds->ds_remotestr);
- 	} else {
+ 	switch (version) {
+ 	case 3:
+-		err = _nfs4_pnfs_v3_ds_connect(mds_srv, ds, timeo, retrans);
++		err = _nfs4_pnfs_v3_ds_connect(mds_srv, ds, timeo, retrans,
++					       nconnect);
+ 		break;
+ 	case 4:
+ 		err = _nfs4_pnfs_v4_ds_connect(mds_srv, ds, timeo, retrans,
+-					       minor_version, tightly_coupled);
++					       nconnect, minor_version,
++					       tightly_coupled);
+ 		break;
+ 	default:
+ 		dprintk("%s: unsupported DS version %d\n", __func__, version);
 -- 
 2.53.0
 
