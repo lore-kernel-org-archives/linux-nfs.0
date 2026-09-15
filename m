@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3232137DAA9;
-	Tue, 15 Sep 2026 16:58:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DC8F74BB5C2;
+	Tue, 15 Sep 2026 16:58:22 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789491502; cv=none; b=JDufRno4VDwcaLFxfyQ92vxqFoWKyEviiM3RVrC4s7dpO4nDqEViKRyZ2kaX4U8PXMU3ei3iR6CIHAtYMxK3vYXmk0ys4cyNmHZD+X7xMR9soa0ohhA6obuX2oBL16Itp/N6mKYGtubsGje97+DeQySSCn5Jcea1eA/KfY3dP78=
+	t=1789491504; cv=none; b=dIieFV7qgWkcVZDR9u73vtC9ICVPuNXJQuCfWOZAnwq2y9Hp+gfmOhz/slEeW7I3HLfKN5zl3C8THHuJhxTGYw+97rX/+bzrK5hPiYSgOSdfJ5T9eKB/on2pXEA7C+WRSiLuXHrP1X3SXplyENfBVSa58rAr3xcku539i1VHqJk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789491502; c=relaxed/simple;
-	bh=i4/iwR4TYPYiKzsSzezhQodaLtViQj+bGNSvh82u/Zc=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=aysJ1hofdc4IICWwZwQ2c1dQR9UhbNLfRN1Wq0P8bre8GP9PKyZz6f9P9NxXqTSyRpnQxKzvRyxDRR2gmjIAwxKYuZ8hRvKlR8NgNpqG2HdZxVUBeZfD0ZgfnZ1Hw96RKQqPdQvXy0H5YmbE2A2Z239d2YJsHsN12dJPM8FuNvM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Dwj1QLWW; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789491504; c=relaxed/simple;
+	bh=UoWQHbkr2M9okG7sxUiZYcmC9RgSw9SeU8siqAcbPag=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=LnVSTMZu0PgVnsreq9jQMPwOw581DN4sLHb+71wDt26LcONwZRy5szvT34NfHLiNVMH1ZMItEkk0dRBZTe0P6cQPnm/suFEGhlE7ILFgEG0eSGMZRsYdzUCAvWM4YbY34UscLoB44meTvFZzcAzxYhK+46VFt+biQrx5yxUQHPc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gEE/HBnb; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Dwj1QLWW"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 65CC21F000FF;
-	Tue, 15 Sep 2026 16:58:19 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gEE/HBnb"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 066A21F00898;
+	Tue, 15 Sep 2026 16:58:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789491500;
-	bh=DhhkI+gCW/CKJwCKSjhSiYlpELpksTa48mZKJjz6KQU=;
-	h=From:Subject:Date:To:Cc;
-	b=Dwj1QLWWrUs9kpawpZzG55uPG/buJNut9cFxs+/Q5PapdBb379ALSG1IiwrRK1GOT
-	 CQ9CLl5C+fXocAVoBv9ecpBNX4pBk2NePcsnI13DGPwFgussL0GE73JkhJDQUOpD4b
-	 rz6h+oLe0rPhG3obcxl0XdoEE/iaI85Sq+06OEOK5ThF3cV8UpKJA3nbEHqHdSPyh0
-	 rqP9Et+VcINOj+83UeIEIh5b5gg4QNvDNZVNFbuJLs9dID9e84Yub0FeHL8hG0VEFm
-	 28dO1hS3yJ/cx8bv0XrxylV2Kg/yGuJkeq3vUVXPDbQ6camk33jj3QSMYO1iB+FiEs
-	 oxK+pFmVHQ4SA==
+	s=k20260515; t=1789491502;
+	bh=OeeQ+ZrmuUedsYcXYwL4tkTD/pZRXUuRAVVdzvyPLKE=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=gEE/HBnbqVhC19JguXbHEXqOV3I+Pg1vdl2LIrkN4dg5xJSloG1NPo/D7aXNZHjQO
+	 DGM5R5haMaeLeVdgRssmTFALOc0mzZtvbhqjkUNlGPaUbCEF+J3itD4vrUJZCt3JjN
+	 AuCPRq4t6ESxqKCgIm1pYkqoWUy84ReYoBNYuvuvGVRQ+4zSZwUb7+Duak72w3Qd1o
+	 YadnNdaaDdc5egPDf40vtDB6vAZC98s86voFbTD1emeXpcSVbJJmPHQJBS315/4uvL
+	 V+tzNJnJc0vbTWUo9RHWvyr147bhDKgmPamIEsTU+BTS99ySR16LKscQEPbKpe/kp+
+	 SDA8CitIXnSHg==
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH v3 0/5] nfsd/sunrpc: allow userland to handle rpcbind
+Date: Tue, 15 Sep 2026 12:57:42 -0400
+Subject: [PATCH v3 1/5] SUNRPC: allow a service to opt out of rpcbind
  registration
-Date: Tue, 15 Sep 2026 12:57:41 -0400
-Message-Id: <20260915-nfsd-norpcb-v3-0-3c60d49ade02@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,11 +38,9 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1XMSwrDIBSF4a2EO65Fr0aSjrqP0kF8JdKiQYu0h
- Oy9JnTQDM+B/1sg2+RthkuzQLLFZx9DHfzUgJ6GMFriTd2AFCXtKSfBZUNCTLNWBJk2enAopFJ
- QizlZ59+7drvXPfn8iumz44Vt789h9OAURihRwrSsQyO50NeHTcE+zzGNsEEF/2NxjLHGvEPJt
- XRtr/AQr+v6BeLAowLkAAAA
-X-Change-ID: 20260903-nfsd-norpcb-21cdcaf246bb
+Message-Id: <20260915-nfsd-norpcb-v3-1-3c60d49ade02@kernel.org>
+References: <20260915-nfsd-norpcb-v3-0-3c60d49ade02@kernel.org>
+In-Reply-To: <20260915-nfsd-norpcb-v3-0-3c60d49ade02@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
  Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
@@ -54,85 +52,88 @@ Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
  netdev@vger.kernel.org, linux-kselftest@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2955; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=i4/iwR4TYPYiKzsSzezhQodaLtViQj+bGNSvh82u/Zc=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqqXkl99V3efaeRQtByxE0NWUcZmZ439lWk42EP
- LrTG9WWZ+mJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaql5JQAKCRAADmhBGVaC
- Fa0ZD/96M6aYJf+0JxvHX9ddfzEQMrQDsqC+ckxGxzCIoM63qWto9YYLaCGPLRIAsTpe4caghb6
- I1ibNqPrU+vD3Gh7/jz/h1BKLs59z2S6oCg7x/uc8fBG89f/uAjDctKLKVNlfiBDSrbGAQUadEB
- ZA7l94aTrZOM61G8Uge9/gjhkkHbD4ZYn354W9eA/kmZ1wvTwfL/6VpUoJNZSlplCEIUxNzultY
- YlbzJizwB21Bfo3rd8lBEzAqShAYnSw3rLSLzOJdFHM0oqwh+KgQ+GDDFv1BGN1lhdQemXOzgcI
- v1x99TcO1uJjO9btaKk1FVNvjZLllzH9wDiCTL4L+tHIC0j6fgr6dHF5kynfftgGKMmfo9z6dm6
- /mFcc6FjInxPwWAFyedeLwKk7Klurye3VyVC4krAUy+iF+2IXXAAvc60+f1XDs7XERmYxuQkW92
- toDsKR5KHbNE9dPUUn8GsMLyxxrQPsggIWD4o1tmDHJWKIVYvsy+V7L+Vt07j5aeNqpqr98WGu8
- IlP51r16pA4j4CRYCXO5KHB5TDTF7Wr6bWNGDlXRwmcH1xmjgfyVlFEyj9pN304ZFFX6AYDS6sL
- JR2ovSVNu0lQUfOk8slsRf1vxe4xP/bry+3M5zuBWVFU1fwP6caNe0fMoTq14zxwNVxOTHBXBI3
- fR27Jfe2DqwajOw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2210; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=UoWQHbkr2M9okG7sxUiZYcmC9RgSw9SeU8siqAcbPag=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqqXkqcaLQI+8LO3EAvOhs84pW2NS1GNfDVBNAV
+ c+EDqOVk/2JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaql5KgAKCRAADmhBGVaC
+ FenbD/9knJs18slI5cZ7sI/4yJT0FxNGelszz3DBCciMgd1rMwoSEWK/knIysaOEDov9eObXl55
+ /kWohvTkoeypggxbS1+CwnstZKsMW83vvnlGSK9IpD2Y13W1vBoXpyWNDfKbhMK0VPsTvA9ZIqt
+ Q12eiBT4kSiW5+mN+GBDPTesx4qrBEYn1l96g56kV2Y3hNGo6vH4oJdeC8Th1y6EqF63igAKLsI
+ vNms80LPvhdUwhE1nbtYkTTjGbMYVgUdp5cD2iu+JxnDg5c/UmF7j6i9S0Mbdns7VsPNlw5vGRY
+ iiNWPdm+B3dtQ85EKoKmG2HZcvjjtzsudFtp2S/nOFGmaqA6g193nLQCJEwiFWuyExUl/W5W14S
+ ErjIC7bvsrmvKyQBkqg3SbJYiP+LGpIm7v6PXJzGkzng48aFDhvgNo9RDitxqYKFmuII7CzNPEE
+ RDmNf+uPqkva49iw7vxaEkuCYLdv8qNQWHIfN9Tnpv+sLd4+wT86vhifs7e4zTVjboaMIt1f15U
+ rWRSA32+q1NsS75EgEX/0+f56gv+KA4rkR42+K+o12urq4saYUHq2Kthk4WRYof7cCZONPwpn/i
+ lfDsc4QkUj2WZYLvE9lSB9U8ili0mZr+4iXchHyGUtRmiK3Td/ENgHeeqLDK/8RCO9JICrF/2yp
+ AxapZfPznb8SQ4w==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-This version fixes a few problems that Chuck and agentic review pointed
-out. Original cover letter follows:
+svc_bind() creates the local rpcbind client, and svc_register() then
+makes one synchronous call for each program and version. Both run under
+the caller's mutex. A caller that registers from userland needs neither.
 
-While working on the recent hardening patches for the nfsd listener
-netlink interface, Chuck mentioned that we could allow userland to
-handle rpcbind registation itself.
+Add sv_no_rpcbind to struct svc_serv, and fix up the code to honor it.
+No caller sets the flag yet, so behaviour does not change.
 
-This adds such a mechanism to the netlink listener set interface. The
-main idea is to add a new optional flag to the netlink downcall that
-tells the kernel to skip rpcbind registration altogether for the nfsd
-listeners.
-
-Note that NLM registration is not affected and is still handled by the
-kernel.  Handling that is trickier since it can be started by the
-client.
-
-Patches to nfsdctl will follow.
-
+Assisted-by: LLM
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
-Changes in v3:
-- Exempt an empty listener list from the rpcbind ownership check.
-- Drop the dead nfsacl test in nfsd_version_registerable().
-- Set an extack when the listener_set reply cannot be built.
-- selftests: check nlmsg_len against the recv() count before parsing the reply.
-- selftests: cover teardown in both ownership directions.
-- Link to v2: https://lore.kernel.org/r/20260914-nfsd-norpcb-v2-0-38263c6f59b2@kernel.org
+ include/linux/sunrpc/svc.h | 2 ++
+ net/sunrpc/svc.c           | 5 +++++
+ net/sunrpc/svc_xprt.c      | 2 +-
+ 3 files changed, 8 insertions(+), 1 deletion(-)
 
-Changes in v2:
-- Refuse the legacy portlist add-fd write against a userspace-rpcbind
-  serv. nfsd_create_serv() cannot flip ownership back for an existing
-  serv, svc_addsock() expects svc_register() to register the listener,
-  and there is no way to tell the rpcbind owner about it.
-- selftests: require NFSv3 in the reply and skip where NFSv4 is not
-  built, rather than passing when neither is present.
-- selftests: cover the portlist refusal.
-- Link to v1: https://lore.kernel.org/r/20260910-nfsd-norpcb-v1-0-b4d5182d634c@kernel.org
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 24698856eb40..cfb5ab17dabd 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -87,6 +87,8 @@ struct svc_serv {
+ 	char *			sv_name;	/* service name */
+ 
+ 	bool			sv_is_pooled;	/* is this a pooled service? */
++	/* Caller registers with rpcbind itself. Set before svc_bind(). */
++	bool			sv_no_rpcbind;
+ 	struct svc_pool *	sv_pools;	/* array of thread pools */
+ 	int			(*sv_threadfn)(void *data);
+ 
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index f73412e123a1..7e23af94a719 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -337,6 +337,8 @@ static int svc_uses_rpcbind(struct svc_serv *serv)
+ 
+ int svc_bind(struct svc_serv *serv, struct net *net)
+ {
++	if (serv->sv_no_rpcbind)
++		return 0;
+ 	if (!svc_uses_rpcbind(serv))
+ 		return 0;
+ 	return svc_rpcb_setup(serv, net);
+@@ -1235,6 +1237,9 @@ int svc_register(struct svc_serv *serv, struct net *net,
+ 	if (proto == 0 && port == 0)
+ 		return -EINVAL;
+ 
++	if (serv->sv_no_rpcbind)
++		return 0;
++
+ 	for (p = 0; p < serv->sv_nprogs; p++) {
+ 		struct svc_program *progp = &serv->sv_programs[p];
+ 
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 5e210bc68422..08cfe8a31189 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -1266,7 +1266,7 @@ void svc_xprt_destroy_all(struct svc_serv *serv, struct net *net,
+ 		msleep(delay++);
+ 	}
+ 
+-	if (unregister)
++	if (unregister && !serv->sv_no_rpcbind)
+ 		svc_rpcb_cleanup(serv, net);
+ }
+ EXPORT_SYMBOL_GPL(svc_xprt_destroy_all);
 
----
-Jeff Layton (5):
-      SUNRPC: allow a service to opt out of rpcbind registration
-      NFSD: add a userspace-rpcbind flag to listener_set
-      NFSD: honour the userspace-rpcbind flag in listener_set
-      NFSD: report registerable programs in the listener_set reply
-      selftests/nfsd: exercise the userspace-rpcbind listener_set flag
-
- Documentation/netlink/specs/nfsd.yaml              |  55 ++-
- fs/nfsd/netlink.c                                  |   5 +-
- fs/nfsd/nfsctl.c                                   | 195 +++++++++-
- fs/nfsd/nfsd.h                                     |   4 +-
- fs/nfsd/nfssvc.c                                   |  66 ++--
- include/linux/sunrpc/svc.h                         |   2 +
- include/uapi/linux/nfsd_netlink.h                  |  20 +
- net/sunrpc/svc.c                                   |   5 +
- net/sunrpc/svc_xprt.c                              |   2 +-
- .../testing/selftests/nfsd/nfsd_netlink_listener.c | 404 ++++++++++++++++++++-
- 10 files changed, 718 insertions(+), 40 deletions(-)
----
-base-commit: 4d46e877c21d07ddcad03da7f3b05ad2cc22b5b3
-change-id: 20260903-nfsd-norpcb-21cdcaf246bb
-
-Best regards,
 -- 
-Jeff Layton <jlayton@kernel.org>
+2.55.0
 
