@@ -1,61 +1,38 @@
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from cstnet.cn (smtp81.cstnet.cn [159.226.251.81])
+	(using TLSv1.2 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3584141E6CD;
-	Wed, 16 Sep 2026 07:15:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.187
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6222D463B73;
+	Wed, 16 Sep 2026 07:41:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=159.226.251.81
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789542944; cv=none; b=tyjvi5+LVxS/SLkANinKm7/TdaI1zg+MZKOw6Ubi7IdVjfzeZh/n2ptvPJw++CD/v2Eo435D346doiz/LfumhnvzyyXwztpFPu7sDGLp7S8oNq7x/I4pxqNqQljOXV1AgjGqHS2FOkirOlRKO8OMbAwKA55b6IR3Lfr5rEl/99E=
+	t=1789544492; cv=none; b=d6oOMtgO29ENQQrI2eUgAqOpMKNvnUgQBYjExFzvW9xB2z2fQ9dbRJeZaxeqD59t9P0JFZgL5HiwUdhGpf2SLQ9lZt5hWUIxSIfahbj42XyEcwf4oufB7xhHLHyX9hQFGMOgQTbYEk2JmahXfcrRqZ2JTwtTt8VdGlQNUIw8bdo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789542944; c=relaxed/simple;
-	bh=qbaiVgf+FPhg9ry/RsD0C9yh5wWMVw6jOEGioOdbWqE=;
-	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=u+r+/PYjJ2xH5bc6o3eXL5v2+KoZB2Y8l+0wp2/KTboli4aZzbXAMmxHdIvAB6oQoVW/OQEtnu7Tn/BSIl6aQdsMq0oR9zQAiFI7KbDtZp+Vyb1HZwzbl2ex6K8LUwJZ8zcX0Jx0OXXa9zx8Efk3qcAB+bxv3TAzbnD4gFBqgUI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=sddbpjbj; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=sddbpjbj; arc=none smtp.client-ip=45.249.212.187
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="sddbpjbj";
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="sddbpjbj"
-dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
-	c=relaxed/relaxed; q=dns/txt;
-	h=From;
-	bh=qbaiVgf+FPhg9ry/RsD0C9yh5wWMVw6jOEGioOdbWqE=;
-	b=sddbpjbjTNkjPD/h8yl9ZQPRMx1qGtmVtYzjSTlbG9GUdtNlf7wSR04H/9HDlfabW49JpmWWL
-	SxWWAlxZGpOoWXj/LRqnoH38KB9Rx4FVm4iFd4q0OvCRSDzDx54x618c//99vBUeUAHU3YZFm+W
-	l7DQ1gZUNSjXZ5iisFguYfA=
-Received: from canpmsgout12.his.huawei.com (unknown [172.19.92.144])
-	by szxga01-in.huawei.com (SkyGuard) with ESMTPS id 4hl99y3lPZz1BG4P;
-	Wed, 16 Sep 2026 15:14:30 +0800 (CST)
-dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
-	c=relaxed/relaxed; q=dns/txt;
-	h=From;
-	bh=qbaiVgf+FPhg9ry/RsD0C9yh5wWMVw6jOEGioOdbWqE=;
-	b=sddbpjbjTNkjPD/h8yl9ZQPRMx1qGtmVtYzjSTlbG9GUdtNlf7wSR04H/9HDlfabW49JpmWWL
-	SxWWAlxZGpOoWXj/LRqnoH38KB9Rx4FVm4iFd4q0OvCRSDzDx54x618c//99vBUeUAHU3YZFm+W
-	l7DQ1gZUNSjXZ5iisFguYfA=
-Received: from mail.maildlp.com (unknown [172.19.163.15])
-	by canpmsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hl8yB3yvjznTZk;
-	Wed, 16 Sep 2026 15:04:18 +0800 (CST)
-Received: from dggpemr200001.china.huawei.com (unknown [7.185.36.96])
-	by mail.maildlp.com (Postfix) with ESMTPS id A532040586;
-	Wed, 16 Sep 2026 15:15:23 +0800 (CST)
-Received: from huawei.com (10.50.85.155) by dggpemr200001.china.huawei.com
- (7.185.36.96) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.2562.46; Wed, 16 Sep
- 2026 15:15:22 +0800
-From: Ran Hongyun <ranhongyun1@huawei.com>
-To: <jlayton@kernel.org>
-CC: <anna@kernel.org>, <bcodding@redhat.com>, <cel@kernel.org>,
-	<chengzhihao1@huawei.com>, <linux-kernel@vger.kernel.org>,
-	<linux-nfs@vger.kernel.org>, <ranhongyun1@huawei.com>, <trondmy@kernel.org>,
-	<viro@zeniv.linux.org.uk>, <yangerkun@huawei.com>, <yi.zhang@huawei.com>
-Subject: Re: [PATCH 0/2] lockd: fix two bugs on nlmclnt_find_lockowner() failure path
-Date: Wed, 16 Sep 2026 15:07:41 +0800
-Message-ID: <20260916070741.350612-1-ranhongyun1@huawei.com>
-X-Mailer: git-send-email 2.52.0
-In-Reply-To: <b17182c347ab5cc092a50cb16c9c11dc9fe449bc.camel@kernel.org>
-References: <b17182c347ab5cc092a50cb16c9c11dc9fe449bc.camel@kernel.org>
+	s=arc-20240116; t=1789544492; c=relaxed/simple;
+	bh=rgTTy4XlZHUTrAmKsM9993K+HnUGwqPcN3m/v80Vk3c=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=IlZk9K8oQQwR/V4FxS5Lbd3PNIhzG4vHClcbNQ1GPxuhFwSHMxh8UBgsVZJIInKUZPIaAoQTRT0tPyEBcRZ8NdsOlo0XQLc9OmtBO7MiSdl039HBwPPvSybY9Hl+bzTTKvT7Jih9SxbVDBLrJFXzzuS1+kAjHQ5ve9iMNwzl0Ks=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=iscas.ac.cn; spf=pass smtp.mailfrom=iscas.ac.cn; arc=none smtp.client-ip=159.226.251.81
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=iscas.ac.cn
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=iscas.ac.cn
+Received: from dfae2b116770.home.arpa (unknown [36.110.52.2])
+	by APP-03 (Coremail) with SMTP id rQCowAAnKjgOSKpq4D7fBw--.40107S2;
+	Wed, 16 Sep 2026 15:41:02 +0800 (CST)
+From: Wentao Liang <vulab@iscas.ac.cn>
+To: Dai.Ngo@oracle.com
+Cc: anna@kernel.org,
+	chuck.lever@oracle.com,
+	jlayton@kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	neil@brown.name,
+	okorniev@redhat.com,
+	tom@talpey.com,
+	trondmy@kernel.org,
+	Wentao Liang <vulab@iscas.ac.cn>,
+	stable@vger.kernel.org
+Subject: [PATCH] lockd: Fix host reference leak in nlmclnt_recovery()
+Date: Wed, 16 Sep 2026 07:40:34 +0000
+Message-Id: <20260916074034.1972173-1-vulab@iscas.ac.cn>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -63,8 +40,60 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-ClientProxiedBy: kwepems200001.china.huawei.com (7.221.188.67) To
- dggpemr200001.china.huawei.com (7.185.36.96)
+X-CM-TRANSID:rQCowAAnKjgOSKpq4D7fBw--.40107S2
+X-Coremail-Antispam: 1UD129KBjvJXoW7KF43JF17tF1fAw1xtrW8Zwb_yoW8Jw18pF
+	Z3twsFkr95t34avanrJa1DWr4rCrZYg398Ca4kGw12ywnxXw4Yy39ruF1jvF48ArWvyrZ0
+	gF17Kr4rZr1DJaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9a14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
+	1l84ACjcxK6xIIjxv20xvE14v26ryj6F1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
+	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
+	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
+	2Ix0cI8IcVAFwI0_Jw0_WrylYx0Ex4A2jsIE14v26r4UJVWxJr1lOx8S6xCaFVCjc4AY6r
+	1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02
+	628vn2kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4
+	IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1r
+	MI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCV
+	W8JwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWU
+	JVWUCwCI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14v26r4UJVWxJr
+	UvcSsGvfC2KfnxnUUI43ZEXa7VUbtl1PUUUUU==
+X-CM-SenderInfo: pyxotu46lvutnvoduhdfq/1tbiBgQMA2qqPpQsJAAAsv
 
-Friendly ping.
+In nlmclnt_recovery(), nlm_get_host(host) is called to take a reference
+on the host before spawning the reclaimer thread via kthread_run(). If
+kthread_run() fails, the reference is never released, and
+host->h_reclaiming remains incremented, preventing subsequent reclaim
+attempts.
+
+Fix this by releasing the host reference with nlmclnt_release_host(host)
+and resetting host->h_reclaiming to 0 on kthread_run() error.
+
+Fixes: df94f000c46c ("lockd: convert reclaimer thread to kthread interface")
+Cc: stable@vger.kernel.org
+Signed-off-by: Wentao Liang <vulab@iscas.ac.cn>
+---
+ fs/lockd/clntlock.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index 8fa30c42c92a..aba37847356c 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -216,10 +216,13 @@ nlmclnt_recovery(struct nlm_host *host)
+ 	if (!host->h_reclaiming++) {
+ 		nlm_get_host(host);
+ 		task = kthread_run(reclaimer, host, "%s-reclaim", host->h_name);
+-		if (IS_ERR(task))
++		if (IS_ERR(task)) {
+ 			printk(KERN_ERR "lockd: unable to spawn reclaimer "
+ 				"thread. Locks for %s won't be reclaimed! "
+ 				"(%ld)\n", host->h_name, PTR_ERR(task));
++			host->h_reclaiming = 0;
++			nlmclnt_release_host(host);
++		}
+ 	}
+ }
+ 
+-- 
+2.34.1
+
