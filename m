@@ -1,221 +1,129 @@
-Received: from ewsoutbound.kpnmail.nl (ewsoutbound.kpnmail.nl [195.121.94.183])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A16624A3F2A
-	for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2026 14:02:07 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.121.94.183
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2D55F3DB337
+	for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2026 14:10:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789567330; cv=none; b=CqqFaLTIQ/aT8Z1Rnx1THLZ35/tprpSyg0e7f3cBHbRVXyZDME2r5eLgRilHi8wp/muSJUZVOyKpUzWJzKG0yWyVj9qlgSMIXnY3KH3F4IOnDuUVo2xgMFQKeiy2SNs5mog83tkDT90S7aS69xzM/z7VR72n9j9+WqpPfz2Howk=
+	t=1789567845; cv=none; b=pD9eoMLHITIG5rK2e7nkk/f7krrswchApBTjJMY1p5JoAQu3TSuWIDld2Z2TjaXemGW4tZit+4wt9Bw9icuEeGpsEAEKjIKpbBPmJLlJNsDSM2fSpDZZ/uWnvzRpv6ADEkjkU4AmLV1MOjyPu1EW0Vm6mUI2SeT0g0d8jidJoUc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789567330; c=relaxed/simple;
-	bh=b2xft+OKM2lLyQoaD18uV1GzD7Aiiqrxm6TJCdgd2P8=;
-	h=Date:From:To:Cc:Message-ID:In-Reply-To:References:Subject:
-	 MIME-Version:Content-Type; b=gZp0J3sbT3XP5D4LzdOdUESBvtL1IuQi5FZdPiTcoTiKbLDPo2n4Y9qoIUNpQAL+MoIwDRGXx8sTzaBuYED4xOrSBvk8jyejfjyfxdGQigBH3aiYBGhsuwJLa7ECpVdr36Odme8WlKzTmXCweS+lnDuxgwm1BK3Mw/3zVZL9Q9Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=xs4all.nl; spf=pass smtp.mailfrom=xs4all.nl; dkim=pass (2048-bit key) header.d=xs4all.nl header.i=@xs4all.nl header.b=njiP/rxj; arc=none smtp.client-ip=195.121.94.183
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=xs4all.nl
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=xs4all.nl
+	s=arc-20240116; t=1789567845; c=relaxed/simple;
+	bh=tWO/i/+i09amkUFwPA+eX/Zgy+VSzpIruBlOY3acr7w=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=hwGxdEC3eXEifmDaFMC+5wI9FaaM0XjCMqBBw9aybMwm9F9N94f2m111joRlFGTqzJ5EbNtFaEkMVlQYwQ6mAqVhHZhZY/8UU5/0q41hV9O2X41ULG+iO7uR+0X/YcmXbh82m/ZzRLUeNN/Y2jHcL681AEDKzcA2lAe8WC8/PDI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=ZiTGZkS6; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=b0YpQK8L; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=xs4all.nl header.i=@xs4all.nl header.b="njiP/rxj"
-X-KPN-MessageId: 2e5aacfe-b1d7-11f1-8f57-005056992ed3
-Received: from mta.kpnmail.nl (unknown [10.31.161.189])
-	by ewsoutbound.so.kpn.org (Halon) with ESMTPS
-	id 2e5aacfe-b1d7-11f1-8f57-005056992ed3;
-	Wed, 16 Sep 2026 16:01:57 +0200 (CEST)
-Received: from mtaoutbound.kpnmail.nl (unknown [10.128.135.189])
-	by mta.kpnmail.nl (Halon) with ESMTP
-	id 2e59d1aa-b1d7-11f1-a07b-0050569981f5;
-	Wed, 16 Sep 2026 16:01:57 +0200 (CEST)
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="ZiTGZkS6";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="b0YpQK8L"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1789567843;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=EjDCJB5cp1SMf9kcPGUmyS/Z6HVxiHf7yQiCMJVGnYo=;
+	b=ZiTGZkS6yV6rewyuPkrfO/E1frHDd9G+ONPprHmt86K8KxSWZgRe+odPItFFozKfAXsgUk
+	CCnCukB1FshyAZz96GO29hL14zpSh5ovJW+Cm1WkVteP2VRolnil+1mSY0r2mII6C5nrNr
+	Uh7C8wDd48O5FN1pjcxgqCIWRuVoVBs=
+Received: from mail-lf1-f69.google.com (mail-lf1-f69.google.com
+ [209.85.167.69]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-512-CFLxsi6VOTiiY5GOW5BxPg-1; Wed, 16 Sep 2026 10:10:41 -0400
+X-MC-Unique: CFLxsi6VOTiiY5GOW5BxPg-1
+X-Mimecast-MFC-AGG-ID: CFLxsi6VOTiiY5GOW5BxPg_1789567840
+Received: by mail-lf1-f69.google.com with SMTP id 2adb3069b0e04-5b4ab63ee90so400515e87.1
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2026 07:10:41 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=xs4all.nl; s=xs4all01;
-	h=content-type:mime-version:subject:message-id:to:from:date;
-	bh=KNPF855LWyArwiBTo/NsLgkSqeHprkbCNAzYgmKihk4=;
-	b=njiP/rxjV4DV8RpS3k0wfi1drWVXVrMQZqKAwjkS7nlJVvwr/zp2Gt3YFLc2kcCwkA10+PxHM40e6
-	 uXtdPQG0PcgaczR0WPPdlCzscxyHxKjuittwRKn6cT0L7bG/hOy3Ce3vZmwKpjWxHSqoDyuKI3Daw8
-	 TudRJkg1N+LGETgFZg5SqYJbp2ju6zm1yXRGvOXJWcTaVW0Zjd6byWJ8evWA0o+MgtX2/2PQUU8IR+
-	 r5j1meM2ICepAFKYbhlMNdG0ViW73oW27uECOinzByDQbCiXMIch4wWDDxYEyBiHdpn+teodSrx4Ec
-	 5abbuftLBdfOpvjy/f6Xs9rZQoR5i5Q==
-X-KPN-MID: 33|C9zVEll4OUbKdsU5tNMIxsF3gEx17Vmw5PRawJ5JCL7AUMeW9ifqCtdXsNM3HFB
- 6tTtNH1dUxlb77I1rfKLM/97GQWY73zLQfL/FaT+W9Ck=
-X-CMASSUN: 33|WSRBIeDpSsFYrliGnJ5yNIoq6U1lWyF+Pja11w6edSIvBSHUwA4F3WLUCJrWz3g
- XLED+gCp3/aeJUBgdLfmGxQ==
-X-KPN-VerifiedSender: Yes
-Received: from cpxoxapps-mh02 (cpxoxapps-mh02.personalcloud.so.kpn.org [10.128.135.208])
-	by mtaoutbound.kpnmail.nl (Halon) with ESMTPSA
-	id 2e4af220-b1d7-11f1-8edc-00505699eff2;
-	Wed, 16 Sep 2026 16:01:57 +0200 (CEST)
-Date: Wed, 16 Sep 2026 16:01:57 +0200 (CEST)
-From: Jori Koolstra <jkoolstra@xs4all.nl>
-To: NeilBrown <neil@brown.name>, NeilBrown <neilb@ownmail.net>,
-	Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: Christian Brauner <brauner@kernel.org>, Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>, linux-fsdevel@vger.kernel.org,
-	linux-nfs@vger.kernel.org
-Message-ID: <2052084198.1190749.1789567317791@kpc.webmail.kpnmail.nl>
-In-Reply-To: <178950702008.207413.8966334050259525793@noble.neil.brown.name>
-References: <20260910002934.192979-1-neilb@ownmail.net>
- <20260910002934.192979-5-neilb@ownmail.net>
- <aqlXZ7Gunepk_4uV@lt-jori.localdomain>
- <178950702008.207413.8966334050259525793@noble.neil.brown.name>
-Subject: Re: [PATCH 4/7] vfs: change vfs_lookup_open() to return found
- dentry in path.dentry.
+        d=redhat.com; s=google; t=1789567840; x=1790172640; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=EjDCJB5cp1SMf9kcPGUmyS/Z6HVxiHf7yQiCMJVGnYo=;
+        b=b0YpQK8LcliqA+fNTUbzJifnfhElDOov3d/7G5KPJtBmCWlTw73GVsK1PRONibtlJZ
+         EUaaLQlZ1675uYE7eGRP/UAzegUEi3g7yzzH1xYP0GWyoC/kDmu/+Kzt3nNMChl30L9+
+         VK44htNg1UFuRWQBH5eNoHmIYzadKNHCFj1YiebiKWZX0oDXljlChocTkUVxdgFbCI0w
+         vBezUylnOk25ugIV4qvF567siGp5Un+hIBNqGiA8AAFgOF5v1bkXjiexGDSvdb9eUeHW
+         bejXQr6gaDyeVvdIiXAn6rBt16XMDstEaUQc8BYtmRWJJJwx/JRTQjVcwwggqlMoWkMh
+         KnFw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1789567840; x=1790172640;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=EjDCJB5cp1SMf9kcPGUmyS/Z6HVxiHf7yQiCMJVGnYo=;
+        b=2OypMsz09AckM8nphA5vmAqD+t2pZPDyeWXo9GsGkX/CXckWpoNryhxBdXqmsXde04
+         yS930URkdv36T1Ukc8fJl27mjgy5V+zqA3ydfZ1/RO1FGghsZ6JhTifmHXiHOnzr6zUs
+         ool0ihgUHhet2tnzO7YAvTzH7Ubp6STuW8NlrzKA3z7oQspYrtvk1jcbjfVxTNx48++W
+         yaWDLCO/1/xtlIvNGSdl7OBADrlvGg3ugNKVAW7AC6cDWf52nex2b7noCBobkJKzB+xN
+         rJLRxgm6SzI8wJuAvcoXzTy2gTT0HCo1XlPcG/FXlF0iyYT9PHcPoJyXdeCQ7qnyk7vJ
+         RVIA==
+X-Gm-Message-State: AFuF++mrF+2aAxOdKrgfd0WAP1/jSjD3BTPM8Fr/sx6AablrISuD+62b
+	dlLN/r9hSe3WPLWB1p8iaAuizvJBvDHVWzPGaqUGle/FhBXMiwpc7K5sn22y4Mz+1aegqc5AEwn
+	nunKgOmtgsV+blNexxovAvptJHGG4zKKoD2c/z3RDm9yRLV9qI9UEKOShVtHEL46uuUboPQ==
+X-Gm-Gg: AYBFou0iyeZJXV06h+wQ66/uqz0AOVG0M9ZFglacYdnZyPgOH6m6UjFdNBk4kROAwSR
+	1ENg2TQ8YaukQ7iBByjnLgGJ+AbkgXh+AzeK0TdRmN3cBCRcQPyqBCHyuNP0D/Qe9MH0Drnylvi
+	Kos2hHgDi7g3wZbLhkMGBMYPvJlxps8tkslFZKTjkRYDQAaT3gVT58gYT/EZPoG+zkThOxWWASS
+	R+JRXRW6Ol145HJpDQdIxJJnVwCGu3VD75ELEkZlQKtijlP6etwTswakgQcpvSzgraTUHLL2PNn
+	9IAU5i1XOJEy55m3LZlUFuGeCMhi6rseQJZoYXAK/wcDG9XFkVrFAbaR7fInBeAQpi8kkWVXWsk
+	=
+X-Received: by 2002:a05:6512:3a90:b0:5b6:183c:5c9b with SMTP id 2adb3069b0e04-5b8b665e866mr917743e87.57.1789567839976;
+        Wed, 16 Sep 2026 07:10:39 -0700 (PDT)
+X-Received: by 2002:a05:6512:3a90:b0:5b6:183c:5c9b with SMTP id 2adb3069b0e04-5b8b665e866mr917733e87.57.1789567839478;
+        Wed, 16 Sep 2026 07:10:39 -0700 (PDT)
+Received: from [172.31.1.12] ([70.105.240.249])
+        by smtp.gmail.com with ESMTPSA id 2adb3069b0e04-5b8b57c3b81sm924396e87.20.2026.09.16.07.10.37
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 16 Sep 2026 07:10:38 -0700 (PDT)
+Message-ID: <11e1e8e5-a092-4db9-902c-fdb595a59d0d@redhat.com>
+Date: Wed, 16 Sep 2026 10:10:36 -0400
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+User-Agent: Mozilla Thunderbird
+Subject: Re: [nfs-utils PATCH] blkmapd: reject zero-length signature
+ components while decoding block signatures
+To: Scott Mayhew <smayhew@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+References: <20260903175448.1214235-1-smayhew@redhat.com>
+Content-Language: en-US
+From: Steve Dickson <steved@redhat.com>
+In-Reply-To: <20260903175448.1214235-1-smayhew@redhat.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-X-Priority: 3
-Importance: Normal
 
 
-> Op 15-09-2026 23:17 CEST schreef NeilBrown <neilb@ownmail.net>:
+
+On 9/3/26 1:54 PM, Scott Mayhew wrote:
+> A zero-length signature can cause blkmapd to map to an unintended
+> device.
 > 
->  
-> On Wed, 16 Sep 2026, Jori Koolstra wrote:
-> > On Thu, Sep 10, 2026 at 10:20:50AM +1000, NeilBrown wrote:
-> > > From: NeilBrown <neil@brown.name>
-> > > 
-> > > The caller - nfsd - needs to know the type of object found when a
-> > > non-regular file was found to exist.  This is most easily done
-> > > by passing back the dentry.
-> > > 
-> > > So change calling pattern so that the path (now called "path") contains
-> > > the parent dentry on entry and the child dentry on exit.
-> > > vfs_lookup_open() will dput() the parent and caller must dput() the
-> > > child.
-> > > 
-> > > If lookup_open() returns -EFTYPE (from ->atomic_open()) we need to
-> > > use d_lookup() to find the dentry.  If ->atomic_open() didn't add a
-> > > dentry to the dcache we return %NULL in %path->dentry.
-> > > 
-> > > Signed-off-by: NeilBrown <neil@brown.name>
-> > > ---
-> > >  fs/namei.c | 31 ++++++++++++++++++++++---------
-> > >  1 file changed, 22 insertions(+), 9 deletions(-)
-> > > 
-> > > diff --git a/fs/namei.c b/fs/namei.c
-> > > index 0c787363b101..30ccc0c2f02f 100644
-> > > --- a/fs/namei.c
-> > > +++ b/fs/namei.c
-> > > @@ -4606,7 +4606,7 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
-> > >  
-> > >  /**
-> > >   * vfs_lookup_open - open and possibly create a regular file
-> > > - * @parent: directory to contain file
-> > > + * @path: directory to contain file
-> > >   * @last: final component of file name
-> > >   * @open_flag: O_flags
-> > >   * @mode: initial permissions for file
-> > > @@ -4619,9 +4619,15 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
-> > >   * If the fs object found is not a regular file then -EFTYPE is
-> > >   * returned.
-> > >   *
-> > > + * @path is updated to contain the dentry that was found if possible.
-> > > + * In particular, if -EFTYPE is returned, then @path.dentry will be the
-> > > + * object that is not a regular file, or %NULL.
-> > > + * Consequently the caller must be prepared for @path.dentry to be
-> > > + * dput(), an it must dput() whatever is in @path.dentry after the call.
-> > > + *
-> > >   * Returns: the opened struct file, or an error.
-> > >   */
-> > > -struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
-> > > +struct file *vfs_lookup_open(struct path *path, struct qstr *last,
-> > >  			     int open_flag, umode_t mode)
-> > >  {
-> > >  	struct file *file __free(fput) = NULL;
-> > > @@ -4638,7 +4644,7 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
-> > >  	mode |= S_IFREG;
-> > >  	open_flag |= __O_REGULAR;
-> > >  
-> > > -	error = lookup_noperm_common(last, parent->dentry);
-> > > +	error = lookup_noperm_common(last, path->dentry);
-> > >  	if (error)
-> > >  		return ERR_PTR(error);
-> > >  
-> > > @@ -4646,7 +4652,7 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
-> > >  	if (IS_ERR(file))
-> > >  		return file;
-> > >  
-> > > -	nd.path = *parent;
-> > > +	nd.path = *path;
-> > >  	nd.last = *last;
-> > >  	nd.flags = LOOKUP_OPEN;
-> > >  	if (open_flag & O_CREAT) {
-> > > @@ -4658,9 +4664,18 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
-> > >  	op.mode = mode;
-> > >  	dentry = lookup_open(&nd, file, &op);
-> > >  
-> > > -	if (IS_ERR(dentry))
-> > > +	if (IS_ERR(dentry)) {
-> > > +		if (dentry == -EFTYPE) {
-> > > +			/* Try to determine what was found */
-> > > +			struct dentry *child = d_lookup(path->dentry, &nd.last);
-> > > +			dput(path->dentry);
-> > > +			path->dentry = child;
-> > > +			WARN_ON_ONCE(child && d_is_reg(child));
-> > > +		}
-> > >  		return ERR_CAST(dentry);
-> > > -
-> > > +	}
-> > > +	dput(path->dentry);
-> > > +	path->dentry = dentry;
-> > >  	if (d_really_is_negative(dentry)) {
-> > >  		error = -ENOENT;
-> > >  	} else if (!(file->f_mode & FMODE_CREATED) && (open_flag & O_EXCL)) {
-> > > @@ -4668,10 +4683,8 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
-> > >  	} else if (!d_is_reg(dentry)) {
-> > >  		error = -EFTYPE;
-> > >  	} else if (!(file->f_mode & FMODE_OPENED)) {
-> > > -		nd.path.dentry = dentry;
-> > > -		error = vfs_open(&nd.path, file);
-> > > +		error = vfs_open(path, file);
-> > >  	}
-> > > -	dput(dentry);
-> > >  
-> > >  	if (error)
-> > >  		return ERR_PTR(error);
-> > > -- 
-> > > 2.50.0.107.gf914562f5916.dirty
-> > > 
-> > 
-> > OK, so if I understand the problem correctly: the current implementation
-> > does not work for the purposes of NFS because ->atomic_open() may return
-> > EFTYPE on O_REGULAR and then you still don't know what that found dentry
-> > was.
-> > 
-> > An arugument with such specific calling conventions feels kinda yucky
-> > and easier to get wrong. Why not an out enum arg that specifies the
-> > found dentry type? Seems at least a bit cleaner. What do you think?
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Committed... (tag: nfs-utils-2-9-3-rc4)
+
+steved.> ---
+>   utils/blkmapd/device-process.c | 4 ++++
+>   1 file changed, 4 insertions(+)
 > 
-> I'm alternating between an out dentry arg separate from path, and
-> reliably returning one of -EISDIR, -ELOOP, and -EFTYPE.  Those are
-> all well defined error codes that are used for exactly this sort of
-> thing.
+> diff --git a/utils/blkmapd/device-process.c b/utils/blkmapd/device-process.c
+> index f53a6165..a47cc36e 100644
+> --- a/utils/blkmapd/device-process.c
+> +++ b/utils/blkmapd/device-process.c
+> @@ -81,6 +81,10 @@ static int decode_blk_signature(uint32_t **pp, uint32_t * end,
+>   		BLK_READBUF(p, end, 12);
+>   		READ64(comp->bs_offset);
+>   		READ32(siglen);
+> +		if (siglen == 0) {
+> +			BL_LOG_ERR("0 length signature component\n");
+> +			goto out_err;
+> +		}
+>   		comp->bs_length = siglen;
+>   		BLK_READBUF(p, end, siglen);
+>   		/* Note we rely here on fact that sig is used immediately
 
-It's only internal callers anyway, so I would take the leeway with some
-errno proliferation. Seems fine to me, especially since NFS needs exactly
-this info.
-
-> My current thought is to modify ->atomic_open to respond to __O_REGULAR
-> either by calling finish_no_open() so the caller can inspect the dentry
-> directly, or to return one of those three errors as appropriate.
-> VFS code can map them all to -EFTYPE for syscalls, and nfsd can use the
-> raw error code.
-
-Personally, I like this last idea the most. Still, I wish there was a more
-general way to signal XYZ problem happened during function call without any
-worrying about collisions on the very limited errno space. I understand that
-you can decouple the local error codes returned by not directly forwarding
-any errnos from called functions, but this is often impracticable or at
-least requires an ugly errno translate.
-
-Interested on perspectives from kernel veterans here what is wisdom, I've ran
-into this myself too.
-
-Jori. 
-
-> 
-> Thanks,
-> NeilBrown
