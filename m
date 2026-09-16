@@ -1,41 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 559A955D89F
-	for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2026 16:29:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A771E592204
+	for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2026 16:29:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789576155; cv=none; b=rCaYiCKXZUCNHaQZb0oVw6Mc2Yu5Mf+VxBqtanyQcyfqTwkdC0tlN4lOQOUHGmsouculKRHt7bUmpjb1O6GcCAVh9gAVqRjRv/zeDrDFqg/tkaeIu3QO4yY24xUvDsvmSGzbzvmbwy5NrvSTPA4i8yMauxAfr7p7s4DGYGKcyzk=
+	t=1789576163; cv=none; b=BWoRBcz72hpitl4dWW8aqRAPlyDkxXoY3fnUwgEPL42RYSIQun7bbBK1wJowFGk5JRGAMf+UeIYZtjGxu9oLjkBGzMhWlNWqWIdRFCcSVRLNnESc51aLInSbCmso1UQZtGd1hrpwEuEMmBIWG0+nCGTS8XuKCA6C/3wQzbJ5stY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789576155; c=relaxed/simple;
-	bh=Emht96KlzJUuanz+/d7Taqne9nd4PqFWUzggXtaKVKY=;
+	s=arc-20240116; t=1789576163; c=relaxed/simple;
+	bh=Jck+r9NfjaAl46q4Ve9Ox2d7rD5v44YNRUxP0q/jW7U=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=U2TBjtZ22fYG7c6Ct85E9p40T4RMbAo3T9U/nDNrGpY9dvfO70C/SbHmomJ/ZC/pXjF5Fmz+R3LBhp+EqfFq/pYaizIwkcLQ12DUGox/layMViIR+2TFKfJyaFv1H9nw/noNNm3dXjT4mY/lRYGlvNHvyPSVeMsQcTHt2bQ1lGE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fivu4KTU; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=U+Sr74MQQQQ30ieO29BN96t7Ja8+dEVuP7dnqNpNT6NKhrqGK/UWTK5lOcMA5WM+mZer70bECejoW9hbarQksS2YfonS7AedxasR9weUF3447rG/ReyNSJDd9eGsJUShR1dMRQS0L9attpn+yOjHbQ0oSXaCm+BT8mRihht8j2I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HY8rO0a2; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fivu4KTU"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B0BD01F00893;
-	Wed, 16 Sep 2026 16:29:10 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HY8rO0a2"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3B8781F000FF;
+	Wed, 16 Sep 2026 16:29:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789576151;
-	bh=rwx401t7aiiVc8w3neMEERWBf83mNvqkqdXfv0V2IOQ=;
+	s=k20260515; t=1789576159;
+	bh=53DXHpYo5JgtP4DphuumHBXaNCrwLeKoANX6LXJSog0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=fivu4KTUxNpeElVJljtyCaSa9/k0QQlqTkZSU7XvjXKTDa492vIFiioR19IizoYNR
-	 5LaQgiUFcKEd1C1swjnv/XLjWeiVUrwcXl8KI7yhZWfQ6L+c1P1Rupn0fw2mzaU7bv
-	 dgFfXc3md/+2yBQRXxX/c72JoRuav7b3OkzMDds0X9Bi4FHOYg7hIOfnhklI7YO9/u
-	 PLe7MoYc7yk/Dyt7828v4rnD74rFPlyrCGFj7HVQEHcdc8fW1kBDZy/h1+spJfoW6f
-	 2hS/UGXR1YGoiQ5blV5wFBG0aOno+ibFOdbw6hl4WocNo+GMB6s5KP0ucB5nWR4mcO
-	 2w8g13scJDHXw==
+	b=HY8rO0a2zzW1ghsEm+mm7J2OYsyksLkdV1dRBB47lWcl0Ws3cr/8Lt6bUFsIHIzsD
+	 MBRiQYNc0cEFStlru/Ypfc1c+O0iCjWB5/u8SqqpEH7JLy1BfPbFsrUFqcGgzazCmK
+	 Q91qyTDHr6pbkw8+nnp3p9nibbItw2fVUO3x4mxwhKLZT1zT6GyyDmlzsOyz5qJJsS
+	 wc5VKWXtoGXRfgQ9Za9IGxW72gFpaOEHqteWMf1LeXrBKh7CRlNzHpLb1TI9bXOHrU
+	 DGpYGFSnHAfzTrdJJi1ccTY0jK7OiusjwjUDLV5+e4qWzrLfp0mrm8GtDxiiJTsWNQ
+	 3VhrzuFDH7NrQ==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
 	Olga Kornievskaia <okorniev@redhat.com>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 12/27] NFSD: Use xdrgen XDR functions for NFSv2 READ procedure
-Date: Wed, 16 Sep 2026 12:28:43 -0400
-Message-ID: <20260916162859.2051-15-cel@kernel.org>
+Cc: <linux-nfs@vger.kernel.org>,
+	Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v1 14/27] NFSD: Use xdrgen XDR functions for NFSv2 WRITE procedure
+Date: Wed, 16 Sep 2026 12:28:45 -0400
+Message-ID: <20260916162859.2051-17-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260916162859.2051-1-cel@kernel.org>
 References: <20260916162859.2051-1-cel@kernel.org>
@@ -47,75 +48,80 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Replace the hand-written NFSv2 READ codec pair with the
-xdrgen-generated functions. The NFSPROC_READ entry in the
-nfsd_procedures2 array now dispatches nfs_svc_decode_readargs and
-nfs_svc_encode_readres. A wrapper structure bridges the generated
-xdrgen readargs type and the legacy svc_fh representation the NFSD
-VFS layer still uses.
+From: Chuck Lever <chuck.lever@oracle.com>
 
-The file's data does not reside at the data pointer of the
-readresok data member: nfsd_read() deposits it directly in the
-pages of the Reply buffer, so the generic encoder that copies an
-opaque from the member's data pointer cannot encode it. Mark the
-member with the "pragma pages" directive so the generated encoder
-calls svcxdr_encode_opaque_payload(), which encodes the length
-prefix and inserts the payload pages into the stream by reference.
-The page anchor that the result structure carried duplicated
-rq_res.pages -- svc_process() points rq_res.pages at the first
-Reply page before dispatch, and the readargs decoder consumes no
-pages -- so the helper locates the payload through the Reply buffer
-itself, and the wrapper collapses to the generated readres type.
+The NFSv2 WRITE argument decoder could not be generated because
+the write payload must be directed into the server's page cache
+and decoded in place; a materializing decoder would copy every
+write. The "pages" directive now expresses this: it represents
+the payload as a struct xdr_buf and decodes it with
+svcxdr_decode_opaque_payload(), which subsegments the source
+stream in place rather than copying it.
 
-The pc_argzero field is now set to zero for the NFSv2 READ
-procedure. The xdrgen decoders are trusted to initialize all
-arguments in the argp->xdrgen field, making the early defensive
-memset unnecessary. The remaining argp fields are cleared as
-needed.
+Annotate the data member of writeargs with "pragma pages" and
+replace the NFSPROC_WRITE entry in nfsd_procedures2 with the
+generated nfs_svc_decode_writeargs and nfs_svc_encode_attrstat. A
+wrapper structure bridges the generated writeargs type and the
+svc_fh the NFSD VFS layer still uses; the result reuses the
+attrstat wrapper from the GETATTR conversion.
 
-Because the generated encoder no longer needs the svc_fh at encode
-time, nfsd_proc_read() releases the file handle directly and no
-separate ->pc_release callback is needed. This makes it
-straightforward to confirm that the file handle is properly
-released during every error flow.
+The pc_argzero field is now set to zero for the NFSv2 WRITE
+procedure. The generated decoder initializes every argument in
+the argp->xdrgen field, making the early defensive memset
+unnecessary.
+
+This refactor replaces the use of svcxdr_encode_fattr(), so the
+reference to the file handle can be released directly by
+nfsd_proc_write(). A separate ->pc_release callback is thus no
+longer needed. This makes it straightforward to confirm that the
+file handle is properly released during every error flow.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
  Documentation/sunrpc/xdr/nfs2.x    |  1 +
- fs/nfsd/nfs2xdr_gen.c              |  4 +-
+ fs/nfsd/nfs2xdr_gen.c              |  6 +--
  fs/nfsd/nfs2xdr_gen.h              |  2 +-
- fs/nfsd/nfsproc.c                  | 94 ++++++++++++++++++------------
- fs/nfsd/nfsxdr.c                   | 52 +----------------
- fs/nfsd/xdr.h                      | 17 ------
- include/linux/sunrpc/xdrgen/nfs2.h |  2 +-
- 7 files changed, 62 insertions(+), 110 deletions(-)
+ fs/nfsd/nfsproc.c                  | 76 ++++++++++++++++++------------
+ fs/nfsd/nfsxdr.c                   | 26 ----------
+ fs/nfsd/xdr.h                      |  8 ----
+ include/linux/sunrpc/xdrgen/nfs2.h |  4 +-
+ 7 files changed, 54 insertions(+), 69 deletions(-)
 
 diff --git a/Documentation/sunrpc/xdr/nfs2.x b/Documentation/sunrpc/xdr/nfs2.x
-index 771acc4baa17..b64b939f11f8 100644
+index b64b939f11f8..b2ed52bd1631 100644
 --- a/Documentation/sunrpc/xdr/nfs2.x
 +++ b/Documentation/sunrpc/xdr/nfs2.x
-@@ -140,6 +140,7 @@ struct readresok {
- 	fattr		attributes;
+@@ -156,6 +156,7 @@ struct writeargs {
+ 	unsigned int	totalcount;
  	opaque		data<NFS_MAXDATA>;
  };
-+pragma pages readresok data;
++pragma pages writeargs data;
  
- union readres switch (nfsstat status) {
- 	case NFS_OK:
+ struct createargs {
+ 	diropargs	where;
 diff --git a/fs/nfsd/nfs2xdr_gen.c b/fs/nfsd/nfs2xdr_gen.c
-index e97df0eda0e1..abde6fa8e510 100644
+index abde6fa8e510..3c2f78c802a6 100644
 --- a/fs/nfsd/nfs2xdr_gen.c
 +++ b/fs/nfsd/nfs2xdr_gen.c
 @@ -1,7 +1,7 @@
  // SPDX-License-Identifier: GPL-2.0
  // Generated by xdrgen. Manual edits will be lost.
  // XDR specification file: ../../Documentation/sunrpc/xdr/nfs2.x
--// XDR specification modification time: Tue Sep  8 11:25:27 2026
-+// XDR specification modification time: Tue Sep  8 11:25:45 2026
+-// XDR specification modification time: Tue Sep  8 11:25:45 2026
++// XDR specification modification time: Tue Sep  8 11:26:00 2026
  
  #include <linux/sunrpc/svc.h>
  
-@@ -777,7 +777,7 @@ xdrgen_encode_readresok(struct xdr_stream *xdr, const struct readresok *value)
+@@ -282,7 +282,7 @@ xdrgen_decode_writeargs(struct xdr_stream *xdr, struct writeargs *ptr)
+ 		return false;
+ 	if (!xdrgen_decode_unsigned_int(xdr, &ptr->totalcount))
+ 		return false;
+-	if (!xdrgen_decode_opaque(xdr, &ptr->data, NFS_MAXDATA))
++	if (!svcxdr_decode_opaque_payload(xdr, &ptr->data, NFS_MAXDATA))
+ 		return false;
+ 	return true;
+ }
+@@ -811,7 +811,7 @@ xdrgen_encode_writeargs(struct xdr_stream *xdr, const struct writeargs *value)
  		return false;
  	if (value->data.len > NFS_MAXDATA)
  		return false;
@@ -125,309 +131,216 @@ index e97df0eda0e1..abde6fa8e510 100644
  	return true;
  }
 diff --git a/fs/nfsd/nfs2xdr_gen.h b/fs/nfsd/nfs2xdr_gen.h
-index 92d5f9a8f5dd..e8ff072e32e5 100644
+index e8ff072e32e5..8f7d17e8e483 100644
 --- a/fs/nfsd/nfs2xdr_gen.h
 +++ b/fs/nfsd/nfs2xdr_gen.h
 @@ -1,7 +1,7 @@
  /* SPDX-License-Identifier: GPL-2.0 */
  /* Generated by xdrgen. Manual edits will be lost. */
  /* XDR specification file: ../../Documentation/sunrpc/xdr/nfs2.x */
--/* XDR specification modification time: Tue Sep  8 11:25:27 2026 */
-+/* XDR specification modification time: Tue Sep  8 11:25:45 2026 */
+-/* XDR specification modification time: Tue Sep  8 11:25:45 2026 */
++/* XDR specification modification time: Tue Sep  8 11:26:00 2026 */
  
  #ifndef _LINUX_XDRGEN_NFS2_DECL_H
  #define _LINUX_XDRGEN_NFS2_DECL_H
 diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 7bc89629934b..c7e273e74c54 100644
+index 71b792c8d78f..4d09da326070 100644
 --- a/fs/nfsd/nfsproc.c
 +++ b/fs/nfsd/nfsproc.c
-@@ -63,6 +63,13 @@ struct diropres_wrapper {
+@@ -70,6 +70,13 @@ struct readargs_wrapper {
  
- static_assert(offsetof(struct diropres_wrapper, xdrgen) == 0);
+ static_assert(offsetof(struct readargs_wrapper, xdrgen) == 0);
  
-+struct readargs_wrapper {
-+	struct readargs		xdrgen;
++struct writeargs_wrapper {
++	struct writeargs	xdrgen;
 +	struct svc_fh		fh;
 +};
 +
-+static_assert(offsetof(struct readargs_wrapper, xdrgen) == 0);
++static_assert(offsetof(struct writeargs_wrapper, xdrgen) == 0);
 +
  static __be32 nfsd_map_status(__be32 status)
  {
  	switch (status) {
-@@ -508,40 +515,52 @@ static __be32 nfsd_proc_readlink(struct svc_rqst *rqstp)
+@@ -581,29 +588,41 @@ static __be32 nfsd_proc_writecache(struct svc_rqst *rqstp)
  	return rpc_success;
  }
  
 -/*
-- * Read a portion of a file.
+- * Write data to a file
 - * N.B. After this call resp->fh needs an fh_put
 +/**
-+ * nfsd_proc_read - READ: Read from file
++ * nfsd_proc_write - WRITE: Write to file
 + * @rqstp: RPC transaction context
 + *
 + * Return:
 + *   %rpc_success:		RPC executed successfully
 + *
 + * RPC synopsis:
-+ *   readres NFSPROC_READ(readargs) = 6;
++ *   attrstat NFSPROC_WRITE(writeargs) = 8;
   */
 -static __be32
--nfsd_proc_read(struct svc_rqst *rqstp)
-+static __be32 nfsd_proc_read(struct svc_rqst *rqstp)
+-nfsd_proc_write(struct svc_rqst *rqstp)
++static __be32 nfsd_proc_write(struct svc_rqst *rqstp)
  {
--	struct nfsd_readargs *argp = rqstp->rq_argp;
--	struct nfsd_readres *resp = rqstp->rq_resp;
-+	struct readargs_wrapper *argp = rqstp->rq_argp;
-+	struct readres *resp = rqstp->rq_resp;
-+	unsigned long count = argp->xdrgen.count;
-+	u32 offset = argp->xdrgen.offset;
+-	struct nfsd_writeargs *argp = rqstp->rq_argp;
+-	struct nfsd_attrstat *resp = rqstp->rq_resp;
+-	unsigned long cnt = argp->len;
++	struct writeargs_wrapper *argp = rqstp->rq_argp;
++	struct attrstat_wrapper *resp = rqstp->rq_resp;
++	struct kstat *statp = &resp->stat;
++	unsigned long count = argp->xdrgen.data.len;
 +	struct svc_fh *fhp = &argp->fh;
-+	struct kstat stat;
- 	u32 eof;
  
--	dprintk("nfsd: READ    %s %d bytes at %d\n",
+-	dprintk("nfsd: WRITE    %s %u bytes at %d\n",
 -		SVCFH_fmt(&argp->fh),
--		argp->count, argp->offset);
+-		argp->len, argp->offset);
 +	nfsd_fhandle_to_svc_fh(fhp, &argp->xdrgen.file);
-+	count = min_t(u32, count, NFS_MAXDATA);
-+	count = min_t(u32, count, rqstp->rq_res.buflen);
  
--	argp->count = min_t(u32, argp->count, NFS_MAXDATA);
--	argp->count = min_t(u32, argp->count, rqstp->rq_res.buflen);
--
--	resp->pages = rqstp->rq_next_page;
--
--	/* Obtain buffer pointer for payload. 19 is 1 word for
--	 * status, 17 words for fattr, and 1 word for the byte count.
-+	/*
-+	 * 19 is 1 word for status, 17 words for fattr, and 1 word
-+	 * for the byte count.
- 	 */
--	svc_reserve_auth(rqstp, (19<<2) + argp->count + 4);
-+	svc_reserve_auth(rqstp, (19 << 2) + count + 4);
-+	resp->status = nfsd_read(rqstp, fhp, offset, &count, &eof);
- 
--	resp->count = argp->count;
 -	fh_copy(&resp->fh, &argp->fh);
--	resp->status = nfsd_read(rqstp, &resp->fh, argp->offset,
--				 &resp->count, &eof);
+-	resp->status = nfsd_write(rqstp, &resp->fh, argp->offset,
+-				  &argp->payload, &cnt, IOCB_DSYNC, NULL);
 -	if (resp->status == nfs_ok)
 -		resp->status = fh_getattr(&resp->fh, &resp->stat);
 -	else if (resp->status == nfserr_jukebox)
-+	if (resp->status == nfs_ok) {
-+		struct readresok *resok = &resp->u.readresok;
-+
-+		resok->data.len = count;
-+		resp->status = fh_getattr(fhp, &stat);
-+		if (resp->status == nfs_ok)
-+			nfsd_stat_to_fattr(rqstp, &resok->attributes, &stat,
-+					   fhp);
++	resp->xdrgen.status = nfsd_write(rqstp, fhp, argp->xdrgen.offset,
++					 &argp->xdrgen.data, &count,
++					 IOCB_DSYNC, NULL);
++	if (resp->xdrgen.status == nfs_ok) {
++		resp->xdrgen.status = fh_getattr(fhp, statp);
++		if (resp->xdrgen.status == nfs_ok)
++			nfsd_stat_to_fattr(rqstp, &resp->xdrgen.u.attributes,
++					   statp, fhp);
 +	}
-+	if (resp->status == nfserr_jukebox)
++	if (resp->xdrgen.status == nfserr_jukebox)
  		set_bit(RQ_DROPME, &rqstp->rq_flags);
 -	resp->status = nfsd_map_io_status(resp->status);
-+	if (resp->status != nfs_ok)
-+		resp->status = nfsd_map_io_status(resp->status);
++	if (resp->xdrgen.status != nfs_ok)
++		resp->xdrgen.status = nfsd_map_io_status(resp->xdrgen.status);
 +
 +	fh_put(fhp);
  	return rpc_success;
  }
  
-@@ -1025,16 +1044,15 @@ static const struct svc_procedure nfsd_procedures2[18] = {
- 		.pc_name	= "READLINK",
+@@ -1076,16 +1095,15 @@ static const struct svc_procedure nfsd_procedures2[18] = {
+ 		.pc_name	= "WRITECACHE",
  	},
- 	[NFSPROC_READ] = {
--		.pc_func = nfsd_proc_read,
--		.pc_decode = nfssvc_decode_readargs,
--		.pc_encode = nfssvc_encode_readres,
--		.pc_release = nfssvc_release_readres,
--		.pc_argsize = sizeof(struct nfsd_readargs),
--		.pc_argzero = sizeof(struct nfsd_readargs),
--		.pc_ressize = sizeof(struct nfsd_readres),
--		.pc_cachetype = RC_NOCACHE,
--		.pc_xdrressize = ST+AT+1+NFS_MAXDATA/4,
--		.pc_name = "READ",
-+		.pc_func	= nfsd_proc_read,
-+		.pc_decode	= nfs_svc_decode_readargs,
-+		.pc_encode	= nfs_svc_encode_readres,
-+		.pc_argsize	= sizeof(struct readargs_wrapper),
+ 	[NFSPROC_WRITE] = {
+-		.pc_func = nfsd_proc_write,
+-		.pc_decode = nfssvc_decode_writeargs,
+-		.pc_encode = nfssvc_encode_attrstatres,
+-		.pc_release = nfssvc_release_attrstat,
+-		.pc_argsize = sizeof(struct nfsd_writeargs),
+-		.pc_argzero = sizeof(struct nfsd_writeargs),
+-		.pc_ressize = sizeof(struct nfsd_attrstat),
+-		.pc_cachetype = RC_REPLBUFF,
+-		.pc_xdrressize = ST+AT,
+-		.pc_name = "WRITE",
++		.pc_func	= nfsd_proc_write,
++		.pc_decode	= nfs_svc_decode_writeargs,
++		.pc_encode	= nfs_svc_encode_attrstat,
++		.pc_argsize	= sizeof(struct writeargs_wrapper),
 +		.pc_argzero	= 0,
-+		.pc_ressize	= sizeof(struct readres),
-+		.pc_cachetype	= RC_NOCACHE,
-+		.pc_xdrressize	= NFS2_readres_sz,
-+		.pc_name	= "READ",
++		.pc_ressize	= sizeof(struct attrstat_wrapper),
++		.pc_cachetype	= RC_REPLBUFF,
++		.pc_xdrressize	= NFS2_attrstat_sz,
++		.pc_name	= "WRITE",
  	},
- 	[NFSPROC_WRITECACHE] = {
- 		.pc_func = nfsd_proc_writecache,
-@@ -1168,7 +1186,7 @@ union nfsd_xdrstore {
- 	struct fhandle_wrapper		fhandle;
+ 	[NFSPROC_CREATE] = {
+ 		.pc_func = nfsd_proc_create,
+@@ -1197,7 +1215,7 @@ union nfsd_xdrstore {
  	struct sattrargs_wrapper	sattrargs;
  	struct diropargs_wrapper	diropargs;
--	struct nfsd_readargs	read;
-+	struct readargs_wrapper		readargs;
- 	struct nfsd_writeargs	write;
+ 	struct readargs_wrapper		readargs;
+-	struct nfsd_writeargs	write;
++	struct writeargs_wrapper	writeargs;
  	struct nfsd_createargs	create;
  	struct nfsd_renameargs	rename;
-@@ -1178,7 +1196,7 @@ union nfsd_xdrstore {
- 	struct attrstat_wrapper		attrstat;
- 	struct diropres_wrapper		diropres;
- 	struct readlinkres	readlinkres;
--	struct nfsd_readres	readres;
-+	struct readres		readres;
- 	struct nfsd_readdirres	readdirres;
- 	struct nfsd_statfsres	statfsres;
- };
+ 	struct nfsd_linkargs	link;
 diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index ed5ec00e8557..1b79f9534af6 100644
+index 1b79f9534af6..33b3fb73053e 100644
 --- a/fs/nfsd/nfsxdr.c
 +++ b/fs/nfsd/nfsxdr.c
-@@ -10,6 +10,7 @@
- #include "vfs.h"
- #include "nfserr.h"
- #include "xdr.h"
-+#include "nfs2xdr_gen.h"
- #include "auth.h"
- 
- /*
-@@ -310,25 +311,6 @@ nfssvc_decode_diropargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+@@ -311,32 +311,6 @@ nfssvc_decode_diropargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
  	return svcxdr_decode_diropargs(xdr, &args->fh, &args->name, &args->len);
  }
  
 -bool
--nfssvc_decode_readargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+-nfssvc_decode_writeargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
 -{
--	struct nfsd_readargs *args = rqstp->rq_argp;
--	u32 totalcount;
+-	struct nfsd_writeargs *args = rqstp->rq_argp;
+-	u32 beginoffset, totalcount;
 -
 -	if (!svcxdr_decode_fhandle(xdr, &args->fh))
 -		return false;
--	if (xdr_stream_decode_u32(xdr, &args->offset) < 0)
+-	/* beginoffset is ignored */
+-	if (xdr_stream_decode_u32(xdr, &beginoffset) < 0)
 -		return false;
--	if (xdr_stream_decode_u32(xdr, &args->count) < 0)
+-	if (xdr_stream_decode_u32(xdr, &args->offset) < 0)
 -		return false;
 -	/* totalcount is ignored */
 -	if (xdr_stream_decode_u32(xdr, &totalcount) < 0)
 -		return false;
 -
--	return true;
--}
--
- bool
- nfssvc_decode_writeargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
- {
-@@ -469,31 +451,6 @@ nfssvc_encode_diropres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
- 	return true;
- }
- 
--bool
--nfssvc_encode_readres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
--{
--	struct nfsd_readres *resp = rqstp->rq_resp;
--	struct kvec *head = rqstp->rq_res.head;
--
--	if (!svcxdr_encode_stat(xdr, resp->status))
+-	/* opaque data */
+-	if (xdr_stream_decode_u32(xdr, &args->len) < 0)
 -		return false;
--	switch (resp->status) {
--	case nfs_ok:
--		if (!svcxdr_encode_fattr(rqstp, xdr, &resp->fh, &resp->stat))
--			return false;
--		if (xdr_stream_encode_u32(xdr, resp->count) < 0)
--			return false;
--		svcxdr_encode_opaque_pages(rqstp, xdr, resp->pages,
--					   rqstp->rq_res.page_base,
--					   resp->count);
--		if (svc_encode_result_payload(rqstp, head->iov_len, resp->count) < 0)
--			return false;
--		break;
--	}
+-	if (args->len > NFS_MAXDATA)
+-		return false;
 -
--	return true;
+-	return xdr_stream_subsegment(xdr, &args->payload, args->len);
 -}
 -
  bool
- nfssvc_encode_readdirres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+ nfssvc_decode_createargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
  {
-@@ -645,10 +602,3 @@ void nfssvc_release_diropres(struct svc_rqst *rqstp)
- 
- 	fh_put(&resp->fh);
- }
--
--void nfssvc_release_readres(struct svc_rqst *rqstp)
--{
--	struct nfsd_readres *resp = rqstp->rq_resp;
--
--	fh_put(&resp->fh);
--}
 diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
-index 4d06c415a867..9d9150760a0b 100644
+index 9d9150760a0b..75f40bef6614 100644
 --- a/fs/nfsd/xdr.h
 +++ b/fs/nfsd/xdr.h
-@@ -14,12 +14,6 @@ struct nfsd_diropargs {
+@@ -14,13 +14,6 @@ struct nfsd_diropargs {
  	unsigned int		len;
  };
  
--struct nfsd_readargs {
--	struct svc_fh		fh;
+-struct nfsd_writeargs {
+-	svc_fh			fh;
 -	__u32			offset;
--	__u32			count;
+-	__u32			len;
+-	struct xdr_buf		payload;
 -};
 -
- struct nfsd_writeargs {
- 	svc_fh			fh;
- 	__u32			offset;
-@@ -82,14 +76,6 @@ struct nfsd_diropres  {
- 	struct kstat		stat;
- };
- 
--struct nfsd_readres {
--	__be32			status;
--	struct svc_fh		fh;
--	unsigned long		count;
--	struct kstat		stat;
--	struct page		**pages;
--};
--
- struct nfsd_readdirres {
- 	/* Components of the reply */
- 	__be32			status;
-@@ -110,7 +96,6 @@ struct nfsd_statfsres {
+ struct nfsd_createargs {
+ 	struct svc_fh		fh;
+ 	char *			name;
+@@ -96,7 +89,6 @@ struct nfsd_statfsres {
  
  bool nfssvc_decode_fhandleargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  bool nfssvc_decode_diropargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
--bool nfssvc_decode_readargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfssvc_decode_writeargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+-bool nfssvc_decode_writeargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  bool nfssvc_decode_createargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  bool nfssvc_decode_renameargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
-@@ -121,7 +106,6 @@ bool nfssvc_decode_readdirargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfssvc_encode_statres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfssvc_encode_attrstatres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfssvc_encode_diropres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
--bool nfssvc_encode_readres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfssvc_encode_statfsres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfssvc_encode_readdirres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- 
-@@ -131,7 +115,6 @@ int nfssvc_encode_entry(void *data, const char *name, int namlen,
- 
- void nfssvc_release_attrstat(struct svc_rqst *rqstp);
- void nfssvc_release_diropres(struct svc_rqst *rqstp);
--void nfssvc_release_readres(struct svc_rqst *rqstp);
- 
- /* Helper functions for NFSv2 ACL code */
- bool svcxdr_decode_fhandle(struct xdr_stream *xdr, struct svc_fh *fhp);
+ bool nfssvc_decode_linkargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
 diff --git a/include/linux/sunrpc/xdrgen/nfs2.h b/include/linux/sunrpc/xdrgen/nfs2.h
-index fbda12101f87..eeb8b9ded65f 100644
+index eeb8b9ded65f..7a469ac4b772 100644
 --- a/include/linux/sunrpc/xdrgen/nfs2.h
 +++ b/include/linux/sunrpc/xdrgen/nfs2.h
 @@ -1,7 +1,7 @@
  /* SPDX-License-Identifier: GPL-2.0 */
  /* Generated by xdrgen. Manual edits will be lost. */
  /* XDR specification file: ../../Documentation/sunrpc/xdr/nfs2.x */
--/* XDR specification modification time: Tue Sep  8 11:25:27 2026 */
-+/* XDR specification modification time: Tue Sep  8 11:25:45 2026 */
+-/* XDR specification modification time: Tue Sep  8 11:25:45 2026 */
++/* XDR specification modification time: Tue Sep  8 11:26:00 2026 */
  
  #ifndef _LINUX_XDRGEN_NFS2_DEF_H
  #define _LINUX_XDRGEN_NFS2_DEF_H
+@@ -152,7 +152,7 @@ struct writeargs {
+ 	u32 beginoffset;
+ 	u32 offset;
+ 	u32 totalcount;
+-	opaque data;
++	struct xdr_buf data;
+ };
+ 
+ struct createargs {
 -- 
 2.55.0
 
