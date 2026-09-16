@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C5A9E5540A8
-	for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2026 16:29:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 00C8A559C87
+	for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2026 16:29:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789576147; cv=none; b=hKCkq0byxRjSH2ff7UTJbBmlbcdRKfq8VwoV1HH2xNzcbtx0HJiMqKgkr0kqJIqPDjHcsNjr6YwYVMVfXAcchMrcHcokrPkjEVd29sh2mI2cmSz+LJlMgU8z552IzNldxWZBkfK6v6i3fcDRgNbKzbnk0ON955sH6hVdrbUPg14=
+	t=1789576148; cv=none; b=DdzMTOHcp7JszZdFLPh2ISECFZM57mhpGzVqx0C9CJ6lTbWB9ZxNe8MRzRD1Mhn196JeXdtXmmQgywB9ZcAAX+nX5uH43BQUlhjjLGrXEy+vqpt15k0ie3r6tdwrvaGzM4EsL55Y/+NGYNkhI1uxYMBRH9sYIwhgZDgqka/OCYc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789576147; c=relaxed/simple;
-	bh=VvlnV11GnZPTc+FU7/93ONQYqiaH+x5OW3SOLCSCTHc=;
+	s=arc-20240116; t=1789576148; c=relaxed/simple;
+	bh=zXrbP5mazCJdULxC/XLqB9V2FIkViBZDTZ33oKXJf0w=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=J3PQAZdJ5ttnesXDRvcSkBx8yGZhBHtsKe8qnguVFvW6rkdcFnU6aXtPFrL9p1fQAtao3+7jja/O69xslTC3xtF23mVc0Jzm5/pLT9dLODDO3sUT6wZzvWecGecrassJ/rZkGNrWQW5P1yto986XQoLHu3ufoRlyyVod3yVAsUg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=lOTfwHPx; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=ARsSAaYkMxTlMINjWZa8He54EN4wqqidlAlEt+uy4d9TAPEy1kdO4kM+Ju8MdBil2zBwsR/U5eQv9322dQppgGZnee49nR6izYoSg9CYVKAwSfccFxSiHB72Q+xjJ1XdrznCdMHZ5iZWP7oH8yn17KtwzafDmp/HeflG1/jx6c0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mIj2EFzc; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="lOTfwHPx"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B2BA41F00893;
-	Wed, 16 Sep 2026 16:29:04 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mIj2EFzc"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 36B8C1F0089C;
+	Wed, 16 Sep 2026 16:29:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789576145;
-	bh=8l2qV2s/EnKHb+j6h8VSG3FFZhj+FrCT4p6RN5k72Do=;
+	s=k20260515; t=1789576146;
+	bh=iWAYxWBY2gOsEcSEcDLrT+OONCQQnvBZkNJx7rJTl4E=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=lOTfwHPxEApzdaGoUeP8XLj0oL3n5DOOnB3e3Po+VSafMWW2JBbbA0uEX0oGxrI3r
-	 6Lv11G6U4xdM6u7qI04I+rQT92kkvQTCVHPSFSAHRgYgCi41JuFGyBjXb2BcmSTb3C
-	 qPv83ZaFfaCGSozQvaSUMdoRL+tsTZE6qSVoJ/bK9/K9BRvNw1V6UX2E5zU/KYRRLf
-	 Am9tw/eHDyCAiAdCgN4zggZvFsUwgvJeBd8R/UAESDi0E5PY5um65kK4Vwc9Zv5PjX
-	 /JIuoG/UcY9lBair6nrZdbsYIiWDi8k52OZ0ly+/1elKBS7VhyO/7V5xlT+pyX/8YH
-	 L9ZqzBEg8IlBA==
+	b=mIj2EFzcdxzSFPn4w6dfyJpO/NzjqWvHri5p1GB8H+seKwlLVEbQTvidLoIUiYv3Q
+	 RvGc7Ez9USMQ+W5Bcg1OfP7PiduaMhaNjdFK2Ft04l/gdwKNFa3Wqnb696YYxVRCQJ
+	 siIHtWSru2Q6/pnlBrKI8CrWNPaM4tJ636yXwCcg6HwEAl9uxht+cuXOzDv6TsBlc5
+	 MGMcl0m6L1htt4lstNikvRIaDXk6EprUPSqYzcFPgHqdAwutHqBFpCQCmB5uFEwu6H
+	 rL0rVWTrqkxOLtzGX7fXYCWg1p6gLjUogyeSvebMS2fSqFoNoOoTxC8YrA97HxKeSr
+	 TJ1LtHNFlKnsA==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 04/27] NFSD: Remove '#include "xdr.h"' from fs/nfsd/xdr3.h
-Date: Wed, 16 Sep 2026 12:28:35 -0400
-Message-ID: <20260916162859.2051-7-cel@kernel.org>
+Subject: [PATCH v1 06/27] NFSD: Use xdrgen XDR functions for the NFSv2 NULL procedure
+Date: Wed, 16 Sep 2026 12:28:37 -0400
+Message-ID: <20260916162859.2051-9-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260916162859.2051-1-cel@kernel.org>
 References: <20260916162859.2051-1-cel@kernel.org>
@@ -47,114 +47,80 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Separate the dependencies between fs/nfsd/xdr3.h and fs/nfsd/xdr.h
-so that NFSD's NFSv2 and NFSv3 implementations can be converted
-independently to use xdrgen.
+Hand-written XDR encoders and decoders are difficult to maintain
+and can diverge from protocol specifications. Migrating to
+xdrgen-generated code improves type safety and ensures the
+implementation matches the NFS version 2 protocol specification
+exactly.
 
-The only reason xdr3.h includes xdr.h is to pick up the definition
-of struct nfsd_fhandle. xdr3.h does not name the structure itself;
-its consumers nfs3proc.c and nfs3xdr.c do, reaching the definition
-through xdr3.h. That structure wraps a single struct svc_fh, which
-is defined in nfsfh.h, a header both xdr.h and xdr3.h already include
-via vfs.h. Move struct nfsd_fhandle next to svc_fh in nfsfh.h so the
-two XDR headers share one definition and xdr3.h no longer depends on
-xdr.h. nfs2acl.c, which includes both headers, then sees that single
-definition instead of a clashing pair.
+Convert the NULL procedure to use xdrgen_svc_decode_void and
+xdrgen_svc_encode_void, the built-ins declared in
+include/linux/sunrpc/xdrgen/_builtins.h. NULL has no arguments or
+results, so it is the first procedure converted.
 
-Stripping xdr.h to its own dependencies also removes the
-transitive route by which nfsxdr.c and nfs3xdr.c reached nfsd.h.
-Both expand the nfserr_* and nfs_ok status-code macros that
-nfsd.h defines, so each gains a direct #include of nfsd.h in
-place of the one xdr.h used to supply.
-
-As a clean-up, the #includes at the top of both header files are
-made the same.
+NULL returns no XDR-encoded data, so pc_xdrressize is set to
+XDR_void. The argzero field is also set to zero since xdrgen
+decoders initialize all decoded values.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs2acl.c | 2 +-
- fs/nfsd/nfs3xdr.c | 2 ++
- fs/nfsd/nfsfh.h   | 5 +++++
- fs/nfsd/xdr.h     | 7 +------
- fs/nfsd/xdr3.h    | 3 ++-
- 5 files changed, 11 insertions(+), 8 deletions(-)
+ fs/nfsd/nfsproc.c | 36 +++++++++++++++++++++++++-----------
+ 1 file changed, 25 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
-index 0673e83b6666..eada1ab51415 100644
---- a/fs/nfsd/nfs2acl.c
-+++ b/fs/nfsd/nfs2acl.c
-@@ -10,8 +10,8 @@
- /* FIXME: nfsacl.h is a broken header */
- #include <linux/nfsacl.h>
- #include <linux/gfp.h>
--#include <linux/nfs3.h>
- #include "cache.h"
-+#include "xdr.h"
- #include "xdr3.h"
- #include "vfs.h"
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index fd303d7dbad3..0a1c184217e0 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -57,8 +57,22 @@ static __be32 nfsd_map_io_status(__be32 status)
+ 	return nfsd_map_status(status);
+ }
  
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index a14e829e1c41..f0895f5e32f6 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -10,6 +10,8 @@
- #include <linux/namei.h>
- #include <linux/nfs3.h>
- #include <linux/sunrpc/svc_xprt.h>
+-static __be32
+-nfsd_proc_null(struct svc_rqst *rqstp)
++/*
++ * A full specification of each of the following NFSv2 procedures is
++ * available in RFC 1094 Section 2.2.
++ */
 +
-+#include "nfsd.h"
- #include "xdr3.h"
- #include "auth.h"
- #include "netns.h"
-diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-index 7d8e3f015307..aa3ff3086406 100644
---- a/fs/nfsd/nfsfh.h
-+++ b/fs/nfsd/nfsfh.h
-@@ -111,6 +111,11 @@ typedef struct svc_fh {
- 	struct kstat		fh_post_attr;	/* full attrs after operation */
- 	u64			fh_post_change; /* nfsv4 change; see above */
- } svc_fh;
-+
-+struct nfsd_fhandle {
-+	struct svc_fh		fh;
-+};
-+
- #define NFSD4_FH_FOREIGN (1<<0)
- #define SET_FH_FLAG(c, f) ((c)->fh_flags |= (f))
- #define HAS_FH_FLAG(c, f) ((c)->fh_flags & (f))
-diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
-index 52660b9f8dde..a2a3b2f58a1d 100644
---- a/fs/nfsd/xdr.h
-+++ b/fs/nfsd/xdr.h
-@@ -5,13 +5,8 @@
- #define _LINUX_NFSD_XDR_H
++/**
++ * nfsd_proc_null - NULL: Do nothing
++ * @rqstp: RPC transaction context
++ *
++ * Return:
++ *   %rpc_success:		RPC executed successfully
++ *
++ * RPC synopsis:
++ *   void NFSPROC_NULL(void) = 0;
++ */
++static __be32 nfsd_proc_null(struct svc_rqst *rqstp)
+ {
+ 	return rpc_success;
+ }
+@@ -673,15 +687,15 @@ nfsd_proc_statfs(struct svc_rqst *rqstp)
  
- #include <linux/vfs.h>
--#include "nfsd.h"
--#include "nfsfh.h"
--#include "vfs.h"
- 
--struct nfsd_fhandle {
--	struct svc_fh		fh;
--};
-+#include "vfs.h"
- 
- struct nfsd_sattrargs {
- 	struct svc_fh		fh;
-diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-index cad875d14231..22272695e451 100644
---- a/fs/nfsd/xdr3.h
-+++ b/fs/nfsd/xdr3.h
-@@ -8,7 +8,8 @@
- #ifndef _LINUX_NFSD_XDR3_H
- #define _LINUX_NFSD_XDR3_H
- 
--#include "xdr.h"
-+#include <linux/vfs.h>
-+
- #include "vfs.h"
- 
- struct nfsd3_sattrargs {
+ static const struct svc_procedure nfsd_procedures2[18] = {
+ 	[NFSPROC_NULL] = {
+-		.pc_func = nfsd_proc_null,
+-		.pc_decode = nfssvc_decode_voidarg,
+-		.pc_encode = nfssvc_encode_voidres,
+-		.pc_argsize = sizeof(struct nfsd_voidargs),
+-		.pc_argzero = sizeof(struct nfsd_voidargs),
+-		.pc_ressize = sizeof(struct nfsd_voidres),
+-		.pc_cachetype = RC_NOCACHE,
+-		.pc_xdrressize = 0,
+-		.pc_name = "NULL",
++		.pc_func	= nfsd_proc_null,
++		.pc_decode	= xdrgen_svc_decode_void,
++		.pc_encode	= xdrgen_svc_encode_void,
++		.pc_argsize	= XDR_void,
++		.pc_argzero	= 0,
++		.pc_ressize	= 0,
++		.pc_cachetype	= RC_NOCACHE,
++		.pc_xdrressize	= XDR_void,
++		.pc_name	= "NULL",
+ 	},
+ 	[NFSPROC_GETATTR] = {
+ 		.pc_func = nfsd_proc_getattr,
 -- 
 2.55.0
 
