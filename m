@@ -1,84 +1,67 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oo2-f39.google.com (mail-oo2-f39.google.com [74.125.231.167])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 87A244908DD
-	for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2026 21:57:07 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5B7CD4A7CA4
+	for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2026 22:31:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.167
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789595835; cv=none; b=cu5uMh7JQBOxp8dK6ulFehuPF82rCA2vESQ2CSwzzeVcCXKiT2HeawVCS+GOMcaXBQXpwC0lWZoO1tD7ppYlUYfKzoK7JlG/SeLUCzRQ9UpIAMXdQuC9/5SXmdxJbxmHrIHf2WlZXr+eEwTWW4EOOp3LEMfRg3m3/kY0OxejWbg=
+	t=1789597868; cv=none; b=RSIYCQJPsbkUOm3o4zj6ppwpX+arvgmtowRKmY9YZTi4b/4MUTMz+tntAygKBNo0GbaWb7RhAVzZ0ANKVhq37jGo1MafXz1g9bzuH8GLQH2KlU8PUT6JRnI+qLgD3B0QStARNMyT6YuuAw5rDH9l5tP2pyXbcg0wYKmvHWonexg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789595835; c=relaxed/simple;
-	bh=lF3fJnmhX5/lWGdKl41mUAYmZQJT+JDKcA9E7B9Yz4Q=;
+	s=arc-20240116; t=1789597868; c=relaxed/simple;
+	bh=yERu/wvnybcug10P5T2Rm2UCtXfDlhuUZzFjyyBVnqs=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=X26UW6MKgp03qx+hTZl7cR+q7Z990YTcXezDYPuwmYehJS4fEbaH19FiPqmdPBVBk9eB3HzPx0OXa8We5+torjBlTwNVjrRrIe7ro6wWjFEDtgtpmXrbRJb61BIcF7we682oAF4gRTYccPPYGWcRHAj2WMDRsrNhRc1n/FGsFP4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=gH0s9nUQ; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=rYIZ53wJ; arc=none smtp.client-ip=170.10.129.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	 In-Reply-To:Content-Type; b=I5AppMNsqkKAHF6gZnXZLF0+DRLkcBdrLz+bkWroWpZePsOamYtQ84K/H4nti3NmJA4kBhWnB69BBGAR2Ysa9Rj8bxytGjD/HxH4Wi5NJaO+JmsHp+WP1ghC/56WoapvMD7CUMH0ksTAquW7oVUZmUrQHO7xH8Fx3MDKVqvLQgU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=fD8rAM2R; arc=none smtp.client-ip=74.125.231.167
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="gH0s9nUQ";
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="rYIZ53wJ"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1789595823;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=ualMY5kU0x74npuEboXu7JQBk8XI1T+X5ASxMQ+oFvs=;
-	b=gH0s9nUQw34zJ0gLTUR+C0BMs5ArAIa97bKYA0bN92ngouoVg8V5DaLjXDBeAyBB80WKFm
-	4oReMf4/QnOFEDjyO1tLtyekvaooAPLDqJM0AGucs72LbXPcoPXxAg7Xhggir7YpeP1klR
-	18G7U1UsqS4QT4f6j6Fn1ygv6PSrvX0=
-Received: from mail-qk1-f197.google.com (mail-qk1-f197.google.com
- [209.85.222.197]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-645-f9C_g7buNqCJcoPjs3hAHA-1; Wed, 16 Sep 2026 17:57:02 -0400
-X-MC-Unique: f9C_g7buNqCJcoPjs3hAHA-1
-X-Mimecast-MFC-AGG-ID: f9C_g7buNqCJcoPjs3hAHA_1789595822
-Received: by mail-qk1-f197.google.com with SMTP id af79cd13be357-93a05d645acso30820885a.2
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2026 14:57:02 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="fD8rAM2R"
+Received: by mail-oo2-f39.google.com with SMTP id 006d021491bc7-6b1ae736c63so104475eaf.1
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2026 15:30:59 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1789595822; x=1790200622; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=ualMY5kU0x74npuEboXu7JQBk8XI1T+X5ASxMQ+oFvs=;
-        b=rYIZ53wJshloV3tQDsASbT3j8hYEoCM+CoQrdeYysJWiDVhqeiGCLxkQPe3ajom14U
-         saDswf65totpKZwjMVJkTVfmbUu437XIyijRfK0WhcZzZq2nxl4TVGumB4395i8uj6gu
-         fi0rzCS+e7rK2QPqhGr/Btpa2T5rxGELDL6noh/biHgk+cw3DoKmrZkq9YZZ4V9jkj+Y
-         zSvdJXYZVW/AviHAxLRTA8iA64z3yu9yKBR5aBmtKNJDcIhesEmn9S7Y7OR+oCvaJVT1
-         0peU7QIopgYme36yI/v9JiETpvKEyBdcbxThdypD/g7Ic3kzkfoygKWIhIj7q22cgo+U
-         8WYA==
+        d=gmail.com; s=20251104; t=1789597856; x=1790202656; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from:references
+         :cc:to:content-language:subject:user-agent:mime-version:date
+         :message-id:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=HMBMbABjeP9Oor79poghabOIjaEM4yE3fhNYDP78qZ4=;
+        b=fD8rAM2Rmm04yuNqAc2zuQ5lCz7nL+QqTi6DJPp/5bJyKDB/7/1Bt5DDIKa8qOMzYK
+         tDSFy7jVDrGLA/nngFjm5uubxWohMur7JE+jpl9HeGE2rumJL7HgWd/1otmV0N2AcUK/
+         PmyhLakVbvbdkOR616n/fNX6vz1pv4eVETW69SwPW2ZTwLOmJWRiXCwD4jgB04Nk03zY
+         9FfjAotVmjngtgSWe3Fb0MofUdN/5gAZ03XSVzkywPWZWfkGEKR730Px0I4iDOOPG3+J
+         5bmCacLy96gpeOFZRC3dYPewlvp+UMeIruxlhkXv0LAShX9nQthDGnSBEeIVjtEE4jf7
+         QfDA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789595822; x=1790200622;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+        d=1e100.net; s=20260707; t=1789597856; x=1790202656;
+        h=content-transfer-encoding:content-type:in-reply-to:from:references
+         :cc:to:content-language:subject:user-agent:mime-version:date
+         :message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=ualMY5kU0x74npuEboXu7JQBk8XI1T+X5ASxMQ+oFvs=;
-        b=oqVmCSLbF+OLNrScnvbw/SjNfu6L95x689w7OIF/0yZV8R298dvtD2EvzOltmfGq1O
-         4jsxbG1nUsxxvHXmDWfufnfabSMeRW7uxYIcjudB515oBn6flmfRbSvEM/VwfU24B8E5
-         SJ9yAUUlHbbSzNsVTkf/N9W34vq96ro/4e5zZhgqD91Mozrz5A9p1ca6Z3dkZJU0ZwaL
-         5eWyNzclpT/xWqLWVuH5TdopJ7TatiQvV6JYfPPqPcYtxsfI813D22Mu0OpcuFqVLZ/Q
-         SH74mTp00b69DRsggvaNjfZtoPF7F8JTt2pPko7txAoXBJeQXd74mQL97H6OSOEzZXEu
-         S2HA==
-X-Gm-Message-State: AFuF++mtyJ40NtFIgYtO2Ov5C0iVgEa4XQFY0Z4R4Dov0eELfU0cdoDo
-	FO8TgsBuUxt817GBvkl+fR9/lDYgsQhPHv8L8L7jV8TrsdyLxvyrgPX7lV4xt0+cP2Ba7VhGY73
-	dWCTIl6FwlE2GZyi//EOfnyXvTpRvbBFC1kbsBSYzCkeh3bWwCPNdRBokj8HB+w==
-X-Gm-Gg: AYBFou2EEZX0Dp1dKB8/gBkztILN5CnquiVF61NItYxXZHAVpF8L+ynJ+26zq9951hm
-	o/KMzd7EAVvQvE4Kj8Ick0Hkm2bYkh7vpkGvsL+rEPeWmr3hojw+pmN7qSdcRIMe6I19FCdXMS+
-	99K6mf8MVuMhUECXFgRv50YqfggkgicIveUESuPBd01DoLXPZwK4qC+IfdLjpfc6FxnP3wTl0hL
-	hnu31ZW6v+5QntMEfWGTtjhOVMGQ/5h+yHhUURtji3QAeU6pP0X8lEw3hn530epS5IHiZJcTxWO
-	0orQh7G2cdRipTHNrZlusH7PerxGT+d+R3uis8zP+wb0ZrVM+h7GeqD8PALpnnvTMEJdgwav
-X-Received: by 2002:a05:620a:4542:b0:93a:1540:a75d with SMTP id af79cd13be357-93bb78f1ddfmr803990685a.37.1789595821842;
-        Wed, 16 Sep 2026 14:57:01 -0700 (PDT)
-X-Received: by 2002:a05:620a:4542:b0:93a:1540:a75d with SMTP id af79cd13be357-93bb78f1ddfmr803986985a.37.1789595821356;
-        Wed, 16 Sep 2026 14:57:01 -0700 (PDT)
-Received: from [172.31.1.12] ([70.105.241.2])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-93b81cf4ac6sm303772285a.37.2026.09.16.14.57.00
+        bh=HMBMbABjeP9Oor79poghabOIjaEM4yE3fhNYDP78qZ4=;
+        b=mmf7dHbFRN+i+sjGBFdewcC30hsG4ayjPq7SRJtJ/kG2PVxOO1lvXP/G4mjA0FZ83K
+         kQ1fELANbfOpxFQ7OQS5IaWI05zjHPO8ZwgpRbW9uBLFtz/rIfDv/N7Zo6YIHwmF3TJi
+         LnRfJEnRaVw8Ju0u58FCQT4FLTOTz4UJ/RwurqUDwWjFLxKEvH6Y58S7/A9rSvD3zFgA
+         EnO0v7f62yZDf2B1HjEZp7u/nEPX8JSzhZ9/QDhEEJ8f3CqXSmMqPbgw7G7Z+SaX4jEL
+         14lBrMwp7pxrv2I1xrCqw6sItArayr8Uun/GyDzJ7/+YT3mSrLgoYa5L+kWlQyQKsFgj
+         yuhg==
+X-Gm-Message-State: AFuF++m70fBbjGlUdApulsCuO4H/KYkY3JrBdbOmdbqsCetmyabXaf8G
+	s/HjLirrVUo88fQLgcCOlDuGt5Se+wr0VekQzF2V/tZpDCVr7v+QTiS0
+X-Gm-Gg: AYBFou3Ovgy1cB92jvJN8ypUoBrOl7gQbT3PHsRyHawUTX6U5cB6l5oxGCnpSPZ0Zs0
+	6+pavGFDPhq1NAUnzxc0B2bhH45gTxxChubIFIm6T7iy4p/h0T5Ef9okx93HbPmiMI5OUR6ykE8
+	jPxpRz8JOvh/qiaZ8EDc4aZ6mroe/u+G71jlGfcbG6Apgcs+ckNijjBJpvOa+Bmfb5N1F7Qvzs1
+	52iQE5xE3Unl1EfRORwf2PLl34WyvERFt+rcYFxm1jY8ueg9hKfDkoG40UZVKPaZ9/q0D/Si23j
+	Txygy8IJxnL1qhgIM3cHP11nlPNun+wUaHpE2qSIEOST+Xo0CU90V4uTEIC7h7S0TgsbYTYWB63
+	Emw/OI/2fwEOM9NgXwNLBk0ysVJw1tjyuTtwf5vb9o8wHUnFYbTktHYURJnhSV2x4nfGlHW6KuH
+	jJIDyYuT0ZZyDtNXzrYbdnjmgfjljSoszf8h9lLPORW4GQAR5CY+UwY+YxgJSCJrCk9uLJ25pPk
+	svP0wbGhaMKP7aPrJZOU+PPkXxuDqqVlAmbJcQ0Kn4uEDj0aV94nxvR5vqJ/tpYyj+A22E1uyQC
+	U/a7410=
+X-Received: by 2002:a05:6820:60c:b0:6b1:9f9d:79f3 with SMTP id 006d021491bc7-6c7d0de78d6mr4639749eaf.17.1789597855729;
+        Wed, 16 Sep 2026 15:30:55 -0700 (PDT)
+Received: from ?IPV6:2600:1700:73d0:8030:9c73:7120:39bc:bc57? ([2600:1700:73d0:8030:9c73:7120:39bc:bc57])
+        by smtp.gmail.com with ESMTPSA id a92af1059eb24-14395d5d0f3sm8825329c88.12.2026.09.16.15.30.55
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Wed, 16 Sep 2026 14:57:00 -0700 (PDT)
-Message-ID: <ac59bd44-2fdf-4737-922a-5478749faaf7@redhat.com>
-Date: Wed, 16 Sep 2026 17:57:00 -0400
+        Wed, 16 Sep 2026 15:30:55 -0700 (PDT)
+Message-ID: <ff747b30-2537-4ee0-b827-beb0b7c2b323@gmail.com>
+Date: Wed, 16 Sep 2026 15:30:54 -0700
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -86,146 +69,41 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [nfs-utils PATCH] gssd: clean up threads on shutdown
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-References: <20260831230247.814387-1-smayhew@redhat.com>
+Subject: Re: issues with Linux client pNFS
 Content-Language: en-US
-From: Steve Dickson <steved@redhat.com>
-In-Reply-To: <20260831230247.814387-1-smayhew@redhat.com>
+To: Anna Schumaker <anna.schumaker@oracle.com>,
+ Olga Kornievskaia <aglo@umich.edu>, Trond Myklebust <trondmy@hammerspace.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+References: <41ee5118-027b-4630-8f02-b3a67c61b328@gmail.com>
+ <6880c031-3936-4ea1-86f2-5dc6050c9051@oracle.com>
+From: marc eshel <eshel.marc@gmail.com>
+In-Reply-To: <6880c031-3936-4ea1-86f2-5dc6050c9051@oracle.com>
 Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: 7bit
 
+Hi,
 
+I was just trying pNFS recall any but it look like the NFS client 
+received but ignored the call, is that expected ?
 
-On 8/31/26 7:02 PM, Scott Mayhew wrote:
-> Valgrind reports leaks such as the following:
-> 
-> ==1781== 736 bytes in 2 blocks are possibly lost in loss record 831 of 926
-> ==1781==    at 0x487F36B: calloc (vg_replace_malloc.c:1616)
-> ==1781==    by 0x403A75F: calloc (rtld-malloc.h:44)
-> ==1781==    by 0x403A75F: allocate_dtv (dl-tls.c:477)
-> ==1781==    by 0x403B2E5: _dl_allocate_tls (dl-tls.c:734)
-> ==1781==    by 0x4B6579E: pthread_create@@GLIBC_2.34 (in /usr/lib64/libc.so.6)
-> ==1781==    by 0x400E531: start_upcall_thread.constprop.0 (gssd_proc.c:971)
-> ==1781==    by 0x400EC34: handle_gssd_upcall (gssd_proc.c:1117)
-> ==1781==    by 0x48B9D9B: event_persist_closure (event.c:1623)
-> ==1781==    by 0x48B9D9B: event_process_active_single_queue (event.c:1682)
-> ==1781==    by 0x48BA5BE: event_process_active (event.c:1783)
-> ==1781==    by 0x48BA5BE: event_base_loop (event.c:2006)
-> ==1781==    by 0x400A431: main (gssd.c:1292)
-> ==1781==
-> 
-> This is due to the thread-local storage allocated by pthread_create() as
-> well as the upcall_thread_info struct allocated by
-> start_upcall_thread().  Those do eventually get freed by the watchdog
-> thread in scan_active_thread_list().  The thread-local storage gets
-> freed when pthread_tryjoin_np() succeeds and the upcall_thread_info gets
-> freed via TAILQ_REMOVE() + free().  But since the watchdog thread sleeps
-> between iterations (30 seconds by default), from the perspective of
-> tools like valgrind there’s a leak.
-> 
-> Add logic to clean up the threads on shutdown to make tools like
-> valgrind happy.
-> 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-Committed... (tag: nfs-utils-2-9-3-rc5)
+[287100.214040] NFS: RECALL_ANY callback request from 10.11.96.99
+[287100.214073] nfs4_callback_recallany: exit with status = 0
 
-steved.
-> ---
->   utils/gssd/gssd.c | 60 +++++++++++++++++++++++++++++++++++++++++++++++
->   1 file changed, 60 insertions(+)
-> 
-> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-> index 6a41fc5d..e381c0f2 100644
-> --- a/utils/gssd/gssd.c
-> +++ b/utils/gssd/gssd.c
-> @@ -98,6 +98,7 @@ static struct event_base *evbase = NULL;
->   
->   int upcall_timeout = DEF_UPCALL_TIMEOUT;
->   static bool cancel_timed_out_upcalls = false;
-> +pthread_t watchdog_tid;
->   
->   TAILQ_HEAD(topdir_list_head, topdir) topdir_list;
->   
-> @@ -498,6 +499,61 @@ gssd_clnt_krb5_cb(int UNUSED(fd), short UNUSED(which), void *data)
->   	handle_krb5_upcall(clp);
->   }
->   
-> +static void
-> +cleanup_active_thread_list(void)
-> +{
-> +	struct upcall_thread_info *info;
-> +	bool cancelled = false;
-> +	void *tret, *saveprev;
-> +	int err;
-> +
-> +	pthread_mutex_lock(&active_thread_list_lock);
-> +	TAILQ_FOREACH(info, &active_thread_list, list) {
-> +		err = pthread_tryjoin_np(info->tid, &tret);
-> +		switch (err) {
-> +		case 0:
-> +			saveprev = info->list.tqe_prev;
-> +			TAILQ_REMOVE(&active_thread_list, info, list);
-> +			free(info);
-> +			info = saveprev;
-> +			break;
-> +		case EBUSY:
-> +			pthread_cancel(info->tid);
-> +			do_error_downcall(info->fd, info->uid, -ETIMEDOUT);
-> +			cancelled = true;
-> +			break;
-> +		default:
-> +			/* EDEADLK, EINVAL, and ESRCH... none of which should happen! */
-> +			printerr(0, "watchdog: attempt to join thread id 0x%lx returned %d (%s)!\n",
-> +					info->tid, err, strerror(err));
-> +			break;
-> +		}
-> +	}
-> +	if (cancelled) {
-> +		TAILQ_FOREACH(info, &active_thread_list, list) {
-> +			err = pthread_tryjoin_np(info->tid, &tret);
-> +			switch (err) {
-> +			case EBUSY:
-> +				printerr(0, "watchdog: thread id 0x%lx still busy on shutdown\n",
-> +					 info->tid);
-> +				/* fall through */
-> +			default:
-> +				/* EDEADLK, EINVAL, and ESRCH... none of which should happen! */
-> +				printerr(0, "watchdog: attempt to join thread id 0x%lx returned %d (%s)!\n",
-> +						info->tid, err, strerror(err));
-> +				/* fall through */
-> +			case 0:
-> +				saveprev = info->list.tqe_prev;
-> +				TAILQ_REMOVE(&active_thread_list, info, list);
-> +				free(info);
-> +				info = saveprev;
-> +				break;
-> +			}
-> +		}
-> +	}
-> +	pthread_mutex_unlock(&active_thread_list_lock);
-> +}
-> +
->   /*
->    * scan_active_thread_list:
->    *
-> @@ -628,6 +684,7 @@ start_watchdog_thread(void)
->   		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
->   			 ret, strerror(errno));
->   	}
-> +	watchdog_tid = th;
->   	return ret;
->   }
->   
-> @@ -1290,6 +1347,9 @@ main(int argc, char *argv[])
->   
->   	printerr(0, "event_dispatch() returned %i!\n", rc);
->   
-> +	pthread_cancel(watchdog_tid);
-> +	cleanup_active_thread_list();
-> +
->   	gssd_destroy_krb5_principals(root_uses_machine_creds);
->   
->   	while (!TAILQ_EMPTY(&topdir_list)) {
+Thanks, Marc.
 
+On 9/16/24 1:33 PM, Anna Schumaker wrote:
+> Hi Marc,
+>
+> On 9/16/24 4:27 PM, marc eshel wrote:
+>> Hi,
+>>
+>> Who is the current maintainer of the Linux NFS client?
+> That would be me and Trond.
+>
+>> I have an issue with the way pNFS client is distributing the reads among the DSs and I can provide the traces if anyone cares.
+> What is the problem? And sure, send along the traces! I'll try to take a look as soon as I can.
+>
+> Anna
+>
+>> Thanks, Marc.
+>>
