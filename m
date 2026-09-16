@@ -1,42 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A771E592204
-	for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2026 16:29:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C405A3D3CEB
+	for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2026 16:29:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789576163; cv=none; b=BWoRBcz72hpitl4dWW8aqRAPlyDkxXoY3fnUwgEPL42RYSIQun7bbBK1wJowFGk5JRGAMf+UeIYZtjGxu9oLjkBGzMhWlNWqWIdRFCcSVRLNnESc51aLInSbCmso1UQZtGd1hrpwEuEMmBIWG0+nCGTS8XuKCA6C/3wQzbJ5stY=
+	t=1789576163; cv=none; b=pB0q2KbKuGFpS6TApoEk/ZbkiyvLyVQ1DZkWYoaykO1/SFNk3RTySLXFFBpbujeiGBOkTGgv8yLfTY8Wzn0uos8RGLUFjWyRAzHxv8MxHBm6pvZZ8VTPXm9Jer2j7Agi0i1GaufW0/MxmCsZ4IdJpuPD/DIB2cCl7RnhbeaslzQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1789576163; c=relaxed/simple;
-	bh=Jck+r9NfjaAl46q4Ve9Ox2d7rD5v44YNRUxP0q/jW7U=;
+	bh=fVgQxxCbDTcA5xMCVtt7VHIW/LEWPxXUnkzjLzgBB4A=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=U+Sr74MQQQQ30ieO29BN96t7Ja8+dEVuP7dnqNpNT6NKhrqGK/UWTK5lOcMA5WM+mZer70bECejoW9hbarQksS2YfonS7AedxasR9weUF3447rG/ReyNSJDd9eGsJUShR1dMRQS0L9attpn+yOjHbQ0oSXaCm+BT8mRihht8j2I=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HY8rO0a2; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=YCsn7eyFPQD3ghok8N9yIv79kjVorb08XYn/jvzSWuALXd/C/qm60DTJbldVprmS8NdlPv8Dq15KJQNxBtUr8hBeyrfP7M8qQzUkbiO+sCNcCtKbgSUOYNbgKpFPrdoxau3nSrAgjwg4V4ukPagNfpqR8x2KHayBW9Mc4sq0cSE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bjSkR8lB; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HY8rO0a2"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3B8781F000FF;
-	Wed, 16 Sep 2026 16:29:19 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bjSkR8lB"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DB5401F0089A;
+	Wed, 16 Sep 2026 16:29:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789576159;
-	bh=53DXHpYo5JgtP4DphuumHBXaNCrwLeKoANX6LXJSog0=;
+	s=k20260515; t=1789576161;
+	bh=ocTIl8i40KVEwZlXxB06QvMAJOwzciXNDy+VpFrTIEY=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=HY8rO0a2zzW1ghsEm+mm7J2OYsyksLkdV1dRBB47lWcl0Ws3cr/8Lt6bUFsIHIzsD
-	 MBRiQYNc0cEFStlru/Ypfc1c+O0iCjWB5/u8SqqpEH7JLy1BfPbFsrUFqcGgzazCmK
-	 Q91qyTDHr6pbkw8+nnp3p9nibbItw2fVUO3x4mxwhKLZT1zT6GyyDmlzsOyz5qJJsS
-	 wc5VKWXtoGXRfgQ9Za9IGxW72gFpaOEHqteWMf1LeXrBKh7CRlNzHpLb1TI9bXOHrU
-	 DGpYGFSnHAfzTrdJJi1ccTY0jK7OiusjwjUDLV5+e4qWzrLfp0mrm8GtDxiiJTsWNQ
-	 3VhrzuFDH7NrQ==
+	b=bjSkR8lBT9AWvvKJRqnnFPRjvryvLaXD83NfVljAo3jb0FYI16cwS2PHt0culD1PS
+	 iyuonVnNkss/XnN/LAtKX8RCVYxNWAkFpJg2g4Z1N2Rir+QYNjiS3A0zoUOUwOnb5/
+	 RePNdfeP1Eh3Xf9RcAb5ni4w/R8mzvr47oZZ63147MeEzWHS0VP3bFp8bcuHUzj0zQ
+	 cC2RNHVWs8H28jD2gtCSNWgAjtROSEMZVsa1uVpLTwJqAgLq/LlUVcpWF2nPpWf+/B
+	 lHYvjLINrjsXiwAGVZDzWsN1D3dUOFObC0SPkpSRQ1MLKLROCCENOQAaveeGhDAO+w
+	 U0lS7nYRQ40bA==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
 	Olga Kornievskaia <okorniev@redhat.com>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v1 14/27] NFSD: Use xdrgen XDR functions for NFSv2 WRITE procedure
-Date: Wed, 16 Sep 2026 12:28:45 -0400
-Message-ID: <20260916162859.2051-17-cel@kernel.org>
+Cc: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v1 16/27] NFSD: Use xdrgen XDR functions for NFSv2 CREATE procedure
+Date: Wed, 16 Sep 2026 12:28:47 -0400
+Message-ID: <20260916162859.2051-19-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260916162859.2051-1-cel@kernel.org>
 References: <20260916162859.2051-1-cel@kernel.org>
@@ -48,299 +47,189 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: Chuck Lever <chuck.lever@oracle.com>
+Replace the NFSPROC_CREATE entry in the nfsd_procedures2 array
+with an entry that dispatches the xdrgen-generated
+nfs_svc_decode_createargs and nfs_svc_encode_diropres. Wrapper
+structures bridge the generated xdrgen types and the legacy
+svc_fh, iattr, and kstat representations the NFSD VFS layer still
+uses.
 
-The NFSv2 WRITE argument decoder could not be generated because
-the write payload must be directed into the server's page cache
-and decoded in place; a materializing decoder would copy every
-write. The "pages" directive now expresses this: it represents
-the payload as a struct xdr_buf and decodes it with
-svcxdr_decode_opaque_payload(), which subsegments the source
-stream in place rather than copying it.
-
-Annotate the data member of writeargs with "pragma pages" and
-replace the NFSPROC_WRITE entry in nfsd_procedures2 with the
-generated nfs_svc_decode_writeargs and nfs_svc_encode_attrstat. A
-wrapper structure bridges the generated writeargs type and the
-svc_fh the NFSD VFS layer still uses; the result reuses the
-attrstat wrapper from the GETATTR conversion.
-
-The pc_argzero field is now set to zero for the NFSv2 WRITE
-procedure. The generated decoder initializes every argument in
-the argp->xdrgen field, making the early defensive memset
-unnecessary.
+The pc_argzero field is now set to zero for the NFSv2 CREATE
+procedure. The xdrgen decoders are trusted to initialize all
+arguments in the argp->xdrgen field, making the early defensive
+memset unnecessary. The remaining argp fields are cleared as
+needed.
 
 This refactor replaces the use of svcxdr_encode_fattr(), so the
-reference to the file handle can be released directly by
-nfsd_proc_write(). A separate ->pc_release callback is thus no
-longer needed. This makes it straightforward to confirm that the
-file handle is properly released during every error flow.
+references to the parent directory and the new object file
+handles can be released directly by nfsd_proc_create(). A
+separate ->pc_release callback is thus no longer needed. This
+makes it straightforward to confirm that the file handles are
+properly released during every error flow.
+
+nfssvc_decode_createargs remains for the MKDIR procedure which
+uses the same argument structure.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- Documentation/sunrpc/xdr/nfs2.x    |  1 +
- fs/nfsd/nfs2xdr_gen.c              |  6 +--
- fs/nfsd/nfs2xdr_gen.h              |  2 +-
- fs/nfsd/nfsproc.c                  | 76 ++++++++++++++++++------------
- fs/nfsd/nfsxdr.c                   | 26 ----------
- fs/nfsd/xdr.h                      |  8 ----
- include/linux/sunrpc/xdrgen/nfs2.h |  4 +-
- 7 files changed, 54 insertions(+), 69 deletions(-)
+ fs/nfsd/nfsproc.c | 89 ++++++++++++++++++++++++++++++++---------------
+ 1 file changed, 60 insertions(+), 29 deletions(-)
 
-diff --git a/Documentation/sunrpc/xdr/nfs2.x b/Documentation/sunrpc/xdr/nfs2.x
-index b64b939f11f8..b2ed52bd1631 100644
---- a/Documentation/sunrpc/xdr/nfs2.x
-+++ b/Documentation/sunrpc/xdr/nfs2.x
-@@ -156,6 +156,7 @@ struct writeargs {
- 	unsigned int	totalcount;
- 	opaque		data<NFS_MAXDATA>;
- };
-+pragma pages writeargs data;
- 
- struct createargs {
- 	diropargs	where;
-diff --git a/fs/nfsd/nfs2xdr_gen.c b/fs/nfsd/nfs2xdr_gen.c
-index abde6fa8e510..3c2f78c802a6 100644
---- a/fs/nfsd/nfs2xdr_gen.c
-+++ b/fs/nfsd/nfs2xdr_gen.c
-@@ -1,7 +1,7 @@
- // SPDX-License-Identifier: GPL-2.0
- // Generated by xdrgen. Manual edits will be lost.
- // XDR specification file: ../../Documentation/sunrpc/xdr/nfs2.x
--// XDR specification modification time: Tue Sep  8 11:25:45 2026
-+// XDR specification modification time: Tue Sep  8 11:26:00 2026
- 
- #include <linux/sunrpc/svc.h>
- 
-@@ -282,7 +282,7 @@ xdrgen_decode_writeargs(struct xdr_stream *xdr, struct writeargs *ptr)
- 		return false;
- 	if (!xdrgen_decode_unsigned_int(xdr, &ptr->totalcount))
- 		return false;
--	if (!xdrgen_decode_opaque(xdr, &ptr->data, NFS_MAXDATA))
-+	if (!svcxdr_decode_opaque_payload(xdr, &ptr->data, NFS_MAXDATA))
- 		return false;
- 	return true;
- }
-@@ -811,7 +811,7 @@ xdrgen_encode_writeargs(struct xdr_stream *xdr, const struct writeargs *value)
- 		return false;
- 	if (value->data.len > NFS_MAXDATA)
- 		return false;
--	if (xdr_stream_encode_opaque(xdr, value->data.data, value->data.len) < 0)
-+	if (!svcxdr_encode_opaque_payload(xdr, value->data.len))
- 		return false;
- 	return true;
- }
-diff --git a/fs/nfsd/nfs2xdr_gen.h b/fs/nfsd/nfs2xdr_gen.h
-index e8ff072e32e5..8f7d17e8e483 100644
---- a/fs/nfsd/nfs2xdr_gen.h
-+++ b/fs/nfsd/nfs2xdr_gen.h
-@@ -1,7 +1,7 @@
- /* SPDX-License-Identifier: GPL-2.0 */
- /* Generated by xdrgen. Manual edits will be lost. */
- /* XDR specification file: ../../Documentation/sunrpc/xdr/nfs2.x */
--/* XDR specification modification time: Tue Sep  8 11:25:45 2026 */
-+/* XDR specification modification time: Tue Sep  8 11:26:00 2026 */
- 
- #ifndef _LINUX_XDRGEN_NFS2_DECL_H
- #define _LINUX_XDRGEN_NFS2_DECL_H
 diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 71b792c8d78f..4d09da326070 100644
+index e041598ce68e..69dcd482b77f 100644
 --- a/fs/nfsd/nfsproc.c
 +++ b/fs/nfsd/nfsproc.c
-@@ -70,6 +70,13 @@ struct readargs_wrapper {
+@@ -63,6 +63,14 @@ struct diropres_wrapper {
  
- static_assert(offsetof(struct readargs_wrapper, xdrgen) == 0);
+ static_assert(offsetof(struct diropres_wrapper, xdrgen) == 0);
  
-+struct writeargs_wrapper {
-+	struct writeargs	xdrgen;
++struct createargs_wrapper {
++	struct createargs	xdrgen;
 +	struct svc_fh		fh;
++	struct iattr		iattrs;
 +};
 +
-+static_assert(offsetof(struct writeargs_wrapper, xdrgen) == 0);
++static_assert(offsetof(struct createargs_wrapper, xdrgen) == 0);
 +
- static __be32 nfsd_map_status(__be32 status)
+ struct readargs_wrapper {
+ 	struct readargs		xdrgen;
+ 	struct svc_fh		fh;
+@@ -634,9 +642,10 @@ static __be32 nfsd_proc_write(struct svc_rqst *rqstp)
+  */
+ static __be32
+ nfsd_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+-		 struct svc_fh *resfhp, struct nfsd_createargs *argp)
++		 struct svc_fh *resfhp, struct createargs_wrapper *argp)
  {
- 	switch (status) {
-@@ -581,29 +588,41 @@ static __be32 nfsd_proc_writecache(struct svc_rqst *rqstp)
- 	return rpc_success;
+-	struct iattr *attr = &argp->attrs;
++	struct diropargs *where = &argp->xdrgen.where;
++	struct iattr *attr = &argp->iattrs;
+ 	dev_t rdev = 0, wanted = new_decode_dev(attr->ia_size);
+ 	struct nfsd_attrs attrs = {
+ 		.na_iattr	= attr,
+@@ -648,7 +657,7 @@ nfsd_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	__be32 status;
+ 	int host_err;
+ 
+-	if (name_is_dot_dotdot(argp->name, argp->len))
++	if (name_is_dot_dotdot(where->name.data, where->name.len))
+ 		return nfserr_exist;
+ 
+ 	status = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_EXEC);
+@@ -660,7 +669,7 @@ nfsd_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		return nfserrno(host_err);
+ 
+ 	dchild = start_creating(&nop_mnt_idmap, fhp->fh_dentry,
+-				&QSTR_LEN(argp->name, argp->len));
++				&QSTR_LEN(where->name.data, where->name.len));
+ 	if (IS_ERR(dchild)) {
+ 		status = nfserrno(PTR_ERR(dchild));
+ 		goto out_drop_write;
+@@ -777,7 +786,7 @@ nfsd_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		goto out_drop_write;
+ 	} else if (type == S_IFREG) {
+ 		dprintk("nfsd:   existing %s, valid=%x, size=%ld\n",
+-			argp->name, attr->ia_valid, (long)attr->ia_size);
++			where->name.data, attr->ia_valid, (long)attr->ia_size);
+ 		/* File already exists. We ignore all attributes except
+ 		 * size, so that creat() behaves exactly like
+ 		 * open(..., O_CREAT|O_TRUNC|O_WRONLY).
+@@ -794,24 +803,47 @@ nfsd_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	return status;
  }
  
 -/*
-- * Write data to a file
-- * N.B. After this call resp->fh needs an fh_put
+- * N.B. After this call _both_ argp->fh and resp->fh need an fh_put
 +/**
-+ * nfsd_proc_write - WRITE: Write to file
++ * nfsd_proc_create - CREATE: Create a file
 + * @rqstp: RPC transaction context
 + *
 + * Return:
 + *   %rpc_success:		RPC executed successfully
 + *
 + * RPC synopsis:
-+ *   attrstat NFSPROC_WRITE(writeargs) = 8;
++ *   diropres NFSPROC_CREATE(createargs) = 9;
   */
 -static __be32
--nfsd_proc_write(struct svc_rqst *rqstp)
-+static __be32 nfsd_proc_write(struct svc_rqst *rqstp)
+-nfsd_proc_create(struct svc_rqst *rqstp)
++static __be32 nfsd_proc_create(struct svc_rqst *rqstp)
  {
--	struct nfsd_writeargs *argp = rqstp->rq_argp;
--	struct nfsd_attrstat *resp = rqstp->rq_resp;
--	unsigned long cnt = argp->len;
-+	struct writeargs_wrapper *argp = rqstp->rq_argp;
-+	struct attrstat_wrapper *resp = rqstp->rq_resp;
+-	struct nfsd_createargs *argp = rqstp->rq_argp;
+-	struct nfsd_diropres *resp = rqstp->rq_resp;
+-	svc_fh *dirfhp = &argp->fh;
+-	svc_fh *newfhp = fh_init(&resp->fh, NFS_FHSIZE);
++	struct createargs_wrapper *argp = rqstp->rq_argp;
++	struct diropres_wrapper *resp = rqstp->rq_resp;
 +	struct kstat *statp = &resp->stat;
-+	unsigned long count = argp->xdrgen.data.len;
-+	struct svc_fh *fhp = &argp->fh;
++	struct svc_fh *dirfhp = &argp->fh;
++	struct svc_fh *fhp = &resp->fh;
  
--	dprintk("nfsd: WRITE    %s %u bytes at %d\n",
--		SVCFH_fmt(&argp->fh),
--		argp->len, argp->offset);
-+	nfsd_fhandle_to_svc_fh(fhp, &argp->xdrgen.file);
- 
--	fh_copy(&resp->fh, &argp->fh);
--	resp->status = nfsd_write(rqstp, &resp->fh, argp->offset,
--				  &argp->payload, &cnt, IOCB_DSYNC, NULL);
--	if (resp->status == nfs_ok)
--		resp->status = fh_getattr(&resp->fh, &resp->stat);
--	else if (resp->status == nfserr_jukebox)
-+	resp->xdrgen.status = nfsd_write(rqstp, fhp, argp->xdrgen.offset,
-+					 &argp->xdrgen.data, &count,
-+					 IOCB_DSYNC, NULL);
-+	if (resp->xdrgen.status == nfs_ok) {
-+		resp->xdrgen.status = fh_getattr(fhp, statp);
-+		if (resp->xdrgen.status == nfs_ok)
-+			nfsd_stat_to_fattr(rqstp, &resp->xdrgen.u.attributes,
-+					   statp, fhp);
+-	resp->status = nfsd_create_file(rqstp, dirfhp, newfhp, argp);
+-	fh_put(dirfhp);
+-	if (resp->status != nfs_ok)
++	nfsd_fhandle_to_svc_fh(dirfhp, &argp->xdrgen.where.dir);
++	fh_init(fhp, NFS_FHSIZE);
++	if (!nfsd_sattr_to_iattr(rqstp, &argp->iattrs, &argp->xdrgen.attributes)) {
++		resp->xdrgen.status = nfserr_io;
+ 		goto out;
+-	resp->status = fh_getattr(&resp->fh, &resp->stat);
 +	}
-+	if (resp->xdrgen.status == nfserr_jukebox)
- 		set_bit(RQ_DROPME, &rqstp->rq_flags);
--	resp->status = nfsd_map_io_status(resp->status);
++
++	resp->xdrgen.status = nfsd_create_file(rqstp, dirfhp, fhp, argp);
 +	if (resp->xdrgen.status != nfs_ok)
-+		resp->xdrgen.status = nfsd_map_io_status(resp->xdrgen.status);
++		goto out;
++	resp->xdrgen.status = fh_getattr(fhp, statp);
++
+ out:
+-	resp->status = nfsd_map_status(resp->status);
++	if (resp->xdrgen.status == nfs_ok) {
++		nfsd_svc_fh_to_fhandle(&resp->xdrgen.u.diropok.file, fhp);
++		nfsd_stat_to_fattr(rqstp, &resp->xdrgen.u.diropok.attributes,
++				   statp, fhp);
++	} else {
++		resp->xdrgen.status = nfsd_map_status(resp->xdrgen.status);
++	}
 +
 +	fh_put(fhp);
++	fh_put(dirfhp);
  	return rpc_success;
  }
  
-@@ -1076,16 +1095,15 @@ static const struct svc_procedure nfsd_procedures2[18] = {
- 		.pc_name	= "WRITECACHE",
- 	},
- 	[NFSPROC_WRITE] = {
--		.pc_func = nfsd_proc_write,
--		.pc_decode = nfssvc_decode_writeargs,
--		.pc_encode = nfssvc_encode_attrstatres,
--		.pc_release = nfssvc_release_attrstat,
--		.pc_argsize = sizeof(struct nfsd_writeargs),
--		.pc_argzero = sizeof(struct nfsd_writeargs),
--		.pc_ressize = sizeof(struct nfsd_attrstat),
--		.pc_cachetype = RC_REPLBUFF,
--		.pc_xdrressize = ST+AT,
--		.pc_name = "WRITE",
-+		.pc_func	= nfsd_proc_write,
-+		.pc_decode	= nfs_svc_decode_writeargs,
-+		.pc_encode	= nfs_svc_encode_attrstat,
-+		.pc_argsize	= sizeof(struct writeargs_wrapper),
-+		.pc_argzero	= 0,
-+		.pc_ressize	= sizeof(struct attrstat_wrapper),
-+		.pc_cachetype	= RC_REPLBUFF,
-+		.pc_xdrressize	= NFS2_attrstat_sz,
-+		.pc_name	= "WRITE",
+@@ -1110,16 +1142,15 @@ static const struct svc_procedure nfsd_procedures2[18] = {
+ 		.pc_name	= "WRITE",
  	},
  	[NFSPROC_CREATE] = {
- 		.pc_func = nfsd_proc_create,
-@@ -1197,7 +1215,7 @@ union nfsd_xdrstore {
- 	struct sattrargs_wrapper	sattrargs;
+-		.pc_func = nfsd_proc_create,
+-		.pc_decode = nfssvc_decode_createargs,
+-		.pc_encode = nfssvc_encode_diropres,
+-		.pc_release = nfssvc_release_diropres,
+-		.pc_argsize = sizeof(struct nfsd_createargs),
+-		.pc_argzero = sizeof(struct nfsd_createargs),
+-		.pc_ressize = sizeof(struct nfsd_diropres),
+-		.pc_cachetype = RC_REPLBUFF,
+-		.pc_xdrressize = ST+FH+AT,
+-		.pc_name = "CREATE",
++		.pc_func	= nfsd_proc_create,
++		.pc_decode	= nfs_svc_decode_createargs,
++		.pc_encode	= nfs_svc_encode_diropres,
++		.pc_argsize	= sizeof(struct createargs_wrapper),
++		.pc_argzero	= 0,
++		.pc_ressize	= sizeof(struct diropres_wrapper),
++		.pc_cachetype	= RC_REPLBUFF,
++		.pc_xdrressize	= NFS2_diropres_sz,
++		.pc_name	= "CREATE",
+ 	},
+ 	[NFSPROC_REMOVE] = {
+ 		.pc_func = nfsd_proc_remove,
+@@ -1220,7 +1251,7 @@ union nfsd_xdrstore {
  	struct diropargs_wrapper	diropargs;
  	struct readargs_wrapper		readargs;
--	struct nfsd_writeargs	write;
-+	struct writeargs_wrapper	writeargs;
- 	struct nfsd_createargs	create;
+ 	struct writeargs_wrapper	writeargs;
+-	struct nfsd_createargs	create;
++	struct createargs_wrapper	createargs;
  	struct nfsd_renameargs	rename;
  	struct nfsd_linkargs	link;
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index 1b79f9534af6..33b3fb73053e 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -311,32 +311,6 @@ nfssvc_decode_diropargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
- 	return svcxdr_decode_diropargs(xdr, &args->fh, &args->name, &args->len);
- }
- 
--bool
--nfssvc_decode_writeargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
--{
--	struct nfsd_writeargs *args = rqstp->rq_argp;
--	u32 beginoffset, totalcount;
--
--	if (!svcxdr_decode_fhandle(xdr, &args->fh))
--		return false;
--	/* beginoffset is ignored */
--	if (xdr_stream_decode_u32(xdr, &beginoffset) < 0)
--		return false;
--	if (xdr_stream_decode_u32(xdr, &args->offset) < 0)
--		return false;
--	/* totalcount is ignored */
--	if (xdr_stream_decode_u32(xdr, &totalcount) < 0)
--		return false;
--
--	/* opaque data */
--	if (xdr_stream_decode_u32(xdr, &args->len) < 0)
--		return false;
--	if (args->len > NFS_MAXDATA)
--		return false;
--
--	return xdr_stream_subsegment(xdr, &args->payload, args->len);
--}
--
- bool
- nfssvc_decode_createargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
- {
-diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
-index 9d9150760a0b..75f40bef6614 100644
---- a/fs/nfsd/xdr.h
-+++ b/fs/nfsd/xdr.h
-@@ -14,13 +14,6 @@ struct nfsd_diropargs {
- 	unsigned int		len;
- };
- 
--struct nfsd_writeargs {
--	svc_fh			fh;
--	__u32			offset;
--	__u32			len;
--	struct xdr_buf		payload;
--};
--
- struct nfsd_createargs {
- 	struct svc_fh		fh;
- 	char *			name;
-@@ -96,7 +89,6 @@ struct nfsd_statfsres {
- 
- bool nfssvc_decode_fhandleargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfssvc_decode_diropargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
--bool nfssvc_decode_writeargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfssvc_decode_createargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfssvc_decode_renameargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfssvc_decode_linkargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
-diff --git a/include/linux/sunrpc/xdrgen/nfs2.h b/include/linux/sunrpc/xdrgen/nfs2.h
-index eeb8b9ded65f..7a469ac4b772 100644
---- a/include/linux/sunrpc/xdrgen/nfs2.h
-+++ b/include/linux/sunrpc/xdrgen/nfs2.h
-@@ -1,7 +1,7 @@
- /* SPDX-License-Identifier: GPL-2.0 */
- /* Generated by xdrgen. Manual edits will be lost. */
- /* XDR specification file: ../../Documentation/sunrpc/xdr/nfs2.x */
--/* XDR specification modification time: Tue Sep  8 11:25:45 2026 */
-+/* XDR specification modification time: Tue Sep  8 11:26:00 2026 */
- 
- #ifndef _LINUX_XDRGEN_NFS2_DEF_H
- #define _LINUX_XDRGEN_NFS2_DEF_H
-@@ -152,7 +152,7 @@ struct writeargs {
- 	u32 beginoffset;
- 	u32 offset;
- 	u32 totalcount;
--	opaque data;
-+	struct xdr_buf data;
- };
- 
- struct createargs {
+ 	struct nfsd_symlinkargs	symlink;
 -- 
 2.55.0
 
