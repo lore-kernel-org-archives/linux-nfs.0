@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E2F5D59481C
-	for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2026 16:29:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E9516598BF4
+	for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2026 16:29:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789576166; cv=none; b=nMRdP4C3+SNUTx0bwuktwUbHJyg3PravaJz+OD38DoBbzm1bT+PKYFpur94TMPLLYt+5A4S4WSTr8IqirR3UDdSrX59cbXRlkyv1L53OZxvvPKznfCyatrVSVgpRuVXxLpUq2dz01LZd2eT3JMzQMxeXvxL5yn1AD6tlxQy4PWQ=
+	t=1789576169; cv=none; b=JcmtXdPndjrq4dksolPZRAE023Zf6AUkDM9gfiJRweAVhI+LJmKQKsGLEJeNFSF4etLmhSyLmgMaZaxXSkHKhvOvqIlmWK+2XGdrhA3ByxX5H1kLouor3DHVxO4tHNcgXy20YilcIqY2PuoHE30b2r7XeQ5MbSPhthu5Cq2We9E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789576166; c=relaxed/simple;
-	bh=3O+jAOT+x7dcqqVpdF7mdGHH49HiHO54lcAeg4143/4=;
+	s=arc-20240116; t=1789576169; c=relaxed/simple;
+	bh=HxtmZv2tagehO8cxmPY9R/4VldPC1gpWcqbIbKngCmc=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ou7t19vQodKG2s3Gl3fHA52ZD7CERakFWy4YbQlQHH9YXUtth7A9ZLItP5LSmPuJSIKv0lbwa+p1GktE51rILKKEqGWDuB6Mv5ksFbpywlpArcvZvbj0JI3JkFyywHlJJT2iMI1LcNiyUYj+wv3eGO/hBBHaTYgFGfnZooyDCzg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BXZQRB+7; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=W6w5J8siseFnydPSRfiguHEIJj75U1ntYDpg/1wfoUuVN1IlnvVX2EKOmG4vWSOjBbAJmkMQK+HujIGrtNIHHWAqrrR8JXVqnGoK79/03dceGyPmnoo7rrBxwtFkVsG3K52lEBaGKfjbwCtxYARi5Ue8atkF7MOy9dlm2lByglk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=lLXDt3yu; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BXZQRB+7"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 70FAF1F00898;
-	Wed, 16 Sep 2026 16:29:22 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="lLXDt3yu"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7D7201F0089B;
+	Wed, 16 Sep 2026 16:29:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789576163;
-	bh=hDAZECZPdXJC/xzZvfXYh98m3M1Q5ioc1g4odOpmVL8=;
+	s=k20260515; t=1789576166;
+	bh=3wjwDGpbkYwEdzCXecAoo5fdVDTlFQE0+mtdrQjIF5A=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=BXZQRB+77Mh+fkmHpFKyTq4NTaXVrjPOJc1F3KD/AIebTeJ8STvMssBwg61+3t2B0
-	 6xKK5ffdK0Q0+jcqpKMoeOEJShzjo6qlEc63MP5972dedQkJXddVsrb8ZDBZrRym+K
-	 WLB3+pCy42VKJq7gdf9kc2InzTOLlBbRxX3Cf5t/N2uaCAvSlPf+JPQZG99MNcpp+p
-	 HnMfD7gNyE8j9uFGIN49pa+r61eiw/r229f6yzrOpEIgalu2BoPtbQNZcEMY9x8P1h
-	 iETRmRPlB+JLeiEoW+j1I+RFJ5aso+vr6GlZRuiQ16yJCTytGUYqs4YjcpYsMp27pv
-	 YJmQGjTvoix/Q==
+	b=lLXDt3yuSpzGyzZOSSSIwavK9XeJ9YXfVh9azKH6fgBPwmFUXaqvmypeaG2qCdDyJ
+	 e3XO+M9qb/jJiMbEWHraMKcFb0yacyZ0EyIvAqlstFYyhHWIqhfj+pLH4HqTRya/Og
+	 b15K77NlyphTwft+e0a69ouIYtGb996XkuafmKpWOqmMdae9LntXqJwlP95jgsDKSx
+	 pZcB3UNpRSn/pyeYB4P6W+hKXOvvkiovxy9z/ogVPPt+pwvVr5y5TQRRoK94VgGj8s
+	 ilUuZw2M/A6PhejzENLLyR1BlgwyZMcZuLqhg6Awwa9RAcZO5Fy2Swsnt1lmjYENbH
+	 owM6ImZ54cwow==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 18/27] NFSD: Use xdrgen XDR functions for the NFSv2 RENAME procedure
-Date: Wed, 16 Sep 2026 12:28:49 -0400
-Message-ID: <20260916162859.2051-21-cel@kernel.org>
+Subject: [PATCH v1 22/27] NFSD: Use xdrgen XDR functions for NFSv2 RMDIR procedure
+Date: Wed, 16 Sep 2026 12:28:53 -0400
+Message-ID: <20260916162859.2051-25-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260916162859.2051-1-cel@kernel.org>
 References: <20260916162859.2051-1-cel@kernel.org>
@@ -47,176 +47,214 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Replace the NFSPROC_RENAME entry in the nfsd_procedures2 array
+Replace the NFSPROC_RMDIR entry in the nfsd_procedures2 array
 with an entry that dispatches the xdrgen-generated
-nfs_svc_decode_renameargs and nfs_svc_encode_nfsstat. A wrapper
-structure bridges the generated xdrgen renameargs type and the
-legacy svc_fh representations the NFSD VFS layer still uses.
+nfs_svc_decode_diropargs and nfs_svc_encode_nfsstat. A wrapper
+structure bridges the generated xdrgen diropargs type and the
+legacy svc_fh representation the NFSD VFS layer still uses.
 
-The pc_argzero field is now set to zero for the NFSv2 RENAME
+The pc_argzero field is now set to zero for the NFSv2 RMDIR
 procedure. The xdrgen decoders are trusted to initialize all
 arguments in the argp->xdrgen field, making the early defensive
 memset unnecessary. The remaining argp fields are cleared as
 needed.
 
-nfssvc_decode_renameargs() no longer has any callers, so it is
-removed.
+RMDIR is the last procedure to use the hand-coded
+nfssvc_decode_diropargs() and nfssvc_encode_statres(), so they no
+longer have any callers and are removed, along with the
+svcxdr_decode_diropargs() and svcxdr_decode_filename() helpers
+they relied on. The now-unused nfsd_diropargs and nfsd_stat
+structures are removed as well.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfsproc.c | 64 +++++++++++++++++++++++++++++++++--------------
- fs/nfsd/nfsxdr.c  | 11 --------
- fs/nfsd/xdr.h     | 10 --------
- 3 files changed, 45 insertions(+), 40 deletions(-)
+ fs/nfsd/nfsproc.c | 50 +++++++++++++++++++++++++++++------------------
+ fs/nfsd/nfsxdr.c  | 48 ---------------------------------------------
+ fs/nfsd/xdr.h     | 12 ------------
+ 3 files changed, 31 insertions(+), 79 deletions(-)
 
 diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index ae74247a892f..755518f08490 100644
+index 8317029850c9..ddf743aea89c 100644
 --- a/fs/nfsd/nfsproc.c
 +++ b/fs/nfsd/nfsproc.c
-@@ -85,6 +85,14 @@ struct writeargs_wrapper {
- 
- static_assert(offsetof(struct writeargs_wrapper, xdrgen) == 0);
- 
-+struct renameargs_wrapper {
-+	struct renameargs	xdrgen;
-+	struct svc_fh		ffh;
-+	struct svc_fh		tfh;
-+};
-+
-+static_assert(offsetof(struct renameargs_wrapper, xdrgen) == 0);
-+
- static __be32 nfsd_map_status(__be32 status)
- {
- 	switch (status) {
-@@ -875,17 +883,35 @@ static __be32 nfsd_proc_remove(struct svc_rqst *rqstp)
+@@ -1082,19 +1082,31 @@ static __be32 nfsd_proc_mkdir(struct svc_rqst *rqstp)
  	return rpc_success;
  }
  
--static __be32
--nfsd_proc_rename(struct svc_rqst *rqstp)
+-/*
+- * Remove a directory
 +/**
-+ * nfsd_proc_rename - RENAME: Rename a file or directory
++ * nfsd_proc_rmdir - RMDIR: Remove a directory
 + * @rqstp: RPC transaction context
 + *
 + * Return:
 + *   %rpc_success:		RPC executed successfully
 + *
 + * RPC synopsis:
-+ *   nfsstat NFSPROC_RENAME(renameargs) = 11;
-+ */
-+static __be32 nfsd_proc_rename(struct svc_rqst *rqstp)
++ *   nfsstat NFSPROC_RMDIR(diropargs) = 15;
+  */
+-static __be32
+-nfsd_proc_rmdir(struct svc_rqst *rqstp)
++static __be32 nfsd_proc_rmdir(struct svc_rqst *rqstp)
  {
--	struct nfsd_renameargs *argp = rqstp->rq_argp;
+-	struct nfsd_diropargs *argp = rqstp->rq_argp;
 -	struct nfsd_stat *resp = rqstp->rq_resp;
-+	struct renameargs_wrapper *argp = rqstp->rq_argp;
-+	struct diropargs *from = &argp->xdrgen.from;
-+	struct diropargs *to = &argp->xdrgen.to;
++	struct diropargs_wrapper *argp = rqstp->rq_argp;
++	struct diropargs *object = &argp->xdrgen;
 +	nfsstat *resp = rqstp->rq_resp;
-+	struct svc_fh *ffhp = &argp->ffh;
-+	struct svc_fh *tfhp = &argp->tfh;
++	struct svc_fh *fhp = &argp->fh;
  
--	resp->status = nfsd_rename(rqstp, &argp->ffh, argp->fname, argp->flen,
--				   &argp->tfh, argp->tname, argp->tlen);
--	fh_put(&argp->ffh);
--	fh_put(&argp->tfh);
+-	resp->status = nfsd_unlink(rqstp, &argp->fh, S_IFDIR,
+-				   argp->name, argp->len);
+-	fh_put(&argp->fh);
 -	resp->status = nfsd_map_status(resp->status);
-+	nfsd_fhandle_to_svc_fh(ffhp, &from->dir);
-+	nfsd_fhandle_to_svc_fh(tfhp, &to->dir);
++	nfsd_fhandle_to_svc_fh(fhp, &object->dir);
 +
-+	*resp = nfsd_rename(rqstp, ffhp, (char *)from->name.data,
-+			    from->name.len, tfhp, (char *)to->name.data,
-+			    to->name.len);
++	/* Unlink. S_IFDIR means file must be a directory */
++	*resp = nfsd_unlink(rqstp, fhp, S_IFDIR,
++			    (char *)object->name.data, object->name.len);
 +	*resp = nfsd_map_status(*resp);
 +
-+	fh_put(ffhp);
-+	fh_put(tfhp);
++	fh_put(fhp);
  	return rpc_success;
  }
  
-@@ -1178,15 +1204,15 @@ static const struct svc_procedure nfsd_procedures2[18] = {
- 		.pc_name	= "REMOVE",
+@@ -1334,15 +1346,15 @@ static const struct svc_procedure nfsd_procedures2[18] = {
+ 		.pc_name	= "MKDIR",
  	},
- 	[NFSPROC_RENAME] = {
--		.pc_func = nfsd_proc_rename,
--		.pc_decode = nfssvc_decode_renameargs,
+ 	[NFSPROC_RMDIR] = {
+-		.pc_func = nfsd_proc_rmdir,
+-		.pc_decode = nfssvc_decode_diropargs,
 -		.pc_encode = nfssvc_encode_statres,
--		.pc_argsize = sizeof(struct nfsd_renameargs),
--		.pc_argzero = sizeof(struct nfsd_renameargs),
+-		.pc_argsize = sizeof(struct nfsd_diropargs),
+-		.pc_argzero = sizeof(struct nfsd_diropargs),
 -		.pc_ressize = sizeof(struct nfsd_stat),
 -		.pc_cachetype = RC_REPLSTAT,
 -		.pc_xdrressize = ST,
--		.pc_name = "RENAME",
-+		.pc_func	= nfsd_proc_rename,
-+		.pc_decode	= nfs_svc_decode_renameargs,
+-		.pc_name = "RMDIR",
++		.pc_func	= nfsd_proc_rmdir,
++		.pc_decode	= nfs_svc_decode_diropargs,
 +		.pc_encode	= nfs_svc_encode_nfsstat,
-+		.pc_argsize	= sizeof(struct renameargs_wrapper),
++		.pc_argsize	= sizeof(struct diropargs_wrapper),
 +		.pc_argzero	= 0,
 +		.pc_ressize	= sizeof(nfsstat),
 +		.pc_cachetype	= RC_REPLSTAT,
 +		.pc_xdrressize	= NFS2_nfsstat_sz,
-+		.pc_name	= "RENAME",
++		.pc_name	= "RMDIR",
  	},
- 	[NFSPROC_LINK] = {
- 		.pc_func = nfsd_proc_link,
-@@ -1266,7 +1292,7 @@ union nfsd_xdrstore {
- 	struct readargs_wrapper		readargs;
- 	struct writeargs_wrapper	writeargs;
- 	struct createargs_wrapper	createargs;
--	struct nfsd_renameargs	rename;
-+	struct renameargs_wrapper	renameargs;
- 	struct nfsd_linkargs	link;
- 	struct nfsd_symlinkargs	symlink;
- 	struct nfsd_readdirargs	readdir;
+ 	[NFSPROC_READDIR] = {
+ 		.pc_func = nfsd_proc_readdir,
 diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index 33b3fb73053e..63496ad5e2ac 100644
+index 8989957a94e0..e839de8c9815 100644
 --- a/fs/nfsd/nfsxdr.c
 +++ b/fs/nfsd/nfsxdr.c
-@@ -321,17 +321,6 @@ nfssvc_decode_createargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
- 		svcxdr_decode_sattr(rqstp, xdr, &args->attrs);
+@@ -92,38 +92,6 @@ encode_timeval(__be32 *p, const struct timespec64 *time)
+ 	return p;
+ }
+ 
+-static bool
+-svcxdr_decode_filename(struct xdr_stream *xdr, char **name, unsigned int *len)
+-{
+-	u32 size, i;
+-	__be32 *p;
+-	char *c;
+-
+-	if (xdr_stream_decode_u32(xdr, &size) < 0)
+-		return false;
+-	if (size == 0 || size > NFS_MAXNAMLEN)
+-		return false;
+-	p = xdr_inline_decode(xdr, size);
+-	if (!p)
+-		return false;
+-
+-	*len = size;
+-	*name = (char *)p;
+-	for (i = 0, c = *name; i < size; i++, c++)
+-		if (*c == '\0' || *c == '/')
+-			return false;
+-
+-	return true;
+-}
+-
+-static bool
+-svcxdr_decode_diropargs(struct xdr_stream *xdr, struct svc_fh *fhp,
+-			char **name, unsigned int *len)
+-{
+-	return svcxdr_decode_fhandle(xdr, fhp) &&
+-		svcxdr_decode_filename(xdr, name, len);
+-}
+-
+ /**
+  * svcxdr_encode_fattr - Encode NFSv2 file attributes
+  * @rqstp: Context of a completed RPC transaction
+@@ -205,14 +173,6 @@ nfssvc_decode_fhandleargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+ 	return svcxdr_decode_fhandle(xdr, &args->fh);
  }
  
 -bool
--nfssvc_decode_renameargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+-nfssvc_decode_diropargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
 -{
--	struct nfsd_renameargs *args = rqstp->rq_argp;
+-	struct nfsd_diropargs *args = rqstp->rq_argp;
 -
--	return svcxdr_decode_diropargs(xdr, &args->ffh,
--				       &args->fname, &args->flen) &&
--		svcxdr_decode_diropargs(xdr, &args->tfh,
--					&args->tname, &args->tlen);
+-	return svcxdr_decode_diropargs(xdr, &args->fh, &args->name, &args->len);
 -}
 -
  bool
- nfssvc_decode_linkargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+ nfssvc_decode_readdirargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+ {
+@@ -232,14 +192,6 @@ nfssvc_decode_readdirargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+  * XDR encode functions
+  */
+ 
+-bool
+-nfssvc_encode_statres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+-{
+-	struct nfsd_stat *resp = rqstp->rq_resp;
+-
+-	return svcxdr_encode_stat(xdr, resp->status);
+-}
+-
+ bool
+ nfssvc_encode_attrstatres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
  {
 diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
-index 75f40bef6614..45582d21624c 100644
+index bd3123179f61..64e0febe32da 100644
 --- a/fs/nfsd/xdr.h
 +++ b/fs/nfsd/xdr.h
-@@ -21,15 +21,6 @@ struct nfsd_createargs {
- 	struct iattr		attrs;
- };
+@@ -8,22 +8,12 @@
  
--struct nfsd_renameargs {
--	struct svc_fh		ffh;
--	char *			fname;
--	unsigned int		flen;
--	struct svc_fh		tfh;
--	char *			tname;
--	unsigned int		tlen;
+ #include "vfs.h"
+ 
+-struct nfsd_diropargs {
+-	struct svc_fh		fh;
+-	char *			name;
+-	unsigned int		len;
 -};
 -
- struct nfsd_linkargs {
- 	struct svc_fh		ffh;
- 	struct svc_fh		tfh;
-@@ -90,7 +81,6 @@ struct nfsd_statfsres {
+ struct nfsd_readdirargs {
+ 	struct svc_fh		fh;
+ 	__u32			cookie;
+ 	__u32			count;
+ };
+ 
+-struct nfsd_stat {
+-	__be32			status;
+-};
+-
+ struct nfsd_attrstat {
+ 	__be32			status;
+ 	struct svc_fh		fh;
+@@ -49,10 +39,8 @@ struct nfsd_statfsres {
+ };
+ 
  bool nfssvc_decode_fhandleargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfssvc_decode_diropargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfssvc_decode_createargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
--bool nfssvc_decode_renameargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfssvc_decode_linkargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfssvc_decode_symlinkargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+-bool nfssvc_decode_diropargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  bool nfssvc_decode_readdirargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ 
+-bool nfssvc_encode_statres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ bool nfssvc_encode_attrstatres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ bool nfssvc_encode_statfsres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ bool nfssvc_encode_readdirres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
 -- 
 2.55.0
 
