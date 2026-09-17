@@ -1,157 +1,161 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Received: from mx0b-00154904.pphosted.com (mx0b-00154904.pphosted.com [148.163.137.20])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 476DB413230
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 07:27:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37CB6392C25
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 08:11:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.137.20
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789630034; cv=none; b=YoZ/gP2Tfm3xVGc2vG2o8PxkpEkbZE8siTLjq9nDmQTPik5NB3d71p0PuJTOz1dsrOSCYUAOdf6QAQ4x9OrX15XyB78bKiQ612jBQ5mnVlsbntP6d6a3a7MUCkTU39ccnt9OUBbhGnmmBXfYm2DW/cn0XRdwiK3drC4IKw8O18s=
+	t=1789632672; cv=none; b=W1vNTQ8rIotKLgxzh143qGD52bsqNlghpqeeOStW9DRNJfwgHIA0cLPOrv4nycLUcAvqNsZN3kH5fIQADI+URfIreBGGb6anrV3aMkvAt4SgBFaNPDyVPDBoDGcsnDWUJ5cVEMIt3NDRiAQmLtwW5zGHfCfR/UfYRBLEWBZqX1s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789630034; c=relaxed/simple;
-	bh=hj1QYCB97vF33s4Pv0QkgwUhbdfUb+MhizH/QIM+oiM=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=nJb46IIBDB4f6WjkiwkzYPlpuIxYMzpi3OTMuIGiODgkzN3xAqXKtajqSoVqPF96di6AtxYNIiSFbn3ds6IoabUJqf0rFN8ozg+f+3xWFCSO9TAwSWI3v2jzzqIij9FAhW0H8NdG7uyPd0XwWu31veyDV+iiJW/i8UGcJQ/+XRM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=YLtJUii7; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=Ch+fbWEs; arc=none smtp.client-ip=170.10.133.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	s=arc-20240116; t=1789632672; c=relaxed/simple;
+	bh=NTfGq/qvit8BjzPz+XxKzHFT2xIX+unRsUjOnxanPWw=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=FRF9JXvmQBQ7qNk5+BrxARpCRYhICYxYYQm4mgwpmVX0HHMjp4v7sDuCTdMn1G05n1NGaYRf2wykOuuL2OauaPOY07lZUpgybkD3Wd1oiGv7cgRGSg+uaacnGG+FGqODlXJwXwSumEUBRoi+IqLrV+caEyHXegjbZqbVq3bgOQs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com; spf=pass smtp.mailfrom=dell.com; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=Bw2HQy0l; dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b=ImZ/jcLy; arc=none smtp.client-ip=148.163.137.20
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=dell.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dell.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="YLtJUii7";
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="Ch+fbWEs"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1789630031;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=c6SsdRzT/Bqt4wkU0T0q+RFo7GRVacgmeME637yMjU8=;
-	b=YLtJUii74hVHfhmJOluoDer67yv9m2BHLFXxhmFqrKeqbvEHx8so3Fz1bKMP6HY4b48Uln
-	TtJcdn9fTLOHZ0fxfS2efRL2pSd+i9Dx/st2GbC8JvBF8v/pAOKlP82u4r2lYjH/ZQsLtS
-	hRZWHamUUUY6BUdGIFV8uQwfUJBoBp8=
-Received: from mail-pg1-f197.google.com (mail-pg1-f197.google.com
- [209.85.215.197]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-650-ataGIqtRMoy-xluDcb7s-g-1; Thu, 17 Sep 2026 03:27:10 -0400
-X-MC-Unique: ataGIqtRMoy-xluDcb7s-g-1
-X-Mimecast-MFC-AGG-ID: ataGIqtRMoy-xluDcb7s-g_1789630029
-Received: by mail-pg1-f197.google.com with SMTP id 41be03b00d2f7-cc1cdfb337eso816338a12.0
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 00:27:09 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="Bw2HQy0l";
+	dkim=pass (2048-bit key) header.d=dell.com header.i=@dell.com header.b="ImZ/jcLy"
+Received: from pps.filterd (m0170395.ppops.net [127.0.0.1])
+	by mx0b-00154904.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 68H63OJA1924667
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 04:11:03 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=dell.com; h=cc
+	:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:subject:to; s=smtpout1; bh=+
+	Y4K/Qbwdu4K5q3RN9rNIHgRfxsu4971s5zltveArOE=; b=Bw2HQy0lFBIGyNgw6
+	UY//BExsuusFc7QvmznOfUkaG/enIEdpSFyowsUdQj9UJhINobLow8I41GeuBqGI
+	TnWpG4psbBiklur7dInZD+Wlyxa20MhSrmg6P4+GzWloqxy7EZJuthHWmH6Azwsv
+	w2HN6Th5TyR/zLE4Yznh2MPRcnTCCav7Cgo3ij3v0l4pp8t8SvKt8F2NTGoj6Zjr
+	VcaF9li3lVuuOn4ibuYB4gPzw30aJS9/YNEvHQ/LICdY27oFPZIGU8dxCU955U4D
+	HvZvCs+mUxOByN0m1QYYAHJlD4cpVNdIAb2ER8+80RE2InR3lOkT00tOBo1CtNaG
+	zi4IA==
+Received: from mx0a-00154901.pphosted.com (mx0a-00154901.pphosted.com [67.231.149.39])
+	by mx0b-00154904.pphosted.com (PPS) with ESMTPS id 4gn3dhn2p4-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 04:11:03 -0400 (EDT)
+Received: from pps.filterd (m0134746.ppops.net [127.0.0.1])
+	by mx0a-00154901.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 68H7464o3255272
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 04:11:02 -0400
+Received: from esapsmtplv03.us.dell.com (esapsmtplv03.us.dell.com [143.166.203.148])
+	by mx0a-00154901.pphosted.com (PPS) with ESMTPS id 4grbg90saf-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 04:11:02 -0400 (EDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1789630029; x=1790234829; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=c6SsdRzT/Bqt4wkU0T0q+RFo7GRVacgmeME637yMjU8=;
-        b=Ch+fbWEsZLJCA4PmrCjyUQmU0DZLrq7hw8e+bojqDM6/bQvGPsA7gvjqz//S35QFpW
-         IqkjON4GXV9YUzyHPZOaqduLUqCvaphUcCTwSppFeLza8unovJIRi/pQ/5w6IDXY45DD
-         sCK2jt37cbau2HhRCLHR2hCGOmR2kVl44rMX5WroJWC0QEmGihtmM6tFLZ7AnPjtzLqM
-         Wesh+zjflW+iLkNPyps2DPKPgIeeooQ7Ynw25hRCu/2WZani8t0TTT308YZrN6mCNCst
-         4fFZyvp7jHGBGjUGTExD4+VwSi6fQ2qdtoMpvLuB2Lsg8k4COOZ18ln8ribOysD09nt1
-         liMg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789630029; x=1790234829;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=c6SsdRzT/Bqt4wkU0T0q+RFo7GRVacgmeME637yMjU8=;
-        b=U3NbBTZwp4rpk3nRE5vKczeysTEexkbI0Ghi2ILvEkkBzY1T7i+Dyty31TTNZWOsJH
-         cFSJzbrAk5vc9D1eIqnhONM3zAIVG+QN5CKHZoYVGTHw3HUM749pnJcBvk06mmW/x9sG
-         SlMIYtEASByetMrx0H7m0sig+KeaLnVYWhVWZSl47+wS4qhzBULBs8epF+E2ALexIRAq
-         txpWGoMOy3GIm2Agz1tkRez42J9z3hQ+nMBmfMRfPfgBDRsVjpTw20Xrnqkw9iZmeF0S
-         hAHSZC+2nypWBKFiGO4kwN8tJHhZ6JPyPL6kR3tc1ltygBQjATHEYAdsRJMnzQIbLbnD
-         VwuQ==
-X-Forwarded-Encrypted: i=1; AKwUvBx2U4BlBQ2VDY21iKMJbHUjLAogohG/RZGQiJeJg432+HiHSAw+YnBqF59CHeFrXDNF7iogxrQu91U=@vger.kernel.org
-X-Gm-Message-State: AFuF++mhh5gD1ARUfouMRv6aU6hbJhXngYz/m0GFWqLoWZ4TUvEF1gBq
-	LDAm51AjZrGRyfrD3hyt7G+oxZlQNjx2Ghhwv/zu4pIbLx/V5VMiFN2AlAfLEJD4+98Y4tnS0mL
-	ze9iP2pUR90q0+9sQKiFg6MrgrrtwClQShfaGThP8PToUX15+QWPZlrk0N76dMiiG3865OA==
-X-Gm-Gg: AYBFou1WZVnHDd48WdynGJuccg/TdIC5quMwUV8YkGlG8xrqBJ1+D3F/pOrgUuh8gMe
-	0RaDeMqqKGFH7KDgX4aQIGx2+P/Ys39LrvdK+0Uu067477Ey2zXPPY7Ip2ONzdpMNK2atKzbeOY
-	qZzK5rWhOe76UYPGAxCUV+FEeQcaDzQ8TjWVz58yClInl0+DC5Hljb5YIEXO3bX/ixNt60BYvbu
-	xxA3G0Sy5TNmsdDugrVA1qa98/a570Q386E4ZD85KUbgr8lIM/Rr313C5pzDVXizl467ccPARcc
-	rzrsIcfgUXvJaK1f8MeSZiABEZn+WB49+Y3oac6XFfwviKiM+/ZGjpZyhCCNgdNawgphDyv+
-X-Received: by 2002:a05:6a21:7107:b0:3d3:adad:f177 with SMTP id adf61e73a8af0-3dd5f7a8a9fmr14968825637.25.1789630028843;
-        Thu, 17 Sep 2026 00:27:08 -0700 (PDT)
-X-Received: by 2002:a05:620a:2702:b0:936:b923:4832 with SMTP id af79cd13be357-93bb789c296mr1011364185a.28.1789629700152;
-        Thu, 17 Sep 2026 00:21:40 -0700 (PDT)
-Received: from [172.31.1.12] ([70.105.241.2])
-        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-912428ac1ebsm26198906d6.18.2026.09.17.00.21.39
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 17 Sep 2026 00:21:39 -0700 (PDT)
-Message-ID: <91d4a527-3eaf-4f19-85ae-da2c4ae5e44c@redhat.com>
-Date: Thu, 17 Sep 2026 03:21:38 -0400
+  d=dell.com; i=@dell.com; q=dns/txt; s=smtpdev1;
+  t=1789632663; x=1821168663;
+  h=from:to:cc:subject:date:message-id:in-reply-to:
+   references:mime-version:content-transfer-encoding;
+  bh=+Y4K/Qbwdu4K5q3RN9rNIHgRfxsu4971s5zltveArOE=;
+  b=ImZ/jcLyuMqNmJ8Hi79rDnAkQxL3KLKtyVL+UO3pChG8SrVHkgTdzsWK
+   nBg9L/sJ7fOtDm4Q47TA+Ku95ZkRoVp+HqBJVtGuZtHK6fjQrUO/HMSG4
+   DtTIOzUeMhzXfDsMAX3yFvMxDYhHK3vhGZ3ebdD+jKUGl2DBMO+rLRe/W
+   7gtdySPIxt7w4Jxfe3+7DQDVxvwCUnmO4dGQ+qqOPssaB2nbAPED28zS4
+   Qo4OaVW5HX4RMsexpI95hCKF+LrTVDuE5qjRvKpQhZNqtjsrm/vqDp0Vq
+   MWJcPJJ2Ni4mHE17PHc7BlBE71x3vlTQAjOChsU+EeAhz5jHxUHW9DQ8X
+   A==;
+X-CSE-ConnectionGUID: 0ckS3bVVSg6Se/I5t7axZA==
+X-CSE-MsgGUID: H+7KQsD7RcGpzAz6xbom8g==
+X-LoopCount0: from 10.94.9.174
+X-MS-Exchange-CrossPremises-AuthAs: Internal
+Received: from w-96j1th4.apac.dell.com (HELO W-96J1TH4.blr.amer.dell.com) ([10.94.9.174])
+  by esapsmtplv03.us.dell.com with ESMTP/TLS/TLS_AES_256_GCM_SHA384; 17 Sep 2026 08:11:00 +0000
+From: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
+To: Roberto Bergantinos Corpas <rbergant@redhat.com>
+Cc: Prabhakar Pujeri <prabhakar.pujeri@dell.com>,
+        Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
+        linux-nfs@vger.kernel.org
+Subject: Re: NFS: return DENIED in decode_lock_denied if we cannot decode owner
+Date: Thu, 17 Sep 2026 08:10:57 +0000
+Message-ID: <20260917081057.14836-1-prabhakar.pujeri@dell.com>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <20260916124509.587700-1-rbergant@redhat.com>
+References: <20260916124509.587700-1-rbergant@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH nfs-utils v3 00/11] mountd: bugfixes for up/downcall
- interfaces
-To: Jeff Layton <jlayton@kernel.org>, =?UTF-8?Q?Mantas_Mikul=C4=97nas?=
- <grawity@gmail.com>
-Cc: Chuck Lever <cel@kernel.org>, linux-nfs@vger.kernel.org
-References: <20260914-nl-crossmnt-v3-0-a984a6c94829@kernel.org>
-Content-Language: en-US
-From: Steve Dickson <steved@redhat.com>
-In-Reply-To: <20260914-nl-crossmnt-v3-0-a984a6c94829@kernel.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8bit
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
+ definitions=2026-09-17_01,2026-09-16_02,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ malwarescore=0 lowpriorityscore=0 impostorscore=0 clxscore=1015
+ suspectscore=0 adultscore=0 bulkscore=0 spamscore=0 priorityscore=1501
+ phishscore=0 classifier=typeunknown authscore=0 authtc= authcc=
+ route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2609040000
+ definitions=main-2609170110
+X-Authority-Analysis: v=2.4 cv=JpBkP84C c=1 sm=1 tr=0 ts=6aaba097 cx=c_pps
+ a=j0++y401J6f/BxNAf5EDow==:117 a=iGMIhCliR854E25UHWhNxg==:17
+ a=kj9zAlcOel0A:10 a=VdqzKS8jKosA:10 a=ke5jqHz-1hQA:10
+ a=VkNPw1HP01LnGYTKEx00:22 a=6gNNCFAoQcIphELLPWWu:22 a=Qy6CKLcU0MZ4grw4BCWD:22
+ a=iLNU1ar6AAAA:8 a=RjG8LU8udxzbqfzCoY8A:9 a=CjuIK1q_8ugA:10
+ a=gbU3OgOOxF9bX48Letew:22
+X-Proofpoint-GUID: Wrgk9VQThWoC4YBISuTXhjGKu2gpNCZs
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwOTE3MDEwOSBTYWx0ZWRfXxGmP95XnbATl
+ /9sZIpV1O6xM7n7pFa231II+V56F91Rcm67CW5PGIz2XgCO8tZLRGNB4HF181hwjlgXC9YRiiO7
+ pshCDAM1YvY0D4KGelhBDXYaOAXuWNJoPXizLi2I4FdpDkycdnq7oPdY3g6eQf/PrXxhtXVzdY4
+ MiYU2yBG2mh6tBkMTw3pYjmgnI2hVqZi6/hz8JaZEyGud0cny/OIh0GQ0HYSPab9a6QUhk2O3tu
+ b+eV7IXzAqYWn+Da+4hc7v5416462iWdH40bI1FJSEd5xNFGzaHTwknNd8Y6206trKgfcXbPR0y
+ hyVFQeHDEW1vDq8YztaMVsjLVkmwWmR7KJPJqoySFxY5iMGRIqyvSUgvXI9PAdXD6dFgqRICTDy
+ CorqXO4S2WddP6uGAsQI2vPaZQmtEjkX8G5YLo8U3H6yVcMLZn8MSuDeGw95OZsnS2sNOLXMNIq
+ EkBuEpugC62tZMIvPRg==
+X-Proofpoint-ORIG-GUID: Wrgk9VQThWoC4YBISuTXhjGKu2gpNCZs
+X-Proofpoint-Spam-Info: AW1haW4tMjYwOTE3MDEwOSBTYWx0ZWRfX+diGwF//QHd+
+ 3oMz90gSKu4gDN9sz+LdiNR7vceXOAfIBhXwO/8W/krE001AUjbwWaOlKvNQvPpqZB3aRrA6YM2
+ LbFohDkYJb8gNmjIj3d4zoN2GXQwNQo=
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0
+ lowpriorityscore=0 adultscore=0 phishscore=0 malwarescore=0 bulkscore=0
+ impostorscore=0 spamscore=0 clxscore=1015 priorityscore=1501 suspectscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2609040000 definitions=main-2609170109
 
+Hi Roberto,
 
+Nice catch. I walked the caller paths against this and the reasoning
+holds:
 
-On 9/14/26 9:14 AM, Jeff Layton wrote:
-> The main difference in this version is some cleanup to the warning
-> messages, so that we don't warn about internal events. Mantas, if you're
-> able to test this version too, that would be great.
-> 
-> Mantas reported a problem with his configuration that was using crossmnt
-> and autofs to export a number of btrfs filesystems. Some analysis with
-> Claude also uncovered a few other bugs. This version also fixes a
-> number of problems that Sashiko flagged. Some of them were preexisting
-> but seemed like good things to fix.
-> 
-> Signed-off-by: Jeff Layton <jlayton@kernel.org>
-> ---
-> Changes in v3:
-> - Stop warning twice per unexportable path
-> - Keep a warning for the ip_map and unix_gid answers, which have no fallback
-> - Don't warn about a submount nobody asked to export
-> - Quieten the same message on the pipefs downcall (preexisting)
-> - Link to v2: https://lore.kernel.org/r/20260911-nl-crossmnt-v2-0-f4d869951c5e@kernel.org
-> 
-> Changes in v2:
-> - Retry instead of caching a negative when the failure may be transient:
->    kernel errno, statfs, fsidd, and an undelivered negative fallback
-> - Drop a deferred request once it has been answered
-> - Bound the junction path copied into exportent.e_path (preexisting)
-> - Give each worker its own netlink command socket (preexisting)
-> - Bound the retry queues (preexisting)
-> - Link to v1: https://lore.kernel.org/r/20260909-nl-crossmnt-v1-0-4064b5a3bd85@kernel.org
-> 
-> ---
-> Jeff Layton (11):
->        mountd: factor out the per-path export attribute computation
->        mountd: handle unmountable paths and junctions in the netlink downcall
->        mountd: answer requests the kernel rejects on the netlink downcall
->        mountd: don't leak the parent export's fsid onto crossmnt submounts
->        mountd: retry unresolvable fsid lookups on the netlink downcall
->        mountd: bound the junction path before copying it into e_path
->        mountd: give each worker its own netlink command socket
->        mountd: retry export attributes that fail to resolve for a passing reason
->        mountd: drop a deferred fsid lookup once it has been answered
->        mountd: bound the retry queues
->        mountd: don't warn about pipefs submounts nobody asked to export
-> 
->   support/export/cache.c | 1391 +++++++++++++++++++++++++++++++++++++-----------
->   1 file changed, 1084 insertions(+), 307 deletions(-)
-> ---
-> base-commit: 630393e9c73667b3fda6a7507cb5171ec0ec38dc
-> change-id: 20260908-nl-crossmnt-85584b71c721
-> 
-> Best regards,
-Committed... (tag: nfs-utils-2-9-3-rc6)
+- decode_lock() passes fl = NULL and retries internally; decode_lockt()
+  uses only offset/length/type, all decoded from the fixed 32-byte
+  header before the owner field is reached. Nobody reads the owner
+  bytes, so the removed EIO branch was the last consumer of that
+  xdr_inline_decode() result, and its removal cannot leave a half-filled
+  file_lock behind.
+- The first 32-byte decode check still returns EIO on a truncated
+  reply, so a genuinely malformed DENIED still fails early.
+- The likely() inversion is real: decode failure is not the common case
+  in a function that exists precisely because a denial always carries
+  an owner.
+- The "last operation" justification is, if anything, conservative --
+  decode_lock()/decode_lockt() return non-zero status to the compound
+  decode loop, which stops at this op either way, so pointer
+  advancement would be moot even with more ops queued.
 
-steved
+> 	p = xdr_inline_decode(xdr, namelen); /* variable size field */
+> -	if (likely(!p))
+> -		return -EIO;
+> +	/* We have an owner here, return DENIED */
+> +
+>  	return -NFS4ERR_DENIED;
 
+nit: the blank line between the comment and the return is unusual; I
+would keep the comment immediately above the return.
+
+> After commit 43502f6e8d1e ("NFS: fix open_owner_id_maxsz and related
+> fields.")we dramatically changed the size of the LOCK/LOCKT reply
+> buffer
+
+nit: missing space -- "fields.") we dramatically changed". A few lines
+further down the changelog also has "20bytes" -> "20 bytes".
+
+No test evidence came with the posting. For a two-line decode tweak I
+do not consider that a blocker, though a synthetic oversized-owner
+reply (pynfs or a mangled-RPC test harness) would make a fine selftest
+someday.
+
+With the changelog nits fixed:
+
+Reviewed-by: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
