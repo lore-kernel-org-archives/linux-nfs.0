@@ -1,106 +1,140 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj2-f12.google.com (mail-pj2-f12.google.com [74.125.227.140])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 97BF94E0B73
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 18:53:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E9A103B71D3
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 19:00:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.140
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789671211; cv=none; b=u5OkM6JPqb4jOZSTqpEWS5u3vmp6hPDaeupJrqwsk3M2Y2+QeVuC3TTPcqvhE3Wgk88EsGnASGxHbrTspNRKTa7+IM2kMG0J8QNZ9kcYliAfvcMcdC+wV/nS+GHIZgg+iB+iI0yNPgUb5hO8FbZfRVRXuI5WtPVRPlXkZEkxb+0=
+	t=1789671613; cv=none; b=uhq3jqZsju8vkGkrzqigwSOvLKxws45n4sUCaoz6qMR4LR2PBN0EkC9lM7BlHmsbuTMDpre8sCaM0g5+CX2FtJm9rJS+qni2ufQ2UP+HUB8osnkVIBIt4tTYLF4SbJiko6hJoyna5VxLEmbDyfs00JLlLbljEBBadNFLDnraDGU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789671211; c=relaxed/simple;
-	bh=l+9a0Yu3e3A7RCJWRbjWYWfjNvQgggzTHcXCHttqXDk=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=Ez5isjjr4m+gqPHp/fTicP6wh+RIp2mISlDv9AgNgoNH0yt7u9Vt7p7J8pHglMyzAhMiqDgKl17aPhxDoK4NS/XD3dmy+07oPOHHas43qzhb2euHLCbKB9dTiP7jnRhSVM961FaHx5GfHjsBM07wU69ovrmbfWZgU7ERAHZWibc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mKpg3nwt; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789671613; c=relaxed/simple;
+	bh=zcyvpnSCvZDo9C07vjUctkM67dCNwvt6gbwxxFXqHW8=;
+	h=Message-ID:Date:MIME-Version:Subject:From:To:Cc:References:
+	 In-Reply-To:Content-Type; b=SpRubYNlVCaYVPJOygQOqiBwMgAFtSVp7IIDTrGsNUuVNa9i4eRPi0iKS5dd9gQirferrOHPR02weMww0LySmG3duYbpeT2o8qRUapS/XRF341JV+62IYgMe7OopN2DdwI91+QDAoDL7S9BDHNdcMiQU8MfzcjmULjsbZbGET3w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ZaKT8ml3; arc=none smtp.client-ip=74.125.227.140
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mKpg3nwt"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 01C651F00898;
-	Thu, 17 Sep 2026 18:53:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789671210;
-	bh=Lb4kqWeQRdjb4zE8LxwgGJIxhNABEaxfnXr3Nu6Ek1w=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=mKpg3nwtfEDSuFz1mD1dFfM3+BcUbAtXtsn8j4iHYD6w2Rzv7SlVpMbhI7ltQIiPh
-	 jliJNi5VbFqa5u6yPcHCBpKzhji1mZI/QUR70Nq40Nu47sEM/A3IITgEzoWczyeMZ8
-	 2Khtk7T1SOqJfNWJR8iBqMZ5gYwyE+CAnpOcrb8uzgJvzGjRsJrAPva2IeBFqiKXBd
-	 G1KXYB9tyB3/+UTJ57b4XeJqwrxcBWetjUi6rfN8sM/vhzJgzcPKKyi9gOK6yze5Wb
-	 BbRoKv6xl7gDEs4kEhsM42XNlVXK6zT5TVv4eqP3W0fuTQt+VoR9SwdXrGGn36TtCM
-	 rP9qMKN6Ff7jA==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id B0D46F40066;
-	Thu, 17 Sep 2026 14:53:28 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Thu, 17 Sep 2026 14:53:28 -0400
-X-ME-Sender: <xms:KDesaklddvElvZDBxZRijDCPgAKfOIKp_pP7_UY4W74twLI5CCpjzA>
-    <xme:KDesauohEFD_9F4ntKb8fqxmrd7u6siu-on-MZwmAgLKfBUfn85sI2d_wLZCsPXiz
-    sG8PNOEJwiONYGlgwF8bQTw-utXKSKoZHi_2v0DIPidF9RMnBMaOji0>
-X-ME-Proxy-Cause: dmFkZTFU68yxpAWHjlSNcpsx/sdWPttVe6nqg4sevMl5pQQU/Mmb/uPNOhYdVpUOBugiea
-    fPhfm4n+v0lG6GKZPC7j1a83nRqt5oBajknPg6/QVgwafBdE6y7U3uPcfExQ2u2x4bgeUD
-    KQfwfUgFgXL2HDr6uX/iLe6fblhVJbjGBZ+vkCkX2LiWJHPD1FHsZ+8D0ob5nAyHdaD5TD
-    zZ8YfhuB3mJm/0I5IbAqf2pElAsnsZUn+uAjpo/q9csiTxWCU+XtgB30WgihzDcajiepIq
-    XnjvLei7+cKtduraHGezudW/LghupZUt1xwf6tagrrL/0mHacRTKMbYi8EX2zEuD9BFCC4
-    ajpqIAiIEXsiClzQ6Uwq++FagVBMzqCOz3SKYc91sSpRcdpKIHqCZqwW0axW0/sMw4Lxzp
-    Gs9Sqv7HNTxHm5La38y3Peb60F1YdDpLcpg51T2TpTZ+P3sRwNTpt/o1q6cE2BoUeovNnR
-    lhB/VGdE33VNa9ZJuspzkb/mdFKRi1yNTqRdBf+wqqzttXw122DYzNTyPa50OWfX1OHi7S
-    PJj58/D6eDKtGlJR4M9M6N8ZZX+ZrPz/TyLoec2SjEAtb/Pm7Pji+GXwvh0NmZfZRXNOtK
-    /h+lDE1tvLGdK4BiGT2HVkYQEZHdwvgtMNuotSqYLwVTL8ZSlctUyosONoZQ
-X-ME-Proxy: <xmx:KDesahtP8aszEx_VMrRlMyv8XUdyPjrYUn97r765wCZYdwgCxVYRng>
-    <xmx:KDesav-GP6ASQ0wfi6jhyhLt6dujYRI6fWSDu-FM_7zw8BFO6Qn02A>
-    <xmx:KDesaj1maA43naF6Z12hgkzbgWqw_hN1czn8plTy6EQyQkwbrgj3UQ>
-    <xmx:KDesashjI94EV3kBUKgxOuDdeM5h-WBkc-WPQl6iibEjGdptKI0YBQ>
-    <xmx:KDesaraqgR-1PlZ7u6ENjGjk9bnxZAd5N2YRJQWTXmVrKLzMmlJG1fMd>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 91269780070; Thu, 17 Sep 2026 14:53:28 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ZaKT8ml3"
+Received: by mail-pj2-f12.google.com with SMTP id d9443c01a7336-2d747f0b25dso12995275ad.2
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 12:00:11 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1789671611; x=1790276411; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:references:cc:to
+         :from:content-language:subject:user-agent:mime-version:date
+         :message-id:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=szS/urPqRVYtnZVSFIOA9nbunMszopOFKEErUE0oGjQ=;
+        b=ZaKT8ml383W9eJVSRIWFUMLE9jJQ8a4bHnZM0dwNZiirgm/y25lmXnqkPF+F9RO2GT
+         eWbKthpeWBh70Q0ADvY14SUlsWMkKxmYlh1zfCjV95O7cG8qEK7JPCWw0JP0g49V9hxY
+         5pWWGWFH7sXdrJ0HpVWv6ptELnHfUEiUOQuM3J797zVS2O1BO1jgT5iKsCiA90ukRd1l
+         nXhavgsbjL2WOZw0NduY7lInsL0sOiM/+aM6HwkcyiEj3ExcPI8HqdsU7L5bpb89/S1h
+         M5YvqBEiKkgpZJGtJxBFkCpUjosecuE4yQZCkEx4dSt9DDH/ZPhxvpdkzGN2npnGbxFB
+         3z4w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1789671611; x=1790276411;
+        h=content-transfer-encoding:content-type:in-reply-to:references:cc:to
+         :from:content-language:subject:user-agent:mime-version:date
+         :message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=szS/urPqRVYtnZVSFIOA9nbunMszopOFKEErUE0oGjQ=;
+        b=kmXBi39CWh37Mb5AVztcjvfb5eqU6CFLtrj5qU6i5QXJ42mOy4Xy9RFY9clTBKcjTm
+         Pmu6mkHyMCapS+T7LuIbdiU0HOqTzCLrwFaPnABvwAbZXIoHIvA6Qr0IU7AO/X5svDDN
+         kmBW2xqWxCSNIAzpEDj58cXgCx37yGacI8J9OcwevIsCUqPJFleO0p6b3wbEeeqGxySV
+         htdpeY1Tx8C/08CyWgsJKO4JJ127xbGt25hU7WtPXM7F2n94il5DMvFwXDEQCa3Qmquq
+         FjzdnLWcE+zHj/Nh+im14q3hEzQ8WOBeVNURAwp1gNIZlEci5dc+5J3FVznW7BZ8j6RE
+         /ZWA==
+X-Gm-Message-State: AFuF++lgLTIu9KhnYJPRpgA2NJVP9ChXkPkfLu/GxvR0LtqVqep0n9fb
+	oxTYMMs9LMwTYdRUWHe9S5dHeqdzECG6ABXJW6CP7hjQ+nLWeNqGJfNp
+X-Gm-Gg: AYBFou2fw8ZHTpfGch/9aYet3FxxyCbxKlABt47Yy1kdEJs0GGi4nv8EwA3SnQ3tKFV
+	2GDdvKvfVV9izV/mr7VKA9rQxjKcqP27Gn6TlPdqTE0yTCgkV74nBafM6s/gnHLtRd3+LDvzH4P
+	Uzr6z2cQTbyAk2NuyQFwtXRpQF9B1vDLv8AQG2r34Q9arY3aPc1tAKo6MooRNTfVVsKLx+fBdws
+	tr4GNUgwR0cs6djXRGquH3R5AjfLTO6n0zddY7mU6vdj7Dutm6ZQTP3e0Xrju6+N1nEEQHjIsRl
+	aClMzUyzu+kAfASY529OZIMpFIdK5kA/Lr97TIFR36uUUmH3BXR9HM7GrAaFlUynetQz3tJbt1U
+	BqMSK2+HxTG7D/XEM+GZEmhVvUnMhYFbur0A6miAJpBGY23ftHg/ovlhyB3VhcjShjTsOlEZWM8
+	X+L3Nxl5Azmt98iMo8vVIGiMfwVlzO2MF61jjUX41Wpdgp6FuZ16jORN3B0inDADcTkdfGzace+
+	gB07A2bRfLyFHqVWr0f2Qice9cIp6x3cmZ19x8bkrLPqIyrezRuwpnfuygaNFSea5Vn6VdS
+X-Received: by 2002:a17:903:2a8f:b0:2d9:1dee:43db with SMTP id d9443c01a7336-2ddb1b7ac15mr2361425ad.15.1789671610940;
+        Thu, 17 Sep 2026 12:00:10 -0700 (PDT)
+Received: from ?IPV6:2600:1700:73d0:8030:9d35:65d8:492a:44f9? ([2600:1700:73d0:8030:9d35:65d8:492a:44f9])
+        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-33bf5ac47cfsm15604494eec.17.2026.09.17.12.00.10
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 17 Sep 2026 12:00:10 -0700 (PDT)
+Message-ID: <0fc174bd-ec6b-45a6-be73-221d5b2b3518@gmail.com>
+Date: Thu, 17 Sep 2026 12:00:09 -0700
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AqpWOXCroG7V
-Date: Thu, 17 Sep 2026 14:53:02 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Jeff Layton" <jlayton@kernel.org>
-Cc: "Wentao Liang" <vulab@iscas.ac.cn>, Dai.Ngo@oracle.com, akpm@osdl.org,
- chuck.lever@oracle.com, linux-kernel@vger.kernel.org,
- linux-nfs@vger.kernel.org, neil@brown.name, okorniev@redhat.com,
- tom@talpey.com, stable@vger.kernel.org
-Message-Id: <9cc180f6-f408-42f2-b143-e155df6f542a@slotpi15m67>
-In-Reply-To: <f0ce5336a4062ff88775f81ba26726085dcb95a2.camel@kernel.org>
-References: <20260917163154.2162438-1-vulab@iscas.ac.cn>
- <f0ce5336a4062ff88775f81ba26726085dcb95a2.camel@kernel.org>
-Subject: Re: [PATCH] nfsd: Fix id-to-name cache entry leak in idtoname_parse()
-Content-Type: text/plain
+User-Agent: Mozilla Thunderbird
+Subject: Re: issues with Linux client pNFS
+Content-Language: en-US
+From: marc eshel <eshel.marc@gmail.com>
+To: Anna Schumaker <anna@nowheycreamery.com>,
+ Olga Kornievskaia <aglo@umich.edu>, Trond Myklebust <trondmy@hammerspace.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+References: <41ee5118-027b-4630-8f02-b3a67c61b328@gmail.com>
+ <6880c031-3936-4ea1-86f2-5dc6050c9051@oracle.com>
+ <ff747b30-2537-4ee0-b827-beb0b7c2b323@gmail.com>
+ <ed2753a1-bf56-42f2-b13f-0de2711496de@app.fastmail.com>
+ <f3218169-f309-477a-b439-3d106debd053@gmail.com>
+In-Reply-To: <f3218169-f309-477a-b439-3d106debd053@gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 
-On Thu, 2026-09-17 at 14:10 -0400, Jeff Layton wrote:
-> Looks like we have the same bug later if idtoname_update() fails too?
+Hi Anna,
 
-I don't think so: when sunrpc_cache_update() fails to allocate the
-replacement entry, it drops the reference on the old entry itself:
+Reading the code around this patch it looks like some other flags are 
+checked, so I tried to add RCA4_TYPE_MASK_OTHER_LAYOUT_MAX and with this 
+flags file layout recall did work.
 
-	tmp = detail->alloc();
-	if (!tmp) {
-		cache_put(old, detail);
-		return NULL;
-	}
+Thanks, Marc.
 
-So that exit is already balanced.
-
-> +out_put:
-> +       cache_put(&res->h, cd);
->  out:
-
-On the update failure path, res is NULL here, and cache_put()
-dereferences it. A shared label would need the "if (res)" guard that
-expkey_parse() uses.
-
-A shared put label might be a reasonable clean-up, but for a fix
-headed to stable, the two-line version Wentao posted looks OK
-to me.
-
-
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+On 9/17/26 8:42 AM, marc eshel wrote:
+> Hi Anna,
+>
+> This fix is related to DELEGATION_RETURN only, I was trying to recall 
+> all file layouts.
+>
+> Marc.
+>
+> On 9/17/26 6:29 AM, Anna Schumaker wrote:
+>> Hi Marc,
+>>
+>> On Wed, Sep 16, 2026, at 6:30 PM, marc eshel wrote:
+>>> Hi,
+>>>
+>>> I was just trying pNFS recall any but it look like the NFS client
+>>> received but ignored the call, is that expected ?
+>>>
+>>> [287100.214040] NFS: RECALL_ANY callback request from 10.11.96.99
+>>> [287100.214073] nfs4_callback_recallany: exit with status = 0
+>> Trond just had a patch the other day to fix an issue with CB_RECALL_ANY.
+>> Any chance you're able to test it to see if it fixes your issue?
+>>
+>> https://lore.kernel.org/linux-nfs/115e4102b1bab159c25e8e903070b55cc4de77eb.1789148631.git.trond.myklebust@hammerspace.com/ 
+>>
+>>
+>> Thanks,
+>> Anna
+>>> Thanks, Marc.
+>>>
+>>> On 9/16/24 1:33 PM, Anna Schumaker wrote:
+>>>> Hi Marc,
+>>>>
+>>>> On 9/16/24 4:27 PM, marc eshel wrote:
+>>>>> Hi,
+>>>>>
+>>>>> Who is the current maintainer of the Linux NFS client?
+>>>> That would be me and Trond.
+>>>>
+>>>>> I have an issue with the way pNFS client is distributing the reads 
+>>>>> among the DSs and I can provide the traces if anyone cares.
+>>>> What is the problem? And sure, send along the traces! I'll try to 
+>>>> take a look as soon as I can.
+>>>>
+>>>> Anna
+>>>>
+>>>>> Thanks, Marc.
+>>>>>
