@@ -1,43 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2425E4DAF8A
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 11:57:26 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE2F54E06D9
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 12:24:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789646268; cv=none; b=igyKLKfnRHXyDP5qQ4nTlhfg8LJnJIoLh89Oq5bZ5pMHdsK158ouSdR/0n5iQMAPGGpI7OnQy0XkoAbsF7v3RFIGvEZ9v2KedWngGlF7UstvklrDNiCiN9wNsc/gsSpbc58htYzHdr/Xl4kjwzr4c/E3YgJ1q+F4O58T6tmjndI=
+	t=1789647872; cv=none; b=JH/pqswCjPyXzBC0LOtXAAOGIZAy1WhCRLiqEUzf0B5H5EWq0IPJgO7XdRD213uXbSujxpraHkSQPvhUeX7lDme1c1IOPixkK0//mO26pyM0mbBNjom0jywhItq4jZm3Z+//LFDj0Gt7Np6SSuUidKRXeQyzJ+NB2oqxFPFian8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789646268; c=relaxed/simple;
-	bh=cMhA8HyzRtQBnh3aM/c+T1uBqeHFC6paPkDs+QI+LUs=;
+	s=arc-20240116; t=1789647872; c=relaxed/simple;
+	bh=3UBEZiw+I+EEZ4GWV+tGaeNOtH8EB9MLp0KVwhUr83Q=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=GtJ8oIqyQZDMbrgfZC9hVCjzFsp5eKkVJFMWDSbHMdeFc8fnNz7qBHZsUxF3aA05wN5f7PXXMy2r/cHdFGhiw8cwJ2qQQ/BhfreOnEWdRuiqLIgRNreyOU+Jk+JMcEYl4t7qE8PjUyrEivUuQcPQ2qp6MJvtDpzAPMN5oZpYCVc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=XgQfnkBR; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=FaE3Uj+nyPGj7epMizK+zN0OkJ6EbqBxsrEFsRde6sDT9bqMOKSdhK8QeeQLzdgZPJQoLHOl/sA/lZdLJ2VZZh+ci/Zv1g8jUrYlHbraMxlTKBwDu8Y++uVKAzyw1FpERqWvHkcqwBuU4IxHEwT8DKzZgM9EpFsNMuuhBFVMJxg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Ecjbz8yQ; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="XgQfnkBR"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A53071F00893;
-	Thu, 17 Sep 2026 11:57:25 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Ecjbz8yQ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8CA861F000FF;
+	Thu, 17 Sep 2026 12:24:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789646246;
-	bh=/vmNRkVCd9OAEkOdhVM30DEYSIHEB8WpbZm6WUfdueg=;
+	s=k20260515; t=1789647856;
+	bh=L5LLcuimHcFuRF0ELRzfPgIJqqe4ch4QHh9Rx7DtlBY=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=XgQfnkBRuc5uT0uPYvg8DakctVc50VcBITzlSKnxbQOSt9W1xnI2lxZqTqstZAQKR
-	 F7QBEL8QXWMTilcmvtQSfkgdOHrGwRBtO4b2+Q14YEUx0zXNor+ZvmRSa7HOVNEv+2
-	 J/O2x1BqVXolGVS/J671Y24q+bs38MMl2t1EyQCI6kT3uE1HiOr/mGPRIJpdoGmzK0
-	 bZnbJ9FCneZn2ZthoqHcmXlO+yJDXFkKHxa5YJf8kiykR2URByp52KSEu4bWENCzF7
-	 KRiyV7XZbNhcLMnIlKeK1kcyiHPFLCijR1u5SWZFF7d4GasBIdqLooWj8UBaHPnPq8
-	 sPE+TeB4WKQrw==
-Message-ID: <25acf2de1fc962e3f60c4bfbdf47c731d150ee9d.camel@kernel.org>
-Subject: Re: [PATCH v1 2/2] NFSD: map fh_verify() status codes for NFS_ACLv3
- replies
+	b=Ecjbz8yQLszE69RQBYSot/r5SaEKmcjGLspHQFX8VVATxxvLVyitwsqHy5XiBSBfx
+	 cBoq3JIzUstZnn6xqkh2+1Xg7sDmivyflMTH3vtDIHwJmvDazlhOky16swSKuP7mUX
+	 zaB2J2Oz9IPI/uSDlLdld8o/on2jgfNaEldVwT7MiTdU9vY0t1Q0I8Br21cZUgdsFB
+	 30h35NAMVEnNba/NW2k/s4b7BpHCEzkA9/V6j5SpMIrGYXBA47AFiGJhSGwW3y5xcr
+	 h/So73zh4W7g7+PAtodMMDEfzcXvi43VzMCozequRYhq+MkzK/m2jEjCSdQsE6B88M
+	 QzWE1cYiqJJsQ==
+Message-ID: <fdb976f6e9b78e2618de70bcf6595e9f484fc30f.camel@kernel.org>
+Subject: Re: [PATCH v2] NFS: return DENIED in decode_lock_denied if we
+ cannot decode owner
 From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 17 Sep 2026 07:57:23 -0400
-In-Reply-To: <20260916162859.2051-5-cel@kernel.org>
-References: <20260916162859.2051-1-cel@kernel.org>
-	 <20260916162859.2051-5-cel@kernel.org>
+To: Roberto Bergantinos Corpas <rbergant@redhat.com>, trondmy@kernel.org, 
+	anna@kernel.org
+Cc: neil@brown.name, prabhakar.pujeri@dell.com, linux-nfs@vger.kernel.org
+Date: Thu, 17 Sep 2026 08:24:14 -0400
+In-Reply-To: <20260917104905.669983-1-rbergant@redhat.com>
+References: <20260917104905.669983-1-rbergant@redhat.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -122,70 +120,60 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2026-09-16 at 12:28 -0400, Chuck Lever wrote:
-> The NFS_ACLv3 protocol shares its status code space with NFSv3,
-> which has NFS3ERR_BADHANDLE but no NFSERR_NOFILEHANDLE. An
-> NFS_ACLv3 GETACL or SETACL request that carries an empty file
-> handle gets a reply with status 10020, a value the client cannot
-> interpret.
+On Thu, 2026-09-17 at 12:49 +0200, Roberto Bergantinos Corpas wrote:
+> After commit 43502f6e8d1e ("NFS: fix open_owner_id_maxsz and related
+> fields.") we dramatically changed the size of the LOCK/LOCKT reply buffer
+> from 164 to 52 bytes. This made visible a situation on a buggy NFS
+> server that sent oversized denied responses which led to us returning
+> EIO instead of DENIED.
 >=20
-> Commit 1459ad57673b ("nfsd: Move error code mapping to per-version
-> proc code.") made fh_verify() return nfserr_nofilehandle for an
-> empty handle regardless of protocol version. The NFSv3 procedures
-> gained nfsd3_map_status() in exchange, but the NFS_ACLv3 procedures
-> did not, so the unmapped status reaches the encoder.
+> Now, apart from buggy server issue, this poses an interesting question:
+> what if other implementations have legitimate but bigger than we expect
+> lock owner response, especially now that we have reduced the size we
+> allocate for it (20 bytes for the lock owner part).
 >=20
-> Add the same mapping to the NFS_ACLv3 procedures.
+> This change proposes to tackle that issue returning DENIED instead of
+> EIO regardless of whether we manage to decode the owner or not:
 >=20
-> Fixes: 1459ad57673b ("nfsd: Move error code mapping to per-version proc c=
-ode.")
-> Signed-off-by: Chuck Lever <cel@kernel.org>
+> - At this point of decode_lock_denied we know there is an owner.
+> - Server legitimately denied the lock request, with an owner that fits on
+>   NFS4_OPAQUE_LIMIT but we returned EIO instead to userspace.
+> - The owner data is decoded but actually never used, decode_lock path
+>   simply retries, and decode_lockt turns it into 0 on file_lock and
+>   returns it to userspace.
+> - LOCK/LOCKT are the last operations on the compound so it's not relevant
+>   if we didn't advance the pointer.
+> - Also removes an inverted likely(!p) hint.
+>=20
+> Fixes: 43502f6e8d1e ("NFS: fix open_owner_id_maxsz and related fields.")
+> Signed-off-by: Roberto Bergantinos Corpas <rbergant@redhat.com>
+> Reviewed-by: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
 > ---
->  fs/nfsd/nfs3acl.c | 15 +++++++++++++++
->  1 file changed, 15 insertions(+)
+>  v2:
+>   - fixed formatting issues
 >=20
-> diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
-> index 7183995182ab..5219ec634587 100644
-> --- a/fs/nfsd/nfs3acl.c
-> +++ b/fs/nfsd/nfs3acl.c
-> @@ -14,6 +14,19 @@
->  #include "xdr3.h"
->  #include "vfs.h"
-> =20
-> +static __be32 nfsd3_map_status(__be32 status)
-> +{
-> +	switch (status) {
-> +	case nfserr_nofilehandle:
-> +		status =3D nfserr_badhandle;
-> +		break;
-> +	case nfserr_wrongsec:
-> +		status =3D nfserr_acces;
-> +		break;
-> +	}
-> +	return status;
-> +}
-> +
->  /*
->   * NULL call.
->   */
-> @@ -72,6 +85,7 @@ static __be32 nfsd3_proc_getacl(struct svc_rqst *rqstp)
-> =20
->  	/* resp->acl_{access,default} are released in nfs3svc_release_getacl. *=
-/
->  out:
-> +	resp->status =3D nfsd3_map_status(resp->status);
->  	return rpc_success;
-> =20
->  fail:
-> @@ -125,6 +139,7 @@ static __be32 nfsd3_proc_setacl(struct svc_rqst *rqst=
-p)
->  	resp->status =3D nfserrno(error);
->  out:
->  	/* argp->acl_{access,default} are released in nfs3svc_release_setacl. *=
-/
-> +	resp->status =3D nfsd3_map_status(resp->status);
->  	return rpc_success;
+>  fs/nfs/nfs4xdr.c | 3 +--
+>  1 file changed, 1 insertion(+), 2 deletions(-)
+>=20
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index fc049ce4ba8a..9d0f7ad7525a 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -5169,8 +5169,7 @@ static int decode_lock_denied(struct xdr_stream *xd=
+r, struct file_lock *fl)
+>  	p =3D xdr_decode_hyper(p, &clientid); /* read 8 bytes */
+>  	namelen =3D be32_to_cpup(p); /* read 4 bytes */  /* have read all 32 by=
+tes now */
+>  	p =3D xdr_inline_decode(xdr, namelen); /* variable size field */
+> -	if (likely(!p))
+> -		return -EIO;
+> +	/* We have an owner here, return DENIED */
+>  	return -NFS4ERR_DENIED;
 >  }
 > =20
+
+Typically, we don't work around server bugs in the client (and vice
+versa), but I think this is a reasonable thing to do in this case since
+we don't use remote lockowner information anywhere in the kernel.
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
