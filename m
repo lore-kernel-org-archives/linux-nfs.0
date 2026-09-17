@@ -1,81 +1,127 @@
-Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pz2-f16.google.com (mail-pz2-f16.google.com [74.125.228.16])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4A6F159E35E;
-	Thu, 17 Sep 2026 15:30:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A5A5C4EFFA2
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 15:42:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.228.16
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789659037; cv=none; b=ip4VNdZF+xsjeECkdsGGqd1remR7/I0RvHmlIjtZ08FKp1MJ9YiOGXzEhhYcj3QaCza7o9PnnfyAO9YrV7/u+o5neHPEeZtsVroYwbAz9Jhhh12QaiSsNonDf/l+lWkAsmoSTnUUbJcRu6JsQ0Oqw4yY358jdOd04NhbaGzRb1k=
+	t=1789659776; cv=none; b=m7F/IUfkBrNF4zz8fNj70AtG+u+Z0hkh7LifF1FaRmnlUay4+zmXqHGanGD9i1JV08y+e13ZtJoImRbMho0NSXcoadQA3E5eGywVxlY3+BxecBVaPnG8XK8ND63z5HDcY75T6X1O7/3E8HHQcGLIg5RmmAFGpoHuszYnvpSxf9w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789659037; c=relaxed/simple;
-	bh=k4aRaW8Rin+eJ9oRbixnfh27smnELwPdMm0CF6snSFY=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Z048z2l/e91ACWK98RbgxMKIb3m21/4OIJYrzHZcRIRFtl9F7Wwg5sBa1xSw/fTMtTBcMsOY9iKpoxoKBkpdiklBhk6Il5ribB3XPFwq+TnN1vbgC/8dNpqrRRkl61w3RoowJrsQokunsMF73ks8clEIGtImKKTG9mCSU69TuVQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=pass smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=Y2TFScVh; arc=none smtp.client-ip=90.155.50.34
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
+	s=arc-20240116; t=1789659776; c=relaxed/simple;
+	bh=s8PAE+ZaFj8eyg+owEYEl1hVBrezOmbFFSE1op/JV4s=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=VAxO9LsCc7/TuXkrgo7eaewh8VijkKm3zCYp7cDqRXDnrdtEG9lEKgDLF1o2Of0MAYZ1DbYUq6xHcR8w1Nya/Bfqn19kPPoJADqfY6UuPKB5+hBD4HOgFxoGJNJacSMxpEufdPZzszN/GNYBmwu3Yh3hrygpIiRb/vd4mmONg+U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Mw4fWg2X; arc=none smtp.client-ip=74.125.228.16
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="Y2TFScVh"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=sTfUOkKMGqgqjaFCBY9cwK+mhbSSBWEoZUq8zIqkfmI=; b=Y2TFScVhT4tsYVFry161EhyqSe
-	Hme1WS9xN6vaajiMtnqa0tFXEm1VBXMSwUSWcpD+j0aqgz0+QUKwAyIo7MXChWqf3W2CHRSrffvvb
-	//7bKSIw49o1liqfVlDMtnAYLUgjPQttyP0fUR0ScQuGI7pcM9Fp3ERmddTFgQjCr13Nzyt+nmcRa
-	kMhoTMoPaqTHevxxcKSO7KhMg6C/tb41LnyNRKzv3YyNuyFLXhhgVFM3nvx+DD5qt24MBlKS/srQV
-	nOIRvdgTvv9mLRHYvhjmW3aqR+S9kJozLTRLtmcX2c5GWRK2+C9ANaRh5iedx6gLVDIgNlYNCYcYx
-	jpUAYrlA==;
-Received: from 77-249-17-252.cable.dynamic.v4.ziggo.nl ([77.249.17.252] helo=noisy.programming.kicks-ass.net)
-	by casper.infradead.org with esmtpsa (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1x7E3k-0000000Alj8-3tlT;
-	Thu, 17 Sep 2026 15:30:01 +0000
-Received: by noisy.programming.kicks-ass.net (Postfix, from userid 1000)
-	id 058C1301BD5; Thu, 17 Sep 2026 17:30:00 +0200 (CEST)
-Date: Thu, 17 Sep 2026 17:29:59 +0200
-From: Peter Zijlstra <peterz@infradead.org>
-To: Harry Yoo <harry@kernel.org>
-Cc: Tim Menninger <tmenninger@everpuredata.com>, linux-mm@kvack.org,
-	Chuck Lever <cel@kernel.org>, linux-nfs@vger.kernel.org,
-	Jon Curley <jcurley@everpuredata.com>,
-	Eric Badger <ebadger@everpuredata.com>,
-	Vlastimil Babka <vbabka@kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Hao Li <hao.li@linux.dev>, Christoph Lameter <cl@gentwo.org>,
-	David Rientjes <rientjes@google.com>,
-	Roman Gushchin <roman.gushchin@linux.dev>,
-	Ingo Molnar <mingo@redhat.com>,
-	Arnaldo Carvalho de Melo <acme@kernel.org>,
-	Namhyung Kim <namhyung@kernel.org>,
-	Mark Rutland <mark.rutland@arm.com>,
-	Alexander Shishkin <alexander.shishkin@linux.intel.com>,
-	Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>,
-	Adrian Hunter <adrian.hunter@intel.com>,
-	James Clark <james.clark@linaro.org>,
-	linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [SLUB] nfs_page cmpxchg_double_fail and perf lock perturbation
- on dual-socket NFS/RDMA
-Message-ID: <20260917152959.GI4121339@noisy.programming.kicks-ass.net>
-References: <20260916232227.4098143-1-tmenninger@everpuredata.com>
- <aqvq8-6IJBDer90O@thinkstation>
- <aqvy8NqRRRmUlxjR@thinkstation>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Mw4fWg2X"
+Received: by mail-pz2-f16.google.com with SMTP id 41be03b00d2f7-cc4d2fe2056so654651a12.2
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 08:42:49 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1789659767; x=1790264567; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from:references
+         :cc:to:content-language:subject:user-agent:mime-version:date
+         :message-id:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=z3KrinycGZmbqioK98byaQi4edg0eDsQ+Sn682kLNTE=;
+        b=Mw4fWg2Xlb2jAnUkmbvcPd+rJzhTeK68pzkSfRvxcfjT2oJ4+I9CzkW9l6yx0s3Slw
+         6C7/r9Z/+L/p235Sqe4V1e4hHvZEYyg7JYILRRasxrHW9BRbfUPQ2EUWBXwP7YX+fKCW
+         VeDDadKZPqBsYr7+Hwd/8w8TZia+jHtFRLLtE5SWcDFQd0zri4VxTaN9tlMI0viRTQfW
+         K5zP4q7alNBElwjw4yzB1lqyE+mLVDOSsWrDKkJM2UPfdrqoY7rFNEQNlNU3ZNwn8PHb
+         wtaPEIySEiqBsYgNvFmyDKwYYoJHo8V9jQG5ashmlgCDg4nW+LxqZGrKJwo5lvJznWd6
+         fVmg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1789659767; x=1790264567;
+        h=content-transfer-encoding:content-type:in-reply-to:from:references
+         :cc:to:content-language:subject:user-agent:mime-version:date
+         :message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=z3KrinycGZmbqioK98byaQi4edg0eDsQ+Sn682kLNTE=;
+        b=E+eKMD7lhDzHxH1bUb8gUklMLzrPVadxwszMFpHcOAzf2zxnzLy+qYFSIAsD+9BrWC
+         nBmArj9SU4U3PCoD8bkADL5ANsm7PiEuGNshN0xjxmZV1JMVnC1wNeOtcavt72UOwHEb
+         wkB7q5Zju1xdmoF6YD+ZOoTZzlOP2TNNyRnD2szb8Ivo9eTGmUOtdlZsI/MaGHASGGV+
+         dptd5Y2KmJw65wCwTLUysJd463rCjq0cnJZpaJI+vzp/0Qbq851RYkBsIJ5AayxZYE/Z
+         E6VHbEJzYE2c+75jypXUIPnlrIwGZGEiwzcEgODOcYcPB4FVpk19NhiFDXqhcoEthgX4
+         q3DQ==
+X-Gm-Message-State: AFuF++lmV3euHJksxSqdyA6jFFAnXr+Y2ZujPR+Zsjx4yIsoGbujnMiI
+	0rvCx1MQd6HVIfma6ne9Gb4tm2P+BrYZ+sY1UsdgXV1uOkcbHNZqizdl
+X-Gm-Gg: AYBFou1XFfFZqVyO7e7VHp/O4xK6AKskKsQkNKIqxiS/Cdx7YD5cUbKakxbwIoCKH2U
+	6lVBpEgYZtpEoMGZzG20U6OsTIwPkyDq7OjljrPAZWL5cHi/hcwYleYY4TF5BcuNYd9eH6AX6kW
+	ItjXINpBVQaKgKF9aMm1rOFggyH8F7+2b7qtCX3bsxHnTKPweGMaJQG88ixKQWhSKTb3BdS5LyZ
+	AmtPUkvdSbjXP1LPT5J70C3SpZA5xT8oKVKNa343pXBOjmc0paVS/6PFmIdZ655jFL/Nv5czLa3
+	P3q/AHyVXp2fRdMPLeYWTeP+WdCuNgPDMp0jcFg+0jaWzb1+tyzhJI4K+IQnr0mSxOl++Li+wWw
+	6/cCJUF29Ov1wwJjc1Labe4KcdVUDyFHfKmKBKLjIUZS3SSsArboqVkPvyD5vQ8LepgaJNvEzDM
+	8N7N7R3EkDbnguSTsA4fisQW+yEX27q++B0brJZ3R6BPHIp+grq9NdEqcEe6mwwSPBP6LV8V3b6
+	KIUpeGBY0YTFGAwncq5aFLzTaRfuWSI8rgGlO1qBRqQiwze3QIStRuTZDJT7GX+lKdxZBZU
+X-Received: by 2002:a05:6a20:4313:b0:3d7:eb3e:1c58 with SMTP id adf61e73a8af0-3dd5f4347f1mr18179463637.8.1789659766483;
+        Thu, 17 Sep 2026 08:42:46 -0700 (PDT)
+Received: from ?IPV6:2600:1700:73d0:8030:9d35:65d8:492a:44f9? ([2600:1700:73d0:8030:9d35:65d8:492a:44f9])
+        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-cc50ab50407sm3473870a12.9.2026.09.17.08.42.45
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 17 Sep 2026 08:42:45 -0700 (PDT)
+Message-ID: <f3218169-f309-477a-b439-3d106debd053@gmail.com>
+Date: Thu, 17 Sep 2026 08:42:44 -0700
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <aqvy8NqRRRmUlxjR@thinkstation>
+User-Agent: Mozilla Thunderbird
+Subject: Re: issues with Linux client pNFS
+Content-Language: en-US
+To: Anna Schumaker <anna@nowheycreamery.com>,
+ Olga Kornievskaia <aglo@umich.edu>, Trond Myklebust <trondmy@hammerspace.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+References: <41ee5118-027b-4630-8f02-b3a67c61b328@gmail.com>
+ <6880c031-3936-4ea1-86f2-5dc6050c9051@oracle.com>
+ <ff747b30-2537-4ee0-b827-beb0b7c2b323@gmail.com>
+ <ed2753a1-bf56-42f2-b13f-0de2711496de@app.fastmail.com>
+From: marc eshel <eshel.marc@gmail.com>
+In-Reply-To: <ed2753a1-bf56-42f2-b13f-0de2711496de@app.fastmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Thu, Sep 17, 2026 at 03:10:47PM +0100, Harry Yoo wrote:
-> ... now I realize we need to add PERFORMANCE EVENTS SUBSYSTEM folks 
-> as well ;-)
-> 
-> Hmm, sounds like perf lock is somehow triggering slab allocations
-> and interfering the workload.
+Hi Anna,
 
-perf should not have runtime memory allocation, its build to run from
-NMI context. It can allocate some memory on event creation and the like,
-but once its on, there should be no more allocations happening.
+This fix is related to DELEGATION_RETURN only, I was trying to recall 
+all file layouts.
+
+Marc.
+
+On 9/17/26 6:29 AM, Anna Schumaker wrote:
+> Hi Marc,
+>
+> On Wed, Sep 16, 2026, at 6:30 PM, marc eshel wrote:
+>> Hi,
+>>
+>> I was just trying pNFS recall any but it look like the NFS client
+>> received but ignored the call, is that expected ?
+>>
+>> [287100.214040] NFS: RECALL_ANY callback request from 10.11.96.99
+>> [287100.214073] nfs4_callback_recallany: exit with status = 0
+> Trond just had a patch the other day to fix an issue with CB_RECALL_ANY.
+> Any chance you're able to test it to see if it fixes your issue?
+>
+> https://lore.kernel.org/linux-nfs/115e4102b1bab159c25e8e903070b55cc4de77eb.1789148631.git.trond.myklebust@hammerspace.com/
+>
+> Thanks,
+> Anna
+>> Thanks, Marc.
+>>
+>> On 9/16/24 1:33 PM, Anna Schumaker wrote:
+>>> Hi Marc,
+>>>
+>>> On 9/16/24 4:27 PM, marc eshel wrote:
+>>>> Hi,
+>>>>
+>>>> Who is the current maintainer of the Linux NFS client?
+>>> That would be me and Trond.
+>>>
+>>>> I have an issue with the way pNFS client is distributing the reads among the DSs and I can provide the traces if anyone cares.
+>>> What is the problem? And sure, send along the traces! I'll try to take a look as soon as I can.
+>>>
+>>> Anna
+>>>
+>>>> Thanks, Marc.
+>>>>
