@@ -1,41 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE2F54E06D9
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 12:24:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24F424DC557
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 13:00:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789647872; cv=none; b=JH/pqswCjPyXzBC0LOtXAAOGIZAy1WhCRLiqEUzf0B5H5EWq0IPJgO7XdRD213uXbSujxpraHkSQPvhUeX7lDme1c1IOPixkK0//mO26pyM0mbBNjom0jywhItq4jZm3Z+//LFDj0Gt7Np6SSuUidKRXeQyzJ+NB2oqxFPFian8=
+	t=1789650062; cv=none; b=MYOwjkSCjso/0IRPZrAQz40KcAr3dfuFUJunkF44VXrL0sz2Ih5dQHGVlSj41G0d0hJhITGEAXNxol80hN0RUwOqJHTxieHs5vZv42NosbbuBEFZOkqd3sncRFDclh//WawAKAoyKV/5FqFD03rdZcYizaj6KLDh8CokVj/a6/A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789647872; c=relaxed/simple;
-	bh=3UBEZiw+I+EEZ4GWV+tGaeNOtH8EB9MLp0KVwhUr83Q=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=FaE3Uj+nyPGj7epMizK+zN0OkJ6EbqBxsrEFsRde6sDT9bqMOKSdhK8QeeQLzdgZPJQoLHOl/sA/lZdLJ2VZZh+ci/Zv1g8jUrYlHbraMxlTKBwDu8Y++uVKAzyw1FpERqWvHkcqwBuU4IxHEwT8DKzZgM9EpFsNMuuhBFVMJxg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Ecjbz8yQ; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789650062; c=relaxed/simple;
+	bh=wiqvEsnUyt/DLgmxdRvqAgHoOncVuQ0RrPXIs2+RiBk=;
+	h=Message-ID:Subject:From:To:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=nn4sBqhI+vi6rUIteUUcOe0I2drD3ENBajCLJXJBBQQznvXBEKQd3dhzeaB3+lhuHtxsrEmKJp9pxXpBhwE6Ot7UV5kJp85A/aHq1ovS3RL5/SifjZcwvGz60M75tC2HknN1jbDpFDye+5yZfCyvKaUbk4EbkWuZAj/7ZMQSlwc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IVYAa9cF; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Ecjbz8yQ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8CA861F000FF;
-	Thu, 17 Sep 2026 12:24:15 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IVYAa9cF"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 602EB1F00893;
+	Thu, 17 Sep 2026 13:00:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789647856;
-	bh=L5LLcuimHcFuRF0ELRzfPgIJqqe4ch4QHh9Rx7DtlBY=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=Ecjbz8yQLszE69RQBYSot/r5SaEKmcjGLspHQFX8VVATxxvLVyitwsqHy5XiBSBfx
-	 cBoq3JIzUstZnn6xqkh2+1Xg7sDmivyflMTH3vtDIHwJmvDazlhOky16swSKuP7mUX
-	 zaB2J2Oz9IPI/uSDlLdld8o/on2jgfNaEldVwT7MiTdU9vY0t1Q0I8Br21cZUgdsFB
-	 30h35NAMVEnNba/NW2k/s4b7BpHCEzkA9/V6j5SpMIrGYXBA47AFiGJhSGwW3y5xcr
-	 h/So73zh4W7g7+PAtodMMDEfzcXvi43VzMCozequRYhq+MkzK/m2jEjCSdQsE6B88M
-	 QzWE1cYiqJJsQ==
-Message-ID: <fdb976f6e9b78e2618de70bcf6595e9f484fc30f.camel@kernel.org>
-Subject: Re: [PATCH v2] NFS: return DENIED in decode_lock_denied if we
- cannot decode owner
+	s=k20260515; t=1789650050;
+	bh=6hpj2jS1l7NAIErG+xuvBKbF8zFZvAfmF8FZvZuYm04=;
+	h=Subject:From:To:Date:In-Reply-To:References;
+	b=IVYAa9cF1m6PhhWvOfMu7nvXnFxVL4YsM8aAFSQdY+50y93hcw1dptOliY7IXb4Yo
+	 tsWMvLvCmZSOkavUZT3rQFcpW/lZZHymTXakJ+rQ4J97in09UPMP2JaRnCo+2K6UqW
+	 aNDRJ2vOhB66EamG9qwfF8+eiQqaB90+sSpwzckZccle1/T/7RecomqJNslrfMYVH7
+	 I0bSur5MLHpIafDSUuquVUsuPItPKfMgt5UwiAizo+5hh+Ht3EGBXpB/fj0jZd1TG8
+	 +4z1P2Nb/f1uxmrheN4yX03n0wn8hHdUM1PKr99Vfy8XjCRaHMzzHapI982wWXRlYp
+	 pMLGto1Arforg==
+Message-ID: <4b64ead0ecd81596f8c3fbca5a7ac385c07cc8c7.camel@kernel.org>
+Subject: Re: Need NFSv4.1 "WANT_DELEGATION" op ...
 From: Jeff Layton <jlayton@kernel.org>
-To: Roberto Bergantinos Corpas <rbergant@redhat.com>, trondmy@kernel.org, 
-	anna@kernel.org
-Cc: neil@brown.name, prabhakar.pujeri@dell.com, linux-nfs@vger.kernel.org
-Date: Thu, 17 Sep 2026 08:24:14 -0400
-In-Reply-To: <20260917104905.669983-1-rbergant@redhat.com>
-References: <20260917104905.669983-1-rbergant@redhat.com>
+To: Roland Mainz <roland.mainz@nrubsig.org>, 
+	ms-nfs41-client-devel@lists.sourceforge.net, Linux NFS Mailing List
+	 <linux-nfs@vger.kernel.org>
+Date: Thu, 17 Sep 2026 09:00:49 -0400
+In-Reply-To: <CAKAoaQnTria60yM=zYQAe+dZti0ZvCfja0V+Y0F=Qu1h+hXGAA@mail.gmail.com>
+References: 
+	<CAKAoaQnTria60yM=zYQAe+dZti0ZvCfja0V+Y0F=Qu1h+hXGAA@mail.gmail.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -120,60 +120,65 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2026-09-17 at 12:49 +0200, Roberto Bergantinos Corpas wrote:
-> After commit 43502f6e8d1e ("NFS: fix open_owner_id_maxsz and related
-> fields.") we dramatically changed the size of the LOCK/LOCKT reply buffer
-> from 164 to 52 bytes. This made visible a situation on a buggy NFS
-> server that sent oversized denied responses which led to us returning
-> EIO instead of DENIED.
+On Thu, 2026-09-17 at 01:57 +0200, Roland Mainz wrote:
+> Hi!
 >=20
-> Now, apart from buggy server issue, this poses an interesting question:
-> what if other implementations have legitimate but bigger than we expect
-> lock owner response, especially now that we have reduced the size we
-> allocate for it (20 bytes for the lock owner part).
+> ----
 >=20
-> This change proposes to tackle that issue returning DENIED instead of
-> EIO regardless of whether we manage to decode the owner or not:
+> We're experimenting with a delegation-driven client-side
+> consitency+caching model for the ms-nfs41-client Windows NFSV4.2
+> client a while now.
 >=20
-> - At this point of decode_lock_denied we know there is an owner.
-> - Server legitimately denied the lock request, with an owner that fits on
->   NFS4_OPAQUE_LIMIT but we returned EIO instead to userspace.
-> - The owner data is decoded but actually never used, decode_lock path
->   simply retries, and decode_lockt turns it into 0 on file_lock and
->   returns it to userspace.
-> - LOCK/LOCKT are the last operations on the compound so it's not relevant
->   if we didn't advance the pointer.
-> - Also removes an inverted likely(!p) hint.
+> The original idea was to have two modes:
+> - Mode 1: Get delegations (read delegations for accessing data
+> read-only, write delegations for accessing data [a]) at OPEN time, and
+> return the delegation when the file handle gets closed ([b]). The
+> client only does buffering+caching if it has a delegation.
+> - Model 2:  Do not request a delegation at file open/creation, instead
+> translate Win32 oplocks into WANT_DELEGATION+DELEGRETURN. The client
+> only does buffering+caching if it has a delegation. Server-side
+> revocation of the delegation triggers an oplock break, releasing the
+> oplock from the Win32 side just returns the delegation. This is
+> basically how Win32 oplocks work on the SMB level.
 >=20
-> Fixes: 43502f6e8d1e ("NFS: fix open_owner_id_maxsz and related fields.")
-> Signed-off-by: Roberto Bergantinos Corpas <rbergant@redhat.com>
-> Reviewed-by: Prabhakar Pujeri <prabhakar.pujeri@dell.com>
-> ---
->  v2:
->   - fixed formatting issues
+> But in real life there are problems:
+> - "Mode 1" only worked for small testcases. Real Windows applications
+> typically change filehandle attributes or change ACLs after creating a
+> file, which results in server-side delegation recall triggered by a
+> NFS SETATTR, and after that we do not have a delegation. And there is
+> no WANT_DELEGATION op support in Linux+FreeBSD nfsd to get a
+> delegation back. Which typically means write delegations not being
+> enabled and therefore no client-side buffering/caching.
+> - "Mode 2" does not work because Linux+FreeBSD nfsd does not implement
+> WANT_DELEGATION to implement this "on-demand delegation" model.
 >=20
->  fs/nfs/nfs4xdr.c | 3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
+> Or short: For "mode 1" or "mode 2" to work we need the NFSV4.1
+> operation "WANT_DELEGATION" to work, at least in syncronous mode (e.g.
+> no CB_PUSH_DELEG support needed for now [c]).
 >=20
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index fc049ce4ba8a..9d0f7ad7525a 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -5169,8 +5169,7 @@ static int decode_lock_denied(struct xdr_stream *xd=
-r, struct file_lock *fl)
->  	p =3D xdr_decode_hyper(p, &clientid); /* read 8 bytes */
->  	namelen =3D be32_to_cpup(p); /* read 4 bytes */  /* have read all 32 by=
-tes now */
->  	p =3D xdr_inline_decode(xdr, namelen); /* variable size field */
-> -	if (likely(!p))
-> -		return -EIO;
-> +	/* We have an owner here, return DENIED */
->  	return -NFS4ERR_DENIED;
->  }
-> =20
+> @Chuck Lever What do you think ?
+>=20
+> [a] Win32 also supports opening a file for attributes only, which
+> means no delegation gets requested
+> [b] Note that WIndows supports close-delayed files, which means that
+> calling |CloseHandle()| will flush outstanding dirty data, but keeps
+> the file "active" in the driver for re-use for some time (except on
+> delete/rename/etc.). For the NFS driver this means that locks are
+> returned, but the delegation+buffering stays untouched.
+> [c] Technically requesting WANT_DELEGATION async via CB_PUSH_DELEG
+> would be a welcome optimisation, because it could help dealing with
+> files with high contention between machines.
+>=20
 
-Typically, we don't work around server bugs in the client (and vice
-versa), but I think this is a reasonable thing to do in this case since
-we don't use remote lockowner information anywhere in the kernel.
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+I think we could probably do a trivial WANT_DELEGATION implementation
+(with no callbacks) in knfsd without too much trouble. We have the
+infrastructure to handle granting delegations at OPEN, so we could just
+factor that out for WANT_DELEGATION.
+
+Registering a callback to acquire and grant the delegation however is
+quite a bit more tricky to handle, and opens a lot of questions about
+how to handle competing WANT_DELEGATIONs from different clients.
+
+--=20
+Jeff Layton <jlayton@kernel.org>
