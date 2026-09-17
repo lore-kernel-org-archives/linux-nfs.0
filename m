@@ -1,184 +1,130 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from fout-b4-smtp.messagingengine.com (fout-b4-smtp.messagingengine.com [202.12.124.147])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24F424DC557
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 13:00:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E59BD52B1D1
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 13:29:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.147
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789650062; cv=none; b=MYOwjkSCjso/0IRPZrAQz40KcAr3dfuFUJunkF44VXrL0sz2Ih5dQHGVlSj41G0d0hJhITGEAXNxol80hN0RUwOqJHTxieHs5vZv42NosbbuBEFZOkqd3sncRFDclh//WawAKAoyKV/5FqFD03rdZcYizaj6KLDh8CokVj/a6/A=
+	t=1789651803; cv=none; b=WNjb6jZFDeJGMMxzM8969XRIwg3+CoKjuOqbzr5x62jIgak628HOTxMjbNzUuvjslwJ67FYj3wDVrvREtNuulx1Zq++k0BAy/t7n5QL+dhhFiLS5rnsefIOyz+5m0HkZDnwunnpNbnGXsYehcOIVrrqE3GFyml29hsTajb8NLZA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789650062; c=relaxed/simple;
-	bh=wiqvEsnUyt/DLgmxdRvqAgHoOncVuQ0RrPXIs2+RiBk=;
-	h=Message-ID:Subject:From:To:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=nn4sBqhI+vi6rUIteUUcOe0I2drD3ENBajCLJXJBBQQznvXBEKQd3dhzeaB3+lhuHtxsrEmKJp9pxXpBhwE6Ot7UV5kJp85A/aHq1ovS3RL5/SifjZcwvGz60M75tC2HknN1jbDpFDye+5yZfCyvKaUbk4EbkWuZAj/7ZMQSlwc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IVYAa9cF; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789651803; c=relaxed/simple;
+	bh=UIEVmIk8bS01F28QfFpjZMC+AsE6+RySiVdJiNsTwBI=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=DkJBXMsNzd3xUXwLQurpezFAxQqjTWD7sLU2d8NxbDIF4ldWRvdqSToWCj21dbQCPPsZNw1plKJt6TAVal2uKwJAhbLdV9QKcAad36MT2uJnehq+frz/QqWAfMDh65cARYJfiQHw/VnRewnyO3cb9QgeYSZbxdAhMwt+jf3GEM0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nowheycreamery.com; spf=pass smtp.mailfrom=nowheycreamery.com; dkim=pass (2048-bit key) header.d=nowheycreamery.com header.i=@nowheycreamery.com header.b=Ln4xpyOt; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=bp6uvkfA; arc=none smtp.client-ip=202.12.124.147
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nowheycreamery.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nowheycreamery.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IVYAa9cF"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 602EB1F00893;
-	Thu, 17 Sep 2026 13:00:50 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789650050;
-	bh=6hpj2jS1l7NAIErG+xuvBKbF8zFZvAfmF8FZvZuYm04=;
-	h=Subject:From:To:Date:In-Reply-To:References;
-	b=IVYAa9cF1m6PhhWvOfMu7nvXnFxVL4YsM8aAFSQdY+50y93hcw1dptOliY7IXb4Yo
-	 tsWMvLvCmZSOkavUZT3rQFcpW/lZZHymTXakJ+rQ4J97in09UPMP2JaRnCo+2K6UqW
-	 aNDRJ2vOhB66EamG9qwfF8+eiQqaB90+sSpwzckZccle1/T/7RecomqJNslrfMYVH7
-	 I0bSur5MLHpIafDSUuquVUsuPItPKfMgt5UwiAizo+5hh+Ht3EGBXpB/fj0jZd1TG8
-	 +4z1P2Nb/f1uxmrheN4yX03n0wn8hHdUM1PKr99Vfy8XjCRaHMzzHapI982wWXRlYp
-	 pMLGto1Arforg==
-Message-ID: <4b64ead0ecd81596f8c3fbca5a7ac385c07cc8c7.camel@kernel.org>
-Subject: Re: Need NFSv4.1 "WANT_DELEGATION" op ...
-From: Jeff Layton <jlayton@kernel.org>
-To: Roland Mainz <roland.mainz@nrubsig.org>, 
-	ms-nfs41-client-devel@lists.sourceforge.net, Linux NFS Mailing List
-	 <linux-nfs@vger.kernel.org>
-Date: Thu, 17 Sep 2026 09:00:49 -0400
-In-Reply-To: <CAKAoaQnTria60yM=zYQAe+dZti0ZvCfja0V+Y0F=Qu1h+hXGAA@mail.gmail.com>
-References: 
-	<CAKAoaQnTria60yM=zYQAe+dZti0ZvCfja0V+Y0F=Qu1h+hXGAA@mail.gmail.com>
-Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
- keydata=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
- QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
+	dkim=pass (2048-bit key) header.d=nowheycreamery.com header.i=@nowheycreamery.com header.b="Ln4xpyOt";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="bp6uvkfA"
+Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
+	by mailfout.stl.internal (Postfix) with ESMTP id 827A41D00141;
+	Thu, 17 Sep 2026 09:29:55 -0400 (EDT)
+Received: from phl-imap-04 ([10.202.2.82])
+  by phl-compute-02.internal (MEProxy); Thu, 17 Sep 2026 09:29:55 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	nowheycreamery.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:from:from:in-reply-to
+	:in-reply-to:message-id:mime-version:references:reply-to:subject
+	:subject:to:to; s=fm2; t=1789651795; x=1789738195; bh=lIhgaAgpy0
+	uf8EfPLqQrRJiYnVd+5eiBRlvoSMabjDY=; b=Ln4xpyOtFcInAvLE9gIIpwVzKq
+	9fIvP2YJAc5T08AP1wyWn2lk0F0xIOSBUXoe3Bc3ugVrNEw0I2hXPlvmFofzshoM
+	IdVUjd06okkebNfcKXk/Ol+g0WUIgWHfWkiCoKYiAmP9RW3uO7UBvvxdbCOCTDZ9
+	UXbH810viZfdHD929MfitJ/6vNLDTZtZLBpvXrjLsjEBXVW7JupXnlsmyR5IcTn0
+	9FUY6y1NXULTdQ1tBiltKF4SFCeeR4CJfCn7jUeZ+eHqDsy8A0Gnk82XSkAiyZbS
+	284CeNRdQfxBEXgBdq56pUB6o3Q+i5Y9cWKGCU2c30LNiN48iqqUXdzKnEHQ==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1789651795; x=
+	1789738195; bh=lIhgaAgpy0uf8EfPLqQrRJiYnVd+5eiBRlvoSMabjDY=; b=b
+	p6uvkfAfFnmdwJ4koCQcOjTC+1hM44NXYYF6z0sABrcmP7215PjsByAPq4JmMPes
+	cjPdoUWBrV1Y8EqHxPBRJW4vZu2YYyA11f6/QFZVEWlZqPqR88PyYHTy//S4n4Bi
+	+tuBihcfM2TeXjyDBQDH9Y8X5+rqwmuRiqYt6zm+ela8DBEqyjF//I3avV90zEU9
+	WuBYQnd37WGfU3SG0hiaBwWBwgEIpCwzmKSWVY+3Rdq8C0XBnoM/25SSqqilLmTp
+	yvKPUjQkvZgF+kh2rWkBmgtZB32cSqhRr1PZr5A4Oue+5ra9Q+XWDNt7pcMGhYWd
+	iPMiqx4V3jI+FiKwjBHJQ==
+X-ME-Sender: <xms:U-ural8-_IXC0eVYJ9MASbkBH_-e8xDhbJpifziY1jLvIGmenek-vw>
+    <xme:U-uraki8kmkyXFX-HKP2wyDErbZ2uRqp-pLR3nM_T7Ka9E8phbLIn9gB-9vuQdS_P
+    ZPU5BX1oL4-rPdS7fyCruM1BOgkGc4wxlv6gOCi2KKXiUdxAkHvtwXJ>
+X-ME-Proxy-Cause: dmFkZTGjzhKjOMO47Xb9hg0DAQG5ON87wSluripfuHO0DuVcCE7Ir8inQnkeX1EjPT6Xrm
+    tyHsXnWS66IEfFgOTmqOkT684ER23pbCCOYZAI6W7CP0Cakr+PnLM8j4wIyNcti//c/Gl8
+    PKF5asK/ujUqKckHHb+ihyEDXdmnhDY/1qRYa/rstFgJYxpSLZhcs2UG/sFFfIk6tFvFjp
+    G2xig/X26CCJRnSLB7O1UOFPSoyQpECRf45v8Fyxtpxkuntr5vxbLKH5uQOkhSIxP4rbVb
+    l9f5tSOHBqL5JrNAIjDdclKM5b/+9lAjMuDtWRB6Nya4zdquoMR9gvL0JF0BIfxMblwMQW
+    dXXTfu/K9Eg9YJrI58YmgQ79zJY2I6t5TciG4IDfhxcG0zImfwqa+MfKSZKg+qmE8UDGPF
+    mbV+xYBhGtA9LpTWB7eGynnAXI/l9XmNO8on/hlpLG711rfe6U0giV7cMQIp6MvPBAHTVL
+    VceneR/dplxm1M8hcl+CSsROeDewO44Ct/qML2FYk+0rmR1Wp48rfSO4+AktuGU4elaPep
+    E2GkgbYUBGKLHFdAGwPlUxf0UpGAsZYVbFM1mKkfEruZsDsdsUE3B/wNc9sWk1Qqzbors6
+    Py0yJ9zwAaLrFtBtrYGnezuYO2seDEprVtYOaCct4TySTnysDZ77PXIDMS1A
+X-ME-Proxy: <xmx:U-urasiOEab93UX3stLYICda88eIqgFA6QFhdSu8bI9ySDnPgnagag>
+    <xmx:U-uramilwhGTVlnfCAg3VooNCcs1g-cYRnV0qg1yUd1KCZ9Y0oDTQQ>
+    <xmx:U-urakKacVHUMcRD2Y5mOvlFRv2zS8lprQvSdrwHix8UIXROs-0IGw>
+    <xmx:U-uratFTyjKjglQSmem-4NELQqp3emOW-2gCJp0sfT6eX2AwyUDAxw>
+    <xmx:U-urauxFQ81M--SRxsNC_xi5SQtbBgWqOchiaClWV8zI6zZIAhRyH8Xp>
+Feedback-ID: i67c64855:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 26AE5B6006E; Thu, 17 Sep 2026 09:29:55 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+X-ThreadId: ASiE5xFyi4k7
+Date: Thu, 17 Sep 2026 09:29:33 -0400
+From: "Anna Schumaker" <anna@nowheycreamery.com>
+To: "marc eshel" <eshel.marc@gmail.com>,
+ "Anna Schumaker" <anna.schumaker@oracle.com>,
+ "Olga Kornievskaia" <aglo@umich.edu>,
+ "Trond Myklebust" <trondmy@hammerspace.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Message-Id: <ed2753a1-bf56-42f2-b13f-0de2711496de@app.fastmail.com>
+In-Reply-To: <ff747b30-2537-4ee0-b827-beb0b7c2b323@gmail.com>
+References: <41ee5118-027b-4630-8f02-b3a67c61b328@gmail.com>
+ <6880c031-3936-4ea1-86f2-5dc6050c9051@oracle.com>
+ <ff747b30-2537-4ee0-b827-beb0b7c2b323@gmail.com>
+Subject: Re: issues with Linux client pNFS
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-On Thu, 2026-09-17 at 01:57 +0200, Roland Mainz wrote:
-> Hi!
->=20
-> ----
->=20
-> We're experimenting with a delegation-driven client-side
-> consitency+caching model for the ms-nfs41-client Windows NFSV4.2
-> client a while now.
->=20
-> The original idea was to have two modes:
-> - Mode 1: Get delegations (read delegations for accessing data
-> read-only, write delegations for accessing data [a]) at OPEN time, and
-> return the delegation when the file handle gets closed ([b]). The
-> client only does buffering+caching if it has a delegation.
-> - Model 2:  Do not request a delegation at file open/creation, instead
-> translate Win32 oplocks into WANT_DELEGATION+DELEGRETURN. The client
-> only does buffering+caching if it has a delegation. Server-side
-> revocation of the delegation triggers an oplock break, releasing the
-> oplock from the Win32 side just returns the delegation. This is
-> basically how Win32 oplocks work on the SMB level.
->=20
-> But in real life there are problems:
-> - "Mode 1" only worked for small testcases. Real Windows applications
-> typically change filehandle attributes or change ACLs after creating a
-> file, which results in server-side delegation recall triggered by a
-> NFS SETATTR, and after that we do not have a delegation. And there is
-> no WANT_DELEGATION op support in Linux+FreeBSD nfsd to get a
-> delegation back. Which typically means write delegations not being
-> enabled and therefore no client-side buffering/caching.
-> - "Mode 2" does not work because Linux+FreeBSD nfsd does not implement
-> WANT_DELEGATION to implement this "on-demand delegation" model.
->=20
-> Or short: For "mode 1" or "mode 2" to work we need the NFSV4.1
-> operation "WANT_DELEGATION" to work, at least in syncronous mode (e.g.
-> no CB_PUSH_DELEG support needed for now [c]).
->=20
-> @Chuck Lever What do you think ?
->=20
-> [a] Win32 also supports opening a file for attributes only, which
-> means no delegation gets requested
-> [b] Note that WIndows supports close-delayed files, which means that
-> calling |CloseHandle()| will flush outstanding dirty data, but keeps
-> the file "active" in the driver for re-use for some time (except on
-> delete/rename/etc.). For the NFS driver this means that locks are
-> returned, but the delegation+buffering stays untouched.
-> [c] Technically requesting WANT_DELEGATION async via CB_PUSH_DELEG
-> would be a welcome optimisation, because it could help dealing with
-> files with high contention between machines.
->=20
+Hi Marc,
 
+On Wed, Sep 16, 2026, at 6:30 PM, marc eshel wrote:
+> Hi,
+>
+> I was just trying pNFS recall any but it look like the NFS client 
+> received but ignored the call, is that expected ?
+>
+> [287100.214040] NFS: RECALL_ANY callback request from 10.11.96.99
+> [287100.214073] nfs4_callback_recallany: exit with status = 0
 
-I think we could probably do a trivial WANT_DELEGATION implementation
-(with no callbacks) in knfsd without too much trouble. We have the
-infrastructure to handle granting delegations at OPEN, so we could just
-factor that out for WANT_DELEGATION.
+Trond just had a patch the other day to fix an issue with CB_RECALL_ANY.
+Any chance you're able to test it to see if it fixes your issue?
 
-Registering a callback to acquire and grant the delegation however is
-quite a bit more tricky to handle, and opens a lot of questions about
-how to handle competing WANT_DELEGATIONs from different clients.
+https://lore.kernel.org/linux-nfs/115e4102b1bab159c25e8e903070b55cc4de77eb.1789148631.git.trond.myklebust@hammerspace.com/
 
---=20
-Jeff Layton <jlayton@kernel.org>
+Thanks,
+Anna
+>
+> Thanks, Marc.
+>
+> On 9/16/24 1:33 PM, Anna Schumaker wrote:
+>> Hi Marc,
+>>
+>> On 9/16/24 4:27 PM, marc eshel wrote:
+>>> Hi,
+>>>
+>>> Who is the current maintainer of the Linux NFS client?
+>> That would be me and Trond.
+>>
+>>> I have an issue with the way pNFS client is distributing the reads among the DSs and I can provide the traces if anyone cares.
+>> What is the problem? And sure, send along the traces! I'll try to take a look as soon as I can.
+>>
+>> Anna
+>>
+>>> Thanks, Marc.
+>>>
