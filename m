@@ -1,189 +1,277 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8767E552922
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 13:50:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D44784FC8CB;
+	Thu, 17 Sep 2026 14:10:49 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789653034; cv=none; b=hHwWCGJ/3Shbn7Vqm30GIMw8sTNiKsSLw7olAI9TlvcWApQHuneFipHDyKajEl5VK0sd+1Tj5KlOucdjYhMthr5aWcMNoRJMltuQoUTmaDJI/5yA8hqPOMiByHH0uVM08mmnKwofcrDZd09YZxtf1EIyofsSb7g3sLv6PUMudq0=
+	t=1789654252; cv=none; b=qr+q6YDD4rnT9+dTzdRJBtpktVozk/FV/dkPoUDxFdKzb4YeexVCXu65KrwGjT/7A9EgQtWTPBRVYYyknkXiZK0CbaMxppSmuedO37qjhV0Wo9NnrqF9hXd8kp9OijpeGO1Gmmf7Q3TTrkdOyLmOb+MLxt/BSUeMR1yX/PLmrZ4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789653034; c=relaxed/simple;
-	bh=rHPlkZq8QcUlcXZ95UpE62wzPJOMFcq9wd+pUL1ocmQ=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=c/zI71zoAAQpl4Y8ssiDdeqhN13HOuXN21NSkg/Qc+utVL5rTwOmyj2oODEX8eYYZ1XNynW8yLrMBJOKq1sTvgqP5RMiUw6zgilRKgiilIXeVc+eoYDd7dwT+K8WCTmw3HCFnoxPcUZH+QdBvPCu6kOqCcia7mAbJZ4wleugCXk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=JODIuAeR; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789654252; c=relaxed/simple;
+	bh=/C9f95SWyEmPygIuulycJScYsmXuMozyyQL5PTlWLho=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=tYKoxY6WGthLyvQZYTEuVzTWb/J+Jd1VzDdqU+eSk5ppY2vdnQaCR9QoAMjuI9OkVyQNn4CeW8ZXxSsuGIeDrh4auQscP4coVI/pm/+PPsT22hQuM0jmeBI4lpDJLM7ZuvYMD79zgNFW+n4CRMw8CccdyOC2X0LZ05eLIh7DCwY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=W1OQSPQh; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="JODIuAeR"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4AD0D1F00893;
-	Thu, 17 Sep 2026 13:50:28 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="W1OQSPQh"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DB69F1F000FF;
+	Thu, 17 Sep 2026 14:10:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789653028;
-	bh=7VGadqoDro2Vuq8v7rDZVtvL7j39zo1OAHVttGXcDZw=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=JODIuAeROk7LvipUYjMLS3zBtlaO5JUCAP362f6d/berratThR0fannh5iT0kVyEo
-	 3wvwxYcmvSKFI/Ltpb0GC8hldei2dkPjTAVEKrx3OCoDv+DcqO9PGD0d6/TNEQuP5M
-	 6BAlaka6oIdn1vhRzI+LRUnAnml5sFhZ//qu8ol9++tVVutE8Tufh6MqLiwCOW3lAB
-	 HlJrD/r6dKEtVfan9j0zSj+07gMLFd+WhrfCZYdCwWn4vfndKX6GY4SUn/mJUprNTF
-	 OGbBKRINToU3wSq9KC0RUvC8TA5OVswTp4hr/1F591hd0/vOPHRKS26jIC+RPlEXQ1
-	 +50Z+sAXVxNTA==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 64538F40066;
-	Thu, 17 Sep 2026 09:50:27 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Thu, 17 Sep 2026 09:50:27 -0400
-X-ME-Sender: <xms:I_Crarhk6toSpcoKOzeqUnjmUOJjvebhP1tUzhSHZaX8I-EcApesDw>
-    <xme:I_Crai0GeRGKI55x1Fj3YGXnIniQWs5cFSPZrpCDABu85ojBwIst2GyLdcyCuMBwK
-    WPnHT04CUHce8wCQYSw05z7eLMgJMwrZEn_zPJMaVswsqUf-gd-p0Yw>
-X-ME-Proxy-Cause: dmFkZTGbv4BjqDEZH4LmsvRoCU7w++Gb6N4eKYd0gPPlrLJd2U7e1W6Sm+hPFrTp/Drr34
-    k7NWipfOQ2MK6YZQ9hcdzGjPejZ2TqsovaUyO2h0/tgaWOFuRZowuP3cGkmykJ2pkN+z+i
-    HM+GGKzagpw7dZtL4aQAZX4I6uI68nRT1NGexdHQU6m/Im7rGxWaVrvctc0giIQs2YKan1
-    Xc23GDZewGSYfl+BMyW5vJdqWwoEm0JpFIXVz+El69A5HduXQjMULfPOmxdTOx7L1EcVX/
-    CVlj9+P37du8/Ju6TMa4GJasAsh16WQenLX0FfeHZ2Cd3YQPeWBe4oeeoym3b1kwpOrGLC
-    WhgXAK5de30l/Y0VpYD4plOkEcTIJKgosyeJ+l7OkhoEVmkzen+ytkc/F7swAuDu0/lK/v
-    IJM5rikuTil5B5NBRqfhpQ9iHDiX8mjIy+ARH5I812mrrEU6YsswQRapnRFDkF1b/HwUop
-    6ZmwOYqvkwNAj7Fxdf+xLWikrE4nN7Y32zwJQkduaGZ/4hH0/G/pLKsRY22Tzt4SukTWTT
-    8A+OafK6A8q6JAFuhBwsyHd58WP8Stef1XQYBZig7hGSbnYCFeVLjvGsxdgvQxrGXCBOt1
-    e3UfJ6F/8scqKcT1ElDUJZdLYqFu9Ak1TqZGoGxzS3LY0xsFn510599RlT1g
-X-ME-Proxy: <xmx:I_CratihTnFC6uus25JkY4R98QVXcysGdSrWGUcvoPa-L760s5hgLA>
-    <xmx:I_Cras8XM_ZRePCm8ol2eNnxruVjBtMnyKn0BBltDXt0NHB47-if1A>
-    <xmx:I_CrasGTAT4gYyUPfnJ-k1rkvj9B6Y3D3vJ0WcgH5ZAEWNV63Vdc6A>
-    <xmx:I_CranlTJWSn5MQYi5P62Ps6YH0iyTfi8UkQC4In8YdShAheIramZg>
-    <xmx:I_CraoYcs_niGvx_g9aycVrz1onVx8tJuF5Pyp2ZLxpJMR_XU2mJk9Qo>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 3FF38780075; Thu, 17 Sep 2026 09:50:27 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1789654249;
+	bh=KbrDS6hKlC0VTaC9BV7+naLsGbVr14Ol/r0dwCCcssI=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=W1OQSPQh322nQaohrMaAxOagWwbvl9nfa1M8/bJfBh0BVO2wIDl50kW+0OZlfAY9W
+	 I8TRDsOX/HJXa0PKXXSg3zbiITkFW7y0z/NWU4OXDcMlOaG+DI7FxP3vZNlMvJBf3Q
+	 s4BWwM4qRiDe46bp4aSjSK4+BzIY3PD4mAA0IvWHyhgKcP013CBl7DGA1jrzzPq4Z9
+	 XhM0GnOREVbuDkMQVJt1m0PHIDNXJRlaoPvuGHmCCWqjBKgBaa9tv8Gw1LDojsZm3o
+	 M36krUXURWBS3Sc095w9ic0+ppCVGElFpESwfj7+Pmq8CdLtbTXHTLgG85lvR+ni7t
+	 y85DiRIBQEmIg==
+Date: Thu, 17 Sep 2026 15:10:47 +0100
+From: Harry Yoo <harry@kernel.org>
+To: Tim Menninger <tmenninger@everpuredata.com>
+Cc: linux-mm@kvack.org, Chuck Lever <cel@kernel.org>, 
+	linux-nfs@vger.kernel.org, Jon Curley <jcurley@everpuredata.com>, 
+	Eric Badger <ebadger@everpuredata.com>, Vlastimil Babka <vbabka@kernel.org>, 
+	Andrew Morton <akpm@linux-foundation.org>, Hao Li <hao.li@linux.dev>, Christoph Lameter <cl@gentwo.org>, 
+	David Rientjes <rientjes@google.com>, Roman Gushchin <roman.gushchin@linux.dev>, 
+	Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
+	Arnaldo Carvalho de Melo <acme@kernel.org>, Namhyung Kim <namhyung@kernel.org>, 
+	Mark Rutland <mark.rutland@arm.com>, Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
+	Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
+	Adrian Hunter <adrian.hunter@intel.com>, James Clark <james.clark@linaro.org>, 
+	linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [SLUB] nfs_page cmpxchg_double_fail and perf lock perturbation
+ on dual-socket NFS/RDMA
+Message-ID: <aqvy8NqRRRmUlxjR@thinkstation>
+References: <20260916232227.4098143-1-tmenninger@everpuredata.com>
+ <aqvq8-6IJBDer90O@thinkstation>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: Az0uTlCllO7k
-Date: Thu, 17 Sep 2026 09:50:00 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Roland Mainz" <roland.mainz@nrubsig.org>,
- "ms-nfs41-client-devel@lists.sourceforge.net" <ms-nfs41-client-devel@lists.sourceforge.net>,
- "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Cc: "Rick Macklem" <rick.macklem@gmail.com>,
- "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>
-Message-Id: <ea3ec60c-18a1-4643-ade0-c4a004cb2ac3@app.fastmail.com>
-In-Reply-To: 
- <CAKAoaQnTria60yM=zYQAe+dZti0ZvCfja0V+Y0F=Qu1h+hXGAA@mail.gmail.com>
-References: 
- <CAKAoaQnTria60yM=zYQAe+dZti0ZvCfja0V+Y0F=Qu1h+hXGAA@mail.gmail.com>
-Subject: Re: Need NFSv4.1 "WANT_DELEGATION" op ...
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <aqvq8-6IJBDer90O@thinkstation>
 
+... now I realize we need to add PERFORMANCE EVENTS SUBSYSTEM folks 
+as well ;-)
 
+Hmm, sounds like perf lock is somehow triggering slab allocations
+and interfering the workload.
 
-On Wed, Sep 16, 2026, at 7:57 PM, Roland Mainz wrote:
-> Hi!
->
-> ----
->
-> We're experimenting with a delegation-driven client-side
-> consitency+caching model for the ms-nfs41-client Windows NFSV4.2
-> client a while now.
->
-> The original idea was to have two modes:
-> - Mode 1: Get delegations (read delegations for accessing data
-> read-only, write delegations for accessing data [a]) at OPEN time, and
-> return the delegation when the file handle gets closed ([b]). The
-> client only does buffering+caching if it has a delegation.
-> - Model 2:  Do not request a delegation at file open/creation, instead
-> translate Win32 oplocks into WANT_DELEGATION+DELEGRETURN. The client
-> only does buffering+caching if it has a delegation. Server-side
-> revocation of the delegation triggers an oplock break, releasing the
-> oplock from the Win32 side just returns the delegation. This is
-> basically how Win32 oplocks work on the SMB level.
->
-> But in real life there are problems:
-> - "Mode 1" only worked for small testcases. Real Windows applications
-> typically change filehandle attributes or change ACLs after creating a
-> file, which results in server-side delegation recall triggered by a
-> NFS SETATTR, and after that we do not have a delegation. And there is
-> no WANT_DELEGATION op support in Linux+FreeBSD nfsd to get a
-> delegation back. Which typically means write delegations not being
-> enabled and therefore no client-side buffering/caching.
-> - "Mode 2" does not work because Linux+FreeBSD nfsd does not implement
-> WANT_DELEGATION to implement this "on-demand delegation" model.
->
-> Or short: For "mode 1" or "mode 2" to work we need the NFSV4.1
-> operation "WANT_DELEGATION" to work, at least in syncronous mode (e.g.
-> no CB_PUSH_DELEG support needed for now [c]).
->
-> @Chuck Lever What do you think ?
+It could be because SLUB is merging nfs_page cache with some other
+cache that perf uses.
 
-Roland, thanks for raising the question here.
+Could you please check if it reproduces with slab_nomerge kernel
+parameter?
 
-Playing devil's advocate for a moment. Since 2010, when RFC 5661
-was published, no other client implementer has requested a server
-implementation of the WANT_DELEGATION operation. That suggests:
-
-- POSIX clients might have a hard time making use of it
-- There are one or more flaws with its specification
-- It might not add any benefit for real world workloads
-- It might be possible to work around the lack of a
-  WANT_DELEGATION operation using OPEN
-
-I don't have any evidence of the challenges or benefits, but
-these are admittedly open questions. And note:
-
-- There is no testing infrastructure, currently
-- As you found out, Wireshark does not yet implement a decoder
-- Notably the Solaris NFS server also does not implement it
-
-Even in the simpler synchronous-only mode, it's a heap of work.
-
-I'd like to hear from POSIX client implementers. Have you
-considered implementing WANT_DELEGATION, but found the
-specification wanting, or is there some challenge to
-introducing the plumbing in your client? I'd like to understand,
-practically speaking, if WANT_DELEGATION itself is conceptually
-flawed, before diving in. We'd be the first to attempt an
-implementation of it.
-
-
-> Why is WANT_DELEGATION an "optional" operation in NFSv4.1?
-
-I didn't perform a deep search of pre-2010 items in the archive
-of nfsv4@ietf.org, but RFC 8881 does give indications about why
-WANT_DELEGATION is OPTIONAL.
-
-- Minor-versioning rule 12: a minor version must not introduce
-  REQUIRED new features except infrastructural ones.
-  WANT_DELEGATION is new in 4.1 and is not infrastructural, so
-  it cannot be REQUIRED.
-
-- Feature-to-operation mapping: "For the NFSv4.1 features that
-  are OPTIONAL, the operations that support those features are
-  OPTIONAL, and the server would return NFS4ERR_NOTSUPP."
-
-Underneath that is the older NFSv4 principle that delegations
-are always at the server's discretion. Section 10.4 says "Making
-a delegation is up to the server, and clients should not assume
-that any particular OPEN either will or will not result in an
-OPEN delegation". Section 10.4.7 restates it for this operation:
-"servers MAY provide delegations separate from open, via the
-OPTIONAL WANT_DELEGATION operation". A server that never grants
-delegations has nothing to implement here, so mandating the
-operation would be pointless.
-
-The RFC treats the absence of WANT_DELEGATION as a normal case
-with a fallback. Section 10.2.1 notes that "since the server is
-not required to support this operation," a client reclaiming a
-delegation with no associated open can instead use a dummy OPEN
-with CLAIM_PREVIOUS and then CLOSE it (rfc8881.txt:9596).
-
-So the protocol was deliberately designed so that everything
-WANT_DELEGATION does can be approximated with OPEN, which is
-why it sits on the OPTIONAL side of the line rather than being
-treated as infrastructure like sessions and RECLAIM_COMPLETE.
-
-It doesn't look like an oversight to me.
-
+On Thu, Sep 17, 2026 at 02:46:24PM +0100, Harry Yoo wrote:
+> Hi Tim and Chuck, thanks for reporting this to linux-mm.
+> Will take a look at this but let me Cc SLAB ALLOCATOR folks here first.
+> 
+> -- 
+> Cheers,
+> Harry / Hyeonggon
+> 
+> On Wed, Sep 16, 2026 at 11:22:27PM +0000, Tim Menninger wrote:
+> > Chuck Lever suggested I bring this to linux-mm after we found some SLUB
+> > measurements we could not account for while investigating an NFS/RDMA
+> > throughput regression.
+> > 
+> > The original NFS discussion is here for context:
+> > 
+> >     https://lore.kernel.org/linux-nfs/0e2f9688-097c-4bb9-a7ec-82b41bdb3653@slotpi15m67/
+> > 
+> > The NFS regression itself has been separated from this issue. What
+> > remains interesting here is the behavior of the nfs_page slab cache on
+> > this machine, particularly the measurements with and without perf lock.
+> > 
+> > The system is:
+> > 
+> >     Intel Xeon Silver 4516Y+
+> >     2 sockets
+> >     24 cores/socket
+> >     2 threads/core
+> >     96 logical CPUs
+> > 
+> >     NUMA node0 CPUs: 0-23,48-71
+> >     NUMA node1 CPUs: 24-47,72-95
+> >
+> > The workload is a high-throughput NFS/RDMA direct-read workload using
+> > 1 MiB I/O, 160 threads, and iodepth 64.
+> > 
+> > The relevant debug options are all disabled:
+> > 
+> >     # CONFIG_KASAN is not set
+> >     # CONFIG_PROVE_LOCKING is not set
+> >     # CONFIG_LOCK_STAT is not set
+> >     # CONFIG_DEBUG_SPINLOCK is not set
+> >     # CONFIG_DEBUG_LIST is not set
+> > 
+> > All measurements below were collected on the unpatched base kernel:
+> > 
+> >     $ git rev-parse HEAD
+> >     940de590b839f71d6dc846160534bf202401b8b7
+> > 
+> >     $ uname -r
+> >     7.3.0-rc1-mainline+
+> > 
+> > The initial observation was a high apparent contention rate on the
+> > nfs_page slab's list_lock. In 10-second perf-lock captures I was seeing
+> > roughly 4.5M contended acquisitions and about 170-185 us of average
+> > reported wait.
+> > 
+> > Chuck reproduced a similar acquisition rate on a single-node EPYC
+> > system, but saw only about 7 ns average wait and fewer than 100
+> > cmpxchg_double_fail events over a corresponding interval. He suggested
+> > checking cmpxchg_double_fail because __slab_free() drops list_lock and
+> > retries when the freelist cmpxchg fails.
+> >
+> > I repeated the measurements in three placement configurations:
+> > 
+> >     A. workload unpinned, CQs all on node0
+> >     B. workload pinned to node0, CQs all on node0
+> >     C. workload unpinned, CQs balanced across the nodes
+> > 
+> > Without perf lock, throughput is similar in all three:
+> > 
+> >     A. unpinned / CQs node0:       ~45.5 GB/s
+> >     B. node0 pinned / CQs node0:   ~45.7 GB/s
+> >     C. unpinned / balanced CQs:    ~45.5 GB/s
+> > 
+> > During the perf-lock captures, throughput is approximately 25 GB/s.
+> > 
+> > For each instrumented 10-second window I ran:
+> > 
+> >     sudo perf lock record -a -g -o "$D/perf-locks.data" -- sleep 10
+> >     mpstat -P ALL 1 10
+> > 
+> > Before and after the same window I sampled the counters under:
+> > 
+> >     /sys/kernel/slab/nfs_page/
+> > 
+> > I also collected separate 10-second counter and mpstat windows under
+> > the same workload configurations without perf lock.
+> > 
+> > The resulting slab counter deltas were:
+> > 
+> >                             A               B                 C
+> >                      unpinned/node0    node0/node0   unpinned/balanced
+> > 
+> >     free_fastpath
+> >     instrumented        655,917,745    457,936,140       328,670,030
+> >     uninstrumented       34,906,233    119,984,226        59,469,931
+> > 
+> >     free_slowpath
+> >     instrumented        236,735,724      7,720,917       270,716,506
+> >     uninstrumented       85,039,753          2,814        60,145,870
+> > 
+> >     sheaf_flush
+> >     instrumented         39,842,700     42,706,800         8,341,440
+> >     uninstrumented        1,286,400     13,487,700           887,700
+> > 
+> >     barn_put_fail
+> >     instrumented            663,994        711,745           139,037
+> >     uninstrumented           21,464        224,762            14,765
+> > 
+> >     barn_get_fail
+> >     instrumented          4,609,925        840,344         4,651,225
+> >     uninstrumented        1,438,643        224,787         1,017,006
+> > 
+> >     cmpxchg_double_fail
+> >     instrumented             70,524          8,077            28,062
+> >     uninstrumented            7,471            713             1,503
+> > 
+> >     alloc_slowpath
+> >     all cases                     0              0                 0
+> > 
+> > The SLUB counter profile changes substantially with perf lock despite
+> > the lower NFS throughput, and the exact mix depends strongly on
+> > placement.
+> > 
+> > The uninstrumented node0/node0 run also reproduces the barn/sheaf
+> > relationship Chuck pointed out earlier. The nfs_page sheaf capacity is
+> > 60:
+> > 
+> >     sheaf_flush / 60 = 13,487,700 / 60 = 224,795
+> >     barn_put_fail                      = 224,762
+> > 
+> > The placement dependence of free_slowpath is also large. It falls from
+> > about 85M events per 10 seconds in the unpinned/node0 case to 2,814 in
+> > the node0/node0 case.
+> > 
+> > The reported perf-lock result, however, is similar across all three
+> > placements:
+> > 
+> >                          contentions    total wait    average wait
+> >     unpinned/node0         4,782,839      14.39 min      180.47 us
+> >     node0/node0            4,582,012      14.13 min      185.05 us
+> >     unpinned/balanced      4,572,196      12.81 min      168.14 us
+> > 
+> > I also revisited an inconsistency Chuck noticed in my earlier
+> > measurements. Previously I had compared aggregate perf-lock wait from
+> > one 10-second capture with CPU utilization measured during a different
+> > window.
+> > 
+> > I now have paired 10-second mpstat samples for each placement, with and
+> > without perf lock. The node values below are averages of the per-CPU
+> > %idle values for the CPUs in each NUMA node:
+> > 
+> >                                   system-wide       node0       node1
+> >                                   %idle             %idle       %idle
+> > 
+> >     A. unpinned / CQs node0
+> >        uninstrumented                 31.46           8.0        54.6
+> >        instrumented                    3.60           0.06        7.1
+> > 
+> >     B. node0 pinned / CQs node0
+> >        uninstrumented                 84.26          69.2        99.4
+> >        instrumented                   12.07          10.4        13.8
+> > 
+> >     C. unpinned / balanced CQs
+> >        uninstrumented                 66.86          66.7        66.9
+> >        instrumented                   14.83          19.0        10.6
+> > 
+> > This resolves the accounting inconsistency in my earlier measurements.
+> > The large aggregate perf-lock wait and high idle percentage had come
+> > from different windows. In the aligned samples, the system is much
+> > busier during the perf-lock capture than in the corresponding
+> > uninstrumented run.
+> > 
+> > I am still unsure how representative the reported ~170-185 us average
+> > wait is of the uninstrumented workload.
+> > 
+> > The remaining number I am less sure how to interpret is
+> > cmpxchg_double_fail. In the uninstrumented windows I see:
+> > 
+> >     unpinned / CQs node0:       7,471 / 10 sec
+> >     node0 pinned / CQs node0:     713 / 10 sec
+> >     unpinned / balanced CQs:    1,503 / 10 sec
+> > 
+> > compared with fewer than 100 in Chuck's test.
+> > 
+> > I understand that cmpxchg_double_fail counts failed slab freelist
+> > updates rather than failed logical frees, so I am not sure what the
+> > appropriate denominator is here. In particular, the node0/node0 case
+> > still has 713 failures while sustaining full throughput and only 2,814
+> > free_slowpath events over the interval.
+> > 
+> > My questions are:
+> > 
+> > 1. Do the uninstrumented cmpxchg_double_fail rates above look abnormal
+> >    for this workload/topology, or are they within the range one would
+> >    expect from this degree of concurrency and NUMA placement?
+> > 
+> > 2. Is there a less invasive way you would recommend measuring the
+> >    nfs_page list_lock/freelist contention? I would like to distinguish
+> >    the steady-state behavior from what is observed during the perf-lock
+> >    capture.
+> > 
+> > Thanks,
+> > Tim
 
 -- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+Cheers,
+Harry / Hyeonggon
