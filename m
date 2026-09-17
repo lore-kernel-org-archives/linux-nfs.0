@@ -1,127 +1,150 @@
-Received: from mail-pz2-f16.google.com (mail-pz2-f16.google.com [74.125.228.16])
+Received: from mail-ed1-f98.google.com (mail-ed1-f98.google.com [209.85.208.98])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A5A5C4EFFA2
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 15:42:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.228.16
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8C2DC5AA67C
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 16:25:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.98
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789659776; cv=none; b=m7F/IUfkBrNF4zz8fNj70AtG+u+Z0hkh7LifF1FaRmnlUay4+zmXqHGanGD9i1JV08y+e13ZtJoImRbMho0NSXcoadQA3E5eGywVxlY3+BxecBVaPnG8XK8ND63z5HDcY75T6X1O7/3E8HHQcGLIg5RmmAFGpoHuszYnvpSxf9w=
+	t=1789662338; cv=none; b=upSF93yoB7CLIKYeoHwIKIisJqJfPPApu23c4y/fuU7TjrJZBxsjs+d7FHnEff6JlirHmbAs/cKz2olXjYmD9bQGhokgKWIQDOX+9u9aKPjjBVdUcvIP+bbQC2uqTzoBbOdmy88wACKA1qteFUfY1Gv44/D+DCtbUIiFxBb7ouM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789659776; c=relaxed/simple;
-	bh=s8PAE+ZaFj8eyg+owEYEl1hVBrezOmbFFSE1op/JV4s=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=VAxO9LsCc7/TuXkrgo7eaewh8VijkKm3zCYp7cDqRXDnrdtEG9lEKgDLF1o2Of0MAYZ1DbYUq6xHcR8w1Nya/Bfqn19kPPoJADqfY6UuPKB5+hBD4HOgFxoGJNJacSMxpEufdPZzszN/GNYBmwu3Yh3hrygpIiRb/vd4mmONg+U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Mw4fWg2X; arc=none smtp.client-ip=74.125.228.16
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1789662338; c=relaxed/simple;
+	bh=rtvmHSWXSmxkuH2d1GtpV9D/iH6hOVoLVjJ/X0LT4VU=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=kaCDiQIznXIoHGr+bJzQ1GDb7Y8UBblgY9XJE+GPgSrGcn88Hux/r9e8zJ4u0obsPij6aDYz6jLciU2Gxb3uglw4+hhBon7T3QfgLq5W/oDlbjnsTd0N1IX/rgo4ZhGlX++VHPOi47CDMF0mfw7lTjROkySHjFtP4NYPWOeBODA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com; spf=pass smtp.mailfrom=everpuredata.com; dkim=pass (2048-bit key) header.d=everpuredata.com header.i=@everpuredata.com header.b=rc2gdHiX; arc=none smtp.client-ip=209.85.208.98
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=everpuredata.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Mw4fWg2X"
-Received: by mail-pz2-f16.google.com with SMTP id 41be03b00d2f7-cc4d2fe2056so654651a12.2
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 08:42:49 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=everpuredata.com header.i=@everpuredata.com header.b="rc2gdHiX"
+Received: by mail-ed1-f98.google.com with SMTP id 4fb4d7f45d1cf-6a9cb66f7b4so373630a12.3
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 09:25:36 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1789659767; x=1790264567; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:from:references
-         :cc:to:content-language:subject:user-agent:mime-version:date
-         :message-id:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=z3KrinycGZmbqioK98byaQi4edg0eDsQ+Sn682kLNTE=;
-        b=Mw4fWg2Xlb2jAnUkmbvcPd+rJzhTeK68pzkSfRvxcfjT2oJ4+I9CzkW9l6yx0s3Slw
-         6C7/r9Z/+L/p235Sqe4V1e4hHvZEYyg7JYILRRasxrHW9BRbfUPQ2EUWBXwP7YX+fKCW
-         VeDDadKZPqBsYr7+Hwd/8w8TZia+jHtFRLLtE5SWcDFQd0zri4VxTaN9tlMI0viRTQfW
-         K5zP4q7alNBElwjw4yzB1lqyE+mLVDOSsWrDKkJM2UPfdrqoY7rFNEQNlNU3ZNwn8PHb
-         wtaPEIySEiqBsYgNvFmyDKwYYoJHo8V9jQG5ashmlgCDg4nW+LxqZGrKJwo5lvJznWd6
-         fVmg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789659767; x=1790264567;
-        h=content-transfer-encoding:content-type:in-reply-to:from:references
-         :cc:to:content-language:subject:user-agent:mime-version:date
-         :message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+        d=everpuredata.com; s=google; t=1789662335; x=1790267135; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=z3KrinycGZmbqioK98byaQi4edg0eDsQ+Sn682kLNTE=;
-        b=E+eKMD7lhDzHxH1bUb8gUklMLzrPVadxwszMFpHcOAzf2zxnzLy+qYFSIAsD+9BrWC
-         nBmArj9SU4U3PCoD8bkADL5ANsm7PiEuGNshN0xjxmZV1JMVnC1wNeOtcavt72UOwHEb
-         wkB7q5Zju1xdmoF6YD+ZOoTZzlOP2TNNyRnD2szb8Ivo9eTGmUOtdlZsI/MaGHASGGV+
-         dptd5Y2KmJw65wCwTLUysJd463rCjq0cnJZpaJI+vzp/0Qbq851RYkBsIJ5AayxZYE/Z
-         E6VHbEJzYE2c+75jypXUIPnlrIwGZGEiwzcEgODOcYcPB4FVpk19NhiFDXqhcoEthgX4
-         q3DQ==
-X-Gm-Message-State: AFuF++lmV3euHJksxSqdyA6jFFAnXr+Y2ZujPR+Zsjx4yIsoGbujnMiI
-	0rvCx1MQd6HVIfma6ne9Gb4tm2P+BrYZ+sY1UsdgXV1uOkcbHNZqizdl
-X-Gm-Gg: AYBFou1XFfFZqVyO7e7VHp/O4xK6AKskKsQkNKIqxiS/Cdx7YD5cUbKakxbwIoCKH2U
-	6lVBpEgYZtpEoMGZzG20U6OsTIwPkyDq7OjljrPAZWL5cHi/hcwYleYY4TF5BcuNYd9eH6AX6kW
-	ItjXINpBVQaKgKF9aMm1rOFggyH8F7+2b7qtCX3bsxHnTKPweGMaJQG88ixKQWhSKTb3BdS5LyZ
-	AmtPUkvdSbjXP1LPT5J70C3SpZA5xT8oKVKNa343pXBOjmc0paVS/6PFmIdZ655jFL/Nv5czLa3
-	P3q/AHyVXp2fRdMPLeYWTeP+WdCuNgPDMp0jcFg+0jaWzb1+tyzhJI4K+IQnr0mSxOl++Li+wWw
-	6/cCJUF29Ov1wwJjc1Labe4KcdVUDyFHfKmKBKLjIUZS3SSsArboqVkPvyD5vQ8LepgaJNvEzDM
-	8N7N7R3EkDbnguSTsA4fisQW+yEX27q++B0brJZ3R6BPHIp+grq9NdEqcEe6mwwSPBP6LV8V3b6
-	KIUpeGBY0YTFGAwncq5aFLzTaRfuWSI8rgGlO1qBRqQiwze3QIStRuTZDJT7GX+lKdxZBZU
-X-Received: by 2002:a05:6a20:4313:b0:3d7:eb3e:1c58 with SMTP id adf61e73a8af0-3dd5f4347f1mr18179463637.8.1789659766483;
-        Thu, 17 Sep 2026 08:42:46 -0700 (PDT)
-Received: from ?IPV6:2600:1700:73d0:8030:9d35:65d8:492a:44f9? ([2600:1700:73d0:8030:9d35:65d8:492a:44f9])
-        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-cc50ab50407sm3473870a12.9.2026.09.17.08.42.45
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 17 Sep 2026 08:42:45 -0700 (PDT)
-Message-ID: <f3218169-f309-477a-b439-3d106debd053@gmail.com>
-Date: Thu, 17 Sep 2026 08:42:44 -0700
+        bh=cI+xjeNHVNst3t+SGlRsF85lt+goiabsbiUNU03nAKw=;
+        b=rc2gdHiXG4kPrPnZgypirmqXT1nL4csf38j8bCQRkSOXcFYvWHfcmvpsfwvpE0TvAu
+         eSiyLspLJKF8dPj1SLT+SPQHqqUmRYthPb5aVVo3bCr3PSR4foQbbCuCdzryl3AhDluW
+         uDziRHpEWKlm3yIGJfHd4YvA4fMjvk8rSJnNe68lUxo8fNQBhVeMet0vD83DxU1dPNMF
+         tfX2wDujjO5CDwd5uEH5aq3BklBmPh1v+c0ormFfRhN65hIDjbkiLPZMnxt1rOpsPW0R
+         DRNUNL7buAGH+XTD/nO88Jvk61QwIa+TFTvgcjbBRkOWVs+V8veoNLr3LodiV97m8O2F
+         harA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1789662335; x=1790267135;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=cI+xjeNHVNst3t+SGlRsF85lt+goiabsbiUNU03nAKw=;
+        b=hQsdK9+pKpn8ZcdO24sjFt/i94+TfWWWanX/lbTTzzPb1Af/S4iEyT9i1eSP66zXA7
+         GSp2JgMxA2SBUE8IhSplv5/jdh3B+djZycrAF7ueqPnmLKZMDlFpIZDAwdvNuDYup6Yy
+         RrAXv9/0yeYuGw9lSYvGohCiqNOL5gv0EX4s6Ptrs6RYxoJDY1KP8Rd0xZjKW/oJFOpK
+         hA6kCfQHphEatpIvRM/RvEn29BAQVCFb+ZsuKL7l1K4vH+cmb6F6WTVybST7mOkRtzBa
+         /h3QiffFs5nx2YBcl/Iddy/fe/YAbLeODwJI54c3fOAzZaKJQt8xWerP7CaDkTISGRb5
+         etsA==
+X-Forwarded-Encrypted: i=1; AKwUvByp4fI/k7H7Cwcuzd+gLc0thVJ8FCu9ov9IjDTHQ0UQYWrdgvwDTSD9xh/ECPTZ78UZOqt86UL/gvE=@vger.kernel.org
+X-Gm-Message-State: AFuF++kTtaeOXdlAiOIpwSbADo9FwHuFdiwjDvShU2LDaX/q2gRrjbbj
+	7TuV7X463LXY7NqCKxKb7Np7rvuRQFgfjSfUl/5XhTTTp7SmQg7DNP8okYS+k9+5ZixHmdsidEJ
+	cinxO/a1UoevTQCqmv2sQ0hD0xL1iKiWlxlU7
+X-Gm-Gg: AYBFou1sBodNdt8tDMyi+1oOxfdYoR+svff3L1vTNQDFHMf6QWmOuA+XqzZUkum6pIN
+	tgNi9GFmpUf/bKUYX83aQdbVKFEnv6iG0LfFPaeb/UmiJIkeuq328nu/ZD5S1NjzP40GdCeSPvf
+	wr6Dt6VqLimdQoG4RjDAhFWngW/Fo6B4JwmgDHUQZxLf+6uhr91LzmsB2SEtTNGT12cFm9ufXRy
+	ZX+rjaRWHxlgQgZx6RRm4C0ytTgkrCfuJAQnTYYh3suBmjjI7LFVrMy4jprDbY2JOxQNbLVmFi4
+	10EQZSipKx3AthGDwpXtgKZgfy6z4xW9D5/jsdMvjVMjaGhjcrz9suTXagHHe49ySrqjbJd7drM
+	TwGhXsjAaIxtYrhQ9L9OOBKL57UpB9AZX5DMFia4=
+X-Received: by 2002:a05:6402:24d4:b0:6a7:ee54:f897 with SMTP id 4fb4d7f45d1cf-6aa2244349emr4232275a12.27.1789662334673;
+        Thu, 17 Sep 2026 09:25:34 -0700 (PDT)
+Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.128])
+        by smtp-relay.gmail.com with ESMTPS id 4fb4d7f45d1cf-6aa1cf65559sm2670116a12.0.2026.09.17.09.25.34
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 17 Sep 2026 09:25:34 -0700 (PDT)
+X-Relaying-Domain: everpuredata.com
+Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
+	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id 1A53034014B;
+	Thu, 17 Sep 2026 09:25:33 -0700 (PDT)
+From: Tim Menninger <tmenninger@everpuredata.com>
+To: Harry Yoo <harry@kernel.org>
+Cc: linux-mm@kvack.org,
+	Chuck Lever <cel@kernel.org>,
+	linux-nfs@vger.kernel.org,
+	Jon Curley <jcurley@everpuredata.com>,
+	Eric Badger <ebadger@everpuredata.com>,
+	Vlastimil Babka <vbabka@kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Hao Li <hao.li@linux.dev>,
+	Christoph Lameter <cl@gentwo.org>,
+	David Rientjes <rientjes@google.com>,
+	Roman Gushchin <roman.gushchin@linux.dev>,
+	Peter Zijlstra <peterz@infradead.org>,
+	Ingo Molnar <mingo@redhat.com>,
+	Arnaldo Carvalho de Melo <acme@kernel.org>,
+	Namhyung Kim <namhyung@kernel.org>,
+	Mark Rutland <mark.rutland@arm.com>,
+	Alexander Shishkin <alexander.shishkin@linux.intel.com>,
+	Jiri Olsa <jolsa@kernel.org>,
+	Ian Rogers <irogers@google.com>,
+	Adrian Hunter <adrian.hunter@intel.com>,
+	James Clark <james.clark@linaro.org>,
+	linux-perf-users@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: Re: [SLUB] nfs_page cmpxchg_double_fail and perf lock perturbation on dual-socket NFS/RDMA
+Date: Thu, 17 Sep 2026 16:25:33 +0000
+Message-Id: <20260917162533.600472-1-tmenninger@everpuredata.com>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <aqvy8NqRRRmUlxjR@thinkstation>
+References: <aqvy8NqRRRmUlxjR@thinkstation>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: issues with Linux client pNFS
-Content-Language: en-US
-To: Anna Schumaker <anna@nowheycreamery.com>,
- Olga Kornievskaia <aglo@umich.edu>, Trond Myklebust <trondmy@hammerspace.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-References: <41ee5118-027b-4630-8f02-b3a67c61b328@gmail.com>
- <6880c031-3936-4ea1-86f2-5dc6050c9051@oracle.com>
- <ff747b30-2537-4ee0-b827-beb0b7c2b323@gmail.com>
- <ed2753a1-bf56-42f2-b13f-0de2711496de@app.fastmail.com>
-From: marc eshel <eshel.marc@gmail.com>
-In-Reply-To: <ed2753a1-bf56-42f2-b13f-0de2711496de@app.fastmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-Hi Anna,
+It reproduces with slab_nomerge.
 
-This fix is related to DELEGATION_RETURN only, I was trying to recall 
-all file layouts.
+I booted the same kernel with:
 
-Marc.
+    $ cat /proc/cmdline
+    ... slab_nomerge ...
 
-On 9/17/26 6:29 AM, Anna Schumaker wrote:
-> Hi Marc,
->
-> On Wed, Sep 16, 2026, at 6:30 PM, marc eshel wrote:
->> Hi,
->>
->> I was just trying pNFS recall any but it look like the NFS client
->> received but ignored the call, is that expected ?
->>
->> [287100.214040] NFS: RECALL_ANY callback request from 10.11.96.99
->> [287100.214073] nfs4_callback_recallany: exit with status = 0
-> Trond just had a patch the other day to fix an issue with CB_RECALL_ANY.
-> Any chance you're able to test it to see if it fixes your issue?
->
-> https://lore.kernel.org/linux-nfs/115e4102b1bab159c25e8e903070b55cc4de77eb.1789148631.git.trond.myklebust@hammerspace.com/
->
-> Thanks,
-> Anna
->> Thanks, Marc.
->>
->> On 9/16/24 1:33 PM, Anna Schumaker wrote:
->>> Hi Marc,
->>>
->>> On 9/16/24 4:27 PM, marc eshel wrote:
->>>> Hi,
->>>>
->>>> Who is the current maintainer of the Linux NFS client?
->>> That would be me and Trond.
->>>
->>>> I have an issue with the way pNFS client is distributing the reads among the DSs and I can provide the traces if anyone cares.
->>> What is the problem? And sure, send along the traces! I'll try to take a look as soon as I can.
->>>
->>> Anna
->>>
->>>> Thanks, Marc.
->>>>
+Uninstrumented throughput remains in the high-45 to low-46 GB/s
+range, as before. During perf lock it was around 30 GB/s in these
+runs, versus roughly 25 GB/s previously.
+
+The dominant lock measurements are essentially unchanged:
+
+                         default             slab_nomerge
+    unpinned/node0
+      contentions        4,782,839             4,858,759
+      total wait          14.39 min             14.26 min
+      average wait       180.47 us             176.13 us
+
+    node0/node0
+      contentions        4,582,012             4,686,729
+      total wait          14.13 min             14.34 min
+      average wait       185.05 us             183.53 us
+
+    unpinned/balanced
+      contentions        4,572,196             4,544,677
+      total wait          12.81 min             12.56 min
+      average wait       168.14 us             165.84 us
+
+The uninstrumented cmpxchg_double_fail deltas were:
+
+                         default     slab_nomerge
+    unpinned/node0          7,471          8,892
+    node0/node0               713            457
+    unpinned/balanced       1,503          1,504
+
+The CPU-utilization change while perf lock is active also remains.
+System-wide %idle for uninstrumented/instrumented windows was:
+
+                           default                  slab_nomerge
+                       uninstr.   instr.         uninstr.   instr.
+    unpinned/node0      31.46%    3.60%           23.02%    2.15%
+    node0/node0         84.26%   12.07%           84.62%   11.85%
+    unpinned/balanced   66.86%   14.83%           66.58%   14.78%
+
+Thanks,
+Tim
