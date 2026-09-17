@@ -1,161 +1,182 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from fhigh-b2-smtp.messagingengine.com (fhigh-b2-smtp.messagingengine.com [202.12.124.153])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F35B0547042;
-	Thu, 17 Sep 2026 20:04:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B8C538F65C
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 21:46:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.153
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789675465; cv=none; b=K76mRhy+FPntnRpprO9wrx2vUaq4eUMw3j18ac19tOezlO37ZLdt6T6FQ8jtGhcb4k8ARmQgIuVkYUj08dYRi8TKtS7BiPV0IDNLUbeItWbzzkkJeSI0IB4yzNwBT8+QACROAFUfE61hmaa88y9jcCJDjEyq19gYFa4eyorKs/I=
+	t=1789681577; cv=none; b=b7ftXAevo/F6cltj0sN9b+pUmbzW+4D5nZo7Q4eUVOJlBBdUgL/SG0pVzXFL6Cn7IIsJmKj467gU6Eu7Mk1o4XfsiB+F3Pp0/SibzchBonnKnbFJFBjuy+b3gP3jMHc23cl9Dp5FakXhR9N1zZd8x6csBOsTMB2il+DtndYil0c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789675465; c=relaxed/simple;
-	bh=Mr2SWEULNIyWKssATACvJHFK+HIf5bkG+CO21DBtg5M=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=LRloxDzdSP/kJVXuahPb0oH9pzfVk6mIw990qAQw/flVKBWUp/Rko7/IaHydUn4rfDBLcBJJ8uF6wTP9ENGCMc27Vpxqn4htDnlg4GA/fA6MDwMOy5INKiazfb8dJe5Jqyq6UP+RRXkmblgri5nwZJrMBick/STVD1lnuSlF8qg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jvWq7MPr; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789681577; c=relaxed/simple;
+	bh=ZNlgHe7rClBJ6TNFHIr44FBXelpYsaDy0deuc3Ame0I=;
+	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
+	 References:Date:Message-id; b=TqiGM31pDyYx+RILi3FZtkufgHt+Bapt+JH2nJRNx1MS9RtzYZO3U0GeEyNCK0OFuW8L6bmoq9E6MhAJ6UnmI0iIUtk4hjrjS3nei4ywaoWo337grte6UvzVlzsjSgTx9n41K1scH3FiZvvX293EKQCDXf5Wul5KKcbtHvG5hGE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=apdWoKv5; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=LQukZofW; arc=none smtp.client-ip=202.12.124.153
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jvWq7MPr"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D151B1F000FF;
-	Thu, 17 Sep 2026 20:04:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789675463;
-	bh=fzsN54GY0rHruAu/P7z9k5svS20PsIAJgVkPpUcXeWA=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=jvWq7MPrQFsqkF4lWQHn1mmYqZkKWtH+6i1hYvwLFOLoHbDSJqGz/dONI3N8xD2qN
-	 mIpjr2PMm8ZDF5CEfTf+z9YoMDm3o+W+VQAKK5Wfb7nub7mynEqe24YTQ4/XxR0nR4
-	 NuIacKhNprh8MRrGhawNKlsGN7YsnV4dIHbDzpzeHjLCpmZUuys8bNxPBgcIXvOLzs
-	 pFAnQXQNKWUfX5rtqvCYRZ4kEND1xcsFKE5CcjwqZeBV3e0IWRWZtQYFKSvF73UYPr
-	 Xa1kU0ofF1yqGQPHQyAi5cR/PMlZBpOPXrPaCho6QiVB+bK0PIMqyxmLv8JxSR7M1M
-	 UUbZzjmQvT3gw==
-Message-ID: <8e430ea8692853928f71d65f15654751a9888c4f.camel@kernel.org>
-Subject: Re: [PATCH] nfsd: Fix id-to-name cache entry leak in
- idtoname_parse()
-From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>
-Cc: Wentao Liang <vulab@iscas.ac.cn>, Dai.Ngo@oracle.com, akpm@osdl.org, 
-	chuck.lever@oracle.com, linux-kernel@vger.kernel.org,
- linux-nfs@vger.kernel.org, 	neil@brown.name, okorniev@redhat.com,
- tom@talpey.com, stable@vger.kernel.org
-Date: Thu, 17 Sep 2026 16:04:21 -0400
-In-Reply-To: <9cc180f6-f408-42f2-b143-e155df6f542a@slotpi15m67>
-References: <20260917163154.2162438-1-vulab@iscas.ac.cn>
-	 <f0ce5336a4062ff88775f81ba26726085dcb95a2.camel@kernel.org>
-	 <9cc180f6-f408-42f2-b143-e155df6f542a@slotpi15m67>
-Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
- keydata=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
- QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="apdWoKv5";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="LQukZofW"
+Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
+	by mailfhigh.stl.internal (Postfix) with ESMTP id 049327A01C4;
+	Thu, 17 Sep 2026 17:46:13 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-04.internal (MEProxy); Thu, 17 Sep 2026 17:46:14 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
+	cc:cc:content-transfer-encoding:content-type:content-type:date
+	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to; s=fm1; t=
+	1789681573; x=1789767973; bh=aFcs1MTRt5FfzyNe3wQe45a2saa/yhxatq/
+	+QvgPtsk=; b=apdWoKv56ggzstS4u3iTjKPespJUpPEaB8X1p+pIkLjl0x3+DdC
+	KYUy7JPvo4a8fH4ScORsudMCllOQvhrMPnUtjiyXV3/+ieS5DriUvw1e9zesa65T
+	z0ZSU2WcAiPCSYgArmEycScO/8BshRGDMeQmhhFpja0+MvHhUigTcdlUVftZtvDS
+	SvrzCdCTdgyKZpfDI6lZI5pVtkLQfPJ33E8Qos5fkS1eOFU5bPt+W3/aXpp9thaa
+	SHekNAiU4l8JoLhVQUunEpD8m0vwtWq5nKDSJRrUk6m63HR6IvOZju7MliT2/08o
+	IJprbKjWsO/O4shSjIDs+aQBzsX+ishrqKg==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1789681573; x=
+	1789767973; bh=aFcs1MTRt5FfzyNe3wQe45a2saa/yhxatq/+QvgPtsk=; b=L
+	QukZofW2xx3Tu4/0uuEyQXEjMGXdO46mMT4OUS704s38ubKVAeu1oJqLjhuFQX6Y
+	jeHS1m8sQs+3HZ3c9D17B79Z/UHjNkZx4M7CPgl+sDoOJawcjUm4oTfKur8haoWc
+	WiTashjSUFaVhraLd7ZHQ7KH9KFxwFsWG2+qiGiJ5+EtaHyAlwhI2X5Aq9HbCy6+
+	QspetSdgP/tAww/yh6FMgFcwSwGL/jrQb/I3JJpTXsH/X8qb1qmpplFZcCrEgthk
+	1SM1qkdosdVc0Xzk9QuRVUzT+fx2CaF0O3bDTC+IdWUO8SVFv/DxcmMUgTkE6UiY
+	ND7DQd5dgFMDq9akzkx/w==
+X-ME-Sender: <xms:pV-sagzaRkbfzBYvc1CTHHbgZDaCVrShx-LqL1BmQ9fDSvjbp5IAlQ>
+    <xme:pV-samij7_3-zGIZU5E7lhlWJ15926z57N44UmkSc2Il9xIh19aY2CpuQk9rvdwXN
+    l7RjBwARhWu4b1Repi8doVibvwM68c9uTgPQebzNICtRtuoybyu>
+X-ME-Received: <xmr:pV-saknf-yooQnAAnKkxq8-bqtxr17DYda9mnmpnEQONMOBJhirPyA7zeQuUOgW-KsTG9JkDMXSr9qpLuUNNpL1NiYAnsFU>
+X-ME-Proxy-Cause: dmFkZTEsLPNT7BWXIFqp8ln4h19aiSZnI7I3PEiCBsQ7PR7jKjqFtw0l3O54dWfXilAKzE
+    /7X+kldF3yutEruEYhYAE/QxU3mSptm/vau01OAvWvNZ6HC1eYfwJW2z04fSAN9/UabCdQ
+    b0RRP87ez8e1+R16WcgFRsy0rVUCq5zhV7yx32jsffaORBhYtS/m7K2Ifi4Y5s+uqGODIQ
+    B1JUjBVStraFgevcSVgHaXJMCLyuO04xiWGEeF0C4wMIxTqGsnCxM1kpYutN2n5iMcnjUq
+    K0y4LKCzaG2IRFf14HvHZhsL1CcxOEivs+EcxQB+AOTG+a8FUIjZo0a+B5dE8p6oAc5KXl
+    Zk4gButR+LB1bQJW2lswoux/g+dYBv7uU53aOeRqdMLkoI8Bh/CSiuc3RcCsaJNf0RCvxF
+    ojPosOwiWxO4S/Mq+hCMuu4NTTJuT0yJ+u6wzK+wOfzKcwtF0LRpgNx2F6Gx4clb9gavn/
+    Lw3aip3hqcIjAN8gdJn2gWSOTeoT4V3aV0Sf1JMSya4kPrHR9e5IxtuhQKskgQzW6zVC/z
+    UTMFQYJWLLDBFWH/Ak/9/TEseF4n3vvUmOHQl5eGoOzgoLKkVVk3DFaowOTLqx+Jwwc9Q+
+    NdtxzN5gbb16MJe4qh2P/yIwnjFEFhC24ya3kc6M4DB5hc9u2Epud6iibfDw
+X-ME-Proxy: <xmx:pV-sakgW1UsrSBZpLJb6jrlqtxsY4V0QMtBiVypeS6mG4utm_xb__Q>
+    <xmx:pV-sag0B1P1f8khjiY6RDGaET1wEJqHV7R4TEnNX6uRPMREeKKxEHw>
+    <xmx:pV-salKAfxzyNd17moh5Rr52dPa8XvPrN6REWt7v1WyAGnpFr63nJQ>
+    <xmx:pV-saoyqBYv7LeG7fCpa8Cjm51_VI_WfhNJWDaxU1cPml2BWyiIzEw>
+    <xmx:pV-sagO5IVCzt_npktG1PpNOTOCGR7qDJucdsFg87gbw82YnnywHp0bi>
+Feedback-ID: i9d664b8f:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA; Thu,
+ 17 Sep 2026 17:46:11 -0400 (EDT)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+From: NeilBrown <neilb@ownmail.net>
+To: "Chuck Lever" <cel@kernel.org>
+Cc: "Jeff Layton" <jlayton@kernel.org>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, "Rick Macklem" <rmacklem@uoguelph.ca>,
+ linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 00/11] Improve the scalability of NFSD's classic DRC
+In-reply-to: <4aa8dccd-256f-4f6a-8be3-dc832ffdaccf@app.fastmail.com>
+References: <20260914-duplicate-reply-cache-v4-0-bcf9d2628a94@kernel.org>
+  <178945353329.207413.1555757673936041397@noble.neil.brown.name>
+  <038f948f-64d7-434d-ae51-2e692c3b71b9@slotpi15m67>
+  <178959882426.207413.6596745257975294056@noble.neil.brown.name>
+  <4aa8dccd-256f-4f6a-8be3-dc832ffdaccf@app.fastmail.com>
+Date: Fri, 18 Sep 2026 07:46:07 +1000
+Message-id: <178968156727.207413.14622543870891027608@noble.neil.brown.name>
+Reply-To: NeilBrown <neil@brown.name>
 
-On Thu, 2026-09-17 at 14:53 -0400, Chuck Lever wrote:
-> On Thu, 2026-09-17 at 14:10 -0400, Jeff Layton wrote:
-> > Looks like we have the same bug later if idtoname_update() fails too?
->=20
-> I don't think so: when sunrpc_cache_update() fails to allocate the
-> replacement entry, it drops the reference on the old entry itself:
->=20
-> 	tmp =3D detail->alloc();
-> 	if (!tmp) {
-> 		cache_put(old, detail);
-> 		return NULL;
-> 	}
->=20
-> So that exit is already balanced.
->=20
-> > +out_put:
-> > +       cache_put(&res->h, cd);
-> >  out:
->=20
-> On the update failure path, res is NULL here, and cache_put()
-> dereferences it. A shared label would need the "if (res)" guard that
-> expkey_parse() uses.
->=20
-> A shared put label might be a reasonable clean-up, but for a fix
-> headed to stable, the two-line version Wentao posted looks OK
-> to me.
->=20
+On Fri, 18 Sep 2026, Chuck Lever wrote:
+> 
+> On Wed, Sep 16, 2026, at 6:47 PM, NeilBrown wrote:
+> > On Wed, 16 Sep 2026, Chuck Lever wrote:
+> >> On Tue, 15 Sep 2026, NeilBrown wrote:
+> >> > In any case, There is zero chance an NFS server will get a
+> >> > retransmission of an NFS request over TCP within 120 seconds unless the
+> >> > admin has significantly reduced the timeo / retrans options.
+> >> > So maybe there is no point caching these at all???
+> >> 
+> >> Agreed that 120 seconds serves nobody on TCP. But the retransmit that
+> >> matters arrives on a new connection, after a partition or a client
+> >> timeout, and by then the old connection's send buffer is gone. The
+> >> DRC is the only mechanism that can handle it.
+> >> 
+> >> 
+> >> > Or maybe once we get this more efficient pruning working, we can extend
+> >> > the lifetime for cached TCP replies to something potentially useful,
+> >> > like 15 minutes.  Or more.
+> >> 
+> >> That's the direction I would prefer to take. We spent a lot of effort
+> >> on the courteous server so NFSv4 state survives partitions that might
+> >> last hours. The DRC should cover the same window for NFSv3, if that is
+> >> at all feasible.
+> >
+> > Thanks - this is useful context and feeds into the design I think.
+> > Particularly the LRU and pruning.
+> >
+> > I imagine having 3 separate LRUs for cache entries.
+> > 1/ the current per-bucket LRU - entries on this are prune after
+> >    a timeout and when the size gets too big, exactly as present.
+> > 2/ a new per-xprt LRU which tracks all the request on that xprt
+> >    which are awating an ack.  Entries are removed when the ack 
+> >    arrives.  This means a per-xprt lock for the queue, and taking a per
+> >    bucket lock for each entry we need to remove.
+> >    When the xprt closes, everything needs to be moved to the third
+> >    queue.
+> > 3/ a second per-bucket LRU much like the first one but with a much
+> >    longer timeout - several hours.  This is where entries go when
+> >    the xprt is closed.  If a new request arrives which matches the
+> >    entry, it is moved to the relevant per-xprt LRU.  Probably it is
+> >    removed from this LRU, then added to the per-xprt one when it is
+> >    sent ... maybe.
+> >
+> > I had concerns about the changes you made to the LRU code - not a
+> > concrete sense of a problem, but more a sense that I couldn't understand
+> > what was happening enough to know if there was a problem.
+> > I think the above design, particularly keeping the old LRU as-is and
+> > adding new LRUs for new needs, addresses those concerns.
+> 
+> You're jumping ahead of me a little. The next series I have in
+> this area implements per-xprt DRCs for connected transports,
+> and it provides some of what you describe above.
+> 
+> So shall I post a v5 that includes that work, or do you think
+> merging the v4 work now (with adjustments) is acceptable?
 
-I stand corrected then re: the other bug. It might be nice to clean
-that up and make the refcounting more evident, but I agree that should
-wait for a later patch.
+I don't think the intermediate LRU makes any sense.
+The change to the eviction walk to only 4 times the maximum number to
+free is arbitrary and unjustified.
+I understand that for evicting acknowledged replies you need to move
+past unacknowledged replies (for another transport), and that you are
+cautious about walking the whole list because you don't have control of
+the length, but the "4 times" doesn't even seem like good intermediate
+solution, and certainly not a good final solution.
 
-You can add this:
+If you want to keep the per-xprt LRU for a separate series (and I
+understand the appeal of that), I would rather you leave the LRU alone,
+only adding the extra "acknowledged replies can be freed if you happen
+to find them" case without changing how the LRU is handled in general.
+The commit which adds this case would include a note that this will miss
+a lot of replies, but that future work will change the LRU.
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+The removal of the hard cap is, I think, independent of the other
+changes - is that right?  In that case I would probably put is first to
+make this clear.
+
+Thanks,
+NeilBrown
+
+
+> 
+> 
+> -- 
+> Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+> 
+
