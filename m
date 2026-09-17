@@ -1,41 +1,43 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 148A14FB9AB
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 11:56:40 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B85B4DAF8A
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2026 11:57:05 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789646204; cv=none; b=mV9Bpzn7Csr8UGbowIFtn6vcmaqtfK9ZZbZE5/PKY5N3kAGNfMr4dpL6vxogyHiaKKavhVlFW1BBz0GWf/4Bu/4mVz9+wkEmH1SfoDhkEIpsmPNBS/p7rfMKTou4vbcD6AbwyRet0P3s0LAxMcmn1rhpidIoDVdCRUtgrV9MJZM=
+	t=1789646241; cv=none; b=quLpukwm810uxbxIxqWUxjyVUhkD9iOXHBr3SN4mpiVd357CGPIkfmhLSn39XDlJSyhEDtLSJaqN0Q+nwfjvYEE30Y+80Hp9zrpmo46scrJKKmVHlptriz39Sh6CPz9/h+SsHiKSZ0AeuxZdplmpmbvQII1XZ2QUip8yyBJjfsM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789646204; c=relaxed/simple;
-	bh=vcxhLYE3SWSxiiBWnuspM0tjvj6Ba0/bRTKwUmaULbE=;
+	s=arc-20240116; t=1789646241; c=relaxed/simple;
+	bh=fIxTprHYq1CvLMrLB5SSZMk6rX5vx0FPz4tE3+2Jqoc=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=AjSvh6u60PldwaTN1PVViJf+LkOVSb3HparJKfDtvZPqHMhnlZAlFnkq5VTOlSk55THwT5Q66PIBIsiFPFxTKZK6TdTtRmyvHKzZVMY7181KUmox7VIFVo1AviuGQcLA2zcAi4DzSeQ2l/r5OgKJaIqiE2UHe+WzQQuqU244bSY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BepTqiwt; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=POimTtrv83buutTsBBm7ze1db2OhssWw28jrvTBWfGVYPNMOXwo9qwJ5mOz5JxsK5jHU7EBERpzjoXqsUJwLGlEu5kXXvuj9Fn2yzMmQnKskkbuzmkV0qcIsy9iU2hFFSQ3ipOgykRAfILFgrOR4YhF7aI/xO878Dv54CPtgJjM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=RnilGNUX; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BepTqiwt"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0B7101F0089C;
-	Thu, 17 Sep 2026 11:56:36 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="RnilGNUX"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A6D5E1F00893;
+	Thu, 17 Sep 2026 11:57:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789646197;
-	bh=fHMgQGOfv/MvLUjvxYJG0H2zZoaKjnuHQq4PrA5lO7E=;
+	s=k20260515; t=1789646223;
+	bh=mqXm4AZLQtmqOOw+aclrLwew7QEEOdklynLfv9mX3BA=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=BepTqiwtzkmTLkitUH6GnyNeOmL0Nex0CnVO6ujswhJ4vKXAunFot7HYBIdEb6U2f
-	 97YYqKbiVQaiu8kxcusNEX/kkyD2dbGkQhEeNiNIybevNon7l3dk1nMAvXpgClbhxZ
-	 1LwsYlZ2DSCMaD+LNW66x1iAC5H9TevrWK1HoF5O68ssnYSIv+ENO1fxUP0EddGhqq
-	 Y3oZmnXhbD5z5H6eNHojUS8XRRFeJWo9f7tscap2CVH+N0SYZHu/pXMcHwdCYTpObR
-	 vzjLjLffzSYQKUETokmzHgA6Abk+rnJVCaT8ZC/+i7LpmzQuv8Ui1lomKVoklxw23U
-	 FwQCHIqzvcHJA==
-Message-ID: <4edae19999311917fdc27b6a736a567bc6de249c.camel@kernel.org>
-Subject: Re: [PATCH v1 00/27] Convert server-side NFSv2 XDR to use xdrgen
+	b=RnilGNUX9atm8MtR7Jsw+gUNefdrWv4PWENTfIiyt1YiO06e9owtQzvtrahD0jbMm
+	 u67L2zBvwy2t+DgqpufXUz734cDE7yUWCwq5C8DxlfE47a1Kpf5VBeRlR6XPIVoT2t
+	 4X9isvr0MCFO+GDjQvPGYT8ZCwViqxj0NjqO7UXisrEgq103xVvphdoJ+ar9VdGIG4
+	 Gr7lT177gMjDH98VSaU5sEVZvAQ/R4KG3WmGdDrsLCIC3vNUj9Po2xnrhp68kuOeKB
+	 ENK03gsqXnLdkRoaY6yRKiy9Lkpr58Q/XmnKgsYPwNNnFmqKEmaHvvVn4JX4M8asI5
+	 N/7FQ+finQxaw==
+Message-ID: <f6d6664acd16535bd99e5227adcf631f75eff12e.camel@kernel.org>
+Subject: Re: [PATCH v1 1/2] NFSD: map fh_verify() status codes for NFS_ACLv2
+ replies
 From: Jeff Layton <jlayton@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
  Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
  Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Thu, 17 Sep 2026 07:56:35 -0400
-In-Reply-To: <20260916162859.2051-1-cel@kernel.org>
+Date: Thu, 17 Sep 2026 07:57:00 -0400
+In-Reply-To: <20260916162859.2051-3-cel@kernel.org>
 References: <20260916162859.2051-1-cel@kernel.org>
+	 <20260916162859.2051-3-cel@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -121,84 +123,89 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
 On Wed, 2026-09-16 at 12:28 -0400, Chuck Lever wrote:
-> Replace NFSD's NFSv2 XDR encoders and decoders with code that is
-> mechanically generated directly from the NFSv2 RPC language
-> specification.
+> The NFS_ACL v2 protocol shares its status code space with NFSv2,
+> which has no NFSERR_BADHANDLE and no NFSERR_NOFILEHANDLE. An
+> NFS_ACLv2 GETACL, SETACL, GETATTR, or ACCESS request that carries a
+> malformed or empty file handle gets a reply with status 10001 or
+> 10020, values the client cannot interpret.
 >=20
-> The benefits for NFSv2 are marginal. When we eventually convert
-> newer NFS versions to use xdrgen, I expect a reduction in human
-> coding errors, improved spec compliance, and better memory safety
-> for those more complex NFS programs.
+> Commit 1459ad57673b ("nfsd: Move error code mapping to per-version
+> proc code.") removed the version check from fh_verify() that turned
+> those codes into NFSERR_STALE for any version 2 program. The NFSv2
+> procedures gained nfsd_map_status() in exchange, but the NFS_ACL v2
+> procedures did not, so the unmapped status reaches the encoder.
 >=20
-> These patches have been lightly tested with fstests run against an
-> xfs export.
+> Add the same mapping to the NFS_ACL v2 procedures.
 >=20
-> Chuck Lever (27):
->   Documentation: Add the RPC language description of NFSv2
->   NFSD: Add infrastructure for generating NFSv2 XDR encoders and
->     decoders
->   NFSD: Use xdrgen-generated NFSv2 protocol definitions
->   NFSD: Remove '#include "xdr.h"' from fs/nfsd/xdr3.h
->   NFSD: Relocate the NFSv2 XDR storage union into nfsproc.c
->   NFSD: Use xdrgen XDR functions for the NFSv2 NULL procedure
->   NFSD: Use xdrgen XDR functions for NFSv2 GETATTR procedure
->   NFSD: Use xdrgen XDR functions for NFSv2 SETATTR procedure
->   NFSD: Use xdrgen XDR functions for the NFSv2 ROOT procedure
->   NFSD: Use xdrgen XDR functions for the NFSv2 LOOKUP procedure
->   NFSD: Use xdrgen XDR functions for NFSv2 READLINK procedure
->   NFSD: Use xdrgen XDR functions for NFSv2 READ procedure
->   NFSD: Use xdrgen XDR functions for the NFSv2 WRITECACHE procedure
->   NFSD: Use xdrgen XDR functions for NFSv2 WRITE procedure
->   NFSD: Refactor nfsd_proc_create()
->   NFSD: Use xdrgen XDR functions for NFSv2 CREATE procedure
->   NFSD: Use xdrgen XDR functions for the NFSv2 REMOVE procedure
->   NFSD: Use xdrgen XDR functions for the NFSv2 RENAME procedure
->   NFSD: Use xdrgen XDR functions for the NFSv2 LINK procedure
->   NFSD: Use xdrgen XDR functions for NFSv2 SYMLINK procedure
->   NFSD: Use xdrgen XDR functions for NFSv2 MKDIR procedure
->   NFSD: Use xdrgen XDR functions for NFSv2 RMDIR procedure
->   NFSD: Use xdrgen XDR functions for the NFSv2 STATFS procedure
->   NFSD: Use xdrgen XDR functions for NFSv2 READDIR arguments
->   NFSD: Add a streaming directory reader
->   NFSD: Refactor NFSv2 directory cookie encoding
->   NFSD: Use xdrgen XDR functions for NFSv2 READDIR results
+> Fixes: 1459ad57673b ("nfsd: Move error code mapping to per-version proc c=
+ode.")
+> Signed-off-by: Chuck Lever <cel@kernel.org>
+> ---
+>  fs/nfsd/nfs2acl.c | 18 ++++++++++++++++++
+>  1 file changed, 18 insertions(+)
 >=20
->  Documentation/sunrpc/xdr/nfs2.x    |  254 +++++
->  fs/nfs_common/common.c             |    5 +-
->  fs/nfsd/Makefile                   |   15 +-
->  fs/nfsd/nfs2acl.c                  |    2 +-
->  fs/nfsd/nfs2xdr_gen.c              | 1079 +++++++++++++++++++
->  fs/nfsd/nfs2xdr_gen.h              |   46 +
->  fs/nfsd/nfs3xdr.c                  |    2 +
->  fs/nfsd/nfsd.h                     |    2 -
->  fs/nfsd/nfserr.h                   |    2 +-
->  fs/nfsd/nfsfh.h                    |    5 +
->  fs/nfsd/nfsproc.c                  | 1574 +++++++++++++++++++---------
->  fs/nfsd/nfsxdr.c                   |  605 +++--------
->  fs/nfsd/vfs.c                      |  239 +++--
->  fs/nfsd/vfs.h                      |   40 +
->  fs/nfsd/xdr.h                      |  167 +--
->  fs/nfsd/xdr3.h                     |    3 +-
->  include/linux/nfs_common.h         |    4 +-
->  include/linux/sunrpc/xdrgen/nfs2.h |  298 ++++++
->  18 files changed, 3121 insertions(+), 1221 deletions(-)
->  create mode 100644 Documentation/sunrpc/xdr/nfs2.x
->  create mode 100644 fs/nfsd/nfs2xdr_gen.c
->  create mode 100644 fs/nfsd/nfs2xdr_gen.h
->  create mode 100644 include/linux/sunrpc/xdrgen/nfs2.h
+> diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+> index 0a5c444fef99..0673e83b6666 100644
+> --- a/fs/nfsd/nfs2acl.c
+> +++ b/fs/nfsd/nfs2acl.c
+> @@ -59,6 +59,20 @@ static const struct nfsd_access_maps nfsd2_access_maps=
+ =3D {
+>  	.other		=3D nfsd2_otheraccess,
+>  };
+> =20
+> +static __be32 nfsacld_map_status(__be32 status)
+> +{
+> +	switch (status) {
+> +	case nfserr_nofilehandle:
+> +	case nfserr_badhandle:
+> +		status =3D nfserr_stale;
+> +		break;
+> +	case nfserr_wrongsec:
+> +		status =3D nfserr_acces;
+> +		break;
+> +	}
+> +	return status;
+> +}
+> +
+>  /*
+>   * NULL call.
+>   */
+> @@ -123,6 +137,7 @@ static __be32 nfsacld_proc_getacl(struct svc_rqst *rq=
+stp)
+> =20
+>  	/* resp->acl_{access,default} are released in nfssvc_release_getacl. */
+>  out:
+> +	resp->status =3D nfsacld_map_status(resp->status);
+>  	return rpc_success;
+> =20
+>  fail:
+> @@ -181,6 +196,7 @@ static __be32 nfsacld_proc_setacl(struct svc_rqst *rq=
+stp)
+> =20
+>  out:
+>  	/* argp->acl_{access,default} are released in nfsaclsvc_release_setacl.=
+ */
+> +	resp->status =3D nfsacld_map_status(resp->status);
+>  	return rpc_success;
+> =20
+>  out_drop_lock:
+> @@ -207,6 +223,7 @@ static __be32 nfsacld_proc_getattr(struct svc_rqst *r=
+qstp)
+>  		goto out;
+>  	resp->status =3D fh_getattr(&resp->fh, &resp->stat);
+>  out:
+> +	resp->status =3D nfsacld_map_status(resp->status);
+>  	return rpc_success;
+>  }
+> =20
+> @@ -231,6 +248,7 @@ static __be32 nfsacld_proc_access(struct svc_rqst *rq=
+stp)
+>  		goto out;
+>  	resp->status =3D fh_getattr(&resp->fh, &resp->stat);
+>  out:
+> +	resp->status =3D nfsacld_map_status(resp->status);
+>  	return rpc_success;
+>  }
+> =20
 
-This all looks like a fairly sane and straightforward conversion, but
-it's too much to review in detail. It's almost a shame to do this at a
-time when we're talking about deprecating v2, but if it makes ongoing
-maintenance easier, then I'm on board.
-
-Also, there are 2 patches that were sent as part of this series, but
-seem to be a separate series:
-
-[PATCH v1 1/2] NFSD: map fh_verify() status codes for NFS_ACLv2 replies
-[PATCH v1 2/2] NFSD: map fh_verify() status codes for NFS_ACLv3 replies
-
-Did you mean to send those separately? In any case, for the 27-patch
-series:
-
-Acked-by: Jeff Layton <jlayton@kernel.org>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
