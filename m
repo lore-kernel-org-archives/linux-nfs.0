@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E5C1F35E943
-	for <linux-nfs@vger.kernel.org>; Fri, 18 Sep 2026 17:21:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98815511218
+	for <linux-nfs@vger.kernel.org>; Fri, 18 Sep 2026 17:21:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789752103; cv=none; b=JrfjnCie0iy7Bo0Jw8RkaCy8C8d7u18HI25NT45Uufm2pcuVcZTjmfsyPU+wUEtUY4VzFp2swaJ10ViMHB7Iz1cZvkRveBzELLsYJjKwLxwS67KeqcozEgDWvPtN1wDOkI+LuCNIsCJHZ90zn22kXYvHaNu9yWFpyFMykHucB60=
+	t=1789752099; cv=none; b=Ldu/K2l7h5O+Q3XCRviDlC0uWYM3I1bJaD9oFQetUFeD6i7GYn8FLhg4UgDAwZBgU6IEht7Glsd10w42bx8VEcfT3Mi7xwBnQSGWIyY+AOLLGLf8ryaaYljciPr1BINDsj4PpbA5yPJMABIR561ujsEFCQprZWlDgy9vLRCKVZ0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789752103; c=relaxed/simple;
-	bh=b48kdeVrrT/UuMq8JLl1fT2WIY6LkLvDKD3d8NgwdbQ=;
+	s=arc-20240116; t=1789752099; c=relaxed/simple;
+	bh=lzETcYgdv8qAlNqRE+PdLoz3oacLVTmtSH/D0Ph3FN4=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=UzI+Ds32vva2MQV0/XLt/YqHYteA/mpLuhwNNrH8TWf56J1GlyzJahi2nIF7XbTmyvP3s0T8pcpfbXpj872EqsEaiqBQRm3gUT0zEx2PKBdgslbE3MwyeTRWJ8wXnyRp9QGYtwzHqjRhAuaDSNxspA1DE3HfMU6buWcTZW/Oxho=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MI+V1/2f; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=ZmsaZ5ysYbmMoHrInNw+jMYDE9h8B0uI/7ZkeDNcHAvgQx2eoHEqXO7+pDG0wRN+7s/R9dfk68qm5ywpMgAMdSJiuxWjTHMK+qiOVvNO5xOfX3aLXmtIXKkP308M03Jb1PJw+/oNc23rpucQkpBEiriFWORd28yfDD6JTLHIpR4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=D+y6p5be; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MI+V1/2f"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B3CE41F008A1;
-	Fri, 18 Sep 2026 17:21:33 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="D+y6p5be"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 976A11F0089C;
+	Fri, 18 Sep 2026 17:21:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789752094;
-	bh=UciFuXHLpOdHcYvmIqtk0Bta3g72s7ZIv090r4OFHfc=;
+	s=k20260515; t=1789752090;
+	bh=o1aCYoBSvMc1L3cN+ndmCeHwG0EUEAv8Jy4Fe8E+zHE=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=MI+V1/2f415V/RONvlWDzPueRulDz5zahyZuKOsgE0TZd8WYTLTJaDppKOOQ+c1jM
-	 m6pjmPX990HZH6pGoLjeSWQA4chyfJfyWAj8py6BNSFQuiH5jBEALjSuuLcrKVvhuQ
-	 C4OGxLJ57leSXRneunl5c1NSWle7ADt4ghqUDbpSVxOmkzPBgceHPPCAXLHMiRjeL9
-	 /h8fzSrKb7ezFgL+QllMUbkD8VjaTki5v9nuwJ4AjKjyMh016kounD1K4W9uRKYy75
-	 S8Sv12Ie5Z3vvwLIZOb/6bZz2fn1F3BMdW8u/GBAQ6nxXlf3hEVoLgcZ0OeP3ioXfW
-	 eHorXsCAx0enA==
+	b=D+y6p5beiB2br2jCfG3o58hXNrKWUt/t7KNF/E2ihdxime09vmJsJECbDamxBZ/ch
+	 lpc5tNrHxJs7SvaEqW5rIFp68I2KaS15mmJrXWr6GQUaaGOFQA6RBrZBgacqge0V8j
+	 hGQaN4bOlU8yKDGalWOwTNmZBdIs2cEPhyYW+fEEXL+73Mj2SeM2SdZ/IDUOoe6DZx
+	 +G1AsQPe7XIIL2gxOz8lCYqgWXj2sVZRQgkinNF9y9JYwH83XxIOOavYbEBFwsaif6
+	 ag2ssnfRy2KyvM+cRYCCfeccRP/t7Pqelf4+SmZK+JpoUrW64ehpmlUaZOmuzu3rzq
+	 mX5/xG0rzQY+A==
 From: Chuck Lever <cel@kernel.org>
-Date: Fri, 18 Sep 2026 13:21:20 -0400
-Subject: [PATCH v5 08/11] SUNRPC: Publish TCP reply positions
+Date: Fri, 18 Sep 2026 13:21:15 -0400
+Subject: [PATCH v5 03/11] NFSD: Track transport in DRC entries
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +37,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260918-duplicate-reply-cache-v5-8-b6aba9ebf2f4@kernel.org>
+Message-Id: <20260918-duplicate-reply-cache-v5-3-b6aba9ebf2f4@kernel.org>
 References: <20260918-duplicate-reply-cache-v5-0-b6aba9ebf2f4@kernel.org>
 In-Reply-To: <20260918-duplicate-reply-cache-v5-0-b6aba9ebf2f4@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -46,115 +46,60 @@ To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
 Cc: Rick Macklem <rmacklem@uoguelph.ca>, linux-nfs@vger.kernel.org, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3814; i=cel@kernel.org;
- h=from:subject:message-id; bh=b48kdeVrrT/UuMq8JLl1fT2WIY6LkLvDKD3d8NgwdbQ=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqrXMWkvXV8ynsCXWkwl8cgjlB4RW5T35H7Uc8c
- t96lODcYVWJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaq1zFgAKCRAzarMzb2Z/
- l7aBD/sE1oymC7fGzM8RVuFbIPC5CYCM/Y+k3YQQpX6L14zOLyfrlBtMQFTp9EdsVkV0tBfaDbz
- 6OxuZlWPg0R9owsRxU2lM3eNqz1RteWboAhoGAYUlgMxfMQ9/0xJVoqpCp7bi9A+qhcYJTXeftR
- +iqN9i6IrOUofMO5VQZB8djwd3hq27BqOjZfe96IiKXG6qm+BHj6bRK1XwGdVVezItP1amCyCtP
- L0TUyj9RuemJfFPmsFGvX+kLuO6GNyQe0lUgsP03mCgGTk69RC3pHmru1GgeJynZvdohBxW5fnW
- DT1x92nFFZjI6Pj4KGbE6YKba5fN3UXowQU5W22ddzLpkaVxDPyjBWRgppH5ehXPzeVNNLQno2r
- vbUkRJsAjtwLcZdHTuqiwHVQ5MVjgk2h52P0uOPkq9rb7uy1aJ3ox/GnFD8Ed/HZrOIezQYd0Fb
- W47OTy8GVRNVpRjFcQZol4ha9UqMuE7LfnNwIUoyIe/lpUu4aEp0vOewQSINMRqERWd7Dkgfiq9
- ALJqNmI7OFD5Iln1Ii6gW4bVEIxYgCsAhNe4ilyi3ujsx0qKze3C7cjIemY4Z0R39xM1phorc3k
- NuUEWgkKuYI9Rtsce588pmaRPH4rB9AwwrrDpP4K4fj5i9vqBkvdTS69p3bdofTVJduTzUxrvjw
- K3uThEo/VrjwTUw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1241; i=cel@kernel.org;
+ h=from:subject:message-id; bh=lzETcYgdv8qAlNqRE+PdLoz3oacLVTmtSH/D0Ph3FN4=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqrXMWLXDK3yTBYTCO9fpw4eG7z3x38dQc3p4lz
+ +DUMxhZH/CJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaq1zFgAKCRAzarMzb2Z/
+ l52DEACmvEBYkWAgXbxSOOR0yoTx/7QyRzH5JJmLLX/Z7NYMTwMCX2TGDSbN4BorTB866g5nLu1
+ 9a8TxEfZ5r7Y198sr/+Ro2drvkK6zrxAVLBO9dnl4Uq3fpNmRSzzBYi55bwWARdObabNsCNaRiJ
+ uewscBOFbLRXZOngz4IAF6N2PNpv/i37ObY7Z2PktL4v1inyaQnOOgt1PMobySY6sXHwvHtNHRH
+ x655AZJhGeSfoWuoC1hxmrcqgPrCZFWHOAyq7/UYveLPy9szyi9IHKdV4EMtelEUC5xto7Azh4Y
+ WFpHcpIBd8V9wGy+8mH7iSB4yQm6V1/sHMKsL3dubTE3uM3MHXYZuJBlOLbE7b7cEjMqAkwe9P+
+ 4jyELtIza+HW9Slu+Ntq+z+5AwzN9ioxchl+VVS0Q+hzZrrjUg1WrRj4c6jVs9d/k77twGiP66F
+ P8eM/rvYt2c9vcmipPPN1gL0PWstSgU1Ryj+uptaX1scAW4TP3ICwKtgfn3UtxsVAeWxLHLkwYZ
+ HzosnKsE7/PzIcuGXpHVR1ApHftXWEcDx11wlMcybdaTEzqjD1v6wSFDsAflVBWtWar5RDd0R2o
+ SkfTWip4L5C+YXbTvmW2m4q7lV+NyDoHcSNHRktqII/VE1diuOBc5AkupXJFti9isbaiI9aczBE
+ gZo3nKwzTR3E2QQ==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-Add the svcsock side of reply-position reporting. A reply's position
-is the running count of bytes handed to the socket, kept per socket
-under xpt_mutex. A TCP sequence number cannot serve as the position:
-the 32-bit space wraps in a few hundred milliseconds at 40 GbE, and
-a duplicate reply cache entry lives for two minutes.
+A cached reply carries no record of the transport its request arrived
+on. Transport-aware eviction needs that association.
 
-The acknowledged position is derived from the socket's unacknowledged
-byte count, write_seq minus snd_una, after each successful send. The
-two are read without the socket lock, as tcp_ioctl() reads them for
-SIOCOUTQ: write_seq advances only under xpt_mutex, and a stale
-snd_una only lowers the result. Refreshing the position only in the
-send path means a consumer sees the acknowledgment state as of the
-previous reply on that connection, stale by one round trip but never
-ahead of the peer. A failed or refused send leaves rq_reply_pos at
-zero, so the reply is never reported as acknowledged.
-
-Under kTLS the socket counts ciphertext while svcsock counts
-plaintext, and tls_sw_sendmsg() can return the full plaintext count
-with part of a record still waiting for socket write space. The
-unacknowledged count then understates what the peer has yet to
-receive. Whether a record is pending is state private to net/tls, so
-a TLS session publishes no acknowledged position and its replies
-are retained for the full interval.
+Record the xprt id in each entry. struct nfsd_cacherep grows from 128
+to 136 bytes. No behavior change.
 
 Assisted-by: LLM
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- include/linux/sunrpc/svcsock.h |  3 +++
- net/sunrpc/svcsock.c           | 29 +++++++++++++++++++++++++++++
- 2 files changed, 32 insertions(+)
+ fs/nfsd/cache.h    | 1 +
+ fs/nfsd/nfscache.c | 1 +
+ 2 files changed, 2 insertions(+)
 
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 372a00882ca6..b6e0767de35a 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -41,6 +41,9 @@ struct svc_sock {
- 
- 	struct page_frag_cache  sk_frag_cache;
- 
-+	/* reply bytes handed to the socket; protected by xpt_mutex */
-+	u64			sk_send_pos;
-+
- 	struct completion	sk_handshake_done;
- 
- 	/* received data */
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index e5459d504b6a..b9bab3751e76 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1390,6 +1390,32 @@ static int svc_tcp_sendmsg(struct svc_sock *svsk, struct svc_rqst *rqstp,
- 	return ret;
+diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+index 3bc4856e34b8..589ffe4762d5 100644
+--- a/fs/nfsd/cache.h
++++ b/fs/nfsd/cache.h
+@@ -37,6 +37,7 @@ struct nfsd_cacherep {
+ 	unsigned char		c_state,	/* unused, inprog, done */
+ 				c_type,		/* status, buffer */
+ 				c_secure : 1;	/* req came from port < 1024 */
++	u64			c_xprt;		/* svc_xprt that carried req */
+ 	unsigned long		c_timestamp;
+ 	union {
+ 		struct kvec	u_vec;
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index d0f65cc9c07a..474bfeecde9e 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -112,6 +112,7 @@ nfsd_cacherep_alloc(struct svc_rqst *rqstp, __wsum csum,
+ 		rp->c_key.k_vers = rqstp->rq_vers;
+ 		rp->c_key.k_len = rqstp->rq_arg.len;
+ 		rp->c_key.k_csum = csum;
++		rp->c_xprt = rqstp->rq_xprt->xpt_id;
+ 	}
+ 	return rp;
  }
- 
-+/*
-+ * Bytes the socket has not seen acknowledged all belong to the most
-+ * recent replies, so sk_send_pos less that count is the acknowledged
-+ * position. write_seq advances only under xpt_mutex, which the caller
-+ * holds, and a stale snd_una only lowers the result.
-+ *
-+ * Under kTLS, tls_sw_sendmsg() can return the full plaintext count
-+ * with part of a record still waiting for socket write space, leaving
-+ * write_seq short of the reply. Whether a record is pending is private
-+ * to net/tls, so a TLS session publishes no acknowledged position.
-+ */
-+static void svc_tcp_update_acked(struct svc_sock *svsk)
-+{
-+	struct tcp_sock *tp = tcp_sk(svsk->sk_sk);
-+	u64 unacked, acked;
-+
-+	if (test_bit(XPT_TLS_SESSION, &svsk->sk_xprt.xpt_flags))
-+		return;
-+	unacked = READ_ONCE(tp->write_seq) - READ_ONCE(tp->snd_una);
-+	if (unacked >= svsk->sk_send_pos)
-+		return;
-+	acked = svsk->sk_send_pos - unacked;
-+	if (acked > atomic64_read(&svsk->sk_xprt.xpt_acked_pos))
-+		atomic64_set(&svsk->sk_xprt.xpt_acked_pos, acked);
-+}
-+
- /**
-  * svc_tcp_sendto - Send out a reply on a TCP socket
-  * @rqstp: completed svc_rqst
-@@ -1418,6 +1444,9 @@ static int svc_tcp_sendto(struct svc_rqst *rqstp)
- 	trace_svcsock_tcp_send(xprt, sent);
- 	if (sent < 0 || sent != (xdr->len + sizeof(marker)))
- 		goto out_close;
-+	svsk->sk_send_pos += sent;
-+	rqstp->rq_reply_pos = svsk->sk_send_pos;
-+	svc_tcp_update_acked(svsk);
- 	mutex_unlock(&xprt->xpt_mutex);
- 	return sent;
- 
 
 -- 
 2.55.0
