@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 44DE54EF15D;
-	Fri, 18 Sep 2026 14:05:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E26FC3A873C;
+	Fri, 18 Sep 2026 14:05:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789740339; cv=none; b=b27QkKCAI1LVwJ1IxHiH2H9sLKDaEhk29jwBY2dCAO+g28FIEjhRy0FOPkTYoBKVFKovvvonZrnRUKIHF+QAWbWBktYMrQWHYXIQ+IFxX/ytVf6+3uTfEQTVvyf8dO38kiJfnNnMr8wEzxVhEQtuVNFKS783qurUzGDYTttBkS0=
+	t=1789740341; cv=none; b=oyJjlcrhXiKyb+5k2VKfj2OJuN3rxrNHd3gD/Iuf5sHvw1qYKJZj1NZ+dajVAEZ8wcp1a6hPPepBQ6LSjdvI3mDyTORmZQbHsM02JsXqJHr8TRmyzLo0Ir5L3GVB6XH1PNeuqLPXxQge/K+1tazLJK9UShlg8HYXaNe9pUr+xEc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789740339; c=relaxed/simple;
-	bh=TzYJ1FZgG1Ma4e4lSEwYq8NmG/ZbP952XVkuDpDBCac=;
+	s=arc-20240116; t=1789740341; c=relaxed/simple;
+	bh=AbL+F1HyIi0v9a+uLESmSwQIwgMnTS8/MYAqfaYVCRI=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=onvJguUtYh/k6m4Fb6dbRbit1Fv+akUJiyewWIlI0wXl4sthymCr/xQbSYH4/54UASgjqWm+KTpLCzI9RPO81tn+tQ5J47ECD6D+gLary5xnCZhoN/BL724MyQvMC6B+HtGgW/vQdU9RHMYMzk1uoxQk6oHT/E2CJ1+6Z6jDLbw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UR5WnBj6; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=Dm1RBaxSVAxKY7iTieXmFlvtLo7Xiv12pHcOVQ4igpZP3BnYqtohOFU7TeVK+6VR3ImSxqP+jjPwWuXZVEeIFKvqAyqKnxrQKe0el1etEecXkTQAenksckaGLxpaBcknfPZqVJrVpLPEHb7VIbPMNQzj8blPrueIq2OsqEKxpZ4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=E3bGCspl; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UR5WnBj6"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7F3551F00898;
-	Fri, 18 Sep 2026 14:05:36 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="E3bGCspl"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 286821F000FF;
+	Fri, 18 Sep 2026 14:05:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789740337;
-	bh=Sj7NjMSsab8fPlZcvqTkEdnd36rHl0AjmJ/EhVsBjcs=;
+	s=k20260515; t=1789740339;
+	bh=RuGzpEeGZm5iLtjfuwZwIy6S7yHCQcuVrZ8PaQIHj4I=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=UR5WnBj6V5VrFZsNlw7QwB6TImlCbnrHRgarDKSut6MiC3CGvdJx8JAxjn18/R0rH
-	 l6Dk0Ki4OuVo10Bh208FySMaBbc8bUQvH1ctw8bOXLVeAnXbyDDFA3p+80AllT5eX+
-	 PlGJeZy0ho6tgYquCju5tY3oWvhyjywopx4m6E+SA3TboJ4QHygWOVnxjVOjM3ACPL
-	 ff7hMUADUxatQhM+N6bCftJjAsWIJl0XljA6vHkk7rLL75e3+0u3dREJHOOYUW3uQE
-	 LmX8TIU6y2KSJ26czFXkVMSyIEPbGH1Y/IbJjqva1upC+mxCtvSvd9i7T4ljgu4Sps
-	 z1db9t26m2DKg==
+	b=E3bGCsplIKTl0vJ7lXBt1nIteJtwkq6vuabOGErMawRKeWTTxdRZFYs6ZsL6qbC4K
+	 O0sRWCgvalz9izqsbRlI5ma1KNIoDnR7qCUdOjclEgJ9B7ecMHRnvOK8C1NMBMkjnW
+	 vNJ5pzKFHbjcPHDiJuyw7aM8TiYDn8SHykJahhIZKlkGXD47NoTulJ3GQBiFEE+FYS
+	 uf+rl4eGRZr/mJosz4C4HziIA/DENIetjCu79Wp4RwloR7wTcLXG9S/LINhggM0rs1
+	 3uBGvUaiDWN3hcnbHB8xPElJhaHKnMaZAqVI7VQfCV/2TFuo7Wo02tPix5rZE5tmlK
+	 N3jrwOqt2UWUA==
 From: Chuck Lever <cel@kernel.org>
-Date: Fri, 18 Sep 2026 10:05:18 -0400
-Subject: [PATCH RFC 3/5] SUNRPC: pass a keyring serial to the TLS handshake
+Date: Fri, 18 Sep 2026 10:05:19 -0400
+Subject: [PATCH RFC 4/5] NFS: name the namespace .nfs keyring in the x509
+ handshake
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260918-nfs-mtls-identity-v1-3-197e568d78a7@kernel.org>
+Message-Id: <20260918-nfs-mtls-identity-v1-4-197e568d78a7@kernel.org>
 References: <20260918-nfs-mtls-identity-v1-0-197e568d78a7@kernel.org>
 In-Reply-To: <20260918-nfs-mtls-identity-v1-0-197e568d78a7@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
@@ -52,103 +53,82 @@ Cc: linux-nfs@vger.kernel.org, keyrings@vger.kernel.org,
  kernel-tls-handshake@lists.linux.dev, netdev@vger.kernel.org, 
  linux-doc@vger.kernel.org, Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3044; i=cel@kernel.org;
- h=from:subject:message-id; bh=TzYJ1FZgG1Ma4e4lSEwYq8NmG/ZbP952XVkuDpDBCac=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqrUUrpQR3bmyfKTx4DgbiVoq1tzDRwSGtDz7+9
- kDCKCaCG8eJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaq1FKwAKCRAzarMzb2Z/
- l0wGD/4xtdmAG7KZ387AGVnbMfP3EuKf9LVLK+v48b/JDwgHip70FM8cBjpNYubQGOhL95sdNyo
- zv5iV044W375q5gH4DIsLRE3D2M4lC+eH0Itx0h+pXnRGuFYxRajUY5dxveQJSWMobCX6yF+qLQ
- 7HuD+B3Eo5jsPOHkCX/8VcLJn+Bo7VcQbziP8ishYbWCOurmfwk+RR4CbtKwdcHss77nBfqUtFz
- GlPqTTI4Gar6vX6qmZLP7iq+IjV4VaU4Sj2qndW9WMh9Y5rh8zsVSk8oUqpcJv6hfCfiFgzb/qC
- GTLwXLcKxbisOiPnECZaM5pPSqn6DdZfFH6ArFicxNkNgJDw1HEHvmVsSDLRnGFXlLUGSGqoOzi
- uRF7t5qAdIAK8Lmbhk4fb1EXCQ96wM+nj3nTDUnxBQr8wLDIe3QbSlbebuIsoi3PayOwKDkIpHV
- zvu9PkSNI5TC20TCoe7DU95muyZ2WLTMkuo7oWzNXyTM3YyeXR6/pN351/vJm06HCflnLQXK4Pd
- r4m+Fsz/kliXu0xvuuJabhZ7LRPTtXFswX5FEyPBavI71ReXakX+IPRqfmADIc9Iu519XJvvBHk
- cQfZAMHq7SBHYipCd8lR/AwUGWE+1NBUjymb1xvdjamAwpMNhw+cgDJU8FYfLZDCC6eusZA7l1D
- /G2UiGb/e6lgvdw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2004; i=cel@kernel.org;
+ h=from:subject:message-id; bh=AbL+F1HyIi0v9a+uLESmSwQIwgMnTS8/MYAqfaYVCRI=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqrUUr+h+AIWDV+2rXw53b9vljW+tGR6PkowVoY
+ wgByvuxfNiJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaq1FKwAKCRAzarMzb2Z/
+ l47nD/9+W93masR9JVGO8qQG3FbeLfke6BuG97QhNnC5C+LmETNjBEX2JwG9pe4r/B5b54YYYAD
+ y6l1EVRULQ/cncdKpyQvCKbJVUd+CwoHUNNY0cCQ3j+WCDQCsHiCLUtX5+YeN4TevRz+D1vUpbL
+ cNVMWNrO1MAb2XbNBBtyvC0pwp+Th/VrrOrEyMAs/2or1GfA26QXLEchyExxB76sipT3N4kXRtP
+ ZcsPvKey/AT42jFg93PLpZdRom9ZvwPzcT3Jl4doHz4HFme+tf0XFDFga6t/nwZi6z82ZoO2T4D
+ xsf8t0MJKVfp/TGNdARnAWgXfVX6dQDJW1SUrPhSwfvd7WDA9X2Xx3fi0DXEsH8Tq4SVArUMrAG
+ NbwsOc8PxMWKkHoK8I1+rKzw4xf1ZzAhy614+ch0AE1gP8oKgNdhWDumaGYWmcndl+iFPGk5T0H
+ g0ov6HBTNOoY3sMM8JB2rodHGaDdzi2dAtRqxSkrNFn+6D6jP6QLbjKuqX7K0KpuNQYUZCihiTI
+ Orksan3yagZFmAYqzOE+4b0CZxKasDR5zIa0WetSU2Yw9fufgX+6GIvVILA9GZOeT7faDGx+2qV
+ S968pczBG3ZIWShlJHJVzgKVRhp92Of50O84aF/oKo207rjSxzX2FXEME/y1oltnKGdrjeK5akP
+ JpNIfeOo7qo9F0Q==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-The handshake upcall links the keyring named in ta_keyring into
-tlshd's process keyring before tlshd reads the client certificate and
-private key. That link is how tlshd gains possession of keys that
-grant no user read permission. xprtsock never fills the field, so an
-x509 handshake can present only keys that tlshd's own credentials can
-read.
+Keys on the per-namespace .nfs keyring need not grant user read
+permission once tlshd possesses the keyring, but nothing tells tlshd
+which keyring to possess. An xprtsec=mtls mount can present only keys
+that tlshd's own credentials can read, and one namespace's keys are
+not isolated from another's.
 
-Add a keyring serial to struct xprtsec_parms and pass it to the x509
-handshake, so an RPC client can name the keyring that holds its
-credentials.
+Record the serial of the namespace's .nfs keyring in the nfs_client's
+xprtsec parameters under the x509 policy, so tlshd possesses that
+keyring when it reads the certificate and private key.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfs/fs_context.c         | 1 +
- fs/nfs/nfs3client.c         | 1 +
- fs/nfs/nfs4client.c         | 1 +
- include/linux/sunrpc/xprt.h | 1 +
- net/sunrpc/xprtsock.c       | 1 +
- 5 files changed, 5 insertions(+)
+ fs/nfs/client.c | 9 ++++++++-
+ fs/nfs/netns.h  | 7 +++++++
+ 2 files changed, 15 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/fs_context.c b/fs/nfs/fs_context.c
-index 1967de7d1dff..f8f5f8b2954e 100644
---- a/fs/nfs/fs_context.c
-+++ b/fs/nfs/fs_context.c
-@@ -1750,6 +1750,7 @@ static int nfs_init_fs_context(struct fs_context *fc)
- 		ctx->minorversion	= 0;
- 		ctx->need_mount		= true;
- 		ctx->xprtsec.policy	= RPC_XPRTSEC_NONE;
-+		ctx->xprtsec.keyring_serial	= TLS_NO_KEYRING;
- 		ctx->xprtsec.cert_serial	= TLS_NO_CERT;
- 		ctx->xprtsec.privkey_serial	= TLS_NO_PRIVKEY;
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 60386330aeec..bda1d19db527 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -191,6 +191,13 @@ struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
  
-diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-index 5d97c1d38bb6..c5d8278838b2 100644
---- a/fs/nfs/nfs3client.c
-+++ b/fs/nfs/nfs3client.c
-@@ -101,6 +101,7 @@ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
- 		.cred = mds_srv->cred,
- 		.xprtsec = {
- 			.policy = RPC_XPRTSEC_NONE,
-+			.keyring_serial = TLS_NO_KEYRING,
- 			.cert_serial = TLS_NO_CERT,
- 			.privkey_serial = TLS_NO_PRIVKEY,
- 		},
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index b661f446ea49..05df0fcabfb5 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -809,6 +809,7 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
- 		.cred = mds_srv->cred,
- 		.xprtsec = {
- 			.policy = RPC_XPRTSEC_NONE,
-+			.keyring_serial = TLS_NO_KEYRING,
- 			.cert_serial = TLS_NO_CERT,
- 			.privkey_serial = TLS_NO_PRIVKEY,
- 		},
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index a82045804d34..005730623f3b 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -145,6 +145,7 @@ struct xprtsec_parms {
- 	enum xprtsec_policies	policy;
+ 	clp->cl_principal = "*";
+ 	clp->cl_xprtsec = cl_init->xprtsec;
++	/*
++	 * Every client in a namespace names the same keyring, so
++	 * nfs_match_client() does not compare keyring_serial.
++	 */
++	if (clp->cl_xprtsec.policy == RPC_XPRTSEC_TLS_X509)
++		clp->cl_xprtsec.keyring_serial =
++			key_serial(nfs_net_keyring(clp->cl_net));
+ 	return clp;
  
- 	/* authentication material */
-+	key_serial_t		keyring_serial;
- 	key_serial_t		cert_serial;
- 	key_serial_t		privkey_serial;
- };
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 7f60723fa64d..2825dec82d6e 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2636,6 +2636,7 @@ static int xs_tls_handshake_sync(struct rpc_xprt *lower_xprt, struct xprtsec_par
- 			goto out_put_xprt;
- 		break;
- 	case RPC_XPRTSEC_TLS_X509:
-+		args.ta_keyring = xprtsec->keyring_serial;
- 		args.ta_my_cert = xprtsec->cert_serial;
- 		args.ta_my_privkey = xprtsec->privkey_serial;
- 		rc = tls_client_hello_x509(&args, GFP_KERNEL);
+ error_cleanup:
+@@ -549,7 +556,7 @@ int nfs_create_rpc_client(struct nfs_client *clp,
+ 		.version	= clp->rpc_ops->version,
+ 		.authflavor	= flavor,
+ 		.cred		= cl_init->cred,
+-		.xprtsec	= cl_init->xprtsec,
++		.xprtsec	= clp->cl_xprtsec,
+ 		.connect_timeout = cl_init->connect_timeout,
+ 		.reconnect_timeout = cl_init->reconnect_timeout,
+ 	};
+diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
+index da0854510404..c8ca7b989f4b 100644
+--- a/fs/nfs/netns.h
++++ b/fs/nfs/netns.h
+@@ -47,4 +47,11 @@ struct nfs_net {
+ 
+ extern unsigned int nfs_net_id;
+ 
++static inline struct key *nfs_net_keyring(struct net *net)
++{
++	struct nfs_net *nn = net_generic(net, nfs_net_id);
++
++	return nn->nfs_keyring;
++}
++
+ #endif
 
 -- 
 2.55.0
