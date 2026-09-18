@@ -1,132 +1,129 @@
-Received: from mail-oi2-f12.google.com (mail-oi2-f12.google.com [74.125.231.204])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 159AB4E780D
-	for <linux-nfs@vger.kernel.org>; Fri, 18 Sep 2026 12:21:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.204
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 27287313523
+	for <linux-nfs@vger.kernel.org>; Fri, 18 Sep 2026 12:52:46 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789734076; cv=none; b=K6iurGRIrm2qVHlfJxZETw+pvmf0k+U1cvkFYyJam4T07EW7qrpudoJPiiP2+uSl8vMxeEyTuSZgJLerMm6eSuBberrqj+pCYbynLME6FWNkQGQIeqpdF0fd/KR2v/Jv/zn/gbB0GKQn5yUGMR5lTCr55T05dARHtobszdDZdlI=
+	t=1789735969; cv=none; b=NbLD0yKfSUiotJmr3vpqI/6Ctvh4wIO3b14TqCzmkkgyOHZuSKduXScCF5Yl2HEE9DECQwN3CieShzKJiUgTEXReM06NbQQBrr+nZ9jCOD4lbdIZr9IXzutt3Tl/ZOYXerBwF1X9hYXqNunHv1+yjaMs/seWiPGF5WPdOFMgEoc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789734076; c=relaxed/simple;
-	bh=zuoLF5W+uDY0qQutkD3bwYk3HcfNK/EiZIQg2b0jnE8=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=g7INSiz5zpXi2fzOTotHQD04H8tRyIIfZOqsr/H5hA3QgAvBUvIN6B+HyWvT6PnZXyf/l07gR59SYWBQuev541LuJIIZMyB+3Ft0HNkx2rTZfUaIOdszuk3t+fxyeSp2qjpyTeW/7k1ejz1e31hFcusTBjSyf5ae+UQDj7PXsl0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=lcqj/GOH; arc=none smtp.client-ip=74.125.231.204
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	s=arc-20240116; t=1789735969; c=relaxed/simple;
+	bh=URL5OVHpVZmJeSxZOa6qP69E2VQXQ72G81+v0ms+TiQ=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=et60kHfvawcsgVfPdpLgAEqX2zO3RzW9tIi8fbRTF/MLc3Y169CgeU21JSb3uHxne/ljRw1nJRx4sWxpkWxN/A3M0GjWl3I3LmP9+qK2ofEhv/M9ZOmwcghSlrdDjo+fRVnQ3RrSF9Aj2NrmT/0ZJ71n/iSAqik+7KRg/WQOZz8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=JGkleZ/X; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="lcqj/GOH"
-Received: by mail-oi2-f12.google.com with SMTP id 5614622812f47-4bf948737e1so496447b6e.2
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Sep 2026 05:21:08 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1789734066; x=1790338866; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=iwKuCWDKd3wCYqVqgifkMtn0UvxWWU9Zbm+F4N6DVJQ=;
-        b=lcqj/GOHmAwx2zVMWB3ZW3zWXqks5U+KQsscEUecoT9RA00q8WMAmdr1/5seXDmghF
-         Z+FraZ8D7MYoJ04/uKWLWlgHBTj+CM/lifKTK5kE18ePbG0xgXo5XPwx0HC+TpETFDN+
-         ChC1pDJ+LKRHvLkuyesD2RdGeuQFgEezr5XPQc+an/ePiX2IQ3mWXDYPxHK/3LMRYntQ
-         GN26QoHzyS2EV/Wb3ogoLRR35Eeq5aAHEAyGp3LkcSQGrwGvywvsBp0XO+7t0WJB2Njl
-         3fSGW/sxYCMF+xv4DjdGmmMCJAL/oJ5AdwZ9Sactays91hT1PS5ASlZHiNVr66cMKI+E
-         CKMA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789734066; x=1790338866;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=iwKuCWDKd3wCYqVqgifkMtn0UvxWWU9Zbm+F4N6DVJQ=;
-        b=Jx8dTB5jSQGE9ifNnPkzml32U6UjUiHflejqkCcX26ePTWlSyIm532IDXWAQW7J5oE
-         paWceVyU5KH/lQiuKhBI31k7WFlgSmZRAvJqann8TLtuPT5OrwIbBl/TNBwxEE28ACtK
-         b+0F/aLmSjdNMLA9XmZ8XW5wws3oDP87FuOqK5klEdKUQ5iyeYUN558lezh7EuvUAMAp
-         7eghyKXKBwnsNhAusn9ZUviEGYk92zoNPAFB/xbPwuuAFA39nkhvxSUFLJxYK7w3AOSQ
-         iFyCKTrZQ/rGaoXQbEuE6g66o2V4XzvSM9G3ZE/ac7IGMCqU7QOElfyLzf1jgrugOYcz
-         H1xw==
-X-Gm-Message-State: AFuF++nokZd015x5Yr8p+sO1RS6AFXAz/n5cSDcmimHz+1gURazM3blB
-	or9wcRcmR488mfkZf8axq6JD/LU72zNegtavl1VrsedV4LMSnl4UmqhPwApI3oE++sA=
-X-Gm-Gg: AYBFou3j6EXncOLrguAW9o7yPo50EYyFimWQWLmMZOaQqmWUyMWq9EK874Fn3IcbjDN
-	2nQAzIhvg8WiwTbIiBUAe344G3RU1hASQ7DuvZzX1N+CzAAEpNq1+gALy0OC4QNZPgCCKun15Eq
-	MZCBo9Iy4zynKt8gMCOFaUv7zrZj6PmsphslnNa6PjI4DezL4APyvD91HnYH+DS+Dmo4tq1QbHQ
-	DhcxQdCIQDHsk5mT/pWCuIizqNbGHX3Js8K4HQeUPbw1tMCSenP1GXN+GN0CzN5F2Y4+xKOs5aE
-	HXpHO7ZO0Zd3Z/X7mKWOTXb8qN3c8yDm9OHmzZqYJ+tffgf9E9CPHFUFcHrET8An9lYLb+RO3v3
-	fj8AVlDM2loPGSKvjmqsWaN7YrHf/B0XHmGPEifBSAuD8Ufcc2Ayu7ocFUz/j8m8jx/7ghTvjeo
-	uPo+GB/Mlu1eyPA4iWZ4S0ZKZ3wVroM3YovuovN0MIS0Krw4ZiyWQ95gn8WekvanDh3jBzRGKSr
-	YNxlC2bvTS6ThXAszx/C3AmMMk8/6iZUlA=
-X-Received: by 2002:a05:6808:350b:b0:4c3:e608:ade6 with SMTP id 5614622812f47-4ccf71a4d99mr2229512b6e.18.1789734066043;
-        Fri, 18 Sep 2026 05:21:06 -0700 (PDT)
-Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-4cd6ab7d9d3sm883331b6e.18.2026.09.18.05.21.04
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 18 Sep 2026 05:21:05 -0700 (PDT)
-From: Benjamin Coddington <ben.coddington@hammerspace.com>
-X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	Mike Snitzer <snitzer@kernel.org>
-Subject: [PATCH 1/2] NFSv4/pnfs: Give the data server cache its own reference
-Date: Fri, 18 Sep 2026 08:21:01 -0400
-Message-ID: <037fabd833135d24ca8498e5fa8d6ff25a1c0383.1789733774.git.bcodding@hammerspace.com>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <cover.1789733774.git.bcodding@hammerspace.com>
-References: <cover.1789733774.git.bcodding@hammerspace.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="JGkleZ/X"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5B9D81F0089A
+	for <linux-nfs@vger.kernel.org>; Fri, 18 Sep 2026 12:52:45 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789735965;
+	bh=URL5OVHpVZmJeSxZOa6qP69E2VQXQ72G81+v0ms+TiQ=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=JGkleZ/XAhcExzcKZYi+/mjkmIUpIz7ElmkzDgJx4CsNxWHyEjCmMZYPHzZR42/L1
+	 b5RYJH4UGPjJnpZXK6W8pzvPo+v/PK/7jtfJaXnTKxjUgdQHkYCx7DoHkpnGC6uK3D
+	 ae17+c+gbueBcmUUX4ruz4UZWFkzqCOVee5dXOJnlW1MNrDD4yj44h0MbMk85mSxmw
+	 R1z1rbeZMkJgCLX+Ui0oQ5/a4ipfKl70ybCtC5qD7UUKu108ykC3Tw/Tk2TRVOL2X6
+	 okk6yUCZHNSs6U0LkKvTq8tu/2e+RntE+waOoGGxT9BnoJPceENrakgp0v3rZN1d62
+	 L60yoquFc5TXQ==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 75E0EF40066;
+	Fri, 18 Sep 2026 08:52:44 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Fri, 18 Sep 2026 08:52:44 -0400
+X-ME-Sender: <xms:HDStaren-s3mEd_C4H-zlsIV7JEzMAWsNt0EWptDbCnevV-pUJ_weA>
+    <xme:HDStasCmqhBZxfbT5fMCOzd8ZQICQjPEnR5TVCHaGzkkxB37RwDMoZXuc4aiznTKy
+    ouBiT5nxmiywQY_RVt4rDKO1EfYJJOMFM6YTS0VqpzqJT8b6IUrgfFN>
+X-ME-Proxy-Cause: dmFkZTE33gkw3iy7iQIBCYo/4ICHCmC2a6ZnNhVNSgX+77E2Uj/vrbLC26dFdd/ArqndTg
+    18tA+eunGD5VmfGGlJsxv59olllHR07FZNc3vw2mLaXz+nQ67UeJeidhrUUyNBO55TmjC5
+    KriJMJE8kUsxN4SAWbdC/G1fukpWQ8unoeojVJgtd1S9dYwELM/e7JyM4K1eHTgNcdBs9V
+    52JO6rS5Yx6+dT7jjEIhLlMfkhqEerhk+CQ1qd4RJrfcqoEVGY8tuNbwhTnZu0WwSfoAch
+    76OZjH5gAiEI1IS8DfLQXk2GnMjcA5T8FpYzh8Q867ci9Rw4Obhj2fgQi4/J1uX2o+kuK+
+    A8KHlAKLsFhm0xZGCcF1swPp1pOw7kY3dIHj+QSCte1x5VZLKLiV4NOVYzRCDzbnu7sccH
+    VmMnbRvo5Hzn9qsDAk/sCiPGlsElurIXIbUB4cL0/HgpUJK7/aKF8IBM7RUrtAZtvT3NCl
+    YXZNIz/A9SONwdQtYIkZG2SxX5tLLhsdtJKLYw3m3SjsJiaQz14eCWwm0iIjmuXlbD+z8a
+    Xxa1KfnQyh/QtZWrbljpOxWJktNwhY6dOHq+TUIt0hyOS9Hvu4QhUCaWQLkBIsoJkt+pSU
+    zHgLE5qoPdGVZOivcNXsWXXCxLII0x07Prj9bSOCULKTsgClyNXANxctlMew
+X-ME-Proxy: <xmx:HDStanB6YYkI6hbuTGcK5Qe6mH2txNhmFslQE2VTFJQhu9MIKnPorQ>
+    <xmx:HDStatpCUxyKrL-xL6K03kxspFiMWzxFQ6P_NgEFJpl6TUOWGh0hNg>
+    <xmx:HDStaqhcTvhbVdkzBWQUPipFPLZqKeyLQpouoQwPflVsRkEShMZ9nQ>
+    <xmx:HDStaiAkq56nvhGkte7O1T85C4nBLKBiJa2kUQUsXhguLHpVOT-dDQ>
+    <xmx:HDStanEvvcxnymQyPheDXK_z1uKVUMW8PEufV3S8Ix3iuciPRXbLXGvD>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 5770A780070; Fri, 18 Sep 2026 08:52:44 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-ThreadId: AMlZhD_SRtH7
+Date: Fri, 18 Sep 2026 08:52:17 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Sirisha Mylavarapu (she/her)" <smylavarapu@everpuredata.com>,
+ linux-nfs@vger.kernel.org
+Cc: cgroups@vger.kernel.org
+Message-Id: <b5fbd385-383c-4497-a927-b86565dac9c9@app.fastmail.com>
+In-Reply-To: 
+ <CABc6Dy5mvvCSECx2z+-L1q6FpQGO_hQfoLaS6vtpWVud6+8zbA@mail.gmail.com>
+References: 
+ <CABc6Dy5mvvCSECx2z+-L1q6FpQGO_hQfoLaS6vtpWVud6+8zbA@mail.gmail.com>
+Subject: Re: cgroup v2 io.max throttling works for NFSd reads but not writes
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-Prepare the DS cache to allow data servers to outlive their layout
-references.  Take a reference for the cache itself.  An entry is created
-with a count of two, one for the caller and one for the cache, so a count
-of one now means it is still hashed with no users left.
 
-Entries are still torn down at exactly the same point as before; only
-the bookkeeping changes.
 
-Assisted-by: Claude:claude-opus-5
-Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
----
- fs/nfs/pnfs_nfs.c | 15 +++++++++++----
- 1 file changed, 11 insertions(+), 4 deletions(-)
+On Wed, Sep 16, 2026, at 2:59 AM, Sirisha Mylavarapu (she/her) wrote:
+> Hi,
+>
+> I have been experimenting with cgroup v2 io.max throttling for NFSd on
+> kernel 7.0.0-14-generic (Ubuntu 26.04) and I wanted to share results
+> and ask for recommendations.
+>
+> Goal: Throttle NFS server I/O bandwidth using cgroup v2 io.max by
+> placing nfsd kernel threads in a dedicated cgroup, to limit block
+> device I/O performed by the NFS server.
+>
+> Setup:
+>
+> -NFSd direct I/O mode enabled via debugfs (io_cache_read=3D2, io_cache=
+_write=3D2).
+> -All 16 [nfsd] kernel threads moved to a dedicated cgroup
+> (system.slice/nfsd.slice)
+> -io.max throttle set to 50 MB/s on underlying block device (sdb,64GB
+> disk, major:minor 8:16).
+> -NFS export mounted locally via loopback for testing.
+> -fio used for benchmarks
+>
+>
+> Results:
+> Read throttling works as expected, consistently capped at 50 MB/s.
+> Write throttling doesn't work regardless of io_cache_write mode(tried
+> DIRECT=3D2 and DONTCACHE=3D1).
+>
+> Root cause (as I understand it): The NFS client buffers writes in the
+> local page cache and returns immediately to the application. The
+> actual disk write happens asynchronously, so the application never
+> waits for data to reach disk =E2=80=94 meaning the throttle does not p=
+rovide
+> backpressure to the writer even when the nfsd cgroup's io.max is
+> active.
+>
+> Questions:
+> 1. Is NFSd write throttling via cgroup v2 io.max a known limitation?
+> Is there active upstream work to address this?
+> 2. Are there any known workarounds or recommended approaches to
+> achieve NFS write I/O throttling at the server side?
+>
+> Any pointers to upstream patches or LKML threads would be appreciated.
 
-diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index 7adb6f941cf2..6d6a4d05d13e 100644
---- a/fs/nfs/pnfs_nfs.c
-+++ b/fs/nfs/pnfs_nfs.c
-@@ -713,11 +713,18 @@ void nfs4_pnfs_ds_put(struct nfs4_pnfs_ds *ds)
- {
- 	struct nfs_net *nn = net_generic(ds->ds_net, nfs_net_id);
- 
--	if (refcount_dec_and_lock(&ds->ds_count, &nn->nfs4_data_server_lock)) {
--		hlist_del_init(&ds->ds_node);
-+	spin_lock(&nn->nfs4_data_server_lock);
-+	refcount_dec(&ds->ds_count);
-+	if (refcount_read(&ds->ds_count) > 1) {
- 		spin_unlock(&nn->nfs4_data_server_lock);
--		destroy_ds(ds);
-+		return;
- 	}
-+	hlist_del_init(&ds->ds_node);
-+	spin_unlock(&nn->nfs4_data_server_lock);
-+
-+	/* The cache's reference is the last one */
-+	if (refcount_dec_and_test(&ds->ds_count))
-+		destroy_ds(ds);
- }
- EXPORT_SYMBOL_GPL(nfs4_pnfs_ds_put);
- 
-@@ -803,7 +810,7 @@ nfs4_pnfs_ds_add(const struct net *net, struct list_head *dsaddrs, u32 version,
- 		INIT_LIST_HEAD(&ds->ds_addrs);
- 		list_splice_init(dsaddrs, &ds->ds_addrs);
- 		ds->ds_remotestr = remotestr;
--		refcount_set(&ds->ds_count, 1);
-+		refcount_set(&ds->ds_count, 2);
- 		INIT_HLIST_NODE(&ds->ds_node);
- 		ds->ds_net = net;
- 		ds->ds_clp = NULL;
--- 
-2.53.0
+I have a to-do to look at constraining memory consumption with
+cgroups, but nothing involving I/O bandwidth. As far as I am
+aware, you are now the owner of this topic.
 
+
+--=20
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
