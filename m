@@ -1,129 +1,138 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 27287313523
-	for <linux-nfs@vger.kernel.org>; Fri, 18 Sep 2026 12:52:46 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A4A423A873C;
+	Fri, 18 Sep 2026 14:05:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789735969; cv=none; b=NbLD0yKfSUiotJmr3vpqI/6Ctvh4wIO3b14TqCzmkkgyOHZuSKduXScCF5Yl2HEE9DECQwN3CieShzKJiUgTEXReM06NbQQBrr+nZ9jCOD4lbdIZr9IXzutt3Tl/ZOYXerBwF1X9hYXqNunHv1+yjaMs/seWiPGF5WPdOFMgEoc=
+	t=1789740335; cv=none; b=p+cJdR9qYE6+J7kWip0xVYX1zvKmMpghCkOY23nN37uXxL9YN895sWqM8zd4FmU60CuJwjqFRu40F6DuFblHHUxLCDLQI8I0k/dkmvEWQ6UiCBu+u4MS1FuItsY/v0R8/j3mDqRAEA7A/h5qPuGp3HJ6eLXcPYUwEv8zvuGnHfw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789735969; c=relaxed/simple;
-	bh=URL5OVHpVZmJeSxZOa6qP69E2VQXQ72G81+v0ms+TiQ=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=et60kHfvawcsgVfPdpLgAEqX2zO3RzW9tIi8fbRTF/MLc3Y169CgeU21JSb3uHxne/ljRw1nJRx4sWxpkWxN/A3M0GjWl3I3LmP9+qK2ofEhv/M9ZOmwcghSlrdDjo+fRVnQ3RrSF9Aj2NrmT/0ZJ71n/iSAqik+7KRg/WQOZz8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=JGkleZ/X; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789740335; c=relaxed/simple;
+	bh=Bcwy+E6Oi4b2berfQyScAitGGyv5fqsNPnDcrsX0nZM=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=T4gwm4YC2PNDJsWhBHPazH4JrRtxBeG0YR2U2sh8KJb3xg9eJsk17lSSSoEISxFY+vqZiIf5ksVgnSQ4tYNwFb5UecDEcvQh+1vlGsecNDxP1b4U2sq8JjFFLwJpgDt99Ai4FwhW2LIXFMRFjM7rahX8RIP4vEsYpwKh6PNPNns=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LnTkSueR; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="JGkleZ/X"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5B9D81F0089A
-	for <linux-nfs@vger.kernel.org>; Fri, 18 Sep 2026 12:52:45 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LnTkSueR"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 98B6E1F000FF;
+	Fri, 18 Sep 2026 14:05:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789735965;
-	bh=URL5OVHpVZmJeSxZOa6qP69E2VQXQ72G81+v0ms+TiQ=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=JGkleZ/XAhcExzcKZYi+/mjkmIUpIz7ElmkzDgJx4CsNxWHyEjCmMZYPHzZR42/L1
-	 b5RYJH4UGPjJnpZXK6W8pzvPo+v/PK/7jtfJaXnTKxjUgdQHkYCx7DoHkpnGC6uK3D
-	 ae17+c+gbueBcmUUX4ruz4UZWFkzqCOVee5dXOJnlW1MNrDD4yj44h0MbMk85mSxmw
-	 R1z1rbeZMkJgCLX+Ui0oQ5/a4ipfKl70ybCtC5qD7UUKu108ykC3Tw/Tk2TRVOL2X6
-	 okk6yUCZHNSs6U0LkKvTq8tu/2e+RntE+waOoGGxT9BnoJPceENrakgp0v3rZN1d62
-	 L60yoquFc5TXQ==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 75E0EF40066;
-	Fri, 18 Sep 2026 08:52:44 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Fri, 18 Sep 2026 08:52:44 -0400
-X-ME-Sender: <xms:HDStaren-s3mEd_C4H-zlsIV7JEzMAWsNt0EWptDbCnevV-pUJ_weA>
-    <xme:HDStasCmqhBZxfbT5fMCOzd8ZQICQjPEnR5TVCHaGzkkxB37RwDMoZXuc4aiznTKy
-    ouBiT5nxmiywQY_RVt4rDKO1EfYJJOMFM6YTS0VqpzqJT8b6IUrgfFN>
-X-ME-Proxy-Cause: dmFkZTE33gkw3iy7iQIBCYo/4ICHCmC2a6ZnNhVNSgX+77E2Uj/vrbLC26dFdd/ArqndTg
-    18tA+eunGD5VmfGGlJsxv59olllHR07FZNc3vw2mLaXz+nQ67UeJeidhrUUyNBO55TmjC5
-    KriJMJE8kUsxN4SAWbdC/G1fukpWQ8unoeojVJgtd1S9dYwELM/e7JyM4K1eHTgNcdBs9V
-    52JO6rS5Yx6+dT7jjEIhLlMfkhqEerhk+CQ1qd4RJrfcqoEVGY8tuNbwhTnZu0WwSfoAch
-    76OZjH5gAiEI1IS8DfLQXk2GnMjcA5T8FpYzh8Q867ci9Rw4Obhj2fgQi4/J1uX2o+kuK+
-    A8KHlAKLsFhm0xZGCcF1swPp1pOw7kY3dIHj+QSCte1x5VZLKLiV4NOVYzRCDzbnu7sccH
-    VmMnbRvo5Hzn9qsDAk/sCiPGlsElurIXIbUB4cL0/HgpUJK7/aKF8IBM7RUrtAZtvT3NCl
-    YXZNIz/A9SONwdQtYIkZG2SxX5tLLhsdtJKLYw3m3SjsJiaQz14eCWwm0iIjmuXlbD+z8a
-    Xxa1KfnQyh/QtZWrbljpOxWJktNwhY6dOHq+TUIt0hyOS9Hvu4QhUCaWQLkBIsoJkt+pSU
-    zHgLE5qoPdGVZOivcNXsWXXCxLII0x07Prj9bSOCULKTsgClyNXANxctlMew
-X-ME-Proxy: <xmx:HDStanB6YYkI6hbuTGcK5Qe6mH2txNhmFslQE2VTFJQhu9MIKnPorQ>
-    <xmx:HDStatpCUxyKrL-xL6K03kxspFiMWzxFQ6P_NgEFJpl6TUOWGh0hNg>
-    <xmx:HDStaqhcTvhbVdkzBWQUPipFPLZqKeyLQpouoQwPflVsRkEShMZ9nQ>
-    <xmx:HDStaiAkq56nvhGkte7O1T85C4nBLKBiJa2kUQUsXhguLHpVOT-dDQ>
-    <xmx:HDStanEvvcxnymQyPheDXK_z1uKVUMW8PEufV3S8Ix3iuciPRXbLXGvD>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 5770A780070; Fri, 18 Sep 2026 08:52:44 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1789740333;
+	bh=6poMYmfx2QCRu6OebYOQVuSs9AtiKnZz0sS56fkFvHI=;
+	h=From:Subject:Date:To:Cc;
+	b=LnTkSueRiZtJazx9N12EVScAkE9TOYSRbcSMyLVtqpVFDomLjrkXKXqwB51ooB/PY
+	 3S/rIV6sXHh9BIGOF2ENXBrt8MMuZ0jqF0AZcLmv0dNG2vEzXGELqH6+KYrJftn4g/
+	 AJY6HNrBn5LMYacAIc1Foua767Uj4lnFab/uw9EbL8TSacpKoVQ7CuzeCjYGJFOfqB
+	 +86sqi0a1TCwapaLe2NMt4zB2fif8PR9kvkNqoutUsey0ZTv/S+M+B2lsfp7ajtHql
+	 ntw0XJR0K5Dn3XC3S10Vi6r9XANmBNimsML2zVtzf1ehBi8JDy9S7k0LMpzO2NfZus
+	 EarewJPihl3sw==
+From: Chuck Lever <cel@kernel.org>
+Subject: [PATCH RFC 0/5] NFS: isolate mTLS client credentials by network
+ namespace
+Date: Fri, 18 Sep 2026 10:05:15 -0400
+Message-Id: <20260918-nfs-mtls-identity-v1-0-197e568d78a7@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AMlZhD_SRtH7
-Date: Fri, 18 Sep 2026 08:52:17 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Sirisha Mylavarapu (she/her)" <smylavarapu@everpuredata.com>,
- linux-nfs@vger.kernel.org
-Cc: cgroups@vger.kernel.org
-Message-Id: <b5fbd385-383c-4497-a927-b86565dac9c9@app.fastmail.com>
-In-Reply-To: 
- <CABc6Dy5mvvCSECx2z+-L1q6FpQGO_hQfoLaS6vtpWVud6+8zbA@mail.gmail.com>
-References: 
- <CABc6Dy5mvvCSECx2z+-L1q6FpQGO_hQfoLaS6vtpWVud6+8zbA@mail.gmail.com>
-Subject: Re: cgroup v2 io.max throttling works for NFSd reads but not writes
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMywrCMBBFf6XM2kBSQ31sBT/ArbhI0okdsalkR
+ lFK/91El+dw75mBMRMy7JsZMr6IaUoFzKqBMLh0RUV9YWh12+md2agUWY1y5+IxCclHaRuMjV1
+ c220P5ffIGOn9a57hdDzA5S/56W8YpNbqzDtG5bNLYahqdCyYYVm+WtrzkZMAAAA=
+X-Change-ID: 20260917-nfs-mtls-identity-04c14f6f348d
+To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>, 
+ Christian Brauner <brauner@kernel.org>, David Howells <dhowells@redhat.com>, 
+ Sagi Grimberg <sagi@grimberg.me>
+Cc: linux-nfs@vger.kernel.org, keyrings@vger.kernel.org, 
+ kernel-tls-handshake@lists.linux.dev, netdev@vger.kernel.org, 
+ linux-doc@vger.kernel.org, Chuck Lever <cel@kernel.org>
+X-Mailer: b4 0.16-dev-da966
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3117; i=cel@kernel.org;
+ h=from:subject:message-id; bh=Bcwy+E6Oi4b2berfQyScAitGGyv5fqsNPnDcrsX0nZM=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqrUUh2otE4UaTM/4UNJvbzhYbfEh/zl+1BjUur
+ mLLDfM8QIWJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaq1FIQAKCRAzarMzb2Z/
+ l1VBEACkGjBjcvS+UuHhBY7gD+YJfo1EWWJzk9olQk61PsAcxYmhEg93mXosFxeiQr8dn7UfaMA
+ e2Xp4qNzcDoqNC0PbeYZQ+B5w0dDp744+PEewcdazX8ToJ7+6PuHVvgUe5cKnml4Uiht0BFLGgQ
+ BSu6qhPSsVsgBhP2gvN/AyeusuO/rY/eWeliyR22W2oLdGhfdw++4gTfSeh44a2afzMVXdGJwjM
+ i7AVXGvWAu7D5ksVCm5/hj8cLzuVH/wLQ/XXsHXf2hW6o4lVwIadS086XiOVCJSa6Y6u9D45Pyh
+ Dpsy5P7UzAsqE8ZlyibJKfsMP6oTYj6SZicbaNvK40j/lse0ZbhK1kYs+AjsnVsk3E2pxBk80+/
+ T/3MEguppu8cK2jO5oYTSK3hrTmtENwne/iAtgJjQusILaEmDwGgBtqRYEi5JCQnA466nQXHeUW
+ Tw1uP7x44w3GBUbGrqyazMnMjs1Fc6GKtAIfEPINPqypOQeD1IbtO8cDRD9ro8iW9k9XhmI+egX
+ uWWH9cviVl1g/Y1QCZgq9TQPB/r9fUvd00PpvDwacWzo9rnCBCLaQoTIT6PN9jcGngeRrRq7Fmb
+ G9nNZfALfFdoqSQE3C/HWGzRRxYfed+ojzNt6gb2AHtrO1pez8lbHkezd20x3Y9cNZc/WwWvj6G
+ ktgK8+0efSBKggA==
+X-Developer-Key: i=cel@kernel.org; a=openpgp;
+ fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
+An xprtsec=mtls mount names its client certificate and private key
+by keyring serial, and tlshd reads those keys with its own
+credentials. Each key therefore has to grant user read permission,
+and any tlshd on the host that learns a serial can read it. Nothing
+separates one network namespace's credentials from another's.
 
+This series makes the network namespace the isolation domain. The
+RFC thread asked whether the user or mount namespace is the better
+binding. tlshd services the handshake socket of one network
+namespace, so that is the namespace it already lives in.
 
-On Wed, Sep 16, 2026, at 2:59 AM, Sirisha Mylavarapu (she/her) wrote:
-> Hi,
->
-> I have been experimenting with cgroup v2 io.max throttling for NFSd on
-> kernel 7.0.0-14-generic (Ubuntu 26.04) and I wanted to share results
-> and ask for recommendations.
->
-> Goal: Throttle NFS server I/O bandwidth using cgroup v2 io.max by
-> placing nfsd kernel threads in a dedicated cgroup, to limit block
-> device I/O performed by the NFS server.
->
-> Setup:
->
-> -NFSd direct I/O mode enabled via debugfs (io_cache_read=3D2, io_cache=
-_write=3D2).
-> -All 16 [nfsd] kernel threads moved to a dedicated cgroup
-> (system.slice/nfsd.slice)
-> -io.max throttle set to 50 MB/s on underlying block device (sdb,64GB
-> disk, major:minor 8:16).
-> -NFS export mounted locally via loopback for testing.
-> -fio used for benchmarks
->
->
-> Results:
-> Read throttling works as expected, consistently capped at 50 MB/s.
-> Write throttling doesn't work regardless of io_cache_write mode(tried
-> DIRECT=3D2 and DONTCACHE=3D1).
->
-> Root cause (as I understand it): The NFS client buffers writes in the
-> local page cache and returns immediately to the application. The
-> actual disk write happens asynchronously, so the application never
-> waits for data to reach disk =E2=80=94 meaning the throttle does not p=
-rovide
-> backpressure to the writer even when the nfsd cgroup's io.max is
-> active.
->
-> Questions:
-> 1. Is NFSd write throttling via cgroup v2 io.max a known limitation?
-> Is there active upstream work to address this?
-> 2. Are there any known workarounds or recommended approaches to
-> achieve NFS write I/O throttling at the server side?
->
-> Any pointers to upstream patches or LKML threads would be appreciated.
+  https://lore.kernel.org/linux-nfs/20260602154740.49861-1-cel@kernel.org/
 
-I have a to-do to look at constraining memory consumption with
-cgroups, but nothing involving I/O bandwidth. As far as I am
-aware, you are now the owner of this topic.
+The keyring is held in struct nfs_net rather than found by name,
+because /proc/keys is not namespace scoped. Its serial travels with
+each handshake instead (patches 3-4), and tlshd's possession of that
+keyring is what lets a provisioned key grant no user read permission
+at all. Both ends of the link exist today, in tls_handshake_accept()
+and in tlshd. The handshake genetlink ABI and the cert_serial= and
+privkey_serial= mount options do not change.
 
+Still open is how userspace names the kernel-held keyring. Patch 5
+prototypes a request_key type handled in the kernel and tagged
+KEY_TYPE_NET_DOMAIN. A keyctl modeled on KEYCTL_GET_PERSISTENT, or a
+read-only attribute on the netns-tagged nfs_client sysfs kobject,
+would do the same job if the keyrings maintainers prefer one. Keys
+that userspace adds are quota-charged by user namespace while the
+keyring lives in nfs_net. Confirmation that this is sane when the
+two boundaries differ would be welcome.
 
---=20
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+nfstlskey, the provisioning tool that consumes the key type, is
+merged in https://github.com/oracle/ktls-utils/ .
+
+Tested on one Fedora VM acting as both NFS client and NFSD, with
+tlshd from ktls-utils 1.4.0: NFSv4.2 mounts with xprtsec=tls, with
+xprtsec=mtls using the identity in tlshd.conf, and with xprtsec=mtls
+using serials that nfstlskey provisioned.
+
+---
+Chuck Lever (5):
+      NFS: name the init_nfs_fs() error labels
+      NFS: allocate the .nfs keyring per network namespace
+      SUNRPC: pass a keyring serial to the TLS handshake
+      NFS: name the namespace .nfs keyring in the x509 handshake
+      NFS: add a key type that reveals the namespace .nfs keyring serial
+
+ Documentation/filesystems/nfs/index.rst   |   1 +
+ Documentation/filesystems/nfs/keyring.rst |  67 ++++++++++
+ fs/nfs/client.c                           |   9 +-
+ fs/nfs/fs_context.c                       |   1 +
+ fs/nfs/inode.c                            | 209 ++++++++++++++++++++++--------
+ fs/nfs/netns.h                            |   9 ++
+ fs/nfs/nfs3client.c                       |   1 +
+ fs/nfs/nfs4client.c                       |   1 +
+ include/linux/sunrpc/xprt.h               |   1 +
+ net/sunrpc/xprtsock.c                     |   1 +
+ 10 files changed, 244 insertions(+), 56 deletions(-)
+---
+base-commit: df2908090cda368b01ff43709f51890076c56157
+change-id: 20260917-nfs-mtls-identity-04c14f6f348d
+
+Best regards,
+--  
+Chuck Lever <cel@kernel.org>
+
