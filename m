@@ -1,146 +1,134 @@
-Received: from mail-ed2-f43.google.com (mail-ed2-f43.google.com [74.125.228.107])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from oss.cyber.gouv.fr (oss.cyber.gouv.fr [51.159.188.251])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 86AB4385D97
-	for <linux-nfs@vger.kernel.org>; Sat, 19 Sep 2026 19:22:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.228.107
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789845745; cv=pass; b=GemHgisO4nQCN9S2rW7get4ov2tRPRMdFWEMG87vORravB+82c7xS42HcDVwh6Z4FWRS37uSeOX3SE+uvFK5pC0ESg3rrflI4bUns/Ns+MvibHAZgB8UciE/+efHLwyDJXIqmSHjw/+jqcatLO1SiAipp01kDT+1PRoVKRmqtO8=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789845745; c=relaxed/simple;
-	bh=gN1WI+qphepzDCwKaABqp7qf4bf0o02kweBq2l/Y9Jo=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=L2QDE4XKgHM1Ux8wAkJjUqVqwDnaeGfx/IleKC2TS2wRO45aFA64uBaky73EGcN0+77Iz014R8jcZas+7xk1UfcP5Kj6jMeDPthWiF1HoR9x2cVJo7KMbiciK7Ul6stGP4BYrF5BCQaO7VF87+JivkCB1CScsI2I0NpQTXxrvs0=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=OEGMHAsA; arc=pass smtp.client-ip=74.125.228.107
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 638F0345725;
+	Sat, 19 Sep 2026 21:21:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=51.159.188.251
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1789852892; cv=none; b=axbwCM8Cwmc1WioB4+uUO6o+1Xr49vZdR6sUxM6je3eGS9I7O7oR3fp1k9BUL5YycfwnXmZWdZHuzsMfD42HeMiDTdjud6/pGZ3PxEPek0QkfgipGPMi5KAR4r0VMHa1PEbuBKd2y9+K4EJKKVont0Q/ip1K7YzQPM0czKb5d64=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1789852892; c=relaxed/simple;
+	bh=/CFkfMpBF8fyzBHjid3b4/eX04QmMQDYl53ld049TOI=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type; b=W7mUKFYkqiAFMegH0gaSFAS6uMXt014HWf8yRcKyq91IpUSomyQWrazMEzpO9Q3TOnoWI7K1B5o6lwARz2s4aN5Z//OI4JVzf4NTXuc8UohWy9dHpO+RClAm7D3wzvflazJLS0uh6DmQBrOzTmenEhfVCizOCRvhKWzKIYSV+MA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=oss.cyber.gouv.fr; spf=pass smtp.mailfrom=oss.cyber.gouv.fr; dkim=pass (2048-bit key) header.d=oss.cyber.gouv.fr header.i=@oss.cyber.gouv.fr header.b=qgyEcQKt; arc=none smtp.client-ip=51.159.188.251
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=oss.cyber.gouv.fr
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oss.cyber.gouv.fr
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OEGMHAsA"
-Received: by mail-ed2-f43.google.com with SMTP id 4fb4d7f45d1cf-6a9ba73bee8so1304932a12.0
-        for <linux-nfs@vger.kernel.org>; Sat, 19 Sep 2026 12:22:23 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1789845741; cv=none;
-        d=google.com; s=arc-20260327;
-        b=X4ueqyUWfnZ1imr9RaZI8RjeBLNoy7yCNnMCoup+SFJ2TRwfEejYV+/DziYlg38YSY
-         y6PgINx2XATyxkCNny9niwFIewODMHstD0gGnj/+V6oV43nCU/vnKnpA07fAf3TNXVn6
-         uC1mwlNOY99xxCLxFwoftjqgQdov37pR3CFNk5SigaW2vgzlAs+qh4jbktZR+AdWnJ7o
-         k12fqaK6JNhD1Zb6M/cgIMsEHc1R7eeZoqOyxQ1QgfvpYeCyVmIpGCdk0NTtrYjTBMYn
-         QOnhWjBSnajvoxSAtnxAVS/hW6ZsCpwaMQsXTEttK1KN7AiveKjM2D6qRTRb4TrxYB17
-         1ZuA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=gN1WI+qphepzDCwKaABqp7qf4bf0o02kweBq2l/Y9Jo=;
-        fh=Ngy2BDM21RuctHycH6E44Q+cl6monNjBRO5pKPjAchc=;
-        b=IFQkFz2/yDStHs9TSO+x4FgVDkfNqzfPOdtWITflhWTVmhVADOHJBflthn0N8DNbWH
-         vVtbs1i+OSJBazIIW2DDB4lnD95JbxXjBMRG7isQ7xt4pkGdlMdQ1H15dxAML45e9ZSS
-         YyRl4X4L6m0b1FOqBEinZn8t5NFTWvvB9OyMffnMQcShue5w1vhdjcwLcZm4u6gyErj/
-         k7g2DaXVWwcvFuNJroWAXRZKX005S5plpV6wZiaBpXR7QlRbtCaAKYzwCKdsyeetxcIU
-         5+DBoJ9n7ALNa10ZPP2YNCrHwledGyYYL5j0QaBXUIyNJcVIvfsgzRYmFidiNFhuYIO4
-         cMTg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1789845741; x=1790450541; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=gN1WI+qphepzDCwKaABqp7qf4bf0o02kweBq2l/Y9Jo=;
-        b=OEGMHAsAgb3AywaF/LGcd+J8UzENG46PfnFcjqwWErxCPyJbK4fEPUABlPOknYCvuE
-         FgEAk0uYlhWNVo/KHnJ6wFSMfqQMDoSW0TeQXB7+133CBZdFH5+4hY62XlxmR0W7TGHa
-         u/9hsputA5PVHX/bCHm/1/8ctYrHHUmq93SSBfKc5fKOO2JB7QBQrbrYwsD1L20xHZC3
-         9OI6mN2Z/+7wynqmy2MilaaSXj9IYPNu8dRzbNySjYulk+uTS69hE22pK+ahpyocv5qE
-         RmaE0/WMlSgv+DQgaIPbfMrxZfYCJBJguUiIv7Iz2Rs3xCXn220hz83osD4mXerfdPSp
-         SQ8g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789845741; x=1790450541;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=gN1WI+qphepzDCwKaABqp7qf4bf0o02kweBq2l/Y9Jo=;
-        b=f2kfgcVs9VOVGP5lTspCkdzobdzE49HrXqXvoh6vigEyeHqjztFrzCeW6yhTzq9UNI
-         j8hlzg7FD/cToX1HJFH6k1yja7owFw//ExWUSUR+kBzPi4QxCcVgtRtxqIaagItyTlPM
-         ysq6y4LxWs/DQT4BxdjvgQLv+fcBAbHvrDxhLdxbpuKiEhty3iXqEoriZyCd7DWW88C3
-         uXXMlbJsQrqyYPETsqPE/dIEuWm55jey3YQiPEdZKcbe25f4+E7m5tLyZUqIPcGPK40w
-         VuubvOSycUmlJUuuBrInvdUS2E3RlqnDmB8IMvu+GMGPg2BHyEdciz9EiT7NZRSYVhhl
-         m02g==
-X-Forwarded-Encrypted: i=1; AKwUvBzIHXThaRh3DxxReGCis0GXbqkTVtkc16JFuCZLHjD+Nq5aG/+AUYJhF0Z7eaMJvXkV2EQ99gTX8DI=@vger.kernel.org
-X-Gm-Message-State: AFuF++n3WaQNM6trrICYqAVoD9ElDWDl6m6wmfRjRNt/Z5YbvD9qHxpR
-	FTAzHUojYth9P/TUG1XFuGgUGflCrHr5dw3difMpn3ITuGp9VF+X09n71zF/6ToYSd7Ukfadu83
-	KL7EBk6yTVu9ROoSIXeH+FnFfDi9jrQ==
-X-Gm-Gg: AYBFou09xpOML5f1wYGlxrTV4F3DgGfnJiw5zwgQEl2nlGV54wZouWonVi6+RCceat5
-	ID3MK10NyZhvkIljN+B8QNjGZEqmAaKh6OuImsvDzHvLvX2iDx45yksWUcNE1j0j9I9WNZ0EnI2
-	eYdhgKWoPhzTS52Z4Rf+apneqAROmaTh2gfrFF5lNhJkFV9tPKrMu0a2MTkDBD9t6JpI4BGn8SU
-	lxeNgMx0Sru5L4sz4+gkw/vxylAOH6G1FkDvtu/C+fpMCsChB1bO9rA6ASUMS11QpytQHKD5LIp
-	xXL6iaPGdorf/wPyravkgffQEoruf/aAboourmZRK12YkD9kyIsHD8gs7deqHLinKjl6xu16M7R
-	wOoNoXWKHsp4=
-X-Received: by 2002:a05:6402:360a:b0:6aa:12f0:166e with SMTP id
- 4fb4d7f45d1cf-6aa4fe77112mr5015991a12.16.1789845740503; Sat, 19 Sep 2026
- 12:22:20 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=oss.cyber.gouv.fr header.i=@oss.cyber.gouv.fr header.b="qgyEcQKt"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=oss.cyber.gouv.fr; s=default; h=Content-Transfer-Encoding:Content-Type:
+	MIME-Version:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:Content-ID:
+	Content-Description:Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc
+	:Resent-Message-ID:In-Reply-To:References:List-Id:List-Help:List-Unsubscribe:
+	List-Unsubscribe-Post:List-Subscribe:List-Post:List-Owner:List-Archive;
+	bh=VGlVhVkMT0o9ZTra6qrIGvE2wdfs8kYNNB8oz6/+LZE=; b=qgyEcQKtBtUrqZxiTZfW53qNuY
+	3ff5cmSuVpSuY/8+WS+TLvOH8gGg/jswlQWwCgB+alhndB9JfIiB2wm3wvDrbQxF+FudBwKV+v95S
+	kDuZMBvI5h6vYvhtpQylpTcAdnIaZkp6gXOZmpjVNUPoW6xOKrhhGtCPbhuqw7WAQ1AgzfirnAbAi
+	8x/WBCuGRhgvEGqCEayUnTAIgIFcN9SfqYMeMQnPPtWqQPlP/7Q9KgLts0q3Q8EfNNZjcGKdRoytq
+	AhQMRInvCfipjuhJGl6PURz/9xiXb/p8pNdr6VXof34R7pZh1Xk6XMKVJKJSc8r2psbzOBwKZCoRp
+	62Zw2hIA==;
+Received: from [151.115.150.205] (port=49996 helo=gepetto..)
+	by pf-012.whm.fr-par.scw.cloud with esmtpsa  (TLS1.3) tls TLS_AES_256_GCM_SHA384
+	(Exim 4.100)
+	(envelope-from <Jeremy.Jean@oss.cyber.gouv.fr>)
+	id 1x82Uz-00000004vfW-3Go1;
+	Sat, 19 Sep 2026 23:21:27 +0200
+From: =?UTF-8?q?J=C3=A9r=C3=A9my=20Jean?= <Jeremy.Jean@oss.cyber.gouv.fr>
+To: cel@kernel.org,
+	jlayton@kernel.org,
+	trondmy@kernel.org,
+	anna@kernel.org
+Cc: linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	=?UTF-8?q?J=C3=A9r=C3=A9my=20Jean?= <Jeremy.Jean@oss.cyber.gouv.fr>
+Subject: [PATCH] SUNRPC: restrict integrity replies to authenticated payload
+Date: Sat, 19 Sep 2026 21:20:25 +0000
+Message-ID: <20260919212024.2335794-2-Jeremy.Jean@oss.cyber.gouv.fr>
+X-Mailer: git-send-email 2.47.3
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <CAKAoaQnTria60yM=zYQAe+dZti0ZvCfja0V+Y0F=Qu1h+hXGAA@mail.gmail.com>
- <ea3ec60c-18a1-4643-ade0-c4a004cb2ac3@app.fastmail.com> <CAPJSo4XZcAvXE6gP1vXFSfGZnjiQ8BwgeqO02obd_nWc-boR_Q@mail.gmail.com>
-In-Reply-To: <CAPJSo4XZcAvXE6gP1vXFSfGZnjiQ8BwgeqO02obd_nWc-boR_Q@mail.gmail.com>
-From: Rick Macklem <rick.macklem@gmail.com>
-Date: Sat, 19 Sep 2026 12:22:09 -0700
-X-Gm-Features: AcwNN1We1oDonn0gAwlDlHzH4jpOtceOwQ9122EHBH3x8kDKy0sc26VY-G-wFOQ
-Message-ID: <CAM5tNy4Jm=Mu4Tu1QUQV4JjMj0iabFJ1NqnytWioWtu6bDYUuQ@mail.gmail.com>
-Subject: Re: [Ms-nfs41-client-devel] Need NFSv4.1 "WANT_DELEGATION" op ...
-To: Lionel Cons <lionelcons1972@gmail.com>
-Cc: "ms-nfs41-client-devel@lists.sourceforge.net" <ms-nfs41-client-devel@lists.sourceforge.net>, 
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
+X-AntiAbuse: Primary Hostname - pf-012.whm.fr-par.scw.cloud
+X-AntiAbuse: Original Domain - vger.kernel.org
+X-AntiAbuse: Originator/Caller UID/GID - [47 12] / [47 12]
+X-AntiAbuse: Sender Address Domain - oss.cyber.gouv.fr
+X-Get-Message-Sender-Via: pf-012.whm.fr-par.scw.cloud: authenticated_id: jeremy.jean@oss.cyber.gouv.fr
+X-Authenticated-Sender: pf-012.whm.fr-par.scw.cloud: jeremy.jean@oss.cyber.gouv.fr
+X-Source: 
+X-Source-Args: 
+X-Source-Dir: 
 
-On Sat, Sep 19, 2026 at 4:43=E2=80=AFAM Lionel Cons <lionelcons1972@gmail.c=
-om> wrote:
->
-> CAUTION: This email originated from outside of the University of Guelph. =
-Do not click links or open attachments unless you recognize the sender and =
-know the content is safe. If you are unsure, forward the message to ITHelp@=
-uoguelph.ca for review.
->
->
-> On Thu, 17 Sept 2026 at 15:50, Chuck Lever via Ms-nfs41-client-devel
-> <ms-nfs41-client-devel@lists.sourceforge.net> wrote:
-> > The RFC treats the absence of WANT_DELEGATION as a normal case
-> > with a fallback. Section 10.2.1 notes that "since the server is
-> > not required to support this operation," a client reclaiming a
-> > delegation with no associated open can instead use a dummy OPEN
-> > with CLAIM_PREVIOUS and then CLOSE it (rfc8881.txt:9596).
->
-> I had to refer to a colleague for this one. The answer:
-> "... CLAIM_PREVIOUS is only valid during reclaim. Outside the server's
-> grace/recovery period, a compliant server must reject it. ..."
-Yes, the above does refer to reclaim during grace.
+gss_unwrap_resp_integ() authenticates only databody_integ. The checksum
+object and any bytes after it are not covered by the integrity check, but
+remain visible to the XDR decoder.
 
-However, I do not see why a client cannot do an OPEN/CLAIM_FH
-for a file where the client already has an OPEN for the same file
-for the same owner.
-This is normally done to upgrade from OPEN4_SHARE_ACCESS_READ
-to OPEN4_SHARE_ACCESS_BOTH, but all the RFC says is that the
-access bits are or'd together. (It does not say that the new bits must be
-different than what is already done for the OPEN.)
-At least for the FreeBSD server, it appears to allow this for "same access =
-bits"
-and will issue the delegation based on the OPEN4_SHARE_ACCESS_WANT_xxx_DELE=
-G
-bit, using the same rules as an OPEN where file is not yet OPEN'd and the s=
-ame
-rules that a WANT_DELEGATION would apply if it were implemented.
+This makes RPCSEC_GSS reply payloads malleable by bypassing crypto
+integrity. A modified reply can contain only the RPCSEC_GSS sequence
+number in databody_integ, reuse the reply verifier MIC as the body MIC,
+and append bytes that the decoder consumes without invalidating the MIC.
 
-I'd suggest that you explore using the above, since you are only doing
-it for an "experimental caching model" at this time.
+Decode the checksum length into mic.len and truncate the decode stream
+after MIC verification so only the authenticated payload remains visible.
+Reject bodies shorter than the mandatory sequence number before using the
+body length.
 
-rick
+Fixes: 1da177e4c3f41 ("Linux-2.6.12-rc2")
+Assisted-by: Codex:gpt-5
+Signed-off-by: Jérémy Jean <Jeremy.Jean@oss.cyber.gouv.fr>
+---
+ net/sunrpc/auth_gss/auth_gss.c | 15 ++++++++++-----
+ 1 file changed, 10 insertions(+), 5 deletions(-)
 
->
-> I think that is why WANT_DELEGATION was added to RFC 5661
->
-> Lionel
->
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 8ddc65e894da..bd0457abc5fe 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -2001,7 +2001,7 @@ gss_unwrap_resp_integ(struct rpc_task *task, struct rpc_cred *cred,
+ 	/* opaque databody_integ<>; */
+ 	if (xdr_stream_decode_u32(xdr, &len))
+ 		goto unwrap_failed;
+-	if (len & 3)
++	if (len < XDR_UNIT || len & 3)
+ 		goto unwrap_failed;
+ 	offset = rcv_buf->len - xdr_stream_remaining(xdr);
+ 	if (xdr_stream_decode_u32(xdr, &seqno))
+@@ -2021,13 +2021,12 @@ gss_unwrap_resp_integ(struct rpc_task *task, struct rpc_cred *cred,
+ 
+ 	/* opaque checksum<>; */
+ 	offset += len;
+-	if (xdr_decode_word(rcv_buf, offset, &len))
++	if (xdr_decode_word(rcv_buf, offset, &mic.len))
+ 		goto unwrap_failed;
+ 	offset += sizeof(__be32);
+-	if (offset + len > rcv_buf->len)
++	if (offset + mic.len > rcv_buf->len)
+ 		goto unwrap_failed;
+-	mic.len = len;
+-	mic.data = kmalloc(len, GFP_KERNEL);
++	mic.data = kmalloc(mic.len, GFP_KERNEL);
+ 	if (ZERO_OR_NULL_PTR(mic.data))
+ 		goto unwrap_failed;
+ 	if (read_bytes_from_xdr_buf(rcv_buf, offset, mic.data, mic.len))
+@@ -2038,6 +2037,12 @@ gss_unwrap_resp_integ(struct rpc_task *task, struct rpc_cred *cred,
+ 		clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
+ 	if (maj_stat != GSS_S_COMPLETE)
+ 		goto bad_mic;
++	if (xdr_stream_remaining(xdr) < len - XDR_UNIT)
++		goto unwrap_failed;
++
++	/* Expose only the authenticated payload to the decoder. */
++	xdr_truncate_decode(xdr, xdr_stream_remaining(xdr) -
++			    (len - XDR_UNIT));
+ 
+ 	gss_update_rslack(task, cred, 2, 2 + 1 + XDR_QUADLEN(mic.len));
+ 	ret = 0;
+-- 
+2.47.3
+
