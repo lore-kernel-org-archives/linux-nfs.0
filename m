@@ -1,57 +1,57 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BA12D377ECC;
-	Sat, 19 Sep 2026 15:59:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5D6ED2ED141
+	for <linux-nfs@vger.kernel.org>; Sat, 19 Sep 2026 16:11:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789833575; cv=none; b=Gbs8Xxwm6ARjOOFNCNXSBaO1YmhYgzY39VeGLWZMAh7FCgWPbLwKTY20BE2MS8F7IrzqEX+RQJFW8z9nBZnyWqfUWDlLGpdjZ9KR3bitZNjA6nWCKt0RrxZE31YZsQJUSGLLyNFe3g6vbJUztikinNhLHk1VmPDmijIjOYMDQDo=
+	t=1789834302; cv=none; b=fdfTRU0eCxqsqHisf/WXmouHtTovlz2WCFNR+iq/Izmn1fHEZ72dCt1xdR5DNYucYSLyszzGJ1V5NT4Me1vJsfvSVBbYC5DfIF4G3GG0UC0xw2Az4n1eRfz0aQsoa5NlofNHPQ9kdKzQ2qKnRT5hKGf0h1UJYd4aQMXvystMWAc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789833575; c=relaxed/simple;
-	bh=KuZxTGYmYI+18lYLipMVDIRS5uCzvWfO7Vz+l7dBcNw=;
+	s=arc-20240116; t=1789834302; c=relaxed/simple;
+	bh=eEnSPjzGwbm92SQ4gh4C5u9LvJVtJ4nM76fDHPq64R0=;
 	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=e/Xa7Y7SKNvunM269jVkiMt7zY3hbFCBMyiMNTbLm9TPEfwMOOs3eXdbhBLnjVCJ0hJdm+/81HLpPokFmzi4YZ2REAo4Jsg8V4dZYvKUmAd+mieGbxBg2qKw8ySeyzO+JJIynjeD0VNPjKLMYcoTpvzOF0DmrIimZyxZl3rI/c0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=aAjXuHgc; arc=none smtp.client-ip=100.103.45.18
+	 Subject:Content-Type; b=Tf+o2DffwnepTWwDON0jt9cjIk/JJkE6lcGxHQqJaxQxuEZDAUEoHWbcXhefLiAlAYK4b4ATggCwH0b5eFsmSlZPWqZFVljpa1ReqWCRigcKPoNy5VKyqEjCCWiHBzuxsW4ANIRn0uTUeX24l2OTkiP0V0xzdnQcuTdmDoghdGc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Tj5RW8/t; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="aAjXuHgc"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C6D861F00893;
-	Sat, 19 Sep 2026 15:59:32 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Tj5RW8/t"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A4D921F00893;
+	Sat, 19 Sep 2026 16:11:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789833573;
-	bh=q9tGf2FHjvgt3EYsyTdi+IQiT0IDvvD38OcRKEVlpoA=;
+	s=k20260515; t=1789834300;
+	bh=44cYfAhHvog+0OWjXfCaJkzwGaXsMAj5yteR4Z1pqhU=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=aAjXuHgcm5sppM0erniPLOOn7gm43yQzo7P62FKAx3TDITEaFopNgCC4QWS0kZJft
-	 qNo8iSImnQMJ7NCiguVzszrCo/IWI/9cHIuuVseKKH11l+B/6F83X0lhNJggEPkT6C
-	 DtHYX73KokrpS+joSM77K9MoO7U+A/ACuRYdJ/tJ+zlFVM2Z8leJiXF0mdi6yUL6/B
-	 nstLOXyEyVJt3STxb4nUCq9KDltD0Qt2mcSs3upP5//5CZvKV6FGxKLa2whrMDxWDK
-	 ZuxBxbtKcHdJZJmV6QJO+rBfeXzK/vLUAE2u9q/R8arNL5rIRKvu1lveFmCb7w0EgV
-	 4/9SRQFMg0aGw==
+	b=Tj5RW8/tFPdMeO2u1lbH0f6pw+JywRbcl4rB2vMJ5T0+srAAsHU0uLWg45LHfuqBX
+	 RxbkIsFKGeqPa8xy0tzwtGqk9tIZRhIj3b5xbujd2zPucvvlWdCElxG5QIsUHLIKsV
+	 kX7Et3psRHncUL2/Qle66bM3913Nn01J2jJwYasD6XEzJIpzOlmaf+E4rz0oOMH3Et
+	 g7ozK2cN0ccPMY+jt/ub1mS9xVSNZefU3c0+79Ey6RaFesHSJigsCmJ7HZLAP7j643
+	 WrxUhD7Hpe1qu4Ao9xU7iFiqZLbr8WDb1jm1hRTJwZLP6Se8FQagbu58Rqk+liGLip
+	 5hNrRvBfnHjMA==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id DC7BCF40066;
-	Sat, 19 Sep 2026 11:59:31 -0400 (EDT)
+	by mailfauth.phl.internal (Postfix) with ESMTP id DE07CF40066;
+	Sat, 19 Sep 2026 12:11:39 -0400 (EDT)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Sat, 19 Sep 2026 11:59:31 -0400
-X-ME-Sender: <xms:Y7GuasnpgOpticBZFGdWhC0dSIhSK0A_KuTB45BC8whK4OVed-iQ5A>
-    <xme:Y7Guamr0yFme39V5i8WWcGesJIlReCzc7ecA3weMg41SVR6TFCH-RT1jpIjkV5fP0
-    W_TCG5KVyNIZd9-b7F0DmQ1k8fZyCGgmGd59hpamNyWFRmZQMdoL-mO>
-X-ME-Proxy-Cause: dmFkZTEWaFWew1YtC5kOyRNe16JieifWt0qiUM04EPgn9QLCnIWp956Fs6XsXOuGDWbPys
-    HJNwl8prIHsgOTDrtWY2xhwbpwyDrMtoWEh4rZfGAKCvqod1NVrtqs07w1bAZZUoy9mIcq
-    +tR3/adKNO3hOkcgJm0prld2ULCet9BOiK1CIErqNrvNiYjmUJFpi5sXdqw+e0KQKchmhd
-    mDKjBccjZy0VW6BBXmrrzl6vtDMrNz/krSAaMY5fzdrBjVyqP1WEvestmRq948TI++qWlO
-    RfEZEV9X3re3MScR7+hwhZ/eTW7r3W2pyuC7ADQ3mtL1Ga4oz5FRnBHoDr56l7YUNeGLNZ
-    BJ+qcwgtdvkuofgL+A+tiFAQwcWDuuIVhXU0G3mtvB6xktzdBTUgZ72crIggLeqWeQNN6S
-    j5wcwcxipyNW+JH+tVzcOGz5Rxp4ygjc0uEBRZBeyLzdL0CECXqnzsywXQSV77SQWWsFJ2
-    yQlcIQxsPBUw0RLgMyTr3eHx6JBOSsmOcmv65IrPeg8ePFGmGbGBYsa1LJMH4I+rb0pou9
-    oyFXB+1vxyu2ILJ3hltVKAhJblh+RnUWJSn1bi9gCp+RLssrL4fCw1b9XINJDjd1Sf6yhl
-    OBx/ln6mMHPfStvU4B0FH4KIoA3z1wuTbdgFsDSJzkCjHC/uqHX71GD5EQrQ
-X-ME-Proxy: <xmx:Y7GuanMcKK9PM7C_QjjmZuOliOWTaROYlxLorpEHs6-r-V8OZkbNGg>
-    <xmx:Y7Guap4lnpUVY_Sg9uL2ZlF1C_TlJ-jf2WqiU0cnpbg5Mz4x2ekFqA>
-    <xmx:Y7GuatcBcJG8Pn4Ur1BHVnfkhmD6DJc21xICsMatAU3C_kxoB8iHUQ>
-    <xmx:Y7GuaiJQb8f2S3m7U8HfJxGBfSQH5jf5zCxGgtJF3F2wcUmOco0L_Q>
-    <xmx:Y7Guarn8qvknBOJXUQJHyzOzb_QIlzX0c_gvsiB-tUg_zDpHXWkhJGCb>
+  by phl-compute-10.internal (MEProxy); Sat, 19 Sep 2026 12:11:39 -0400
+X-ME-Sender: <xms:O7Suaocdc_4fi1xAH7n7MASuT4TLS_Jt7kRwllz43hR6S7VAUIc2rg>
+    <xme:O7SualCwjenNeP5owjfVf6uHySbu6o7VNUKSd9sYJLYioh5TibFsOFmcyDtqmQwxW
+    wkU7PxoYfLXn10Viut9xmG37TRmGp23YooQmhyYxbYDIWMsLKiY3Cb4>
+X-ME-Proxy-Cause: dmFkZTF0n7cxv0ybYRGaMhfDpl2fZClcjI/n1DqEH/Pb0GdJYGPo74fM/8sVrz5iSKgdG0
+    8jTTLMTdxo4bUPS1yPPwQh3DUH04PGD3adpYOEmBa1PST+h4esFda3sM/OTp31k9kvOl2v
+    aDBXjjmo2Vi+gYROOfEFsRoUMu6FgIp/Aj7wmPv8yQbLIr+EeY7+LzZtI6pMHKtZm6cvQm
+    B/OOC13z9+/5VbiySISP+BQpKATXRnVcQmTr8ZQ5k0LoiwFdB1CooN5VGgmKnYxXVBdzee
+    BIWjCNGvcb5Zue1wsqJtnhsciNMsNYVg94LQ6U0mSO9fGPQzzOHaKBAIAO9RkCK7BBZJHs
+    LyOhfQ0kYH5RU+ncplPGcFKTBVB5jALPsev4gn0Ugzep6SQlRyFr+FGmJaPqJK3vJURZKV
+    3OyX/k4mxAz/fYXSa4MH3AiM7VSF8Y9A9crzTwKnCbI2op5bu4b7wd0Yo/63g5m2c00m7m
+    uKNqOEegMSzlMR+PLUyjUyEEobkG85+E4SzDf0Wz4aIUbRuv8hA4h5n0KKF88u2A2hUFyn
+    sEWzkj2JcWzy1VGwAImRhuHY7dDgYVjfWYenk4XaIShiQF0m9Fdiy9xy+8rejjC8NbgrgA
+    /NYbXSkEAxlruQaBmSoI4JJaunh8xy55FpKp4+ttwOY+Qz18asdhbvDenlyA
+X-ME-Proxy: <xmx:O7Suaj2iE_tDVLyOnTzsqIfkyiOM9q40dkpxxUM3Ned9pvgScGkGXg>
+    <xmx:O7SuaixQCpCzw_m7wPLJMUWTI5T3jrqYsrnJrirEeBh7CVpQZsTGlg>
+    <xmx:O7SuaiF_sPBARME7IiGveu4SaZ8Uujs34qu815vn-I1jZHlSLpaqPQ>
+    <xmx:O7SuatYmFzDI8kneFnudZ44-8H9M2nZ30d6uv-k1cxkhzmjzb9DpnA>
+    <xmx:O7SuasAo4htcvRQJ2f2mpr527rAvwjTrLnC5V3XXsCqF4kuXzLHybKN8>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id AEA58780070; Sat, 19 Sep 2026 11:59:31 -0400 (EDT)
+	id 6EC52780070; Sat, 19 Sep 2026 12:11:39 -0400 (EDT)
 X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -59,54 +59,44 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AwBBIkqz6-kg
-Date: Sat, 19 Sep 2026 11:59:03 -0400
+X-ThreadId: Ahez1a8JXu07
+Date: Sat, 19 Sep 2026 12:11:11 -0400
 From: "Chuck Lever" <cel@kernel.org>
-To: "Randy Dunlap" <rdunlap@infradead.org>
-Cc: "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>, "David S. Miller" <davem@davemloft.net>,
- "Eric Dumazet" <edumazet@google.com>, "Jakub Kicinski" <kuba@kernel.org>,
- "Paolo Abeni" <pabeni@redhat.com>, "Simon Horman" <horms@kernel.org>,
- "Jonathan Corbet" <corbet@lwn.net>, "Shuah Khan" <skhan@linuxfoundation.org>,
- "Christian Brauner" <brauner@kernel.org>,
- "David Howells" <dhowells@redhat.com>, "Sagi Grimberg" <sagi@grimberg.me>,
- linux-nfs@vger.kernel.org, keyrings@vger.kernel.org,
- kernel-tls-handshake@lists.linux.dev, netdev@vger.kernel.org,
- linux-doc@vger.kernel.org
-Message-Id: <ebc7d73e-92be-4997-937c-7b9fd086154f@slotpi15m67>
-In-Reply-To: <8d635404-f85f-48fa-817a-88d3c1ecd344@infradead.org>
-References: <20260918-nfs-mtls-identity-v1-0-197e568d78a7@kernel.org>
- <20260918-nfs-mtls-identity-v1-5-197e568d78a7@kernel.org>
- <8d635404-f85f-48fa-817a-88d3c1ecd344@infradead.org>
-Subject: Re: [PATCH RFC 5/5] NFS: add a key type that reveals the namespace .nfs
- keyring serial
+To: NeilBrown <neil@brown.name>
+Cc: "Jeff Layton" <jlayton@kernel.org>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, "Rick Macklem" <rmacklem@uoguelph.ca>,
+ linux-nfs@vger.kernel.org
+Message-Id: <85a7313b-6c69-41bd-9a12-18ab4fec4b5b@app.fastmail.com>
+In-Reply-To: <178977475436.207413.9806283444174908649@noble.neil.brown.name>
+References: <20260918-duplicate-reply-cache-v5-0-b6aba9ebf2f4@kernel.org>
+ <20260918-duplicate-reply-cache-v5-11-b6aba9ebf2f4@kernel.org>
+ <178977475436.207413.9806283444174908649@noble.neil.brown.name>
+Subject: Re: [PATCH v5 11/11] NFSD: Remove DRC checksum and payload_misses stat
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
-On 9/18/26 2:00 PM, Randy Dunlap wrote:
-> This might be a locale thing, but using serial as a noun here seems
-> awkward to me.  Is this like "serial number" with the "number" omitted?
->
-> Serial as a noun usually means a publication in a series (TV, comics, etc.).
->
-> Or is this some special security-related usage of the word serial?
 
-It's "serial number" with the "number" omitted, borrowed from the
-keyring code. The struct member is key->serial, the type is
-key_serial_t, and the accessor is key_serial(). The bare form has
-crept into prose in a few places (Documentation/bpf/signing.rst,
-Documentation/ABI/stable/sysfs-nvme), but the canonical documents,
-Documentation/security/keys/core.rst and the keyrings(7) man page,
-consistently say "serial number", and keyctl(1) says "key ID".
 
-I agree that it's a little disorienting. I'll update the patch
-description and keyring.rst to use "serial number".
+On Fri, Sep 18, 2026, at 7:39 PM, NeilBrown wrote:
 
-The cert_serial= and privkey_serial= mount option names have to
-stay as they are, since those are an already established part of
-the kernel/user space API.
+> If we get a request on a particular transport and it is a good match
+> for a request that we recently replied to on the same transport, then
+> the chance of it being a timed-out retransmit is 100%.  A client that
+> re-uses xids that quickly is buggy, isn't it?
+> So if nfsd_cacherep_acked() then I think we can ignore the request.
+> In fact if the "found" reply was sent on the same xprt that we received
+> a new request on, I think we can ignore the new request even if the
+> reply hasn't been acked yet.
 
-Thanks for your review!
+Just to be clear, by "ignore" do you mean "drop the request" or "reply
+with the cached reply" ?
+
+
+> Everything else in the series is good and I really appreciate how
+> thoroughly you have explained the logic in a lot of places.
+
+Thanks, your comments have made this a much better implementation.
 
 -- 
 Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
