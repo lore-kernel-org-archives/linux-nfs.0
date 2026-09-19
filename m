@@ -1,73 +1,73 @@
 Received: from fhigh-b5-smtp.messagingengine.com (fhigh-b5-smtp.messagingengine.com [202.12.124.156])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B731129408;
-	Sat, 19 Sep 2026 02:26:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 970C82F851;
+	Sat, 19 Sep 2026 02:26:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.156
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789784800; cv=none; b=S32m1EfEkZUYL7/vWDd4Dqe5uHi5b9H+/c3/DmB8/Sm/HvFKnp+yvnEIOXABxou3jSIt+WQkisRr5EwFfpet79NhaaPHoemjJuLRvTSLRRFpdliVnzDthDVy5iGwQfudSmalFLkvFM5Dmnhb91QGf4YHD8LOdRKVEsY7Q9Vndw4=
+	t=1789784809; cv=none; b=de+134JAKwsYlFX9COFQt4IgcRlZbOnv+E1ig/i7F33JJcKAsWU2wAoQuimVb6gdffZR0sKPv0Tkmzc+0CY0Jt/v4/1P+6GFanQ/TI7/Ha92u3ju4S25CoQ6CU4aCuzFqu5CpXKJEXVpOD5XaRxkArvFYFOlAHw7wR83tdRL9Zs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789784800; c=relaxed/simple;
-	bh=YmC59NAUC7/uUbhj1BJ/zSEWfT+TfTXDmuq1GQDsb0o=;
+	s=arc-20240116; t=1789784809; c=relaxed/simple;
+	bh=1yEjdq5Vo5OS53wWJkXRPnYsh2QIg/oED3oYaYDRrcE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=R1PqLum7dUvVlHbWQSRqi+MLg5fqB7U3gjSDp7aQuwrZQW7OvkKgQiKn4dtcnxiLRrhMRNvVuNCt8j4lnDnNBYATdgLaJlnECowJ696Kg3ulFEUpvvzhV+h9kh5961bHV0mTncbOSTKJaFouOkfWnMJuJArijUC98zmGpw+fo3Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=W8654+RX; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=fbcBSW67; arc=none smtp.client-ip=202.12.124.156
+	 MIME-Version; b=rEv/S4QjXGGqCsHeWRkQH2BERIDy1TrUtDUmbVjFvleFQ6z2UcPcwWKXC07AbICLFLy6NxEQ2M2UFGLhEnN3K7UMxRHEroCj6sUylCED62XlbqQqnEvUa74tNxOD0HmsA1s/RXEHRB9VmSdYXYfEClT1AJnsMgbst5XYDOxguFU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=K12XBHpn; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=C4mDWAkJ; arc=none smtp.client-ip=202.12.124.156
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="W8654+RX";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="fbcBSW67"
-Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
-	by mailfhigh.stl.internal (Postfix) with ESMTP id C55CF7A0111;
-	Fri, 18 Sep 2026 22:26:37 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-06.internal (MEProxy); Fri, 18 Sep 2026 22:26:38 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="K12XBHpn";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="C4mDWAkJ"
+Received: from phl-compute-05.internal (phl-compute-05.internal [10.202.2.45])
+	by mailfhigh.stl.internal (Postfix) with ESMTP id 9FF9B7A0105;
+	Fri, 18 Sep 2026 22:26:46 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-05.internal (MEProxy); Fri, 18 Sep 2026 22:26:47 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1789784797;
-	 x=1789871197; bh=Bfas5eoj6gTl6gT4OiBpfvkBBi/UOvEDd8xjCDdIVxw=; b=
-	W8654+RXA4fm8Eg3wfnhxF/nda66MLqYnWwxSy/2BZNq5sYKJt6fNror0pY7GiqN
-	5NkCrsFFI0QZmu/YB9h2Wp7hMaZUhdkPGNWnoAszgvrx1xyyANCL0WEUwgYzP9MN
-	LWlLhvre8Q4wk7xW/0wYA4DSlDX57t+s9R5BfhhFasL9OtaHTfB35xZKRv8biJ8Z
-	UarJa2u/t4LjbJZemCJncW2g1/9E9vUjE9ttCVlUIFeGsidNc9KEu8SVBzJyM2DS
-	TSZnpInyTdoIg27MMx3drZeogjtCheVj/NiW0a4MRWyVFlATnTojn+DPCpmHXTng
-	yrJHIa3H4UiA24V48ay3kA==
+	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1789784806;
+	 x=1789871206; bh=Kk35wTCnG6qaH5kjEvCmWyGKPkYGw0HOge+XZtsWfao=; b=
+	K12XBHpnwTh8ELIq5YiTeTTRRC5Q2+OxcfZ1ltNrybWm2yVAoC/Thx8IIzc/1odL
+	zDBUcueOKU8uNX59oa/SBDi8GjuoXtZPHKH7NzM0Wa8Y5Tq1ejMcW491aW06xvKY
+	dHXo8KbnoQApyRQQWsP/Ik1wre7k0Qc/i1HL45ZS/13jYuXJEHYsQy9/ELu67F+n
+	ycnPdWdIX8x/d3A+w5vHNHoTSCBp6N4G3fst1bZmAiOm+kY4JXC35eCbgSYcdZZb
+	DKs2juPkCOve2PUqQJDQ9B4fkdbdotU2Peou+W2zcF8QC3oi22HvGT7vUm7byfO3
+	NwoyBFdcsSdzjUW0s4CUqA==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
 	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm1; t=1789784797; x=1789871197; bh=B
-	fas5eoj6gTl6gT4OiBpfvkBBi/UOvEDd8xjCDdIVxw=; b=fbcBSW674z5RO9z/J
-	Ut4mw6Rpan6nJ04tUzj5jpH2qxaYNcVoP/VhKa+ylOk5PPa6uG1y/ZtpKzFeyk33
-	CtR1haqm/3kF9R5KSeyVjx0pkzp73QonvxOaIQ+pyhYyIyN5Vgf/F7ozQow14iEk
-	aulXuTxQES/B0PYBrLmr8nzgh16uva7vAZJgr3a2XIWwnETF34rw2e1FwY+RKUBL
-	OR0vM+/zS0KAct7A7PNY5HDmaYZoG8Hw3oH7wNIc8wfhdelMzfg8wzU/fDZuH9Kq
-	gMlQUFCf24TJ7p3dH1FFI2ZHTSr9az/sndJ7uFGvZCZF00NQ73gR4DhbP0hc4Zer
-	p58QA==
-X-ME-Sender: <xms:3fKtaj6ZC4I6VIt5LBnt5YsA34IoZ7CH0nZZ-I6L5MWd1D_zfCWdDw>
-    <xme:3fKtapSn1J0YrA_AjzOKGp2UtmYrVKP-czE-7HUlkGJG6EIPEfufZxpqaGR7a4LUw
-    vS-CaZ8KBjGLMxLkWWI2vAxj90ADPLdZb7JHV1Jk9liZpdxeUE>
-X-ME-Received: <xmr:3fKtarlfRJXCZZSOlcD8l3DCFzDyOH83nVNV0-49V6W8yYfhHgMlyJ9dTMjuAujOkzXu4DpXLeCtLmCo0T-VMGYNBNGmc8E>
-X-ME-Proxy-Cause: dmFkZTGgqDvHUiFoelb3szb25Xc5WIL1X0CmKVd0SSFttbFGm3ZS4/WbThw2/23Wv0kT2L
-    zTiD3f7/mbRn4xQkog4u9WXAUu/Z8xbLL7habzJ5iT0L9pvsBxuMoK5k8M+5CBBhCA34Md
-    HPlNAQAuPUTpsFoyG9EfHruislsqzF/ELe8vhu1WoHNTpMpKsXLXUP8fPb+iJDnGZK+wxX
-    pyu1Y8XGp2Ez4Y8aWvA0+LsWIM5P5beRGa1K+yf2x8AAFZFB+FqQNejpWDyXiPsbkOSKyy
-    pf6WO9eid06RPw0E0qVieiQBSzbPbVfHpbR/XZ98dIIyde1pgFtUnUmkW5DtGlTWNRmkO1
-    tW0GGVDTRwtKBGFoRS1xsMA/6OFLzDhXTgNuEBQ6mFI6B7/GkoSuSzhSHTUZFjwXh+zdwQ
-    GNr5BGvh17pfQzyjnss8bxp3/hzn1x5YvfMI+T2IJxlq5rpmidlT21yZxiZ9hA12xTkwIy
-    1GjY05xvJ6fLHn6p1RSsgHpCAGb5k00zMdVflsRKvc0Yi7VcjaJkuYjqEQFHO+1taOCVrC
-    EVHMwxDTXvo47rtz92PsUP/oFsDw+MmygYU+aZJVPwyAKHx1xgk3BoSg8anEW/sN+3HwxR
-    ZfDnskicWx6bcn4lZkpJSdJ3NOSjSbFszG0ACb+AhmWppG9+rTkubX8Int/w
-X-ME-Proxy: <xmx:3fKtagKpekYeXXK7Rt0OF5vH5JR9x5GWt7Ah57WGHI3VCjhsgLwuJA>
-    <xmx:3fKtamTGGFsiKhwYgNlJcxQQjmG0_xo_LmphoQzUHOb08l2FXu3wBg>
-    <xmx:3fKtamT4tVIz0yYHOLjvqEQeTsTFclqKQCK1EP76izYAi7RqQzMhow>
-    <xmx:3fKtagw4-q4t5-GVOIpClZT4Dfq1zXIyJgGC6qqb3NMBvkEos1d5oQ>
-    <xmx:3fKtagtbATJRduzyGLstjy689tGFQ1ZkFaliPViHLYN4peOPsWH3oWqX>
+	:x-me-sender:x-sasl-enc; s=fm1; t=1789784806; x=1789871206; bh=K
+	k35wTCnG6qaH5kjEvCmWyGKPkYGw0HOge+XZtsWfao=; b=C4mDWAkJAg6admkc6
+	94YjFSXaY78gRIBdEQjFXyRttLiCKniK1JGGY0kVUUQigwukNFiPMCBa9g8EvvwP
+	uxS6WZZ2Dsr0nLiN2gnaDi4xacf7wDIZ4AaujPHJjkw98LuQmlwWmS4QlB31PEiS
+	MS+f8gN167WAtrVGztnFsuXvA+aRKLUM+1hINyNZl5Cr2G+q9RaNMFzwQOxbrhmg
+	2CmrnAC+iwMiRkJNwDfxRMBT+Yk/M4IZpXnxo3I5DoNcyrgsA1PUmapLjrJBHHAL
+	Rn4N+/wUOZ5fiOml28nOtXUdBuTXLazzd1E4obOZ2nnSh06+Lqf2EnIZpYQUm0cV
+	XhkQw==
+X-ME-Sender: <xms:5vKtatSjHHy4u8KPdHvBqvoFcFZ8BUmhslr50vTzjP3Dqy0ysVbsDA>
+    <xme:5vKtavlGjPFwpWopURNRHHOWCZFqQqNla4qwkQILKguDq2n-lNEt30_emusIR2HGT
+    AgOYAxEHCClOK4SLpK7GyLsuy-eoVIVxxPELKSkDAAWVhSEZz4>
+X-ME-Received: <xmr:5vKtakKf29nBsalQWvkOTo3B7mXzCYCBhzts6fAbDdAH4eT5wzbzNyow0VihCdY_SFSup3hVjJa-vRcQjpZUyJGwj100-6o>
+X-ME-Proxy-Cause: dmFkZTGtAHYZ2fol9WZbijETZDg+7FCar+y/pMhv66kqsGspm17JsjzmN+wOfYd0at9xWa
+    UpL1ir5F/oOkFsK7kqoauKKWs6eMpLCsbqi42s4tBHpUvxFMTRQDd6VYm/rcH4SZDwJWC1
+    mB2gQF0uBqecUb/asRUVJ9E0aE/yCL6egEGowl11EY43/dVlVXINF3ezsrr6Mrs1epbIzK
+    NTey6EyLFCy3wMucOF+e93SFzjCJr429VK3iHP1PO2ehW8CsCSMuTyO1dvmH6SPcex1cXA
+    2lKZB+ZWUeNPLANmEUzEUzCIol0g7KWkEci5Ngi6tkJ54ALbt+FqCRsOFa/XWjWUcu92Wz
+    ZMQro8XUuYyll17dZTLfVNELP8XVZdT2Hbt/2Pf9Ju4kHvToXTo8kTE5EOY5gPs6xzNiO5
+    GB49oDW+WSFtZEC/dBG2xVW4uJsjIvpEBQrIj25OJZM5ZAIcNBkAX5sYGGwIqraJrdsGIM
+    /tLZcDY31X5h2K5+MqTQWNsHK53NZKSbw2g4NquK+nyo63XE1EaqE0y+6k0+hCp0Vj1W8U
+    h1P5A4xVjzZGLuHxYmbdJwW9jCDdNZqPl9z/Go/bstVzI9SwWo7XTn7NFRBwBiUan5cexr
+    kNfAsBM3xa9U7Aw/QVU5NHpN79XDN/ZkBmBHF9SYgxjQVGIvZgGPhbIlUF6g
+X-ME-Proxy: <xmx:5vKtaqQfn7siKzwsTACnj6_Re1-7U5ZqfU29Bx3TvOnoUEe4SA1kYw>
+    <xmx:5vKtaqR4GedprlJRr4JCxNyF9elT8qA3Q3zdFwTivJ9h9yICPCdQTw>
+    <xmx:5vKtakxTkf2smNs_jHTR4BuMbNLK-4EmFOUE2khmmTpY8RHsUmHuaw>
+    <xmx:5vKtaouGM1U9wvNIvXeTJTMr8Qy878JqnRQ65-0rZeXcTgCOvl8Waw>
+    <xmx:5vKtais2RuQOVdPzTaNdeAmHxi5aveyjEgMno_e-CpWYXkNfRRdciDuG>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Fri,
- 18 Sep 2026 22:26:31 -0400 (EDT)
+ 18 Sep 2026 22:26:40 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Christian Brauner <brauner@kernel.org>,
@@ -89,9 +89,9 @@ Cc: Trond Myklebust <trondmy@kernel.org>,
 	linux-cifs@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH v2 11/14] nfsd: check for mountpoints after non-creating open.
-Date: Sat, 19 Sep 2026 12:06:15 +1000
-Message-ID: <20260919022441.3305170-12-neilb@ownmail.net>
+Subject: [PATCH v2 12/14] nfsd: switch NFS4 OPEN to use vfs_lookup_open()
+Date: Sat, 19 Sep 2026 12:06:16 +1000
+Message-ID: <20260919022441.3305170-13-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
 In-Reply-To: <20260919022441.3305170-1-neilb@ownmail.net>
 References: <20260919022441.3305170-1-neilb@ownmail.net>
@@ -106,95 +106,112 @@ Content-Transfer-Encoding: 8bit
 
 From: NeilBrown <neil@brown.name>
 
-A file can be a mountpoint for nfsd purposes when it isn't in the
-dcache.  This happens when it is a junction (nfsd4_is_junction()).
-So when we open a file and find that it already existed though
-not in the dcache, we have to check if it is a mountpoint (or junction)
-and potentially follow the junction.
+The functionality that was recently gathered into do_lookup_open() is
+now available from the vfs as vfs_lookup_open().  So nfsd4_create_file()
+can call that, with a few adjustments.
 
-So move the mountpoint crossing code in nfsd4_create_file() to a new
-label at the end of the function and goto there both when an in-dcache
-lookup finds an existing file, and when vfs_lookup_open() finds an
-existing file.
+This implementation shares more code with syscall open paths and so uses
+some filesystem interfaces slightly more correctly. Specifically:
+ - it doesn't call ->lookup before ->atomic_open is called
+ - it does pass LOOKUP_OPEN to ->d_revalidate
+ - only gets exclusive lock on parent if name is NOT in dcache
+These are minor.  The main benefit is code-sharing. In particular
+it takes responsibility for locking out of nfsd so that planned changes
+can happen entirely in VFS code.
+
+We need to pass O_NONBLOCK so that that EWOULDBLOCK errors from
+break_lease of try_break_deleg() get passed back.
+
+We need to mask any type out of "mode" else vfs_lookup_open() will warn.
 
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- fs/nfsd/nfs4proc.c | 41 ++++++++++++++++++++++++++---------------
- 1 file changed, 26 insertions(+), 15 deletions(-)
+ fs/nfsd/nfs4proc.c | 58 +++++-----------------------------------------
+ 1 file changed, 6 insertions(+), 52 deletions(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 6e443503d0b7..3d37754f787b 100644
+index 3d37754f787b..50baf125d5f9 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -320,6 +320,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	};
- 	__u32 v_mtime, v_atime;
- 	__be32 status, create_status;
-+	struct svc_export *exp;
- 	int want_write_err;
- 
- 	if (name_is_dot_dotdot(open->op_fname, open->op_fnamelen))
-@@ -339,21 +340,8 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 						    open->op_fnamelen),
- 					  parent.dentry);
- 		if (child && !IS_ERR(child) && d_is_reg(child) &&
--		    unlikely(nfsd_mountpoint(child, fhp->fh_export))) {
--			struct svc_export *exp = exp_get(fhp->fh_export);
--
--			status = nfsd_cross_mnt(rqstp, &child, &exp);
--			if (status == nfs_ok)
--				status = fh_compose(resfhp, exp,
--						    child, fhp);
--			fh_fill_post_noop(fhp);
--			open->op_truncate =
--				(iap->ia_valid & ATTR_SIZE) &&
--				!iap->ia_size;
--			dput(child);
--			exp_put(exp);
--			return status;
--		}
-+		    unlikely(nfsd_mountpoint(child, fhp->fh_export)))
-+			goto do_cross_mnt;
- 		if (!IS_ERR(child))
- 			dput(child);
- 	}
-@@ -466,6 +454,14 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 			status = nfserr_exist;
- 			goto out;
- 		}
-+		/* We opened an existing file, it might be a junction. */
-+		if (unlikely(nfsd_mountpoint(child, fhp->fh_export) == 1)) {
-+			dget(child);
-+			nfsd_filp_close(open->op_filp);
-+			open->op_filp = NULL;
-+			goto do_cross_mnt;
-+		}
-+
- 		/* NFSv4 protocol requires change attributes
- 		 * even though no change happened.
- 		 */
-@@ -511,6 +507,21 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- out:
- 	nfsd_attrs_free(&attrs);
- 	return status;
-+
-+do_cross_mnt:
-+	exp = exp_get(fhp->fh_export);
-+
-+	status = nfsd_cross_mnt(rqstp, &child, &exp);
-+	if (status == nfs_ok)
-+		status = fh_compose(resfhp, exp,
-+				    child, fhp);
-+	fh_fill_post_noop(fhp);
-+	open->op_truncate =
-+		(iap->ia_valid & ATTR_SIZE) &&
-+		!iap->ia_size;
-+	dput(child);
-+	exp_put(exp);
-+	goto out;
+@@ -250,52 +250,6 @@ static inline bool nfsd4_create_is_exclusive(int createmode)
+ 		createmode == NFS4_CREATE_EXCLUSIVE4_1;
  }
  
- /**
+-static struct file *do_lookup_open(struct path *parent,
+-				   struct qstr *name,
+-				   unsigned int oflags,
+-				   umode_t mode)
+-{
+-	struct file *filp = NULL;
+-	struct path path;
+-	struct dentry *child;
+-	int want_write_err = 0;
+-
+-	want_write_err = mnt_want_write(parent->mnt);
+-
+-	child = start_creating(&nop_mnt_idmap, parent->dentry, name);
+-	if (IS_ERR(child)) {
+-		filp = ERR_CAST(child);
+-		goto out;
+-	}
+-	path.mnt = parent->mnt;
+-	path.dentry = child;
+-
+-	if (d_really_is_positive(child)) {
+-		/*
+-		 * open the file so that we consistently have a valid
+-		 * op_filp and consequently a valid ->f_path.dentry.
+-		 */
+-		int err = nfsd_check_obj_isreg(child);
+-
+-		if (err)
+-			filp = ERR_PTR(err);
+-		else
+-			filp = dentry_open(&path, oflags, current_cred());
+-	} else if (!(oflags & O_CREAT)) {
+-		filp = ERR_PTR(-ENOENT);
+-	} else if (want_write_err) {
+-		filp = ERR_PTR(want_write_err);
+-	} else {
+-		filp = dentry_create(&path, oflags, mode, current_cred());
+-		child = path.dentry;
+-	}
+-	end_creating(child);
+-out:
+-	if (!want_write_err)
+-		mnt_drop_write(parent->mnt);
+-	return filp;
+-}
+-
+ /*
+  * Implement NFSv4's unchecked, guarded, and exclusive create
+  * semantics for regular files. Open state for this new file is
+@@ -312,7 +266,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		.na_iattr	= iap,
+ 		.na_seclabel	= &open->op_label,
+ 	};
+-	int oflags = O_CREAT | O_LARGEFILE;
++	int oflags = O_CREAT | O_LARGEFILE | O_NONBLOCK;
+ 	struct dentry *child = ERR_PTR(-EINVAL);
+ 	struct path parent = {
+ 		.mnt = fhp->fh_export->ex_path.mnt,
+@@ -412,11 +366,11 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		/* Might still succeed if no create is needed */
+ 		oflags &= ~O_CREAT;
+ 
+-	open->op_filp = do_lookup_open(&parent,
+-				       &QSTR_LEN(open->op_fname,
+-						 open->op_fnamelen),
+-				       oflags,
+-				       open->op_iattr.ia_mode);
++	open->op_filp = vfs_lookup_open(&parent,
++					&QSTR_LEN(open->op_fname,
++						  open->op_fnamelen),
++					oflags,
++					open->op_iattr.ia_mode & S_IALLUGO);
+ 	if (IS_ERR(open->op_filp)) {
+ 		int hosterr = PTR_ERR(open->op_filp);
+ 
 -- 
 2.50.0.107.gf914562f5916.dirty
 
