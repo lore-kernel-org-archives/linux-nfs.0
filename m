@@ -1,73 +1,73 @@
 Received: from fout-b3-smtp.messagingengine.com (fout-b3-smtp.messagingengine.com [202.12.124.146])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8859A29408;
-	Sat, 19 Sep 2026 02:26:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A22AC2F851;
+	Sat, 19 Sep 2026 02:26:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.146
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789784764; cv=none; b=lLJft5tInUHvfpby51B6NoeH0bnUv9NpvlUsGrfkaOEvsnANQWlqnvOxvgcHySGOGf5qogufX9NPG/Ek9aILNDPMZ33VPcHJK9u59QElnlHbdM+wgBrOtRyXqGghYF51CoW+VMhYjtWH/052z2d25fTKfdvUxHBMH6hdTf4YP4I=
+	t=1789784775; cv=none; b=AZvf041ROPxXiShh2jMVaMS/BR80ft/00woGOiYDvjPpXfhKHsi2JkVJujvEO8evX6DVgnBYCk99GXDVMxG1bSxwD43hzMoZgNrp2Jq6nsC/7NKQGl0cidkIRTxZwpnEEeERheOBO41CMu2yKUdZ9rfM1O5AZ4UXdMnWLIsP4Nc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789784764; c=relaxed/simple;
-	bh=TVSozmx5LFrbr3L5ZI4OUBzaCnxlwtu1LBDaDccQd7Q=;
+	s=arc-20240116; t=1789784775; c=relaxed/simple;
+	bh=cxtmKlNVG4Xw2mxND8A2B6NsJi4o/gMPEhMEJRaJw3o=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=MUgVjhSpvNynZDF0oDYmfafOWiOPKlF3uyXvc3BO453of+aU5yzNF2BE3fhGk1pfga21P6TKqMIHvilbY5TRYmItAJ8GSx7OKyqzG1WPm6tvF7Kz6v1LWvTFNSl12ERFqCCCywXNHUHxMlkPoH1z4GcwAI2dXGceRaXsoRWqc/4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=I6WEBdAB; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=FL0hBgJ+; arc=none smtp.client-ip=202.12.124.146
+	 MIME-Version; b=M8oM8R+KRwGjIAxkrTm16pL0ABD1lmjgsW5ozUgMnlt7Gn02bTkfNG1BtaVFodDs0VysEtDOomdEcZNse+f2ybAK3Fq8jH5v3Iz9077Y8EGbBB8egDt0IYnr7kzOFgWAKEcSrXFi2j8n16V5aoB4VvjCDT1IdQxtLzDLmRzzJJs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=Oo+zBWjP; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=i61JrGLs; arc=none smtp.client-ip=202.12.124.146
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="I6WEBdAB";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="FL0hBgJ+"
-Received: from phl-compute-03.internal (phl-compute-03.internal [10.202.2.43])
-	by mailfout.stl.internal (Postfix) with ESMTP id 951181D00111;
-	Fri, 18 Sep 2026 22:26:02 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-03.internal (MEProxy); Fri, 18 Sep 2026 22:26:03 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="Oo+zBWjP";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="i61JrGLs"
+Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
+	by mailfout.stl.internal (Postfix) with ESMTP id 7E3321D00116;
+	Fri, 18 Sep 2026 22:26:11 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-06.internal (MEProxy); Fri, 18 Sep 2026 22:26:12 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1789784762;
-	 x=1789871162; bh=a1dvbCIXGTF+aXVYY4V7L9bSEi3TKPjz6Nuequ/+FvU=; b=
-	I6WEBdABEuzXUbzGrYlECC5k6ALHztuxS1ToBtm0AN6ZQrX1kf/YvjSxD5t1O0Ra
-	v8m2Y+27VbZ5+dvuIjkUGKMubyIbJu1vWjxqKOMsPvuILv1x0uquKZSd3EfWULUT
-	+HbhVXphRrsJnOxzYncKkGuOV/uQnAgZum3im0Vvpv94xZFq+3l7qRVGQh3CZ3U3
-	2nFy7lO3wirWumStmIWW5aANCzthOneuwz2X7YHq1MgUGnlACFb6YNY+dyzjVCqb
-	U+3Jp6XNgK0LBlRtnf9vYZJaSpoXSFvRc8rfwuFgZ+0SO5ZLG7gFjwo1MjRGTM74
-	apz1+KKjkG9bdSXTz4eUzw==
+	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1789784771;
+	 x=1789871171; bh=Zyu3DcbO+3qBIpROcTOO61Y8i5MbUANXndfp1aNLI+U=; b=
+	Oo+zBWjPL4sGJaL582bHVQjfXQUvxJg+FGiKWEiKs6fUK+CdzVddkHxGeQT4Uf3L
+	P/B5q0PLT+J1fbnogTYxBjeBPWmczQY2nlF+0ZJZ2tIPY+985dujROyLzu3ntcqG
+	ptx7Q/YMtbD+x5NO1i63cGWzZUMzsniVYRI5bNjkFkwwTKmV+dmcd4/GjZrQ7MCw
+	Er0DLHSSXElr4LKDMWYGoum5CEUHI8glPEe5zA5pR4UiUFkeG1pYsH47nOzn9AOI
+	GWvbesDgQmYFf+7Kr8p48HHGVbkFBWsLwviVtuID+PchrlDiof3iCcILWXkWqId6
+	Z44eZcfGqt95Uf7D4tspVw==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
 	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm1; t=1789784762; x=1789871162; bh=a
-	1dvbCIXGTF+aXVYY4V7L9bSEi3TKPjz6Nuequ/+FvU=; b=FL0hBgJ+46kNWo0n0
-	UxJFJHKPjtyHfN0w7E0d3znCvIwwggu0u7a3BnHPjcf85K9DYWj+l+kh/2lSGq/z
-	Q1ypr6pg4PqfBvp8wHQcpyUG0h7DaCYx+wmKIbe1eZ0MBkM4XvpjWw2MyF0dpRo8
-	FyxXDUgtXhDDjS4fL84stcLM7nLjs+SqLP4I+fxb+ITB+CStGwA4vxVCF7DJNBOw
-	elS3guj1BvrFpOcDuJ4rquCSVQ2NvnZq4dykKRcNdXcRYZn9KZdSS0qBfZ4qppaM
-	jzaiPZU7Ba0fDcDY/+3LBYQGWvh6gJpXFbip/xuDfArGvZn10KdxH6ycBEo+pZWa
-	0GOxQ==
-X-ME-Sender: <xms:uvKtauRbr4Rbss-Buj1LCcOQQZ28ictr2ntBcaz-64cDIMQvvQeaWQ>
-    <xme:uvKtakKsd0PRZxgH0THW2RKvRirUczBwyH8KYWNeNc9WhRvP4_3JOM4DyiPFYWhDt
-    tzANkGcY_tPsaVgn0G0zRteoqpiz1OmrG9Pa80TCEQewnOBt-0>
-X-ME-Received: <xmr:uvKtas-xScZ61xmfifQRQF5HPQqyNARw6EAxLvkDWTsYZIEGUlcofat4SmpJWAnIGproPaft86_KH-lpBpVLZxnuBMvJgYc>
+	:x-me-sender:x-sasl-enc; s=fm1; t=1789784771; x=1789871171; bh=Z
+	yu3DcbO+3qBIpROcTOO61Y8i5MbUANXndfp1aNLI+U=; b=i61JrGLsQAJFocV9D
+	TiAveThSMmxqmvwTWXQrUvdgzR5cIORhwFxEQqWK6VdUNKO++mBqtiChbnbd5RhL
+	FxrmSYKOvVqW+1lDksL/tgF7S2ssLcj/kh/kFtX7RLWsx14rjU0WAnfWJIFEWXs1
+	WsIzH5NkeS9h60DYBg2XidXMzNHymR2IkgELR2fI5BWW438fWSDlSFuSAg7XbPJW
+	zGZyezoX2VMscHjXAwwrUKKFF3qYigx7ozlnJzGMA5vzMwBiUgZa3/OZ2NEMxdSH
+	vUVEzY+8l0yBFDabusY776OSK7pDN3M4DvF2CQry6CfUfIgSNlkj2b6uwfdpWs25
+	E+Qhg==
+X-ME-Sender: <xms:w_KtatpvfRcs1aJ3EobntgY2JuL71FWDfWP3OFUzdlQYzReWtEQ9aw>
+    <xme:w_KtagAw7aVQTaZzex1nFSk0nQQ-R8iZqVfbTbsNokJLdETREZ61Fz5OAgWf8jWNQ
+    -GRlefOyt1eqvCI-j9OjTLoL3OzO7i_JyQKNdOcvhbHWuv0kRs>
+X-ME-Received: <xmr:w_KtarV9130meqAm1z6uqs8ZiJYd_Z5CdTSFGjFlMg4e-MYw3_Z5WrBEEaK2xGVkkpOt0s6Q5O3ilW_Ux19JK-YtHnqY8rY>
 X-ME-Proxy-Cause: dmFkZTFLgyyrvnMhFmYCoJfNGebDNGcHqUeGIiw02nB9GfHFGjzZEEpoPB8yFh+lfcAfoT
     ZsKrrVjfOxqzmiP7eTn/n2mccnQ7GMLsuJ0poDjTPggF0rDuGyfgzwYCsrMedCtwxXFSpc
     liDl8cBm/buIJ5SnOZxfqXtnf/cc9igXp+DsvTtzyWWqoLH8cS15BmA0iulNSKshtF5YXS
     nP8kFduV9rNb0xQrN7KMLaO3qhW5cVpFfoz7Xul4/hJXLDOLBANLw7bX2U4sYp7p6ES8Jy
-    PGxsHzxRHKaSswbjCJiS593oHxVlUwMe+9vnDG4OL4hPKelxIPDDR/f6RONYfqLWkorhjc
-    8wBi/3Lusy5ZTGWqbb/gzaG7iVBClRmgFDJvP8g610GGFx/jKpQIPNXkptUoqq8kqCeb0d
-    02N2Df8iP1egjlFdJeR2Yhb6JkUmLU9U/hufpXXP0LL10AWGTx3O7r1AcM8CPzZkrWgbMl
-    ShXD5vE1E5ivY1lFpanViwzUDVt3ssFTYU0MvS6+nXFqB5zJPTaNxVCtBPIZPVn2CRg3Sg
-    RpmqNZJjW11Wd/FnmOOAIUc/Z7kFNQQc0d5C56tDdTT9kQGec2DRYwJRC39VRvUrP3m2Vm
-    8WoFNBrGmVvM94wY8fAYcqk1Y2AUvX3pjXMjfSP0DC2CWNWNrpQLcgGkw3NA
-X-ME-Proxy: <xmx:uvKtamBgxq3dW25jXo5F9OIc1YvQIDvc92vRKCe_FrKLszbHMPVHJw>
-    <xmx:uvKtampNvOuw_q5u51Uf6os20L_fDz2bNfbQI4j8Z-kfE4mx2ohrHw>
-    <xmx:uvKtavLZLYEGvT6_vT_oY5H-6-M6_B297gUSK0dgr5YWb4VRtJTXQQ>
-    <xmx:uvKtaoLVkj9tWPVwCy9mSgWVNfJsXywUMtwBQzDvlhZBTelxLx0TTg>
-    <xmx:uvKtavHIBxY5stqgvNescjVYtbQs6CHG4W535fL2BxKiQglWVWbqMIwn>
+    PGxsHzxRHKaSswbjCJiS593oHxVlUwMe+9vnDG4OL4hPKelxIPDDR/f6RONYfqLWkorhTt
+    wkawggax5EQAXJNtbBZ5G5XGETb00UaJMfnI9YKhciBYfv0L64NAYDBiGqcqhV7rQbbVuT
+    AFErVdmUjoVlp898Ga5ITsc/4+GAZogwFrn0NFp33mge7Frm9mJaxdCiP+1rrWD0JhAAkC
+    0n6gS23r+8vvGnd1dbOXi9ue/nCv1WqDNPxQ+3gqQUqUhhgBrFPQsYDe210fxJfr7XGCF8
+    S6JmGzLzEmBF6l3pgvI6LBX3zdEVZ1LyEli04NYT+WJJvA5TwJUfn/Y3x8VW3eWN3EMHgn
+    yMA5DP28ynNDOLwu68lpSDyRfjIghw13qk481IaY+OQOpQLoD7XjT7OkHlCA
+X-ME-Proxy: <xmx:w_Ktak7VXqZEyyEF4nVPn-BKykEKOwVZlH8imJFogTULbHGbAtE4JA>
+    <xmx:w_KtasDqG-3KB_xHHRLnWMorBIXdxKH4xbakuDviaISaHI65eC46Qw>
+    <xmx:w_KtapAbh51-ACpgv3T3sARt06AQ7pIJZ28i5m_Rn8EdVbdEMTTH4A>
+    <xmx:w_Ktasi5LwTKySjLedOam5eLzjA7ZxVfjSB7M2dYHkLjSEPlBKoo_Q>
+    <xmx:w_KtaideVqcuweAuano2RrzQgc_MFMbmRIXk41F2h-Xd_n2Uhv5l2gE8>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Fri,
- 18 Sep 2026 22:25:56 -0400 (EDT)
+ 18 Sep 2026 22:26:05 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Christian Brauner <brauner@kernel.org>,
@@ -89,9 +89,9 @@ Cc: Trond Myklebust <trondmy@kernel.org>,
 	linux-cifs@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH v2 07/14] vfs: O_NONBLOCK|O_CREAT open shouldn't wait for directory delegation
-Date: Sat, 19 Sep 2026 12:06:11 +1000
-Message-ID: <20260919022441.3305170-8-neilb@ownmail.net>
+Subject: [PATCH v2 08/14] vfs: don't return -ENODEV from vfs_lookup_open()
+Date: Sat, 19 Sep 2026 12:06:12 +1000
+Message-ID: <20260919022441.3305170-9-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
 In-Reply-To: <20260919022441.3305170-1-neilb@ownmail.net>
 References: <20260919022441.3305170-1-neilb@ownmail.net>
@@ -106,43 +106,70 @@ Content-Transfer-Encoding: 8bit
 
 From: NeilBrown <neil@brown.name>
 
-An open() of a regular file can block if there is an active lease on that
-file, but this can be prevented by opening with O_NONBLOCK.
-An open(O_CREAT) of a non-existent file can block if there is an active
-delegation on the parent directory but this CANNOT be prevented with
-O_NONBLOCK.
+-ENODEV is not generally an error meaning "the object is a device"
+and nfsd - the only intended caller of vfs_lookup_open() - does not
+benefit from knowing it was a device file.  So return -EFTYPE in
+that case.
+Also switch to testing the dentry type rather than dereferencing the
+inode to get the type.
 
-If nfsd is to use common VFS code for open/create it needs to be able to
-prevent this blocking.  It is conceivable that a user-space application
-might need this too.
+-EISDIR is widely used to mean "the object is a directory which is
+   not what is wanted".
+-ELOOP is sometimes used elsewhere to mean "a symlink was found but
+   cannot be handled".
 
-So extend O_NONBLOCK protection to not block on a directory delegation
-when creating a file.
+Also remove note about ->atomic_open returning -EFTYPE as that now only
+happens for non regular/dir/symlink.
 
-Fixes: 134796f43a5e ("vfs: break parent dir delegations in open(..., O_CREAT) codepath")
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- fs/namei.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ fs/namei.c | 24 +++++-------------------
+ 1 file changed, 5 insertions(+), 19 deletions(-)
 
 diff --git a/fs/namei.c b/fs/namei.c
-index a08f37aca3e1..b9fca38ad489 100644
+index b9fca38ad489..ba3e7e4b5fdb 100644
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -4554,7 +4554,12 @@ retry:
- 		goto out_dput;
- 	}
- 
--	error = try_break_deleg(dir_inode, LEASE_BREAK_DIR_CREATE, &delegated_inode);
-+	if (op->open_flag & O_NONBLOCK)
-+		error = try_break_deleg(dir_inode, LEASE_BREAK_DIR_CREATE,
-+					NULL);
-+	else
-+		error = try_break_deleg(dir_inode, LEASE_BREAK_DIR_CREATE,
-+					&delegated_inode);
- 	if (error)
- 		goto out_dput;
- 
+@@ -4621,9 +4621,7 @@ out_dput:
+  * determine the type of file found from the error.
+  * -EISDIR : a directory was found
+  * -ELOOP  : a symlink was found
+- * -ENODEV : a block or character device special file was found
+- * -EFTYPE : any other non-regular file was found, such as FIFO or SOCK.
+- *           or ->atomic_open responded to __O_REGULAR.
++ * -EFTYPE : any other non-regular file was found, device-special, FIFO or SOCK
+  *
+  * Returns: the opened struct file, or an error.
+  */
+@@ -4671,24 +4669,12 @@ struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
+ 		error = -ENOENT;
+ 	} else if (!(file->f_mode & FMODE_CREATED) && (open_flag & O_EXCL)) {
+ 		error = -EEXIST;
+-	} else if ((dentry->d_inode->i_mode & S_IFMT) != S_IFREG) {
+-		switch (dentry->d_inode->i_mode & S_IFMT) {
+-		case S_IFDIR:
++	} else if (!d_is_reg(dentry)) {
++		error = -EFTYPE;
++		if (d_is_dir(dentry))
+ 			error = -EISDIR;
+-			break;
+-		case S_IFLNK:
++		if (d_is_symlink(dentry))
+ 			error = -ELOOP;
+-			break;
+-		case S_IFBLK:
+-		case S_IFCHR:
+-			error = -ENODEV;
+-			break;
+-		case S_IFIFO:
+-		case S_IFSOCK:
+-		default:
+-			error = -EFTYPE;
+-			break;
+-		}
+ 	} else if (!(file->f_mode & FMODE_OPENED)) {
+ 		nd.path.dentry = dentry;
+ 		error = vfs_open(&nd.path, file);
 -- 
 2.50.0.107.gf914562f5916.dirty
 
