@@ -1,73 +1,73 @@
-Received: from fhigh-b5-smtp.messagingengine.com (fhigh-b5-smtp.messagingengine.com [202.12.124.156])
+Received: from fout-b3-smtp.messagingengine.com (fout-b3-smtp.messagingengine.com [202.12.124.146])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 780D52F851;
-	Sat, 19 Sep 2026 02:25:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.156
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F40D22F851;
+	Sat, 19 Sep 2026 02:25:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.146
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789784738; cv=none; b=YSnZDVx6fnI2QKHd0hD+6TaYQaJUI2pBzfb5izY7XrHKspPgdCU80fd+SQpK90HdMIgvF8MbWPY4tlj4gRp5gnh91f7Z+0uPbY3dbwGGrn/QvLZurRp062kKdj0VlFtuGKBNLtRzuMyi/37iOLWzV42Tb05H+7DB2uBIfELEYrQ=
+	t=1789784747; cv=none; b=SMWBOVNNmKdw9ZN5LeT2t6LeE4C3X0TcE1OMsldkp4Qd/I4G0tOyQJdrBye7nQLsw53bS7prgFFweUqC4tczQp+w6GifaXck787GH48xhSBvoAk56BxyvM1bdZi7yQ4p7IsxU7IoKp9ZtXFtY/8WUyPcfx+Ewd6gdgSI2QVR+RI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789784738; c=relaxed/simple;
-	bh=y5ozCMpQ6FSrFkQlaY69PFI2hEBCUwhCVMCveB27H30=;
+	s=arc-20240116; t=1789784747; c=relaxed/simple;
+	bh=nsMD1IsuWcn4rlq0wxYJIvo1Ln7fmePrR1TO2YB+rUc=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=jc5aHdLy3o2fCM1xx+8yEKks77J/Qjpz3M53rXeDfbTW8ISVXp+JHXqKeGsxrVDCYQuVvVQY07uldRf/ZJgXTbrO7sLKOWCHvhwHSUai961+32Rx/mzzMc9CmljnpctF3U1TC5YQB8OITaJozr+LCg+fy1G/UZYRxrslocOc/Lk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=G9wD1nh0; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=xDlJUwaB; arc=none smtp.client-ip=202.12.124.156
+	 MIME-Version; b=igAvl5/piuSL53iKSJ1OmzGIbpjfWAwCTUYwH0v8Sfy3mvwX2eWrniT3jgHCypMQ9x3KS2uYwJ1qIvJrC3x4K+gIA8sjj8gUuoD/fLqWt0r67HycMzNJ4KBet3UN56fY4RPUdoSA0Spc3H/umPOHUEtIGHiJs/jYO8VCBTJ+qNI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=b5zuoRH9; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=oLiTsIQI; arc=none smtp.client-ip=202.12.124.146
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="G9wD1nh0";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="xDlJUwaB"
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="b5zuoRH9";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="oLiTsIQI"
 Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
-	by mailfhigh.stl.internal (Postfix) with ESMTP id 4AEFA7A007E;
-	Fri, 18 Sep 2026 22:25:36 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-04.internal (MEProxy); Fri, 18 Sep 2026 22:25:36 -0400
+	by mailfout.stl.internal (Postfix) with ESMTP id 0939B1D0010D;
+	Fri, 18 Sep 2026 22:25:45 -0400 (EDT)
+Received: from phl-frontend-04 ([10.202.2.163])
+  by phl-compute-04.internal (MEProxy); Fri, 18 Sep 2026 22:25:45 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1789784736;
-	 x=1789871136; bh=iiwgVmXkwy1VcvFZGCPdg6frKZWpCoTTWrXqbQRI+V0=; b=
-	G9wD1nh0RW2kKm1TkfuZaahBtFMz7w73demJ8lNsadAt5CuWAiAiILdHC7b1NLBs
-	R5MG+935j5Tm0ES/wA3yfYS9QuF8BNPkozHgBTiOuCKIoFEazxlTZAZ5evTc4nPW
-	pOSkvJfPDHQQEHLeDr8aTRMKPiysOpL8vIb1j+mJ5EvRX88/bXOGppv8cTJixiEn
-	f2zD7OE8USmwDB7jWXWyHxK14+IB2iEwOrQNTjphcoU0aZ7ddrzVDJQbGLDa5TIv
-	4FjiKWwDKLkmYAfxt6X0miHsbQ25GhS4SWUhyeJQoJIurjaVjXoG/AZkpS5OaTrt
-	50kz5v0X0iA5Dk4raoXdAw==
+	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1789784744;
+	 x=1789871144; bh=P5/A7LmBtwefRzrYhGyLInA8c6nOGrnF32GDUrC1oag=; b=
+	b5zuoRH9qJzXfdapiv2UN9tl2/lrcknD6FcL5g852rOeroyPCZqhUtakYesvOc+r
+	UBA6WrUmv7+BNn1mgeG9PwlRX3Wo5pvcd0Q3ZY1riWkA0kYDEvO4ZNlegwBqJwpO
+	tqdd7prhcR0xfbHxuJ7uZxA9leBrO6++R9kL+H1rjAOXgc43jCs6MtDkyigeP2Mi
+	qxGoegXD+yzHBlR+X+aDduI8Cqw5dM8CMTM8qmcGoyJTEtAL6EZ6Va+o11TTK9/8
+	Gp8WoWfPAiLgUctyk1JHSY900pLexIg2ZrjMVYoNlMaHYfkB2P4CZsEsBsJi/LMP
+	yYB2W4PP/pDDTPGFoJCipg==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
 	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm1; t=1789784736; x=1789871136; bh=i
-	iwgVmXkwy1VcvFZGCPdg6frKZWpCoTTWrXqbQRI+V0=; b=xDlJUwaBWn+W5Voie
-	4Afg6JUL6+NFOx1OGnv7wNa9Jc848+PJMgMvvT1WksOMmpwsrlwQwUp+tcqGpwl9
-	w/RfoQm/MeFoYO4M66qU/YuXsVv8YEoAalLsfKp77HkYAsKUxy405rsdydK0f/kS
-	4r3wfW8pq2kdV4LEe1odTLDprmHqkZ1hLsbfZp32hB2URF//BkY91PIyWUfY3XMn
-	RjaFONbRQh6gh1d+rjadT9SWLMDep0c3rOBiQRA7roY2K/CbpI+98pAA/GlBD5pS
-	L5/fzacDCyl/UsWkelQjz3DiyuBQ2p2y5a8IojMaNSON9wG4wzebkGYy7YAjKlyn
-	7Djbw==
-X-ME-Sender: <xms:n_KtakQi0ojp6KxbO98rnoiAm1y8shVR-ma6zmPyhMxwyNETHjpwSQ>
-    <xme:n_KtaiJjAGVyNRUTdVDwVkdHsYIAovv-dzYVIknUbZ7zcXiHXrydOMsQ2aJpKUqHp
-    JcrxHQktGlj12oDlWTuC7Bz0Bv4DBP125Pd0p8M3Qknayfk>
-X-ME-Received: <xmr:n_Ktai_PTLhxHp_70I9of2cgMrWd8H_Hz89Uay2zqx4tkauQsANrHkl9o1baBmFo4ikWdqN5uvNe0zlxwRia3L7AvJHHBjw>
-X-ME-Proxy-Cause: dmFkZTFLgyyrvnMhFmYCoJfNGebDNGcHqUeGIiw02nB9GfHFGjzZEEpoPB8yFh+lfcAfoT
-    ZsKrrVjfOxqzmiP7eTn/n2mccnQ7GMLsuJ0poDjTPggF0rDuGyfgzwYCsrMedCtwxXFSpc
-    liDl8cBm/buIJ5SnOZxfqXtnf/cc9igXp+DsvTtzyWWqoLH8cS15BmA0iulNSKshtF5YXS
-    nP8kFduV9rNb0xQrN7KMLaO3qhW5cVpFfoz7Xul4/hJXLDOLBANLw7bX2U4sYp7p6ES8Jy
-    PGxsHzxRHKaSswbjCJiS593oHxVlUwMe+9vnDG4OL4hPKelxIPDDR/f6RONYfqLWkorhVv
-    fH5qB7ueKHa5DYsvWgliAnPEuZm6iROzZO0pqdT6yu31lYHJE7kL+O9AxFSFbOrNzWjrhN
-    MZMYBvrz5McRgYl9OqDdtAfvwv0esf83FCSO0OipJgIMv5uI7eCDO/BMfmmDj6kZnf2Khc
-    a75lPeQVKqTeBPHDEkOPkn9kz6z6JLqdSQHjd5clWM7Mc7V2UZ7mNx4d/X591O1gobRM9Z
-    9GuCcP+fpZnz9mw5FBXQRxv8SZf5NzolPogTGviGeRj27okPcTt4/qTRGSlACBhuKZEkdy
-    aZ9ssV+ys6FJh41rQTBrIUZdsLgK617jPsWqOaqCh/GgGpRy/XAGF2JazEpA
-X-ME-Proxy: <xmx:n_KtakAi_tnXr_VELxxi4rw9eYURkaq-oxadblNfGSPgKKBeMm2EAg>
-    <xmx:n_KtasoZKdLHLO4T1D0Hg249uW9AdXLvi4jbvumw6LEySDNHug1BFQ>
-    <xmx:n_KtatIenwV8FFal0mFyrXhBUKBoUqzlvq3iSUVAQP6vqSP5uhfOZw>
-    <xmx:n_KtauJoLibfRGW402Lyr0yQ3Liw8FuqfJeviTbWtykKAmPOhSAHcw>
-    <xmx:oPKtalHDgRGppW6szD0pmPHYG6tLO7YmVLrpl9WYnMMJl8jGZQ_GLUNF>
+	:x-me-sender:x-sasl-enc; s=fm1; t=1789784744; x=1789871144; bh=P
+	5/A7LmBtwefRzrYhGyLInA8c6nOGrnF32GDUrC1oag=; b=oLiTsIQIV1kl6I0is
+	t5zHK12MLa1qNv0ccwuoHkpeAtyuSt3pc8tuMyY8Xlm3dFOuxPoUwna8gBXS5PC6
+	xo+wpfw1d7Sk8ysE0u72VihzcAcQDoBifGEb5H2EyVWw0I7czv6395ygZ/AlNpsb
+	qlO0K7eoGI05325PxmcUBSssAUeZ9/WeDqBt9HLHPfvfWOinyJi+NxxVCaw87P5Z
+	0+Ho9Xw2S1hEbF7IhQGH8IQ0dsMb+WCYtvoPw6bB2Wvlekmvgz8YtCQzjjKZFzuk
+	iY11F7FRMSUmKJkubJWadSU6lsX22Tsnc1xT7TA29JdFt63L2suLnvZGYcEIM986
+	hAV0w==
+X-ME-Sender: <xms:qPKtajUNVFyhRh_VoBLji217aSpR_Cr7MqmdT7QRkeFDSUYcWf4EaQ>
+    <xme:qPKtakZLPXVod0U27JCBkHd9BoYu8EcdnhzqziciCCmVkVDB3JyXC6mtAquFN4H8b
+    wfGJCmL8wtjCbb51GHkOfSvFMqHX0yRZqlUcn6e4m4KJG8>
+X-ME-Received: <xmr:qPKtaguiE7N8EQYiMc8AvJQlDsnZd-Loz0e2kvIz9mswkMcuyjSxUIJ0QTinJlKzSGwzZs2uPgZgaB17jaQzQuLcDzIyd2o>
+X-ME-Proxy-Cause: dmFkZTGrZFL0s8hBJLx8z3hidUOdwjCj9VjHK3n7O8BnTzDOjzuikYR/nZKS/JMQnUKW/m
+    ttU6pMwc0Z9tFCObS0zKugLfPCmM9THrNDpJhhW7OY44mORRN5hiq9VrA88SmKEVaH19qR
+    i9D05LBi9HI4qBpsPpVhU/61V5aYr8eS/LOMCfgMVULO4KwUgCoc5t22HMtnFDR95rYZw+
+    tiY3qz4MyMC8e26QEmZdPX7v7WOi9JIP6OYRRQGrfNEz1xmgvQwmcdQSj03QIeX/Ibdge8
+    qJ8/QJ0WjoVEcVGcTafzJ6mX0s4yb+o1DmeiYS+9+j89g5WAZDBBqzve6MsIb8w2Rbd3tn
+    l9bvPSA3N0BJOG5fj1CQ0LJvDEDVKm/7X1YmYJ8tCBupZ0t9dpvXsGLdgsbq8W5uts8QA9
+    Juah7XqWorElET+Xbs69OSv8my/o/E2LS2iY2yElE5hWt1jNFi17pj6lp7CpZy5OiNfr81
+    MHA2FqqKtFg7s5x9pDgwbxbEfbKd9Wk734gQqiQ4YyTAPhfR02X01Z9DkY8kPuh6MTx8gP
+    Ajk6sNaw3n62VXdAAQPkB3V+2yZVjsZ2HZBuYvSqskolViyEO32Up3gp/4ofBeXI+pLwxW
+    SvzIapKPvR7pr/8vuNz9HLIBG7fqzXldVoDD0JZSbClRuHQxuFLqGpoqnbcA
+X-ME-Proxy: <xmx:qPKtajnlRGrcoq-0thgsOo_LuGaLkfrNuj9kTKT-cu64mn5a_FF4fA>
+    <xmx:qPKtahV3jo50mdWB8iNEFdg1JtCkI6L3IVYb0Cc2vfA6BAOTewDIhg>
+    <xmx:qPKtamkvJ_U26pZHTQQQMfWVjLvol2snTFqvURUEXFKQ1oM8if91CA>
+    <xmx:qPKtauRMgHRlzpiuRjhFgcQGfdy1wl5zD10Q2-TQ6wAhZW2N00fUXQ>
+    <xmx:qPKtamzz7N4Mc2IHf_bGn6sa__bqia_3JLY4ENbU0_sBUG4hOEarvJ1J>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Fri,
- 18 Sep 2026 22:25:30 -0400 (EDT)
+ 18 Sep 2026 22:25:39 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Christian Brauner <brauner@kernel.org>,
@@ -89,9 +89,9 @@ Cc: Trond Myklebust <trondmy@kernel.org>,
 	linux-cifs@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH v2 04/14] ceph: simplify atomic_open to use finish_no_open()
-Date: Sat, 19 Sep 2026 12:06:08 +1000
-Message-ID: <20260919022441.3305170-5-neilb@ownmail.net>
+Subject: [PATCH v2 05/14] cifs: allow -EISDIR precedence over -EFTYPE in __cifs_do_create()
+Date: Sat, 19 Sep 2026 12:06:09 +1000
+Message-ID: <20260919022441.3305170-6-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
 In-Reply-To: <20260919022441.3305170-1-neilb@ownmail.net>
 References: <20260919022441.3305170-1-neilb@ownmail.net>
@@ -106,102 +106,65 @@ Content-Transfer-Encoding: 8bit
 
 From: NeilBrown <neil@brown.name>
 
-The cephfs protocol does not combine lookup/create and open into a
-single request/response.  atomic_open() first performs the lookup/create
-and then if a positive dentry results, this is passed to
-finish_open(..., ceph_open) which simply performs a normal open.
+If atomic_open is given __O_REGULAR, we now would prefer -EISDIR
+if a directory was found.  So move the S_ISDIR() tests earlier.
 
-The same effect can be achieved more simply be calling finish_no_open().
-VFS code will call file_operations->open which is exactly ceph_open.
-
-This fixes a potential bug where an open with __O_REGULAR but not
-O_NOFOLLOW may treat a symlink as an error, and also avoids any
-possibility of passing a non-regular file to ceph_open()
-in ceph_finish_async_create() if __O_REGULAR were set.
-
-It also ensures correct handling of any alias returned by
-d_splice_alias().
+Also don't return -EFTYPE for S_ISLNK() - that should get -ELOOP and only
+if O_NOFOLLOW.
 
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- fs/ceph/file.c | 45 ++++++++++++++++++---------------------------
- 1 file changed, 18 insertions(+), 27 deletions(-)
+ fs/smb/client/dir.c | 20 ++++++++++++--------
+ 1 file changed, 12 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-index bd3e3f5c269e..83ceb2906f85 100644
---- a/fs/ceph/file.c
-+++ b/fs/ceph/file.c
-@@ -754,7 +754,7 @@ static int ceph_finish_async_create(struct inode *dir, struct inode *inode,
- 			d_drop(dentry);
- 		discard_new_inode(inode);
- 	} else {
--		struct dentry *dn;
-+		struct dentry *dn = NULL;
+diff --git a/fs/smb/client/dir.c b/fs/smb/client/dir.c
+index 6fa6d48fdfd3..08425c9eea42 100644
+--- a/fs/smb/client/dir.c
++++ b/fs/smb/client/dir.c
+@@ -237,16 +237,18 @@ static int __cifs_do_create(struct inode *dir, struct dentry *direntry,
+ 				goto cifs_create_get_file_info;
+ 			}
  
- 		doutc(cl, "d_adding new inode 0x%llx to 0x%llx/%s\n",
- 		      vino.ino, ceph_ino(dir), dentry->d_name.name);
-@@ -775,10 +775,9 @@ static int ceph_finish_async_create(struct inode *dir, struct inode *inode,
- 			if (!d_unhashed(dentry))
- 				d_drop(dentry);
- 			dn = d_splice_alias(inode, dentry);
--			WARN_ON_ONCE(dn && dn != dentry);
+-			if ((oflags & __O_REGULAR) && !S_ISREG(newinode->i_mode)) {
++			if (S_ISDIR(newinode->i_mode)) {
+ 				CIFSSMBClose(xid, tcon, fid->netfid);
+ 				iput(newinode);
+-				return -EFTYPE;
++				return -EISDIR;
+ 			}
+ 
+-			if (S_ISDIR(newinode->i_mode)) {
++			if ((oflags & __O_REGULAR) &&
++			    !S_ISREG(newinode->i_mode) &&
++			    !S_ISLNK(newinode->i_mode)) {
+ 				CIFSSMBClose(xid, tcon, fid->netfid);
+ 				iput(newinode);
+-				return -EISDIR;
++				return -EFTYPE;
+ 			}
+ 
+ 			if (!S_ISREG(newinode->i_mode)) {
+@@ -461,14 +463,16 @@ cifs_create_set_dentry:
+ 	}
+ 
+ 	if (newinode) {
+-		if ((oflags & __O_REGULAR) && !S_ISREG(newinode->i_mode)) {
+-			rc = -EFTYPE;
+-			goto out_err;
+-		}
+ 		if (S_ISDIR(newinode->i_mode)) {
+ 			rc = -EISDIR;
+ 			goto out_err;
  		}
- 		file->f_mode |= FMODE_CREATED;
--		ret = finish_open(file, dentry, ceph_open);
-+		ret = finish_no_open(file, dn);
++		if ((oflags & __O_REGULAR) &&
++		    !S_ISREG(newinode->i_mode) &&
++		    !S_ISLNK(newinode->i_mode)) {
++			rc = -EFTYPE;
++			goto out_err;
++		}
  	}
  
- 	spin_lock(&dentry->d_lock);
-@@ -977,33 +976,25 @@ retry:
- 	}
- 	if (err)
- 		goto out_req;
--	if (dn || d_really_is_negative(dentry) || d_is_symlink(dentry)) {
--		/* make vfs retry on splice, ENOENT, or symlink */
--		doutc(cl, "finish_no_open on dn %p\n", dn);
--		err = finish_no_open(file, dn);
--	} else {
--		if (IS_ENCRYPTED(dir) &&
--		    !fscrypt_has_permitted_context(dir, d_inode(dentry))) {
--			pr_warn_client(cl,
--				"Inconsistent encryption context (parent %llx:%llx child %llx:%llx)\n",
--				ceph_vinop(dir), ceph_vinop(d_inode(dentry)));
--			goto out_req;
--		}
- 
--		doutc(cl, "finish_open on dn %p\n", dn);
--		if (req->r_op == CEPH_MDS_OP_CREATE && req->r_reply_info.has_create_ino) {
--			struct inode *newino = d_inode(dentry);
-+	if (IS_ENCRYPTED(dir) &&
-+	    !fscrypt_has_permitted_context(dir, d_inode(dentry))) {
-+		pr_warn_client(cl,
-+			       "Inconsistent encryption context (parent %llx:%llx child %llx:%llx)\n",
-+			       ceph_vinop(dir), ceph_vinop(d_inode(dentry)));
-+		goto out_req;
-+	}
- 
--			cache_file_layout(dir, newino);
--			ceph_init_inode_acls(newino, &as_ctx);
--			file->f_mode |= FMODE_CREATED;
--		}
--		if ((flags & __O_REGULAR) && !d_is_reg(dentry)) {
--			err = -EFTYPE;
--			goto out_req;
--		}
--		err = finish_open(file, dentry, ceph_open);
-+	doutc(cl, "finish_no_open on dn %p\n", dn);
-+	if (req->r_op == CEPH_MDS_OP_CREATE && req->r_reply_info.has_create_ino) {
-+		struct inode *newino = d_inode(dentry);
-+
-+		cache_file_layout(dir, newino);
-+		ceph_init_inode_acls(newino, &as_ctx);
-+		file->f_mode |= FMODE_CREATED;
- 	}
-+	err = finish_no_open(file, dn);
-+
- out_req:
- 	ceph_mdsc_put_request(req);
- 	iput(new_inode);
+ 	*inode = newinode;
 -- 
 2.50.0.107.gf914562f5916.dirty
 
