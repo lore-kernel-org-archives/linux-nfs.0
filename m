@@ -1,57 +1,57 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5D6ED2ED141
-	for <linux-nfs@vger.kernel.org>; Sat, 19 Sep 2026 16:11:41 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E0CD5363089;
+	Sat, 19 Sep 2026 16:23:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789834302; cv=none; b=fdfTRU0eCxqsqHisf/WXmouHtTovlz2WCFNR+iq/Izmn1fHEZ72dCt1xdR5DNYucYSLyszzGJ1V5NT4Me1vJsfvSVBbYC5DfIF4G3GG0UC0xw2Az4n1eRfz0aQsoa5NlofNHPQ9kdKzQ2qKnRT5hKGf0h1UJYd4aQMXvystMWAc=
+	t=1789835005; cv=none; b=LQrAF+haoxGtetQnoQGujje92JvkGLnUuK6iZ92YUvYpaDPuc3+D7g/xd96y/TQ2wIQnfwFhOLWlOH/TG6uxjTjbt9n9L9UTmDom5SWuWACnsQuXvwwui9lpoqGmtEDWrbyxu5AFMhgz0AtSvp08k4RqlY6bKLkAHu4uGTc1FtI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789834302; c=relaxed/simple;
-	bh=eEnSPjzGwbm92SQ4gh4C5u9LvJVtJ4nM76fDHPq64R0=;
+	s=arc-20240116; t=1789835005; c=relaxed/simple;
+	bh=rCfku23NV4rHOcA4C6xP0o0XxycvahRnuUmJxepMU10=;
 	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=Tf+o2DffwnepTWwDON0jt9cjIk/JJkE6lcGxHQqJaxQxuEZDAUEoHWbcXhefLiAlAYK4b4ATggCwH0b5eFsmSlZPWqZFVljpa1ReqWCRigcKPoNy5VKyqEjCCWiHBzuxsW4ANIRn0uTUeX24l2OTkiP0V0xzdnQcuTdmDoghdGc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Tj5RW8/t; arc=none smtp.client-ip=100.103.45.18
+	 Subject:Content-Type; b=cDE1KA3IBfW2R0o99p8uptIX4cvz3x0BFjx+rwOVO6U/3WcSNLKpTV3Emt0ueX5Wkbfwp/w8/ugHnjVgRW5HwYWNgKYpt+d7FXBujykzTIPn7p/CB8xeafkIIh12jsSIYbeSsXSYAem8WtUwqYL9i39GZlTiGozbS/8BbdKddVI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=DP6wtNOV; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Tj5RW8/t"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A4D921F00893;
-	Sat, 19 Sep 2026 16:11:40 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="DP6wtNOV"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0A6271F00898;
+	Sat, 19 Sep 2026 16:23:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789834300;
-	bh=44cYfAhHvog+0OWjXfCaJkzwGaXsMAj5yteR4Z1pqhU=;
+	s=k20260515; t=1789835003;
+	bh=C4lRm3RTYNV9mhdEEDcZuzTAV6oSYrE2Pr2mgjuhYUs=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=Tj5RW8/tFPdMeO2u1lbH0f6pw+JywRbcl4rB2vMJ5T0+srAAsHU0uLWg45LHfuqBX
-	 RxbkIsFKGeqPa8xy0tzwtGqk9tIZRhIj3b5xbujd2zPucvvlWdCElxG5QIsUHLIKsV
-	 kX7Et3psRHncUL2/Qle66bM3913Nn01J2jJwYasD6XEzJIpzOlmaf+E4rz0oOMH3Et
-	 g7ozK2cN0ccPMY+jt/ub1mS9xVSNZefU3c0+79Ey6RaFesHSJigsCmJ7HZLAP7j643
-	 WrxUhD7Hpe1qu4Ao9xU7iFiqZLbr8WDb1jm1hRTJwZLP6Se8FQagbu58Rqk+liGLip
-	 5hNrRvBfnHjMA==
+	b=DP6wtNOViiARae2q4SCrhAyAjFH8KgPwEw8WLAjQbJOmdm/ox8AuLydIJPBO14wzF
+	 HFAChnG/jXzQrTMR5ZK6knAFEquuyvHrYDZAwcFqYUvi1EjMCI+X5rzt6VY5ZL/iHG
+	 0z1aQ23qMJldHrWn9H92GNf/ye+WhPPjhGW20uydqgrUskzcrrmCuDSoVhP46a2LZh
+	 HHBa8M1cx6qDFj4tXSRS6F9xeEjIhmvnHd8Y27NoBO76AWVxuIK516mD/JsaprktZ3
+	 MW3uhHSmeYwS9+x6syOn5B9fjrZRnMchpUbr/cu7/vdqI/FfxOlPWDC10YfPkZPNJ1
+	 pADuEyXzxvOww==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id DE07CF40066;
-	Sat, 19 Sep 2026 12:11:39 -0400 (EDT)
+	by mailfauth.phl.internal (Postfix) with ESMTP id 3CD09F40066;
+	Sat, 19 Sep 2026 12:23:22 -0400 (EDT)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Sat, 19 Sep 2026 12:11:39 -0400
-X-ME-Sender: <xms:O7Suaocdc_4fi1xAH7n7MASuT4TLS_Jt7kRwllz43hR6S7VAUIc2rg>
-    <xme:O7SualCwjenNeP5owjfVf6uHySbu6o7VNUKSd9sYJLYioh5TibFsOFmcyDtqmQwxW
-    wkU7PxoYfLXn10Viut9xmG37TRmGp23YooQmhyYxbYDIWMsLKiY3Cb4>
-X-ME-Proxy-Cause: dmFkZTF0n7cxv0ybYRGaMhfDpl2fZClcjI/n1DqEH/Pb0GdJYGPo74fM/8sVrz5iSKgdG0
-    8jTTLMTdxo4bUPS1yPPwQh3DUH04PGD3adpYOEmBa1PST+h4esFda3sM/OTp31k9kvOl2v
-    aDBXjjmo2Vi+gYROOfEFsRoUMu6FgIp/Aj7wmPv8yQbLIr+EeY7+LzZtI6pMHKtZm6cvQm
-    B/OOC13z9+/5VbiySISP+BQpKATXRnVcQmTr8ZQ5k0LoiwFdB1CooN5VGgmKnYxXVBdzee
-    BIWjCNGvcb5Zue1wsqJtnhsciNMsNYVg94LQ6U0mSO9fGPQzzOHaKBAIAO9RkCK7BBZJHs
-    LyOhfQ0kYH5RU+ncplPGcFKTBVB5jALPsev4gn0Ugzep6SQlRyFr+FGmJaPqJK3vJURZKV
-    3OyX/k4mxAz/fYXSa4MH3AiM7VSF8Y9A9crzTwKnCbI2op5bu4b7wd0Yo/63g5m2c00m7m
-    uKNqOEegMSzlMR+PLUyjUyEEobkG85+E4SzDf0Wz4aIUbRuv8hA4h5n0KKF88u2A2hUFyn
-    sEWzkj2JcWzy1VGwAImRhuHY7dDgYVjfWYenk4XaIShiQF0m9Fdiy9xy+8rejjC8NbgrgA
-    /NYbXSkEAxlruQaBmSoI4JJaunh8xy55FpKp4+ttwOY+Qz18asdhbvDenlyA
-X-ME-Proxy: <xmx:O7Suaj2iE_tDVLyOnTzsqIfkyiOM9q40dkpxxUM3Ned9pvgScGkGXg>
-    <xmx:O7SuaixQCpCzw_m7wPLJMUWTI5T3jrqYsrnJrirEeBh7CVpQZsTGlg>
-    <xmx:O7SuaiF_sPBARME7IiGveu4SaZ8Uujs34qu815vn-I1jZHlSLpaqPQ>
-    <xmx:O7SuatYmFzDI8kneFnudZ44-8H9M2nZ30d6uv-k1cxkhzmjzb9DpnA>
-    <xmx:O7SuasAo4htcvRQJ2f2mpr527rAvwjTrLnC5V3XXsCqF4kuXzLHybKN8>
+  by phl-compute-10.internal (MEProxy); Sat, 19 Sep 2026 12:23:22 -0400
+X-ME-Sender: <xms:-rauao4lVNwNJfYCW_uP-vocWLYXA57nbVKefMKFSueq83qGmQNR0g>
+    <xme:-rauaktlCAjPoyAVKnoGlmCs-uiF8aJELr9aOxjX_GfQZ0u0oAvLRmMqOMEtIsfjr
+    I6OklI6iYn2IlD3A2gCrUwiQ2TN2N5EtY9AsFQS7-M5cvesT_tPGIK1>
+X-ME-Proxy-Cause: dmFkZTEthDnEnTNzGgkWQatgFds47X3LBSfUEYm0c0ZV4go8jNCGUPTrclDhUI/156RFd1
+    /El8fx5I9rXFPLoY0rOdO+CyvUB20WNDyuUvNd2rs4whvxrwYkFwqFWAmZgOmYRfacooGf
+    Hsno+CrK28XrP4pQiCXO6I6fHLBpX/OBZF+5vqlcEnKmpro4D07Z2TnxgKtKoOSx/EeJDk
+    Glh7d3bJXB4TtCB4mrfUOOjA1WR4nLQRvqMBgn54Es+OSfZ189mocfqS/A9z+Kd5oWwiwW
+    86mNzGJRzE9jVo6E5PFLeFEEOUwbtSi/ySCoXWBN2XGCZ3xIfVvCq4ajWkUJmBxFEmQimT
+    yC+8CFFp++nh1Gpgkl715haFfzOTVJ/BzvU8Gx+DnRZCcTYqkgydL48eoVhKA/T5FilLjA
+    Dlt7oirURHzjF0M82ZLTxtGLHyauKFB/8HnR8JfpLOvtcGwV5uM34/lP0Sq+0vVf69FBq+
+    maWUY544pdxmFhCrzgofqT+an5vcltd5DUBUZMUVergbT/Ys4m587z0p2E4/sMF0MPt8Za
+    GU8LWqsNyXiXI/Ds6McbcCRBFCGuIEnCV9pp+L3pjJJPEXC7iiQJrtRFC+udc9dhm+nkQa
+    zbeHlIr8F7p0/KKumF2T33Ufu5AYehf5+PnQLasaD8Sbf+3/hPH8b3AkzhXA
+X-ME-Proxy: <xmx:-rauakSPik5hohjS6WVR9oHq5r_BBrZPo3dvSwBB-finccobpzOMRQ>
+    <xmx:-rauamrvN3Uo0LBKIxAWvTdijVNQPYe3GQ23koadj-FULtE5n7XeJg>
+    <xmx:-rauaqZ07v50s4_DfQGFKTF3emwXKCRee_eK2NpO97SdwAHO-gFQiw>
+    <xmx:-rauapQdYCHkzEQghnYFCbsUHPZJVlE3gM29Y4e4-3NHaZQmIXRwqQ>
+    <xmx:-rauagd3AzYaAnJtbeI88yDbi6C35PSvLiLIFpVbc0bNx1vNO-i5QQpW>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 6EC52780070; Sat, 19 Sep 2026 12:11:39 -0400 (EDT)
+	id 1A66E780070; Sat, 19 Sep 2026 12:23:22 -0400 (EDT)
 X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -59,44 +59,60 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: Ahez1a8JXu07
-Date: Sat, 19 Sep 2026 12:11:11 -0400
+X-ThreadId: Ak1fuKNIJ_kR
+Date: Sat, 19 Sep 2026 12:22:53 -0400
 From: "Chuck Lever" <cel@kernel.org>
-To: NeilBrown <neil@brown.name>
-Cc: "Jeff Layton" <jlayton@kernel.org>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Rick Macklem" <rmacklem@uoguelph.ca>,
- linux-nfs@vger.kernel.org
-Message-Id: <85a7313b-6c69-41bd-9a12-18ab4fec4b5b@app.fastmail.com>
-In-Reply-To: <178977475436.207413.9806283444174908649@noble.neil.brown.name>
-References: <20260918-duplicate-reply-cache-v5-0-b6aba9ebf2f4@kernel.org>
- <20260918-duplicate-reply-cache-v5-11-b6aba9ebf2f4@kernel.org>
- <178977475436.207413.9806283444174908649@noble.neil.brown.name>
-Subject: Re: [PATCH v5 11/11] NFSD: Remove DRC checksum and payload_misses stat
+To: "Hannes Reinecke" <hare@suse.de>
+Cc: "Trond Myklebust" <trondmy@kernel.org>,
+ "Anna Schumaker" <anna@kernel.org>, "David S. Miller" <davem@davemloft.net>,
+ "Eric Dumazet" <edumazet@google.com>, "Jakub Kicinski" <kuba@kernel.org>,
+ "Paolo Abeni" <pabeni@redhat.com>, "Simon Horman" <horms@kernel.org>,
+ "Jonathan Corbet" <corbet@lwn.net>, "Shuah Khan" <skhan@linuxfoundation.org>,
+ "Randy Dunlap" <rdunlap@infradead.org>,
+ "Christian Brauner" <brauner@kernel.org>,
+ "David Howells" <dhowells@redhat.com>, "Sagi Grimberg" <sagi@grimberg.me>,
+ linux-nfs@vger.kernel.org, keyrings@vger.kernel.org,
+ kernel-tls-handshake@lists.linux.dev, netdev@vger.kernel.org,
+ linux-doc@vger.kernel.org
+Message-Id: <ebaeb3c9-839c-4ad7-8573-baa68e8c64d0@slotpi15m67>
+In-Reply-To: <bbc4ff6f-aa38-4862-96fe-518c3b4df4d6@suse.de>
+References: <20260918-nfs-mtls-identity-v1-0-197e568d78a7@kernel.org>
+ <20260918-nfs-mtls-identity-v1-2-197e568d78a7@kernel.org>
+ <bbc4ff6f-aa38-4862-96fe-518c3b4df4d6@suse.de>
+Subject: Re: [PATCH RFC 2/5] NFS: allocate the .nfs keyring per network namespace
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
+On 9/18/26 10:44 AM, Hannes Reinecke wrote:
+> Thing is, when running within a container (eg a docker one) access
+> access to /proc/keys might be restricted, and from what I've
+> gathered each container gets its own, _empty_ keyring.
+> (certainly an empty session keyring ...).
 
+IMO, neither one affects patch 5. The key type has its own request_key
+handler, so construct_key() calls it in the requesting task's context.
+There's no upcall, no /proc/keys. It reports the .nfs keyring of
+current->nsproxy->net_ns, and KEY_TYPE_NET_DOMAIN keeps a key
+instantiated in one netns from answering another. An empty session
+keyring is a fine destination, and with no session keyring at all
+look_up_user_keyrings() creates a per-user-namespace one on demand.
 
-On Fri, Sep 18, 2026, at 7:39 PM, NeilBrown wrote:
+What does break is add_key() into the .nfs keyring from a container
+with its own user namespace. Patch 2 allocates it owned by global
+root with no OTH permissions, so a root mapped to a non-zero kuid
+gets EACCES. A netns-only container (Docker's default) works end to
+end. NFS is not FS_USERNS_MOUNT either, so whoever mounts on behalf
+of a user-ns container can provision the keyring too. If a
+netns-owned keyring is wanted anyway, patch 2 can allocate it with
+net->user_ns->owner instead of GLOBAL_ROOT_UID. I'd like the
+keyrings folks to weigh in on that, please.
 
-> If we get a request on a particular transport and it is a good match
-> for a request that we recently replied to on the same transport, then
-> the chance of it being a timed-out retransmit is 100%.  A client that
-> re-uses xids that quickly is buggy, isn't it?
-> So if nfsd_cacherep_acked() then I think we can ignore the request.
-> In fact if the "found" reply was sent on the same xprt that we received
-> a new request on, I think we can ignore the new request even if the
-> reply hasn't been acked yet.
+Regarding the idea of letting each container create its own keyring,
+the kernel still has to learn which keyring to link into tlshd for a
+handshake, and the serial number in the handshake request already
+carries that. The per-namespace allocation decides only who creates
+the keyring and who owns it, not how it is named on the wire.
 
-Just to be clear, by "ignore" do you mean "drop the request" or "reply
-with the cached reply" ?
-
-
-> Everything else in the series is good and I really appreciate how
-> thoroughly you have explained the logic in a lot of places.
-
-Thanks, your comments have made this a much better implementation.
 
 -- 
 Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
