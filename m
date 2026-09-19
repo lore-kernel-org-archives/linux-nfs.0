@@ -1,332 +1,178 @@
-Received: from fout-b3-smtp.messagingengine.com (fout-b3-smtp.messagingengine.com [202.12.124.146])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ed2-f35.google.com (mail-ed2-f35.google.com [74.125.228.99])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 00CD829408;
-	Sat, 19 Sep 2026 02:27:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.146
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789784827; cv=none; b=B7e7i0isUYb4kPMRF57POtGVLK/BtNt5U3B8lFb1X31d8SXJ8Z3fMehgEX6aityX4ZOgnrGnqXp6xHR1Ox+Ctskc2TIFrQiQKV5M7h75hbFPmxc4EC9VulSUBZ4u0vY3SV4qv7muoaBrrgw5vDvtj4XJOEsEFVkMszsit4alhI0=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789784827; c=relaxed/simple;
-	bh=s6cayByBblZbIUGBUY15grr/HNZ4HSwkyOWYKJd+0hc=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=qU453jiSQ/5aIJ+3Fpo7IDU07ImbQxr++vfXhutxnWwwQohpYZVvdYrNvNqFmqaC8iBzNUJNS/nVAGBMnt/XwHGevkeV8N0jS+nxO8n7jlNNcyQHhYSxQNyqjBzJyDjsUg3vqXevi1ZAR/BcmrwhVfTfUziid/wlbXiM/kzfvC8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=bfewcsEI; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=JgSvn6Ud; arc=none smtp.client-ip=202.12.124.146
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CBCA3472795
+	for <linux-nfs@vger.kernel.org>; Sat, 19 Sep 2026 11:28:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.228.99
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1789817315; cv=pass; b=JLOCY8ukdv5TsTwdsGPAtiEmVzfIHS6li26ZM3YeV1pJMWLGYKJfLfMSqSAt4cmqvLEUVgjkKg/WhScuBdRjIx4Z/S7blUKKLRnADEDVrYpmiv04H0uR/PPVAWsjWNCYuZsvzHgEkt8JS1ASjepaReKtjLA9ZPZhVmQsBdM3918=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1789817315; c=relaxed/simple;
+	bh=6v8vmWs1HYwx7Z91CjMFT1MOwsXTsGupNzvuGSf2/SE=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Content-Type; b=hN5FY0TCtn8gr/HKWD+WmsCfWmZydxryAnGkPCIPselNuPqD/uIIjhVEGgpTkRxVOrHyANcYnHRHJWLue2Tl+SenAozHN9TmNfnDx/L6sVjVjfE4tr1HLvyn0VMyyTUDkKGZafuTgFC+aDG0E8AC+p0XI0sDqNa+0lPUecEsgGA=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=p/SYZcmC; arc=pass smtp.client-ip=74.125.228.99
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="bfewcsEI";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="JgSvn6Ud"
-Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
-	by mailfout.stl.internal (Postfix) with ESMTP id D5B001D000F0;
-	Fri, 18 Sep 2026 22:27:04 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-04.internal (MEProxy); Fri, 18 Sep 2026 22:27:05 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:date:date:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1789784824;
-	 x=1789871224; bh=akLwUn1lvreeYgo58yx0OnGAqD6FE0lkcCMJqjJSHyQ=; b=
-	bfewcsEIcnNsLPlh7kalv2o2/V+xdcsGXojQ6t0jQf2cnL0SlKZyRCC2FfpmmIBG
-	H9GioP1Zy8pcw9fAIZkiG56WMfJMrtJsjEyv9zaFrx9S6UC7T3rCHoP+2df+NuI1
-	vC8VTEP6b7ssCKg1hLKYABRf9E6KMtJKqL75YdZIU+aGV87rK9kxZhF8IkSuY0+E
-	DchQNjxQnKagJknynU8GJZczsH0T0u0KBchEPKcd4P7r4G/9Wx0fJahaeSHPDPqd
-	q3X6+YiBVR0j8hqyhNNWCpOlzPvN03JJW7B2aodUL+R8JeUEAvIaS7awkR3NmRPW
-	Y34gqan57VXZb1qfElnFWg==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:date:date:feedback-id:feedback-id:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm1; t=1789784824; x=1789871224; bh=a
-	kLwUn1lvreeYgo58yx0OnGAqD6FE0lkcCMJqjJSHyQ=; b=JgSvn6Udt0ZFSFx1U
-	F4+xjWYa2Ggo3p+dx+BxVFWvN89rt8uhjoMLhikUmbe6SKcYqwUSs5MnmVipmyDx
-	iTqORkbBQPlLBaff6WxYJtOwekR+ufXHgbFQXn3jjU7CLqyI/VUjVZNHS48kefM5
-	CzA26nN9SkaVoK5tCNS5IPl/fsQbNQ7cN/+hD5XXErVh/kr7yt1Lu1Zxf//rAYxd
-	Q3HLLnbR+NypDXX1Nz6M/eMG6LTD7d1lYFB1ZFdrH4ESETirca4CBb3M7ZRox0FQ
-	E8waxtV3kNBjiQguGGmflIrYXpKE3v/QP3OJ1sR7Nnukf9UQGYo+dMo0w5HFDAHj
-	wc3Vw==
-X-ME-Sender: <xms:-PKtagXJ7Mtw_K6xHaCFTFQQw6jReEHdjIDunwlZi9kAQagXLoYZvA>
-    <xme:-PKtatYiwrXDvB2bXGPy-EZTHVDv3FB_fyXWeydEd_bkJRj9Gf2lGu-MTgO6_DR8R
-    M9BlUFi3K5e8bAvbb-5vmuFGobSA68wWegcSkSoIQbtlr1J>
-X-ME-Received: <xmr:-PKtalvKDh6cO1wbb7NK2ySJP6NjV1bMYyndn78Zi5MerfL7v0uQdAvUdYQGxPMwbwtrDB-N1IvQd-nggrK1r3DlYgDtOuo>
-X-ME-Proxy-Cause: dmFkZTGgqDvHUiFoelb3szb25Xc5WIL1X0CmKVd0SSFttbFGm3ZS4/WbThw2/23Wv0kT2L
-    zTiD3f7/mbRn4xQkog4u9WXAUu/Z8xbLL7habzJ5iT0L9pvsBxuMoK5k8M+5CBBhCA34Md
-    HPlNAQAuPUTpsFoyG9EfHruislsqzF/ELe8vhu1WoHNTpMpKsXLXUP8fPb+iJDnGZK+wxX
-    pyu1Y8XGp2Ez4Y8aWvA0+LsWIM5P5beRGa1K+yf2x8AAFZFB+FqQNejpWDyXiPsbkOSKyy
-    pf6WO9eid06RPw0E0qVieiQBSzbPbVfHpbR/XZ98dIIyde1pgFtUnUmkW5DtGlTWNRmkEj
-    377G7CM3GpxmXSNvMi+MPW2aEgby5zH2/1Do6FlWCyen6Exv4DxYCE4xkLL+N71nymIowO
-    LQbw7XMRj6Aj+q5xxndpZRqcCEI9+BWqeMNpwzih2rrAvrgBVFaN5IOQ4szAS6Ymy+7ZO/
-    gVZJKUAMeQDjZCn5OqDEcaELhvBpC7YlnyySMcpxZnmZMSj302XUJy3Ivhjd6Z+dcTkPtL
-    fpiZYIo2CEpWqHWfPGPyIOSgkNnl8sUfmBHExqN4gutq5Gez5f8naeViXgk+nJa/G3C9jO
-    LA2CswWqZSp25q5zrRzqHydQzjvDTTIymnCMg8ivZVGwqIQlD6L5/TEC0qow
-X-ME-Proxy: <xmx:-PKtaknvLCdCS97AJAHuSA4StIgQjUd05FAMiem2CRtO8biPeEyaNQ>
-    <xmx:-PKtauUfJZ2AN9Xds8r_ECye6hS-MMxznRVISl9PzgnSRPzC7RxWIA>
-    <xmx:-PKtavnvt4YL-5QYEO00uOfTHuJ7llq-twaGuQzdnwPp_ZnUwZV4vQ>
-    <xmx:-PKtajSq4-BNs1t41vbFIf3FeLuk0PJNHwvuxXzNmDp34LCvyhQY-w>
-    <xmx:-PKtajw1FgHnwTTTEAPcoZItoe0WGoPep6i7GlDA3Si_JsItHAn516xp>
-Feedback-ID: i9d664b8f:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Fri,
- 18 Sep 2026 22:26:58 -0400 (EDT)
-From: NeilBrown <neilb@ownmail.net>
-To: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>,
-	Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	Jori Koolstra <jkoolstra@xs4all.nl>,
-	Mateusz Guzik <mjguzik@gmail.com>,
-	Dorjoy Chowdhury <dorjoychy111@gmail.com>
-Cc: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Andreas Gruenbacher <agruenba@redhat.com>,
-	gfs2@lists.linux.dev,
-	Ilya Dryomov <idryomov@gmail.com>,
-	Alex Markuze <amarkuze@redhat.com>,
-	Viacheslav Dubeyko <slava@dubeyko.com>,
-	ceph-devel@vger.kernel.org,
-	Paulo Alcantara <pc@manguebit.org>,
-	Namjae Jeon <linkinjeon@kernel.org>,
-	linux-cifs@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-nfs@vger.kernel.org
-Subject: [PATCH v2 14/14] nfsd: use vfs_lookup_open() for non-creating open requests too.
-Date: Sat, 19 Sep 2026 12:06:18 +1000
-Message-ID: <20260919022441.3305170-15-neilb@ownmail.net>
-X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
-In-Reply-To: <20260919022441.3305170-1-neilb@ownmail.net>
-References: <20260919022441.3305170-1-neilb@ownmail.net>
-Reply-To: NeilBrown <neil@brown.name>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="p/SYZcmC"
+Received: by mail-ed2-f35.google.com with SMTP id 4fb4d7f45d1cf-6a99c5de614so2077139a12.2
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Sep 2026 04:28:33 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1789817312; cv=none;
+        d=google.com; s=arc-20260327;
+        b=Hf15+YKy+y2xT6qP/UmZgz3j0zzP7jX7ME0nh+2YX9c8Kt2DyCzRIFbn/H6e69cA4l
+         4dZMyBOzvRjMrjT3NDUJZGbItZi2srkVJRJP/VhxHpOw9wB2UnwzrTsufWsYRk1xZExr
+         ytqEIoyeOh0Jui3UdwJA7Ut1xZImYrmUISRaXRUM0LkZVremjZB+6AD1QYOPhH72rjLo
+         5VdnVIsaI9ues3UXLIOfgvyK12neNEUZgImYsDZ/j/3bAoR5U9HqZbRdf+9TAzRgrlIW
+         N0hxuQ2xPbdmGIATw/u1hekVfXUu8icjNhFt+OBgz5qsbid2gDTBay2upAi5Y1MCboBa
+         BAXQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :dkim-signature;
+        bh=YYw0hXLxjAvI0p9m2JnGIwsgy5CaaFrL4W8vXURAxKo=;
+        fh=YRwTr2AjnzfvXHTa7+zJoAqCeXeC2OzfNtKNRJEz3Fg=;
+        b=jaHPcO6pEGYoLoCOZr5m+wn7ojSZ4d42vHWoSwxN4FpyuZkRsWHkWCF80IMAyknJIs
+         jbIAhapsWVHgV+kI1K0FmCR7lfyiZ6SjgNMFosMh+EYwQmmZBIzY1xKarj02Dbav5Nlj
+         OEyHn95f2t+5Qe4vZss1lmUWKujXYWmrCJHGvBS2WXsWlBVOMXiZPlRNrbXfqTxJZB+h
+         PhB6umrEZsN5tFFj3x6KfVIWJtifE75nRQCq68UjYoYiAfy1RtCrZbdcKx87porVTEc1
+         6rKApgvLfTzFT4gPw7t49nIyVIwrhLsG6uF0KJajSnO1x2yZ6TfCa+h4/9f8M2mKh/4Q
+         TiZA==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1789817312; x=1790422112; darn=vger.kernel.org;
+        h=content-type:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=YYw0hXLxjAvI0p9m2JnGIwsgy5CaaFrL4W8vXURAxKo=;
+        b=p/SYZcmCgWT21iT/GYzZyFv6zDD/59cb8hwlgfAEkpU4+OIoXBXWaWivj14E0toEEe
+         vja6F7CjnQKaJMzUosTA6sRtIh3wx3YExOIzL3KeG0xPHqVlWYfAeaP0cE/jFPRxLKLV
+         63ASZGc3SzNizHet1GnOaCvRPTvO79jhl+JYRUtFM6N03R9uDVzZ63+wx3cB3GkOOKdU
+         K+naj+MlHGjD1ZoUC+K2gWHRWp3MNoxSH6yEr+VQgVDgiLx5sLCZZcAmFTksPkafpuJy
+         2Hu4FkcmBx5kkPcuC1q2zu+9KPOLVfA1CezsFKluwAovEt2vOdxohb+TSeTbZDQ/uCb4
+         dIyQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1789817312; x=1790422112;
+        h=content-type:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=YYw0hXLxjAvI0p9m2JnGIwsgy5CaaFrL4W8vXURAxKo=;
+        b=QyGrIlvnR4G+7KUOQjHEscIGvmWggW3WjGBnDU1V1lyggVB4EKnEninICgi+lUWQr9
+         UvEj2VD48ZUl2by0Cm73eaqXQB3d0+vbSYtOctLcWSch22TDoCV4JAdIAuyJSSy1cx0k
+         9h5fejStnF8Pr9G4k9k6n8blzBuuu6oLfUNfiZwsuhFpMZXFjsREuj8I2OcZzayo0kOA
+         eYk/CsiRWTGI0vmhxKg3HvgHwilFCcrUGi3lb7XGK+a8rwBijr8bpilS9j43HwgIY5PJ
+         q/jcz7ycDSXlILR8z7jR4IAbXxqHDZxFiLBVFjS8G7W8q5eB92MGxF5/P5ejzQ/VHTT1
+         7zHQ==
+X-Forwarded-Encrypted: i=1; AKwUvBya+g6p6R/mBZmT9UjYXWhK5MMZCkB7DauxA6wYFLiSqOHJl82bRvBRBbV4y8H6mZkOCAaIBEcZhyQ=@vger.kernel.org
+X-Gm-Message-State: AFuF++mmccp6gqwfZ+Ft/0ZNXgFed/Iz8mfQIrPVZ1qdm0daSwCs7R2A
+	l98MX8Kw+iPSB4iX5AJygQJohIh+Zcr+m23lL6zlc8JaslRMuuPqIyxNLEQ1yD5/9jRxeVGHjJE
+	Lx8qovYODLeLerM9xDsSC7/lZ+revMdT/KmBU
+X-Gm-Gg: AYBFou0bPJphJwyz7bdFqjS4o9BUm41cz+Grni52gjPVKaI06oeVboXd4FfJuwHYJIo
+	3mew9Z2mlAH8z6pap88l0bfDm2W9DObEZ1w0KF40EdJUKYkaj14xJA3xYXUoLBIWgNuDXQV2sQu
+	4aGLKkTEu6o6FsXxyrXMkDDGr6+wU9vEnA0uokQ0nWOrcbXA1Onc1x0VwZeO9h0EYkwMiemHADv
+	gPlwpfXHQZVcqMvxl7J7NFUYq9/07edTMxa6oq3cx+ZG8sCFGUFOt0kl45paEmje41kICykbguo
+	2Y66bCA8QNh90rtMIfdxOpr8mg95j9nQfJjMtW2KB4t3gMG2EhfEoRc=
+X-Received: by 2002:a17:907:94d6:b0:c29:c531:7525 with SMTP id
+ a640c23a62f3a-c2a15699fb5mr432643666b.7.1789817311797; Sat, 19 Sep 2026
+ 04:28:31 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <CAKAoaQnTria60yM=zYQAe+dZti0ZvCfja0V+Y0F=Qu1h+hXGAA@mail.gmail.com>
+ <ea3ec60c-18a1-4643-ade0-c4a004cb2ac3@app.fastmail.com>
+In-Reply-To: <ea3ec60c-18a1-4643-ade0-c4a004cb2ac3@app.fastmail.com>
+From: Lionel Cons <lionelcons1972@gmail.com>
+Date: Sat, 19 Sep 2026 13:27:55 +0200
+X-Gm-Features: AcwNN1Wh_x6ED5d9U8TUtwLNg3mnOoOo3DUDL0ujwi5Ljn0HGlXMlDc5kag73dc
+Message-ID: <CAPJSo4Uvi2_+fn29tgt1fi4E=R6MKBKXq69uh7U+Rm3Rh=QF_A@mail.gmail.com>
+Subject: Re: [Ms-nfs41-client-devel] Need NFSv4.1 "WANT_DELEGATION" op ...
+To: "ms-nfs41-client-devel@lists.sourceforge.net" <ms-nfs41-client-devel@lists.sourceforge.net>, 
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 
-From: NeilBrown <neil@brown.name>
+On Thu, 17 Sept 2026 at 15:50, Chuck Lever via Ms-nfs41-client-devel
+<ms-nfs41-client-devel@lists.sourceforge.net> wrote:
+>
+>
+>
+> On Wed, Sep 16, 2026, at 7:57 PM, Roland Mainz wrote:
+> > Hi!
+> >
+> > ----
+> >
+> > We're experimenting with a delegation-driven client-side
+> > consitency+caching model for the ms-nfs41-client Windows NFSV4.2
+> > client a while now.
+> >
+> > The original idea was to have two modes:
+> > - Mode 1: Get delegations (read delegations for accessing data
+> > read-only, write delegations for accessing data [a]) at OPEN time, and
+> > return the delegation when the file handle gets closed ([b]). The
+> > client only does buffering+caching if it has a delegation.
+> > - Model 2:  Do not request a delegation at file open/creation, instead
+> > translate Win32 oplocks into WANT_DELEGATION+DELEGRETURN. The client
+> > only does buffering+caching if it has a delegation. Server-side
+> > revocation of the delegation triggers an oplock break, releasing the
+> > oplock from the Win32 side just returns the delegation. This is
+> > basically how Win32 oplocks work on the SMB level.
+> >
+> > But in real life there are problems:
+> > - "Mode 1" only worked for small testcases. Real Windows applications
+> > typically change filehandle attributes or change ACLs after creating a
+> > file, which results in server-side delegation recall triggered by a
+> > NFS SETATTR, and after that we do not have a delegation. And there is
+> > no WANT_DELEGATION op support in Linux+FreeBSD nfsd to get a
+> > delegation back. Which typically means write delegations not being
+> > enabled and therefore no client-side buffering/caching.
+> > - "Mode 2" does not work because Linux+FreeBSD nfsd does not implement
+> > WANT_DELEGATION to implement this "on-demand delegation" model.
+> >
+> > Or short: For "mode 1" or "mode 2" to work we need the NFSV4.1
+> > operation "WANT_DELEGATION" to work, at least in syncronous mode (e.g.
+> > no CB_PUSH_DELEG support needed for now [c]).
+> >
+> > @Chuck Lever What do you think ?
+>
+> Roland, thanks for raising the question here.
+>
+> Playing devil's advocate for a moment. Since 2010, when RFC 5661
+> was published, no other client implementer has requested a server
+> implementation of the WANT_DELEGATION operation.
 
-Now that we have vfs_lookup_open() for open requests which create, we
-can use it for non-creating requests too as vfs_lookup_open() is already
-able to do that.  nfsd4_create_file() is renamed to nfsd4_open_file()
-and enhanced to not always create, and is then used for all OPEN
-requests.
+Steve French (Linux ksmb) pointed out that problem (and it is one)
+many years ago: "... The NFS client and server implementations are all
+patterned after SUN's awful NFSv1 implementation, and never evolved.
+Windows did evolve by introducing oplocks with Windows NT3.1, got the
+superior oplock based caching model with Windows 7, and put that into
+SMB. ... The UNIX (and by extension Linux) model did not evolve beyond
+NFSv1. ..."
+Not my words - I am not trying to insult or start a riot in a Linux
+list, just quoting. Steve citing "NFSv1" (not v2) was likely some
+intentional locking/exaggeration.
 
-The resulting simplification allows fh_fill_pre_attrs_unlocked() to be
-moved into nfsd4_open_file() so it is closer to fh_fill_post_attrs() and
-fh_fill_post_noop() calls.
+But Steve is right: NFSv4 was intentionally designed not only with
+POSIX clients in mind, but also to cover IBM's mainframe needs, IBM
+DFS-like caching needs, Windows NT needs, VMS network filesystem
+needs, and so on.
+If you go beyond the Linux point-of-view you see that other operating
+systems do it a bit differently. CITI had the ambition to explore a
+delegation-based caching model, but never got to that when the funding
+ran out.
 
-As ->op_createmode isn't defined when op_create is zero, we need a
-local createmode which is -1 (illegal value) when op_create is zero.
+> That suggests:
+>
+> - POSIX clients might have a hard time making use of it
 
-The non-create path now doesn't use nfsd_lookup().  As mount-point
-crossing, including check_nfsd_access(), is already included for existing
-names, this does not lose us anything.
+This is an issue with how the Linux and UNIX NFS clients work under
+the hood. They are designed for FATTR4_CHANGE based caching model, and
+delegation are handled like some minor unimportant trailing optional
+detail. Otherwise people would've already stumbled over the issues
+that delegations get recalled when setting file attributes. Which is a
+problem for real world usage on shared files opened for a long time,
+but only for big things like compiling clang on a NFS share. The
+average userland script kiddle would not even notice.
 
-Signed-off-by: NeilBrown <neil@brown.name>
----
- fs/nfsd/nfs4proc.c | 115 +++++++++++++++++++++++----------------------
- 1 file changed, 60 insertions(+), 55 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 40bd1179bf60..6be6ca473586 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -249,28 +249,30 @@ static inline bool nfsd4_create_is_exclusive(int createmode)
- }
- 
- /*
-- * Implement NFSv4's unchecked, guarded, and exclusive create
-- * semantics for regular files. Open state for this new file is
-- * subsequently fabricated in nfsd4_process_open2().
-+ * Implement NFSv4's open semantics for regular files, both creating
-+ * (unchecked, guarded, and exclusive) and non-creating.  The "struct file"
-+ * is openned here, and other open state for is subsequently fabricated in
-+ * nfsd4_process_open2().
-  *
-  * Upon return, caller must release @fhp and @resfhp.
-  */
- static __be32
--nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
--		  struct svc_fh *resfhp, struct nfsd4_open *open)
-+nfsd4_open_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+		struct svc_fh *resfhp, struct nfsd4_open *open)
- {
- 	struct iattr *iap = &open->op_iattr;
- 	struct nfsd_attrs attrs = {
- 		.na_iattr	= iap,
- 		.na_seclabel	= &open->op_label,
- 	};
--	int oflags = O_CREAT | O_LARGEFILE | O_NONBLOCK;
-+	int oflags = O_LARGEFILE | O_NONBLOCK;
- 	struct dentry *child = ERR_PTR(-EINVAL);
- 	struct path parent = {
- 		.mnt = fhp->fh_export->ex_path.mnt,
- 		.dentry = fhp->fh_dentry,
- 	};
- 	__u32 v_mtime, v_atime;
-+	int createmode;
- 	__be32 status, create_status;
- 	struct svc_export *exp;
- 	int want_write_err;
-@@ -284,7 +286,27 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	if (status != nfs_ok)
- 		return status;
- 
--	if (open->op_createmode == NFS4_CREATE_UNCHECKED) {
-+	status = fh_fill_pre_attrs_unlocked(fhp);
-+	if (status)
-+		return status;
-+
-+	if (open->op_create) {
-+		createmode = open->op_createmode;
-+
-+		create_status = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
-+		if (create_status == nfs_ok)
-+			oflags |= O_CREAT;
-+	} else {
-+		/*
-+		 * The only difference between no-create and CREATE_UNCHECKED
-+		 * is the presence of O_CREAT.  In all other ways we can treat
-+		 * them the same.
-+		 */
-+		createmode = NFS4_CREATE_UNCHECKED;
-+		create_status = nfs_ok;
-+	}
-+
-+	if (createmode == NFS4_CREATE_UNCHECKED) {
- 		/*
- 		 * If name is already in dcache we need to check for mountpoints
- 		 */
-@@ -305,7 +327,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	 * For the EXCLUSIVE modes we do our own uniqueness tests
- 	 * so don't want O_EXCL.
- 	 */
--	if (open->op_createmode == NFS4_CREATE_GUARDED)
-+	if (createmode == NFS4_CREATE_GUARDED)
- 		oflags |= O_EXCL;
- 
- 	switch (open->op_share_access & NFS4_SHARE_ACCESS_BOTH) {
-@@ -337,7 +359,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 
- 	v_mtime = 0;
- 	v_atime = 0;
--	if (nfsd4_create_is_exclusive(open->op_createmode)) {
-+	if (nfsd4_create_is_exclusive(createmode)) {
- 		u32 *verifier = (u32 *)open->op_verf.data;
- 
- 		/*
-@@ -359,11 +381,6 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		iap->ia_atime.tv_nsec = 0;
- 	}
- 
--	create_status = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
--	if (create_status)
--		/* Might still succeed if no create is needed */
--		oflags &= ~O_CREAT;
--
- 	open->op_filp = vfs_lookup_open(&parent,
- 					&QSTR_LEN(open->op_fname,
- 						  open->op_fnamelen),
-@@ -372,7 +389,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	if (IS_ERR(open->op_filp)) {
- 		int hosterr = PTR_ERR(open->op_filp);
- 
--		if (open->op_createmode != NFS4_CREATE_UNCHECKED) {
-+		if (createmode != NFS4_CREATE_UNCHECKED) {
- 			switch (hosterr) {
- 			case -EISDIR:
- 			case -ELOOP:
-@@ -395,14 +412,14 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		goto out;
- 
- 	if (!open->op_created &&
--	    nfsd4_create_is_exclusive(open->op_createmode) &&
-+	    nfsd4_create_is_exclusive(createmode) &&
- 	    inode_get_mtime_sec(d_inode(child)) == v_mtime &&
- 	    inode_get_atime_sec(d_inode(child)) == v_atime &&
- 	    d_inode(child)->i_size == 0)
- 		open->op_created = true;
- 
- 	if (!open->op_created) {
--		if (open->op_createmode != NFS4_CREATE_UNCHECKED) {
-+		if (createmode != NFS4_CREATE_UNCHECKED) {
- 			status = nfserr_exist;
- 			goto out;
- 		}
-@@ -521,46 +538,34 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
- 	fh_init(*resfh, NFS4_FHSIZE);
- 	open->op_truncate = false;
- 
--	status = fh_fill_pre_attrs_unlocked(current_fh);
--	if (status)
--		goto out;
--	if (open->op_create) {
--		/* FIXME: check session persistence and pnfs flags.
--		 * The nfsv4.1 spec requires the following semantics:
--		 *
--		 * Persistent   | pNFS   | Server REQUIRED | Client Allowed
--		 * Reply Cache  | server |                 |
--		 * -------------+--------+-----------------+--------------------
--		 * no           | no     | EXCLUSIVE4_1    | EXCLUSIVE4_1
--		 *              |        |                 | (SHOULD)
--		 *              |        | and EXCLUSIVE4  | or EXCLUSIVE4
--		 *              |        |                 | (SHOULD NOT)
--		 * no           | yes    | EXCLUSIVE4_1    | EXCLUSIVE4_1
--		 * yes          | no     | GUARDED4        | GUARDED4
--		 * yes          | yes    | GUARDED4        | GUARDED4
--		 */
-+	/* FIXME: check session persistence and pnfs flags.
-+	 * The nfsv4.1 spec requires the following semantics:
-+	 *
-+	 * Persistent   | pNFS   | Server REQUIRED | Client Allowed
-+	 * Reply Cache  | server |                 |
-+	 * -------------+--------+-----------------+--------------------
-+	 * no           | no     | EXCLUSIVE4_1    | EXCLUSIVE4_1
-+	 *              |        |                 | (SHOULD)
-+	 *              |        | and EXCLUSIVE4  | or EXCLUSIVE4
-+	 *              |        |                 | (SHOULD NOT)
-+	 * no           | yes    | EXCLUSIVE4_1    | EXCLUSIVE4_1
-+	 * yes          | no     | GUARDED4        | GUARDED4
-+	 * yes          | yes    | GUARDED4        | GUARDED4
-+	 */
- 
--		current->fs->umask = open->op_umask;
--		status = nfsd4_create_file(rqstp, current_fh, *resfh, open);
--		current->fs->umask = 0;
-+	current->fs->umask = open->op_umask;
-+	status = nfsd4_open_file(rqstp, current_fh, *resfh, open);
-+	current->fs->umask = 0;
- 
--		/*
--		 * Following rfc 3530 14.2.16, and rfc 5661 18.16.4
--		 * use the returned bitmask to indicate which attributes
--		 * we used to store the verifier:
--		 */
--		if (nfsd4_create_is_exclusive(open->op_createmode) && status == 0)
--			open->op_bmval[1] |= (FATTR4_WORD1_TIME_ACCESS |
--						FATTR4_WORD1_TIME_MODIFY);
--	} else {
--		status = nfsd_lookup(rqstp, current_fh,
--				     open->op_fname, open->op_fnamelen, *resfh);
--		/*
--		 * NFSv4 protocol requires change attributes even though
--		 * no change happened.
--		 */
--		fh_fill_post_noop(current_fh);
--	}
-+	/*
-+	 * Following rfc 3530 14.2.16, and rfc 5661 18.16.4
-+	 * use the returned bitmask to indicate which attributes
-+	 * we used to store the verifier:
-+	 */
-+	if (open->op_create &&
-+	    nfsd4_create_is_exclusive(open->op_createmode) && status == 0)
-+		open->op_bmval[1] |= (FATTR4_WORD1_TIME_ACCESS |
-+				      FATTR4_WORD1_TIME_MODIFY);
- 	if (status)
- 		goto out;
- 	status = nfsd_check_obj_isreg((*resfh)->fh_dentry);
--- 
-2.50.0.107.gf914562f5916.dirty
-
+Lionel
