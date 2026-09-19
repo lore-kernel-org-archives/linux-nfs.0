@@ -1,110 +1,119 @@
-Received: from mail-ej2-f12.google.com (mail-ej2-f12.google.com [74.125.228.140])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E1F603F329E
-	for <linux-nfs@vger.kernel.org>; Sat, 19 Sep 2026 11:43:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.228.140
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789818229; cv=pass; b=inXwEYHvXyPAr6B6aIRUDkU8qwqLeOUwSLOOkUjemQc103PUy1nGGmC0kVmsJAnpFMEPnc62CvicWU3ruw5QlrPgQ6aayVfpgCiuf+XQW6GB08ZteRXGVv2bJd5wxnMXbyfVkAoIBgdf6KPluMOJyPyXeAo4sFIcKHZswmnKfvs=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789818229; c=relaxed/simple;
-	bh=EzTs7PJQF5HsvNigfKwCL5CmMcq0Ggx1EHRO4qh5jhY=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Content-Type; b=PGe1lFYi99p8aoVyyuiiVoMw1NaGIV/7IILwG42JyHc8Gzqk+Pr89VFfcFfTew4HnW2/JmdfGE80kOwMAoqRuMFFCQwj9l3SJniY/9CpoR9ALDUzlbdRP+jLNmyeTdfKdWzAGzsv8F+1DCKoVkJkgay6SZo3gGjeCxPDFjfNQcQ=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=TKN30/vM; arc=pass smtp.client-ip=74.125.228.140
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 076B3379C2A
+	for <linux-nfs@vger.kernel.org>; Sat, 19 Sep 2026 15:40:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1789832412; cv=none; b=f4qxnf58SWD7cD0cuGZwJiZBRxA1Da8j0sVIt7QgYRVRuEd3zOCtF5UZWDAQUzD0awkxL50BgQ+n5O0CWry3nHpLzVBUPLbLd5VCOZQHyB6eFAmusW9KaNPzLQPh7GSarax4dLLgeSjOhHVGoDVz0Q6HTvp6nJ1EKX1pYG7MNZQ=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1789832412; c=relaxed/simple;
+	bh=Y4aLsO7E5K1rlKqvYJbr/U4BDZy6IH6PStNFk6QKzPw=;
+	h=Message-ID:Date:MIME-Version:From:Subject:To:Cc:Content-Type; b=kHLQL2qSG2mtKBvGdT3tO9TkYHOe+XfKUbfEOQU9g3NK8yHJ+tMtwzRIOiMzR/lZVcKeQYyjsg46RkqWnjgP1oantQOVd02Q4hWHymC6npO6z8VWcVYVAXK+gFIcCJqkCMZ9Pyasb/4iMDBIGiU58Uvm5c6zZ1IBq8aqthIK/G0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=N4+Z9AFr; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=t0qZlavM; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TKN30/vM"
-Received: by mail-ej2-f12.google.com with SMTP id a640c23a62f3a-c254f55eff0so233876166b.0
-        for <linux-nfs@vger.kernel.org>; Sat, 19 Sep 2026 04:43:47 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1789818226; cv=none;
-        d=google.com; s=arc-20260327;
-        b=NbfUI1C/OjBepKEO6G58biKD5+sRJiGZg/qufFiA/1/+tFHF9VFNTQvfIfPIXr5Yr8
-         F8sbyjjmDIbFhyr0ly18iB153VMHmXzmQhQ9wWkgoginpZCpSybhs1iVfZY9hiVlFpoI
-         rsLkm1Qia5NhadmWj8c2SSYi5aqwfMdUViTsFs3/U7bUX1+M9sg28BOET2oT8e8j8um5
-         AAJwi/ni9qCKb4Db46Rcps6qvGglyrvQad50lFKxZcsGWcC482NGtvGAweqPCymzy8fs
-         KAYsd3QlbnZ1EzgZaW4BuRzD5z0yU1ZxUAUTomx6uxsI34L/m24HETFJpp9WWfuep568
-         vmWw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
-         :dkim-signature;
-        bh=EzTs7PJQF5HsvNigfKwCL5CmMcq0Ggx1EHRO4qh5jhY=;
-        fh=A5XrQb8nrWFDht6aaFFkeJKx7DwlCTzUgCbXEliKk3E=;
-        b=kj24qkS2EjiVe0F7qJPKM9GXrmANCeLdmuFQwIuEp0g/PSWTU7SeRx/08kmPiNsZbz
-         +a4Btt4mG0Ao4+nWwOgOx8D9PJMp18L27Ykkj0O8DmJ0/LvTeywg0BZScTACCrx9bqqI
-         1u/tYS/Wb8AvIaC9ecM8VWm2GfmQZicDe9dnTAezrVDocsmdel1XK9tA4x5nk9H5JitH
-         HLQujF44uf07LfRqxBMbb6TAv1+kbPQzTLRBZp5w+lIFa5chZKshHwPDK593O/7eLucR
-         1h0UheXOT/aOF2o8OzEeGKML6N9SFweAMvPV8v1WBaPCqihkf8M/zpZ2q/0zPURVlBjV
-         cJ2g==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="N4+Z9AFr";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="t0qZlavM"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1789832408;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=13X+p5BlHvU1jlJef4qxKfLhScGAMJVOYykK2pEOeDw=;
+	b=N4+Z9AFrTD2xjFrcBdxVHalKE51g3TSdkVbr5W40CWFQYAsL8dm9WuOTxFRVuWt5sAWhVS
+	xgaftODe+mw4LjC18fsE5j+ZMUm88dpL4Uj5+NfTyYxwLfBA3U6rZQE2UCTx9qLAzIGeV8
+	VYQXdP2XFrXs2fzzKjH1Fs6kOUSxn7U=
+Received: from mail-qk1-f198.google.com (mail-qk1-f198.google.com
+ [209.85.222.198]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-3-H4GMJhzAN4W62Ew3QjcSTA-1; Sat, 19 Sep 2026 11:40:06 -0400
+X-MC-Unique: H4GMJhzAN4W62Ew3QjcSTA-1
+X-Mimecast-MFC-AGG-ID: H4GMJhzAN4W62Ew3QjcSTA_1789832406
+Received: by mail-qk1-f198.google.com with SMTP id af79cd13be357-939f3426a7cso345715985a.0
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Sep 2026 08:40:06 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1789818226; x=1790423026; darn=vger.kernel.org;
-        h=content-type:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=EzTs7PJQF5HsvNigfKwCL5CmMcq0Ggx1EHRO4qh5jhY=;
-        b=TKN30/vM5seeKuOdY4Za2MsHrv1HW2vNm/GYPJwfl5sFmZmgl6fzTeqmgO+U7ym/TF
-         0Z6/kmRD+pAgUKBwWCtj+7owxaW/bmjCe1BbQquAYBuaH2mKup2Id4TGul6XDmlgR/Or
-         3kNFHwLoT2ga5ta015BEipekH4nw5H4LJ9YwGaWXxrJYs00uYlljQtNp/IR1nJtYseha
-         ycMTJYfO4/PFmsZoUH/cVKAhIUFCnvQBf5DkMdmvfZ3gIVOusJn7jx0LyYihHxCkdU27
-         vc+jT7637fvI8Fj3N956nuYMRE/dBn5psPfACfGa9CHlGlg0NrD6MM69rFny0Szm1kQQ
-         gYiw==
+        d=redhat.com; s=google; t=1789832406; x=1790437206; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:content-language:cc:to
+         :subject:from:user-agent:mime-version:date:message-id:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=13X+p5BlHvU1jlJef4qxKfLhScGAMJVOYykK2pEOeDw=;
+        b=t0qZlavM6jModQLtcyTRGNUAWzOmXrx9sTODu0BdJTVsqJ+Qagt7ObKKVH4m7y4nzt
+         YroQTFtuiGT0rcBZsQR1sBccOY7vtLScsfPhY+Q3UE07g9rTcAJypF+Qa/oyiDlGGKcU
+         DjobItQRQoNQIDXRous2qGIMGAL68rlomPmsyzM/abZ5namfZTva16c9dlnxJ5fndtkq
+         1VrI+Q4Ff9+yz3cQrmu7BFRoImcWC0o2xuTuGT73nsesbrGUiAoh1cgv18zlRaKJp4GC
+         V29LZdaF7W+VzegUXlwNsPgjB7ggpJDfcSWrNFEHtv/JTQ+i7m9VH212zan83CztXzHG
+         AC/g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789818226; x=1790423026;
-        h=content-type:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=EzTs7PJQF5HsvNigfKwCL5CmMcq0Ggx1EHRO4qh5jhY=;
-        b=IqpnfvsZ+LN68q/VLJy4c0JHKNpkoofamM2woxcznIMv00/6TQQISVbK6g4TIYPKvK
-         dBtOiezYK/gGHls/zDmZy/cOmi0A1zPkaIKsS4BhzjsqwXnPmboGjfpKoUxrkSKkA8wf
-         Ptbv8yEw90O3GMURc+MnSto3zk9wjhZUonYGPEjF9FszzobkPjq09440W4zp3NY/HMXC
-         /nJw//zkD6mACHzjhDLWnuiOOEhewGH8w7EnvB8SaHLhpHVaNjbBoIQVfpilOxGEGVfd
-         nqGV7OXpE6WZ949wzrSxPXgmQnPxHXTYkhkxitB12gY4XPh761I8FSjIJkIK4tkn3/Gv
-         xjUg==
-X-Forwarded-Encrypted: i=1; AKwUvByxPmk5fcSZ8HNaIFicnblvpS4BYtvMwOsqHnDaUQ2cDfXFUTEZ5MV6e16CC6vZbOFV+SWkax1LY5I=@vger.kernel.org
-X-Gm-Message-State: AFuF++lDg9bpzK/gGQzsFX/+SiE02aXc8N6yTywGChgZ+E7lnLU2Bo07
-	IakRbnjmwc6wKt8BCTS8gJh8PJeMDZ1IKb4UHXDvUzUaUi9hxi0dQjtWB/O0zkiFi5Hr9P8krGL
-	tySHVMV8WiU9ooNZLWcOBuKDiiPiNoKBQMwtR8nk=
-X-Gm-Gg: AYBFou0PVFzglFuEQZUlOeqYhwTIqzuY16u7vlWrAZH/IgBhl/ZqqCxZCc6Tlc1PaBl
-	KQijtdJYQ54fnEjIpjs0XmWdmLE6w16+juSn4a1YeMbUjZPArLhV3JtEYaOJKlksBko7O8sGTPk
-	1nf7r0rDuMhW+lYSMaBZk0YdH7Rdu+bLwgSf1bT2Wmo9HZvzKDFObZucb8vL4IWTuXsFWXOISWq
-	RBCYSGTDmhrOAc+y9fLEK6ihmqR1jZDQS43/GDvQPcmMEl7HoYhyFE+tKY/MOyCLtpw79RlaYD0
-	a4Sho75YRzm3TPBm84vVT+r4US+XWHGDZB6MWL8nSWDomOuwfYAbMRg=
-X-Received: by 2002:a17:907:9286:b0:c1c:4e36:eec6 with SMTP id
- a640c23a62f3a-c2a1569d640mr499788566b.18.1789818226057; Sat, 19 Sep 2026
- 04:43:46 -0700 (PDT)
+        d=1e100.net; s=20260707; t=1789832406; x=1790437206;
+        h=content-transfer-encoding:content-type:content-language:cc:to
+         :subject:from:user-agent:mime-version:date:message-id:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=13X+p5BlHvU1jlJef4qxKfLhScGAMJVOYykK2pEOeDw=;
+        b=1K0g+AF7Bs1esbzy9Ml9GCVZWi8PlvIx6sjh3GBWvCW8mNUyRlIA/VOhAxxItn0p49
+         EqhljOQoTgbq/idleMs9sIcIjzlNqyfKotfCMtRzsigZar4Bu8teOjE3r4zgf+aTBzMx
+         qUU8pUv+SHFk7mC/EVfy2VJPvI4QZeoPxFpMlQUiOva/HiKEfA4QDSW2YPURVuMIPSEf
+         muLXfENCDwo4bp6c+3GTgTgt0ShI8GWeGUHpvq+ha08jRUpzn0mJm5cvEzQZYA+ML8vB
+         BQP6xigBHSM2vn6jkrrZzdv7rn9t2dw4gBMeDgpHjATrZHVzHCp8Og/7jtMd5n4/h2iJ
+         Wy1A==
+X-Gm-Message-State: AFuF++mS5WOQoxHIKDYm3Umpr8JF24yT7z6YKOw+LlK2nlo+4hPGBrBW
+	OYa0D3fIst3M1Ah8z6fB23TDmcriGHtJvjRVS/C+41W3LLT1wI3i2B5YMd2PH9qJwS6k+bHhgEi
+	A6SX7qR68njry4yLSotDDbqAJK5dnf6fUmORzQLbL2Mt8uEp/jRiNFL0bvY6actUa/kvJXRhfgO
+	evglI0Zy3IKfFz51BFPLDv+xdHaJ7gs4d7AUNygu6H2Ps=
+X-Gm-Gg: AYBFou3VI86yMJ5APyZcuf5IvN+rrq80N3iydSh/ruF8Dmpfn2c/pWfyJfdeZy8Tz8w
+	yqN1drwZfLR7u3z1eXxjxVKmwUROeNZ5TzYRzeAF3h3J5Eu6ur1jQb3KQguyeUVxbks/tRpyXAQ
+	861YiswdTX4eXyllcIqlttMDIWMGpvRvGd6jwr7Vl75rTuVZgU3cVoje7G7uu8GcE2j7MICsUJH
+	I1VXpaN7c8qF/I0sZ9F9rrvdoyQYKNul30kyDSErjY/aPJiJ1EJbvaYwMxhFbc2tuH+YtmbYAsX
+	W5U63ykPVeCGPaTRtgFyL5hnYX93o7O6pN/IMOH53WpcHGlMYXiMOHfO7vpZpXSXdlf2FDimKzY
+	=
+X-Received: by 2002:a05:620a:2b96:b0:939:6d22:6fd with SMTP id af79cd13be357-93bf55950damr200312985a.18.1789832405994;
+        Sat, 19 Sep 2026 08:40:05 -0700 (PDT)
+X-Received: by 2002:a05:620a:2b96:b0:939:6d22:6fd with SMTP id af79cd13be357-93bf55950damr200307885a.18.1789832405432;
+        Sat, 19 Sep 2026 08:40:05 -0700 (PDT)
+Received: from [172.31.1.12] ([70.105.241.211])
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-93bedac892esm211835985a.25.2026.09.19.08.40.04
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sat, 19 Sep 2026 08:40:04 -0700 (PDT)
+Message-ID: <5717a803-805c-409f-a9cc-d0c33a365570@redhat.com>
+Date: Sat, 19 Sep 2026 11:40:03 -0400
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <CAKAoaQnTria60yM=zYQAe+dZti0ZvCfja0V+Y0F=Qu1h+hXGAA@mail.gmail.com>
- <ea3ec60c-18a1-4643-ade0-c4a004cb2ac3@app.fastmail.com>
-In-Reply-To: <ea3ec60c-18a1-4643-ade0-c4a004cb2ac3@app.fastmail.com>
-From: Lionel Cons <lionelcons1972@gmail.com>
-Date: Sat, 19 Sep 2026 13:43:08 +0200
-X-Gm-Features: AcwNN1VYfpmeIwPd3EYisRA3nCs_DiwMOBLwB8FhPp8FYdJdLPTnY-0cBj1zgO8
-Message-ID: <CAPJSo4XZcAvXE6gP1vXFSfGZnjiQ8BwgeqO02obd_nWc-boR_Q@mail.gmail.com>
-Subject: Re: [Ms-nfs41-client-devel] Need NFSv4.1 "WANT_DELEGATION" op ...
-To: "ms-nfs41-client-devel@lists.sourceforge.net" <ms-nfs41-client-devel@lists.sourceforge.net>, 
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+User-Agent: Mozilla Thunderbird
+From: Steve Dickson <steved@redhat.com>
+Subject: ANNOUNCE: nfs-utils-3.1.1 released.
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Content-Language: en-US
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Thu, 17 Sept 2026 at 15:50, Chuck Lever via Ms-nfs41-client-devel
-<ms-nfs41-client-devel@lists.sourceforge.net> wrote:
-> The RFC treats the absence of WANT_DELEGATION as a normal case
-> with a fallback. Section 10.2.1 notes that "since the server is
-> not required to support this operation," a client reclaiming a
-> delegation with no associated open can instead use a dummy OPEN
-> with CLAIM_PREVIOUS and then CLOSE it (rfc8881.txt:9596).
+Hello,
 
-I had to refer to a colleague for this one. The answer:
-"... CLAIM_PREVIOUS is only valid during reclaim. Outside the server's
-grace/recovery period, a compliant server must reject it. ..."
+This is basically an AI generated release which
+is way I bumped the version to 3.X. Most of the
+patches were generated by vulnerabilities that
+AI found.
 
-I think that is why WANT_DELEGATION was added to RFC 5661
+The tarballs can be found in
+   https://www.kernel.org/pub/linux/utils/nfs-utils/3.1.1/
+or
+   http://sourceforge.net/projects/nfs/files/nfs-utils/3.1.1
 
-Lionel
+The change log is in
+https://www.kernel.org/pub/linux/utils/nfs-utils/3.1.1/3.1.1-Changelog
+or
+https://sourceforge.net/projects/nfs/files/nfs-utils/3.1.1/3.1.1-Changelog
+
+The git tree is at:
+    git://linux-nfs.org/~steved/nfs-utils
+
+Please send comments/bugs to linux-nfs@vger.kernel.org
+
+steved.
+
