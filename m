@@ -1,73 +1,73 @@
-Received: from fhigh-b2-smtp.messagingengine.com (fhigh-b2-smtp.messagingengine.com [202.12.124.153])
+Received: from fout-b3-smtp.messagingengine.com (fout-b3-smtp.messagingengine.com [202.12.124.146])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7CF7940B6E0
-	for <linux-nfs@vger.kernel.org>; Fri, 18 Sep 2026 23:39:22 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.153
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43876394496;
+	Sat, 19 Sep 2026 01:59:01 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.146
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789774765; cv=none; b=Ip3U+mnoekWoaASismqY8llNoDtk7MnMcvNJiMhUpYdppjjgTXGlUwYLoWnpVWfq2an7oWIQivIfAVezoxfamSppCyyPcoBTlNI2Z786arQF3ud4LbfPEXCuUdwpsZR0ijsWLwx/sNKhAsRMMPRuY0A9Rxc4Jrg58cwsX5JTzcw=
+	t=1789783144; cv=none; b=Q+U7XK7S8+GTHNUfMAEfv9c8Vwg4F1zF+eW0cS/kLrM0oO36qAgDeeraDT5b3FTyXLV/+a+O98jlgOdrV9TTarklKGWG4CgZScclk1VNyPLKMvsTe93aOc3GgCy8CI/EkwI21BTLf2+ugIXlPldxU0ol+qHJ6S1UXEoSsRjzCfQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789774765; c=relaxed/simple;
-	bh=JWC9GaiTLAAyNmcw3Hyd6K3/M24bqKRKSVMr9vKfLec=;
+	s=arc-20240116; t=1789783144; c=relaxed/simple;
+	bh=Vd0Nq0t19M2YgeBBDprTT9iaP7BrVuOAuA3eDx+q/Rc=;
 	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=KkjjJ49BGu08cg3i4JG8zGzYn7+A+VKBzAtPviZ4V54eondKLAOzjtc9gZgfC0NAIaNgRO829UtkX7z0uP2MUtxtDyUeMM3v3hb38yoHQcQOmvjL47JgwdWyRvyAXgJwRE7p99TIkAUJ7VPKM5S56Rt0PBxe1u+IxgY++w+O7Fc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=Bif2WGYf; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=anuqA7Xh; arc=none smtp.client-ip=202.12.124.153
+	 References:Date:Message-id; b=OJ/sfp+hC/SFD/uQ0QJ6rcVTg32Li5tzYvcC/cDk9qo1qoerQvFR0jx1qxfHeqM/qfDypBYfy46COzBarIlqBz3XqCjPrp6gUA4OzHt+S+3tkIOvDLNg7EqAgl0XnzJT9GzJUBzH+Ga57JSOEd8k2UJ4WKwNN5uz6eDJCCU8zMg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=e/Crfu9x; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=hxtJnL29; arc=none smtp.client-ip=202.12.124.146
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="Bif2WGYf";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="anuqA7Xh"
-Received: from phl-compute-05.internal (phl-compute-05.internal [10.202.2.45])
-	by mailfhigh.stl.internal (Postfix) with ESMTP id 6A8697A00B7;
-	Fri, 18 Sep 2026 19:39:21 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-05.internal (MEProxy); Fri, 18 Sep 2026 19:39:21 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="e/Crfu9x";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="hxtJnL29"
+Received: from phl-compute-08.internal (phl-compute-08.internal [10.202.2.48])
+	by mailfout.stl.internal (Postfix) with ESMTP id A5AD91D00104;
+	Fri, 18 Sep 2026 21:58:59 -0400 (EDT)
+Received: from phl-frontend-04 ([10.202.2.163])
+  by phl-compute-08.internal (MEProxy); Fri, 18 Sep 2026 21:58:59 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:content-type:date
 	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:reply-to:subject:subject:to:to; s=fm1; t=
-	1789774761; x=1789861161; bh=5RhoIQ9kyxIbLRTEV4wtktcFc+YyN0e8yDz
-	Wch96Q74=; b=Bif2WGYf9UA2keNvFuC/b6/khsjrRsIw1Iv+A95rlGtZVnkkwZH
-	P/DWsVYQvqRXFbJmg0Z3lfrattAhZ+NH0xBbxWvkuM4gyHavEqkgRlXX7Z64+FFN
-	QBK3vIzsmBCly9OjLd65MZgtIqesd/hMqZnJG7c7wTFXQRUOMsZ0j1Py7LXNKbmJ
-	QTxWnY7/ftnKqpuRwtD15BYkKVBoYeh0V3cqSA/91p4OvNn1FnzxLOWH/+T7Fnzt
-	putKKJG6YRQgX1SJCzK6JrLzViG4UlxOb3bovrZQgRl2m4deOf88M03VUcUKkiEz
-	PAbN/wOdyyz04Gy50/MHq1YAzYp9T7pWjRA==
+	1789783139; x=1789869539; bh=nh/C4Q5BiOdNTmfqGZnkHCJ3NXU++0bpGH5
+	Fc/yEaCw=; b=e/Crfu9xFJH3DGXlXaJf7kxVqMtBHeNtAIYHY80hxwWkQ1PAi7d
+	cmOu7J6TF6FAnVoMjZ7l3VtaSo7eu1rePEVdSGwVJ48QgBkm7FS80GabB5r+HySG
+	cr9rslHUVAaRqp3kQMYh0sDm2f3UgZpMATbLjhmmZwS6MCOdO1JpL4yi+CkX3Djk
+	OW/JCCxDn3UjOQCFzBm3J9TXl0znRo8XvVPBJtPzoI4IFEXpObUaWqsFvWBKwJiX
+	hYsQ18sR8n+pO7dqKikKmUUNuJHCLHjqGn0T/vb1HKc1hskvWoB2Y9WdeE/b2adZ
+	w7zuQLyQBYPNRtZqmdfengCxTyDbGs4pszA==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:content-type:date:date:feedback-id:feedback-id
 	:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1789774761; x=
-	1789861161; bh=5RhoIQ9kyxIbLRTEV4wtktcFc+YyN0e8yDzWch96Q74=; b=a
-	nuqA7XhBQVBbsy3vxam2Ril/0/WdppbUyMI52T1/Mjs09pPwvMTtCn4uT7z2xsss
-	zX0D5EC4xRlVznbBD8NPOJLZC72fIYPt+2DTW1wJEQCkvgMytYozXbKDIZpHnPby
-	pnX7v1CogSn+lCkdGSeCyHj8s4pFdZSp2WhqMiozsxnMU6yMgHXxG8lFaDJs7z3I
-	7m83I+tQyY2mWDrOB3LsR3/eRvhp4j5ydFPmPYiXm1Yad4AhGhtZxmE4lAsIMWQo
-	PxM7pGXpKnokh7/CSm6Yg81af2z0/cQhGLqFfVrJw4wNRAtD3jxsEvUHH2AENaNo
-	WkY2u41Vvw014kEMsvvcw==
-X-ME-Sender: <xms:qMutavybpY0yaBrivPx_nwDRp_YbDHl9HAC5UqTTuR8X2v5eD2DeRw>
-    <xme:qMutapjWxWzuqxqkgEGHg3OyxU_c2Sf-6XefkOX1mFf63m5uLH8q-9FEubClIidOQ
-    XlxL767MoiWgmQx8ioJ11UClUfM5PkhvNiX-Z2LLjGyEBSD8vo>
-X-ME-Received: <xmr:qMutarnKbJ6iODhbmj6FxzilPekhIpm3eMPEnDT0og2IVEzI6ZCPLL5cc6Rd0N0atw>
-X-ME-Proxy-Cause: dmFkZTFsDCCikMIWnPixvVSCV9GI6XLfB61jiJkulsqnifesMGZSCLroN4YaWyRzjjWsEK
-    0vhryt55bvfvxFFcrN+7bFT6LZoNWKVhFXrJDLAOsAZd/xCv84ayKvW4Yaj6WBRsKUSJ5o
-    OZ3vDkFk8v/HTmnguXThKyEQ13oNvxAEIDWXqXq2r8Xztb7C7FZwlG20IdIU3hyohkp+aF
-    3HhwitgUmf7s66lVctKP7thf3OkJ7F3Z7i8rp1IsMgRr41IzSg6yGCTyCl3FvF/zre5hE1
-    WdExoICEspPG2SeijP49iUlPe6xrSU0Y2c89SEmrN8RVzEFJetytANg1rwuqPbms6r32Oe
-    moJdJQ18dKUaPVOcDsD9gT0d2eleLd4+wELVQVx0o9aY7n7BodBSd5jmooH52DbTn0/ZuS
-    lu4mk0GCYzTkf1JyctIOWQfuPD+rukDtd5LO6vsc/AqVD9DkGYlDHWSawqMV8ObPXEDfKH
-    YpXg3oMgsE3S5Xu54UGwzjZqTPpiBTY06Ks331w9K6h+rIsU6FCS0znWnayLkpe6S/ko7q
-    GjFMk5+B8unbsiMKvr3ppCVVN+W90pV7YOAIcFB2LNfs7nO+eJtc/aQCw95w+8HjeGCIFs
-    9swbc31N2gxxHf8qXsXraSk0a0TxKttdZ39BSnASmbIcBOIFx8xVf5ylqJDg
-X-ME-Proxy: <xmx:qMutavj0rxEtI2mKXnxhchICZTn63fypVh2OmkCmkAyY6oobO0b4FQ>
-    <xmx:qMutav3xVsp80jeb6qHm0MP-S7frUPT99LxDSHf7eQqcgAE0_t3wpA>
-    <xmx:qMutaoK29xHR5whBUEpNxxsMISjgEI8DQD0RW2iD_VwGkTn0uXtiNg>
-    <xmx:qMutavzcI6TJiipsW9a-O0A9GF7zh4gnFP1WoeBP36zc0CobHjTH0w>
-    <xmx:qcutarN5WnxxTWdstSteuTBwIbh0E_s-8LEbOoXREJCAbznkStoZeiS4>
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1789783139; x=
+	1789869539; bh=nh/C4Q5BiOdNTmfqGZnkHCJ3NXU++0bpGH5Fc/yEaCw=; b=h
+	xtJnL29rd8MegqIHK+Bww6hugcnWmKauvdiv2MEwSQyGmN2fuyLV3JGKe8gG2RGa
+	YYV7nlfg35h2fZG8/f1b+ZgLz7ZpFNmysTMoO6NVYKN7SGfHLXL0SSsE9ddKk26v
+	SaFZNLik+e8+8wbOHkStbUK/kcY/FuImOw37EUA0i+OqTd3OX2LCNz+FjatNnWcR
+	W+SnR9NpLxwBlT/LlaZPx2MNizAZBnI2vMYeljpoAiAsUZkKcZottwl+w6WS0j2k
+	JzpKgh9eMMv9qi6PepFXWqEEltsf7PEc4oHYBCitHuaj11vPaXHSoNrijj8xNYQM
+	WtG8dv7Ri+SZNaWTHcJRA==
+X-ME-Sender: <xms:Y-ytalY-zW7zvjB6t4v8sfjnP9eS3k0pmZZq4xU8u5x-FFu714ZDyA>
+    <xme:Y-ytarfJFS08frCVGIJ-r-pqPixImaUpJx5r8gLYXPHeS3WXu8575mXj7qe-Jx1YO
+    IbItx-aQEzbqfH3CDsy795t83TE3litHrXs0MBWTELsigCkXLI>
+X-ME-Received: <xmr:Y-ytauIKwv9Fdxtuo2AukY-_NPrLR640rO2cQkU2sibob80YW3HKeIgf_bCgeYDUo8obGPYircbVAw1-GVX9f-60ff9SsIc>
+X-ME-Proxy-Cause: dmFkZTE6QpaXc9yL6AgFKDlkYKF7YCqmm6eIFjQLv/9/Bcjfmgfipz2uUqgaA7IG2xhyxY
+    4Yo5/Z6GoTitUvnjJu1Y9ugn5RG1oiZBFSEMiZXcsGg1+U4BNKcDyrRhgPJZJrS3+9Qn8y
+    xCY+ZzJyoRRAh/FMV6baelt0EpFENJYWAdhWXiL28Y5KyoFQDwm0EVdopnX6KUdX7SMOcx
+    h1OlqpVqTjh4lYSY/zcstp/InDIeejZ1PIsFdUez0ajhtHvkcq9qEjtIOtZ39HIK33Rc7W
+    a97Y6Eqw2U7A4RdAen9qqErcyKDkJPrVJYlIjZY+032BS4GvLwWY9kxQjCrbgc9NOT3Lan
+    JdJXk/G6TywAA76eIXa7KuC/p6CgyLnsTMbG4oM79JaPU10CtG5oHkS/cXVEZVEPeNQpK9
+    mtbCXt6aNH+z5kUBKCDPsiJQUxXwQubwThy8sRA9BIzsWRZkJsPap5q3hP/+onq/Gj3kn6
+    KeS5mf5dO35ZE8GPPXnpZ7aXDgfbAp5OuqEwL0TcUV3Si/xiZF6rvyYP4OMN/M6jdQA2Tc
+    xhZF7vQjDJWE6L3AXm9VVdVAmHuBdhcixnQb1ux7uWOPHjhtNwp0SVkJqaeZAJi5eBMN/i
+    ZGersgbtztoTY6wt3bCME42XsrEXB0QGdFK98rD+lWAXm9bhy7xsnTU/LGeg
+X-ME-Proxy: <xmx:Y-ytagLMprT-YSlH4qw5awR1SlnGUFIVfSHjkMk40o-ZmF4JogxfcA>
+    <xmx:Y-ytalU3ZbxT5fe9LegaTgzxsyr7_oXkiojLpGo_DezSxdGMZ0rJzw>
+    <xmx:Y-ytahnr4r-zPV0qWKI8rsj07bom4iuPr7KFtf6D5qKXU_FkV1chnA>
+    <xmx:Y-ytajngpX4bqSy5sOr3NF_0C--yDTa33DNiysYRNWgiM6knGEK2Bw>
+    <xmx:Y-ytan-r5zHm9QyCLJBpvlsvenkuQ4LxBE7lIJG4sKW9VAIpSu7u2_l6>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Fri,
- 18 Sep 2026 19:39:18 -0400 (EDT)
+ 18 Sep 2026 21:58:56 -0400 (EDT)
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
@@ -77,456 +77,191 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 From: NeilBrown <neilb@ownmail.net>
-To: "Chuck Lever" <cel@kernel.org>
-Cc: "Jeff Layton" <jlayton@kernel.org>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Rick Macklem" <rmacklem@uoguelph.ca>,
- linux-nfs@vger.kernel.org, "Chuck Lever" <cel@kernel.org>
-Subject:
- Re: [PATCH v5 11/11] NFSD: Remove DRC checksum and payload_misses stat
-In-reply-to: <20260918-duplicate-reply-cache-v5-11-b6aba9ebf2f4@kernel.org>
-References: <20260918-duplicate-reply-cache-v5-0-b6aba9ebf2f4@kernel.org>
-  <20260918-duplicate-reply-cache-v5-11-b6aba9ebf2f4@kernel.org>
-Date: Sat, 19 Sep 2026 09:39:14 +1000
-Message-id: <178977475436.207413.9806283444174908649@noble.neil.brown.name>
+To: "Jori Koolstra" <jkoolstra@xs4all.nl>
+Cc: "Alexander Viro" <viro@zeniv.linux.org.uk>,
+ "Christian Brauner" <brauner@kernel.org>, "Chuck Lever" <cel@kernel.org>,
+ "Jeff Layton" <jlayton@kernel.org>, linux-fsdevel@vger.kernel.org,
+ linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/7] vfs: change vfs_lookup_open() to return found dentry
+ in path.dentry.
+In-reply-to: <2052084198.1190749.1789567317791@kpc.webmail.kpnmail.nl>
+References: <20260910002934.192979-1-neilb@ownmail.net>
+  <20260910002934.192979-5-neilb@ownmail.net>
+  <aqlXZ7Gunepk_4uV@lt-jori.localdomain>
+  <178950702008.207413.8966334050259525793@noble.neil.brown.name>
+  <2052084198.1190749.1789567317791@kpc.webmail.kpnmail.nl>
+Date: Sat, 19 Sep 2026 11:58:52 +1000
+Message-id: <178978313273.207413.10091995194620648480@noble.neil.brown.name>
 Reply-To: NeilBrown <neil@brown.name>
 
-On Sat, 19 Sep 2026, Chuck Lever wrote:
-> nfsd_cache_csum() costs CPU on every non-idempotent request. It also
-> prevents the use of zero-copy RDMA receives for WRITE and SYMLINK
-> because the payload must be in the server's memory before the DRC
-> lookup can run.
+On Thu, 17 Sep 2026, Jori Koolstra wrote:
+> > Op 15-09-2026 23:17 CEST schreef NeilBrown <neilb@ownmail.net>:
+> >=20
+> > =20
+> > On Wed, 16 Sep 2026, Jori Koolstra wrote:
+> > > On Thu, Sep 10, 2026 at 10:20:50AM +1000, NeilBrown wrote:
+> > > > From: NeilBrown <neil@brown.name>
+> > > >=20
+> > > > The caller - nfsd - needs to know the type of object found when a
+> > > > non-regular file was found to exist.  This is most easily done
+> > > > by passing back the dentry.
+> > > >=20
+> > > > So change calling pattern so that the path (now called "path") contai=
+ns
+> > > > the parent dentry on entry and the child dentry on exit.
+> > > > vfs_lookup_open() will dput() the parent and caller must dput() the
+> > > > child.
+> > > >=20
+> > > > If lookup_open() returns -EFTYPE (from ->atomic_open()) we need to
+> > > > use d_lookup() to find the dentry.  If ->atomic_open() didn't add a
+> > > > dentry to the dcache we return %NULL in %path->dentry.
+> > > >=20
+> > > > Signed-off-by: NeilBrown <neil@brown.name>
+> > > > ---
+> > > >  fs/namei.c | 31 ++++++++++++++++++++++---------
+> > > >  1 file changed, 22 insertions(+), 9 deletions(-)
+> > > >=20
+> > > > diff --git a/fs/namei.c b/fs/namei.c
+> > > > index 0c787363b101..30ccc0c2f02f 100644
+> > > > --- a/fs/namei.c
+> > > > +++ b/fs/namei.c
+> > > > @@ -4606,7 +4606,7 @@ static struct dentry *lookup_open(struct nameid=
+ata *nd, struct file *file,
+> > > > =20
+> > > >  /**
+> > > >   * vfs_lookup_open - open and possibly create a regular file
+> > > > - * @parent: directory to contain file
+> > > > + * @path: directory to contain file
+> > > >   * @last: final component of file name
+> > > >   * @open_flag: O_flags
+> > > >   * @mode: initial permissions for file
+> > > > @@ -4619,9 +4619,15 @@ static struct dentry *lookup_open(struct namei=
+data *nd, struct file *file,
+> > > >   * If the fs object found is not a regular file then -EFTYPE is
+> > > >   * returned.
+> > > >   *
+> > > > + * @path is updated to contain the dentry that was found if possible.
+> > > > + * In particular, if -EFTYPE is returned, then @path.dentry will be =
+the
+> > > > + * object that is not a regular file, or %NULL.
+> > > > + * Consequently the caller must be prepared for @path.dentry to be
+> > > > + * dput(), an it must dput() whatever is in @path.dentry after the c=
+all.
+> > > > + *
+> > > >   * Returns: the opened struct file, or an error.
+> > > >   */
+> > > > -struct file *vfs_lookup_open(struct path *parent, struct qstr *last,
+> > > > +struct file *vfs_lookup_open(struct path *path, struct qstr *last,
+> > > >  			     int open_flag, umode_t mode)
+> > > >  {
+> > > >  	struct file *file __free(fput) =3D NULL;
+> > > > @@ -4638,7 +4644,7 @@ struct file *vfs_lookup_open(struct path *paren=
+t, struct qstr *last,
+> > > >  	mode |=3D S_IFREG;
+> > > >  	open_flag |=3D __O_REGULAR;
+> > > > =20
+> > > > -	error =3D lookup_noperm_common(last, parent->dentry);
+> > > > +	error =3D lookup_noperm_common(last, path->dentry);
+> > > >  	if (error)
+> > > >  		return ERR_PTR(error);
+> > > > =20
+> > > > @@ -4646,7 +4652,7 @@ struct file *vfs_lookup_open(struct path *paren=
+t, struct qstr *last,
+> > > >  	if (IS_ERR(file))
+> > > >  		return file;
+> > > > =20
+> > > > -	nd.path =3D *parent;
+> > > > +	nd.path =3D *path;
+> > > >  	nd.last =3D *last;
+> > > >  	nd.flags =3D LOOKUP_OPEN;
+> > > >  	if (open_flag & O_CREAT) {
+> > > > @@ -4658,9 +4664,18 @@ struct file *vfs_lookup_open(struct path *pare=
+nt, struct qstr *last,
+> > > >  	op.mode =3D mode;
+> > > >  	dentry =3D lookup_open(&nd, file, &op);
+> > > > =20
+> > > > -	if (IS_ERR(dentry))
+> > > > +	if (IS_ERR(dentry)) {
+> > > > +		if (dentry =3D=3D -EFTYPE) {
+> > > > +			/* Try to determine what was found */
+> > > > +			struct dentry *child =3D d_lookup(path->dentry, &nd.last);
+> > > > +			dput(path->dentry);
+> > > > +			path->dentry =3D child;
+> > > > +			WARN_ON_ONCE(child && d_is_reg(child));
+> > > > +		}
+> > > >  		return ERR_CAST(dentry);
+> > > > -
+> > > > +	}
+> > > > +	dput(path->dentry);
+> > > > +	path->dentry =3D dentry;
+> > > >  	if (d_really_is_negative(dentry)) {
+> > > >  		error =3D -ENOENT;
+> > > >  	} else if (!(file->f_mode & FMODE_CREATED) && (open_flag & O_EXCL))=
+ {
+> > > > @@ -4668,10 +4683,8 @@ struct file *vfs_lookup_open(struct path *pare=
+nt, struct qstr *last,
+> > > >  	} else if (!d_is_reg(dentry)) {
+> > > >  		error =3D -EFTYPE;
+> > > >  	} else if (!(file->f_mode & FMODE_OPENED)) {
+> > > > -		nd.path.dentry =3D dentry;
+> > > > -		error =3D vfs_open(&nd.path, file);
+> > > > +		error =3D vfs_open(path, file);
+> > > >  	}
+> > > > -	dput(dentry);
+> > > > =20
+> > > >  	if (error)
+> > > >  		return ERR_PTR(error);
+> > > > --=20
+> > > > 2.50.0.107.gf914562f5916.dirty
+> > > >=20
+> > >=20
+> > > OK, so if I understand the problem correctly: the current implementation
+> > > does not work for the purposes of NFS because ->atomic_open() may return
+> > > EFTYPE on O_REGULAR and then you still don't know what that found dentry
+> > > was.
+> > >=20
+> > > An arugument with such specific calling conventions feels kinda yucky
+> > > and easier to get wrong. Why not an out enum arg that specifies the
+> > > found dentry type? Seems at least a bit cleaner. What do you think?
+> >=20
+> > I'm alternating between an out dentry arg separate from path, and
+> > reliably returning one of -EISDIR, -ELOOP, and -EFTYPE.  Those are
+> > all well defined error codes that are used for exactly this sort of
+> > thing.
 >=20
-> Commit 01a7decf7593 ("nfsd: keep a checksum of the first 256 bytes
-> of request") added the checksum when a growing cache made XID
-> collisions easier to hit. It is the only guard against a reused
-> XID: two calls with the same procedure and equal-length arguments
-> match on every other key field.
+> It's only internal callers anyway, so I would take the leeway with some
+> errno proliferation. Seems fine to me, especially since NFS needs exactly
+> this info.
 >=20
-> Acknowledgment-based eviction retires a TCP or RDMA entry once the
-> transport confirms delivery and a later request from the same
-> connection visits its bucket. Three kinds of entry outlast that: the
-> entries a connection has issued since it last visited each bucket,
-> entries from a connection the client has since closed, which no
-> later request can evict because their transport is gone, and UDP
-> entries. Those wait out RC_EXPIRE. A collision needs the same XID
-> from the same address and port within that window. The Linux NFS
-> client's XIDs are sequential from a seed drawn with
-> get_random_u32(), so an XID recurs only after 2^32 calls, and a
-> rebooted client does not replay its previous sequence. A client that
-> restarts its sequence from a fixed value and rebinds its previous
-> source port within RC_EXPIRE is unguarded, but a client that repeats
-> a live XID cannot reliably match replies to its own calls anyway.
+> > My current thought is to modify ->atomic_open to respond to __O_REGULAR
+> > either by calling finish_no_open() so the caller can inspect the dentry
+> > directly, or to return one of those three errors as appropriate.
+> > VFS code can map them all to -EFTYPE for syscalls, and nfsd can use the
+> > raw error code.
 >=20
-> An acknowledged entry stays in its bucket until the next prune
-> visits it, and a lookup matches it in the meantime. The client
-> already holds that reply, so treat a call carrying its XID as a
-> miss: evict the entry and insert the new one in its place.
+> Personally, I like this last idea the most. Still, I wish there was a more
+> general way to signal XYZ problem happened during function call without any
+> worrying about collisions on the very limited errno space. I understand that
+> you can decouple the local error codes returned by not directly forwarding
+> any errnos from called functions, but this is often impracticable or at
+> least requires an ugly errno translate.
+>=20
+> Interested on perspectives from kernel veterans here what is wisdom, I've r=
+an
+> into this myself too.
 
-I don't follow the logic here.
-If we get a request on a particular transport and it is a good match
-for a request that we recently replied to on the same transport, then
-the chance of it being a timed-out retransmit is 100%.  A client that
-re-uses xids that quickly is buggy, isn't it?
-So if nfsd_cacherep_acked() then I think we can ignore the request.
-In fact if the "found" reply was sent on the same xprt that we received
-a new request on, I think we can ignore the new request even if the
-reply hasn't been acked yet.
+I'm not aware of any patterns that are used in the kernel to address this
+issue.  I don't think it comes up all that much, and people create
+ad hoc solution that work for their case.
 
-Everything else in the series is good and I really appreciate how
-thoroughly you have explained the logic in a lot of places.
+Sometimes this is a positive value returned in place of a negative
+errno, though that doesn't work with ERR_PTR().
 
-Thanks,
+It might be useful to have a MAX_USED_ERRNO so that any number between
+that and MAX_ERRNO can be re-purposed locally, and some automatic
+conversion to EINVAL or similar could happen at syscall-return.
+
+I think that mostly people manage with the error codes we have, and put
+up with occasional overloading.
+
 NeilBrown
-
-
->=20
-> Remove the checksum, the nfsd_drc_mismatch tracepoint, and the
-> payload_misses stat that counted checksum-detected collisions.
-> nfsd_dispatch() no longer snapshots the argument stream before
-> decoding, and with k_csum gone, struct nfsd_cacherep shrinks to 136
-> bytes.
->=20
-> The "payload misses" line disappears from
-> /proc/fs/nfsd/reply_cache_stats. No known userspace tool parses it.
->=20
-> Assisted-by: LLM
-> Signed-off-by: Chuck Lever <cel@kernel.org>
-> ---
->  .../ABI/testing/procfs-nfsd-reply_cache_stats      |  11 +--
->  fs/nfsd/cache.h                                    |   9 +-
->  fs/nfsd/netns.h                                    |   2 -
->  fs/nfsd/nfscache.c                                 | 103 +++++------------=
-----
->  fs/nfsd/nfssvc.c                                   |  10 +-
->  fs/nfsd/stats.h                                    |   5 -
->  fs/nfsd/trace.h                                    |  24 -----
->  7 files changed, 28 insertions(+), 136 deletions(-)
->=20
-> diff --git a/Documentation/ABI/testing/procfs-nfsd-reply_cache_stats b/Docu=
-mentation/ABI/testing/procfs-nfsd-reply_cache_stats
-> index 57ed5f8e6597..7a22ac7c1ccd 100644
-> --- a/Documentation/ABI/testing/procfs-nfsd-reply_cache_stats
-> +++ b/Documentation/ABI/testing/procfs-nfsd-reply_cache_stats
-> @@ -19,19 +19,16 @@ Description:
->  		cache misses             s64     Requests not found in cache
->  		not cached               s64     Idempotent requests that
->  		                                 bypass the cache
-> -		payload misses           s64     XID matched but request
-> -		                                 checksum did not
->  		longest chain len        u32     Longest hash chain observed
->  		cachesize at longest     u32     Cache size when longest
->  		                                 chain was recorded
->  		=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D  =
-=3D=3D=3D=3D=3D=3D  =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D
-> =20
->  		Counter fields (cache hits, cache misses, not cached,
-> -		payload misses, mem usage) are maintained with per-cpu
-> -		counters and may briefly show stale values under
-> -		concurrent load. There is no way to reset these
-> -		counters; consumers should compute rates by sampling
-> -		over time.
-> +		mem usage) are maintained with per-cpu counters and
-> +		may briefly show stale values under concurrent load.
-> +		There is no way to reset these counters; consumers
-> +		should compute rates by sampling over time.
-> =20
->  		New fields may be appended in future kernels. Parsers
->  		should match on field name, not line position.
-> diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-> index 894e0b61cbfc..3491a10524d7 100644
-> --- a/fs/nfsd/cache.h
-> +++ b/fs/nfsd/cache.h
-> @@ -22,9 +22,7 @@ struct nfsd_net;
->   */
->  struct nfsd_cacherep {
->  	struct {
-> -		/* Keep often-read xid, csum in the same cache line: */
->  		__be32			k_xid;
-> -		__wsum			k_csum;
->  		u32			k_proc;
->  		u32			k_prot;
->  		u32			k_vers;
-> @@ -80,15 +78,12 @@ enum {
->  /* Cache entries expire after this time period */
->  #define RC_EXPIRE		(120 * HZ)
-> =20
-> -/* Checksum this amount of the request */
-> -#define RC_CSUMLEN		(256U)
-> -
->  int	nfsd_drc_slab_create(void);
->  void	nfsd_drc_slab_free(void);
->  int	nfsd_reply_cache_init(struct nfsd_net *);
->  void	nfsd_reply_cache_shutdown(struct nfsd_net *);
-> -int	nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
-> -			  unsigned int len, struct nfsd_cacherep **cacherep);
-> +int	nfsd_cache_lookup(struct svc_rqst *rqstp,
-> +			  struct nfsd_cacherep **cacherep);
->  void	nfsd_cache_update(struct svc_rqst *rqstp, struct nfsd_cacherep *rp,
->  			  int cachetype, __be32 *statp);
->  void	nfsd_cache_reply_sent(struct svc_rqst *rqstp);
-> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-> index 0ce7da20aba3..30231b9027dd 100644
-> --- a/fs/nfsd/netns.h
-> +++ b/fs/nfsd/netns.h
-> @@ -39,8 +39,6 @@ enum nfsd_net_flag {
->  };
-> =20
->  enum {
-> -	/* cache misses due only to checksum comparison failures */
-> -	NFSD_STATS_PAYLOAD_MISSES,
->  	/* amount of memory (in bytes) currently consumed by the DRC */
->  	NFSD_STATS_DRC_MEM_USAGE,
->  	NFSD_STATS_RC_HITS,		/* repcache hits */
-> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-> index 41b8098d3528..f5bc29cd8eee 100644
-> --- a/fs/nfsd/nfscache.c
-> +++ b/fs/nfsd/nfscache.c
-> @@ -13,10 +13,8 @@
->  #include <linux/slab.h>
->  #include <linux/vmalloc.h>
->  #include <linux/sunrpc/addr.h>
-> -#include <linux/highmem.h>
->  #include <linux/log2.h>
->  #include <linux/hash.h>
-> -#include <net/checksum.h>
-> =20
->  #include "nfsd.h"
->  #include "nfserr.h"
-> @@ -91,8 +89,7 @@ nfsd_hashsize(unsigned int limit)
->  }
-> =20
->  static struct nfsd_cacherep *
-> -nfsd_cacherep_alloc(struct svc_rqst *rqstp, __wsum csum,
-> -		    struct nfsd_net *nn)
-> +nfsd_cacherep_alloc(struct svc_rqst *rqstp, struct nfsd_net *nn)
->  {
->  	struct nfsd_cacherep *rp;
-> =20
-> @@ -111,7 +108,6 @@ nfsd_cacherep_alloc(struct svc_rqst *rqstp, __wsum csum,
->  		rp->c_key.k_prot =3D rqstp->rq_prot;
->  		rp->c_key.k_vers =3D rqstp->rq_vers;
->  		rp->c_key.k_len =3D rqstp->rq_arg.len;
-> -		rp->c_key.k_csum =3D csum;
->  		rp->c_xprt =3D rqstp->rq_xprt->xpt_id;
->  		rp->c_inflight =3D 0;
->  		rp->c_pos =3D 0;
-> @@ -377,68 +373,10 @@ nfsd_reply_cache_scan(struct shrinker *shrink, struct=
- shrink_control *sc)
->  	return freed;
->  }
-> =20
-> -/**
-> - * nfsd_cache_csum - Checksum incoming NFS Call arguments
-> - * @buf: buffer containing a whole RPC Call message
-> - * @start: starting byte of the NFS Call header
-> - * @remaining: size of the NFS Call header, in bytes
-> - *
-> - * Compute a weak checksum of the leading bytes of an NFS procedure
-> - * call header to help verify that a retransmitted Call matches an
-> - * entry in the duplicate reply cache.
-> - *
-> - * To avoid assumptions about how the RPC message is laid out in
-> - * @buf and what else it might contain (eg, a GSS MIC suffix), the
-> - * caller passes us the exact location and length of the NFS Call
-> - * header.
-> - *
-> - * Returns a 32-bit checksum value, as defined in RFC 793.
-> - */
-> -static __wsum nfsd_cache_csum(struct xdr_buf *buf, unsigned int start,
-> -			      unsigned int remaining)
-> -{
-> -	unsigned int base, len;
-> -	struct xdr_buf subbuf;
-> -	__wsum csum =3D 0;
-> -	void *p;
-> -	int idx;
-> -
-> -	if (remaining > RC_CSUMLEN)
-> -		remaining =3D RC_CSUMLEN;
-> -	if (xdr_buf_subsegment(buf, &subbuf, start, remaining))
-> -		return csum;
-> -
-> -	/* rq_arg.head first */
-> -	if (subbuf.head[0].iov_len) {
-> -		len =3D min_t(unsigned int, subbuf.head[0].iov_len, remaining);
-> -		csum =3D csum_partial(subbuf.head[0].iov_base, len, csum);
-> -		remaining -=3D len;
-> -	}
-> -
-> -	/* Continue into page array */
-> -	idx =3D subbuf.page_base / PAGE_SIZE;
-> -	base =3D subbuf.page_base & ~PAGE_MASK;
-> -	while (remaining) {
-> -		p =3D page_address(subbuf.pages[idx]) + base;
-> -		len =3D min_t(unsigned int, PAGE_SIZE - base, remaining);
-> -		csum =3D csum_partial(p, len, csum);
-> -		remaining -=3D len;
-> -		base =3D 0;
-> -		++idx;
-> -	}
-> -	return csum;
-> -}
-> -
->  static int
->  nfsd_cache_key_cmp(const struct nfsd_cacherep *key,
-> -		   const struct nfsd_cacherep *rp, struct nfsd_net *nn)
-> +		   const struct nfsd_cacherep *rp)
->  {
-> -	if (key->c_key.k_xid =3D=3D rp->c_key.k_xid &&
-> -	    key->c_key.k_csum !=3D rp->c_key.k_csum) {
-> -		nfsd_stats_payload_misses_inc(nn);
-> -		trace_nfsd_drc_mismatch(nn, key, rp);
-> -	}
-> -
->  	return memcmp(&key->c_key, &rp->c_key, sizeof(key->c_key));
->  }
-> =20
-> @@ -462,7 +400,7 @@ nfsd_cache_insert(struct nfsd_drc_bucket *b, struct nfs=
-d_cacherep *key,
->  		parent =3D *p;
->  		rp =3D rb_entry(parent, struct nfsd_cacherep, c_node);
-> =20
-> -		cmp =3D nfsd_cache_key_cmp(key, rp, nn);
-> +		cmp =3D nfsd_cache_key_cmp(key, rp);
->  		if (cmp < 0)
->  			p =3D &parent->rb_left;
->  		else if (cmp > 0)
-> @@ -491,28 +429,23 @@ nfsd_cache_insert(struct nfsd_drc_bucket *b, struct n=
-fsd_cacherep *key,
->  /**
->   * nfsd_cache_lookup - Find an entry in the duplicate reply cache
->   * @rqstp: Incoming Call to find
-> - * @start: starting byte in @rqstp->rq_arg of the NFS Call header
-> - * @len: size of the NFS Call header, in bytes
->   * @cacherep: OUT: DRC entry for this request
->   *
-> - * Try to find an entry matching the current call in the cache. When none
-> - * is found, we try to grab the oldest expired entry off the LRU list. If
-> - * a suitable one isn't there, then drop the cache_lock and allocate a
-> - * new one, then search again in case one got inserted while this thread
-> - * didn't hold the lock.
-> + * On a miss, the entry created for this call is returned in
-> + * @cacherep. On a hit, the cached reply is encoded into @rqstp's
-> + * response.
->   *
->   * Return values:
->   *   %RC_DOIT: Process the request normally
->   *   %RC_REPLY: Reply from cache
->   *   %RC_DROPIT: Do not process the request further
->   */
-> -int nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
-> -		      unsigned int len, struct nfsd_cacherep **cacherep)
-> +int nfsd_cache_lookup(struct svc_rqst *rqstp,
-> +		      struct nfsd_cacherep **cacherep)
->  {
->  	struct nfsd_net		*nn =3D net_generic(SVC_NET(rqstp), nfsd_net_id);
->  	struct nfsd_thread_local_info *ntli =3D rqstp->rq_private;
->  	struct nfsd_cacherep	*rp, *found;
-> -	__wsum			csum;
->  	struct nfsd_drc_bucket	*b;
->  	int type =3D ntli->ntli_cachetype;
->  	LIST_HEAD(dispose);
-> @@ -524,21 +457,29 @@ int nfsd_cache_lookup(struct svc_rqst *rqstp, unsigne=
-d int start,
->  		goto out;
->  	}
-> =20
-> -	csum =3D nfsd_cache_csum(&rqstp->rq_arg, start, len);
-> -
->  	/*
->  	 * Since the common case is a cache miss followed by an insert,
->  	 * preallocate an entry.
->  	 */
-> -	rp =3D nfsd_cacherep_alloc(rqstp, csum, nn);
-> +	rp =3D nfsd_cacherep_alloc(rqstp, nn);
->  	if (!rp)
->  		goto out;
-> =20
->  	b =3D nfsd_cache_bucket_find(rqstp->rq_xid, nn);
->  	spin_lock(&b->cache_lock);
->  	found =3D nfsd_cache_insert(b, rp, nn);
-> -	if (found !=3D rp)
-> -		goto found_entry;
-> +	if (found !=3D rp) {
-> +		/*
-> +		 * The client already holds the reply for an acknowledged
-> +		 * entry, so a call carrying its XID is a new call.
-> +		 */
-> +		if (!nfsd_cacherep_acked(found, rqstp->rq_xprt))
-> +			goto found_entry;
-> +		trace_nfsd_drc_evict_acked(nn, found);
-> +		nfsd_cacherep_unlink_locked(nn, b, found);
-> +		list_add(&found->c_lru, &dispose);
-> +		nfsd_cache_insert(b, rp, nn);
-> +	}
->  	*cacherep =3D rp;
->  	rp->c_state =3D RC_INPROG;
->  	nfsd_prune_bucket_locked(nn, b, 3, &dispose, rqstp->rq_xprt);
-> @@ -737,8 +678,6 @@ int nfsd_reply_cache_stats_show(struct seq_file *m, voi=
-d *v)
->  		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_RC_MISSES]));
->  	seq_printf(m, "not cached:            %lld\n",
->  		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_RC_NOCACHE]));
-> -	seq_printf(m, "payload misses:        %lld\n",
-> -		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_PAYLOAD_MISSES]));
->  	seq_printf(m, "longest chain len:     %u\n", nn->longest_chain);
->  	seq_printf(m, "cachesize at longest:  %u\n", nn->longest_chain_cachesize);
->  	return 0;
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index 6fc54399cb90..07e5e8549f6d 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -1005,7 +1005,6 @@ int nfsd_dispatch(struct svc_rqst *rqstp)
->  	const struct svc_procedure *proc =3D rqstp->rq_procinfo;
->  	__be32 *statp =3D rqstp->rq_accept_statp;
->  	struct nfsd_cacherep *rp;
-> -	unsigned int start, len;
->  	__be32 *nfs_reply;
-> =20
->  	/*
-> @@ -1014,13 +1013,6 @@ int nfsd_dispatch(struct svc_rqst *rqstp)
->  	 */
->  	ntli->ntli_cachetype =3D proc->pc_cachetype;
-> =20
-> -	/*
-> -	 * ->pc_decode advances the argument stream past the NFS
-> -	 * Call header, so grab the header's starting location and
-> -	 * size now for the call to nfsd_cache_lookup().
-> -	 */
-> -	start =3D xdr_stream_pos(&rqstp->rq_arg_stream);
-> -	len =3D xdr_stream_remaining(&rqstp->rq_arg_stream);
->  	if (!proc->pc_decode(rqstp, &rqstp->rq_arg_stream))
->  		goto out_decode_err;
-> =20
-> @@ -1034,7 +1026,7 @@ int nfsd_dispatch(struct svc_rqst *rqstp)
->  	smp_store_release(&rqstp->rq_status_counter, rqstp->rq_status_counter | 1=
-);
-> =20
->  	rp =3D NULL;
-> -	switch (nfsd_cache_lookup(rqstp, start, len, &rp)) {
-> +	switch (nfsd_cache_lookup(rqstp, &rp)) {
->  	case RC_DOIT:
->  		break;
->  	case RC_REPLY:
-> diff --git a/fs/nfsd/stats.h b/fs/nfsd/stats.h
-> index aabfbb1a9c71..4a556dfbf64a 100644
-> --- a/fs/nfsd/stats.h
-> +++ b/fs/nfsd/stats.h
-> @@ -97,11 +97,6 @@ static inline void nfsd_stats_io_write_add(struct nfsd_n=
-et *nn,
->  					 amount);
->  }
-> =20
-> -static inline void nfsd_stats_payload_misses_inc(struct nfsd_net *nn)
-> -{
-> -	percpu_counter_inc(&nn->counter[NFSD_STATS_PAYLOAD_MISSES]);
-> -}
-> -
->  /**
->   * nfsd_stats_drc_mem_usage_add - Add memory used by a cache item
->   * @nn: target network namespace
-> diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-> index 7abd46e8a752..1febb42a008f 100644
-> --- a/fs/nfsd/trace.h
-> +++ b/fs/nfsd/trace.h
-> @@ -1536,30 +1536,6 @@ TRACE_EVENT(nfsd_drc_found,
-> =20
->  );
-> =20
-> -TRACE_EVENT(nfsd_drc_mismatch,
-> -	TP_PROTO(
-> -		const struct nfsd_net *nn,
-> -		const struct nfsd_cacherep *key,
-> -		const struct nfsd_cacherep *rp
-> -	),
-> -	TP_ARGS(nn, key, rp),
-> -	TP_STRUCT__entry(
-> -		__field(unsigned long long, boot_time)
-> -		__field(u32, xid)
-> -		__field(u32, cached)
-> -		__field(u32, ingress)
-> -	),
-> -	TP_fast_assign(
-> -		__entry->boot_time =3D nn->boot_time;
-> -		__entry->xid =3D be32_to_cpu(key->c_key.k_xid);
-> -		__entry->cached =3D (__force u32)key->c_key.k_csum;
-> -		__entry->ingress =3D (__force u32)rp->c_key.k_csum;
-> -	),
-> -	TP_printk("boot_time=3D%16llx xid=3D0x%08x cached-csum=3D0x%08x ingress-c=
-sum=3D0x%08x",
-> -		__entry->boot_time, __entry->xid, __entry->cached,
-> -		__entry->ingress)
-> -);
-> -
->  DECLARE_EVENT_CLASS(nfsd_drc_entry_class,
->  	TP_PROTO(
->  		const struct nfsd_net *nn,
->=20
-> --=20
-> 2.55.0
->=20
->=20
->=20
-
