@@ -1,176 +1,149 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ed2-f12.google.com (mail-ed2-f12.google.com [74.125.228.76])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B7923947B5;
-	Sun, 20 Sep 2026 17:22:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789924951; cv=none; b=TRqHaJ6Gs5Oc2Yn3BoNETJxC5WGgyMnkpT2Xf4zX58Oz2ny7cwHVKuPSK4Y1uf3SEJ3xoIeecvIy12yeQ/5ROdOweaOdpLUhnP8fv5FSWeBe1lc00Wu94zJNKuxhdpAaxqH94DNWCqDcFbrYaXTHoHznGplTIeLsZFFLyRETWH0=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789924951; c=relaxed/simple;
-	bh=JbjQ4r18XuBTuD5lsBHbKl9WSV0D3tVV3qu6d2uk+EU=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=UYTkRjrj47KR9XeNEKZUmpd7sStk3hyNgqrFETA7aZRe3qjNRmXPSbgLqDCsSOSxS4wkgAEnolaRbFz7+HPr0ZYypDuiXK9SZZ+XgwDFHnCFE7Hcf6gSQ3eXRCF3j6xNdmjehY0MMo9RmykhDAac0dCWtyAoauX4m9gzarvOMGA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CbcELAtF; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B40932D9ECB
+	for <linux-nfs@vger.kernel.org>; Sun, 20 Sep 2026 17:32:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.228.76
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1789925558; cv=pass; b=VxTuK3GKq+vQpCdqDsitBGZstTv+1euWnjoNcX0AZoFoYmisdCpTQ7Kq6og3MK/NRrpSxlQhmWvVCgmjQfCFv4YW/jOmoA/8cnQqvMXQvVM7vPRL1vjWyFs0QXSSJ9W0BE03trXhR8XN/x3Czk2hCVDcQXdom8FUr7fyQ8xli3k=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1789925558; c=relaxed/simple;
+	bh=NKA9IU/siaGutO1lqGCz7C/kGpzRSmKDM/zWbvIfBUw=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=nuovVdx75Q4gEXi708p5UHo4NJRU30R6rBLoK3ru5uR5v1vIGOw6ICU2IIGJ6m/Vz0gtAGdTA14XaGA6WKd2DxHURR2ny9KT6+o2MJyHNcdbObAzPrR8CbcKtfLGObb29a9XyJBYRwoEVVA6rZ+jP2dNGSfM3RgGZq8abgKAJ1o=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=UXVJdJ0Y; arc=pass smtp.client-ip=74.125.228.76
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CbcELAtF"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8D4011F000FF;
-	Sun, 20 Sep 2026 17:22:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789924950;
-	bh=Y4ryNfrMAsm8KB58Bi7LH/O24NK1iFHFLktP/PM27iI=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=CbcELAtFlTvzEZtCVrObVJtRqJJGFhLwPIU+P59v64/8jVGZIPBk544FW2AsUog2x
-	 cmz/stKmytZ4xuLPcDIL9pp/UpV2l/UH3VrH3cZKe2VcHpZQBH/1sBy9yTPaHE7EOW
-	 hK1WamOQewJd7ctqPIZU9K52ug21l/+qqBwuRZzAVZr5CHUl21/c45F21SYN5/iQBu
-	 RAZGNho3QmaWgwtK4LFMrNTr4VPexSR79Y0lxeYwSXwpGQOrqy1D/JKsUhIcPcdTYk
-	 +nJVC+VoLuiUAJBdKqXTBPQ9110v2utaw/wxz8xS1gpfSHGVUVQbL+sJXPnJBdbBa6
-	 GKXoa+C/yFqAQ==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 7F1D6F40066;
-	Sun, 20 Sep 2026 13:22:28 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Sun, 20 Sep 2026 13:22:28 -0400
-X-ME-Sender: <xms:VBawakZ4J65jWVf0G46P7Ktfh05ui6-Yx9kJwBdT7Cv_9HFtKBQQsw>
-    <xme:VBawaqPt8wyo0t8oarnao-V-Jv6f6217xi_J3Bk8aRJ60ZJjTIanW6XViGA3SSusR
-    nNwQltTPQQ1Rz8rK9tW5vOTeV6WsBLxyQk5TZHZRHsl093KGtG_aic>
-X-ME-Proxy-Cause: dmFkZTEokurct+LG466RWENb4bS0pYaC0e4jnnVs6OiprIT28ofLr0KANonsHf2clU2ZI2
-    HFYB5hnFznGY5wGJ/fDZHv5xyX9N+0aBkfL/+mh3Au05BFKVGjJLeqpObIvauAW/IYcgSb
-    alFk+2shdsKjvTS+ivb/SU3ldHLciPcYSGhDG/zgioiF0miRZnMkzbGdSSLdehQsVL1XUb
-    XLehGBa5MonBfF7JlEyYAXBSp41ahCVI4kuorFjVoHHiynyxgx87mENcrX9wr9gnRoOvgt
-    MzTeSwld6fnVwqG5IEDowlnx3j24X92ZBd4TVOwt5rMw8KsejgZERxMy9H49tr6TKxmKeq
-    hqOmnPYZupnhtjTRrrhx3BhDRp86z0XEL2Mv61ASKnikjV/vC6y9kFiU8HHs8yrE+QoXHp
-    JAV08wrZ+KuCf085X1fQkzYuTeTLV9Mx+0wc/ZQ248HIgEiqgFWfVswA0t7b2LDOZ9w7MI
-    U3EVHNJBeX/9QQoDU7S/FljftMHTo/AHkqNPmymFuyYMuCFWASxTO6R9gqEFMJDFbgttC6
-    E6HnFKqW/NKp+VSpUgz9nr63utitQEy8LDdiuYEPPoiwvHm/5965KT5zSeBEy+tYKQHDQn
-    Kc9GIrDpp8oqBoqc/XzN4l87vk0Hdtp1pVuliBEZ/LOS7TFtBDhtT2IvRbag
-X-ME-Proxy: <xmx:VBawagnE8istvw80pF1RqPiz1zJ5rWM_ANI6bmCj6B5UZjTXp-ZCcA>
-    <xmx:VBawarxMDqLVvHgowPCgu1jZ5eofD-DLUyQUnkcYxjiaORWiQjDYpA>
-    <xmx:VBawakwwOWH0gu6zSyt-fnF-PpEMkH9yaD79kjeA_fu0xLfFb5XZOg>
-    <xmx:VBawai-xc1cWra3E99UOypzF270VZjHDYuqh35cFKBDXHJsX4lHVjw>
-    <xmx:VBawas9dhlPpmGd4t94fiqZbO3phZSPWcpUnewa6HjspAsWL6vjEfaYF>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 53A7E780075; Sun, 20 Sep 2026 13:22:28 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UXVJdJ0Y"
+Received: by mail-ed2-f12.google.com with SMTP id 4fb4d7f45d1cf-6a99cd5115bso3415485a12.3
+        for <linux-nfs@vger.kernel.org>; Sun, 20 Sep 2026 10:32:36 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1789925555; cv=none;
+        d=google.com; s=arc-20260327;
+        b=NB6Oxi/OzS77jo9GoZ4i0Ez3K2v2WQ2+b7RKDDW0YB9Vb3DbUxTTtoBHqTzUFOHaxc
+         vrpwbA05WzGZ7lxIFgjsXhlegcUN54qIF3KC9KXU/w/kBPDNxmK7YB1JLIS2+Is81CKu
+         t5oeDsvSErkfFg5uG+fdN1LFyZyPML6XsnEOEa9vV3G8SPwQ9fY01UkG0uyraK7Cttnl
+         rHQ7zIbKUD+yuN3Ca4E8WOvEKD/Tt5t0U39zdpT4Ch0sEZ3IYO9yWNC5Jb4pvHgBc65F
+         v7KLQToa/8SBpWnxx0X0TmQImVm7OVjm9yiANmzfCNdpw1UDjtediY7V3pW7/K9H0AQi
+         AZBg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=NKA9IU/siaGutO1lqGCz7C/kGpzRSmKDM/zWbvIfBUw=;
+        fh=el6r7sq6ZqQujOZnP3X9Hxr+KeOQ7m8JIgdU+uu77Z4=;
+        b=JQ9gC6VKaTWYzNz+0fEjYfyrwBeiFXrM7VIq3edDcsNAaZFnrBvLMDGj8zBFMV7SdG
+         +uWyNXy7EhkeMKK7TIbfiJhwl0FnpJSco8+MtJQxhyLWm8S7YPgcDNOzT5ZDrXpXdRL9
+         7WyF+2p2SjFV6gae8M9GPOKt5KjFgUei9MSeNlsKaORnPfnIEDH38sHwlgzGIrAcS7cg
+         6oifPFUyDfdzwU3puGGwoidH+SHhSPHQ8g4cAyVTvMQsotGp/nAwABLm9qk62wL/MJMv
+         pJ1tOiwxwhWm9/sZVR5VRNZNQwpb/26Oo3bVyaimnSLB9i7a9Qrq3apuhRSnyJtHi7Ok
+         gzYg==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1789925555; x=1790530355; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=NKA9IU/siaGutO1lqGCz7C/kGpzRSmKDM/zWbvIfBUw=;
+        b=UXVJdJ0YB0IqwOQvEYXiRdc9+E9kQCofReK6l8wx7/2FJGMLOMgFeI3YYwrSp2Ukxv
+         pJGR9ifvmtmdPoV+iu0Pv0+Oynayuiohik1vM7elj/5catrLrmNZX2sj/FQS4l1rSgC1
+         Z8DZd8aSJYcfM9m8km6jlmZvXvJtJ9R06Juw8DqKflMUu9730wikTmXdWBb7gI/f94A1
+         Ql9V2DJPYLldLRH6m3ACyUMm3R131QZyTnt+X0sWMYStqV1/X0SmloB2CRlmPVjI8LvT
+         +7FhHwdE4C7kErvXK1qEJT6rnvm9ZXoOf/lmf/G86wxrVecr/lrXf3AZ9Z67IUEU/IGP
+         Ggjw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1789925555; x=1790530355;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=NKA9IU/siaGutO1lqGCz7C/kGpzRSmKDM/zWbvIfBUw=;
+        b=OO+9mnfr46l0g7fjcNACt/dpDeQ7j/8f7NiiUMHrBWH961li/nRbu/3a1uL6Dq5GPF
+         Sm6BZuyCNF3HBRbTsq82Fv/h8ZK7Fm1HD/OYy/o7sOLOXTk36lD4R/582ZJsDUoIvTLT
+         UJ9A3XqMiWrn+l12jLbo1b1Iew+ApcbmSEeQ7cD1YqtLuWNCGG7nLSEKhLvlLRG5vWZw
+         tmgTE4KJ4OTF/rOwRUHDLkmSVlZ00v/mv0G4+n206Ka6ZU1YykKJtgAd3n92/TRmGU6r
+         KYObrzS1Uy9uHrJyRHZZrogio9di3nAheawCCvmg3dQQPHCeQ0GG4ISZkFPsuW4s7d3L
+         HTTg==
+X-Forwarded-Encrypted: i=1; AKwUvByyicfCbo0sxkQFHoII27IHUJu11ydvVOP5Yy6qMVqQBgEdKSuH8J/IGgdYhOYla1EfmEK1Zx01sTQ=@vger.kernel.org
+X-Gm-Message-State: AFuF++lNdjTIAVlOK6jY9HvddpMicw0uBEg0TXRSg9qAaS1KsxZvtSXw
+	HyYougGw0a6mQgpgo4s23V74HTM+tctrgGxEqH1JMY1zEVNBod9ULtbR+FkeWeEus1oaiLImkwC
+	MZEXu2u5RD/xQDz3GybQTzeagcoxfr5E=
+X-Gm-Gg: AYBFou0LnU7Tn632YSbkf62lTpDM14VU8zKBriBrnCGDIn4slMtrtDNudYyrNc8IyMe
+	NhxRkq5oT1QcK5pHnsZbj259rxw+Sz4XeRC0bmxna5MZLxOezxbWs7BKZ2D95VrC+bgbm3LkLAI
+	jH/XJXfF0oDNV95DSPI5LsCSpLLLMN8x+3WtAefH68u66fBa9midWlrLcc7Ql//qSZSr+rIccM4
+	DlJ/BYgNV2YqWrHQSyePFviVEzG1VgBx1Is2KNnfFJl8f/TU395siuMplXk3tKYbVGXtS6iHdjb
+	dnIUHF2sOYlReAVRdccZUozxnTFJ8ZFRAa0x59rZBDeC+D3+zjRo/rEKsQ==
+X-Received: by 2002:a05:6402:438c:b0:6a3:ee60:b13f with SMTP id
+ 4fb4d7f45d1cf-6aa577f8829mr5598617a12.14.1789925554728; Sun, 20 Sep 2026
+ 10:32:34 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AFQlgKekMDrg
-Date: Sun, 20 Sep 2026 13:22:00 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Peng Fan (OSS)" <peng.fan@oss.nxp.com>,
- "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>, "David S. Miller" <davem@davemloft.net>,
- "Eric Dumazet" <edumazet@google.com>, "Jakub Kicinski" <kuba@kernel.org>,
- "Paolo Abeni" <pabeni@redhat.com>, "Simon Horman" <horms@kernel.org>
-Cc: linux-kernel@vger.kernel.org, "Peng Fan" <peng.fan@nxp.com>,
- linux-nfs@vger.kernel.org, netdev@vger.kernel.org
-Message-Id: <7c7d7b6a-38a9-477e-9bcd-1f9c53a160c5@app.fastmail.com>
-In-Reply-To: <20260920022714.3145751-1-peng.fan@oss.nxp.com>
-References: <20260920022714.3145751-1-peng.fan@oss.nxp.com>
-Subject: Re: [PATCH] SUNRPC: use assign_bit() where applicable
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+References: <CAKAoaQnTria60yM=zYQAe+dZti0ZvCfja0V+Y0F=Qu1h+hXGAA@mail.gmail.com>
+ <ea3ec60c-18a1-4643-ade0-c4a004cb2ac3@app.fastmail.com> <CAPJSo4XZcAvXE6gP1vXFSfGZnjiQ8BwgeqO02obd_nWc-boR_Q@mail.gmail.com>
+ <CAM5tNy4Jm=Mu4Tu1QUQV4JjMj0iabFJ1NqnytWioWtu6bDYUuQ@mail.gmail.com>
+In-Reply-To: <CAM5tNy4Jm=Mu4Tu1QUQV4JjMj0iabFJ1NqnytWioWtu6bDYUuQ@mail.gmail.com>
+From: Lionel Cons <lionelcons1972@gmail.com>
+Date: Sun, 20 Sep 2026 19:31:58 +0200
+X-Gm-Features: AcwNN1XkKguznbVekAccXucjk0lZuTUG2zSBncSVIby03FPYmv-xTMxUVOR3MjU
+Message-ID: <CAPJSo4XuHo7jed5AThjooh2E8uuoxQYDFV+7x+CrBsrKoN3Lkg@mail.gmail.com>
+Subject: Re: [Ms-nfs41-client-devel] Need NFSv4.1 "WANT_DELEGATION" op ...
+To: Rick Macklem <rick.macklem@gmail.com>
+Cc: "ms-nfs41-client-devel@lists.sourceforge.net" <ms-nfs41-client-devel@lists.sourceforge.net>, 
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-
-
-On Sat, Sep 19, 2026, at 10:27 PM, Peng Fan (OSS) wrote:
-> From: Peng Fan <peng.fan@nxp.com>
+On Sat, 19 Sept 2026 at 21:22, Rick Macklem <rick.macklem@gmail.com> wrote:
 >
-> Convert open-coded if/else with set_bit/clear_bit the assign_bit API.
-
-The above sentence explains the same thing that the diff body shows me,
-so it does not add value.
-
-But I don't have any context here: why is this being done? Is there some
-kind of tree-wide clean-up underway so that a new feature can be added,
-or is this patch just a one-off change?
-
-Including a URL that points to an explainer, or making this patch part
-of a series would help orient reviewers.
-
-
-> Done with Coccinelle semantic patch:
->     // set_bit -> clear_bit => assign_bit
+> On Sat, Sep 19, 2026 at 4:43=E2=80=AFAM Lionel Cons <lionelcons1972@gmail=
+.com> wrote:
+> >
+> > CAUTION: This email originated from outside of the University of Guelph=
+. Do not click links or open attachments unless you recognize the sender an=
+d know the content is safe. If you are unsure, forward the message to ITHel=
+p@uoguelph.ca for review.
+> >
+> >
+> > On Thu, 17 Sept 2026 at 15:50, Chuck Lever via Ms-nfs41-client-devel
+> > <ms-nfs41-client-devel@lists.sourceforge.net> wrote:
+> > > The RFC treats the absence of WANT_DELEGATION as a normal case
+> > > with a fallback. Section 10.2.1 notes that "since the server is
+> > > not required to support this operation," a client reclaiming a
+> > > delegation with no associated open can instead use a dummy OPEN
+> > > with CLAIM_PREVIOUS and then CLOSE it (rfc8881.txt:9596).
+> >
+> > I had to refer to a colleague for this one. The answer:
+> > "... CLAIM_PREVIOUS is only valid during reclaim. Outside the server's
+> > grace/recovery period, a compliant server must reject it. ..."
+> Yes, the above does refer to reclaim during grace.
 >
->     @@
->     expression cond, bit, addr;
->     @@
+> However, I do not see why a client cannot do an OPEN/CLAIM_FH
+> for a file where the client already has an OPEN for the same file
+> for the same owner.
+> This is normally done to upgrade from OPEN4_SHARE_ACCESS_READ
+> to OPEN4_SHARE_ACCESS_BOTH, but all the RFC says is that the
+> access bits are or'd together. (It does not say that the new bits must be
+> different than what is already done for the OPEN.)
+> At least for the FreeBSD server, it appears to allow this for "same acces=
+s bits"
+> and will issue the delegation based on the OPEN4_SHARE_ACCESS_WANT_xxx_DE=
+LEG
+> bit, using the same rules as an OPEN where file is not yet OPEN'd and the=
+ same
+> rules that a WANT_DELEGATION would apply if it were implemented.
 >
->     -if (cond)
->     -        set_bit(bit, addr);
->     -else
->     -        clear_bit(bit, addr);
->     +assign_bit(bit, addr, cond);
->
->     @@
->     expression cond, bit, addr;
->     @@
->
->     -if (cond)
->     -        clear_bit(bit, addr);
->     -else
->     -        set_bit(bit, addr);
->     +assign_bit(bit, addr, !cond);
->
-> Signed-off-by: Peng Fan <peng.fan@nxp.com>
-> ---
->  net/sunrpc/svcsock.c | 18 ++++++------------
->  1 file changed, 6 insertions(+), 12 deletions(-)
->
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index ef7ac080fcd3..d7fa0d1de3ef 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -352,10 +352,8 @@ static void svc_sock_setbufsize(struct svc_sock 
-> *svsk, unsigned int nreqs)
-> 
->  static void svc_sock_secure_port(struct svc_rqst *rqstp)
->  {
-> -	if (svc_port_is_privileged(svc_addr(rqstp)))
-> -		set_bit(RQ_SECURE, &rqstp->rq_flags);
-> -	else
-> -		clear_bit(RQ_SECURE, &rqstp->rq_flags);
-> +	assign_bit(RQ_SECURE, &rqstp->rq_flags,
-> +		   svc_port_is_privileged(svc_addr(rqstp)));
->  }
-> 
->  /*
-> @@ -941,10 +939,8 @@ static struct svc_xprt *svc_tcp_accept(struct 
-> svc_xprt *xprt)
->  		slen = offsetof(struct sockaddr, sa_data);
->  	svc_xprt_set_local(&newsvsk->sk_xprt, sin, slen);
-> 
-> -	if (sock_is_loopback(newsock->sk))
-> -		set_bit(XPT_LOCAL, &newsvsk->sk_xprt.xpt_flags);
-> -	else
-> -		clear_bit(XPT_LOCAL, &newsvsk->sk_xprt.xpt_flags);
-> +	assign_bit(XPT_LOCAL, &newsvsk->sk_xprt.xpt_flags,
-> +		   sock_is_loopback(newsock->sk));
->  	if (serv->sv_stats)
->  		serv->sv_stats->nettcpconn++;
-> 
-> @@ -1290,10 +1286,8 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
-> 
->  	rqstp->rq_xprt_ctxt   = NULL;
->  	rqstp->rq_prot	      = IPPROTO_TCP;
-> -	if (test_bit(XPT_LOCAL, &svsk->sk_xprt.xpt_flags))
-> -		set_bit(RQ_LOCAL, &rqstp->rq_flags);
-> -	else
-> -		clear_bit(RQ_LOCAL, &rqstp->rq_flags);
-> +	assign_bit(RQ_LOCAL, &rqstp->rq_flags,
-> +		   test_bit(XPT_LOCAL, &svsk->sk_xprt.xpt_flags));
-> 
->  	/* Completing one message stops ->read_sock with whatever
->  	 * follows still queued, and no path from here re-arms XPT_DATA.
-> -- 
-> 2.51.0
+> I'd suggest that you explore using the above,
 
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+At least for MS nfsd and OTAP nfsd this does not work outside the
+recovery period.
+
+> since you are only doing
+> it for an "experimental caching model" at this time.
+
+Well, it's already in the tree, and slated to be the only caching model.
+
+Lionel
