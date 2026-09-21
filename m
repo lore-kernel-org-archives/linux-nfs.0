@@ -1,116 +1,122 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C643A4BB28E;
-	Mon, 21 Sep 2026 15:31:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 71910492E5C;
+	Mon, 21 Sep 2026 16:31:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790004717; cv=none; b=Q434pHUWcgvbixnQ/Zstb8DeyWnQDJOe8W0QWguuxWFBefwdvN1188SsoIklsZJsQ0UruYGF3wpdD6XlDxEfuYm9O3CtpADxypGuMPcm5X45KA1BRDO0e9Co+5yBNwqvTVYNOTNK53SK5Ju5Cb4+WKuakHkdDDLpMC8PZCspNu4=
+	t=1790008318; cv=none; b=FnTjdHoxnfZxN5dszrZ9h1uZn6MT+jb5Cn/0VbRGdV3WydAkWZSNPq/hoVbEArcDYSmuQQmykaNosybkBhSsvJZJdbhcSx5MWPynrgepTe1Yr6E593uvtrUZWPKAWNI0K1helxWi3d0kjYpz3yIFs3O3w7YvlWj6xLN1RxpmTrQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790004717; c=relaxed/simple;
-	bh=Zhun9bmg0CRQi5K4hjUQKXMbPDPpc1D1fATRLPF5MqQ=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=qEY/QoV3dgJQqEnMAx0t+nMJD+T/OvXaCqlgeWtQ/ws110t4Qq4jAi72UwmnSglonPzo7s+lCQehMbdrCrBDcF7TUNQqZLZhexQ7hI0gEvtpYq7neOMYM5aglFiz5E+4+ekOIKUecnj5kLBVxBr01+laMdUkex2QNG2IN9VKfzg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BpWnWfx2; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1790008318; c=relaxed/simple;
+	bh=ofYRUACXIOHSiN7om7I6Mv56G8lMIVNgty2jM3XLfQU=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=hyHNr2xtXtRz1Tx9RSdv/bbFkDihRPmdwN/EfOUTxh/a4Kj3NYgTM2E8DGTkZp/0IYxOJC7H8I+AVKEnwbwOHp0lQH+ROcUvEdlSLDGE/RUDw6m4vnYsk4VgbnlRl/7XlsrnWoQ3eh54/Ing7i7t6VTXvKQajzUNMPeX6DkLtMU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=j/saWYIY; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BpWnWfx2"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A0C741F00898;
-	Mon, 21 Sep 2026 15:31:55 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="j/saWYIY"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 937411F000FF;
+	Mon, 21 Sep 2026 16:31:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790004716;
-	bh=FuUrqWc9bTGN2ILuKnc9hMdv0vV4JMwCLib1Eff7GPo=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=BpWnWfx2ds3Fe0emxSeG9TZPaU0fjs6BNTQP9KkoI+3KJtqZ/c53fPAcFTUWz4E1b
-	 23fgyM9QIldp/Ud7j2JcDXbZR7MY3ffMBZMYTMjb7RHPDAQdV9oFWu/rPLi9x75GdW
-	 wqLix0oxA7ZjiuZuAA5szff+krYbGlVAY60Gh+q5/5mdR9xpLfCA1oHMoqB6akI1o5
-	 xPtXZ8W9vQG4uA61wqDz1XOlOPTV8POlHsKzV5yG8b+GNPUIXpVntti06qvivtGb+H
-	 4qVvcrlSiYCVXujkEwaEmTL5GzWaUz1EzJqeRGnEicy8fFZx6Er5LvVSJrxOpJSCqA
-	 krGUh0imuKFzA==
-Date: Mon, 21 Sep 2026 16:31:53 +0100
-From: Harry Yoo <harry@kernel.org>
-To: "Vlastimil Babka (SUSE)" <vbabka@kernel.org>
-Cc: Tim Menninger <tmenninger@everpuredata.com>, linux-mm@kvack.org, 
-	Chuck Lever <cel@kernel.org>, linux-nfs@vger.kernel.org, Jon Curley <jcurley@everpuredata.com>, 
-	Eric Badger <ebadger@everpuredata.com>, Andrew Morton <akpm@linux-foundation.org>, 
-	Hao Li <hao.li@linux.dev>, Christoph Lameter <cl@gentwo.org>, 
-	David Rientjes <rientjes@google.com>, Roman Gushchin <roman.gushchin@linux.dev>, 
-	Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
-	Arnaldo Carvalho de Melo <acme@kernel.org>, Namhyung Kim <namhyung@kernel.org>, 
-	Mark Rutland <mark.rutland@arm.com>, Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
-	Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
-	Adrian Hunter <adrian.hunter@intel.com>, James Clark <james.clark@linaro.org>, 
-	linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [SLUB] nfs_page cmpxchg_double_fail and perf lock perturbation
- on dual-socket NFS/RDMA
-Message-ID: <arFNKeseUHBvdRCA@thinkstation>
-References: <aqvy8NqRRRmUlxjR@thinkstation>
- <20260917162533.600472-1-tmenninger@everpuredata.com>
- <8705aa4f-5e02-45e7-ad45-0baa982a8c02@kernel.org>
+	s=k20260515; t=1790008317;
+	bh=pAiVDjQnqANbx3607JY0pUpg6KKkPEJMDRzcxM3nW7w=;
+	h=From:Subject:Date:To:Cc;
+	b=j/saWYIYjq5sUJehueZKK7GdoA05qXpCTj2kMexI58tZAI8829f2vYdX5/lM168Yq
+	 iOn/ZBRek9YJjv0OY20QHUetwZKsW5jKpOujViODAuDh/WbqKQZOrkEvN8aE4N6k7D
+	 LUkFFrCN3XnOCkkHFOT0mPfVtvjnj+dgDrxKrTpxksQHuC9OFT8ZY6ByFWA7XYILrF
+	 iKU2vu7QnnQk4JmSVEBbJ0ia/vWtwn4qK20FIp6BGjRHcS/ydbltMd3os++/iQeM5C
+	 5juaQx8gIVhu++A2M3Y9YG8+bKsQ9+Zi0JyMLaXIhhpPiiO5AtaUmNfFloMJC6eKqD
+	 wdqKjZNDrz5KA==
+From: Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH 0/8] nfsd: reduce the scope of the nfsd_mutex
+Date: Mon, 21 Sep 2026 12:31:39 -0400
+Message-Id: <20260921-nfsd-per-net-mutex-v1-0-4a7287f6504c@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <8705aa4f-5e02-45e7-ad45-0baa982a8c02@kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avIrBswKdOuEi0ip5pFFmoRSHdPW
+ r7F/xkiBaYIvcgQ6ObIhy+oKwHzNvmVkF0xKKm0tLVBv0SHJwX0lHC/Ej1odNt2urGNnGYo4Rl
+ o4eefDuP7fkWP/h9kAAAA
+X-Change-ID: 20260918-nfsd-per-net-mutex-8655764940ac
+To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>, Shuah Khan <shuah@kernel.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-kselftest@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2585; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=ofYRUACXIOHSiN7om7I6Mv56G8lMIVNgty2jM3XLfQU=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqsVv2sn0sYvYPH60kiVAUObkBX8v0rf15p6kuk
+ /MJnwqcCBSJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCarFb9gAKCRAADmhBGVaC
+ FbC9EACgvHROzNFS6rLD+9j1iW23hBZvcHtAODANSM99p073rBysfBmp15Fs61PwatzA7WtEsqG
+ b/CkaNCcpB7Cz5IDZ1DUEULYGBHO1aVvMsP6r9WMCOgpPJFmtNDO++Hhv0nG1/621g09KKncVGH
+ 2RoWKS0yI905zrt2ZN04lHyySPLsnQhUNiJLh2oXmxMG96vkPsdrQgHb6GJxctA97GnbeheQB2V
+ 4WUPUWNcsdH1fovsqsFT7oSscZ9XV1mqDqZF5zr1BbYxPRIO3W+pHmdJJuk4+HiOLtNm8dZ9NlW
+ mOtfWGq7Anrb7Qlvfbr1oe5N3wBrg4wq6LDiosMNy6pyT6JHWjSRfpGdDKQzfffjzbSwMhGxgyT
+ 8NOBaF70lGXgZOIBlx7YBA5PyVwUfmues7whfSHdFpSVrT13xWzChO78ec3TC2J77FK0YmP6jWF
+ LQPDfEmf37e3LXpl9uJo2te4vpzQVmqJ8pm7LQsJ7EyEdwNuZU8NpTiYqMaUdHaRWi3n/p7Citr
+ um/9QWgzGZ3A+JGAQEkgqDPRzFiKWzJoR0ONGTNZN98b/GbqLNUP3wvuCAMJPR1P2+In8H7egx3
+ r8mK4ZJktgxeIMRrE6CQ2wh9pL6CyQ5czFld5Y43GStJNjkinDKX/wL3w8lSfIYMPThDYa3xS9H
+ YWTREYNBQ1PdUDg==
+X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
+ fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-On Fri, Sep 18, 2026 at 09:08:37AM +0200, Vlastimil Babka (SUSE) wrote:
-> On 9/17/26 18:25, Tim Menninger wrote:
-> > It reproduces with slab_nomerge.
-> > 
-> > I booted the same kernel with:
-> > 
-> >     $ cat /proc/cmdline
-> >     ... slab_nomerge ...
-> > 
-> > Uninstrumented throughput remains in the high-45 to low-46 GB/s
-> > range, as before. During perf lock it was around 30 GB/s in these
-> > runs, versus roughly 25 GB/s previously.
-> > 
-> > The dominant lock measurements are essentially unchanged:
-> > 
-> >                          default             slab_nomerge
-> >     unpinned/node0
-> >       contentions        4,782,839             4,858,759
-> >       total wait          14.39 min             14.26 min
-> >       average wait       180.47 us             176.13 us
-> > 
-> >     node0/node0
-> >       contentions        4,582,012             4,686,729
-> >       total wait          14.13 min             14.34 min
-> >       average wait       185.05 us             183.53 us
-> > 
-> >     unpinned/balanced
-> >       contentions        4,572,196             4,544,677
-> >       total wait          12.81 min             12.56 min
-> >       average wait       168.14 us             165.84 us
-> > 
-> > The uninstrumented cmpxchg_double_fail deltas were:
-> > 
-> >                          default     slab_nomerge
-> >     unpinned/node0          7,471          8,892
-> >     node0/node0               713            457
-> >     unpinned/balanced       1,503          1,504
-> > 
-> > The CPU-utilization change while perf lock is active also remains.
-> > System-wide %idle for uninstrumented/instrumented windows was:
-> > 
-> >                            default                  slab_nomerge
-> >                        uninstr.   instr.         uninstr.   instr.
-> >     unpinned/node0      31.46%    3.60%           23.02%    2.15%
-> >     node0/node0         84.26%   12.07%           84.62%   11.85%
-> >     unpinned/balanced   66.86%   14.83%           66.58%   14.78%
-> 
-> I believe the weirdest part in the original report was how slub stat
-> counters such as free_fastpath etc got order of magnitude higher with
-> instrumented vs non-instrumented.
-> Did any of that change with slab_nomerge?
+Currently much of nfsd's administration is serialized under the global
+nfsd_mutex, even though most of the objects managed under it are
+segregated by net namespace.
 
-If it didn't change, that'd be very surprising.
-... unless perf lock was writing data to an NFS filesystem?
+This patchset does a couple of small cleanups and then adds a new
+per-net mutex and moves all of the appropriate per-net data structures
+to be protected by it instead of the global mutex. The filecache is
+given its own mutex, and the global mutex is renamed and left for
+managing just the few remaning global objects.
 
+I also had an LLM cook up some selftests so we can hopefully keep all of
+this working properly in the future.
+
+Please consider for v7.4.
+
+Thanks,
+Jeff
+
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+Jeff Layton (8):
+      nfsd: clear NFSD_NET_UP before dropping the generic resource reference
+      nfsd: make max_blksize a per-namespace setting
+      nfsd: move the control plane to a per-namespace mutex
+      nfsd: rename nfsd_mutex to nfsd_global_mutex
+      nfsd: give the open file cache its own mutex
+      selftests/nfsd: factor the netlink plumbing into a shared header
+      selftests/nfsd: add cross-namespace isolation tests
+      selftests/nfsd: add a cross-namespace control-plane soak
+
+ fs/nfsd/export.c                                   |  22 +-
+ fs/nfsd/filecache.c                                |  36 +-
+ fs/nfsd/netns.h                                    |  16 +
+ fs/nfsd/nfs4proc.c                                 |   4 +-
+ fs/nfsd/nfs4state.c                                |   8 +-
+ fs/nfsd/nfsctl.c                                   | 129 ++---
+ fs/nfsd/nfsd.h                                     |   4 +-
+ fs/nfsd/nfssvc.c                                   | 146 ++++--
+ tools/testing/selftests/nfsd/Makefile              |   2 +
+ tools/testing/selftests/nfsd/config                |   6 +
+ tools/testing/selftests/nfsd/nfsd_netlink.h        | 319 ++++++++++++
+ .../testing/selftests/nfsd/nfsd_netlink_listener.c | 301 +----------
+ tools/testing/selftests/nfsd/nfsd_netns_isolation  | Bin 0 -> 49192 bytes
+ .../testing/selftests/nfsd/nfsd_netns_isolation.c  | 450 ++++++++++++++++
+ tools/testing/selftests/nfsd/nfsd_netns_stress     | Bin 0 -> 39232 bytes
+ tools/testing/selftests/nfsd/nfsd_netns_stress.c   | 572 +++++++++++++++++++++
+ tools/testing/selftests/nfsd/settings              |   2 +-
+ 17 files changed, 1580 insertions(+), 437 deletions(-)
+---
+base-commit: aeaddc6a3711283c09a9183068897d4fe1fb464f
+change-id: 20260918-nfsd-per-net-mutex-8655764940ac
+
+Best regards,
 -- 
-Cheers,
-Harry / Hyeonggon
+Jeff Layton <jlayton@kernel.org>
+
