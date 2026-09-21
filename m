@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A37943C09F5
-	for <linux-nfs@vger.kernel.org>; Mon, 21 Sep 2026 13:22:40 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7CC1D49DBB1
+	for <linux-nfs@vger.kernel.org>; Mon, 21 Sep 2026 13:22:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789996962; cv=none; b=gXWKqAm60EHGZeppexo84iyGCUQhMWqlkZa0lfLzzUPO89bRfcbQ5wyChmSG9UQwTde54q5UOgNDdThjkpc8+8X4poegKwrARd45gfS3oWZveocWUCFVwjRKxMXnSq/bL2N/OMjwx8UJwk8gmyEeqAtlTRFZqkQuMey4OMiM5f4=
+	t=1789996962; cv=none; b=AncJBOPKe2WemOC8kpmaByYHPLNF2+5TKz0KHBFT5a9oVAeXdmfRg+QcvSDiTX/hmejJkqV59dREQdH7nUotu2aHTW7wcm1hzxZeMwYOKJSp3nM9M2o6l+xy/6ce9pMZJSBj5KYugHWdCeyl0c/Db6htwDqblRPbM6nR+q+HKeA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1789996962; c=relaxed/simple;
-	bh=qnEUXYehdn/gEW6PL/EGlL3o/RfA7WITlL+fyac4vDA=;
+	bh=CrNMEiSlJAPYU07Bt+yxWbPYmo+qtcsUYkSVimnUVPI=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=IvBLqziufUr5wmpIcnhe7qGNO6YsoWXdISjEweOWsxJQ3ehPi+gC+wt0d4oICTtF0dfR8qHj1RfzYQT98RCPlPwosVJcPHrfK/nxhhAGs2mu8MKXYecVCKpi+gKUK33nwglNagj73JvibZ2KHOV8Lk10KLjRGJz6pI4UloMCBXI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Du72lAf/; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=QCNUUdmGTeNOgM9/Nhy+dLl05iALCFjDEhyqGheWOJ1VFQeVUezefiFN41oPS25h5ljAUj0EcxX/LSimlAG/MPFoQdTna+ha25iUqGSC1A+RFDzLzAB/lBOjzPahDK8PZWZO7FQ6A8T4yCEKKNBaKmVJDsBhFEH0+TUgajZQl5I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=PsZkkN5u; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Du72lAf/"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 802CE1F00893;
-	Mon, 21 Sep 2026 13:22:39 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="PsZkkN5u"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 674271F00898;
+	Mon, 21 Sep 2026 13:22:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789996960;
-	bh=nCUWB+Wa3VU6AYkNoA2e5rIIo3e9NEWxZCdAiNufrOg=;
+	s=k20260515; t=1789996961;
+	bh=XgN4aAlpv8PUxnjgO4dLE6+wVPsQga7qjjMHCUOFhwk=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=Du72lAf/0oHyBGWU8fhwR/8IwIQHb0Zqi5hDoffF75fZpFNPnzWN7kI9tU6i2yVfy
-	 dSqux9B8AfGZCECEzn+f405K9LEAh2O2BLxryR3HueZ8aNtwhcil0Ht+RbCV9RaG2g
-	 Ag16SD7hLwJGHKYgda7EP6tpKBRp+5TmG/BmmocK9NroYR97kN5pZpIIXJfCKAxc7I
-	 aBIQymAYTy6CMB+oBWsed/1fI22zGBd7mEb39T55xF6/WQ1JyR8tqoyT0pW7LBak6x
-	 S00vJaf73HaWakpQQ4tkMZ0wj/EA5Zf+rnPum9q74mDSmEXMgZQI+IWFY5w6nNvROO
-	 srxzd84+0WYng==
+	b=PsZkkN5u5/qb2tx5OjI884xCWDcQiLsFGwH58oluSOcFCB30UuwGRost8ELUAQE6r
+	 O7qfiSqW7vpSpKfxmf0qG741djqn4WkbC0j+FzFSKUlrv9Lh3nIMLrur72jFq2Jccy
+	 p4tmhkrj/46CNPdYWO8OoYPLyxC3c+Pyj3mTR57ohGpjx2D/WnzJsYJ6mY/8uXOyPc
+	 iy3dUEfg2bqW46OKEirEmm02TRYsNuHfaBS7dxSkeb6kWZNTDZwo3o8tRHC+T2+I2N
+	 H1dv3Jqt8/5/RKTYd8clA/TdkEbH97LZN0cDiVGsP/iEL3tU5M8gxFdIaomwAh7NU7
+	 KuUOVa0dfFcgw==
 From: Chuck Lever <cel@kernel.org>
-Date: Mon, 21 Sep 2026 09:22:27 -0400
-Subject: [PATCH v6 01/12] NFSD: Make the DRC size limit independent of page
+Date: Mon, 21 Sep 2026 09:22:28 -0400
+Subject: [PATCH v6 02/12] NFSD: Remove hard cap on duplicate reply cache
  size
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260921-duplicate-reply-cache-v6-1-db5e13fd9944@kernel.org>
+Message-Id: <20260921-duplicate-reply-cache-v6-2-db5e13fd9944@kernel.org>
 References: <20260921-duplicate-reply-cache-v6-0-db5e13fd9944@kernel.org>
 In-Reply-To: <20260921-duplicate-reply-cache-v6-0-db5e13fd9944@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -47,55 +47,105 @@ To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
 Cc: Rick Macklem <rmacklem@uoguelph.ca>, linux-nfs@vger.kernel.org, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1357; i=cel@kernel.org;
- h=from:subject:message-id; bh=qnEUXYehdn/gEW6PL/EGlL3o/RfA7WITlL+fyac4vDA=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqsS+djo7mFpSKOfQpVE1GpLbpkQm4YsGwGnngp
- Zystb4gqW6JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCarEvnQAKCRAzarMzb2Z/
- lz+hD/0bVN1CLdNWPxIu2oNaasRrvGXN3jcrI00Pu6w6VYpD23thTip2hDroFQoPAhZ95AmjKdS
- vGDpAX57WnJUUIUx5Dvdj4Cn8NUSma9/fXm4jfQU0/9cMKGgYY8WNdUHBR5W8QnRlq/7Wvsu1UX
- hea4MdBwdfQsqIIoo4voCCaphmIzbFF5I8+GJMgUNDCqqeh7l8pTekSvqGuJLjIKZopyueHOKLr
- iQtSFu2l+E8n2S1sX0IIC3+oZ6qmrO3hUDZPiiwsCFKECIRDYEYQjKZU9hP4gPr8kSeeZ76VZIk
- B2BCaOOMAbMxQCSVwzQH77RD9ogQkWT943rJFQ/kPnnvCpiuizcwkiUMAitH6qB6xOCDLoKIMEv
- EZGL2112JqR+1TOddb/4jqEAFK/MgQolcg+rEhezfpvGedR0m3Z9s7da7FGKKhxK0uHKMczSFdX
- 6EbTIJRqu+hGbs6JU6SBTeZyOGY99tatotdfTXvnkHqB52bDmmwA4N/+0NBC7vV+JHcGTRSwj6Y
- xS5/rKlEpJxSxUgAo7Tf7Z97GmnnYp5HCb/jxdvae3bceqCP1SlV1MCD3CfUpvM/5IwdMFgv+A0
- pafkgTRzzm3lkQpEZerfgWLiSpFIu7LAj4UxpR4P/6xgTizmI23x00rvJSGlhe4uNf7KAhLqO45
- SevaG67USL5peow==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3326; i=cel@kernel.org;
+ h=from:subject:message-id; bh=CrNMEiSlJAPYU07Bt+yxWbPYmo+qtcsUYkSVimnUVPI=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqsS+diIP5T1tdeofR5WWDKfPXg/gpkWh3k5gf5
+ ljgyUYSijuJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCarEvnQAKCRAzarMzb2Z/
+ l1OhD/9UcMkXiKE0ELClgyq5+xGsbxFLS2HFS3gj9NE/1XrDNoSJrLauaAGnh8zYjXyRMzNWAUz
+ aINB6dLks/TqGgGmXAGsMW8iQmJcoKAvMbdJsylLjezdkIdtGyxL5jfLLGw7P/ZkmK5YxLdYqBM
+ C9dJmxYvyEOuQQNhuciKoDhyFjkYTJk5kUar0JDI9RN0H7mGEZ8YWuNpKthKI9hr3yGq2MbIUgI
+ lQ85mvZMDTWMRgPNrmzZXfS1WhN0r+YCwkpyjucA5U9TYdPxZyWce/5BH0s+GDexuHpJvu3vwFi
+ Pu1FlovIJZyBnokBp7dGEroEBprx1Kf2KC11Fq0M5O8TMMT7v/Ba5LGRAaPgXEbpLjGwAzUl6og
+ +ogr0aj4z8D6Z8prE8I0h0C8xOF+PvewuRAwMPRZDZBVK1AG5xChQoaxaM031jssB0HvrkPInXU
+ znqYTTiRXG6GA73v8y80IUEdDmIKrm7p2rzpjS1bzxGfMG0mKma1/LZh6Z8AKejnPsRu+R2m+jA
+ QJWEia35Dl705+0Opck3vlbWIrbVhkQoYuMYtpyb/kqpPqrP1ltomMu+lKcxuX+Xy3VWoFCYimt
+ CwQqXA06zO0vbxa4i5s6WyRED1B6KkmSorM8P5KLaPb8Sow9yb8KUHFvKIK0hDGnfngq6abYpqw
+ mZIhD5VeJ7fz9gA==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-nfsd_cache_size_limit() takes the square root of the low-memory page
-count and then shifts the result by the page size in KB. The shift
-belongs under the root. A host with 64 KB pages has a page count 16
-times smaller than a 4 KB host with the same memory, so its root is
-4 times smaller and its shift 16 times larger, and the limit comes
-out 4 times larger. With 8 GB of low memory the limit is 92672
-entries on 4 KB pages and 370688 on 64 KB pages.
+nfsd_cache_size_limit() scales the DRC entry limit with the square
+root of low memory, then clamps the result at 256k entries. The
+clamp binds on any host with more than 64 GB of low memory. Once
+the cache reaches max_drc_entries, nfsd_prune_bucket_locked()
+evicts oldest-first regardless of age, so on such a host the cap
+governs retention rather than RC_EXPIRE. A server that completes
+more than about 2200 calls per second fills 256k entries inside
+the 120 second RC_EXPIRE window, and from then on entries are
+evicted before they expire. Those are the entries a retransmit
+could still hit.
 
-Take the root of the byte count instead. The result matches the
-table above the function on every page size. Low memory on a 32-bit
-host is under 1 GB, so the byte count fits in an unsigned long.
+Commit 0338dd157282 ("nfsd: dynamically allocate DRC entries")
+added the clamp in 2013, when the formula's worst case of 1 KB
+per entry made 256 MB a reasonable ceiling for the hosts of the
+day. The formula was already sized to memory; the clamp froze it
+at that generation of hardware.
 
-Fixes: 0338dd157282 ("nfsd: dynamically allocate DRC entries")
-Suggested-by: NeilBrown <neil@brown.name>
+Remove the cap and let the square-root formula govern sizing. It
+scales sub-linearly with memory, and the hash table already uses
+kvzalloc, so larger sizes need no physical contiguity. The limit is
+unchanged at 64 GB and below. At 1 TB the formula yields 1048576
+entries, four times the old cap. Even at 1 KB per entry, the worst
+case the old comment assumed, a full cache is 1 GB, 0.1% of that
+host's memory. That memory is not reclaimable: the shrinker frees
+only entries older than RC_EXPIRE, and each net namespace sizes its
+own cache.
+
+Assisted-by: LLM
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfscache.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfsd/nfscache.c | 24 +++++++++++++-----------
+ 1 file changed, 13 insertions(+), 11 deletions(-)
 
 diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 80364b91331a..b43b276a92b3 100644
+index b43b276a92b3..36afe5fbdac5 100644
 --- a/fs/nfsd/nfscache.c
 +++ b/fs/nfsd/nfscache.c
-@@ -73,7 +73,7 @@ nfsd_cache_size_limit(void)
- 	unsigned int limit;
+@@ -47,8 +47,8 @@ static unsigned long nfsd_reply_cache_scan(struct shrinker *shrink,
+ 					   struct shrink_control *sc);
+ 
+ /*
+- * Put a cap on the size of the DRC based on the amount of available
+- * low memory in the machine.
++ * Size the DRC by the amount of low memory in the machine. The
++ * limit scales with the square root of available memory:
+  *
+  *  64MB:    8192
+  * 128MB:   11585
+@@ -59,22 +59,24 @@ static unsigned long nfsd_reply_cache_scan(struct shrinker *shrink,
+  *   4GB:   65536
+  *   8GB:   92681
+  *  16GB:  131072
++ *  32GB:  185363
++ *  64GB:  262144
++ * 128GB:  370727
++ * 256GB:  524288
++ * 512GB:  741455
++ *   1TB: 1048576
+  *
+- * ...with a hard cap of 256k entries. In the worst case, each entry will be
+- * ~1k, so the above numbers should give a rough max of the amount of memory
+- * used in k.
+- *
+- * XXX: these limits are per-container, so memory used will increase
+- * linearly with number of containers.  Maybe that's OK.
++ * These limits are per-net-namespace, so memory used increases
++ * linearly with the number of namespaces. The shrinker frees only
++ * entries older than RC_EXPIRE, so a cache below its limit is not
++ * reclaimable under memory pressure.
+  */
+ static unsigned int
+ nfsd_cache_size_limit(void)
+ {
+-	unsigned int limit;
  	unsigned long low_pages = totalram_pages() - totalhigh_pages();
  
--	limit = (16 * int_sqrt(low_pages)) << (PAGE_SHIFT-10);
-+	limit = int_sqrt(low_pages << PAGE_SHIFT);
- 	return min_t(unsigned int, limit, 256*1024);
+-	limit = int_sqrt(low_pages << PAGE_SHIFT);
+-	return min_t(unsigned int, limit, 256*1024);
++	return int_sqrt(low_pages << PAGE_SHIFT);
  }
  
+ /*
 
 -- 
 2.55.0
