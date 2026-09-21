@@ -1,35 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8DE0649DB90
-	for <linux-nfs@vger.kernel.org>; Mon, 21 Sep 2026 13:22:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0A44F49CF23
+	for <linux-nfs@vger.kernel.org>; Mon, 21 Sep 2026 13:22:43 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789996963; cv=none; b=V/mh3cuaUV4jtAUqLkQt/yqygKysuZ7zBejQjuM9/fJzvD2AdaT+XM3qLx2R9evBWT53nMxi+7Crh5FyflR+fwdE8k+sotlfBbS4w0VI5oXxUlGUbvGwbqWo32uOtGHXA41VK13uiRWwngujyut+AnszWlNkko3Jlsag4bvOleg=
+	t=1789996964; cv=none; b=W31wiMXMe7Ry3wINTCrICqQCzb4xDV7g4J/PShjvOjK3GBCuKioWaxPW6th81D+nZlU0Q7jmgEIzOLY8XSX/WK0RyL1RUvMhgL7diLjutkF9dCN9RV7E6DcDJ5JhQOJekK05fCI8QMVvWp40iW3jF7tJgSCEKolM50CP/vd9arE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789996963; c=relaxed/simple;
-	bh=ndp0dKQygu7J0h1iI8KDpk9FrMqHmDCaIvKQ1w9o6z0=;
+	s=arc-20240116; t=1789996964; c=relaxed/simple;
+	bh=hWHv3dzxUWZiGjpOALjyHjTOBSHI3Wxt/fd39Z7duuI=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=YxXdjDniNZ1K3n9DChKHFWgF8MCJsPjwp7dY4laU/Yf7BokOVQsFNch5lEZltGr6B9QCG9IAxfcT3b/mr34g4eIF+Znyrsj2L+vENTm2KUM9mmjKObD5cP3Uj48mWmrlJdBLRqWeANWgsyh0JFd5YAI2TtRZMT+go0ndlbfE45Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=TOqRx88G; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=cBhAyQyntjvv7HyCPmx5ATL0IMcpveNUMbagJCGZaFkEzCPrNxM8EPK5OKe1Gsx+JEjgL8UumIEcmJBVRawoGaOtjCyOKNA4hClFt6JwME0jC3y8RMDBzhnslgrAizSjB92vrKweXjxHEAtHbdlK1CIjPifc43AlSssK5dERJnk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OV9OGWNB; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="TOqRx88G"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 531CF1F000FF;
-	Mon, 21 Sep 2026 13:22:41 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OV9OGWNB"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3F2DF1F00899;
+	Mon, 21 Sep 2026 13:22:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1789996962;
-	bh=Et0014LPxXBiOS7B11bhhTCvsKeh+lCl4607bnp0/c8=;
+	bh=tp5KmtVOwoc3KSitS1pjmIR6x2f1iO50Z0U7QFTRnq0=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=TOqRx88GvtmGW//8pAdjkD7XLhZC2DpRZ02lBLGw29bq5Q/k+5GN199jzqaG0WLjC
-	 bKgXnRszAMWbWYfpDgJJ+rf7rmUoyVKwWBsQ9YqPcaqCmUjseBVVjEd+UOnYhVRjBx
-	 XO1v2uOJYM3YQpfT3CR0A8Z0PPmrVhS5tgb5cUqpDFiEbh/T5T1nukMrf7LYxckq5F
-	 Zbh3rSPtpzE1h5/7XqJV2HEvJ9gHoupWER1fHONpDIlFJZhqU5AFnI8FxTU8IAlFLw
-	 EpYZzAfOYyF+1O5yF71+o14Nhazn/HFbS5554aWVyhNEA6C+fggC6Xt0Z1DbkzToRH
-	 u5fQzQPwSh2MA==
+	b=OV9OGWNBJSfiAhRMxhkVQMkhGkAfgzfM9yxHp1lKDiFL87P+36Rc/CpUvojFNYir2
+	 cB52skh5Va7HuMBnJQb4UhqGLOVsCVvJefS+qo//pAtppS7WJl6kn0bk17mDTbAFPO
+	 /nat2dwFhz2QRLHHS9t8AiJjMslhqMyIEZSEV+fHzw0Fk1iRyZqV30tg52OkScKXvm
+	 aN38upogOMztbGLpjNTr/CyzA7Te1SX7MfZKf/pKOE3NazZcpkLyGICjyOJhjdGBOr
+	 3tTxPc0FaFbtV0lbHpo4I/ESKE1QVWD72qwzYoGb2xvO7jjL1AmXwqangAorEyI5CW
+	 yW2ymS1uOI+aQ==
 From: Chuck Lever <cel@kernel.org>
-Date: Mon, 21 Sep 2026 09:22:29 -0400
-Subject: [PATCH v6 03/12] SUNRPC: Assign a unique identifier to each
- svc_xprt
+Date: Mon, 21 Sep 2026 09:22:30 -0400
+Subject: [PATCH v6 04/12] NFSD: Track transport in DRC entries
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +37,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260921-duplicate-reply-cache-v6-3-db5e13fd9944@kernel.org>
+Message-Id: <20260921-duplicate-reply-cache-v6-4-db5e13fd9944@kernel.org>
 References: <20260921-duplicate-reply-cache-v6-0-db5e13fd9944@kernel.org>
 In-Reply-To: <20260921-duplicate-reply-cache-v6-0-db5e13fd9944@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -47,134 +46,60 @@ To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
 Cc: Rick Macklem <rmacklem@uoguelph.ca>, linux-nfs@vger.kernel.org, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4235; i=cel@kernel.org;
- h=from:subject:message-id; bh=ndp0dKQygu7J0h1iI8KDpk9FrMqHmDCaIvKQ1w9o6z0=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqsS+dCGyzLqFG8Bv5BIKK/yuGTgPyE4HEoVwX4
- bcag4U0fSqJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCarEvnQAKCRAzarMzb2Z/
- l36RD/40z3rTifWYzjdEgbRMR7+XWSjZeoTqOBHy7ZDikbiiXYy3ffkYniZC1d9Uvi1LoJeqHcG
- lyLuq15q1KEiS++l+dOzNhK2j3cFXERussSlUQOKPJCMpTHIBol7Uc861+Qrg9BjaaX3OdjUApO
- fNAcid4bl6LrggRpz1NMBzzrk+Pq4vZmIx2XKVJtSQEwo5lNZWQtRtNfs7D8nx1mtfH7VzYqhO4
- 4nT2MQ4xGM1XuZbU1MALkZ8Ufk4sJverNLaJH9Cxt16PtRRJ1rxw2dYqH4tgvaWZjRfP1bd9TAB
- agc57IaDJctmdEdHr/FnpbBlwK61mOnts3y6fRFsMuxXifqy01c+oA9rodCafpksL1PPZFDbUJp
- 8UZVPz+nXKvW7p+nV5Db4pa6+nZlqifDzc10Iv4Vx72xFSlT1u1u9d7RgWW0d7hAxwy5X6lOwbO
- mddOfud7tBgcucmaZ0azXrK1Nd2Hl7EWf+W1dRRBwI2YFq9CKWKObJrEniZEveVef0yMW+Vordf
- I/7KRkVFejDCXYbH4ukeT6E2BhiKrLn5gYZZC1r9PJiFDOgblGO9etcPBjkr1q8b3ekZZyid0z+
- YR4Xd53RNkmIbdZjyVYkLiTmvSm/aYN5T+bbMP9uIibXXVQT3UefCf9lmIvF0tJgPGgoQlmPiKt
- d67/ueWQiYIo7fg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1241; i=cel@kernel.org;
+ h=from:subject:message-id; bh=hWHv3dzxUWZiGjpOALjyHjTOBSHI3Wxt/fd39Z7duuI=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqsS+dbTI8xopuRje+DicTQhm3C+c8vrnMkvscA
+ AdOy+Wa4VyJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCarEvnQAKCRAzarMzb2Z/
+ l5NbEACmfGQP2oLdY7zgIHv+vwy38mD0L/GhzEixzys5tGV/gQLZdqvr946EfT2x8cs4gzMyZlq
+ 0TL+eawq0SnhxMqolRKoAH17ZBFUnNIKprFvpX5ViC2bjkZOo+aDZVzcQsn1VTse7IswYr1t9yJ
+ GTKQaUQcizONDCdjj4dw7GdU1GepQyW6PjdN03lVUQkx2yr6FVWQdicn62a+C+P6B/E5/znEX29
+ n0f3dnhZQDRKvUCx7QeenIxnM9+kJAiEnEXSjWtSDD7tVzC2KB50jdrySw8gdmwkkv8Ieia+MPP
+ Yg1Fjz3W8Gd+VjvA1ZfurVBSLkXwijz0LIjCqtfBMqpD1f/nGGyH9fID6dWaRW3I7j45yK8KNbU
+ fEIf9Q3QMwWcp53y0UeH1ilTI0lOd84xxrmRxN5IAKY3AXok2/M7bewLq4xX2xLrbERGkpt08WO
+ 25fTlUCwh+4qcDmgUqGSeVU4T/NXFAm7ictcCHI4bamdrU8zXVpxTghb8rY03uuZVYu9nA8GVH7
+ NNln3v4PMu6GqardCUdI8f201JaB27lAtJX+oiIF8UCbwPc7qHlVKVbe8XQ9RJ5WCJd+5gs2Twq
+ Au2LELwhEzwnCxEpwdZjsRbvyv4S/wpSEGd+uJME1H4fQ70dpLjlgmj5TUz4rp7DqvDfKoKroi5
+ giijCQ1f6vbi47g==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-A consumer that associates state with a transport without holding a
-reference cannot detect ABA collisions: once a transport is freed,
-SLUB may hand out a new svc_xprt at the same address.
+A cached reply carries no record of the transport its request arrived
+on. Transport-aware eviction needs that association.
 
-Assign each transport a 64-bit identifier from a global sequential
-counter in svc_xprt_init(). The counter cannot wrap within the
-lifetime of a transport, so two live transports never share an
-identifier and a consumer needs no release when the transport is
-freed. The NFSD duplicate reply cache is the first consumer.
+Record the xprt id in each entry. struct nfsd_cacherep grows from 128
+to 136 bytes. No behavior change.
 
 Assisted-by: LLM
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- include/linux/sunrpc/svc_xprt.h |  1 +
- include/trace/events/sunrpc.h   |  8 ++++++--
- net/sunrpc/svc_xprt.c           | 17 ++++++++++++++---
- 3 files changed, 21 insertions(+), 5 deletions(-)
+ fs/nfsd/cache.h    | 1 +
+ fs/nfsd/nfscache.c | 1 +
+ 2 files changed, 2 insertions(+)
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 2af222f3ea2c..52082d8ea6dd 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -56,6 +56,7 @@ struct svc_xprt {
- 	struct svc_xprt_class	*xpt_class;
- 	const struct svc_xprt_ops *xpt_ops;
- 	struct kref		xpt_ref;
-+	u64			xpt_id;
- 	ktime_t			xpt_qtime;
- 	struct list_head	xpt_list;
- 	struct lwq_node		xpt_ready;
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index ff855197880d..77efe63d2c14 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -1986,7 +1986,8 @@ TRACE_EVENT(svc_xprt_create_err,
- 		__sockaddr(server, (x)->xpt_locallen) \
- 		__sockaddr(client, (x)->xpt_remotelen) \
- 		__field(unsigned long, flags) \
--		__field(unsigned int, netns_ino)
-+		__field(unsigned int, netns_ino) \
-+		__field(u64, xpt_id)
- 
- #define SVC_XPRT_ENDPOINT_ASSIGNMENTS(x) \
- 		do { \
-@@ -1996,13 +1997,15 @@ TRACE_EVENT(svc_xprt_create_err,
- 					  (x)->xpt_remotelen); \
- 			__entry->flags = (x)->xpt_flags; \
- 			__entry->netns_ino = (x)->xpt_net->ns.inum; \
-+			__entry->xpt_id = (x)->xpt_id; \
- 		} while (0)
- 
- #define SVC_XPRT_ENDPOINT_FORMAT \
--		"server=%pISpc client=%pISpc flags=%s"
-+		"server=%pISpc client=%pISpc xpt_id=%llu flags=%s"
- 
- #define SVC_XPRT_ENDPOINT_VARARGS \
- 		__get_sockaddr(server), __get_sockaddr(client), \
-+		__entry->xpt_id, \
- 		show_svc_xprt_flags(__entry->flags)
- 
- TRACE_EVENT(svc_xprt_enqueue,
-@@ -2024,6 +2027,7 @@ TRACE_EVENT(svc_xprt_enqueue,
- 				  xprt->xpt_remotelen);
- 		__entry->flags = flags;
- 		__entry->netns_ino = xprt->xpt_net->ns.inum;
-+		__entry->xpt_id = xprt->xpt_id;
- 	),
- 
- 	TP_printk(SVC_XPRT_ENDPOINT_FORMAT, SVC_XPRT_ENDPOINT_VARARGS)
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index d5634dd6d6cc..463ba8d77f0c 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -26,6 +26,8 @@
- static unsigned int svc_rpc_per_connection_limit __read_mostly;
- module_param(svc_rpc_per_connection_limit, uint, 0644);
- 
-+static atomic64_t svc_xprt_id_seq;
-+
- 
- static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt);
- static int svc_deferred_recv(struct svc_rqst *rqstp);
-@@ -190,9 +192,17 @@ void svc_xprt_put(struct svc_xprt *xprt)
+diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+index 3bc4856e34b8..589ffe4762d5 100644
+--- a/fs/nfsd/cache.h
++++ b/fs/nfsd/cache.h
+@@ -37,6 +37,7 @@ struct nfsd_cacherep {
+ 	unsigned char		c_state,	/* unused, inprog, done */
+ 				c_type,		/* status, buffer */
+ 				c_secure : 1;	/* req came from port < 1024 */
++	u64			c_xprt;		/* svc_xprt that carried req */
+ 	unsigned long		c_timestamp;
+ 	union {
+ 		struct kvec	u_vec;
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 36afe5fbdac5..4207c2e694db 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -111,6 +111,7 @@ nfsd_cacherep_alloc(struct svc_rqst *rqstp, __wsum csum,
+ 		rp->c_key.k_vers = rqstp->rq_vers;
+ 		rp->c_key.k_len = rqstp->rq_arg.len;
+ 		rp->c_key.k_csum = csum;
++		rp->c_xprt = rqstp->rq_xprt->xpt_id;
+ 	}
+ 	return rp;
  }
- EXPORT_SYMBOL_GPL(svc_xprt_put);
- 
--/*
-- * Called by transport drivers to initialize the transport independent
-- * portion of the transport instance.
-+/**
-+ * svc_xprt_init - initialize transport-independent portion of a transport
-+ * @net: network namespace in which the transport operates
-+ * @xcl: transport class providing operations and metadata
-+ * @xprt: svc_xprt to initialize
-+ * @serv: RPC service that owns this transport
-+ *
-+ * @xprt->xpt_id is never reused: a 64-bit counter does not wrap
-+ * within the lifetime of a transport.
-+ *
-+ * Context: Process context. May sleep.
-  */
- void svc_xprt_init(struct net *net, struct svc_xprt_class *xcl,
- 		   struct svc_xprt *xprt, struct svc_serv *serv)
-@@ -210,6 +220,7 @@ void svc_xprt_init(struct net *net, struct svc_xprt_class *xcl,
- 	set_bit(XPT_BUSY, &xprt->xpt_flags);
- 	xprt->xpt_net = get_net_track(net, &xprt->ns_tracker, GFP_ATOMIC);
- 	strcpy(xprt->xpt_remotebuf, "uninitialized");
-+	xprt->xpt_id = atomic64_inc_return(&svc_xprt_id_seq);
- }
- EXPORT_SYMBOL_GPL(svc_xprt_init);
- 
 
 -- 
 2.55.0
