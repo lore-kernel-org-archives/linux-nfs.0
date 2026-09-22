@@ -1,59 +1,56 @@
-Received: from pdx-out-007.esa.us-west-2.outbound.mail-perimeter.amazon.com (pdx-out-007.esa.us-west-2.outbound.mail-perimeter.amazon.com [52.34.181.151])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 87AA446982F;
-	Tue, 22 Sep 2026 17:57:10 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=52.34.181.151
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1BF77489FC8
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2026 18:24:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790099831; cv=none; b=UNmSTPAm/x9EjnFoNxVQecabKVXV3oTYcZYy4pQeVKp3B2nWr+in49J8db8bALx5VfnP3wTeJfrE5tk1b6xADeXIhchfFIg49idbnJDgHo4JqAy12KAKnOwfhmE0WxTqN3cg/c37fzd9wVF4y2kUlZ/vv1Udz9eog83rF3LP5Xg=
+	t=1790101484; cv=none; b=Ol0E7k3BthQPw4rpawSSDMaPWU8rden9ETLxB81VIr3Os6Rgxu+TEDXdMfTRt4fWKtLtU6a3sxN6nVTK7c40A2nnvo50oCMyvyuTqowDBC3YB+baHbHpxlh6kxEgATgPnNKVz1+JL+XvQjA3pPT+B3jxuxTJlVOtqrlZmvJ7PjU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790099831; c=relaxed/simple;
-	bh=Q8au4sTrqz4YIvyNguOhIkoAy69QlyaYpnbwvs4cJl0=;
-	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=LB2VaRsbx/8bZ2oNp1YyFiZtjy6LVGRIUXmajw6d1kdCzeSmWE5n8a97/EbUJj4J4EhHosmPoFyz2VZ/q7z76c/BxSqrVQdjvuK9KJrofZWoqvF3v5WQces440SW4HekpkJHVcqrH4CjHspXrXMcNM20TrmUuSPjfqpStOxjbRk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=amazon.com; spf=pass smtp.mailfrom=amazon.com; dkim=pass (2048-bit key) header.d=amazon.com header.i=@amazon.com header.b=jHiQvgsv; arc=none smtp.client-ip=52.34.181.151
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=amazon.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=amazon.com
+	s=arc-20240116; t=1790101484; c=relaxed/simple;
+	bh=Makz4ArxCE6DxPGP6hXIm+U4qe5mZFn5ENR8KYoPtKQ=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=kiNjkAgN5hipTnUQv1xGlw7mKKI1lZY0DOaNtoQjkOD26yif/pKFnbPPkQPInY+Z0V7ZorPaNZWqiYVy1ridQeiz4NsEVeb+MHW1aU9Q3Rgn2ViViXj3K1/HiAv+IQtghbEr4pFwWn/d8UnrgS87PDBYSxt13m/8miP4vf0lWKQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=jFwT5iZV; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=amazon.com header.i=@amazon.com header.b="jHiQvgsv"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazoncorp2;
-  t=1790099830; x=1821635830;
-  h=from:to:cc:subject:date:message-id:mime-version:
-   content-transfer-encoding;
-  bh=qN5XnQIzCII0JvDnuh1uh6pvZD1IP2URc4wRLzLGKJM=;
-  b=jHiQvgsv0RB7uk1x0PbZzoLJovD+FH8fpBWUfZ76ulEP/AN9Jg3dxUMO
-   dZWy1H1DJQgigwr7acXfkTFxrMyMibnsYu62dFli1kHsjAtfIGYUeYue2
-   6r5VD6SdE6i2lWDPxpSaPytG4cnf7dOF9spb3xiTIWU0c/PEsTBKguOzc
-   BJ2e9VrGStrXCA6cnMVGIy8fl+g/STflcBeMFmVD7/azqDoBiku/JLane
-   T8Juu7pxvjS+wuAIxcQX7Aod8tRVGvHvVSqAT2KSqL45OjDm8Tkc5Grrw
-   V0pHVV5XYUU1rAagw98YP68WfMbFHuEZ00/GXdilfzjge0w2hhqzCRWHY
-   w==;
-X-CSE-ConnectionGUID: JYPe3dSdRE2Jst86+ehwXA==
-X-CSE-MsgGUID: Ghgc5jPVTNiP74Z4PG1YBg==
-X-IronPort-AV: E=Sophos;i="6.27,116,1787011200"; 
-   d="scan'208";a="29355524"
-Received: from ip-10-5-12-219.us-west-2.compute.internal (HELO smtpout.naws.us-west-2.prod.farcaster.email.amazon.dev) ([10.5.12.219])
-  by internal-pdx-out-007.esa.us-west-2.outbound.mail-perimeter.amazon.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 22 Sep 2026 17:57:10 +0000
-Received: from EX19MTAUWB001.ant.amazon.com [205.251.233.51:27790]
- by smtpin.naws.us-west-2.prod.farcaster.email.amazon.dev [10.0.5.10:2525] with esmtp (Farcaster)
- id 7f634d42-ea37-4bd3-8072-578b37438cbd; Tue, 22 Sep 2026 17:57:09 +0000 (UTC)
-X-Farcaster-Flow-ID: 7f634d42-ea37-4bd3-8072-578b37438cbd
-Received: from EX19D001UWA001.ant.amazon.com (10.13.138.214) by
- EX19MTAUWB001.ant.amazon.com (10.250.64.248) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA) id 15.2.2562.49;
- Tue, 22 Sep 2026 17:57:09 +0000
-Received: from dev-dsk-jamz-1e-e35f4cd9.us-east-1.amazon.com (10.189.35.140)
- by EX19D001UWA001.ant.amazon.com (10.13.138.214) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA) id 15.2.2562.49;
- Tue, 22 Sep 2026 17:57:08 +0000
-From: Jimmy Zuber <jamz@amazon.com>
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
-CC: NeilBrown <neilb@ownmail.net>, <linux-nfs@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>, <stable@vger.kernel.org>
-Subject: [PATCH RESEND] NFS: Fix stale negative cache on failed nfs_mkdir()
-Date: Tue, 22 Sep 2026 17:56:56 +0000
-Message-ID: <20260922175656.2833041-1-jamz@amazon.com>
-X-Mailer: git-send-email 2.50.1
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="jFwT5iZV"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1790101482;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=bFG0dVU4nckxzAfanEWEximTgc6B3GCzWrfXtih7gk8=;
+	b=jFwT5iZVrzZlEj3S7H2Iwpjf4dK/rJmasSVvJL3i8stCTfsVlWMR3gPTs6U8dah2YqZKyb
+	lOcFQDHykNzeD1ggC/5ksc+9cNNo465cYVJJjJPhK4Bj6xF/Q/XwjMlCFyzY1vGG5A5IKS
+	nLnGhgF0QO+CI83ov+qtWG629pAmODs=
+Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-333-1zIVtj7TNgqUvWdJInpDmA-1; Tue,
+ 22 Sep 2026 14:24:38 -0400
+X-MC-Unique: 1zIVtj7TNgqUvWdJInpDmA-1
+X-Mimecast-MFC-AGG-ID: 1zIVtj7TNgqUvWdJInpDmA_1790101477
+Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 3CE6F1805A16;
+	Tue, 22 Sep 2026 18:24:37 +0000 (UTC)
+Received: from smayhew-thinkpadp1gen4i.remote.csb (headnet04.pony-001.prod.iad2.dc.redhat.com [10.2.32.116])
+	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id F3C971956049;
+	Tue, 22 Sep 2026 18:24:36 +0000 (UTC)
+Received: from smayhew-thinkpadp1gen4i.redhat.corp (localhost [IPv6:::1])
+	by smayhew-thinkpadp1gen4i.remote.csb (Postfix) with ESMTP id 4F08E557E66A;
+	Tue, 22 Sep 2026 14:24:36 -0400 (EDT)
+From: Scott Mayhew <smayhew@redhat.com>
+To: trondmy@kernel.org,
+	anna@kernel.org
+Cc: hch@infradead.org,
+	linux-nfs@vger.kernel.org
+Subject: [PATCH v3] nfs: split up block layout and SCSI layout support
+Date: Tue, 22 Sep 2026 14:24:36 -0400
+Message-ID: <20260922182436.957454-1-smayhew@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -61,74 +58,317 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-ClientProxiedBy: EX19D037UWC004.ant.amazon.com (10.13.139.254) To
- EX19D001UWA001.ant.amazon.com (10.13.138.214)
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
 
-Since commit 8376583b84a1 ("nfs: change mkdir inode_operation to return
-alternate dentry if needed"), nfs_mkdir() no longer drops the dentry on
-RPC failure.  A negative cache value can then result in spurious ENOENT
-results for further operations within that directory, such as open or
-stat.
+Add two new config options PNFS_BLOCK_LAYOUT and PNFS_SCSI_LAYOUT so
+that SCSI layouts can be enabled without requiring block layouts.
+Since block layouts are considered deprecated, PNFS_BLOCK_LAYOUT
+is off by default.
 
-We observed this breaking some applications where an EEXIST on mkdir
-caused the application to assume the directory to exist, only to fail
-operations within that directory due to the retained negative cache
-entry.  The other create paths, nfs_create() and nfs_mknod(), still drop
-the dentry on failure.  This patch restores the previous behavior.
+The original PNFS_BLOCK config is now invisible and gets selected when
+either of PNFS_BLOCK_LAYOUT or PNFS_SCSI_LAYOUT are enabled.
 
-Fixes: 8376583b84a1 ("nfs: change mkdir inode_operation to return alternate dentry if needed")
-Cc: stable@vger.kernel.org # v6.15+
-Signed-off-by: Jimmy Zuber <jamz@amazon.com>
+Also added a dependency on BLOCK to the Kconfig to fix undefined symbol
+warnings from the kernel test robot.
+
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
+v3 changes:
+- Make PNFS_BLOCK_LAYOUT and PNFS_SCSI_LAYOUT select PNFS_BLOCK instead
+  of having PNFS_BLOCK depend on PNFS_BLOCK_LAYOUT or PNFS_SCSI_LAYOUT
+- Remove redundant 'default n' from PNFS_BLOCK_LAYOUT
+- Shuffled stuff around in blocklayout.c to reduce the number of ifdefs
+- Added separate helpers to blocklayout.c for registering/unregistering
+  the blocklayout and scsilayout types, along with stubs for when
+  either of those are disabled
+- In dev.c, wrapped blocklayout-specific and scsilayout-specific
+  functions in appropriate ifdef blocks and created the necessary stubs
+  for when either of those are disabled.
+- Added dependency on BLOCK to the Kconfig to fix undefined symbol
+  warnings from the kernel test robot
 
-Resend of:
-https://lore.kernel.org/linux-nfs/20260819015111.2743908-1-jamz@amazon.com/
+ fs/nfs/Kconfig                   |  17 ++++-
+ fs/nfs/blocklayout/Makefile      |   3 +-
+ fs/nfs/blocklayout/blocklayout.c | 113 ++++++++++++++++++++++---------
+ fs/nfs/blocklayout/dev.c         |  32 ++++++++-
+ 4 files changed, 129 insertions(+), 36 deletions(-)
 
-No change to the patch itself; rebased onto v7.3-rc4 and Cc'ing NeilBrown as
-the author of the Fixes: commit.  nfs_mkdir() in v7.3-rc4 still returns the
-error without unhashing @dentry, and vfs_mkdir()'s error path only calls
-end_creating()/end_dirop(), which unlocks the parent and dputs the dentry, so
-the hashed negative dentry survives in the dcache.
-
-We reproduced this against a local knfsd export over NFSv4.1.  The export is
-mounted several times with "nosharecache" so that each mount acts as an
-independent client with its own dcache:
-
-  # /etc/exports
-  /srv/nfs 127.0.0.1(rw,sync,no_subtree_check,no_root_squash,fsid=0)
-
-  for i in $(seq 0 5); do
-      mount -t nfs4 -o vers=4.1,nosharecache,acdirmin=30,acdirmax=60 \
-          127.0.0.1:/ /mnt/nfs$i
-  done
-
-For each of 40 new cache/<id> directories, every mount stats the directory to
-seed a negative entry, then all mounts race to mkdir it.  The winner writes a
-file and renames it, and the losers that got EEXIST then read that file back.
-On a vanilla v6.17 kernel, the 200 loser reads were:
-
-  unpatched:   read OK   0 / ENOENT 200
-  patched:     read OK 200 / ENOENT   0
-
- fs/nfs/dir.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 49394123b..a26c459ff 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2490,6 +2490,8 @@ struct dentry *nfs_mkdir(struct mnt_idmap *idmap, struct inode *dir,
- 	trace_nfs_mkdir_enter(dir, dentry);
- 	ret = NFS_PROTO(dir)->mkdir(dir, dentry, &attr);
- 	trace_nfs_mkdir_exit(dir, dentry, PTR_ERR_OR_ZERO(ret));
-+	if (IS_ERR(ret))
-+		d_drop(dentry);
- 	return ret;
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 6bb30543eff0..64c249f800a9 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -123,8 +123,23 @@ config PNFS_FILE_LAYOUT
+ 
+ config PNFS_BLOCK
+ 	tristate
+-	depends on NFS_V4 && BLK_DEV_DM
++
++config PNFS_BLOCK_LAYOUT
++	bool "NFS client support for pNFS block layouts"
++	depends on NFS_V4 && BLOCK && BLK_DEV_DM
++	select PNFS_BLOCK
++	help
++	  Enable support for the pNFS block-volume layout type (RFC 5663).
++
++	  If unsure, say N.
++
++config PNFS_SCSI_LAYOUT
++	bool "NFS client support for pNFS SCSI layouts"
++	depends on NFS_V4 && BLOCK
+ 	default NFS_V4
++	select PNFS_BLOCK
++	help
++	  Enable suport for the pNFS SCSI layout type (RFC 8154).
+ 
+ config PNFS_FLEXFILE_LAYOUT
+ 	tristate
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+index 7668a1bfb5fa..3403cb7fe201 100644
+--- a/fs/nfs/blocklayout/Makefile
++++ b/fs/nfs/blocklayout/Makefile
+@@ -4,4 +4,5 @@
+ #
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
+ 
+-blocklayoutdriver-y += blocklayout.o dev.o extent_tree.o rpc_pipefs.o
++blocklayoutdriver-y += blocklayout.o dev.o extent_tree.o
++blocklayoutdriver-$(CONFIG_PNFS_BLOCK_LAYOUT) += rpc_pipefs.o
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index d54a141a89b3..680b3b343859 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -470,18 +470,6 @@ static struct pnfs_layout_hdr *__bl_alloc_layout_hdr(struct inode *inode,
+ 	return &bl->bl_layout;
  }
- EXPORT_SYMBOL_GPL(nfs_mkdir);
-
-base-commit: c4e9f74da4389a6b3e505d329d99232915a6b9cd
+ 
+-static struct pnfs_layout_hdr *bl_alloc_layout_hdr(struct inode *inode,
+-						   gfp_t gfp_flags)
+-{
+-	return __bl_alloc_layout_hdr(inode, gfp_flags, false);
+-}
+-
+-static struct pnfs_layout_hdr *sl_alloc_layout_hdr(struct inode *inode,
+-						   gfp_t gfp_flags)
+-{
+-	return __bl_alloc_layout_hdr(inode, gfp_flags, true);
+-}
+-
+ static void bl_free_lseg(struct pnfs_layout_segment *lseg)
+ {
+ 	dprintk("%s enter\n", __func__);
+@@ -954,6 +942,13 @@ static const struct nfs_pageio_ops bl_pg_write_ops = {
+ 	.pg_cleanup = pnfs_generic_pg_cleanup,
+ };
+ 
++#ifdef CONFIG_PNFS_BLOCK_LAYOUT
++static struct pnfs_layout_hdr *bl_alloc_layout_hdr(struct inode *inode,
++						   gfp_t gfp_flags)
++{
++	return __bl_alloc_layout_hdr(inode, gfp_flags, false);
++}
++
+ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.id				= LAYOUT_BLOCK_VOLUME,
+ 	.name				= "LAYOUT_BLOCK_VOLUME",
+@@ -978,6 +973,48 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.sync				= pnfs_generic_sync,
+ };
+ 
++static int __init pnfs_register_blocklayout(void)
++{
++	int ret;
++
++	ret = bl_init_pipefs();
++	if (ret)
++		return ret;
++
++	ret = pnfs_register_layoutdriver(&blocklayout_type);
++	if (ret) {
++		bl_cleanup_pipefs();
++		return ret;
++	}
++
++	return 0;
++}
++
++static void __exit pnfs_unregister_blocklayout(void)
++{
++	pnfs_unregister_layoutdriver(&blocklayout_type);
++	bl_cleanup_pipefs();
++}
++
++MODULE_ALIAS("nfs-layouttype4-3");
++#else
++static int __init pnfs_register_blocklayout(void)
++{
++	return 0;
++}
++
++static void __exit pnfs_unregister_blocklayout(void)
++{
++}
++#endif /* CONFIG_PNFS_BLOCK_LAYOUT */
++
++#ifdef CONFIG_PNFS_SCSI_LAYOUT
++static struct pnfs_layout_hdr *sl_alloc_layout_hdr(struct inode *inode,
++						   gfp_t gfp_flags)
++{
++	return __bl_alloc_layout_hdr(inode, gfp_flags, true);
++}
++
+ static struct pnfs_layoutdriver_type scsilayout_type = {
+ 	.id				= LAYOUT_SCSI,
+ 	.name				= "LAYOUT_SCSI",
+@@ -1002,6 +1039,28 @@ static struct pnfs_layoutdriver_type scsilayout_type = {
+ 	.sync				= pnfs_generic_sync,
+ };
+ 
++static int __init pnfs_register_scsilayout(void)
++{
++	return pnfs_register_layoutdriver(&scsilayout_type);
++}
++
++static void __exit pnfs_unregister_scsilayout(void)
++{
++	pnfs_unregister_layoutdriver(&scsilayout_type);
++}
++
++MODULE_ALIAS("nfs-layouttype4-5");
++#else
++static int __init pnfs_register_scsilayout(void)
++{
++	return 0;
++}
++
++static void __exit pnfs_unregister_scsilayout(void)
++{
++}
++#endif /* CONFIG_PNFS_SCSI_LAYOUT */
++
+ 
+ static int __init nfs4blocklayout_init(void)
+ {
+@@ -1009,25 +1068,17 @@ static int __init nfs4blocklayout_init(void)
+ 
+ 	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
+ 
+-	ret = bl_init_pipefs();
++	ret = pnfs_register_blocklayout();
+ 	if (ret)
+-		goto out;
++		return ret;
+ 
+-	ret = pnfs_register_layoutdriver(&blocklayout_type);
+-	if (ret)
+-		goto out_cleanup_pipe;
++	ret = pnfs_register_scsilayout();
++	if (ret) {
++		pnfs_unregister_blocklayout();
++		return ret;
++	}
+ 
+-	ret = pnfs_register_layoutdriver(&scsilayout_type);
+-	if (ret)
+-		goto out_unregister_block;
+ 	return 0;
+-
+-out_unregister_block:
+-	pnfs_unregister_layoutdriver(&blocklayout_type);
+-out_cleanup_pipe:
+-	bl_cleanup_pipefs();
+-out:
+-	return ret;
+ }
+ 
+ static void __exit nfs4blocklayout_exit(void)
+@@ -1035,13 +1086,9 @@ static void __exit nfs4blocklayout_exit(void)
+ 	dprintk("%s: NFSv4 Block Layout Driver Unregistering...\n",
+ 	       __func__);
+ 
+-	pnfs_unregister_layoutdriver(&scsilayout_type);
+-	pnfs_unregister_layoutdriver(&blocklayout_type);
+-	bl_cleanup_pipefs();
++	pnfs_unregister_scsilayout();
++	pnfs_unregister_blocklayout();
+ }
+ 
+-MODULE_ALIAS("nfs-layouttype4-3");
+-MODULE_ALIAS("nfs-layouttype4-5");
+-
+ module_init(nfs4blocklayout_init);
+ module_exit(nfs4blocklayout_exit);
+diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
+index c926b7e43827..00462e6affb1 100644
+--- a/fs/nfs/blocklayout/dev.c
++++ b/fs/nfs/blocklayout/dev.c
+@@ -15,6 +15,7 @@
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PNFS_LD
+ 
++#ifdef CONFIG_PNFS_SCSI_LAYOUT
+ static void bl_unregister_scsi(struct pnfs_block_dev *dev)
+ {
+ 	struct block_device *bdev = file_bdev(dev->bdev_file);
+@@ -45,6 +46,16 @@ static bool bl_register_scsi(struct pnfs_block_dev *dev)
+ 	trace_bl_pr_key_reg(bdev, dev->pr_key);
+ 	return true;
+ }
++#else
++static void bl_unregister_scsi(struct pnfs_block_dev *dev)
++{
++}
++
++static bool bl_register_scsi(struct pnfs_block_dev *dev)
++{
++	return false;
++}
++#endif /* CONFIG_PNFS_SCSI_LAYOUT */
+ 
+ static void bl_unregister_dev(struct pnfs_block_dev *dev)
+ {
+@@ -292,7 +303,7 @@ static int
+ bl_parse_deviceid(struct nfs_server *server, struct pnfs_block_dev *d,
+ 		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask);
+ 
+-
++#ifdef CONFIG_PNFS_BLOCK_LAYOUT
+ static int
+ bl_parse_simple(struct nfs_server *server, struct pnfs_block_dev *d,
+ 		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask)
+@@ -320,7 +331,17 @@ bl_parse_simple(struct nfs_server *server, struct pnfs_block_dev *d,
+ 		file_bdev(bdev_file)->bd_disk->disk_name);
+ 	return 0;
+ }
++#else
++static int
++bl_parse_simple(struct nfs_server *server, struct pnfs_block_dev *d,
++                struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask)
++{
++	dprintk("unsupported volume type: %d\n", PNFS_BLOCK_VOLUME_SIMPLE);
++	return -EIO;
++}
++#endif /* CONFIG_PNFS_BLOCK_LAYOUT */
+ 
++#ifdef CONFIG_PNFS_SCSI_LAYOUT
+ static bool
+ bl_validate_designator(struct pnfs_block_volume *v)
+ {
+@@ -449,6 +470,15 @@ bl_parse_scsi(struct nfs_server *server, struct pnfs_block_dev *d,
+ 	d->bdev_file = NULL;
+ 	return error;
+ }
++#else
++static int
++bl_parse_scsi(struct nfs_server *server, struct pnfs_block_dev *d,
++		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask)
++{
++	dprintk("unsupported volume type: %d\n", PNFS_BLOCK_VOLUME_SCSI);
++	return -EIO;
++}
++#endif /* CONFIG_PNFS_SCSI_LAYOUT */
+ 
+ static int
+ bl_parse_slice(struct nfs_server *server, struct pnfs_block_dev *d,
 -- 
-2.50.1
+2.55.0
 
