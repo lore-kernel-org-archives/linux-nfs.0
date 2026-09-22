@@ -1,186 +1,137 @@
-Received: from mail-pj2-f43.google.com (mail-pj2-f43.google.com [74.125.227.171])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4D46153B338
-	for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2026 11:26:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.171
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8B8B7472F63;
+	Tue, 22 Sep 2026 11:34:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790076391; cv=none; b=ElgQeGqeqBlDv1xb7/PAHNC640yEL0MhFj89zJ8F0ASA4BR2oEeayNIJi/RqC96r0a8BKaHx9vEsPIi3smo9myQveUF4RN3kFQLRu/g36IaklQajhiPStoxWL0s5BpJzucQE3iFaH0GqNJFQVQ0YOiHo6xN6hr5PBo1hZcnQ5zY=
+	t=1790076861; cv=none; b=sE4hL3/etmUASAoYeGd92lgixx1KtMvDoDijBkMrBZLQUQvkEhvW9eA6mNKuY8v/IhV+nBupQF4eQnMqyLImQFOhxNny7ljRgpJrVyELQvRDBkw5UlkkuvWcVb0HywDCXBkZKpJLnDjlxEIiJEJfUroMUGjT07GaDV9exuk17Wk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790076391; c=relaxed/simple;
-	bh=W6B9AjhIZeXspmpCYDtaD6xtJG3LTCnH7YMHFx++ScQ=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=nZpsUhz3fFoBbsUU0YUS1btZRfjGqakPCsZLzFv+7LZrGFBAR2+hEeKGfz5ZYhhFWY87dSsLVVYm6MAktO6/ux9BRs8zI+ZMmvmSa/ypbVB5whH/d4bjvA67wO0ZkFVfu6T9B0vTnbzy2HQQrlpqfg0VcRST1/3PxGgr0ZyXcdc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=quoRFSvk; arc=none smtp.client-ip=74.125.227.171
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1790076861; c=relaxed/simple;
+	bh=tetoouqKM6x3srM9fS0s9Rmg2CTzXDOW9oGLZrjQ9b0=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=fdducSPdxX8qLPPnXwCOgRWI1uf1DRG/sdNYACSMDTa70wtkRWC3jcqccu1N5EHBAO++pY9e6bD12YEQ6v2LCQpnlo0DNdkqkNgqJAAaEb99SpLQSn8n7M6ehth54btMmcuX5opSluqWWwmFz+KHp/22utzP72LFfwdvcuoadnQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nBbEb8eg; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="quoRFSvk"
-Received: by mail-pj2-f43.google.com with SMTP id 98e67ed59e1d1-39b31b4281eso3854110a91.2
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2026 04:26:26 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1790076383; x=1790681183; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=OP4ep2F3i+YMFcbmXutjukSDO+90ndszR4jUA8kjXWY=;
-        b=quoRFSvkSfHWLyeLXSIWVAgExCfvd2a+6mus0xelgtaCfUDBqAw4Jk79CLDUDovtiB
-         qDGzYGScoR/8buiy0f9L+DfTwISQLBtxNUun6DsXrKfsulOEsFO4bgU8PxSGZx4MDTnr
-         AlWSK0xu2N1WsFKKmrcEfzMwL/f/Y1FUUs3S4zVRa0CyVA78XROpJGvhUpBT0Qh4+uCk
-         ZMfU7rAWW/SPV14WHRm6gEa/Iqv0ma27siKx47xaodrFFgoD1axf+B9E8Qz2rDGGcIg6
-         waNvmWZgqMDnYbygZ71N8Hu2njwf5sfLzjeS+F99rvEvl0yaniajvLAm8T9htESKRmti
-         8aPQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790076383; x=1790681183;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=OP4ep2F3i+YMFcbmXutjukSDO+90ndszR4jUA8kjXWY=;
-        b=0/aJ0goDGzy1aoVYAGtdILW+lTxuezuqfhzu192cVNmvCtEWfram5jL375fiexenru
-         b2LshBNTH9AWNQyOdNBmhLMUjzPV9ut6QgZZs4h14zw6g5gL9p815ZIHuLj4ZhS2S/0x
-         BRmC/cXwZK28w52rkpBQv6Hhj3l4TzT+LvlnWNBc6pLY5P/6wx9AzRZB6iQbfSGpguP4
-         6Ut2c29Mf9L29o3jzrmvDc362li18V0df51dD+X9glsh0yLHTtTFqKci2oLcrnL7qhcH
-         fqXbmIjjf8LXo/MqX3/vMA6/m2o5xyGrqdXGpvOQEZIitMgs40Wlp9Hh/qhzn/4Aba+u
-         hTPg==
-X-Forwarded-Encrypted: i=1; AKwUvBxlCwGSWOdZzqu3MFdo4U3IDOafhDf95iVDPKiweA+IUe/8+1Wp/aNPJoq298aptARfYcSyTQSer/U=@vger.kernel.org
-X-Gm-Message-State: AFuF++khgkL14MfUaQkyguP/iysy4a4gtd+uPgZHsTv1WBQoInaKk5Qs
-	CUSvy+xPQY+j+TNORgkwD0orR7b6Q2UqI4ZggKHitu4BY5gtHLgOghwi
-X-Gm-Gg: AYBFou3K+l9d/lyQg75RorFJbpFPaRDia7fr0XxkOOCS3wIuZOememjPovf69OjTOfo
-	S4be9HhS9OOkY0pZBxfi7rySx9AQ+rQuHUHB5r9UhwdoijxSD0r4p09NZpoMo/M+YpFRXRTC7nk
-	vISkb85aMlb/ZIPaxVUzHvWTNrK2EOThT4x1PsZ8oXiIl+Commv8pApeGzHK4W4Y8a/5H79nzUJ
-	0dzZ5UQ0NACEAJHO5HQmihsAMWYlsZcpuMoFksM1m4h1vbHZogev7Pb6HYcav/d87Tx4n1wM5a5
-	jKZSyttenz1TjpbPEzsH2IwX/VGq5qlFr5mtbEvuYo9tSsDHR+q0GcTt6iOJJy76u7bPekOtrNw
-	Hl7DmmZfYPzikL1jk8d+ohQthooLORVnDURDS0f3Q3OEXhMoNld4ncFKywG/oKd2M31UsWnzctr
-	Ia+P+nkpNjxODE7gPEE3XFOYalpZDRCxq7SrKfA2WFdkAfKDgJaNVjXlNJuSGQ5Qx3yHXwtH99R
-	YUGomTG2iifn+LlzSQ=
-X-Received: by 2002:a17:90b:1c08:b0:3a0:5413:49b4 with SMTP id 98e67ed59e1d1-3a073201a61mr830901a91.39.1790076383278;
-        Tue, 22 Sep 2026 04:26:23 -0700 (PDT)
-Received: from vultr.guest ([139.84.147.97])
-        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-33e6131506dsm5055854eec.25.2026.09.22.04.26.18
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 22 Sep 2026 04:26:22 -0700 (PDT)
-From: "Mayank Jangid (OpenSec Intelligence)" <mayank.jangid.moon@gmail.com>
-To: cel@kernel.org,
-	jlayton@kernel.org
-Cc: neil@brown.name,
-	okorniev@redhat.com,
-	Dai.Ngo@oracle.com,
-	tom@talpey.com,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	security@kernel.org,
-	"Mayank Jangid (OpenSec Intelligence)" <mayank.jangid.moon@gmail.com>,
-	Kushal Khemka <kushalkhemka559@gmail.com>,
-	Kkartik Aggarwal <aggarwalkkartik@gmail.com>
-Subject: [PATCH] nfsd: prevent NFSv4.1 SEQUENCE reply-cache overflow
-Date: Tue, 22 Sep 2026 11:26:08 +0000
-Message-ID: <20260922112608.1256363-1-mayank.jangid.moon@gmail.com>
-X-Mailer: git-send-email 2.43.0
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nBbEb8eg"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A0B231F00893;
+	Tue, 22 Sep 2026 11:34:18 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1790076859;
+	bh=8MPz51/AleVqrB9iFqCx4mq9xp/agFzW+2KTIHJEgnc=;
+	h=From:Subject:Date:To:Cc;
+	b=nBbEb8egguabqjrVzmzMNSUqdTo4bs3RSq/ArplsVaIb9l8ajUQvjFAb2oU6RmhIp
+	 EAwH7TV+CMZoiAYuGGY93rxNfPAckENr/+b+pVy5U9CP7pAhF+gHbljxwB5K/wczes
+	 WGiCwTSfhrpCVgVkh8FU1H1tnCZvRziDJcWAnX7mixtltlhuQC0L4j9d6nSqAxLHsH
+	 7PUd1WkNFryhNeH4AexvPsjlyzIeXN2OwIVLzVL5wXzSaI073WRlC4myWq6iTEFoO+
+	 JAuh4XFgjpI6NxlpnMlumOIZicSlSahXtENpqc8FDoASPyfWoggYTnMLMM180z8LCv
+	 gFp7uN6IGp7Kg==
+From: Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH v2 0/8] nfsd: reduce the scope of the nfsd_mutex
+Date: Tue, 22 Sep 2026 07:34:01 -0400
+Message-Id: <20260922-nfsd-per-net-mutex-v2-0-4a5da8243a73@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NQQ6CMBBFr0Jm7Zi2aQu48h6GBYEBGrWQaSUY0
+ rtbiUuX7yX//R0CsaMAl2IHptUFN/sM6lRAN7V+JHR9ZlBCWVHLCv0QelyI0VPE5yvShpU1prS
+ 61qLtIA8XpsFtR/TWZJ5ciDO/j49Vfu0vp+S/3CpRoG5LVZWDNUJ31zuxp8d55hGalNIHe37fg
+ LUAAAA=
+X-Change-ID: 20260918-nfsd-per-net-mutex-8655764940ac
+To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>, Shuah Khan <shuah@kernel.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-kselftest@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2996; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=tetoouqKM6x3srM9fS0s9Rmg2CTzXDOW9oGLZrjQ9b0=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqsmevVh/20L3zjeMpksNMAyjJxwaz1PW6OTxRa
+ VOFxrNJDHOJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCarJnrwAKCRAADmhBGVaC
+ FVKPD/0aXeeF8iIti+pN23JOjN4G9uIdYc929dgtr73TPjJz8Vqljs5vAUixQjCAdQRAz7S4N9r
+ ehBrJZsYj9hP0F16EoMA61raWO/5TxAWZQvctIj75w9Ag+CP6YbsG1h14WaId6FlCaSU7HhK1HG
+ zDg2/U6JUJslKssqx5HgPc7eFeTQn+gClHKPXUWwB+zA7/c/GoqAjFxtRsDEj1DLjU7vB1YLa0/
+ 1fcU6jWcNVpvelHzpTqZbVdfdyXSULuNgd8H70Kx1dtPjFyUKTn1bKIS4kvGvk1udgrVe7trwC5
+ Xfi9ewRVLAGLpHKPwWvMWXjhEVPYbrpqwXMWLn/m2ZEuI77/nUS/kG4gVrFd+bfO3EEXXGSfxP0
+ dcPXuhoHipraKPJHRtLIjDpI0u0bu2EEQvtyD9LmYN4i7zbytSLusDChqIV26z9rxs9f9soM/TU
+ apuk7xjDG+NtfFoI9oeQ3vtyCJ97nvpkxqCLgE5v73UHVXw6KYP7ePYol+6FIJijgWR1Yr5/G/1
+ cn3Y0sTf+Cgxr43AVfH8xZ8YeIQ5DbFCq/cPkj9SzjMPEOR/nlq7NFBvkiF9UNjzgICvlEJolS5
+ aHfldJ+XGTwATx9xPu0MvfKiuHQ7/e1fe83kz98fSBbvFVRFAGyuMrcE+9cKbzWbS29Tx23jZ9Q
+ sYd/AjoU5ABocjA==
+X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
+ fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-nfsd4_sequence() narrows the reply buffer to the session cached-response
-limit before accepting the slot sequence ID. A client can negotiate
-ca_maxresponsesize_cached down to NFSD_MIN_HDR_SEQ_SZ, leaving no storage
-in the slot trailing sl_data[] array.
+This version fixes a couple of minor issues that Sashiko flagged, and
+also implements a suggestion by Neil to use guard() with the new
+filecache mutex.
 
-A padded COMPOUND tag can then leave enough space for the SEQUENCE opcode
-but not its status word. The encoder returns without setting
-cstate.data_offset, and nfsd4_sequence_done() consequently copies the
-whole reply from offset zero into the zero-capacity slot cache, causing a
-heap out-of-bounds write.
+Original cover letter follows:
 
-Compute the fixed SEQUENCE reply size, including room for a following
-operation error when necessary, before restricting the reply buffer and
-accepting the slot. Return NFS4ERR_REP_TOO_BIG_TO_CACHE without changing
-the slot when the result cannot fit.
+-------------------8<--------------------
 
-Also record the appropriate NFS error when an operation header cannot be
-encoded. This prevents an incomplete operation from remaining marked
-successful and being treated as cacheable.
+Currently much of nfsd's administration is serialized under the global
+nfsd_mutex, even though most of the objects managed under it are
+segregated by net namespace.
 
-Fixes: 47ee52986472 ("nfsd4: adjust buflen to session channel limit")
-Cc: stable@vger.kernel.org
-Assisted-by: LLM
-Co-developed-by: Kushal Khemka (OpenSec Intelligence) <kushalkhemka559@gmail.com>
-Signed-off-by: Kushal Khemka (OpenSec Intelligence) <kushalkhemka559@gmail.com>
-Co-developed-by: Kkartik Aggarwal (OpenSec Intelligence) <aggarwalkkartik@gmail.com>
-Signed-off-by: Kkartik Aggarwal (OpenSec Intelligence) <aggarwalkkartik@gmail.com>
-Signed-off-by: Mayank Jangid (OpenSec Intelligence) <mayank.jangid.moon@gmail.com>
+This patchset does a couple of small cleanups and then adds a new
+per-net mutex and moves all of the appropriate per-net data structures
+to be protected by it instead of the global mutex. The filecache is
+given its own mutex, and the global mutex is renamed and left for
+managing just the few remaning global objects.
+
+I also had an LLM cook up some selftests so we can hopefully keep all of
+this working properly in the future.
+
+Please consider for v7.4.
+
+Thanks,
+Jeff
+
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4state.c | 18 +++++++++++++++++-
- fs/nfsd/nfs4xdr.c   | 12 ++++++++++--
- 2 files changed, 27 insertions(+), 3 deletions(-)
+Changes in v2:
+- Fix potential deadlock in cross-namespace isolation selftest
+- Drop binaries from selftest patches
+- Use guard() in nfsd_file_cache_init()
+- Link to v1: https://lore.kernel.org/r/20260921-nfsd-per-net-mutex-v1-0-4a7287f6504c@kernel.org
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9c4adf311..6c246d851 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5016,6 +5016,7 @@ __be32
- nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		union nfsd4_op_u *u)
- {
-+	struct nfsd4_compoundargs *args = rqstp->rq_argp;
- 	struct nfsd4_sequence *seq = &u->sequence;
- 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
- 	struct xdr_stream *xdr = resp->xdr;
-@@ -5025,6 +5026,7 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfsd4_conn *conn;
- 	__be32 status;
- 	int buflen;
-+	u32 maxlen, respsize;
- 	struct net *net = SVC_NET(rqstp);
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
-@@ -5102,7 +5104,21 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 			session->se_fchannel.maxresp_sz;
- 	status = (seq->cachethis) ? nfserr_rep_too_big_to_cache :
- 				    nfserr_rep_too_big;
--	if (xdr_restrict_buflen(xdr, buflen - rqstp->rq_auth_slack))
-+	if (buflen < rqstp->rq_auth_slack)
-+		goto out_put_session;
-+	maxlen = buflen - rqstp->rq_auth_slack;
-+
-+	/*
-+	 * Ensure the SEQUENCE result and, when needed, the next operation's
-+	 * error result fit before narrowing the buffer and accepting the slot.
-+	 */
-+	respsize = nfsd4_max_reply(rqstp, &args->ops[0]);
-+	if (!nfsd4_last_compound_op(rqstp))
-+		respsize += COMPOUND_ERR_SLACK_SPACE;
-+	if (xdr->buf->len > maxlen || respsize > maxlen - xdr->buf->len)
-+		goto out_put_session;
-+
-+	if (xdr_restrict_buflen(xdr, maxlen))
- 		goto out_put_session;
- 	svc_reserve_auth(rqstp, buflen);
- 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 606ddcb08..e5489eec6 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -6637,11 +6637,19 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- 	unsigned int op_status_offset;
- 	nfsd4_enc encoder;
- 
--	if (xdr_stream_encode_u32(xdr, op->opnum) != XDR_UNIT)
-+	/*
-+	 * nfsd4_proc_compound() stops only when op->status records an error.
-+	 * Do not leave an operation that has no encoded header marked nfs_ok.
-+	 */
-+	if (xdr_stream_encode_u32(xdr, op->opnum) != XDR_UNIT) {
-+		op->status = nfsd4_check_resp_size(resp, XDR_UNIT * 2);
- 		goto release;
-+	}
- 	op_status_offset = xdr->buf->len;
--	if (!xdr_reserve_space(xdr, XDR_UNIT))
-+	if (!xdr_reserve_space(xdr, XDR_UNIT)) {
-+		op->status = nfsd4_check_resp_size(resp, XDR_UNIT);
- 		goto release;
-+	}
- 
- 	if (op->opnum == OP_ILLEGAL)
- 		goto status;
+---
+Jeff Layton (8):
+      nfsd: clear NFSD_NET_UP before dropping the generic resource reference
+      nfsd: make max_blksize a per-namespace setting
+      nfsd: move the control plane to a per-namespace mutex
+      nfsd: rename nfsd_mutex to nfsd_global_mutex
+      nfsd: give the open file cache its own mutex
+      selftests/nfsd: factor the netlink plumbing into a shared header
+      selftests/nfsd: add cross-namespace isolation tests
+      selftests/nfsd: add a cross-namespace control-plane soak
+
+ fs/nfsd/export.c                                   |  22 +-
+ fs/nfsd/filecache.c                                |  26 +-
+ fs/nfsd/netns.h                                    |  16 +
+ fs/nfsd/nfs4proc.c                                 |   4 +-
+ fs/nfsd/nfs4state.c                                |   8 +-
+ fs/nfsd/nfsctl.c                                   | 129 ++---
+ fs/nfsd/nfsd.h                                     |   4 +-
+ fs/nfsd/nfssvc.c                                   | 146 ++++--
+ tools/testing/selftests/nfsd/.gitignore            |   2 +
+ tools/testing/selftests/nfsd/Makefile              |   2 +
+ tools/testing/selftests/nfsd/config                |   6 +
+ tools/testing/selftests/nfsd/nfsd_netlink.h        | 319 ++++++++++++
+ .../testing/selftests/nfsd/nfsd_netlink_listener.c | 301 +----------
+ .../testing/selftests/nfsd/nfsd_netns_isolation.c  | 468 +++++++++++++++++
+ tools/testing/selftests/nfsd/nfsd_netns_stress.c   | 572 +++++++++++++++++++++
+ tools/testing/selftests/nfsd/settings              |   2 +-
+ 16 files changed, 1592 insertions(+), 435 deletions(-)
+---
+base-commit: aeaddc6a3711283c09a9183068897d4fe1fb464f
+change-id: 20260918-nfsd-per-net-mutex-8655764940ac
+
+Best regards,
+-- 
+Jeff Layton <jlayton@kernel.org>
+
