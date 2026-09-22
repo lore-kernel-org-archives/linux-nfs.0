@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 34E1851DAF1;
-	Tue, 22 Sep 2026 11:34:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B9D3547FB0C;
+	Tue, 22 Sep 2026 11:34:25 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790076867; cv=none; b=Jxg9tugEnl/huRtBRPdwZYhYTURwhBtOBp0jVC75Ab844buPYG/NhS6ZiMv61OJHv4s8PNjTXHiKSMaEYXhlJOTaGoAO/VS5Umi87pWYIlMQaVhyNv2/n16GFvP8jZv3FJuH0n4zO5d43Ezpbom3oVRenmAVOqWGS/WNj4WI2FI=
+	t=1790076868; cv=none; b=TEYGljP/EspiOeQe0tqM9Xyg0/d0LLEMg32tboZx0bgBnsk/gFN/2RsSxcKb0xyNT+QG+Jghcgy39JAuXecgVhNe3AdKERaAzGwUfcr+KqLqtN+EB4UThiOEQIsWPVO8bAJ2QS+FKC/Yn18IzTiBc/ppGSH4EAEc/fShpdCRUhU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790076867; c=relaxed/simple;
-	bh=eccpfKgq7LHNRgtiVZPkAmXh6awU7amVgjZZIwNqGXs=;
+	s=arc-20240116; t=1790076868; c=relaxed/simple;
+	bh=E8vGIRGIZ5Ej8iVy508sE++9uoe+ty5nWr2vlsyp4Xw=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=RXyrEi7c9041S/5yWAqxMO+QIhhjS2W3XFx2/eCL58AsJu56KqjDe5HgqfDINB39mwAtCfO1Ve25PkhgGvX+TipqNKLw9HAX+gmL/820OwvqTcZbJe+NylrN5BXhqtzdBBjNj+h3fOyEikb0uimjr9ntTtSaNnL5zcJHkgf2zcY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NFwRIb3p; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=sl4jYqPagfZm5tPgTDBig1tqQkYW8mpbq4IMDvQ0VzDGumQFVSzgWz6H44d26rsqoMcI5rgm80FwlTYmiIp6NG8WX2SOSScBaZiQEkAoALlA0cGnyNNS4hzpBaaDMmyBLryfVdn/6Sv2tlvha/Sxn9Rk196yx3nH1/ieW2yuDXk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AvL+l3Qj; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NFwRIb3p"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A7B7C1F000FF;
-	Tue, 22 Sep 2026 11:34:22 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AvL+l3Qj"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A164E1F00898;
+	Tue, 22 Sep 2026 11:34:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790076863;
-	bh=gYr4Al9SkWgWFj4tavPhadksvjnQShdDD9G12OjD91E=;
+	s=k20260515; t=1790076865;
+	bh=2aVXY9iiOPtDAAWpb3Jyxfl+AE25CNbFUHutOqPD/6c=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=NFwRIb3pt6de0hgh1P8ccCfiI12RWrbnDWTuyUH/5OfbKYRzTpZKZiTDy0KRWUmcs
-	 oORX+Y6ZDVF2UvM2q8W+1KEhorvJSOttX7i3KvAACfXVIDqK4blcfesC8G4jvSn2yG
-	 OyZl2t4yKddkFkWvMAoKwef2OWSDRswj8IktkFIRMNA7RJctodpt8dDYBSSyTD81/b
-	 04hzi+9kutkEg+TdOqfXJXvOoRfBsD/5h30tNdZIj/Tn8j1I1boRqB5qy4urb7YTK2
-	 SlwMrnQorZXSEoh+7jDcJ6MUQAPM56bPEHwMHY5Mf4yvf4kLC7jk1KuO1dogDfxNbZ
-	 4MfVmhbEiBY3w==
+	b=AvL+l3QjUdv78sXs0ZzDvxviyFWjSHMjAn3uo1XIrC67WklTZzLYsM8RBxVm2OoLd
+	 A7fX8hSVWER4Zy5z99fOwW8Z6vKm3olj2/mH9ez3sDU0slaYG3gATiKO1fQm42T8wk
+	 Ok241egWSbp2MWA3kuXFqR500z++dEQ9Fi8jgL/iuKhUch3X9ndS99o43YzWeoahwQ
+	 a/iVqSIU/8XNbe610gmWnAYLgMHBW6MdwjfKDHDKL6DRnEY6tts6vL/75Qq0w3xhsW
+	 +ZoCjNbFiu71pUZR2p63p+/0PuLWjh2wkV7X7kppmn5tkbR9yCw3cTzfVC+nmdsndI
+	 oQJCs6V5wKGxA==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Tue, 22 Sep 2026 07:34:05 -0400
-Subject: [PATCH v2 4/8] nfsd: rename nfsd_mutex to nfsd_global_mutex
+Date: Tue, 22 Sep 2026 07:34:07 -0400
+Subject: [PATCH v2 6/8] selftests/nfsd: factor the netlink plumbing into a
+ shared header
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260922-nfsd-per-net-mutex-v2-4-4a5da8243a73@kernel.org>
+Message-Id: <20260922-nfsd-per-net-mutex-v2-6-4a5da8243a73@kernel.org>
 References: <20260922-nfsd-per-net-mutex-v2-0-4a5da8243a73@kernel.org>
 In-Reply-To: <20260922-nfsd-per-net-mutex-v2-0-4a5da8243a73@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -46,246 +47,688 @@ To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>,
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-kselftest@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7432; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=eccpfKgq7LHNRgtiVZPkAmXh6awU7amVgjZZIwNqGXs=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqsme51UfH1OjZV+Ww+CTpZ7KIKUsqcr4ohi6bI
- JT/DYM36niJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCarJnuQAKCRAADmhBGVaC
- FfvmEACTENxEw1oFHy0u7PfzCmwP9yvuwTHi+etxs0HOVwqpTWyYRkTqUd1mgbdPHe3sdpUcNy7
- kfZZIrgkiFxk1TiIfpbNechvVT+MhnoA5+r9fIkYLouR+oVapdWy7bTm7v3tW9nseihNKRhkuqS
- LUDDKrMz73tLTmZa0nZYMGi+zA1inJy3qRPvvGTdCrrH5FQ2qTAiLZB72gyr3ttrPuywTJetQd6
- LQpX5ef9KZIZJDcSkKnBj+xxvNhKVDTHLoqUM8RjJoQYIfMtdUyZiLwF6P6+32mTenVfBshCaBQ
- hI9B/DJ0xWM2tMe3oZv+1AhVrCgokYWRey0wCHhwh3r+qHFaZftdb/In4oWHf0mXedBswnxJDNp
- YV21CSZjW6LyqNi3da2vFbloXRodzg9Yg+FwXEztFd9IbepBu+86EjBYM+qshoun3YK7cVKl4x5
- 14Hrof6kopv9gkbBPliKV2YXsM3KJ4j2xzEbxCwIvuKpgg/bkUoGOP56/dzashlpaiZVtAzYbXO
- 3fi99ho2g7kpXLfC5WrHM6WqPDJDKTNjlDHrSwErnxVNkfKrJwWff7DtyStS+tphE2EhsjcdiKx
- 7Mo6Fg9IYBAj3o6qVQhDYvkwtwuavKMnA5DZrTF7wUxicIvPb/6Jk+rzUCOo0QoPF9Z2XH5/LOO
- aQrlJj7rXrPOwrQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=20983; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=E8vGIRGIZ5Ej8iVy508sE++9uoe+ty5nWr2vlsyp4Xw=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqsme5PAihfAmBedzHK5Z62IPF0XRZhGv/Fx+Sy
+ OHhWc1CYi+JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCarJnuQAKCRAADmhBGVaC
+ FaAkEACJwD5jhrxCvI38sNz2b8TuDlTaBafPgc4fVTgnksSXrdDRvNVKqvC7Y1EnNwf4QXNgC6+
+ Xb9EimX2ZM3IhkcEWZ8bbjCcKyKZecGqovEtf+sE/E10H8gqUDymHtmWenSOwcqG+dgr0VV7gGi
+ RlX3egerXdgM9gSPUIfSo3HyS3Z9xhnyZIn3PsxEHfm+JHZYO8tXmEmMRUuWWx6c9JGAuKjJOmK
+ +i1vXSkGYgHCwn7kaFk49otkvKS5zSSh8C7/dApWFCuasD6pO0tjOYnC2bAPEps64w31UuIhNxv
+ 1cotobzCqEH31Amjec/lv8cmXNmR3Xk9c0j3q8z/VT8feYt/pJWQ/j5c9HEPg45jYW9qzxtHiMT
+ Ss2n7aRCIlC46AP6XWE1P3VQCnGCJpAJeQ+pqXawtd0hK5K3Z4Pdk7/0RTTCVZXD6clXNP87Llr
+ Q9Nv73+oYOGvuQUX1RUeA3D9YHTbnU1+te/4yqimtZBgLK+irMiDp9DGJNSJ8+pLIFY6uuRZVNw
+ SkHiNqPAGBSXk/varH42tDpIQYOEEPEcPqUNfNM/USZomm6bZmItrM1S0MO8M7wATsL7IqlOZNK
+ oX+l39Idv/Lka3+He6oJ1e1Z2dN5+e1bFd7LUhvNgRTOzIJyei4HOy4mgKrH19S9kP77PjBAAFZ
+ jqXtgVYBYMZRdEA==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-With nn->nfsd_mutex now carrying the per-namespace control plane, give the
-remaining module-wide mutex a name that says which one a call site means.
-Mechanical; no functional change.
+nfsd_netlink_listener.c carries a small generic-netlink client -- socket
+setup, attribute packing, extack parsing, family resolution -- plus the
+LISTENER_SET/THREADS_SET/VERSION_SET wrappers. Other nfsd tests want the
+same thing.
+
+Move it to nfsd_netlink.h as static inline helpers, so each test binary
+gets its own copy and there is nothing to link. Code is unchanged; only
+the three continuation lines that the static inline prefix pushed out of
+alignment were reflowed.
 
 Assisted-by: LLM
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/filecache.c | 14 +++++++-------
- fs/nfsd/netns.h     |  2 +-
- fs/nfsd/nfsctl.c    |  4 ++--
- fs/nfsd/nfsd.h      |  2 +-
- fs/nfsd/nfssvc.c    | 34 +++++++++++++++++-----------------
- 5 files changed, 28 insertions(+), 28 deletions(-)
+ tools/testing/selftests/nfsd/nfsd_netlink.h        | 319 +++++++++++++++++++++
+ .../testing/selftests/nfsd/nfsd_netlink_listener.c | 295 +------------------
+ 2 files changed, 322 insertions(+), 292 deletions(-)
 
-diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index 79b9e8c92e70..501772bc8f8d 100644
---- a/fs/nfsd/filecache.c
-+++ b/fs/nfsd/filecache.c
-@@ -869,7 +869,7 @@ nfsd_file_cache_init(void)
- {
- 	int ret;
+diff --git a/tools/testing/selftests/nfsd/nfsd_netlink.h b/tools/testing/selftests/nfsd/nfsd_netlink.h
+new file mode 100644
+index 000000000000..c66a980bfc01
+--- /dev/null
++++ b/tools/testing/selftests/nfsd/nfsd_netlink.h
+@@ -0,0 +1,319 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Shared generic-netlink plumbing for the NFSD selftests.
++ *
++ * Header-only: every helper is static inline, so each test binary gets its
++ * own copy and there is nothing extra to link. nfsd_family must be set by
++ * calling genl_resolve_nfsd() before any of the request helpers are used.
++ */
++#ifndef __SELFTESTS_NFSD_NETLINK_H__
++#define __SELFTESTS_NFSD_NETLINK_H__
++
++#include <errno.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++#include <sys/socket.h>
++#include <sys/time.h>
++#include <netinet/in.h>
++#include <linux/netlink.h>
++#include <linux/genetlink.h>
++#include <linux/nfsd_netlink.h>
++
++#define NLA_ALIGN4(len)			(((len) + 3) & ~3)
++#define RECV_TIMEO_SEC			30
++
++static int nfsd_family = -1;		/* set per-test in FIXTURE_SETUP */
++
++/* Extack message from the last genl_request(); empty if there was none. */
++static char last_extack[128];
++
++static inline void die(const char *msg)
++{
++	perror(msg);
++	exit(1);
++}
++
++/* ------------------- minimal generic-netlink plumbing ------------------- */
++
++static inline int genl_open(void)
++{
++	struct sockaddr_nl sa = { .nl_family = AF_NETLINK };
++	struct timeval tv = { .tv_sec = RECV_TIMEO_SEC };
++	int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_GENERIC);
++	int on = 1;
++
++	if (fd < 0)
++		die("socket(NETLINK_GENERIC)");
++	if (bind(fd, (void *)&sa, sizeof(sa)) < 0)
++		die("bind(netlink)");
++	setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
++	/*
++	 * Ask for extack, and cap the ack so the request is not echoed back:
++	 * the TLVs then always follow the fixed part of the error message.
++	 */
++	setsockopt(fd, SOL_NETLINK, NETLINK_EXT_ACK, &on, sizeof(on));
++	setsockopt(fd, SOL_NETLINK, NETLINK_CAP_ACK, &on, sizeof(on));
++	return fd;
++}
++
++/* Stash the extack message of an ack, if it carries one. */
++static inline void parse_extack(const char *rbuf)
++{
++	const struct nlmsghdr *nlh = (const void *)rbuf;
++	const struct nlattr *na;
++	int off, left;
++
++	last_extack[0] = '\0';
++	if (nlh->nlmsg_type != NLMSG_ERROR ||
++	    !(nlh->nlmsg_flags & NLM_F_ACK_TLVS))
++		return;
++
++	off = NLMSG_HDRLEN + NLMSG_ALIGN(sizeof(struct nlmsgerr));
++	left = nlh->nlmsg_len - off;
++	na = (const void *)(rbuf + off);
++
++	while (left >= (int)NLA_HDRLEN) {
++		if ((na->nla_type & NLA_TYPE_MASK) == NLMSGERR_ATTR_MSG) {
++			strncpy(last_extack, (const char *)na + NLA_HDRLEN,
++				sizeof(last_extack) - 1);
++			last_extack[sizeof(last_extack) - 1] = '\0';
++			return;
++		}
++		left -= NLA_ALIGN4(na->nla_len);
++		na = (const void *)((const char *)na + NLA_ALIGN4(na->nla_len));
++	}
++}
++
++/* Append an attribute at @off; return the new (aligned) offset. */
++static inline int put_attr(char *buf, int off, uint16_t type,
++			   const void *data, int len)
++{
++	struct nlattr *na = (void *)(buf + off);
++
++	na->nla_type = type;
++	na->nla_len = NLA_HDRLEN + len;
++	if (len)
++		memcpy(buf + off + NLA_HDRLEN, data, len);
++	return off + NLA_ALIGN4(NLA_HDRLEN + len);
++}
++
++/* Build a genl message header into @buf; return the offset past it. */
++static inline int genl_hdr(char *buf, uint16_t type, uint16_t flags, uint8_t cmd)
++{
++	struct nlmsghdr *nlh = (void *)buf;
++	struct genlmsghdr *gnl = (void *)(buf + NLMSG_HDRLEN);
++
++	memset(buf, 0, NLMSG_HDRLEN + GENL_HDRLEN);
++	nlh->nlmsg_type = type;
++	nlh->nlmsg_flags = flags;
++	nlh->nlmsg_seq = 1;
++	gnl->cmd = cmd;
++	gnl->version = 1;
++	return NLMSG_HDRLEN + GENL_HDRLEN;
++}
++
++/* Send an nfsd command with an ACK; return the ACK errno (<= 0). */
++static inline int genl_request(uint8_t cmd, const char *attrs, int attrs_len)
++{
++	char buf[1 << 20], rbuf[4096];
++	struct nlmsghdr *nlh = (void *)buf;
++	int fd = genl_open();
++	int off, n, ret;
++
++	off = genl_hdr(buf, nfsd_family, NLM_F_REQUEST | NLM_F_ACK, cmd);
++	if (attrs_len) {
++		memcpy(buf + off, attrs, attrs_len);
++		off += attrs_len;
++	}
++	nlh->nlmsg_len = off;
++
++	if (send(fd, buf, off, 0) < 0)
++		die("send(genl)");
++
++	last_extack[0] = '\0';
++	n = recv(fd, rbuf, sizeof(rbuf), 0);
++	if (n < 0) {
++		ret = (errno == EAGAIN || errno == EWOULDBLOCK) ? -ETIMEDOUT : -errno;
++	} else if (((struct nlmsghdr *)rbuf)->nlmsg_type == NLMSG_ERROR) {
++		ret = ((struct nlmsgerr *)NLMSG_DATA(rbuf))->error;
++		parse_extack(rbuf);
++	} else {
++		ret = 0;
++	}
++	close(fd);
++	return ret;
++}
++
++/*
++ * Send a command with attributes and return the full reply message; -errno
++ * on failure. NLM_F_ACK is left off: the kernel reports an error either way,
++ * so the first message back is the reply whenever there is one.
++ */
++static inline int genl_request_reply_attrs(uint8_t cmd, const char *attrs,
++					   int attrs_len, char *rbuf,
++					   size_t rlen)
++{
++	char buf[1 << 20];
++	struct nlmsghdr *nlh = (void *)buf;
++	int fd = genl_open();
++	int off, n, ret;
++
++	off = genl_hdr(buf, nfsd_family, NLM_F_REQUEST, cmd);
++	if (attrs_len) {
++		memcpy(buf + off, attrs, attrs_len);
++		off += attrs_len;
++	}
++	nlh->nlmsg_len = off;
++
++	if (send(fd, buf, off, 0) < 0)
++		die("send(genl reply)");
++
++	n = recv(fd, rbuf, rlen, 0);
++	if (n < 0)
++		ret = (errno == EAGAIN || errno == EWOULDBLOCK) ? -ETIMEDOUT : -errno;
++	else if (((struct nlmsghdr *)rbuf)->nlmsg_type == NLMSG_ERROR)
++		ret = ((struct nlmsgerr *)NLMSG_DATA(rbuf))->error;
++	else
++		ret = n;
++	close(fd);
++	return ret;
++}
++
++static inline int genl_request_reply(uint8_t cmd, char *rbuf, size_t rlen)
++{
++	return genl_request_reply_attrs(cmd, NULL, 0, rbuf, rlen);
++}
++
++/* Resolve the "nfsd" genl family id; -1 if not registered. */
++static inline int genl_resolve_nfsd(void)
++{
++	char buf[1024], rbuf[4096];
++	struct nlmsghdr *nlh = (void *)buf;
++	struct nlmsghdr *rh = (void *)rbuf;
++	struct nlattr *na;
++	int fd, off, left, id = -1;
++
++	fd = genl_open();
++	off = genl_hdr(buf, GENL_ID_CTRL, NLM_F_REQUEST, CTRL_CMD_GETFAMILY);
++	off = put_attr(buf, off, CTRL_ATTR_FAMILY_NAME,
++		       NFSD_FAMILY_NAME, sizeof(NFSD_FAMILY_NAME));
++	nlh->nlmsg_len = off;
++
++	if (send(fd, buf, off, 0) < 0)
++		die("send(GETFAMILY)");
++	if (recv(fd, rbuf, sizeof(rbuf), 0) < 0)
++		die("recv(GETFAMILY)");
++	close(fd);
++
++	if (rh->nlmsg_type == NLMSG_ERROR)
++		return -1;
++
++	na = (void *)((char *)NLMSG_DATA(rh) + GENL_HDRLEN);
++	left = rh->nlmsg_len - NLMSG_HDRLEN - GENL_HDRLEN;
++	while (left >= (int)NLA_HDRLEN) {
++		if (na->nla_type == CTRL_ATTR_FAMILY_ID) {
++			id = *(uint16_t *)((char *)na + NLA_HDRLEN);
++			break;
++		}
++		left -= NLA_ALIGN4(na->nla_len);
++		na = (void *)((char *)na + NLA_ALIGN4(na->nla_len));
++	}
++	return id;
++}
++
++/* ------------------- listener request builders ------------------- */
++
++/* Fine-grained control for negative tests: any field can be omitted/malformed. */
++struct raw_listener {
++	const char *xprt;	/* NULL -> omit NFSD_A_SOCK_TRANSPORT_NAME */
++	int emit_addr;		/* 0 -> omit NFSD_A_SOCK_ADDR */
++	const void *addr;
++	int addr_len;		/* bytes to emit for NFSD_A_SOCK_ADDR */
++};
++
++static inline int put_raw_listener(char *buf, int off, const struct raw_listener *r)
++{
++	struct nlattr *nest = (void *)(buf + off);
++	int inner = off + NLA_HDRLEN;
++
++	if (r->emit_addr)
++		inner = put_attr(buf, inner, NFSD_A_SOCK_ADDR, r->addr, r->addr_len);
++	if (r->xprt)
++		inner = put_attr(buf, inner, NFSD_A_SOCK_TRANSPORT_NAME,
++				 r->xprt, strlen(r->xprt) + 1);
++	nest->nla_type = NFSD_A_SERVER_SOCK_ADDR | NLA_F_NESTED;
++	nest->nla_len = inner - off;
++	return off + NLA_ALIGN4(nest->nla_len);
++}
++
++/* Well-formed loopback listener for @family (AF_INET or AF_INET6). */
++static inline int put_listener_af(char *buf, int off, const char *xprt,
++				  int family, uint16_t port)
++{
++	struct sockaddr_storage ss = {0};
++	struct raw_listener r = { .xprt = xprt, .emit_addr = 1, .addr = &ss };
++
++	if (family == AF_INET6) {
++		struct sockaddr_in6 *s6 = (void *)&ss;
++
++		s6->sin6_family = AF_INET6;
++		s6->sin6_port = htons(port);
++		s6->sin6_addr = in6addr_loopback;
++		r.addr_len = sizeof(*s6);
++	} else {
++		struct sockaddr_in *s4 = (void *)&ss;
++
++		s4->sin_family = AF_INET;
++		s4->sin_port = htons(port);
++		s4->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
++		r.addr_len = sizeof(*s4);
++	}
++	return put_raw_listener(buf, off, &r);
++}
++
++static inline int put_listener(char *buf, int off, const char *xprt, uint16_t port)
++{
++	return put_listener_af(buf, off, xprt, AF_INET, port);
++}
++
++static inline int listener_set(const char *attrs, int len)
++{
++	return genl_request(NFSD_CMD_LISTENER_SET, attrs, len);
++}
++
++/*
++ * Enable exactly one NFS version in this netns. NFSD_CMD_VERSION_SET clears
++ * every version first, so one nest is enough to leave the server v4-only.
++ * It refuses once a serv exists, so call it before any listener.
++ */
++static inline int version_set_only(uint32_t major, uint32_t minor)
++{
++	char attrs[64];
++	struct nlattr *nest = (void *)attrs;
++	int inner = NLA_HDRLEN;
++
++	inner = put_attr(attrs, inner, NFSD_A_VERSION_MAJOR,
++			 &major, sizeof(major));
++	inner = put_attr(attrs, inner, NFSD_A_VERSION_MINOR,
++			 &minor, sizeof(minor));
++	inner = put_attr(attrs, inner, NFSD_A_VERSION_ENABLED, NULL, 0);
++	nest->nla_type = NFSD_A_SERVER_PROTO_VERSION | NLA_F_NESTED;
++	nest->nla_len = inner;
++
++	return genl_request(NFSD_CMD_VERSION_SET, attrs, NLA_ALIGN4(inner));
++}
++
++/* Start (@n > 0) or stop (@n == 0) nfsd threads in this netns. */
++static inline int threads_set(int n)
++{
++	char attrs[64];
++	uint32_t v = n;
++	int off = put_attr(attrs, 0, NFSD_A_SERVER_THREADS, &v, sizeof(v));
++
++	return genl_request(NFSD_CMD_THREADS_SET, attrs, off);
++}
++
++#endif /* __SELFTESTS_NFSD_NETLINK_H__ */
+diff --git a/tools/testing/selftests/nfsd/nfsd_netlink_listener.c b/tools/testing/selftests/nfsd/nfsd_netlink_listener.c
+index 1294057b6f62..f6f8aa1e1cfe 100644
+--- a/tools/testing/selftests/nfsd/nfsd_netlink_listener.c
++++ b/tools/testing/selftests/nfsd/nfsd_netlink_listener.c
+@@ -46,267 +46,13 @@
+ #include <linux/nfsd_netlink.h>
  
--	lockdep_assert_held(&nfsd_mutex);
-+	lockdep_assert_held(&nfsd_global_mutex);
- 	if (test_and_set_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) == 1)
- 		return 0;
+ #include "../kselftest_harness.h"
++#include "nfsd_netlink.h"
  
-@@ -1011,16 +1011,16 @@ nfsd_file_cache_start_net(struct net *net)
-  * nfsd_file_cache_purge - Remove all cache items associated with @net
-  * @net: target net namespace
-  *
-- * Takes nfsd_mutex so the cache cannot be torn down underneath the
-+ * Takes nfsd_global_mutex so the cache cannot be torn down underneath the
-  * walk.  Callers must not already hold it.
-  */
- void
- nfsd_file_cache_purge(struct net *net)
- {
--	mutex_lock(&nfsd_mutex);
-+	mutex_lock(&nfsd_global_mutex);
- 	if (test_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) == 1)
- 		__nfsd_file_cache_purge(net);
--	mutex_unlock(&nfsd_mutex);
-+	mutex_unlock(&nfsd_global_mutex);
+-#define NFS_PROGRAM			100003
+-#define NFS_ACL_PROGRAM			100227
+-
+-#define NLA_ALIGN4(len)			(((len) + 3) & ~3)
+ #define TEST_PORT			20049
+ #define MAX_LISTENERS			8
+-#define RECV_TIMEO_SEC			30
+-
+-static int nfsd_family = -1;		/* set per-test in FIXTURE_SETUP */
+-
+-/* Extack message from the last genl_request(); empty if there was none. */
+-static char last_extack[128];
+-
+-static void die(const char *msg)
+-{
+-	perror(msg);
+-	exit(1);
+-}
+-
+-/* ------------------- minimal generic-netlink plumbing ------------------- */
+-
+-static int genl_open(void)
+-{
+-	struct sockaddr_nl sa = { .nl_family = AF_NETLINK };
+-	struct timeval tv = { .tv_sec = RECV_TIMEO_SEC };
+-	int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_GENERIC);
+-	int on = 1;
+-
+-	if (fd < 0)
+-		die("socket(NETLINK_GENERIC)");
+-	if (bind(fd, (void *)&sa, sizeof(sa)) < 0)
+-		die("bind(netlink)");
+-	setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+-	/*
+-	 * Ask for extack, and cap the ack so the request is not echoed back:
+-	 * the TLVs then always follow the fixed part of the error message.
+-	 */
+-	setsockopt(fd, SOL_NETLINK, NETLINK_EXT_ACK, &on, sizeof(on));
+-	setsockopt(fd, SOL_NETLINK, NETLINK_CAP_ACK, &on, sizeof(on));
+-	return fd;
+-}
+-
+-/* Stash the extack message of an ack, if it carries one. */
+-static void parse_extack(const char *rbuf)
+-{
+-	const struct nlmsghdr *nlh = (const void *)rbuf;
+-	const struct nlattr *na;
+-	int off, left;
+-
+-	last_extack[0] = '\0';
+-	if (nlh->nlmsg_type != NLMSG_ERROR ||
+-	    !(nlh->nlmsg_flags & NLM_F_ACK_TLVS))
+-		return;
+-
+-	off = NLMSG_HDRLEN + NLMSG_ALIGN(sizeof(struct nlmsgerr));
+-	left = nlh->nlmsg_len - off;
+-	na = (const void *)(rbuf + off);
+-
+-	while (left >= (int)NLA_HDRLEN) {
+-		if ((na->nla_type & NLA_TYPE_MASK) == NLMSGERR_ATTR_MSG) {
+-			strncpy(last_extack, (const char *)na + NLA_HDRLEN,
+-				sizeof(last_extack) - 1);
+-			last_extack[sizeof(last_extack) - 1] = '\0';
+-			return;
+-		}
+-		left -= NLA_ALIGN4(na->nla_len);
+-		na = (const void *)((const char *)na + NLA_ALIGN4(na->nla_len));
+-	}
+-}
+-
+-/* Append an attribute at @off; return the new (aligned) offset. */
+-static int put_attr(char *buf, int off, uint16_t type,
+-		    const void *data, int len)
+-{
+-	struct nlattr *na = (void *)(buf + off);
+-
+-	na->nla_type = type;
+-	na->nla_len = NLA_HDRLEN + len;
+-	if (len)
+-		memcpy(buf + off + NLA_HDRLEN, data, len);
+-	return off + NLA_ALIGN4(NLA_HDRLEN + len);
+-}
+-
+-/* Build a genl message header into @buf; return the offset past it. */
+-static int genl_hdr(char *buf, uint16_t type, uint16_t flags, uint8_t cmd)
+-{
+-	struct nlmsghdr *nlh = (void *)buf;
+-	struct genlmsghdr *gnl = (void *)(buf + NLMSG_HDRLEN);
+-
+-	memset(buf, 0, NLMSG_HDRLEN + GENL_HDRLEN);
+-	nlh->nlmsg_type = type;
+-	nlh->nlmsg_flags = flags;
+-	nlh->nlmsg_seq = 1;
+-	gnl->cmd = cmd;
+-	gnl->version = 1;
+-	return NLMSG_HDRLEN + GENL_HDRLEN;
+-}
+-
+-/* Send an nfsd command with an ACK; return the ACK errno (<= 0). */
+-static int genl_request(uint8_t cmd, const char *attrs, int attrs_len)
+-{
+-	char buf[1 << 20], rbuf[4096];
+-	struct nlmsghdr *nlh = (void *)buf;
+-	int fd = genl_open();
+-	int off, n, ret;
+-
+-	off = genl_hdr(buf, nfsd_family, NLM_F_REQUEST | NLM_F_ACK, cmd);
+-	if (attrs_len) {
+-		memcpy(buf + off, attrs, attrs_len);
+-		off += attrs_len;
+-	}
+-	nlh->nlmsg_len = off;
+-
+-	if (send(fd, buf, off, 0) < 0)
+-		die("send(genl)");
+-
+-	last_extack[0] = '\0';
+-	n = recv(fd, rbuf, sizeof(rbuf), 0);
+-	if (n < 0) {
+-		ret = (errno == EAGAIN || errno == EWOULDBLOCK) ? -ETIMEDOUT : -errno;
+-	} else if (((struct nlmsghdr *)rbuf)->nlmsg_type == NLMSG_ERROR) {
+-		ret = ((struct nlmsgerr *)NLMSG_DATA(rbuf))->error;
+-		parse_extack(rbuf);
+-	} else {
+-		ret = 0;
+-	}
+-	close(fd);
+-	return ret;
+-}
+-
+-/*
+- * Send a command with attributes and return the full reply message; -errno
+- * on failure. NLM_F_ACK is left off: the kernel reports an error either way,
+- * so the first message back is the reply whenever there is one.
+- */
+-static int genl_request_reply_attrs(uint8_t cmd, const char *attrs,
+-				    int attrs_len, char *rbuf, size_t rlen)
+-{
+-	char buf[1 << 20];
+-	struct nlmsghdr *nlh = (void *)buf;
+-	int fd = genl_open();
+-	int off, n, ret;
+-
+-	off = genl_hdr(buf, nfsd_family, NLM_F_REQUEST, cmd);
+-	if (attrs_len) {
+-		memcpy(buf + off, attrs, attrs_len);
+-		off += attrs_len;
+-	}
+-	nlh->nlmsg_len = off;
+ 
+-	if (send(fd, buf, off, 0) < 0)
+-		die("send(genl reply)");
+-
+-	n = recv(fd, rbuf, rlen, 0);
+-	if (n < 0)
+-		ret = (errno == EAGAIN || errno == EWOULDBLOCK) ? -ETIMEDOUT : -errno;
+-	else if (((struct nlmsghdr *)rbuf)->nlmsg_type == NLMSG_ERROR)
+-		ret = ((struct nlmsgerr *)NLMSG_DATA(rbuf))->error;
+-	else
+-		ret = n;
+-	close(fd);
+-	return ret;
+-}
+-
+-static int genl_request_reply(uint8_t cmd, char *rbuf, size_t rlen)
+-{
+-	return genl_request_reply_attrs(cmd, NULL, 0, rbuf, rlen);
+-}
+-
+-/* Resolve the "nfsd" genl family id; -1 if not registered. */
+-static int genl_resolve_nfsd(void)
+-{
+-	char buf[1024], rbuf[4096];
+-	struct nlmsghdr *nlh = (void *)buf;
+-	struct nlmsghdr *rh = (void *)rbuf;
+-	struct nlattr *na;
+-	int fd, off, left, id = -1;
+-
+-	fd = genl_open();
+-	off = genl_hdr(buf, GENL_ID_CTRL, NLM_F_REQUEST, CTRL_CMD_GETFAMILY);
+-	off = put_attr(buf, off, CTRL_ATTR_FAMILY_NAME,
+-		       NFSD_FAMILY_NAME, sizeof(NFSD_FAMILY_NAME));
+-	nlh->nlmsg_len = off;
+-
+-	if (send(fd, buf, off, 0) < 0)
+-		die("send(GETFAMILY)");
+-	if (recv(fd, rbuf, sizeof(rbuf), 0) < 0)
+-		die("recv(GETFAMILY)");
+-	close(fd);
+-
+-	if (rh->nlmsg_type == NLMSG_ERROR)
+-		return -1;
+-
+-	na = (void *)((char *)NLMSG_DATA(rh) + GENL_HDRLEN);
+-	left = rh->nlmsg_len - NLMSG_HDRLEN - GENL_HDRLEN;
+-	while (left >= (int)NLA_HDRLEN) {
+-		if (na->nla_type == CTRL_ATTR_FAMILY_ID) {
+-			id = *(uint16_t *)((char *)na + NLA_HDRLEN);
+-			break;
+-		}
+-		left -= NLA_ALIGN4(na->nla_len);
+-		na = (void *)((char *)na + NLA_ALIGN4(na->nla_len));
+-	}
+-	return id;
+-}
+-
+-/* ------------------- listener request builders ------------------- */
+-
+-/* Fine-grained control for negative tests: any field can be omitted/malformed. */
+-struct raw_listener {
+-	const char *xprt;	/* NULL -> omit NFSD_A_SOCK_TRANSPORT_NAME */
+-	int emit_addr;		/* 0 -> omit NFSD_A_SOCK_ADDR */
+-	const void *addr;
+-	int addr_len;		/* bytes to emit for NFSD_A_SOCK_ADDR */
+-};
+-
+-static int put_raw_listener(char *buf, int off, const struct raw_listener *r)
+-{
+-	struct nlattr *nest = (void *)(buf + off);
+-	int inner = off + NLA_HDRLEN;
+-
+-	if (r->emit_addr)
+-		inner = put_attr(buf, inner, NFSD_A_SOCK_ADDR, r->addr, r->addr_len);
+-	if (r->xprt)
+-		inner = put_attr(buf, inner, NFSD_A_SOCK_TRANSPORT_NAME,
+-				 r->xprt, strlen(r->xprt) + 1);
+-	nest->nla_type = NFSD_A_SERVER_SOCK_ADDR | NLA_F_NESTED;
+-	nest->nla_len = inner - off;
+-	return off + NLA_ALIGN4(nest->nla_len);
+-}
+-
+-/* Well-formed loopback listener for @family (AF_INET or AF_INET6). */
+-static int put_listener_af(char *buf, int off, const char *xprt, int family,
+-			   uint16_t port)
+-{
+-	struct sockaddr_storage ss = {0};
+-	struct raw_listener r = { .xprt = xprt, .emit_addr = 1, .addr = &ss };
+-
+-	if (family == AF_INET6) {
+-		struct sockaddr_in6 *s6 = (void *)&ss;
+-
+-		s6->sin6_family = AF_INET6;
+-		s6->sin6_port = htons(port);
+-		s6->sin6_addr = in6addr_loopback;
+-		r.addr_len = sizeof(*s6);
+-	} else {
+-		struct sockaddr_in *s4 = (void *)&ss;
+-
+-		s4->sin_family = AF_INET;
+-		s4->sin_port = htons(port);
+-		s4->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+-		r.addr_len = sizeof(*s4);
+-	}
+-	return put_raw_listener(buf, off, &r);
+-}
+-
+-static int put_listener(char *buf, int off, const char *xprt, uint16_t port)
+-{
+-	return put_listener_af(buf, off, xprt, AF_INET, port);
+-}
++#define NFS_PROGRAM			100003
++#define NFS_ACL_PROGRAM			100227
+ 
+ /* ------------------- LISTENER_GET parsing ------------------- */
+ 
+@@ -374,32 +120,6 @@ static int parse_listener_get(const char *rbuf, int len,
+ 
+ /* ------------------- convenience wrappers ------------------- */
+ 
+-static int listener_set(const char *attrs, int len)
+-{
+-	return genl_request(NFSD_CMD_LISTENER_SET, attrs, len);
+-}
+-
+-/*
+- * Enable exactly one NFS version in this netns. NFSD_CMD_VERSION_SET clears
+- * every version first, so one nest is enough to leave the server v4-only.
+- * It refuses once a serv exists, so call it before any listener.
+- */
+-static int version_set_only(uint32_t major, uint32_t minor)
+-{
+-	char attrs[64];
+-	struct nlattr *nest = (void *)attrs;
+-	int inner = NLA_HDRLEN;
+-
+-	inner = put_attr(attrs, inner, NFSD_A_VERSION_MAJOR,
+-			 &major, sizeof(major));
+-	inner = put_attr(attrs, inner, NFSD_A_VERSION_MINOR,
+-			 &minor, sizeof(minor));
+-	inner = put_attr(attrs, inner, NFSD_A_VERSION_ENABLED, NULL, 0);
+-	nest->nla_type = NFSD_A_SERVER_PROTO_VERSION | NLA_F_NESTED;
+-	nest->nla_len = inner;
+-
+-	return genl_request(NFSD_CMD_VERSION_SET, attrs, NLA_ALIGN4(inner));
+-}
+ 
+ /* ------------------- userspace-rpcbind ------------------- */
+ 
+@@ -552,15 +272,6 @@ static struct listener_ent *find_listener(struct listener_ent *e, int n,
+ 	return NULL;
  }
  
- void
-@@ -1045,7 +1045,7 @@ nfsd_file_cache_shutdown(void)
- {
- 	int i;
+-/* Start (@n > 0) or stop (@n == 0) nfsd threads in this netns. */
+-static int threads_set(int n)
+-{
+-	char attrs[64];
+-	uint32_t v = n;
+-	int off = put_attr(attrs, 0, NFSD_A_SERVER_THREADS, &v, sizeof(v));
+-
+-	return genl_request(NFSD_CMD_THREADS_SET, attrs, off);
+-}
  
--	lockdep_assert_held(&nfsd_mutex);
-+	lockdep_assert_held(&nfsd_global_mutex);
- 	if (test_and_clear_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) == 0)
- 		return;
- 
-@@ -1477,7 +1477,7 @@ int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
- 	unsigned long lru = 0, total_age = 0;
- 
- 	/* Serialize with server shutdown */
--	mutex_lock(&nfsd_mutex);
-+	mutex_lock(&nfsd_global_mutex);
- 	if (test_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) == 1) {
- 		struct bucket_table *tbl;
- 		struct rhashtable *ht;
-@@ -1491,7 +1491,7 @@ int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
- 		buckets = tbl->size;
- 		rcu_read_unlock();
- 	}
--	mutex_unlock(&nfsd_mutex);
-+	mutex_unlock(&nfsd_global_mutex);
- 
- 	for_each_possible_cpu(i) {
- 		hits += per_cpu(nfsd_file_cache_hits, i);
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 35199c17f8d1..866d5f64641f 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -170,7 +170,7 @@ struct nfsd_net {
- 	 * ->sv_temp_socks, thread counts), the NFSD_NET_* flags, and the
- 	 * settables above that may only change while the server is down.
- 	 *
--	 * Nests outside the global nfsd_mutex.
-+	 * Nests outside nfsd_global_mutex.
- 	 */
- 	struct mutex nfsd_mutex;
- 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 5ae33c21cf71..e2455a549e25 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1092,9 +1092,9 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
- 	 * dirname itself is still shared between namespaces.
- 	 */
- 	mutex_lock(&nn->nfsd_mutex);
--	mutex_lock(&nfsd_mutex);
-+	mutex_lock(&nfsd_global_mutex);
- 	rv = __write_recoverydir(file, buf, size, nn);
--	mutex_unlock(&nfsd_mutex);
-+	mutex_unlock(&nfsd_global_mutex);
- 	mutex_unlock(&nn->nfsd_mutex);
- 	return rv;
- }
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 0864d6d564e2..d824d2c39029 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -46,7 +46,7 @@ enum {
- 
- extern struct svc_program	nfsd_programs[];
- extern const struct svc_version	nfsd_version2, nfsd_version3, nfsd_version4;
--extern struct mutex		nfsd_mutex;
-+extern struct mutex		nfsd_global_mutex;
- extern atomic_t			nfsd_th_cnt;		/* number of available threads */
- 
- extern const struct seq_operations nfs_exports_op;
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 3d47e5c86bd5..5cb92c3829f9 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -64,15 +64,15 @@ static __be32			nfsd_init_request(struct svc_rqst *,
-  * that namespace's server is down (->nfsd_versions, ->nfsd4_lease,
-  * ->nfsd4_grace, ->max_blksize, ...).
-  *
-- * The global nfsd_mutex covers only what is genuinely shared between
-+ * nfsd_global_mutex covers only what is genuinely shared between
-  * namespaces: the nfsd_users refcount and the host-wide resources it
-  * brings up and tears down (the open file cache and the NFSv4 global
-  * tables), the address-notifier registration, and user_recovery_dirname.
-  *
-- * Lock ordering is nn->nfsd_mutex outside the global nfsd_mutex.  Nothing
-- * takes two namespaces' nfsd_mutexes.
-+ * Lock ordering is nn->nfsd_mutex outside nfsd_global_mutex.  Nothing takes
-+ * two namespaces' nfsd_mutexes.
-  */
--DEFINE_MUTEX(nfsd_mutex);
-+DEFINE_MUTEX(nfsd_global_mutex);
- 
- #if IS_ENABLED(CONFIG_NFS_LOCALIO)
- static const struct svc_version *localio_versions[] = {
-@@ -272,7 +272,7 @@ static int __nfsd_startup_generic(void)
- {
- 	int ret;
- 
--	lockdep_assert_held(&nfsd_mutex);
-+	lockdep_assert_held(&nfsd_global_mutex);
- 
- 	if (nfsd_users++)
- 		return 0;
-@@ -297,20 +297,20 @@ static int nfsd_startup_generic(void)
- {
- 	int ret;
- 
--	mutex_lock(&nfsd_mutex);
-+	mutex_lock(&nfsd_global_mutex);
- 	ret = __nfsd_startup_generic();
--	mutex_unlock(&nfsd_mutex);
-+	mutex_unlock(&nfsd_global_mutex);
- 	return ret;
- }
- 
- static void nfsd_shutdown_generic(void)
- {
--	mutex_lock(&nfsd_mutex);
-+	mutex_lock(&nfsd_global_mutex);
- 	if (!--nfsd_users) {
- 		nfs4_state_shutdown();
- 		nfsd_file_cache_shutdown();
- 	}
--	mutex_unlock(&nfsd_mutex);
-+	mutex_unlock(&nfsd_global_mutex);
- }
- 
- static bool nfsd_needs_lockd(struct nfsd_net *nn)
-@@ -525,31 +525,31 @@ static struct notifier_block nfsd_inet6addr_notifier = {
- };
- #endif
- 
--/* Number of namespaces with a serv, guarded by nfsd_mutex */
-+/* Number of namespaces with a serv, guarded by nfsd_global_mutex */
- static int nfsd_notifier_users;
- 
- static void nfsd_register_notifiers(void)
- {
--	mutex_lock(&nfsd_mutex);
-+	mutex_lock(&nfsd_global_mutex);
- 	if (!nfsd_notifier_users++) {
- 		register_inetaddr_notifier(&nfsd_inetaddr_notifier);
- #if IS_ENABLED(CONFIG_IPV6)
- 		register_inet6addr_notifier(&nfsd_inet6addr_notifier);
- #endif
- 	}
--	mutex_unlock(&nfsd_mutex);
-+	mutex_unlock(&nfsd_global_mutex);
- }
- 
- static void nfsd_unregister_notifiers(void)
- {
--	mutex_lock(&nfsd_mutex);
-+	mutex_lock(&nfsd_global_mutex);
- 	if (!--nfsd_notifier_users) {
- 		unregister_inetaddr_notifier(&nfsd_inetaddr_notifier);
- #if IS_ENABLED(CONFIG_IPV6)
- 		unregister_inet6addr_notifier(&nfsd_inet6addr_notifier);
- #endif
- 	}
--	mutex_unlock(&nfsd_mutex);
-+	mutex_unlock(&nfsd_global_mutex);
- }
- 
- /**
-@@ -690,9 +690,9 @@ int nfsd_create_serv(struct net *net, bool no_rpcbind)
- 	}
- 	/*
- 	 * Register before publishing nn->nfsd_serv.  Namespaces are only
--	 * serialized against each other by nfsd_mutex here, so
--	 * taking the reference first is what guarantees a visible
--	 * nn->nfsd_serv never coincides with an unregistered notifier.
-+	 * serialized against each other by nfsd_global_mutex here, so taking
-+	 * the reference first is what guarantees a visible nn->nfsd_serv
-+	 * never coincides with an unregistered notifier.
- 	 */
- 	nfsd_register_notifiers();
+ /* ------------------- per-netns local rpcbind stub ------------------- */
  
 
 -- 
