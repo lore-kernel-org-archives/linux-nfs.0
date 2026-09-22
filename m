@@ -1,190 +1,271 @@
-Received: from mail-pj2-f1.google.com (mail-pj2-f1.google.com [74.125.227.129])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from fout-a5-smtp.messagingengine.com (fout-a5-smtp.messagingengine.com [103.168.172.148])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AC3183ACF0F
-	for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2026 04:16:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.129
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 646C2485936;
+	Tue, 22 Sep 2026 06:37:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.148
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790050586; cv=none; b=Bwfxm03noQ7zVQMLc6dtNwWvHZrsM32A2xtUoncL8556URic6Ph/1aNyuJM0IT+2uXHciVHr9uNHEPgZP8TRrbWCRokdUibFgu/zkyXtQEUvmcgZeoMJvwQ+KHtAk6+UJWDOMwTS4Qy7yVwQ3bBKG3LfkYMear4R1b73gd9PtNc=
+	t=1790059082; cv=none; b=jMjvJER8agMP+Zw8muE35A//cNtg9BNrJAx8wCQm5fzHJfr1m+ihK6SkvAdBufjm3ClMB7ZnmKg6tkk6x0YJBLKAwXdRB+v89SpNK8Tw/3tDshzsu0rnkEMTf+NOqaflYutqcuSdfDI9p4hrb8SpT7q6wZYzJcR1u/64aY/mdb0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790050586; c=relaxed/simple;
-	bh=JDLbvCKUB+a+IDR0laoJE09QGbcCCmet6VJT4AONztI=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=AR2tqpvOsVb8Tob6ALPSZb4fTb7FJSgiwM55nXa5f1h/PFmNfxGPWElOZiCAgMcM5I5gXlro9pWaS5EQon4tLFe87eTzN3D4Ss3SVnlxoHgr0hrogwWFXWbGZqjkbEOXpNnCg5Y4BoR/vyA9yMrZx50HK8E8CbeAEyr+m9k0SPQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=qbWgsdWy; arc=none smtp.client-ip=74.125.227.129
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1790059082; c=relaxed/simple;
+	bh=Z+QfpyS5qDgu38mkp/qyWdSQGLmFDSPC+pg9fTRpY6A=;
+	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
+	 References:Date:Message-id; b=chbi4nSSZUGRAXHkTpLlIdb0cqYrScM8fD0brQyp9yFB49q+xixVq4oNFIq6hGETzUCxCXZl/0b+GMSh0V0SMEDxxcnNROw6NgBT/PCEB/YAIiwwOrCRM/40N65JFxn2j60+iCuUJwDGG/f1wmhnx70nlV5paJ3knPm3dVc7w2Q=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=T6WzhdIL; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=df7m0l4+; arc=none smtp.client-ip=103.168.172.148
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="qbWgsdWy"
-Received: by mail-pj2-f1.google.com with SMTP id 98e67ed59e1d1-39e59dca659so2252841a91.1
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Sep 2026 21:16:23 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1790050583; x=1790655383; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=JDLbvCKUB+a+IDR0laoJE09QGbcCCmet6VJT4AONztI=;
-        b=qbWgsdWy4wdLIEntA0/FpNsZf7horCJWmJzWBillIAs0GNxkhMLlgvtcqJOfsqP1ws
-         Ng/wonxycsF2AqEW3RyNeklKNgPvdiCOC0wbLjzW/qAa+hOvVPhprZcKvZDrpkQbIEd1
-         PaR8KMFKjE3Nruixg4Lz4i/TxjIz73YN01CYbAC4efeboklUI7kSWoH4mp8mOTqYT0FC
-         fXuHHp6NnkCA+wgOViuzh8WF8Dqk3OdsJeLQnlIeVZ10z/RmuWQ2REFZYvm6xCFxoRKY
-         RqxUhWWK8VvKp3nmjYU9Q/tkXcDNplAeKAbNIUbSyfn7bCc8LmQfDrEkLWQtEPOXNE5B
-         KuiA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790050583; x=1790655383;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=JDLbvCKUB+a+IDR0laoJE09QGbcCCmet6VJT4AONztI=;
-        b=wsdJstzCKje8yeMXUJWptukBrnhNjX0F6YylGU5iTJhA84NCanEkxFL79JptbOQ698
-         aC5hL7xAW++0Km9KH+LDx0d1aO1kdJsKIAwOjhHsX6Vj/sl4z6xqeu5hMiwoUSPHnWxF
-         djI0h4ocNMt69+g3FZEseTMLLHj6fhTEge75QGSlIrx95xl9+O/BpuedlfzZCe/qadQQ
-         qPURmmyOm3xi9ql6Hr0Lv1xAlUK4K7u14xAf6+KsIvKGsBRq9ni/JTrvVRBHie1bmX0U
-         6D2w8OfzoEnRlFeE6YTkQjFiA/XpQA92axlH/SpJy9RahONZ7ga8dnJFLe9mO4d5wRne
-         73Ig==
-X-Forwarded-Encrypted: i=1; AKwUvBwx745kVNAwqLskvn2KoQuKpxBEsQIGjBLnksgsfsc8O/j95fcAJJAeHhKjBr1vyUev2/K8W0agARw=@vger.kernel.org
-X-Gm-Message-State: AFuF++l9Cvud+d/CwRQ0xErxoUCJI7Wkgqx84LauCL6EpUJgs30CFyWc
-	oJ5xUfGiw4Hnpqde9zvSTTpr/WIJZcKp2wbERDNaZn/WmNDqUNd2RDFM
-X-Gm-Gg: AYBFou2lpyly2P//HACkXCXrYCJPLom3Dcv3b5pl7DLpoOSxprzenRN4TsztPKKMtNF
-	4e6WbuJWdho39qK9+TdLAG7BJ7YJbasNeSlc3OtT9dG2tXtmqR/AcvYlvpdPjpqmq183LJrwPL6
-	V3JUV9c/qunn5uFWr/rfsbxaR66drVSOM8tI4ixd0e2mkDdq+vuvCtWHvUf32kYgphI0ygWLt0b
-	GNI5Fk8wIqrUWiSE/+Yl+JJRlxc5fW1jbJBho0WUa4yJVcj/VIRZhOo8Hc7HBRa6+9GE3QqV3+P
-	6vPJufnn/E8iFAUWnJk1iwTyie28B2U5pLa5QUA6unE2zw03ZtglTvl3H/XDH75P58DGMKt0s8Y
-	fmNqcTCkyV1pytF0BE6V1gk+BVscvwu8m/RZmV/fF4DZOJcjDw3tJjmtUTbiW/7cmyzY9pkAVV1
-	1MXb1IGvUPaMYPgz+GL/FgMNqtkpOE6KhSVn2YOXGq9ULD7M4jR4d5aWwzV6UXrcnegPHX01Y4D
-	yrnyyHdGMVk66Ng05lpKTA3wjRWOEaGXBQc
-X-Received: by 2002:a17:90b:56c5:b0:39d:f95d:bd08 with SMTP id 98e67ed59e1d1-39e55008a3amr25857593a91.14.1790050583196;
-        Mon, 21 Sep 2026 21:16:23 -0700 (PDT)
-Received: from nzzhao-ThinkCentre-M760t.mioffice.cn ([43.224.245.179])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3a0674d65d4sm2204031a91.15.2026.09.21.21.16.02
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 21 Sep 2026 21:16:22 -0700 (PDT)
-From: Nanzhe Zhao <nzzhao.sigma@gmail.com>
-X-Google-Original-From: Nanzhe Zhao <zhaonanzhe@xiaomi.com>
-To: Zi Yan <ziy@nvidia.com>
-Cc: David Hildenbrand <david@kernel.org>,
-	"Matthew Wilcox (Oracle)" <willy@infradead.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Muchun Song <muchun.song@linux.dev>,
-	Lorenzo Stoakes <ljs@kernel.org>,
-	"Liam R. Howlett" <liam@infradead.org>,
-	Vlastimil Babka <vbabka@kernel.org>,
-	Mike Rapoport <rppt@kernel.org>,
-	Suren Baghdasaryan <surenb@google.com>,
-	Michal Hocko <mhocko@suse.com>,
-	Baolin Wang <baolin.wang@linux.alibaba.com>,
-	Nico Pache <nico.pache@linux.dev>,
-	Ryan Roberts <ryan.roberts@arm.com>,
-	Dev Jain <dev.jain@arm.com>,
-	Barry Song <baohua@kernel.org>,
-	Lance Yang <lance.yang@linux.dev>,
-	Usama Arif <usama.arif@linux.dev>,
-	Gregory Price <gourry@gourry.net>,
-	Ying Huang <ying.huang@linux.alibaba.com>,
-	Alistair Popple <apopple@nvidia.com>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	Qi Zheng <qi.zheng@linux.dev>,
-	Shakeel Butt <shakeel.butt@linux.dev>,
-	Kairui Song <kasong@tencent.com>,
-	Mark Rutland <mark.rutland@arm.com>,
-	Ian Rogers <irogers@google.com>,
-	Jan Kara <jack@suse.cz>,
-	linux-doc@vger.kernel.org,
-	Alex Markuze <amarkuze@redhat.com>,
-	Peter Zijlstra <peterz@infradead.org>,
-	kexec@lists.infradead.org,
-	Dave Hansen <dave.hansen@linux.intel.com>,
-	Dave Young <ruirui.yang@linux.dev>,
-	Adrian Hunter <adrian.hunter@intel.com>,
-	linux-mm@kvack.org,
-	Hongbo Li <hongbohbli@tencent.com>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	Chunhai Guo <guochunhai@vivo.com>,
-	Shuah Khan <skhan@linuxfoundation.org>,
-	Tal Zussman <tz2294@columbia.edu>,
-	Baoquan He <baoquan.he@linux.dev>,
-	Matthew Brost <matthew.brost@intel.com>,
-	Anna Schumaker <anna@kernel.org>,
-	Stefano Stabellini <sstabellini@kernel.org>,
-	Yue Hu <zbestahu@gmail.com>,
-	Rakie Kim <rakie.kim@sk.com>,
-	Minchan Kim <minchan@kernel.org>,
-	Richard Weinberger <richard@nod.at>,
-	x86@kernel.org,
-	ceph-devel@vger.kernel.org,
-	Eric Biggers <ebiggers@kernel.org>,
-	Alexander Shishkin <alexander.shishkin@linux.intel.com>,
-	Ingo Molnar <mingo@redhat.com>,
-	Viacheslav Dubeyko <slava@dubeyko.com>,
-	Wei Xu <weixugc@google.com>,
-	xen-devel@lists.xenproject.org,
-	Gao Xiang <xiang@kernel.org>,
-	Masami Hiramatsu <mhiramat@kernel.org>,
-	Joshua Hahn <joshua.hahnjy@gmail.com>,
-	Byungchul Park <byungchul@sk.com>,
-	James Clark <james.clark@linaro.org>,
-	Arnaldo Carvalho de Melo <acme@kernel.org>,
-	linux-fscrypt@vger.kernel.org,
-	Borislav Petkov <bp@alien8.de>,
-	Steven Rostedt <rostedt@goodmis.org>,
-	linux-mtd@lists.infradead.org,
-	Axel Rasmussen <axelrasmussen@google.com>,
-	Jeffle Xu <jefflexu@linux.alibaba.com>,
-	Namhyung Kim <namhyung@kernel.org>,
-	Jaegeuk Kim <jaegeuk@kernel.org>,
-	Yuanchu Xie <yuanchu@google.com>,
-	Ilya Dryomov <idryomov@gmail.com>,
-	Oscar Salvador <osalvador@suse.de>,
-	Juergen Gross <jgross@suse.com>,
-	Pratyush Yadav <pratyush@kernel.org>,
-	linux-nfs@vger.kernel.org,
-	"Theodore Y. Ts'o" <tytso@mit.edu>,
-	Oleksandr Tyshchenko <oleksandr_tyshchenko@epam.com>,
-	Jonathan Corbet <corbet@lwn.net>,
-	Pasha Tatashin <pasha.tatashin@soleen.com>,
-	linux-kernel@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-perf-users@vger.kernel.org,
-	Sergey Senozhatsky <senozhatsky@chromium.org>,
-	Thomas Gleixner <tglx@kernel.org>,
-	Jiri Olsa <jolsa@kernel.org>,
-	linux-fsdevel@vger.kernel.org,
-	Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-	linux-trace-kernel@vger.kernel.org,
-	linux-erofs@lists.ozlabs.org,
-	Trond Myklebust <trondmy@kernel.org>,
-	Chao Yu <chao@kernel.org>,
-	Daeho Jeong <daeho43@gmail.com>
-Subject: Re: [PATCH v5 00/17] Remove PG_private by using page/folio->private checks instead
-Date: Tue, 22 Sep 2026 12:16:00 +0800
-Message-ID: <20260922041600.1240429-1-zhaonanzhe@xiaomi.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20260920-remove-pg_private-v5-0-bb68b6a21869@nvidia.com>
-References: <20260920-remove-pg_private-v5-0-bb68b6a21869@nvidia.com>
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="T6WzhdIL";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="df7m0l4+"
+Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
+	by mailfout.phl.internal (Postfix) with ESMTP id 43445EC025A;
+	Tue, 22 Sep 2026 02:37:58 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-06.internal (MEProxy); Tue, 22 Sep 2026 02:37:58 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
+	cc:cc:content-transfer-encoding:content-type:content-type:date
+	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to; s=fm1; t=
+	1790059078; x=1790145478; bh=/FIQoBE8emqVxFEcdiqwkd7zKkcYKY75XVd
+	VvZycBrw=; b=T6WzhdIL9UW4tVKCHSd5mUkJXUPsnoxuZEYwI99L7vBC+wThMag
+	2wFlYyQPTaLbDpXTg9vE43KE8L4bAPt87AorFS/SsFfKEiQZATz/op6D3SAWEuJW
+	bzlaxeUgjxfDTh/OSSnBYo9kiTNMGxxTSV+ri5Anm5zmZ1Rb6zghKFI669EY2fFe
+	POA5XKi4iKX3fBYNC+7W9+xqO7pNpeBJlHWIdGXlzRXdsi6l9HSPWBHMC2ehntvB
+	TqKx6X5v3xJ/PhM5IsYwdXkEkbaJWum6WImnfII7M0wZg9WSt1757vo/aVSfz1Ys
+	E9U23ENBa1mh1ee8xDXaYORPQKvgY9WdmPQ==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1790059078; x=
+	1790145478; bh=/FIQoBE8emqVxFEcdiqwkd7zKkcYKY75XVdVvZycBrw=; b=d
+	f7m0l4+jx+MCRlMlGstvviltnrlaV1ukmWC5uHaF01UqLhl+D7M31Sa1q6ODCICw
+	RttdiW9tS695agRSwAWpkQYQUwIJ3B27O/9VPAMufIz3ejmI4hjFlbCTcCYGfC5k
+	t+iVsOlFf+mjXJNEtuI2TgN4q9TYP2WWvbnmYdHNK0oVTARrQfuAF00Jd5snIskg
+	ZR5aJaqt5eUra3qHgJ/ZP69fY1x3j7MF4M9D9GjPq/SlnpfCHPCK9mUhIuAKdI25
+	QFWXUHZmuYd5j/XoeQQjn/VdRdDG0OMdozYiLDZ2tSP0SkKZC9xrrLTZPOUr8OJC
+	RN7uq40Z5Qo7hhz/BhjGQ==
+X-ME-Sender: <xms:RSKyatIQ4JkoEj2zrmI1Z6wLzEW1tMwVm_0kc0MeVt8ZRzST6Mm1_w>
+    <xme:RSKyapmLvYK2SrJZgIwnGrk26s6_Ghmjt5O3JIWhMmCPuK0AvDXy5PIKNRKASwRm7
+    cCjyrR3CCP7OtrdHxYHH8qM7qSeKVNqSyKOkZmnnC4yH7N7gQ>
+X-ME-Received: <xmr:RSKyambiMh6IW4TwBXjpYj1dweytL55J386T4sENAS52BR5DV9osYzor3OO8fhRvXvw9QxSo6dXjsh_jJSHGrwyBOMADr3I>
+X-ME-Proxy-Cause: dmFkZTE2UsV6fzuS0xZ1a0qIg/rZx9Yr9yus3xrEBXIjhzSHggxp05Fja2/M7LIF1iZ1g+
+    EwnVNvjY6xzm/M6XZfEryeeyoQwJBGawfIa8lX/xpYKRJ3kiwW3mvMxxtzvxihD54HP1yh
+    uWoeZCxUE4TA1hUDmFwGzejtuBgHx24uArLjxhZTA2yRCNmjOW5TVDljUG0hSkIhmb8uvV
+    FeCe9Z0znrAKBuC/zZe34IW3502mQB2rs3gZijMLxYJKCaOcGOEBDEqKebE6dgzUqvAX6m
+    DaHyW+nWq+WqhceAQaBoPgnURlPa8kR2U4+OXpcdoMhl3l1qXUNF2xenEbpZWJL3+Fp0dZ
+    lapmHbbAdHx7wra7HTLxN3L9XVfGwtnRSEEAYhIhTXZTZfInD2MSqI4cyXDvKUoSG4E4Tv
+    krOsg2fqon0iWt+xqLFGtC/4QmaFZ2+Zxlf3ZuSY07oMYeL7F27UqYi4XGFZM+BDvjpdcZ
+    REUptd13HXr8OeuHsRlzgGaizHWVvyvf/ZMyCpjTKGJfG+Fxn9h4LihBc/yk6QORe1CCnA
+    FL1RzxYoL0jYW4Q4nlA17C93RUZW11YLVdheNezmXsxtn8mWKiomB16Al7k3dRR4FNuQRl
+    L/PFIkZ4KzXhYvY2j9SxX28jCpR06cep7HB9OUPzcYnhWVIr64kLEVKsKh2w
+X-ME-Proxy: <xmx:RSKyal_w5TSxXj3R15nxCmGjuGpZmxlJV7P6RQy5QMpxVXEkLW5DDQ>
+    <xmx:RiKyalbrFokXAZ7ZQskq7LF-Qg6PcGDl66ufkYM0H4FtnnfrgEBjSQ>
+    <xmx:RiKyavd47q0qwpk0_xZ7pIavSmviNiai8CM64OAyfippOUB0Sxo_Yw>
+    <xmx:RiKyailDCWH7o2l711M13IxQIlUJjjOelX3-3V_nZ7YV-vwnUVIlzA>
+    <xmx:RiKyas0b1n6H1REt-oaVnj-sbipoGsXbWw-at165LdMDpuL8HaXTBcdo>
+Feedback-ID: i9d664b8f:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
+ 22 Sep 2026 02:37:55 -0400 (EDT)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+From: NeilBrown <neilb@ownmail.net>
+To: "Jeff Layton" <jlayton@kernel.org>
+Cc: "Chuck Lever" <cel@kernel.org>, "Olga Kornievskaia" <okorniev@redhat.com>,
+ "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
+ "Shuah Khan" <shuah@kernel.org>, linux-nfs@vger.kernel.org,
+ linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org,
+ "Jeff Layton" <jlayton@kernel.org>
+Subject: Re: [PATCH 5/8] nfsd: give the open file cache its own mutex
+In-reply-to: <20260921-nfsd-per-net-mutex-v1-5-4a7287f6504c@kernel.org>
+References: <20260921-nfsd-per-net-mutex-v1-0-4a7287f6504c@kernel.org>
+  <20260921-nfsd-per-net-mutex-v1-5-4a7287f6504c@kernel.org>
+Date: Tue, 22 Sep 2026 16:37:51 +1000
+Message-id: <179005907144.37859.15558964767750002575@noble.neil.brown.name>
+Reply-To: NeilBrown <neil@brown.name>
 
-Hi Zi Yan,
+On Tue, 22 Sep 2026, Jeff Layton wrote:
+> nfsd_global_mutex still serializes file cache flushes against server
+> start/stop in unrelated namespaces. nfsd_file_cache_purge() is reached from
+> expkey_flush() on every "exportfs -f", which makes it the only frequent
+> taker of the global lock -- and it has nothing to do with nfsd_users or the
+> NFSv4 global tables it would be waiting on.
+>=20
+> Move NFSD_FILE_CACHE_UP and the objects it covers (rhltable, LRU, slabs,
+> shrinker, fsnotify groups) onto a nfsd_file_cache_mutex private to
+> filecache.c. nfsd_file_cache_init() and nfsd_file_cache_shutdown() take it
+> themselves rather than asserting the caller holds the global one, so
+> nfssvc.c no longer needs to know how the cache locks itself.
+>=20
+> nfsd_global_mutex is left holding only nfsd_users, the notifier count and
+> user_recovery_dirname, all of which are touched solely on server
+> start/stop.
+>=20
+> Ordering is nn->nfsd_mutex outside nfsd_global_mutex outside
+> nfsd_file_cache_mutex. The cache mutex is reached three ways, all
+> consistent with that: from nfsd_startup_generic()/nfsd_shutdown_generic()
+> under the global mutex, from nfsd_shutdown_net() under nn->nfsd_mutex, and
+> bare from expkey_flush() and the filecache stats file. Nothing called with
+> the cache mutex held takes either of the others.
+>=20
+> Assisted-by: LLM
+> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> ---
+>  fs/nfsd/filecache.c | 39 ++++++++++++++++++++++++++++-----------
+>  fs/nfsd/nfssvc.c    |  9 +++++----
+>  2 files changed, 33 insertions(+), 15 deletions(-)
+>=20
+> diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
+> index 501772bc8f8d..179362e5394b 100644
+> --- a/fs/nfsd/filecache.c
+> +++ b/fs/nfsd/filecache.c
+> @@ -67,6 +67,17 @@
+>   */
+>  static DEFINE_SPINLOCK(nfsd_gc_lock);
+> =20
+> +/*
+> + * Guards NFSD_FILE_CACHE_UP and the host-wide objects it covers: the
+> + * rhltable, the LRU, the slabs, the shrinker and the fsnotify groups.
+> + * Held across cache bring-up and teardown, and by readers and walkers
+> + * that need the cache to stay up for the duration (->cache_purge, the
+> + * stats file).
+> + *
+> + * Nests inside nfsd_global_mutex and inside nn->nfsd_mutex.
+> + */
+> +static DEFINE_MUTEX(nfsd_file_cache_mutex);
+> +
+>  static DEFINE_PER_CPU(unsigned long, nfsd_file_cache_hits);
+>  static DEFINE_PER_CPU(unsigned long, nfsd_file_acquisitions);
+>  static DEFINE_PER_CPU(unsigned long, nfsd_file_allocations);
+> @@ -869,9 +880,11 @@ nfsd_file_cache_init(void)
+>  {
+>  	int ret;
+> =20
+> -	lockdep_assert_held(&nfsd_global_mutex);
+> -	if (test_and_set_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) =3D=3D 1)
+> +	mutex_lock(&nfsd_file_cache_mutex);
 
-Thanks for the series. The cleanup is a nice help for the f2fs
-large-folio work -- it removes the page-based private-flag plumbing that
-my series would otherwise have to carry itself.
+What would you think of making this
 
-My large-folio series v2 [1] can be rebased on top of this series. The
-only overlap is the PAGE_PRIVATE_* flag helpers, which I can re-express
-on top of the F2FS_FOLIO_PRIVATE_* names while keeping the
-f2fs_folio_state indirection.
+   guard(mutex)(&nfsd_file_cache_mutex);
 
-Jaegeuk, do you have a preference on the ordering here? My personal
-suggestion would be to review and merge this series first, and I'll
-rebase on top of it.
+so you don't need to make other changes in this function??
 
-[1] https://lore.kernel.org/linux-f2fs-devel/20260915041909.2903887-1-zhaonanzhe@xiaomi.com/
+NeilBrown
 
-Thanks,
-Nanzhe
+
+> +	if (test_and_set_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) =3D=3D 1) {
+> +		mutex_unlock(&nfsd_file_cache_mutex);
+>  		return 0;
+> +	}
+> =20
+>  	ret =3D rhltable_init(&nfsd_file_rhltable, &nfsd_file_rhash_params);
+>  	if (ret)
+> @@ -937,6 +950,7 @@ nfsd_file_cache_init(void)
+>  out:
+>  	if (ret)
+>  		clear_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags);
+> +	mutex_unlock(&nfsd_file_cache_mutex);
+>  	return ret;
+>  out_notify_group:
+>  	fsnotify_put_group(nfsd_file_fsnotify_group);
+> @@ -1011,16 +1025,16 @@ nfsd_file_cache_start_net(struct net *net)
+>   * nfsd_file_cache_purge - Remove all cache items associated with @net
+>   * @net: target net namespace
+>   *
+> - * Takes nfsd_global_mutex so the cache cannot be torn down underneath the
+> - * walk.  Callers must not already hold it.
+> + * Takes nfsd_file_cache_mutex so the cache cannot be torn down underneath
+> + * the walk.  Callers must not already hold it.
+>   */
+>  void
+>  nfsd_file_cache_purge(struct net *net)
+>  {
+> -	mutex_lock(&nfsd_global_mutex);
+> +	mutex_lock(&nfsd_file_cache_mutex);
+>  	if (test_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) =3D=3D 1)
+>  		__nfsd_file_cache_purge(net);
+> -	mutex_unlock(&nfsd_global_mutex);
+> +	mutex_unlock(&nfsd_file_cache_mutex);
+>  }
+> =20
+>  void
+> @@ -1045,9 +1059,11 @@ nfsd_file_cache_shutdown(void)
+>  {
+>  	int i;
+> =20
+> -	lockdep_assert_held(&nfsd_global_mutex);
+> -	if (test_and_clear_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) =3D=3D 0)
+> +	mutex_lock(&nfsd_file_cache_mutex);
+> +	if (test_and_clear_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) =3D=3D 0) {
+> +		mutex_unlock(&nfsd_file_cache_mutex);
+>  		return;
+> +	}
+> =20
+>  	lease_unregister_notifier(&nfsd_file_lease_notifier);
+>  	shrinker_free(nfsd_file_shrinker);
+> @@ -1078,6 +1094,7 @@ nfsd_file_cache_shutdown(void)
+>  		per_cpu(nfsd_file_total_age, i) =3D 0;
+>  		per_cpu(nfsd_file_evictions, i) =3D 0;
+>  	}
+> +	mutex_unlock(&nfsd_file_cache_mutex);
+>  }
+> =20
+>  static struct nfsd_file *
+> @@ -1476,8 +1493,8 @@ int nfsd_file_cache_stats_show(struct seq_file *m, vo=
+id *v)
+>  	unsigned int i, count =3D 0, buckets =3D 0;
+>  	unsigned long lru =3D 0, total_age =3D 0;
+> =20
+> -	/* Serialize with server shutdown */
+> -	mutex_lock(&nfsd_global_mutex);
+> +	/* Serialize with cache teardown */
+> +	mutex_lock(&nfsd_file_cache_mutex);
+>  	if (test_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) =3D=3D 1) {
+>  		struct bucket_table *tbl;
+>  		struct rhashtable *ht;
+> @@ -1491,7 +1508,7 @@ int nfsd_file_cache_stats_show(struct seq_file *m, vo=
+id *v)
+>  		buckets =3D tbl->size;
+>  		rcu_read_unlock();
+>  	}
+> -	mutex_unlock(&nfsd_global_mutex);
+> +	mutex_unlock(&nfsd_file_cache_mutex);
+> =20
+>  	for_each_possible_cpu(i) {
+>  		hits +=3D per_cpu(nfsd_file_cache_hits, i);
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index 5cb92c3829f9..b2c215775e08 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -66,11 +66,12 @@ static __be32			nfsd_init_request(struct svc_rqst *,
+>   *
+>   * nfsd_global_mutex covers only what is genuinely shared between
+>   * namespaces: the nfsd_users refcount and the host-wide resources it
+> - * brings up and tears down (the open file cache and the NFSv4 global
+> - * tables), the address-notifier registration, and user_recovery_dirname.
+> + * brings up and tears down (the NFSv4 global tables, and the open file
+> + * cache -- which guards its own internals with nfsd_file_cache_mutex),
+> + * the address-notifier registration, and user_recovery_dirname.
+>   *
+> - * Lock ordering is nn->nfsd_mutex outside nfsd_global_mutex.  Nothing tak=
+es
+> - * two namespaces' nfsd_mutexes.
+> + * Lock ordering is nn->nfsd_mutex outside nfsd_global_mutex outside
+> + * nfsd_file_cache_mutex.  Nothing takes two namespaces' nfsd_mutexes.
+>   */
+>  DEFINE_MUTEX(nfsd_global_mutex);
+> =20
+>=20
+> --=20
+> 2.55.0
+>=20
+>=20
+
