@@ -1,120 +1,105 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8564E54CF69
-	for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2026 13:49:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0EA6854280D
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2026 14:06:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790084948; cv=none; b=PqYo86cqgsygNxRk1BCl7auR/0v+AYMfaKygpiu9v84atUKD++c4rwBjTyAs1dvl2vXaB/bt33XpcAlqCqdGmTsFIEU2evbPkppbMzd//s0cHNGEFYD6ajrhQzTyPvD4hmU00bg78HK/I9Y9FHh22IwuoObQZ+XWwhKgSE5hEX8=
+	t=1790086003; cv=none; b=Q9zCmthnO+CVHy7yroSjVplVgRxMjIMkQAdQCgAPBVFtRvvg3VDDI8G9a2VQIWZ/5ZP6SHPsW7k+3BUfjKBOMOSdCVG1sCpPqlW9ttZYKhqLvdNQKyWb3+APbFzISaA6WGw/p3qde3IkbWuXWZ0BXXwJBi4W1mOVliyVUz8yX+o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790084948; c=relaxed/simple;
-	bh=mxyubcKPkYDGv8WilvPgtIFncNfvowqK/Jndalvx+oo=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type; b=i9OOYxiQGBUXkZBZGyXn7bLWMfZnAaml3k4BU0e/nKdxlD3f7TooniM5lF9VJibgKzCFsYywmT42nLuXEcECgnAl6XHeBWH1CgCeR6oLdotapTke/PSuqQ+NutZUF1pTj3guhQy1+B9EIJ4jxT6tHoLQah9G/PdndQtX/HyYySo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=iA1XHIlo; arc=none smtp.client-ip=170.10.129.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	s=arc-20240116; t=1790086003; c=relaxed/simple;
+	bh=8YT7zCTEOtTi+DhThW3Q2EI4+sV3BD+6ovKn3PFEKsM=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=htLqakg+fSv85GY0+VFJXg9Na0wDCSNyq1h/lrGvm8huSGYKlorECesyQZ3tXfqrCdX658AOHh+O4HqQiteaX5RzuwMK8QC2gqZFLSHW/Yx+9QJi9G7QcBHtz33o7j/pEXLYXWhHV1DWUv0RTPSOHKTkFDaC8ZjNRriAtsSt6IA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GtdqFT2/; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="iA1XHIlo"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1790084945;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=eJ/1f3iL2ktEuOOlvx/Nwus8G4DR31dEGBcv/JTPxmo=;
-	b=iA1XHIlogiGs98WipfzzDj0WXjGgXawH75NZ4EZGbfmOHQKnHcti8UFpZv4SdUKXJKOPhp
-	j7jA3F2xwrlfV5uJFMeApAYnDNjYI7/I7ZNVUzBuKP327NqYbx64/0/v8VUOurMB2kk8DQ
-	W/s5bfjkCigYRpqX7g+QL13UQeRCoAE=
-Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-441-HIAiTUq5P9uskqDFeMc63w-1; Tue,
- 22 Sep 2026 09:49:02 -0400
-X-MC-Unique: HIAiTUq5P9uskqDFeMc63w-1
-X-Mimecast-MFC-AGG-ID: HIAiTUq5P9uskqDFeMc63w_1790084940
-Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 8A8F41945CB3;
-	Tue, 22 Sep 2026 13:49:00 +0000 (UTC)
-Received: from fs-i40c-01.fast.eng.rdu2.dc.redhat.com (fs-i40c-01.fast.eng.rdu2.dc.redhat.com [10.6.54.119])
-	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 9A2A13000225;
-	Tue, 22 Sep 2026 13:48:59 +0000 (UTC)
-From: Abhinandan Ekande <aekande@redhat.com>
-To: cel@kernel.org,
-	jlayton@kernel.org
-Cc: neilb@brown.name,
-	okorniev@redhat.com,
-	Dai.Ngo@oracle.com,
-	tom@talpey.com,
-	linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: in svcauth_gss_wrap_integ() resync rq_next_page after the GSS wrap
-Date: Tue, 22 Sep 2026 09:48:58 -0400
-Message-ID: <20260922134858.2219136-1-aekande@redhat.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GtdqFT2/"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6B0651F000FF;
+	Tue, 22 Sep 2026 14:06:40 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1790086000;
+	bh=L//P5NyOuHR1Jrk9NeNBtxDdceW2fcOYPJ4vvra3O+o=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=GtdqFT2/zw30B2Q2Ul14yhkeTcdg4jIzh5ovaw2xMPbdPmJ/W3aFiLXLATevDCCiK
+	 WNaznQr7psEdEbX53GAJXR2iqlmPzzNeDJoh85xPSSfmMak5HNDmvSxcSlU1S9Qaxn
+	 EaTre23Qrw6hFDEnDEsT04kaUpMsQAkYJKYTweYlmZatdrCfsNuKul34CyOPHDT9/P
+	 iYBbb1BiOjz4ZJ24ejy3N6tHjCTw5Xbl1Ll/GZF1Esp3/I4XUGfGg/h9m++852BS5c
+	 Dq2e8JupGtLz+kIt9rc6DABIQbTCTP/nNzgz7abLa703crVeEqFrSil3HUMb/KkyDz
+	 JOrAFRFsYi2zg==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 3CCF7F40068;
+	Tue, 22 Sep 2026 10:06:39 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Tue, 22 Sep 2026 10:06:39 -0400
+X-ME-Sender: <xms:b4uyapW-vT9BiWbzHHcbEpzKuNDKnEGNMWt4oPwAQCXcyb6C6M8x4g>
+    <xme:b4uyakbX7l_7sfNG8qI46yZQ4qNOzingX8sETZ6HO4Bqn6ifbi3h_Vi8LsW-Gphj5
+    HCT8HQtpkpVQZsnt7Hxucc4SvH-vtUictTuyQo0JrhS4xs3-d9F7s3D>
+X-ME-Proxy-Cause: dmFkZTGrdFg+p1NEcMQqgNPzVSTWrwg0fiEELVFhhoBp2f+DUziSJk1MdsO4OypE12VT1Q
+    DseutIxhZfb8rcnKiPI7dBbYC5OAekK7MnaejmiXbzYmA841FT60o4jPM7co0LcE8Dcali
+    4+1n2GIEHGotrN9dAE3kBO9shwLsK9BaFcRF8mOoDSM7T4FbJQ5JzPQ33zOAHFXSBJORuj
+    UcZXsPPLkxUTcktsbSrXg1b67bl+/q7V/UxTfiMYPT1vzUGM1lSwBcGjVlcU6Nn/D/eu0J
+    h0CILJAPSEX/D8Ang29e52FrREU7+0pD79mGl6PISHgE5TzJlHfn/7BfLwCsu35TQCZBpM
+    v63P54tsWi7BIH08ADpzFATQ/Yq4AVvSOJamWu7lXiO2VQxXHIFj5Ok7qXj6ik9kGSvFP+
+    W4VYueg0hA4X8gj2haD3/HqWAO121JpvC30J4S2CXELTIAdLsiWpqR8pWlydeORlhKpbbh
+    znWU4Gk2VflSJqPmA5g5DuemC6dl+9jmYsumYsU0JmrcJcDRV2PMPsM07NwjnQ0LEL2ttb
+    qlWSOG6gLfFs5JSWET+QyZuL9qKwFeiE1zIgzhaM6q9UdO2NKxOkEzxOOTYZkifuTGxeJj
+    THIIsANAj0SHEebejcvq8ioCGGYlpItn3LK/op0p5n6y/ENDuK6Jv775CUeQ
+X-ME-Proxy: <xmx:b4uyatxK71TEC9QeIW6FAt4SWR2Up86zzADpN9V7nO3_3HCyAFJjzw>
+    <xmx:b4uyaseiv8FNjyvTjzDsBUP3lNnE_BJtQM4t7-m2twu48aiZ7QvhoQ>
+    <xmx:b4uyaqCDfAl7kZ0GU0KZ1LAW8EuyE4zf69c51_J3kvmamoSCSyJyVA>
+    <xmx:b4uyao4EF8iEG6sWvNijjNDCySqm37oOGCakuGn3IfKm320tMZwgGw>
+    <xmx:b4uyarfBemmT6PaP2DuWrkHPHQAMb-DVwOifGyjeHEIEpSL2419pJb-5>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 1406E780070; Tue, 22 Sep 2026 10:06:39 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
+X-ThreadId: AVt1c__qMuMw
+Date: Tue, 22 Sep 2026 10:06:08 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Mayank Jangid (OpenSec Intelligence)" <mayank.jangid.moon@gmail.com>
+Cc: jlayton@kernel.org, neil@brown.name, okorniev@redhat.com,
+ Dai.Ngo@oracle.com, tom@talpey.com, linux-nfs@vger.kernel.org,
+ linux-kernel@vger.kernel.org, security@kernel.org,
+ "Kushal Khemka" <kushalkhemka559@gmail.com>,
+ "Kkartik Aggarwal" <aggarwalkkartik@gmail.com>
+Message-Id: <29830200-dcb0-452f-9e19-80a595b46fe7@slotpi15m67>
+In-Reply-To: <20260922112608.1256363-1-mayank.jangid.moon@gmail.com>
+References: <20260922112608.1256363-1-mayank.jangid.moon@gmail.com>
+Subject: Re: [PATCH] nfsd: prevent NFSv4.1 SEQUENCE reply-cache overflow
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-For a page-aligned READ payload, xdr_reserve_space_vec() leaves the
-encode cursor with p == end and page_ptr still on the last payload page.
-nfsd4_encode_operation() then resyncs rqstp->rq_next_page = xdr->page_ptr + 1,
-so rq_next_page points at the first page past the payload.
+On 9/22/26 7:26 AM, Mayank Jangid (OpenSec Intelligence) wrote:
+> nfsd4_sequence() narrows the reply buffer to the session cached-respon=
+se
+> limit before accepting the slot sequence ID. A client can negotiate
+> ca_maxresponsesize_cached down to NFSD_MIN_HDR_SEQ_SZ, leaving no stor=
+age
+> in the slot trailing sl_data[] array.
 
-The GSS MIC is encoded later, after the last operation, and nothing resyncs
-rq_next_page after that. Because p == end, the MIC's xdr_reserve_space()
-falls into xdr_get_next_encode_buffer(), which increments page_ptr into
-the next page — the page rq_next_page points at. After the send,
-svc_rqst_release_pages() releases only 'rq_next_page - rq_respages' pages,
-so that page sits one past the release range and is never released. The
-next reply from the same nfsd thread writes its MIC into the same physical
-page while TCP still holds a MSG_SPLICE_PAGES reference to the previous
-reply, so that reply is transmitted carrying the wrong MIC.
+Thanks for the report and the patch. J=C3=A9r=C3=A9my Jean reported the =
+same
+issue in August, and a fix for it is already queued in the nfsd-testing
+branch:
 
-mmap + fscache workloads hit this consistently because their READ payloads
-end exactly on a page boundary.
+  https://lore.kernel.org/linux-nfs/20260817-jean-v1-0-9e356596ab85@kern=
+el.org/
 
-Before the commit 'd7de37d6d7cc', xdr_truncate_encode() ran after the
-reserve. For the page-aligned case xdr_truncate_encode() correctly
-recomputed page_ptr to point at the page after the payload. Therefore the
-later MIC encode had room and never crossed page boundary. That protection
-was a side effect rather than by design. The underlying hazard of MIC page
-falling outside the release range existed before the commit as well; for
-example payload that ends with fewer than a MIC's width of room left before
-the page boundary. The commit did not introduce the bug, it widened the
-trigger from that rare case to the page-aligned one.
+Patch 1/2 there adds the same pre-flight check of the SEQUENCE reply
+size before nfsd4_sequence() narrows the buffer and accepts the slot,
+and patch 2/2 sets op->status when an operation header cannot be
+encoded. Your patch does the same two things, so I won't apply it on
+top of that series.
 
-The fix for this issue is to make the MIC page always fall inside the
-release range regardless of payload alignment - that is resync rq_next_page
-after the GSS wrap, for example, rqstp->rq_next_page = xdr->page_ptr + 1;
-at the end of svcauth_gss_wrap_integ().
+If you can test the queued fix against your reproducer and confirm it
+addresses the overflow you found, a Tested-by: on that thread would be
+welcome.
 
-Fixes: d7de37d6d7cc ("NFSD: Relocate the xdr_reserve_space_vec() call site")
-Suggested-by: Chuck Lever <cel@kernel.org>
-Signed-off-by: Abhinandan Ekande <aekande@redhat.com>
----
- net/sunrpc/auth_gss/svcauth_gss.c | 3 +++
- 1 file changed, 3 insertions(+)
-
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 967e9d53080d..06d75f98e954 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1820,6 +1820,9 @@ static int svcauth_gss_wrap_integ(struct svc_rqst *rqstp)
- 		goto wrap_failed;
- 	xdr_commit_encode(xdr);
- 
-+	if (xdr->page_ptr + 1 > rqstp->rq_next_page)
-+		rqstp->rq_next_page = xdr->page_ptr + 1;
-+
- out:
- 	return 0;
- 
--- 
-2.55.0
-
+--=20
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
