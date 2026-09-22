@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B17022F0C7E;
-	Tue, 22 Sep 2026 01:51:31 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A17AF1B3925;
+	Tue, 22 Sep 2026 01:51:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790041892; cv=none; b=Zi0r+1upL0dSUElYMBTo7plXOorddbompFHvcqKgsSdjQx+i0S1blPV5fsOGjC/R9gQTVI1yqBcBXqEY/vqASRhHLopNOqqOOBx1vaQ3Sych/7BgBfM2BxKRiL91Fhqjo87/EieoDYukrwkKuvh6NYIku3QSXhROjEA/hmIGAyE=
+	t=1790041893; cv=none; b=OvurL+T+STadgH8SIAF46Yab2x4dBV8Koc/KeeXI6nX1d/GZxg2HqsWFRUFKfyzxqwwHO04VMiRbvtWLZtDwHDeweIq/52S6DvjbnJ2F24SaEKvoXadRO6NOAYBok4qrDcbRl0E2Bq1jCWinAnRlcXjSWll8j75wgElyZJ1snKM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790041892; c=relaxed/simple;
-	bh=Arz7UgP90weelG+1AX3kaLqQuBhCzorzaLzrzixPVJw=;
+	s=arc-20240116; t=1790041893; c=relaxed/simple;
+	bh=7Lig+oQa2+WaonC8GcIYhxLPe+RFMDJpYwhPxaabKak=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ck+taVF6YqWzXLysK8XHsXOlKyH74wYqNUXPMU3EKMa6wk7AvEV4mLYncvN2faQDd8f4+UPh49WHYYSDZ/3+9IYs+yIzZDC+CAHqLQ/fT2/fBd/mjzxh9wSNtv3rmDpEA5lLvxKy3rp7JtvYw2lAwHavpG3th6lAeqwrsGIRCUM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=TI0HQMAX; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=OtY/nWalbyyfzVP7AU7O9valKM13CB5GzcsiyTENqtcpLGR7Sp/r75xsmbzzG9fmWZS1ZZcTdbeM1gOzjDOGAFSX5XGcV7O27khGU7Llnw+tmNTSg+0dm87wFstF7mjcI1lfNfWh/kMVp1o9Qh4kEEkWDi9gWRUEgFnUOHhHiHM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=l+reH2dS; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="TI0HQMAX"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D56DA1F00898;
-	Tue, 22 Sep 2026 01:51:30 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="l+reH2dS"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AF4E71F00899;
+	Tue, 22 Sep 2026 01:51:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790041891;
-	bh=zdWtl6C1PuUIS+CZSaasQpmUdZKxtaNNhtKUZ5YAU7s=;
+	s=k20260515; t=1790041892;
+	bh=FBfy5I+ODEEIQhyh0BGbIyXsls2TjLfq/mHRL/EDaoI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=TI0HQMAXJeNJ30UNtVXcrtSpqaqkq9VIF37TkJ0/g1vD/bvFsT/swRKxdHM6HtrAI
-	 Fj2jre1wSxwzdiAuPjiMc/DUcNT6kUWWQZwZysvBGDIIX6xfQwxIh9QqSSqYU93sYj
-	 UE3f/Vw8fgERCJkPbGYbRvnzMZPJJtfsWkH1yCOmevog/qcgeLS7tG0WhjWcUIr5VF
-	 gGC+fq7FwbgmfXoH9qgtmlSmlxScN0Byi1thDTMN6LA0xGHhuA3TXCi75tGC3zAWgm
-	 U+bgXTboTH5wIpCnkIvTGnCXopgVG73OgHUV4M6/EUIGaVCWjSAppTjpYw91TZrW2n
-	 WelyZN2vOaYZQ==
+	b=l+reH2dSBbGswdy+nL7wDLje1SPzxUsOY79qPW04D3cV6XFD+ax3gWsz5EnOAWPW0
+	 BvF5jy9cDVFwRxRmvvlb7lJbbikT/V67OXs2azVFjFdDsbzZ6aGS4Q1p3bf+XCa05+
+	 o7etD040CE9ZBhaLUp0HyoQiUY3bQOsqFJIjfkveBEcTBo3O0zozKCM77KHPu2+SlJ
+	 fHJytUOEAdrkXuWludoQzTmEXpbg3Co/qOtWJXvjlnueoHDhcVsVC2PSZAZBOLfaoB
+	 tA0OyNmmAsxUBIp6eepNszC8WEPVoEkcFrvi+RbwVAqaU27ayl4KNbhO8K5xI3DHiD
+	 iCsFpcDnx6e/g==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -34,9 +34,9 @@ To: NeilBrown <neil@brown.name>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>,
 	<linux-rdma@vger.kernel.org>
-Subject: [PATCH v1 2/5] SUNRPC: fire svc_defer_queue tracepoint before publishing the request
-Date: Mon, 21 Sep 2026 21:51:25 -0400
-Message-ID: <20260922015128.240977-2-cel@kernel.org>
+Subject: [PATCH v1 3/5] svcrdma: fix a page leak in backchannel sends
+Date: Mon, 21 Sep 2026 21:51:26 -0400
+Message-ID: <20260922015128.240977-3-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260922015128.240977-1-cel@kernel.org>
 References: <20260922015128.240977-1-cel@kernel.org>
@@ -48,37 +48,54 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-svc_revisit() adds the deferred request to xpt_deferred, drops
-xpt_lock, and then fires trace_svc_defer_queue(), which reads the
-request's XID and source address. Once the request is on the list,
-an nfsd thread already servicing that transport can dequeue it in
-svc_deferred_dequeue(), process it, and free it in
-svc_xprt_release() before the tracepoint reads it. The window is
-narrow, but nothing keeps the request alive across it.
+svc_rdma_bc_sendto() takes an extra reference on the page that
+holds the backchannel Call message, so that the page is not
+returned to the allocator while the Send that reads it is still
+posted. Send completion once dropped that reference, back when the
+page sat in the send context's page array. Commit 99722fe4d5a6
+("svcrdma: Persistently allocate and DMA-map Send buffers")
+switched the backchannel to svc_rdma_map_reply_msg(), which
+DMA-maps the buffer and records no pages. Send completion no
+longer touches the page, but the get_page() stayed.
 
-Fire the tracepoint before the list_add(), while svc_revisit()
-still owns the request.
+xprt_rdma_bc_free() drops the allocation reference and nothing
+drops the extra one, so every backchannel Call sent over RPC/RDMA
+leaks its send buffer page.
 
-Fixes: 8954c5c212d3 ("SUNRPC: Clean up request deferral tracepoints")
+The extra reference is still needed. A Call at or above
+RPCRDMA_PULLUP_THRESH is DMA-mapped in place. The RPC client frees
+rq_buffer when the callback task times out or is killed, whether
+or not the Send has completed. Record the page in the send
+context's page array so that svc_rdma_send_ctxt_release() drops
+the reference after Send completion.
+
+Fixes: 99722fe4d5a6 ("svcrdma: Persistently allocate and DMA-map Send buffers")
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- net/sunrpc/svc_xprt.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 908569035e57..713f4ba19ba1 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -1271,9 +1271,9 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
- 		return;
- 	}
- 	dr->xprt = NULL;
-+	trace_svc_defer_queue(dr);
- 	list_add(&dr->handle.recent, &xprt->xpt_deferred);
- 	spin_unlock(&xprt->xpt_lock);
--	trace_svc_defer_queue(dr);
- 	svc_xprt_enqueue(xprt);
- 	svc_xprt_put(xprt);
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+index e5a78b761012..e0768d1ee556 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+@@ -85,10 +85,14 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
+ 	if (ret < 0)
+ 		return -EIO;
+ 
+-	/* Bump page refcnt so Send completion doesn't release
+-	 * the rq_buffer before all retransmits are complete.
++	/* The RPC client frees rq_buffer when the callback task ends,
++	 * whether or not the Send has completed. Hold the page until the
++	 * send context is released after Send completion.
+ 	 */
+-	get_page(virt_to_page(rqst->rq_buffer));
++	sctxt->sc_pages[0] = virt_to_page(rqst->rq_buffer);
++	get_page(sctxt->sc_pages[0]);
++	sctxt->sc_page_count = 1;
++
+ 	sctxt->sc_send_wr.opcode = IB_WR_SEND;
+ 	return svc_rdma_post_send(rdma, sctxt);
  }
 -- 
 2.55.0
