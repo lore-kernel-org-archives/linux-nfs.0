@@ -1,47 +1,55 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 332B743FD18;
-	Tue, 22 Sep 2026 15:50:44 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 96D8B560AD0;
+	Tue, 22 Sep 2026 15:50:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790092245; cv=none; b=rUznNUR2Fee0+wq/N8uJmeEOwfaYdb7JioA3U0QCLjzI0MkWw9DFNd6Or1EZ+G5SXs3/mROZtkbVQDwR0rqyHeOtx+FeDLqn5OOuFPpbgPtIIXnNi5vXuKnkoNRPAZaKJ+TeXDaDn9TPFo08FRGI17JfoA95i/mNRBuldTuFN/o=
+	t=1790092246; cv=none; b=Dj+hQG8ozOu/ACrYSpbPzBSiZFsmkZsDDjHL1iq7C2SzdatNieaWHJYDsdhK80mDuxecjUNsaMfQqtsSl0KbhGEqsCqqcucSdX/go1yDd+TiteVbgTNy8n/mdFsxyweaqoTHpBXsLvR8NWBtFCiXqzF52bz928CbTyyEZqmHBD0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790092245; c=relaxed/simple;
-	bh=f+Imo4b1lwgAyODO1NhF2C/2oPWOE6s4hRbPghNP2oc=;
+	s=arc-20240116; t=1790092246; c=relaxed/simple;
+	bh=ciuqAn5+IEN9aHB1AUjtGdOiJ9Zx4Jt7S5Ps4yO+a+M=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=Z2vTJo4dzrwXy8XK8HVSCmbygBBr5G25iG9rzJXOPxr+RqgVDKQYOtwYxlguI9bLzlfi6ObixwSiBDK5zhHD6nAmg90EQ53RacgKnS8ztyNVX30maohl+CpZ7fI40jeNHXrTAGrKKZT/GB+5Djy0pqO/I7B5b2otAuqR6jML1qY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=f13Ggwt1; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version:Content-Type; b=URL9RXAvZ1aQyculeCF/n7QklRjgswhyIuVR8+aXU1RsBx7lBWHRuOLBDd/zkf4RquGOKhYnmAq75difzBz0lUMWXe/kfMtPD3bJ1wxrNSozJuaIY1soFdfn5LF1TqmAG1KUF8IjDFaat6dspYZji7nffpDsG2xKTu4wkmqbZ8M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GTnWE6Y2; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="f13Ggwt1"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2E7BF1F0089A;
-	Tue, 22 Sep 2026 15:50:43 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GTnWE6Y2"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 243C11F00899;
+	Tue, 22 Sep 2026 15:50:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790092243;
-	bh=mFC/KqKwts/3O7F2OeiAqUhvzsqgNKQHaS0taMQl8Xg=;
+	s=k20260515; t=1790092245;
+	bh=/FHIaydIKTcUBH7Pczn6fA88iewfQ5ilI/ohVhmKyiY=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=f13Ggwt1EiAxovPb/vbiXzDRe7OOxnOFjk6okTx1J8mrkGBK/FWMKeGKPuS0L6gav
-	 eW+J73MXDNgCtz7wMPiLFLeqJIR1Z7rFjKT+HZT+TCFRRpnXWtXWxUt0uEXeRHkYOa
-	 GIyJ2KPlbFswbvZ36zn8RJ7VmAtg0PmBj7Ck0gLsleVpUxNlqcIBQdSWklI5PcuhQy
-	 PRhtkANZOOyjg7LkYukVFxiBB8r0o9+RnLIX9s0F9VXpRUMMGOlEnpCciMEwPImGXR
-	 TAZ0JqoJBI8u4tva87sioWIOG8AVdupBp+9+eycDB/VgrqxWb3nMivQCETX9x8IiHV
-	 C5foc49ra0K8Q==
+	b=GTnWE6Y2pcK4sGc0veexT5/s5cVmxvjJPwVHLjIX1lJ8GCXx4+gyJhiqZjLKk+kWo
+	 NrKBp2YXeCn2/nn9S4sBZyV3wp6+OdfWPVnBYA2v24MCGWWO2vlQsDPMas/C3LNb+z
+	 aHuNQS6u09GmTcO7/EsltXlD7SG8/uOeMw1YylnsM35sjpU4009AeLRPTotH1aX86E
+	 kleNUBjq+jFie3DATDqN52eZjjpdyxt8kX8+zEyCJMR2eKeLKkdXaVCKFkMqBCDwGd
+	 6ENGL0W25aF1FyEyJl0mbbihgfo6iE3j9dFhbqii5PfjQ+YTKHJVzupD/KcG7NyoaH
+	 J3LW0qCVLOoZQ==
 From: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neil@brown.name>,
+To: Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
 	Olga Kornievskaia <okorniev@redhat.com>,
 	Dai Ngo <Dai.Ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>,
-	Shuah Khan <shuah@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-kselftest@vger.kernel.org
-Subject: Re: [PATCH v2 0/8] nfsd: reduce the scope of the nfsd_mutex
-Date: Tue, 22 Sep 2026 11:50:36 -0400
-Message-ID: <179009210791.3799844.13806982251385485248.b4-ty@b4>
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>,
+	"Peng Fan (OSS)" <peng.fan@oss.nxp.com>
+Cc: linux-kernel@vger.kernel.org,
+	Peng Fan <peng.fan@nxp.com>,
+	linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org
+Subject: Re: [PATCH] SUNRPC: use assign_bit() where applicable
+Date: Tue, 22 Sep 2026 11:50:37 -0400
+Message-ID: <179009210788.3799844.9095882835269531324.b4-ty@b4>
 X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20260922-nfsd-per-net-mutex-v2-0-4a5da8243a73@kernel.org>
-References: <20260922-nfsd-per-net-mutex-v2-0-4a5da8243a73@kernel.org>
+In-Reply-To: <20260920022714.3145751-1-peng.fan@oss.nxp.com>
+References: <20260920022714.3145751-1-peng.fan@oss.nxp.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -51,37 +59,24 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
-On Tue, 22 Sep 2026 07:34:01 -0400, Jeff Layton wrote:
-> Currently much of nfsd's administration is serialized under the global
-> nfsd_mutex, even though most of the objects managed under it are
-> segregated by net namespace.
+On Sun, 20 Sep 2026 10:27:13 +0800, Peng Fan (OSS) wrote:
+> Convert open-coded if/else with set_bit/clear_bit the assign_bit API.
 > 
-> This patchset does a couple of small cleanups and then adds a new
-> per-net mutex and moves all of the appropriate per-net data structures
-> to be protected by it instead of the global mutex. The filecache is
-> given its own mutex, and the global mutex is renamed and left for
-> managing just the few remaning global objects.
+> Done with Coccinelle semantic patch:
+>     // set_bit -> clear_bit => assign_bit
+> 
+>     @@
+>     expression cond, bit, addr;
+>     @@
 > 
 > [...]
 
-Applied to nfsd-testing, thanks!
+Applied to nfsd-testing, thanks! This narrow clean-up should be easy
+to discover and apply as a pre-requisite should it ever conflict
+with an LTS backport.
 
-[1/8] nfsd: clear NFSD_NET_UP before dropping the generic resource reference
-      commit: 77881893d52fc4ac737bd55727eca54cb95d6002
-[2/8] nfsd: make max_blksize a per-namespace setting
-      commit: 4a29b69535eb2778255634b795ad9c026269a95f
-[3/8] nfsd: move the control plane to a per-namespace mutex
-      commit: 88815584b68611c3eeb6f536b8dc1f4a2274c129
-[4/8] nfsd: rename nfsd_mutex to nfsd_global_mutex
-      commit: 828e48566b8145969f93df212628349e4d2849d0
-[5/8] nfsd: give the open file cache its own mutex
-      commit: 4ad8170fd7287fbf7adc493c785a284fe213065f
-[6/8] selftests/nfsd: factor the netlink plumbing into a shared header
-      commit: e99f6a7157acd18cda500c2bcbb17761ecfede3f
-[7/8] selftests/nfsd: add cross-namespace isolation tests
-      commit: 20801469b68a678a06b51592a1f90cb018983cf9
-[8/8] selftests/nfsd: add a cross-namespace control-plane soak
-      commit: a55e35036b7e984e601264565c767a23582c2175
+[1/1] SUNRPC: use assign_bit() where applicable
+      commit: 1a2b6be91033a31e13b676163be3e232201b1e3f
 
 --
 Chuck Lever
