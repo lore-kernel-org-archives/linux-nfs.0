@@ -1,45 +1,166 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj2-f1.google.com (mail-pj2-f1.google.com [74.125.227.129])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2A73337E5F1;
-	Tue, 22 Sep 2026 01:51:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AC3183ACF0F
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2026 04:16:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.129
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790041895; cv=none; b=GakO7jbNIEOw0+k4vv/exzek1if3LY+T2TVfOXQRJ8mkcAW7nifPhtl3eKe3ei/sdoD3NtvftybdOYzdvPs90/GSXtCiD7au1/Y1q5/wLpvC/09XDJtg/1LxlFBbH8QfE312qPTD4U2PLJdR6gJc4kaLMRnqEd3d4j7Ji9ANBss=
+	t=1790050586; cv=none; b=Bwfxm03noQ7zVQMLc6dtNwWvHZrsM32A2xtUoncL8556URic6Ph/1aNyuJM0IT+2uXHciVHr9uNHEPgZP8TRrbWCRokdUibFgu/zkyXtQEUvmcgZeoMJvwQ+KHtAk6+UJWDOMwTS4Qy7yVwQ3bBKG3LfkYMear4R1b73gd9PtNc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790041895; c=relaxed/simple;
-	bh=SsJlfalME/BNzxS/bc8f9zdmcLYZQV496Y8d5gloUbU=;
+	s=arc-20240116; t=1790050586; c=relaxed/simple;
+	bh=JDLbvCKUB+a+IDR0laoJE09QGbcCCmet6VJT4AONztI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=OE888TqqwcZ++IIzBmJAufxbWFa2tae9br5fxMv4PpIgtHldy5HuMn6HrkJuWTeosKkpZnnHu5pMLlOK2yismpnlYB6ns+YbFrwtFqfqhrwedN6epImsc3uM7c6n7Vx4Fy31SBH4DSJIdLipQWGmHBKDIZkhpMJJt0+6YGgF9Wg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=FGADwoAk; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=AR2tqpvOsVb8Tob6ALPSZb4fTb7FJSgiwM55nXa5f1h/PFmNfxGPWElOZiCAgMcM5I5gXlro9pWaS5EQon4tLFe87eTzN3D4Ss3SVnlxoHgr0hrogwWFXWbGZqjkbEOXpNnCg5Y4BoR/vyA9yMrZx50HK8E8CbeAEyr+m9k0SPQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=qbWgsdWy; arc=none smtp.client-ip=74.125.227.129
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="FGADwoAk"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6EDAA1F00898;
-	Tue, 22 Sep 2026 01:51:33 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790041894;
-	bh=seS+UxDkdMQS6FB0KWK0qr+/1zZRub4CzJjJhSdCzcw=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=FGADwoAkIhqgmuBwSbSn/F2oGRxmlpx6UWk4nl6a/K8jlJWTqCe+W4WkfvEW4JDm8
-	 wfMQnLT+xpu8P1qGr9TPccVfHVrClBMrHiPgO0DpgHqUcUOvySm3nMseYte8xtzQHf
-	 KOxmips4Jh7MuDA8VzuR+41q1HGbD5+EdiLzirupvvN1PqhU5klxlGnyJG9SSXUIKr
-	 qdffFS4NW494meBlGb+hNFn5n7uZaiK+06z3P4I5PJtVnXK8QgAt6KPuAbhNVWSNHE
-	 Loambr7UsEY7/7vuREd8Yvh8y5Of030EuKR6fIgQfTpFU5H3u4iSU0SAAEPu34EtBk
-	 oeed6r6Qw3f0A==
-From: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neil@brown.name>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>,
-	<linux-rdma@vger.kernel.org>
-Subject: [PATCH v1 5/5] svcrdma: release a receive context stranded by a partial Read post
-Date: Mon, 21 Sep 2026 21:51:28 -0400
-Message-ID: <20260922015128.240977-5-cel@kernel.org>
-X-Mailer: git-send-email 2.55.0
-In-Reply-To: <20260922015128.240977-1-cel@kernel.org>
-References: <20260922015128.240977-1-cel@kernel.org>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="qbWgsdWy"
+Received: by mail-pj2-f1.google.com with SMTP id 98e67ed59e1d1-39e59dca659so2252841a91.1
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Sep 2026 21:16:23 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1790050583; x=1790655383; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=JDLbvCKUB+a+IDR0laoJE09QGbcCCmet6VJT4AONztI=;
+        b=qbWgsdWy4wdLIEntA0/FpNsZf7horCJWmJzWBillIAs0GNxkhMLlgvtcqJOfsqP1ws
+         Ng/wonxycsF2AqEW3RyNeklKNgPvdiCOC0wbLjzW/qAa+hOvVPhprZcKvZDrpkQbIEd1
+         PaR8KMFKjE3Nruixg4Lz4i/TxjIz73YN01CYbAC4efeboklUI7kSWoH4mp8mOTqYT0FC
+         fXuHHp6NnkCA+wgOViuzh8WF8Dqk3OdsJeLQnlIeVZ10z/RmuWQ2REFZYvm6xCFxoRKY
+         RqxUhWWK8VvKp3nmjYU9Q/tkXcDNplAeKAbNIUbSyfn7bCc8LmQfDrEkLWQtEPOXNE5B
+         KuiA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1790050583; x=1790655383;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=JDLbvCKUB+a+IDR0laoJE09QGbcCCmet6VJT4AONztI=;
+        b=wsdJstzCKje8yeMXUJWptukBrnhNjX0F6YylGU5iTJhA84NCanEkxFL79JptbOQ698
+         aC5hL7xAW++0Km9KH+LDx0d1aO1kdJsKIAwOjhHsX6Vj/sl4z6xqeu5hMiwoUSPHnWxF
+         djI0h4ocNMt69+g3FZEseTMLLHj6fhTEge75QGSlIrx95xl9+O/BpuedlfzZCe/qadQQ
+         qPURmmyOm3xi9ql6Hr0Lv1xAlUK4K7u14xAf6+KsIvKGsBRq9ni/JTrvVRBHie1bmX0U
+         6D2w8OfzoEnRlFeE6YTkQjFiA/XpQA92axlH/SpJy9RahONZ7ga8dnJFLe9mO4d5wRne
+         73Ig==
+X-Forwarded-Encrypted: i=1; AKwUvBwx745kVNAwqLskvn2KoQuKpxBEsQIGjBLnksgsfsc8O/j95fcAJJAeHhKjBr1vyUev2/K8W0agARw=@vger.kernel.org
+X-Gm-Message-State: AFuF++l9Cvud+d/CwRQ0xErxoUCJI7Wkgqx84LauCL6EpUJgs30CFyWc
+	oJ5xUfGiw4Hnpqde9zvSTTpr/WIJZcKp2wbERDNaZn/WmNDqUNd2RDFM
+X-Gm-Gg: AYBFou2lpyly2P//HACkXCXrYCJPLom3Dcv3b5pl7DLpoOSxprzenRN4TsztPKKMtNF
+	4e6WbuJWdho39qK9+TdLAG7BJ7YJbasNeSlc3OtT9dG2tXtmqR/AcvYlvpdPjpqmq183LJrwPL6
+	V3JUV9c/qunn5uFWr/rfsbxaR66drVSOM8tI4ixd0e2mkDdq+vuvCtWHvUf32kYgphI0ygWLt0b
+	GNI5Fk8wIqrUWiSE/+Yl+JJRlxc5fW1jbJBho0WUa4yJVcj/VIRZhOo8Hc7HBRa6+9GE3QqV3+P
+	6vPJufnn/E8iFAUWnJk1iwTyie28B2U5pLa5QUA6unE2zw03ZtglTvl3H/XDH75P58DGMKt0s8Y
+	fmNqcTCkyV1pytF0BE6V1gk+BVscvwu8m/RZmV/fF4DZOJcjDw3tJjmtUTbiW/7cmyzY9pkAVV1
+	1MXb1IGvUPaMYPgz+GL/FgMNqtkpOE6KhSVn2YOXGq9ULD7M4jR4d5aWwzV6UXrcnegPHX01Y4D
+	yrnyyHdGMVk66Ng05lpKTA3wjRWOEaGXBQc
+X-Received: by 2002:a17:90b:56c5:b0:39d:f95d:bd08 with SMTP id 98e67ed59e1d1-39e55008a3amr25857593a91.14.1790050583196;
+        Mon, 21 Sep 2026 21:16:23 -0700 (PDT)
+Received: from nzzhao-ThinkCentre-M760t.mioffice.cn ([43.224.245.179])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3a0674d65d4sm2204031a91.15.2026.09.21.21.16.02
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 21 Sep 2026 21:16:22 -0700 (PDT)
+From: Nanzhe Zhao <nzzhao.sigma@gmail.com>
+X-Google-Original-From: Nanzhe Zhao <zhaonanzhe@xiaomi.com>
+To: Zi Yan <ziy@nvidia.com>
+Cc: David Hildenbrand <david@kernel.org>,
+	"Matthew Wilcox (Oracle)" <willy@infradead.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Muchun Song <muchun.song@linux.dev>,
+	Lorenzo Stoakes <ljs@kernel.org>,
+	"Liam R. Howlett" <liam@infradead.org>,
+	Vlastimil Babka <vbabka@kernel.org>,
+	Mike Rapoport <rppt@kernel.org>,
+	Suren Baghdasaryan <surenb@google.com>,
+	Michal Hocko <mhocko@suse.com>,
+	Baolin Wang <baolin.wang@linux.alibaba.com>,
+	Nico Pache <nico.pache@linux.dev>,
+	Ryan Roberts <ryan.roberts@arm.com>,
+	Dev Jain <dev.jain@arm.com>,
+	Barry Song <baohua@kernel.org>,
+	Lance Yang <lance.yang@linux.dev>,
+	Usama Arif <usama.arif@linux.dev>,
+	Gregory Price <gourry@gourry.net>,
+	Ying Huang <ying.huang@linux.alibaba.com>,
+	Alistair Popple <apopple@nvidia.com>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	Qi Zheng <qi.zheng@linux.dev>,
+	Shakeel Butt <shakeel.butt@linux.dev>,
+	Kairui Song <kasong@tencent.com>,
+	Mark Rutland <mark.rutland@arm.com>,
+	Ian Rogers <irogers@google.com>,
+	Jan Kara <jack@suse.cz>,
+	linux-doc@vger.kernel.org,
+	Alex Markuze <amarkuze@redhat.com>,
+	Peter Zijlstra <peterz@infradead.org>,
+	kexec@lists.infradead.org,
+	Dave Hansen <dave.hansen@linux.intel.com>,
+	Dave Young <ruirui.yang@linux.dev>,
+	Adrian Hunter <adrian.hunter@intel.com>,
+	linux-mm@kvack.org,
+	Hongbo Li <hongbohbli@tencent.com>,
+	"H. Peter Anvin" <hpa@zytor.com>,
+	Chunhai Guo <guochunhai@vivo.com>,
+	Shuah Khan <skhan@linuxfoundation.org>,
+	Tal Zussman <tz2294@columbia.edu>,
+	Baoquan He <baoquan.he@linux.dev>,
+	Matthew Brost <matthew.brost@intel.com>,
+	Anna Schumaker <anna@kernel.org>,
+	Stefano Stabellini <sstabellini@kernel.org>,
+	Yue Hu <zbestahu@gmail.com>,
+	Rakie Kim <rakie.kim@sk.com>,
+	Minchan Kim <minchan@kernel.org>,
+	Richard Weinberger <richard@nod.at>,
+	x86@kernel.org,
+	ceph-devel@vger.kernel.org,
+	Eric Biggers <ebiggers@kernel.org>,
+	Alexander Shishkin <alexander.shishkin@linux.intel.com>,
+	Ingo Molnar <mingo@redhat.com>,
+	Viacheslav Dubeyko <slava@dubeyko.com>,
+	Wei Xu <weixugc@google.com>,
+	xen-devel@lists.xenproject.org,
+	Gao Xiang <xiang@kernel.org>,
+	Masami Hiramatsu <mhiramat@kernel.org>,
+	Joshua Hahn <joshua.hahnjy@gmail.com>,
+	Byungchul Park <byungchul@sk.com>,
+	James Clark <james.clark@linaro.org>,
+	Arnaldo Carvalho de Melo <acme@kernel.org>,
+	linux-fscrypt@vger.kernel.org,
+	Borislav Petkov <bp@alien8.de>,
+	Steven Rostedt <rostedt@goodmis.org>,
+	linux-mtd@lists.infradead.org,
+	Axel Rasmussen <axelrasmussen@google.com>,
+	Jeffle Xu <jefflexu@linux.alibaba.com>,
+	Namhyung Kim <namhyung@kernel.org>,
+	Jaegeuk Kim <jaegeuk@kernel.org>,
+	Yuanchu Xie <yuanchu@google.com>,
+	Ilya Dryomov <idryomov@gmail.com>,
+	Oscar Salvador <osalvador@suse.de>,
+	Juergen Gross <jgross@suse.com>,
+	Pratyush Yadav <pratyush@kernel.org>,
+	linux-nfs@vger.kernel.org,
+	"Theodore Y. Ts'o" <tytso@mit.edu>,
+	Oleksandr Tyshchenko <oleksandr_tyshchenko@epam.com>,
+	Jonathan Corbet <corbet@lwn.net>,
+	Pasha Tatashin <pasha.tatashin@soleen.com>,
+	linux-kernel@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-perf-users@vger.kernel.org,
+	Sergey Senozhatsky <senozhatsky@chromium.org>,
+	Thomas Gleixner <tglx@kernel.org>,
+	Jiri Olsa <jolsa@kernel.org>,
+	linux-fsdevel@vger.kernel.org,
+	Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+	linux-trace-kernel@vger.kernel.org,
+	linux-erofs@lists.ozlabs.org,
+	Trond Myklebust <trondmy@kernel.org>,
+	Chao Yu <chao@kernel.org>,
+	Daeho Jeong <daeho43@gmail.com>
+Subject: Re: [PATCH v5 00/17] Remove PG_private by using page/folio->private checks instead
+Date: Tue, 22 Sep 2026 12:16:00 +0800
+Message-ID: <20260922041600.1240429-1-zhaonanzhe@xiaomi.com>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <20260920-remove-pg_private-v5-0-bb68b6a21869@nvidia.com>
+References: <20260920-remove-pg_private-v5-0-bb68b6a21869@nvidia.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -48,174 +169,22 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-When ib_post_send() rejects a WR mid-chain, svc_rdma_post_send_err()
-returns zero and svc_rdma_post_chunk_ctxt() reports the Read chain
-as posted. The only signaled WR in the chain is its tail, so a chain
-cut before the tail posts nothing that completes.
-svc_rdma_process_read_list() then reports the Read in progress, and
-the receive context waits for svc_rdma_wc_read_done(), which never
-runs. No list the transport destructor walks holds the context, so
-it leaks past teardown along with its rw contexts and their DMA
-mappings.
+Hi Zi Yan,
 
-The caller cannot release the context on the error, because the
-posted Read WRs still write into pages it owns. Nor can the error
-path drain the Send Queue. The drain's marker WR needs an SQ slot,
-and a provider that has just rejected a WR cannot be trusted to
-have one.
+Thanks for the series. The cleanup is a nice help for the f2fs
+large-folio work -- it removes the page-based private-flag plumbing that
+my series would otherwise have to carry itself.
 
-Park the receive context on a per-transport list, as the Send path
-does, and release it from svc_rdma_free() after the drain and before
-the rw contexts are destroyed. svc_rdma_post_chunk_ctxt() posts only
-Read chains, so pass it the receive context itself rather than the
-embedded chunk context.
+My large-folio series v2 [1] can be rebased on top of this series. The
+only overlap is the PAGE_PRIVATE_* flag helpers, which I can re-express
+on top of the F2FS_FOLIO_PRIVATE_* names while keeping the
+f2fs_folio_state indirection.
 
-Reaching this path needs a provider to reject a WR after accepting
-earlier ones in the same chain. That has not been observed.
+Jaegeuk, do you have a preference on the ordering here? My personal
+suggestion would be to review and merge this series first, and I'll
+rebase on top of it.
 
-Fixes: f13193f50b64 ("svcrdma: Introduce local rdma_rw API helpers")
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- include/linux/sunrpc/svc_rdma.h          |  2 ++
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  | 18 ++++++++++++++
- net/sunrpc/xprtrdma/svc_rdma_rw.c        | 31 ++++++++++++++++++------
- net/sunrpc/xprtrdma/svc_rdma_transport.c |  2 ++
- 4 files changed, 46 insertions(+), 7 deletions(-)
+[1] https://lore.kernel.org/linux-f2fs-devel/20260915041909.2903887-1-zhaonanzhe@xiaomi.com/
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index b52f83f97d64..87af38878b37 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -118,6 +118,7 @@ struct svcxprt_rdma {
- 
- 	struct llist_head    sc_send_release_list;
- 	struct llist_head    sc_send_stranded_ctxts;
-+	struct llist_head    sc_recv_stranded_ctxts;
- 
- 	atomic_t	     sc_completion_ids;
- };
-@@ -263,6 +264,7 @@ extern void svc_rdma_handle_bc_reply(struct svc_rqst *rqstp,
- 
- /* svc_rdma_recvfrom.c */
- extern void svc_rdma_recv_ctxts_destroy(struct svcxprt_rdma *rdma);
-+extern void svc_rdma_recv_ctxts_stranded_release(struct svcxprt_rdma *rdma);
- extern bool svc_rdma_post_recvs(struct svcxprt_rdma *rdma);
- extern struct svc_rdma_recv_ctxt *
- 		svc_rdma_recv_ctxt_get(struct svcxprt_rdma *rdma);
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index d029bcb7a5c0..ed5a83e9edd2 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -234,6 +234,24 @@ void svc_rdma_recv_ctxt_put(struct svcxprt_rdma *rdma,
- 	llist_add(&ctxt->rc_node, &rdma->sc_recv_ctxts);
- }
- 
-+/**
-+ * svc_rdma_recv_ctxts_stranded_release - Release stranded recv_ctxts
-+ * @rdma: svcxprt_rdma being torn down
-+ *
-+ * Context: transport destructor only, after the QP has been drained
-+ * and before its rw contexts and recv_ctxts are destroyed.
-+ */
-+void svc_rdma_recv_ctxts_stranded_release(struct svcxprt_rdma *rdma)
-+{
-+	struct svc_rdma_recv_ctxt *ctxt;
-+	struct llist_node *node;
-+
-+	while ((node = llist_del_first(&rdma->sc_recv_stranded_ctxts)) != NULL) {
-+		ctxt = llist_entry(node, struct svc_rdma_recv_ctxt, rc_node);
-+		svc_rdma_recv_ctxt_put(rdma, ctxt);
-+	}
-+}
-+
- /**
-  * svc_rdma_release_ctxt - Release transport-specific per-rqst resources
-  * @xprt: the transport which owned the context
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-index 7b7879b2cc88..63d00f0cc1db 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-@@ -389,10 +389,18 @@ static void svc_rdma_wc_read_done(struct ib_cq *cq, struct ib_wc *wc)
-  * - If ib_post_send() succeeds, only one completion is expected,
-  *   even if one or more WRs are flushed. This is true when posting
-  *   an rdma_rw_ctx or when posting a single signaled WR.
-+ *
-+ * Return values:
-+ *   %0: The chain was posted; svc_rdma_wc_read_done() releases
-+ *       @head. Or a prefix of the chain was posted; no completion
-+ *       follows, and the transport destructor releases @head.
-+ *   %-ENOTCONN: No WR was posted; the caller still owns @head.
-+ *   %-EINVAL: @head's Read chain needs more SQ entries than exist.
-  */
- static int svc_rdma_post_chunk_ctxt(struct svcxprt_rdma *rdma,
--				    struct svc_rdma_chunk_ctxt *cc)
-+				    struct svc_rdma_recv_ctxt *head)
- {
-+	struct svc_rdma_chunk_ctxt *cc = &head->rc_cc;
- 	struct ib_send_wr *first_wr;
- 	const struct ib_send_wr *bad_wr;
- 	struct list_head *tmp;
-@@ -422,10 +430,18 @@ static int svc_rdma_post_chunk_ctxt(struct svcxprt_rdma *rdma,
- 	cc->cc_posttime = ktime_get();
- 	bad_wr = first_wr;
- 	ret = ib_post_send(rdma->sc_qp, first_wr, &bad_wr);
--	if (ret)
--		return svc_rdma_post_send_err(rdma, &cc->cc_cid, bad_wr,
--					      first_wr, cc->cc_sqecount,
--					      ret);
-+	if (ret) {
-+		ret = svc_rdma_post_send_err(rdma, &cc->cc_cid, bad_wr,
-+					     first_wr, cc->cc_sqecount,
-+					     ret);
-+		if (ret)
-+			return ret;
-+
-+		/* The posted prefix still references @head. Only the
-+		 * transport destructor may release it.
-+		 */
-+		llist_add(&head->rc_node, &rdma->sc_recv_stranded_ctxts);
-+	}
- 	return 0;
- }
- 
-@@ -1169,7 +1185,8 @@ static void svc_rdma_clear_rqst_pages(struct svc_rqst *rqstp,
-  * RDMA Reads have completed.
-  *
-  * Return values:
-- *   %1: all needed RDMA Reads were posted successfully,
-+ *   %1: RDMA Reads were posted; the transport now owns @head, and
-+ *       a Read completion or the transport destructor releases it,
-  *   %-EINVAL: client provided too many chunks or segments,
-  *   %-ENOMEM: rdma_rw context pool was exhausted,
-  *   %-ENOTCONN: posting failed (connection is lost),
-@@ -1200,6 +1217,6 @@ int svc_rdma_process_read_list(struct svcxprt_rdma *rdma,
- 		return ret;
- 
- 	trace_svcrdma_post_read_chunk(&cc->cc_cid, cc->cc_sqecount);
--	ret = svc_rdma_post_chunk_ctxt(rdma, cc);
-+	ret = svc_rdma_post_chunk_ctxt(rdma, head);
- 	return ret < 0 ? ret : 1;
- }
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index d449460e8f1e..df6c3501f97c 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -198,6 +198,7 @@ static struct svcxprt_rdma *svc_rdma_create_xprt(struct svc_serv *serv,
- 	init_llist_head(&cma_xprt->sc_rw_ctxts);
- 	init_llist_head(&cma_xprt->sc_send_release_list);
- 	init_llist_head(&cma_xprt->sc_send_stranded_ctxts);
-+	init_llist_head(&cma_xprt->sc_recv_stranded_ctxts);
- 	init_waitqueue_head(&cma_xprt->sc_send_wait);
- 	init_waitqueue_head(&cma_xprt->sc_sq_ticket_wait);
- 
-@@ -677,6 +678,7 @@ static void svc_rdma_free(struct svc_xprt *xprt)
- 	svc_rdma_send_ctxts_stranded_release(rdma);
- 
- 	svc_rdma_flush_recv_queues(rdma);
-+	svc_rdma_recv_ctxts_stranded_release(rdma);
- 
- 	svc_rdma_destroy_rw_ctxts(rdma);
- 	svc_rdma_send_ctxts_destroy(rdma);
--- 
-2.55.0
-
+Thanks,
+Nanzhe
