@@ -1,219 +1,153 @@
-Received: from fout-a5-smtp.messagingengine.com (fout-a5-smtp.messagingengine.com [103.168.172.148])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wm2-f12.google.com (mail-wm2-f12.google.com [74.125.225.140])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DDA42481238
-	for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2026 06:55:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.148
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 769BD4DEC07
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2026 09:58:23 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.225.140
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790060123; cv=none; b=dleZvSezCGMnrgVSOAGvGjw2XDnbgQ4AzSQbUqGxNJ4shg1FHaDiuDvwu9P6oIO9eBz8zbV78DAdfjp8/TdCtCQbqIFwe3C4jibSOM+Sj7NRczABw89RR4CZ32iL7yCCdd/+ePGvv5vYM4jTDDvrNJRseySqzOrGUVMNOqHgQkc=
+	t=1790071107; cv=none; b=LX+xbW8z9gMK7h4CuSrdXcSiSg1mQbh/R8/OEo29BWMh8xJya1GXRSOzHOloR/+n/n/qhJ/8PUQ8MyoDKJdiqPdpPNVvN/4ES68F5DbTXnfJVrPk2sE259wfoJLgN1MPsQUe7nhGqwswH6NqQu0QbI5QJKco5S0z3nsUIIrnqKY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790060123; c=relaxed/simple;
-	bh=OcmGMyu/7xdr5fEkRpcp3RLPsoJSJw+OysBWNM4uIoI=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=KhER5Z+FjqmkRvWB1E0IXt62c0iinT5b6g4edOQ/0mGWvvl+GR9V0rzTK9y5yBEvStk8yyRx4vGhFi6Wf5IaKnJfxmh7h9t4TX+BIfCngRVUs+PFgcdLQGw8LGRyRWzOgjrGE/D8dtdpSeYBSz90r30AZmLNA6XVUB12fOHr6is=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=bu1bmJ/4; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=A1vSoP04; arc=none smtp.client-ip=103.168.172.148
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+	s=arc-20240116; t=1790071107; c=relaxed/simple;
+	bh=zYbfbPSv4oN0DQRZXu+ig0WpHZAE1jueUN/5aUe+dpQ=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=ZS6SHX30+GKn3WVUKo40rQpJ35tgorV9tBFp8sXIVBNcsXwW6rN9wEaXlNrG1Uhihj2XcZX5jZSH/bAms6+sHF7ursf6Gpe+wLRVXZKDZ0ku6LfZzvM5wRYCJ/JZHdSVEbwhcsGUUg9BWd615vqaE15HxfqfZyjJ9q4daw2qme8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=suse.com; spf=pass smtp.mailfrom=suse.com; dkim=pass (2048-bit key) header.d=suse.com header.i=@suse.com header.b=VtBoOvXm; arc=none smtp.client-ip=74.125.225.140
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=suse.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="bu1bmJ/4";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="A1vSoP04"
-Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
-	by mailfout.phl.internal (Postfix) with ESMTP id 1853CEC0181;
-	Tue, 22 Sep 2026 02:55:15 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-04.internal (MEProxy); Tue, 22 Sep 2026 02:55:15 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:content-type:date
-	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to; s=fm1; t=
-	1790060115; x=1790146515; bh=hPdoJ0br1yr8XeH5cwuWwDKHaEgxnk7Hcwn
-	vbf8dFfE=; b=bu1bmJ/4UoeKB/yROHyQoYTZKzSmND8ByMi+/cCo1hbW8JDMUEH
-	Qo2rM/mFHv2oiGUs6z22gsXWNBZAGRsOSOrQ4vaD9oKZebRxnKkizEvA+hz2Gq25
-	fhIJaq1pMRik9Kz8ipo+ujT937lTnOxvt1ZS2/qKe5Yr/qTtFjFc4yKiOHMgsazN
-	Cu6huTrZdKU/cbgWdZAfjY0SgvKjknhXRE2nStPocgbIft1yReUs+Q5Zv0aUTleB
-	aWJlwJfZ2bgqRZIpf1KAmUOuy2OSVwXRpl0kix+DjyBmqiQ7qCmZDy9oAM+wAcPH
-	JCaMz3P6YNPmmJskRqq+KEjjXKBof0ZtcxQ==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:content-type:date:date:feedback-id:feedback-id
-	:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1790060115; x=
-	1790146515; bh=hPdoJ0br1yr8XeH5cwuWwDKHaEgxnk7Hcwnvbf8dFfE=; b=A
-	1vSoP04YJndbnlfGvGqmTJCkFzglc3YYMFZCLh0kgpwqFZv03zl4X8o9/ot+b3ZK
-	TQeAyW8GBi1L1GH5i5fFiUlhL2O650X9udJ2els5bo5pLl2vNTDcdqFKr8c/YUN0
-	yjRr3DkAspKdN7AxXuZax3/ND+uP4IwqnxkNSCFJ62ftS/99ta454xo26BTCV6YX
-	VLLfXHULZ6i8C8p75BXt1C2wdn2XYV9BI5Is0Z08XwtUxqsiqI0+ymAo10JRAu7u
-	oR4XH4uGIUH8LYAlt5nZEFkUU7mSjmzUNQHSIMW9sb+Oao3HLsM5UwJXADJO6Z2l
-	1cFDcR+XMmlEZ55bLpaQg==
-X-ME-Sender: <xms:UiayaruyuKT1R-uJwCNdWbInrgtTm7ERdkDmNXK15ZnU6haVGXNTgg>
-    <xme:UiayausfagAQ6izU9m8SzrO554OhmfZOM1OfE1pzWhfONhx5SRbq1aQBu1RsAHN3g
-    q_63Jlt25GqODL2DhZAINd--ATFF_Jwaj5ZDDTob4Ftym9lWA>
-X-ME-Received: <xmr:UiayahCVxKd0Z_gXEosaTa3GqZhzorZ0kpowq1vRePs6m2D9R7HVLkewu5nXWFtYWPFoSlPwqjeyC5yKrL2xwtoFJ3RpgiM>
-X-ME-Proxy-Cause: dmFkZTF3EUutTaGhfEtD1/7WtJcHwlZCtnsQDhe3roPMKWG1x29AlWrpJT06z1QNu4T2NG
-    BvbCq0K/fFhhWfZ7riVCs2OKsb++MWYzH5bgSAEBQ17yK3Z0nYvaHX0VjPcxs5ViP/GnS9
-    TM0x3STwiY3HaasL8xX+JBE0jGb2weOZLIU74QAKLlTDoO9Zij1fp4yTALFZajFdLXfiIu
-    KIFDNoxU+VxByCT+voVw3d+aBRU8mazfaHKnPf/3DizuoKSI9EwD2txQzQfJd2XXiLLWHE
-    c/rZNIvcMVgbzDi2eVcfDkFPGw6HJSrCcv6BG7NIP8DBuRPag4YnrxGPUYhmVh3zHJREEr
-    rV9zMOG68M+JKIcRGQwcthSldaTost7Fq7aSr3A2Z1wFki5oUug5QXPxGI/4EQAuLHSMGP
-    mCdeCSNTnU0yEcSyJjAxvRTnbG+cgch7fgpmfHSmjW5kDVq+nZg2wzXZ6Wh7rVqnPOGDU/
-    GUzsXEeYRiUFzxg+snKms2lMvyZITmJQEAJ3UzVtG38R6Hv5ZjEOD039/HxwXua/qV1OwD
-    Mm66W1DR8i6MrctLplS0TOYmR5xQ3Xy7OHX8ifxUcXw6USFQ9DbB6gVbf6qCuzIi81/fWB
-    xwjMRsrDww3ECtWHFjT8O/C25kM9ptT+BnMC9g2t+5vLHUyOvq+37oE+UrlA
-X-ME-Proxy: <xmx:UiayagNGD-awQ_3Ql6M8Xf7c3FoI77e9hsgllpUfynEmgDzY5VQDow>
-    <xmx:UiayaqxV4Bnl99USTwfsMLkWgBftDJFHRumUYWCemFppWhoom8VOlw>
-    <xmx:UiayagViWgZs0XVlKJ0Sf4eFEIepDQD42XFHW-gFgiai1SZqfLkSBA>
-    <xmx:UiayasOVAg9OgdHmnkz1ALPfEJUtL1rcOPkNb_BkllU8TRWfGVuS1Q>
-    <xmx:Uyayat4UIYOmlyiVOa_uYjyvh_yKXq8rnsD9Yo8jUHGWi-L2fFdA-LLb>
-Feedback-ID: i9d664b8f:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
- 22 Sep 2026 02:55:12 -0400 (EDT)
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+	dkim=pass (2048-bit key) header.d=suse.com header.i=@suse.com header.b="VtBoOvXm"
+Received: by mail-wm2-f12.google.com with SMTP id 5b1f17b1804b1-49b912e4ad9so22933335e9.2
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2026 02:58:23 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=suse.com; s=google; t=1790071102; x=1790675902; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=nZUNZdA2VreC5ZuzVVTaU77y9kWQRV4FmcQNBHWyLvk=;
+        b=VtBoOvXmAmen9A15P2XUuom5lD/1FL4lYGpdQVlTKAozAKOcuAjxP/fvx0Ao38Exoq
+         5+Z4Hz0ZBE6NheeiWCh5xeWyQPagqjfs4f79S40IPirUpX5MyYP/m4caovC3dzry78uG
+         qLVHF46WMJzE6APh5ToFTevmH6sDFNe8j6X21GWEoW4cLdhNm4hEB96kOS4aoPn79zyN
+         nZrL7X7l5ieVRSVE7emEimSWG9oKJUGSRvLQJGSqXqZQPPgzbooqStbK79ZVMeOIf3FZ
+         Rfg8io+iLrPWZmwv45RZ6QmcYxFygH8ndbcley/wqvpcy8l0XeKLrrX3CsuxOj3R0rI1
+         hMhw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1790071102; x=1790675902;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=nZUNZdA2VreC5ZuzVVTaU77y9kWQRV4FmcQNBHWyLvk=;
+        b=lZLepS8K5HzJLMpWB+s8afgcftCYvw3hOWyscM7xa8cPbNaHrvzVoPEd+hV3q0FFjS
+         PDM23lVjKIHR87aKZXXWLes/tng4Lpht2/34J3XbNEoveVrrkdp0L6PZQmIGXkBDb1RS
+         WDkZKM4qk0qhUrR2L1GWgXplFY/GvSZBGt9/JhiE12JPHp4fyPVtw8HEnCdo514gkCdd
+         GSDf1wne7ibtHvgscI6HZWIdkzEe3zdSOKTW+hIGkSePY/Nj3fV37d93Im4fh/k9taAA
+         T1DPN9pQyTWP9IM2OVotrTysn8941mshPDS0nlCek3ao26jH9Tt/PuuXB3ZbZERYb96K
+         ioPA==
+X-Forwarded-Encrypted: i=1; AKwUvByXRoJVaAEIJjoLpYGDE6puU12/KB//LWBqswPqodmFeyqlo84UM97eAhbAOWEnP0weiwhKGctA8C8=@vger.kernel.org
+X-Gm-Message-State: AFuF++mpbH9cLZBrkEO+F9WdIr0xrN6u0mGK3HHbTBndGfAeYKgUxjVp
+	+8lGMWjNdv2vuezO9LRmJa7NfRFb2M15vWKGPGq1uyMRTr2zqupKXUPkIfRWgzhu1sI=
+X-Gm-Gg: AYBFou09iiZtRlgJb9DY0/o+DhSPWyicoGytg/OTMl1IMQ0wmKJ016UAUNnGMI04X2y
+	gf3GzEmrFUNbpJSJt7p9EaPJpJZ4aB6wrc9OorfI1dSOugzoI39nLgChVW/TDJN3X8H71BJHYOi
+	lEBx2YTqa/ZpZTW5BRPNcScRJInmLzAaOKi5KDtgsaq5aBZthvPKOwJN32m66MP3U9jJ10DKB85
+	EEL2RHm8w0JxEBzdT6rBDdLL0F9w3VBB2O9eskk6nWcScjgeMqj8FDgPXdBSZ1Fxn7k8TTMlRdQ
+	nGXXf5gUDX3Vo2ymSm58+6ehtWP5kA67mBOQzYGlOSbhkiqY3yGtPxoHzqctTUB0uSNsaPbTDNq
+	DzYSk9pS2IFSK88YzVOZxfWX1t9IcCuK+QZzPjbpk7VkYq6JHhyKIW629HlAs85MyfQi4qXlID3
+	rr7UwrjUi0ei26KmkiSpuyjB1HaaunaJBt4hPPkN55K8AYOXd3B5WriarFKn0lSemjT21HQyjoK
+	wdmO2P1yZHdFQA6g3fvfw3ww08Ka11mLI2EOt/g+SFEtgBIVvn0pp2HDB56edNPY5rh67G1ZvdF
+	pNP5N9ZDk0/OwOem1A/XNZTh1v2Uqkbbe3FUriMb
+X-Received: by 2002:a05:600c:a0a:b0:49e:84bf:6110 with SMTP id 5b1f17b1804b1-49fc56dbb49mr199597855e9.6.1790071101618;
+        Tue, 22 Sep 2026 02:58:21 -0700 (PDT)
+Received: from ?IPV6:2a00:1028:838d:271e:8e3b:4aff:fe4c:a100? (dynamic-2a00-1028-838d-271e-8e3b-4aff-fe4c-a100.ipv6.o2.cz. [2a00:1028:838d:271e:8e3b:4aff:fe4c:a100])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-49fdab0c240sm27108755e9.4.2026.09.22.02.58.19
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 22 Sep 2026 02:58:21 -0700 (PDT)
+Message-ID: <2bf82e0b-a032-4ee7-8d93-c5604222723d@suse.com>
+Date: Tue, 22 Sep 2026 11:58:18 +0200
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: NeilBrown <neilb@ownmail.net>
-To: "Chuck Lever" <cel@kernel.org>
-Cc: "Jeff Layton" <jlayton@kernel.org>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Rick Macklem" <rmacklem@uoguelph.ca>,
- linux-nfs@vger.kernel.org, "Chuck Lever" <cel@kernel.org>
-Subject: Re: [PATCH v6 00/12] Improve the scalability of NFSD's classic DRC
-In-reply-to: <20260921-duplicate-reply-cache-v6-0-db5e13fd9944@kernel.org>
-References: <20260921-duplicate-reply-cache-v6-0-db5e13fd9944@kernel.org>
-Date: Tue, 22 Sep 2026 16:55:10 +1000
-Message-id: <179006011019.37859.3256483489236921115@noble.neil.brown.name>
-Reply-To: NeilBrown <neil@brown.name>
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v3 0/3] Bring includes in linux/kmod.h up to date
+To: petr.pavlu@suse.com
+Cc: Tony Luck <tony.luck@intel.com>, Borislav Petkov <bp@alien8.de>,
+ Thomas Gleixner <tglx@kernel.org>, Ingo Molnar <mingo@redhat.com>,
+ Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org,
+ "H. Peter Anvin" <hpa@zytor.com>,
+ Philipp Reisner <philipp.reisner@linbit.com>,
+ Lars Ellenberg <lars.ellenberg@linbit.com>,
+ =?UTF-8?Q?Christoph_B=C3=B6hmwalder?= <christoph.boehmwalder@linbit.com>,
+ Jens Axboe <axboe@kernel.dk>, Johan Hovold <johan@kernel.org>,
+ Alex Elder <elder@kernel.org>,
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+ "Rafael J. Wysocki" <rafael@kernel.org>,
+ Michal Januszewski <spock@gentoo.org>, Helge Deller <deller@gmx.de>,
+ Alexander Viro <viro@zeniv.linux.org.uk>,
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
+ Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
+ Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>,
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+ Mark Fasheh <mark@fasheh.com>, Joel Becker <jlbec@evilplan.org>,
+ Joseph Qi <joseph.qi@linux.alibaba.com>, Tejun Heo <tj@kernel.org>,
+ Johannes Weiner <hannes@cmpxchg.org>, =?UTF-8?Q?Michal_Koutn=C3=BD?=
+ <mkoutny@suse.com>, Luis Chamberlain <mcgrof@kernel.org>,
+ Daniel Gomez <da.gomez@kernel.org>, Sami Tolvanen <samitolvanen@google.com>,
+ Aaron Tomlin <atomlin@atomlin.com>, Pavel Machek <pavel@kernel.org>,
+ Len Brown <lenb@kernel.org>, Andrew Morton <akpm@linux-foundation.org>,
+ Danilo Krummrich <dakr@kernel.org>, Nikolay Aleksandrov
+ <razor@blackwall.org>, Ido Schimmel <idosch@nvidia.com>,
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>,
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
+ Simon Horman <horms@kernel.org>, David Howells <dhowells@redhat.com>,
+ Jarkko Sakkinen <jarkko@kernel.org>, Paul Moore <paul@paul-moore.com>,
+ James Morris <jmorris@namei.org>, "Serge E. Hallyn" <serge@hallyn.com>,
+ Kentaro Takeda <takedakn@nttdata.co.jp>,
+ Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+ linux-edac@vger.kernel.org, linux-kernel@vger.kernel.org,
+ drbd-dev@lists.linux.dev, linux-block@vger.kernel.org,
+ greybus-dev@lists.linaro.org, linuxppc-dev@lists.ozlabs.org,
+ linux-acpi@vger.kernel.org, linux-fbdev@vger.kernel.org,
+ dri-devel@lists.freedesktop.org, linux-fsdevel@vger.kernel.org,
+ linux-nfs@vger.kernel.org, ocfs2-devel@lists.linux.dev,
+ cgroups@vger.kernel.org, linux-modules@vger.kernel.org,
+ linux-pm@vger.kernel.org, driver-core@lists.linux.dev,
+ bridge@lists.linux.dev, netdev@vger.kernel.org, keyrings@vger.kernel.org,
+ linux-security-module@vger.kernel.org
+References: <20260911-module-include-kmod-v3-0-6ebccc3e0731@suse.com>
+Content-Language: en-US
+From: Petr Pavlu <petr.pavlu@suse.com>
+In-Reply-To: <20260911-module-include-kmod-v3-0-6ebccc3e0731@suse.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-On Mon, 21 Sep 2026, Chuck Lever wrote:
-> On a server with more than 64 GB of low memory, the cap, and not
-> RC_EXPIRE, governs retention of DRC entries, so entries are evicted
-> before a retransmit can hit them. RC_EXPIRE is 120 seconds, shorter
-> than the default retransmit timeout for connected transport. This
-> means entries are frequently dropped from the DRC before a client
-> might retransmit.
->=20
-> After this series, the DRC retires an entry once the server transport
-> has seen the client peer acknowledge its reply.
->=20
-> Each network connection publishes two positions: the reply it has
-> just sent and the point up to which the peer has acknowledged, and
-> the DRC compares only the two. Nothing else about transport state is
-> exposed to fs/nfsd. UDP entries and replies sent over a TLS session
-> keep the current time-based eviction.
->=20
-> RC_EXPIRE itself is unchanged for every transport. A longer lifetime
-> for connected transports is follow-on work.
->=20
-> The hash bucket walk still stops at the first entry that has neither
-> expired nor been acknowledged, so an acknowledged entry behind one
-> from another transport stays until it expires.
->=20
-> ---
-> Changes in v6:
-> - Make the DRC size limit independent of page size (Neil)
-> - Drop same-connection retransmits (Neil)
-> - Link to v5: https://patch.msgid.link/20260918-duplicate-reply-cache-v5-0-=
-b6aba9ebf2f4@kernel.org
->=20
-> Changes in v5:
-> - Actually make xpt_id 64 bits wide (per Neil's review).
-> - Move the DRC cap removal first (per Neil's review).
-> - Rewrite the cap removal's description to stand on its own.
-> - Drop the 4x visit bound from the prune walk (per Neil's review).
-> - Evict acknowledged entries only where the prune walk reaches them.
-> - Restore the shrinker's unlimited per-bucket scan.
-> - Link to v4: https://patch.msgid.link/20260914-duplicate-reply-cache-v4-0-=
-bcf9d2628a94@kernel.org
->=20
-> Changes in v4:
-> - Track reply positions instead of ack cookies (per Neil's review).
-> - Make xpt_id a 64-bit counter and drop the xarray (per Neil's review).
-> - Drop implied ACK and the last-request timestamp (per Neil's review).
-> - Keep an unsent reply until RC_EXPIRE (per Neil's review).
-> - Pin a DRC entry against eviction until its reply has been sent.
-> - svcrdma: Serialize Send posting so positions match completion order.
-> - Drop the nfsd_drc_reply_acked tracepoint.
-> - Link to v3: https://patch.msgid.link/20260910-duplicate-reply-cache-v3-0-=
-31532a4c7449@kernel.org
->=20
-> Changes in v3:
-> - Add the reply-acknowledged callback and its TCP and RDMA reporters
->   ahead of implied ACK, which now defers to a pending report.
-> - Split the prune-loop restructure into its own patch.
-> - Move the eviction tracepoints ahead of the ack patches; the
->   implied-ACK event now lands with implied ACK.
-> - Keep err local to the pmap_register block in svc_setup_socket()
->   (per Jeff's review).
-> - Never move xpt_last_recv backwards when nfsd threads race.
-> - Fold the XPT_ORDERED patch into its consumer (per Jeff's review).
-> - State the re-execution exposure of implied-ACK eviction instead of
->   calling the DRC advisory (per Jeff's review).
-> - New patch: remove the DRC request checksum and payload_misses stat.
-> - New patch: remove the 256k-entry cap on the DRC size.
-> - Link to v2: https://patch.msgid.link/20260828-duplicate-reply-cache-v2-0-=
-25069e660a7b@kernel.org
->=20
-> Changes in v2:
-> - Print the DRC eviction tracepoints' age field as unsigned.
-> - Link to v1: https://patch.msgid.link/20260826-duplicate-reply-cache-v1-0-=
-b1d51e1af5c7@kernel.org
->=20
-> ---
-> Chuck Lever (12):
->       NFSD: Make the DRC size limit independent of page size
->       NFSD: Remove hard cap on duplicate reply cache size
->       SUNRPC: Assign a unique identifier to each svc_xprt
->       NFSD: Track transport in DRC entries
->       NFSD: Prepare bucket pruning for additional eviction reasons
->       NFSD: Add tracepoints for DRC entry eviction
->       NFSD: Record DRC population in lookup tracepoints
->       SUNRPC: Publish reply positions for upper-layer consumers
->       SUNRPC: Publish TCP reply positions
->       svcrdma: Publish RDMA reply positions
->       NFSD: Evict acknowledged DRC entries
->       NFSD: Remove DRC checksum and payload_misses stat
->=20
->  .../ABI/testing/procfs-nfsd-reply_cache_stats      |  11 +-
->  fs/nfsd/cache.h                                    |  16 +-
->  fs/nfsd/netns.h                                    |   2 -
->  fs/nfsd/nfscache.c                                 | 206 +++++++++++------=
-----
->  fs/nfsd/nfsd.h                                     |   3 +
->  fs/nfsd/nfssvc.c                                   |  11 +-
->  fs/nfsd/stats.h                                    |   5 -
->  fs/nfsd/trace.h                                    |  47 +++--
->  include/linux/sunrpc/svc.h                         |  16 ++
->  include/linux/sunrpc/svc_rdma.h                    |   5 +-
->  include/linux/sunrpc/svc_xprt.h                    |   3 +
->  include/linux/sunrpc/svcsock.h                     |   3 +
->  include/trace/events/sunrpc.h                      |   8 +-
->  net/sunrpc/svc.c                                   |   3 +
->  net/sunrpc/svc_xprt.c                              |  19 +-
->  net/sunrpc/svcsock.c                               |  29 +++
->  net/sunrpc/xprtrdma/svc_rdma_backchannel.c         |   2 +-
->  net/sunrpc/xprtrdma/svc_rdma_sendto.c              |  27 ++-
->  net/sunrpc/xprtrdma/svc_rdma_transport.c           |   1 +
->  19 files changed, 263 insertions(+), 154 deletions(-)
-> ---
-> base-commit: abf2077ee32058e60d3f49ecab265d3c4bd953d9
-> change-id: 20260325-duplicate-reply-cache-f0fe7c7b740c
->=20
-> Best regards,
-> -- =20
-> Chuck Lever <cel@kernel.org>
->=20
->=20
+On 9/11/26 4:46 PM, Petr Pavlu wrote:
+> The usermode helper declarations were previously provided by linux/kmod.h
+> but commit c1f3fa2a4fde ("kmod: split off umh headers into its own file")
+> moved them to linux/umh.h in 2017. Add explicit includes of linux/umh.h to
+> files that use usermode helpers and remove linux/kmod.h where it is no
+> longer needed.
+> 
+> Also add a missing include of linux/sysctl.h to kernel/time/jiffies.c.
+> 
+> Finally, clean up linux/kmod.h so that it includes only the headers that it
+> actually requires, importantly removing the compat linux/umh.h include.
+> 
+> This cleanup is motivated by trying to reduce the preprocessed size of
+> linux/module.h, which includes linux/kmod.h. linux/module.h appears in
+> roughly 15k #include directives across the kernel. This makes it a "hot"
+> header, so it should avoid pulling in unnecessary definitions. Note that
+> this series doesn't immediately improve the situation, since most of the
+> files included by linux/kmod.h are, for now, also included by
+> linux/module.h through other paths.
+> 
+> Apologies for the wide distribution. Acked-bys are appreciated.
 
-This all looks good to me - thanks.
-Apart from path 10:
-Reviewed-by: NeilBrown <neil@brown.name>
+I've queued the series on modules-next for 7.4-rc1.
 
-I don't know enough about rdma interfaces to properly review 10/12.
-
+-- 
 Thanks,
-NeilBrown
+Petr
