@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8B8B7472F63;
-	Tue, 22 Sep 2026 11:34:19 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DDAF13BB13A;
+	Tue, 22 Sep 2026 11:34:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790076861; cv=none; b=sE4hL3/etmUASAoYeGd92lgixx1KtMvDoDijBkMrBZLQUQvkEhvW9eA6mNKuY8v/IhV+nBupQF4eQnMqyLImQFOhxNny7ljRgpJrVyELQvRDBkw5UlkkuvWcVb0HywDCXBkZKpJLnDjlxEIiJEJfUroMUGjT07GaDV9exuk17Wk=
+	t=1790076862; cv=none; b=c/N24lnk7/hl33W0aNOPsHLCy6lsuaDbYmkMPLVQx6mLSBS9OJJgPCmOHTwEzLBdU1kEdcoXO2RyaZKN/r5+t+mAJxqdbMa6TFqYQxawqHs0qkePG+dCwATVEZT2jVNvKVrYeSo9ZMBE8ehlK6BKYKn/ktfQb+0PsEEwsZfTiHE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790076861; c=relaxed/simple;
-	bh=tetoouqKM6x3srM9fS0s9Rmg2CTzXDOW9oGLZrjQ9b0=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=fdducSPdxX8qLPPnXwCOgRWI1uf1DRG/sdNYACSMDTa70wtkRWC3jcqccu1N5EHBAO++pY9e6bD12YEQ6v2LCQpnlo0DNdkqkNgqJAAaEb99SpLQSn8n7M6ehth54btMmcuX5opSluqWWwmFz+KHp/22utzP72LFfwdvcuoadnQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nBbEb8eg; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1790076862; c=relaxed/simple;
+	bh=zCR/opn7RVI4+wfWUxanS7wEtFBcAfR88rNRJVt+grk=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=LVJENpdkc9qOzjUTB/7h4WeUMrSzQBbBuOZsW9DL0A83TDzsdR37htBP5nICbLeJpnponna9wkxN6T3bW+WSXwWJ93C4A3Hdnnpc99eCBBTZ8caDP7Lp4/l4cyuQLRWsd1atg8Txf0+hENNFrpwCWBMFNIlT3077w3AwX3fNOGk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=eWCJ6sBi; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nBbEb8eg"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A0B231F00893;
-	Tue, 22 Sep 2026 11:34:18 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="eWCJ6sBi"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9E9E11F000FF;
+	Tue, 22 Sep 2026 11:34:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790076859;
-	bh=8MPz51/AleVqrB9iFqCx4mq9xp/agFzW+2KTIHJEgnc=;
-	h=From:Subject:Date:To:Cc;
-	b=nBbEb8egguabqjrVzmzMNSUqdTo4bs3RSq/ArplsVaIb9l8ajUQvjFAb2oU6RmhIp
-	 EAwH7TV+CMZoiAYuGGY93rxNfPAckENr/+b+pVy5U9CP7pAhF+gHbljxwB5K/wczes
-	 WGiCwTSfhrpCVgVkh8FU1H1tnCZvRziDJcWAnX7mixtltlhuQC0L4j9d6nSqAxLHsH
-	 7PUd1WkNFryhNeH4AexvPsjlyzIeXN2OwIVLzVL5wXzSaI073WRlC4myWq6iTEFoO+
-	 JAuh4XFgjpI6NxlpnMlumOIZicSlSahXtENpqc8FDoASPyfWoggYTnMLMM180z8LCv
-	 gFp7uN6IGp7Kg==
+	s=k20260515; t=1790076860;
+	bh=jzSoL3QvVgF+2xSUs9iiTKgvCrgelMiWawC+3zEoW/0=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=eWCJ6sBiOdlMLL+N/z+7zOLvkAFrvJU5F1uWDhvM0vRYYI1Enac9B28S/cHDn6VK3
+	 iVWDRc+DQU7arC42sxdA6AVuiIAHhMaxDKMy2g2s+x2Q8qWW+Lo/jlosThJ1oqFLJx
+	 t3MXX/bBixboGPPCMq3zUxvmlZmRT0zwWYgZ1FAKOM3TK0wp0wic2h0jS6O9CfpseP
+	 L2nYBDrSTTVjJGlk2YgR7Pn7GozvCX4Ced0KeCraTw9HuamG15L1wx3hQyriIXvpi9
+	 CGuV9drC0i5HC/cp5g389uIF8Yq9xNSbbakkNaq7NHi96AnIjTppvx2QNWn5uB7Qpz
+	 vRtQQnTp+YSDQ==
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH v2 0/8] nfsd: reduce the scope of the nfsd_mutex
-Date: Tue, 22 Sep 2026 07:34:01 -0400
-Message-Id: <20260922-nfsd-per-net-mutex-v2-0-4a5da8243a73@kernel.org>
+Date: Tue, 22 Sep 2026 07:34:02 -0400
+Subject: [PATCH v2 1/8] nfsd: clear NFSD_NET_UP before dropping the generic
+ resource reference
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,101 +38,68 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NQQ6CMBBFr0Jm7Zi2aQu48h6GBYEBGrWQaSUY0
- rtbiUuX7yX//R0CsaMAl2IHptUFN/sM6lRAN7V+JHR9ZlBCWVHLCv0QelyI0VPE5yvShpU1prS
- 61qLtIA8XpsFtR/TWZJ5ciDO/j49Vfu0vp+S/3CpRoG5LVZWDNUJ31zuxp8d55hGalNIHe37fg
- LUAAAA=
-X-Change-ID: 20260918-nfsd-per-net-mutex-8655764940ac
+Message-Id: <20260922-nfsd-per-net-mutex-v2-1-4a5da8243a73@kernel.org>
+References: <20260922-nfsd-per-net-mutex-v2-0-4a5da8243a73@kernel.org>
+In-Reply-To: <20260922-nfsd-per-net-mutex-v2-0-4a5da8243a73@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>, Shuah Khan <shuah@kernel.org>
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-kselftest@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2996; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=tetoouqKM6x3srM9fS0s9Rmg2CTzXDOW9oGLZrjQ9b0=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqsmevVh/20L3zjeMpksNMAyjJxwaz1PW6OTxRa
- VOFxrNJDHOJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCarJnrwAKCRAADmhBGVaC
- FVKPD/0aXeeF8iIti+pN23JOjN4G9uIdYc929dgtr73TPjJz8Vqljs5vAUixQjCAdQRAz7S4N9r
- ehBrJZsYj9hP0F16EoMA61raWO/5TxAWZQvctIj75w9Ag+CP6YbsG1h14WaId6FlCaSU7HhK1HG
- zDg2/U6JUJslKssqx5HgPc7eFeTQn+gClHKPXUWwB+zA7/c/GoqAjFxtRsDEj1DLjU7vB1YLa0/
- 1fcU6jWcNVpvelHzpTqZbVdfdyXSULuNgd8H70Kx1dtPjFyUKTn1bKIS4kvGvk1udgrVe7trwC5
- Xfi9ewRVLAGLpHKPwWvMWXjhEVPYbrpqwXMWLn/m2ZEuI77/nUS/kG4gVrFd+bfO3EEXXGSfxP0
- dcPXuhoHipraKPJHRtLIjDpI0u0bu2EEQvtyD9LmYN4i7zbytSLusDChqIV26z9rxs9f9soM/TU
- apuk7xjDG+NtfFoI9oeQ3vtyCJ97nvpkxqCLgE5v73UHVXw6KYP7ePYol+6FIJijgWR1Yr5/G/1
- cn3Y0sTf+Cgxr43AVfH8xZ8YeIQ5DbFCq/cPkj9SzjMPEOR/nlq7NFBvkiF9UNjzgICvlEJolS5
- aHfldJ+XGTwATx9xPu0MvfKiuHQ7/e1fe83kz98fSBbvFVRFAGyuMrcE+9cKbzWbS29Tx23jZ9Q
- sYd/AjoU5ABocjA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1304; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=zCR/opn7RVI4+wfWUxanS7wEtFBcAfR88rNRJVt+grk=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqsme4Zq8r7rpxrReBlyDJQLFo6L2pWeRg4gR/x
+ vKfyFY3L6yJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCarJnuAAKCRAADmhBGVaC
+ FSLgD/0ZcAPRcHUbfk/YEfFxEUitUPai++jXThCJ739AubMcTUb9rywL+mS+ccKdIi0urni8uj5
+ TqWEe5CMnD3b2QOMX8aVRhPMVo4POxR5w6LnT+iyeMP3erfbOuogh1rHRA6SswnP7fyLrjoh980
+ 6aJzIlr68FvZKFmVFH2i8vh7oEKN9bLuX2MKm3X6u7c5vucvwYP0+KvAru43J8c14LpDhonWyEp
+ LJPlW0Ehw6G09Ks81/LMmAaBgOm4TdrKkw80yxBTDdbiEgsB0ZsJswzNTIRoV688IVGvkMoSs//
+ KZKO6T8gvOn6yBm9Ezqu8AigWa3VJPdol2xdlG8uW7CDNiZ3VHThU35cDReuwp+5ufu/64DaxrH
+ uA9P+GOTjeWUXRp9A1ht8yU44t4fcCvM75xn9+AX25ZIbSvDHdxL79shksX+bB1w/MTRnlOgtnx
+ fpGg8aIkwvcoUhipN3j4k8VKNov9bKnv+zEia0Un05lM2EdXgBP+9zsmlyEgqGqoxIDrDpsXqIl
+ FamShhaz7/cJf2hU/GpKtJW0mvO+mAn9KvI21UerhM2b3FeV4DGpY4BXQOeilJKxx+bIg0Jdi0N
+ 1+z+q+u6DPAGsoK1ycAWKoBbm999QOUW2Upk7snH1msOGL/sMSgZsLWpyYSuCspA5iWydmReOWH
+ lTa6KYSm4ak/Q5Q==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-This version fixes a couple of minor issues that Sashiko flagged, and
-also implements a suggestion by Neil to use guard() with the new
-filecache mutex.
+nfsd_shutdown_net() leaves NFSD_NET_UP set across nfsd_shutdown_generic(),
+so during that window the bit claims the host-wide file cache and NFSv4
+tables are up when the last namespace may already have torn them down.
+Nothing observes it today only because one global mutex covers both.
 
-Original cover letter follows:
+Fold the test and clear into test_and_clear_bit() so the invariant
+"NFSD_NET_UP implies the generic resources are up" holds on its own.
+No functional change.
 
--------------------8<--------------------
-
-Currently much of nfsd's administration is serialized under the global
-nfsd_mutex, even though most of the objects managed under it are
-segregated by net namespace.
-
-This patchset does a couple of small cleanups and then adds a new
-per-net mutex and moves all of the appropriate per-net data structures
-to be protected by it instead of the global mutex. The filecache is
-given its own mutex, and the global mutex is renamed and left for
-managing just the few remaning global objects.
-
-I also had an LLM cook up some selftests so we can hopefully keep all of
-this working properly in the future.
-
-Please consider for v7.4.
-
-Thanks,
-Jeff
-
+Assisted-by: LLM
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
-Changes in v2:
-- Fix potential deadlock in cross-namespace isolation selftest
-- Drop binaries from selftest patches
-- Use guard() in nfsd_file_cache_init()
-- Link to v1: https://lore.kernel.org/r/20260921-nfsd-per-net-mutex-v1-0-4a7287f6504c@kernel.org
+ fs/nfsd/nfssvc.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
----
-Jeff Layton (8):
-      nfsd: clear NFSD_NET_UP before dropping the generic resource reference
-      nfsd: make max_blksize a per-namespace setting
-      nfsd: move the control plane to a per-namespace mutex
-      nfsd: rename nfsd_mutex to nfsd_global_mutex
-      nfsd: give the open file cache its own mutex
-      selftests/nfsd: factor the netlink plumbing into a shared header
-      selftests/nfsd: add cross-namespace isolation tests
-      selftests/nfsd: add a cross-namespace control-plane soak
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index cbc989238710..d75fe1523436 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -433,9 +433,13 @@ static void nfsd_shutdown_net(struct net *net)
+ 
+ 	percpu_ref_exit(&nn->nfsd_net_ref);
+ 
+-	if (test_bit(NFSD_NET_UP, &nn->flags))
++	/*
++	 * Clear NFSD_NET_UP before dropping this namespace's reference on
++	 * the generic (host-wide) resources, so that the bit never claims
++	 * they are available once they may already be gone.
++	 */
++	if (test_and_clear_bit(NFSD_NET_UP, &nn->flags))
+ 		nfsd_shutdown_generic();
+-	clear_bit(NFSD_NET_UP, &nn->flags);
+ }
+ 
+ static DEFINE_SPINLOCK(nfsd_notifier_lock);
 
- fs/nfsd/export.c                                   |  22 +-
- fs/nfsd/filecache.c                                |  26 +-
- fs/nfsd/netns.h                                    |  16 +
- fs/nfsd/nfs4proc.c                                 |   4 +-
- fs/nfsd/nfs4state.c                                |   8 +-
- fs/nfsd/nfsctl.c                                   | 129 ++---
- fs/nfsd/nfsd.h                                     |   4 +-
- fs/nfsd/nfssvc.c                                   | 146 ++++--
- tools/testing/selftests/nfsd/.gitignore            |   2 +
- tools/testing/selftests/nfsd/Makefile              |   2 +
- tools/testing/selftests/nfsd/config                |   6 +
- tools/testing/selftests/nfsd/nfsd_netlink.h        | 319 ++++++++++++
- .../testing/selftests/nfsd/nfsd_netlink_listener.c | 301 +----------
- .../testing/selftests/nfsd/nfsd_netns_isolation.c  | 468 +++++++++++++++++
- tools/testing/selftests/nfsd/nfsd_netns_stress.c   | 572 +++++++++++++++++++++
- tools/testing/selftests/nfsd/settings              |   2 +-
- 16 files changed, 1592 insertions(+), 435 deletions(-)
----
-base-commit: aeaddc6a3711283c09a9183068897d4fe1fb464f
-change-id: 20260918-nfsd-per-net-mutex-8655764940ac
-
-Best regards,
 -- 
-Jeff Layton <jlayton@kernel.org>
+2.55.0
 
