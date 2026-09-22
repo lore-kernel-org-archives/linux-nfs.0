@@ -1,105 +1,146 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0EA6854280D
-	for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2026 14:06:40 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B4E6755C312;
+	Tue, 22 Sep 2026 15:31:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790086003; cv=none; b=Q9zCmthnO+CVHy7yroSjVplVgRxMjIMkQAdQCgAPBVFtRvvg3VDDI8G9a2VQIWZ/5ZP6SHPsW7k+3BUfjKBOMOSdCVG1sCpPqlW9ttZYKhqLvdNQKyWb3+APbFzISaA6WGw/p3qde3IkbWuXWZ0BXXwJBi4W1mOVliyVUz8yX+o=
+	t=1790091091; cv=none; b=eydvb8VjEs9Uur6DiQznYL9pJbJx2XMCBNuCAbHU/yvl1S8L4wBoCh+qZ613Ltusxt6ZQLOo9f8eY+YqilUetkhK9kjfNGN2JRInRg7GdxW1Ze8i4jvBc4a/qaPO5oIQbZsu6WbuwSfAEhhIg/wSawlWBIdgEmIoYO/MEKpwRdI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790086003; c=relaxed/simple;
-	bh=8YT7zCTEOtTi+DhThW3Q2EI4+sV3BD+6ovKn3PFEKsM=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=htLqakg+fSv85GY0+VFJXg9Na0wDCSNyq1h/lrGvm8huSGYKlorECesyQZ3tXfqrCdX658AOHh+O4HqQiteaX5RzuwMK8QC2gqZFLSHW/Yx+9QJi9G7QcBHtz33o7j/pEXLYXWhHV1DWUv0RTPSOHKTkFDaC8ZjNRriAtsSt6IA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GtdqFT2/; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1790091091; c=relaxed/simple;
+	bh=NALfkOxOZukdaM9bPf10hwBO/x1kAs+vxmEyMf4s694=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=GaZYUXX7pLzOKkV97cKsyoTrGWhkL96dOJR5Z+TdCfJtnOp/DDZ06gzxhoAqf6xX+f/e8KH9ydEWNoBCvspeerSfyfccGMYCcDR2DLFshMuFBFys2sBJxfMz1M9ZTFvT8djzeNSp4oDgHYJKzugYRZN5M6h9WX+Tc51KgAbMsuA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=oxgbajWA; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GtdqFT2/"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6B0651F000FF;
-	Tue, 22 Sep 2026 14:06:40 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="oxgbajWA"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 971F71F00893;
+	Tue, 22 Sep 2026 15:31:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790086000;
-	bh=L//P5NyOuHR1Jrk9NeNBtxDdceW2fcOYPJ4vvra3O+o=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=GtdqFT2/zw30B2Q2Ul14yhkeTcdg4jIzh5ovaw2xMPbdPmJ/W3aFiLXLATevDCCiK
-	 WNaznQr7psEdEbX53GAJXR2iqlmPzzNeDJoh85xPSSfmMak5HNDmvSxcSlU1S9Qaxn
-	 EaTre23Qrw6hFDEnDEsT04kaUpMsQAkYJKYTweYlmZatdrCfsNuKul34CyOPHDT9/P
-	 iYBbb1BiOjz4ZJ24ejy3N6tHjCTw5Xbl1Ll/GZF1Esp3/I4XUGfGg/h9m++852BS5c
-	 Dq2e8JupGtLz+kIt9rc6DABIQbTCTP/nNzgz7abLa703crVeEqFrSil3HUMb/KkyDz
-	 JOrAFRFsYi2zg==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 3CCF7F40068;
-	Tue, 22 Sep 2026 10:06:39 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Tue, 22 Sep 2026 10:06:39 -0400
-X-ME-Sender: <xms:b4uyapW-vT9BiWbzHHcbEpzKuNDKnEGNMWt4oPwAQCXcyb6C6M8x4g>
-    <xme:b4uyakbX7l_7sfNG8qI46yZQ4qNOzingX8sETZ6HO4Bqn6ifbi3h_Vi8LsW-Gphj5
-    HCT8HQtpkpVQZsnt7Hxucc4SvH-vtUictTuyQo0JrhS4xs3-d9F7s3D>
-X-ME-Proxy-Cause: dmFkZTGrdFg+p1NEcMQqgNPzVSTWrwg0fiEELVFhhoBp2f+DUziSJk1MdsO4OypE12VT1Q
-    DseutIxhZfb8rcnKiPI7dBbYC5OAekK7MnaejmiXbzYmA841FT60o4jPM7co0LcE8Dcali
-    4+1n2GIEHGotrN9dAE3kBO9shwLsK9BaFcRF8mOoDSM7T4FbJQ5JzPQ33zOAHFXSBJORuj
-    UcZXsPPLkxUTcktsbSrXg1b67bl+/q7V/UxTfiMYPT1vzUGM1lSwBcGjVlcU6Nn/D/eu0J
-    h0CILJAPSEX/D8Ang29e52FrREU7+0pD79mGl6PISHgE5TzJlHfn/7BfLwCsu35TQCZBpM
-    v63P54tsWi7BIH08ADpzFATQ/Yq4AVvSOJamWu7lXiO2VQxXHIFj5Ok7qXj6ik9kGSvFP+
-    W4VYueg0hA4X8gj2haD3/HqWAO121JpvC30J4S2CXELTIAdLsiWpqR8pWlydeORlhKpbbh
-    znWU4Gk2VflSJqPmA5g5DuemC6dl+9jmYsumYsU0JmrcJcDRV2PMPsM07NwjnQ0LEL2ttb
-    qlWSOG6gLfFs5JSWET+QyZuL9qKwFeiE1zIgzhaM6q9UdO2NKxOkEzxOOTYZkifuTGxeJj
-    THIIsANAj0SHEebejcvq8ioCGGYlpItn3LK/op0p5n6y/ENDuK6Jv775CUeQ
-X-ME-Proxy: <xmx:b4uyatxK71TEC9QeIW6FAt4SWR2Up86zzADpN9V7nO3_3HCyAFJjzw>
-    <xmx:b4uyaseiv8FNjyvTjzDsBUP3lNnE_BJtQM4t7-m2twu48aiZ7QvhoQ>
-    <xmx:b4uyaqCDfAl7kZ0GU0KZ1LAW8EuyE4zf69c51_J3kvmamoSCSyJyVA>
-    <xmx:b4uyao4EF8iEG6sWvNijjNDCySqm37oOGCakuGn3IfKm320tMZwgGw>
-    <xmx:b4uyarfBemmT6PaP2DuWrkHPHQAMb-DVwOifGyjeHEIEpSL2419pJb-5>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 1406E780070; Tue, 22 Sep 2026 10:06:39 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1790091090;
+	bh=VFYj6sjedfWGEBuGl++9heS9zoD83sYWZIxoZFH52Mw=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=oxgbajWAx+ewgz3EYGgJPYtZfNNrVy2jiDvlrL0XB6QieOmgNe9oJ8tWYTAmWkd4E
+	 40O1bShYyuGwabzOZg2yryGvTCOWVoLErNmP15TezU6CcK1+IP50a2puK4iDmaw6R3
+	 PCwUfPw/jYwdSq8HtaOBJAU/3KQvk7VOfDVSLU+W6MZTQuGVG14os2s8QuaTXuRpZy
+	 c1E7BQMp5Oh5V6N9yXEOXRU2Ns8Xz5BjaAREZfd68p1jzII0svn4YeEB6D4D+XgUXP
+	 mn6RKCk0xuOhAtFCkmd48wAcJ6k5w8jrTIJhK2olCjTjtXsHqi1z/Ac++TcJ8CKg7E
+	 LVSLUkJaZCs2w==
+Date: Tue, 22 Sep 2026 15:31:25 +0000
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+To: Nanzhe Zhao <nzzhao.sigma@gmail.com>
+Cc: Zi Yan <ziy@nvidia.com>, Qi Zheng <qi.zheng@linux.dev>,
+	Matthew Brost <matthew.brost@intel.com>,
+	Alistair Popple <apopple@nvidia.com>, ceph-devel@vger.kernel.org,
+	Eric Biggers <ebiggers@kernel.org>, xen-devel@lists.xenproject.org,
+	Gregory Price <gourry@gourry.net>,
+	Arnaldo Carvalho de Melo <acme@kernel.org>,
+	linux-fscrypt@vger.kernel.org,
+	Shuah Khan <skhan@linuxfoundation.org>,
+	David Hildenbrand <david@kernel.org>,
+	Suren Baghdasaryan <surenb@google.com>,
+	linux-kernel@vger.kernel.org, Nico Pache <nico.pache@linux.dev>,
+	linux-perf-users@vger.kernel.org,
+	Oleksandr Tyshchenko <oleksandr_tyshchenko@epam.com>,
+	Masami Hiramatsu <mhiramat@kernel.org>,
+	Jiri Olsa <jolsa@kernel.org>, linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Mark Rutland <mark.rutland@arm.com>, linux-doc@vger.kernel.org,
+	Dave Hansen <dave.hansen@linux.intel.com>,
+	Hongbo Li <hongbohbli@tencent.com>,
+	Ying Huang <ying.huang@linux.alibaba.com>,
+	Stefano Stabellini <sstabellini@kernel.org>,
+	Vlastimil Babka <vbabka@kernel.org>,
+	Sergey Senozhatsky <senozhatsky@chromium.org>,
+	Byungchul Park <byungchul@sk.com>,
+	linux-trace-kernel@vger.kernel.org,
+	Lorenzo Stoakes <ljs@kernel.org>,
+	Joshua Hahn <joshua.hahnjy@gmail.com>,
+	Barry Song <baohua@kernel.org>, Kairui Song <kasong@tencent.com>,
+	"Theodore Y. Ts'o" <tytso@mit.edu>,
+	Muchun Song <muchun.song@linux.dev>,
+	linux-f2fs-devel@lists.sourceforge.net,
+	Minchan Kim <minchan@kernel.org>, Lance Yang <lance.yang@linux.dev>,
+	Thomas Gleixner <tglx@kernel.org>, Anna Schumaker <anna@kernel.org>,
+	Pratyush Yadav <pratyush@kernel.org>,
+	Alex Markuze <amarkuze@redhat.com>,
+	Alexander Shishkin <alexander.shishkin@linux.intel.com>,
+	linux-mtd@lists.infradead.org, Chunhai Guo <guochunhai@vivo.com>,
+	Jonathan Corbet <corbet@lwn.net>, Dev Jain <dev.jain@arm.com>,
+	"Matthew Wilcox (Oracle)" <willy@infradead.org>,
+	Viacheslav Dubeyko <slava@dubeyko.com>,
+	Gao Xiang <xiang@kernel.org>, Wei Xu <weixugc@google.com>,
+	Baoquan He <baoquan.he@linux.dev>,
+	James Clark <james.clark@linaro.org>,
+	Steven Rostedt <rostedt@goodmis.org>,
+	Borislav Petkov <bp@alien8.de>,
+	Baolin Wang <baolin.wang@linux.alibaba.com>,
+	Shakeel Butt <shakeel.butt@linux.dev>,
+	Tal Zussman <tz2294@columbia.edu>,
+	Ilya Dryomov <idryomov@gmail.com>,
+	Oscar Salvador <osalvador@suse.de>, linux-nfs@vger.kernel.org,
+	linux-mm@kvack.org, linux-erofs@lists.ozlabs.org,
+	Mike Rapoport <rppt@kernel.org>, Ian Rogers <irogers@google.com>,
+	Michal Hocko <mhocko@suse.com>, Jan Kara <jack@suse.cz>,
+	Peter Zijlstra <peterz@infradead.org>,
+	Dave Young <ruirui.yang@linux.dev>,
+	Yuanchu Xie <yuanchu@google.com>,
+	"Liam R. Howlett" <liam@infradead.org>,
+	"H. Peter Anvin" <hpa@zytor.com>, Yue Hu <zbestahu@gmail.com>,
+	Rakie Kim <rakie.kim@sk.com>, Richard Weinberger <richard@nod.at>,
+	x86@kernel.org, Ingo Molnar <mingo@redhat.com>,
+	Axel Rasmussen <axelrasmussen@google.com>,
+	Ryan Roberts <ryan.roberts@arm.com>,
+	Pasha Tatashin <pasha.tatashin@soleen.com>,
+	Usama Arif <usama.arif@linux.dev>,
+	Jeffle Xu <jefflexu@linux.alibaba.com>,
+	Namhyung Kim <namhyung@kernel.org>, Juergen Gross <jgross@suse.com>,
+	kexec@lists.infradead.org, Adrian Hunter <adrian.hunter@intel.com>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+Subject: Re: [f2fs-dev] [PATCH v5 00/17] Remove PG_private by using
+ page/folio->private checks instead
+Message-ID: <arKfTXizFeTeKYDx@google.com>
+References: <20260920-remove-pg_private-v5-0-bb68b6a21869@nvidia.com>
+ <20260922041600.1240429-1-zhaonanzhe@xiaomi.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AVt1c__qMuMw
-Date: Tue, 22 Sep 2026 10:06:08 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Mayank Jangid (OpenSec Intelligence)" <mayank.jangid.moon@gmail.com>
-Cc: jlayton@kernel.org, neil@brown.name, okorniev@redhat.com,
- Dai.Ngo@oracle.com, tom@talpey.com, linux-nfs@vger.kernel.org,
- linux-kernel@vger.kernel.org, security@kernel.org,
- "Kushal Khemka" <kushalkhemka559@gmail.com>,
- "Kkartik Aggarwal" <aggarwalkkartik@gmail.com>
-Message-Id: <29830200-dcb0-452f-9e19-80a595b46fe7@slotpi15m67>
-In-Reply-To: <20260922112608.1256363-1-mayank.jangid.moon@gmail.com>
-References: <20260922112608.1256363-1-mayank.jangid.moon@gmail.com>
-Subject: Re: [PATCH] nfsd: prevent NFSv4.1 SEQUENCE reply-cache overflow
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260922041600.1240429-1-zhaonanzhe@xiaomi.com>
 
-On 9/22/26 7:26 AM, Mayank Jangid (OpenSec Intelligence) wrote:
-> nfsd4_sequence() narrows the reply buffer to the session cached-respon=
-se
-> limit before accepting the slot sequence ID. A client can negotiate
-> ca_maxresponsesize_cached down to NFSD_MIN_HDR_SEQ_SZ, leaving no stor=
-age
-> in the slot trailing sl_data[] array.
+On 09/22, Nanzhe Zhao wrote:
+> Hi Zi Yan,
+> 
+> Thanks for the series. The cleanup is a nice help for the f2fs
+> large-folio work -- it removes the page-based private-flag plumbing that
+> my series would otherwise have to carry itself.
+> 
+> My large-folio series v2 [1] can be rebased on top of this series. The
+> only overlap is the PAGE_PRIVATE_* flag helpers, which I can re-express
+> on top of the F2FS_FOLIO_PRIVATE_* names while keeping the
+> f2fs_folio_state indirection.
+> 
+> Jaegeuk, do you have a preference on the ordering here? My personal
+> suggestion would be to review and merge this series first, and I'll
+> rebase on top of it.
 
-Thanks for the report and the patch. J=C3=A9r=C3=A9my Jean reported the =
-same
-issue in August, and a fix for it is already queued in the nfsd-testing
-branch:
+Let's keep working on the f2fs tree, since we should not merge this in my tree.
+Later, we'd need to prepare how to address the merge conflict.
 
-  https://lore.kernel.org/linux-nfs/20260817-jean-v1-0-9e356596ab85@kern=
-el.org/
-
-Patch 1/2 there adds the same pre-flight check of the SEQUENCE reply
-size before nfsd4_sequence() narrows the buffer and accepts the slot,
-and patch 2/2 sets op->status when an operation header cannot be
-encoded. Your patch does the same two things, so I won't apply it on
-top of that series.
-
-If you can test the queued fix against your reproducer and confirm it
-addresses the overflow you found, a Tested-by: on that thread would be
-welcome.
-
---=20
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+> 
+> [1] https://lore.kernel.org/linux-f2fs-devel/20260915041909.2903887-1-zhaonanzhe@xiaomi.com/
+> 
+> Thanks,
+> Nanzhe
+> 
+> 
+> _______________________________________________
+> Linux-f2fs-devel mailing list
+> Linux-f2fs-devel@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel
