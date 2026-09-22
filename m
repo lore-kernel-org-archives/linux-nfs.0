@@ -1,35 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B9D3547FB0C;
-	Tue, 22 Sep 2026 11:34:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 79D0C53C3CC;
+	Tue, 22 Sep 2026 11:34:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790076868; cv=none; b=TEYGljP/EspiOeQe0tqM9Xyg0/d0LLEMg32tboZx0bgBnsk/gFN/2RsSxcKb0xyNT+QG+Jghcgy39JAuXecgVhNe3AdKERaAzGwUfcr+KqLqtN+EB4UThiOEQIsWPVO8bAJ2QS+FKC/Yn18IzTiBc/ppGSH4EAEc/fShpdCRUhU=
+	t=1790076868; cv=none; b=dwuY5rFRFxF4vWbRSlh0r3cgo/QRVMcIghNgXpNF0J7K5ehrthr7tLzePh9xeKjyxQA1snSdJBUrW+dHTKvbYrcv6qq5uLHzPdZzmbgT18Blm8W/u998rwJqjTiPSTrbGQBjN6c9CW3c1WuhhmxLN1wm2VZBY9PuUrBrXYt3VC8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1790076868; c=relaxed/simple;
-	bh=E8vGIRGIZ5Ej8iVy508sE++9uoe+ty5nWr2vlsyp4Xw=;
+	bh=kOuMQpouklLFUeC63Q/1ytRszZTYqhpNjFTVkX/gXnY=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=sl4jYqPagfZm5tPgTDBig1tqQkYW8mpbq4IMDvQ0VzDGumQFVSzgWz6H44d26rsqoMcI5rgm80FwlTYmiIp6NG8WX2SOSScBaZiQEkAoALlA0cGnyNNS4hzpBaaDMmyBLryfVdn/6Sv2tlvha/Sxn9Rk196yx3nH1/ieW2yuDXk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AvL+l3Qj; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=WgeTQy6rkYBhpYC4GOBWFqqUB3XVtCHGvk3ZWRWvpYANi+HuPLWJF2XIJwcscTejVFdvw4dlP52Hc6oI5t3GN3cbDzyGoIe3AanX73WMKAS14GxB0tb0Qjv52j8pnUC9R9wS12eOmg6sxLahctQ0qoeL5xZkSvpMn8k2Rr8NwIU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZnKrPllV; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AvL+l3Qj"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A164E1F00898;
-	Tue, 22 Sep 2026 11:34:24 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZnKrPllV"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9F5C41F0089B;
+	Tue, 22 Sep 2026 11:34:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790076865;
-	bh=2aVXY9iiOPtDAAWpb3Jyxfl+AE25CNbFUHutOqPD/6c=;
+	s=k20260515; t=1790076866;
+	bh=DZ7DioWmuUY4s9zHzGXWjWhaeMChyVlk3Mqm1MIVMX0=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=AvL+l3QjUdv78sXs0ZzDvxviyFWjSHMjAn3uo1XIrC67WklTZzLYsM8RBxVm2OoLd
-	 A7fX8hSVWER4Zy5z99fOwW8Z6vKm3olj2/mH9ez3sDU0slaYG3gATiKO1fQm42T8wk
-	 Ok241egWSbp2MWA3kuXFqR500z++dEQ9Fi8jgL/iuKhUch3X9ndS99o43YzWeoahwQ
-	 a/iVqSIU/8XNbe610gmWnAYLgMHBW6MdwjfKDHDKL6DRnEY6tts6vL/75Qq0w3xhsW
-	 +ZoCjNbFiu71pUZR2p63p+/0PuLWjh2wkV7X7kppmn5tkbR9yCw3cTzfVC+nmdsndI
-	 oQJCs6V5wKGxA==
+	b=ZnKrPllV/jfU9jLuWPc4pgPZnv4Cma5gSqzFuzaM2E/G/+Tn4aOQLbzgMEo6os3j8
+	 YqCWz38c7U6EhuQzmVK2p/4KmC4yFnb6OGwTqbzrre3ZgAGQoSWVM5pu1nx+gfQ/Wo
+	 x5q7eZXxbV0L9RzPKYgYXynwm/b5fKN9yZXteQgMS9mqnrc6BCADtSjLv1OVuiFL6E
+	 U8RSkZ/TQLQuMGAx1lZ8rLv59gfv4j7ml3Ib2/0p85rwarM3H84enSOpCjcS1ZBZDy
+	 K0hdt06D0hjjC8iQE8ce/Z1MO52T/+05SnKFOtRRBoLyA54kc/DMXrOT/8KjsXEOdh
+	 ElRE46EA2tgNg==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Tue, 22 Sep 2026 07:34:07 -0400
-Subject: [PATCH v2 6/8] selftests/nfsd: factor the netlink plumbing into a
- shared header
+Date: Tue, 22 Sep 2026 07:34:08 -0400
+Subject: [PATCH v2 7/8] selftests/nfsd: add cross-namespace isolation tests
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +37,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260922-nfsd-per-net-mutex-v2-6-4a5da8243a73@kernel.org>
+Message-Id: <20260922-nfsd-per-net-mutex-v2-7-4a5da8243a73@kernel.org>
 References: <20260922-nfsd-per-net-mutex-v2-0-4a5da8243a73@kernel.org>
 In-Reply-To: <20260922-nfsd-per-net-mutex-v2-0-4a5da8243a73@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -47,689 +46,560 @@ To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>,
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-kselftest@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=20983; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=E8vGIRGIZ5Ej8iVy508sE++9uoe+ty5nWr2vlsyp4Xw=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqsme5PAihfAmBedzHK5Z62IPF0XRZhGv/Fx+Sy
- OHhWc1CYi+JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCarJnuQAKCRAADmhBGVaC
- FaAkEACJwD5jhrxCvI38sNz2b8TuDlTaBafPgc4fVTgnksSXrdDRvNVKqvC7Y1EnNwf4QXNgC6+
- Xb9EimX2ZM3IhkcEWZ8bbjCcKyKZecGqovEtf+sE/E10H8gqUDymHtmWenSOwcqG+dgr0VV7gGi
- RlX3egerXdgM9gSPUIfSo3HyS3Z9xhnyZIn3PsxEHfm+JHZYO8tXmEmMRUuWWx6c9JGAuKjJOmK
- +i1vXSkGYgHCwn7kaFk49otkvKS5zSSh8C7/dApWFCuasD6pO0tjOYnC2bAPEps64w31UuIhNxv
- 1cotobzCqEH31Amjec/lv8cmXNmR3Xk9c0j3q8z/VT8feYt/pJWQ/j5c9HEPg45jYW9qzxtHiMT
- Ss2n7aRCIlC46AP6XWE1P3VQCnGCJpAJeQ+pqXawtd0hK5K3Z4Pdk7/0RTTCVZXD6clXNP87Llr
- Q9Nv73+oYOGvuQUX1RUeA3D9YHTbnU1+te/4yqimtZBgLK+irMiDp9DGJNSJ8+pLIFY6uuRZVNw
- SkHiNqPAGBSXk/varH42tDpIQYOEEPEcPqUNfNM/USZomm6bZmItrM1S0MO8M7wATsL7IqlOZNK
- oX+l39Idv/Lka3+He6oJ1e1Z2dN5+e1bFd7LUhvNgRTOzIJyei4HOy4mgKrH19S9kP77PjBAAFZ
- jqXtgVYBYMZRdEA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=15892; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=kOuMQpouklLFUeC63Q/1ytRszZTYqhpNjFTVkX/gXnY=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqsme6VV1ytjSUpbRIPQ0J9vQO1EO026VXdWK/7
+ mY9COTvkdmJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCarJnugAKCRAADmhBGVaC
+ FS4iEACow7yfFH9XO88jd7iO2qumFIDeQ5EWk3EzOQ0HCD1GaPug0nf4H4QZnVUVaOn5yP1Iw2R
+ VhvQzC/0or/gdyUFaLlY3iY58L4L5jYNjOVFS5iDJE7GA6ERdix14M4BgCN7cUG/lar+v4+WwYv
+ Ds2cuxWKB1RXPYgMUFNxquq/6GIac/gd5EyF2siBMw8VW2+/ETZEFijyYhBj15ijoQwIquLg7Uu
+ rI60OHEiR8HsFnYaX6mA0+yPKzemobPH4i9/Qk0s4/IO94u45b38T/zAPdI9eiY0BB4ubWnrpwZ
+ pwnbvGsRouGp9AaV5ZRddgfYLDoTnNJlsJSXllOX8vgfodPi9ZYxvYkkSICv5SSsasMX2WiJUnT
+ OvMtHyPMOusRRvNBQVOom4Am8nG/KQ5cLhnDZ2+rrKMqHRWvlwkiWzVda/rUAwMADxmEnWs6MD/
+ sn0GXpPExHWKTh4a0i1y9IWsRYD/tDV1m7vsBKUNFUDM5DJ1KS3+JcmbYwt+2zGK/Xm55hTK4Gi
+ acmMmJkiqOXE+LF8zxhbB10mJ66piWgk4SnVev/3cxsQWUKbT1oIhGJpFfO8lrk0iyhGnleWuJa
+ LZ11kZVa21bmeOx+9HdUy3S6PDK9wRHNdnZRebtJfpANtcJuJmyU/uJvwDnrZkAhFlSGS194M1F
+ UVVe7RwV09Wh68A==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-nfsd_netlink_listener.c carries a small generic-netlink client -- socket
-setup, attribute packing, extack parsing, family resolution -- plus the
-LISTENER_SET/THREADS_SET/VERSION_SET wrappers. Other nfsd tests want the
-same thing.
+Check that one namespace's NFSD settings and running server stay out of
+another's, now that the control plane is serialized per namespace.
 
-Move it to nfsd_netlink.h as static inline helpers, so each test binary
-gets its own copy and there is nothing to link. Code is unchanged; only
-the three continuation lines that the static inline prefix pushed out of
-alignment were reflowed.
+  max_blksize_is_per_netns
+	max_block_size is reachable only through a per-netns nfsd
+	filesystem but used to live in a module-wide variable. Read it in
+	a throwaway namespace, change it in a second, read it again in a
+	third; the two reads must agree. No value is hardcoded -- the
+	default is derived from the size of memory, so the test picks a
+	target that differs from whatever this machine reports.
+
+  *_busy_is_per_netns, pool_stats_readable_with_foreign_server,
+  listener_get_does_not_show_foreign_listeners
+	max_block_size, VERSION_SET and nfsv4leasetime all refuse with
+	-EBUSY once that namespace has a serv. A peer namespace holds a
+	server up while the test pokes its own, which must not be
+	affected. LISTENER_GET must not report the peer's listener.
+
+  expkey_flush_with_foreign_server
+	writing /proc/net/rpc/nfsd.fh/flush is the one userspace path that
+	reaches nfsd_file_cache_purge(), and so the one that takes the
+	file cache lock with nothing else held.
+
+Servers are created with NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND so nothing
+calls out to rpcbind, and restricted to NFSv4.1 so nfsd_needs_lockd()
+stays false. Each namespace mounts its own nfsd filesystem on a private
+tmpfs; the module creates /proc/fs/nfs, not /proc/fs/nfsd, so there is no
+mountpoint to borrow.
 
 Assisted-by: LLM
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- tools/testing/selftests/nfsd/nfsd_netlink.h        | 319 +++++++++++++++++++++
- .../testing/selftests/nfsd/nfsd_netlink_listener.c | 295 +------------------
- 2 files changed, 322 insertions(+), 292 deletions(-)
+ tools/testing/selftests/nfsd/.gitignore            |   1 +
+ tools/testing/selftests/nfsd/Makefile              |   1 +
+ .../testing/selftests/nfsd/nfsd_netns_isolation.c  | 468 +++++++++++++++++++++
+ tools/testing/selftests/nfsd/settings              |   2 +-
+ 4 files changed, 471 insertions(+), 1 deletion(-)
 
-diff --git a/tools/testing/selftests/nfsd/nfsd_netlink.h b/tools/testing/selftests/nfsd/nfsd_netlink.h
+diff --git a/tools/testing/selftests/nfsd/.gitignore b/tools/testing/selftests/nfsd/.gitignore
+index 19e6dec04d8e..0304b80eb844 100644
+--- a/tools/testing/selftests/nfsd/.gitignore
++++ b/tools/testing/selftests/nfsd/.gitignore
+@@ -1 +1,2 @@
+ nfsd_netlink_listener
++nfsd_netns_isolation
+diff --git a/tools/testing/selftests/nfsd/Makefile b/tools/testing/selftests/nfsd/Makefile
+index 15ac65549d25..2b7c44c3fb00 100644
+--- a/tools/testing/selftests/nfsd/Makefile
++++ b/tools/testing/selftests/nfsd/Makefile
+@@ -2,5 +2,6 @@
+ CFLAGS += $(KHDR_INCLUDES) -Wall
+ 
+ TEST_GEN_PROGS := nfsd_netlink_listener
++TEST_GEN_PROGS += nfsd_netns_isolation
+ 
+ include ../lib.mk
+diff --git a/tools/testing/selftests/nfsd/nfsd_netns_isolation.c b/tools/testing/selftests/nfsd/nfsd_netns_isolation.c
 new file mode 100644
-index 000000000000..c66a980bfc01
+index 000000000000..b39ea6a908fd
 --- /dev/null
-+++ b/tools/testing/selftests/nfsd/nfsd_netlink.h
-@@ -0,0 +1,319 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
++++ b/tools/testing/selftests/nfsd/nfsd_netns_isolation.c
+@@ -0,0 +1,468 @@
++// SPDX-License-Identifier: GPL-2.0
 +/*
-+ * Shared generic-netlink plumbing for the NFSD selftests.
++ * Namespace-isolation tests for the NFSD control plane.
 + *
-+ * Header-only: every helper is static inline, so each test binary gets its
-+ * own copy and there is nothing extra to link. nfsd_family must be set by
-+ * calling genl_resolve_nfsd() before any of the request helpers are used.
++ * NFSD's per-namespace settings used to sit behind one module-wide mutex,
++ * and one of them -- the maximum READ/WRITE payload -- was a module-wide
++ * variable reachable through a per-netns file. These tests pin down the
++ * boundary: what one namespace does to its own server must not be visible
++ * to, or block, another.
++ *
++ * Every namespace here gets a private net + mount namespace, a tmpfs on
++ * /mnt so nothing escapes, and its own nfsd filesystem mounted on
++ * /mnt/nfsd. The module creates /proc/fs/nfs, not /proc/fs/nfsd, so the
++ * mount has to be made by hand; it is also what ties a running server to
++ * this test, since nfsd_umount() stops the threads.
++ *
++ * Servers are created with NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND so nothing
++ * ever calls out to rpcbind, and restricted to NFSv4.1 so that
++ * nfsd_needs_lockd() stays false and no lockd instance is started.
 + */
-+#ifndef __SELFTESTS_NFSD_NETLINK_H__
-+#define __SELFTESTS_NFSD_NETLINK_H__
-+
++#define _GNU_SOURCE
 +#include <errno.h>
++#include <fcntl.h>
++#include <limits.h>
++#include <sched.h>
++#include <signal.h>
 +#include <stdint.h>
 +#include <stdio.h>
 +#include <stdlib.h>
 +#include <string.h>
 +#include <unistd.h>
++#include <sys/ioctl.h>
++#include <sys/mount.h>
++#include <sys/prctl.h>
 +#include <sys/socket.h>
-+#include <sys/time.h>
++#include <sys/stat.h>
++#include <sys/wait.h>
++#include <net/if.h>
 +#include <netinet/in.h>
-+#include <linux/netlink.h>
-+#include <linux/genetlink.h>
-+#include <linux/nfsd_netlink.h>
 +
-+#define NLA_ALIGN4(len)			(((len) + 3) & ~3)
-+#define RECV_TIMEO_SEC			30
++#include "../kselftest_harness.h"
++#include "nfsd_netlink.h"
 +
-+static int nfsd_family = -1;		/* set per-test in FIXTURE_SETUP */
++#define NFSD_MNT		"/mnt/nfsd"
++#define TEST_PORT		20049
 +
-+/* Extack message from the last genl_request(); empty if there was none. */
-+static char last_extack[128];
-+
-+static inline void die(const char *msg)
-+{
-+	perror(msg);
-+	exit(1);
-+}
-+
-+/* ------------------- minimal generic-netlink plumbing ------------------- */
-+
-+static inline int genl_open(void)
-+{
-+	struct sockaddr_nl sa = { .nl_family = AF_NETLINK };
-+	struct timeval tv = { .tv_sec = RECV_TIMEO_SEC };
-+	int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_GENERIC);
-+	int on = 1;
-+
-+	if (fd < 0)
-+		die("socket(NETLINK_GENERIC)");
-+	if (bind(fd, (void *)&sa, sizeof(sa)) < 0)
-+		die("bind(netlink)");
-+	setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-+	/*
-+	 * Ask for extack, and cap the ack so the request is not echoed back:
-+	 * the TLVs then always follow the fixed part of the error message.
-+	 */
-+	setsockopt(fd, SOL_NETLINK, NETLINK_EXT_ACK, &on, sizeof(on));
-+	setsockopt(fd, SOL_NETLINK, NETLINK_CAP_ACK, &on, sizeof(on));
-+	return fd;
-+}
-+
-+/* Stash the extack message of an ack, if it carries one. */
-+static inline void parse_extack(const char *rbuf)
-+{
-+	const struct nlmsghdr *nlh = (const void *)rbuf;
-+	const struct nlattr *na;
-+	int off, left;
-+
-+	last_extack[0] = '\0';
-+	if (nlh->nlmsg_type != NLMSG_ERROR ||
-+	    !(nlh->nlmsg_flags & NLM_F_ACK_TLVS))
-+		return;
-+
-+	off = NLMSG_HDRLEN + NLMSG_ALIGN(sizeof(struct nlmsgerr));
-+	left = nlh->nlmsg_len - off;
-+	na = (const void *)(rbuf + off);
-+
-+	while (left >= (int)NLA_HDRLEN) {
-+		if ((na->nla_type & NLA_TYPE_MASK) == NLMSGERR_ATTR_MSG) {
-+			strncpy(last_extack, (const char *)na + NLA_HDRLEN,
-+				sizeof(last_extack) - 1);
-+			last_extack[sizeof(last_extack) - 1] = '\0';
-+			return;
-+		}
-+		left -= NLA_ALIGN4(na->nla_len);
-+		na = (const void *)((const char *)na + NLA_ALIGN4(na->nla_len));
-+	}
-+}
-+
-+/* Append an attribute at @off; return the new (aligned) offset. */
-+static inline int put_attr(char *buf, int off, uint16_t type,
-+			   const void *data, int len)
-+{
-+	struct nlattr *na = (void *)(buf + off);
-+
-+	na->nla_type = type;
-+	na->nla_len = NLA_HDRLEN + len;
-+	if (len)
-+		memcpy(buf + off + NLA_HDRLEN, data, len);
-+	return off + NLA_ALIGN4(NLA_HDRLEN + len);
-+}
-+
-+/* Build a genl message header into @buf; return the offset past it. */
-+static inline int genl_hdr(char *buf, uint16_t type, uint16_t flags, uint8_t cmd)
-+{
-+	struct nlmsghdr *nlh = (void *)buf;
-+	struct genlmsghdr *gnl = (void *)(buf + NLMSG_HDRLEN);
-+
-+	memset(buf, 0, NLMSG_HDRLEN + GENL_HDRLEN);
-+	nlh->nlmsg_type = type;
-+	nlh->nlmsg_flags = flags;
-+	nlh->nlmsg_seq = 1;
-+	gnl->cmd = cmd;
-+	gnl->version = 1;
-+	return NLMSG_HDRLEN + GENL_HDRLEN;
-+}
-+
-+/* Send an nfsd command with an ACK; return the ACK errno (<= 0). */
-+static inline int genl_request(uint8_t cmd, const char *attrs, int attrs_len)
-+{
-+	char buf[1 << 20], rbuf[4096];
-+	struct nlmsghdr *nlh = (void *)buf;
-+	int fd = genl_open();
-+	int off, n, ret;
-+
-+	off = genl_hdr(buf, nfsd_family, NLM_F_REQUEST | NLM_F_ACK, cmd);
-+	if (attrs_len) {
-+		memcpy(buf + off, attrs, attrs_len);
-+		off += attrs_len;
-+	}
-+	nlh->nlmsg_len = off;
-+
-+	if (send(fd, buf, off, 0) < 0)
-+		die("send(genl)");
-+
-+	last_extack[0] = '\0';
-+	n = recv(fd, rbuf, sizeof(rbuf), 0);
-+	if (n < 0) {
-+		ret = (errno == EAGAIN || errno == EWOULDBLOCK) ? -ETIMEDOUT : -errno;
-+	} else if (((struct nlmsghdr *)rbuf)->nlmsg_type == NLMSG_ERROR) {
-+		ret = ((struct nlmsgerr *)NLMSG_DATA(rbuf))->error;
-+		parse_extack(rbuf);
-+	} else {
-+		ret = 0;
-+	}
-+	close(fd);
-+	return ret;
-+}
++/* netns_enter() could not build a usable namespace; not a test failure. */
++#define NETNS_NO_SETUP		INT_MIN
 +
 +/*
-+ * Send a command with attributes and return the full reply message; -errno
-+ * on failure. NLM_F_ACK is left off: the kernel reports an error either way,
-+ * so the first message back is the reply whenever there is one.
++ * Build a private net + mount namespace with an nfsd filesystem on
++ * /mnt/nfsd and loopback up. Returns 0, or NETNS_NO_SETUP when the
++ * environment will not allow it.
 + */
-+static inline int genl_request_reply_attrs(uint8_t cmd, const char *attrs,
-+					   int attrs_len, char *rbuf,
-+					   size_t rlen)
++static int netns_enter(void)
 +{
-+	char buf[1 << 20];
-+	struct nlmsghdr *nlh = (void *)buf;
-+	int fd = genl_open();
-+	int off, n, ret;
++	struct ifreq ifr = {0};
++	int s;
 +
-+	off = genl_hdr(buf, nfsd_family, NLM_F_REQUEST, cmd);
-+	if (attrs_len) {
-+		memcpy(buf + off, attrs, attrs_len);
-+		off += attrs_len;
++	if (unshare(CLONE_NEWNET | CLONE_NEWNS) < 0)
++		return NETNS_NO_SETUP;
++	if (mount("", "/", NULL, MS_REC | MS_PRIVATE, NULL) < 0)
++		return NETNS_NO_SETUP;
++
++	/*
++	 * Everything below is created inside this mount namespace only, so
++	 * the mkdir cannot leave anything behind on the host.
++	 */
++	if (mount("tmpfs", "/mnt", "tmpfs", 0, NULL) < 0)
++		return NETNS_NO_SETUP;
++	if (mkdir(NFSD_MNT, 0755) < 0)
++		return NETNS_NO_SETUP;
++	if (mount("nfsd", NFSD_MNT, "nfsd", 0, NULL) < 0)
++		return NETNS_NO_SETUP;
++
++	s = socket(AF_INET, SOCK_DGRAM, 0);
++	if (s < 0)
++		return NETNS_NO_SETUP;
++	strcpy(ifr.ifr_name, "lo");
++	if (ioctl(s, SIOCGIFFLAGS, &ifr) < 0) {
++		close(s);
++		return NETNS_NO_SETUP;
 +	}
-+	nlh->nlmsg_len = off;
++	ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
++	if (ioctl(s, SIOCSIFFLAGS, &ifr) < 0) {
++		close(s);
++		return NETNS_NO_SETUP;
++	}
++	close(s);
 +
-+	if (send(fd, buf, off, 0) < 0)
-+		die("send(genl reply)");
++	nfsd_family = genl_resolve_nfsd();
++	if (nfsd_family < 0)
++		return NETNS_NO_SETUP;
++	return 0;
++}
 +
-+	n = recv(fd, rbuf, rlen, 0);
-+	if (n < 0)
-+		ret = (errno == EAGAIN || errno == EWOULDBLOCK) ? -ETIMEDOUT : -errno;
-+	else if (((struct nlmsghdr *)rbuf)->nlmsg_type == NLMSG_ERROR)
-+		ret = ((struct nlmsgerr *)NLMSG_DATA(rbuf))->error;
-+	else
-+		ret = n;
++/* ------------------- nfsdfs file access ------------------- */
++
++static int nfsd_file_read(const char *name, char *buf, size_t len)
++{
++	char path[128];
++	int fd, n;
++
++	snprintf(path, sizeof(path), "%s/%s", NFSD_MNT, name);
++	fd = open(path, O_RDONLY);
++	if (fd < 0)
++		return -errno;
++	n = read(fd, buf, len - 1);
 +	close(fd);
++	if (n < 0)
++		return -errno;
++	buf[n] = '\0';
++	return n;
++}
++
++static int nfsd_file_read_int(const char *name)
++{
++	char buf[64];
++	int n = nfsd_file_read(name, buf, sizeof(buf));
++
++	if (n < 0)
++		return n;
++	return atoi(buf);
++}
++
++static int nfsd_file_write_int(const char *name, int val)
++{
++	char path[128], buf[64];
++	int fd, n, len;
++
++	snprintf(path, sizeof(path), "%s/%s", NFSD_MNT, name);
++	len = snprintf(buf, sizeof(buf), "%d\n", val);
++	fd = open(path, O_WRONLY);
++	if (fd < 0)
++		return -errno;
++	n = write(fd, buf, len);
++	close(fd);
++	return n < 0 ? -errno : 0;
++}
++
++/* ------------------- server lifecycle ------------------- */
++
++/*
++ * Bring up a v4.1-only server on a loopback listener, owning rpcbind
++ * registration in userspace so the kernel never issues an rpcbind call.
++ */
++static int server_start(uint16_t port, int nthreads)
++{
++	char attrs[128];
++	int off;
++	int ret;
++
++	ret = version_set_only(4, 1);
++	if (ret)
++		return ret;
++
++	off = put_listener(attrs, 0, "tcp", port);
++	off = put_attr(attrs, off, NFSD_A_SERVER_SOCK_USERSPACE_RPCBIND,
++		       NULL, 0);
++	ret = listener_set(attrs, off);
++	if (ret)
++		return ret;
++
++	return threads_set(nthreads);
++}
++
++static void server_stop(void)
++{
++	threads_set(0);
++	listener_set(NULL, 0);
++}
++
++/* ------------------- run a callback in a fresh namespace ------------------- */
++
++/*
++ * Fork a child into its own namespace, run @fn there and hand back what it
++ * returned. Used for the checks that only need one namespace at a time.
++ */
++static int netns_run(int (*fn)(long), long arg)
++{
++	int p[2], ret = -EIO;
++	pid_t pid;
++
++	if (pipe(p) < 0)
++		return -errno;
++
++	pid = fork();
++	if (pid < 0) {
++		close(p[0]);
++		close(p[1]);
++		return -errno;
++	}
++	if (pid == 0) {
++		int r = netns_enter();
++
++		if (r == 0)
++			r = fn(arg);
++		if (write(p[1], &r, sizeof(r)) != sizeof(r))
++			_exit(1);
++		_exit(0);
++	}
++
++	close(p[1]);
++	if (read(p[0], &ret, sizeof(ret)) != sizeof(ret))
++		ret = -EIO;
++	close(p[0]);
++	waitpid(pid, NULL, 0);
 +	return ret;
 +}
 +
-+static inline int genl_request_reply(uint8_t cmd, char *rbuf, size_t rlen)
-+{
-+	return genl_request_reply_attrs(cmd, NULL, 0, rbuf, rlen);
-+}
++/* ------------------- a peer namespace held open ------------------- */
 +
-+/* Resolve the "nfsd" genl family id; -1 if not registered. */
-+static inline int genl_resolve_nfsd(void)
-+{
-+	char buf[1024], rbuf[4096];
-+	struct nlmsghdr *nlh = (void *)buf;
-+	struct nlmsghdr *rh = (void *)rbuf;
-+	struct nlattr *na;
-+	int fd, off, left, id = -1;
-+
-+	fd = genl_open();
-+	off = genl_hdr(buf, GENL_ID_CTRL, NLM_F_REQUEST, CTRL_CMD_GETFAMILY);
-+	off = put_attr(buf, off, CTRL_ATTR_FAMILY_NAME,
-+		       NFSD_FAMILY_NAME, sizeof(NFSD_FAMILY_NAME));
-+	nlh->nlmsg_len = off;
-+
-+	if (send(fd, buf, off, 0) < 0)
-+		die("send(GETFAMILY)");
-+	if (recv(fd, rbuf, sizeof(rbuf), 0) < 0)
-+		die("recv(GETFAMILY)");
-+	close(fd);
-+
-+	if (rh->nlmsg_type == NLMSG_ERROR)
-+		return -1;
-+
-+	na = (void *)((char *)NLMSG_DATA(rh) + GENL_HDRLEN);
-+	left = rh->nlmsg_len - NLMSG_HDRLEN - GENL_HDRLEN;
-+	while (left >= (int)NLA_HDRLEN) {
-+		if (na->nla_type == CTRL_ATTR_FAMILY_ID) {
-+			id = *(uint16_t *)((char *)na + NLA_HDRLEN);
-+			break;
-+		}
-+		left -= NLA_ALIGN4(na->nla_len);
-+		na = (void *)((char *)na + NLA_ALIGN4(na->nla_len));
-+	}
-+	return id;
-+}
-+
-+/* ------------------- listener request builders ------------------- */
-+
-+/* Fine-grained control for negative tests: any field can be omitted/malformed. */
-+struct raw_listener {
-+	const char *xprt;	/* NULL -> omit NFSD_A_SOCK_TRANSPORT_NAME */
-+	int emit_addr;		/* 0 -> omit NFSD_A_SOCK_ADDR */
-+	const void *addr;
-+	int addr_len;		/* bytes to emit for NFSD_A_SOCK_ADDR */
++/*
++ * A second namespace running a server for as long as the test needs it.
++ * The peer reports readiness on a pipe and waits for a byte before tearing
++ * down, so the test can be sure the server is up while it pokes its own
++ * namespace.
++ */
++struct peer {
++	pid_t pid;
++	int wake;		/* write here to let the peer exit */
++	int ready;		/* peer writes its status here */
 +};
 +
-+static inline int put_raw_listener(char *buf, int off, const struct raw_listener *r)
++static int peer_start(struct peer *pr, uint16_t port)
 +{
-+	struct nlattr *nest = (void *)(buf + off);
-+	int inner = off + NLA_HDRLEN;
++	int wake[2], ready[2];
++	pid_t ppid = getpid();
++	char status;
 +
-+	if (r->emit_addr)
-+		inner = put_attr(buf, inner, NFSD_A_SOCK_ADDR, r->addr, r->addr_len);
-+	if (r->xprt)
-+		inner = put_attr(buf, inner, NFSD_A_SOCK_TRANSPORT_NAME,
-+				 r->xprt, strlen(r->xprt) + 1);
-+	nest->nla_type = NFSD_A_SERVER_SOCK_ADDR | NLA_F_NESTED;
-+	nest->nla_len = inner - off;
-+	return off + NLA_ALIGN4(nest->nla_len);
-+}
-+
-+/* Well-formed loopback listener for @family (AF_INET or AF_INET6). */
-+static inline int put_listener_af(char *buf, int off, const char *xprt,
-+				  int family, uint16_t port)
-+{
-+	struct sockaddr_storage ss = {0};
-+	struct raw_listener r = { .xprt = xprt, .emit_addr = 1, .addr = &ss };
-+
-+	if (family == AF_INET6) {
-+		struct sockaddr_in6 *s6 = (void *)&ss;
-+
-+		s6->sin6_family = AF_INET6;
-+		s6->sin6_port = htons(port);
-+		s6->sin6_addr = in6addr_loopback;
-+		r.addr_len = sizeof(*s6);
-+	} else {
-+		struct sockaddr_in *s4 = (void *)&ss;
-+
-+		s4->sin_family = AF_INET;
-+		s4->sin_port = htons(port);
-+		s4->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-+		r.addr_len = sizeof(*s4);
++	if (pipe(wake) < 0)
++		return -errno;
++	if (pipe(ready) < 0) {
++		close(wake[0]);
++		close(wake[1]);
++		return -errno;
 +	}
-+	return put_raw_listener(buf, off, &r);
++
++	/* peer_stop() handles a dead peer itself; do not die of SIGPIPE first. */
++	signal(SIGPIPE, SIG_IGN);
++
++	pr->pid = fork();
++	if (pr->pid < 0) {
++		close(wake[0]); close(wake[1]);
++		close(ready[0]); close(ready[1]);
++		return -errno;
++	}
++	if (pr->pid == 0) {
++		char c;
++		int r;
++
++		/* Hold no writer of our own, so read() below sees EOF. */
++		close(wake[1]);
++		close(ready[0]);
++		/*
++		 * A parent that dies without reaching peer_stop() would leave
++		 * this namespace and its server pinned by a process blocked
++		 * forever in read().
++		 */
++		prctl(PR_SET_PDEATHSIG, SIGKILL);
++		if (getppid() != ppid)
++			_exit(1);
++
++		r = netns_enter();
++		if (r == 0)
++			r = server_start(port, 1);
++		status = r == NETNS_NO_SETUP ? 'S' : (r ? 'E' : 'R');
++		if (write(ready[1], &status, 1) != 1)
++			_exit(1);
++		/* Hold the namespace open until the test is done with it. */
++		if (read(wake[0], &c, 1) == 1 && status == 'R')
++			server_stop();
++		_exit(0);
++	}
++
++	close(wake[0]);
++	close(ready[1]);
++	pr->wake = wake[1];
++	pr->ready = ready[0];
++
++	if (read(pr->ready, &status, 1) != 1)
++		status = 'E';
++	if (status == 'S')
++		return NETNS_NO_SETUP;
++	return status == 'R' ? 0 : -EIO;
 +}
 +
-+static inline int put_listener(char *buf, int off, const char *xprt, uint16_t port)
++static void peer_stop(struct peer *pr)
 +{
-+	return put_listener_af(buf, off, xprt, AF_INET, port);
++	char c = 'x';
++
++	if (pr->pid <= 0)
++		return;
++	if (write(pr->wake, &c, 1) != 1)
++		kill(pr->pid, SIGKILL);
++	close(pr->wake);
++	close(pr->ready);
++	waitpid(pr->pid, NULL, 0);
++	pr->pid = 0;
 +}
 +
-+static inline int listener_set(const char *attrs, int len)
++/* ===================== max_block_size is per-namespace ===================== */
++
++static int read_max_blksize(long unused)
 +{
-+	return genl_request(NFSD_CMD_LISTENER_SET, attrs, len);
++	(void)unused;
++	return nfsd_file_read_int("max_block_size");
++}
++
++static int write_max_blksize(long val)
++{
++	int ret = nfsd_file_write_int("max_block_size", (int)val);
++
++	if (ret)
++		return ret;
++	/* Report what stuck, so the caller knows the write was accepted. */
++	return nfsd_file_read_int("max_block_size");
 +}
 +
 +/*
-+ * Enable exactly one NFS version in this netns. NFSD_CMD_VERSION_SET clears
-+ * every version first, so one nest is enough to leave the server v4-only.
-+ * It refuses once a serv exists, so call it before any listener.
++ * max_block_size is reachable only through a per-netns nfsd filesystem, so
++ * a write in one namespace must not be visible in another. Read it in a
++ * throwaway namespace, change it in a second, then read it again in a
++ * third: the two reads have to agree.
++ *
++ * No value is hardcoded. The default is derived from the size of memory,
++ * so the test picks a target that differs from whatever this machine uses.
 + */
-+static inline int version_set_only(uint32_t major, uint32_t minor)
++TEST(max_blksize_is_per_netns)
 +{
-+	char attrs[64];
-+	struct nlattr *nest = (void *)attrs;
-+	int inner = NLA_HDRLEN;
++	int before, after, wrote, target;
 +
-+	inner = put_attr(attrs, inner, NFSD_A_VERSION_MAJOR,
-+			 &major, sizeof(major));
-+	inner = put_attr(attrs, inner, NFSD_A_VERSION_MINOR,
-+			 &minor, sizeof(minor));
-+	inner = put_attr(attrs, inner, NFSD_A_VERSION_ENABLED, NULL, 0);
-+	nest->nla_type = NFSD_A_SERVER_PROTO_VERSION | NLA_F_NESTED;
-+	nest->nla_len = inner;
++	before = netns_run(read_max_blksize, 0);
++	if (before == NETNS_NO_SETUP)
++		SKIP(return, "cannot set up a private nfsd namespace");
++	ASSERT_GE(before, 0);
 +
-+	return genl_request(NFSD_CMD_VERSION_SET, attrs, NLA_ALIGN4(inner));
++	/* Any legal value that is not the one this machine already reports. */
++	target = (before == 262144) ? 131072 : 262144;
++
++	wrote = netns_run(write_max_blksize, target);
++	ASSERT_EQ(target, wrote)
++		TH_LOG("second namespace did not accept max_block_size=%d",
++		       target);
++
++	after = netns_run(read_max_blksize, 0);
++	ASSERT_GE(after, 0);
++	EXPECT_EQ(before, after)
++		TH_LOG("max_block_size leaked between namespaces: %d -> %d",
++		       before, after);
 +}
 +
-+/* Start (@n > 0) or stop (@n == 0) nfsd threads in this netns. */
-+static inline int threads_set(int n)
-+{
-+	char attrs[64];
-+	uint32_t v = n;
-+	int off = put_attr(attrs, 0, NFSD_A_SERVER_THREADS, &v, sizeof(v));
++/* ===================== a busy namespace does not busy others ===================== */
 +
-+	return genl_request(NFSD_CMD_THREADS_SET, attrs, off);
++FIXTURE(nfsd_peer) {
++	struct peer pr;
++};
++
++FIXTURE_SETUP(nfsd_peer)
++{
++	int ret;
++
++	if (geteuid() != 0)
++		SKIP(return, "must be run as root");
++
++	/* The peer namespace comes first; it must not be ours. */
++	memset(&self->pr, 0, sizeof(self->pr));
++	ret = peer_start(&self->pr, TEST_PORT);
++	if (ret == NETNS_NO_SETUP)
++		SKIP(return, "cannot set up a private nfsd namespace");
++	if (ret)
++		SKIP(return, "peer namespace could not start a server: %d", ret);
++
++	/* Now put this process in a namespace of its own, with no server. */
++	if (netns_enter() != 0)
++		SKIP(return, "cannot set up a private nfsd namespace");
 +}
 +
-+#endif /* __SELFTESTS_NFSD_NETLINK_H__ */
-diff --git a/tools/testing/selftests/nfsd/nfsd_netlink_listener.c b/tools/testing/selftests/nfsd/nfsd_netlink_listener.c
-index 1294057b6f62..f6f8aa1e1cfe 100644
---- a/tools/testing/selftests/nfsd/nfsd_netlink_listener.c
-+++ b/tools/testing/selftests/nfsd/nfsd_netlink_listener.c
-@@ -46,267 +46,13 @@
- #include <linux/nfsd_netlink.h>
- 
- #include "../kselftest_harness.h"
-+#include "nfsd_netlink.h"
- 
--#define NFS_PROGRAM			100003
--#define NFS_ACL_PROGRAM			100227
--
--#define NLA_ALIGN4(len)			(((len) + 3) & ~3)
- #define TEST_PORT			20049
- #define MAX_LISTENERS			8
--#define RECV_TIMEO_SEC			30
--
--static int nfsd_family = -1;		/* set per-test in FIXTURE_SETUP */
--
--/* Extack message from the last genl_request(); empty if there was none. */
--static char last_extack[128];
--
--static void die(const char *msg)
--{
--	perror(msg);
--	exit(1);
--}
--
--/* ------------------- minimal generic-netlink plumbing ------------------- */
--
--static int genl_open(void)
--{
--	struct sockaddr_nl sa = { .nl_family = AF_NETLINK };
--	struct timeval tv = { .tv_sec = RECV_TIMEO_SEC };
--	int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_GENERIC);
--	int on = 1;
--
--	if (fd < 0)
--		die("socket(NETLINK_GENERIC)");
--	if (bind(fd, (void *)&sa, sizeof(sa)) < 0)
--		die("bind(netlink)");
--	setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
--	/*
--	 * Ask for extack, and cap the ack so the request is not echoed back:
--	 * the TLVs then always follow the fixed part of the error message.
--	 */
--	setsockopt(fd, SOL_NETLINK, NETLINK_EXT_ACK, &on, sizeof(on));
--	setsockopt(fd, SOL_NETLINK, NETLINK_CAP_ACK, &on, sizeof(on));
--	return fd;
--}
--
--/* Stash the extack message of an ack, if it carries one. */
--static void parse_extack(const char *rbuf)
--{
--	const struct nlmsghdr *nlh = (const void *)rbuf;
--	const struct nlattr *na;
--	int off, left;
--
--	last_extack[0] = '\0';
--	if (nlh->nlmsg_type != NLMSG_ERROR ||
--	    !(nlh->nlmsg_flags & NLM_F_ACK_TLVS))
--		return;
--
--	off = NLMSG_HDRLEN + NLMSG_ALIGN(sizeof(struct nlmsgerr));
--	left = nlh->nlmsg_len - off;
--	na = (const void *)(rbuf + off);
--
--	while (left >= (int)NLA_HDRLEN) {
--		if ((na->nla_type & NLA_TYPE_MASK) == NLMSGERR_ATTR_MSG) {
--			strncpy(last_extack, (const char *)na + NLA_HDRLEN,
--				sizeof(last_extack) - 1);
--			last_extack[sizeof(last_extack) - 1] = '\0';
--			return;
--		}
--		left -= NLA_ALIGN4(na->nla_len);
--		na = (const void *)((const char *)na + NLA_ALIGN4(na->nla_len));
--	}
--}
--
--/* Append an attribute at @off; return the new (aligned) offset. */
--static int put_attr(char *buf, int off, uint16_t type,
--		    const void *data, int len)
--{
--	struct nlattr *na = (void *)(buf + off);
--
--	na->nla_type = type;
--	na->nla_len = NLA_HDRLEN + len;
--	if (len)
--		memcpy(buf + off + NLA_HDRLEN, data, len);
--	return off + NLA_ALIGN4(NLA_HDRLEN + len);
--}
--
--/* Build a genl message header into @buf; return the offset past it. */
--static int genl_hdr(char *buf, uint16_t type, uint16_t flags, uint8_t cmd)
--{
--	struct nlmsghdr *nlh = (void *)buf;
--	struct genlmsghdr *gnl = (void *)(buf + NLMSG_HDRLEN);
--
--	memset(buf, 0, NLMSG_HDRLEN + GENL_HDRLEN);
--	nlh->nlmsg_type = type;
--	nlh->nlmsg_flags = flags;
--	nlh->nlmsg_seq = 1;
--	gnl->cmd = cmd;
--	gnl->version = 1;
--	return NLMSG_HDRLEN + GENL_HDRLEN;
--}
--
--/* Send an nfsd command with an ACK; return the ACK errno (<= 0). */
--static int genl_request(uint8_t cmd, const char *attrs, int attrs_len)
--{
--	char buf[1 << 20], rbuf[4096];
--	struct nlmsghdr *nlh = (void *)buf;
--	int fd = genl_open();
--	int off, n, ret;
--
--	off = genl_hdr(buf, nfsd_family, NLM_F_REQUEST | NLM_F_ACK, cmd);
--	if (attrs_len) {
--		memcpy(buf + off, attrs, attrs_len);
--		off += attrs_len;
--	}
--	nlh->nlmsg_len = off;
--
--	if (send(fd, buf, off, 0) < 0)
--		die("send(genl)");
--
--	last_extack[0] = '\0';
--	n = recv(fd, rbuf, sizeof(rbuf), 0);
--	if (n < 0) {
--		ret = (errno == EAGAIN || errno == EWOULDBLOCK) ? -ETIMEDOUT : -errno;
--	} else if (((struct nlmsghdr *)rbuf)->nlmsg_type == NLMSG_ERROR) {
--		ret = ((struct nlmsgerr *)NLMSG_DATA(rbuf))->error;
--		parse_extack(rbuf);
--	} else {
--		ret = 0;
--	}
--	close(fd);
--	return ret;
--}
--
--/*
-- * Send a command with attributes and return the full reply message; -errno
-- * on failure. NLM_F_ACK is left off: the kernel reports an error either way,
-- * so the first message back is the reply whenever there is one.
-- */
--static int genl_request_reply_attrs(uint8_t cmd, const char *attrs,
--				    int attrs_len, char *rbuf, size_t rlen)
--{
--	char buf[1 << 20];
--	struct nlmsghdr *nlh = (void *)buf;
--	int fd = genl_open();
--	int off, n, ret;
--
--	off = genl_hdr(buf, nfsd_family, NLM_F_REQUEST, cmd);
--	if (attrs_len) {
--		memcpy(buf + off, attrs, attrs_len);
--		off += attrs_len;
--	}
--	nlh->nlmsg_len = off;
- 
--	if (send(fd, buf, off, 0) < 0)
--		die("send(genl reply)");
--
--	n = recv(fd, rbuf, rlen, 0);
--	if (n < 0)
--		ret = (errno == EAGAIN || errno == EWOULDBLOCK) ? -ETIMEDOUT : -errno;
--	else if (((struct nlmsghdr *)rbuf)->nlmsg_type == NLMSG_ERROR)
--		ret = ((struct nlmsgerr *)NLMSG_DATA(rbuf))->error;
--	else
--		ret = n;
--	close(fd);
--	return ret;
--}
--
--static int genl_request_reply(uint8_t cmd, char *rbuf, size_t rlen)
--{
--	return genl_request_reply_attrs(cmd, NULL, 0, rbuf, rlen);
--}
--
--/* Resolve the "nfsd" genl family id; -1 if not registered. */
--static int genl_resolve_nfsd(void)
--{
--	char buf[1024], rbuf[4096];
--	struct nlmsghdr *nlh = (void *)buf;
--	struct nlmsghdr *rh = (void *)rbuf;
--	struct nlattr *na;
--	int fd, off, left, id = -1;
--
--	fd = genl_open();
--	off = genl_hdr(buf, GENL_ID_CTRL, NLM_F_REQUEST, CTRL_CMD_GETFAMILY);
--	off = put_attr(buf, off, CTRL_ATTR_FAMILY_NAME,
--		       NFSD_FAMILY_NAME, sizeof(NFSD_FAMILY_NAME));
--	nlh->nlmsg_len = off;
--
--	if (send(fd, buf, off, 0) < 0)
--		die("send(GETFAMILY)");
--	if (recv(fd, rbuf, sizeof(rbuf), 0) < 0)
--		die("recv(GETFAMILY)");
--	close(fd);
--
--	if (rh->nlmsg_type == NLMSG_ERROR)
--		return -1;
--
--	na = (void *)((char *)NLMSG_DATA(rh) + GENL_HDRLEN);
--	left = rh->nlmsg_len - NLMSG_HDRLEN - GENL_HDRLEN;
--	while (left >= (int)NLA_HDRLEN) {
--		if (na->nla_type == CTRL_ATTR_FAMILY_ID) {
--			id = *(uint16_t *)((char *)na + NLA_HDRLEN);
--			break;
--		}
--		left -= NLA_ALIGN4(na->nla_len);
--		na = (void *)((char *)na + NLA_ALIGN4(na->nla_len));
--	}
--	return id;
--}
--
--/* ------------------- listener request builders ------------------- */
--
--/* Fine-grained control for negative tests: any field can be omitted/malformed. */
--struct raw_listener {
--	const char *xprt;	/* NULL -> omit NFSD_A_SOCK_TRANSPORT_NAME */
--	int emit_addr;		/* 0 -> omit NFSD_A_SOCK_ADDR */
--	const void *addr;
--	int addr_len;		/* bytes to emit for NFSD_A_SOCK_ADDR */
--};
--
--static int put_raw_listener(char *buf, int off, const struct raw_listener *r)
--{
--	struct nlattr *nest = (void *)(buf + off);
--	int inner = off + NLA_HDRLEN;
--
--	if (r->emit_addr)
--		inner = put_attr(buf, inner, NFSD_A_SOCK_ADDR, r->addr, r->addr_len);
--	if (r->xprt)
--		inner = put_attr(buf, inner, NFSD_A_SOCK_TRANSPORT_NAME,
--				 r->xprt, strlen(r->xprt) + 1);
--	nest->nla_type = NFSD_A_SERVER_SOCK_ADDR | NLA_F_NESTED;
--	nest->nla_len = inner - off;
--	return off + NLA_ALIGN4(nest->nla_len);
--}
--
--/* Well-formed loopback listener for @family (AF_INET or AF_INET6). */
--static int put_listener_af(char *buf, int off, const char *xprt, int family,
--			   uint16_t port)
--{
--	struct sockaddr_storage ss = {0};
--	struct raw_listener r = { .xprt = xprt, .emit_addr = 1, .addr = &ss };
--
--	if (family == AF_INET6) {
--		struct sockaddr_in6 *s6 = (void *)&ss;
--
--		s6->sin6_family = AF_INET6;
--		s6->sin6_port = htons(port);
--		s6->sin6_addr = in6addr_loopback;
--		r.addr_len = sizeof(*s6);
--	} else {
--		struct sockaddr_in *s4 = (void *)&ss;
--
--		s4->sin_family = AF_INET;
--		s4->sin_port = htons(port);
--		s4->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
--		r.addr_len = sizeof(*s4);
--	}
--	return put_raw_listener(buf, off, &r);
--}
--
--static int put_listener(char *buf, int off, const char *xprt, uint16_t port)
--{
--	return put_listener_af(buf, off, xprt, AF_INET, port);
--}
-+#define NFS_PROGRAM			100003
-+#define NFS_ACL_PROGRAM			100227
- 
- /* ------------------- LISTENER_GET parsing ------------------- */
- 
-@@ -374,32 +120,6 @@ static int parse_listener_get(const char *rbuf, int len,
- 
- /* ------------------- convenience wrappers ------------------- */
- 
--static int listener_set(const char *attrs, int len)
--{
--	return genl_request(NFSD_CMD_LISTENER_SET, attrs, len);
--}
--
--/*
-- * Enable exactly one NFS version in this netns. NFSD_CMD_VERSION_SET clears
-- * every version first, so one nest is enough to leave the server v4-only.
-- * It refuses once a serv exists, so call it before any listener.
-- */
--static int version_set_only(uint32_t major, uint32_t minor)
--{
--	char attrs[64];
--	struct nlattr *nest = (void *)attrs;
--	int inner = NLA_HDRLEN;
--
--	inner = put_attr(attrs, inner, NFSD_A_VERSION_MAJOR,
--			 &major, sizeof(major));
--	inner = put_attr(attrs, inner, NFSD_A_VERSION_MINOR,
--			 &minor, sizeof(minor));
--	inner = put_attr(attrs, inner, NFSD_A_VERSION_ENABLED, NULL, 0);
--	nest->nla_type = NFSD_A_SERVER_PROTO_VERSION | NLA_F_NESTED;
--	nest->nla_len = inner;
--
--	return genl_request(NFSD_CMD_VERSION_SET, attrs, NLA_ALIGN4(inner));
--}
- 
- /* ------------------- userspace-rpcbind ------------------- */
- 
-@@ -552,15 +272,6 @@ static struct listener_ent *find_listener(struct listener_ent *e, int n,
- 	return NULL;
- }
- 
--/* Start (@n > 0) or stop (@n == 0) nfsd threads in this netns. */
--static int threads_set(int n)
--{
--	char attrs[64];
--	uint32_t v = n;
--	int off = put_attr(attrs, 0, NFSD_A_SERVER_THREADS, &v, sizeof(v));
--
--	return genl_request(NFSD_CMD_THREADS_SET, attrs, off);
--}
- 
- /* ------------------- per-netns local rpcbind stub ------------------- */
- 
++FIXTURE_TEARDOWN(nfsd_peer)
++{
++	if (nfsd_family >= 0)
++		server_stop();
++	peer_stop(&self->pr);
++}
++
++/*
++ * write_maxblksize() refuses with -EBUSY while that namespace has a serv.
++ * The check is on nn->nfsd_serv, so a server belonging to someone else must
++ * not trip it.
++ */
++TEST_F(nfsd_peer, maxblksize_busy_is_per_netns)
++{
++	int cur = nfsd_file_read_int("max_block_size");
++
++	ASSERT_GE(cur, 0);
++	EXPECT_EQ(0, nfsd_file_write_int("max_block_size",
++					 cur == 262144 ? 131072 : 262144))
++		TH_LOG("max_block_size refused while another netns has a server");
++}
++
++/*
++ * NFSD_CMD_VERSION_SET returns -EBUSY once the namespace has a serv. A
++ * server in the peer namespace must not reach us.
++ */
++TEST_F(nfsd_peer, version_set_busy_is_per_netns)
++{
++	EXPECT_EQ(0, version_set_only(4, 1))
++		TH_LOG("VERSION_SET refused while another netns has a server");
++}
++
++/*
++ * The grace and lease times are per-namespace too, and gated on the same
++ * nn->nfsd_serv check.
++ */
++TEST_F(nfsd_peer, leasetime_busy_is_per_netns)
++{
++	EXPECT_EQ(0, nfsd_file_write_int("nfsv4leasetime", 60))
++		TH_LOG("nfsv4leasetime refused while another netns has a server");
++}
++
++/*
++ * pool_stats runs its seq_file under the mutex that also guards the serv.
++ * Reading it here must not be affected by the peer's server, and must
++ * report this namespace, which has no threads at all.
++ */
++TEST_F(nfsd_peer, pool_stats_readable_with_foreign_server)
++{
++	char buf[4096];
++	int n = nfsd_file_read("pool_stats", buf, sizeof(buf));
++
++	ASSERT_GE(n, 0)
++		TH_LOG("pool_stats unreadable: %s", strerror(-n));
++	EXPECT_NE(NULL, strstr(buf, "packets-arrived"));
++}
++
++/*
++ * LISTENER_GET reports this namespace's listeners. With a server running
++ * next door and none here, the list must come back empty rather than
++ * showing the peer's.
++ */
++TEST_F(nfsd_peer, listener_get_does_not_show_foreign_listeners)
++{
++	char rbuf[8192];
++	int n = genl_request_reply(NFSD_CMD_LISTENER_GET, rbuf, sizeof(rbuf));
++
++	ASSERT_GT(n, 0);
++	EXPECT_EQ(NULL, memmem(rbuf, n, "tcp", 4))
++		TH_LOG("LISTENER_GET leaked a listener from another netns");
++}
++
++/*
++ * The file cache is one host-wide object, but the flush that reaches it is
++ * driven from a per-netns file. Doing it here while the peer has a server
++ * up must be harmless -- this is the path that takes the cache lock with
++ * nothing else held.
++ */
++TEST_F(nfsd_peer, expkey_flush_with_foreign_server)
++{
++	int fd = open("/proc/net/rpc/nfsd.fh/flush", O_WRONLY);
++
++	if (fd < 0)
++		SKIP(return, "no /proc/net/rpc/nfsd.fh/flush: %s",
++		     strerror(errno));
++	EXPECT_EQ(2, write(fd, "1\n", 2));
++	close(fd);
++}
++
++TEST_HARNESS_MAIN
+diff --git a/tools/testing/selftests/nfsd/settings b/tools/testing/selftests/nfsd/settings
+index 6091b45d226b..694d70710ff0 100644
+--- a/tools/testing/selftests/nfsd/settings
++++ b/tools/testing/selftests/nfsd/settings
+@@ -1 +1 @@
+-timeout=120
++timeout=300
 
 -- 
 2.55.0
