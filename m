@@ -1,77 +1,134 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from pdx-out-007.esa.us-west-2.outbound.mail-perimeter.amazon.com (pdx-out-007.esa.us-west-2.outbound.mail-perimeter.amazon.com [52.34.181.151])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6EB4C563FB7
-	for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2026 16:13:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 87AA446982F;
+	Tue, 22 Sep 2026 17:57:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=52.34.181.151
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790093601; cv=none; b=BNrXFojg6N3qloWJOQDdXQU2gy4cCTtefuI1wVayVwZlQWHQvmR5fwPDosMyFZXC49TpYEAmZUK4iCulzJ9pfS4HUKhaCPVJTjBcTC9JMqsP1CP1qa6Cx2uXqgCTjSrUkevrwGsftOs62Zqj8KETDqcSVaWK4tR5N3M7A+2AcUE=
+	t=1790099831; cv=none; b=UNmSTPAm/x9EjnFoNxVQecabKVXV3oTYcZYy4pQeVKp3B2nWr+in49J8db8bALx5VfnP3wTeJfrE5tk1b6xADeXIhchfFIg49idbnJDgHo4JqAy12KAKnOwfhmE0WxTqN3cg/c37fzd9wVF4y2kUlZ/vv1Udz9eog83rF3LP5Xg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790093601; c=relaxed/simple;
-	bh=QRVPCsjyS/d17FDqBpEGQrhcMy7/xFo9Lk/zh0QDdew=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=V7CuJoo44d2L15ytmi5Y01u+3kqoHBY8a5HsTPCGHU+auLNu10ILacvKYNmV51P53SCcDyHHRALhRNv9zA/3Q7HxJ19lnqslGuNHGm8cFmgKx0Yc0ugEpJlxCyvygwX/WiRvMxxhnTKr6HrUwpwUgGF0UpeiRgdwkwtcg8wj/M8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WLpnQLIZ; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1790099831; c=relaxed/simple;
+	bh=Q8au4sTrqz4YIvyNguOhIkoAy69QlyaYpnbwvs4cJl0=;
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=LB2VaRsbx/8bZ2oNp1YyFiZtjy6LVGRIUXmajw6d1kdCzeSmWE5n8a97/EbUJj4J4EhHosmPoFyz2VZ/q7z76c/BxSqrVQdjvuK9KJrofZWoqvF3v5WQces440SW4HekpkJHVcqrH4CjHspXrXMcNM20TrmUuSPjfqpStOxjbRk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=amazon.com; spf=pass smtp.mailfrom=amazon.com; dkim=pass (2048-bit key) header.d=amazon.com header.i=@amazon.com header.b=jHiQvgsv; arc=none smtp.client-ip=52.34.181.151
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=amazon.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=amazon.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WLpnQLIZ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 83ADB1F000FF;
-	Tue, 22 Sep 2026 16:13:19 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790093600;
-	bh=bi3moq/IAoOC6RR9KPDXAhkYQ2BMbBEyW5ujmZIoHqA=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=WLpnQLIZF7Msxy6DWx1PFOMUwkBoDcrQQHnofzFc183PTJ1tvL1Wm5XaFacAC5wPl
-	 FFm6hOW61QJmsVYoCEndpDOcOg7ABbTuKSrAb6iimakk+oGtYp41F5+9Ao7P9J0hI4
-	 6ylSQYuRGOm8hUg/1owwk+9zil29LT5ELvh0nveJt9GHA/toO3SGr0tO9kpB5POx2u
-	 k6T/1Ynmheh9W/1BM70NauDADdt0kPHb/jbCe3Q3yjdBMS1WhAkeL6PEHWzd8Id71a
-	 mRHq3X8hLVoqGICSXQcaSdFaa3WcBWjDjzpzpRN9qJKRXFUTm9zbt9meXldGuuT1Me
-	 PPKlSIaK6vclw==
-From: Chuck Lever <cel@kernel.org>
-To: jlayton@kernel.org,
-	Abhinandan Ekande <aekande@redhat.com>
-Cc: neilb@brown.name,
-	okorniev@redhat.com,
-	Dai.Ngo@oracle.com,
-	tom@talpey.com,
-	linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] SUNRPC: in svcauth_gss_wrap_integ() resync rq_next_page after the GSS wrap
-Date: Tue, 22 Sep 2026 12:13:16 -0400
-Message-ID: <179009358798.3889096.3405918687560360743.b4-ty@b4>
-X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20260922134858.2219136-1-aekande@redhat.com>
-References: <20260922134858.2219136-1-aekande@redhat.com>
+	dkim=pass (2048-bit key) header.d=amazon.com header.i=@amazon.com header.b="jHiQvgsv"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazoncorp2;
+  t=1790099830; x=1821635830;
+  h=from:to:cc:subject:date:message-id:mime-version:
+   content-transfer-encoding;
+  bh=qN5XnQIzCII0JvDnuh1uh6pvZD1IP2URc4wRLzLGKJM=;
+  b=jHiQvgsv0RB7uk1x0PbZzoLJovD+FH8fpBWUfZ76ulEP/AN9Jg3dxUMO
+   dZWy1H1DJQgigwr7acXfkTFxrMyMibnsYu62dFli1kHsjAtfIGYUeYue2
+   6r5VD6SdE6i2lWDPxpSaPytG4cnf7dOF9spb3xiTIWU0c/PEsTBKguOzc
+   BJ2e9VrGStrXCA6cnMVGIy8fl+g/STflcBeMFmVD7/azqDoBiku/JLane
+   T8Juu7pxvjS+wuAIxcQX7Aod8tRVGvHvVSqAT2KSqL45OjDm8Tkc5Grrw
+   V0pHVV5XYUU1rAagw98YP68WfMbFHuEZ00/GXdilfzjge0w2hhqzCRWHY
+   w==;
+X-CSE-ConnectionGUID: JYPe3dSdRE2Jst86+ehwXA==
+X-CSE-MsgGUID: Ghgc5jPVTNiP74Z4PG1YBg==
+X-IronPort-AV: E=Sophos;i="6.27,116,1787011200"; 
+   d="scan'208";a="29355524"
+Received: from ip-10-5-12-219.us-west-2.compute.internal (HELO smtpout.naws.us-west-2.prod.farcaster.email.amazon.dev) ([10.5.12.219])
+  by internal-pdx-out-007.esa.us-west-2.outbound.mail-perimeter.amazon.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 22 Sep 2026 17:57:10 +0000
+Received: from EX19MTAUWB001.ant.amazon.com [205.251.233.51:27790]
+ by smtpin.naws.us-west-2.prod.farcaster.email.amazon.dev [10.0.5.10:2525] with esmtp (Farcaster)
+ id 7f634d42-ea37-4bd3-8072-578b37438cbd; Tue, 22 Sep 2026 17:57:09 +0000 (UTC)
+X-Farcaster-Flow-ID: 7f634d42-ea37-4bd3-8072-578b37438cbd
+Received: from EX19D001UWA001.ant.amazon.com (10.13.138.214) by
+ EX19MTAUWB001.ant.amazon.com (10.250.64.248) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA) id 15.2.2562.49;
+ Tue, 22 Sep 2026 17:57:09 +0000
+Received: from dev-dsk-jamz-1e-e35f4cd9.us-east-1.amazon.com (10.189.35.140)
+ by EX19D001UWA001.ant.amazon.com (10.13.138.214) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA) id 15.2.2562.49;
+ Tue, 22 Sep 2026 17:57:08 +0000
+From: Jimmy Zuber <jamz@amazon.com>
+To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
+CC: NeilBrown <neilb@ownmail.net>, <linux-nfs@vger.kernel.org>,
+	<linux-kernel@vger.kernel.org>, <stable@vger.kernel.org>
+Subject: [PATCH RESEND] NFS: Fix stale negative cache on failed nfs_mkdir()
+Date: Tue, 22 Sep 2026 17:56:56 +0000
+Message-ID: <20260922175656.2833041-1-jamz@amazon.com>
+X-Mailer: git-send-email 2.50.1
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: EX19D037UWC004.ant.amazon.com (10.13.139.254) To
+ EX19D001UWA001.ant.amazon.com (10.13.138.214)
 
-On Tue, 22 Sep 2026 09:48:58 -0400, Abhinandan Ekande wrote:
-> For a page-aligned READ payload, xdr_reserve_space_vec() leaves the
-> encode cursor with p == end and page_ptr still on the last payload page.
-> nfsd4_encode_operation() then resyncs rqstp->rq_next_page = xdr->page_ptr + 1,
-> so rq_next_page points at the first page past the payload.
-> 
-> The GSS MIC is encoded later, after the last operation, and nothing resyncs
-> rq_next_page after that. Because p == end, the MIC's xdr_reserve_space()
-> falls into xdr_get_next_encode_buffer(), which increments page_ptr into
-> the next page — the page rq_next_page points at. After the send,
-> svc_rqst_release_pages() releases only 'rq_next_page - rq_respages' pages,
-> so that page sits one past the release range and is never released. The
-> next reply from the same nfsd thread writes its MIC into the same physical
-> page while TCP still holds a MSG_SPLICE_PAGES reference to the previous
-> reply, so that reply is transmitted carrying the wrong MIC.
-> 
-> [...]
+Since commit 8376583b84a1 ("nfs: change mkdir inode_operation to return
+alternate dentry if needed"), nfs_mkdir() no longer drops the dentry on
+RPC failure.  A negative cache value can then result in spurious ENOENT
+results for further operations within that directory, such as open or
+stat.
 
-Applied to nfsd-testing, thanks!
+We observed this breaking some applications where an EEXIST on mkdir
+caused the application to assume the directory to exist, only to fail
+operations within that directory due to the retained negative cache
+entry.  The other create paths, nfs_create() and nfs_mknod(), still drop
+the dentry on failure.  This patch restores the previous behavior.
 
-[1/1] SUNRPC: in svcauth_gss_wrap_integ() resync rq_next_page after the GSS wrap
-      commit: 1f04f4ab88bd62ea98bdf6490b385b6d046aafab
+Fixes: 8376583b84a1 ("nfs: change mkdir inode_operation to return alternate dentry if needed")
+Cc: stable@vger.kernel.org # v6.15+
+Signed-off-by: Jimmy Zuber <jamz@amazon.com>
+---
 
---
-Chuck Lever
+Resend of:
+https://lore.kernel.org/linux-nfs/20260819015111.2743908-1-jamz@amazon.com/
+
+No change to the patch itself; rebased onto v7.3-rc4 and Cc'ing NeilBrown as
+the author of the Fixes: commit.  nfs_mkdir() in v7.3-rc4 still returns the
+error without unhashing @dentry, and vfs_mkdir()'s error path only calls
+end_creating()/end_dirop(), which unlocks the parent and dputs the dentry, so
+the hashed negative dentry survives in the dcache.
+
+We reproduced this against a local knfsd export over NFSv4.1.  The export is
+mounted several times with "nosharecache" so that each mount acts as an
+independent client with its own dcache:
+
+  # /etc/exports
+  /srv/nfs 127.0.0.1(rw,sync,no_subtree_check,no_root_squash,fsid=0)
+
+  for i in $(seq 0 5); do
+      mount -t nfs4 -o vers=4.1,nosharecache,acdirmin=30,acdirmax=60 \
+          127.0.0.1:/ /mnt/nfs$i
+  done
+
+For each of 40 new cache/<id> directories, every mount stats the directory to
+seed a negative entry, then all mounts race to mkdir it.  The winner writes a
+file and renames it, and the losers that got EEXIST then read that file back.
+On a vanilla v6.17 kernel, the 200 loser reads were:
+
+  unpatched:   read OK   0 / ENOENT 200
+  patched:     read OK 200 / ENOENT   0
+
+ fs/nfs/dir.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 49394123b..a26c459ff 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2490,6 +2490,8 @@ struct dentry *nfs_mkdir(struct mnt_idmap *idmap, struct inode *dir,
+ 	trace_nfs_mkdir_enter(dir, dentry);
+ 	ret = NFS_PROTO(dir)->mkdir(dir, dentry, &attr);
+ 	trace_nfs_mkdir_exit(dir, dentry, PTR_ERR_OR_ZERO(ret));
++	if (IS_ERR(ret))
++		d_drop(dentry);
+ 	return ret;
+ }
+ EXPORT_SYMBOL_GPL(nfs_mkdir);
+
+base-commit: c4e9f74da4389a6b3e505d329d99232915a6b9cd
+-- 
+2.50.1
 
