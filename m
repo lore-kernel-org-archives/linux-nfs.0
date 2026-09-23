@@ -1,78 +1,95 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4EDEB352C52
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Sep 2026 08:13:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 638DB47DD5C;
+	Wed, 23 Sep 2026 10:59:24 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790151201; cv=none; b=beZgJoBcrPxRYn/ntkXY59QCAXbo4YNkIKvF5tNzyy2FzYgRrdjmWavyKy8svL5KG78QjGcCKs50srOgMJwa7obvzLDVYvB91HhDfG5PVw7SSY3Vvt2x7WdQsnPV4O8sZ23YZFidmWmDXI6B61Laepv4t+RTNzCJTPOBPEruKvQ=
+	t=1790161169; cv=none; b=TlIV9NYtf+vk+eTuKcw3WGGnYvyPye1O1Tr6BC6f+UxJtVDPl0tCUPlWTl3QHhzCXD1pLlYZiyafg/H/FwvAUVr0uV8DtPFXOKpGCmxs3b59Cy9YanypJcr+8T6ru1yIuB44nlpXx2OkAWYDsHZUvlcev2giNktdfqjXrLTtvpI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790151201; c=relaxed/simple;
-	bh=BD6Yc4Awp5mXwTtTdoGGtvbdsAJKf9tOOFNNk3RqMwo=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=gFSRGCsN+U9O/UgcYl+6yUYFL79UqbbE8/Xq4eJd1+lN+5D4TxkWM7THPQCJSpfCFEqlZJsJbmz7t7cYT6kCyPNbaC4bxCy0jhK3Cy+Aid6WLH578u6m4r/XIl1Q3h/7xh4vrbMBgPoK2DmSe7nAnELXKPUZI+XZoWs9coWf42A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=DJBmVc2i; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1790161169; c=relaxed/simple;
+	bh=G5oO/+RhBLTrz3cAjisoExQ9dTpAdQbN9ADtYijVQ20=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=r5am8pQW5ZQpg2KSMPd3u0S3pLPOax3LEeo5Nmy7JX+yp+jbwAZPXensOcL4dmR+53IG1FMK6B0QEeZaCllG9WW9h1VVTqMKZr0t9g7nhRdv965dw4cGyoPOxduy7zGQjZPg5ol0+C7nLkf5ahZ3faZ3bI/zbFRcx/WGTLl5/GY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Cxm2SRBB; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="DJBmVc2i"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2FB8C1F0089D
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Sep 2026 08:13:20 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Cxm2SRBB"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A566A1F00893;
+	Wed, 23 Sep 2026 10:59:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790151200;
-	bh=vs6i4s6cZE2SzhYO9unvM1fDGvN8xO/nW1L12Au3yl8=;
-	h=References:In-Reply-To:From:Date:Subject:To:Cc;
-	b=DJBmVc2iCWZlbQqynxRdaSplBcDQMpvrfKhmcDtZUpUsHpT+0lFFCAyU8JqcvMFr2
-	 uIeAgzoH2ux6fVrG4smmKxl0zo1UjKoeeRiHS8Dq8aJifZBwmiaf5/M7h1Rehujufd
-	 LnO01bqLSanFEc5iS8ViKc7UldWX9RgEaQeDpu0Iiw62m6uTY6I5/RsBKbA+urVlpk
-	 Lz67+6XHhWSAKiLf+6LEFAbeDTiuI8V/DU6VR0jWZcvPU50kf9pdZ/WZk2lOrHO1Kr
-	 LGD0PmDrnrZynfQURrVB4fjKMNaMt0Iy8i1lJQPazvBDBYZ+uNqhq+vygVxw8mGtGL
-	 0qyV3PaoS3rUQ==
-Received: by mail-ej2-f12.google.com with SMTP id a640c23a62f3a-c254f56039dso87210866b.3
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Sep 2026 01:13:20 -0700 (PDT)
-X-Forwarded-Encrypted: i=1; AKwUvBwiCBzZ0vOErDyx4cBiUlTPoVwKY1ue5V2b/DAb6R6scc+nVdzQfMUBG3Ff/zozX3eJbX0jVeQEI9E=@vger.kernel.org
-X-Gm-Message-State: AFuF++mtsQSShGDkYiKOLo0dEus4IHlXldQqiJ6XvviAMHa5kAwnBudP
-	JgkbI4uk2wvzmX/1DF+VVIUoIx7HTxq0nO8hXjw2oxr9uigQRCUt5Nco/GkG2hTgDLxuqtKzIyz
-	k8t0/CeOvDIv9/mObOF8n135+zLYiEqc=
-X-Received: by 2002:a17:907:1c94:b0:c2a:6a12:6fb3 with SMTP id
- a640c23a62f3a-c2aae272d7bmr136115466b.23.1790151198825; Wed, 23 Sep 2026
- 01:13:18 -0700 (PDT)
+	s=k20260515; t=1790161162;
+	bh=D6U8HY7mBNbIPoapivmiB8AdBKml6Hnm2Fkjlzw9aj4=;
+	h=From:Subject:Date:To:Cc;
+	b=Cxm2SRBB5p4nl+alZDrzO+TrRWvql4V39l2WGNSRn0ym9sRba6WihezRBpA8DK+C+
+	 eO64NwwKTgQ4RX8r0fdkzzRLCjuJ/9sBdNDzoY+fJKHUnPY/TmI+klkZhGLC45js8F
+	 rqgdgSSE309Ax5e4EWHq/OEkaXLJMwzUxMIUplGE4qYfikOojnk9M3Ehfblze7Y4Cr
+	 tY86R787J2i9O2APK/6RDkTb8RpJi8O1VXji+yioIHUNND2xQo+METcrtXj+fZXxBd
+	 AazHoF3xGc+SgKYWF+hzQNeWCqGch1iSnAj8TvmLzPECi9klP4SnhI5KErsRT6+bzr
+	 Fzvspp+MZEjcw==
+From: Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH 0/2] lockd: allow setting ports without setting gracetime
+Date: Wed, 23 Sep 2026 06:58:55 -0400
+Message-Id: <20260923-nfsd-testing-v1-0-a793f54a4dd1@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260919022441.3305170-1-neilb@ownmail.net> <20260919022441.3305170-6-neilb@ownmail.net>
-In-Reply-To: <20260919022441.3305170-6-neilb@ownmail.net>
-From: Namjae Jeon <linkinjeon@kernel.org>
-Date: Wed, 23 Sep 2026 17:13:06 +0900
-X-Gmail-Original-Message-ID: <CAKYAXd9S4x4ghqFOf1J0FO7vDq61mMZWaxnBihQU799jnASZ4Q@mail.gmail.com>
-X-Gm-Features: AclHuK_-E_IUYXE5Xo_ebb9zx21UxugXhFsUxDAnoFldZXoIK8bk30DS2iEwx5w
-Message-ID: <CAKYAXd9S4x4ghqFOf1J0FO7vDq61mMZWaxnBihQU799jnASZ4Q@mail.gmail.com>
-Subject: Re: [PATCH v2 05/14] cifs: allow -EISDIR precedence over -EFTYPE in __cifs_do_create()
-To: NeilBrown <neil@brown.name>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, Christian Brauner <brauner@kernel.org>, 
-	Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, Jori Koolstra <jkoolstra@xs4all.nl>, 
-	Mateusz Guzik <mjguzik@gmail.com>, Dorjoy Chowdhury <dorjoychy111@gmail.com>, 
-	Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
-	Andreas Gruenbacher <agruenba@redhat.com>, gfs2@lists.linux.dev, 
-	Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
-	Viacheslav Dubeyko <slava@dubeyko.com>, ceph-devel@vger.kernel.org, 
-	Paulo Alcantara <pc@manguebit.org>, linux-cifs@vger.kernel.org, 
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDSyMj3by04hTdktTiksy8dF0Dg2RDI2NjUwMT8xQloJaCotS0zAqwcdG
+ xtbUAHIgMUV4AAAA=
+X-Change-ID: 20260922-nfsd-testing-00c12335047d
+To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+ Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>, Shuah Khan <shuah@kernel.org>
+Cc: Scott Mayhew <smayhew@redhat.com>, linux-nfs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ Jeff Layton <jlayton@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1024; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=G5oO/+RhBLTrz3cAjisoExQ9dTpAdQbN9ADtYijVQ20=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqs7D/R827ZDFgbncLCefDfcKGfZUKqwkXNsfhq
+ kt9eKhp/3eJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCarOw/wAKCRAADmhBGVaC
+ FQ+BEACjoYvSorWriDKfUUAGutR0+ux5CVtdBsZAhtMoIHo3JF3s5ObH1SwnRa9gSDOrSRqBrDl
+ gBKBHW8ZMrUge0PWkAnxFs110JUcTHFZrWUyx8ckiINDNefFtiF5xbZBF0+JqgyDyshv3rZYcKJ
+ gIXO/IxgNT6uBSOv2vvwg0ZiNB031ro+2jgSjce01W8+HLDwpuOszZ/fdWNWs5HEf+JLeZW38vT
+ qLGiNdqapO4EpObwdjzaeUufMtAA8jy0BgFI4VETv1zYPo+MvKJbmEAWIlKAS70e/8UC6wjKUmL
+ D9bMV+ZK9BoeFSMWAauDY3o4M1lf/aFtF5Sv0FAGboilQ6bO2y6xnJj1XKXDXZVB5UUb7kk4+aW
+ n96qfE3vzjyeXLdOKLmf6VnSCvfP6HHHTlb+5z3VkUMoLepZyOqWYESm6AQw1WODlkSA1DxHsK7
+ 6DifekYUNkpT/8q/bPe/QhRb29Qd08Su0eH3BG0lrukfh48a7agu4ebN/oxi8BBB+ikRDy1gdMk
+ fM5w2orloj3zdsYqgTzKAUqAOMWvT6cWKxfWqCGlysnTdnBYColTmkr4Xr5Gt2N8cOVyMcx1Wah
+ rUUWJHMW2MccxKQ+8KX73Ht07xdASByYIkBv4knUdHZriPf0ogLv1B1dbbP6a8F/SCJ8inW6ILy
+ KUvEbOqUXY1Qhag==
+X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
+ fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-On Sat, Sep 19, 2026 at 11:25=E2=80=AFAM NeilBrown <neilb@ownmail.net> wrot=
-e:
->
-> From: NeilBrown <neil@brown.name>
->
-> If atomic_open is given __O_REGULAR, we now would prefer -EISDIR
-> if a directory was found.  So move the S_ISDIR() tests earlier.
->
-> Also don't return -EFTYPE for S_ISLNK() - that should get -ELOOP and only
-> if O_NOFOLLOW.
->
-> Signed-off-by: NeilBrown <neil@brown.name>
-Reviewed-by: Namjae Jeon <linkinjeon@kernel.org>
-Thanks!
+This fixes a rather silly bug that Scott pointed out to me in a meeting
+recently. You currently can't set the ports in lockd via the netlink
+interface unless you also set the gracetime. This patch makes them all
+properly optional.
+
+We probably want this to go to stable.
+
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+Jeff Layton (2):
+      lockd: allow SERVER_SET without a gracetime attribute
+      selftests/nfsd: add lockd netlink configuration tests
+
+ fs/lockd/svc.c                                    |  50 ++---
+ tools/testing/selftests/nfsd/.gitignore           |   1 +
+ tools/testing/selftests/nfsd/Makefile             |   1 +
+ tools/testing/selftests/nfsd/nfsd_lockd_netlink.c | 249 ++++++++++++++++++++++
+ tools/testing/selftests/nfsd/nfsd_netlink.h       |  90 ++++++--
+ 5 files changed, 348 insertions(+), 43 deletions(-)
+---
+base-commit: cab95e6be3ba82bcf4c8be27c2eb20e55238aa41
+change-id: 20260922-nfsd-testing-00c12335047d
+
+Best regards,
+-- 
+Jeff Layton <jlayton@kernel.org>
+
