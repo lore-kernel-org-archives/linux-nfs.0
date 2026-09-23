@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0B1115304CC
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C6C815304DF
 	for <linux-nfs@vger.kernel.org>; Wed, 23 Sep 2026 13:28:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790170115; cv=none; b=hwLB86JCjz5kWkP8XG4c1Kk4w3xE8qsOCFluy812B+uvV8tl3U556ytkYyPwFNjykg8mD4lNK2dY6MV+Nj8+Xwwc+sZyRDOoY+ZY9B7Wq+B59Qz6WYgUkdFrJDOAZmY58cHbuKLeEX5Otj0QLR2P04UBnTyPMMs4Z0KDFJsWbjI=
+	t=1790170116; cv=none; b=Y9g5MyQhlfx/TA9Z/CBCGY7Lo+Y+R7q1XyvcQtrOvjnWkOaXfDgP/WkY0fwZR/pqGWtEiztaURChpIiQCty6/BHzWIlJvZY/vDjjfagwLvApl4meODVrTBd/nMlXzVtqdys80qPx8VFSuXjN2I1IJUqS9a/l75tJPmK8EI7FaZk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790170115; c=relaxed/simple;
-	bh=r7WE8l/LbZERoR/Z7tjsiuSOP/LI6J40deN8QmZribE=;
+	s=arc-20240116; t=1790170116; c=relaxed/simple;
+	bh=kklLZzxDAVlFFWcWkK/nidX0DJt0jbsBpq2jP4xRNOs=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=dMKOCHXuv2sbPYGG67uuAj1Z89bJcuz8Lc+9aL+ssph2irQa9fsrTkBExHpm7vJKkswUY7o4OvpLeHaWXsXpjQHN2SKZIaQUI5k9+18En5MKnKGMGXlOwrgGBjtx1V8yD1FyQsm1ZTHpP4I19x0pUGvp6BrgMj6j9qFgYN8N0iw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MTY9vdEJ; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=p1X9kQBUSUy99UUMrebAYx1m2LlvbFmUGmQ/ZaEf96wca8HzpGGv9wiU64WW+OsDYkvw916Tw86kkHMAarTU149ya/a8ZoiiRMiCkapA9Cx6MhpRtpcROtGJACd0VFnWRZxrKxG4aPXJjv+Zj8bJwvSp33f7jp6+zmeXbcftLTE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hN9X7/Or; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MTY9vdEJ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 66D781F00899;
-	Wed, 23 Sep 2026 13:28:33 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hN9X7/Or"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2D55E1F00893;
+	Wed, 23 Sep 2026 13:28:34 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790170113;
-	bh=sImchkM6++WMEaCi7F66sgIL34d/+Yw5giw7ZQqPwzk=;
+	s=k20260515; t=1790170114;
+	bh=H2LG7OvDqhu0YkT53d/9tBBRBKiHZvyIvAEyt4D1Vrg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=MTY9vdEJGldW28k76PD2QDkoHOxbzv78WyT9a1qFvRiKba3qqIUK0JiF0bqYoecm5
-	 74el+oNmBLmo1fIDOT3MN4o+7yMop5QYETqTJYOQzbynFQWDAxrp8zVfMjrWW0lDET
-	 lW30/iivQ5affbY6zpBDYaWUwtgciDQjftxSDJVkS78lk9TUrKW4lmjSkHsavXmI9K
-	 csFiNDRzg03G+SId+5KpHJ/VoFJj3SutuVqMNXmfX5q3X6oI1dPeQNfXLu7ocUmvNC
-	 +WriFKSs0iJg8GO/MJ38AmMKfyAiWx36relN8lzRl3+PJYb9ecu/30eUDsACfp7upr
-	 AMXqk1eTnOeVQ==
+	b=hN9X7/OrY/UVRP+2CnSe7MDhRIJFTW7sigde97bBEwoFT5YQrmExX8cnmW1hVv8V6
+	 /17e4sD5W4U3ITRellGHY+UF2MLmegVoK8IOZ/SLYJN4GstWtb6a9vOWwGUQnUjaeO
+	 53tXcZuwK6yxS+nIWUrni297bDg0yZKuLbd8fliNnzo2sf7Kx7gipvwAHpKl8ZDrz2
+	 plISqIfRsofPH+3TGfbO7/DzA3XGo54esqyY9pEFiWmjHUTaIgeH/TrJ/iADrZ/6ue
+	 XpkpIom2z86RQXi8EaVGDzPLDGLC8psEeEufpxACVXqpza9k46pbcX0n5ZUWaAuqkC
+	 466qM9ZlLwtXg==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 23/33] NFSD: Use xdrgen XDR functions for the NFSv3 FSSTAT procedure
-Date: Wed, 23 Sep 2026 09:28:01 -0400
-Message-ID: <20260923132811.244160-24-cel@kernel.org>
+Subject: [PATCH v1 24/33] NFSD: Use xdrgen XDR functions for the NFSv3 FSINFO procedure
+Date: Wed, 23 Sep 2026 09:28:02 -0400
+Message-ID: <20260923132811.244160-25-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260923132811.244160-1-cel@kernel.org>
 References: <20260923132811.244160-1-cel@kernel.org>
@@ -47,177 +47,240 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Replace the NFSPROC3_FSSTAT entry in the nfsd_procedures3 array with
-an entry that dispatches the xdrgen-generated
-nfs_svc_decode_FSSTAT3args and nfs_svc_encode_FSSTAT3res. A wrapper
-structure bridges the generated xdrgen argument type and the legacy
-svc_fh representation the NFSD VFS layer still uses. The result
-wrapper carries a scratch kstatfs alongside the generated FSSTAT3res
-type, which nfsd_statfs() fills before nfsd3_proc_fsstat() copies the
-values into the encoded result.
+Replace the NFSPROC3_FSINFO entry in the nfsd_procedures3 array with
+an entry that dispatches the xdrgen-generated nfs_svc_decode_FSINFO3args
+and nfs_svc_encode_FSINFO3res. A wrapper structure bridges the
+generated xdrgen argument type and the legacy svc_fh representation the
+NFSD VFS layer still uses.
 
-The pc_argzero field is now set to zero for the NFSv3 FSSTAT
-procedure. The xdrgen decoders are trusted to initialize all
-arguments in the argp->xdrgen field, making the early defensive
-memset unnecessary. The remaining argp fields are cleared as needed.
+The pc_argzero field is now set to zero for the NFSv3 FSINFO
+procedure. The xdrgen decoders are trusted to initialize all arguments
+in the argp->xdrgen field, making the early defensive memset
+unnecessary. The remaining argp fields are cleared as needed.
 
-nfsd3_proc_fsstat() now sets the post-op attributes directly. This
+nfsd3_proc_fsinfo() now sets the post-op attributes directly. This
 makes it straightforward to confirm that the file handle is released
 during every error flow.
 
-nfs3svc_encode_fsstatres() no longer has any callers, so it is
-removed, and with it the now-orphaned svcxdr_encode_fsstat3resok()
-encode helper.
+nfs3svc_encode_fsinfores() no longer has any callers, so it is
+removed, and with it the now-orphaned svcxdr_encode_fsinfo3resok()
+encode helper and the nfs3svc_time_delta constant it referenced.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs3proc.c | 71 +++++++++++++++++++++++++++++++++++-----------
- fs/nfsd/nfs3xdr.c  | 45 -----------------------------
- fs/nfsd/xdr3.h     |  6 ++--
- 3 files changed, 57 insertions(+), 65 deletions(-)
+ fs/nfsd/nfs3proc.c | 107 +++++++++++++++++++++++++++------------------
+ fs/nfsd/nfs3xdr.c  |  55 -----------------------
+ fs/nfsd/xdr3.h     |  14 ++----
+ 3 files changed, 67 insertions(+), 109 deletions(-)
 
 diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 3706991ecea4..b9bcd05d4152 100644
+index b9bcd05d4152..ea3baab1ed95 100644
 --- a/fs/nfsd/nfs3proc.c
 +++ b/fs/nfsd/nfs3proc.c
-@@ -193,6 +193,13 @@ struct LINK3args_wrapper {
+@@ -24,9 +24,6 @@
  
- static_assert(offsetof(struct LINK3args_wrapper, xdrgen) == 0);
+ #define NFSDDBG_FACILITY		NFSDDBG_PROC
  
-+struct FSSTAT3args_wrapper {
-+	struct FSSTAT3args	xdrgen;
+-#define NFS3_FSF_DEFAULT		0x001b
+-#define NFS3_FSF_BILLYBOY		0x0018
+-
+ /*
+  * Wrapper structures combine xdrgen types with legacy structures.
+  * The xdrgen field must be first so the structure can be cast
+@@ -200,6 +197,13 @@ struct FSSTAT3args_wrapper {
+ 
+ static_assert(offsetof(struct FSSTAT3args_wrapper, xdrgen) == 0);
+ 
++struct FSINFO3args_wrapper {
++	struct FSINFO3args	xdrgen;
 +	struct svc_fh		fh;
 +};
 +
-+static_assert(offsetof(struct FSSTAT3args_wrapper, xdrgen) == 0);
++static_assert(offsetof(struct FSINFO3args_wrapper, xdrgen) == 0);
 +
  static int nfsd3_ftype3_to_mode(ftype3 ftype)
  {
  	switch (ftype) {
-@@ -1559,18 +1566,47 @@ nfsd3_proc_readdirplus(struct svc_rqst *rqstp)
+@@ -1610,47 +1614,63 @@ static __be32 nfsd3_proc_fsstat(struct svc_rqst *rqstp)
  	return rpc_success;
  }
  
 -/*
-- * Get file system stats
+- * Get file system info
 +/**
-+ * nfsd3_proc_fsstat - FSSTAT: Get dynamic file system information
++ * nfsd3_proc_fsinfo - FSINFO: Get static file system information
 + * @rqstp: RPC transaction context
 + *
 + * Return:
 + *   %rpc_success:		RPC executed successfully
 + *
 + * RPC synopsis:
-+ *   FSSTAT3res NFSPROC3_FSSTAT(FSSTAT3args) = 18;
++ *   FSINFO3res NFSPROC3_FSINFO(FSINFO3args) = 19;
   */
 -static __be32
--nfsd3_proc_fsstat(struct svc_rqst *rqstp)
-+static __be32 nfsd3_proc_fsstat(struct svc_rqst *rqstp)
+-nfsd3_proc_fsinfo(struct svc_rqst *rqstp)
++static __be32 nfsd3_proc_fsinfo(struct svc_rqst *rqstp)
  {
 -	struct nfsd_fhandle *argp = rqstp->rq_argp;
-+	struct FSSTAT3args_wrapper *argp = rqstp->rq_argp;
- 	struct nfsd3_fsstatres *resp = rqstp->rq_resp;
-+	struct kstatfs *statp = &resp->stats;
++	struct FSINFO3args_wrapper *argp = rqstp->rq_argp;
+ 	struct nfsd3_fsinfores *resp = rqstp->rq_resp;
+-	u32	max_blocksize = svc_max_payload(rqstp);
 +	struct svc_fh *fhp = &argp->fh;
  
--	resp->status = nfsd_statfs(rqstp, &argp->fh, &resp->stats, 0);
--	fh_put(&argp->fh);
--	resp->status = nfsd3_map_status(resp->status);
+-	dprintk("nfsd: FSINFO(3)   %s\n",
+-				SVCFH_fmt(&argp->fh));
 +	nfsd3_fh3_to_svc_fh(fhp, &argp->xdrgen.fsroot);
-+
-+	resp->xdrgen.status = nfsd_statfs(rqstp, fhp, statp, 0);
-+
+ 
+-	resp->f_rtmax  = max_blocksize;
+-	resp->f_rtpref = max_blocksize;
+-	resp->f_rtmult = PAGE_SIZE;
+-	resp->f_wtmax  = max_blocksize;
+-	resp->f_wtpref = max_blocksize;
+-	resp->f_wtmult = PAGE_SIZE;
+-	resp->f_dtpref = max_blocksize;
+-	resp->f_maxfilesize = ~(u32) 0;
+-	resp->f_properties = NFS3_FSF_DEFAULT;
++	resp->xdrgen.status = fh_verify(rqstp, fhp, 0, NFSD_MAY_NOP |
++					NFSD_MAY_BYPASS_GSS_ON_ROOT);
+ 
+-	resp->status = fh_verify(rqstp, &argp->fh, 0,
+-				 NFSD_MAY_NOP | NFSD_MAY_BYPASS_GSS_ON_ROOT);
 +	if (resp->xdrgen.status == nfs_ok) {
-+		struct FSSTAT3resok *resok = &resp->xdrgen.u.resok;
-+		u64 bs = statp->f_bsize;
-+
++		struct FSINFO3resok *resok = &resp->xdrgen.u.resok;
++		struct super_block *sb = fhp->fh_dentry->d_sb;
++		u32 max_blocksize = svc_max_payload(rqstp);
+ 
+-	/* Check special features of the file system. May request
+-	 * different read/write sizes for file systems known to have
+-	 * problems with large blocks */
+-	if (resp->status == nfs_ok) {
+-		struct super_block *sb = argp->fh.fh_dentry->d_sb;
 +		resok->obj_attributes.attributes_follow = false;
-+		resok->tbytes = bs * statp->f_blocks;
-+		resok->fbytes = bs * statp->f_bfree;
-+		resok->abytes = bs * statp->f_bavail;
-+		resok->tfiles = statp->f_files;
-+		resok->ffiles = statp->f_ffree;
-+		resok->afiles = statp->f_ffree;
-+		resok->invarsec = 0;
++		resok->rtmax = max_blocksize;
++		resok->rtpref = max_blocksize;
++		resok->rtmult = PAGE_SIZE;
++		resok->wtmax = max_blocksize;
++		resok->wtpref = max_blocksize;
++		resok->wtmult = PAGE_SIZE;
++		resok->dtpref = max_blocksize;
++		resok->maxfilesize = ~(u32)0;
++		/* NFSD is accurate to the nearest second. */
++		resok->time_delta.seconds = 1;
++		resok->time_delta.nseconds = 0;
++		resok->properties = FSF3_LINK | FSF3_SYMLINK |
++				    FSF3_HOMOGENEOUS | FSF3_CANSETTIME;
+ 
+-		/* Note that we don't care for remote fs's here */
+-		if (sb->s_magic == MSDOS_SUPER_MAGIC) {
+-			resp->f_properties = NFS3_FSF_BILLYBOY;
+-		}
+-		resp->f_maxfilesize = sb->s_maxbytes;
++		/*
++		 * Check special features of the file system. May
++		 * request different read/write sizes for file systems
++		 * known to have problems with large blocks.
++		 */
++		if (sb->s_magic == MSDOS_SUPER_MAGIC)
++			resok->properties = FSF3_HOMOGENEOUS | FSF3_CANSETTIME;
++		resok->maxfilesize = sb->s_maxbytes;
 +	} else {
-+		struct FSSTAT3resfail *resfail = &resp->xdrgen.u.resfail;
++		struct FSINFO3resfail *resfail = &resp->xdrgen.u.resfail;
 +
 +		resp->xdrgen.status = nfsd3_map_status(resp->xdrgen.status);
 +		resfail->obj_attributes.attributes_follow = false;
-+	}
-+
+ 	}
+ 
+-	fh_put(&argp->fh);
+-	resp->status = nfsd3_map_status(resp->status);
 +	fh_put(fhp);
  	return rpc_success;
  }
  
-@@ -1928,15 +1964,15 @@ static const struct svc_procedure nfsd_procedures3[22] = {
- 		.pc_name = "READDIRPLUS",
- 	},
- 	[NFSPROC3_FSSTAT] = {
--		.pc_func = nfsd3_proc_fsstat,
--		.pc_decode = nfs3svc_decode_fhandleargs,
--		.pc_encode = nfs3svc_encode_fsstatres,
--		.pc_argsize = sizeof(struct nfsd3_fhandleargs),
--		.pc_argzero = sizeof(struct nfsd3_fhandleargs),
--		.pc_ressize = sizeof(struct nfsd3_fsstatres),
--		.pc_cachetype = RC_NOCACHE,
--		.pc_xdrressize = ST+pAT+2*6+1,
--		.pc_name = "FSSTAT",
-+		.pc_func	= nfsd3_proc_fsstat,
-+		.pc_decode	= nfs_svc_decode_FSSTAT3args,
-+		.pc_encode	= nfs_svc_encode_FSSTAT3res,
-+		.pc_argsize	= sizeof(struct FSSTAT3args_wrapper),
-+		.pc_argzero	= 0,
-+		.pc_ressize	= sizeof(struct nfsd3_fsstatres),
-+		.pc_cachetype	= RC_NOCACHE,
-+		.pc_xdrressize	= NFS3_FSSTAT3res_sz,
-+		.pc_name	= "FSSTAT",
+@@ -1975,15 +1995,15 @@ static const struct svc_procedure nfsd_procedures3[22] = {
+ 		.pc_name	= "FSSTAT",
  	},
  	[NFSPROC3_FSINFO] = {
- 		.pc_func = nfsd3_proc_fsinfo,
-@@ -2010,6 +2046,7 @@ union nfsd3_xdrstore {
- 	struct READ3res			readres;
- 	struct nfsd3_writeres		writeres;
+-		.pc_func = nfsd3_proc_fsinfo,
+-		.pc_decode = nfs3svc_decode_fhandleargs,
+-		.pc_encode = nfs3svc_encode_fsinfores,
+-		.pc_argsize = sizeof(struct nfsd3_fhandleargs),
+-		.pc_argzero = sizeof(struct nfsd3_fhandleargs),
+-		.pc_ressize = sizeof(struct nfsd3_fsinfores),
+-		.pc_cachetype = RC_NOCACHE,
+-		.pc_xdrressize = ST+pAT+12,
+-		.pc_name = "FSINFO",
++		.pc_func	= nfsd3_proc_fsinfo,
++		.pc_decode	= nfs_svc_decode_FSINFO3args,
++		.pc_encode	= nfs_svc_encode_FSINFO3res,
++		.pc_argsize	= sizeof(struct FSINFO3args_wrapper),
++		.pc_argzero	= 0,
++		.pc_ressize	= sizeof(struct nfsd3_fsinfores),
++		.pc_cachetype	= RC_NOCACHE,
++		.pc_xdrressize	= NFS3_FSINFO3res_sz,
++		.pc_name	= "FSINFO",
+ 	},
+ 	[NFSPROC3_PATHCONF] = {
+ 		.pc_func = nfsd3_proc_pathconf,
+@@ -2048,6 +2068,7 @@ union nfsd3_xdrstore {
  	struct nfsd3_readdirres		readdirres;
-+	struct FSSTAT3args_wrapper	fsstatargs;
+ 	struct FSSTAT3args_wrapper	fsstatargs;
  	struct nfsd3_fsstatres		fsstatres;
++	struct FSINFO3args_wrapper	fsinfoargs;
  	struct nfsd3_fsinfores		fsinfores;
  	struct nfsd3_pathconfres	pathconfres;
+ 	struct nfsd3_commitres		commitres;
 diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 59e89b7f9d19..0ca671bdd1c8 100644
+index 0ca671bdd1c8..9e400a97e435 100644
 --- a/fs/nfsd/nfs3xdr.c
 +++ b/fs/nfsd/nfs3xdr.c
-@@ -620,51 +620,6 @@ int nfs3svc_encode_entryplus3(void *data, const char *name, int namlen,
+@@ -24,15 +24,6 @@ static const struct svc_fh nfs3svc_null_fh = {
+ 	.fh_no_wcc	= true,
+ };
+ 
+-/*
+- * time_delta. {1, 0} means the server is accurate only
+- * to the nearest second.
+- */
+-static const struct timespec64 nfs3svc_time_delta = {
+-	.tv_sec		= 1,
+-	.tv_nsec	= 0,
+-};
+-
+ /*
+  * Mapping of S_IF* types to NFS file types
+  */
+@@ -620,52 +611,6 @@ int nfs3svc_encode_entryplus3(void *data, const char *name, int namlen,
  	return -EINVAL;
  }
  
 -static bool
--svcxdr_encode_fsstat3resok(struct xdr_stream *xdr,
--			   const struct nfsd3_fsstatres *resp)
+-svcxdr_encode_fsinfo3resok(struct xdr_stream *xdr,
+-			   const struct nfsd3_fsinfores *resp)
 -{
--	const struct kstatfs *s = &resp->stats;
--	u64 bs = s->f_bsize;
 -	__be32 *p;
 -
--	p = xdr_reserve_space(xdr, XDR_UNIT * 13);
+-	p = xdr_reserve_space(xdr, XDR_UNIT * 12);
 -	if (!p)
 -		return false;
--	p = xdr_encode_hyper(p, bs * s->f_blocks);	/* total bytes */
--	p = xdr_encode_hyper(p, bs * s->f_bfree);	/* free bytes */
--	p = xdr_encode_hyper(p, bs * s->f_bavail);	/* user available bytes */
--	p = xdr_encode_hyper(p, s->f_files);		/* total inodes */
--	p = xdr_encode_hyper(p, s->f_ffree);		/* free inodes */
--	p = xdr_encode_hyper(p, s->f_ffree);		/* user available inodes */
--	*p = cpu_to_be32(resp->invarsec);		/* mean unchanged time */
+-	*p++ = cpu_to_be32(resp->f_rtmax);
+-	*p++ = cpu_to_be32(resp->f_rtpref);
+-	*p++ = cpu_to_be32(resp->f_rtmult);
+-	*p++ = cpu_to_be32(resp->f_wtmax);
+-	*p++ = cpu_to_be32(resp->f_wtpref);
+-	*p++ = cpu_to_be32(resp->f_wtmult);
+-	*p++ = cpu_to_be32(resp->f_dtpref);
+-	p = xdr_encode_hyper(p, resp->f_maxfilesize);
+-	p = encode_nfstime3(p, &nfs3svc_time_delta);
+-	*p = cpu_to_be32(resp->f_properties);
 -
 -	return true;
 -}
 -
--/* FSSTAT */
+-/* FSINFO */
 -bool
--nfs3svc_encode_fsstatres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+-nfs3svc_encode_fsinfores(struct svc_rqst *rqstp, struct xdr_stream *xdr)
 -{
--	struct nfsd3_fsstatres *resp = rqstp->rq_resp;
+-	struct nfsd3_fsinfores *resp = rqstp->rq_resp;
 -
 -	if (!svcxdr_encode_nfsstat3(xdr, resp->status))
 -		return false;
@@ -225,7 +288,7 @@ index 59e89b7f9d19..0ca671bdd1c8 100644
 -	case nfs_ok:
 -		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &nfs3svc_null_fh))
 -			return false;
--		if (!svcxdr_encode_fsstat3resok(xdr, resp))
+-		if (!svcxdr_encode_fsinfo3resok(xdr, resp))
 -			return false;
 -		break;
 -	default:
@@ -237,35 +300,42 @@ index 59e89b7f9d19..0ca671bdd1c8 100644
 -}
 -
  static bool
- svcxdr_encode_fsinfo3resok(struct xdr_stream *xdr,
- 			   const struct nfsd3_fsinfores *resp)
+ svcxdr_encode_pathconf3resok(struct xdr_stream *xdr,
+ 			     const struct nfsd3_pathconfres *resp)
 diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-index 9f29f34cca8f..01c8539e67b8 100644
+index 01c8539e67b8..7c39d7c35df0 100644
 --- a/fs/nfsd/xdr3.h
 +++ b/fs/nfsd/xdr3.h
-@@ -93,11 +93,12 @@ struct nfsd3_readdirres {
- };
+@@ -100,18 +100,11 @@ struct nfsd3_fsstatres {
+ static_assert(offsetof(struct nfsd3_fsstatres, xdrgen) == 0);
  
- struct nfsd3_fsstatres {
--	__be32			status;
-+	struct FSSTAT3res	xdrgen;
- 	struct kstatfs		stats;
--	__u32			invarsec;
- };
- 
-+static_assert(offsetof(struct nfsd3_fsstatres, xdrgen) == 0);
-+
  struct nfsd3_fsinfores {
+-	__be32			status;
+-	__u32			f_rtmax;
+-	__u32			f_rtpref;
+-	__u32			f_rtmult;
+-	__u32			f_wtmax;
+-	__u32			f_wtpref;
+-	__u32			f_wtmult;
+-	__u32			f_dtpref;
+-	__u64			f_maxfilesize;
+-	__u32			f_properties;
++	struct FSINFO3res	xdrgen;
+ };
+ 
++static_assert(offsetof(struct nfsd3_fsinfores, xdrgen) == 0);
++
+ struct nfsd3_pathconfres {
  	__be32			status;
- 	__u32			f_rtmax;
-@@ -143,7 +144,6 @@ bool nfs3svc_decode_commitargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ 	__u32			p_link_max;
+@@ -144,7 +137,6 @@ bool nfs3svc_decode_commitargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  
  bool nfs3svc_encode_accessres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  bool nfs3svc_encode_readdirres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
--bool nfs3svc_encode_fsstatres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfs3svc_encode_fsinfores(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+-bool nfs3svc_encode_fsinfores(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  bool nfs3svc_encode_pathconfres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  bool nfs3svc_encode_commitres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ 
 -- 
 2.55.0
 
