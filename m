@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 30043328B71
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Sep 2026 13:28:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6245B531621
+	for <linux-nfs@vger.kernel.org>; Wed, 23 Sep 2026 13:28:22 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790170105; cv=none; b=N/RVdPIBOj/Tn0iEX1JBaOCL3KJJj0HTB6zTln/2mJhDNMSQTHWMan3giN+XDkdHHdgf8W+4zyxUczx6uM4P3o2Cjic0U3XRJgkbUiLcLA77znZK6/qi7jOT2edNzvEQW8CUnkzEitjmyhSyZZeJJzes4sayNvcEiGL4yOtr3nA=
+	t=1790170105; cv=none; b=FABfQjT6/EIXDt2MUxps82UdSb1L6GLq3GjzufaWmET4+NCMzdk4VM+XqnoCOAWWO4uPae6FVDvt5Allco8uuNC4P1QHvRADPlzi0QaiGI5jguMt94aGsy5CYNIef+KGScDjGHFtux6tMiZj8kyeSRihrZAKrwVtsHXmsXG4lwo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1790170105; c=relaxed/simple;
-	bh=KS9TmCBCTb1bb+mJyoSYPc1EgdbxOHMGBUOhTqoXkQ8=;
+	bh=igeju+7jE6//QU47GUpb9imAjCpcVOO8D0J7URhcWOY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=lUj82DxkAAwWa1dmyUCzaNKu8ay13QVMqthEeGMAxaUofkajom3WSvneeEHMlqfKQ/MlCYYNEXr4NEtl3RB2LEUVq1oQ/GFrxklwU+C4U3Qwey1LD4SgMlmsCKO8ukvnj6HbqkJzChzxH3t5OlcUCxllUrWjo61SZKvijNSw1X8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UyVK028i; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=gWPGzyE7lKUUgo/gSQgvOpeDrY/vW5OM1blIfiuE+F0+f9qz9FZyvBio+flr8W/n4sTlkExIhJRO618bnS3f4CWsikjELW1qXZJhWHvIQA31xkOQyJONDcajyeSnrKxKMIweygFk17Duf/xdEhe/GK6HkPlRho3xu/Z+5SAIWkE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=dYHORIyi; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UyVK028i"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4C3751F00899;
-	Wed, 23 Sep 2026 13:28:23 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="dYHORIyi"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BB9D91F000FF;
+	Wed, 23 Sep 2026 13:28:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790170103;
-	bh=R7AJ6vIygFwP7h6BidVZgmkVkbLXqXaiG+M+iR53vuQ=;
+	s=k20260515; t=1790170102;
+	bh=CeBjrdL/bCroblgw0czDQ8GUySwiw8XT8eihPHhb7tk=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=UyVK028igE1ItFMgCCf7I0stV3mt0CCZKtF7M21pwyeMDJnz1Y1O09IuCBdM9aGwS
-	 +PYmqrlg21W15N4+6BY7kMNhW4tb3IEKE+Rs2Nrbh57GMcs9jJehINRv1VZ5ucunUz
-	 SPcF7eqQ+UE59cQOetukRppR+NVX7I7kvlmFlIAtD/eZ1rUQxcZmsBAZkqjFNPNnrT
-	 7lKL/X+9HJhR9cLBFEnaxIGvjafZg6igBglWVB9eSIr/28fdjt8Re6ZDWDZdngJ4DA
-	 aOTGAkxQazuwff1ZFY3BK8jEZyf7w3e5rZNzPZKIfI95zLDSrPc6ydAlru50g//31I
-	 Z4Dk+cmahHY+A==
+	b=dYHORIyiwYs1Ye4qqirJz+MGdmhMaAn/DOKciDADj9ZbTMfAN3VbkMyT0bEij81y8
+	 zOAdLA/NcDmV1tVxXgChytFfsVemGVIYVFeg2NBcdWiVWcX20uAOggNV1Kk6V1veFQ
+	 9i/lQFpsNHdahRzZiMBjZvRFAUGGKNoHTLUL0h01msboH9Dtyy2d/b6f2e0rkFavCc
+	 lht/x/2D49UW/5YryUjVfXy+rcFGXG5wVfX1ZWQwI49bnW4aXvmtyd7vb6vkuRqpZI
+	 Rky8PP0nMzStXkvANAueDaYH+6ZSRSLyk++8LD9ogTDsIb3aHYrmqfC5AYxY98Zuj3
+	 0pfOe/el4M93Q==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 10/33] NFSD: Use xdrgen XDR functions for the NFSv3 LOOKUP procedure
-Date: Wed, 23 Sep 2026 09:27:48 -0400
-Message-ID: <20260923132811.244160-11-cel@kernel.org>
+Subject: [PATCH v1 08/33] NFSD: Use xdrgen XDR functions for NFSv3 GETATTR procedure
+Date: Wed, 23 Sep 2026 09:27:46 -0400
+Message-ID: <20260923132811.244160-9-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260923132811.244160-1-cel@kernel.org>
 References: <20260923132811.244160-1-cel@kernel.org>
@@ -47,267 +47,786 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Replace the NFSPROC3_LOOKUP entry in the nfsd_procedures3 array
-with an entry that dispatches the xdrgen-generated
-nfs_svc_decode_LOOKUP3args and nfs_svc_encode_LOOKUP3res. Wrapper
+Replace the NFSPROC3_GETATTR entry in the nfsd_procedures3
+array with an entry that dispatches the xdrgen-generated
+nfs_svc_decode_GETATTR3args and nfs_svc_encode_GETATTR3res. Wrapper
 structures bridge the generated xdrgen types and the legacy svc_fh
-representation the NFSD VFS layer still uses.
+and kstat representations the NFSD VFS layer still uses. A few helper
+functions are introduced which will be used here and in subsequent
+patches.
 
-The pc_argzero field is now set to zero for the NFSv3 LOOKUP
+The pc_argzero field is now set to zero for the NFSv3 GETATTR
 procedure. The xdrgen decoders are trusted to initialize all
-arguments in the argp->xdrgen field, making the early defensive
-memset unnecessary. The remaining argp fields are cleared as
-needed.
+arguments in the argp->xdrgen field, making the early defensive memset
+unnecessary. The remaining argp fields are cleared as needed.
 
-nfs3svc_decode_diropargs() rejects an empty name, a name longer
-than NFS3_MAXNAMLEN, and a name containing '/' or NUL. The
-generated filename3 decoder checks none of these. Introduce
-nfsd3_check_filename() so that nfsd3_proc_lookup() applies the same
-checks before it calls nfsd_lookup(). After the change, a name that
-fails them draws NFS3ERR_INVAL or NFS3ERR_NAMETOOLONG rather than
-GARBAGE_ARGS. Later procedures that take a filename share the helper.
-
-Because nfsd3_proc_lookup() now fills in the post-op attributes,
-the fh_getattr() calls are made in the proc function rather than in
-the XDR result encoder, and the references to the file handles can
-be released directly by nfsd3_proc_lookup(). A separate ->pc_release
-callback is thus no longer needed. This makes it straightforward to
-confirm that the file handles are properly released during every
-error flow.
+This refactor replaces the use of svcxdr_encode_fattr3(). Because
+nfsd3_proc_getattr() now fills in the response attributes, the
+fh_getattr() call is made in the proc function rather than in the XDR
+result encoder, and the reference to the file handle can be released
+directly by nfsd3_proc_getattr(). A separate ->pc_release callback is
+thus no longer needed. This makes it straightforward to confirm that
+the file handle is properly released during every error flow.
 
 Following the precedent of commit 40ee5dc6af35 ("knfsd: 64 bit ino
 support for NFS server"), lease_get_mtime() determines the file's
-mtime when filling in post-op attributes, but is not used for WCC
-data. This seems odd to me; NFSv4 does not use lease_get_mtime() at
-all, and not using it for WCC data seems like an NFSv3 file's
-reported mtime values might vary depending on how the file metadata
-is queried.
+mtime for GETATTR (and later when filling in post-op attributes),
+but is not used for WCC data. This seems odd to me; NFSv4 does not use
+lease_get_mtime() at all, and not using it for WCC data seems like an
+NFSv3 file's reported mtime values might vary depending on how the file
+metadata is queried.
 
-nfs3svc_encode_lookupres() no longer has any callers, so it is
+nfs3svc_encode_getattrres() no longer has any callers, so it is
 removed.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs3proc.c | 116 +++++++++++++++++++++++++++++++++++----------
- fs/nfsd/nfs3xdr.c  |  25 ----------
- fs/nfsd/xdr3.h     |   1 -
- 3 files changed, 90 insertions(+), 52 deletions(-)
+ Documentation/sunrpc/xdr/nfs3.x    |   1 +
+ fs/nfsd/nfs3proc.c                 | 161 ++++++++++++++++++++++++-----
+ fs/nfsd/nfs3xdr.c                  |  19 ----
+ fs/nfsd/nfs3xdr_gen.c              |  94 ++++++++---------
+ fs/nfsd/nfs3xdr_gen.h              |   2 +-
+ fs/nfsd/xdr3.h                     |   1 -
+ include/linux/sunrpc/xdrgen/nfs3.h |   4 +-
+ 7 files changed, 187 insertions(+), 95 deletions(-)
 
+diff --git a/Documentation/sunrpc/xdr/nfs3.x b/Documentation/sunrpc/xdr/nfs3.x
+index 9feabfda94e7..1ef99ec54103 100644
+--- a/Documentation/sunrpc/xdr/nfs3.x
++++ b/Documentation/sunrpc/xdr/nfs3.x
+@@ -95,6 +95,7 @@ enum nfsstat3 {
+ 	NFS3ERR_BADTYPE		= 10007,
+ 	NFS3ERR_JUKEBOX		= 10008
+ };
++pragma big_endian nfsstat3;
+ 
+ enum ftype3 {
+ 	NF3REG		= 1,
 diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 815722afde9a..735b4fc21336 100644
+index 0c4109bde2bb..1facaccf408b 100644
 --- a/fs/nfsd/nfs3proc.c
 +++ b/fs/nfsd/nfs3proc.c
-@@ -56,6 +56,21 @@ struct SETATTR3args_wrapper {
+@@ -9,7 +9,10 @@
+ #include <linux/ext2_fs.h>
+ #include <linux/magic.h>
+ #include <linux/namei.h>
++#include <linux/sunrpc/svc.h>
  
- static_assert(offsetof(struct SETATTR3args_wrapper, xdrgen) == 0);
++#include "auth.h"
++#include "nfsd.h"
+ #include "cache.h"
+ #include "xdr3.h"
+ #include "vfs.h"
+@@ -24,6 +27,26 @@
+ #define NFS3_FSF_DEFAULT		0x001b
+ #define NFS3_FSF_BILLYBOY		0x0018
  
-+struct LOOKUP3args_wrapper {
-+	struct LOOKUP3args	xdrgen;
++/*
++ * Wrapper structures combine xdrgen types with legacy structures.
++ * The xdrgen field must be first so the structure can be cast
++ * to its XDR type for the RPC dispatch layer.
++ */
++
++struct GETATTR3args_wrapper {
++	struct GETATTR3args	xdrgen;
 +	struct svc_fh		fh;
 +};
 +
-+static_assert(offsetof(struct LOOKUP3args_wrapper, xdrgen) == 0);
++static_assert(offsetof(struct GETATTR3args_wrapper, xdrgen) == 0);
 +
-+struct LOOKUP3res_wrapper {
-+	struct LOOKUP3res	xdrgen;
-+	struct svc_fh		fh;
-+	u8			fh_data[NFS3_FHSIZE];
++struct GETATTR3res_wrapper {
++	struct GETATTR3res	xdrgen;
++	struct kstat		stat;
 +};
 +
-+static_assert(offsetof(struct LOOKUP3res_wrapper, xdrgen) == 0);
++static_assert(offsetof(struct GETATTR3res_wrapper, xdrgen) == 0);
 +
  static int	nfs3_ftypes[] = {
  	0,			/* NF3NON */
  	S_IFREG,		/* NF3REG */
-@@ -170,6 +185,14 @@ nfsd3_fh3_to_svc_fh(struct svc_fh *fhp, const struct nfs_fh3 *fh3)
- 	memcpy(&fhp->fh_handle.fh_raw, fh3->data.data, fh3->data.len);
+@@ -129,6 +152,77 @@ static __be32 nfsd3_map_status(__be32 status)
+ 	return status;
  }
  
++/* XDR decoding has already checked that the FH length is valid */
 +static __always_inline void
-+nfsd3_svc_fh_to_fh3(struct nfs_fh3 *fh3, const struct svc_fh *fhp, u8 *scratch)
++nfsd3_fh3_to_svc_fh(struct svc_fh *fhp, const struct nfs_fh3 *fh3)
 +{
-+	memcpy(scratch, fhp->fh_handle.fh_raw, fhp->fh_handle.fh_size);
-+	fh3->data.data = scratch;
-+	fh3->data.len = fhp->fh_handle.fh_size;
++	fh_init(fhp, NFS3_FHSIZE);
++	fhp->fh_handle.fh_size = fh3->data.len;
++	memcpy(&fhp->fh_handle.fh_raw, fh3->data.data, fh3->data.len);
 +}
 +
- static __always_inline void
- nfsd3_timespec64_to_nfstime3(struct nfstime3 *dst,
- 			     const struct timespec64 *src)
-@@ -178,6 +201,22 @@ nfsd3_timespec64_to_nfstime3(struct nfstime3 *dst,
- 	dst->nseconds = src->tv_nsec;
- }
- 
-+static __be32
-+nfsd3_check_filename(const unsigned char *name, u32 len)
++static __always_inline void
++nfsd3_timespec64_to_nfstime3(struct nfstime3 *dst,
++			     const struct timespec64 *src)
 +{
-+	u32 i;
++	dst->seconds = src->tv_sec;
++	dst->nseconds = src->tv_nsec;
++}
 +
-+	if (len == 0)
-+		return nfserr_inval;
-+	if (len > NFS3_MAXNAMLEN)
-+		return nfserr_nametoolong;
-+	for (i = 0; i < len; i++) {
-+		if (name[i] == '\0' || name[i] == '/')
-+			return nfserr_inval;
++static u32
++nfsd3_mode_to_ftype3(umode_t mode)
++{
++	switch (mode & S_IFMT) {
++	case S_IFREG:  return NF3REG;
++	case S_IFDIR:  return NF3DIR;
++	case S_IFBLK:  return NF3BLK;
++	case S_IFCHR:  return NF3CHR;
++	case S_IFLNK:  return NF3LNK;
++	case S_IFSOCK: return NF3SOCK;
++	case S_IFIFO:  return NF3FIFO;
 +	}
-+	return nfs_ok;
++
++	pr_warn_once("NFSD: unexpected file type: mode=0%o\n", mode);
++	return NF3REG;
 +}
 +
- static u32
- nfsd3_mode_to_ftype3(umode_t mode)
- {
-@@ -458,27 +497,51 @@ static __be32 nfsd3_proc_setattr(struct svc_rqst *rqstp)
++static void
++nfsd3_stat_to_fattr3(struct svc_rqst *rqstp, struct fattr3 *fattr,
++		     const struct kstat *stat, const struct svc_fh *fhp)
++{
++	struct user_namespace *userns = nfsd_user_namespace(rqstp);
++
++	fattr->type = nfsd3_mode_to_ftype3(stat->mode);
++	fattr->mode = stat->mode & S_IALLUGO;
++	fattr->nlink = stat->nlink;
++	fattr->uid = from_kuid_munged(userns, stat->uid);
++	fattr->gid = from_kgid_munged(userns, stat->gid);
++	if (S_ISLNK(stat->mode) && stat->size > NFS3_MAXPATHLEN)
++		fattr->size = NFS3_MAXPATHLEN;
++	else
++		fattr->size = stat->size;
++	fattr->used = stat->blocks << 9;
++	fattr->rdev.specdata1 = MAJOR(stat->rdev);
++	fattr->rdev.specdata2 = MINOR(stat->rdev);
++
++	switch (fsid_source(fhp)) {
++	case FSIDSOURCE_FSID:
++		fattr->fsid = (u64)fhp->fh_export->ex_fsid;
++		break;
++	case FSIDSOURCE_UUID:
++		fattr->fsid = ((u64 *)fhp->fh_export->ex_uuid)[0];
++		fattr->fsid ^= ((u64 *)fhp->fh_export->ex_uuid)[1];
++		break;
++	default:
++		fattr->fsid = (u64)huge_encode_dev(fhp->fh_dentry->d_sb->s_dev);
++	}
++	fattr->fileid = stat->ino;
++
++	nfsd3_timespec64_to_nfstime3(&fattr->atime, &stat->atime);
++	nfsd3_timespec64_to_nfstime3(&fattr->mtime, &stat->mtime);
++	nfsd3_timespec64_to_nfstime3(&fattr->ctime, &stat->ctime);
++}
++
+ /*
+  * A full specification of each of the following NFSv3 procedures is
+  * available in RFC 1813 Section 3.3.
+@@ -149,26 +243,42 @@ static __be32 nfsd3_proc_null(struct svc_rqst *rqstp)
  	return rpc_success;
  }
  
 -/*
-- * Look up a path name component
+- * Get a file's attributes
 +/**
-+ * nfsd3_proc_lookup - LOOKUP: Look up file name
++ * nfsd3_proc_getattr - GETATTR: Get file attributes
 + * @rqstp: RPC transaction context
 + *
 + * Return:
 + *   %rpc_success:		RPC executed successfully
 + *
 + * RPC synopsis:
-+ *   LOOKUP3res NFSPROC3_LOOKUP(LOOKUP3args) = 3;
++ *   GETATTR3res NFSPROC3_GETATTR(GETATTR3args) = 1;
   */
 -static __be32
--nfsd3_proc_lookup(struct svc_rqst *rqstp)
-+static __be32 nfsd3_proc_lookup(struct svc_rqst *rqstp)
+-nfsd3_proc_getattr(struct svc_rqst *rqstp)
++static __be32 nfsd3_proc_getattr(struct svc_rqst *rqstp)
  {
--	struct nfsd3_diropargs *argp = rqstp->rq_argp;
--	struct nfsd3_diropres  *resp = rqstp->rq_resp;
-+	struct LOOKUP3args_wrapper *argp = rqstp->rq_argp;
-+	struct LOOKUP3res_wrapper *resp = rqstp->rq_resp;
-+	struct diropargs3 *what = &argp->xdrgen.what;
-+	struct svc_fh *dirfhp = &argp->fh;
-+	struct svc_fh *fhp = &resp->fh;
+-	struct nfsd_fhandle *argp = rqstp->rq_argp;
+-	struct nfsd3_attrstat *resp = rqstp->rq_resp;
++	struct GETATTR3args_wrapper *argp = rqstp->rq_argp;
++	struct GETATTR3res_wrapper *resp = rqstp->rq_resp;
++	struct kstat *statp = &resp->stat;
++	struct svc_fh *fhp = &argp->fh;
  
--	dprintk("nfsd: LOOKUP(3)   %s %.*s\n",
--				SVCFH_fmt(&argp->fh),
--				argp->len,
--				argp->name);
-+	nfsd3_fh3_to_svc_fh(dirfhp, &what->dir);
- 
--	fh_copy(&resp->dirfh, &argp->fh);
--	fh_init(&resp->fh, NFS3_FHSIZE);
-+	fh_init(fhp, NFS3_FHSIZE);
-+	resp->xdrgen.status = nfsd3_check_filename(what->name.data,
-+						   what->name.len);
+-	trace_nfsd_vfs_getattr(rqstp, &argp->fh);
+-
+-	fh_copy(&resp->fh, &argp->fh);
+-	resp->status = fh_verify(rqstp, &resp->fh, 0,
+-				 NFSD_MAY_NOP | NFSD_MAY_BYPASS_GSS_ON_ROOT);
+-	if (resp->status != nfs_ok)
++	nfsd3_fh3_to_svc_fh(fhp, &argp->xdrgen.object);
++	trace_nfsd_vfs_getattr(rqstp, fhp);
++	resp->xdrgen.status = fh_verify(rqstp, fhp, 0, NFSD_MAY_NOP |
++					NFSD_MAY_BYPASS_GSS_ON_ROOT);
 +	if (resp->xdrgen.status != nfs_ok)
-+		goto out;
-+	resp->xdrgen.status = nfsd_lookup(rqstp, dirfhp,
-+					  (char *)what->name.data,
-+					  what->name.len, fhp);
+ 		goto out;
  
--	resp->status = nfsd_lookup(rqstp, &resp->dirfh,
--				   argp->name, argp->len,
--				   &resp->fh);
+-	resp->status = fh_getattr(&resp->fh, &resp->stat);
++	resp->xdrgen.status = fh_getattr(fhp, statp);
++
+ out:
 -	resp->status = nfsd3_map_status(resp->status);
-+out:
 +	if (resp->xdrgen.status == nfs_ok) {
-+		struct LOOKUP3resok *resok = &resp->xdrgen.u.resok;
-+
-+		nfsd3_svc_fh_to_fh3(&resok->object, fhp, resp->fh_data);
-+		nfsd3_fill_post_op_attr(rqstp, &resok->obj_attributes, fhp);
-+		nfsd3_fill_post_op_attr(rqstp, &resok->dir_attributes, dirfhp);
++		lease_get_mtime(d_inode(fhp->fh_dentry), &statp->mtime);
++		nfsd3_stat_to_fattr3(rqstp, &resp->xdrgen.u.resok.obj_attributes,
++				     statp, fhp);
 +	} else {
-+		struct LOOKUP3resfail *resfail = &resp->xdrgen.u.resfail;
-+
 +		resp->xdrgen.status = nfsd3_map_status(resp->xdrgen.status);
-+		nfsd3_fill_post_op_attr(rqstp, &resfail->dir_attributes, dirfhp);
 +	}
 +
 +	fh_put(fhp);
-+	fh_put(dirfhp);
  	return rpc_success;
  }
  
-@@ -1224,16 +1287,15 @@ static const struct svc_procedure nfsd_procedures3[22] = {
- 		.pc_name	= "SETATTR",
+@@ -920,12 +1030,10 @@ nfsd3_proc_commit(struct svc_rqst *rqstp)
+  * NFSv3 Server procedures.
+  * Only the results of non-idempotent operations are cached.
+  */
+-#define nfs3svc_encode_attrstatres	nfs3svc_encode_attrstat
+ #define nfs3svc_encode_wccstatres	nfs3svc_encode_wccstat
+ #define nfsd3_mkdirargs			nfsd3_createargs
+ #define nfsd3_readdirplusargs		nfsd3_readdirargs
+ #define nfsd3_fhandleargs		nfsd_fhandle
+-#define nfsd3_attrstatres		nfsd3_attrstat
+ #define nfsd3_wccstatres		nfsd3_attrstat
+ 
+ #define ST 1		/* status*/
+@@ -947,16 +1055,15 @@ static const struct svc_procedure nfsd_procedures3[22] = {
+ 		.pc_name	= "NULL",
  	},
- 	[NFSPROC3_LOOKUP] = {
--		.pc_func = nfsd3_proc_lookup,
--		.pc_decode = nfs3svc_decode_diropargs,
--		.pc_encode = nfs3svc_encode_lookupres,
--		.pc_release = nfs3svc_release_fhandle2,
--		.pc_argsize = sizeof(struct nfsd3_diropargs),
--		.pc_argzero = sizeof(struct nfsd3_diropargs),
--		.pc_ressize = sizeof(struct nfsd3_diropres),
+ 	[NFSPROC3_GETATTR] = {
+-		.pc_func = nfsd3_proc_getattr,
+-		.pc_decode = nfs3svc_decode_fhandleargs,
+-		.pc_encode = nfs3svc_encode_getattrres,
+-		.pc_release = nfs3svc_release_fhandle,
+-		.pc_argsize = sizeof(struct nfsd_fhandle),
+-		.pc_argzero = sizeof(struct nfsd_fhandle),
+-		.pc_ressize = sizeof(struct nfsd3_attrstatres),
 -		.pc_cachetype = RC_NOCACHE,
--		.pc_xdrressize = ST+FH+pAT+pAT,
--		.pc_name = "LOOKUP",
-+		.pc_func	= nfsd3_proc_lookup,
-+		.pc_decode	= nfs_svc_decode_LOOKUP3args,
-+		.pc_encode	= nfs_svc_encode_LOOKUP3res,
-+		.pc_argsize	= sizeof(struct LOOKUP3args_wrapper),
+-		.pc_xdrressize = ST+AT,
+-		.pc_name = "GETATTR",
++		.pc_func	= nfsd3_proc_getattr,
++		.pc_decode	= nfs_svc_decode_GETATTR3args,
++		.pc_encode	= nfs_svc_encode_GETATTR3res,
++		.pc_argsize	= sizeof(struct GETATTR3args_wrapper),
 +		.pc_argzero	= 0,
-+		.pc_ressize	= sizeof(struct LOOKUP3res_wrapper),
++		.pc_ressize	= sizeof(struct GETATTR3res_wrapper),
 +		.pc_cachetype	= RC_NOCACHE,
-+		.pc_xdrressize	= NFS3_LOOKUP3res_sz,
-+		.pc_name	= "LOOKUP",
++		.pc_xdrressize	= NFS3_GETATTR3res_sz,
++		.pc_name	= "GETATTR",
  	},
- 	[NFSPROC3_ACCESS] = {
- 		.pc_func = nfsd3_proc_access,
-@@ -1456,6 +1518,8 @@ union nfsd3_xdrstore {
- 	struct GETATTR3res_wrapper	getattrres;
- 	struct SETATTR3args_wrapper	setattrargs;
- 	struct SETATTR3res		setattrres;
-+	struct LOOKUP3args_wrapper	lookupargs;
-+	struct LOOKUP3res_wrapper	lookupres;
+ 	[NFSPROC3_SETATTR] = {
+ 		.pc_func = nfsd3_proc_setattr,
+@@ -1199,6 +1306,8 @@ static const struct svc_procedure nfsd_procedures3[22] = {
+  * Storage requirements for XDR arguments and results.
+  */
+ union nfsd3_xdrstore {
++	struct GETATTR3args_wrapper	getattrargs;
++	struct GETATTR3res_wrapper	getattrres;
+ 	struct nfsd3_sattrargs		sattrargs;
  	struct nfsd3_diropargs		diropargs;
  	struct nfsd3_readargs		readargs;
- 	struct nfsd3_writeargs		writeargs;
 diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index eb5f3148a0ab..36c22611370d 100644
+index d163b51684d5..5802208f96b7 100644
 --- a/fs/nfsd/nfs3xdr.c
 +++ b/fs/nfsd/nfs3xdr.c
-@@ -721,31 +721,6 @@ nfs3svc_encode_wccstat(struct svc_rqst *rqstp, struct xdr_stream *xdr)
- 		svcxdr_encode_wcc_data(rqstp, xdr, &resp->fh);
- }
+@@ -738,25 +738,6 @@ nfs3svc_decode_commitargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+  * XDR encode functions
+  */
  
--/* LOOKUP */
+-/* GETATTR */
 -bool
--nfs3svc_encode_lookupres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+-nfs3svc_encode_getattrres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
 -{
--	struct nfsd3_diropres *resp = rqstp->rq_resp;
+-	struct nfsd3_attrstat *resp = rqstp->rq_resp;
 -
 -	if (!svcxdr_encode_nfsstat3(xdr, resp->status))
 -		return false;
 -	switch (resp->status) {
 -	case nfs_ok:
--		if (!svcxdr_encode_nfs_fh3(xdr, &resp->fh))
--			return false;
--		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
--			return false;
--		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->dirfh))
+-		lease_get_mtime(d_inode(resp->fh.fh_dentry), &resp->stat.mtime);
+-		if (!svcxdr_encode_fattr3(rqstp, xdr, &resp->fh, &resp->stat))
 -			return false;
 -		break;
--	default:
--		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->dirfh))
--			return false;
 -	}
 -
 -	return true;
 -}
 -
- /* ACCESS */
+ /* SETATTR, REMOVE, RMDIR */
  bool
- nfs3svc_encode_accessres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+ nfs3svc_encode_wccstat(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+diff --git a/fs/nfsd/nfs3xdr_gen.c b/fs/nfsd/nfs3xdr_gen.c
+index 48b382ccfc81..e21ee0053129 100644
+--- a/fs/nfsd/nfs3xdr_gen.c
++++ b/fs/nfsd/nfs3xdr_gen.c
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: GPL-2.0
+ // Generated by xdrgen. Manual edits will be lost.
+ // XDR specification file: ../../Documentation/sunrpc/xdr/nfs3.x
+-// XDR specification modification time: Fri Jul 10 23:20:55 2026
++// XDR specification modification time: Fri Jul 10 23:21:45 2026
+ 
+ #include <linux/sunrpc/svc.h>
+ 
+@@ -112,10 +112,12 @@ xdrgen_decode_count3(struct xdr_stream *xdr, count3 *ptr)
+ static bool __maybe_unused
+ xdrgen_decode_nfsstat3(struct xdr_stream *xdr, nfsstat3 *ptr)
+ {
++	__be32 raw;
+ 	u32 val;
+ 
+-	if (xdr_stream_decode_u32(xdr, &val) < 0)
++	if (xdr_stream_decode_be32(xdr, &raw) < 0)
+ 		return false;
++	val = be32_to_cpu(raw);
+ 	/* Compiler may optimize to a range check for dense enums */
+ 	switch (val) {
+ 	case NFS3_OK:
+@@ -151,7 +153,7 @@ xdrgen_decode_nfsstat3(struct xdr_stream *xdr, nfsstat3 *ptr)
+ 	default:
+ 		return false;
+ 	}
+-	*ptr = val;
++	*ptr = raw;
+ 	return true;
+ }
+ 
+@@ -447,7 +449,7 @@ xdrgen_decode_GETATTR3res(struct xdr_stream *xdr, struct GETATTR3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_GETATTR3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -503,7 +505,7 @@ xdrgen_decode_SETATTR3res(struct xdr_stream *xdr, struct SETATTR3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_SETATTR3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -548,7 +550,7 @@ xdrgen_decode_LOOKUP3res(struct xdr_stream *xdr, struct LOOKUP3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_LOOKUP3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -593,7 +595,7 @@ xdrgen_decode_ACCESS3res(struct xdr_stream *xdr, struct ACCESS3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_ACCESS3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -636,7 +638,7 @@ xdrgen_decode_READLINK3res(struct xdr_stream *xdr, struct READLINK3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_READLINK3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -687,7 +689,7 @@ xdrgen_decode_READ3res(struct xdr_stream *xdr, struct READ3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_READ3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -762,7 +764,7 @@ xdrgen_decode_WRITE3res(struct xdr_stream *xdr, struct WRITE3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_WRITE3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -850,7 +852,7 @@ xdrgen_decode_CREATE3res(struct xdr_stream *xdr, struct CREATE3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_CREATE3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -897,7 +899,7 @@ xdrgen_decode_MKDIR3res(struct xdr_stream *xdr, struct MKDIR3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_MKDIR3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -954,7 +956,7 @@ xdrgen_decode_SYMLINK3res(struct xdr_stream *xdr, struct SYMLINK3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_SYMLINK3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -1033,7 +1035,7 @@ xdrgen_decode_MKNOD3res(struct xdr_stream *xdr, struct MKNOD3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_MKNOD3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -1074,7 +1076,7 @@ xdrgen_decode_REMOVE3res(struct xdr_stream *xdr, struct REMOVE3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_REMOVE3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -1115,7 +1117,7 @@ xdrgen_decode_RMDIR3res(struct xdr_stream *xdr, struct RMDIR3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_RMDIR3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -1162,7 +1164,7 @@ xdrgen_decode_RENAME3res(struct xdr_stream *xdr, struct RENAME3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_RENAME3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -1209,7 +1211,7 @@ xdrgen_decode_LINK3res(struct xdr_stream *xdr, struct LINK3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_LINK3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -1289,7 +1291,7 @@ xdrgen_decode_READDIR3res(struct xdr_stream *xdr, struct READDIR3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_READDIR3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -1375,7 +1377,7 @@ xdrgen_decode_READDIRPLUS3res(struct xdr_stream *xdr, struct READDIRPLUS3res *pt
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_READDIRPLUS3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -1430,7 +1432,7 @@ xdrgen_decode_FSSTAT3res(struct xdr_stream *xdr, struct FSSTAT3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_FSSTAT3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -1491,7 +1493,7 @@ xdrgen_decode_FSINFO3res(struct xdr_stream *xdr, struct FSINFO3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_FSINFO3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -1544,7 +1546,7 @@ xdrgen_decode_PATHCONF3res(struct xdr_stream *xdr, struct PATHCONF3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_PATHCONF3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -1591,7 +1593,7 @@ xdrgen_decode_COMMIT3res(struct xdr_stream *xdr, struct COMMIT3res *ptr)
+ 	if (!xdrgen_decode_nfsstat3(xdr, &ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_decode_COMMIT3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -2043,7 +2045,7 @@ xdrgen_encode_count3(struct xdr_stream *xdr, const count3 value)
+ static bool __maybe_unused
+ xdrgen_encode_nfsstat3(struct xdr_stream *xdr, nfsstat3 value)
+ {
+-	return xdr_stream_encode_u32(xdr, value) == XDR_UNIT;
++	return xdr_stream_encode_be32(xdr, value) == XDR_UNIT;
+ }
+ 
+ static bool __maybe_unused
+@@ -2308,7 +2310,7 @@ xdrgen_encode_GETATTR3res(struct xdr_stream *xdr, const struct GETATTR3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_GETATTR3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -2364,7 +2366,7 @@ xdrgen_encode_SETATTR3res(struct xdr_stream *xdr, const struct SETATTR3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_SETATTR3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -2409,7 +2411,7 @@ xdrgen_encode_LOOKUP3res(struct xdr_stream *xdr, const struct LOOKUP3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_LOOKUP3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -2454,7 +2456,7 @@ xdrgen_encode_ACCESS3res(struct xdr_stream *xdr, const struct ACCESS3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_ACCESS3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -2497,7 +2499,7 @@ xdrgen_encode_READLINK3res(struct xdr_stream *xdr, const struct READLINK3res *pt
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_READLINK3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -2548,7 +2550,7 @@ xdrgen_encode_READ3res(struct xdr_stream *xdr, const struct READ3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_READ3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -2609,7 +2611,7 @@ xdrgen_encode_WRITE3res(struct xdr_stream *xdr, const struct WRITE3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_WRITE3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -2683,7 +2685,7 @@ xdrgen_encode_CREATE3res(struct xdr_stream *xdr, const struct CREATE3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_CREATE3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -2730,7 +2732,7 @@ xdrgen_encode_MKDIR3res(struct xdr_stream *xdr, const struct MKDIR3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_MKDIR3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -2787,7 +2789,7 @@ xdrgen_encode_SYMLINK3res(struct xdr_stream *xdr, const struct SYMLINK3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_SYMLINK3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -2866,7 +2868,7 @@ xdrgen_encode_MKNOD3res(struct xdr_stream *xdr, const struct MKNOD3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_MKNOD3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -2907,7 +2909,7 @@ xdrgen_encode_REMOVE3res(struct xdr_stream *xdr, const struct REMOVE3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_REMOVE3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -2948,7 +2950,7 @@ xdrgen_encode_RMDIR3res(struct xdr_stream *xdr, const struct RMDIR3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_RMDIR3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -2995,7 +2997,7 @@ xdrgen_encode_RENAME3res(struct xdr_stream *xdr, const struct RENAME3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_RENAME3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -3042,7 +3044,7 @@ xdrgen_encode_LINK3res(struct xdr_stream *xdr, const struct LINK3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_LINK3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -3120,7 +3122,7 @@ xdrgen_encode_READDIR3res(struct xdr_stream *xdr, const struct READDIR3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_READDIR3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -3204,7 +3206,7 @@ xdrgen_encode_READDIRPLUS3res(struct xdr_stream *xdr, const struct READDIRPLUS3r
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_READDIRPLUS3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -3259,7 +3261,7 @@ xdrgen_encode_FSSTAT3res(struct xdr_stream *xdr, const struct FSSTAT3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_FSSTAT3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -3320,7 +3322,7 @@ xdrgen_encode_FSINFO3res(struct xdr_stream *xdr, const struct FSINFO3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_FSINFO3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -3373,7 +3375,7 @@ xdrgen_encode_PATHCONF3res(struct xdr_stream *xdr, const struct PATHCONF3res *pt
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_PATHCONF3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+@@ -3420,7 +3422,7 @@ xdrgen_encode_COMMIT3res(struct xdr_stream *xdr, const struct COMMIT3res *ptr)
+ 	if (!xdrgen_encode_nfsstat3(xdr, ptr->status))
+ 		return false;
+ 	switch (ptr->status) {
+-	case NFS3_OK:
++	case __constant_cpu_to_be32(NFS3_OK):
+ 		if (!xdrgen_encode_COMMIT3resok(xdr, &ptr->u.resok))
+ 			return false;
+ 		break;
+diff --git a/fs/nfsd/nfs3xdr_gen.h b/fs/nfsd/nfs3xdr_gen.h
+index e2fbb583da92..58499ca28c43 100644
+--- a/fs/nfsd/nfs3xdr_gen.h
++++ b/fs/nfsd/nfs3xdr_gen.h
+@@ -1,7 +1,7 @@
+ /* SPDX-License-Identifier: GPL-2.0 */
+ /* Generated by xdrgen. Manual edits will be lost. */
+ /* XDR specification file: ../../Documentation/sunrpc/xdr/nfs3.x */
+-/* XDR specification modification time: Fri Jul 10 23:20:55 2026 */
++/* XDR specification modification time: Fri Jul 10 23:21:45 2026 */
+ 
+ #ifndef _LINUX_XDRGEN_NFS3_DECL_H
+ #define _LINUX_XDRGEN_NFS3_DECL_H
 diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-index 354cff178b75..d17192f3c983 100644
+index 35fb715e7c3f..2dcd36160ced 100644
 --- a/fs/nfsd/xdr3.h
 +++ b/fs/nfsd/xdr3.h
-@@ -252,7 +252,6 @@ bool nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, struct xdr_stream *x
+@@ -259,7 +259,6 @@ bool nfs3svc_decode_readdirargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ bool nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  bool nfs3svc_decode_commitargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  
+-bool nfs3svc_encode_getattrres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  bool nfs3svc_encode_wccstat(struct svc_rqst *rqstp, struct xdr_stream *xdr);
--bool nfs3svc_encode_lookupres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ bool nfs3svc_encode_lookupres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  bool nfs3svc_encode_accessres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfs3svc_encode_readlinkres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfs3svc_encode_readres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+diff --git a/include/linux/sunrpc/xdrgen/nfs3.h b/include/linux/sunrpc/xdrgen/nfs3.h
+index 3afc4ffb6daa..785ebff351ce 100644
+--- a/include/linux/sunrpc/xdrgen/nfs3.h
++++ b/include/linux/sunrpc/xdrgen/nfs3.h
+@@ -1,7 +1,7 @@
+ /* SPDX-License-Identifier: GPL-2.0 */
+ /* Generated by xdrgen. Manual edits will be lost. */
+ /* XDR specification file: ../../Documentation/sunrpc/xdr/nfs3.x */
+-/* XDR specification modification time: Fri Jul 10 23:20:55 2026 */
++/* XDR specification modification time: Fri Jul 10 23:21:45 2026 */
+ 
+ #ifndef _LINUX_XDRGEN_NFS3_DEF_H
+ #define _LINUX_XDRGEN_NFS3_DEF_H
+@@ -83,7 +83,7 @@ enum nfsstat3 {
+ 	NFS3ERR_JUKEBOX = 10008,
+ };
+ 
+-typedef enum nfsstat3 nfsstat3;
++typedef __be32 nfsstat3;
+ 
+ enum ftype3 {
+ 	NF3REG = 1,
 -- 
 2.55.0
 
