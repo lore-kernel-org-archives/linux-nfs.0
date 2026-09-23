@@ -1,30 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 96CBB52ED5D
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Sep 2026 13:28:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 459885304AE
+	for <linux-nfs@vger.kernel.org>; Wed, 23 Sep 2026 13:28:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790170094; cv=none; b=MwYGcHgVgxp7DrUOYtRvX++ZO7DPQtfwuPvHhK69NHmD/k4MT6nxzF4vyUu1DPBCcyI0d4NPNPgk12hJWpZjsZZ//LPFHq5oDMP0GHwbt9QArL0XWWTqpa/YxjcIT9LB30b2RogzLtP9x4JqPM960bODhT0H30zsnzG4zIlRtcw=
+	t=1790170095; cv=none; b=lE6c7rhkwk0EZ4HatdOpPPGqVJV/UE++ntjIUh8cCSiBeFw4/1+xLXFNi7WGSrCL81zNZXk7UfvIRF9zxbxlrPdPcrAIi0EoZClIvWCJuAjCOxFyOmEgI/X2j58JiQJRkAQhVyrvikJVZHgjHk9TQDoMk2Xfw38RI7fAji70Als=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790170094; c=relaxed/simple;
-	bh=KS/E8GUHmWnB2sK4Z9s+X78Z5fLNg7YlQndJ4TkAo9g=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=ApCVWgVDtkXDccLRyklBXzeYT17XFdHabz1wgySlc1EvGUAhmQ4rBjCI8b5bI/5JKO2ae7RNAZmKeYvCqiqvKy3qzrwFAn9JpfYibp/2/3/kyXOK4GX3qt7l/3aVnDmLxJJsHSh30LCbAgEESyLDcYRDc3Dwhc0xgADZuc/FzpY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OPbxzt/Q; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1790170095; c=relaxed/simple;
+	bh=sd7URNQwVLUaNrGCogVVMghxSBWCbocCzg0QhT2QDBY=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=PWVt4Xz8bVDqTnnfljYLAQslrhqcZePkGzdHPNZUlkwDDSWtSFsxVRZQA7do5ZMoIjIiX9fUFEbMzLuhsz1FKQljUy40+dLP7TRkIp/UD8QC6r2l3UAvYK1xkp0fO/D3U4akn4jcsQt8GNdIaUUXaJ3tmQ5HnHgTJIa8nJ/Ad4I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=KnumPPAR; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OPbxzt/Q"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D964C1F000FF;
-	Wed, 23 Sep 2026 13:28:12 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="KnumPPAR"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9EAEF1F00893;
+	Wed, 23 Sep 2026 13:28:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790170093;
-	bh=qYICDR5dqtZTe8VbucIq/nvkzEI/WY2dGly5ynaIaik=;
-	h=From:To:Cc:Subject:Date;
-	b=OPbxzt/QDgvGEyj98N8ldVXaf4VRmwrL055THrayDqeuUL2IsGvgCd6ELKiuEfBoo
-	 a9ri2mN5HaMhm4dVc38pSEokHlSBSx1WasJSZHkZVWYMbkz4ab8XMmmxqsevwPFVgs
-	 7QkfsHTxcXQIRprDAOtC0awz4xUGnl+lw1u3xYnZDE5HwGUgdNJItpljhYlkGT98u3
-	 c5o4B1v3Ls8YG7Jq2Rkpj2aLMBxhYeY49w1M7M/xgyFbslDCSPg5iPMAVhJU/KqINc
-	 XCZNPDQTc4GPV861S7Rbmh+6hUD91WJYwFGlywcjbDcXHbFqbSHPNnanYaxuNIhgBZ
-	 lFUYOMEFcmIOA==
+	s=k20260515; t=1790170094;
+	bh=RB7Uz0Sp1o1u2EPrk3gSN487kl3ugVDMkpkwUdQUBSg=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=KnumPPARd62KoyqzBAbX/3auNUAhI7DWF/djtlbnfOmwB78m697Yk3Nqng08QL8T+
+	 hvz6q2Uyq85XAhz7VemNgZ4k2X0pNMMyfuSb/hiQVNfXatI8UEpGXmchCynpIsQRkv
+	 nL71E2EG7k1VrL50Pr679d5yQojwkhL47910AJaV7Y8VNkMk8WWQiFfniViRUQY/4j
+	 5l9Ry7mmWtdGBgrUo3B1V6skx+bTE9qeihU4/ncgGdovGxZLFczhKYnRcLtgQisb4M
+	 fhLMGqY8XorhtUVRg/ZQfS8gX7v/LdZLXQ5k6Xdb3XqkqW/4jp7ZNAw/h0lkeD/dIU
+	 auD0y1b+pIVDg==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -32,10 +33,12 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 00/33] Convert server-side NFSv3 XDR to use xdrgen
-Date: Wed, 23 Sep 2026 09:27:38 -0400
-Message-ID: <20260923132811.244160-1-cel@kernel.org>
+Subject: [PATCH v1 01/33] NFSD: Report a first-batch readdir error in the reply status
+Date: Wed, 23 Sep 2026 09:27:39 -0400
+Message-ID: <20260923132811.244160-2-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
+In-Reply-To: <20260923132811.244160-1-cel@kernel.org>
+References: <20260923132811.244160-1-cel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -44,73 +47,133 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Replace NFSD's NFSv3 XDR encoders and decoders with code that is
-mechanically generated directly from the NFSv3 RPC language
-specification. Unlike NFSv2, where there are at least two
-incomplete language specifications and much lore, nfs3.x here is
-based closely on RFC 1813.
+The NFSv2 READDIR encoder pulls directory entries while the reply
+is encoded, after the status word is on the wire. nfsd_readdir_open()
+does not read from the directory, so an iterate_dir() failure on the
+first batch surfaces only in nfsd_readdir_next(), where nothing can
+turn it into a status. The reply carries NFS_OK, no entries, and eof
+false. The client resends the same cookie and receives the same reply,
+so a directory that fails with -EIO or -ENOENT traps it in a loop.
 
-As we convert newer NFS versions to use xdrgen, I expect a reduction
-in human coding errors, improved spec compliance, and better memory
-safety for those more complex NFS programs.
+Read the first batch in nfsd_readdir_open() so the error selects the
+reply status before any of it is committed. An error on a later batch
+still cuts the list short with eof false. The client's follow-up
+request then starts from that cookie and gets the error in its status.
 
-Chuck Lever (33):
-  NFSD: Report a first-batch readdir error in the reply status
-  Documentation: Add the RPC language description of NFSv3
-  NFSD: Add infrastructure for generating NFSv3 XDR encoders and
-    decoders
-  NFSD: Replace nfs3.h with nfs3xdr_gen.h
-  NFSD: Replace the nfsd3_createres macro
-  NFSD: Relocate the NFSv3 XDR storage union into nfs3proc.c
-  NFSD: Use xdrgen XDR functions for the NFSv3 NULL procedure
-  NFSD: Use xdrgen XDR functions for NFSv3 GETATTR procedure
-  NFSD: Use xdrgen XDR functions for NFSv3 SETATTR procedure
-  NFSD: Use xdrgen XDR functions for the NFSv3 LOOKUP procedure
-  NFSD: Use xdrgen XDR functions for NFSv3 ACCESS procedure
-  NFSD: Use xdrgen XDR functions for NFSv3 READLINK procedure
-  NFSD: Use xdrgen XDR functions for NFSv3 READ procedure
-  NFSD: Use xdrgen XDR functions for NFSv3 WRITE procedure
-  NFSD: Use xdrgen XDR functions for NFSv3 CREATE procedure
-  NFSD: Use xdrgen XDR functions for NFSv3 MKDIR procedure
-  NFSD: Use xdrgen XDR functions for NFSv3 SYMLINK procedure
-  NFSD: Use xdrgen XDR functions for NFSv3 MKNOD procedure
-  NFSD: Use xdrgen XDR functions for the NFSv3 REMOVE procedure
-  NFSD: Use xdrgen XDR functions for the NFSv3 RMDIR procedure
-  NFSD: Use xdrgen XDR functions for the NFSv3 RENAME procedure
-  NFSD: Use xdrgen XDR functions for the NFSv3 LINK procedure
-  NFSD: Use xdrgen XDR functions for the NFSv3 FSSTAT procedure
-  NFSD: Use xdrgen XDR functions for the NFSv3 FSINFO procedure
-  NFSD: Use xdrgen XDR functions for the NFSv3 PATHCONF procedure
-  NFSD: Use xdrgen XDR functions for the NFSv3 COMMIT procedure
-  NFSD: Use xdrgen XDR functions for NFSv3 READDIR arguments
-  NFSD: Use xdrgen XDR functions for NFSv3 READDIRPLUS arguments
-  NFSD: Refactor NFSv3 directory cookie encoding
-  NFSD: Refactor NFSv3 directory entry encoding
-  NFSD: Split struct nfsd3_readdirres
-  NFSD: Use xdrgen XDR functions for NFSv3 READDIR results
-  NFSD: Use xdrgen XDR functions for NFSv3 READDIRPLUS results
+Signed-off-by: Chuck Lever <cel@kernel.org>
+---
+ fs/nfsd/vfs.c | 76 +++++++++++++++++++++++++++++++++------------------
+ 1 file changed, 50 insertions(+), 26 deletions(-)
 
- Documentation/sunrpc/xdr/nfs3.x    |  839 ++++++
- fs/nfsd/Makefile                   |   15 +-
- fs/nfsd/nfs2acl.c                  |   41 +-
- fs/nfsd/nfs3acl.c                  |   12 +-
- fs/nfsd/nfs3proc.c                 | 2545 ++++++++++++------
- fs/nfsd/nfs3xdr.c                  | 1391 +++-------
- fs/nfsd/nfs3xdr_gen.c              | 3862 ++++++++++++++++++++++++++++
- fs/nfsd/nfs3xdr_gen.h              |   82 +
- fs/nfsd/nfsctl.c                   |    1 -
- fs/nfsd/nfserr.h                   |    2 +-
- fs/nfsd/nfsfh.c                    |    1 -
- fs/nfsd/vfs.c                      |   76 +-
- fs/nfsd/xdr3.h                     |  293 +--
- include/linux/nfs3.h               |    3 -
- include/linux/sunrpc/xdrgen/nfs3.h | 1092 ++++++++
- 15 files changed, 8104 insertions(+), 2151 deletions(-)
- create mode 100644 Documentation/sunrpc/xdr/nfs3.x
- create mode 100644 fs/nfsd/nfs3xdr_gen.c
- create mode 100644 fs/nfsd/nfs3xdr_gen.h
- create mode 100644 include/linux/sunrpc/xdrgen/nfs3.h
-
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 4584d5b94fee..d46257dd8c61 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -2376,6 +2376,33 @@ static bool nfsd_buffered_filldir(struct dir_context *ctx, const char *name,
+ 	return true;
+ }
+ 
++/*
++ * Read the next batch of entries.  Returns false at end of directory
++ * (@iter->eof set) or on a filesystem error (@iter->host_err set).
++ */
++static bool nfsd_readdir_fill(struct nfsd_readdir_iter *iter)
++{
++	/* Between batches the resume cookie advances past the last. */
++	if (iter->batched)
++		iter->offset = vfs_llseek(iter->file, 0, SEEK_CUR);
++
++	iter->used = 0;
++	iter->full = 0;
++	iter->host_err = iterate_dir(iter->file, &iter->ctx);
++	if (iter->full)
++		iter->host_err = 0;
++	if (iter->host_err < 0)
++		return false;
++	if (!iter->used) {
++		iter->eof = true;
++		return false;
++	}
++	iter->batched = true;
++	iter->pos = iter->page;
++	iter->remaining = iter->used;
++	return true;
++}
++
+ /**
+  * nfsd_readdir_open - open a directory for streaming readdir
+  * @rqstp: RPC transaction context
+@@ -2383,13 +2410,15 @@ static bool nfsd_buffered_filldir(struct dir_context *ctx, const char *name,
+  * @offsetp: seek offset at which to resume reading
+  * @iter: OUT: directory reader to initialize
+  *
+- * On success the directory is open and positioned at @offsetp, and
+- * @iter is ready for nfsd_readdir_next().  The caller must release
+- * @iter with nfsd_readdir_close() once done, including on error paths
+- * that follow a successful open.
++ * On success the directory is open and positioned at @offsetp, the
++ * first batch of entries has been read, and @iter is ready for
++ * nfsd_readdir_next().  The caller must release @iter with
++ * nfsd_readdir_close() once done, including on error paths that
++ * follow a successful open.
+  *
+- * Return: nfs_ok on success, otherwise an nfsstat code.  On error @iter
+- * is left safe to pass to nfsd_readdir_close().
++ * Return: nfs_ok on success, otherwise an nfsstat code, including the
++ * error from reading the first batch.  On error @iter is left safe to
++ * pass to nfsd_readdir_close().
+  */
+ __be32 nfsd_readdir_open(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 			 loff_t *offsetp, struct nfsd_readdir_iter *iter)
+@@ -2425,6 +2454,17 @@ __be32 nfsd_readdir_open(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	iter->file = file;
+ 	iter->fhp = fhp;
+ 	iter->offset = offset;
++
++	/*
++	 * The first batch is read here so a filesystem error surfaces
++	 * in the reply status.  Once the encoder has committed nfs_ok,
++	 * an error can only be reported as a short list.
++	 */
++	if (!nfsd_readdir_fill(iter) && iter->host_err) {
++		err = nfserrno(iter->host_err);
++		nfsd_readdir_close(iter);
++		return err;
++	}
+ 	return nfs_ok;
+ 
+ out_close:
+@@ -2449,26 +2489,10 @@ struct buffered_dirent *nfsd_readdir_next(struct nfsd_readdir_iter *iter)
+ 	struct buffered_dirent *de;
+ 	unsigned int reclen;
+ 
+-	while (iter->remaining <= 0) {
+-		/* Between batches the resume cookie advances past the last. */
+-		if (iter->batched)
+-			iter->offset = vfs_llseek(iter->file, 0, SEEK_CUR);
+-
+-		iter->used = 0;
+-		iter->full = 0;
+-		iter->host_err = iterate_dir(iter->file, &iter->ctx);
+-		if (iter->full)
+-			iter->host_err = 0;
+-		if (iter->host_err < 0)
+-			return NULL;
+-		if (!iter->used) {
+-			iter->eof = true;
+-			return NULL;
+-		}
+-		iter->batched = true;
+-		iter->pos = iter->page;
+-		iter->remaining = iter->used;
+-	}
++	if (iter->eof || iter->host_err)
++		return NULL;
++	if (iter->remaining <= 0 && !nfsd_readdir_fill(iter))
++		return NULL;
+ 
+ 	de = (struct buffered_dirent *)iter->pos;
+ 	iter->offset = de->offset;
 -- 
 2.55.0
 
