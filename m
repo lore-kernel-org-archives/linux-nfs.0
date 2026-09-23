@@ -1,262 +1,141 @@
-Received: from fhigh-b3-smtp.messagingengine.com (fhigh-b3-smtp.messagingengine.com [202.12.124.154])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pz2-f40.google.com (mail-pz2-f40.google.com [74.125.228.40])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 048A34F4CFC;
-	Tue, 22 Sep 2026 21:55:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.154
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D2FD42F8EBB
+	for <linux-nfs@vger.kernel.org>; Wed, 23 Sep 2026 00:37:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.228.40
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790114152; cv=none; b=tlVSOsmNb6M2yznDfVo9WzikivmI+kaQzQNWBDkBnJteZm6iIGdLJ/VTKcs/MJ1UU+YkcMWxAr2SzKyDYggLBbVeypY47Ou11AY4ab6fIzt0uQLvMbkjz7E9lCawi8Hne3TDF6qniVnhIDlaYVBkaDRdRRDY/KAC9BbnvjXlHp4=
+	t=1790123876; cv=none; b=feVM3DdUzo3r24J6yLSxWaEf9ZgjnPSYskcar5wvZ95uDT8J/2f6M4Lm/6FaUTKCO1KSxgTex1rZ4U2fGc00Z6ZhDgjO8ZfsD41pW8pFrp80gwIvcJ+qeVlJC1OWlkjCde5n4fitw97OhzaX7l+6F5Z8/BSlefJHo3WmDAFox1Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790114152; c=relaxed/simple;
-	bh=Rlq1ydHLjWWDMingCHmssf5UF2zL0z/fg27y2YmYlVE=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=fU3VQRXs+lhbyco8aurXXybsGz+wnfV/S0I9RCUiKCmU0gjeQdYR3cyr1ZQp0WbLDLBw5ESWqwN0Mu5JYOeZiZjyyv5nmYbCAq+Fiu2R/oNHjthDf68eaANza2EOwzkR8q89/8T5xtrk0VlsUAAqpl8kzqir56g3dqjiNRnDOI4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=cUZqjAgE; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=Mvwx7utn; arc=none smtp.client-ip=202.12.124.154
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+	s=arc-20240116; t=1790123876; c=relaxed/simple;
+	bh=mLB37Exj08/433G+3BazeafnfFxR6CqGB3+a9cQSS5g=;
+	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
+	 Message-Id:References:To; b=YpEwsDphprTdLbrZ1TbVn8iFeMCI2pfyCWecsdBZfNYP7Xa3klr5OFkdQSz2/MEkE59xZhVNJHJ7F0+kj9BX/JunvlN8PB7LcihhGDujqx5rUJIy6XNW9v4byWMxchHtfiulshhoI2iADRXZ5fx8ZjMAYBR22IrXhtUl/XUony4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=kzfhNqVr; arc=none smtp.client-ip=74.125.228.40
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="cUZqjAgE";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="Mvwx7utn"
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailfhigh.stl.internal (Postfix) with ESMTP id B5DFE7A00E0;
-	Tue, 22 Sep 2026 17:55:34 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-02.internal (MEProxy); Tue, 22 Sep 2026 17:55:35 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:content-type:date
-	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to; s=fm1; t=
-	1790114134; x=1790200534; bh=9cxMFAZN1rwjMGvRM6WC/pO1geQneeseFMr
-	wRTLwy8k=; b=cUZqjAgEkzB2HSn2+Txzn159DVPC5ifbiB63heCrkFfaUvxeYMn
-	QKiZgqehGCZbIl0CFUzhy5yJU8wMPl/fN6abEu8tkuFxArZRkcS7Dw0XfcTT/tP6
-	A4goKFiphI2wZ4dLh33Yq2BCIip7+UBl8AtmVWn+foMsBWqqq9h4kF+T4tlyvBDv
-	xsdexeGMnxPMDUy7wmholXo6Hut1uGErRrv+13aGPaWf7KlmSIXdByQ/tPLRQMsH
-	fio/zMrPfuAc4J7IgBTjmLPhKhlYCrId7RY3LghnGLjcMIxuDTNc1e7W64V4jL38
-	Niera5VQR/9mDCUI8DwczPkkR6LDMTcnt8w==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:content-type:date:date:feedback-id:feedback-id
-	:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1790114134; x=
-	1790200534; bh=9cxMFAZN1rwjMGvRM6WC/pO1geQneeseFMrwRTLwy8k=; b=M
-	vwx7utn9is9oh5fVOGR/sSrDTE1zWWRS09ykIfkzr5G3EYXX911dPDNPElczh0sX
-	fXk9UgmRRC8dHPCXiFmh72bTFlPnb0E9Hvk1obDvBPHJhepEu414iX2Wo4fAAFBB
-	/vmiy6xm9yUWJkDlE+iEwaT7LBOonvcvQQ+jE9aTTqmsAsYuKqF/uaDOWvqGq0B4
-	ByFhoy2fiSZUEOMhREIpbc/Sd6gyc0qu88B3WfTeyRVQ52uHdUUkVuG+w1ObwCFI
-	C7pl7tyAJkI+nAMphyMxUW3BtXtUdORfY+NN6FYRi3bunf+AyS3+QKYcBiPgapDk
-	ZBe/8zkStxnvtV+PwgeiA==
-X-ME-Sender: <xms:Vvmyaqb8sNLuh-eyMbjxIAoMZU76tnhq1VdlZujYHdC4O5vBVT4NqA>
-    <xme:Vvmyatxqb18A1QwyhtAXr2RJ--BtMuMob-swS4MU-SGoZZF27Bsn8aZDgZzOmVrB5
-    chCPknZF3LMrF41Bgskbpyt1i_Dikb-0xMlyP2IQWA5QXq21uGb>
-X-ME-Received: <xmr:VvmyamE1_IX93wrXAUO49tsDh3Alle0kM6TOX6-xrU0RLqrjRdvKDHGn-NcMeDosD3A-mrUbNeBIhupcLAq8Kwx7HchBHE4>
-X-ME-Proxy-Cause: dmFkZTGFgSGc4eEkykbaPUU5fXwAoDmB5DvOUipLXkA/zVuom1NI6nCyU04A2n7WfqdDcc
-    8L/AWx7/0szO7E6nvpB2K92z9j6LpJ6hF7LnDSWKJX7hpoRhRU/M8C2ZehO543bIk19A4t
-    IgrOn5VnEams7G1AYjalz2BGObiNDKmBqO8yT9qf0DR01to1ttBZkkJEFKwwygzKQiaDLU
-    fGBtCepX+C5xvKyyWBsPJT5nqvZSQ38SUwTJc2N1n62YecUysO012Ip729iVzN1JqnKKD2
-    xuY6uk63K10Ig/sj6tszpGJ3jNtTFzRoqvbiVMrftNQvFtIUG+fXJBBv2Y5LJYHhOah8d0
-    vNdXzUIBygG7XhHTWblwfYZ+iEe4CKk1tSBMhiN8bK3vZ1Xirjsbrnh73Pz3dPzzKWru4Q
-    17ywvSvrjX9Xxu3ozEi9GVm3VreDLn7mL2rpkTB9hMW5v2YM3v3zb8VpxAZER2Oxhf1DV/
-    p0tNRFQ97qGiUDE3ZpxWgXKb25iQuguo+UlQUYKVB/b7dRsPjIDcO7IyRBJFcUNSYEq6l0
-    mWovvx1vuSdcENOTD4dRCSsn+rX35JhIMAiO1OtnAmD6qVKJw4eIYi5llYWq5+qBHtGHq4
-    Xfj8VBD+i/nxLob2ehyk+hd8G+xvkP88iaq/gN/NS5/taFNdCSacHN8/C+zw
-X-ME-Proxy: <xmx:VvmyaoqRlZWr6KXd0eAqf_wkh3DwPMuV0WsU1SEMBSsZnTFWC_QdrQ>
-    <xmx:Vvmyakz414OTw_N5buYKu_ji3e3p_KBZlWi3KqYWZf4U9yfp4wi-BA>
-    <xmx:Vvmyaiyo1KTQ5dU2TQiTsnF75gOKBXusHXOeVjuBzoGjhqt3W5EuGw>
-    <xmx:VvmyajTAWLRhUU9SNlNOimJhtfAf_-eCZ8g-YBaugInJ6BFo4yH16g>
-    <xmx:VvmyajMcJHZos82c05soTbYoMutgQn7PcnfR8RBoPsspI-B48CtDtb6j>
-Feedback-ID: i9d664b8f:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
- 22 Sep 2026 17:55:28 -0400 (EDT)
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="kzfhNqVr"
+Received: by mail-pz2-f40.google.com with SMTP id 41be03b00d2f7-cc5121bcf1aso402724a12.1
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2026 17:37:54 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1790123874; x=1790728674; darn=vger.kernel.org;
+        h=to:references:message-id:content-transfer-encoding:cc:date
+         :in-reply-to:from:subject:mime-version:content-type:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=IwcZc6dV/wJdORGfLDctznTgTbvt9ax2XJYGP2ZitOo=;
+        b=kzfhNqVrrobPRdQM8WhVaBsRcdEmk5WmiapAxAXfiiXVwJ8Lt90vavG/0JT3wnIu8Y
+         cnEPsMMo0ylXmuyRusSJyEGyaQ0OybkbQpxDjtt4wsEvqS1mnm4RrD5R2v9aUGA6boHL
+         Pb5v1haeofXhPZ7svjFUsGLRayw2Jon4UOkzWZI+scCqmQO7+LTxT0Ibh8CdggLTB3jy
+         2kLYHg6boHTHMV4ApithnA3o3FGrRwivI/uBr0wPQOm3etzp5QtsUMw9qMSVwVFWZM+3
+         dAG+mdQhJM45zRdVqzbJehBwkzHmaTt2OKBgNGVaY8HkRribkZeDEsLvycrVL+ZXlTj8
+         amvA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1790123874; x=1790728674;
+        h=to:references:message-id:content-transfer-encoding:cc:date
+         :in-reply-to:from:subject:mime-version:content-type:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=IwcZc6dV/wJdORGfLDctznTgTbvt9ax2XJYGP2ZitOo=;
+        b=MZUhVQI1m8d9HWxBe89RUiDgfl3NPDUjWflkeghv5cPW2SlX7B2FlT2DQZOIH9aBfa
+         Kb/Dw500lWQ8M2+bytt8OKbRldRlHZZh8ucDtqQQPjAetloGcu/WvaKiujRC+kZ0Zl6T
+         z+tUIPtr1JKiW+x+FN/uh79kEA4pq8L9Xm2Y78Dv5QAvC40h8EjJlUasdSdjfqyhF8uA
+         bdNa3xYWTJ40retF775RShEXnapxQltNwFD2y6dZcoXk9tU70FpEb27k49RRkcMCWHhX
+         sJwaXEhXwlS3oaVCh4S/6UOf+ShMwnuhc97yK7Lg224LLbJk5AU/qPQWKHr8Tq2FRbcC
+         53gQ==
+X-Forwarded-Encrypted: i=1; AKwUvBwLYMrQD3Tjf2/AsefK+bxog16yWQthkpllQJJnsEZ1RDuqwwCeUV3K2ZTix++TYYiH7zZyUCHxPbM=@vger.kernel.org
+X-Gm-Message-State: AFuF++ljFcx/pvLoM1SnGgrwukP/qU55tNO20ui/qcHIr2LgVlfICQaW
+	4gdplNT/prQ8I/1w6H0idAPTnWkpmu0hXvL2Ca2VfIygNHMqWaqhcthu
+X-Gm-Gg: AYBFou2bauxupzFUb8w3kCV5C/GmWQCXROYqtCsE/QoFCD5DTbRRob0GG+ZOJbsAWmc
+	FOLndiI3nBXzKeu1W4DZeof5h+O1cbcYu80JxLgBISce71P9FzMkbtex17NkjB9uZvNTLXo7gs/
+	5+b8XMT/VJAFIir6cV44bnyj7kHrLBG9NgzgEej0mHOKvtA969EtY3/ziDzMupDObY5CFH5Lz5A
+	G3cL6uRVAXvrIfdYXQTS10CbntgZiFkD5dp6uQH9Nk2Xl9NqWgR/sKILqyXngiAC5OTSd8jbf5m
+	Mb6JBJzIkBYzp4Mn03d6Errh/fnlqRwgJbaTVklcRWCVOMEZhBbLR3CD6oiiub/hxi9bK/2FRNR
+	5h8KuGPl+TQClyVlX/vnd4aIZitmkyf2Fyzm3/tJsvhuOLbXxAgNIVtayR6dQOiRZB3v+e8Si4T
+	mXks2wEqI6Gw8Dm0MqDzki6wh90UdyxYushpxC+B35+uP0Ow+wreDLSxqkUk4AeWYVnvOt08Fgp
+	fYCP34fGumXjnUxUBPK4KCNOIo4VEQ=
+X-Received: by 2002:a05:6a20:748d:b0:3dd:a196:53a2 with SMTP id adf61e73a8af0-3ddf82f113fmr927824637.68.1790123873965;
+        Tue, 22 Sep 2026 17:37:53 -0700 (PDT)
+Received: from smtpclient.apple ([14.139.251.98])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-87d1cfc0843sm449618b3a.12.2026.09.22.17.37.50
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Tue, 22 Sep 2026 17:37:53 -0700 (PDT)
+Content-Type: text/plain;
+	charset=utf-8
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-From: NeilBrown <neilb@ownmail.net>
-To: "Chuck Lever" <cel@kernel.org>
-Cc: "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Christian Brauner" <brauner@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
- "Jori Koolstra" <jkoolstra@xs4all.nl>, "Mateusz Guzik" <mjguzik@gmail.com>,
- "Dorjoy Chowdhury" <dorjoychy111@gmail.com>,
- "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
- "Andreas Gruenbacher" <agruenba@redhat.com>, gfs2@lists.linux.dev,
- "Ilya Dryomov" <idryomov@gmail.com>, "Alex Markuze" <amarkuze@redhat.com>,
- "Viacheslav Dubeyko" <slava@dubeyko.com>, ceph-devel@vger.kernel.org,
- "Paulo Alcantara" <pc@manguebit.org>, "Namjae Jeon" <linkinjeon@kernel.org>,
- linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 12/14] nfsd: switch NFS4 OPEN to use vfs_lookup_open()
-In-reply-to: <0b2597f9-2af1-448d-9bff-c9a96a07068b@slotpi15m67>
-References: <20260919022441.3305170-1-neilb@ownmail.net>
-  <20260919022441.3305170-13-neilb@ownmail.net>
-  <0b2597f9-2af1-448d-9bff-c9a96a07068b@slotpi15m67>
-Date: Wed, 23 Sep 2026 07:55:24 +1000
-Message-id: <179011412461.37859.5169498575115711178@noble.neil.brown.name>
-Reply-To: NeilBrown <neil@brown.name>
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.700.51.1.1\))
+Subject: Re: [PATCH] nfsd: prevent NFSv4.1 SEQUENCE reply-cache overflow
+From: Mayank Jangid <mayank.jangid.moon@gmail.com>
+In-Reply-To: <29830200-dcb0-452f-9e19-80a595b46fe7@slotpi15m67>
+Date: Wed, 23 Sep 2026 06:07:38 +0530
+Cc: jlayton@kernel.org,
+ neil@brown.name,
+ okorniev@redhat.com,
+ Dai.Ngo@oracle.com,
+ tom@talpey.com,
+ linux-nfs@vger.kernel.org,
+ linux-kernel@vger.kernel.org,
+ security@kernel.org,
+ Kushal Khemka <kushalkhemka559@gmail.com>,
+ Kkartik Aggarwal <aggarwalkkartik@gmail.com>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <A0CE2B28-0875-43AE-95A2-18AA7FB758B4@gmail.com>
+References: <20260922112608.1256363-1-mayank.jangid.moon@gmail.com>
+ <29830200-dcb0-452f-9e19-80a595b46fe7@slotpi15m67>
+To: Chuck Lever <cel@kernel.org>
+X-Mailer: Apple Mail (2.3864.700.51.1.1)
 
-On Mon, 21 Sep 2026, Chuck Lever wrote:
-> On Sat, Sep 19, 2026, NeilBrown wrote:
-> > The functionality that was recently gathered into do_lookup_open() is
-> > now available from the vfs as vfs_lookup_open().  So nfsd4_create_file()
-> > can call that, with a few adjustments.
-> >
-> > This implementation shares more code with syscall open paths and so uses
-> > some filesystem interfaces slightly more correctly. Specifically:
-> >  - it doesn't call ->lookup before ->atomic_open is called
-> >  - it does pass LOOKUP_OPEN to ->d_revalidate
-> >  - only gets exclusive lock on parent if name is NOT in dcache
->=20
-> Thanks for listing these. Is the third item accurate, though?
-> vfs_lookup_open() calls lookup_open() with no lookup_fast() step ahead of
-> it, and lookup_open() picks the lock from O_CREAT alone, before it
-> consults the dcache:
->=20
-> fs/namei.c:lookup_open() {
->     ...
-> 	if (open_flag & O_CREAT)
-> 		inode_lock(dir_inode);
-> 	else
-> 		inode_lock_shared(dir_inode);
->     ...
-> 	dentry =3D d_lookup(dir, &nd->last);
->     ...
-> }
->=20
-> AFAICT the parent is locked shared only when nfsd4_create_file() has
-> already cleared O_CREAT because the NFSD_MAY_CREATE fh_verify()
-> failed.
+Hi Chuck,
 
-Yes, I was getting ahead of myself - or maybe thinking of
-lookup_fast_for_open(), which we aren't using.
-I think my proposed patches for locking changes will avoid the exclusive
-lock in lookup_open(), but as you say we are not there yet.
-I've dropped that line.
+Thanks for pointing me to J=C3=A9r=C3=A9my's series.
 
->=20
->=20
-> > These are minor.  The main benefit is code-sharing. In particular
-> > it takes responsibility for locking out of nfsd so that planned changes
-> > can happen entirely in VFS code.
-> >
-> > We need to pass O_NONBLOCK so that that EWOULDBLOCK errors from
-> > break_lease of try_break_deleg() get passed back.
->=20
-> "that that" is still here from v1. Also, s/break_lease of/break_lease() or/
+I tested the queued fix against our reproducer, and it resolves the =
+issue. I can no longer reproduce the reply buffer overflow with the two =
+patches applied.
 
-Thanks.
-
->=20
->=20
-> > We need to mask any type out of "mode" else vfs_lookup_open() will warn.
-> >
-> > Signed-off-by: NeilBrown <neil@brown.name>
->=20
-> [ ... ]
->=20
-> > @@ -412,11 +366,11 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct sv=
-c_fh *fhp,
-> >  		/* Might still succeed if no create is needed */
-> >  		oflags &=3D ~O_CREAT;
-> >
-> > -	open->op_filp =3D do_lookup_open(&parent,
-> > -				       &QSTR_LEN(open->op_fname,
-> > -						 open->op_fnamelen),
-> > -				       oflags,
-> > -				       open->op_iattr.ia_mode);
-> > +	open->op_filp =3D vfs_lookup_open(&parent,
-> > +					&QSTR_LEN(open->op_fname,
-> > +						  open->op_fnamelen),
-> > +					oflags,
-> > +					open->op_iattr.ia_mode & S_IALLUGO);
->=20
-> Can this fail an OPEN that nfsd_permission() would have allowed?
-
-Yes.  As you explain in detail (thanks) this is a problem.
-
-This highlights a problem with using nfsv4 to re-export a remote filesystem.
-
-Any non-standard permission checking we do in nfsd to handle reading
-execute-only files, or opening recently created files without the
-requested access, also needs to be performed on the server for a
-re-exported filesystem.
-
-Re-exporting NFS is probably safe because nfsd is already relaxed about
-these permissions, with NFSD_MAY_OWNER_OVERRIDE and NFSD_MAY_READ_IF_EXEC.
-But other filesystems may not be.
-
-I wonder if we should communicate this through the VFS so we can at
-least tell ->atomic_open and ->permission that it can be a little
-relaxed about certain permission checks...
-
-I don't know what is best, but will dwell on if for a while.
+Please feel free to add:
+Tested-by: Mayank Jangid (OpenSec Intelligence) =
+mayank.jangid.moon@gmail.com <mailto:mayank.jangid.moon@gmail.com>
 
 Thanks,
-NeilBrown
+Mayank Jangid
+OpenSec Intelligence
 
-
+> On 22 Sep 2026, at 7:36=E2=80=AFPM, Chuck Lever <cel@kernel.org> =
+wrote:
 >=20
-> With 09/14 applied, an existing file that ->atomic_open did not open goes
-> through vfs_lookup_open()->do_open()->may_open(), which does:
+> On 9/22/26 7:26 AM, Mayank Jangid (OpenSec Intelligence) wrote:
+>> nfsd4_sequence() narrows the reply buffer to the session =
+cached-response
+>> limit before accepting the slot sequence ID. A client can negotiate
+>> ca_maxresponsesize_cached down to NFSD_MIN_HDR_SEQ_SZ, leaving no =
+storage
+>> in the slot trailing sl_data[] array.
 >=20
-> 	error =3D inode_permission(idmap, inode, MAY_OPEN | acc_mode);
+> Thanks for the report and the patch. J=C3=A9r=C3=A9my Jean reported =
+the same
+> issue in August, and a fix for it is already queued in the =
+nfsd-testing
+> branch:
 >=20
-> do_open() zeroes acc_mode only when FMODE_CREATED is set. The removed
-> do_lookup_open() used dentry_open() for a positive dentry, which makes no
-> permission check, the same as __nfsd_open(). The permission decision was
-> left to do_open_lookup()->do_open_permission()->nfsd_permission(), which
-> runs after nfsd4_create_file() returns. Now may_open() fails first, and
-> the two relaxations in nfsd_permission() are never consulted.
+>  =
+https://lore.kernel.org/linux-nfs/20260817-jean-v1-0-9e356596ab85@kernel.o=
+rg/
 >=20
-> The case I am most concerned about is a replayed exclusive create. An
-> NFSv4.0 EXCLUSIVE4 OPEN carries no attributes, so:
+> Patch 1/2 there adds the same pre-flight check of the SEQUENCE reply
+> size before nfsd4_sequence() narrows the buffer and accepts the slot,
+> and patch 2/2 sets op->status when an operation header cannot be
+> encoded. Your patch does the same two things, so I won't apply it on
+> top of that series.
 >=20
-> fs/nfsd/nfs4proc.c:nfsd4_create_file() {
->     ...
-> 	if (!(iap->ia_valid & ATTR_MODE))
-> 		iap->ia_mode =3D 0;
->     ...
-> }
->=20
-> and the file is created with mode 0000 until the client's SETATTR
-> arrives. If the client resends the OPEN in that window (after a server
-> restart, say), the dentry is positive and FMODE_CREATED is clear, so
-> may_open() returns -EACCES for a non-root owner. The verifier comparison
-> further down:
->=20
-> 	if (!open->op_created &&
-> 	    nfsd4_create_is_exclusive(open->op_createmode) &&
-> 	    inode_get_mtime_sec(d_inode(child)) =3D=3D v_mtime &&
-> 	    inode_get_atime_sec(d_inode(child)) =3D=3D v_atime &&
-> 	    d_inode(child)->i_size =3D=3D 0)
-> 		open->op_created =3D true;
->=20
-> is never reached, so do_open_lookup() never gets to add
-> NFSD_MAY_OWNER_OVERRIDE, and the retry gets NFS4ERR_ACCESS where it
-> used to succeed.
->=20
-> The other relaxation is NFSD_MAY_READ_IF_EXEC, which do_open_permission()
-> always sets. An UNCHECKED create for read that finds an existing mode
-> 0111 file now fails in may_open() with -EACCES. That is rare for a
-> creating OPEN, but would 14/14 not make it the common case, since a
-> client reading an execute-only binary sends a non-creating OPEN?
->=20
-> Also, vfs_lookup_open() calls do_open() only when FMODE_OPENED is clear.
-> Does that mean the result differs by exported filesystem? ext4, xfs,
-> btrfs and tmpfs have no ->atomic_open and get the new may_open() check,
-> while a re-exported NFS or a fuse export skips it.
->=20
-> Would it work to let this caller reach do_open() with an acc_mode of
-> zero, so that nfsd_permission() stays the only authority for NFS
-> requests? If the new check is wanted on the nfsd side, the patch
-> description needs to say so and explain how the exclusive replay case
-> is handled.
->=20
+> If you can test the queued fix against your reproducer and confirm it
+> addresses the overflow you found, a Tested-by: on that thread would be
+> welcome.
 >=20
 > --=20
 > Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
->=20
 
