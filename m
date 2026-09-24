@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C77123CF1EF;
-	Thu, 24 Sep 2026 13:04:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9530834F24A;
+	Thu, 24 Sep 2026 13:07:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790255050; cv=none; b=Z6gJ37g1z6Jt/CTZU6Rvt16h7ESzmO9qTfMurAtFb39bqi99Wn0U2Z4BcqUH7bvJWNmJP+WhPH1lJqsiQsNqUIJBkgaNP0RMeaOrzpeQLyA6ItR2UipekHJ06ebQpBUFK9rAkbsL7nHhQp7KQmU0fs4dfE0RdrS6BXzlNbI5XUk=
+	t=1790255247; cv=none; b=QEKLgBYY+9y3GGRm2qcrypckPxJP13daKybEnrPMSRThWkD72mox6xeBFu0XBKtr8WdO9nyN+xMkyWfZdOt2306Njv+wEYQU4JSfvQzZroZgPgoUnXlR0OcYSnx8QJyelF1x+cw5lxV3VRDMnM+xhEf6pSQ89wsnJwfUzBA65u4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790255050; c=relaxed/simple;
-	bh=Vyyb/DvXlDQZU5coJEgzU8GWzT51K2/FeRjcOEuFlKk=;
+	s=arc-20240116; t=1790255247; c=relaxed/simple;
+	bh=RkKdX/le/Dj4VH3Ue3irvJpTa19TZgwewtkrwGd3saI=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=m4ivXIe6qDv+0wnvc0OT8MaZTeWljPI7Ohq6MHqTgQY3PyBO2jNoRp6xwIXJy80gkXQzvFM3+O2MuuL6wVg5uxNNAnFjNCSo5705ju/E4HanVTkYa0ZBig2VGwvzgHSiD2r1OYAh9rZl/cVkc1mUIdQAImvyVzgdmchs7XQtA8w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=B6bBDM6R; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=U9zYn1YDFqsEGGWDDCr+PqSoqGXU8dO2opTwnR8EOBVXnI2H1ukrKYNOZfexJ11AxruaTVC0Y92gBexmgfy0LYnEy+5DkkGu10NBhKMfVBvgpPlRw4FSduridd/v3vdZskshEjtSGHdXh7QN2rXQk1ArWTjPp2TnfDj7CWbIiJ8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QdMzdhmb; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="B6bBDM6R"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 63D531F000FF;
-	Thu, 24 Sep 2026 13:03:57 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QdMzdhmb"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A2DB21F00893;
+	Thu, 24 Sep 2026 13:07:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790255038;
-	bh=yjh2bTrhPurtSNQ+PKSrwOkkIhBdDNVWMQpqO75xcrw=;
+	s=k20260515; t=1790255246;
+	bh=RrbHzOITI1UEiF+RE/HauX0IhMAhdm3McLbhPNIitLk=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=B6bBDM6RLUwPMidyEA3J6yTrC1z2LxfebOzGupioZKL7/z+8dN5qX8EvtQcjsWGND
-	 7seDE3XNfHUxmMqkumqQyNRazmMB2QkleCC3EGcr/NcPDW/VaIuSKE0+Qio6R/qo0m
-	 xo9XqNbJsK7hXA7zHwb6h5e/GH2sTL9IYrbZvNU1U0f4ksKxTs867r4KP3wmXnQVu8
-	 MUHso+pXbXZwpaiJTOYrF5hsGdbiY27gyqIJtZxesX+s1moC7kWbhVtARNqvftdVIR
-	 m93cK3/EVxBrO14y1opug/eGdItQA6WVSo5r83I+LiEwCvWIBK5zseEGUilTHE66KE
-	 F177+fK1DVWlw==
-Message-ID: <2a78884377a5e537dab390788d66b10fbf2b2726.camel@kernel.org>
-Subject: Re: [PATCH v2 11/14] nfsd: check for mountpoints after non-creating
- open.
+	b=QdMzdhmbee7mDaC6Ge8B2/rmYrJnzoVuCUWN2s9Xy22DLtT/L1Wdcd5qUP4ympjOE
+	 QbdOcMbNXoEa6VIRZALTrfOe1jr1XyQOdCG85W6oS+tPocgzbphWR4VQWa9oo0aPjq
+	 79f2XxWVmiyKDVezxOpuG6yXoIroOsqBrHrLJKRPjHFic6fO8kX1FhPQ0ziuAs/Nx7
+	 URERVgi2++x8EmEtqoOk+Od9thSjzpB6Xs8GlUNeGmVnAZjrnj1aIfY9UVAXL6r6wi
+	 +WinFkwbHh0ygquVRw/ZO6SLCqdmBhRUup/dttC768fD9v87+M3QnJ/G6xij1WWLhf
+	 jyt2rIar0GkkA==
+Message-ID: <043941d50b1a90273061a95c4115fdb5893da254.camel@kernel.org>
+Subject: Re: [PATCH v2 08/14] vfs: don't return -ENODEV from
+ vfs_lookup_open()
 From: Jeff Layton <jlayton@kernel.org>
 To: NeilBrown <neil@brown.name>, Alexander Viro <viro@zeniv.linux.org.uk>, 
  Christian Brauner
@@ -42,10 +42,10 @@ Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
  Alcantara	 <pc@manguebit.org>, Namjae Jeon <linkinjeon@kernel.org>, 
 	linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
 	linux-nfs@vger.kernel.org
-Date: Thu, 24 Sep 2026 09:03:55 -0400
-In-Reply-To: <20260919022441.3305170-12-neilb@ownmail.net>
+Date: Thu, 24 Sep 2026 09:07:22 -0400
+In-Reply-To: <20260919022441.3305170-9-neilb@ownmail.net>
 References: <20260919022441.3305170-1-neilb@ownmail.net>
-	 <20260919022441.3305170-12-neilb@ownmail.net>
+	 <20260919022441.3305170-9-neilb@ownmail.net>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -130,64 +130,74 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-LLM review:
+On Sat, 2026-09-19 at 12:06 +1000, NeilBrown wrote:
+> From: NeilBrown <neil@brown.name>
+>=20
+> -ENODEV is not generally an error meaning "the object is a device"
+> and nfsd - the only intended caller of vfs_lookup_open() - does not
+> benefit from knowing it was a device file.  So return -EFTYPE in
+> that case.
+> Also switch to testing the dentry type rather than dereferencing the
+> inode to get the type.
+>=20
+> -EISDIR is widely used to mean "the object is a directory which is
+>    not what is wanted".
+> -ELOOP is sometimes used elsewhere to mean "a symlink was found but
+>    cannot be handled".
+>=20
+> Also remove note about ->atomic_open returning -EFTYPE as that now only
+> happens for non regular/dir/symlink.
+>=20
+> Signed-off-by: NeilBrown <neil@brown.name>
+> ---
+>  fs/namei.c | 24 +++++-------------------
+>  1 file changed, 5 insertions(+), 19 deletions(-)
+>=20
+> diff --git a/fs/namei.c b/fs/namei.c
+> index b9fca38ad489..ba3e7e4b5fdb 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -4621,9 +4621,7 @@ out_dput:
+>   * determine the type of file found from the error.
+>   * -EISDIR : a directory was found
+>   * -ELOOP  : a symlink was found
+> - * -ENODEV : a block or character device special file was found
+> - * -EFTYPE : any other non-regular file was found, such as FIFO or SOCK.
+> - *           or ->atomic_open responded to __O_REGULAR.
+> + * -EFTYPE : any other non-regular file was found, device-special, FIFO =
+or SOCK
+>   *
+>   * Returns: the opened struct file, or an error.
+>   */
+> @@ -4671,24 +4669,12 @@ struct file *vfs_lookup_open(struct path *parent,=
+ struct qstr *last,
+>  		error =3D -ENOENT;
+>  	} else if (!(file->f_mode & FMODE_CREATED) && (open_flag & O_EXCL)) {
+>  		error =3D -EEXIST;
+> -	} else if ((dentry->d_inode->i_mode & S_IFMT) !=3D S_IFREG) {
+> -		switch (dentry->d_inode->i_mode & S_IFMT) {
+> -		case S_IFDIR:
+> +	} else if (!d_is_reg(dentry)) {
+> +		error =3D -EFTYPE;
+> +		if (d_is_dir(dentry))
+>  			error =3D -EISDIR;
+> -			break;
+> -		case S_IFLNK:
+> +		if (d_is_symlink(dentry))
+>  			error =3D -ELOOP;
+> -			break;
+> -		case S_IFBLK:
+> -		case S_IFCHR:
+> -			error =3D -ENODEV;
+> -			break;
+> -		case S_IFIFO:
+> -		case S_IFSOCK:
+> -		default:
+> -			error =3D -EFTYPE;
+> -			break;
+> -		}
+>  	} else if (!(file->f_mode & FMODE_OPENED)) {
+>  		nd.path.dentry =3D dentry;
+>  		error =3D vfs_open(&nd.path, file);
 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 6e443503d0b7..3d37754f787b 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-
-[ ... ]
-
-> @@ -466,6 +454,14 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc=
-_fh *fhp,
->  			status =3D nfserr_exist;
->  			goto out;
->  		}
-> +		/* We opened an existing file, it might be a junction. */
-> +		if (unlikely(nfsd_mountpoint(child, fhp->fh_export) =3D=3D 1)) {
-> +			dget(child);
-> +			nfsd_filp_close(open->op_filp);
-> +			open->op_filp =3D NULL;
-> +			goto do_cross_mnt;
-> +		}
-> +
-
-[ ... ]
-
-> @@ -511,6 +507,21 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc=
-_fh *fhp,
->  out:
->  	nfsd_attrs_free(&attrs);
->  	return status;
-> +
-> +do_cross_mnt:
-> +	exp =3D exp_get(fhp->fh_export);
-> +
-> +	status =3D nfsd_cross_mnt(rqstp, &child, &exp);
-> +	if (status =3D=3D nfs_ok)
-> +		status =3D fh_compose(resfhp, exp,
-> +				    child, fhp);
-
-When the new junction check triggers, resfhp was already composed
-earlier in nfsd4_create_file(), so the fh_compose() in do_cross_mnt
-runs a second time on the same handle:
-
-fs/nfsd/nfsfh.c:fh_compose() {
-	...
-	if (fhp->fh_dentry) {
-		printk(KERN_ERR "fh_compose: fh %pd2 not initialized!\n",
-		       dentry);
-	}
-	...
-	fhp->fh_dentry =3D dget(dentry); /* our internal copy */
-	fhp->fh_export =3D exp_get(exp);
-	...
-}
-
-The first composed dentry and export references are overwritten
-without being released. Should resfhp be released before crossing,
-or the mountpoint check done before the first compose?
-
---=20
-Jeff Layton <jlayton@kernel.org>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
