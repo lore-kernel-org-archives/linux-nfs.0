@@ -1,71 +1,70 @@
 Received: from mail-oi2-f12.google.com (mail-oi2-f12.google.com [74.125.231.204])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F2A0D4A2070
-	for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2026 15:29:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C69D94A2638
+	for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2026 15:29:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.204
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790263751; cv=none; b=H8GaP0ou4tZCLc4uUhSW1XicKfe5uO604enEz/+PrfazbHYwl5rGIOdWHaOfNRDtit8rTvjW+3fXszVI0ztmOtLT3x/+KnkixNL34nTBSlME9hNfcFHrZWzr2bItd3+0ThzuPYfeMAVbSuczrDguUy36boEI+tch4kyz4txKtto=
+	t=1790263751; cv=none; b=hbNCFLiNT6bxGkk6OTSLVkN1yqZPieEcVHPvOqS8lXv9bCrH3ViuvqU/D69eTCXNyVstvoQjTjyISnGxlSsbVE3Jz8cxj58VH54zuEdD4/YuAZdKL6s6ZNPygCLw1U99RhvUfKW/B56Ilke5XbcPFA9Pt9x2kx9+SJtfGSK8ec4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1790263751; c=relaxed/simple;
-	bh=UtQnkBsrOX8LW2/Ori1OJkwu16forj5zgTbp5+glvGk=;
+	bh=b8Vrfa1gksEUabZrX8qfJ4PR7LQWiIgTfPD02gWp2/A=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=LDUYOb780YmJTFoxvc+fUrPPR1zpNiG7IG98UJho8jbKIfxqfvfV4wteB4J+5s0NjxrQE1+4RK485GktBp1S32lsV1Fgf/cOVmQwr6qrASJ5VSRG8aN9vMGopSBdhkFinJlEge/VPEPehyZ+wVR6WFpWPSSoqzpB8cpoK59YpYY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=ffblYCRg; arc=none smtp.client-ip=74.125.231.204
+	 MIME-Version; b=dgwb6TEVlCbbWofLi6VKxz9u7If6VggEaZD89XtZhuGe7Cf/qsAeJ8PWqcexOethT5MkOEVyhr/yr4G6a18HFLLqKu4uZk1NhWrYvL+qy42PLd3ry7SFXweVdCUUKyo8t3adutgFrLVq3xRdzxToipwbOqENV5rM9/V7xvZKFIc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=W+GxBzkZ; arc=none smtp.client-ip=74.125.231.204
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="ffblYCRg"
-Received: by mail-oi2-f12.google.com with SMTP id 46e09a7af769-7f4f0d37dc4so1483627a34.1
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2026 08:29:08 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="W+GxBzkZ"
+Received: by mail-oi2-f12.google.com with SMTP id 46e09a7af769-7f4f0c89e33so1347645a34.0
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2026 08:29:09 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1790263747; x=1790868547; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1790263748; x=1790868548; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=jNygcrs3H4RmUooXemo80t9hSCgF0lV2AB/NXV3J2OE=;
-        b=ffblYCRgaPdgTwouhGH58ghyLJwmAFDbsTFJu7TdtVq345VpZLMC19HsQ4rd8dItm0
-         IFR4ajOPYzDz4Ppm4f/yUDftCYDxmAd7BibJM7PraplCYfA8aGTLGhwMgr4aQFUXHJZZ
-         72L6VN0ab8n6ubuxq9OGRuSr6o6/GOTgSQT1M1W3TaPwI7oErd1Zt1f1kw6lCkTnnlgk
-         Qau//0ZMnOSiYnWKZJ5Z0KmL9NBzOKlWj/KIcD3ru6RrEQhAMkLST44PL2FeB7ycxxe7
-         97gmC8gQfQnxSnZz5TzK3PC+8Je0WfZHktmROscFUalA+F/4Y0IS7QkZe3W6QnQgrtFp
-         r4Xw==
+        bh=LEbyg7CKiEM5Y+PH4FmcXsI0nVh3tU69PmDVbCDNouA=;
+        b=W+GxBzkZ3S5EY9k2V7w1oUEYgIOd55ohwkrCJiGjda20ocH4XIQYdBuLpE9C+ahH3V
+         nhPX6TzRu3ohGUBqND6sipZL3uPNEusGc4kVom1qBC7khYELpibcMGr1JgdN/8rokYvY
+         /FaSv1DFm8/LpqsKRx5B5huOIZq1eFA0Zt0c5yc3vOKDVu/+tGBkRsDVOSTJ+qdqUHxp
+         ZXSQnpGdbXvEfPfrg5VB87krcbePay0fH11vvJas1J7dSgg0qgbziPK1y6zQqAc4T/NR
+         hR2D8s7Hiu6ibth1Yl8eQxHeBtql5UZYCKFgbDflQlpcjoXjc1LhEEtFEx0SLmQPpARW
+         oGvQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790263747; x=1790868547;
+        d=1e100.net; s=20260707; t=1790263748; x=1790868548;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=jNygcrs3H4RmUooXemo80t9hSCgF0lV2AB/NXV3J2OE=;
-        b=gO2F1Q2bgfE1DNrS2IBTCfBiHlIVCA0USIYbXcrQIZ5rzMcpF3PUEqaqEURycnaDA6
-         1fZMHWsYGI04LeS8PsJfzyGokycNlsHLX11M1ZD6jv4f23xj97UxRXxw4rriQowMx7RB
-         D8n6NEBDQM9s44oGwDDjrQWzrNjMJLh53Kr5VUonDvpibQ+kj1oep7hBiOIZnCeNleoF
-         HILISHBfidHMfLWYTUlNeqb7vdkidPvbY/8psvpPLM+a0VBM9RV2fgRwk3KMxFKIP7BQ
-         kElH5qcmmiAGVCw86aOu5dK6ttN0ACfgg8NvV4vV7jbnx/+o+DlehvLDmTVvdI1G+xMY
-         S3ew==
-X-Gm-Message-State: AFuF++m/p8TrbVAOZpQfq74OjVAz9+eP+RsEwmGi4tITwzm4R5oFlCgz
-	JT2A0Lk3SjihSJKFVWjc2+wiotvzd/Cc2eqrE5Y42EumPndIp9hMotQ0K12/zZ5O7V2BFXJ44Xr
-	0Oe0L
-X-Gm-Gg: AYBFou0s63KJIsOCiUT3Se7dHgar/ES/YYrZ1n6jyvxi9PyZc6fbpNKeZeg8K40B80t
-	UB0gykAPaKCC0gElk1GT6TYM6xw2HUe/PGi55jZqBc/bFdxQS65L5f6ycexttwMvi7jADO8fvnj
-	wrDyvh0TwUp9azkVkFi6VUnQOyxIvmdl5IkfNdIK6F5CJpeBTuxQCNbnfTJbIZNusO/sMErxxlE
-	6f/c/9XVSImD8nB4M/zBPz80PnFHYLZK40ME6VByGDHco0eEYQyiok4PfRx9RFOWQ+IUK4SFRlb
-	65vXUDXD9PW6CcUuGDS0pLoOJhmSPprOkyU7lsxYf1D4MDvqRCiJq65Tc5Lj6gQJS8emX5PzwG9
-	6C4fuospM4EMgLvzKFAaJYyKhtSd+BLOYp6eJNlPqfJK1dA/zlarqlGOdReRU8mKrEpLgV+z3zo
-	YpzCydw00hKNkTCLbxritNFCC0LlzzdEgjml0ag2SUEi9mbFnZ2nCN9261Da3sDRnSByyeoq2y4
-	OhmAswQ2OxGEsllWPrsWaj+accy1s37uw==
-X-Received: by 2002:a05:6830:83b0:b0:7fc:ae19:17ec with SMTP id 46e09a7af769-81783e88241mr3013429a34.29.1790263747503;
-        Thu, 24 Sep 2026 08:29:07 -0700 (PDT)
+        bh=LEbyg7CKiEM5Y+PH4FmcXsI0nVh3tU69PmDVbCDNouA=;
+        b=fg7vAn2EsiO0lz9HfNHs8MgrB2DqKRupiRYNaGiIe4f0yPS7BuE2B0NDwQhvJsf+V0
+         5p45+j8KQ2viFrqHT0Wfy9TC9/pbEJaUwtpHqiN4STFWySJY9rv5RBks/Mc5LbhPUL05
+         BAv6IHy5EfMKXmWQ8260+9nYCShv/+XxbQDKMiF5k07Go460fSj9qTsaa2gSI2SDXrqT
+         DPYfxrA8lLbJfiOqezSedf0V/BecGD5BVt39pcceDusloaRiKztv8IIZHgzfZC46gP9e
+         s16o0zwOw56aGm1BBDMgBc5qhDUqsya4j0RTjOmj0xX0Y/iPBwNZS8jA21auTBJpKvqZ
+         KOxA==
+X-Gm-Message-State: AFuF++k6afq+i/ixZTHyc+hx/o4O0soxF2SQZJIqtrOivrbL1cwh33mS
+	KstLnH1GlWc8I+Tha4I+GILeBakzN6Dx388Nv0wt+nbV4tMdVkflhvmKCdlyjzOUggc=
+X-Gm-Gg: AYBFou0/kByVAKhwitVbUcHlUxvQBDUo3J7695rpsnTirvV5LE847OwDCFcPH0UTvFp
+	nExTUGUOThPlzDQ7el5Qf7SdEpGeUBx9VDWaQ5FkjoChMZCwNcN9iyJp4ImNRz9BvjxXh2v8EVc
+	ej98Aa27tBpTTRfP3/P9EpJEGB49dzw49wOyW5CpDQ9q23fPnRTglQv6dwW6jlZye5WFeOYvBZ6
+	s19PcJjA4yf5rhf4KQHodkGlTHJIdkD/S9/4Kn9HJM3W3aNNalexsyfO88tgHLxZ8oky5qxEuFW
+	vVMReWaHlg5KwO793YJi5nuw2uMfZ4yS17flK9tuVQNFONp1z5DhjE+zUPMgJ2jcC+R7DsLBeVU
+	tcB7ey2dU6xBLPIPlp54XkbEJIq1sEmzUjjB8W5H//relWTzXcjgU4lF3wa/9jj5Z0RelLP3NW8
+	AgG1YPalaEwabYr7ZEV/femZMsTUeP2XnUo0jbMeAUYRTldIYQncV+ljYCZP7ufq26NDjkEFdN5
+	lPuVhNJA+is6yciYZI2w5WYsgulPK0GKF4=
+X-Received: by 2002:a05:6830:43a0:b0:7f4:2418:7ed8 with SMTP id 46e09a7af769-81780c940f4mr2966347a34.12.1790263748239;
+        Thu, 24 Sep 2026 08:29:08 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-81603ad2b19sm6551506a34.4.2026.09.24.08.29.06
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-81603ad2b19sm6551506a34.4.2026.09.24.08.29.07
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
         Thu, 24 Sep 2026 08:29:07 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Steve Dickson <steved@redhat.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/4] mountd: stop exiting from a signal handler
-Date: Thu, 24 Sep 2026 11:29:02 -0400
-Message-ID: <20fec8c5b5668f67a002240c240d27a21f6e7e5c.1790263469.git.bcodding@hammerspace.com>
+Subject: [PATCH 3/4] exportd: stop exiting from a signal handler
+Date: Thu, 24 Sep 2026 11:29:03 -0400
+Message-ID: <4513fefc0741f08cfa76777ae10edc6b579ad4db.1790263469.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1790263469.git.bcodding@hammerspace.com>
 References: <cover.1790263469.git.bcodding@hammerspace.com>
@@ -77,43 +76,39 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Use cache_block_signals() instead of installing killer() and sig_hup().
-my_svc_run() returns once a stop signal is seen and main() calls
-killer() from normal context.  The worker handling in killer() is gone;
-cache_fork_workers() does that now.
+Same change as for mountd: use cache_block_signals() and call killer()
+from the process loop once cache_stop_signal() is set.
 
 Assisted-by: LLM
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- utils/mountd/mountd.c  | 25 ++++++-------------------
- utils/mountd/svc_run.c |  2 ++
- 2 files changed, 8 insertions(+), 19 deletions(-)
+ utils/exportd/exportd.c | 30 +++++++++---------------------
+ 1 file changed, 9 insertions(+), 21 deletions(-)
 
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index 92d8c4690efc..bdbff1dda0b7 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -124,17 +124,13 @@ cleanup_lockfiles (void)
+diff --git a/utils/exportd/exportd.c b/utils/exportd/exportd.c
+index a08aaaccbc2f..d63195c4ea28 100644
+--- a/utils/exportd/exportd.c
++++ b/utils/exportd/exportd.c
+@@ -61,14 +61,13 @@ cleanup_lockfiles (void)
+ 	unlink(etab.lockfn);
  }
  
- /*
-- * Signal handler.
-+ * Called from main() once my_svc_run() has seen SIGINT or SIGTERM,
++/*
++ * Called from main() once cache_process() has seen SIGINT or SIGTERM,
 + * never from a signal handler: see cache_block_signals().
-  */
++ */
  static void
  killer (int sig)
  {
- 	unregister_services();
 -	if (num_threads > 1) {
 -		/* play Kronos and eat our children */
 -		kill(0, SIGTERM);
--		cache_wait_for_workers("mountd");
+-		cache_wait_for_workers("exportd");
 -	}
  	cleanup_lockfiles();
  	free_state_path_names(&etab);
- 	free_state_path_names(&rmtab);
-@@ -142,14 +138,6 @@ killer (int sig)
+ 	xlog (L_NOTICE, "Caught signal %d, exiting.", sig);
+@@ -76,14 +75,6 @@ killer (int sig)
  	exit(0);
  }
  
@@ -125,44 +120,36 @@ index 92d8c4690efc..bdbff1dda0b7 100644
 -	return;
 -}
 -
- bool_t
- mount_null_1_svc(struct svc_req *rqstp, void *UNUSED(argp),
- 	void *UNUSED(resp))
-@@ -883,11 +871,7 @@ main(int argc, char **argv)
- 	if (version23() && listeners == 0)
- 		xlog(L_WARNING, "mountd: No V2 or V3 listeners created!");
+ inline static void
+ set_signals(void)
+ {
+@@ -96,12 +87,7 @@ set_signals(void)
+ 	/* WARNING: the following works on Linux and SysV, but not BSD! */
+ 	sigaction(SIGCHLD, &sa, NULL);
  
 -	sa.sa_handler = killer;
 -	sigaction(SIGINT, &sa, NULL);
 -	sigaction(SIGTERM, &sa, NULL);
+-
 -	sa.sa_handler = sig_hup;
 -	sigaction(SIGHUP, &sa, NULL);
 +	cache_block_signals();
- 
- 	if (!foreground) {
- 		/* We first fork off a child. */
-@@ -939,6 +923,9 @@ main(int argc, char **argv)
- 	xlog(L_NOTICE, "Version " VERSION " starting");
- 	my_svc_run();
- 
-+	if (cache_stop_signal())
-+		killer(cache_stop_signal());
-+
- 	xlog(L_ERROR, "RPC service loop terminated unexpectedly. Exiting...\n");
- 	unregister_services();
- 	free_state_path_names(&etab);
-diff --git a/utils/mountd/svc_run.c b/utils/mountd/svc_run.c
-index 2aaf3756bbb1..259d03b2f031 100644
---- a/utils/mountd/svc_run.c
-+++ b/utils/mountd/svc_run.c
-@@ -105,5 +105,7 @@ my_svc_run(void)
- 		}
- 		if (selret)
- 			svc_getreqset(&readfds);
-+		if (cache_stop_signal())
-+			return;
- 	}
  }
+ 
+ static void
+@@ -242,8 +228,10 @@ main(int argc, char **argv)
+ 	v4clients_init();
+ 
+ 	/* Process incoming upcalls */
+-	while (cache_process(NULL) >= 0)
+-		;
++	while (cache_process(NULL) >= 0) {
++		if (cache_stop_signal())
++			killer(cache_stop_signal());
++	}
+ 
+ 	xlog(L_ERROR, "%s: process loop terminated unexpectedly(%m). Exiting...\n",
+ 		progname);
 -- 
 2.53.0
 
