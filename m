@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5493147FAE1;
-	Thu, 24 Sep 2026 13:01:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B3634499A4;
+	Thu, 24 Sep 2026 13:02:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790254881; cv=none; b=bljVW7aQeivpByZz42xFSoJThgnv6tu/n5++gSJB0h8xZJRmVo78mkN9aOExoaowtlKfkGPCo2qH3D8uQByposPAIKsiNrpH/p3QCKS1JRGe45YAagCpIEEWQJGSSC9MTs5rfBYA3C/cdGo9rlEZfwQxr2/TrSHi5ehU9fA8lTI=
+	t=1790254954; cv=none; b=mpEA+mjQK7fPG6aD1pTvxGHY3FQ4r82TiKmt5Nt7nilymaRRGgP0cTLPJr2+vhnqb0JKTiHbCXQJc1FH3kpmbo06XLpFzcTxSCWw9cPtIOEIqBtEQr0OaOm067mn09omfOMCMsI7gndx8wG2gL7muGtbCgCFCiPOCgZP0BiPCWY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790254881; c=relaxed/simple;
-	bh=hH/lwu/IfxC6JCDDRdk8MH0oeXlHHuPWC2Jcizgdmdw=;
+	s=arc-20240116; t=1790254954; c=relaxed/simple;
+	bh=F+X9l+8Qw3jOUqvswVvQpRqQwdvk1KRhp5i/siJ6aSE=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=Fb3WJN7nZn95RIZifp5UCqYgnmvCOmn3gxKlFbCYPwwgCSBqVfNn7DYtOt7RZD1QGSNUfD8OFMpbI+bg8gvBkl6xoCbvoiIzmvo9zW4hoctrXb8lHvuTyfNiVIcvqQ4Mn+d63C2M130m+UKedeqpdQyOd98nSEF60C7bCyxTBQw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=YM1/ExFO; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=tCtZaKfw24vL3r4EYfxUjelFdeHEm+Pr3HI+nBOEi9gDS7uYFgmYZMvLpYEmndEmgN1zbF7PLZtRNG/eLD1OnQFt7PKir7sin4wZmKLrbC2/mV0osK2e+EJXeamnFk6V+QEXvn1XNIDrImYQjqpf/nsLIe/Yuk6k4VouTwk1low=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=PZeAjwFf; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="YM1/ExFO"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6D3E11F000FF;
-	Thu, 24 Sep 2026 13:01:18 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="PZeAjwFf"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 579A31F00893;
+	Thu, 24 Sep 2026 13:02:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790254879;
-	bh=tILsIh/34tfOjHd4pLyAU/dB1/vDUv+mUz0xu94fN2k=;
+	s=k20260515; t=1790254952;
+	bh=OoJv4hE7nRkyLdCwXnqULA5lTrUqCCcffOfZDfsTCx8=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=YM1/ExFO0Nre9zG7li3ETX0LEu/Lh93Wy/5nDKyb44/GqnhhC7V+KDtVXprFKOui0
-	 HyNm6f9h/lWtEDpJfdYFrQbqS/fLEz9sH6FIqJr3UcNY8U5eC1wVjtx0mKMW6wtV87
-	 f0uHUFonQQ7ccoLdspUHXTUWbg5eiBpsgzjH/5asOAWHmkyGMzCddTZFnN5rlMS5um
-	 xnWizs04Z0a444G/tL0UwUjfhngEgn2sxpY/dcq+a8eYIrqDnyo9VUXDl2jTtzADEu
-	 9br1GAxiUFMmegN7AsZj8W+28btC+zVUuba84xc3Bt5xn+hPn9PiSfxr32nh25wquI
-	 mtX4jQeYWnUiA==
-Message-ID: <2dbe2fef2fde0515011866a585749ed2d95b46f4.camel@kernel.org>
-Subject: Re: [PATCH v2 02/14] nfs: correctly handle NFS4ERR_WRONG_TYPE from
- v4 OPEN request
+	b=PZeAjwFflgp1cE6rzyOISC6ZDTAWKt2dOiYOpJNVKhHyZfdJCC9CsoxJmrdQjh34E
+	 EcUr8DQrBjbEu1NVg525RbgHLCYL27pov54inwmSuCRSH52avzZxS2rfjd3jXS6a40
+	 hsvR+mwsR7ehxfZSRiaf9MMSWFWbjpRVRKyCo3hJ9IV5fwcv1dzb0Qf0cqPLR0eyrs
+	 xvZtAijd5KqBOfSSR2rvxRm4VZXMrdFg7zxnCFTwEf4DRSVLI0r5LlKF/EHCm3XMgB
+	 IqavYt+/may4euMGEfp9GCRvO8NBCM2zvqqFycuGwfO0s8tBoy0MX+ZFHhU2FOrgON
+	 iwm2wXZI5T6jw==
+Message-ID: <ca31c1deadab1bbe5c2f9040f1ccee17266d8027.camel@kernel.org>
+Subject: Re: [PATCH v2 04/14] ceph: simplify atomic_open to use
+ finish_no_open()
 From: Jeff Layton <jlayton@kernel.org>
 To: NeilBrown <neil@brown.name>, Alexander Viro <viro@zeniv.linux.org.uk>, 
  Christian Brauner
@@ -42,10 +42,10 @@ Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
  Alcantara	 <pc@manguebit.org>, Namjae Jeon <linkinjeon@kernel.org>, 
 	linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
 	linux-nfs@vger.kernel.org
-Date: Thu, 24 Sep 2026 09:01:16 -0400
-In-Reply-To: <20260919022441.3305170-3-neilb@ownmail.net>
+Date: Thu, 24 Sep 2026 09:02:29 -0400
+In-Reply-To: <20260919022441.3305170-5-neilb@ownmail.net>
 References: <20260919022441.3305170-1-neilb@ownmail.net>
-	 <20260919022441.3305170-3-neilb@ownmail.net>
+	 <20260919022441.3305170-5-neilb@ownmail.net>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -130,52 +130,65 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-Some agentic review found a potential issue here:
+Another LLM review:
 
-> diff --git a/fs/nfs_common/common.c b/fs/nfs_common/common.c
-> index 0778743ae2c2..24add750c8d5 100644
-> --- a/fs/nfs_common/common.c
-> +++ b/fs/nfs_common/common.c
-> @@ -102,6 +102,7 @@ static const struct {
->  	{ NFS4ERR_BADTYPE,	-EBADTYPE	},
->  	{ NFS4ERR_SYMLINK,	-ELOOP		},
->  	{ NFS4ERR_DEADLOCK,	-EDEADLK	},
-> +	{ NFS4ERR_WRONG_TYPE,	-EFTYPE		},
->  };
+> diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+> index bd3e3f5c269e..83ceb2906f85 100644
+> --- a/fs/ceph/file.c
+> +++ b/fs/ceph/file.c
 
 [ ... ]
 
-The new mapping also changes what filelayout_async_handle_error() in
-fs/nfs/filelayout/filelayout.c sees for this status. That function
-switches on the decoded task status, which mixes mapped errnos with raw
-NFSv4 codes:
+> @@ -977,33 +976,25 @@ int ceph_atomic_open(struct inode *dir, struct dent=
+ry *dentry,
+>  	}
+>  	if (err)
+>  		goto out_req;
+> -	if (dn || d_really_is_negative(dentry) || d_is_symlink(dentry)) {
+> -		/* make vfs retry on splice, ENOENT, or symlink */
+> -		doutc(cl, "finish_no_open on dn %p\n", dn);
+> -		err =3D finish_no_open(file, dn);
+> -	} else {
+> -		if (IS_ENCRYPTED(dir) &&
+> -		    !fscrypt_has_permitted_context(dir, d_inode(dentry))) {
+> -			pr_warn_client(cl,
+> -					"Inconsistent encryption context (parent %llx:%llx child %llx:%llx)=
+\n",
+> -					ceph_vinop(dir), ceph_vinop(d_inode(dentry)));
+> -			goto out_req;
+> -		}
+> +	if (IS_ENCRYPTED(dir) &&
+> +	    !fscrypt_has_permitted_context(dir, d_inode(dentry))) {
+> +		pr_warn_client(cl,
+> +			       "Inconsistent encryption context (parent %llx:%llx child %llx:=
+%llx)\n",
+> +			       ceph_vinop(dir), ceph_vinop(d_inode(dentry)));
+> +		goto out_req;
+> +	}
 
-fs/nfs/filelayout/filelayout.c:filelayout_async_handle_error() {
+The fscrypt check used to run only when the dentry was positive, not
+a symlink, and had no alias. Now it runs unconditionally, but
+d_inode() can still be NULL here: a lookup that found nothing leaves
+a negative dentry with err =3D=3D 0, and when the MDS reply splices an
+alias the original dentry is never instantiated.
+
+fscrypt_has_permitted_context() dereferences its child argument
+without checking for NULL:
+
+fs/crypto/policy.c:fscrypt_has_permitted_context() {
 	...
-	case -ESTALE:           /* mapped NFS4ERR_STALE */
-	case -EBADHANDLE:       /* mapped NFS4ERR_BADHANDLE */
-	case -EISDIR:           /* mapped NFS4ERR_ISDIR */
-	case -NFS4ERR_FHEXPIRED:
-	case -NFS4ERR_WRONG_TYPE:
-		...
-		pnfs_destroy_layout(NFS_I(inode));
-		rpc_wake_up(&tbl->slot_tbl_waitq);
-		goto reset;
+	if (!S_ISREG(child->i_mode) && !S_ISDIR(child->i_mode) &&
+	    !S_ISLNK(child->i_mode))
+		return 1;
 	...
-	default:
-reset:
-		return -NFS4ERR_RESET_TO_MDS;
 }
 
-Before this commit a data server returning WRONG_TYPE arrived as
--NFS4ERR_WRONG_TYPE and took the layout-invalidating path above. With
-the new mapping it arrives as -EFTYPE, which matches no case and falls
-into default, so the I/O is still retried through the MDS but the
-layout is no longer destroyed and the slot waitqueue is not woken.
+Every other in-tree caller passes a known inode, while this one can
+pass NULL. An open of a name that does not exist in an encrypted
+directory reaches this through lookup_open() -> atomic_open() ->
+ceph_atomic_open().
 
-Should the "Invalidate Layout errors" group gain a case for -EFTYPE
-alongside the mapped -EISDIR case, the way the other mapped codes are
-handled there?
-
+Could the fscrypt check stay behind the positive-dentry test, as
+before?
 --=20
 Jeff Layton <jlayton@kernel.org>
