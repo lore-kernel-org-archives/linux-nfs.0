@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5D7CA4A8432
-	for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2026 17:10:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5805041B8F6
+	for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2026 17:10:24 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790269825; cv=none; b=XFY84gk/J6BZaohBf7BaLJu20qPJy7orFL2Rqvsqa0gZiBp8JEcvwKE13taKeaiddi4hkUuGN2t+cEEgm/o98g/wp6z0Jyyak7VIfT1hoz1fE5zL3j0OxgyLCSmzx+JhuliiVRsl9pZ543jB40V1XK4uXIGMveovm4JmmYQioGs=
+	t=1790269826; cv=none; b=Y4kSAarISBzY9FfumO/HJDopZ+p1S3adw/47VlWPB5vuSmvmO/7eybj2a8euOcfY9fLU54/4IkpOXekVSndRZBaX2Vcd4N/rTMR82rEu81Mj1r9xjB0AKHsok7D4OEdMOFp/5/9pkHqbG2p6KYA9iJVyxJGCIFS+D6Wc3WRVK68=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790269825; c=relaxed/simple;
-	bh=KS9TmCBCTb1bb+mJyoSYPc1EgdbxOHMGBUOhTqoXkQ8=;
+	s=arc-20240116; t=1790269826; c=relaxed/simple;
+	bh=KfICAiuQujJx2siQxpRIej7KB09vMGlMLgwfzbhMr1A=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=o2mR+yu40qNiy9t8W8RSXYUS4pbAHC+Cqp9ymJo+8atAnRFh0ca4a9PZcMu1IKZgdxlPZWzil0TQENgP4ztt0PY+3BYY+DfcMZeutWxUrEQ7fvDFTxilrl77v/whTAceQS0cfloQmwgGlMx3rXksTdV8+Oc3Jwf+MxP+f0yu3tQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=kvzpOw0q; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=pZgpzMfY7x+n2fcD0w1DRkDYZ9vUBiMoNu26nertMik0TH5DXCZgIMPCqBtaSgt73b7It/dcxY1WudPBmnbJrpSWDF/O+BbDzOxKWowkr6y9CJcieOVF5+lUoOucMs8vIfLzF2bwnhLjzdpd8i9QHlVwqnf03QreOdieyoREfUQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=A29SVtHs; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="kvzpOw0q"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B93221F000FF;
-	Thu, 24 Sep 2026 17:10:22 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="A29SVtHs"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7F66C1F0089A;
+	Thu, 24 Sep 2026 17:10:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790269823;
-	bh=R7AJ6vIygFwP7h6BidVZgmkVkbLXqXaiG+M+iR53vuQ=;
+	s=k20260515; t=1790269824;
+	bh=l9X9yLSXdImAidljD2w6pBkb9lQ39rGbe7fJWf9GxvY=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=kvzpOw0qGSiaDNiEdwnX+QeW9+Zs2o9JOBPfLHCJXL6p9exhgpon4zXmj8y8E1gO5
-	 0pZzKFwMfM8yyIrAi6neWS5PV4RqumIaJovXkNdi1yX5WNLQTxnPfv84eWab2lfapI
-	 OCqWYzTLvzklWRDIMgpBFcjgkxtshtZkbfgAqiBY5zHm4zTunf6BoyRY83CVVCdtGR
-	 xfy4b8xGovwCCJPokRGhgFEiIZ2Tyv9fZxSsa52oV/hkAcjyXGW5pSrKoazm0329Bj
-	 b4ycZL1VrjSq91lPsu/++XvwFScEV23vlE3N8/RBwHrv87cwfO3gdFwdiFHM5rf/kw
-	 JqbDgGzsZOMQQ==
+	b=A29SVtHsWoxVECUMNmtfw1p/iyb78spEkUXVeH4gzD35ue3Cp3jA0YklA0gB6gWyI
+	 vdvdX0sW6brYny0UqTdYRqCXLVPvB41tkLdU1/ifwnzF6YOrz9X0PrAzhPH0WQrZkX
+	 Mvg9vHllqcwI3fI+pSizIbSdaundcsnztZkxXe9TuZBIxj/mbTOi9zL8dPGyO10dFy
+	 oGCE2SiDyTQi8yYHGQjETPhTXjbnvxmuvAsAiqmMrraocWch4Y0AO9b8oWqvuaAQqx
+	 FsIBr24dI+tuRS2PgjQ1AKvT5KMiiivLcHsiiEabcS88tDiiErNDtYayg8X/2AphFD
+	 uDqPCpGPgSIFQ==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 10/33] NFSD: Use xdrgen XDR functions for the NFSv3 LOOKUP procedure
-Date: Thu, 24 Sep 2026 13:09:49 -0400
-Message-ID: <20260924171012.3978-11-cel@kernel.org>
+Subject: [PATCH v2 11/33] NFSD: Use xdrgen XDR functions for NFSv3 ACCESS procedure
+Date: Thu, 24 Sep 2026 13:09:50 -0400
+Message-ID: <20260924171012.3978-12-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260924171012.3978-1-cel@kernel.org>
 References: <20260924171012.3978-1-cel@kernel.org>
@@ -47,267 +47,218 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Replace the NFSPROC3_LOOKUP entry in the nfsd_procedures3 array
+Replace the NFSPROC3_ACCESS entry in the nfsd_procedures3 array
 with an entry that dispatches the xdrgen-generated
-nfs_svc_decode_LOOKUP3args and nfs_svc_encode_LOOKUP3res. Wrapper
+nfs_svc_decode_ACCESS3args and nfs_svc_encode_ACCESS3res. Wrapper
 structures bridge the generated xdrgen types and the legacy svc_fh
 representation the NFSD VFS layer still uses.
 
-The pc_argzero field is now set to zero for the NFSv3 LOOKUP
+The pc_argzero field is now set to zero for the NFSv3 ACCESS
 procedure. The xdrgen decoders are trusted to initialize all
 arguments in the argp->xdrgen field, making the early defensive
 memset unnecessary. The remaining argp fields are cleared as
 needed.
 
-nfs3svc_decode_diropargs() rejects an empty name, a name longer
-than NFS3_MAXNAMLEN, and a name containing '/' or NUL. The
-generated filename3 decoder checks none of these. Introduce
-nfsd3_check_filename() so that nfsd3_proc_lookup() applies the same
-checks before it calls nfsd_lookup(). After the change, a name that
-fails them draws NFS3ERR_INVAL or NFS3ERR_NAMETOOLONG rather than
-GARBAGE_ARGS. Later procedures that take a filename share the helper.
-
-Because nfsd3_proc_lookup() now fills in the post-op attributes,
+Because nfsd3_proc_access() now fills in the post-op attributes,
 the fh_getattr() calls are made in the proc function rather than in
-the XDR result encoder, and the references to the file handles can
-be released directly by nfsd3_proc_lookup(). A separate ->pc_release
+the XDR result encoder, and the reference to the file handle can be
+released directly by nfsd3_proc_access(). A separate ->pc_release
 callback is thus no longer needed. This makes it straightforward to
-confirm that the file handles are properly released during every
+confirm that the file handle is properly released during every
 error flow.
 
-Following the precedent of commit 40ee5dc6af35 ("knfsd: 64 bit ino
-support for NFS server"), lease_get_mtime() determines the file's
-mtime when filling in post-op attributes, but is not used for WCC
-data. This seems odd to me; NFSv4 does not use lease_get_mtime() at
-all, and not using it for WCC data seems like an NFSv3 file's
-reported mtime values might vary depending on how the file metadata
-is queried.
-
-nfs3svc_encode_lookupres() no longer has any callers, so it is
-removed.
+nfs3svc_decode_accessargs() and nfs3svc_encode_accessres() no
+longer have any callers, so they are removed.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs3proc.c | 116 +++++++++++++++++++++++++++++++++++----------
- fs/nfsd/nfs3xdr.c  |  25 ----------
- fs/nfsd/xdr3.h     |   1 -
- 3 files changed, 90 insertions(+), 52 deletions(-)
+ fs/nfsd/nfs3proc.c | 73 ++++++++++++++++++++++++++++++----------------
+ fs/nfsd/nfs3xdr.c  | 36 -----------------------
+ fs/nfsd/xdr3.h     |  1 -
+ 3 files changed, 48 insertions(+), 62 deletions(-)
 
 diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 815722afde9a..735b4fc21336 100644
+index 735b4fc21336..5182108999b5 100644
 --- a/fs/nfsd/nfs3proc.c
 +++ b/fs/nfsd/nfs3proc.c
-@@ -56,6 +56,21 @@ struct SETATTR3args_wrapper {
+@@ -71,6 +71,13 @@ struct LOOKUP3res_wrapper {
  
- static_assert(offsetof(struct SETATTR3args_wrapper, xdrgen) == 0);
+ static_assert(offsetof(struct LOOKUP3res_wrapper, xdrgen) == 0);
  
-+struct LOOKUP3args_wrapper {
-+	struct LOOKUP3args	xdrgen;
++struct ACCESS3args_wrapper {
++	struct ACCESS3args	xdrgen;
 +	struct svc_fh		fh;
 +};
 +
-+static_assert(offsetof(struct LOOKUP3args_wrapper, xdrgen) == 0);
-+
-+struct LOOKUP3res_wrapper {
-+	struct LOOKUP3res	xdrgen;
-+	struct svc_fh		fh;
-+	u8			fh_data[NFS3_FHSIZE];
-+};
-+
-+static_assert(offsetof(struct LOOKUP3res_wrapper, xdrgen) == 0);
++static_assert(offsetof(struct ACCESS3args_wrapper, xdrgen) == 0);
 +
  static int	nfs3_ftypes[] = {
  	0,			/* NF3NON */
  	S_IFREG,		/* NF3REG */
-@@ -170,6 +185,14 @@ nfsd3_fh3_to_svc_fh(struct svc_fh *fhp, const struct nfs_fh3 *fh3)
- 	memcpy(&fhp->fh_handle.fh_raw, fh3->data.data, fh3->data.len);
- }
- 
-+static __always_inline void
-+nfsd3_svc_fh_to_fh3(struct nfs_fh3 *fh3, const struct svc_fh *fhp, u8 *scratch)
-+{
-+	memcpy(scratch, fhp->fh_handle.fh_raw, fhp->fh_handle.fh_size);
-+	fh3->data.data = scratch;
-+	fh3->data.len = fhp->fh_handle.fh_size;
-+}
-+
- static __always_inline void
- nfsd3_timespec64_to_nfstime3(struct nfstime3 *dst,
- 			     const struct timespec64 *src)
-@@ -178,6 +201,22 @@ nfsd3_timespec64_to_nfstime3(struct nfstime3 *dst,
- 	dst->nseconds = src->tv_nsec;
- }
- 
-+static __be32
-+nfsd3_check_filename(const unsigned char *name, u32 len)
-+{
-+	u32 i;
-+
-+	if (len == 0)
-+		return nfserr_inval;
-+	if (len > NFS3_MAXNAMLEN)
-+		return nfserr_nametoolong;
-+	for (i = 0; i < len; i++) {
-+		if (name[i] == '\0' || name[i] == '/')
-+			return nfserr_inval;
-+	}
-+	return nfs_ok;
-+}
-+
- static u32
- nfsd3_mode_to_ftype3(umode_t mode)
- {
-@@ -458,27 +497,51 @@ static __be32 nfsd3_proc_setattr(struct svc_rqst *rqstp)
+@@ -545,24 +552,40 @@ static __be32 nfsd3_proc_lookup(struct svc_rqst *rqstp)
  	return rpc_success;
  }
  
 -/*
-- * Look up a path name component
+- * Check file access
 +/**
-+ * nfsd3_proc_lookup - LOOKUP: Look up file name
++ * nfsd3_proc_access - ACCESS: Check access permission
 + * @rqstp: RPC transaction context
 + *
 + * Return:
 + *   %rpc_success:		RPC executed successfully
 + *
 + * RPC synopsis:
-+ *   LOOKUP3res NFSPROC3_LOOKUP(LOOKUP3args) = 3;
++ *   ACCESS3res NFSPROC3_ACCESS(ACCESS3args) = 4;
   */
 -static __be32
--nfsd3_proc_lookup(struct svc_rqst *rqstp)
-+static __be32 nfsd3_proc_lookup(struct svc_rqst *rqstp)
+-nfsd3_proc_access(struct svc_rqst *rqstp)
++static __be32 nfsd3_proc_access(struct svc_rqst *rqstp)
  {
--	struct nfsd3_diropargs *argp = rqstp->rq_argp;
--	struct nfsd3_diropres  *resp = rqstp->rq_resp;
-+	struct LOOKUP3args_wrapper *argp = rqstp->rq_argp;
-+	struct LOOKUP3res_wrapper *resp = rqstp->rq_resp;
-+	struct diropargs3 *what = &argp->xdrgen.what;
-+	struct svc_fh *dirfhp = &argp->fh;
-+	struct svc_fh *fhp = &resp->fh;
+-	struct nfsd3_accessargs *argp = rqstp->rq_argp;
+-	struct nfsd3_accessres *resp = rqstp->rq_resp;
++	struct ACCESS3args_wrapper *argp = rqstp->rq_argp;
++	struct ACCESS3res *resp = rqstp->rq_resp;
++	struct svc_fh *fhp = &argp->fh;
  
--	dprintk("nfsd: LOOKUP(3)   %s %.*s\n",
+-	dprintk("nfsd: ACCESS(3)   %s 0x%x\n",
 -				SVCFH_fmt(&argp->fh),
--				argp->len,
--				argp->name);
-+	nfsd3_fh3_to_svc_fh(dirfhp, &what->dir);
+-				argp->access);
++	nfsd3_fh3_to_svc_fh(fhp, &argp->xdrgen.object);
  
--	fh_copy(&resp->dirfh, &argp->fh);
--	fh_init(&resp->fh, NFS3_FHSIZE);
-+	fh_init(fhp, NFS3_FHSIZE);
-+	resp->xdrgen.status = nfsd3_check_filename(what->name.data,
-+						   what->name.len);
-+	if (resp->xdrgen.status != nfs_ok)
-+		goto out;
-+	resp->xdrgen.status = nfsd_lookup(rqstp, dirfhp,
-+					  (char *)what->name.data,
-+					  what->name.len, fhp);
- 
--	resp->status = nfsd_lookup(rqstp, &resp->dirfh,
--				   argp->name, argp->len,
--				   &resp->fh);
+-	fh_copy(&resp->fh, &argp->fh);
+-	resp->access = argp->access;
+-	resp->status = nfsd_access(rqstp, &resp->fh, &nfsd3_access_maps,
+-				   &resp->access, NULL);
 -	resp->status = nfsd3_map_status(resp->status);
-+out:
-+	if (resp->xdrgen.status == nfs_ok) {
-+		struct LOOKUP3resok *resok = &resp->xdrgen.u.resok;
++	resp->status = nfsd_access(rqstp, fhp, &nfsd3_access_maps,
++				   &argp->xdrgen.access, NULL);
 +
-+		nfsd3_svc_fh_to_fh3(&resok->object, fhp, resp->fh_data);
++	if (resp->status == nfs_ok) {
++		struct ACCESS3resok *resok = &resp->u.resok;
++
++		resok->access = argp->xdrgen.access;
 +		nfsd3_fill_post_op_attr(rqstp, &resok->obj_attributes, fhp);
-+		nfsd3_fill_post_op_attr(rqstp, &resok->dir_attributes, dirfhp);
 +	} else {
-+		struct LOOKUP3resfail *resfail = &resp->xdrgen.u.resfail;
++		struct ACCESS3resfail *resfail = &resp->u.resfail;
 +
-+		resp->xdrgen.status = nfsd3_map_status(resp->xdrgen.status);
-+		nfsd3_fill_post_op_attr(rqstp, &resfail->dir_attributes, dirfhp);
++		resp->status = nfsd3_map_status(resp->status);
++		nfsd3_fill_post_op_attr(rqstp, &resfail->obj_attributes, fhp);
 +	}
 +
 +	fh_put(fhp);
-+	fh_put(dirfhp);
  	return rpc_success;
  }
  
-@@ -1224,16 +1287,15 @@ static const struct svc_procedure nfsd_procedures3[22] = {
- 		.pc_name	= "SETATTR",
- 	},
- 	[NFSPROC3_LOOKUP] = {
--		.pc_func = nfsd3_proc_lookup,
--		.pc_decode = nfs3svc_decode_diropargs,
--		.pc_encode = nfs3svc_encode_lookupres,
--		.pc_release = nfs3svc_release_fhandle2,
--		.pc_argsize = sizeof(struct nfsd3_diropargs),
--		.pc_argzero = sizeof(struct nfsd3_diropargs),
--		.pc_ressize = sizeof(struct nfsd3_diropres),
--		.pc_cachetype = RC_NOCACHE,
--		.pc_xdrressize = ST+FH+pAT+pAT,
--		.pc_name = "LOOKUP",
-+		.pc_func	= nfsd3_proc_lookup,
-+		.pc_decode	= nfs_svc_decode_LOOKUP3args,
-+		.pc_encode	= nfs_svc_encode_LOOKUP3res,
-+		.pc_argsize	= sizeof(struct LOOKUP3args_wrapper),
-+		.pc_argzero	= 0,
-+		.pc_ressize	= sizeof(struct LOOKUP3res_wrapper),
-+		.pc_cachetype	= RC_NOCACHE,
-+		.pc_xdrressize	= NFS3_LOOKUP3res_sz,
-+		.pc_name	= "LOOKUP",
+@@ -1298,16 +1321,15 @@ static const struct svc_procedure nfsd_procedures3[22] = {
+ 		.pc_name	= "LOOKUP",
  	},
  	[NFSPROC3_ACCESS] = {
- 		.pc_func = nfsd3_proc_access,
-@@ -1456,6 +1518,8 @@ union nfsd3_xdrstore {
- 	struct GETATTR3res_wrapper	getattrres;
- 	struct SETATTR3args_wrapper	setattrargs;
+-		.pc_func = nfsd3_proc_access,
+-		.pc_decode = nfs3svc_decode_accessargs,
+-		.pc_encode = nfs3svc_encode_accessres,
+-		.pc_release = nfs3svc_release_fhandle,
+-		.pc_argsize = sizeof(struct nfsd3_accessargs),
+-		.pc_argzero = sizeof(struct nfsd3_accessargs),
+-		.pc_ressize = sizeof(struct nfsd3_accessres),
+-		.pc_cachetype = RC_NOCACHE,
+-		.pc_xdrressize = ST+pAT+1,
+-		.pc_name = "ACCESS",
++		.pc_func	= nfsd3_proc_access,
++		.pc_decode	= nfs_svc_decode_ACCESS3args,
++		.pc_encode	= nfs_svc_encode_ACCESS3res,
++		.pc_argsize	= sizeof(struct ACCESS3args_wrapper),
++		.pc_argzero	= 0,
++		.pc_ressize	= sizeof(struct ACCESS3res),
++		.pc_cachetype	= RC_NOCACHE,
++		.pc_xdrressize	= NFS3_ACCESS3res_sz,
++		.pc_name	= "ACCESS",
+ 	},
+ 	[NFSPROC3_READLINK] = {
+ 		.pc_func = nfsd3_proc_readlink,
+@@ -1520,6 +1542,8 @@ union nfsd3_xdrstore {
  	struct SETATTR3res		setattrres;
-+	struct LOOKUP3args_wrapper	lookupargs;
-+	struct LOOKUP3res_wrapper	lookupres;
+ 	struct LOOKUP3args_wrapper	lookupargs;
+ 	struct LOOKUP3res_wrapper	lookupres;
++	struct ACCESS3args_wrapper	accessargs;
++	struct ACCESS3res		accessres;
  	struct nfsd3_diropargs		diropargs;
  	struct nfsd3_readargs		readargs;
  	struct nfsd3_writeargs		writeargs;
+@@ -1529,7 +1553,6 @@ union nfsd3_xdrstore {
+ 	struct nfsd3_symlinkargs	symlinkargs;
+ 	struct nfsd3_readdirargs	readdirargs;
+ 	struct nfsd3_diropres 		diropres;
+-	struct nfsd3_accessres		accessres;
+ 	struct nfsd3_readlinkres	readlinkres;
+ 	struct nfsd3_readres		readres;
+ 	struct nfsd3_writeres		writeres;
 diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index eb5f3148a0ab..36c22611370d 100644
+index 36c22611370d..f3f723215114 100644
 --- a/fs/nfsd/nfs3xdr.c
 +++ b/fs/nfsd/nfs3xdr.c
-@@ -721,31 +721,6 @@ nfs3svc_encode_wccstat(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+@@ -490,19 +490,6 @@ nfs3svc_decode_diropargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+ 	return svcxdr_decode_diropargs3(xdr, &args->fh, &args->name, &args->len);
+ }
+ 
+-bool
+-nfs3svc_decode_accessargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+-{
+-	struct nfsd3_accessargs *args = rqstp->rq_argp;
+-
+-	if (!svcxdr_decode_nfs_fh3(xdr, &args->fh))
+-		return false;
+-	if (xdr_stream_decode_u32(xdr, &args->access) < 0)
+-		return false;
+-
+-	return true;
+-}
+-
+ bool
+ nfs3svc_decode_readargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+ {
+@@ -721,29 +708,6 @@ nfs3svc_encode_wccstat(struct svc_rqst *rqstp, struct xdr_stream *xdr)
  		svcxdr_encode_wcc_data(rqstp, xdr, &resp->fh);
  }
  
--/* LOOKUP */
+-/* ACCESS */
 -bool
--nfs3svc_encode_lookupres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+-nfs3svc_encode_accessres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
 -{
--	struct nfsd3_diropres *resp = rqstp->rq_resp;
+-	struct nfsd3_accessres *resp = rqstp->rq_resp;
 -
 -	if (!svcxdr_encode_nfsstat3(xdr, resp->status))
 -		return false;
 -	switch (resp->status) {
 -	case nfs_ok:
--		if (!svcxdr_encode_nfs_fh3(xdr, &resp->fh))
--			return false;
 -		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
 -			return false;
--		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->dirfh))
+-		if (xdr_stream_encode_u32(xdr, resp->access) < 0)
 -			return false;
 -		break;
 -	default:
--		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->dirfh))
+-		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
 -			return false;
 -	}
 -
 -	return true;
 -}
 -
- /* ACCESS */
+ /* READLINK */
  bool
- nfs3svc_encode_accessres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+ nfs3svc_encode_readlinkres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
 diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-index 354cff178b75..d17192f3c983 100644
+index d17192f3c983..bb23c444c23d 100644
 --- a/fs/nfsd/xdr3.h
 +++ b/fs/nfsd/xdr3.h
-@@ -252,7 +252,6 @@ bool nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, struct xdr_stream *x
- bool nfs3svc_decode_commitargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+@@ -238,7 +238,6 @@ struct nfsd3_fhandle_pair {
  
- bool nfs3svc_encode_wccstat(struct svc_rqst *rqstp, struct xdr_stream *xdr);
--bool nfs3svc_encode_lookupres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfs3svc_encode_accessres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfs3svc_encode_readlinkres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfs3svc_encode_readres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ bool nfs3svc_decode_fhandleargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ bool nfs3svc_decode_diropargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+-bool nfs3svc_decode_accessargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ bool nfs3svc_decode_readargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ bool nfs3svc_decode_writeargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ bool nfs3svc_decode_createargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
 -- 
 2.55.0
 
