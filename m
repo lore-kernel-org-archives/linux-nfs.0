@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9ADF4414A15
-	for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2026 21:22:49 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A278E43BDC8
+	for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2026 21:22:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790284970; cv=none; b=MkazHVXjrqdx5RSO6RtKDXXcNxWjgYc8t67cNiOb0mlMjgIhv4PEphYIJNOTfFLBnLk0qBqvTsTG0z89spAxkJIpuPCGa11uVWRr0nNz2Dm8QIy8c8aTdLW5Oh4xOLvkNiNXkH8HC6HG/aNk/3nVP3vKCIRDIXWmkJCAs4gRmrs=
+	t=1790284971; cv=none; b=VCr2VWWUvstPD7F5Jt7O1paBn1FgXbVJFQcgIXmUCyXcoYk2GkOd18RgcLErk60/iKHNmFkkvHB99i3+D2SJM8CpKypIxiaePhx/+0zMj6QboIFLZx0G90e0Xq8msDvIEFIUJ+1KCTXYdJYkF5GWUvg9v88hKVrYfKyKSg+0yEk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790284970; c=relaxed/simple;
-	bh=f3Idy7rXL71t5zhf0/HYEqKJ0oQZu9e9s3V0ruLBJTo=;
+	s=arc-20240116; t=1790284971; c=relaxed/simple;
+	bh=12HX7lkrHXXCNlElnMJukU9GZVj9otC1fwq/yRdL14E=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=fY4s8bD1dK6ZDUf1c7yCKtI2sNYtkq7yl00o1ZyAU8F9l7UIAAb9kwpmJBbfFevCeraCxGYSkEW4F+liNvmOaKPcaYJ1b5oaWLzw3wABV3OsSl6AcwixG6bpfygTbuaVQQTvsbSBx/8XBgBtl2nr0/kGnzH5omQw0GkkWUfHAto=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ecvatVD6; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=dQE8i7exmTVlhdajaTer3G/zaUkvP+fvRN+BW7aN5VTIKdXdLf0+oy/5k5bhh+PTb3V07RESYlqjOLfx4dfKAF+AxiR3LkNiOIcryUHT2SJU63C/DAoZAkKQ+KSpkObyeemYo5DJyaPorSrhxAgaCzu5ZTNxRudw4NlHV4/ZdjE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=b7AT3KkI; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ecvatVD6"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B07D41F00898;
-	Thu, 24 Sep 2026 21:22:48 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="b7AT3KkI"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 98B5D1F0089A;
+	Thu, 24 Sep 2026 21:22:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790284969;
-	bh=U+BM/4nV130L8BoSSnY4C4RUE8CnigI0wMoLkYtKe2w=;
+	s=k20260515; t=1790284970;
+	bh=xolijnKbT7d965PVPXYytTqHCMmp0O5PXSjeCV0g8lM=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=ecvatVD6PMUJXwL9/j32xY4C9aLH7ybSoB193lLSOka44IJ863HByGGtmsiuwfeNV
-	 dMrdg+alySPezqM3K2+WhD4qwR/KeSrNP4aaj1eoDjn94129AxjRAqBDMgH/avdvkX
-	 x5/dIgpdPSpptqHZ37MdOLcoeRwUPpIadoK89kDsxUMT54JO5grAY7QeqatOb/VS2C
-	 gCtTO+/rQGgKl5CY71As++uZeRGHVbfw71GALMcGf4e5LCDYOkZcNFABI+gkIgxiA8
-	 ju21Q0hSs95pT1k5kg7S0kDwvdLvVhJ1PvEDX0Kl2AmRfa6TcJmQizmXoYXOuM1XEi
-	 Bmzd4Gf+1tPgw==
+	b=b7AT3KkI9zYQUzricqp+T3AndA52YUhVCWecpIdskiawllvmzF22aIoR/dggZ9Xg5
+	 BAjCdqGWTRZSwTjTPdsptW7kTyklhki28ygwH4YnRZ+laLmN03su7VPznRc+JTz5Ii
+	 wY2tBiVIXb6WKAPKoFf6c26ZGNC+RBsPZWek1cdpluIaGr78LQg4q6Jez9511HvhaL
+	 PkS2QJ+/jTfE1Dhbs0xBhllDQ8NSYKo4LCtH+KWaJXZOd1CO1TLby/8/Gr/D9Z6HDA
+	 1wmrgi2/4B2SFbmV4KEM7HgL1kW+/s8TZb7f8vb/KjyjCWnrTDezawyEnE6kKc6fz9
+	 3/h0d7mY747sQ==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -35,9 +35,9 @@ To: NeilBrown <neil@brown.name>,
 	Trond Myklebust <trond.myklebust@hammerspace.com>,
 	Anna Schumaker <anna@kernel.org>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 1/2] nfs_common: Do not encode an ACL with fewer than three entries
-Date: Thu, 24 Sep 2026 17:22:45 -0400
-Message-ID: <20260924212246.114355-2-cel@kernel.org>
+Subject: [PATCH v1 2/2] nfs_common: Do not stream-encode an ACL with fewer than three entries
+Date: Thu, 24 Sep 2026 17:22:46 -0400
+Message-ID: <20260924212246.114355-3-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260924212246.114355-1-cel@kernel.org>
 References: <20260924212246.114355-1-cel@kernel.org>
@@ -49,61 +49,37 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-nfsacl_encode() reports at least four wire entries for any ACL
-that has entries, because a three-entry ACL is sent as four with a
-synthesized ACL_MASK. The entry encoder then walks a_entries[] up
-to that count.
-
-A one- or two-entry ACL cannot arrive from setfacl, because
-set_posix_acl() validates it first. It can arrive from an NFS
-server. The NFS client caches a GETACL result without validating
-it, and posix_acl_create() hands the cached default ACL to
-nfs3_proc_setacls() when the client creates a directory. The walk
-then reads past the end of the posix_acl allocation and copies the
-bytes into the SETACL arguments.
+nfs_stream_encode_acl() reports at least four wire entries for any
+ACL that has entries, because a three-entry ACL is sent as four
+with a synthesized ACL_MASK. The entry encoder then walks
+a_entries[] up to that count. For an ACL with one or two entries,
+which posix_acl_from_xattr() and the filesystem on-disk parsers do
+not reject, the walk reads past the end of the posix_acl
+allocation and copies the bytes into the GETACL reply.
 
 Report zero wire entries for an ACL with fewer than three, the
-same as for an ACL with none. Count them the same way in
-nfsacl_size(), which otherwise sizes such an ACL at four entries
-and leaves the reserved bytes unwritten in the SETACL arguments.
+same as for an ACL with none.
 
-Fixes: a257cdd0e217 ("[PATCH] NFSD: Add server support for NFSv3 ACLs.")
+Fixes: 8edc0648880a ("NFSD: Add an xdr_stream-based encoder for NFSv2/3 ACLs")
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
  fs/nfs_common/nfsacl.c | 3 ++-
- include/linux/nfsacl.h | 5 +++--
- 2 files changed, 5 insertions(+), 3 deletions(-)
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfs_common/nfsacl.c b/fs/nfs_common/nfsacl.c
-index e2eaac14fd8e..38bb2c294d7c 100644
+index 38bb2c294d7c..24ee7f622b18 100644
 --- a/fs/nfs_common/nfsacl.c
 +++ b/fs/nfs_common/nfsacl.c
-@@ -93,7 +93,8 @@ xdr_nfsace_encode(struct xdr_array2_desc *desc, void *elem)
- int nfsacl_encode(struct xdr_buf *buf, unsigned int base, struct inode *inode,
- 		  struct posix_acl *acl, int encode_entries, int typeflag)
+@@ -157,7 +157,8 @@ bool nfs_stream_encode_acl(struct xdr_stream *xdr, struct inode *inode,
+ 			   int typeflag)
  {
--	int entries = (acl && acl->a_count) ? max_t(int, acl->a_count, 4) : 0;
-+	int entries = (acl && acl->a_count >= 3) ?
+ 	const size_t elem_size = XDR_UNIT * 3;
+-	u32 entries = (acl && acl->a_count) ? max_t(int, acl->a_count, 4) : 0;
++	u32 entries = (acl && acl->a_count >= 3) ?
 +		      max_t(int, acl->a_count, 4) : 0;
  	struct nfsacl_encode_desc nfsacl_desc = {
  		.desc = {
- 			.elem_size = 12,
-diff --git a/include/linux/nfsacl.h b/include/linux/nfsacl.h
-index 8e76a79cdc6a..e4155e69c8dd 100644
---- a/include/linux/nfsacl.h
-+++ b/include/linux/nfsacl.h
-@@ -26,8 +26,9 @@ static inline unsigned int
- nfsacl_size(struct posix_acl *acl_access, struct posix_acl *acl_default)
- {
- 	unsigned int w = 16;
--	w += max(acl_access ? (int)acl_access->a_count : 3, 4) * 12;
--	if (acl_default)
-+	if (acl_access && acl_access->a_count >= 3)
-+		w += max((int)acl_access->a_count, 4) * 12;
-+	if (acl_default && acl_default->a_count >= 3)
- 		w += max((int)acl_default->a_count, 4) * 12;
- 	return w;
- }
+ 			.elem_size = elem_size,
 -- 
 2.55.0
 
