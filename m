@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9530834F24A;
-	Thu, 24 Sep 2026 13:07:26 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 751F147D92F;
+	Thu, 24 Sep 2026 13:13:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790255247; cv=none; b=QEKLgBYY+9y3GGRm2qcrypckPxJP13daKybEnrPMSRThWkD72mox6xeBFu0XBKtr8WdO9nyN+xMkyWfZdOt2306Njv+wEYQU4JSfvQzZroZgPgoUnXlR0OcYSnx8QJyelF1x+cw5lxV3VRDMnM+xhEf6pSQ89wsnJwfUzBA65u4=
+	t=1790255635; cv=none; b=kcQQcufLpZcNRoMbQuFr2TkhJP4p0JuRUQThN1BadQ90GCFZUdxNjPj+OxW5iLrC9D8tNKG/0AapPgpo45ZtLTEuV5Enz17WT/tGL1DmgiOVkTMm4wta1GRTNlK4svMBTP89wEq6nJcmLPpNW8S7eAuspIcyagC7+7oYqDkggT8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790255247; c=relaxed/simple;
-	bh=RkKdX/le/Dj4VH3Ue3irvJpTa19TZgwewtkrwGd3saI=;
+	s=arc-20240116; t=1790255635; c=relaxed/simple;
+	bh=SDRx3+VcdGaaNt8/JqYuEAywmrmMs0tJzocl9lQyMlg=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=U9zYn1YDFqsEGGWDDCr+PqSoqGXU8dO2opTwnR8EOBVXnI2H1ukrKYNOZfexJ11AxruaTVC0Y92gBexmgfy0LYnEy+5DkkGu10NBhKMfVBvgpPlRw4FSduridd/v3vdZskshEjtSGHdXh7QN2rXQk1ArWTjPp2TnfDj7CWbIiJ8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QdMzdhmb; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=u4hRrFz1LsvUJnZuDjUUaJ8RdypcNEGroXwmUd8YI9Y0X9EaAFtXv4J84irvc/blUdrNVJ1hf3/xZoyfOGvgiqN6qSNbliqLM8sLx4kXcVLJ3VFafzBlNrYcWgXmYqlJxWe269q4aHu0Flm0gbfeawPTRcu7+BSdLRrXDt67hJk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nK3DqKYC; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QdMzdhmb"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A2DB21F00893;
-	Thu, 24 Sep 2026 13:07:24 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nK3DqKYC"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A22DC1F000FF;
+	Thu, 24 Sep 2026 13:13:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790255246;
-	bh=RrbHzOITI1UEiF+RE/HauX0IhMAhdm3McLbhPNIitLk=;
+	s=k20260515; t=1790255634;
+	bh=1FPuxwA7U/Oka2FvjX4JcthGqDjhawyI31UGFPK+B8A=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=QdMzdhmbee7mDaC6Ge8B2/rmYrJnzoVuCUWN2s9Xy22DLtT/L1Wdcd5qUP4ympjOE
-	 QbdOcMbNXoEa6VIRZALTrfOe1jr1XyQOdCG85W6oS+tPocgzbphWR4VQWa9oo0aPjq
-	 79f2XxWVmiyKDVezxOpuG6yXoIroOsqBrHrLJKRPjHFic6fO8kX1FhPQ0ziuAs/Nx7
-	 URERVgi2++x8EmEtqoOk+Od9thSjzpB6Xs8GlUNeGmVnAZjrnj1aIfY9UVAXL6r6wi
-	 +WinFkwbHh0ygquVRw/ZO6SLCqdmBhRUup/dttC768fD9v87+M3QnJ/G6xij1WWLhf
-	 jyt2rIar0GkkA==
-Message-ID: <043941d50b1a90273061a95c4115fdb5893da254.camel@kernel.org>
-Subject: Re: [PATCH v2 08/14] vfs: don't return -ENODEV from
- vfs_lookup_open()
+	b=nK3DqKYCh/zCXC4zGxqWUtES3r/fTjJm9w/ODW7RxJEzhk3SdLek8jvV851dQBZJO
+	 njpeITCa0GDdPkRoGUegV+b4WXq4Q3r2Mv+w9DK2KNJli3gD8oy2xYSpLm5smQ6ipk
+	 vpwq89vgyx5za29EiDaryndHi53+Qhub2xe8tEebYwvf1gAg/2ZwUxa+QYXv2KEaLe
+	 l15GyXoYlb7of4jhaeuttZlx0h0n/nojBIlP4vOS7RlL/mSa8Doc8NXb+2uxebNkTr
+	 ReUyGBwwFUT+EFIZ4NqUIT198KMEEZuQS9FZSo921z8DL/iwRAdyBcNsHhMGPeckvJ
+	 JfYMbARm6cYhw==
+Message-ID: <06b05140db43b94e8a8cbf877f73e74d3fbb306e.camel@kernel.org>
+Subject: Re: [PATCH v2 09/14] vfs: change vfs_lookup_open() to use
+ do_open(), not vfs_open()
 From: Jeff Layton <jlayton@kernel.org>
 To: NeilBrown <neil@brown.name>, Alexander Viro <viro@zeniv.linux.org.uk>, 
  Christian Brauner
@@ -42,10 +42,10 @@ Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
  Alcantara	 <pc@manguebit.org>, Namjae Jeon <linkinjeon@kernel.org>, 
 	linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
 	linux-nfs@vger.kernel.org
-Date: Thu, 24 Sep 2026 09:07:22 -0400
-In-Reply-To: <20260919022441.3305170-9-neilb@ownmail.net>
+Date: Thu, 24 Sep 2026 09:13:51 -0400
+In-Reply-To: <20260919022441.3305170-10-neilb@ownmail.net>
 References: <20260919022441.3305170-1-neilb@ownmail.net>
-	 <20260919022441.3305170-9-neilb@ownmail.net>
+	 <20260919022441.3305170-10-neilb@ownmail.net>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -133,71 +133,57 @@ MIME-Version: 1.0
 On Sat, 2026-09-19 at 12:06 +1000, NeilBrown wrote:
 > From: NeilBrown <neil@brown.name>
 >=20
-> -ENODEV is not generally an error meaning "the object is a device"
-> and nfsd - the only intended caller of vfs_lookup_open() - does not
-> benefit from knowing it was a device file.  So return -EFTYPE in
-> that case.
-> Also switch to testing the dentry type rather than dereferencing the
-> inode to get the type.
+> The vfs_open() call misses permission checks which should happen before
+> an open is attempted (atomic_open does separate permission checks).
 >=20
-> -EISDIR is widely used to mean "the object is a directory which is
->    not what is wanted".
-> -ELOOP is sometimes used elsewhere to mean "a symlink was found but
->    cannot be handled".
->=20
-> Also remove note about ->atomic_open returning -EFTYPE as that now only
-> happens for non regular/dir/symlink.
+> Much of the code in do_open() will have no effect as relevant LOOKUP_
+> flags aren't set.  truncation will be done (which nfsd is not expected
+> to use) along with some audit logs and security hook.  The important
+> benefit is getting the may_open() check.
 >=20
 > Signed-off-by: NeilBrown <neil@brown.name>
 > ---
->  fs/namei.c | 24 +++++-------------------
->  1 file changed, 5 insertions(+), 19 deletions(-)
+>  fs/namei.c | 8 +++++++-
+>  1 file changed, 7 insertions(+), 1 deletion(-)
 >=20
 > diff --git a/fs/namei.c b/fs/namei.c
-> index b9fca38ad489..ba3e7e4b5fdb 100644
+> index ba3e7e4b5fdb..8ef2d44b6108 100644
 > --- a/fs/namei.c
 > +++ b/fs/namei.c
-> @@ -4621,9 +4621,7 @@ out_dput:
->   * determine the type of file found from the error.
->   * -EISDIR : a directory was found
->   * -ELOOP  : a symlink was found
-> - * -ENODEV : a block or character device special file was found
-> - * -EFTYPE : any other non-regular file was found, such as FIFO or SOCK.
-> - *           or ->atomic_open responded to __O_REGULAR.
-> + * -EFTYPE : any other non-regular file was found, device-special, FIFO =
-or SOCK
->   *
->   * Returns: the opened struct file, or an error.
->   */
-> @@ -4671,24 +4669,12 @@ struct file *vfs_lookup_open(struct path *parent,=
- struct qstr *last,
->  		error =3D -ENOENT;
->  	} else if (!(file->f_mode & FMODE_CREATED) && (open_flag & O_EXCL)) {
->  		error =3D -EEXIST;
-> -	} else if ((dentry->d_inode->i_mode & S_IFMT) !=3D S_IFREG) {
-> -		switch (dentry->d_inode->i_mode & S_IFMT) {
-> -		case S_IFDIR:
-> +	} else if (!d_is_reg(dentry)) {
-> +		error =3D -EFTYPE;
-> +		if (d_is_dir(dentry))
->  			error =3D -EISDIR;
-> -			break;
-> -		case S_IFLNK:
-> +		if (d_is_symlink(dentry))
+> @@ -4604,6 +4604,9 @@ out_dput:
+>  	goto out;
+>  }
+> =20
+> +static int do_open(struct nameidata *nd,
+> +		   struct file *file, const struct open_flags *op);
+> +
+>  /**
+>   * vfs_lookup_open - open and possibly create a regular file
+>   * @parent: directory to contain file
+> @@ -4660,6 +4663,9 @@ struct file *vfs_lookup_open(struct path *parent, s=
+truct qstr *last,
+>  	}
+>  	op.open_flag =3D open_flag;
+>  	op.mode =3D mode;
+> +	op.acc_mode =3D ACC_MODE(open_flag);
+> +	if (open_flag & O_TRUNC)
+> +		op.acc_mode |=3D MAY_WRITE;
+>  	dentry =3D lookup_open(&nd, file, &op);
+> =20
+>  	if (IS_ERR(dentry))
+> @@ -4677,7 +4683,7 @@ struct file *vfs_lookup_open(struct path *parent, s=
+truct qstr *last,
 >  			error =3D -ELOOP;
-> -			break;
-> -		case S_IFBLK:
-> -		case S_IFCHR:
-> -			error =3D -ENODEV;
-> -			break;
-> -		case S_IFIFO:
-> -		case S_IFSOCK:
-> -		default:
-> -			error =3D -EFTYPE;
-> -			break;
-> -		}
 >  	} else if (!(file->f_mode & FMODE_OPENED)) {
 >  		nd.path.dentry =3D dentry;
->  		error =3D vfs_open(&nd.path, file);
+> -		error =3D vfs_open(&nd.path, file);
+> +		error =3D do_open(&nd, file, &op);
+>  	}
+>  	dput(dentry);
+> =20
+
+I think the code looks right, but the vfs_open -> do_open change is
+largely unmentioned in the changelog. It'd be good to flesh that out
+some.
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
