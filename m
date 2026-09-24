@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6C8694AA575
-	for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2026 17:10:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E60D14AA3E0
+	for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2026 17:10:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790269831; cv=none; b=qDMMb82/VHGTDxNS8Ywce2GFOp9bVOJehMJmHAZyoCbWM3d8ceM5P7imJ28fsSUL8sKQduL8FKAltG40uSD/b9v8FcChEYXtkg+pYhHd1AOyY0NvEeW/N1wzTj+8Uht1oPcowbHAXGVDlEvgp/rWp+3ShkdGjEkL7FYJjRWYToQ=
+	t=1790269832; cv=none; b=pQ18pmn165JVEoPmz0Tq+vbGVXwoOHvgrwCo0GcTyi/W6+uoXBcx1XA8zy9aE8wzuzw3ya7TxEIKq9Joq1FvWpnPib8B6ctaCV0d+MPDafmiuJuZN11DhwSBJ6xnDNFC5H2TMF5Cs6yTvWSFDwMzcIz1aVgg+p8vfenpucAcAgM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790269831; c=relaxed/simple;
-	bh=E3QJNZ1KwOrNnwF3mTsiZGiAIMk16i2njEtvhLPF6I8=;
+	s=arc-20240116; t=1790269832; c=relaxed/simple;
+	bh=FXIDLmU7Syxaxn9aRPBn/gs7ciY3gp455ff/xSh4BAY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=bcY8yu98oqm+/1QV/zwGKDjOAvH1rqGbiK9h57/mLFouIP0F927BasxRRYZDleJ1c/qOXAwfxnFy5P5NSri+l8tRTm2/fGTVw/m7It9rSSbSMWfInv0JIEdTH0bcLMKZP+xFoIqRjKNhmb1SMBbr0Ctlg2JQXmDJvI/GdVwQ9n8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Y+sELhKN; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=aL6R8GDr2M1mCJzO8d+Xf9vQBs2TNP1bCBOeTo8+7aBc8s/coOAYGGR+USUbtjyiwQvMmnXL4pXt8KfqIs0gWjtOnzvj9uCUFxWpw91N+3mRmn/ry0vcl2GYYmRbWdb38JgHZQSym2f2r7qo8mErHW2fUzFzmnWFT7obpiaRUN8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=K32Ebiyl; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Y+sELhKN"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C54461F00898;
-	Thu, 24 Sep 2026 17:10:28 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="K32Ebiyl"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 51AC91F0089A;
+	Thu, 24 Sep 2026 17:10:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790269829;
-	bh=1oi7i7lqOBGCPEtK0d3CV+iiyZOBINDBzhFEO2Vhp3M=;
+	s=k20260515; t=1790269830;
+	bh=xSYe4EQeOHuq4FtyXUKUE8VlqpXuXKkNbmLXdey1Vno=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=Y+sELhKNxxBtWVCyED8V8qgY7ITHubxWPf4wyEAGM/3770sJMMyPmmS9Tqy3F/63S
-	 K/Imd90s6B/UDBdBgZ0LLVmAuUthLSCqtvNxZTeSe1EruBb7U4Tf8fRH6bmRoQxiNw
-	 FuFr0I/UduGvS/wQ7idDhQNAV8EOixBmMZXnPCD7kXv+yFaeW4UwY2KW64IYfQHlMj
-	 UFsTA1zk6Ir8OiZL2Vxms6vxKR49AyQ2m+JD2LFwtJ/Us8EudrGV49hnnBVXTTqyv2
-	 0X2F/cfER0oUvr7W8Fu7XsAir4RrdnbgihXHgS47gHgOwy2waFnY4gfVPq+CcWnVGU
-	 n/m40MQUkY9zQ==
+	b=K32EbiylqQCjw0VGjD7i8sv2uh4p4D+usyzWczdzcr+WoHbY9Uco5NzA13E0TXuJ6
+	 T4f02RqV0TMpcz1fdEshkIFMiyUo3v0W7ZRj7ZEXU80ce3+hUngIVVhdjW1Oti7JkC
+	 oL20ib9um1XMrbAzBXA1iDDh8freXvJ0ECoRkg4y43Pt+5bUeMePr2kx3erfysWGpD
+	 m4AUpynli0SQuscLkPiV6xP2JhUD4VkDLlK/qGLhW0pbezfYop83VsruEB6jRtXQHn
+	 GfzaMREIpuzpxmJ6yi+p8euS6gSDRfOIrsq/AYKU+789jLL4u1hqf77mWEx46QRnBJ
+	 RxYow3iBkJ3Hg==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 18/33] NFSD: Use xdrgen XDR functions for NFSv3 MKNOD procedure
-Date: Thu, 24 Sep 2026 13:09:57 -0400
-Message-ID: <20260924171012.3978-19-cel@kernel.org>
+Subject: [PATCH v2 20/33] NFSD: Use xdrgen XDR functions for the NFSv3 RMDIR procedure
+Date: Thu, 24 Sep 2026 13:09:59 -0400
+Message-ID: <20260924171012.3978-21-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260924171012.3978-1-cel@kernel.org>
 References: <20260924171012.3978-1-cel@kernel.org>
@@ -47,512 +47,233 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Replace the NFSPROC3_MKNOD entry in the nfsd_procedures3 array
+Replace the NFSPROC3_RMDIR entry in the nfsd_procedures3 array
 with an entry that dispatches the xdrgen-generated
-nfs_svc_decode_MKNOD3args and nfs_svc_encode_MKNOD3res. Wrapper
-structures bridge the generated xdrgen types and the legacy
-svc_fh and iattr representations the NFSD VFS layer still uses.
+nfs_svc_decode_RMDIR3args and nfs_svc_encode_RMDIR3res. A
+wrapper structure bridges the generated xdrgen argument type and
+the legacy svc_fh representation the NFSD VFS layer still uses;
+the result uses the generated RMDIR3res type directly.
 
-Filename validity is now checked by nfsd3_proc_mknod() so that a
+Filename validity is now checked by nfsd3_proc_rmdir() so that a
 proper NFS3ERR status code can be returned to the client rather
 than GARBAGE_ARGS.
 
-The pc_argzero field is now set to zero for the NFSv3 MKNOD
+The pc_argzero field is now set to zero for the NFSv3 RMDIR
 procedure. The xdrgen decoders are trusted to initialize all
 arguments in the argp->xdrgen field, making the early defensive
 memset unnecessary. The remaining argp fields are cleared as
 needed.
 
-Because nfsd3_proc_mknod() now fills in the post-op file handle,
-the post-op attributes, and the WCC data, the fh_getattr() calls
-are made in the proc function rather than in the XDR result
-encoder, and the references to the file handles can be released
-directly by nfsd3_proc_mknod(). A separate ->pc_release callback
-is thus no longer needed. This makes it straightforward to
-confirm that the file handles are properly released during every
-error flow.
+Because nfsd3_proc_rmdir() now assembles the WCC data, that work
+moves out of the XDR result encoder, and the reference to the
+file handle can be released directly by nfsd3_proc_rmdir(). A
+separate ->pc_release callback is thus no longer needed. This
+makes it straightforward to confirm that the file handle is
+properly released during every error flow.
 
-nfs3svc_decode_mknodargs() and nfs3svc_encode_createres() no
-longer have any callers, so they are removed. MKNOD was the last
-consumer of the hand-coded sattr3 decoder, so svcxdr_decode_sattr3()
-and its helpers svcxdr_decode_nfstime3(), svcxdr_decode_specdata3(),
-and svcxdr_decode_devicedata3() are removed as well.
+nfs3svc_decode_diropargs() and nfs3svc_encode_wccstat() no longer
+have any callers, so they are removed.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs3proc.c | 154 +++++++++++++++++++++++++++------------
- fs/nfsd/nfs3xdr.c  | 175 ---------------------------------------------
- fs/nfsd/xdr3.h     |  18 -----
- 3 files changed, 107 insertions(+), 240 deletions(-)
+ fs/nfsd/nfs3proc.c | 74 ++++++++++++++++++++++++++++++++--------------
+ fs/nfsd/nfs3xdr.c  | 18 -----------
+ fs/nfsd/xdr3.h     |  8 -----
+ 3 files changed, 51 insertions(+), 49 deletions(-)
 
 diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 97c68c51f9a5..e178cb7fa206 100644
+index 02c7501c8663..e31b96bf4a80 100644
 --- a/fs/nfsd/nfs3proc.c
 +++ b/fs/nfsd/nfs3proc.c
-@@ -147,17 +147,37 @@ struct SYMLINK3res_wrapper {
+@@ -170,6 +170,13 @@ struct REMOVE3args_wrapper {
  
- static_assert(offsetof(struct SYMLINK3res_wrapper, xdrgen) == 0);
+ static_assert(offsetof(struct REMOVE3args_wrapper, xdrgen) == 0);
  
--static int	nfs3_ftypes[] = {
--	0,			/* NF3NON */
--	S_IFREG,		/* NF3REG */
--	S_IFDIR,		/* NF3DIR */
--	S_IFBLK,		/* NF3BLK */
--	S_IFCHR,		/* NF3CHR */
--	S_IFLNK,		/* NF3LNK */
--	S_IFSOCK,		/* NF3SOCK */
--	S_IFIFO,		/* NF3FIFO */
-+struct MKNOD3args_wrapper {
-+	struct MKNOD3args	xdrgen;
++struct RMDIR3args_wrapper {
++	struct RMDIR3args	xdrgen;
 +	struct svc_fh		fh;
-+	struct iattr		iattrs;
- };
- 
-+static_assert(offsetof(struct MKNOD3args_wrapper, xdrgen) == 0);
-+
-+struct MKNOD3res_wrapper {
-+	struct MKNOD3res	xdrgen;
-+	struct svc_fh		fh;
-+	u8			fh_data[NFS3_FHSIZE];
 +};
 +
-+static_assert(offsetof(struct MKNOD3res_wrapper, xdrgen) == 0);
++static_assert(offsetof(struct RMDIR3args_wrapper, xdrgen) == 0);
 +
-+static int nfsd3_ftype3_to_mode(ftype3 ftype)
-+{
-+	switch (ftype) {
-+	case NF3REG:  return S_IFREG;
-+	case NF3DIR:  return S_IFDIR;
-+	case NF3BLK:  return S_IFBLK;
-+	case NF3CHR:  return S_IFCHR;
-+	case NF3LNK:  return S_IFLNK;
-+	case NF3SOCK: return S_IFSOCK;
-+	case NF3FIFO: return S_IFIFO;
-+	default:
-+		return 0;
-+	}
-+}
-+
- /*
-  * Reject a client-supplied atime or mtime whose nanoseconds field is out
-  * of range. Such a value is well-formed on the wire but is not a valid
-@@ -1153,45 +1173,86 @@ static __be32 nfsd3_proc_symlink(struct svc_rqst *rqstp)
+ static int nfsd3_ftype3_to_mode(ftype3 ftype)
+ {
+ 	switch (ftype) {
+@@ -1302,19 +1309,42 @@ static __be32 nfsd3_proc_remove(struct svc_rqst *rqstp)
  	return rpc_success;
  }
  
 -/*
-- * Make socket/fifo/device.
+- * Remove a directory
 +/**
-+ * nfsd3_proc_mknod - MKNOD: Create a special file
++ * nfsd3_proc_rmdir - RMDIR: Remove a directory
 + * @rqstp: RPC transaction context
 + *
 + * Return:
 + *   %rpc_success:		RPC executed successfully
 + *
 + * RPC synopsis:
-+ *   MKNOD3res NFSPROC3_MKNOD(MKNOD3args) = 11;
++ *   RMDIR3res NFSPROC3_RMDIR(RMDIR3args) = 13;
   */
 -static __be32
--nfsd3_proc_mknod(struct svc_rqst *rqstp)
-+static __be32 nfsd3_proc_mknod(struct svc_rqst *rqstp)
+-nfsd3_proc_rmdir(struct svc_rqst *rqstp)
++static __be32 nfsd3_proc_rmdir(struct svc_rqst *rqstp)
  {
--	struct nfsd3_mknodargs *argp = rqstp->rq_argp;
--	struct nfsd3_diropres  *resp = rqstp->rq_resp;
--	struct nfsd_attrs attrs = {
--		.na_iattr	= &argp->attrs,
-+	struct MKNOD3args_wrapper *argp = rqstp->rq_argp;
-+	struct diropargs3 *where = &argp->xdrgen.where;
-+	struct mknoddata3 *what = &argp->xdrgen.what;
-+	struct MKNOD3res_wrapper *resp = rqstp->rq_resp;
-+	struct iattr *iattrs = &argp->iattrs;
-+	struct svc_fh *dirfhp = &argp->fh;
-+	struct svc_fh *fhp = &resp->fh;
-+	struct nfsd_attrs nattrs = {
-+		.na_iattr	= iattrs,
- 	};
--	int type;
--	dev_t	rdev = 0;
-+	dev_t rdev = 0;
+-	struct nfsd3_diropargs *argp = rqstp->rq_argp;
+-	struct nfsd3_attrstat *resp = rqstp->rq_resp;
++	struct RMDIR3args_wrapper *argp = rqstp->rq_argp;
++	struct diropargs3 *object = &argp->xdrgen.object;
++	struct RMDIR3res *resp = rqstp->rq_resp;
++	struct svc_fh *fhp = &argp->fh;
  
--	fh_copy(&resp->dirfh, &argp->fh);
--	fh_init(&resp->fh, NFS3_FHSIZE);
--
--	if (argp->ftype == NF3CHR || argp->ftype == NF3BLK) {
--		rdev = MKDEV(argp->major, argp->minor);
--		if (MAJOR(rdev) != argp->major ||
--		    MINOR(rdev) != argp->minor) {
--			resp->status = nfserr_inval;
-+	nfsd3_fh3_to_svc_fh(dirfhp, &where->dir);
-+	resp->xdrgen.status = nfsd3_check_filename(where->name.data,
-+						   where->name.len);
-+	if (resp->xdrgen.status != nfs_ok)
-+		goto out;
-+	switch (what->type) {
-+	case NF3CHR:
-+	case NF3BLK:
-+		rdev = MKDEV(what->u.device.spec.specdata1,
-+			     what->u.device.spec.specdata2);
-+		if (MAJOR(rdev) != what->u.device.spec.specdata1 ||
-+		    MINOR(rdev) != what->u.device.spec.specdata2) {
-+			resp->xdrgen.status = nfserr_inval;
- 			goto out;
- 		}
--	} else if (argp->ftype != NF3SOCK && argp->ftype != NF3FIFO) {
--		resp->status = nfserr_badtype;
-+		nfsd3_sattr3_to_iattr(rqstp, iattrs,
-+				      &what->u.device.dev_attributes);
-+		break;
-+	case NF3SOCK:
-+	case NF3FIFO:
-+		nfsd3_sattr3_to_iattr(rqstp, iattrs,
-+				      &what->u.pipe_attributes);
-+		break;
-+	default:
-+		resp->xdrgen.status = nfserr_badtype;
- 		goto out;
- 	}
- 
--	if (!nfsd3_time_in_range(&argp->attrs)) {
--		resp->status = nfserr_inval;
-+	if (!nfsd3_time_in_range(iattrs)) {
-+		resp->xdrgen.status = nfserr_inval;
- 		goto out;
- 	}
- 
--	type = nfs3_ftypes[argp->ftype];
--	resp->status = nfsd_create(rqstp, &resp->dirfh, argp->name, argp->len,
--				   &attrs, type, rdev, &resp->fh);
-+	fh_init(fhp, NFS3_FHSIZE);
-+	resp->xdrgen.status = nfsd_create(rqstp, dirfhp,
-+					  (char *)where->name.data,
-+					  where->name.len, &nattrs,
-+					  nfsd3_ftype3_to_mode(what->type),
-+					  rdev, fhp);
-+
- out:
+-	fh_copy(&resp->fh, &argp->fh);
+-	resp->status = nfsd_unlink(rqstp, &resp->fh, S_IFDIR,
+-				   argp->name, argp->len);
 -	resp->status = nfsd3_map_status(resp->status);
-+	if (resp->xdrgen.status == nfs_ok) {
-+		struct MKNOD3resok *resok = &resp->xdrgen.u.resok;
++	nfsd3_fh3_to_svc_fh(fhp, &object->dir);
++	resp->status = nfsd3_check_filename(object->name.data,
++					    object->name.len);
++	if (resp->status != nfs_ok)
++		goto out;
 +
-+		nfsd3_fill_post_op_fh3(&resok->obj, fhp, resp->fh_data);
-+		nfsd3_fill_post_op_attr(rqstp, &resok->obj_attributes, fhp);
-+		nfsd3_fill_wcc_data(rqstp, &resok->dir_wcc, dirfhp);
++	resp->status = nfsd_unlink(rqstp, fhp, S_IFDIR,
++				   (char *)object->name.data,
++				   object->name.len);
++
++out:
++	if (resp->status == nfs_ok) {
++		nfsd3_fill_wcc_data(rqstp, &resp->u.resok.dir_wcc, fhp);
 +	} else {
-+		struct MKNOD3resfail *resfail = &resp->xdrgen.u.resfail;
-+
-+		resp->xdrgen.status = nfsd3_map_status(resp->xdrgen.status);
-+		nfsd3_fill_wcc_data(rqstp, &resfail->dir_wcc, dirfhp);
++		resp->status = nfsd3_map_status(resp->status);
++		nfsd3_fill_wcc_data(rqstp, &resp->u.resfail.dir_wcc, fhp);
 +	}
 +
 +	fh_put(fhp);
-+	fh_put(dirfhp);
  	return rpc_success;
  }
  
-@@ -1514,7 +1575,6 @@ nfsd3_proc_commit(struct svc_rqst *rqstp)
- #define nfsd3_wccstatres		nfsd3_attrstat
+@@ -1598,10 +1628,8 @@ nfsd3_proc_commit(struct svc_rqst *rqstp)
+  * NFSv3 Server procedures.
+  * Only the results of non-idempotent operations are cached.
+  */
+-#define nfs3svc_encode_wccstatres	nfs3svc_encode_wccstat
+ #define nfsd3_readdirplusargs		nfsd3_readdirargs
+ #define nfsd3_fhandleargs		nfsd_fhandle
+-#define nfsd3_wccstatres		nfsd3_attrstat
  
  #define ST 1		/* status*/
--#define FH 17		/* filehandle with length */
  #define AT 21		/* attributes */
- #define pAT (1+AT)	/* post attributes - conditional */
- #define WC (7+pAT)	/* WCC attributes */
-@@ -1645,16 +1705,15 @@ static const struct svc_procedure nfsd_procedures3[22] = {
- 		.pc_name	= "SYMLINK",
+@@ -1756,16 +1784,15 @@ static const struct svc_procedure nfsd_procedures3[22] = {
+ 		.pc_name	= "REMOVE",
  	},
- 	[NFSPROC3_MKNOD] = {
--		.pc_func = nfsd3_proc_mknod,
--		.pc_decode = nfs3svc_decode_mknodargs,
--		.pc_encode = nfs3svc_encode_createres,
--		.pc_release = nfs3svc_release_fhandle2,
--		.pc_argsize = sizeof(struct nfsd3_mknodargs),
--		.pc_argzero = sizeof(struct nfsd3_mknodargs),
--		.pc_ressize = sizeof(struct nfsd3_diropres),
+ 	[NFSPROC3_RMDIR] = {
+-		.pc_func = nfsd3_proc_rmdir,
+-		.pc_decode = nfs3svc_decode_diropargs,
+-		.pc_encode = nfs3svc_encode_wccstatres,
+-		.pc_release = nfs3svc_release_fhandle,
+-		.pc_argsize = sizeof(struct nfsd3_diropargs),
+-		.pc_argzero = sizeof(struct nfsd3_diropargs),
+-		.pc_ressize = sizeof(struct nfsd3_wccstatres),
 -		.pc_cachetype = RC_REPLBUFF,
--		.pc_xdrressize = ST+(1+FH+pAT)+WC,
--		.pc_name = "MKNOD",
-+		.pc_func	= nfsd3_proc_mknod,
-+		.pc_decode	= nfs_svc_decode_MKNOD3args,
-+		.pc_encode	= nfs_svc_encode_MKNOD3res,
-+		.pc_argsize	= sizeof(struct MKNOD3args_wrapper),
+-		.pc_xdrressize = ST+WC,
+-		.pc_name = "RMDIR",
++		.pc_func	= nfsd3_proc_rmdir,
++		.pc_decode	= nfs_svc_decode_RMDIR3args,
++		.pc_encode	= nfs_svc_encode_RMDIR3res,
++		.pc_argsize	= sizeof(struct RMDIR3args_wrapper),
 +		.pc_argzero	= 0,
-+		.pc_ressize	= sizeof(struct MKNOD3res_wrapper),
++		.pc_ressize	= sizeof(struct RMDIR3res),
 +		.pc_cachetype	= RC_REPLBUFF,
-+		.pc_xdrressize	= NFS3_MKNOD3res_sz,
-+		.pc_name	= "MKNOD",
++		.pc_xdrressize	= NFS3_RMDIR3res_sz,
++		.pc_name	= "RMDIR",
  	},
- 	[NFSPROC3_REMOVE] = {
- 		.pc_func = nfsd3_proc_remove,
-@@ -1795,10 +1854,11 @@ union nfsd3_xdrstore {
- 	struct MKDIR3res_wrapper	mkdirres;
- 	struct SYMLINK3args_wrapper	symlinkargs;
- 	struct SYMLINK3res_wrapper	symlinkres;
-+	struct MKNOD3args_wrapper	mknodargs;
-+	struct MKNOD3res_wrapper	mknodres;
+ 	[NFSPROC3_RENAME] = {
+ 		.pc_func = nfsd3_proc_rename,
+@@ -1874,7 +1901,6 @@ union nfsd3_xdrstore {
+ 	struct ACCESS3res		accessres;
+ 	struct READLINK3args_wrapper	readlinkargs;
+ 	struct READ3args_wrapper	readargs;
+-	struct nfsd3_diropargs		diropargs;
+ 	struct WRITE3args_wrapper	writeargs;
+ 	struct CREATE3args_wrapper	createargs;
+ 	struct CREATE3res_wrapper	createres;
+@@ -1886,6 +1912,8 @@ union nfsd3_xdrstore {
+ 	struct MKNOD3res_wrapper	mknodres;
+ 	struct REMOVE3args_wrapper	removeargs;
+ 	struct REMOVE3res		removeres;
++	struct RMDIR3args_wrapper	rmdirargs;
++	struct RMDIR3res		rmdirres;
  	struct nfsd3_renameargs		renameargs;
  	struct nfsd3_linkargs		linkargs;
  	struct nfsd3_readdirargs	readdirargs;
--	struct nfsd3_diropres 		diropres;
- 	struct READLINK3res		readlinkres;
- 	struct READ3res			readres;
- 	struct nfsd3_writeres		writeres;
 diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 68f00ff604be..53a82af80ad5 100644
+index 53a82af80ad5..1cfc79724450 100644
 --- a/fs/nfsd/nfs3xdr.c
 +++ b/fs/nfsd/nfs3xdr.c
-@@ -57,20 +57,6 @@ encode_nfstime3(__be32 *p, const struct timespec64 *time)
- 	return p;
- }
- 
--static bool
--svcxdr_decode_nfstime3(struct xdr_stream *xdr, struct timespec64 *timep)
--{
--	__be32 *p;
--
--	p = xdr_inline_decode(xdr, XDR_UNIT * 2);
--	if (!p)
--		return false;
--	timep->tv_sec = be32_to_cpup(p++);
--	timep->tv_nsec = be32_to_cpup(p);
--
--	return true;
--}
--
- /**
-  * svcxdr_decode_nfs_fh3 - Decode an NFSv3 file handle
-  * @xdr: XDR stream positioned at an undecoded NFSv3 FH
-@@ -209,114 +195,6 @@ svcxdr_decode_diropargs3(struct xdr_stream *xdr, struct svc_fh *fhp,
- 		svcxdr_decode_filename3(xdr, name, len);
- }
- 
--static bool
--svcxdr_decode_sattr3(struct svc_rqst *rqstp, struct xdr_stream *xdr,
--		     struct iattr *iap)
--{
--	u32 set_it;
--
--	iap->ia_valid = 0;
--
--	if (xdr_stream_decode_bool(xdr, &set_it) < 0)
--		return false;
--	if (set_it) {
--		u32 mode;
--
--		if (xdr_stream_decode_u32(xdr, &mode) < 0)
--			return false;
--		iap->ia_valid |= ATTR_MODE;
--		iap->ia_mode = mode;
--	}
--	if (xdr_stream_decode_bool(xdr, &set_it) < 0)
--		return false;
--	if (set_it) {
--		u32 uid;
--
--		if (xdr_stream_decode_u32(xdr, &uid) < 0)
--			return false;
--		iap->ia_uid = make_kuid(nfsd_user_namespace(rqstp), uid);
--		if (uid_valid(iap->ia_uid))
--			iap->ia_valid |= ATTR_UID;
--	}
--	if (xdr_stream_decode_bool(xdr, &set_it) < 0)
--		return false;
--	if (set_it) {
--		u32 gid;
--
--		if (xdr_stream_decode_u32(xdr, &gid) < 0)
--			return false;
--		iap->ia_gid = make_kgid(nfsd_user_namespace(rqstp), gid);
--		if (gid_valid(iap->ia_gid))
--			iap->ia_valid |= ATTR_GID;
--	}
--	if (xdr_stream_decode_bool(xdr, &set_it) < 0)
--		return false;
--	if (set_it) {
--		u64 newsize;
--
--		if (xdr_stream_decode_u64(xdr, &newsize) < 0)
--			return false;
--		iap->ia_valid |= ATTR_SIZE;
--		iap->ia_size = newsize;
--	}
--	if (xdr_stream_decode_u32(xdr, &set_it) < 0)
--		return false;
--	switch (set_it) {
--	case DONT_CHANGE:
--		break;
--	case SET_TO_SERVER_TIME:
--		iap->ia_valid |= ATTR_ATIME;
--		break;
--	case SET_TO_CLIENT_TIME:
--		if (!svcxdr_decode_nfstime3(xdr, &iap->ia_atime))
--			return false;
--		iap->ia_valid |= ATTR_ATIME | ATTR_ATIME_SET;
--		break;
--	default:
--		return false;
--	}
--	if (xdr_stream_decode_u32(xdr, &set_it) < 0)
--		return false;
--	switch (set_it) {
--	case DONT_CHANGE:
--		break;
--	case SET_TO_SERVER_TIME:
--		iap->ia_valid |= ATTR_MTIME;
--		break;
--	case SET_TO_CLIENT_TIME:
--		if (!svcxdr_decode_nfstime3(xdr, &iap->ia_mtime))
--			return false;
--		iap->ia_valid |= ATTR_MTIME | ATTR_MTIME_SET;
--		break;
--	default:
--		return false;
--	}
--
--	return true;
--}
--
--static bool
--svcxdr_decode_specdata3(struct xdr_stream *xdr, struct nfsd3_mknodargs *args)
--{
--	__be32 *p;
--
--	p = xdr_inline_decode(xdr, XDR_UNIT * 2);
--	if (!p)
--		return false;
--	args->major = be32_to_cpup(p++);
--	args->minor = be32_to_cpup(p);
--
--	return true;
--}
--
--static bool
--svcxdr_decode_devicedata3(struct svc_rqst *rqstp, struct xdr_stream *xdr,
--			  struct nfsd3_mknodargs *args)
--{
--	return svcxdr_decode_sattr3(rqstp, xdr, &args->attrs) &&
--		svcxdr_decode_specdata3(xdr, args);
--}
--
- static bool
- svcxdr_encode_fattr3(struct svc_rqst *rqstp, struct xdr_stream *xdr,
- 		     const struct svc_fh *fhp, const struct kstat *stat)
-@@ -490,34 +368,6 @@ nfs3svc_decode_diropargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
- 	return svcxdr_decode_diropargs3(xdr, &args->fh, &args->name, &args->len);
+@@ -360,14 +360,6 @@ nfs3svc_decode_fhandleargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+ 	return svcxdr_decode_nfs_fh3(xdr, &args->fh);
  }
  
 -bool
--nfs3svc_decode_mknodargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+-nfs3svc_decode_diropargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
 -{
--	struct nfsd3_mknodargs *args = rqstp->rq_argp;
+-	struct nfsd3_diropargs *args = rqstp->rq_argp;
 -
--	if (!svcxdr_decode_diropargs3(xdr, &args->fh, &args->name, &args->len))
--		return false;
--	if (xdr_stream_decode_u32(xdr, &args->ftype) < 0)
--		return false;
--	switch (args->ftype) {
--	case NF3CHR:
--	case NF3BLK:
--		return svcxdr_decode_devicedata3(rqstp, xdr, args);
--	case NF3SOCK:
--	case NF3FIFO:
--		return svcxdr_decode_sattr3(rqstp, xdr, &args->attrs);
--	case NF3REG:
--	case NF3DIR:
--	case NF3LNK:
--		/* Valid XDR but illegal file types */
--		break;
--	default:
--		return false;
--	}
--
--	return true;
+-	return svcxdr_decode_diropargs3(xdr, &args->fh, &args->name, &args->len);
 -}
 -
  bool
  nfs3svc_decode_renameargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
  {
-@@ -608,31 +458,6 @@ nfs3svc_encode_wccstat(struct svc_rqst *rqstp, struct xdr_stream *xdr)
- 		svcxdr_encode_wcc_data(rqstp, xdr, &resp->fh);
- }
+@@ -448,16 +440,6 @@ nfs3svc_decode_commitargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+  * XDR encode functions
+  */
  
--/* CREATE, MKDIR, SYMLINK, MKNOD */
+-/* SETATTR, REMOVE, RMDIR */
 -bool
--nfs3svc_encode_createres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
+-nfs3svc_encode_wccstat(struct svc_rqst *rqstp, struct xdr_stream *xdr)
 -{
--	struct nfsd3_diropres *resp = rqstp->rq_resp;
+-	struct nfsd3_attrstat *resp = rqstp->rq_resp;
 -
--	if (!svcxdr_encode_nfsstat3(xdr, resp->status))
--		return false;
--	switch (resp->status) {
--	case nfs_ok:
--		if (!svcxdr_encode_post_op_fh3(xdr, &resp->fh))
--			return false;
--		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
--			return false;
--		if (!svcxdr_encode_wcc_data(rqstp, xdr, &resp->dirfh))
--			return false;
--		break;
--	default:
--		if (!svcxdr_encode_wcc_data(rqstp, xdr, &resp->dirfh))
--			return false;
--	}
--
--	return true;
+-	return svcxdr_encode_nfsstat3(xdr, resp->status) &&
+-		svcxdr_encode_wcc_data(rqstp, xdr, &resp->fh);
 -}
 -
  /* RENAME */
  bool
  nfs3svc_encode_renameres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
 diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-index 43ded5cff892..6d5cea6baf3a 100644
+index 6d5cea6baf3a..fac60fb4cdf9 100644
 --- a/fs/nfsd/xdr3.h
 +++ b/fs/nfsd/xdr3.h
-@@ -30,15 +30,6 @@ struct nfsd3_accessargs {
- 	__u32			access;
- };
+@@ -19,12 +19,6 @@
+ #define NFS3_MAXNAMLEN			NAME_MAX
+ #define NFS3_MAXPATHLEN			PATH_MAX
  
--struct nfsd3_mknodargs {
+-struct nfsd3_diropargs {
 -	struct svc_fh		fh;
 -	char *			name;
 -	unsigned int		len;
--	__u32			ftype;
--	__u32			major, minor;
--	struct iattr		attrs;
 -};
 -
- struct nfsd3_renameargs {
- 	struct svc_fh		ffh;
- 	char *			fname;
-@@ -87,13 +78,6 @@ struct nfsd3_attrstat {
- 	struct kstat            stat;
+ struct nfsd3_accessargs {
+ 	struct svc_fh		fh;
+ 	__u32			access;
+@@ -171,14 +165,12 @@ struct nfsd3_fhandle_pair {
  };
  
--/* LOOKUP, CREATE, MKDIR, SYMLINK, MKNOD */
--struct nfsd3_diropres  {
--	__be32			status;
--	struct svc_fh		dirfh;
--	struct svc_fh		fh;
--};
--
- struct nfsd3_accessres {
- 	__be32			status;
- 	struct svc_fh		fh;
-@@ -188,7 +172,6 @@ struct nfsd3_fhandle_pair {
- 
  bool nfs3svc_decode_fhandleargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfs3svc_decode_diropargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
--bool nfs3svc_decode_mknodargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+-bool nfs3svc_decode_diropargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  bool nfs3svc_decode_renameargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  bool nfs3svc_decode_linkargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  bool nfs3svc_decode_readdirargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
-@@ -197,7 +180,6 @@ bool nfs3svc_decode_commitargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ bool nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ bool nfs3svc_decode_commitargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  
- bool nfs3svc_encode_wccstat(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+-bool nfs3svc_encode_wccstat(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  bool nfs3svc_encode_accessres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
--bool nfs3svc_encode_createres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  bool nfs3svc_encode_renameres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  bool nfs3svc_encode_linkres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfs3svc_encode_readdirres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
 -- 
 2.55.0
 
