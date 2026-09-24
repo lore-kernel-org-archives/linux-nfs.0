@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EF62D47F2E0;
-	Thu, 24 Sep 2026 12:51:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 443B036654F;
+	Thu, 24 Sep 2026 12:54:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790254301; cv=none; b=uW1RkBHES005Z0qodqiKucTFvdzWMfDaAW0LV+mODCrOyH5kULv/AXDxbE1SdEqpq5KCfew8YAdj/u941kYUFW/ppxyySSXRgENPKygwXW+QXV6qMZB+9Frpnr69U2aKysUVvpV1miTGbBpYfBcC9jTjvHf9K45wz1lrrCc45T4=
+	t=1790254498; cv=none; b=lizADKoHxjmFLQ9lzBD+5bXyrpZ+ACqCr7RicZLPfRBU8e+n8aLfUbzgdLYwY6WV1vd7BirD+OE5ARI99eg7zJjXjzvAnEepMywiWUXTU2ZJWH59t0r5TpWugQgbISHEn3/KTrehcPPDHiRcUPQYoFpngFA0H1AaCQLiLLUwmB4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790254301; c=relaxed/simple;
-	bh=4jNcgF3MRpKoHIMIk/aAPHyp2kctXYRFgLFJ1M9NGbg=;
+	s=arc-20240116; t=1790254498; c=relaxed/simple;
+	bh=uYglS/+40aGdpgcQ0Wl7UxcVopdrLkFANgVul6arDg4=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=Wl00k6jjbQ0pBSx7jcR4EP6SMKbWtLr3HdSGs7Cc7Dxi1p/KURQp7GI6qvN5JO47C/6HeRCC4uQ+hViJwWhszUfDya5cghO7nDQmHFM1b0u2TEggQYlpgZyGJTXFAcbTkSen8eHd3Fp9tBEI8q633xbBQOLjWEMR8ZTgSpGisQk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=kLllSwoJ; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=omdy8ts8u9PuSYWU/GI18JTni4M5kMkBXkCa8qlU4cLPk0vYab1Soo+xmGS8w46ZjfHU6uId50hKmxIARf8hQXbVyqxXnYX+geG99Z3PeNVhMmKDNAZx3rcgeWEDa6AQBx0PqYV9ZsTEsTMTLA0VjrpujJCykC9dOZ4CVbZnCEA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MKhNCs7P; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="kLllSwoJ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8A8D51F000FF;
-	Thu, 24 Sep 2026 12:51:33 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MKhNCs7P"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 73D581F000FF;
+	Thu, 24 Sep 2026 12:54:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790254295;
-	bh=IsEALg7Hq5x2wVFXViSqoybbskoduEYdMFNjEWk3H/c=;
+	s=k20260515; t=1790254496;
+	bh=GfzwflmDPTtyf57d7LrQ8EeJrO3cuaNHFbz57I5DSz4=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=kLllSwoJl7BQpdC7SVEp2/qUijCyR1+ay5yXDhpP3ZhZ4oqwTqFM3wY6o29ezXNE2
-	 9ideFSwI7foQ2H6mENyDdv/Gh8B5DI+tZhF9PddRpe0JaMMEvtv+za1s8pT5lwA7IU
-	 UZCI5z9PWxQpbUQThO/UEoza1KIIG714jS3YCBcGY4jcsgIkeCOm0cR9fiZdujOAaq
-	 4X/e5UUzWsOkw3g0yCzA3wT3fEhI1igdUmsQsQg0C4OM5NVTDawq0q2MnCmsyxAHgx
-	 ruqbBHBJPh4gA+7PL7gU4RjopDmyJp2dvFsgtYo0zO4QXaIfvr/R24X2vFZddwrizZ
-	 AaX3nes0VKpRg==
-Message-ID: <dca2cd51b83589bba5aedf50cec3e300e1de1941.camel@kernel.org>
-Subject: Re: [PATCH v2 07/14] vfs: O_NONBLOCK|O_CREAT open shouldn't wait
- for directory delegation
+	b=MKhNCs7PVyida9CZBZLtbOW+YDabXIecDJYMyODwkuYB2DTfpAT2pikK42CKHjK+8
+	 U/aZMltfF6jU7hmzdpFB5AVm9dBLBBx6CJND+8mpba0S9LRuqQz2jxd5F/+RztcAYW
+	 TKZLBlTF7flK+8X60SzLVG6BcRyfRN6yd1a1A9iIjqdLju7aO55wnYMbO0MdImOLPV
+	 BPdhw4ZLERony352clLnRDlfkG2ToQHmjCqZUwLTW/9bL+1plPvU7lbN+s5S0xZqfI
+	 EY/CySknLJ2ZnkYr/7SOqYLpHJRbP/hOgtPKfwSAkemlsRhorH37QURt3Vecd/Awwz
+	 wnTiaAZgb5RcQ==
+Message-ID: <2498d3ddbd2b6f8a1d3da097c20a2c08f090a163.camel@kernel.org>
+Subject: Re: [PATCH v2 06/14] vfs: add some allowed open flags to
+ vfs_lookup_open()
 From: Jeff Layton <jlayton@kernel.org>
 To: NeilBrown <neil@brown.name>, Alexander Viro <viro@zeniv.linux.org.uk>, 
  Christian Brauner
@@ -42,10 +42,10 @@ Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
  Alcantara	 <pc@manguebit.org>, Namjae Jeon <linkinjeon@kernel.org>, 
 	linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
 	linux-nfs@vger.kernel.org
-Date: Thu, 24 Sep 2026 08:51:31 -0400
-In-Reply-To: <20260919022441.3305170-8-neilb@ownmail.net>
+Date: Thu, 24 Sep 2026 08:54:53 -0400
+In-Reply-To: <20260919022441.3305170-7-neilb@ownmail.net>
 References: <20260919022441.3305170-1-neilb@ownmail.net>
-	 <20260919022441.3305170-8-neilb@ownmail.net>
+	 <20260919022441.3305170-7-neilb@ownmail.net>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -133,47 +133,37 @@ MIME-Version: 1.0
 On Sat, 2026-09-19 at 12:06 +1000, NeilBrown wrote:
 > From: NeilBrown <neil@brown.name>
 >=20
-> An open() of a regular file can block if there is an active lease on that
-> file, but this can be prevented by opening with O_NONBLOCK.
-> An open(O_CREAT) of a non-existent file can block if there is an active
-> delegation on the parent directory but this CANNOT be prevented with
-> O_NONBLOCK.
+> vfs_lookup_open() must allow:
+>   O_LARGEFILE so that large files can be opened.
+>   O_NONBLOCK so that break_lease() can be asked to return -EWOULDBLOCK.
 >=20
-> If nfsd is to use common VFS code for open/create it needs to be able to
-> prevent this blocking.  It is conceivable that a user-space application
-> might need this too.
+> Also O_NOFOLLOW as we don't/can't handle symlinks.  In fact we
+> should enforce O_NOFOLLOW for the same reason we enforce __O_REGULAR.
 >=20
-> So extend O_NONBLOCK protection to not block on a directory delegation
-> when creating a file.
->=20
-> Fixes: 134796f43a5e ("vfs: break parent dir delegations in open(..., O_CR=
-EAT) codepath")
 > Signed-off-by: NeilBrown <neil@brown.name>
 > ---
->  fs/namei.c | 7 ++++++-
->  1 file changed, 6 insertions(+), 1 deletion(-)
+>  fs/namei.c | 5 +++--
+>  1 file changed, 3 insertions(+), 2 deletions(-)
 >=20
 > diff --git a/fs/namei.c b/fs/namei.c
-> index a08f37aca3e1..b9fca38ad489 100644
+> index 0f69abb3743b..a08f37aca3e1 100644
 > --- a/fs/namei.c
 > +++ b/fs/namei.c
-> @@ -4554,7 +4554,12 @@ retry:
->  		goto out_dput;
->  	}
+> @@ -4632,11 +4632,12 @@ struct file *vfs_lookup_open(struct path *parent,=
+ struct qstr *last,
+>  	int error =3D 0;
 > =20
-> -	error =3D try_break_deleg(dir_inode, LEASE_BREAK_DIR_CREATE, &delegated=
-_inode);
-> +	if (op->open_flag & O_NONBLOCK)
-> +		error =3D try_break_deleg(dir_inode, LEASE_BREAK_DIR_CREATE,
-> +					NULL);
-> +	else
-> +		error =3D try_break_deleg(dir_inode, LEASE_BREAK_DIR_CREATE,
-> +					&delegated_inode);
+>  	WARN_ONCE(mode & ~S_IALLUGO, "mode must only have permission bits");
+> -	WARN_ONCE(open_flag & ~(O_ACCMODE|O_CREAT|O_EXCL|O_TRUNC|__O_REGULAR),
+> +	WARN_ONCE(open_flag & ~(O_ACCMODE|O_CREAT|O_EXCL|O_TRUNC|__O_REGULAR|
+> +				O_NONBLOCK|O_LARGEFILE|O_NOFOLLOW),
+>  		  "open_flag has unsupported flags");
+> =20
+>  	mode |=3D S_IFREG;
+> -	open_flag |=3D __O_REGULAR;
+> +	open_flag |=3D __O_REGULAR | O_NOFOLLOW;
+> =20
+>  	error =3D lookup_noperm_common(last, parent->dentry);
 >  	if (error)
->  		goto out_dput;
-> =20
-
-That seems right. We don't want to block the opener while breaking the
-directory lease.
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
