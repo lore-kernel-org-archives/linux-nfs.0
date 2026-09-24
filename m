@@ -1,38 +1,38 @@
 Received: from canpmsgout10.his.huawei.com (canpmsgout10.his.huawei.com [113.46.200.225])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F0E5B46D570;
-	Thu, 24 Sep 2026 10:22:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 97A7447276D;
+	Thu, 24 Sep 2026 10:22:51 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.225
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790245374; cv=none; b=R4ciTNTeYdpCtPy4UB4Iawgn24fLdE+rXKpj/1vLuNHORmS5v4WHQsEVfdAsTDtLQHto6p90lovQozUKzJxVDOf01dktVKQ0nLDIOjDLbBvq5eKHnwWh/7zFiQp/ny7QVVq7uCdglvSyOqQIUxt4r1zV/lIDCHWQVqGB5yzxzig=
+	t=1790245374; cv=none; b=PWY3HjsCLQy/j0HpuAaiBag9255gCWurhrSF3sAClj8gXo66D+j71KxT2HLigVJcKkzXBYehWpAJh8/Zu8KGxRfWncBfsrOYmLSRnXT/IwaeS2FeFLyAOKE21WWUEzhch5hRagnDf8OwClSl+iKCYyFh9pHWoVd2QI3yyumYSc0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1790245374; c=relaxed/simple;
-	bh=DFGXEJWaaD6Y8LCZ/3X3mwZXj4qQQE/weRspuNxP4VU=;
+	bh=yIWk2z7Kn6KDAbnNXADHaqW8/grBunxlSozSsJw0ERQ=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=YdZfMfu2SmURvP0DmsN3uJLFjx4rA2xEyTv1+lI9W6E0Ujom7TYpz5xFz+7dxlyOmPJnGnAawMojSnHSefjLh+zdgB7HlNr9SSTGeI75cNIIY4w4Th4OzLvlOv5DJOQFHH/UPn1bGTtPHJsKdJMNJ4rLekpDctSoA3B8IwybNds=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=gW1nrHpe; arc=none smtp.client-ip=113.46.200.225
+	 MIME-Version:Content-Type; b=eu1XlPez9fQV+KgxytW1fuxAY24uTaowDE6sodkqgZ8wZ0Ou+xc6SRjetgiyv6P1ESPX885Atv5OxCq+LjWc4sFLCS35/Yoq9gUFOSfZO52RNkXC0cXvQDpx0NEhAnBd7XYxcS4+TLRagUt/BI0YoHcdNw8Z2cyD+h0TxF1lQ5w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=CJb1ZQJ7; arc=none smtp.client-ip=113.46.200.225
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="gW1nrHpe"
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="CJb1ZQJ7"
 dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
 	c=relaxed/relaxed; q=dns/txt;
 	h=From;
-	bh=b0eYkrH8lAgXwtPuD9VgCirOAiEk4KJAmS03afZ5hRo=;
-	b=gW1nrHpe+HHlau8VCHz/eJNHKdR2CWFxFFGdqv9bRO1VaS5z/zlVm1c7MQP0K2IQ7m1cxOdBk
-	cXUxkkerJ+JmL9copgQTYCs/f3+ujTwj02gXeQ/0eOjzq69y2QZDLieds5cwo2QyLVhMVfG0her
-	5S3ioKo9Q6yHQWw8Pfndeuc=
-Received: from mail.maildlp.com (unknown [172.19.163.127])
-	by canpmsgout10.his.huawei.com (SkyGuard) with ESMTPS id 4hr8jW0s9Tz1K9WY;
-	Thu, 24 Sep 2026 18:10:39 +0800 (CST)
+	bh=uGzOy/v4wYJC3Hqw93vd9Z+a0m25IVeEcUNy9USeD5Q=;
+	b=CJb1ZQJ78rVItwYnP0OSDKYg2fUFIEaxqOho+5xaDHvSaWnDatSjLwQeRiPggUx2YBwlafp34
+	w1p7rxUxrdhqzAkFSpCHWKYk3ILyVFBQgjOXQrAMbSZYc/XK/mHVV4Y5gJKL5OX4vmAmzqQIS0m
+	AICaIIYZxhKNs6sMLXgRXVU=
+Received: from mail.maildlp.com (unknown [172.19.163.214])
+	by canpmsgout10.his.huawei.com (SkyGuard) with ESMTPS id 4hr8jb1tRXz1K9D2;
+	Thu, 24 Sep 2026 18:10:43 +0800 (CST)
 Received: from whupemk100010.china.huawei.com (unknown [7.152.184.41])
-	by mail.maildlp.com (Postfix) with ESMTPS id 4297A40561;
-	Thu, 24 Sep 2026 18:22:45 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 68D0A4057C;
+	Thu, 24 Sep 2026 18:22:49 +0800 (CST)
 Received: from octopus.huawei.com (10.67.174.191) by
  whupemk100010.china.huawei.com (7.152.184.41) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.2562.45; Thu, 24 Sep 2026 18:22:40 +0800
+ 15.2.2562.45; Thu, 24 Sep 2026 18:22:44 +0800
 From: Cai Xinchen <caixinchen1@huawei.com>
 To: <mic@digikod.net>, <gnoack@google.com>, <paul@paul-moore.com>,
 	<jmorris@namei.org>, <serge@hallyn.com>, <corbet@lwn.net>,
@@ -59,9 +59,9 @@ CC: <rdunlap@infradead.org>, <gregkh@linuxfoundation.org>,
 	<linux-cifs@vger.kernel.org>, <linux-integrity@vger.kernel.org>,
 	<selinux@vger.kernel.org>, <linux-kselftest@vger.kernel.org>,
 	<xiujianfeng@huawei.com>, <caixinchen1@huawei.com>, <lujialin4@huawei.com>
-Subject: [PATCH RFC -next 04/12] fs: pass struct path to POSIX ACL helpers
-Date: Thu, 24 Sep 2026 18:48:23 +0800
-Message-ID: <20260924104831.1081137-5-caixinchen1@huawei.com>
+Subject: [PATCH RFC -next 05/12] LSM: pass struct path to the inode_setattr hook
+Date: Thu, 24 Sep 2026 18:48:24 +0800
+Message-ID: <20260924104831.1081137-6-caixinchen1@huawei.com>
 X-Mailer: git-send-email 2.18.0.huawei.25
 In-Reply-To: <20260924104831.1081137-1-caixinchen1@huawei.com>
 References: <20260924104831.1081137-1-caixinchen1@huawei.com>
@@ -75,360 +75,200 @@ Content-Type: text/plain
 X-ClientProxiedBy: kwepems200001.china.huawei.com (7.221.188.67) To
  whupemk100010.china.huawei.com (7.152.184.41)
 
-vfs_set_acl(), vfs_get_acl() and vfs_remove_acl() together with the
-do_set_acl()/do_get_acl() syscall helpers take a struct mnt_idmap and
-a struct dentry even though their callers either already hold a
-struct path or have to pass &nop_mnt_idmap because no idmapped mount
-is involved.  Switch them all to take a struct path instead and
-derive the idmap and dentry from it where needed.
+The inode_setattr hook is called from notify_change(), which now
+holds a struct path and used to derive the idmap and dentry from it
+just for the hook.  The other in-kernel caller, the fat and exfat
+attribute ioctls, already holds a struct file and can pass its
+f_path directly.
 
-set_posix_acl() keeps taking the idmap and dentry as it is called
-from inode_operations->set_acl, which operates on a bare dentry.
-
-The security_inode_*_acl() hooks invoked from fs/posix_acl.c keep
-taking the idmap and dentry for now; they will be converted together
-with the LSM hooks themselves in separate patches.
+Convert the hook and its SELinux, Smack and EVM implementations to
+take a const struct path.  The implementations derive the idmap and
+dentry they still need from the path, so this is a purely mechanical
+change with no behavior change.
 
 Assisted-by: opencode: glm-5.3
 Signed-off-by: Cai Xinchen <caixinchen1@huawei.com>
 ---
- fs/ecryptfs/inode.c       | 12 ++++++------
- fs/internal.h             | 17 ++++++++---------
- fs/overlayfs/inode.c      |  4 ++--
- fs/overlayfs/overlayfs.h  | 14 ++++++++++++--
- fs/posix_acl.c            | 40 ++++++++++++++++++++-------------------
- fs/smb/server/vfs.c       |  3 +--
- fs/xattr.c                | 10 ++++------
- include/linux/posix_acl.h | 21 +++++++++-----------
- 8 files changed, 63 insertions(+), 58 deletions(-)
+ fs/attr.c                         |  2 +-
+ fs/exfat/file.c                   |  3 +--
+ fs/fat/file.c                     |  3 +--
+ include/linux/lsm_hook_defs.h     |  2 +-
+ include/linux/security.h          |  6 ++----
+ security/integrity/evm/evm_main.c |  7 ++++---
+ security/security.c               | 10 ++++------
+ security/selinux/hooks.c          |  3 ++-
+ security/smack/smack_lsm.c        |  3 ++-
+ 9 files changed, 18 insertions(+), 21 deletions(-)
 
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index 3307cf13b5b4..626341ef1a99 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -1093,8 +1093,9 @@ static int ecryptfs_fileattr_set(struct mnt_idmap *idmap,
- static struct posix_acl *ecryptfs_get_acl(struct mnt_idmap *idmap,
- 					  struct dentry *dentry, int type)
- {
--	return vfs_get_acl(idmap, ecryptfs_dentry_to_lower(dentry),
--			   posix_acl_xattr_name(type));
-+	struct path lower_path = ecryptfs_lower_path(dentry);
-+
-+	return vfs_get_acl(&lower_path, posix_acl_xattr_name(type));
+diff --git a/fs/attr.c b/fs/attr.c
+index ea91e4471faa..f0eb4be496fc 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -537,7 +537,7 @@ int notify_change(const struct path *path, struct iattr *attr,
+ 	    !vfsgid_valid(i_gid_into_vfsgid(idmap, inode)))
+ 		return -EOVERFLOW;
+ 
+-	error = security_inode_setattr(idmap, dentry, attr);
++	error = security_inode_setattr(path, attr);
+ 	if (error)
+ 		return error;
+ 
+diff --git a/fs/exfat/file.c b/fs/exfat/file.c
+index a2a9ee1a2004..db62a8c85d64 100644
+--- a/fs/exfat/file.c
++++ b/fs/exfat/file.c
+@@ -493,8 +493,7 @@ static int exfat_ioctl_set_attributes(struct file *file, u32 __user *user_attr)
+ 	 * out the RO attribute for checking by the security
+ 	 * module, just because it maps to a file mode.
+ 	 */
+-	err = security_inode_setattr(file_mnt_idmap(file),
+-				     file->f_path.dentry, &ia);
++	err = security_inode_setattr(&file->f_path, &ia);
+ 	if (err)
+ 		goto out_unlock_inode;
+ 
+diff --git a/fs/fat/file.c b/fs/fat/file.c
+index 6c475c53334c..c0ec05825517 100644
+--- a/fs/fat/file.c
++++ b/fs/fat/file.c
+@@ -92,8 +92,7 @@ static int fat_ioctl_set_attributes(struct file *file, u32 __user *user_attr)
+ 	 * out the RO attribute for checking by the security
+ 	 * module, just because it maps to a file mode.
+ 	 */
+-	err = security_inode_setattr(file_mnt_idmap(file),
+-				     file->f_path.dentry, &ia);
++	err = security_inode_setattr(&file->f_path, &ia);
+ 	if (err)
+ 		goto out_unlock_inode;
+ 
+diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
+index b22f7928523e..b54fdf7d32e8 100644
+--- a/include/linux/lsm_hook_defs.h
++++ b/include/linux/lsm_hook_defs.h
+@@ -142,7 +142,7 @@ LSM_HOOK(int, 0, inode_follow_link, struct dentry *dentry, struct inode *inode,
+ 	 bool rcu)
+ LSM_HOOK(int, 0, inode_permission, struct mnt_idmap *idmap,
+ 	 struct inode *inode, int mask)
+-LSM_HOOK(int, 0, inode_setattr, struct mnt_idmap *idmap, struct dentry *dentry,
++LSM_HOOK(int, 0, inode_setattr, const struct path *path,
+ 	 struct iattr *attr)
+ LSM_HOOK(void, LSM_RET_VOID, inode_post_setattr, struct mnt_idmap *idmap,
+ 	 struct dentry *dentry, int ia_valid)
+diff --git a/include/linux/security.h b/include/linux/security.h
+index 6ac9fb634017..09c14c83e58f 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -429,8 +429,7 @@ int security_inode_follow_link(struct dentry *dentry, struct inode *inode,
+ 			       bool rcu);
+ int security_inode_permission(struct mnt_idmap *idmap, struct inode *inode,
+ 			      int mask);
+-int security_inode_setattr(struct mnt_idmap *idmap,
+-			   struct dentry *dentry, struct iattr *attr);
++int security_inode_setattr(const struct path *path, struct iattr *attr);
+ void security_inode_post_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 				 int ia_valid);
+ int security_inode_getattr(const struct path *path);
+@@ -1001,8 +1000,7 @@ static inline int security_inode_permission(struct mnt_idmap *idmap,
+ 	return 0;
  }
  
- static int ecryptfs_set_acl(struct mnt_idmap *idmap,
-@@ -1102,11 +1103,10 @@ static int ecryptfs_set_acl(struct mnt_idmap *idmap,
- 			    int type)
+-static inline int security_inode_setattr(struct mnt_idmap *idmap,
+-					 struct dentry *dentry,
++static inline int security_inode_setattr(const struct path *path,
+ 					 struct iattr *attr)
  {
- 	int rc;
--	struct dentry *lower_dentry = ecryptfs_dentry_to_lower(dentry);
--	struct inode *lower_inode = d_inode(lower_dentry);
-+	struct path lower_path = ecryptfs_lower_path(dentry);
-+	struct inode *lower_inode = d_inode(lower_path.dentry);
+ 	return 0;
+diff --git a/security/integrity/evm/evm_main.c b/security/integrity/evm/evm_main.c
+index b59e3f121b8a..b0af1bf86ab5 100644
+--- a/security/integrity/evm/evm_main.c
++++ b/security/integrity/evm/evm_main.c
+@@ -949,18 +949,19 @@ static int evm_attr_change(struct mnt_idmap *idmap,
  
--	rc = vfs_set_acl(&nop_mnt_idmap, lower_dentry,
--			 posix_acl_xattr_name(type), acl);
-+	rc = vfs_set_acl(&lower_path, posix_acl_xattr_name(type), acl);
- 	if (!rc)
- 		fsstack_copy_attr_all(d_inode(dentry), lower_inode);
+ /**
+  * evm_inode_setattr - prevent updating an invalid EVM extended attribute
+- * @idmap: idmap of the mount
+- * @dentry: pointer to the affected dentry
++ * @path: pointer to the affected object
+  * @attr: iattr structure containing the new file attributes
+  *
+  * Permit update of file attributes when files have a valid EVM signature,
+  * except in the case of them having an immutable portable signature.
+  */
+-static int evm_inode_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
++static int evm_inode_setattr(const struct path *path,
+ 			     struct iattr *attr)
+ {
+ 	unsigned int ia_valid = attr->ia_valid;
+ 	enum integrity_status evm_status;
++	struct dentry *dentry = path->dentry;
++	struct mnt_idmap *idmap = mnt_idmap(path->mnt);
+ 
+ 	/* Policy permits modification of the protected attrs even though
+ 	 * there's no HMAC key loaded
+diff --git a/security/security.c b/security/security.c
+index de3ed5c18802..ce74b9f1d110 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -1891,8 +1891,7 @@ int security_inode_permission(struct mnt_idmap *idmap, struct inode *inode,
+ 
+ /**
+  * security_inode_setattr() - Check if setting file attributes is allowed
+- * @idmap: idmap of the mount
+- * @dentry: file
++ * @path: file
+  * @attr: new attributes
+  *
+  * Check permission before setting file attributes.  Note that the kernel call
+@@ -1902,12 +1901,11 @@ int security_inode_permission(struct mnt_idmap *idmap, struct inode *inode,
+  *
+  * Return: Returns 0 if permission is granted.
+  */
+-int security_inode_setattr(struct mnt_idmap *idmap,
+-			   struct dentry *dentry, struct iattr *attr)
++int security_inode_setattr(const struct path *path, struct iattr *attr)
+ {
+-	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
++	if (unlikely(IS_PRIVATE(d_backing_inode(path->dentry))))
+ 		return 0;
+-	return call_int_hook(inode_setattr, idmap, dentry, attr);
++	return call_int_hook(inode_setattr, path, attr);
+ }
+ EXPORT_SYMBOL_GPL(security_inode_setattr);
+ 
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 1d06b08f3c41..49785dd62df4 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -3339,10 +3339,11 @@ static int selinux_inode_permission(struct mnt_idmap *idmap,
  	return rc;
-diff --git a/fs/internal.h b/fs/internal.h
-index 71211ef0859f..c2088345462c 100644
---- a/fs/internal.h
-+++ b/fs/internal.h
-@@ -304,20 +304,19 @@ int import_xattr_name(struct xattr_name *kname, const char __user *name);
- int may_write_xattr(struct mnt_idmap *idmap, struct inode *inode);
- 
- #ifdef CONFIG_FS_POSIX_ACL
--int do_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
--	       const char *acl_name, const void *kvalue, size_t size);
--ssize_t do_get_acl(struct mnt_idmap *idmap, struct dentry *dentry,
--		   const char *acl_name, void *kvalue, size_t size);
-+int do_set_acl(const struct path *path, const char *acl_name,
-+	       const void *kvalue, size_t size);
-+ssize_t do_get_acl(const struct path *path, const char *acl_name,
-+		   void *kvalue, size_t size);
- #else
--static inline int do_set_acl(struct mnt_idmap *idmap,
--			     struct dentry *dentry, const char *acl_name,
-+static inline int do_set_acl(const struct path *path, const char *acl_name,
- 			     const void *kvalue, size_t size)
- {
- 	return -EOPNOTSUPP;
- }
--static inline ssize_t do_get_acl(struct mnt_idmap *idmap,
--				 struct dentry *dentry, const char *acl_name,
--				 void *kvalue, size_t size)
-+static inline ssize_t do_get_acl(const struct path *path,
-+				 const char *acl_name, void *kvalue,
-+				 size_t size)
- {
- 	return -EOPNOTSUPP;
- }
-diff --git a/fs/overlayfs/inode.c b/fs/overlayfs/inode.c
-index 401cb8c75520..f73556d17d65 100644
---- a/fs/overlayfs/inode.c
-+++ b/fs/overlayfs/inode.c
-@@ -414,7 +414,7 @@ struct posix_acl *ovl_get_acl_path(const struct path *path,
- 	if (noperm)
- 		real_acl = get_inode_acl(realinode, posix_acl_type(acl_name));
- 	else
--		real_acl = vfs_get_acl(idmap, path->dentry, acl_name);
-+		real_acl = vfs_get_acl(path, acl_name);
- 	if (IS_ERR_OR_NULL(real_acl))
- 		return real_acl;
- 
-@@ -502,7 +502,7 @@ static int ovl_set_or_remove_acl(struct dentry *dentry, struct inode *inode,
- 
- 		ovl_path_lower(dentry, &realpath);
- 		with_ovl_creds(dentry->d_sb)
--			real_acl = vfs_get_acl(mnt_idmap(realpath.mnt), realdentry, acl_name);
-+			real_acl = vfs_get_acl(&realpath, acl_name);
- 		if (IS_ERR(real_acl)) {
- 			err = PTR_ERR(real_acl);
- 			goto out;
-diff --git a/fs/overlayfs/overlayfs.h b/fs/overlayfs/overlayfs.h
-index c13f6b2c915c..5df2adfea13d 100644
---- a/fs/overlayfs/overlayfs.h
-+++ b/fs/overlayfs/overlayfs.h
-@@ -366,13 +366,23 @@ static inline int ovl_removexattr(struct ovl_fs *ofs, struct dentry *dentry,
- static inline int ovl_do_set_acl(struct ovl_fs *ofs, struct dentry *dentry,
- 				 const char *acl_name, struct posix_acl *acl)
- {
--	return vfs_set_acl(ovl_upper_mnt_idmap(ofs), dentry, acl_name, acl);
-+	struct path path = {
-+		.mnt = ovl_upper_mnt(ofs),
-+		.dentry = dentry,
-+	};
-+
-+	return vfs_set_acl(&path, acl_name, acl);
  }
  
- static inline int ovl_do_remove_acl(struct ovl_fs *ofs, struct dentry *dentry,
- 				    const char *acl_name)
+-static int selinux_inode_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
++static int selinux_inode_setattr(const struct path *path,
+ 				 struct iattr *iattr)
  {
--	return vfs_remove_acl(ovl_upper_mnt_idmap(ofs), dentry, acl_name);
-+	struct path path = {
-+		.mnt = ovl_upper_mnt(ofs),
-+		.dentry = dentry,
-+	};
-+
-+	return vfs_remove_acl(&path, acl_name);
- }
- 
- static inline int ovl_do_rename_rd(struct renamedata *rd)
-diff --git a/fs/posix_acl.c b/fs/posix_acl.c
-index 18b302f94174..be1643e18a6a 100644
---- a/fs/posix_acl.c
-+++ b/fs/posix_acl.c
-@@ -1081,8 +1081,7 @@ static int vfs_set_acl_idmapped_mnt(struct mnt_idmap *idmap,
- 
- /**
-  * vfs_set_acl - set posix acls
-- * @idmap: idmap of the mount
-- * @dentry: the dentry based on which to set the posix acls
-+ * @path: the path based on which to set the posix acls
-  * @acl_name: the name of the posix acl
-  * @kacl: the posix acls in the appropriate VFS format
-  *
-@@ -1091,9 +1090,11 @@ static int vfs_set_acl_idmapped_mnt(struct mnt_idmap *idmap,
-  *
-  * Return: On success 0, on error negative errno.
-  */
--int vfs_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
--		const char *acl_name, struct posix_acl *kacl)
-+int vfs_set_acl(const struct path *path, const char *acl_name,
-+		struct posix_acl *kacl)
- {
-+	struct mnt_idmap *idmap = mnt_idmap(path->mnt);
+ 	const struct cred *cred = current_cred();
 +	struct dentry *dentry = path->dentry;
- 	int acl_type;
- 	int error;
- 	struct inode *inode = d_inode(dentry);
-@@ -1159,8 +1160,7 @@ EXPORT_SYMBOL_GPL(vfs_set_acl);
- 
- /**
-  * vfs_get_acl - get posix acls
-- * @idmap: idmap of the mount
-- * @dentry: the dentry based on which to retrieve the posix acls
-+ * @path: the path based on which to retrieve the posix acls
-  * @acl_name: the name of the posix acl
+ 	struct inode *inode = d_backing_inode(dentry);
+ 	unsigned int ia_valid = iattr->ia_valid;
+ 	u32 av = FILE__WRITE;
+diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+index e517809c230d..991b967c4c4e 100644
+--- a/security/smack/smack_lsm.c
++++ b/security/smack/smack_lsm.c
+@@ -1272,10 +1272,11 @@ static int smack_inode_permission(struct mnt_idmap *idmap, struct inode *inode,
   *
-  * This function retrieves @kacl from the filesystem. The caller must all
-@@ -1168,9 +1168,10 @@ EXPORT_SYMBOL_GPL(vfs_set_acl);
-  *
-  * Return: On success POSIX ACLs in VFS format, on error negative errno.
+  * Returns 0 if access is permitted, an error code otherwise
   */
--struct posix_acl *vfs_get_acl(struct mnt_idmap *idmap,
--			      struct dentry *dentry, const char *acl_name)
-+struct posix_acl *vfs_get_acl(const struct path *path, const char *acl_name)
+-static int smack_inode_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
++static int smack_inode_setattr(const struct path *path,
+ 			       struct iattr *iattr)
  {
-+	struct mnt_idmap *idmap = mnt_idmap(path->mnt);
+ 	struct smk_audit_info ad;
 +	struct dentry *dentry = path->dentry;
- 	struct inode *inode = d_inode(dentry);
- 	struct posix_acl *acl;
- 	int acl_type, error;
-@@ -1204,17 +1205,17 @@ EXPORT_SYMBOL_GPL(vfs_get_acl);
+ 	int rc;
  
- /**
-  * vfs_remove_acl - remove posix acls
-- * @idmap: idmap of the mount
-- * @dentry: the dentry based on which to retrieve the posix acls
-+ * @path: the path based on which to retrieve the posix acls
-  * @acl_name: the name of the posix acl
-  *
-  * This function removes posix acls.
-  *
-  * Return: On success 0, on error negative errno.
-  */
--int vfs_remove_acl(struct mnt_idmap *idmap, struct dentry *dentry,
--		   const char *acl_name)
-+int vfs_remove_acl(const struct path *path, const char *acl_name)
- {
-+	struct mnt_idmap *idmap = mnt_idmap(path->mnt);
-+	struct dentry *dentry = path->dentry;
- 	int acl_type;
- 	int error;
- 	struct inode *inode = d_inode(dentry);
-@@ -1265,8 +1266,8 @@ int vfs_remove_acl(struct mnt_idmap *idmap, struct dentry *dentry,
- }
- EXPORT_SYMBOL_GPL(vfs_remove_acl);
- 
--int do_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
--	       const char *acl_name, const void *kvalue, size_t size)
-+int do_set_acl(const struct path *path, const char *acl_name,
-+	       const void *kvalue, size_t size)
- {
- 	int error;
- 	struct posix_acl *acl = NULL;
-@@ -1281,22 +1282,23 @@ int do_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
- 			return PTR_ERR(acl);
- 	}
- 
--	error = vfs_set_acl(idmap, dentry, acl_name, acl);
-+	error = vfs_set_acl(path, acl_name, acl);
- 	posix_acl_release(acl);
- 	return error;
- }
- 
--ssize_t do_get_acl(struct mnt_idmap *idmap, struct dentry *dentry,
--		   const char *acl_name, void *kvalue, size_t size)
-+ssize_t do_get_acl(const struct path *path, const char *acl_name,
-+		   void *kvalue, size_t size)
- {
- 	ssize_t error;
- 	struct posix_acl *acl;
- 
--	acl = vfs_get_acl(idmap, dentry, acl_name);
-+	acl = vfs_get_acl(path, acl_name);
- 	if (IS_ERR(acl))
- 		return PTR_ERR(acl);
- 
--	error = vfs_posix_acl_to_xattr(idmap, d_inode(dentry),
-+	error = vfs_posix_acl_to_xattr(mnt_idmap(path->mnt),
-+				       d_inode(path->dentry),
- 				       acl, kvalue, size);
- 	posix_acl_release(acl);
- 	return error;
-diff --git a/fs/smb/server/vfs.c b/fs/smb/server/vfs.c
-index eb904cf9ef2d..97497e72fbe9 100644
---- a/fs/smb/server/vfs.c
-+++ b/fs/smb/server/vfs.c
-@@ -1485,8 +1485,7 @@ int ksmbd_vfs_remove_acl_xattrs(const struct path *path)
- 			     sizeof(XATTR_NAME_POSIX_ACL_ACCESS) - 1) ||
- 		    !strncmp(name, XATTR_NAME_POSIX_ACL_DEFAULT,
- 			     sizeof(XATTR_NAME_POSIX_ACL_DEFAULT) - 1)) {
--			err = vfs_remove_acl(mnt_idmap(path->mnt),
--					     path->dentry, name);
-+			err = vfs_remove_acl(path, name);
- 			if (err)
- 				ksmbd_debug(SMB,
- 					    "remove acl xattr failed : %s\n", name);
-diff --git a/fs/xattr.c b/fs/xattr.c
-index 818d6652b6d9..ee4a5f6d7ef3 100644
---- a/fs/xattr.c
-+++ b/fs/xattr.c
-@@ -660,8 +660,8 @@ int setxattr_copy(const char __user *name, struct kernel_xattr_ctx *ctx)
- static int do_setxattr(const struct path *path, struct kernel_xattr_ctx *ctx)
- {
- 	if (is_posix_acl_xattr(ctx->kname->name))
--		return do_set_acl(mnt_idmap(path->mnt), path->dentry,
--				  ctx->kname->name, ctx->kvalue, ctx->size);
-+		return do_set_acl(path, ctx->kname->name,
-+				  ctx->kvalue, ctx->size);
- 
- 	return vfs_setxattr(path, ctx->kname->name,
- 			ctx->kvalue, ctx->size, ctx->flags);
-@@ -806,8 +806,7 @@ do_getxattr(const struct path *path, struct kernel_xattr_ctx *ctx)
- 	}
- 
- 	if (is_posix_acl_xattr(kname))
--		error = do_get_acl(mnt_idmap(path->mnt), path->dentry,
--				   kname, kvalue, ctx->size);
-+		error = do_get_acl(path, kname, kvalue, ctx->size);
- 	else
- 		error = vfs_getxattr(path, kname, kvalue, ctx->size);
- 	if (error > 0) {
-@@ -1036,8 +1035,7 @@ static long
- removexattr(const struct path *path, const char *name)
- {
- 	if (is_posix_acl_xattr(name))
--		return vfs_remove_acl(mnt_idmap(path->mnt), path->dentry,
--				      name);
-+		return vfs_remove_acl(path, name);
- 	return vfs_removexattr(path, name);
- }
- 
-diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
-index 62d497763e25..384111cb6673 100644
---- a/include/linux/posix_acl.h
-+++ b/include/linux/posix_acl.h
-@@ -105,12 +105,11 @@ static inline void cache_no_acl(struct inode *inode)
- 	inode->i_default_acl = NULL;
- }
- 
--int vfs_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
--		const char *acl_name, struct posix_acl *kacl);
--struct posix_acl *vfs_get_acl(struct mnt_idmap *idmap,
--			      struct dentry *dentry, const char *acl_name);
--int vfs_remove_acl(struct mnt_idmap *idmap, struct dentry *dentry,
--		   const char *acl_name);
-+int vfs_set_acl(const struct path *path, const char *acl_name,
-+		struct posix_acl *kacl);
-+struct posix_acl *vfs_get_acl(const struct path *path,
-+			      const char *acl_name);
-+int vfs_remove_acl(const struct path *path, const char *acl_name);
- int posix_acl_listxattr(struct inode *inode, char **buffer,
- 			ssize_t *remaining_size);
- #else
-@@ -141,22 +140,20 @@ static inline void forget_all_cached_acls(struct inode *inode)
- {
- }
- 
--static inline int vfs_set_acl(struct mnt_idmap *idmap,
--			      struct dentry *dentry, const char *name,
-+static inline int vfs_set_acl(const struct path *path, const char *name,
- 			      struct posix_acl *acl)
- {
- 	return -EOPNOTSUPP;
- }
- 
--static inline struct posix_acl *vfs_get_acl(struct mnt_idmap *idmap,
--					    struct dentry *dentry,
-+static inline struct posix_acl *vfs_get_acl(const struct path *path,
- 					    const char *acl_name)
- {
- 	return ERR_PTR(-EOPNOTSUPP);
- }
- 
--static inline int vfs_remove_acl(struct mnt_idmap *idmap,
--				 struct dentry *dentry, const char *acl_name)
-+static inline int vfs_remove_acl(const struct path *path,
-+				 const char *acl_name)
- {
- 	return -EOPNOTSUPP;
- }
+ 	/*
 -- 
 2.18.0.huawei.25
 
