@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B8F04AD4A7
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C6B804ACC6A
 	for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2026 17:10:37 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790269838; cv=none; b=lim5hXd1qHb07p9Lor8CFoQYoqtHGQSkGt22TNP/eGjq9jMxAdKoIOn+nO7fdJwv0j206OBvaPNltnYtDNGjit2xfUSEcDdWIRQt9Iwmg/2cpDc0zV9IDw7RXKRD+HI6jVjZvHnAfvPXLUWgdHt/0uhLjC7MrFixH4Hi91SC2b0=
+	t=1790269839; cv=none; b=QIXuCWPdcnDj0Q478gPFOlO1MKJNFadPPMYikyutRUhIpsCUSgoCq/Chyec3aWjRsgYBX0UAdh0mOpvkR3C9Q7V8DS8ABzj2QHjOFBPDTONETmLSl0gB4ytgk07DiPZwBqYCCEB5eh4x0hB//A6rTea+IXiQDx0QaIld8/NZx5o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790269838; c=relaxed/simple;
-	bh=sgfzSedI9LX7fNw4JOnaXVWDJO9moBihOUULylFtdxA=;
+	s=arc-20240116; t=1790269839; c=relaxed/simple;
+	bh=E8FHjKb/S3DVT/OUvPaGw/N2Ef6GAutBT0yyoGFL/wE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ceWJ6x31U7nzPMf6rfMHgrl9lBzVgkYqnjP/H6sH83EjfkxrMFUc++xUcnTTlVtsqK0Fzp9ocqrXmls0m3yzntQ4Ym1+jUe5KRSbaqK+zy7zAGV9Kqz0c3xnHgcz1McR8OPa8TmudZO1mh5Yt08HXIgmy6LcKEuL37jx3OySUcM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LIjvT7FN; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=TcTFI7/0vkHl6LzsUOKKoN5CrrlWaO8HU7N4bIixL641IDc8FKVRI8J1BCFC6M9VTuMaK59zhwntPCiJZsNU+QMvlva1A7bAhU8G6JyQEkzuNV1u5e7BP9+TB/LjOqv0kVaMsViod8QvGk+g+bYW1MEuQfYW+WJG7iPv09Az7yQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=j4sjAyup; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LIjvT7FN"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 680381F0089B;
-	Thu, 24 Sep 2026 17:10:36 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="j4sjAyup"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2D1041F0089A;
+	Thu, 24 Sep 2026 17:10:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790269836;
-	bh=kW4VCNjx5wb4e0paWlR8ZBqSvopIpJoqExjcgYbO6cA=;
+	s=k20260515; t=1790269837;
+	bh=9kajQAco7V3ciyPHE6Yb6D77x85uLsVeAQ7xl18cw20=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=LIjvT7FNzQfP8Ne78GazY3j6XJ2gaIIEiz12BCoFesUJbM74Uu0fLxGkd1noDXjrD
-	 9dTF/JJMcIGRBH+y+bWj8CsOnrsGIidC2rfBRjgHT9NIU9lQM9c5jCSmGXv78qLdKe
-	 mzoymJCNnZciLbCwFT+WvWNCqgzrJ86MNgARjJJa/yoRQO1DfwxHEP7HBxRWEcubPY
-	 3vEg8Z9NEdG55+p9JQanLQV0+RZWK2GQzc/bkREoIqvbYmnRsHkKgGw9JeOL/t5HWm
-	 /GDTfM0LY1022ZT57lDWuENJJHTD7rLpiPj4Erjbo9QlGqDBAOaPHcOTEXW0kZNmlF
-	 8UHxp5XEZaEsw==
+	b=j4sjAyupGvBk22yx/IyBZulQY8LAn63PiOD37dtPM9gx50v0LW99SNBhJzXxSkOLR
+	 I6qIwN2Pl/6De6bTH4Xo5PrKHHPRohUri0Ou1TRXGSqAdqoR81Kb7yHFNtrF3ctHZ1
+	 w6Kegs+zKxJ0E7+Hpt6jufJkZ1vKgc2xU/8Vm68nyTZV40eLd8Uz7MpG2mCstCyiGx
+	 +RnA0WPUtirLpObVTNetsulsmkr11S8shtlStbFpP3jOE9UqeSxGNY7HTzhQFBVT+N
+	 fWYDxO9oF/qmiEEUyjHlbSWDgSmcyFViCov8ktrUEoASv5GHRNDH/xbNXkQF+v9are
+	 5HftExdHybnDQ==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 28/33] NFSD: Use xdrgen XDR functions for NFSv3 READDIRPLUS arguments
-Date: Thu, 24 Sep 2026 13:10:07 -0400
-Message-ID: <20260924171012.3978-29-cel@kernel.org>
+Subject: [PATCH v2 29/33] NFSD: Refactor NFSv3 directory cookie encoding
+Date: Thu, 24 Sep 2026 13:10:08 -0400
+Message-ID: <20260924171012.3978-30-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260924171012.3978-1-cel@kernel.org>
 References: <20260924171012.3978-1-cel@kernel.org>
@@ -47,208 +47,133 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Replace the NFSPROC3_READDIRPLUS entry in the nfsd_procedures3 array
-with an entry that dispatches the xdrgen-generated
-nfs_svc_decode_READDIRPLUS3args. A wrapper structure bridges the
-generated xdrgen READDIRPLUS3args type and the legacy svc_fh
-representation the NFSD VFS layer still uses.
+The current synopsis of nfs3svc_encode_cookie3() takes a "struct
+nfsd3_readdirres" argument, which is common to the NFSv3 READDIR and
+READDIRPLUS procedures.
 
-The pc_argzero field is now set to zero for the NFSv3 READDIRPLUS
-procedure. The xdrgen decoders are trusted to initialize all
-arguments in the argp->xdrgen field, making the early defensive
-memset unnecessary. The remaining argp fields are cleared as
-needed.
+xdrgen defines two distinct argument structures for these procedures
+since they are actually two distinct procedures and have different
+arguments.
 
-nfs3svc_decode_readdirplusargs() no longer has any callers, so it
-is removed.
+With a "struct READDIR3args" and a "struct READDIRPLUS3args," the
+cookie3 encoder will need generic parameter types in order to be
+callable from both.
+
+Note that NFSD can't use the xdrgen-generated cookie3 encoder. This
+is because directory cookies need to point to the previous directory
+entry. Space for each cookie in the send buffer is reserved when
+each directory entry is encoded; when the /next/ entry is encoded,
+the encoder writes its offset into that reserved space.
+
+As a clean-up, remove "resp->cookie_offset = 0;" :
+
+- In nfs3svc_encode_entry3() and nfs3svc_encode_entryplus3(),
+  immediately after calling nfs3svc_encode_cookie3(), the code calls
+  svcxdr_encode_entry3_common() which sets a new resp->cookie_offset
+  value. The cookie_offset value was immediately overwritten.
+- In nfsd3_proc_readdir() and nfsd3_proc_readdirplus(),
+  nfs3svc_encode_cookie3() is called as the last cookie encoding,
+  and no further use of cookie_offset follows.
+- The out_toosmall error paths in entry encoders continue to set
+  resp->cookie_offset = 0
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs3proc.c | 62 +++++++++++++++++++++++++++-------------------
- fs/nfsd/nfs3xdr.c  | 26 -------------------
- fs/nfsd/xdr3.h     |  9 -------
- 3 files changed, 36 insertions(+), 61 deletions(-)
+ fs/nfsd/nfs3proc.c |  4 ++--
+ fs/nfsd/nfs3xdr.c  | 22 +++++++++++-----------
+ fs/nfsd/xdr3.h     |  3 ++-
+ 3 files changed, 15 insertions(+), 14 deletions(-)
 
 diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index f221bd11482e..e09c2a839a1c 100644
+index e09c2a839a1c..0316bb60b50b 100644
 --- a/fs/nfsd/nfs3proc.c
 +++ b/fs/nfsd/nfs3proc.c
-@@ -225,6 +225,13 @@ struct READDIR3args_wrapper {
- 
- static_assert(offsetof(struct READDIR3args_wrapper, xdrgen) == 0);
- 
-+struct READDIRPLUS3args_wrapper {
-+	struct READDIRPLUS3args	xdrgen;
-+	struct svc_fh		fh;
-+};
-+
-+static_assert(offsetof(struct READDIRPLUS3args_wrapper, xdrgen) == 0);
-+
- static int nfsd3_ftype3_to_mode(ftype3 ftype)
- {
- 	switch (ftype) {
-@@ -1555,27 +1562,32 @@ static __be32 nfsd3_proc_readdir(struct svc_rqst *rqstp)
- 	return rpc_success;
- }
- 
--/*
-- * Read a portion of a directory, including file handles and attrs.
-- * For now, we choose to ignore the dircount parameter.
-+/**
-+ * nfsd3_proc_readdirplus - READDIRPLUS: Extended read from directory
-+ * @rqstp: RPC transaction context
-+ *
-+ * Return:
-+ *   %rpc_success:		RPC executed successfully
-+ *
-+ * RPC synopsis:
-+ *   READDIRPLUS3res NFSPROC3_READDIRPLUS(READDIRPLUS3args) = 17;
-  */
--static __be32
--nfsd3_proc_readdirplus(struct svc_rqst *rqstp)
-+static __be32 nfsd3_proc_readdirplus(struct svc_rqst *rqstp)
- {
--	struct nfsd3_readdirargs *argp = rqstp->rq_argp;
-+	struct READDIRPLUS3args_wrapper *argp = rqstp->rq_argp;
- 	struct nfsd3_readdirres  *resp = rqstp->rq_resp;
--	loff_t	offset;
-+	loff_t offset = argp->xdrgen.cookie;
-+	struct svc_fh *fhp = &argp->fh;
- 
--	trace_nfsd_vfs_readdir(rqstp, &argp->fh, argp->count, argp->cookie);
-+	nfsd3_fh3_to_svc_fh(fhp, &argp->xdrgen.dir);
-+	trace_nfsd_vfs_readdir(rqstp, fhp, argp->xdrgen.maxcount,
-+			       argp->xdrgen.cookie);
- 
--	nfsd3_init_dirlist_pages(rqstp, resp, argp->count);
--
--	fh_copy(&resp->fh, &argp->fh);
-+	nfsd3_init_dirlist_pages(rqstp, resp, argp->xdrgen.maxcount);
-+	fh_copy(&resp->fh, fhp);
- 	resp->common.err = nfs_ok;
- 	resp->cookie_offset = 0;
- 	resp->rqstp = rqstp;
--	offset = argp->cookie;
--
- 	resp->status = fh_verify(rqstp, &resp->fh, S_IFDIR, NFSD_MAY_NOP);
- 	if (resp->status != nfs_ok)
- 		goto out;
-@@ -1587,7 +1599,7 @@ nfsd3_proc_readdirplus(struct svc_rqst *rqstp)
- 
+@@ -1553,7 +1553,7 @@ static __be32 nfsd3_proc_readdir(struct svc_rqst *rqstp)
  	resp->status = nfsd_readdir(rqstp, &resp->fh, &offset,
- 				    &resp->common, nfs3svc_encode_entryplus3);
--	memcpy(resp->verf, argp->verf, 8);
-+	memcpy(resp->verf, argp->xdrgen.cookieverf, NFS3_COOKIEVERFSIZE);
- 	nfs3svc_encode_cookie3(resp, offset);
+ 				    &resp->common, nfs3svc_encode_entry3);
+ 	memcpy(resp->verf, argp->xdrgen.cookieverf, NFS3_COOKIEVERFSIZE);
+-	nfs3svc_encode_cookie3(resp, offset);
++	nfs3svc_encode_cookie3(&resp->xdr, resp->cookie_offset, offset);
  
  	/* Recycle only pages that were part of the reply */
-@@ -1828,8 +1840,6 @@ static __be32 nfsd3_proc_commit(struct svc_rqst *rqstp)
-  * NFSv3 Server procedures.
-  * Only the results of non-idempotent operations are cached.
-  */
--#define nfsd3_readdirplusargs		nfsd3_readdirargs
--
- static const struct svc_procedure nfsd_procedures3[22] = {
- 	[NFSPROC3_NULL] = {
- 		.pc_func	= nfsd3_proc_null,
-@@ -2022,15 +2032,15 @@ static const struct svc_procedure nfsd_procedures3[22] = {
- 		.pc_name	= "READDIR",
- 	},
- 	[NFSPROC3_READDIRPLUS] = {
--		.pc_func = nfsd3_proc_readdirplus,
--		.pc_decode = nfs3svc_decode_readdirplusargs,
--		.pc_encode = nfs3svc_encode_readdirres,
--		.pc_release = nfs3svc_release_fhandle,
--		.pc_argsize = sizeof(struct nfsd3_readdirplusargs),
--		.pc_argzero = sizeof(struct nfsd3_readdirplusargs),
--		.pc_ressize = sizeof(struct nfsd3_readdirres),
--		.pc_cachetype = RC_NOCACHE,
--		.pc_name = "READDIRPLUS",
-+		.pc_func	= nfsd3_proc_readdirplus,
-+		.pc_decode	= nfs_svc_decode_READDIRPLUS3args,
-+		.pc_encode	= nfs3svc_encode_readdirres,
-+		.pc_release	= nfs3svc_release_fhandle,
-+		.pc_argsize	= sizeof(struct READDIRPLUS3args_wrapper),
-+		.pc_argzero	= 0,
-+		.pc_ressize	= sizeof(struct nfsd3_readdirres),
-+		.pc_cachetype	= RC_NOCACHE,
-+		.pc_name	= "READDIRPLUS",
- 	},
- 	[NFSPROC3_FSSTAT] = {
- 		.pc_func	= nfsd3_proc_fsstat,
-@@ -2110,7 +2120,7 @@ union nfsd3_xdrstore {
- 	struct LINK3args_wrapper	linkargs;
- 	struct LINK3res			linkres;
- 	struct READDIR3args_wrapper	readdirargs;
--	struct nfsd3_readdirargs	readdirplusargs;
-+	struct READDIRPLUS3args_wrapper	readdirplusargs;
- 	struct READLINK3res		readlinkres;
- 	struct READ3res			readres;
- 	struct nfsd3_writeres		writeres;
+ 	rqstp->rq_next_page = resp->xdr.page_ptr + 1;
+@@ -1600,7 +1600,7 @@ static __be32 nfsd3_proc_readdirplus(struct svc_rqst *rqstp)
+ 	resp->status = nfsd_readdir(rqstp, &resp->fh, &offset,
+ 				    &resp->common, nfs3svc_encode_entryplus3);
+ 	memcpy(resp->verf, argp->xdrgen.cookieverf, NFS3_COOKIEVERFSIZE);
+-	nfs3svc_encode_cookie3(resp, offset);
++	nfs3svc_encode_cookie3(&resp->xdr, resp->cookie_offset, offset);
+ 
+ 	/* Recycle only pages that were part of the reply */
+ 	rqstp->rq_next_page = resp->xdr.page_ptr + 1;
 diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 0e83a2245c45..b1a930b857d7 100644
+index b1a930b857d7..279b19d5e3ac 100644
 --- a/fs/nfsd/nfs3xdr.c
 +++ b/fs/nfsd/nfs3xdr.c
-@@ -224,32 +224,6 @@ svcxdr_encode_post_op_attr(struct svc_rqst *rqstp, struct xdr_stream *xdr,
- 	return xdr_stream_encode_item_absent(xdr) > 0;
+@@ -300,22 +300,22 @@ compose_entry_fh(struct nfsd3_readdirres *cd, struct svc_fh *fhp,
  }
  
--/*
-- * XDR decode functions
-- */
--
--bool
--nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
--{
--	struct nfsd3_readdirargs *args = rqstp->rq_argp;
--	u32 dircount;
--
--	if (!svcxdr_decode_nfs_fh3(xdr, &args->fh))
--		return false;
--	if (xdr_stream_decode_u64(xdr, &args->cookie) < 0)
--		return false;
--	args->verf = xdr_inline_decode(xdr, NFS3_COOKIEVERFSIZE);
--	if (!args->verf)
--		return false;
--	/* dircount is ignored */
--	if (xdr_stream_decode_u32(xdr, &dircount) < 0)
--		return false;
--	if (xdr_stream_decode_u32(xdr, &args->count) < 0)
--		return false;
--
--	return true;
--}
--
- /*
-  * XDR encode functions
+ /**
+- * nfs3svc_encode_cookie3 - Encode a directory offset cookie
+- * @resp: readdir result context
+- * @offset: offset cookie to encode
++ * nfs3svc_encode_cookie3 - Encode a directory cookie
++ * @xdr: stream into which to encode the cookie
++ * @pos: byte position in the stream
++ * @cookie: cookie to be encoded
+  *
+  * The buffer space for the offset cookie has already been reserved
+  * by svcxdr_encode_entry3_common().
   */
+-void nfs3svc_encode_cookie3(struct nfsd3_readdirres *resp, u64 offset)
++void nfs3svc_encode_cookie3(struct xdr_stream *xdr, unsigned int pos,
++			    u64 cookie)
+ {
+-	__be64 cookie = cpu_to_be64(offset);
++	__be64 wire_cookie = cpu_to_be64(cookie);
+ 
+-	if (!resp->cookie_offset)
++	if (!pos)
+ 		return;
+-	write_bytes_to_xdr_buf(&resp->dirlist, resp->cookie_offset, &cookie,
+-			       sizeof(cookie));
+-	resp->cookie_offset = 0;
++	write_bytes_to_xdr_buf(xdr->buf, pos, &wire_cookie, XDR_UNIT * 2);
+ }
+ 
+ static bool
+@@ -369,7 +369,7 @@ int nfs3svc_encode_entry3(void *data, const char *name, int namlen,
+ 	unsigned int starting_length = resp->dirlist.len;
+ 
+ 	/* The offset cookie for the previous entry */
+-	nfs3svc_encode_cookie3(resp, offset);
++	nfs3svc_encode_cookie3(&resp->xdr, resp->cookie_offset, offset);
+ 
+ 	if (!svcxdr_encode_entry3_common(resp, name, namlen, offset, ino))
+ 		goto out_toosmall;
+@@ -444,7 +444,7 @@ int nfs3svc_encode_entryplus3(void *data, const char *name, int namlen,
+ 	unsigned int starting_length = resp->dirlist.len;
+ 
+ 	/* The offset cookie for the previous entry */
+-	nfs3svc_encode_cookie3(resp, offset);
++	nfs3svc_encode_cookie3(&resp->xdr, resp->cookie_offset, offset);
+ 
+ 	if (!svcxdr_encode_entry3_common(resp, name, namlen, offset, ino))
+ 		goto out_toosmall;
 diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-index 3fb4a01011ca..4c4642077342 100644
+index 4c4642077342..fdb2e68e16d5 100644
 --- a/fs/nfsd/xdr3.h
 +++ b/fs/nfsd/xdr3.h
-@@ -24,13 +24,6 @@ struct nfsd3_accessargs {
- 	__u32			access;
- };
+@@ -111,7 +111,8 @@ bool nfs3svc_encode_readdirres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
  
--struct nfsd3_readdirargs {
--	struct svc_fh		fh;
--	__u64			cookie;
--	__u32			count;
--	__be32 *		verf;
--};
--
- struct nfsd3_getaclargs {
- 	struct svc_fh		fh;
- 	__u32			mask;
-@@ -113,8 +106,6 @@ struct nfsd3_getaclres {
- 	struct kstat		stat;
- };
+ void nfs3svc_release_fhandle(struct svc_rqst *);
  
--bool nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
--
- bool nfs3svc_encode_accessres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfs3svc_encode_readdirres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- 
+-void nfs3svc_encode_cookie3(struct nfsd3_readdirres *resp, u64 offset);
++void nfs3svc_encode_cookie3(struct xdr_stream *xdr, unsigned int pos,
++			    u64 cookie);
+ int nfs3svc_encode_entry3(void *data, const char *name, int namlen,
+ 			  loff_t offset, u64 ino, unsigned int d_type);
+ int nfs3svc_encode_entryplus3(void *data, const char *name, int namlen,
 -- 
 2.55.0
 
