@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B3634499A4;
-	Thu, 24 Sep 2026 13:02:32 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C77123CF1EF;
+	Thu, 24 Sep 2026 13:04:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790254954; cv=none; b=mpEA+mjQK7fPG6aD1pTvxGHY3FQ4r82TiKmt5Nt7nilymaRRGgP0cTLPJr2+vhnqb0JKTiHbCXQJc1FH3kpmbo06XLpFzcTxSCWw9cPtIOEIqBtEQr0OaOm067mn09omfOMCMsI7gndx8wG2gL7muGtbCgCFCiPOCgZP0BiPCWY=
+	t=1790255050; cv=none; b=Z6gJ37g1z6Jt/CTZU6Rvt16h7ESzmO9qTfMurAtFb39bqi99Wn0U2Z4BcqUH7bvJWNmJP+WhPH1lJqsiQsNqUIJBkgaNP0RMeaOrzpeQLyA6ItR2UipekHJ06ebQpBUFK9rAkbsL7nHhQp7KQmU0fs4dfE0RdrS6BXzlNbI5XUk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790254954; c=relaxed/simple;
-	bh=F+X9l+8Qw3jOUqvswVvQpRqQwdvk1KRhp5i/siJ6aSE=;
+	s=arc-20240116; t=1790255050; c=relaxed/simple;
+	bh=Vyyb/DvXlDQZU5coJEgzU8GWzT51K2/FeRjcOEuFlKk=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=tCtZaKfw24vL3r4EYfxUjelFdeHEm+Pr3HI+nBOEi9gDS7uYFgmYZMvLpYEmndEmgN1zbF7PLZtRNG/eLD1OnQFt7PKir7sin4wZmKLrbC2/mV0osK2e+EJXeamnFk6V+QEXvn1XNIDrImYQjqpf/nsLIe/Yuk6k4VouTwk1low=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=PZeAjwFf; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=m4ivXIe6qDv+0wnvc0OT8MaZTeWljPI7Ohq6MHqTgQY3PyBO2jNoRp6xwIXJy80gkXQzvFM3+O2MuuL6wVg5uxNNAnFjNCSo5705ju/E4HanVTkYa0ZBig2VGwvzgHSiD2r1OYAh9rZl/cVkc1mUIdQAImvyVzgdmchs7XQtA8w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=B6bBDM6R; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="PZeAjwFf"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 579A31F00893;
-	Thu, 24 Sep 2026 13:02:31 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="B6bBDM6R"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 63D531F000FF;
+	Thu, 24 Sep 2026 13:03:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790254952;
-	bh=OoJv4hE7nRkyLdCwXnqULA5lTrUqCCcffOfZDfsTCx8=;
+	s=k20260515; t=1790255038;
+	bh=yjh2bTrhPurtSNQ+PKSrwOkkIhBdDNVWMQpqO75xcrw=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=PZeAjwFflgp1cE6rzyOISC6ZDTAWKt2dOiYOpJNVKhHyZfdJCC9CsoxJmrdQjh34E
-	 EcUr8DQrBjbEu1NVg525RbgHLCYL27pov54inwmSuCRSH52avzZxS2rfjd3jXS6a40
-	 hsvR+mwsR7ehxfZSRiaf9MMSWFWbjpRVRKyCo3hJ9IV5fwcv1dzb0Qf0cqPLR0eyrs
-	 xvZtAijd5KqBOfSSR2rvxRm4VZXMrdFg7zxnCFTwEf4DRSVLI0r5LlKF/EHCm3XMgB
-	 IqavYt+/may4euMGEfp9GCRvO8NBCM2zvqqFycuGwfO0s8tBoy0MX+ZFHhU2FOrgON
-	 iwm2wXZI5T6jw==
-Message-ID: <ca31c1deadab1bbe5c2f9040f1ccee17266d8027.camel@kernel.org>
-Subject: Re: [PATCH v2 04/14] ceph: simplify atomic_open to use
- finish_no_open()
+	b=B6bBDM6RLUwPMidyEA3J6yTrC1z2LxfebOzGupioZKL7/z+8dN5qX8EvtQcjsWGND
+	 7seDE3XNfHUxmMqkumqQyNRazmMB2QkleCC3EGcr/NcPDW/VaIuSKE0+Qio6R/qo0m
+	 xo9XqNbJsK7hXA7zHwb6h5e/GH2sTL9IYrbZvNU1U0f4ksKxTs867r4KP3wmXnQVu8
+	 MUHso+pXbXZwpaiJTOYrF5hsGdbiY27gyqIJtZxesX+s1moC7kWbhVtARNqvftdVIR
+	 m93cK3/EVxBrO14y1opug/eGdItQA6WVSo5r83I+LiEwCvWIBK5zseEGUilTHE66KE
+	 F177+fK1DVWlw==
+Message-ID: <2a78884377a5e537dab390788d66b10fbf2b2726.camel@kernel.org>
+Subject: Re: [PATCH v2 11/14] nfsd: check for mountpoints after non-creating
+ open.
 From: Jeff Layton <jlayton@kernel.org>
 To: NeilBrown <neil@brown.name>, Alexander Viro <viro@zeniv.linux.org.uk>, 
  Christian Brauner
@@ -42,10 +42,10 @@ Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
  Alcantara	 <pc@manguebit.org>, Namjae Jeon <linkinjeon@kernel.org>, 
 	linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
 	linux-nfs@vger.kernel.org
-Date: Thu, 24 Sep 2026 09:02:29 -0400
-In-Reply-To: <20260919022441.3305170-5-neilb@ownmail.net>
+Date: Thu, 24 Sep 2026 09:03:55 -0400
+In-Reply-To: <20260919022441.3305170-12-neilb@ownmail.net>
 References: <20260919022441.3305170-1-neilb@ownmail.net>
-	 <20260919022441.3305170-5-neilb@ownmail.net>
+	 <20260919022441.3305170-12-neilb@ownmail.net>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -130,65 +130,64 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-Another LLM review:
+LLM review:
 
-> diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-> index bd3e3f5c269e..83ceb2906f85 100644
-> --- a/fs/ceph/file.c
-> +++ b/fs/ceph/file.c
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 6e443503d0b7..3d37754f787b 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
 
 [ ... ]
 
-> @@ -977,33 +976,25 @@ int ceph_atomic_open(struct inode *dir, struct dent=
-ry *dentry,
->  	}
->  	if (err)
->  		goto out_req;
-> -	if (dn || d_really_is_negative(dentry) || d_is_symlink(dentry)) {
-> -		/* make vfs retry on splice, ENOENT, or symlink */
-> -		doutc(cl, "finish_no_open on dn %p\n", dn);
-> -		err =3D finish_no_open(file, dn);
-> -	} else {
-> -		if (IS_ENCRYPTED(dir) &&
-> -		    !fscrypt_has_permitted_context(dir, d_inode(dentry))) {
-> -			pr_warn_client(cl,
-> -					"Inconsistent encryption context (parent %llx:%llx child %llx:%llx)=
-\n",
-> -					ceph_vinop(dir), ceph_vinop(d_inode(dentry)));
-> -			goto out_req;
-> -		}
-> +	if (IS_ENCRYPTED(dir) &&
-> +	    !fscrypt_has_permitted_context(dir, d_inode(dentry))) {
-> +		pr_warn_client(cl,
-> +			       "Inconsistent encryption context (parent %llx:%llx child %llx:=
-%llx)\n",
-> +			       ceph_vinop(dir), ceph_vinop(d_inode(dentry)));
-> +		goto out_req;
-> +	}
+> @@ -466,6 +454,14 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc=
+_fh *fhp,
+>  			status =3D nfserr_exist;
+>  			goto out;
+>  		}
+> +		/* We opened an existing file, it might be a junction. */
+> +		if (unlikely(nfsd_mountpoint(child, fhp->fh_export) =3D=3D 1)) {
+> +			dget(child);
+> +			nfsd_filp_close(open->op_filp);
+> +			open->op_filp =3D NULL;
+> +			goto do_cross_mnt;
+> +		}
+> +
 
-The fscrypt check used to run only when the dentry was positive, not
-a symlink, and had no alias. Now it runs unconditionally, but
-d_inode() can still be NULL here: a lookup that found nothing leaves
-a negative dentry with err =3D=3D 0, and when the MDS reply splices an
-alias the original dentry is never instantiated.
+[ ... ]
 
-fscrypt_has_permitted_context() dereferences its child argument
-without checking for NULL:
+> @@ -511,6 +507,21 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc=
+_fh *fhp,
+>  out:
+>  	nfsd_attrs_free(&attrs);
+>  	return status;
+> +
+> +do_cross_mnt:
+> +	exp =3D exp_get(fhp->fh_export);
+> +
+> +	status =3D nfsd_cross_mnt(rqstp, &child, &exp);
+> +	if (status =3D=3D nfs_ok)
+> +		status =3D fh_compose(resfhp, exp,
+> +				    child, fhp);
 
-fs/crypto/policy.c:fscrypt_has_permitted_context() {
+When the new junction check triggers, resfhp was already composed
+earlier in nfsd4_create_file(), so the fh_compose() in do_cross_mnt
+runs a second time on the same handle:
+
+fs/nfsd/nfsfh.c:fh_compose() {
 	...
-	if (!S_ISREG(child->i_mode) && !S_ISDIR(child->i_mode) &&
-	    !S_ISLNK(child->i_mode))
-		return 1;
+	if (fhp->fh_dentry) {
+		printk(KERN_ERR "fh_compose: fh %pd2 not initialized!\n",
+		       dentry);
+	}
+	...
+	fhp->fh_dentry =3D dget(dentry); /* our internal copy */
+	fhp->fh_export =3D exp_get(exp);
 	...
 }
 
-Every other in-tree caller passes a known inode, while this one can
-pass NULL. An open of a name that does not exist in an encrypted
-directory reaches this through lookup_open() -> atomic_open() ->
-ceph_atomic_open().
+The first composed dentry and export references are overwritten
+without being released. Should resfhp be released before crossing,
+or the mountpoint check done before the first compose?
 
-Could the fscrypt check stay behind the positive-dentry test, as
-before?
 --=20
 Jeff Layton <jlayton@kernel.org>
