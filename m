@@ -1,126 +1,123 @@
-Received: from smtpout-03.galae.net (smtpout-03.galae.net [185.246.85.4])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E156B4A1E1D;
-	Thu, 24 Sep 2026 16:08:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=185.246.85.4
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 362BA3D9665
+	for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2026 17:10:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790266112; cv=none; b=D2m/C07VO+HgVKfkzbKP1pmg2h5uKWLYSn4bOoUkxUXsOc9WCvRcjFpU4B+WZ+PLTpwmtxBCuK+THYHT6vIrX5+RO8k97xZ3QreT04kG3RQXO4lkXbQXlkkZhrsysT4lUv+t+pazhLY/T8N4IgXvRjqj4KIsp39TXfSUdeMBvYM=
+	t=1790269815; cv=none; b=OSwyAzzY4qJ1yf3fkPhxdrvlNbkweiw81v7XtrJPbUPH29qdRlQ/Jg4ofKVMBSeNk09CNy4xbdiBqei2rwsDjmJBJq8mKYGpwTIxX5ZcO0nmmtwVcKPs0NMiJrqqos4PSNsgCtRLGpG/yUx+h52L5i01rl37ia3MJy9+ANEtFuU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790266112; c=relaxed/simple;
-	bh=PdOrdhPdZuZhrlxEVnCGfBAZmrpdFXAr/Fx0uRSk2gY=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=gY5lnNzIxROe8HJBZrkuED68VxPOeeqvO3Z1xRPURmML7WHT4BjcYrVmygQjcWCXItKB+4b6WHuCf7Fq96/JVlmnLYEiPmydI+9OOoRSPeZglvt/BApWghwBOY1kNB9hj2Zkn1VMLRLUfwCYspDRYYZiMUaiVIN4WHKr9XTgBA0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=bootlin.com; spf=pass smtp.mailfrom=bootlin.com; dkim=pass (2048-bit key) header.d=bootlin.com header.i=@bootlin.com header.b=ONsXbOcr; arc=none smtp.client-ip=185.246.85.4
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=bootlin.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bootlin.com
+	s=arc-20240116; t=1790269815; c=relaxed/simple;
+	bh=UhL8+Ub5b0V/7p/C7Glcr3QbLYNsFBPPX+nDHYhK/CY=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=a7fAUhuuiXgWvqYOi2z8roadi2LnapBbybD75lK3RSw8yLyK2EhRmc1B59In4TRKeGBxa0KYP/OHRyQTc5g1ktbrReekNGsGmxV6/04PyrAyTxxF1x12yQm4vWuPRIXCancy6V20QMgkalJnQcGzuKlz1xttc85NC252+kVpBxQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jkYRwVgq; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=bootlin.com header.i=@bootlin.com header.b="ONsXbOcr"
-Received: from smtpout-01.galae.net (smtpout-01.galae.net [212.83.139.233])
-	by smtpout-03.galae.net (Postfix) with ESMTPS id 3342B4E4105F;
-	Thu, 24 Sep 2026 16:08:27 +0000 (UTC)
-Received: from mail.galae.net (mail.galae.net [212.83.136.155])
-	by smtpout-01.galae.net (Postfix) with ESMTPS id 00C3760738;
-	Thu, 24 Sep 2026 16:08:27 +0000 (UTC)
-Received: from [127.0.0.1] (localhost [127.0.0.1]) by localhost (Mailerdaemon) with ESMTPSA id 0105010329450;
-	Thu, 24 Sep 2026 18:06:38 +0200 (CEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=bootlin.com; s=dkim;
-	t=1790266041; h=from:subject:date:message-id:to:cc:mime-version:content-type:
-	 content-transfer-encoding; bh=BH+arErWIBY7hpZKpPthQMU4Dv/fEL3yycrYdB+7SAY=;
-	b=ONsXbOcr23MBp97WH0svxjX/qajC1P03GDotsG32pqiLLyxtrTG9i/nFxLh60PPtt6ib8B
-	KpwGfgCIAwOe7tqrY2Dr+yZGfVzW92Q/qGCRLH12Zq2Z+wkPwECFoEWvCnx7LufxoQmNdg
-	WJ38Cg8+yZ30XQiNT8mAwHbSzwvtFH3WA1zvLte7l0Hovu7kidqd16A6YZg6XsdpHqCF84
-	NeFQDNgfTJzmgMmEB3SwdUbUw3tntTqszPGEZrO2bTGHan5QGUo5jUepD2J8Oh1oP19ybF
-	hrPgZgr2bEWcYpEAMR3ve3Agm7LWsRG1dKDyFtfL681JTjL1Biw6uMGRLV74FQ==
-From: "Miguel Gazquez (Schneider Electric)" <miguel.gazquez@bootlin.com>
-Date: Thu, 24 Sep 2026 18:06:25 +0200
-Subject: [PATCH 5.10.y] SUNRPC: lock against ->sock changing during sysfs
- read
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jkYRwVgq"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 839251F000FF;
+	Thu, 24 Sep 2026 17:10:13 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1790269814;
+	bh=thVfsWDfvYkeVTgs6LDOVfS7e6bdcXDsmggzaxc9r60=;
+	h=From:To:Cc:Subject:Date;
+	b=jkYRwVgqAn9riLdyt4S8HRZTaFgBiWfMwfPFHb8u+C04vbrdHMmdrVngHmfmUV47N
+	 Lz8Cct1B4sdXxacnGWzqVPgHSwJbMFpQl7a7IBWk16cOOK6JccGoCe/584hE8zmubt
+	 26kmvABgK/Ip525wD4NTnswGXgOQAqwogtkQCk91P2e6sqcRnmCGR0/tq+7VnMgAzf
+	 8EQGMcqMOxHDfU9fc40dkunHRLf2C6LycPEmquXXN31+0Z1YyJYunamAsoVtlUSlp4
+	 7hZb8rcalsgINVby3To2sYbYsV39cVyK1ktD0irStzovpYBJKe0nUlFjkOEG9GBThn
+	 8JG9z8mGjFc3A==
+From: Chuck Lever <cel@kernel.org>
+To: NeilBrown <neil@brown.name>,
+	Jeff Layton <jlayton@kernel.org>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <dai.ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>
+Cc: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 00/33] Convert server-side NFSv3 XDR to use xdrgen
+Date: Thu, 24 Sep 2026 13:09:39 -0400
+Message-ID: <20260924171012.3978-1-cel@kernel.org>
+X-Mailer: git-send-email 2.55.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260924-cve-2022-48816-v1-1-b44c7e4dd493@bootlin.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ7CMAxE0atUs8ZVHNqq4SqIRTAOmEVBCVSgq
- ncnwPKNNH9B0WxasGsWZJ2t2G2q4E0DucTprGSnanjnBxd8RzIrVXjqxpEHYg59SCmKxC3q6Z4
- 12esX3KNv2bVvHP57eR6vKo9vDev6AQqjEkB6AAAA
-X-Change-ID: 20260924-cve-2022-48816-11959ffacca3
-To: stable@vger.kernel.org, 
- Trond Myklebust <trond.myklebust@hammerspace.com>, 
- Anna Schumaker <anna.schumaker@netapp.com>, 
- "J. Bruce Fields" <bfields@fieldses.org>, 
- Chuck Lever <chuck.lever@oracle.com>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Olga Kornievskaia <kolga@netapp.com>
-Cc: Benjamin Robin <benjamin.robin@bootlin.com>, 
- Anna Schumaker <Anna.Schumaker@Netapp.com>, linux-nfs@vger.kernel.org, 
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Thomas Petazzoni <thomas.petazzoni@bootlin.com>, NeilBrown <neilb@suse.de>, 
- Robert Garcia <rob_garcia@163.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- "Miguel Gazquez (Schneider Electric)" <miguel.gazquez@bootlin.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790265996; l=1838;
- i=miguel.gazquez@bootlin.com; s=20250708; h=from:subject:message-id;
- bh=liulsZ/coQfT07R5JtzG+PjFTbjUtiJrY8ERm44fUGw=;
- b=hvuAFoVF4j+paPwTWzFrf8A5Zvpgx03sXgeYvPovb8Fl/DD4+3oPfzYGOZU2WXVBh2AVlco3N
- vH+l07ieePVCOtgTy7kARTUQVdDf8YorRQLKWt+tC9Bhkqw27kHEwg0
-X-Developer-Key: i=miguel.gazquez@bootlin.com; a=ed25519;
- pk=k/2KI9jkmayaF0ghZ8QYUH9Wm/kFHDhl8QoZ0RHbr4w=
-X-Last-TLS-Session-Version: TLSv1.3
+Content-Transfer-Encoding: 8bit
 
-From: NeilBrown <neilb@suse.de>
+Replace NFSD's NFSv3 XDR encoders and decoders with code that is
+mechanically generated directly from the NFSv3 RPC language
+specification. Unlike NFSv2, where there are at least two
+incomplete language specifications and much lore, nfs3.x here is
+based closely on RFC 1813.
 
-[ Upstream commit b49ea673e119f59c71645e2f65b3ccad857c90ee ]
+As we convert newer NFS versions to use xdrgen, I expect a reduction
+in human coding errors, improved spec compliance, and better memory
+safety for those more complex NFS programs.
 
-->sock can be set to NULL asynchronously unless ->recv_mutex is held.
-So it is important to hold that mutex.  Otherwise a sysfs read can
-trigger an oops.
-Commit 17f09d3f619a ("SUNRPC: Check if the xprt is connected before
-handling sysfs reads") appears to attempt to fix this problem, but it
-only narrows the race window.
+Changes in v2:
+- Include the generated NFSv3 header directly in nfsfh.c and nfsctl.c.
+- Remove the unused struct nfsd3_createargs in the MKDIR patch.
+- Regenerate the READDIR and READDIRPLUS result decoders.
+- Drop the decode-hook stubs the regenerated decoders no longer call.
+- Link to v1: https://lore.kernel.org/linux-nfs/20260923132811.244160-1-cel@kernel.org/
 
-[ Removed the changes about net/sunrpc/sysfs.c, as this file doesn't
-exist in 5.10 ]
+Chuck Lever (33):
+  NFSD: Report a first-batch readdir error in the reply status
+  Documentation: Add the RPC language description of NFSv3
+  NFSD: Add infrastructure for generating NFSv3 XDR encoders and
+    decoders
+  NFSD: Replace nfs3.h with nfs3xdr_gen.h
+  NFSD: Replace the nfsd3_createres macro
+  NFSD: Relocate the NFSv3 XDR storage union into nfs3proc.c
+  NFSD: Use xdrgen XDR functions for the NFSv3 NULL procedure
+  NFSD: Use xdrgen XDR functions for NFSv3 GETATTR procedure
+  NFSD: Use xdrgen XDR functions for NFSv3 SETATTR procedure
+  NFSD: Use xdrgen XDR functions for the NFSv3 LOOKUP procedure
+  NFSD: Use xdrgen XDR functions for NFSv3 ACCESS procedure
+  NFSD: Use xdrgen XDR functions for NFSv3 READLINK procedure
+  NFSD: Use xdrgen XDR functions for NFSv3 READ procedure
+  NFSD: Use xdrgen XDR functions for NFSv3 WRITE procedure
+  NFSD: Use xdrgen XDR functions for NFSv3 CREATE procedure
+  NFSD: Use xdrgen XDR functions for NFSv3 MKDIR procedure
+  NFSD: Use xdrgen XDR functions for NFSv3 SYMLINK procedure
+  NFSD: Use xdrgen XDR functions for NFSv3 MKNOD procedure
+  NFSD: Use xdrgen XDR functions for the NFSv3 REMOVE procedure
+  NFSD: Use xdrgen XDR functions for the NFSv3 RMDIR procedure
+  NFSD: Use xdrgen XDR functions for the NFSv3 RENAME procedure
+  NFSD: Use xdrgen XDR functions for the NFSv3 LINK procedure
+  NFSD: Use xdrgen XDR functions for the NFSv3 FSSTAT procedure
+  NFSD: Use xdrgen XDR functions for the NFSv3 FSINFO procedure
+  NFSD: Use xdrgen XDR functions for the NFSv3 PATHCONF procedure
+  NFSD: Use xdrgen XDR functions for the NFSv3 COMMIT procedure
+  NFSD: Use xdrgen XDR functions for NFSv3 READDIR arguments
+  NFSD: Use xdrgen XDR functions for NFSv3 READDIRPLUS arguments
+  NFSD: Refactor NFSv3 directory cookie encoding
+  NFSD: Refactor NFSv3 directory entry encoding
+  NFSD: Split struct nfsd3_readdirres
+  NFSD: Use xdrgen XDR functions for NFSv3 READDIR results
+  NFSD: Use xdrgen XDR functions for NFSv3 READDIRPLUS results
 
-Fixes: 17f09d3f619a ("SUNRPC: Check if the xprt is connected before handling sysfs reads")
-Fixes: a8482488a7d6 ("SUNRPC query transport's source port")
-Signed-off-by: NeilBrown <neilb@suse.de>
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Signed-off-by: Robert Garcia <rob_garcia@163.com>
-Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Signed-off-by: Miguel Gazquez (Schneider Electric) <miguel.gazquez@bootlin.com>
----
- net/sunrpc/xprtsock.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ Documentation/sunrpc/xdr/nfs3.x    |  839 ++++++
+ fs/nfsd/Makefile                   |   15 +-
+ fs/nfsd/nfs2acl.c                  |   41 +-
+ fs/nfsd/nfs3acl.c                  |   12 +-
+ fs/nfsd/nfs3proc.c                 | 2545 +++++++++++++------
+ fs/nfsd/nfs3xdr.c                  | 1369 +++-------
+ fs/nfsd/nfs3xdr_gen.c              | 3808 ++++++++++++++++++++++++++++
+ fs/nfsd/nfs3xdr_gen.h              |   82 +
+ fs/nfsd/nfsctl.c                   |    2 +-
+ fs/nfsd/nfserr.h                   |    2 +-
+ fs/nfsd/nfsfh.c                    |    2 +-
+ fs/nfsd/vfs.c                      |   76 +-
+ fs/nfsd/xdr3.h                     |  300 +--
+ include/linux/nfs3.h               |    3 -
+ include/linux/sunrpc/xdrgen/nfs3.h | 1092 ++++++++
+ 15 files changed, 8021 insertions(+), 2167 deletions(-)
+ create mode 100644 Documentation/sunrpc/xdr/nfs3.x
+ create mode 100644 fs/nfsd/nfs3xdr_gen.c
+ create mode 100644 fs/nfsd/nfs3xdr_gen.h
+ create mode 100644 include/linux/sunrpc/xdrgen/nfs3.h
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 5dccad3271fe..4ec6516a53e0 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1666,7 +1666,12 @@ static int xs_get_srcport(struct sock_xprt *transport)
- unsigned short get_srcport(struct rpc_xprt *xprt)
- {
- 	struct sock_xprt *sock = container_of(xprt, struct sock_xprt, xprt);
--	return xs_sock_getport(sock->sock);
-+	unsigned short ret = 0;
-+	mutex_lock(&sock->recv_mutex);
-+	if (sock->sock)
-+		ret = xs_sock_getport(sock->sock);
-+	mutex_unlock(&sock->recv_mutex);
-+	return ret;
- }
- EXPORT_SYMBOL(get_srcport);
- 
-
----
-base-commit: 1797d8bf8d0c2e74defad605d14e3553d43a3caf
-change-id: 20260924-cve-2022-48816-11959ffacca3
-
-Best regards,
---  
-Miguel Gazquez (Schneider Electric) <miguel.gazquez@bootlin.com>
-
+base-commit: 21c66e2ece97c0ac8139b44051d565b29574f821
+-- 
+2.55.0
