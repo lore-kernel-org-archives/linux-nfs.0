@@ -1,32 +1,32 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 404FB37CD2C;
-	Thu, 24 Sep 2026 12:55:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5493147FAE1;
+	Thu, 24 Sep 2026 13:01:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790254525; cv=none; b=ePRtumhN3hz8xtlcszrVx/0WUcrThazzLBMJAR+kLEDth48QZ/EirGVTIJaOtHT07Wr91VbzbbIiUYOdAnqtz9cMeN91xo3cputcBEm39nacfQ/iqt+71/ix4A0HrMDZg0XMSp1eyAhGNsjzizw7TRGJZKiCiUaIYrMcUFPWkXQ=
+	t=1790254881; cv=none; b=bljVW7aQeivpByZz42xFSoJThgnv6tu/n5++gSJB0h8xZJRmVo78mkN9aOExoaowtlKfkGPCo2qH3D8uQByposPAIKsiNrpH/p3QCKS1JRGe45YAagCpIEEWQJGSSC9MTs5rfBYA3C/cdGo9rlEZfwQxr2/TrSHi5ehU9fA8lTI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790254525; c=relaxed/simple;
-	bh=O6W3rBJ8ab6YKrst526Xn4qQWGu3UG5M04theUwnQZA=;
+	s=arc-20240116; t=1790254881; c=relaxed/simple;
+	bh=hH/lwu/IfxC6JCDDRdk8MH0oeXlHHuPWC2Jcizgdmdw=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=dqcVAxtfLrJPi0jWz7RVxMY/M/1X69aGlIStdahAXi+tjI2zk7iVIWz5VdU/1c+/fQu/nHamJuJ7ZcE9PzVKNK+Ho9Koe9M/VMu6ebt4q46CdI2RVoLsBulV6bSi6pgWfd92ERRc49S4yVP8hPzJ/YntlX/tA3Oxerc9BW+F0n0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AsEOifNm; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=Fb3WJN7nZn95RIZifp5UCqYgnmvCOmn3gxKlFbCYPwwgCSBqVfNn7DYtOt7RZD1QGSNUfD8OFMpbI+bg8gvBkl6xoCbvoiIzmvo9zW4hoctrXb8lHvuTyfNiVIcvqQ4Mn+d63C2M130m+UKedeqpdQyOd98nSEF60C7bCyxTBQw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=YM1/ExFO; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AsEOifNm"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 54CFB1F000FF;
-	Thu, 24 Sep 2026 12:55:21 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="YM1/ExFO"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6D3E11F000FF;
+	Thu, 24 Sep 2026 13:01:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790254522;
-	bh=fP+1HwRUtWcFOCFpRjWoMMBm7HwJGp0YLW4Z1HCtkEc=;
+	s=k20260515; t=1790254879;
+	bh=tILsIh/34tfOjHd4pLyAU/dB1/vDUv+mUz0xu94fN2k=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=AsEOifNmocKl8nee7u0JQkxITv3N2FOe0dKbyoXDJ4LWwRko4MvAx7PVzcI3PN4a0
-	 qYiVpxbPcy1gelI8x4LRY3M8NvLbdxLyWtTf0MY4XCQqR62jmqXAkHCBoWSv3Zt0nx
-	 lyEj/EYOKonkt88aDeVfvyTkep0+yV1xT9kEFPkE8dwznfKWUzzup3MQcMhLM8RqFC
-	 KFn/HaHOtKYfJU+cDEAsetNxhlqpi83ddm48974/kqEf44R8t6Kj2+1Flu2sjmLk5a
-	 WYo59yTTaua4ubmfx+vbHKOn4f8Lue0iEtWFrNCp05rsv6r1kZL6HmD0YHICrHpGSu
-	 iYpzkmmqBLi2Q==
-Message-ID: <41e92f38261b9659c5810f01c0ca501309a02223.camel@kernel.org>
+	b=YM1/ExFO0Nre9zG7li3ETX0LEu/Lh93Wy/5nDKyb44/GqnhhC7V+KDtVXprFKOui0
+	 HyNm6f9h/lWtEDpJfdYFrQbqS/fLEz9sH6FIqJr3UcNY8U5eC1wVjtx0mKMW6wtV87
+	 f0uHUFonQQ7ccoLdspUHXTUWbg5eiBpsgzjH/5asOAWHmkyGMzCddTZFnN5rlMS5um
+	 xnWizs04Z0a444G/tL0UwUjfhngEgn2sxpY/dcq+a8eYIrqDnyo9VUXDl2jTtzADEu
+	 9br1GAxiUFMmegN7AsZj8W+28btC+zVUuba84xc3Bt5xn+hPn9PiSfxr32nh25wquI
+	 mtX4jQeYWnUiA==
+Message-ID: <2dbe2fef2fde0515011866a585749ed2d95b46f4.camel@kernel.org>
 Subject: Re: [PATCH v2 02/14] nfs: correctly handle NFS4ERR_WRONG_TYPE from
  v4 OPEN request
 From: Jeff Layton <jlayton@kernel.org>
@@ -42,7 +42,7 @@ Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
  Alcantara	 <pc@manguebit.org>, Namjae Jeon <linkinjeon@kernel.org>, 
 	linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
 	linux-nfs@vger.kernel.org
-Date: Thu, 24 Sep 2026 08:55:19 -0400
+Date: Thu, 24 Sep 2026 09:01:16 -0400
 In-Reply-To: <20260919022441.3305170-3-neilb@ownmail.net>
 References: <20260919022441.3305170-1-neilb@ownmail.net>
 	 <20260919022441.3305170-3-neilb@ownmail.net>
@@ -130,47 +130,8 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, 2026-09-19 at 12:06 +1000, NeilBrown wrote:
-> From: NeilBrown <neil@brown.name>
->=20
-> Now that we have the -EFTYPE error code, we can return it from
-> ->open_context when the server returns NFS4ERR_WRONG_TYPE.
-> This can be directly returned when __O_REGULAR is in effect,
-> or can trigger a lookup and finish_no_open().
->=20
-> Also don't over-ride the err code when __O_REGULAR is in effect - nfsd
-> wants the see the original error, and VFS code will map when needed.
->=20
-> Finally don't consult __O_REGULAR for -ENOTDIR.  It isn't clear what
-> that means and is safest to leave the original handling.
->=20
-> Signed-off-by: NeilBrown <neil@brown.name>
-> ---
->  fs/nfs/dir.c           | 8 ++++----
->  fs/nfs_common/common.c | 1 +
->  2 files changed, 5 insertions(+), 4 deletions(-)
->=20
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 49394123bd09..11bcc922198e 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -2191,11 +2191,11 @@ int nfs_atomic_open(struct inode *dir, struct den=
-try *dentry,
->  			d_splice_alias(NULL, dentry);
->  			break;
->  		case -EISDIR:
-> -		case -ENOTDIR:
-> -			if (open_flags & __O_REGULAR) {
-> -				err =3D -EFTYPE;
-> +		case -EFTYPE:
-> +			if (open_flags & __O_REGULAR)
->  				break;
-> -			}
-> +			goto no_open;
-> +		case -ENOTDIR:
->  			goto no_open;
->  		case -ELOOP:
->  			if (!(open_flags & O_NOFOLLOW))
+Some agentic review found a potential issue here:
+
 > diff --git a/fs/nfs_common/common.c b/fs/nfs_common/common.c
 > index 0778743ae2c2..24add750c8d5 100644
 > --- a/fs/nfs_common/common.c
@@ -181,7 +142,40 @@ try *dentry,
 >  	{ NFS4ERR_DEADLOCK,	-EDEADLK	},
 > +	{ NFS4ERR_WRONG_TYPE,	-EFTYPE		},
 >  };
-> =20
->  static const struct {
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+[ ... ]
+
+The new mapping also changes what filelayout_async_handle_error() in
+fs/nfs/filelayout/filelayout.c sees for this status. That function
+switches on the decoded task status, which mixes mapped errnos with raw
+NFSv4 codes:
+
+fs/nfs/filelayout/filelayout.c:filelayout_async_handle_error() {
+	...
+	case -ESTALE:           /* mapped NFS4ERR_STALE */
+	case -EBADHANDLE:       /* mapped NFS4ERR_BADHANDLE */
+	case -EISDIR:           /* mapped NFS4ERR_ISDIR */
+	case -NFS4ERR_FHEXPIRED:
+	case -NFS4ERR_WRONG_TYPE:
+		...
+		pnfs_destroy_layout(NFS_I(inode));
+		rpc_wake_up(&tbl->slot_tbl_waitq);
+		goto reset;
+	...
+	default:
+reset:
+		return -NFS4ERR_RESET_TO_MDS;
+}
+
+Before this commit a data server returning WRONG_TYPE arrived as
+-NFS4ERR_WRONG_TYPE and took the layout-invalidating path above. With
+the new mapping it arrives as -EFTYPE, which matches no case and falls
+into default, so the I/O is still retried through the MDS but the
+layout is no longer destroyed and the slot waitqueue is not woken.
+
+Should the "Invalidate Layout errors" group gain a case for -EFTYPE
+alongside the mapped -EISDIR case, the way the other mapped codes are
+handled there?
+
+--=20
+Jeff Layton <jlayton@kernel.org>
