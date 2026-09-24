@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4AE1B285041;
-	Thu, 24 Sep 2026 13:24:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E1F6D5477E;
+	Thu, 24 Sep 2026 13:25:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790256249; cv=none; b=sojTD77X9xmu0Vf7u5PUxuHS/cWkSbaGVTzFNZ+tYJB6Gi1GN9qgShK8I7VjcmyzgaiN/A6Dz3PvCkBq9QB7bLtTAEGZTCIyzJ4nZjVLhtYQdA/O2xpzx27lQ08NM9dXvOBZPaVqthHzf8kwFFmZvjwh/vyKql5Io7oGz8XhiuQ=
+	t=1790256312; cv=none; b=JOqQ0XpK/xZZSAvIuWROPbIjyVM4HZm6/I/NI+QBV5WZ+2IU3BE4ugdIMA2oEQ+UQZMcABl8FYVsDb2bt+VYfgCI+yF15BFfG6efCfBclUjdvwYJzPZywQ1mRFx1GLkG/k77FGlN/g8Ba5k0u2PnyHaFETNk1a1qKuq1qibMGyk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790256249; c=relaxed/simple;
-	bh=oD96HPeB93PmGDXv5Xs45kg9jKq5KlY/ogmqR0eWnmc=;
+	s=arc-20240116; t=1790256312; c=relaxed/simple;
+	bh=YQ14DaMxLfmNOt4FXPHBvllxHseIK7Ro8UzteVcioi8=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=XEjPKb6qIUOr2K9gVzneVT0bfvsIPKa54zMuaFH0O8zkCre3/+IzlqsVYwQP7ECnHUD90aOHM5sceIHIDsRHcoA73OB4OEytb/Rs4iP07KB2D/b5qMh8SoQir93QSV5rjil4GaNf3EdEZGaOQgi0P/tkzYMWW6AVBdJgqGQkQs0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=eIxPKVZk; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=QNzsJnkzFux+vIWdeGOrjFq20F9L/Ps2J8PVFP29RBDrLuVntD28knWe7NJJP4x3gB0f4EtF3ISZ2KJRIQWZWHGzQWouSiblqiz1CIx4Rp+5fglkiXPZ5q+qndhfRLqo78B14Rf/PuD+sLItWSI424wRHFBH3t1X2qtweT378Tw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=K5QtmZ3t; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="eIxPKVZk"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F10151F000FF;
-	Thu, 24 Sep 2026 13:23:58 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="K5QtmZ3t"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E39FD1F0089D;
+	Thu, 24 Sep 2026 13:25:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790256240;
-	bh=zNDk0mcKphEdrUdRK3vjk4xN5TSUj6ARDzxHlDFkxiw=;
+	s=k20260515; t=1790256307;
+	bh=df0xqnpDf3KH8WX3GQqavrnMFOE50lqbLZtqCzXl9sI=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=eIxPKVZkne5qwGl28a6yE5qWAzoHmA8O5R++6nvKNs/qAj80ps2aRxRzhu1OBnYog
-	 JJpTidgZ4OloPotM6KuSIaGR+3m382ZVbHsipLaVgn1aMk4O3rv1jR5m44PppQK5wt
-	 2toiNrd8yOJv2SS6RbKIZi0U2rF6vzA74cSSahe2sILoI+71cuFO3MduuUY2XNPmGz
-	 eZfMPcWzFjc0AJETWASt2BwXuSzzD6RPdH91ObbHZJIdMUQixP1a8yAEl4etdS6PMo
-	 iM8T/xDNbvJpgAZekALHSfxsOIcYAo9aj2r2heflfm21AB6s3zCmq3yCpUKaBNwozu
-	 CQmZmq6w9JSog==
-Message-ID: <1d617af0ddc11ae773808aa6a876d9d3f91e7115.camel@kernel.org>
-Subject: Re: [PATCH v2 10/14] nfsd: make EEXIST checks in
- nfsd4_create_file() more consistent.
+	b=K5QtmZ3tw03v4vNGqGBEJEhQj3j2hg+J933DAr0ZEEmEDl3tstMK4A9RLD/aSk5iQ
+	 +8v20rq786uIKS8o/6o0kQMpanfmCxCXCCihD+Ri5YfXB+3QZohzrTeyuSfdCJDNyH
+	 YIjzVDLrav/BR0WgPbfjV6ZAAZ9S3nxW9MYZLWh7IlYy6kmmeqg1vUZ9+aIbvYr2EV
+	 AQ25KzEvUZ6GJQMTBL48Knh5zC8Qwv3t1+fiWVEMGgmUNf+NL27Y4D5CrGBbDn9e3q
+	 mn66TkDGipiEouR/VoB55C/aLLAaPsoz/YKvkotS53W4LzSTG/g5LXl5Dln4sn1CDx
+	 OEx09fF4ogblA==
+Message-ID: <9c1f99076c4f24a33d0e194ee96b7bbb6437da3f.camel@kernel.org>
+Subject: Re: [PATCH v2 13/14] nfsd: change nfsd_check_obj_isreg() to use nfs
+ error codes.
 From: Jeff Layton <jlayton@kernel.org>
 To: NeilBrown <neil@brown.name>, Alexander Viro <viro@zeniv.linux.org.uk>, 
  Christian Brauner
@@ -42,10 +42,10 @@ Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
  Alcantara	 <pc@manguebit.org>, Namjae Jeon <linkinjeon@kernel.org>, 
 	linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
 	linux-nfs@vger.kernel.org
-Date: Thu, 24 Sep 2026 09:23:57 -0400
-In-Reply-To: <20260919022441.3305170-11-neilb@ownmail.net>
+Date: Thu, 24 Sep 2026 09:25:04 -0400
+In-Reply-To: <20260919022441.3305170-14-neilb@ownmail.net>
 References: <20260919022441.3305170-1-neilb@ownmail.net>
-	 <20260919022441.3305170-11-neilb@ownmail.net>
+	 <20260919022441.3305170-14-neilb@ownmail.net>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -133,72 +133,61 @@ MIME-Version: 1.0
 On Sat, 2026-09-19 at 12:06 +1000, NeilBrown wrote:
 > From: NeilBrown <neil@brown.name>
 >=20
-> nfsd4_create_file() has two places that check if an "eexists" style
-> error is needed - only if create_mode is not NFS4_CREATE_UNCHECKED.
+> There is no longer any value in having nfsd_check_obj_isreg() return
+> over-loaded error codes which are converted to nfs error codes.
+> So revert to directly returning the required nfs error code.
 >=20
-> One if when checking the error code from do_lookup_open(), one when
-> checking if ->op_created wasn't set.
->=20
-> These are not consistent - one tests if op_createmode IS
-> NFS4_CREATE_UNCHECKED, the other tests if it isn't.
->=20
-> Rearrange the second piece of code so that the tests look similar.
-> This will make some following patches a bit cleaner.
+> Also take the opportunity to avoid dereferencing the inode and determine
+> the type directly from the dentry.
 >=20
 > Signed-off-by: NeilBrown <neil@brown.name>
 > ---
->  fs/nfsd/nfs4proc.c | 33 +++++++++++++++++----------------
->  1 file changed, 17 insertions(+), 16 deletions(-)
+>  fs/nfsd/nfs4proc.c | 18 ++++++++----------
+>  1 file changed, 8 insertions(+), 10 deletions(-)
 >=20
 > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 3a82af381a8d..6e443503d0b7 100644
+> index 50baf125d5f9..40bd1179bf60 100644
 > --- a/fs/nfsd/nfs4proc.c
 > +++ b/fs/nfsd/nfs4proc.c
-> @@ -462,23 +462,24 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct sv=
-c_fh *fhp,
->  		open->op_created =3D true;
+> @@ -223,17 +223,15 @@ do_open_permission(struct svc_rqst *rqstp, struct s=
+vc_fh *current_fh, struct nfs
+>  	return fh_verify(rqstp, current_fh, S_IFREG, accmode);
+>  }
 > =20
->  	if (!open->op_created) {
-> -		if (open->op_createmode =3D=3D NFS4_CREATE_UNCHECKED) {
-> -			/* NFSv4 protocol requires change attributes
-> -			 * even though no change happened.
-> -			 */
-> -			fh_fill_post_noop(fhp);
+> -static int nfsd_check_obj_isreg(struct dentry *child)
+> +static __be32 nfsd_check_obj_isreg(struct dentry *child)
+>  {
+> -	umode_t mode =3D d_inode(child)->i_mode;
 > -
-> -			/*
-> -			 * In NFSv4, we don't want to truncate the file
-> -			 * now. This would be wrong if the OPEN fails for
-> -			 * some other reason. Furthermore, if the size is
-> -			 * nonzero, we should ignore it according to spec!
-> -			 */
-> -			open->op_truncate =3D (d_is_reg(child) &&
-> -					     (iap->ia_valid & ATTR_SIZE) &&
-> -					     !iap->ia_size);
-> -		} else
-> +		if (open->op_createmode !=3D NFS4_CREATE_UNCHECKED) {
->  			status =3D nfserr_exist;
-> +			goto out;
-> +		}
-> +		/* NFSv4 protocol requires change attributes
-> +		 * even though no change happened.
-> +		 */
-> +		fh_fill_post_noop(fhp);
-> +
-> +		/*
-> +		 * In NFSv4, we don't want to truncate the file
-> +		 * now. This would be wrong if the OPEN fails for
-> +		 * some other reason. Furthermore, if the size is
-> +		 * nonzero, we should ignore it according to spec!
-> +		 */
-
-Some mention of where in the spec that's written would be helpful for
-posterity. I think it's RFC 8881 =C2=A7 18.16.3.
-
-> +		open->op_truncate =3D (d_is_reg(child) &&
-> +				     (iap->ia_valid & ATTR_SIZE) &&
-> +				     !iap->ia_size);
->  		goto out;
+> -	if (S_ISREG(mode))
+> +	if (d_is_reg(child))
+>  		return 0;
+> -	if (S_ISDIR(mode))
+> -		return -EISDIR;
+> -	if (S_ISLNK(mode))
+> -		return -ELOOP;
+> -	return -EFTYPE;
+> +	if (d_is_dir(child))
+> +		return nfserr_isdir;
+> +	if (d_is_symlink(child))
+> +		return nfserr_symlink;
+> +	return nfserr_wrong_type;
+>  }
+> =20
+>  static void nfsd4_set_open_owner_reply_cache(struct nfsd4_compound_state=
+ *cstate, struct nfsd4_open *open, struct svc_fh *resfh)
+> @@ -565,7 +563,7 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_c=
+ompound_state *cstate, stru
 >  	}
->  	/* file was created */
+>  	if (status)
+>  		goto out;
+> -	status =3D nfserrno(nfsd_check_obj_isreg((*resfh)->fh_dentry));
+> +	status =3D nfsd_check_obj_isreg((*resfh)->fh_dentry);
+>  	if (status)
+>  		goto out;
+>=20
+>=20
+
+Nice cleanup.
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
