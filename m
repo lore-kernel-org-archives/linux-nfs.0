@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F37F047DD72;
-	Thu, 24 Sep 2026 12:25:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EF62D47F2E0;
+	Thu, 24 Sep 2026 12:51:38 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790252725; cv=none; b=fmwx+ZVCKkWgrM2yCTZAqtdPF2dKgTG430eUPrBU1L4DFlUmeBMgUUBX6XlxFVbE6+Mmc0TC0bB6L29lgjAhOmzXC7wy6689fGb4BmDlE1lb2dzCWWMF9CvdwtKqsqd6GwCR/GPdBN6gbnVVzNxYZ1f6+gwNZ+2n/H+BsrFXS3U=
+	t=1790254301; cv=none; b=uW1RkBHES005Z0qodqiKucTFvdzWMfDaAW0LV+mODCrOyH5kULv/AXDxbE1SdEqpq5KCfew8YAdj/u941kYUFW/ppxyySSXRgENPKygwXW+QXV6qMZB+9Frpnr69U2aKysUVvpV1miTGbBpYfBcC9jTjvHf9K45wz1lrrCc45T4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790252725; c=relaxed/simple;
-	bh=01i9WejsLdiMX6G/FL2digLaVsJEX/S7apwqrd48yoc=;
+	s=arc-20240116; t=1790254301; c=relaxed/simple;
+	bh=4jNcgF3MRpKoHIMIk/aAPHyp2kctXYRFgLFJ1M9NGbg=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=CLvWg3t5ZLMY5MTIQhQEyJQ831gCwbWHNyAFBfdR5m+TJcpZIBnFv7qwmVdtfDnWhRAq5sWzCMQi/pjgZyD0ix57ra6lg13nXjpZPewW/+MjfUpvVLFvs2DD4NwI32B9yjQXUUHXLB2eBGzunlwnpThVNCh0Z1DluFUxl22xw+k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=d1OYfSDc; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=Wl00k6jjbQ0pBSx7jcR4EP6SMKbWtLr3HdSGs7Cc7Dxi1p/KURQp7GI6qvN5JO47C/6HeRCC4uQ+hViJwWhszUfDya5cghO7nDQmHFM1b0u2TEggQYlpgZyGJTXFAcbTkSen8eHd3Fp9tBEI8q633xbBQOLjWEMR8ZTgSpGisQk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=kLllSwoJ; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="d1OYfSDc"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1C15C1F000FF;
-	Thu, 24 Sep 2026 12:25:22 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="kLllSwoJ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8A8D51F000FF;
+	Thu, 24 Sep 2026 12:51:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790252723;
-	bh=i1wc7mco9mhAsE81iNGHYJRTKDBGIOxL8y/hhOoeRqI=;
+	s=k20260515; t=1790254295;
+	bh=IsEALg7Hq5x2wVFXViSqoybbskoduEYdMFNjEWk3H/c=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=d1OYfSDcHGlPiGc5qF/mIK/jytBkjw5fGcsDZ1VUx+sv/BotsB4Gbwoq1cu7hUHCd
-	 ebi8x0Hi/vuszK/DnAaLZk6mhEUDFEcHPC3yt3vtvrzVu9FctxDsOJaD31ODnZf5lb
-	 ChvfGllTDpJYWfZ6LAmSYV9RHkzL63m2ZXjB1UST6QlBfGLODN1Vn7mfuzvgD+Tqwb
-	 uOwti8ANNX6yqa7JVdZHU6t9bIe3VR5EFA0SlzU3i4sgG0iQcyr+Ov3Mp3e8sOtJVK
-	 x0uTMHrBXBWk97skEgLp6ymm0kjxfhmUVoGVe9ti8T4e6hOqZx1ErzkYIDvdNwn3j5
-	 d0I/Yf/N8Sa0A==
-Message-ID: <0880c8baea48edbca372bd54060000b27dd5fcbb.camel@kernel.org>
-Subject: Re: [PATCH v2 01/14] VFS: revise and expand documentation for
- atomic_open.
+	b=kLllSwoJl7BQpdC7SVEp2/qUijCyR1+ay5yXDhpP3ZhZ4oqwTqFM3wY6o29ezXNE2
+	 9ideFSwI7foQ2H6mENyDdv/Gh8B5DI+tZhF9PddRpe0JaMMEvtv+za1s8pT5lwA7IU
+	 UZCI5z9PWxQpbUQThO/UEoza1KIIG714jS3YCBcGY4jcsgIkeCOm0cR9fiZdujOAaq
+	 4X/e5UUzWsOkw3g0yCzA3wT3fEhI1igdUmsQsQg0C4OM5NVTDawq0q2MnCmsyxAHgx
+	 ruqbBHBJPh4gA+7PL7gU4RjopDmyJp2dvFsgtYo0zO4QXaIfvr/R24X2vFZddwrizZ
+	 AaX3nes0VKpRg==
+Message-ID: <dca2cd51b83589bba5aedf50cec3e300e1de1941.camel@kernel.org>
+Subject: Re: [PATCH v2 07/14] vfs: O_NONBLOCK|O_CREAT open shouldn't wait
+ for directory delegation
 From: Jeff Layton <jlayton@kernel.org>
 To: NeilBrown <neil@brown.name>, Alexander Viro <viro@zeniv.linux.org.uk>, 
  Christian Brauner
@@ -42,10 +42,10 @@ Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
  Alcantara	 <pc@manguebit.org>, Namjae Jeon <linkinjeon@kernel.org>, 
 	linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
 	linux-nfs@vger.kernel.org
-Date: Thu, 24 Sep 2026 08:25:20 -0400
-In-Reply-To: <20260919022441.3305170-2-neilb@ownmail.net>
+Date: Thu, 24 Sep 2026 08:51:31 -0400
+In-Reply-To: <20260919022441.3305170-8-neilb@ownmail.net>
 References: <20260919022441.3305170-1-neilb@ownmail.net>
-	 <20260919022441.3305170-2-neilb@ownmail.net>
+	 <20260919022441.3305170-8-neilb@ownmail.net>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -133,132 +133,47 @@ MIME-Version: 1.0
 On Sat, 2026-09-19 at 12:06 +1000, NeilBrown wrote:
 > From: NeilBrown <neil@brown.name>
 >=20
-> atomic_open is a complex operation which different filesystems implement
-> quite differently.  The available documentation doesn't give clear
-> guidance on how it should be implemented.
+> An open() of a regular file can block if there is an active lease on that
+> file, but this can be prevented by opening with O_NONBLOCK.
+> An open(O_CREAT) of a non-existent file can block if there is an active
+> delegation on the parent directory but this CANNOT be prevented with
+> O_NONBLOCK.
 >=20
-> nfsd has a particular need to open only regular files, but to get
-> precise information about what was found if it wasn't a regular file.
-> This is slightly different to the syscall calling needs.  In particular
-> it suggests that __O_REGULAR shouldn't always result in -EFTYPE.
+> If nfsd is to use common VFS code for open/create it needs to be able to
+> prevent this blocking.  It is conceivable that a user-space application
+> might need this too.
 >=20
-> In any case that does involve creating open state, using
-> finish_no_open() is simplest as it reduces the need to check
-> __O_REGULAR, O_DIRECTORY, O_NOFOLLOW.
+> So extend O_NONBLOCK protection to not block on a directory delegation
+> when creating a file.
 >=20
-> So refresh the documentation to give guidance on the choice between
-> finish_no_open, finish_open, and an error.  Efficiency always wins, but
-> when that isn't an issue, prefer finish_no_open().
->=20
-> Also clarify the required behaviour when __O_REGULAR is given.  This
-> should return -EISDIR if a directory is found as nfsd needs this.  If a
-> symlink is found then __O_REGULAR does NOT apply: O_NOFOLLOW must be
-> used to decided if it is safe to not return the looked-up dentry.
->=20
+> Fixes: 134796f43a5e ("vfs: break parent dir delegations in open(..., O_CR=
+EAT) codepath")
 > Signed-off-by: NeilBrown <neil@brown.name>
 > ---
->  Documentation/filesystems/vfs.rst | 67 ++++++++++++++++++++++++++-----
->  fs/namei.c                        |  3 ++
->  2 files changed, 59 insertions(+), 11 deletions(-)
+>  fs/namei.c | 7 ++++++-
+>  1 file changed, 6 insertions(+), 1 deletion(-)
 >=20
-> diff --git a/Documentation/filesystems/vfs.rst b/Documentation/filesystem=
-s/vfs.rst
-> index d3a93eec3945..00ada8cc85ae 100644
-> --- a/Documentation/filesystems/vfs.rst
-> +++ b/Documentation/filesystems/vfs.rst
-> @@ -599,17 +599,62 @@ otherwise noted.
-> =20
->  ``atomic_open``
->  	called on the last component of an open.  Using this optional
-> -	method the filesystem can look up, possibly create and open the
-> -	file in one atomic operation.  If it wants to leave actual
-> -	opening to the caller (e.g. if the file turned out to be a
-> -	symlink, device, or just something filesystem won't do atomic
-> -	open for), it may signal this by returning finish_no_open(file,
-> -	dentry).  This method is only called if the last component is
-> -	negative or needs lookup.  Cached positive dentries are still
-> -	handled by f_op->open().  If the file was created, FMODE_CREATED
-> -	flag should be set in file->f_mode.  In case of O_EXCL the
-> -	method must only succeed if the file didn't exist and hence
-> -	FMODE_CREATED shall always be set on success.
-> +	method the filesystem can look up, create, truncate, and open
-> +	the file in one atomic operation.  This is needed if the
-> +	filesystem content can be changed asynchronously and
-> +	specifically if a negative dentry is not a guarantee that the
-> +	object doesn't exist.  It is also useful if it is possible to
-> +	perform combinations of revalidate, lookup, create, open, and
-> +	truncate more efficiently what with a sequence of individual
-> +	operations.
-> +
-> +	If the object found is not a file or directory, or if
-> +	lookup/create succeeded without establishing any "open" state,
-> +	then finish_no_open() should be called to confirm that the
-> +	dentry is ready to be handled by normal VFS processing.
-> +	FMODE_CREATED should be set in the "file" if the object was
-> +	created, and this will prevent further access permission checks,
-> +	or handling of O_TRUNC and O_EXCL.
-> +
-> +	If the lookup/create operation established some open state for a
-> +	file or directory, the open should be completed by calling
-> +	finish_open().  Passing NULL as the "open" function to
-> +	finish_open() is unlikely to be useful as that assumes that no
-> +	open state has been established.
-> +
-> +	atomic_open() may generate errors related to O_DIRECTORY,
-> +	__O_REGULAR, O_EXCL, O_NOFOLLOW but is not required to as the
-> +	caller will check those against the resulting dentry and
-> +	generate any error needed, possibly closing the file if it was
-> +	opened by finish_open().  atomic_open() is encouraged to handle
-> +	these flags only when doing so is more efficient than not.
-> +
-> +	If __O_REGULAR is handled, it should generate -EISDIR if the
-> +	name is known to be a directory or -EFTYPE if it is some other
-> +	non-regular file other than a symbolic link.  Handling of a
-> +	symbolic link should be guided by O_NOFOLLOW, not __O_REGULAR:
-> +	-ELOOP can be return if O_NOFOLLOW is set, otherwise the symlink
-> +	should be returned through finish_no_open().
-> +
-> +	The focus for atomic_open() is to provide the correct dentry and
-> +	to set FMODE_CREATED as accurately as possible.  If O_EXCL was
-> +	set, FMODE_CREATED should only be set if this operation
-> +	certainly created the object.  If O_EXCL was not set,
-> +	FMODE_CREATE should be set if it is possible that this operation
-> +	created the object.
-> +
-> +	This method is only called if the last component is negative or
-> +	needs lookup.  Cached positive dentries are still handled by
-> +	f_op->open().
-> +
-> +	If the dentry provided is negative (not in-lookup) and O_CREAT
-> +	isn't set, then there is no guarantee of exclusive access to the
-> +	dentry - another thread might call ->atomic_open() on the same
-> +	dentry at the same time.  If needed a filesystem can ensure this
-> +	doesn't happen by returning 0 from ->d_revalidate when that is
-> +	called with LOOKUP_OPEN on a negative dentry.  This will ensure
-> +	that ->atomic_open() only receives an in-lookup dentry, which
-> +	always ensures exclusive access.
-> =20
->  ``tmpfile``
->  	called in the end of O_TMPFILE open().  Optional, equivalent to
 > diff --git a/fs/namei.c b/fs/namei.c
-> index d95249dd527c..0f69abb3743b 100644
+> index a08f37aca3e1..b9fca38ad489 100644
 > --- a/fs/namei.c
 > +++ b/fs/namei.c
-> @@ -5007,6 +5007,9 @@ static struct file *path_openat(struct nameidata *n=
-d,
->  		error =3D -EINVAL;
+> @@ -4554,7 +4554,12 @@ retry:
+>  		goto out_dput;
 >  	}
->  	fput_close(file);
-> +	if (error =3D=3D -EISDIR &&
-> +	    (op->open_flag & __O_REGULAR))
-> +		error =3D -EFTYPE;
->  	if (error =3D=3D -EOPENSTALE) {
->  		if (flags & LOOKUP_RCU)
->  			error =3D -ECHILD;
->=20
-> base-commit: 9189e6a6f89e32d3a604b221ea64e67e1a35957c
+> =20
+> -	error =3D try_break_deleg(dir_inode, LEASE_BREAK_DIR_CREATE, &delegated=
+_inode);
+> +	if (op->open_flag & O_NONBLOCK)
+> +		error =3D try_break_deleg(dir_inode, LEASE_BREAK_DIR_CREATE,
+> +					NULL);
+> +	else
+> +		error =3D try_break_deleg(dir_inode, LEASE_BREAK_DIR_CREATE,
+> +					&delegated_inode);
+>  	if (error)
+>  		goto out_dput;
+> =20
 
-It just keeps growing! But on a more serious note, it's better to have
-more clear verbiage here.
+That seems right. We don't want to block the opener while breaking the
+directory lease.
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
