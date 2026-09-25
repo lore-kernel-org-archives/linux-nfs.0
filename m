@@ -1,151 +1,146 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj2-f13.google.com (mail-pj2-f13.google.com [74.125.227.141])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4F8983B8409;
-	Fri, 25 Sep 2026 16:56:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790355410; cv=none; b=kRluWytSxzMwjGphxkZSD9mZ1+pS/MWdYxEshMbLFKasLQziM7XipsJiGrgFfuGNbnzP+NA+NE44Zt2s+knUKhV7BqHj9EOwRyPAxPHgjqfm59lYoqGx0pJHbAsnFl9140w6oQP0EniesEwnzxJJv5F0wvriM+IGC5eXB5gPbPg=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790355410; c=relaxed/simple;
-	bh=7qiLBvkL5f31UPJ2GYjFxJoybPTdrvHnUyAGg0joyoM=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=UdWBYbHpmEIDljuUMQRh2hv1oi3Ypc/qwET2OLTaAefiuEcG+64C5SN/dwdlEhdKjItjfPRDAtWcJyNVtF9c0JUerKqm4x/ZITGJ4+xgmfSMKNDWO5Ym3LWrOHAQEqNTsALPhiamzhHUYsdXy4AWOpLyV3hRI/Of7Mlkv7IPOPY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=V8pA+M6k; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 25CB53DC85B
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Sep 2026 17:07:27 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.227.141
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1790356056; cv=pass; b=oHL/KVYhykm1tkr1dD+U26J5Jb8V8qxLuu6272bUh6Cph3Ic6cPtPwx/hZOzv0YQLUr7H4w0e0QDnVZ6s3HPFQc55eHmNgWegq3fY1UZNh9dzrbAnz9H+beiZha9ENaqM4K9vlVGF0nrcAJuaRAHercVwt1BX9EP3VLw2XXI/SE=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1790356056; c=relaxed/simple;
+	bh=Z/QlDjEqmTsvd8hmVsRhjPJAPZKduCsAshcn9SEcHsU=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=WSqAq1YzJOwhK9jI1NMFXeh+09KGnHeupi0JBfgokPtEpS2OWR0ViVaet8eUiRWSK4vDmBoydngZVvRcMPLHfVpuNZNhxMVwMmtdeRhAOOfA/HTvbopT3o5Gu4kwgJj+ses6UBx/Dw8XHudCk9FQp/+o1G8I8s8FkcQ6oDgIhlY=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=paul-moore.com; spf=pass smtp.mailfrom=paul-moore.com; dkim=pass (2048-bit key) header.d=paul-moore.com header.i=@paul-moore.com header.b=JQ7vBslB; arc=pass smtp.client-ip=74.125.227.141
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=paul-moore.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=paul-moore.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="V8pA+M6k"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BDFE81F000FF;
-	Fri, 25 Sep 2026 16:56:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790355398;
-	bh=mtySRZfOGfyzWLw3A6sR7H3wATLXpdRhprJ1nem+O74=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=V8pA+M6k1zxkZfQB1M+nOoUv3HYgZjbVNr2fbYCv7aXvqHO0WB5acEPlTMwHmbtIZ
-	 OimiWtGMdAm5SUt3y+IX0sB3AAuPrrsg/0r46ajF2wg0gq1I0/C37cfeTv0fz/mTGU
-	 GXljzjVn3B3lvCxRbsdnhbQEj8iGko4hCWCxIxIMNHg+8qfvzC1Yvu9l3aYc8agAev
-	 lViXOPMt6DQIVf8WK5lCj+8k4pwZd4JjD8zBOiwFvHcLH6DQ9JyRv0AlMEW4FwhPAC
-	 1LPh7RxQX/GxHTc4v4VIIAWSxzQuvbVZoSbzCHwO5OH4u/91U/S1QpK5/g3doiaGit
-	 LZwEtb2G0YsKg==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id A42A0F40068;
-	Fri, 25 Sep 2026 12:56:36 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Fri, 25 Sep 2026 12:56:36 -0400
-X-ME-Sender: <xms:xKe2apJq4vvrUbOoXR3IQkzHyDKbRQ8uznavo-KYiNL8UE1owhYaUg>
-    <xme:xKe2av9fTWFU2q8r4aZzjbClaHJEHdJXg8TknyYREd3c9xO4GevSrnitwGSJ0mryR
-    EC5RG7aPjVbGpx3VWSCuj3enJR3vaHUO-Awc-e0Bm9mMNDaIzzR0K63>
-X-ME-Proxy-Cause: dmFkZTE199OACx/5ZGmQOcqgj7GgW/wDsNF2qXaQx7rypS1ySEohTniwvIoRnu5gER2JKj
-    jHei6a2m+alk6AgHs9qI/Eq8KwIT3v5UEiAy68IBmy4jHPGruy8dsVjitWYF+kufX5JzFq
-    m74gM6jQiYubi3n2ZgAtqt4xEHg1Yy4C43X3u5kNMhKgBPb/mUyI1qH8YjxEOJsTYqn1je
-    pAbxBwWujsi++cGSB0r0HDiN6lBig4rNZ2FcnVQ9Cc10tv1HwreJysL/jxVb3XuQ7xdRkx
-    82bd1agSu1Dz6G2dwAwxeP77iGevNkeQ0d7ug9SHrwJQt7RsZsYbsXaxSf7m+mVdNQhYYH
-    +jyZmbkaNB67O5LquY0+PjPX3d9yxv/xVRCMtuH/V59IrJJvpgU/3QF7w8D47H78u6Le62
-    qlbJjgKLrU6DFiqe0fj1kLa9XnBADaEFXsv0B/96zocPFmlGIGU5WY9A92MPUeYqt31KkF
-    +jYBgO0+Bi+b/N4bXPD38LLFAgTbUMXRz1fYNmh1Z6txsRDvIesLRHO3Ct4bGo2Jy9AWup
-    zPUyTPuHrrvmQfdS51tf03gvkPZ4j7idqKxXZpkGvlTquR5cZZkJRYcCayZbSKYM/CmTCm
-    wX0uSqQT+IHQNSxVm18uUYHhrX1efZNtOaZevxzT0tz8Bq1GNAfjxDdE7fdA
-X-ME-Proxy: <xmx:xKe2avu8gZF8WFmuy9J-LVGnIWzZaVG_i9KGEa2SNyr2Dm-V45pHxw>
-    <xmx:xKe2ahyqPAOF-RbkB-Xmns0hFbRkkAh-I-yWEJ8spZ-qzEhUqmpYeg>
-    <xmx:xKe2anaaqJZqbMHNQrEcnTE_WMY7QJQcM2AWnz3K5HMXttX4g_urAQ>
-    <xmx:xKe2ag5wEwRUHRMy1tTQzZQg5V0p0p6k2laVPIlyxoS-QAf69UVXJA>
-    <xmx:xKe2am7nAOr3eqfmtAPH7_zRNhFJX0o_0syFG1-4IuldGMvw0wbQSmoC>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 6EB83780070; Fri, 25 Sep 2026 12:56:36 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=paul-moore.com header.i=@paul-moore.com header.b="JQ7vBslB"
+Received: by mail-pj2-f13.google.com with SMTP id d9443c01a7336-2d747f05ffdso5082735ad.1
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Sep 2026 10:07:26 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1790356042; cv=none;
+        d=google.com; s=arc-20260327;
+        b=OCNpgE0dORD/zR8I16zXQrBdVvWSntVmszVA6DPUxbyY8W0IK7los3RSeHYhSeLzPC
+         FRaJ7zfokny4m489LlNqn37jNpKXjsUfcYEDY4geik1SvqNK+wSX/YY3PGRjqoeVoA4c
+         R1V6fWY3TL53OtIrtugIMMawmfq+yzyy0XoH8QF5wmGSKTK/8HYBENQ1C3gCqykdhabC
+         FXrc68rizHHMJzrDV3gRtO67uoZ1D0ihozHOWEGxRH5MfgWNGR9twXQx5Fzy4+0pGGrj
+         uSI6JV8OhPc68pxaWPRFILzJYeTTRH2g3nUIajougNES3jNL3noEqL+2OG53Cr88bh0J
+         VydA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=8YwzIASUiQRwU6GfvzkJObDJseuyBEMVP7g4XrNm/58=;
+        fh=eo8LHfwKeZCeQP752Bl0+GIpVaS0NG4tPl9WzxQDeqY=;
+        b=f+6GrXnbsSW5plYI9Lic1KTyrwPYarsohJTmoLhHNXGKuJNid1SfJKAdZu3DrlmTK3
+         GpCg2+m1vxwfRyHLij7RmiOxZ65ms7HiVDNe+KDphwCV8avHSOL6d91NcMiPlCyWmw1U
+         Ml0YQj6+6ZIq9LSjb/vJ0pvsW2EokAd/bw4BJPxOnyFK+nxkhCXVYVQvWW36sck7aUAe
+         Zm3cHHAPBXBSfQ6lxZZ7WXVDZpzdOsQbTrXqGgM5A8qdkNYGzWVkGHjz9ybkP8NOYq1T
+         IqC5oAKsraHfjIIoFGGiL/xIgVAPyXrI0Y/gf016OloezvrzUICBm6V3hN57lWLN3FEm
+         BnuA==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=paul-moore.com; s=google; t=1790356042; x=1790960842; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=8YwzIASUiQRwU6GfvzkJObDJseuyBEMVP7g4XrNm/58=;
+        b=JQ7vBslBA75Oz3vhccuiegu2ZSCVFqSF0HyjC/3/vNzOkrP+yD6f4D4JjYMSYAoFrr
+         wlg7Wmn6oEu7SXRotz0a67VZfHRO6XibZ9ZQ2iaB3D1nQj3Xnbu+DnvAmLPuwuabcTJk
+         PXz37aU1zp89S9iK0/x3WEyWrQZ8hNLRiSYpSLIsFe52Q0ZtYHr08wUrk94pc3ENWlQd
+         J+Tedgfpmw+/PX5h3yjumGEOqc+s3rcWYPx4Hn4luwZxasnr3NVcHxFxvCE/jfitgeBw
+         +jOt/CmP2fD13Y486VYHbVYAPN3U4OMa+qtVuZhbWJD5jm5g1hu0o/Zq9FL93oXYU7V4
+         vv7w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1790356042; x=1790960842;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=8YwzIASUiQRwU6GfvzkJObDJseuyBEMVP7g4XrNm/58=;
+        b=xhusU7UF3IAlTNyjt50LBLou/Q9vxhj2lKHRjOm1ls4movUJ91UbouPhiSxyO+d/My
+         dKNBJ4xFrhhvRgnIEV5LRMNVzO+qp2pgSkWAsXPmzgkfkSoEA0/saqxwaFs7RSXydm8V
+         bjFlmHFQFKPtN1ZwwWfD3lPNaXvoFHZg4NtRdPCOczuqS7h3k4NG3JLP7KziRUCzRIVN
+         NoosDJi1TERQvgmIsOAXro7Q3Eqir6e1G6FZmKm34nFt+DygF9rTV+D1q8mo2BoeVs5J
+         i4PzXTxBAuA1voxfObMV1kcu80CR9hHscdtLkkmEX9zh/3ghG2jIKptTe3mW4TZ9DGPJ
+         DEiQ==
+X-Forwarded-Encrypted: i=1; AKwUvBwFUvcJdLbtkWIuTU/kugd1QDja8R1pGnQsRvTgagws7JNTOxaYSgp9MQBvvcDweVZHkXN7O7BxF30=@vger.kernel.org
+X-Gm-Message-State: AFuF++kBawrWWT4PT/q/rtz76QWbfpGcvtYRHyH65uQ/2ygCeIdubm2T
+	zfbUv/b7MlFBJHQJ3kcU6eZNIDbJG4A9bkdPcXP1xlYf8WG51D69bFqDNvgRpEUiSwdRV4pAiXj
+	NLiWZcNkRX0hqsPofojFLF6XxHSuUlAK92gh3jj6o
+X-Gm-Gg: AYBFou1nVDkmv9usR+cDTGTmXSARlVceQOcWyLFf7icIHdmvdfqRtwTpJ75m7nWMbo8
+	293qUjj9xvLuZ8WwHNk+jQD1YAe8SJuHlOQ+f3U0JT0A792OJgdRdTIgzj56nJc0tVs5XQ3DzAz
+	oLMvj0qZp9heEAH4b8+67yqCidbXX4a9qAj/TsTRFMvCZCVXtITusr+bzg/63Sp73sljFINwArh
+	BAkaDQ8gUXPxpTjgFzNClMvhxkKS6m8XYLqFHJsIUaOTXEf/GTUtynXGmq4O6rzCn2T/jv3a/QI
+	h5B3XnHCIHkicQ43L2mxtIlyY6Y/868X7ZxEjRQ/d+62T0OPJa/CqJMW2i6+b0ohGeFk7lnNQG4
+	SDCxfhzIu9WGNRL3opAD5uA==
+X-Received: by 2002:a17:902:d48d:b0:2df:99e6:9448 with SMTP id
+ d9443c01a7336-2df99e695bbmr12902675ad.61.1790356042370; Fri, 25 Sep 2026
+ 10:07:22 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AeJzmHWrDZMJ
-Date: Fri, 25 Sep 2026 12:56:15 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Christian Brauner" <brauner@kernel.org>, NeilBrown <neil@brown.name>
-Cc: "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Jeff Layton" <jlayton@kernel.org>, "Jori Koolstra" <jkoolstra@xs4all.nl>,
- "Mateusz Guzik" <mjguzik@gmail.com>,
- "Dorjoy Chowdhury" <dorjoychy111@gmail.com>,
- "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
- "Andreas Gruenbacher" <agruenba@redhat.com>, gfs2@lists.linux.dev,
- "Ilya Dryomov" <idryomov@gmail.com>, "Alex Markuze" <amarkuze@redhat.com>,
- "Viacheslav Dubeyko" <slava@dubeyko.com>, ceph-devel@vger.kernel.org,
- "Paulo Alcantara" <pc@manguebit.org>, "Namjae Jeon" <linkinjeon@kernel.org>,
- linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-nfs@vger.kernel.org
-Message-Id: <a59cfd65-0491-4fe8-99d4-f48576185d5a@app.fastmail.com>
-In-Reply-To: <20260925-diavortrag-zueinander-komitee-6bb18933f480@brauner>
-References: <20260919022441.3305170-1-neilb@ownmail.net>
- <20260925-diavortrag-zueinander-komitee-6bb18933f480@brauner>
-Subject: Re: [PATCH v2 01/14] fixes for vfs_lookup_open, and integration with nfsd
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+References: <20260924104831.1081137-1-caixinchen1@huawei.com> <20260925-zahnersatz-hielt-lerche-141893658522@brauner>
+In-Reply-To: <20260925-zahnersatz-hielt-lerche-141893658522@brauner>
+From: Paul Moore <paul@paul-moore.com>
+Date: Fri, 25 Sep 2026 13:07:08 -0400
+X-Gm-Features: AclHuK-PYyMWIn_xv6i13K6lF_3RP26uUOO_mtAnUMGHNcMrV5ydBitx8qn_ri0
+Message-ID: <CAHC9VhSeXmOHvioZ12aVmnOtpP52-G=K_jS3K0fTSiCrDHStPw@mail.gmail.com>
+Subject: Re: [PATCH RFC -next 00/12] landlock: Add READ_METADATA and
+ WRITE_METADATA access rights
+To: Christian Brauner <brauner@kernel.org>, =?UTF-8?B?TWlja2HDq2wgU2FsYcO8bg==?= <mic@digikod.net>
+Cc: Cai Xinchen <caixinchen1@huawei.com>, gnoack@google.com, jmorris@namei.org, 
+	serge@hallyn.com, corbet@lwn.net, skhan@linuxfoundation.org, 
+	rdunlap@infradead.org, gregkh@linuxfoundation.org, rafael@kernel.org, 
+	dakr@kernel.org, dlemoal@kernel.org, hch@lst.de, axboe@kernel.dk, 
+	viro@zeniv.linux.org.uk, jack@suse.cz, dhowells@redhat.com, code@tyhicks.com, 
+	linkinjeon@kernel.org, sj1557.seo@samsung.com, yuezhang.mo@sony.com, 
+	hirofumi@mail.parknet.co.jp, cel@kernel.org, jlayton@kernel.org, 
+	neil@brown.name, okorniev@redhat.com, Dai.Ngo@oracle.com, tom@talpey.com, 
+	miklos@szeredi.hu, amir73il@gmail.com, senozhatsky@chromium.org, 
+	chenxiaosong@chenxiaosong.com, zohar@linux.ibm.com, roberto.sassu@huawei.com, 
+	dmitry.kasatkin@gmail.com, eric.snowberg@oracle.com, 
+	stephen.smalley.work@gmail.com, omosnacek@gmail.com, casey@schaufler-ca.com, 
+	nanx95726@gmail.com, djwong@kernel.org, daniel@iogearbox.net, 
+	linux-security-module@vger.kernel.org, linux-doc@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, driver-core@lists.linux.dev, 
+	linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+	netfs@lists.linux.dev, ecryptfs@vger.kernel.org, exfat@lists.linux.dev, 
+	linux-nfs@vger.kernel.org, linux-unionfs@vger.kernel.org, 
+	linux-cifs@vger.kernel.org, linux-integrity@vger.kernel.org, 
+	selinux@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+	xiujianfeng@huawei.com, lujialin4@huawei.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-
-
-On Fri, Sep 25, 2026, at 12:04 PM, Christian Brauner wrote:
-> On Sat, Sep 19, 2026 at 12:06:04PM +1000, NeilBrown wrote:
->> Greetings.
->> 
->>  NFSv4 has an "OPEN" request which combines lookup and create and
->>  truncate and permission checks etc much like the open() syscall.  When
->>  nfsd implements this, I want it to share a much code as (reasonably)
->>  possible with the open() paths - in particular I want it to use lookup_open() 
->>  and so that it uses ->atomic_open() the same way that other code does.
->>  (Longer term I want to make some locking changes and having all the code
->>  central makes that easier.)
->>  vfs_lookup_open() is a step towards that  but it isn't quite ready yet.
->>  This series aims to make it ready, then use it.
->> 
->>  A particular issue is that using __O_REGULAR exactly meets the needs of
->>  nfsd (it doesn't want to open anything else) but the errors returned by
->>  __O_REGULAR aren't what nfsd needs.  nfsd needs to know if it was a
->>  directory, or a symlink, or something else.
->> 
->>  I don't think __O_REGULAR should cause symlinks to result in -EFTYPE.
->>  If a symlink is found, then it should be followed.  That is what
->>  happens with filesystems that don't support ->atomic_open, but some
->>  ->atomic_open handlers return -EFTYPE for symlinks when __O_REGULAR is
->>  present.  I think that O_NOFOLLOW can affect how symlink are handled,
->>  but where possible it is best to just return the symlink to the caller
->>  and let it figure out what to do.
->> 
->>  For directories, nfsd wants EISDIR rather than EFTYPE.  It may be that
->>  user-space could benefit from seeing EISDIR too, but that is a separate
->>  issue.  So I want ->atomic_open to return EISDIR (if it returns an
->>  error at all) rather than EFTYPE if a directory is found.  VFS code can
->>  then map that to EFTYPE if needed.
->> 
->>  So the first few patches in this series improve the documentation for
->>  atomic_open and then make changes to nfs, gfs2, ceph, cifs to better
->>  match this documentation.  I would appreciate an Ack-by (or whatever
->>  else might be appropriate) from fs maintainers for those.
->> 
->>  Subsequent patches make changes to vfs_lookup_open() and then to nfsd
->>  to use it.
->> 
->>  A significant change here is that opening a file with
->>  O_NONBLOCK|O_CREAT will result in -EWOULDBLOCK if a delegation
->>  exists on the parent directory - currently it blocks.
->>  Jeff - could you comment on that change (07/14)?
->> 
->>  There are quite a lot of changes here since my previous post,
->>  particularly the changes to various filesystems.
->>  I've stopped trying to return the dentry from vfs_lookup_open()
->>  in the error case - no-one liked that.
->> 
->>  Thanks for your time,
+On Fri, Sep 25, 2026 at 11:33=E2=80=AFAM Christian Brauner <brauner@kernel.=
+org> wrote:
+> On Thu, Sep 24, 2026 at 06:48:19PM +0800, Cai Xinchen wrote:
+> > This series adds two new Landlock filesystem access rights,
+> > LANDLOCK_ACCESS_FS_READ_METADATA and LANDLOCK_ACCESS_FS_WRITE_METADATA,
+> > which control access to file and directory metadata such as inode
+> > attributes (mode, ownership, timestamps), extended attributes and POSIX
+> > ACLs.  It picks up the work from the "landlock: add chmod and chown
+> > support" series [1] and follows the coarse-grained grouping discussed i=
+n
+> > that thread [2]: instead of separate chmod/chown rights, metadata
+> > operations are grouped into one read and one write right.
 >
-> Neil, I'll take the vfs specific fixes onto vfs-7.4.lookup and then nfs
-> can pull that all in?
+> This is mostly fine for me. @Michael, for the fs side of things I would
+> give you a stable branch vfs-7.*.shared.landlock.path that you can pull
+> once this is ready.
 
-There are outstanding review comments on the NFSD patches in this
-series, but once those are resolved I can merge vfs-7.4.lookup
-into nfsd-next and apply Neil's work.
+This is in my queue, but I haven't reviewed the changes yet.
 
-Let me know when I can merge your topic branch.
+@Christian, I'm guessing you will merge patches 1/12, 3/13, and 4/12
+since those are the VFS changes?  Once you have a branch for that, and
+we have all the necessary ACKs, I'll merge the LSM changes in 2/12,
+5/12, 6/12, and 7/12 and then Micka=C3=ABl can merge the Landlock patches.
 
+Are we all okay with that?
 
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+--
+paul-moore.com
