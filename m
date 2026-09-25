@@ -1,98 +1,108 @@
-Received: from mail-oi2-f11.google.com (mail-oi2-f11.google.com [74.125.231.203])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A6F463793DC
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Sep 2026 15:55:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.231.203
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790351749; cv=pass; b=mwmjLP7AmanMyin+JwinancOz7mlIjz/AsP0pfj0V0oDjcFZfXUmDwLoLuJOaNljCApGFrzbTo6seSOJHV0OGWetBLSXaqzIMSv8DiquIUyYAWdZkhNOIzotkwvI4/pkQmzeP0FPznCez9KwYacBKEIy/ZdUhHyXuF/Zb8rIUOI=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790351749; c=relaxed/simple;
-	bh=fNEDZ8HWgIsZwtF0GmCwTLByGY4becmkdcVSNKAdeJc=;
-	h=MIME-Version:From:Date:Message-ID:Subject:To:Content-Type; b=NZwacwkq0OTZg93kaOO6u5mfQ+sabwCXoKi9/M6+zv2832dn1Ym+6rPM40l2G90cdiqoEVqowLMOCBd0ajFfw8ESDfJ5JCyZHaCLML7MjdygZN/bf5w95cHhVeULHmfsFfMABbkvz9xYVQMQaMeX66vwU0NbUzN2PXr4iv4zflk=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=TNEswJwU; arc=pass smtp.client-ip=74.125.231.203
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F20454D5993;
+	Fri, 25 Sep 2026 16:04:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1790352259; cv=none; b=eF0RSI3VCoBhav8+7zRnFCPjgzIbmMiH3TD18dgpqVszeBGxzU8JPXsjvf9hJG9NPHVSjZVzIJPTYcIutahjQnQkA3LgI6Q8JWYUEw42/jid2D4k243GBKyVShCIP/w4TuYHvPgiSanpuX71HfPIkWaIV+MqQr4QSn53U2fCdxs=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1790352259; c=relaxed/simple;
+	bh=IZ4F6iel9CQYqqk/dvStAas9CFSg4V10BDkGilw6Aw0=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=MmR/FaFVO5tNXbCjoHNej+oPJOvJnbEOpzor8FvqnZ+DA/v9Yh7jfLGTyrqTZadSyCGcZVNZvEEmaVKRf0rzjGqyXLaFRWAXXX4g4Pq4NvfyqneMXA6B6gXzeuZGTbAstH+dnl1vXlPM3KTNRuIQ1IISPbjPA+8eYPnThudZAP0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=StglrGOe; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TNEswJwU"
-Received: by mail-oi2-f11.google.com with SMTP id 5614622812f47-4c112aaaee4so373813b6e.0
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Sep 2026 08:55:47 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1790351746; cv=none;
-        d=google.com; s=arc-20260327;
-        b=nEdHSfzfhXL5sq/xNGXOx18hS2xXK7ZnOJT09GXriyYmdCh4H4Gi8JZ6AS5xTLZR+x
-         i6ZZJ+10UUP8F7ZhhEFpyIZREIZxZkVQ/07HYPVsA8iYHlGNAjLqE8w1v8TF0azkTsKu
-         BjxSVqhhCyhuiRD4lJN9hZ4FTbF74S+l+Rc4Yr7nETfRd/tGsUnMo4lMzxozQvtglqKc
-         eLvpjS65OuPdm3rXsyAypJDuE8owGLYilLjwobJ4GuGKYOaq3K/fiL2v6aMTuyqs+d3m
-         lwwz+zepWtAVK62qHq111XubRjAg0mgOokvXP6AD2UDvWVVUr1lYglfwy7/WlPzAOTbs
-         insg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=to:subject:message-id:date:from:mime-version:dkim-signature;
-        bh=ioxdiZmWaPzqzijm9AOPCSSjM4t1R+JDuC6raTuXsUc=;
-        fh=A3pMOUK00huGibGCZBFsLekFLVbB5hHGKjUNNKwO+5E=;
-        b=Y/49AepWeslYzMgNSR46dMRMd0IQDcSo6DauCW+QxCIqNi8vPq79bFzJrAbzWLp6/o
-         iBuDvVYk241/2BU3CvSZ9FiWpzwhkvRkP3x35puvzgqjHXeJ9/aycHUY7sHmyMaf6saN
-         NbywyHxv16oNNZmXb0NoUQoPG12rFQVIGAuM9/c2+wlOYylnHeqAUc518xJRoU2VrIT6
-         vBbSGiMpR/nIUKRAgevWPz0lpLTiO8TyAxGSDduOrTBytg+a9PCzbUlwWF+G7pBKNIbO
-         xxUna3wogeGq5NmNN0qobLkDlbt2KxTg0GF5xpSIIgo/g6fFEQiTJvJUqOvlsA3zIZbj
-         zyuA==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1790351746; x=1790956546; darn=vger.kernel.org;
-        h=content-type:to:subject:message-id:date:from:mime-version:from:to
-         :cc:subject:date:message-id:reply-to:content-type;
-        bh=ioxdiZmWaPzqzijm9AOPCSSjM4t1R+JDuC6raTuXsUc=;
-        b=TNEswJwUHukzCTlQd+WGT9k0E6gLo212AxKJll9r+cuwmC89MARl7NT9XuJoZdjHGF
-         5MDxD75su8dLkrVyxtxj3Bq8J/EmwoRdRx2w1sExJqu6o5uX5qb9iXz6VW/1skHey+lp
-         KkBQm1GjXPMozyWQg+Rs1QdPWyc4TwkJAHWKfmuJsOKFIk2z4LTXLcnoc1uIXfuSxGmI
-         PYBM1BIYVv0oC9Qmaacma+6NrnKvOyHMbdPNAoq1gZRx0Sm6bM+g6JHrtsRBfOw+fGBp
-         gAlwMx+TcjETHBPeOY1ITjqOHqr8RkgELyViae8dPH5Aj7iqmkSbJu8x7FIfSDtOCQKy
-         OlYQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790351746; x=1790956546;
-        h=content-type:to:subject:message-id:date:from:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=ioxdiZmWaPzqzijm9AOPCSSjM4t1R+JDuC6raTuXsUc=;
-        b=XWTp65yXxplS6UNOHTv6Ogfdk7pALvID6HDEzWns8oNzJZJqRAFxhPSPexoijSO6Iw
-         xoN3mAo2wU9C8eLplaHXcDpTN/WGLkkZLbvMphjHqO7705etlRpK9q6cnCNvS7ciQ8U8
-         dT1SNdLivHyDQ0E8T1agsYQUkdm7aXS2hKUoLI31iNykjQ+uBMhnV9qz2oOfrAkgpSSz
-         z8bvT8IeSwKNn1bt9OxTRQBk96v6XUzYLbVdK3PjAZ09b5pSrC7UdVV9sba8oOGfipIg
-         02ZAEVIfqgufZWLXKRsOiYGCARjPdUkpauK9gcQO546XaFF1YrYMNOGYH2Oclcla3f7X
-         EyEw==
-X-Gm-Message-State: AFuF++nB96nzXC5ZniiabqlTaQ06DkILEeq6DFQGwBp5Kkbz/waO7uYK
-	+rkdVKKyKilgrgWlUQKw/RUJMZoYotF9aNf0uGxT82GnSMsSMkUdMe0XvusWf6sJFVerRqaVLhG
-	9P1FRhjCpIb1otUqjqtqld/CLfzVBcvSqs34nEu19mYIUh5A=
-X-Gm-Gg: AYBFou0RXwPEERcRKMD/v7lM6k/2qPlWVQnbALebU/E7YYV4MVXxcmEEMKCQEjvhSuF
-	TC566Gg+tbhV4I8xqnmiXFoMYedg2gggP5BVKBwNqscoKJya4zS/HLbFfhfkNMItdCSBHj4uMao
-	Zq9Hqjf9MUbgKL6GIY4cSqmWUSt3dsI7FQPF4gwufzIxUoDZxwP9hf43lfS6SLXG5Z72Pfie59q
-	IVvZozqsKWh78Q0pH2sCe7QiP2d594HkpTdjrOK9eLZkTPq8HVrvclhXpoRVqaLwe7HbGk/KUzn
-	oaxxZPtEj+WM0KCFUo2CSqQC0+Wu72/98fDf4Agufe8Jh+oTvwGlZCE=
-X-Received: by 2002:a05:6808:4494:b0:4c3:440f:d7e with SMTP id
- 5614622812f47-4d72c042e68mr6278643b6e.13.1790351746275; Fri, 25 Sep 2026
- 08:55:46 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="StglrGOe"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E862A1F00893;
+	Fri, 25 Sep 2026 16:04:10 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1790352255;
+	bh=xxKiFFCryCgBG+J9gLCduvIgJfvaHBPdrbmundnTLmM=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=StglrGOep6ggfNeYlGrPooEOQ3IynWTiiVN8I5HxyD/o7tfrYcBSYaPMR0PJY+SSW
+	 gjH7cQkFI2CVkFLGDUyoY6qUnIHcDk8Da+xD0kjVmGAx8oWKaGtKMvaToawy1Y+lF9
+	 khVhbzzv60Nnf9cp1eH5oVv470PZ8RQSegqGFyuOFyv6jZ3feeP9sFoUpPi1PPzZ+4
+	 I7lJK/THcXYhhlr/Q/JEpUkrzr8RTp9e2GMzq6KkQneSTPgWkE60m48dzRUGpQufPR
+	 G9ilaHZBSlHz3mqTUcMLhvdTUc60a302yoFW8uKC5MFydpGX7X2w++deM3hmzt5VPc
+	 ZMTva6F1R9tEw==
+Date: Fri, 25 Sep 2026 18:04:08 +0200
+From: Christian Brauner <brauner@kernel.org>
+To: NeilBrown <neil@brown.name>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, Chuck Lever <cel@kernel.org>, 
+	Jeff Layton <jlayton@kernel.org>, Jori Koolstra <jkoolstra@xs4all.nl>, 
+	Mateusz Guzik <mjguzik@gmail.com>, Dorjoy Chowdhury <dorjoychy111@gmail.com>, 
+	Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+	Andreas Gruenbacher <agruenba@redhat.com>, gfs2@lists.linux.dev, Ilya Dryomov <idryomov@gmail.com>, 
+	Alex Markuze <amarkuze@redhat.com>, Viacheslav Dubeyko <slava@dubeyko.com>, 
+	ceph-devel@vger.kernel.org, Paulo Alcantara <pc@manguebit.org>, 
+	Namjae Jeon <linkinjeon@kernel.org>, linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+	linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 01/14] fixes for vfs_lookup_open, and integration with
+ nfsd
+Message-ID: <20260925-diavortrag-zueinander-komitee-6bb18933f480@brauner>
+References: <20260919022441.3305170-1-neilb@ownmail.net>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: Jasmin Dave <jasmin.dave.math@gmail.com>
-Date: Fri, 25 Sep 2026 17:55:10 +0200
-X-Gm-Features: AclHuK_YqUKd65Oo9dyMCkeywcPIXRiAwTEDCk3S4jdnkeX1ZvlaTw1FO8WIf4M
-Message-ID: <CAHvsQGPXA+boPzZ_87XoxFFSn8-2TNhMXnmR9Rd+jB9dFcF+Kg@mail.gmail.com>
-Subject: Multilayer auth with Linux NFSv4.1/TLS?
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <20260919022441.3305170-1-neilb@ownmail.net>
 
-Hello,
+On Sat, Sep 19, 2026 at 12:06:04PM +1000, NeilBrown wrote:
+> Greetings.
+> 
+>  NFSv4 has an "OPEN" request which combines lookup and create and
+>  truncate and permission checks etc much like the open() syscall.  When
+>  nfsd implements this, I want it to share a much code as (reasonably)
+>  possible with the open() paths - in particular I want it to use lookup_open() 
+>  and so that it uses ->atomic_open() the same way that other code does.
+>  (Longer term I want to make some locking changes and having all the code
+>  central makes that easier.)
+>  vfs_lookup_open() is a step towards that  but it isn't quite ready yet.
+>  This series aims to make it ready, then use it.
+> 
+>  A particular issue is that using __O_REGULAR exactly meets the needs of
+>  nfsd (it doesn't want to open anything else) but the errors returned by
+>  __O_REGULAR aren't what nfsd needs.  nfsd needs to know if it was a
+>  directory, or a symlink, or something else.
+> 
+>  I don't think __O_REGULAR should cause symlinks to result in -EFTYPE.
+>  If a symlink is found, then it should be followed.  That is what
+>  happens with filesystems that don't support ->atomic_open, but some
+>  ->atomic_open handlers return -EFTYPE for symlinks when __O_REGULAR is
+>  present.  I think that O_NOFOLLOW can affect how symlink are handled,
+>  but where possible it is best to just return the symlink to the caller
+>  and let it figure out what to do.
+> 
+>  For directories, nfsd wants EISDIR rather than EFTYPE.  It may be that
+>  user-space could benefit from seeing EISDIR too, but that is a separate
+>  issue.  So I want ->atomic_open to return EISDIR (if it returns an
+>  error at all) rather than EFTYPE if a directory is found.  VFS code can
+>  then map that to EFTYPE if needed.
+> 
+>  So the first few patches in this series improve the documentation for
+>  atomic_open and then make changes to nfs, gfs2, ceph, cifs to better
+>  match this documentation.  I would appreciate an Ack-by (or whatever
+>  else might be appropriate) from fs maintainers for those.
+> 
+>  Subsequent patches make changes to vfs_lookup_open() and then to nfsd
+>  to use it.
+> 
+>  A significant change here is that opening a file with
+>  O_NONBLOCK|O_CREAT will result in -EWOULDBLOCK if a delegation
+>  exists on the parent directory - currently it blocks.
+>  Jeff - could you comment on that change (07/14)?
+> 
+>  There are quite a lot of changes here since my previous post,
+>  particularly the changes to various filesystems.
+>  I've stopped trying to return the dentry from vfs_lookup_open()
+>  in the error case - no-one liked that.
+> 
+>  Thanks for your time,
 
-we have to add multilayer authentication to our department NFSv4.1
-servers. We already deploy krb5i/krb5p, but due to gov requirements
-around NIST2&friends we have to add another layer.
-
-Can NFS over TLS help with this? How can I set this up?
-
-Thanks, Jasmin
--- 
-Jasmin Dave - Math (Quaternions!), Coding, Simulations
+Neil, I'll take the vfs specific fixes onto vfs-7.4.lookup and then nfs
+can pull that all in?
