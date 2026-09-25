@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 72BD74968E0;
-	Fri, 25 Sep 2026 19:16:39 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 163794E2F07;
+	Fri, 25 Sep 2026 19:16:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790363800; cv=none; b=e/eNY5a4jzb0PNioJqC8+yUHBQQVpGs71qtpKRzEMKqGYN0//bZF+9VqOAvEWUvn7MTq6HPVDeVChHTksNKfpg6lILcQ/Dev+cp/LSqh4sWGFBh/eYZXcN9SFICz77xOmHLbTl8ZtuZtwTMUjc3bjHKE+edP2h+g0yE63cSN6QM=
+	t=1790363802; cv=none; b=RcagKU5S9cEtT8i+7DzJzKgMlZsqzAmWIkLPl6JEKVQx3dTm2ikJEjkRgDib1dBT0fCu0sSNH1TvqQB+CiXEPq4wSmp6NPcBG2T+tuiUF1sk3d60rJ67ldaTr8fFfNiYWWiTkgDTk1WbYDNdFNjwCsohNqKJmiK6ZrjqNp6DMwo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790363800; c=relaxed/simple;
-	bh=FLfziQZLPnu6y3z2fWxofxw5KtIfaVhBmkfb5/S3Xb4=;
+	s=arc-20240116; t=1790363802; c=relaxed/simple;
+	bh=KBQ45uEsnPiS9q4BtxHEsGEJscvlRLmVHvTHnHFbsgY=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=MV5rIR5EjuziV/2pkzIKt5RkJdwI6OKEJbywZXdyRH05PK/wpFIVE8zR2kSEPbKcM//Lvg7M/c+S2c1UFN7rL9jdBiNP9f61+hS+hs0EqN4/J6dnx7HG4xmgKbl7tktyNVWDR8MTKM531i0oITFedgya0ozUGYTZ72BV9DMWe4I=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=iE36D90G; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=b5udWwn40FflNA93sUGARb3jxyfF25fnNWHOgBY5PM6j/ACFP5AnPJFUpIUCMIP1WRy8lMMotFgM2cI113njfVUgeLdnwubEXHGELt3Ant/pfGHiOkHI4HkMa7TtHAh3YJEziE/M+v907PFqvc5sPXFXgtkj4sP5RVeWdwTnSlM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=h7xB8zak; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="iE36D90G"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CBF0D1F0089A;
-	Fri, 25 Sep 2026 19:16:37 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="h7xB8zak"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 77CFE1F00898;
+	Fri, 25 Sep 2026 19:16:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790363799;
-	bh=PVvkiHtxln9Mn3ExYwHOY9OExYSN010VAj8STzkHraI=;
+	s=k20260515; t=1790363800;
+	bh=sSa7lUoM1JtWHx3tzZE/3Q9qFY63oIBNpQpRQV79Vlg=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=iE36D90GkOQ5VQGjlHSbA4qR6HwAHSYwNEJfndOmnlVrSkKpX0PHhlHO8qcUpL3Ay
-	 1FJiyWit5m2jwQSEEVNSQe5o3aJ+KGzzixFVbUlpqxCc9vVnPiVJQSzMYm3hns32ME
-	 MsjDdP8owOfhfjeBh6sHkmgdIMTykcDtZtcY3Vpm8eVDr8aN1/6HSe6sZLc93GkkGO
-	 H2nGS4dqasoWBrIQGqCBD5LgloPGxjwmD8kfxahqg8qVM7Me3VuaE6dX0T6DgqDvQS
-	 nFZcDTaFCOfgz/6SUs+BBWuOFPebxIJU/cZzW6xXHklKERXXCl5OtrP6VTLG0uYmte
-	 mTTOMGeqqq59Q==
+	b=h7xB8zakKU0vmv2mUhKpjXFNvf6FTiH8CpoeAl1U9F4VaOFdIFeq3p2ZNoqX2WIDm
+	 gb5KBlPnf2wxJiNFjY20NkUVxMGCWkmwphf81XIra7qSYaT//gM0TO836xTRjY8K+q
+	 9DM59SKm9o9SkEealfnPRpOajS7nst+ejtBFuhvDoEa7o2Kc11oGxdfivjv3Bivd/S
+	 xlSPZOAztAtXHJ0+MoQSLjzOzJsCQUpmiivgEjGqdjh+ujKj/2yinUeOSIIxpQUfvW
+	 mDCXQHjLCtoECK78oqCwA6ATAxAqxTh5kqw8G91KWHtcw0hXn+rhjt74ZBLv4jpAuF
+	 a+aK0Bpap/MjA==
 From: Chuck Lever <cel@kernel.org>
-Date: Fri, 25 Sep 2026 15:16:23 -0400
-Subject: [PATCH RFC v2 1/5] NFS: name the init_nfs_fs() error labels
+Date: Fri, 25 Sep 2026 15:16:24 -0400
+Subject: [PATCH RFC v2 2/5] NFS: allocate the .nfs keyring per network
+ namespace
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-nfs-mtls-identity-v2-1-aa3ad17dd6c8@kernel.org>
+Message-Id: <20260925-nfs-mtls-identity-v2-2-aa3ad17dd6c8@kernel.org>
 References: <20260925-nfs-mtls-identity-v2-0-aa3ad17dd6c8@kernel.org>
 In-Reply-To: <20260925-nfs-mtls-identity-v2-0-aa3ad17dd6c8@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
@@ -52,126 +53,215 @@ Cc: linux-nfs@vger.kernel.org, keyrings@vger.kernel.org,
  kernel-tls-handshake@lists.linux.dev, netdev@vger.kernel.org, 
  linux-doc@vger.kernel.org, Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2220; i=cel@kernel.org;
- h=from:subject:message-id; bh=FLfziQZLPnu6y3z2fWxofxw5KtIfaVhBmkfb5/S3Xb4=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqtsiTMIr2nQ+5Qn4x+cy35dFtl0w5uHHSz8rCQ
- 4wJe8xoNIuJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCarbIkwAKCRAzarMzb2Z/
- lwn9EACAYEGXPBIGuSAJa2ROFKDYJMJ5jVkihh+fED8Ij92KV/oFfV4rhtjKQwsNxexuhNC7OH/
- 41O5peAuu+EQdeUD9ULtxXHnj7o98pUnOSMiThaQbGdrsTBAL6Dbqyj9vzxU84CNk/FyZsXunn1
- mR7f2iAJN221TJjWZ+a0YTnshMJp5qdWazE8cNplr9V8PttxVsFBd9ZkuEtojbbWE2BUGXKcNM3
- pCbBgX0+yk8/OGdaVTe1vVNQS75LuiAjawfyl0men4L3JWyuOjr1CxuQIEXRkQKlZdObiKZOf8z
- 2E+w83ZlqdRHnPDdvqiUL/pU9AZ2smNrJh2PYyzL6jqMV1cnrCl+cfZj35T7gvCPL8FVGyEQtJm
- xAinRgpnV38Jh6/gH6IVxMevPCiD0vPSvKpT3k1NDf6SmzS0YaO870ojfboBOy0mf/QlVdgMpL2
- HNrLm6iZRW74TnGej2ndLoJjBVyg0fsGzi9hAeU41LPkRkb31WcgU5vWMb1PlvZoEtvAy7z/vjI
- +VJNWzk/Ujc7m2/vhfTR0PxxMS2fM3pxV54ldYNn0rvS4t1ngbLmKdCcUzhLAB0Tw0quIdv1fTe
- Dqneu7cI6ZzzRZLlvQnguRDmJrAXi1zVAYsoYotKDmlOZ69FiRAz5OmFcVzEXLtUtyxUN8qElAm
- Bn7jTfvTzcdSDUw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5131; i=cel@kernel.org;
+ h=from:subject:message-id; bh=KBQ45uEsnPiS9q4BtxHEsGEJscvlRLmVHvTHnHFbsgY=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqtsiTfZ03+4rWe1K2ZnzhZhnbpiUQvEFYwOT7y
+ krdAa9qjZ2JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCarbIkwAKCRAzarMzb2Z/
+ l4OHD/4833y49PBQ3P56Ugab481LWMcDRJl7MLyuORF/kr9ZdPC+nqzM0Ed+94qJZgndJ/dW4CR
+ ZrySpsOPnTbtQEgatZD/UuSH3myIJUs7FlSh8QIjLHWAPEUhgizdr1BBYlkz8FEaENlugOE/bj/
+ jN38lk14frA0DgoNap/ixgmx/kqo0gLztNkUEJHFvZdZ7OKTuupe+xUyXPCgogZUtVOYlALTZln
+ lbpn4tot569TIwGksnypc2zEdUyqWVZIztDze9oEC07RsCdIilKU5RTo/+MEZ4qbHxEm6LCKqB7
+ cA0nsx8U/HJJBjUwfDN2qAdfrhZ0lbiS70oY5fRfmH5wYpwxGByH/GQ/aWSIpN3GFtdAmxU3bUU
+ OWeUX5DBnZSOdfnn4rrKhZuniuZWKDE1bz/nYAbc9CUT5cVDJ2zb14EorXGKMXlkb9DvErkZ8OU
+ Llc6QRBtRyaDhH8IB6Dk43NuIMa+INPfSLk7WMJI9Zz/87FvVzgJ/q+O/X8T+v1DibkRn99Z1eq
+ o8qqW7rKY67qUvDrUPXui8D9My4Lr5OJgh4MK+U74QDWFY1u9zN4AOseen4+euh9ogA4vxNZMG6
+ DZ8qKJvS98/smZEy2tUC6qbQSUZl4fZwGZBACPQUnJ2iI34SwcjIlYb+gf+7qfDL2BffDtqpqSi
+ d1Cu1BehG1vO/MQ==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-The unwind labels in init_nfs_fs() are numbered, and the numbering
-already skips out8, so a reader has to count the label block to
-learn what each one undoes. Inserting an init step means either
-renumbering every label below it or leaving the sequence out of
-order, and a goto that picks the wrong number unwinds the wrong
-step.
+Commit 87268f7a4f1f ("nfs: create a kernel keyring") allocates one
+.nfs keyring at module load, and nothing in the NFS client reads it.
+One module-wide keyring also cannot isolate x.509 credentials
+between network namespaces. Each tlshd instance services the
+handshake socket of one network namespace, so a credential
+provisioned for that namespace's mounts has to be reachable by that
+tlshd and by no other.
 
-Name each label for the step it undoes, as coding-style.rst asks.
+Allocate one .nfs keyring per network namespace in nfs_net_init()
+and release it in nfs_net_exit(). tlshd finds a keyring by name
+through /proc/keys, which is not namespace scoped, so each handshake
+request has to carry the keyring serial number instead. Allocate
+the keyring under a kernel credential rather than that of the task
+creating the namespace, so an LSM labels every namespace's keyring
+the same way.
+
+The keyring grants its owner every permission and everyone else
+none. Make the owner of the network namespace's user namespace the
+keyring's owner, so that in a container with its own user namespace
+the container's root can provision the keyring and its tlshd can
+link it.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfs/inode.c | 40 ++++++++++++++++++++--------------------
- 1 file changed, 20 insertions(+), 20 deletions(-)
+ fs/nfs/inode.c | 83 ++++++++++++++++++++++++++++++++--------------------------
+ fs/nfs/netns.h |  2 ++
+ 2 files changed, 48 insertions(+), 37 deletions(-)
 
 diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 3022454f7698..832923be43a9 100644
+index 832923be43a9..2b494fa5ecc0 100644
 --- a/fs/nfs/inode.c
 +++ b/fs/nfs/inode.c
-@@ -2722,64 +2722,64 @@ static int __init init_nfs_fs(void)
+@@ -2641,11 +2641,52 @@ static int nfsiod_start(void)
+ unsigned int nfs_net_id;
+ EXPORT_SYMBOL_GPL(nfs_net_id);
  
++#ifdef CONFIG_KEYS
++static int nfs_init_keyring(struct net *net)
++{
++	struct nfs_net *nn = net_generic(net, nfs_net_id);
++	struct cred *cred;
++	struct key *keyring;
++
++	cred = prepare_kernel_cred(&init_task);
++	if (!cred)
++		return -ENOMEM;
++	keyring = keyring_alloc(".nfs", net->user_ns->owner,
++				net->user_ns->group, cred,
++				(KEY_POS_ALL & ~KEY_POS_SETATTR) |
++				(KEY_USR_ALL & ~KEY_USR_SETATTR),
++				KEY_ALLOC_NOT_IN_QUOTA, NULL, NULL);
++	put_cred(cred);
++	if (IS_ERR(keyring))
++		return PTR_ERR(keyring);
++	nn->nfs_keyring = keyring;
++	return 0;
++}
++
++static void nfs_exit_keyring(struct nfs_net *nn)
++{
++	key_put(nn->nfs_keyring);
++}
++#else
++static inline int nfs_init_keyring(struct net *net)
++{
++	return 0;
++}
++
++static inline void nfs_exit_keyring(struct nfs_net *nn)
++{
++}
++#endif /* CONFIG_KEYS */
++
+ static int nfs_net_init(struct net *net)
+ {
+ 	struct nfs_net *nn = net_generic(net, nfs_net_id);
+ 	int err;
+ 
++	err = nfs_init_keyring(net);
++	if (err)
++		return err;
++
+ 	nfs_clients_init(net);
+ 
+ 	if (!rpc_proc_register(net, &nn->rpcstats)) {
+@@ -2663,14 +2704,18 @@ static int nfs_net_init(struct net *net)
+ 	rpc_proc_unregister(net, "nfs");
+ err_proc_rpc:
+ 	nfs_clients_exit(net);
++	nfs_exit_keyring(nn);
+ 	return err;
+ }
+ 
+ static void nfs_net_exit(struct net *net)
+ {
++	struct nfs_net *nn = net_generic(net, nfs_net_id);
++
+ 	rpc_proc_unregister(net, "nfs");
+ 	nfs_fs_proc_net_exit(net);
+ 	nfs_clients_exit(net);
++	nfs_exit_keyring(nn);
+ }
+ 
+ static struct pernet_operations nfs_net_ops = {
+@@ -2680,35 +2725,6 @@ static struct pernet_operations nfs_net_ops = {
+ 	.size = sizeof(struct nfs_net),
+ };
+ 
+-#ifdef CONFIG_KEYS
+-static struct key *nfs_keyring;
+-
+-static int __init nfs_init_keyring(void)
+-{
+-	nfs_keyring = keyring_alloc(".nfs",
+-			     GLOBAL_ROOT_UID, GLOBAL_ROOT_GID,
+-			     current_cred(),
+-			     (KEY_POS_ALL & ~KEY_POS_SETATTR) |
+-			     (KEY_USR_ALL & ~KEY_USR_SETATTR),
+-			     KEY_ALLOC_NOT_IN_QUOTA, NULL, NULL);
+-	return PTR_ERR_OR_ZERO(nfs_keyring);
+-}
+-
+-static void nfs_exit_keyring(void)
+-{
+-	key_put(nfs_keyring);
+-}
+-#else
+-static inline int nfs_init_keyring(void)
+-{
+-	return 0;
+-}
+-
+-static inline void nfs_exit_keyring(void)
+-{
+-}
+-#endif /* CONFIG_KEYS */
+-
+ /*
+  * Initialize NFS
+  */
+@@ -2716,13 +2732,9 @@ static int __init init_nfs_fs(void)
+ {
+ 	int err;
+ 
+-	err = nfs_init_keyring();
+-	if (err)
+-		return err;
+-
  	err = nfs_sysfs_init();
  	if (err < 0)
--		goto out10;
-+		goto err_keyring;
+-		goto err_keyring;
++		return err;
  
  	err = register_pernet_subsys(&nfs_net_ops);
  	if (err < 0)
--		goto out9;
-+		goto err_sysfs;
- 
- 	err = nfsiod_start();
- 	if (err)
--		goto out7;
-+		goto err_pernet;
- 
- 	err = nfs_fs_proc_init();
- 	if (err)
--		goto out6;
-+		goto err_nfsiod;
- 
- 	err = nfs_init_nfspagecache();
- 	if (err)
--		goto out5;
-+		goto err_proc;
- 
- 	err = nfs_init_inodecache();
- 	if (err)
--		goto out4;
-+		goto err_nfspagecache;
- 
- 	err = nfs_init_readpagecache();
- 	if (err)
--		goto out3;
-+		goto err_inodecache;
- 
- 	err = nfs_init_writepagecache();
- 	if (err)
--		goto out2;
-+		goto err_readpagecache;
- 
- 	err = nfs_init_directcache();
- 	if (err)
--		goto out1;
-+		goto err_writepagecache;
- 
- 	err = register_nfs_fs();
- 	if (err)
--		goto out0;
-+		goto err_directcache;
- 
- 	return 0;
--out0:
-+err_directcache:
- 	nfs_destroy_directcache();
--out1:
-+err_writepagecache:
- 	nfs_destroy_writepagecache();
--out2:
-+err_readpagecache:
- 	nfs_destroy_readpagecache();
--out3:
-+err_inodecache:
- 	nfs_destroy_inodecache();
--out4:
-+err_nfspagecache:
- 	nfs_destroy_nfspagecache();
--out5:
-+err_proc:
- 	nfs_fs_proc_exit();
--out6:
-+err_nfsiod:
- 	nfsiod_stop();
--out7:
-+err_pernet:
+@@ -2779,8 +2791,6 @@ static int __init init_nfs_fs(void)
  	unregister_pernet_subsys(&nfs_net_ops);
--out9:
-+err_sysfs:
+ err_sysfs:
  	nfs_sysfs_exit();
--out10:
-+err_keyring:
- 	nfs_exit_keyring();
+-err_keyring:
+-	nfs_exit_keyring();
  	return err;
  }
+ 
+@@ -2796,7 +2806,6 @@ static void __exit exit_nfs_fs(void)
+ 	nfs_fs_proc_exit();
+ 	nfsiod_stop();
+ 	nfs_sysfs_exit();
+-	nfs_exit_keyring();
+ }
+ 
+ /* Not quite true; I just maintain it */
+diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
+index 36658579100d..da0854510404 100644
+--- a/fs/nfs/netns.h
++++ b/fs/nfs/netns.h
+@@ -16,6 +16,7 @@ struct bl_dev_msg {
+ 	uint32_t major, minor;
+ };
+ 
++struct key;
+ struct nfs_netns_client;
+ 
+ struct nfs_net {
+@@ -36,6 +37,7 @@ struct nfs_net {
+ #endif /* CONFIG_NFS_V4 */
+ 	struct nfs_netns_client *nfs_client;
+ 	spinlock_t nfs_client_lock;
++	struct key *nfs_keyring;
+ 	ktime_t boot_time;
+ 	struct rpc_stat rpcstats;
+ #ifdef CONFIG_PROC_FS
 
 -- 
 2.55.0
