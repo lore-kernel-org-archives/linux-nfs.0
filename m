@@ -1,73 +1,71 @@
-Received: from mail-dy2-f12.google.com (mail-dy2-f12.google.com [74.125.229.12])
+Received: from mail-pz2-f39.google.com (mail-pz2-f39.google.com [74.125.228.39])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24BC7298CC4
-	for <linux-nfs@vger.kernel.org>; Sun, 27 Sep 2026 05:17:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.229.12
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7F9463D410C
+	for <linux-nfs@vger.kernel.org>; Sun, 27 Sep 2026 09:45:39 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.228.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790486235; cv=none; b=Q7KbNcf7nuuhP+HYaXrn41+8IU57q4A5zYV9yfedAEKrhQ7trXl7G96I86bcyuJJQ1wkSvQPZDBD9c1aRrOrXQIpbjTLXYJrubqDGBrGQXztVe5kIXZJi6OS1INnmGuOujIrkAU6ySHB9s/LrzUAEh+4R4diR2wUjApiwXw9Eko=
+	t=1790502341; cv=none; b=oL+OxyxglStK/lRdqtjoS35OXPSBJ1BMc6Yzg5sZxHKvDFPJpislPwSBaNd/DiFoc37l/39jlLOlwE06KhD5qtdIeLd8OEFZEps/VWR70lp4b6EnHcV1GRFVOxCEX5GqKDRG+xfhxdnS7zG75lPJobqLjzRZkwfAjtG+gQlJna8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790486235; c=relaxed/simple;
-	bh=NU6QRcYWbC6ozvlXfNRptThKfI89r0/f8cNx0Vdf9+Y=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=B2beRi+bmNZrWV0X5tC8cTneXh+kRTw8qxopmXyflGFntVeyE+vfoxZRUyVfIh23Sd6WFzx+yy7QqIZ6/vZabNj8eoo+dpOjykfqD7wzCk0yjtp28MHK9WOgXp9ZTzzQKFdtGbYMQRkvmuV4/REAf3v8n+CgYiyShYla+utCymc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ASFgvPH0; arc=none smtp.client-ip=74.125.229.12
+	s=arc-20240116; t=1790502341; c=relaxed/simple;
+	bh=tax8JMiviEXQQXZx8r3+hVtfjUs+GKtkWSm4PU5xCJo=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=bg3Ljyj7hBYSYxN4ue2GdNwRuwGmbkD4UdzfTWuiHPVEHMatQJnwt2/phHKM5aip5+2SgEOUSXMN2CG1/OHwykp2lGMKJtj4VOoPuF2qLf7cgs9B+TrN+Jx4OBNZwojSCqNcMGDAxTQ95Bu4CDJsMpvWmcR6boSWC4XVzcc2Kt4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=YaPiCJAN; arc=none smtp.client-ip=74.125.228.39
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ASFgvPH0"
-Received: by mail-dy2-f12.google.com with SMTP id 5a478bee46e88-328664c2da6so1565365eec.1
-        for <linux-nfs@vger.kernel.org>; Sat, 26 Sep 2026 22:17:14 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="YaPiCJAN"
+Received: by mail-pz2-f39.google.com with SMTP id d2e1a72fcca58-88103e47f72so1044589b3a.2
+        for <linux-nfs@vger.kernel.org>; Sun, 27 Sep 2026 02:45:39 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1790486233; x=1791091033; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1790502339; x=1791107139; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=XP6+qvN7EZZEEWS6mx/6BLwbaxX5epJwC8MSjQPD2V8=;
-        b=ASFgvPH0Hq8dvFeHdrZrdRmuPYXXCOgW/wj+By/XziMBwPhLv9tDVclyth0GTNoE/5
-         hGQpUWnJuJC9S5cU/Od6iUWwn0MPni4w3qfaHSIaJ7IYdxjY3rtVjB1vZwjASbQls49S
-         EG0In6ksU8wc7YVBSRtrD1Me8qPT3ST24UjOiYabIt5TF40HDhGJsy6iU3Za2mOcaW3F
-         LVhNAuNUyXyCwrsuU/OrlEALCK+ftNZLzA/B+RSlTXDtm6swjsFuB24Eos+GygGj+Q/Z
-         GK5vAV4g9mxsQLSEydNKP/Rfmzjm5Af/sgOG3+/iGj1ckYhZLa09/JJm1fW1GGIJ6dUT
-         pCsQ==
+        bh=WW03v5grmvf8mOWn+UC1EtDiLQQpdA7r8LHu21l4O94=;
+        b=YaPiCJANHqirSJ6pn0t3fsx59mZ2lfQeMrtEiFgu9OtYc8v1Sm4Pwnf+NICNfAYhCH
+         3LUcpVC8EcPRr+AQYC/ADdJe4TVEbrBoptYuINucgFgLMDaXQwarvSSi1Gc+diuaYHNa
+         X6MzcAFdpUxDMG6fzEEH6lm6WtnIJr+PaHtvAIajYI43cW4GbtCbqITtMe3AHgIfSxat
+         iCR11Om4Ue1uiP7R10qpG4TtDQzSCdf76ikuPQMZK91YTuuK/gZZZtc2m2A0jul0pDcX
+         RGoBQEz+aCmyizt/M1Srl0lOIWNYKkl48iX04O94yYsJc7u/5y8XYb02Ve6sHNrQcitK
+         cl0Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790486233; x=1791091033;
+        d=1e100.net; s=20260707; t=1790502339; x=1791107139;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=XP6+qvN7EZZEEWS6mx/6BLwbaxX5epJwC8MSjQPD2V8=;
-        b=C950rtHSxRYPXtjlB8M92ZVvO7ViE9Wpp7N+cDG9/FKeWNwC7dRSMWfojgLbp3kmsy
-         JpQ5QDSp8sxN+kpdMyTIPxF5hu5nvDTVqT4+VonGA/7DA1/BW0yk9OoraG8BrHiz3puu
-         HWx1xVodxhPxIbsabt+0T+Q2rllhQHyqFzpRhDIpW3yktfmq9BS/QEBSuHuElNFxGaPv
-         xl0wV1emFySFjYI9JKfFWrImw6MIZjycxslontnOscxOWqBTpU32ZKaKB6NnaU73Nf0H
-         j6Kg2gqE0SW1oVaJaZ6Fmit6w0oowodYjpLVM2MVJkjfAjlPSVBllBZ3yR9yWOL+5qpi
-         h3AA==
-X-Gm-Message-State: AFq9FYJNpqHIE2dUGdx5XtfT8LtaaJEXdGmdI72/24Kv13ewy5Zz6g+n
-	y6vFD0o7qkeBFVfM3HxA1eSb91vxA3HqHyZBYwc6s0ITEqrcNTcIlAO9Rd5MqYjk
-X-Gm-Gg: AYBFou2wGyYVSSLc0UuuejWiWlkGgkWHi9LVYRZBKQO1TICYgPz5hRodDRYiWipW1tg
-	J7uCz6V1QF82EfFFDqkCYLOCxBB7xlH+HJs/NsDeOjTpoHythPt7bfdsRlf8czwwELUU/XRv/1i
-	fWdjfxgEV/C6Ab8A11nRI/+pfo5G7GwFFhLkCNu8jHkCazFa6F1MJ2vAGIefBowk85FzBP5T3mx
-	M568BcKVUK/SS5APruGZA5I9bRKi9pU2OmrX7HUb6nvtXTSDm5D/7K4XZXKOGP39XWFgI7nkyWB
-	K+noY1bDrbrewEmvXispSMvtQkw6JljAoEOcn8eXPTWr7P7EzHAH4bLD7SWwpgbji1BVJzIelY0
-	3lrBfk7EuqoVzlvwX4j5hZfAnDazheyUEpdIUJI31VAs7/60YWrEuRjhO4zcUj4+kVRbc96dfat
-	ibKbRCGOl8uTVo7dkWNhCEa9NgynFI3EKF7AWC2lX/WO5ObjuXlIim4ElIY8m+xhK4bO9UjkJ1q
-	uNPzTx0O2ZNcVyp2qVNwiLVp0ekkNyC36LVNP9o0yjA60nsOU0ihXLAviAXNaQID0JLeAvoQOS9
-	rvOjFqMlmaaZbK+Gb7xvvJa0wqJmyLLVnZYxqY6ysM5VfZWqpcflBkSgREifPV+CEU84ZOUoIBI
-	=
-X-Received: by 2002:a05:7301:fd8a:b0:33e:c164:b5d7 with SMTP id 5a478bee46e88-3426f9c09a0mr5078028eec.3.1790486233118;
-        Sat, 26 Sep 2026 22:17:13 -0700 (PDT)
-Received: from FT6N242TWK ([223.181.116.210])
-        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-34141d2fe4bsm20283753eec.4.2026.09.26.22.17.10
-        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
-        Sat, 26 Sep 2026 22:17:12 -0700 (PDT)
-From: Shashank Mohan Jain <jain.sm@gmail.com>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-Subject: [PATCH] NFSv4: use match_uint() for ids in the legacy idmapper upcall
-Date: Sun, 27 Sep 2026 10:47:07 +0530
-Message-ID: <20260927051707.71187-1-jain.sm@gmail.com>
-X-Mailer: git-send-email 2.54.0
+        bh=WW03v5grmvf8mOWn+UC1EtDiLQQpdA7r8LHu21l4O94=;
+        b=oQMswLHklBEClpsRiec2/G46AXmeFsiR/vEt1X6lmTZF4M26LlJUrUiFqgOfutKFkk
+         GERuMByQhlX+XbLTwz9EZLIBbP8JLCjE0T6FBxRRDOxY6/xq4+l7x4NYvF/NjLhNdOLY
+         XCkSy5ex+Ee6cQ8WuBTqyoSXmWjSzizvD/giH6YvFMjjuWDBvHswK6QkjN2TF+Fnn1AP
+         lns9iofodndgJ/EKvllD288eLIoLz33cOfSqgznW0ER18e9qKyWy/kzxFToj/QJSWyac
+         cWpgk50KN6ueNhB4V+oyaEVn10FmmKGUsn6zp+8VJIq5Eoi6w73ImCEUTGm4rh5Tphky
+         Nhmg==
+X-Gm-Message-State: AFuF++kTrB9EWeKUnTN86wdKzu4Q/+me656KlCj7jX6EqJTJSoSf0JYc
+	F4NcuO1qr92PzDicLco9e9JTLdGKDP0qs0EYhghte9+RQ0L9obgHE8PU5CmAZ3TEw9v1s0bj
+X-Gm-Gg: AYBFou1KUErt4ZAJNVBeBEZ6PzRTz0b1S11LGGo3r20C9UBCXz03+xayqozyAIkgAix
+	7RopHn+OhHDh9FObULKgYUdhm801hPVGxkMA8nwIJS6FEHzAyxEc3ukOYIfk7DDtY5KdtfpEOl+
+	vdfNOY5bXwtjqmQOzSP8eN5TpP8mWK8EBZXI65HM7zVsv4eV3I7azlqrkHr3kIAz06Dwy4B51Kf
+	huvJoVUJvTUvEukSEcUjJxNuitmk2voinO6e67RsncJXXN9FNKnIMirOzkG4ZXxLRzcl4nE+Pa1
+	xktSEDEZmA/8bZq/+GbP3nB0ZQdlJamd96MqHkhpcRCRnpoL3POgzpCVzyuaiZfkpyUC78AAG6a
+	H5iKRMK0EnLlm1+QmxxLnyX1IVYuroHexgewlFCd5e6BgKaTsY7ubd+f4QfCKayqRDBCqh32wR2
+	CeP//L3TshvAx0HVsps88h+uiVVU9+F9EUxOju2UwczvC5UslqGA98Mp4S0EYLWyH0UA==
+X-Received: by 2002:a05:6a00:9298:b0:874:706d:856c with SMTP id d2e1a72fcca58-87e9b3b9e0bmr9164617b3a.29.1790502338655;
+        Sun, 27 Sep 2026 02:45:38 -0700 (PDT)
+Received: from localhost ([8.219.235.175])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-882ad656fdcsm501918b3a.18.2026.09.27.02.45.37
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 27 Sep 2026 02:45:38 -0700 (PDT)
+From: Dairui Zhang <zhangdairui@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Dairui Zhang <zhangdairui@gmail.com>,
+	stable@vger.kernel.org
+Subject: [PATCH] nfsd: fix READ payload landing one page ahead of the XDR accounting
+Date: Sun, 27 Sep 2026 17:45:35 +0800
+Message-ID: <20260927094535.1745224-1-zhangdairui@gmail.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -76,88 +74,57 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-For an id to name lookup, nfs_idmap_lookup_name() prints the __u32 id
-with "%u" and requests the key "user:<id>" or "group:<id>".  If the
-legacy idmapper is used, nfs_idmap_prepare_message() parses the id back
-into the __u32 im_id with match_int(), which parses a signed int.
+nfsd4_encode_readv() passes the in-page offset
+base = page_len & ~PAGE_MASK to nfsd_iter_read(), which writes the
+file data at that offset into *rq_next_page. After each operation
+rq_next_page is set to page_ptr + 1, so when the reply stream is
+mid-page the data lands one page ahead of where the payload
+accounting continues (which stays in the current page at base).
+The wire then carries the stale tail of the current page (previous
+RPC payloads, since reply pages are reallocated nonzeroed) instead
+of the file data: a remote kernel info leak to an authenticated
+client, plus silently corrupted READ results.
 
-Since commit 77dd3b0bd17a ("lib/parser.c: avoid overflow in
-match_number()"), match_int() returns -ERANGE on 64-bit for values
-above INT_MAX, so the upcall fails for every uid and gid of 2^31 or
-above.  nfs_map_uid_to_name() and nfs_map_gid_to_group() then send
-the numeric id instead of a name.  A server that requires names, for
-example Linux nfsd with Kerberos (it never accepts numeric ids from
-RPCSEC_GSS clients), rejects it with NFS4ERR_BADOWNER, so
-chown() and chgrp() to such an id fail with -EINVAL.  On 32-bit these
-ids happen to work, because match_int() does not detect the overflow
-there and the wrapped int converts back to the same __u32.
+Trigger: any compound where a READ follows an op that left the
+stream mid-page, e.g. [PUTFH, READ(100), READ(N)] or READDIR+READ.
 
-The signed parser has been used for the __u32 im_id since commit
-57e62324e469 ("NFS: Store the legacy idmapper result in the keyring"),
-which added this code; it only started to fail when match_int() gained
-its range check.
+When base is nonzero, place the data in the page the accounting is
+filling (page_ptr) instead of one page ahead.
 
-The client only maps ids to names when it does not send numeric ids,
-that is with Kerberos or with nfs.nfs4_disable_idmapping=0.  It uses the
-legacy idmapper (an upcall to rpc.idmapd) when the request-key upcall
-fails, for example when nfsidmap is not configured, and always when the
-NFS client was created from a user namespace other than init_user_ns.
-
-Use match_uint(), which parses a decimal unsigned int with kstrtouint().
-The id is always printed by the kernel in decimal, so every __u32 is now
-accepted on all architectures.  The type of im_id now also matches the
-parser.
-
-Fixes: 57e62324e469 ("NFS: Store the legacy idmapper result in the keyring")
-Cc: stable@vger.kernel.org # 5.12.x: needs match_uint()
+Fixes: ed4a567a179e ("NFSD: Update rq_next_page between COMPOUND operations")
+Reported-by: Dairui Zhang <zhangdairui@gmail.com>
 Assisted-by: LLM
-Signed-off-by: Shashank Mohan Jain <jain.sm@gmail.com>
+Cc: stable@vger.kernel.org
+Signed-off-by: Dairui Zhang <zhangdairui@gmail.com>
 ---
-This patch was prepared with Claude Code (Anthropic), model Claude Opus 5.5
-(claude-opus-5-5): the analysis, the fix, the changelog and the throwaway
-test described below. The trailer only says "Assisted-by: LLM", as
-Documentation/process/coding-assistants.rst describes.
 
-Dependencies: none. The patch is correct on its own on current mainline.
-It is related to "lib: parser: reject out-of-range values in
-match_number()", sent to Andrew Morton:
-https://lore.kernel.org/r/20260926012718.15675-1-jain.sm@gmail.com
-On 32-bit, that patch makes match_int() reject these ids as well, so this
-patch should be merged before it or together with it.
+From code reading only - no runtime test yet; the trigger compound
+is in the commit message. First patch to this list, so if I've
+misread the flow somewhere, please tell me.
 
-Testing done:
-- W=1 build of fs/nfs/nfs4idmap.o with allmodconfig for x86_64 and i386:
-  no warnings.
-- A throwaway KUnit test (not part of this patch) called
-  nfs_idmap_prepare_message() under UML (x86_64 and i386 subarch) with
-  "user:<id>" and "group:<id>"
-  built the way nfs_idmap_lookup_name() builds them, for ids 0, 1000,
-  65534, 2^31 - 1, 2^31, 3000000000, 2^32 - 2 and 2^32 - 1.
-  x86_64: without the patch every id >= 2^31 fails with -ERANGE; with it
-  all ids parse to the right value.  i386: passes with and without the
-  patch; with the parser patch above applied it fails without this patch
-  and passes with it.
+ fs/nfsd/nfs4xdr.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-Not tested: a real NFSv4 mount using rpc.idmapd (legacy upcall), and the
-resulting chown() failure against a Kerberos export.  That effect comes
-from reading nfs_map_uid_to_name() and fs/nfsd/nfs4idmap.c.
-
- fs/nfs/nfs4idmap.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-index bc397110d977..c7a20286d0ee 100644
---- a/fs/nfs/nfs4idmap.c
-+++ b/fs/nfs/nfs4idmap.c
-@@ -519,7 +519,7 @@ static int nfs_idmap_prepare_message(char *desc, struct idmap *idmap,
- 		fallthrough;
- 	case Opt_find_group:
- 		im->im_conv = IDMAP_CONV_IDTONAME;
--		ret = match_int(&substr, &im->im_id);
-+		ret = match_uint(&substr, &im->im_id);
- 		if (ret)
- 			goto out;
- 		break;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 6a0a97d..17aff48 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -4933,6 +4933,15 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ 	__be32 zero = xdr_zero;
+ 	__be32 nfserr;
+ 
++	/*
++	 * rq_next_page only tracks full pages. When the reply stream is
++	 * mid-page, the payload accounting continues in the current page
++	 * at base, so the data must be placed there instead of one page
++	 * ahead.
++	 */
++	if (base)
++		resp->rqstp->rq_next_page = xdr->page_ptr;
++
+ 	nfserr = nfsd_iter_read(resp->rqstp, read->rd_fhp, read->rd_nf,
+ 				read->rd_offset, &maxcount, base,
+ 				&read->rd_eof);
 -- 
-2.43.0
+2.53.0
 
