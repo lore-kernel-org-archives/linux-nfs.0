@@ -1,116 +1,76 @@
-Received: from canpmsgout02.his.huawei.com (canpmsgout02.his.huawei.com [113.46.200.217])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B5B553FC5AE;
-	Mon, 28 Sep 2026 08:44:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.217
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2A1AC4E0202
+	for <linux-nfs@vger.kernel.org>; Mon, 28 Sep 2026 15:54:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790585096; cv=none; b=cNA6/xLPW9ioG5KbsFcNMOkFKQxD/6BIb1iJzKOX8GU0ztWKA9r1V8M9Foc1+bA80Tmi/0JNx7BGa7Cs9GzPgPzn7cpJJpezGF4h17Yhwu4wJt6S4iuz5f6XWlx0KTYsvp952DtNe/MoWA6bvr1ccIdYfjiMbKn+gN24XHPvSnU=
+	t=1790610873; cv=none; b=SePgkcxGEmU3cgJGoeG++LNAUJMbXYoDEoOuETWEP5M3/i2iKxSP1iKw+UTlGhBL/fLN5WEI0MCenLRBh1zEtorosiWcudP7+2FXK5CIIXZa+KCY69jvOrpLlw2hwIEIeEv4ctlSM+DMx3p1plXbncy7EPcrNafy4CelrvMGCQE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790585096; c=relaxed/simple;
-	bh=iDGp7P3BEvSWs1L7iNJIWjF45NYDB+xMs1LHa1Er8uQ=;
-	h=Message-ID:Date:MIME-Version:Subject:To:CC:References:From:
-	 In-Reply-To:Content-Type; b=pfVyHmoq/Q2gQ9ebu3eQEWsXTWUPT4NHNHmPcFjQ+8UGE6UQNtsJfEr6vEGPjXVoCQA9YwGRQqHNObSz9szPhIhfNHxaXKrgFh8SO7NBcG+M39TySQxTEXDQ2VVV5Ep8S+kp14dgFxn4MLU5vPNGlv4KjAcCQ6+WDhfWt0ZEqHY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=Il61np93; arc=none smtp.client-ip=113.46.200.217
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+	s=arc-20240116; t=1790610873; c=relaxed/simple;
+	bh=GD39rD1Zm5VwCGRBkTgaxbqo0z9lqPBXpZnUpjAGF9s=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=BOCs1rsA0b0vjmfYgMeJHPio2NAPt4Og40USWwEFUUJvgEbXl8CDAypGr5m1dpElqfV6E80d3vIj84LagvDbzWPshn5qlMyxQzbkfprikQAeLcLJggC8KEazzB4sws08Jv9VD6xTTr3MtJDIeC/85XWlqmIRdyy/U2RExCid1DA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=aAacAuo0; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="Il61np93"
-dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
-	c=relaxed/relaxed; q=dns/txt;
-	h=From;
-	bh=iDGp7P3BEvSWs1L7iNJIWjF45NYDB+xMs1LHa1Er8uQ=;
-	b=Il61np93Mzpfh1Yw6ZTaudK8+nCQ4+DjNBs7VntEmE0tZXcn7sPEF3AumdIjHPSk2gTjz273a
-	wBOH1W7k/4xR4wPV7l62M9UPquFd63zSevJQns1zbf6BGnLBtZpCHWpqVhapwho/G5mndn+Ez1O
-	jCI6EYJd4AynyN7whX7Q3xA=
-Received: from mail.maildlp.com (unknown [172.19.162.197])
-	by canpmsgout02.his.huawei.com (SkyGuard) with ESMTPS id 4htZM82gK2zcb3G;
-	Mon, 28 Sep 2026 16:33:08 +0800 (CST)
-Received: from whupemk100010.china.huawei.com (unknown [7.152.184.41])
-	by mail.maildlp.com (Postfix) with ESMTPS id A9A0740579;
-	Mon, 28 Sep 2026 16:44:41 +0800 (CST)
-Received: from [10.67.109.91] (10.67.109.91) by whupemk100010.china.huawei.com
- (7.152.184.41) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.2562.45; Mon, 28 Sep
- 2026 16:44:37 +0800
-Message-ID: <f697efa0-81c9-4ace-b9cc-d672b98dfc9d@huawei.com>
-Date: Mon, 28 Sep 2026 16:44:35 +0800
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="aAacAuo0"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7828E1F000FF;
+	Mon, 28 Sep 2026 15:54:31 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1790610871;
+	bh=//fgc273iFP5fHb+LqodTODPVnBDsMzjq7io7KNG8EE=;
+	h=From:To:Cc:Subject:Date;
+	b=aAacAuo0zznOq+ZestcnJh2bWZtsKPxy56kDdGA1TgCSXzpF7N6DX+FwxlWRh76lG
+	 gBSP7PdFM0vQsZGn3Yl69rE+Sv2vu0nX/QYlXIUd+Q8MfVuixUeoB1e2ttGOgYhxrr
+	 z5R2S4q82APxIZH2u75JiDYfj/HysTbpDnFqOjTVN/o6SzzaZALBf201jo6NUxt2kF
+	 ew7gaZ23gzBaQ8N0l5ZzzbjMkEyDziI7Cm778rODoLGJt82mQYYDYDNptFbY6c2LIX
+	 6VvEGCwul6eDFc8jGhS/+ploSRRAxM7i97rE8bfnYlAGotjVnnu4bFk+wYaSoIiNkd
+	 WsxFwAQRTllxw==
+From: Mike Snitzer <snitzer@kernel.org>
+To: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/6] NFS: LOCALIO fixes and FF_FLAGS_NO_IO_THRU_MDS fixes
+Date: Mon, 28 Sep 2026 11:54:24 -0400
+Message-ID: <20260928155430.95985-1-snitzer@kernel.org>
+X-Mailer: git-send-email 2.44.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH RFC -next 03/12] fs: pass struct path to xattr helpers
-To: Amir Goldstein <amir73il@gmail.com>
-CC: <mic@digikod.net>, <gnoack@google.com>, <paul@paul-moore.com>,
-	<jmorris@namei.org>, <serge@hallyn.com>, <corbet@lwn.net>,
-	<skhan@linuxfoundation.org>, <rdunlap@infradead.org>,
-	<gregkh@linuxfoundation.org>, <rafael@kernel.org>, <dakr@kernel.org>,
-	<dlemoal@kernel.org>, <hch@lst.de>, <axboe@kernel.dk>,
-	<viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
-	<dhowells@redhat.com>, <code@tyhicks.com>, <linkinjeon@kernel.org>,
-	<sj1557.seo@samsung.com>, <yuezhang.mo@sony.com>,
-	<hirofumi@mail.parknet.co.jp>, <cel@kernel.org>, <jlayton@kernel.org>,
-	<neil@brown.name>, <okorniev@redhat.com>, <Dai.Ngo@oracle.com>,
-	<tom@talpey.com>, <miklos@szeredi.hu>, <senozhatsky@chromium.org>,
-	<chenxiaosong@chenxiaosong.com>, <zohar@linux.ibm.com>,
-	<roberto.sassu@huawei.com>, <dmitry.kasatkin@gmail.com>,
-	<eric.snowberg@oracle.com>, <stephen.smalley.work@gmail.com>,
-	<omosnacek@gmail.com>, <casey@schaufler-ca.com>, <nanx95726@gmail.com>,
-	<djwong@kernel.org>, <daniel@iogearbox.net>,
-	<linux-security-module@vger.kernel.org>, <linux-doc@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>, <driver-core@lists.linux.dev>,
-	<linux-block@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-	<netfs@lists.linux.dev>, <ecryptfs@vger.kernel.org>, <exfat@lists.linux.dev>,
-	<linux-nfs@vger.kernel.org>, <linux-unionfs@vger.kernel.org>,
-	<linux-cifs@vger.kernel.org>, <linux-integrity@vger.kernel.org>,
-	<selinux@vger.kernel.org>, <linux-kselftest@vger.kernel.org>,
-	<xiujianfeng@huawei.com>, <lujialin4@huawei.com>
-References: <20260924104831.1081137-1-caixinchen1@huawei.com>
- <20260924104831.1081137-4-caixinchen1@huawei.com>
- <CAOQ4uxhMhcxq5+crz84f8xj+Wi1bHhNqa_TecP-RvipheBR+ug@mail.gmail.com>
-Content-Language: en-US
-From: Cai Xinchen <caixinchen1@huawei.com>
-In-Reply-To: <CAOQ4uxhMhcxq5+crz84f8xj+Wi1bHhNqa_TecP-RvipheBR+ug@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
 Content-Transfer-Encoding: 8bit
-X-ClientProxiedBy: kwepems500002.china.huawei.com (7.221.188.17) To
- whupemk100010.china.huawei.com (7.152.184.41)
 
-Thank you for review
+Hi,
 
-I will switched to ovl_path_real in the next version.
+The first LOCALIO tracing fix is pretty old, just reposting it.  The
+other 2 LOCALIO fixes fell out as a side-effect of other NFSD/LOCALIO
+work I was doing.
 
-ovl_creds is a prepare_creds() clone of the mounter, so unless
-the mounter itself was sandboxed, the clone carries no Landlock
-domain and every check short-circuits. The new rights are also
-enforced at the security_inode_*xattr() call sites in fs/xattr.c,
-which run with the user-visible overlay path.
+The FF_FLAGS_NO_IO_THRU_MDS fixes focus on the cases where a previous
+layout set FF_FLAGS_NO_IO_THRU_MDS but that layout was returned and
+there was no recourse unless that context to prefer not issuing IO
+back to the MDS is saved in-core and consulted if/when no layout
+available.
 
-The exception is an unprivileged overlay mount by an already
-sandboxed mounter: the domain is inherited into
-creator_cred through the cred_prepare hook, so the internal
-real-path calls *do* get checked there.  For this series that
-means:
+All review appreciated, thanks.
+Mike
 
-- ovl_xattr_get/set/ovl_listxattr() forwarding and the
-   ovl_setattr() -> ovl_do_notify_change() forwarding would be
-   checked against the upper/lower paths;
-- copy-up would newly require the metadata rights on the backing
-   directories too (ovl_copy_xattr() calls the security-checking
-   vfs_listxattr()/vfs_setxattr());
-- stat() is unaffected: ovl_getattr() goes through the _nosec
-   variant.
+Mike Snitzer (6):
+  NFS/localio: fix nfs_local_dio_misaligned tracepoint
+  NFS/localio: detect a short read or write before the iterator has moved
+  NFS/localio: report the stability a DIO WRITE actually has
+  pNFS/flexfiles: honor FF_FLAGS_NO_IO_THRU_MDS over the mdsthreshold hint
+  pNFS/flexfiles: don't read through MDS when previous layout forbid it
+  pNFS/flexfiles: don't reset to MDS for v4 error when previous layout forbid it
 
-This is not Landlock-specific: every LSM
-that keeps its state in the cred blob inherits the mounter's
-context into creator_cred through cred_prepare.
+ fs/nfs/flexfilelayout/flexfilelayout.c | 60 ++++++++++++++++++++------
+ fs/nfs/internal.h                      | 29 +++++++++++++
+ fs/nfs/localio.c                       | 31 ++++++++++---
+ fs/nfs/nfstrace.h                      |  5 ++-
+ fs/nfs/pnfs.c                          | 12 +++++-
+ 5 files changed, 115 insertions(+), 22 deletions(-)
 
-On 9/24/2026 7:12 PM, Amir Goldstein wrote:
-> that's ovl_path_real()
->
-> I have no technical issue with the ovl patch bits in this series.
-> Anyway, I guess landlock is not going to enforce anything on the
-> private mnt with ovl_creds anyway?
+-- 
+2.44.0
+
