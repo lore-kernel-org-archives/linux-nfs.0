@@ -1,38 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CCDF43A5E8F
-	for <linux-nfs@vger.kernel.org>; Mon, 28 Sep 2026 18:57:53 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1CA44257827
+	for <linux-nfs@vger.kernel.org>; Mon, 28 Sep 2026 18:57:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790621875; cv=none; b=GBLJbAPGqmPKlGhyT/CuQb24UjK5FluQXsHUAS1qvVvx4GXUqH7exQszc8bPl7ira/wQ3y9AfUTCjkKE2lo1vBgWVEhMyil9QxfCLSV1QB7j8roPOV/meEu6lDvjfPubrUY7TwhmAjdapiM6koiHkGGi5WhXdaUJDAlexOjFHzM=
+	t=1790621876; cv=none; b=XFlpiHW7l2nGgIT3jDnnUDhBzzdxAaF8vOpwvmAmS1cqwHpA3BnI4ILuqkZRoGoYpYs4eL904cA7guhIL0B8jqOceA5uF2eWhGk2q3RLuretClj76pYgVfrLGP0R2kK7xwIA5sOWQzWiUHAA1Xth74zZC7XYehlKmqfw/cCrsxI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790621875; c=relaxed/simple;
-	bh=j6vzvFLksc0MO2MMQFwkF9VpkyeYXrKzELEhOZ8Tzqg=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=UJLsZvLQd2EBLx141FwjuePHxT+ZBMl3fHuOnAUMRYPBbtm/+W9h5GotSnaChonUlB3vsVGQIoXa4vzHtNJq7wqxxso1+mr1y2ERf22NkwFtNE1YjW7Dyfa0qWeUm4FQI5/FIu54jfEvOJz1tEFerscpBR56g+/dEoPBqzw+hAY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ksRup1J+; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1790621876; c=relaxed/simple;
+	bh=TtyjFj3zFB34PTlorv0lotDz3qnfTxfTbF1UWW+kfM0=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=V5OdKsB+MqbEi7xBWV3RkG9L6mmovLwwF9Z6Ije8VLOiEW/qSN74myNYT6XDmJbOLAl/4+ToMb92Ijh6D0JJ6cYY9eeaYTDnew1un7hsG+q3gJLzuV2M4J9bcPoSM4ll5eF2lgHeHrE3nObUlrZtIqgf5OMc+xsxpJbukjsFKkQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AJaml7av; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ksRup1J+"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1DF061F000FF;
-	Mon, 28 Sep 2026 18:57:53 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AJaml7av"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 592AE1F00893;
+	Mon, 28 Sep 2026 18:57:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790621873;
-	bh=2wWatpmTOgnFUxaDvQ864hYp1/5VkGpZgY4QQcfVjOI=;
-	h=From:To:Cc:Subject:Date;
-	b=ksRup1J+hQlwjN1zGX+5QhnArd0BUWGRIYhGOAmloPnbclN5NRSVHKoWkyl+h1dUx
-	 e5B9IqMML9TwNo7BSbPdioGzB6QSTbOTW/TPxkNMYLy1QC4ARFdthjcBljyIJrJdWI
-	 ZYb0CAhpBEhPUYVQpVK/GhKi2Myp0jF9gXLk3Iy0ZOGgaov5rRTp3v+HpQIwOjMojo
-	 qCSOh3iMeeeR2zUIua2H+2FFe6NbLweaFRMmxJ+xD/lgrdK+K1nB68s7mXIyGj0v4j
-	 wUa3AMXwBAfdy1lRQNUOSwstygxNN4hgs1TIpi6O958ZV6yCuXbi2c6pt2UYqoTH3x
-	 h+D0ON0ej+Zxg==
+	s=k20260515; t=1790621874;
+	bh=PuuMgbg9S0h/NOiLk27XRLMtHv4VkSHwllS/5W+C+wc=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=AJaml7avl7Yo2/yj0h3m/sXLN+gZFoTPVIyLpR6LodmLVXHEluSuplTb9tixqPfaD
+	 Xfdndz0yYNdc6v90+MaF6I1n1hCLihjcCn/ZFbKSB+4Riflfy1JfVoIRZJWRfkYwga
+	 C6mxMdRO7CztSEeXFydWor08wCj7a0kay1hF3COCQwLmW2gAQ3RO1mEtv+Vutwe7ew
+	 gcN7/RnKmch7v/lHrCLgsfovplHB/qN+GlTM12f/ow8RpcmkUWzAaVEQY5J1tAvHSC
+	 ZRqkTFmr1bwrmcrrj5BfFiCoLmlCptqf2Xlb2tnVUzKFFdQ3kCchyf6xjVvOMb0x1d
+	 I9HFZdJMo/V5A==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/3] NFS: don't release an open context from writeback
-Date: Mon, 28 Sep 2026 14:57:48 -0400
-Message-ID: <20260928185751.98682-1-snitzer@kernel.org>
+Subject: [PATCH v2 1/3] NFS: don't release the open context of a failed write from writeback
+Date: Mon, 28 Sep 2026 14:57:49 -0400
+Message-ID: <20260928185751.98682-2-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
+In-Reply-To: <20260928185751.98682-1-snitzer@kernel.org>
+References: <20260928185751.98682-1-snitzer@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -41,77 +44,208 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-v1 deferred the final deactivate_super() in nfs_sb_deactive() to nfsiod:
-https://lore.kernel.org/linux-nfs/20260911184239.90154-1-snitzer@kernel.org/
-
-Feedback on v1 was that it worked around the problem rather than fixing
-it. That is fair: v1 made the last step of releasing an open context
-safe to run from writeback, when the problem is that writeback releases
-the open context at all. Testing bears that out, see below: with v1
-applied the flusher still deadlocks, one step earlier, on I_SYNC.
+When a write fails with an error that nfs_error_is_fatal_on_server()
+accepts, nfs_do_writepage() and nfs_async_write_error() complete the
+request in the submitting thread: nfs_write_error() removes the request
+from the inode and drops the last reference to it. The request owns a
+reference to its open context, so if the file has already been closed
+this is also where the open context is released.
 
 Releasing an open context closes NFSv4 state and drops what may be the
-last reference to the dentry, the inode and the superblock. The flusher
-holds sb->s_umount and has set I_SYNC on the inode, so it can end up
-waiting for itself on either. Writes normally avoid this because their
-requests are released by the RPC release callback, on nfsiod. This
-series fixes the three ways writeback does not:
+last reference to the dentry, the inode and the superblock. The
+submitting thread is usually the flusher, which may do none of that:
 
-Patch 1: a write that fails before it is sent is completed by
-nfs_write_error() in the submitter. This is the deadlock that was hit
-in the field, on a client whose server began returning AUTH_TOOWEAK.
+ - It holds sb->s_umount shared, or works on behalf of a sync(2) caller
+   that does. An open context does not keep a filesystem mounted, so
+   once it has been unmounted the open context can hold the last active
+   reference to the superblock, and deactivate_super() then waits for
+   s_umount forever:
 
-Patch 2: nfs_initiate_pgio() and nfs_initiate_commit() drop their task
-reference with rpc_put_task(), which runs the release callback in the
-submitter if the task has already completed. This is the deadlock that
-NeilBrown reported in 2014:
-https://lore.kernel.org/linux-nfs/20140407135001.56ef9f36@notabene.brown/
+     wb_workfn
+       __writeback_inodes_wb
+         super_trylock_shared(sb)          <- s_umount held shared
+         writeback_sb_inodes
+           nfs_writepages
+             nfs_do_writepage              <- fatal error: out_launder
+               nfs_write_error
+                 nfs_release_request
+                   nfs_put_lock_context
+                     __put_nfs_open_context
+                       nfs_sb_deactive
+                         deactivate_super
+                           down_write(&sb->s_umount)   <- deadlock
 
-Patch 3: the asynchronous LAYOUTCOMMIT that ->write_inode() sends has
-the same problem as patch 2, with an inode and superblock reference of
-its own in place of an open context, and no workqueue at all.
+ - Since commit 169ebd90131b ("writeback: Avoid iput() from flusher
+   thread") it pins the inode with I_SYNC instead of a reference, so
+   that it never does the final iput(). evict() waits for I_SYNC, so if
+   dput() drops the last reference to a stale or sillyrenamed inode,
+   the flusher waits for itself:
 
-All three move the release to nfsiod, where every other write already
-does it. None changes how or when a filesystem is shut down, and
-nfs_sb_deactive() is left as it is.
+     wb_workfn
+       __writeback_inodes_wb
+         writeback_sb_inodes               <- sets I_SYNC
+           nfs_writepages
+             nfs_do_writepage
+               nfs_write_error
+                 nfs_release_request
+                   nfs_put_lock_context
+                     __put_nfs_open_context
+                       dput
+                         nfs_dentry_iput
+                           iput
+                             evict
+                               inode_wait_for_writeback   <- deadlock
 
-Testing: NFSv3 over loopback, with a test-only knob that makes
-nfs_do_writepage() see -EACCES in the pageio descriptor. Dirty a file
-through a mapping after closing it, unmount, and let the periodic
-flusher write it back. A plain umount is enough to leave the write
-requests as the only thing keeping the superblock alive.
+The first of these was hit on a 6.12-based client whose server began
+rejecting requests with AUTH_TOOWEAK (-EACCES). The flush worker hung in
+deactivate_super(), and every later automount of the same filesystem
+blocked in grab_super() behind it. The second was reproduced by failing
+the writeback of a sillyrenamed file that had been closed.
 
-                  plain file           sillyrenamed file
-  v1              shuts down, from     flusher hangs in evict(),
-                  v1's work item       waiting for I_SYNC
+A write that was sent is normally released by the RPC release callback,
+which runs on nfsiod; the next patch closes the case where it is not.
+Do the same for a write that fails before it is sent. Have
+nfs_write_error() hold the open context across the release of the
+request, and drop that reference with put_nfs_open_context_async(),
+which hands the release of the context to nfsiod if the reference is
+the last one.
 
-  this series     shuts down, from     shuts down, from the release
-                  the context's        of the sillyrename REMOVE
-                  work item
+This does not change when or how a filesystem is shut down. Since
+commit 3d4ff43d895c ("nfs_open_context doesn't need struct path
+either") an open context pins the superblock instead of a mount, so an
+open context that outlives the last mount shuts the filesystem down
+when it is released. The completion of a write already does that from
+nfsiod.
 
-Patches 2 and 3 close races and were not exercised by this test.
-
-Changes since v1:
-- Dropped "NFS: defer the final superblock deactivation".
-- Fix the three places that release such references from writeback
-  instead.
-- Patch 1 carries a Fixes: tag; v1 had none.
-
-Mike Snitzer (3):
-  NFS: don't release the open context of a failed write from writeback
-  NFS: don't run the release of a WRITE or COMMIT in the submitter
-  NFSv4/pnfs: don't run the release of a LAYOUTCOMMIT in the submitter
-
+Fixes: a6598813a4c5 ("NFS: Don't write back further requests if there is a pending write error")
+Cc: stable@vger.kernel.org
+Assisted-by: Claude:claude-fable-5-1
+Signed-off-by: Mike Snitzer <snitzer@kernel.org>
+---
  fs/nfs/inode.c         | 37 ++++++++++++++++++++++++++++++++++---
  fs/nfs/internal.h      |  1 +
- fs/nfs/nfs4proc.c      |  7 ++++++-
- fs/nfs/pagelist.c      |  3 ++-
- fs/nfs/write.c         |  8 +++++++-
+ fs/nfs/write.c         |  5 +++++
  include/linux/nfs_fs.h |  2 ++
- 6 files changed, 52 insertions(+), 6 deletions(-)
+ 4 files changed, 42 insertions(+), 3 deletions(-)
 
-
-base-commit: 82e951e8628cdc0a5434c6f71ff1566b20e9912c
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 3022454f7698..c91334dd7e3e 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1231,13 +1231,11 @@ struct nfs_open_context *get_nfs_open_context(struct nfs_open_context *ctx)
+ }
+ EXPORT_SYMBOL_GPL(get_nfs_open_context);
+ 
+-static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
++static void nfs_free_open_context(struct nfs_open_context *ctx, int is_sync)
+ {
+ 	struct inode *inode = d_inode(ctx->dentry);
+ 	struct super_block *sb = ctx->dentry->d_sb;
+ 
+-	if (!refcount_dec_and_test(&ctx->lock_context.count))
+-		return;
+ 	if (!list_empty(&ctx->list)) {
+ 		spin_lock(&inode->i_lock);
+ 		list_del_rcu(&ctx->list);
+@@ -1254,12 +1252,45 @@ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
+ 	kfree_rcu(ctx, rcu_head);
+ }
+ 
++static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
++{
++	if (refcount_dec_and_test(&ctx->lock_context.count))
++		nfs_free_open_context(ctx, is_sync);
++}
++
+ void put_nfs_open_context(struct nfs_open_context *ctx)
+ {
+ 	__put_nfs_open_context(ctx, 0);
+ }
+ EXPORT_SYMBOL_GPL(put_nfs_open_context);
+ 
++static void nfs_free_open_context_work(struct work_struct *work)
++{
++	struct nfs_open_context *ctx =
++		container_of(work, struct nfs_open_context, free_work);
++
++	nfs_free_open_context(ctx, 0);
++}
++
++/**
++ * put_nfs_open_context_async - drop a reference from a caller that must not
++ *				release the open context itself
++ * @ctx: open context to drop
++ *
++ * Releasing an open context closes NFSv4 state and drops what may be the
++ * last reference to the dentry, the inode and the superblock. None of that
++ * is allowed in writeback, which holds sb->s_umount and has set I_SYNC on
++ * the inode. If this is the last reference, release the context from nfsiod,
++ * which is where the completion of a write releases it.
++ */
++void put_nfs_open_context_async(struct nfs_open_context *ctx)
++{
++	if (!refcount_dec_and_test(&ctx->lock_context.count))
++		return;
++	INIT_WORK(&ctx->free_work, nfs_free_open_context_work);
++	queue_work(nfsiod_workqueue, &ctx->free_work);
++}
++
+ static void put_nfs_open_context_sync(struct nfs_open_context *ctx)
+ {
+ 	__put_nfs_open_context(ctx, 1);
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 48f7c0e25da1..94d61a42c7ee 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -525,6 +525,7 @@ extern int __init register_nfs_fs(void);
+ extern void __exit unregister_nfs_fs(void);
+ extern bool nfs_sb_active(struct super_block *sb);
+ extern void nfs_sb_deactive(struct super_block *sb);
++extern void put_nfs_open_context_async(struct nfs_open_context *ctx);
+ extern int nfs_client_for_each_server(struct nfs_client *clp,
+ 				      int (*fn)(struct nfs_server *, void *),
+ 				      void *data);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 7f173dbbeb9d..f38bbebffe4d 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -568,11 +568,16 @@ static struct nfs_page *nfs_lock_and_join_requests(struct folio *folio)
+ 
+ static void nfs_write_error(struct nfs_page *req, int error)
+ {
++	struct nfs_open_context *ctx;
++
++	/* The caller may be writeback, which must not release the context */
++	ctx = get_nfs_open_context(nfs_req_openctx(req));
+ 	trace_nfs_write_error(nfs_page_to_inode(req), req, error);
+ 	nfs_mapping_set_error(nfs_page_to_folio(req), error);
+ 	nfs_inode_remove_request(req);
+ 	nfs_page_end_writeback(req);
+ 	nfs_release_request(req);
++	put_nfs_open_context_async(ctx);
+ }
+ 
+ /*
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index b85a73ae7919..32a46de106cd 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -26,6 +26,7 @@
+ #include <linux/refcount.h>
+ #include <linux/rwsem.h>
+ #include <linux/wait.h>
++#include <linux/workqueue.h>
+ 
+ #include <linux/sunrpc/debug.h>
+ #include <linux/sunrpc/auth.h>
+@@ -115,6 +116,7 @@ struct nfs_open_context {
+ 	struct nfs4_threshold	*mdsthreshold;
+ 	struct list_head list;
+ 	struct rcu_head	rcu_head;
++	struct work_struct free_work;
+ 	struct nfs_file_localio nfl;
+ };
+ 
 -- 
 2.52.0
 
