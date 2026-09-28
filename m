@@ -1,128 +1,91 @@
-Received: from mail-pj2-f3.google.com (mail-pj2-f3.google.com [74.125.227.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from canpmsgout11.his.huawei.com (canpmsgout11.his.huawei.com [113.46.200.226])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB07C3F6C59
-	for <linux-nfs@vger.kernel.org>; Sun, 27 Sep 2026 14:24:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9BF1238F624;
+	Mon, 28 Sep 2026 06:19:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.226
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790519088; cv=none; b=RbYvaQS3dLhtaiG9ax2hlkwNFskWchiHJs0Qk5aQgluR8XqtbrdITTD1WfszwORZcC5lNmsZlDbD10MUU5Sd1tfp3KNfZh1tFX24Ah2rKgeVc46V2QxtgQtG3P/rUOPv4TKqsqFDGbpAPH3Xbo9RatAJeGIdmmVySRog474UEbs=
+	t=1790576360; cv=none; b=ExPKGgblfPlM4BNGTd7meJIFp9cRXkmcaANMYEZD0JlVeTrwratVZS4+krE9v0AuTqbZeBwd7kWBK5zR8oqRz7PRID2qtuAQUk4uzugErmilS8tM7xFoMRjXvMjLh/NrD2Jt1ovtYqCfzsHv/sLbj0iqIO0Gv4S+cp+CZf59TJA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790519088; c=relaxed/simple;
-	bh=1B7kYapCZpPFtgUkVhWVPxakfdU8+qYYCL4ZQ9DMlQs=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=HV3lc/1O8dXW248pvoYG0FkEctsdmMt9efPd5ATrqnWKYwgGO4K151O52SN5cRXF5feZ5O3zwFU73hBdvnwHVGqJ9C0ZL54s9mDIZJBDdbxWHXEf7UpNsmQbXG1orRPPiz9IWUDRHWgGfPe29Bag+btQf6hFT7OZL+mpkhyGrOg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=LARR76NI; arc=none smtp.client-ip=74.125.227.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1790576360; c=relaxed/simple;
+	bh=4fL1geGwR/vTw2pP+aud257yMQC2kIMBAThqmN3v7XE=;
+	h=Message-ID:Date:MIME-Version:Subject:To:CC:References:From:
+	 In-Reply-To:Content-Type; b=tcgQAugebzns6PvivHglY1Q3BAeWg822Q0LhpPQKYLye9TB7Ue9YbBDZUBLvwiEBIZypGvU4J7hhHMHRyZ69eBpvnxxQsb9B/d3V2V0Tl3s6dml8c8gxzb+KEQsqk9YvARhl0KkEFXuDZF6qLJ3mCyT/RAZiqynLKaopWHeGlmw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=XvJLuFVF; arc=none smtp.client-ip=113.46.200.226
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="LARR76NI"
-Received: by mail-pj2-f3.google.com with SMTP id 98e67ed59e1d1-3a0cb6b922eso732662a91.1
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Sep 2026 07:24:46 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1790519086; x=1791123886; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=KoReSBu918TC7LfxH4R53EGW5VKxOHQwVKQfiuCg6QE=;
-        b=LARR76NIMKliW+yUa2MyOaK8oRYVWAkZPm2i+R7j4X4LMZ4kFCxO6EY994tiaMQOkE
-         p7flM/DSgQU4OqZ0nIoMd+IjrwxvajwzTeR56LKp0+/AUgOw/4Rs5/JA0dozTDYHply6
-         NbRl+G1iqio/lznxdP2zLBRf4uVWcY2blr7OI+IUw7R3GCsryblTDaQESFyEB4nE2Bis
-         Xu+c7DkM2nOd6XK3eBk2VB5uCao4t1QFnpkbUKaaN0x9uvwb7/OSTantAavb8UMiVPEA
-         S7hhdK9AoLVkMlUL9YluFN6CDUTNfNlqYBVkwGSw4FRW20NA4xySSLXlBbpRdNFOvwsc
-         kOJg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790519086; x=1791123886;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=KoReSBu918TC7LfxH4R53EGW5VKxOHQwVKQfiuCg6QE=;
-        b=PqCeiEfOdAruU4G2GdFAA2QnMQbTuoF1QYPoPXsGmFae//HWxvaRt4tlRrin4eTkVf
-         LekNC00qq8TiO/cm+thuFQfPkxJEMtXh66ktrmVEzPqhdsCkgt3y/MRExGUF3Hs9cvMh
-         o2sURpoUKd30GMQTClUdd9lPDXS/sz2fWy/J/V5bDfRviO4q/xIJ4PfcceoGzZL/IAHa
-         lqwDYaSciT1J879Gaq8tz+cCq+uUMgWBNZ7NypK35BzqiGKC1kmk8ghFjlO9fG0y/CNy
-         RFwFc+ibRsybb9IHNnFHbq58tWIldaxvsJxDprPAS4nXwZ6GC7vOt/I2LGyqzumCGCqH
-         n36w==
-X-Gm-Message-State: AFq9FYLv3VJdvfEEh7VWCqdz88i0gd9NnFYAk6bek/4ppOqihEZ1gOmN
-	2qngU7fi2YrrDjqOH2zwwWz2+thCpusqx+C+s0LFkh/NqIh7LrkM5QMg
-X-Gm-Gg: AYBFou3Ztrjl4RI5K2GAbOg4gRkBF7SIIoqY/SVBKJjv4CvCfHu6gpLPbo8sUOY3OaG
-	Kwto1I6NhDuzlulQwQ6s3XGS/sN+AOWhgtwdQS+A9pc0rKEmc/8dSso461Z/PHrVBxlzxlc0MVT
-	YFqjf8FvlPnALnKYcQ/DFOw62D8npP/XFQ5GYKtn8gRITzXxwJiXSNHynXqojpZ4I11VuvwUJj9
-	fto+GAN966WML7/kh0kvCeO+CauvC/ZNR5mbyeNMSMXTt3GuoQp+NNFPrgJcxjQZ95vRxfCKjnh
-	VQ1Y/QrhoE6tjHgkvZYZ3FTobAX0t24hLGL4Mld/onAqx4CXXxhARuOXbKpi3hxegO6wQWoF1/F
-	psh2QuBpOpjor339ifQsnvRajzTCtDA900CnFAMk3CI0Qh35p9F8845cZG6H8d1QrXY1x4SX6zl
-	C+TyzS3HF1UTCKJhI+5hw/aX1OdMa0RgFHpwaNrb04cwHTTBfsB3pPZTR++bmFBlb6evbqEyLLt
-	8FMhHluhw==
-X-Received: by 2002:a17:90b:2247:b0:3a0:ca03:3e1f with SMTP id 98e67ed59e1d1-3a0ca03447amr4203206a91.32.1790519085824;
-        Sun, 27 Sep 2026 07:24:45 -0700 (PDT)
-Received: from LAPTOP-QJLDGQ2L.lan ([47.82.103.134])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3a0b9892dbfsm15424701a91.11.2026.09.27.07.24.41
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 27 Sep 2026 07:24:45 -0700 (PDT)
-From: Boyan Liu <yymhvert@gmail.com>
-To: Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	co+7aebac19e62711ff@bugs.sh,
-	Boyan Liu <yymhvert@gmail.com>,
-	stable@vger.kernel.org
-Subject: [PATCH] nfsd: Fix out-of-bounds read in clientstr_hashval()
-Date: Sun, 27 Sep 2026 22:23:19 +0800
-Message-ID: <20260927142319.12054-1-yymhvert@gmail.com>
-X-Mailer: git-send-email 2.43.0
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="XvJLuFVF"
+dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
+	c=relaxed/relaxed; q=dns/txt;
+	h=From;
+	bh=hQEbXTR0WO6OLctre3xEpANMZkBOustPdfsjT/vetaI=;
+	b=XvJLuFVFKIsF5clGxrSoqwAGVY+g3ugM68udF3ON7tQ/lQLwaMuoYIolmm9/YnF1e05w8Iw8K
+	PDQnaD7jO+WxUfz/naLxHMBEuQrIGqHIYfxDCR1YoRyqyy6HAML1dNc1Gcw3j4CInQXfpbQm9P0
+	yW8zOpXooIbBwC6YE0IqSuo=
+Received: from mail.maildlp.com (unknown [172.19.163.200])
+	by canpmsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4htW6Y0jfbzKm5t;
+	Mon, 28 Sep 2026 14:07:01 +0800 (CST)
+Received: from whupemk100010.china.huawei.com (unknown [7.152.184.41])
+	by mail.maildlp.com (Postfix) with ESMTPS id CAABB40563;
+	Mon, 28 Sep 2026 14:19:12 +0800 (CST)
+Received: from [10.67.109.91] (10.67.109.91) by whupemk100010.china.huawei.com
+ (7.152.184.41) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.2562.45; Mon, 28 Sep
+ 2026 14:19:06 +0800
+Message-ID: <7161a5f0-0176-45c3-9e78-d90e39cf4288@huawei.com>
+Date: Mon, 28 Sep 2026 14:19:05 +0800
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH RFC -next 09/12] landlock: Implement metadata access hooks
+To: =?UTF-8?Q?G=C3=BCnther_Noack?= <gnoack3000@gmail.com>
+CC: <mic@digikod.net>, <gnoack@google.com>, <paul@paul-moore.com>,
+	<jmorris@namei.org>, <serge@hallyn.com>, <corbet@lwn.net>,
+	<skhan@linuxfoundation.org>, <rdunlap@infradead.org>,
+	<gregkh@linuxfoundation.org>, <rafael@kernel.org>, <dakr@kernel.org>,
+	<dlemoal@kernel.org>, <hch@lst.de>, <axboe@kernel.dk>,
+	<viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
+	<dhowells@redhat.com>, <code@tyhicks.com>, <linkinjeon@kernel.org>,
+	<sj1557.seo@samsung.com>, <yuezhang.mo@sony.com>,
+	<hirofumi@mail.parknet.co.jp>, <cel@kernel.org>, <jlayton@kernel.org>,
+	<neil@brown.name>, <okorniev@redhat.com>, <Dai.Ngo@oracle.com>,
+	<tom@talpey.com>, <miklos@szeredi.hu>, <amir73il@gmail.com>,
+	<senozhatsky@chromium.org>, <chenxiaosong@chenxiaosong.com>,
+	<zohar@linux.ibm.com>, <roberto.sassu@huawei.com>,
+	<dmitry.kasatkin@gmail.com>, <eric.snowberg@oracle.com>,
+	<stephen.smalley.work@gmail.com>, <omosnacek@gmail.com>,
+	<casey@schaufler-ca.com>, <nanx95726@gmail.com>, <djwong@kernel.org>,
+	<daniel@iogearbox.net>, <linux-security-module@vger.kernel.org>,
+	<linux-doc@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+	<driver-core@lists.linux.dev>, <linux-block@vger.kernel.org>,
+	<linux-fsdevel@vger.kernel.org>, <netfs@lists.linux.dev>,
+	<ecryptfs@vger.kernel.org>, <exfat@lists.linux.dev>,
+	<linux-nfs@vger.kernel.org>, <linux-unionfs@vger.kernel.org>,
+	<linux-cifs@vger.kernel.org>, <linux-integrity@vger.kernel.org>,
+	<selinux@vger.kernel.org>, <linux-kselftest@vger.kernel.org>,
+	<xiujianfeng@huawei.com>, <lujialin4@huawei.com>
+References: <20260924104831.1081137-1-caixinchen1@huawei.com>
+ <20260924104831.1081137-10-caixinchen1@huawei.com>
+ <20260926.a96402fcbd4b@gnoack.org>
+Content-Language: en-US
+From: Cai Xinchen <caixinchen1@huawei.com>
+In-Reply-To: <20260926.a96402fcbd4b@gnoack.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Content-Transfer-Encoding: 8bit
+X-ClientProxiedBy: kwepems100001.china.huawei.com (7.221.188.238) To
+ whupemk100010.china.huawei.com (7.152.184.41)
 
-clientstr_hashval() always hashes 8 bytes of the client name, but
-since commit 6b1891052a3f ("nfsd: make nfs4_client_reclaim use an
-xdr_netobj instead of a fixed char array") the name is a
-kmemdup()'d xdr_netobj of arbitrary length. A 1-7 byte ownerid is
-legal, so the hash reads past the allocation:
+You are right.
 
-    BUG: KASAN: slab-out-of-bounds in nfsd4_find_reclaim_client
-    Read of size 1 at addr ffff888010acf1a1 by task nfsd/141
-    Call Trace:
-     kasan_report (mm/kasan/report.c:595)
-     nfsd4_find_reclaim_client (fs/nfsd/nfs4state.c:1622)
-     nfsd4_reclaim_complete (fs/nfsd/nfs4state.c:5286)
-     nfsd4_proc_compound (fs/nfsd/nfs4proc.c:3313)
-     nfsd_dispatch (fs/nfsd/nfssvc.c:1038)
-     svc_process_common (net/sunrpc/svc.c:1527)
-     svc_process (net/sunrpc/svc.c:1682)
-     svc_recv (net/sunrpc/svc_xprt.c:886)
-     nfsd (fs/nfsd/nfssvc.c:919)
+I will change in the next version
 
-The hash only selects a bucket; compare_blob() does the real
-comparison. Hash the actual length, like ownerstr_hashval() does.
-
-Fixes: 6b1891052a3f ("nfsd: make nfs4_client_reclaim use an xdr_netobj instead of a fixed char array")
-Cc: stable@vger.kernel.org
-Reported-by: co+7aebac19e62711ff@bugs.sh
-Signed-off-by: Boyan Liu <yymhvert@gmail.com>
----
- fs/nfsd/nfs4state.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 18e17232c..6c50286fa 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1619,7 +1619,7 @@ static unsigned int clientid_hashval(u32 id)
- 
- static unsigned int clientstr_hashval(struct xdr_netobj name)
- {
--	return opaque_hashval(name.data, 8) & CLIENT_HASH_MASK;
-+	return opaque_hashval(name.data, name.len) & CLIENT_HASH_MASK;
- }
- 
- /*
--- 
-2.43.0
-
+On 9/26/2026 4:38 PM, Günther Noack wrote:
+> Nit: It feels like this comment about implicit timestamp updates
+> (especially the size change) should go in the top-level documentation
+> for the WRITE_METADATA right?  setattr() can not result in a size
+> change, after all, AFAIK?
