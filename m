@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 346CE38DC62;
-	Tue, 29 Sep 2026 07:18:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ACB4D391855;
+	Tue, 29 Sep 2026 07:18:13 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790666290; cv=none; b=bREWtqfqUCGBUIZwdLqLOWtKF6qNM30oft1sIYT0qJGzhpipHNedSf7yyijepUigP5j0nbqFublsIwozmPdyqXsZhc4x24xowgwez6RzZYF6/0Dc74Kvt9pwymclKmgJF5UH7IyA+Aoemd+8wA1dEkNs8+kRwtWe91jLMoIC+Vo=
+	t=1790666294; cv=none; b=c2jNIBatUC6ix6+Qw1C1DWXZ5gewPSFi2SCGOLvVGobKGQEUTE4xuZI/fig1sZYPA3DuVg2B6+ta+dMpvmNpZQ9B6DCEwUptSdwHiIprMsov+Mu7WKLlBTvzxEdYCZe96V0cWm5i4uccNsmjtyM5yvjaGFLvF9NrTHc6f3vmxvk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790666290; c=relaxed/simple;
-	bh=ldm+w9eNgKayOOg9zqGBUrUGr6woRc0ajPzZb0o6l4g=;
+	s=arc-20240116; t=1790666294; c=relaxed/simple;
+	bh=O6hSXIksPZx9kHh9bRdjJ62Y0nt3rUSNhzlYGqfFT8Y=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=azWTdu0o7Nvc03wD9GPoE1BBaaDnjfJHk+otWOmw6lZNglzgAFqWcdfUlENgmtSJt8CFHh7lOx33kiWnGS8AJtfAP7pVe6hG7YviCIQpY17n3cJGn/VrUJH6+xNF1hm/U40A1SzOSXoPCYuN/g061WJPIZzRPaNTpLZxAPN63AA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LHPMDU1s; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=JiuLd3vJM2ayVt8xdu01giAAXTgwWagQv8gH0ep3baBW8LEnIMSMdwwYscSAlf2lAg8rw/p4b1iMs1vBYYAXq6cflqW/K+as83O4xGrMfQ/8iTrjQ/Tp6e6XTVbNgVvl1Jx4KcBoEoFWEDmz49+UueRC0iSVCIQ25CtGlDa65/A=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BbuCT+m8; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LHPMDU1s"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 656C11F00893;
-	Tue, 29 Sep 2026 07:18:05 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BbuCT+m8"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C31591F00899;
+	Tue, 29 Sep 2026 07:18:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790666288;
-	bh=IJFRpgGenZGFgmE716szjfJPy4R2IRxV7+FW89IFnek=;
+	s=k20260515; t=1790666293;
+	bh=OPajyF9FpTj0kdlawINv7kUV6GbsYhAG/0HAkx7dZ6s=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=LHPMDU1stnoIOzkVui5b8vIjoubzbqbSkB4Jj1qRkY6vs6k1Y8cf0xmvP9HdU+YYk
-	 swI3Mapse3ZMpePDOfv9JPB2K6iAg5gqIteBCHA4COYT3fRb609BKChwFGSCxSziUc
-	 Biv+bVQseOx+MUK9r1S5tpgS7zGeRiWE0sh9iij7+BLslOUPKSFPtF8IiBWh+NDmiB
-	 T6hCU9+gd6sD7bGJw4O+ZgDRrGfEzJAVQ21WozmNFHiLL1QcS91U27S7+RXqvICDh8
-	 0EwVWsV8vAEy1EuFG+wTLl4Px1nPEY48mKz5HPwvfvg8LuX+TzyYQ+Z1TEW7ADYcVh
-	 1Rae7OOHJcrOQ==
+	b=BbuCT+m8zPy06hZWnuow0+uWftZurI4ASu5Wb63Dvh7l0cVGZT3j4uvj9VIqpVzz8
+	 dMLqI2peRMPS/ii2Z0wjkWcoKZDuZCJhsnRRIatPEHFC4OAC2cByCn8Qk22HbiBX8o
+	 XHkBrJrYZo/RlzzdRCZXV3LNVc/lGpoqSQH4fZj1ZXRbCEUJ5EsptZTAa2qHzhzs8J
+	 xtlomL4J5ccBDKN5WiHp+gxQjTIdpSIKMrnJQFpqdgtTNQr8E9H1HolnlIlE+uQwTX
+	 5WkZgPd4ZmXn946h7vjskb/VzO9IfS7PrORPEZGFQrCqmMhUwhA66q3I66s7QaJSdu
+	 wVNJ2CU1FzAdw==
 From: Eric Dumazet <edumazet@kernel.org>
 To: "David S . Miller" <davem@davemloft.net>,
 	Jakub Kicinski <kuba@kernel.org>,
@@ -75,9 +75,9 @@ Cc: Simon Horman <horms@kernel.org>,
 	Viacheslav Dubeyko <slava@dubeyko.com>,
 	ceph-devel@vger.kernel.org,
 	Eric Dumazet <edumazet@kernel.org>
-Subject: [PATCH v3 net-next 3/9] sunrpc: use sk_set_nospace() and sk_clear_nospace()
-Date: Tue, 29 Sep 2026 07:17:37 +0000
-Message-ID: <20260929071743.23624-4-edumazet@kernel.org>
+Subject: [PATCH v3 net-next 4/9] rds: use sk_set_nospace()
+Date: Tue, 29 Sep 2026 07:17:38 +0000
+Message-ID: <20260929071743.23624-5-edumazet@kernel.org>
 X-Mailer: git-send-email 2.56.0.rc1.315.gc6ed9934b7-goog
 In-Reply-To: <20260929071743.23624-1-edumazet@kernel.org>
 References: <20260929071743.23624-1-edumazet@kernel.org>
@@ -98,50 +98,30 @@ No functional change intended.
 Reviewed-by: Kuniyuki Iwashima <kuniyu@google.com>
 Signed-off-by: Eric Dumazet <edumazet@kernel.org>
 ---
- net/sunrpc/svcsock.c  | 4 ++--
- net/sunrpc/xprtsock.c | 4 ++--
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ net/rds/tcp_send.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 50e5e7f5b762de28c34d0f58cb0c6feb1e3ce79f..2d8cdee0798d540ba8eae589deaac5bd3ff889fa 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -792,11 +792,11 @@ static int svc_udp_has_wspace(struct svc_xprt *xprt)
- 	 * Set the SOCK_NOSPACE flag before checking the available
- 	 * sock space.
+diff --git a/net/rds/tcp_send.c b/net/rds/tcp_send.c
+index 7c52acc749cf4d4003c749a2646c2b4f87f207fe..824222c475119d91e333123c5afc9291005a8696 100644
+--- a/net/rds/tcp_send.c
++++ b/net/rds/tcp_send.c
+@@ -100,7 +100,7 @@ int rds_tcp_xmit(struct rds_connection *conn, struct rds_message *rm,
+ 
+ 	if (hdr_off < sizeof(struct rds_header)) {
+ 		/* see rds_tcp_write_space() */
+-		set_bit(SOCK_NOSPACE, &tc->t_sock->sk->sk_socket->flags);
++		sk_set_nospace(tc->t_sock->sk);
+ 
+ 		ret = rds_tcp_sendmsg(tc->t_sock,
+ 				      (void *)&rm->m_inc.i_hdr + hdr_off,
+@@ -221,6 +221,5 @@ void rds_tcp_write_space(struct sock *sk)
  	 */
--	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-+	sk_set_nospace(svsk->sk_sk);
- 	required = atomic_read(&svsk->sk_xprt.xpt_reserved) + serv->sv_max_mesg;
- 	if (required*2 > sock_wspace(svsk->sk_sk))
- 		return 0;
--	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-+	sk_clear_nospace(svsk->sk_sk);
- 	return 1;
- }
+ 	write_space(sk);
  
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 7f60723fa64d84887e260e5e130e44cdbec6f850..b97c70c12f627630509510facfd3c3cf96ab6cb6 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -858,7 +858,7 @@ static int xs_nospace(struct rpc_rqst *req, struct sock_xprt *transport)
- 	if (xprt_connected(xprt)) {
- 		/* wait for more buffer space */
- 		set_bit(XPRT_SOCK_NOSPACE, &transport->sock_state);
+-	if (sk->sk_socket)
 -		set_bit(SOCK_NOSPACE, &sk->sk_socket->flags);
-+		sk_set_nospace(sk);
- 		sk->sk_write_pending++;
- 		xprt_wait_for_buffer_space(xprt);
- 	} else
-@@ -1615,7 +1615,7 @@ static void xs_write_space(struct sock *sk)
- 
- 	if (!sk->sk_socket)
- 		return;
--	clear_bit(SOCK_NOSPACE, &sk->sk_socket->flags);
-+	sk_clear_nospace(sk);
- 
- 	if (unlikely(!(xprt = xprt_from_sock(sk))))
- 		return;
++	sk_set_nospace(sk);
+ }
 -- 
 2.56.0.rc1.315.gc6ed9934b7-goog
 
