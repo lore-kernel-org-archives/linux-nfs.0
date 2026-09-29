@@ -1,73 +1,73 @@
 Received: from fout-b8-smtp.messagingengine.com (fout-b8-smtp.messagingengine.com [202.12.124.151])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E72C72D1913;
-	Tue, 29 Sep 2026 02:26:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 78A262D1913;
+	Tue, 29 Sep 2026 02:26:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.151
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790648812; cv=none; b=Jre2rOHtvj1P8vv5EBybovr9hxtyK+rS7dwPv5PRadf/2PRI1Ai6pdd3sx8yEKK0HhrKOhCetVmb+VpeOsjsKnCmZX7MubtiONOsBL1piZycvgEekwd9mb51O7SmEF6jsEnL3XS14Sp5Aiu7ruE1+FIj8u1LMqUwBNVcEdsmVvg=
+	t=1790648817; cv=none; b=pnSRUc8iZcA4S38l0412uNGWtvhUUEXQ2XzHQ/MDFqn9y2dw1zhPu3HcqAA10Yfch4WQ1YA0uWRDwi9uEWVtW1SU5HxlOJ3uJ8OGJH77pnEAjJW3QOFVJNKiHk+aRM2GtkAZZ+T4fUjuqznlY79UkHfnrCFNacRCIYPzMcKsW8s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790648812; c=relaxed/simple;
-	bh=NOnSRp2kxnyMnxqkm1ceapCrGoAaaoR7EzrcZwGTh3U=;
+	s=arc-20240116; t=1790648817; c=relaxed/simple;
+	bh=/ZoaH+vOkUglJ8Z3lzEiYwSjjMPFBJyuhIzSTt2tARo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=TZx9RcFT4xZocjaAGDtu0gt2Mb2Rk+XRl9+ZkS4Ab5yC1rFCBqlH3RnsPGRElmAMq+5euc4O4YJQHZLJ+SORvCI2kJxt01ZONefD5IZPjgpY1cZWxJWcvCSGagPOK7QK9A6YMzgH5oEy8ShccUlfsR8enMpRuIScnU7TYlfkfgw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=LitlcS8G; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=aNCk9scU; arc=none smtp.client-ip=202.12.124.151
+	 MIME-Version; b=NggueTStPnRb1w2ta+tSebZ7iPdlqOwZ7JOxa3XowIxroOPebZ5COyBpOQNnjEHIG4mbEE9opKTuGCkzluB5ec7SsRUSPs/BqUsAjS0W8DMrBgZLaCyfNIlD1vjmCa7jo/K95YcElEAQm3llHD4Zj93VRiIkF3kelYMGsBJ6Vec=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=l+5UGnsf; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=CBUv9ERU; arc=none smtp.client-ip=202.12.124.151
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="LitlcS8G";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="aNCk9scU"
-Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
-	by mailfout.stl.internal (Postfix) with ESMTP id E9B7D1D0012B;
-	Mon, 28 Sep 2026 22:26:49 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-06.internal (MEProxy); Mon, 28 Sep 2026 22:26:50 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="l+5UGnsf";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="CBUv9ERU"
+Received: from phl-compute-01.internal (phl-compute-01.internal [10.202.2.41])
+	by mailfout.stl.internal (Postfix) with ESMTP id 92C5F1D0010E;
+	Mon, 28 Sep 2026 22:26:55 -0400 (EDT)
+Received: from phl-frontend-04 ([10.202.2.163])
+  by phl-compute-01.internal (MEProxy); Mon, 28 Sep 2026 22:26:55 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1790648809;
-	 x=1790735209; bh=ANQObL1xB5sA0p/hT8By1Wk381VxDj1iYlQc1jcd2cQ=; b=
-	LitlcS8GAxf0osXvoz6/HMYM5xqjMukrYAdDEZavsokL+7J908RByOF7a514c2JW
-	h+g3D6a+O3UQlBz8pQcJ5GGsz3xPFjsstdYgQg7Ivb4EQmOY8Okahp43nVpPhUWD
-	kXITqdXaXRIqlhVfhev/mpBDBC+e2vbLqV0KqEuGr7vRutoKeztfy3R+vnXt2j6K
-	7TefcW46jTWU+w3RE9pngl2no7z1cmd7wK81GdAZBtpPpDr2rPjsQuxlx4KzYwa5
-	j6pVvgHLKO8yJ0Bb0V4tl1H9t2+BfUbXgfhBhsSSSOydI8awmk6WPETbjM6LiOHZ
-	eRdgEahYXn7unlDZ0j5huA==
+	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1790648815;
+	 x=1790735215; bh=0tWbFhV8Hhf9sFrHyq38w4c/gUVvhIW+x+RDW64Ml54=; b=
+	l+5UGnsf+7lxQkUD7OTmF/3kHeRN5hQF80C3yTZKd4wyE4dzHYLrUUUAxhE4GE3G
+	5ptuYxjwvAMt5REJtQ7MxgHiFTVT8igAVUmjlKN/LZ5mWrZISfNGIsupfPw80X8y
+	BuVvrsWO54gEj4S3ptB99spqKCdxrlbb4gyO2Kt7ITUXrim+5XlUdWr1RY3PUAM2
+	mPXwieidtDopuPA6il/ft2vsVnntKqcRO5sFu8XM5RE2nq0LTl475IaohOs0vZzq
+	aSfU6ScpVK7DdpBFlQOvnMKo7QhLI64Q9/tD09JJZx3KtrefQa67ciAqn4+BuBRJ
+	l/iYzq/Be58lhreTGFEg+A==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
 	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm1; t=1790648809; x=1790735209; bh=A
-	NQObL1xB5sA0p/hT8By1Wk381VxDj1iYlQc1jcd2cQ=; b=aNCk9scUV9l4Yzbuh
-	D0YorcjCQfE1XnQfSZntpH9d6icEfjDD8t2klX6yMfzk1oEwoT0GgU1vQgAEE4Ps
-	3NN6AxupRZ2W7dQm7vb6zvRimo/fZgUz9hewdqOc7i/Jl9M8VXKeYlrxX9m2FQsk
-	dPPyrdjs5grQQ2wrMH6tAozofSAU9Swq7XgzbnqKkRUze4o2th6b5cnu9gNCbuj1
-	ADl2mUlcFOTLPazl8klbwc631Fg40x/g5VwhGz+3H4kNmSq3ykzSx3v+2MJHVawL
-	g3o1fDIiuFw0/iRYcQ71oBkCRP/z8hiocGnefiSLgOsnOjoaM0PWNE7EcGSJjndp
-	QqDNg==
-X-ME-Sender: <xms:6SG7asK4Ct_f8SC0BUxz83ff7PecONiUuTwJIMf31TJ2TcrEaNR0OQ>
-    <xme:6SG7avP321iTgn6TFxGoXyhdXBsaUnPcXPAb94FEZt91haOmkIKCHBeu8lxCUmIHA
-    gB2qIWbMcRwhPNcRldbHNcb_Ht-Eb0o1oe7s529a0TENTtR4Tg>
-X-ME-Received: <xmr:6SG7anW8jiCPrQyOaml1-n4Tzl7f_6mH2g5bmoEFB1_NypyA0BEMRct3iBVzfFcLp1LdjyOOxT-eXk6vLlbBIliOv1tDV7Q>
-X-ME-Proxy-Cause: dmFkZTGVDNnzESBYR3mA0mj4J/oiPo94sEVuvz2NPFNMdz9kYeMQUYNSOMDonD5x5v1lxt
-    Y3YKxth5y+5AcelhmbqoVXV3FsLexQGqy6ySfBbZdX3XOiA0j0ixOwBQ7YQLMW11urS7Nn
-    P7GcHAm+fnGGsK6eRyjpaEjaW3wGzOUhgHmF6172kXxhvNqw5t03JcHMsDIg5eCzkcfYMp
-    gzeksANsqYigaEYw/3+s/BCzhblwneuYn20KFgS0pcn7Y6OCynIfFAyFrn+uVtT1eBj7is
-    YWaEDBls78d1VVrgCXv67Nm8xKS7Zaj2d89K8kC6IirWCBlABYeoWupGoWlHVy0aKpr4ra
-    MCuHKCIGuxk+pUdVyAeBUoLSkp62iBW9r9vU/E9CFIdQOIWzgRKlEJx7M7LkCwXcA1ka3f
-    Ce5dqvAhVl6F2MeyVU8zh7uNIMAHZnqBraYo1/DcUThzLhri4YNb05g2dhjD3bIqSh0F5Z
-    EUGKZaNVf2hZTAnmxc2zQfDq4dqRZz4IC+CK9QFTG6YCatXNCSqdo2480HDvhwzTn21a+h
-    jKTXZmkFi5yeCZOUETrZvK/dcSGbtvxhlQqSqEGa0a+WTOCPv19BcN28o46p0jKJYSinik
-    ctc3m48a6Ku59emXOEvmD/kEaZ2NsyvZFDPQrAlylZcdBrIVuCWrZZbgH5nw
-X-ME-Proxy: <xmx:6SG7alnT9SR8fqERtt_L_ejiOqNeyw8uK8HPU8ADbXgwgzKbN6Vfew>
-    <xmx:6SG7auNbWTCo7I7ncyikPbVxpvfALGchak5Tq1Bu9rITU3SAYeje2w>
-    <xmx:6SG7alIiUDDB30JJRHT9Uo8CQR6efjKDp8qe2cyy7fz_5G1nSPLILQ>
-    <xmx:6SG7ag0LB9rsOsjL575vrSqvofc7K8p8MRM-RgGwbkqz8gdYYjSuIQ>
-    <xmx:6SG7amBDuJk6aNf2Ux_crd3fvZZSYjQ4NQ17MKnDtVW5S5_tj4Qw3j6l>
+	:x-me-sender:x-sasl-enc; s=fm1; t=1790648815; x=1790735215; bh=0
+	tWbFhV8Hhf9sFrHyq38w4c/gUVvhIW+x+RDW64Ml54=; b=CBUv9ERUkZtwtUe47
+	rfbNRUy3w198srJ0P3C4CduM18HWZIGvHUkFZCM5XAaTqQguuyMZqbP02IOjZ4rc
+	eLtxDzZemA/EUJcQI2ntd/jhpRG7/b68lFOwAyIiYM8kENfSJYeTHMuGWzsFaCcc
+	5iPOZDBGPu1ewHVX5PddPNiRttLCNf5nNb1vNYR4L8iWuJLQCG63oVxUkwowoN+1
+	w/sGLB14V7QniHFBmETmrlBqoUhSM6DzaHw4YKJLG4LRDo5xM/hnQxTzAYbIZq7Q
+	2ShvALMUWZnw/y0dU+oUW1ExsuuV7fSDDmNfayQpx3hPGMt70vxxwjVxK3aJs4iN
+	IFK9w==
+X-ME-Sender: <xms:7yG7aujubRQ6eMVaOS6GcKebiPR4UiNL0qkLYNRijDVagyoBN2cY_Q>
+    <xme:7yG7aiEqyBX1mVfqpzvGU_GsjMmG_T_g_I2EI9aKA-Mij1_OXtca53NfkMhuNX_LE
+    TaTTP-5FtrkCAw1c4Hx_0tGKSBaehkzKOfKzgtKyGzK36RjtUY>
+X-ME-Received: <xmr:7yG7agtunezgG8FF2YsOISD2znrTIW1A8135x7FpTTex1qFp7L6mfocS5zW8BO0pjcK_ccdvzrBv6VJP46WmsHpt3kpqcJY>
+X-ME-Proxy-Cause: dmFkZTE+bsogD40d2GxBgpnYeHp/aup6WVRLzjdWBHHPlKBynVrzNWh8QEoADNOHP+FK+Z
+    Vgqz5hC90Yp6jn9MDfo9aRFsYr2vMRz0xkNM8qRCjZwAXlP78t6WYYtP5SMZJn0d0uhQfe
+    gFgWB4/7khWSm3cmBSPuGM0BFEi9gykQl8qvlo22NeQC6/uQwRqZOUFbgyYVOtcf7rUASX
+    7Kaqhw7pe+zb3JDOIQ8+ig3BBnwuM5Xo+83Pt9mtsfvsMhL3F500p85F5BLBBgJRLOp1EP
+    +Hcng1Jy3IJ4SZQiTS20OSaSrrdwyfitMh3HWtIXcSjsNttSH1A8upFBeYFTHElHPf89Jw
+    XDBRlJJNKOYiwWn+AVPSceEeyuwa7uwyuL8NFtRdz4VpBaulKCogSlZUZGsIgCAfdVH4g6
+    GGMA61AOWk0g90cW0JkbDT3xF0H6FJtkmc9yVeHL+Zp6e4+pC1Z6y/SYOsuZ0PZFgy0Vp8
+    o0qfroyYmv2d1R+yU78gZ03PfIvZV9N5nV91e1XrHzwCJpBhoN+kedW/hj+9XsPOqLCOPY
+    pRh1yiJ9colessSwEB8DeF9JvP1wWpa8N+3q0GlmIKNbax0D6yKxX9G1m5BjZ4uYuwzijJ
+    l0/k555j15U1xwNs4j7kdoL1FZhmOHDcKGJwQ0Eos4Y1fjN2oeGs3Ltl+2iA
+X-ME-Proxy: <xmx:7yG7ajc0DAXZJmRwRjMzYh5A7GHaww-SfXfhvSfcVcbgoiiZpN6WYg>
+    <xmx:7yG7amkOkIVeC0IUamOYE6z4vKaoq0pXQDZvx_QOHBebbQfaV1Pckg>
+    <xmx:7yG7amCJhmTElWlroR2qMzvBc7LR1Kfj9i8gu0-BLslQdjccZI6FKw>
+    <xmx:7yG7agOArxrwVf4floGehUJCN8aM1xYunQW1kN9RSrScM1VpachFAw>
+    <xmx:7yG7ao5T3RERhJxQZIhPuK_1AqxYuAu_xtXHVK2IBNwbMShppywwg07O>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Mon,
- 28 Sep 2026 22:26:46 -0400 (EDT)
+ 28 Sep 2026 22:26:52 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>,
@@ -78,9 +78,9 @@ Cc: Jeff Layton <jlayton@kernel.org>,
 	linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v2 4/9] nfs: use d_splice_alias() in nfs_link()
-Date: Tue, 29 Sep 2026 12:21:14 +1000
-Message-ID: <20260929022547.1428036-5-neilb@ownmail.net>
+Subject: [PATCH v2 5/9] nfs: don't d_drop() before d_splice_alias()
+Date: Tue, 29 Sep 2026 12:21:15 +1000
+Message-ID: <20260929022547.1428036-6-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
 In-Reply-To: <20260929022547.1428036-1-neilb@ownmail.net>
 References: <20260929022547.1428036-1-neilb@ownmail.net>
@@ -95,69 +95,62 @@ Content-Transfer-Encoding: 8bit
 
 From: NeilBrown <neil@brown.name>
 
-When filename_linkat() calls filename_create() which ultimately
-calls ->lookup, the flags LOOKUP_CREATE|LOOKUP_EXCL are passed.
-nfs_lookup() treats this as an exclusive create (which it is) and
-skips the ->lookup, leaving the dentry unchanged.
+nfs_add_or_obtain() is used, often via nfs_instantiate(), to attach a
+newly created inode to the appropriate dentry - or to provide an
+alternate dentry.
+It has to drop the dentry first, which is problematic for proposed
+locking changes.
 
-Currently that means nfs_link() can get a hashed dentry (if the name was
-already in the cache) or an unhashed dentry (if it wasn't). As none of
-d_add(), d_instantiate(), d_splice_alias() could handle both of these,
-nfs_link() calls d_drop() and then d_add().
+As d_splice_alias() now works with hashed dentries, the d_drop() is no
+longer needed.
 
-Recent changes to d_splice_alias() mean that it *can* work with either
-hashed or unhashed dentries.  Future changes to locking mean that it
-will be unsafe to d_drop() a dentry while an operation (in this case
-"link()") is still ongoing.
+However we still d_drop() on error as the status of the name is
+uncertain.
 
-So change to use d_splice_alias(), and not to d_drop() until an error is
-detected (as in that case was can't be sure what is actually on the server).
-
-Also update the comment for nfs_is_exclusive_create() to note that
-link(), mkdir(), mknod(), symlink() all appear as exclusive creates.
-Those other than link() already used d_splice_alias() via
-nfs_add_or_obtain().
-
-Possibly nfs_is_exclusive_create() should return true even with NFSv2
-when the request isn't an open (not LOOKUP_OPEN).
+_nfs4_open_and_get_state() is only used for files so we should be able to
+use d_instantiate().  However as that depends on the server for
+correctness, it is safer to stay with the current code pattern and use
+d_splice_alias() there too.
 
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- fs/nfs/dir.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+ fs/nfs/dir.c      | 3 +--
+ fs/nfs/nfs4proc.c | 1 -
+ 2 files changed, 1 insertion(+), 3 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index f219cc1a5fc5..b7cb14310bcf 100644
+index b7cb14310bcf..a0d22445dd06 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -1570,6 +1570,9 @@ static int nfs_check_verifier(struct inode *dir, struct dentry *dentry,
- /*
-  * Use intent information to check whether or not we're going to do
-  * an O_EXCL create using this path component.
-+ * Note that link(), mkdir(), mknod(), symlink() all appear as
-+ * exclusive creation.  Regular file creation could be distinguished
-+ * with LOOKUP_OPEN.
-  */
- static int nfs_is_exclusive_create(struct inode *dir, unsigned int flags)
- {
-@@ -2699,14 +2702,15 @@ nfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *dentry)
- 		old_dentry, dentry);
+@@ -2346,8 +2346,6 @@ nfs_add_or_obtain(struct dentry *dentry, struct nfs_fh *fhandle,
+ 	struct dentry *d;
+ 	int error;
  
- 	trace_nfs_link_enter(inode, dir, dentry);
 -	d_drop(dentry);
- 	if (S_ISREG(inode->i_mode))
- 		nfs_sync_inode(inode);
- 	error = NFS_PROTO(dir)->link(inode, dir, &dentry->d_name);
- 	if (error == 0) {
- 		nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
- 		ihold(inode);
--		d_add(dentry, inode);
-+		d_splice_alias(inode, dentry);
-+	} else {
-+		d_drop(dentry);
- 	}
- 	trace_nfs_link_exit(inode, dir, dentry, error);
- 	return error;
+-
+ 	if (fhandle->size == 0) {
+ 		error = NFS_PROTO(dir)->lookup(dir, dentry, &dentry->d_name,
+ 					       fhandle, fattr);
+@@ -2368,6 +2366,7 @@ nfs_add_or_obtain(struct dentry *dentry, struct nfs_fh *fhandle,
+ 	dput(parent);
+ 	return d;
+ out_error:
++	d_drop(dentry);
+ 	d = ERR_PTR(error);
+ 	goto out;
+ }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 04b1987115d5..8f07f34f899e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3113,7 +3113,6 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
+ 	nfs_set_verifier(dentry, dir_verifier);
+ 	if (d_really_is_negative(dentry)) {
+ 		struct dentry *alias;
+-		d_drop(dentry);
+ 		alias = d_splice_alias(igrab(state->inode), dentry);
+ 		/* d_splice_alias() can't fail here - it's a non-directory */
+ 		if (alias) {
 -- 
 2.50.0.107.gf914562f5916.dirty
 
