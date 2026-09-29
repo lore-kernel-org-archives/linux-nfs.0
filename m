@@ -1,90 +1,83 @@
-Received: from fout-b8-smtp.messagingengine.com (fout-b8-smtp.messagingengine.com [202.12.124.151])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 17A2B3C8C71;
-	Tue, 29 Sep 2026 02:27:18 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.151
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B39643612DB;
+	Tue, 29 Sep 2026 07:17:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790648840; cv=none; b=b2evZMUqXHetCz9aBxBs3Hl51QpfvHO06sLu1aL2tEzRjZpGq9a3nILnA96Vsox9VKZliQCP1WRtt8LUyRZAfNr+J3UTD5OZ/ML2cCpe9JKQWQ5lfTPmNmtq1WjbGjr8nhJ6pV2rynKbmVQgfUTAfbhpCuBZOoDyfkF54jj2SAQ=
+	t=1790666275; cv=none; b=f42ev/thX0vo/VrZrvEynRGjheBTbKGH9NK7dXikAG0epRwXP/aI+U3mKJ5y80o+8yToVicuCk5U6dNNY42c8nKlGPu425XP0twqO3rlMmH795PcAuar/jEX2aO6YNGX0SmNXjvRdrl30bHzcUgDPkgJJbyzdnJW2YillaR/UEE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790648840; c=relaxed/simple;
-	bh=QM259V0k6Iv9mXLetJTrj6WRU+lW9FuJjU4okchEOas=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=KahruD+f4sjP9SE22O13Bh2nxGFt2AB8arRgq/hob10YmrNtkWNb6EntzVPJwlnzir/ZpUBer82kMdk/hcHxu2cJqSkVQ6JRtJQkGOd/QoqRtIneX5kh5bNxeNhdNZUuQnNQ28foJKly1r1eYIATMc0AS/oCLuKLlgNBVaHJ2YM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=IRNMVBFb; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=pklCQRTz; arc=none smtp.client-ip=202.12.124.151
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+	s=arc-20240116; t=1790666275; c=relaxed/simple;
+	bh=4vCIQXmbxD/BJRzWDsEb/yfZXwazmkAxLJ75C0XOahc=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=bv72Ggsz/rtTL4JX1hUsFEmaYnIthbLj0kyjy+ykoG1FW47COlpux50F/3q1wWl/JD/bUxzQHzqXe6IvohVtHmUtGPByBOH0ueFTxRKhRQO6brXHNTkSsgqSAvKU3wAiK+niR1DHgmRquZFxW+Y9hDFCeFxJS7yM9xBr6IGOluA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HC9gNeCZ; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="IRNMVBFb";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="pklCQRTz"
-Received: from phl-compute-05.internal (phl-compute-05.internal [10.202.2.45])
-	by mailfout.stl.internal (Postfix) with ESMTP id 19BC51D00126;
-	Mon, 28 Sep 2026 22:27:18 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-05.internal (MEProxy); Mon, 28 Sep 2026 22:27:18 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:date:date:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1790648837;
-	 x=1790735237; bh=tlOTPlxeJg48uRf0lio6IimpGMjfoaRSeSTDpus1fBE=; b=
-	IRNMVBFbzK/5Dy6MQJxl8LhpxAiX2HMTOYVqKWLOCXTGukNlanuUMhN0B+9Jty3A
-	9xF4Pl1UPJmOUrOy/SbjaD2w+/DF9V91l7pDLTHdG1e60HBXQWaEIQxI9jLcM2p3
-	bUvyixFL95fJwY5JaKJ7NsP2dzeNEOIpQghRsiFTox9r+yt6f8lNbUOcGiaSQp/S
-	OKXhWt8ThXV8UAOI4qlkYJoLAuC9oIUX6Yp5VZ13qKlvfck+hbhrPRMpA9Tqb+Mw
-	xujum+cw72Xy8LTWo5EWHdPrLhk4JHfJYkFz2KzUO+zTNorNHDSnP94DbE4VE83m
-	JeTviJyuUaEaD/hK0uasWA==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:date:date:feedback-id:feedback-id:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm1; t=1790648837; x=1790735237; bh=t
-	lOTPlxeJg48uRf0lio6IimpGMjfoaRSeSTDpus1fBE=; b=pklCQRTz6Y/gmFmIW
-	I2K6S6Ab0fSvqdBhlBGJE3CwsOXecitym2zFi+u9oKx97hdfL7yaZtVJ0Y7kQ57s
-	vqsNQAH1/YTJR5y7V5qL/fSrSLpqOtKyE/MebVfi7/D4U9/i2mE+9I/ZgnbgYMSl
-	Gqj2m6anPyJUMZSnvx51/PoSuvHmzRbP29EjPxxav7w4Lt9YaUchc7Na4xSh+3yZ
-	VqtDOHb/igBuX+dXzckTcg8VD9IULWRCFsn5qyY8FfTyJaBPlKEv91XSwiC+Vwhl
-	qNE2h8eluPHI3OVYzLQlt0QhqNZqmce+GWIww3sZWHtrB8IUenomc5rKSWSGV9ck
-	CIQMQ==
-X-ME-Sender: <xms:BSK7auegtllkTAvZ2kJ6dz6ajTpBWkd9qsJQibSOzNbEMysLbOZypg>
-    <xme:BSK7arQNux5Q4-WA9ZuPoZInY6_sgf4RFCa246SlPPzdl4HuoG_NZiuy1WjWI8Vaj
-    FBx-yOgJiEzREEcODYTeO-5LoHctGRDTLD_XyQ1R9LRm72HQQ>
-X-ME-Received: <xmr:BSK7aqJlAjoNrMVvJwBb0iCptyZBVasyiM2mknTRQYMnt4j2rJEV_TCUj-G2GE-EJEcjHqb1yaComPM_Rxt4SrKRzOkMdMI>
-X-ME-Proxy-Cause: dmFkZTE+bsogD40d2GxBgpnYeHp/aup6WVRLzjdWBHHPlKBynVrzNWh8QEoADNOHP+FK+Z
-    Vgqz5hC90Yp6jn9MDfo9aRFsYr2vMRz0xkNM8qRCjZwAXlP78t6WYYtP5SMZJn0d0uhQfe
-    gFgWB4/7khWSm3cmBSPuGM0BFEi9gykQl8qvlo22NeQC6/uQwRqZOUFbgyYVOtcf7rUASX
-    7Kaqhw7pe+zb3JDOIQ8+ig3BBnwuM5Xo+83Pt9mtsfvsMhL3F500p85F5BLBBgJRLOp1EP
-    +Hcng1Jy3IJ4SZQiTS20OSaSrrdwyfitMh3HWtIXcSjsNttSH1A8upFBeYFTHElHPf89sX
-    5oLGn0sJlmr2C5T4eviFDjjMl5BHPY19GMX9oHH+VfX5Cil5bLLyRok6azGMlFdhNP4n7Z
-    PiD7LsNIky5Y7+hyQ4hzGFDLvrwkh9iPCqFc3aHNfsDm10pTU0klFznURDdS5LKYD1IObA
-    a7JdmdOHoY3UNh59ThQQ/QCuOYkavq9KxxWLLkppC04a54GxyytDLzCg8NVg2wNgYuKRQ7
-    v9z7k0JcyDHtlo3nysRMeQfM94bu5i5axYNoe9fyup88D1gvRbrT9eEZPCOjVQmWP+gNPa
-    Y4jR3BG+1K3tzz2BHrppQFva73AwO/Xs0Pz8xtsWPGuc0IZ1H7fbITMdOFsg
-X-ME-Proxy: <xmx:BSK7aoJJr-BOmx4cllYX-Pb0F3snVC2d3PTVQtmoCfypibCIIx3sAA>
-    <xmx:BSK7aliBRTrI_nTZ2eCQwEayk0BN8VLkjjkJW8ZmzJ9bypkIB9Y1tw>
-    <xmx:BSK7aiMzX5E82MVqUmDl-MyDMkeH8_q-Ypo_IaK9Onr4HnFtqXVb-Q>
-    <xmx:BSK7agr6OHVOC-E-UirmBrhO75gaaqYSxlTimrTpsvnHQIBtX2uXiw>
-    <xmx:BSK7aiGCgSDJQo_GCml0hueFzx4k93-bOXXfqNNNIkayCeVgkVdnnEjn>
-Feedback-ID: i9d664b8f:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Mon,
- 28 Sep 2026 22:27:15 -0400 (EDT)
-From: NeilBrown <neilb@ownmail.net>
-To: Trond Myklebust <trondmy@kernel.org>,
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HC9gNeCZ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 040681F000FF;
+	Tue, 29 Sep 2026 07:17:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1790666274;
+	bh=DfV0ZdyXjwMFuzBG40t+uh9OXVIWsQkLcTmp8LtXSIY=;
+	h=From:To:Cc:Subject:Date;
+	b=HC9gNeCZQT3WnFBnHiYLaloBAkhdlb69XWMbxRy8PiaJGIPTPD6zTlnf3Ryvc5YtD
+	 ndc1eqGx+qsW/X5N60SwWKjXKN/SDPDG9hXhKxLq33KqrAu55Pg74vSUxLQoxmHM/A
+	 H+J9biykKCRQU4nYH8TyqyD8WmPWQUy9/BuIvyefKsCo/b4tbec7l5y2zh5U6NU3vi
+	 Vl6GVqTVBJUVa4EkAj/o8NBWA2q3BUWLxqFONpztoLahQLNxKZAn5q64UDAdmqIZ1O
+	 iFjMVQtBoLp1twfVreBa2slbPq0CUbtZDgBGVZGoTwPMB9daryMl2npyQVIszOZHCz
+	 l0d+sbbfh4V4w==
+From: Eric Dumazet <edumazet@kernel.org>
+To: "David S . Miller" <davem@davemloft.net>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>
+Cc: Simon Horman <horms@kernel.org>,
+	Neal Cardwell <ncardwell@google.com>,
+	Kuniyuki Iwashima <kuniyu@google.com>,
+	edumazet@google.com,
+	netdev@vger.kernel.org,
+	Alexander Aring <aahringo@redhat.com>,
+	David Teigland <teigland@redhat.com>,
+	gfs2@lists.linux.dev,
+	John Fastabend <john.fastabend@gmail.com>,
+	Jakub Sitnicki <jakub@cloudflare.com>,
+	Sabrina Dubroca <sd@queasysnail.net>,
+	Jiayuan Chen <jiayuan.chen@linux.dev>,
+	Matthieu Baerts <matttbe@kernel.org>,
+	Mat Martineau <martineau@kernel.org>,
+	Geliang Tang <geliang@kernel.org>,
+	mptcp@lists.linux.dev,
+	Wen Gu <guwen@linux.alibaba.com>,
+	Dust Li <dust.li@linux.alibaba.com>,
+	"D. Wythe" <alibuda@linux.alibaba.com>,
+	Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>
-Cc: Jeff Layton <jlayton@kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH v2 9/9] nfs: use d_duplicate()
-Date: Tue, 29 Sep 2026 12:21:19 +1000
-Message-ID: <20260929022547.1428036-10-neilb@ownmail.net>
-X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
-In-Reply-To: <20260929022547.1428036-1-neilb@ownmail.net>
-References: <20260929022547.1428036-1-neilb@ownmail.net>
-Reply-To: NeilBrown <neil@brown.name>
+	Allison Henderson <achender@kernel.org>,
+	rds-devel@oss.oracle.com,
+	Philipp Reisner <philipp.reisner@linbit.com>,
+	Lars Ellenberg <lars.ellenberg@linbit.com>,
+	=?UTF-8?q?Christoph=20B=C3=B6hmwalder?= <christoph.boehmwalder@linbit.com>,
+	Jens Axboe <axboe@kernel.dk>,
+	drbd-dev@lists.linux.dev,
+	Keith Busch <kbusch@kernel.org>,
+	Christoph Hellwig <hch@lst.de>,
+	Sagi Grimberg <sagi@grimberg.me>,
+	Chaitanya Kulkarni <kch@nvidia.com>,
+	linux-nvme@lists.infradead.org,
+	Ilya Dryomov <idryomov@gmail.com>,
+	Alex Markuze <amarkuze@redhat.com>,
+	Viacheslav Dubeyko <slava@dubeyko.com>,
+	ceph-devel@vger.kernel.org,
+	Eric Dumazet <edumazet@kernel.org>
+Subject: [PATCH v3 net-next 0/9] tcp: avoid struct socket cache line miss in tcp_check_space()
+Date: Tue, 29 Sep 2026 07:17:34 +0000
+Message-ID: <20260929071743.23624-1-edumazet@kernel.org>
+X-Mailer: git-send-email 2.56.0.rc1.315.gc6ed9934b7-goog
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -93,48 +86,85 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: NeilBrown <neil@brown.name>
+tcp_check_space() is called on every incoming ACK and every transmitted
+packet, and tests SOCK_NOSPACE in sk->sk_socket->flags.  Because struct
+socket lives in its own cache line and the TCP fast paths do not touch
+it for anything else, that test pulls in an extra cache line that is
+cold when the working set of active sockets is large.
 
-As preparation for d_alloc_parallel() being allowed without the
-directory locked, use d_duplicate() to duplicate a dentry for silly
-rename.
+This series mirrors SOCK_NOSPACE into a new u8 field, tp->tcp_nospace,
+placed right after tp->chrono_type in the tcp_sock_write_tx cache line
+group (fitting in an existing 3-byte hole before chrono_start, so no
+other field moves and sizeof(struct tcp_sock) is unchanged).  Both the
+transmit and ACK fast paths already touch that cache line, making the
+fast-path test in tcp_check_space() free of extra cache misses while
+keeping __tcp_check_space() authoritative on SOCK_NOSPACE.
 
-This results in an in-lookup name, so d_lookup_done() must be called.
+To maintain the invariant (SOCK_NOSPACE set => tp->tcp_nospace set) from
+a single choke point:
 
-Signed-off-by: NeilBrown <neil@brown.name>
----
- fs/nfs/dir.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ - Patch 1 fixes a long-standing bug in dlm where SOCKWQ_ASYNC_NOSPACE
+   was tested and cleared on con->sock->flags instead of SOCK_NOSPACE.
+ - Patch 2 introduces sk_set_nospace() and sk_clear_nospace() and
+   converts the core networking setters and clearers.
+ - Patches 3-8 convert the remaining in-kernel callers (sunrpc, rds,
+   dlm, drbd, nvme-tcp, libceph) so that no open-coded set_bit() or
+   clear_bit() of SOCK_NOSPACE remains in the tree.
+ - Patch 9 adds tp->tcp_nospace, wires it into sk_set_nospace() and
+   sk_clear_nospace(), and switches tcp_check_space() to test it.
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index e40ea471fa34..3adb8ce727f8 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2801,11 +2801,9 @@ int nfs_rename(struct mnt_idmap *idmap, struct inode *old_dir,
- 			spin_unlock(&new_dentry->d_lock);
- 
- 			/* copy the target dentry's name */
--			dentry = d_alloc(new_dentry->d_parent,
--					 &new_dentry->d_name);
-+			dentry = d_duplicate(new_dentry);
- 			if (!dentry)
- 				goto out;
--
- 			/* silly-rename the existing target ... */
- 			err = nfs_sillyrename(new_dir, new_dentry);
- 			if (err)
-@@ -2870,8 +2868,10 @@ int nfs_rename(struct mnt_idmap *idmap, struct inode *old_dir,
- 		nfs_dentry_handle_enoent(old_dentry);
- 
- 	/* new dentry created? */
--	if (dentry)
-+	if (dentry) {
-+		d_lookup_done(dentry);
- 		dput(dentry);
-+	}
- 	return error;
- }
- EXPORT_SYMBOL_GPL(nfs_rename);
+v3:
+ - Rebase and CC subsystem maintainers (Jakub)
+ - Link to v2: https://lore.kernel.org/netdev/20260924134729.2047213-1-edumazet@google.com/
+
+v2:
+ - Order set_bit(SOCK_NOSPACE) before tp->tcp_nospace = 1 in
+   sk_set_nospace() and tp->tcp_nospace = 0 before
+   clear_bit(SOCK_NOSPACE) in sk_clear_nospace() so a concurrent
+   lockless tcp_poll() cannot leave SOCK_NOSPACE set with
+   tp->tcp_nospace cleared (Sashiko)
+ - Move tp->tcp_nospace to the 3-byte hole after tp->chrono_type so no
+   field in struct tcp_sock shifts after the AccECN bitfield additions
+   (Sashiko)
+ - Clarify comment and Patch 2 changelog wording (Sashiko)
+ - Link to v1: https://lore.kernel.org/netdev/20260922122721.3568295-1-edumazet@google.com/
+
+Eric Dumazet (9):
+  dlm: fix send buffer backpressure handling
+  net: add sk_set_nospace() and sk_clear_nospace()
+  sunrpc: use sk_set_nospace() and sk_clear_nospace()
+  rds: use sk_set_nospace()
+  dlm: use sk_set_nospace() and sk_clear_nospace()
+  drbd: use sk_set_nospace()
+  nvme-tcp: use sk_clear_nospace()
+  libceph: use sk_clear_nospace()
+  tcp: add tp->tcp_nospace
+
+ .../networking/net_cachelines/tcp_sock.rst    |  1 +
+ drivers/block/drbd/drbd_worker.c              |  3 +-
+ drivers/nvme/host/tcp.c                       |  2 +-
+ drivers/nvme/target/tcp.c                     |  2 +-
+ fs/dlm/lowcomms.c                             | 10 ++--
+ include/linux/tcp.h                           |  3 ++
+ include/net/sock.h                            |  2 +
+ include/net/tcp.h                             | 30 +++++++++++-
+ net/ceph/messenger.c                          |  2 +-
+ net/core/sock.c                               | 46 ++++++++++++++++++-
+ net/core/stream.c                             |  6 +--
+ net/ipv4/tcp.c                                |  5 +-
+ net/ipv4/tcp_bpf.c                            |  2 +-
+ net/ipv4/tcp_input.c                          |  8 +++-
+ net/kcm/kcmsock.c                             |  4 +-
+ net/mptcp/protocol.c                          |  4 +-
+ net/mptcp/subflow.c                           |  5 ++
+ net/rds/tcp_send.c                            |  5 +-
+ net/smc/af_smc.c                              |  2 +-
+ net/smc/smc_tx.c                              |  6 +--
+ net/sunrpc/svcsock.c                          |  4 +-
+ net/sunrpc/xprtsock.c                         |  4 +-
+ net/tls/tls_sw.c                              |  2 +-
+ 23 files changed, 121 insertions(+), 37 deletions(-)
+
 -- 
-2.50.0.107.gf914562f5916.dirty
+2.56.0.rc1.315.gc6ed9934b7-goog
 
