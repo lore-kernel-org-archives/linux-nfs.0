@@ -1,132 +1,184 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from fout-a3-smtp.messagingengine.com (fout-a3-smtp.messagingengine.com [103.168.172.146])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 693373B101C;
-	Tue, 29 Sep 2026 21:24:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E6E464E236B;
+	Tue, 29 Sep 2026 22:04:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.146
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790717090; cv=none; b=JSYq6FyxO0bfX6fMBCp09MagGgXMFepQv448x9ftSxThFNSwghTc8J/30rH63K4eae8g71e5ZYASU5q18d9Xgg6DJTDGJyu0SuIc+TBNQc+Ewcoks/96maaIqvHQupDb5pBHHj/B9wlUoW7D97s4UfhxcEkoADYjFCHqjhT7xdk=
+	t=1790719456; cv=none; b=pRDd9DhvimM/08RCVlvU0W0tZ9a2ec7D5R+cNlITPfIERsiW8vurnja4p12oDE1uatt8OJv26k7A78eln6v6y0K9rHEu11NKQtpUowqVVMAEKLeJrlFxRW1WL78a/ktjgPkoqmV8xp+HljqdGzte9G77/5z0wF23r0DZGgpe3U8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790717090; c=relaxed/simple;
-	bh=hl/GJq+lBD80Hn/PMYx2ViilH0jQaejr1LEgM8N0frA=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=nQzvRgcPfb8IbwKpjSbuaIH9zcMlJjtlZoUzXDILj9JsQehnaEsHQYmEvxWLSLvLUMxD7G0vEDh9KiFeH9bPXPxJCHGreSirB8Eb0xEYO+ytDeyo18sAWGds/qQiA1aYjtxvnBFfea241LFYtbn23j6p8GjyANveUQYgYZjhxuU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Ctj7u5wo; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1790719456; c=relaxed/simple;
+	bh=16XFWo6ATwn43R7NHscr4K38O3/KMT8HyU7k+zgKqC0=;
+	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
+	 References:Date:Message-id; b=o5zaIaPBkpGBelhsO/JlY8k+IAD0bhlj3mthkTTEaeGPyAxg1p7MY7n9fNlGFRtC0nSThCAumrM9Ny5rvmEBW+p1OvDukQMJ9S48YjVZEzwIOO4AnVLAVwPauVQQ7FMhY1FQXiUBn0G/cDkrC8BLiwcc5dHomwf03gFNctrnBdU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=bB+M/pl1; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=K0L8THyR; arc=none smtp.client-ip=103.168.172.146
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Ctj7u5wo"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DF1CC1F000FF;
-	Tue, 29 Sep 2026 21:24:48 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790717089;
-	bh=xrUvbY2XS9zfmj593JZTmLqFqRTgjCWGJ4x+Rrl6zwg=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=Ctj7u5woYiswL4CpuhbxlzRiM2H9NAHfrGWOvo/pDYZJI3eKOy/gqbjDnnE5gg1dh
-	 FtvoR593w4HcTf8cnu6U1Os0QzZtQ5m5FfFDcPltbuLk5U2eMuvGKcJJAoD6eXW1XA
-	 NkGBYNnzBYdgP1qi/R5pycy64TFPayWqegpxYkLJXrJg0vIQ/2MPmmaozAF1rdX0o9
-	 oRrirBxdbebHOLS8mf5hOdy8MamP8XPQmvjOAUpDiI87+Skymf4OYGb46Hq4VKsPys
-	 M/j1s7JikWKuudPv+4KrCW0uKmNntOLFvFOxIRrtvDhghKVGVjWJ3k0htZ0WiwCOt/
-	 IvqTp2io4hygg==
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailfauth.phl.internal (Postfix) with ESMTP id E7581F40066;
-	Tue, 29 Sep 2026 17:24:47 -0400 (EDT)
-Received: from phl-imap-04 ([10.202.2.82])
-  by phl-compute-02.internal (MEProxy); Tue, 29 Sep 2026 17:24:47 -0400
-X-ME-Sender: <xms:nyy8ajUGHxxkmrO8o9Ab5bEq3_iMhsRq9bbFPsx2HPNR3N_tpx2pGA>
-    <xme:nyy8amYWNGPOtlELasc3wmTEXOuWadrc_-o7Z-8ja6zSnmO8__p71FpzGsaRNFBuw
-    cY-1Hu27sr2QggmSlHQPBiIHkf_XkADfyNXOcxJA28YOG6T5GKPv2xo>
-X-ME-Proxy-Cause: dmFkZTEDV3/1yCe+FQo+fajx7AqOIr5Rxrx3oIgqUFxFLnj0QtPLZEH8zROozvhnMD7F/z
-    bxLh2IuyMIL/XFrFtL85b172Pv70LA4koJij1gAHBougsg20/EGxhfDwp9eZHd0SewJgFV
-    ut76SDPp5jQjxDbA0x9nKTNLzMdN/gk/fN/3mNXiQQcw4ID0b97l5sEsHIdqTt4UJ6wBDv
-    M2OLSORoquyKzLfw2+GZwznTxEsHUpNWshe4Gfjr732LA3ChvX8lH/EySiZwG9pYRpQ6P4
-    hGLLR5zvCUgZBx5CV1J7SZZxuzuYvLqirgRn4S1NL04m2EkKAEZ+fTHu68U/pJ7bSOuAVQ
-    Q8RNTYYMKw/Q0G31exTYs7VIzRA8xc/g7maAD4lddSVmAUD2XDn56e/9Rz2aZNXLb/eCV6
-    m8/VHDblDdbvqltGwMl2muz96Sg23FCUUAb57Nc0/CCr0Lz6g96Jwi1VdwOvK1BLJNkDnd
-    7QaQX61rT6fDSDJdYVv/25/wCJ02rHxZAE7xw0l8Rldy9Vgr+bp0vq6Y26uD/J4r/jbcvY
-    lYg6KQhhSQML3q5xiQ/Zcbb4sEWAQfPdmb0ZgZ9Fhq54C2v5hcqOdY9XJTcuVAInzIo9P2
-    rMOYJWouMLdjzZmKkO0tIq4Ccn/RStHFmod88WxKT40cxJSg0cZ1WZDrZNbA
-X-ME-Proxy: <xmx:nyy8ahhaC2jkq1l2rC5skmWScn_X9B4SYIipVuaqXfcwvws50DNvfA>
-    <xmx:nyy8asBj6TagPUgqZd_ApjbzUUg3BZd2IqM6eayipYaAc6kVXyLP4Q>
-    <xmx:nyy8ar5hvhkwFFpM7CP3DDo7evSaK6s10VEqFVg6wtDoWaLwjUBTuQ>
-    <xmx:nyy8apFieqMq8XXqonrD-HsdwKS5xUjcz9eK23gho_H7FCa3cs-gQg>
-    <xmx:nyy8auD_0LS3b8KVLuI0CjYACmMO2l_DXKfFjxiBBeq-Gkk1De2l7pwA>
-Feedback-ID: i20964851:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id BB3D8B6006E; Tue, 29 Sep 2026 17:24:47 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="bB+M/pl1";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="K0L8THyR"
+Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
+	by mailfout.phl.internal (Postfix) with ESMTP id 0FA8FEC03DE;
+	Tue, 29 Sep 2026 18:04:14 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-04.internal (MEProxy); Tue, 29 Sep 2026 18:04:14 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
+	cc:cc:content-transfer-encoding:content-type:content-type:date
+	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to; s=fm1; t=
+	1790719454; x=1790805854; bh=udynu9P+wS+IBpdZ3J1EX3YCm0KHojnwhA3
+	Wk7LL3nE=; b=bB+M/pl1KuNOZ+73qarfUJ2X09pm8e3Ms2GMYyVGt3Bc72/jZ8M
+	Cxl2qzipP0vap4eCKsrYB/tt9sthaKbKiEZQYuo9tpF+w9lgOcRPAkckV1p+bsLy
+	t9kvAsw0D1scFsRuETSn5D9/BUp/zCN83JppzmMfWgBI8NgaCjnMOh0AGpyBGlmZ
+	uNhMlWrBK+obvOrHe5neLt9cs1DXmQYQWpQhzVvX1wxqktoz8y4tXA94Ura0cvDE
+	k6P0MWcrkEf/hjvcAZRINBF0jfyeEiX/bEAsY56t7YgznGzoeWAggz0SEoAkXgUh
+	iiBOOddoHHIoXNVlFtM0A+o/0vE9wamOVZQ==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1790719454; x=
+	1790805854; bh=udynu9P+wS+IBpdZ3J1EX3YCm0KHojnwhA3Wk7LL3nE=; b=K
+	0L8THyR6X7Z6bHyIydTB9BEFIHTxqL8C/kKG3XuL6IdDLnOb/l0yeVLhe1Gwy/ZB
+	8lTPcQDSVfW6eLo4cGfkuTigFfASqHi2UZcSBu6rqk9QHzpjk/xk7wnU1ZPZCsDz
+	MKPdoYJVPdcEPPPlWGRXO4Yqm6go3gXlVoLzKdSv0/17tBz6XWLzo4KfX0asBWzn
+	C3aBHVXkwaQL+/Ovdt7rZectrlTXR5B81DjT8R7EVxmNDUYNWFuYcPqtc9WIEFK2
+	XG9D2PT2OdB/tyV4BlBTFgWDNk2+yXFR+fHicpkamao2fFkr52LoTrVRQgzbIdhK
+	42av5CdGv0SQEZ7d2axwQ==
+X-ME-Sender: <xms:3TW8alwTWVt9ob_RkgrwOmlN9QcfZm7XvrxhfdBpXb8yKt1YkPO6PA>
+    <xme:3TW8alqaMFdp3n0ZRiNK5goh1lJFlb3hQ40FAd2CuZiRcEmOdrXLQFggfPxnuZeTB
+    -53Dhu89jlejLQSa9Y5sBtYDMAucPGMBZO2cGb6apPoPsPeAt8>
+X-ME-Received: <xmr:3TW8ageiEKDKDTtF5RVJfKNC9BRSSKrm_TjyyHwwRDbAztCVjubfbdT-j_j_Y9XsNjB7U3HIAsIZ4ML58H44Z3t6LsY_KKY>
+X-ME-Proxy-Cause: dmFkZTEhYeZ7AcnZkOHqvU57j7tfcy7G15Xx0OlemqmM5leZZUU3yVbuMGFNb1nJkB2m4E
+    eqGUZy/NzG+yPnx3+NKWvgMozSKTe3MvRESWT+GI2OBG8PASaJdaE1dPzULEQLY2R8Bfhe
+    XI7yt4hMoN0sjjhb4K2o6rB5XK5y64y9g34CUols03YSDdg7dUG8fvvkKQdGiIeF/qdwGF
+    tsk5zbextjtg+xXr+wyhsHxdCGAqnYmXWFPDoDRiLrAGOAjHfQUEOTtyoY/RMc+vzsUBEK
+    n/AvC2KHqJvp3zfUgac/REmEOcQMpRF++SV82tluAV9OhKm7GXUnHmHC5cDAgIV9bFI4Qm
+    HGqfL9IsTDCZ1lUX+RXj1bhlbLHsW2lart6MPyDKkjKYG0NQ8KCRCX77H/S3WL+6Fq23z5
+    FdK2EEmnvuMhG2wA3yvy+JjtGGxlF8DBbch944ckWqoOPm0S5BNl9BNKYmP8ePXMcEoZx9
+    rKj8Ye1ZesmUFiq0Ckqm4UBfYKYVMYf7q178mjbgz6HHOKVTPOjmyApx7Oco/U4Ky2g/8u
+    xEt1Vn2jVDmJvyfdM6X9vnigwSrNG0Xs+HlrH2NlxNGp3UuNRFZrg6EbFcfHQgLE4V+SU+
+    km3bB3zG48wAo9fKiWBaqm/8NCKSqn/gYONYLByalJo6iqD3sn77dlp6v2iw
+X-ME-Proxy: <xmx:3TW8ajj47CbipcBriqjEYjAxShVBXRRn1Fo_oQW2cOvaFyOmztcV0Q>
+    <xmx:3TW8amIEt3jt0LpSR_eQWrkT7dug5QJEzRUc30kBQwX-k2GcBaa7Ew>
+    <xmx:3TW8aoqR8ITAbSvccosTJu0DWEcPCv-dvz9vq1vVTS4r6SfeBGqoyw>
+    <xmx:3TW8ajqRjdq3SxmJglzyAZ--fXLZOakBBE4NaLIimuQPX0a4_UXmNg>
+    <xmx:3jW8ammR1vuHEasDxA3FES5K2HSaD3I4M3XDZol0tDSOjwA_p8yw4zAn>
+Feedback-ID: i9d664b8f:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
+ 29 Sep 2026 18:04:07 -0400 (EDT)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AFvboQk2emfF
-Date: Tue, 29 Sep 2026 17:24:15 -0400
-From: "Anna Schumaker" <anna@kernel.org>
-To: NeilBrown <neil@brown.name>, "Trond Myklebust" <trondmy@kernel.org>,
- "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Christian Brauner" <brauner@kernel.org>
-Cc: "Jeff Layton" <jlayton@kernel.org>, "Jan Kara" <jack@suse.cz>,
- linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
- linux-kernel@vger.kernel.org
-Message-Id: <68919e69-d97b-47a4-8695-8021f24f119c@app.fastmail.com>
-In-Reply-To: <20260929022547.1428036-1-neilb@ownmail.net>
-References: <20260929022547.1428036-1-neilb@ownmail.net>
-Subject: Re: [PATCH v2 0/9] nfs: prepare for VFS locking changes.
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+From: NeilBrown <neilb@ownmail.net>
+To: "Jori Koolstra" <jkoolstra@xs4all.nl>
+Cc: "Alexander Viro" <viro@zeniv.linux.org.uk>,
+ "Christian Brauner" <brauner@kernel.org>, "Chuck Lever" <cel@kernel.org>,
+ "Jeff Layton" <jlayton@kernel.org>, "Mateusz Guzik" <mjguzik@gmail.com>,
+ "Dorjoy Chowdhury" <dorjoychy111@gmail.com>,
+ "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
+ "Andreas Gruenbacher" <agruenba@redhat.com>, gfs2@lists.linux.dev,
+ "Ilya Dryomov" <idryomov@gmail.com>, "Alex Markuze" <amarkuze@redhat.com>,
+ "Viacheslav Dubeyko" <slava@dubeyko.com>, ceph-devel@vger.kernel.org,
+ "Paulo Alcantara" <pc@manguebit.org>, "Namjae Jeon" <linkinjeon@kernel.org>,
+ linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-nfs@vger.kernel.org
+Subject:
+ Re: [PATCH v2 06/14] vfs: add some allowed open flags to vfs_lookup_open()
+In-reply-to: <113651329.602012.1790695136052@kpc.webmail.kpnmail.nl>
+References: <20260919022441.3305170-1-neilb@ownmail.net>
+  <20260919022441.3305170-7-neilb@ownmail.net>
+  <113651329.602012.1790695136052@kpc.webmail.kpnmail.nl>
+Date: Wed, 30 Sep 2026 08:04:02 +1000
+Message-id: <179071944284.37859.11007945820334867989@noble.neil.brown.name>
+Reply-To: NeilBrown <neil@brown.name>
+
+On Wed, 30 Sep 2026, Jori Koolstra wrote:
+> > Op 19-09-2026 04:06 CEST schreef NeilBrown <neilb@ownmail.net>:
+> >=20
+> > =20
+> > From: NeilBrown <neil@brown.name>
+> >=20
+> > vfs_lookup_open() must allow:
+> >   O_LARGEFILE so that large files can be opened.
+> >   O_NONBLOCK so that break_lease() can be asked to return -EWOULDBLOCK.
+> >=20
+> > Also O_NOFOLLOW as we don't/can't handle symlinks.  In fact we
+> > should enforce O_NOFOLLOW for the same reason we enforce __O_REGULAR.
+>=20
+> I don't know all the NFS background, but: you can handle intermediate symli=
+nks
+> but not trailing ones? Why is that?
+
+NFS performs a lookup one component at a time.  Each component might be
+a symlink and the client decides what to do it if is.
+When opening a file where the client hasn't previously performed a
+lookup of the basename, it can use the NFS OPEN request which combines
+lookup and open (and create), much like how ->atomic_open does.
+So the OPEN NFS request only needs to care about trailing symlinks as
+those are the only ones that it has any chance of seeing.
+
+>=20
+> >=20
+> > Signed-off-by: NeilBrown <neil@brown.name>
+> > ---
+> >  fs/namei.c | 5 +++--
+> >  1 file changed, 3 insertions(+), 2 deletions(-)
+> >=20
+> > diff --git a/fs/namei.c b/fs/namei.c
+> > index 0f69abb3743b..a08f37aca3e1 100644
+> > --- a/fs/namei.c
+> > +++ b/fs/namei.c
+> > @@ -4632,11 +4632,12 @@ struct file *vfs_lookup_open(struct path *parent,=
+ struct qstr *last,
+> >  	int error =3D 0;
+> > =20
+> >  	WARN_ONCE(mode & ~S_IALLUGO, "mode must only have permission bits");
+> > -	WARN_ONCE(open_flag & ~(O_ACCMODE|O_CREAT|O_EXCL|O_TRUNC|__O_REGULAR),
+> > +	WARN_ONCE(open_flag & ~(O_ACCMODE|O_CREAT|O_EXCL|O_TRUNC|__O_REGULAR|
+> > +				O_NONBLOCK|O_LARGEFILE|O_NOFOLLOW),
+> >  		  "open_flag has unsupported flags");
+> > =20
+> >  	mode |=3D S_IFREG;
+> > -	open_flag |=3D __O_REGULAR;
+> > +	open_flag |=3D __O_REGULAR | O_NOFOLLOW;
+>=20
+> What does __O_REGULAR | O_NOFOLLOW do? Does __O_REGULAR only block opening
+> if the final resolved thing is not a regular file, or does is also block
+> trailing symlinks? Afaict, the former.
+
+__O_REGULAR is not documented it detail, but I understand that it
+prevents the filesystem from opening anything that isn't a regular file.
+As symlinks can never be opened anyway (O_PATH is not really an "open"),
+__O_REGULAR should have no effect if a symlink is found.  But O_NOFOLLOW
+might have an effect.  (If the symlink is followed and ultimately points
+to a non-regular file, then __O_REGULAR will have an effect).
+
+For ->atomic_open, if a symlink is found, then the dentry should be
+instantiated to that symlink and it should be provided via
+finish_no_open().
+If, however, O_NOFOLLOW is set, then if a symlink is found then it is
+perfectly acceptable to return -ELOOP instead.
+
+This makes a difference for the NFS client.  If it sends an OPEN request
+to the server and gets the error NFS4ERR_SYMLINK, then it will normally
+send a LOOKUP to the server to get the details of the symlink.  However
+if O_NOFOLLOW is set it can avoid the LOOKUP and simply return -ELOOP.
 
 
+NeilBrown
 
-On Mon, Sep 28, 2026, at 10:21 PM, NeilBrown wrote:
-> sashiko reported some problem with the previous posting.  A lot
-> were false positives as it used the wrong base.  However:
-> 3/9 had inverted the return code from nfs_neg_need_reval() - it returns
->     1 for "must revalidate" unlike d_revalidate which returns 0.
-> 8/9 didn't handle and error from nfs_lookup() correctly - it
->     should be fatal rather than triggering a retry.
->
-> Original intro below.
-> Thanks,
-> NeilBrown
->
-> I am working on changes to directory locking.  The medium term goal is
-> to lift d_alloc_parallel() locking above i_rwsem, so d_alloc_paralle()
-> can be run unlocked, and consequently cannot be called when ->i_rwsem is
-> held.
->
-> The requires:
->  1/ the d_alloc_parallel() not be called while i_rwsem is held.  NFS does
->     this in a few places. New interfaces d_alloc_trylock() and d_duplicate()
->     are now available and can be used instead.
->
->  2/ a dentry must not be d_drop()ed while an operation is ongoing, as an
->     unlocked d_alloc_parallel() would then be able to create a new
->     dentry with the same name.  In particular d_rehash() must be phased
->     out as it won't be safe.  Various techiniques are used to avoid the
->     need for d_drop(), particularly that d_splice_alias() is now able to
->     splice a hashed alias.
->
-> Further, the first two patches here fixes bugs that I found while
-> developing and reviewing these changes.
->
-> The patches depend on patches recently added to the vfs tree.  I would
-> prefer these land in that tree too with an Acked-by or similar from NFS
-> maintainers.
+>=20
+> > =20
+> >  	error =3D lookup_noperm_common(last, parent->dentry);
+> >  	if (error)
+> > --=20
+> > 2.50.0.107.gf914562f5916.dirty
+>=20
 
-These look okay to me:
-
-Acked-by: Anna Schumaker <anna.schumaker@hammerspace.com>
-
->
-> Thanks,
-> NeilBrown
->
->  [PATCH v2 1/9] nfs: fix open-blocking with d_fsdata
->  [PATCH v2 2/9] nfs: fix nfs_call_unlink()
->  [PATCH v2 3/9] nfs: remove d_drop()/d_alloc_parallel() from
->  [PATCH v2 4/9] nfs: use d_splice_alias() in nfs_link()
->  [PATCH v2 5/9] nfs: don't d_drop() before d_splice_alias()
->  [PATCH v2 6/9] nfs: don't d_drop() before d_splice_alias() in
->  [PATCH v2 7/9] nfs: Use d_alloc_trylock() in nfs_prime_dcache()
->  [PATCH v2 8/9] nfs: use d_alloc_trylock() in silly-rename
->  [PATCH v2 9/9] nfs: use d_duplicate()
