@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9FD5238E8CA;
-	Tue, 29 Sep 2026 07:18:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B082F3451D6;
+	Tue, 29 Sep 2026 07:18:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790666303; cv=none; b=Bo7kMKj+m4t0CGbcyVOgaGSkK6w370NSCwt8koZd4UNVGzEBy9QVaXo6jVADN1zHgO0+Uf5PsY0tx+JVsB+1jx6moym8ulz44KF8aBvufNokyTs8VUDcFGqYXmmDnt2OdRmzsYeg3kIUIr/ZD1korh3LZRf7CtXGpjWITVQvU5A=
+	t=1790666307; cv=none; b=RBLjp6Jahmr5xERtxbc+XruWCXWW/F8RA54pvLKZMTzsbN/Z55Yc5oUr/V1C9Qsl7l93poLN3SuvcI4wIL4TKYyCYs0hNukJfH0RUyMAglc6xUaiy7kOQH6D4/xU1kRcED5jPMIr/SAkV9S/P4714OUlJ6UxZp+KMikE6m6zoKw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790666303; c=relaxed/simple;
-	bh=rDxvOjm7grrJIvYuyxm1pKCpGBApcCr6KlaorucIEUA=;
+	s=arc-20240116; t=1790666307; c=relaxed/simple;
+	bh=HjoQsE6HQdzGw+KMpLI8hOVBrhCx1wyGTA1hNtXTzZQ=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=JJjtE/zF7nt73Mpu/heW8Lj1bc+n0h4O0J5QzG5c7vUVbsYczXkZSWfZy29CycUqj5ejvkerUPm9mcKKQjPUIVv320mS2fy51Ra4Vd038pQD8otB9xOCxORP29p/agyjWpIE2jzi72a1saB6ecPddNsP6sDO8W5rbt8ckFb9I7g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Utmyw0ZM; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=j9AxIIwr9GhjCnCHcZJf6smZghi89dGSgpPIa1iII+78Bry5957xQ87emKdLd+Pf4u7pJiwoYexkYQaXGtPwIOc7J+y2dFg6DtOsjLE/2pl6q5eOnBqdy5+/u9u2RJTcrdXtUwO0yxxX8L0DxwI6IIWDjwvTEb1tESSBYn6xabs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=H1cdlZ0K; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Utmyw0ZM"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C9C0B1F00893;
-	Tue, 29 Sep 2026 07:18:18 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="H1cdlZ0K"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 159F81F00898;
+	Tue, 29 Sep 2026 07:18:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790666302;
-	bh=RnWUSUoPlsuP4rnCrMGHZfdBwvKHsEHp7ONS81OIlUg=;
+	s=k20260515; t=1790666306;
+	bh=SzyVW5II+GzZ2Kkc45gez6YC7wp+NQFrBHSESlX7gQI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=Utmyw0ZM96CbsgrYi7Di59lazewSJzkqgeCES4nSZti+IkvQCMxSaEX88ZKJjxOaj
-	 zUWbZuXoe7uutd0a8VirVY4s6libYi8v+CFbziQeDQ6HwyA5Hr1P2B0tKrg6pDK9G9
-	 6EV/14xbrkSI+W3pL6lhkD/dP2yzga6gZbzWU0pJOkwFlkK4BmSrbFCpeitPYiTNkg
-	 o3atTJQsP2tS6/yI0SMxpo56E1/28mcKwHn+27jtxmmb6hW3J09MQHWkzuimU/ghVA
-	 WMuho6JPxiSj2sOwc0JQkxgLh2KpNt85qfi8fzgt2G0Kddq2PFgtzuUEmSix9n/c1I
-	 +Riy/PYJ/j7ew==
+	b=H1cdlZ0KoyRcwCIuvoJcNR/Y4PP9Q7y1AW2bQfnybfPcty/KPw69k279QkahNdmMQ
+	 AcMS3CTyIBCTR8WlcE0it4bnS8sRPN7WyUBPDJ3iDhKqaJ1qo5XbU4CEdCso1ZqkM/
+	 JQ9SFbTDWRw1COa8Fmi+dUuFRCy4FzTvhhAm4jU8Uv19cIncCZCeyyUIsVT3IP/W4O
+	 v3MBnLIH+LQMqy8Rf21QfbOQDSpZWcSKtOehWAemHNSySobnSvhmc/p6PvQHiD5pTz
+	 eZAs9ej6HDQJLaL8gj/P1EB+//rV0i8X0PDaF712sNC/Erv1bcnqWzzNh+EkC2vWhj
+	 ZHCvKJcaFL7nw==
 From: Eric Dumazet <edumazet@kernel.org>
 To: "David S . Miller" <davem@davemloft.net>,
 	Jakub Kicinski <kuba@kernel.org>,
@@ -75,9 +75,9 @@ Cc: Simon Horman <horms@kernel.org>,
 	Viacheslav Dubeyko <slava@dubeyko.com>,
 	ceph-devel@vger.kernel.org,
 	Eric Dumazet <edumazet@kernel.org>
-Subject: [PATCH v3 net-next 6/9] drbd: use sk_set_nospace()
-Date: Tue, 29 Sep 2026 07:17:40 +0000
-Message-ID: <20260929071743.23624-7-edumazet@kernel.org>
+Subject: [PATCH v3 net-next 7/9] nvme-tcp: use sk_clear_nospace()
+Date: Tue, 29 Sep 2026 07:17:41 +0000
+Message-ID: <20260929071743.23624-8-edumazet@kernel.org>
 X-Mailer: git-send-email 2.56.0.rc1.315.gc6ed9934b7-goog
 In-Reply-To: <20260929071743.23624-1-edumazet@kernel.org>
 References: <20260929071743.23624-1-edumazet@kernel.org>
@@ -98,23 +98,36 @@ No functional change intended.
 Reviewed-by: Kuniyuki Iwashima <kuniyu@google.com>
 Signed-off-by: Eric Dumazet <edumazet@kernel.org>
 ---
- drivers/block/drbd/drbd_worker.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ drivers/nvme/host/tcp.c   | 2 +-
+ drivers/nvme/target/tcp.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/block/drbd/drbd_worker.c b/drivers/block/drbd/drbd_worker.c
-index 0697f99fed18d7e70f00b7c559a131517ee8aa42..8e50131b5a5692a8dfb99eafe706602153be94b7 100644
---- a/drivers/block/drbd/drbd_worker.c
-+++ b/drivers/block/drbd/drbd_worker.c
-@@ -635,8 +635,7 @@ static int make_resync_request(struct drbd_peer_device *const peer_device, int c
- 			int sndbuf = sk->sk_sndbuf;
- 			if (queued > sndbuf / 2) {
- 				requeue = 1;
--				if (sk->sk_socket)
--					set_bit(SOCK_NOSPACE, &sk->sk_socket->flags);
-+				sk_set_nospace(sk);
- 			}
- 		} else
- 			requeue = 1;
+diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
+index 921934028e0b22c2e4c9fd60d09ed8e50051262d..b853ca2d598fa4cb8ea9cb66513f1e1070cd1fb4 100644
+--- a/drivers/nvme/host/tcp.c
++++ b/drivers/nvme/host/tcp.c
+@@ -1133,7 +1133,7 @@ static void nvme_tcp_write_space(struct sock *sk)
+ 	read_lock_bh(&sk->sk_callback_lock);
+ 	queue = sk->sk_user_data;
+ 	if (likely(queue && sk_stream_is_writeable(sk))) {
+-		clear_bit(SOCK_NOSPACE, &sk->sk_socket->flags);
++		sk_clear_nospace(sk);
+ 		/* Ensure pending TLS partial records are retried */
+ 		if (nvme_tcp_queue_tls(queue))
+ 			queue->write_space(sk);
+diff --git a/drivers/nvme/target/tcp.c b/drivers/nvme/target/tcp.c
+index e598101752620448423925d2385b606e0b4346e8..c38ea3501ea5def168b6f180b56734b99d21bdea 100644
+--- a/drivers/nvme/target/tcp.c
++++ b/drivers/nvme/target/tcp.c
+@@ -1686,7 +1686,7 @@ static void nvmet_tcp_write_space(struct sock *sk)
+ 	}
+ 
+ 	if (sk_stream_is_writeable(sk)) {
+-		clear_bit(SOCK_NOSPACE, &sk->sk_socket->flags);
++		sk_clear_nospace(sk);
+ 		queue_work_on(queue_cpu(queue), nvmet_tcp_wq, &queue->io_work);
+ 	}
+ out:
 -- 
 2.56.0.rc1.315.gc6ed9934b7-goog
 
