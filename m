@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BB56C397338;
-	Tue, 29 Sep 2026 07:18:17 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9FD5238E8CA;
+	Tue, 29 Sep 2026 07:18:22 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790666298; cv=none; b=oaJ4YxfOylk6HEP59Afk0KpESF7mJYcpf0Q29uiR1I03redTuThqJXF7YSTdB0EJIJg6/tYGPL6v97fX4/yL13MOdVFj2nuEske3S7wIR6hubyAdQcV7v8bg79yPHK4vO3m+A4HZY6hiM5TtBcBaGcqxxZdXi52Wqp3SGzkIje0=
+	t=1790666303; cv=none; b=Bo7kMKj+m4t0CGbcyVOgaGSkK6w370NSCwt8koZd4UNVGzEBy9QVaXo6jVADN1zHgO0+Uf5PsY0tx+JVsB+1jx6moym8ulz44KF8aBvufNokyTs8VUDcFGqYXmmDnt2OdRmzsYeg3kIUIr/ZD1korh3LZRf7CtXGpjWITVQvU5A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790666298; c=relaxed/simple;
-	bh=7Ef0u1n4rA80U3wvj+1MNSMfNuxnKiPp45+RAjtvn+Q=;
+	s=arc-20240116; t=1790666303; c=relaxed/simple;
+	bh=rDxvOjm7grrJIvYuyxm1pKCpGBApcCr6KlaorucIEUA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=cQBRifxFmcskO5KJSFG7fv1GFo4RDGWqiD2ZuxUA2zzDyliMNjardVFgKPVlZcNbvDTMmZUsMISArWf1NQ8v+1BaW2oDiVdqtMGjyXRoKKJ2K4m1FthDxyQhKkFdLQU1zqmForwWg6fZo0R3hqZYDKLLmLBxkhK4ijsc2qWbets=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VwivzD3a; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=JJjtE/zF7nt73Mpu/heW8Lj1bc+n0h4O0J5QzG5c7vUVbsYczXkZSWfZy29CycUqj5ejvkerUPm9mcKKQjPUIVv320mS2fy51Ra4Vd038pQD8otB9xOCxORP29p/agyjWpIE2jzi72a1saB6ecPddNsP6sDO8W5rbt8ckFb9I7g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Utmyw0ZM; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VwivzD3a"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 318A41F000FF;
-	Tue, 29 Sep 2026 07:18:14 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Utmyw0ZM"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C9C0B1F00893;
+	Tue, 29 Sep 2026 07:18:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790666297;
-	bh=hThQis9jrIYHM2qp/AUyAye12+rzpdk99d0bmSnxuAo=;
+	s=k20260515; t=1790666302;
+	bh=RnWUSUoPlsuP4rnCrMGHZfdBwvKHsEHp7ONS81OIlUg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=VwivzD3a6Tfbg1hAmWgU/0lvAsOcO/D2hXgF4I0INZapunQeWFiA/vY9+Pj8um46k
-	 ooyPMj18vfhDBUXjxz3dhKxrC+XN2JW9+9CM6Kpr4craL9R0MJ26TlUwOoQk0DosJu
-	 gTHOTAGt2AbJdtEAc/Se1u3UgBdqRffpKtTmiwlVip3IaR4H8tSqGTpPXp7sS/0lT7
-	 RuQ5LJQxjPDDmef9IVOvE7Ymzh2NTA1DTF+GbYrPFmTDsuyfVORv6qnKeLEbwRO0gn
-	 iTkQMEQ0zTsXm9q0ymW/E/4EZGn948lnU6kHmrmasVInSPxWwImDhDQUPdijALzpug
-	 1/z5MjigjDm7g==
+	b=Utmyw0ZM96CbsgrYi7Di59lazewSJzkqgeCES4nSZti+IkvQCMxSaEX88ZKJjxOaj
+	 zUWbZuXoe7uutd0a8VirVY4s6libYi8v+CFbziQeDQ6HwyA5Hr1P2B0tKrg6pDK9G9
+	 6EV/14xbrkSI+W3pL6lhkD/dP2yzga6gZbzWU0pJOkwFlkK4BmSrbFCpeitPYiTNkg
+	 o3atTJQsP2tS6/yI0SMxpo56E1/28mcKwHn+27jtxmmb6hW3J09MQHWkzuimU/ghVA
+	 WMuho6JPxiSj2sOwc0JQkxgLh2KpNt85qfi8fzgt2G0Kddq2PFgtzuUEmSix9n/c1I
+	 +Riy/PYJ/j7ew==
 From: Eric Dumazet <edumazet@kernel.org>
 To: "David S . Miller" <davem@davemloft.net>,
 	Jakub Kicinski <kuba@kernel.org>,
@@ -75,9 +75,9 @@ Cc: Simon Horman <horms@kernel.org>,
 	Viacheslav Dubeyko <slava@dubeyko.com>,
 	ceph-devel@vger.kernel.org,
 	Eric Dumazet <edumazet@kernel.org>
-Subject: [PATCH v3 net-next 5/9] dlm: use sk_set_nospace() and sk_clear_nospace()
-Date: Tue, 29 Sep 2026 07:17:39 +0000
-Message-ID: <20260929071743.23624-6-edumazet@kernel.org>
+Subject: [PATCH v3 net-next 6/9] drbd: use sk_set_nospace()
+Date: Tue, 29 Sep 2026 07:17:40 +0000
+Message-ID: <20260929071743.23624-7-edumazet@kernel.org>
 X-Mailer: git-send-email 2.56.0.rc1.315.gc6ed9934b7-goog
 In-Reply-To: <20260929071743.23624-1-edumazet@kernel.org>
 References: <20260929071743.23624-1-edumazet@kernel.org>
@@ -98,31 +98,23 @@ No functional change intended.
 Reviewed-by: Kuniyuki Iwashima <kuniyu@google.com>
 Signed-off-by: Eric Dumazet <edumazet@kernel.org>
 ---
- fs/dlm/lowcomms.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ drivers/block/drbd/drbd_worker.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
-index abe9ae4c643fae061d2e168c03219a4f4e1bc007..6aa68a24acab574429664acc3f5ecc25ddd1553d 100644
---- a/fs/dlm/lowcomms.c
-+++ b/fs/dlm/lowcomms.c
-@@ -519,7 +519,7 @@ static void lowcomms_write_space(struct sock *sk)
- {
- 	struct connection *con = sock2con(sk);
- 
--	clear_bit(SOCK_NOSPACE, &con->sock->flags);
-+	sk_clear_nospace(sk);
- 
- 	spin_lock_bh(&con->writequeue_lock);
- 	if (test_and_clear_bit(CF_APP_LIMITED, &con->flags))
-@@ -1394,7 +1394,7 @@ static int send_to_sock(struct connection *con)
- 			/* Notify TCP that we're limited by the
- 			 * application window size.
- 			 */
--			set_bit(SOCK_NOSPACE, &con->sock->sk->sk_socket->flags);
-+			sk_set_nospace(con->sock->sk);
- 			con->sock->sk->sk_write_pending++;
- 
- 			clear_bit(CF_SEND_PENDING, &con->flags);
+diff --git a/drivers/block/drbd/drbd_worker.c b/drivers/block/drbd/drbd_worker.c
+index 0697f99fed18d7e70f00b7c559a131517ee8aa42..8e50131b5a5692a8dfb99eafe706602153be94b7 100644
+--- a/drivers/block/drbd/drbd_worker.c
++++ b/drivers/block/drbd/drbd_worker.c
+@@ -635,8 +635,7 @@ static int make_resync_request(struct drbd_peer_device *const peer_device, int c
+ 			int sndbuf = sk->sk_sndbuf;
+ 			if (queued > sndbuf / 2) {
+ 				requeue = 1;
+-				if (sk->sk_socket)
+-					set_bit(SOCK_NOSPACE, &sk->sk_socket->flags);
++				sk_set_nospace(sk);
+ 			}
+ 		} else
+ 			requeue = 1;
 -- 
 2.56.0.rc1.315.gc6ed9934b7-goog
 
