@@ -1,38 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E999D4E7802
-	for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2026 23:13:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 32F024E50CA
+	for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2026 23:13:37 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790723617; cv=none; b=k1QgsuCh+mj5Qv0VD5y13V8eFghm3AX+3QYcdqdroIUaPMphBp27rcrO+VLGPOzUf6ExsZSgFG1ddul35i/rruOSxfla/ZoiiUkLrbx2IFZB9FaCvyZRBQqpXYoZvEq+W+KZosRchKhVfaJm3kNamKg8ax61zp6s84/12mFrzNY=
+	t=1790723618; cv=none; b=vAddvee5L8kTu5W0v0qO1OGSMro3bcJK2cdbYFqT48/pZFInBmhVApuEM0drXT/WFDMte7dG/JeqBN8moMH+22uwUQlBW5cZJAbo3r6h734aMiVs0us1tb2k7ECdmvgVPDsy9yyWq0JR1cAFNSlrrQsc9WRsjHQfYVm19VnPRKs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790723617; c=relaxed/simple;
-	bh=eNuPQMWmdlVTPdcZ2kSCr/30f9iaclRCq+EkjbbWiUs=;
+	s=arc-20240116; t=1790723618; c=relaxed/simple;
+	bh=las4jaBOKoLmkvx40qw7BzYQeXoMmb4vEnt+i/yOBso=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=kDo4vEnu/+sYsc8aF0Zh8vhGd5pC48xs+kcy4SzjGZDuu1igRpUkX7bfaCIcwBRqv94UQJaI7RKMOUcQX7mxyYOO4y10KuSvIU35WrE0fHmjX87ksfr1iol8v+oBuhjVVioZfFzyJf0/hDds9b2DAYUQTAJWKsTobg9G5sT2Ee0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ij0A+EQJ; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=e3uRo/UJIetBsT0YS0aXjLgF71WWQ1s2SvrFStbCuZmJ6fYYVFvX5k3LCSxOF4CQcEXClkxt8SbOajXTieT2rN1/kpkK+yG9aWX7nG36SeHdZNngwXxbs1BUxCQoOHnHPD+6j81Uygxl6gWdjlkWrgNfnTUHqci8Ph7z8YTe++M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cZAM8SPX; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ij0A+EQJ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9E1D01F00893;
-	Tue, 29 Sep 2026 23:13:35 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cZAM8SPX"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DB7AE1F000FF;
+	Tue, 29 Sep 2026 23:13:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790723615;
-	bh=jot3Ea1ALy9XUo5OJC/VUtKkFqf12PyTug8ET8c7pGs=;
+	s=k20260515; t=1790723617;
+	bh=PcQsLUhPjX2bXxL6afrE3OxsTnZ0nXse5csij8FfbFI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=ij0A+EQJyUFNYcc2IgsWBj5rjB3L0bis7ScHJ7kTdegHi6UYegCC4fP8cglSaAfhB
-	 CXi85jHbvuwVlpuoBdh9ihgJ5U6vTIb5cQnpUO/tH3CDQ/slcC4+bnQNhKesn+9S91
-	 5r9ughF32OAJdUJ8dlKItad+67WQHt8m8r7jFHSJLk8KHLSW3/ozBRAmNzpaIVjx3T
-	 nZziydBKfc+Eqo72e7MdM7iH2O7TNPwLzH0fKAPjMvyRvnitAcXlNOWKWWvk9H/RQP
-	 GTTxDJjam3q3zlXQgltwDT7zr6Lz5POmljB/HEFpTrdvLaYuwFWPvLuH4/hmvxJDiX
-	 mNEO1DnUwj6kg==
+	b=cZAM8SPX61OnLrGZQ2HZRjFkW5uHm/yQ2OuWocjNvo2q7FpVPnBu0f5GAO7StVroW
+	 ZYYCkrttSlJmD/NBp/QgilHis84Bp0jr/ltUQtAY1Aw8MHLVMufypLO+ZCJcHP3rH1
+	 SqeM3xxnpsdbQ82zeVEQ4zJW5rrlpwsibZDSWpoNyxarcwQFjq/8n++lmx4B27YnoF
+	 TWDSUe+/aN2nWUMqEPhU3P9y3qsvZ/WoOhx+HSSqZ5gHZTHljaRxKC6BcMNMI4hOmQ
+	 5pY3wvfrcDHjie8j9wPrLMXlSKdtilIOnu8e2cT3X38w8EHgsmeOumf2o3n4qoEWXi
+	 f/LcX7aYqzx8A==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Chuck Lever <cel@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 4/9] NFSD: Enable return of an updated stable_how to NFS clients
-Date: Tue, 29 Sep 2026 19:13:24 -0400
-Message-ID: <20260929231329.22018-5-snitzer@kernel.org>
+Subject: [PATCH v2 5/9] NFSD: let a direct-mode WRITE raise stable_how and elide the client's COMMIT
+Date: Tue, 29 Sep 2026 19:13:25 -0400
+Message-ID: <20260929231329.22018-6-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20260929231329.22018-1-snitzer@kernel.org>
 References: <20260929231329.22018-1-snitzer@kernel.org>
@@ -44,273 +44,187 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: Chuck Lever <chuck.lever@oracle.com>
+A WRITE serviced in a direct mode is already persistent when NFSD
+replies: the aligned middle is O_DIRECT, and a synchronous WRITE fsyncs
+whatever was buffered before the reply is sent.  The reply still says
+UNSTABLE, so the client dutifully sends a COMMIT for data that is
+already on stable storage, and NFSD answers it with an fsync that has
+nothing left to write.
 
-NFSv3 and newer protocols enable clients to perform a two-phase
-WRITE. A client requests an UNSTABLE WRITE, which sends dirty data
-to the NFS server, but does not persist it. The server replies that
-it performed the UNSTABLE WRITE, and the client is then obligated to
-follow up with a COMMIT request before it can remove the dirty data
-from its own page cache. The COMMIT reply is the client's guarantee
-that the written data has been persisted on the server.
+Add two io_cache_write modes that issue direct I/O exactly like
+NFSD_IO_DIRECT and raise the stable_how of the reply to a floor:
 
-The purpose of this protocol design is to enable clients to send
-a large amount of data via multiple WRITE requests to a server, and
-then wait for persistence just once. The server is able to start
-persisting the data as soon as it gets it, to shorten the length of
-time the client has to wait for the final COMMIT to complete.
+  NFSD_IO_DIRECT_WRITE_DATA_SYNC (3): at least NFS_DATA_SYNC
+  NFSD_IO_DIRECT_WRITE_FILE_SYNC (4): at least NFS_FILE_SYNC
 
-It's also possible for the server to respond to an UNSTABLE WRITE
-request in a way that indicates that the data was persisted anyway.
-In that case, the client can skip the COMMIT and remove the dirty
-data from its memory immediately. NetApp filers, for example, do
-this because they have a battery-backed cache and can guarantee that
-written data is persisted quickly and immediately.
+A client that asked for more is left alone, and the WRITE is persisted
+to the level the reply reports before that reply is sent.  A client told
+FILE_SYNC has no reason to COMMIT and sends none.
 
-NFSD has never implemented this kind of promotion. UNSTABLE WRITE
-requests are unconditionally treated as UNSTABLE. However, in a
-subsequent patch, nfsd_vfs_write() will be able to promote an
-UNSTABLE WRITE to be a FILE_SYNC WRITE. This will be because NFSD
-will handle some WRITE requests locally with O_DIRECT, which
-persists written data immediately. The FILE_SYNC WRITE response
-indicates to the client that no follow-up COMMIT is necessary.
+What this removes is the COMMIT traffic, and it is worth most where a
+client's writes are carved into several WRITE RPCs, because each piece
+is then committed separately.  Measured on a pNFS flexfiles share where
+every write straddles two data servers, so every write becomes two WRITE
+RPCs and, under NFSD_IO_DIRECT, two COMMITs: the two modes do identical
+durability work, one fsync per COMMIT against one fsync per WRITE on
+identical WRITE counts, and the COMMIT RPCs alone cost NFSD_IO_DIRECT
+31% more server CPU and 42% more client CPU for the same bytes, about
+20 us of server CPU per COMMIT plus a client cost that grows with the
+range committed.  Where only one write in 22 is split the same effect
+is a couple of cores on each side and no resolvable throughput
+difference, and writes that fit a single RPC send no COMMIT in either
+mode.
 
-This patch prepares for that change by making the @iocb_flags
-argument of nfsd_write() and nfsd_vfs_write() bi-directional. A
-caller passes in the IOCB_* flags that express the stability its
-client asked for; on return the argument holds the flags that were
-actually satisfied. Each protocol version maps that result back to
-its own on-the-wire value when it encodes the WRITE reply, using the
-new nfsd3_stable_how() and nfsd4_stable_how() helpers, so that NFS
-stable_how values stay out of NFSD's generic VFS API. No behavior
-change is expected.
+Choose 4 when the export services WRITEs in a direct mode and clients
+split their writes; choose 3 to promise only the data, leaving a client
+that needs metadata durability to COMMIT for it.  Both are inert for
+READ, and for a WRITE the client already marked FILE_SYNC.
 
-[snitzer: reworked onto the @iocb_flags argument introduced by
-commit 6dcddbb70b08 ("NFSD: Replace nfsd_write()'s "stable" argument with "iocb_flags""),
-which was applied after this patch was first posted.
-The original passed a "u32 *stable_how" instead. Carrying the value as
-IOCB_* flags keeps the NFSv3 XDR value out of the VFS API, and lets a
-later patch raise the achieved stability with a plain bitwise OR rather
-than an ordering comparison. The Reviewed-by tags from the original
-posting are dropped because the argument's type and direction changed.]
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Assisted-by: Claude:claude-opus-5[1m]
 Signed-off-by: Mike Snitzer <snitzer@kernel.org>
 ---
- fs/nfsd/nfs3proc.c | 16 +++++++++++++---
- fs/nfsd/nfs4proc.c | 15 +++++++++++++--
- fs/nfsd/nfsproc.c  |  3 ++-
- fs/nfsd/vfs.c      | 18 +++++++++++-------
- fs/nfsd/vfs.h      |  4 ++--
- fs/nfsd/xdr3.h     |  2 +-
- 6 files changed, 42 insertions(+), 16 deletions(-)
+ .../filesystems/nfs/nfsd-io-modes.rst         | 17 ++++++++--
+ fs/nfsd/debugfs.c                             |  5 +++
+ fs/nfsd/nfsd.h                                |  2 ++
+ fs/nfsd/vfs.c                                 | 33 +++++++++++++++++--
+ 4 files changed, 52 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 60cd01b6a37d2..f06573759ad6f 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -102,6 +102,15 @@ static int nfsd3_iocb_flags(enum nfs3_stable_how how)
- 	}
- }
+diff --git a/Documentation/filesystems/nfs/nfsd-io-modes.rst b/Documentation/filesystems/nfs/nfsd-io-modes.rst
+index d6ebb82f10b48..9ee94cfa546d8 100644
+--- a/Documentation/filesystems/nfs/nfsd-io-modes.rst
++++ b/Documentation/filesystems/nfs/nfsd-io-modes.rst
+@@ -25,12 +25,14 @@ Based on the configured settings, NFSD's IO will either be:
+ - cached using page cache (NFSD_IO_BUFFERED=0)
+ - cached but removed from page cache on completion (NFSD_IO_DONTCACHE=1)
+ - not cached stable_how=NFS_UNSTABLE (NFSD_IO_DIRECT=2)
++- not cached stable_how=NFS_DATA_SYNC (NFSD_IO_DIRECT_WRITE_DATA_SYNC=3)
++- not cached stable_how=NFS_FILE_SYNC (NFSD_IO_DIRECT_WRITE_FILE_SYNC=4)
  
-+static enum nfs3_stable_how nfsd3_stable_how(int iocb_flags)
-+{
-+	if (iocb_flags & IOCB_SYNC)
-+		return NFS_FILE_SYNC;
-+	if (iocb_flags & IOCB_DSYNC)
-+		return NFS_DATA_SYNC;
-+	return NFS_UNSTABLE;
-+}
+-To set an NFSD IO mode, write a supported value (0 - 2) to the
++To set an NFSD IO mode, write a supported value (0 - 4) to the
+ corresponding IO operation's debugfs interface, e.g.::
+ 
+   echo 2 > /sys/kernel/debug/nfsd/io_cache_read
+-  echo 2 > /sys/kernel/debug/nfsd/io_cache_write
++  echo 4 > /sys/kernel/debug/nfsd/io_cache_write
+ 
+ To check which IO mode NFSD is using for READ or WRITE, simply read the
+ corresponding IO operation's debugfs interface, e.g.::
+@@ -38,6 +40,17 @@ corresponding IO operation's debugfs interface, e.g.::
+   cat /sys/kernel/debug/nfsd/io_cache_read
+   cat /sys/kernel/debug/nfsd/io_cache_write
+ 
++The two NFSD_IO_DIRECT_WRITE_*_SYNC modes raise the stable_how of every
++WRITE to at least NFS_DATA_SYNC or NFS_FILE_SYNC, persist the WRITE
++accordingly before replying, and return the raised value to the client;
++a client that asked for a higher stable_how is left alone. With
++NFSD_IO_DIRECT_WRITE_FILE_SYNC the client sends no COMMIT. Against
++NFSD_IO_DIRECT the durability work is the same, one fsync per WRITE
++instead of one per COMMIT; what NFSD_IO_DIRECT adds is the COMMIT RPCs
++themselves, tens of microseconds of server CPU each plus a client cost
++that grows with the range committed, which matters in proportion to how
++many of a client's WRITEs need a COMMIT.
 +
- static __be32 nfsd3_map_status(__be32 status)
- {
- 	switch (status) {
-@@ -299,6 +308,7 @@ nfsd3_proc_write(struct svc_rqst *rqstp)
- 	struct nfsd3_writeargs *argp = rqstp->rq_argp;
- 	struct nfsd3_writeres *resp = rqstp->rq_resp;
- 	unsigned long cnt = argp->len;
-+	int iocb_flags;
+ If you experiment with NFSD's IO modes on a recent kernel and have
+ interesting results, please report them to linux-nfs@vger.kernel.org
  
- 	dprintk("nfsd: WRITE(3)    %s %d bytes at %Lu%s\n",
- 				SVCFH_fmt(&argp->fh),
-@@ -312,11 +322,11 @@ nfsd3_proc_write(struct svc_rqst *rqstp)
- 		return rpc_success;
- 
- 	fh_copy(&resp->fh, &argp->fh);
--	resp->committed = argp->stable;
-+	iocb_flags = nfsd3_iocb_flags(argp->stable);
- 	resp->status = nfsd_write(rqstp, &resp->fh, argp->offset,
--				  &argp->payload, &cnt,
--				  nfsd3_iocb_flags(resp->committed),
-+				  &argp->payload, &cnt, &iocb_flags,
- 				  resp->verf);
-+	resp->committed = nfsd3_stable_how(iocb_flags);
- 	resp->count = cnt;
- 	resp->status = nfsd3_map_status(resp->status);
- 	return rpc_success;
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index bb74eef439388..051d900581609 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -109,6 +109,15 @@ static const struct nfsd_access_maps nfsd4_access_maps = {
- 	.other		= nfsd4_otheraccess,
+diff --git a/fs/nfsd/debugfs.c b/fs/nfsd/debugfs.c
+index 398e400d64038..279e341a81ec1 100644
+--- a/fs/nfsd/debugfs.c
++++ b/fs/nfsd/debugfs.c
+@@ -90,6 +90,9 @@ DEFINE_DEBUGFS_ATTRIBUTE(nfsd_io_cache_read_fops, nfsd_io_cache_read_get,
+  * Contents:
+  *   %0: NFS WRITE will use buffered IO
+  *   %1: NFS WRITE will use dontcache (buffered IO w/ dropbehind)
++ *   %2: NFS WRITE will use direct IO with stable_how=NFS_UNSTABLE
++ *   %3: NFS WRITE will use direct IO with stable_how=NFS_DATA_SYNC
++ *   %4: NFS WRITE will use direct IO with stable_how=NFS_FILE_SYNC
+  *
+  * This setting takes immediate effect for all NFS versions,
+  * all exports, and in all NFSD net namespaces.
+@@ -109,6 +112,8 @@ static int nfsd_io_cache_write_set(void *data, u64 val)
+ 	case NFSD_IO_BUFFERED:
+ 	case NFSD_IO_DONTCACHE:
+ 	case NFSD_IO_DIRECT:
++	case NFSD_IO_DIRECT_WRITE_DATA_SYNC:
++	case NFSD_IO_DIRECT_WRITE_FILE_SYNC:
+ 		nfsd_io_cache_write = val;
+ 		break;
+ 	default:
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index a2d72434160af..135e319e378d4 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -138,6 +138,8 @@ enum {
+ 	NFSD_IO_BUFFERED,
+ 	NFSD_IO_DONTCACHE,
+ 	NFSD_IO_DIRECT,
++	NFSD_IO_DIRECT_WRITE_DATA_SYNC,
++	NFSD_IO_DIRECT_WRITE_FILE_SYNC,
  };
  
-+static enum stable_how4 nfsd4_stable_how(int iocb_flags)
-+{
-+	if (iocb_flags & IOCB_SYNC)
-+		return FILE_SYNC4;
-+	if (iocb_flags & IOCB_DSYNC)
-+		return DATA_SYNC4;
-+	return UNSTABLE4;
-+}
-+
- static int nfsd4_iocb_flags(enum stable_how4 how)
- {
- 	switch (how) {
-@@ -1432,6 +1441,7 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfsd_file *nf = NULL;
- 	__be32 status = nfs_ok;
- 	unsigned long cnt;
-+	int iocb_flags;
- 
- 	if (write->wr_offset > (u64)OFFSET_MAX ||
- 	    write->wr_offset + write->wr_buflen > (u64)OFFSET_MAX)
-@@ -1450,11 +1460,12 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		nfs4_put_stid(stid);
- 	}
- 
--	write->wr_how_written = write->wr_stable_how;
-+	iocb_flags = nfsd4_iocb_flags(write->wr_stable_how);
- 	status = nfsd_vfs_write(rqstp, &cstate->current_fh, nf,
- 				write->wr_offset, &write->wr_payload,
--				&cnt, nfsd4_iocb_flags(write->wr_how_written),
-+				&cnt, &iocb_flags,
- 				(__be32 *)write->wr_verifier.data);
-+	write->wr_how_written = nfsd4_stable_how(iocb_flags);
- 	nfsd_file_put(nf);
- 
- 	write->wr_bytes_written = cnt;
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 09d3608398250..a847b35006781 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -274,6 +274,7 @@ nfsd_proc_write(struct svc_rqst *rqstp)
- 	struct nfsd_writeargs *argp = rqstp->rq_argp;
- 	struct nfsd_attrstat *resp = rqstp->rq_resp;
- 	unsigned long cnt = argp->len;
-+	int iocb_flags = IOCB_DSYNC;
- 
- 	dprintk("nfsd: WRITE    %s %u bytes at %d\n",
- 		SVCFH_fmt(&argp->fh),
-@@ -281,7 +282,7 @@ nfsd_proc_write(struct svc_rqst *rqstp)
- 
- 	fh_copy(&resp->fh, &argp->fh);
- 	resp->status = nfsd_write(rqstp, &resp->fh, argp->offset,
--				  &argp->payload, &cnt, IOCB_DSYNC, NULL);
-+				  &argp->payload, &cnt, &iocb_flags, NULL);
- 	if (resp->status == nfs_ok)
- 		resp->status = fh_getattr(&resp->fh, &resp->stat);
- 	else if (resp->status == nfserr_jukebox)
+ extern u64 nfsd_io_cache_read __read_mostly;
 diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 1d2b03cb42963..82eba97656c4e 100644
+index 82eba97656c4e..924c5992dc32e 100644
 --- a/fs/nfsd/vfs.c
 +++ b/fs/nfsd/vfs.c
-@@ -1444,7 +1444,9 @@ nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
-  * @offset: Byte offset of start
-  * @payload: xdr_buf containing the write payload
-  * @cnt: IN: number of bytes to write, OUT: number of bytes actually written
-- * @iocb_flags: VFS IOCB_* flags expressing the requested write stability
-+ * @iocb_flags: IN: VFS IOCB_* flags expressing the requested write
-+ *             stability; OUT: the flags actually satisfied, which may be
-+ *             higher than requested
-  * @verf: NFS WRITE verifier
-  *
-  * Upon return, caller must invoke fh_put on @fhp.
-@@ -1456,7 +1458,7 @@ __be32
- nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	       struct nfsd_file *nf, loff_t offset,
- 	       const struct xdr_buf *payload, unsigned long *cnt,
--	       int iocb_flags, __be32 *verf)
-+	       int *iocb_flags, __be32 *verf)
+@@ -1399,17 +1399,42 @@ nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
+ 	return 1;
+ }
+ 
++/*
++ * Raise the stability of this WRITE to at least @floor_iocb_flags, and
++ * record what was achieved in @iocb_flags so the reply can report it.
++ * A client that asked for more is left alone.
++ */
++static void
++nfsd_write_raise_stability(int floor_iocb_flags, struct kiocb *kiocb,
++			   int *iocb_flags)
++{
++	if ((*iocb_flags & floor_iocb_flags) == floor_iocb_flags)
++		return; /* already at or above the floor */
++
++	*iocb_flags |= floor_iocb_flags;
++	kiocb->ki_flags |= floor_iocb_flags;
++}
++
+ static noinline_for_stack int
+ nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
+-		  struct nfsd_file *nf, unsigned int nvecs,
++		  struct nfsd_file *nf, int *iocb_flags, unsigned int nvecs,
+ 		  unsigned long *cnt, struct kiocb *kiocb)
  {
- 	struct nfsd_net		*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 	struct file		*file = nf->nf_file;
-@@ -1493,11 +1495,11 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	exp = fhp->fh_export;
+ 	struct nfsd_write_dio_seg segments[3];
++	int floor_iocb_flags = 0;
+ 	struct file *file = nf->nf_file;
+ 	unsigned int nsegs, i;
+ 	ssize_t host_err;
+ 	size_t expected;
  
- 	if (!EX_ISSYNC(exp))
--		iocb_flags = 0;
-+		*iocb_flags = 0;
- 	init_sync_kiocb(&kiocb, file);
- 	kiocb.ki_pos = offset;
- 	if (likely(!fhp->fh_use_wgather))
--		kiocb.ki_flags |= iocb_flags;
-+		kiocb.ki_flags |= *iocb_flags;
++	if (nfsd_io_cache_write == NFSD_IO_DIRECT_WRITE_FILE_SYNC)
++		floor_iocb_flags = IOCB_DSYNC | IOCB_SYNC;
++	else if (nfsd_io_cache_write == NFSD_IO_DIRECT_WRITE_DATA_SYNC)
++		floor_iocb_flags = IOCB_DSYNC;
++	if (floor_iocb_flags)
++		nfsd_write_raise_stability(floor_iocb_flags, kiocb,
++					   iocb_flags);
++
+ 	nsegs = nfsd_write_dio_iters_init(nf, rqstp->rq_bvec, nvecs,
+ 					  kiocb, *cnt, segments);
  
- 	nvecs = xdr_buf_to_bvec(rqstp->rq_bvec, rqstp->rq_maxpages, payload);
- 	if (nvecs < 0) {
-@@ -1538,7 +1540,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		goto out_nfserr;
- 	}
+@@ -1513,8 +1538,10 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
  
--	if (iocb_flags && fhp->fh_use_wgather) {
-+	if (*iocb_flags && fhp->fh_use_wgather) {
- 		host_err = wait_for_concurrent_writes(file);
- 		if (host_err < 0)
- 			nfsd_maybe_reset_write_verifier(nn, rqstp, host_err);
-@@ -1629,7 +1631,9 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
-  * @offset: Byte offset of start
-  * @payload: xdr_buf containing the write payload
-  * @cnt: IN: number of bytes to write, OUT: number of bytes actually written
-- * @iocb_flags: VFS IOCB_* flags expressing the requested write stability
-+ * @iocb_flags: IN: VFS IOCB_* flags expressing the requested write
-+ *             stability; OUT: the flags actually satisfied, which may be
-+ *             higher than requested
-  * @verf: NFS WRITE verifier
-  *
-  * Upon return, caller must invoke fh_put on @fhp.
-@@ -1640,7 +1644,7 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- __be32
- nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t offset,
- 	   const struct xdr_buf *payload, unsigned long *cnt,
--	   int iocb_flags, __be32 *verf)
-+	   int *iocb_flags, __be32 *verf)
- {
- 	struct nfsd_file *nf;
- 	__be32 err;
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index f0cb184643f2f..6b352ca7f02b7 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -154,12 +154,12 @@ __be32		nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 				u32 *eof);
- __be32		nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 				loff_t offset, const struct xdr_buf *payload,
--				unsigned long *cnt, int iocb_flags,
-+				unsigned long *cnt, int *iocb_flags,
- 				__be32 *verf);
- __be32		nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 				struct nfsd_file *nf, loff_t offset,
- 				const struct xdr_buf *payload,
--				unsigned long *cnt, int iocb_flags,
-+				unsigned long *cnt, int *iocb_flags,
- 				__be32 *verf);
- __be32		nfsd_readlink(struct svc_rqst *, struct svc_fh *,
- 				char *, int *);
-diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-index cad875d142313..a2a980559fb72 100644
---- a/fs/nfsd/xdr3.h
-+++ b/fs/nfsd/xdr3.h
-@@ -153,7 +153,7 @@ struct nfsd3_writeres {
- 	__be32			status;
- 	struct svc_fh		fh;
- 	unsigned long		count;
--	int			committed;
-+	u32			committed;
- 	__be32			verf[2];
- };
- 
+ 	switch (nfsd_io_cache_write) {
+ 	case NFSD_IO_DIRECT:
+-		host_err = nfsd_direct_write(rqstp, fhp, nf, nvecs,
+-					     cnt, &kiocb);
++	case NFSD_IO_DIRECT_WRITE_DATA_SYNC:
++	case NFSD_IO_DIRECT_WRITE_FILE_SYNC:
++		host_err = nfsd_direct_write(rqstp, fhp, nf, iocb_flags,
++					     nvecs, cnt, &kiocb);
+ 		break;
+ 	case NFSD_IO_DONTCACHE:
+ 		if (file->f_op->fop_flags & FOP_DONTCACHE)
 -- 
 2.52.0
 
