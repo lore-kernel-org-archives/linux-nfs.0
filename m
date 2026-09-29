@@ -1,142 +1,223 @@
-Received: from mail-qk2-f40.google.com (mail-qk2-f40.google.com [74.125.230.232])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0678339E9DE
-	for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2026 07:30:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.230.232
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790667062; cv=pass; b=V8KNC/xOMy5KHUuJ8RBq53c+0oJQ+eVwBhjMYuDACgVBnj8X0KrEf+Sp6TRahaMwzVYQGtkYclFb5huX/QlSjgpvBihvEmb7vBcZK8ayGbVL0N2g+ndoJtC2bN1zBy+RmJSVNIJOXLh7tEe7ybUCZee2E+qQOMQV6LtEgHNJL8o=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790667062; c=relaxed/simple;
-	bh=I35gDNGA4fpIsc0ElTO4/D3swmmdD1nD0eRHXQrQQRk=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=IdCLs9cXEv+UzgA2SgFG+36xpBTTnF6/P1hSb5ADKENo2vAmySKGTCa9IWbaLIscaZ/YzQWytnZCSPCGLnhrluxQr8pNU13tFbmOCdAJquG4KrUO1+LVinvAfN8tGgTTDQ1gD53m8hx7sxWhLccW9Gh53yZbK2WNAdPLuDuR8hA=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=bEz6fVnT; arc=pass smtp.client-ip=74.125.230.232
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 349793ACA45
+	for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2026 07:59:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1790668778; cv=none; b=phMEg+NGi0OQ4ojv3YytRraQFTF+ao+rIqGu7bIlHpBYY7PUffRNl9vSKiijA2V/n345mvncgzmp/Kh1uXQwIwaZnRLNFf4Oa8UZ84Pn2nogC3ujqH8PIqxUc93Wpps3hE4u4Q4HFb+4IZVHz35G+6CNQJhtlApJjWe9L42++lY=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1790668778; c=relaxed/simple;
+	bh=5YrHK4cctkzRIfTGun0k2AbKHxc2EmK5N7diHcBB30o=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=PzgyR5yVvGqUXtbjGQQxQQjMaBHEr4p66EOgJalE7CQhw8oCE82v+f5MuEMaFTnZUkhqeZ0wBfk2Y8xiJctoTs/XFN9Zb/Elh+2qmdZREtY0BAZ3U3zJyLFFstVh9xGNny9KQPJYtqDcC+1/1QlfJ882xLqoTKINjZ4HuDvEKhA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=K2TdPBaK; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="bEz6fVnT"
-Received: by mail-qk2-f40.google.com with SMTP id d75a77b69052e-5332a80a731so32062751cf.0
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2026 00:30:59 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1790667059; cv=none;
-        d=google.com; s=arc-20260327;
-        b=aRt7t+1hBanIlepwO8KZ2TRIpnmFpyul/jx4pwHQnldKDHFmGHG7fYsEjLzFen3UYu
-         vn4lwij+m3YIrUJwUXE2rR3HIMgCy2Q/fsV6U7tknlBCfVWRTxwmi0ag/nuE0nxs1jtO
-         RjuqDQuMwj6F8FLAfWjIGxo24wd+JwAx849UlVcZUz3dS9zfoBJYsnGqVdqnRdDmh6yQ
-         vDoe/8XJiUJUzFvUgAAZAvGXMfUtDDJb2V7Aca8G4Vci6gA3Pu+/M8ARx7MGBla7M7T3
-         MDejRgvT3KGGwXK973bDuMVDKuan4QORmDXW8f940KllBA3jsx4/zf351qpR1265fw/J
-         Vr/g==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=9v/Z0GcKezXBRqzYvyQ4v0b98G06dRHjg36qbCp+fss=;
-        fh=Vi9CpR7ZDNbEJY/ZfyPNAo1SLWbhFJkuoFnZ2ql1an4=;
-        b=bFmW0jry7PIh1YRSlV9tdGxmE7Jz/wJ3twoMl7Tzeb+YE6APsOyv57t4pqN3Ou7LjW
-         ctkBrfbF9rPwVnCMKlSLVGufO4Lxhp/Qegps7EoqiFMf3CDS9xFrsYFd3ve4H7won9JE
-         TBHdTRlSEvZlVSkw7C2iS279dWW7GXikVl9vBJcSC+jlI35FJC0cHvOGpIrMRr8sLbGZ
-         1rt2X09o14dZkY8Jl7T1LfxrDiRiX7nnoXNpC+bBCBuw+hnI72NyxfXIalrcrDIDcZUW
-         pGV7opN02cGaUT3v6wQ0Dxp8MJ82pdMjQkF76SYiOgRj9VqNBufaAXNiIkidfnoGLqYy
-         Hjqg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20251104; t=1790667059; x=1791271859; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=9v/Z0GcKezXBRqzYvyQ4v0b98G06dRHjg36qbCp+fss=;
-        b=bEz6fVnTttyL2gBz5ZoudIT1eHaMMJx80l0ZTmCNvha+RTrwZxHgvV3QMIQn8Cn8xv
-         8bUrnAAi6r2V7RmxeFvFJVUF7VpyFhwU0LMs25betgMEwF5uUU6bdk0uNnrIqO8nFrev
-         cCPrOjMAkVTgcX4veZuXyjiyZIdMlx/mDUCCt/3XKU2rhfkMEoZXtaOANWGfSkNhR9Cv
-         eAZbKbH7uFEfLN4ldYH8J81qVTJTSqqH4AXb1q7WUHqFVg/ZG5BD8eOO7WpaebhzBNcf
-         LY+0+0lShac65S9s/ZOZjxDsIou4uYvOPHBQ5aXfxRCozB9TRuowm7BOfav0d6yyoNGG
-         GrpA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790667059; x=1791271859;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=9v/Z0GcKezXBRqzYvyQ4v0b98G06dRHjg36qbCp+fss=;
-        b=veCrWm81iPrEmYmniDrz/jjKUzN93y9vfUBNVyTodDh5iEsk+UKitodlpgSlyqwGCb
-         TeAKZ9hj7Fjo7LHsLWiK0ijmCrjv4zIoxAECrQEz26eut4pdddjZq1w1V8gkZcrW0QZ3
-         dH1akt9yzoDG1drKFuyo50gQmUqov72idEU0R+PqQwzg/3Vstrw2Gow0gcb+Y8YZ0XRU
-         7y16/vUGO3kQd9RF6B6drf+uD2/E724m6RhVwdGlkX5mYolf/dW5NtVg+bk9vI5fdpOR
-         MNC/Rhq9xl/hJ3N0D7nq8wnt/MXde/YVjuDpeHKV3O3Ejj7eSdNi+Ktv9LUIWn9JynZS
-         fN3w==
-X-Forwarded-Encrypted: i=1; AKwUvBxw8d8uoZNw+O7q4Vn0yjxLgI9s9yPR6puEuwz3SB+CJTw4dKhhMKTDueXxShDKoz0o4qncTnjB53U=@vger.kernel.org
-X-Gm-Message-State: AFuF++k9Pk1bTDY1FCgM7tHnrV8dNH4f3dB70FhtN1Y8qqlsmlEQqITF
-	iMb5j98eKMDJu00fXBZZY51kfsbu626njXMNc9r6iUSWZpxBeTZ3CqXNOarjl8ACmcOibV4Y5ue
-	C2Xoe2ScHB6wHHQCBgNpL1f3tWwdlfKgrShv+y08n
-X-Gm-Gg: AYBFou3WMCk+ClCfClRH1oGlIKf3f17XGxZmbtmekN3PolXouNDfuawp5K8XCCjCpjD
-	e1GehEeuwZTdfXm1M/P8crXXen+/1p5NbmtiPLpHfxz02ZOsqXIyyyFjtCyB1GACz5oyBziFfVY
-	ezf/PKSuE8wFSgORBHuJ4R2e/VsUzd9Nv9dQZ9pkGA6adhaj2eWksVe6mQfq/3/eXhU3eIqmRRJ
-	vEu82E/GixlZuRpFQaTlVxAYA4kwB7d4EMGrljvonzXtJyH85X+/g4ouLWdDpE7EAVtfbQBsE7u
-	1BMnW5RIIzfZMq856/U/8sMzWVXnkofYW7yzrdf2ZitDtwMmm6D4TBeeVnmAl3pbMcUXbRu7PpL
-	+ZK70NdrrLMOF1H1Yz7ewLwFCBT5T7Tesj4r334snbFADEf4weubzUSKlkWWUyoLLL9zM
-X-Received: by 2002:a05:622a:580a:b0:532:d3c2:165c with SMTP id
- d75a77b69052e-5330dbe7682mr252226541cf.5.1790667058017; Tue, 29 Sep 2026
- 00:30:58 -0700 (PDT)
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="K2TdPBaK"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1790668775;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=KKrMTjP0ZLGqrXdItKkwrT0On91XxEvvcqwyjevqycI=;
+	b=K2TdPBaKkadqcyI1GO5fuSVRU3uvkWZRL93Vwwj0CIZ7z/x0rJuTfOSnzwePWK2gsvCtSd
+	m0Y42iRVC6bNSJJdtoDqsoNFhesTDT+URHVC8X4pxnDwJxhd+1eYQYcheQK4+odL4/aPbk
+	ADPQQYi3yRk3r0LIxrpWOd8jfFWRfCA=
+Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-15-PGUjv593MZu1j53VLEIq2A-1; Tue,
+ 29 Sep 2026 03:59:31 -0400
+X-MC-Unique: PGUjv593MZu1j53VLEIq2A-1
+X-Mimecast-MFC-AGG-ID: PGUjv593MZu1j53VLEIq2A_1790668769
+Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id E1E8B1944EBE;
+	Tue, 29 Sep 2026 07:59:27 +0000 (UTC)
+Received: from warthog.com (unknown [10.44.32.54])
+	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id D7EF71956042;
+	Tue, 29 Sep 2026 07:59:20 +0000 (UTC)
+From: David Howells <dhowells@redhat.com>
+To: Christian Brauner <christian@brauner.io>
+Cc: David Howells <dhowells@redhat.com>,
+	Paulo Alcantara <pc@manguebit.org>,
+	Matthew Wilcox <willy@infradead.org>,
+	Namjae Jeon <linkinjeon@kernel.org>,
+	Marc Dionne <marc.dionne@auristor.com>,
+	Stefan Metzmacher <metze@samba.org>,
+	Eric Van Hensbergen <ericvh@kernel.org>,
+	Dominique Martinet <asmadeus@codewreck.org>,
+	Ilya Dryomov <idryomov@gmail.com>,
+	netfs@lists.linux.dev,
+	linux-afs@lists.infradead.org,
+	linux-cifs@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	ceph-devel@vger.kernel.org,
+	v9fs@lists.linux.dev,
+	linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v12 00/10] netfs, cachefiles: Changes for next, primarily occupancy tracking-related
+Date: Tue, 29 Sep 2026 08:59:01 +0100
+Message-ID: <20260929075913.2740968-1-dhowells@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260929071743.23624-1-edumazet@kernel.org> <179066667444.31693.3326934466907750947@kernel.org>
-In-Reply-To: <179066667444.31693.3326934466907750947@kernel.org>
-From: Eric Dumazet <edumazet@google.com>
-Date: Tue, 29 Sep 2026 09:30:46 +0200
-X-Gm-Features: AclHuK9CAnCUx8smImHilXsTcocuUN-fbbX48CMDJnYU9QbhFatMhZFb2tpvc_0
-Message-ID: <CANn89iLUKHZVrUOEtqDwuAghCRAkddigPwSWj4uS=fKyWdk86g@mail.gmail.com>
-Subject: Re: [PATCH v3 net-next 0/9] tcp: avoid struct socket cache line miss
- in tcp_check_space()
-To: netdev-bot+sinfo@kernel.org
-Cc: Eric Dumazet <edumazet@kernel.org>, "David S . Miller" <davem@davemloft.net>, 
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
-	Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, netdev@vger.kernel.org, 
-	Alexander Aring <aahringo@redhat.com>, David Teigland <teigland@redhat.com>, gfs2@lists.linux.dev, 
-	John Fastabend <john.fastabend@gmail.com>, Jakub Sitnicki <jakub@cloudflare.com>, 
-	Sabrina Dubroca <sd@queasysnail.net>, Jiayuan Chen <jiayuan.chen@linux.dev>, 
-	Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>, 
-	Geliang Tang <geliang@kernel.org>, mptcp@lists.linux.dev, 
-	Wen Gu <guwen@linux.alibaba.com>, Dust Li <dust.li@linux.alibaba.com>, 
-	"D. Wythe" <alibuda@linux.alibaba.com>, Chuck Lever <cel@kernel.org>, 
-	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
-	Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
-	Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, linux-nfs@vger.kernel.org, 
-	Allison Henderson <achender@kernel.org>, rds-devel@oss.oracle.com, 
-	Philipp Reisner <philipp.reisner@linbit.com>, Lars Ellenberg <lars.ellenberg@linbit.com>, 
-	=?UTF-8?Q?Christoph_B=C3=B6hmwalder?= <christoph.boehmwalder@linbit.com>, 
-	Jens Axboe <axboe@kernel.dk>, drbd-dev@lists.linux.dev, Keith Busch <kbusch@kernel.org>, 
-	Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, Chaitanya Kulkarni <kch@nvidia.com>, 
-	linux-nvme@lists.infradead.org, Ilya Dryomov <idryomov@gmail.com>, 
-	Alex Markuze <amarkuze@redhat.com>, Viacheslav Dubeyko <slava@dubeyko.com>, ceph-devel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
 
-On Tue, Sep 29, 2026 at 9:24=E2=80=AFAM <netdev-bot+sinfo@kernel.org> wrote=
-:
->
-> Hi!
->
-> This is an automated message. This series looks like a fix, but its
-> commit messages seem to be missing some information:
->
->  - Whether the issue was actually triggered, or is only theoretical
->    (e.g. found by code inspection). If it was triggered please include
->    the symptoms, like the stack trace or error messages.
->
+Hi Christian,
 
-Patch 1/9 fixes a bug found by code inspection.
+Could you pull these patches please into your vfs-7.4.netfs branch?  This
+is the third of four (maybe five) batches, in this case replacing the
+folio_queue struct with a bvecq struct, and is based upon the
+aforementioned branch.  This was split from v11 of a larger netfslib
+series[1].
 
-Other patches are not bug fixes.
+This series adds a new type, struct bvecq.  This points to a bounded array
+of bio_vecs with information about how to clean up the memory they point
+to.  A number of bvecq structs can be linked together to form a chain and
+an iterator type, ITER_BVECQ, is provided that can be pointed at the chain
+and can walk it.  Netfslib is then switched to use the new type and
+folio_queue is removed along with ITER_FOLIOQ.
 
-> Please do not repost the series just to address the above. Instead,
-> reply to this email with the missing information, so that reviewers
-> can take it into account. If the series needs another revision for
-> other reasons, please include the information in the commit messages
-> then.
->
-> The evaluation is done by an LLM so it may be wrong, if you think
-> that is the case please reply and explain.
+This is intended as a more flexible replacement for struct folio_queue as
+the latter can only point to whole folios and cannot point to partial pages
+that might be extracted from an ITER_IOVEC/ITER_UBUF for direct or
+unbuffered I/O purposes.
+
+These patches make a more or less straight swap between struct folio_queue
+and struct bvecq.  The change is not quite trivial as the folio_queue
+struct contains a folio_batch struct and is basically a list of whole
+folios only, whereas the new bvecq struct is a chain of bio_vec arrays.
+
+A further patchset will switch the netfslib unbuffered I/O code to using
+bvecqs and then the bvecqs will be passed down into the filesystem rather
+than passing an iterator.
+
+The primary reason behind making this change is so that bvecq chains can be
+used in the assembly of network filesystem messages.  Netfslib can furnish
+the filesystem with bvecq chains representing the data buffers that need to
+be read or written and then, for example, for a write RPC, the filesystem
+can add protocol headers and trailers onto the chain without the need to
+copy it and can also glue multiple buffers together to form compound
+operations and/or perform sparse operations.
+
+One option here is to add two more fields to the bvecq struct, one to
+increase the offset of the first bio_vec and one to decrease the length of
+the last, thereby allowing a bvecq struct to point at a slice of another
+bio_vec array without having to copy the array - but at the cost of adding
+one or two extra conditional ops when getting the offset or length of a
+segment.
+
+I have in-progress patch sets to rewrite the cifs transport[2] and the ceph
+and rbd transport[3] to make use of bvecq chains.  With the cifs transport,
+the idea is to extend the SMB message concept further up the stack and have
+the PDU creation routines attach individual RPC requests blobs that can
+then be automatically chained by the transport when a compound is being
+assembled for transmission.
+
+With the ceph transport, the idea is to convert all the different data
+containers it has into just passing around bvecqs.  These can then be
+chained together in order to transmit them.
+
+This improves efficiency in the TCP stack as we no longer need to cork the
+TCP socket, call sendmsg() multiple times and then uncork; rather we can
+preassemble the message in a bvecq chain and just send the entire messsage
+in one shot with a single sendmsg() and reduce the number of places doing
+loops.  This got an improvement in nfsd performance[4].
+
+I also have some changes on the TCP receive side for the cifs transport
+(which is also likely applicable to the ceph TCP transport) whereby the
+receive buffers are 'spliced' out into a bvecq in the cifs I/O thread
+rather than being copied.  Using a bvecq chain here is advantageous as we
+don't know in advance how many segments we're going to have.  This allows
+us firstly to avoid copying data with the socket lock held (thus holding up
+sendmsg) and secondly to avoid copying data in the I/O thread (copying can
+be offloaded to the app thread).  The last time I benchmarked this, it
+appeared to get fio reading tests on cifs a 5% speedup.
+
+Unfortunately, this doesn't help AFS much as that uses a UDP transport, but
+it might also help 9P, at least with its TCP transport.
+
+The patches can also be found here:
+
+	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=netfs-next-3
+
+Thanks,
+David
+
+Changes
+=======
+
+ver #12)
+- Split from v11 of "netfs: Keep track of folios in a segmented bio_vec[]
+  chain"[1]
+
+[1] https://lore.kernel.org/r/20260902173350.3468672-1-dhowells@redhat.com/
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=cifs-experimental
+[3] https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=ceph-iter
+[4] https://lore.kernel.org/netdev/168979108540.1905271.9720708849149797793.stgit@morisot.1015granger.net/
+
+David Howells (10):
+  Add a function to kmap one page of a multipage bio_vec
+  iov_iter: Add a segmented queue of bio_vec[]
+  netfs: Add some tools for managing bvecq chains
+  afs: Use a bvecq to hold dir content rather than folioq
+  cifs: Use a bvecq for buffering instead of a folioq
+  smbdirect: Support ITER_BVECQ in smbdirect_map_sges_from_iter()
+  netfs: Switch folioq to bvecq
+  smbdirect: Remove support for ITER_FOLIOQ from
+    smbdirect_map_sges_from_iter()
+  iov_iter: Remove ITER_FOLIOQ
+  netfs: Remove folio_queue
+
+ Documentation/core-api/folio_queue.rst      | 209 ---------
+ Documentation/core-api/index.rst            |   1 -
+ Documentation/filesystems/netfs_library.rst |   2 +-
+ fs/afs/dir.c                                |  35 +-
+ fs/afs/dir_edit.c                           |  43 +-
+ fs/afs/dir_search.c                         |  33 +-
+ fs/afs/inode.c                              |   2 +-
+ fs/afs/internal.h                           |   6 +-
+ fs/afs/symlink.c                            |  37 +-
+ fs/netfs/Makefile                           |   1 +
+ fs/netfs/buffered_read.c                    |  34 +-
+ fs/netfs/bvecq.c                            | 342 ++++++++++++++
+ fs/netfs/internal.h                         |   7 +-
+ fs/netfs/iterator.c                         |  33 +-
+ fs/netfs/main.c                             |  13 +-
+ fs/netfs/misc.c                             |  96 ----
+ fs/netfs/read_collect.c                     |  47 +-
+ fs/netfs/read_pgpriv2.c                     |  24 +-
+ fs/netfs/read_retry.c                       |  28 +-
+ fs/netfs/rolling_buffer.c                   | 189 +++-----
+ fs/netfs/stats.c                            |   6 +-
+ fs/netfs/write_collect.c                    |  26 +-
+ fs/netfs/write_issue.c                      | 180 ++-----
+ fs/smb/client/cifsglob.h                    |   2 +-
+ fs/smb/client/smb2ops.c                     |  78 ++--
+ fs/smb/smbdirect/connection.c               | 135 +++---
+ include/linux/bvec.h                        |  18 +
+ include/linux/bvecq.h                       | 166 +++++++
+ include/linux/folio_queue.h                 | 282 -----------
+ include/linux/iov_iter.h                    |  87 ++--
+ include/linux/netfs.h                       |  14 +-
+ include/linux/rolling_buffer.h              |  42 +-
+ include/linux/uio.h                         |  17 +-
+ include/trace/events/netfs.h                |  49 +-
+ kernel/bpf/btf.c                            |   2 -
+ lib/iov_iter.c                              | 494 +++++++++++++-------
+ lib/scatterlist.c                           |  82 ++--
+ lib/tests/kunit_iov_iter.c                  | 131 +++---
+ 38 files changed, 1437 insertions(+), 1556 deletions(-)
+ delete mode 100644 Documentation/core-api/folio_queue.rst
+ create mode 100644 fs/netfs/bvecq.c
+ create mode 100644 include/linux/bvecq.h
+ delete mode 100644 include/linux/folio_queue.h
+
