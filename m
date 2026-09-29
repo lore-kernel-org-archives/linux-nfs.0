@@ -1,262 +1,235 @@
-Received: from smtp-bc0e.mail.infomaniak.ch (smtp-bc0e.mail.infomaniak.ch [45.157.188.14])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-qk2-f41.google.com (mail-qk2-f41.google.com [74.125.230.233])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 62374550DBA;
-	Tue, 29 Sep 2026 18:52:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.157.188.14
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 82F4B54A7FB
+	for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2026 19:56:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.230.233
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790707928; cv=none; b=QysDqDXR1wWZb6P0kI1ZibNJ7w4vxL6M21+vcF97cGHgaR0EWpF1Wboui4yCorcfuMqf9CvdIjXjH6DtJkaawOb0FEOKzUAMpBouEkGUaBIwPAUuulzxEjJl9AiH9cJBGYYAa0X03oQCIG8QqZExnCPGHmUZVGQOieL/viWNssk=
+	t=1790711818; cv=none; b=DX7x2Z/fWWtcnqntCC/sJP5VyJpq8wRRV5AysP9Is40OUNswqPmxNBRARg1V/S+bOlQLj9swRnIJtebq05WE+sCVZeElIjoaTmJB8K+w0IKV3Ft7I25WIO83qIQe6jpbhOhRwcGRUduSaT2j6jiaX9oEw/P0g2O9aXAel9we4SI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790707928; c=relaxed/simple;
-	bh=XG42HsU/sMqXC+2mZyZtlSTX6jXkUuV0jGL7ftsUi1c=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=FErFM+tdiLTUwM40poEcFNd2bE2qeVKEYaVcjM2crLx/kWt4+ubVBVhEXuclZ/ZOn37FMY3GM9XB/hlxt83YZc4nJCSrMqNc5YB0b0I1OogNLenAKGxLzh/TCkzK2cVYfgYqPV/uBR5Uu7d2JcYQE8h/TLK4SsJfneu6Gv13j7E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=digikod.net; spf=pass smtp.mailfrom=digikod.net; dkim=pass (1024-bit key) header.d=digikod.net header.i=@digikod.net header.b=NmkxKvYY; arc=none smtp.client-ip=45.157.188.14
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=digikod.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=digikod.net
+	s=arc-20240116; t=1790711818; c=relaxed/simple;
+	bh=Y0/h65BK/3Cr60RUPs5WgSC8Ax0CBmTat7p70+NFbks=;
+	h=From:Date:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=aVf8hwLW/rOhtUH0F/KyVs5odG//HjRYtJoW2fIlA2U/vhG6XGPyIj6aEe3b5Pc0PPfnH3nf5qBPgLNWmdn5rY+pM5lv5LliCqIVG0EQyik8KMFpEDBC99ZToq65wICHV/R/iNYrkpLoaudEoRMkwZ9NUwcGLiCz8IQA8UCpXn8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=YNKrbGzO; arc=none smtp.client-ip=74.125.230.233
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=digikod.net header.i=@digikod.net header.b="NmkxKvYY"
-Received: from smtp-4-0000.mail.infomaniak.ch (unknown [IPv6:2001:1600:7:10::a6b])
-	by smtp-3-3000.mail.infomaniak.ch (Postfix) with ESMTPS id 4hvS2p2m6Sz1CD;
-	Tue, 29 Sep 2026 20:52:02 +0200 (CEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=digikod.net;
-	s=20191114; t=1790707921;
-	bh=n8m+1/BomLkKgTbR4X98Agh5NHkdrJRlqsVG38xM61s=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=NmkxKvYY7IAkYpsQSw34+uAQW9dfJv3xKt7fsNkRohVNKzr5oP5BjUWuF2NdOi79t
-	 vvs4m9cuI+bBBRuJQAVOoHW1oRrA18o+pALFKcTK6U8VOdF0aQDADis65isVXer8D4
-	 UtHi4jAnDX1/It25jO4gSTSKy338JFE41uy/4218=
-Received: from unknown by smtp-4-0000.mail.infomaniak.ch (Postfix) with ESMTPA id 4hvS2b4dnJzppl;
-	Tue, 29 Sep 2026 20:51:51 +0200 (CEST)
-Date: Tue, 29 Sep 2026 20:51:47 +0200
-From: =?utf-8?Q?Micka=C3=ABl_Sala=C3=BCn?= <mic@digikod.net>
-To: Justin Suess <utilityemal77@gmail.com>
-Cc: =?utf-8?Q?G=C3=BCnther?= Noack <gnoack@google.com>, 
-	=?utf-8?Q?G=C3=BCnther?= Noack <gnoack3000@gmail.com>, Cai Xinchen <caixinchen1@huawei.com>, paul@paul-moore.com, 
-	jmorris@namei.org, serge@hallyn.com, corbet@lwn.net, skhan@linuxfoundation.org, 
-	rdunlap@infradead.org, gregkh@linuxfoundation.org, rafael@kernel.org, dakr@kernel.org, 
-	dlemoal@kernel.org, hch@lst.de, axboe@kernel.dk, viro@zeniv.linux.org.uk, 
-	brauner@kernel.org, jack@suse.cz, dhowells@redhat.com, code@tyhicks.com, 
-	linkinjeon@kernel.org, sj1557.seo@samsung.com, yuezhang.mo@sony.com, 
-	hirofumi@mail.parknet.co.jp, cel@kernel.org, jlayton@kernel.org, neil@brown.name, 
-	okorniev@redhat.com, Dai.Ngo@oracle.com, tom@talpey.com, miklos@szeredi.hu, 
-	amir73il@gmail.com, senozhatsky@chromium.org, chenxiaosong@chenxiaosong.com, 
-	zohar@linux.ibm.com, roberto.sassu@huawei.com, dmitry.kasatkin@gmail.com, 
-	eric.snowberg@oracle.com, stephen.smalley.work@gmail.com, omosnacek@gmail.com, 
-	casey@schaufler-ca.com, nanx95726@gmail.com, djwong@kernel.org, daniel@iogearbox.net, 
-	linux-security-module@vger.kernel.org, linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	driver-core@lists.linux.dev, linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	netfs@lists.linux.dev, ecryptfs@vger.kernel.org, exfat@lists.linux.dev, 
-	linux-nfs@vger.kernel.org, linux-unionfs@vger.kernel.org, linux-cifs@vger.kernel.org, 
-	linux-integrity@vger.kernel.org, selinux@vger.kernel.org, linux-kselftest@vger.kernel.org, 
-	xiujianfeng@huawei.com, lujialin4@huawei.com
-Subject: Re: [PATCH RFC -next 00/12] landlock: Add READ_METADATA and
- WRITE_METADATA access rights
-Message-ID: <20260929.Ahgoo4yeetai@digikod.net>
-References: <20260924104831.1081137-1-caixinchen1@huawei.com>
- <araxO4ze0KZBz756@suesslenovo>
- <20260926.255b951d3013@gnoack.org>
- <arqcbjWLN1CLkL_Y@suesslenovo>
- <arurOphe6QIx2Zr8@google.com>
- <arvjb0HJYh1KyEBB@suesslenovo>
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="YNKrbGzO"
+Received: by mail-qk2-f41.google.com with SMTP id af79cd13be357-93c57d36d37so423132685a.3
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2026 12:56:56 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=hammerspace.com; s=google; t=1790711815; x=1791316615; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:date:from:sender:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=/w/1o6dWL1VfAv+XnbpVEvJyvsggxxz3k1B5xm75PHA=;
+        b=YNKrbGzOF2hpakh6pBc+HMef1t8KTxAb9OnE+7kxeUmYKni9zEhz5AI1tmPlEvGm/P
+         a5VOzcxUU6petEpjG0j7gyGkykSj85MR/lt7E5GubXZo34uiHKHxErHUQeiDWKu31ZFa
+         +xDC3KIjDT0PFr5LucjN7EUygCI1U8K/r72dpkDXCRuCOW+bYeV0/y8+2YSoeWc3v6+f
+         3GvDHpL1cSi2nuS2wfEFQC1wHbKZP6kb5sJFMqw2NAyyF/cBZ9GqsuYrDXfxand54fXp
+         4IbGmcXzaEV5Xq0MTWDsv0ObXY568YlDDi9SAaDyu0ecxY8TuJ6OvjbXVfNuVWmOsCd2
+         gViw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1790711815; x=1791316615;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:date:from:sender:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=/w/1o6dWL1VfAv+XnbpVEvJyvsggxxz3k1B5xm75PHA=;
+        b=a/BBqj0OaVTv0VbEeFtlOGZoa/tjE6WQrWHDvtNKAoImzsZhVs/TeSTS8DCMa2D6wS
+         JUoHlvj6GQsQ9F2bQ1yVOD3L3wz/7PtLkHMuJEkfuT5VBx6gqp5l6mv8w9+s9nxRfLv0
+         dRC2pC2pb1qetOS7VO0iM7pEgt1aAl+vmeEEsnWOy50zga3eo71dn5Aiblhl3MNX15NQ
+         BZCfJCYCBirc829iYn/cDRBx0z7FRsSdDDJ5bv0qx7YlsZC2YouTHthJLX9iEcxekHzu
+         vO9KzWiJH/lo5i/pSgl8/+Kp/YDR4ALI0l3ZvipbTZQEzfeTJ/blWY2KksgGYuBD2+vV
+         MHrg==
+X-Forwarded-Encrypted: i=1; AKwUvBzRqj70VOZ5RZiL0OlSh3vU7IMygmpVFew/W1WKc2TM9rlvw5Pp9kyI3EP7jGUFdhT+aXd1lsZoXHk=@vger.kernel.org
+X-Gm-Message-State: AFuF++mqyDZVNkplUdSzg1wDOq+qIg60tEzJeSBH11UsCc+y8DX+23LU
+	j7EHSPN+RnD4xsS8L7kAhr2Im+6jxPgMK0qoqlnRNVYH/xKA+sg7y32LXuq2vPTctEYbf6Mdiwb
+	AlagJ
+X-Gm-Gg: AYBFou18265CVgABB95fl2m78xFKQsSmdR2Vh5NjkemflHGewzDJdXsQ3JwaNQFfiAT
+	OBEYEC3peFlJZuI1DY3juti1Ntgd6+TrxWoKYNuId9G+PyDI17SvZUVsRkHMsIJYNnmafdGtutV
+	Qpr1sivrnsusfDVFupExjJJiyGX4LA9Ggtfrfb/iYidmy3Qw0oMqqBVUayxkXcYJPUsvByRawhL
+	MSa0k0AtlnFjx8z2kkGBjOMlH2INV/5kbYOV0T58UllKMrjUqXdfAo3ANG5NtpONtsT3S7zTJ6A
+	uKOeu4JNOFLwUpU5yJstfddD4/eC4oXBvdsrFqncXwVzywIbidPmcWBZCAn+LQSufbLMWfYn946
+	revDdgMidiYXkTSQiwiA0MlyMaDQ4dkjAD6XSKnFCNehlm8uGoYPXz8v0wYEFKCMb6lC8wmEyFS
+	t532xOs2bGqg3FkYJ+uP413pzatfzHKLjHHceJ+SpyiKXJy29kP9YtknzKRNcDSkGFSvZUNtxrc
+	7nQnsrBvrxNKyO5lnczxb2dSw2VsTiB7SpibQXWXn9dqFIuZ++YNWsIgiZadRO90jpnd6hn8g==
+X-Received: by 2002:a05:620a:4541:b0:93b:d79f:d941 with SMTP id af79cd13be357-93c9fc965b9mr115799685a.54.1790711815041;
+        Tue, 29 Sep 2026 12:56:55 -0700 (PDT)
+Received: from localhost (pool-68-160-167-46.bstnma.fios.verizon.net. [68.160.167.46])
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-93c9f4b912bsm48096685a.20.2026.09.29.12.56.54
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 29 Sep 2026 12:56:54 -0700 (PDT)
+Sender: Mike Snitzer <mike.snitzer@hammerspace.com>
+From: Mike Snitzer <snitzer@hammerspace.com>
+X-Google-Original-From: Mike Snitzer <snitzer@kernel.org>
+Date: Tue, 29 Sep 2026 15:56:53 -0400
+To: Chuck Lever <cel@kernel.org>
+Cc: Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 01/10] NFSD: interlock the use of NFSD_IO_DIRECT for NFS
+ READ and WRITE
+Message-ID: <arwYBaemyvLoG2sT@hammerspace.com>
+References: <20260929173423.16149-1-snitzer@kernel.org>
+ <20260929173423.16149-2-snitzer@kernel.org>
+ <37625d4e-9d86-4651-bbc8-73c1c589942d@app.fastmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=iso-8859-1
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <arvjb0HJYh1KyEBB@suesslenovo>
-X-Infomaniak-Routing: alpha
+In-Reply-To: <37625d4e-9d86-4651-bbc8-73c1c589942d@app.fastmail.com>
 
-On Tue, Sep 29, 2026 at 01:27:44PM -0400, Justin Suess wrote:
-> On Tue, Sep 29, 2026 at 02:12:42PM +0200, Günther Noack wrote:
-> > On Mon, Sep 28, 2026 at 01:13:35PM -0400, Justin Suess wrote:
-> > > On Sat, Sep 26, 2026 at 09:56:28AM +0200, Günther Noack wrote:
-> > > > Hello!
-> > > > 
-> > > > On Fri, Sep 25, 2026 at 02:03:05PM -0400, Justin Suess wrote:
-> > > > > On Thu, Sep 24, 2026 at 06:48:19PM +0800, Cai Xinchen wrote:
-> > > > > > This series adds two new Landlock filesystem access rights,
-> > > > > > LANDLOCK_ACCESS_FS_READ_METADATA and LANDLOCK_ACCESS_FS_WRITE_METADATA,
-> > > > > > which control access to file and directory metadata such as inode
-> > > > > > attributes (mode, ownership, timestamps), extended attributes and POSIX
-> > > > > > ACLs.  It picks up the work from the "landlock: add chmod and chown
-> > > > > > support" series [1] and follows the coarse-grained grouping discussed in
-> > > > > > that thread [2]: instead of separate chmod/chown rights, metadata
-> > > > > > operations are grouped into one read and one write right.
-> > > > > > 
-> > > > > > Landlock evaluates access rights on a per-path basis, but the metadata
-> > > > > > related LSM hooks (inode_getattr, inode_setattr, inode_setxattr,
-> > > > > > inode_getxattr, inode_listxattr, inode_removexattr, inode_set_acl,
-> > > > > > inode_get_acl, inode_remove_acl) only receive the dentry of the accessed
-> > > > > > object.  Patches 1-7 therefore first pass struct path instead of dentry
-> > > > > > through the metadata-related VFS helpers and LSM hooks.  This is a pure
-> > > > > > refactoring with no behavior change, split so that every patch builds
-> > > > > > and works on its own:
-> > > > > >
-> > > > > I like these patches, but is the ability to read metadata already
-> > > > > sorta controlled by LANDLOCK_ACCESS_FS_READ_DIR on the parent
-> > > > > directory?
-> > > > > 
-> > > > > The one case I see this being different is:
-> > > > > 
-> > > > > 1. if you wanted to grant read access to the file, but not metadata
-> > > > > read access, but I can't think of any usecase for being able to read
-> > > > > the contents of a file, but not the metadata. (see below)
-> > > > > 
-> > > > > 2. If you had the absolute path already and didn't need READ_DIR.
-> > > > > 
-> > > > > I see introducing this READ_METADATA as causing potential
-> > > > > hard-to-diagnose issues.
-> > > > > 
-> > > > > Say you handle READ_METADATA and READ_FILE, but only grant READ_FILE.
-> > > > > 
-> > > > > The program can technically open the file with the READ_FILE permission,
-> > > > > but it may error out because the stat() on it beforehand failed.
-> > > > > It's pretty common for programs to do that kind of thing (stat before
-> > > > > open), like for checking for config files (strace bash and you see it
-> > > > > stat .profile, /etc/profile)
-> > > > > 
-> > > > > There may be other bugs, because being able to set permissions to read
-> > > > > a file *but not read it's metadata* isn't possible currently in posix
-> > > > > acl and userspace may not work well if that assumption no longer holds.
-> > > > >
-> > > * posix acl and linux DAC.
-> > > 
-> > > > > So maybe WRITE_METADATA is good enough?
-> > > > 
-> > > > The existing use cases are the combinations of (a) READ_DIR
-> > > > allowed/denied and (b) READ_METADATA allowed/denied.  Because these
-> > > > two access rights overlap slightly, it seems likely that for a given
-> > > > directory or file, users will want to either grant both, or deny both.
-> > > > 
-> > > > At the moment, where the (not yet existing) READ_METADATA is
-> > > > implicitly always allowed, the problematic case is the one where the
-> > > > Landlock user wants to deny READ_DIR, but where much of the same
-> > > > metadata is still available through stat() and the various
-> > > > get-attribute syscalls.  (c.f. the warning box in the Landlock docs
-> > > > [1])
-> > > > 
-> > > > In my view the READ_METADATA right closes a gap that READ_DIR left
-> > > > open (which is also potentially surprising to callers if they did not
-> > > > read the docs closely).  Also, if its implementation is symmetric to
-> > > > WRITE_METADATA, I feel that it's worth having it in the same patch
-> > > > set.
-> > > > 
-> > > > –Günther
-> > > > 
-> > > > P.S.: I know, even after we can control stat(), there are likely ways
-> > > > to infer the presence of a file by observing Landlock error codes.
-> > > > This would be nice to fix as well, but is harder to do without
-> > > > controlling the path walk itself [2].  But also, the fact that this is
-> > > > currently not controllable is not an excuse for leaving READ_METADATA
-> > > > open IMHO.
-> > > >
-> > > I'm still sort of concerned about the case where read access is allowed,
-> > > but metadata isn't, due to how many applications will not cleanly handle
-> > > such an unexpected condition. You can reproduce this with a seccomp
-> > > policy forbidding stat().
-> > > 
-> > > Would it make sense to have the existing READ rights
-> > > (READ_DIR/READ_FILE) imply READ_METADATA on the files/directories 
-> > > if READ_METADATA is handled? Reading a file's contents should always
-> > > imply that you can read the metadata.
-> > 
-> > I am wary of situations where the handling of access rights implicity
-> > implies other access rights.  We have discussed such schemes in the
-> > past (e.g. we considered a design for RESOLVE_UNIX where we'd have
-> > both a "scoped" and a "access_fs" right that would interact with each
-> > other), but in the end we always settled for approaches where such
-> > interactions would not be necessary.  One of the concerns was that it
-> > would complicate "best effort" fallback logic in all Landlock
-> > libraries and in the countless places where people use the syscalls
-> > directly.
-> > 
-> > To throw another option in the mix.  (To be clear, I have only 70%
-> > confidence, so feel free to push back, but it feels like it might
-> > work?):
-> > 
-> > Is this similar to the "truncate" right?
-> > ----------------------------------------
-> > 
-> > With "truncate", there was an existing common operation (open(2) with
-> > O_TRUNC, a.k.a. creat(2)) which called the truncation hook and checked
-> > for the truncation access right.  But that was in fact OK.  The way we
-> > resolved it at the time was by documenting very loudly that WRITE_FILE
-> > and TRUNCATE access rights should always be requested in lockstep, if
-> > TRUNCATE is handled.
-> > 
-> > If READ_DIR and READ_FILE do in fact read and return metadata to the
-> > user, maybe the right thing would be to do it the same way here and
-> > *require* that we have READ_METADATA to do these operations?
-> > 
-> > (READ_METADATA is automatically allowed as long as it's not handled,
-> > so that approach does not break existing programs.  Programs who
-> > consciously start handling READ_METADATA must simply take into account
-> > that reading directories and opening files for reading requires
-> > READ_METADATA.)
-> > 
-> > (BTW, I can see it for reading directories, but I am not sure I fully
-> > follow the argument why opening files for reading means that you can
-> > read the metadata?  Can't that be guarded on fstat()-like operations?)
+On Tue, Sep 29, 2026 at 11:27:05AM -0700, Chuck Lever wrote:
+> 
+> On Tue, Sep 29, 2026, at 10:34 AM, Mike Snitzer wrote:
+> > Now that NFSD supports NFSD_IO_DIRECT for both READ and WRITE it is
+> > much safer to avoid needless buffered vs direct contention if/when
+> > only one of them has been configured to use NFSD_IO_DIRECT.
 > >
-> Many standard libraries will call stat before / after opening a file to
-> allocate a buffer matching the file size. Or to figure out if mmap
-> is more efficient than opening it directly.
+> > Mixing direct and buffered I/O to the same file causes needless page
+> > cache invalidation and writeback, so although io_cache_read and
+> > io_cache_write remain separate interfaces, writing either one adjusts
+> > the other so that READ and WRITE are never left on opposite sides of
+> > the buffered/direct divide:
 > 
-> So Python's open().read() or Go's os.ReadFile they may throw an error
-> when opening the file, making it look as if the file is inaccessible
-> when its contents are. They make the assumption that if a file is
-> readable, the metadata is too.
+> Jeff and I have been discussing making DIRECT the default for WRITEs and
+> BUFFERED the default for READs. This patch takes us in the opposite
+> direction.
 > 
-> There's also a lot of metadata that is already leaked by just having
-> READ_FILE. FS_IOC_GETFLAGS/FS_IOC_FSGETXATTR ioctl / fileattr_get are
-> unrestrictable and allow you to see inode attributes. There's also
-> access(2) which isn't restricted here and allows you to see your rights
-> on the file. The size can be found by simply seeking to the beginning
-> and end. So much of the metadata is obtainable with just READ_DIR/READ_FILE.
-> 
-> ...
-> 
-> Another problem I'm just realizing is that this READ_METADATA
-> right is inconsistent with open file descriptor behavior. With most
-> rights, already open file descriptors are exempted, but here, fstat,
-> (and the other stat-family calls which takes a file descriptor) become
-> denied even on already open files. It's a catch 22 here, if you change
-> the fstat to not apply to opened files, then READ_FILE becomes a bypass
-> for READ_METADATA. But if you leave it as is, then it's inconsistent with
-> the other Landlock rights wrt already opened files.
+> Nothing here convinces me that mixing the modes is a bad thing to do.
+> "Needless page cache invalidation" needs some demonstration, and it
+> needs to show why the right thing to do is make it impossible to mix
+> modes rather than explore the issue as one or more bugs that can be
+> fixed. Or... why not let admins explore this for themselves? Where is
+> the hazard and why does it need to be forbidden by the admin UI?
 
-Indeed, these access rights should follow the
-LANDLOCK_ACCESS_FS_TRUNCATE mechanic.
+The basis for the interlock is that O_DIRECT mode is intended to avoid
+bloating memory with page cache and the excess CPU burn of managing
+the page cache.  Using read caching in conjunction with O_DIRECT
+writes knee-caps the wins of O_DIRECT.  But sure, you can do it.. and
+I suppose the freedom of choice (and enough rope to hang) is perfectly
+fine. I can drop the interlock and send v2 after more time for review
+of the other patches (but there were some real bugs fixed in the
+interlock patch so will require some care to adjust).
 
-> 
-> Which isn't the end of the world, but just shows that either
-> approach is going to have it's quirks. 
-> 
-> I think it would be better to just avoid the cat and mouse game here
-> of trying to seperate READ_FILE/READ_METADATA and either require
-> READ_METADATA be specified with READ_FILE if READ_METADATA is handled
-> like Gunther proposed, or have READ_FILE imply READ_METADATA.
-> 
-> Documenting it strongly is OK too, but really there are really zero
-> usecases where you'd want to grant READ_FILE without READ_METADATA
-> so it would need to be made extremely clear.
+direct_misaligned_dontcache=N shows the excessive 630 GiB page cache
+bloat (across 4 servers) I've had to confront with a larger scale test
+that really sticks its finger in this particular wound (as documented at
+end of the "NFSD: keep boundary page of a split direct-mode WRITE
+until both writers complete" patch):
 
-What about a program that just need to read files? We can think about
-sanboxes such as those used in web browsers, but that applies to other
-tailored processes that don't need/want to access metadata e.g., for
-confidentiality or personal information (UID, timestamp) concerns.
+    On a four-server pNFS flexfiles rig, three clients writing 47008-byte
+    records for 240 s against 640 nfsd threads per server, compared with
+    the same servers before this change: device reads fall from 0.014-0.015
+    per record to 0.003, page-cache growth over the write phase falls from
+    about 11 GiB to 2.9 GiB, and write throughput rises by 2.4% to 4.9%
+    across NFSD_IO_DIRECT and both stable_how floors, with read throughput
+    unchanged. Records of that size always take the split path, since their
+    direct middle is at least 38818 bytes, so the figures are the split
+    path alone; the whole-WRITE fallback needs records below about 12 KB to
+    come into play. Keeping every boundary page cached instead, which a
+    later commit makes possible with a direct_misaligned_dontcache=N
+    debugfs knob, grows the page cache by about 630 GiB over the same
+    runs.
 
-This is similar to FILE_WRITE vs. TRUNCATE: most of the time we want
-them to be grouped.
+The "11 GiB" is what's left resident in page cache _without_ the
+"NFSD: keep boundary page of a split direct-mode WRITE until both
+writers complete". _WITH_ that patch (to make more informed use of
+DONTCACHE) it drops to the quoted 2.9 GiB while still benefitting from
+RMW avoidance buffered IO makes possible -- pretty fantastic result.
 
-> 
-> Thanks,
-> Justin
-> 
-> > —Günther
-> 
+> Later patches in the series assume DONTCACHE is the fallback for
+> certain cases.
+
+That's the existing default that current upstream code has.  But with
+this patchset the fallback is buffered, with buffered DONTCACHE the
+default unless debugfs direct_misaligned_dontcache=N configured.
+
+It would be quite bad to remove DONTCACHE support because it actually
+does offer pretty solid wins (especially for the workload I quoted
+above).  If pure buffered IO used (direct_misaligned_dontcache=N)
+WRITE performance suffers: "only" 31,297 MiB/s for O_DIRECT +
+buffered, whereas with O_DIRECT + DONTCACHE, overall result were (more
+runs needed to get stddev):
+4 - FILE_SYNC floor   35,567 MiB/s
+2 - NFSD_IO_DIRECT    35,302 MiB/s
+3 - DATA_SYNC floor   36,163 MiB/s
+
+> Jeff has measured substantial performance deficits for that mode,
+> and maybe removing DONTCACHE would be a better direction to take.
+
+But to be clear, I'm not referring to DONTCACHE only mode=1, I'm most
+interested in hybrid of O_DIRECT+DONTCACHE (more on that at the end
+below).
+
+My series has been fully tested with Jeff's more recent DONTCACHE
+commits in place:
+ 88d6f128d06d mm: track DONTCACHE dirty pages per bdi_writeback
+ f3122ce09a51 mm: kick writeback flusher for IOCB_DONTCACHE with targeted dirty tracking
+
+> The patch that reports the actual stability of a WRITE was dropped
+> because it broke something (although I don't remember what).
+
+Haven't seen any issues with it.  Been carrying it ever since you
+posted it.
+
+> As I recall, even a direct WRITE needs a subsequent COMMIT. Have you
+> demonstrated that the client COMMIT is a latency problem or that
+> the memory that is pinned on the client has a noticeable impact?
+>
+> We suspect that it might, but every time I've measured, avoiding
+> COMMIT with NFSD has shown no impact on throughput, which is why
+> NFSD doesn't already do this optimization.
+
+Yes, in the header for "NFSD: let a direct-mode WRITE raise stable_how
+and elide the client's COMMIT":
+
+    What this removes is the COMMIT traffic, and it is worth most where a
+    client's writes are carved into several WRITE RPCs, because each piece
+    is then committed separately.  Measured on a pNFS flexfiles share where
+    every write straddles two data servers, so every write becomes two WRITE
+    RPCs and, under NFSD_IO_DIRECT, two COMMITs: the two modes do identical
+    durability work, one fsync per COMMIT against one fsync per WRITE on
+    identical WRITE counts, and the COMMIT RPCs alone cost NFSD_IO_DIRECT
+    31% more server CPU and 42% more client CPU for the same bytes, about
+    20 us of server CPU per COMMIT plus a client cost that grows with the
+    range committed.  Where only one write in 22 is split the same effect
+    is a couple of cores on each side and no resolvable throughput
+    difference, and writes that fit a single RPC send no COMMIT in either
+    mode.
+
+> So even if these patches apply mechanically and benefit your workloads,
+> it would be helpful if we could step back and understand what you are
+> trying to achieve and how it should coordinate/align with where Jeff
+> and I want to see this mechanism go. Can we start with that
+> conversation?
+
+OK, please review what I've provided further and we can then have a
+more detailed discussion about anything you like.
+
+Claude helped summarize what this series fixes:
+
+What this advance is, precisely. It is not "NFSD uses DONTCACHE". It
+is NFSD's direct write path - io_cache_write modes 2, 3 and 4, where
+an aligned WRITE goes to the filesystem as O_DIRECT - with DONTCACHE
+used only for the buffered fragments a misaligned WRITE cannot issue
+directly. The page cache is bypassed for the bulk of the data and
+bounded for the remainder. That distinction runs through everything
+below, and it is exactly what separates this from io_cache_write=1,
+which is plain buffered DONTCACHE with no direct I/O at all and does
+not reach this code.
+
+A misaligned WRITE in one of those direct modes is split into a
+buffered prefix, an O_DIRECT middle and a buffered suffix. The
+boundary pages are shared by exactly two WRITEs that may arrive in
+either order, from different clients, at once. Marking both DONTCACHE
+bounded the page cache but cost the second writer a read from disk
+every time - 0.81 device reads per record on the rig, 585 GiB read
+back during an 8.1 TiB write.
+
+Thanks,
+Mike
