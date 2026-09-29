@@ -1,47 +1,47 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 790DD3BA253
-	for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2026 08:00:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD1363AFCED
+	for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2026 08:00:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790668819; cv=none; b=RamGLVvt6Q00puutD4MkA6z+F3kRHhr581YLlT6irqDNSgtXZwA2uSKBlnryuvvT8ezVdVM65G9MiSljZGAxSShzzWY84GHSQZBhoxen1W45N6if1xFAERh1/PElMYoNh3Xrb2U+sbQNc+GNCtd/BazUlvKIkG7GbIrEf8fYXLY=
+	t=1790668823; cv=none; b=KOd+wueB9RECtQTky7Ue1xiTQ5xwBqy/Wgprm8UTv05MTdlbBVmpHtsA8ca3Pq8KIdyGvaQbkZhTRg4fYEfGMURdoCMclC3qEtCtyt6sqP/DUuvFp55HoesSopZrXLGfDJGbgX7/xR8/ZnadaEnTda9V0WroiJAMI/lhLfIsodg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790668819; c=relaxed/simple;
-	bh=ddjxOsgZ1GQ49nRgt5kCvn+7ObM/aL5HK1T9S5upFwo=;
+	s=arc-20240116; t=1790668823; c=relaxed/simple;
+	bh=0nLPG5HXz7Xo1+MBMhfA45u5paiGKM8kGdpuWz8dExs=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=OW6J9f9i46qvoJooRNyvemijjRbcmICfDcSSwgja0QMq6uFn3ngEBVBVTeHNG0bwXfK9vuJUjUKyEQ6AR/TC8EJE/k64XBwmIOQKvApdq6Yq7W2kJ1lehw1WsKzqaynLjlTOkMNp0xCX8jWz/+MqzJLZwL0SnuVJ1kNzwnkGKn0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=cSnnZ+TD; arc=none smtp.client-ip=170.10.133.124
+	 MIME-Version; b=nIF8Y4m0ItivVI/e9/FEt0Q2WW4DVGOFL0SGlDZCHzX+8gYLJLFX+dvV6691RH7KyD4m2pX/YzjCRiXBiSNMpDBamPOSPIPI79c3ALLcdGuVTMXmCrzJP5mzBkGI9LMH2T+8C53dscDUeA3jOIXx9L5SVeM2CR+DfRDOyHvPjyc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=ghwWVKTA; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="cSnnZ+TD"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="ghwWVKTA"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1790668816;
+	s=mimecast20190719; t=1790668820;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=3HL9NZwwcgGIe9j0P53K4GDSUnsPRBzPV5TCzNGGWrc=;
-	b=cSnnZ+TDyRl70njq+RpL/YGwy0NFKkCnfakSZ042WUY15dQfzcWEpkgXYW70e0yusgWvjr
-	oAAoKvaOHBXiWQuRoOCjHi9oZf0DZpFHaAadVTGhDDWuPPpRfARkFvj1ksR4FzucCO106U
-	+T+brw10BW+cJ5Y5ZbWTDYu9x8h+z1U=
-Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+	bh=xjdLFx7siNPDsTDeYhNPbuQOG9Ff9GarrMomfKXig4Q=;
+	b=ghwWVKTADJ6hrYO5GYyNw6hCbvgcI+hllZAm/4ayUjs7QAqiOhCYuGFse7XhDcgmXJecnx
+	7dLO5h34DDp+89o00K9wsS3REiJ1XiVDelWqwJ8hRuJELeQsvYIn8VgLx211/Kb6bStPJ2
+	UyIvcYEHnTdehgGdjHhBt3o8TtceyhU=
+Received: from mx-prod-mc-01.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-524-K7gK-olsPS6D5qvDXigujg-1; Tue,
- 29 Sep 2026 04:00:11 -0400
-X-MC-Unique: K7gK-olsPS6D5qvDXigujg-1
-X-Mimecast-MFC-AGG-ID: K7gK-olsPS6D5qvDXigujg_1790668808
-Received: from mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.95])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-209-agefBdXvN8-_wKqf8DjKBg-1; Tue,
+ 29 Sep 2026 04:00:18 -0400
+X-MC-Unique: agefBdXvN8-_wKqf8DjKBg-1
+X-Mimecast-MFC-AGG-ID: agefBdXvN8-_wKqf8DjKBg_1790668816
+Received: from mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.17])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 8735C180A223;
-	Tue, 29 Sep 2026 08:00:08 +0000 (UTC)
+	by mx-prod-mc-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id D95211944F10;
+	Tue, 29 Sep 2026 08:00:15 +0000 (UTC)
 Received: from warthog.com (unknown [10.44.32.54])
-	by mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id BEC8240E;
-	Tue, 29 Sep 2026 08:00:02 +0000 (UTC)
+	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 2BACE1956047;
+	Tue, 29 Sep 2026 08:00:09 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>
 Cc: David Howells <dhowells@redhat.com>,
@@ -61,10 +61,12 @@ Cc: David Howells <dhowells@redhat.com>,
 	v9fs@lists.linux.dev,
 	linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
+	Shyam Prasad N <sprasad@microsoft.com>,
+	Tom Talpey <tom@talpey.com>,
 	Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH v12 05/10] cifs: Use a bvecq for buffering instead of a folioq
-Date: Tue, 29 Sep 2026 08:59:06 +0100
-Message-ID: <20260929075913.2740968-6-dhowells@redhat.com>
+Subject: [PATCH v12 06/10] smbdirect: Support ITER_BVECQ in smbdirect_map_sges_from_iter()
+Date: Tue, 29 Sep 2026 08:59:07 +0100
+Message-ID: <20260929075913.2740968-7-dhowells@redhat.com>
 In-Reply-To: <20260929075913.2740968-1-dhowells@redhat.com>
 References: <20260929075913.2740968-1-dhowells@redhat.com>
 Precedence: bulk
@@ -74,223 +76,115 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.6 on 10.30.177.95
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.17
 
-Use a bvecq for internal buffering for crypto purposes instead of a folioq
-so that the latter can be phased out.
+Add support for ITER_BVECQ to smbdirect_map_sges_from_iter().
 
 Signed-off-by: David Howells <dhowells@redhat.com>
+Acked-by: Stefan Metzmacher <metze@samba.org>
 Reviewed-by: Paulo Alcantara <pc@manguebit.org>
-cc: Namjae Jeon <linkinjeon@kernel.org>
 cc: Matthew Wilcox <willy@infradead.org>
+cc: Namjae Jeon <linkinjeon@kernel.org>
+cc: Shyam Prasad N <sprasad@microsoft.com>
+cc: Tom Talpey <tom@talpey.com>
 cc: Christoph Hellwig <hch@infradead.org>
 cc: linux-cifs@vger.kernel.org
 cc: netfs@lists.linux.dev
 cc: linux-fsdevel@vger.kernel.org
 ---
- fs/smb/client/cifsglob.h |  2 +-
- fs/smb/client/smb2ops.c  | 78 +++++++++++++++++++---------------------
- 2 files changed, 38 insertions(+), 42 deletions(-)
+ fs/smb/smbdirect/connection.c | 67 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 67 insertions(+)
 
-diff --git a/fs/smb/client/cifsglob.h b/fs/smb/client/cifsglob.h
-index 79e4e84f8985..c8b1c23ef494 100644
---- a/fs/smb/client/cifsglob.h
-+++ b/fs/smb/client/cifsglob.h
-@@ -289,7 +289,7 @@ struct smb_rqst {
- 	struct kvec	*rq_iov;	/* array of kvecs */
- 	unsigned int	rq_nvec;	/* number of kvecs in array */
- 	struct iov_iter	rq_iter;	/* Data iterator */
--	struct folio_queue *rq_buffer;	/* Buffer for encryption */
-+	struct bvecq	*rq_buffer;	/* Buffer for encryption */
- };
- 
- struct mid_q_entry;
-diff --git a/fs/smb/client/smb2ops.c b/fs/smb/client/smb2ops.c
-index aa142420dae2..317d10b22966 100644
---- a/fs/smb/client/smb2ops.c
-+++ b/fs/smb/client/smb2ops.c
-@@ -13,7 +13,7 @@
- #include <linux/sort.h>
- #include <crypto/aead.h>
- #include <linux/fiemap.h>
--#include <linux/folio_queue.h>
-+#include <linux/bvecq.h>
- #include <uapi/linux/magic.h>
- #include "cifsfs.h"
- #include "cifsglob.h"
-@@ -4830,19 +4830,18 @@ crypt_message(struct TCP_Server_Info *server, int num_rqst,
- }
- 
- /*
-- * Copy data from an iterator to the folios in a folio queue buffer.
-+ * Copy data from an iterator to the pages in a bvec queue buffer.
+diff --git a/fs/smb/smbdirect/connection.c b/fs/smb/smbdirect/connection.c
+index afd31fa12a36..7cf8e1f8556f 100644
+--- a/fs/smb/smbdirect/connection.c
++++ b/fs/smb/smbdirect/connection.c
+@@ -5,6 +5,7 @@
   */
--static bool cifs_copy_iter_to_folioq(struct iov_iter *iter, size_t size,
--				     struct folio_queue *buffer)
-+static bool cifs_copy_iter_to_bvecq(struct iov_iter *iter, size_t size,
-+				    struct bvecq *buffer)
- {
- 	for (; buffer; buffer = buffer->next) {
--		for (int s = 0; s < folioq_count(buffer); s++) {
--			struct folio *folio = folioq_folio(buffer, s);
--			size_t part = folioq_folio_size(buffer, s);
-+		for (int s = 0; s < bvecq_nr_slots_acquire(buffer); s++) {
-+			struct bio_vec *bv = &buffer->bv[s];
-+			size_t part = umin(bv->bv_len, size);
  
--			part = umin(part, size);
--
--			if (copy_folio_from_iter(folio, 0, part, iter) != part)
-+			if (copy_page_from_iter(bv->bv_page, bv->bv_offset,
-+						part, iter) != part)
- 				return false;
- 			size -= part;
- 		}
-@@ -4854,7 +4853,7 @@ void
- smb3_free_compound_rqst(int num_rqst, struct smb_rqst *rqst)
- {
- 	for (int i = 0; i < num_rqst; i++)
--		netfs_free_folioq_buffer(rqst[i].rq_buffer);
-+		bvecq_put(rqst[i].rq_buffer);
+ #include "internal.h"
++#include <linux/bvecq.h>
+ #include <linux/folio_queue.h>
+ 
+ struct smbdirect_map_sges {
+@@ -2015,6 +2016,69 @@ static ssize_t smbdirect_map_sges_from_bvec(struct iov_iter *iter,
+ 	return ret;
  }
  
++/*
++ * Extract memory fragments from a BVECQ-class iterator and add them to an RDMA
++ * list.  The fragments are not pinned.
++ */
++static ssize_t smbdirect_map_sges_from_bvecq(struct iov_iter *iter,
++					     struct smbdirect_map_sges *state,
++					     ssize_t maxsize)
++{
++	const struct bvecq *bq = iter->bvecq, *next;
++	unsigned int slot = iter->bvecq_slot;
++	ssize_t extracted = 0;
++	size_t offset = iter->iov_offset;
++
++	maxsize = umin(maxsize, iov_iter_count(iter));
++
++	do {
++		struct bio_vec *bv;
++		size_t bsize;
++
++		while (slot >= bq->nr_slots) {
++			next = bvecq_next(bq);
++			if (!next) {
++				if (WARN_ON_ONCE(maxsize > 0))
++					return -EIO;
++				goto out;
++			}
++			bq = next;
++			slot = 0;
++		}
++
++		bv = &bq->bv[slot];
++		bsize = bv->bv_len;
++
++		if (offset < bsize) {
++			size_t part = umin(maxsize, bsize - offset);
++			bool ok;
++
++			ok = smbdirect_map_sges_single_page(state,
++							    bv->bv_page,
++							    bv->bv_offset + offset,
++							    part);
++			if (!ok)
++				return -EIO;
++
++			offset += part;
++			extracted += part;
++			maxsize -= part;
++		}
++
++		if (offset >= bsize) {
++			offset = 0;
++			slot++;
++		}
++	} while (state->num_sge < state->max_sge && maxsize > 0);
++
++out:
++	iter->bvecq = bq;
++	iter->bvecq_slot = slot;
++	iter->iov_offset = offset;
++	iter->count -= extracted;
++	return extracted;
++}
++
  /*
-@@ -4881,7 +4880,7 @@ smb3_init_transform_rq(struct TCP_Server_Info *server, int num_rqst,
- 	for (int i = 1; i < num_rqst; i++) {
- 		struct smb_rqst *old = &old_rq[i - 1];
- 		struct smb_rqst *new = &new_rq[i];
--		struct folio_queue *buffer = NULL;
-+		struct bvecq *buffer = NULL;
- 		size_t size = iov_iter_count(&old->rq_iter);
- 
- 		orig_len += smb_rqst_len(server, old);
-@@ -4889,17 +4888,16 @@ smb3_init_transform_rq(struct TCP_Server_Info *server, int num_rqst,
- 		new->rq_nvec = old->rq_nvec;
- 
- 		if (size > 0) {
--			size_t cur_size = 0;
--			rc = netfs_alloc_folioq_buffer(NULL, &buffer, &cur_size,
--						       size, GFP_NOFS);
--			new->rq_buffer = buffer;
--			if (rc < 0)
-+			rc = -ENOMEM;
-+			buffer = bvecq_alloc_buffer(size, GFP_NOFS, true);
-+			if (!buffer)
- 				goto err_free;
- 
--			iov_iter_folio_queue(&new->rq_iter, ITER_SOURCE,
--					     buffer, 0, 0, size);
-+			new->rq_buffer = buffer;
-+			iov_iter_bvec_queue(&new->rq_iter, ITER_SOURCE,
-+					    buffer, 0, 0, size);
- 
--			if (!cifs_copy_iter_to_folioq(&old->rq_iter, size, buffer)) {
-+			if (!cifs_copy_iter_to_bvecq(&old->rq_iter, size, buffer)) {
- 				rc = smb_EIO1(smb_eio_trace_tx_copy_iter_to_buf, size);
- 				goto err_free;
- 			}
-@@ -4989,22 +4987,20 @@ decrypt_raw_data(struct TCP_Server_Info *server, char *buf,
- }
- 
- static int
--cifs_copy_folioq_to_iter(struct folio_queue *folioq, size_t data_size,
--			 size_t skip, struct iov_iter *iter)
-+cifs_copy_bvecq_to_iter(struct bvecq *bq, size_t data_size,
-+			size_t skip, struct iov_iter *iter)
- {
--	for (; folioq; folioq = folioq->next) {
--		for (int s = 0; s < folioq_count(folioq); s++) {
--			struct folio *folio;
--			size_t fsize, n, len;
-+	for (; bq; bq = bq->next) {
-+		for (int s = 0; s < bvecq_nr_slots_acquire(bq); s++) {
-+			struct bio_vec *bv = &bq->bv[s];
-+			size_t n, len;
- 
- 			if (data_size == 0)
- 				return 0;
- 
--			folio = folioq_folio(folioq, s);
--			fsize = folio_size(folio);
--			len = umin(fsize - skip, data_size);
-+			len = umin(bv->bv_len - skip, data_size);
- 
--			n = copy_folio_to_iter(folio, skip, len, iter);
-+			n = copy_page_to_iter(bv->bv_page, bv->bv_offset + skip, len, iter);
- 			if (n != len) {
- 				cifs_dbg(VFS, "%s: something went wrong\n", __func__);
- 				return smb_EIO2(smb_eio_trace_rx_copy_to_iter,
-@@ -5026,7 +5022,7 @@ cifs_copy_folioq_to_iter(struct folio_queue *folioq, size_t data_size,
- 
- static int
- handle_read_data(struct TCP_Server_Info *server, struct mid_q_entry *mid,
--		 char *buf, unsigned int buf_len, struct folio_queue *buffer,
-+		 char *buf, unsigned int buf_len, struct bvecq *buffer,
- 		 unsigned int buffer_len, bool is_offloaded)
- {
- 	unsigned int data_offset;
-@@ -5136,8 +5132,8 @@ handle_read_data(struct TCP_Server_Info *server, struct mid_q_entry *mid,
- 		}
- 
- 		/* Copy the data to the output I/O iterator. */
--		rdata->result = cifs_copy_folioq_to_iter(buffer, data_len,
--							 cur_off, &rdata->subreq.io_iter);
-+		rdata->result = cifs_copy_bvecq_to_iter(buffer, data_len,
-+							cur_off, &rdata->subreq.io_iter);
- 		if (rdata->result != 0) {
- 			if (is_offloaded)
- 				mid->mid_state = MID_RESPONSE_MALFORMED;
-@@ -5176,7 +5172,7 @@ handle_read_data(struct TCP_Server_Info *server, struct mid_q_entry *mid,
- struct smb2_decrypt_work {
- 	struct work_struct decrypt;
- 	struct TCP_Server_Info *server;
--	struct folio_queue *buffer;
-+	struct bvecq *buffer;
- 	char *buf;
- 	unsigned int len;
- };
-@@ -5190,7 +5186,7 @@ static void smb2_decrypt_offload(struct work_struct *work)
- 	struct mid_q_entry *mid;
- 	struct iov_iter iter;
- 
--	iov_iter_folio_queue(&iter, ITER_DEST, dw->buffer, 0, 0, dw->len);
-+	iov_iter_bvec_queue(&iter, ITER_DEST, dw->buffer, 0, 0, dw->len);
- 	rc = decrypt_raw_data(dw->server, dw->buf, dw->server->vals->read_rsp_size,
- 			      &iter, true);
- 	if (rc) {
-@@ -5239,7 +5235,7 @@ static void smb2_decrypt_offload(struct work_struct *work)
- 	}
- 
- free_pages:
--	netfs_free_folioq_buffer(dw->buffer);
-+	bvecq_put(dw->buffer);
- 	cifs_small_buf_release(dw->buf);
- 	kfree(dw);
- }
-@@ -5285,12 +5281,12 @@ receive_encrypted_read(struct TCP_Server_Info *server, struct mid_q_entry **mid,
- 	dw->len = len;
- 	len = round_up(dw->len, PAGE_SIZE);
- 
--	size_t cur_size = 0;
--	rc = netfs_alloc_folioq_buffer(NULL, &dw->buffer, &cur_size, len, GFP_NOFS);
--	if (rc < 0)
-+	rc = -ENOMEM;
-+	dw->buffer = bvecq_alloc_buffer(len, GFP_NOFS, false);
-+	if (!dw->buffer)
- 		goto discard_data;
- 
--	iov_iter_folio_queue(&iter, ITER_DEST, dw->buffer, 0, 0, len);
-+	iov_iter_bvec_queue(&iter, ITER_DEST, dw->buffer, 0, 0, len);
- 
- 	/* Read the data into the buffer and clear excess bufferage. */
- 	rc = cifs_read_iter_from_socket(server, &iter, dw->len);
-@@ -5348,7 +5344,7 @@ receive_encrypted_read(struct TCP_Server_Info *server, struct mid_q_entry **mid,
- 	}
- 
- free_pages:
--	netfs_free_folioq_buffer(dw->buffer);
-+	bvecq_put(dw->buffer);
- free_dw:
- 	kfree(dw);
- 	return rc;
+  * Extract fragments from a KVEC-class iterator and add them to an ib_sge list.
+  * This can deal with vmalloc'd buffers as well as kmalloc'd or static buffers.
+@@ -2164,6 +2228,9 @@ static ssize_t smbdirect_map_sges_from_iter(struct iov_iter *iter, size_t len,
+ 	case ITER_BVEC:
+ 		ret = smbdirect_map_sges_from_bvec(iter, state, len);
+ 		break;
++	case ITER_BVECQ:
++		ret = smbdirect_map_sges_from_bvecq(iter, state, len);
++		break;
+ 	case ITER_KVEC:
+ 		ret = smbdirect_map_sges_from_kvec(iter, state, len);
+ 		break;
 
