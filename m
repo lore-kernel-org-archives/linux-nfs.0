@@ -1,70 +1,73 @@
 Received: from fout-b8-smtp.messagingengine.com (fout-b8-smtp.messagingengine.com [202.12.124.151])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E6F693246E8;
-	Tue, 29 Sep 2026 02:26:27 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DB05239768D;
+	Tue, 29 Sep 2026 02:26:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.151
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790648790; cv=none; b=qq+DfKNZCzTv+hLrSHvaCyhSTRpL9kaX1InMZv3o8UPo2UAymbHMs8MP2NWPEBtIlvxc/XKvxdgW5aFUSmRR2SXjewz6AsKOnz3ZvKI+fTRMQGNi3sv44An3RbFS6BPts9oaMAJxonOvbD10XFG1A0I9z0Sqoep9PTCnOLrQczA=
+	t=1790648795; cv=none; b=K3pgocYn7Td7uXSjcr76Su4dMcTea5YA1USKXAcd5PSgEYHO2Gdpd/KftiXk4getQaUQXW0TxdJUfXxBadOsk4Iaztwcr7jKY1qEmPtmoIIp5VCXjroL0Km0AJAii6Lwi+gB9W2DxAhRbPyLhGKemPzZAvHqVFxS2I8x6kjykZ0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790648790; c=relaxed/simple;
-	bh=i/lKgAsH/C/AV7pVWtaiq1i4qrbxjN2LinNdz1jk+jk=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=QvnDgkxJplqFicG5ToP59+OwK1I0buRX2ZpukxCL2xVOvgnWbYuddsKmbtjdrK2uGwOeE+R5gy7Tfqe+/kmfxqrb1PEm5+czYu15BeDGo6jQWw9rg01ntdjImfVtHyrl6xj6InKF/BJMEQvCU0S4CdJ6aukCd1idokpAf9eneXs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=dzD8g4gv; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=F8N95+iB; arc=none smtp.client-ip=202.12.124.151
+	s=arc-20240116; t=1790648795; c=relaxed/simple;
+	bh=rYLOYBRstCBxkIDIRobiKp8nkdTXNJthHML1aMVlpX0=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=ZhhLgQuwImgJa36cqDQXWIBmM3ql+85Fy9dBbBRjODk9k1+KIWAjxQ2sMPfSBNQmLAwMBEfPdB1RX4eBkkrak6NegTHrTN+c6UuOtXjWFvA38faNThaFvQw9xMCbiFWKc56hB5Dm5w0ZFTnZGLQJXo7/QQxQP+krTsQdHrTxLa0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=C2F7dUnn; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=Jx3QMAyy; arc=none smtp.client-ip=202.12.124.151
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="dzD8g4gv";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="F8N95+iB"
-Received: from phl-compute-09.internal (phl-compute-09.internal [10.202.2.49])
-	by mailfout.stl.internal (Postfix) with ESMTP id 1337D1D0010E;
-	Mon, 28 Sep 2026 22:26:27 -0400 (EDT)
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="C2F7dUnn";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="Jx3QMAyy"
+Received: from phl-compute-01.internal (phl-compute-01.internal [10.202.2.41])
+	by mailfout.stl.internal (Postfix) with ESMTP id EBF511D000F1;
+	Mon, 28 Sep 2026 22:26:32 -0400 (EDT)
 Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-09.internal (MEProxy); Mon, 28 Sep 2026 22:26:27 -0400
+  by phl-compute-01.internal (MEProxy); Mon, 28 Sep 2026 22:26:33 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
-	:in-reply-to:message-id:mime-version:reply-to:reply-to:subject
-	:subject:to:to; s=fm1; t=1790648786; x=1790735186; bh=fQfipOJolE
-	kHsmqImv36lHB5+tqfbMddkfK+T0q8pyo=; b=dzD8g4gvk6ccjhyrboNoDbYvzc
-	rY0jbbZAR4Y74bafRixxZFxVOFIzVJjsIVj5bPwkhigw18S/Th0YxAjaY5b2QaWu
-	caFCV53k3gH5ZkpmUvTsi7LYIndAXoQ+HFPEtlzypvxrnU1h5qdIwFsjyjOQe+P+
-	rZlaeheHRIubb5boFzMQ2lmM7+MjEYJqzh/xmgLQ+K1uE+JLACVhclrH1I+3q0BS
-	xQLyewPtwQGRVv3IMNPTrTxyLWfVwbMzj4lrD8CgmiDee+agy4GHtgR5u+GGS6Xz
-	E9sUvNC58JKuYn0ByItVCgRYMa5+SomyHawQPVyg5ZNLAZpxCyzxIC/kusjg==
+	:in-reply-to:in-reply-to:message-id:mime-version:references
+	:reply-to:reply-to:subject:subject:to:to; s=fm1; t=1790648792;
+	 x=1790735192; bh=0ma6EHUA9ZqNeo5Lg2+dQtOo2dUBWsjNdBT2myIDiug=; b=
+	C2F7dUnnkdi48nIwVKguukqhNwMnGUplhWboXvOdP2RfK0KT6v9OpOnB/Raf111c
+	npXqgvIcHUntc2Ro/lbgU5RpEFdnLXAfBzVuRRMNeyiYsMvGeyZ8/Cl83FfKG0Ha
+	V6vYowywWldxhjbFxpUY2+kWnsM1NbUtodAKU/zwgbb7P5NBcIhEj0YUbODYUPf+
+	uR/2xZ2ZO4G6ZXCr2R5F7Uh1S6qy6bVKcrYyKSlJ65raiwc/D1lc+T5L3/s0egrC
+	9bWRTwB9Ede9ykgl3l3sZK4lQobOxl9Ug1aDrCjTKZ/4CKylL+VDPZLuemCv4+jW
+	iYUMd0r2YzfNKoFhKlutBQ==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
-	:in-reply-to:message-id:mime-version:reply-to:reply-to:subject
-	:subject:to:to:x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=
-	fm1; t=1790648786; x=1790735186; bh=fQfipOJolEkHsmqImv36lHB5+tqf
-	bMddkfK+T0q8pyo=; b=F8N95+iBaQqvKrFMwCmZxu+LhSHCZmSv6wlBhPZG+ZE8
-	Ajx/+jxn7jeTEkB9kcKwCZAt0Pnvfuw8yxTVn9Ha3w6STLmykWEKfPpYkiBmghvN
-	yC4bpequntXs9Xv6fCAzi6s7Vx/aLlp1uFORn5fCyIrbw7ZtRY4OKorIA+XUow4W
-	NJ7p63OzMMsP/2ylgnAEr7GVsInn3w61mzEfATep0B0T7eKwRMpzSL67QHJV68qL
-	IL6ZCfAMW0EBphcPRgptEUmZ94Qs7Dav7lVFuwIw8oYqXGwPp9g8kmVi6OteS18H
-	T2J3Zo5yjnRzYctp4hbT52asFbGSjzqHFSLaOEBSjg==
-X-ME-Sender: <xms:0iG7atMavhIjwEhlH66k8-NOCHf1brSrQ9ZhO9NiID-50ERjw6b8OQ>
-    <xme:0iG7ajD_A6zFrmD7WnLdaaO_bu8ODZntkbkTVf1-j6YAJ9wQK_qp6erls63Rv4dPA
-    X8g0By8MPAL_-UiQciMM_0D1pGCet4DFAFSa9w8dmMehZNX>
-X-ME-Received: <xmr:0iG7am6fVhF8dfc_oKKkmkSfP7XiOoV4AH0nbUdq7AsVs-lgg_zfBAnv5PUC9pP6_n-nuu_HPOr9HKfnrauL0En_IaNi6gg>
-X-ME-Proxy-Cause: dmFkZTGLLDYQTXj5BdO/E4j628mUGGgHEeIjGN+IUdKDHlUNcmhGbvXTpGYZ82xelyoMp9
-    iOCQhEshaVrLMKBvzE+CUFCf+V8K1VongVdcTlpT4gEzHejYMJIFVB9tcLkRIljcA5ciZM
-    t8opHSyP6q79YHQoxDtGcUuwyUkR+uR3ygjcgDgayZWqTH7FwHCHCQHlWOmQbWGjoosDV8
-    vR9i96supiDiNaOWnZinNrk18ZzNVmL1G28s5sNi0HTDi4aTTToHTYtXrp3LQMqAg5Ahfw
-    2caUVqZxm7SgyJ1VEEJsKM98R4KTRyMcZq8FA5cbGPqpmC9HvA+aIoMnm0g/iwQbicGupS
-    1cOehSSF+SRWNuDa+ib07N9iztfZkzEdNrQdidQHOzT0DSAUJGlKYeeaoRU+RtKp+Ml/5q
-    vuaz7kkmQmZoGHFdNlqiepRuia9DGAiOvi7We6wNRzHhNdTnjogs69K7ymCi3/aRq2HdcN
-    zPXFmWKxGcwXccgywc9j5+dRwHIBEqJUVJEG54keEzsr6m/x7a29JeUiq1kXO4KTTEj56+
-    BlJsgoMEH2jOJvz6sjjPidxSQpKQZdF7yN05lkvCpANiWsZWPDfmtoTDUgMHmsuchIUfWR
-    DZtnKx3urJS6whpsVH+PdJjplw+YSVOtB81oGXgbCokXQoGPBrmXQqSXIe3A
-X-ME-Proxy: <xmx:0iG7al4tiWsIdtxI5FAlxvw2MvN5IAytb-9dInev8f4O-JTHrklGFg>
-    <xmx:0iG7agQuk_KCuteTRnzfMuXw8Yl3H_wrKX17V63LoIPPVwZfaJ-RVA>
-    <xmx:0iG7al9AJCpPEEi2NwYQcTyOaTvAlPVOJiyteFHRtkZrrLlNAcv5ew>
-    <xmx:0iG7apaEU8Y0YeKxqqbKPpFV1dY1aWRtQgHRgy7IGhOXE7DS4j6ZNg>
-    <xmx:0iG7ap1P3kNBgW5Qht5UXOZH0mjErFedG7uMOWz8K18UwbEyv5yctnjD>
+	:in-reply-to:in-reply-to:message-id:mime-version:references
+	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
+	:x-me-sender:x-sasl-enc; s=fm1; t=1790648792; x=1790735192; bh=0
+	ma6EHUA9ZqNeo5Lg2+dQtOo2dUBWsjNdBT2myIDiug=; b=Jx3QMAyy/k+pOfE3J
+	8oaISedexKCi0hDR9g/z/ltsTSam4pWMAvfxpYKwIKLX8TcNZaxWdZg61YpFPF5J
+	xJvILf6KU2hsYmltQE02kyagFCPZKeHb7fnVbyQVf9wGuCjFXjdxeqgd/0cCrUzy
+	q+A3EQVcx4ACm2cLpd0ymi7Id0yVPLVwHPo9QlvA+un4QBKgkH51upMyU7N7QsWl
+	dmAaZFHjC9h0hGoK7Is3CyHyABjsjHTp7bVSZ1mRXG2N0i0GrRKW3b60n7O9+31u
+	ow1XQ0KhJvKY9aIyLrxUOjvVeFJadyn+G4B8z/MRTvJ1nR3QoVFhCClLFjsJ1kQX
+	1UbmQ==
+X-ME-Sender: <xms:2CG7aqGxqYWWv0CXmSW-zzIqkFijmJETdERsOBuc1J8QbxpUiekEDg>
+    <xme:2CG7auZIuO3-IWauM5wvNDYafgBnX4WbPGXhIu31f2FuLchem6_UqEWkWa_SYaBNp
+    rfrwpj2WRYoHLT2DQQbTFnOqNH9WVtZhAYUCy8O1jUTT70nBjGH>
+X-ME-Received: <xmr:2CG7auyFG83YG4KMwcub4gXNmPOTp-eJ_o59RKecld1aqo4iDq3YEktkUMgYlLyjwJofxfffyvC8Rb7GTKTHhvIxmOcmh7k>
+X-ME-Proxy-Cause: dmFkZTGVDNnzESBYR3mA0mj4J/oiPo94sEVuvz2NPFNMdz9kYeMQUYNSOMDonD5x5v1lxt
+    Y3YKxth5y+5AcelhmbqoVXV3FsLexQGqy6ySfBbZdX3XOiA0j0ixOwBQ7YQLMW11urS7Nn
+    P7GcHAm+fnGGsK6eRyjpaEjaW3wGzOUhgHmF6172kXxhvNqw5t03JcHMsDIg5eCzkcfYMp
+    gzeksANsqYigaEYw/3+s/BCzhblwneuYn20KFgS0pcn7Y6OCynIfFAyFrn+uVtT1eBj7is
+    YWaEDBls78d1VVrgCXv67Nm8xKS7Zaj2d89K8kC6IirWCBlABYeoWupGoWlHVy0aKpr4gp
+    TDzd39fwQjlWQogNKv1vi/CVkxoc8hPSH3dUw0S3ehe26dP+vCHgbHhn0gWJLoDTj0OgAA
+    3BO1W8NgpbxvNuBrQl1y1g5EQapH8T55sEnFsWRwScL0VNR6BMD5mcCreiXuJWEmGUt7e5
+    PC+4BcB5JVlV/v03iTu2xjA6p9zPwmcqGGHTTydDVeZrtcw/jqo8enm6eAoZzloJJqaCPe
+    TpFphPCxG51JOg0p5zlzbdNbRM+9aUdUSQEbNut0EZJUY17Qsn4W1rBZ8GwvCHFmdAXM9/
+    qKcQwOvyexCX0SXRU+b6MdC+xlAWWKxyMfnQH1QabxVTIrM7liYcjag9Eykw
+X-ME-Proxy: <xmx:2CG7agSFnAXMFCpwm1Tax3g_o_pi4hBt67XtsHe_QLx-3mSW89pAKQ>
+    <xmx:2CG7arKjlq5hKIBGgV-BezeF8fqpVG4Pyl1Bqh79uQVwXRxGhu8ilA>
+    <xmx:2CG7anWvv7NJX1TB6R_yB5HF9TCU4D47Q-QhTfi8WH-M-Dp7lit5KA>
+    <xmx:2CG7avSUl38QivvWNi54votFCzt97pHav5fydCAxJi_jbyJctmLh2w>
+    <xmx:2CG7alM_YkeWQnPy3P7-SU2-_hGjG0MvuB9Vr1vPBVUqts0_k6X0Fs59>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Mon,
- 28 Sep 2026 22:26:23 -0400 (EDT)
+ 28 Sep 2026 22:26:29 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>,
@@ -75,10 +78,12 @@ Cc: Jeff Layton <jlayton@kernel.org>,
 	linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v2 0/9] nfs: prepare for VFS locking changes.
-Date: Tue, 29 Sep 2026 12:21:10 +1000
-Message-ID: <20260929022547.1428036-1-neilb@ownmail.net>
+Subject: [PATCH v2 1/9] nfs: fix open-blocking with d_fsdata
+Date: Tue, 29 Sep 2026 12:21:11 +1000
+Message-ID: <20260929022547.1428036-2-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
+In-Reply-To: <20260929022547.1428036-1-neilb@ownmail.net>
+References: <20260929022547.1428036-1-neilb@ownmail.net>
 Reply-To: NeilBrown <neil@brown.name>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -88,50 +93,79 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-sashiko reported some problem with the previous posting.  A lot
-were false positives as it used the wrong base.  However:
-3/9 had inverted the return code from nfs_neg_need_reval() - it returns
-    1 for "must revalidate" unlike d_revalidate which returns 0.
-8/9 didn't handle and error from nfs_lookup() correctly - it
-    should be fatal rather than triggering a retry.
+From: NeilBrown <neil@brown.name>
 
-Original intro below.
-Thanks,
-NeilBrown
+The logic described in block_revalidate() that ->d_lock must be taken in
+lookup_open() missed the fact that sometimes lookup_open() isn't called.
 
-I am working on changes to directory locking.  The medium term goal is
-to lift d_alloc_parallel() locking above i_rwsem, so d_alloc_paralle()
-can be run unlocked, and consequently cannot be called when ->i_rwsem is
-held.
+If open_last_lookups() is called while still in RCU-walk and
+lookup_fast() finds a dentry, it does not take ->d_lock or increment
+d_count() before calling d_revalidate() - only afterwards.
 
-The requires:
- 1/ the d_alloc_parallel() not be called while i_rwsem is held.  NFS does
-    this in a few places. New interfaces d_alloc_trylock() and d_duplicate()
-    are now available and can be used instead.
+So on that path d_count() can be incremented and the file opened *after*
+nfs_unlink() has checked d_count() and set NFS_FSDATA_BLOCKED.  So an
+application could have the file open when it is unlinked on the server.
 
- 2/ a dentry must not be d_drop()ed while an operation is ongoing, as an
-    unlocked d_alloc_parallel() would then be able to create a new
-    dentry with the same name.  In particular d_rehash() must be phased
-    out as it won't be safe.  Various techiniques are used to avoid the
-    need for d_drop(), particularly that d_splice_alias() is now able to
-    splice a hashed alias.
+To fix this we need block_revalidate() to ensure the RCU-walk path
+is blocked as well. This is easily done with
+  write_seqcount_invalidate(&dentry->d_seq);
 
-Further, the first two patches here fixes bugs that I found while
-developing and reviewing these changes.
+legitimize_path() will increment d_count() and then check d_seq.
+The write_seqcount_invalidate() call with cause that check to fail if
+nfs_unlink() has already seen d_count() being 1.  So the RCU-walk will
+fail with -ECHILD and it will be retried as a ref-walk.
 
-The patches depend on patches recently added to the vfs tree.  I would
-prefer these land in that tree too with an Acked-by or similar from NFS
-maintainers.
+Also the smp_load_acquire() in __nfs_lookup_revalidate() is pointless.
+wait_var_event() contains the required barriers (a spinlock in
+prepare_to_wait_event()) to ensure the correct value is read after any
+wakeup.
 
-Thanks,
-NeilBrown
+That barrier doesn't apply for the very first test of the condition in
+wait_var_event) but the locking of ->d_lock described above provides
+sufficient barriers.
 
- [PATCH v2 1/9] nfs: fix open-blocking with d_fsdata
- [PATCH v2 2/9] nfs: fix nfs_call_unlink()
- [PATCH v2 3/9] nfs: remove d_drop()/d_alloc_parallel() from
- [PATCH v2 4/9] nfs: use d_splice_alias() in nfs_link()
- [PATCH v2 5/9] nfs: don't d_drop() before d_splice_alias()
- [PATCH v2 6/9] nfs: don't d_drop() before d_splice_alias() in
- [PATCH v2 7/9] nfs: Use d_alloc_trylock() in nfs_prime_dcache()
- [PATCH v2 8/9] nfs: use d_alloc_trylock() in silly-rename
- [PATCH v2 9/9] nfs: use d_duplicate()
+Fixes: 99bc9f2eb3f7 ("NFS: add barriers when testing for NFS_FSDATA_BLOCKED")
+Signed-off-by: NeilBrown <neil@brown.name>
+---
+ fs/nfs/dir.c | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 49394123bd09..4f1bf45b0c70 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1837,8 +1837,7 @@ __nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 	} else {
+ 		/* Wait for unlink to complete - see unblock_revalidate() */
+ 		wait_var_event(&dentry->d_fsdata,
+-			       smp_load_acquire(&dentry->d_fsdata)
+-			       != NFS_FSDATA_BLOCKED);
++			       dentry->d_fsdata != NFS_FSDATA_BLOCKED);
+ 	}
+ 	return 0;
+ }
+@@ -1857,12 +1856,15 @@ static void block_revalidate(struct dentry *dentry)
+ 	kfree(dentry->d_fsdata);
+ 
+ 	/* Any new reference that could lead to an open
+-	 * will take ->d_lock in lookup_open() -> d_lookup().
+-	 * Holding this lock ensures we cannot race with
+-	 * __nfs_lookup_revalidate() and removes and need
+-	 * for further barriers.
++	 * will either:
++	 *  - take ->d_lock in lookup_open() -> d_lookup() or
++	 *  - will check d_seq in legitimize_mnt()
++	 *
++	 * Holding this lock and invalidating ->d_seq ensures we cannot
++	 * race with __nfs_lookup_revalidate().
+ 	 */
+ 	lockdep_assert_held(&dentry->d_lock);
++	write_seqcount_invalidate(&dentry->d_seq);
+ 
+ 	dentry->d_fsdata = NFS_FSDATA_BLOCKED;
+ }
+
+base-commit: 3879f51857325da9bf3cfb073280257cd16ae067
+-- 
+2.50.0.107.gf914562f5916.dirty
+
