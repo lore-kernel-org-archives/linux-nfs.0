@@ -1,148 +1,169 @@
-Received: from mail-pz2-f37.google.com (mail-pz2-f37.google.com [74.125.228.37])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5AA3935DA63
-	for <linux-nfs@vger.kernel.org>; Wed, 30 Sep 2026 05:54:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.228.37
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 789E24CEE70
+	for <linux-nfs@vger.kernel.org>; Wed, 30 Sep 2026 12:46:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790747664; cv=none; b=l1nmgxlUWTlHEhZZ0zMb/M8a0FGIH8hq25uoOCKWW1XRfHdPxUW/dcEu0BTfggSe0gg2uE/ASEaQAyyW8GbQMwhC2Na1ETk7uVw7vgtQXafC3HiNPbskTnhA+2jXXjqPr2+lqXVhXfThKGZ2ZjXg76aKgcu4zAOX0LYMDg5R5yI=
+	t=1790772418; cv=none; b=S/JRlYxj2nPLHW+QXZNEPEagFfMtWwUVlQFJFbo0ddCQ093xPDAWyaIey9DHDTRfmKfgJ8obvWOxw55nkRvzza1yT1t/eUhAOwu6WRUwgRTmCui4MXc4PfltP7UR8RDL+x0ld/yuG3/s8H+CZAUh7RveMvrD4gXZke5STaBnNrI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790747664; c=relaxed/simple;
-	bh=naJhusjE/f0eW+uX9wPNfOeMPyPLkR630Hor3GTspqE=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=BJj5NZWlskYI8/lgdBCAveZwvk6JhRckNOB0kU4pjba7hDViwtD6JXSd5V5n6T1zz1LvDil4m3zAPaWXIZ59+Hely0eCksksW3NF7g/MPtA7wEx53UjAHBa34QqXE77HyhoEe9kwNC5ycfaCiMy7/iP9asCIFVIVK25+G2x9OO4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=HC9rqPBm; arc=none smtp.client-ip=74.125.228.37
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1790772418; c=relaxed/simple;
+	bh=qlxnA9e0nzSkzShYJJgc2p4g/oV9x9/5PFEuQDnGesA=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=OOdkmgSx0XSEtJ+/XajemRK+0TXlgw31Ag6bnnoGBTZGPbmokL+Z4oxhyhL7Ttx8MturuxYzQ1Tu9HswA6MTw7OBJjtL+R1uH/d+uYQNSkVywsOBAr5EL4oQjiTG0ZknkVxst7DXl8wCT8kval/nqLUvbQ+ZM6q9jS4jSmUXGX4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jiOa7ksl; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HC9rqPBm"
-Received: by mail-pz2-f37.google.com with SMTP id 41be03b00d2f7-cc7d1802740so520647a12.1
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2026 22:54:23 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1790747662; x=1791352462; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=JdRHwJkMD5tGOAkcVqHgpo9CQbKqWdCWhh5iMZs6XYc=;
-        b=HC9rqPBmnCAxy1xU1LeMKOHqB2mOTkni57cDt3Dzy3pYl2aj/+7qe95+PDJVA7B3Oh
-         MZ+DT6pLIaChaFw4VA+1/44yi89gBTdsPd506QrQ3J72Je5pyPOBypgff4SL/c7V4APP
-         SBjq/bjAVwMJ+3LSCVzKH5LtQly5ATkY8kr9qbkiIZeqKe5H6mtkyL5DYgmt1R04O9xt
-         XnNfQi4rXEBBfhrLhn6JZLG6WcskiwVWtOqrRxx/f7tbFi3ugywEKSCh0JjmIQiTp2Wk
-         TcrgTyr+7s6ukF9ZAMsBE/+MDkbiLYpff3xHno+PeTfcRzhNRv7jNtIYNUVntSwr20P4
-         rEqQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790747662; x=1791352462;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=JdRHwJkMD5tGOAkcVqHgpo9CQbKqWdCWhh5iMZs6XYc=;
-        b=Xk+3j1bBAy4ofLTKthMJ6XdJnv1JkVXK/CnLgGH2gqjCqaRfynmTShoN0JknKGqWLs
-         zucxiaXSoUy/tkEUrb5GQXW0Uc1GSeSfg9XpynxO3TWmaab+WDASt/6vFWJsd7qXwHjv
-         tfdZOVBnF5qruO7SHm6N4DWc9CgIkGFoks8R3cAl4UdkdPt8ikPAyvFZptCHRCyt/hZ0
-         PCtfr/BEegYWuEWdeUiGlzkMkznNNa+u4QELEaONQns1jw2AVVtrguA+2J1+Hv5pMJr0
-         PWB0WYiZEN28aqFVdqxsq5HkuuU3GluBWz9mLReXzR1vZoXdL/tVoJxui0+T142DnYv1
-         pxJw==
-X-Gm-Message-State: AFuF++nnazFgfAlsS5AqISLxZxNYpMfTNmMB9gumMpaLdZuFsWHsOf15
-	gx003sv/P/3snNe9KM1ncXagewtmFN9x/vppaPe5Ux6oizuFk3gjsMebvT2UBHiyDEk=
-X-Gm-Gg: AYBFou2XCo7BGmnJCSV15qiSag5+bMcjWKutiQ8zDPhck0PPtraIXndzc2eJqe+AhnX
-	HB8yv2dmwW54YnFaZGqZPF+MW9lxrFV14xl2Juv8A3YqS5hWbtKwwMkfwYN3kNM7teLssRcK9bk
-	bX5HShuYN/nUHDK3H/9dA7JxrYZcylHBrcekH7Hu7ZHrs/kno7Za09/Wlrs79f6r2uEEUphgbpu
-	mLqcnDRFppAPeADHYrwJ/hWHUEZCLb4F0odp4cu+/n/IbqVetc2jBmNsSZ/8TeVdzmt9W/OFlLt
-	ItnlPnKKMuCLAbR5y1g+b8AmNSWF/q+4nS3zKxMY66JcjueuVAiDfORq3mYbZ/pSQOx8o4wpAxm
-	gA5Jxw2Mb+Gjz2q33yAyIIrCfeOgtdgxMvYMgR2G8P2Ddxb05lDcxPFOSFWB/xA5m8WuzLaW9D+
-	NfmWQiuoN4EqDBAq16/VkCiFYO7xJDgpTAdSyspG2u8d4hT0NuBPg/ZMt6wNHfDnLJyin+N5kWf
-	vtML8LnLLKIRwg=
-X-Received: by 2002:a05:6a20:260a:b0:3dd:a006:55a3 with SMTP id adf61e73a8af0-3de9e7ebbb7mr357536637.49.1790747662598;
-        Tue, 29 Sep 2026 22:54:22 -0700 (PDT)
-Received: from bintable.tail83b815.ts.net ([123.215.20.10])
-        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-88722f72a19sm255099b3a.6.2026.09.29.22.54.20
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 29 Sep 2026 22:54:22 -0700 (PDT)
-From: Jinpyo Lee <bint4b13@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	Greg KH <gregkh@linuxfoundation.org>,
-	bobtobabz@gmail.com,
-	Jinpyo Lee <bint4b13@gmail.com>
-Subject: [PATCH v2] nfsd: bounds-check opnum before testing spo_must_allow
-Date: Wed, 30 Sep 2026 14:54:14 +0900
-Message-ID: <20260930055414.136306-1-bint4b13@gmail.com>
-X-Mailer: git-send-email 2.43.0
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jiOa7ksl"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8DD5F1F000FF;
+	Wed, 30 Sep 2026 12:46:49 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1790772409;
+	bh=H8QNeZY2e28yB8DQ7gaPV8xdlg9APpaxDW+KxOf6suc=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=jiOa7ksloC6lzxLyY8urqjFtMmTkDQBX0+AjHblHNrY3D38W5xejSS7m49HejWoe6
+	 Cia1Oke9l18A94ndLZeSbJaa3+10HXhoKCXdwO4cSEf13VNe9Qzz6yOphDxbm4uaW/
+	 atwWJ5WTDm8Kn9P4i4K4+5BraeI3gGh3vmlUxvBoZyMQvKsmzrklbxDN0paseMp7PR
+	 wE5eoGyYgfsDmEI6Nma3imS4zUWEjZfQ6mYwsHJ97iHwmfvZA4+Wb0GBOMcmqya3FY
+	 CCV/AXRfyPde3kuzgZfdL5jToMSRWhLqRDMfJT/XoYC1bjNgF3HuW003Szitq5U2fd
+	 AT8xFuq/NZFEA==
+Date: Wed, 30 Sep 2026 08:46:48 -0400
+From: Mike Snitzer <snitzer@kernel.org>
+To: Chuck Lever <cel@kernel.org>
+Cc: hch@lst.de, Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 01/10] NFSD: interlock the use of NFSD_IO_DIRECT for NFS
+ READ and WRITE
+Message-ID: <ar0EuAKO0VvD8kT4@kernel.org>
+References: <20260929173423.16149-1-snitzer@kernel.org>
+ <20260929173423.16149-2-snitzer@kernel.org>
+ <37625d4e-9d86-4651-bbc8-73c1c589942d@app.fastmail.com>
+ <arwYBaemyvLoG2sT@hammerspace.com>
+ <d5d7635a-fe7a-4664-8797-b581c23cdf9c@app.fastmail.com>
+ <arxKM8RkjwYaPzwL@kernel.org>
+ <0cbfd399-45cd-4df2-888a-bdf8a2935ab0@app.fastmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <0cbfd399-45cd-4df2-888a-bdf8a2935ab0@app.fastmail.com>
 
-The NFSv4 decoder represents an unknown wire operation as OP_ILLEGAL,
-whose value is outside struct nfs4_op_map. nfsd4_spo_must_allow() passes
-that value directly to test_bit(), causing an out-of-bounds bitmap read
-when an invalid operation follows a successfully processed operation.
+On Tue, Sep 29, 2026 at 05:20:03PM -0700, Chuck Lever wrote:
+> 
+> 
+> On Tue, Sep 29, 2026, at 4:30 PM, Mike Snitzer wrote:
+> > On Tue, Sep 29, 2026 at 04:17:50PM -0700, Chuck Lever wrote:
+> >> 
+> >> 
+> >> On Tue, Sep 29, 2026, at 12:56 PM, Mike Snitzer wrote:
+> >> > On Tue, Sep 29, 2026 at 11:27:05AM -0700, Chuck Lever wrote:
+> >> >> 
+> >> >> On Tue, Sep 29, 2026, at 10:34 AM, Mike Snitzer wrote:
+> >> >> > Now that NFSD supports NFSD_IO_DIRECT for both READ and WRITE it is
+> >> >> > much safer to avoid needless buffered vs direct contention if/when
+> >> >> > only one of them has been configured to use NFSD_IO_DIRECT.
+> >> >> >
+> >> >> > Mixing direct and buffered I/O to the same file causes needless page
+> >> >> > cache invalidation and writeback, so although io_cache_read and
+> >> >> > io_cache_write remain separate interfaces, writing either one adjusts
+> >> >> > the other so that READ and WRITE are never left on opposite sides of
+> >> >> > the buffered/direct divide:
+> >> >> 
+> >> >> Jeff and I have been discussing making DIRECT the default for WRITEs and
+> >> >> BUFFERED the default for READs. This patch takes us in the opposite
+> >> >> direction.
+> >> >> 
+> >> >> Nothing here convinces me that mixing the modes is a bad thing to do.
+> >> >> "Needless page cache invalidation" needs some demonstration, and it
+> >> >> needs to show why the right thing to do is make it impossible to mix
+> >> >> modes rather than explore the issue as one or more bugs that can be
+> >> >> fixed. Or... why not let admins explore this for themselves? Where is
+> >> >> the hazard and why does it need to be forbidden by the admin UI?
+> >> >
+> >> > The basis for the interlock is that O_DIRECT mode is intended to avoid
+> >> > bloating memory with page cache and the excess CPU burn of managing
+> >> > the page cache.  Using read caching in conjunction with O_DIRECT
+> >> > writes knee-caps the wins of O_DIRECT.
+> >> 
+> >> Jeff and I have never seen that, and it's a counterintuitive result.
+> >> Buffered READ with DIRECT WRITE seems to work very well and the server
+> >> is easily capable of managing the page cache in this case, since
+> >> reclaiming a clean page doesn't mean having to flush dirty data.
+> >> Evicting clean pages is not slow.
+> >> 
+> >> So I'd like to see a quantification of the penalties in this mixed
+> >> mode before adjudicating it as a hazard. That is, you might be right,
+> >> but so far I've seen no direct evidence that having a substantial page
+> >> cache presence is a general deficit for WRITEs. If there are certain
+> >> cases where even caching READs is a problem, then by all means, set the
+> >> READ IO mode to DIRECT too in those cases.
+> >> 
+> >> I don't see this as an argument for forcing the server's mode setting
+> >> in every case.
+> >
+> > Yes, I understand and I've dropped the interlock patch in v2 (just posted).
+> 
+> Please give reviewers a chance to digest and review, as requested in
+> Documentation/filesystems/nfs/nfsd-maintainer-entry-profile.rst :
+> 
+> "As always, please avoid reposting series revisions more than once
+>  every 24 hours."
+> 
+> Trust me, it saves a lot of confusion.
+> 
+> 
+> >> Based on this description, it seems to me the client has full visibility
+> >> of the data to be pushed back and how it's sharded, it has information
+> >> about the network RTT (that's where the real throughput impact is for
+> >> COMMIT), and it has control over the selection of UNSTABLE vs. FILE_SYNC.
+> >> 
+> >> The problem here might be that when a large WRITE payload is sharded
+> >> across multiple servers, the client still thinks it is sending them via
+> >> UNSTABLE WRITES to one server, and plans for only one COMMIT after the
+> >> server completes the WRITEs.
+> >> 
+> >> But for the pNFS scenario, the client sends one UNSTABLE WRITE followed
+> >> by a COMMIT to each server. If the sharded WRITES are all single RPCs
+> >> to distinct servers, then they should each be FILE_SYNC.
+> >> 
+> >> The client can be smarter about how it writes data back to multiple
+> >> servers, can't it?
+> >
+> > When the server is operating in direct mode it isn't something exposed
+> > to the client.  That the client could be smarter and/or already has
+> > adequate controls to achieve the same FILE_SYNC result is besides the
+> > point.  The point is, if the server has already done the work then it
+> > should, within reason, convey as much back to the client to elide
+> > COMMIT work that isn't needed.
+> 
+> Your point assumes the other patches in the series are applied to make
+> DIRECT UNSTABLE WRITEs completely persistent.
+> 
+> The current IOCB flags do not include IOCB_DSYNC on a DIRECT UNSTABLE
+> WRITE for a very good reason: that makes them slower and more expensive.
+> The current server logic is working exactly as we designed it last year,
+> and I'm not enthusiastic about changing that. I expect at least one
+> other reviewer will have a similar reaction, once he sobers up from
+> ALPSS.
 
-For an SP4_MACH_CRED client, a set out-of-bounds bit also marks the
-compound as spo_must_allowed. Validation used the nfsd-testing base
-recorded below. On the unmodified KASAN kernel with an empty allow bitmap,
-the out-of-bounds bit changed the export security-flavor result from
-NFS4ERR_WRONGSEC to NFS4_OK for 64 of 72 client instances. A krb5i canary
-read then succeeded through a sec=krb5p export. The current allocation
-layout did not produce a KASAN report for this invalid bitmap access.
+You haven't reviewed the changes, yet you are passing judgement.
 
-Reject operation numbers above LAST_NFS4_OP before testing the bitmap.
+Please review.  I think you'll find I have only made things better.
 
-AUTH_NULL reaches the invalid load. The observed security-flavor decision
-change additionally requires a valid SP4_MACH_CRED client and matching GSS
-credentials; ordinary POSIX permissions remained enforced. Source
-reproducers and complete logs are available privately on request. A legal
-OP_CLOSE control also allowed the preceding read, so the read itself is
-not claimed as a capability unique to this OOB.
+And as for Mr ALPSS, the "NFSD: do not use direct I/O for a READ
+smaller than its alignment" and "NFSD: only split a direct-mode WRITE
+for a worthwhile direct middle" patches were motivated by his feedback
+last year! (I have been carrying them since then, albeit in a less
+polished form than I have now made available in this series).
 
-With this patch, none of the 72 client instances caused the export
-security-flavor check to return NFS4_OK for the invalid-operation probe,
-and the canary read was denied. The legal OP_CLOSE and empty-bitmap
-controls retained their expected behavior, and no KASAN report was
-observed. The full KASAN kernel built with CONFIG_WERROR without a compiler
-diagnostic. Basic NFSv4.2 and NFSv3 read/write/unmount smoke tests also
-passed.
+> If the client wants to avoid the COMMIT, the standing rule is to send a
+> FILE_SYNC WRITE. That benefits all WRITE I/O modes on the server.
 
-The vulnerability research and validation were conducted by members of
-the Tobabz team as part of the Best of the Best 15th program.
+I haven't precluded DIRECT UNSTABLE WRITE from operating as it does
+now _at all_.
 
-Fixes: ed94164398c9 ("nfsd: implement machine credential support for some operations")
-Assisted-by: LLM
-Signed-off-by: Jinpyo Lee <bint4b13@gmail.com>
----
-Changes in v2:
-- Make the current policy impact and controls self-contained.
-- Add full-build and NFSv4.2/NFSv3 smoke-test results.
-- No code changes.
-
- fs/nfsd/nfs4proc.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 7df60abfb..f9e119cd0 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -4293,9 +4293,10 @@ bool nfsd4_spo_must_allow(struct svc_rqst *rqstp)
- 	opiter = resp->opcnt;
- 	while (opiter < argp->opcnt) {
- 		this = &argp->ops[opiter++];
--		if (test_bit(this->opnum, allow->u.longs) &&
--			cstate->clp->cl_mach_cred &&
--			nfsd4_mach_creds_match(cstate->clp, rqstp)) {
-+		if (this->opnum <= LAST_NFS4_OP &&
-+		    test_bit(this->opnum, allow->u.longs) &&
-+		    cstate->clp->cl_mach_cred &&
-+		    nfsd4_mach_creds_match(cstate->clp, rqstp)) {
- 			cstate->spo_must_allowed = true;
- 			return true;
- 		}
-
-base-commit: 32eb1a60b456980761cf7a9cee8f907fdc08afb8
--- 
-2.50.1 (Apple Git-155)
+I've merely exposed additional optional controls that require opt-in.
+And provided a natural evolution to what we have that has proven
+beneficial.
