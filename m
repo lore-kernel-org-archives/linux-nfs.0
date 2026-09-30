@@ -1,153 +1,139 @@
-Received: from mail-wm2-f13.google.com (mail-wm2-f13.google.com [74.125.225.141])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from fhigh-b6-smtp.messagingengine.com (fhigh-b6-smtp.messagingengine.com [202.12.124.157])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 03EA84F96C5
-	for <linux-nfs@vger.kernel.org>; Wed, 30 Sep 2026 20:22:25 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.225.141
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D0F2046C82B;
+	Wed, 30 Sep 2026 21:17:38 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.157
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790799748; cv=none; b=ize8tpDJGyZLbuqyRlaLrGhVwf9mhlttJ/qIOWJgzP17yem+lqTW/JNTN8MC9V32zpdL6e3r63ac4IRwEb8CjOll01p9iBuJ8QYMc4/CJGKWR8WG2IvF6BuuAJwCFtbbu2eMNar5ovLuoIYxGeNZDqizPGIHOxM6GxLlrGs19tI=
+	t=1790803060; cv=none; b=SsRQDEuxAE4WI9qvaq3v2p3RlOz9lZMh5uqEDWKnJskAJm0kH1qjmwqTNttrnHhLA/bInT43O63+DjbE6mbwkST7XhiGJYfxu6m4Ymd/49pMZMLZciKNaZprZWcwqRmJCEgyXSrFWkDNjw3sm7XrArVJ8x0taVVhd2iMd+NVudQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790799748; c=relaxed/simple;
-	bh=pN/G0+fViAWcFotxNNYaHvIrBf4dqFEFrepGUufaYk0=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=N57MsT2axXk4c4Vmt29a5XAHhjEdzJY77O04QrzwA8raxqAOgUPqATQ0V1bkQYxZKA88vUX82VHPObyCBTp3ZPTF1estlxWamF1Re5ReuNc6itxk+UiXnAGY3QwfKOJEeAiantpw+2eJ61xsNcXH+th4kuGPUC2g8Ya725kJuQ0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=imNWqkwH; arc=none smtp.client-ip=74.125.225.141
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1790803060; c=relaxed/simple;
+	bh=LVOHumrHyHT+mIYjVPW8zGx23DcqwKbyKcv+g1tjnI8=;
+	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
+	 References:Date:Message-id; b=oC0EzgMSWFvqTF+r3gDJbNNvjWiUyM8RLxfzo1koBRbfadBaUbcbbzGf+K9wfs3FHbjZ8L9ep5oRE6F93MLBLRz51AssW0RBWwxwYFfHCjEGUDw3ked8giBc3UtUdeZK8o1OEWwQ0HpxQzR/72VSJ4WT4RGauidTMuaGUwJa+f8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=gUXA9zxv; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=Ai357FG4; arc=none smtp.client-ip=202.12.124.157
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="imNWqkwH"
-Received: by mail-wm2-f13.google.com with SMTP id 5b1f17b1804b1-49e69b9e16aso59778965e9.1
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Sep 2026 13:22:25 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1790799744; x=1791404544; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=QsbcUIyvcZ+zskSrFDYxowHlHtYifbo/michUtyrAnY=;
-        b=imNWqkwHvnjmoe4H8U8qhTs76+3le0J4bGoYKZAqS+xBMIc2VehVdeDHZ4JeYTyIUJ
-         GGZLhYh2mUQ8dRO/ZUjHxwt3XwTcZ5tZqadqJEesaxjbuOErUAAqkCU7Dmn1nbLbMiTV
-         Sr+hvZ65Y81w6Km4o15/GLe0+Qtkt9PHVUxu3TvrZAJUTK4UwjSa994lP/NYQoweGIdi
-         u5BVcufZYnZV7yKFdcSKUTbumgRdzapzukS6pZp3hQV2Lr77ja5iTiuHwCXkOjyr5VW7
-         1GBQ1I8u5M8YO5ORRVi8fFDaQpNpJsBleqwy8mkZ4IRmno/GrBoltVQWpLZQ0yv3GrHb
-         ihnQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790799744; x=1791404544;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=QsbcUIyvcZ+zskSrFDYxowHlHtYifbo/michUtyrAnY=;
-        b=sIllWfzqhFMVNxWkF6Y+J+kUSpjgARzx0Ac458h5GQuaIPhiQdmrRh0R15UmKwmePF
-         Es3F6e9dCFnEy51MhBuHuQmLAwuInfjet7B+CUi96GNgQc+6w0mtA0QyPtQt+ucK7d01
-         Nejhx1E/5zVBrwZZzL4KDT5fUcmX24hXGY4VQy8fwShugQEBC6QrSRQVX1NXKw7UL87n
-         /9QeLV52UWjSpolxAjUhUuas1zhLrx2IBxtV2wYcITTmnMnEe+zZk1cAfmSItsm3V42D
-         Mrv6w/mKaUmm+NC0xsGcD32/LtxWXTRlxJD0eVZWIcWBerhCNWyGljMlL4n5RPECztNg
-         u/2w==
-X-Gm-Message-State: AFq9FYLKbBn/ouqXqZLK0c+9u7E+4B+ZvHNJPM4T6L282Y7KcCVYgOJJ
-	ndFy7/kuGhCEx5ecb0jZcxCggF4eqniRo6LCbCG3GZ3wSlCoGmd5ACseiQLnvQ==
-X-Gm-Gg: AYBFou22aX3EZfDskCnuqAhNOJMgiLShhxGZwW54zeJ1y6nxkeAPQcSm3up5/sYBGkg
-	w1G+Wq7nBbqWchpLqXfQUVniwamGg6IbgSwv1ZHIBRos1tNiekckz439a+0emeHEq/X8p+/qX5G
-	KNs5XpUaDPAt7d/jcnIqkSnLGyxrH8AFGXSv9luLuYbtoFbSaD20rJSy+TT4PjP9So8u1aHdBUG
-	TgzgD0nTrJRzhjzvb2a9QjTjy2Rpq/fFMq5sYQaWXvNSocXjh0vPmAAWytldb9aXefO82GY+lX4
-	8eGEv6A1OXFmoggQdNjJQ9JpwHOzlel5vm8nFZW5iVz0q1iSdFAfEbfndRI2Vqlaj+Yp0ds78f+
-	V2nVHm/hlmxmmkdCe+NuZpax2LDjvj7KClXP4Ofyj8RTguzHNiY2YcM5cHonk8WDoW1udMby16d
-	z3ATkrp7+wtIUTacVKK0M0znvPxLU0R/hHNCHPrZqT0KHUiL+HOIAlmwY05k2khk0WwHj+DOM/B
-	ne+ZYWiLXXhO++3
-X-Received: by 2002:a05:6000:4904:b0:488:6072:c0bc with SMTP id ffacd0b85a97d-48b02430da7mr4724064f8f.4.1790799743668;
-        Wed, 30 Sep 2026 13:22:23 -0700 (PDT)
-Received: from SurHub.localdomain ([102.213.68.159])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-48b068ff6eesm1457831f8f.11.2026.09.30.13.22.20
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 30 Sep 2026 13:22:23 -0700 (PDT)
-From: Abdifatah Suruur <suruurism@gmail.com>
-To: cel@kernel.org,
-	jlayton@kernel.org
-Cc: linux-nfs@vger.kernel.org,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	linux-kernel@vger.kernel.org,
-	stable@vger.kernel.org,
-	Abdifatah Suruur <suruurism@gmail.com>
-Subject: [PATCH] lockd: fix use-after-free in nlmsvc_retry_blocked()
-Date: Wed, 30 Sep 2026 23:22:12 +0300
-Message-ID: <20260930202212.1482-1-suruurism@gmail.com>
-X-Mailer: git-send-email 2.53.0
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="gUXA9zxv";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="Ai357FG4"
+Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
+	by mailfhigh.stl.internal (Postfix) with ESMTP id E86EF7A007A;
+	Wed, 30 Sep 2026 17:17:37 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-04.internal (MEProxy); Wed, 30 Sep 2026 17:17:38 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
+	cc:cc:content-transfer-encoding:content-type:content-type:date
+	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to; s=fm1; t=
+	1790803057; x=1790889457; bh=V9E6+Jyih2ZQ40BcJgsbHBwin3o99HCpRGz
+	ELXlzetw=; b=gUXA9zxvCl88E7U9H1ELAKFIiEoq9DUwy0ZF+tqx5FrgnG9hwXK
+	4iD5ixq0DgEybMVSd1c9tJQPi7kbv+JQV/JYjpLZI1Do9UAuqRCtKpd7In4c1pFt
+	rXs3F64y/1jKu/t0XreWnbOiW0skqywzptfwoDtXtQPm2ruq8GnYJzVPsjGpo0aH
+	+IO0RcJXgmPEYNkm7fmuYmgxhrBALOvZEhZA4ibYIIsKPZ1OETgah1K35fBWoy/w
+	jNFSbZLZilemLVVYxy6r0XEr28gityms96SdSAMWSBW42T7FTv31VWLaf4OJL8ck
+	a9z7ZxSlz4gQ4s7LGzxvfWZDXNg+9S0pnPA==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1790803057; x=
+	1790889457; bh=V9E6+Jyih2ZQ40BcJgsbHBwin3o99HCpRGzELXlzetw=; b=A
+	i357FG4Jnav2tyizPLAibOuTXTqLmY2V4SpW6nx8o2zO1RiXUV3kDXFBLJqw+/bc
+	e3wtKm2p+2V3ydT0roECUJGjyx5awjAIJ6zgvvlfk0XLQ8WNEr0QXBX3PKTodIeP
+	1ROZlKQnqWaPxc6SXB00RUGfZbtZGYuwsoKQEgI4ccFK7tA0sU+abraW4M8KHni3
+	u8wKNdnE77iSPqtMUYCnzRj3bmz8yTPm8q82DwocT1LVD6q2shLtfMfero22IGqp
+	vQsmCHG1EID6146n9HGOAKtHCqOHgMlJJ2ePEfyfnC2Al3GYhpDLbluzsd98JBJD
+	KxNDdsZYKaunW3AB9oXHg==
+X-ME-Sender: <xms:cXy9avRQCNJb0LtMdn_GyXsh_g4_xuM6v08LfuG3ThBIVO5c5l8w0g>
+    <xme:cXy9avA1roG_u07nEMZE7ZxzzAtkzRCCOu8b8WnqiUi23ufEVUSRte6XBhtGfs5En
+    aoap34I_6pJQF1n0JwMx8tSYBWJ4a4bVxylnecBzwen79rYtIM>
+X-ME-Received: <xmr:cXy9auLaMIxwZuRdK7VEWra6UA_xz9Z_GwGU2cm7kF07hlJ0uIHZ3Vo8bH2i01MtCSLeYS_I0CocLj9_9gsb6Nu7uCot5Nk>
+X-ME-Proxy-Cause: dmFkZTEiP7eojnwJIrVLqcVTGL46onno6ZtSQqEedKDBUHsPo/W4h3ztg05trwBtbbPtpz
+    hO9vqks2n/NfgmVUC38eSh2fEAYv+kUiNi1jrR3di4Yf9S0nlAOV0eSosUQgDnM9G6KpvR
+    ow+NP8ygfvWV+J2za5klwIvKjB9uu5bh07eDMNphduRQ0kUsM1cXIYwWXYyjK6CmbgZ+QM
+    zL8YEAH/t0zC0lFDwZeo/Isjuens0kdSIWL/jv2kgHqs6bkdryiKUnB+0l/6Dt5GpVZFp+
+    ZQsH9oYPU+I2EO3+H19UwQ4/PoKrZVePofPFMErsnlXPzeLzdczP6ijEdAxGgu6kagyEgF
+    ylupx+2sygvNZVSFzRZbJSpjppFukSc5Ki6msbZUqddrJQhj2ENrOIro0309iXSDRyTYyd
+    x6G7m+I/dWaVaM2CVi4HaeBO0jb8j0VGE86qSj5uKYHg0SVOCxL331tvF6ySDejSEK2jS9
+    +xy0bLa4k3iT1X3aZc97Fx6oqn1XSnHZzRlZOeKhj0PPqlQ5j4xFzsDD+it7LA0i+DyYcJ
+    NWJUUT/Pg+OQmexUCdf3h6M2hATsOCXBvlZU28ctTocATHxcR6P7xFpg/J8Mr66CxF70Ad
+    qc+1di1mSRPYXtYLRvautb5cfiFwMqzXQ0k0YisC+27dWdyaKMXvRuNqsaxQ
+X-ME-Proxy: <xmx:cXy9aiARsVC8nEVO2A71lPuR8oMhJwYQoUFSvw7Ntg7WEoZAU33hYA>
+    <xmx:cXy9arslEsof58jfBeNgPHlkqIq1t2MmuMMNdJbuZl8rXAK9Y_e8Kw>
+    <xmx:cXy9aoR9NQcQZpPFkLFGYxOueQtnnSz2OmUEPm20ojwyTaEgPO1Onw>
+    <xmx:cXy9aqJCjBajqa5wLsmWxoc-4mUuD0j5BCuOZsGOF39n1LvK2RYanw>
+    <xmx:cXy9ai27OD0UI_I883TC49iYqPI7vaYFBJ9LZMLiP9VhxXLhqtoe1Zir>
+Feedback-ID: i9d664b8f:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA; Wed,
+ 30 Sep 2026 17:17:34 -0400 (EDT)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+From: NeilBrown <neilb@ownmail.net>
+To: "John Stoffel" <john@stoffel.org>
+Cc: "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
+ "Alexander Viro" <viro@zeniv.linux.org.uk>,
+ "Christian Brauner" <brauner@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
+ "Jan Kara" <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+ linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2 3/9] nfs: remove d_drop()/d_alloc_parallel() from
+ nfs_atomic_open()
+In-reply-to: <27325.7525.26178.516077@quad.stoffel.home>
+References: <20260929022547.1428036-1-neilb@ownmail.net>
+  <20260929022547.1428036-4-neilb@ownmail.net>
+  <27325.7525.26178.516077@quad.stoffel.home>
+Date: Thu, 01 Oct 2026 07:17:32 +1000
+Message-id: <179080305245.37859.18267888595495397553@noble.neil.brown.name>
+Reply-To: NeilBrown <neil@brown.name>
 
-A block queued on the nlm_blocked list holds exactly one kref, the
-list's: nlmsvc_create_block() hands out an initial reference,
-nlmsvc_insert_block_locked() takes the list reference, and
-nlmsvc_lock() releases the initial one at out:.
+On Thu, 01 Oct 2026, John Stoffel wrote:
+> >>>>> "NeilBrown" == NeilBrown  <neilb@ownmail.net> writes:
+> 
+> > From: NeilBrown <neil@brown.name>
+> > It is important that two non-create NFS "open"s of a negative dentry
+> > don't race.  They both have only a shared lock on i_rwsem and so could
+> > run concurrently, but they might both try to call d_splice_alias() at
+> > the same time which is confusing at best.
+> 
+> > nfs_atomic_open() currently avoids this by discarding the negative
+> > dentry and creating a new one using d_alloc_parallel().  Only one thread
+> > can successfully get the d_in_lookup() dentry, the other will wait for
+> > the first to finish, and can use the result of that first lookup.
+> 
+> This paragraph is confusing, and I'm not sure which thread can use the
+> result of the first lookup from this description.  
 
-nlmsvc_retry_blocked() then drops nlm_blocked_lock and dereferences
-`block` (b_when, b_flags, b_deferred_req) and passes it to
-retry_deferred_block() or nlmsvc_grant_blocked() without holding any
-reference of its own.  Concurrently, an svc thread processing the
-client's GRANT_RES (nlmsvc_grant_reply()), a CANCEL or UNLOCK
-(nlmsvc_cancel_blocked()), or a host failover sweep
-(nlmsvc_traverse_blocks()) can find the same block, unlink it and drop
-the last kref, freeing it while the lockd kthread is still using the
-pointer.  The freed slab is then written through: kref_get() on the
-freed block, the B_TIMED_OUT flag, the list operations in
-nlmsvc_insert_block(), and the b_deferred_req revisit - a
-use-after-free on a remotely reachable path.
+Unfortunately it isn't clear to me what it is that isn't clear to you
+:-)
 
-nlmsvc_notify_blocked() has the same problem: it moves the block to
-the head of the list and then calls svc_wake_up(block->b_daemon)
-after dropping nlm_blocked_lock.  Keep that wake-up under the
-spinlock, as nlmsvc_grant_deferred() already does.
+When O_CREAT is not requested, calls to ->atomic_open are protected only
+by a shared lock on the parent so if the dcache contains a negative
+dentry for a given name then two ->atomic_open calls on that name can
+happen concurrently.  That can be a problem as they both might try to
+instantiate the dentry with an inode, and the second to do that will
+trigger a BUG.
 
-Pin the block before dropping the spinlock in nlmsvc_retry_blocked()
-and release the pin after processing, so the block cannot be freed
-while it is in use.
+This is fixed by discarding (d_drop()) the dentry and using
+d_alloc_parallel() to allocate a new dentry.  d_alloc_parallel()
+effects a lock.  Only one thread will get an in_lookup dentry.  The
+other will block until the dentry has been instantiated, and will then
+be given the non-in_lookup dentry.
 
-Cc: stable@vger.kernel.org
-Signed-off-by: Abdifatah Suruur <suruurism@gmail.com>
----
- fs/lockd/svclock.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+The current code does all this in nfs_atomic_open().  The new code does
+the d_drop and the d_alloc_parallel() in VFS code were I can manage the
+locking rules more easily.
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index e628b5d355071..38d02b10591ae 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -775,8 +775,8 @@ nlmsvc_notify_blocked(struct file_lock *fl)
- 	list_for_each_entry(block, &nlm_blocked, b_list) {
- 		if (nlm_compare_locks(&block->b_call->a_args.lock.fl, fl)) {
- 			nlmsvc_insert_block_locked(block, 0);
--			spin_unlock(&nlm_blocked_lock);
- 			svc_wake_up(block->b_daemon);
-+			spin_unlock(&nlm_blocked_lock);
- 			return;
- 		}
- 	}
-@@ -1023,6 +1023,13 @@ nlmsvc_retry_blocked(struct svc_rqst *rqstp)
- 			timeout = block->b_when - jiffies;
- 			break;
- 		}
-+		/*
-+		 * Pin the block before dropping nlm_blocked_lock: a
-+		 * concurrent GRANT_RES, CANCEL or UNLOCK can unlink the
-+		 * block and drop the last kref, freeing it while we are
-+		 * still using it.
-+		 */
-+		kref_get(&block->b_count);
- 		spin_unlock(&nlm_blocked_lock);
- 
- 		dprintk("nlmsvc_retry_blocked(%p, when=%ld)\n",
-@@ -1033,6 +1040,7 @@ nlmsvc_retry_blocked(struct svc_rqst *rqstp)
- 			retry_deferred_block(block);
- 		} else
- 			nlmsvc_grant_blocked(block);
-+		nlmsvc_release_block(block);
- 		spin_lock(&nlm_blocked_lock);
- 	}
- 	spin_unlock(&nlm_blocked_lock);
--- 
-2.53.0
+I thought that is what I said above - though more briefly of course.  If
+you can point me more precisely to what is not clear in the original, I
+can try to improve it.
+
+Thanks,
+NeilBrown
 
