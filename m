@@ -1,111 +1,159 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj2-f43.google.com (mail-pj2-f43.google.com [74.125.227.171])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C1B7D282F2A;
-	Wed, 30 Sep 2026 01:59:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C2C0930C147
+	for <linux-nfs@vger.kernel.org>; Wed, 30 Sep 2026 05:37:22 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.171
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790733594; cv=none; b=ZkvpXrQeofqXryqhWibGLPcsO7ZLWG1pHsOLPoFQEDgBeJzLIhrFIwdWXOmJ9vTSnKPubP9QPCuG7gwhxGepJM4TpTyC3Tt1r2pRd61tfS5eMf2ZDnJ6H8Z/w2AR1qAW2rJv7yi9ogWARYxr9DsEaynuwMpeic0kP6PKAsVJFW8=
+	t=1790746644; cv=none; b=X9p85wFDOmWOnO2tvjtIfoxWnK72+599GOaEf3l1qcgdguxHPM7FUhN55FlDRWKznlx7wnWxl2YSeUoMhfd2xeG+ikJU+9I+D6GD+iOEYpRZKD85/2Ky2YczuU/LsCX65rT1euV3ArmJb0c9c8FVavZoyFgeG1MCDrIzVbc3xlE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790733594; c=relaxed/simple;
-	bh=1XZfKocU/lN5GfPuRrDk1+Frer+DxmS5rdeBz68W3/4=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=M8iRlLN4SbH19AbPui6B/x7sCHntBq1/a1v6Ue8lFquWiEN4T0faOO2zjy60TpQB+avn1bnG63o3ZpUz4DnuCPq4qZWHgVa1t/39gapGq1sSlaGvC5Wc6Gwlq2qJXHmz8MHVnd1JAiYMlVN+4AgI/CbBjixYynOMz3sCizcF5G4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=O1welR2X; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1790746644; c=relaxed/simple;
+	bh=lZ4CG1XNJ86ULS6Q1dtMhVSEbxPDfyhIfk7KzQlBc0o=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Bl7GXTVjq4dIg8kh/ctmYBgNv1SQI4Iztl/GNZCRJPx9KW4pDGdv47i1UzjE3ScatOS16yXv9USvhZcOs1aUP2X4q6Csmo6HCOCi8R4u8HcjSJ8zrsufIE0JcrogowGYs20o+AZqGtCwGAOXm9DKiMZTobiz3KKi3Vrurp4i+K0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=U/RCJaEq; arc=none smtp.client-ip=74.125.227.171
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="O1welR2X"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 530171F000FF;
-	Wed, 30 Sep 2026 01:59:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790733593;
-	bh=DX9g4ivFVPNTKG/kBEx/zUz96+yiO19hM2X9UAqzp0o=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=O1welR2XYxDBYcQMymrp8H6LU8yzVjVEsXTqj+hE3Y6d384E20FR9whrky/Hlyvq8
-	 PJBgrnmt0uwt8QYwPmssrtdWFnj9TlvpkUOcLju5O3FJ9+ZO1qq4A3RQp9kbPSJ3JI
-	 AQvB1zRp2pyQRux8QZ6NS1/NHs7TRz8Ec101/R5TwolVHbJdIOa6AehLEpMX9RzcYp
-	 0/12MShIxqBagJhTZ5n1HD9WpixNqk7ruvokk+tWP/ZJLFstOnlRPsEKrX2BtUpdlO
-	 JsTn+twh2/J6S5QCngwhB61nx+6Ifhk+jqBTPr//Obogdmns5GmWCsQY5R9XKfbPgj
-	 PklpO8bvU1b8g==
-Message-ID: <3453cad85b6ec1d3b36398ba7565d053163a5929.camel@kernel.org>
-Subject: Re: [PATCH v3 net-next 4/9] rds: use sk_set_nospace()
-From: Allison Henderson <achender@kernel.org>
-To: Eric Dumazet <edumazet@kernel.org>, "David S . Miller"
- <davem@davemloft.net>,  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni
- <pabeni@redhat.com>
-Cc: Simon Horman <horms@kernel.org>, Neal Cardwell <ncardwell@google.com>, 
- Kuniyuki Iwashima <kuniyu@google.com>, edumazet@google.com,
- netdev@vger.kernel.org, Alexander Aring <aahringo@redhat.com>, David
- Teigland <teigland@redhat.com>,  gfs2@lists.linux.dev, John Fastabend
- <john.fastabend@gmail.com>, Jakub Sitnicki <jakub@cloudflare.com>, Sabrina
- Dubroca <sd@queasysnail.net>, Jiayuan Chen <jiayuan.chen@linux.dev>,
- Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>,
- Geliang Tang <geliang@kernel.org>,  mptcp@lists.linux.dev, Wen Gu
- <guwen@linux.alibaba.com>, Dust Li <dust.li@linux.alibaba.com>, "D. Wythe"
- <alibuda@linux.alibaba.com>, Chuck Lever <cel@kernel.org>, Jeff Layton
- <jlayton@kernel.org>, NeilBrown <neil@brown.name>, Olga Kornievskaia
- <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey
- <tom@talpey.com>, Trond Myklebust <trondmy@kernel.org>, Anna Schumaker
- <anna@kernel.org>, linux-nfs@vger.kernel.org,  rds-devel@oss.oracle.com,
- Philipp Reisner <philipp.reisner@linbit.com>, Lars Ellenberg
- <lars.ellenberg@linbit.com>, Christoph =?ISO-8859-1?Q?B=F6hmwalder?=
- <christoph.boehmwalder@linbit.com>, Jens Axboe <axboe@kernel.dk>, 
- drbd-dev@lists.linux.dev, Keith Busch <kbusch@kernel.org>, Christoph
- Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, Chaitanya Kulkarni
- <kch@nvidia.com>, linux-nvme@lists.infradead.org, Ilya Dryomov
- <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, Viacheslav
- Dubeyko <slava@dubeyko.com>, ceph-devel@vger.kernel.org
-Date: Tue, 29 Sep 2026 18:59:50 -0700
-In-Reply-To: <20260929071743.23624-5-edumazet@kernel.org>
-References: <20260929071743.23624-1-edumazet@kernel.org>
-	 <20260929071743.23624-5-edumazet@kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.52.3-0ubuntu1.1 
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="U/RCJaEq"
+Received: by mail-pj2-f43.google.com with SMTP id d9443c01a7336-2d747ee1f38so22018785ad.2
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2026 22:37:22 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1790746642; x=1791351442; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=ABXfLcCI9uCWzauTzWRtTaAq7LAQCTVkflaA1GfjZ2g=;
+        b=U/RCJaEqkPlpOg0SHKpY7VJ5Dt/pTilmQqrLwJ8azPLYKifXvhWimMl1zAyixfQybk
+         UF7XUDYFDU0fuMCe6CmoJ04kE4F9yHg92TPD1uaT752rHycYCwZv8mGz2HtFSWT1C6sn
+         TzuxZ/Krd1gJMhFQ2xH+IepHjX5Gq6MXpqUPpgJaszb0STMb6QnSnpdilo1PzHRQtxmZ
+         fPcYEohc+7MzB0zIdVD5fNTHGE7THntGsDVG3qRjbZ926qnF9kZub24TIxaSfF4F6HkX
+         4J7cbMFLCovfjpv3Uxmvi6/Ck7qfUEAVips5biDuv1odiPAsjUcdh8GJ8zAYovOizxjb
+         OJzw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1790746642; x=1791351442;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=ABXfLcCI9uCWzauTzWRtTaAq7LAQCTVkflaA1GfjZ2g=;
+        b=QQ8xTRltCbbv7mdoJtOaQFbtvwWPqne5KnBb8tRH7mSRKRaQ+U3QdS9OJNeGz/jmMd
+         61vGCUiVMiZ5E9J32ZL9iRYiyHBtE/B0+QfKmjDhDb9lrPBwJeqw1HZKx5lwU2s7b2cn
+         5SfjRSJM8++hcqmE078zUbHH4SFjxaz+QrQKdr9NttkARxGfvPQgKmfoACSqe0LW/lIA
+         8WNO/8/wJBL5s3qk21EXDfYFA9W6ZYK2YdUswi5Qcs2bGoHHkc4FFpskFAhPQ+Xo03so
+         DEL3DIKoRFUAKwMEfSq/oD53h9n9wz8wsaJjMeurVvVJATlOveBlY83ltbiMgUQIkBQk
+         EqaA==
+X-Gm-Message-State: AFq9FYKCKxma0LcUzVL7eUM4rV0d0i0FubgaHIlUZjgMI40o8rMmEgR+
+	MRV9MPie7oTkPJNZu7PAzjaYwC2bTHfQdy7EA4jMOOzW5J5xkiDm5H0tPimtpTxILP8=
+X-Gm-Gg: AYBFou0sdqpMFWImH6tlpgg1tlL3fvgLvDXoG3djt24s0BwybGl6usfycqVqQMPh4+I
+	dhSkbbjZExEvZKuEba7EE3RUJSKLJ/dOPYpUw3mw5S+RWwz8n4PU6ZnyY7k8aEK20tQaVyz0zRr
+	3+v5usvepIPMsVTb71RQD2U2DFLpKqlX/Imk2oDTe6vQIdN5K/2KlHo0LesYlSWDsWtYws+Rqvj
+	AhBRGDtiAdprauDnN2vyi3jDBQA3P01qIc3v4p5K9Gqsoceb4WJU9PHwMLkddQa8Kpj19XGa1Pv
+	FeEvXgY76q81k828vBanac7K1iU2urJzpxjH/8iAzGktGoci17NyOLxG2T2WqHieo7EgLRarvUN
+	i7x6YiMmWpZOw8RAQaNDTiZJ4jufu8H0tQTFlSyOyFvo/kKtWZgjxzDncfxjP1ihMHSkm9G+G2s
+	i6iDrzYBa4ap2LwAPNa3jSK7nKX7Hq0GJJmJxarO/Fij3cgqKQRonNwwB8hcnraazcn7FiS9Ori
+	cVilyuTXumdfTrZ4rYf8hpP2Sdcsnc2BdmkZzl8ZJzSAGSgrdlz/wuzo8VCzy9jp0ykTMkd
+X-Received: by 2002:a17:902:e94d:b0:2dd:c100:7cb6 with SMTP id d9443c01a7336-2e2e4a0aa2dmr3335145ad.50.1790746641774;
+        Tue, 29 Sep 2026 22:37:21 -0700 (PDT)
+Received: from muumthf.localdomain ([123.215.20.10])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2e2e5c1b7dfsm1110365ad.72.2026.09.29.22.37.19
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 29 Sep 2026 22:37:21 -0700 (PDT)
+From: Hyunsol Mun <muumthf@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	Willy Tarreau <w@1wt.eu>,
+	bobtobabz@gmail.com,
+	Hyunsol Mun <muumthf@gmail.com>
+Subject: [PATCH v2] nfsd: pin OPEN stateid referenced by LOCK stateid
+Date: Wed, 30 Sep 2026 14:36:46 +0900
+Message-ID: <20260930053646.299164-1-muumthf@gmail.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-On Tue, 2026-09-29 at 07:17 +0000, Eric Dumazet wrote:
-> Use the new helpers instead of open coding the SOCK_NOSPACE
-> manipulation, so that TCP can later maintain a cheaper private
-> copy of this bit.
->=20
-> No functional change intended.
->=20
-> Reviewed-by: Kuniyuki Iwashima <kuniyu@google.com>
-> Signed-off-by: Eric Dumazet <edumazet@kernel.org>
+A LOCK stateid stores its parent OPEN stateid in st_openstp without taking
+a reference. A request can keep the child alive while a concurrent CLOSE
+unhashes the child and releases the parent's persistent reference. A READ
+using the surviving LOCK stateid then follows the freed parent in
+nfs4_check_openmode().
 
-Thank you!
-Acked-by: Allison Henderson <achender@kernel.org>
+Take an OPEN stateid reference when initializing the LOCK stateid and
+release it from the LOCK stateid free callback. Keep the free path safe
+for partially initialized objects.
 
-> ---
->  net/rds/tcp_send.c | 5 ++---
->  1 file changed, 2 insertions(+), 3 deletions(-)
->=20
-> diff --git a/net/rds/tcp_send.c b/net/rds/tcp_send.c
-> index 7c52acc749cf4d4003c749a2646c2b4f87f207fe..824222c475119d91e333123c5=
-afc9291005a8696 100644
-> --- a/net/rds/tcp_send.c
-> +++ b/net/rds/tcp_send.c
-> @@ -100,7 +100,7 @@ int rds_tcp_xmit(struct rds_connection *conn, struct =
-rds_message *rm,
-> =20
->  	if (hdr_off < sizeof(struct rds_header)) {
->  		/* see rds_tcp_write_space() */
-> -		set_bit(SOCK_NOSPACE, &tc->t_sock->sk->sk_socket->flags);
-> +		sk_set_nospace(tc->t_sock->sk);
-> =20
->  		ret =3D rds_tcp_sendmsg(tc->t_sock,
->  				      (void *)&rm->m_inc.i_hdr + hdr_off,
-> @@ -221,6 +221,5 @@ void rds_tcp_write_space(struct sock *sk)
->  	 */
->  	write_space(sk);
-> =20
-> -	if (sk->sk_socket)
-> -		set_bit(SOCK_NOSPACE, &sk->sk_socket->flags);
-> +	sk_set_nospace(sk);
->  }
+An unprivileged NFSv4.1 client with normal access to an exported file can
+reach the lifetime error using ordinary OPEN, LOCK, READ, and CLOSE
+operations. Validation used the nfsd-testing base recorded below. Natural
+race runs on the unmodified KASAN kernel completed 3,000 one-reader
+attempts and 5,000 eight-reader attempts without reproducing the report.
 
+For deterministic validation, a test-only kprobe delayed
+nfs4_check_openmode() after LOCK setup, before it followed st_openstp. The
+module only widened the race window; it did not allocate, free, or modify
+an NFSD object. The unpatched kernel then reported a slab use-after-free in
+nfs4_check_openmode() on the first timed attempt. With this patch, the same
+timed READ and CLOSE both returned NFS4_OK and produced no KASAN report.
+
+The patched kernel also completed the natural 3,000-attempt run and the
+5,000-attempt eight-reader run without a KASAN report or kernel failure.
+The full KASAN kernel built with CONFIG_WERROR without a compiler
+diagnostic. Basic NFSv4.2 and NFSv3 read/write/unmount smoke tests passed.
+A source reproducer, timing-module source, complete logs, and the kernel
+configuration are available privately on request.
+
+The vulnerability research and validation were conducted by members of
+the Tobabz team as part of the Best of the Best 15th program.
+
+Fixes: 02921914170e ("nfsd4: fix openmode checking on IO using lock stateid")
+Assisted-by: LLM
+Signed-off-by: Hyunsol Mun <muumthf@gmail.com>
+---
+Changes in v2:
+- Separate natural-race and timing-assisted validation results.
+- Add full-build and NFSv4.2/NFSv3 smoke-test results.
+- No code changes.
+
+ fs/nfsd/nfs4state.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index bbc16dd22..208badfe6 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1781,6 +1781,7 @@ static void nfs4_free_ol_stateid(struct nfs4_stid *stid)
+ static void nfs4_free_lock_stateid(struct nfs4_stid *stid)
+ {
+ 	struct nfs4_ol_stateid *stp = openlockstateid(stid);
++	struct nfs4_ol_stateid *open_stp = stp->st_openstp;
+ 	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
+ 	struct nfsd_file *nf;
+ 
+@@ -1791,6 +1792,8 @@ static void nfs4_free_lock_stateid(struct nfs4_stid *stid)
+ 		nfsd_file_put(nf);
+ 	}
+ 	nfs4_free_ol_stateid(stid);
++	if (open_stp)
++		nfs4_put_stid(&open_stp->st_stid);
+ }
+ 
+ /*
+@@ -9301,6 +9304,7 @@ init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
+ 			exp_get(open_stp->st_stid.sc_export);
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
++	refcount_inc(&open_stp->st_stid.sc_count);
+ 	stp->st_openstp = open_stp;
+ 	spin_lock(&fp->fi_lock);
+ 	list_add(&stp->st_locks, &open_stp->st_locks);
+
+base-commit: 32eb1a60b456980761cf7a9cee8f907fdc08afb8
+-- 
+2.50.1 (Apple Git-155)
