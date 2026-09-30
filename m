@@ -1,139 +1,99 @@
-Received: from fhigh-b6-smtp.messagingengine.com (fhigh-b6-smtp.messagingengine.com [202.12.124.157])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D0F2046C82B;
-	Wed, 30 Sep 2026 21:17:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.157
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 81B3052F282
+	for <linux-nfs@vger.kernel.org>; Wed, 30 Sep 2026 21:43:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790803060; cv=none; b=SsRQDEuxAE4WI9qvaq3v2p3RlOz9lZMh5uqEDWKnJskAJm0kH1qjmwqTNttrnHhLA/bInT43O63+DjbE6mbwkST7XhiGJYfxu6m4Ymd/49pMZMLZciKNaZprZWcwqRmJCEgyXSrFWkDNjw3sm7XrArVJ8x0taVVhd2iMd+NVudQ=
+	t=1790804634; cv=none; b=F6OiOc1yESLmrs0uHdKADh6ofFwlYOVZOtECXBUWkzviIyi9/WeHdeTBfMbMBe3fFI3W/qae+AH3LKRdXaTvamNrwKOmzEPV14sgiN++D2JwMZOc6PBjgZlnIHa/167voa0QHyg+Cg1LhxrFuhakk/qvqNyeICB9Er8mKaDQwfI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790803060; c=relaxed/simple;
-	bh=LVOHumrHyHT+mIYjVPW8zGx23DcqwKbyKcv+g1tjnI8=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=oC0EzgMSWFvqTF+r3gDJbNNvjWiUyM8RLxfzo1koBRbfadBaUbcbbzGf+K9wfs3FHbjZ8L9ep5oRE6F93MLBLRz51AssW0RBWwxwYFfHCjEGUDw3ked8giBc3UtUdeZK8o1OEWwQ0HpxQzR/72VSJ4WT4RGauidTMuaGUwJa+f8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=gUXA9zxv; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=Ai357FG4; arc=none smtp.client-ip=202.12.124.157
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+	s=arc-20240116; t=1790804634; c=relaxed/simple;
+	bh=6yCeTiJvm3FRFm4u9anahsTQh03Sw92k4imBxFN0vSQ=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=gUjSOtl5lVRWiyI8STCj/HXs9yPeUMYH95iruiNa4mx79tiFFHTEDGMJELEWDFazwV8KncCd3wVXWlzX+g+thfcFywIJR8V4m66EHSJH/uF+gpCCWRxMiReLzSukPUexw1BqsrPRpeLNqrEOpjozPTciVG+vLURMcUCJj805hII=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IZGDH16q; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="gUXA9zxv";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="Ai357FG4"
-Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
-	by mailfhigh.stl.internal (Postfix) with ESMTP id E86EF7A007A;
-	Wed, 30 Sep 2026 17:17:37 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-04.internal (MEProxy); Wed, 30 Sep 2026 17:17:38 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:content-type:date
-	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to; s=fm1; t=
-	1790803057; x=1790889457; bh=V9E6+Jyih2ZQ40BcJgsbHBwin3o99HCpRGz
-	ELXlzetw=; b=gUXA9zxvCl88E7U9H1ELAKFIiEoq9DUwy0ZF+tqx5FrgnG9hwXK
-	4iD5ixq0DgEybMVSd1c9tJQPi7kbv+JQV/JYjpLZI1Do9UAuqRCtKpd7In4c1pFt
-	rXs3F64y/1jKu/t0XreWnbOiW0skqywzptfwoDtXtQPm2ruq8GnYJzVPsjGpo0aH
-	+IO0RcJXgmPEYNkm7fmuYmgxhrBALOvZEhZA4ibYIIsKPZ1OETgah1K35fBWoy/w
-	jNFSbZLZilemLVVYxy6r0XEr28gityms96SdSAMWSBW42T7FTv31VWLaf4OJL8ck
-	a9z7ZxSlz4gQ4s7LGzxvfWZDXNg+9S0pnPA==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:content-type:date:date:feedback-id:feedback-id
-	:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1790803057; x=
-	1790889457; bh=V9E6+Jyih2ZQ40BcJgsbHBwin3o99HCpRGzELXlzetw=; b=A
-	i357FG4Jnav2tyizPLAibOuTXTqLmY2V4SpW6nx8o2zO1RiXUV3kDXFBLJqw+/bc
-	e3wtKm2p+2V3ydT0roECUJGjyx5awjAIJ6zgvvlfk0XLQ8WNEr0QXBX3PKTodIeP
-	1ROZlKQnqWaPxc6SXB00RUGfZbtZGYuwsoKQEgI4ccFK7tA0sU+abraW4M8KHni3
-	u8wKNdnE77iSPqtMUYCnzRj3bmz8yTPm8q82DwocT1LVD6q2shLtfMfero22IGqp
-	vQsmCHG1EID6146n9HGOAKtHCqOHgMlJJ2ePEfyfnC2Al3GYhpDLbluzsd98JBJD
-	KxNDdsZYKaunW3AB9oXHg==
-X-ME-Sender: <xms:cXy9avRQCNJb0LtMdn_GyXsh_g4_xuM6v08LfuG3ThBIVO5c5l8w0g>
-    <xme:cXy9avA1roG_u07nEMZE7ZxzzAtkzRCCOu8b8WnqiUi23ufEVUSRte6XBhtGfs5En
-    aoap34I_6pJQF1n0JwMx8tSYBWJ4a4bVxylnecBzwen79rYtIM>
-X-ME-Received: <xmr:cXy9auLaMIxwZuRdK7VEWra6UA_xz9Z_GwGU2cm7kF07hlJ0uIHZ3Vo8bH2i01MtCSLeYS_I0CocLj9_9gsb6Nu7uCot5Nk>
-X-ME-Proxy-Cause: dmFkZTEiP7eojnwJIrVLqcVTGL46onno6ZtSQqEedKDBUHsPo/W4h3ztg05trwBtbbPtpz
-    hO9vqks2n/NfgmVUC38eSh2fEAYv+kUiNi1jrR3di4Yf9S0nlAOV0eSosUQgDnM9G6KpvR
-    ow+NP8ygfvWV+J2za5klwIvKjB9uu5bh07eDMNphduRQ0kUsM1cXIYwWXYyjK6CmbgZ+QM
-    zL8YEAH/t0zC0lFDwZeo/Isjuens0kdSIWL/jv2kgHqs6bkdryiKUnB+0l/6Dt5GpVZFp+
-    ZQsH9oYPU+I2EO3+H19UwQ4/PoKrZVePofPFMErsnlXPzeLzdczP6ijEdAxGgu6kagyEgF
-    ylupx+2sygvNZVSFzRZbJSpjppFukSc5Ki6msbZUqddrJQhj2ENrOIro0309iXSDRyTYyd
-    x6G7m+I/dWaVaM2CVi4HaeBO0jb8j0VGE86qSj5uKYHg0SVOCxL331tvF6ySDejSEK2jS9
-    +xy0bLa4k3iT1X3aZc97Fx6oqn1XSnHZzRlZOeKhj0PPqlQ5j4xFzsDD+it7LA0i+DyYcJ
-    NWJUUT/Pg+OQmexUCdf3h6M2hATsOCXBvlZU28ctTocATHxcR6P7xFpg/J8Mr66CxF70Ad
-    qc+1di1mSRPYXtYLRvautb5cfiFwMqzXQ0k0YisC+27dWdyaKMXvRuNqsaxQ
-X-ME-Proxy: <xmx:cXy9aiARsVC8nEVO2A71lPuR8oMhJwYQoUFSvw7Ntg7WEoZAU33hYA>
-    <xmx:cXy9arslEsof58jfBeNgPHlkqIq1t2MmuMMNdJbuZl8rXAK9Y_e8Kw>
-    <xmx:cXy9aoR9NQcQZpPFkLFGYxOueQtnnSz2OmUEPm20ojwyTaEgPO1Onw>
-    <xmx:cXy9aqJCjBajqa5wLsmWxoc-4mUuD0j5BCuOZsGOF39n1LvK2RYanw>
-    <xmx:cXy9ai27OD0UI_I883TC49iYqPI7vaYFBJ9LZMLiP9VhxXLhqtoe1Zir>
-Feedback-ID: i9d664b8f:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Wed,
- 30 Sep 2026 17:17:34 -0400 (EDT)
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IZGDH16q"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CFEF91F000FF;
+	Wed, 30 Sep 2026 21:43:52 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1790804633;
+	bh=ytwQT19qVl46mNpNSJGZq72qEGRQjaSaMFQSZiQwWnU=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=IZGDH16qmVlQHBvwteo0XFGLFId512IIPwgCjLbaH58TmZABkvlBeO4XfBCgiW2Bb
+	 gWPj/KVE3ci0WCqElJt5PieNgYBRXscfAosx86yBUy8r6IAkYYoFMrin8MPEHe/XIj
+	 YkON6HY/0Rxy2c0H8RlaYhDwr/LuKCO7/HtoRzEaGVFK1yOV4JM+N7sMyXTncVuMii
+	 RmLCOA5PPH21IRl9xcX4BqdzVne/WcrCSd2rZzqPXjuONjOEFBHffvG7tFnYRgjfiq
+	 a7ci6dNogVLxY/ZzRwWuOwMpEnHZLG75Ie8sVXMYoD1wkVZ6g0jd7KHQuL5pKnHrro
+	 +nPlvNw6cJAZA==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id D0C8EF40066;
+	Wed, 30 Sep 2026 17:43:51 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Wed, 30 Sep 2026 17:43:51 -0400
+X-ME-Sender: <xms:l4K9asBtoEFnKU2DxYe833DF5pUYZERhmzTyiGm4Bbu9LbsAgn1_zg>
+    <xme:l4K9apUOeJwZ_oyJO6V81FIrorUP19WLJnqPAxY-DeMXK2l_LHwCoa7pfhu8KmfEf
+    ozg_ayr1EELLv4fwln1iekhI-AbIow83ZtuAGM_I3ORz8U2H_6YOnBqnw>
+X-ME-Proxy-Cause: dmFkZTFzkily9ToWPe0DNVyM4v6ng/yjSg3UEMUv76hxOOK+Az1m3Jx/HTGZfwUEp/9+Z1
+    rx/YH/iGNPegcQGbpU2DQ1xYBVDsLYB7+aratMCZ2lNHCJkgy8Z7pvnvr65/LLpLlaeK0E
+    C38WeCEyUibUo6/c5L/Icm4hEM7mbQeSX/C3J3CHdFt/SjLkl+Af/CViA9Sdj/Q+cSYdXm
+    GC6zgLMoHghdpEj9u2yjy4+9pJ3RfiAOEgOpMqgbDAOHsHRk1NYDxsUgU0Ou+8BZnREEjB
+    070fj9nq64xG2/zCgyzfZczpxch5UIDkkg+91vXknslwIi6v9lOXSMdUa9H594WIMwqzlO
+    qNykUhyaRaV14lZYzl00tWm2hIbIbobT6tI4RWQv2Dh/+Mg2Cf2zZsx6rwr7K5+21K42lK
+    bVOH/7cIpjxTyDFyjQrEUoH4pNvgg0wE0Qf52pD6eIHWWgA3dU+3MqBu2KXzITppXFz2gU
+    9tG7e6vR9z/G7vykhjIzqwaYmAcT0lNUbDzRU61kMB3J3Z/ZNXydb3YTi+1u1zOe0rWW5h
+    gFKC6ve7+6+Q1+kyP9vOyarI96AY0axXpLBPmXFJROpPYPz9Vh0ka3+VZQVLR2tF+nywbw
+    kk8n+Yqai+cb1BQDKwyQdoa0rltdOyCl9lznKwbqDbYjvQoDklDP8Ihf3OYQ
+X-ME-Proxy: <xmx:l4K9ahfdhtPMKGqe-4XPcslkH5bVlpaKFCva5dBuRKrUf7JN7bPQ0Q>
+    <xmx:l4K9am9QDeepzsL1AnhytKLvPE-vC61I-FS5XC1YkxULq9rRg1Xcog>
+    <xmx:l4K9atl0pClBCBiEUbEETq883A0zOeESJ9YTFnCJh-OeaYhfkvNehA>
+    <xmx:l4K9ao83nmwP-jazr1Y84ucWpz4EuG6cxd66ylhFk7fCPvxjE3ZQyQ>
+    <xmx:l4K9arkr7wxwlCStLrF7uaJ3BhklXYdL6zTx9X3uYYWH-iesmrjOmdjd>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id B26F6780070; Wed, 30 Sep 2026 17:43:51 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: NeilBrown <neilb@ownmail.net>
-To: "John Stoffel" <john@stoffel.org>
-Cc: "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
- "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Christian Brauner" <brauner@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
- "Jan Kara" <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
- linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2 3/9] nfs: remove d_drop()/d_alloc_parallel() from
- nfs_atomic_open()
-In-reply-to: <27325.7525.26178.516077@quad.stoffel.home>
-References: <20260929022547.1428036-1-neilb@ownmail.net>
-  <20260929022547.1428036-4-neilb@ownmail.net>
-  <27325.7525.26178.516077@quad.stoffel.home>
-Date: Thu, 01 Oct 2026 07:17:32 +1000
-Message-id: <179080305245.37859.18267888595495397553@noble.neil.brown.name>
-Reply-To: NeilBrown <neil@brown.name>
+X-ThreadId: AKn1pY3y9srV
+Date: Wed, 30 Sep 2026 14:43:31 -0700
+From: "Chuck Lever" <cel@kernel.org>
+To: "Mike Snitzer" <snitzer@kernel.org>
+Cc: "Jeff Layton" <jlayton@kernel.org>, linux-nfs@vger.kernel.org
+Message-Id: <0ee41b38-3f36-4750-ad60-1a59646bb970@slotpi15m67>
+In-Reply-To: <20260929231329.22018-2-snitzer@kernel.org>
+References: <20260929231329.22018-1-snitzer@kernel.org>
+ <20260929231329.22018-2-snitzer@kernel.org>
+Subject: Re: [PATCH v2 1/9] NFSD: mark the direct middle of a split WRITE
+ IOCB_DONTCACHE as well
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-On Thu, 01 Oct 2026, John Stoffel wrote:
-> >>>>> "NeilBrown" == NeilBrown  <neilb@ownmail.net> writes:
-> 
-> > From: NeilBrown <neil@brown.name>
-> > It is important that two non-create NFS "open"s of a negative dentry
-> > don't race.  They both have only a shared lock on i_rwsem and so could
-> > run concurrently, but they might both try to call d_splice_alias() at
-> > the same time which is confusing at best.
-> 
-> > nfs_atomic_open() currently avoids this by discarding the negative
-> > dentry and creating a new one using d_alloc_parallel().  Only one thread
-> > can successfully get the d_in_lookup() dentry, the other will wait for
-> > the first to finish, and can use the result of that first lookup.
-> 
-> This paragraph is confusing, and I'm not sure which thread can use the
-> result of the first lookup from this description.  
+Since this one carries a Fixes: tag, the stable folks will pick it
+into 7.2.y by itself. The rest of the series won't follow it there.
 
-Unfortunately it isn't clear to me what it is that isn't clear to you
-:-)
+> diff --git a/Documentation/filesystems/nfs/nfsd-io-modes.rst b/Documentation/filesystems/nfs/nfsd-io-modes.rst
+> index 0fd6e82478fe..dc50c930f976 100644
+> --- a/Documentation/filesystems/nfs/nfsd-io-modes.rst
+> +++ b/Documentation/filesystems/nfs/nfsd-io-modes.rst
+> @@ -130,6 +130,16 @@ Misaligned WRITE:
+>      segments because using normal buffered IO offers significant RMW
+>      performance benefit when handling streaming misaligned WRITEs.
+>
+> +    The O_DIRECT middle segment also carries the DONTCACHE flag. It has
 
-When O_CREAT is not requested, calls to ->atomic_open are protected only
-by a shared lock on the parent so if the dcache contains a negative
-dentry for a given name then two ->atomic_open calls on that name can
-happen concurrently.  That can be a problem as they both might try to
-instantiate the dentry with an inode, and the second to do that will
-trigger a BUG.
+In a stable tree this paragraph will sit directly below the existing
+"DONTCACHE buffered IO is _not_ used for the misaligned segments"
+sentence, which the "also" contradicts. Patch 2/9 removes that
+sentence, but 2/9 is not a fix and won't be backported.
 
-This is fixed by discarding (d_drop()) the dentry and using
-d_alloc_parallel() to allocate a new dentry.  d_alloc_parallel()
-effects a lock.  Only one thread will get an in_lookup dentry.  The
-other will block until the dentry has been instantiated, and will then
-be given the non-in_lookup dentry.
+Let's replace that sentence itself, so the document reads consistently
+in the LTS kernels that carry only this patch.
 
-The current code does all this in nfs_atomic_open().  The new code does
-the d_drop and the d_alloc_parallel() in VFS code were I can manage the
-locking rules more easily.
 
-I thought that is what I said above - though more briefly of course.  If
-you can point me more precisely to what is not clear in the original, I
-can try to improve it.
-
-Thanks,
-NeilBrown
-
+-- 
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
