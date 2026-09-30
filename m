@@ -1,72 +1,199 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C6DB94E50B3
-	for <linux-nfs@vger.kernel.org>; Wed, 30 Sep 2026 12:54:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 304A94E5322;
+	Wed, 30 Sep 2026 13:54:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790772875; cv=none; b=kstLLKFLk9sRq+cApU9R+OEEzgB5fLx2XcbJYx0Qh2cwF1AjqSkpraaLJUx5KnCzqyFyo682Lc+QYqDEfegsJuRN5Lxv2fi3s5QVq0xeX2IIkNLMm/AVWmFcGABYfSCaBhK9PwdGlzCyxYJvfHyHlWVqYFf18rG7o+mii/JGvxI=
+	t=1790776473; cv=none; b=YpSZRxdEbpJk29THllGziPTMp7WEXgjhtWy/CXy+Z5+vkfuNxtq78FDVJ9zEMcH3QSOYvmpY0IGcZHhjtxLLoVn21xXA2qrK4lJjM5ovIxix/jwQWUF32N0ro8oHmTnlmMOrHMNKIvOmRVITB8t+alpl7P+H4LAwnDhkZDh4IwE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790772875; c=relaxed/simple;
-	bh=HdTeuXDr8a7M/dBT1V2MVVOrSM/0oDhlJDINU92xQac=;
+	s=arc-20240116; t=1790776473; c=relaxed/simple;
+	bh=jNmuJCUQ6AV+uZkYgO4Rl+6zLRg4alhoFL9PUHqBETY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=I2X43vmdhhVRBQTxo/xLlHFYtTLiayxzX5cZNuT//rebgvhrUcIEMkNlJP48v5MbCWgmivY4dz37DxeUenYVg46MZasfd+dudSGQWSKmZG/8W/AG1hEEjkPmsRJ+93YyL2dc9jmdnTxfoOG55i/109k6h3sPC8fIF7a8RASlzbU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=CITfNojL; arc=none smtp.client-ip=170.10.133.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	 MIME-Version; b=pc9ZsAInDUPExBaKOiq+MMHhHrywrWS1hsteuBheybyDtIsg1MvOoiCSycT/YnpSJI0dg7MjZh1PnzcmZ+6G+mNrEQPyPxMdcidpSY7whoDmy1KZVU7a26y3aFrL1qZnZFhRdyYfPbUZAyuqLJv/uAdt7A5DtwXPoGzsKSwre4Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=RMlAQQh6; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=P936QFcu; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=gM3IYV04; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=LLHlj2rw; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="CITfNojL"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1790772859;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="RMlAQQh6";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="P936QFcu";
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="gM3IYV04";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="LLHlj2rw"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 9041B21D6E;
+	Wed, 30 Sep 2026 13:53:57 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1790776441; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=ICFl38P2Y0U35iqslj/QkLomi3wKSjtXDnf9ygvw9eM=;
-	b=CITfNojLFPGQfzD9/IVnR5jIgQCStjoqBmZ3ln0g1iRIs/IIUmTeeUTpvv7GUDP+KSp5Zb
-	/vIpQiPMPQziyG8rMR61qvAVHn2gjhMjoKIeVi2EVhRVOsvH7DIHuAvp99DHJNsv78Hf9R
-	l7Q1yusqjWOjlu3RnMQL46H+/AHp9K0=
-Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-620-S6pnJxY4OLaJz_v0AZEHsg-1; Wed,
- 30 Sep 2026 08:54:15 -0400
-X-MC-Unique: S6pnJxY4OLaJz_v0AZEHsg-1
-X-Mimecast-MFC-AGG-ID: S6pnJxY4OLaJz_v0AZEHsg_1790772853
-Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
+	bh=/1IBlTX6vlcUFCjGWOjia0E+4yysJS/6lorCAPFPo2k=;
+	b=RMlAQQh6Ro2RDStq9a9Pi4hvvzfw/pA5YUeUecyAZ4aFYcJJWbS916DqfmwuxBem6zAStE
+	C2duED++f9sTtXDi5RcfVhz/dydQoUk6hTRuFnNUwIvvOEaqgeuxfOLiG1IcvI5IN19Ddp
+	eTpsISxoKWRqRrmuU4YCQHYleh6Z0RM=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1790776441;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=/1IBlTX6vlcUFCjGWOjia0E+4yysJS/6lorCAPFPo2k=;
+	b=P936QFcu0z8RG2dASK2K1h3d7//Tq0wpKPHKld1bjAzQAZLP7v0LTYDuzqVmweo99MLUAL
+	rPDE3NILpnxJ+GAw==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1790776437; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=/1IBlTX6vlcUFCjGWOjia0E+4yysJS/6lorCAPFPo2k=;
+	b=gM3IYV04c03WM7/KGb0tyF1pfVk1tn84pCcc2mA/mqFYqKxd777ODk16gGzzw4f2Hbg3Ll
+	4/pf7CEMbxB/HG8j2FsDpHv10PuPOLkaXzClmKHOuJHAlskz7TZtJnsAO1dXqjCfXyjby5
+	igQhfVatYTIbZbzb6s2oLOpRRBkeAAU=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1790776437;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=/1IBlTX6vlcUFCjGWOjia0E+4yysJS/6lorCAPFPo2k=;
+	b=LLHlj2rwNW2vWZZWdFhrfd0aqpDv2Ka96milIukaY7nmcybc90aDipBEKI9am2til22yHn
+	C2ZKOgyP4QsQjNBA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 0C7B9192E24D;
-	Wed, 30 Sep 2026 12:54:13 +0000 (UTC)
-Received: from warthog.com (unknown [10.44.32.54])
-	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id BDF5D30001BE;
-	Wed, 30 Sep 2026 12:54:07 +0000 (UTC)
-From: David Howells <dhowells@redhat.com>
-To: Christian Brauner <christian@brauner.io>
-Cc: David Howells <dhowells@redhat.com>,
-	Paulo Alcantara <pc@manguebit.org>,
-	Matthew Wilcox <willy@infradead.org>,
-	Namjae Jeon <linkinjeon@kernel.org>,
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id A512313ABC;
+	Wed, 30 Sep 2026 13:53:51 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id fJXpHGIUvWqUTwAAD6G6ig:T2
+	(envelope-from <fmancera@suse.de>); Wed, 30 Sep 2026 13:53:51 +0000
+From: Fernando Fernandez Mancera <fmancera@suse.de>
+To: netdev@vger.kernel.org
+Cc: horms@kernel.org,
+	kuba@kernel.org,
+	pabeni@redhat.com,
+	edumazet@kernel.org,
+	davem@davemloft.net,
+	Fernando Fernandez Mancera <fmancera@suse.de>,
+	Chuck Lever <cel@kernel.org>,
+	Jason Gunthorpe <jgg@ziepe.ca>,
+	Leon Romanovsky <leon@kernel.org>,
+	Zhu Yanjun <zyjzyj2000@gmail.com>,
+	Andrew Lunn <andrew+netdev@lunn.ch>,
+	Eric Dumazet <edumazet@google.com>,
+	Tony Nguyen <anthony.l.nguyen@intel.com>,
+	Przemek Kitszel <przemyslaw.kitszel@intel.com>,
+	Elad Nachman <enachman@marvell.com>,
+	Saeed Mahameed <saeedm@nvidia.com>,
+	Tariq Toukan <tariqt@nvidia.com>,
+	Mark Bloch <mbloch@nvidia.com>,
+	Ido Schimmel <idosch@nvidia.com>,
+	Petr Machata <petrm@nvidia.com>,
+	Jiri Pirko <jiri@resnulli.us>,
+	Edward Cree <ecree.xilinx@gmail.com>,
+	Maxime Chevallier <maxime.chevallier@bootlin.com>,
+	Maxime Coquelin <mcoquelin.stm32@gmail.com>,
+	Alexandre Torgue <alexandre.torgue@foss.st.com>,
+	Arend van Spriel <arend.vanspriel@broadcom.com>,
+	Miri Korenblit <miriam.rachel.korenblit@intel.com>,
+	Keith Busch <kbusch@kernel.org>,
+	Jens Axboe <axboe@kernel.dk>,
+	Christoph Hellwig <hch@lst.de>,
+	Sagi Grimberg <sagi@grimberg.me>,
+	Chaitanya Kulkarni <kch@nvidia.com>,
+	Varun Prakash <varun@chelsio.com>,
+	"James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>,
+	"Martin K. Petersen" <mkp@kernel.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Christian Brauner <brauner@kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	David Howells <dhowells@redhat.com>,
 	Marc Dionne <marc.dionne@auristor.com>,
-	Stefan Metzmacher <metze@samba.org>,
-	Eric Van Hensbergen <ericvh@kernel.org>,
-	Dominique Martinet <asmadeus@codewreck.org>,
-	Ilya Dryomov <idryomov@gmail.com>,
-	netfs@lists.linux.dev,
-	linux-afs@lists.infradead.org,
-	linux-cifs@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	ceph-devel@vger.kernel.org,
-	v9fs@lists.linux.dev,
-	linux-fsdevel@vger.kernel.org,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	Marek Lindner <marek.lindner@mailbox.org>,
+	Simon Wunderlich <sw@simonwunderlich.de>,
+	Antonio Quartulli <antonio@mandelbit.com>,
+	Sven Eckelmann <sven@narfation.org>,
+	Nikolay Aleksandrov <razor@blackwall.org>,
+	Pablo Neira Ayuso <pablo@netfilter.org>,
+	Florian Westphal <fw@strlen.de>,
+	Phil Sutter <phil@nwl.cc>,
+	Matthieu Baerts <matttbe@kernel.org>,
+	Mat Martineau <martineau@kernel.org>,
+	Geliang Tang <geliang@kernel.org>,
+	Julian Anastasov <ja@ssi.bg>,
+	Allison Henderson <achender@kernel.org>,
+	Jamal Hadi Salim <jhs@mojatatu.com>,
+	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+	Xin Long <lucien.xin@gmail.com>,
+	"D. Wythe" <alibuda@linux.alibaba.com>,
+	Dust Li <dust.li@linux.alibaba.com>,
+	Sidraya Jayagond <sidraya@linux.ibm.com>,
+	Mahanta Jambigi <mjambigi@linux.ibm.com>,
+	Tony Lu <tonylu@linux.alibaba.com>,
+	Wen Gu <guwen@linux.alibaba.com>,
+	Jon Maloy <jmaloy@redhat.com>,
+	Tung Quang Nguyen <tung.quang.nguyen@est.tech>,
+	Steffen Klassert <steffen.klassert@secunet.com>,
+	Herbert Xu <herbert@gondor.apana.org.au>,
+	Casey Schaufler <casey@schaufler-ca.com>,
+	Paul Moore <paul@paul-moore.com>,
+	James Morris <jmorris@namei.org>,
+	"Serge E. Hallyn" <serge@hallyn.com>,
+	Krzysztof Kozlowski <krzk@kernel.org>,
+	Qingfang Deng <qingfang.deng@linux.dev>,
+	Julian Braha <julianbraha@gmail.com>,
+	Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+	Ethan Nelson-Moore <enelsonmoore@gmail.com>,
+	Eric Biggers <ebiggers@kernel.org>,
+	Ard Biesheuvel <ardb@kernel.org>,
+	Neal Cardwell <ncardwell@google.com>,
+	Kuniyuki Iwashima <kuniyu@google.com>,
+	Alyssa Ross <hi@alyssa.is>,
+	linux-rdma@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
-	Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH v14 10/10] netfs: Remove folio_queue
-Date: Wed, 30 Sep 2026 13:52:45 +0100
-Message-ID: <20260930125247.3232130-11-dhowells@redhat.com>
-In-Reply-To: <20260930125247.3232130-1-dhowells@redhat.com>
-References: <20260930125247.3232130-1-dhowells@redhat.com>
+	intel-wired-lan@lists.osuosl.org,
+	linux-net-drivers@amd.com,
+	linux-stm32@st-md-mailman.stormreply.com,
+	linux-arm-kernel@lists.infradead.org,
+	linux-wireless@vger.kernel.org,
+	brcm80211@lists.linux.dev,
+	brcm80211-dev-list.pdl@broadcom.com,
+	linux-nvme@lists.infradead.org,
+	linux-scsi@vger.kernel.org,
+	target-devel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-afs@lists.infradead.org,
+	linux-nfs@vger.kernel.org,
+	b.a.t.m.a.n@lists.open-mesh.org,
+	bridge@lists.linux.dev,
+	netfilter-devel@vger.kernel.org,
+	coreteam@netfilter.org,
+	mptcp@lists.linux.dev,
+	lvs-devel@vger.kernel.org,
+	rds-devel@oss.oracle.com,
+	linux-sctp@vger.kernel.org,
+	linux-s390@vger.kernel.org,
+	tipc-discussion@lists.sourceforge.net,
+	linux-security-module@vger.kernel.org
+Subject: [PATCH 01/16 net-next v3] ipv4: introduce CONFIG_IPV4 to decouple the IPv4 stack
+Date: Wed, 30 Sep 2026 15:52:44 +0200
+Message-ID: <20260930135334.4739-2-fmancera@suse.de>
+X-Mailer: git-send-email 2.51.0
+In-Reply-To: <20260930135334.4739-1-fmancera@suse.de>
+References: <20260930135334.4739-1-fmancera@suse.de>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -74,948 +201,1215 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
+X-Spamd-Result: default: False [-3.30 / 50.00];
+	REPLY(-4.00)[];
+	BAYES_HAM(-3.00)[100.00%];
+	FORGED_RECIPIENTS(2.00)[m:horms@kernel.org,m:kuba@kernel.org,m:pabeni@redhat.com,m:edumazet@kernel.org,m:davem@davemloft.net,m:fmancera@suse.de,m:cel@kernel.org,m:leon@kernel.org,m:zyjzyj2000@gmail.com,m:andrew+netdev@lunn.ch,m:edumazet@google.com,m:anthony.l.nguyen@intel.com,m:przemyslaw.kitszel@intel.com,m:enachman@marvell.com,m:saeedm@nvidia.com,m:tariqt@nvidia.com,m:mbloch@nvidia.com,m:idosch@nvidia.com,m:petrm@nvidia.com,m:jiri@resnulli.us,m:ecree.xilinx@gmail.com,m:maxime.chevallier@bootlin.com,m:mcoquelin.stm32@gmail.com,m:alexandre.torgue@foss.st.com,m:arend.vanspriel@broadcom.com,m:miriam.rachel.korenblit@intel.com,m:kbusch@kernel.org,m:axboe@kernel.dk,m:hch@lst.de,m:sagi@grimberg.me,m:kch@nvidia.com,m:varun@chelsio.com,m:James.Bottomley@HansenPartnership.com,m:mkp@kernel.org,m:brauner@kernel.org,m:jack@suse.cz,m:dhowells@redhat.com,m:marc.dionne@auristor.com,m:trondmy@kernel.org,m:anna@kernel.org,m:jlayton@kernel.org,m:neil@brown.name,m:okorniev@redhat.com,m:Dai.Ngo@oracle
+ .com,m:tom@talpey.com,m:marek.lindner@mailbox.org,m:sw@simonwunderlich.de,m:antonio@mandelbit.com,m:sven@narfation.org,m:razor@blackwall.org,m:pablo@netfilter.org,m:fw@strlen.de,m:phil@nwl.cc,m:matttbe@kernel.org,m:martineau@kernel.org,m:geliang@kernel.org,m:ja@ssi.bg,m:achender@kernel.org,m:jhs@mojatatu.com,m:marcelo.leitner@gmail.com,m:lucien.xin@gmail.com,m:alibuda@linux.alibaba.com,m:dust.li@linux.alibaba.com,m:sidraya@linux.ibm.com,m:mjambigi@linux.ibm.com,m:tonylu@linux.alibaba.com,m:guwen@linux.alibaba.com,m:jmaloy@redhat.com,m:tung.quang.nguyen@est.tech,m:steffen.klassert@secunet.com,m:herbert@gondor.apana.org.au,m:casey@schaufler-ca.com,m:paul@paul-moore.com,m:jmorris@namei.org,m:serge@hallyn.com,m:krzk@kernel.org,m:qingfang.deng@linux.dev,m:julianbraha@gmail.com,m:gregkh@linuxfoundation.org,m:enelsonmoore@gmail.com,m:ebiggers@kernel.org,m:ardb@kernel.org,m:ncardwell@google.com,m:kuniyu@google.com,m:hi@alyssa.is,m:intel-wired-lan@lists.osuosl.org,m:linux-net-drivers@amd.com
+ ,m:linux-stm32@st-md-mailman.stormreply.com,m:linux-arm-kernel@lists.infradead.org,m:brcm80211@lists.linux.dev,m:brcm80211-dev-list.pdl@broadcom.com,m:linux-nvme@lists.infradead.org,s:linux-nfs@vger.kernel.org,s:linux-s390@vger.kernel.org,s:linux-sctp@vger.kernel.org,s:linux-security-module@vger.kernel.org,s:lvs-devel@vger.kernel.org,s:netfilter-devel@vger.kernel.org,s:target-devel@vger.kernel.org];
+	SUSPICIOUS_RECIPS(1.50)[];
+	MID_CONTAINS_FROM(1.00)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	R_MISSING_CHARSET(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-0.994];
+	MIME_GOOD(-0.10)[text/plain];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:email,suse.de:mid];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	ARC_NA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	FREEMAIL_CC(0.00)[kernel.org,redhat.com,davemloft.net,suse.de,ziepe.ca,gmail.com,lunn.ch,google.com,intel.com,marvell.com,nvidia.com,resnulli.us,bootlin.com,foss.st.com,broadcom.com,kernel.dk,lst.de,grimberg.me,chelsio.com,HansenPartnership.com,zeniv.linux.org.uk,suse.cz,auristor.com,brown.name,oracle.com,talpey.com,mailbox.org,simonwunderlich.de,mandelbit.com,narfation.org,blackwall.org,netfilter.org,strlen.de,nwl.cc,ssi.bg,mojatatu.com,linux.alibaba.com,linux.ibm.com,est.tech,secunet.com,gondor.apana.org.au,schaufler-ca.com,paul-moore.com,namei.org,hallyn.com,linux.dev,linuxfoundation.org,alyssa.is,vger.kernel.org,lists.osuosl.org,amd.com,st-md-mailman.stormreply.com,lists.infradead.org,lists.linux.dev,lists.open-mesh.org,oss.oracle.com,lists.sourceforge.net];
+	RCPT_COUNT_GT_50(0.00)[114];
+	TAGGED_RCPT(0.00)[netdev];
+	TO_MATCH_ENVRCPT_SOME(0.00)[];
+	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	FROM_EQ_ENVFROM(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RCVD_COUNT_TWO(0.00)[2];
+	RCVD_TLS_ALL(0.00)[]
+X-Spam-Flag: NO
+X-Spam-Score: -3.30
+X-Spam-Level: 
 
-Remove folio_queue as it's no longer used.
+Historically, the IPv4 protocol has been linked to the core INET
+subsystem. Because shared infrastructure like the TCP/UDP engine,
+routing or INET hashtables live inside net/ipv4/, it has been impossible
+to compile a kernel with only IPv6 support.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-Reviewed-by: Paulo Alcantara <pc@manguebit.org>
-cc: Matthew Wilcox <willy@infradead.org>
-cc: Christoph Hellwig <hch@infradead.org>
-cc: netfs@lists.linux.dev
-cc: linux-fsdevel@vger.kernel.org
+This patch introduces the CONFIG_IPV4 Kconfig symbol, which is set to
+'def_bool y' for now. This does not allow to completely disable the
+IPv4 stack yet but it lays the necessary build-system work for that
+goal.
+
+In addition, multiple subsystems Kconfig symbols across networking
+features like tunnels, drivers and filesystems have been adjusted to
+depend on IPv4. Keep on mind that follow-up work is required to convert
+the Kconfig symbol to bool and remove the dependency on IPv4 where it
+makes sense.
+
+Acked-by: Chuck Lever <cel@kernel.org>
+Signed-off-by: Fernando Fernandez Mancera <fmancera@suse.de>
 ---
- Documentation/core-api/folio_queue.rst      | 209 ---------------
- Documentation/core-api/index.rst            |   1 -
- Documentation/filesystems/netfs_library.rst |   2 +-
- fs/netfs/internal.h                         |   5 -
- fs/netfs/main.c                             |   7 -
- fs/netfs/misc.c                             |  96 -------
- fs/netfs/rolling_buffer.c                   |  46 ----
- fs/netfs/stats.c                            |   4 +-
- include/linux/folio_queue.h                 | 282 --------------------
- include/linux/netfs.h                       |  13 -
- include/trace/events/netfs.h                |  35 ---
- kernel/bpf/btf.c                            |   2 -
- 12 files changed, 2 insertions(+), 700 deletions(-)
- delete mode 100644 Documentation/core-api/folio_queue.rst
- delete mode 100644 include/linux/folio_queue.h
+Sashiko: Marking the Kconfig symbols to depend on IPV4 is intentional,
+plenty of features won't work without IPv4 for now. Follow-up patches
+are required to support IPv4=n for those symbols.
+---
+ drivers/infiniband/Kconfig                    |  2 +-
+ drivers/infiniband/sw/rxe/Kconfig             |  2 +-
+ drivers/net/Kconfig                           | 23 ++++++++++---------
+ drivers/net/ethernet/chelsio/Kconfig          |  2 +-
+ drivers/net/ethernet/intel/Kconfig            |  2 ++
+ drivers/net/ethernet/marvell/prestera/Kconfig |  1 +
+ .../net/ethernet/mellanox/mlx5/core/Kconfig   |  3 ++-
+ drivers/net/ethernet/mellanox/mlxsw/Kconfig   |  1 +
+ drivers/net/ethernet/qlogic/Kconfig           |  2 ++
+ drivers/net/ethernet/rocker/Kconfig           |  1 +
+ drivers/net/ethernet/sfc/Kconfig              |  1 +
+ drivers/net/ethernet/stmicro/stmmac/Kconfig   |  1 +
+ drivers/net/ethernet/via/Kconfig              |  1 +
+ drivers/net/ppp/Kconfig                       |  1 +
+ .../broadcom/brcm80211/brcmfmac/Kconfig       |  1 +
+ drivers/net/wireless/intel/iwlwifi/Kconfig    |  1 +
+ drivers/nvme/host/Kconfig                     |  2 +-
+ drivers/nvme/target/Kconfig                   |  2 +-
+ drivers/scsi/cxgbi/cxgb3i/Kconfig             |  2 +-
+ drivers/scsi/cxgbi/cxgb4i/Kconfig             |  2 +-
+ drivers/target/iscsi/Kconfig                  |  2 +-
+ drivers/target/iscsi/cxgbit/Kconfig           |  2 +-
+ fs/Kconfig                                    |  1 +
+ fs/afs/Kconfig                                |  2 +-
+ fs/nfs/Kconfig                                |  2 +-
+ fs/nfsd/Kconfig                               |  2 +-
+ net/Kconfig                                   | 12 ++++++----
+ net/batman-adv/Kconfig                        |  6 ++---
+ net/bridge/Kconfig                            |  2 +-
+ net/bridge/netfilter/Kconfig                  |  3 ++-
+ net/ipv4/Kconfig                              | 21 ++++++++++++++---
+ net/ipv4/Makefile                             | 21 ++++++++---------
+ net/ipv4/netfilter/Kconfig                    |  2 +-
+ net/ipv6/Kconfig                              | 17 ++++++++++----
+ net/ipv6/netfilter/Kconfig                    |  2 +-
+ net/l2tp/Kconfig                              |  2 +-
+ net/mptcp/Kconfig                             |  2 +-
+ net/netfilter/Kconfig                         |  2 +-
+ net/netfilter/ipset/Kconfig                   |  2 +-
+ net/netfilter/ipvs/Kconfig                    |  2 +-
+ net/rds/Kconfig                               |  1 +
+ net/rxrpc/Kconfig                             |  2 +-
+ net/sched/Kconfig                             |  2 +-
+ net/sctp/Kconfig                              |  2 +-
+ net/smc/Kconfig                               |  2 +-
+ net/sunrpc/Kconfig                            |  2 +-
+ net/tipc/Kconfig                              |  1 +
+ net/xfrm/Kconfig                              | 10 ++++++--
+ security/smack/Kconfig                        |  1 +
+ 49 files changed, 118 insertions(+), 65 deletions(-)
 
-diff --git a/Documentation/core-api/folio_queue.rst b/Documentation/core-api/folio_queue.rst
-deleted file mode 100644
-index b7628896d2b6..000000000000
---- a/Documentation/core-api/folio_queue.rst
-+++ /dev/null
-@@ -1,209 +0,0 @@
--.. SPDX-License-Identifier: GPL-2.0+
--
--===========
--Folio Queue
--===========
--
--:Author: David Howells <dhowells@redhat.com>
--
--.. Contents:
--
-- * Overview
-- * Initialisation
-- * Adding and removing folios
-- * Querying information about a folio
-- * Querying information about a folio_queue
-- * Folio queue iteration
-- * Folio marks
-- * Lockless simultaneous production/consumption issues
--
--
--Overview
--========
--
--The folio_queue struct forms a single segment in a segmented list of folios
--that can be used to form an I/O buffer.  As such, the list can be iterated over
--using the ITER_FOLIOQ iov_iter type.
--
--The publicly accessible members of the structure are::
--
--	struct folio_queue {
--		struct folio_queue *next;
--		struct folio_queue *prev;
--		...
--	};
--
--A pair of pointers are provided, ``next`` and ``prev``, that point to the
--segments on either side of the segment being accessed.  Whilst this is a
--doubly-linked list, it is intentionally not a circular list; the outward
--sibling pointers in terminal segments should be NULL.
--
--Each segment in the list also stores:
--
-- * an ordered sequence of folio pointers,
-- * the size of each folio and
-- * three 1-bit marks per folio,
--
--but these should not be accessed directly as the underlying data structure may
--change, but rather the access functions outlined below should be used.
--
--The facility can be made accessible by::
--
--	#include <linux/folio_queue.h>
--
--and to use the iterator::
--
--	#include <linux/uio.h>
--
--
--Initialisation
--==============
--
--A segment should be initialised by calling::
--
--	void folioq_init(struct folio_queue *folioq);
--
--with a pointer to the segment to be initialised.  Note that this will not
--necessarily initialise all the folio pointers, so care must be taken to check
--the number of folios added.
--
--
--Adding and removing folios
--==========================
--
--Folios can be set in the next unused slot in a segment struct by calling one
--of::
--
--	unsigned int folioq_append(struct folio_queue *folioq,
--				   struct folio *folio);
--
--	unsigned int folioq_append_mark(struct folio_queue *folioq,
--					struct folio *folio);
--
--Both functions update the stored folio count, store the folio and note its
--size.  The second function also sets the first mark for the folio added.  Both
--functions return the number of the slot used.  [!] Note that no attempt is made
--to check that the capacity wasn't overrun and the list will not be extended
--automatically.
--
--A folio can be excised by calling::
--
--	void folioq_clear(struct folio_queue *folioq, unsigned int slot);
--
--This clears the slot in the array and also clears all the marks for that folio,
--but doesn't change the folio count - so future accesses of that slot must check
--if the slot is occupied.
--
--
--Querying information about a folio
--==================================
--
--Information about the folio in a particular slot may be queried by the
--following function::
--
--	struct folio *folioq_folio(const struct folio_queue *folioq,
--				   unsigned int slot);
--
--If a folio has not yet been set in that slot, this may yield an undefined
--pointer.  The size of the folio in a slot may be queried with either of::
--
--	unsigned int folioq_folio_order(const struct folio_queue *folioq,
--					unsigned int slot);
--
--	size_t folioq_folio_size(const struct folio_queue *folioq,
--				 unsigned int slot);
--
--The first function returns the size as an order and the second as a number of
--bytes.
--
--
--Querying information about a folio_queue
--========================================
--
--Information may be retrieved about a particular segment with the following
--functions::
--
--	unsigned int folioq_nr_slots(const struct folio_queue *folioq);
--
--	unsigned int folioq_count(struct folio_queue *folioq);
--
--	bool folioq_full(struct folio_queue *folioq);
--
--The first function returns the maximum capacity of a segment.  It must not be
--assumed that this won't vary between segments.  The second returns the number
--of folios added to a segments and the third is a shorthand to indicate if the
--segment has been filled to capacity.
--
--Not that the count and fullness are not affected by clearing folios from the
--segment.  These are more about indicating how many slots in the array have been
--initialised, and it assumed that slots won't get reused, but rather the segment
--will get discarded as the queue is consumed.
--
--
--Folio marks
--===========
--
--Folios within a queue can also have marks assigned to them.  These marks can be
--used to note information such as if a folio needs folio_put() calling upon it.
--There are three marks available to be set for each folio.
--
--The marks can be set by::
--
--	void folioq_mark(struct folio_queue *folioq, unsigned int slot);
--	void folioq_mark2(struct folio_queue *folioq, unsigned int slot);
--
--Cleared by::
--
--	void folioq_unmark(struct folio_queue *folioq, unsigned int slot);
--	void folioq_unmark2(struct folio_queue *folioq, unsigned int slot);
--
--And the marks can be queried by::
--
--	bool folioq_is_marked(const struct folio_queue *folioq, unsigned int slot);
--	bool folioq_is_marked2(const struct folio_queue *folioq, unsigned int slot);
--
--The marks can be used for any purpose and are not interpreted by this API.
--
--
--Folio queue iteration
--=====================
--
--A list of segments may be iterated over using the I/O iterator facility using
--an ``iov_iter`` iterator of ``ITER_FOLIOQ`` type.  The iterator may be
--initialised with::
--
--	void iov_iter_folio_queue(struct iov_iter *i, unsigned int direction,
--				  const struct folio_queue *folioq,
--				  unsigned int first_slot, unsigned int offset,
--				  size_t count);
--
--This may be told to start at a particular segment, slot and offset within a
--queue.  The iov iterator functions will follow the next pointers when advancing
--and prev pointers when reverting when needed.
--
--
--Lockless simultaneous production/consumption issues
--===================================================
--
--If properly managed, the list can be extended by the producer at the head end
--and shortened by the consumer at the tail end simultaneously without the need
--to take locks.  The ITER_FOLIOQ iterator inserts appropriate barriers to aid
--with this.
--
--Care must be taken when simultaneously producing and consuming a list.  If the
--last segment is reached and the folios it refers to are entirely consumed by
--the IOV iterators, an iov_iter struct will be left pointing to the last segment
--with a slot number equal to the capacity of that segment.  The iterator will
--try to continue on from this if there's another segment available when it is
--used again, but care must be taken lest the segment got removed and freed by
--the consumer before the iterator was advanced.
--
--It is recommended that the queue always contain at least one segment, even if
--that segment has never been filled or is entirely spent.  This prevents the
--head and tail pointers from collapsing.
--
--
--API Function Reference
--======================
--
--.. kernel-doc:: include/linux/folio_queue.h
-diff --git a/Documentation/core-api/index.rst b/Documentation/core-api/index.rst
-index 92f91c6a0d79..956f6803d2a2 100644
---- a/Documentation/core-api/index.rst
-+++ b/Documentation/core-api/index.rst
-@@ -39,7 +39,6 @@ Library functionality that is used throughout the kernel.
-    kref
-    cleanup
-    assoc_array
--   folio_queue
-    xarray
-    maple_tree
-    idr
-diff --git a/Documentation/filesystems/netfs_library.rst b/Documentation/filesystems/netfs_library.rst
-index 0c9786ffe192..ebf07a37922e 100644
---- a/Documentation/filesystems/netfs_library.rst
-+++ b/Documentation/filesystems/netfs_library.rst
-@@ -452,7 +452,7 @@ be called from the writeback code to write the data to the cache, if there is
- one.
+diff --git a/drivers/infiniband/Kconfig b/drivers/infiniband/Kconfig
+index 086195758a8a..e9302002b6ea 100644
+--- a/drivers/infiniband/Kconfig
++++ b/drivers/infiniband/Kconfig
+@@ -3,7 +3,7 @@ menuconfig INFINIBAND
+ 	tristate "InfiniBand support"
+ 	depends on HAS_IOMEM && HAS_DMA
+ 	depends on NET
+-	depends on INET
++	depends on INET && IPV4
+ 	depends on !ALPHA
+ 	select DMA_SHARED_BUFFER
+ 	select IRQ_POLL
+diff --git a/drivers/infiniband/sw/rxe/Kconfig b/drivers/infiniband/sw/rxe/Kconfig
+index 1ed5b63f8afc..e4272f863944 100644
+--- a/drivers/infiniband/sw/rxe/Kconfig
++++ b/drivers/infiniband/sw/rxe/Kconfig
+@@ -1,7 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config RDMA_RXE
+ 	tristate "Software RDMA over Ethernet (RoCE) driver"
+-	depends on INET && PCI && INFINIBAND && 64BIT
++	depends on INET && IPV4 && PCI && INFINIBAND && 64BIT
+ 	depends on INFINIBAND_VIRT_DMA
+ 	select NET_UDP_TUNNEL
+ 	select CRC32
+diff --git a/drivers/net/Kconfig b/drivers/net/Kconfig
+index ff79c466712d..5f60c3ff182b 100644
+--- a/drivers/net/Kconfig
++++ b/drivers/net/Kconfig
+@@ -40,7 +40,7 @@ if NET_CORE
  
- The inode should be marked ``NETFS_ICTX_SINGLE_NO_UPLOAD`` if this API is to be
--used.  The writeback function requires the buffer to be of ITER_FOLIOQ type.
-+used.
+ config BONDING
+ 	tristate "Bonding driver support"
+-	depends on INET
++	depends on INET && IPV4
+ 	depends on TLS || TLS_DEVICE=n
+ 	help
+ 	  Say 'Y' or 'M' if you wish to be able to 'bond' multiple Ethernet
+@@ -73,7 +73,7 @@ config DUMMY
  
- High-Level VM API
- ==================
-diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
-index dd20a9f201be..583ffa967d5a 100644
---- a/fs/netfs/internal.h
-+++ b/fs/netfs/internal.h
-@@ -7,7 +7,6 @@
+ config WIREGUARD
+ 	tristate "WireGuard secure network tunnel"
+-	depends on NET && INET
++	depends on NET && INET && IPV4
+ 	select NET_UDP_TUNNEL
+ 	select DST_CACHE
+ 	select CRYPTO_LIB_CURVE25519
+@@ -102,7 +102,7 @@ config WIREGUARD_DEBUG
  
- #include <linux/slab.h>
- #include <linux/seq_file.h>
--#include <linux/folio_queue.h>
- #include <linux/netfs.h>
- #include <linux/fscache.h>
- #include <linux/fscache-cache.h>
-@@ -46,7 +45,6 @@ extern spinlock_t netfs_proc_lock;
- extern mempool_t netfs_request_pool;
- extern mempool_t netfs_subrequest_pool;
- extern mempool_t netfs_bvecq_pool;
--extern mempool_t netfs_folioq_pool;
+ config OVPN
+ 	tristate "OpenVPN data channel offload"
+-	depends on NET && INET
++	depends on NET && INET && IPV4
+ 	select DST_CACHE
+ 	select NET_UDP_TUNNEL
+ 	select CRYPTO
+@@ -198,7 +198,7 @@ config IPVLAN_L3S
  
- #ifdef CONFIG_PROC_FS
- static inline void netfs_proc_add_rreq(struct netfs_io_request *rreq)
-@@ -71,8 +69,6 @@ static inline void netfs_proc_del_rreq(struct netfs_io_request *rreq) {}
- /*
-  * misc.c
-  */
--struct folio_queue *netfs_buffer_make_space(struct netfs_io_request *rreq,
--					    enum netfs_folioq_trace trace);
- void netfs_reset_iter(struct netfs_io_subrequest *subreq);
- void netfs_wake_collector(struct netfs_io_request *rreq);
- void netfs_subreq_clear_in_progress(struct netfs_io_subrequest *subreq);
-@@ -203,7 +199,6 @@ extern atomic_t netfs_n_wh_retry_write_req;
- extern atomic_t netfs_n_wh_retry_write_subreq;
- extern atomic_t netfs_n_wb_lock_skip;
- extern atomic_t netfs_n_wb_lock_wait;
--extern atomic_t netfs_n_folioq;
- extern atomic_t netfs_n_bvecq;
+ config IPVLAN
+ 	tristate "IP-VLAN support"
+-	depends on INET
++	depends on INET && IPV4
+ 	help
+ 	  This allows one to create virtual devices off of a main interface
+ 	  and packets will be delivered based on the dest L3 (IPv6/IPv4 addr)
+@@ -229,7 +229,7 @@ config IPVTAP
  
- int netfs_stats_show(struct seq_file *m, void *v);
-diff --git a/fs/netfs/main.c b/fs/netfs/main.c
-index 5c8517a66dde..36a1d98e593a 100644
---- a/fs/netfs/main.c
-+++ b/fs/netfs/main.c
-@@ -29,7 +29,6 @@ static struct kmem_cache *netfs_subrequest_slab;
- mempool_t netfs_request_pool;
- mempool_t netfs_subrequest_pool;
- mempool_t netfs_bvecq_pool;
--mempool_t netfs_folioq_pool;
+ config VXLAN
+ 	tristate "Virtual eXtensible Local Area Network (VXLAN)"
+-	depends on INET
++	depends on INET && IPV4
+ 	select NET_UDP_TUNNEL
+ 	select GRO_CELLS
+ 	help
+@@ -244,7 +244,7 @@ config VXLAN
  
- #ifdef CONFIG_PROC_FS
- LIST_HEAD(netfs_io_requests);
-@@ -109,9 +108,6 @@ static int __init netfs_init(void)
- {
- 	int ret = -ENOMEM;
+ config GENEVE
+ 	tristate "Generic Network Virtualization Encapsulation"
+-	depends on INET
++	depends on INET && IPV4
+ 	select NET_UDP_TUNNEL
+ 	select GRO_CELLS
+ 	help
+@@ -259,7 +259,7 @@ config GENEVE
  
--	if (mempool_init_kmalloc_pool(&netfs_folioq_pool, 100, sizeof(struct folio_queue)) < 0)
--		goto error_folioq_pool;
--
- 	if (mempool_init_kmalloc_pool(&netfs_bvecq_pool, 100,
- 				      struct_size_t(struct bvecq, __bv, BVECQ_POOL_SLOTS)) < 0)
- 		goto error_bvecq_pool;
-@@ -170,8 +166,6 @@ static int __init netfs_init(void)
- error_req:
- 	mempool_exit(&netfs_bvecq_pool);
- error_bvecq_pool:
--	mempool_exit(&netfs_folioq_pool);
--error_folioq_pool:
- 	return ret;
- }
- fs_initcall(netfs_init);
-@@ -185,6 +179,5 @@ static void __exit netfs_exit(void)
- 	mempool_exit(&netfs_request_pool);
- 	kmem_cache_destroy(netfs_request_slab);
- 	mempool_exit(&netfs_bvecq_pool);
--	mempool_exit(&netfs_folioq_pool);
- }
- module_exit(netfs_exit);
-diff --git a/fs/netfs/misc.c b/fs/netfs/misc.c
-index a3cd76d584b8..40e0ff649132 100644
---- a/fs/netfs/misc.c
-+++ b/fs/netfs/misc.c
-@@ -8,102 +8,6 @@
- #include <linux/swap.h>
- #include "internal.h"
+ config BAREUDP
+ 	tristate "Bare UDP Encapsulation"
+-	depends on INET
++	depends on INET && IPV4
+ 	select NET_UDP_TUNNEL
+ 	select GRO_CELLS
+ 	help
+@@ -271,7 +271,7 @@ config BAREUDP
  
--/**
-- * netfs_alloc_folioq_buffer - Allocate buffer space into a folio queue
-- * @mapping: Address space to set on the folio (or NULL).
-- * @_buffer: Pointer to the folio queue to add to (may point to a NULL; updated).
-- * @_cur_size: Current size of the buffer (updated).
-- * @size: Target size of the buffer.
-- * @gfp: The allocation constraints.
-- */
--int netfs_alloc_folioq_buffer(struct address_space *mapping,
--			      struct folio_queue **_buffer,
--			      size_t *_cur_size, ssize_t size, gfp_t gfp)
--{
--	struct folio_queue *tail = *_buffer, *p;
--
--	size = round_up(size, PAGE_SIZE);
--	if (*_cur_size >= size)
--		return 0;
--
--	if (tail)
--		while (tail->next)
--			tail = tail->next;
--
--	do {
--		struct folio *folio;
--		int order = 0, slot;
--
--		if (!tail || folioq_full(tail)) {
--			p = netfs_folioq_alloc(0, GFP_NOFS, netfs_trace_folioq_alloc_buffer);
--			if (!p)
--				return -ENOMEM;
--			if (tail) {
--				tail->next = p;
--				p->prev = tail;
--			} else {
--				*_buffer = p;
--			}
--			tail = p;
--		}
--
--		if (size - *_cur_size > PAGE_SIZE)
--			order = umin(ilog2(size - *_cur_size) - PAGE_SHIFT,
--				     MAX_PAGECACHE_ORDER);
--
--		folio = folio_alloc(gfp, order);
--		if (!folio && order > 0)
--			folio = folio_alloc(gfp, 0);
--		if (!folio)
--			return -ENOMEM;
--
--		folio->mapping = mapping;
--		folio->index = *_cur_size / PAGE_SIZE;
--		trace_netfs_folio(folio, netfs_folio_trace_alloc_buffer);
--		slot = folioq_append_mark(tail, folio);
--		*_cur_size += folioq_folio_size(tail, slot);
--	} while (*_cur_size < size);
--
--	return 0;
--}
--EXPORT_SYMBOL(netfs_alloc_folioq_buffer);
--
--/**
-- * netfs_free_folioq_buffer - Free a folio queue.
-- * @fq: The start of the folio queue to free
-- *
-- * Free up a chain of folio_queues and, if marked, the marked folios they point
-- * to.
-- */
--void netfs_free_folioq_buffer(struct folio_queue *fq)
--{
--	struct folio_queue *next;
--	struct folio_batch fbatch;
--
--	folio_batch_init(&fbatch);
--
--	for (; fq; fq = next) {
--		for (int slot = 0; slot < folioq_count(fq); slot++) {
--			struct folio *folio = folioq_folio(fq, slot);
--
--			if (!folio ||
--			    !folioq_is_marked(fq, slot))
--				continue;
--
--			trace_netfs_folio(folio, netfs_folio_trace_put);
--			if (folio_batch_add(&fbatch, folio))
--				folio_batch_release(&fbatch);
--		}
--
--		netfs_stat_d(&netfs_n_folioq);
--		next = fq->next;
--		kfree(fq);
--	}
--
--	folio_batch_release(&fbatch);
--}
--EXPORT_SYMBOL(netfs_free_folioq_buffer);
--
- /*
-  * Reset the subrequest iterator to refer just to the region remaining to be
-  * read.  The iterator may or may not have been advanced by socket ops or
-diff --git a/fs/netfs/rolling_buffer.c b/fs/netfs/rolling_buffer.c
-index 76429fbb6920..66ce9add4012 100644
---- a/fs/netfs/rolling_buffer.c
-+++ b/fs/netfs/rolling_buffer.c
-@@ -12,52 +12,6 @@
- #include <linux/slab.h>
- #include "internal.h"
+ config GTP
+ 	tristate "GPRS Tunneling Protocol datapath (GTP-U)"
+-	depends on INET
++	depends on INET && IPV4
+ 	select NET_UDP_TUNNEL
+ 	help
+ 	  This allows one to create gtp virtual interfaces that provide
+@@ -288,7 +288,7 @@ config GTP
  
--static atomic_t debug_ids;
--
--/**
-- * netfs_folioq_alloc - Allocate a folio_queue struct
-- * @rreq_id: Associated debugging ID for tracing purposes
-- * @gfp: Allocation constraints
-- * @trace: Trace tag to indicate the purpose of the allocation
-- *
-- * Allocate, initialise and account the folio_queue struct and log a trace line
-- * to mark the allocation.
-- */
--struct folio_queue *netfs_folioq_alloc(unsigned int rreq_id, gfp_t gfp,
--				       unsigned int /*enum netfs_folioq_trace*/ trace)
--{
--	struct folio_queue *fq;
--
--	if (gfp == GFP_KERNEL)
--		fq = mempool_alloc_noreserve(&netfs_folioq_pool, gfp);
--	else
--		fq = mempool_alloc(&netfs_folioq_pool, gfp);
--	if (fq) {
--		netfs_stat(&netfs_n_folioq);
--		folioq_init(fq, rreq_id);
--		fq->debug_id = atomic_inc_return(&debug_ids);
--		trace_netfs_folioq(fq, trace);
--	}
--	return fq;
--}
--EXPORT_SYMBOL(netfs_folioq_alloc);
--
--/**
-- * netfs_folioq_free - Free a folio_queue struct
-- * @folioq: The object to free
-- * @trace: Trace tag to indicate which free
-- *
-- * Free and unaccount the folio_queue struct.
-- */
--void netfs_folioq_free(struct folio_queue *folioq,
--		       unsigned int /*enum netfs_trace_folioq*/ trace)
--{
--	trace_netfs_folioq(folioq, trace);
--	netfs_stat_d(&netfs_n_folioq);
--	mempool_free(folioq, &netfs_folioq_pool);
--}
--EXPORT_SYMBOL(netfs_folioq_free);
--
- /*
-  * Initialise a rolling buffer.  We allocate an empty folio queue struct to so
-  * that the pointers can be independently driven by the producer and the
-diff --git a/fs/netfs/stats.c b/fs/netfs/stats.c
-index a10d34f88597..0ba6ce9295b2 100644
---- a/fs/netfs/stats.c
-+++ b/fs/netfs/stats.c
-@@ -46,7 +46,6 @@ atomic_t netfs_n_wh_retry_write_req;
- atomic_t netfs_n_wh_retry_write_subreq;
- atomic_t netfs_n_wb_lock_skip;
- atomic_t netfs_n_wb_lock_wait;
--atomic_t netfs_n_folioq;
- atomic_t netfs_n_bvecq;
+ config PFCP
+ 	tristate "Packet Forwarding Control Protocol (PFCP)"
+-	depends on INET
++	depends on INET && IPV4
+ 	select NET_UDP_TUNNEL
+ 	help
+ 	  This allows one to create PFCP virtual interfaces that allows to
+@@ -301,7 +301,7 @@ config PFCP
  
- int netfs_stats_show(struct seq_file *m, void *v)
-@@ -89,11 +88,10 @@ int netfs_stats_show(struct seq_file *m, void *v)
- 		   atomic_read(&netfs_n_rh_retry_read_subreq),
- 		   atomic_read(&netfs_n_wh_retry_write_req),
- 		   atomic_read(&netfs_n_wh_retry_write_subreq));
--	seq_printf(m, "Objs   : rr=%u sr=%u bq=%u foq=%u wsc=%u\n",
-+	seq_printf(m, "Objs   : rr=%u sr=%u bq=%u wsc=%u\n",
- 		   atomic_read(&netfs_n_rh_rreq),
- 		   atomic_read(&netfs_n_rh_sreq),
- 		   atomic_read(&netfs_n_bvecq),
--		   atomic_read(&netfs_n_folioq),
- 		   atomic_read(&netfs_n_wh_wstream_conflict));
- 	seq_printf(m, "WbLock : skip=%u wait=%u\n",
- 		   atomic_read(&netfs_n_wb_lock_skip),
-diff --git a/include/linux/folio_queue.h b/include/linux/folio_queue.h
-deleted file mode 100644
-index f6d5f1f127c9..000000000000
---- a/include/linux/folio_queue.h
-+++ /dev/null
-@@ -1,282 +0,0 @@
--/* SPDX-License-Identifier: GPL-2.0-or-later */
--/* Queue of folios definitions
-- *
-- * Copyright (C) 2024 Red Hat, Inc. All Rights Reserved.
-- * Written by David Howells (dhowells@redhat.com)
-- *
-- * See:
-- *
-- *	Documentation/core-api/folio_queue.rst
-- *
-- * for a description of the API.
-- */
--
--#ifndef _LINUX_FOLIO_QUEUE_H
--#define _LINUX_FOLIO_QUEUE_H
--
--#include <linux/folio_batch.h>
--#include <linux/mm.h>
--
--/*
-- * Segment in a queue of running buffers.  Each segment can hold a number of
-- * folios and a portion of the queue can be referenced with the ITER_FOLIOQ
-- * iterator.  The possibility exists of inserting non-folio elements into the
-- * queue (such as gaps).
-- *
-- * Explicit prev and next pointers are used instead of a list_head to make it
-- * easier to add segments to tail and remove them from the head without the
-- * need for a lock.
-- */
--struct folio_queue {
--	struct folio_batch	vec;		/* Folios in the queue segment */
--	u8			orders[FOLIO_BATCH_SIZE]; /* Order of each folio */
--	struct folio_queue	*next;		/* Next queue segment or NULL */
--	struct folio_queue	*prev;		/* Previous queue segment of NULL */
--	unsigned long		marks;		/* 1-bit mark per folio */
--	unsigned long		marks2;		/* Second 1-bit mark per folio */
--#if FOLIO_BATCH_SIZE > BITS_PER_LONG
--#error marks is not big enough
--#endif
--	unsigned int		rreq_id;
--	unsigned int		debug_id;
--};
--
--/**
-- * folioq_init - Initialise a folio queue segment
-- * @folioq: The segment to initialise
-- * @rreq_id: The request identifier to use in tracelines.
-- *
-- * Initialise a folio queue segment and set an identifier to be used in traces.
-- *
-- * Note that the folio pointers are left uninitialised.
-- */
--static inline void folioq_init(struct folio_queue *folioq, unsigned int rreq_id)
--{
--	folio_batch_init(&folioq->vec);
--	folioq->next = NULL;
--	folioq->prev = NULL;
--	folioq->marks = 0;
--	folioq->marks2 = 0;
--	folioq->rreq_id = rreq_id;
--	folioq->debug_id = 0;
--}
--
--/**
-- * folioq_nr_slots: Query the capacity of a folio queue segment
-- * @folioq: The segment to query
-- *
-- * Query the number of folios that a particular folio queue segment might hold.
-- * [!] NOTE: This must not be assumed to be the same for every segment!
-- */
--static inline unsigned int folioq_nr_slots(const struct folio_queue *folioq)
--{
--	return FOLIO_BATCH_SIZE;
--}
--
--/**
-- * folioq_count: Query the occupancy of a folio queue segment
-- * @folioq: The segment to query
-- *
-- * Query the number of folios that have been added to a folio queue segment.
-- * Note that this is not decreased as folios are removed from a segment.
-- */
--static inline unsigned int folioq_count(struct folio_queue *folioq)
--{
--	return folio_batch_count(&folioq->vec);
--}
--
--/**
-- * folioq_full: Query if a folio queue segment is full
-- * @folioq: The segment to query
-- *
-- * Query if a folio queue segment is fully occupied.  Note that this does not
-- * change if folios are removed from a segment.
-- */
--static inline bool folioq_full(struct folio_queue *folioq)
--{
--	//return !folio_batch_space(&folioq->vec);
--	return folioq_count(folioq) >= folioq_nr_slots(folioq);
--}
--
--/**
-- * folioq_is_marked: Check first folio mark in a folio queue segment
-- * @folioq: The segment to query
-- * @slot: The slot number of the folio to query
-- *
-- * Determine if the first mark is set for the folio in the specified slot in a
-- * folio queue segment.
-- */
--static inline bool folioq_is_marked(const struct folio_queue *folioq, unsigned int slot)
--{
--	return test_bit(slot, &folioq->marks);
--}
--
--/**
-- * folioq_mark: Set the first mark on a folio in a folio queue segment
-- * @folioq: The segment to modify
-- * @slot: The slot number of the folio to modify
-- *
-- * Set the first mark for the folio in the specified slot in a folio queue
-- * segment.
-- */
--static inline void folioq_mark(struct folio_queue *folioq, unsigned int slot)
--{
--	set_bit(slot, &folioq->marks);
--}
--
--/**
-- * folioq_unmark: Clear the first mark on a folio in a folio queue segment
-- * @folioq: The segment to modify
-- * @slot: The slot number of the folio to modify
-- *
-- * Clear the first mark for the folio in the specified slot in a folio queue
-- * segment.
-- */
--static inline void folioq_unmark(struct folio_queue *folioq, unsigned int slot)
--{
--	clear_bit(slot, &folioq->marks);
--}
--
--/**
-- * folioq_is_marked2: Check second folio mark in a folio queue segment
-- * @folioq: The segment to query
-- * @slot: The slot number of the folio to query
-- *
-- * Determine if the second mark is set for the folio in the specified slot in a
-- * folio queue segment.
-- */
--static inline bool folioq_is_marked2(const struct folio_queue *folioq, unsigned int slot)
--{
--	return test_bit(slot, &folioq->marks2);
--}
--
--/**
-- * folioq_mark2: Set the second mark on a folio in a folio queue segment
-- * @folioq: The segment to modify
-- * @slot: The slot number of the folio to modify
-- *
-- * Set the second mark for the folio in the specified slot in a folio queue
-- * segment.
-- */
--static inline void folioq_mark2(struct folio_queue *folioq, unsigned int slot)
--{
--	set_bit(slot, &folioq->marks2);
--}
--
--/**
-- * folioq_unmark2: Clear the second mark on a folio in a folio queue segment
-- * @folioq: The segment to modify
-- * @slot: The slot number of the folio to modify
-- *
-- * Clear the second mark for the folio in the specified slot in a folio queue
-- * segment.
-- */
--static inline void folioq_unmark2(struct folio_queue *folioq, unsigned int slot)
--{
--	clear_bit(slot, &folioq->marks2);
--}
--
--/**
-- * folioq_append: Add a folio to a folio queue segment
-- * @folioq: The segment to add to
-- * @folio: The folio to add
-- *
-- * Add a folio to the tail of the sequence in a folio queue segment, increasing
-- * the occupancy count and returning the slot number for the folio just added.
-- * The folio size is extracted and stored in the queue and the marks are left
-- * unmodified.
-- *
-- * Note that it's left up to the caller to check that the segment capacity will
-- * not be exceeded and to extend the queue.
-- */
--static inline unsigned int folioq_append(struct folio_queue *folioq, struct folio *folio)
--{
--	unsigned int slot = folioq->vec.nr++;
--
--	folioq->vec.folios[slot] = folio;
--	folioq->orders[slot] = folio_order(folio);
--	return slot;
--}
--
--/**
-- * folioq_append_mark: Add a folio to a folio queue segment
-- * @folioq: The segment to add to
-- * @folio: The folio to add
-- *
-- * Add a folio to the tail of the sequence in a folio queue segment, increasing
-- * the occupancy count and returning the slot number for the folio just added.
-- * The folio size is extracted and stored in the queue, the first mark is set
-- * and and the second and third marks are left unmodified.
-- *
-- * Note that it's left up to the caller to check that the segment capacity will
-- * not be exceeded and to extend the queue.
-- */
--static inline unsigned int folioq_append_mark(struct folio_queue *folioq, struct folio *folio)
--{
--	unsigned int slot = folioq->vec.nr++;
--
--	folioq->vec.folios[slot] = folio;
--	folioq->orders[slot] = folio_order(folio);
--	folioq_mark(folioq, slot);
--	return slot;
--}
--
--/**
-- * folioq_folio: Get a folio from a folio queue segment
-- * @folioq: The segment to access
-- * @slot: The folio slot to access
-- *
-- * Retrieve the folio in the specified slot from a folio queue segment.  Note
-- * that no bounds check is made and if the slot hasn't been added into yet, the
-- * pointer will be undefined.  If the slot has been cleared, NULL will be
-- * returned.
-- */
--static inline struct folio *folioq_folio(const struct folio_queue *folioq, unsigned int slot)
--{
--	return folioq->vec.folios[slot];
--}
--
--/**
-- * folioq_folio_order: Get the order of a folio from a folio queue segment
-- * @folioq: The segment to access
-- * @slot: The folio slot to access
-- *
-- * Retrieve the order of the folio in the specified slot from a folio queue
-- * segment.  Note that no bounds check is made and if the slot hasn't been
-- * added into yet, the order returned will be 0.
-- */
--static inline unsigned int folioq_folio_order(const struct folio_queue *folioq, unsigned int slot)
--{
--	return folioq->orders[slot];
--}
--
--/**
-- * folioq_folio_size: Get the size of a folio from a folio queue segment
-- * @folioq: The segment to access
-- * @slot: The folio slot to access
-- *
-- * Retrieve the size of the folio in the specified slot from a folio queue
-- * segment.  Note that no bounds check is made and if the slot hasn't been
-- * added into yet, the size returned will be PAGE_SIZE.
-- */
--static inline size_t folioq_folio_size(const struct folio_queue *folioq, unsigned int slot)
--{
--	return PAGE_SIZE << folioq_folio_order(folioq, slot);
--}
--
--/**
-- * folioq_clear: Clear a folio from a folio queue segment
-- * @folioq: The segment to clear
-- * @slot: The folio slot to clear
-- *
-- * Clear a folio from a sequence in a folio queue segment and clear its marks.
-- * The occupancy count is left unchanged.
-- */
--static inline void folioq_clear(struct folio_queue *folioq, unsigned int slot)
--{
--	folioq->vec.folios[slot] = NULL;
--	folioq_unmark(folioq, slot);
--	folioq_unmark2(folioq, slot);
--}
--
--#endif /* _LINUX_FOLIO_QUEUE_H */
-diff --git a/include/linux/netfs.h b/include/linux/netfs.h
-index 1723bcda86ba..31a80f4377d7 100644
---- a/include/linux/netfs.h
-+++ b/include/linux/netfs.h
-@@ -24,7 +24,6 @@
- enum netfs_sreq_ref_trace;
- typedef struct mempool mempool_t;
- struct fscache_occupancy;
--struct folio_queue;
+ config AMT
+ 	tristate "Automatic Multicast Tunneling (AMT)"
+-	depends on INET && IP_MULTICAST
++	depends on INET && IP_MULTICAST && IPV4
+ 	select NET_UDP_TUNNEL
+ 	help
+ 	  This allows one to create AMT(Automatic Multicast Tunneling)
+@@ -471,6 +471,7 @@ config NETKIT
  
- /**
-  * folio_start_private_2 - Start an fscache write on a folio.  [DEPRECATED]
-@@ -470,18 +469,6 @@ void netfs_end_io_write(struct inode *inode);
- int netfs_start_io_direct(struct inode *inode);
- void netfs_end_io_direct(struct inode *inode);
+ config NET_VRF
+ 	tristate "Virtual Routing and Forwarding (Lite)"
++	depends on IPV4
+ 	depends on IP_MULTIPLE_TABLES
+ 	depends on NET_L3_MASTER_DEV
+ 	depends on IPV6_MULTIPLE_TABLES || IPV6=n
+@@ -604,7 +605,7 @@ source "drivers/net/hyperv/Kconfig"
+ config NETDEVSIM
+ 	tristate "Simulated networking device"
+ 	depends on DEBUG_FS
+-	depends on INET
++	depends on INET && IPV4
+ 	depends on PSAMPLE || PSAMPLE=n
+ 	depends on PTP_1588_CLOCK_MOCK || PTP_1588_CLOCK_MOCK=n
+ 	select NET_DEVLINK
+diff --git a/drivers/net/ethernet/chelsio/Kconfig b/drivers/net/ethernet/chelsio/Kconfig
+index 96d7779cd2f0..c738820688e0 100644
+--- a/drivers/net/ethernet/chelsio/Kconfig
++++ b/drivers/net/ethernet/chelsio/Kconfig
+@@ -48,7 +48,7 @@ config CHELSIO_T1_1G
  
--/* Miscellaneous APIs. */
--struct folio_queue *netfs_folioq_alloc(unsigned int rreq_id, gfp_t gfp,
--				       unsigned int trace /*enum netfs_folioq_trace*/);
--void netfs_folioq_free(struct folio_queue *folioq,
--		       unsigned int trace /*enum netfs_trace_folioq*/);
--
--/* Buffer wrangling helpers API. */
--int netfs_alloc_folioq_buffer(struct address_space *mapping,
--			      struct folio_queue **_buffer,
--			      size_t *_cur_size, ssize_t size, gfp_t gfp);
--void netfs_free_folioq_buffer(struct folio_queue *fq);
--
- /* Writeback exclusion API. */
- bool netfs_wb_begin(struct netfs_inode *ictx, bool nowait);
- void netfs_wb_end(struct netfs_inode *ictx);
-diff --git a/include/trace/events/netfs.h b/include/trace/events/netfs.h
-index 41f7f0733bfa..e80c27c49ce2 100644
---- a/include/trace/events/netfs.h
-+++ b/include/trace/events/netfs.h
-@@ -199,7 +199,6 @@
- 	EM(netfs_streaming_filled_page,		"mod-streamw-f") \
- 	EM(netfs_streaming_cont_filled_page,	"mod-streamw-f+") \
- 	EM(netfs_folio_trace_abandon,		"abandon")	\
--	EM(netfs_folio_trace_alloc_buffer,	"alloc-buf")	\
- 	EM(netfs_folio_trace_cancel_copy,	"cancel-copy")	\
- 	EM(netfs_folio_trace_cancel_store,	"cancel-store")	\
- 	EM(netfs_folio_trace_end_copy,		"end-copy")	\
-@@ -222,7 +221,6 @@
- 	EM(netfs_folio_trace_not_locked,	"!locked")	\
- 	EM(netfs_folio_trace_not_under_wback,	"!wback")	\
- 	EM(netfs_folio_trace_pgpriv2_copy,	"pgpriv2-copy")	\
--	EM(netfs_folio_trace_put,		"put")		\
- 	EM(netfs_folio_trace_read,		"read")		\
- 	EM(netfs_folio_trace_read_done,		"read-done")	\
- 	EM(netfs_folio_trace_read_gaps,		"read-gaps")	\
-@@ -244,14 +242,6 @@
- 	EM(netfs_trace_donate_to_next,		"to-next")	\
- 	E_(netfs_trace_donate_to_deferred_next,	"defer-next")
+ config CHELSIO_T3
+ 	tristate "Chelsio Communications T3 10Gb Ethernet support"
+-	depends on PCI && INET
++	depends on PCI && INET && IPV4
+ 	select FW_LOADER
+ 	select MDIO
+ 	help
+diff --git a/drivers/net/ethernet/intel/Kconfig b/drivers/net/ethernet/intel/Kconfig
+index 780f113986ea..ce1c68e9cdf6 100644
+--- a/drivers/net/ethernet/intel/Kconfig
++++ b/drivers/net/ethernet/intel/Kconfig
+@@ -195,6 +195,7 @@ config IXGBE_IPSEC
+ 	bool "IPSec XFRM cryptography-offload acceleration"
+ 	depends on IXGBE
+ 	depends on XFRM_OFFLOAD
++	depends on IPV4 || !INET
+ 	default y
+ 	select XFRM_ALGO
+ 	help
+@@ -221,6 +222,7 @@ config IXGBEVF_IPSEC
+ 	bool "IPSec XFRM cryptography-offload acceleration"
+ 	depends on IXGBEVF
+ 	depends on XFRM_OFFLOAD
++	depends on IPV4 || !INET
+ 	default y
+ 	select XFRM_ALGO
+ 	help
+diff --git a/drivers/net/ethernet/marvell/prestera/Kconfig b/drivers/net/ethernet/marvell/prestera/Kconfig
+index f2f7663c3d10..257afbb3c434 100644
+--- a/drivers/net/ethernet/marvell/prestera/Kconfig
++++ b/drivers/net/ethernet/marvell/prestera/Kconfig
+@@ -7,6 +7,7 @@ config PRESTERA
+ 	tristate "Marvell Prestera Switch ASICs support"
+ 	depends on NET_SWITCHDEV && VLAN_8021Q
+ 	depends on BRIDGE || BRIDGE=n
++	depends on IPV4 || !INET
+ 	select NET_DEVLINK
+ 	select PHYLINK
+ 	help
+diff --git a/drivers/net/ethernet/mellanox/mlx5/core/Kconfig b/drivers/net/ethernet/mellanox/mlx5/core/Kconfig
+index 925ee25d05b4..99d998aa7e9b 100644
+--- a/drivers/net/ethernet/mellanox/mlx5/core/Kconfig
++++ b/drivers/net/ethernet/mellanox/mlx5/core/Kconfig
+@@ -12,6 +12,7 @@ config MLX5_CORE
+ 	depends on PTP_1588_CLOCK_OPTIONAL
+ 	depends on PCI_HYPERV_INTERFACE || !PCI_HYPERV_INTERFACE
+ 	depends on HWMON || !HWMON
++	depends on IPV4 || !INET
+ 	help
+ 	  Core driver for low level functionality of the ConnectX-4 and
+ 	  Connect-IB cards by Mellanox Technologies.
+@@ -28,7 +29,7 @@ config MLX5_FPGA
  
--#define netfs_folioq_traces					\
--	EM(netfs_trace_folioq_alloc_buffer,	"alloc-buf")	\
--	EM(netfs_trace_folioq_clear,		"clear")	\
--	EM(netfs_trace_folioq_delete,		"delete")	\
--	EM(netfs_trace_folioq_make_space,	"make-space")	\
--	EM(netfs_trace_folioq_rollbuf_init,	"roll-init")	\
--	E_(netfs_trace_folioq_read_progress,	"r-progress")
--
- #ifndef __NETFS_DECLARE_TRACE_ENUMS_ONCE_ONLY
- #define __NETFS_DECLARE_TRACE_ENUMS_ONCE_ONLY
+ config MLX5_CORE_EN
+ 	bool "Mellanox 5th generation network adapters (ConnectX series) Ethernet support"
+-	depends on NETDEVICES && ETHERNET && INET && PCI && MLX5_CORE
++	depends on NETDEVICES && ETHERNET && INET && PCI && MLX5_CORE && IPV4
+ 	select PAGE_POOL
+ 	select PAGE_POOL_STATS
+ 	select DIMLIB
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/Kconfig b/drivers/net/ethernet/mellanox/mlxsw/Kconfig
+index 2229a2694aa5..fb3028600724 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/Kconfig
++++ b/drivers/net/ethernet/mellanox/mlxsw/Kconfig
+@@ -53,6 +53,7 @@ config MLXSW_I2C
  
-@@ -270,7 +260,6 @@ enum netfs_sreq_ref_trace { netfs_sreq_ref_traces } __mode(byte);
- enum netfs_folio_trace { netfs_folio_traces } __mode(byte);
- enum netfs_collect_contig_trace { netfs_collect_contig_traces } __mode(byte);
- enum netfs_donate_trace { netfs_donate_traces } __mode(byte);
--enum netfs_folioq_trace { netfs_folioq_traces } __mode(byte);
+ config MLXSW_SPECTRUM
+ 	tristate "Mellanox Technologies Spectrum family support"
++	depends on IPV4 || !INET
+ 	depends on MLXSW_CORE && MLXSW_PCI && NET_SWITCHDEV && VLAN_8021Q
+ 	depends on PSAMPLE || PSAMPLE=n
+ 	depends on BRIDGE || BRIDGE=n
+diff --git a/drivers/net/ethernet/qlogic/Kconfig b/drivers/net/ethernet/qlogic/Kconfig
+index 1203353238e5..aed78311ecaf 100644
+--- a/drivers/net/ethernet/qlogic/Kconfig
++++ b/drivers/net/ethernet/qlogic/Kconfig
+@@ -29,6 +29,7 @@ config QLA3XXX
+ config QLCNIC
+ 	tristate "QLOGIC QLCNIC 1/10Gb Converged Ethernet NIC Support"
+ 	depends on PCI
++	depends on IPV4 || !INET
+ 	select FW_LOADER
+ 	help
+ 	  This driver supports QLogic QLE8240 and QLE8242 Converged Ethernet
+@@ -68,6 +69,7 @@ config QLCNIC_HWMON
  
- #endif
+ config NETXEN_NIC
+ 	tristate "NetXen Multi port (1/10) Gigabit Ethernet NIC"
++	depends on IPV4 || !INET
+ 	depends on PCI
+ 	select FW_LOADER
+ 	help
+diff --git a/drivers/net/ethernet/rocker/Kconfig b/drivers/net/ethernet/rocker/Kconfig
+index 2318811ff75a..2f994bd6f9bd 100644
+--- a/drivers/net/ethernet/rocker/Kconfig
++++ b/drivers/net/ethernet/rocker/Kconfig
+@@ -19,6 +19,7 @@ if NET_VENDOR_ROCKER
+ config ROCKER
+ 	tristate "Rocker switch driver (EXPERIMENTAL)"
+ 	depends on PCI && NET_SWITCHDEV && BRIDGE
++	depends on IPV4 || !INET
+ 	select CRC32
+ 	help
+ 	  This driver supports Rocker switch device.
+diff --git a/drivers/net/ethernet/sfc/Kconfig b/drivers/net/ethernet/sfc/Kconfig
+index e2898ec2e6e9..2bf5c2a185d2 100644
+--- a/drivers/net/ethernet/sfc/Kconfig
++++ b/drivers/net/ethernet/sfc/Kconfig
+@@ -18,6 +18,7 @@ if NET_VENDOR_SOLARFLARE
  
-@@ -294,7 +283,6 @@ netfs_sreq_ref_traces;
- netfs_folio_traces;
- netfs_collect_contig_traces;
- netfs_donate_traces;
--netfs_folioq_traces;
+ config SFC
+ 	tristate "Solarflare SFC9100/EF100-family support"
++	depends on IPV4 || !INET
+ 	depends on PCI
+ 	depends on PTP_1588_CLOCK_OPTIONAL
+ 	select MDIO
+diff --git a/drivers/net/ethernet/stmicro/stmmac/Kconfig b/drivers/net/ethernet/stmicro/stmmac/Kconfig
+index ab3c4cf96423..0b487786dad4 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/Kconfig
++++ b/drivers/net/ethernet/stmicro/stmmac/Kconfig
+@@ -1,6 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config STMMAC_ETH
+ 	tristate "STMicroelectronics Multi-Gigabit Ethernet driver"
++	depends on IPV4 || !INET
+ 	depends on HAS_IOMEM && HAS_DMA
+ 	depends on PTP_1588_CLOCK_OPTIONAL
+ 	depends on ETHTOOL_NETLINK
+diff --git a/drivers/net/ethernet/via/Kconfig b/drivers/net/ethernet/via/Kconfig
+index 00773f5e4d7e..dbb24d35dfbd 100644
+--- a/drivers/net/ethernet/via/Kconfig
++++ b/drivers/net/ethernet/via/Kconfig
+@@ -45,6 +45,7 @@ config VIA_RHINE_MMIO
  
- /*
-  * Now redefine the EM() and E_() macros to map the enums to the strings that
-@@ -773,29 +761,6 @@ TRACE_EVENT(netfs_collect_stream,
- 		      __entry->collected_to, __entry->issued_to)
- 	    );
+ config VIA_VELOCITY
+ 	tristate "VIA Velocity support"
++	depends on IPV4 || !INET
+ 	depends on (PCI || (OF_ADDRESS && OF_IRQ))
+ 	depends on HAS_DMA
+ 	select CRC32
+diff --git a/drivers/net/ppp/Kconfig b/drivers/net/ppp/Kconfig
+index 4047f13b83dc..c5200fae5e4a 100644
+--- a/drivers/net/ppp/Kconfig
++++ b/drivers/net/ppp/Kconfig
+@@ -160,6 +160,7 @@ config PPPOE_HASH_BITS
  
--TRACE_EVENT(netfs_folioq,
--	    TP_PROTO(const struct folio_queue *fq,
--		     enum netfs_folioq_trace trace),
--
--	    TP_ARGS(fq, trace),
--
--	    TP_STRUCT__entry(
--		    __field(unsigned int,		rreq)
--		    __field(unsigned int,		id)
--		    __field(enum netfs_folioq_trace,	trace)
--			     ),
--
--	    TP_fast_assign(
--		    __entry->rreq	= fq ? fq->rreq_id : 0;
--		    __entry->id		= fq ? fq->debug_id : 0;
--		    __entry->trace	= trace;
--			   ),
--
--	    TP_printk("R=%08x fq=%x %s",
--		      __entry->rreq, __entry->id,
--		      __print_symbolic(__entry->trace, netfs_folioq_traces))
--	    );
--
- TRACE_EVENT(netfs_read_progress_at,
- 	    TP_PROTO(const struct netfs_io_request *rreq),
+ config PPTP
+ 	tristate "PPP over IPv4 (PPTP)"
++	depends on IPV4 || !INET
+ 	depends on NET_IPGRE_DEMUX
+ 	select PPPOX
+ 	help
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/Kconfig b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/Kconfig
+index 32794c1eca23..01a5b3310e1e 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/Kconfig
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/Kconfig
+@@ -1,6 +1,7 @@
+ config BRCMFMAC
+ 	tristate "Broadcom FullMAC WLAN driver"
+ 	depends on CFG80211
++	depends on IPV4 || !INET
+ 	select BRCMUTIL
+ 	help
+ 	  This module adds support for wireless adapters based on Broadcom
+diff --git a/drivers/net/wireless/intel/iwlwifi/Kconfig b/drivers/net/wireless/intel/iwlwifi/Kconfig
+index 153a8368b412..3719fa0727c2 100644
+--- a/drivers/net/wireless/intel/iwlwifi/Kconfig
++++ b/drivers/net/wireless/intel/iwlwifi/Kconfig
+@@ -2,6 +2,7 @@
+ config IWLWIFI
+ 	tristate "Intel Wireless WiFi Next Gen AGN - Wireless-N/Advanced-N/Ultimate-N (iwlwifi) "
+ 	depends on PCI && HAS_IOMEM && CFG80211
++	depends on IPV4 || !INET
+ 	depends on IWLMEI || !IWLMEI
+ 	select FW_LOADER
+ 	help
+diff --git a/drivers/nvme/host/Kconfig b/drivers/nvme/host/Kconfig
+index 31974c7dd20c..6e119cf475de 100644
+--- a/drivers/nvme/host/Kconfig
++++ b/drivers/nvme/host/Kconfig
+@@ -82,7 +82,7 @@ config NVME_FC
  
-diff --git a/kernel/bpf/btf.c b/kernel/bpf/btf.c
-index d870bc5e50bc..63fd6156ffa7 100644
---- a/kernel/bpf/btf.c
-+++ b/kernel/bpf/btf.c
-@@ -6803,8 +6803,6 @@ static const struct bpf_raw_tp_null_args raw_tp_null_args[] = {
- 	/* amdgpu */
- 	{ "amdgpu_vm_bo_map", 0x1 },
- 	{ "amdgpu_vm_bo_unmap", 0x1 },
--	/* netfs */
--	{ "netfs_folioq", 0x1 },
- 	/* xfs from xfs_defer_pending_class */
- 	{ "xfs_defer_create_intent", 0x1 },
- 	{ "xfs_defer_cancel_list", 0x1 },
+ config NVME_TCP
+ 	tristate "NVM Express over Fabrics TCP host driver"
+-	depends on INET
++	depends on INET && IPV4
+ 	depends on BLOCK
+ 	select CRC32
+ 	select NET_CRC32C
+diff --git a/drivers/nvme/target/Kconfig b/drivers/nvme/target/Kconfig
+index 69bde270115e..f731a043f6a9 100644
+--- a/drivers/nvme/target/Kconfig
++++ b/drivers/nvme/target/Kconfig
+@@ -86,7 +86,7 @@ config NVME_TARGET_FCLOOP
+ 
+ config NVME_TARGET_TCP
+ 	tristate "NVMe over Fabrics TCP target support"
+-	depends on INET
++	depends on INET && IPV4
+ 	depends on NVME_TARGET
+ 	help
+ 	  This enables the NVMe TCP target support, which allows exporting NVMe
+diff --git a/drivers/scsi/cxgbi/cxgb3i/Kconfig b/drivers/scsi/cxgbi/cxgb3i/Kconfig
+index 143e881ec77e..abb4a462cb37 100644
+--- a/drivers/scsi/cxgbi/cxgb3i/Kconfig
++++ b/drivers/scsi/cxgbi/cxgb3i/Kconfig
+@@ -1,7 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config SCSI_CXGB3_ISCSI
+ 	tristate "Chelsio T3 iSCSI support"
+-	depends on PCI && INET
++	depends on PCI && INET && IPV4
+ 	select NETDEVICES
+ 	select ETHERNET
+ 	select NET_VENDOR_CHELSIO
+diff --git a/drivers/scsi/cxgbi/cxgb4i/Kconfig b/drivers/scsi/cxgbi/cxgb4i/Kconfig
+index dd1c8ff36b00..04b3e7b053dc 100644
+--- a/drivers/scsi/cxgbi/cxgb4i/Kconfig
++++ b/drivers/scsi/cxgbi/cxgb4i/Kconfig
+@@ -1,7 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config SCSI_CXGB4_ISCSI
+ 	tristate "Chelsio T4 iSCSI support"
+-	depends on PCI && INET
++	depends on PCI && INET && IPV4
+ 	depends on PTP_1588_CLOCK_OPTIONAL
+ 	depends on THERMAL || !THERMAL
+ 	depends on ETHERNET
+diff --git a/drivers/target/iscsi/Kconfig b/drivers/target/iscsi/Kconfig
+index 70d76f3dd693..362edff80c15 100644
+--- a/drivers/target/iscsi/Kconfig
++++ b/drivers/target/iscsi/Kconfig
+@@ -1,7 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config ISCSI_TARGET
+ 	tristate "SCSI Target Mode Stack"
+-	depends on INET
++	depends on INET && IPV4
+ 	select CRC32
+ 	select CRYPTO
+ 	select CRYPTO_HASH
+diff --git a/drivers/target/iscsi/cxgbit/Kconfig b/drivers/target/iscsi/cxgbit/Kconfig
+index bdeefa75f29e..7a2e585d76d7 100644
+--- a/drivers/target/iscsi/cxgbit/Kconfig
++++ b/drivers/target/iscsi/cxgbit/Kconfig
+@@ -1,7 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config ISCSI_TARGET_CXGB4
+ 	tristate "Chelsio iSCSI target offload driver"
+-	depends on ISCSI_TARGET && CHELSIO_T4 && INET
++	depends on ISCSI_TARGET && CHELSIO_T4 && INET && IPV4
+ 	select CHELSIO_LIB
+ 	help
+ 	To compile this driver as module, choose M here: the module
+diff --git a/fs/Kconfig b/fs/Kconfig
+index e05917adcd60..2f492fa3a3fb 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -358,6 +358,7 @@ config GRACE_PERIOD
+ 
+ config LOCKD
+ 	tristate
++	depends on IPV4 || !INET
+ 	depends on FILE_LOCKING
+ 	select CRC32
+ 	select GRACE_PERIOD
+diff --git a/fs/afs/Kconfig b/fs/afs/Kconfig
+index 682bd8ec2c10..e7ed46426f81 100644
+--- a/fs/afs/Kconfig
++++ b/fs/afs/Kconfig
+@@ -1,7 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config AFS_FS
+ 	tristate "Andrew File System support (AFS)"
+-	depends on INET
++	depends on INET && IPV4
+ 	select AF_RXRPC
+ 	select DNS_RESOLVER
+ 	select NETFS_SUPPORT
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 6bb30543eff0..52efd3664d21 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -1,7 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config NFS_FS
+ 	tristate "NFS client support"
+-	depends on INET && FILE_LOCKING && MULTIUSER
++	depends on INET && FILE_LOCKING && MULTIUSER && IPV4
+ 	select CRC32
+ 	select LOCKD
+ 	select SUNRPC
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index ffb76761d6a8..153a9918214d 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -1,7 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config NFSD
+ 	tristate "NFS server support"
+-	depends on INET
++	depends on INET && IPV4
+ 	depends on FILE_LOCKING
+ 	depends on FSNOTIFY
+ 	select CRC32
+diff --git a/net/Kconfig b/net/Kconfig
+index 76ab44aa439a..ca86f20540dd 100644
+--- a/net/Kconfig
++++ b/net/Kconfig
+@@ -135,9 +135,12 @@ config INET
+ if INET
+ source "net/ipv4/Kconfig"
+ source "net/ipv6/Kconfig"
+-source "net/netlabel/Kconfig"
+ source "net/mptcp/Kconfig"
+ 
++if IPV4
++source "net/netlabel/Kconfig"
++endif # if IPV4
++
+ endif # if INET
+ 
+ config NETWORK_SECMARK
+@@ -232,6 +235,7 @@ config BRIDGE_NETFILTER
+ 	depends on BRIDGE
+ 	depends on NETFILTER && INET
+ 	depends on NETFILTER_ADVANCED
++	depends on IPV4
+ 	select NETFILTER_FAMILY_BRIDGE
+ 	select SKB_EXTENSIONS
+ 	help
+@@ -384,7 +388,7 @@ menu "Network testing"
+ 
+ config NET_PKTGEN
+ 	tristate "Packet Generator (USE WITH CAUTION)"
+-	depends on INET && PROC_FS
++	depends on INET && IPV4 && PROC_FS
+ 	help
+ 	  This module will inject preconfigured packets, at a configurable
+ 	  rate, out of a given interface.  It is used for network interface
+@@ -451,7 +455,7 @@ config LWTUNNEL
+ 
+ config LWTUNNEL_BPF
+ 	bool "Execute BPF program as route nexthop action"
+-	depends on LWTUNNEL && INET
++	depends on LWTUNNEL && INET && IPV4
+ 	default y if LWTUNNEL=y
+ 	help
+ 	  Allows to run BPF programs as a nexthop action following a route
+@@ -473,7 +477,7 @@ config NET_IEEE8021Q_HELPERS
+ 
+ config NET_SELFTESTS
+ 	def_tristate PHYLIB
+-	depends on PHYLIB && INET
++	depends on PHYLIB && INET && IPV4
+ 
+ config NET_SOCK_MSG
+ 	bool
+diff --git a/net/batman-adv/Kconfig b/net/batman-adv/Kconfig
+index 58c408b7a7d9..5c66122c137c 100644
+--- a/net/batman-adv/Kconfig
++++ b/net/batman-adv/Kconfig
+@@ -33,7 +33,7 @@ config BATMAN_ADV_BATMAN_V
+ 
+ config BATMAN_ADV_BLA
+ 	bool "Bridge Loop Avoidance"
+-	depends on BATMAN_ADV && INET
++	depends on BATMAN_ADV && INET && IPV4
+ 	select CRC16
+ 	select NET_CRC32C
+ 	default y
+@@ -46,7 +46,7 @@ config BATMAN_ADV_BLA
+ 
+ config BATMAN_ADV_DAT
+ 	bool "Distributed ARP Table"
+-	depends on BATMAN_ADV && INET
++	depends on BATMAN_ADV && INET && IPV4
+ 	default y
+ 	help
+ 	  This option enables DAT (Distributed ARP Table), a DHT based
+@@ -56,7 +56,7 @@ config BATMAN_ADV_DAT
+ 
+ config BATMAN_ADV_MCAST
+ 	bool "Multicast optimisation"
+-	depends on BATMAN_ADV && INET && !(BRIDGE=m && BATMAN_ADV=y)
++	depends on BATMAN_ADV && INET && !(BRIDGE=m && BATMAN_ADV=y) && IPV4
+ 	default y
+ 	help
+ 	  This option enables the multicast optimisation which aims to
+diff --git a/net/bridge/Kconfig b/net/bridge/Kconfig
+index 318715c8fc9b..c7737d3ebac8 100644
+--- a/net/bridge/Kconfig
++++ b/net/bridge/Kconfig
+@@ -36,7 +36,7 @@ config BRIDGE
+ config BRIDGE_IGMP_SNOOPING
+ 	bool "IGMP/MLD snooping"
+ 	depends on BRIDGE
+-	depends on INET
++	depends on INET && IPV4
+ 	default y
+ 	help
+ 	  If you say Y here, then the Ethernet bridge will be able selectively
+diff --git a/net/bridge/netfilter/Kconfig b/net/bridge/netfilter/Kconfig
+index 4fd5a6ea26b4..31e388ce503f 100644
+--- a/net/bridge/netfilter/Kconfig
++++ b/net/bridge/netfilter/Kconfig
+@@ -28,6 +28,7 @@ endif # NF_TABLES_BRIDGE
+ config NF_CONNTRACK_BRIDGE
+ 	tristate "IPv4/IPV6 bridge connection tracking support"
+ 	depends on NF_CONNTRACK
++	depends on IPV4 || !INET
+ 	default n
+ 	help
+ 	  Connection tracking keeps a record of what packets have passed
+@@ -188,7 +189,7 @@ config BRIDGE_EBT_VLAN
+ #
+ config BRIDGE_EBT_ARPREPLY
+ 	tristate "ebt: arp reply target support"
+-	depends on BRIDGE_NF_EBTABLES && INET
++	depends on BRIDGE_NF_EBTABLES && INET && IPV4
+ 	help
+ 	  This option adds the arp reply target, which allows
+ 	  automatically sending arp replies to arp requests.
+diff --git a/net/ipv4/Kconfig b/net/ipv4/Kconfig
+index 301b47660305..51bf05d9770c 100644
+--- a/net/ipv4/Kconfig
++++ b/net/ipv4/Kconfig
+@@ -2,6 +2,9 @@
+ #
+ # IP configuration
+ #
++config IPV4
++	def_bool y
++
+ config IP_MULTICAST
+ 	bool "IP: multicasting"
+ 	help
+@@ -62,7 +65,7 @@ config IP_FIB_TRIE_STATS
+ 
+ config IP_MULTIPLE_TABLES
+ 	bool "IP: policy routing"
+-	depends on IP_ADVANCED_ROUTER
++	depends on IPV4 && IP_ADVANCED_ROUTER
+ 	select FIB_RULES
+ 	help
+ 	  Normally, a router decides what to do with a received packet based
+@@ -105,6 +108,7 @@ config IP_ROUTE_CLASSID
+ 
+ config IP_PNP
+ 	bool "IP: kernel level autoconfiguration"
++	depends on IPV4
+ 	help
+ 	  This enables automatic configuration of IP addresses of devices and
+ 	  of the routing table during kernel boot, based on either information
+@@ -161,6 +165,7 @@ config IP_PNP_RARP
+ 
+ config NET_IPIP
+ 	tristate "IP: tunneling"
++	depends on IPV4
+ 	select INET_TUNNEL
+ 	select NET_IP_TUNNEL
+ 	help
+@@ -185,12 +190,14 @@ config NET_IPGRE_DEMUX
+ 
+ config NET_IP_TUNNEL
+ 	tristate
++	depends on IPV4
+ 	select DST_CACHE
+ 	select GRO_CELLS
+ 	default n
+ 
+ config NET_IPGRE
+ 	tristate "IP: GRE tunnels over IP"
++	depends on IPV4
+ 	depends on NET_IPGRE_DEMUX
+ 	select NET_IP_TUNNEL
+ 	help
+@@ -219,7 +226,7 @@ config IP_MROUTE_COMMON
+ 
+ config IP_MROUTE
+ 	bool "IP: multicast routing"
+-	depends on IP_MULTICAST
++	depends on IP_MULTICAST && IPV4
+ 	select IP_MROUTE_COMMON
+ 	help
+ 	  This is used if you want your machine to act as a router for IP
+@@ -267,6 +274,7 @@ config IP_PIMSM_V2
+ 
+ config SYN_COOKIES
+ 	bool "IP: TCP syncookie support"
++	depends on IPV4
+ 	help
+ 	  Normal TCP/IP networking is open to an attack known as "SYN
+ 	  flooding". This denial-of-service attack prevents legitimate remote
+@@ -303,6 +311,7 @@ config SYN_COOKIES
+ 
+ config NET_IPVTI
+ 	tristate "Virtual (secure) IP: tunneling"
++	depends on IPV4
+ 	select INET_TUNNEL
+ 	select NET_IP_TUNNEL
+ 	select XFRM
+@@ -315,11 +324,13 @@ config NET_IPVTI
+ 
+ config NET_UDP_TUNNEL
+ 	tristate
++	depends on IPV4
+ 	select NET_IP_TUNNEL
+ 	default n
+ 
+ config NET_FOU
+ 	tristate "IP: Foo (IP protocols) over UDP"
++	depends on IPV4
+ 	select NET_UDP_TUNNEL
+ 	help
+ 	  Foo over UDP allows any IP protocol to be directly encapsulated
+@@ -338,6 +349,7 @@ config NET_FOU_IP_TUNNELS
+ 
+ config INET_AH
+ 	tristate "IP: AH transformation"
++	depends on IPV4
+ 	select XFRM_AH
+ 	help
+ 	  Support for IPsec AH (Authentication Header).
+@@ -353,6 +365,7 @@ config INET_AH
+ 
+ config INET_ESP
+ 	tristate "IP: ESP transformation"
++	depends on IPV4
+ 	select XFRM_ESP
+ 	help
+ 	  Support for IPsec ESP (Encapsulating Security Payload).
+@@ -393,6 +406,7 @@ config INET_ESPINTCP
+ 
+ config INET_IPCOMP
+ 	tristate "IP: IPComp transformation"
++	depends on IPV4
+ 	select INET_XFRM_TUNNEL
+ 	select XFRM_IPCOMP
+ 	help
+@@ -747,7 +761,7 @@ config TCP_AO
+ 	select CRYPTO_LIB_SHA1
+ 	select CRYPTO_LIB_SHA256
+ 	select CRYPTO_LIB_UTILS
+-	depends on 64BIT # seq-number extension needs WRITE_ONCE(u64)
++	depends on IPV4 && 64BIT # seq-number extension needs WRITE_ONCE(u64)
+ 	help
+ 	  TCP-AO specifies the use of stronger Message Authentication Codes (MACs),
+ 	  protects against replays for long-lived TCP connections, and
+@@ -758,6 +772,7 @@ config TCP_AO
+ 
+ config TCP_MD5SIG
+ 	bool "TCP: MD5 Signature Option support (RFC2385)"
++	depends on IPV4
+ 	select CRYPTO_LIB_MD5
+ 	select CRYPTO_LIB_UTILS
+ 	help
+diff --git a/net/ipv4/Makefile b/net/ipv4/Makefile
+index 06e21c26b76f..8b148be79fa4 100644
+--- a/net/ipv4/Makefile
++++ b/net/ipv4/Makefile
+@@ -3,18 +3,17 @@
+ # Makefile for the Linux TCP/IP (INET) layer.
+ #
+ 
+-obj-y     := route.o inetpeer.o protocol.o \
+-	     ip_input.o ip_fragment.o ip_forward.o ip_options.o \
+-	     ip_output.o ip_sockglue.o inet_hashtables.o \
+-	     inet_timewait_sock.o inet_connection_sock.o \
+-	     tcp.o tcp_input.o tcp_output.o tcp_timer.o tcp_ipv4.o \
++obj-y     := inetpeer.o protocol.o inet_hashtables.o inet_timewait_sock.o \
++	     inet_connection_sock.o tcp.o tcp_input.o tcp_output.o tcp_timer.o \
+ 	     tcp_minisocks.o tcp_cong.o tcp_metrics.o tcp_fastopen.o \
+-	     tcp_recovery.o tcp_ulp.o \
+-	     tcp_offload.o tcp_plb.o datagram.o raw.o udp.o \
+-	     udp_offload.o arp.o icmp.o devinet.o af_inet.o igmp.o \
+-	     fib_frontend.o fib_semantics.o fib_trie.o fib_notifier.o \
+-	     inet_fragment.o ping.o ip_tunnel_core.o gre_offload.o \
+-	     metrics.o netlink.o nexthop.o udp_tunnel_stub.o
++	     tcp_recovery.o tcp_ulp.o tcp_offload.o tcp_plb.o raw.o udp.o \
++	     udp_offload.o af_inet.o inet_fragment.o ping.o ip_tunnel_core.o \
++	     gre_offload.o metrics.o netlink.o nexthop.o udp_tunnel_stub.o
++
++obj-$(CONFIG_IPV4) += route.o ip_input.o ip_fragment.o ip_forward.o ip_options.o \
++		      ip_sockglue.o tcp_ipv4.o datagram.o icmp.o arp.o devinet.o \
++		      igmp.o fib_notifier.o ip_output.o fib_frontend.o \
++		      fib_semantics.o fib_trie.o
+ 
+ obj-$(CONFIG_NET_IP_TUNNEL) += ip_tunnel.o
+ obj-$(CONFIG_SYSCTL) += sysctl_net_ipv4.o
+diff --git a/net/ipv4/netfilter/Kconfig b/net/ipv4/netfilter/Kconfig
+index 7dc9772fe2d8..ab4fa6a6d453 100644
+--- a/net/ipv4/netfilter/Kconfig
++++ b/net/ipv4/netfilter/Kconfig
+@@ -4,7 +4,7 @@
+ #
+ 
+ menu "IP: Netfilter Configuration"
+-	depends on INET && NETFILTER
++	depends on INET && NETFILTER && IPV4
+ 
+ config NF_DEFRAG_IPV4
+ 	tristate
+diff --git a/net/ipv6/Kconfig b/net/ipv6/Kconfig
+index c3806c6ac96f..f83efc1505cc 100644
+--- a/net/ipv6/Kconfig
++++ b/net/ipv6/Kconfig
+@@ -47,6 +47,7 @@ config IPV6_OPTIMISTIC_DAD
+ config INET6_AH
+ 	tristate "IPv6: AH transformation"
+ 	select XFRM_AH
++	depends on IPV4
+ 	help
+ 	  Support for IPsec AH (Authentication Header).
+ 
+@@ -61,6 +62,7 @@ config INET6_AH
+ 
+ config INET6_ESP
+ 	tristate "IPv6: ESP transformation"
++	depends on IPV4
+ 	select XFRM_ESP
+ 	help
+ 	  Support for IPsec ESP (Encapsulating Security Payload).
+@@ -101,6 +103,7 @@ config INET6_ESPINTCP
+ 
+ config INET6_IPCOMP
+ 	tristate "IPv6: IPComp transformation"
++	depends on IPV4
+ 	select INET6_XFRM_TUNNEL
+ 	select XFRM_IPCOMP
+ 	help
+@@ -111,6 +114,7 @@ config INET6_IPCOMP
+ 
+ config IPV6_MIP6
+ 	tristate "IPv6: Mobility"
++	depends on IPV4
+ 	select XFRM
+ 	help
+ 	  Support for IPv6 Mobility described in RFC 3775.
+@@ -119,6 +123,7 @@ config IPV6_MIP6
+ 
+ config IPV6_ILA
+ 	tristate "IPv6: Identifier Locator Addressing (ILA)"
++	depends on IPV4
+ 	depends on NETFILTER
+ 	select DST_CACHE
+ 	select LWTUNNEL
+@@ -149,6 +154,7 @@ config INET6_TUNNEL
+ 
+ config IPV6_VTI
+ 	tristate "Virtual (secure) IPv6: tunneling"
++	depends on IPV4
+ 	select IPV6_TUNNEL
+ 	select NET_IP_TUNNEL
+ 	select XFRM
+@@ -161,6 +167,7 @@ config IPV6_VTI
+ 
+ config IPV6_SIT
+ 	tristate "IPv6: IPv6-in-IPv4 tunnel (SIT driver)"
++	depends on IPV4
+ 	select INET_TUNNEL
+ 	select NET_IP_TUNNEL
+ 	select IPV6_NDISC_NODETYPE
+@@ -198,6 +205,7 @@ config IPV6_NDISC_NODETYPE
+ 
+ config IPV6_TUNNEL
+ 	tristate "IPv6: IP-in-IPv6 tunnel (RFC2473)"
++	depends on IPV4
+ 	select INET6_TUNNEL
+ 	select DST_CACHE
+ 	select GRO_CELLS
+@@ -209,6 +217,7 @@ config IPV6_TUNNEL
+ 
+ config IPV6_GRE
+ 	tristate "IPv6: GRE tunnel"
++	depends on IPV4
+ 	select IPV6_TUNNEL
+ 	select NET_IP_TUNNEL
+ 	depends on NET_IPGRE_DEMUX
+@@ -256,7 +265,7 @@ config IPV6_SUBTREES
+ 
+ config IPV6_MROUTE
+ 	bool "IPv6: multicast routing"
+-	depends on IPV6
++	depends on IPV4 && IPV6
+ 	select IP_MROUTE_COMMON
+ 	help
+ 	  Support for IPv6 multicast forwarding.
+@@ -285,7 +294,7 @@ config IPV6_PIMSM_V2
+ 
+ config IPV6_SEG6_LWTUNNEL
+ 	bool "IPv6: Segment Routing Header encapsulation support"
+-	depends on IPV6
++	depends on IPV4 && IPV6
+ 	select LWTUNNEL
+ 	select DST_CACHE
+ 	select IPV6_MULTIPLE_TABLES
+@@ -316,7 +325,7 @@ config IPV6_SEG6_BPF
+ 
+ config IPV6_RPL_LWTUNNEL
+ 	bool "IPv6: RPL Source Routing Header support"
+-	depends on IPV6
++	depends on IPV4 && IPV6
+ 	select LWTUNNEL
+ 	select DST_CACHE
+ 	help
+@@ -327,7 +336,7 @@ config IPV6_RPL_LWTUNNEL
+ 
+ config IPV6_IOAM6_LWTUNNEL
+ 	bool "IPv6: IOAM Pre-allocated Trace insertion support"
+-	depends on IPV6
++	depends on IPV4 && IPV6
+ 	select LWTUNNEL
+ 	select DST_CACHE
+ 	help
+diff --git a/net/ipv6/netfilter/Kconfig b/net/ipv6/netfilter/Kconfig
+index 81daf82ddc2d..f99a2176bf3d 100644
+--- a/net/ipv6/netfilter/Kconfig
++++ b/net/ipv6/netfilter/Kconfig
+@@ -4,7 +4,7 @@
+ #
+ 
+ menu "IPv6: Netfilter Configuration"
+-	depends on INET && IPV6 && NETFILTER
++	depends on INET && IPV6 && NETFILTER && IPV4
+ 
+ # old sockopt interface and eval loop
+ config IP6_NF_IPTABLES_LEGACY
+diff --git a/net/l2tp/Kconfig b/net/l2tp/Kconfig
+index 0de178d5baba..e92cf6d94135 100644
+--- a/net/l2tp/Kconfig
++++ b/net/l2tp/Kconfig
+@@ -5,7 +5,7 @@
+ 
+ menuconfig L2TP
+ 	tristate "Layer Two Tunneling Protocol (L2TP)"
+-	depends on INET
++	depends on INET && IPV4
+ 	select NET_UDP_TUNNEL
+ 	help
+ 	  Layer Two Tunneling Protocol
+diff --git a/net/mptcp/Kconfig b/net/mptcp/Kconfig
+index be71fc9b4638..c5b660fdda4c 100644
+--- a/net/mptcp/Kconfig
++++ b/net/mptcp/Kconfig
+@@ -1,7 +1,7 @@
+ 
+ config MPTCP
+ 	bool "MPTCP: Multipath TCP"
+-	depends on INET
++	depends on INET && IPV4
+ 	select SKB_EXTENSIONS
+ 	select CRYPTO_LIB_SHA256
+ 	select CRYPTO_LIB_UTILS
+diff --git a/net/netfilter/Kconfig b/net/netfilter/Kconfig
+index 09874c26fd13..857af95fbb48 100644
+--- a/net/netfilter/Kconfig
++++ b/net/netfilter/Kconfig
+@@ -1,6 +1,6 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ menu "Core Netfilter Configuration"
+-	depends on INET && NETFILTER
++	depends on INET && IPV4 && NETFILTER
+ 
+ config NETFILTER_INGRESS
+ 	bool "Netfilter ingress support"
+diff --git a/net/netfilter/ipset/Kconfig b/net/netfilter/ipset/Kconfig
+index 6c4d54758106..e6537c842a45 100644
+--- a/net/netfilter/ipset/Kconfig
++++ b/net/netfilter/ipset/Kconfig
+@@ -1,7 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ menuconfig IP_SET
+ 	tristate "IP set support"
+-	depends on INET && NETFILTER
++	depends on INET && IPV4 && NETFILTER
+ 	select NETFILTER_NETLINK
+ 	help
+ 	  This option adds IP set support to the kernel.
+diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
+index 7724cb44e6de..fb09218d84d0 100644
+--- a/net/netfilter/ipvs/Kconfig
++++ b/net/netfilter/ipvs/Kconfig
+@@ -4,7 +4,7 @@
+ #
+ menuconfig IP_VS
+ 	tristate "IP virtual server support"
+-	depends on INET && NETFILTER
++	depends on INET && NETFILTER && IPV4
+ 	depends on (NF_CONNTRACK || NF_CONNTRACK=n)
+ 	help
+ 	  IP Virtual Server support will let you build a high-performance
+diff --git a/net/rds/Kconfig b/net/rds/Kconfig
+index f007730aa2bb..af5632b37dd7 100644
+--- a/net/rds/Kconfig
++++ b/net/rds/Kconfig
+@@ -17,6 +17,7 @@ config RDS_RDMA
+ config RDS_TCP
+ 	tristate "RDS over TCP"
+ 	depends on RDS
++	depends on IPV4
+ 	depends on IPV6 || !IPV6
+ 	help
+ 	  Allow RDS to use TCP as a transport.
+diff --git a/net/rxrpc/Kconfig b/net/rxrpc/Kconfig
+index 2cebb666dc07..2029d2d1065f 100644
+--- a/net/rxrpc/Kconfig
++++ b/net/rxrpc/Kconfig
+@@ -5,7 +5,7 @@
+ 
+ config AF_RXRPC
+ 	tristate "RxRPC session sockets"
+-	depends on INET
++	depends on INET && IPV4
+ 	select CRYPTO
+ 	select CRYPTO_LIB_DES if RXKAD
+ 	select KEYS
+diff --git a/net/sched/Kconfig b/net/sched/Kconfig
+index 6ddff028b81a..bb782822c3fb 100644
+--- a/net/sched/Kconfig
++++ b/net/sched/Kconfig
+@@ -807,7 +807,7 @@ config NET_ACT_SKBEDIT
+ 
+ config NET_ACT_CSUM
+ 	tristate "Checksum Updating"
+-	depends on NET_CLS_ACT && INET
++	depends on NET_CLS_ACT && INET && IPV4
+ 	select NET_CRC32C
+ 	help
+ 	  Say Y here to update some common checksum after some direct
+diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
+index fc989a3791b3..eb3e2bf1ec3a 100644
+--- a/net/sctp/Kconfig
++++ b/net/sctp/Kconfig
+@@ -5,7 +5,7 @@
+ 
+ menuconfig IP_SCTP
+ 	tristate "The SCTP Protocol"
+-	depends on INET
++	depends on INET && IPV4
+ 	select CRYPTO_LIB_SHA1
+ 	select CRYPTO_LIB_SHA256
+ 	select CRYPTO_LIB_UTILS
+diff --git a/net/smc/Kconfig b/net/smc/Kconfig
+index 277ef504bc26..faac6586b848 100644
+--- a/net/smc/Kconfig
++++ b/net/smc/Kconfig
+@@ -1,7 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config SMC
+ 	tristate "SMC socket protocol family"
+-	depends on INET && INFINIBAND && DIBS
++	depends on INET && IPV4 && INFINIBAND && DIBS
+ 	help
+ 	  SMC-R provides a "sockets over RDMA" solution making use of
+ 	  RDMA over Converged Ethernet (RoCE) technology to upgrade
+diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
+index e7808e5714dc..58e6f6db3100 100644
+--- a/net/sunrpc/Kconfig
++++ b/net/sunrpc/Kconfig
+@@ -1,7 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config SUNRPC
+ 	tristate
+-	depends on MULTIUSER
++	depends on MULTIUSER && IPV4
+ 
+ config SUNRPC_GSS
+ 	tristate
+diff --git a/net/tipc/Kconfig b/net/tipc/Kconfig
+index 18f62135e47b..2db479597c79 100644
+--- a/net/tipc/Kconfig
++++ b/net/tipc/Kconfig
+@@ -30,6 +30,7 @@ config TIPC_MEDIA_IB
+ config TIPC_MEDIA_UDP
+ 	bool "IP/UDP media type support"
+ 	depends on TIPC
++	depends on IPV4
+ 	select NET_UDP_TUNNEL
+ 	default y
+ 	help
+diff --git a/net/xfrm/Kconfig b/net/xfrm/Kconfig
+index 4a62817a88f8..203188b05be4 100644
+--- a/net/xfrm/Kconfig
++++ b/net/xfrm/Kconfig
+@@ -4,7 +4,7 @@
+ #
+ config XFRM
+ 	bool
+-	depends on INET
++	depends on INET && IPV4
+ 	select GRO_CELLS
+ 	select SKB_EXTENSIONS
+ 
+@@ -13,6 +13,7 @@ config XFRM_OFFLOAD
+ 
+ config XFRM_ALGO
+ 	tristate
++	depends on IPV4
+ 	select XFRM
+ 	select CRYPTO
+ 	select CRYPTO_AEAD
+@@ -23,6 +24,7 @@ if INET
+ config XFRM_USER
+ 	tristate "Transformation user configuration interface"
+ 	select XFRM_ALGO
++	depends on IPV4
+ 	help
+ 	  Support for Transformation(XFRM) user configuration interface
+ 	  like IPsec used by native Linux tools.
+@@ -42,7 +44,7 @@ config XFRM_USER_COMPAT
+ 
+ config XFRM_INTERFACE
+ 	tristate "Transformation virtual interface"
+-	depends on XFRM && IPV6
++	depends on XFRM && IPV4 && IPV6
+ 	help
+ 	  This provides a virtual interface to route IPsec traffic.
+ 
+@@ -83,6 +85,7 @@ config XFRM_STATISTICS
+ # RFC 8221 lists as MUST be implemented.
+ config XFRM_AH
+ 	tristate
++	depends on IPV4
+ 	select XFRM_ALGO
+ 	select CRYPTO
+ 	select CRYPTO_HMAC
+@@ -92,6 +95,7 @@ config XFRM_AH
+ # algorithms that RFC 8221 lists as MUST be implemented.
+ config XFRM_ESP
+ 	tristate
++	depends on IPV4
+ 	select XFRM_ALGO
+ 	select CRYPTO
+ 	select CRYPTO_AES
+@@ -105,12 +109,14 @@ config XFRM_ESP
+ 
+ config XFRM_IPCOMP
+ 	tristate
++	depends on IPV4
+ 	select XFRM_ALGO
+ 	select CRYPTO
+ 	select CRYPTO_DEFLATE
+ 
+ config NET_KEY
+ 	tristate "PF_KEY sockets (deprecated)"
++	depends on IPV4
+ 	select XFRM_ALGO
+ 	help
+ 	  PF_KEYv2 socket family, compatible to KAME ones.
+diff --git a/security/smack/Kconfig b/security/smack/Kconfig
+index 5a8dfad469c3..b4e6d0168bd1 100644
+--- a/security/smack/Kconfig
++++ b/security/smack/Kconfig
+@@ -3,6 +3,7 @@ config SECURITY_SMACK
+ 	bool "Simplified Mandatory Access Control Kernel Support"
+ 	depends on NET
+ 	depends on INET
++	depends on IPV4
+ 	depends on SECURITY
+ 	select NETLABEL
+ 	select SECURITY_NETWORK
+-- 
+2.55.0
 
