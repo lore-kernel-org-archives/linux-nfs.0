@@ -1,61 +1,61 @@
-Received: from mail-pj2-f43.google.com (mail-pj2-f43.google.com [74.125.227.171])
+Received: from mail-pz2-f37.google.com (mail-pz2-f37.google.com [74.125.228.37])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7368335DA63
-	for <linux-nfs@vger.kernel.org>; Wed, 30 Sep 2026 05:52:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.171
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5AA3935DA63
+	for <linux-nfs@vger.kernel.org>; Wed, 30 Sep 2026 05:54:23 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.228.37
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790747565; cv=none; b=H8BrgAiy20CbQY0U2iPCfviuytJiDYhNscfdNzG/Rh+s+CPYavIzMaTeohpJ8l+4iJeMbalRWO9Brc15nxfeiQQg3fCWMbbJywHYxvccULyNvzyXd6FwNCxtg1ioXFiuwNnWdYdEllExCAJAdEdz4SNdBtD/KUQm3UtrFpUG7Cw=
+	t=1790747664; cv=none; b=l1nmgxlUWTlHEhZZ0zMb/M8a0FGIH8hq25uoOCKWW1XRfHdPxUW/dcEu0BTfggSe0gg2uE/ASEaQAyyW8GbQMwhC2Na1ETk7uVw7vgtQXafC3HiNPbskTnhA+2jXXjqPr2+lqXVhXfThKGZ2ZjXg76aKgcu4zAOX0LYMDg5R5yI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790747565; c=relaxed/simple;
-	bh=6wb43ADyYognT1p/xJV+cSqzctJv1mOQTI6afHoezOY=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Jnu893caSkWpNFBz4Om4UtADSDomN20cTdZ6cEle9XC04/FRVBHDRB85N8JeK7z3vAyfES2vkAnByUTuyjHwcmE960RYKPALvFq49XonoQjgi2Ouo4ZQf2i41399tzF6UwKMICC5yCjq6sMGpsKEsxcBnUdloJo4C0BsTO0m/hk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=AKlVf/N4; arc=none smtp.client-ip=74.125.227.171
+	s=arc-20240116; t=1790747664; c=relaxed/simple;
+	bh=naJhusjE/f0eW+uX9wPNfOeMPyPLkR630Hor3GTspqE=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=BJj5NZWlskYI8/lgdBCAveZwvk6JhRckNOB0kU4pjba7hDViwtD6JXSd5V5n6T1zz1LvDil4m3zAPaWXIZ59+Hely0eCksksW3NF7g/MPtA7wEx53UjAHBa34QqXE77HyhoEe9kwNC5ycfaCiMy7/iP9asCIFVIVK25+G2x9OO4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=HC9rqPBm; arc=none smtp.client-ip=74.125.228.37
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="AKlVf/N4"
-Received: by mail-pj2-f43.google.com with SMTP id d9443c01a7336-2d747ee1f38so22060665ad.2
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2026 22:52:44 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HC9rqPBm"
+Received: by mail-pz2-f37.google.com with SMTP id 41be03b00d2f7-cc7d1802740so520647a12.1
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2026 22:54:23 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1790747564; x=1791352364; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1790747662; x=1791352462; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=6U/GCi21xHgKGW6jXj/fbh8CwDtK6EGodKCafzOq+uc=;
-        b=AKlVf/N41Djj1tnQKLWDfW4gTgb0bxD5qiLbMpy9TYqB3ZvFy2zfWHzw0COJSWMTV9
-         SaoJhOSk1K0250cElvnRTRNtASB0DRpaqj5mXWSkI9hQpEQr5GUCDSA1KJbqeqjnp7zg
-         mfi0g4amjOHX51SknKtwqsUWb8IVXJzSFfHaPDC32czq69YYbXx5+zSOyFROKbiTX+Q7
-         HZshpPtIb7tJWHFZ1glkZI1M22nueph5fnsdJEJ9TbNKlNk2p0xeUC1dedyZigOAy1If
-         yNUNnhO/uUdYnS2etleJHis6rlMhgrpijI99r6mrkN0rSWQ2QAg7YJNK9LcP/nc4+Fy2
-         b3LQ==
+        bh=JdRHwJkMD5tGOAkcVqHgpo9CQbKqWdCWhh5iMZs6XYc=;
+        b=HC9rqPBmnCAxy1xU1LeMKOHqB2mOTkni57cDt3Dzy3pYl2aj/+7qe95+PDJVA7B3Oh
+         MZ+DT6pLIaChaFw4VA+1/44yi89gBTdsPd506QrQ3J72Je5pyPOBypgff4SL/c7V4APP
+         SBjq/bjAVwMJ+3LSCVzKH5LtQly5ATkY8kr9qbkiIZeqKe5H6mtkyL5DYgmt1R04O9xt
+         XnNfQi4rXEBBfhrLhn6JZLG6WcskiwVWtOqrRxx/f7tbFi3ugywEKSCh0JjmIQiTp2Wk
+         TcrgTyr+7s6ukF9ZAMsBE/+MDkbiLYpff3xHno+PeTfcRzhNRv7jNtIYNUVntSwr20P4
+         rEqQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790747564; x=1791352364;
+        d=1e100.net; s=20260707; t=1790747662; x=1791352462;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=6U/GCi21xHgKGW6jXj/fbh8CwDtK6EGodKCafzOq+uc=;
-        b=QU1iJ0k+A8K4JkNRe8JzCahiUstbxgzr3UjzxxvhZikaLa9m6cf5xyMYwOG7G4bMxs
-         8RaND38Itt17J6qRcKSSdArdSDJw+l2UbgVHAhh78mrwxs5VZGmItjSzGu0uxko/W6F+
-         H52ajdsI76lpBOf9BvoyKky9ZFAN7k99aRfWF+dOzKPZqNMru3ae4HaMkaR195hreHpR
-         ixfqTEBLuD4kL4yJmhivGfJirkySbsL5F7k2Pdulp1Fx+1SOewpxuQ2NnWWEqOCuzgHX
-         UEkz920N5CO8DzYJC+dJS9SZXatLlfOHw9USDOLh84Xd8NZ8ACPPEvWeHUl5juZx+KYK
-         P6Mw==
-X-Gm-Message-State: AFq9FYLJvQ2x7YsxMhJUqZRc23eYE1ifz+cXj7eTTpw9lwXJBNNfW6Co
-	yJbO/zYoJLBxOF7Mur0eOyny4Wb3kqphvHF65pPtRiJ+75nqNJSK7iJ0+eIAvPPTWcQ=
-X-Gm-Gg: AYBFou0RG9B+kb+WGeE+c6BWIk5F5KHQmFTZ+NGACBVbnKBxoTTNXLkTvBWyvJDDev0
-	ODdFbRE5otvvixBtfj8eXD39VoJPIEs0E3blfI0uLa1Q20EvXO9eaJdNVUQ5Im75CadCz4Of/Lm
-	7/aDiPG70e2z2N0znJ6H8yL2lVUlaZJ08xRk5x2ZeqNlTwZkSnPRrk2f/pd50to/Dx0IC/NQp/B
-	bjiXbS4Npete9zyj8fZH9srRD3Z/lWK7wY2oNsJSLH+8xxeZMPeQw4BlSsaNEsliXExMadN1MDi
-	fjVJvXEeBVBXI+zq2Vg+qK6+Cud1oBgRjiiTdQXmC+4YUXjHYnotyi1+PgCsqV4MekNnfWvjk9d
-	EvT4rrFHm5q/PmthPrSXJiyn01QDXSOppvqozGE9Fl85BST1Si6P51vpO2ymko7D0T6r4fiF0gp
-	JgZHX1uB2TkPQ5TWFwoP5E24bs3oe3nedxrssE2jhdkXILI3/KEBujJb3FAHHJQMm+DxpaAkzEs
-	jbprUb1m+3cL3c=
-X-Received: by 2002:a17:903:234c:b0:2dd:c100:7cc1 with SMTP id d9443c01a7336-2e2e4a27f5fmr3664145ad.61.1790747563591;
-        Tue, 29 Sep 2026 22:52:43 -0700 (PDT)
+        bh=JdRHwJkMD5tGOAkcVqHgpo9CQbKqWdCWhh5iMZs6XYc=;
+        b=Xk+3j1bBAy4ofLTKthMJ6XdJnv1JkVXK/CnLgGH2gqjCqaRfynmTShoN0JknKGqWLs
+         zucxiaXSoUy/tkEUrb5GQXW0Uc1GSeSfg9XpynxO3TWmaab+WDASt/6vFWJsd7qXwHjv
+         tfdZOVBnF5qruO7SHm6N4DWc9CgIkGFoks8R3cAl4UdkdPt8ikPAyvFZptCHRCyt/hZ0
+         PCtfr/BEegYWuEWdeUiGlzkMkznNNa+u4QELEaONQns1jw2AVVtrguA+2J1+Hv5pMJr0
+         PWB0WYiZEN28aqFVdqxsq5HkuuU3GluBWz9mLReXzR1vZoXdL/tVoJxui0+T142DnYv1
+         pxJw==
+X-Gm-Message-State: AFuF++nnazFgfAlsS5AqISLxZxNYpMfTNmMB9gumMpaLdZuFsWHsOf15
+	gx003sv/P/3snNe9KM1ncXagewtmFN9x/vppaPe5Ux6oizuFk3gjsMebvT2UBHiyDEk=
+X-Gm-Gg: AYBFou2XCo7BGmnJCSV15qiSag5+bMcjWKutiQ8zDPhck0PPtraIXndzc2eJqe+AhnX
+	HB8yv2dmwW54YnFaZGqZPF+MW9lxrFV14xl2Juv8A3YqS5hWbtKwwMkfwYN3kNM7teLssRcK9bk
+	bX5HShuYN/nUHDK3H/9dA7JxrYZcylHBrcekH7Hu7ZHrs/kno7Za09/Wlrs79f6r2uEEUphgbpu
+	mLqcnDRFppAPeADHYrwJ/hWHUEZCLb4F0odp4cu+/n/IbqVetc2jBmNsSZ/8TeVdzmt9W/OFlLt
+	ItnlPnKKMuCLAbR5y1g+b8AmNSWF/q+4nS3zKxMY66JcjueuVAiDfORq3mYbZ/pSQOx8o4wpAxm
+	gA5Jxw2Mb+Gjz2q33yAyIIrCfeOgtdgxMvYMgR2G8P2Ddxb05lDcxPFOSFWB/xA5m8WuzLaW9D+
+	NfmWQiuoN4EqDBAq16/VkCiFYO7xJDgpTAdSyspG2u8d4hT0NuBPg/ZMt6wNHfDnLJyin+N5kWf
+	vtML8LnLLKIRwg=
+X-Received: by 2002:a05:6a20:260a:b0:3dd:a006:55a3 with SMTP id adf61e73a8af0-3de9e7ebbb7mr357536637.49.1790747662598;
+        Tue, 29 Sep 2026 22:54:22 -0700 (PDT)
 Received: from bintable.tail83b815.ts.net ([123.215.20.10])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2e2e5b89e29sm1423445ad.23.2026.09.29.22.52.41
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-88722f72a19sm255099b3a.6.2026.09.29.22.54.20
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 29 Sep 2026 22:52:43 -0700 (PDT)
+        Tue, 29 Sep 2026 22:54:22 -0700 (PDT)
 From: Jinpyo Lee <bint4b13@gmail.com>
 To: linux-nfs@vger.kernel.org
 Cc: Chuck Lever <cel@kernel.org>,
@@ -64,12 +64,12 @@ Cc: Chuck Lever <cel@kernel.org>,
 	Olga Kornievskaia <okorniev@redhat.com>,
 	Dai Ngo <Dai.Ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>,
-	Willy Tarreau <w@1wt.eu>,
+	Greg KH <gregkh@linuxfoundation.org>,
 	bobtobabz@gmail.com,
 	Jinpyo Lee <bint4b13@gmail.com>
-Subject: [PATCH v2] nfsd: hash only the supplied client-owner bytes
-Date: Wed, 30 Sep 2026 14:52:35 +0900
-Message-ID: <20260930055235.135503-1-bint4b13@gmail.com>
+Subject: [PATCH v2] nfsd: bounds-check opnum before testing spo_must_allow
+Date: Wed, 30 Sep 2026 14:54:14 +0900
+Message-ID: <20260930055414.136306-1-bint4b13@gmail.com>
 X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -79,60 +79,69 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-NFSv4 client-owner strings are variable-length XDR opaque data, but
-clientstr_hashval() unconditionally hashes eight bytes. A valid owner
-shorter than eight bytes therefore makes the reclaim lookup read beyond
-the allocated string.
+The NFSv4 decoder represents an unknown wire operation as OP_ILLEGAL,
+whose value is outside struct nfs4_op_map. nfsd4_spo_must_allow() passes
+that value directly to test_bit(), causing an out-of-bounds bitmap read
+when an invalid operation follows a successfully processed operation.
 
-An ordinary NFSv4.1 client can supply a one-byte owner and issue
-EXCHANGE_ID, CREATE_SESSION, and RECLAIM_COMPLETE during startup grace.
-Generic KASAN reported a one-byte slab out-of-bounds read immediately
-after the one-byte allocation in nfsd4_find_reclaim_client(). No
-disclosure of the adjacent bytes or other production security impact was
-demonstrated.
+For an SP4_MACH_CRED client, a set out-of-bounds bit also marks the
+compound as spo_must_allowed. Validation used the nfsd-testing base
+recorded below. On the unmodified KASAN kernel with an empty allow bitmap,
+the out-of-bounds bit changed the export security-flavor result from
+NFS4ERR_WRONGSEC to NFS4_OK for 64 of 72 client instances. A krb5i canary
+read then succeeded through a sec=krb5p export. The current allocation
+layout did not produce a KASAN report for this invalid bitmap access.
 
-Pass name.len to opaque_hashval() so hashing is bounded by the length
-validated by the XDR decoder.
+Reject operation numbers above LAST_NFS4_OP before testing the bitmap.
 
-Validation used the nfsd-testing base recorded below. On the unmodified
-KASAN kernel, the one-byte client completed EXCHANGE_ID, CREATE_SESSION,
-and RECLAIM_COMPLETE, then triggered the slab-out-of-bounds read in
-nfsd4_find_reclaim_client(). With this patch, the same sequence returned
-status 0 with two operations and produced no KASAN report.
+AUTH_NULL reaches the invalid load. The observed security-flavor decision
+change additionally requires a valid SP4_MACH_CRED client and matching GSS
+credentials; ordinary POSIX permissions remained enforced. Source
+reproducers and complete logs are available privately on request. A legal
+OP_CLOSE control also allowed the preceding read, so the read itself is
+not claimed as a capability unique to this OOB.
 
-The full KASAN kernel built with CONFIG_WERROR without a compiler
+With this patch, none of the 72 client instances caused the export
+security-flavor check to return NFS4_OK for the invalid-operation probe,
+and the canary read was denied. The legal OP_CLOSE and empty-bitmap
+controls retained their expected behavior, and no KASAN report was
+observed. The full KASAN kernel built with CONFIG_WERROR without a compiler
 diagnostic. Basic NFSv4.2 and NFSv3 read/write/unmount smoke tests also
-passed. A source reproducer and the complete KASAN logs are available
-privately on request.
+passed.
 
 The vulnerability research and validation were conducted by members of
 the Tobabz team as part of the Best of the Best 15th program.
 
-Fixes: 6b1891052a3f ("nfsd: make nfs4_client_reclaim use an xdr_netobj instead of a fixed char array")
+Fixes: ed94164398c9 ("nfsd: implement machine credential support for some operations")
 Assisted-by: LLM
 Signed-off-by: Jinpyo Lee <bint4b13@gmail.com>
 ---
 Changes in v2:
-- Describe the baseline and patched runtime results explicitly.
+- Make the current policy impact and controls self-contained.
 - Add full-build and NFSv4.2/NFSv3 smoke-test results.
 - No code changes.
 
- fs/nfsd/nfs4state.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfsd/nfs4proc.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index bbc16dd22..e818c032a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1649,7 +1649,7 @@ static unsigned int clientid_hashval(u32 id)
- 
- static unsigned int clientstr_hashval(struct xdr_netobj name)
- {
--	return opaque_hashval(name.data, 8) & CLIENT_HASH_MASK;
-+	return opaque_hashval(name.data, name.len) & CLIENT_HASH_MASK;
- }
- 
- /*
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 7df60abfb..f9e119cd0 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -4293,9 +4293,10 @@ bool nfsd4_spo_must_allow(struct svc_rqst *rqstp)
+ 	opiter = resp->opcnt;
+ 	while (opiter < argp->opcnt) {
+ 		this = &argp->ops[opiter++];
+-		if (test_bit(this->opnum, allow->u.longs) &&
+-			cstate->clp->cl_mach_cred &&
+-			nfsd4_mach_creds_match(cstate->clp, rqstp)) {
++		if (this->opnum <= LAST_NFS4_OP &&
++		    test_bit(this->opnum, allow->u.longs) &&
++		    cstate->clp->cl_mach_cred &&
++		    nfsd4_mach_creds_match(cstate->clp, rqstp)) {
+ 			cstate->spo_must_allowed = true;
+ 			return true;
+ 		}
 
 base-commit: 32eb1a60b456980761cf7a9cee8f907fdc08afb8
 -- 
