@@ -1,169 +1,252 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 789E24CEE70
-	for <linux-nfs@vger.kernel.org>; Wed, 30 Sep 2026 12:46:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4F7623B19C6
+	for <linux-nfs@vger.kernel.org>; Wed, 30 Sep 2026 12:53:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790772418; cv=none; b=S/JRlYxj2nPLHW+QXZNEPEagFfMtWwUVlQFJFbo0ddCQ093xPDAWyaIey9DHDTRfmKfgJ8obvWOxw55nkRvzza1yT1t/eUhAOwu6WRUwgRTmCui4MXc4PfltP7UR8RDL+x0ld/yuG3/s8H+CZAUh7RveMvrD4gXZke5STaBnNrI=
+	t=1790772797; cv=none; b=RWNBtQr4rTVqWDgg3aLv2i9wBl2qXjacn5nMnT4L6wsm3ff7Yitcv7W4Jmi5xiRJyfDcFIyZwD8jTs4GRVq3ddEr0mm0xsPZhgPqduuSMbrqgQqsGIh9pfRN5PpOMYcCYgMTxPpSFKDfhQ+EWQJzxKlu9WeWLwtwHfRoBnFjQR8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790772418; c=relaxed/simple;
-	bh=qlxnA9e0nzSkzShYJJgc2p4g/oV9x9/5PFEuQDnGesA=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=OOdkmgSx0XSEtJ+/XajemRK+0TXlgw31Ag6bnnoGBTZGPbmokL+Z4oxhyhL7Ttx8MturuxYzQ1Tu9HswA6MTw7OBJjtL+R1uH/d+uYQNSkVywsOBAr5EL4oQjiTG0ZknkVxst7DXl8wCT8kval/nqLUvbQ+ZM6q9jS4jSmUXGX4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jiOa7ksl; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1790772797; c=relaxed/simple;
+	bh=B7xG+aQYDK86UXE3XPqHVl/NYCscZ0PsgSv3PpmhsP4=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=tYb35HUV3TqoHV9Ky571y5EA1DjEaZCbLRTargyhfoORIDPt31f8f28WkER/68aTcG3bJgjz34eUuuL+4LIya2zLruihaAQGYoe0rbcjvrEpc9PrN9F113pycyG+joQXW9Ybvvit8etn1DpOnw5+Aq4/Hj+tUKZwJ+2Lkjyqat4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=dDuGlOqI; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jiOa7ksl"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8DD5F1F000FF;
-	Wed, 30 Sep 2026 12:46:49 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790772409;
-	bh=H8QNeZY2e28yB8DQ7gaPV8xdlg9APpaxDW+KxOf6suc=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=jiOa7ksloC6lzxLyY8urqjFtMmTkDQBX0+AjHblHNrY3D38W5xejSS7m49HejWoe6
-	 Cia1Oke9l18A94ndLZeSbJaa3+10HXhoKCXdwO4cSEf13VNe9Qzz6yOphDxbm4uaW/
-	 atwWJ5WTDm8Kn9P4i4K4+5BraeI3gGh3vmlUxvBoZyMQvKsmzrklbxDN0paseMp7PR
-	 wE5eoGyYgfsDmEI6Nma3imS4zUWEjZfQ6mYwsHJ97iHwmfvZA4+Wb0GBOMcmqya3FY
-	 CCV/AXRfyPde3kuzgZfdL5jToMSRWhLqRDMfJT/XoYC1bjNgF3HuW003Szitq5U2fd
-	 AT8xFuq/NZFEA==
-Date: Wed, 30 Sep 2026 08:46:48 -0400
-From: Mike Snitzer <snitzer@kernel.org>
-To: Chuck Lever <cel@kernel.org>
-Cc: hch@lst.de, Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 01/10] NFSD: interlock the use of NFSD_IO_DIRECT for NFS
- READ and WRITE
-Message-ID: <ar0EuAKO0VvD8kT4@kernel.org>
-References: <20260929173423.16149-1-snitzer@kernel.org>
- <20260929173423.16149-2-snitzer@kernel.org>
- <37625d4e-9d86-4651-bbc8-73c1c589942d@app.fastmail.com>
- <arwYBaemyvLoG2sT@hammerspace.com>
- <d5d7635a-fe7a-4664-8797-b581c23cdf9c@app.fastmail.com>
- <arxKM8RkjwYaPzwL@kernel.org>
- <0cbfd399-45cd-4df2-888a-bdf8a2935ab0@app.fastmail.com>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="dDuGlOqI"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1790772785;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=nVFUXCDetrutGMr/TSlAC1L9g7la/tYoO/yvXUUcUHM=;
+	b=dDuGlOqIlPyz6q1pVZM1efRN8S0yeFuZ3cDDQYnPWoRmtZccFFudMVXfGF82qE00c5nS6V
+	B0bSSDxVMdWTIdPssMuvQZOlsoS2qF8YntjdtXhG3ZMVE6dDAKr+oA/gdFCqsdFQEPFnzU
+	iPIc+fqWtRR0wWpbtPmTXoIbwEFo1BU=
+Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-481--GF_FqMMPOSdygku3Jfcyg-1; Wed,
+ 30 Sep 2026 08:53:01 -0400
+X-MC-Unique: -GF_FqMMPOSdygku3Jfcyg-1
+X-Mimecast-MFC-AGG-ID: -GF_FqMMPOSdygku3Jfcyg_1790772779
+Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 2FC6E19540DC;
+	Wed, 30 Sep 2026 12:52:58 +0000 (UTC)
+Received: from warthog.com (unknown [10.44.32.54])
+	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 84CDF1800361;
+	Wed, 30 Sep 2026 12:52:50 +0000 (UTC)
+From: David Howells <dhowells@redhat.com>
+To: Christian Brauner <christian@brauner.io>
+Cc: David Howells <dhowells@redhat.com>,
+	Paulo Alcantara <pc@manguebit.org>,
+	Matthew Wilcox <willy@infradead.org>,
+	Namjae Jeon <linkinjeon@kernel.org>,
+	Marc Dionne <marc.dionne@auristor.com>,
+	Stefan Metzmacher <metze@samba.org>,
+	Eric Van Hensbergen <ericvh@kernel.org>,
+	Dominique Martinet <asmadeus@codewreck.org>,
+	Ilya Dryomov <idryomov@gmail.com>,
+	netfs@lists.linux.dev,
+	linux-afs@lists.infradead.org,
+	linux-cifs@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	ceph-devel@vger.kernel.org,
+	v9fs@lists.linux.dev,
+	linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v14 00/10] netfs, iov_iter: Use a chain of bio_vec arrays instead of folio_queue
+Date: Wed, 30 Sep 2026 13:52:35 +0100
+Message-ID: <20260930125247.3232130-1-dhowells@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <0cbfd399-45cd-4df2-888a-bdf8a2935ab0@app.fastmail.com>
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
 
-On Tue, Sep 29, 2026 at 05:20:03PM -0700, Chuck Lever wrote:
-> 
-> 
-> On Tue, Sep 29, 2026, at 4:30 PM, Mike Snitzer wrote:
-> > On Tue, Sep 29, 2026 at 04:17:50PM -0700, Chuck Lever wrote:
-> >> 
-> >> 
-> >> On Tue, Sep 29, 2026, at 12:56 PM, Mike Snitzer wrote:
-> >> > On Tue, Sep 29, 2026 at 11:27:05AM -0700, Chuck Lever wrote:
-> >> >> 
-> >> >> On Tue, Sep 29, 2026, at 10:34 AM, Mike Snitzer wrote:
-> >> >> > Now that NFSD supports NFSD_IO_DIRECT for both READ and WRITE it is
-> >> >> > much safer to avoid needless buffered vs direct contention if/when
-> >> >> > only one of them has been configured to use NFSD_IO_DIRECT.
-> >> >> >
-> >> >> > Mixing direct and buffered I/O to the same file causes needless page
-> >> >> > cache invalidation and writeback, so although io_cache_read and
-> >> >> > io_cache_write remain separate interfaces, writing either one adjusts
-> >> >> > the other so that READ and WRITE are never left on opposite sides of
-> >> >> > the buffered/direct divide:
-> >> >> 
-> >> >> Jeff and I have been discussing making DIRECT the default for WRITEs and
-> >> >> BUFFERED the default for READs. This patch takes us in the opposite
-> >> >> direction.
-> >> >> 
-> >> >> Nothing here convinces me that mixing the modes is a bad thing to do.
-> >> >> "Needless page cache invalidation" needs some demonstration, and it
-> >> >> needs to show why the right thing to do is make it impossible to mix
-> >> >> modes rather than explore the issue as one or more bugs that can be
-> >> >> fixed. Or... why not let admins explore this for themselves? Where is
-> >> >> the hazard and why does it need to be forbidden by the admin UI?
-> >> >
-> >> > The basis for the interlock is that O_DIRECT mode is intended to avoid
-> >> > bloating memory with page cache and the excess CPU burn of managing
-> >> > the page cache.  Using read caching in conjunction with O_DIRECT
-> >> > writes knee-caps the wins of O_DIRECT.
-> >> 
-> >> Jeff and I have never seen that, and it's a counterintuitive result.
-> >> Buffered READ with DIRECT WRITE seems to work very well and the server
-> >> is easily capable of managing the page cache in this case, since
-> >> reclaiming a clean page doesn't mean having to flush dirty data.
-> >> Evicting clean pages is not slow.
-> >> 
-> >> So I'd like to see a quantification of the penalties in this mixed
-> >> mode before adjudicating it as a hazard. That is, you might be right,
-> >> but so far I've seen no direct evidence that having a substantial page
-> >> cache presence is a general deficit for WRITEs. If there are certain
-> >> cases where even caching READs is a problem, then by all means, set the
-> >> READ IO mode to DIRECT too in those cases.
-> >> 
-> >> I don't see this as an argument for forcing the server's mode setting
-> >> in every case.
-> >
-> > Yes, I understand and I've dropped the interlock patch in v2 (just posted).
-> 
-> Please give reviewers a chance to digest and review, as requested in
-> Documentation/filesystems/nfs/nfsd-maintainer-entry-profile.rst :
-> 
-> "As always, please avoid reposting series revisions more than once
->  every 24 hours."
-> 
-> Trust me, it saves a lot of confusion.
-> 
-> 
-> >> Based on this description, it seems to me the client has full visibility
-> >> of the data to be pushed back and how it's sharded, it has information
-> >> about the network RTT (that's where the real throughput impact is for
-> >> COMMIT), and it has control over the selection of UNSTABLE vs. FILE_SYNC.
-> >> 
-> >> The problem here might be that when a large WRITE payload is sharded
-> >> across multiple servers, the client still thinks it is sending them via
-> >> UNSTABLE WRITES to one server, and plans for only one COMMIT after the
-> >> server completes the WRITEs.
-> >> 
-> >> But for the pNFS scenario, the client sends one UNSTABLE WRITE followed
-> >> by a COMMIT to each server. If the sharded WRITES are all single RPCs
-> >> to distinct servers, then they should each be FILE_SYNC.
-> >> 
-> >> The client can be smarter about how it writes data back to multiple
-> >> servers, can't it?
-> >
-> > When the server is operating in direct mode it isn't something exposed
-> > to the client.  That the client could be smarter and/or already has
-> > adequate controls to achieve the same FILE_SYNC result is besides the
-> > point.  The point is, if the server has already done the work then it
-> > should, within reason, convey as much back to the client to elide
-> > COMMIT work that isn't needed.
-> 
-> Your point assumes the other patches in the series are applied to make
-> DIRECT UNSTABLE WRITEs completely persistent.
-> 
-> The current IOCB flags do not include IOCB_DSYNC on a DIRECT UNSTABLE
-> WRITE for a very good reason: that makes them slower and more expensive.
-> The current server logic is working exactly as we designed it last year,
-> and I'm not enthusiastic about changing that. I expect at least one
-> other reviewer will have a similar reaction, once he sobers up from
-> ALPSS.
+Hi Christian,
 
-You haven't reviewed the changes, yet you are passing judgement.
+Could you pull these patches please into your vfs-7.4.netfs branch?  This
+is the third of four (maybe five) batches, in this case replacing the
+folio_queue struct with a bvecq struct, and is based upon the
+aforementioned branch.  This was split from v11 of a larger netfslib
+series[1].  I've fixed some issues spotted by sashiko[5].
 
-Please review.  I think you'll find I have only made things better.
+This series adds a new type, struct bvecq.  This points to a bounded array
+of bio_vecs with information about how to clean up the memory they point
+to.  A number of bvecq structs can be linked together to form a chain and
+an iterator type, ITER_BVECQ, is provided that can be pointed at the chain
+and can walk it.  Netfslib is then switched to use the new type and
+folio_queue is removed along with ITER_FOLIOQ.
 
-And as for Mr ALPSS, the "NFSD: do not use direct I/O for a READ
-smaller than its alignment" and "NFSD: only split a direct-mode WRITE
-for a worthwhile direct middle" patches were motivated by his feedback
-last year! (I have been carrying them since then, albeit in a less
-polished form than I have now made available in this series).
+This is intended as a more flexible replacement for struct folio_queue as
+the latter can only point to whole folios and cannot point to partial pages
+that might be extracted from an ITER_IOVEC/ITER_UBUF for direct or
+unbuffered I/O purposes.
 
-> If the client wants to avoid the COMMIT, the standing rule is to send a
-> FILE_SYNC WRITE. That benefits all WRITE I/O modes on the server.
+These patches make a more or less straight swap between struct folio_queue
+and struct bvecq.  The change is not quite trivial as the folio_queue
+struct contains a folio_batch struct and is basically a list of whole
+folios only, whereas the new bvecq struct is a chain of bio_vec arrays.
 
-I haven't precluded DIRECT UNSTABLE WRITE from operating as it does
-now _at all_.
+A further patchset will switch the netfslib unbuffered I/O code to using
+bvecqs and then the bvecqs will be passed down into the filesystem rather
+than passing an iterator.
 
-I've merely exposed additional optional controls that require opt-in.
-And provided a natural evolution to what we have that has proven
-beneficial.
+The primary reason behind making this change is so that bvecq chains can be
+used in the assembly of network filesystem messages.  Netfslib can furnish
+the filesystem with bvecq chains representing the data buffers that need to
+be read or written and then, for example, for a write RPC, the filesystem
+can add protocol headers and trailers onto the chain without the need to
+copy it and can also glue multiple buffers together to form compound
+operations and/or perform sparse operations.
+
+One option here is to add two more fields to the bvecq struct, one to
+increase the offset of the first bio_vec and one to decrease the length of
+the last, thereby allowing a bvecq struct to point at a slice of another
+bio_vec array without having to copy the array - but at the cost of adding
+one or two extra conditional ops when getting the offset or length of a
+segment.
+
+I have in-progress patch sets to rewrite the cifs transport[2] and the ceph
+and rbd transport[3] to make use of bvecq chains.  With the cifs transport,
+the idea is to extend the SMB message concept further up the stack and have
+the PDU creation routines attach individual RPC requests blobs that can
+then be automatically chained by the transport when a compound is being
+assembled for transmission.
+
+With the ceph transport, the idea is to convert all the different data
+containers it has into just passing around bvecqs.  These can then be
+chained together in order to transmit them.
+
+This improves efficiency in the TCP stack as we no longer need to cork the
+TCP socket, call sendmsg() multiple times and then uncork; rather we can
+preassemble the message in a bvecq chain and just send the entire messsage
+in one shot with a single sendmsg() and reduce the number of places doing
+loops.  This got an improvement in nfsd performance[4].
+
+I also have some changes on the TCP receive side for the cifs transport
+(which is also likely applicable to the ceph TCP transport) whereby the
+receive buffers are 'spliced' out into a bvecq in the cifs I/O thread
+rather than being copied.  Using a bvecq chain here is advantageous as we
+don't know in advance how many segments we're going to have.  This allows
+us firstly to avoid copying data with the socket lock held (thus holding up
+sendmsg) and secondly to avoid copying data in the I/O thread (copying can
+be offloaded to the app thread).  The last time I benchmarked this, it
+appeared to get fio reading tests on cifs a 5% speedup.
+
+Unfortunately, this doesn't help AFS much as that uses a UDP transport, but
+it might also help 9P, at least with its TCP transport.
+
+The patches can also be found here:
+
+	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=netfs-next-3
+
+Thanks,
+David
+
+Changes
+=======
+ver #14)
+- Fix issues from Sashiko[6]:
+  - In iter_bvecq_get_pages(), use folio_get() not get_pages.
+  - In netfs_read_set_unlock_at(), netfs_read_unlock_folios(),
+    netfs_pgpriv2_unlock_copied_folios() and
+    netfs_writeback_unlock_folios(), skip wholly unoccupied bvecqs.
+  - Remove some now-unused trace bits.
+
+ver #13)
+- Fix issues from Sashiko[5]:
+  - In iter_bvecq_get_pages(), need to add bv_offset when calling
+    want_pages_array().
+  - In iter_bvecq_get_pages(), make the getting of a ref on the page
+    dependent on the page being non-slab.
+  - In bvecq_alloc_one(), use mempool_alloc(), not
+     mempool_alloc_noreserve().
+  - In bvecq_expand_buffer(), don't apply __GFP_NORETRY|__GFP_WARN for
+    order 0 allocations.
+  - Drop the netfs_bv_slot tracepoint as it's not used in these patches.
+  - In afs_do_read_single(), afs_dir_get_block() and afs_do_read_symlink(),
+    use mapping_gfp_mask() rather than GFP_KERNEL.
+  - In netfs_writeback_single(), set ->submitted so that
+    netfs_wait_for_write() doesn't then just return -EIO.
+  - In netfs_unlock_abandoned_read_pages(), reset ->first_tail_slot when
+    moving on to next node.
+  - Remove netfs_folioq_trace(s) trace info enum and string set as their
+    tracepoint got removed.
+
+ver #12)
+- Split from v11 of "netfs: Keep track of folios in a segmented bio_vec[]
+  chain"[1]
+
+[1] https://lore.kernel.org/r/20260902173350.3468672-1-dhowells@redhat.com/
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=cifs-experimental
+[3] https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=ceph-iter
+[4] https://lore.kernel.org/netdev/168979108540.1905271.9720708849149797793.stgit@morisot.1015granger.net/
+[5] https://sashiko.dev/#/patchset/20260929075913.2740968-1-dhowells%40redhat.com
+[6] https://sashiko.dev/#/patchset/20260929103412.2807494-1-dhowells%40redhat.com
+
+David Howells (10):
+  Add a function to kmap one page of a multipage bio_vec
+  iov_iter: Add a segmented queue of bio_vec[]
+  netfs: Add some tools for managing bvecq chains
+  afs: Use a bvecq to hold dir content rather than folioq
+  cifs: Use a bvecq for buffering instead of a folioq
+  smbdirect: Support ITER_BVECQ in smbdirect_map_sges_from_iter()
+  netfs: Switch folioq to bvecq
+  smbdirect: Remove support for ITER_FOLIOQ from
+    smbdirect_map_sges_from_iter()
+  iov_iter: Remove ITER_FOLIOQ
+  netfs: Remove folio_queue
+
+ Documentation/core-api/folio_queue.rst      | 209 --------
+ Documentation/core-api/index.rst            |   1 -
+ Documentation/filesystems/netfs_library.rst |   2 +-
+ fs/afs/dir.c                                |  36 +-
+ fs/afs/dir_edit.c                           |  43 +-
+ fs/afs/dir_search.c                         |  33 +-
+ fs/afs/inode.c                              |   2 +-
+ fs/afs/internal.h                           |   6 +-
+ fs/afs/symlink.c                            |  38 +-
+ fs/netfs/Makefile                           |   1 +
+ fs/netfs/buffered_read.c                    |  34 +-
+ fs/netfs/bvecq.c                            | 346 +++++++++++++
+ fs/netfs/internal.h                         |   7 +-
+ fs/netfs/iterator.c                         |  33 +-
+ fs/netfs/main.c                             |  13 +-
+ fs/netfs/misc.c                             |  96 ----
+ fs/netfs/read_collect.c                     |  48 +-
+ fs/netfs/read_pgpriv2.c                     |  26 +-
+ fs/netfs/read_retry.c                       |  29 +-
+ fs/netfs/rolling_buffer.c                   | 189 +++----
+ fs/netfs/stats.c                            |   6 +-
+ fs/netfs/write_collect.c                    |  26 +-
+ fs/netfs/write_issue.c                      | 181 ++-----
+ fs/smb/client/cifsglob.h                    |   2 +-
+ fs/smb/client/smb2ops.c                     |  78 ++-
+ fs/smb/smbdirect/connection.c               | 135 +++--
+ include/linux/bvec.h                        |  18 +
+ include/linux/bvecq.h                       | 166 +++++++
+ include/linux/folio_queue.h                 | 282 -----------
+ include/linux/iov_iter.h                    |  87 ++--
+ include/linux/netfs.h                       |  14 +-
+ include/linux/rolling_buffer.h              |  42 +-
+ include/linux/uio.h                         |  17 +-
+ include/trace/events/netfs.h                |  37 +-
+ kernel/bpf/btf.c                            |   2 -
+ lib/iov_iter.c                              | 516 ++++++++++++++------
+ lib/scatterlist.c                           |  82 ++--
+ lib/tests/kunit_iov_iter.c                  | 131 +++--
+ 38 files changed, 1447 insertions(+), 1567 deletions(-)
+ delete mode 100644 Documentation/core-api/folio_queue.rst
+ create mode 100644 fs/netfs/bvecq.c
+ create mode 100644 include/linux/bvecq.h
+ delete mode 100644 include/linux/folio_queue.h
+
