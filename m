@@ -1,124 +1,82 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oi1-f200.google.com (mail-oi1-f200.google.com [209.85.167.200])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A71E3372ECE;
-	Thu,  1 Oct 2026 01:07:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A896D38D6B8
+	for <linux-nfs@vger.kernel.org>; Thu,  1 Oct 2026 03:36:04 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.200
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790816868; cv=none; b=sKTq4ezE5JBd69ZG0PcBo4HMiEnSlaLXCz5JN+wrTX+VTAIa56dH5iQW3uq7pKNzcZI73LtgFRp+T81oAmZIqvn1cB93vIkp3mt43rFzMf2keXqYiXVnMMq3ZKgcaGML8SwaGaQklloAiG68rJqshstoABhfbTIm8qFdpaMZSdA=
+	t=1790825767; cv=none; b=JN/5KpEjjJmORZwAb8qro1aDMDPpCLeeZgrBd2hUlBQaayMBPUkKEx4eUaunmZy1iliBhXG830crWs2E+M31j7kjFz4InU1+dqpR+7njG/kyJvA7p9hQmGI4qXzKC5UfQ1Bca23fIcnmIyZx5q4Z3hmkPQB9SutslSGcS4wmgFY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790816868; c=relaxed/simple;
-	bh=RT5A/9HMue+O1wWjxQ4Pjn4DNG4xsbTmgAuu0oIfJCo=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=JJ+CVtZhauM+z2JroeSK7O7+35BbrXxOlBmNPjrL43JKRCEHgOT4JV+FZEgIhFXaMM6hMGp2IAlzxkugt4wu0r89wGDV725tS5qF2Cf2nnFqtMe7RG3M+acRbXeMIN8hOGbKZREHDvBvyHgNQzk8K2oegStJ66N5Er+65LHIqh4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LFgJ3oXx; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LFgJ3oXx"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4BB351F00898;
-	Thu,  1 Oct 2026 01:07:44 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790816864;
-	bh=CwGxd9g4HHs/84Ge8XmhcajbmFBf0YozaOvMHk6FYmU=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=LFgJ3oXx9MSfEpsQSHbl4GynYqe+Qtnoc27HQH0v3epUoDivaGRy+emKM1oIRQQeN
-	 2l43p7i0I7+o7fx2MVmD2XfAgf8uIh2FWChL+7EYeG4qA7HTMkx9dimkNMDDlCVAv5
-	 ERP83MNm4WFGldYdh3XXStQW5lHml78EwpwvjYXTTJdIL+ywScvkJ13heqodzIVNYE
-	 ACr6KZOyBUSIJf2T2YUeGyKTaRHKcHbQ9UWDqBT6SJy4zX0uUCOHLei1CLSI9wkhAo
-	 tjK9SaXj7LZr3AfA6n2Id90b5vJG3VRaAUGm/CJvEcej7TAyg+/FXZZTZPVdGXVood
-	 rAvQyHXZp14hQ==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 6D97AF40068;
-	Wed, 30 Sep 2026 21:07:43 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Wed, 30 Sep 2026 21:07:43 -0400
-X-ME-Sender: <xms:X7K9agIdF9tRWgveFzyyfEuUnDVk3iXGPzBiBqboEg_ooU6WOlzn8A>
-    <xme:X7K9aq_5TWJE-hWCwmg9zWl01ylfAIHY16oiVQzLJrL-CZaki7EZI40WkX1n_r12A
-    FLlUsg59Jvy2lMnMH6PTH1crnA2vIYjGB8xmaZmNI9KgGabdLe4BKH20Q>
-X-ME-Proxy-Cause: dmFkZTEV/a2fjBtwvOeO/zFaNy52ZxTsEZH1L0We3+jzDQcLzqY5tCsX3mQtn/I9WA99/8
-    w3zcW93Vpp59fRkTUzBDjlNFLWfnh1NSc3muGBYHpV9FWSoxgJ2wycM6lkJds8A40LSLO1
-    Re0SSxugGsc9miYclrDglYx6X+/UivPAsTeRj7o4KLBXlrmCiJxCXs/P660KAHByI5OcLe
-    ZvNap1Lh6BnOXmNSIN0IGRR9EqhSFQ/C+1VdqfFBOgaXOTeA6frV34UL+aed0NEWsol8ln
-    Jg6NoHr7fPtY0YTv3FB8mbEvR8pu+txLOgW6fmcRfOgRYXOfZDfVxPDyb4GMjwaIw9a9ks
-    58tyMw6G2PVKcRF6Ctz45j/3bYgqQJQlmv/j17ClqnZcuSMb8tFRRQz3628Mc+ZMfs8gqW
-    3liianVqpV3pz1zprE+Ma+1YPPNkBI4KSi5ZTSFUbSSs6QasVteoVZK6eU2tn4wP6/9ZZs
-    NLzCRPfa7bJM3gxuoOsW4oPtEOiuUg9AHN3tUnYOY8RjvgK6ytWL3kyrBZ7H6d1+VZegb2
-    slIjjNh4lRpfnAGSuB0xgNwjFHkQZ9u4sqFTlNqUpX75eq/rLmnxV/E4mBp2rDT9jGr+M1
-    aLYAYCjb/k3cYZMWhdZlI/NIpq1sefSPWPqXZAAuk0EjRGVzNf0GeEVyrh7Q
-X-ME-Proxy: <xmx:X7K9aiq65aDhsoKw-D7VuUbJHbQaVXbtbLAli5kQAKdRUGbTZ_38Yg>
-    <xmx:X7K9atPmlWn0Brsrd-dgIHAtxKE880UbP3HxlUCDzkaxKQQGGzgspw>
-    <xmx:X7K9aroSX9q4glimWV5AuYONP_j9WQf6Zt7s2ckPRoOM1QLnHwsTng>
-    <xmx:X7K9aosWOyWU_I_Ezb-TLHjdajWPBY3qSg6FX5FUizySHk0yvLOd3Q>
-    <xmx:X7K9ai1Tq56RRpi7_egbaGGWYfdbY0ayVIwz0xSjh_F1F7_c_ueohLBv>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 4B985780070; Wed, 30 Sep 2026 21:07:43 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=arc-20240116; t=1790825767; c=relaxed/simple;
+	bh=F+cE99e/IoZcBiqybvdTBRrrEvhUAZGIkEo/uvhm6uA=;
+	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:
+	 Content-Type; b=mJQcJgnKUlsr4FCIJgAJ9ldSVdM+A/LGRsUheOUll3U30WCphJWRNetsfr7QS1yJ7HoIba/0nX283l8XYdylPT1NuNmMocvKJdTZPEzLKRMBEsI9HcWOL/0fMGgJmwoAvU3u0I6SlnuYi1pFYQWcwTa5JGfTJ3iRolDBVe9ZNnE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.167.200
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oi1-f200.google.com with SMTP id 5614622812f47-4b2d1eb484aso9512095b6e.2
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Sep 2026 20:36:04 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1790825763; x=1791430563;
+        h=content-type:to:from:subject:message-id:in-reply-to:date
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=ArUdhkCHBvqLujlWUFMyF2icv5EZv9kWUaouQO4XIP8=;
+        b=E8eYtnS5/ImHOYjq9GmBFF51PFqHbWHhhi7nehXEgwzP1fRNaDyKsedAvnwfBqnMOb
+         WOFWRKvIIYz/OVwy/l6BFBl4yAFQ52qBggCEICyYpR3YJMa2SZ5fcZVKwfeOhPxNOADs
+         /4cMyWclJVyc7lIXLr0kBIlqWI7rPTUuNGez1xMKudAKQ51GmPxtCWOoQuks6kBLgwY7
+         dkF7bBwT8fYG1ky/Kpt2bAussTVk8KoVe4sRsFVGjE3j6XI5aZFhuaerMOD/ZMzwnP6H
+         W0h2TTKQ+aFrTXg/FfwxkkW1jrSbqz7dk/6PPc3O1CaOwhWl/yZJGlO+tbgHVIxfR2EN
+         4BEw==
+X-Forwarded-Encrypted: i=1; AKwUvBxwgIW6FhaRMYNkxmWETgDkNNKw1Toa3xuwncO1PLtvpy/pnnL/4c6Y2282U79FtmbU5uy4P1XWJjY=@vger.kernel.org
+X-Gm-Message-State: AFuF++k5la6+HIwPU0sfgmKpdsNGxApC7xE58e5lD7/xNLZBPtutHKqq
+	BXZynwOXNzFo6ryXvhAG0QwIFT1pSyQ//hp764c6E13V08y3cRPyLgeA1DRKGyUvHQw7yN4OCcx
+	zcLL5QPOYeddel+CjOMaROiFwuC2SScXeMC5yvERG8mEDTr6tptObxrsCcDA=
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: APE9iFNf_byJ
-Date: Wed, 30 Sep 2026 18:07:23 -0700
-From: "Chuck Lever" <cel@kernel.org>
-To: "Abdifatah Suruur" <suruurism@gmail.com>
-Cc: jlayton@kernel.org, linux-nfs@vger.kernel.org,
- NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
- linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Message-Id: <6dbeec76-a55d-4e41-9115-99d199997497@slotpi15m67>
-In-Reply-To: <20260930202212.1482-1-suruurism@gmail.com>
-References: <20260930202212.1482-1-suruurism@gmail.com>
-Subject: Re: [PATCH] lockd: fix use-after-free in nlmsvc_retry_blocked()
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+X-Received: by 2002:a05:6808:221c:b0:4c3:4e34:c69e with SMTP id
+ 5614622812f47-4f1b2e33ccbmr4286287b6e.8.1790825762867; Wed, 30 Sep 2026
+ 20:36:02 -0700 (PDT)
+Date: Wed, 30 Sep 2026 20:36:02 -0700
+In-Reply-To: <6abd40af.fac9d4e5.17396.0008.GAE@google.com>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6abdd522.f32479dd.202a09.0001.GAE@google.com>
+Subject: Re: [syzbot] [openvswitch?] WARNING in set_ipv6_addr
+From: syzbot <syzbot+4cc63fcfb3845e149969@syzkaller.appspotmail.com>
+To: Dai.Ngo@oracle.com, aconole@redhat.com, anna@kernel.org, 
+	chuck.lever@oracle.com, davem@davemloft.net, dev@openvswitch.org, 
+	donald.hunter@gmail.com, echaudro@redhat.com, edumazet@google.com, 
+	fmancera@suse.de, horms@kernel.org, i.maximets@ovn.org, jlayton@kernel.org, 
+	kuba@kernel.org, linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, 
+	neil@brown.name, netdev@vger.kernel.org, okorniev@redhat.com, 
+	pabeni@redhat.com, syzkaller-bugs@googlegroups.com, tom@talpey.com, 
+	trondmy@kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-Hi Abdifatah,
+syzbot has bisected this issue to:
 
-Thanks for looking at this code. I'm not going to take this patch,
-for the reasons below.
+commit af81cb247ca94e4bcfea31ea862cf3aaf955a503
+Author: Jeff Layton <jlayton@kernel.org>
+Date:   Wed Mar 25 14:40:28 2026 +0000
 
-On Wed, Sep 30, 2026 at 11:22:12PM +0300, Abdifatah Suruur wrote:
-> Pin the block before dropping the spinlock in nlmsvc_retry_blocked()
-> and release the pin after processing, so the block cannot be freed
-> while it is in use.
+    sunrpc: add a generic netlink family for cache upcalls
 
-This part is already fixed. The nfsd-testing branch carries
+bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=120ae3f5580000
+start commit:   47a144672573 Merge branch 'mptcp-misc-improvements-for-v7-4'
+git tree:       net-next
+final oops:     https://syzkaller.appspot.com/x/report.txt?x=110ae3f5580000
+console output: https://syzkaller.appspot.com/x/log.txt?x=160ae3f5580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=88147dd7e4cb6a0f
+dashboard link: https://syzkaller.appspot.com/bug?extid=4cc63fcfb3845e149969
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=12c35e05580000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=11908035580000
 
-  lockd: Fix use-after-free in nlmsvc_retry_blocked
-  lockd: Serialize block retries against host teardown
+Reported-by: syzbot+4cc63fcfb3845e149969@syzkaller.appspotmail.com
+Fixes: af81cb247ca9 ("sunrpc: add a generic netlink family for cache upcalls")
 
-The first takes the same reference in the same place, so your patch
-no longer applies there. For lockd and NFSD work, please base patches
-on the nfsd-testing branch of
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git
-
-> nlmsvc_notify_blocked() has the same problem: it moves the block to
-> the head of the list and then calls svc_wake_up(block->b_daemon)
-> after dropping nlm_blocked_lock.  Keep that wake-up under the
-> spinlock, as nlmsvc_grant_deferred() already does.
-
-This one appears to be unreachable.
-
-nlmsvc_notify_blocked() is the lm_notify callback. It is called from
-__locks_wake_up_blocks() with blocked_lock_lock held, and that
-function clears waiter->flc_blocker only after lm_notify returns.
-
-The block is on nlm_blocked when the callback finds it, so the list
-holds a reference. A block whose file_lock is waiting comes off that
-list through nlmsvc_unlink_block(), which calls locks_delete_block()
-on the block's file_lock before it calls nlmsvc_remove_block(). That
-covers GRANT_RES, CANCEL, nlmsvc_traverse_blocks(), and
-nlmsvc_grant_blocked().
-
-While the callback is running, flc_blocker is still set, so
-locks_delete_block() cannot take its lockless early return. It has to
-acquire blocked_lock_lock, and it waits there until the callback has
-returned. The list reference therefore cannot be dropped between the
-spin_unlock() and the svc_wake_up().
-
-
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+For information about bisection process see: https://goo.gl/tpsmEJ#bisection
