@@ -1,75 +1,39 @@
-Received: from mail-pj2-f13.google.com (mail-pj2-f13.google.com [74.125.227.141])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BB242433049
-	for <linux-nfs@vger.kernel.org>; Thu,  1 Oct 2026 04:15:03 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.141
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D6E0936DA0D
+	for <linux-nfs@vger.kernel.org>; Thu,  1 Oct 2026 04:55:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790828105; cv=none; b=KvX9S99as5dtXWHGf3zwYimPBb01H1EYPGbbn+m5SnwzdedMmb6hmpljU1G7s3fAzH6JQr4+WiC2LQQ9COtru1PYZPpgRkwyl7GcBvZQDbc7xYgPuC6+D7OzUvPu0zU4QBp2LxaTv5Tij01pFhW7xXsby5WFuf17h5TCc9FpnWM=
+	t=1790830505; cv=none; b=jQt6EHmFwmjR6KG8sr5ceUgiW7aWOePCYncXIffCUJszvFrsxB5ZIJIl2LfeSCO8uKyHbnl9GC+eYrQjFXfAE1oKNVRP1c5eUOWQhzmFRknQg81TGWVZvA/0tC6xoU6ThHc5eJj31mQ9uaD6vhjTpJ2b7pWEwFDkcNGXuWn6CiY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790828105; c=relaxed/simple;
-	bh=yMrgCvGa3qhqYSJQkqvhXq27Aav/mbOlv8nbGLhr+aU=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=VsoYXxy5NQEGYE4VD1rvexUm/bsfJQWMOQGbQa7PM6QYoPAq2hl7hGXbxrBjVcPEGPk7ktAkG6uvlTQQXiMNwwJTVXXSfIt0SdsJRLtxgHpHYackCuo49ybRmzoFJthc+HgB1/6W1+w2dFQ8jGHydzzpBWRIEswUG+Uc/okkI9k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=SGNLaKMg; arc=none smtp.client-ip=74.125.227.141
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1790830505; c=relaxed/simple;
+	bh=jPJEtfwD0+0M1X6TyqoKrDkebAwgN3n1uDOcoDoZWk4=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=iprmA2uO9J+ubcAXiHzOG5s1pVNAYWfmvSWVfn2+86TFqY47r6QprDLf5oBAlNrbbEukg9aMbKxEcNqYh4gRMr0G2msJ0+NUuHbaoc6T8fMWHTCUbAWy2/3bralN48YmgKP5MyRnUGRQchCaSiGJx2eQbDFG6pj/puTZf8NWBEE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=kqtWNwgT; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="SGNLaKMg"
-Received: by mail-pj2-f13.google.com with SMTP id d9443c01a7336-2d747ee1f9bso29100125ad.3
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Sep 2026 21:15:03 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1790828103; x=1791432903; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=K+qaqnfQy5F06363dTl5OUAILO3wyf1YsFrHb6xv8d0=;
-        b=SGNLaKMgDfLj9SgGmoKn31DHJjdwTtvB+amnyW5SZHp30OyBIP5oA68HNhJ5SvGObR
-         U76c31lxwkZzxar/z5r2DVlyElkqwAbE9Qv+C+Y3A3TNmIYaEyVWQpnBhHgAQ6nWTfQN
-         //SRsuTeBAbtxvSt6BCwfFCF8BIn635QRm9PHxg4AkQ8c9RP2wcT3MxlasLKAKWr7B8f
-         LTG4ulyJBWRCPSSKZGFZBvAPkNpSzSt0DDN4dkRTyIhN0+805zjfK2XY67BLGmCZIGDd
-         swSwaxLeeMHqbveZRMsL2zhntMjm5UHI3wAi/IcosJpO0zB0nVYWjgeQtXi2nRtPcEzS
-         uuYA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790828103; x=1791432903;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=K+qaqnfQy5F06363dTl5OUAILO3wyf1YsFrHb6xv8d0=;
-        b=dDN4YB5QlQLasCs4/cm076/dtz9/3K6uX6M/eNVxu7WnbjJ9ToVdWmoP+sFMdhpqpR
-         uISgh1BsUPZB/aUCQRkZYSB+PXoQpH3opxRTCRn15Hm82zOzImVvB+p3UImMuCnnFjaX
-         w61ws9TqwP0RAcGfeMlPPjzOfIqlXzsIwhPoAxMZ0eXblnYAwy6nh5LOQP2eh9PgUP3u
-         tBLHEa34nNdAntc8TKvubH/DlLMvNAt28n+RRIghKKLwcXNoQ53tlBVKGSJSABzskhsx
-         mXPzlAlYmNS5lVCr6OU02X+1jBNzo72yY9OjfavkvIe1E3ahS7bY940zk/oylXyEprK8
-         6nFg==
-X-Gm-Message-State: AFq9FYL8CmMqsKjg1jy6FyISKRNJIw1+tRdR9eGe4oR1pnJLNlCEukT3
-	YLcAx8FL74G+s/itY2ZrwyrY+8WHCVDksB/fx4X5hKdhBnnK989e5FQcpAxeccqj
-X-Gm-Gg: AYBFou0AK3JIBKRWBi9E5JkY7KvoMWcecojdOAqyp0MtmMIaloVu/EA46V737b2XIsP
-	gHCwo00vNzpK6cBTE6BdteoZv3V0Mz0kLbUDfIt1Ve+Fae9IuqLpz5SDm3DzKDgyLJzegQsllBr
-	x/WCBubHJzAVGMkWY+d/M/XJaFfIvC3LGzYoELvBhECLW62Pm9xoh9RDwMunenaseAPlEFVjb2t
-	l2eph84PoCjoO3gbsyu3l8Xmu13Vs3VC4UpxIvFcm3Cb6p0ALVEToiv1PIVCulMHRtVMfUQilGm
-	s+Bl92EvvRjx2kK1ciVdXvbniKNiPmlAzj5CzxHAXQGv8GI7/hKiy+ggo0Kj7qMtAUzBIUMvNPO
-	og0xUXqasK9MjwuyCWwx4Onit77n/MTvjhV+YNJ2RxD/+f3hieULBp3/Al4zrC/RTYswclyfpX6
-	PVchyrpZlCmnTdPnsRERI+4eJJUXOpn0jtcXV45nhX0BqJFhExPpvyfLAQM9LJT39iELuOI4TXx
-	oI8yR4GHhF86qN52EK49Rc=
-X-Received: by 2002:a17:902:e808:b0:2df:84e0:9034 with SMTP id d9443c01a7336-2e2e48b342fmr27449095ad.7.1790828102948;
-        Wed, 30 Sep 2026 21:15:02 -0700 (PDT)
-Received: from Mac.tail7ad783.ts.net ([123.215.20.10])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2e3005848a5sm4815105ad.8.2026.09.30.21.15.00
-        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
-        Wed, 30 Sep 2026 21:15:02 -0700 (PDT)
-From: Jiwoong Wi <dwdnlzj@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	bobtobabz@gmail.com,
-	Jiwoong Wi <dwdnlzj@gmail.com>
-Subject: [PATCH] nfsd: update existing connection flags under client lock
-Date: Thu,  1 Oct 2026 13:14:33 +0900
-Message-ID: <20261001041433.74718-1-dwdnlzj@gmail.com>
-X-Mailer: git-send-email 2.50.1
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="kqtWNwgT"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2F06E1F000FF;
+	Thu,  1 Oct 2026 04:55:03 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1790830503;
+	bh=9C+n9Rs9taRb7n0USDD+NQ7sMKw5MPwVUGcGcNix3eI=;
+	h=From:To:Cc:Subject:Date;
+	b=kqtWNwgT6nAWo0VMlZ00C+Tc4EdfaYN+tZcKdwbZTuSGX2YgsmvtOY1Th1HDMt9cL
+	 nFb+IL1bGF23hxconnP54eDmYTlca8/oWQREwxkQqRXNl6NkPp2Y5/xxUkF87J9NVb
+	 kX/gV+EdXenxQybye6xCCR7kjK4reHhVS+VZIvPA2owZ7sHY4yIFKh9b7AEHNn86JN
+	 htxjrvCClV9lwzwL4rk4lLSOHjtEyQD8XwOWbv1hCk+Za1nIMU3H3rRhvu8v0hzY9f
+	 NE5F1NLmyvFwqx5C/7VnuwnALluqNsdsXGq0QGv1bVsjcd81DI/AXR+dCLsirSxKlN
+	 yUPC6380pAXtw==
+From: Mike Snitzer <snitzer@kernel.org>
+To: Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>
+Cc: hch@lst.de,
+	linux-nfs@vger.kernel.org
+Subject: [PATCH v3 0/9] NFSD: keep direct-mode I/O out of the page cache
+Date: Thu,  1 Oct 2026 00:54:53 -0400
+Message-ID: <20261001045502.48381-1-snitzer@kernel.org>
+X-Mailer: git-send-email 2.44.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -78,80 +42,103 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-nfsd4_match_existing_connection() searches the session connection list
-while holding clp->cl_lock, but returns the matching nfsd4_conn after
-releasing the lock. nfsd4_bind_conn_to_session() then updates
-conn->cn_flags. Concurrent transport loss can remove and free the
-connection in nfsd4_conn_lost() between the unlock and the update,
-leading to a use-after-free read-modify-write of cn_flags.
+Hi,
 
-Update cn_flags before releasing clp->cl_lock and stop returning the raw
-connection pointer to the caller.
+This series changes NFSD's direct write path: io_cache_write modes
+where an aligned WRITE goes to the filesystem as O_DIRECT, with
+DONTCACHE for the parts a misaligned WRITE cannot issue directly.
 
-A natural reproducer pipelined 16 BIND_CONN_TO_SESSION requests and reset
-the connection after receiving the first reply. On a Generic KASAN kernel
-at v7.3-rc4-606-gfd179f8a05be, it triggered three reports in 1,000
-attempts. All attempts completed, covering 55,494 BIND operations and
-6,494 processed pipelined BIND requests.
+1/9 marks the direct middle of a split WRITE IOCB_DONTCACHE, for when
+XFS re-issues it buffered (-ENOTBLK).  It carries Fixes: and rewrites
+the stale nfsd-io-modes.rst sentence in place, so a stable tree
+carrying only this patch reads consistently.
 
-With this change applied to nfsd-testing at 32eb1a60b456, the same
-reproducer completed 1,000 attempts with no harness error or KASAN
-report. A 750 ms post-unlock timing-aid control also completed without a
-KASAN report. Basic NFSv4.2 and NFSv3 read/write/unmount smoke tests
-passed, and fs/nfsd built with GCC 12.2 without a new warning.
+2/9 splits a misaligned WRITE only for a direct middle of at least
+direct_misaligned_num_pages (default 2).  3/9 (Jonathan) adds
+direct_misaligned_dontcache, which selects whether the parts that are
+not O_DIRECT are DONTCACHE or cached.
 
-The vulnerability research and validation were conducted by members of
-the Tobabz team as part of the Best of the Best 15th program.
+4/9 stops expanding a READ smaller than its alignment into a full
+aligned device read.
 
-Fixes: 02579b2ff8b0 ("nfsd: back channel stuck in SEQ4_STATUS_CB_PATH_DOWN")
-Assisted-by: LLM
-Signed-off-by: Jiwoong Wi <dwdnlzj@gmail.com>
----
- fs/nfsd/nfs4state.c | 13 +++++--------
- 1 file changed, 5 insertions(+), 8 deletions(-)
+5/9 persists a synchronous direct-mode WRITE once, after all of its
+segments, instead of once per segment.  6/9 keeps the page two
+misaligned WRITEs share until both have written it: 704 device reads
+for 42895 WRITEs where there were 45144 for 45664.  7/9 adds
+tracepoints for how each direct-mode READ and WRITE was serviced.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index bbc16dd2294d..6b445c5d4eb3 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4810,7 +4810,7 @@ static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt, struct nfsd4_s
- }
- 
- static __be32 nfsd4_match_existing_connection(struct svc_rqst *rqst,
--		struct nfsd4_session *session, u32 req, struct nfsd4_conn **conn)
-+		struct nfsd4_session *session, u32 req)
- {
- 	struct nfs4_client *clp = session->se_client;
- 	struct svc_xprt *xpt = rqst->rq_xprt;
-@@ -4832,9 +4832,10 @@ static __be32 nfsd4_match_existing_connection(struct svc_rqst *rqst,
- 		status = nfs_ok;
- 	else
- 		status = nfserr_inval;
-+	if (status == nfs_ok &&
-+	    (req == NFS4_CDFC4_FORE_OR_BOTH || req == NFS4_CDFC4_BACK))
-+		c->cn_flags |= NFS4_CDFC4_BACK;
- 	spin_unlock(&clp->cl_lock);
--	if (status == nfs_ok && conn)
--		*conn = c;
- 	return status;
- }
- 
-@@ -4859,12 +4860,8 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
- 	status = nfserr_wrong_cred;
- 	if (!nfsd4_mach_creds_match(session->se_client, rqstp))
- 		goto out;
--	status = nfsd4_match_existing_connection(rqstp, session,
--			bcts->dir, &conn);
-+	status = nfsd4_match_existing_connection(rqstp, session, bcts->dir);
- 	if (status == nfs_ok) {
--		if (bcts->dir == NFS4_CDFC4_FORE_OR_BOTH ||
--				bcts->dir == NFS4_CDFC4_BACK)
--			conn->cn_flags |= NFS4_CDFC4_BACK;
- 		nfsd4_probe_callback(session->se_client);
- 		goto out;
- 	}
+8/9 and 9/9 are separable and come last for that reason.  8/9 is
+Chuck's "Enable return of an updated stable_how to NFS clients",
+reworked onto @iocb_flags.  9/9 adds two opt-in io_cache_write modes
+that persist every direct-mode WRITE before replying and report
+NFS_DATA_SYNC or NFS_FILE_SYNC, so the client sends no COMMIT.  A
+client can get the same result by sending FILE_SYNC itself, so 1-7
+stand without them.
+
+The series applies to cel/nfsd-testing (32eb1a60b456) and each patch
+builds with W=1 with no warnings.
+
+Changes since v2:
+- Rebased onto cel/nfsd-testing; 8/9 now applies to the xdrgen
+  nfsd_proc_write().
+- 1/9: replaces the "DONTCACHE buffered IO is _not_ used" sentence
+  instead of adding a paragraph that contradicted it.
+- 2/9: the description now opens with the cost a small middle adds,
+  says the IOCB_* flags only move (the write loop already set
+  IOCB_DONTCACHE), and says which parts of Christoph's diff are taken
+  and why the DONTCACHE policy and the memory-misaligned collapse are
+  not.  The DONTCACHE explanation is one comment at no_dio; the
+  debugfs comment sits on the debugfs_create_u32() call; "three
+  segments" is now "two or three".
+- Reordered: direct_misaligned_dontcache moved up to 3/9, beside
+  direct_misaligned_num_pages, and the boundary-page patch (now 6/9)
+  adds its own fields.  The two stable_how patches moved to the end
+  (8/9, 9/9), since nothing before them depends on them.
+- 8/9: the async export option clears a local copy, so the reply to a
+  FILE_SYNC or DATA_SYNC WRITE to an async export is never lowered
+  (RFC 1813 3.3.7).  The description says where NFSv3 and NFSv4 map
+  the result, and no longer says O_DIRECT persists data.
+- 9/9: retitled.  The description says an UNSTABLE O_DIRECT write is not
+  durable, that NFSD_IO_DIRECT is unchanged, and that the new modes cost
+  a flush per WRITE.  They are worth it only where each COMMIT covers
+  about one WRITE.
+- Comments and documentation trimmed throughout.
+
+v2: https://lore.kernel.org/linux-nfs/20260929231329.22018-1-snitzer@kernel.org/
+v1: https://lore.kernel.org/linux-nfs/20260929173423.16149-1-snitzer@kernel.org/
+
+Thanks,
+Mike
+
+Chuck Lever (1):
+  NFSD: Enable return of an updated stable_how to NFS clients
+
+Jonathan Flynn (1):
+  NFSD: add direct_misaligned_dontcache debugfs knob
+
+Mike Snitzer (7):
+  NFSD: mark the direct middle of a split WRITE IOCB_DONTCACHE as well
+  NFSD: only split a direct-mode WRITE for a worthwhile direct middle
+  NFSD: do not use direct I/O for a READ smaller than its alignment
+  NFSD: persist a synchronous direct-mode WRITE once, after all of its segments
+  NFSD: keep boundary page of a split direct-mode WRITE until both writers complete
+  NFSD: add tracing for how direct-mode READ and WRITE are serviced
+  NFSD: add direct-mode WRITE settings that persist each WRITE
+
+ .../filesystems/nfs/nfsd-io-modes.rst         |  97 ++++++-
+ fs/nfsd/debugfs.c                             |  28 ++
+ fs/nfsd/nfs3proc.c                            |  16 +-
+ fs/nfsd/nfs4proc.c                            |  15 +-
+ fs/nfsd/nfsd.h                                |   4 +
+ fs/nfsd/nfsproc.c                             |   3 +-
+ fs/nfsd/trace.h                               |  85 +++++++
+ fs/nfsd/vfs.c                                 | 239 +++++++++++++++---
+ fs/nfsd/vfs.h                                 |  18 +-
+ fs/nfsd/xdr3.h                                |   2 +-
+ 10 files changed, 449 insertions(+), 58 deletions(-)
+
 
 base-commit: 32eb1a60b456980761cf7a9cee8f907fdc08afb8
 -- 
-2.50.1 (Apple Git-155)
+2.52.0
 
