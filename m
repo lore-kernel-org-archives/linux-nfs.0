@@ -1,42 +1,67 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 79F6036DA0D
-	for <linux-nfs@vger.kernel.org>; Thu,  1 Oct 2026 04:55:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1F3EE4BF950
+	for <linux-nfs@vger.kernel.org>; Thu,  1 Oct 2026 09:13:05 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790830515; cv=none; b=GPVnUVQcS0TYzrdF975Kv42yZZn2FsgiOJ6Ke/c53K0Iac/sxdDqLXLbheal6UzXnGnQQED8+mZOrZmL5obE5oHQ5UgSumucpq2Wsdi8mCsaTpfZ9xz2amU5GHNwimAdDYE875u/oXsODf6ieV06qArMlHam7H5nTaD/tGX83V0=
+	t=1790845989; cv=none; b=mdDXkl7pGXNR/Vu9Fv6uqhhnHJdULY9j4/AJBLzFjy1PkONprMZ34SjrJNjE08XrAQwyG6gUj8eUADvLnkSOJ/sAkVEZ0KLEhgB2EZB4HKQmZ6QlB7H5oOtmCbU7z2Ai3qgGHvpW8/Wjf3+jr5xoEIppQq01FWDGS8DiAttjiMo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790830515; c=relaxed/simple;
-	bh=mSOkim1J0hKs6LWcWxv5zWHQ5QXvY3s7i3gZoPcojzo=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=AWT61LuBbvl1XUsce2LOvVkUCQZZTT2hQB1650qKMPFS5PbJwIgNPtaJ6MrhrU8fwVuJ5WJFu4ot2XbehSzJXUTVqGVJeMOsDlNBpj6JK0bcmACkVUG1M0boQVxbV4dtDDR00kWJ3+xjmg/1CTR3pFbnCb+HMLdLDxk9l7v8BV0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=j5G4irIm; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1790845989; c=relaxed/simple;
+	bh=OtNyHMIlfqayS5vu/6EFuXbsPFE+h0JEysiOF4htPwA=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=WhxSiX/0Qkh+xCRHt+Tr91qg43eybY4FufomGP4SxY2Hk5oWqOoC2kJumc9NCyWrKkwFu9Rrwg9ygy8x1de2VVJCaeC+ylKE86Cu+iLSI528xE/OR0eQjOPKbnttFWWLiI/D/OB7tzlw+eTHOIMsL1u0BvjjV6wdL2Qq2bfcTQ0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=EbQyo+uQ; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="j5G4irIm"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2FD5B1F00898;
-	Thu,  1 Oct 2026 04:55:14 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790830514;
-	bh=E+3/YpferOmfVDGf6DCZBB09VS+faYWnHhwFQuQFuio=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=j5G4irImZnyXaynpSQS8ivW5f0nOXnXgo1corAD4XPJBlPip7gATRRTRQfAqiCmUD
-	 2VJfenBiSK7OvmkDYKvt+WLiSnNqsjymzMN41CIakxDJji8gjzoXmBjudgc/jsxiFo
-	 MpxpspxeqnKR2XGSAev7dzvPXaGl+xoD1jCmSWiwASSNQoYyH/bbLUwBiOg7toGoA7
-	 sHQZjHXnyPad0qtq1QaW/nfSTn6bZgcZnJMELkBRTRvSkIJMcJHtVtORq2q4/kn8Uy
-	 XoHxqt/op11K/7FkWNQgFXskeVrnJ8mz+7W6VQ6Q5oXLSPmFJTzok86IRYSHiJ+d09
-	 KZpL3j15MN3Qg==
-From: Mike Snitzer <snitzer@kernel.org>
-To: Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>
-Cc: hch@lst.de,
-	linux-nfs@vger.kernel.org
-Subject: [PATCH v3 9/9] NFSD: add direct-mode WRITE settings that persist each WRITE
-Date: Thu,  1 Oct 2026 00:55:02 -0400
-Message-ID: <20261001045502.48381-10-snitzer@kernel.org>
-X-Mailer: git-send-email 2.44.0
-In-Reply-To: <20261001045502.48381-1-snitzer@kernel.org>
-References: <20261001045502.48381-1-snitzer@kernel.org>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="EbQyo+uQ"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1790845985;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=TULl+IUUaJc6iYKbMI8b/ucaf+xZze09Nd2rMNDad6s=;
+	b=EbQyo+uQNQBtZSQ9nHCqN2ace3bkJYm8OBJh5010JT+uGVqpXYAmzN6dOsPTB/BmImc2L0
+	CSCK8Orwp1nd80kZ8ncrWZZv8sZzJlnr+YThQO6jCc7c68lWk4qo4raXUAAQf6H8OKZTBd
+	U/WexHDJaHXVnqcL21+sZWhADH0qwoU=
+Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-122-bAkuhX88Ne2Jcga1417YVQ-1; Thu,
+ 01 Oct 2026 05:12:59 -0400
+X-MC-Unique: bAkuhX88Ne2Jcga1417YVQ-1
+X-Mimecast-MFC-AGG-ID: bAkuhX88Ne2Jcga1417YVQ_1790845971
+Received: from mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.93])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 7F5911843AD3;
+	Thu,  1 Oct 2026 09:12:49 +0000 (UTC)
+Received: from warthog.com (unknown [10.44.32.54])
+	by mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id C7DAB1800348;
+	Thu,  1 Oct 2026 09:12:42 +0000 (UTC)
+From: David Howells <dhowells@redhat.com>
+To: Christian Brauner <christian@brauner.io>
+Cc: David Howells <dhowells@redhat.com>,
+	Paulo Alcantara <pc@manguebit.org>,
+	Matthew Wilcox <willy@infradead.org>,
+	Namjae Jeon <linkinjeon@kernel.org>,
+	Marc Dionne <marc.dionne@auristor.com>,
+	Stefan Metzmacher <metze@samba.org>,
+	Eric Van Hensbergen <ericvh@kernel.org>,
+	Dominique Martinet <asmadeus@codewreck.org>,
+	Ilya Dryomov <idryomov@gmail.com>,
+	netfs@lists.linux.dev,
+	linux-afs@lists.infradead.org,
+	linux-cifs@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	ceph-devel@vger.kernel.org,
+	v9fs@lists.linux.dev,
+	linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v15 00/10] netfs, iov_iter: Use a chain of bio_vec arrays instead of folio_queue
+Date: Thu,  1 Oct 2026 10:12:28 +0100
+Message-ID: <20261001091239.3343034-1-dhowells@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -44,203 +69,192 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.93
 
-Under NFSD_IO_DIRECT an UNSTABLE WRITE is issued O_DIRECT without
-IOCB_DSYNC and answered UNSTABLE.  The data is not yet durable: the
-device cache is not flushed, and block allocation, unwritten extent
-conversion and the size update are not committed.  The client's COMMIT
-is what makes it so.  This patch does not change NFSD_IO_DIRECT.
+Hi Christian,
 
-Add two io_cache_write modes that issue direct I/O like NFSD_IO_DIRECT
-but persist every WRITE before replying, to at least a floor, and
-report the stability achieved:
+Could you pull these patches please into your vfs-7.4.netfs branch?  This
+is the third of four (maybe five) batches, in this case replacing the
+folio_queue struct with a bvecq struct, and is based upon the
+aforementioned branch.  This was split from v11 of a larger netfslib
+series[1].  I've fixed some issues spotted by sashiko[5-7].
 
-  NFSD_IO_DIRECT_WRITE_DATA_SYNC (3): at least NFS_DATA_SYNC
-  NFSD_IO_DIRECT_WRITE_FILE_SYNC (4): at least NFS_FILE_SYNC
+This series adds a new type, struct bvecq.  This points to a bounded array
+of bio_vecs with information about how to clean up the memory they point
+to.  A number of bvecq structs can be linked together to form a chain and
+an iterator type, ITER_BVECQ, is provided that can be pointed at the chain
+and can walk it.  Netfslib is then switched to use the new type and
+folio_queue is removed along with ITER_FOLIOQ.
 
-A client that asked for more is left alone.  A client told FILE_SYNC
-sends no COMMIT.
+This is intended as a more flexible replacement for struct folio_queue as
+the latter can only point to whole folios and cannot point to partial pages
+that might be extracted from an ITER_IOVEC/ITER_UBUF for direct or
+unbuffered I/O purposes.
 
-The cost is a flush and log force on every WRITE, where NFSD_IO_DIRECT
-has one per COMMIT, so these are opt-in.  They cost more than
-NFSD_IO_DIRECT when one COMMIT covers many WRITEs.  They cost the same
-flushes, and save the COMMIT RPCs, when each COMMIT covers about one
-WRITE.  That is the case on a pNFS flexfiles share where a client's
-writes straddle two data servers, so that each data server receives
-one WRITE and one COMMIT per write.  Measured there, with identical
-WRITE counts and flush counts, the COMMIT RPCs cost NFSD_IO_DIRECT 31%
-more server CPU and 42% more client CPU for the same bytes.  Where only
-one write in 22 was split, there was no resolvable difference.
+These patches make a more or less straight swap between struct folio_queue
+and struct bvecq.  The change is not quite trivial as the folio_queue
+struct contains a folio_batch struct and is basically a list of whole
+folios only, whereas the new bvecq struct is a chain of bio_vec arrays.
 
-A Linux client change that sends FILE_SYNC for a WRITE that is alone
-in its flush to a given server would remove those COMMITs without a
-server setting, for clients that have it.
+A further patchset will switch the netfslib unbuffered I/O code to using
+bvecqs and then the bvecqs will be passed down into the filesystem rather
+than passing an iterator.
 
-Mode 3 promises only the data, leaving a client that needs metadata
-durability to COMMIT for it.  Both modes are inert for READ and for a
-WRITE the client already marked FILE_SYNC.
+The primary reason behind making this change is so that bvecq chains can be
+used in the assembly of network filesystem messages.  Netfslib can furnish
+the filesystem with bvecq chains representing the data buffers that need to
+be read or written and then, for example, for a write RPC, the filesystem
+can add protocol headers and trailers onto the chain without the need to
+copy it and can also glue multiple buffers together to form compound
+operations and/or perform sparse operations.
 
-Assisted-by: Claude:claude-opus-5[1m]
-Signed-off-by: Mike Snitzer <snitzer@kernel.org>
----
- .../filesystems/nfs/nfsd-io-modes.rst         | 15 ++++++--
- fs/nfsd/debugfs.c                             |  5 +++
- fs/nfsd/nfsd.h                                |  2 ++
- fs/nfsd/vfs.c                                 | 35 ++++++++++++++++---
- 4 files changed, 50 insertions(+), 7 deletions(-)
+One option here is to add two more fields to the bvecq struct, one to
+increase the offset of the first bio_vec and one to decrease the length of
+the last, thereby allowing a bvecq struct to point at a slice of another
+bio_vec array without having to copy the array - but at the cost of adding
+one or two extra conditional ops when getting the offset or length of a
+segment.
 
-diff --git a/Documentation/filesystems/nfs/nfsd-io-modes.rst b/Documentation/filesystems/nfs/nfsd-io-modes.rst
-index 11938caee14ca..87266e43e4d1c 100644
---- a/Documentation/filesystems/nfs/nfsd-io-modes.rst
-+++ b/Documentation/filesystems/nfs/nfsd-io-modes.rst
-@@ -25,12 +25,14 @@ Based on the configured settings, NFSD's IO will either be:
- - cached using page cache (NFSD_IO_BUFFERED=0)
- - cached but removed from page cache on completion (NFSD_IO_DONTCACHE=1)
- - not cached stable_how=NFS_UNSTABLE (NFSD_IO_DIRECT=2)
-+- not cached stable_how=NFS_DATA_SYNC (NFSD_IO_DIRECT_WRITE_DATA_SYNC=3)
-+- not cached stable_how=NFS_FILE_SYNC (NFSD_IO_DIRECT_WRITE_FILE_SYNC=4)
- 
--To set an NFSD IO mode, write a supported value (0 - 2) to the
-+To set an NFSD IO mode, write a supported value (0 - 4) to the
- corresponding IO operation's debugfs interface, e.g.::
- 
-   echo 2 > /sys/kernel/debug/nfsd/io_cache_read
--  echo 2 > /sys/kernel/debug/nfsd/io_cache_write
-+  echo 4 > /sys/kernel/debug/nfsd/io_cache_write
- 
- To check which IO mode NFSD is using for READ or WRITE, simply read the
- corresponding IO operation's debugfs interface, e.g.::
-@@ -38,6 +40,15 @@ corresponding IO operation's debugfs interface, e.g.::
-   cat /sys/kernel/debug/nfsd/io_cache_read
-   cat /sys/kernel/debug/nfsd/io_cache_write
- 
-+NFSD_IO_DIRECT leaves an UNSTABLE WRITE for the client's COMMIT to
-+persist. The two NFSD_IO_DIRECT_WRITE_*_SYNC modes instead persist every
-+WRITE before replying, to at least NFS_DATA_SYNC or NFS_FILE_SYNC, and
-+report that stable_how to the client; a client that asked for more is
-+left alone. With NFSD_IO_DIRECT_WRITE_FILE_SYNC the client sends no
-+COMMIT. This costs a flush on every WRITE: more than NFSD_IO_DIRECT
-+when one COMMIT covers many WRITEs, about the same, without the COMMIT
-+RPCs, when each COMMIT covers about one.
-+
- If you experiment with NFSD's IO modes on a recent kernel and have
- interesting results, please report them to linux-nfs@vger.kernel.org
- 
-diff --git a/fs/nfsd/debugfs.c b/fs/nfsd/debugfs.c
-index d5b714dd0fbc6..bd8ceb5eb2879 100644
---- a/fs/nfsd/debugfs.c
-+++ b/fs/nfsd/debugfs.c
-@@ -90,6 +90,9 @@ DEFINE_DEBUGFS_ATTRIBUTE(nfsd_io_cache_read_fops, nfsd_io_cache_read_get,
-  * Contents:
-  *   %0: NFS WRITE will use buffered IO
-  *   %1: NFS WRITE will use dontcache (buffered IO w/ dropbehind)
-+ *   %2: NFS WRITE will use direct IO with stable_how=NFS_UNSTABLE
-+ *   %3: NFS WRITE will use direct IO with stable_how=NFS_DATA_SYNC
-+ *   %4: NFS WRITE will use direct IO with stable_how=NFS_FILE_SYNC
-  *
-  * This setting takes immediate effect for all NFS versions,
-  * all exports, and in all NFSD net namespaces.
-@@ -109,6 +112,8 @@ static int nfsd_io_cache_write_set(void *data, u64 val)
- 	case NFSD_IO_BUFFERED:
- 	case NFSD_IO_DONTCACHE:
- 	case NFSD_IO_DIRECT:
-+	case NFSD_IO_DIRECT_WRITE_DATA_SYNC:
-+	case NFSD_IO_DIRECT_WRITE_FILE_SYNC:
- 		nfsd_io_cache_write = val;
- 		break;
- 	default:
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 1c17f96012523..913860ab3eb20 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -141,6 +141,8 @@ enum {
- 	NFSD_IO_BUFFERED,
- 	NFSD_IO_DONTCACHE,
- 	NFSD_IO_DIRECT,
-+	NFSD_IO_DIRECT_WRITE_DATA_SYNC,
-+	NFSD_IO_DIRECT_WRITE_FILE_SYNC,
- };
- 
- extern u64 nfsd_io_cache_read __read_mostly;
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index a8e15193b2160..af05ef942c5d9 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1450,12 +1450,25 @@ nfsd_write_dio_iters_init(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	return nsegs;
- }
- 
-+/* Raise this WRITE to at least @floor_iocb_flags, and report that. */
-+static void
-+nfsd_write_raise_stability(int floor_iocb_flags, struct kiocb *kiocb,
-+			   int *iocb_flags)
-+{
-+	if ((*iocb_flags & floor_iocb_flags) == floor_iocb_flags)
-+		return;
-+
-+	*iocb_flags |= floor_iocb_flags;
-+	kiocb->ki_flags |= floor_iocb_flags;
-+}
-+
- static noinline_for_stack int
- nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
--		  struct nfsd_file *nf, unsigned int nvecs,
-+		  struct nfsd_file *nf, int *iocb_flags, unsigned int nvecs,
- 		  unsigned long *cnt, struct kiocb *kiocb)
- {
- 	struct nfsd_write_dio_seg segments[3];
-+	int floor_iocb_flags = 0;
- 	struct file *file = nf->nf_file;
- 	loff_t start = kiocb->ki_pos, seg_pos, seg_last;
- 	bool sync, datasync, complete_first, complete_last;
-@@ -1463,6 +1476,14 @@ nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	ssize_t host_err;
- 	size_t expected;
- 
-+	if (nfsd_io_cache_write == NFSD_IO_DIRECT_WRITE_FILE_SYNC)
-+		floor_iocb_flags = IOCB_DSYNC | IOCB_SYNC;
-+	else if (nfsd_io_cache_write == NFSD_IO_DIRECT_WRITE_DATA_SYNC)
-+		floor_iocb_flags = IOCB_DSYNC;
-+	if (floor_iocb_flags)
-+		nfsd_write_raise_stability(floor_iocb_flags, kiocb,
-+					   iocb_flags);
-+
- 	/* Persist a synchronous WRITE once, after all of its segments. */
- 	sync = kiocb->ki_flags & IOCB_DSYNC;
- 	datasync = !(kiocb->ki_flags & IOCB_SYNC);
-@@ -1538,7 +1559,8 @@ nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
-  * @payload: xdr_buf containing the write payload
-  * @cnt: IN: number of bytes to write, OUT: number of bytes actually written
-  * @iocb_flags: IN: VFS IOCB_* flags expressing the requested write
-- *             stability; OUT: the stability to report to the client
-+ *             stability; OUT: the stability to report to the client,
-+ *             which may be raised
-  * @verf: NFS WRITE verifier
-  *
-  * Upon return, caller must invoke fh_put on @fhp.
-@@ -1606,8 +1628,10 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 
- 	switch (nfsd_io_cache_write) {
- 	case NFSD_IO_DIRECT:
--		host_err = nfsd_direct_write(rqstp, fhp, nf, nvecs,
--					     cnt, &kiocb);
-+	case NFSD_IO_DIRECT_WRITE_DATA_SYNC:
-+	case NFSD_IO_DIRECT_WRITE_FILE_SYNC:
-+		host_err = nfsd_direct_write(rqstp, fhp, nf, iocb_flags,
-+					     nvecs, cnt, &kiocb);
- 		break;
- 	case NFSD_IO_DONTCACHE:
- 		if (file->f_op->fop_flags & FOP_DONTCACHE)
-@@ -1725,7 +1749,8 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
-  * @payload: xdr_buf containing the write payload
-  * @cnt: IN: number of bytes to write, OUT: number of bytes actually written
-  * @iocb_flags: IN: VFS IOCB_* flags expressing the requested write
-- *             stability; OUT: the stability to report to the client
-+ *             stability; OUT: the stability to report to the client,
-+ *             which may be raised
-  * @verf: NFS WRITE verifier
-  *
-  * Upon return, caller must invoke fh_put on @fhp.
--- 
-2.52.0
+I have in-progress patch sets to rewrite the cifs transport[2] and the ceph
+and rbd transport[3] to make use of bvecq chains.  With the cifs transport,
+the idea is to extend the SMB message concept further up the stack and have
+the PDU creation routines attach individual RPC requests blobs that can
+then be automatically chained by the transport when a compound is being
+assembled for transmission.
+
+With the ceph transport, the idea is to convert all the different data
+containers it has into just passing around bvecqs.  These can then be
+chained together in order to transmit them.
+
+This improves efficiency in the TCP stack as we no longer need to cork the
+TCP socket, call sendmsg() multiple times and then uncork; rather we can
+preassemble the message in a bvecq chain and just send the entire messsage
+in one shot with a single sendmsg() and reduce the number of places doing
+loops.  This got an improvement in nfsd performance[4].
+
+I also have some changes on the TCP receive side for the cifs transport
+(which is also likely applicable to the ceph TCP transport) whereby the
+receive buffers are 'spliced' out into a bvecq in the cifs I/O thread
+rather than being copied.  Using a bvecq chain here is advantageous as we
+don't know in advance how many segments we're going to have.  This allows
+us firstly to avoid copying data with the socket lock held (thus holding up
+sendmsg) and secondly to avoid copying data in the I/O thread (copying can
+be offloaded to the app thread).  The last time I benchmarked this, it
+appeared to get fio reading tests on cifs a 5% speedup.
+
+Unfortunately, this doesn't help AFS much as that uses a UDP transport, but
+it might also help 9P, at least with its TCP transport.
+
+The patches can also be found here:
+
+	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=netfs-next-3
+
+Thanks,
+David
+
+Changes
+=======
+ver #15)
+- Fix issues from Sashiko[7]:
+  - Don't need to set page counts after calling alloc_pages_bulk().
+  - Adjust netfs_writeback_single() to return 0 on success, not the amount
+    written.
+  - Remove a couple of unused constants.
+
+ver #14)
+- Fix issues from Sashiko[6]:
+  - In iter_bvecq_get_pages(), use folio_get() not get_pages.
+  - In netfs_read_set_unlock_at(), netfs_read_unlock_folios(),
+    netfs_pgpriv2_unlock_copied_folios() and
+    netfs_writeback_unlock_folios(), skip wholly unoccupied bvecqs.
+  - Remove some now-unused trace bits.
+
+ver #13)
+- Fix issues from Sashiko[5]:
+  - In iter_bvecq_get_pages(), need to add bv_offset when calling
+    want_pages_array().
+  - In iter_bvecq_get_pages(), make the getting of a ref on the page
+    dependent on the page being non-slab.
+  - In bvecq_alloc_one(), use mempool_alloc(), not
+     mempool_alloc_noreserve().
+  - In bvecq_expand_buffer(), don't apply __GFP_NORETRY|__GFP_WARN for
+    order 0 allocations.
+  - Drop the netfs_bv_slot tracepoint as it's not used in these patches.
+  - In afs_do_read_single(), afs_dir_get_block() and afs_do_read_symlink(),
+    use mapping_gfp_mask() rather than GFP_KERNEL.
+  - In netfs_writeback_single(), set ->submitted so that
+    netfs_wait_for_write() doesn't then just return -EIO.
+  - In netfs_unlock_abandoned_read_pages(), reset ->first_tail_slot when
+    moving on to next node.
+  - Remove netfs_folioq_trace(s) trace info enum and string set as their
+    tracepoint got removed.
+
+ver #12)
+- Split from v11 of "netfs: Keep track of folios in a segmented bio_vec[]
+  chain"[1]
+
+[1] https://lore.kernel.org/r/20260902173350.3468672-1-dhowells@redhat.com/
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=cifs-experimental
+[3] https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=ceph-iter
+[4] https://lore.kernel.org/netdev/168979108540.1905271.9720708849149797793.stgit@morisot.1015granger.net/
+[5] https://sashiko.dev/#/patchset/20260929075913.2740968-1-dhowells%40redhat.com
+[6] https://sashiko.dev/#/patchset/20260929103412.2807494-1-dhowells%40redhat.com
+[7] https://sashiko.dev/#/patchset/20260930125247.3232130-1-dhowells%40redhat.com
+
+David Howells (10):
+  Add a function to kmap one page of a multipage bio_vec
+  iov_iter: Add a segmented queue of bio_vec[]
+  netfs: Add some tools for managing bvecq chains
+  afs: Use a bvecq to hold dir content rather than folioq
+  cifs: Use a bvecq for buffering instead of a folioq
+  smbdirect: Support ITER_BVECQ in smbdirect_map_sges_from_iter()
+  netfs: Switch folioq to bvecq
+  smbdirect: Remove support for ITER_FOLIOQ from
+    smbdirect_map_sges_from_iter()
+  iov_iter: Remove ITER_FOLIOQ
+  netfs: Remove folio_queue
+
+ Documentation/core-api/folio_queue.rst      | 209 --------
+ Documentation/core-api/index.rst            |   1 -
+ Documentation/filesystems/netfs_library.rst |   2 +-
+ fs/afs/dir.c                                |  36 +-
+ fs/afs/dir_edit.c                           |  43 +-
+ fs/afs/dir_search.c                         |  33 +-
+ fs/afs/inode.c                              |   2 +-
+ fs/afs/internal.h                           |   6 +-
+ fs/afs/symlink.c                            |  38 +-
+ fs/netfs/Makefile                           |   1 +
+ fs/netfs/buffered_read.c                    |  34 +-
+ fs/netfs/bvecq.c                            | 344 +++++++++++++
+ fs/netfs/internal.h                         |   7 +-
+ fs/netfs/iterator.c                         |  33 +-
+ fs/netfs/main.c                             |  13 +-
+ fs/netfs/misc.c                             |  96 ----
+ fs/netfs/read_collect.c                     |  48 +-
+ fs/netfs/read_pgpriv2.c                     |  26 +-
+ fs/netfs/read_retry.c                       |  29 +-
+ fs/netfs/rolling_buffer.c                   | 189 +++----
+ fs/netfs/stats.c                            |   6 +-
+ fs/netfs/write_collect.c                    |  26 +-
+ fs/netfs/write_issue.c                      | 191 ++------
+ fs/smb/client/cifsglob.h                    |   2 +-
+ fs/smb/client/smb2ops.c                     |  78 ++-
+ fs/smb/smbdirect/connection.c               | 135 +++--
+ include/linux/bvec.h                        |  18 +
+ include/linux/bvecq.h                       | 166 +++++++
+ include/linux/folio_queue.h                 | 282 -----------
+ include/linux/iov_iter.h                    |  87 ++--
+ include/linux/netfs.h                       |  16 +-
+ include/linux/rolling_buffer.h              |  42 +-
+ include/linux/uio.h                         |  17 +-
+ include/trace/events/netfs.h                |  37 +-
+ kernel/bpf/btf.c                            |   2 -
+ lib/iov_iter.c                              | 516 ++++++++++++++------
+ lib/scatterlist.c                           |  82 ++--
+ lib/tests/kunit_iov_iter.c                  | 131 +++--
+ 38 files changed, 1453 insertions(+), 1571 deletions(-)
+ delete mode 100644 Documentation/core-api/folio_queue.rst
+ create mode 100644 fs/netfs/bvecq.c
+ create mode 100644 include/linux/bvecq.h
+ delete mode 100644 include/linux/folio_queue.h
 
