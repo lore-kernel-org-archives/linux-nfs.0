@@ -1,39 +1,39 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E189B379EDA
-	for <linux-nfs@vger.kernel.org>; Thu,  1 Oct 2026 04:55:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 33DBC36DA0D
+	for <linux-nfs@vger.kernel.org>; Thu,  1 Oct 2026 04:55:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790830512; cv=none; b=N9emLKyrGJ+XjnjJ78mC7rE8Q8pdR7p7tqKj5e42Pt2lZ/VUs3LI85C5DKPmi5IYJuglyAPaVPrcfVTKO9VOkp62i90jQ+wBle9t/VG3wkTjir5VjafzRV1UgSjamwXnoVYCxtXdeoAwl8Vo8mcYv1eTCswvI+1lFUBRgUU2u1I=
+	t=1790830513; cv=none; b=O2QjvLLsDfrcUTTgSSahko5TaCHZSlwEkNyAT/ukhcj8e2RdPgVZRjrkrDj5QiXA4g4o6J6mEi3cza/D61GPAkF1jIRuQiDUH8dvcH5HH8Gb7gC4SroV6XPb9fdnRPSlsC7x6ze283eAkYmXRXWN7CGGDV2g4lCmgYLLqm4jpk0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790830512; c=relaxed/simple;
-	bh=/zGbSHc+dCkC5A04UxP+5CJpeF6aDPuMSwwXMgOfiN0=;
+	s=arc-20240116; t=1790830513; c=relaxed/simple;
+	bh=cQVyLls9m4/7tOyNYmSHUPCDkm3adUdgREEljXmlviU=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=qti/MMccqcfwbcCNf9aoYD4HILJ2cstR/v6zD+QRZ3sU40LDrclGdzb+j+6fdkq8tOhP9/knI3NKKijbKXmhcQDhzlDhfdiQ7tcQZV5fwQHSQk7iFj1B5kDIet2PScD3UCuP2aYD4yDgCvnDWqIG5oTO8VPrl8HJ6Q91EaNHLVc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=DM3DhA29; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=FumhO/n6JuC7O/AJaRK9nC2dEyWrXwdL063Qo/I0U8iaBFTMFwiQ5i6qSgS+tdwtTJnbsXlfZ312iwTSjTvl8IW03XPUV8fYrmDtBNztW4zBGs3j5bfKnlyq7qDoZ3CxMd3MOXqZJc+FCWFJ3DLPFaMJt6S3t/3hgK1h0dmFSEI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=KAj4fRrp; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="DM3DhA29"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 93C341F000FF;
-	Thu,  1 Oct 2026 04:55:10 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="KAj4fRrp"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C64911F00898;
+	Thu,  1 Oct 2026 04:55:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790830510;
-	bh=l4m/49rXZys4opMsgWT5jP1+LM2B10Iv4ntLJWRXP4o=;
+	s=k20260515; t=1790830512;
+	bh=cNVv8qsABCpgMfUVoTS3hPlEAkHOEzke3PH5lfYtbO0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=DM3DhA299PP6fskbTugerg/WW4nuSWjmmaNEd+a7YSW9/nqo/OaTc9wMyLAW2ouI0
-	 fj4D/m3FRssis7Yj1S+yCDfO0g4K8xjJO5rWXbkQsgnsOAAl74BHfOgdVLE6jFjcn6
-	 XsOiYXVjTNlgLwGoxWOl7++L7kWQLsUcOIMiAfJxn/dpsoejEudwDpUkC3jNLUpp4L
-	 nvTZLKOz5ewVzT9pxOjdRiYWTxCv2p+3hpGGMEstxkeFMNbSuQQWMjtf3F66MgzshY
-	 qguhQjNt1hz+BEX2/SPHFlvC7+vcaUA5Ur2tsKrvDNR7qtec910RhcUFbdnVh5M8f3
-	 izwx7+tpn9bGw==
+	b=KAj4fRrpnibkcAAwJGdHtVIkBh07e+iUog4qGDjshMUnCXOe/khvZzYhMj+LddBe1
+	 OsmG5XYRSIV/IGQOHK276fX8DSHEhcSS2gcBo0frGMcSPEMIcNcjC1zV/q9BUp4PAf
+	 lsmvsuvf7OWTyNZL0FlnRVeajPKm3Qd2pDAM1BTBKLHM44IX22WJdV8XJ864oAed6F
+	 I+2GIT9hZIwvLww1EIMibLYL1XmmJQdeCMKaT/D1Phz+e3KgvsapA6uKJ99x/9sDYB
+	 0ul2J9Gx2LYUcTFUTx+cW+5Ar2+GP4Clv/Kmh4t/+mWkDDL+9QwYrdcrOScepCKq2E
+	 I9na029YcXVcA==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Chuck Lever <cel@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>
 Cc: hch@lst.de,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH v3 6/9] NFSD: keep boundary page of a split direct-mode WRITE until both writers complete
-Date: Thu,  1 Oct 2026 00:54:59 -0400
-Message-ID: <20261001045502.48381-7-snitzer@kernel.org>
+Subject: [PATCH v3 7/9] NFSD: add tracing for how direct-mode READ and WRITE are serviced
+Date: Thu,  1 Oct 2026 00:55:00 -0400
+Message-ID: <20261001045502.48381-8-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20261001045502.48381-1-snitzer@kernel.org>
 References: <20261001045502.48381-1-snitzer@kernel.org>
@@ -45,234 +45,368 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-A direct-mode WRITE whose ends are not aligned for direct I/O is split
-into a buffered prefix, a direct middle and a buffered suffix, and the
-prefix and suffix are issued IOCB_DONTCACHE so their pages are dropped
-once written back.  The page holding such a segment is shared by two
-WRITEs, the one ending in it and the one starting in it, which may
-arrive in either order, from different clients, at the same time.  If
-it is dropped as soon as the first writer's data is written back, the
-second has to read the block from disk before it can complete it: one
-4 KiB read per WRITE.  With many clients interleaving small misaligned
-O_DIRECT records into one shared file, that was 0.81 device reads per
-record (585 GiB read while writing 8.1 TiB).
+When io_cache_read or io_cache_write selects a direct I/O mode, a
+request may still be serviced with DONTCACHE buffered or normal
+buffered I/O, and a WRITE may be split into up to three segments that
+each take a different path depending on the request's offset/length
+alignment, the payload's memory alignment, the filesystem's
+FOP_DONTCACHE support and direct_misaligned_dontcache.  Until now the only visibility was
+nfsd_{read,write}_direct for O_DIRECT and nfsd_{read,write}_vector for
+everything else, so the DONTCACHE and cached buffered cases were
+indistinguishable and the reason a WRITE was not issued as direct I/O
+was not recorded at all.
 
-Keep the page until both writers have had it, with no state in NFSD.
-Immediately before a boundary segment is written,
-nfsd_write_dio_boundary_claim() puts an empty folio in the page cache
-if there is not one there already.  The folio is inserted unmarked: a
-DONTCACHE write only marks a folio it allocated itself, so neither
-writer marks this one and it is never counted in WB_DONTCACHE_DIRTY,
-which is what the DONTCACHE writeback kick targets.
+Add:
 
-The add is atomic, so of two concurrent partners exactly one gets the
-folio.  The other finds it (-EEXIST), is therefore the second of the
-two, and once its data is in the page
-nfsd_write_dio_boundary_complete() marks the folio dropbehind.  The
-mark must follow the write, because a clean marked folio is dropped by
-whatever writeback completes next, and must not be accounted, because
-a counted folio is handed straight back to the kick.  Whichever
-writeback then cleans the page drops it: the WRITE's own sync for
-FILE_SYNC and DATA_SYNC, the flusher or the client's COMMIT for
-UNSTABLE.
+ - nfsd_write_dio_split, emitted once per direct-mode WRITE before any
+   segment is issued.  It records the advertised offset and memory
+   alignments, the payload's offset within its first page, the start,
+   middle and end segment sizes, the number of segments issued, a
+   disposition naming the path taken (direct, no_alignment, too_small,
+   no_middle, mem_misaligned), and whether the buffered segments were
+   issued IOCB_DONTCACHE.
 
-A WRITE that is not split is issued as one buffered DONTCACHE segment.
-Its first and last pages are shared with the neighbouring WRITEs in the
-same way, and are claimed the same way.  Nothing is claimed when
-direct_misaligned_dontcache is N, since those pages are then cached.
+ - nfsd_write_dontcache and nfsd_read_dontcache, emitted for WRITE
+   segments and READs serviced with IOCB_DONTCACHE.  nfsd_write_vector
+   and nfsd_read_vector now fire only for normal buffered I/O.
 
-Measured with 32 interleaved writers over an emulated 4Kn NVMe,
-direct_misaligned_dontcache=Y and io_cache_write=4 (the
-NFSD_IO_DIRECT_WRITE_FILE_SYNC mode added in a later commit), each arm
-starting from a freshly made file system.  47008-byte records, which
-split: 704 device reads for 42895 WRITEs, against 45144 for 45664 WRITEs
-without this patch.  6000-byte records, which are not split: 385 reads
-against 196589.  The DONTCACHE flusher stays idle in both, and 81 of the
-written file's 524066 pages are still resident afterwards.
+The disposition enum lives in vfs.h so trace.h can reference it.
 
-On a four-server pNFS flexfiles rig, three clients writing 47008-byte
-records for 240 s against 640 nfsd threads per server: device reads
-fall from 0.014-0.015 per record to 0.003, page-cache growth over the
-write phase falls from about 11 GiB to 2.9 GiB, and write throughput
-rises by 2.4% to 4.9% across NFSD_IO_DIRECT and the two modes added
-in a later commit, with read throughput unchanged.
-Keeping every boundary page cached instead, with
-direct_misaligned_dontcache=N, grows the page cache by about 630 GiB
-over the same runs.
+Document the new events in nfsd-io-modes.rst, including the iomap
+iomap_dio_invalidate_fail event that reveals an O_DIRECT segment which
+the filesystem silently serviced with buffered I/O.
 
-Reported-by: Jonathan Flynn <jonathan.flynn@hammerspace.com>
-Assisted-by: Claude:claude-opus-5[1m]
+Assisted-by: Claude:claude-fable-5-1
 Signed-off-by: Mike Snitzer <snitzer@kernel.org>
 ---
- .../filesystems/nfs/nfsd-io-modes.rst         | 11 +++
- fs/nfsd/vfs.c                                 | 87 ++++++++++++++++++-
- 2 files changed, 94 insertions(+), 4 deletions(-)
+ .../filesystems/nfs/nfsd-io-modes.rst         | 34 +++++++-
+ fs/nfsd/trace.h                               | 85 +++++++++++++++++++
+ fs/nfsd/vfs.c                                 | 48 ++++++++---
+ fs/nfsd/vfs.h                                 | 14 +++
+ 4 files changed, 166 insertions(+), 15 deletions(-)
 
 diff --git a/Documentation/filesystems/nfs/nfsd-io-modes.rst b/Documentation/filesystems/nfs/nfsd-io-modes.rst
-index 686b106b96f1b..683e3a81d4de1 100644
+index 683e3a81d4de1..11938caee14ca 100644
 --- a/Documentation/filesystems/nfs/nfsd-io-modes.rst
 +++ b/Documentation/filesystems/nfs/nfsd-io-modes.rst
-@@ -155,6 +155,17 @@ Misaligned WRITE:
-     A FILE_SYNC or DATA_SYNC WRITE is persisted once after all of its
-     segments are written, not once per segment.
+@@ -175,21 +175,49 @@ Misaligned WRITE:
+ Tracing:
+     The nfsd_read_direct trace event shows how NFSD expands any
+     misaligned READ to the next DIO-aligned block (on either end of the
+-    original READ, as needed).
++    original READ, as needed). A READ that is serviced with buffered IO
++    instead emits nfsd_read_dontcache (DONTCACHE buffered IO) or
++    nfsd_read_vector (normal buffered IO).
  
-+    The page holding a start or end segment is shared with the
-+    neighbouring WRITE, which may arrive before, after or at the same
-+    time, from any client. So that the second WRITE to such a page does
-+    not have to read it back from disk, NFSD puts an empty page there
-+    immediately before writing a start or end segment, if there is not
-+    one already, without marking it DONTCACHE. The WRITE that finds the
-+    page already there marks it DONTCACHE once it has written it, and
-+    the next writeback drops it. The first and last pages of a WRITE
-+    that is not split are handled the same way. None of this applies
-+    when direct_misaligned_dontcache is N.
+     This combination of trace events is useful for READs::
+ 
+       echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_read_vector/enable
++      echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_read_dontcache/enable
+       echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_read_direct/enable
+       echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_read_io_done/enable
+       echo 1 > /sys/kernel/tracing/events/xfs/xfs_file_direct_read/enable
+ 
+-    The nfsd_write_direct trace event shows how NFSD splits a given
+-    misaligned WRITE into a DIO-aligned middle segment.
++    The nfsd_write_dio_split trace event is emitted once per WRITE in a
++    DIRECT IO mode, before any IO is issued. It records the alignments
++    the filesystem advertised, the payload's offset in its first page,
++    the sizes of the start, middle and end segments, the number of
++    segments issued, and a disposition::
 +
-     Writing N to /sys/kernel/debug/nfsd/direct_misaligned_dontcache
-     (default Y) issues the start and end segments, and a WRITE that is
-     not split, as normal buffered IO instead of DONTCACHE, which suits a
++      direct          the aligned middle segment uses O_DIRECT
++      mem_misaligned  payload memory is misaligned; not split
++      no_alignment    the filesystem advertises no DIO alignment; not split
++      too_small       smaller than the larger alignment; not split
++      no_middle       no aligned middle, or one smaller than
++                      direct_misaligned_num_pages; not split
++
++    dontcache=1 means the buffered segments were DONTCACHE: the start and
++    end segments of a direct WRITE, or the whole of one that was not
++    split.
++
++    Each segment then emits nfsd_write_direct (O_DIRECT),
++    nfsd_write_dontcache (DONTCACHE buffered IO) or nfsd_write_vector
++    (normal buffered IO).
+ 
+     This combination of trace events is useful for WRITEs::
+ 
+       echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_write_opened/enable
++      echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_write_dio_split/enable
+       echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_write_direct/enable
++      echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_write_dontcache/enable
++      echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_write_vector/enable
+       echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_write_io_done/enable
+       echo 1 > /sys/kernel/tracing/events/xfs/xfs_file_direct_write/enable
++      echo 1 > /sys/kernel/tracing/events/iomap/iomap_dio_invalidate_fail/enable
++
++    iomap_dio_invalidate_fail reports an O_DIRECT middle segment that
++    the filesystem serviced with buffered IO instead.
+diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+index ad106d627fe72..89b1962dacfb1 100644
+--- a/fs/nfsd/trace.h
++++ b/fs/nfsd/trace.h
+@@ -15,6 +15,7 @@
+ #include <trace/misc/fsnotify.h>
+ #include <trace/misc/sunrpc.h>
+ 
++#include "vfs.h"
+ #include "export.h"
+ #include "nfsfh.h"
+ #include "xdr4.h"
+@@ -501,6 +502,7 @@ DEFINE_EVENT(nfsd_io_class, nfsd_##name,	\
+ DEFINE_NFSD_IO_EVENT(read_start);
+ DEFINE_NFSD_IO_EVENT(read_splice);
+ DEFINE_NFSD_IO_EVENT(read_vector);
++DEFINE_NFSD_IO_EVENT(read_dontcache);
+ DEFINE_NFSD_IO_EVENT(read_direct);
+ DEFINE_NFSD_IO_EVENT(read_io_done);
+ DEFINE_NFSD_IO_EVENT(read_done);
+@@ -508,11 +510,94 @@ DEFINE_NFSD_IO_EVENT(write_start);
+ DEFINE_NFSD_IO_EVENT(write_opened);
+ DEFINE_NFSD_IO_EVENT(write_direct);
+ DEFINE_NFSD_IO_EVENT(write_vector);
++DEFINE_NFSD_IO_EVENT(write_dontcache);
+ DEFINE_NFSD_IO_EVENT(write_io_done);
+ DEFINE_NFSD_IO_EVENT(write_done);
+ DEFINE_NFSD_IO_EVENT(commit_start);
+ DEFINE_NFSD_IO_EVENT(commit_done);
+ 
++TRACE_DEFINE_ENUM(NFSD_WRITE_DIO_DIRECT);
++TRACE_DEFINE_ENUM(NFSD_WRITE_DIO_MEM_MISALIGNED);
++TRACE_DEFINE_ENUM(NFSD_WRITE_DIO_NO_ALIGN);
++TRACE_DEFINE_ENUM(NFSD_WRITE_DIO_TOO_SMALL);
++TRACE_DEFINE_ENUM(NFSD_WRITE_DIO_NO_MIDDLE);
++
++#define show_nfsd_write_dio_disposition(x)				\
++	__print_symbolic(x,						\
++		{ NFSD_WRITE_DIO_DIRECT,	"direct" },		\
++		{ NFSD_WRITE_DIO_MEM_MISALIGNED, "mem_misaligned" },	\
++		{ NFSD_WRITE_DIO_NO_ALIGN,	"no_alignment" },	\
++		{ NFSD_WRITE_DIO_TOO_SMALL,	"too_small" },		\
++		{ NFSD_WRITE_DIO_NO_MIDDLE,	"no_middle" })
++
++/**
++ * nfsd_write_dio_split - how a direct-mode WRITE was split
++ *
++ * Emitted once per direct-mode WRITE, before any segment is issued.
++ * @prefix, @middle and @suffix are zero when not computed.  @mem_offset
++ * is the offset of the payload within its first page.  The DONTCACHE
++ * bit arrives in @disposition because a tracepoint takes at most twelve
++ * arguments.
++ */
++TRACE_EVENT(nfsd_write_dio_split,
++	TP_PROTO(struct svc_rqst *rqstp,
++		 struct svc_fh *fhp,
++		 u64 offset,
++		 u32 len,
++		 u32 offset_align,
++		 u32 mem_align,
++		 u32 mem_offset,
++		 u32 prefix,
++		 u32 middle,
++		 u32 suffix,
++		 u32 nsegs,
++		 unsigned int disposition),
++	TP_ARGS(rqstp, fhp, offset, len, offset_align, mem_align, mem_offset,
++		prefix, middle, suffix, nsegs, disposition),
++	TP_STRUCT__entry(
++		__field(u32, xid)
++		__field(u32, fh_hash)
++		__field(u64, offset)
++		__field(u32, len)
++		__field(u32, offset_align)
++		__field(u32, mem_align)
++		__field(u32, mem_offset)
++		__field(u32, prefix)
++		__field(u32, middle)
++		__field(u32, suffix)
++		__field(u32, nsegs)
++		__field(unsigned int, disposition)
++		__field(bool, dontcache)
++	),
++	TP_fast_assign(
++		__entry->xid = be32_to_cpu(rqstp->rq_xid);
++		__entry->fh_hash = knfsd_fh_hash(&fhp->fh_handle);
++		__entry->offset = offset;
++		__entry->len = len;
++		__entry->offset_align = offset_align;
++		__entry->mem_align = mem_align;
++		__entry->mem_offset = mem_offset;
++		__entry->prefix = prefix;
++		__entry->middle = middle;
++		__entry->suffix = suffix;
++		__entry->nsegs = nsegs;
++		__entry->disposition = disposition & ~NFSD_WRITE_DIO_DONTCACHE;
++		__entry->dontcache = !!(disposition & NFSD_WRITE_DIO_DONTCACHE);
++	),
++	TP_printk("xid=0x%08x fh_hash=0x%08x offset=%llu len=%u "
++		  "offset_align=%u mem_align=%u mem_offset=%u "
++		  "prefix=%u middle=%u suffix=%u nsegs=%u disposition=%s "
++		  "dontcache=%u",
++		  __entry->xid, __entry->fh_hash,
++		  __entry->offset, __entry->len,
++		  __entry->offset_align, __entry->mem_align,
++		  __entry->mem_offset,
++		  __entry->prefix, __entry->middle, __entry->suffix,
++		  __entry->nsegs,
++		  show_nfsd_write_dio_disposition(__entry->disposition),
++		  __entry->dontcache)
++);
++
+ DECLARE_EVENT_CLASS(nfsd_err_class,
+ 	TP_PROTO(struct svc_rqst *rqstp,
+ 		 struct svc_fh	*fhp,
 diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 592415900403f..5a54ef664da43 100644
+index 5a54ef664da43..ec52c67c4380d 100644
 --- a/fs/nfsd/vfs.c
 +++ b/fs/nfsd/vfs.c
-@@ -1272,6 +1272,8 @@ static int wait_for_concurrent_writes(struct file *file)
- struct nfsd_write_dio_seg {
- 	struct iov_iter			iter;
- 	int				flags;
-+	bool				boundary;	/* prefix or suffix */
-+	bool				edges;		/* unsplit WRITE */
- };
+@@ -1226,7 +1226,10 @@ __be32 nfsd_iter_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		base = 0;
+ 	}
  
- static unsigned long
-@@ -1291,6 +1293,54 @@ nfsd_write_dio_seg_init(struct nfsd_write_dio_seg *segment,
- 		iov_iter_advance(&segment->iter, start);
- 	iov_iter_truncate(&segment->iter, len);
- 	segment->flags = iocb->ki_flags;
-+	segment->boundary = false;
-+	segment->edges = false;
-+}
-+
-+/*
-+ * The page holding a misaligned start or end of a WRITE is shared with the
-+ * neighbouring WRITE.  Put an unmarked folio there if there is none: a
-+ * DONTCACHE write marks only a folio it allocates, so neither WRITE marks
-+ * this one and no writeback drops it before the other WRITE has written it.
-+ *
-+ * Return: true if a folio was already there.  This WRITE is then the
-+ * second of the two and calls nfsd_write_dio_boundary_complete() after
-+ * writing the page.
-+ */
-+static bool
-+nfsd_write_dio_boundary_claim(struct file *file, loff_t pos)
-+{
-+	struct address_space *mapping = file->f_mapping;
-+	gfp_t gfp = mapping_gfp_mask(mapping);
-+	struct folio *folio;
-+	int err;
-+
-+	folio = filemap_alloc_folio(gfp, 0, NULL);
-+	if (!folio)
-+		return false;
-+	err = filemap_add_folio(mapping, folio, pos >> PAGE_SHIFT, gfp);
-+	if (!err)
-+		folio_unlock(folio);
-+	folio_put(folio);
-+	return err == -EEXIST;
-+}
-+
-+/*
-+ * Both WRITEs have written the page: mark it so the writeback that cleans
-+ * it drops it.  folio_set_dropbehind() does not count the folio in
-+ * WB_DONTCACHE_DIRTY.
-+ */
-+static void
-+nfsd_write_dio_boundary_complete(struct file *file, loff_t pos)
-+{
-+	struct folio *folio;
-+
-+	folio = __filemap_get_folio(file->f_mapping, pos >> PAGE_SHIFT,
-+				    FGP_DONTCACHE, 0);
-+	if (IS_ERR(folio))
-+		return;
-+	folio_set_dropbehind(folio);
-+	folio_put(folio);
+-	trace_nfsd_read_vector(rqstp, fhp, offset, *count - total);
++	if (kiocb.ki_flags & IOCB_DONTCACHE)
++		trace_nfsd_read_dontcache(rqstp, fhp, offset, *count - total);
++	else
++		trace_nfsd_read_vector(rqstp, fhp, offset, *count - total);
+ 	iov_iter_bvec(&iter, ITER_DEST, rqstp->rq_bvec, v, *count - total);
+ 	host_err = vfs_iocb_iter_read(file, &kiocb, &iter);
+ 	return nfsd_finish_read(rqstp, fhp, file, offset, count, eof, host_err);
+@@ -1344,7 +1347,8 @@ nfsd_write_dio_boundary_complete(struct file *file, loff_t pos)
  }
  
  static unsigned int
-@@ -1338,7 +1388,8 @@ nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
+-nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
++nfsd_write_dio_iters_init(struct svc_rqst *rqstp, struct svc_fh *fhp,
++			  struct nfsd_file *nf, struct bio_vec *bvec,
+ 			  unsigned int nvecs, struct kiocb *iocb,
+ 			  unsigned long total,
+ 			  struct nfsd_write_dio_seg segments[3])
+@@ -1352,7 +1356,8 @@ nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
+ 	u32 offset_align = nf->nf_dio_offset_align;
+ 	loff_t prefix_end, orig_end, middle_end;
+ 	u32 mem_align = nf->nf_dio_mem_align;
+-	size_t prefix, middle, suffix;
++	size_t prefix = 0, middle = 0, suffix = 0;
++	enum nfsd_write_dio_disposition disposition;
+ 	loff_t offset = iocb->ki_pos;
+ 	unsigned int dontcache_flags = 0;
+ 	unsigned int buffered_flags;
+@@ -1368,9 +1373,14 @@ nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
+ 	 * If alignments are not available, the write is too small,
+ 	 * or no alignment can be found, fall back to buffered I/O.
+ 	 */
+-	if (unlikely(!mem_align || !offset_align) ||
+-	    unlikely(total < max(offset_align, mem_align)))
++	if (unlikely(!mem_align || !offset_align)) {
++		disposition = NFSD_WRITE_DIO_NO_ALIGN;
+ 		goto no_dio;
++	}
++	if (unlikely(total < max(offset_align, mem_align))) {
++		disposition = NFSD_WRITE_DIO_TOO_SMALL;
++		goto no_dio;
++	}
+ 
+ 	prefix_end = round_up(offset, offset_align);
+ 	orig_end = offset + total;
+@@ -1382,8 +1392,10 @@ nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
+ 
+ 	if (!middle ||
+ 	    ((prefix || suffix) &&
+-	     middle < PAGE_SIZE * nfsd_direct_misaligned_num_pages))
++	     middle < PAGE_SIZE * nfsd_direct_misaligned_num_pages)) {
++		disposition = NFSD_WRITE_DIO_NO_MIDDLE;
+ 		goto no_dio;
++	}
+ 
  	if (prefix) {
  		nfsd_write_dio_seg_init(&segments[nsegs], bvec,
- 					nvecs, total, 0, prefix, iocb);
--		segments[nsegs++].flags |= buffered_flags;
-+		segments[nsegs].flags |= buffered_flags;
-+		segments[nsegs++].boundary = !!buffered_flags;
- 	}
+@@ -1402,10 +1414,13 @@ nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
+ 	 * the first bvec, all subsequent bvecs start at bv_offset zero
+ 	 * (page-aligned). Therefore, only the first bvec is checked.
+ 	 */
+-	if (iov_iter_bvec_offset(&segments[nsegs].iter) & (mem_align - 1))
++	if (iov_iter_bvec_offset(&segments[nsegs].iter) & (mem_align - 1)) {
++		disposition = NFSD_WRITE_DIO_MEM_MISALIGNED;
+ 		goto no_dio;
++	}
+ 	/* In case the file system falls back to buffered I/O (-ENOTBLK). */
+ 	segments[nsegs++].flags |= IOCB_DIRECT | dontcache_flags;
++	disposition = NFSD_WRITE_DIO_DIRECT;
  
- 	nfsd_write_dio_seg_init(&segments[nsegs], bvec, nvecs,
-@@ -1359,7 +1410,8 @@ nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
  	if (suffix) {
  		nfsd_write_dio_seg_init(&segments[nsegs], bvec, nvecs, total,
- 					prefix + middle, suffix, iocb);
--		segments[nsegs++].flags |= buffered_flags;
-+		segments[nsegs].flags |= buffered_flags;
-+		segments[nsegs++].boundary = !!buffered_flags;
+@@ -1413,8 +1428,7 @@ nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
+ 		segments[nsegs].flags |= buffered_flags;
+ 		segments[nsegs++].boundary = !!buffered_flags;
  	}
+-
+-	return nsegs;
++	goto out;
  
- 	return nsegs;
-@@ -1373,6 +1425,7 @@ nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
- 	nfsd_write_dio_seg_init(&segments[0], bvec, nvecs, total, 0,
+ no_dio:
+ 	/*
+@@ -1426,7 +1440,14 @@ nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
  				total, iocb);
  	segments[0].flags |= buffered_flags;
-+	segments[0].edges = !!buffered_flags;
- 	return 1;
+ 	segments[0].edges = !!buffered_flags;
+-	return 1;
++	nsegs = 1;
++out:
++	trace_nfsd_write_dio_split(rqstp, fhp, offset, total,
++				   offset_align, mem_align, bvec->bv_offset,
++				   prefix, middle, suffix, nsegs,
++				   disposition | (buffered_flags ?
++						  NFSD_WRITE_DIO_DONTCACHE : 0));
++	return nsegs;
  }
  
-@@ -1383,8 +1436,8 @@ nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- {
- 	struct nfsd_write_dio_seg segments[3];
- 	struct file *file = nf->nf_file;
--	loff_t start = kiocb->ki_pos;
--	bool sync, datasync;
-+	loff_t start = kiocb->ki_pos, seg_pos, seg_last;
-+	bool sync, datasync, complete_first, complete_last;
- 	unsigned int nsegs, i;
- 	ssize_t host_err;
- 	size_t expected;
-@@ -1408,9 +1461,35 @@ nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ static noinline_for_stack int
+@@ -1446,8 +1467,8 @@ nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	sync = kiocb->ki_flags & IOCB_DSYNC;
+ 	datasync = !(kiocb->ki_flags & IOCB_SYNC);
  
- 		expected = iov_iter_count(&segments[i].iter);
+-	nsegs = nfsd_write_dio_iters_init(nf, rqstp->rq_bvec, nvecs,
+-					  kiocb, *cnt, segments);
++	nsegs = nfsd_write_dio_iters_init(rqstp, fhp, nf, rqstp->rq_bvec,
++					  nvecs, kiocb, *cnt, segments);
  
-+		/*
-+		 * Claim just before the write: an earlier claim gives the
-+		 * partner WRITE time to complete the page and drop it first.
-+		 */
-+		seg_pos = kiocb->ki_pos;
-+		seg_last = seg_pos + expected - 1;
-+		complete_first = false;
-+		complete_last = false;
-+		if (segments[i].boundary) {
-+			complete_first = nfsd_write_dio_boundary_claim(file,
-+								       seg_pos);
-+		} else if (segments[i].edges) {
-+			/* A page the segment covers entirely is not shared. */
-+			if (seg_pos & ~PAGE_MASK)
-+				complete_first = nfsd_write_dio_boundary_claim(
-+							file, seg_pos);
-+			if (((seg_last + 1) & ~PAGE_MASK) &&
-+			    (seg_last >> PAGE_SHIFT) != (seg_pos >> PAGE_SHIFT))
-+				complete_last = nfsd_write_dio_boundary_claim(
-+							file, seg_last);
-+		}
+ 	*cnt = 0;
+ 	for (i = 0; i < nsegs; i++) {
+@@ -1455,6 +1476,9 @@ nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		if (kiocb->ki_flags & IOCB_DIRECT)
+ 			trace_nfsd_write_direct(rqstp, fhp, kiocb->ki_pos,
+ 						segments[i].iter.count);
++		else if (kiocb->ki_flags & IOCB_DONTCACHE)
++			trace_nfsd_write_dontcache(rqstp, fhp, kiocb->ki_pos,
++						   segments[i].iter.count);
+ 		else
+ 			trace_nfsd_write_vector(rqstp, fhp, kiocb->ki_pos,
+ 						segments[i].iter.count);
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index 38f7d36bd4da2..4b352a48a8af2 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -229,4 +229,18 @@ __be32		nfsd_permission(struct svc_cred *cred, struct svc_export *exp,
+ 
+ void		nfsd_filp_close(struct file *fp);
+ 
++/*
++ * The path nfsd_write_dio_iters_init() took for a direct-mode WRITE.
++ * NFSD_WRITE_DIO_DONTCACHE is ORed in when its buffered segments carry
++ * IOCB_DONTCACHE.
++ */
++enum nfsd_write_dio_disposition {
++	NFSD_WRITE_DIO_DIRECT,
++	NFSD_WRITE_DIO_MEM_MISALIGNED,
++	NFSD_WRITE_DIO_NO_ALIGN,
++	NFSD_WRITE_DIO_TOO_SMALL,
++	NFSD_WRITE_DIO_NO_MIDDLE,
++	NFSD_WRITE_DIO_DONTCACHE = 0x80,
++};
 +
- 		host_err = vfs_iocb_iter_write(file, kiocb, &segments[i].iter);
- 		if (host_err < 0)
- 			return host_err;
-+		if (complete_first)
-+			nfsd_write_dio_boundary_complete(file, seg_pos);
-+		if (complete_last)
-+			nfsd_write_dio_boundary_complete(file, seg_last);
- 		*cnt += host_err;
- 		if (host_err < (ssize_t)expected)
- 			break;	/* partial write */
+ #endif /* LINUX_NFSD_VFS_H */
 -- 
 2.52.0
 
