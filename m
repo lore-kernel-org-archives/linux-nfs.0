@@ -1,39 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D6E0936DA0D
-	for <linux-nfs@vger.kernel.org>; Thu,  1 Oct 2026 04:55:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 068CD3803F4
+	for <linux-nfs@vger.kernel.org>; Thu,  1 Oct 2026 04:55:04 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790830505; cv=none; b=jQt6EHmFwmjR6KG8sr5ceUgiW7aWOePCYncXIffCUJszvFrsxB5ZIJIl2LfeSCO8uKyHbnl9GC+eYrQjFXfAE1oKNVRP1c5eUOWQhzmFRknQg81TGWVZvA/0tC6xoU6ThHc5eJj31mQ9uaD6vhjTpJ2b7pWEwFDkcNGXuWn6CiY=
+	t=1790830506; cv=none; b=A21AhOTIgxFQUGuORAXBQB/5nJ+uGCzPUm8BdoyXgmqZ481hspgK9xd6dW+qBQN6atgcFre/BkIntgXvewuU17a10QNttyaP/2vFpkANP4DW5d1uWcfcUlvb7RRluAGsRN0AB5E8QbNawvAioI6f/l2jKGzaJAFjX6UuIpM6UR4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790830505; c=relaxed/simple;
-	bh=jPJEtfwD0+0M1X6TyqoKrDkebAwgN3n1uDOcoDoZWk4=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=iprmA2uO9J+ubcAXiHzOG5s1pVNAYWfmvSWVfn2+86TFqY47r6QprDLf5oBAlNrbbEukg9aMbKxEcNqYh4gRMr0G2msJ0+NUuHbaoc6T8fMWHTCUbAWy2/3bralN48YmgKP5MyRnUGRQchCaSiGJx2eQbDFG6pj/puTZf8NWBEE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=kqtWNwgT; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1790830506; c=relaxed/simple;
+	bh=/fmpFYSiuu/n67mxgvNxYwoNxR/Vhwp+hO2cdQPkefM=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=FEvykdkNpo7+tY5kLDhJgPHvWBXTwcSeHpuO3xpESp7RIgRkUvyOGXESTAOaaGDIQN4G8CMe3on/FjP2Qos+Jbh8uLrmAHmyV56oI92klZ0PCSQ1XB3rcW3KOVvEIMtkyXpmzoi89xgNwxTZDsUcUD/UBDF7THd2jBrL8SKl8yY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=T/ADQKS0; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="kqtWNwgT"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2F06E1F000FF;
-	Thu,  1 Oct 2026 04:55:03 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="T/ADQKS0"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6E3941F00898;
+	Thu,  1 Oct 2026 04:55:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790830503;
-	bh=9C+n9Rs9taRb7n0USDD+NQ7sMKw5MPwVUGcGcNix3eI=;
-	h=From:To:Cc:Subject:Date;
-	b=kqtWNwgT6nAWo0VMlZ00C+Tc4EdfaYN+tZcKdwbZTuSGX2YgsmvtOY1Th1HDMt9cL
-	 nFb+IL1bGF23hxconnP54eDmYTlca8/oWQREwxkQqRXNl6NkPp2Y5/xxUkF87J9NVb
-	 kX/gV+EdXenxQybye6xCCR7kjK4reHhVS+VZIvPA2owZ7sHY4yIFKh9b7AEHNn86JN
-	 htxjrvCClV9lwzwL4rk4lLSOHjtEyQD8XwOWbv1hCk+Za1nIMU3H3rRhvu8v0hzY9f
-	 NE5F1NLmyvFwqx5C/7VnuwnALluqNsdsXGq0QGv1bVsjcd81DI/AXR+dCLsirSxKlN
-	 yUPC6380pAXtw==
+	s=k20260515; t=1790830504;
+	bh=mwIFU7RQjl7yYOxHo65fE7ZJzaKR7cUWIGGQMRpoBJY=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=T/ADQKS0KPLSVbjvjAXj9fx5ZcVRjqFHImBJguXzVidnXQK6BRdpG3d+ZrrkCy6Ug
+	 Ii1FQU2UYvlh49zT67nUJxrhywP2Wo5NJsCgMRxEg939Tfrw0J9BCmmHl2nOjuQg2W
+	 HASJJSjkfZ9QnJbFxwX/R7KECe1Gli1RRDy0XCt9Z1qLdSf/5OsaRRRZ3qx2yUWPh3
+	 h6qM8T368NHJUvtyVAjERSsYBS4sEswACIHIHJX3ZqqrcPEfB5U7p8LhA+evPyhJJv
+	 1HItt7Upowr/TJXXtrJMPzH56gYkio1TqG45dqoPu7zGyG9qzBjiudePL76+BC1G2p
+	 EfFAks0YwFg3g==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Chuck Lever <cel@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>
 Cc: hch@lst.de,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH v3 0/9] NFSD: keep direct-mode I/O out of the page cache
-Date: Thu,  1 Oct 2026 00:54:53 -0400
-Message-ID: <20261001045502.48381-1-snitzer@kernel.org>
+Subject: [PATCH v3 1/9] NFSD: mark the direct middle of a split WRITE IOCB_DONTCACHE as well
+Date: Thu,  1 Oct 2026 00:54:54 -0400
+Message-ID: <20261001045502.48381-2-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
+In-Reply-To: <20261001045502.48381-1-snitzer@kernel.org>
+References: <20261001045502.48381-1-snitzer@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -42,101 +45,70 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Hi,
+nfsd_write_dio_iters_init() issues the DIO-aligned middle of a
+misaligned WRITE with IOCB_DIRECT.  A file system may service that
+request with buffered I/O instead: xfs_file_write_iter() retries
+through xfs_file_buffered_write() with the same kiocb when
+xfs_file_dio_write() returns -ENOTBLK, which iomap_dio_rw() does when
+it cannot invalidate page cache overlapping the range.
 
-This series changes NFSD's direct write path: io_cache_write modes
-where an aligned WRITE goes to the filesystem as O_DIRECT, with
-DONTCACHE for the parts a misaligned WRITE cannot issue directly.
+In a streaming misaligned WRITE workload with more than one request in
+flight this happens routinely.  Request N's direct middle ends in the
+page where request N+1's buffered prefix starts.  If N+1 dirties that
+page between N's writeback and N's invalidation, the invalidation
+fails and XFS re-issues all of N's middle, tens of kilobytes, as a
+cached buffered write that nothing ever drops.
 
-1/9 marks the direct middle of a split WRITE IOCB_DONTCACHE, for when
-XFS re-issues it buffered (-ENOTBLK).  It carries Fixes: and rewrites
-the stale nfsd-io-modes.rst sentence in place, so a stable tree
-carrying only this patch reads consistently.
+Set IOCB_DONTCACHE on the middle segment alongside IOCB_DIRECT when
+the file system supports FOP_DONTCACHE.  The direct path ignores the
+flag; a buffered fallback now drops its pages once written back.
 
-2/9 splits a misaligned WRITE only for a direct middle of at least
-direct_misaligned_num_pages (default 2).  3/9 (Jonathan) adds
-direct_misaligned_dontcache, which selects whether the parts that are
-not O_DIRECT are DONTCACHE or cached.
+nfsd-io-modes.rst said that DONTCACHE is not used for the misaligned
+segments, which the write loop already contradicted: every segment
+without IOCB_DIRECT gets IOCB_DONTCACHE when the file system supports
+it.  Replace that sentence with one that covers all three segments.
 
-4/9 stops expanding a READ smaller than its alignment into a full
-aligned device read.
+Fixes: 06c5c97293e3 ("NFSD: Implement NFSD_IO_DIRECT for NFS WRITE")
+Assisted-by: Claude:claude-fable-5-1
+Signed-off-by: Mike Snitzer <snitzer@kernel.org>
+---
+ Documentation/filesystems/nfs/nfsd-io-modes.rst | 8 +++++---
+ fs/nfsd/vfs.c                                   | 3 +++
+ 2 files changed, 8 insertions(+), 3 deletions(-)
 
-5/9 persists a synchronous direct-mode WRITE once, after all of its
-segments, instead of once per segment.  6/9 keeps the page two
-misaligned WRITEs share until both have written it: 704 device reads
-for 42895 WRITEs where there were 45144 for 45664.  7/9 adds
-tracepoints for how each direct-mode READ and WRITE was serviced.
-
-8/9 and 9/9 are separable and come last for that reason.  8/9 is
-Chuck's "Enable return of an updated stable_how to NFS clients",
-reworked onto @iocb_flags.  9/9 adds two opt-in io_cache_write modes
-that persist every direct-mode WRITE before replying and report
-NFS_DATA_SYNC or NFS_FILE_SYNC, so the client sends no COMMIT.  A
-client can get the same result by sending FILE_SYNC itself, so 1-7
-stand without them.
-
-The series applies to cel/nfsd-testing (32eb1a60b456) and each patch
-builds with W=1 with no warnings.
-
-Changes since v2:
-- Rebased onto cel/nfsd-testing; 8/9 now applies to the xdrgen
-  nfsd_proc_write().
-- 1/9: replaces the "DONTCACHE buffered IO is _not_ used" sentence
-  instead of adding a paragraph that contradicted it.
-- 2/9: the description now opens with the cost a small middle adds,
-  says the IOCB_* flags only move (the write loop already set
-  IOCB_DONTCACHE), and says which parts of Christoph's diff are taken
-  and why the DONTCACHE policy and the memory-misaligned collapse are
-  not.  The DONTCACHE explanation is one comment at no_dio; the
-  debugfs comment sits on the debugfs_create_u32() call; "three
-  segments" is now "two or three".
-- Reordered: direct_misaligned_dontcache moved up to 3/9, beside
-  direct_misaligned_num_pages, and the boundary-page patch (now 6/9)
-  adds its own fields.  The two stable_how patches moved to the end
-  (8/9, 9/9), since nothing before them depends on them.
-- 8/9: the async export option clears a local copy, so the reply to a
-  FILE_SYNC or DATA_SYNC WRITE to an async export is never lowered
-  (RFC 1813 3.3.7).  The description says where NFSv3 and NFSv4 map
-  the result, and no longer says O_DIRECT persists data.
-- 9/9: retitled.  The description says an UNSTABLE O_DIRECT write is not
-  durable, that NFSD_IO_DIRECT is unchanged, and that the new modes cost
-  a flush per WRITE.  They are worth it only where each COMMIT covers
-  about one WRITE.
-- Comments and documentation trimmed throughout.
-
-v2: https://lore.kernel.org/linux-nfs/20260929231329.22018-1-snitzer@kernel.org/
-v1: https://lore.kernel.org/linux-nfs/20260929173423.16149-1-snitzer@kernel.org/
-
-Thanks,
-Mike
-
-Chuck Lever (1):
-  NFSD: Enable return of an updated stable_how to NFS clients
-
-Jonathan Flynn (1):
-  NFSD: add direct_misaligned_dontcache debugfs knob
-
-Mike Snitzer (7):
-  NFSD: mark the direct middle of a split WRITE IOCB_DONTCACHE as well
-  NFSD: only split a direct-mode WRITE for a worthwhile direct middle
-  NFSD: do not use direct I/O for a READ smaller than its alignment
-  NFSD: persist a synchronous direct-mode WRITE once, after all of its segments
-  NFSD: keep boundary page of a split direct-mode WRITE until both writers complete
-  NFSD: add tracing for how direct-mode READ and WRITE are serviced
-  NFSD: add direct-mode WRITE settings that persist each WRITE
-
- .../filesystems/nfs/nfsd-io-modes.rst         |  97 ++++++-
- fs/nfsd/debugfs.c                             |  28 ++
- fs/nfsd/nfs3proc.c                            |  16 +-
- fs/nfsd/nfs4proc.c                            |  15 +-
- fs/nfsd/nfsd.h                                |   4 +
- fs/nfsd/nfsproc.c                             |   3 +-
- fs/nfsd/trace.h                               |  85 +++++++
- fs/nfsd/vfs.c                                 | 239 +++++++++++++++---
- fs/nfsd/vfs.h                                 |  18 +-
- fs/nfsd/xdr3.h                                |   2 +-
- 10 files changed, 449 insertions(+), 58 deletions(-)
-
+diff --git a/Documentation/filesystems/nfs/nfsd-io-modes.rst b/Documentation/filesystems/nfs/nfsd-io-modes.rst
+index 0fd6e82478fe6..60b0af9b7e49f 100644
+--- a/Documentation/filesystems/nfs/nfsd-io-modes.rst
++++ b/Documentation/filesystems/nfs/nfsd-io-modes.rst
+@@ -126,9 +126,11 @@ Misaligned WRITE:
+     middle and end as needed. The large middle segment is DIO-aligned
+     and the start and/or end are misaligned. Buffered IO is used for the
+     misaligned segments and O_DIRECT is used for the middle DIO-aligned
+-    segment. DONTCACHE buffered IO is _not_ used for the misaligned
+-    segments because using normal buffered IO offers significant RMW
+-    performance benefit when handling streaming misaligned WRITEs.
++    segment. If the filesystem supports FOP_DONTCACHE, every segment is
++    marked DONTCACHE. The flag has no effect on the O_DIRECT segment
++    unless the filesystem services it with buffered IO instead, as XFS
++    does when it cannot invalidate page cache that overlaps the segment.
++    The iomap_dio_invalidate_fail trace event reports such a fallback.
+ 
+ Tracing:
+     The nfsd_read_direct trace event shows how NFSD expands any
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 4584d5b94feed..1ccdac4693745 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1341,6 +1341,9 @@ nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
+ 	if (iov_iter_bvec_offset(&segments[nsegs].iter) & (mem_align - 1))
+ 		goto no_dio;
+ 	segments[nsegs].flags |= IOCB_DIRECT;
++	/* In case the file system falls back to buffered I/O (-ENOTBLK). */
++	if (nf->nf_file->f_op->fop_flags & FOP_DONTCACHE)
++		segments[nsegs].flags |= IOCB_DONTCACHE;
+ 	nsegs++;
+ 
+ 	if (suffix)
 
 base-commit: 32eb1a60b456980761cf7a9cee8f907fdc08afb8
 -- 
