@@ -1,57 +1,57 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 745733C3F7B
-	for <linux-nfs@vger.kernel.org>; Wed, 30 Sep 2026 21:46:32 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7F8E035E1A4
+	for <linux-nfs@vger.kernel.org>; Thu,  1 Oct 2026 00:43:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790804794; cv=none; b=FAMH9q8y6LTBNUibRbBm+STnAqKRJIIUwNySyEtcOLwOFXp9hktTJnZbJbuqKtBPQJjmMsPWbvE4KeftG4ggjJEzeorKuHX5b0sRAfSkz20WVpyCjmZhGVIzsUOV5aDFe6RGVJyA4iLZED7zP2ckEwXePZxmfYJfJ+8UW7ZyIJ4=
+	t=1790815417; cv=none; b=Nyj6MeK1njfcCFVWrYfoN5Q7s0LWh8GQIQYqm+6eqbky6YiE46OZyQ6iLM9i48FQeUKhHQ6NNanjMaV530HUecvmAyXyAr3vaq47a0UdfuYM/F1fm2lo0rBLpkuZTJ/8fNXvRd8q88DQa8YAjaE1pydTDvDlxdOPrLthFAbixIE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790804794; c=relaxed/simple;
-	bh=TNA0IBdBB6KsRV8w2gcT7EJGHWEW1cVHFIVLc20xrao=;
+	s=arc-20240116; t=1790815417; c=relaxed/simple;
+	bh=KSHu5a2mJ1xfNyaJECWoE/21miVpc1tY893M0grLibE=;
 	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=UYRQvzwWm0nBRJ1VxkqNkG6fV8l01OKAzH8PvXrSZeSkSPlLai+WKimd6o6CF2ZLzAGooEysKgSm9Vu4OSjPc9vvc0w/3KFxCYvS6kN8lIgZc2G4hSylTrj+ily/Vl/XETzhpKZ+zbHZ+iZkrVkRRl8cQMvyRWU+w0Gz+i51niE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jPvUrJDS; arc=none smtp.client-ip=100.103.45.18
+	 Subject:Content-Type; b=GxhIvceSYCby0QzVZ38Tam1Gat5IYbw7QHJBOjDs4vfUXkaouOYlCTTbLi1GXaQrtcMcah+OlvPcscD34L5n4NPnuF56mtPsGFu0aJu5+lTDHIN6cHZk9J5CB8f+xQq4DiTzn5QrTh1MDr+CeCPRLj6sc/giaUI+7ND9BvfAbro=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=H7UTmxGh; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jPvUrJDS"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 13C0C1F000FF;
-	Wed, 30 Sep 2026 21:46:31 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="H7UTmxGh"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 595E31F00899;
+	Thu,  1 Oct 2026 00:43:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790804792;
-	bh=JnhUUGXAziXW8Hwb73Q3nu7+EUVdIzqCluinUbKWA8A=;
+	s=k20260515; t=1790815411;
+	bh=ovnpSUKE8TetNT/2EM4/AmmK3MMTLsMWa1SMiRHMF0Y=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=jPvUrJDSLxV+V55BYupCLTc0GzYXKLG0Z2F2loamcQjLLd9m16TBcAo0oTYJe1zgp
-	 8nkHGVBcV9OsIO1r5Qxnk3ht7XHMaQU0cy4w3LXxVWu3h8HhvaGA1tBRBo0plvk5tL
-	 X00xVSLY04xJW3rRPWjLIBXh1v+rQX5mM9fqpX/KLqt1zG+OfYvwf4LYaNEYPikPzd
-	 ZA2z0jSofiikRcLOuiR0HweBnA6TldIw+P4SMu6GmlKJBmKsfVDhj/t4ZuSmTFz2Hj
-	 PgiNFB3YUCoRQbz486u9ERjme+wV3ICyY0GvT3WeiENGc8pKMIRidDXKWRIZeVY5GL
-	 bSzgyMs9yWyCw==
+	b=H7UTmxGhFmYj8l8vbFqvO1h/jpTEX3RuaFnZGbAk7RuqPLf0DC8fsj48X4EcPnh1K
+	 8F88q/gtXcSdyyfNIeQRw3zhN4s8+T3hNt6TE9F+QDNPXTRtIEAW5WjqmV1k19xcZk
+	 44ZCUM38KT3KLHf5G/RBWrsazO9wD/GULCwNmPQLzpWU/KTfjP1+fxZgjcxgWl9Y6i
+	 4K2UGQ9erAwCZLeRKExbJdk4jWFp3QTaMxyZrIIA3r2bh0U2s/XIqD2hzipvhlH1ub
+	 EjrX6LDz+0LofL5G7jPSAljj0FnC7G7WIp07Ur7U/nLR9fy9hGysNVGVQ6b72d7RSo
+	 rYRCck/r3ifkQ==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 3ED2CF40066;
-	Wed, 30 Sep 2026 17:46:31 -0400 (EDT)
+	by mailfauth.phl.internal (Postfix) with ESMTP id 5ECD0F40066;
+	Wed, 30 Sep 2026 20:43:30 -0400 (EDT)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Wed, 30 Sep 2026 17:46:31 -0400
-X-ME-Sender: <xms:N4O9aoJrwdc2Ygj2QTbnpGOaeaSIMqliC6uNt24x8gpT5_c8ye-VKQ>
-    <xme:N4O9ai9mWFdKgA1qGa-aw0JIFeIkPkiYQ513kiiIT9J7u1cWWey9fYLXUDtFh2eC7
-    Yp-1VfJAeknatLGYJKVVESCfMC0FO7IvR8UPJD6ckUCQ8zywXL1yEns>
-X-ME-Proxy-Cause: dmFkZTEJ+TncayYneT3QkSMGGMBsLAiAQvFM9tzMmSnplT3XLoqVXo/EPkN6MJgBp/W1pp
-    VfoOXVPzuv9mo8TDYGp1TUcGOccqWAFnlH/Zlju3ZANpAAjTS1ZqkOsDrarxuMsoGCzhsE
-    RFnCrqYGBslagWExhHq1ev4OxHPAZRvSZDH99aJHyoIOZX6MfR7+t1WobBjeCujysW01Ii
-    s1Ssbpsp0EvLCbJYhozvGOBL4J6vVtB0roMUVn/LstlMo4mTiA6IPxfBWYaRV13l6HuCZc
-    RjrZA4mAiA+0UJHkdudNC1xhR6Bvu+1T7vonHRWOlTv1YH/A1sdzCR0Za+9dqNZvg4j7Kx
-    H+iExrHPb3fPnu+J7WIIvZPDYI8AItTz0EMjTDAsGSds1YlJU+cs+07NJuismg4oAKJTP4
-    XuEVGnJqgrc2coLJz3GKSqvrFJwScYomFLzl/5lRxwAYt37fHTLqPkCrai9eeTb7YxGMYe
-    UFN18Pc8s7r43w4y23LxpBO4dPk7iKRtGPRM6qrofu+leGoWyipG6YtHAgfnIwwrYyD8Lk
-    98K1KV1zkIq3XWNq8EoFQQVvKhoa5XtCTAcaBy7jVZ4fOnr3VoFLjwvnPOaW5LMkzsPLoo
-    7o0mAVObxHbHUaWRozQ+0CQE1lnb0d5pe4tvKM4f4c7R0qx9IErYnpdqw0mg
-X-ME-Proxy: <xmx:N4O9aqM5H3dS-qyOrUB0hNJMYNM8JBwUsnclkYy5-1d5BxVhnzXgTQ>
-    <xmx:N4O9aqcm-cc2BDy4srfZ0jB2bvLthCuzKzeJ64S1n_J1WqrnEOFy4A>
-    <xmx:N4O9ahU82abZmFJnBQmHv-4KN1OqMHA_SahIYbtUko0Tjn7Es4-QHA>
-    <xmx:N4O9aqjM0dNhvKhsQ3SeoKX1RxGHlFUc8XEQ2o3fTPfj16WiB1w2Cw>
-    <xmx:N4O9ao9bTF8WbhhQ3tTrgELIhYdR8enP34Y-arY4v-ZN41i22ORmvCDn>
+  by phl-compute-10.internal (MEProxy); Wed, 30 Sep 2026 20:43:30 -0400
+X-ME-Sender: <xms:sqy9alGenPyRr-cK67sw5lzfAp1skrHzLwDBCe3bOY4JhbvgkCBdHw>
+    <xme:sqy9alICJ1EVgYReiQg7GmpyxB1SZQJajWXjWzdaxXuwbHmOGuDZldl1-SyRSd_VB
+    2QUB45BruCHL9AGovnCWYc6tMk-5zA6IFGETC-5unhsnhx208haBkQ>
+X-ME-Proxy-Cause: dmFkZTFPsPLjRKQ1KfOK9Wy4TAKAfGz3PpBZFtlmdV0SPWnhd59cV9BLzEtbSpBUKbM7eL
+    RpYFf1OsIkDgLdD6cOy+0f4DV2YATffAZfbiCI57B6NDB1J+j/3kwRAbgVdB3Afbuuoj1Z
+    F/8T1jR5nJiyD5Zu8hTxE6bSKDhbHsh4UmLktrFRRH//4Eht4yFLx4Y5I2kJss1OiLKkQD
+    iZdqjlKZlXTgIfTD6sxK3qJ24i75O76ogDT0oNaawi9uTfLPEa7/0p+YQzaFy4VZK7aNqT
+    XT1phKjs0iec3B42/gQokZWV7kMRZ6Nj5ijGwJcsD2iQNL38PaYOolQbjzyIVVp3ZZfSkn
+    Sfvw2waxjCoP9suZQRPpgn+Xd8wLUIRG+5yP3WmGUUP4GWl7CQKPaOjsmBEISH2gyvfGoP
+    CPLDqUz6NZdGW7lW07pC5qx3TTgc2QebnAcpLuqei3ca1To3hmwGUjCVAOyM/9iY5PRYPh
+    45no4yhSYp61QWUrvceLeqjRw0E9cb60wFkNSDfTlD+Z5iGI9B245HvlRcIXtpWI6Dy5S5
+    lEjdKWhpYjaesd+BTKZFn4xnPtmRZ3i2ycD0glvhO0WUT3vPjbtAogx7pKrWBSlCYf1OOk
+    o9ikINXQIjTKg37ESJUUR6CloCrNcjHIx3W6DYsvi7cWwsL6CESIvPUUpm9A
+X-ME-Proxy: <xmx:sqy9akbDU5yMOi2ppUNSOkc9irWS7uPw_t3ib3RzPqEaZ4ee-bMWoQ>
+    <xmx:sqy9apYmjP7q28xdJDGZNR5oMkVL2yRN0XLGa4Mz6IE2gfcTZS_A7g>
+    <xmx:sqy9alnA3Roc-ZTMrNRqTWgIWMavl5VXA6auKwf7MO-hy-nqIUNnOw>
+    <xmx:sqy9as3Z_gtWp_fWPAQA9Cj-eSnKuUr8y5VjZ3vuIJu0VIxKsAhIjA>
+    <xmx:sqy9at068CS2cGhNLAZPGdIwxncoU0lkRwIa2X6esyjVkS9n4BGqhzoT>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 25CEB780070; Wed, 30 Sep 2026 17:46:31 -0400 (EDT)
+	id 38270780070; Wed, 30 Sep 2026 20:43:30 -0400 (EDT)
 X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -59,74 +59,47 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AKcoqTPZAJRZ
-Date: Wed, 30 Sep 2026 14:46:10 -0700
+X-ThreadId: ALdGVoYYsPlN
+Date: Wed, 30 Sep 2026 17:43:10 -0700
 From: "Chuck Lever" <cel@kernel.org>
-To: "Mike Snitzer" <snitzer@kernel.org>
-Cc: "Jeff Layton" <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
- "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>
-Message-Id: <03d36af4-79b6-4bb3-8890-c6f6f44fe70f@slotpi15m67>
-In-Reply-To: <20260929231329.22018-6-snitzer@kernel.org>
-References: <20260929231329.22018-1-snitzer@kernel.org>
- <20260929231329.22018-6-snitzer@kernel.org>
-Subject: Re: [PATCH v2 5/9] NFSD: let a direct-mode WRITE raise stable_how and elide
- the client's COMMIT
+To: "Hyunsol Mun" <muumthf@gmail.com>
+Cc: linux-nfs@vger.kernel.org, "Jeff Layton" <jlayton@kernel.org>,
+ NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
+ "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
+ bobtobabz@gmail.com
+Message-Id: <31deab90-3f1b-4238-9890-982f7e9ab66b@slotpi15m67>
+In-Reply-To: <20260930054032.299499-1-muumthf@gmail.com>
+References: <20260930054032.299499-1-muumthf@gmail.com>
+Subject: Re: [PATCH v2] nfsd: update reclaim client pointer under hash lock
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
-On 9/29/26 7:13 PM, Mike Snitzer wrote:
-> A WRITE serviced in a direct mode is already persistent when NFSD
-> replies: the aligned middle is O_DIRECT, and a synchronous WRITE fsyncs
-> whatever was buffered before the reply is sent.  The reply still says
-> UNSTABLE, so the client dutifully sends a COMMIT for data that is
-> already on stable storage, and NFSD answers it with an fsync that has
-> nothing left to write.
+Hello Hyunsol -
 
-I'm stopping my review here. The premise of this patch is wrong, and
-the remaining patches in the series depend on whether we keep this
-patch and the previous patch to return a different stable_how to the
-client, or drop them.
+On Wed, Sep 30, 2026 at 02:40:32PM +0900, Hyunsol Mun wrote:
+> __nfsd4_create_reclaim_record_grace() assigns cr_clp after
+> nfs4_client_to_reclaim() has released reclaim_str_hashtbl_lock.
+> Concurrent reclaim-record removal can free the returned record before
+> that assignment.
+>
+> Pass the client into nfs4_client_to_reclaim() and install cr_clp while
+> its write lock is held, both for an existing record and for a newly
+> allocated record.
 
-An O_DIRECT write issued for an UNSTABLE WRITE carries no IOCB_DSYNC.
-It bypasses the page cache, but it does not flush the device's write
-cache and it does not commit metadata: block allocation, unwritten
-extent conversion, and the i_size update all sit in the journal or
-in memory until something calls fsync. Under NFSD_IO_DIRECT the data
-is not on stable storage when the reply goes out, and the COMMIT's
-fsync is the operation that makes it so.
+This patch does not apply to nfsd-testing. The first hunk in
+fs/nfsd/nfs4recover.c fails because nfsd-testing carries these two
+commits:
 
-The diff does the right thing to make the raised stable_how truthful:
-the floor reaches every segment, and for the direct middle iomap sets
-IOMAP_DIO_NEED_SYNC and runs generic_write_sync at completion. But
-that means modes 3 and 4 add a flush and journal commit to every
-UNSTABLE WRITE, for every client and every export, whether or not a
-COMMIT would have followed. A client streaming a large sequential
-write to an ordinary export goes from one flush per COMMIT to one
-flush per wsize. A per-WRITE O_DSYNC direct write was measured to
-cost more than a direct WRITE followed by a COMMIT, and that is why
-NFSD's direct UNSTABLE path deliberately leaves IOCB_DSYNC clear.
+  nfsd: remove the nfsdcltrack usermodehelper tracking backend
+  nfsd: remove CONFIG_NFSD_LEGACY_CLIENT_TRACKING
 
-That is a rule we established when designing the DIRECT WRITE I/O
-mode: an UNSTABLE WRITE is never synced by the server on its own
-initiative, and a COMMIT is always needed afterwards.
+The second one deletes __nfsd4_create_reclaim_record_grace() and
+load_recdir(), along with the rest of the legacy recovery directory
+backend. The function with the post-unlock assignment no longer
+exists.
 
-The redundant COMMIT in your flexfiles setup is a client problem, not
-a server one. The client starts each flush with FLUSH_COND_STABLE,
-meaning "send FILE_SYNC if this flush is a single WRITE", and clears
-it whenever pg_moreio is set. In nfs_pageio_add_request, pg_moreio is
-set as soon as nfs_pageio_do_add_request declines to coalesce the
-next page, and on a pNFS mount the layout's pg_test declines at a
-data server boundary. So a write that straddles two DSs sends both
-halves UNSTABLE and follows each with a COMMIT, even though each DS
-receives exactly one WRITE. The heuristic conflates "more WRITEs in
-this flush" with "more WRITEs to this server". If the piece bound for
-a given DS fits a single RPC, the client already knows a COMMIT will
-follow and should mark that piece FILE_SYNC. Each DS then does the
-write and fsync in one round trip under the existing NFSD_IO_DIRECT
-mode, and no server knob is needed.
-
-Trond, Anna: does a change in the pg_moreio / FLUSH_COND_STABLE
-logic along those lines look reasonable to you?
+So I can't take this patch for nfsd-next: there is nothing left for it
+to fix there.
 
 -- 
 Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
