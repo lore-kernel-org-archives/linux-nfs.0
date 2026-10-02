@@ -1,167 +1,212 @@
-Received: from mailout4.samsung.com (mailout4.samsung.com [203.254.224.34])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6426C414406
-	for <linux-nfs@vger.kernel.org>; Fri,  2 Oct 2026 07:03:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.254.224.34
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 49CB1370D79
+	for <linux-nfs@vger.kernel.org>; Fri,  2 Oct 2026 07:09:26 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790924632; cv=none; b=e7g69Vq+K3c3u15i6a8mB3KlXlaYXNJ1yjVWk88+uixHCDkY+f3xwJ5UZXkARCtvwR1Mf/kkpov4wPMe2Y30S5WY8LHdVFJomqYTNgK11UUJBVjniBJVJMm1HsS9e+D9IlQzZ9Q/FXwWoiR+msAmxc7DpMJlBMD7EZ8YWr0z8Fs=
+	t=1790924969; cv=none; b=IZdrVO4v4vjjub/c0fKRyUzR4CI1bKPJAzQhp3ME+KReUQVydBQMUfhzBsBDltPBmnmR2HEBMGe9Q/PiPTbSGyLYPKm9H1d4QjWrNmJU6SrSOBE8WkFnVxd9i7m12a3h9ppU9kjAQpt9sFLCk2ZJM3RF3xMj13Cfq5Jhq6Gk0OU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790924632; c=relaxed/simple;
-	bh=ZRLK9Xfq/852TvpiNnY6YBdiIbx92Vnng+DlryrUxlw=;
-	h=Mime-Version:Subject:From:To:CC:In-Reply-To:Message-ID:Date:
-	 Content-Type:References; b=gkU7TwSPG3hHcD5X+kk4C5YI4iALdg8kGXtVqJLjJvEuEEijEQGv20slvv3ytCeafXO8dLjaeMh+Fq7YkopQIG32LtvB1B44l4GtbuQkhB3b6LM8VGFAoxNe4eJYQMTIv8R0ejofA7aXPn+oH/wm5/rAlj4tRIGNqzWXPLpdHH8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=VUaVlqmV; arc=none smtp.client-ip=203.254.224.34
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
+	s=arc-20240116; t=1790924969; c=relaxed/simple;
+	bh=HdajbdA7oV2JHal5OeNngrJH3MtA/SL2N5ri31Tba/k=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=OGHdb6ayXGh9w0W9EKb7xf+3iB9vClM+o7ARPUni2xw5sJUcb7WsocJu3+Nu3OWBNjMLLYpnI01TevD2CaO/62UOjMMkt2vdmBEqtzbwK1Mt5JSmdIBMRgEQ71Y++DYjKARiguebBeZ5b8Sv3jNz0l9sECrfOIJe63oj6UwP3GA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CbcU2six; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="VUaVlqmV"
-Received: from epcas2p1.samsung.com (unknown [182.195.41.53])
-	by mailout4.samsung.com (KnoxPortal) with ESMTP id 20261002070348epoutp042971ad54ef5a2eab85975a9a6d510af9~apHXpU9qq0721907219epoutp04e
-	for <linux-nfs@vger.kernel.org>; Fri,  2 Oct 2026 07:03:48 +0000 (GMT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout4.samsung.com 20261002070348epoutp042971ad54ef5a2eab85975a9a6d510af9~apHXpU9qq0721907219epoutp04e
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
-	s=mail20170921; t=1790924628;
-	bh=7HqN1Vx6yBbpaHNRy8ORyBDiazEMrazm50bZ8i01OPA=;
-	h=Subject:Reply-To:From:To:CC:In-Reply-To:Date:References:From;
-	b=VUaVlqmVLaqkDhKh2QE2KVuTX3qUHjCk3KDPe6jNldCPAWHilLrW2DFNDmlGTIQKd
-	 DcWmF5614RBodhI7gIK2b+vnTSOhzhfTis1Q4Gl5TVVrGKLfVWGQJPyVrjNFlUfTGw
-	 jcOeeaSuZk1+LiPjNnhZ4o1E6kJxOZG6FsCfWupM=
-Received: from epsnrtp02.localdomain (unknown [182.195.42.154]) by
-	epcas2p3.samsung.com (KnoxPortal) with ESMTPS id
-	20261002070342epcas2p35b772ffe3226af31a7314d1e5090bd73~apHSk24cm2248022480epcas2p30;
-	Fri,  2 Oct 2026 07:03:42 +0000 (GMT)
-Received: from epcas2p3.samsung.com (unknown [182.195.38.208]) by
-	epsnrtp02.localdomain (Postfix) with ESMTP id 4hx0B62kk2z2SSKj; Fri,  2 Oct
-	2026 07:03:42 +0000 (GMT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CbcU2six"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0ED9D1F000FF;
+	Fri,  2 Oct 2026 07:09:23 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1790924966;
+	bh=GmPiovLZ3sXtY5kKCX7tNr1+Bq5tZux5bOH/wG5NtzI=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=CbcU2sixKa0L5Q0AuHtX+TvRxsEvZrPAVHcw9K6x6UCL+Kq8q0w6lrrcE3Aif2+O3
+	 r6aVerZUwIZoa5koV4+5CAsw6Akil8ZUQMkV9+Lu8D58GMJb/vI6gXMXRsfUu0aFHV
+	 4bZx8kVcW26w/hGQOWGQ4tD52m4CCj0HjS2Vnm7OuwX/BVNA/mepg9MUlY4YQq3B3L
+	 ezSa3o//euLjMmpFmvhtsCtJTAVXYXR4w7Zoithse8nk9UrfLfP3NQdfLerH+54053
+	 dtqiJ9/VidZnTI0YK8WiP5kyo1CFw5ftwGLwGixfhjzezUPSvgH9Kd5J6pSh+4fL9p
+	 Ln1H9EHzJjtqw==
+Message-ID: <8cfb77a14656dc4b8efd4cd77dbb88898025d7c5.camel@kernel.org>
+Subject: Re: [PATCH v2] nfsd: pin OPEN stateid referenced by LOCK stateid
+From: Jeff Layton <jlayton@kernel.org>
+To: Hyunsol Mun <muumthf@gmail.com>, linux-nfs@vger.kernel.org
+Cc: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
+ Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
+ Talpey <tom@talpey.com>, Willy Tarreau	 <w@1wt.eu>, bobtobabz@gmail.com
+Date: Fri, 02 Oct 2026 08:09:22 +0100
+In-Reply-To: <20260930053646.299164-1-muumthf@gmail.com>
+References: <20260930053646.299164-1-muumthf@gmail.com>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-2.fc44) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0
-Subject: [PATCH 2/2] nvmet: fix preempt of another registrant by the
- reservation holder
-Reply-To: daejun7.park@samsung.com
-Sender: Daejun Park <daejun7.park@samsung.com>
-From: Daejun Park <daejun7.park@samsung.com>
-To: "hch@lst.de" <hch@lst.de>, "sagi@grimberg.me" <sagi@grimberg.me>,
-	"kch@nvidia.com" <kch@nvidia.com>
-CC: "kbusch@kernel.org" <kbusch@kernel.org>, "kanie@linux.alibaba.com"
-	<kanie@linux.alibaba.com>, "linux-nvme@lists.infradead.org"
-	<linux-nvme@lists.infradead.org>, "linux-nfs@vger.kernel.org"
-	<linux-nfs@vger.kernel.org>, "linux-kernel@vger.kernel.org"
-	<linux-kernel@vger.kernel.org>, Daejun Park <daejun7.park@samsung.com>
-X-Priority: 3
-X-Content-Kind-Code: NORMAL
-In-Reply-To: <20261002070200epcms2p593a0aa8ac482e776e8f1de89d9f212ae@epcms2p5>
-X-CPGS-Detection: blocking_info_exchange
-X-Drm-Type: N,general
-X-Msg-Generator: Mail
-X-Msg-Type: PERSONAL
-X-Reply-Demand: N
-Message-ID: <20261002070341epcms2p4e1409e8fcea145562a2996ad1d1d24ea@epcms2p4>
-Date: Fri, 02 Oct 2026 16:03:41 +0900
-X-CMS-MailID: 20261002070341epcms2p4e1409e8fcea145562a2996ad1d1d24ea
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain; charset="utf-8"
-X-Sendblock-Type: AUTO_CONFIDENTIAL
-CMS-TYPE: 102P
-X-CPGSPASS: Y
-X-CPGSPASS: Y
-cpgsPolicy: CPGSC10-223,Y
-X-CFilter-Loop: Reflected
-X-CMS-RootMailID: 20261002065931epcms2p1cb2c16f98cf3b05f8c859ad92b0ad465
-References: <20261002070200epcms2p593a0aa8ac482e776e8f1de89d9f212ae@epcms2p5>
-	<20261002065931epcms2p1cb2c16f98cf3b05f8c859ad92b0ad465@epcms2p1>
-	<CGME20261002065931epcms2p1cb2c16f98cf3b05f8c859ad92b0ad465@epcms2p4>
+MIME-Version: 1.0
 
-Unless the reservation is of an All Registrants type, nvmet_pr_preempt()
-treats every Reservation Acquire command with the Preempt or Preempt and
-Abort action that is sent by the reservation holder as the holder
-preempting itself.  It updates the reservation type to RTYPE and
-completes the command successfully without looking at PRKEY.
+On Wed, 2026-09-30 at 14:36 +0900, Hyunsol Mun wrote:
+> A LOCK stateid stores its parent OPEN stateid in st_openstp without takin=
+g
+> a reference. A request can keep the child alive while a concurrent CLOSE
+> unhashes the child and releases the parent's persistent reference. A READ
+> using the surviving LOCK stateid then follows the freed parent in
+> nfs4_check_openmode().
+>=20
+> Take an OPEN stateid reference when initializing the LOCK stateid and
+> release it from the LOCK stateid free callback. Keep the free path safe
+> for partially initialized objects.
+>=20
+> An unprivileged NFSv4.1 client with normal access to an exported file can
+> reach the lifetime error using ordinary OPEN, LOCK, READ, and CLOSE
+> operations. Validation used the nfsd-testing base recorded below. Natural
+> race runs on the unmodified KASAN kernel completed 3,000 one-reader
+> attempts and 5,000 eight-reader attempts without reproducing the report.
+>=20
+> For deterministic validation, a test-only kprobe delayed
+> nfs4_check_openmode() after LOCK setup, before it followed st_openstp. Th=
+e
+> module only widened the race window; it did not allocate, free, or modify
+> an NFSD object. The unpatched kernel then reported a slab use-after-free =
+in
+> nfs4_check_openmode() on the first timed attempt. With this patch, the sa=
+me
+> timed READ and CLOSE both returned NFS4_OK and produced no KASAN report.
+>=20
+> The patched kernel also completed the natural 3,000-attempt run and the
+> 5,000-attempt eight-reader run without a KASAN report or kernel failure.
+> The full KASAN kernel built with CONFIG_WERROR without a compiler
+> diagnostic. Basic NFSv4.2 and NFSv3 read/write/unmount smoke tests passed=
+.
+> A source reproducer, timing-module source, complete logs, and the kernel
+> configuration are available privately on request.
+>=20
+> The vulnerability research and validation were conducted by members of
+> the Tobabz team as part of the Best of the Best 15th program.
+>=20
+> Fixes: 02921914170e ("nfsd4: fix openmode checking on IO using lock state=
+id")
+> Assisted-by: LLM
+> Signed-off-by: Hyunsol Mun <muumthf@gmail.com>
+> ---
+> Changes in v2:
+> - Separate natural-race and timing-assisted validation results.
+> - Add full-build and NFSv4.2/NFSv3 smoke-test results.
+> - No code changes.
+>=20
+>  fs/nfsd/nfs4state.c | 4 ++++
+>  1 file changed, 4 insertions(+)
+>=20
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index bbc16dd22..208badfe6 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1781,6 +1781,7 @@ static void nfs4_free_ol_stateid(struct nfs4_stid *=
+stid)
+>  static void nfs4_free_lock_stateid(struct nfs4_stid *stid)
+>  {
+>  	struct nfs4_ol_stateid *stp =3D openlockstateid(stid);
+> +	struct nfs4_ol_stateid *open_stp =3D stp->st_openstp;
+>  	struct nfs4_lockowner *lo =3D lockowner(stp->st_stateowner);
+>  	struct nfsd_file *nf;
+> =20
+> @@ -1791,6 +1792,8 @@ static void nfs4_free_lock_stateid(struct nfs4_stid=
+ *stid)
+>  		nfsd_file_put(nf);
+>  	}
+>  	nfs4_free_ol_stateid(stid);
+> +	if (open_stp)
+> +		nfs4_put_stid(&open_stp->st_stid);
+>  }
+> =20
+>  /*
+> @@ -9301,6 +9304,7 @@ init_lock_stateid(struct nfs4_ol_stateid *stp, stru=
+ct nfs4_lockowner *lo,
+>  			exp_get(open_stp->st_stid.sc_export);
+>  	stp->st_access_bmap =3D 0;
+>  	stp->st_deny_bmap =3D open_stp->st_deny_bmap;
+> +	refcount_inc(&open_stp->st_stid.sc_count);
+>  	stp->st_openstp =3D open_stp;
+>  	spin_lock(&fp->fi_lock);
+>  	list_add(&stp->st_locks, &open_stp->st_locks);
+>=20
+> base-commit: 32eb1a60b456980761cf7a9cee8f907fdc08afb8
 
-NVMe Base Specification 2.1, section 8.1.22.7 makes the action depend
-on PRKEY for these reservation types, no matter which registrant sends
-the command:
+LGTM
 
- - PRKEY matches the key of the reservation holder: the reservation is
-   preempted.  This is how a holder preempts itself.
- - PRKEY does not match the key of the holder and is not 0h: the
-   registrants whose key matches PRKEY are unregistered.
- - PRKEY does not match the key of the holder and is 0h: the command is
-   aborted with Invalid Field in Command.
-
-With the current code, a holder that preempts with the key of another
-registrant leaves that registrant registered, changes the reservation
-type to RTYPE and still gets a successful completion.  With hosts A, B
-and C registered with the keys 0xa, 0xb and 0xc, and A holding an
-Exclusive Access - Registrants Only reservation, A sends:
-
-  # nvme resv-acquire /dev/nvme1 -n 1 --crkey=0xa --prkey=0xb \
-        --rtype=4 --racqa=1
-  NVME Reservation Acquire success
-  # nvme resv-report /dev/nvme1 -n 1 --eds | grep '^regctl '
-  regctl    : 3
-
-and B can still write to the namespace.  Preempt and Abort (--racqa=2)
-gives the same result.  When C sends the preempt instead (--crkey=0xc),
-B is unregistered and its writes fail with Reservation Conflict.
-
-This defeats fencing in the pNFS SCSI layout server.  nfsd holds the
-reservation and fences a client that does not return its layout by
-calling pr_preempt() with the key of that client and the abort flag,
-which is the command RFC 9561 section 2.2.3 asks for.  On an nvmet
-namespace the preempt succeeds, nfsd logs the client as fenced, and the
-client keeps writing to the device.  In a test with an nfsd server and
-two clients on an nvmet-tcp namespace, the namespace still had three
-registrants after the fence and the fenced client went on writing to
-it.  With this patch two registrants are left and the writes of the
-fenced client fail with a reservation conflict.
-
-Take the self preempt path only when PRKEY is the key of the holder.
-Any other PRKEY sent by the holder is then handled by the code that
-already serves a non-holder registrant, for Preempt and for Preempt and
-Abort.  For a host that holds the reservation this changes the
-following:
-
- - A preempt with the key of another registrant unregisters the
-   registrants with that key, sends them the registration preempted
-   notification and leaves the reservation type alone.
- - A preempt with PRKEY 0h fails with Invalid Field in Command.  A
-   holder that changed its reservation type this way has to pass its
-   own key in PRKEY, which works with and without this patch.
- - A preempt with a PRKEY that matches no registrant fails with
-   Reservation Conflict.  The specification defines that status only
-   for the All Registrants types.  It is what nvmet already returns to
-   a non-holder registrant in this case and what the SCSI target
-   returns for an unregistered key.  nfsd treats it as a successful
-   fence.
-
-Not changed: when the holder preempts itself, registrants that share
-its key stay registered.
-
-Fixes: 5a47c2080a73 ("nvmet: support reservation feature")
-Cc: stable@vger.kernel.org
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
----
- drivers/nvme/target/pr.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/nvme/target/pr.c b/drivers/nvme/target/pr.c
-index bfd5447f6..665cee8fc 100644
---- a/drivers/nvme/target/pr.c
-+++ b/drivers/nvme/target/pr.c
-@@ -585,7 +585,7 @@ static u16 nvmet_pr_preempt(struct nvmet_req *req,
- 				&ctrl->hostid, abort);
- 	}
- 
--	if (holder == reg) {
-+	if (holder == reg && prkey == holder->rkey) {
- 		status = nvmet_pr_update_reg_attr(pr, holder,
- 				nvmet_pr_update_holder_rtype, &rtype);
- 		if (!status && original_rtype != rtype)
--- 
-2.43.0
-
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
