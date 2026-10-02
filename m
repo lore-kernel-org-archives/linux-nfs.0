@@ -1,41 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 49CB1370D79
-	for <linux-nfs@vger.kernel.org>; Fri,  2 Oct 2026 07:09:26 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 871583BFE3F
+	for <linux-nfs@vger.kernel.org>; Fri,  2 Oct 2026 07:20:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790924969; cv=none; b=IZdrVO4v4vjjub/c0fKRyUzR4CI1bKPJAzQhp3ME+KReUQVydBQMUfhzBsBDltPBmnmR2HEBMGe9Q/PiPTbSGyLYPKm9H1d4QjWrNmJU6SrSOBE8WkFnVxd9i7m12a3h9ppU9kjAQpt9sFLCk2ZJM3RF3xMj13Cfq5Jhq6Gk0OU=
+	t=1790925622; cv=none; b=KQ+4Cl16qFFSFS3aNECbbHDZjAkCUs83WjPdVDvq+reQVw0vY1QTkwg2Vsi/6N+Q/D8WR33D4T4NI1vwNnX24IjIyyGaaRHGarc0DwFFHBjARMPbqw/9o9cLyFvuKalU5o/BqKFzaIlN/AracMHB7e/z7M+7IOrbUR45Me0bv+U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790924969; c=relaxed/simple;
-	bh=HdajbdA7oV2JHal5OeNngrJH3MtA/SL2N5ri31Tba/k=;
+	s=arc-20240116; t=1790925622; c=relaxed/simple;
+	bh=WG1fLkkb2B1qJuD0v6HV+6meCD2Qqsv/I2NnKEeNAx0=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=OGHdb6ayXGh9w0W9EKb7xf+3iB9vClM+o7ARPUni2xw5sJUcb7WsocJu3+Nu3OWBNjMLLYpnI01TevD2CaO/62UOjMMkt2vdmBEqtzbwK1Mt5JSmdIBMRgEQ71Y++DYjKARiguebBeZ5b8Sv3jNz0l9sECrfOIJe63oj6UwP3GA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CbcU2six; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=ZRfKm58G/T9SBEZifh9wu0+V2G0dNx4iiY5YStdhmsVPUONVxZy4k3IyGaUxslaqhQV60Wq2AvxJnbDSGS5h+AnQNEUi5EkUSFR7qsqlzkTVH7i/DZiufTbtMGqxmqCbcopIX31Wz8RqCxik2Zd/H7VfinikR+W1+UQWoh4F2gs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=F61mqJDd; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CbcU2six"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0ED9D1F000FF;
-	Fri,  2 Oct 2026 07:09:23 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="F61mqJDd"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7A72D1F000FF;
+	Fri,  2 Oct 2026 07:20:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790924966;
-	bh=GmPiovLZ3sXtY5kKCX7tNr1+Bq5tZux5bOH/wG5NtzI=;
+	s=k20260515; t=1790925620;
+	bh=2ksT7AtWgEjRX52ALuK99iYSiCNVf6xZrHdk8vgEMgE=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=CbcU2sixKa0L5Q0AuHtX+TvRxsEvZrPAVHcw9K6x6UCL+Kq8q0w6lrrcE3Aif2+O3
-	 r6aVerZUwIZoa5koV4+5CAsw6Akil8ZUQMkV9+Lu8D58GMJb/vI6gXMXRsfUu0aFHV
-	 4bZx8kVcW26w/hGQOWGQ4tD52m4CCj0HjS2Vnm7OuwX/BVNA/mepg9MUlY4YQq3B3L
-	 ezSa3o//euLjMmpFmvhtsCtJTAVXYXR4w7Zoithse8nk9UrfLfP3NQdfLerH+54053
-	 dtqiJ9/VidZnTI0YK8WiP5kyo1CFw5ftwGLwGixfhjzezUPSvgH9Kd5J6pSh+4fL9p
-	 Ln1H9EHzJjtqw==
-Message-ID: <8cfb77a14656dc4b8efd4cd77dbb88898025d7c5.camel@kernel.org>
-Subject: Re: [PATCH v2] nfsd: pin OPEN stateid referenced by LOCK stateid
+	b=F61mqJDddLR9C2KV/3o+uqA1shBTy73NgG1pxTjzysB9aq4AHqtBMf+ZVZwaHQ/H5
+	 aspPOT7TB11I2Fg/TTLuLcJQt0NxrrwAvArIYZtSwGjGtP7k+Qn5R/HbxvIT0I4fvg
+	 59Kp+4wmwkBPhqmShGSWgWiK7QvH0/BU6FoCv9teoqyauChqxLv3IZxaz8IsNpS4Ca
+	 xukcJKiE7UXiqYB/QTycNYNCMpiHceIb5t6hnuYtn0N9BcB5+ovHlbYIXoo8nl7UMm
+	 Iyu/RgUrljJziuPaALdjNkt+OMEi5mguRxNT1A319pB5z4FKpKg+O1eEx0lHuQpM/6
+	 qGyX+gqseYixA==
+Message-ID: <6ad7a2fd190a94aa3b2592314b79109d21f38436.camel@kernel.org>
+Subject: Re: [PATCH v2] nfsd: pin source client while using COPY_NOTIFY
+ stateid
 From: Jeff Layton <jlayton@kernel.org>
 To: Hyunsol Mun <muumthf@gmail.com>, linux-nfs@vger.kernel.org
 Cc: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
  Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>, Willy Tarreau	 <w@1wt.eu>, bobtobabz@gmail.com
-Date: Fri, 02 Oct 2026 08:09:22 +0100
-In-Reply-To: <20260930053646.299164-1-muumthf@gmail.com>
-References: <20260930053646.299164-1-muumthf@gmail.com>
+ Talpey <tom@talpey.com>, 	bobtobabz@gmail.com
+Date: Fri, 02 Oct 2026 08:20:16 +0100
+In-Reply-To: <20260930053915.299362-1-muumthf@gmail.com>
+References: <20260930053915.299362-1-muumthf@gmail.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -120,36 +121,40 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2026-09-30 at 14:36 +0900, Hyunsol Mun wrote:
-> A LOCK stateid stores its parent OPEN stateid in st_openstp without takin=
-g
-> a reference. A request can keep the child alive while a concurrent CLOSE
-> unhashes the child and releases the parent's persistent reference. A READ
-> using the surviving LOCK stateid then follows the freed parent in
-> nfs4_check_openmode().
+On Wed, 2026-09-30 at 14:39 +0900, Hyunsol Mun wrote:
+> A COPY_NOTIFY token can resolve to a stateid owned by the source client.
+> find_cpntf_state() drops its source-client reference before returning
+> that stateid, so concurrent source-client expiry can free sc_client
+> while stateid validation or the caller still uses the stateid.
 >=20
-> Take an OPEN stateid reference when initializing the LOCK stateid and
-> release it from the LOCK stateid free callback. Keep the free path safe
-> for partially initialized objects.
+> Add a local nfsd4_get_client() helper as the counterpart to
+> nfsd4_put_client(). Return a paired client reference from
+> nfs4_preprocess_stateid_op() when lookup crosses through COPY_NOTIFY
+> state. Keep it until the caller releases the returned stateid; internal
+> and error paths release it locally.
 >=20
-> An unprivileged NFSv4.1 client with normal access to an exported file can
-> reach the lifetime error using ordinary OPEN, LOCK, READ, and CLOSE
-> operations. Validation used the nfsd-testing base recorded below. Natural
-> race runs on the unmodified KASAN kernel completed 3,000 one-reader
-> attempts and 5,000 eight-reader attempts without reproducing the report.
+> An unprivileged NFSv4.2 client with access to the exported file can execu=
+te
+> the OPEN, COPY_NOTIFY, source-client replacement, and token READ sequence=
+.
+> Four hundred natural trials reached the protocol path without reproducing
+> the report, so a reliable timing-assistance-free trigger was not
+> demonstrated.
 >=20
-> For deterministic validation, a test-only kprobe delayed
-> nfs4_check_openmode() after LOCK setup, before it followed st_openstp. Th=
-e
-> module only widened the race window; it did not allocate, free, or modify
-> an NFSD object. The unpatched kernel then reported a slab use-after-free =
-in
-> nfs4_check_openmode() on the first timed attempt. With this patch, the sa=
-me
-> timed READ and CLOSE both returned NFS4_OK and produced no KASAN report.
+> For deterministic validation, a test-only kprobe delayed nfsd_permission(=
+)
+> after COPY_NOTIFY state lookup. The module only widened the race window; =
+it
+> did not allocate, free, or modify an NFSD object. Validation used the
+> nfsd-testing base recorded below. On the unmodified KASAN kernel, five
+> trials registered four delayed calls and reproduced the source-client
+> use-after-free in nfs4_put_stid(). With this patch, five trials registere=
+d
+> five delayed calls and produced no KASAN report or kernel failure. Three
+> token READs returned NFS4_OK with 23 bytes; two returned NFS4ERR_EXPIRED =
+as
+> client replacement won the race.
 >=20
-> The patched kernel also completed the natural 3,000-attempt run and the
-> 5,000-attempt eight-reader run without a KASAN report or kernel failure.
 > The full KASAN kernel built with CONFIG_WERROR without a compiler
 > diagnostic. Basic NFSv4.2 and NFSv3 read/write/unmount smoke tests passed=
 .
@@ -159,54 +164,300 @@ me
 > The vulnerability research and validation were conducted by members of
 > the Tobabz team as part of the Best of the Best 15th program.
 >=20
-> Fixes: 02921914170e ("nfsd4: fix openmode checking on IO using lock state=
-id")
+> Fixes: 624322f1adc5 ("NFSD add COPY_NOTIFY operation")
 > Assisted-by: LLM
 > Signed-off-by: Hyunsol Mun <muumthf@gmail.com>
 > ---
 > Changes in v2:
-> - Separate natural-race and timing-assisted validation results.
+> - Describe current timing-assisted baseline and patched results.
 > - Add full-build and NFSv4.2/NFSv3 smoke-test results.
-> - No code changes.
+> - Keep nfsd4_get_client() local to nfs4state.c.
 >=20
->  fs/nfsd/nfs4state.c | 4 ++++
->  1 file changed, 4 insertions(+)
+>  fs/nfsd/nfs4proc.c  | 31 +++++++++++++++++++++----------
+>  fs/nfsd/nfs4state.c | 34 +++++++++++++++++++++++++++-------
+>  fs/nfsd/state.h     |  2 +-
+>  3 files changed, 49 insertions(+), 18 deletions(-)
 >=20
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index bbc16dd22..208badfe6 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1781,6 +1781,7 @@ static void nfs4_free_ol_stateid(struct nfs4_stid *=
-stid)
->  static void nfs4_free_lock_stateid(struct nfs4_stid *stid)
->  {
->  	struct nfs4_ol_stateid *stp =3D openlockstateid(stid);
-> +	struct nfs4_ol_stateid *open_stp =3D stp->st_openstp;
->  	struct nfs4_lockowner *lo =3D lockowner(stp->st_stateowner);
->  	struct nfsd_file *nf;
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 7df60abfb..d5b5f59f1 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1144,7 +1144,7 @@ nfsd4_read(struct svc_rqst *rqstp, struct nfsd4_com=
+pound_state *cstate,
+>  	/* check stateid */
+>  	status =3D nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_f=
+h,
+>  					&read->rd_stateid, RD_STATE,
+> -					&read->rd_nf, NULL);
+> +					&read->rd_nf, NULL, NULL);
 > =20
-> @@ -1791,6 +1792,8 @@ static void nfs4_free_lock_stateid(struct nfs4_stid=
- *stid)
->  		nfsd_file_put(nf);
+>  	read->rd_rqstp =3D rqstp;
+>  	read->rd_fhp =3D &cstate->current_fh;
+> @@ -1342,6 +1342,7 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_=
+compound_state *cstate,
+>  		.na_dpacl	=3D posix_acl_dup(setattr->sa_dpacl),
+>  	};
+>  	bool save_no_wcc, deleg_attrs;
+> +	struct nfs4_client *stid_clp =3D NULL;
+>  	struct nfs4_stid *st =3D NULL;
+>  	struct inode *inode;
+>  	__be32 status =3D nfs_ok;
+> @@ -1358,7 +1359,7 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_=
+compound_state *cstate,
+> =20
+>  		status =3D nfs4_preprocess_stateid_op(rqstp, cstate,
+>  				&cstate->current_fh, &setattr->sa_stateid,
+> -				flags, NULL, &st);
+> +				flags, NULL, &st, &stid_clp);
+>  		if (status)
+>  			goto out_err;
 >  	}
->  	nfs4_free_ol_stateid(stid);
-> +	if (open_stp)
-> +		nfs4_put_stid(&open_stp->st_stid);
+> @@ -1375,8 +1376,11 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4=
+_compound_state *cstate,
+>  			}
+>  		}
+>  	}
+> -	if (st)
+> +	if (st) {
+>  		nfs4_put_stid(st);
+> +		if (stid_clp)
+> +			nfsd4_put_client(stid_clp);
+> +	}
+>  	if (status)
+>  		goto out_err;
+> =20
+> @@ -1439,6 +1443,7 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_co=
+mpound_state *cstate,
+>  	struct nfsd4_write *write =3D &u->write;
+>  	stateid_t *stateid =3D &write->wr_stateid;
+>  	struct nfs4_stid *stid =3D NULL;
+> +	struct nfs4_client *stid_clp =3D NULL;
+>  	struct nfsd_file *nf =3D NULL;
+>  	__be32 status =3D nfs_ok;
+>  	unsigned long cnt;
+> @@ -1451,13 +1456,16 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_=
+compound_state *cstate,
+>  	trace_nfsd_write_start(rqstp, &cstate->current_fh,
+>  			       write->wr_offset, cnt);
+>  	status =3D nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_f=
+h,
+> -						stateid, WR_STATE, &nf, &stid);
+> +						stateid, WR_STATE, &nf, &stid,
+> +						&stid_clp);
+>  	if (status)
+>  		return status;
+> =20
+>  	if (stid) {
+>  		nfsd4_file_mark_deleg_written(stid->sc_file);
+>  		nfs4_put_stid(stid);
+> +		if (stid_clp)
+> +			nfsd4_put_client(stid_clp);
+>  	}
+> =20
+>  	write->wr_how_written =3D write->wr_stable_how;
+> @@ -1484,12 +1492,12 @@ nfsd4_verify_copy(struct svc_rqst *rqstp, struct =
+nfsd4_compound_state *cstate,
+>  		return nfserr_nofilehandle;
+> =20
+>  	status =3D nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->save_fh,
+> -					    src_stateid, RD_STATE, src, NULL);
+> +					    src_stateid, RD_STATE, src, NULL, NULL);
+>  	if (status)
+>  		goto out;
+> =20
+>  	status =3D nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_f=
+h,
+> -					    dst_stateid, WR_STATE, dst, NULL);
+> +					    dst_stateid, WR_STATE, dst, NULL, NULL);
+>  	if (status)
+>  		goto out_put_src;
+> =20
+> @@ -1954,7 +1962,7 @@ nfsd4_setup_inter_ssc(struct svc_rqst *rqstp,
+>  	/* Verify the destination stateid and set dst struct file*/
+>  	status =3D nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_f=
+h,
+>  					    &copy->cp_dst_stateid,
+> -					    WR_STATE, &copy->nf_dst, NULL);
+> +					    WR_STATE, &copy->nf_dst, NULL, NULL);
+>  	if (status)
+>  		goto out;
+> =20
+> @@ -2498,12 +2506,13 @@ nfsd4_copy_notify(struct svc_rqst *rqstp, struct =
+nfsd4_compound_state *cstate,
+>  	struct nfsd4_copy_notify *cn =3D &u->copy_notify;
+>  	__be32 status;
+>  	struct nfsd_net *nn =3D net_generic(SVC_NET(rqstp), nfsd_net_id);
+> +	struct nfs4_client *stid_clp =3D NULL;
+>  	struct nfs4_stid *stid =3D NULL;
+>  	struct nfs4_cpntf_state *cps;
+> =20
+>  	status =3D nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_f=
+h,
+>  					&cn->cpn_src_stateid, RD_STATE, NULL,
+> -					&stid);
+> +					&stid, &stid_clp);
+>  	if (status)
+>  		return status;
+>  	if (!stid)
+> @@ -2536,6 +2545,8 @@ nfsd4_copy_notify(struct svc_rqst *rqstp, struct nf=
+sd4_compound_state *cstate,
+>  	nfs4_put_cpntf_state(nn, cps);
+>  out:
+>  	nfs4_put_stid(stid);
+> +	if (stid_clp)
+> +		nfsd4_put_client(stid_clp);
+>  	return status;
 >  }
 > =20
->  /*
-> @@ -9301,6 +9304,7 @@ init_lock_stateid(struct nfs4_ol_stateid *stp, stru=
-ct nfs4_lockowner *lo,
->  			exp_get(open_stp->st_stid.sc_export);
->  	stp->st_access_bmap =3D 0;
->  	stp->st_deny_bmap =3D open_stp->st_deny_bmap;
-> +	refcount_inc(&open_stp->st_stid.sc_count);
->  	stp->st_openstp =3D open_stp;
->  	spin_lock(&fp->fi_lock);
->  	list_add(&stp->st_locks, &open_stp->st_locks);
+> @@ -2548,7 +2559,7 @@ nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd=
+4_compound_state *cstate,
+> =20
+>  	status =3D nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_f=
+h,
+>  					    &fallocate->falloc_stateid,
+> -					    WR_STATE, &nf, NULL);
+> +					    WR_STATE, &nf, NULL, NULL);
+>  	if (status !=3D nfs_ok)
+>  		return status;
+> =20
+> @@ -2612,7 +2623,7 @@ nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_com=
+pound_state *cstate,
+> =20
+>  	status =3D nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_f=
+h,
+>  					    &seek->seek_stateid,
+> -					    RD_STATE, &nf, NULL);
+> +					    RD_STATE, &nf, NULL, NULL);
+>  	if (status)
+>  		return status;
+> =20
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index bbc16dd22..43906f87e 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -2805,6 +2805,15 @@ static void __free_client(struct kref *k)
+>  	kmem_cache_free(client_slab, clp);
+>  }
+> =20
+> +/**
+> + * nfsd4_get_client - acquire a reference on an nfs4_client
+> + * @clp: the client to be acquired
+> + */
+> +static void nfsd4_get_client(struct nfs4_client *clp)
+> +{
+> +	kref_get(&clp->cl_nfsdfs.cl_ref);
+> +}
+> +
+
+If you're going to add this helper, then you should convert all of the
+other places that call kref_get() on this object to use it, ideally in
+a separate patch.
+
+>  /**
+>   * nfsd4_put_client - release a reference on an nfs4_client
+>   * @clp: the client to be released
+> @@ -8504,7 +8513,8 @@ __be32 manage_cpntf_state(struct nfsd_net *nn, stat=
+eid_t *st,
+>  }
+> =20
+>  static __be32 find_cpntf_state(struct nfsd_net *nn, stateid_t *st,
+> -			       struct nfs4_stid **stid)
+> +			       struct nfs4_stid **stid,
+> +			       struct nfs4_client **stid_clp)
+>  {
+>  	__be32 status;
+>  	struct nfs4_cpntf_state *cps =3D NULL;
+> @@ -8524,10 +8534,13 @@ static __be32 find_cpntf_state(struct nfsd_net *n=
+n, stateid_t *st,
+>  	*stid =3D find_stateid_by_type(found, &cps->cp_p_stateid,
+>  				     SC_TYPE_DELEG|SC_TYPE_OPEN|SC_TYPE_LOCK,
+>  				     0);
+> -	if (*stid)
+> +	if (*stid) {
+> +		nfsd4_get_client(found);
+> +		*stid_clp =3D found;
+>  		status =3D nfs_ok;
+> -	else
+> +	} else {
+>  		status =3D nfserr_bad_stateid;
+> +	}
+> =20
+>  	put_client_renew(found);
+>  out:
+> @@ -8551,6 +8564,7 @@ void nfs4_put_cpntf_state(struct nfsd_net *nn, stru=
+ct nfs4_cpntf_state *cps)
+>   * @flags: flags describing type of operation to be done
+>   * @nfp: optional nfsd_file return pointer (may be NULL)
+>   * @cstid: optional returned nfs4_stid pointer (may be NULL)
+> + * @cstid_clp: client reference paired with @cstid (required with @cstid=
+)
+>   *
+>   * Given info from the client, look up a nfs4_stid for the operation. On
+>   * success, it returns a reference to the nfs4_stid and/or the nfsd_file
+> @@ -8560,10 +8574,11 @@ __be32
+>  nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+>  		struct nfsd4_compound_state *cstate, struct svc_fh *fhp,
+>  		stateid_t *stateid, int flags, struct nfsd_file **nfp,
+> -		struct nfs4_stid **cstid)
+> +		struct nfs4_stid **cstid, struct nfs4_client **cstid_clp)
+
+The bug seems possible (esp given the fault-injected reproducer), but
+this function is really devolving into a big mess. It would be very
+nice to move the COPY-specific code into a dedicated helper that is
+only called from the COPY-related codepaths. Consider reorganizing this
+code along those lines.
+
+>  {
+>  	struct net *net =3D SVC_NET(rqstp);
+>  	struct nfsd_net *nn =3D net_generic(net, nfsd_net_id);
+> +	struct nfs4_client *stid_clp =3D NULL;
+>  	struct nfs4_stid *s =3D NULL;
+>  	__be32 status;
+> =20
+> @@ -8579,7 +8594,7 @@ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+>  				SC_TYPE_DELEG|SC_TYPE_OPEN|SC_TYPE_LOCK,
+>  				0, &s, nn);
+>  	if (status =3D=3D nfserr_bad_stateid)
+> -		status =3D find_cpntf_state(nn, stateid, &s);
+> +		status =3D find_cpntf_state(nn, stateid, &s, &stid_clp);
+>  	if (status)
+>  		return status;
+>  	status =3D nfsd4_stid_check_stateid_generation(stateid, s,
+> @@ -8605,11 +8620,16 @@ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp=
+,
+>  		status =3D nfs4_check_file(rqstp, fhp, s, nfp, flags);
+>  out:
+>  	if (s) {
+> -		if (!status && cstid)
+> +		if (!status && cstid) {
+>  			*cstid =3D s;
+> -		else
+> +			*cstid_clp =3D stid_clp;
+> +			stid_clp =3D NULL;
+> +		} else {
+>  			nfs4_put_stid(s);
+> +		}
+>  	}
+> +	if (stid_clp)
+> +		nfsd4_put_client(stid_clp);
+>  	return status;
+>  }
+> =20
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 1a0da82cb..7910dabb4 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -911,7 +911,7 @@ struct nfsd4_async_copy;
+>  extern __be32 nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+>  		struct nfsd4_compound_state *cstate, struct svc_fh *fhp,
+>  		stateid_t *stateid, int flags, struct nfsd_file **filp,
+> -		struct nfs4_stid **cstid);
+> +		struct nfs4_stid **cstid, struct nfs4_client **cstid_clp);
+>  __be32 nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+>  			    stateid_t *stateid, unsigned short typemask,
+>  			    unsigned short statusmask,
 >=20
 > base-commit: 32eb1a60b456980761cf7a9cee8f907fdc08afb8
 
-LGTM
-
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+--=20
+Jeff Layton <jlayton@kernel.org>
