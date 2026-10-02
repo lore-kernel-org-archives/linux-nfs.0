@@ -1,62 +1,63 @@
-Received: from mail-oo2-f40.google.com (mail-oo2-f40.google.com [74.125.231.168])
+Received: from mail-oo2-f37.google.com (mail-oo2-f37.google.com [74.125.231.165])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD7194A8FEB
-	for <linux-nfs@vger.kernel.org>; Fri,  2 Oct 2026 16:42:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.168
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 067CE4DAF85
+	for <linux-nfs@vger.kernel.org>; Fri,  2 Oct 2026 16:42:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.165
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790959380; cv=none; b=itfNkTB6qRCPwaYfErpkCxpTNxQRDT01G/mIZZ04/BUo8dOUW41OSSpWnRlQu2ShEuTqLMqVCxKQJ2D+a7p4YTscd9OJoozNBhLKqpN4YNPYSiOfZ4ISrvZIsxFKFFAcU6PetN/LVjnSk5k3jfR3nkjtPRFTLA4tPJybTtliuvo=
+	t=1790959381; cv=none; b=LgB1en8tadBHLj6ETIYz3D9VJujeW6gr9P/X5ug8hO6O292niZfwnwQufk4oW4gYnIY2jhHGJOeTHVtxS4Q3ekWSeF8+Gj3nij73sN6QqpehRs3zZOe0urlcf3TxtwgslHzvnctumt5CiBWAkQOUbS4uuM5MGFTrjiTTQPCgZ/M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790959380; c=relaxed/simple;
-	bh=1Gt3ibARcYwwA6GCLFBUoCvrp8Gi/l/tXKJ5q6gH0cE=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=phR7kcwUi8kMsa4r6Ud6/kP2ubQ5FY3kJPyyvVdWVensHBoAhYC1bFbFWD4mdoRZugSSWikDj7bmh4h7cYs/Q2Xp627ZoXuSvbvVMunq+amxBXUiufu9IJlxIEF6E9oCUeuXg8LSP5z7YAnh3AS552G2VQqJ17PX2qtGrBvZaXw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=gW2rLljJ; arc=none smtp.client-ip=74.125.231.168
+	s=arc-20240116; t=1790959381; c=relaxed/simple;
+	bh=6KuhV94KcruuQ+YN7LOd/7n092BKddspFP9t/mnB9w8=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=EPNBCfjFrsfAO8JqM1v+PiRB2ZlCjgbZK/9J5/gDCP22UHqef0qmE2Im/VZmNqI7r7zW0lzuA+KZnWi1eyH27cg6St4OzHe6IKsdiPAcEoVviztRhOKHSlGJuH0bEEZiuTcU3xH8f+Yvp5mL9JfORXtduvQ2adxgG0Up8J7Wz30=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=OfBWkjM0; arc=none smtp.client-ip=74.125.231.165
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="gW2rLljJ"
-Received: by mail-oo2-f40.google.com with SMTP id 46e09a7af769-82328163e12so60557a34.1
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Oct 2026 09:42:58 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="OfBWkjM0"
+Received: by mail-oo2-f37.google.com with SMTP id 46e09a7af769-8137b129131so70204a34.2
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Oct 2026 09:42:59 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1790959377; x=1791564177; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=LimnJDcVd7npcILwB8VutY33Lt6UDgFe/VvLPRBts3A=;
-        b=gW2rLljJsSRWDpV7iNu7VFDeqNymQxu1uihtCACahd/La6gwR2AKcZY3TfAuF6FgEg
-         GwWg6pqEWrTljKrtNJ8xgRvUk21C86rYti4DPBdrIclSlHGEqCD/V98LXH9LJx5wrq55
-         ykGodpoyOjvlwgJKDpQWEBBZ9XpOOOaOfcJuBw74wmbGDQ23zWPMUkdcfP9QLIZqOCe/
-         QeTPkiZVVSQCkeDxtrsMIZYyP1nwv7pvazMxuPyapI8EJ17gtETG9r+qrQN188nVMHDL
-         sxNs3HUVRWxfRoe17EU3wKLxP3av5gPZlhm+42k/6h0feDS8yhuSazbwX0yM72/WUeOq
-         4WeA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790959377; x=1791564177;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+        d=hammerspace.com; s=google; t=1790959379; x=1791564179; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=LimnJDcVd7npcILwB8VutY33Lt6UDgFe/VvLPRBts3A=;
-        b=KAnkButn908if5XxDR51NCEZszxRb2MxD3uphCIi7+RDYqIdnPe6E7nt49V5wrq7/x
-         kdgi4rGkhAgtzWNVKYdhI6LDrSYW5CNSUnDJdf1HrbZqXWtE6LE9bXl6qxeBJM+H4OcE
-         qZwEDsMq1xwnbo/t4t/Iz6od7TOsfBVledS9NiblSXsTqcEGURxzTl6k5/+g1HCpL47B
-         jFXw7Gcdxh4Ilc1nqfxYVoo3tVNvg/E6asLPGjXZUnkRGZbt9rNNrwmz5Z3s+vrBrEUI
-         pDAQxcOpvyDxZIV+HgIxnduFoeyqy/2fJ3wCrt7myegBPeJUMKushZBffdEbsACHoHWH
-         P79w==
-X-Gm-Message-State: AFuF++mwZjc1wXtfwIEVqDHux+buw1m/Lh/IjJjKEnMgbGTCQydWDc40
-	8Dwq3rH2ONObLHAI9wQRTg/JojVIyypfBy77Tviy0/Uz+CDXP8NPaEhhtotP+EXNNPrIJQSk0xA
-	AqxYC
-X-Gm-Gg: AYBFou3xhTLzMwxGwphqkFx38Ff786jtlLGfyYz9aUs/0NfvMRk0NZJ20YH1/aSzP+6
-	jdPQ7pSrhs8ticRzlvHGKoMW7Kz4CCICLSTJRB6njpcsFrwCjq162TVEMZtr54v7kK903Kjo5aV
-	3WxDyVzBzBDy2xm6EGp1/PGJdjDOaCZO5lNz5kR9mFuHT/3WCD0he/YoFWBEdf8v8Oe0SQIcMvZ
-	RYodUL6irq5ViAfdcoei+o+IDt17Dpx7CjnE9lULMVr7k6854D6I25bhFbMxM5qJkbnrX+dfNIE
-	MKfLz7ZHRtVB9o2smLOVxJS8/Cg95kVzl5Ubdn7jZc36pfy43PVJ/8tJfR1GX7Odr4PqhCpflg+
-	tNdeX/N2ASprO5EVW77Ykwlg/AGgnHnZuT6P+3XSWwox9v7bpiWHzuDG95O7mc5MdIB8l/f0hka
-	+Tzb6PaLEkIipBrziZoaq4t/mJ/BEEUKK4hThPJa/wps0T3gzaol0NJNbXFuF864BE/mnOSyNdm
-	Ybg5u48z34g+09fKO+XQgTtIDQzUjbRSw==
-X-Received: by 2002:a05:6830:4890:b0:7fa:ac4f:79a with SMTP id 46e09a7af769-822854529eemr3303325a34.22.1790959377314;
-        Fri, 02 Oct 2026 09:42:57 -0700 (PDT)
+        bh=NlkyTWl8resmehTHg6aEAUF3Vge/TVlQuteQDu446js=;
+        b=OfBWkjM0ZvOJvuuJEyzlVuolGyxmvS6xGxemppV8MvF3oSxsdreQhnCLJuklxTFLH6
+         fAs8yK6pUWSDIfATmOQWKcLpKHC9dlzFIe8OYivGl1Zx1pY3O+1ggde7acwiGfhCg0YG
+         RsYMtI7EEF3C1KRIImOnUDDOIV5eqf6fqAgB70uEE7WQHZ0Re+5HoWLew8nCNG8pLPAV
+         qPnObck0qDHP9z6qEKmW4hDu80xFLyikxET7/CRzvQky4gcSf8fDuXUWbZnqwN8Twl3M
+         NstpEhf0iAf0QBkbDKYBtwP45PHsKBc+es3FqzjCDzHOTf8B8cjY6qVu0pSEw0u8ecNL
+         NUfA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1790959379; x=1791564179;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=NlkyTWl8resmehTHg6aEAUF3Vge/TVlQuteQDu446js=;
+        b=ZaRZ5fPPsHdtXBxhc8kKoQhb66yM9YtjjW6h8oZsZZnI0WIBVPGWOniF1AnfdgAEez
+         pqqLojTDs9BtGrca5eZt4DwWH075ToNBq7o2krJb77kokyfI13eCjw+njtTSkJw65OqL
+         Eo695CwgbtsgfZgPWll9fl2MYDzWzl4JRowjy/3ZFJEOvAn8u5F02SEJv7Bz4lB9L5ze
+         DTAVnqOhRmMjNYzYy0MGM6PBJZ5A8JUHD/CLVNKB/3VfekIF/OpTSkkxP0RLEbnVgyHi
+         nYQvJe3I6IqiE7wt3cfB5Owmwg9EdfcnxfUu1gRk1LisYRCHpxy/CKf3e8pj8Iz3RZS8
+         7dkQ==
+X-Gm-Message-State: AFuF++n+8XEhd7fqX1jvwXmq2uKQPM/nTJoLXJs/p7sGFE/XjeHCz9y2
+	M5PPjNDM7K/8/V1qEAeV4rmsdftPHmkq7ipyWS4lQSLDp/bMh6zsoDob46+39PJ1CU4=
+X-Gm-Gg: AYBFou06Z17Km00RI2U+PXlRVI2gBEFgd1tZIrrFsoP/2w5ale1N948hjL4EbXnIejo
+	5iqHEEfEaCpcFUZG5GIJoBt4Y8m5sqc6wOiZ1RCrKwiy9WABxCQ5EYg8EvOknDVrUTSCpXDXoKl
+	3njCGZLldMXdH4SSc9wDCcw0DTfYtyA06APInA8xaquozs8LiQJNgD3OvzTqkYA8U4IX4culGr3
+	U854OnsFnallBL7HgLzqSrkWFL2KQK0LlrgqBBwChX3r3+lgKdKBqgGlPM79ubpKr1MwtPjTJfS
+	oR6KDBnLqeKALdVipg7eHmeBO6qcsrELrDl0SEcPVrdgFi8yQc9aoaFBTIvZeCUfHuU2UPhK1kd
+	ymdY7y1TRJFGXRCQdK2wio4zZB0wP/YTGox3xkbTMLiICagJK/hPylCfQSjt1F1E2l0xZQS339J
+	muHZbXlBElE/vP6LXyPKXFp0/j3Q+YCmXlvMnmp4g659Y1YPXc90LDYZ105xCPvQtxHJ9RyTtDx
+	rKFePDdv30EdhO3sDBKIOeuddPoqfXhXnNIz3fVL+Jt
+X-Received: by 2002:a05:6820:1a05:b0:6b6:87cf:d1dc with SMTP id 006d021491bc7-6df32da21bcmr2363823eaf.24.1790959378525;
+        Fri, 02 Oct 2026 09:42:58 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-8227a66c6dfsm3238524a34.23.2026.10.02.09.42.56
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-8227a66c6dfsm3238524a34.23.2026.10.02.09.42.57
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 02 Oct 2026 09:42:56 -0700 (PDT)
+        Fri, 02 Oct 2026 09:42:58 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Chuck Lever <cel@kernel.org>,
@@ -64,10 +65,12 @@ To: Chuck Lever <cel@kernel.org>,
 	NeilBrown <neil@brown.name>
 Cc: linux-nfs@vger.kernel.org,
 	Daire Byrne <daire@dneg.com>
-Subject: [PATCH RFC 0/2] SUNRPC: dispatch ready transports round-robin across clients
-Date: Fri,  2 Oct 2026 12:42:53 -0400
-Message-ID: <cover.1790953694.git.bcodding@hammerspace.com>
+Subject: [PATCH RFC 1/2] SUNRPC: track service clients by peer address
+Date: Fri,  2 Oct 2026 12:42:54 -0400
+Message-ID: <dc5f43ea406deffd0074904f2fbc9b554fa69d2f.1790953694.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
+In-Reply-To: <cover.1790953694.git.bcodding@hammerspace.com>
+References: <cover.1790953694.git.bcodding@hammerspace.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -76,192 +79,310 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-This is a third pass at the problem from [1] and [2].  It's the design
-Neil described on [1], close to as he wrote it: a client object per peer,
-a queue of ready transports per client, and a queue of ready clients per
-pool.  A pool takes turns across clients instead of across transports.
+A pool dispatches its ready transports in FIFO order, one RPC per turn,
+so a peer's share of the service grows with the number of connections
+it holds: a client with K connections is served K times as often as a
+client with one.  Dispatching per peer instead needs the service to know
+which transports belong to the same peer.
 
-I owe an explanation for leaving sparse-flow behind.  Two things:
+Add struct svc_client, one per peer address and network namespace of a
+service, found through a small hash table under a spinlock.  The table
+is touched only when a connection is accepted and when a client's last
+transport is freed; dispatch will follow the transport's xpt_client
+pointer, which is set before the transport can be enqueued (it is still
+XPT_BUSY from svc_xprt_init()) and is kept alive by the transport's
+reference.  Each client carries a per-pool lwq of its ready transports
+and a node for the pool's queue of clients, unused as yet.
 
-The re-arm trigger Chuck asked about on [2] is a cliff wherever it's put,
-and softening it means picking between watermarks and decaying credits
-against real interactive workloads under load.  I ran some of that and
-found the behavior depends on timing from several actors at once.  I
-don't think I can characterize it well enough to defend a heuristic.
+Listeners, UDP sockets, and accepted transports for which no client can
+be allocated are bound to the service's anonymous client.
 
-..and Neil's objection on [1] holds: the interactive frame only works
-for clients with one or a few users.  A latency floor helps a client
-while it's idle between requests.  What I have is a data mover with a
-lot of connections sharing a server with clients that keep I/O in flight
-themselves, a re-export gateway for one.  Sparse-flow puts those in the
-same queue as the mover and they split the pool by connection count.
-Neil asked then whether fairness between a client with one connection
-and one with sixteen wasn't what I wanted -- but it is.
+Dispatch is unchanged by this patch.
 
-Approach
---------
+Suggested-by: NeilBrown <neil@brown.name>
+Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
+---
+ include/linux/sunrpc/svc.h      | 32 +++++++++++
+ include/linux/sunrpc/svc_xprt.h |  1 +
+ net/sunrpc/svc.c                | 34 ++++++++++++
+ net/sunrpc/svc_xprt.c           | 97 +++++++++++++++++++++++++++++++++
+ 4 files changed, 164 insertions(+)
 
-Each transport belongs to a client, one per peer address and network
-namespace.  A client has a queue of its ready transports, and the pool
-has a queue of clients that have something ready.  A thread takes the
-client at the head, dispatches one of its transports, and puts the client
-back at the tail if it has more.  So every peer with work queued gets one
-dispatch per round, however many connections it holds.
-
-Enqueue is still lockless.  Dequeue takes one more lwq lock than before.
-The client table is only touched when a connection is accepted and when a
-client's last transport goes away, so there's no lookup on the dispatch
-path and no RCU.  Listeners and UDP sockets share an anonymous client.
-The one piece of Neil's description I left out is moving a transport
-between clients.
-
-It's always on and there's nothing to tune.
-
-  patch 1  track clients by peer address, no change to dispatch
-  patch 2  dispatch round-robin across clients
-
-These go on top of the svc_clean_up_xprts() wake fix I sent separately
-[3], on nfsd-testing.  That's the pre-existing issue Chuck asked me to
-look at on [2].  I've only compiled them on nfsd-testing; the numbers
-below are from v7.2.
-
-What happened to the review items from [2]: there's no trigger and no
-credit to tune, nothing is classified as batch or interactive, and there's
-no priority tier, so nothing can be starved.  Control events take turns
-like data.  A close queued behind k of its own client's transports gets
-dispatched k rounds later, where today it waits behind every queued
-transport in the pool.  I didn't add a separate queue for them.  I can if
-that's wanted.
-
-Results
--------
-
-Same harness as [2], with one change: every load group now comes from its
-own source address, so the server sees it as one client.  16 threads, 10ms
-injected per op by the same test-only hook (not part of this series).  A
-is v7.2 with the hook, and B adds the wake fix [3] and this series.
-NFSv3 burst completion p50 in ms.  NFSv4.1 is within a few percent in
-every cell.
-
-Interactive burst of 32 against one busy client with K connections
-(unobstructed floor 45.8ms):
-
-    K       4      8     16     32
-    A    82.8  249.0  439.9  838.9
-    B    73.5   90.1   94.6   90.0
-
-That's two clients taking turns, so about twice the floor, and it doesn't
-move with K.  Against burst size N at K=16 it stays about twice the floor
-too.  There's no knee any more:
-
-    N        1      8     32     64     96    128
-   floor  14.9   31.6   45.8   72.5   98.6  123.6
-    A     31.6  125.3  440.0  865.8 1290.1 1705.3
-    B     18.0   40.2   91.9  151.3  217.4  278.0
-
-What it does scale with is the number of busy clients.  M clients with 4
-connections each, burst of 32:
-
-    M       1      2      4      8
-    A    80.9  245.3  441.1  839.0
-    B    75.0  112.5  158.3  252.3
-
-That's the cost of dropping the priority tier.  A light client on
-a server with a lot of busy peers waits its turn behind each of them.  It
-still beats waiting behind each of their connections.
-
-Share of the pool for a client with 2 connections against a client with K,
-both backlogged:
-
-    K        4      8     16     32
-    A    46.3%  19.9%  11.1%   5.9%
-    B    49.4%  47.6%  47.9%  48.4%
-
-Six movers, against clients that are backlogged too.  Share for one
-client with 4 connections, and for four such clients together:
-
-                         movers at 4 conns    movers at 8 conns
-                            A        B           A        B
-    one client           14.3%    14.3%        7.7%    14.3%
-    four clients         40.0%    40.0%       25.0%    40.0%
-    one client, 1 conn    4.0%    13.0%        2.0%    13.0%
-
-A client that already matches the movers' connection count sees no change.
-What changes is that the movers can't buy more by opening more.
-
-Chuck asked on [2] for something real rather than the synthetic victim.
-A kernel v3 mount with one connection (noac, lookupcache=none) of a tmpfs
-export, walking 2000 files with find | xargs stat (about 26k RPCs) and then
-reading with four fio jobs, while the 16-connection aggressor runs from
-another address:
-
-                    alone (A / B)     loaded A    loaded B
-    walk            1.53s / 2.08s      328.55s     107.74s
-    fio 4k IOPS     21876 / 19776           80         777
-
-Both loaded columns are worse than a real mix would be.  With every
-request taking exactly 10ms the threads finish in batches, and a request
-that shows up mid-batch waits for the next one.
-
-Aggregate throughput is the same A and B in every saturated cell (about
-1280 vs 1290 ops/s).  With every group on one source address B gives A's
-numbers back, which is what I'd expect.
-
-For the cost on the dispatch path I used fio over a loopback mount of a
-tmpfs export, 4k O_DIRECT reads, nconnect=8, five 20s runs each: 95.5k
-vs 95.8k IOPS at 16 jobs and 139.0k vs 139.2k at 64, A vs B.  I can't see
-a difference.  That's one client on a KASAN kernel, so I wouldn't lean on
-it too hard.
-
-What this doesn't do
---------------------
-
-Peers are told apart by address.  Everything behind one address shares
-one client's turns: NAT, a gateway re-exporting for a lot of users, pods
-behind a node address.  Chuck raised this on [1] and I don't have an
-answer for v3.  For v4.1 the clientid could be the key, but the transport
-would have to move between clients at session bind and I left that out.
-
-Fairness is per pool.  With ten pools (pool_mode=percpu) a client with 2
-connections against one with 16 got 26% where a single pool gives 49%.
-v7.2 gives it 12% there.  Now that pools are per node this matters
-more than it used to.
-
-It equalizes dispatches, not thread time.  A client whose requests each
-hold a thread for a long time still ends up holding most of the threads.
-
-It's fair by host, not by class.  Six movers get six turns.
-
-A single connection with 16 requests outstanding gets about a third
-against a client with 8 connections in my synthetic harness, not half.
-From tracing, its transport is dispatched within about 150us of becoming
-ready and alternates with the other client, so I think that's my load
-generator not keeping one connection supplied.  I haven't measured the
-share a real single-connection client gets when it's backlogged.
-
-Questions
----------
-
-Is the anonymous client the right home for listeners?  A connection flood
-gets one turn per round that way.
-
-Does anyone want the pool_stats or a tracepoint to show clients?  I left
-observability out to keep this small.
-
-[1] https://lore.kernel.org/linux-nfs/cover.1780498019.git.bcodding@hammerspace.com/
-[2] https://lore.kernel.org/linux-nfs/cover.1782314746.git.bcodding@hammerspace.com/
-[3] https://lore.kernel.org/linux-nfs/5b162e1a03d59bd0d3cc479891965834d0d4f0c8.1790948398.git.bcodding@hammerspace.com/
-
-Benjamin Coddington (2):
-  SUNRPC: track service clients by peer address
-  SUNRPC: dispatch ready transports round-robin across clients
-
- include/linux/sunrpc/svc.h      |  34 +++++-
- include/linux/sunrpc/svc_xprt.h |   1 +
- net/sunrpc/svc.c                |  36 +++++-
- net/sunrpc/svc_xprt.c           | 191 ++++++++++++++++++++++++++++----
- 4 files changed, 240 insertions(+), 22 deletions(-)
-
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index bdff8ccb92c7..496fd33da96f 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -58,6 +58,33 @@ enum {
+ 	SP_TASK_STARTING,	/* Task has started but not added to idle yet */
+ };
+ 
++/*
++ * One peer of a service: the transports from one address in one network
++ * namespace.  Ready transports are queued per client and per pool, and a
++ * pool dispatches round-robin across its queued clients, so a peer's share
++ * of the service does not grow with its connection count.
++ */
++struct svc_client_pool {
++	struct lwq		cp_xprts;	/* ready transports */
++	struct lwq_node		cp_ready;	/* link in svc_pool.sp_clients */
++	unsigned long		cp_flags;
++	struct svc_client	*cp_client;
++};
++
++enum {
++	SVC_CP_QUEUED,	/* on sp_clients, or held by the thread that took it */
++};
++
++struct svc_client {
++	struct hlist_node	cl_hash;
++	refcount_t		cl_ref;
++	struct net		*cl_net;
++	struct sockaddr_storage	cl_addr;	/* peer address; port ignored */
++	struct svc_client_pool	cl_pool[];	/* one per pool */
++};
++
++#define SVC_CLIENT_HASH_BITS	8
++
+ 
+ struct svc_rqst;
+ 
+@@ -94,6 +121,10 @@ struct svc_serv {
+ 	struct svc_pool *	sv_pools;	/* array of thread pools */
+ 	int			(*sv_threadfn)(void *data);
+ 
++	spinlock_t		sv_client_lock;	/* protects sv_client_hash */
++	struct hlist_head	sv_client_hash[1 << SVC_CLIENT_HASH_BITS];
++	struct svc_client	*sv_anon_client; /* transports without a peer */
++
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+ 	struct lwq		sv_cb_list;	/* queue for callback requests
+ 						 * that arrive over the same
+@@ -500,6 +531,7 @@ void		   svc_reserve(struct svc_rqst *rqstp, int space);
+ void		   svc_pool_wake_idle_thread(struct svc_pool *pool);
+ struct svc_pool   *svc_pool_for_cpu(struct svc_serv *serv);
+ unsigned int	   svc_serv_nrpools(const struct svc_serv *serv);
++struct svc_client *svc_client_alloc(unsigned int nrpools, gfp_t gfp);
+ char *		   svc_print_addr(struct svc_rqst *, char *, size_t);
+ const char *	   svc_proc_name(const struct svc_rqst *rqstp);
+ int		   svc_encode_result_payload(struct svc_rqst *rqstp,
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 7176c42f19d7..ee4dd0d3647c 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -63,6 +63,7 @@ struct svc_xprt {
+ 	unsigned long		xpt_flags;
+ 
+ 	struct svc_serv		*xpt_server;	/* service for transport */
++	struct svc_client	*xpt_client;	/* peer this transport belongs to */
+ 	atomic_t		xpt_reserved;	/* outq space rsvd, UDP only */
+ 	atomic_t		xpt_nr_rqsts;	/* Number of requests */
+ 	struct mutex		xpt_mutex;	/* to serialize sending data */
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 0a2c040ad096..cb2b7caaa627 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -387,6 +387,30 @@ static void svc_pool_destroy_counters(struct svc_pool *pool)
+ 	percpu_counter_destroy(&pool->sp_threads_woken);
+ }
+ 
++/**
++ * svc_client_alloc - allocate a service client
++ * @nrpools: number of thread pools in the service
++ * @gfp: allocation flags
++ *
++ * Return: the client, holding one reference, or %NULL.
++ */
++struct svc_client *svc_client_alloc(unsigned int nrpools, gfp_t gfp)
++{
++	struct svc_client *cl;
++	unsigned int i;
++
++	cl = kzalloc(struct_size(cl, cl_pool, nrpools), gfp);
++	if (!cl)
++		return NULL;
++	refcount_set(&cl->cl_ref, 1);
++	INIT_HLIST_NODE(&cl->cl_hash);
++	for (i = 0; i < nrpools; i++) {
++		lwq_init(&cl->cl_pool[i].cp_xprts);
++		cl->cl_pool[i].cp_client = cl;
++	}
++	return cl;
++}
++
+ /*
+  * Create an RPC service
+  */
+@@ -432,8 +456,16 @@ __svc_create(struct svc_program *prog, int nprogs, struct svc_stat *stats,
+ 
+ 	__svc_init_bc(serv);
+ 
++	spin_lock_init(&serv->sv_client_lock);
++	serv->sv_anon_client = svc_client_alloc(npools, GFP_KERNEL);
++	if (!serv->sv_anon_client) {
++		kfree(serv);
++		return NULL;
++	}
++
+ 	serv->sv_pools = kzalloc_objs(struct svc_pool, npools);
+ 	if (!serv->sv_pools) {
++		kfree(serv->sv_anon_client);
+ 		kfree(serv);
+ 		return NULL;
+ 	}
+@@ -459,6 +491,7 @@ __svc_create(struct svc_program *prog, int nprogs, struct svc_stat *stats,
+ 	while (i--)
+ 		svc_pool_destroy_counters(&serv->sv_pools[i]);
+ 	kfree(serv->sv_pools);
++	kfree(serv->sv_anon_client);
+ 	kfree(serv);
+ 	return NULL;
+ }
+@@ -545,6 +578,7 @@ svc_destroy(struct svc_serv **servp)
+ 	if (serv->sv_is_pooled)
+ 		svc_pool_map_put();
+ 
++	kfree(serv->sv_anon_client);
+ 	kfree(serv->sv_pools);
+ 	kfree(serv);
+ }
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index c891532fb1f6..51753aeeb0ba 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -9,8 +9,11 @@
+ #include <linux/sched/mm.h>
+ #include <linux/errno.h>
+ #include <linux/freezer.h>
++#include <linux/hash.h>
+ #include <linux/slab.h>
+ #include <net/sock.h>
++#include <net/ip.h>
++#include <net/ipv6.h>
+ #include <linux/sunrpc/addr.h>
+ #include <linux/sunrpc/stats.h>
+ #include <linux/sunrpc/svc_xprt.h>
+@@ -167,6 +170,96 @@ void svc_xprt_deferred_close(struct svc_xprt *xprt)
+ }
+ EXPORT_SYMBOL_GPL(svc_xprt_deferred_close);
+ 
++static unsigned int svc_client_hash(const struct sockaddr *sa,
++				    const struct net *net)
++{
++	u32 h = hash_ptr(net, 32);
++
++	switch (sa->sa_family) {
++	case AF_INET:
++		h = __ipv4_addr_hash(((const struct sockaddr_in *)sa)->sin_addr.s_addr, h);
++		break;
++	case AF_INET6:
++		h = __ipv6_addr_jhash(&((const struct sockaddr_in6 *)sa)->sin6_addr, h);
++		break;
++	}
++	return hash_32(h, SVC_CLIENT_HASH_BITS);
++}
++
++static struct svc_client *svc_client_get(struct svc_client *cl)
++{
++	refcount_inc(&cl->cl_ref);
++	return cl;
++}
++
++static void svc_client_put(struct svc_serv *serv, struct svc_client *cl)
++{
++	if (!refcount_dec_and_test(&cl->cl_ref))
++		return;
++	spin_lock_bh(&serv->sv_client_lock);
++	hlist_del(&cl->cl_hash);
++	spin_unlock_bh(&serv->sv_client_lock);
++	kfree(cl);
++}
++
++/* Caller holds sv_client_lock. */
++static struct svc_client *svc_client_find(struct hlist_head *head,
++					  const struct net *net,
++					  const struct sockaddr *sa)
++{
++	struct svc_client *cl;
++
++	hlist_for_each_entry(cl, head, cl_hash)
++		if (cl->cl_net == net &&
++		    rpc_cmp_addr((struct sockaddr *)&cl->cl_addr, sa) &&
++		    refcount_inc_not_zero(&cl->cl_ref))
++			return cl;
++	return NULL;
++}
++
++/*
++ * Bind @xprt to the client for its peer address.  Runs once per accepted
++ * transport, in process context, while the transport is still XPT_BUSY
++ * from svc_xprt_init(), so no enqueue can see the pointer change.  A
++ * transport without a usable peer address, or one for which no client can
++ * be allocated, stays on the service's anonymous client.
++ */
++static void svc_client_bind(struct svc_serv *serv, struct svc_xprt *xprt)
++{
++	struct sockaddr *sa = (struct sockaddr *)&xprt->xpt_remote;
++	struct svc_client *cl, *new = NULL;
++	struct net *net = xprt->xpt_net;
++	struct hlist_head *head;
++
++	if (sa->sa_family != AF_INET && sa->sa_family != AF_INET6)
++		return;
++	head = &serv->sv_client_hash[svc_client_hash(sa, net)];
++
++	spin_lock_bh(&serv->sv_client_lock);
++	cl = svc_client_find(head, net, sa);
++	spin_unlock_bh(&serv->sv_client_lock);
++	if (!cl) {
++		new = svc_client_alloc(svc_serv_nrpools(serv), GFP_KERNEL);
++		if (!new)
++			return;
++		new->cl_net = net;
++		memcpy(&new->cl_addr, sa, xprt->xpt_remotelen);
++
++		spin_lock_bh(&serv->sv_client_lock);
++		cl = svc_client_find(head, net, sa);
++		if (!cl) {
++			hlist_add_head(&new->cl_hash, head);
++			cl = new;
++			new = NULL;
++		}
++		spin_unlock_bh(&serv->sv_client_lock);
++		kfree(new);
++	}
++
++	svc_client_put(serv, xprt->xpt_client);
++	xprt->xpt_client = cl;
++}
++
+ static void svc_xprt_free(struct kref *kref)
+ {
+ 	struct svc_xprt *xprt =
+@@ -176,6 +269,7 @@ static void svc_xprt_free(struct kref *kref)
+ 	trace_svc_xprt_free(xprt);
+ 	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags))
+ 		svcauth_unix_info_release(xprt);
++	svc_client_put(xprt->xpt_server, xprt->xpt_client);
+ 	put_cred(xprt->xpt_cred);
+ 	put_net_track(xprt->xpt_net, &xprt->ns_tracker);
+ 	/* See comment on corresponding get in xs_setup_bc_tcp(): */
+@@ -213,6 +307,7 @@ void svc_xprt_init(struct net *net, struct svc_xprt_class *xcl,
+ 	xprt->xpt_ops = xcl->xcl_ops;
+ 	kref_init(&xprt->xpt_ref);
+ 	xprt->xpt_server = serv;
++	xprt->xpt_client = svc_client_get(serv->sv_anon_client);
+ 	INIT_LIST_HEAD(&xprt->xpt_list);
+ 	INIT_LIST_HEAD(&xprt->xpt_deferred);
+ 	INIT_LIST_HEAD(&xprt->xpt_users);
+@@ -836,6 +931,8 @@ static bool svc_thread_wait_for_work(struct svc_rqst *rqstp, long timeo)
+ 
+ static void svc_add_new_temp_xprt(struct svc_serv *serv, struct svc_xprt *newxpt)
+ {
++	svc_client_bind(serv, newxpt);
++
+ 	spin_lock_bh(&serv->sv_lock);
+ 	set_bit(XPT_TEMP, &newxpt->xpt_flags);
+ 	list_add(&newxpt->xpt_list, &serv->sv_tempsocks);
 -- 
 2.53.0
 
