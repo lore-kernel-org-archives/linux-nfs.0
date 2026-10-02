@@ -1,166 +1,122 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-qv2-f12.google.com (mail-qv2-f12.google.com [74.125.230.140])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3E1B846A5EE
-	for <linux-nfs@vger.kernel.org>; Fri,  2 Oct 2026 14:07:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=170.10.129.124
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790950040; cv=pass; b=tdjQDglA9s5VysWjd+7HCo5wQcU4oD3oDH/+O3/ZXSdGYBlGePlr8W2UplOKgxMquHh+/Uu89+azQOn8yg0pPmwDNeP7n9NnUEjyD7wLeDuyjXMDWx49fZISToQzdqamrJcU0ktRL8V3/ksEUy+mjtz29QCAgBLI3MdvOj5t/Mk=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790950040; c=relaxed/simple;
-	bh=yfDvPO4H/mIRlRzgF1ehHxShRFO4ABWe5fq0yL3+cMs=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=EXqzJIGlQa6Eds5opdf358NFrAxCZEvpHb+JEnLjAuD44t1u3O+WYkmypZamAXYNxO/BzkNAIC6qScHOawqMUlqvjo1y7ojL+1LgpQOCww5Z96QRabfdOkcps2e6hNyRVxU9TF3PSEWAvTkTuxr0DGPHwOw6RFznGyIFcruQcHM=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=eftsUuVY; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=KGWOl5js; arc=pass smtp.client-ip=170.10.129.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8EF294B7A22
+	for <linux-nfs@vger.kernel.org>; Fri,  2 Oct 2026 14:13:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.230.140
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1790950439; cv=none; b=gXiCtlojNe0p8nT70NbZWNXLLzdhONLS2QshFLkoqk4S+QWTWOcNuGLq66pctV22QKBff+Spy7A6aEMeBHfQcmdwvi4YQym+GijVZx5QOcmtlk0yTEQCX0IUS9WS28vGLL2m99ub9uYsuAKQCDI3pkdzltIxNrrE9cOnmscorOs=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1790950439; c=relaxed/simple;
+	bh=ecLdzVlyyEVSoagyjfJaI/MVE1ss1FL179UKwSi1Umk=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=ViyJzlRU5GlBd/QrhbDahtBebAPvEZqU4zN6CjeflCDcbAHbe2OabCN0T3xoqLCnAGgfYoQYlyCW0kCQJqMgJm0WdqpEgINNbiBXQEbH8abWf+f+9rm1/zHw4aQnWSRFoW3QQ1kX/Vx9KCI4EltgQ2Y4mX+08kn3HFykBlKiFYE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=imBnhktN; arc=none smtp.client-ip=74.125.230.140
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="eftsUuVY";
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="KGWOl5js"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1790950038;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=XDp0RcD7HYWUzlsOLtsxZUXX4GvVdXcns7B6N4dcr9I=;
-	b=eftsUuVYCPvq8xq1ZIWulJtLktke+IJKxMUPlpxs+dnvurIJRsHIzkktOuF9D5Ahq0jI/x
-	l+tXmaJahlnXTKfbpRs1xjld/rqqEaw3XrrYZwCCpXntHkHMKvnR/PPdRhYtfMasumhS9f
-	HYVRKPdDZlElN7gLpbj2KoeFU7N/9kQ=
-Received: from mail-lj1-f197.google.com (mail-lj1-f197.google.com
- [209.85.208.197]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-43-nKMrwYb7PhKa8WnxDgxaCw-1; Fri, 02 Oct 2026 10:07:15 -0400
-X-MC-Unique: nKMrwYb7PhKa8WnxDgxaCw-1
-X-Mimecast-MFC-AGG-ID: nKMrwYb7PhKa8WnxDgxaCw_1790950034
-Received: by mail-lj1-f197.google.com with SMTP id 38308e7fff4ca-3a782ba9e23so325181fa.3
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Oct 2026 07:07:15 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1790950034; cv=none;
-        d=google.com; s=arc-20260327;
-        b=D13GF+4nuW564pKYZrCXQBGYkjtXcgT+Ixjgy3rYl9sT4A50CH4Qg/FjAV2ddA37OZ
-         NbiCQfylqEQhOZfvStScKmagnCg7FWks0yk0ZpEE6lrRQZna/SM0yEyyURLc+FHsAfzB
-         p4NstOBd1iPA8/WUgQF/G4vFOIwFIVnje9sHjTnqddtBsiG91oAfsTW8iNoM5CDPbLF1
-         AM8dGqR1ysIzTgQFgINdoX7mwjcuOs8khb8Q8neIud1/HxA6Qp5yK3Dw+FdjAwUrWxQK
-         XRJy3huJi9QjhLEiu3Go2rfde0dm1q+tO8PvpVCk/Sr8PwJ1MRjXmePCIoChoLfgUTRj
-         ZZzw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=XDp0RcD7HYWUzlsOLtsxZUXX4GvVdXcns7B6N4dcr9I=;
-        fh=1zSUO/tjvuavuaD0qygcvip6i03yX/Rs6fBBCgojquw=;
-        b=qBDYW6cju8feCwN4trERXpx7XAY/WDM3O08Pb8vXSK6QmeegTv6hdE793Ch7eccN8N
-         l6eSEMFFHpC+Qs2WybRnxfDvo68EMgGi/0LXzO8nUmaHzmNf+UJzCwSMZELFATCf5j3E
-         yUrBhGX9WjfHq2/EQYRL6SFYvN8n8bXGTFKvFjmYro2j3hCi8c+XubL4FRkWKy/G/UtD
-         YeDog0L8lK8vEST94dXp0IvA6yvKMqRuX1CmWv5bhGW8xroSFaL3HOlaPy+5uwOutjE9
-         /jE3couyJtY3o2DaCw/9mUa767w3xfqbMlcvlE1xZU0D2ng5IDwzEzrmFHGkn4v6HpJ3
-         KzFA==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="imBnhktN"
+Received: by mail-qv2-f12.google.com with SMTP id 6a1803df08f44-91071ba92a8so38914216d6.0
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Oct 2026 07:13:57 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1790950034; x=1791554834; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=XDp0RcD7HYWUzlsOLtsxZUXX4GvVdXcns7B6N4dcr9I=;
-        b=KGWOl5jsE8QQb4D8FZHcRRf3lRLbD4irayVANcnlm/qIwAMXnpXYCr5QJieryHqkoR
-         v8CifHXoKNYHPgb8wwYE8PE3JvUUxGLoJGMuIuuXimaP+vSCt4DZvhTkRoE0aPZ36cOg
-         cDvxMLqNnDpny0iv0KhmN6FkPKmYAgCTQjwzbJG4/S+UhFW3/QiJViXFXpN/aqhmuQiD
-         RIT/SSGL1YkAbAxc3Sj3C7IXPjBH+SUjKGKT46M7E92U0iYhOY3jNO/djKP63ET9H2N+
-         ucb667glPv00LkhYIybgLn34YJt3hzpP9MyqdZQrg97ckmkkBIsmhxEoSZUaCSmbaTBz
-         KEcQ==
+        d=hammerspace.com; s=google; t=1790950435; x=1791555235; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=kz5BNGvtQN27tO5bNJ/lnOnVvOARDzBgNARZZNdZZ28=;
+        b=imBnhktNQDt8+ph23vKGnWbz4I0bSeR5yvffPbUeC1I7Q2eGacu8DbeXuKNvv9Z2h8
+         BByDXYiu6TzHKFZe6TsKSJlgq16pxTce+mcUpsQLuGKSjgoHYE58wN7kx4E+mkuC0EgI
+         HXW0Vz51+5Dn44+gKh3yoicScTdqXKhHUJaUYEmFp+WVekDZ+8j6XjcZ6YM7tUbeQ0i6
+         eV1eMCefYBmSfJReMWK0qvmsp/bZXCmv1w7Gy8sa8733Pj3b/7IVF6zMAi16wTKuI0Si
+         KPDQlM6ZDyKbA4vXdBMUzU62ti8MxUMtCEP0sZPzOPyqkrRFExVNYXJXxoy1MKqIUU+Q
+         H9oA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790950034; x=1791554834;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=XDp0RcD7HYWUzlsOLtsxZUXX4GvVdXcns7B6N4dcr9I=;
-        b=jHee/+mJY2FSn58poz11EsgwUpUV7q8Ql2s+Re7IRbxRZ5FUMoX0IBaic188Jb+2AL
-         Xshwgi1e5fRFbaz1Pd6qNalFyCw4Rw0L/AcTSWY31KQY3u5r75nxUQdKiJjx4NbcxdBN
-         O7Eh7vXP/BNbRiAw4m+jBuqzf5ghDtSX+5a7czW1XxFazu4uXcnvmYbcLHaj4VrtzsfB
-         CZM2pcrCvjyOvDP5zBObbqmYyck8dwCvQK1b6jgiRmfFUKheM8L4BsbExYZ/2VDN/oGo
-         U+xY+shrXyrhRoee3g49a0Ah6Mj+7XSBmOeG5hmD+DhKwKj1Q6jDlgVZoyStZ0g17XDS
-         Lyww==
-X-Forwarded-Encrypted: i=1; AKwUvBz/yYQyyukfo1WeUTosAcRaJH0171LrTEU09GOB5JLLV8tpvx1MvCXfKI0Mu6GdFngLE3kFcehXMq8=@vger.kernel.org
-X-Gm-Message-State: AFq9FYIlbsXv6eutG/A4rT7EKLBxP89iFceToNNbyGyCqGq3d2ZRCBON
-	mNTk/1GqhFxkxZtvl4WeyWUdwYLiz4Y4wxW7FcBq7Hu5JVg0dlGeH5LchIFb8Xulz7Ylmlt4plX
-	0kjE6QpacURADgsrbCCfqR0lpYyNLWZ/D1OZmPrtBW1c1o29eX0vpRlWBsZWHIohfui4t0rKogX
-	zNtzC+JsaSWEwNKZESWA8rfRb0kKiOY/kifp3S
-X-Gm-Gg: AYBFou0TCymYacSKxP9mJLZOxSobvhAKTDYf2uDNDFNWe8TVV4B00VRWm0lNTIhSSzf
-	SC1+Mo7Ewk02V5SZfSOoJFeb75FD4tkcQ0yOnITy1sY/fpD0FD9VNe96kYisgAKXHryZLf1zSyh
-	TzAwVli0TewDqMYz2VsKKWdGbXFV2RApm3Y4c0z+M+5l4rqBA90oYGKEci
-X-Received: by 2002:a2e:bc24:0:b0:3a6:95a:52a6 with SMTP id 38308e7fff4ca-3a8877b72d8mr7514341fa.20.1790950033915;
-        Fri, 02 Oct 2026 07:07:13 -0700 (PDT)
-X-Received: by 2002:a2e:bc24:0:b0:3a6:95a:52a6 with SMTP id
- 38308e7fff4ca-3a8877b72d8mr7514081fa.20.1790950033516; Fri, 02 Oct 2026
- 07:07:13 -0700 (PDT)
+        d=1e100.net; s=20260707; t=1790950435; x=1791555235;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=kz5BNGvtQN27tO5bNJ/lnOnVvOARDzBgNARZZNdZZ28=;
+        b=ncCNdNQRNb7MRZ0G1c/dcdkubqbTJFDVOAHqW6NceexNJIK1OuuZUNVlZMUbSFK+To
+         zcjQD/ITwA9kxq+7ulkvt7YVY5+ThV2DorzBqVO+ElHVa7aOgl65Rs7LCG0/pJaoTo9s
+         C9jLGbFd3au85UIDf6QFmn8U3fA21xVKvSvPLd32U8P2WDmNdAPTnzW5l1UXHH2TBZBs
+         OE0n6Hu5TwYTiVhB1watUExhNyBeO8naV6GmW+FEQOh31a2CS54TSFPkqNJk5jhn5Jiu
+         LZ8bx93I18JSOfWUt98Df293atCVosDaMWsOlPQsEEf8LVJ7ncWV1sZXaORZKlLKh3pl
+         TcrA==
+X-Gm-Message-State: AFuF++nmh0P3sXZiWrl9NwjJhsecWWff/FD7JE4m3w5VxaOfXCmxPi4b
+	TMoXww1bJJUk4i6C589WUAZ8Ue1QCbOY6RDvadni4wGwFe0BUcH5AoosLG1WrNESUVrI1Ao5LzW
+	RHwtW
+X-Gm-Gg: AYBFou1R04EXCn1n9G1i3ybeO6jy10TUSsBDVyjVRNLe9p4z61mCDJ7boiQsmxZzDVs
+	/Ahy8lw3Gpf6jkUjt+fPwJRsrkfORJroh1v03QzB5Qj6iCqjUuLu0FZWphPdrqBTnw1DZwdDpJM
+	NbfijeRH7lPPv/tG/i3ybpPqEVKOvdPqcNubIE+4ZhwwUdoZG7OIttN9mt+dUAs8hbt/AQIXbmS
+	QoK7ET12Y7L/JuIsOG0xxkdGBXwxuG2rvycUje8ugl5DkLKRdR/1D24NrPv/I7hv3zEzY0NWotd
+	zndU/8DpKsFh1eokY40QnQ3r8ShLyPv4SLxh7Z2ZzmTNGNqiBX8ho501zc+qDLHLY6voqwNVEEa
+	f89MZNHAYigW0+yfQdaEb4lQcm/cK/qNH1SZfS8NmaTYPfeph5cY+mHLsyj3/pdwpAc1JDzFXBC
+	Or0BToX842mILU4sBy8BHArTSPeH8ePVR4GXTWDyyRldGMB0pJ3vw33moWUJj6JbWwmd3U+VybU
+	ZvMVnQtcN2Fc2xDVoKgMvgAdiuMGzkFTQ==
+X-Received: by 2002:a05:6214:55ca:b0:917:a8ae:26d6 with SMTP id 6a1803df08f44-917c015fbd4mr48663016d6.34.1790950435036;
+        Fri, 02 Oct 2026 07:13:55 -0700 (PDT)
+Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-917e0c0bef6sm20632276d6.39.2026.10.02.07.13.54
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 02 Oct 2026 07:13:54 -0700 (PDT)
+From: Benjamin Coddington <ben.coddington@hammerspace.com>
+X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
+To: Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: wake a thread after re-queueing transports in svc_clean_up_xprts()
+Date: Fri,  2 Oct 2026 10:13:53 -0400
+Message-ID: <5b162e1a03d59bd0d3cc479891965834d0d4f0c8.1790948398.git.bcodding@hammerspace.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260929071743.23624-2-edumazet@kernel.org> <179090395863.434549.3668493667259120759@kernel.org>
- <CAL4WiipAe11BJA0rs33_0=bzYXMr0qQvQMPc+6-awyFQdQ1yCA@mail.gmail.com>
-In-Reply-To: <CAL4WiipAe11BJA0rs33_0=bzYXMr0qQvQMPc+6-awyFQdQ1yCA@mail.gmail.com>
-From: Alexander Aring <aahringo@redhat.com>
-Date: Fri, 2 Oct 2026 10:07:01 -0400
-X-Gm-Features: AclHuK_sfowi4LPKpSWl8IXP3uRNzWbqORQfvYROS9BqQto16BFcN8kPZWF14yQ
-Message-ID: <CAK-6q+ga-MNEXgENToB2hLB9jzpsGMrz-1sOo7WQP5M-scnAxg@mail.gmail.com>
-Subject: Re: [PATCH v3 net-next 1/9] dlm: fix send buffer backpressure handling
-To: Eric Dumazet <edumazet@kernel.org>
-Cc: netdev-bot+sashiko@kernel.org, davem@davemloft.net, kuba@kernel.org, 
-	pabeni@redhat.com, horms@kernel.org, ncardwell@google.com, kuniyu@google.com, 
-	edumazet@google.com, netdev@vger.kernel.org, teigland@redhat.com, 
-	gfs2@lists.linux.dev, john.fastabend@gmail.com, jakub@cloudflare.com, 
-	sd@queasysnail.net, jiayuan.chen@linux.dev, matttbe@kernel.org, 
-	martineau@kernel.org, geliang@kernel.org, mptcp@lists.linux.dev, 
-	guwen@linux.alibaba.com, dust.li@linux.alibaba.com, alibuda@linux.alibaba.com, 
-	cel@kernel.org, jlayton@kernel.org, neil@brown.name, okorniev@redhat.com, 
-	Dai.Ngo@oracle.com, tom@talpey.com, trondmy@kernel.org, anna@kernel.org, 
-	linux-nfs@vger.kernel.org, achender@kernel.org, rds-devel@oss.oracle.com, 
-	philipp.reisner@linbit.com, lars.ellenberg@linbit.com, 
-	christoph.boehmwalder@linbit.com, axboe@kernel.dk, drbd-dev@lists.linux.dev, 
-	kbusch@kernel.org, hch@lst.de, sagi@grimberg.me, kch@nvidia.com, 
-	linux-nvme@lists.infradead.org, idryomov@gmail.com, amarkuze@redhat.com, 
-	slava@dubeyko.com, ceph-devel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-Hi,
+svc_clean_up_xprts() takes every ready transport off the pool's queue,
+deletes those belonging to the network namespace being shut down, and
+puts the rest back with lwq_enqueue_batch(), ignoring its return value.
+No thread is woken.  A thread that tested the queue while it was
+drained has gone to sleep, and the re-queued transports still carry
+XPT_BUSY, so the data they receive next cannot enqueue them either.
+They wait until an unrelated transport wakes a thread.  nfsd bounds
+that with the 5 second timeout it passes to svc_recv(); lockd and the
+NFSv4 callback service, which share one service across network
+namespaces and wait without a timeout, do not.
 
-On Fri, Oct 2, 2026 at 4:33=E2=80=AFAM Eric Dumazet <edumazet@kernel.org> w=
-rote:
->
-> On Fri, Oct 2, 2026 at 3:19=E2=80=AFAM <netdev-bot+sashiko@kernel.org> wr=
-ote:
-> >
-> > Thank you for your contribution! Sashiko AI review found 2 potential
-> > issue(s) to consider.
-> >
-> > Critical: 0 =C2=B7 High: 1 =C2=B7 Medium: 0 =C2=B7 Low: 1
-> >
-> > If you believe none of the issues are legitimate, please reply to each
-> > issue of Medium severity or higher and explain why the AI is wrong.
-> > If any of them are legitimate and you plan to respin, please let patchw=
-ork
-> > know by including "pw-bot: cr" as a separate line at the end of your re=
-ply
-> > (one such reply per series is enough).
-> >
-> > - [High] A TCP reset or TCP timeout while the connection is waiting for
-> >   send space can stall the dlm connection permanently.
->
-> I dunno if I want to spend time fixing all dlm bugs.
->
-> It seems TCP changes are now stuck because ood pre-existing bugs in
-> in-kernel-users.
->
-> Sad.
+Reproduced with lockd: with NLM traffic running in the initial
+network namespace, mounting and unmounting NFSv3 in a second
+namespace takes lockd down there, and lock requests in the first
+namespace stop being answered until something else wakes the
+lockd thread.
 
-I will take a look into it and cc netdev people.
+Wake a thread when the re-enqueue reports the queue was empty.
 
-Thanks.
+Fixes: 9a0e6accc0a8 ("SUNRPC: use lwq for sp_sockets - renamed to sp_xprts")
+Reported-by: sashiko-bot <sashiko-bot@kernel.org>
+Closes: https://sashiko.dev/#/patchset/cover.1782314746.git.bcodding@hammerspace.com?part=2
+Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
+---
+ net/sunrpc/svc_xprt.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-- Alex
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 0de613b36fff..c891532fb1f6 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -1246,8 +1246,8 @@ static void svc_clean_up_xprts(struct svc_serv *serv, struct net *net)
+ 			}
+ 		}
+ 
+-		if (q)
+-			lwq_enqueue_batch(q, &pool->sp_xprts);
++		if (q && lwq_enqueue_batch(q, &pool->sp_xprts))
++			svc_pool_wake_idle_thread(pool);
+ 	}
+ }
+ 
+-- 
+2.53.0
 
