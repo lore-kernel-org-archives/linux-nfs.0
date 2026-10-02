@@ -1,47 +1,47 @@
 Received: from mailout4.samsung.com (mailout4.samsung.com [203.254.224.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2F0692DF156
-	for <linux-nfs@vger.kernel.org>; Fri,  2 Oct 2026 07:02:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6426C414406
+	for <linux-nfs@vger.kernel.org>; Fri,  2 Oct 2026 07:03:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.254.224.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790924525; cv=none; b=TFzqeXRwT9FMhYxAN/F66EgsS/6Ppv52R7E+/hVX4aOcRRafyKMAO0+NKq3gWQdESZObxWj5wsTjsoifk/9D36Qe9GKjk0hd9+UWnYxya10CI7+s7dAkY+0lNsDqVSxbA/RbuW0JMXnTF9oEOfwKoAlB8RD0+fnMxzRsYiNvI+A=
+	t=1790924632; cv=none; b=e7g69Vq+K3c3u15i6a8mB3KlXlaYXNJ1yjVWk88+uixHCDkY+f3xwJ5UZXkARCtvwR1Mf/kkpov4wPMe2Y30S5WY8LHdVFJomqYTNgK11UUJBVjniBJVJMm1HsS9e+D9IlQzZ9Q/FXwWoiR+msAmxc7DpMJlBMD7EZ8YWr0z8Fs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790924525; c=relaxed/simple;
-	bh=yY4WyVT5eSzlPT/GzLNNSSRq506EM7lsXWxz3OxywSM=;
+	s=arc-20240116; t=1790924632; c=relaxed/simple;
+	bh=ZRLK9Xfq/852TvpiNnY6YBdiIbx92Vnng+DlryrUxlw=;
 	h=Mime-Version:Subject:From:To:CC:In-Reply-To:Message-ID:Date:
-	 Content-Type:References; b=CZ8HBgRSEc/2EHPa+trUYxEsBJ+lg1PI4S6eIPoaMvLXCeZdVUz8whrHWI8gt8Lh+bYmgKaABL1IfONI4YwXdZ7O5kPQncJQ0Zi7LycbucleNcMBlpKdDNIAFQX+Rctm8Ip3m3ubliCYud0iQyzh7cAFaEtXGUGsuZnMxoOIWeQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=HfVWCHS6; arc=none smtp.client-ip=203.254.224.34
+	 Content-Type:References; b=gkU7TwSPG3hHcD5X+kk4C5YI4iALdg8kGXtVqJLjJvEuEEijEQGv20slvv3ytCeafXO8dLjaeMh+Fq7YkopQIG32LtvB1B44l4GtbuQkhB3b6LM8VGFAoxNe4eJYQMTIv8R0ejofA7aXPn+oH/wm5/rAlj4tRIGNqzWXPLpdHH8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=VUaVlqmV; arc=none smtp.client-ip=203.254.224.34
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="HfVWCHS6"
+	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="VUaVlqmV"
 Received: from epcas2p1.samsung.com (unknown [182.195.41.53])
-	by mailout4.samsung.com (KnoxPortal) with ESMTP id 20261002070201epoutp04dc31462832452738abd573100fd2f1de~apF0FzC_W0287202872epoutp04D
-	for <linux-nfs@vger.kernel.org>; Fri,  2 Oct 2026 07:02:01 +0000 (GMT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout4.samsung.com 20261002070201epoutp04dc31462832452738abd573100fd2f1de~apF0FzC_W0287202872epoutp04D
+	by mailout4.samsung.com (KnoxPortal) with ESMTP id 20261002070348epoutp042971ad54ef5a2eab85975a9a6d510af9~apHXpU9qq0721907219epoutp04e
+	for <linux-nfs@vger.kernel.org>; Fri,  2 Oct 2026 07:03:48 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout4.samsung.com 20261002070348epoutp042971ad54ef5a2eab85975a9a6d510af9~apHXpU9qq0721907219epoutp04e
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
-	s=mail20170921; t=1790924521;
-	bh=IuoVDFisGJtBiR6B4hUqoFcY2KUNUjB6ufO+jyeqPv8=;
+	s=mail20170921; t=1790924628;
+	bh=7HqN1Vx6yBbpaHNRy8ORyBDiazEMrazm50bZ8i01OPA=;
 	h=Subject:Reply-To:From:To:CC:In-Reply-To:Date:References:From;
-	b=HfVWCHS6yuYXfydKbOshIMCeJDd+mJWcs20yF6EhmxFmwjG+G5gPb29eAqoo2oij0
-	 kGTWMvjgRgOMgo7LbkSjOp6rO3k4bveSTCqYM8FPgiYIqF/lE/HTPxMeJ/39W7cSuT
-	 p28TQy4Qf/1jZ71q6VAz2h7HtH62/RwljdoMzaKU=
-Received: from epsnrtp01.localdomain (unknown [182.195.42.153]) by
-	epcas2p1.samsung.com (KnoxPortal) with ESMTPS id
-	20261002070200epcas2p13075a036b31125d4054157e3f0cf9bc3~apFzs9jrw2252422524epcas2p1q;
-	Fri,  2 Oct 2026 07:02:00 +0000 (GMT)
-Received: from epcas2p2.samsung.com (unknown [182.195.38.209]) by
-	epsnrtp01.localdomain (Postfix) with ESMTP id 4hx0883DzQz6B9m6; Fri,  2 Oct
-	2026 07:02:00 +0000 (GMT)
+	b=VUaVlqmVLaqkDhKh2QE2KVuTX3qUHjCk3KDPe6jNldCPAWHilLrW2DFNDmlGTIQKd
+	 DcWmF5614RBodhI7gIK2b+vnTSOhzhfTis1Q4Gl5TVVrGKLfVWGQJPyVrjNFlUfTGw
+	 jcOeeaSuZk1+LiPjNnhZ4o1E6kJxOZG6FsCfWupM=
+Received: from epsnrtp02.localdomain (unknown [182.195.42.154]) by
+	epcas2p3.samsung.com (KnoxPortal) with ESMTPS id
+	20261002070342epcas2p35b772ffe3226af31a7314d1e5090bd73~apHSk24cm2248022480epcas2p30;
+	Fri,  2 Oct 2026 07:03:42 +0000 (GMT)
+Received: from epcas2p3.samsung.com (unknown [182.195.38.208]) by
+	epsnrtp02.localdomain (Postfix) with ESMTP id 4hx0B62kk2z2SSKj; Fri,  2 Oct
+	2026 07:03:42 +0000 (GMT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 Mime-Version: 1.0
-Subject: [PATCH 1/2] nvmet: fix use-after-free of the old registrant in
- nvmet_pr_preempt()
+Subject: [PATCH 2/2] nvmet: fix preempt of another registrant by the
+ reservation holder
 Reply-To: daejun7.park@samsung.com
 Sender: Daejun Park <daejun7.park@samsung.com>
 From: Daejun Park <daejun7.park@samsung.com>
@@ -54,15 +54,15 @@ CC: "kbusch@kernel.org" <kbusch@kernel.org>, "kanie@linux.alibaba.com"
 	<linux-kernel@vger.kernel.org>, Daejun Park <daejun7.park@samsung.com>
 X-Priority: 3
 X-Content-Kind-Code: NORMAL
-In-Reply-To: <20261002065931epcms2p1cb2c16f98cf3b05f8c859ad92b0ad465@epcms2p1>
+In-Reply-To: <20261002070200epcms2p593a0aa8ac482e776e8f1de89d9f212ae@epcms2p5>
 X-CPGS-Detection: blocking_info_exchange
 X-Drm-Type: N,general
 X-Msg-Generator: Mail
 X-Msg-Type: PERSONAL
 X-Reply-Demand: N
-Message-ID: <20261002070200epcms2p593a0aa8ac482e776e8f1de89d9f212ae@epcms2p5>
-Date: Fri, 02 Oct 2026 16:02:00 +0900
-X-CMS-MailID: 20261002070200epcms2p593a0aa8ac482e776e8f1de89d9f212ae
+Message-ID: <20261002070341epcms2p4e1409e8fcea145562a2996ad1d1d24ea@epcms2p4>
+Date: Fri, 02 Oct 2026 16:03:41 +0900
+X-CMS-MailID: 20261002070341epcms2p4e1409e8fcea145562a2996ad1d1d24ea
 Content-Transfer-Encoding: 7bit
 Content-Type: text/plain; charset="utf-8"
 X-Sendblock-Type: AUTO_CONFIDENTIAL
@@ -72,85 +72,96 @@ X-CPGSPASS: Y
 cpgsPolicy: CPGSC10-223,Y
 X-CFilter-Loop: Reflected
 X-CMS-RootMailID: 20261002065931epcms2p1cb2c16f98cf3b05f8c859ad92b0ad465
-References: <20261002065931epcms2p1cb2c16f98cf3b05f8c859ad92b0ad465@epcms2p1>
-	<CGME20261002065931epcms2p1cb2c16f98cf3b05f8c859ad92b0ad465@epcms2p5>
+References: <20261002070200epcms2p593a0aa8ac482e776e8f1de89d9f212ae@epcms2p5>
+	<20261002065931epcms2p1cb2c16f98cf3b05f8c859ad92b0ad465@epcms2p1>
+	<CGME20261002065931epcms2p1cb2c16f98cf3b05f8c859ad92b0ad465@epcms2p4>
 
-nvmet_pr_preempt() handles a preempt sent by the reservation holder by
-changing the reservation type with nvmet_pr_update_reg_attr(), unless
-the reservation is of an All Registrants type.  For the holder that
-helper does not modify the registrant in place: it puts a copy on the
-registrant list, points pr->holder to the copy and passes the old
-registrant to kfree_rcu().
+Unless the reservation is of an All Registrants type, nvmet_pr_preempt()
+treats every Reservation Acquire command with the Preempt or Preempt and
+Abort action that is sent by the reservation holder as the holder
+preempting itself.  It updates the reservation type to RTYPE and
+completes the command successfully without looking at PRKEY.
 
-If the reservation type changed, nvmet_pr_preempt() then hands
-&reg->hostid of that old registrant to nvmet_pr_resv_released().  Unless
-the reservation released notification is masked, that function takes
-subsys->lock and compares the host id against every controller of the
-subsystem.  The caller only holds pr->pr_sem and is not in an RCU
-read-side critical section, so nothing keeps the old registrant alive
-while it is read.
+NVMe Base Specification 2.1, section 8.1.22.7 makes the action depend
+on PRKEY for these reservation types, no matter which registrant sends
+the command:
 
-The result is a read of 16 freed bytes that decides which controllers
-get the notification.  Found by code inspection.  kfree_rcu() defers
-the free, so it usually happens after the read; when the pending free
-is forced to run before the read, KASAN reports the host id as freed
-memory.
+ - PRKEY matches the key of the reservation holder: the reservation is
+   preempted.  This is how a holder preempts itself.
+ - PRKEY does not match the key of the holder and is not 0h: the
+   registrants whose key matches PRKEY are unregistered.
+ - PRKEY does not match the key of the holder and is 0h: the command is
+   aborted with Invalid Field in Command.
 
-Pass the host id of the controller that sent the command instead.  The
-registrant was looked up by that host id, and the controller outlives
-the request.
+With the current code, a holder that preempts with the key of another
+registrant leaves that registrant registered, changes the reservation
+type to RTYPE and still gets a successful completion.  With hosts A, B
+and C registered with the keys 0xa, 0xb and 0xc, and A holding an
+Exclusive Access - Registrants Only reservation, A sends:
+
+  # nvme resv-acquire /dev/nvme1 -n 1 --crkey=0xa --prkey=0xb \
+        --rtype=4 --racqa=1
+  NVME Reservation Acquire success
+  # nvme resv-report /dev/nvme1 -n 1 --eds | grep '^regctl '
+  regctl    : 3
+
+and B can still write to the namespace.  Preempt and Abort (--racqa=2)
+gives the same result.  When C sends the preempt instead (--crkey=0xc),
+B is unregistered and its writes fail with Reservation Conflict.
+
+This defeats fencing in the pNFS SCSI layout server.  nfsd holds the
+reservation and fences a client that does not return its layout by
+calling pr_preempt() with the key of that client and the abort flag,
+which is the command RFC 9561 section 2.2.3 asks for.  On an nvmet
+namespace the preempt succeeds, nfsd logs the client as fenced, and the
+client keeps writing to the device.  In a test with an nfsd server and
+two clients on an nvmet-tcp namespace, the namespace still had three
+registrants after the fence and the fenced client went on writing to
+it.  With this patch two registrants are left and the writes of the
+fenced client fail with a reservation conflict.
+
+Take the self preempt path only when PRKEY is the key of the holder.
+Any other PRKEY sent by the holder is then handled by the code that
+already serves a non-holder registrant, for Preempt and for Preempt and
+Abort.  For a host that holds the reservation this changes the
+following:
+
+ - A preempt with the key of another registrant unregisters the
+   registrants with that key, sends them the registration preempted
+   notification and leaves the reservation type alone.
+ - A preempt with PRKEY 0h fails with Invalid Field in Command.  A
+   holder that changed its reservation type this way has to pass its
+   own key in PRKEY, which works with and without this patch.
+ - A preempt with a PRKEY that matches no registrant fails with
+   Reservation Conflict.  The specification defines that status only
+   for the All Registrants types.  It is what nvmet already returns to
+   a non-holder registrant in this case and what the SCSI target
+   returns for an unregistered key.  nfsd treats it as a successful
+   fence.
+
+Not changed: when the holder preempts itself, registrants that share
+its key stay registered.
 
 Fixes: 5a47c2080a73 ("nvmet: support reservation feature")
 Cc: stable@vger.kernel.org
 Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-
-Notes:
-    The KASAN report came from this change on top of the base commit, which
-    forces the pending free and then checks the pointer that is handed to
-    nvmet_pr_resv_released():
-    
-     		status = nvmet_pr_update_reg_attr(pr, holder,
-     				nvmet_pr_update_holder_rtype, &rtype);
-    +		kvfree_rcu_barrier();
-    +		kasan_check_read(&reg->hostid, sizeof(reg->hostid));
-     		if (!status && original_rtype != rtype)
-     			nvmet_pr_resv_released(pr, &reg->hostid);
-    
-    A holder that preempts itself with another reservation type then gives:
-    
-      BUG: KASAN: slab-use-after-free in nvmet_pr_preempt.isra.0+0x462/0xa50
-      Read of size 16 at addr ff110001113bb088 by task kworker/u32:0/12
-      ...
-      Allocated by task 12:
-       ...
-       nvmet_execute_pr_register+0x1f4/0x1130
-      ...
-      Freed by task 864:
-       ...
-       __rcu_free_sheaf_prepare+0x61/0x230
-       rcu_free_sheaf_nobarn+0x1d/0x50
-       rcu_core+0x691/0x1e20
-    
-    The free in this report is the one forced by the added barrier.  The
-    same two lines with &ctrl->hostid on top of this patch give no report.
-
  drivers/nvme/target/pr.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/drivers/nvme/target/pr.c b/drivers/nvme/target/pr.c
-index 09d8c63f5..bfd5447f6 100644
+index bfd5447f6..665cee8fc 100644
 --- a/drivers/nvme/target/pr.c
 +++ b/drivers/nvme/target/pr.c
-@@ -589,7 +589,7 @@ static u16 nvmet_pr_preempt(struct nvmet_req *req,
+@@ -585,7 +585,7 @@ static u16 nvmet_pr_preempt(struct nvmet_req *req,
+ 				&ctrl->hostid, abort);
+ 	}
+ 
+-	if (holder == reg) {
++	if (holder == reg && prkey == holder->rkey) {
  		status = nvmet_pr_update_reg_attr(pr, holder,
  				nvmet_pr_update_holder_rtype, &rtype);
  		if (!status && original_rtype != rtype)
--			nvmet_pr_resv_released(pr, &reg->hostid);
-+			nvmet_pr_resv_released(pr, &ctrl->hostid);
- 		return status;
- 	}
- 
 -- 
 2.43.0
 
