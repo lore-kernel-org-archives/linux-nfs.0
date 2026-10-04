@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 483094779B2
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3969747D471
 	for <linux-nfs@vger.kernel.org>; Sun,  4 Oct 2026 19:40:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791142833; cv=none; b=PHh+u15rbrgqsLc7fRZaOK2oGfZy0cScTPJF4ao5hIcvjELb/7aVjYPNmdy0HpOgV3JB/gj6L/JauNFuuIQMf0s6aG4vRh5Ba3YFY2yij/dqRRoQTx+X6ycF6RUbSrOY6EMfZTG7mlGLiFFdepKwY/+N5pUxVJ6K446l25weF2s=
+	t=1791142834; cv=none; b=E2tYhmGaofgbviiWKqO3HloIphfEkADDtTBNXT/iNfNHZmIyYY1ML+2cfv6V3RfYDKvQ3rV+Jp1Yi5liFe/dB3XQKCEpmTRqDH9jjkl1V0BxNYxE1Sk8HXPHiSQpQT1V8f5qeNwmbEWJFBkYHef472Q6orCU2can1Ib+Llv8qSw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791142833; c=relaxed/simple;
-	bh=uZgUMbbgU1jRbxf3XTiBMOR1Rnzdn+ZiGQjZ96MdA6Q=;
+	s=arc-20240116; t=1791142834; c=relaxed/simple;
+	bh=SDR2Yj+Q9sFye73iMe+A6Cy0C84fxK77Kgx0ZLA/r9g=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=p75B50ZlXiEc5MNhra6Y3SAW9ZAfk9Wu9kEOxu00kCtLbaXQh3UWz68KbVcXON/jOxfs6Q45EPdCgzUAl1j+iiVfRJEr7VNM3Wh2TS04o/9XmoK5EOeIgdiWcV4j+AymWRtabB4Me7b7FZZQMkA2QsXntoy8zRS7jH+vQ0jNfBk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WTQheSSo; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=F16s+dngQtB2Qk+KnEr1RJ6HpviUy20p5YPRJn846sxj+AYRaCTYNBSJd2xEwBQj7WGJpLKsqv2/pQBjQ0X0BOXjWrDl0MpEAkphHMGYzzuxvyp9OpIhPsDCFc8Rx1aL9Xl414bhb/iqz2m/oUJoqbs9iL5op/Lk5VjWs1mIHU0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=TieJk30V; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WTQheSSo"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8E8991F00898;
-	Sun,  4 Oct 2026 19:40:31 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="TieJk30V"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4F51E1F00899;
+	Sun,  4 Oct 2026 19:40:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1791142832;
-	bh=yFEoFRQ479X8pUlM/VTiQKCxV3yZMz3gbX5S0X0Sirg=;
+	bh=kZif9cfpUVHc/B7+7COyQc5y8Zfjpxgi4I/d6EnDYnc=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=WTQheSSoiMVN6WhGjQGJr/+qom1NVe09+G5O2AEU/azhtTx5x5TLAxPd7W2v5L2Mr
-	 c5Q2Vq8Gl+zUXh5j55dIXP2BoBpt3oxBy0kUNBrQ+lGz84dfb91cBYKW2q+ugOCCR+
-	 peQAsuBEIKA+OMGYswyzz8KXNc/hDyas7kCFBvwdUPxO3WuO9TfUSQfMHrRXEDU8Wj
-	 rCZRiNG8NoIRr2rS4d2kt0CqPlT0lsV7GmtGxGzEmenL6UEbGyV43HjL14kgKRujg7
-	 iLzwn6KzGTfeeaLIE3xoHXAjZCdJdAMT5W9sX5EyP2SFtGnmzeXJxlMygtGrTrDr+M
-	 T+mVShZN/S44A==
+	b=TieJk30VSh5JXGsk6WPowurVmdgkehuru5XQvzuwa0MTHZ6AX6EJzP0BcsRoJ6H3H
+	 uSK+qsIwrxfq4Rk8143eceeyQXhEXKH8U3kkGPLyKyAQUbJCRt8t4bQ2Bvis1tO3/D
+	 HN5Slt0OXr7VtBRNB2PFui7kUcBXL2s02Vrj6IB8Ckpx+2qvXQttIHYS8JwYJJxyCV
+	 qilOuiYxaD+F3YPRwEbDZLjvrJOeJo+LdNSt+Rz1h0arjtfzdXdQQeTNFlgQ8p5QPc
+	 OtfFbkNXqVRMf/gQzlqVuUSUvXs3H6zS+MHIq8pfEkydQi4suGTQy1i9mHiCqoGSMX
+	 WIC3l4dctxqNg==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 1/7] nfsd: use direct I/O only for the last operation in a COMPOUND
-Date: Sun,  4 Oct 2026 15:40:23 -0400
-Message-ID: <20261004194029.10714-2-cel@kernel.org>
+Subject: [PATCH v1 2/7] nfsd: account for page_base when advancing rq_next_page
+Date: Sun,  4 Oct 2026 15:40:24 -0400
+Message-ID: <20261004194029.10714-3-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20261004194029.10714-1-cel@kernel.org>
 References: <20261004194029.10714-1-cel@kernel.org>
@@ -47,78 +47,89 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-A direct read widens the requested byte range to the file system's
-alignment and leaves the payload at a nonzero rq_res.page_base. The
-xdr_stream encoder does not account for page_base:
-xdr_reserve_space_vec() sizes each chunk from page_len alone, and
-xdr_get_next_encode_buffer() opens each new page at its first byte.
-The stream's position lags the end of the payload by page_base
-bytes.
+nfsd4_encode_operation() sets rq_next_page from xdr->page_ptr, which
+the xdr_stream advances from page_len alone. A direct read leaves the
+payload at a nonzero page_base, so its last page can lie beyond the
+page xdr->page_ptr names. svc_rqst_release_pages() then skips that
+page, and svc_alloc_arg() hands it to the next request as a receive
+buffer while the transport still references it. svc_tcp_sendmsg()
+splices the page into the socket without copying it, and svcrdma
+keeps only the pages below rq_next_page until Send completion. The
+tail of the READ payload reaches the client overwritten with bytes
+of the next request.
 
-An NFSv4 operation encoded after such a READ overwrites the tail of
-the payload, and the transport sends alignment padding in place of
-that operation's result. The client sees corrupted file data
-followed by an undecodable reply. NFSv2 and NFSv3 are unaffected:
-their READ encoders pass page_base explicitly, and nothing is
-encoded into the pages after the payload.
+Derive rq_next_page from page_base and page_len, the accounting that
+xdr_truncate_encode() and the transports use to locate the payload.
 
-Fall back to buffered or DONTCACHE I/O when the READ is not the last
-operation in its COMPOUND, as nfsd4_read() already does for splice
-reads.
+Currently nfsd_direct_read() stores its alignment pad in page_base
+even when the read returns no payload, and the pad can exceed the
+size of the rq_respages array. Set page_base only when the read
+returns payload, so that the new calculation stays within the pages
+offered to the read.
 
 Fixes: d686e64e931c ("NFSD: Implement NFSD_IO_DIRECT for NFS READ")
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/vfs.c | 22 ++++++++++++++++++++--
- 1 file changed, 20 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4xdr.c | 12 +++++++++---
+ fs/nfsd/vfs.c     |  7 ++++---
+ 2 files changed, 13 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 4584d5b94fee..e052b9163692 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -37,6 +37,7 @@
- #ifdef CONFIG_NFSD_V4
- #include "acl.h"
- #include "idmap.h"
-+#include "xdr4.h"
- #endif /* CONFIG_NFSD_V4 */
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 7062c84f96dd..89230b3206ac 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -6714,6 +6714,7 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 	struct svc_rqst *rqstp = resp->rqstp;
+ 	const struct nfsd4_operation *opdesc = op->opdesc;
+ 	unsigned int op_status_offset;
++	struct page **next_page;
+ 	nfsd4_enc encoder;
  
- #include "nfsd.h"
-@@ -1164,6 +1165,24 @@ nfsd_direct_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 				eof, host_err);
+ 	/*
+@@ -6800,10 +6801,15 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 			       &op->status, XDR_UNIT);
+ release:
+ 	/*
+-	 * Account for pages consumed while encoding this operation.
+-	 * The xdr_stream primitives don't manage rq_next_page.
++	 * Account for pages consumed while encoding this operation. The
++	 * xdr_stream primitives don't manage rq_next_page, and
++	 * xdr->page_ptr does not account for page_base. XDR padding can
++	 * carry page_base + page_len past rq_page_end.
+ 	 */
+-	rqstp->rq_next_page = xdr->page_ptr + 1;
++	next_page = xdr->buf->pages +
++		DIV_ROUND_UP(xdr->buf->page_base + xdr->buf->page_len,
++			     PAGE_SIZE);
++	rqstp->rq_next_page = min(next_page, rqstp->rq_page_end);
  }
  
-+static bool nfsd_direct_read_ok(struct svc_rqst *rqstp, struct nfsd_file *nf)
-+{
-+	/* When dio_read_offset_align is zero, dio is not supported */
-+	if (!nf->nf_dio_read_offset_align)
-+		return false;
-+	if (rqstp->rq_res.page_len)
-+		return false;
-+#ifdef CONFIG_NFSD_V4
-+	/*
-+	 * The xdr_stream encoder ignores rq_res.page_base, so an operation
-+	 * encoded after a direct read would overwrite the payload's tail.
-+	 */
-+	if (rqstp->rq_vers == 4 && !nfsd4_last_compound_op(rqstp))
-+		return false;
-+#endif
-+	return true;
-+}
-+
  /**
-  * nfsd_iter_read - Perform a VFS read using an iterator
-  * @rqstp: RPC transaction context
-@@ -1197,8 +1216,7 @@ __be32 nfsd_iter_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	case NFSD_IO_BUFFERED:
- 		break;
- 	case NFSD_IO_DIRECT:
--		/* When dio_read_offset_align is zero, dio is not supported */
--		if (nf->nf_dio_read_offset_align && !rqstp->rq_res.page_len)
-+		if (nfsd_direct_read_ok(rqstp, nf))
- 			return nfsd_direct_read(rqstp, fhp, nf, offset,
- 						count, eof);
- 		fallthrough;
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index e052b9163692..3f328378c805 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1143,9 +1143,6 @@ nfsd_direct_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	if (host_err >= 0) {
+ 		unsigned int pad = offset - dio_start;
+ 
+-		/* The returned payload starts after the pad */
+-		rqstp->rq_res.page_base = pad;
+-
+ 		/* Compute the count of bytes to be returned */
+ 		if (host_err > pad + *count)
+ 			host_err = *count;
+@@ -1153,6 +1150,10 @@ nfsd_direct_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 			host_err -= pad;
+ 		else
+ 			host_err = 0;
++
++		/* The returned payload starts after the pad */
++		if (host_err)
++			rqstp->rq_res.page_base = pad;
+ 	} else if (unlikely(host_err == -EINVAL)) {
+ 		struct inode *inode = d_inode(fhp->fh_dentry);
+ 
 -- 
 2.55.0
 
