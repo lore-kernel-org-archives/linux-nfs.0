@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3BBC949E5E1
-	for <linux-nfs@vger.kernel.org>; Mon,  5 Oct 2026 15:00:39 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C7C604BB26B
+	for <linux-nfs@vger.kernel.org>; Mon,  5 Oct 2026 15:01:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791212440; cv=none; b=lvnzQJp418Fu3qxdCo9AnGeXelGNR21QdooZKpNQFZc8XIOBd5BdlEzdqXk4jK868ZqhTZO8lTykAKdroPTEB6y61dFRu6RdFEz/bAVus5s1F0hUWWqkc9PBCattW5XuR2tlK6AU6uRexYds1lxMMAr+32otgjgM2ECNrGRQcB8=
+	t=1791212495; cv=none; b=KCV/lSQxUnm1Ic79EwbGLLyu6s9EHATKE2Qg8ygBdthoYc8Z+9ut49jKj4NB/QSsOUDyTdi5vIxbOBc1lBEBwdAkAtQWoVIlfJUB/kIW3kQfmONMfPtE275TyjhNtQ/sLGVAoNLdyNe/sR34n8AQqCC9V4aVzIdXo4K3KOuAq2A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791212440; c=relaxed/simple;
-	bh=/pW2TlbG1adDBs8NgAs6BajGKQEOT+0fqnnSpW4SGkk=;
+	s=arc-20240116; t=1791212495; c=relaxed/simple;
+	bh=S7qIGPsHyig0GjW74JMNgQa0HEMwytokjtzXMCHG50s=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=ewDc/NzgGEI254celL911IuDRKG0a2jJIV+zxO/0VOh905qu2aeHzXravu/WP/xkfKN8RfIT1m0LEwEiqHBh0RqrPF/qe6Ka9WSuJC92umVx+Uffh5aiH0SfvaJuxFqpQY+2R0m3nud8RRTXvuCQUNWJvZHittSRh/EVW9DsecE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=A+ebWgg/; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version:Content-Type; b=asdjOuDVSpMqzjGPgMpSgEYFdWOvaF83jaUdWt9L5rb2az+OkUlibyTC74ycNSOtE0t/7H3pVJec+w5V08aH3nRzP9K7TtiE5fheYdl8zRvCQ+wKIrG8hRc63Bz+KFXptqL96t8nS0fkPH7m2zwJPHLRLb2RfCgQtjEU/sKa6Yk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gqrg73F4; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="A+ebWgg/"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2BD1E1F00893;
-	Mon,  5 Oct 2026 15:00:38 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gqrg73F4"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D1D301F00898;
+	Mon,  5 Oct 2026 15:01:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791212438;
-	bh=QSRPylZ00nJLAVXCMiDltq+5z/8vARYBCpk3J5394yw=;
+	s=k20260515; t=1791212494;
+	bh=roNmcZpW0Ew0iE4TBqf3IO4KRwwtJJOAWWw35vXbbhI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=A+ebWgg/y1CloomHo1Nnb3ZKYdp+eTb1qWDzz11a0aavdb9W2YhTFcQvc8k4KCu36
-	 t1HS4gt3ZbOaQVSPnMVFdau+HW+0wPjGtL8IlwGEGPZACXJZpmenK+3ZYEwpzkA0DB
-	 L4VN6YQinhN9X+RQ2vega+x0IcPWtEt23xDy7/ibVWL8kkARJKKzeOWqMLHjtx7gP6
-	 AalK56x1yAyXYYkAwlv6kqbzhnAT+62UVpfrgbV5/lwTC9hFTou05O9iLUEg6s6XPw
-	 hMM1TOWlv4qg8hFYhIiOVVAiv9EysQ4gn/qwcX4tF+SJpF8n43nrpTXRruQktK+s0Q
-	 n4Bisoyl8mKyg==
+	b=gqrg73F4Pzgq8vN1to3jT675bKZqU4xKmkOZsZ4zf5TzNiw2cfmg3YKmZwPU5Rmcj
+	 IaluIwkGvuslBVnoeG5zAlUqLDOLy+4KNzTfURwPia//RiM74Jtk08v7dxtXtow4hS
+	 Zoqa2RzTtfUpEDQVmb0wTvyjCbhbh5VjIrIKFVt3uD0/1y1EayB0j6X6sckXERxb+J
+	 fH03vIy3C3XW2T6Zu/aJTWVFad5pSW+SHdfkYJXIoCEYuukaAxqsIxaHT0UkUeqEIj
+	 puIOwGuzz35doYM9rZY9SG0EACYp/aIRRfStaKgtRf6/av5DiKO7DH9GOdNwJgGgvx
+	 bOgyxvuyfa6IA==
 From: Chuck Lever <cel@kernel.org>
 To: linux-nfs@vger.kernel.org,
 	Jinpyo Lee <bint4b13@gmail.com>
@@ -34,14 +34,13 @@ Cc: Jeff Layton <jlayton@kernel.org>,
 	Olga Kornievskaia <okorniev@redhat.com>,
 	Dai Ngo <Dai.Ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>,
-	Greg KH <gregkh@linuxfoundation.org>,
 	bobtobabz@gmail.com
-Subject: Re: [PATCH v2] nfsd: hold client reference while reaping async copies
-Date: Mon,  5 Oct 2026 11:00:34 -0400
-Message-ID: <179121242263.30709.1424909534100183084.b4-ty@b4>
+Subject: Re: [PATCH v2] nfsd: avoid dereferencing callback connection after unlocking
+Date: Mon,  5 Oct 2026 11:01:31 -0400
+Message-ID: <179121248185.30837.10054154203647606127.b4-ty@b4>
 X-Mailer: git-send-email 2.55.0
-In-Reply-To: <20260928083050.642664-1-bint4b13@gmail.com>
-References: <20260928083050.642664-1-bint4b13@gmail.com>
+In-Reply-To: <20260928083424.642863-1-bint4b13@gmail.com>
+References: <20260928083424.642863-1-bint4b13@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -52,26 +51,24 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Mon, 28 Sep 2026 17:30:50 +0900, Jinpyo Lee wrote:
-> nfsd4_async_copy_reaper() moves expired COPY state from the client list
-> to a private reap list while holding nn->client_lock, then releases the
-> lock before destroying the stateid. The detached COPY state retains a
-> raw sc_client pointer, but does not hold a reference on the associated
-> nfs4_client.
+On Mon, 28 Sep 2026 17:34:24 +0900, Jinpyo Lee wrote:
+> nfsd4_process_cb_update() takes a reference on c->cn_xprt while
+> holding clp->cl_lock, but retains the raw nfsd4_conn pointer after
+> dropping the lock. The svc_xprt reference keeps the transport alive;
+> it does not retain the enclosing nfsd4_conn.
 > 
-> Client teardown can therefore release the final client reference after
-> the COPY state is detached and before cleanup_async_copy() releases its
-> stateid. nfs4_put_stid() then follows sc_client and accesses state in the
-> freed client. Generic KASAN reported a four-byte use-after-free write in
-> _raw_spin_lock() through nfs4_put_stid() and
-> nfsd4_async_copy_reaper().
+> Concurrent transport-loss handling can unlink and free the connection
+> through nfsd4_conn_lost(). If setup_callback_client() subsequently
+> fails, the original error path evaluates c->cn_xprt through the freed
+> connection in order to release the transport reference, resulting in
+> a use-after-free read.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] nfsd: hold client reference while reaping async copies
-      commit: 719ce5204fcfb98daf1656fd85c76ba2f5369f8d
+[1/1] nfsd: avoid dereferencing callback connection after unlocking
+      commit: c186c6483c45f5c0867faad9c63f95a53dad46e7
 
 Best regards,
 -- 
