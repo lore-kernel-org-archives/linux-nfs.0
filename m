@@ -1,238 +1,204 @@
-Received: from mail-oa1-f50.google.com (mail-oa1-f50.google.com [209.85.160.50])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83B2548B386
-	for <linux-nfs@vger.kernel.org>; Mon,  5 Oct 2026 13:44:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.50
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791207851; cv=none; b=bO/XXmsiy1L6Qlkh74uWFbr8PEPnB+nA1zhzzfOaa1T2gg2Xk8WOYD/kkvkqXmGiIpU2+KOkEFtX1QspCLhdFWixIqlAECYWqt+H9266ef+k6FZSGBm7GkQ1jhPykxhClxcD7an0zziW5N8xevc4F9bLX2VMuUUGlcQXP83oLcc=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791207851; c=relaxed/simple;
-	bh=KGq8d8I0MUd7m+3sehJDv+6B3yXPQspA6uppXrCVPAQ=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=s9zY2ZYrixhaeH7biVFGhcqIk+/Z46+WWDiFbBMhtuWZK9qcpP6uycu2HF9P7N5YbPh1aoGr7g59DOlbVFUqp0KVSsPMXgKq2mwr0cLB6PmFNfLuqrVvW4pIpwNKw4y1jXZBdwz/nPj7g4IaLBOnEIl/CTXzjvVjp3t13GN5DYI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=CAdWRiFd; arc=none smtp.client-ip=209.85.160.50
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 972E048125E
+	for <linux-nfs@vger.kernel.org>; Mon,  5 Oct 2026 13:45:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=205.220.177.32
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1791207944; cv=fail; b=T0ZPMb1O1C2aoHyYSZdIklQIOKcqj8llG82gLzz12b1OY85PVmzPQZqYkEDg6nVVK3WzJjwMHKZw1pcCpYhhPauU6lVYPZpXnrzJEt7ZDPSROPYtrBnEsETyRFZotGyGbsYQ2A5dgYHhgxsJSsc7EMNgNux4HAyKU0eJrBbMYZY=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1791207944; c=relaxed/simple;
+	bh=6rHgDdOusEBv/rU4u1N0zLeKBqDc+N70Yzd3Msl32HU=;
+	h=Message-ID:Date:Cc:Subject:To:References:From:In-Reply-To:
+	 Content-Type:MIME-Version; b=FKpWf7pXWmc0iyJNKiYipRDFBIX3tfdHuZ3utrzr4L8IqUgdemha442KaAzmLHjndow03W7+oz3fnVTDAGqowQ93+CmFDCuoQI1SJYTdrSUxhE9QWwCDEeDFRu1FrA7Kxl/Pxd0hSX4C6GQojjsl65U+eW2JEvnhD1iP9QA51VI=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=V1x1vmXE; dkim=pass (1024-bit key) header.d=oracle.onmicrosoft.com header.i=@oracle.onmicrosoft.com header.b=y4nt9aM8; arc=fail smtp.client-ip=205.220.177.32
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="CAdWRiFd"
-Received: by mail-oa1-f50.google.com with SMTP id 586e51a60fabf-48ed460be50so992567fac.2
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Oct 2026 06:44:09 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="V1x1vmXE";
+	dkim=pass (1024-bit key) header.d=oracle.onmicrosoft.com header.i=@oracle.onmicrosoft.com header.b="y4nt9aM8"
+Received: from pps.filterd (m0333520.ppops.net [127.0.0.1])
+	by mx0b-00069f02.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 695DURZQ3491240;
+	Mon, 5 Oct 2026 13:45:39 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc
+	:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:subject:to; s=
+	corp-2025-04-25; bh=kmaX46TlhnEmjBcZsixUpIqvrXJKtCiB1ljr20HTdHU=; b=
+	V1x1vmXEHZ611JhDs75TLMcdchYRAFMSjpbfDFmxU0IFqP3IHmz65Hln/4kghgFo
+	zanVqlSb+pbqVhTfpehZqjz7mEBWXPztEWiZttaj1mHCNO/DQhJYZESb96spvNnB
+	pJyv1Olkjw7XM2EFNeAXftzG269gxYL+61b7Mlvx9t3FPlwvt9iuYMxBaS2i3mch
+	c2no0lhcITDa09Se6VpVrYN2wrTPBAxqtvK9tWb+3P54newQvaavngEzF70O3xdd
+	AiPjVoKPfmT0eu5IMF4PAs9J1GowIeu78vjXmks0R6DYvMQnzOR9TSCu+Rs7P6fk
+	onyhTrAyDxjTy7h3P6QN0g==
+Received: from phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta01.appoci.oracle.com [138.1.114.2])
+	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 4h2srct0ru-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Mon, 05 Oct 2026 13:45:39 +0000 (GMT)
+Received: from pps.filterd (phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
+	by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (8.18.1.7/8.18.1.7) with ESMTP id 695DeE38011427;
+	Mon, 5 Oct 2026 13:45:38 GMT
+Received: from bn1pr04cu002.outbound.protection.outlook.com (mail-eastus2azon11010023.outbound.protection.outlook.com [52.101.56.23])
+	by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 4h4cyxg5wa-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+	Mon, 05 Oct 2026 13:45:38 +0000 (GMT)
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=DulBaxMNHARzSND5U2KlNbcjWAbXXcuPfGAcqGo7SS/KYuVZQOqWoLYiXaxE7eolgm00oq1gBdPypRP0iTKeA48sZVuiDXOATT6ChjHc/pb59eK9Nsfw/UxvSZy9zq/uM3aDdV++m40Q7S962C5VtD+KFZGzPrCeRQAV3Gr+Iakp9/1dFm3EIy62EQP1hSA88TL4Mhr8BAQy/7pdsLUUXdG8aeHDl4ay4DQXSbrAREbtK35etUiEPHClVlqxFpCYiLHHYi0jrrCd70zAsIExtYm2NqARVZyUzfAOV3oNRYJY/nHiUNmhSUIA1VdqYYSILzJRViGaKWczEnuOyq84Mg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=kmaX46TlhnEmjBcZsixUpIqvrXJKtCiB1ljr20HTdHU=;
+ b=t07t25ggwdJMCTwu3mhENahJvql6tKEgKo6ZiuGe8yqM3LlF08gKEXRsVmgRuN4OaCSiQaqDxgOl7sxUEA6UwQOoT05tlVfi9MKEehRbBK+MKG9OzuRgjcyhqxuE1r3I+l0ioTmbc9Zvrf7sGLIjvRuFOV75wfF7+qY8pqpkP/8rTUQNR8TB+9lgVJR2cfX5Ckm6fX+IP5CjMoqiujlMMmA8N5UnTlhbqkazFKbDKMsDlj6b1gxddxjmlKU85RdsJyXvmerSKaMVKArMp4OFRwoHFUXOLYPaQqjxG56zclVEurl6okYBTdz7FMxZ5zewT6zwRgPmhwXKdvN7Z5YkLA==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
+ dkim=pass header.d=oracle.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1791207848; x=1791812648; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=lzTJprDeN4VROcN1BZ0KyJDiQEqmFFVET4Lj+r/HK+E=;
-        b=CAdWRiFdqOy8nNof2RCoxDB1oTAaguvwQ1YPAzTEka2ikI0Zm4Wh6mWiiZWKHR8Vxc
-         mG4bu5vCIkG29FpD+f/wYMjstbeyNYkTDtkmFuBrDgMj4q9niCE4vC4CdghPv6Ldol7r
-         eMmtlgyo7NH901WdK4kxzfqz0kiPYhd/E8T51Dwexh4cNHIPEiV5wJmDVbZrep16jVxQ
-         qevPRunHBK+/lBvUbE8JOf+FeFonDIwA2/YRglNxLuvEkGW6EzwIFljHcnYqnTilxgHp
-         +aHCLGr+cqS7w78aDTMWAJGgN2xabtKve2emC17+J/3CdM1hLMyHjD1Lgo15L74MvY1w
-         GLjg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791207848; x=1791812648;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=lzTJprDeN4VROcN1BZ0KyJDiQEqmFFVET4Lj+r/HK+E=;
-        b=VSVElGWtOGePi/kvI6V6iq+BKYQMOB7dHOADQ6dC0DOeozyRwiZy4+Ow0WaFykmdt5
-         pLkgtWRPQCNx6AXBIJO/Y+qwv/tq4fy5bxqy+AmmTb5MRrbizue9QAu6fqmdMJ3/7gvc
-         MDkyyVOFz46ZszerXq4LpAFUc/V3WwLAQdM/XaXES4WXMmR75XgLPfOPF8bXWGOtJYeC
-         8MGcB1DhqrweTPO3i7kxcUp0mjr8FW4PUGf95TLzKx2bSX184yRY70NJ6olWR5ILVBmq
-         regzMdpmbMCZ4ndwZYSEEYjEp/cOACdqd1SCdCklhqz6LsydLoxQ8SZnOnedxJKZBeN8
-         DhHA==
-X-Gm-Message-State: AFq9FYIr5AUq1XmOWreRMnpZeBnVZLzLAnfpxIDLqsCFm+FOn2y/8SpG
-	Wig1FoEPAch2ihWUN+4ggwkbe969RZz9LwCGSPVsJ7iRr/qMi1GWlILs2wr6hJC+uDU=
-X-Gm-Gg: AYBFou3ZvGmnE7y3uZ06Yo0k8EsS+Lsaj3MBzJaauUSx/Sk6bHBHvyrZohfALNB5lis
-	CWaW6IoF0ApPnn8bSDNYEt0ID4e9mSB8wBmFYFYwGteTkWdY7uhQLLa48J5sfcAJ26XEwPKKwiR
-	nYP63Dxqw60UtTRzSuaCtRp+K1VtOYOGvW0jKL5GZz9Ow7vgZcGh4MmY770MynQKdGOxSGEpHck
-	3hBrRX0YZwUlh3hbazpQu4sfjtn0P4RCwuy4KOHww/adOe1zNYqajGCJSBNEMGuF+06Y7hVK1BO
-	WgZhLMxQXATk6LTZYif2Ap8mbW+YfN/ykPBzdH6lEhOzSSCy3+Jzu7DfkUXFzroPPusMsGtMz2I
-	N5TVNfdzKUOsmkAYK6P5Ckjh+K96NGwADEbbl8jyUwnczXS8nLFHBAFl3ZdvtTeYjOwe5nwFaTz
-	+cge+Qvp07W9WTv2kzxpPGY0LnIIkh3YtW+RUbJ82+QpOkh93ELnSA0T16RB+7mtVWlIM4fbo20
-	P2K7Cvao+fIV7TRqItCGvSIU1BIm5elOtKXTPQqVQ==
-X-Received: by 2002:a05:6870:80c9:b0:497:4b0a:61fa with SMTP id 586e51a60fabf-49e3a8a24c4mr5926899fac.28.1791207847927;
-        Mon, 05 Oct 2026 06:44:07 -0700 (PDT)
-Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 586e51a60fabf-49e16a4ecacsm9269274fac.1.2026.10.05.06.44.06
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 05 Oct 2026 06:44:07 -0700 (PDT)
-From: Benjamin Coddington <ben.coddington@hammerspace.com>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2] lockd: make the nlm_file reference count atomic
-Date: Mon,  5 Oct 2026 09:44:05 -0400
-Message-ID: <3caeffa75660e6d9a9e0646f38263157b3b6d56d.1790963561.git.bcodding@hammerspace.com>
-X-Mailer: git-send-email 2.53.0
+ d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=kmaX46TlhnEmjBcZsixUpIqvrXJKtCiB1ljr20HTdHU=;
+ b=y4nt9aM8MIIvK7EiIf32HwBrvI7USbqNniGGAXfqKYdZ4YQ4pgMNAitw5wjDnCp/8Z03YpnZujxQPcy5c5N1TbUHzDU+NXShWvkK7wHfMnQeei6f6G5VzWV6glXqs2VLbSeDcRzansqEc5iYvZxZBNZlMGjgT28NAmG5K8cxjKA=
+Authentication-Results: mx.microsoft.com 1; dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=oracle.com;
+Received: from BN0PR10MB5143.namprd10.prod.outlook.com (2603:10b6:408:12c::7)
+ by DSVPR10MB997937.namprd10.prod.outlook.com (2603:10b6:8:3bd::5) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.496.14; Mon, 5 Oct
+ 2026 13:45:36 +0000
+Received: from BN0PR10MB5143.namprd10.prod.outlook.com
+ ([fe80::71c3:4ee5:93a1:85e9]) by BN0PR10MB5143.namprd10.prod.outlook.com
+ ([fe80::71c3:4ee5:93a1:85e9%3]) with mapi id 15.21.0496.010; Mon, 5 Oct 2026
+ 13:45:36 +0000
+Message-ID: <db8dd3c0-0e51-4d3a-a98b-4ceb4f31daa7@oracle.com>
+Date: Mon, 5 Oct 2026 14:45:33 +0100
+User-Agent: Thunderbird Daily
+Cc: Calum Mackay <calum.mackay@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] SEQ_FALSE_RETRY is allowed for a solo SEQUENCE replay
+To: Chuck Lever <cel@kernel.org>
+References: <20251007204806.15560-1-cel@kernel.org>
+ <ece49885-7f63-4be8-a8b8-810c9ae4580f@slotpi15m67>
+Content-Language: en-GB
+From: Calum Mackay <calum.mackay@oracle.com>
+Organization: Oracle
+In-Reply-To: <ece49885-7f63-4be8-a8b8-810c9ae4580f@slotpi15m67>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+X-ClientProxiedBy: LO4P123CA0527.GBRP123.PROD.OUTLOOK.COM
+ (2603:10a6:600:2c5::11) To BN0PR10MB5143.namprd10.prod.outlook.com
+ (2603:10b6:408:12c::7)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: BN0PR10MB5143:EE_|DSVPR10MB997937:EE_
+X-MS-Office365-Filtering-Correlation-Id: 8f456102-6df5-4b31-f46b-08df22e6eedb
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam:
+	BCL:0;ARA:13230040|366016|1800799024|376014|23010399003|56012099006|4143699003|10067099003|18002099003|22082099003;
+X-Microsoft-Antispam-Message-Info:
+	UH7tUTcPnDtIZG73p9mLgvJi8sL4vp7b9kM9c9yS6Hh8XNxgIYhzveHxNX/dQeF4lTz+lCut9YT3aiEj31PdT9eEzXKDcHhTR6tNBB/AjxzMyQKxN5eCuB9a+Qvo5DwnANftjCMdiiJxaXNsNzjpZzS1aawNKOufBS5imO6RJPuNP1uUKamVElUtFtCd3IcDGCTUHG1oxHiqlr8aNBEXvL/LSq/gPdeEG1HbxWSigA3aOyRjGPIBgHTnesGsTp2OkU9/bFY3yewEJAJZLLFuVmk8l1HSV8Naf9D/4tzJBLxHrC3S621SyvpnjIrZyzCJ/j/hfXkK+VJf0fWTUGVM/ziH/ASO8rUtyAHkA/1/UvqWWW7dW2nLfIRP5bS+RlPfqB5fdLDjsHJsx3F0vSDu5Wu4hDx5veSZ6h9hZrkf76wifdQgJBgEDh9Mvv5J4oq4PzTqUOk8xHN26lBKbqM+39R1eh2B7A4EJxhwB9pJdsFQ5oDfI+pGkCi2FrxLRWGKFYrDBRFRXgE8NDhq3DDltY+l0kR2k73WzAVq5t2CTuaEM0HmdDl79AQ9XTO/VOZtOITLQz0mJJswdRtK1QGymOTosXy6gJ0+uNDLF9nLffwPeyV/rMOrakzKwHTfKzr/U1cFk86zeziEwh3Zbtvo+fa0JFiNZw+8PwvgZms9gNs=
+X-Forefront-Antispam-Report:
+	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5143.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(366016)(1800799024)(376014)(23010399003)(56012099006)(4143699003)(10067099003)(18002099003)(22082099003);DIR:OUT;SFP:1101;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0:
+	=?utf-8?B?WWprSWhwNm5OY28zWnU4WVRMNkovSm9jeFJLVmxHY0E5VVUwMVNzMXZ3V3RT?=
+ =?utf-8?B?VzdraW02QlY0Q2FpY3hHRVhQTGlTaVNPZ0dmN1AwVS81cmlleVByVlFIZ2pT?=
+ =?utf-8?B?ODZ4bkpmRzlhd2pLeS84ZTFyWUtHMDBCUmwyMjZaVUk5eERnUlgyOW9Xek9z?=
+ =?utf-8?B?ZUhaaHhSellieXhpZlpGcjMzUUxXTW9Zd0pWcTNkelMvYmM0c3dBL2V6SHlJ?=
+ =?utf-8?B?RnkwRjhmV2xiLzQ4SHVjRzJLVmFzMThBR25zUnhqZ2d3WXhVSGNuVkRNKzdR?=
+ =?utf-8?B?bXRVWHlTcUdQUUd0YW5xWGpVZzhDVGh3KzExdTVuZHpDZkp0QzNDUllzN0h4?=
+ =?utf-8?B?d0gyanhkdzV2UmJ3YUt1ZFJ5RHI2UnRRVHhsbmdFYkNZbDdJSVB6eEh4QUhI?=
+ =?utf-8?B?aDJsZWhOTFBDbUJRNWpwcFpsd0dXbGVTWVBBZGtZbzVNMEFFZGloRVYzTlkw?=
+ =?utf-8?B?emxTV21obWZNWlczNGZoTTBWQ2drWmFKWndpSDVoMG05aW9VYW9KdDZOUVh0?=
+ =?utf-8?B?eDJwM3hXZXJzeUIwWWRlaklpMDVUb1NneTRseWlVcndYYjhaeERMQ1FZbWlh?=
+ =?utf-8?B?OTJlT2dyYmVGL3RIdlduMjJDMlJ4bUtFdllaZGg0UEQrYjVheXpxeXljVEcx?=
+ =?utf-8?B?MERYVlNYSi9pMmZDR1FkZUJ3R3FZM3plL2ZJMzZtcU5Vb2pzV3ErZHo0aVJF?=
+ =?utf-8?B?eWNEOC9CVGs0Yk5UMm1pRU1SK1pkcWt0ZXFiUll3c05aKzBHMVdGY1Y1MVU3?=
+ =?utf-8?B?Zm1qMTZIZktqNXY5bHdGSmNuOG1lUkVjWm1DRVQrbFpqR1lQL2MxTEViS3lI?=
+ =?utf-8?B?em5sOTBQYnFEV3hTMjAwZWdpVnhtZGZvQUsrbnJUR3NDRjYxK3hxdzkzcGxk?=
+ =?utf-8?B?Ly9RSkdYK1Z1clpCeG95RDkxL0JBYjNRNUZMSE0wSWg2MldCbmlNdnk5V2pJ?=
+ =?utf-8?B?N0RGUW9KOFhpRElwNE1NWWVjVXljSEZJazRiTzFON2Y2VW1Mck1UZ3VYSDNT?=
+ =?utf-8?B?czZwMnVvaWRlbzRObEFHMEFlSmdNUEFSM3ZFWmgzcmxYcTBWeGVGeEhaYjZF?=
+ =?utf-8?B?bS9LditjNFRuQldrOG45ZE1mam1rZVVWa1VYcmRaOTExQkJ1V0cyWkgwbFhr?=
+ =?utf-8?B?SVR0NTV3ay9rRWZCNGtoVkx2R0xCdEZwZkVjWFRWUW4xZWs0QkR4cnlxcGpW?=
+ =?utf-8?B?SEFtVHM2TUN6ZTJ3eElyWktVeG5DN2FPVHNzU2pzUzFQVUwvWDd3aUJBVEY2?=
+ =?utf-8?B?YW1nMzUwRXY2akhMcUdRWG91cFduMGsvWG0wdWFEUmtqMWZJcHpHU2YyLzRL?=
+ =?utf-8?B?eHY4TS81TkE5KzY3bU9DMXlFWW9xdGVBMlFhR3hNYjhBMHpqR3lIaGZPZjg0?=
+ =?utf-8?B?L0Y4a3owQ1daVDM4cEJ0OEJsVURNQTVvdTVMWHd3bWNERTlNOWx6d3lYVVNP?=
+ =?utf-8?B?VUQ3eFpJbCtLcHU0eTJZcEYzajNoUWlobU1DbHhleHZ0RHA2YTVNaGZmUldj?=
+ =?utf-8?B?dUY4YUZPbFhsSzcrYW9qcnJyQ0VnMkxneXVwbFhCdGlqWnltZHNyRDdjOFBm?=
+ =?utf-8?B?R0k3M0oxSVY4aXhkdUJKbGFtNmxzUE84bnA5R3BPcGs4aXdzcUhpRUp5NE9n?=
+ =?utf-8?B?c2JwS3NQZ0RmNWs3bEtuS0dZaW5GV1NpeGphd3hhNmJhMVh6TnhERjZoNHZI?=
+ =?utf-8?B?d0UvVW1nREJUbExyTnpJK0RyRFB6YTd4UHJCSEJzbFlNTDYzSTdmTXhDV0lZ?=
+ =?utf-8?B?VWxrME1PYWRVNjBDWm5uS0x5cmR6WWtwQUJDYzFjSE14WnNtSUhRS2lYWkNj?=
+ =?utf-8?B?Z240djBMcTlrb1BZbjBTZXZ6Mzh4NU9xUUd2NjhHOVA5SDY0OGg4bnhUb0li?=
+ =?utf-8?B?SGhqNGdJYTNoWFFkU3ZzZGg1Qnp3V2xDSWg0QTB3NHExU29CY3p3a2pHWHE3?=
+ =?utf-8?B?cURDMFZETkdnb21BTEF3dHZBT2dOTzV2MVRUaHJNL3AySDJHRkI2WGNDVDZJ?=
+ =?utf-8?B?Y0dKejJIV3N1bTZBT2tRa1VnVzRydW9ydjFRT0ZCQ2FUQlBLNjdrWXppUGNm?=
+ =?utf-8?B?Z1Q2QXdjSVUvZzArTTlzZC9tRThGQlZ6Z3FhdXN3UEkxNkVaWU5NRVpZbm9H?=
+ =?utf-8?B?S0RrbFpYNC9EcE5PS0FkSHloUUkyMnhqSXF6UVl3L3l5cjdXRE16RGo2QzMz?=
+ =?utf-8?B?cDRRU0sra1l5ZTdDNDdydmFvajUrcU1IeVg3Q3RXS3lTUDU5cjYzaDhaTmVM?=
+ =?utf-8?B?a0xiVFhaRHhtc0xjYllkcy9RU0dnc21KSnlmbUxXNEhpQWFmaW1ZWmtKRzQz?=
+ =?utf-8?B?dXJQZVlCaVhNU054WVJTcjdhRkFQdmowdnc2aUxMZWZzaWEwRjRwQT09?=
+X-Exchange-RoutingPolicyChecked:
+	gNTmhC5wTmcRfC1mnJUWWadmrQOlElmULNu0VuLzJ/6b48e1xC1OAS/oxv87PyFCJzIUk626e7X/Usf+K7IVhRIxc2OuPz/N6xHLIrnehdSKZXzIoOYvwkvQqJQPx8T0TK+NyjN+xK65XyMgMDGWQf9b3ePr2e3X0yQu2zPAeGjrKhsNq7aMSNAh1KlA9X6TTXoPp+lrsIOmWZ7aL5TxaMPWlSSoOQ40bblAFa+oXR8Gaf0LDlopuS7N7851YZk72lpqeo24hHMKH32TbatbFyWoBtZCUTqJkZvREd9R3pW1RqCGDh2cXcgBwDEM0GstMJb14fq4EzQTsrQQy+0tMg==
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0:
+	ajALMsdvTg0tLvhVcbs3jfpl5HYw2kCAc31VUg5SpcfWiRmfHJUo2bmx/vpI79qK7zgUIM//5a2tgTauLqvOQpYcDH6V7VH4KdiTvOSz2dISZi847TvcTJmme8rAyFe8z5/ykr1js+lULL3MdUq+hWWPZmvQDuWNkwIeqhhylW+KpVCLmWVx7vBt95NfIMnRR817E/Dmg9cR4cwnI5mZq/QF83N1sFo5/o6Wky4J4eCei6JDeLq8a8YuZdwqP8FTIvgsGxVtFy0RFI8v/gPTRxIb1ITtcnqs0Cm8RePzBihTsi44hkSXFc0z8NRBukPd4SjViRpucXhFkAV8/vJSeOZVdJW2HbnFm70nwT5pYI35PDJfVlV/ht7reCdodpt4h2Yhr2ParelIiLM9GpsR6rD0wiuxicqxjpTboAfIn29FiSxGZw+BB9XmGS9QE3E4vsyuqN3VRYv3Veujp/h1TOzu5OZHfW831NNtbKrWP8hZzRqL/LO6vhFjQhK9HF/nDUASDqXLwdjMf6r0b0/cWNBDsLX5P2E7JsD/hEwH2LYzTKgdagIy/vegGAdgS1Imr+/SZXOJfGyGG6321MA7ar77fOLgU63HgUiI8RXv2Yo=
+X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 8f456102-6df5-4b31-f46b-08df22e6eedb
+X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5143.namprd10.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 05 Oct 2026 13:45:36.0241
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: hnAdghyqCyjznU+4zEGy8UBawcTtQTmOzz4fQ/XcizV6I82tJJIgw8a7hxd05xyLBxmQ4HGih19LxtLd3tZCCw==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: DSVPR10MB997937
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
+ definitions=2026-10-05_03,2026-10-05_01,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0
+ malwarescore=0 spamscore=0 mlxlogscore=856 bulkscore=0 mlxscore=0
+ adultscore=0 phishscore=0 lowpriorityscore=0 classifier=spam adjust=0
+ reason=mlx scancount=1 engine=8.19.0-2609040000 definitions=main-2610050053
+X-Proofpoint-Spam-Info: AW1haW4tMjYxMDA1MDA1MyBTYWx0ZWRfXzcXbfuMqJkvZ
+ Jnb26gfpci2X0GbcvTdXJDOgIa5z6osNdc4o4O6TauxEbr0882E9CPnpu52um3OgcYTkEGymYtf
+ frkYCjFBrHRleR2njkumI7OC1F8Kg0Z3FC2cyAetXiakjlGkNAcs
+X-Authority-Analysis: v=2.4 cv=d/dgWhjE c=1 sm=1 tr=0 ts=6ac3aa03 cx=c_pps
+ a=XiAAW1AwiKB2Y8Wsi+sD2Q==:117 a=XiAAW1AwiKB2Y8Wsi+sD2Q==:17
+ a=6eWqkTHjU83fiwn7nKZWdM+Sl24=:19 a=z/mQ4Ysz8XfWz/Q5cLBRGdckG28=:19
+ a=lCpzRmAYbLLaTzLvsPZ7Mbvzbb8=:19 a=xqWC_Br6kY4A:10 a=IkcTkHD0fZMA:10
+ a=660iZSQnnn4A:10 a=GoEa3M9JfhUA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=jiCTI4zE5U7BLdzWsZGv:22 a=BqU2WV_vvsyTyxaotp0D:22 a=yLKeqhJSjpyUfR__ITgA:9
+ a=QEXdDO2ut3YA:10 a=QYH75iMubAgA:10
+X-Proofpoint-ORIG-GUID: ITccnaAyNgdygz3-WZqCnu0f3lTlRnFf
+X-Proofpoint-GUID: ITccnaAyNgdygz3-WZqCnu0f3lTlRnFf
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYxMDA1MDA1MyBTYWx0ZWRfXyQkXpnr29VHB
+ TRIqyBvuWTL6776zRmODKiZa41TLtwh/d2/ht2APKSoyhHmViu7Baz3tf/mK6j21wh6XORU7/c9
+ zow3JQg1Y0Gx0XWPeC2AwBOtvlvqruTJ3+ft8MRfAbK1OYVj99jTmc4LZ92C/TzGoczMvV/WBAE
+ E5La7KhllA8hD0Ci3P2Z4F3akGPDVWR49lGgeNzWt4StbV0u5x+fNVUlQ7Yo5qb6N5JFK4TsqVa
+ 1LFBsmkAVtE8vREaPBLReLjQyfak2l0REdelFgnU2XfK83Re9BmtJJ0NeRA86y7ywSE5HG9gZd+
+ /cg5HZLr/MQ1u/vfaF0v5G7xQITFu0kQj7qZF0W1SxTFdCSvhyZ5X5hUgZSOOD80yYlgeyCuBBM
+ nPjq5+LbKrZHtgVSATt/68VoEUsJZmokI/POgqmOqukSAn4z4gu1y2lfkvYx6cvIUOQ5ZrD7/pG
+ mGfQqslgq9v81Ahxx0Q==
 
-From: Benjamin Coddington <bcodding@hammerspace.com>
+On 04/10/2026 9:17 pm, Chuck Lever wrote:
+> Hi Calum -
+> 
+> Ping on this one. I don't see it in pynfs master as of commit
+> cd4701827a82 ("Add some tests for unsupported fattr4 attributes").
+> 
+> Is there anything you'd like changed, or can it be applied as-is?
+> I'm happy to resend if that's easier.
 
-nlmsvc_create_block() takes its reference on the nlm_file with
-file->f_count++ while holding only that file's f_mutex.  Every other
-update of f_count is made under nlm_file_mutex, and can come from
-another task: nlm_traverse_files() pins each file it visits and runs
-from lockd_down() in any network namespace and from nfsd's unlock_ip and
-unlock_filesystem, and nlm_release_file() runs from the release of a
-GRANTED callback.  An update can be lost, and the count then reaches
-zero while a reference is still held:
+Hi Chuck,
 
-  BUG: KASAN: slab-use-after-free in nlm_release_file+0x504/0x7e8 [lockd]
-  Read of size 4 at addr ffff0000a738f6c4 by task lockd/11494
+Yes, sorry, I have a bit of a backlog, I'll get to it asap. No need to 
+resend.
 
-  Call trace:
-   nlm_release_file+0x504/0x7e8 [lockd]
-   nlm4svc_do_lock+0x2bc/0x468 [lockd]
-   nlm4svc_proc_lock+0x1c/0x30 [lockd]
-   nlmsvc_dispatch+0xa8/0x200 [lockd]
-   svc_process_common+0xb08/0x1b80 [sunrpc]
-   svc_process+0x424/0xb70 [sunrpc]
-   svc_recv+0x1680/0x2408 [sunrpc]
-   lockd+0x148/0x288 [lockd]
-
-  Allocated by task 10651:
-   nlm_lookup_file+0x2a4/0x5c0 [lockd]
-   nlm4svc_lookup_file.constprop.0+0x4dc/0x848 [lockd]
-   nlm4svc_do_lock+0x284/0x468 [lockd]
-   nlm4svc_proc_lock+0x1c/0x30 [lockd]
-
-  Freed by task 11494:
-   nlm_release_file+0x46c/0x7e8 [lockd]
-   nlmsvc_free_block+0x1a4/0x298 [lockd]
-   nlmsvc_lock+0x2cc/0x1a80 [lockd]
-   nlm4svc_do_lock+0x324/0x468 [lockd]
-   nlm4svc_proc_lock+0x1c/0x30 [lockd]
-
-That is v7.2 with commit 526c49cff3f7 ("lockd: pin next file across
-nlm_inspect_file lock-drop") applied, with NLM lock and unlock traffic
-in one network namespace while a second namespace mounts and unmounts
-NFSv3, which shuts lockd down in that namespace each time.
-
-Make f_count an atomic_t.  Files are still only freed under
-nlm_file_mutex, and nlmsvc_create_block() increments a count that its
-caller already holds.  It is an atomic_t rather than a refcount_t
-because the count rests at zero while only locks hold the file in the
-table.
-
-Fixes: d9f6eb75d490 ("lockd: blocks should hold a reference to the nlm_file")
-Cc: <stable@vger.kernel.org> # 526c49cff3f7: lockd: pin next file across nlm_inspect_file lock-drop
-Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
----
-Changes in v2:
- - no code change; sent with an in-body From so the author matches the
-   Signed-off-by
- v1: https://lore.kernel.org/linux-nfs/6469ea852a2ad9d650a0bcdc8e2609bbaaec9f98.1790948497.git.bcodding@hammerspace.com/
-
- fs/lockd/lockd.h   |  2 +-
- fs/lockd/svclock.c |  2 +-
- fs/lockd/svcsubs.c | 18 ++++++++++--------
- 3 files changed, 12 insertions(+), 10 deletions(-)
-
-diff --git a/fs/lockd/lockd.h b/fs/lockd/lockd.h
-index 14cc952fe81a..55958e490ee4 100644
---- a/fs/lockd/lockd.h
-+++ b/fs/lockd/lockd.h
-@@ -201,7 +201,7 @@ struct nlm_file {
- 	struct lockd_share *	f_shares;	/* DOS shares */
- 	struct list_head	f_blocks;	/* blocked locks */
- 	unsigned int		f_locks;	/* guesstimate # of locks */
--	unsigned int		f_count;	/* reference count */
-+	atomic_t		f_count;	/* reference count */
- 	struct mutex		f_mutex;	/* avoid concurrent access */
- };
- 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 495eacb3264f..0a6540409ef8 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -221,7 +221,7 @@ nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
- 	block->b_daemon = rqstp->rq_server;
- 	block->b_host   = host;
- 	block->b_file   = file;
--	file->f_count++;
-+	atomic_inc(&file->f_count);
- 
- 	/* Add to file's list of blocks */
- 	list_add(&block->b_flist, &file->f_blocks);
-diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
-index ffab76278bb2..147852e8c3be 100644
---- a/fs/lockd/svcsubs.c
-+++ b/fs/lockd/svcsubs.c
-@@ -186,9 +186,10 @@ nlm_lookup_file(struct svc_rqst *rqstp, struct nlm_file **result,
- 	hlist_add_head(&file->f_list, &nlm_files[hash]);
- 
- found:
--	dprintk("lockd: found file %p (count %d)\n", file, file->f_count);
-+	dprintk("lockd: found file %p (count %d)\n", file,
-+		atomic_read(&file->f_count));
- 	*result = file;
--	file->f_count++;
-+	atomic_inc(&file->f_count);
- 
- out_unlock:
- 	mutex_unlock(&nlm_file_mutex);
-@@ -333,7 +334,8 @@ nlm_file_inuse(struct nlm_file *file)
- 	struct file_lock *fl;
- 	struct file_lock_context *flctx = locks_inode_context(inode);
- 
--	if (file->f_count || !list_empty(&file->f_blocks) || file->f_shares)
-+	if (atomic_read(&file->f_count) || !list_empty(&file->f_blocks) ||
-+	    file->f_shares)
- 		return 1;
- 
- 	if (flctx && !list_empty_careful(&flctx->flc_posix)) {
-@@ -371,7 +373,7 @@ nlm_traverse_files(void *data, nlm_host_match_fn_t match,
- 		file = hlist_entry_safe(nlm_files[i].first,
- 					struct nlm_file, f_list);
- 		if (file)
--			file->f_count++;
-+			atomic_inc(&file->f_count);
- 		while (file) {
- 			/*
- 			 * Pin the next neighbour before we drop the mutex
-@@ -384,7 +386,7 @@ nlm_traverse_files(void *data, nlm_host_match_fn_t match,
- 			next = hlist_entry_safe(file->f_list.next,
- 						struct nlm_file, f_list);
- 			if (next)
--				next->f_count++;
-+				atomic_inc(&next->f_count);
- 
- 			if (!is_failover_file || is_failover_file(data, file)) {
- 				mutex_unlock(&nlm_file_mutex);
-@@ -395,7 +397,7 @@ nlm_traverse_files(void *data, nlm_host_match_fn_t match,
- 				mutex_lock(&nlm_file_mutex);
- 			}
- 
--			file->f_count--;
-+			atomic_dec(&file->f_count);
- 			nlm_file_release(file);
- 			file = next;
- 		}
-@@ -417,13 +419,13 @@ void
- nlm_release_file(struct nlm_file *file)
- {
- 	dprintk("lockd: nlm_release_file(%p, ct = %d)\n",
--				file, file->f_count);
-+				file, atomic_read(&file->f_count));
- 
- 	/* Lock file table */
- 	mutex_lock(&nlm_file_mutex);
- 
- 	/* If there are no more locks etc, delete the file */
--	if (--file->f_count == 0 && !nlm_file_inuse(file))
-+	if (atomic_dec_and_test(&file->f_count) && !nlm_file_inuse(file))
- 		nlm_delete_file(file);
- 
- 	mutex_unlock(&nlm_file_mutex);
--- 
-2.53.0
-
+cheers,
+c.
