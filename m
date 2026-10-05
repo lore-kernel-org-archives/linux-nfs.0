@@ -1,211 +1,155 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9BC0A388377
-	for <linux-nfs@vger.kernel.org>; Sun,  4 Oct 2026 20:48:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E3FE037755A
+	for <linux-nfs@vger.kernel.org>; Mon,  5 Oct 2026 07:12:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791146915; cv=none; b=KdQZi1a1GLWKAlhIGxT7YgQRcs5I+at0exWM7P/DENdcf79wRiu31c+eltvs2iIh4YGYmLP9WcXz23RY1weZkB5wKZOvTETnf3Gryeg2MiQNkJxVJrGh47rv195WVoJE7GiFSEeLC/D/z28+wJAEuHJfe7S972EKsHBJ0+Ub2c4=
+	t=1791184375; cv=none; b=uX4kBFggRmXmZeQy/H76u7P92skVgDB6hRWcQUv7bQd+ZGhbJb54Hx/VnHqfGmjIh2Db4vsvh1js8k2+ftGsS077gybkzKfnjg6WIduCaigQONuZXdn+Ugn72mclWvOevtoYYK+1lZSDTRna3EaJv6oMu+p0E+pQjEs1EdQy4e4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791146915; c=relaxed/simple;
-	bh=ITdAbKl80y6z5UTXNOj4W9pol3loaa1gunsuZYJgeLI=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=c/g5x5tS90ztJo/6FOMVxWOks2n5kpA67hR+wz3AJOGiJJj/sRB1bxxEUjbZ3Hy0oM3Elw1QVMnKuUbzvxiUyIfptah1smjXR6aRYn64bw7kfjm0g5Ym050OO5/A6twigtZdJe0FdWLMi0FNhtsMNpuGPqEia9ivKOvZqMvIIhQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AYPRunwS; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791184375; c=relaxed/simple;
+	bh=0TFVNxlW3vvQr0CysToctEJKeYMjBvQLlIgyergyrlM=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=b0NR46/XyrV74pPtmhB+B2IFKnG/5GXm2xegHXfG0Lu1PSLqZ1CABOZTxmIny/QnT8bmsOvbRMrHTAh1L7LO3LDPOePnYTDp6z+ISu6a2F33EDjIwp1y+LNHDl48m6IToE5Ttt9n9NWxTSso5QrT59dibp2HCs9ygwqvqjFVIf4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=fPFlxpxc; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AYPRunwS"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 051FC1F00898
-	for <linux-nfs@vger.kernel.org>; Sun,  4 Oct 2026 20:48:33 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791146914;
-	bh=ZRB+5EakXP8ZZ6LsqnIW2a5D6Ke2vrYczEG0YEocfeE=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=AYPRunwSF3/SET1sCIOpMOJS2gnzUB+RVq4gPwVoDhjrxxomSasJvwySbMYOwirHm
-	 ZHagDCq915XssqvBCHo6ft9xR3egEN5iIPIPMyb6nRKL71XxdGvCxe/uYrOgRzLyQw
-	 gYzLvimU9kcD+1cehuw5YhvB6Yrrq1vAAUoHIn5Hgj6gkUIeqmoIUGb1NQf3BNogMu
-	 1lHGjvoxKc3+BufP+Z2tkkouVrlYAsbiv5udbVcDULCPNPYYAe9ugOQUVq4ET+O64F
-	 y8IQk6dQQ/rhkddEFwKWJ/vVIMeekDl1MDU3MMVyOqAfgJ+7PNqjGPNuSOsIqVAhS8
-	 R1cFN+OPv963w==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 23414F40066;
-	Sun,  4 Oct 2026 16:48:33 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Sun, 04 Oct 2026 16:48:33 -0400
-X-ME-Sender: <xms:obvCanrAzf7HeXiIXFJWKTKUpOVj_02MK2h5X29J7vDwQIRMiZRnJQ>
-    <xme:obvCasdjj3BfFPbzMMGhiZINotVrCl784Bq-C4mKYh50KuTCklMVcfviyZJVSPevp
-    0z7_TrzVH6Ihwo-t6PlCDDdOTHWVgsufS36dZJJkGPRa__QM1E6AVgj>
-X-ME-Proxy-Cause: dmFkZTGYTAOmP710rp1RRrNYluB066Qpb64PInXhtr8p6vmZrPC4B/A6JBZIbud905GrpV
-    tHYY0vk1QeKoVceODzOQPj9wgnV1dV8KEmzi72gbpexXscZ4HQNqCJNYxZ0yifGUB41ncu
-    NDnnz6pWrwUwg5zMoD/9BQmF0uF1OtjfBPtM0y6G1Ei/vPCxoOWLQUCT+D6jDWqjwflen3
-    4kdUAFU7SMnaXrfIscarZG1jF3SrSz6jwr/QkQaCcyuVXLJzSfvypAJpanaXu12XWXnZ7l
-    lhYbH3CN05Sj0x/o9XMs2NMfFuAeKfgbTA4B4b0njLyJWUiDxFNKLSI5IUJDZEtWROqibY
-    Q7+54WTFS3nsS8xN7dpQ1gO5XiKz0ZnFIkxPr7HksOT9ZWDuoOFlT/Sa8XmW0emLgy9PsE
-    bJ7L+EFSnFo3S97smBXLcpkwkDZtCgkfWfU2uFLsnCXXeXkBQyBUhgxKlDxaf3f4UxsOV8
-    s86BEJEw7DhLYR79kxPn9rVUZtCGsE68dYQmP6pgy8AdDjbskVRIOwyIF8M95P9PBlb7Iq
-    svjsHPBds5HNSApDRcVWXXKS0sWBxW339RQIV8fX9QgOaIFVDXJzheD8C6V4ulG11xSSQS
-    rt+KUiYfwgocTw/HzF1BfcHz7LTO7brhopWGh3vwxMqbLGvfZhUqrPDf5Ohw
-X-ME-Proxy: <xmx:obvCalv_3p3tK6bAjJBost7K51bhAguE6JtN4oQ_gaVZEwe0vXe2wg>
-    <xmx:obvCav-l42iJKol9PGGCclsJDHc7hUUlnX1RVcljbmCYMidA2vxxsQ>
-    <xmx:obvCao2EOo5vYnOzuYQqZFeq_G3JWqVqSy5Bl4m3809gGTRJdlkGAA>
-    <xmx:obvCasB3-Z1FbVESYmXtjNcL3CRDXS8n6hI6EtU4lzCNt_eYXwNaBg>
-    <xmx:obvCasfEB6BiS4KYBSQZ552TPfUbQ2HmIqAD3FFEJQ3yyztb03B83Miw>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 019B2780075; Sun,  4 Oct 2026 16:48:33 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="fPFlxpxc"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1791184373;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=un0sOdMzGIB0ugj0c9sRuvRA31Lh2M8UPL/TEXn4uR4=;
+	b=fPFlxpxcAhsIFhQc/4tJdYCG4eMQD0iycILYXpEeJPqaJY1yZCFFKytzNrk1f3sAI3+a61
+	sqImo7PVvmF07T1sI+zODM1YoI7jILJIyNtFcS+BT0y7hbk0Ycc17eQeo0zJKN1qed3fF+
+	6NJoG2DoeqH0wD4kc1LfFX0FFKAxDzc=
+Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-25-hbnd5JVLMZS7HNUkhIydkw-1; Mon,
+ 05 Oct 2026 03:12:47 -0400
+X-MC-Unique: hbnd5JVLMZS7HNUkhIydkw-1
+X-Mimecast-MFC-AGG-ID: hbnd5JVLMZS7HNUkhIydkw_1791184365
+Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 823841955BED;
+	Mon,  5 Oct 2026 07:12:44 +0000 (UTC)
+Received: from warthog.com (unknown [10.44.32.90])
+	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 9D51D1956087;
+	Mon,  5 Oct 2026 07:12:37 +0000 (UTC)
+From: David Howells <dhowells@redhat.com>
+To: Christian Brauner <christian@brauner.io>
+Cc: David Howells <dhowells@redhat.com>,
+	Paulo Alcantara <pc@manguebit.org>,
+	Matthew Wilcox <willy@infradead.org>,
+	Namjae Jeon <linkinjeon@kernel.org>,
+	Marc Dionne <marc.dionne@auristor.com>,
+	Stefan Metzmacher <metze@samba.org>,
+	Eric Van Hensbergen <ericvh@kernel.org>,
+	Dominique Martinet <asmadeus@codewreck.org>,
+	Ilya Dryomov <idryomov@gmail.com>,
+	netfs@lists.linux.dev,
+	linux-afs@lists.infradead.org,
+	linux-cifs@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	ceph-devel@vger.kernel.org,
+	v9fs@lists.linux.dev,
+	linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v12 0/8] netfs: Use a bvecq chain position abstraction
+Date: Mon,  5 Oct 2026 08:12:17 +0100
+Message-ID: <20261005071227.147182-1-dhowells@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AB0QkRkUO1Do
-Date: Sun, 04 Oct 2026 16:48:12 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Benjamin Coddington" <ben.coddington@hammerspace.com>
-Cc: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- linux-nfs@vger.kernel.org, "Daire Byrne" <daire@dneg.com>
-Message-Id: <cb5d00b3-008f-4876-b284-c8cbabfea3ad@slotpi15m67>
-In-Reply-To: <cover.1790953694.git.bcodding@hammerspace.com>
-References: <cover.1790953694.git.bcodding@hammerspace.com>
-Subject: Re: [PATCH RFC 0/2] SUNRPC: dispatch ready transports round-robin across
- clients
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
 
-Hi Ben -
+Hi Christian,
 
-On Fri, Oct 2, 2026, at 12:42 PM, Benjamin Coddington wrote:
-> This is a third pass at the problem from [1] and [2].  It's the design
-> Neil described on [1], close to as he wrote it: a client object per peer,
-> a queue of ready transports per client, and a queue of ready clients per
-> pool.  A pool takes turns across clients instead of across transports.
+Could you pull these patches please into your vfs-7.4.netfs branch?  This
+is the fourth of five batches.  The primary purpose of this batch is to add
+an abstraction for a position in a bvecq chain and make use of it.
 
-I read through your patches and did not find a problem with the
-SVC_CP_QUEUED handshake or with the client's lifetime. My concern
-is with what the pool takes turns across, and with a few of the
-results.
+With that in mind, this patchset does the following:
 
+ (1) Add a struct, bvecq_pos, to refer to a position in a bvecq chain.
+     This is a tuple of ( bvecq pointer, slot and offset } and the position
+     struct holds (for now) a ref on the bvecq pointed to.
 
-> Each transport belongs to a client, one per peer address and network
-> namespace.
+ (2) Change unbuffered/DIO to extract the supplied user buffers into a
+     bvecq chain rather than a bio_vec[] up front.  This means that
+     netfslib then uses bvecq chains for everything.
 
-> The one piece of Neil's description I left out is moving a transport
-> between clients.
+ (3) Add a folio count to the readahead_control struct and then makes
+     readahead pre-create its buffer using that count to determine how many
+     slots are required.
 
-I think that piece has to come back.
+ (4) Change netfslib to use the bvecq_pos struct to keep track of the whole
+     request buffer and various points in it where loading, dispatch and
+     collection are taking place and to also keep track of the slice given
+     to each subrequest.
 
-svc_client_find() matches on the full peer address, so each source
-address gets its own turn. A host with N addresses is served N times
-per round. That is the curve from your May numbers with the address
-count in place of the connection count.
+This was split from v11 of a larger netfslib series[1].
 
+The patches can also be found here:
 
-> It's fair by host, not by class.  Six movers get six turns.
+	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=netfs-next-4
 
-It is fair by address. That covers more than six movers:
+Thanks,
+David
 
- - A multi-homed data mover gets a turn for each interface it
-   connects from.
+Changes
+=======
+ver #12)
+- Split from v11 of "netfs: Keep track of folios in a segmented bio_vec[]
+  chain"[1]
 
- - An NFSv4.1 client that trunks a session over N of its own
-   addresses is one clientid and N svc_clients. It gets the larger
-   share without asking for it.
+[1] https://lore.kernel.org/r/20260902173350.3468672-1-dhowells@redhat.com/
 
- - An IPv6 host can connect from as many addresses in its prefix as
-   it likes.
+David Howells (8):
+  mm: Make readahead store folio count in readahead_control
+  netfs: Add a function to extract from an iter into a bvecq
+  netfs: Make unbuffered/DIO read and write use bvecq
+  netfs: Add some tools for managing a position in a bvecq chain
+  netfs: Provide a func to load the readahead buffers into a bvecq chain
+  netfs: Use bvecq_pos to hold the buffer positions
+  netfs: Remove the rolling_buffer implementation
+  netfs: Remove netfs_extract_user_iter()
 
-Meanwhile a NAT or a re-export gateway with hundreds of users behind
-it gets one turn. A client with many users is held to one turn and a
-client with many addresses is not. The multi-homed client case is
-not something we can easily ignore.
+ fs/afs/dir.c                   |   5 +-
+ fs/afs/symlink.c               |   6 +-
+ fs/cachefiles/io.c             |  12 -
+ fs/netfs/Makefile              |   1 -
+ fs/netfs/buffered_read.c       | 169 ++++++++------
+ fs/netfs/bvecq.c               | 310 ++++++++++++++++++++++++++
+ fs/netfs/direct_read.c         |  77 +++----
+ fs/netfs/direct_write.c        |  67 +++---
+ fs/netfs/internal.h            |   4 +-
+ fs/netfs/iterator.c            | 392 ++++++++++-----------------------
+ fs/netfs/misc.c                |  18 --
+ fs/netfs/objects.c             |  16 +-
+ fs/netfs/read_collect.c        |  92 ++++----
+ fs/netfs/read_pgpriv2.c        |  87 +++++---
+ fs/netfs/read_retry.c          |  86 ++++----
+ fs/netfs/read_single.c         |  16 +-
+ fs/netfs/rolling_buffer.c      | 182 ---------------
+ fs/netfs/write_collect.c       |  55 ++---
+ fs/netfs/write_issue.c         | 166 +++++++++-----
+ fs/netfs/write_retry.c         |  61 +++--
+ include/linux/bvecq.h          | 184 ++++++++++++++++
+ include/linux/netfs.h          |  25 ++-
+ include/linux/pagemap.h        |  10 +
+ include/linux/rolling_buffer.h |  47 ----
+ include/trace/events/netfs.h   |  32 ++-
+ mm/readahead.c                 |   5 +
+ 26 files changed, 1195 insertions(+), 930 deletions(-)
+ delete mode 100644 fs/netfs/rolling_buffer.c
+ delete mode 100644 include/linux/rolling_buffer.h
 
-For the next version, please add a case to the harness where one host
-drives load from N source addresses against a single-address client.
-
-
-> Chuck asked on [2] for something real rather than the synthetic victim.
-
->                     alone (A / B)     loaded A    loaded B
->     walk            1.53s / 2.08s      328.55s     107.74s
->     fio 4k IOPS     21876 / 19776           80         777
-
-The "alone" column worries me more than the loaded ones. With no
-aggressor, the walk takes 36% longer on B and fio loses about 10%.
-A single client with one connection pays for one more lwq dequeue
-and a few atomic operations per dispatch. That's a regression even
-Linus will notice.
-
-
-> For the cost on the dispatch path I used fio over a loopback mount of a
-> tmpfs export, 4k O_DIRECT reads, nconnect=8, five 20s runs each: 95.5k
-> vs 95.8k IOPS at 16 jobs and 139.0k vs 139.2k at 64, A vs B.  I can't see
-> a difference.  That's one client on a KASAN kernel, so I wouldn't lean on
-> it too hard.
-
-That result and the "alone" column disagree. Can you repeat both on a
-kernel without KASAN, with enough runs to show the variance? If the
-unloaded slowdown is real, we need to know where it comes from.
-
-
-> Fairness is per pool.  With ten pools (pool_mode=percpu) a client with 2
-> connections against one with 16 got 26% where a single pool gives 49%.
-> v7.2 gives it 12% there.  Now that pools are per node this matters
-> more than it used to.
-
-Any server with more than one NUMA node gets the diluted result by
-default. I would like to see numbers for a two-node per node
-configuration, and your thoughts on whether the client queue belongs
-to the pool at all.
-
-
-> A single connection with 16 requests outstanding gets about a third
-> against a client with 8 connections in my synthetic harness, not half.
-> From tracing, its transport is dispatched within about 150us of becoming
-> ready and alternates with the other client, so I think that's my load
-> generator not keeping one connection supplied.
-
-XPT_BUSY might account for part of that. Once a thread dequeues
-the client's only transport, the client is off sp_clients until
-svc_xprt_received() enqueues that transport again. The 8-connection
-client goes back on the tail immediately. A thread that comes free
-in that window takes the other client. The window is one recvfrom,
-so it matters only when several threads come free together. The
-fixed 10ms service time makes them do that. Your first RFC's cover
-letter attributed the same shortfall to XPT_BUSY.
-
-Jittering the injected service time would show how much of the
-shortfall comes from the harness. Counting consecutive dispatches
-of the same client in the trace might show the rest.
-
-
-> Control events take turns
-> like data.  A close queued behind k of its own client's transports gets
-> dispatched k rounds later, where today it waits behind every queued
-> transport in the pool.  I didn't add a separate queue for them.  I can if
-> that's wanted.
-
-A round is as long as the number of ready clients. With k transports
-queued ahead of it and M clients ready, the close waits about k * M
-dispatches. For a client with many connections on a server with many
-busy clients, that is longer than the wait in today's FIFO. Those are
-the connections NFSD most wants to close promptly. Let's dispatch
-XPT_CONN, XPT_CLOSE, and XPT_HANDSHAKE ahead of XPT_DATA within a
-client.
-
-
-> Is the anonymous client the right home for listeners?  A connection flood
-> gets one turn per round that way.
-
-I think so.
-
-
-> Does anyone want the pool_stats or a tracepoint to show clients?  I left
-> observability out to keep this small.
-
-Yes, please. A tracepoint at dequeue that reports the client is
-enough for now.
-
-
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
