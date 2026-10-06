@@ -1,69 +1,48 @@
-Received: from mail-wm1-f47.google.com (mail-wm1-f47.google.com [209.85.128.47])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 106743DFC80
-	for <linux-nfs@vger.kernel.org>; Tue,  6 Oct 2026 08:37:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.47
+Received: from foss.arm.com (foss.arm.com [217.140.110.172])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 270523806CE;
+	Tue,  6 Oct 2026 09:01:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.140.110.172
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791275871; cv=none; b=k94VkKsz/SyxsV3ruOptWoR9ZwfAJOTQdwy4ZgGdww3Ci19xbT9txYxcxIWPldh4hlp/Fm48TDXGIr4SPb5HEg4fknsHc0pgoVfpNYggvs7K1q+SzsSAabgFR/fehCailKgDB+QNnndwO8GvVtxnTIi7e0ltRYDSCrS0kI3hoK4=
+	t=1791277263; cv=none; b=pzVgGNmjdAdkIfq2j685yQ7ivxliR8IpU7z7GIY7WyxL8yFjvVbbGMBpsU++aIrBDF1drj7b6L9rmxzChYGie3gJfvzjZmkWuKgoeQVIILqFvSG4wduV4l706azqkZQu/WiVvJG6bYTTU1y0SzqUQeGkS0dEkw1Bfm5ymUmG0Co=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791275871; c=relaxed/simple;
-	bh=c6XJk30eeiJIQINtl7rTtv74KQp65+5hPbjkmD88LAE=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=j8ew8ebG86g83dFB3vfYiKqgL69pOLM+MpYg7KFqpURC5GmMwNzVZ7wBuu/7m0sB4IlSBkby3eTNrkRa1ffmqy5dFQyJQGxqEmNh6e9RdNBvTUoqEG/ByIXecqxXcC8PbYUT33/fIFLNYaZvOst+7UZs0rRJOmex21CgmwfaiI4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=bJb0zNOy; arc=none smtp.client-ip=209.85.128.47
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1791277263; c=relaxed/simple;
+	bh=Iwd2tfYTmlt/l0EpeJOvp//1Eq1OPqBlm4ThVSt9wPE=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Gfk7awB9zhX90V0Xa5svrSrJgnZbEFj8mztOm6FZegAS8sy7zK1skqlZN/0SZlrgZrQq36SuJbp4JDsSHFLxZyOqC8Wb4p4lUC9/2vLrQfJu3LxYpFc3e5UNaHX3fs+HDUKGJhb+9cZ84bNo/bVOB/a3QhpQibWUpduzmz50fnY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=arm.com; spf=pass smtp.mailfrom=arm.com; dkim=pass (1024-bit key) header.d=arm.com header.i=@arm.com header.b=Lkh7HC57; arc=none smtp.client-ip=217.140.110.172
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=arm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=arm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="bJb0zNOy"
-Received: by mail-wm1-f47.google.com with SMTP id 5b1f17b1804b1-4995b0343c1so9753385e9.3
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Oct 2026 01:37:49 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1791275868; x=1791880668; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=6lbHUo9RRGPMTrm2WIboNGXIcD4dUALOnxmlEPV05Lo=;
-        b=bJb0zNOyKXbYVOnTKoWTPG+w7RUS9pSBIZWLY8YEZoG+ezwUqwe7SdHuSBeyzFEh8E
-         ouXnhCf4XnqWhF30yito2P9VCDU4/sUfvCs0EC/AwptsUiXAM/mMZ7jMuRpsZu8r8UM9
-         fIuZOmQQ7f3T3xYrvpMZBchUvbqZZjD30KXDc67Dsa77oLu7HthvAsMijaJCRQz7lUQi
-         zLjCgRW6+ez+Jre5N1XItg5+D53sJxd0+gMh9s+fEj/xAs0pjd0fpusGf+3DkP9PLTfQ
-         oFa4P9bZlDRwMCNPpGYgODViY5gbMCfXBhK7sIuCuTUG8d51UyCEUSR08kXCRlSe1XWx
-         VQEg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791275868; x=1791880668;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=6lbHUo9RRGPMTrm2WIboNGXIcD4dUALOnxmlEPV05Lo=;
-        b=mrIPcqmXcLvF768zS5Ns22O0oM1tVDxIr6xPQYOtRaKYIXICv9G2+6P33+UJjB/HLn
-         dfmYtwN2EuzYN/AomRIQN0mF4/KG6NyBVwBjhCQGlWMqxuUPxkKu6eeiKU+FAxmvpns1
-         TB4rAxURVjULwhkJ9p1sQd5ITjQ2nomndGQvXJOeG6nemYC3R9loslnsWemJy2iUxHTL
-         CqgG2IRP/CWu/GbVCcptOboK8Hj8hB+RjLZ69e3p+YkTixIlimmstv3L6Mjrl2v/QvUd
-         j4yyj+5Nupy8NOoQ0PvIbq2IeKp6ZEHPDrc2NnqXwrx7uqczR9RJsJpVdbHQ2zCAGnA6
-         81cw==
-X-Gm-Message-State: AFuF++nrvlxwL19C0QDk5ByFo++gZjeMPk3iuyyn3IXRuTYku5v6zvP5
-	IXgNalnXrZQCj8kEGwTUfJQc9FAygp+hhe+Bp/2VONrJ/8SoRX+Y5LI4oBz3s5Z5
-X-Gm-Gg: AYBFou3VoOhsp4zI4JSJ1ozviyByADRnjvrTyR8CNp6eeXEbJibmOXlOrcviTPdTgVa
-	iqAvRFn4wOfaLaQUYMkJYjDigDkXm3jAyIn6M0U0k3fPehMM6eNEg8fzFazH0WoiQXOAk6UFxRE
-	7/7t9VxllrmwiFJuJ/P3E3YD6atn160mS4KVUUdiV628i8B3ZF9o9SFvIHfmqe2sTaetFIii2kD
-	TH2Ii1s1JeAo0dzm99kx2gOmD3qo7sb20d4vVeVlRI2I6q2Tfq5yZWsySMcxaxC1bQKCbOzTv2B
-	3sikQDhWR9WCqkvC27SIu3AaBJ5CevOAVqItKRy2RZ6ot3jgG6DbHQzFNqxcYe/GqX45Av3OfLN
-	9bLDrFxWWxZ+gQh7LrScqJdH+1fD0W8faUy6zWmQRLuQSZNUZyx4IfwyjP5SI9zhRASUfvzolSf
-	LUeGbh82yvQ9ZnxPkv4sj6hg++iW7a1kYT2kTY28jjMGe812V5m/oyBBC9xIiUxg8Q1plhP4K9j
-	7DdPpr8Dq5REp/kdmLq1ynshxigtNbwtyrkvTzA8ONlzQxeHE164t+iryAjVPDWjOge1J9btUpv
-	n7zlINVTjPp53Xkj+jT9HknR5Yiu
-X-Received: by 2002:a05:600c:3486:b0:4a0:1e68:d28d with SMTP id 5b1f17b1804b1-4a17b53be3amr13033455e9.6.1791275867902;
-        Tue, 06 Oct 2026 01:37:47 -0700 (PDT)
-Received: from center.jhjvjihww5qejoy14qwv1cc4td.frax.internal.cloudapp.net ([131.189.143.225])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4a178db0929sm55677635e9.12.2026.10.06.01.37.47
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 06 Oct 2026 01:37:47 -0700 (PDT)
-From: Orgad Shaneh <orgads@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Steve Dickson <steved@redhat.com>
-Subject: [PATCH rpcbind] rpcbind: bind the TCP listeners to the -h addresses too
-Date: Tue,  6 Oct 2026 08:37:46 +0000
-Message-ID: <20261006083746.353335-1-orgads@gmail.com>
-X-Mailer: git-send-email 2.47.3
+	dkim=pass (1024-bit key) header.d=arm.com header.i=@arm.com header.b="Lkh7HC57"
+Received: from usa-sjc-imap-foss1.foss.arm.com (unknown [10.121.207.14])
+	by usa-sjc-mx-foss1.foss.arm.com (Postfix) with ESMTP id 0BDF81516;
+	Tue,  6 Oct 2026 02:00:57 -0700 (PDT)
+Received: from e132076.cambridge.arm.com (e132076.arm.com [10.2.197.107])
+	by usa-sjc-imap-foss1.foss.arm.com (Postfix) with ESMTPA id B5F9C3F86F;
+	Tue,  6 Oct 2026 02:00:58 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=arm.com; s=foss;
+	t=1791277260; bh=Iwd2tfYTmlt/l0EpeJOvp//1Eq1OPqBlm4ThVSt9wPE=;
+	h=From:To:Cc:Subject:Date:From;
+	b=Lkh7HC57qU32WtFqHB6ARSHn12qBPstQTKP9ycabog/ruDz/CfpY5YXfNFQzJzKI0
+	 mU5119dB5zNBKrUEs0EYkqHnALXYec20eReViv6eAkezT2OeJE04AGYYGweoRoeQ1q
+	 qgMgwAfyLwZcXax37OGXysHEsLxhTrfb6yiAylTk=
+From: J Louis Kaplan <Louis.Kaplan@arm.com>
+To: cel@kernel.org,
+	dai.ngo@oracle.com,
+	jlayton@kernel.org,
+	neil@brown.name,
+	okorniev@redhat.com,
+	tom@talpey.com
+Cc: linux-nfs@vger.kernel.org,
+	linux-rdma@vger.kernel.org,
+	anna@kernel.org,
+	jgg@ziepe.ca,
+	leon@kernel.org,
+	trondmy@kernel.org,
+	J Louis Kaplan <Louis.Kaplan@arm.com>
+Subject: [RFC PATCH 0/6] Improve NFS server direct throughput with passthrough enabled
+Date: Tue,  6 Oct 2026 10:00:22 +0100
+Message-ID: <20261006090028.3412544-1-Louis.Kaplan@arm.com>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -72,77 +51,166 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
--h restricts only the datagram transports: tcp and tcp6 still bind to
-the wildcard address, so rpcbind answers on every interface over TCP
-even when -h names loopback and a single internal address. A host that
-uses -h to keep rpcbind off its external interfaces gets that only for
-UDP.
+For NFSoRDMA using RoCE, and with IOMMU passthrough enabled, use of a
+64KiB base page size was found to provide higher NFS read throughput
+than a 4KiB base page size. This patch series recovers some of that
+throughput with a 4k base page size by opportunistic use of large folios
+for the svc reply buffer.
 
-When -h is given, take the stream transports through the same
-per-address loop as the datagram ones (AF_LOCAL ones have no address
-and keep their own path), with the SO_REUSEADDR and listen() that the
-wildcard path already does for them. Without -h nothing changes.
+To better understand the performance implications of this patch series,
+an ablation test was run which added a single line to limit bio_vec
+coalescing to a single 4 KiB page. Large-folio allocation was kept in
+place. This brought direct-read throughput in configuration A (see
+below) back to approximately plain-kernel levels. This indicates that
+coalescing strongly contributes to the observed throughput gains with
+passthrough enabled.
 
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Orgad Shaneh <orgads@gmail.com>
----
- man/rpcbind.8 |  2 +-
- src/rpcbind.c | 15 ++++++++++++++-
- 2 files changed, 15 insertions(+), 2 deletions(-)
+Tests with patch series on Linux 7.2 commit 8d3ae59288f1
+========================================================
 
-diff --git a/man/rpcbind.8 b/man/rpcbind.8
-index 15b70f9..03b5514 100644
---- a/man/rpcbind.8
-+++ b/man/rpcbind.8
-@@ -85,7 +85,7 @@ checks are shown in detail.
- .It Fl f
- Do not fork and become a background process.
- .It Fl h
--Specify specific IP addresses to bind to for UDP requests.
-+Specify specific IP addresses to bind to for UDP and TCP requests.
- This option may be specified multiple times and can be used to
- restrict the interfaces rpcbind will respond to.
- When specifying IP addresses with
-diff --git a/src/rpcbind.c b/src/rpcbind.c
-index c39df97..1215c73 100644
---- a/src/rpcbind.c
-+++ b/src/rpcbind.c
-@@ -535,7 +535,13 @@ init_transport(struct netconfig *nconf)
- 		hints.ai_socktype = si.si_socktype;
- 		hints.ai_protocol = si.si_proto;
- 	}
--	if (nconf->nc_semantics == NC_TPI_CLTS) {
-+	/*
-+	 * With -h, bind the stream transports to the given addresses too,
-+	 * not only the datagram ones; AF_LOCAL transports have no address.
-+	 */
-+	if (nconf->nc_semantics == NC_TPI_CLTS ||
-+	    (nhosts > 0 && strcmp(nconf->nc_netid, "local") != 0 &&
-+	     strcmp(nconf->nc_netid, "unix") != 0)) {
- 		/*
- 		 * If no hosts were specified, just bind to INADDR_ANY.  Otherwise
- 		 * make sure 127.0.0.1 is added to the list.
-@@ -621,6 +627,11 @@ init_transport(struct netconfig *nconf)
- 			}
- 			addrlen = res->ai_addrlen;
- 			sa = (struct sockaddr *)res->ai_addr;
-+			if (nconf->nc_semantics != NC_TPI_CLTS &&
-+			    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on,
-+				       sizeof(on)) != 0)
-+				syslog(LOG_ERR, "cannot set SO_REUSEADDR on %s",
-+				    nconf->nc_netid);
- 			oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
-                         if (bind(fd, sa, addrlen) != 0) {
- 				syslog(LOG_ERR, "cannot bind %s on %s: %m",
-@@ -673,6 +684,8 @@ init_transport(struct netconfig *nconf)
- 				(void) free(uaddr);
- 			}
- #endif
-+			if (nconf->nc_semantics != NC_TPI_CLTS)
-+				listen(fd, SOMAXCONN);
- 			my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf, &taddr, 
-                                 RPC_MAXDATASIZE, RPC_MAXDATASIZE);
- 			if (my_xprt == (SVCXPRT *)NULL) {
+(The below tests were done before minor internal revisions.)
+
+Performance:
+fio read benchmark results on an NFSv4 mount are shown below with
+various tested boot commandlines on the NFS server. NFSoRDMA was used
+for all tests.
+
+Configurations B-D explicitly disable passthrough as I wanted to confirm
+that no significant regressions to the passthrough=0 are introduced by
+this prototype. I plan to test more passthrough=1 configurations ASAP.
+
+- Throughput and CPU usage were averaged over 60s runs.
+- Request size was 1 MiB in all tests.
+- Except where noted, 64 fio jobs and 64 nfsd threads were used.
+- Clients used O_DIRECT in all tests.
+- `Mode` in tables below is NFS server's access mode.
+- Server throughput/core is mean throughput divided by mean measured
+  server core equivalents, where 100% processor usage represents one core.
+- Changes are relative to the plain kernel:
+  100 * (patched - plain) / plain. Positive values mean increases.
+- Percentages are calculated from means rounded to two decimal places.
+- Results from the first buffered runs were discarded so as to
+  only compare filled page cache performance.
+- Direct results are average of two runs, except direct
+  configuration E which is the average of four runs.
+- Hardware used: Nvidia Grace (144 Arm Neoverse V2 cores),
+  Broadcom 400G NICs connected to NUMA 1 on client and server
+
+NFS server command lines tested:
+A: cpufreq.off=1 cpuidle.off=1 iommu.passthrough=1 iommu.strict=0
+   kpti=off maxcpus=72 mem=480g rcu_nocb_poll selinux=0
+B: cpufreq.off=1 cpuidle.off=1 iommu.passthrough=0 iommu.strict=0
+   kpti=off maxcpus=72 mem=480g rcu_nocb_poll selinux=0
+C: cpufreq.off=1 cpuidle.off=1 iommu.passthrough=0 iommu.strict=1
+   kpti=off maxcpus=72 mem=480g rcu_nocb_poll selinux=0
+D: cpufreq.off=0 cpuidle.off=0 iommu.passthrough=0 iommu.strict=1
+            maxcpus=72 mem=480g
+E: <empty command line>
+F: <empty command line> with only 8 fio jobs and 8 nfsd threads.
+
+Configuration   Mode      Throughput change   Server throughput/core change
+--------------  --------  ------------------  -----------------------------
+A               Direct               +136.8%                         +95.5%
+B               Direct                 +6.7%                         +74.9%
+C               Direct                +11.3%                         +62.4%
+D               Direct                 -1.9%                         +27.6%
+E               Direct                 -2.6%                         +28.2%
+F               Direct                +18.8%                         +21.8%
+
+More benchmarks are planned for a better signal/noise ratio.
+
+--------------  --------  ------------------  -----------------------------
+A               Buffered               +0.2%                         +33.6%
+B               Buffered                0.0%                         +28.7%
+C               Buffered                0.0%                         +11.4%
+D               Buffered                0.0%                          -8.0%
+E               Buffered                0.0%                          +7.4%
+F               Buffered                0.0%                         -12.0%
+
+Buffered mode saw no loss of throughput but there was an increased
+CPU usage observed in some configurations.
+
+Functional testing:
+Seven hour NFSv4 over RDMA stress run exercised buffered and direct NFSD
+modes using fsstress, fsx, and fio, with concurrency up to 64 workers.
+All 879 completed workloads passed.
+
+Tests with patch series on nfsd-testing commit 32eb1a60b456
+===========================================================
+
+Performance:
+
+Set-up as above.
+
+Configuration   Mode      Throughput change   Server throughput/core change
+--------------  --------  ------------------  -----------------------------
+A               Direct               +104.5%                         +70.2%
+E               Direct                 +3.4%                         +20.8%
+A               Buffered               +1.0%                         +35.6%
+E               Buffered                0.0%                         +15.5%
+
+Functional testing:
+A planned seven-hour NFSv4 over RDMA stress run stopped after
+approximately one hour because the test harness stops on server kernel
+warnings. It detected two correctable PCIe AER reports (RxErr and
+BadTLP) from the root port upstream of the server's RoCE NIC.
+
+Before the stop, 315 test workloads completed with exit status zero,
+including fio checksum readbacks. The cause of the AER reports and any
+relationship to this series have not been established.
+
+Tests with patch series on nfsd-testing commit 56589cdb58819
+============================================================
+
+Functional testing:
+On the rebased nfsd-testing tree, 490 workloads completed successfully.
+They covered buffered and direct NFSD modes with 1, 8, 32, and 64
+workers, using fsstress, fsx, and fio write/checksum readback tests.
+The planned seven-hour run stopped after 1h37 when the harness detected
+two USB hub descriptor timeouts that appear unrelated to the nfs stack.
+A full 7 hour test will be re-attempted again as soon as practicable.
+
+Known issues and follow-up
+==========================
+
+- Complete a seven-hour stress run on nfsd-testing and investigate
+  whether the PCIe AER reports recur.
+- Address memory-registration capacity limits with coalesced vectors
+  in the force_mr and Xen paths.
+- Gather more comprehensive performance data, including write data
+
+LLM Usage
+=========
+
+The idea of folio usage here was human-generated from observations of
+performance differences between 4KiB and 64KiB page size kernels. An
+LLM was used for familiarization with the NFS and related subsystems
+and for generating some of the code after lengthy prompted technical
+discussions. An LLM was used for multiple rounds of review, including
+for the cover letter; suggested changes were manually verified. It also
+helped develop scripts to invoke the various test suites mentioned above
+and analyze resulting logs.
+
+Signed-off-by: J Louis Kaplan <Louis.Kaplan@arm.com>
+Assisted-by: LLM
+
+J Louis Kaplan (6):
+  sunrpc: Add helpers to build bvecs from contiguous pages
+  nfsd: Coalesce contiguous pages for direct reads
+  svcrdma: Coalesce contiguous pages when mapping replies
+  svcrdma: Coalesce contiguous pages in RDMA Write chunks
+  svcrdma: Coalesce contiguous pages in RDMA Read chunks
+  sunrpc: Allocate svc request pages from large folios
+
+ drivers/infiniband/core/rw.c          |   7 +-
+ fs/nfsd/vfs.c                         |  11 +-
+ include/linux/sunrpc/svc.h            |  90 +++++++++++++
+ include/linux/sunrpc/svc_rdma.h       |  15 +++
+ net/sunrpc/svc_xprt.c                 |  44 ++++++-
+ net/sunrpc/xprtrdma/svc_rdma_rw.c     | 178 +++++++++++++++-----------
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c | 112 +++++++++-------
+ 7 files changed, 327 insertions(+), 130 deletions(-)
+
 -- 
-2.53.0
+2.43.0
 
