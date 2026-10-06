@@ -1,120 +1,223 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 56087356747;
-	Tue,  6 Oct 2026 04:29:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 92CA62DC792;
+	Tue,  6 Oct 2026 05:13:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791260984; cv=none; b=JMpCWDvQRhMyHWw+brdA8vuqWCuHyb9Y85+vtUJHeIvW4EMNeI+A3GSMAPpeQK60NeNlA99rvD32GLpCOoq7JhBRRzvxxOKUsg9yFzFA5v9H+p0tKpFhAT1r3yuPqNvPrZW4Xm/bqvBlfS2m7jHBUR+131keisgA0LegtrazXMs=
+	t=1791263607; cv=none; b=uYj//Po+B7ntLxTy3G9yhmpLgiy5jzFfwzXLfiqkSXYslH4SXZS7TBBgkCQ5LANiu8HiDoky9/OojUYHEidZaUqPeI12CGFsZJQ7tXgzmbu2oI4pHtSi8lyBu/YI3VWUTVU5HYLt6TUQsm/1tqFTL3zNKYYt4ITwapTiobQEM4g=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791260984; c=relaxed/simple;
-	bh=cR/D2haPwwjo171jB+/EuVU3PIdnppipC88D3htU2BU=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=XqN5X9H/jGJydjhAvv41t2zZ1C0TWok5ilReyzR3Z8/PM4lVOxzWpcBcnzplWVF5XdQREEv1Uuy9Xrn9eQzpHzXCLCJWrpoPp1xLs2+EvEtqL0nKCvUwQrRvuIIZi8/M4HU1NTuvabt1436r5Tkcr3cQGRSDLmaigUb880bjexY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IKM5bErH; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1791263607; c=relaxed/simple;
+	bh=G7/E9NSb+g9nF3NJXRM7t//sbhETCtMzAAg/iah6UuQ=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=h38yORLsk4DIzfKqt5cfrt5stILg01OyWva6IxQYBr7aWJXma3LYaNKYk/34rTZzcdMvVqO9bS19xfVGloueAzOSBPXG6Z3TpvxF2rX2/bJjdR9SenxJT7DsIIzr5BersWNNGYX5G0wZCrpvr496ah3pIeLyiAniAmzWdV7WpaY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=FrE9A7B7; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IKM5bErH"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id BD282C4AF67;
-	Tue,  6 Oct 2026 04:29:43 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1791260983;
-	bh=cR/D2haPwwjo171jB+/EuVU3PIdnppipC88D3htU2BU=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To:From;
-	b=IKM5bErHlLIcfCFDFCjkn6v/o4JKaUS75lIIzZKF1W7enecZfgLxox8YE6kgysfv2
-	 45wouSdHiGIkjRvYnlaBJ0GJVTc+TEpU/NUFADVkqlR+BO0zf+fXRyXSq5uf1TUkoQ
-	 nTUtsMZOtqQOhsYaSBV5Qqy6XJUY1jfxjEJtK/uYJRHruWBunOpT0bOvJdGS1WcGH+
-	 F2XXPgplV2+st5pBRa2O65EsQMSc67quLsEVuPnEszAFJbV65pzBDO3nUOzmbc0MUO
-	 b8hXfmTciPJeEbmU294xl9jFee0yT7q2k1XWxBbawtHLbC2sBidme6fBaWmFkijbwY
-	 rrKFAsLu+68Xw==
-Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AAC48CA6001;
-	Tue,  6 Oct 2026 04:29:43 +0000 (UTC)
-From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
-Date: Tue, 06 Oct 2026 13:29:48 +0900
-Subject: [PATCH 6/6] nfsd: do not fence a client for a layout recall with
- no layouts left
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="FrE9A7B7"
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 18EF31F000FF;
+	Tue,  6 Oct 2026 05:13:25 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1791263605;
+	bh=9Sai79UzyLyMiCUObaR4mGisnpxjcvP58Zvr/GHun3k=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=FrE9A7B7wCyshXEHUeQ+44JsyBO4maHfbNuvzGw9XcJblI7g0/OCJeeGsQJV7h308
+	 bFKj8MMirvQiY5HdgBTA6Dgxc2c8Wh3qRKjJN1iEuGn9kT65qCb8o0g+anmsEZnfZj
+	 LXVrJ6nbam6AflfYYdTXem5GyzfgpfDFEip9+Pkug0ZDFtRKalxcJ3/Cf0Y/MenHzB
+	 jRaaW+8zcbFl3JN7ZG+ke6Ho/ayssjdYL2PSrmPmh1hNvG/j2r/WChPoQrz0a7CPoP
+	 naQgeCqHpINvcwyeCkqTU+tyXkPFVFSYnLvJELsTmQ53mCV+YB5QXxdaa5CehBwjTn
+	 l9mT0axO+PJGw==
+Date: Mon, 5 Oct 2026 22:13:24 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Daejun Park <daejun7.park@samsung.com>
+Cc: "cem@kernel.org" <cem@kernel.org>,
+	"linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
+	"dai.ngo@oracle.com" <dai.ngo@oracle.com>,
+	"hch@lst.de" <hch@lst.de>, "dgc@kernel.org" <dgc@kernel.org>,
+	"sergeybashirov@gmail.com" <sergeybashirov@gmail.com>,
+	"cel@kernel.org" <cel@kernel.org>,
+	"jlayton@kernel.org" <jlayton@kernel.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] xfs: map pNFS layouts to the end of the extent again
+Message-ID: <20261006051324.GV2705364@frogsfrogsfrogs>
+References: <CGME20261006003425epcms2p586728e55ff5f9bbabc506b672fc4a421@epcms2p5>
+ <20261006003425epcms2p586728e55ff5f9bbabc506b672fc4a421@epcms2p5>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261006-nfsd-layout-recall-v1-6-b59b31caf342@samsung.com>
-References: <20261006-nfsd-layout-recall-v1-0-b59b31caf342@samsung.com>
-In-Reply-To: <20261006-nfsd-layout-recall-v1-0-b59b31caf342@samsung.com>
-To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
- NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
-Cc: Christoph Hellwig <hch@lst.de>, 
- Benjamin Coddington <bcodding@redhat.com>, 
- Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791260982; l=1856;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=COYpZ3SqMO2IRKw0SwEL7gpRX3/8u/hD6UzC74CWKOs=;
- b=5qcBM6K6w6wFM+qZQy3un3Voxb9MQBkUbamzRFy4ehI1RHFL4dcFr9uFQT58EEVfBTjQnu124
- xdekVhZ1y9KBtvbdIr5x1V32yzB4Kd13FRMU1toi7AyY2BpsK8P3H6z
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
- auth_id=1122
-X-Original-From: Daejun Park <daejun7.park@samsung.com>
-Reply-To: daejun7.park@samsung.com
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261006003425epcms2p586728e55ff5f9bbabc506b672fc4a421@epcms2p5>
 
-From: Daejun Park <daejun7.park@samsung.com>
+On Tue, Oct 06, 2026 at 09:34:25AM +0900, Daejun Park wrote:
+> Since commit 36ca6f11424a ("xfs: fix overlapping extents returned for
+> pNFS LAYOUTGET"), xfs_fs_map_blocks() maps only the range that nfsd asks
+> for.  For O_DIRECT, the Linux block layout client asks for the range of
+> the I/O at hand, so it now needs a LAYOUTGET for every O_DIRECT read or
+> write to a part of a file it has no layout for yet, where the first
+> LAYOUTGET used to return the whole extent.  Each LAYOUTGET is a round
+> trip, and xfs_fs_map_blocks() takes the iolock exclusively and writes
+> back and invalidates the page cache of the file for it.
+> 
+> On three QEMU VMs (an NVMe/TCP target, the server with nfsd and XFS, and
+> a client) running the same kernel without KASAN or lock debugging, a
+> client doing O_DIRECT I/O over the block layout of NFSv4.2 for 30
+> seconds to a 1 GiB file of one written extent, in order unless noted and
+> with an fsync every 16 MiB written, gets this many I/Os done (and
+> LAYOUTGETs counted at the server), one run each:
+> 
+>                        unpatched   ENTIRE, no trim      this patch
+>   4 KiB reads      41207 (41207)        334931 (1)      343749 (1)
+>   4 KiB random     36670 (34148)        259527 (1)     263829 (15)
+>   4 KiB overwrite  38556 (38556)        325533 (1)      307105 (1)
+>   64 KiB reads     70241 (16384)         80829 (1)       91196 (1)
+>   1 MiB reads       6857 (1024)           6759 (1)        6706 (1)
+> 
+> "ENTIRE, no trim" is a test kernel that maps with XFS_BMAPI_ENTIRE and
+> does not trim.  The random reads need a LAYOUTGET each time they go
+> before the lowest offset read so far, as the part of the extent before
+> the offset asked for is not mapped.  1 MiB overwrites and writes to an
+> unwritten extent also go from 1024 LAYOUTGETs to 1, with no clear change
+> in I/Os done.  Appending to a new file needs a LAYOUTGET per 1 MiB
+> appended either way, as XFS allocates only the range asked for on a
+> filesystem without a stripe unit or an extent size hint.
+> 
+> The overlap fixed by that commit comes from XFS_BMAPI_ENTIRE reaching
+> back.  nfsd4_block_proc_layoutget() calls ->map_blocks once per extent
+> of a LAYOUTGET, each time for the range left after the previous extent.
+> An allocation in one call can merge the extent that the next call starts
+> in with the extents before it, and the whole extent then starts before
+> the offset of that call and overlaps extents already in the layout.  The
+> Linux client rejects such a layout (verify_extent() returns -EIO), and
+> the I/O that needed it fails.
+> 
+> In the thread of that commit, Christoph Hellwig asked for
+> XFS_BMAPI_ENTIRE to be dropped to stop the overlap, Darrick J. Wong
+> agreed, and it was said that the flag makes no difference on the first
+> call, which is for the whole range the client asked for.  The difference
+> is past that range: the Linux client asks for the range of each O_DIRECT
+> I/O and uses the rest of a longer layout for the I/Os that follow, which
+> RFC 8881 allows (Table 22 sets only a minimum length).  A client could
+> ask for more for a read layout, but for a write layout
+> xfs_fs_map_blocks() allocates any hole in the range asked for.
+> 
+> Dave Chinner suggested keeping the flag for the first call and trimming
+> the mappings of the calls that follow.  ->map_blocks cannot tell the
+> first call from the others, and Christoph preferred to keep such a
+> choice out of that interface, so trim every mapping to start at the
+> offset asked for instead.  No mapping can then overlap the one before
+> it, since each call starts where the previous extent ended.  Unlike
+> Dave's suggestion, the first mapping loses the part of the extent before
+> the offset, and the last mapping keeps the part past the end of the
+> range, which the loop in nfsd4_block_proc_layoutget() already handles.
+> Trimming in that loop instead would keep his suggestion exactly, but
+> would change nfsd as well, while trimming in XFS keeps every mapping it
+> returns free of overlap whatever the caller does.
+> 
+> Unlike before that commit, don't let the mapping reach past EOF beyond
+> the range asked for.  On an inode without XFS_DIFLAG_PREALLOC or
+> XFS_DIFLAG_APPEND, xfs_free_eofblocks() can free blocks past EOF, such
+> as speculative preallocation, without breaking the layout, so a client
+> that did not ask for them should not get them.  What a client gets for a
+> range past EOF that it asks for does not change.
+> 
+> The aio group, the fsx tests and generic/013 (fsstress) of fstests over
+> the block layout, and the fsx tests and generic/013 over the SCSI
+> layout, give the same results with and without this patch.  generic/091
+> and 263 fail with the ENTIRE, no trim kernel and pass with this patch,
+> and so does the pynfs test BLOCK5, which checks a write layout over a
+> hole between two allocated blocks against three rules of RFC 5663
+> section 2.3.1.
+> 
+> Fixes: 36ca6f11424a ("xfs: fix overlapping extents returned for pNFS LAYOUTGET")
+> Cc: stable@vger.kernel.org
+> Suggested-by: Dave Chinner <dgc@kernel.org>
+> Link: https://lore.kernel.org/r/ageSguSyf2kBY33a@dread
+> Link: https://lore.kernel.org/r/agwDhixPAAA0-cTa@infradead.org
+> Link: https://lore.kernel.org/r/agqfBPRWXQDR2ImG@infradead.org
+> Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+> ---
+> This is meant as the small fix for stable.  It does not stand in the
+> way of letting ->map_blocks return several mappings per call, which
+> was raised in the thread of that commit.
+> 
+> Tested on nfsd-testing 32eb1a60b456 (7.3-rc4), on the three VMs above.
+> Its fs/xfs/xfs_pnfs.c and xfs_bmap_util.c are the same as in this base;
+> its xfs_iomap.c and libxfs/xfs_bmap.c differ only in the error path of
+> xfs_iomap_write_direct(), zoned writes and two unused arguments.  For
+> the SCSI layout, the target ran 7.3-rc1 with two fixes to
+> nvmet_pr_preempt(), which fencing a client through a reservation preempt
+> relies on:
+> 
+> - With KASAN, lockdep and CONFIG_XFS_DEBUG, 20 of the 31 tests of the
+>   aio group, the fsx tests and generic/013 run over the block layout
+>   (FSX_AVOID=-E), and the same ones fail with and without this patch:
+>   generic/075, 112 and 127 with an fsx "Size error" within 390
+>   operations, and 551 with the client out of memory.  Over the SCSI
+>   layout, generic/013, 075, 091, 112, 127 and 263 run, and 075, 112 and
+>   127 fail the same way.
+> - Without KASAN or lock debugging, generic/551 passes with and without
+>   this patch with 16 GiB of client memory.  With the ENTIRE, no trim
+>   kernel, generic/075, 091 and 263 fail with a zero-length O_DIRECT
+>   write or an msync() EIO, and bl_alloc_lseg() on the client returns
+>   -EIO three times.  On the unpatched kernel and with this patch only
+>   075 fails, with the "Size error", and bl_alloc_lseg() returns no
+>   error.
+> - The pynfs test BLOCK5 fails in five runs out of five with the ENTIRE,
+>   no trim kernel, and passes in five out of five on the unpatched
+>   kernel and with this patch.  It is at
+>   https://lore.kernel.org/r/20261006002622epcms2p38e492aef17fdf79e48b05c9aada2918d@epcms2p3
+> 
+>  fs/xfs/xfs_pnfs.c | 19 +++++++++++++++++--
+>  1 file changed, 17 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
+> index f8535ecde..ab3856170 100644
+> --- a/fs/xfs/xfs_pnfs.c
+> +++ b/fs/xfs/xfs_pnfs.c
+> @@ -183,13 +183,28 @@ xfs_fs_map_blocks(
+>  	offset_fsb = XFS_B_TO_FSBT(mp, offset);
+>  
+>  	lock_flags = xfs_ilock_data_map_shared(ip);
+> -	/* request mappings for the specified range only */
+> +	/*
+> +	 * Map to the end of the extent that covers the start of the range,
+> +	 * so that a client doing I/O in pieces gets a layout it can use for
+> +	 * the pieces that follow.  Never map anything before the start of
+> +	 * the range: nfsd calls in here once per extent of a LAYOUTGET, for
+> +	 * the range that is left after the previous extent, and the mapping
+> +	 * can change in between, so a mapping that reaches back can overlap
+> +	 * one already in the layout.  Don't extend the mapping past EOF
+> +	 * beyond the range either: xfs_free_eofblocks() can free blocks past
+> +	 * EOF without breaking the layout.
+> +	 */
+>  	error = xfs_bmapi_read(ip, offset_fsb, end_fsb - offset_fsb,
+> -				&imap, &nimaps, 0);
+> +				&imap, &nimaps, XFS_BMAPI_ENTIRE);
+>  	if (error) {
+>  		xfs_iunlock(ip, lock_flags);
+>  		goto out_unlock;
+>  	}
+> +	if (nimaps)
+> +		xfs_trim_extent(&imap, offset_fsb,
+> +				max_t(xfs_fileoff_t, end_fsb,
+> +				      XFS_B_TO_FSB(mp, XFS_ISIZE(ip))) -
+> +				offset_fsb);
 
-nfsd4_cb_layout_done() fences the client for any answer to a
-CB_LAYOUTRECALL that it does not handle, without looking at whether the
-layout stateid still has layouts.  A LAYOUTRETURN can return the last
-layout while the recall is still out.  The Linux client answers
-NFS4ERR_NOMATCHING_LAYOUT then, which RFC 8881 section 20.3.3 allows
-for a client that holds no layouts for the file.  A client that answers
-NFS4ERR_BAD_STATEID is right too, since section 12.5.3 makes a layout
-stateid invalid once the client has no layouts for the file, but it is
-fenced for nothing.
+This is a clever solution -- report a mapping for at least the first
+block at @offset, potentially going past @length up to EOF.
 
-Check for layouts before fencing, as the polls already do before their
-time limit, and end the recall when none are left.  This does not depend
-on the earlier patches in this series.
+I wonder, though, should the caller (i.e. NFS) do this trimming to
+protect itself from other filesystems making the same mistake?
 
-A pynfs client that returns its layout on the recall and then answers
-it NFS4ERR_BAD_STATEID: without this patch, nfsd logged "failed to
-respond to layout recall" and ran the fence for it; with it, the recall
-ended without either.
+--D
 
-Fixes: c5c707f96fc9 ("nfsd: implement pNFS layout recalls")
-
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
----
- fs/nfsd/nfs4layouts.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
-
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index c140c9bde..345890add 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -803,6 +803,15 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
- 		}
- 		fallthrough;
- 	default:
-+		/*
-+		 * Nothing to fence for once the layouts are gone: a
-+		 * LAYOUTRETURN can return the last one while the recall is
-+		 * still out.
-+		 */
-+		if (list_empty(&ls->ls_layouts)) {
-+			trace_nfsd_layout_recall_done(&ls->ls_stid.sc_stateid);
-+			return 1;
-+		}
- 		/*
- 		 * Unknown error or non-responding client, we'll need to fence.
- 		 */
-
--- 
-2.43.0
-
-
+>  	seq = xfs_iomap_inode_sequence(ip, 0);
+>  
+>  	ASSERT(!nimaps || imap.br_startblock != DELAYSTARTBLOCK);
+> 
+> base-commit: b942c6919ac39870f8327d3123a2912d96e7e617
+> 
