@@ -1,55 +1,58 @@
 Received: from mailout1.samsung.com (mailout1.samsung.com [203.254.224.24])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B636D54707C
-	for <linux-nfs@vger.kernel.org>; Tue,  6 Oct 2026 00:26:32 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AC21D2AE68
+	for <linux-nfs@vger.kernel.org>; Tue,  6 Oct 2026 00:34:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.254.224.24
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791246395; cv=none; b=P6WEh3qJooimaUYXG7bWv5ttOPgPYIhkoZX7OKQ3eHeeU0EBg1lFXZn8GkXcggCsO+FWYkwFe4lS/tezDXYOvVPs03WphhhoWRh/Dvrxqg603YH0+U2XWNzon/wWFkSIj6Vrh4C4KeEKPEkTOFb4y5PFtSnLt85m0UOBoZ0Gfu4=
+	t=1791246872; cv=none; b=h+IBe9oHOFE8t5s/CJpD1ifhBkKeZYo/2OwUAv6cCx8/QU1Si6H/mIlcSHGaeLnVrJQofChrF/RCkHFUo/dEFYzu2Okp9PQ2bEVfVb7RbEAWLZ1CxCInaOO6FHRcPgHyHcPk0nA715GuIUagGmQj+pQRXD5zgxvgh8bls2quHYg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791246395; c=relaxed/simple;
-	bh=mJ7k63PC+cvN/zBKFFM8RV6+AOQ4LweXzP64o0lt5x8=;
+	s=arc-20240116; t=1791246872; c=relaxed/simple;
+	bh=X2IHjnJSr2H2NwlXpMdGtVOGUMazL7fCYtntG3QGmUc=;
 	h=Mime-Version:Subject:From:To:CC:Message-ID:Date:Content-Type:
-	 References; b=TVTS/RDgpMn4xaQGnyJWB88dVe5R3a7Oo5/Kdjpj0x4KS84QsKf/OEgl+1Ww4Pqg5GXejPVach35NTp/uUERsTMd0vIR4EzoevkoUf61+mE+fcInUGWYTBez9+7TVSLzN9cTHIdhHsHFadAROl6/5tlp/DfAcEOkGkux8IbSS8M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=N8/YgPYv; arc=none smtp.client-ip=203.254.224.24
+	 References; b=eSV8VNrmX7wR1CsLvjDrRPqv4CrP4WYhwyAhLof30w2DhD288B2HHPWHCSKoAvcbnci5aRz7PdY2y5o84U56+J9e1K8zYT+dO4QjlJGTBGzwVkuOAIP7j+GD5sBca+pdHqsLm+claTP1BKkdxzjG03nBTYrsTDpWkISgDY9mssU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=aAFp96+3; arc=none smtp.client-ip=203.254.224.24
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="N8/YgPYv"
+	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="aAFp96+3"
 Received: from epcas2p2.samsung.com (unknown [182.195.41.54])
-	by mailout1.samsung.com (KnoxPortal) with ESMTP id 20261006002623epoutp016a27d45e7520c2f55cc0fde850ef8b61~byRh2rAyO2253522535epoutp01D
-	for <linux-nfs@vger.kernel.org>; Tue,  6 Oct 2026 00:26:23 +0000 (GMT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout1.samsung.com 20261006002623epoutp016a27d45e7520c2f55cc0fde850ef8b61~byRh2rAyO2253522535epoutp01D
+	by mailout1.samsung.com (KnoxPortal) with ESMTP id 20261006003427epoutp01f2a350f7c14012a6fa32192140f5ba21~byYkPv3bz3036830368epoutp013
+	for <linux-nfs@vger.kernel.org>; Tue,  6 Oct 2026 00:34:27 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout1.samsung.com 20261006003427epoutp01f2a350f7c14012a6fa32192140f5ba21~byYkPv3bz3036830368epoutp013
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
-	s=mail20170921; t=1791246383;
-	bh=NOnLE34qT3DV0pmdVnEpikaaCzPZ9pdjW6ih6oDVzwc=;
+	s=mail20170921; t=1791246867;
+	bh=4hjWuoVtjy3VTTdcWwhptVFZzqM8EAvwPY2jhU7T6YY=;
 	h=Subject:Reply-To:From:To:CC:Date:References:From;
-	b=N8/YgPYvH7or1SdT/13kTzsp4W7K+LJFvDqDX5CPxfpQG/RiA4ux0kspNdNDn+FB5
-	 rSStlxCijP0xydFQss6z4SVLajqEke/+YOCemOWa2BxRnMTBNuotozHKgzZqT2rlKu
-	 cnn9NFRkzg3fK9B58Qd46cyq0/Os7/cBKADVT+bg=
-Received: from epsnrtp03.localdomain (unknown [182.195.42.155]) by
-	epcas2p1.samsung.com (KnoxPortal) with ESMTPS id
-	20261006002623epcas2p14f7c081252fa4e99504b6cba5760c20c~byRhQUfug0287502875epcas2p1C;
-	Tue,  6 Oct 2026 00:26:23 +0000 (GMT)
-Received: from epcas2p4.samsung.com (unknown [182.195.38.212]) by
-	epsnrtp03.localdomain (Postfix) with ESMTP id 4hzH9p58cgz3hhT7; Tue,  6 Oct
-	2026 00:26:22 +0000 (GMT)
+	b=aAFp96+3Ifh59YMJ8QRcaQnDpOi9gJu+ovfd1hPYwbvnrMRSISkiVsQ4W/k0u70rf
+	 IYULVOjM1jGq9Ki+b/WOoOVQbotf2peBmqe9IJtS2SR/arP74j/igUEj/fgSpxtb8p
+	 jaejAIDWxX998Xjm4I+tHjiGL3gh7SlFZqwZMarc=
+Received: from epsnrtp01.localdomain (unknown [182.195.42.153]) by
+	epcas2p3.samsung.com (KnoxPortal) with ESMTPS id
+	20261006003426epcas2p3add840c9553986bf28e953d99e2922ea~byYjwo9VJ2593125931epcas2p3J;
+	Tue,  6 Oct 2026 00:34:26 +0000 (GMT)
+Received: from epcas2p1.samsung.com (unknown [182.195.38.200]) by
+	epsnrtp01.localdomain (Postfix) with ESMTP id 4hzHM636snz6B9m4; Tue,  6 Oct
+	2026 00:34:26 +0000 (GMT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 Mime-Version: 1.0
-Subject: [PATCH pynfs] Add a test for contiguous writable extents in a block
- layout
+Subject: [PATCH] xfs: map pNFS layouts to the end of the extent again
 Reply-To: daejun7.park@samsung.com
 Sender: Daejun Park <daejun7.park@samsung.com>
 From: Daejun Park <daejun7.park@samsung.com>
-To: "calum.mackay@oracle.com" <calum.mackay@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"cel@kernel.org" <cel@kernel.org>, "jlayton@kernel.org"
-	<jlayton@kernel.org>, "hch@lst.de" <hch@lst.de>, "dai.ngo@oracle.com"
-	<dai.ngo@oracle.com>, Daejun Park <daejun7.park@samsung.com>
+To: "cem@kernel.org" <cem@kernel.org>, "linux-xfs@vger.kernel.org"
+	<linux-xfs@vger.kernel.org>
+CC: "dai.ngo@oracle.com" <dai.ngo@oracle.com>, "hch@lst.de" <hch@lst.de>,
+	"djwong@kernel.org" <djwong@kernel.org>, "dgc@kernel.org" <dgc@kernel.org>,
+	"sergeybashirov@gmail.com" <sergeybashirov@gmail.com>, "cel@kernel.org"
+	<cel@kernel.org>, "jlayton@kernel.org" <jlayton@kernel.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, Daejun Park
+	<daejun7.park@samsung.com>
 X-Priority: 3
 X-Content-Kind-Code: NORMAL
 X-CPGS-Detection: blocking_info_exchange
@@ -57,9 +60,9 @@ X-Drm-Type: N,general
 X-Msg-Generator: Mail
 X-Msg-Type: PERSONAL
 X-Reply-Demand: N
-Message-ID: <20261006002622epcms2p38e492aef17fdf79e48b05c9aada2918d@epcms2p3>
-Date: Tue, 06 Oct 2026 09:26:22 +0900
-X-CMS-MailID: 20261006002622epcms2p38e492aef17fdf79e48b05c9aada2918d
+Message-ID: <20261006003425epcms2p586728e55ff5f9bbabc506b672fc4a421@epcms2p5>
+Date: Tue, 06 Oct 2026 09:34:25 +0900
+X-CMS-MailID: 20261006003425epcms2p586728e55ff5f9bbabc506b672fc4a421
 Content-Transfer-Encoding: 7bit
 Content-Type: text/plain; charset="utf-8"
 X-Sendblock-Type: AUTO_CONFIDENTIAL
@@ -68,149 +71,164 @@ X-CPGSPASS: Y
 X-CPGSPASS: Y
 cpgsPolicy: CPGSC10-223,Y
 X-CFilter-Loop: Reflected
-X-CMS-RootMailID: 20261006002622epcms2p38e492aef17fdf79e48b05c9aada2918d
-References: <CGME20261006002622epcms2p38e492aef17fdf79e48b05c9aada2918d@epcms2p3>
+X-CMS-RootMailID: 20261006003425epcms2p586728e55ff5f9bbabc506b672fc4a421
+References: <CGME20261006003425epcms2p586728e55ff5f9bbabc506b672fc4a421@epcms2p5>
 
-BLOCK5: a LAYOUTIOMODE4_RW LAYOUTGET over a hole between two allocated
-blocks, where the server allocates the hole, gets extents that follow
-three of the rules in RFC 5663 section 2.3.1: the extents are ordered by
-offset, the writable extents (all but PNFS_BLOCK_READ_DATA) are
-logically contiguous, and the first extent contains the requested offset
-(so the extent list is not empty).  A server that maps each extent in
-full can return the extent that the allocation merges with the ones
-before it, overlapping them.
+Since commit 36ca6f11424a ("xfs: fix overlapping extents returned for
+pNFS LAYOUTGET"), xfs_fs_map_blocks() maps only the range that nfsd asks
+for.  For O_DIRECT, the Linux block layout client asks for the range of
+the I/O at hand, so it now needs a LAYOUTGET for every O_DIRECT read or
+write to a part of a file it has no layout for yet, where the first
+LAYOUTGET used to return the whole extent.  Each LAYOUTGET is a round
+trip, and xfs_fs_map_blocks() takes the iolock exclusively and writes
+back and invalidates the page cache of the file for it.
 
-The test allocates three blocks of the layout block size
-(FATTR4_LAYOUT_BLKSIZE) and deallocates the middle one, so that the
-block the server allocates for the hole is likely to be that one and to
-merge with both neighbours.  It warns if the layout does not cover the
-three blocks or they are not contiguous on the volume, as then no merge
-could be seen.  On Linux nfsd over XFS the freed block can be reused at
-once on a sync export, where DEALLOCATE commits.  The minimum length is
-one block, so that a server that returns one extent per LAYOUTGET does
-not have to refuse the request.  Every layout in the reply is checked.
-The test uses ALLOCATE and DEALLOCATE, so it needs NFSv4.2, and a server
-without them does not support the test.
+On three QEMU VMs (an NVMe/TCP target, the server with nfsd and XFS, and
+a client) running the same kernel without KASAN or lock debugging, a
+client doing O_DIRECT I/O over the block layout of NFSv4.2 for 30
+seconds to a 1 GiB file of one written extent, in order unless noted and
+with an fsync every 16 MiB written, gets this many I/Os done (and
+LAYOUTGETs counted at the server), one run each:
 
-Linux nfsd over XFS fails BLOCK5 in five runs out of five on a test
-kernel that maps with XFS_BMAPI_ENTIRE in xfs_fs_map_blocks() and does
-not trim, which kernel commit 36ca6f11424a ("xfs: fix overlapping
-extents returned for pNFS LAYOUTGET") stopped in 7.1.  nfsd-testing on
-top of 7.3-rc4 passes it in five runs out of five, with and without
-"xfs: map pNFS layouts to the end of the extent again".
+                       unpatched   ENTIRE, no trim      this patch
+  4 KiB reads      41207 (41207)        334931 (1)      343749 (1)
+  4 KiB random     36670 (34148)        259527 (1)     263829 (15)
+  4 KiB overwrite  38556 (38556)        325533 (1)      307105 (1)
+  64 KiB reads     70241 (16384)         80829 (1)       91196 (1)
+  1 MiB reads       6857 (1024)           6759 (1)        6706 (1)
 
+"ENTIRE, no trim" is a test kernel that maps with XFS_BMAPI_ENTIRE and
+does not trim.  The random reads need a LAYOUTGET each time they go
+before the lowest offset read so far, as the part of the extent before
+the offset asked for is not mapped.  1 MiB overwrites and writes to an
+unwritten extent also go from 1024 LAYOUTGETs to 1, with no clear change
+in I/Os done.  Appending to a new file needs a LAYOUTGET per 1 MiB
+appended either way, as XFS allocates only the range asked for on a
+filesystem without a stripe unit or an extent size hint.
+
+The overlap fixed by that commit comes from XFS_BMAPI_ENTIRE reaching
+back.  nfsd4_block_proc_layoutget() calls ->map_blocks once per extent
+of a LAYOUTGET, each time for the range left after the previous extent.
+An allocation in one call can merge the extent that the next call starts
+in with the extents before it, and the whole extent then starts before
+the offset of that call and overlaps extents already in the layout.  The
+Linux client rejects such a layout (verify_extent() returns -EIO), and
+the I/O that needed it fails.
+
+In the thread of that commit, Christoph Hellwig asked for
+XFS_BMAPI_ENTIRE to be dropped to stop the overlap, Darrick J. Wong
+agreed, and it was said that the flag makes no difference on the first
+call, which is for the whole range the client asked for.  The difference
+is past that range: the Linux client asks for the range of each O_DIRECT
+I/O and uses the rest of a longer layout for the I/Os that follow, which
+RFC 8881 allows (Table 22 sets only a minimum length).  A client could
+ask for more for a read layout, but for a write layout
+xfs_fs_map_blocks() allocates any hole in the range asked for.
+
+Dave Chinner suggested keeping the flag for the first call and trimming
+the mappings of the calls that follow.  ->map_blocks cannot tell the
+first call from the others, and Christoph preferred to keep such a
+choice out of that interface, so trim every mapping to start at the
+offset asked for instead.  No mapping can then overlap the one before
+it, since each call starts where the previous extent ended.  Unlike
+Dave's suggestion, the first mapping loses the part of the extent before
+the offset, and the last mapping keeps the part past the end of the
+range, which the loop in nfsd4_block_proc_layoutget() already handles.
+Trimming in that loop instead would keep his suggestion exactly, but
+would change nfsd as well, while trimming in XFS keeps every mapping it
+returns free of overlap whatever the caller does.
+
+Unlike before that commit, don't let the mapping reach past EOF beyond
+the range asked for.  On an inode without XFS_DIFLAG_PREALLOC or
+XFS_DIFLAG_APPEND, xfs_free_eofblocks() can free blocks past EOF, such
+as speculative preallocation, without breaking the layout, so a client
+that did not ask for them should not get them.  What a client gets for a
+range past EOF that it asks for does not change.
+
+The aio group, the fsx tests and generic/013 (fsstress) of fstests over
+the block layout, and the fsx tests and generic/013 over the SCSI
+layout, give the same results with and without this patch.  generic/091
+and 263 fail with the ENTIRE, no trim kernel and pass with this patch,
+and so does the pynfs test BLOCK5, which checks a write layout over a
+hole between two allocated blocks against three rules of RFC 5663
+section 2.3.1.
+
+Fixes: 36ca6f11424a ("xfs: fix overlapping extents returned for pNFS LAYOUTGET")
+Cc: stable@vger.kernel.org
+Suggested-by: Dave Chinner <dgc@kernel.org>
+Link: https://lore.kernel.org/r/ageSguSyf2kBY33a@dread
+Link: https://lore.kernel.org/r/agwDhixPAAA0-cTa@infradead.org
+Link: https://lore.kernel.org/r/agqfBPRWXQDR2ImG@infradead.org
 Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
- nfs4.1/server41tests/st_block.py | 94 +++++++++++++++++++++++++++++++-
- 1 file changed, 91 insertions(+), 3 deletions(-)
+This is meant as the small fix for stable.  It does not stand in the
+way of letting ->map_blocks return several mappings per call, which
+was raised in the thread of that commit.
 
-diff --git a/nfs4.1/server41tests/st_block.py b/nfs4.1/server41tests/st_block.py
-index 3cfc1c6..6c30585 100644
---- a/nfs4.1/server41tests/st_block.py
-+++ b/nfs4.1/server41tests/st_block.py
-@@ -2,10 +2,11 @@ from xdrdef.nfs4_const import *
- from xdrdef.nfs4_type import *
- import nfs_ops
- op = nfs_ops.NFS4ops()
--from .environment import check, fail, create_file
-+from .environment import check, fail, create_file, use_obj, \
-+    get_blocksize
- from block import Packer as BlockPacker, Unpacker as BlockUnpacker, \
--    PNFS_BLOCK_READWRITE_DATA, pnfs_block_layoutupdate4, \
--    pnfs_block_extent4
-+    PNFS_BLOCK_READWRITE_DATA, PNFS_BLOCK_READ_DATA, \
-+    pnfs_block_layoutupdate4, pnfs_block_extent4
- from nfs4lib import FancyNFS4Packer, get_nfstime
+Tested on nfsd-testing 32eb1a60b456 (7.3-rc4), on the three VMs above.
+Its fs/xfs/xfs_pnfs.c and xfs_bmap_util.c are the same as in this base;
+its xfs_iomap.c and libxfs/xfs_bmap.c differ only in the error path of
+xfs_iomap_write_direct(), zoned writes and two unused arguments.  For
+the SCSI layout, the target ran 7.3-rc1 with two fixes to
+nvmet_pr_preempt(), which fencing a client through a reservation preempt
+relies on:
+
+- With KASAN, lockdep and CONFIG_XFS_DEBUG, 20 of the 31 tests of the
+  aio group, the fsx tests and generic/013 run over the block layout
+  (FSX_AVOID=-E), and the same ones fail with and without this patch:
+  generic/075, 112 and 127 with an fsx "Size error" within 390
+  operations, and 551 with the client out of memory.  Over the SCSI
+  layout, generic/013, 075, 091, 112, 127 and 263 run, and 075, 112 and
+  127 fail the same way.
+- Without KASAN or lock debugging, generic/551 passes with and without
+  this patch with 16 GiB of client memory.  With the ENTIRE, no trim
+  kernel, generic/075, 091 and 263 fail with a zero-length O_DIRECT
+  write or an msync() EIO, and bl_alloc_lseg() on the client returns
+  -EIO three times.  On the unpatched kernel and with this patch only
+  075 fails, with the "Size error", and bl_alloc_lseg() returns no
+  error.
+- The pynfs test BLOCK5 fails in five runs out of five with the ENTIRE,
+  no trim kernel, and passes in five out of five on the unpatched
+  kernel and with this patch.  It is at
+  https://lore.kernel.org/r/20261006002622epcms2p38e492aef17fdf79e48b05c9aada2918d@epcms2p3
+
+ fs/xfs/xfs_pnfs.c | 19 +++++++++++++++++--
+ 1 file changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
+index f8535ecde..ab3856170 100644
+--- a/fs/xfs/xfs_pnfs.c
++++ b/fs/xfs/xfs_pnfs.c
+@@ -183,13 +183,28 @@ xfs_fs_map_blocks(
+ 	offset_fsb = XFS_B_TO_FSBT(mp, offset);
  
+ 	lock_flags = xfs_ilock_data_map_shared(ip);
+-	/* request mappings for the specified range only */
++	/*
++	 * Map to the end of the extent that covers the start of the range,
++	 * so that a client doing I/O in pieces gets a layout it can use for
++	 * the pieces that follow.  Never map anything before the start of
++	 * the range: nfsd calls in here once per extent of a LAYOUTGET, for
++	 * the range that is left after the previous extent, and the mapping
++	 * can change in between, so a mapping that reaches back can overlap
++	 * one already in the layout.  Don't extend the mapping past EOF
++	 * beyond the range either: xfs_free_eofblocks() can free blocks past
++	 * EOF without breaking the layout.
++	 */
+ 	error = xfs_bmapi_read(ip, offset_fsb, end_fsb - offset_fsb,
+-				&imap, &nimaps, 0);
++				&imap, &nimaps, XFS_BMAPI_ENTIRE);
+ 	if (error) {
+ 		xfs_iunlock(ip, lock_flags);
+ 		goto out_unlock;
+ 	}
++	if (nimaps)
++		xfs_trim_extent(&imap, offset_fsb,
++				max_t(xfs_fileoff_t, end_fsb,
++				      XFS_B_TO_FSB(mp, XFS_ISIZE(ip))) -
++				offset_fsb);
+ 	seq = xfs_iomap_inode_sequence(ip, 0);
  
-@@ -215,3 +216,90 @@ def testSplitCommit(t, env):
-                            layoutupdate4(LAYOUT4_BLOCK_VOLUME, p.get_buffer()))]
-     res = sess.compound(ops)
-     check(res)
-+
-+def testRWExtentsContiguous(t, env):
-+    """RW layout over a hole between allocated blocks has contiguous extents
-+
-+    The server allocates the hole for the layout.  Check three of the
-+    rules in RFC 5663 section 2.3.1: the extents are ordered by offset,
-+    the writable extents (all but PNFS_BLOCK_READ_DATA) are logically
-+    contiguous, and the first extent contains the requested offset.  A
-+    server that maps each extent in full can return the extent that the
-+    allocation merges with the ones before it, overlapping them.  The
-+    minimum length is one block, so that a server that returns one
-+    extent per LAYOUTGET does not have to refuse the request.  Warn if
-+    the layout does not cover the three blocks or they are not contiguous
-+    on the volume, as then no merge could be seen.
-+
-+    FLAGS: block
-+    CODE: BLOCK5
-+    VERS: 2-
-+    """
-+    sess = env.c1.new_pnfs_client_session(env.testname(t))
-+    bs = get_blocksize(sess, use_obj(env.opts.path))
-+    res = create_file(sess, env.testname(t))
-+    check(res)
-+    fh = res.resarray[-1].object
-+    open_stateid = res.resarray[-2].stateid
-+    # Allocate three blocks, then deallocate the middle one: the block
-+    # the server allocates for the hole is likely to be that one, and to
-+    # merge with both neighbours.  (On Linux nfsd over XFS the freed block
-+    # can be reused at once on a sync export, where DEALLOCATE commits.)
-+    res = sess.compound([op.putfh(fh), op.allocate(open_stateid, 0, 3*bs)])
-+    if res.status == NFS4ERR_NOTSUPP:
-+        t.fail_support("ALLOCATE is not supported")
-+    check(res)
-+    res = sess.compound([op.putfh(fh), op.deallocate(open_stateid, bs, bs)])
-+    if res.status == NFS4ERR_NOTSUPP:
-+        t.fail_support("DEALLOCATE is not supported")
-+    check(res)
-+    ops = [op.putfh(fh),
-+           op.layoutget(False, LAYOUT4_BLOCK_VOLUME, LAYOUTIOMODE4_RW,
-+                        0, 3*bs, bs, open_stateid, 0xffff)]
-+    res = sess.compound(ops)
-+    check(res)
-+    found = False
-+    blocks = {}
-+    for layout in res.resarray[-1].logr_layout:
-+        p = BlockUnpacker(layout.loc_body)
-+        opaque = p.unpack_pnfs_block_layout4()
-+        p.done()
-+        ext = [(e.bex_file_offset, e.bex_length, e.bex_state)
-+               for e in opaque.blo_extents]
-+        print(layout.lo_offset, layout.lo_length, ext,
-+              [e.bex_storage_offset for e in opaque.blo_extents])
-+        if not ext:
-+            fail("No extents in layout %d+%d" %
-+                 (layout.lo_offset, layout.lo_length))
-+        for a, b in zip(ext, ext[1:]):
-+            if b[0] < a[0] or (b[0] == a[0] and
-+                               a[2] != PNFS_BLOCK_READ_DATA and
-+                               b[2] == PNFS_BLOCK_READ_DATA):
-+                fail("Extents %s and %s are not in order" % (a, b))
-+        writable = [e for e in ext if e[2] != PNFS_BLOCK_READ_DATA]
-+        for a, b in zip(writable, writable[1:]):
-+            if b[0] != a[0] + a[1]:
-+                fail("Writable extents %s and %s are not logically "
-+                     "contiguous" % (a, b))
-+        if layout.lo_offset <= 0 < layout.lo_offset + layout.lo_length:
-+            found = True
-+            if not ext[0][0] <= 0 < ext[0][0] + ext[0][1]:
-+                fail("First extent %s does not contain offset 0" %
-+                     (ext[0],))
-+        for e in opaque.blo_extents:
-+            if e.bex_state == PNFS_BLOCK_READ_DATA:
-+                continue
-+            off = e.bex_file_offset
-+            for i in range(3):
-+                if off <= i*bs < off + e.bex_length:
-+                    blocks[i] = (e.bex_vol_id,
-+                                 e.bex_storage_offset + i*bs - off)
-+    if not found:
-+        fail("No layout contains offset 0")
-+    if len(blocks) < 3:
-+        t.pass_warn("The layout does not cover all three blocks, so a "
-+                    "merge could not be seen")
-+    if blocks[0][0] != blocks[1][0] or blocks[1][0] != blocks[2][0] or \
-+       blocks[1][1] != blocks[0][1] + bs or blocks[2][1] != blocks[1][1] + bs:
-+        t.pass_warn("The three blocks are not contiguous on the volume, "
-+                    "so there were no extents to merge")
+ 	ASSERT(!nimaps || imap.br_startblock != DELAYSTARTBLOCK);
+
+base-commit: b942c6919ac39870f8327d3123a2912d96e7e617
