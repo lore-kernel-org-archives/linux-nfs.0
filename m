@@ -1,336 +1,518 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from sonic305-27.consmr.mail.ne1.yahoo.com (sonic305-27.consmr.mail.ne1.yahoo.com [66.163.185.153])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4AC9249E5F0;
-	Tue,  6 Oct 2026 15:31:25 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EF3434A3F06
+	for <linux-nfs@vger.kernel.org>; Tue,  6 Oct 2026 15:50:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=66.163.185.153
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791300686; cv=none; b=GJ9PWKeQQJwlod70Jgpp//rYjaFfDMblcDAHK6CE/aPV4lK+68pPD/7DimkQk8dDN9RAZNjpf36Arv+DM2x58+CXJIPI3hKECkGOoy//kffqVOUPtbL39ctxulp5XNbPlhCzXuTCLvFWiV/C+vY9zH+CoUddFB49kcU5ywVwb+Y=
+	t=1791301857; cv=none; b=IDvOZVrU8NPDXjji/e7Ep0KDAry/cv4TK2sa8l7DUcdeSXNjchdFHn21J98uF9ex2GN1jyyI0hp+UXg4npc7AKjizMk6hDXa9MyY2i/H0IXVdiP13sLVL3ELmSXgtBNtcsDEkZLPDw/CaMaBGIjyCAPyLuBOqGt3k0p+twgP06U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791300686; c=relaxed/simple;
-	bh=Tmw7Lyoy2BJSRBitllEK8LzSGFR+a6mKPOAvIUSKJ9s=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=RDQVq31R9dlxk4loq3ykL0iYjiDSSB5bg7vGTVCT7onWtvPJIvc/u3SlhjSY3rwyoPK218U0EYwC7KFYFjyZuMZnZ1dbFFEQM8crggqj88VIN3kK3Rp1oypLzMyAKOOrXJzmHw0vvuKjdty5S1mRDksp6IEiGVfon0jcjCGWUGw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jC707Xif; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791301857; c=relaxed/simple;
+	bh=EheR1hmf6/Ev3iO8zIIEknwXzGh5275L3B9/AxtcZ+s=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=EJv9wEN5VvEF1ofOKaBDTDATEVQD+uBN18NqbvOdBnx4Rv8+Gf7Nbf6HtRjZZc5DnZsYRn/nXi/thf4U2a/ZWZrZ0Cayed1/gtjQt0a7RYMHU1JWbNvFdezx+FY+6yiVVZbRlopbPzMYOnGzybOIIVlxx4S2Mrg+L6jguAOeqSw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=schaufler-ca.com; spf=pass smtp.mailfrom=schaufler-ca.com; dkim=pass (2048-bit key) header.d=yahoo.com header.i=@yahoo.com header.b=UZfV3tON; arc=none smtp.client-ip=66.163.185.153
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=schaufler-ca.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=schaufler-ca.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jC707Xif"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CAC321F0089C;
-	Tue,  6 Oct 2026 15:31:23 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791300685;
-	bh=rLZ8omInzSMXOU9fAbmYNxiNW9WnUy1KNuwoxwPOBCI=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=jC707XifUNzQeY1Y0Hvs/yYxwFZF4BO1mZF042q27Onl+bNM1cGviCcRFCNcXH9sh
-	 5w7SdMDCjHah6W4emTya7Ca7W4fwvPIB6rJL+sVAggvUP1UEUFKvzk8tobwk+Tgrf9
-	 KX37HQ29nrBTUgRq5gBAVG2f5VIpiBsKZ6b0NCUOYpndIhTkKRHgGnSyY/Z0Mqp9Q0
-	 XMe0kxFhQVaizX6Q3BW2u0Fw0/tJEmtId42IzbtFORn5BWjCxKEVvi9kHgs1DWQZRr
-	 qWFAUSd3QW5/Nr+oDS5RYuBoQzVjuySIw0DukeFTnjhtUjkbecFHlooUlFhDNxhEcU
-	 /pJVr2GX2tsGw==
-From: Chuck Lever <cel@kernel.org>
-Date: Tue, 06 Oct 2026 11:31:16 -0400
-Subject: [PATCH v4 5/5] NFS: add a key type that reveals the namespace .nfs
- keyring serial number
+	dkim=pass (2048-bit key) header.d=yahoo.com header.i=@yahoo.com header.b="UZfV3tON"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1791301848; bh=In0HrnRjC0SQ8uSLS948ZfF+aHZwrdC2RfKhVM1BaVU=; h=Date:Subject:To:Cc:References:From:In-Reply-To:From:Subject:Reply-To; b=UZfV3tONQNSl5S3BZlLyAcaspco9G2cysE31uURe+3yErCynXyik8Wio+r5bccsdPhxdEuUuzd7CT6Qr5MdaHEktUwU4tW0YCOBcLU464zmFicUgWJGPiipCzMJ+fhFHJOLj+qHwNrF8K8jlOMYv8tNB+xNhsBWpSWVWzXfImB38e+xLLqFoHg9xaa/oQ7XBoLV2NMR3AcizWIFn6Cue3Uq/WcGLkEZGngCd6eULn4eUO8h1k8jFeRIo2ZHjaSGYF7Ze4nmRsM3pSA0bJ1lBOtzS3R/BbffrsNcGLt6q9RQw7akweJIYNFZI4PA4B2GCZ+RFEDbOK5/BcctgjWYb/w==
+X-SONIC-DKIM-SIGN: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1791301848; bh=U2Wm3+ad1OHbYxIGTgbUp/TxR4QdPCyOMu7N33NIVnz=; h=X-Sonic-MF:Date:Subject:To:From:From:Subject; b=BBphlDA/0CBHMVPgU2Q7zww1C4LiZg7ZsNtsga6dXSxyH/1N0RIDU4qlZwsgCwrTjMA0fTIb9a7+rRGctGCddMJ/joW/ROWAkMQNjTk8dX0w/PAkRcmkiEAU/IfRxLOLz8XFOqR7PuiubyizOrXzP9bOfOOi2SjDJpAoV4MUO4VBc72m66uB/1aLkLGdg6L+9yJlCnFHupS17ONOS5+LbBPqdkuReyBgZLPGB3hS/blt3rgGTC0tiXfRd6N4stVNKqlNNf4a9IYyAvwVyNALmkCePZmj1zLN6z0BQ4PQWE8NYv9CrRUxuJ6ozzeJ1qtb14giMUgnjZo5R+6QUo+uRQ==
+X-YMail-OSG: 12QZ3EUVM1mvDQlcxYZXldfO5rSekIBwMsvbLf0NDjQP6AnCtfnVTQNdvWfOf0J
+ 93fqh6RW9AOmZtVzqatN.80sTuj8Yf0QB98V9uUSxbgcgNpp9tbgyqkiD1K2BPN4o8SVD5ViqN_X
+ gsXAQofdVDPr2zBwaq8ozjSfI9mnbFeF_zCn6gmV7NZsQofQfQZEqH9.bXVObgPkO4MQeBLUDtPI
+ ZY8eB0Z8Q1JOSYd0.pu9fRdKcMp_TSxvhsHACW0GgPzzp1RDPlBwGfTwPytWACoA4EB7HGFu8NFW
+ ORr.oXUHSj0DEOESUeg6mfeP0lqSxa9Ii_Tv84xOJcSSkd5TtNs9LkkkHiZnCJV6a2MLNKelJlKq
+ dTwUIQDHSuMTRevGtpNL1WK57izjzOJKqxmpFJvalR2yK26zPFRyqSW8PmoutNFayKolG0m3upcX
+ SJ0MFM61bIE5mElH88jae_4tFLKODQWmuJByRIMZgGE_0eyAI7jbTd67TT_yqPDBjVYDMJqbTOnk
+ qoKHXZUa1Ul89a.Yr.vm8TO2oczz.I360Wi9UcH0Lr4nZqd.503ilsgvjkJEQcXED89feVBP4TKy
+ H56nynAjgco5rC2sOuS0JUk9i.FS13mheAA6eS3ulNdeVSdlLV1dM6as5x0BbEaimTCh0WPq4aFf
+ AEDuvxuZ46eBgOaUZmC_I9xrYhWMNppp8B0zLn.Vq.4liihxHaW6Ew15Ek9QXomnOz2y99J.itFp
+ wbfvwur9YPQnbYkHSGSynbOSbz.zwW4HhUMm5N2DI3x0iBUTCM9HSRHnn6_K_ffLNy9te9vYq2kM
+ pFo8E9qe8lPp5kL_dmp1q_zMA6xCI_3PQsWH2talsDK7RoUhjtmDi7Y.1_wU1p61g11SgMsM2Ubv
+ PXGNSW1EcWYNR0Czn5GIHe3BtbzYYwh7dUaqF16NKGy6K4XmFAJy9g6tE2iCQiGiFAShBB5znCp0
+ QcJvBp0Mp9finI.PqM8VYOwV26PDPCmdm_JvTUYZIwRm91EqDu6BqSZaPeT0Y0Yvy8sQ9T5o6hia
+ Jf5lpjNVhpP_5E7P67z1HaOr9_w1YD18XNDEh_KHCYODDpbDxD99uF4PsH1s1m8lJwBaLpOdWyoE
+ F0qjRTf5UIn_JirFUiHAe6Up3rZ5Jdp5rh2X4isVXxXL4bbuxlqM_gGEE2RBaY6ltIdBQ0GIbZBT
+ dbYp3bMvfF_q.skNBoxubsX1QyiUzx0fuzETYBBG7CqxpyaGlUorLh34pPGFvL2iJ0Pxuf3lGh7Y
+ hRQCnsRwkw7Ae.lK9C.Qv4FLwaeM2p51MVNpMgPGR2PGhlZ.KLrKI4kGtDIzzI5G6dluMlMSxDfZ
+ XcFdrMJzlLmveLcCRjEs1XOEUwUVGD5cpXCVTkJfL0NiTCWmcOphYNYGgw2mw4UFeapHp8hy5e1_
+ 62L85fGtYxLidMzyulooqyRXpuKiwoFTq0W2GO40.tUitBBPFHiyAByUa6cVi3hct8i1FBjzw6rC
+ 4X34olOFGDJ0rWScH11TeSeufzxRM1CaVXHD8k7u46gfTS9e5ATA2voAqb7sb6rECwVOZYWMjdWV
+ ku3Hb8__zDu2J6jSmFnhchYWaH934QFgmbUTjh5MvzvD8TAth474RNDFZrYFfE9gDkLwYu2ufCii
+ 0HNVICGW5Z7oMs_MvrmBo4_EiKcl.B6TqUvtPdUwwly1dlby3DClhWo_Liil2D3QScNSCZ4vdTOS
+ NyBHJIn5D5al1Vqfi1qHbDWuKnsIQqGDYL0ZZZtdNCx0J7zK62RedeBiLdikZRc3SJAKjkUq3SBN
+ U278Y9zv3oQIsNrXVEI7LinaGiz93T2DptLp1KkgRehMGTMrzVz6nZQpXt3fuUCMRnEpw3_ozxwI
+ 3z94rmRGDFvUk3VsThm5ml8wim8wdu5uxeg24e3m_GPvIZsQLY0dO8ioutGnA1XFscIhfE0nq3qS
+ PwV8a.MYffvzhYPk4_YdoSdWTWi4TxtwqmrZ5SdnYq.yqE_4LZHB86yWVBtx.hS0pUJQk.SuI4nd
+ f3Cz32JctTVwMGOAPWXxMSa4sfL0ia3RrxgWYr1gvng2OcbevvpJAXwusvsZIsyDY7.mrPQcxXB3
+ IjORPWA1U8hp9J7LNf_QQQHN.7Onb9GIazIqw76sHgnIK2X39Db8ggpsGus_p1ppyt81TrLuHvzD
+ .e5wOwqup1lVwkezrv4u8Kw6JqBC7KXTLtWZW2cpsJLur1aqfpK0AE.s1SJ6o9EWX5_sE02HHOHk
+ UVOCnvvImJwBcE1x3Li0eUyUIoqmL5hmO1D3Zkz2sLIPZEyqAhJyWcYcQKL6Mii9zupM-
+X-Sonic-MF: <casey@schaufler-ca.com>
+X-Sonic-ID: 2e35ecc7-e47d-4d0e-b617-632020e93310
+Received: from sonic.gate.mail.ne1.yahoo.com by sonic305.consmr.mail.ne1.yahoo.com with HTTP; Tue, 6 Oct 2026 15:50:48 +0000
+Received: by hermes--production-gq1-fd7994565-ftb5j (Yahoo Inc. Hermes SMTP Server) with ESMTPA ID b0571d5bbbc1cca81cf8719e87a92cf0;
+          Tue, 06 Oct 2026 15:30:08 +0000 (UTC)
+Message-ID: <113bf656-867b-4b96-a8c3-4ae4735c0159@schaufler-ca.com>
+Date: Tue, 6 Oct 2026 08:30:05 -0700
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH RFC -next 07/12] LSM: pass struct path to the inode posix
+ acl hooks
+To: Cai Xinchen <caixinchen1@huawei.com>, mic@digikod.net, gnoack@google.com,
+ paul@paul-moore.com, jmorris@namei.org, serge@hallyn.com, corbet@lwn.net,
+ skhan@linuxfoundation.org
+Cc: rdunlap@infradead.org, gregkh@linuxfoundation.org, rafael@kernel.org,
+ dakr@kernel.org, dlemoal@kernel.org, hch@lst.de, axboe@kernel.dk,
+ viro@zeniv.linux.org.uk, brauner@kernel.org, jack@suse.cz,
+ dhowells@redhat.com, code@tyhicks.com, linkinjeon@kernel.org,
+ sj1557.seo@samsung.com, yuezhang.mo@sony.com, hirofumi@mail.parknet.co.jp,
+ cel@kernel.org, jlayton@kernel.org, neil@brown.name, okorniev@redhat.com,
+ Dai.Ngo@oracle.com, tom@talpey.com, miklos@szeredi.hu, amir73il@gmail.com,
+ senozhatsky@chromium.org, chenxiaosong@chenxiaosong.com,
+ zohar@linux.ibm.com, roberto.sassu@huawei.com, dmitry.kasatkin@gmail.com,
+ eric.snowberg@oracle.com, stephen.smalley.work@gmail.com,
+ omosnacek@gmail.com, nanx95726@gmail.com, djwong@kernel.org,
+ daniel@iogearbox.net, linux-security-module@vger.kernel.org,
+ linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org,
+ driver-core@lists.linux.dev, linux-block@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, netfs@lists.linux.dev,
+ ecryptfs@vger.kernel.org, exfat@lists.linux.dev, linux-nfs@vger.kernel.org,
+ linux-unionfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+ linux-integrity@vger.kernel.org, selinux@vger.kernel.org,
+ linux-kselftest@vger.kernel.org, xiujianfeng@huawei.com,
+ lujialin4@huawei.com, Casey Schaufler <casey@schaufler-ca.com>
+References: <20260924104831.1081137-1-caixinchen1@huawei.com>
+ <20260924104831.1081137-8-caixinchen1@huawei.com>
+Content-Language: en-US
+From: Casey Schaufler <casey@schaufler-ca.com>
+In-Reply-To: <20260924104831.1081137-8-caixinchen1@huawei.com>
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261006-nfs-mtls-identity-v4-5-1fdf8cc65da7@kernel.org>
-References: <20261006-nfs-mtls-identity-v4-0-1fdf8cc65da7@kernel.org>
-In-Reply-To: <20261006-nfs-mtls-identity-v4-0-1fdf8cc65da7@kernel.org>
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>, 
- Christian Brauner <brauner@kernel.org>, David Howells <dhowells@redhat.com>, 
- Sagi Grimberg <sagi@grimberg.me>, Eric Dumazet <edumazet@kernel.org>
-Cc: linux-nfs@vger.kernel.org, keyrings@vger.kernel.org, 
- kernel-tls-handshake@lists.linux.dev, netdev@vger.kernel.org, 
- linux-doc@vger.kernel.org, Chuck Lever <cel@kernel.org>
-X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=8981; i=cel@kernel.org;
- h=from:subject:message-id; bh=Tmw7Lyoy2BJSRBitllEK8LzSGFR+a6mKPOAvIUSKJ9s=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqxRRD5DEw6x7/OgnNcvSz0cxe4LoXNCMJeKZhF
- /BPV1/U3O+JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCasUUQwAKCRAzarMzb2Z/
- l9X1EAC8FHLB0jZq7BNo6BPnTXkig4r0NdRbvtqlxIVHDMKwJM5bFGdWYq1MV5sU1X8Te9LkpaL
- 0NbUuFTErXbnDlsWi+wZ+Ez1r2KGSukRdgRpARYaeShChh3s7pbpSs5zoS3YyIP9JiO5l0pFnwK
- ixNSLoHBPb4WWMF4iDv6WIcf3x+JHa9nNghd6RkMFVuUHXnk2rKNwzY0aX2AUwDa3IzZ0VAw2DD
- 3ADv7v7L0egnDpLmrYP367Dty0iWYwmPgyZoUX/0CPicxFEp6Yt7LDAdjz7vNywL+O73mZmvXU9
- Sz6k1SQMd94TIgOwRFS/Nzak0Zsnhi5tQxiyBl/6JEdfIm2enL+bRfQCKU0C1uEm+rAyayawFZ8
- 59eKslMZvVsucgn3T7D4MwezdN6YWxC38oWoW7Dz3+fiEcDMQwnjs4Ke5fxq/GDu/0ljzJDVivu
- x7nnQm6nrEMm4mQswym47pqgR5Dj9CMETjMvtPC2b2bzyMpG1OmoBBJJAlvcAKywXxWkDOmqrUi
- qxueKrd8VP0ziCaQokeI19HraCsQeJYuqHocIeB/C3iJgfTxVObbIZiEqkm0NPMiKTGZflL+eio
- cTNNSiAj1nDmiUWN9AZ3p372WaSiiQcCb5VYCZT1KyB2+rrlVWNmKnfmqR1EO3/yEAhlt71JPkR
- IwKANWOifejPegQ==
-X-Developer-Key: i=cel@kernel.org; a=openpgp;
- fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
+X-Mailer: WebService/1.1.26668 mail.backend.jedi.jws.acl:role.jedi.acl.token.atz.jws.hermes.yahoo
 
-The per-namespace .nfs keyring is linked into no keyring that
-userspace possesses, so a tool that provisions x509 credentials, or a
-mount helper that searches for them, cannot reach it. Every keyring
-operation from userspace takes a serial number, and nothing hands
-this one out.
+On 9/24/2026 3:48 AM, Cai Xinchen wrote:
+> The inode_set_acl, inode_get_acl and inode_remove_acl hooks are
+> called from fs/posix_acl.c, whose helpers now hold a struct path and
+> used to derive the idmap and dentry from it just for the hook calls.
+>
+> Convert the hooks and their SELinux, Smack, EVM and IMA
+> implementations to take a const struct path.  The implementations
+> derive the idmap and dentry they still need from the path, so this
+> is a purely mechanical change with no behavior change.
+>
+> Assisted-by: opencode: glm-5.3
+> Signed-off-by: Cai Xinchen <caixinchen1@huawei.com>
 
-Register an "nfs_keyring" key type whose request_key handler runs in
-the caller's context, without an upcall, and instantiates the key
-with the serial number of the caller's namespace .nfs keyring.
-Userspace reads the serial number with one request_key() and one
-keyctl_read().
+The Smack changes appear sane.
+Acked-by: Casey Schaufler <casey@schaufler-ca.com>
 
-A keyring search runs before the handler does, and a task keeps its
-session keyring across setns(). The type carries KEY_TYPE_NET_DOMAIN
-so a key instantiated in one namespace does not answer a request from
-another. Its preparse accepts no payload but the caller's own serial
-number, so a key planted by add_key() cannot misdirect a later
-request.
-
-Register the type after register_pernet_subsys() has installed
-nfs_net_id, and unregister it before the per-namespace state goes
-away. unregister_key_type() waits for in-flight request_key() calls
-to drain, so the handler never runs against a freed struct nfs_net.
-
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- Documentation/filesystems/nfs/index.rst   |  1 +
- Documentation/filesystems/nfs/keyring.rst | 69 +++++++++++++++++++++++
- fs/nfs/inode.c                            | 94 ++++++++++++++++++++++++++++++-
- 3 files changed, 163 insertions(+), 1 deletion(-)
-
-diff --git a/Documentation/filesystems/nfs/index.rst b/Documentation/filesystems/nfs/index.rst
-index a29a212b5b4d..dab5f16aaad1 100644
---- a/Documentation/filesystems/nfs/index.rst
-+++ b/Documentation/filesystems/nfs/index.rst
-@@ -7,6 +7,7 @@ NFS
-    :maxdepth: 1
- 
-    client-identifier
-+   keyring
-    exporting
-    localio
-    pnfs
-diff --git a/Documentation/filesystems/nfs/keyring.rst b/Documentation/filesystems/nfs/keyring.rst
-new file mode 100644
-index 000000000000..29367e71a801
---- /dev/null
-+++ b/Documentation/filesystems/nfs/keyring.rst
-@@ -0,0 +1,69 @@
-+.. SPDX-License-Identifier: GPL-2.0
-+
-+====================================
-+The per-namespace NFS client keyring
-+====================================
-+
-+The NFS client holds one keyring, named ".nfs", per network
-+namespace. An xprtsec=mtls mount presents the client certificate and
-+private key named by its cert_serial= and privkey_serial= mount
-+options, and the handshake links the mount's namespace .nfs keyring
-+into tlshd before tlshd reads those keys. Keys placed on the .nfs
-+keyring therefore need not grant user read permission: tlshd reaches
-+them as a possessor, and a tlshd in another network namespace never
-+possesses them.
-+
-+The keyring is owned by the owner of the network namespace's user
-+namespace, with KEY_POS_ALL and KEY_USR_ALL less SETATTR. It is not
-+charged to any quota. Keys added to it by userspace are charged to
-+the user that adds them.
-+
-+Finding the keyring serial number
-+=================================
-+
-+The .nfs keyring is not linked into any keyring that userspace
-+possesses, so a serial number is the only way to name it. The NFS
-+client registers a key type, "nfs_keyring", whose sole purpose is to
-+hand that serial number out. Its request_key handler runs in the
-+caller's context and does not upcall to /sbin/request-key.
-+
-+To obtain the serial number, request a key of type "nfs_keyring" with
-+the description ".nfs" and read its payload::
-+
-+	id=$(keyctl request2 nfs_keyring .nfs "" @s)
-+	serial=$(keyctl print $id)
-+
-+The contract of the key type is:
-+
-+ * The description is the string ".nfs". Any other description is
-+   rejected with EINVAL before a key is allocated.
-+
-+ * The callout info must be present. request_key() with a NULL
-+   callout_info never invokes a handler and returns ENOKEY when no
-+   matching key exists, so use request_key() with an empty string, or
-+   ``keyctl request2`` rather than ``keyctl request``. The content of
-+   the callout info is ignored.
-+
-+ * The payload is the keyring serial number as decimal ASCII digits
-+   with no terminating NUL. The return value of keyctl_read() gives
-+   the length; a buffer of 12 bytes is sufficient.
-+
-+ * add_key() with this type accepts only that payload. A key carrying
-+   any other value is rejected with EINVAL, so a key found in the
-+   caller's keyrings always holds the serial number of the caller's
-+   namespace.
-+
-+ * The key type carries KEY_TYPE_NET_DOMAIN. A key instantiated in one
-+   network namespace does not answer a request made in another, so a
-+   process that keeps its session keyring across setns() receives the
-+   serial number of the namespace it is in at the time of the request.
-+
-+The serial number is not a secret. The keyring's own permissions
-+decide what a caller can do with it.
-+
-+Provisioning credentials
-+========================
-+
-+Add the client certificate and private key to the .nfs keyring as
-+keys that grant no user read permission, then pass their serial
-+numbers as cert_serial= and privkey_serial= mount options.
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 2b494fa5ecc0..fe7a05dec02f 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -42,6 +42,12 @@
- #include <linux/uaccess.h>
- #include <linux/iversion.h>
- #include <linux/fileattr.h>
-+#include <linux/nsproxy.h>
-+#include <linux/key-type.h>
-+#include <keys/user-type.h>
-+#ifdef CONFIG_KEYS
-+#include <keys/request_key_auth-type.h>
-+#endif
- 
- #include "nfs4_fs.h"
- #include "callback.h"
-@@ -2667,6 +2673,76 @@ static void nfs_exit_keyring(struct nfs_net *nn)
- {
- 	key_put(nn->nfs_keyring);
- }
-+
-+static int nfs_keyring_vet_description(const char *desc)
-+{
-+	return strcmp(desc, ".nfs") ? -EINVAL : 0;
-+}
-+
-+static int nfs_keyring_format_serial(char *buf, size_t len)
-+{
-+	struct key *keyring = nfs_net_keyring(current->nsproxy->net_ns);
-+
-+	return snprintf(buf, len, "%d", key_serial(keyring));
-+}
-+
-+/*
-+ * A key planted by add_key() answers request_key() before the handler
-+ * runs. Accept only the serial number the handler would produce.
-+ */
-+static int nfs_keyring_preparse(struct key_preparsed_payload *prep)
-+{
-+	char serial[12];
-+	int len;
-+
-+	len = nfs_keyring_format_serial(serial, sizeof(serial));
-+	if (prep->datalen != len || !prep->data ||
-+	    memcmp(prep->data, serial, len))
-+		return -EINVAL;
-+	return user_preparse(prep);
-+}
-+
-+static int nfs_keyring_request_key(struct key *authkey, void *aux)
-+{
-+	struct request_key_auth *rka = get_request_key_auth(authkey);
-+	char serial[12];
-+	int len, ret;
-+
-+	len = nfs_keyring_format_serial(serial, sizeof(serial));
-+	ret = key_instantiate_and_link(rka->target_key, serial, len,
-+				       rka->dest_keyring, authkey);
-+	if (ret < 0)
-+		complete_request_key(authkey, ret);
-+	return ret;
-+}
-+
-+/*
-+ * A session keyring survives setns(). Without the net domain tag, a
-+ * key instantiated in one namespace answers a request from another.
-+ */
-+static struct key_type key_type_nfs_keyring = {
-+	.name		= "nfs_keyring",
-+	.flags		= KEY_TYPE_NET_DOMAIN,
-+	.vet_description = nfs_keyring_vet_description,
-+	.preparse	= nfs_keyring_preparse,
-+	.free_preparse	= user_free_preparse,
-+	.instantiate	= generic_key_instantiate,
-+	.revoke		= user_revoke,
-+	.destroy	= user_destroy,
-+	.describe	= user_describe,
-+	.read		= user_read,
-+	.request_key	= nfs_keyring_request_key,
-+};
-+
-+static int __init nfs_register_key_type(void)
-+{
-+	return register_key_type(&key_type_nfs_keyring);
-+}
-+
-+static void nfs_unregister_key_type(void)
-+{
-+	unregister_key_type(&key_type_nfs_keyring);
-+}
- #else
- static inline int nfs_init_keyring(struct net *net)
- {
-@@ -2676,6 +2752,15 @@ static inline int nfs_init_keyring(struct net *net)
- static inline void nfs_exit_keyring(struct nfs_net *nn)
- {
- }
-+
-+static inline int nfs_register_key_type(void)
-+{
-+	return 0;
-+}
-+
-+static inline void nfs_unregister_key_type(void)
-+{
-+}
- #endif /* CONFIG_KEYS */
- 
- static int nfs_net_init(struct net *net)
-@@ -2740,10 +2825,14 @@ static int __init init_nfs_fs(void)
- 	if (err < 0)
- 		goto err_sysfs;
- 
--	err = nfsiod_start();
-+	err = nfs_register_key_type();
- 	if (err)
- 		goto err_pernet;
- 
-+	err = nfsiod_start();
-+	if (err)
-+		goto err_keytype;
-+
- 	err = nfs_fs_proc_init();
- 	if (err)
- 		goto err_nfsiod;
-@@ -2787,6 +2876,8 @@ static int __init init_nfs_fs(void)
- 	nfs_fs_proc_exit();
- err_nfsiod:
- 	nfsiod_stop();
-+err_keytype:
-+	nfs_unregister_key_type();
- err_pernet:
- 	unregister_pernet_subsys(&nfs_net_ops);
- err_sysfs:
-@@ -2801,6 +2892,7 @@ static void __exit exit_nfs_fs(void)
- 	nfs_destroy_readpagecache();
- 	nfs_destroy_inodecache();
- 	nfs_destroy_nfspagecache();
-+	nfs_unregister_key_type();
- 	unregister_pernet_subsys(&nfs_net_ops);
- 	unregister_nfs_fs();
- 	nfs_fs_proc_exit();
-
--- 
-2.55.0
-
+> ---
+>  fs/posix_acl.c                        |  6 ++---
+>  include/linux/lsm_hook_defs.h         | 12 ++++-----
+>  include/linux/security.h              | 20 +++++----------
+>  security/integrity/evm/evm_main.c     | 14 +++++-----
+>  security/integrity/ima/ima_appraise.c |  8 +++---
+>  security/security.c                   | 32 ++++++++++-------------
+>  security/selinux/hooks.c              | 19 +++++++-------
+>  security/smack/smack_lsm.c            | 37 ++++++++++++---------------
+>  8 files changed, 66 insertions(+), 82 deletions(-)
+>
+> diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+> index be1643e18a6a..72e77540a0e9 100644
+> --- a/fs/posix_acl.c
+> +++ b/fs/posix_acl.c
+> @@ -1128,7 +1128,7 @@ int vfs_set_acl(const struct path *path, const char *acl_name,
+>  	if (error)
+>  		goto out_inode_unlock;
+>  
+> -	error = security_inode_set_acl(idmap, dentry, acl_name, kacl);
+> +	error = security_inode_set_acl(path, acl_name, kacl);
+>  	if (error)
+>  		goto out_inode_unlock;
+>  
+> @@ -1184,7 +1184,7 @@ struct posix_acl *vfs_get_acl(const struct path *path, const char *acl_name)
+>  	 * The VFS has no restrictions on reading POSIX ACLs so calling
+>  	 * something like xattr_permission() isn't needed. Only LSMs get a say.
+>  	 */
+> -	error = security_inode_get_acl(idmap, dentry, acl_name);
+> +	error = security_inode_get_acl(path, acl_name);
+>  	if (error)
+>  		return ERR_PTR(error);
+>  
+> @@ -1236,7 +1236,7 @@ int vfs_remove_acl(const struct path *path, const char *acl_name)
+>  	if (error)
+>  		goto out_inode_unlock;
+>  
+> -	error = security_inode_remove_acl(idmap, dentry, acl_name);
+> +	error = security_inode_remove_acl(path, acl_name);
+>  	if (error)
+>  		goto out_inode_unlock;
+>  
+> diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
+> index 3a3512a3ee91..45cf0ca24260 100644
+> --- a/include/linux/lsm_hook_defs.h
+> +++ b/include/linux/lsm_hook_defs.h
+> @@ -160,14 +160,14 @@ LSM_HOOK(void, LSM_RET_VOID, inode_post_removexattr, struct dentry *dentry,
+>  	 const char *name)
+>  LSM_HOOK(int, 0, inode_file_setattr, struct dentry *dentry, struct file_kattr *fa)
+>  LSM_HOOK(int, 0, inode_file_getattr, struct dentry *dentry, struct file_kattr *fa)
+> -LSM_HOOK(int, 0, inode_set_acl, struct mnt_idmap *idmap,
+> -	 struct dentry *dentry, const char *acl_name, struct posix_acl *kacl)
+> +LSM_HOOK(int, 0, inode_set_acl, const struct path *path,
+> +	 const char *acl_name, struct posix_acl *kacl)
+>  LSM_HOOK(void, LSM_RET_VOID, inode_post_set_acl, struct dentry *dentry,
+>  	 const char *acl_name, struct posix_acl *kacl)
+> -LSM_HOOK(int, 0, inode_get_acl, struct mnt_idmap *idmap,
+> -	 struct dentry *dentry, const char *acl_name)
+> -LSM_HOOK(int, 0, inode_remove_acl, struct mnt_idmap *idmap,
+> -	 struct dentry *dentry, const char *acl_name)
+> +LSM_HOOK(int, 0, inode_get_acl, const struct path *path,
+> +	 const char *acl_name)
+> +LSM_HOOK(int, 0, inode_remove_acl, const struct path *path,
+> +	 const char *acl_name)
+>  LSM_HOOK(void, LSM_RET_VOID, inode_post_remove_acl, struct mnt_idmap *idmap,
+>  	 struct dentry *dentry, const char *acl_name)
+>  LSM_HOOK(int, 0, inode_need_killpriv, struct dentry *dentry)
+> diff --git a/include/linux/security.h b/include/linux/security.h
+> index f5dc67a937bd..8b02b3bfe46d 100644
+> --- a/include/linux/security.h
+> +++ b/include/linux/security.h
+> @@ -435,15 +435,12 @@ int security_inode_getattr(const struct path *path);
+>  int security_inode_setxattr(const struct path *path,
+>  			    const char *name, const void *value,
+>  			    size_t size, int flags);
+> -int security_inode_set_acl(struct mnt_idmap *idmap,
+> -			   struct dentry *dentry, const char *acl_name,
+> -			   struct posix_acl *kacl);
+> +int security_inode_set_acl(const struct path *path,
+> +			   const char *acl_name, struct posix_acl *kacl);
+>  void security_inode_post_set_acl(struct dentry *dentry, const char *acl_name,
+>  				 struct posix_acl *kacl);
+> -int security_inode_get_acl(struct mnt_idmap *idmap,
+> -			   struct dentry *dentry, const char *acl_name);
+> -int security_inode_remove_acl(struct mnt_idmap *idmap,
+> -			      struct dentry *dentry, const char *acl_name);
+> +int security_inode_get_acl(const struct path *path, const char *acl_name);
+> +int security_inode_remove_acl(const struct path *path, const char *acl_name);
+>  void security_inode_post_remove_acl(struct mnt_idmap *idmap,
+>  				    struct dentry *dentry,
+>  				    const char *acl_name);
+> @@ -1021,8 +1018,7 @@ static inline int security_inode_setxattr(const struct path *path,
+>  	return cap_inode_setxattr(path, name, value, size, flags);
+>  }
+>  
+> -static inline int security_inode_set_acl(struct mnt_idmap *idmap,
+> -					 struct dentry *dentry,
+> +static inline int security_inode_set_acl(const struct path *path,
+>  					 const char *acl_name,
+>  					 struct posix_acl *kacl)
+>  {
+> @@ -1034,15 +1030,13 @@ static inline void security_inode_post_set_acl(struct dentry *dentry,
+>  					       struct posix_acl *kacl)
+>  { }
+>  
+> -static inline int security_inode_get_acl(struct mnt_idmap *idmap,
+> -					 struct dentry *dentry,
+> +static inline int security_inode_get_acl(const struct path *path,
+>  					 const char *acl_name)
+>  {
+>  	return 0;
+>  }
+>  
+> -static inline int security_inode_remove_acl(struct mnt_idmap *idmap,
+> -					    struct dentry *dentry,
+> +static inline int security_inode_remove_acl(const struct path *path,
+>  					    const char *acl_name)
+>  {
+>  	return 0;
+> diff --git a/security/integrity/evm/evm_main.c b/security/integrity/evm/evm_main.c
+> index 47ad39d64c76..c83befd32e99 100644
+> --- a/security/integrity/evm/evm_main.c
+> +++ b/security/integrity/evm/evm_main.c
+> @@ -685,8 +685,7 @@ static inline int evm_inode_set_acl_change(struct mnt_idmap *idmap,
+>  
+>  /**
+>   * evm_inode_set_acl - protect the EVM extended attribute from posix acls
+> - * @idmap: idmap of the idmapped mount
+> - * @dentry: pointer to the affected dentry
+> + * @path: pointer to the affected object
+>   * @acl_name: name of the posix acl
+>   * @kacl: pointer to the posix acls
+>   *
+> @@ -696,10 +695,12 @@ static inline int evm_inode_set_acl_change(struct mnt_idmap *idmap,
+>   *
+>   * Return: zero on success, -EPERM on failure.
+>   */
+> -static int evm_inode_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
+> +static int evm_inode_set_acl(const struct path *path,
+>  			     const char *acl_name, struct posix_acl *kacl)
+>  {
+>  	enum integrity_status evm_status;
+> +	struct dentry *dentry = path->dentry;
+> +	struct mnt_idmap *idmap = mnt_idmap(path->mnt);
+>  
+>  	/* Policy permits modification of the protected xattrs even though
+>  	 * there's no HMAC key loaded
+> @@ -738,8 +739,7 @@ static int evm_inode_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
+>  
+>  /**
+>   * evm_inode_remove_acl - Protect the EVM extended attribute from posix acls
+> - * @idmap: idmap of the mount
+> - * @dentry: pointer to the affected dentry
+> + * @path: pointer to the affected object
+>   * @acl_name: name of the posix acl
+>   *
+>   * Prevent removing posix acls causing the EVM HMAC to be re-calculated
+> @@ -748,10 +748,10 @@ static int evm_inode_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
+>   *
+>   * Return: zero on success, -EPERM on failure.
+>   */
+> -static int evm_inode_remove_acl(struct mnt_idmap *idmap, struct dentry *dentry,
+> +static int evm_inode_remove_acl(const struct path *path,
+>  				const char *acl_name)
+>  {
+> -	return evm_inode_set_acl(idmap, dentry, acl_name, NULL);
+> +	return evm_inode_set_acl(path, acl_name, NULL);
+>  }
+>  
+>  static void evm_reset_status(struct inode *inode)
+> diff --git a/security/integrity/ima/ima_appraise.c b/security/integrity/ima/ima_appraise.c
+> index 58ba674bc172..518faf04ddde 100644
+> --- a/security/integrity/ima/ima_appraise.c
+> +++ b/security/integrity/ima/ima_appraise.c
+> @@ -793,11 +793,11 @@ static int ima_inode_setxattr(const struct path *path,
+>  	return result;
+>  }
+>  
+> -static int ima_inode_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
+> +static int ima_inode_set_acl(const struct path *path,
+>  			     const char *acl_name, struct posix_acl *kacl)
+>  {
+>  	if (evm_revalidate_status(acl_name))
+> -		ima_reset_appraise_flags(d_backing_inode(dentry), -1);
+> +		ima_reset_appraise_flags(d_backing_inode(path->dentry), -1);
+>  
+>  	return 0;
+>  }
+> @@ -818,10 +818,10 @@ static int ima_inode_removexattr(const struct path *path,
+>  	return result;
+>  }
+>  
+> -static int ima_inode_remove_acl(struct mnt_idmap *idmap, struct dentry *dentry,
+> +static int ima_inode_remove_acl(const struct path *path,
+>  				const char *acl_name)
+>  {
+> -	return ima_inode_set_acl(idmap, dentry, acl_name, NULL);
+> +	return ima_inode_set_acl(path, acl_name, NULL);
+>  }
+>  
+>  static struct security_hook_list ima_appraise_hooks[] __ro_after_init = {
+> diff --git a/security/security.c b/security/security.c
+> index 3a8892d8ca5c..74bcd8c0502c 100644
+> --- a/security/security.c
+> +++ b/security/security.c
+> @@ -1987,8 +1987,7 @@ int security_inode_setxattr(const struct path *path,
+>  
+>  /**
+>   * security_inode_set_acl() - Check if setting posix acls is allowed
+> - * @idmap: idmap of the mount
+> - * @dentry: file
+> + * @path: file
+>   * @acl_name: acl name
+>   * @kacl: acl struct
+>   *
+> @@ -1997,13 +1996,12 @@ int security_inode_setxattr(const struct path *path,
+>   *
+>   * Return: Returns 0 if permission is granted.
+>   */
+> -int security_inode_set_acl(struct mnt_idmap *idmap,
+> -			   struct dentry *dentry, const char *acl_name,
+> -			   struct posix_acl *kacl)
+> +int security_inode_set_acl(const struct path *path,
+> +			   const char *acl_name, struct posix_acl *kacl)
+>  {
+> -	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
+> +	if (unlikely(IS_PRIVATE(d_backing_inode(path->dentry))))
+>  		return 0;
+> -	return call_int_hook(inode_set_acl, idmap, dentry, acl_name, kacl);
+> +	return call_int_hook(inode_set_acl, path, acl_name, kacl);
+>  }
+>  
+>  /**
+> @@ -2025,8 +2023,7 @@ void security_inode_post_set_acl(struct dentry *dentry, const char *acl_name,
+>  
+>  /**
+>   * security_inode_get_acl() - Check if reading posix acls is allowed
+> - * @idmap: idmap of the mount
+> - * @dentry: file
+> + * @path: file
+>   * @acl_name: acl name
+>   *
+>   * Check permission before getting osix acls, the posix acls are identified by
+> @@ -2034,18 +2031,16 @@ void security_inode_post_set_acl(struct dentry *dentry, const char *acl_name,
+>   *
+>   * Return: Returns 0 if permission is granted.
+>   */
+> -int security_inode_get_acl(struct mnt_idmap *idmap,
+> -			   struct dentry *dentry, const char *acl_name)
+> +int security_inode_get_acl(const struct path *path, const char *acl_name)
+>  {
+> -	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
+> +	if (unlikely(IS_PRIVATE(d_backing_inode(path->dentry))))
+>  		return 0;
+> -	return call_int_hook(inode_get_acl, idmap, dentry, acl_name);
+> +	return call_int_hook(inode_get_acl, path, acl_name);
+>  }
+>  
+>  /**
+>   * security_inode_remove_acl() - Check if removing a posix acl is allowed
+> - * @idmap: idmap of the mount
+> - * @dentry: file
+> + * @path: file
+>   * @acl_name: acl name
+>   *
+>   * Check permission before removing posix acls, the posix acls are identified
+> @@ -2053,12 +2048,11 @@ int security_inode_get_acl(struct mnt_idmap *idmap,
+>   *
+>   * Return: Returns 0 if permission is granted.
+>   */
+> -int security_inode_remove_acl(struct mnt_idmap *idmap,
+> -			      struct dentry *dentry, const char *acl_name)
+> +int security_inode_remove_acl(const struct path *path, const char *acl_name)
+>  {
+> -	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
+> +	if (unlikely(IS_PRIVATE(d_backing_inode(path->dentry))))
+>  		return 0;
+> -	return call_int_hook(inode_remove_acl, idmap, dentry, acl_name);
+> +	return call_int_hook(inode_remove_acl, path, acl_name);
+>  }
+>  
+>  /**
+> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> index 5d98ec73df9f..45ece734463e 100644
+> --- a/security/selinux/hooks.c
+> +++ b/security/selinux/hooks.c
+> @@ -3498,23 +3498,22 @@ static int selinux_inode_setxattr(const struct path *path,
+>  			    &ad);
+>  }
+>  
+> -static int selinux_inode_set_acl(struct mnt_idmap *idmap,
+> -				 struct dentry *dentry, const char *acl_name,
+> -				 struct posix_acl *kacl)
+> +static int selinux_inode_set_acl(const struct path *path,
+> +				 const char *acl_name, struct posix_acl *kacl)
+>  {
+> -	return dentry_has_perm(current_cred(), dentry, FILE__SETATTR);
+> +	return dentry_has_perm(current_cred(), path->dentry, FILE__SETATTR);
+>  }
+>  
+> -static int selinux_inode_get_acl(struct mnt_idmap *idmap,
+> -				 struct dentry *dentry, const char *acl_name)
+> +static int selinux_inode_get_acl(const struct path *path,
+> +				 const char *acl_name)
+>  {
+> -	return dentry_has_perm(current_cred(), dentry, FILE__GETATTR);
+> +	return dentry_has_perm(current_cred(), path->dentry, FILE__GETATTR);
+>  }
+>  
+> -static int selinux_inode_remove_acl(struct mnt_idmap *idmap,
+> -				    struct dentry *dentry, const char *acl_name)
+> +static int selinux_inode_remove_acl(const struct path *path,
+> +				    const char *acl_name)
+>  {
+> -	return dentry_has_perm(current_cred(), dentry, FILE__SETATTR);
+> +	return dentry_has_perm(current_cred(), path->dentry, FILE__SETATTR);
+>  }
+>  
+>  static void selinux_inode_post_setxattr(struct dentry *dentry, const char *name,
+> diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+> index 4adb2fd9cf70..7889f63ec739 100644
+> --- a/security/smack/smack_lsm.c
+> +++ b/security/smack/smack_lsm.c
+> @@ -1548,62 +1548,59 @@ static int smack_inode_removexattr(const struct path *path,
+>   *
+>   * Returns 0 if access is permitted, an error code otherwise
+>   */
+> -static int smack_inode_set_acl(struct mnt_idmap *idmap,
+> -			       struct dentry *dentry, const char *acl_name,
+> -			       struct posix_acl *kacl)
+> +static int smack_inode_set_acl(const struct path *path,
+> +			       const char *acl_name, struct posix_acl *kacl)
+>  {
+>  	struct smk_audit_info ad;
+>  	int rc;
+>  
+>  	smk_ad_init(&ad, __func__, LSM_AUDIT_DATA_DENTRY);
+> -	smk_ad_setfield_u_fs_path_dentry(&ad, dentry);
+> +	smk_ad_setfield_u_fs_path_dentry(&ad, path->dentry);
+>  
+> -	rc = smk_curacc(smk_of_inode(d_backing_inode(dentry)), MAY_WRITE, &ad);
+> -	rc = smk_bu_inode(d_backing_inode(dentry), MAY_WRITE, rc);
+> +	rc = smk_curacc(smk_of_inode(d_backing_inode(path->dentry)), MAY_WRITE, &ad);
+> +	rc = smk_bu_inode(d_backing_inode(path->dentry), MAY_WRITE, rc);
+>  	return rc;
+>  }
+>  
+>  /**
+>   * smack_inode_get_acl - Smack check for getting posix acls
+> - * @idmap: idmap of the mnt this request came from
+> - * @dentry: the object
+> + * @path: the object
+>   * @acl_name: name of the posix acl
+>   *
+>   * Returns 0 if access is permitted, an error code otherwise
+>   */
+> -static int smack_inode_get_acl(struct mnt_idmap *idmap,
+> -			       struct dentry *dentry, const char *acl_name)
+> +static int smack_inode_get_acl(const struct path *path,
+> +			       const char *acl_name)
+>  {
+>  	struct smk_audit_info ad;
+>  	int rc;
+>  
+>  	smk_ad_init(&ad, __func__, LSM_AUDIT_DATA_DENTRY);
+> -	smk_ad_setfield_u_fs_path_dentry(&ad, dentry);
+> +	smk_ad_setfield_u_fs_path_dentry(&ad, path->dentry);
+>  
+> -	rc = smk_curacc(smk_of_inode(d_backing_inode(dentry)), MAY_READ, &ad);
+> -	rc = smk_bu_inode(d_backing_inode(dentry), MAY_READ, rc);
+> +	rc = smk_curacc(smk_of_inode(d_backing_inode(path->dentry)), MAY_READ, &ad);
+> +	rc = smk_bu_inode(d_backing_inode(path->dentry), MAY_READ, rc);
+>  	return rc;
+>  }
+>  
+>  /**
+>   * smack_inode_remove_acl - Smack check for getting posix acls
+> - * @idmap: idmap of the mnt this request came from
+> - * @dentry: the object
+> + * @path: the object
+>   * @acl_name: name of the posix acl
+>   *
+>   * Returns 0 if access is permitted, an error code otherwise
+>   */
+> -static int smack_inode_remove_acl(struct mnt_idmap *idmap,
+> -				  struct dentry *dentry, const char *acl_name)
+> +static int smack_inode_remove_acl(const struct path *path,
+> +				  const char *acl_name)
+>  {
+>  	struct smk_audit_info ad;
+>  	int rc;
+>  
+>  	smk_ad_init(&ad, __func__, LSM_AUDIT_DATA_DENTRY);
+> -	smk_ad_setfield_u_fs_path_dentry(&ad, dentry);
+> +	smk_ad_setfield_u_fs_path_dentry(&ad, path->dentry);
+>  
+> -	rc = smk_curacc(smk_of_inode(d_backing_inode(dentry)), MAY_WRITE, &ad);
+> -	rc = smk_bu_inode(d_backing_inode(dentry), MAY_WRITE, rc);
+> +	rc = smk_curacc(smk_of_inode(d_backing_inode(path->dentry)), MAY_WRITE, &ad);
+> +	rc = smk_bu_inode(d_backing_inode(path->dentry), MAY_WRITE, rc);
+>  	return rc;
+>  }
+>  
