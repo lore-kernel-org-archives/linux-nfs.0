@@ -1,31 +1,31 @@
 Received: from foss.arm.com (foss.arm.com [217.140.110.172])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 1471237F333;
-	Tue,  6 Oct 2026 09:01:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 314A53264D6;
+	Tue,  6 Oct 2026 09:01:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.140.110.172
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791277274; cv=none; b=HgNYL8QEiBvCYUYl8QFGQa89tgk1+dXJPDQonma5nkxjZLhHkHWHtA3815AKB8xS4cell3PT96cl84qL1Ybp7dwxaOUSaP7yywhtvwIjELBj9iCx3FZ2eEkIp/ByoQ4tbg4+oncWCwrj9pDrhNG48HH+dkR6biXCIi0bg5cOG/0=
+	t=1791277277; cv=none; b=FGp5N0+M/s76YtIz8C100ZF4mqMBSN418imHTJbqXeai83dElbRYuuQVLkRRD2AD9ywDqjbub46ce6VGJl4m6Z0Tz+X9o83XUhS+y28DqX5n+KIiWvQbv7JdbtRXlwrdxf69SC4qfI2VxGb64ibClfGjZN3ZTT/NWaVqNt9Crs0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791277274; c=relaxed/simple;
-	bh=ywqcrRc7QUD1ae9hrzuPnCoeDpUDqqLWAOW2mEl3xRY=;
+	s=arc-20240116; t=1791277277; c=relaxed/simple;
+	bh=arJ0m3qXBVceTD93xZic+LKbAkh+xHh4zRoDUEINAeg=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=CHiJtWLmOKW/0mf1x7KrAuHwGGIugT7iO1HqdRcmthOzwKr9PXqautl2lHvgF3d5+on8UtF9LE9rrv5Ad5iotG+o2+5P6TrBQfqeIyuJOnpB3wSqABO/sUldb+U4LGk8ok8uSlG3YZoFKJlJ3e4mn3xZgY0oa1HIh2T64ulqBwc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=arm.com; spf=pass smtp.mailfrom=arm.com; dkim=pass (1024-bit key) header.d=arm.com header.i=@arm.com header.b=HbJPy60+; arc=none smtp.client-ip=217.140.110.172
+	 MIME-Version; b=uCdVhDxq5/IQbtDo+vpvR15hNUZWWiZRPvMN3+VNqj12lEgbAhfTf0XUl2sl9PkNZiG+Zevl7LsJG1GLNS9PVu3WyLuBfIGgbVZQrg2SYxZsQtT8qktw5jehtKW9A2GUBRzMyHw5AmiCr06ULu1cv9qgltheFkZy3ECVR1B7VLg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=arm.com; spf=pass smtp.mailfrom=arm.com; dkim=pass (1024-bit key) header.d=arm.com header.i=@arm.com header.b=bvm/FcmO; arc=none smtp.client-ip=217.140.110.172
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=arm.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=arm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=arm.com header.i=@arm.com header.b="HbJPy60+"
+	dkim=pass (1024-bit key) header.d=arm.com header.i=@arm.com header.b="bvm/FcmO"
 Received: from usa-sjc-imap-foss1.foss.arm.com (unknown [10.121.207.14])
-	by usa-sjc-mx-foss1.foss.arm.com (Postfix) with ESMTP id 2A666168F;
-	Tue,  6 Oct 2026 02:01:09 -0700 (PDT)
+	by usa-sjc-mx-foss1.foss.arm.com (Postfix) with ESMTP id 2B1B01A00;
+	Tue,  6 Oct 2026 02:01:11 -0700 (PDT)
 Received: from e132076.cambridge.arm.com (e132076.arm.com [10.2.197.107])
-	by usa-sjc-imap-foss1.foss.arm.com (Postfix) with ESMTPA id D12DA3F86F;
-	Tue,  6 Oct 2026 02:01:10 -0700 (PDT)
+	by usa-sjc-imap-foss1.foss.arm.com (Postfix) with ESMTPA id D69EF3F86F;
+	Tue,  6 Oct 2026 02:01:12 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=arm.com; s=foss;
-	t=1791277272; bh=ywqcrRc7QUD1ae9hrzuPnCoeDpUDqqLWAOW2mEl3xRY=;
+	t=1791277274; bh=arJ0m3qXBVceTD93xZic+LKbAkh+xHh4zRoDUEINAeg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=HbJPy60+BP2nXVLC/rOkuhVyLUigvjC3GxA6jlUYMQxNO/jUHeyBVZEeDamqhvN3A
-	 TKULGw9vQNvUTgw2bTueNcp+/NMb75d/P06s3GsDS/G91MzC1jsUj7uQbEioHfzv79
-	 Gxha4ly7VLG5K02yEe5xRNuhBVfixCXbO1JKephY=
+	b=bvm/FcmOmVc3tJwsWpSx1avIIyFrvLKAKp1qJqfviWEi+eteFuXTCvkvRh7BKZZkU
+	 6QR1d15FimO+riScAJm8BmT0ftoI+JzlXcQmJfvorIY+1yqFH11U6O783oyiwdk5cZ
+	 HE+vaaP25NQhSvj8PmyoqzgUvdDN+oJpf6oCPgcA=
 From: J Louis Kaplan <Louis.Kaplan@arm.com>
 To: cel@kernel.org,
 	dai.ngo@oracle.com,
@@ -40,9 +40,9 @@ Cc: linux-nfs@vger.kernel.org,
 	leon@kernel.org,
 	trondmy@kernel.org,
 	J Louis Kaplan <Louis.Kaplan@arm.com>
-Subject: [RFC PATCH 4/6] svcrdma: Coalesce contiguous pages in RDMA Write chunks
-Date: Tue,  6 Oct 2026 10:00:26 +0100
-Message-ID: <20261006090028.3412544-5-Louis.Kaplan@arm.com>
+Subject: [RFC PATCH 5/6] svcrdma: Coalesce contiguous pages in RDMA Read chunks
+Date: Tue,  6 Oct 2026 10:00:27 +0100
+Message-ID: <20261006090028.3412544-6-Louis.Kaplan@arm.com>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <20261006090028.3412544-1-Louis.Kaplan@arm.com>
 References: <20261006090028.3412544-1-Louis.Kaplan@arm.com>
@@ -54,145 +54,182 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-When sending replies with remote direct memory access (RDMA)
-Writes, the pagelist is represented by one bvec per base page.
-This prevents contiguous pages from sharing a buffer descriptor.
+Read chunks currently describe their destination buffers with one
+bvec per base page. Coalesce contiguous destination pages to reduce
+the number of entries passed to the transport mapping code.
 
-Coalesce contiguous runs within each remote segment, subject to
-device length limits. Count the resulting bvecs before acquiring
-the context so its allocation reflects the coalesced entry count.
-The counting pass leaves the payload cursor untouched.
+Derive the number of consumed pages from the final page cursor,
+since one bvec can now cover several pages.
+
+Limit each iWARP Read context to one memory region: the core
+registration code cannot split a coalesced entry between regions.
+The force_mr case on other transports remains unresolved.
+
+Update comment for multipage bvecs.
 
 Signed-off-by: J Louis Kaplan <Louis.Kaplan@arm.com>
 Assisted-by: LLM
 ---
- net/sunrpc/xprtrdma/svc_rdma_rw.c | 77 +++++++++++++++++--------------
- 1 file changed, 43 insertions(+), 34 deletions(-)
+ drivers/infiniband/core/rw.c      |   7 +--
+ net/sunrpc/xprtrdma/svc_rdma_rw.c | 101 ++++++++++++++++++------------
+ 2 files changed, 65 insertions(+), 43 deletions(-)
 
+diff --git a/drivers/infiniband/core/rw.c b/drivers/infiniband/core/rw.c
+index 4fafe393a48c7..f9e0a5b8ea806 100644
+--- a/drivers/infiniband/core/rw.c
++++ b/drivers/infiniband/core/rw.c
+@@ -706,10 +706,9 @@ int rdma_rw_ctx_init_bvec(struct rdma_rw_ctx *ctx, struct ib_qp *qp,
+ 	 * is a throughput optimization, not a correctness requirement.
+ 	 * (iWARP, which does require MRs, is handled by the check above.)
+ 	 *
+-	 * The rdma_rw_io_needs_mr() gate is not used here because nr_bvec
+-	 * is a raw page count that overstates DMA entry demand -- the bvec
+-	 * caller has no post-DMA-coalescing segment count, and feeding the
+-	 * inflated count into the MR path exhausts the pool on RDMA READs.
++	 * We do not use max_sgl_rd to switch non-iWARP READs to MRs. Doing so
++	 * would require the MR builder to split multipage bvecs across MRs,
++	 * which it does not yet support. The force_mr case is handled above.
+ 	 */
+ 	return rdma_rw_init_map_wrs_bvec(ctx, qp, bvecs, nr_bvec, &iter,
+ 			remote_addr, rkey, dir);
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-index 63d00f0cc1dbd..a2e1c693b1bc1 100644
+index a2e1c693b1bc1..074a75d251c96 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-@@ -445,46 +445,48 @@ static int svc_rdma_post_chunk_ctxt(struct svcxprt_rdma *rdma,
- 	return 0;
- }
- 
--/* Build a bvec that covers one kvec in an xdr_buf.
-+/*
-+ * With a NULL @ctxt, bvec constructors count entries without advancing
-+ * @info. Otherwise they populate the context and advance @info.
-  */
--static void svc_rdma_vec_to_bvec(struct svc_rdma_write_info *info,
--				 unsigned int len,
--				 struct svc_rdma_rw_ctxt *ctxt)
-+static unsigned int
-+svc_rdma_vec_to_bvec(struct svc_rdma_write_info *info, unsigned int len,
-+		     struct svc_rdma_rw_ctxt *ctxt)
+@@ -789,54 +789,78 @@ static int svc_rdma_build_read_segment(struct svc_rqst *rqstp,
  {
-+	if (!ctxt)
-+		return 1;
-+
- 	bvec_set_virt(&ctxt->rw_bvec[0], info->wi_base, len);
- 	info->wi_base += len;
- 
- 	ctxt->rw_nents = 1;
-+	return 1;
- }
- 
- /* Build a bvec array that covers part of an xdr_buf's pagelist.
-+ * If @ctxt is NULL, only count the required entries.
-  */
--static void svc_rdma_pagelist_to_bvec(struct svc_rdma_write_info *info,
--				      unsigned int remaining,
--				      struct svc_rdma_rw_ctxt *ctxt)
-+static unsigned int
-+svc_rdma_pagelist_to_bvec(struct svc_rdma_write_info *info,
-+			  unsigned int remaining,
-+			  struct svc_rdma_rw_ctxt *ctxt)
- {
--	unsigned int bvec_idx, bvec_len, page_off, page_no;
- 	const struct xdr_buf *xdr = info->wi_xdr;
--	struct page **page;
--
--	page_off = info->wi_next_off + xdr->page_base;
--	page_no = page_off >> PAGE_SHIFT;
--	page_off = offset_in_page(page_off);
--	page = xdr->pages + page_no;
--	info->wi_next_off += remaining;
--	bvec_idx = 0;
--	do {
--		bvec_len = min_t(unsigned int, remaining,
--				 PAGE_SIZE - page_off);
--		bvec_set_page(&ctxt->rw_bvec[bvec_idx], *page, bvec_len,
--			      page_off);
--		remaining -= bvec_len;
--		page_off = 0;
--		bvec_idx++;
--		page++;
--	} while (remaining);
--
--	ctxt->rw_nents = bvec_idx;
-+	unsigned int page_pos = info->wi_next_off + xdr->page_base;
-+	unsigned int page_no = page_pos >> PAGE_SHIFT;
-+	unsigned int max_bvec_len = svc_rdma_max_bvec_len(info->wi_rdma);
-+	unsigned int page_off = offset_in_page(page_pos);
-+	unsigned int nr_pages = DIV_ROUND_UP(page_off + remaining, PAGE_SIZE);
-+	struct bio_vec *bvecs = ctxt ? ctxt->rw_bvec : NULL;
-+	unsigned int nents;
-+
-+	nents = svc_pages_to_bvecs(bvecs, xdr->pages + page_no, nr_pages,
-+				   page_off, remaining, max_bvec_len);
-+	if (ctxt) {
-+		ctxt->rw_nents = nents;
-+		info->wi_next_off += remaining;
-+	}
-+	return nents;
- }
- 
- /* Construct RDMA Write WRs to send a portion of an xdr_buf containing
-@@ -492,9 +494,9 @@ static void svc_rdma_pagelist_to_bvec(struct svc_rdma_write_info *info,
-  */
- static int
- svc_rdma_build_writes(struct svc_rdma_write_info *info,
--		      void (*constructor)(struct svc_rdma_write_info *info,
--					  unsigned int len,
--					  struct svc_rdma_rw_ctxt *ctxt),
-+		      unsigned int (*constructor)(struct svc_rdma_write_info *,
-+						  unsigned int,
-+						  struct svc_rdma_rw_ctxt *),
- 		      unsigned int remaining)
- {
- 	struct svc_rdma_chunk_ctxt *cc = &info->wi_cc;
-@@ -504,6 +506,7 @@ svc_rdma_build_writes(struct svc_rdma_write_info *info,
+ 	struct svcxprt_rdma *rdma = svc_rdma_rqst_rdma(rqstp);
+ 	struct svc_rdma_chunk_ctxt *cc = &head->rc_cc;
+-	unsigned int bvec_idx, nr_bvec, seg_len, len, total;
++	struct ib_device *dev = rdma->sc_cm_id->device;
++	unsigned int max_bvec_len = svc_rdma_max_bvec_len(rdma);
++	u64 remote_offset = segment->rs_offset;
++	unsigned int nr_bvec, len, remaining, total;
++	unsigned int base_pages;
+ 	struct svc_rdma_rw_ctxt *ctxt;
  	int ret;
  
- 	do {
-+		unsigned int nr_bvec;
- 		unsigned int write_len;
- 		u64 offset;
- 
-@@ -514,12 +517,18 @@ svc_rdma_build_writes(struct svc_rdma_write_info *info,
- 		write_len = min(remaining, seg->rs_length - info->wi_seg_off);
- 		if (!write_len)
- 			goto out_overflow;
--		ctxt = svc_rdma_get_rw_ctxt(rdma,
--					    (write_len >> PAGE_SHIFT) + 2);
-+		nr_bvec = constructor(info, write_len, NULL);
-+		if (!nr_bvec)
-+			return -EIO;
+-	len = segment->rs_length;
+-	if (check_add_overflow(head->rc_pageoff, len, &total))
++	remaining = segment->rs_length;
++	if (check_add_overflow(head->rc_pageoff, remaining, &total))
+ 		return -EINVAL;
+-	nr_bvec = PAGE_ALIGN(total) >> PAGE_SHIFT;
+-	ctxt = svc_rdma_get_rw_ctxt(rdma, nr_bvec);
+-	if (!ctxt)
+-		return -ENOMEM;
+-	ctxt->rw_nents = nr_bvec;
+-
+-	for (bvec_idx = 0; bvec_idx < ctxt->rw_nents; bvec_idx++) {
+-		seg_len = min_t(unsigned int, len,
+-				PAGE_SIZE - head->rc_pageoff);
+-
+-		if (!head->rc_pageoff)
+-			head->rc_page_count++;
++	base_pages = PAGE_ALIGN(total) >> PAGE_SHIFT;
++	if (!remaining || head->rc_curpage >= rqstp->rq_maxpages ||
++	    base_pages > rqstp->rq_maxpages - head->rc_curpage)
++		goto out_overrun;
 +
-+		ctxt = svc_rdma_get_rw_ctxt(rdma, nr_bvec);
- 		if (!ctxt)
- 			return -ENOMEM;
++	while (remaining) {
++		base_pages = DIV_ROUND_UP(head->rc_pageoff + remaining,
++					  PAGE_SIZE);
++
++		/*
++		 * The bvec MR builder cannot split a coalesced SG entry between
++		 * MRs. iWARP always uses MRs for RDMA Reads, so keep each context
++		 * within one MR. force_mr on other transports remains subject to
++		 * the core limitation.
++		 */
++		if (rdma_protocol_iwarp(dev, rdma->sc_port_num)) {
++			unsigned int nr_mrs = rdma_rw_mr_factor(dev,
++							rdma->sc_port_num,
++							base_pages);
  
--		constructor(info, write_len, ctxt);
-+		if (WARN_ON_ONCE(constructor(info, write_len, ctxt) != nr_bvec)) {
-+			svc_rdma_put_rw_ctxt(rdma, ctxt);
-+			return -EIO;
+-		bvec_set_page(&ctxt->rw_bvec[bvec_idx],
+-			      rqstp->rq_pages[head->rc_curpage],
+-			      seg_len, head->rc_pageoff);
++			base_pages = DIV_ROUND_UP(base_pages, nr_mrs);
 +		}
- 		offset = seg->rs_offset + info->wi_seg_off;
- 		ret = svc_rdma_rw_ctx_init(rdma, ctxt, offset, seg->rs_handle,
- 					   write_len, DMA_TO_DEVICE);
+ 
+-		head->rc_pageoff += seg_len;
+-		if (head->rc_pageoff == PAGE_SIZE) {
+-			head->rc_curpage++;
+-			head->rc_pageoff = 0;
++		len = min_t(unsigned int, remaining,
++			    (base_pages << PAGE_SHIFT) - head->rc_pageoff);
++		nr_bvec = svc_pages_to_bvecs(NULL,
++					     rqstp->rq_pages + head->rc_curpage,
++					     base_pages, head->rc_pageoff, len,
++					     max_bvec_len);
++		if (!nr_bvec)
++			goto out_overrun;
++		ctxt = svc_rdma_get_rw_ctxt(rdma, nr_bvec);
++		if (!ctxt)
++			return -ENOMEM;
++		ctxt->rw_nents = svc_pages_to_bvecs(ctxt->rw_bvec,
++						    rqstp->rq_pages + head->rc_curpage,
++						    base_pages, head->rc_pageoff, len,
++						    max_bvec_len);
++		if (WARN_ON_ONCE(ctxt->rw_nents != nr_bvec)) {
++			svc_rdma_put_rw_ctxt(rdma, ctxt);
++			goto out_overrun;
+ 		}
+-		len -= seg_len;
++		total = head->rc_pageoff + len;
++		head->rc_curpage += total >> PAGE_SHIFT;
++		head->rc_pageoff = offset_in_page(total);
+ 
+-		if (len && ((head->rc_curpage + 1) > rqstp->rq_maxpages))
+-			goto out_put;
+-	}
++		ret = svc_rdma_rw_ctx_init(rdma, ctxt, remote_offset,
++					   segment->rs_handle, len,
++					   DMA_FROM_DEVICE);
++		if (ret < 0)
++			return -EIO;
+ 
+-	ret = svc_rdma_rw_ctx_init(rdma, ctxt, segment->rs_offset,
+-				   segment->rs_handle, segment->rs_length,
+-				   DMA_FROM_DEVICE);
+-	if (ret < 0)
+-		return -EIO;
++		list_add(&ctxt->rw_list, &cc->cc_rwctxts);
++		cc->cc_sqecount += ret;
++		remote_offset += len;
++		remaining -= len;
++	}
+ 	percpu_counter_inc(&svcrdma_stat_read);
+-
+-	list_add(&ctxt->rw_list, &cc->cc_rwctxts);
+-	cc->cc_sqecount += ret;
+ 	return 0;
+ 
+-out_put:
+-	svc_rdma_put_rw_ctxt(rdma, ctxt);
++out_overrun:
+ 	trace_svcrdma_page_overrun_err(&cc->cc_cid, head->rc_curpage);
+ 	return -EINVAL;
+ }
+@@ -908,9 +932,6 @@ static int svc_rdma_copy_inline_range(struct svc_rqst *rqstp,
+ 		page_len = min_t(unsigned int, remaining,
+ 				 PAGE_SIZE - head->rc_pageoff);
+ 
+-		if (!head->rc_pageoff)
+-			head->rc_page_count++;
+-
+ 		dst = page_address(rqstp->rq_pages[head->rc_curpage]);
+ 		memcpy((unsigned char *)dst + head->rc_pageoff, src + offset, page_len);
+ 
+@@ -1170,6 +1191,8 @@ static void svc_rdma_clear_rqst_pages(struct svc_rqst *rqstp,
+ {
+ 	unsigned int i;
+ 
++	/* The cursor identifies every page touched while rebuilding the call. */
++	head->rc_page_count = head->rc_curpage + !!head->rc_pageoff;
+ 	for (i = 0; i < head->rc_page_count; i++) {
+ 		head->rc_pages[i] = rqstp->rq_pages[i];
+ 		rqstp->rq_pages[i] = NULL;
 -- 
 2.43.0
 
