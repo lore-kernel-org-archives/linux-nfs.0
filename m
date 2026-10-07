@@ -1,254 +1,271 @@
-Received: from CH1PR05CU001.outbound.protection.outlook.com (mail-northcentralusazolkn19010020.outbound.protection.outlook.com [52.103.20.20])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oo1-f44.google.com (mail-oo1-f44.google.com [209.85.161.44])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4DF694D2EC8;
-	Wed,  7 Oct 2026 19:03:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=52.103.20.20
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791399833; cv=fail; b=VcLhoOBKPOEsXr+xFswA5VaZ8NzWwH+Uo0UbbVr3rYrEMTwNrTUhTvWRC8ZQZ8md6+2j+jYjoEqbBZ/hZpgK110vRt1Ti0f21V0IgCPd/x4o5N6cEAFXEE3Ol1mLHWV7va/KUl3miH9ZTEvlTboFeGGyXDACVIForSZ/SZN7neg=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791399833; c=relaxed/simple;
-	bh=5q0l9O4z2VReiyBpTkDf/ZuYVuOrwfM/DhGxxcVgYZw=;
-	h=From:To:CC:Subject:Date:Message-ID:References:In-Reply-To:
-	 Content-Type:MIME-Version; b=kObwdX8GUmfiQ0F4Z4RO9NA5PcVhGtLf1ucVVSlZorlk/9mHBIHRHstv+3ZvgrS1UDFgNdTJHfcxquz3LeM2bSh90wgxLNLLWNr5dNg93w0coC7iwuBH9G2c2jKRAnsNYNqmVUf2qxLT8JjTsbfH7dwl7WkVr9Kriv79Gep64f8=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=hotmail.com; spf=pass smtp.mailfrom=hotmail.com; dkim=pass (2048-bit key) header.d=hotmail.com header.i=@hotmail.com header.b=oK8hyQUZ; arc=fail smtp.client-ip=52.103.20.20
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=hotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hotmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 44BE44E73DF
+	for <linux-nfs@vger.kernel.org>; Wed,  7 Oct 2026 19:59:38 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.44
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1791403181; cv=none; b=q1Edo2KCOn6JV0taCQXIn4N8TFca7DEbGOsjJ/qBmXa2kGxHuxGuxsqeL5udWJ3Zal+oKfjzVCdhn/VNaEdX5rE0FA1oSvjKwTVG9lXF1NLsNWT1VI6PVMCCyl4fE+RP2L0PFttGNt+6pa1IBUrwPOXjSejvqOpqaydAA3xVDNc=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1791403181; c=relaxed/simple;
+	bh=0pPmeZyp251Lr0x3886a9pgXCkpW4jNoTcJsPjHFl9g=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=NNBdLr2ft0YT2cGtyckYg3GtbwMuruAcoMEYtsKEyZ9QnmMxl+Lze2Ole96SAAxnrWZBiEwE9/1bcpr/sU4zpf00mAiq6m2XrXmwu+shb7Mns7XWyfOqQD782lROthLIfyIFe0YRs9+Wr4KmUOQl5ZcU++7caHJbuQIZXElt0KI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=AEcc0tmI; arc=none smtp.client-ip=209.85.161.44
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hotmail.com header.i=@hotmail.com header.b="oK8hyQUZ"
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=Ta1b6st9vqKdJDmuppC5bjpmMxT3pZ02Mqk8i/qAfZ877KzyV31uPZsjA/7Z3xPghSEUdR1bYUkHR1p05UjQFg45x+NIL8sklUhbGI1lEuGHuxdVxK2VzZNUyREDLsUu5V5AcgT8kZxmPOmmPGCr1RvvJ65JXJVCGSum0qe+rKgxgF3NObfsLQ8tWcQPedef6cW7sZwsl3qnmJgwKitDOva76KcYSGnIlBns+EtAqh+h/FqRnjnWsov9RlNogcRjoS1zOg3qLFTMUV6rUyjAel5KlV/awPV5XQmZ7Ae1bJN6FzQwCN0wYmsit7U0Y51GYTyzUrUCBiE9KXtBZzCV8w==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=5q0l9O4z2VReiyBpTkDf/ZuYVuOrwfM/DhGxxcVgYZw=;
- b=n9UhfHcYezn61klnlReHzLHlFxiFUo0crH7fEcxinUo3BJ/kdzqj/BFPmt+gEPXksMaUOFi/xYt7dNmlkKWVg8k3WiY6TYCFfSOx2LjClkN7eNVd2tdcFGWPPjj5/Sd3GwczFbGP8+wIVcNRM/2Ar73pfQloN4SX8kNuoF1lDDXsyT8b5gCz0NJJCjV9+xsqCpqp1J+JSMTiH/KJqYO5V9M0QrQuNUD5K9jkZvjyizZf6GWkI+cfgLmCxjzzCYAAAjS4JGWcHD/RsT5xPOcjJjlNVQhQ9Olz3HIMjCoEUjV4emy3KrLUzegi1zxZxJwuoB/VJ4TKNkVseSKA3485Sw==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=none; dmarc=none;
- dkim=none; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hotmail.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=5q0l9O4z2VReiyBpTkDf/ZuYVuOrwfM/DhGxxcVgYZw=;
- b=oK8hyQUZZQaiYMk7Exc2UIAmQG31hubz1b9aHAwHoVdUBox5nhmLxJGMbJDW9x9upPBHfL2p5R3N969DvcHGFKhwxsrNhLAAmVQWrgJLU2cEMEanKoFLt1BRVJYXrpVH+mEupDLO8NrYxHJQfEOapmi7hCxLFlfDCp553wPQm0/pB/SWuR5WBt5s/NzHPQbGYQXnSXTkeM3ZrngZXQP+cfwe7aY+0vddalAuC+V02fN5Chj8uBJ2xGann/FR5Ssvye1N+5Lr10s3koKsO/tL5n2YFbQBL5X5OuFbb8jq8jMblg2DPCOyRES8IcAyurZKe6ajlP7VjIa243GNFNbU8A==
-Received: from DS4PR04MB9846.namprd04.prod.outlook.com (2603:10b6:8:2ea::15)
- by PH0PR04MB9905.namprd04.prod.outlook.com (2603:10b6:510:3ae::24) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.496.15; Wed, 7 Oct
- 2026 19:03:47 +0000
-Received: from DS4PR04MB9846.namprd04.prod.outlook.com
- ([fe80::f475:2ef9:2387:5e0]) by DS4PR04MB9846.namprd04.prod.outlook.com
- ([fe80::f475:2ef9:2387:5e0%5]) with mapi id 15.21.0496.010; Wed, 7 Oct 2026
- 19:03:47 +0000
-From: Danny Pidutti <danny_pidutti@hotmail.com>
-To: Daniel Pidutti <Danny@lightningiq.io>, Chuck Lever <cel@kernel.org>,
-	Christian Brauner <brauner@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>,
-	Amir Goldstein <amir73il@gmail.com>
-CC: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] exportfs: Release the get_name() directory file
- synchronously
-Thread-Topic: [PATCH] exportfs: Release the get_name() directory file
- synchronously
-Thread-Index: AQHdVnt+XztgP33s002uCdHGjnc4/bbyYivagAAN4d4=
-Date: Wed, 7 Oct 2026 19:03:47 +0000
-Message-ID:
- <DS4PR04MB984629798B7EB97DBB56117C8D942@DS4PR04MB9846.namprd04.prod.outlook.com>
-References: <20261007164648.50493-1-cel@kernel.org>
- <LV2PR15MB538107FDEB65AB1A4CEA8D5EC6942@LV2PR15MB5381.namprd15.prod.outlook.com>
-In-Reply-To:
- <LV2PR15MB538107FDEB65AB1A4CEA8D5EC6942@LV2PR15MB5381.namprd15.prod.outlook.com>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach:
-X-MS-TNEF-Correlator:
-msip_labels:
-x-ms-exchange-messagesentrepresentingtype: 1
-x-ms-publictraffictype: Email
-x-ms-traffictypediagnostic: DS4PR04MB9846:EE_|PH0PR04MB9905:EE_
-x-ms-office365-filtering-correlation-id: 1615598e-6e96-4eea-5f08-08df24a5b77f
-x-microsoft-antispam:
- BCL:0;ARA:14566002|25010399006|8060799015|25031999004|24021099003|4140399003|31061999003|37011999003|12121999013|8062599012|19110799012|41001999006|15030799006|15080799012|52005399003|40105399003|1602099012|10035399007|2607281247196008|102099032|4302099013|440099028|3412199025;
-x-microsoft-antispam-message-info:
- =?iso-8859-1?Q?iTAkwaf8wZ17dRQN+/Fx1DD0hGW4rXt6jxxUQ3jwqJQ8znclfG44nRdfh0?=
- =?iso-8859-1?Q?knea9j8aYGxFdShQkb9DW5adWf9yiZ7ixtNGzPfpD5Tw2QO0TOahfyUieU?=
- =?iso-8859-1?Q?hP1VejDVrBeO3tN8V9fxaXpnu/wp9b2wBI1s1JaBk0mSh0nr3pf/vcA5BJ?=
- =?iso-8859-1?Q?U6ObH24F9IsGCxdbf/9XWk9ZTc9I1O9Y7pAgtFJb6fSELWDuvrxfhj4Fup?=
- =?iso-8859-1?Q?VElJerlotiq0PKnZxznXcXziwgkMNx3x3p3Gu7TEduYG4IpGEgnICpMtkJ?=
- =?iso-8859-1?Q?AveMdkPd7fjFNJcfwyEACeILxRCyQ42XFX9S2wjnvxr/ZhprbVz9K28ww5?=
- =?iso-8859-1?Q?dpzo5Ke7Vi/ZzbBo6ipe4ZjJeKK+TaSapKipf/QUsWvhOZi2cZ6FuBDksF?=
- =?iso-8859-1?Q?oFSI7zQtHCC7VFAPaaDYd3/5AcTjQh8GjywfPqRkB9qI4D17dqMTM4M2Bg?=
- =?iso-8859-1?Q?/hWZAnssu9Sq13WuFtg/f4W2uNvyWlPaBB5V3GpTFb2jnT4oj/Qt4Rdc52?=
- =?iso-8859-1?Q?Nxg2DhmuGr82NHHTp/Ie08BKRxJCqw17wygIDuZ7RD2SSZOM9KwvbJWQwc?=
- =?iso-8859-1?Q?pdaE9ESXN/AViYYf5Ltm4By3XZX2wv4Xg8wFQ7Q4M4r43kp7v8zoarL3D9?=
- =?iso-8859-1?Q?jyYpmOiyhPwZF3Q/2JmMSymW17oxh104iOFcVl2ktXZKzJhoVqXLQ8Pi5X?=
- =?iso-8859-1?Q?yWtDrITQEDiy9M5vTU38ol2JXe+YYtNRgswpRV9Gl5xlAzUO9ByzdayYl7?=
- =?iso-8859-1?Q?B0A1N0mvq4/gPtvyyAyIlI/Cf1BsN1goZWUvOlJQrySGe+KRbNpIyxPIgj?=
- =?iso-8859-1?Q?EwaI0RDddqphwEfYPvCctXbGavZmw4PEfFlVrvGlVrg/TpCszxRztG2tBe?=
- =?iso-8859-1?Q?MdbJ9infkcwTNiiMGrb58UTi3MhItr9X2I5HkW5SCguOYAHoAES5hnj3WC?=
- =?iso-8859-1?Q?JmQLa6z/WpY2f5WmSEvKju5FcRg7ZttzKTD7g4cJe2oM4PHxV6NNiPX9rn?=
- =?iso-8859-1?Q?6YJhmdlsgSvoS5irrvctHIIg9hNqJ10JEMW0/COGZodND0k9yGhXg7S4Fj?=
- =?iso-8859-1?Q?rhdn4QNKNLV4MyvVU8FJyqpOxc7+No+Y8QrADmUmd5gq6GHwi8o12m3nXi?=
- =?iso-8859-1?Q?ZVEvSY4x5yHkZKPEos/LkO5o3TG8naRO/9ny1egYUPQXI6U4NSCUHPimLa?=
- =?iso-8859-1?Q?7IpLlnWC4Fnf7w=3D=3D?=
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0:
- =?iso-8859-1?Q?NLWkJ1bCFe9F6Ag+tzqcrEKT2RpegM76VYV6m1xRtvbUqTp9rYNq//Z6Gv?=
- =?iso-8859-1?Q?6ZNiuyBTr2DesaNWxP3WfuPFDQydodBvmsuo9Nm7XNfCE7en2TKuxkdbHv?=
- =?iso-8859-1?Q?00n7AcyF1/ghqeT8m046N6S/AWvrSDyI74zpPxF4pvV0qnCRuAIBqMHeXN?=
- =?iso-8859-1?Q?76c6vt5a8peA1lJ7q9LV8e5SkEp/CWugG8Amv3Xm4Y1ECM3F52LiOQ6KoB?=
- =?iso-8859-1?Q?dzfoaZXGCJL3mV18MI6sn37MT0/HVxon1HeasbrQ7+h6PaVMe61Ldpw3mu?=
- =?iso-8859-1?Q?ZP9W1ePaUISB1Tp9WOA6b9T/+5V2vHQwW82qEmqPUMb1UQ453TYjOdAEk7?=
- =?iso-8859-1?Q?lSB6jbcuC3nsQegKStDKhsh8iWsyCPbqSzIADGYDqRHMlIb4VlZ+PpDPuL?=
- =?iso-8859-1?Q?2mAkoJaGrZW63hQfiEQMGkZ6S0UJivXbMSjozooBy9yIWLXjsxeNyPBAQ+?=
- =?iso-8859-1?Q?0dNTPpQtrJ25sxhsabUpcs1eo2ZDyOTNMTA02fXsx9VUbO4my92Un//es7?=
- =?iso-8859-1?Q?8dnAyDVAybshbcOrwQQDu5jjDvze48hYylyxJJ6EOsgykNvIrkPt3kiTNY?=
- =?iso-8859-1?Q?3fySI8foW3vHZ8pv46gFQ9fwQn2jGSQ7f/HjrHrQ7d9kVRV2lP9owrA+xG?=
- =?iso-8859-1?Q?WySwjthiIOXzQ/iJO3ApGW9YBT5jvQwuIyMfeyR2yvhQ9fEaUZYf/GWab1?=
- =?iso-8859-1?Q?FsWvdcJbZdsOc5snx6Ura7U1PD3w/Yuy0pCpFkQEemHAfpRKvPTbsj0Iba?=
- =?iso-8859-1?Q?Li4tA2//JMv8x+8RWZiqZq90/5/cwBdZuRCgKx1UMGe3WGgQdnOe8I5x8u?=
- =?iso-8859-1?Q?nXPTJnQLIWM5N2bZPly5F0DydNZzTiaotPGCrTiZ5PCkazHRiyaFwKLbil?=
- =?iso-8859-1?Q?b4Mkdv/sPumZ/Y1nGJ0Yp9Y0l/ZzgwcN7V+cz66pLuBTdkUxSyKig5kLIi?=
- =?iso-8859-1?Q?rSUP2Fi3OTeKz6w2jdlBfvLiFdTZzRN5nVvNLdkHlGz5lM4KEWWfxYVbiH?=
- =?iso-8859-1?Q?xZlx5eHK9qmsVHI9RGPzUx6FaG5wSbPRe66SrPY0Qt13Mfs97qF55HDM2G?=
- =?iso-8859-1?Q?v/UPjdTQYS45oDG8tifFe8ZBrDdMe2ro2jdIC9tXvYmfEh1vG1uskvrHJn?=
- =?iso-8859-1?Q?heeXlnPKsEYeOBfzHnEGMY1mWKgb+9KUWxpAW6d57763o325ha1P9i38oq?=
- =?iso-8859-1?Q?CWGKLxUHx/VjY1r9O7/N5LXeWWuVafvqM6NMx2Otnm0/xYWU0fsbkWaocf?=
- =?iso-8859-1?Q?CMCMReeMS2c8HaTM/0Ql8wY5lHbYGtJocbcF4PukGBZlg3+0WyVOOsVD07?=
- =?iso-8859-1?Q?dS1sulHxjfrc9mEUSZGjgX6Xnbg72ZOXKSFj/eWrHs+HWr0WZrKJq8wS7N?=
- =?iso-8859-1?Q?erbkkUc6k3TGBb4nQ18pbrcXgG5jV32yfLrFJTERRKhKBiGryZpZGEG+cN?=
- =?iso-8859-1?Q?WsQowbosNsb5AgOP?=
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="AEcc0tmI"
+Received: by mail-oo1-f44.google.com with SMTP id 006d021491bc7-6de1fd5f572so1017106eaf.3
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Oct 2026 12:59:38 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=hammerspace.com; s=google; t=1791403177; x=1792007977; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=RlvmTENnWdcvYsu4QTibTscykQ0vwVEqV2HgUrxeKRU=;
+        b=AEcc0tmIii4yPMyuUwsLkDOpjstv2xxCG4of+/7l0cZ199AW8ykghTTwgL2zuoDMn4
+         bzAPHF1QxjLMl/+q0FnO/PxZJ7SO+vQQ3N6QfYOKBYHox4poeBiXbraGpYRN1wUmMl3Y
+         /3mAejKZ8AI//NFAs77jvPcP9hSpDMY2I1BjTgKNwZ2hJyEMhOlQpbprntXyEIJPxHWM
+         YmfCD2ZMVMoTNkySxMNk6G+ApO/Po2vTx20wfsgukXgeWSCJ5y/uPYCw7h+CI6D4fjsF
+         Mf3BqDLLvjnHQ9JBgoUyrdS/seo4PA1qoZWNceGErOVLnyUkAw1p3lYBJFKPsunTWN0Q
+         CDVA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1791403177; x=1792007977;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=RlvmTENnWdcvYsu4QTibTscykQ0vwVEqV2HgUrxeKRU=;
+        b=MLnl4phf+TPgectMAd2FOtaTYW6aG7eWerKuTpY7v1DvKWmYNflzoiij3o7n5tpGt5
+         AY2MBveZTl+sm9uTjdtblBGE353M9N6P38FK2+BNcmAMszjaqPp6GEIdFtDmgjVWgjFR
+         LSNeH3/gKoS3c4Lap/TPQVe64wxZO/sPcW97xddA5WIrTXYarvEYihyPjEZdxtlKTz3y
+         WJQ3OKcwlSvxL/sOyvuxfP/v5BJZIVrwYCMpM9MUsuaIzduwYbuBvy/DjiusgrXPHfJp
+         OOUmDmY6jGcc+B+tju/Ck5dUAp5LnJAvc6nv0W4oBP3yqCXkg1efIlq4XeyAZa9Wketw
+         HlMA==
+X-Gm-Message-State: AFuF++nF2okTy72ksjGhJMIgR6BKZUxNmc0mCbr/TOjDI/Ys34bvfyNb
+	m9DzuJdEkIZBv5vf9RtFipOhwI4IIOq9YQK4vQU5bD3kUuiE8x1Oh4UF4NYCBah6kYknAYRTk28
+	UhymH
+X-Gm-Gg: AYBFou2MZzckTNFKDftkVC45ErcghR5OmZu4nPeDoOSOrh4o79XMaM9vRxQH8AePtlx
+	9mgYp71HNwSGF2z2QVJJfMbj2yPzGGx24DQMBNmWtXlXGB++EkNktqmxxQAWxN2dTKIGYlwYqga
+	r7aMKlFLV0GIEBKh6p0zwQ04kZITxgDN+PkaLGFGrUp6usVpdJ6mEALfFcqc6Zc6PiSbmJVD/dt
+	t1OW6jEXYDv1VEdpkL/2D7RUBFYurtbvbAy9uS42IVEaS7QM1DCffHjoqZvW0+WiOeyT6JyeBGf
+	S6qMYmB5+7uAGRILvFIEFzObbnEVXDrHunrJOnl8cTosjjhI1tm4AWytVWjGJayD7R1R6dChHIu
+	clVa7b5dIFsZnpyEKR6/6C1kq+7JfoUgWUM8GEr9nGx7OFdPJ+rjLzDlT8N4wpEMQk/g3I5TeYN
+	DM8FUBPryWAQJeudXV8wuopi6VwudZYVahhC5tG0aczltII47OpcoapjMqfOBSl0MRqzzbtbXoO
+	BzkfVP0M8ULMXUto2At7c6A0XM3ej4NdVIArGYzvg==
+X-Received: by 2002:a05:6820:f011:b0:6dd:3105:1f86 with SMTP id 006d021491bc7-6e7a98932efmr3318026eaf.62.1791403176819;
+        Wed, 07 Oct 2026 12:59:36 -0700 (PDT)
+Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
+        by smtp.gmail.com with ESMTPSA id 586e51a60fabf-4a274c9c520sm1084285fac.16.2026.10.07.12.59.35
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 07 Oct 2026 12:59:36 -0700 (PDT)
+From: Benjamin Coddington <ben.coddington@hammerspace.com>
+To: Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>
+Cc: linux-nfs@vger.kernel.org,
+	Daire Byrne <daire@dneg.com>,
+	bpf@vger.kernel.org,
+	Martin KaFai Lau <martin.lau@linux.dev>
+Subject: [PATCH RFC v2 0/9] SUNRPC: dispatch ready transports round-robin across clients, classes from BPF
+Date: Wed,  7 Oct 2026 15:59:25 -0400
+Message-ID: <cover.1791402701.git.bcodding@hammerspace.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-OriginatorOrg: sct-15-20-9412-4-msonline-outlook-7fd9e.templateTenant
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: DS4PR04MB9846.namprd04.prod.outlook.com
-X-MS-Exchange-CrossTenant-RMS-PersistedConsumerOrg: 00000000-0000-0000-0000-000000000000
-X-MS-Exchange-CrossTenant-Network-Message-Id: 1615598e-6e96-4eea-5f08-08df24a5b77f
-X-MS-Exchange-CrossTenant-originalarrivaltime: 07 Oct 2026 19:03:47.6247
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 84df9e7f-e9f6-40af-b435-aaaaaaaaaaaa
-X-MS-Exchange-CrossTenant-rms-persistedconsumerorg: 00000000-0000-0000-0000-000000000000
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: PH0PR04MB9905
+Content-Transfer-Encoding: 8bit
 
-Thanks for the quick patch. The description matches what I saw on=0A=
-our server.=0A=
-=0A=
-I tested it on the kernel where I found the problem: Ubuntu=0A=
-7.0.0-38 (7.0.14) built with this patch only, 64 nfsd threads,=0A=
-vfs_cache_pressure at the default of 100, and the same parallel tree=0A=
-walk over about 43 million files and 5.5 million directories.=0A=
-=0A=
-Before the patch, unreclaimable slab grew by about 90 MB per second=0A=
-and reached the 8 GB limit of my test script. With the patch it=0A=
-peaked at 1.5 GB in the first two minutes, came down to 0.6 GB while=0A=
-all 64 threads were still busy, and stayed flat until the walk ended.=0A=
-Open files went back to the idle count once the walk finished.=0A=
-=0A=
-=0A=
-One question about the stable backport. The Fixes: tag goes back to=0A=
-3.10, so stable may pick this up for 5.15 and 6.1. As far as I=0A=
-remember, __fput_sync() on those kernels had a BUG_ON for callers=0A=
-that are not kernel threads, and that was removed around 6.6.=0A=
-get_name() can also be reached from open_by_handle_at() in process=0A=
-context. Could you check whether the older stable kernels need a=0A=
-different fix, or a guard on current->flags & PF_KTHREAD?=0A=
-=0A=
-=0A=
-Danny Pidutti=0A=
-=0A=
-=0A=
-=0A=
-=0A=
-________________________________________=0A=
-From: Chuck Lever <cel@kernel.org>=0A=
-Sent: Wednesday, October 7, 2026 12:46 PM=0A=
-To: Daniel Pidutti <Danny@lightningiq.io>; Christian Brauner <brauner@kerne=
-l.org>; Al Viro <viro@zeniv.linux.org.uk>; Amir Goldstein <amir73il@gmail.c=
-om>=0A=
-Cc: linux-fsdevel@vger.kernel.org <linux-fsdevel@vger.kernel.org>; linux-nf=
-s@vger.kernel.org <linux-nfs@vger.kernel.org>; Danny Pidutti <danny_pidutti=
-@hotmail.com>=0A=
-Subject: [PATCH] exportfs: Release the get_name() directory file synchronou=
-sly=0A=
-=0A=
-=0A=
-get_name() opens the parent directory with dentry_open() and=0A=
-releases it with fput(). From a kernel thread, fput() defers the=0A=
-final __fput() to the delayed_fput work item. NFSD threads are=0A=
-kernel threads, and NFSD reaches get_name() through=0A=
-exportfs_decode_fh() whenever a file handle's dentry is not=0A=
-connected to the root.=0A=
-=0A=
-On a filesystem with more directories than the dcache retains,=0A=
-nearly every READDIRPLUS needs a reconnect. The deferred releases=0A=
-arrive faster than the work item retires them, and each pending=0A=
-file pins the directory's readdir state. On ext4 that state is the=0A=
-htree fname cache for the last leaf block read. A 64-thread NFSv3=0A=
-server under a parallel tree walk showed unreclaimable slab growing=0A=
-by about 90 MB per second, and the same workload on a 5.15 kernel=0A=
-ended in a global OOM.=0A=
-=0A=
-Commit 5ff318f645eb ("nfsd: use __fput_sync() to avoid delayed=0A=
-closing of files.") stopped NFSD's own closes from feeding the=0A=
-delayed_fput queue but did not cover the exportfs reconnect path.=0A=
-=0A=
-Release the file with __fput_sync(). get_name() opened the file=0A=
-itself, read-only, on a directory, so __fput() involves nothing=0A=
-that could wait on the caller.=0A=
-=0A=
-Fixes: 4a9d4b024a31 ("switch fput to task_work_add")=0A=
-Reported-by: Danny Pidutti <danny_pidutti@hotmail.com>=0A=
-Closes: https://lore.kernel.org/linux-fsdevel/DS4PR04MB9846BA3C16BC5ACED8B5=
-89228D952@DS4PR04MB9846.namprd04.prod.outlook.com/=0A=
-Signed-off-by: Chuck Lever <cel@kernel.org>=0A=
----=0A=
-fs/exportfs/expfs.c | 6 +++++-=0A=
-1 file changed, 5 insertions(+), 1 deletion(-)=0A=
-=0A=
-Mail from kernel.org to hotmail.com was rejected. kernel.org appears=0A=
-to be on some deny-list. Reposting.=0A=
-=0A=
-=0A=
-diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c=0A=
-index eafd99507afe..b5768f94fbb5 100644=0A=
---- a/fs/exportfs/expfs.c=0A=
-+++ b/fs/exportfs/expfs.c=0A=
-@@ -336,7 +336,11 @@ static int get_name(const struct path *path, char *nam=
-e, struct dentry *child)=0A=
-}=0A=
-=0A=
-out_close:=0A=
-- fput(file);=0A=
-+ /*=0A=
-+ * @file is the read-only directory opened above, so __fput()=0A=
-+ * cannot block on anything the caller holds.=0A=
-+ */=0A=
-+ __fput_sync(file);=0A=
-out:=0A=
-return error;=0A=
-}=0A=
---=0A=
-2.55.0=0A=
-=0A=
-=0A=
-Disclaimer=0A=
-The information contained in this communication from the sender is confiden=
-tial. It is intended solely for use by the recipient and others authorized =
-to receive it. If you are not the recipient, you are hereby notified that a=
-ny disclosure, copying, distribution or taking action in relation of the co=
-ntents of this information is strictly prohibited and may be unlawful.=0A=
-=0A=
-This email has been scanned for viruses and malware, and may have been auto=
-matically archived by Mimecast, a leader in email security and cyber resili=
-ence. Mimecast integrates email defenses with brand protection, security aw=
-areness training, web security, compliance and other essential capabilities=
-. Mimecast helps protect large and small organizations from malicious activ=
-ity, human error and technology failure; and to lead the movement toward bu=
-ilding a more resilient world. To find out more, visit our website.=
+From: Benjamin Coddington <bcodding@hammerspace.com>
+
+This is v2 of [3], with the change I floated in that thread: the kernel
+no longer decides which transports belong together.  By default nothing
+changes.  An administrator who wants peers grouped loads a small BPF
+program that returns a class for each accepted connection, and the pool
+takes turns across classes.
+
+What's different from v1
+------------------------
+
+The table I described on [3] became a hook.  Instead of a kernel table
+of address prefixes, a netlink interface for it and an nfs-utils side,
+sunrpc registers a struct_ops with one callback: given the accepted
+svc_xprt, return a class.  0 means the anonymous client (shared with
+everything unclassified, today's order among them); any other number is
+a class every transport returning it shares; a flag bit on top means
+"and one client per peer address within that class".  So "all movers are
+one class, everybody else per host" is two entries in a prefix map, and
+the posted v1 behaviour is one entry.
+
+The hook runs once per accepted connection, in process context, after
+TCP and RDMA have both set the peer address.  Nothing runs per request.
+No program loaded means every transport is on the
+anonymous client, and with patch 6 the pool uses its old flat queue
+until a classifier attaches, so the dispatch path is today's code for
+anyone who hasn't asked for anything.  That's the answer to Chuck's cost
+question from [3]: measured on bare metal the two-level queue cost about
+half a microsecond a dispatch (1.7% at 484k IOPS on one client's eight
+connections); with no program it now costs a static branch on enqueue
+and an empty-queue test on dequeue.
+
+Attaching is a struct_ops link, bound to the attaching task's network
+namespace, one per namespace.  A second attach gets -EBUSY, a link
+update replaces the program, closing the link removes it, and a
+namespace that exits leaves its link with nothing behind.  Transports
+keep the class they got at accept; a new program only affects new
+connections.  The reference program and the attach tests are in the BPF
+selftests (patch 7).  svc-classify (patch 8) attaches the prefix
+classifier and manages its map by address prefix, so an administrator
+never touches bpftool.  The page in patch 9,
+Documentation/filesystems/nfs/rpc-server-clients.rst, has the class
+word, the install procedure, and six class maps with the share each one
+gives its clients.
+
+Still not in here: moving a transport between clients, so a v4.1
+clientid key, which Chuck asked about on [3], is not in this version.
+A multi-homed host or an IPv6 host with a prefix's worth of addresses
+is handled by the prefix map instead.
+
+Also from the [3] review: control events (accept, close, handshake) go
+ahead of data within a client (patch 5), and the dequeue tracepoint
+prints the class (patch 4).
+
+Numbers
+-------
+
+The dispatch numbers are the v1 series' on a two-socket box (2 x Xeon
+6542Y, 96 threads, no KASAN), from [3].  The dispatch code is the same
+here: v2 puts the classifier in front of it, and the flat queue behind
+a static branch when nothing is attached.  Loopback, NFSv3, 16 threads,
+10 ms injected service time with 50% jitter.  A is v7.2, B the series.
+v4.1 is within 2% in every cell.
+
+One interactive client (bursts of 32) against one host with K
+backlogged connections, burst completion p50 in ms, floor 37:
+
+    K             4      8     16     32
+    A            70    195    351    671
+    B            56     62     61     63
+
+    N (K=16)      1      8     32     64     96    128
+    A            21     98    350    690   1035   1365
+    B            11     31     62    103    144    179
+
+    M hosts x 4   1      2      4      8
+    A            70    192    351    670
+    B            57     81    121    192
+
+    S: 2x8 vs K, share   4      8     16     32
+    A                 41.0   20.0   11.1    5.9
+    B                 50.3   50.0   50.0   50.0
+
+A real NFSv3 client walking 500 files against a 16-connection
+aggressor: 37.8 s on A, 2.5 s on B, 0.12 s alone on both.
+
+Classes.  The v1 kernel keyed on source address, so on [3] I emulated
+"all movers are one class" by giving six movers one address.  With this
+series that's one map entry (the movers' prefix -> 1, everything else
+per address), and the six-address column is what "everything per
+address" gives.  Six movers at 4 or 8 connections each against
+customers, customer share of dispatches:
+
+                                 A           per address   movers one class
+    one customer, 1 conn x 16    4.0 / 2.0   14.3 / 14.3   49.9 / 49.9
+    one customer, 4 x 4         14.3 / 7.7   14.3 / 14.3   49.8 / 49.7
+    four customers, 4 x 4 each  40 / 25      40 / 40       80 / 80
+
+Burst of 32 against M busy hosts, p50 ms: hosts on their own addresses
+57 81 121 192, as one class 56 62 62 62.  A: 71 193 348 673 either way.
+
+Cost.  With a classifier attached, dispatch takes two or three more
+lock-free queue operations per request.  On the same box that's about half a
+microsecond when the enqueue and the dequeue run on different cores,
+fio 4k O_DIRECT randread over loopback, 5 x 20s:
+
+                                   A        B
+    nconnect=1, 16 jobs        152.8k   152.2k   -0.4%
+    nconnect=8, 16 jobs        483.8k   475.5k   -1.7%
+    nconnect=8, 64 jobs        584.2k   581.0k   -0.5%
+
+The serial walk and 4 jobs on one connection don't move.  With no
+classifier attached the pool is on its old flat queue (patch 6).  I only
+have my VM for that path so far (KASAN, 10 vCPUs, loopback, the same
+fio), and there the no-program kernel measures the same as v7.2 within
+the run-to-run spread: 16 jobs 94.9k vs 95.5k, 64 jobs 138.6k vs 139.0k.
+So the static branch adds nothing I can see, but that's a VM number.
+
+Not tested: RDMA.  The hook sits in the accept path TCP and RDMA share,
+but I could not bring a soft-RoCE listener up on the VM.
+
+Daire - the same nine patches on v7.2 (plus the wake fix) are at
+https://github.com/bcodding/linux branch nfsd-clientq-v2-7.2 if you
+want to run it; the loader builds from tools/net/sunrpc/svc-classify in
+that tree.
+
+The series is on nfsd-testing at 56589cdb5881, which already has the
+svc_clean_up_xprts() wake fix from [3].
+
+  patch 1  track clients by class, no change to dispatch
+  patch 2  dispatch round-robin across clients
+  patch 3  the struct_ops hook
+  patch 4  class in the svc_xprt_dequeue tracepoint
+  patch 5  control events ahead of data within a client
+  patch 6  flat queue while no classifier is attached
+  patch 7  selftests: the prefix program and the attach tests
+  patch 8  tools/net/sunrpc/svc-classify: the prefix classifier and its
+           loader (load/replace/unload, add/del/list by prefix, status)
+  patch 9  Documentation: the model, the class word, installing a
+           classifier with svc-classify, six class maps and the share
+           each gives, how it works underneath
+
+[1] https://lore.kernel.org/linux-nfs/cover.1780498019.git.bcodding@hammerspace.com
+[2] https://lore.kernel.org/linux-nfs/cover.1782314746.git.bcodding@hammerspace.com
+[3] https://lore.kernel.org/linux-nfs/cover.1790953694.git.bcodding@hammerspace.com
+
+Benjamin Coddington (9):
+  SUNRPC: track service clients by class
+  SUNRPC: dispatch ready transports round-robin across clients
+  SUNRPC: add a BPF struct_ops hook to classify accepted transports
+  SUNRPC: report the transport's class in the svc_xprt_dequeue
+    tracepoint
+  SUNRPC: dispatch control events ahead of data within a client
+  SUNRPC: keep the single transport queue while no classifier is
+    attached
+  selftests/bpf: add svc_classifier tests
+  tools/net/sunrpc: add svc-classify, a prefix classifier and its loader
+  Documentation: describe RPC server transport classes and the BPF
+    classifier
+
+ Documentation/filesystems/nfs/index.rst       |   1 +
+ .../filesystems/nfs/rpc-server-clients.rst    | 394 ++++++++++++++++++
+ include/linux/sunrpc/svc.h                    |  72 +++-
+ include/linux/sunrpc/svc_xprt.h               |  30 ++
+ include/trace/events/sunrpc.h                 |  11 +-
+ net/sunrpc/Kconfig                            |  12 +
+ net/sunrpc/Makefile                           |   1 +
+ net/sunrpc/netns.h                            |   4 +
+ net/sunrpc/sunrpc_syms.c                      |   4 +
+ net/sunrpc/svc.c                              |  36 ++
+ net/sunrpc/svc_classify.c                     | 210 ++++++++++
+ net/sunrpc/svc_xprt.c                         | 281 ++++++++++++-
+ tools/net/sunrpc/svc-classify/.gitignore      |   1 +
+ tools/net/sunrpc/svc-classify/Makefile        |  65 +++
+ tools/net/sunrpc/svc-classify/svc-classify.c  | 357 ++++++++++++++++
+ .../sunrpc/svc-classify/svc_classify.bpf.c    |  83 ++++
+ tools/testing/selftests/bpf/config            |   2 +
+ .../selftests/bpf/prog_tests/svc_classifier.c | 104 +++++
+ .../selftests/bpf/progs/bpf_svc_classifier.c  |  80 ++++
+ 19 files changed, 1724 insertions(+), 24 deletions(-)
+ create mode 100644 Documentation/filesystems/nfs/rpc-server-clients.rst
+ create mode 100644 net/sunrpc/svc_classify.c
+ create mode 100644 tools/net/sunrpc/svc-classify/.gitignore
+ create mode 100644 tools/net/sunrpc/svc-classify/Makefile
+ create mode 100644 tools/net/sunrpc/svc-classify/svc-classify.c
+ create mode 100644 tools/net/sunrpc/svc-classify/svc_classify.bpf.c
+ create mode 100644 tools/testing/selftests/bpf/prog_tests/svc_classifier.c
+ create mode 100644 tools/testing/selftests/bpf/progs/bpf_svc_classifier.c
+
+-- 
+2.53.0
+
