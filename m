@@ -1,146 +1,221 @@
-Received: from mail-ej1-f50.google.com (mail-ej1-f50.google.com [209.85.218.50])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F06943D5668
-	for <linux-nfs@vger.kernel.org>; Wed,  7 Oct 2026 20:50:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.218.50
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D128341D106
+	for <linux-nfs@vger.kernel.org>; Wed,  7 Oct 2026 21:20:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791406253; cv=none; b=STWhxuJuFfwstxUkZA5taIaSmtzQP0xH4+IdyTTEbbiD8UXcqF8P5wXsY35BUtvA2RGM1CBCiW8iuTiIoqzamT9Bq4tVSe+Q1ZcpHsm1X9QlumpPDgEFDUs86XIfqMGizUTURLWR0DBOJiVf90HZMCg7jVvI7gcE3QS5WBKGAYA=
+	t=1791408053; cv=none; b=Po2iuO95Qyw0WxG/hmk4hwkSlnAshHBzLYf1mbZysMszwXSEWWusYUsIR2Iu/2G7FnHRVU0OuObT+6UpbLRQfrmOJOsm7ZFCiTDp7xzCeOiwOgeaMVdIQ6gNtvjUvyCqeQmmckkiR4lQcAFIkjglynFahG6DCnyavvz6yWS2I+w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791406253; c=relaxed/simple;
-	bh=EXFVAvTC/vWiJrFlpA2elpEgBuaKO/kQcp09aEgW/vo=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Bs/nh29AnET1u8a0JACCFs5ekDM6QwnkXYbLsgv+nLiFUlL9+ieXgGRxipXd9ipjV8Vavj/XU4jMeyKH4B4TnFdnFka3v4wZaBmx0eOpo/gRyqORLM0Wc4bFTlvDrAT8P39+3kB/HNU6mCjuLUuQLuB5oXMx4akirISQCons4tc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=l7RBQR2G; arc=none smtp.client-ip=209.85.218.50
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1791408053; c=relaxed/simple;
+	bh=tkxparI7BMhsSeem0UAU2WFDXKjLq0jgOlpX8F393hA=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=R9i5c7svXKM0s+D1kzJ2enhJ+ZfArrOi853c4hhneqyEu6kstbxM7F2w0XgHDMe/irpjQv47vrGD3dMQnGhJ9h8Wb9rAS+oa0VlXzNJ5kOriNcY9YdMHqj9GiIvyj/7HrNUmxF6kvq+oSQjk51xRs1v1A0YeraXPN/13mTabACs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mdWP4qC6; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="l7RBQR2G"
-Received: by mail-ej1-f50.google.com with SMTP id a640c23a62f3a-c262f1186f0so305802366b.1
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Oct 2026 13:50:51 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1791406250; x=1792011050; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=Io16ZQYZqnv/XY4N0OIZ2PKkHhmCNfXqi9mdoeoE9zg=;
-        b=l7RBQR2G5krsT0OJmuAHyFfkijU1GAYfYSSkUz5zTXEGVUgYBEGpqvx/0y33r/Rp8c
-         2i6iIJJtP/9yjZR7o6Kuxeq2X6shspNE6Vwv2lB2dbMBxkl/lMhvcHTI4bdSxXDAasbC
-         Eo/xs0cAhPcHLVBcVH7c1J530qrLrBbpg/lW0cDGLWPRMYdf80/FpzbsP4f+ajay5BHq
-         Sjzxdk9P+0R66V9MJMa0lbzuoSWSnPglJZ0p8QYLS8yLotP9yUIh4ouq6Abc22b5awwZ
-         kgn4V3P/zcoFS0tFCkjp94lSsPfF8AdPT3yTKealqSBNs6fF/4FkRXLlJNfzZP3eeGvM
-         UENw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791406250; x=1792011050;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=Io16ZQYZqnv/XY4N0OIZ2PKkHhmCNfXqi9mdoeoE9zg=;
-        b=E7Nl0oGPnv7S7qqKLm8YDMWkV2/RDvZvyzNED0gA0QAqrUyKATzuyBYNb1wQxpUpQt
-         vZ639exPU9nXfxKxFKXjZGhOhFNUXElU+kJ0MB8t2TjnD/9S2I55KUmRiuKWA1fy8gWa
-         Bpj8rPuLsHzyHLrbvfTZVXlpcrAMimqz+D8Z5nFmUzoqDz8LbYBsLPN45Jx1GV62KVCw
-         qFNMvTMKpWTTbp1CH4enrKeqhnbsXMmFwv/pnbjDX1oftDBaR+RBTYCPwH2J9+OdztS1
-         9RnAGFGJI49U3UuRpZEugP98wfLTWqng5lyv2Pwf2vClPiUt1qk2ddt5QyjsHTqeU4ja
-         QrxA==
-X-Gm-Message-State: AFq9FYLMmv3EYZwMuKCHKqfD+/XTYhuIa31nR9bM8JaIuVRvnyw7dNjB
-	DqGMpNc7u52BgMMzVckdNQ3r46gpZcyIvvuYlfJjR8ylQGQoO9sAFdsi4rqhly17
-X-Gm-Gg: AYBFou3jLtQ7OBnw0ICrottV00+VQnzUVOz7agpCEbAUEKewWITtRWsNzL5lRSZ3taJ
-	XuhZ6pTd8fP81atKHJJYacGczIyft4DH0Oss5zY8DFHwYSRVSM6Jjpe/yRt7OVZTEm98+3xr025
-	h781EYRWx9iXfnalM5FDrrTDufBU2LZbI6nuAcsulsb0TwzbHyQx1901kY+Pez05muC6FU/U238
-	4ymW6Zc9vNPKr80MPVTA0TohOZRhPFoDqcoZt/gqkN2MySczVTpCgNsdkhAvsiAihG9WlHajn+E
-	U5r7JXi3j9LbGKVS0VRiuUQqUKbB50NGwPhz4kw0N60o3B/1cUG6B3vFSNvW7ayPdKndEeVyIxw
-	XX8sZvL2ZK3853B9q5VAG3yRkIPZ9MRE4nLK8TKj50Siu7McnLuLRzL3zyctVjYP4ZpnDaR7QGQ
-	Xe8jpJ4RMj6A/Wc7trwmZu6FXy2GKzj3ixdV9FFKHOUyLP+0CMEdNI96dTviCQfe66BQKJEtFY0
-	C4FbvZeFCNw59WYPQfrWprYZK6BKaSDNrxU0N0hCPxxd3m7m/AA
-X-Received: by 2002:a17:907:948f:b0:c2d:d1d8:b220 with SMTP id a640c23a62f3a-c317c0d9959mr343402466b.42.1791406250029;
-        Wed, 07 Oct 2026 13:50:50 -0700 (PDT)
-Received: from docker-desktop (host-145-14-240-255.wtvk.pl. [145.14.240.255])
-        by smtp.gmail.com with ESMTPSA id a640c23a62f3a-c317c1c66fbsm141707166b.45.2026.10.07.13.50.49
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 07 Oct 2026 13:50:49 -0700 (PDT)
-From: Marcin Krystianc <marcin.krystianc@gmail.com>
-To: Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org,
-	Marcin Krystianc <marcin.krystianc@gmail.com>
-Subject: [PATCH] SUNRPC: reset the svc decode stream after unwrapping a privacy request
-Date: Wed,  7 Oct 2026 20:49:17 +0000
-Message-ID: <20261007204917.1818086-1-marcin.krystianc@gmail.com>
-X-Mailer: git-send-email 2.51.0
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mdWP4qC6"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D73041F00898;
+	Wed,  7 Oct 2026 21:20:49 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1791408050;
+	bh=ZaNGiYiohI5xp7M93pAOKm2idsiAlCo1RqFZxjCDoIY=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=mdWP4qC6w6GwAMIDGmB6gcmFCeWeXCZXBA4cUi/nqrmu8GKefLtc8kPnpPIIaCPtw
+	 3Pt8lb1qtIXNgRfls3fgYDqkysRuj7xXdQGpsKYUIMAKFvPmHhtZMwE5Q0B+5nLJFq
+	 6JZhRGbtUOVNfXTSQkAlPl9oUEeGd+fsQkeJeBV5Um7XC7WSmn5vlDyf+Rac/ALxBp
+	 ee1CQjWtB4s2THh8lUI5CYh/Yfxj5hW2wxGr7JpN9RIVPMt9h5C9GA6AIqQNO68hZU
+	 ijvZqUs8EdR1YzSl89Gijpuj4pXCZfHMJl84dKIqJFgLM0AJK7MHXZ7P6zaZttUPXY
+	 sMRB1bWiovEUg==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id F0CA9F40067;
+	Wed,  7 Oct 2026 17:20:48 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Wed, 07 Oct 2026 17:20:48 -0400
+X-ME-Sender: <xms:sLfGanu9ZSFpTR_RbR5PkN8TftBmx39xJ05qPW3uUYdURu6o77Pkfw>
+    <xme:sLfGajQDgdOAJd53AZmdwpodkx-CjWnKGBaKzDq01Hn-JPvlksMa2urmQkaBUJlbs
+    oA30e00CcakcobOaj4eG7HUGBxl9RueBgxtDPvhz6nKe9Axk9GZFHY>
+X-ME-Proxy-Cause: dmFkZTGbCQ3CoQxq1JYlRBJlx4nYDcB45vlD7SywSbfRFOjcilb4a6kevJWcJQAsrOm40d
+    LacIlvhZ8EgT6mWPw6z/WvYrdq6+U3X3dJfGwJQWPI+SwMRDa3HUWcS4a633X8YnlCx+T4
+    GjIEir6SXJpqvL4T5hTO87I8QNdUHjBo6CTIxieHrF1/Uijj2R2l5QAHXf8vnBs5y/fe3d
+    JpYPTwZvxvUHwImekZhhDEoDSAsXmJ2b6cEahMBcI021ETYoUZ0GEnSJnuemTJ6QWqX9dg
+    G701auymbts8n8YniDTGaL867b6EF0SQ5FfYk/Qw6QZGHEmIPZ8NVbAdlvR8oGunreXLC3
+    7JZM3DNzZGl25wTr2bMYrpr6Bx8NiO6YGYE4J9Rf62xts8gqCBF/HLFyT5PbCuX1oLxI1P
+    w+HQY8guROTYv3okcrc59XX8udOmrEgqXSocau38N/SzRHdABsYeDPb8YAZDcl9snvs0uO
+    8gB1IqKWai0covcRbjngKciRNCdBPnn5ysijWHhT90/1xWxT/01XrK2tMI1ZAaLn2iCI2R
+    efkfyYrvI2ECj9fjFkuSfY6d4gOwKifu/fnxPVhPKfN1wm5XyU9gjV/J3OCxvOwMfEZeo8
+    mkYlFdr7dvAORYytVwv2YiXQhR8W8olpJhcqA56ieK/vm/IWP+fBbUs/QQrw
+X-ME-Proxy: <xmx:sLfGauntOyvI3Kne1BjWvwZ9z32VYSG5y-TAAbUlVBBCc9LkzsPWEQ>
+    <xmx:sLfGatZxofe8ovA6KCfufUofJLu6L4jbcp1ufdpagQOv4rrcMfZhHg>
+    <xmx:sLfGasTG9htLjzOdwOFZmuY8kjkhOVygg53UDnB6yl7My1RT_QQDVg>
+    <xmx:sLfGavUYCofkmfDdRIzDnwxg3H_9p71XK7lmRQDCCw9OJ-F_8207Pg>
+    <xmx:sLfGajZG5h2Gogx3nPmjMDJi82ZkRp9Wt3Bd3mT8J2wyqzbl0eZIwGQI>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id CE117780075; Wed,  7 Oct 2026 17:20:48 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-ThreadId: Aicf_QbpfWdV
+Date: Wed, 07 Oct 2026 17:20:28 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Pranjal Shrivastava" <praan@google.com>
+Cc: linux-nfs@vger.kernel.org, "Trond Myklebust" <trondmy@kernel.org>,
+ "Anna Schumaker" <anna@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
+ linux-kernel@vger.kernel.org, "Christoph Hellwig" <hch@lst.de>,
+ "Logan Gunthorpe" <logang@deltatee.com>, "Jason Gunthorpe" <jgg@ziepe.ca>,
+ linux-pci@vger.kernel.org, linux-rdma@vger.kernel.org,
+ "Shivaji Kant" <shivajikant@google.com>, "Tom Talpey" <tom@talpey.com>,
+ "Leon Romanovsky" <leon@kernel.org>,
+ "Unnati Sachan" <unnatisachan@google.com>
+Message-Id: <4af1c065-538a-45eb-ad56-6517c29dd126@slotpi15m67>
+In-Reply-To: <20261006233248.705086-1-praan@google.com>
+References: <20261006233248.705086-1-praan@google.com>
+Subject: Re: [RFC PATCH v1 0/8] nfs: PCI P2PDMA for O_DIRECT over RDMA
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-For RPCSEC_GSS privacy (krb5p), gss_krb5_unwrap_v2() decrypts the request
-in place and then removes the GSS token header and the confounder from the
-head iovec: it memmoves the plaintext down to @offset and subtracts
-GSS_KRB5_TOK_HDR_LEN + headskip (32 bytes for the AES enctypes) from
-buf->head[0].iov_len.
+On 10/6/26 7:32 PM, Pranjal Shrivastava wrote:
+> Enable NFS O_DIRECT to and from PCI peer-to-peer DMA (P2PDMA) memory
+> on RDMA mounts. This replaces the initial RFC [1] and builds on the
+> Direct I/O modernization series [2].
 
-svcauth_gss_unwrap_priv() only accounts for that in xdr->nwords. The
-stream's xdr->end still points at the end of the head as it was before
-unwrapping, 32 bytes past the data that is now there.
+Hi Praan,
 
-Decoding is unaffected while every argument lies within the head. It breaks
-once an argument spans the head and the page array: xdr_stream_subsegment()
-advances to the stale xdr->end, so it counts 32 bytes of leftover head
-buffer as argument data and then takes 32 bytes too few from the pages.
-xdr_stream_set_pos() corrects the position counter but not xdr->p, which is
-left 32 bytes inside the argument. The next operation of the COMPOUND is
-then decoded from argument data.
+Good to see this moving.
 
-Do what the client already does in gss_unwrap_resp_priv() after decrypting
-a reply: discard the stream and build a new one over the buffer as it now
-is.
 
-Fixes: 42140718ea26 ("SUNRPC: Convert unwrap_priv_data() to use xdr_stream")
-Signed-off-by: Marcin Krystianc <marcin.krystianc@gmail.com>
----
-Found with xfstests generic/486 (a 1-byte to 64 KiB XATTR_REPLACE) on an
-NFSv4.2 mount with sec=krb5p; sec=sys and sec=krb5i pass. Tested with
-knfsd and the NFS client in one UML kernel over loopback, an MIT KDC in the
-guest and an xfs-backed export: generic/486 fails without this change and
-passes with it, and xfstests -g quick under krb5p shows no other
-difference.
+> 6. pNFS: excluded for now. Route P2PDMA I/O through the MDS, or let
+>    each layout driver opt in?
+>
+> Known issue: the pNFS check happens at extraction. If a mount gains
+> pNFS afterwards (e.g. after migration), a rescheduled WRITE could
+> reach a layout driver. I plan to decide once per O_DIRECT call and
+> force the MDS path when P2PDMA pages are allowed.
 
- net/sunrpc/auth_gss/svcauth_gss.c | 8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+I think we need to have a path to supporting DS I/O with P2PDMA.
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index ab01156a1af9..d5da541353e7 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -944,7 +944,6 @@ svcauth_gss_unwrap_priv(struct svc_rqst *rqstp, u32 seq, struct gss_ctx *ctx)
- 	struct xdr_stream *xdr = &rqstp->rq_arg_stream;
- 	u32 len, maj_stat, seq_num, offset;
- 	struct xdr_buf *buf = xdr->buf;
--	unsigned int saved_len;
- 
- 	if (xdr_stream_decode_u32(xdr, &len) < 0)
- 		goto unwrap_failed;
-@@ -959,11 +958,14 @@ svcauth_gss_unwrap_priv(struct svc_rqst *rqstp, u32 seq, struct gss_ctx *ctx)
- 		goto unwrap_failed;
- 	offset = xdr_stream_pos(xdr);
- 
--	saved_len = buf->len;
- 	maj_stat = gss_unwrap(ctx, offset, offset + len, buf);
- 	if (maj_stat != GSS_S_COMPLETE)
- 		goto bad_unwrap;
--	xdr->nwords -= XDR_QUADLEN(saved_len - buf->len);
-+	/* gss_unwrap redacts the opaque blob from the head iovec.
-+	 * buf has changed, thus the stream needs to be reset.
-+	 */
-+	xdr_init_decode(xdr, buf, buf->head[0].iov_base + offset, NULL);
-+	xdr_set_scratch_folio(xdr, rqstp->rq_scratch_folio);
- 
- out_seq:
- 	/* gss_unwrap() decrypted the sequence number. */
+The deployment sites that want P2PDMA O_DIRECT are the same sites
+running flexfiles, and flexfiles with a co-located DS is where
+LOCALIO actually offers quite a benefit. So for question 6 I'd say:
+layout driver opt-in, flexfiles first, and the flexfiles LOCALIO
+path is part of that.
+
+Although it is fine for a prototype, forcing the MDS path will
+always be the slow path. Can v1 be designed so the follow-on is
+additive? As posted it might not be. The P2PDMA refusals sit in
+the MDS-only pgio path and at page extraction, and the decision is
+made once and never revisited where the RPC is built.
+
+ - The krb5i/krb5p refusal is in nfs_pgio_prepare(). Flexfiles and
+   filelayout install their own rpc_call_prepare, so a DS RPC never
+   sees it and gets as far as call_encode, where gss_wrap() encrypts
+   device memory in place before xprtrdma has a chance to refuse.
+
+ - ff_layout_read_pagelist() and ff_layout_write_pagelist() open an
+   nfsd_file through ff_local_open_fh() without going through
+   nfs_local_p2pdma_check().
+
+If the auth refusal lives in the RPC client (any XDRBUF_P2PDMA
+buffer under an RPCAUTH_AUTH_DATATOUCH flavor) and the rest lives
+in the transport, then every RPC gets checked no matter who built
+it, and enabling flexfiles later is a small series on top instead
+of reworking already-merged code.
+
+
+> 1. Layering: "RDMA transport, !pNFS" is only a hint, and each RPC
+>    re-checks its transport. Should the transport advertise P2PDMA
+>    capability up front instead? That would also allow LOCALIO on
+>    TCP mounts, which this series refuses.
+
+Yes, please. LOCALIO never goes near the NIC, so a TCP mount has
+no reason to be refused. Advertise the capability and keep the
+per-RPC check as the backstop; that covers both cases.
+
+
+> 5. LOCALIO: the check uses sb->s_bdev, which misses multi-device
+>    filesystems. Is there a better way to ask whether a file can do
+>    P2PDMA? Should misaligned I/O fall back to an RPC instead of
+>    failing with -EINVAL?
+
+s_bdev turns out to be the smaller part of this. I went looking
+for ways LOCALIO could still CPU-touch the payload after the
+checks pass, and found these:
+
+o  ext4 and xfs both retry a direct write as buffered when the DIO
+   path returns -ENOTBLK (fs/ext4/file.c, fs/xfs/xfs_file.c).
+   nfs_local_p2pdma_misaligned() only guards the NFS-side split.
+   Once the write reaches the local filesystem, that fallback
+   copies the P2PDMA pages through the page cache and nothing
+   reports it.
+
+o  The queue feature doesn't say anything about what the
+   filesystem does with the data. btrfs checksums every data page
+   on write and verifies on read unless nodatasum, so an aligned
+   DIO on btrfs reads the pages with the CPU. Plain O_DIRECT on
+   btrfs has the same exposure today, since bio_iov_iter_get_pages()
+   gates on the same queue feature, so this isn't something the
+   series introduced. But it does mean the cover's claim that every
+   CPU-touching path refuses the I/O isn't true on btrfs.
+
+o  nfs_local_p2pdma_check() tests the queue feature but not whether
+   the page's provider can reach the disk's DMA device.
+   blk_dma_map_iter_start() rejects an unreachable provider with
+   BLK_STS_INVAL. That shows up in nfs_local_read_done() as -EINVAL,
+   gets logged as an alignment failure, and fails the I/O. There's
+   no RPC retry at that point, so the comment's "sent as a regular
+   RPC instead" doesn't hold here, and the same I/O would have
+   worked over the NIC.
+
+o  sb->s_bdev, as you noted: wrong for XFS realtime, btrfs
+   multi-device, and dm/md stacks, and wrong in both directions.
+
+I don't see a clean fix for 1 or 2. The VFS does not have a "DIO
+or fail" knob, and a filesystem's data path isn't visible from the
+block queue. Perhaps for v1, drop LOCALIO for P2PDMA pages and
+bring it back under a filesystem allowlist when the flexfiles
+work needs it.
+
+On alignment: yes, fall back to an RPC. Decide inside
+nfs_local_p2pdma_check() from offset, count and
+bdev_logical_block_size(), and return NULL when it doesn't line up.
+The RDMA path has no alignment requirement, so returning -EINVAL
+here makes LOCALIO strictly worse than not having it. That change
+also lets you delete the two duplicated error exits.
+
+
+Nits:
+
+8/8 doesn't build with CONFIG_NFS_V4=n. nfs_direct_extract_pages()
+calls pnfs_enabled_sb(), which is only defined inside the
+IS_ENABLED(CONFIG_NFS_V4) block in fs/nfs/pnfs.h, and the #else
+branch has no stub.
+
+In rpcrdma_marshal_req(), a P2PDMA WRITE is forced to
+rpcrdma_readch without checking that head and tail fit the inline
+send threshold. The READ side checks rpcrdma_nonpayload_inline();
+the WRITE side should too, or fall back to a Position Zero Read
+chunk, or return -EREMOTEIO. From code audit.
+
+On a server returning READ data inline despite the Write chunk:
+you're right that RFC 8166 section 4.3.2.2 requires the responder
+to use the offered chunk, so failing the RPC is correct. It does
+surface as a per-RPC "RPC call returned error 121" printk from
+call_status(), though. A tracepoint and a quiet error path would
+be better.
+
+A short LOCALIO write restarts via nfs_local_pgio_restart() with
+offset and count advanced, and the residual can then fail the
+alignment check with -EINVAL after most of the bytes have landed.
+
+The same three-line P2PDMA guard appears in xs_local, xs_udp and
+xs_tcp send_request. One check in xprt_request_transmit() keyed on
+a transport flag would cover the socket transports and anything
+that comes later.
+
+
 -- 
-2.51.0
-
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
