@@ -1,63 +1,63 @@
-Received: from mail-oo1-f53.google.com (mail-oo1-f53.google.com [209.85.161.53])
+Received: from mail-oo1-f43.google.com (mail-oo1-f43.google.com [209.85.161.43])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5F0D23A6F04
-	for <linux-nfs@vger.kernel.org>; Wed,  7 Oct 2026 19:59:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.53
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D32CA37F32D
+	for <linux-nfs@vger.kernel.org>; Wed,  7 Oct 2026 19:59:48 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.43
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791403188; cv=none; b=E8c1baAuABvlwMmUAIC7qf9u8X0XEBHwQG82foSKY6YE6yFp2jCfmKTL3SvwbjzvvcoJ/xkesM/Dop5dAlfe8tu+jZhKRQLYt8FSLunh8jNJBdORuaar+J+kWjUib/rg+pQR7YlvkYt7eVIVYkNBF8SWlv1+SZLAUx+NiPi+uVY=
+	t=1791403190; cv=none; b=FUtcfFGmrVwj4Wyv8+nVjYdD4XlWqfFhXNDTLakNW8aD7cr6ev1B+D5Pe67HWhJUn5gytLJxSoyP8Nb2hIocPYogteqF5E2cscxJxMKzKBHWHbPZ5/M6KSSHx5Rq1LQEzdNlVzCzwLJ8avXtBDHXi767KOUV35lPI6MNsRfFaOA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791403188; c=relaxed/simple;
-	bh=ovwJuZ7EJ7wjONSARifAxDAgx4Ym9sF+zZfy3Xmc8xw=;
+	s=arc-20240116; t=1791403190; c=relaxed/simple;
+	bh=loecUXXsYFkeWiRf9TOwlz7onjLqDUTh/DarvfQxAyE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ORD7PFAy4PKKjeEDYWW7IayKINr6Csly/ceGznTlVKymyMgf+//eUKzmV4TUPA3v+AKGEcn2OJmxrpjbuZF+Sfj136Z5J6i4YsWnWLgBYNqGFUTabTgnHncRLhY4YPSts8PYll5fqpQMtwnkh7BS0OEjDgVfovpStBGWdEtg8mY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=iCzA9hes; arc=none smtp.client-ip=209.85.161.53
+	 MIME-Version; b=JhxVhRPdbmtv/kvQ+X/vPyNs9nOqMfArHDISXXMldnijpErwtFkj0KQygyv4btyzedIL1ZXUZiks/nl5E2Q2wt7VpiRVCOBsaEZmVRymyvMKw3/SECmB8FHi54j0JzEsfOQw6XxuJ/hoNRFNbvw/LXHPDLg8Bubh5xy9elcRCYA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=JQvmDu84; arc=none smtp.client-ip=209.85.161.43
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="iCzA9hes"
-Received: by mail-oo1-f53.google.com with SMTP id 006d021491bc7-6de3360d905so1606278eaf.3
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Oct 2026 12:59:47 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="JQvmDu84"
+Received: by mail-oo1-f43.google.com with SMTP id 006d021491bc7-6de1ca1b05aso1518831eaf.0
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Oct 2026 12:59:48 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1791403186; x=1792007986; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1791403188; x=1792007988; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=NmuguSQcbeAhN/rpcSMJYygZi4fbgxuPSkkmPTezGHI=;
-        b=iCzA9hesvuVKzkmkz7qhh9jpt3FnVy5N+0O3h+vRxYuQ/e+5jmAricm53rdIAAGVkw
-         m9gMK34V01eL03vHJxCK+6zJiVTQmcgKsaXeaRhZBTGSoFebwvEbGNTBULVfXDWj/muL
-         Rz7L1VxvDmbcTrKUejGL17sY3Djqxr9NoUeIXPUYmUpCq6BzOVQs8Y9JjBlwJxXxxzbh
-         envauYfZyWJ4kMqEQc7kSWfFuzo4E7+r+9PuUZcdnKHsP8kjlpzItZEQX7U5IBPx0d6i
-         lUvSO0Mznx0rbzYj/RYKVECsNSi88dtsiIfJMjbDKN/mE94zAHtsWyaABxeSPQI4o/Zy
-         klZA==
+        bh=WcOvn26EZOk0zQ9+u6HfufVq1HUwiB8cekM2EcQEZHA=;
+        b=JQvmDu84v0U+pIKE/bZY+EwLABjTO2/ryeoxCz9Qu0VA22Znq4FbszoZsQNCv/MR85
+         ELIkVFQ4bQWvO6cqMkONd/NZPSIJNf37wjpEt+IP33BvvKWorXgal4nXmSyA01w1UmCM
+         7gFRWMnFjdAKimP0hFMTAkjLSlnqymuZiPPkpa5p3iLhFH/zaPBI7RZjR2z7g0+r6FQk
+         AAYkzmldxrXNBWLzc761u9aJ4BkU9ubsAIMXe/sV9RX7oe8q0SxY8D20Zr5+4mPLPoQT
+         FE1AcmMGoOi6wzJKRc+KquuvEHVd7amlssf3YCYXox0nAVmn81NBjyYpkNG6gOkZOIOH
+         JIBw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791403186; x=1792007986;
+        d=1e100.net; s=20260707; t=1791403188; x=1792007988;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=NmuguSQcbeAhN/rpcSMJYygZi4fbgxuPSkkmPTezGHI=;
-        b=R1+WymF/1+mDNR8q1mJO6xO2TVqcALA7iJC5S+6ue0JySy0Jpul30rzjW3PAiU5E0/
-         ZylPUJ7RDea7YRyPppzzxyEF4ieAULZQTHKH8vT1qkULXM4cf4s2yTzkQDDqCWFfi89G
-         SMj5O0iSo0pP1gqSHPz5VIj//QB4mSHbbFYfGgseN8LS6UN9HOE4RRscG5GX+kTPGQ15
-         pl8qhLvaKOxZTXgq6J6mtXNclzC55w9TQP+QSoanXCC6eomkWz7AbPd1qnxDkR1cbEZ5
-         K+WZHfhPmB5qzjlTKk2JHmv/eRmDcaxHvfJZjlApsaisbnv/ml4XUl+A36WPMmxLx7+I
-         uB3g==
-X-Gm-Message-State: AFuF++ndO6AbUfYa7UQLf9SU+R28kTF9qhKY0GHR6U6IYJVfnuLCo0uQ
-	tgpC1Om+fKx+PxMjU5CDsOyR1NSVwPOdyaaV6z6fOd2QH/9mBQ9c1G0iYoAJWsXYYf0=
-X-Gm-Gg: AYBFou0UwTb1s7Fuq+hsm8jxzM3EqitT88cftrn1c4Bnx4xZF0j0Th8zBz12hO8e+8H
-	nbfQ/Ga0eAHRZEY0pl7q7adNR/NIfDRgQ50Vb/QC7jFFaeDPdEr06M1hX/pAf6H3BlVYHnrCQLe
-	+l4EXCRYHKUBA/vxXZZZKFnvno1y/FVr7+a6qXm0rEOxY7Iq7KYOhpIpyJBOddJgZs46VWWj6w6
-	4EeJQnllmN/qrY3b6jjwBx4zRiP+C1aobfTIZzoojUNLKWzcTdwOP7lLZVwOtWyO5kFHUIbPtsA
-	nvuuccNYpzh052Mw1AHHZnzod5dWu/DP4CDm3Uq9n/Jj74Mvr5pVtqr1MkCoM3aVwmS8NIgjukY
-	7+7WF8oBKXlBiGZqqXmm4bG0hc1vbz1bW7ACUS6q3cqidcIYuZSnywmrv4w6DhL7BFmB/zXSyHZ
-	ZWTQtxKavzRJv2Orz3f/SzsDFifp54W3+TlOSbKazP2YVD0QSWmHnasqdwf1B/oCX78IzGm91YT
-	GM32OQdQGFMremuClFplJTO+e/lX7H6R4g3YddNbw==
-X-Received: by 2002:a05:6820:200b:b0:6df:428f:f17e with SMTP id 006d021491bc7-6e7a65caaa2mr3346065eaf.39.1791403186071;
-        Wed, 07 Oct 2026 12:59:46 -0700 (PDT)
+        bh=WcOvn26EZOk0zQ9+u6HfufVq1HUwiB8cekM2EcQEZHA=;
+        b=CUwnvXfe2J0S2io2Xej/bEoiU+Pq/wOB/imj2mByrzOdr8FraYOdsFqfrJGGbWFcXL
+         NE44rFN3qVY6Rh8ZKHxlyDZR6cQ41/OuPQRvJIfKbTGMew9++NvWJKwce9sOYhOnm3kj
+         Qhcqo5cz2AA0rWKjgtJHCKNdtxt4StYTf++qsG26CriRMW5QiCdTW0ch+4HocTVbvp8Q
+         3lPf+O1WNzYP1P6y1CC36e0xJ6sRECzyFQ2/A3/0I5PQF52IU3iOM+GxzTF9J0j1orD2
+         o7Wz79KSOwOeLbtGVDpOHml9hhZUctcmV0mz6MrGbVb6hDz6W6yE9MNb5vYuh6iyBY5r
+         hW7A==
+X-Gm-Message-State: AFuF++kXIUZfC+Rw55EyrRzE3hEY/QGbphtDzKW2rCguu8NG6ftxY60d
+	GOe6jB0g+T1HvAqsMK2r3uhXuwRU4UVmsGtmC3xZHEmprd4WUgWBxODW32pIbwuXUC0=
+X-Gm-Gg: AYBFou1D9i7qQt/BqsN94psPYUG/O9xVZ9YjrpvGafE7DHwsppEhDXmHM2bl1j2r01C
+	slZUDbsFcYegauZFSl/bA4AyllzmlJsI80mEyvhcoRNlU6dFhWGgfr90hWONnPAIUIRpkCxuFbm
+	zpnv8eS0joGnrXsmtkIMWidGeBUg/Q2VcTeOLc9hxsrdZfzExOkGr9NMztKf8/LtgcX1GDvJMDP
+	x0mstKNDaiWKo+puZe+DT4VQZDa7rSbAGiiGJIgM0fiqKW7yeU1sQvxL3jfMxlqlM0MygovgXAK
+	9wlUD3tENI+1L8Wvq+nDJP9onEP9TqUbfpLr3cFS9iSaQDWsYUVWEjhPC40C3zeLsQxIBE+4jVa
+	Qi5MgQCjginYBJGzlelJ0sJRpDU8DPMPa4EJyUzTlJN5txXVPtWBw9wdWRqvFrYw/8bgHunri08
+	VEmp0uLOON3xu79K0745U+aPK7jmuiAiEDlsPRFW1ZXcnTIciEhnpqnruW14EwKTgzh1p4GB1bw
+	kNmMId/rDYi3VPvoHhZYSk5O2CmGKWPOlwc9dQ6Fnw=
+X-Received: by 2002:a05:6820:7090:10b0:6d9:8fed:b732 with SMTP id 006d021491bc7-6e7a8bb924dmr2420950eaf.56.1791403187566;
+        Wed, 07 Oct 2026 12:59:47 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 586e51a60fabf-4a274c9c520sm1084285fac.16.2026.10.07.12.59.44
+        by smtp.gmail.com with ESMTPSA id 586e51a60fabf-4a274c9c520sm1084285fac.16.2026.10.07.12.59.46
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 07 Oct 2026 12:59:45 -0700 (PDT)
+        Wed, 07 Oct 2026 12:59:46 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 To: Chuck Lever <cel@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -66,9 +66,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Daire Byrne <daire@dneg.com>,
 	bpf@vger.kernel.org,
 	Martin KaFai Lau <martin.lau@linux.dev>
-Subject: [PATCH RFC v2 5/9] SUNRPC: dispatch control events ahead of data within a client
-Date: Wed,  7 Oct 2026 15:59:30 -0400
-Message-ID: <c7a3a17e887512ce20a8ea90b706816dcbf8c785.1791402701.git.bcodding@hammerspace.com>
+Subject: [PATCH RFC v2 6/9] SUNRPC: keep the single transport queue while no classifier is attached
+Date: Wed,  7 Oct 2026 15:59:31 -0400
+Message-ID: <66560de3139aed32b820cef9921143edb5148777.1791402701.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1791402701.git.bcodding@hammerspace.com>
 References: <cover.1791402701.git.bcodding@hammerspace.com>
@@ -82,198 +82,244 @@ Content-Transfer-Encoding: 8bit
 
 From: Benjamin Coddington <bcodding@hammerspace.com>
 
-A transport that needs a connection accepted, closed, or a handshake
-run waits its turn like a transport with data, behind every transport
-of its client queued before it, and a client with many connections can
-hold a close back for k rounds of all the busy clients.  None of those
-events costs the service a request's worth of work, and a close frees
-resources the sooner it is served.
+With no classifier attached every transport is on the anonymous client
+and a pool's client queue holds one entry, so dispatch is in today's
+order but takes one more lwq dequeue and a re-queue per request than
+today's code.  That is about half a microsecond a dispatch on current
+hardware, paid by every server whether or not it has asked for
+anything.
 
-Give each client a second per-pool queue for transports with XPT_CONN,
-XPT_CLOSE or XPT_HANDSHAKE set when they are enqueued, and have the
-dispatcher serve that queue before the client's data queue.  The
-client's turn in the round-robin is unchanged; only which of its
-transports goes first.  A transport that is already queued with data
-when it is closed is served in its original order, as before.
+Keep the pool's flat transport queue, sp_xprts, and use it while no
+classifier is attached anywhere, switched by a static key that
+attaching a classifier raises and detaching it drops.  The dispatcher
+looks first at whichever queue is not in use, so transports queued
+before a switch are served promptly after it and nothing is lost in
+either direction; the thread's sleep test covers both queues, and
+network namespace teardown cleans both.  With the key off the enqueue
+and dequeue paths are today's, plus one empty test of the client queue
+at dequeue.
 
-Suggested-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- include/linux/sunrpc/svc.h      |  2 ++
- include/linux/sunrpc/svc_xprt.h |  3 ++
+ include/linux/sunrpc/svc.h      |  1 +
+ include/linux/sunrpc/svc_xprt.h |  4 +++
  net/sunrpc/svc.c                |  1 +
- net/sunrpc/svc_xprt.c           | 60 +++++++++++++++++++++++++++------
- 4 files changed, 56 insertions(+), 10 deletions(-)
+ net/sunrpc/svc_classify.c       | 20 ++++++++++----
+ net/sunrpc/svc_xprt.c           | 46 ++++++++++++++++++++++++++++++---
+ 5 files changed, 63 insertions(+), 9 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 5d8e35c5379e..02a8eb5d3357 100644
+index 02a8eb5d3357..49c1cebe5702 100644
 --- a/include/linux/sunrpc/svc.h
 +++ b/include/linux/sunrpc/svc.h
-@@ -66,6 +66,7 @@ enum {
-  * of the service does not grow with its connection count.
-  */
- struct svc_client_pool {
-+	struct lwq		cp_ctrl;	/* ready transports with a control event */
- 	struct lwq		cp_xprts;	/* ready transports */
- 	struct lwq_node		cp_ready;	/* link in svc_pool.sp_clients */
- 	unsigned long		cp_flags;
-@@ -74,6 +75,7 @@ struct svc_client_pool {
- 
- enum {
- 	SVC_CP_QUEUED,	/* on sp_clients, or held by the thread that took it */
-+	SVC_CP_DATA_NEXT, /* last turn served a control event; data is owed */
- };
- 
- struct svc_client {
+@@ -38,6 +38,7 @@ struct svc_pool {
+ 	unsigned int		sp_nrthreads;	/* # of threads currently running in pool */
+ 	unsigned int		sp_nrthrmin;	/* Min number of threads to run per pool */
+ 	unsigned int		sp_nrthrmax;	/* Max requested number of threads in pool */
++	struct lwq		sp_xprts;	/* ready transports, no classifier */
+ 	struct lwq		sp_clients;	/* clients with ready transports */
+ 	struct list_head	sp_all_threads;	/* all server threads */
+ 	struct llist_head	sp_idle_threads; /* idle server threads */
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 10c18e948b42..e05d7c8610ff 100644
+index e05d7c8610ff..ef21b2e57b98 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -116,6 +116,9 @@ enum {
- 				 */
- };
+@@ -8,6 +8,7 @@
+ #ifndef SUNRPC_SVC_XPRT_H
+ #define SUNRPC_SVC_XPRT_H
  
-+/* events a client's queue serves ahead of its data */
-+#define SVC_XPT_CTRL_EVENTS	(BIT(XPT_CONN) | BIT(XPT_CLOSE) | BIT(XPT_HANDSHAKE))
++#include <linux/jump_label.h>
+ #include <linux/sunrpc/svc.h>
+ 
+ struct module;
+@@ -182,6 +183,9 @@ void	svc_xprt_destroy_all(struct svc_serv *serv, struct net *net,
+ 			     bool unregister);
+ void	svc_xprt_received(struct svc_xprt *xprt);
+ 
++/* Set while a classifier is attached anywhere: dispatch by client. */
++DECLARE_STATIC_KEY_FALSE(svc_classify_key);
 +
- /*
-  * Maximum number of "tmp" connections - those without XPT_PEER_VALID -
-  * permitted on any service.
+ /* The class of an accepted transport; SVC_CLASS_* in svc.h. */
+ #if IS_ENABLED(CONFIG_SUNRPC_BPF_CLASSIFY)
+ u32	svc_classify(const struct svc_xprt *xprt);
 diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 4adf113d067b..92c6737e5905 100644
+index 92c6737e5905..5f6a0fc06e66 100644
 --- a/net/sunrpc/svc.c
 +++ b/net/sunrpc/svc.c
-@@ -405,6 +405,7 @@ struct svc_client *svc_client_alloc(unsigned int nrpools, gfp_t gfp)
- 	refcount_set(&cl->cl_ref, 1);
- 	INIT_HLIST_NODE(&cl->cl_hash);
- 	for (i = 0; i < nrpools; i++) {
-+		lwq_init(&cl->cl_pool[i].cp_ctrl);
- 		lwq_init(&cl->cl_pool[i].cp_xprts);
- 		cl->cl_pool[i].cp_client = cl;
+@@ -478,6 +478,7 @@ __svc_create(struct svc_program *prog, int nprogs, struct svc_stat *stats,
+ 				i, serv->sv_name);
+ 
+ 		pool->sp_id = i;
++		lwq_init(&pool->sp_xprts);
+ 		lwq_init(&pool->sp_clients);
+ 		INIT_LIST_HEAD(&pool->sp_all_threads);
+ 		init_llist_head(&pool->sp_idle_threads);
+diff --git a/net/sunrpc/svc_classify.c b/net/sunrpc/svc_classify.c
+index aa63e0a3cb95..8d93d63157f5 100644
+--- a/net/sunrpc/svc_classify.c
++++ b/net/sunrpc/svc_classify.c
+@@ -36,16 +36,17 @@ u32 svc_classify(const struct svc_xprt *xprt)
+ 	return class;
+ }
+ 
+-/* Caller holds svc_classifier_lock. */
+-static void svc_classifier_detach(struct svc_classifier *c)
++/* Caller holds svc_classifier_lock; the static key is dropped after. */
++static bool svc_classifier_detach(struct svc_classifier *c)
+ {
+ 	struct sunrpc_net *sn;
+ 
+ 	if (!c->net)
+-		return;
++		return false;
+ 	sn = net_generic(c->net, sunrpc_net_id);
+ 	RCU_INIT_POINTER(sn->svc_classifier, NULL);
+ 	c->net = NULL;
++	return true;
+ }
+ 
+ /**
+@@ -58,13 +59,16 @@ void svc_classifier_exit_net(struct net *net)
+ {
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 	struct svc_classifier *c;
++	bool detached = false;
+ 
+ 	spin_lock(&svc_classifier_lock);
+ 	c = rcu_dereference_protected(sn->svc_classifier,
+ 				      lockdep_is_held(&svc_classifier_lock));
+ 	if (c)
+-		svc_classifier_detach(c);
++		detached = svc_classifier_detach(c);
+ 	spin_unlock(&svc_classifier_lock);
++	if (detached)
++		static_branch_dec(&svc_classify_key);
+ }
+ 
+ static int svc_classifier_reg(void *kdata, struct bpf_link *link)
+@@ -86,14 +90,20 @@ static int svc_classifier_reg(void *kdata, struct bpf_link *link)
+ 		rcu_assign_pointer(sn->svc_classifier, c);
  	}
+ 	spin_unlock(&svc_classifier_lock);
++	if (!err)
++		static_branch_inc(&svc_classify_key);
+ 	return err;
+ }
+ 
+ static void svc_classifier_unreg(void *kdata, struct bpf_link *link)
+ {
++	bool detached;
++
+ 	spin_lock(&svc_classifier_lock);
+-	svc_classifier_detach(kdata);
++	detached = svc_classifier_detach(kdata);
+ 	spin_unlock(&svc_classifier_lock);
++	if (detached)
++		static_branch_dec(&svc_classify_key);
+ 	synchronize_rcu();
+ }
+ 
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 735f4d92bf5d..14a7483886fc 100644
+index 14a7483886fc..e18fd20923cd 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -646,7 +646,10 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+@@ -170,6 +170,8 @@ void svc_xprt_deferred_close(struct svc_xprt *xprt)
+ }
+ EXPORT_SYMBOL_GPL(svc_xprt_deferred_close);
+ 
++DEFINE_STATIC_KEY_FALSE(svc_classify_key);
++
+ static unsigned int svc_client_hash(const struct net *net, u32 class,
+ 				    const struct sockaddr *sa)
+ {
+@@ -642,17 +644,22 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+ 		return;
+ 
+ 	pool = svc_pool_for_cpu(xprt->xpt_server);
+-	cp = &xprt->xpt_client->cl_pool[pool->sp_id];
  
  	percpu_counter_inc(&pool->sp_sockets_queued);
  	xprt->xpt_qtime = ktime_get();
--	lwq_enqueue(&xprt->xpt_ready, &cp->cp_xprts);
-+	if (READ_ONCE(xprt->xpt_flags) & SVC_XPT_CTRL_EVENTS)
-+		lwq_enqueue(&xprt->xpt_ready, &cp->cp_ctrl);
-+	else
-+		lwq_enqueue(&xprt->xpt_ready, &cp->cp_xprts);
++	if (!static_branch_unlikely(&svc_classify_key)) {
++		lwq_enqueue(&xprt->xpt_ready, &pool->sp_xprts);
++		goto wake;
++	}
++
++	cp = &xprt->xpt_client->cl_pool[pool->sp_id];
+ 	if (READ_ONCE(xprt->xpt_flags) & SVC_XPT_CTRL_EVENTS)
+ 		lwq_enqueue(&xprt->xpt_ready, &cp->cp_ctrl);
+ 	else
+ 		lwq_enqueue(&xprt->xpt_ready, &cp->cp_xprts);
  	if (!test_and_set_bit(SVC_CP_QUEUED, &cp->cp_flags))
  		lwq_enqueue(&cp->cp_ready, &pool->sp_clients);
- 
-@@ -654,6 +657,11 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+-
++wake:
+ 	svc_pool_wake_idle_thread(pool);
  }
  EXPORT_SYMBOL_GPL(svc_xprt_enqueue);
- 
-+static bool svc_client_pool_empty(struct svc_client_pool *cp)
-+{
-+	return lwq_empty(&cp->cp_ctrl) && lwq_empty(&cp->cp_xprts);
-+}
-+
- /*
-  * Put @cp back on the pool's client queue if it still has ready
-  * transports.  Otherwise clear SVC_CP_QUEUED and look once more: an
-@@ -662,21 +670,47 @@ EXPORT_SYMBOL_GPL(svc_xprt_enqueue);
- static void svc_client_pool_requeue(struct svc_pool *pool,
- 				    struct svc_client_pool *cp)
+@@ -712,7 +719,7 @@ static struct svc_xprt *svc_client_pool_dequeue(struct svc_client_pool *cp)
+  * Dequeue the next transport from the pool's client queue: one from the
+  * client at the head, which then goes to the tail if it has more.
+  */
+-static struct svc_xprt *svc_xprt_dequeue(struct svc_pool *pool)
++static struct svc_xprt *svc_client_dequeue(struct svc_pool *pool)
  {
--	if (!lwq_empty(&cp->cp_xprts)) {
-+	if (!svc_client_pool_empty(cp)) {
- 		lwq_enqueue(&cp->cp_ready, &pool->sp_clients);
- 		return;
- 	}
- 	clear_bit(SVC_CP_QUEUED, &cp->cp_flags);
- 	/* the clear is visible before the re-test; see svc_xprt_enqueue() */
- 	smp_mb__after_atomic();
--	if (!lwq_empty(&cp->cp_xprts) &&
-+	if (!svc_client_pool_empty(cp) &&
- 	    !test_and_set_bit(SVC_CP_QUEUED, &cp->cp_flags))
- 		lwq_enqueue(&cp->cp_ready, &pool->sp_clients);
+ 	struct svc_client_pool *cp;
+ 	struct svc_xprt	*xprt;
+@@ -729,6 +736,36 @@ static struct svc_xprt *svc_xprt_dequeue(struct svc_pool *pool)
+ 	return xprt;
  }
  
- /*
-- * Dequeue the next transport: one from the client at the head of the
-- * pool's client queue, which then goes to the tail if it has more.
-+ * A client's control events go before its data, but not two turns in a
-+ * row while data waits: a listener re-arms XPT_CONN after every accept
-+ * and would otherwise hold the anonymous client's turns for as long as
-+ * connections keep arriving.  Only the thread holding @cp touches
-+ * SVC_CP_DATA_NEXT.
++/*
++ * Dequeue the next transport.  Transports are queued flat on sp_xprts
++ * while no classifier is attached and by client otherwise; whichever
++ * queue is not in use is looked at first, so that what was queued
++ * before a switch is served promptly after it.
 + */
-+static struct svc_xprt *svc_client_pool_dequeue(struct svc_client_pool *cp)
++static struct svc_xprt *svc_xprt_dequeue(struct svc_pool *pool)
 +{
-+	struct svc_xprt *xprt = NULL;
-+	bool data_owed;
++	struct svc_xprt	*xprt = NULL;
 +
-+	data_owed = test_and_clear_bit(SVC_CP_DATA_NEXT, &cp->cp_flags);
-+	if (!data_owed)
-+		xprt = lwq_dequeue(&cp->cp_ctrl, struct svc_xprt, xpt_ready);
-+	if (!xprt) {
-+		xprt = lwq_dequeue(&cp->cp_xprts, struct svc_xprt, xpt_ready);
-+		if (xprt || !data_owed)
-+			return xprt;
-+		xprt = lwq_dequeue(&cp->cp_ctrl, struct svc_xprt, xpt_ready);
++	if (static_branch_unlikely(&svc_classify_key)) {
++		if (!lwq_empty(&pool->sp_xprts))
++			xprt = lwq_dequeue(&pool->sp_xprts, struct svc_xprt,
++					   xpt_ready);
++		if (xprt)
++			svc_xprt_get(xprt);
++		else
++			xprt = svc_client_dequeue(pool);
++		return xprt;
 +	}
-+	if (xprt && !lwq_empty(&cp->cp_xprts))
-+		set_bit(SVC_CP_DATA_NEXT, &cp->cp_flags);
++	if (!lwq_empty(&pool->sp_clients))
++		xprt = svc_client_dequeue(pool);
++	if (!xprt) {
++		xprt = lwq_dequeue(&pool->sp_xprts, struct svc_xprt, xpt_ready);
++		if (xprt)
++			svc_xprt_get(xprt);
++	}
 +	return xprt;
 +}
 +
-+/*
-+ * Dequeue the next transport from the pool's client queue: one from the
-+ * client at the head, which then goes to the tail if it has more.
-  */
- static struct svc_xprt *svc_xprt_dequeue(struct svc_pool *pool)
- {
-@@ -688,7 +722,7 @@ static struct svc_xprt *svc_xprt_dequeue(struct svc_pool *pool)
- 				 cp_ready);
- 		if (!cp)
- 			return NULL;
--		xprt = lwq_dequeue(&cp->cp_xprts, struct svc_xprt, xpt_ready);
-+		xprt = svc_client_pool_dequeue(cp);
- 		svc_client_pool_requeue(pool, cp);
- 	} while (!xprt);
- 	svc_xprt_get(xprt);
-@@ -1371,15 +1405,15 @@ static int svc_close_list(struct svc_serv *serv, struct list_head *xprt_list, st
- }
+ /**
+  * svc_reserve - change the space reserved for the reply to a request.
+  * @rqstp:  The request in question
+@@ -952,7 +989,7 @@ svc_thread_should_sleep(struct svc_rqst *rqstp)
+ 		return false;
  
- /*
-- * Delete the ready transports of @net that are queued on @cp; the rest go
-+ * Delete the ready transports of @net that are queued on @lq; the rest go
-  * back in their order.
-  */
--static void svc_client_pool_clean(struct svc_client_pool *cp, struct net *net)
-+static void svc_xprt_lwq_clean(struct lwq *lq, struct net *net)
- {
- 	struct llist_node *q, **t1, *t2;
- 	struct svc_xprt *xprt;
+ 	/* was a socket queued? */
+-	if (!lwq_empty(&pool->sp_clients))
++	if (!lwq_empty(&pool->sp_xprts) || !lwq_empty(&pool->sp_clients))
+ 		return false;
  
--	q = lwq_dequeue_all(&cp->cp_xprts);
-+	q = lwq_dequeue_all(lq);
- 	lwq_for_each_safe(xprt, t1, t2, &q, xpt_ready) {
- 		if (xprt->xpt_net == net) {
- 			set_bit(XPT_CLOSE, &xprt->xpt_flags);
-@@ -1388,7 +1422,13 @@ static void svc_client_pool_clean(struct svc_client_pool *cp, struct net *net)
- 		}
- 	}
- 	if (q)
--		lwq_enqueue_batch(q, &cp->cp_xprts);
-+		lwq_enqueue_batch(q, lq);
-+}
-+
-+static void svc_client_pool_clean(struct svc_client_pool *cp, struct net *net)
-+{
-+	svc_xprt_lwq_clean(&cp->cp_ctrl, net);
-+	svc_xprt_lwq_clean(&cp->cp_xprts, net);
- }
+ 	/* are we shutting down? */
+@@ -1441,6 +1478,7 @@ static void svc_clean_up_xprts(struct svc_serv *serv, struct net *net)
+ 		struct svc_client *cl;
+ 		struct llist_node *q;
  
- static void svc_clean_up_xprts(struct svc_serv *serv, struct net *net)
++		svc_xprt_lwq_clean(&pool->sp_xprts, net);
+ 		q = lwq_dequeue_all(&pool->sp_clients);
+ 		while (q) {
+ 			cp = container_of(q, struct svc_client_pool, cp_ready.node);
 -- 
 2.53.0
 
