@@ -1,134 +1,115 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BE6643AE1BC;
-	Thu,  8 Oct 2026 16:44:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A4E2E4EE84F
+	for <linux-nfs@vger.kernel.org>; Thu,  8 Oct 2026 18:18:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791477897; cv=none; b=WrQVt+iF3REsw/8WOoWO7gGpQThtJyNQua8LIqXoEf0E/dK9AFnS3k0t08psQolUnDx1b9gLVl6/Bz9JkrTupS+KvMAS20PyX48tb7Pc+nASKg1Iri6DYQprmeaqjp60lHMAffhUY1KkltzM3fACkbJTTl/PHhS+6Eb6IaL1Sow=
+	t=1791483521; cv=none; b=dwZeEhHGxSq3UEO4AFPjaLhJYFxQvUQXufcFWgX2T4cV/05cdSctmIk3FJ5QMKT3Gh0e/ADUkjQy5TkKtTr1spukC7TevOMSdkWCHVX9UMruprkz4RyjzY9A/QDAavkF+Fba9OmzgfWAIUgKOpzrNTq4AaoSc2380U32VzKVb/w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791477897; c=relaxed/simple;
-	bh=7tV8BRMZdSjjQ+wFsZrltGhnIcC3NrF9Zo7u9Nf6AX4=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=WFOwG0HCrKKU2fntDxawnOR5r8lk+IBBK2MQnpaaYdftQ2HQIeq+arkrLPb7NhuOKFjudQQcMPyJNwL13kdJdc3HrZoCcR6gcSCBHqchC1CVvbnnVxwwKw5K+yxbz0O9Hw4Ead88TFYU7Yay/s2Y1ZSzBP1zPqnBnq2Uxxwbf2s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LwvZOWrK; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791483521; c=relaxed/simple;
+	bh=T+Yq1QDhqmClkehrimM6tz+b9uyP+CrFuxZha/wEgsY=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=QteJS24KVx6k3k4x5tNG8I2+yBuXitl58K/Jfo8PcjIcHSie2JMo2dwedmfoN5B16H2H/yZcDRP3vJ/8yPVTuHNI8hezsZ3ShJx2MvllVQHxdbOlQmHAqw+zXy8JW/DYicNCuRqlmNncC/pvMeV3pm7rVARmwHvIVfAEI2RCq+c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=l4Nd4SH/; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LwvZOWrK"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1A3EA1F00899;
-	Thu,  8 Oct 2026 16:44:55 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="l4Nd4SH/"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C39181F000FF;
+	Thu,  8 Oct 2026 18:18:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791477895;
-	bh=EOLWPkdhYi4qVwglYx9ZNkz+Ir/6UM4RLdYhyJK61e8=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=LwvZOWrKkGHhS2pwGXL1qw6GzOTlDBVh3AGxxnLso8vWwUKGN9nt2y/9cLMoxXKOS
-	 ookn8FRQrHa/BL9IDx+URtnxXV+lraBPS/Rc/JAIAXVKiM7dEvZcHHuRUJa4/6qeCR
-	 VLUE+U1xZA3Sj/hdA8tsX3jcOamJo7G6CrrbQOouxUzdAEp+No2FrMSVxdvFbXcYoI
-	 xHxP3Ix4XBBcAus8d/2RxoXRadYVSKmM/Uw7aW42rdA9ZxNvoMSN03o5NPTInOMxzt
-	 BqxXNzW/3KXJinv3nD/z8fszir3xA5gjiPK3aUe2YWmMsv8SXpabJgTHkDkjTDOcWE
-	 vbm//FqHmSD8g==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 27D91F40066;
-	Thu,  8 Oct 2026 12:44:54 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Thu, 08 Oct 2026 12:44:54 -0400
-X-ME-Sender: <xms:hsjHapdwBb1JALUbXsHPYxLK7WcYz3Ux6hyj8D7ZYi4FQV1l2ehZGg>
-    <xme:hsjHaiBuO_fW6FZVnxnom3A8OJVUuxNNMpC6_hIqEvQTWXF89OiGElUpaAqIKhNsO
-    GTknRLM55z51CBePQuXjSLm3PkTLKgEDtQqS50IBtp__fNp81mnF80G>
-X-ME-Proxy-Cause: dmFkZTGZKaxtIBuY+yj1fQkVEluS1rV9uwLMyU57JUlv6pkSFkT7nyLgauo3S8Imh9UDyg
-    3FWL9SEuXDFtDIyqQlADThGRnqD/32GZSBNgrnlLbb0ThypE1eOYN05l2ISkNPCMyIucVR
-    hU/WhxBfdG84BD/KZiAfx00WXHwL8ctB5qd0w3sxQXKPW7N0HLOlIHjFpRnOzhKvj85fmj
-    1iFN+sdis6Ub8Ox1xGzChegCjUGiwQDK5sn5lBmp3kVDdDDAlrfcUi31TGsvg/nWt1dko6
-    ERPhTbUzGSrEI8YBN3q2Bet1VVSYnatZpF+tGXF+txhl9W6m0zIRYem1VNF8/Wbl/PDJJk
-    kv3m8fHK6Kv3+H92c3xOV6MM+GE84tBJjzLYEEWJIsEkvgtm/KIaoW4EO+wCEeDxci9gwz
-    85IrZmbJd9iBRM4ajExsmHZjGm6dPTLGkqbHxTZBrkFShaNcpur7uuC4yj3++LJUBCgfN7
-    CiibBPopWhQAVVf4uzIUiwhHUFIEAzYVeFvbDkYBYSjuLQGBxoj31QPlWZ34pd74nV2PeA
-    qcjIMls3coxyImy+WFf4I+JgYHMGN6i/CoPp5i4ecAxLimNHnyl6ZopAocFg8W/uRsQ1DG
-    5F/OUeEkBft7aKyIsFd5HPj1Mp13j25V4JhrL20ewBt6RgSCBbrUItxYPirg
-X-ME-Proxy: <xmx:hsjHahoIU3yvzCFHdp6ffFYMlQx-9nZFlt8nO1_cPyQ1E4T011yy8w>
-    <xmx:hsjHavmN3tUMTu2JlHo2OlgVu2fB6Viu-G0RgCXpo9oPcRUl96hnvg>
-    <xmx:hsjHakXFvZXXRXTKgCuvHpENpk3yyCwCI-FPbp7KqKPiH3gxsDufiA>
-    <xmx:hsjHajTVShXEE8VbBss11eugx0DPRuBK5EEAEfkoLrIz3lYtlwvP-A>
-    <xmx:hsjHavAxGf2vTjVSrPliw1d6EQqu42Y_f7lucL1JkZYzrmVRxqkYOBsY>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 0243B780070; Thu,  8 Oct 2026 12:44:54 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1791483520;
+	bh=fk4l2DecKfMQankBdkCCJ2Nvu9KxGDWxMvIZWXojAgo=;
+	h=From:Subject:Date:To:Cc;
+	b=l4Nd4SH/FTEuB5FRxje8YxzBjb/KfeWpFn84Ghmvlevmo+1iwu0fbDKwZaVW58L3J
+	 0r59TbW2GhvKvt1ndcELXuXtogZwXBWpHCACT2Z3wRj04zlWG0qgLlNcYLMMf0MoKZ
+	 BYnCRZ47zmQ2PN2d5YWk8eMN4bNJLLfXtHZOHX+RtE0k9K0QcqYqs/jdGgg20wD35a
+	 Dqdd8Tj8oeuff50fDrZktOathkSJCqqm10GvD7KBJmPtQUiwztVS60KqahXtYoxC1N
+	 STtgQVHTw5qSaZ5jLY9EV80u5rMuYucNNs0Dez0E27mfR9PZjYrtbNeMTvEgxxKa+i
+	 e3kMcAYkPpIIA==
+From: Chuck Lever <cel@kernel.org>
+Subject: [PATCH 0/5] NFSD: Fixes for OPEN4_SHARE_ACCESS_WANT handling
+Date: Thu, 08 Oct 2026 14:18:26 -0400
+Message-Id: <20261008-want-read-v1-0-e372262857c8@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: ANi-fZsmwLLZ
-Date: Thu, 08 Oct 2026 12:44:33 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: daejun7.park@samsung.com
-Cc: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Christoph Hellwig" <hch@lst.de>,
- "Carlos Maiolino" <cem@kernel.org>, "Amir Goldstein" <amir73il@gmail.com>,
- "Darrick J. Wong" <djwong@kernel.org>, "Dave Chinner" <dgc@kernel.org>,
- "Sergey Bashirov" <sergeybashirov@gmail.com>,
- "Christian Brauner" <brauner@kernel.org>, linux-nfs@vger.kernel.org,
- linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-kernel@vger.kernel.org
-Message-Id: <235ae19b-fd63-4d01-9fe0-d047a33b55ed@slotpi15m67>
-In-Reply-To: <20261008-xfs-nfsd-map-blocks-v1-8-560026cdccb6@samsung.com>
-References: <20261008-xfs-nfsd-map-blocks-v1-0-560026cdccb6@samsung.com>
- <20261008-xfs-nfsd-map-blocks-v1-8-560026cdccb6@samsung.com>
-Subject: Re: [PATCH 8/8] nfsd: get all extents of a block layout in one ->map_blocks
- call
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQrCMBAAv1L27GJSQYNfEQ+bZNNGZJVsqkLp3
+ 030OMMwKyiXzArnYYXCr6z5IQ3sboAwk0yMOTaG0YxHa8wJ3yQVC1PEAxmXonXO2QCtfxZO+fN
+ 7Xa5/1sXfONQ+6IUnZfSFJMxdBb7vJWnEylqzTLBtX2/eEpiQAAAA
+X-Change-ID: 20261007-want-read-3a08fd18881c
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org
+X-Mailer: b4 0.16-dev-da966
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2467; i=cel@kernel.org;
+ h=from:subject:message-id; bh=T+Yq1QDhqmClkehrimM6tz+b9uyP+CrFuxZha/wEgsY=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqx951KDDbJSBxocpfRjQH31YdXxuA4RCwhLw6k
+ F8/RiEz35+JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCasfedQAKCRAzarMzb2Z/
+ l7BZEACDHrdTfhW6438Q3KvN2GmXZe5TUvKclQQe84Xf4yP4KgkQJ0uSkqssE8E+M+xM/V3Fasv
+ SWLLmsNHwUpfC/eEZB0soQUqDRnazdzAp7erf+pHQZGGdY4F9htsI2SIiMJ15dREHy/r03rdqji
+ e5y/Sxcwd/3cS4seUujNeAGjw5/RaIMGtVs/8vkzp4iMGMcCOezc1VpnKU7VC02F6HPf122bQku
+ uk8YnqwlfAjsJcSdtnbstg+YAnrZ7sTC2osfdHRZxgNggBkXzPBRNjlDmiAxAg9qiFJ+x+ZhZYh
+ Dd1RHx76pE5VpJjb+NlvWenfkFqi3da5pJBTkohlQSOa07eZw0YV8FfjMCdm+XznLeDDVsFlpAz
+ Amk8MRuyhfeReMgO7bAj2QsX4PPEiDaM2TADKcqlEcj9i4rh8570QlRInaL5k8gyJk/Hm8FF1Pj
+ fg0nE0tYUkhAOohxgXc3mg+spPIhKl8s028dWnai15/NhRshKwsVa0kJZr5YqDL8aU3Oepm3onz
+ A18p9Sa3OTWUvKCwdVLEHtLXAfZrJTdhC5dAXCJeTaQNeRobifdg45VKngVOfx3653mdjCaGzY9
+ NxHhBegxXO5iWiDtY5X17JNeNsrsdyhP/ZFeAOjlwWmZZZDDFC7PWzvK+VIjr3QDusxQhsVYo7x
+ VBQnPV7wBz31sfQ==
+X-Developer-Key: i=cel@kernel.org; a=openpgp;
+ fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-Daejun Park <daejun7.park@samsung.com> wrote:
-> @@ -146,42 +124,67 @@ nfsd4_block_proc_layoutget(struct svc_rqst *rqstp, struct inode *inode,
->  		goto out_error;
->  	bl->nr_extents = nr_extents_max;
->  	args->lg_content = bl;
-> +	iomaps = kmalloc_array(nr_extents_max, sizeof(*iomaps), GFP_KERNEL);
-> +	if (!iomaps)
-> +		goto out_error;
+A client that uses OPEN(CLAIM_FH) with OPEN4_SHARE_ACCESS_WANT_READ_DELEG
+to regain a delegation on a file the client already has open gets no
+delegation from NFSD (https://github.com/linux-nfs/nfsd/issues/156).
+The report carries no ond_why value, and currently NFSD does not
+supply a useful one. nfs4_open_delegation() discards the errno from
+nfs4_set_delegation(), so every refusal reports WND4_RESOURCE, and
+the WANT_CANCEL and upgrade/downgrade cases in the reply code are
+unreachable.
 
-nr_extents_max is bounded by PAGE_SIZE so that the per-request buffer
-stays small. But a struct iomap is nearly twice the size of an encoded
-extent, so this array is nearly twice the layout buffer it sits next
-to. On 64 KiB pages that is well over 100 KiB of physically contiguous
-memory per LAYOUTGET. A failure here turns into NFS4ERR_DELAY for
-every request under fragmentation.
+The -EAGAIN return of nfs4_set_delegation() is narrowed to mean
+contention before the recall Bloom filter is mapped onto it
+(patches 2 and 3). Patch 3 has no effect without patch 2, so patch 3
+carries no Fixes: tag. The last patch changes what NFSD grants rather
+than what it reports, matching what the FreeBSD server grants.
 
-Using kvmalloc_array() would cover the large case, or you could cap
-nr_extents_max independently of PAGE_SIZE.
+After this series, NFSD still reports WND4_RESOURCE while in grace,
+while the backchannel is down, and for a want of the delegation type
+the client already holds, for which RFC 8881 defines no ond_why
+value. NFSD also still grants no delegation on a file after a recall
+for as long as any client keeps the file open, now reported as
+WND4_CONTENTION. Whether the reporter's client hit that policy is
+unknown. Relaxing the policy and/or implementing access mode upgrade
+and downgrade is left as future work.
 
+The pynfs NFSv4.1 "deleg" tests pass 24 or 24, including the tests
+that exercise ond_why and WANT_READ_DELEG on a read-write OPEN. The
+NFSv4.0 delegations and writedelegations flags were run without the
+five tests that need a manual operation on the
+server. DELEG22 fails and the seven write-delegation tests warn
+because NFSD grants no delegation to an NFSv4.0 client that opens for
+write. DELEG6 and REBT8 fail in code this series does not change.
 
-> +	/*
-> +	 * Get all extents in one call, so that the filesystem maps them
-> +	 * together and they fit.
-> +	 */
-> +	nr_iomaps = nr_extents_max;
-> +	error = sb->s_export_op->block_ops->map_blocks(inode, offset, length,
-> +			iomaps, &nr_iomaps, seg->iomode != IOMODE_READ,
-> +			&device_generation);
+---
+Chuck Lever (5):
+      NFSD: Report WND4_CANCELLED for an OPEN with WANT_CANCEL
+      NFSD: Report the correct value in an OPEN response's ond_why field
+      NFSD: Report WND4_CONTENTION for a recently recalled file
+      NFSD: Report unsupported delegation upgrade and downgrade
+      NFSD: Honor OPEN4_SHARE_ACCESS_WANT_READ_DELEG on a read-write OPEN
 
-An RW LAYOUTGET with loga_minlength of 0 is refused by
-nfsd4_block_iomap_to_extent() on the first unwritten extent, so
-currently no write mapping is ever handed out for it. Yet this call
-still passes write, so XFS allocates every hole in the range, updates
-the inode and forces the log before the result is thrown away. With
-one call per request this looks like up to nr_extents_max allocation
-transactions instead of one.
+ fs/nfsd/nfs4state.c | 128 +++++++++++++++++++++++++++++-----------------------
+ 1 file changed, 71 insertions(+), 57 deletions(-)
+---
+base-commit: 97bf905e837e345107c2ed3efb2e65108e081e0e
+change-id: 20261007-want-read-3a08fd18881c
 
-Passing write only when loga_minlength is non-zero, and having
-nfsd4_block_iomap_to_extent() refuse IOMAP_HOLE for IOMODE_RW the way
-it already refuses IOMAP_UNWRITTEN, gives the client the same answer
-without allocating anything. Admittedly this is a pre-existing
-issue -- perhaps a pre-requisite fix for this series is best, so
-that the fix can be backported to LTS.
+Best regards,
+--  
+Chuck Lever <cel@kernel.org>
 
-A note about process: the series touches XFS and exportfs. It will
-need to go through the VFS tree, I think, and might conflict with
-what's already in nfsd-testing.
-
-
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
