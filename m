@@ -1,37 +1,37 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6C01A34D3B9
-	for <linux-nfs@vger.kernel.org>; Thu,  8 Oct 2026 15:47:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E6FD74EE843
+	for <linux-nfs@vger.kernel.org>; Thu,  8 Oct 2026 15:47:31 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791474459; cv=none; b=ekuhodzEDUGWNOpxywCL8/hj2IbuCA7QBrPwin5ZHX9xPWVaN2eEq0qYSe0b/JWHpR2GBCRNDZhWEQpRBGfVmCh0RvGJV79031/zJRwGMYgpY/5iuRcJVeyLZK65NRgxH2UA/6dJQo3rm7hLR9qEOT/EuAmP30ZiFNQq5JKLzwQ=
+	t=1791474460; cv=none; b=EyRsIN/5B0W7DVUU2wEka36hmojayFxKKXKfjDLLCCVm7/a+5e2vgnTohvUbL9jToEOutMRum8KiyhvPtKIKQzPC9F7oXigxL7MgwTnUONdAS9rlOnm354BWKZ3LE7C0tRkMmNwUhc4q6YLzZuAQZTu3G2wFsYIbbrywvOJlZnA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791474459; c=relaxed/simple;
-	bh=9fvgbfR1vOJXIPL8N/RtYmoErF10T65PDKd0BOirwL0=;
+	s=arc-20240116; t=1791474460; c=relaxed/simple;
+	bh=U0s4mxX+UBKA82KCvme2B3wiLYQ7bAZC1YPZqWecKMw=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=BQK3OdrvuTjfi7OVhNSdbs4WERWP/M6XzcC6EZtqKExPeTf1vAYW5xzWbSevFrGDWb5OzqQsGSxQY/w5QqK3dkICeJFY+2nPYlLiOyDhZFeG9zgb5gibN+KKGxfEBKpPLqS0auOj94HikW57NWZuBoyYsBUrk7byeuZQic0FliQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=aCSdtcK/; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=aheFDo2n2E1TpwoTJ9RhqVUWJjW1YI0EjcMV+/urvZSNCK5ESoMz0GbtjsE/yN1KdBdaBDWrkHMsY8iv2U0AmDNOq7N/7BqYWvlymqpZuaYnx8LLF45f7dgu8NXFw8qTGYlxDjCssWFHamVXNd2JrTtuRTenhZ9dfHQQaBDXZ9k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=B5Hvi3Hz; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="aCSdtcK/"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8F2EB1F0089A;
-	Thu,  8 Oct 2026 15:47:32 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="B5Hvi3Hz"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1C0CE1F00893;
+	Thu,  8 Oct 2026 15:47:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791474452;
-	bh=5F6iNU9eL5a2fFA41eJc7OLErOXmKWcwzFkC0mHS7/k=;
+	s=k20260515; t=1791474451;
+	bh=eiFXop1O5UF5YSowQh8ubU6ARQxtZANswpqt3aNfqgQ=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=aCSdtcK/lPZnxd0fca7hhdA2N7yPDJqNNpUBMH4EUXb+7aGrNMAv61tKZ5ozljZEO
-	 zP/kOAcJzQK+D7n5qARNDvIiPLkz0k0ocplrh3oT7PjqN513lFqonOwe85srRP7waZ
-	 XdtAat0VtNSnxdizsjt9Tl0IrqYwusCQ9XbclFhb3z5V8dWGDFt/Mz0CXQRO1+OuIw
-	 fYlv7Bu60nrDZoJOGBvS7y5TJlxBAdS3J6e5DUxrmCAX5HefrvVnq2KNXi12kN2CR7
-	 jjC7Ql03rGTC/ebnQZZizTM9BXldcTwzZl1fSlrjZASczhqv4rYyEYMYr6lm2OCBWR
-	 P7aFpiUpWG2fg==
+	b=B5Hvi3HzGaLBGP3nu9Jkcsu0l68AGBwCiU3O7iSQ70VMl26U9Qh9XAW9nC0cCungo
+	 vvAkApAJ4HcgSnH2uyG1+msmIBd7sLpxSC8qiDp0hva3+zqUu5y3CZSC5Hq28ISz18
+	 uxb1gpu3P5gwVudJeoVFFivLQqP7nJ6XQb7LmCnp3uPdqXUlTPRAtJV6eG5wDC4JBZ
+	 UTEKK9QuFdLVMYgu8seSTBU03zxHQKNI59YzIwbdxu02BFa2I1d+PBmn+nsgbGqio8
+	 J/qERNIHEDd1NdQH0vJh1LbfjeXKGjBM9ex2zOoaxPqgsugXUYn0teiKTKllLofS8+
+	 TXxyVS4CypWrA==
 From: Chuck Lever <cel@kernel.org>
 To: Calum Mackay <calum.mackay@oracle.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 4/8] pynfs: add tests for SETATTR by a delegation holder
-Date: Thu,  8 Oct 2026 11:47:25 -0400
-Message-ID: <20261008154729.77787-5-cel@kernel.org>
+Subject: [PATCH v1 1/8] pynfs: add test for OPEN(CLAIM_FH) with WANT_READ_DELEG
+Date: Thu,  8 Oct 2026 11:47:22 -0400
+Message-ID: <20261008154729.77787-2-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20261008154729.77787-1-cel@kernel.org>
 References: <20261008154729.77787-1-cel@kernel.org>
@@ -43,90 +43,90 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-A client that holds a delegation and then changes the file's mode
-does not conflict with itself, so the server has no reason to recall
-that delegation. A server that recalls it anyway costs the client
-its delegation on every chmod, and no test checks for that.
+The delegation tests request a delegation only through CLAIM_NULL,
+and OPEN7 pairs CLAIM_FH with WANT_NO_DELEG. No test covers a client
+that already holds a filehandle and asks for a delegation with
+OPEN(CLAIM_FH). On a server that does not implement WANT_DELEGATION,
+that OPEN is the only way to ask.
 
-Add DELEG30 and DELEG31, which take a write and a read delegation
-and send a mode-changing SETATTR from the same session. Each fails
-if a CB_RECALL arrives within two seconds or if TEST_STATEID no
-longer accepts the delegation stateid. A server that does not grant
-the delegation type the test asks for gets UNSUPPORTED, not a
-failure.
+Add DELEG27. It creates a file, closes it, then sends OPEN(CLAIM_FH)
+with WANT_READ_DELEG and expects a read delegation. A failure reports
+the delegation type and ond_why that the server returned instead.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- nfs4.1/server41tests/st_delegation.py | 59 +++++++++++++++++++++++++++
- 1 file changed, 59 insertions(+)
+ nfs4.1/server41tests/st_delegation.py | 61 +++++++++++++++++++++++++++
+ 1 file changed, 61 insertions(+)
 
 diff --git a/nfs4.1/server41tests/st_delegation.py b/nfs4.1/server41tests/st_delegation.py
-index 8addde6c4fbf..198555ce9b9d 100644
+index 6ae89d223c7f..c35ce8f5ec3b 100644
 --- a/nfs4.1/server41tests/st_delegation.py
 +++ b/nfs4.1/server41tests/st_delegation.py
-@@ -800,3 +800,62 @@ def testClaimFHAfterRecall(t, env):
-     if not passed:
-         fail(results)
-     print(results)
+@@ -625,3 +625,64 @@ def testCbGetattrAfterSyncWrite(t, env):
+     if compareTimes(attrs2[FATTR4_TIME_MODIFY], attrs4[FATTR4_TIME_MODIFY]) != 0:
+         fail(f"mtime after write ({attrs2[FATTR4_TIME_MODIFY]}) != "
+              f"mtime from delegreturn ({attrs4[FATTR4_TIME_MODIFY]})")
 +
-+def _check_deleg_stateid(sess, stateid):
-+    res = sess.compound([op.test_stateid([stateid])])
++def _open_claim_fh(sess, fh, owner, access):
++    """OPEN by filehandle. No GETFH follows, so OPEN is the last result."""
++    open_op = op.open(0, access, OPEN4_SHARE_DENY_NONE, open_owner4(0, owner),
++                      openflag4(OPEN4_NOCREATE), open_claim4(CLAIM_FH))
++    return sess.compound([op.putfh(fh), open_op])
++
++def _open_claim_fh_retry(sess, fh, owner, access):
++    """Send OPEN(CLAIM_FH) again if the first reply carries no delegation
++
++    The first OPEN after CREATE_SESSION can race the server's backchannel
++    probe.
++    """
++    res = _open_claim_fh(sess, fh, owner, access)
 +    check(res)
-+    status = res.resarray[0].tsr_status_codes[0]
-+    if status != NFS4_OK:
-+        fail("TEST_STATEID on the delegation stateid returned %s" %
-+             nfsstat4[status])
++    if not _got_deleg(res.resarray[-1].delegation):
++        res = _open_claim_fh(sess, fh, owner, access)
++        check(res)
++    return res
 +
-+def _testHolderSetattr(t, env, access, deleg_type):
-+    recall = threading.Event()
-+    def pre_hook(arg, env):
-+        env.notify = recall.set
-+    def post_hook(arg, env, res):
-+        return res
++def _delegreturn(sess, fh, deleg):
++    """Return the delegation, if OPEN granted one"""
++    if _got_deleg(deleg):
++        res = sess.compound([op.putfh(fh), op.delegreturn(deleg.stateid)])
++        check(res)
++
++def _deleg_desc(deleg):
++    desc = "%s" % open_delegation_type4.get(deleg.delegation_type,
++                                            deleg.delegation_type)
++    if deleg.delegation_type == OPEN_DELEGATE_NONE_EXT:
++        desc += ", ond_why %s" % why_no_delegation4.get(deleg.ond_why,
++                                                        deleg.ond_why)
++    return desc
++
++def testClaimFHReadDeleg(t, env):
++    """OPEN(CLAIM_FH) with WANT_READ_DELEG on a file with no open state
++
++    FLAGS: open deleg all
++    CODE: DELEG28
++    """
 +    name = env.testname(t)
 +    sess1 = env.c1.new_client_session(b"%s_1" % name)
-+    sess1.client.cb_pre_hook(OP_CB_RECALL, pre_hook)
-+    sess1.client.cb_post_hook(OP_CB_RECALL, post_hook)
-+
-+    fh, stateid, deleg = __create_file_with_deleg(sess1, name, access)
-+    if deleg.delegation_type != deleg_type:
-+        _delegreturn(sess1, fh, deleg)
-+        t.fail_support("Wanted %s, got %s" %
-+                       (open_delegation_type4[deleg_type], _deleg_desc(deleg)))
-+
-+    res = sess1.compound([op.putfh(fh),
-+                          op.setattr(nfs4lib.state00, {FATTR4_MODE: 0o600})])
-+    recalled = recall.wait(2)
-+    if recalled or res.status != NFS4_OK:
-+        _delegreturn(sess1, fh, deleg)
-+    if recalled:
-+        fail("SETATTR by the delegation holder recalled its delegation")
++    res = create_file(sess1, name, access=OPEN4_SHARE_ACCESS_BOTH |
++                      OPEN4_SHARE_ACCESS_WANT_NO_DELEG)
 +    check(res)
-+    _check_deleg_stateid(sess1, deleg.stateid)
++    fh = res.resarray[-1].object
++    res = close_file(sess1, fh, stateid=res.resarray[-2].stateid)
++    check(res)
 +
-+    _delegreturn(sess1, fh, deleg)
++    res = _open_claim_fh_retry(sess1, fh, name, OPEN4_SHARE_ACCESS_READ |
++                               OPEN4_SHARE_ACCESS_WANT_READ_DELEG)
++    stateid = res.resarray[-1].stateid
++    deleg = res.resarray[-1].delegation
++    if deleg.delegation_type != OPEN_DELEGATE_READ:
++        _delegreturn(sess1, fh, deleg)
++        fail("Expected a read delegation, got %s" % _deleg_desc(deleg))
++
++    res = sess1.compound([op.putfh(fh), op.delegreturn(deleg.read.stateid)])
++    check(res)
 +    res = close_file(sess1, fh, stateid=stateid)
 +    check(res)
-+
-+def testWriteDelegHolderSetattr(t, env):
-+    """SETATTR by the holder of a write delegation must not recall it
-+
-+    FLAGS: writedelegations deleg all
-+    CODE: DELEG31
-+    """
-+    _testHolderSetattr(t, env, OPEN4_SHARE_ACCESS_BOTH |
-+                       OPEN4_SHARE_ACCESS_WANT_WRITE_DELEG,
-+                       OPEN_DELEGATE_WRITE)
-+
-+def testReadDelegHolderSetattr(t, env):
-+    """SETATTR by the holder of a read delegation must not recall it
-+
-+    FLAGS: deleg all
-+    CODE: DELEG32
-+    """
-+    _testHolderSetattr(t, env, OPEN4_SHARE_ACCESS_READ |
-+                       OPEN4_SHARE_ACCESS_WANT_READ_DELEG,
-+                       OPEN_DELEGATE_READ)
 -- 
 2.55.0
 
