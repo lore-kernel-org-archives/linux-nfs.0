@@ -1,231 +1,209 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 874883290D1
-	for <linux-nfs@vger.kernel.org>; Wed,  7 Oct 2026 23:02:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 818564086A;
+	Thu,  8 Oct 2026 01:39:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791414171; cv=none; b=f6qtUw83owgUVYQP9Mpo8YcZORYrruA6ihI/quWj5XGXB+2sWTGeYQqz1n33tU5WPmAjUcva9ANA9Yg5l3s50nKfrBu6urZR9Xn7HdVSX+So+M2n0AVF2trZxoQ6tRMxrpfaJ7/kMhJfiCzy6EOyZSSAVbHuxEYj9jFX6DIWrnQ=
+	t=1791423571; cv=none; b=GKVgiliGFCo+zzU/oxhCNqugohB/oKhlBzJt/kSVhYr+FMHSgIGLRtAEVEBZdfKVRszSGqA4UTiwq3i4Cr5l1oz1bvWE67xW832ewwdxvLIlbQz+RFDM/18sZrasPAIV1A5smT8vwzF0Ur2c2fgn5yFmEe49D8C4+QE5SAkYhgw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791414171; c=relaxed/simple;
-	bh=QVJJq3gpSBghM6bBANcxHNWePeMTSUc2nNQuQ3yxy8s=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=ibVt5gSAu9lMvKOem3FYwBw/6Twa+sumC7LmtpxSWxrVNDMaR+n8/8t05I16FknyV7xkvE2NR4Uix+OT6nBct8SrtnvpCFyNUZV/5quyLnWFNgEvOlF4YSBFiY2rkdXbi/J0q3HxsGuE0cg2d19trhw63/WpmpDAEo6JVHx51fM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=f3Y03g10; arc=none smtp.client-ip=170.10.129.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	s=arc-20240116; t=1791423571; c=relaxed/simple;
+	bh=kP0JJQRwP0kNOX5s7X+UWUSB0zcc0qher0tSsqFRWKw=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=n6I/STKQKD4lGSK5oY4tg9w799W5ShRXTFF1ip+fO61/alhY1dQ3VC0iMj8p9A3D7c+rS3aEdGyclMSvTugFdOc0Aoa+Py7/E0w4fTnY24zZZh38vfRkvuprtKhrTUAoKJvmtAfZjCzZsnX1DWvlDw4u0JAfS23yTHpdtKmoT8U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jOH78Q+r; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="f3Y03g10"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1791414169;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=1UXuNu2sBriiYiudisIfsddma7apPl0zKPxw59FOJmQ=;
-	b=f3Y03g10V2qca9EBhpLGc73RTNAh+LrMJ0UCUtGtk7H+3f2kqlj862TUxztzx8EwyJyDex
-	p6CQYiVZ6qmNTrA45Wd8gKbZGup5IJpmA6wLW1crlpN0zg5jjX/cAFI69J4PyeHi2+QINe
-	/9/mlMTzTQqsiKJg6GBUhS3tUNYPf4I=
-Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-609-_Oyqmc5vNkObzhq8jlGZpA-1; Wed,
- 07 Oct 2026 19:02:48 -0400
-X-MC-Unique: _Oyqmc5vNkObzhq8jlGZpA-1
-X-Mimecast-MFC-AGG-ID: _Oyqmc5vNkObzhq8jlGZpA_1791414167
-Received: from mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.17])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 1E231180AEFB;
-	Wed,  7 Oct 2026 23:02:47 +0000 (UTC)
-Received: from smayhew-thinkpadp1gen4i.remote.csb (headnet03.pony-001.prod.iad2.dc.redhat.com [10.2.32.114])
-	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id D5C3C1944CC0;
-	Wed,  7 Oct 2026 23:02:46 +0000 (UTC)
-Received: from smayhew-thinkpadp1gen4i.redhat.corp (localhost [IPv6:::1])
-	by smayhew-thinkpadp1gen4i.remote.csb (Postfix) with ESMTP id 1DC94576375D;
-	Wed, 07 Oct 2026 19:02:46 -0400 (EDT)
-From: Scott Mayhew <smayhew@redhat.com>
-To: steved@redhat.com
-Cc: libtirpc-devel@lists.sourceforge.net,
-	linux-nfs@vger.kernel.org
-Subject: [libtirpc RFC PATCH] __binddynport: honor ip_local_port_range
-Date: Wed,  7 Oct 2026 19:02:45 -0400
-Message-ID: <20261007230245.449569-1-smayhew@redhat.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jOH78Q+r"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 1B7F7C2BCB9;
+	Thu,  8 Oct 2026 01:39:31 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1791423571;
+	bh=kP0JJQRwP0kNOX5s7X+UWUSB0zcc0qher0tSsqFRWKw=;
+	h=From:Subject:Date:To:Cc:Reply-To:From;
+	b=jOH78Q+rcjx7LrpduSg29lrWE6tRWt6kFGFCI5GPWiP7iwWX/QqiVUiYiXAnkE6rJ
+	 cdXhFJWUl47vbP5/HCMY+9inudu1T0Zl1+3A/uhxb40TnJ9uloMkm7GoAJuyq+OQDR
+	 J9HUYj74ofzIoLQ7aNtrekFfW1wAaSA+Cr7pjyvpiA3vdftnNWGzaqjGlTS1NF1NdE
+	 k9eOTCCk4hYkRUZUhf5VhSYA6EpypCK0aht7xyLu72POCJSFIlaWVQJlwElJEFENEO
+	 7RFznnErhTSBQiNgyo0+E6aCKTS60lX3IwBEcUorym8SAO2ZpoGCcbTGzmn1tSWrj2
+	 E3O7VXpDXXM9A==
+Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E5EF1CA6002;
+	Thu,  8 Oct 2026 01:39:30 +0000 (UTC)
+From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
+Subject: [PATCH 0/8] xfs, nfsd: map a whole pNFS block layout in one
+ ->map_blocks call
+Date: Thu, 08 Oct 2026 10:39:29 +0900
+Message-Id: <20261008-xfs-nfsd-map-blocks-v1-0-560026cdccb6@samsung.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.0 on 10.30.177.17
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAFH0xmoC/x3MTQqAIBBA4avErBtQsR+6SrSwHGuoLByIILp70
+ vJbvPeAUGIS6IoHEl0sfMQMXRYwLS7OhOyzwShTa6VavINgDOJxdyeO2zGtglY3vhpr58gayOW
+ ZKPD9X/vhfT8mSRkAZQAAAA==
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
+ Christoph Hellwig <hch@lst.de>, Carlos Maiolino <cem@kernel.org>, 
+ Amir Goldstein <amir73il@gmail.com>
+Cc: "Darrick J. Wong" <djwong@kernel.org>, Dave Chinner <dgc@kernel.org>, 
+ Sergey Bashirov <sergeybashirov@gmail.com>, 
+ Christian Brauner <brauner@kernel.org>, linux-nfs@vger.kernel.org, 
+ linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791423569; l=7438;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=kP0JJQRwP0kNOX5s7X+UWUSB0zcc0qher0tSsqFRWKw=;
+ b=lrFrEp5QgOiMYXYb/d1JOtyxiu/wqdG0GoRLJODoSCxZGx7HOoaBjy9nT610jBvSfnZ2459rK
+ xx6ttYEwjQbBcOHKx8Ureevc8DCXHDLXWei5W7KXHOgjxDExfBquw4K
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
+ auth_id=1122
+X-Original-From: Daejun Park <daejun7.park@samsung.com>
+Reply-To: daejun7.park@samsung.com
 
-__binddynport() currently binds to ports in the dynamic port range
-defined by RFC 6335, which is ports 49152-65535.
+nfsd calls ->map_blocks once per extent of a block layout. XFS takes
+the iolock, flushes and invalidates the page cache, maps one extent
+and, if it allocated blocks for a write layout, updates the inode and
+forces the log, all again for each extent, and the mapping of the file
+can change between the calls. Christoph asked for ->map_blocks to
+return several mappings instead [1], as Darrick had suggested [2].
 
-If rpcbind is built with remotecalls enabled, it binds 2 dynamic ports
-for the remotecall sockets.  The selinux-policy allows rpcbind_t to bind
-ports with ephemeral_port_t, which is ports 32768-60999.  It does not
-allow rpcbind_t to bind ports with unreserved_port_t, which is ports in
-the ranges 61000-65535 and 1024-32767.  Currently, the random port
-selected by __binddynport might land in the former range, which triggers
-both an AVC error in selinux and an error from rpcbind in the syslog.
+Patch 1 is "xfs: map pNFS layouts to the end of the extent again" [3],
+posted on its own and reviewed by Darrick, but not in a tree yet. It
+changes the same function, so it is included here unchanged.
 
-Read /proc/sys/net/ipv4/ip_local_port_range and constrain the range of
-ports used by __binddynport() to the intersection of the compiled-in
-defaults and the range defined by ip_local_port_range.
+Patches 2 and 3 fix the ranges that xfs_fs_map_blocks() gets from a
+client. An RW LAYOUTGET at offset 0 of an empty file for 16 TiB shuts
+the filesystem down, because xfs_iomap_write_direct() keeps the block
+reservation in an unsigned int; patch 2 refuses a count that does not
+fit with -ENOSPC. A LAYOUTGET for NFS4_UINT64_MAX bytes, or at an offset
+of 2^63, makes the range check wrap and maps nothing; patch 3 fixes the
+check, which the rest of the series relies on. Both are fixes for stable
+kernels as well, and leave a range that fits the free space as it was.
+Patch 3 needs patch 2 there: alone, it turns the NFS4ERR_IO of an RW
+layout to the end of the file into a shutdown.
 
-The default values for ip_local_port_range is "32768 60999", so the
-resulting dynamic range used by __binddynport() would be lowport=49152,
-highport=60999, nports=11848.
+Patch 4 lets ->map_blocks fill an array of mappings, without a change
+in behavior. Patches 5 to 7 make XFS map the whole range one extent
+after the other, under the iolock and, as Darrick also pointed out in
+[2], the invalidate lock, so that each mapping starts where the one
+before it ends, with one flush and at most one log force. Patch 8 makes
+nfsd ask for all extents at once and check that they fit together,
+instead of trimming them.
 
-Link: https://bugzilla.redhat.com/show_bug.cgi?id=1758147
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+The series is on top of nfsd-testing 214e388464bf ("nfsd: do not return
+overlapping extents in a block layout"). Patches 4 and 8 depend on that
+commit, which added the comment that patch 4 changes and the trim that
+patch 8 replaces. Darrick's comment on that commit [5] came after it was
+applied: patch 4 documents that a mapping may end past the range, and
+patch 8 removes the comment he asked to fix. exportfs_block.h is
+maintained with nfsd, so I would suggest the nfsd tree, with acks from
+XFS for patches 1 to 3 and 5 to 7. Patches 1 to 3 could also go through
+XFS first; they apply to XFS for-next 197f678cccba as they are, and
+patches 5 to 7 do not apply without them.
+
+Tests. QEMU VMs, the server exports a 32 GiB XFS on an NVMe/TCP
+namespace, pynfs or the Linux client, KASAN and lockdep unless noted.
+"before" is the base with patch 1, "after" the whole series.
+
+LAYOUTGETs for the first 256 KiB of a file in which 32 blocks of 4 KiB
+written with O_DIRECT are each followed by a 4 KiB hole, 64 extents,
+20 LAYOUTGETs each, KASAN and lockdep off, time from a kprobe on
+nfsd4_block_proc_layoutget():
+
+                                            before      after
+  READ: ->map_blocks calls                  64          1
+        median time                         26 us       9 us
+  RW, 32 holes allocated:
+        ->map_blocks calls                  64          1
+        log forces                          32          1
+        median time                         166 ms      2.2 ms
+
+RW LAYOUTGETs for large ranges, minimum length 4 KiB unless noted,
+each on its own boot:
+
+                            before       patches 2, 3   after
+  empty file, 16 TiB        shutdown     NOSPC          NOSPC
+  empty file, to the end    IO, WARN     NOSPC          NOSPC
+  64 KiB allocated, then
+  a hole, to the end        IO, WARN     NOSPC          NOSPC
+  empty file, 100 GiB       NOSPC        NOSPC          NOSPC
+  empty file, 16 GiB,
+  minimum length 16 GiB     16 GiB       16 GiB         16 GiB
+
+NOSPC is answered before anything is allocated. WARN is nfsd's warning
+about the non-standard errno -63.
+
+pynfs, with BLOCK5 from [6] and the empty lou_body of BLOCK3 passed as
+bytes (as shipped, BLOCK3 fails with a TypeError in pynfs before
+anything is sent): BLOCK1, BLOCK2, BLOCK4 and BLOCK5 pass before and
+after, five and three runs, and BLOCK3 fails in both with
+NFS4ERR_BADXDR, as a zero-length lou_body has no extent count.
+GETLAYOUT1, a READ LAYOUTGET for NFS4_UINT64_MAX bytes, gets NFS4ERR_IO
+before, NFS4ERR_INVAL with patches 2 and 3, and a layout to 2^63 after,
+also with XFS_DEBUG. LAYOUTRET1 and LAYOUTRET3 then run and fail as they
+would on any kernel (a TypeError in pynfs, and no current filehandle),
+as do CSID7 and GETDLIST1 before and after. On a test kernel whose XFS
+does not trim a mapping to the offset asked for, BLOCK5 gets
+NFS4ERR_LAYOUTUNAVAILABLE and nfsd warns, instead of handing out
+overlapping extents. With a process on the server that writes a shared
+mapping of another file in a loop, the pynfs run gives no lockdep
+report.
+
+fstests generic/075, 091 and 263 over the block and the SCSI layout
+give the same results before and after (075 fails with an fsx size
+error in both), and the client's bl_alloc_lseg() returns no error.
+With XFS_DEBUG, of generic/013, 075, 091, 112, 127 and 263 only 075,
+112 and 127 fail, which also fail without this series on nfsd-testing,
+and XFS logs no assertion.
+
+Clients writing new files through their layouts, four cases, read back
+on the server: no block is lost before or after. This test runs on top
+of the nfsd layout recall series [4] as revised for a v2 that is not
+posted yet; this series applies to it without conflicts. Without it,
+nfsd-testing loses blocks when a layout recall fails.
+
+Not in this series: Darrick's third point in [2], that the reflink and
+realtime checks are made before the locks are taken, and the window
+between ->map_blocks and nfsd4_insert_layout() that Christoph mentioned
+in the same thread, which this series narrows but does not close.
+
+[1] https://lore.kernel.org/r/20261007131133.GB30647@lst.de
+[2] https://lore.kernel.org/r/20260519145949.GH9555@frogsfrogsfrogs
+[3] https://lore.kernel.org/r/20261006003425epcms2p586728e55ff5f9bbabc506b672fc4a421@epcms2p5
+[4] https://lore.kernel.org/r/20261006-nfsd-layout-recall-v1-0-b59b31caf342@samsung.com
+[5] https://lore.kernel.org/r/20261007165101.GD2705364@frogsfrogsfrogs
+[6] https://lore.kernel.org/r/20261006002622epcms2p38e492aef17fdf79e48b05c9aada2918d@epcms2p3
+
 ---
- src/binddynport.c | 90 ++++++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 81 insertions(+), 9 deletions(-)
+Daejun Park (8):
+      xfs: map pNFS layouts to the end of the extent again
+      xfs: refuse a direct allocation whose block reservation would wrap
+      xfs: clamp the pNFS layout range to the maximum file size
+      exportfs: let ->map_blocks return more than one mapping
+      xfs: factor the mapping of one pNFS extent out of xfs_fs_map_blocks()
+      xfs: take the invalidate lock while mapping a pNFS layout
+      xfs: map the whole range of a pNFS layout in one ->map_blocks call
+      nfsd: get all extents of a block layout in one ->map_blocks call
 
-diff --git a/src/binddynport.c b/src/binddynport.c
-index c2e9a20..52bac17 100644
---- a/src/binddynport.c
-+++ b/src/binddynport.c
-@@ -57,6 +57,75 @@ enum {
- 	NPORTS		= ENDPORT - LOWPORT + 1,
- };
- 
-+int lowport = LOWPORT;
-+int endport = ENDPORT;
-+int nports = NPORTS;
-+
-+/*
-+ * Parse the first and last local port numbers from
-+ *	/proc/sys/net/ipv4/ip_local_port_range.
-+ *
-+ * @first - the first (low) port in the range
-+ * @last - the last (high) port in the range
-+ *
-+ * Returns 0 on success, and both @first and @last are updated.
-+ * Returns -1 on failure, and neither @first nor @last are updated.
-+ */
-+static int parse_ip_local_port_range(int *first, int *last)
-+{
-+	int res, new_first, new_last;
-+	FILE *fp;
-+
-+	fp = fopen("/proc/sys/net/ipv4/ip_local_port_range", "r");
-+	if (fp == NULL) {
-+		(void) syslog(LOG_ERR,
-+			"Unable to open open /proc/sys/net/ipv4/ip_local_port_range.");
-+		return -1;
-+	}
-+
-+	res = fscanf(fp, "%d %d", &new_first, &new_last);
-+	if (res != 2) {
-+		(void) syslog(LOG_ERR,
-+			"An error occurred while parsing ip_local_port_range.");
-+		fclose(fp);
-+		return -1;
-+	}
-+
-+	*first = new_first;
-+	*last = new_last;
-+
-+	fclose(fp);
-+	return 0;
-+}
-+
-+/*
-+ * Try to update our dynamic port range using information from the kernel.
-+ *
-+ * Returns 0 on success, and lowport, endport, and nports should be the
-+ *	intersection of the compiled-in defaults and the values reported
-+ *	by /proc/sys/net/ipv4/ip_local_port_range.
-+ * Returns -1 on failure, and lowport, endport, and nports retain their
-+ *	default values.
-+ *
-+ * This function is called by __binddynport() before using any of:
-+ *	endport, lowport, nports
-+ */
-+static int update_dynamic_port_range(void)
-+{
-+	int ret, low, end;
-+
-+	ret = parse_ip_local_port_range(&low, &end);
-+	if (ret < 0)
-+		return -1;
-+
-+	if (lowport < low)
-+		lowport = low;
-+	if (endport > end)
-+		endport = end;
-+	nports = endport - lowport + 1;
-+	return 0;
-+}
-+
- /*
-  * This function decodes information about given port from provided array and
-  * return if port is reserved or not.
-@@ -67,8 +136,8 @@ enum {
-  * Returns 0 if port is not reserved, non-negative if port is reserved.
-  */
- static int is_reserved(char *reserved_ports, int port) {
--	port -= LOWPORT;
--	if (port < 0 || port >= NPORTS)
-+	port -= lowport;
-+	if (port < 0 || port >= nports)
- 		return 0;
- 	return reserved_ports[port/(8*sizeof(char))] & 1<<(port%(8*sizeof(char)));
- }
-@@ -82,8 +151,8 @@ static int is_reserved(char *reserved_ports, int port) {
-  *
-  */
- static void set_reserved(char *reserved_ports, int port) {
--	port -= LOWPORT;
--	if (port < 0 || port >= NPORTS)
-+	port -= lowport;
-+	if (port < 0 || port >= nports)
- 		return;
- 	reserved_ports[port/(8*sizeof(char))] |= 1<<(port%(8*sizeof(char)));
- }
-@@ -193,13 +262,16 @@ int __binddynport(int fd)
- 		goto out;
- 	}
- 
-+	if (update_dynamic_port_range() < 0)
-+		(void) syslog(LOG_ERR, "Using default port range.");
-+
- 	if (!seed) {
- 		struct timeval tv;
- 
- 		gettimeofday(&tv, NULL);
- 		seed = tv.tv_usec * getpid();
- 	}
--	array_size = NPORTS / (8*sizeof(char)) + 1;
-+	array_size = nports / (8*sizeof(char)) + 1;
- 	reserved_ports = malloc(array_size);
- 	if (!reserved_ports) {
- 		goto out;
-@@ -208,8 +280,8 @@ int __binddynport(int fd)
- 	if (parse_reserved_ports(reserved_ports) < 0)
- 		goto out;
- 
--	port = (rand_r(&seed) % NPORTS) + LOWPORT;
--	for (i = 0; i < NPORTS; ++i) {
-+	port = (rand_r(&seed) % nports) + lowport;
-+	for (i = 0; i < nports; ++i) {
- 		*portp = htons(port);
- 		if (!is_reserved(reserved_ports, port++)) {
- 			res = bind(fd, sap, salen);
-@@ -220,8 +292,8 @@ int __binddynport(int fd)
- 			if (errno != EADDRINUSE)
- 				break;
- 		}
--		if (port > ENDPORT)
--			port = LOWPORT;
-+		if (port > endport)
-+			port = lowport;
- 	}
- 
- out:
+ fs/nfsd/blocklayout.c          | 134 +++++++++++++++++++++-------------------
+ fs/xfs/xfs_iomap.c             |   7 +++
+ fs/xfs/xfs_pnfs.c              | 136 +++++++++++++++++++++++++++++------------
+ include/linux/exportfs_block.h |  14 +++--
+ 4 files changed, 185 insertions(+), 106 deletions(-)
+---
+base-commit: 214e388464bf850fcdc5d656fd39909f0a1ee83d
+change-id: 20261008-xfs-nfsd-map-blocks-417d5b6aae42
+
+Best regards,
 -- 
-2.55.0
+Daejun Park <daejun7.park@samsung.com>
+
 
