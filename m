@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6233A4EFFC4
-	for <linux-nfs@vger.kernel.org>; Thu,  8 Oct 2026 18:18:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 271F84EFFD9
+	for <linux-nfs@vger.kernel.org>; Thu,  8 Oct 2026 18:18:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791483524; cv=none; b=ayghybqXyv6KREF1eGz9QwSdIEL2OqCZpUb4ldz6uarvu+XMlWKkfBS1EwDsfqqo6JIalerGvjimek3OpQrq+hLg+thNSe3vS3cxR9+6bJ6eYwWtWP5m7uSA71rGWJQZ2W3deyQH+7u/Kxpa4kTn5werxuv63hHGRJWJP1Ej7rI=
+	t=1791483525; cv=none; b=rEivT+rl2k4GEo32BDYK/WWjplARs8L/NTDlgh+zyW9Fe6JdU6tBsxBUBCMsAHEEdX5ugcr1fcs4AujnWsdNgymBixRWnOoDcscBAtMnHwWqwbp2XLNKufeDtEkjG4PNVlibXVAYZi3JcFXlWwkl1uMg1Nu8Fwf3ZFbDHnkPuow=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791483524; c=relaxed/simple;
-	bh=dVxNXgLPChIB8OpFA97Tyit5Ylny2d9jinnHFRhu/uk=;
+	s=arc-20240116; t=1791483525; c=relaxed/simple;
+	bh=9H29U4nzD+M67mqLt6yCRboS95LCKEFKn0r34PvhMxs=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=m741uJdjLmaUBz9EpnQANygCPjy6D969Iiz/7jSRTayLdCJfM/xd6G9x28nJUdG+YWtkQ9EZ8QJzehCdJ06JqFRksm85cuJJl+hQwKHIu5/CwsenhbWjjAug1zt3wbJ4eicK88aoG0Fuk33EosbjRWpT7ofmLqfP8tsEXFV0z6c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QZXnbxu9; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=DgipfipCwJ872ECve4Q5EkrOoawO05g4K8J9cqppppKZx6TYjrFvQvT3intbiWc+8HbHZ4Imha9SJa+0BcmmRbvUg3EtRUk7zyPzIZcsQ5JuOfFEhBSdNv8+SToUNUBp5OPl8F5RjYB7gm79zxyGviRxNLXU1GeZpJFGC9qC+Q4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=JJdZBkLb; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QZXnbxu9"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C1FA51F00893;
-	Thu,  8 Oct 2026 18:18:42 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="JJdZBkLb"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 83BB51F0089A;
+	Thu,  8 Oct 2026 18:18:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791483523;
-	bh=bcbQnuZQsoUU5xH27A0QbjFMKZZAoA2JZlFtk/XOnz0=;
+	s=k20260515; t=1791483524;
+	bh=fIIbiDhCN1HxEgtxVrP61ozIsEXALfT2tt11uQL7Des=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=QZXnbxu9tr7mlsNbVS+7c4m2Kgq0e4ZkdD4OQGMyuAdeNKdNlkbwCmRDV3wO7LPpL
-	 UalpukI1iaE+3OM3uvKfocGXJSvNlWjFIFxjjBwTwpUeSn7DIstByvgJpaeOwU45aF
-	 xJVQ5NMP03opfwUcu/VuZd5UTEiT9sAnL0URYMwz61NK83oEzO3Jza5cfOfZXzR9lT
-	 hmR5dGY+KxliXofZ15n/wZNN/TXiBu6h5VpsFNNaNUerzxTLP9fq0DUQU92tQmsQ9X
-	 ew5Pe9wGMhCCsF4lPAnxeGZ6az6G7P2F95KRzTTRlvkeIoj9tgsAkWO2DMg9E4Od22
-	 oao7K/hEwaR+Q==
+	b=JJdZBkLbOmxo1q1E+kGRdNpVx3zHUkgcWPArVO1FJ6/WQyc0rIxq0nYvDooR61lvl
+	 JdrarznmiqgX5sXXAUBQ/s6WWP7bVlp2zTUV/HrB09E5EvnPMKaTFxw5wsObEaq/In
+	 Y3gIhZp2kTIBSbAHCDTv/4RqIZkaz3kIybMRjfa6t3YA0Szhc3k46sapAYg2yBd67u
+	 GG+OznsB9zqSJn7XnCoOjGG7O6hs/4afcMTagfEIF2wtlYiJ+Be8IuuRyBvbCGtpuI
+	 tHgKEx0h5gwIm1gDRGCN9PhNtBraffhLVn7mkGWfiac1KeTt4VOI9R1mgW1nHBnWe6
+	 GnTnrXoeK9kTA==
 From: Chuck Lever <cel@kernel.org>
-Date: Thu, 08 Oct 2026 14:18:30 -0400
-Subject: [PATCH 4/5] NFSD: Report unsupported delegation upgrade and
- downgrade
+Date: Thu, 08 Oct 2026 14:18:31 -0400
+Subject: [PATCH 5/5] NFSD: Honor OPEN4_SHARE_ACCESS_WANT_READ_DELEG on a
+ read-write OPEN
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261008-want-read-v1-4-e372262857c8@kernel.org>
+Message-Id: <20261008-want-read-v1-5-e372262857c8@kernel.org>
 References: <20261008-want-read-v1-0-e372262857c8@kernel.org>
 In-Reply-To: <20261008-want-read-v1-0-e372262857c8@kernel.org>
 To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
@@ -46,212 +46,104 @@ To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7398; i=cel@kernel.org;
- h=from:subject:message-id; bh=dVxNXgLPChIB8OpFA97Tyit5Ylny2d9jinnHFRhu/uk=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqx95/74EBbuyRr1ylwN+NfGVj7vTx30LXSVUb/
- koGy0PCpKCJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCasfefwAKCRAzarMzb2Z/
- lxMpD/wMsNJi2EoZ0DDkdl+VIyyVax8Cpeb0O2o4B/qtHogNSDVSn9byGo7Zc8h26/9DFsWWRO3
- ceMzFWV5C9sqBkE1NefLxYqIHlL5O3ilS9o7gOFtc4pg/JXB5z2FsUpic6iefCSken4v0zZ0/tT
- +LxonY6AJ+3eVNnP14PGtP+z/WK9+anZLHQzeYDzh6nsEVIkhBnKoaK5NYKvVYSfXX86oiJCK3g
- /2jtJx85ivAEjABQWcrNIGeWecu0Ug4mmA293lwTcT0fkjVrJl8oODxyXMyVXCUGLkCNI8iY+Sv
- +fKVreTZRZKvxbX1WihRvrSlk84Bs0JwtvVyOgSmguzrkx7SaqwCof3YYLm1M9xk9QGUAxc48FR
- AomWxUN+9/sB1UPhwzax26F0lAdfxBvxkADPTqb+QqHj7FHIfcPRsIJrc+Gvy0aA7M/OkNOsp5s
- khKqGsMbhsxiBzMmzX2YWjeBqbdzuSs0yiCtGnXUBtd5jKvGe5i7o5+HsnmvAUpejRqSmSYNG87
- 7ovSqH8cE2ScPHve3W98qWmueMxCWYRL3o2F5Mv6G8/dnj0G09+tFnV0s7gjvKItYRXvMlRGtWp
- S4DNqf7grqpSfDs7yRAcEAw06NcIFmbwm30Zp542n5dpa5z0FQA/ZU5v5z5tln9zEldRs7T8CTQ
- AYvJH1FSmgL36zw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3475; i=cel@kernel.org;
+ h=from:subject:message-id; bh=9H29U4nzD+M67mqLt6yCRboS95LCKEFKn0r34PvhMxs=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqx95/22Cazzs0y+9FpFIESU0CN7SvycydvnyCM
+ LnLZYlELVWJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCasfefwAKCRAzarMzb2Z/
+ l2+FEACV4DmMVAtW9Ar5zqXDWpu99NdsuDKndvKZsg2YUcRjmab13C71Td4eI7QaDpWMCjpy13o
+ uWp0jzLuJ5oYTdnsBoF/OidTjieovVcXQnqW8JYao9IRWQ5VTkWQpnFwq4pyae8S+q+CrbKOY9o
+ VXVhy43L9mCeWHh25iM1DHxd9PTrgTkYGJMfMy9xvjuj00yqHrnumD9e2N3pC3JYOnN5rzehF+u
+ U7lXJfh0WjivGwQcJcTLYH/7xAs1ehMty5HzNN+SBlpAcSZcnAVaP8gqZ6AMDjd/IOWYwByjeRo
+ tkubMaVUGfh902OXoEgYVgrUGNpq98qpd0nyOaMr8D+i29zx15oaSUWEDTWgkE1EPyPRdvpZoyj
+ 2xLM3e61zTbxQB6fIx8F+LoKcrqMH3vWPNyANTH5TDA0I5p+FHncdj4KG+8j71zvQWjAnCgl2aF
+ O3r0r8UZFkmp6xCzrWo735yDVLpc2ri513AFJKAg4s2REhYvMP9pw7voCzefuSOVULqxiY8p/ih
+ 80I7zUYt9sQC0E/BtXycY5uc8AGuqu4LuYRRu7zpkvnHT1X1cgujtWkw/KbaJHuxlE8xgHHX8KE
+ W4oVGrvz4JNiyak+do1yznxIIH6LyoPx2YcSyLHrm55WDR7wpYd8k0u3fd6CmWzORmaDatOd1It
+ MVJjMB9gw36XmAw==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-RFC 8881 Section 18.16.3 defines an OPEN that sets
-OPEN4_SHARE_ACCESS_WANT_WRITE_DELEG, from a client holding an
-OPEN_DELEGATE_READ delegation on the file, as a request to upgrade
-the OPEN_DELEGATE_READ delegation. Likewise, an OPEN that sets
-OPEN4_SHARE_ACCESS_WANT_READ_DELEG from a client holding an
-OPEN_DELEGATE_WRITE delegation is a request to downgrade. A server
-that supports neither upgrade nor downgrade replies with ond_why
-set to WND4_NOT_SUPP_UPGRADE or WND4_NOT_SUPP_DOWNGRADE.
+RFC 8881 Section 18.16.3 defines OPEN4_SHARE_ACCESS_WANT_READ_DELEG
+as a request for an OPEN_DELEGATE_READ delegation regardless of the
+access bits in the OPEN. NFSD chooses the delegation type from the
+access bits alone, so an OPEN for both read and write that sets
+WANT_READ_DELEG gets a write delegation.
 
-NFSD supports neither, but replies with WND4_RESOURCE to both
-requests, inviting the client to ask again, futilely.
-nfsd4_deleg_xgrade_none_ext() exists to supply the correct reasons,
-but nfsd4_process_open2() calls it only when the delegation type in
-the reply is still OPEN_DELEGATE_NONE, and nfs4_open_delegation()
-has already replaced OPEN_DELEGATE_NONE with OPEN_DELEGATE_NONE_EXT
-before nfsd4_process_open2() makes the check.
+Any other client's open recalls that write delegation, and another
+client's GETATTR triggers a CB_GETATTR. The read delegation the
+client asked for survives both. Granting no delegation would also
+respect the request, but it withholds a delegation NFSD is able to
+grant.
 
-Have nfs4_set_delegation() report the type of the delegation the
-client already holds, and have nfsd4_open_deleg_none_ext() choose
-the upgrade or downgrade reason from the held type. Remove the
-unreachable helper.
+Try for a read delegation when the OPEN sets WANT_READ_DELEG and
+includes read access. After this change, a write-only OPEN that
+sets WANT_READ_DELEG gets no delegation, with ond_why set to
+WND4_RESOURCE. When the OPEN also sets
+OPEN4_SHARE_ACCESS_WANT_OPEN_XOR_DELEGATION, return the open
+stateid along with the read delegation.
 
-Fixes: d24433cdc91c ("nfsd41: implement NFS4_SHARE_WANT_NO_DELEG, NFS4_OPEN_DELEGATE_NONE_EXT, why_no_deleg")
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs4state.c | 65 +++++++++++++++++++++++++----------------------------
- 1 file changed, 30 insertions(+), 35 deletions(-)
+ fs/nfsd/nfs4state.c | 20 ++++++++++++++++----
+ 1 file changed, 16 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6ed53864c9be..6bb70d50e9d9 100644
+index 6bb70d50e9d9..920967dd6f84 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1481,10 +1481,12 @@ static void destroy_unhashed_deleg(struct nfs4_delegation *dp)
-  * @fp:      a pointer to the nfs4_file we're granting a delegation on
-  *
-  * Return:
-- *      On success: true iff an existing delegation is found
-+ *      The delegation @clp already holds on @fp, or NULL if it holds
-+ *      none. No reference is taken: the pointer is valid only while
-+ *      the caller holds fi_lock.
-  */
+@@ -6984,6 +6984,12 @@ static bool nfsd4_want_deleg_timestamps(const struct nfsd4_open *open)
+ 	return open->op_deleg_want & OPEN4_SHARE_ACCESS_WANT_DELEG_TIMESTAMPS;
+ }
  
--static bool
-+static struct nfs4_delegation *
- nfs4_delegation_exists(struct nfs4_client *clp, struct nfs4_file *fp)
- {
- 	struct nfs4_delegation *searchdp = NULL;
-@@ -1497,10 +1499,10 @@ nfs4_delegation_exists(struct nfs4_client *clp, struct nfs4_file *fp)
- 	list_for_each_entry(searchdp, &fp->fi_delegations, dl_perfile) {
- 		searchclp = searchdp->dl_stid.sc_client;
- 		if (clp == searchclp) {
--			return true;
-+			return searchdp;
- 		}
++static bool nfsd4_want_read_deleg(const struct nfsd4_open *open)
++{
++	return (open->op_deleg_want & NFS4_SHARE_WANT_TYPE_MASK) ==
++		OPEN4_SHARE_ACCESS_WANT_READ_DELEG;
++}
++
+ static void
+ nfs4_delegation_record_grant_slot(struct nfs4_delegation *dp,
+ 				 const struct nfsd4_compound_state *cstate)
+@@ -7041,14 +7047,16 @@ nfs4_set_delegation(struct nfsd4_open *open,
+ 	 *  We choose to offer a write delegation for OPEN with the
+ 	 *  OPEN4_SHARE_ACCESS_WRITE access mode to accommodate such clients.
+ 	 */
+-	if (open->op_share_access & NFS4_SHARE_ACCESS_WRITE) {
++	if ((open->op_share_access & NFS4_SHARE_ACCESS_WRITE) &&
++	    !nfsd4_want_read_deleg(open)) {
+ 		nf = find_writeable_file(fp);
+ 		dl_type = deleg_ts ? OPEN_DELEGATE_WRITE_ATTRS_DELEG : OPEN_DELEGATE_WRITE;
  	}
--	return false;
-+	return NULL;
+ 
+ 	/*
+-	 * If the file is being opened O_RDONLY or we couldn't get a O_RDWR
+-	 * file for some reason, then try for a read delegation instead.
++	 * A read delegation can go to a client that holds a write open
++	 * of the file: nfsd_breaker_owns_lease() keeps the holder's own
++	 * opens from breaking it.
+ 	 */
+ 	if (!nf && (open->op_share_access & NFS4_SHARE_ACCESS_READ)) {
+ 		nf = find_readable_file(fp);
+@@ -7325,7 +7333,7 @@ nfs4_open_delegation(struct svc_rqst *rqstp, struct nfsd4_open *open,
+ 
+ 	memcpy(&open->op_delegate_stateid, &dp->dl_stid.sc_stateid, sizeof(dp->dl_stid.sc_stateid));
+ 
+-	if (open->op_share_access & NFS4_SHARE_ACCESS_WRITE) {
++	if (deleg_is_write(dp->dl_type)) {
+ 		struct file *f;
+ 
+ 		f = rcu_dereference_protected(dp->dl_stid.sc_file->fi_deleg_file, 1)->nf_file;
+@@ -7371,6 +7379,10 @@ static bool open_xor_delegation(struct nfsd4_open *open)
+ 	/* Did we actually get a delegation? */
+ 	if (!deleg_is_read(open->op_delegate_type) && !deleg_is_write(open->op_delegate_type))
+ 		return false;
++	/* A read delegation stateid does not permit WRITE. */
++	if (deleg_is_read(open->op_delegate_type) &&
++	    (open->op_share_access & NFS4_SHARE_ACCESS_WRITE))
++		return false;
+ 	return true;
  }
  
- /**
-@@ -7000,14 +7002,15 @@ nfs4_delegation_record_grant_slot(struct nfs4_delegation *dp,
- static struct nfs4_delegation *
- nfs4_set_delegation(struct nfsd4_open *open,
- 		    const struct nfsd4_compound_state *cstate,
--		    struct nfs4_ol_stateid *stp, struct svc_fh *parent)
-+		    struct nfs4_ol_stateid *stp, struct svc_fh *parent,
-+		    u32 *held_type)
- {
- 	bool deleg_ts = nfsd4_want_deleg_timestamps(open);
- 	struct nfs4_client *clp = stp->st_stid.sc_client;
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 	struct nfs4_file *fp = stp->st_stid.sc_file;
- 	struct nfs4_clnt_odstate *odstate = stp->st_clnt_odstate;
--	struct nfs4_delegation *dp;
-+	struct nfs4_delegation *dp, *held;
- 	struct nfsd_file *nf = NULL;
- 	struct file_lease *fl;
- 	int status = 0;
-@@ -7066,9 +7069,11 @@ nfs4_set_delegation(struct nfsd4_open *open,
- 
- 	spin_lock(&nn->deleg_lock);
- 	spin_lock(&fp->fi_lock);
--	if (nfs4_delegation_exists(clp, fp))
-+	held = nfs4_delegation_exists(clp, fp);
-+	if (held) {
-+		*held_type = held->dl_type;
- 		status = -EEXIST;
--	else if (nfsd4_verify_setuid_write(open, nf))
-+	} else if (nfsd4_verify_setuid_write(open, nf))
- 		status = -EPERM;
- 	else if (!rcu_dereference_protected(fp->fi_deleg_file,
- 					    lockdep_is_held(&fp->fi_lock))) {
-@@ -7140,6 +7145,10 @@ nfs4_set_delegation(struct nfsd4_open *open,
- 	spin_lock(&clp->cl_lock);
- 	spin_lock(&fp->fi_lock);
- 	status = hash_delegation_locked(dp, fp);
-+	if (status == -EEXIST) {
-+		held = nfs4_delegation_exists(clp, fp);
-+		*held_type = held->dl_type;
-+	}
- 	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&clp->cl_lock);
- 	spin_unlock(&nn->deleg_lock);
-@@ -7159,16 +7168,23 @@ nfs4_set_delegation(struct nfsd4_open *open,
- 	return ERR_PTR(status);
- }
- 
--static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
-+static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status,
-+				      u32 held_type)
- {
- 	open->op_delegate_type = OPEN_DELEGATE_NONE_EXT;
- 	if (status == -EAGAIN)
- 		open->op_why_no_deleg = WND4_CONTENTION;
- 	else {
- 		open->op_why_no_deleg = WND4_RESOURCE;
--		switch (open->op_deleg_want) {
-+		switch (open->op_deleg_want & NFS4_SHARE_WANT_TYPE_MASK) {
- 		case OPEN4_SHARE_ACCESS_WANT_READ_DELEG:
-+			if (deleg_is_write(held_type))
-+				open->op_why_no_deleg = WND4_NOT_SUPP_DOWNGRADE;
-+			break;
- 		case OPEN4_SHARE_ACCESS_WANT_WRITE_DELEG:
-+			if (deleg_is_read(held_type))
-+				open->op_why_no_deleg = WND4_NOT_SUPP_UPGRADE;
-+			break;
- 		case OPEN4_SHARE_ACCESS_WANT_ANY_DELEG:
- 			break;
- 		case OPEN4_SHARE_ACCESS_WANT_CANCEL:
-@@ -7268,6 +7284,7 @@ nfs4_open_delegation(struct svc_rqst *rqstp, struct nfsd4_open *open,
- 	struct nfs4_client *clp = stp->st_stid.sc_client;
- 	struct svc_fh *parent = NULL;
- 	struct nfs4_delegation *dp;
-+	u32 held_type = OPEN_DELEGATE_NONE;
- 	struct kstat stat;
- 	int status = 0;
- 	int cb_up;
-@@ -7299,7 +7316,8 @@ nfs4_open_delegation(struct svc_rqst *rqstp, struct nfsd4_open *open,
- 		default:
- 			goto out_no_deleg;
- 	}
--	dp = nfs4_set_delegation(open, &resp->cstate, stp, parent);
-+	dp = nfs4_set_delegation(open, &resp->cstate, stp, parent,
-+				 &held_type);
- 	if (IS_ERR(dp)) {
- 		status = PTR_ERR(dp);
- 		goto out_no_deleg;
-@@ -7341,28 +7359,10 @@ nfs4_open_delegation(struct svc_rqst *rqstp, struct nfsd4_open *open,
- 
- 	/* 4.1 client asking for a delegation? */
- 	if (open->op_deleg_want)
--		nfsd4_open_deleg_none_ext(open, status);
-+		nfsd4_open_deleg_none_ext(open, status, held_type);
- 	return;
- }
- 
--static void nfsd4_deleg_xgrade_none_ext(struct nfsd4_open *open,
--					struct nfs4_delegation *dp)
--{
--	if (deleg_is_write(dp->dl_type)) {
--		if (open->op_deleg_want & OPEN4_SHARE_ACCESS_WANT_READ_DELEG) {
--			open->op_delegate_type = OPEN_DELEGATE_NONE_EXT;
--			open->op_why_no_deleg = WND4_NOT_SUPP_DOWNGRADE;
--		} else if (open->op_deleg_want & OPEN4_SHARE_ACCESS_WANT_WRITE_DELEG) {
--			open->op_delegate_type = OPEN_DELEGATE_NONE_EXT;
--			open->op_why_no_deleg = WND4_NOT_SUPP_UPGRADE;
--		}
--	}
--	/* Otherwise the client must be confused wanting a delegation
--	 * it already has, therefore we don't return
--	 * OPEN_DELEGATE_NONE_EXT and reason.
--	 */
--}
--
- /* Are we returning only a delegation stateid? */
- static bool open_xor_delegation(struct nfsd4_open *open)
- {
-@@ -7509,11 +7509,6 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	status = nfs_ok;
- 	trace_nfsd_open(&stp->st_stid.sc_stateid);
- out:
--	/* 4.1 client trying to upgrade/downgrade delegation? */
--	if (open->op_delegate_type == OPEN_DELEGATE_NONE && dp &&
--	    open->op_deleg_want)
--		nfsd4_deleg_xgrade_none_ext(open, dp);
--
- 	if (fp)
- 		put_nfs4_file(fp);
- 	if (status == 0 && open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS)
 
 -- 
 2.55.0
