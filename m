@@ -1,37 +1,37 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2D3154EE844
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 964574EDCD5
 	for <linux-nfs@vger.kernel.org>; Thu,  8 Oct 2026 15:47:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791474460; cv=none; b=g4Wpad6yi1zadgDVlQALU1fvKKNEwkFrgubkNWxxk3ZZOD3VmO+p9QnZPZryNgrPpf8AShbZLu6oNL1z7ySOAkPa3Vqltw+OsHoSmhd3rAcBRVxZSgZW21DOPKt8rUzx7QUMKZwfqjz7qqoFk0PsuEYGCkC6eUihHi2SOLclD0I=
+	t=1791474463; cv=none; b=hLiwUoE6p9UsLPr26Ms+fpj1y1+hmTi2xCnO06BGUSJt8T3evDAef17909CGtagXAaMHsWmxAXTsnQzCyP9QxagCyD4DYCr0Q/iZA3xVtSiCLg9aq6M7McwuHgO3zZuPpWApWEKrmwt9E1s53nYtzDTRgAMpJ8TffjQLD9xr/oY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791474460; c=relaxed/simple;
-	bh=cbuVKOMw+0RNG7knbVNXNzYHg6h+EBDjkL7x87aV4sI=;
+	s=arc-20240116; t=1791474463; c=relaxed/simple;
+	bh=qQZScXblnTgZ6boNd46OtjaoT0fKsdtISnfIJX2B5+o=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=bZadV0plD83Eq1xk5LqIclRxIIKD9SJ5OS2Kvio4Pg7k+TP1rk9FgaOvNk3/HvomBx9W3rB/kynW2/Xsnmv6F5J9ZKpySVKYPARfeEtUJ5vLNIPAfKQkDT27xNnDfPEHjfqaOA9JN7dySUkRO2aDNGubgzqzcaZ4cgDomGI7We0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=DKpm9eaN; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=avDaV1o/XD7cR2Na2fOsPwFea8GqHFcWfiEEpo4weqk8k1I96RB9UwBmj0yjduc9GLg2JKh+NgfX6J7h6Br5yFHInB7CXRCK3eDrHWxnSfPX9IjEVdj38otsp7oP8s/YrL8UrP1Q4iy0YvI/RrxYsbeMuIKbHiR1FnUmZSP73H8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=a2zwCo65; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="DKpm9eaN"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 13C7E1F0089E;
-	Thu,  8 Oct 2026 15:47:33 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="a2zwCo65"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 906761F0089D;
+	Thu,  8 Oct 2026 15:47:34 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1791474454;
-	bh=zpmBdQv6GufzR1q07ed+Cgg0BhaY/AnnbM94/fhdKwg=;
+	bh=nCFz3lVVPbKw0on90XTmrmOdYU55CSEFV6ignfhIvA8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=DKpm9eaNOqUMUgPrCkC6laqjUXCL0edEaIShRFsclnFBohLkI5xHsjVvxqkRyU43R
-	 iXMKHrL4haiS7Ve59RxBfDj5eybZCks8pWTJoodehoG9uhxz8u1S/vUjCattLTKBCd
-	 IMS/T5Vhy625JimDMMMx8zhGiIfJMOpus1Wd9XzrZe+yyPjmyErR5Fy8ZBYsJ6/Ofj
-	 oa/m0dt+JA9KQ4K8rHNua2bNvg0Vuo3u9Xz5y34PeXqWnAjSh0ilkdkNJ9O64qXrFe
-	 fDwGuI4Ps9e2qtlnLVRPI3kX884M3SUKLGuh2Ubx1S8nRzRW2xWvr86tBF9UL/zqEc
-	 TZOajMf6ShEQg==
+	b=a2zwCo65NipfYVi4Bo+ubv8DCJ+YLoS9BOHOrROtjntftP6jN4Q00WuwgtCRJjCeO
+	 P/tVE9ZmKr8rhxGz/mMQbR4w6Czx8Cv3iJaBORsMG/Vv5r87wLFiSGMs+81nrZnlVv
+	 8lKVORejrJa+6wgrZ632BNLcC1udhYfjVkd3i/3PBFfpd9ddb8vv3nkGcQM5CHCs+7
+	 aOyMdgMapj+kVARu+mCGuJ9YQzc6Fq6VAfWche01Sx/OCKGJ8mwIUSems/sm9r0G2V
+	 3audRVIZuMmlwhugs58x1wAkpVeLrhMl+tSDIu9VlaWp1/BPSATztLOmUwFxeOqMGL
+	 fh0CZCGqYhzOA==
 From: Chuck Lever <cel@kernel.org>
 To: Calum Mackay <calum.mackay@oracle.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 7/8] pynfs: add tests for delegation upgrade and downgrade wants
-Date: Thu,  8 Oct 2026 11:47:28 -0400
-Message-ID: <20261008154729.77787-8-cel@kernel.org>
+Subject: [PATCH v1 8/8] pynfs: add test for OPEN with WANT_CANCEL
+Date: Thu,  8 Oct 2026 11:47:29 -0400
+Message-ID: <20261008154729.77787-9-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20261008154729.77787-1-cel@kernel.org>
 References: <20261008154729.77787-1-cel@kernel.org>
@@ -43,89 +43,52 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-RFC 8881 Section 18.16.3 treats a want for the other delegation
-type, from a client that already holds a delegation on the file, as
-a request to upgrade or downgrade it. A server that supports neither
-has to say so with WND4_NOT_SUPP_UPGRADE or WND4_NOT_SUPP_DOWNGRADE.
-No test sends a want while a delegation is held, so a server that
-gives another reason goes unnoticed.
+RFC 8881 Section 18.16.3 defines WND4_CANCELLED as the reason a
+server gives when an OPEN sets OPEN4_SHARE_ACCESS_WANT_CANCEL. No
+test sends that want, so a server that answers with another reason
+goes unnoticed. NFSD reports WND4_NOT_WANTED.
 
-Add DELEG34 and DELEG35. Each takes a delegation, then sends
-OPEN(CLAIM_FH) from a second open-owner with a want for the other
-type. The reply has to carry either a delegation of the wanted type
-or the matching reason. DELEG35 reports UNSUPPORTED when the server
-grants no write delegation to start from.
+Add DELEG36. It creates a file with WANT_CANCEL and fails unless the
+reply carries OPEN_DELEGATE_NONE_EXT with ond_why set to
+WND4_CANCELLED.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- nfs4.1/server41tests/st_delegation.py | 57 +++++++++++++++++++++++++++
- 1 file changed, 57 insertions(+)
+ nfs4.1/server41tests/st_delegation.py | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
 diff --git a/nfs4.1/server41tests/st_delegation.py b/nfs4.1/server41tests/st_delegation.py
-index 3b6ca1d3b005..29d8341762d8 100644
+index 29d8341762d8..5af83c8744c4 100644
 --- a/nfs4.1/server41tests/st_delegation.py
 +++ b/nfs4.1/server41tests/st_delegation.py
-@@ -949,3 +949,60 @@ def testClaimFHDelegAfterClose(t, env):
-     check(res)
-     res = close_file(sess1, fh, stateid=stateid)
-     check(res)
+@@ -1006,3 +1006,27 @@ def testWriteDelegDowngrade(t, env):
+                      OPEN4_SHARE_ACCESS_READ |
+                      OPEN4_SHARE_ACCESS_WANT_READ_DELEG, OPEN_DELEGATE_READ,
+                      WND4_NOT_SUPP_DOWNGRADE)
 +
-+def _testDelegXgrade(t, env, access, held_type, want_access, want_type, why):
-+    name = env.testname(t)
-+    sess1 = env.c1.new_client_session(b"%s_1" % name)
-+    fh, stateid, deleg = __create_file_with_deleg(sess1, name, access)
-+    if deleg.delegation_type != held_type:
-+        _delegreturn(sess1, fh, deleg)
-+        t.fail_support("Wanted %s, got %s" %
-+                       (open_delegation_type4[held_type], _deleg_desc(deleg)))
-+
-+    res = _open_claim_fh(sess1, fh, b"%s_2" % name, want_access)
-+    check(res)
-+    stateid2 = res.resarray[-1].stateid
-+    xgrade = res.resarray[-1].delegation
-+    if xgrade.delegation_type == want_type:
-+        deleg = xgrade
-+
-+    # Return the delegation first, so that a failure does not leave it
-+    # behind to block the removal of the test file
-+    _delegreturn(sess1, fh, deleg)
-+    res = close_file(sess1, fh, stateid=stateid2)
-+    check(res)
-+    res = close_file(sess1, fh, stateid=stateid)
-+    check(res)
-+
-+    if (xgrade.delegation_type != want_type and
-+        (xgrade.delegation_type != OPEN_DELEGATE_NONE_EXT or
-+         xgrade.ond_why != why)):
-+        fail("Expected %s or %s, got %s" %
-+             (open_delegation_type4[want_type], why_no_delegation4[why],
-+              _deleg_desc(xgrade)))
-+
-+def testReadDelegUpgrade(t, env):
-+    """WANT_WRITE_DELEG from the holder of a read delegation gets a
-+       write delegation or WND4_NOT_SUPP_UPGRADE
++def testWantCancel(t, env):
++    """OPEN with WANT_CANCEL gets no delegation and WND4_CANCELLED
 +
 +    FLAGS: open deleg all
-+    CODE: DELEG35
++    CODE: DELEG37
 +    """
-+    _testDelegXgrade(t, env, OPEN4_SHARE_ACCESS_READ |
-+                     OPEN4_SHARE_ACCESS_WANT_READ_DELEG, OPEN_DELEGATE_READ,
-+                     OPEN4_SHARE_ACCESS_BOTH |
-+                     OPEN4_SHARE_ACCESS_WANT_WRITE_DELEG, OPEN_DELEGATE_WRITE,
-+                     WND4_NOT_SUPP_UPGRADE)
-+
-+def testWriteDelegDowngrade(t, env):
-+    """WANT_READ_DELEG from the holder of a write delegation gets a
-+       read delegation or WND4_NOT_SUPP_DOWNGRADE
-+
-+    FLAGS: writedelegations deleg all
-+    CODE: DELEG36
-+    """
-+    _testDelegXgrade(t, env, OPEN4_SHARE_ACCESS_BOTH |
-+                     OPEN4_SHARE_ACCESS_WANT_WRITE_DELEG, OPEN_DELEGATE_WRITE,
-+                     OPEN4_SHARE_ACCESS_READ |
-+                     OPEN4_SHARE_ACCESS_WANT_READ_DELEG, OPEN_DELEGATE_READ,
-+                     WND4_NOT_SUPP_DOWNGRADE)
++    sess1 = env.c1.new_client_session(b"%s_1" % env.testname(t))
++    res = create_file(sess1, env.testname(t),
++                      access=OPEN4_SHARE_ACCESS_READ |
++                      OPEN4_SHARE_ACCESS_WANT_CANCEL)
++    check(res)
++    fh = res.resarray[-1].object
++    deleg = res.resarray[-2].delegation
++    _delegreturn(sess1, fh, deleg)
++    res = close_file(sess1, fh, stateid=res.resarray[-2].stateid)
++    check(res)
++    if deleg.delegation_type == OPEN_DELEGATE_NONE:
++        fail("Got OPEN_DELEGATE_NONE, expected OPEN_DELEGATE_NONE_EXT")
++    if deleg.delegation_type != OPEN_DELEGATE_NONE_EXT:
++        fail("Got a delegation (type %d) despite WANT_CANCEL" %
++             deleg.delegation_type)
++    if deleg.ond_why != WND4_CANCELLED:
++        fail("Got ond_why %d, expected WND4_CANCELLED" % deleg.ond_why)
 -- 
 2.55.0
 
