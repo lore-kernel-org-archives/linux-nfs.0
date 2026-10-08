@@ -1,107 +1,122 @@
-Received: from mail-ot1-f54.google.com (mail-ot1-f54.google.com [209.85.210.54])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D6DF54C33F9
-	for <linux-nfs@vger.kernel.org>; Thu,  8 Oct 2026 15:28:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.54
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6FDB74D179A;
+	Thu,  8 Oct 2026 15:40:18 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791473314; cv=none; b=S1SwHVuQUBiVUbo1cF6KlYAHueegenVmZj1A+1BUNZv6b4zDGsfx9fHH1YjawJ8u7IItTuB49h5okBGRh7fsGiOBPANhQHXRjrBXXTeW34aNma0vTW5vJK9zlYmjj6vbt+gOdizcBlq+CrzOV87cIZDOjXAwxZ8WgpEjOzOdu5M=
+	t=1791474019; cv=none; b=VBmV8Qg313lY4vAaWr9cF96xk70xHeEgsPjDOtS1Afi2280YJXUY7yb97AvntmPOaRIRySJL5QM2VirDAMZr8EVTEaRgpURgIV171n+fA74WRjwh/lmJm1ry8O6MJmRtlEOrFLdkY/X7AImLbl0DGsntr38sDhAH8SfAmCYoVeI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791473314; c=relaxed/simple;
-	bh=xPIkTrWXwRX0CL0W0fiuITjlLJD76IEIwGpDkmWc6Eg=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=b8Z6Js9v0sCjXdBUZj3CZxIcDvsZK135kqKYLsZmV0wneNLVyc/Ziibj5qWpx3AzPAAjoaUW8WtYWnt/bxyfUccbwER1M4dzQtjGzYK3AumA6UygRsaFDCb4v05v7W7Tz5+MNp+/0EWD7h4Wd1no3Chxt5S+7vl5J1nHoqkpKFQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=FvJ8yhmN; arc=none smtp.client-ip=209.85.210.54
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	s=arc-20240116; t=1791474019; c=relaxed/simple;
+	bh=hkt9CBC9EWy73tH6jGLMY7YmUbR8Ng6jrYXv8ljt2Mw=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=Sd+b7vscBpv9Wy+H7Ox+FXSiJ69f8h/71nlM9fTe8P5pY0WA92lipXTRmvV+ZeJNeWht/og5H2q+j08LipkalIoFhyKLQwlm4N9ropKvCQsOW5AwtvHkQASZIu25wJSTGrluKiXXhijGKRh2OYeXwvk2xaQvmPqxelN6fez2OdU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nn/oQKMu; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="FvJ8yhmN"
-Received: by mail-ot1-f54.google.com with SMTP id 46e09a7af769-8266c388b67so2939394a34.0
-        for <linux-nfs@vger.kernel.org>; Thu, 08 Oct 2026 08:28:30 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1791473309; x=1792078109; darn=vger.kernel.org;
-        h=content-type:mime-version:references:in-reply-to:message-id:date
-         :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=JOmVZUV8dWCecF0YjRXtl3pU/8WRFPW/xw293xIwNYM=;
-        b=FvJ8yhmNscRIVTTGBcMxq4Ao90blQdAMv+RKihE2eERsYTgnuPHGDERwTL13F31Lzq
-         BwLwyEUQ2/iNG9fudW9a5l2YeRAvtitMsxu2/RXcPUOfwg3SVC67XlceGH/qEJAR3b7a
-         QNPteWXKm6f8EGnzc6NDO6IfL9f8w3qBgvQOonNpV/owN5gTSAERBVIJEf+0L8wsBvIq
-         tL4hAMdb11a6fAxfQdyhgk3d8UH2S9P9MQbk/khMBjiHIS7jxE7qxcL+EiIbmKEAfM6y
-         y8jETrx9LZevF+oRqmwfYB1vuPytgS8L/13n5g8fBJeyJfrKOXKnSWBe4uxSYRj9m8Gh
-         jkig==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791473309; x=1792078109;
-        h=content-type:mime-version:references:in-reply-to:message-id:date
-         :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=JOmVZUV8dWCecF0YjRXtl3pU/8WRFPW/xw293xIwNYM=;
-        b=CcIlFCXaS0c4Kfjn2b3FuPFa/2faVPgKDLeufdjJFBxFT4RZnM4B/9L9EIrPjVClve
-         20Ilp/dQ6dpC4Kki5VB1A2fm3iZ/ndQ97ZFuR6QOfSSBLtdntPvWLzyDt63RBOUIrWZO
-         SA2suim4d/E+vUtdKT8r8CYVnfgrOxQuYbUwEN4yYcKq7fnkZhUy2h2HOzverzc72C2j
-         ldogDR2ry+Epjr+diF+Hqs1JkmfXL3s8P9FrlSnJ2tJGA0ZopIyvX9P5CwcmAEH/g4ba
-         GsyJtSM4zF8492VP1aXXxeeXEW1IJ8iJIqznLR2ZVqFXvJxG6ZDPNUwjFa4asAVpLk1y
-         M2CQ==
-X-Forwarded-Encrypted: i=1; AKwUvByRojV4N1KX858k1l4NYBDtmvCqarviFsg8M/GTMgoQbHcVj4TYS+k6EuHw0guzJnUUxNySpOp29ZU=@vger.kernel.org
-X-Gm-Message-State: AFuF++k+XntMPsGCfbHQgPIY2l1qYE7Pwi+xiZ9OlRwPhEZBNpjLgmSq
-	sgADBOCOtwxZtUStrSbj3n8BKeGj2/SWJgnYh5KOGUaOOeFwb5hJeRiZrpRN13TV4sA=
-X-Gm-Gg: AYBFou1bnDQpG2uVB2yHhqFPHHcVTJ3h+3KDBZ5r+5KAyBJtpwwxlSQU07OjWgo1PJf
-	PBmMl8kU6SrRIPOYAIpGLVuF7H/HvYtjtyQ315XxEExg+/+z6Wf88yrSP2RYcjcxCqB4OCaGi43
-	b/QpbUb7mcuuM+vl22mVNsaIe8medSYhGWmUflN4nulTN8xg9OxxCd5hb6sWPT2ABmkycNbHWz+
-	hcAOBlJWmc38uWYRvRYwLMbPatMoV1CJN6Z+GR79FuucLwodB1xSgos73WL/M0vSGeP8r3StPdS
-	VjfL34fSzLFWE7NV4uWtCP7kVsTsC4WU3KOAvXKonJnsloorQRjdYqbcDrre3n4zCRvd/RDaU12
-	wz1c25X77nXzI/2kLNA4uZ4ac8QaKAe5tU+d51iUwDMy1m58oK+PqqaAK5oP2sFC2AE6+5O7xPA
-	hNAvbotGchXP776/0mcUNgADuYI+8INnNM0WZdIrbIddP0TtrNuqZU4sCD4YajX1q6kW7A+kiH1
-	xqV0lHXOiFthOQL4w==
-X-Received: by 2002:a05:6830:6d24:b0:822:b35a:a2d3 with SMTP id 46e09a7af769-82acfbb2f63mr6766567a34.9.1791473309431;
-        Thu, 08 Oct 2026 08:28:29 -0700 (PDT)
-Received: from [192.168.254.51] ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-82ad9eeb5eesm5901841a34.2.2026.10.08.08.28.28
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 08 Oct 2026 08:28:28 -0700 (PDT)
-From: Benjamin Coddington <ben.coddington@hammerspace.com>
-X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
-To: Chuck Lever <cel@kernel.org>
-Cc: Benjamin Coddington <ben.coddington@hammerspace.com>,
- Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- linux-nfs@vger.kernel.org, Daire Byrne <daire@dneg.com>, bpf@vger.kernel.org,
- Martin KaFai Lau <martin.lau@linux.dev>
-Subject: Re: [PATCH RFC v2 0/9] SUNRPC: dispatch ready transports round-robin
- across clients, classes from BPF
-Date: Thu, 08 Oct 2026 11:28:26 -0400
-X-Mailer: MailMate (2.0r6272)
-Message-ID: <D87A521D-E15E-4E87-A467-C73DED8ADD05@hammerspace.com>
-In-Reply-To: <5f226738-0062-4e78-af4c-c68c1433e1b2@app.fastmail.com>
-References: <cover.1791402701.git.bcodding@hammerspace.com>
- <5f226738-0062-4e78-af4c-c68c1433e1b2@app.fastmail.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nn/oQKMu"
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 073891F000FF;
+	Thu,  8 Oct 2026 15:40:18 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1791474018;
+	bh=SDkASTJ9FRD3oHMgI63Gz2ZqFSLBdEZmuCHDDzkdsYg=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=nn/oQKMu5bUOZ/Old3XjjvmROumYUrDdjaQ46bkQ2+LEouNK6WGkQ8I+f4r+gCLMX
+	 1Ahor7wmXKBLZRs/Y5eEjwihZ/trrYkxHfoMMUucto5JdJs0NDbOIgnKKWjM5eJfBA
+	 Sm3HckTLxPgGA3kKSh6EO4kVE/o/UtDKmlvMSejnvFAnbzE5rsThSmV+EnPv1m6dof
+	 1tb1J7ErZw2dd3EonbAll9QCpq2orAz0B5a0WXdE4zkpDOpZg3LyBQLIcEolgmDg2h
+	 VYVuu9Kzq3gXYe3UfHAFyvErfHGDZiVa2BbaA3P5EAikF48TActZl4p7KvHsWJll5q
+	 bmVKzfrsmE3NA==
+Date: Thu, 8 Oct 2026 08:40:17 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: daejun7.park@samsung.com
+Cc: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	Christoph Hellwig <hch@lst.de>, Carlos Maiolino <cem@kernel.org>,
+	Amir Goldstein <amir73il@gmail.com>, Dave Chinner <dgc@kernel.org>,
+	Sergey Bashirov <sergeybashirov@gmail.com>,
+	Christian Brauner <brauner@kernel.org>, linux-nfs@vger.kernel.org,
+	linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH 2/8] xfs: refuse a direct allocation whose block
+ reservation would wrap
+Message-ID: <20261008154017.GO2705364@frogsfrogsfrogs>
+References: <20261008-xfs-nfsd-map-blocks-v1-0-560026cdccb6@samsung.com>
+ <20261008-xfs-nfsd-map-blocks-v1-2-560026cdccb6@samsung.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261008-xfs-nfsd-map-blocks-v1-2-560026cdccb6@samsung.com>
 
-On 8 Oct 2026, at 11:19, Chuck Lever wrote:
+On Thu, Oct 08, 2026 at 10:39:31AM +0900, Daejun Park via B4 Relay wrote:
+> From: Daejun Park <daejun7.park@samsung.com>
+> 
+> xfs_iomap_write_direct() maps one extent, but it reserves blocks for the
+> whole count it is given, in an unsigned int. A count of about 2^32
+> blocks or more wraps the reservation. If it wraps to a few blocks, the
+> allocation uses more blocks than the transaction reserved, and
+> xfs_trans_mod_sb() shuts the filesystem down. If it wraps to nearly 2^32
+> blocks, the allocation fails with -ENOSPC.
+> 
+> Direct I/O, DAX and buffered writes with an extent size hint never ask
+> for that much, as xfs_direct_write_iomap_begin() limits them to
+> 1024 pages to keep the count below 32 bits. xfs_fs_map_blocks() has no
+> such limit: it asks for everything from the start of a hole to the end
+> of the range of a pNFS layout, which a client chooses, and an RW
+> LAYOUTGET at offset 0 of an empty file for 16 TiB does it.
+> 
+> Fail such a count with -ENOSPC before anything is reserved, also on a
+> filesystem with that much free space, as the transaction cannot take
+> it. A count that fits is reserved in full, as before, so a hole longer
+> than the free space still fails before it is allocated.
+> 
+> With pynfs as the client and a 32 GiB XFS, an RW LAYOUTGET at offset 0
+> of an empty file for 16 TiB shut the filesystem down: "Corruption of
+> in-memory data (0x8) detected at xfs_trans_mod_sb". With this patch it
+> gets NFS4ERR_NOSPC and nothing is allocated, as with 100 GiB, and one
+> for 16 GiB, which fits, is still granted, in three extents.
+> 
+> Fixes: 527851124d10 ("xfs: implement pNFS export operations")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+> ---
+>  fs/xfs/xfs_iomap.c | 7 +++++++
+>  1 file changed, 7 insertions(+)
+> 
+> diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
+> index 7c6238fed6..1917e49166 100644
+> --- a/fs/xfs/xfs_iomap.c
+> +++ b/fs/xfs/xfs_iomap.c
+> @@ -287,6 +287,13 @@ xfs_iomap_write_direct(
+>  
+>  	resaligned = xfs_aligned_fsb_count(offset_fsb, count_fsb,
+>  					   xfs_get_extsz_hint(ip));
+> +	/*
+> +	 * The transaction takes the block reservation as an unsigned int.
+> +	 * Refuse a count that does not fit rather than reserve too little;
+> +	 * only a pNFS layout for a huge range asks for that much.
+> +	 */
+> +	if (resaligned > UINT_MAX - XFS_DIOSTRAT_SPACE_RES(mp, 0))
+> +		return -ENOSPC;
 
-> On Wed, Oct 7, 2026, at 3:59 PM, Benjamin Coddington wrote:
->> This is v2 of [3], with the change I floated in that thread: the kernel
->> no longer decides which transports belong together.  By default nothing
->> changes.  An administrator who wants peers grouped loads a small BPF
->> program that returns a class for each accepted connection, and the pool
->> takes turns across classes.
->
-> As a quick response to this posting: I'd like to hear opinions from others
-> on this approach rather than just fetching it straight into nfsd-testing.
->
-> Having patches to mull over is great. Thanks Ben!
+Uh... seeing as extent records can only map 2^21 blocks maximum and
+iomap/pnfs can handle xfs returning a mapping of whatever length we
+want, why don't we constrain count_fsb to XFS_BMBT_MAX_EXTLEN?
 
-No problem, thanks for all the feedback and discussion so far.  One point of
-trouble on the bpf-list side is their CI bot can't apply these patches
-because there are conflicts from the nfsd-testing base.  It might be that
-the bpf folks won't even bother to review if their CI can't build it..
+--D
 
-If this goes further, I'll rebase a next version onto something the bpf-list
-tooling can handle, then back to nfsd-testing if it looks like its mergeable.
-
-Ben
+>  	if (unlikely(XFS_IS_REALTIME_INODE(ip))) {
+>  		dblocks = XFS_DIOSTRAT_SPACE_RES(mp, 0);
+>  		rblocks = resaligned;
+> 
+> -- 
+> 2.43.0
+> 
+> 
+> 
