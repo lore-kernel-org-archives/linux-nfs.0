@@ -1,872 +1,385 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 075844F3908
-	for <linux-nfs@vger.kernel.org>; Fri,  9 Oct 2026 16:35:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 57DAE3B71D1
+	for <linux-nfs@vger.kernel.org>; Fri,  9 Oct 2026 16:49:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791563721; cv=none; b=X+aNa/fbncEYGuxPng+gNpeGYWvrKU5+F4jLFBCa8iRXpYH5vzxv+X0m1u3P3C1gH5SJWOqIovDGYrtGTBmW55zf7/wRR3m25DqyRQkTrnrTB5FCIVRNAbQgO5Ui+UrBMzTeUgT9nUyrcvhVVTfZBf+cysDKzvBJFAHUEHXFoF0=
+	t=1791564593; cv=none; b=Se9azAA5B0XKSv8W+OxWn08go4MSxqEef/Dkl+xZPRuBobM3V+1KC/MHyqTDC5xfCfnhbs9mo1F3sLXASr4YHb2riWrgQl5wgcCK39e72WqCGZvk8HTJQakTeOekq40G19IHZkMJGip0pf8L38A357kOa+3snssSBJO0MncRlGU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791563721; c=relaxed/simple;
-	bh=Z6bIcYlxXrtnqG4kRu3HDNXBGBMJrvJiQ9dbx1foXZM=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=rfk2Cuxh1EbVKhR98zfNQAsgsHuAuyKg86BSQfTyU6OKpSYCpFdcSjRPlvCmfEHiLFRjzezCZIKqaIwiMHfr2jqRxmS+qOXPZlUxxsD3+uWB752XHSujxLfgFTx09XO8EZskaRgWLzAAgZ5f60YKnVGOSGj5nwHf4/sd4qRes8o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=T8M4GmpL; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791564593; c=relaxed/simple;
+	bh=0jXVhWGE7nF1HLX9arxdz521XSrxSWdBfJaQjodx3M0=;
+	h=From:In-Reply-To:References:To:Cc:Subject:MIME-Version:
+	 Content-Type:Date:Message-ID; b=INNjqB4GZOlkzGSkQP9cm9/rRqAgrJzsY4/n/8yU8lfHQQbVXtSmtKCRpL2Yxuqm8HUiU5WnZP0J29ujY7tM5bspNPSyA6slxmA54R1GCJDgQ2IUF6d4OAFc+zGa1HwUWx0mg97poCY4oUjCBxblXh7Qom2xaxSsCeO28EonTz4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=bNxR2f80; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="T8M4GmpL"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1ACCD1F0089E;
-	Fri,  9 Oct 2026 16:35:10 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791563710;
-	bh=nZ2fNoXgw5vmj50k7n317JLzi9weMVqqa+pqgYPsYQE=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=T8M4GmpLrFSxETs2S3LWBBOKq3jvEFKbcu6V9rAjyEieCgLOHuQ7dWtJZsFdgFnoK
-	 z4R0eN63CsmdXh6SOVhQykn4emr2CgREnWDa5NJEFqIlCuGQrYZxrdpN5/EgHKa9Mo
-	 vk4Y71BMDwxJ7JL4ULr43ntHclSDJFS9CopyWqifUDeavBRUBwDv+9m9wzZbiHGzV3
-	 kdG21ZzoC0xqUOusTWLHx1syqINUAUxFuTBy6Zpngwtuuk/JmnLkkpQ5H37S//pI22
-	 66jfXlE/vSTYXe0CsCZk6ve007nE0TiuiQy/Zq5g7QqC7PX5XKSzvVMmGgeeyI6WPA
-	 jXBt20TVgq6kA==
-From: Chuck Lever <cel@kernel.org>
-Date: Fri, 09 Oct 2026 12:35:02 -0400
-Subject: [PATCH pynfs v3 8/9] Add tests for SETATTR with MODE and ACL
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="bNxR2f80"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1791564588;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=EGp1nP1MOhXTinDdYneGixsmhnzN0Z/KBHwGuuFPNJU=;
+	b=bNxR2f80w3CHaqDt43guZ7Pi3M7oNRqziCYCmUimSk/FxgGTnzTTM5UGO7PNG6rOKt8tnI
+	ebs6wcKNSfS7279B2qDq+9Rz2OkjmVrEK7+jwPLny8F1uFA6Y3g8fYyzi4lmbNCX5nxVre
+	1wY1bmX0NMo/TSpwIN83/4XJlPq5d7w=
+Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-690-MEcRL3SNPvOI-11-hdY4rA-1; Fri,
+ 9 Oct 2026 16:49:37 +0000
+X-MC-Unique: MEcRL3SNPvOI-11-hdY4rA-1
+X-Mimecast-MFC-AGG-ID: MEcRL3SNPvOI-11-hdY4rA_1791564574
+Received: from mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.95])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 43AD41955D62;
+	Fri,  9 Oct 2026 16:49:32 +0000 (UTC)
+Received: from warthog.procyon.org.uk (unknown [10.44.32.90])
+	by mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id CCC3C471;
+	Fri,  9 Oct 2026 16:49:22 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+	Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+	Kingdom.
+	Registered in England and Wales under Company Registration No. 3798903
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <asNeCzye-xas_Lt7@infradead.org>
+References: <asNeCzye-xas_Lt7@infradead.org> <20261001091239.3343034-1-dhowells@redhat.com> <20261001091239.3343034-2-dhowells@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: dhowells@redhat.com, Christian Brauner <christian@brauner.io>,
+    Paulo Alcantara <pc@manguebit.org>,
+    Matthew Wilcox <willy@infradead.org>,
+    Namjae Jeon <linkinjeon@kernel.org>,
+    Marc Dionne <marc.dionne@auristor.com>,
+    Stefan Metzmacher <metze@samba.org>,
+    Eric Van Hensbergen <ericvh@kernel.org>,
+    Dominique Martinet <asmadeus@codewreck.org>,
+    Ilya Dryomov <idryomov@gmail.com>, netfs@lists.linux.dev,
+    linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org,
+    linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+    v9fs@lists.linux.dev, linux-fsdevel@vger.kernel.org,
+    linux-kernel@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
+    linux-block@vger.kernel.org
+Subject: Re: [PATCH v15 01/10] Add a function to kmap one page of a multipage bio_vec
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261009-acl-mode-v3-8-ba487c5e66e0@kernel.org>
-References: <20261009-acl-mode-v3-0-ba487c5e66e0@kernel.org>
-In-Reply-To: <20261009-acl-mode-v3-0-ba487c5e66e0@kernel.org>
-To: Calum Mackay <calum.mackay@oracle.com>
-Cc: linux-nfs@vger.kernel.org, aurelien.couderc2002@gmail.com, 
- Chuck Lever <chuck.lever@oracle.com>
-X-Mailer: b4 0.16-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=31800; i=cel@kernel.org;
- h=from:subject:message-id; bh=ILLD3MBHp8fUkrKWxwLcmkA2ow8WH6Y8yppW4EZNcao=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqyRe5CYI5QkQLJSdthT2HCHTjncFtdOGoUhBsV
- 2S9mCMZhqCJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaskXuQAKCRAzarMzb2Z/
- l1lUD/9ve7MbrQULRVnbL0o6KQ3ccz1JwQj+X0DuYqC9wmxQezKEe1Zj+3d1uKIdl6dZEDjN/IU
- Z/Kvhm/zjwgjjyrgqO1z7CHFdiMsgl2FZBXTI2f4Zs1Cws0QQwnXIgicxYXC7jCaCr5onZ4iKte
- ou3fpo9UutmzGQXLg1Orkr+qpU5bsClGiSvwLWLgd/bzvqkmj6wBw3N/xim4hRbxaaG6j7MnxPj
- TphRkOWYcbpIM4sg8AL4bidGADFK3mUW1iU9VkXvXl1u6HurFyVCsaxbjHH+VAPkZq0My5GYJLL
- FT0miMleQVgnp8cCy/FiOrpu46wMMXguwQ3AqPa2+920lb/C7sntNVDoG4yo6X2CIDA4BaAP4Bb
- uvg92voOzsdkJOLP/G+rqUU7Z7uWvx68Ed4wADVErBJItCEhRmPMefKtndy8q6HjTyMpPZaBz2K
- HCPdeZ2E5CvNSlPSJa2ckIH5PMI7VrKndH9SKhVbhfi5vN+qCW0Z4gO7hosBeykXLjAt4mTNsLK
- Lk8Z+O8Z6/HhVvgTTMomDEBkC1UYbaUM4eY0EFI0QaKFdCe0MCCXrx8nZjBbUZevHr/qFejKz30
- d2+LkP9rHnJvWg4srEGCuUQuWaZulRBVUYizPMoNKrE7KEi4XVYKvqf8nV5mEarkTuW/SPnqeJ1
- VtBsi4wdP3FvZMA==
-X-Developer-Key: i=cel@kernel.org; a=openpgp;
- fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <1220023.1791564561.1@warthog.procyon.org.uk>
+Content-Transfer-Encoding: quoted-printable
+Date: Fri, 09 Oct 2026 17:49:21 +0100
+Message-ID: <1220024.1791564561@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 3.6 on 10.30.177.95
 
-From: Chuck Lever <chuck.lever@oracle.com>
+Christoph Hellwig <hch@infradead.org> wrote:
 
-Add comprehensive tests that verify SETATTR behavior when both
-mode bits and an ACL are set simultaneously. The new tests cover:
+> I've now got 4 copies of this series in less than a week,
 
-1. SATT19: testSetattrModeWithACL
- - Sets MODE and ACL in a single SETATTR, once each with a MODE the
-   ACL widens (0o640, 0o600) and one more restrictive than the ACL
-   grants (0o400)
- - Verifies both attributes appear in attrsset, the ACL is stored as
-   given, and the final mode is derived from the ACL rather than
-   taken from the requested MODE
-2. SATT22: testSetattrACLThenMode
- - Compares setting MODE+ACL together vs separately in sequence
- - Creates two files and verifies consistent behavior
+Sashiko is such fun.  =
 
-These tests ensure that servers correctly handle the interaction
-between MODE and ACL attributes when setting file attributes, and
-verify that the ACL specified in the OPEN operation matches the ACL
-after the OPEN completes.
 
-SETATTR: ACL-to-mode verification tests
+> or rather partial copies as all of them seem to miss a cover letter.
 
-These new tests verify:
+Apologies for that.  I removed you from the list for the first two batches=
+ of
+patches because they were some internal netfs changes and cachefiles
+improvements respectively, not core code; I forgot to add you back to the
+cover letter for the third set.  I've attached the cover letter below so t=
+hat
+you can refer to it.
 
-- Mode is correctly derived from ACL per RFC 8881 §6.3.2
-- Write bit requires both ACE4_WRITE_DATA and ACE4_APPEND_DATA
-- ACL evaluation order (first ACE takes precedence)
-- EVERYONE@ ACEs affect all three permission classes
-- Complex ACLs with multiple identifiers
+> Thus I still don't know how the core code in this series is tested
 
-SETATTR: Two additional ACL verification tests
+Four ways:
 
-New test SATT28: Verify that the final ACL is the same no matter what
-the file's previous mode bits were.
+ (1) There's a kunit module, lib/tests/kunit_iov_iter.c.
 
-New test SATT29: Verify that SETATTR(ACL) preserves high-order mode
-bits (SUID/SGID/SVTX).
+ (2) -g quick xfstests on afs (with and without fscache) and cifs.
 
-SETATTR: Verify behavior when setting both MODE and ACL
+ (3) Git checkout and kernel compilation on afs (with and without fscache)=
+ and
+     cifs.
 
-Add three comprehensive tests that verify SETATTR(MODE+ACL) behavior
-per RFC 8881 §6.4.1.3:
+ (4) A bunch of different fio tests on afs (with and without fscache) and
+     cifs.
 
-SATT30:
-Verify attrsset bitmap and final mode consistency when MODE+ACL set
-together. The server must report both MODE and ACL in attrsset, and
-the final mode must match what the ACL derives to per §6.4.1.3.
+The code is not directly accessible by userspace so adding xfstests to dri=
+ve
+it directly is not feasible.  It is also testable by 9p and to a lesser ex=
+tent
+nfs and ceph.
 
-SATT31:
-Test MODE+ACL interaction when they conflict significantly.
-Regardless of requested MODE, final mode always matches ACL
-derivation. This shows that ACL wins when both are set (per
-§6.4.1.3: "possibly changing the final mode").
+Paulo has also done some testing of these patch sets against a greater var=
+iety
+of cifs servers than I have available and Marc has also run tests against
+Auristor's AFS servers.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> or why you've not considered using it for anything but your little corne=
+r
+
+Network filesystems are "my own little corner" and "niche"?  I explain bel=
+ow
+in the cover letter what I'm trying to achieve with this and where I want =
+to
+use it next.  It seems that I can probably achieve a 5% improvement in cif=
+s
+performance, for example.  There are links in the cover letter to patch se=
+ts I
+have for cifs and for ceph where I'm using this to improve the transport.
+
+And I have considered rolling it out into other places - for example: pipe=
+s
+(instead of a ring buffer), the block layer, the networking layer (skbuff
+memory lists as bvecq carries info on how to clean up the memory) and the
+crypto layer (replacing scatterlists).
+
+But I have to start somewhere - and that somewhere is in improving network
+filesystems.  The main thing I'm working towards is being able to assemble=
+ a
+whole RPC message and then send it in one single sendmsg call without the =
+need
+for corking on TCP transports - where a message may be assembled as a comp=
+ound
+of other messages, may include sparse write data and may be huge (multiple
+megabytes).
+
+One alteration I've considered making to the bvecq (as mentioned in the
+attached cover letter) is to add two additional fields, the first to add t=
+o
+the offset of the first slot and the second to subtract from the length of=
+ the
+last slot.  This would allow the use of a bvecq struct to point at a slice=
+ of
+someone else's bio_vec[] array without the need to copy that array.  This
+might make it of more use in the block layer.
+
+> and thus barely tested.
+>
+> Please slow down a bit and after the nth time please consider
+> testability.  Make sure core code regular exercised uses it, or find
+> a way to unit test it at least.
+
+I wrote some kunit tests for iov_iter back in 2023 and extended them in th=
+is
+patch series.  May I also point out that you haven't added tests for
+iov_iter_extract_bvecs() to lib/tests/kunit_iov_iter.c yet?
+
+Granted the kunit tests could be more thorough as there's a number of thin=
+gs
+that aren't tested.
+
+David
 ---
- nfs4.0/servertests/st_setattr.py | 728 ++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 727 insertions(+), 1 deletion(-)
+Cover letter:
 
-diff --git a/nfs4.0/servertests/st_setattr.py b/nfs4.0/servertests/st_setattr.py
-index 5d51054c29b4..2dd496503f48 100644
---- a/nfs4.0/servertests/st_setattr.py
-+++ b/nfs4.0/servertests/st_setattr.py
-@@ -1,9 +1,10 @@
- from xdrdef.nfs4_const import *
- from .environment import check, get_invalid_utf8strings
- from nfs4lib import bitmap2list, dict2fattr
--from xdrdef.nfs4_type import nfstime4, settime4
-+from xdrdef.nfs4_type import nfstime4, settime4, nfsace4
- import nfs_ops
- op = nfs_ops.NFS4ops()
-+import nfs4acl
- 
- def _set_mode(t, c, file, stateid=None, msg=" using stateid=0",
-               warnlist=[]):
-@@ -783,3 +784,728 @@ def testMixed(t, env):
-     c.init_connection()
-     fh, stateid = c.create_confirm(t.word(), deny=OPEN4_SHARE_DENY_NONE)
-     _set_mixed(t, c, fh)
-+
-+def testSetattrModeWithACL(t, env):
-+    """SETATTR with both MODE and ACL attributes
-+
-+    Per RFC 8881 Section 6.4.1.3, when both MODE and ACL are set together,
-+    both are processed, but the final mode is derived from the ACL and may
-+    differ from the requested MODE. The requested MODE is varied from one
-+    that the ACL widens to one more restrictive than the ACL grants.
-+
-+    FLAGS: setattr acl all
-+    DEPEND: MODE ACL0
-+    CODE: SATT19
-+    """
-+    c = env.c1
-+    c.init_connection()
-+    acl = nfs4acl.make_test_acl()
-+
-+    for mode in (0o640, 0o600, 0o400):
-+        fh, stateid = c.create_confirm(t.word() + (b"_%o" % mode))
-+
-+        # Set both MODE and ACL in a single SETATTR
-+        attrs = {FATTR4_MODE: mode, FATTR4_ACL: acl}
-+        ops = c.use_obj(fh) + [c.setattr(attrs)]
-+        res = c.compound(ops)
-+        check(res, msg="SETATTR with MODE 0%o and ACL" % mode)
-+
-+        # Check which attributes were actually set by examining the reply bitmask
-+        attrsset = bitmap2list(res.resarray[-1].attrsset)
-+
-+        # Verify both MODE and ACL were set (processed)
-+        if FATTR4_MODE not in attrsset:
-+            t.fail("MODE not in attrsset, but MODE 0%o was requested" % mode)
-+        if FATTR4_ACL not in attrsset:
-+            t.fail("ACL not in attrsset, but ACL was requested with MODE 0%o"
-+                   % mode)
-+
-+        # Verify ACL was set correctly and the mode derived from it
-+        attrs_dict = c.do_getattrdict(fh, [FATTR4_ACL, FATTR4_MODE])
-+        try:
-+            nfs4acl.verify_mode_and_acl(attrs_dict, acl,
-+                                        "SETATTR with MODE 0%o" % mode)
-+        except AssertionError as e:
-+            t.fail(str(e))
-+
-+def testSetattrACLThenMode(t, env):
-+    """SETATTR MODE+ACL together vs ACL then MODE separately
-+
-+    Per RFC 8881 sections 6.4.1.1-6.4.1.3, when MODE and ACL are set
-+    together in a single SETATTR, the server computes the final mode
-+    from the ACL (the MODE attribute is effectively ignored). When
-+    ACL is set first and MODE is set in a separate operation, the
-+    final mode is the explicitly-set MODE value.
-+
-+    This test verifies this difference by using a MODE (0o755) that
-+    differs from the ACL-derived mode (0o644).
-+
-+    FLAGS: setattr acl all
-+    DEPEND: MODE ACL0
-+    CODE: SATT22
-+    """
-+    from nfs4acl import acl2mode_rfc8881
-+    c = env.c1
-+    c.init_connection()
-+
-+    # Create two test files
-+    fh1, stateid1 = c.create_confirm(t.word() + b"_1")
-+    fh2, stateid2 = c.create_confirm(t.word() + b"_2")
-+
-+    # make_test_acl() derives to mode 0o644 (rw-r--r--)
-+    acl = nfs4acl.make_test_acl()
-+    acl_derived_mode = acl2mode_rfc8881(acl)
-+
-+    # Use a different mode to demonstrate the RFC-defined difference
-+    explicit_mode = 0o755
-+
-+    # File 1: Set MODE and ACL together
-+    # Per RFC 8881 Section 6.4.1.2, mode is derived from ACL (MODE ignored)
-+    attrs = {FATTR4_MODE: explicit_mode, FATTR4_ACL: acl}
-+    ops = c.use_obj(fh1) + [c.setattr(attrs)]
-+    res = c.compound(ops)
-+    check(res, msg="SETATTR with MODE and ACL together")
-+
-+    # File 2: Set ACL first, then MODE separately
-+    # Per RFC 8881 Section 6.4.1.1, final mode is the explicit MODE value
-+    ops = c.use_obj(fh2) + [c.setattr({FATTR4_ACL: acl})]
-+    res = c.compound(ops)
-+    check(res, msg="SETATTR with ACL")
-+
-+    ops = c.use_obj(fh2) + [c.setattr({FATTR4_MODE: explicit_mode})]
-+    res = c.compound(ops)
-+    check(res, msg="SETATTR with MODE after ACL")
-+
-+    # Verify the modes differ as expected per RFC 8881
-+    attrs1 = c.do_getattrdict(fh1, [FATTR4_MODE, FATTR4_ACL])
-+    attrs2 = c.do_getattrdict(fh2, [FATTR4_MODE, FATTR4_ACL])
-+
-+    mode1 = attrs1[FATTR4_MODE] & 0o777
-+    mode2 = attrs2[FATTR4_MODE] & 0o777
-+
-+    # File 1 (MODE+ACL together): mode should be derived from ACL
-+    if mode1 != acl_derived_mode:
-+        t.fail("MODE+ACL together: expected ACL-derived mode 0%o, got 0%o"
-+               % (acl_derived_mode, mode1))
-+
-+    # File 2 (ACL then MODE): mode should be explicit MODE value
-+    if mode2 != explicit_mode:
-+        t.fail("ACL then MODE: expected explicit mode 0%o, got 0%o"
-+               % (explicit_mode, mode2))
-+
-+def testSetattrACLModeDeriveBasic(t, env):
-+    """SETATTR(ACL) should derive mode per RFC 8881 Section 6.3.2
-+
-+    Test basic mode derivation from ACL when setting ACL alone.
-+    The mode's permission bits should match what is computed from the ACL.
-+
-+    FLAGS: setattr acl all
-+    DEPEND: MODE ACL0
-+    CODE: SATT23
-+    """
-+    from nfs4acl import acl2mode_rfc8881
-+    c = env.c1
-+    c.init_connection()
-+
-+    fh, stateid = c.create_confirm(t.word())
-+
-+    # Create ACL: OWNER@ gets read+write+execute, others get nothing
-+    acl = [
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA | ACE4_EXECUTE,
-+                b"OWNER@"),
-+        nfsace4(ACE4_ACCESS_DENIED_ACE_TYPE, 0,
-+                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA | ACE4_EXECUTE,
-+                b"GROUP@"),
-+        nfsace4(ACE4_ACCESS_DENIED_ACE_TYPE, 0,
-+                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA | ACE4_EXECUTE,
-+                b"EVERYONE@")
-+    ]
-+
-+    # Set ACL only (not MODE)
-+    ops = c.use_obj(fh) + [c.setattr({FATTR4_ACL: acl})]
-+    res = c.compound(ops)
-+    check(res, msg="SETATTR with ACL only")
-+
-+    # Get resulting mode
-+    attrs = c.do_getattrdict(fh, [FATTR4_MODE, FATTR4_ACL])
-+    returned_mode = attrs[FATTR4_MODE] & 0o777
-+
-+    # Compute expected mode from the requested ACL per RFC 8881 Section 6.3.2
-+    expected_mode = acl2mode_rfc8881(acl)
-+
-+    if returned_mode != expected_mode:
-+        t.fail("Mode (0%o) does not match RFC 8881 Section 6.3.2 derivation "
-+               "from ACL (expected 0%o)" % (returned_mode, expected_mode))
-+
-+def testSetattrACLModeDeriveWriteBits(t, env):
-+    """SETATTR(ACL) write bit requires BOTH WRITE_DATA and APPEND_DATA
-+
-+    Per RFC 8881 Section 6.3.2, the write mode bit should only be set if BOTH
-+    ACE4_WRITE_DATA and ACE4_APPEND_DATA are present in the ACL.
-+
-+    FLAGS: setattr acl all
-+    DEPEND: MODE ACL0
-+    CODE: SATT24
-+    """
-+    from nfs4acl import acl2mode_rfc8881
-+    c = env.c1
-+    c.init_connection()
-+
-+    # Test 1: Only WRITE_DATA (no APPEND_DATA) - write bit should NOT be set
-+    fh1, stateid1 = c.create_confirm(t.word() + b"_1")
-+    acl1 = [
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_WRITE_DATA,  # Missing APPEND_DATA
-+                b"OWNER@")
-+    ]
-+    ops = c.use_obj(fh1) + [c.setattr({FATTR4_ACL: acl1})]
-+    res = c.compound(ops)
-+    check(res, msg="SETATTR ACL with only WRITE_DATA")
-+
-+    attrs1 = c.do_getattrdict(fh1, [FATTR4_MODE, FATTR4_ACL])
-+    mode1 = attrs1[FATTR4_MODE] & 0o777
-+    expected_mode1 = acl2mode_rfc8881(acl1)
-+
-+    if mode1 != expected_mode1:
-+        t.fail("Mode (0%o) with only WRITE_DATA does not match expected (0%o). "
-+               "Write bit should NOT be set without APPEND_DATA." %
-+               (mode1, expected_mode1))
-+
-+    # Test 2: Only APPEND_DATA (no WRITE_DATA) - write bit should NOT be set
-+    fh2, stateid2 = c.create_confirm(t.word() + b"_2")
-+    acl2 = [
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_APPEND_DATA,  # Missing WRITE_DATA
-+                b"OWNER@")
-+    ]
-+    ops = c.use_obj(fh2) + [c.setattr({FATTR4_ACL: acl2})]
-+    res = c.compound(ops)
-+    check(res, msg="SETATTR ACL with only APPEND_DATA")
-+
-+    attrs2 = c.do_getattrdict(fh2, [FATTR4_MODE, FATTR4_ACL])
-+    mode2 = attrs2[FATTR4_MODE] & 0o777
-+    expected_mode2 = acl2mode_rfc8881(acl2)
-+
-+    if mode2 != expected_mode2:
-+        t.fail("Mode (0%o) with only APPEND_DATA does not match expected (0%o). "
-+               "Write bit should NOT be set without WRITE_DATA." %
-+               (mode2, expected_mode2))
-+
-+    # Test 3: Both WRITE_DATA and APPEND_DATA - write bit SHOULD be set
-+    fh3, stateid3 = c.create_confirm(t.word() + b"_3")
-+    acl3 = [
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_WRITE_DATA | ACE4_APPEND_DATA,  # Both present
-+                b"OWNER@")
-+    ]
-+    ops = c.use_obj(fh3) + [c.setattr({FATTR4_ACL: acl3})]
-+    res = c.compound(ops)
-+    check(res, msg="SETATTR ACL with both WRITE_DATA and APPEND_DATA")
-+
-+    attrs3 = c.do_getattrdict(fh3, [FATTR4_MODE, FATTR4_ACL])
-+    mode3 = attrs3[FATTR4_MODE] & 0o777
-+    expected_mode3 = acl2mode_rfc8881(acl3)
-+
-+    if mode3 != expected_mode3:
-+        t.fail("Mode (0%o) with WRITE_DATA+APPEND_DATA does not match "
-+               "expected (0%o)" % (mode3, expected_mode3))
-+
-+def testSetattrACLModeDeriveAllowDeny(t, env):
-+    """SETATTR(ACL) with ALLOW/DENY interaction
-+
-+    Test that ACL evaluation order is correct when mixing ALLOW and DENY ACEs.
-+    Per RFC 8881 Section 6.3.2, evaluate ACEs in order, with earlier ACEs taking
-+    precedence.
-+
-+    FLAGS: setattr acl all
-+    DEPEND: MODE ACL0
-+    CODE: SATT25
-+    """
-+    from nfs4acl import acl2mode_rfc8881
-+    c = env.c1
-+    c.init_connection()
-+
-+    # Test: ALLOW first, then DENY - the ALLOW should win
-+    fh, stateid = c.create_confirm(t.word())
-+    acl = [
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_READ_DATA,
-+                b"OWNER@"),
-+        nfsace4(ACE4_ACCESS_DENIED_ACE_TYPE, 0,
-+                ACE4_READ_DATA,  # This should be ignored (already allowed)
-+                b"OWNER@")
-+    ]
-+
-+    ops = c.use_obj(fh) + [c.setattr({FATTR4_ACL: acl})]
-+    res = c.compound(ops)
-+    check(res, msg="SETATTR ACL with ALLOW then DENY")
-+
-+    attrs = c.do_getattrdict(fh, [FATTR4_MODE, FATTR4_ACL])
-+    returned_mode = attrs[FATTR4_MODE] & 0o777
-+    expected_mode = acl2mode_rfc8881(acl)
-+
-+    if returned_mode != expected_mode:
-+        t.fail("Mode (0%o) with ALLOW/DENY does not match expected (0%o). "
-+               "First ACE should take precedence." % (returned_mode, expected_mode))
-+
-+def testSetattrACLModeDeriveEveryone(t, env):
-+    """SETATTR(ACL) with EVERYONE@ affecting all identifiers
-+
-+    Test that EVERYONE@ ACEs are considered when evaluating permissions
-+    for OWNER@ and GROUP@ per RFC 8881 Section 6.3.2.
-+
-+    FLAGS: setattr acl all
-+    DEPEND: MODE ACL0
-+    CODE: SATT26
-+    """
-+    from nfs4acl import acl2mode_rfc8881
-+    c = env.c1
-+    c.init_connection()
-+
-+    # EVERYONE@ gets read, specific OWNER@ gets nothing extra
-+    # Final result: OWNER@ should have read (from EVERYONE@)
-+    fh, stateid = c.create_confirm(t.word())
-+    acl = [
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_READ_DATA,
-+                b"EVERYONE@")
-+    ]
-+
-+    ops = c.use_obj(fh) + [c.setattr({FATTR4_ACL: acl})]
-+    res = c.compound(ops)
-+    check(res, msg="SETATTR ACL with only EVERYONE@")
-+
-+    attrs = c.do_getattrdict(fh, [FATTR4_MODE, FATTR4_ACL])
-+    returned_mode = attrs[FATTR4_MODE] & 0o777
-+    expected_mode = acl2mode_rfc8881(acl)
-+
-+    if returned_mode != expected_mode:
-+        t.fail("Mode (0%o) does not match expected (0%o). "
-+               "EVERYONE@ should affect all mode bits." %
-+               (returned_mode, expected_mode))
-+
-+def testSetattrACLModeDeriveComplex(t, env):
-+    """SETATTR(ACL) with complex ACL including multiple identifiers
-+
-+    Test mode derivation with a more realistic ACL including OWNER@,
-+    GROUP@, and EVERYONE@ with various permissions.
-+
-+    FLAGS: setattr acl all
-+    DEPEND: MODE ACL0
-+    CODE: SATT27
-+    """
-+    from nfs4acl import acl2mode_rfc8881
-+    c = env.c1
-+    c.init_connection()
-+
-+    fh, stateid = c.create_confirm(t.word())
-+
-+    # Create a complex ACL:
-+    # OWNER@: read + write + execute
-+    # GROUP@: read + execute (no write)
-+    # EVERYONE@: read only
-+    acl = [
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA | ACE4_EXECUTE,
-+                b"OWNER@"),
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_READ_DATA | ACE4_EXECUTE,
-+                b"GROUP@"),
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_READ_DATA,
-+                b"EVERYONE@")
-+    ]
-+
-+    ops = c.use_obj(fh) + [c.setattr({FATTR4_ACL: acl})]
-+    res = c.compound(ops)
-+    check(res, msg="SETATTR with complex ACL")
-+
-+    attrs = c.do_getattrdict(fh, [FATTR4_MODE, FATTR4_ACL])
-+    returned_mode = attrs[FATTR4_MODE] & 0o777
-+    expected_mode = acl2mode_rfc8881(acl)
-+
-+    if returned_mode != expected_mode:
-+        t.fail("Mode (0%o) does not match RFC 8881 Section 6.3.2 derivation "
-+               "from complex ACL (expected 0%o)" %
-+               (returned_mode, expected_mode))
-+
-+def testSetattrACLIndependentOfMode(t, env):
-+    """SETATTR(ACL) outcome should not depend on existing mode bits
-+
-+    Per RFC 8881 Section 6.4.1.2, when setting ACL without mode, the ACL should
-+    be set as given. The existing mode should not affect the ACL that gets
-+    stored. This test verifies that setting the same ACL on files with
-+    different initial modes results in identical ACLs being stored.
-+
-+    FLAGS: setattr acl all
-+    DEPEND: MODE ACL0
-+    CODE: SATT28
-+    """
-+    from nfs4acl import acl2mode_rfc8881
-+    c = env.c1
-+    c.init_connection()
-+
-+    # Create the same ACL to use for all files
-+    # OWNER@: read + write, GROUP@: read, EVERYONE@: nothing
-+    test_acl = [
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA,
-+                b"OWNER@"),
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_READ_DATA,
-+                b"GROUP@")
-+    ]
-+
-+    # Test with various initial mode values
-+    initial_modes = [0o600, 0o644, 0o755, 0o777, 0o400, 0o000]
-+    files = []
-+
-+    # Create files with different initial modes
-+    for initial_mode in initial_modes:
-+        fh, stateid = c.create_confirm(t.word() + (b"_%o" % initial_mode))
-+
-+        # Set initial mode
-+        ops = c.use_obj(fh) + [c.setattr({FATTR4_MODE: initial_mode})]
-+        res = c.compound(ops)
-+        check(res, msg="Setting initial mode to 0%o" % initial_mode)
-+
-+        files.append((fh, initial_mode))
-+
-+    # Now set the same ACL on all files
-+    for fh, initial_mode in files:
-+        ops = c.use_obj(fh) + [c.setattr({FATTR4_ACL: test_acl})]
-+        res = c.compound(ops)
-+        check(res, msg="SETATTR ACL on file with initial mode 0%o" % initial_mode)
-+
-+    # Retrieve the ACLs that were actually stored
-+    acls = []
-+    for fh, initial_mode in files:
-+        attrs = c.do_getattrdict(fh, [FATTR4_ACL])
-+        acls.append((initial_mode, attrs[FATTR4_ACL]))
-+
-+    # Helper function to compare ACLs (comparing ACE lists)
-+    def acl_equal(acl1, acl2):
-+        """Compare two ACLs for equality"""
-+        if len(acl1) != len(acl2):
-+            return False
-+        for ace1, ace2 in zip(acl1, acl2):
-+            if (ace1.type != ace2.type or
-+                ace1.flag != ace2.flag or
-+                ace1.access_mask != ace2.access_mask or
-+                ace1.who != ace2.who):
-+                return False
-+        return True
-+
-+    def acl_to_string(acl):
-+        """Convert ACL to readable string for error messages"""
-+        aces = []
-+        for ace in acl:
-+            type_str = "ALLOW" if ace.type == ACE4_ACCESS_ALLOWED_ACE_TYPE else "DENY"
-+            aces.append("<%s:%s:0x%x:0x%x>" %
-+                       (type_str, ace.who.decode(), ace.access_mask, ace.flag))
-+        return "[" + ", ".join(aces) + "]"
-+
-+    # Compare all ACLs - they should all be identical
-+    reference_mode, reference_acl = acls[0]
-+    for initial_mode, acl in acls[1:]:
-+        if not acl_equal(reference_acl, acl):
-+            t.fail("ACLs differ based on initial mode! "
-+                   "File with mode 0%o has ACL %s, "
-+                   "but file with mode 0%o has ACL %s. "
-+                   "RFC 8881 Section 6.4.1.2: ACL should be set as given, "
-+                   "independent of existing mode." %
-+                   (reference_mode, acl_to_string(reference_acl),
-+                    initial_mode, acl_to_string(acl)))
-+
-+    # Also verify that the mode derived from the ACL is consistent
-+    modes = []
-+    for initial_mode, acl in acls:
-+        derived_mode = acl2mode_rfc8881(acl)
-+        modes.append(derived_mode)
-+
-+    if len(set(modes)) != 1:
-+        mode_str = ", ".join("0%o (from initial 0%o)" % (m, acls[i][0])
-+                             for i, m in enumerate(modes))
-+        t.fail("ACLs derive to different modes: %s. "
-+               "This suggests ACLs were stored differently based on initial mode." %
-+               mode_str)
-+
-+def testSetattrACLIndependentModeHighBits(t, env):
-+    """SETATTR(ACL) should preserve high-order mode bits (SUID/SGID/SVTX)
-+
-+    Per RFC 8881 Section 6.4.1.2, when setting ACL without mode, the three
-+    high-order bits of mode (SUID, SGID, SVTX) SHOULD remain unchanged.
-+    Only the low-order nine permission bits should be modified.
-+
-+    FLAGS: setattr acl all
-+    DEPEND: MODE ACL0
-+    CODE: SATT29
-+    """
-+    from nfs4acl import acl2mode_rfc8881
-+    c = env.c1
-+    c.init_connection()
-+
-+    # Create ACL to set
-+    test_acl = [
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA | ACE4_EXECUTE,
-+                b"OWNER@"),
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_READ_DATA,
-+                b"GROUP@")
-+    ]
-+
-+    # Test with different high-order bits set
-+    test_cases = [
-+        (0o4755, "SUID"),      # Set-user-ID
-+        (0o2755, "SGID"),      # Set-group-ID
-+        (0o1755, "SVTX"),      # Sticky bit
-+        (0o6755, "SUID+SGID"), # Both SUID and SGID
-+        (0o7755, "ALL"),       # All three bits
-+    ]
-+
-+    # Preserving the high-order bits is a SHOULD, so collect violations
-+    # and warn once the MUST checks below have run for every case
-+    not_preserved = []
-+    for initial_mode, description in test_cases:
-+        fh, stateid = c.create_confirm(t.word() + (b"_%s" % description.encode()))
-+
-+        # Set initial mode with high-order bits
-+        ops = c.use_obj(fh) + [c.setattr({FATTR4_MODE: initial_mode})]
-+        res = c.compound(ops)
-+        check(res, msg="Setting initial mode 0%o (%s)" % (initial_mode, description))
-+
-+        # Verify the mode was set
-+        before_attrs = c.do_getattrdict(fh, [FATTR4_MODE])
-+        before_mode = before_attrs[FATTR4_MODE] & 0o7777
-+
-+        # Set ACL only (not mode)
-+        ops = c.use_obj(fh) + [c.setattr({FATTR4_ACL: test_acl})]
-+        res = c.compound(ops)
-+        check(res, msg="SETATTR ACL on file with %s" % description)
-+
-+        # Check that high-order bits are preserved
-+        after_attrs = c.do_getattrdict(fh, [FATTR4_MODE, FATTR4_ACL])
-+        after_mode = after_attrs[FATTR4_MODE] & 0o7777
-+
-+        # Extract high-order bits (SUID, SGID, SVTX)
-+        before_high = before_mode & 0o7000
-+        after_high = after_mode & 0o7000
-+
-+        if before_high != after_high:
-+            not_preserved.append("%s: before=0%o, after=0%o" %
-+                                 (description, before_mode, after_mode))
-+
-+        # Verify low-order bits match ACL derivation
-+        after_low = after_mode & 0o777
-+        expected_low = acl2mode_rfc8881(test_acl)
-+
-+        if after_low != expected_low:
-+            t.fail("Low-order mode bits (0%o) don't match RFC 8881 Section 6.3.2 "
-+                   "derivation (expected 0%o) for %s" %
-+                   (after_low, expected_low, description))
-+
-+    if not_preserved:
-+        t.pass_warn("High-order mode bits not preserved (RFC 8881 Section "
-+                    "6.4.1.2: SHOULD remain unchanged): %s" %
-+                    "; ".join(not_preserved))
-+
-+def testSetattrModeACLattrsset(t, env):
-+    """SETATTR(MODE+ACL) should indicate which attributes were actually set
-+
-+    Per RFC 8881 Section 6.4.1.3, when both MODE and ACL are set together, the
-+    server processes MODE first, then ACL (which may modify the mode).
-+    The attrsset bitmap indicates which attributes were actually set.
-+    This test verifies the attrsset bitmap and final mode consistency.
-+
-+    FLAGS: setattr acl all
-+    DEPEND: MODE ACL0
-+    CODE: SATT30
-+    """
-+    from nfs4acl import acl2mode_rfc8881
-+    c = env.c1
-+    c.init_connection()
-+
-+    fh, stateid = c.create_confirm(t.word())
-+
-+    # Create an ACL that will derive to a specific mode (0754)
-+    acl = [
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA | ACE4_EXECUTE,
-+                b"OWNER@"),
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_READ_DATA | ACE4_EXECUTE,
-+                b"GROUP@"),
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_READ_DATA,
-+                b"EVERYONE@")
-+    ]
-+
-+    # Request a different mode (0640)
-+    requested_mode = 0o640
-+
-+    # Set both MODE and ACL together
-+    attrs = {FATTR4_MODE: requested_mode, FATTR4_ACL: acl}
-+    ops = c.use_obj(fh) + [c.setattr(attrs)]
-+    res = c.compound(ops)
-+    check(res, msg="SETATTR with MODE and ACL together")
-+
-+    # Check the attrsset bitmap
-+    attrsset = bitmap2list(res.resarray[-1].attrsset)
-+
-+    # Get the final attributes
-+    final_attrs = c.do_getattrdict(fh, [FATTR4_MODE, FATTR4_ACL])
-+    final_mode = final_attrs[FATTR4_MODE] & 0o777
-+
-+    # Both attributes were processed, so both must appear in attrsset
-+    if FATTR4_MODE not in attrsset:
-+        t.fail("MODE not in attrsset, but MODE was requested")
-+    if FATTR4_ACL not in attrsset:
-+        t.fail("ACL not in attrsset, but ACL was requested")
-+
-+    # Per RFC 8881 Section 6.4.1.3, ACL processing modifies the mode, so
-+    # the final mode matches the ACL derivation, not the requested mode
-+    acl_derived_mode = acl2mode_rfc8881(acl)
-+    if final_mode != acl_derived_mode:
-+        t.fail("Final mode (0%o) does not match ACL-derived mode (0%o)" %
-+               (final_mode, acl_derived_mode))
-+
-+def testSetattrModeACLConflict(t, env):
-+    """SETATTR(MODE+ACL) when MODE and ACL would produce different permissions
-+
-+    Test the interaction when the requested MODE differs significantly from
-+    what the ACL would derive. Per RFC 8881 Section 6.4.1.3, MODE is applied first,
-+    then ACL is applied (possibly changing the final mode).
-+
-+    FLAGS: setattr acl all
-+    DEPEND: MODE ACL0
-+    CODE: SATT31
-+    """
-+    from nfs4acl import acl2mode_rfc8881
-+    c = env.c1
-+    c.init_connection()
-+
-+    # Test multiple conflict scenarios
-+    test_cases = [
-+        # (requested_mode, ACL, description)
-+        (0o777, [  # Request all permissions
-+            nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                    ACE4_READ_DATA,  # But ACL only grants read
-+                    b"OWNER@")
-+        ], "MODE=0777 but ACL grants only read"),
-+
-+        (0o000, [  # Request no permissions
-+            nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                    ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA | ACE4_EXECUTE,
-+                    b"OWNER@")  # But ACL grants everything
-+        ], "MODE=0000 but ACL grants rwx"),
-+
-+        (0o644, [  # Request read for all, write for owner
-+            nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                    ACE4_EXECUTE,  # But ACL only grants execute
-+                    b"OWNER@")
-+        ], "MODE=0644 but ACL grants only execute"),
-+    ]
-+
-+    for requested_mode, acl, description in test_cases:
-+        fh, stateid = c.create_confirm(t.word() + ("_%o" % requested_mode).encode())
-+
-+        # Set both MODE and ACL together
-+        attrs = {FATTR4_MODE: requested_mode, FATTR4_ACL: acl}
-+        ops = c.use_obj(fh) + [c.setattr(attrs)]
-+        res = c.compound(ops)
-+        check(res, msg="SETATTR MODE+ACL: %s" % description)
-+
-+        # Get final attributes
-+        final_attrs = c.do_getattrdict(fh, [FATTR4_MODE, FATTR4_ACL])
-+        final_mode = final_attrs[FATTR4_MODE] & 0o777
-+
-+        # Verify final mode matches derivation from the requested ACL
-+        expected_mode = acl2mode_rfc8881(acl)
-+
-+        if final_mode != expected_mode:
-+            t.fail("Test case '%s': final mode (0%o) doesn't match "
-+                   "ACL-derived mode (0%o). Per RFC 8881 Section 6.4.1.3, "
-+                   "ACL should be set as given and mode derived from it." %
-+                   (description, final_mode, expected_mode))
-+
-+def testSetattrACLNamedPrincipals(t, env):
-+    """SETATTR(ACL) with named principals should preserve them
-+
-+    Per RFC 8881 Section 6.4.1.3: "the ACL attribute is set as given."
-+    When an ACL contains named principals (not OWNER@/GROUP@/EVERYONE@),
-+    the server must preserve those exact principals in the stored ACL,
-+    not convert them to special identifiers. For SETATTR(ACL) alone,
-+    Section 6.4.1.2 makes this a SHOULD, so that case only warns.
-+
-+    FLAGS: setattr acl all
-+    DEPEND: MODE ACL0
-+    CODE: SATT32
-+    """
-+    c = env.c1
-+    c.init_connection()
-+
-+    # First create a file and get its owner and group
-+    temp_fh, temp_stateid = c.create_confirm(t.word() + b"_temp")
-+    attrs = c.do_getattrdict(temp_fh, [FATTR4_OWNER, FATTR4_OWNER_GROUP])
-+    current_owner = attrs[FATTR4_OWNER]
-+    current_group = attrs[FATTR4_OWNER_GROUP]
-+
-+    # Test 1: SETATTR(ACL) with named principals only
-+    fh1, stateid1 = c.create_confirm(t.word() + b"_acl_only")
-+
-+    acl = [
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA,
-+                current_owner),  # Named principal, not OWNER@
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, ACE4_IDENTIFIER_GROUP,
-+                ACE4_READ_DATA,
-+                current_group)  # Named principal, not GROUP@
-+    ]
-+
-+    ops = c.use_obj(fh1) + [c.setattr({FATTR4_ACL: acl})]
-+    res = c.compound(ops)
-+    check(res, msg="SETATTR ACL with named principals")
-+
-+    # Verify ACL was preserved with named principals. Setting the ACL as
-+    # given is a SHOULD in RFC 8881 Section 6.4.1.2, so hold the warning
-+    # until test 2 has run.
-+    returned_attrs = c.do_getattrdict(fh1, [FATTR4_ACL])
-+    acl_only_warning = None
-+    try:
-+        nfs4acl.verify_acl(returned_attrs[FATTR4_ACL], acl)
-+    except AssertionError as e:
-+        acl_only_warning = ("%s. Server did not set the ACL as given "
-+                            "(RFC 8881 Section 6.4.1.2: SHOULD)" % e)
-+
-+    # Test 2: SETATTR(MODE+ACL) with named principals
-+    fh2, stateid2 = c.create_confirm(t.word() + b"_mode_acl")
-+
-+    mode = 0o755
-+    acl = [
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA | ACE4_EXECUTE,
-+                current_owner),  # Named principal
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, ACE4_IDENTIFIER_GROUP,
-+                ACE4_READ_DATA | ACE4_EXECUTE,
-+                current_group),  # Named principal
-+        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-+                ACE4_READ_DATA,
-+                b"EVERYONE@")  # Special identifier is fine
-+    ]
-+
-+    ops = c.use_obj(fh2) + [c.setattr({FATTR4_MODE: mode, FATTR4_ACL: acl})]
-+    res = c.compound(ops)
-+    check(res, msg="SETATTR MODE+ACL with named principals")
-+
-+    # Verify ACL was preserved
-+    returned_attrs = c.do_getattrdict(fh2, [FATTR4_ACL])
-+    try:
-+        nfs4acl.verify_acl(returned_attrs[FATTR4_ACL], acl)
-+    except AssertionError as e:
-+        t.fail("%s. Server did not set the ACL as given, "
-+               "violating RFC 8881 Section 6.4.1.3" % e)
-+
-+    if acl_only_warning:
-+        t.pass_warn(acl_only_warning)
+Hi Christian,
 
--- 
-2.54.0
+Could you pull these patches please into your vfs-7.4.netfs branch?  This
+is the third of four (maybe five) batches, in this case replacing the
+folio_queue struct with a bvecq struct, and is based upon the
+aforementioned branch.  This was split from v11 of a larger netfslib
+series[1].  I've fixed some issues spotted by sashiko[5-7].
+
+This series adds a new type, struct bvecq.  This points to a bounded array
+of bio_vecs with information about how to clean up the memory they point
+to.  A number of bvecq structs can be linked together to form a chain and
+an iterator type, ITER_BVECQ, is provided that can be pointed at the chain
+and can walk it.  Netfslib is then switched to use the new type and
+folio_queue is removed along with ITER_FOLIOQ.
+
+This is intended as a more flexible replacement for struct folio_queue as
+the latter can only point to whole folios and cannot point to partial page=
+s
+that might be extracted from an ITER_IOVEC/ITER_UBUF for direct or
+unbuffered I/O purposes.
+
+These patches make a more or less straight swap between struct folio_queue
+and struct bvecq.  The change is not quite trivial as the folio_queue
+struct contains a folio_batch struct and is basically a list of whole
+folios only, whereas the new bvecq struct is a chain of bio_vec arrays.
+
+A further patchset will switch the netfslib unbuffered I/O code to using
+bvecqs and then the bvecqs will be passed down into the filesystem rather
+than passing an iterator.
+
+The primary reason behind making this change is so that bvecq chains can b=
+e
+used in the assembly of network filesystem messages.  Netfslib can furnish
+the filesystem with bvecq chains representing the data buffers that need t=
+o
+be read or written and then, for example, for a write RPC, the filesystem
+can add protocol headers and trailers onto the chain without the need to
+copy it and can also glue multiple buffers together to form compound
+operations and/or perform sparse operations.
+
+One option here is to add two more fields to the bvecq struct, one to
+increase the offset of the first bio_vec and one to decrease the length of
+the last, thereby allowing a bvecq struct to point at a slice of another
+bio_vec array without having to copy the array - but at the cost of adding
+one or two extra conditional ops when getting the offset or length of a
+segment.
+
+I have in-progress patch sets to rewrite the cifs transport[2] and the cep=
+h
+and rbd transport[3] to make use of bvecq chains.  With the cifs transport=
+,
+the idea is to extend the SMB message concept further up the stack and hav=
+e
+the PDU creation routines attach individual RPC requests blobs that can
+then be automatically chained by the transport when a compound is being
+assembled for transmission.
+
+With the ceph transport, the idea is to convert all the different data
+containers it has into just passing around bvecqs.  These can then be
+chained together in order to transmit them.
+
+This improves efficiency in the TCP stack as we no longer need to cork the
+TCP socket, call sendmsg() multiple times and then uncork; rather we can
+preassemble the message in a bvecq chain and just send the entire messsage
+in one shot with a single sendmsg() and reduce the number of places doing
+loops.  This got an improvement in nfsd performance[4].
+
+I also have some changes on the TCP receive side for the cifs transport
+(which is also likely applicable to the ceph TCP transport) whereby the
+receive buffers are 'spliced' out into a bvecq in the cifs I/O thread
+rather than being copied.  Using a bvecq chain here is advantageous as we
+don't know in advance how many segments we're going to have.  This allows
+us firstly to avoid copying data with the socket lock held (thus holding u=
+p
+sendmsg) and secondly to avoid copying data in the I/O thread (copying can
+be offloaded to the app thread).  The last time I benchmarked this, it
+appeared to get fio reading tests on cifs a 5% speedup.
+
+Unfortunately, this doesn't help AFS much as that uses a UDP transport, bu=
+t
+it might also help 9P, at least with its TCP transport.
+
+The patches can also be found here:
+
+	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log=
+/?h=3Dnetfs-next-3
+
+Thanks,
+David
+
+Changes
+=3D=3D=3D=3D=3D=3D=3D
+ver #15)
+- Fix issues from Sashiko[7]:
+  - Don't need to set page counts after calling alloc_pages_bulk().
+  - Adjust netfs_writeback_single() to return 0 on success, not the amount
+    written.
+  - Remove a couple of unused constants.
+
+ver #14)
+- Fix issues from Sashiko[6]:
+  - In iter_bvecq_get_pages(), use folio_get() not get_pages.
+  - In netfs_read_set_unlock_at(), netfs_read_unlock_folios(),
+    netfs_pgpriv2_unlock_copied_folios() and
+    netfs_writeback_unlock_folios(), skip wholly unoccupied bvecqs.
+  - Remove some now-unused trace bits.
+
+ver #13)
+- Fix issues from Sashiko[5]:
+  - In iter_bvecq_get_pages(), need to add bv_offset when calling
+    want_pages_array().
+  - In iter_bvecq_get_pages(), make the getting of a ref on the page
+    dependent on the page being non-slab.
+  - In bvecq_alloc_one(), use mempool_alloc(), not
+     mempool_alloc_noreserve().
+  - In bvecq_expand_buffer(), don't apply __GFP_NORETRY|__GFP_WARN for
+    order 0 allocations.
+  - Drop the netfs_bv_slot tracepoint as it's not used in these patches.
+  - In afs_do_read_single(), afs_dir_get_block() and afs_do_read_symlink()=
+,
+    use mapping_gfp_mask() rather than GFP_KERNEL.
+  - In netfs_writeback_single(), set ->submitted so that
+    netfs_wait_for_write() doesn't then just return -EIO.
+  - In netfs_unlock_abandoned_read_pages(), reset ->first_tail_slot when
+    moving on to next node.
+  - Remove netfs_folioq_trace(s) trace info enum and string set as their
+    tracepoint got removed.
+
+ver #12)
+- Split from v11 of "netfs: Keep track of folios in a segmented bio_vec[]
+  chain"[1]
+
+[1] https://lore.kernel.org/r/20260902173350.3468672-1-dhowells@redhat.com=
+/
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/=
+log/?h=3Dcifs-experimental
+[3] https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/=
+log/?h=3Dceph-iter
+[4] https://lore.kernel.org/netdev/168979108540.1905271.972070884914979779=
+3.stgit@morisot.1015granger.net/
+[5] https://sashiko.dev/#/patchset/20260929075913.2740968-1-dhowells%40red=
+hat.com
+[6] https://sashiko.dev/#/patchset/20260929103412.2807494-1-dhowells%40red=
+hat.com
+[7] https://sashiko.dev/#/patchset/20260930125247.3232130-1-dhowells%40red=
+hat.com
+
+David Howells (10):
+  Add a function to kmap one page of a multipage bio_vec
+  iov_iter: Add a segmented queue of bio_vec[]
+  netfs: Add some tools for managing bvecq chains
+  afs: Use a bvecq to hold dir content rather than folioq
+  cifs: Use a bvecq for buffering instead of a folioq
+  smbdirect: Support ITER_BVECQ in smbdirect_map_sges_from_iter()
+  netfs: Switch folioq to bvecq
+  smbdirect: Remove support for ITER_FOLIOQ from
+    smbdirect_map_sges_from_iter()
+  iov_iter: Remove ITER_FOLIOQ
+  netfs: Remove folio_queue
+
+ Documentation/core-api/folio_queue.rst      | 209 --------
+ Documentation/core-api/index.rst            |   1 -
+ Documentation/filesystems/netfs_library.rst |   2 +-
+ fs/afs/dir.c                                |  36 +-
+ fs/afs/dir_edit.c                           |  43 +-
+ fs/afs/dir_search.c                         |  33 +-
+ fs/afs/inode.c                              |   2 +-
+ fs/afs/internal.h                           |   6 +-
+ fs/afs/symlink.c                            |  38 +-
+ fs/netfs/Makefile                           |   1 +
+ fs/netfs/buffered_read.c                    |  34 +-
+ fs/netfs/bvecq.c                            | 344 +++++++++++++
+ fs/netfs/internal.h                         |   7 +-
+ fs/netfs/iterator.c                         |  33 +-
+ fs/netfs/main.c                             |  13 +-
+ fs/netfs/misc.c                             |  96 ----
+ fs/netfs/read_collect.c                     |  48 +-
+ fs/netfs/read_pgpriv2.c                     |  26 +-
+ fs/netfs/read_retry.c                       |  29 +-
+ fs/netfs/rolling_buffer.c                   | 189 +++----
+ fs/netfs/stats.c                            |   6 +-
+ fs/netfs/write_collect.c                    |  26 +-
+ fs/netfs/write_issue.c                      | 191 ++------
+ fs/smb/client/cifsglob.h                    |   2 +-
+ fs/smb/client/smb2ops.c                     |  78 ++-
+ fs/smb/smbdirect/connection.c               | 135 +++--
+ include/linux/bvec.h                        |  18 +
+ include/linux/bvecq.h                       | 166 +++++++
+ include/linux/folio_queue.h                 | 282 -----------
+ include/linux/iov_iter.h                    |  87 ++--
+ include/linux/netfs.h                       |  16 +-
+ include/linux/rolling_buffer.h              |  42 +-
+ include/linux/uio.h                         |  17 +-
+ include/trace/events/netfs.h                |  37 +-
+ kernel/bpf/btf.c                            |   2 -
+ lib/iov_iter.c                              | 516 ++++++++++++++------
+ lib/scatterlist.c                           |  82 ++--
+ lib/tests/kunit_iov_iter.c                  | 131 +++--
+ 38 files changed, 1453 insertions(+), 1571 deletions(-)
+ delete mode 100644 Documentation/core-api/folio_queue.rst
+ create mode 100644 fs/netfs/bvecq.c
+ create mode 100644 include/linux/bvecq.h
+ delete mode 100644 include/linux/folio_queue.h
 
