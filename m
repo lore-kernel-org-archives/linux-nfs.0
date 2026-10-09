@@ -1,35 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 59B6C4F30CE
-	for <linux-nfs@vger.kernel.org>; Fri,  9 Oct 2026 16:35:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D9AD04EFFD4
+	for <linux-nfs@vger.kernel.org>; Fri,  9 Oct 2026 16:35:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791563711; cv=none; b=dOZTAsf76BgCpVQVXHi2QtnTbuWosZlKMRBUlEZEAi1ADD4+TOgvdwUwa/C0IA8ZPsjFylfMJEUgzAGvEFXTC8wq8su63KtCVRg42PhxZIGpmBrcUb90HoyTVxko/jpURYNr4KxU/xMsq5O2RhqFfpmpJceCAhisLOgbvbDD+q0=
+	t=1791563712; cv=none; b=VmNpLBKtyjE0TtKsawUvSQIDys0GxzWCOj9AqnBsD5rFW9zzDKib8unbQW9Bvoe4y2dtHrgJR/LGSja5FQYxZhoJrgCMMtNozn0uKx2NLDXH0KY2AtEKy0OIwZS81HoLjMiEfcxAuSNEe+tkmYii+dK0Aa6LuVQEwOMAlNT9t+s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791563711; c=relaxed/simple;
-	bh=jMjWyO3pNuVWezeTo2bCy7hxdCJeVwofdXDUYYi/Hqg=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=UbQxOVIGGARuW+/+gr0Uvi+9KE8ulv0NsEdPvzPTxfMOJXFY2dNwOI+7HeLk0OON5RwDU9eLEmfdW/XwLMKMrd02LBfvQrUcy0pzWWHskKmpnVDNDI++Ayk7MHisASGHU/9SXB63p/oEerGPQZSZV0O8cdfXF2Suafor1LXLEyw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=DY5P8nv/; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791563712; c=relaxed/simple;
+	bh=mmrOPpwNuRRwN23HYRgOW9br4eI3+lc8x4eTzUjgviE=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=fkOZ10JSuO38Hf8eZO06OdxhcludvsUrP34oe4dvZ1mPlFjxXOvEKOiY4G9ThByQrtrkqGtGthYpG/BuKbYq6wuNxWxpaUZEH6uz8lMZ1RkWEyhuhTLZHoNp7aDakzUzYqWP4yuMmLnCFQW8iirrwWwuzRIqbHUcMxNvDJUv04M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=N2nEJx34; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="DY5P8nv/"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 67CC91F00899;
-	Fri,  9 Oct 2026 16:35:07 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="N2nEJx34"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CA9A31F000FF;
+	Fri,  9 Oct 2026 16:35:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791563707;
-	bh=p7JGsSmw3JVxJPzKMMcuU4sIn+3I9mcV4IxZFfrwF+Y=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=DY5P8nv//Wjx9OtU+JidfMLTICrbKFd7GDg4ogOdjuZ52uja6IS1z0udtoYwFeliQ
-	 xEgs1lozgFhC2ExGSf/Em4tT2tauaFtpD/7MyhIgJnf8SzRo2hfYCVTnO15igyBLbk
-	 cbdWk3cH9LeC5A6GI4zLWK/KEwm0fk2YL3F7mIniqG/YfvACqNXmYkemdO5UG6WM5G
-	 i3k/lPXI8G0G9kx0O2P2BsFIvQkkQB3SVmQDMo3M0U8RmahvOiZqIxXEsf1MwmOfYs
-	 /sxRm7AusCTvbsZlQCAWxMAHYIC4Ki/wyQgiwPkeXJ+TUFyxf94r1EzoDxToAhu+xh
-	 iV0MkgWQ7O9+g==
+	s=k20260515; t=1791563706;
+	bh=O149LhRUze0l9fxnb0YRPYndx17W+cgyrCq861ZeJVQ=;
+	h=From:Subject:Date:To:Cc;
+	b=N2nEJx34dqGWptJHB3gWNfJnUYuzKYlsEotjda6CcOKD9dGVHhf7kgWMMwgYtF9v1
+	 dRs0BaE3IFiTAm144zEAiDu5+k7d9NKWULogO9t66E6CrCaAv8+pi4C4KLRbnAZeGk
+	 KsbyHIxxX8K5loJtKD8LVIGMa/K8/ueGzb7A1GmyDno3i8Uvp8K8BQRCW4vvra72n+
+	 jFswFrAeayWTS086W5dcW89Y3AQol04hjUuY8EHQu27LObaJ9PJFOSVtsNBRJyMccB
+	 nOrultcWpFM+9flyHBaLG85yJEqA6pF3TSeiRA4GOTmTBjwpF3p4urM9UXzMmSSd4o
+	 /8R/9q0s1GIoA==
 From: Chuck Lever <cel@kernel.org>
-Date: Fri, 09 Oct 2026 12:34:57 -0400
-Subject: [PATCH pynfs v3 3/9] Add a helper to compute POSIX mode bits from
- NFSv4 ACLs
+Subject: [PATCH pynfs v3 0/9] pynfs tests for setting ACL+MODE
+Date: Fri, 09 Oct 2026 12:34:54 -0400
+Message-Id: <20261009-acl-mode-v3-0-ba487c5e66e0@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,132 +37,99 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261009-acl-mode-v3-3-ba487c5e66e0@kernel.org>
-References: <20261009-acl-mode-v3-0-ba487c5e66e0@kernel.org>
-In-Reply-To: <20261009-acl-mode-v3-0-ba487c5e66e0@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ6CMBAAv0L2bGOhQdGvEA9t2cIaackuGg3h7
+ 7Z6nMlkNhBkQoFrtQHji4RSzGAOFfjJxhEVDZmh0c2p1rpT1j/UnAZUwXjT1rrz7eUMOV8YA71
+ /qx6WTwwCt7+Wp7ujX8umhM4KKsc2+qmoxDRSPM5WVmTY9y/QIYlRkwAAAA==
+X-Change-ID: 20261008-acl-mode-f3c35108c597
 To: Calum Mackay <calum.mackay@oracle.com>
 Cc: linux-nfs@vger.kernel.org, aurelien.couderc2002@gmail.com, 
  Chuck Lever <chuck.lever@oracle.com>
 X-Mailer: b4 0.16-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3786; i=cel@kernel.org;
- h=from:subject:message-id; bh=i8rv74icUCeI7R0DgJt/MoyWMxMD22yl+pLRuaBtd50=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqyRe5fvb9lr8lVinidTBSnvWo83SIfX1YaAFFZ
- /s6eKxEoiaJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaskXuQAKCRAzarMzb2Z/
- l+etEACVYgL0qyRtm+qyX1BEyfvLwbzluMSrbGeiPyKeBqnM5nIg1PyC9l0c1wkp5ojZ0z7sNbu
- 0b0t4T66axJvmeMo/sS1f5/qf867fC+72XcqU/BR2ortdaqG2nl6m2uk4ibPG+XgRqlTqnO7awy
- efea8gKxPRjlJQQQx8g7nwUHubVZ4qXyCBy12ZRlhkQ/JUF/wUaRtYmo2Jymib/Rvbi/wJyyocl
- +SUsYiRUQD4vnJ4hfyC/+lQco3r66fOgqTGVvUD75+wZuD2cBAMWgGfzfWSjKAy30adULyQp1gx
- k3AB2QthN9dlD5NY4pnO9wS+CPgRtSi4Ax5Us9cn64rhCvCa1SkTqZzLTQSnrkmDrJM5dFMe6I5
- 8XA9xrS4KmT5L1bp2nWiR/58yaW4sA2IjOYoy3IJDRIgXLu26CdiUU1XyHIYVMQfNnS5Axr7WpT
- 5VIQv6oQQ2XTaNovzhjzIkExRVPTzvNuhhWJprFKOX5S29nkxxE+AVS03MQxRQ7b1h2vUc+pR3E
- 0MYMg5B/w+61eTpP7Xus3EO9ufSJGgeFnh8cO6Pdewv93HuJlVQx/RAr+HmyB2M6Kvs5WUILLRt
- 6N13WRCZ2fVGFqBfjpOScgkLmaybEEHMmrMpiDXrY7fEs57buOq9yG81qAzRswYxAghLtrpzbMZ
- O5OTFcwlGzNU4nw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3234; i=cel@kernel.org;
+ h=from:subject:message-id; bh=mmrOPpwNuRRwN23HYRgOW9br4eI3+lc8x4eTzUjgviE=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqyRewHmQEvMO0aWdYQwQFuELq1AnBpulIsjpaE
+ usDklSEtqCJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaskXsAAKCRAzarMzb2Z/
+ lzZqD/sFn/PYKgPcKnbZZsZqaE74gqAfEnC2UyFEAH2CMFaPNCrBRbkT5Ixvp/dCxIgz+Ct6Fr4
+ Gd/6Ngdkcx6ZNoSleY6ry9soHuS5iZhRB935uz6S/7unxtuA/oYmiAinv+5Oa2vJIpFZCKrfsR9
+ IQDZL7alXoYGF/8LJEEw9rq8RtAVmRbzriiGojVYyOfGLf+jd4aGE4qnQPAPK6eZjUItW2rbJRz
+ B2i/cMq6lhNzs9iVi17jHQpCH3R8RVoTaeAYYgSxdp0R/1Zly6qpaWflv4zVONnaQjjUMUvT3Hq
+ /ahEWcjaiusw4JFHanrsAF0bdEuZVn1+slKtgrsw4Z9Y6JWFeySH1VZKhNROcvgQjQHDzzf30Dw
+ FTt10Qln5J3fWznRCXbeqrIZ4DGW04+gZJAC0rIGhB97OMJeBRQE/Ai5LYb+wHOU/GvrpgNFLtG
+ gPso99SiiXztvQipVBK3jZ8uAbn/Xlu5tn+SOx/G52SneuT3Da8AOr6ghbi3sEjuVTPdYgr93qY
+ HcG0xpde5F3EsN/GRjMkg6iN9eJDjidBYEQ7ct/cBFc3Y36UI5Y8h6R2ZlGEa6oD9qqsfm+cVyA
+ 61FUkNVebw5Or69uXUpLQMXSQJAxYEFRsLiERigrWA1mBYg86naT5BzH8K6aPhYN+zPsa1U/6v7
+ 2aPLzf+h2irMOsA==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-From: Chuck Lever <chuck.lever@oracle.com>
+There are plenty of corner cases when an NFSv4 client requests
+setting an NFSv4 ACL and POSIX mode bits in the a single SETATTR
+request. It's even worse for NFS server implementations that have
+to translate NFSv4 ACLs to POSIX ACLs.
 
-NFSv4 servers are permitted to adjust a file's mode bits when
-the file's ACL is set. RFC 8881 Section 6.3.2 describes what is
-expected.
+Note that the in-kernel Linux NFS client itself does not support
+NFSv4 ACLs since Linux is a POSIX ACL ecosystem. I believe it will
+never send an OPEN(create) or SETATTR that sets an NFSv4 ACL and
+mode bits simultaneously, relying on only user space tooling to set
+the ACL. So we must depend on only pynfs for testing this particular
+NFSD facility.
 
-I'm about to add new tests that set an ACL and then retrieve
-the file's mode to verify that the server is following that
-section of RFC 8881. Mode bit verification is common, so it
-is added as a utility function.
+pynfs didn't have many tests in this particular category when I set
+out to troubleshoot a recently reported ACL+MODE bug in NFSD. So
+I've written a handful to exercise this specific case.
 
-To avoid duplicating this code for both NFSv4.0 and NFSv4.1
-ACL-related tests (I'm expecting to see a common NFSv4 ACL
-document published soon), a symlink is added to make ACL
-utility functions visible to tests for both minor versions.
+Claude and sashiko review found a number of issues in this old
+series. Resending with fixes.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- nfs4.0/nfs4acl.py | 60 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- nfs4.1/nfs4acl.py |  1 +
- 2 files changed, 61 insertions(+)
+Changes in v3:
+- Compare ACE who fields as bytes in acl2mode_rfc8881(), make_test_acl()
+- Run testMixed's RFC 8881 mode check before pass_warn(), which raises
+- Compare ACE flags in verify_acl()
+- Let verify_acl() skip ACEs the server inserts before requested ones
+- Let verify_acl() search past a matching ACE whose mask falls short
+- Derive the expected mode from the requested ACL, not the returned one
+- Fold SATT20/21 into SATT19 and drop the pass_warn() that always fired
+- Require MODE in attrsset in SATT30, as SATT19 already does
+- Mask the mode with 0o777, not 0o7777, in SATT22 and SATT30
+- Warn rather than fail on the SHOULD clauses in SATT29 and SATT32
+- Fail OPEN12 and OPEN8b when the REQUIRED suppattr_exclcreat is missing
+- Verify the whole ACE, not just who, in testSetattrACLNamedPrincipals
+- Fold OPEN9/10 and OPEN15-18 into OPEN14, which covers all create modes
+- Rewrite the OPEN(create) patch description
+- Correct the SATT30 item and test list in the SETATTR patch description
+- Link to v2: https://lore.kernel.org/linux-nfs/20251125194936.770792-1-cel@kernel.org/
 
-diff --git a/nfs4.0/nfs4acl.py b/nfs4.0/nfs4acl.py
-index 69e0d0bcfbe1..4b6ca4921162 100644
---- a/nfs4.0/nfs4acl.py
-+++ b/nfs4.0/nfs4acl.py
-@@ -208,6 +208,66 @@ def chk_groups(acl, flags, not_mask):
-             chk_triple(mask, allow, acl[0], flags | GROUP, not_mask)
-         del acl[:1]
- 
-+def acl2mode_rfc8881(acl):
-+    """
-+    Compute mode from ACL according to RFC 8881 Section 6.3.2.
-+
-+    For each special identifier (OWNER@, GROUP@, EVERYONE@), evaluate the
-+    ACL in order considering only ALLOW and DENY ACEs for EVERYONE@ and
-+    the identifier under consideration. Then translate to mode bits:
-+    - Read bit: Set if ACE4_READ_DATA is permitted
-+    - Write bit: Set if BOTH ACE4_WRITE_DATA AND ACE4_APPEND_DATA are permitted
-+    - Execute bit: Set if ACE4_EXECUTE is permitted
-+
-+    Returns the low-order 9 bits of the mode (user/group/other permissions).
-+    """
-+    identifiers = [
-+        (b"OWNER@", MODE4_RUSR, MODE4_WUSR, MODE4_XUSR),
-+        (b"GROUP@", MODE4_RGRP, MODE4_WGRP, MODE4_XGRP),
-+        (b"EVERYONE@", MODE4_ROTH, MODE4_WOTH, MODE4_XOTH)
-+    ]
-+
-+    mode = 0
-+
-+    for who, read_bit, write_bit, exec_bit in identifiers:
-+        # Start with no permissions
-+        allowed_mask = 0
-+        denied_mask = 0
-+
-+        # Evaluate ACL in order, considering only ALLOW/DENY for this
-+        # identifier and EVERYONE@
-+        for ace in acl:
-+            # Skip non-relevant ACEs
-+            if ace.who not in (who, b"EVERYONE@"):
-+                continue
-+            if ace.type not in (ALLOWED, DENIED):
-+                continue
-+            # Skip inherit-only ACEs (they don't affect current permissions)
-+            if ace.flag & ACE4_INHERIT_ONLY_ACE:
-+                continue
-+
-+            if ace.type == ALLOWED:
-+                # Add allowed permissions not already denied
-+                allowed_mask |= (ace.access_mask & ~denied_mask)
-+            elif ace.type == DENIED:
-+                # Add denied permissions not already allowed
-+                denied_mask |= (ace.access_mask & ~allowed_mask)
-+
-+        # Translate permitted mask to mode bits per RFC 8881 Section 6.3.2
-+        # Read bit: ACE4_READ_DATA must be set
-+        if allowed_mask & ACE4_READ_DATA:
-+            mode |= read_bit
-+
-+        # Write bit: BOTH ACE4_WRITE_DATA and ACE4_APPEND_DATA must be set
-+        if (allowed_mask & ACE4_WRITE_DATA) and (allowed_mask & ACE4_APPEND_DATA):
-+            mode |= write_bit
-+
-+        # Execute bit: ACE4_EXECUTE must be set
-+        if allowed_mask & ACE4_EXECUTE:
-+            mode |= exec_bit
-+
-+    return mode
-+
- def printableacl(acl):
-     type_str = ["ACCESS", "DENY"]
-     out = ""
-diff --git a/nfs4.1/nfs4acl.py b/nfs4.1/nfs4acl.py
-new file mode 120000
-index 000000000000..f05cb4015424
---- /dev/null
-+++ b/nfs4.1/nfs4acl.py
-@@ -0,0 +1 @@
-+../nfs4.0/nfs4acl.py
-\ No newline at end of file
+Changes in v2:
+- De-duplicate code shared between NFSv4.0 and NFSv4.1
+- Remove named principals tests for now
+- Replace incorrect usage of binary strings
+- Add missing patch descriptions
 
--- 
-2.54.0
+---
+Chuck Lever (9):
+      Add helper to report unsupported protocol features
+      Add helper to format attribute bitmaps
+      Add a helper to compute POSIX mode bits from NFSv4 ACLs
+      Add access_mask_to_str() helper to nfs4.0/nfs4acl.py
+      Add make_test_acl() helper to nfs4acl modules
+      Add verify_acl() helper to nfs4acl modules
+      Add verify_mode_and_acl() helper to nfs4acl modules
+      Add tests for SETATTR with MODE and ACL
+      Add tests for OPEN(create) with ACLs
+
+ nfs4.0/nfs4acl.py                   | 193 ++++++++++
+ nfs4.0/servertests/st_setattr.py    | 728 +++++++++++++++++++++++++++++++++++-
+ nfs4.1/nfs4acl.py                   |   1 +
+ nfs4.1/nfs4lib.py                   |   8 +
+ nfs4.1/server41tests/environment.py |   3 +
+ nfs4.1/server41tests/st_open.py     | 463 ++++++++++++++++++++++-
+ 6 files changed, 1392 insertions(+), 4 deletions(-)
+---
+base-commit: cd4701827a8261fedbfb4c6e39029fb9671321a6
+change-id: 20261008-acl-mode-f3c35108c597
+
+Best regards,
+--  
+Chuck Lever
 
