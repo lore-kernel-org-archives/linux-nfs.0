@@ -1,68 +1,121 @@
-Received: from foss.arm.com (foss.arm.com [217.140.110.172])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 2A41445041C;
-	Thu,  8 Oct 2026 22:58:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.140.110.172
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 96B1F3939AE
+	for <linux-nfs@vger.kernel.org>; Fri,  9 Oct 2026 03:20:23 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791500326; cv=none; b=g+siSr3RWkg0L/bbZL8AMtFh8RyaYKweRqbP9PXJbaZcagRaP5yO2+m5Cpy2EO6AfTKBYTsf993BGv+L4v+geDx6RteeGjXS/wXqkMCcH772Ojl62EssuKqgw51FcdJPkX9XUJkOE0lwTiT5eHKcY4h/oNY6lb33CQ1joNKygG4=
+	t=1791516041; cv=none; b=J/pZtLvCG2by1ZFitmubLWTm7qzVQ2gdBVm4hHFBsjaaScSvdu4Ql+4LKybFs9kRCiYt35TCySp7E2G1HmbxU/ZwmOrOIArKAy0nJbnjcBdc1oCoWS4eVbLmuJ56+Td7zSqaw4PQxjGOvG+eI4EpbuAfXKs4UirCjwNd79N8/9A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791500326; c=relaxed/simple;
-	bh=dfD+bJF9h7dLTRCLt8lHJBwiu1mQ2/5+5VLsZj+oO7Y=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=A1/RZeMT2pKyKH9qiyxM0Pj9ZOf2TxQ6LWLePrOC+lpOq/gon0kQBJpX2WoqDelNu7a8RFWUjbsUJZTFGgw7SbbXbJB44+vofd1ZnIyPJRbqVSGOAVU2rgLTAbzx6xrCplOQV5zfFhLbvGztaNCwBpnTrtq9eiy+ExJ4APwmNng=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=arm.com; spf=pass smtp.mailfrom=arm.com; dkim=pass (1024-bit key) header.d=arm.com header.i=@arm.com header.b=VKM+cnEw; arc=none smtp.client-ip=217.140.110.172
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=arm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=arm.com
+	s=arc-20240116; t=1791516041; c=relaxed/simple;
+	bh=Cht1M2l+Vdk6kE6Y7FPZSovcL8SyLax7MQwwdXT0ooA=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=dPeU6LyOaXxspoQHj02FwTWlOFmhC+hSFx2Y4/fEKaA3LxpI1t1wAI9RJZoflSCbS2QXtqTWBjbf2rcOwmvnQv8TGTsRoWQICq7LL8juHZ71RXUz3XxMMpxmgw73zJuNxHwcs1ikvSwAPkTlJTFmzsWRueJgGu778jxCfT6YjR0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MhwCpclS; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=arm.com header.i=@arm.com header.b="VKM+cnEw"
-Received: from usa-sjc-imap-foss1.foss.arm.com (unknown [10.121.207.14])
-	by usa-sjc-mx-foss1.foss.arm.com (Postfix) with ESMTP id 14C941692;
-	Thu,  8 Oct 2026 15:58:41 -0700 (PDT)
-Received: from e132076.cambridge.arm.com (e132076.arm.com [10.2.197.107])
-	by usa-sjc-imap-foss1.foss.arm.com (Postfix) with ESMTPSA id CE7013F66F;
-	Thu,  8 Oct 2026 15:58:42 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=arm.com; s=foss;
-	t=1791500324; bh=dfD+bJF9h7dLTRCLt8lHJBwiu1mQ2/5+5VLsZj+oO7Y=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=VKM+cnEw6A5VPtIxfkjBJ57FpyKUJavXooSEDKXKjTLBZVNB4cqE65t76/E3uejpR
-	 R54GdldP3piNy5/ARTwtg1Ht+JI1IfRD2yZla88E3qS1NSK5GYGzq+pJczAg75MCEx
-	 UCPDpIiXt+BDS+PW9LP1sDJzUjbfM3Ag7F8RF7F0=
-From: J Louis Kaplan <Louis.Kaplan@arm.com>
-To: cel@kernel.org,
-	dai.ngo@oracle.com,
-	jlayton@kernel.org,
-	neil@brown.name,
-	okorniev@redhat.com,
-	tom@talpey.com
-Cc: anna@kernel.org,
-	jgg@ziepe.ca,
-	leon@kernel.org,
-	linux-nfs@vger.kernel.org,
-	linux-rdma@vger.kernel.org,
-	trondmy@kernel.org
-Subject: Re: [RFC PATCH 6/6] sunrpc: Allocate svc request pages from large folios
-Date: Thu,  8 Oct 2026 23:58:33 +0100
-Message-ID: <20261008225833.682794-1-Louis.Kaplan@arm.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <d189ba0e-6215-433e-b27e-859502db67e5@app.fastmail.com>
-References: <d189ba0e-6215-433e-b27e-859502db67e5@app.fastmail.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MhwCpclS"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AE1511F00923;
+	Fri,  9 Oct 2026 03:20:22 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1791516023;
+	bh=rCUbLTwtZlqJca4oHVsgG87PNWgtRG1nz8CL4l9I7Y4=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=MhwCpclSVbIW6AFiD6PVh4Jp2XVGeszkJgTbmSiC31yAKY8jT/v4WFXuAR4xcPgjo
+	 7VRL7h5cEFYI9Z9RZdRfZrwTHBOoQCt3D39BFBaGBFOlcwxe9W33lZr7/uZ8VC/c0w
+	 U57aAFbumPuexxIzP+aMTD+NuNtdDlYIuKk4WuMDteXp9jBu1eUSaOgHBqyigCNqk6
+	 mDcdI/hQO25cP2KspeDHJAMalbjJG6InZ6XbOgZfKLqu62jMYmNA8wRxz5/6WG/i4E
+	 THJ4C13DSS2WGKkBVglXiU+i+8hADX6wn5bqZvBIT6OqMuipWUvlv8rPQnnvSwQ2Qc
+	 rJiwW44tppHtQ==
+Message-ID: <10b9a614cff017245e865c9c46a863d556e274b8.camel@kernel.org>
+Subject: Re: [PATCH] NFSv4/flexfiles: fix infinite retry loop on data server
+ version mismatch
+From: Trond Myklebust <trondmy@kernel.org>
+To: Anthony Iliopoulos <ailiop@suse.com>, Anna Schumaker <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 08 Oct 2026 23:20:21 -0400
+In-Reply-To: <20261008224544.79469-1-ailiop@suse.com>
+References: <20261008224544.79469-1-ailiop@suse.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-2.fc44) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-> Given past experience with contention in the page free path, IMO
-> this one needs careful macro and micro benchmarking.
+On Fri, 2026-10-09 at 00:45 +0200, Anthony Iliopoulos wrote:
+> When a flexfiles layout disallows fallback to the MDS via
+> FF_FLAGS_NO_IO_THRU_MDS and sets the ffdv_version in GETDEVINFO
+> response
+> to NFSv3, it can cause an infinite retry loop in the client when the
+> server is not configured to handle NFSv3 protocol connections.
+>=20
+> Specifically, the server will return a PROG_MISMATCH RPC along with
+> the
+> minimum protocol version supported, and the client will keep retrying
+> as
+> the EPROTONOSUPPORT error is not currently handled as a fatal error.=C2=
+=A0
+> At
+> the same time the client is not allowed to fallback to the MDS where
+> it
+> could proceed with NFSv4.
+>=20
+> Given that a DS version mismatch is usually a permanent error, it
+> makes
+> little sense to keep retrying. Fix this by explicitly checking for
+> the
+> specific error, return immediately when the MDS fallback is disabled,
+> and allow an error to be propagated back to user space.
+>=20
+> Signed-off-by: Anthony Iliopoulos <ailiop@suse.com>
+> ---
+> =C2=A0fs/nfs/flexfilelayout/flexfilelayout.c | 10 ++++++++++
+> =C2=A01 file changed, 10 insertions(+)
+>=20
+> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c
+> b/fs/nfs/flexfilelayout/flexfilelayout.c
+> index 7fe8b91fa47c..52018039c9a4 100644
+> --- a/fs/nfs/flexfilelayout/flexfilelayout.c
+> +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+> @@ -1060,6 +1060,11 @@ ff_layout_pg_init_read(struct
+> nfs_pageio_descriptor *pgio,
+> =C2=A0	if (IS_ERR(ds)) {
+> =C2=A0		if (!ff_layout_no_fallback_to_mds(pgio->pg_lseg))
+> =C2=A0			goto out_mds;
+> +		if (PTR_ERR(ds) =3D=3D -EPROTONOSUPPORT) {
+> +			pgio->pg_error =3D -EIO;
+> +			pnfs_generic_pg_cleanup(pgio);
+> +			return;
+> +		}
+> =C2=A0		pnfs_generic_pg_cleanup(pgio);
+> =C2=A0		/* Sleep for 1 second before retrying */
+> =C2=A0		ssleep(1);
+> @@ -1139,6 +1144,11 @@ ff_layout_pg_init_write(struct
+> nfs_pageio_descriptor *pgio,
+> =C2=A0		if (IS_ERR(ds)) {
+> =C2=A0			if (!ff_layout_no_fallback_to_mds(pgio-
+> >pg_lseg))
+> =C2=A0				goto out_mds;
+> +			if (PTR_ERR(ds) =3D=3D -EPROTONOSUPPORT) {
+> +				pgio->pg_error =3D -EIO;
+> +				pnfs_generic_pg_cleanup(pgio);
+> +				return;
+> +			}
+> =C2=A0			pnfs_generic_pg_cleanup(pgio);
+> =C2=A0			/* Sleep for 1 second before retrying */
+> =C2=A0			ssleep(1);
 
-Makes sense to me after reading through the links you posted in the
-other reply.
+NACK. Errors returned by data servers are never fatal in the flex files
+pNFS protocol.
+Data server errors get reported back to the metadata server either
+through a LAYOUTERROR or through LAYOUTRETURN. The metadata server then
+decides how to handle matters either by returning a fatal error on the
+next LAYOUTGET, or by fixing the problem.
 
-> I wonder if this change should get merged first instead of last.
-> It's probably going to have broad impact and high risk, and will
-> need testing across all hardware platforms and on large- and small-
-> memory configurations.
-
-Happy to do that. Should I consider a separate single-commit submission
-for this change?
+--=20
+Trond Myklebust
+Linux NFS client maintainer, Hammerspace
+trondmy@kernel.org, trond.myklebust@hammerspace.com
