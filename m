@@ -1,174 +1,202 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wm1-f100.google.com (mail-wm1-f100.google.com [209.85.128.100])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A9058392C46
-	for <linux-nfs@vger.kernel.org>; Fri,  9 Oct 2026 16:50:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7E12B431A50
+	for <linux-nfs@vger.kernel.org>; Fri,  9 Oct 2026 18:15:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.100
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791564653; cv=none; b=JYkGEilaCTY+4O5FSrL4t0nzN53qxBINx2y+qsLp/rKUJf0+WFeHYHalFWgr8BxihIvhf74sHTIDr75COAZdD1nwtmzoOLnwooA7XfHUUfHzRzzsmRqmXpR1cHkwMd2MVrfkYhEtYcn9bWLSNir5DgM9wmE74vPE8bvEPdYp/bo=
+	t=1791569760; cv=none; b=sn0zJmrI/5bP+Y+cz1T7VDqTKm2LIlyLc+b5togmvKulaF7UQApmUBY/TvM/lCWPnsUhuBXU4m7FI+P9xHe2HzU0MnsgNOBb5mWac9DDynVIHP+Ff/j5WOzKK4cXU4aZlYNtrZAlGkSywOSAbr6J2Ed0hh6JlFxmlHvamrWtlak=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791564653; c=relaxed/simple;
-	bh=m7VZoj+K3JznXwu8AG0oVtNqLg4y97jJr9RLW4PP8wM=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=uD+kCw5oGmEPldrOapRxl6D162xDNhtjGyhUtFsd/V0Y97YsoCwhg1EPy+wf5zuLokv+5WPni6t2ni2JL7o9YD3plpz65DD5dwatiogglOmtWdK+r0Jfg+FzPds5xdVEbxlW7rX7fL1vOvcMivDOeIkqtXKkgytsXbG/XOt1Xrs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=K7nNZhng; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791569760; c=relaxed/simple;
+	bh=KQQJ+CHj3noUPqd3hIOKH/SstTaXg/xWE+mbjKTc6QU=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=TXBA8qTxdUS2IceZk89mKsGt12/LUWWXbhqQR1Yq+beVmwJNVI+8G9PrtaY6dI1yzLz+FZctLODxPXR9Q2fvafPVhoTo6kkcsnOW7OwETUilsXa//+ARjkFPxXvBxIt/ynzP2jOQWA08OBehgOPTOjrBbRFCz9ca7fArUxGN4IQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com; spf=pass smtp.mailfrom=everpuredata.com; dkim=pass (2048-bit key) header.d=everpuredata.com header.i=@everpuredata.com header.b=UhkTVboJ; arc=none smtp.client-ip=209.85.128.100
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=everpuredata.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="K7nNZhng"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C71F51F000FF;
-	Fri,  9 Oct 2026 16:50:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791564652;
-	bh=KDHwxZkL/AY1JqSS1qpz+BJQI+bCKauJnIOy1uz/t0k=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=K7nNZhngFVcEJzzfeV/PDdVFAfUsbCV8vewtu7I+QMTyn3iNqxkpdIRIa6gbCYIMV
-	 IC/g+LIrCb9YmtRf/IlN7YhchwO21CAW+7SiSybFGCUnQv0nkWukg/OYoKQx2B3xo5
-	 OiBkLI/Ue1Xr5zJ3+4njifQsADOjZyFKWdKQixnAKXslTjut3CEwtUwiTxyku5Evuv
-	 9SkOONoECwoBX/egR27OHWJY4ZxwZcb/S3OKpeDYpw/+sjdWahPscyz4RwVsvNzu/Q
-	 5ZK4K2k5reAf0bwPxleugjlMxmGm0a3voOEcfDRgz7EISu73nSDwWbcxKhF+1zMT6M
-	 qSCGZx3FFMI4g==
-Message-ID: <2da460c2585851e2c4de977b5bdb5ea1bd5175a3.camel@kernel.org>
-Subject: Re: [PATCH v1] NFSD: Don't start nfsd threads from a pool_threads
- write
-From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neilb@ownmail.net>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org, 
-	syzbot+9c7b9c5f6dd1d470b605@syzkaller.appspotmail.com
-Date: Fri, 09 Oct 2026 12:50:49 -0400
-In-Reply-To: <20261009144017.1284586-1-cel@kernel.org>
-References: <20261009144017.1284586-1-cel@kernel.org>
-Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
- keydata=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
- QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-2.fc44) 
+	dkim=pass (2048-bit key) header.d=everpuredata.com header.i=@everpuredata.com header.b="UhkTVboJ"
+Received: by mail-wm1-f100.google.com with SMTP id 5b1f17b1804b1-49ff680331aso1097675e9.3
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Oct 2026 11:15:58 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=everpuredata.com; s=google; t=1791569757; x=1792174557; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=PKh0n31LZjAabx1GRWM6AQ6aUQk08xh7miYGIsbVSlE=;
+        b=UhkTVboJozaRtNyHM6Olto+yCVOvaRrcj12FNiuV9ycRnF/aBvS61RGdwrgywKZc2U
+         GP3JIIF6SKj3uc12yTxsFzSV9n/oSsmi0aV74KPxz/0iWS7v58/jNAtoUlrKbMamJzA9
+         dG9PSCQYXl5BjtVvfr8Kx2b+iBwKbo+uLpplrSZYL0aDC0Jx2l2mRtde8kUWqoT7gIle
+         A6Fk12LXVCzePCAdwmRPYoFAZLRs89347znKeuWC8UjsR+O7vqBF6clh6Uup+fG7Q1EE
+         8dciMLfoT8dM/0i/620Fu8qEYBWjlhBlCibxbrTFhm20G5FlACO6wsgjzpiUv3soG64C
+         zErA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1791569757; x=1792174557;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=PKh0n31LZjAabx1GRWM6AQ6aUQk08xh7miYGIsbVSlE=;
+        b=ndN5EkZjHcRY4Psuqh0cDiaDn3rxuo4jI2BXzqlpkIjNTcJIOVJ4uqdN9cnb2sg8lY
+         dEWGKcjbWtnTVo0jKe3eq/uz1K3PSaTTNJXfeRiH2eCTJQRIEMuznhc1wCx1yaU6BWEC
+         +wEh8hSyuSrFIPnIPvEmdRr3K5N7UR9sOUCxI+9JdpFPt1w+wUZqG1mSvzpAq6VK+EdB
+         mCyjy27g67HYbQkFeoRn/vraFYs2MXgZyHPUzf4RNv4K/NG9gCd1HfROYgQHFKldYD/H
+         ZALEso/6LG7/z2XIxkL86KKknoej3urx1cDLl6MxTj/0jMlRE6whdP9U/F7/fJq6rTt+
+         FREQ==
+X-Forwarded-Encrypted: i=1; AKwUvBwDAZ2a8VDbN76T4gdbaUQbZtm19ugy+GEfH+87DFmmvnF8yU6McHvFeIZv1lvRkZ/3jwPOVkdnvnw=@vger.kernel.org
+X-Gm-Message-State: AFuF++lXCHv0xYwOioR2IWYrczd3RooqomxUkQuN81Mbm+tekffY3TZt
+	/HTvCmx2nA6kLKzVrBoxFYgLMUPy5WLcB+yIMeOXksITJIZmrQdGljt2sS9v74CaWBes53AlhBO
+	Q+QBrrtrJwgnpRZMqDtlhObrCLvtDgsE8sawx
+X-Gm-Gg: AYBFou1be3iH7A0SegHVY5YuvuCc8RvOnBHWVOn70P25rDANnLHCTwboUImVIYE6BzO
+	A9nul5AAE8BRD4Zci+gk7Z3SyF0am+mFbbpYF+ACQG7+YGHrNQpeYG1ArnUS1b8ymz5dYxjlz/7
+	bp4bT8/kBb5PTZpPykJxivtMejItZs7W5CLlkOuFowZyFeMJbglqxb8LCqCtnZJnmg0LMN1JCut
+	dVJXxcK5XMVfMiDbjT6XKAdXHVDhT+m21fBPvHqQibRcBzbGqS2vG8nnnasreJQm6nXwVXWL7gd
+	6nYC6jtAclR9ctGWs7XoSp7ndPUeg4dRdYdUdINoWXiNdoIJa7kTbxJ87T+Bi8mybJhccpZ7Plx
+	ofUlv7tZSq5iErwSRIA1SSnbcN6ok2aqivdw6UJY=
+X-Received: by 2002:a05:600c:609a:b0:4a1:717b:7976 with SMTP id 5b1f17b1804b1-4a18e4b15e5mr54406015e9.35.1791569756709;
+        Fri, 09 Oct 2026 11:15:56 -0700 (PDT)
+Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.129])
+        by smtp-relay.gmail.com with ESMTPS id 5b1f17b1804b1-4a18bc48302sm7189525e9.2.2026.10.09.11.15.56
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 09 Oct 2026 11:15:56 -0700 (PDT)
+X-Relaying-Domain: everpuredata.com
+Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
+	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id F24603401CB;
+	Fri,  9 Oct 2026 11:15:54 -0700 (PDT)
+From: Tim Menninger <tmenninger@everpuredata.com>
+To: Chuck Lever <cel@kernel.org>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>
+Cc: Olga Kornievskaia <okorniev@redhat.com>,
+	Tom Talpey <tom@talpey.com>,
+	linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Eric Badger <ebadger@everpuredata.com>,
+	Jon Curley <jcurley@everpuredata.com>,
+	Yongjian Mu <ymu@everpuredata.com>,
+	stable@vger.kernel.org
+Subject: [PATCH] xprtrdma: trim head iovec when the payload arrives via a Write chunk
+Date: Fri,  9 Oct 2026 18:15:54 +0000
+Message-Id: <20261009181554.2280374-1-tmenninger@everpuredata.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-On Fri, 2026-10-09 at 10:40 -0400, Chuck Lever wrote:
-> Writing to pool_threads calls nfsd_set_nrthreads() directly, which
-> starts nfsd threads as soon as a svc_serv exists. A portlist write
-> creates the svc_serv without running nfsd_startup_net(), so a
-> pool_threads write that follows it starts threads in a namespace
-> whose NFSv4 state has not been set up. If the server in that
-> namespace has been started and shut down before, the hash table
-> pointers in struct nfsd_net still point at memory that
-> nfs4_state_destroy_net() freed, and the first EXCHANGE_ID those
-> threads handle reads it:
->=20
->   BUG: KASAN: slab-use-after-free in add_to_unconfirmed
->   nfsd4_exchange_id
->   nfsd4_proc_compound
->   nfsd_dispatch
->=20
-> A namespace that has never been started dereferences NULL instead.
->=20
-> write_pool_threads() already starts nothing when no svc_serv exists,
-> and its comment documents that only the threads file starts NFS.
-> Ignore the thread counts in a pool_threads write while NFSD_NET_UP
-> is clear as well, so a pool_threads write never starts threads
-> before nfsd_startup_net() has run. The reply still reports the
-> current thread count for each pool.
->=20
-> Fixes: 0a7ec37727dc ("nfsd: make unconf_id_hashtbl allocated per net")
-> Reported-by: syzbot+9c7b9c5f6dd1d470b605@syzkaller.appspotmail.com
-> Closes: https://syzkaller.appspot.com/bug?extid=3D9c7b9c5f6dd1d470b605
-> Signed-off-by: Chuck Lever <cel@kernel.org>
-> ---
->  fs/nfsd/nfsctl.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
->=20
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 2379b838c028..5a606086b811 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -497,7 +497,8 @@ static ssize_t write_pool_threads(struct file *file, =
-char *buf, size_t size)
->  	if (nthreads =3D=3D NULL)
->  		goto out_free;
-> =20
-> -	if (size > 0) {
-> +	/* Threads started now would run without NFSv4 state. */
-> +	if (size > 0 && test_bit(NFSD_NET_UP, &nn->flags)) {
->  		for (i =3D 0; i < npools; i++) {
->  			rv =3D get_int(&mesg, &nthreads[i]);
->  			if (rv =3D=3D -ENOENT)
+From: Yongjian Mu <ymu@everpuredata.com>
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+The upper layer sets rq_rcv_buf.head[0].iov_len from its estimate of the
+reply header size. For RPCSEC_GSS that estimate includes
+auth->au_ralign, which gss_create_new() initializes to GSS_VERF_SLACK >>
+2 (25 XDR words, or 100 bytes) and which is corrected to the real
+verifier size only after the first reply on that rpc_auth has been
+unwrapped. In this case, the krb5 MIC verifier is 36 bytes, so every
+request encoded before the first reply completes has a head that is 64
+bytes too long.
+
+On TCP this is harmless: xdr_realign_pages() moves the excess head
+bytes, which are genuine reply data, into the page list. With
+RPC-over-RDMA and a Write chunk (sec=krb5, i.e. RPC_GSS_SVC_NONE, where
+DDP is allowed), the payload has already been placed directly into the
+page list, and the receive buffer holds only the inline part of the
+reply. rpcrdma_inline_fixup() clamps its local copy of the head length
+to the inline length but leaves head.iov_len untouched, so
+xdr_realign_pages() still sees iov_len > cur and shifts whatever lies
+past the inline reply in the receive buffer into the front of the
+directly-placed payload:
+
+  rpc_xdr_recvfrom:  head=[...,196] page=524288 tail=[...,64]
+  rpc_xdr_alignment: nfsv4 READ offset=132 copied=64
+
+The first 64 bytes returned by each such READ are incorrect (zeroed, or
+shifted right by 64 bytes depending on the kernel's xdr_shrink_bufhead()
+implementation). This is readily hit with pNFS flexfiles over RDMA and
+sec=krb5: the per-DS rpc_clnt gets a fresh rpc_auth whose first RPC is a
+large READ. Reads following the first completed reply return the
+expected data.
+
+Commit cb0ae1fbb2f5 ("xprtrdma: Do not update {head, tail}.iov_len in
+rpcrdma_inline_fixup()") removed the head-length correction while fixing
+the handling of pure-inline krb5p replies.
+
+When a Write chunk conveyed the payload, trim head.iov_len (in both
+rq_rcv_buf and rq_private_buf, which call_decode() expects to match) to
+the inline length actually received so that the XDR layer does not
+realign the page list. Pure inline replies and Reply chunk replies are
+unchanged.
+
+Fixes: cb0ae1fbb2f5 ("xprtrdma: Do not update {head, tail}.iov_len in rpcrdma_inline_fixup()")
+Cc: stable@vger.kernel.org
+Signed-off-by: Yongjian Mu <ymu@everpuredata.com>
+Signed-off-by: Tim Menninger <tmenninger@everpuredata.com>
+---
+ net/sunrpc/xprtrdma/rpc_rdma.c | 23 +++++++++++++++++++----
+ 1 file changed, 19 insertions(+), 4 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 1285f04cdac1..bebc9a20b28e 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -984,7 +984,7 @@ void rpcrdma_reset_cwnd(struct rpcrdma_xprt *r_xprt)
+  * @rqst: controlling RPC request
+  * @srcp: points to RPC message payload in receive buffer
+  * @copy_len: remaining length of receive buffer content
+- * @pad: Write chunk pad bytes needed (zero for pure inline)
++ * @writelist: bytes conveyed by the Write chunk (zero for pure inline)
+  *
+  * The upper layer has set the maximum number of bytes it can
+  * receive in each component of rq_rcv_buf. These values are set in
+@@ -998,13 +998,16 @@ void rpcrdma_reset_cwnd(struct rpcrdma_xprt *r_xprt)
+  * Returns the count of bytes which had to be memcopied.
+  */
+ static unsigned long
+-rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
++rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len,
++		     u32 writelist)
+ {
+ 	unsigned long fixup_copy_count;
+ 	int i, npages, curlen;
+ 	char *destp;
+ 	struct page **ppages;
+ 	int page_base;
++	int pad = writelist & 3;
++	unsigned int delta;
+ 
+ 	/* The head iovec is redirected to the RPC reply message
+ 	 * in the receive buffer, to avoid a memcopy.
+@@ -1016,8 +1019,20 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 	 * head.iov_len bytes are copied into the page list.
+ 	 */
+ 	curlen = rqst->rq_rcv_buf.head[0].iov_len;
+-	if (curlen > copy_len)
++	if (curlen > copy_len) {
++		/* These READ replies have no inline fields after the payload.
++		 * Trim the head without moving the directly-placed data.
++		 */
++		if (writelist) {
++			delta = curlen - copy_len;
++
++			rqst->rq_rcv_buf.head[0].iov_len = copy_len;
++			rqst->rq_private_buf.head[0].iov_len = copy_len;
++			rqst->rq_rcv_buf.buflen -= delta;
++			rqst->rq_private_buf.buflen -= delta;
++		}
+ 		curlen = copy_len;
++	}
+ 	srcp += curlen;
+ 	copy_len -= curlen;
+ 
+@@ -1245,7 +1260,7 @@ rpcrdma_decode_msg(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep,
+ 	base = (char *)xdr_inline_decode(xdr, 0);
+ 	rpclen = xdr_stream_remaining(xdr);
+ 	r_xprt->rx_stats.fixup_copy_count +=
+-		rpcrdma_inline_fixup(rqst, base, rpclen, writelist & 3);
++		rpcrdma_inline_fixup(rqst, base, rpclen, writelist);
+ 
+ 	r_xprt->rx_stats.total_rdma_reply += writelist;
+ 	return rpclen + xdr_align_size(writelist);
+-- 
+2.34.1
+
