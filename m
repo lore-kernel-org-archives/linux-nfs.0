@@ -1,64 +1,64 @@
-Received: from smtp-o-2.desy.de (smtp-o-2.desy.de [131.169.56.155])
+Received: from smtp-o-3.desy.de (smtp-o-3.desy.de [131.169.56.156])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D42C32142B
-	for <linux-nfs@vger.kernel.org>; Sat, 10 Oct 2026 22:19:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=131.169.56.155
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D9A263515CB
+	for <linux-nfs@vger.kernel.org>; Sat, 10 Oct 2026 22:19:13 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=131.169.56.156
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791670755; cv=none; b=Rz20bE30a3rDoT8RbZ6DWLLE6bcoF54Ne/oTHrx9QqbfRkyMMMx4yyUPv5DPDHD8o46kplXE+Vw7kWnmBk4DJxIjXS6cCHIjmV+xGOP0iMJLpEkG9VQQQ1+u2VMXyn1SKKKPYMtLQFQ+CVkwiX69a7DF0V+xpzXpj6wuHsVNfoo=
+	t=1791670756; cv=none; b=isDFXHDeKk49o5InoCTrrq+H3g55N5E3GJTHuJf7FlENm8QhyNnTseFbnCSfSVe8qKXNmHtBpibuRwB10BTkDiKJabbucK6uldY4/9SpJByv4r8vgLlrPyIzOBDR20NSdwHOIOB7WZII22gfsBEmUjI5GtGVFxqyMksjVZOsXg4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791670755; c=relaxed/simple;
-	bh=o5C6kfC2OeRMuL57hdfv5YlcP1YKKIh9rWEpux+NbEU=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=kluArFsc7nhtFuExhT4oK2Wq8dz3X0UMYON75pWGYwMPnXufQeMfox2OUHCgRVX7ym/MMm9+0zhHP10In1aqJ62K61Wc2ojnxyGmWJCQpDVqi6847TLgnQq3RkSmocPfOj7PeAl+JwgccCQJpLvoxBR03HqNBMwFdRKODadShKk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=desy.de; spf=pass smtp.mailfrom=desy.de; dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b=VzJXLdvV; arc=none smtp.client-ip=131.169.56.155
+	s=arc-20240116; t=1791670756; c=relaxed/simple;
+	bh=dw7ym7mdaqCxjp3Eixqyc2K2ivZJBKji8p1Jr4hvM6A=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=nLHgyeua7h1OPXHGZgdhLyIjZ0PasqTPbnYgsnhMpVtzg2Bc3SdF6htYw5M2wPdvfb4lfw73oIgusMKJuo4Q0Lqr7j+SeKWAGSh7LSVGKQMd7PH4ENcVaGjCbRahfy0P8rCYyp7rX3Bbw9wLMEsk5S+SUfClR1Wr/UW+sXbMIQg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=desy.de; spf=pass smtp.mailfrom=desy.de; dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b=lBvg+6O5; arc=none smtp.client-ip=131.169.56.156
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=desy.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=desy.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b="VzJXLdvV"
-Received: from smtp-buf-3.desy.de (smtp-buf-3.desy.de [131.169.56.166])
-	by smtp-o-2.desy.de (Postfix) with ESMTP id 5A66613F647
+	dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b="lBvg+6O5"
+Received: from smtp-o-1.desy.de (smtp-o-1.desy.de [131.169.56.154])
+	by smtp-o-3.desy.de (Postfix) with ESMTP id CACBE11F8AF
 	for <linux-nfs@vger.kernel.org>; Sun, 11 Oct 2026 00:19:04 +0200 (CEST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-2.desy.de 5A66613F647
+Received: from smtp-buf-2.desy.de (smtp-buf-2.desy.de [131.169.56.165])
+	by smtp-o-1.desy.de (Postfix) with ESMTP id EF03B11F746
+	for <linux-nfs@vger.kernel.org>; Sun, 11 Oct 2026 00:18:56 +0200 (CEST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-1.desy.de EF03B11F746
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
-	t=1791670744; bh=yjPEAWe2G7T7fXrrXsJkLJ3XkNf3ertiTtExgZ6z80I=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=VzJXLdvVNNeIkcdv3act4I2QAu91VDidX2+dnLu8wjeaFR/yQGkoYXgoPTfuvRUrd
-	 Wk7gkIcyXQ1SERihPkC/qLe6NrYLBdeeFdqGa5AZp4vKfjTyAxilkdY2qReJBagA8C
-	 KlP1CnvF39eChSHvPJH7/FrPtvPT9xjjbAhbfq+M=
-Received: from smtp-m-2.desy.de (smtp-m-2.desy.de [IPv6:2001:638:700:1038::1:82])
-	by smtp-buf-3.desy.de (Postfix) with ESMTP id 4B5F0C0040;
-	Sun, 11 Oct 2026 00:19:04 +0200 (CEST)
-Received: from a1722.mx.srv.dfn.de (a1722.mx.srv.dfn.de [194.95.233.47])
-	by smtp-m-2.desy.de (Postfix) with ESMTP id 39696160043;
-	Sun, 11 Oct 2026 00:19:04 +0200 (CEST)
+	t=1791670737; bh=ISyMa15ksc57BOiMelyTCIjUswj4ilbV7S9bGWUxNV8=;
+	h=From:To:Cc:Subject:Date:From;
+	b=lBvg+6O5eufjLYV6IotFCTl5oPnGOFRMSpOvcNkfKmM9ShAur0SYEMqgbtO12oi6+
+	 n23DnM1SxTZVjQ7WY75ljgq9CPEY4rP4EHB3x6UzKIMNrDqHDbwLX3CwGi9Tw04UKy
+	 x+6MkezoYlob6ro8JuFY1n3hG+LVtgKpijW7NSQo=
+Received: from smtp-m-2.desy.de (smtp-m-2.desy.de [131.169.56.130])
+	by smtp-buf-2.desy.de (Postfix) with ESMTP id DC19B120043;
+	Sun, 11 Oct 2026 00:18:56 +0200 (CEST)
+Received: from b1722.mx.srv.dfn.de (b1722.mx.srv.dfn.de [194.95.235.47])
+	by smtp-m-2.desy.de (Postfix) with ESMTP id D27B216004A;
+	Sun, 11 Oct 2026 00:18:56 +0200 (CEST)
 Received: from smtp-intra-1.desy.de (smtp-intra-1.desy.de [131.169.56.82])
-	by a1722.mx.srv.dfn.de (Postfix) with ESMTP id 82D7B3200A2;
-	Sun, 11 Oct 2026 00:19:03 +0200 (CEST)
+	by b1722.mx.srv.dfn.de (Postfix) with ESMTP id 3695A160059;
+	Sun, 11 Oct 2026 00:18:56 +0200 (CEST)
 Received: from z-prx-2.desy.de (z-prx-2.desy.de [131.169.10.29])
-	by smtp-intra-1.desy.de (Postfix) with ESMTP id 74CAE80046;
-	Sun, 11 Oct 2026 00:19:03 +0200 (CEST)
+	by smtp-intra-1.desy.de (Postfix) with ESMTP id 22F5D80053;
+	Sun, 11 Oct 2026 00:18:56 +0200 (CEST)
 Received: from localhost (localhost [IPv6:::1])
-	by z-prx-2.desy.de (Postfix) with ESMTP id 68DDD6053A;
-	Sun, 11 Oct 2026 00:19:02 +0200 (CEST)
+	by z-prx-2.desy.de (Postfix) with ESMTP id 184E56053A;
+	Sun, 11 Oct 2026 00:18:56 +0200 (CEST)
 Received: from z-prx-2.desy.de ([IPv6:::1])
  by localhost (z-prx-2.desy.de [IPv6:::1]) (amavis, port 10026) with ESMTP
- id cG8ZKLlnv-1Q; Sun, 11 Oct 2026 00:19:02 +0200 (CEST)
+ id OrsNIhNVSbpL; Sun, 11 Oct 2026 00:18:56 +0200 (CEST)
 Received: from nairi.desy.de (VPN0276.desy.de [131.169.254.21])
-	by z-prx-2.desy.de (Postfix) with ESMTPSA id BB00160005;
-	Sun, 11 Oct 2026 00:19:00 +0200 (CEST)
+	by z-prx-2.desy.de (Postfix) with ESMTPSA id 433BF60005;
+	Sun, 11 Oct 2026 00:18:53 +0200 (CEST)
 From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 To: trondmy@kernel.org,
 	anna@kernel.org
 Cc: linux-nfs@vger.kernel.org,
 	snitzer@kernel.org,
 	Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH 1/2] pNFS/flexfiles: make pg_init retry loops killable
-Date: Sun, 11 Oct 2026 00:18:38 +0200
-Message-ID: <20261010221839.42172-2-tigran.mkrtchyan@desy.de>
+Subject: [PATCH 0/2] pnfs/flexfiles: make DS connect application interrupt resistent
+Date: Sun, 11 Oct 2026 00:18:37 +0200
+Message-ID: <20261010221839.42172-1-tigran.mkrtchyan@desy.de>
 X-Mailer: git-send-email 2.56.0
-In-Reply-To: <20261010221839.42172-1-tigran.mkrtchyan@desy.de>
-References: <20261010221839.42172-1-tigran.mkrtchyan@desy.de>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -67,102 +67,38 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-When a task is killed while the pNFS client connects to a data server,
-nfs4_pnfs_ds_connect() fails with -ERESTARTSYS. If the layout has
-FF_FLAGS_NO_IO_THRU_MDS set, ff_layout_pg_init_read() cannot fall back
-to the MDS and retries after an uninterruptible ssleep. As the fatal
-signal stays pending, every new connect attempt is aborted the same
-way and the task loops forever without returning to user space:
+In our testing we hit a situation where the pNFS flexfiles client
+goes into an infinite loop. The application spawns one reader process
+per CPU core to read multiple files in parallel, and kills the readers
+once a fixed time budget expires. The killed processes never exit.
 
-  # grep -E 'SigPnd|ShdPnd' /proc/156021/status
-  SigPnd: 0000000000000100
-  ShdPnd: 0000000000000100
+We have identified three issues:
 
-  # cat /proc/156021/stack
-  msleep+0x2e/0x50
-  ff_layout_pg_init_read+0x267/0x310 [nfs_layout_flexfiles]
-  __nfs_pageio_add_request+0x1c1/0x480 [nfs]
-  nfs_pageio_add_request+0x21d/0x2c0 [nfs]
-  nfs_read_add_folio+0x143/0x200 [nfs]
-  nfs_readahead+0x204/0x290 [nfs]
-  read_pages+0x62/0x230
-  page_cache_ra_unbounded+0x136/0x180
-  filemap_get_pages+0xf2/0x350
-  filemap_read+0xd5/0x320
-  nfs_file_read+0x6d/0xc0 [nfs]
-  vfs_read+0x24f/0x3a0
-  __x64_sys_pread64+0x90/0xc0
-  do_syscall_64+0x5f/0xe0
+- Concurrent connections to data servers are serialized in
+  nfs4_discover_server_trunking() (not addressed yet).
 
-Previous attempt propagates the error from nfs4_ff_layout_prepare_ds(), but
-only ff_layout_{read,write}_pagelist() look at it. The pg_init functions
-test IS_ERR() and retry on any error.
+- Regardless of the configured security flavor, the client always
+  tries krb5i first, addressed in a separate patch:
+  https://lore.kernel.org/linux-nfs/20261009155802.540179-1-tigran.mkrtchyan@desy.de/T/#u
 
-Check for a fatal signal or an exiting task before sleeping in
-ff_layout_pg_init_read() and ff_layout_pg_init_write() and fail the I/O
-instead of retrying.
+- ff_layout_pg_init_read() and ff_layout_pg_init_write() retry in a
+  loop with ssleep() when no data server is available. Since ssleep()
+  is uninterruptible and the loop does not check for fatal signals,
+  a task with SIGKILL pending never leaves the loop.
 
-Fixes: f06bedfa62d5 ("pNFS/flexfiles: don't attempt pnfs on fatal DS errors")
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
----
- fs/nfs/flexfilelayout/flexfilelayout.c | 23 ++++++++++++++++++++---
- 1 file changed, 20 insertions(+), 3 deletions(-)
+These two patches address the last issue.
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 7fe8b91fa47c..c636983f1e12 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -961,6 +961,20 @@ ff_layout_get_ds_for_read(struct nfs_pageio_descriptor *pgio,
- 						 offset, dss_id);
- }
- 
-+/*
-+ * Wait before retrying pg_init. Returns false, with pgio->pg_error set,
-+ * if the task was killed or is exiting and must not retry.
-+ */
-+static bool ff_layout_pg_retry_wait(struct nfs_pageio_descriptor *pgio)
-+{
-+	if (fatal_signal_pending(current) || nfs_current_task_exiting()) {
-+		pgio->pg_error = -ERESTARTSYS;
-+		return false;
-+	}
-+	ssleep(1);
-+	return true;
-+}
-+
- static void
- ff_layout_pg_get_read(struct nfs_pageio_descriptor *pgio,
- 		      struct nfs_page *req,
-@@ -1062,7 +1076,8 @@ ff_layout_pg_init_read(struct nfs_pageio_descriptor *pgio,
- 			goto out_mds;
- 		pnfs_generic_pg_cleanup(pgio);
- 		/* Sleep for 1 second before retrying */
--		ssleep(1);
-+		if (!ff_layout_pg_retry_wait(pgio))
-+			return;
- 		goto retry;
- 	}
- 
-@@ -1086,7 +1101,8 @@ ff_layout_pg_init_read(struct nfs_pageio_descriptor *pgio,
- 		}
- 		pgio->pg_error = 0;
- 		/* Sleep for 1 second before retrying */
--		ssleep(1);
-+		if (!ff_layout_pg_retry_wait(pgio))
-+			return;
- 		goto retry;
- 	}
- out_mds:
-@@ -1141,7 +1157,8 @@ ff_layout_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 				goto out_mds;
- 			pnfs_generic_pg_cleanup(pgio);
- 			/* Sleep for 1 second before retrying */
--			ssleep(1);
-+			if (!ff_layout_pg_retry_wait(pgio))
-+				return;
- 			goto retry;
- 		}
- 		pgm = &pgio->pg_mirrors[i];
+The patches tested on 7.3-rc3 and RHEL 5.14.0-757 kernels (with
+backport).
+
+Tigranve  Mkrtchyan (2):
+  pNFS/flexfiles: make pg_init retry loops killable
+  pNFS/flexfiles: don't report an interrupted DS connect as a DS error
+
+ fs/nfs/flexfilelayout/flexfilelayout.c    | 23 ++++++++++++++++++++---
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c |  5 +++++
+ 2 files changed, 25 insertions(+), 3 deletions(-)
+
 -- 
 2.56.0
 
