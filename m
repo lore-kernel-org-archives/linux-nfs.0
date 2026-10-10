@@ -1,160 +1,168 @@
-Received: from proxmox-new.maurer-it.com (proxmox-new.maurer-it.com [94.136.29.106])
+Received: from smtp-o-2.desy.de (smtp-o-2.desy.de [131.169.56.155])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0B32C2EEE65;
-	Sat, 10 Oct 2026 19:30:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=94.136.29.106
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D42C32142B
+	for <linux-nfs@vger.kernel.org>; Sat, 10 Oct 2026 22:19:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=131.169.56.155
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791660659; cv=none; b=g4pk6e+X8nwma+w+1y22LInQLLM+wOmprzXopA3sv2sC9jYp/MYjoh7g3yul+y1flN77fBLvLA6/zIYSVDBHfNwihs9+rNnnMPXbMwYA48oVQ11sLQjSqKRyhtc/UmSPYTNDOwS/V7JJPG9eWcSv8c+jcgW5K3c5YLRHCtmuU90=
+	t=1791670755; cv=none; b=Rz20bE30a3rDoT8RbZ6DWLLE6bcoF54Ne/oTHrx9QqbfRkyMMMx4yyUPv5DPDHD8o46kplXE+Vw7kWnmBk4DJxIjXS6cCHIjmV+xGOP0iMJLpEkG9VQQQ1+u2VMXyn1SKKKPYMtLQFQ+CVkwiX69a7DF0V+xpzXpj6wuHsVNfoo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791660659; c=relaxed/simple;
-	bh=kk+VoJEcW3YCdNKSLtTJRN+To5JsBzDfQyaW0H+Prbw=;
-	h=Message-ID:Date:MIME-Version:To:Cc:From:Subject:Content-Type; b=ooaCbvHxEBekRWuS2tmDOUOIMEyjYV3dEbXbI0q8soI2L9pCRXMXczQxphnj4MoGRTA6dbMd9P0p7N6btTzfhS+McSoIpWqxrSNkuren55fl9H+eBSrJ1/0zgS6DmKeOCwm77VwRYH1vvTaip2VbuVbNQuKWhInsmAWz5uZP/Oo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=proxmox.com; spf=pass smtp.mailfrom=proxmox.com; arc=none smtp.client-ip=94.136.29.106
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=proxmox.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=proxmox.com
-Received: from proxmox-new.maurer-it.com (localhost.localdomain [127.0.0.1])
-	by proxmox-new.maurer-it.com (Proxmox) with ESMTP id CD9EE47B5F;
-	Sat, 10 Oct 2026 21:30:47 +0200 (CEST)
-Message-ID: <7cc824c4-632d-49df-ae5e-cfcbb5bf76ad@proxmox.com>
-Date: Sun, 11 Oct 2026 06:30:40 +1100
+	s=arc-20240116; t=1791670755; c=relaxed/simple;
+	bh=o5C6kfC2OeRMuL57hdfv5YlcP1YKKIh9rWEpux+NbEU=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=kluArFsc7nhtFuExhT4oK2Wq8dz3X0UMYON75pWGYwMPnXufQeMfox2OUHCgRVX7ym/MMm9+0zhHP10In1aqJ62K61Wc2ojnxyGmWJCQpDVqi6847TLgnQq3RkSmocPfOj7PeAl+JwgccCQJpLvoxBR03HqNBMwFdRKODadShKk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=desy.de; spf=pass smtp.mailfrom=desy.de; dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b=VzJXLdvV; arc=none smtp.client-ip=131.169.56.155
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=desy.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=desy.de
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b="VzJXLdvV"
+Received: from smtp-buf-3.desy.de (smtp-buf-3.desy.de [131.169.56.166])
+	by smtp-o-2.desy.de (Postfix) with ESMTP id 5A66613F647
+	for <linux-nfs@vger.kernel.org>; Sun, 11 Oct 2026 00:19:04 +0200 (CEST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-2.desy.de 5A66613F647
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
+	t=1791670744; bh=yjPEAWe2G7T7fXrrXsJkLJ3XkNf3ertiTtExgZ6z80I=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=VzJXLdvVNNeIkcdv3act4I2QAu91VDidX2+dnLu8wjeaFR/yQGkoYXgoPTfuvRUrd
+	 Wk7gkIcyXQ1SERihPkC/qLe6NrYLBdeeFdqGa5AZp4vKfjTyAxilkdY2qReJBagA8C
+	 KlP1CnvF39eChSHvPJH7/FrPtvPT9xjjbAhbfq+M=
+Received: from smtp-m-2.desy.de (smtp-m-2.desy.de [IPv6:2001:638:700:1038::1:82])
+	by smtp-buf-3.desy.de (Postfix) with ESMTP id 4B5F0C0040;
+	Sun, 11 Oct 2026 00:19:04 +0200 (CEST)
+Received: from a1722.mx.srv.dfn.de (a1722.mx.srv.dfn.de [194.95.233.47])
+	by smtp-m-2.desy.de (Postfix) with ESMTP id 39696160043;
+	Sun, 11 Oct 2026 00:19:04 +0200 (CEST)
+Received: from smtp-intra-1.desy.de (smtp-intra-1.desy.de [131.169.56.82])
+	by a1722.mx.srv.dfn.de (Postfix) with ESMTP id 82D7B3200A2;
+	Sun, 11 Oct 2026 00:19:03 +0200 (CEST)
+Received: from z-prx-2.desy.de (z-prx-2.desy.de [131.169.10.29])
+	by smtp-intra-1.desy.de (Postfix) with ESMTP id 74CAE80046;
+	Sun, 11 Oct 2026 00:19:03 +0200 (CEST)
+Received: from localhost (localhost [IPv6:::1])
+	by z-prx-2.desy.de (Postfix) with ESMTP id 68DDD6053A;
+	Sun, 11 Oct 2026 00:19:02 +0200 (CEST)
+Received: from z-prx-2.desy.de ([IPv6:::1])
+ by localhost (z-prx-2.desy.de [IPv6:::1]) (amavis, port 10026) with ESMTP
+ id cG8ZKLlnv-1Q; Sun, 11 Oct 2026 00:19:02 +0200 (CEST)
+Received: from nairi.desy.de (VPN0276.desy.de [131.169.254.21])
+	by z-prx-2.desy.de (Postfix) with ESMTPSA id BB00160005;
+	Sun, 11 Oct 2026 00:19:00 +0200 (CEST)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: trondmy@kernel.org,
+	anna@kernel.org
+Cc: linux-nfs@vger.kernel.org,
+	snitzer@kernel.org,
+	Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH 1/2] pNFS/flexfiles: make pg_init retry loops killable
+Date: Sun, 11 Oct 2026 00:18:38 +0200
+Message-ID: <20261010221839.42172-2-tigran.mkrtchyan@desy.de>
+X-Mailer: git-send-email 2.56.0
+In-Reply-To: <20261010221839.42172-1-tigran.mkrtchyan@desy.de>
+References: <20261010221839.42172-1-tigran.mkrtchyan@desy.de>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Content-Language: en-US
-To: stable@vger.kernel.org
-Cc: regressions@lists.linux.dev, Chuck Lever <cel@kernel.org>,
- Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
- linux-kernel@vger.kernel.org
-From: Lubos Rendek <l.rendek@proxmox.com>
-Subject: [REGRESSION] 7.2.4: nfsd sends CB_OFFLOAD with all-zero stateid,
- async NFSv4.2 COPY never completes
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-Bm-Milter-Handled: 55990f41-d878-4baa-be0a-ee34c49e34d2
-X-Bm-Transport-Timestamp: 1791660646761
+Content-Transfer-Encoding: 8bit
 
-Since 7.2.4, an NFSv4.2 server-side COPY between two exports of a Linux
-NFS server never completes, because nfsd sends CB_OFFLOAD with an
-all-zero stateid.
+When a task is killed while the pNFS client connects to a data server,
+nfs4_pnfs_ds_connect() fails with -ERESTARTSYS. If the layout has
+FF_FLAGS_NO_IO_THRU_MDS set, ff_layout_pg_init_read() cannot fall back
+to the MDS and retries after an uninterruptible ssleep. As the fatal
+signal stays pending, every new connect attempt is aborted the same
+way and the task loops forever without returning to user space:
 
-The client sends COPY, the server answers with a copy stateid, does the
-copy in the background and then reports completion in CB_OFFLOAD, but
-with a zeroed stateid. The client cannot match it to its pending COPY,
-so cp(1) waits in nfs42_proc_copy until killed, while the data is
-complete on the server. Nothing is logged on the server. This is a
-stable-only regression: mainline is fine.
+  # grep -E 'SigPnd|ShdPnd' /proc/156021/status
+  SigPnd: 0000000000000100
+  ShdPnd: 0000000000000100
 
-Details:
+  # cat /proc/156021/stack
+  msleep+0x2e/0x50
+  ff_layout_pg_init_read+0x267/0x310 [nfs_layout_flexfiles]
+  __nfs_pageio_add_request+0x1c1/0x480 [nfs]
+  nfs_pageio_add_request+0x21d/0x2c0 [nfs]
+  nfs_read_add_folio+0x143/0x200 [nfs]
+  nfs_readahead+0x204/0x290 [nfs]
+  read_pages+0x62/0x230
+  page_cache_ra_unbounded+0x136/0x180
+  filemap_get_pages+0xf2/0x350
+  filemap_read+0xd5/0x320
+  nfs_file_read+0x6d/0xc0 [nfs]
+  vfs_read+0x24f/0x3a0
+  __x64_sys_pread64+0x90/0xc0
+  do_syscall_64+0x5f/0xe0
 
-Tested with kernel.org kernels, all built with the same config, no
-out-of-tree modules, untainted:
+Previous attempt propagates the error from nfs4_ff_layout_prepare_ds(), but
+only ff_layout_{read,write}_pagelist() look at it. The pg_init functions
+test IS_ERR() and retry on any error.
 
-  7.2.3      works  (3 of 3)
-  7.2.4      hangs  (3 of 3)
-  7.2.9      hangs  (2 of 2)
-  6.18.55    hangs
-  7.3-rc6    works  (mainline)
-  6.12.112   copies synchronously here (128 x 4 MiB COPY, no
-             CB_OFFLOAD), so this reproducer does not reach the
-             async path
+Check for a fatal signal or an exiting task before sleeping in
+ff_layout_pg_init_read() and ff_layout_pg_init_write() and fail the I/O
+instead of retrying.
 
-Stateid in the COPY reply vs. in CB_OFFLOAD, from captures on the
-server:
+Fixes: f06bedfa62d5 ("pNFS/flexfiles: don't attempt pnfs on fatal DS errors")
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+---
+ fs/nfs/flexfilelayout/flexfilelayout.c | 23 ++++++++++++++++++++---
+ 1 file changed, 20 insertions(+), 3 deletions(-)
 
-  kernel   COPY reply                  CB_OFFLOAD
-  7.2.3    1 3456c76a717bdc2100000000  1 3456c76a717bdc2100000000
-  7.2.4    1 ef54c76a2dcf760401000000  0 000000000000000000000000
-  7.3-rc6  1 13efc76a9308445405000000  1 13efc76a9308445405000000
-  6.18.55  1 1011c86a7674335600000000  0 000000000000000000000000
-
-Cause, from reading the source: in 7.2.4, nfsd4_copy() duplicates the
-copy into async_copy before the copy stateid exists:
-
-    dup_copy_fields(copy, async_copy);
-
-    if (!nfs4_init_copy_state(nn, async_copy))
-        goto out_dec_async_copy_err;
-    memcpy(&result->cb_stateid, &async_copy->cp_stateid.cs_stid,
-        sizeof(result->cb_stateid));
-
-So the COPY reply gets the stateid, but async_copy->cp_res.cb_stateid
-stays zero, and nfsd4_send_cb_offload() builds the callback from
-async_copy->cp_res. 7.2.3 set up the stateid before dup_copy_fields().
-Mainline writes cb_stateid before duplicating, with the comment "dup
-after writing cb_stateid; duplicating first would leave the callback
-stateid zeroed."
-
-7.2.4 took six patches of the "nfsd: copy offload fixes" series, but
-not its restructuring patches. The reordering most likely came with:
-
-  14b978e8d05c ("nfsd: fix stale s2s_cp_stateids IDR entry for async COPY")
-
-which is d0beaee498e1 upstream. Mainline gets the right order with
-f307b4f7ed17 ("nfsd: split nfsd4_copy into transient and durable async
-copy objects"), which is not in any 7.2.y release. Not bisected. The
-same patches are in 6.18.50/6.18.51 (6.18.55 tested bad) and
-6.12.109/6.12.111.
-
-For confirmation, this minimal change on top of 7.2.4 makes the
-reproducer work here: the COPY stays async, and CB_OFFLOAD carries the
-same stateid as the COPY reply. It is only a lab test, not a proposed
-fix:
-
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -2238,6 +2238,8 @@
- 			goto out_dec_async_copy_err;
- 		memcpy(&result->cb_stateid, &async_copy->cp_stateid.cs_stid,
- 			sizeof(result->cb_stateid));
-+		memcpy(&async_copy->cp_res.cb_stateid, &async_copy->cp_stateid.cs_stid,
-+		       sizeof(async_copy->cp_res.cb_stateid));
- 		if ((READ_ONCE(copy->nf_dst->nf_file->f_mode) &
- 			       FMODE_NOCMTIME) != 0)
- 			async_copy->attr_update = true;
-
-Reproducer:
-
-  Server: two exports on two separate ext4 filesystems (also seen with
-  two ZFS datasets on a distribution kernel):
-
-    /srv/e1  <client>(rw,sync,no_subtree_check)
-    /srv/e2  <client>(rw,sync,no_subtree_check)
-
-  Client:
-
-    mount -t nfs -o vers=4 <server>:/srv/e1 /mnt/share1
-    mount -t nfs -o vers=4 <server>:/srv/e2 /mnt/share2
-    dd if=/dev/urandom of=/mnt/share1/big.bin bs=1M count=512
-    cp /mnt/share1/big.bin /mnt/share2/
-
-  cp blocks in nfs42_proc_copy, /mnt/share2/big.bin stays at 0 bytes
-  on the client. With vers=4.1 (no COPY) the copy works.
-
-Environment:
-
-  Server: x86_64 QEMU/KVM guest, Debian 13 (trixie) userspace
-    Linux version 7.2.4-stock (gcc (Debian 14.2.0-19) 14.2.0,
-    GNU ld (GNU Binutils for Debian) 2.44) #1 SMP PREEMPT_DYNAMIC
-  Client: Debian 13, 6.12.107+deb13-amd64
-
-  The 7.2.3 and 7.2.4 configs are identical apart from the version
-  line; the same config gives a working kernel on 7.2.3 and 7.3-rc6.
-
-  .config (7.2.4): https://bugzilla.proxmox.com/attachment.cgi?id=2161
-  dmesg (7.2.4):   https://bugzilla.proxmox.com/attachment.cgi?id=2162
-  captures:        https://bugzilla.proxmox.com/attachment.cgi?id=2160
-  full history:    https://bugzilla.proxmox.com/show_bug.cgi?id=8121
-
-First seen by a Proxmox VE user on its 7.0.14-20 kernel, which includes
-these stable patches.
-
-#regzbot introduced: v7.2.3..v7.2.4
-
-Thanks,
-Lubos Rendek
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 7fe8b91fa47c..c636983f1e12 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -961,6 +961,20 @@ ff_layout_get_ds_for_read(struct nfs_pageio_descriptor *pgio,
+ 						 offset, dss_id);
+ }
+ 
++/*
++ * Wait before retrying pg_init. Returns false, with pgio->pg_error set,
++ * if the task was killed or is exiting and must not retry.
++ */
++static bool ff_layout_pg_retry_wait(struct nfs_pageio_descriptor *pgio)
++{
++	if (fatal_signal_pending(current) || nfs_current_task_exiting()) {
++		pgio->pg_error = -ERESTARTSYS;
++		return false;
++	}
++	ssleep(1);
++	return true;
++}
++
+ static void
+ ff_layout_pg_get_read(struct nfs_pageio_descriptor *pgio,
+ 		      struct nfs_page *req,
+@@ -1062,7 +1076,8 @@ ff_layout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ 			goto out_mds;
+ 		pnfs_generic_pg_cleanup(pgio);
+ 		/* Sleep for 1 second before retrying */
+-		ssleep(1);
++		if (!ff_layout_pg_retry_wait(pgio))
++			return;
+ 		goto retry;
+ 	}
+ 
+@@ -1086,7 +1101,8 @@ ff_layout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ 		}
+ 		pgio->pg_error = 0;
+ 		/* Sleep for 1 second before retrying */
+-		ssleep(1);
++		if (!ff_layout_pg_retry_wait(pgio))
++			return;
+ 		goto retry;
+ 	}
+ out_mds:
+@@ -1141,7 +1157,8 @@ ff_layout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 				goto out_mds;
+ 			pnfs_generic_pg_cleanup(pgio);
+ 			/* Sleep for 1 second before retrying */
+-			ssleep(1);
++			if (!ff_layout_pg_retry_wait(pgio))
++				return;
+ 			goto retry;
+ 		}
+ 		pgm = &pgio->pg_mirrors[i];
+-- 
+2.56.0
 
