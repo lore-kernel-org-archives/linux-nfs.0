@@ -1,149 +1,236 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.8])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C1BA344F544;
-	Fri,  9 Oct 2026 19:41:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0597434A79D
+	for <linux-nfs@vger.kernel.org>; Sat, 10 Oct 2026 04:33:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=192.198.163.8
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791574876; cv=none; b=WWWlY4vVq2x8DAMiXe6XYoRNo4j91tHH7iDuqmlswS45g5CrjfHbfKCeamJe2vGfrNtHmz7e0gonf6GevhTrc8AaN8cmHPLHwd7iFxwsecGOHwDbV4QnNCIgWeL3CmxaFH8P8razRFLk7eApV/hNdaRyjOyuRcz7QdZ7KiE94FI=
+	t=1791606826; cv=none; b=ftpkXtg+3F2+uohsEH0sZ+0zj4hs9QUUvEdkLOvlcU8c9KwPcEe7kErOJF0ypsK84j9arUkeEkmfaA9lxeMBYwsK8KEZ2/YhTXTUh9wsH1p6mvvM22/t0ZNG94FIOCzffG4iSubkiI5+DkmcFb1Je/0+aRl+XnpW7uIVG3a5dyU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791574876; c=relaxed/simple;
-	bh=qE7MTt4BGcpRKDSoy2OHuGGL4066Bjr5wE12UIwf/nE=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=KS+vzD5rTuecha5nubaBTlLJMHM2iY1WeHtc/dECLbjKurT8H5A1WFn8snsKHBxiloOLPStu4IgNQTFqnx/QPqcb5m0KGHm9yHJxpXxnUwHXF9G9o9KVzwBXOA/VAz8YZ6e4Orly5nzF0Dqe62K9oxbaQuCz/xM0XcGFGuI1mOo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ePuKnpRi; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791606826; c=relaxed/simple;
+	bh=Ovuopj3ancVGepJBxH0p4IIedmQOa7Ldw3S6CpDi7EY=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=r7TIwedcLnEIUKlFSXDuPYYqiHieNYiIc0DYm+yi265iGPYF1OEtLMVxPy47gkbgA7OG4hx/9fbvu+YjSKbKC/AAuXsIrg78to0wWZEjH8gVrFBT/cbFieZ2LgqXkQ9sRxsDQ+yLVqargZNFfoJGOW/de3yrJ7ABPJ9C+tNtrvw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=dV4mTlnG; arc=none smtp.client-ip=192.198.163.8
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ePuKnpRi"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8EEE91F00898;
-	Fri,  9 Oct 2026 19:41:07 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791574867;
-	bh=0+HxdfpCd0lGOL923ZgNNScB6cTLzMhRAVhXSQOhDp4=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=ePuKnpRiUiEPUNtRZbZNduCO+pLQ7HKZmX5wkQMMrA7tV/3zgW8/tYGnFM9xDvPtp
-	 tjkqeoIoanPl1EGilMYxN6iXUQx5F21HgHuKOO1w+qREnYRRuKJRRKrkl31qWN/BRq
-	 P4VJeGDJjilhh9AiQC4NOeWOC4GDr3KuXeYPO25qJfS5Yg3b3un3YYNG4fVMHBSPjg
-	 zD4zRcV06yR1ey+HXzZW0Iaj+jWd9ZtpvSQ8ZvKyaCkqnDN3pSlkzEUidoC9FGttlH
-	 z6DvVGS87Pf3jzRTpeTKpwT0gYhRj18GJ7vBUAnp8ZlrrjWzs/Y4DFNtedvk93OfKL
-	 bfSDhKs5ZCeXw==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id E8B1DF40066;
-	Fri,  9 Oct 2026 15:41:06 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Fri, 09 Oct 2026 15:41:06 -0400
-X-ME-Sender: <xms:UkPJamwNxJGQbsJBEubJSZSZk_REJEtxKqwSp0mX9Hj6Rq4k-BqW5A>
-    <xme:UkPJatGSpxdzc3m3SXIsJhJ5Tb1VADTrWYMCWQ9djEdFBeHHayJsm0H_9R7iQQDQb
-    RbHDptH5VVKPpIHnEZBOxLlISMEKDQVcJL3pOZvF2t0DTSNyuuFfwOs>
-X-ME-Proxy-Cause: dmFkZTGSiTPAtGOtyP1wIURv6n+bh2o/hREy6sGtp6Q2MkIB9VDo2FvGtsNYUa3zd3f6pV
-    L12EIJzrM37cbua8bXoardeuVbn14dedg0NSt1KLN/Nz+SVLyn3Kcil3TRVuZiuveTEIrI
-    +5vVN7Clsjvuxlr0cwe36kT7+mihnjpUpy7CxnvkdU3sAWJ5im3IZ3SRkmT8900xwEQWsE
-    zobBoNDy3jCmeeGi3j3V3f36y1vCvIa42zd8AboJweM/WWdN/MLpm82sK9kqHYK/zqT9cl
-    XAGR/bFmKJ/9lZc5HZdlGM3hSsOj04Xgpvj6asdeof98rBUXAplKQysnrRdkp5wy9urAF7
-    1mbzTnKRGMpDEdrKQXilDxUGYMX0z0WKLzlxFy0LeFEaFcbCz8MNhjxcz8hEp6RZj4Lql8
-    Uj32/R8uyeKlnvgSFdPPr6jnQTET9YSXCMt9E+QgVrApS3urSqEuzYvCRnNb2L6tx0GESD
-    dVKgfK970SKdetubrKv/8ufHY/ucbU2X9tJEmUkwHlLL8987HdBGy+hdJA+S2tHw7kuCNb
-    dWv2aTE8qMD77JdiVx4/SYKvQl/+RdSHw3WTNnO+NsafGTQBs3ys1DnwmPWjCZ0vg96pLD
-    GIODp8rHkF51Ikd7/MEt8hebDeKlvEbYbQRyS9deegxcvbbAIEwfKi3+0wrQ
-X-ME-Proxy: <xmx:UkPJaiDRrW77RKgkjcocOmRcgYndEmoeW_QMfooSowjkbSUh1Z1Nbg>
-    <xmx:UkPJajBq0jiyZSYhfEY-1Kap_o2mkg1TfqAR8CR0QjEc20BS8Mezzg>
-    <xmx:UkPJajlhKFqzuho95n-IcFpoLhrK_csCP1CvhIwrY3lzOklNF1kNbA>
-    <xmx:UkPJajjnwMZRrE-pT9i-yUB1VEITmeNxOmSGdD7t-BvZI2EUE10hsg>
-    <xmx:UkPJatilbCEJzhvQ8oezqstFbaxGPoGyRKKsNwB5N56sd4a-HxcG91IT>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id C4A39780070; Fri,  9 Oct 2026 15:41:06 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="dV4mTlnG"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1791606826; x=1823142826;
+  h=date:from:to:cc:subject:message-id:references:
+   mime-version:in-reply-to;
+  bh=Ovuopj3ancVGepJBxH0p4IIedmQOa7Ldw3S6CpDi7EY=;
+  b=dV4mTlnGAVrboTuYbVk0bDJVQrZoxWCF+aEHvibBIRQ02v4kdSMeAvCw
+   /V/bf1HkQ/Hyy+i8PFDX4RNr3bM7aSUFUy2ZOVDFXCjDQkYEPCzsXIt/1
+   H3XiTqr+Wy1vD2pMk7jTlYTc+Nz+y+oUwBM0pYffUzfx+jWRR1FwXc6Qb
+   GI7n5xM9ui6kP9BtPhC8IM0AoqLcJQo8K90e4uLgNiQnC/PheK765niR0
+   F63JhX9lhVfB4cooCuu6DMESsfOqE/aziYR5Dfs1bKqE2ggogfy+t6Hjl
+   EFJALbtS3lbKYGr6XchgHp8Pzpk/j/SiTY8R3KGvZb9cs7LDlt77rE54G
+   g==;
+X-CSE-ConnectionGUID: Vkndq5B9R7mSYHZaTV/pxQ==
+X-CSE-MsgGUID: LU6irICKSumFe3jojy+lDQ==
+X-IronPort-AV: E=McAfee;i="6800,10657,11930"; a="297546"
+X-IronPort-AV: E=Sophos;i="6.27,149,1787036400"; 
+   d="scan'208";a="297546"
+Received: from fmviesa007.fm.intel.com ([10.60.135.147])
+  by fmvoesa102.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2026 21:33:45 -0700
+X-CSE-ConnectionGUID: ADYKFu3vTliZiSZEw0jAvQ==
+X-CSE-MsgGUID: AFU2TKwgRcOjP5T/Iz0GlQ==
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="6.27,149,1787036400"; 
+   d="scan'208";a="802521"
+Received: from lkp-server01.sh.intel.com (HELO 0caa9d2d175c) ([10.239.97.150])
+  by fmviesa007.fm.intel.com with ESMTP; 09 Oct 2026 21:33:42 -0700
+Received: from kbuild by 0caa9d2d175c with local (Exim 4.98.2)
+	(envelope-from <lkp@intel.com>)
+	id 1xFOmB-000000006U7-1mFK;
+	Sat, 10 Oct 2026 04:33:39 +0000
+Date: Sat, 10 Oct 2026 12:33:03 +0800
+From: kernel test robot <lkp@intel.com>
+To: Chuck Lever <cel@kernel.org>, NeilBrown <neilb@ownmail.net>,
+	Jeff Layton <jlayton@kernel.org>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <dai.ngo@oracle.com>, Tom Talpey <tom@talpey.com>
+Cc: oe-kbuild-all@lists.linux.dev, linux-nfs@vger.kernel.org,
+	syzbot+9c7b9c5f6dd1d470b605@syzkaller.appspotmail.com
+Subject: Re: [PATCH v1] NFSD: Don't start nfsd threads from a pool_threads
+ write
+Message-ID: <202610101235.HaenlCPb-lkp@intel.com>
+References: <20261009144017.1284586-1-cel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: A2C7vSpxgoAN
-Date: Fri, 09 Oct 2026 15:40:46 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Tim Menninger" <tmenninger@everpuredata.com>,
- "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>
-Cc: "Olga Kornievskaia" <okorniev@redhat.com>, "Tom Talpey" <tom@talpey.com>,
- linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
- linux-kernel@vger.kernel.org, "Eric Badger" <ebadger@everpuredata.com>,
- "Jon Curley" <jcurley@everpuredata.com>,
- "Yongjian Mu" <ymu@everpuredata.com>, stable@vger.kernel.org
-Message-Id: <e62ff502-be18-454e-8a64-80b366d477f4@app.fastmail.com>
-In-Reply-To: <20261009181554.2280374-1-tmenninger@everpuredata.com>
-References: <20261009181554.2280374-1-tmenninger@everpuredata.com>
-Subject: Re: [PATCH] xprtrdma: trim head iovec when the payload arrives via a Write
- chunk
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261009144017.1284586-1-cel@kernel.org>
+
+Hi Chuck,
+
+kernel test robot noticed the following build errors:
+
+[auto build test ERROR on brauner-vfs/vfs.all]
+[also build test ERROR on linus/master v7.3-rc6 next-20261008]
+[If your patch is applied to the wrong git tree, kindly drop us a note.
+And when submitting patch, we suggest to use '--base' as documented in
+https://git-scm.com/docs/git-format-patch#_base_tree_information]
+
+url:    https://github.com/intel-lab-lkp/linux/commits/Chuck-Lever/NFSD-Don-t-start-nfsd-threads-from-a-pool_threads-write/20261009-104017
+base:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git vfs.all
+patch link:    https://lore.kernel.org/r/20261009144017.1284586-1-cel%40kernel.org
+patch subject: [PATCH v1] NFSD: Don't start nfsd threads from a pool_threads write
+config: parisc64-defconfig (https://download.01.org/0day-ci/archive/20261010/202610101235.HaenlCPb-lkp@intel.com/config)
+compiler: hppa64-linux-gcc (GCC) 16.1.0
+reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20261010/202610101235.HaenlCPb-lkp@intel.com/reproduce)
+
+If you fix the issue in a separate patch/commit (i.e. not just a new version of
+the same patch/commit), kindly add following tags
+| Reported-by: kernel test robot <lkp@intel.com>
+| Closes: https://lore.kernel.org/oe-kbuild-all/202610101235.HaenlCPb-lkp@intel.com/
+
+All errors (new ones prefixed by >>):
+
+   In file included from include/linux/log2.h:12,
+                    from include/asm-generic/div64.h:55,
+                    from ./arch/parisc/include/generated/asm/div64.h:1,
+                    from include/linux/math.h:6,
+                    from include/linux/math64.h:6,
+                    from include/linux/time64.h:5,
+                    from include/linux/restart_block.h:9,
+                    from include/linux/thread_info.h:14,
+                    from include/asm-generic/preempt.h:5,
+                    from ./arch/parisc/include/generated/asm/preempt.h:1,
+                    from include/linux/preempt.h:107,
+                    from include/linux/spinlock.h:56,
+                    from include/linux/mmzone.h:8,
+                    from include/linux/gfp.h:7,
+                    from include/linux/slab.h:17,
+                    from fs/nfsd/nfsctl.c:8:
+   fs/nfsd/nfsctl.c: In function 'write_pool_threads':
+>> fs/nfsd/nfsctl.c:504:48: error: 'nn' undeclared (first use in this function)
+     504 |         if (size > 0 && test_bit(NFSD_NET_UP, &nn->flags)) {
+         |                                                ^~
+   include/linux/bitops.h:44:44: note: in definition of macro 'bitop'
+      44 |           __builtin_constant_p((uintptr_t)(addr) != (uintptr_t)NULL) && \
+         |                                            ^~~~
+   fs/nfsd/nfsctl.c:504:25: note: in expansion of macro 'test_bit'
+     504 |         if (size > 0 && test_bit(NFSD_NET_UP, &nn->flags)) {
+         |                         ^~~~~~~~
+   fs/nfsd/nfsctl.c:504:48: note: each undeclared identifier is reported only once for each function it appears in
+   include/linux/bitops.h:44:44: note: in definition of macro 'bitop'
+      44 |           __builtin_constant_p((uintptr_t)(addr) != (uintptr_t)NULL) && \
+         |                                            ^~~~
+   fs/nfsd/nfsctl.c:504:25: note: in expansion of macro 'test_bit'
+     504 |         if (size > 0 && test_bit(NFSD_NET_UP, &nn->flags)) {
+         |                         ^~~~~~~~
 
 
+vim +/nn +504 fs/nfsd/nfsctl.c
 
-On Fri, Oct 9, 2026, at 2:15 PM, Tim Menninger wrote:
-> From: Yongjian Mu <ymu@everpuredata.com>
->
-> The upper layer sets rq_rcv_buf.head[0].iov_len from its estimate of the
-> reply header size. For RPCSEC_GSS that estimate includes
-> auth->au_ralign, which gss_create_new() initializes to GSS_VERF_SLACK >>
-> 2 (25 XDR words, or 100 bytes) and which is corrected to the real
-> verifier size only after the first reply on that rpc_auth has been
-> unwrapped. In this case, the krb5 MIC verifier is 36 bytes, so every
-> request encoded before the first reply completes has a head that is 64
-> bytes too long.
->
-> On TCP this is harmless: xdr_realign_pages() moves the excess head
-> bytes, which are genuine reply data, into the page list. With
-> RPC-over-RDMA and a Write chunk (sec=krb5, i.e. RPC_GSS_SVC_NONE, where
-> DDP is allowed), the payload has already been placed directly into the
-> page list, and the receive buffer holds only the inline part of the
-> reply. rpcrdma_inline_fixup() clamps its local copy of the head length
-> to the inline length but leaves head.iov_len untouched, so
-> xdr_realign_pages() still sees iov_len > cur and shifts whatever lies
-> past the inline reply in the receive buffer into the front of the
-> directly-placed payload:
->
->   rpc_xdr_recvfrom:  head=[...,196] page=524288 tail=[...,64]
->   rpc_xdr_alignment: nfsv4 READ offset=132 copied=64
->
-> The first 64 bytes returned by each such READ are incorrect (zeroed, or
-> shifted right by 64 bytes depending on the kernel's xdr_shrink_bufhead()
-> implementation). This is readily hit with pNFS flexfiles over RDMA and
-> sec=krb5: the per-DS rpc_clnt gets a fresh rpc_auth whose first RPC is a
-> large READ. Reads following the first completed reply return the
-> expected data.
->
-> Commit cb0ae1fbb2f5 ("xprtrdma: Do not update {head, tail}.iov_len in
-> rpcrdma_inline_fixup()") removed the head-length correction while fixing
-> the handling of pure-inline krb5p replies.
->
-> When a Write chunk conveyed the payload, trim head.iov_len (in both
-> rq_rcv_buf and rq_private_buf, which call_decode() expects to match) to
-> the inline length actually received so that the XDR layer does not
-> realign the page list. Pure inline replies and Reply chunk replies are
-> unchanged.
+   449	
+   450	/*
+   451	 * write_pool_threads - Set or report the configured number of threads per pool
+   452	 *
+   453	 * Input:
+   454	 *			buf:		ignored
+   455	 *			size:		zero
+   456	 *
+   457	 * OR
+   458	 *
+   459	 * Input:
+   460	 *			buf:		C string containing whitespace-
+   461	 *					separated unsigned integer values
+   462	 *					representing the number of NFSD
+   463	 *					threads to start in each pool
+   464	 *			size:		non-zero length of C string in @buf
+   465	 * Output:
+   466	 *	On success:	passed-in buffer filled with '\n'-terminated C
+   467	 *			string containing integer values representing the
+   468	 *			configured number of NFSD threads in each pool;
+   469	 *			return code is the size in bytes of the string
+   470	 *	On error:	return code is zero or a negative errno value
+   471	 */
+   472	static ssize_t write_pool_threads(struct file *file, char *buf, size_t size)
+   473	{
+   474		/* if size > 0, look for an array of number of threads per node
+   475		 * and apply them  then write out number of threads per node as reply
+   476		 */
+   477		char *mesg = buf;
+   478		int i;
+   479		int rv;
+   480		int len;
+   481		int npools;
+   482		int *nthreads;
+   483		struct net *net = netns(file);
+   484	
+   485		mutex_lock(&nfsd_mutex);
+   486		npools = nfsd_nrpools(net);
+   487		if (npools == 0) {
+   488			/*
+   489			 * NFS is shut down.  The admin can start it by
+   490			 * writing to the threads file but NOT the pool_threads
+   491			 * file, sorry.  Report zero threads.
+   492			 */
+   493			mutex_unlock(&nfsd_mutex);
+   494			strcpy(buf, "0\n");
+   495			return strlen(buf);
+   496		}
+   497	
+   498		nthreads = kzalloc_objs(int, npools);
+   499		rv = -ENOMEM;
+   500		if (nthreads == NULL)
+   501			goto out_free;
+   502	
+   503		/* Threads started now would run without NFSv4 state. */
+ > 504		if (size > 0 && test_bit(NFSD_NET_UP, &nn->flags)) {
+   505			for (i = 0; i < npools; i++) {
+   506				rv = get_int(&mesg, &nthreads[i]);
+   507				if (rv == -ENOENT)
+   508					break;		/* fewer numbers than pools */
+   509				if (rv)
+   510					goto out_free;	/* syntax error */
+   511				rv = -EINVAL;
+   512				if (nthreads[i] < 0)
+   513					goto out_free;
+   514				trace_nfsd_ctl_pool_threads(net, i, nthreads[i]);
+   515			}
+   516	
+   517			/*
+   518			 * There must always be a thread in pool 0; the admin
+   519			 * can't shut down NFS completely using pool_threads.
+   520			 */
+   521			if (nthreads[0] == 0)
+   522				nthreads[0] = 1;
+   523	
+   524			rv = nfsd_set_nrthreads(i, nthreads, net);
+   525			if (rv)
+   526				goto out_free;
+   527		}
+   528	
+   529		rv = nfsd_get_nrthreads(npools, nthreads, net);
+   530		if (rv)
+   531			goto out_free;
+   532	
+   533		mesg = buf;
+   534		size = SIMPLE_TRANSACTION_LIMIT;
+   535		for (i = 0; i < npools && size > 0; i++) {
+   536			snprintf(mesg, size, "%d%c", nthreads[i], (i == npools-1 ? '\n' : ' '));
+   537			len = strlen(mesg);
+   538			size -= len;
+   539			mesg += len;
+   540		}
+   541		rv = mesg - buf;
+   542	out_free:
+   543		kfree(nthreads);
+   544		mutex_unlock(&nfsd_mutex);
+   545		return rv;
+   546	}
+   547	
 
-pNFS flexfiles exposes this issue because a per-DS rpc_clnt gets a fresh
-rpc_auth, and its first RPC can be a large READ.
-
-On the MDS mount (and on non-pNFS mounts) the first GSS reply is a small
-non-DDP operation. The RPC client corrects the auth slack value before
-any READ can occur.
-
-Reviewed-by: Chuck Lever <cel@kernel.org>
-
-Nit: The kernel-doc still says the upper layer's per-component maximums
-live in head.iov_len and buflen, implying the transport leaves them alone.
-That rule was set by commit cb0ae1fbb2f5.
-
-But the inline fixup function now lowers both in rq_rcv_buf and
-rq_private_buf when a Write chunk is present. The commit message should
-mention that, and/or the kdoc should explain why Write chunks are a safe
-exception to that rule.
-
-Anna/Trond, does the NFS client or XDR code rely on the reply-side kvec
-lengths staying as set during send preparation, or might there be an
-in-tree reader of head[0].iov_len on the post-receive path that I missed?
-
-
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+--
+0-DAY CI Kernel Test Service
+https://github.com/intel/lkp-tests/wiki
