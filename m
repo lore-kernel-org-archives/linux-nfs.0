@@ -1,63 +1,64 @@
-Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.8])
+Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.14])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0597434A79D
-	for <linux-nfs@vger.kernel.org>; Sat, 10 Oct 2026 04:33:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=192.198.163.8
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5FEE837CD33
+	for <linux-nfs@vger.kernel.org>; Sat, 10 Oct 2026 06:11:05 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.175.65.14
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791606826; cv=none; b=ftpkXtg+3F2+uohsEH0sZ+0zj4hs9QUUvEdkLOvlcU8c9KwPcEe7kErOJF0ypsK84j9arUkeEkmfaA9lxeMBYwsK8KEZ2/YhTXTUh9wsH1p6mvvM22/t0ZNG94FIOCzffG4iSubkiI5+DkmcFb1Je/0+aRl+XnpW7uIVG3a5dyU=
+	t=1791612668; cv=none; b=O6h5cQSNPD7KMm4pIb38iLgTo9LcmMMr8bLvefv9+/7/x8geynKvHDHKCupLnecRb5PJitUtSNI2xZuDykyDMBwFdE2Bflzri9wMUhJO0b184NgYCg4strmcT+mkSV2m6AcWlx0tSwfC7xQNMgvlB0THWtnlnqgUBf3aKNBTHzs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791606826; c=relaxed/simple;
-	bh=Ovuopj3ancVGepJBxH0p4IIedmQOa7Ldw3S6CpDi7EY=;
+	s=arc-20240116; t=1791612668; c=relaxed/simple;
+	bh=wpblAJc6Odww8wRDHBiwoFtswZS0nDjQzcO+QlkNqKI=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=r7TIwedcLnEIUKlFSXDuPYYqiHieNYiIc0DYm+yi265iGPYF1OEtLMVxPy47gkbgA7OG4hx/9fbvu+YjSKbKC/AAuXsIrg78to0wWZEjH8gVrFBT/cbFieZ2LgqXkQ9sRxsDQ+yLVqargZNFfoJGOW/de3yrJ7ABPJ9C+tNtrvw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=dV4mTlnG; arc=none smtp.client-ip=192.198.163.8
+	 Content-Type:Content-Disposition:In-Reply-To; b=Yi7y5qzEyns/GPe/loM/wW9CDGnZGkP4Sn1LpR6NMISTywQ+OO+V/LAzhEnEx00peQ0pQbWOi7Ot0ur9ZhRFRbLBU4rnMc5vp93+yG8xbTm5M1TChlHy1roiW9FAz0+Y4YIQpnyPfgQ4sLLzhqC3I0qISu0Gr/VtlBDCN1IeyBo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=VDIwbMOz; arc=none smtp.client-ip=198.175.65.14
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="dV4mTlnG"
+	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="VDIwbMOz"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
   d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1791606826; x=1823142826;
+  t=1791612666; x=1823148666;
   h=date:from:to:cc:subject:message-id:references:
    mime-version:in-reply-to;
-  bh=Ovuopj3ancVGepJBxH0p4IIedmQOa7Ldw3S6CpDi7EY=;
-  b=dV4mTlnGAVrboTuYbVk0bDJVQrZoxWCF+aEHvibBIRQ02v4kdSMeAvCw
-   /V/bf1HkQ/Hyy+i8PFDX4RNr3bM7aSUFUy2ZOVDFXCjDQkYEPCzsXIt/1
-   H3XiTqr+Wy1vD2pMk7jTlYTc+Nz+y+oUwBM0pYffUzfx+jWRR1FwXc6Qb
-   GI7n5xM9ui6kP9BtPhC8IM0AoqLcJQo8K90e4uLgNiQnC/PheK765niR0
-   F63JhX9lhVfB4cooCuu6DMESsfOqE/aziYR5Dfs1bKqE2ggogfy+t6Hjl
-   EFJALbtS3lbKYGr6XchgHp8Pzpk/j/SiTY8R3KGvZb9cs7LDlt77rE54G
+  bh=wpblAJc6Odww8wRDHBiwoFtswZS0nDjQzcO+QlkNqKI=;
+  b=VDIwbMOzFsrCTwbpiPJGV1HAWjgnUR39qvLaVo4AZJUR3fwY7sbay1/t
+   x88z+OW9sbnzoELPka7GW5+HThVEClC5XRvzTblcBkSBctZgphMeQUklG
+   ETjSk8dTe6z162B3KQEAkjSXjBCchrEU8Xi0EFwV+TqTYHo/UFHHbLS8H
+   RM1++bxnjjvTcH86IyGhH0PG+r3/+Y2Lh2m5ZVBhbdSGS22f6UARJrhH6
+   oCZKCAnDi9RzR5BFf7O0kAHWIWq28p0sEYmie3EyftNFvwBsnzoePrd31
+   mi6o7HnFAMd6FguXApcGPT/tMSJ5IihpPbWBqvM8MJWBIcs6vH2iwfuG+
    g==;
-X-CSE-ConnectionGUID: Vkndq5B9R7mSYHZaTV/pxQ==
-X-CSE-MsgGUID: LU6irICKSumFe3jojy+lDQ==
-X-IronPort-AV: E=McAfee;i="6800,10657,11930"; a="297546"
+X-CSE-ConnectionGUID: ynM3Y8HZTDKrRkXjgPRr+g==
+X-CSE-MsgGUID: 5Lc2i/BNRCWxpJFpbdhcVQ==
+X-IronPort-AV: E=McAfee;i="6800,10657,11930"; a="285481"
 X-IronPort-AV: E=Sophos;i="6.27,149,1787036400"; 
-   d="scan'208";a="297546"
-Received: from fmviesa007.fm.intel.com ([10.60.135.147])
-  by fmvoesa102.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2026 21:33:45 -0700
-X-CSE-ConnectionGUID: ADYKFu3vTliZiSZEw0jAvQ==
-X-CSE-MsgGUID: AFU2TKwgRcOjP5T/Iz0GlQ==
+   d="scan'208";a="285481"
+Received: from orviesa008.jf.intel.com ([10.64.159.148])
+  by orvoesa106.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2026 23:11:05 -0700
+X-CSE-ConnectionGUID: X++7SABlT7a8Xa0owoSNaQ==
+X-CSE-MsgGUID: VbcRJbsOQ/Sj9WhAAZxrjQ==
 X-ExtLoop1: 1
 X-IronPort-AV: E=Sophos;i="6.27,149,1787036400"; 
-   d="scan'208";a="802521"
+   d="scan'208";a="408167"
 Received: from lkp-server01.sh.intel.com (HELO 0caa9d2d175c) ([10.239.97.150])
-  by fmviesa007.fm.intel.com with ESMTP; 09 Oct 2026 21:33:42 -0700
+  by orviesa008.jf.intel.com with ESMTP; 09 Oct 2026 23:11:03 -0700
 Received: from kbuild by 0caa9d2d175c with local (Exim 4.98.2)
 	(envelope-from <lkp@intel.com>)
-	id 1xFOmB-000000006U7-1mFK;
-	Sat, 10 Oct 2026 04:33:39 +0000
-Date: Sat, 10 Oct 2026 12:33:03 +0800
+	id 1xFQIN-000000006Yl-44fb;
+	Sat, 10 Oct 2026 06:10:59 +0000
+Date: Sat, 10 Oct 2026 14:10:41 +0800
 From: kernel test robot <lkp@intel.com>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neilb@ownmail.net>,
 	Jeff Layton <jlayton@kernel.org>,
 	Olga Kornievskaia <okorniev@redhat.com>,
 	Dai Ngo <dai.ngo@oracle.com>, Tom Talpey <tom@talpey.com>
-Cc: oe-kbuild-all@lists.linux.dev, linux-nfs@vger.kernel.org,
+Cc: llvm@lists.linux.dev, oe-kbuild-all@lists.linux.dev,
+	linux-nfs@vger.kernel.org,
 	syzbot+9c7b9c5f6dd1d470b605@syzkaller.appspotmail.com
 Subject: Re: [PATCH v1] NFSD: Don't start nfsd threads from a pool_threads
  write
-Message-ID: <202610101235.HaenlCPb-lkp@intel.com>
+Message-ID: <202610101401.uliqHtVY-lkp@intel.com>
 References: <20261009144017.1284586-1-cel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -83,50 +84,33 @@ url:    https://github.com/intel-lab-lkp/linux/commits/Chuck-Lever/NFSD-Don-t-st
 base:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git vfs.all
 patch link:    https://lore.kernel.org/r/20261009144017.1284586-1-cel%40kernel.org
 patch subject: [PATCH v1] NFSD: Don't start nfsd threads from a pool_threads write
-config: parisc64-defconfig (https://download.01.org/0day-ci/archive/20261010/202610101235.HaenlCPb-lkp@intel.com/config)
-compiler: hppa64-linux-gcc (GCC) 16.1.0
-reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20261010/202610101235.HaenlCPb-lkp@intel.com/reproduce)
+config: loongarch-defconfig (https://download.01.org/0day-ci/archive/20261010/202610101401.uliqHtVY-lkp@intel.com/config)
+compiler: clang version 24.0.0git (https://github.com/llvm/llvm-project 242243a5814307de825db3428662d67b064e2cbc)
+reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20261010/202610101401.uliqHtVY-lkp@intel.com/reproduce)
 
 If you fix the issue in a separate patch/commit (i.e. not just a new version of
 the same patch/commit), kindly add following tags
 | Reported-by: kernel test robot <lkp@intel.com>
-| Closes: https://lore.kernel.org/oe-kbuild-all/202610101235.HaenlCPb-lkp@intel.com/
+| Closes: https://lore.kernel.org/oe-kbuild-all/202610101401.uliqHtVY-lkp@intel.com/
 
 All errors (new ones prefixed by >>):
 
-   In file included from include/linux/log2.h:12,
-                    from include/asm-generic/div64.h:55,
-                    from ./arch/parisc/include/generated/asm/div64.h:1,
-                    from include/linux/math.h:6,
-                    from include/linux/math64.h:6,
-                    from include/linux/time64.h:5,
-                    from include/linux/restart_block.h:9,
-                    from include/linux/thread_info.h:14,
-                    from include/asm-generic/preempt.h:5,
-                    from ./arch/parisc/include/generated/asm/preempt.h:1,
-                    from include/linux/preempt.h:107,
-                    from include/linux/spinlock.h:56,
-                    from include/linux/mmzone.h:8,
-                    from include/linux/gfp.h:7,
-                    from include/linux/slab.h:17,
-                    from fs/nfsd/nfsctl.c:8:
-   fs/nfsd/nfsctl.c: In function 'write_pool_threads':
->> fs/nfsd/nfsctl.c:504:48: error: 'nn' undeclared (first use in this function)
+>> fs/nfsd/nfsctl.c:504:41: error: use of undeclared identifier 'nn'
      504 |         if (size > 0 && test_bit(NFSD_NET_UP, &nn->flags)) {
          |                                                ^~
-   include/linux/bitops.h:44:44: note: in definition of macro 'bitop'
-      44 |           __builtin_constant_p((uintptr_t)(addr) != (uintptr_t)NULL) && \
-         |                                            ^~~~
-   fs/nfsd/nfsctl.c:504:25: note: in expansion of macro 'test_bit'
+>> fs/nfsd/nfsctl.c:504:41: error: use of undeclared identifier 'nn'
      504 |         if (size > 0 && test_bit(NFSD_NET_UP, &nn->flags)) {
-         |                         ^~~~~~~~
-   fs/nfsd/nfsctl.c:504:48: note: each undeclared identifier is reported only once for each function it appears in
-   include/linux/bitops.h:44:44: note: in definition of macro 'bitop'
-      44 |           __builtin_constant_p((uintptr_t)(addr) != (uintptr_t)NULL) && \
-         |                                            ^~~~
-   fs/nfsd/nfsctl.c:504:25: note: in expansion of macro 'test_bit'
+         |                                                ^~
+>> fs/nfsd/nfsctl.c:504:41: error: use of undeclared identifier 'nn'
      504 |         if (size > 0 && test_bit(NFSD_NET_UP, &nn->flags)) {
-         |                         ^~~~~~~~
+         |                                                ^~
+>> fs/nfsd/nfsctl.c:504:41: error: use of undeclared identifier 'nn'
+     504 |         if (size > 0 && test_bit(NFSD_NET_UP, &nn->flags)) {
+         |                                                ^~
+>> fs/nfsd/nfsctl.c:504:41: error: use of undeclared identifier 'nn'
+     504 |         if (size > 0 && test_bit(NFSD_NET_UP, &nn->flags)) {
+         |                                                ^~
+   5 errors generated.
 
 
 vim +/nn +504 fs/nfsd/nfsctl.c
