@@ -1,62 +1,62 @@
-Received: from mail-wm1-f49.google.com (mail-wm1-f49.google.com [209.85.128.49])
+Received: from mail-wm1-f48.google.com (mail-wm1-f48.google.com [209.85.128.48])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EA43F3C2B8F
-	for <linux-nfs@vger.kernel.org>; Sun, 11 Oct 2026 05:29:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.49
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B79363CA4AD
+	for <linux-nfs@vger.kernel.org>; Sun, 11 Oct 2026 05:29:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.48
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791696588; cv=none; b=Y7v6jb0EzgIKXM7U4QRcY6vVa8Vc9rL+B2mrFYs047OfHTyQN7+TnmRQGErN1XmRm44YSuiScDqqaJeHvtmm5pd7fA+SiIguboO8svWo5ViAhLeynTvIlAc+gZm3y+GFa2n1yUJUMKkXXZ4c8rg+vZPejaNIYx9QJ5hcyw/noqA=
+	t=1791696595; cv=none; b=b83LY7St5Sf/OSCIDD161eXnWrd8qwr+l1jms2V9eLlO6HAzO6CBpTjJmC6fRELNn/AjXDQ/stfsBUFTuU4SIvgAqk622q/FqkQlwI8JQzBnjoUr5zsPGtzzD428GhcqMiMHlLxA5K2J556MCmutNGz0vCXCuXIWcPv5ESiNN7o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791696588; c=relaxed/simple;
-	bh=sIbRso6W6WqLNYE6yLPCDLJ+kUhhHofo7p2mjFJFouk=;
+	s=arc-20240116; t=1791696595; c=relaxed/simple;
+	bh=1haV4dNMWDdQWqZsUuA0TFAZtQMdcpLXPmSnhiji0ao=;
 	h=From:To:Cc:Subject:Message-ID:In-Reply-To:References:Date:
-	 MIME-Version:Content-Type; b=PfhlSu0wRdB81Es9lqYA+PyzFY8lnnsoOa7sJdQLYv8Rz/R6ZfFWcvfel08LpDVHxsIcSaKiS5ut309atSSzOEYxEoxfvazMIDGpkwzH2UT28+/4BJgOlrv/uOMIFk1+Nq7mcAvL3kexKz8IwnmyqLx5VyVbA3MoysRgKzHActU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=innovatrics.com; spf=pass smtp.mailfrom=innovatrics.com; dkim=pass (1024-bit key) header.d=innovatrics.com header.i=@innovatrics.com header.b=eqefMXFC; arc=none smtp.client-ip=209.85.128.49
+	 MIME-Version:Content-Type; b=uPyiX0RYcdQe7v9Hwq1SRHNoIKOcCUa22e7aUOGAFqWKNOm6BUqejwdF5t8oIp6mwVa45ZeBokndgB9i7ALAOkUc1juid4rNepjijq8QTqQ1UAx/B+HXe7MoIfYf1ne4KNzxj2gXFWZ5SnjH3fsb/XgQe1TbDmUBmi+LLSFPz+Q=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=innovatrics.com; spf=pass smtp.mailfrom=innovatrics.com; dkim=pass (1024-bit key) header.d=innovatrics.com header.i=@innovatrics.com header.b=sG+ClBZE; arc=none smtp.client-ip=209.85.128.48
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=innovatrics.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=innovatrics.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=innovatrics.com header.i=@innovatrics.com header.b="eqefMXFC"
-Received: by mail-wm1-f49.google.com with SMTP id 5b1f17b1804b1-4a16af2a232so7701915e9.1
-        for <linux-nfs@vger.kernel.org>; Sat, 10 Oct 2026 22:29:46 -0700 (PDT)
+	dkim=pass (1024-bit key) header.d=innovatrics.com header.i=@innovatrics.com header.b="sG+ClBZE"
+Received: by mail-wm1-f48.google.com with SMTP id 5b1f17b1804b1-4a166199820so5244305e9.1
+        for <linux-nfs@vger.kernel.org>; Sat, 10 Oct 2026 22:29:53 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=innovatrics.com; s=google; t=1791696585; x=1792301385; darn=vger.kernel.org;
+        d=innovatrics.com; s=google; t=1791696592; x=1792301392; darn=vger.kernel.org;
         h=content-type:mime-version:date:references:in-reply-to:message-id
          :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=EwJQAcrSA8vm2/QDhj4tfogkpVMYET7O/tmaR0Uw6Xg=;
-        b=eqefMXFCtMdjqzxlckHAdKhdWg45OVbq12RRfTeUnpr5REQeBjRlA4pvRF/8tX2SrU
-         DOxrr52H3C0AgyMCvq5wtF1r/IYYnEersFGO9EFi3Iu2k1HLsXzNf4IT+bWUR2+wVoJj
-         xl41LRWS6re51wj+N3vj+nJQOwbAQxAPdTARg=
+        bh=q2LSr6tsQNBQXJylfG8nOPgyPFtDzDbVgLjnyN+NvOY=;
+        b=sG+ClBZEZshyYL12WpUA8gi5U4p3Lf2TUW5h8eG3RZVknGgosp9xUBym2Jg7on3Bti
+         u3YWy87k/lf3MT3ptjbhL28yBia/RGwBWim2B6spsjnWSKbqf/PRWIODLjHoWquV6rf6
+         lWE+oxJb1L+70J2GVpC844oToN87Xc7V4+zzg=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791696585; x=1792301385;
+        d=1e100.net; s=20260707; t=1791696592; x=1792301392;
         h=content-type:mime-version:date:references:in-reply-to:message-id
          :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=EwJQAcrSA8vm2/QDhj4tfogkpVMYET7O/tmaR0Uw6Xg=;
-        b=klMGw0j9ObJR8zlD/HIzbU1DHVrx6LNBYGJTeBBuLWgisZn3UgmP+BVNhK77+ErzAf
-         /8Gb9xZi8D4QOGZRmhe7gQFEoS2Cy8mjtA5zNRI94lTUqVC26BkkA54q+j3SMZ7CIffu
-         8h0ADY12zQrYV94/XYzuAzqs3YWk0N61WQqQ3TV/NGt4in+9bbrr93tui9bnmWB/NaaW
-         zus/9LEXkUCoGyPMCIJdFiPFl4o68IzZbVXIQDmBKjDjyN/6Bd9t+gJotAXXi6msDGMO
-         VThtwSBcXhXQ1KAjv3mvTeQBd1M2NzUpNtG97/DBZwU6pLAP5M7kwQUody8OhTYQ9YcR
-         HnEg==
-X-Forwarded-Encrypted: i=1; AKwUvBwW1NQcXx+4tCBxD9VGvJ/96ZqfmwavGLQ12zp6XKQm5KhNSnPZphquoUgG05w/SoWVy4TH0C7Mls4=@vger.kernel.org
-X-Gm-Message-State: AFq9FYIQHM9dT3n7KicA05PO9rziIO6zfsUb4Usqyjxsc9Z/W6O7D+IK
-	IrLk0Jv3cX+WV2Gu+3R+sRnbx72GZ1asWNkmK4c8YeisZ+Vi0YKNAZ31yNnozOenNw==
-X-Gm-Gg: AYBFou1rSi7NpeE2k4dC/qa+oVsFAajhhGagtmKpEzbvh/hvTD3SJP/MsnwibLK335b
-	FrPnOdpuyFElaeKFfNyRGyewezkrZ5pWwbDB1AM8+xjn0mBFadUJZfF3BPPA6mp8u8CwgC0FYau
-	7cQmF3s4TeGwtr412+Z1wdGqdEykjqCgYAq6s/vsp9KVCuRKYC2wL+a3DfEC2rSuhak3DRwuNYX
-	3fiSK44H/+96smU3o3Gu8k0MP8breLG+13dJDywoh6A9EtgaMqEGreZmohLVlj2/L6mIy6XU2fP
-	xPVn8ZQtM2waGiJNvisXNsTEhbvySL09L6dBmGFr6TMtIbjqavK5mTg1+r4OESQHnAoLcxtKiH7
-	DjhHzM3++ljFd9rBc6TpBhlVHl3uL0L78VygejcaNQHuhWzXeXmRLGofmxBO9QQ7Dq7Ins7I32/
-	zxnuRLxHrb2t2Irzu+haUGij2pHxDOese2zUX1rF9YtnZpbTfJtUcyRHV5HXi4G6A60gTUYLViU
-	cSyn8e9rDxRiIPRlyZOBHx4UeyRMWN4zwCTnh/icc+vUCXjDHSd2S6fKyQ8b302CFuDUfPrBDSS
-	7O17qFMgsD2GzOl+NI7mnMLpivkYIJY=
-X-Received: by 2002:a05:600c:e558:20b0:4a1:946c:953f with SMTP id 5b1f17b1804b1-4a1946c9744mr30278845e9.20.1791696585122;
-        Sat, 10 Oct 2026 22:29:45 -0700 (PDT)
+        bh=q2LSr6tsQNBQXJylfG8nOPgyPFtDzDbVgLjnyN+NvOY=;
+        b=EGzycpyveyLWqKpaTewKgIdS69jYKIgQ5gzAjewTX8EWV1d5sm+WdoyocvJn0DoZHk
+         PYQcI0ZYtXwB8GaNN/juoX1WzC9ltF5C1VPuTQfAH6YxcI4JuXo7FnarI1sgGFufYpXB
+         1l7QyRCCWKAu0TOCiHF9nwclgFjMdeIVla9d0wkgpYaMR/YyT6vdLxKTb+xaYZnVUHNs
+         6vPVQldKXrQZrnCco49RDAg1R4GPrJXJE+oLF6+q/oyA1wrw8/M49HIaMf4ygdg2Fmuk
+         /qB5CVVHrDVHsbqtYuF/KqRr/GH4GDOcta+w93jMrYonEEET9tLhBCfdrnc8/aKbJPGr
+         VMEQ==
+X-Forwarded-Encrypted: i=1; AKwUvBxWpL8dAmoWxleXHQz3AVoWGce77ydnWA9iIgkpdxSod/gxPXHVN4RIWcnOjs9u7DAB3ogTaENxaKI=@vger.kernel.org
+X-Gm-Message-State: AFq9FYItjUAk227rMh30imdPmZywzgTJMx0YwwvoH+sxZn+41rvpVjPX
+	/rwrnpg1Z9w6MQsM6Q253gCUpJrixPlxTtjtJ/yjAY68igI1lBwHilct+eLviEa+bg==
+X-Gm-Gg: AYBFou3w2a1+v6DQxI+Xc+BUxvydOnPDIbaKG8A4RQMGJ5MT/vznNCL8pvx/MGNYDCy
+	IcbO/yEtgtmvdIA0uzSGukhqstlUU5fdL8wlAuZC2muMqepp9v/3mMZcw5wBMnIErwMMcKuHsQe
+	LMz7O7xX+DgM/wiZQ3kUxrjLM+EyM5+earp2eUaF+2ibfQyFR1uHlT/xVSQ+w2Ou9a5VvbB5qH3
+	cT/eUNdR2DiieJ5BibXe4LrXe9VBxARzblu+djowKZDehsyRpNJeFrWeGCbFNVXO+6kNqEvrfRy
+	N59Xl6d9JxqbvUvAmO2qj8xCyh/Rv45T92gVc082w9Ha1beD7qLIHThNaQdoLRKZJFdr2oVpgzT
+	sZDrafEOD6yyvfumkbBTcD+mzg8XZAN1k0mXxNpt4pbT4Ug/scVpZfg7dYho0lMGSKLFcHmdliD
+	9HKKZFrJ3bDlx0o3Z794+qCz8DuEHlGAPIiv0jjQebupU5lUsBqbHLf+iuvXTUUzubr7oFsO9J5
+	nMtEhtuH7dMBzfmQA8pJUfHq5zc7WJtcOx6u7PTQdsrmsYwwFCi8u3gXywaE/C41snrLwr9L8Pu
+	vTdq6IL0A62+i5/7NFlTHeiz59Nf0cg=
+X-Received: by 2002:a05:600c:3146:b0:4a0:34a:588c with SMTP id 5b1f17b1804b1-4a18e4a7cb9mr117216165e9.14.1791696591843;
+        Sat, 10 Oct 2026 22:29:51 -0700 (PDT)
 Received: from [10.11.72.5] (bip-static-148.213-81-147.telecom.sk. [213.81.147.148])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4a193f2c992sm107606015e9.5.2026.10.10.22.29.44
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4a18bea0f1csm277235065e9.9.2026.10.10.22.29.50
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 10 Oct 2026 22:29:44 -0700 (PDT)
+        Sat, 10 Oct 2026 22:29:51 -0700 (PDT)
 From: Petr Chmelar <petr.chmelar@innovatrics.com>
 To: David Howells <dhowells@redhat.com>
 Cc: Christian Brauner <christian@brauner.io>,
@@ -76,13 +76,12 @@ Cc: Christian Brauner <christian@brauner.io>,
     v9fs@lists.linux.dev,
     linux-fsdevel@vger.kernel.org,
     linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v12 4/5] cachefiles: Don't rely on backing fs storage map
- for most use cases
-Message-ID: <20261011.cachefiles-partial-zeros.pchmelar@innovatrics.com>
-In-Reply-To: <20260910220242.2165023-5-dhowells@redhat.com>
+Subject: Re: [PATCH v12 0/5] netfs, cachefiles: Changes for next, primarily
+ occupancy tracking-related
+Message-ID: <20261011.cachefiles-seek-hole-walk.pchmelar@innovatrics.com>
+In-Reply-To: <20260910220242.2165023-1-dhowells@redhat.com>
 References: <20260910220242.2165023-1-dhowells@redhat.com>
- <20260910220242.2165023-5-dhowells@redhat.com>
-Date: Sun, 11 Oct 2026 05:29:43 +0000
+Date: Sun, 11 Oct 2026 05:29:50 +0000
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -93,73 +92,78 @@ Content-Type: text/plain; charset="utf-8"
 
 Hi David,
 
-With this patch, reading a file whose cache object is only partly
-filled returns wrong data, mostly whole 64 KiB blocks of zeros.  A
-second full read returns the same wrong blocks.  It reproduces over
-NFS and 9p on vfs-7.4.netfs (9f8b64f66).  Over 9p it bisects to this
-patch, 13e340e397 in that branch; over NFS its parent is clean and the
-branch tip is not.
+The cover letter leaves non-contiguous objects, which still use
+SEEK_DATA/SEEK_HOLE, for a later series.  We hit that case badly in
+production, so here are numbers in case they help with its priority.
 
-#regzbot introduced: 13e340e397
+Objects get into that state when a large file is read at random
+offsets, as training jobs do with data sets on NFS.  Each read is
+copied to the cache at its own offset, and with other files being
+cached at the same time most pieces end up in separate XFS extents.  The
+object is BACKFS_MAP from the first discontiguous write and stays so
+once it has filled in.
 
-Reproducer: random 64 KiB reads covering half of a 256 MiB file of
-random data, then a full read after dropping the page cache, compared
-with the original per 64 KiB block:
+SEEK_HOLE has no upper bound.  On XFS, iomap_seek_hole() calls
+xfs_seek_iomap_begin() once per extent until it finds a hole, and in a
+fully populated object the only hole is EOF.  cachefiles probes the
+occupancy at least once per read request, so a sequential read of such
+an object walks the rest of its extent list for every readahead batch.
 
-  fio --name=half --filename=/mnt/part.bin --rw=randread --bs=64k \
-      --ioengine=psync --fadvise_hint=random --size=256m --io_size=128m \
-      --randrepeat=1
-  sync; echo 3 > /proc/sys/vm/drop_caches
-  cmp /mnt/part.bin /path/to/original
+On our NFS clients (Ubuntu, v6.8, cache on XFS), a sequential read of a
+fully cached 184 GB object with 1,080,732 extents ran at 0.4 MB/s.  In
+a 15 s trace of one of the affected readers, each SEEK_HOLE took 64 ms
+to 1 s, XFS did 58.5 million extent lookups, and nothing was read from
+the server.  After xfs_fsr brought the object down to a few hundred
+extents, a traced read of it ran at 369 MB/s from the cache.  On
+another machine, v6.14 does the same walk at about 220 ns per extent,
+against 520 ns on v6.8.
 
-Setup: QEMU 8.2.2 (TCG, 4 vCPUs), cache on a fresh XFS on a loop device
-(2 GiB for 9p, 4 GiB for NFS), cachefilesd 0.10.10 with brun 10%, bcull
-7%, bstop 3%, fio 3.36.  Mounts:
+It's the same on vfs-7.4.netfs (9f8b64f66).  In QEMU (TCG, 4 vCPUs),
+over an NFSv4.2 loopback mount with fsc and the cache on XFS, a 1 GiB
+object filled by random 64 KiB reads, while a second file is filled
+the same way, ends up with about 16,300 extents.  A sequential read of
+it after dropping the page cache makes 4,098 SEEK_HOLE calls that take
+176 s in total, and runs at 4.3 MiB/s.
 
-  NFS: NFSv4.2 loopback export of a tmpfs, vers=4.2,fsc,actimeo=1
-  9p:  trans=virtio,version=9p2000.L,cache=fscache,msize=1048576
+To confirm that the walk is the whole problem, I wrote a naive
+workaround with LLM assistance.  I don't know the cachefiles and netfs
+internals well, so take it as a probe rather than a proposal:
 
-Wrong 64 KiB blocks out of 4096, first full read / second full read:
+ - Each cachefiles_object remembers the last region that SEEK_DATA/
+   SEEK_HOLE found to be contiguous data.  cachefiles_query_occupancy()
+   answers a query that starts inside that region without seeking, and
+   overlapping or abutting regions merge.  A sequential read then pays
+   for one walk instead of one per request.
 
-  kernel                mount     wrong       all zeros
-  v7.3-rc6              9p        0 / 0       0
-  e0aa90eb8c            9p        0 / 0       0
-  98e0cd700d (parent)   9p        0 / 0       0
-  98e0cd700d (parent)   NFS       0 / 0       0
-  13e340e397 (this)     9p        936 / 936   825
-  8097a263bd (merge)    9p        936 / 936   825
-  9f8b64f66             9p        936 / 936   825
-  9f8b64f66             NFS       817 / 817   817
-  9f8b64f66             9p loose  0 / 0       0
+ - The region is forgotten after every place where cachefiles removes
+   data from a backing file: the punch on low space in
+   __cachefiles_prepare_write(), the padding clear and the truncation in
+   cachefiles_collect_write(), cachefiles_shorten_object() and
+   invalidation.  A sequence number sampled before the seeks stops a
+   query that raced with a removal from recording what it saw, and
+   cookie->inval_counter ties the region to the backing file.
 
-  "9p loose" is the 9p mount with cache=loose, without fscache.
+In the same test, the workaround makes one SEEK_HOLE call taking 61 ms,
+and the read runs at 17 MiB/s.  A debug build that checked every
+remembered answer against a fresh SEEK_DATA/SEEK_HOLE saw no mismatch in
+more than 7,000 checks over NFS and 9p.  It only helps fully or mostly
+populated objects read in order; random reads of a partly cached object
+still seek.
 
-On 9f8b64f66 over 9p, three runs gave the same counts and the same
-first wrong blocks.  The first wrong blocks are 10, 13, 15, 24, 26 and
-27 over 9p, and 50, 51, 53, 54, 55 and 56 over NFS.
+I expect the right fix is for cachefiles to track what it has written
+itself, as CONTENT_ALL now does for contiguous files, rather than
+something like the above.  I can send the workaround if it's useful as
+a reference, and I'm happy to test whatever you plan for this case on
+our workload.
 
-Two more observations, in case they help:
+While testing it I hit a data corruption on partly cached objects that
+bisects to patch 4/5 of this series and reproduces without the
+workaround; I've reported it in a reply to that patch:
 
- - Over 9p, after the random fill and both full reads, the backing
-   object has 451 extents with this patch and 28 on v7.3-rc6 (37 on
-   98e0cd700d).
+  https://lore.kernel.org/r/20261011.cachefiles-partial-zeros.pchmelar@innovatrics.com
 
- - Over NFS on 9f8b64f66, the fscache counters after the fill and both
-   full reads are IO rd=371 wr=2189.  I haven't traced whether the
-   zeros come from reads over holes in the backing file or from what
-   was written to it.
-
-Over NFS, a server-side rewrite of the file (invalidation) and a shrink
-and regrow through the mount both read back correctly on 9f8b64f66 and
-98e0cd700d.
-
-I found this while testing a workaround for slow reads from fragmented
-cache objects, which I describe in a reply to the cover letter:
-
-  https://lore.kernel.org/r/20261011.cachefiles-seek-hole-walk.pchmelar@innovatrics.com
-
-It reproduces without that workaround.  The reproducer and the
-bisection were done with LLM assistance.
+The numbers on vfs-7.4.netfs and the debug cross-check were also
+produced with LLM assistance.
 
 Thanks,
 Petr
