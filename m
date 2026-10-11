@@ -1,981 +1,217 @@
-Received: from mail-ej1-f51.google.com (mail-ej1-f51.google.com [209.85.218.51])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A433942B324
-	for <linux-nfs@vger.kernel.org>; Sun, 11 Oct 2026 09:41:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.51
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791711705; cv=pass; b=kvVFbDbSo9X/vRV9aMDmdw6gLUh6fG21/UJ+U6CjXiDIgdT1784MC5skmBoYKx1sqHEpbW6kmKuUnhUt9tcAMTAd1XUFejDcrEYwR/HCvFaPy8RSAmQuIxuquZ3mk9LAPZZ2QgUWV2DHIXGC8QSI1CATLh7zuYJ05fcfBQ8maJw=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791711705; c=relaxed/simple;
-	bh=+0/wC2P1sBiZBSlz4MO89ZW9Q1VNULVBR4nQmWrzLBE=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=lgJ2mK/RM7HAqPeZGWIrFWVpYsaDCRz8Mb9DW3RYN9qYDo9S4Bgjw/IgpmK9R7y+OUXy/dJ+V3w9tYulWqSd2Cb1zA+kTEOoNRZNPzGpn4vzjZs4U6OFcgkPeG1nLfFK8cLGnFYZbHpjq1hK+6ViVCejDHSFzVke+Bb4aXsHimM=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=OYUVDWDD; arc=pass smtp.client-ip=209.85.218.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 968093CF022;
+	Sun, 11 Oct 2026 12:07:39 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1791720464; cv=none; b=Vjs+aTWr/TzvFSCQc+yaku9feYiV+qOlc0Swf6C9Unq9Bi9w1lmzlyVI+/tyD4xfhM84scveSeCXDapedrIMS7qlaseoOxaTrKcGPlyTy6SLku2ZQhyWfUzl6RNDIBZlVle/Gyu7L6bYcNIlchFhd+cZ4siDuaJ9xQfbssl5NDw=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1791720464; c=relaxed/simple;
+	bh=7N2q9l5nBXyZzPAwAnlgHaJXYTaIxTpsZkpSTN5koro=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=FkwGhx3rBVc2aq1M3j9pHK8Ngilh9ib8rYNMmsyVwpkh/5RCrl0KnN6XsQWtO1Bm+IaHMynKc4MljfunxnVklXdqjuV0eI/Wm8lCA/Cr3ceaRjvViyb30gBluX4BdCKinmNen09+pQ9srNLiPfqk7Ry4wdmTW4JQ9CBnyNVJRfU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Wy3JL97O; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OYUVDWDD"
-Received: by mail-ej1-f51.google.com with SMTP id a640c23a62f3a-c2dc63f8d8aso174146666b.0
-        for <linux-nfs@vger.kernel.org>; Sun, 11 Oct 2026 02:41:42 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1791711701; cv=none;
-        d=google.com; s=arc-20260327;
-        b=OkePhaQaejjcvu16jVHiGLG28LjV0K75OURwX8UlaJZUDAdBlxJix+nbxUEW7OKbt8
-         4IS8S4elfaTxaUVIm5kvvi9McgrkuuyxLZHi+INSwyXnbTLoZ2KJaLofC30Ka4+exbFs
-         q6NY4LIiDSVuUcSHboBMzRk9eRMmavkVZtFcMV6sowDdM5ZNUNMTPW11l6LSB96a3CaS
-         qAdKXQSbZfB41QEC1TnLQlKBSPv0wf8ly4nF3UrIDNmImflLrzFjcUyde0Za17KLrx+z
-         gf2LsCVv/Uif2KYV6aPRRdoQkO3EbKphCYQKEqDCP51FINCZZGbidVriGdjCWHmCQZ0s
-         o7Yg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=ZA0UDoj8CNA0VByif2bup5iXTFjD+81/G74dWuGFqT0=;
-        fh=a1YeqGAUch5LOLmR4fcsD5q8uKp1zOhgvbXsEjBPNhg=;
-        b=JlUr3gtxp7ZGLkomq+xAAzl5yKpW0ia3mssq1lw0xOPyfzm+AW19LGMcRFaZDHyUng
-         trrt1QZrX/B8VGNhSLxXwv8ZS2h/RIv2oauRwRfWaP8k5vWpcpoQ1k8JH2dpT1YhN7tb
-         VcQ7P2Ro+tTbqGhKCAJ3RvPUvzDe4Lgjp1yCqu/LCgNA69Dj2aDCOMo+OWJUoiOQN+Zn
-         h+osufh2OrQFChZxDwH3SuY2tR9NtKIJKo3Y3JazYV+Gt9v0DPxUd24CH/FtuybL8U75
-         G76tXfKs18qcugFCBDgbdfTwMJ9fZLnS33SeRiifUhs9jBdWLV3X6JvZSB3w56uZE7uQ
-         0i5w==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1791711701; x=1792316501; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=ZA0UDoj8CNA0VByif2bup5iXTFjD+81/G74dWuGFqT0=;
-        b=OYUVDWDD5wegLFEwJKjCgr3D3TdKQSaSlUioHO9nCG8gMsiEl3zbiDcd/7fjfPbzWs
-         Ixw/79Vc7pSk0I5axV8uHf98drV2LiFodNkNwZebapa0/06Pgo30U2roIUPZ2QN/QdZX
-         Lg/CCGlHxZvIZjaefk9JxqTLJe8dRrp1lCXjfW2rtMXZ/NlIG10sTnM/j0knUcoas05W
-         8FJChaZUcgZ48M9bNvLkvPVxZkejbTAlX9S/khZKLp9WawjuvXhnrOKxPD2rg7KsyNNQ
-         BYojAUvqGKEcapdu2p/sVV0u5PkAYZcCBkBtHU7zBiu5RAIUH3a7DlhZfmiYLeVG+930
-         wdMg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791711701; x=1792316501;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=ZA0UDoj8CNA0VByif2bup5iXTFjD+81/G74dWuGFqT0=;
-        b=aFj8ASLR94ZBQ3te5b8PcUmnp974ETpf1U04NH254oLg4Qf+oyMoyI18NyqDSI4vCq
-         kRxP8AfFYJUXBjhNSpZSRDI+Yz8nL69Fps0jSpEivSIlnoH0KJ5cPCQBaOf8QgU1T7pq
-         QmpnpI/TRvxlYOCp/7CSsRUPPjZS/43+tTD+aW0r8llJnzaT/UNC9vbr9C/HKNsUcUZz
-         b/6pCw/jssZ1Awp0Zp0WlJxYNFS1SnsfKmkiCX9d4Fdf249UHUvopnygUgriGw3oEwkd
-         rf/2oFk7uyzLGJxLvjwei/ZZioJiEGNoxkJZhNYGf8pfeXyidU1VYqcfKY4WbYP4fvbX
-         XQqQ==
-X-Forwarded-Encrypted: i=1; AKwUvByXMG9aml7Xp8EGDqVcg+ZulTOh2Wa/p/Q2MgSKCUH2zl3IplnUmUoHOjjbAc0iV4WFnszZfX3CiMg=@vger.kernel.org
-X-Gm-Message-State: AFq9FYJDvLw96t1I8DOikWpD455FNZXSsBYWHDpBGvES/1fEuYPDGeyJ
-	GwNUwzLyLWHeWrR/q0QVvJPJPs+/cb2S9wpxlAVjPNalcgUvTMVrDk0ev0gF//1CQbt4Pemi46h
-	tLQQopheYCD2mzWxqKX3okyB1u1Ot1QI=
-X-Gm-Gg: AYBFou2AZKAR89zP5Gnt2hZTPmu+x7CMyA3v/6V51fFpj+NVsz+IplQ5XqdbyJrVBRI
-	2Wm0odW6LsEfttXMAKxAsWX1cWlAd8cg+McfPAnVjP70ONGdfttHaNCeKA926wyRkJev+qrOaiK
-	XT5ERx+UfUguqXIa6Rf9iAKntXpfJqaGm/ifcUrfeoAF+3zasQGNO4GS9PQOX1G7Qumgsej5KhD
-	bhAl8O49iIqC+Di5ZrPx3yy1ribiCSaybRC/P1hN+a4xP60rMy1iU+7dxxUio7kX+K/a5IjsBY7
-	qD9LOFAtcm5SLUNCT0vryHomMYFg24hPZM/TXz0FsqOg8N1WQUDryStWnmK91OfUBaOYhKyKS3b
-	AlqFmd/YL0t5D
-X-Received: by 2002:a17:907:3f8d:b0:c2c:d06f:cf87 with SMTP id
- a640c23a62f3a-c31aa0d3106mr630522266b.46.1791711700455; Sun, 11 Oct 2026
- 02:41:40 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Wy3JL97O"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8B60C1F0089B;
+	Sun, 11 Oct 2026 12:07:38 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1791720459;
+	bh=1/BM11TaH1DkAq8nCc5GVlPtgZDkWqiFYSD/goVwjiI=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=Wy3JL97OVL1UrMF5h243ciRiSvtZzn3Kfy7DPC0jPU3sgCSjJDA1zio3xOlx2gmDb
+	 WMQvLH9jhis3283wxN5wkxbbK/EcOArvIsu+GfHJ9v5P9uSeAlzaBTWXrQW+Ktdpyo
+	 kdUpNZjQ8TRhISq33VOUk2PPv1EqfDQOPNVdZoy8CQT2QNn7nombG2VtmTW+Clif5M
+	 s2CKowx8xn0vZ04u2p43d/noAn3vIMfRh/e77dhK7KsZsI3kfxYZK3R7g5t3MLVW2R
+	 oaBnXRH4AOjDvAZHdIWW4zv+qLEcJU98++gAElxvv5kE6k+8QGpsaSyvytYTPnQaB0
+	 as1sg0/3JdzPQ==
+Message-ID: <1eca2a80d8e90375682adeadcaf8b007ae2cc720.camel@kernel.org>
+Subject: Re: [REGRESSION] 7.2.4: nfsd sends CB_OFFLOAD with all-zero
+ stateid, async NFSv4.2 COPY never completes
+From: Jeff Layton <jlayton@kernel.org>
+To: Greg KH <gregkh@linuxfoundation.org>, Lubos Rendek <l.rendek@proxmox.com>
+Cc: stable@vger.kernel.org, regressions@lists.linux.dev, Chuck Lever
+	 <cel@kernel.org>, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Sun, 11 Oct 2026 08:07:36 -0400
+In-Reply-To: <2026101121-staining-scheme-358a@gregkh>
+References: <7cc824c4-632d-49df-ae5e-cfcbb5bf76ad@proxmox.com>
+	 <2026101121-staining-scheme-358a@gregkh>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-2.fc44) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20261009-acl-mode-v3-0-ba487c5e66e0@kernel.org> <20261009-acl-mode-v3-8-ba487c5e66e0@kernel.org>
-In-Reply-To: <20261009-acl-mode-v3-8-ba487c5e66e0@kernel.org>
-From: =?UTF-8?Q?Aur=C3=A9lien_Couderc?= <aurelien.couderc2002@gmail.com>
-Date: Sun, 11 Oct 2026 11:40:00 +0200
-X-Gm-Features: AclHuK9FIMe7pGhc-LWE7eoAz369yY2Jjmr0aPeJ2gkMCRNOQWFcheXweT5G_i4
-Message-ID: <CA+1jF5pyuVULzoAjbfCLDjwwOwHQP7sG29G-dkG9ZSOdVShHWg@mail.gmail.com>
-Subject: Re: [PATCH pynfs v3 8/9] Add tests for SETATTR with MODE and ACL
-To: Chuck Lever <cel@kernel.org>
-Cc: Calum Mackay <calum.mackay@oracle.com>, linux-nfs@vger.kernel.org, 
-	Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 
-What about testing FATTR4_MODE_SET_MASKED too? IMO this is a better
-way to set the mode, because it is atomic and might fit better with
-ACLs because it only sets intended mode bits.
+On Sun, 2026-10-11 at 09:19 +0200, Greg KH wrote:
+> On Sun, Oct 11, 2026 at 06:30:40AM +1100, Lubos Rendek wrote:
+> > Since 7.2.4, an NFSv4.2 server-side COPY between two exports of a Linux
+> > NFS server never completes, because nfsd sends CB_OFFLOAD with an
+> > all-zero stateid.
+>=20
+> Can you just use git bisect to determine the offending commit?
+>=20
+> And is this also the same for 7.3-rc?
+>=20
+>=20
 
-Aur=C3=A9lien
+I took a look: I believe this is a bug in 14b978e8d05c ("nfsd: fix
+stale s2s_cp_stateids IDR entry for async COPY"), which is d0beaee498e1
+in mainline.
 
-On Fri, Oct 9, 2026 at 6:35=E2=80=AFPM Chuck Lever <cel@kernel.org> wrote:
->
-> From: Chuck Lever <chuck.lever@oracle.com>
->
-> Add comprehensive tests that verify SETATTR behavior when both
-> mode bits and an ACL are set simultaneously. The new tests cover:
->
-> 1. SATT19: testSetattrModeWithACL
->  - Sets MODE and ACL in a single SETATTR, once each with a MODE the
->    ACL widens (0o640, 0o600) and one more restrictive than the ACL
->    grants (0o400)
->  - Verifies both attributes appear in attrsset, the ACL is stored as
->    given, and the final mode is derived from the ACL rather than
->    taken from the requested MODE
-> 2. SATT22: testSetattrACLThenMode
->  - Compares setting MODE+ACL together vs separately in sequence
->  - Creates two files and verifies consistent behavior
->
-> These tests ensure that servers correctly handle the interaction
-> between MODE and ACL attributes when setting file attributes, and
-> verify that the ACL specified in the OPEN operation matches the ACL
-> after the OPEN completes.
->
-> SETATTR: ACL-to-mode verification tests
->
-> These new tests verify:
->
-> - Mode is correctly derived from ACL per RFC 8881 =C2=A76.3.2
-> - Write bit requires both ACE4_WRITE_DATA and ACE4_APPEND_DATA
-> - ACL evaluation order (first ACE takes precedence)
-> - EVERYONE@ ACEs affect all three permission classes
-> - Complex ACLs with multiple identifiers
->
-> SETATTR: Two additional ACL verification tests
->
-> New test SATT28: Verify that the final ACL is the same no matter what
-> the file's previous mode bits were.
->
-> New test SATT29: Verify that SETATTR(ACL) preserves high-order mode
-> bits (SUID/SGID/SVTX).
->
-> SETATTR: Verify behavior when setting both MODE and ACL
->
-> Add three comprehensive tests that verify SETATTR(MODE+ACL) behavior
-> per RFC 8881 =C2=A76.4.1.3:
->
-> SATT30:
-> Verify attrsset bitmap and final mode consistency when MODE+ACL set
-> together. The server must report both MODE and ACL in attrsset, and
-> the final mode must match what the ACL derives to per =C2=A76.4.1.3.
->
-> SATT31:
-> Test MODE+ACL interaction when they conflict significantly.
-> Regardless of requested MODE, final mode always matches ACL
-> derivation. This shows that ACL wins when both are set (per
-> =C2=A76.4.1.3: "possibly changing the final mode").
->
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  nfs4.0/servertests/st_setattr.py | 728 +++++++++++++++++++++++++++++++++=
-+++++-
->  1 file changed, 727 insertions(+), 1 deletion(-)
->
-> diff --git a/nfs4.0/servertests/st_setattr.py b/nfs4.0/servertests/st_set=
-attr.py
-> index 5d51054c29b4..2dd496503f48 100644
-> --- a/nfs4.0/servertests/st_setattr.py
-> +++ b/nfs4.0/servertests/st_setattr.py
-> @@ -1,9 +1,10 @@
->  from xdrdef.nfs4_const import *
->  from .environment import check, get_invalid_utf8strings
->  from nfs4lib import bitmap2list, dict2fattr
-> -from xdrdef.nfs4_type import nfstime4, settime4
-> +from xdrdef.nfs4_type import nfstime4, settime4, nfsace4
->  import nfs_ops
->  op =3D nfs_ops.NFS4ops()
-> +import nfs4acl
->
->  def _set_mode(t, c, file, stateid=3DNone, msg=3D" using stateid=3D0",
->                warnlist=3D[]):
-> @@ -783,3 +784,728 @@ def testMixed(t, env):
->      c.init_connection()
->      fh, stateid =3D c.create_confirm(t.word(), deny=3DOPEN4_SHARE_DENY_N=
-ONE)
->      _set_mixed(t, c, fh)
-> +
-> +def testSetattrModeWithACL(t, env):
-> +    """SETATTR with both MODE and ACL attributes
-> +
-> +    Per RFC 8881 Section 6.4.1.3, when both MODE and ACL are set togethe=
-r,
-> +    both are processed, but the final mode is derived from the ACL and m=
-ay
-> +    differ from the requested MODE. The requested MODE is varied from on=
-e
-> +    that the ACL widens to one more restrictive than the ACL grants.
-> +
-> +    FLAGS: setattr acl all
-> +    DEPEND: MODE ACL0
-> +    CODE: SATT19
-> +    """
-> +    c =3D env.c1
-> +    c.init_connection()
-> +    acl =3D nfs4acl.make_test_acl()
-> +
-> +    for mode in (0o640, 0o600, 0o400):
-> +        fh, stateid =3D c.create_confirm(t.word() + (b"_%o" % mode))
-> +
-> +        # Set both MODE and ACL in a single SETATTR
-> +        attrs =3D {FATTR4_MODE: mode, FATTR4_ACL: acl}
-> +        ops =3D c.use_obj(fh) + [c.setattr(attrs)]
-> +        res =3D c.compound(ops)
-> +        check(res, msg=3D"SETATTR with MODE 0%o and ACL" % mode)
-> +
-> +        # Check which attributes were actually set by examining the repl=
-y bitmask
-> +        attrsset =3D bitmap2list(res.resarray[-1].attrsset)
-> +
-> +        # Verify both MODE and ACL were set (processed)
-> +        if FATTR4_MODE not in attrsset:
-> +            t.fail("MODE not in attrsset, but MODE 0%o was requested" % =
-mode)
-> +        if FATTR4_ACL not in attrsset:
-> +            t.fail("ACL not in attrsset, but ACL was requested with MODE=
- 0%o"
-> +                   % mode)
-> +
-> +        # Verify ACL was set correctly and the mode derived from it
-> +        attrs_dict =3D c.do_getattrdict(fh, [FATTR4_ACL, FATTR4_MODE])
-> +        try:
-> +            nfs4acl.verify_mode_and_acl(attrs_dict, acl,
-> +                                        "SETATTR with MODE 0%o" % mode)
-> +        except AssertionError as e:
-> +            t.fail(str(e))
-> +
-> +def testSetattrACLThenMode(t, env):
-> +    """SETATTR MODE+ACL together vs ACL then MODE separately
-> +
-> +    Per RFC 8881 sections 6.4.1.1-6.4.1.3, when MODE and ACL are set
-> +    together in a single SETATTR, the server computes the final mode
-> +    from the ACL (the MODE attribute is effectively ignored). When
-> +    ACL is set first and MODE is set in a separate operation, the
-> +    final mode is the explicitly-set MODE value.
-> +
-> +    This test verifies this difference by using a MODE (0o755) that
-> +    differs from the ACL-derived mode (0o644).
-> +
-> +    FLAGS: setattr acl all
-> +    DEPEND: MODE ACL0
-> +    CODE: SATT22
-> +    """
-> +    from nfs4acl import acl2mode_rfc8881
-> +    c =3D env.c1
-> +    c.init_connection()
-> +
-> +    # Create two test files
-> +    fh1, stateid1 =3D c.create_confirm(t.word() + b"_1")
-> +    fh2, stateid2 =3D c.create_confirm(t.word() + b"_2")
-> +
-> +    # make_test_acl() derives to mode 0o644 (rw-r--r--)
-> +    acl =3D nfs4acl.make_test_acl()
-> +    acl_derived_mode =3D acl2mode_rfc8881(acl)
-> +
-> +    # Use a different mode to demonstrate the RFC-defined difference
-> +    explicit_mode =3D 0o755
-> +
-> +    # File 1: Set MODE and ACL together
-> +    # Per RFC 8881 Section 6.4.1.2, mode is derived from ACL (MODE ignor=
-ed)
-> +    attrs =3D {FATTR4_MODE: explicit_mode, FATTR4_ACL: acl}
-> +    ops =3D c.use_obj(fh1) + [c.setattr(attrs)]
-> +    res =3D c.compound(ops)
-> +    check(res, msg=3D"SETATTR with MODE and ACL together")
-> +
-> +    # File 2: Set ACL first, then MODE separately
-> +    # Per RFC 8881 Section 6.4.1.1, final mode is the explicit MODE valu=
-e
-> +    ops =3D c.use_obj(fh2) + [c.setattr({FATTR4_ACL: acl})]
-> +    res =3D c.compound(ops)
-> +    check(res, msg=3D"SETATTR with ACL")
-> +
-> +    ops =3D c.use_obj(fh2) + [c.setattr({FATTR4_MODE: explicit_mode})]
-> +    res =3D c.compound(ops)
-> +    check(res, msg=3D"SETATTR with MODE after ACL")
-> +
-> +    # Verify the modes differ as expected per RFC 8881
-> +    attrs1 =3D c.do_getattrdict(fh1, [FATTR4_MODE, FATTR4_ACL])
-> +    attrs2 =3D c.do_getattrdict(fh2, [FATTR4_MODE, FATTR4_ACL])
-> +
-> +    mode1 =3D attrs1[FATTR4_MODE] & 0o777
-> +    mode2 =3D attrs2[FATTR4_MODE] & 0o777
-> +
-> +    # File 1 (MODE+ACL together): mode should be derived from ACL
-> +    if mode1 !=3D acl_derived_mode:
-> +        t.fail("MODE+ACL together: expected ACL-derived mode 0%o, got 0%=
-o"
-> +               % (acl_derived_mode, mode1))
-> +
-> +    # File 2 (ACL then MODE): mode should be explicit MODE value
-> +    if mode2 !=3D explicit_mode:
-> +        t.fail("ACL then MODE: expected explicit mode 0%o, got 0%o"
-> +               % (explicit_mode, mode2))
-> +
-> +def testSetattrACLModeDeriveBasic(t, env):
-> +    """SETATTR(ACL) should derive mode per RFC 8881 Section 6.3.2
-> +
-> +    Test basic mode derivation from ACL when setting ACL alone.
-> +    The mode's permission bits should match what is computed from the AC=
-L.
-> +
-> +    FLAGS: setattr acl all
-> +    DEPEND: MODE ACL0
-> +    CODE: SATT23
-> +    """
-> +    from nfs4acl import acl2mode_rfc8881
-> +    c =3D env.c1
-> +    c.init_connection()
-> +
-> +    fh, stateid =3D c.create_confirm(t.word())
-> +
-> +    # Create ACL: OWNER@ gets read+write+execute, others get nothing
-> +    acl =3D [
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA | AC=
-E4_EXECUTE,
-> +                b"OWNER@"),
-> +        nfsace4(ACE4_ACCESS_DENIED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA | AC=
-E4_EXECUTE,
-> +                b"GROUP@"),
-> +        nfsace4(ACE4_ACCESS_DENIED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA | AC=
-E4_EXECUTE,
-> +                b"EVERYONE@")
-> +    ]
-> +
-> +    # Set ACL only (not MODE)
-> +    ops =3D c.use_obj(fh) + [c.setattr({FATTR4_ACL: acl})]
-> +    res =3D c.compound(ops)
-> +    check(res, msg=3D"SETATTR with ACL only")
-> +
-> +    # Get resulting mode
-> +    attrs =3D c.do_getattrdict(fh, [FATTR4_MODE, FATTR4_ACL])
-> +    returned_mode =3D attrs[FATTR4_MODE] & 0o777
-> +
-> +    # Compute expected mode from the requested ACL per RFC 8881 Section =
-6.3.2
-> +    expected_mode =3D acl2mode_rfc8881(acl)
-> +
-> +    if returned_mode !=3D expected_mode:
-> +        t.fail("Mode (0%o) does not match RFC 8881 Section 6.3.2 derivat=
-ion "
-> +               "from ACL (expected 0%o)" % (returned_mode, expected_mode=
-))
-> +
-> +def testSetattrACLModeDeriveWriteBits(t, env):
-> +    """SETATTR(ACL) write bit requires BOTH WRITE_DATA and APPEND_DATA
-> +
-> +    Per RFC 8881 Section 6.3.2, the write mode bit should only be set if=
- BOTH
-> +    ACE4_WRITE_DATA and ACE4_APPEND_DATA are present in the ACL.
-> +
-> +    FLAGS: setattr acl all
-> +    DEPEND: MODE ACL0
-> +    CODE: SATT24
-> +    """
-> +    from nfs4acl import acl2mode_rfc8881
-> +    c =3D env.c1
-> +    c.init_connection()
-> +
-> +    # Test 1: Only WRITE_DATA (no APPEND_DATA) - write bit should NOT be=
- set
-> +    fh1, stateid1 =3D c.create_confirm(t.word() + b"_1")
-> +    acl1 =3D [
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_WRITE_DATA,  # Missing APPEND_DATA
-> +                b"OWNER@")
-> +    ]
-> +    ops =3D c.use_obj(fh1) + [c.setattr({FATTR4_ACL: acl1})]
-> +    res =3D c.compound(ops)
-> +    check(res, msg=3D"SETATTR ACL with only WRITE_DATA")
-> +
-> +    attrs1 =3D c.do_getattrdict(fh1, [FATTR4_MODE, FATTR4_ACL])
-> +    mode1 =3D attrs1[FATTR4_MODE] & 0o777
-> +    expected_mode1 =3D acl2mode_rfc8881(acl1)
-> +
-> +    if mode1 !=3D expected_mode1:
-> +        t.fail("Mode (0%o) with only WRITE_DATA does not match expected =
-(0%o). "
-> +               "Write bit should NOT be set without APPEND_DATA." %
-> +               (mode1, expected_mode1))
-> +
-> +    # Test 2: Only APPEND_DATA (no WRITE_DATA) - write bit should NOT be=
- set
-> +    fh2, stateid2 =3D c.create_confirm(t.word() + b"_2")
-> +    acl2 =3D [
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_APPEND_DATA,  # Missing WRITE_DATA
-> +                b"OWNER@")
-> +    ]
-> +    ops =3D c.use_obj(fh2) + [c.setattr({FATTR4_ACL: acl2})]
-> +    res =3D c.compound(ops)
-> +    check(res, msg=3D"SETATTR ACL with only APPEND_DATA")
-> +
-> +    attrs2 =3D c.do_getattrdict(fh2, [FATTR4_MODE, FATTR4_ACL])
-> +    mode2 =3D attrs2[FATTR4_MODE] & 0o777
-> +    expected_mode2 =3D acl2mode_rfc8881(acl2)
-> +
-> +    if mode2 !=3D expected_mode2:
-> +        t.fail("Mode (0%o) with only APPEND_DATA does not match expected=
- (0%o). "
-> +               "Write bit should NOT be set without WRITE_DATA." %
-> +               (mode2, expected_mode2))
-> +
-> +    # Test 3: Both WRITE_DATA and APPEND_DATA - write bit SHOULD be set
-> +    fh3, stateid3 =3D c.create_confirm(t.word() + b"_3")
-> +    acl3 =3D [
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_WRITE_DATA | ACE4_APPEND_DATA,  # Both present
-> +                b"OWNER@")
-> +    ]
-> +    ops =3D c.use_obj(fh3) + [c.setattr({FATTR4_ACL: acl3})]
-> +    res =3D c.compound(ops)
-> +    check(res, msg=3D"SETATTR ACL with both WRITE_DATA and APPEND_DATA")
-> +
-> +    attrs3 =3D c.do_getattrdict(fh3, [FATTR4_MODE, FATTR4_ACL])
-> +    mode3 =3D attrs3[FATTR4_MODE] & 0o777
-> +    expected_mode3 =3D acl2mode_rfc8881(acl3)
-> +
-> +    if mode3 !=3D expected_mode3:
-> +        t.fail("Mode (0%o) with WRITE_DATA+APPEND_DATA does not match "
-> +               "expected (0%o)" % (mode3, expected_mode3))
-> +
-> +def testSetattrACLModeDeriveAllowDeny(t, env):
-> +    """SETATTR(ACL) with ALLOW/DENY interaction
-> +
-> +    Test that ACL evaluation order is correct when mixing ALLOW and DENY=
- ACEs.
-> +    Per RFC 8881 Section 6.3.2, evaluate ACEs in order, with earlier ACE=
-s taking
-> +    precedence.
-> +
-> +    FLAGS: setattr acl all
-> +    DEPEND: MODE ACL0
-> +    CODE: SATT25
-> +    """
-> +    from nfs4acl import acl2mode_rfc8881
-> +    c =3D env.c1
-> +    c.init_connection()
-> +
-> +    # Test: ALLOW first, then DENY - the ALLOW should win
-> +    fh, stateid =3D c.create_confirm(t.word())
-> +    acl =3D [
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA,
-> +                b"OWNER@"),
-> +        nfsace4(ACE4_ACCESS_DENIED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA,  # This should be ignored (already allow=
-ed)
-> +                b"OWNER@")
-> +    ]
-> +
-> +    ops =3D c.use_obj(fh) + [c.setattr({FATTR4_ACL: acl})]
-> +    res =3D c.compound(ops)
-> +    check(res, msg=3D"SETATTR ACL with ALLOW then DENY")
-> +
-> +    attrs =3D c.do_getattrdict(fh, [FATTR4_MODE, FATTR4_ACL])
-> +    returned_mode =3D attrs[FATTR4_MODE] & 0o777
-> +    expected_mode =3D acl2mode_rfc8881(acl)
-> +
-> +    if returned_mode !=3D expected_mode:
-> +        t.fail("Mode (0%o) with ALLOW/DENY does not match expected (0%o)=
-. "
-> +               "First ACE should take precedence." % (returned_mode, exp=
-ected_mode))
-> +
-> +def testSetattrACLModeDeriveEveryone(t, env):
-> +    """SETATTR(ACL) with EVERYONE@ affecting all identifiers
-> +
-> +    Test that EVERYONE@ ACEs are considered when evaluating permissions
-> +    for OWNER@ and GROUP@ per RFC 8881 Section 6.3.2.
-> +
-> +    FLAGS: setattr acl all
-> +    DEPEND: MODE ACL0
-> +    CODE: SATT26
-> +    """
-> +    from nfs4acl import acl2mode_rfc8881
-> +    c =3D env.c1
-> +    c.init_connection()
-> +
-> +    # EVERYONE@ gets read, specific OWNER@ gets nothing extra
-> +    # Final result: OWNER@ should have read (from EVERYONE@)
-> +    fh, stateid =3D c.create_confirm(t.word())
-> +    acl =3D [
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA,
-> +                b"EVERYONE@")
-> +    ]
-> +
-> +    ops =3D c.use_obj(fh) + [c.setattr({FATTR4_ACL: acl})]
-> +    res =3D c.compound(ops)
-> +    check(res, msg=3D"SETATTR ACL with only EVERYONE@")
-> +
-> +    attrs =3D c.do_getattrdict(fh, [FATTR4_MODE, FATTR4_ACL])
-> +    returned_mode =3D attrs[FATTR4_MODE] & 0o777
-> +    expected_mode =3D acl2mode_rfc8881(acl)
-> +
-> +    if returned_mode !=3D expected_mode:
-> +        t.fail("Mode (0%o) does not match expected (0%o). "
-> +               "EVERYONE@ should affect all mode bits." %
-> +               (returned_mode, expected_mode))
-> +
-> +def testSetattrACLModeDeriveComplex(t, env):
-> +    """SETATTR(ACL) with complex ACL including multiple identifiers
-> +
-> +    Test mode derivation with a more realistic ACL including OWNER@,
-> +    GROUP@, and EVERYONE@ with various permissions.
-> +
-> +    FLAGS: setattr acl all
-> +    DEPEND: MODE ACL0
-> +    CODE: SATT27
-> +    """
-> +    from nfs4acl import acl2mode_rfc8881
-> +    c =3D env.c1
-> +    c.init_connection()
-> +
-> +    fh, stateid =3D c.create_confirm(t.word())
-> +
-> +    # Create a complex ACL:
-> +    # OWNER@: read + write + execute
-> +    # GROUP@: read + execute (no write)
-> +    # EVERYONE@: read only
-> +    acl =3D [
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA | AC=
-E4_EXECUTE,
-> +                b"OWNER@"),
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA | ACE4_EXECUTE,
-> +                b"GROUP@"),
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA,
-> +                b"EVERYONE@")
-> +    ]
-> +
-> +    ops =3D c.use_obj(fh) + [c.setattr({FATTR4_ACL: acl})]
-> +    res =3D c.compound(ops)
-> +    check(res, msg=3D"SETATTR with complex ACL")
-> +
-> +    attrs =3D c.do_getattrdict(fh, [FATTR4_MODE, FATTR4_ACL])
-> +    returned_mode =3D attrs[FATTR4_MODE] & 0o777
-> +    expected_mode =3D acl2mode_rfc8881(acl)
-> +
-> +    if returned_mode !=3D expected_mode:
-> +        t.fail("Mode (0%o) does not match RFC 8881 Section 6.3.2 derivat=
-ion "
-> +               "from complex ACL (expected 0%o)" %
-> +               (returned_mode, expected_mode))
-> +
-> +def testSetattrACLIndependentOfMode(t, env):
-> +    """SETATTR(ACL) outcome should not depend on existing mode bits
-> +
-> +    Per RFC 8881 Section 6.4.1.2, when setting ACL without mode, the ACL=
- should
-> +    be set as given. The existing mode should not affect the ACL that ge=
-ts
-> +    stored. This test verifies that setting the same ACL on files with
-> +    different initial modes results in identical ACLs being stored.
-> +
-> +    FLAGS: setattr acl all
-> +    DEPEND: MODE ACL0
-> +    CODE: SATT28
-> +    """
-> +    from nfs4acl import acl2mode_rfc8881
-> +    c =3D env.c1
-> +    c.init_connection()
-> +
-> +    # Create the same ACL to use for all files
-> +    # OWNER@: read + write, GROUP@: read, EVERYONE@: nothing
-> +    test_acl =3D [
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA,
-> +                b"OWNER@"),
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA,
-> +                b"GROUP@")
-> +    ]
-> +
-> +    # Test with various initial mode values
-> +    initial_modes =3D [0o600, 0o644, 0o755, 0o777, 0o400, 0o000]
-> +    files =3D []
-> +
-> +    # Create files with different initial modes
-> +    for initial_mode in initial_modes:
-> +        fh, stateid =3D c.create_confirm(t.word() + (b"_%o" % initial_mo=
-de))
-> +
-> +        # Set initial mode
-> +        ops =3D c.use_obj(fh) + [c.setattr({FATTR4_MODE: initial_mode})]
-> +        res =3D c.compound(ops)
-> +        check(res, msg=3D"Setting initial mode to 0%o" % initial_mode)
-> +
-> +        files.append((fh, initial_mode))
-> +
-> +    # Now set the same ACL on all files
-> +    for fh, initial_mode in files:
-> +        ops =3D c.use_obj(fh) + [c.setattr({FATTR4_ACL: test_acl})]
-> +        res =3D c.compound(ops)
-> +        check(res, msg=3D"SETATTR ACL on file with initial mode 0%o" % i=
-nitial_mode)
-> +
-> +    # Retrieve the ACLs that were actually stored
-> +    acls =3D []
-> +    for fh, initial_mode in files:
-> +        attrs =3D c.do_getattrdict(fh, [FATTR4_ACL])
-> +        acls.append((initial_mode, attrs[FATTR4_ACL]))
-> +
-> +    # Helper function to compare ACLs (comparing ACE lists)
-> +    def acl_equal(acl1, acl2):
-> +        """Compare two ACLs for equality"""
-> +        if len(acl1) !=3D len(acl2):
-> +            return False
-> +        for ace1, ace2 in zip(acl1, acl2):
-> +            if (ace1.type !=3D ace2.type or
-> +                ace1.flag !=3D ace2.flag or
-> +                ace1.access_mask !=3D ace2.access_mask or
-> +                ace1.who !=3D ace2.who):
-> +                return False
-> +        return True
-> +
-> +    def acl_to_string(acl):
-> +        """Convert ACL to readable string for error messages"""
-> +        aces =3D []
-> +        for ace in acl:
-> +            type_str =3D "ALLOW" if ace.type =3D=3D ACE4_ACCESS_ALLOWED_=
-ACE_TYPE else "DENY"
-> +            aces.append("<%s:%s:0x%x:0x%x>" %
-> +                       (type_str, ace.who.decode(), ace.access_mask, ace=
-.flag))
-> +        return "[" + ", ".join(aces) + "]"
-> +
-> +    # Compare all ACLs - they should all be identical
-> +    reference_mode, reference_acl =3D acls[0]
-> +    for initial_mode, acl in acls[1:]:
-> +        if not acl_equal(reference_acl, acl):
-> +            t.fail("ACLs differ based on initial mode! "
-> +                   "File with mode 0%o has ACL %s, "
-> +                   "but file with mode 0%o has ACL %s. "
-> +                   "RFC 8881 Section 6.4.1.2: ACL should be set as given=
-, "
-> +                   "independent of existing mode." %
-> +                   (reference_mode, acl_to_string(reference_acl),
-> +                    initial_mode, acl_to_string(acl)))
-> +
-> +    # Also verify that the mode derived from the ACL is consistent
-> +    modes =3D []
-> +    for initial_mode, acl in acls:
-> +        derived_mode =3D acl2mode_rfc8881(acl)
-> +        modes.append(derived_mode)
-> +
-> +    if len(set(modes)) !=3D 1:
-> +        mode_str =3D ", ".join("0%o (from initial 0%o)" % (m, acls[i][0]=
-)
-> +                             for i, m in enumerate(modes))
-> +        t.fail("ACLs derive to different modes: %s. "
-> +               "This suggests ACLs were stored differently based on init=
-ial mode." %
-> +               mode_str)
-> +
-> +def testSetattrACLIndependentModeHighBits(t, env):
-> +    """SETATTR(ACL) should preserve high-order mode bits (SUID/SGID/SVTX=
-)
-> +
-> +    Per RFC 8881 Section 6.4.1.2, when setting ACL without mode, the thr=
-ee
-> +    high-order bits of mode (SUID, SGID, SVTX) SHOULD remain unchanged.
-> +    Only the low-order nine permission bits should be modified.
-> +
-> +    FLAGS: setattr acl all
-> +    DEPEND: MODE ACL0
-> +    CODE: SATT29
-> +    """
-> +    from nfs4acl import acl2mode_rfc8881
-> +    c =3D env.c1
-> +    c.init_connection()
-> +
-> +    # Create ACL to set
-> +    test_acl =3D [
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA | AC=
-E4_EXECUTE,
-> +                b"OWNER@"),
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA,
-> +                b"GROUP@")
-> +    ]
-> +
-> +    # Test with different high-order bits set
-> +    test_cases =3D [
-> +        (0o4755, "SUID"),      # Set-user-ID
-> +        (0o2755, "SGID"),      # Set-group-ID
-> +        (0o1755, "SVTX"),      # Sticky bit
-> +        (0o6755, "SUID+SGID"), # Both SUID and SGID
-> +        (0o7755, "ALL"),       # All three bits
-> +    ]
-> +
-> +    # Preserving the high-order bits is a SHOULD, so collect violations
-> +    # and warn once the MUST checks below have run for every case
-> +    not_preserved =3D []
-> +    for initial_mode, description in test_cases:
-> +        fh, stateid =3D c.create_confirm(t.word() + (b"_%s" % descriptio=
-n.encode()))
-> +
-> +        # Set initial mode with high-order bits
-> +        ops =3D c.use_obj(fh) + [c.setattr({FATTR4_MODE: initial_mode})]
-> +        res =3D c.compound(ops)
-> +        check(res, msg=3D"Setting initial mode 0%o (%s)" % (initial_mode=
-, description))
-> +
-> +        # Verify the mode was set
-> +        before_attrs =3D c.do_getattrdict(fh, [FATTR4_MODE])
-> +        before_mode =3D before_attrs[FATTR4_MODE] & 0o7777
-> +
-> +        # Set ACL only (not mode)
-> +        ops =3D c.use_obj(fh) + [c.setattr({FATTR4_ACL: test_acl})]
-> +        res =3D c.compound(ops)
-> +        check(res, msg=3D"SETATTR ACL on file with %s" % description)
-> +
-> +        # Check that high-order bits are preserved
-> +        after_attrs =3D c.do_getattrdict(fh, [FATTR4_MODE, FATTR4_ACL])
-> +        after_mode =3D after_attrs[FATTR4_MODE] & 0o7777
-> +
-> +        # Extract high-order bits (SUID, SGID, SVTX)
-> +        before_high =3D before_mode & 0o7000
-> +        after_high =3D after_mode & 0o7000
-> +
-> +        if before_high !=3D after_high:
-> +            not_preserved.append("%s: before=3D0%o, after=3D0%o" %
-> +                                 (description, before_mode, after_mode))
-> +
-> +        # Verify low-order bits match ACL derivation
-> +        after_low =3D after_mode & 0o777
-> +        expected_low =3D acl2mode_rfc8881(test_acl)
-> +
-> +        if after_low !=3D expected_low:
-> +            t.fail("Low-order mode bits (0%o) don't match RFC 8881 Secti=
-on 6.3.2 "
-> +                   "derivation (expected 0%o) for %s" %
-> +                   (after_low, expected_low, description))
-> +
-> +    if not_preserved:
-> +        t.pass_warn("High-order mode bits not preserved (RFC 8881 Sectio=
-n "
-> +                    "6.4.1.2: SHOULD remain unchanged): %s" %
-> +                    "; ".join(not_preserved))
-> +
-> +def testSetattrModeACLattrsset(t, env):
-> +    """SETATTR(MODE+ACL) should indicate which attributes were actually =
-set
-> +
-> +    Per RFC 8881 Section 6.4.1.3, when both MODE and ACL are set togethe=
-r, the
-> +    server processes MODE first, then ACL (which may modify the mode).
-> +    The attrsset bitmap indicates which attributes were actually set.
-> +    This test verifies the attrsset bitmap and final mode consistency.
-> +
-> +    FLAGS: setattr acl all
-> +    DEPEND: MODE ACL0
-> +    CODE: SATT30
-> +    """
-> +    from nfs4acl import acl2mode_rfc8881
-> +    c =3D env.c1
-> +    c.init_connection()
-> +
-> +    fh, stateid =3D c.create_confirm(t.word())
-> +
-> +    # Create an ACL that will derive to a specific mode (0754)
-> +    acl =3D [
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA | AC=
-E4_EXECUTE,
-> +                b"OWNER@"),
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA | ACE4_EXECUTE,
-> +                b"GROUP@"),
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA,
-> +                b"EVERYONE@")
-> +    ]
-> +
-> +    # Request a different mode (0640)
-> +    requested_mode =3D 0o640
-> +
-> +    # Set both MODE and ACL together
-> +    attrs =3D {FATTR4_MODE: requested_mode, FATTR4_ACL: acl}
-> +    ops =3D c.use_obj(fh) + [c.setattr(attrs)]
-> +    res =3D c.compound(ops)
-> +    check(res, msg=3D"SETATTR with MODE and ACL together")
-> +
-> +    # Check the attrsset bitmap
-> +    attrsset =3D bitmap2list(res.resarray[-1].attrsset)
-> +
-> +    # Get the final attributes
-> +    final_attrs =3D c.do_getattrdict(fh, [FATTR4_MODE, FATTR4_ACL])
-> +    final_mode =3D final_attrs[FATTR4_MODE] & 0o777
-> +
-> +    # Both attributes were processed, so both must appear in attrsset
-> +    if FATTR4_MODE not in attrsset:
-> +        t.fail("MODE not in attrsset, but MODE was requested")
-> +    if FATTR4_ACL not in attrsset:
-> +        t.fail("ACL not in attrsset, but ACL was requested")
-> +
-> +    # Per RFC 8881 Section 6.4.1.3, ACL processing modifies the mode, so
-> +    # the final mode matches the ACL derivation, not the requested mode
-> +    acl_derived_mode =3D acl2mode_rfc8881(acl)
-> +    if final_mode !=3D acl_derived_mode:
-> +        t.fail("Final mode (0%o) does not match ACL-derived mode (0%o)" =
-%
-> +               (final_mode, acl_derived_mode))
-> +
-> +def testSetattrModeACLConflict(t, env):
-> +    """SETATTR(MODE+ACL) when MODE and ACL would produce different permi=
-ssions
-> +
-> +    Test the interaction when the requested MODE differs significantly f=
-rom
-> +    what the ACL would derive. Per RFC 8881 Section 6.4.1.3, MODE is app=
-lied first,
-> +    then ACL is applied (possibly changing the final mode).
-> +
-> +    FLAGS: setattr acl all
-> +    DEPEND: MODE ACL0
-> +    CODE: SATT31
-> +    """
-> +    from nfs4acl import acl2mode_rfc8881
-> +    c =3D env.c1
-> +    c.init_connection()
-> +
-> +    # Test multiple conflict scenarios
-> +    test_cases =3D [
-> +        # (requested_mode, ACL, description)
-> +        (0o777, [  # Request all permissions
-> +            nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                    ACE4_READ_DATA,  # But ACL only grants read
-> +                    b"OWNER@")
-> +        ], "MODE=3D0777 but ACL grants only read"),
-> +
-> +        (0o000, [  # Request no permissions
-> +            nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                    ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA =
-| ACE4_EXECUTE,
-> +                    b"OWNER@")  # But ACL grants everything
-> +        ], "MODE=3D0000 but ACL grants rwx"),
-> +
-> +        (0o644, [  # Request read for all, write for owner
-> +            nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                    ACE4_EXECUTE,  # But ACL only grants execute
-> +                    b"OWNER@")
-> +        ], "MODE=3D0644 but ACL grants only execute"),
-> +    ]
-> +
-> +    for requested_mode, acl, description in test_cases:
-> +        fh, stateid =3D c.create_confirm(t.word() + ("_%o" % requested_m=
-ode).encode())
-> +
-> +        # Set both MODE and ACL together
-> +        attrs =3D {FATTR4_MODE: requested_mode, FATTR4_ACL: acl}
-> +        ops =3D c.use_obj(fh) + [c.setattr(attrs)]
-> +        res =3D c.compound(ops)
-> +        check(res, msg=3D"SETATTR MODE+ACL: %s" % description)
-> +
-> +        # Get final attributes
-> +        final_attrs =3D c.do_getattrdict(fh, [FATTR4_MODE, FATTR4_ACL])
-> +        final_mode =3D final_attrs[FATTR4_MODE] & 0o777
-> +
-> +        # Verify final mode matches derivation from the requested ACL
-> +        expected_mode =3D acl2mode_rfc8881(acl)
-> +
-> +        if final_mode !=3D expected_mode:
-> +            t.fail("Test case '%s': final mode (0%o) doesn't match "
-> +                   "ACL-derived mode (0%o). Per RFC 8881 Section 6.4.1.3=
-, "
-> +                   "ACL should be set as given and mode derived from it.=
-" %
-> +                   (description, final_mode, expected_mode))
-> +
-> +def testSetattrACLNamedPrincipals(t, env):
-> +    """SETATTR(ACL) with named principals should preserve them
-> +
-> +    Per RFC 8881 Section 6.4.1.3: "the ACL attribute is set as given."
-> +    When an ACL contains named principals (not OWNER@/GROUP@/EVERYONE@),
-> +    the server must preserve those exact principals in the stored ACL,
-> +    not convert them to special identifiers. For SETATTR(ACL) alone,
-> +    Section 6.4.1.2 makes this a SHOULD, so that case only warns.
-> +
-> +    FLAGS: setattr acl all
-> +    DEPEND: MODE ACL0
-> +    CODE: SATT32
-> +    """
-> +    c =3D env.c1
-> +    c.init_connection()
-> +
-> +    # First create a file and get its owner and group
-> +    temp_fh, temp_stateid =3D c.create_confirm(t.word() + b"_temp")
-> +    attrs =3D c.do_getattrdict(temp_fh, [FATTR4_OWNER, FATTR4_OWNER_GROU=
-P])
-> +    current_owner =3D attrs[FATTR4_OWNER]
-> +    current_group =3D attrs[FATTR4_OWNER_GROUP]
-> +
-> +    # Test 1: SETATTR(ACL) with named principals only
-> +    fh1, stateid1 =3D c.create_confirm(t.word() + b"_acl_only")
-> +
-> +    acl =3D [
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA,
-> +                current_owner),  # Named principal, not OWNER@
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, ACE4_IDENTIFIER_GROUP,
-> +                ACE4_READ_DATA,
-> +                current_group)  # Named principal, not GROUP@
-> +    ]
-> +
-> +    ops =3D c.use_obj(fh1) + [c.setattr({FATTR4_ACL: acl})]
-> +    res =3D c.compound(ops)
-> +    check(res, msg=3D"SETATTR ACL with named principals")
-> +
-> +    # Verify ACL was preserved with named principals. Setting the ACL as
-> +    # given is a SHOULD in RFC 8881 Section 6.4.1.2, so hold the warning
-> +    # until test 2 has run.
-> +    returned_attrs =3D c.do_getattrdict(fh1, [FATTR4_ACL])
-> +    acl_only_warning =3D None
-> +    try:
-> +        nfs4acl.verify_acl(returned_attrs[FATTR4_ACL], acl)
-> +    except AssertionError as e:
-> +        acl_only_warning =3D ("%s. Server did not set the ACL as given "
-> +                            "(RFC 8881 Section 6.4.1.2: SHOULD)" % e)
-> +
-> +    # Test 2: SETATTR(MODE+ACL) with named principals
-> +    fh2, stateid2 =3D c.create_confirm(t.word() + b"_mode_acl")
-> +
-> +    mode =3D 0o755
-> +    acl =3D [
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA | ACE4_WRITE_DATA | ACE4_APPEND_DATA | AC=
-E4_EXECUTE,
-> +                current_owner),  # Named principal
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, ACE4_IDENTIFIER_GROUP,
-> +                ACE4_READ_DATA | ACE4_EXECUTE,
-> +                current_group),  # Named principal
-> +        nfsace4(ACE4_ACCESS_ALLOWED_ACE_TYPE, 0,
-> +                ACE4_READ_DATA,
-> +                b"EVERYONE@")  # Special identifier is fine
-> +    ]
-> +
-> +    ops =3D c.use_obj(fh2) + [c.setattr({FATTR4_MODE: mode, FATTR4_ACL: =
-acl})]
-> +    res =3D c.compound(ops)
-> +    check(res, msg=3D"SETATTR MODE+ACL with named principals")
-> +
-> +    # Verify ACL was preserved
-> +    returned_attrs =3D c.do_getattrdict(fh2, [FATTR4_ACL])
-> +    try:
-> +        nfs4acl.verify_acl(returned_attrs[FATTR4_ACL], acl)
-> +    except AssertionError as e:
-> +        t.fail("%s. Server did not set the ACL as given, "
-> +               "violating RFC 8881 Section 6.4.1.3" % e)
-> +
-> +    if acl_only_warning:
-> +        t.pass_warn(acl_only_warning)
->
-> --
-> 2.54.0
->
+In v7.3, this bug gets fixed by f307b4f7ed17 ("nfsd: split nfsd4_copy
+into transient and durable async copy objects"), which was part of the
+refactor of the async COPY code.
 
+We should probably just take Lubos' two-line fix as a separate one-off
+patch for stable. Backporting the COPY code refactor is too risky IMO.
+
+Clanker analysis follows if you're interested. I think it's largely
+correct:
+
+-----------------8<-----------------------
+
+=E2=97=86 Diagnosis confirmed: the report is correct, and this is a stable-=
+only regression from an
+  incomplete backport.
+
+  Root cause is the order of dup_copy_fields() vs nfs4_init_copy_state() in=
+ nfsd4_copy():
+
+  =E2=80=A2 result points at the transient &u->copy.cp_res.
+  =E2=80=A2 dup_copy_fields() copies cp_res (including cb_stateid) from tra=
+nsient to async_copy.
+  =E2=80=A2 nfsd4_send_cb_offload() builds CB_OFFLOAD from async_copy->cp_r=
+es.
+
+  Pre-d0beaee498e1, mainline did init =E2=86=92 write result->cb_stateid =
+=E2=86=92 dup_copy_fields(), so both the
+  COPY reply and async_copy->cp_res.cb_stateid got the stateid. But the s2s=
+_cp_stateids IDR stored a
+  pointer to &u->copy.cp_stateid, which is transient COMPOUND buffer memory=
+.
+
+  d0beaee498e1 ("nfsd: fix stale s2s_cp_stateids IDR entry for async COPY",=
+ stable 14b978e8d05c)
+  fixed the IDR lifetime by doing dup_copy_fields() first, then
+  nfs4_init_copy_state(nn, async_copy), then writing only result->cb_statei=
+d. That leaves
+  async_copy->cp_res.cb_stateid zero, because the dup already happened. Res=
+ult: COPY reply has a
+  valid stateid, CB_OFFLOAD has all-zero, client can't match it in nfs42_pr=
+oc_copy and hangs. This
+  matches your packet table exactly.
+
+  Mainline is fixed by f307b4f7ed17 ("nfsd: split nfsd4_copy into transient=
+ and durable async copy
+  objects"), which moves the durable stateid out of the duplicated struct s=
+o it can safely do init =E2=86=92
+  write cb_stateid =E2=86=92 dup again. Current code in fs/nfsd/nfs4proc.c:=
+2242 has the explicit comment
+  "dup after writing cb_stateid; duplicating first would leave the callback=
+ stateid zeroed." I
+  verified the callback path in fs/nfsd/nfs4proc.c:2104 copies from cp_copy=
+.cp_res, and
+  dup_copy_fields in fs/nfsd/nfs4proc.c:2051 copies cp_res.
+
+  Your minimal stable fix is the right shape for stable. A plain reorder wo=
+n't work on the old
+  layout because dup_copy_fields() also copies cp_stateid, so init-then-dup=
+ would clobber
+  async_copy->cp_stateid with the transient's zero value. Copying the new s=
+tateid into both
+  result->cb_stateid and async_copy->cp_res.cb_stateid after init preserves=
+ the IDR fix and fixes
+  the callback. The alternative is backporting the full restructuring serie=
+s (f307b4f7ed17,
+  80c376183411, etc.), which is heavier for stable.
+
+  #regzbot introduced: v7.2.3..v7.2.4 looks correct. The 6.12 sync-copy obs=
+ervation is expected:
+  that branch largely forces COPY synchronous, so it doesn't reach the asyn=
+c/CB_OFFLOAD path.
+
+  I did not run the reproducer or inspect a 7.2.y tree locally; verificatio=
+n was by reading mainline
+  and the d0beaee498e1 before/after versions in this checkout.
 
 --=20
-Aur=C3=A9lien Couderc <aurelien.couderc2002@gmail.com>
-Big Data/Data mining expert, chess enthusiast
+Jeff Layton <jlayton@kernel.org>
