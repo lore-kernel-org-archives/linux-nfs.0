@@ -1,81 +1,78 @@
-Received: from out28-123.mail.aliyun.com (out28-123.mail.aliyun.com [115.124.28.123])
+Received: from proxmox-new.maurer-it.com (proxmox-new.maurer-it.com [94.136.29.106])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 65FE721D00A;
-	Mon, 12 Oct 2026 09:08:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.28.123
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3888A3AD515;
+	Mon, 12 Oct 2026 09:36:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=94.136.29.106
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791796120; cv=none; b=mygkcxgrQlNbbtFlCoj96/q1pnRjBAGxTBdQCdRHnSb73ufzLIi5Bfz3y7BZqwFCk8kg0eFb+nd0Y9mNG8QOZFogYCNujK4qm9xKOQ/dVcUiUM7xr7HSggLLDBAnI0B/TRT+jg1yJA9Bw3pcKfqSiGy1mpqsyfwNn7qEdtrzkeU=
+	t=1791797776; cv=none; b=GM/JCVwpN5zoZnuWpvPvEyYqz1/yQVZBAehiJiiL8WZ76r9Rl3nwvG38DCa6tTfVV4FP0DrSxqgRJ2dtvWJEC1JW1/QlmNeSS4+grijcO3u10TeHOkuQJswt5p0p7DBvzzALq/UY7c7cvyuRYhZFpUKjxoh247NiNbp0QfP0P3A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791796120; c=relaxed/simple;
-	bh=MaOtwmXSzQetw/GC1jtFEpyfaEqNpUZoYdI9UQryYpY=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=TiTyrbPoSbNHBaE7j2K9CXz0FtERBnChwHCoMxpwRG+E5iYpv9cDzdfuQ27UURZUEOaL+NzFHaHqeKCDP49GEJMniz4giSwMWrqsAA+pU8FUgB8O0O5QPbS6eeknIocau2kp2NHZEA4PMfbAH8Un+h0y1kY1iQPWa8nN2yAqDJY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=xiaopeng.com; spf=pass smtp.mailfrom=xiaopeng.com; dkim=pass (1024-bit key) header.d=xiaopeng.com header.i=@xiaopeng.com header.b=UNSJ0/vC; arc=none smtp.client-ip=115.124.28.123
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=xiaopeng.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=xiaopeng.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=xiaopeng.com header.i=@xiaopeng.com header.b="UNSJ0/vC"
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=xiaopeng.com; s=default;
-	t=1791796115; h=From:To:Subject:Date:Message-ID:MIME-Version;
-	bh=MG/7cNd6lBR1DZ0PeYAxMraG9cwX8AGNJsr6BTnFceI=;
-	b=UNSJ0/vCYFhIB2X+4COzG4FtbriM/mnb2YiDqpc0YySUhmx87lhkqBkepCz9Q3y14ylk9VBps5NyJQ99ijzkXj/m0CQ7iYk2dYpfz4iMaOzZjVfe2ZKM4p0MO11q8H8sBzWtJviGDFHuNeB8svbuPqo8pD2CtuR2QgneNCzMpbM=
-X-Alimail-AntiSpam:AC=CONTINUE;BC=0.09176327|-1;CH=green;DM=|CONTINUE|false|;DS=CONTINUE|ham_system_inform|0.00505407-0.000686733-0.994259;FP=15373143721677379251|0|0|0|0|-1|-1|-1;HT=maildocker-contentspam033045213054;MF=zhugl3@xiaopeng.com;NM=1;PH=DS;RN=5;RT=5;SR=0;TI=SMTPD_---.jZykkhh_1791796114;
-Received: from DESKTOP-UL5U09E.xiaopeng.local(mailfrom:zhugl3@xiaopeng.com fp:SMTPD_---.jZykkhh_1791796114 cluster:ay29)
-          by smtp.aliyun-inc.com;
-          Mon, 12 Oct 2026 17:08:34 +0800
-From: Guanglei Zhu <zhugl3@xiaopeng.com>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	liuwb@xiaopeng.com
-Subject: [PATCH] NFSv4: fix bitmap length check in decode_bitmap()
-Date: Mon, 12 Oct 2026 17:08:34 +0800
-Message-ID: <20261012090834.920912-1-zhugl3@xiaopeng.com>
-X-Mailer: git-send-email 2.43.0
+	s=arc-20240116; t=1791797776; c=relaxed/simple;
+	bh=HwgH6cNjuXA3qdiLh4L4A0y5gykjUezqzlq6XPMZfV8=;
+	h=Date:From:Subject:To:Cc:References:In-Reply-To:MIME-Version:
+	 Message-Id:Content-Type; b=g18GpdmFPtr1aESZPLvlSHsJc21IekbIwSwTpUKl4dep3FaYdbeOlH2JnFJFBrbJv5IXCjNqbWJaqziE3RuzJBSJ1h6kJSeQFchh8wkLcsn7+irqb6mWGDE7zFesDiwzARqcbE306HWQgTatjLZzZYxf3Ts71su4voQeDLHuiSc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=proxmox.com; spf=pass smtp.mailfrom=proxmox.com; arc=none smtp.client-ip=94.136.29.106
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=proxmox.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=proxmox.com
+Received: from proxmox-new.maurer-it.com (localhost.localdomain [127.0.0.1])
+	by proxmox-new.maurer-it.com (Proxmox) with ESMTP id 1225A47F80;
+	Mon, 12 Oct 2026 11:36:11 +0200 (CEST)
+Date: Mon, 12 Oct 2026 11:36:07 +0200
+From: Fabian =?iso-8859-1?q?Gr=FCnbichler?= <f.gruenbichler@proxmox.com>
+Subject: Re: [REGRESSION] 7.2.4: nfsd sends CB_OFFLOAD with all-zero stateid,
+ async NFSv4.2 COPY never completes
+To: Sasha Levin <sashal@kernel.org>, stable@vger.kernel.org
+Cc: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, Lubos Rendek
+	<l.rendek@proxmox.com>, regressions@lists.linux.dev
+References: <7cc824c4-632d-49df-ae5e-cfcbb5bf76ad@proxmox.com>
+	<2026-10-11-1-daily-reply-0001-nfsd-cb-offload-zero-stateid@kernel.org>
+In-Reply-To: <2026-10-11-1-daily-reply-0001-nfsd-cb-offload-zero-stateid@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: astroid/0.17.0 (https://github.com/astroidmail/astroid)
+Message-Id: <1791797151.oll70jtyaa.astroid@yuna.none>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+X-Bm-Milter-Handled: 55990f41-d878-4baa-be0a-ee34c49e34d2
+X-Bm-Transport-Timestamp: 1791797770509
 
-decode_bitmap() reads attrlen from the callback message and passes
-attrlen << 2 to xdr_inline_decode() as the number of bytes to
-consume.  The shift is done in 32-bit arithmetic, so an attrlen of
-0x40000000 wraps to zero, the bounds check in
-__xdr_inline_decode() passes, and the subsequent reads of
-bitmap[0..2] walk up to 12 bytes past the end of the received
-buffer.
+On October 11, 2026 6:48 pm, Sasha Levin wrote:
+>> Since 7.2.4, an NFSv4.2 server-side COPY between two exports of a Linux
+>> NFS server never completes, because nfsd sends CB_OFFLOAD with an
+>> all-zero stateid.
+>=20
+> Queued the fix for 7.2 and 6.18, thanks.
 
-Reject attrlen values larger than 3, the size of the bitmap array.
+AFAICT (for 7.2.x) you queued a full pick of
 
-Signed-off-by: Guanglei Zhu <zhugl3@xiaopeng.com>
----
-Verified with an ASAN build of an exact user-space replica of
-decode_bitmap() and __xdr_inline_decode(): attrlen=0x40000000 with
-the message ending right after the attrlen word results in a
-heap-buffer-overflow READ of size 4, 0 bytes after the allocation.
+f307b4f7ed17 nfsd: split nfsd4_copy into transient and durable async copy o=
+bjects
 
- fs/nfs/callback_xdr.c | 3 +++
- 1 file changed, 3 insertions(+)
+in
 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 88e1af0fd..bea967e0c 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -109,6 +109,9 @@ static __be32 decode_bitmap(struct xdr_stream *xdr, uint32_t *bitmap)
- 	if (unlikely(p == NULL))
- 		return htonl(NFS4ERR_RESOURCE);
- 	attrlen = ntohl(*p);
-+	/* bitmap[] has only 3 words; also stops attrlen<<2 from wrapping */
-+	if (unlikely(attrlen > 3))
-+		return htonl(NFS4ERR_BADXDR);
- 	p = xdr_inline_decode(xdr, attrlen << 2);
- 	if (unlikely(p == NULL))
- 		return htonl(NFS4ERR_RESOURCE);
--- 
-2.43.0
+0b2963340727 nfsd: split nfsd4_copy into transient and durable async copy o=
+bjects
+
+despite Jeff stating the following up-thread:
+
+> We should probably just take Lubos' two-line fix as a separate one-off
+> patch for stable. Backporting the COPY code refactor is too risky IMO.
+
+Was this intentional, or an accident?
+
+FWIW, the full refactor would include two more patches:
+
+d6edc2a72513efce59eaf85acb204d2ddac71892 nfsd: drop dead COPY-vs-COPYNOTIFY=
+ type handling from s2s stateid IDR
+80c376183411300b4c99977c66f3f84f64b38676 nfsd: make the copy offload statei=
+d a first-class nfs4_stid
+
+so this is kind of half-way between the discussed options..
+
+Fabian
 
