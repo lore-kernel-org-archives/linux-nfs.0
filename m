@@ -1,95 +1,129 @@
-Received: from mail-oo1-f52.google.com (mail-oo1-f52.google.com [209.85.161.52])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 838154399DC
-	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 13:14:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.52
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E32A448EBF3
+	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 14:26:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791810886; cv=none; b=KXQB+7I5x8NTYJRY6886U6FMrgDhfNYYdsNma5Kh4H5e1AJmT8SFQFVPbDqSF1S+amBWp830qPcMHJEM58MaVweMoYspmy3uZsNYtUcEw/ndJQKOw+spKlFnU0VT/tAsalgXx0dsf+7S4VHYs34s7W5qv1zAjieaC/SKXT0ODYQ=
+	t=1791815195; cv=none; b=P5zEj8AVbHLIWcYxjxoo8fTmE0AEHKnCjIK8uEB1u1HqQQKsSCINTH5Q6l1fDwLUgDQMcSTnoHbzGU+RgVVeBTuRqp/ZjUSypCy2J4MYCxypMvaY1GC9ZDEQsZTmZWkymL9VunC98GyOvy5PEF3mImeLSiT8Vk19vIjxH6qusoc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791810886; c=relaxed/simple;
-	bh=sDGPqLnbtD+WzSCkylGXnO67YQBDTEWpdxFzXZDFL04=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=GnJgt1v058iX9/l+8JRZX47FlTYXtQpJPkT8c/wtBA5guAoYTto4br43dy+WeyCsCg3j56DanGneuJyEsSV0ZIiK/QgM/soqf7EJLzXoceN0Lh6nfK0OSdnHiT1GpbwS1dXMWMmdNM36TaYfLnqOtPXwSnT/TLRJNsfaR1F56oQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=p24oVzkW; arc=none smtp.client-ip=209.85.161.52
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	s=arc-20240116; t=1791815195; c=relaxed/simple;
+	bh=V9s8sTVltmDrrjxYTb7b1u47UnWOBPXRe7IP98uqA6o=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=jHE/rYuoGA8UYWzOnSHsDKnsTp++r6duyj4/d0lyO5LT931HpHAjgdXO8a+Cdpo2CvY0rqNf2WGZhOx+CnCSZw6CnsSdnubc9/zsR0+V4ZmafOukgtzH1TcDu5RqGScX3nQgAxRAV8EeqaZnoWL+3Z7ARangg5LV2e3JLqMWRVw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HKfdrdV0; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="p24oVzkW"
-Received: by mail-oo1-f52.google.com with SMTP id 006d021491bc7-6cfb1329979so1252422eaf.1
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 06:14:45 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1791810884; x=1792415684; darn=vger.kernel.org;
-        h=content-type:mime-version:references:in-reply-to:message-id:date
-         :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=sDGPqLnbtD+WzSCkylGXnO67YQBDTEWpdxFzXZDFL04=;
-        b=p24oVzkWtpu7jCET9hvM8iEboLtGOPXt0zzHPxlvsUQ9Ijt5FDmL9E+dk3J6vRzmjo
-         zprudbVipuMiNuNejJkRpXGfAxEvZqUSoVI1M1IoHJjXNH8way0RPSRLgKFIR36LBRMk
-         aCYfdDZTy3c3KQV+D7s+8j9dLBnW/KWE0HAahdlMOeTamTVnmhu8L9db0FFParZHtwBM
-         ehT7HP+yt92Mwz7I2N1YIrhoAEYSxPMpuKCgE/zYOHzK5zK1AS56L2xgD7KsMR01Cqs+
-         n0NWDuaiVdlMwBJFJu5kYWDKookQzxLV+kSeZkalMYWpWT1mGOv1pW4cCBv+Ok93NKXD
-         +Qbw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791810884; x=1792415684;
-        h=content-type:mime-version:references:in-reply-to:message-id:date
-         :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=sDGPqLnbtD+WzSCkylGXnO67YQBDTEWpdxFzXZDFL04=;
-        b=kdRe/oMQPugnuHJV2eNfDQKpXDBMrVzh8dEtpdSj66xA1IQeW9rOgqkFApr0TWMQCi
-         SK2JokO+TvE9hjnd4Upb5re+UWZepG/TQQRcIhYp37TLJIZ00BFTPnsdq5Wluesm+m9/
-         L1rwoMjmZUuHEN11/tyF0/NGfHNyxH4+R9chn0bZUylnpvht0LxTRS7Z3jaXFkprdv7+
-         d1rEOq4qspo2VbxiSCEcPq0Q3+fzvvRUlO0QvMOR+8ypC4Azwh9s9h2J+G7+6qqSv35Y
-         kelfzxCP3UuCW37Tezy32tLGZo49cdoLDPw8ARqko7/7NJ/xLw0sJqo4mVd+4ZFVn0qU
-         aI/w==
-X-Gm-Message-State: AFq9FYIvfBVcc1MNx7RXi037ZOfaj2jvjX+9ZFYUIjqgsghCBB79houF
-	s4eOQhmY2hGlCVPXTRSuWHAMneWD6wE/h0l3/KAV3o+pq9vG2e6QZQP2yTaBQt4dKEZseqX3Czf
-	3PHTS
-X-Gm-Gg: AYBFou1ZSnZsYiKoPFPmnj5tDUTVQJ3uvL8E0cYK6Byf3eQZOkJcIhXGg/vH00H+SC4
-	ZXKwshCh4rpS/v2+wGjUbBuBcLBUa+mPXfHiGnUiNNvAERBEMw12IxipdPyRZGyQy7F1MO3EszK
-	Qk9IVjmrHcuQQU8lbp+6JSbniz2E0WNy9GJOxSoUFGzTJjz2U3KKtrQ2e1SQYiV5Q/MKc1uICLf
-	ANdV27f0vI2Lx4RCKTt8I45TLFpiBuwlDoYUFM4m3pALBtNY97O2cl2hDvsJMExo3yN1UrQDldd
-	HYG0c1PC3TVXfwCdXyHvJEZ5xi9W2zHue9KlfA9ypXjqMRvvpogJNh3ttI//YYlY9C19QBK2bUU
-	iSu1IcXSTDLfXwexRlxuMbK4jUROIWB0/JOFOVs9YqpfwAZ1fKaS2InlWt+Fgb0ExaMu283qH9c
-	KjwPwbTcnyJXNwfqP+sJ39kQYd8bStdMp7k6kyytv5x2N4WeyYaiXAitpIMgL6is4dpYjVKvUns
-	RS+qssuQcw7BYSdnwOmASWDUvhh
-X-Received: by 2002:a05:6820:1a08:b0:6de:d2c1:e97d with SMTP id 006d021491bc7-6ef12206f31mr7503183eaf.66.1791810884311;
-        Mon, 12 Oct 2026 06:14:44 -0700 (PDT)
-Received: from [192.168.254.51] ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 006d021491bc7-6f6d6796c54sm1866357eaf.2.2026.10.12.06.14.42
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 12 Oct 2026 06:14:43 -0700 (PDT)
-From: Benjamin Coddington <ben.coddington@hammerspace.com>
-X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
-To: Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org, trond.myklebust@hammerspace.com
-Subject: Re: [PATCH 0/3] NFS: Modernize decoding uint32 arrays
-Date: Mon, 12 Oct 2026 09:14:41 -0400
-X-Mailer: MailMate (2.0r6272)
-Message-ID: <5148DFB4-A99D-4044-A6BE-B41EC7E08538@hammerspace.com>
-In-Reply-To: <20261012123346.123126-1-anna@kernel.org>
-References: <20261012123346.123126-1-anna@kernel.org>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HKfdrdV0"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3CB4A1F0089B;
+	Mon, 12 Oct 2026 14:26:33 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1791815193;
+	bh=t1gfwLW+DfMmO/MP4/Ltieejm8EJcRgi6V/IwvUl9YQ=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=HKfdrdV0lsDAx3GPI3aOL0ypGrsMFim8466/uUOka/9j28Pz5Ad7TSSzYiYwm/eDk
+	 TZAPBwBZGr0qQrz0RHLuK4iOAhW7ROxJY1wcJu9fTBc5W7L2hTzg4irfDvPtAJce0B
+	 OfrdXFRsjFnTa0VVFzfOGzUAveuMd21MaOXAIOj8R0lEfhJ3n+vMpngQEVYsGDXIQ7
+	 cj048OUGgg2MqBlq3JbwMZXVOiW67thx+pAYAau6cG+tLHwr6M8fA3rhKlB8Zg8i7t
+	 pmWHXY+nwsx8M3cfEK35KS/PkN9Ox/tLmFzywGlR5E2dMWxzz9e72D4hfAVoryGIvS
+	 U7M6Z2RTo3aSA==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 75EF5F4006A;
+	Mon, 12 Oct 2026 10:26:32 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Mon, 12 Oct 2026 10:26:32 -0400
+X-ME-Sender: <xms:GO7Maloc4DAcEfHi3Gg5phPSVrWT6BiIQ0C2syug4eI2AqeL9iPp2g>
+    <xme:GO7MaifCazP9Ih4hYxgiRu8luee6V5gbuq3A9bdXl9eAN_P8SpAnSuk-NLSJ6Ubt8
+    MW84ut1haROH4zAEgpwwuxYAUQOsr9jd1dTWWgz7gAIq_yxK76_fDmN>
+X-ME-Proxy-Cause: dmFkZTGZALPHz+mTcNMTMzZXAq4Ny0BXTT8LBNncGYAjCpeVHrwWYu6PrMQsjyIq3l2fS2
+    2E8imEiXbDJo7omRtakeG+1Qhexcn1koCBkbTaHKaQo95VxyvV07wqcYhKjxdjiRPmO4jJ
+    ARc74sqhHRewjyd3qxpuhxusAfEXnPXS+a5Cj5BRC1BPm9DdQDrqfz+dcoD+hcnSbBHBow
+    iBqef9vCCfpKEhk2LY8Lxu3g+8t00QV+WPbnhIL2GKqO+C02rQMe9PIuR9ENAl5dQnsc8j
+    We3h5lWUZxLDeQWV5y3jRFCmFyR5MmvFl/10oeetgoIqOhjY9SkUg2aXbeAhfpq5y2qSOq
+    2XXfhyShLv6lKTjAd+DO+wkRwSSiizlF5W1/EJ4773N2gF/GpAvvQZ13lldoAszFiqM69q
+    8mhuG4ufHptnb6sZJPBPj366hgx92o7CNfRxTYV5fnGVrRe/LVo81qZDwMsWu5tJ5m+YvK
+    RzD9i1JoAZEhACggBWdNhn5QfbaSj4rDZCcApGIju1eEkNg1cwfCVIFevesT1W22A53Iu9
+    hrW9wBRG10lEDMHh3LlVOd3F9x0tXhM2pWtG8H+6W2qLQu8jG/cJtrMoRBNlbKt/kxq7p/
+    xvi6OGvlZJXKkAm/pLK/aygO9TGGlFLgXVfzhD0L/dXlVl2XSvZ5GBPyVDxA
+X-ME-Proxy: <xmx:GO7Mah3jMRfmnpZo79MkWiGFjaKajADEE9qI3k_LqQKF6dyJ0PwDNw>
+    <xmx:GO7MakCASoA_VaUT7P3gMZyox1VmymB5arL3M4jyf3x5Js_gOqmuVw>
+    <xmx:GO7MaoC30wypbTMwaCYkPNoSX4hRI-82X6ZKgFgXa61T6BYgRtycMQ>
+    <xmx:GO7MalP6p_lyKXYrOhnR1CTG9ebujnNA6z2o12ACa_i5iitjhYzExw>
+    <xmx:GO7MaiParwJ3R8wILniQoK-Ru4G2QNtD83LcFQTurdZOtdtWLJnXKeTB>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 54AF178273C; Mon, 12 Oct 2026 10:26:32 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+X-ThreadId: AwUdQ4Q3F35V
+Date: Mon, 12 Oct 2026 10:26:12 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Daejun Park" <daejun7.park@samsung.com>
+Cc: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, "Christoph Hellwig" <hch@lst.de>,
+ "Carlos Maiolino" <cem@kernel.org>, "Amir Goldstein" <amir73il@gmail.com>,
+ "Darrick J. Wong" <djwong@kernel.org>, "Dave Chinner" <dgc@kernel.org>,
+ "Sergey Bashirov" <sergeybashirov@gmail.com>,
+ "Christian Brauner" <brauner@kernel.org>,
+ "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+ "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
+ "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+ "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Message-Id: <b31fd2ce-3b1f-4cf5-9af9-70ea89a4d67c@app.fastmail.com>
+In-Reply-To: 
+ <20261012024846epcms2p7cccc5c988b2553b3f831070eb17e0455@epcms2p7>
+References: <4de5356f-bc4d-4f1a-9c81-fce09b1b46fd@slotpi15m67>
+ <20261008-xfs-nfsd-map-blocks-v1-0-560026cdccb6@samsung.com>
+ <20261008-xfs-nfsd-map-blocks-v1-7-560026cdccb6@samsung.com>
+ <CGME20261008163812epcas2p120bb86754876aa75cd744bd63258c465@epcms2p7>
+ <20261012024846epcms2p7cccc5c988b2553b3f831070eb17e0455@epcms2p7>
+Subject: Re: (2) [PATCH 7/8] xfs: map the whole range of a pNFS layout in one
+ ->map_blocks call
 Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-On 12 Oct 2026, at 8:33, Anna Schumaker wrote:
 
-> From: Anna Schumaker <anna.schumaker@hammerspace.com>
+
+On Sun, Oct 11, 2026, at 10:48 PM, Daejun Park wrote:
+> On Thu, Oct 08, 2026 at 12:37:46PM -0400, Chuck Lever wrote:
+>> The same freeing can happen to blocks a client holds a write layout
+>> for, AFAICS. But that is not new. Commit 527851124d10 handed out the
+>> same blocks.
+>>
+>> This is however the patch where a fix could go.
 >
-> We've had several reports over the last few months people have tried to
-> add bounds checking to the various places that need to decode a uint32
-> array. None of them update the callsites to use
-> xdr_stream_decode_uint32_array(), which has all the proper bounds
-> checking already implemented. These patches make that change.
+> Yes. xfs_fs_map_blocks() marks the inode XFS_DIFLAG_PREALLOC only when
+> it allocates, so a write layout past EOF over blocks that buffered
+> writes preallocated leaves the inode unmarked, and blockgc frees those
+> blocks while the client holds them.
 >
-> Thoughts?
+> With pynfs as the client on nfsd-testing: a file grown to 1 MiB by two
+> buffered writes on the server had 960 KiB preallocated past EOF, and an
+> RW LAYOUTGET for that range got it as one INVALID_DATA extent, without
+> the inode being marked. About 300 seconds later, with the default
+> speculative_prealloc_lifetime, blockgc freed the 960 KiB while the
+> layout was still held. Small files written on the server after that, and
+> after a sync so that the freed extents were no longer busy, got those
+> blocks, and the client's write through the layout replaced 978944 bytes
+> of their data. The LAYOUTCOMMIT then got NFS4ERR_IO, as
+> xfs_iomap_write_unwritten() allocated for the hole with no blocks
+> reserved, and XFS shut down with "Corruption of in-memory data (0x8)
+> detected at xfs_trans_mod_sb", in six runs out of six. Committing 30
+> seconds after the LAYOUTGET, before blockgc, works.
+>
+> I would rather fix it on its own, before the series, so that it can go
+> to stable: mark the inode as preallocated also when a write mapping
+> ends past EOF and nothing was allocated. With that, the same test keeps
+> the blocks and the LAYOUTCOMMIT succeeds. I will send it to the XFS
+> list, and patch 7 of v2 will keep the check for the mappings of the
+> whole call.
 
-I like it - even if a little disappointed that you didn't state "malicious
-server" anywhere.
+Sensible, thanks.
 
-Ben
+-- 
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
