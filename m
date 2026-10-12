@@ -1,48 +1,47 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8405B43CE58;
-	Mon, 12 Oct 2026 07:01:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A7123440628;
+	Mon, 12 Oct 2026 07:10:24 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791788499; cv=none; b=ilqnVm0xunUjEUNTg0/EtZsAGGXFbFdfdbj6U+dGKKWn3vHPE75Z+nqy9jbPOzUkLMUVbIKxjjGSCz1LdWZd6O7qJfcqK1dDhASU5d/dbgcp4GZIbrt/5E84sswWyg5ZBrB+2aB0fDzXVTJcsHp+l2kEQOWUPe7l1+4Jt3Dhsnc=
+	t=1791789025; cv=none; b=Vhe7rBJn1oLk7V8hKcdv8mpfeKlmfnLoukC/7ty7xfNbJNw7/c8db5eaPeeGS1dj16ODyxIoAqvVImY/QGPz6uDJE3wai2/6IyWE8Z3+Q8DgM9VNAuDy+ZhMxP9DgdsjFHCR/uwTyBV2+4PxRpXs56n5SlUR8ah/Nbo8yj9LVWE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791788499; c=relaxed/simple;
-	bh=IsS6jlUXPTT9+nYDkYwSXZcw9krz7B74BVT1GYVLKe8=;
+	s=arc-20240116; t=1791789025; c=relaxed/simple;
+	bh=omZ7B44BTjksikzdLiQUM1HIGTVrF5fygEDWLWHAffw=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=G7Gsr3MC9VaF7ZWVx/eUuKViUI4Hslhj72z+Zj1gWC8nowcqKnQ1rPiH+oPIbm7y7nOcYRAq0yb6EX7Mo8CJRajvRKsiKY+QIOWWeyjRc2GIDQy07C07R6GRtOk7tOjdg9D6zR7SGpZIlDan0VzdaYhj118Aia8Nf/9bBCXxJdE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=dYBvsSPp; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:Content-Disposition:In-Reply-To; b=Gm3CAjlG6Ic7Wg5SYhnOSJ0f/t1EcNMfhVGHMrPIyY4FZi9FslBWvWbFdKvHppsg+iwopAasOftMrnR0iocWLkI7JsIpC1+3iUx5VERXypfgTr5KAKCradYyFFRllZHDlyBJQ/Cq+G/KfJkWZpq5YbmoH8KVE1X71j3QarSPwr4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=iJ4ZJ+9T; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="dYBvsSPp"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B7AB31F0089B;
-	Mon, 12 Oct 2026 07:01:37 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="iJ4ZJ+9T"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 78FBD1F0089B;
+	Mon, 12 Oct 2026 07:10:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791788498;
-	bh=GFhdpnnhNHq8kto2NtVcBzP+4OYlv8T7WrOl9X3C8NE=;
+	s=k20260515; t=1791789024;
+	bh=EZWLh8ZtcEyLbgkyy8mpGa6zyzZlvRQ5iu92TZ5q1tw=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=dYBvsSPpPy0rtJQbOBva6kehr5wr02bZg7sxUnjFGXUcRAc32MyIzZN45t1AlPjXv
-	 XD9k3E1VS8lDMeRnwmLpY+OlJ8lBsu0kv8TS060NFRJkTdR1gjuyXUzWUGvS+X5FqY
-	 2dE3U2+XMWlLnLe9No1jPEDKg6jBjzAB/SNDqn9L6BSQYYzUYg+rerO+YAp3JCNJEs
-	 V1oxiwYnstkJYO/d/IcUehoZFpkW5i/5xVESLs0c2cOGWTf9XZSqrGjMSDkYvEToBY
-	 1CWsp403rjOJlujTQ3E3tnAfGUBfioFhKXtElwTO180JkktFz5YRVCPrROgLUVtl92
-	 0EeW9fV4TYM9w==
-Date: Mon, 12 Oct 2026 10:01:34 +0300
+	b=iJ4ZJ+9T0IuPjoE/MMgLlFRx+Ik3f1GcSsNvLZr53mf1/+olSG6Re3/+WjjJ9rzkh
+	 HtgSeV2bXLWRaztBvFGpsm5q0kWbcpk6+NPOr75WbPC+Ywh0ymzLY3BwzItzvBPwdo
+	 TS1qOdLnuhU/Ph/bg9CcCuvlzUtV8gbFo7/C4B0yU6TuzMLgiX9AuG2tay2YDTc6+z
+	 Osyyq+sYyQPaxBUrkzRQp1vQaEeClmxFVASeh+EH2ePtYnNQac7pcjvdN7303bY69s
+	 id/eKXAa+WrueOfG2hSBBYTHTxeSlQK/gIXMvOko+zB5fFtPl8MOtkv/M+EtxZhIC9
+	 YeyCaIvlay32w==
+Date: Mon, 12 Oct 2026 10:10:20 +0300
 From: Leon Romanovsky <leon@kernel.org>
-To: Pranjal Shrivastava <praan@google.com>
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>, Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>, linux-kernel@vger.kernel.org,
+To: Pranjal Shrivastava <praan@google.com>, Chuck Lever <cel@kernel.org>,
 	Christoph Hellwig <hch@lst.de>,
-	Logan Gunthorpe <logang@deltatee.com>,
+	Matthew Wilcox <willy@infradead.org>
+Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+	linux-kernel@vger.kernel.org, Logan Gunthorpe <logang@deltatee.com>,
 	Jason Gunthorpe <jgg@ziepe.ca>, linux-pci@vger.kernel.org,
 	linux-rdma@vger.kernel.org, Shivaji Kant <shivajikant@google.com>,
 	Tom Talpey <tom@talpey.com>,
 	Unnati Sachan <unnatisachan@google.com>
-Subject: Re: [RFC PATCH v1 4/8] xprtrdma: return -EREMOTEIO on P2PDMA map
- failure
-Message-ID: <20261012070134.GG27033@unreal>
+Subject: Re: [RFC PATCH v1 5/8] nfs: tag READ/WRITE RPCs carrying P2PDMA pages
+Message-ID: <20261012071020.GH27033@unreal>
 References: <20261006233248.705086-1-praan@google.com>
- <20261006233248.705086-5-praan@google.com>
+ <20261006233248.705086-6-praan@google.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -51,52 +50,40 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261006233248.705086-5-praan@google.com>
+In-Reply-To: <20261006233248.705086-6-praan@google.com>
 
-On Tue, Oct 06, 2026 at 11:32:44PM +0000, Pranjal Shrivastava wrote:
-> ib_dma_map_sg() returns 0 on any failure, so frwr_map() cannot tell
-> why a mapping failed and reports -EIO. Use ib_dma_map_sgtable_attrs()
-> instead, which returns the reason. Pass up -EREMOTEIO, which means
-> the device cannot reach the P2PDMA memory, so the RPC fails with the
-> same error as other P2PDMA refusals. Every other mapping failure
-> still returns -EIO.
+On Tue, Oct 06, 2026 at 11:32:45PM +0000, Pranjal Shrivastava wrote:
+> A transport must know when an RPC's payload pages are P2PDMA memory,
+> so it can move them by DMA or refuse the RPC.
+> 
+> Check each page as nfs_generic_pgio() builds the page array, and
+> record the result in nfs_pgio_args. The READ and WRITE encoders of
+> every NFS version then set XDRBUF_P2PDMA on the buffer holding the
+> payload.
+> 
+> Additionally, avoid using READ_PLUS when the pages are P2PDMA memory.
 > 
 > Signed-off-by: Pranjal Shrivastava <praan@google.com>
 > ---
->  net/sunrpc/xprtrdma/frwr_ops.c | 15 ++++++++++-----
->  1 file changed, 10 insertions(+), 5 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-> index e83cef19e656..a55d5e11c0e2 100644
-> --- a/net/sunrpc/xprtrdma/frwr_ops.c
-> +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-> @@ -293,7 +293,8 @@ int frwr_map(struct rpcrdma_xprt *r_xprt,
->  	bool sg_gaps = ep->re_mrtype == IB_MR_TYPE_SG_GAPS;
->  	unsigned int max_depth = ep->re_max_fr_depth;
->  	struct ib_reg_wr *reg_wr;
-> -	int i, n, dma_nents;
-> +	struct sg_table sgt;
-> +	int i, n, dma_nents, ret;
->  	struct ib_mr *ibmr;
->  	u8 key;
->  
-> @@ -381,10 +382,13 @@ int frwr_map(struct rpcrdma_xprt *r_xprt,
->  	mr->mr_dir = rpcrdma_data_dir(writing);
->  	mr->mr_nents = i;
->  
-> -	dma_nents = ib_dma_map_sg(ep->re_id->device, mr->mr_sg, mr->mr_nents,
-> -				  mr->mr_dir);
-> -	if (!dma_nents)
-> +	/* Unlike ib_dma_map_sg(), this reports why a mapping failed */
-> +	sgt.sgl = mr->mr_sg;
-> +	sgt.orig_nents = mr->mr_nents;
-> +	ret = ib_dma_map_sgtable_attrs(ep->re_id->device, &sgt, mr->mr_dir, 0);
+>  fs/nfs/nfs2xdr.c        | 4 ++++
+>  fs/nfs/nfs3xdr.c        | 4 ++++
+>  fs/nfs/nfs4proc.c       | 3 +++
+>  fs/nfs/nfs4xdr.c        | 4 ++++
+>  fs/nfs/pagelist.c       | 2 ++
+>  include/linux/nfs_xdr.h | 1 +
+>  6 files changed, 18 insertions(+)
 
-Please avoid using this function. We are gradually moving away from SG tables
-in the RDMA code.
+<...>
 
-In general, it is never good thing to built API around try-and-fail
-approach. It will require from us to be aware of "specific" usage for
-the return value from one subsystem by another.
+> +++ b/fs/nfs/pagelist.c
+> @@ -970,6 +970,8 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
+>  				if (pageused > pagecount)
+>  					goto full;
+>  				*pages++ = last_page = page;
+> +				if (is_pci_p2pdma_page(page))
+> +					hdr->args.p2pdma = true;
+
+Should we allow wider use of is_pci_p2pdma_page()? Does NFS require
+`struct page`?
 
 Thanks
