@@ -1,74 +1,74 @@
-Received: from mail-ot1-f45.google.com (mail-ot1-f45.google.com [209.85.210.45])
+Received: from mail-oo1-f52.google.com (mail-oo1-f52.google.com [209.85.161.52])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 52D884915B7
-	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 13:13:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.45
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 838154399DC
+	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 13:14:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.52
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791810801; cv=none; b=byhzk8QFQ3E+1Ox5dLPoDPLh9qqYtR5QtOJpBgwR1NUGC1+REYK/3VE045UaEx9gNWsUcq6zgsQnEoO8cgzlle4OBGw2qlIlI0UMi8w3sshSl2UcHE+gkav2UQ47hvDOXXn4xN6DC/0FS9pvmzo/qP5iBvWJNgQgJ4p9R2KCg9Q=
+	t=1791810886; cv=none; b=KXQB+7I5x8NTYJRY6886U6FMrgDhfNYYdsNma5Kh4H5e1AJmT8SFQFVPbDqSF1S+amBWp830qPcMHJEM58MaVweMoYspmy3uZsNYtUcEw/ndJQKOw+spKlFnU0VT/tAsalgXx0dsf+7S4VHYs34s7W5qv1zAjieaC/SKXT0ODYQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791810801; c=relaxed/simple;
-	bh=icyyxOoZ3uUQvtxKLVLgqMPdhCEzOQs7yIU0LnfX49I=;
+	s=arc-20240116; t=1791810886; c=relaxed/simple;
+	bh=sDGPqLnbtD+WzSCkylGXnO67YQBDTEWpdxFzXZDFL04=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=Nfxs5z4nNspotdf+6KIUGtZFugUd01wvs2XwdnQpHi5tAREsx6QDkK0niVqMJqT1jg4oCBhdBu1Mo9A6nTHT9QJB51k3v7Mo/G6VRZWDouMAUoXXcF3gp4siDITxncOTafVil1JMVhwuHtZlPENblLOx3Dq0nemP0o2210HUhEk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=cnzm8AcF; arc=none smtp.client-ip=209.85.210.45
+	 MIME-Version:Content-Type; b=GnJgt1v058iX9/l+8JRZX47FlTYXtQpJPkT8c/wtBA5guAoYTto4br43dy+WeyCsCg3j56DanGneuJyEsSV0ZIiK/QgM/soqf7EJLzXoceN0Lh6nfK0OSdnHiT1GpbwS1dXMWMmdNM36TaYfLnqOtPXwSnT/TLRJNsfaR1F56oQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=p24oVzkW; arc=none smtp.client-ip=209.85.161.52
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="cnzm8AcF"
-Received: by mail-ot1-f45.google.com with SMTP id 46e09a7af769-8266c388b67so1703178a34.0
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 06:13:20 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="p24oVzkW"
+Received: by mail-oo1-f52.google.com with SMTP id 006d021491bc7-6cfb1329979so1252422eaf.1
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 06:14:45 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1791810799; x=1792415599; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1791810884; x=1792415684; darn=vger.kernel.org;
         h=content-type:mime-version:references:in-reply-to:message-id:date
          :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=XvXKx9dmxgn9mBo07jTY0gfNqVtNo7qN48VsJhAxenc=;
-        b=cnzm8AcFvWhzb8Z6KfqJ3yx9FW0TbdZPm3cdsjQUSa85WnMqjYdqIG4sHuusgan8O2
-         eY+8rypwrvKQ+YITQZe2syb8aqWQq0nQT8kUeClCw2QlseHiNisryiJ6g49hDCjxrLVN
-         XlwzUW0T+WZXYNr5uBl7RWVCu1qgrpNjzss4zm0THK4Ov2AIHFvKFsE5xOA4ANVkK4zp
-         RjLrxYeCH7vlZGjSZURa+FHbCOGqjcT6Mue+Fkz259fAFSW5igBJrajGPd+EXDXwcsYX
-         602YtSc2/VNGWFxZlyNLOfUsM20JYnRGeCSYvJNCgix/EVX9yeD6/H/sZzCtuMYSXl7s
-         qAHQ==
+        bh=sDGPqLnbtD+WzSCkylGXnO67YQBDTEWpdxFzXZDFL04=;
+        b=p24oVzkWtpu7jCET9hvM8iEboLtGOPXt0zzHPxlvsUQ9Ijt5FDmL9E+dk3J6vRzmjo
+         zprudbVipuMiNuNejJkRpXGfAxEvZqUSoVI1M1IoHJjXNH8way0RPSRLgKFIR36LBRMk
+         aCYfdDZTy3c3KQV+D7s+8j9dLBnW/KWE0HAahdlMOeTamTVnmhu8L9db0FFParZHtwBM
+         ehT7HP+yt92Mwz7I2N1YIrhoAEYSxPMpuKCgE/zYOHzK5zK1AS56L2xgD7KsMR01Cqs+
+         n0NWDuaiVdlMwBJFJu5kYWDKookQzxLV+kSeZkalMYWpWT1mGOv1pW4cCBv+Ok93NKXD
+         +Qbw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791810799; x=1792415599;
+        d=1e100.net; s=20260707; t=1791810884; x=1792415684;
         h=content-type:mime-version:references:in-reply-to:message-id:date
          :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=XvXKx9dmxgn9mBo07jTY0gfNqVtNo7qN48VsJhAxenc=;
-        b=K+TRw6HhFM1h+wA6EB3r+0l1gSG7cd75U9V3yLD4BO5CEs2Xt9vLlhB+A5PbWfQCUX
-         UChKmF3myWqEeJFIUR+ZwfWo9nJh/4BLP3E/EEk/bPXjTpmFDvn/X920bmMO5betsGFO
-         /+c9UtufG4O571WlrGgqwY7yu6l5EauX35YXRBSblagTOd1MC8+KxmDCHSAIhk5shSfV
-         UbERb0W+GWIFyPyZGe9CIiQLQao/JzOA5FfV17TLp0KVzDjbCp1zSZKv8MvNXdrRw9CH
-         spUW4VLscljZribx61GID4bUGR1waCbPPdQC2NiVleHSVsInPGtv0rB9T/yJ2wRfvop3
-         Zdbw==
-X-Gm-Message-State: AFq9FYI78QPmw0cBR6CrLfbiXgngfJoE/Pl566qUPvLUZhv2Jq2/bdGs
-	Y+P2/mrzWXF7nvgCx4vb8FphE9rhYg5wKrJ9EjOokj89Gk7DDNI4/KJDTmW+mYArS/Y=
-X-Gm-Gg: AYBFou3II9qQ6+vxynMOsebWeBHb5d5jQ/4WwLUhpNPbc/Q0ku5B49OdGqao1xaNkvX
-	/N+BNVVUcks3ODAN5QtuE6gPP/kUksm7vyihU2cNj7oQspSi+crOHp2Kk3UVQY5RpBoPN19zK4R
-	4GNnvUdfKRp/LTLx5oadzM0/26A+CDfC9ZC7OCH2EPSRHjRpL2ptJvMV6v3LqolgXLUA4MDrPHu
-	uNAcuUYHyTxI5Soe5wllt9bXJ5YEEsnRcOmDFIuD8y2+gKEJeO8j583RiGuIowrU1kRV6An9S0v
-	gsNRhWZIag08b29/21QTn5xkjSnT5fWiWmvH/qyB24KsypOfEIUmRDqI7AD0q8OTKruFfHlpkl5
-	oc5myvP7Yvxanae7D1qD7Ni6F542NhW32kQExMO5ak66CeEAw1RBgbJy7m/rS4UML81BeAkEpGD
-	OXqwnnwFyrcxm9rizdJ/Gz8pkeY9nrieEdkUJV0F7b7sVutbLG/MI5OIAjNuf9QRMyQ2XE6iskr
-	IjYe/1gd4VZNpsP4w==
-X-Received: by 2002:a05:6830:6d0b:b0:81c:a8c5:633e with SMTP id 46e09a7af769-83095c2766fmr8799802a34.11.1791810799004;
-        Mon, 12 Oct 2026 06:13:19 -0700 (PDT)
+        bh=sDGPqLnbtD+WzSCkylGXnO67YQBDTEWpdxFzXZDFL04=;
+        b=kdRe/oMQPugnuHJV2eNfDQKpXDBMrVzh8dEtpdSj66xA1IQeW9rOgqkFApr0TWMQCi
+         SK2JokO+TvE9hjnd4Upb5re+UWZepG/TQQRcIhYp37TLJIZ00BFTPnsdq5Wluesm+m9/
+         L1rwoMjmZUuHEN11/tyF0/NGfHNyxH4+R9chn0bZUylnpvht0LxTRS7Z3jaXFkprdv7+
+         d1rEOq4qspo2VbxiSCEcPq0Q3+fzvvRUlO0QvMOR+8ypC4Azwh9s9h2J+G7+6qqSv35Y
+         kelfzxCP3UuCW37Tezy32tLGZo49cdoLDPw8ARqko7/7NJ/xLw0sJqo4mVd+4ZFVn0qU
+         aI/w==
+X-Gm-Message-State: AFq9FYIvfBVcc1MNx7RXi037ZOfaj2jvjX+9ZFYUIjqgsghCBB79houF
+	s4eOQhmY2hGlCVPXTRSuWHAMneWD6wE/h0l3/KAV3o+pq9vG2e6QZQP2yTaBQt4dKEZseqX3Czf
+	3PHTS
+X-Gm-Gg: AYBFou1ZSnZsYiKoPFPmnj5tDUTVQJ3uvL8E0cYK6Byf3eQZOkJcIhXGg/vH00H+SC4
+	ZXKwshCh4rpS/v2+wGjUbBuBcLBUa+mPXfHiGnUiNNvAERBEMw12IxipdPyRZGyQy7F1MO3EszK
+	Qk9IVjmrHcuQQU8lbp+6JSbniz2E0WNy9GJOxSoUFGzTJjz2U3KKtrQ2e1SQYiV5Q/MKc1uICLf
+	ANdV27f0vI2Lx4RCKTt8I45TLFpiBuwlDoYUFM4m3pALBtNY97O2cl2hDvsJMExo3yN1UrQDldd
+	HYG0c1PC3TVXfwCdXyHvJEZ5xi9W2zHue9KlfA9ypXjqMRvvpogJNh3ttI//YYlY9C19QBK2bUU
+	iSu1IcXSTDLfXwexRlxuMbK4jUROIWB0/JOFOVs9YqpfwAZ1fKaS2InlWt+Fgb0ExaMu283qH9c
+	KjwPwbTcnyJXNwfqP+sJ39kQYd8bStdMp7k6kyytv5x2N4WeyYaiXAitpIMgL6is4dpYjVKvUns
+	RS+qssuQcw7BYSdnwOmASWDUvhh
+X-Received: by 2002:a05:6820:1a08:b0:6de:d2c1:e97d with SMTP id 006d021491bc7-6ef12206f31mr7503183eaf.66.1791810884311;
+        Mon, 12 Oct 2026 06:14:44 -0700 (PDT)
 Received: from [192.168.254.51] ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-83039a46fc3sm10706573a34.20.2026.10.12.06.13.16
+        by smtp.gmail.com with ESMTPSA id 006d021491bc7-6f6d6796c54sm1866357eaf.2.2026.10.12.06.14.42
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 12 Oct 2026 06:13:17 -0700 (PDT)
+        Mon, 12 Oct 2026 06:14:43 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Anna Schumaker <anna@kernel.org>
 Cc: linux-nfs@vger.kernel.org, trond.myklebust@hammerspace.com
-Subject: Re: [PATCH 2/3] NFS: Modernize the callback decode_bitmap() function
-Date: Mon, 12 Oct 2026 09:13:15 -0400
+Subject: Re: [PATCH 0/3] NFS: Modernize decoding uint32 arrays
+Date: Mon, 12 Oct 2026 09:14:41 -0400
 X-Mailer: MailMate (2.0r6272)
-Message-ID: <9CCF4553-C2AB-48FB-A3A0-6ED96D50798A@hammerspace.com>
-In-Reply-To: <20261012123346.123126-3-anna@kernel.org>
+Message-ID: <5148DFB4-A99D-4044-A6BE-B41EC7E08538@hammerspace.com>
+In-Reply-To: <20261012123346.123126-1-anna@kernel.org>
 References: <20261012123346.123126-1-anna@kernel.org>
- <20261012123346.123126-3-anna@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -81,48 +81,15 @@ On 12 Oct 2026, at 8:33, Anna Schumaker wrote:
 
 > From: Anna Schumaker <anna.schumaker@hammerspace.com>
 >
-> The sunrpc function xdr_stream_decode_uint32_array() is already designed
-> to decode arrays of integers with all necessary bounds checking. Update
-> the decode_bitmap() function to call this and map the return value into
-> something the callback handler expects.
+> We've had several reports over the last few months people have tried to
+> add bounds checking to the various places that need to decode a uint32
+> array. None of them update the callsites to use
+> xdr_stream_decode_uint32_array(), which has all the proper bounds
+> checking already implemented. These patches make that change.
 >
-> Signed-off-by: Anna Schumaker <anna.schumaker@hammerspace.com>
-> ---
->  fs/nfs/callback_xdr.c | 24 +++++++-----------------
->  1 file changed, 7 insertions(+), 17 deletions(-)
->
-> diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-> index 5a1f05469268..b6ecfb73d850 100644
-> --- a/fs/nfs/callback_xdr.c
-> +++ b/fs/nfs/callback_xdr.c
-> @@ -100,24 +100,14 @@ static __be32 decode_fh(struct xdr_stream *xdr, struct nfs_fh *fh)
->  	return 0;
->  }
->
-> -static __be32 decode_bitmap(struct xdr_stream *xdr, uint32_t *bitmap)
-> +static __be32 decode_bitmap(struct xdr_stream *xdr, __u32 *bitmap,
-> +			    size_t bitmap_size)
->  {
-> -	__be32 *p;
-> -	unsigned int attrlen;
-> +	ssize_t status;
->
-> -	p = xdr_inline_decode(xdr, 4);
-> -	if (unlikely(p == NULL))
-> +	status = xdr_stream_decode_uint32_array(xdr, bitmap, bitmap_size);
-> +	if (unlikely(status < 0))
->  		return htonl(NFS4ERR_RESOURCE);
+> Thoughts?
 
-There's a slight behavior change here..
-
-xdr_stream_decode_uint32_array() returns -EMSGSIZE when the wire count
-is larger than bitmap_size. That makes a well-formed bitmap4 of four or
-more words fail CB_GETATTR and CB_RECALL_ANY with NFS4ERR_RESOURCE. The
-old code accepted such a bitmap and ignored the words past bitmap[2].
-knfsd never sends more than three words, but bitmap4 is variable length
-and trailing zero words are legal. The client side already treats
--EMSGSIZE as success in nfs4xdr.c's decode_bitmap4()..
-
-Minor.. any concern about that?
+I like it - even if a little disappointed that you didn't state "malicious
+server" anywhere.
 
 Ben
