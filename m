@@ -1,110 +1,106 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from mailout2.samsung.com (mailout2.samsung.com [203.254.224.25])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE2FF3859DC
-	for <linux-nfs@vger.kernel.org>; Sun, 11 Oct 2026 20:54:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A5866371D02
+	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 02:47:55 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.254.224.25
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791752095; cv=none; b=Q4+gQ68KUOM+3++oWKUUN+qpQKNv1skKmhmVK803tbw+H70f+loDugoyKStVcICbCGPTWxwQRrLZg/Bg4mQVBxs6uPNxeUZixmKBOXOEd+yv+smVpRf3CdUcUbwKWrdYp1sSiJtSFC/A9lDOEZ97j7CeSyrTT0mp/yDdFPysKCU=
+	t=1791773277; cv=none; b=CadaDWaa/Nt+9MgbSN0tQ5FetKK/VxnZ6qdGF9b/1v4MImH1b+x/fvPXAH406JoonsZj7PIkLIERyhDiyPwy+2/OVrWiwnomDYaxzekbehxkkkSqUfXiJaxz8KjBTKeOQ1nTufoqiy3l827vQCfVWNMnxLZ2JgmatFtI7y1wXqA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791752095; c=relaxed/simple;
-	bh=cSuMDgjQKJFhCz3V4GbTzRq2AlUYRioY1gYaYHTxJz4=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=VbLk8MVz/OmNfupbo34Osy/GLXmd3zXQrI8dhQUdFvdBtVAa7bXWXi5Mk/pCxOPnME51NlM4zrUrfod//IJGjCVyneWs/03LoovspbP/mG9xFeBUuW5uDz8sRWOjpN56FqxUm/IqByvI6sCSCv31zdbFc1JHTLYujMhwdJESPqY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=V5cCXWmx; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791773277; c=relaxed/simple;
+	bh=WCphX4URgUH6Nmp4Rpz5K5t99v/wRhzMwEP/lZd5amc=;
+	h=Mime-Version:Subject:From:To:CC:In-Reply-To:Message-ID:Date:
+	 Content-Type:References; b=BMX7lSu6yxiUKhqWDAtoY9etZEMUgzXjbLcx+frWhXl2cx5rub3w5kNSjumNjGphG3662E+fitlGCcN0GzUEGQ3gF4cMrpfuQqSFwJ3v+lxMelhAcB/OmMjiMcjoVQdcYvVpjT+Gj3EHQhAZXmcqoSGyVUiYA7NojaWNrxVPeZg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=TT8ilfaZ; arc=none smtp.client-ip=203.254.224.25
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="V5cCXWmx"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E5C931F0089B;
-	Sun, 11 Oct 2026 20:54:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791752092;
-	bh=r8htZRCP/7hsWXK6auw4tnKhwejGXw7hg9XwXTQEh80=;
-	h=From:To:Cc:Subject:Date;
-	b=V5cCXWmxYGLpzqgqodThB249wDYcbWMi1KSQdW/YhOB7JRcKEv7Z0jpfNXWq8UbYU
-	 DFmu//aO68AZGPmyV9hdKdEbG4M8ZVtn+eM0gAgCh00GBYyVGJq4Gcb6N3HXPzMIPV
-	 FC9GkmX+ax/V5p7F6lqR8qmqsJ+nAxIFCI4GpByCHe1zxSWjmwdA7NiuVp5nPdG7Ps
-	 W5n8o3DlMJAbSg+kxGVJZdBodCWnTKATddLK2QkjgwMWWMvHKwoVm7JyoDdKqSCaJt
-	 DBQNUOhEygR5mHXmUdIsYsXfnYw3O9iOCRdhwStWIDboFgr9K//0uK2oBXboBXFk8P
-	 nY+4LtII5T++A==
-From: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neilb@ownmail.net>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: Christian Brauner <brauner@kernel.org>,
-	<linux-nfs@vger.kernel.org>
-Subject: [PATCH v1] NFSD: Take a file unhashed during construction back off the LRU
-Date: Sun, 11 Oct 2026 16:54:51 -0400
-Message-ID: <20261011205451.96638-1-cel@kernel.org>
-X-Mailer: git-send-email 2.54.0
+	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="TT8ilfaZ"
+Received: from epcas2p1.samsung.com (unknown [182.195.41.53])
+	by mailout2.samsung.com (KnoxPortal) with ESMTP id 20261012024747epoutp022c5b6a4a1971c1d9cc13c7c3074f8f28~dqEsifU0Z2589625896epoutp02t
+	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 02:47:47 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout2.samsung.com 20261012024747epoutp022c5b6a4a1971c1d9cc13c7c3074f8f28~dqEsifU0Z2589625896epoutp02t
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
+	s=mail20170921; t=1791773267;
+	bh=WCphX4URgUH6Nmp4Rpz5K5t99v/wRhzMwEP/lZd5amc=;
+	h=Subject:Reply-To:From:To:CC:In-Reply-To:Date:References:From;
+	b=TT8ilfaZdk98uAXq2mDogTumHPr9esemcPmc1WFgkdnqwK22+BDTVKN0mdOFq+8qu
+	 ncFD4VivdgwIxyGzFH/nbJKKQSYszjP3ImAOCMkSsmuEeDZc96JMC84Qvj0adfpXrR
+	 PkEivm1bT1syfQZf6+tSyHxBymE5+wXNXjUwMUAg=
+Received: from epsnrtp03.localdomain (unknown [182.195.42.155]) by
+	epcas2p1.samsung.com (KnoxPortal) with ESMTPS id
+	20261012024746epcas2p1b6c036d7b6eb460753e2a6c0928d5429~dqEr2hiFE0332403324epcas2p1A;
+	Mon, 12 Oct 2026 02:47:46 +0000 (GMT)
+Received: from epcas2p2.samsung.com (unknown [182.195.38.199]) by
+	epsnrtp03.localdomain (Postfix) with ESMTP id 4j322B2S5Lz3hhT7; Mon, 12 Oct
+	2026 02:47:46 +0000 (GMT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Mime-Version: 1.0
+Subject: RE:(2) [PATCH 2/8] xfs: refuse a direct allocation whose block
+ reservation would wrap
+Reply-To: daejun7.park@samsung.com
+Sender: Daejun Park <daejun7.park@samsung.com>
+From: Daejun Park <daejun7.park@samsung.com>
+To: "Darrick J. Wong" <djwong@kernel.org>
+CC: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai
+	Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, Christoph Hellwig
+	<hch@lst.de>, Carlos Maiolino <cem@kernel.org>, Amir Goldstein
+	<amir73il@gmail.com>, Dave Chinner <dgc@kernel.org>, Sergey Bashirov
+	<sergeybashirov@gmail.com>, Christian Brauner <brauner@kernel.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"stable@vger.kernel.org" <stable@vger.kernel.org>, Daejun Park
+	<daejun7.park@samsung.com>
+X-Priority: 3
+X-Content-Kind-Code: NORMAL
+In-Reply-To: <20261008154017.GO2705364@frogsfrogsfrogs>
+X-CPGS-Detection: blocking_info_exchange
+X-Drm-Type: N,general
+X-Msg-Generator: Mail
+X-Msg-Type: PERSONAL
+X-Reply-Demand: N
+Message-ID: <20261012024745epcms2p18c4fad2aa953cd80338e2e614198a6ea@epcms2p1>
+Date: Mon, 12 Oct 2026 11:47:45 +0900
+X-CMS-MailID: 20261012024745epcms2p18c4fad2aa953cd80338e2e614198a6ea
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+X-Sendblock-Type: AUTO_CONFIDENTIAL
+CMS-TYPE: 102P
+X-CPGSPASS: Y
+X-CPGSPASS: Y
+cpgsPolicy: CPGSC10-223,Y
+X-CFilter-Loop: Reflected
+X-CMS-RootMailID: 20261008154023epcas2p487b78abba35fdc6d75f9dd8d62a39837
+References: <20261008154017.GO2705364@frogsfrogsfrogs>
+	<20261008-xfs-nfsd-map-blocks-v1-0-560026cdccb6@samsung.com>
+	<20261008-xfs-nfsd-map-blocks-v1-2-560026cdccb6@samsung.com>
+	<CGME20261008154023epcas2p487b78abba35fdc6d75f9dd8d62a39837@epcms2p1>
 
-nfsd_file_do_acquire() inserts a new nfsd_file into the hash table,
-opens the file, and only then adds the entry to the LRU. In between,
-nfsd_file_cond_queue() can unhash the entry from any caller that
-tests GC but not PENDING, such as nfsd_file_queue_for_close(), with
-nothing on the LRU to remove. The constructor then calls
-nfsd_file_lru_add(), so the entry sits on the LRU with HASHED clear.
+On Thu, Oct 08, 2026 at 08:40:17AM -0700, Darrick J. Wong wrote:
+> Uh... seeing as extent records can only map 2^21 blocks maximum and
+> iomap/pnfs can handle xfs returning a mapping of whatever length we
+> want, why don't we constrain count_fsb to XFS_BMBT_MAX_EXTLEN?
 
-The first laundrette pass after the caller's nfsd_file_put() reaps
-the entry. nfsd_file_cache_shutdown_net() purges through the hash
-table and misses the entry. With one net namespace, if
-nfsd_file_cache_shutdown() runs before that laundrette pass,
-list_lru_destroy() runs with the entry still linked, the struct file
-stays open, and the export cannot be unmounted. With more than one
-net namespace, the entry can outlive its namespace, because nf_net
-does not hold a reference. A later laundrette pass then follows a
-dangling nf_net pointer in nfsd_file_dispose_list_delayed().
+I tried that first. It stops the wrap, but it changes what an RW
+LAYOUTGET for a range longer than the free space does. Today
+xfs_iomap_write_direct() reserves the whole count, so such a request
+fails with -ENOSPC before anything is allocated. With the count capped,
+each ->map_blocks call allocates up to 2^21 blocks, and nfsd calls it
+once per extent, so the request allocates until the filesystem is full
+and then fails.
 
-A local F_SETLEASE, or nfsd_close_cached_files() on an NFS re-export,
-reaches a file under construction when it races an open of the same
-inode on another nfsd thread. A process that repeatedly takes and
-releases a read lease on an exported file, while an NFSv3 client
-reads that file, hits the window on three reads out of four. Before
-commit 56221b42d717 ("nfsd: filecache: don't repeatedly add/remove
-files on the lru list"), only nfsd_file_put() added an entry to the
-LRU, after testing HASHED.
+On a 32 GiB XFS with nfsd-testing at the time, an RW LAYOUTGET at offset
+0 of an empty file for 16 TiB, or to the end of the file, got
+NFS4ERR_NOSPC with the cap, and df showed 25 GiB in use afterwards
+instead of 663 MiB. The blocks stay past EOF, as each call that
+allocated marked the inode XFS_DIFLAG_PREALLOC. One for 100 GiB gets
+NFS4ERR_NOSPC with nothing allocated, both without this patch and with
+it.
 
-Test HASHED again after the LRU add. When the bit is clear, take the
-entry off the LRU and drop the LRU's reference, so the caller's
-nfsd_file_put() frees it.
-
-Fixes: 56221b42d717 ("nfsd: filecache: don't repeatedly add/remove files on the lru list")
-Assisted-by: https://github.com/brauner/linux-formal
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- fs/nfsd/filecache.c | 11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index 42bd8c7859cf..ddca3d580019 100644
---- a/fs/nfsd/filecache.c
-+++ b/fs/nfsd/filecache.c
-@@ -1311,8 +1311,17 @@ nfsd_file_do_acquire(struct svc_rqst *rqstp, struct net *net,
- 	 */
- 	if (status != nfs_ok || inode->i_nlink == 0)
- 		nfsd_file_unhash(nf);
--	else if (want_gc)
-+	else if (want_gc) {
- 		nfsd_file_lru_add(nf);
-+		/*
-+		 * nfsd_file_cond_queue() can unhash nf before the LRU add.
-+		 * Only one LRU removal succeeds, and that one drops the LRU
-+		 * reference.
-+		 */
-+		if (!test_bit(NFSD_FILE_HASHED, &nf->nf_flags) &&
-+		    nfsd_file_lru_remove(nf))
-+			refcount_dec(&nf->nf_ref);
-+	}
- 
- 	clear_and_wake_up_bit(NFSD_FILE_PENDING, &nf->nf_flags);
- 	if (status == nfs_ok)
--- 
-2.54.0
-
+The check in this patch only refuses a count whose reservation does not
+fit in an unsigned int, so a count that fits is handled as before.
