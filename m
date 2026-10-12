@@ -1,42 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 725E6443C19
-	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 12:00:01 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37A10489FBF;
+	Mon, 12 Oct 2026 12:17:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791806405; cv=none; b=IvdpModPRmRrMhW/p0bzDATeeTFw3tZUvXu93ZP2/02+6X8MalEflVmF7yvcq3UxY03UJHLZUCfYZJew+o6cyauU9s30TRhuzZJuFi+oUb4Dbf1kal6zG29bugVBUs0QKXEI44LCx359ymKcpf4HQ4GfJwaHHB1HryJN4fTQEYg=
+	t=1791807455; cv=none; b=LszqFZQzo2sn8+Ukt/6R7P3A/4KAAFMtWxuXjPWZYTD0tTe+OMDvwmLtvCkFngRYepiCVcE4nmg6kvZdOQpiEw4OJhHyVngmUEF3BBOAaa+Ghk3OntvK+J3eq/32EZ/T/HLKAJpMKLOWv9XWs+XI2N09WNgpNH5KE9Fsox8/Uig=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791806405; c=relaxed/simple;
-	bh=urd8dWOg4p2ndhFXYDyerzjHfuTEDAf093fOv1G/bOo=;
+	s=arc-20240116; t=1791807455; c=relaxed/simple;
+	bh=y4s5ZjULgSm3O7XJT1aomsoYH/W6LK57tuXyeyfOdNg=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=Y9laB1lR1U2qP5aIwcYk+TCYjTinf2NyNQWhRSeVBwoUu0WOtJd8kAqYCS1jDW1PpK4MIJXnyqrTmq/4YwxDnAdYHhcHRc0W/ShNju0eeP1cnmewYxuAU7JkiaFwrnrSuw2+h6XAVz7bnwLdyVS/rTllStVnV/qhA7GhfQJBRRA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=D2HS+8Fa; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=PNvQiBvJhhNVlT5xUVU+FMH2dJN+MdFep9qjnrK/7HDZThEWO2pAqt8IMfvH6qaVDScg5Eam058Vbv4KLtYY7Ohxvg+fJJ2oNcLaC4CSjFM+CH9cXLDhg/j8DomMFG1weA3BRfr7UioYsmePsIA8ktVQn6Nb80RXyM622J5EH9E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=l3Q/VwcL; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="D2HS+8Fa"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 69B9F1F0089B;
-	Mon, 12 Oct 2026 12:00:00 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="l3Q/VwcL"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2410B1F0089B;
+	Mon, 12 Oct 2026 12:17:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791806401;
-	bh=vTOWQiw5/S4LkVSvWolvVXD8QLf3c3kexR7QrITUJwI=;
+	s=k20260515; t=1791807453;
+	bh=zurEfVG8DOx6Cdmg2rSk/R1bNceHXwlw55NXrjY+LSc=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=D2HS+8FaebN5HCe2Cj9CJXeTAxX+3JqMjmARQmudi4LXszq5pZ3lZ9BFl1Q9bnyOg
-	 ZbvTpeDpPihFEnorSjJ1dYRkteKBpFlLyBCZ4NwZgfVXDResd4RVhxsdX8nvJyJtnC
-	 iDsgvy3ie/kbYGoPVthZg9WWzP57eFmZkI3VvWBnmnW9wYzuve/zhRnPrQTZUxC8mw
-	 wHc3tFuwBWkVKALx2JBr1MN1Fv2eo1FSw7xx5as9MfQlQzteTzGZmavi1+weIExvr/
-	 hp8uyMG2jxvAQEuLsUIkS004R/jHPHccq9m24CpfB1+vW8oqDgXH5+OyB7IUDOhuIf
-	 H0+go/RDFRGkg==
-Message-ID: <49d70daa2af39596709614bd04431404a7e515a5.camel@kernel.org>
-Subject: Re: [PATCH v1] NFSD: Take a file unhashed during construction back
- off the LRU
+	b=l3Q/VwcL5iRVTmiFRr4NdmG+xJ1eEAGYXsYIhBwbHDeFpsnWQBSOaYiHK0JNI4+Fw
+	 ejDJTMgK3wLF77JdiuQ1rEw22+FrO1/0xLp8RlZBd+nL+Lsv989WM8rDr9h0UcyhP8
+	 tJuvFG037KZIiU3gHZmSCLXN8phSCeaKhzCwiaj2JnVIKqcGyMS8wqp/GQhbyyat81
+	 Hr+97Mfmk9uWIeDDJ5eZeWS47FMy4m+w2pAuelJlzhwmMizIUTGk9my+2CASinlVHO
+	 vqpWWh7Dko5OgFuVvgf+qJasxv5QR1vn2nJKldI7RkSjMEOCGnk2FRbVZWoZ6W4Me4
+	 hjh8Ivl6r4EqQ==
+Message-ID: <133aa8197620ef4f36a48faa62c207f5ee12c0a0.camel@kernel.org>
+Subject: Re: [PATCH] nfsd: prevent a double put of revoked layout stateids
 From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neilb@ownmail.net>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>
-Cc: Christian Brauner <brauner@kernel.org>, linux-nfs@vger.kernel.org
-Date: Mon, 12 Oct 2026 07:59:58 -0400
-In-Reply-To: <20261011205451.96638-1-cel@kernel.org>
-References: <20261011205451.96638-1-cel@kernel.org>
+To: Jinpyo Lee <bint4b13@gmail.com>, linux-nfs@vger.kernel.org
+Cc: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
+ Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
+ Talpey <tom@talpey.com>, 	linux-kernel@vger.kernel.org, bobtobabz@gmail.com
+Date: Mon, 12 Oct 2026 08:17:31 -0400
+In-Reply-To: <20261012084722.5168-1-bint4b13@gmail.com>
+References: <20261012084722.5168-1-bint4b13@gmail.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -121,72 +120,236 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, 2026-10-11 at 16:54 -0400, Chuck Lever wrote:
-> nfsd_file_do_acquire() inserts a new nfsd_file into the hash table,
-> opens the file, and only then adds the entry to the LRU. In between,
-> nfsd_file_cond_queue() can unhash the entry from any caller that
-> tests GC but not PENDING, such as nfsd_file_queue_for_close(), with
-> nothing on the LRU to remove. The constructor then calls
-> nfsd_file_lru_add(), so the entry sits on the LRU with HASHED clear.
+On Mon, 2026-10-12 at 17:47 +0900, Jinpyo Lee wrote:
+> nfsd4_free_stateid() finds an admin-revoked layout stateid with
+> find_stateid_locked(), which does not acquire a reference. Since the
+> layout case does not mark the stateid closed before dropping cl_lock,
+> two FREE_STATEID operations in separate session slots can both select
+> the same stateid and drop a reference they do not own.
 >=20
-> The first laundrette pass after the caller's nfsd_file_put() reaps
-> the entry. nfsd_file_cache_shutdown_net() purges through the hash
-> table and misses the entry. With one net namespace, if
-> nfsd_file_cache_shutdown() runs before that laundrette pass,
-> list_lru_destroy() runs with the entry still linked, the struct file
-> stays open, and the export cannot be unmounted. With more than one
-> net namespace, the entry can outlive its namespace, because nf_net
-> does not hold a reference. A later laundrette pass then follows a
-> dangling nf_net pointer in nfsd_file_dispose_list_delayed().
+> With fence-work teardown in place, the second caller can also wait in
+> nfsd4_stop_layout_fence() until the first caller frees the stateid, then
+> resume through its freed fence mutex and layout lock.
 >=20
-> A local F_SETLEASE, or nfsd_close_cached_files() on an NFS re-export,
-> reaches a file under construction when it races an open of the same
-> inode on another nfsd thread. A process that repeatedly takes and
-> releases a read lease on an exported file, while an NFSv3 client
-> reads that file, hits the window on three reads out of four. Before
-> commit 56221b42d717 ("nfsd: filecache: don't repeatedly add/remove
-> files on the lru list"), only nfsd_file_put() added an entry to the
-> LRU, after testing HASHED.
+> Mark the layout stateid CLOSED under cl_lock and ls_lock so only one
+> disposal caller proceeds. Take a temporary reference before dropping
+> cl_lock and hold it while stopping fence work and draining the remaining
+> layout segments, then release that reference with the final put.
 >=20
-> Test HASHED again after the LRU add. When the bit is clear, take the
-> entry off the LRU and drop the LRU's reference, so the caller's
-> nfsd_file_put() frees it.
+> The layout stateid IDR does not own a separate reference. The initial
+> allocation reference is released when LAYOUTGET completes, and each
+> layout segment holds its own reference. Serialize segment draining with
+> in-flight layout operations using ls_mutex, and recheck CLOSED after
+> acquiring that mutex so a stale LAYOUTGET cannot add a segment after the
+> drain. Also make the newly allocated layout stateid the error-path put
+> target.
 >=20
-> Fixes: 56221b42d717 ("nfsd: filecache: don't repeatedly add/remove files =
-on the lru list")
-> Assisted-by: https://github.com/brauner/linux-formal
-> Signed-off-by: Chuck Lever <cel@kernel.org>
+> Read CLOSED under ls_lock in FREE_STATEID, and restrict
+> nfs40_clean_admin_revoked() to NFSv4.0 clients. Session clients dispose
+> of revoked stateids through FREE_STATEID and must not be processed by
+> the NFSv4.0 cleanup while layout disposal is in progress.
+>=20
+> The vulnerability research and validation were conducted by members of
+> the Tobabz team as part of the Best of the Best 15th program.
+>=20
+> Fixes: 86b9898920a6 ("NFSD: Handle layout stid in nfsd4_drop_revoked_stid=
+()")
+> Assisted-by: LLM
+> Signed-off-by: Jinpyo Lee <bint4b13@gmail.com>
 > ---
->  fs/nfsd/filecache.c | 11 ++++++++++-
->  1 file changed, 10 insertions(+), 1 deletion(-)
+> Validated on nfsd-testing d918c664efd5ec6a7309e98f567fb018bcde0e11
+> (2026-10-12):
+> - Applied cleanly and passed strict checkpatch with no errors or warnings=
+.
+> - Built and booted an x86_64 kernel and modules with GCC 13.3, W=3D1,
+>   Generic KASAN, lockdep, and pNFS block and SCSI layouts enabled.
+> - NFSv4.2, NFSv4.0, and NFSv3 read/write, fio, and unmount tests passed.
+> - On a real loopback pNFS SCSI layout, administrator revocation followed
+>   by one FREE_STATEID removed the layout stateid and reduced the
+>   admin-revoked count from 2 to 1. The sequence passed twice.
+> - Tracing observed nfsd4_stop_layout_fence() in both revocation and
+>   FREE_STATEID processing, followed by nfsd_layoutstate_free.
+> - No KASAN, lockdep, refcount, list-corruption, or Oops report occurred;
+>   kernel taint remained zero.
 >=20
-> diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-> index 42bd8c7859cf..ddca3d580019 100644
-> --- a/fs/nfsd/filecache.c
-> +++ b/fs/nfsd/filecache.c
-> @@ -1311,8 +1311,17 @@ nfsd_file_do_acquire(struct svc_rqst *rqstp, struc=
-t net *net,
->  	 */
->  	if (status !=3D nfs_ok || inode->i_nlink =3D=3D 0)
->  		nfsd_file_unhash(nf);
-> -	else if (want_gc)
-> +	else if (want_gc) {
->  		nfsd_file_lru_add(nf);
-> +		/*
-> +		 * nfsd_file_cond_queue() can unhash nf before the LRU add.
-> +		 * Only one LRU removal succeeds, and that one drops the LRU
-> +		 * reference.
-> +		 */
-> +		if (!test_bit(NFSD_FILE_HASHED, &nf->nf_flags) &&
-> +		    nfsd_file_lru_remove(nf))
-> +			refcount_dec(&nf->nf_ref);
-> +	}
+> The full xfstests suite and a forced concurrent two-slot FREE_STATEID
+> race were not run on this revision.
+>=20
+>  fs/nfsd/nfs4layouts.c | 24 ++++++++++++++++++++++++
+>  fs/nfsd/nfs4state.c   | 37 ++++++++++++++++++++++++++++++++++++-
+>  fs/nfsd/pnfs.h        |  6 ++++++
+>  3 files changed, 66 insertions(+), 1 deletion(-)
+>=20
+> diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+> index 898776c9d..74c39e216 100644
+> --- a/fs/nfsd/nfs4layouts.c
+> +++ b/fs/nfsd/nfs4layouts.c
+> @@ -312,6 +312,7 @@ nfsd4_preprocess_layout_stateid(struct svc_rqst *rqst=
+p,
+>  		status =3D nfserr_jukebox;
+>  		if (!ls)
+>  			goto out;
+> +		stid =3D &ls->ls_stid;
+>  		mutex_lock(&ls->ls_mutex);
+>  	} else {
+>  		ls =3D container_of(stid, struct nfs4_layout_stateid, ls_stid);
+> @@ -324,6 +325,15 @@ nfsd4_preprocess_layout_stateid(struct svc_rqst *rqs=
+tp,
+>  			goto out_unlock_stid;
+>  	}
 > =20
->  	clear_and_wake_up_bit(NFSD_FILE_PENDING, &nf->nf_flags);
->  	if (status =3D=3D nfs_ok)
+> +	/* A new or looked-up stateid may have been closed before ls_mutex. */
+> +	spin_lock(&ls->ls_lock);
+> +	if (ls->ls_stid.sc_status & SC_STATUS_CLOSED) {
+> +		spin_unlock(&ls->ls_lock);
+> +		status =3D nfserr_bad_stateid;
+> +		goto out_unlock_stid;
+> +	}
+> +	spin_unlock(&ls->ls_lock);
+> +
+>  	*lsp =3D ls;
+>  	return 0;
+> =20
+> @@ -594,6 +604,20 @@ nfsd4_return_all_layouts(struct nfs4_layout_stateid =
+*ls,
+>  	spin_unlock(&ls->ls_lock);
+>  }
+> =20
+> +void nfsd4_return_revoked_layout(struct nfs4_layout_stateid *ls)
+> +{
+> +	LIST_HEAD(reaplist);
+> +
+> +	/*
+> +	 * The caller holds a stateid reference until segment draining ends.
+> +	 * Wait for any LAYOUTGET that passed the CLOSED check.
+> +	 */
+> +	mutex_lock(&ls->ls_mutex);
+> +	nfsd4_return_all_layouts(ls, &reaplist);
+> +	mutex_unlock(&ls->ls_mutex);
+> +	nfsd4_free_layouts(&reaplist);
+> +}
+> +
+>  void
+>  nfsd4_return_all_client_layouts(struct nfs4_client *clp)
+>  {
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 920967dd6..02bfbd242 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -5837,6 +5837,24 @@ nfsd4_find_existing_open(struct nfs4_file *fp, str=
+uct nfsd4_open *open)
+>  	return ret;
+>  }
+> =20
+> +/* cl_lock is held; layout stateid status also requires ls_lock. */
+> +static bool nfsd4_stid_is_closed(struct nfs4_stid *s)
+> +{
+> +	struct nfs4_layout_stateid *ls;
+> +	bool closed;
+> +
+> +	lockdep_assert_held(&s->sc_client->cl_lock);
+> +
+> +	if (s->sc_type !=3D SC_TYPE_LAYOUT)
+> +		return s->sc_status & SC_STATUS_CLOSED;
+> +
+> +	ls =3D layoutstateid(s);
+> +	spin_lock(&ls->ls_lock);
+> +	closed =3D s->sc_status & SC_STATUS_CLOSED;
+> +	spin_unlock(&ls->ls_lock);
+> +	return closed;
+> +}
+> +
 
-The problem and solution seem sane. IMO, the comment is not
-particularly helpful and will be subject to bitrot (what if we change
-the name of nfsd_file_cond_queue()?). For the code itself though:
+^^^=20
+I must say that I'm not thrilled with the different locking rules for
+SC_STATUS_CLOSED with different types of stateids. That has a strong
+code smell in my opinion and will be difficult (for humans) to keep
+straight.
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+I don't have a better suggestion for the moment, but I'd strongly
+prefer something that didn't add these extra rules around a flag common
+to all stateids.
+
+>  static void nfsd4_drop_revoked_stid(struct nfs4_stid *s)
+>  	__releases(&s->sc_client->cl_lock)
+>  {
+> @@ -5871,9 +5889,24 @@ static void nfsd4_drop_revoked_stid(struct nfs4_st=
+id *s)
+>  		break;
+>  	case SC_TYPE_LAYOUT:
+>  		ls =3D layoutstateid(s);
+> +		spin_lock(&ls->ls_lock);
+> +		if (s->sc_status & SC_STATUS_CLOSED) {
+> +			spin_unlock(&ls->ls_lock);
+> +			spin_unlock(&cl->cl_lock);
+> +			break;
+> +		}
+> +		s->sc_status |=3D SC_STATUS_CLOSED;
+> +		spin_unlock(&ls->ls_lock);
+> +		/*
+> +		 * The IDR does not own a layout stateid reference. Keep ls
+> +		 * alive while draining worker and segment references below;
+> +		 * the final put releases this temporary reference.
+> +		 */
+> +		refcount_inc(&s->sc_count);
+>  		list_del_init(&ls->ls_perclnt);
+>  		spin_unlock(&cl->cl_lock);
+>  		nfsd4_stop_layout_fence(ls);
+> +		nfsd4_return_revoked_layout(ls);
+>  		nfs4_put_stid(s);
+>  		break;
+>  	default:
+> @@ -7899,6 +7932,8 @@ static void nfs40_clean_admin_revoked(struct nfsd_n=
+et *nn,
+>  		unsigned long id, tmp;
+>  		struct nfs4_stid *stid;
+> =20
+> +		if (clp->cl_minorversion !=3D 0)
+> +			continue;
+>  		if (atomic_read(&clp->cl_admin_revoked) =3D=3D 0)
+>  			continue;
+>  		if (is_client_expired(clp))
+> @@ -8698,7 +8733,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct n=
+fsd4_compound_state *cstate,
+> =20
+>  	spin_lock(&cl->cl_lock);
+>  	s =3D find_stateid_locked(cl, stateid);
+> -	if (!s || s->sc_status & SC_STATUS_CLOSED)
+> +	if (!s || nfsd4_stid_is_closed(s))
+>  		goto out_unlock;
+>  	if (s->sc_status & SC_STATUS_ADMIN_REVOKED) {
+>  		nfsd4_drop_revoked_stid(s);
+> diff --git a/fs/nfsd/pnfs.h b/fs/nfsd/pnfs.h
+> index 559df0e5b..9b0f17a4d 100644
+> --- a/fs/nfsd/pnfs.h
+> +++ b/fs/nfsd/pnfs.h
+> @@ -75,6 +75,7 @@ struct nfsd4_deviceid_map *nfsd4_find_devid_map(int idx=
+);
+>  #ifdef CONFIG_NFSD_PNFS
+>  void nfsd4_setup_layout_type(struct svc_export *exp);
+>  void nfsd4_return_all_client_layouts(struct nfs4_client *);
+> +void nfsd4_return_revoked_layout(struct nfs4_layout_stateid *ls);
+>  void nfsd4_return_all_file_layouts(struct nfs4_client *clp,
+>  		struct nfs4_file *fp);
+>  void nfsd4_close_layout(struct nfs4_layout_stateid *ls);
+> @@ -93,6 +94,11 @@ static inline void nfsd4_setup_layout_type(struct svc_=
+export *exp)
+>  static inline void nfsd4_return_all_client_layouts(struct nfs4_client *c=
+lp)
+>  {
+>  }
+> +
+> +static inline void nfsd4_return_revoked_layout(struct nfs4_layout_statei=
+d *ls)
+> +{
+> +}
+> +
+>  static inline void nfsd4_return_all_file_layouts(struct nfs4_client *clp=
+,
+>  		struct nfs4_file *fp)
+>  {
+>=20
+> base-commit: d918c664efd5ec6a7309e98f567fb018bcde0e11
+
+--=20
+Jeff Layton <jlayton@kernel.org>
