@@ -1,107 +1,224 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-yx1-f47.google.com (mail-yx1-f47.google.com [74.125.224.47])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 92AFB469842
-	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 18:23:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791829435; cv=none; b=YuZC7zIOFclstPcgYfZo65fJp4h/UzfUILHpztDyYVUiVr+hqMShdgAALJ0lvFGjVX3HFNv0P2r0ns1SjLj8Vf39zYgMt9InTM7BJOfqsYKdCR+ir+tPrjUSbecvuef2Oo24BEQNvmasUCxrpHjqgS0q7f+QkDxLQxg8ffgEoSI=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791829435; c=relaxed/simple;
-	bh=n4dSnkwuEDZZ5daUBNZ76MEu9+u2f0loJXwS8d8meCQ=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=I/HHo+pInanJcCVpY+eZg0C9Tmkn04B5ixVEY5abHgpk2akRP7WTIStK5AbRIMp5qoNLLoAjHv5bhE3sUBdZjmIv8ZpN7UFJgB274ztgqlZZM9NmIAFo7kcmxgx1kXVAymnEkupcD20yWweIPTD6QZLNHSPZ/Lxf0Ad1M462+4o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hIgaVG3h; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 99B6F4F3907
+	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 20:44:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.224.47
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1791837846; cv=pass; b=NH3ycj33dzBSnMjLAEhhGEcudn5ye3O1oyaGcuZKaAJh+TedZwDUzQ+L1jLG5z0TI23S557wFPQt4Guln0MHDg3XAvwTQa8BFwdcydPkTLvtu22S4DiRgO0xpxaUB13DjmHxhgoP9U6kYTflqtGSJhqc08ro6E7CaZPN7kt1Ax4=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1791837846; c=relaxed/simple;
+	bh=QjRpgYjJa+kkNqeLuccwGd0OHr83JO9DtZuhqfen5Hg=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=MUPDOQba32atD9fKUMl1mJQZmdf/NeIvfyGFttZW/13SOOAINiDpBEo8uu/qYHNF4e6woVbyeQgUliqopw2J9Xp6d2+crLtoz07j/kN6PDvqmKLffBhoYO2/IBSNYjBr2c8nCver5yST2U26f9U1JVLwAuFL6oPhiNvYMvwxaTQ=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com; spf=pass smtp.mailfrom=purestorage.com; dkim=pass (2048-bit key) header.d=everpuredata.com header.i=@everpuredata.com header.b=D7u/48+B; arc=pass smtp.client-ip=74.125.224.47
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=purestorage.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hIgaVG3h"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2DEA31F008A3;
-	Mon, 12 Oct 2026 18:23:54 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791829434;
-	bh=Lmo8N99soMQbzuuJvl1m7AuZHlNK1WR2LxmmjhycY4o=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=hIgaVG3hMBkvfNNnioS4+QJ5MExfPGqatHLv+EGiGSN9h0Vno7SBiC8TaQh8Fcc7+
-	 d9uZccWLLDokjTcTFWp9fuSQufsqc2sWJzAdXw6JSq7sFzUYI9qEhaLIyJA5zhzlWc
-	 lNKFqSHhYvgLa1EAmk9xqO/2MvaVf+H7XSovYqbb7kMmnKWIo7MPgSOFfiVvC1ru2u
-	 /vwPXIqMz1gaBlNQwnOD+4MphBuY7PSNwRiB6uuwCdCjx31JDacNnXWxaTB8+AdwKi
-	 bFuPToMPTWoDb2NrqGw42okDymD1ESCMK7i77S9/PDdmhCuA94w33npVsoko2wkAn3
-	 +luTqzJFrHpTA==
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 637F1F40066;
-	Mon, 12 Oct 2026 14:23:53 -0400 (EDT)
-Received: from phl-imap-04 ([10.202.2.82])
-  by phl-compute-02.internal (MEProxy); Mon, 12 Oct 2026 14:23:53 -0400
-X-ME-Sender: <xms:uSXNalIofRQoW9ddsTPHmLUlOdvlVBwOKsb5lsgABc7wsY559bS77A>
-    <xme:uSXNar-qqk4cVV_Ky-MjEd42dbOX87dwGkov2mAKbS7D0rHDE3kI2TOZYz2JAHVSR
-    x2YndravUcGvNMwmAG4hwPnR7b2nI5jE09iDM3FL4Way2ljIaT3tOjI>
-X-ME-Proxy-Cause: dmFkZTGePMjlNj4NI6Qa7hzcO2GobSVZXrEzUowRJUp0GOOX///NtlA5gsebg6RCiJyqr5
-    hq+539TCVtJ2Q9RRb8b0OxRe7pADyw0fEmELaaCIvs8sqtuYm3g/H+7W3Ud40f11WXsep1
-    2R8mYmSu1In2x1uxkkR5uXGWES+XDKNtCXNO4BxSq7n66sOJwqKCZb6BCFM7U1EQmaX2uI
-    A+HPXwQ3oRSpY7+GINt7uKkq/nMnJSMoqeowgGc6Ylznh/lJp3/NZIsnmJdbZ4ZyTuRVmt
-    JjFV3faRYwZT3ZXDH9/cfTuKCT8y5gCx2W59d4TLjz1IELj0IiBgtUYs9usD4T4Wm+2XmN
-    XtBsxDaU+htGJT1LUoK+Rw+77BKVAnjOWtJylSHAtErlLb+2I7pKKahzRdvDcccgUgl1Ec
-    +pQ3LYWnG8BgTNr1uGCfU+SBOF+18QUUStihgZVGO/ckgA0FfdJOrhBW8h5uVB9K3/8ypD
-    7bUwNfqalgoc/fN7U5TmXlwFY8E4su53PlM5wfYnpT4zf+EUIWu/nBuzLGkYT6YXirio2q
-    1hYjZVNgZ1vHqLhNn+U02lP8293r2jdDKZ7na+cmtrzFrHzhr4KQCpmpvOn/N/ugSQoho7
-    BAWyWAO67mJf3Qh3Ua9CEgRMOxt6JpkpFNdMJK3QMwaP+erCEgKimKLAxd4Q
-X-ME-Proxy: <xmx:uSXNagruyD8xWTt25OoOLHlcmUV-xfjCdn__vDQlrqFsNt-C4d8bwA>
-    <xmx:uSXNaptXF_yhzo3j2HTQadf5Z78kBtYWjXdrbkHfl4GU8DdBTYywLQ>
-    <xmx:uSXNav1mp9f3MdcWRNpVtE1OrrSgLQ8HSM2rZakAodeVA5rIhTDOIQ>
-    <xmx:uSXNakGfDGkn0OVrSDI4SxAbEhuUdJaRP15B-SYsqX9644u8cL7GsQ>
-    <xmx:uSXNaqudINPjN2l-mnCjSwfzJGQ5ORcYAXXFZkh8NQlnK3KGMNocBjcU>
-Feedback-ID: i20964851:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 444F4B6006E; Mon, 12 Oct 2026 14:23:53 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=everpuredata.com header.i=@everpuredata.com header.b="D7u/48+B"
+Received: by mail-yx1-f47.google.com with SMTP id 956f58d0204a3-6768ced47aeso2018814d50.1
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 13:44:03 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1791837842; cv=none;
+        d=google.com; s=arc-20260327;
+        b=D5Hrj9XlhmJQyO8SpMoVgxYCShPpGjAtXT+Y8Fqzz8bkaZ9AGs35FeAMwLTNUdmo5N
+         ylgIIMECIMuQXpLEHMH0GK5CdSL+j6WgO5XWIfICJDxU8OCr9YjUK4Xk56o/XpK3Ughj
+         iZmhFy94iY8hjNKR4L2tsTBZkbDS62+DssjYv2SI4QKhFe+TpElmKE96UjCnLT3jBbHZ
+         x65uqvHie8vjcmRkTdIkdj9Ixsmtjysr6PtATLE382TmQi6mlIuZXk6lclURRQTm7hCQ
+         SjhNEsdV5TRYk+QWJIMH2ZqcblFp1BWrRQxzstSRGx5HzBzpWmle4pu5rlVPA0rMr1Bx
+         vCGw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=JSUNRjKa8PC9uvL/lbt0WMhZ7tNYQSXReFk4D0bdIN0=;
+        fh=mGQRXyb+myJ5jDfAi9/UQgjFZe9CzgR4a4uKHIj91HE=;
+        b=BkJhPhIXEmu/KWUng9MP7TwiLyokdrUiZplam3HD7GFxe4GedoSyZkvoB/7lzhvsNH
+         sIi17YgQB11NKdwQhYJqT0aPHz94DIgRO8una16NhzNfBBZjp7yu7OnaHV8+olAVhndQ
+         gGZmMLuUPrJrB7Jt+Jyo3y5IPbtldHLqUfKoX5aUpwB0bxf81KGKpZIsMyt6o6PTVTgL
+         9zr8dQDqOgyMyPSt7qemaLwg02lcJ9p3wdg72R3i0sBqjAZKd/OXhxyV5mmTbTg7TCJY
+         D06Q1+DQB30kdeVR3Blx6oJjr+cEikGB/RmIgz5qiTCXRO+QmkSlysE40rJRiYcLca5V
+         W/3Q==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=everpuredata.com; s=google; t=1791837842; x=1792442642; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=JSUNRjKa8PC9uvL/lbt0WMhZ7tNYQSXReFk4D0bdIN0=;
+        b=D7u/48+BkhquwqL83JibC6JgxsN8Kx3M8KTl/EaWI0hClIeSKBnGxRAjYIKcIaerP1
+         AhCuc8cIBuUPAxBh7w+Bs589EVhpMlgFN87LPvmI2TGtD+Obrkvk/F9SnK2bk0bYrb31
+         35plovSOrFZfREygGZ/UHXx9VgASlDVumkHxFw1+JmmX9M8FJPA2pBfL2yZgSxoE5wHK
+         lOZj/LZASEkfcOshiZL552Iby9uW96zVEbXodU4Z8ZgEiDaBpCyT2QBs/Gbk+A70BYzj
+         fK8SRtswc3xcyuBcQ81gMnFr3khxkPj1eu3Hk1rYWLWcR+qRbaVRX/OcvOe41QX+0CUA
+         hubA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1791837842; x=1792442642;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=JSUNRjKa8PC9uvL/lbt0WMhZ7tNYQSXReFk4D0bdIN0=;
+        b=Ov0S5OFVhPZLh4KcPgAQRsd7xMxWBgKzXQxeW0aTOMv/3kF68wT2DulRWgdzRIAgpo
+         s9ILGnKGpJl1FNk3LQ3GLDkWUvifvqhf6ox4DHMfJ6IsXupCBbcikvfU9dr12NW4tFJz
+         A5tm/54cNWI3VV8U6Mhxe3PJRR6BHnYxaT05I1LEtzQ83GfYMqz/R9rAUXcb2ej6SoMX
+         E3bvwrzp3VhnV9e1U89FevtrnivgAoj/fMnk/kzJbw1lNUis+fR0Hu7yGTAC+7543T8L
+         NQ6+oC9yhZlbR2zN4FXIqgmFmGfIAej7/ZHMPOXSadjmDpVbv+I3gPZbBD1dKk6tyfAz
+         XjjA==
+X-Gm-Message-State: AFq9FYKVR3NHDckb79mmUXQ9zqBH1OqNVCwgMaIS0G/nT2bslnRAJMph
+	n9cObSRk0sbXVL5z5BRaZI41pZRE0zKDCM0/3pQfWWx5Ywjd7LbqnqV0v3fRAm92JSZYMO1jlmC
+	AvLtjtyvKx28aHKECv/JgaxQa082suIZGguAT4v2aBg==
+X-Gm-Gg: AYBFou3GzdCROJrACrytZ7m3TiKb/kKNXpp3SeaNc1sXNWKycKnTEPMmENAb0tLCUXm
+	4RSZnq1RdqFqYNolrO9DL/AIsjkndPaOXc2BMDXil4dkCkJzOr4/DdWkPwZRtyWBu+V8FmSY3Bb
+	oV6es/Trz1i16SKckz2jawf84OC/rRkJNubVTcwyWxHv9opNoRECRJFGJxQstqEhPMM2Tx7swOs
+	DzZ+eKX12f4EuQpf8lJqU1REx7NAcAVSeddLVsjdFEgMplNC/QPMc5nBL74mt4jzb8Wv0z2g9Ip
+	VW3qrLD01jBCGioKensHiY00RanKlDHgerhgOrCM+qWly6oC1JEZ2exAdjDwiHxhTQ==
+X-Received: by 2002:a05:690e:4091:b0:677:cb45:a45e with SMTP id
+ 956f58d0204a3-67935edb58dmr4559555d50.6.1791837842225; Mon, 12 Oct 2026
+ 13:44:02 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AqK0L564hkaB
-Date: Mon, 12 Oct 2026 14:23:32 -0400
-From: "Anna Schumaker" <anna@kernel.org>
-To: "Chuck Lever" <cel@kernel.org>, "Jinpyo Lee" <bint4b13@gmail.com>,
- "Trond Myklebust" <trondmy@kernel.org>
-Cc: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, BoB_Tobabz <bobtobabz@gmail.com>,
- linux-nfs@vger.kernel.org
-Message-Id: <4a3cfec7-dc3f-4010-a84d-9c39f8347d2b@app.fastmail.com>
-In-Reply-To: <a87481d1-1246-49e7-8f3d-196b65301e5c@app.fastmail.com>
-References: <031205cd-1099-47a0-889f-ae203fd6c8c5@slotpi15m67>
- <20261012112710.773-1-bint4b13@gmail.com>
- <a87481d1-1246-49e7-8f3d-196b65301e5c@app.fastmail.com>
-Subject: Re: [PATCH v3] nfs/localio: pin UUIDs during global invalidation
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+References: <20261008222843.63319-1-lubao@everpuredata.com>
+ <20261008222843.63319-2-lubao@everpuredata.com> <6855034f0b219b0b8e6a6f47aef802cf2803e42b.camel@kernel.org>
+In-Reply-To: <6855034f0b219b0b8e6a6f47aef802cf2803e42b.camel@kernel.org>
+From: Lucheng Bao <lubao@everpuredata.com>
+Date: Mon, 12 Oct 2026 13:43:49 -0700
+X-Gm-Features: AclHuK_zSM-dUK2eIXZMsKsuxHoHvQIrPR1gRleHlxNa7Z9fN_xJLD3dP1iHjxA
+Message-ID: <CAHPUM33UGE849kviu4cngY7SwscHrrf=qTqkp=8OLiTX9SCcBQ@mail.gmail.com>
+Subject: Re: [PATCH 1/2] NFSv4/pNFS: prevent i_size regression while
+ layoutcommit is outstanding
+To: Trond Myklebust <trondmy@kernel.org>
+Cc: linux-nfs@vger.kernel.org, Anna Schumaker <anna@kernel.org>, 
+	linux-kernel@vger.kernel.org, tmenninger@everpuredata.com, 
+	jcurley@everpuredata.com, stable@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-
-
-On Mon, Oct 12, 2026, at 1:14 PM, Chuck Lever wrote:
-> On Mon, Oct 12, 2026, at 7:27 AM, Jinpyo Lee wrote:
->> nfs_localio_invalidate_clients() moves UUID nodes embedded in nfs_client
->> objects to a private list, then walks that list without retaining the
->> containing clients. Concurrent client teardown can free an entry that
->> the iterator has already selected, causing a use-after-free.
->>
->> Take a reference to each selected UUID under the namespace list lock.
->> Keep this reference count in nfs_common, independently of cl_count, and
->> have nfs_free_client() drain temporary UUID users before freeing the
->> client. Releasing a UUID reference wakes waiting probes and signals
->> completion when the last reference is dropped. It neither calls into
->> nfs.ko nor performs final NFS client teardown in the NFSD invalidation
->> context.
+On Thu, Oct 8, 2026 at 9:43=E2=80=AFPM Trond Myklebust <trondmy@kernel.org>=
+ wrote:
 >
-> Until someone tells me otherwise, I will treat this patch as going through
-> the NFS client tree(s).
-
-Yes, most likely. I still need to look over this version of the patch.
-
-Anna
-
+> On Thu, 2026-10-08 at 22:28 +0000, Lucheng Bao wrote:
+> > Commit ac46bd374c9a ("pNFS: Ensure we layoutcommit before
+> > revalidating
+> > attributes") replaced outstanding-layoutcommit attribute filtering
+> > with
+> > synchronization before explicit revalidation. For layouts requiring
+> > LAYOUTCOMMIT, OPEN attributes can still shrink i_size before metadata
+> > synchronization completes.
 >
+> The client can't police OPEN. It has no idea which file will be
+> affected (particularly when doing an open-by-filename) so unlike the
+> case of an explicit truncate() call, it can't serialise with the
+> truncate.
+> It is therefore up to the server to resolve any ambiguity, either by
+> recalling or revoking the layout before allowing the OPEN truncate to
+> proceed.
 >
-> -- 
-> Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+
+Thanks for the quick review. I think the OPEN-truncate is a different
+scenario from the one this patch is targeting, and my changelog invited
+that reading -- let me describe the actual race.
+
+Agreed for a truncating OPEN (or a SETATTR size), that's a real size
+change, the client can't serialise an open-by-name against it, and the
+server has to recall or revoke conflicting layouts. This patch isn't
+about that case and doesn't touch that path.
+
+The race here involves no truncate and no second client. It's a single
+client doing O_APPEND over an nconnect mount:
+
+  1. the client WRITEs the appended data to the data server and it
+     completes;
+  2. the client arms LAYOUTCOMMIT -- the MDS does not know the new
+     size yet;
+  3. before that LAYOUTCOMMIT is processed, the client's own next OPEN
+     carries a GETATTR, and the MDS answers it with the pre-commit size;
+  4. the OPEN reply and the LAYOUTCOMMIT reply travel on different
+     nconnect connections and are processed out of order, so the
+     smaller, stale size is applied to i_size after the writes;
+  5. the next O_APPEND then computes its offset from the regressed
+     i_size and overwrites the previous append.
+
+So the smaller size isn't a truncate, it's the MDS size legitimately
+lagging until LAYOUTCOMMIT (RFC 8881 section 12.5.4 "It is important to
+note that the level of synchronization is from the point of view of the
+client that sent the LAYOUTCOMMIT. For file-based layouts, synchronization
+of attributes between the metadata and storage devices, primarily the size
+attribute, is required."). The check is in the generic size path and keys o=
+nly
+on whether this client has an outstanding LAYOUTCOMMIT for data it has
+written but not yet committed.
+
+This is the same protection the client already applies to buffered
+writes via !nfs_have_writebacks(): don't let the server shrink i_size
+below data the client has written but the server doesn't know about yet.
+The only difference is the "server doesn't know yet" window. For plain
+buffered I/O it's "dirty pages not yet sent"; for a layout requiring
+LAYOUTCOMMIT it's "written to the data server, LAYOUTCOMMIT
+outstanding." In fact, once the DS write completes, the pages are no
+longer counted by nfs_have_writebacks(), yet the size still isn't known
+to the MDS until the commit, that gap is exactly what this extends the
+existing check to cover.
+
+> >
+> > Commit d8c951c313ed ("NFSv4.1: Don't trust attributes if a pNFS
+> > LAYOUTCOMMIT is outstanding") moved LAYOUTCOMMIT post-op attribute
+> > processing after cleanup, leaving another unprotected window after
+> > NFS_INO_LAYOUTCOMMITTING is cleared.
+>
+> This is unrelated to the above problem, so fixes for this issue need to
+> be in a separate patch.
+>
+
+Will fix in v2.
+
+> >
+> > Extend the existing writeback checks to reject smaller sizes while a
+> > LAYOUTCOMMIT is pending or in flight, preserving size increases and
+> > WCC
+> > checks. Process the reply's attributes and establish their generation
+> > barrier before cleanup removes that protection.
+> >
+> > Fixes: d8c951c313ed ("NFSv4.1: Don't trust attributes if a pNFS
+> > LAYOUTCOMMIT is outstanding")
+> > Fixes: ac46bd374c9a ("pNFS: Ensure we layoutcommit before
+> > revalidating attributes")
+> > Cc: stable@vger.kernel.org
+> > Signed-off-by: Lucheng Bao <lubao@everpuredata.com>
+> > ---
+> >  fs/nfs/inode.c    | 8 ++++++--
+> >  fs/nfs/nfs4proc.c | 2 +-
+> >  2 files changed, 7 insertions(+), 3 deletions(-)
+> >
+> > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> > index 3022454f7698..11432f521b04 100644
+> > --- a/fs/nfs/inode.c
+> > +++ b/fs/nfs/inode.c
+> > @@ -1636,7 +1636,9 @@ static void nfs_wcc_update_inode(struct inode
+> > *inode, struct nfs_fattr *fattr)
+> >       if ((fattr->valid & NFS_ATTR_FATTR_PRESIZE)
+> >                       && (fattr->valid & NFS_ATTR_FATTR_SIZE)
+> >                       && i_size_read(inode) =3D=3D
+> > nfs_size_to_loff_t(fattr->pre_size)
+> > -                     && !nfs_have_writebacks(inode)) {
+> > +                     && !nfs_have_writebacks(inode)
+> > +                     && (nfs_size_to_loff_t(fattr->size) >=3D
+> > i_size_read(inode)
+> > +                             ||
+> > !pnfs_layoutcommit_outstanding(inode))) {
+>
+> Under what circumstance is the client legally supposed to be able to
+> call nfs_wcc_update_inode() with NFS_ATTR_FATTR_PRESIZE set, while
+> there is an outstanding layoutcommit?
+>
+
+It is nfs_post_op_update_inode_force_wcc() from
+nfs4_layoutcommit_release(). With
+nconnect and overlapping LAYOUTCOMMITS, an earlier LAYOUTCOMMIT can complet=
+e
+and apply its (smaller) committed size via force_wcc while a later
+LAYOUTCOMMIT --
+for data already written past that point -- is still in flight.
