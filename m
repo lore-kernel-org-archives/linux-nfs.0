@@ -1,287 +1,171 @@
-Received: from mail-pj1-f41.google.com (mail-pj1-f41.google.com [209.85.216.41])
+Received: from mail-ej1-f45.google.com (mail-ej1-f45.google.com [209.85.218.45])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5490046AA66
-	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 08:47:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.41
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791794857; cv=none; b=bHwDZ7U98aTYRvTjA7/G3jj8Em42QvFFdyhJOVMcB/nHyOedbIS5FBgmtdJPerFZjejkekcVpdJ0UcwL9X8cw+WisxE+ayUnF4wFE0g2gecvIj+F60OvC4MGDbCw8Ue3lu0htxHVNVL4EBCgUT6YR19R1/UE8egBm33664vSPg4=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791794857; c=relaxed/simple;
-	bh=FA+379q/k3V/va3CIg2khmp7va3zPNt5em5x5XrFdug=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Ba1b7reEwxnpME3anbA57Fi6ku2s09pgrLyHI9rRHvVlQT+mTNKjMO0zVWi3tyx6kaZ73om9enOaNIjlzhXJTL7gSBJ0it3clcQS8Hnvw1MnnWBGFK5rvHsWtOS7W5zBRHxt35U0z5kZ63MBORko6VAzP4qawrPwxHGI1QIzL9M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=RKcKSktC; arc=none smtp.client-ip=209.85.216.41
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 54A633932D9
+	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 08:54:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.45
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1791795250; cv=pass; b=CmFVpaGZ7jWs9rtTW3PA+tR9y3ymsZFEGsG7xK2+9hx2sIF4ovCcnlxv4gw05FMhSaMrUpG/CZ50NmCENRbnisCjlxOGYJ2l3OL1uqPs0qUrwaDhaQ77pJzwcpLDopgnX+xoQXyGkMeqh6bPG6s9hIPk/yVGzwNRDGh5QMFbMEM=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1791795250; c=relaxed/simple;
+	bh=U8KYa+GKF1C9UPsHeY4iAeTE7Otjx/lQH7oCwai2CbM=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=SVPq2+UzeVWyixOsUr1D3roZn0ISFBtspS6VR3zYQ3XEWbz0MGNBclGeM1CSpR/6uxo44+uHj/QfoTq8haI9MVJYl/yeCbXmpLqXu+w2arNS5T3U8bxNTF6tt1AJJBGBUih8usUQNVoVLDHExRJOVbyL2nvzT5tXJeoOHwLvt2U=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=p2P0Fe77; arc=pass smtp.client-ip=209.85.218.45
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RKcKSktC"
-Received: by mail-pj1-f41.google.com with SMTP id 98e67ed59e1d1-381b831d535so1821919a91.0
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 01:47:36 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="p2P0Fe77"
+Received: by mail-ej1-f45.google.com with SMTP id a640c23a62f3a-c33bb2f3e6cso172032666b.0
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 01:54:09 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1791795247; cv=none;
+        d=google.com; s=arc-20260327;
+        b=rJI1ZDla16x/ey4G/QApZvazsmyMCfFtqMWC0ncVh5w/MqdlwmHNDOJb3QnPw1Hgu2
+         yXRPpoh458rcBeMprQ57BSsZ7r8B/rRbLNInxOHKVp7CDsid7Ax9vZgah+HgoHNCHYlq
+         g1QMI8Bz/AyEwNF1EwtDjpG9ip+0NInGkB/A/LNpZFi/E/0duWjSl73yuayA/q4hx2EO
+         iA0U3qL+u2qPB7HVVGHEB2LQprWBte/heNcff6LCJI0EH78el9OEwDZcLP8GbYaREZ5y
+         rY9R8dL+6ZLmv3OiM7+raleJr4mSHy2Z8g93TmV2QpSgdodIve68zYAj12Scx4Sp9cNe
+         MupQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=GDzP0JK6B/UuY91fBbPuJqjAvfJtNTVXfMNUf1kMpGU=;
+        fh=ET8c9hnAQChGO8NqyY3Eve4oz63UDHRTTVtsGOpL090=;
+        b=Jq3CKcafl1yJzpV0uSTvucxnqG4P0AXjfM2DkI9wRWWrhhQoN9Usnw/aOOcDKAuZtE
+         TM+YnZbkTeQNjhsse9p/g+o8mqtjqOYkD9IY/6HTSTyy2xIPZRJwUrKACDJmgyx2Kk8p
+         +1yczjL4H+c51bfMUi92w0KwOGoXGnBAwQIVPjK+HiYbElV/iKPVx5tOf/KHH76ZEx3O
+         ujAVkEKfQ9k+AGjpYduy+fcO4GrFzrW3V0Saf0nCC4bkMbVZUqYPRpn2JmbXZo9uet05
+         a8WvhHzNa5XYoRpml8BuMDYmed859Ji+Ll3LZZkUlXso486t70isk5fDEBzLWvN7geR9
+         Ch6g==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1791794856; x=1792399656; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=tRNyFB0sP29lOtILIZTpJyH9zkzaJWR0CNvGcZ1ksVM=;
-        b=RKcKSktCSzEmUgnsQlkCPPb1qooWtUrCJyHG4FBcj357i1myZ/8Mgboa4B/UlP49vr
-         d42J2O6OZSkbGrK7vlOBK4J1T0smFOGVatY0UNnl9E7vMKB5tgrRXe/m8FCfgL7gDGKA
-         rU/yXs2su1nJJfQPLtDebUqYox3lVu3b/1nd5vNX2sePz/v6YPAn4qWrbB+AEA3o0FEC
-         7aGrrnwKjSa80XezOyL7D90xv0JyewSoucw5yRRyhiCF4EBu/+ru/ZIOWJvzkI1nt15K
-         Tm0WZkUgN73wjCvE+TcbGUlxOEGw6I4fdUHC3VYCybqcMu6wemz9doAxcbP5YIiRRMGR
-         dSHw==
+        d=gmail.com; s=20251104; t=1791795247; x=1792400047; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=GDzP0JK6B/UuY91fBbPuJqjAvfJtNTVXfMNUf1kMpGU=;
+        b=p2P0Fe77MEiUEQC5rGopAucqgDmzL1y27C0A/VSFYhV07YThgEtEuklJO4WzKedWU1
+         YHwajZ7hGUywPzh0/nT1OiQPVsMgZ7waukszcRd5fccGfcsbUQaAgKyhXjfXYwx+8t+i
+         dEmTMZUqqK5M8CkmNrTyNGG7xLHuVBLQCPjVTt4ZwpSxe4OeW3KxgIyzGy47+1JUgD5+
+         wlEx1H41ThFBJI1X5CDNPLn4b3fctXFiHgTyJ1dYk69Xwq9Ic4QvbGGpnapZCkuOdmdX
+         qp/Ju27iUIAhgWe3o+7r2pgIYlFX6gRhQbz3c1WNIQnwQdSgLrfBNYsCV/5MpGDCeq3G
+         UXHw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791794856; x=1792399656;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=tRNyFB0sP29lOtILIZTpJyH9zkzaJWR0CNvGcZ1ksVM=;
-        b=26MYSwTTGqFmnYXQXxxE1FVI91vLOSsd8naKVcLxS26AsfFIemxc7VKMx/i5N4nP9F
-         +iBpM2aVboc57NyMrjlwY/tIbK0glZGNd77iDAmBixrtR9RYCbE3hSVkF1COVFFOxgug
-         wgpHl7q/8yfkxm8NLKUqHokzPb9f/1Yui5Db9b1OLX1yXzlB6DaErCKrHgrCl6DKKjrX
-         z+CaDdpDqxIkpt6bUsOW6gdJoSfcqVETDotPHaC6ynHufBBF1pn9f79wQy17Hyz6tAM6
-         IP5Ixa7DRvPRvrHfYNIGDgpqBO0QiXuvWCgnSu6OdZyy+cgPQDs6vgFsxmPHwe59JX0a
-         Oacg==
-X-Gm-Message-State: AFq9FYLpoGGrOWYUf4w/QkFggXlqlYjlmr+U+X+RRxP2btg2MWfWst8i
-	3e6Q3W4L2JdBoHkv2imlxvNSZ3oUWNCY8TLWgfTlU/2ad7faC6DoIUa8W5w/SBWENQQ=
-X-Gm-Gg: AYBFou1Uk6LaxeX6wSvXWcFM14DGWm1Pt6iUOAedTcyiBmNBwbtS7ov4fYQA0dkpmKK
-	oWMfyowYEnazSThe69c43FACx/CSiqqJ4r/fVVewGZNF6oTFn6q3ysUAS8E0LGTXm5f2BQe/rqT
-	JPVCTbvWr0M4IzxIIwuaW+LYyXmFdtwvgVmhmuYQgnyGVLY/uBXud6KI1ozQMVTn8ecfSNoD5WS
-	ZX/w/3Z4+SDFbY5MPHuuGxxai3Cu6QlGyliHtIkyZ5DpuECbyO6c3fvicYC7CsTmejgb5TE3bc2
-	NiZy7Wq+YqsqHwhJZ073x5X7Gf9VzJdPFPjfOdAS4qaznbIF0xghbwSG8Usrfxd6jz8t1kcGsSb
-	ZFicVqc+xKNH8qAaf2iQOWx4j3jlWQYsNF8uMv30WEJAWqJ8ItGJUjV81HjF/ruHvLHClkt7bf0
-	WSXrTrYpOJ/KV0UUD5LhUf24ON0NuBTNmj7ufYPoGNsBnJUYNa9pJ10t2zm0kk29o8F7gf3KYTQ
-	d95qo0=
-X-Received: by 2002:a17:90b:28c4:b0:3ab:188b:c5be with SMTP id 98e67ed59e1d1-3ab3acdc5e3mr6964938a91.45.1791794855613;
-        Mon, 12 Oct 2026 01:47:35 -0700 (PDT)
-Received: from bintable.localdomain ([123.215.20.10])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3ab50ce9d98sm13518386a91.9.2026.10.12.01.47.32
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 12 Oct 2026 01:47:34 -0700 (PDT)
-From: Jinpyo Lee <bint4b13@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	linux-kernel@vger.kernel.org,
-	bobtobabz@gmail.com,
-	Jinpyo Lee <bint4b13@gmail.com>
-Subject: [PATCH] nfsd: prevent a double put of revoked layout stateids
-Date: Mon, 12 Oct 2026 17:47:22 +0900
-Message-ID: <20261012084722.5168-1-bint4b13@gmail.com>
-X-Mailer: git-send-email 2.43.0
+        d=1e100.net; s=20260707; t=1791795247; x=1792400047;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=GDzP0JK6B/UuY91fBbPuJqjAvfJtNTVXfMNUf1kMpGU=;
+        b=g8hyDphaAxbEvJ8EEzvdiJTRFi1X3xiXipfnP0F7sdg1bvy104wMM8camfCF3M+go4
+         FbVTaPvuCeNLU7IJlZExSIeXrpbkSUQwiDAtDcwbpof6YJBDjORTuhtDCjuiQHCI+dT+
+         LPRSFiHUrONaCbY4eW16y1NE/+G+MOaUNAOECfwVcCUOQTPlNNffgY4J2iZQVBkkFCLQ
+         997So+15S3f0lYPgdGyZRXhJ2AQZq5L19aLCkyylza2gMHcbiY4bJfcnOGJ35mBif1tV
+         BzD3Mr909r0KQlp++krXt/19QWdYbHQUgzP8a5JtuoeXU1lLCm8bl2o+h+vBXvcoUa+Q
+         Ucog==
+X-Gm-Message-State: AFq9FYIGShllpnyPAPbCIH8C12CYH5a245xYWuG3uPBfngptdd53XhQA
+	qLf5kTBwpVa7HmiHRfJaulIQblAGwgC3RQKrmz5GgDInfBTsyJGHiNXzVeJKKyuJ9vRXgoL82lV
+	yW72mzU/DQ5K8XwfwZol0tiLRt1chT/s=
+X-Gm-Gg: AYBFou3SApKHgvsoj24NGowqET6gNbwuSV/rqUE3aU2xDOUzeoMGVhKzuZxm/1yFP0I
+	oR4HDuSZ9LSWlb3HX6ZOXkOb3HMcU8KIab4QfzTEMCGY/drjxJeJGj0xG3BNyDO6CGhnbui4LqH
+	ydnSwollPIm+PAPJiwEaKCna35kpYnsdWZ/8Q8PGpWSV9eDJ0Xn3yhfe/viCBl64j7zg5DPWCHJ
+	rhQjeE33wMkXB9El0pxpFDt1k2AoBf8N0Xt/nUJFQjW11kbAiVVMI3+gmEHBXMCtk6P5I6iMvol
+	hDnM5nADW4QcaTi6DdwOZGPbP3d+yyzAHKYbvAlvGHXeoX1UfFUpV4w=
+X-Received: by 2002:a17:907:d10:b0:c2e:49b4:ab8b with SMTP id
+ a640c23a62f3a-c31a9fcead1mr928654066b.8.1791795247308; Mon, 12 Oct 2026
+ 01:54:07 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20260928083739.643010-1-bint4b13@gmail.com> <438f1a46-ed0f-470c-ab1a-347941e07570@slotpi15m67>
+In-Reply-To: <438f1a46-ed0f-470c-ab1a-347941e07570@slotpi15m67>
+From: Jinpyo Lee <bint4b13@gmail.com>
+Date: Mon, 12 Oct 2026 17:53:55 +0900
+X-Gm-Features: AclHuK_TWkezfrYh0JkaCjAgtE3MfHL2EUA1XhUFH25C9PlJLfipKtOWUQpvWZo
+Message-ID: <CAAC4NB=M2zdG_Z=5nU5jFd6mAH00c3ACJAzjM360XdKDBZDQ9A@mail.gmail.com>
+Subject: Re: [PATCH v2] nfsd: drain pNFS fence work during state teardown
+To: Chuck Lever <cel@kernel.org>
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>, 
+	NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+	Tom Talpey <tom@talpey.com>, bobtobabz@gmail.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-nfsd4_free_stateid() finds an admin-revoked layout stateid with
-find_stateid_locked(), which does not acquire a reference. Since the
-layout case does not mark the stateid closed before dropping cl_lock,
-two FREE_STATEID operations in separate session slots can both select
-the same stateid and drop a reference they do not own.
+Hi Chuck,
 
-With fence-work teardown in place, the second caller can also wait in
-nfsd4_stop_layout_fence() until the first caller frees the stateid, then
-resume through its freed fence mutex and layout lock.
+Thanks for pointing this out.
 
-Mark the layout stateid CLOSED under cl_lock and ls_lock so only one
-disposal caller proceeds. Take a temporary reference before dropping
-cl_lock and hold it while stopping fence work and draining the remaining
-layout segments, then release that reference with the final put.
+I prepared and posted the separate stateid lifetime fix you suggested:
 
-The layout stateid IDR does not own a separate reference. The initial
-allocation reference is released when LAYOUTGET completes, and each
-layout segment holds its own reference. Serialize segment draining with
-in-flight layout operations using ls_mutex, and recheck CLOSED after
-acquiring that mutex so a stale LAYOUTGET cannot add a segment after the
-drain. Also make the newly allocated layout stateid the error-path put
-target.
+  [PATCH] nfsd: prevent a double put of revoked layout stateids
+  https://lore.kernel.org/linux-nfs/20261012084722.5168-1-bint4b13@gmail.co=
+m/T/#u
 
-Read CLOSED under ls_lock in FREE_STATEID, and restrict
-nfs40_clean_admin_revoked() to NFSv4.0 clients. Session clients dispose
-of revoked stateids through FREE_STATEID and must not be processed by
-the NFSv4.0 cleanup while layout disposal is in progress.
+It marks the revoked layout stateid CLOSED under cl_lock and ls_lock,
+takes a temporary stateid reference before dropping cl_lock, and
+serializes layout segment draining with in-flight layout operations.
 
-The vulnerability research and validation were conducted by members of
-the Tobabz team as part of the Best of the Best 15th program.
+The patch was rebased and validated on nfsd-testing
+d918c664efd5ec6a7309e98f567fb018bcde0e11.
 
-Fixes: 86b9898920a6 ("NFSD: Handle layout stid in nfsd4_drop_revoked_stid()")
-Assisted-by: LLM
-Signed-off-by: Jinpyo Lee <bint4b13@gmail.com>
----
-Validated on nfsd-testing d918c664efd5ec6a7309e98f567fb018bcde0e11
-(2026-10-12):
-- Applied cleanly and passed strict checkpatch with no errors or warnings.
-- Built and booted an x86_64 kernel and modules with GCC 13.3, W=1,
-  Generic KASAN, lockdep, and pNFS block and SCSI layouts enabled.
-- NFSv4.2, NFSv4.0, and NFSv3 read/write, fio, and unmount tests passed.
-- On a real loopback pNFS SCSI layout, administrator revocation followed
-  by one FREE_STATEID removed the layout stateid and reduced the
-  admin-revoked count from 2 to 1. The sequence passed twice.
-- Tracing observed nfsd4_stop_layout_fence() in both revocation and
-  FREE_STATEID processing, followed by nfsd_layoutstate_free.
-- No KASAN, lockdep, refcount, list-corruption, or Oops report occurred;
-  kernel taint remained zero.
+Regards,
+Jinpyo
 
-The full xfstests suite and a forced concurrent two-slot FREE_STATEID
-race were not run on this revision.
-
- fs/nfsd/nfs4layouts.c | 24 ++++++++++++++++++++++++
- fs/nfsd/nfs4state.c   | 37 ++++++++++++++++++++++++++++++++++++-
- fs/nfsd/pnfs.h        |  6 ++++++
- 3 files changed, 66 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index 898776c9d..74c39e216 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -312,6 +312,7 @@ nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
- 		status = nfserr_jukebox;
- 		if (!ls)
- 			goto out;
-+		stid = &ls->ls_stid;
- 		mutex_lock(&ls->ls_mutex);
- 	} else {
- 		ls = container_of(stid, struct nfs4_layout_stateid, ls_stid);
-@@ -324,6 +325,15 @@ nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
- 			goto out_unlock_stid;
- 	}
- 
-+	/* A new or looked-up stateid may have been closed before ls_mutex. */
-+	spin_lock(&ls->ls_lock);
-+	if (ls->ls_stid.sc_status & SC_STATUS_CLOSED) {
-+		spin_unlock(&ls->ls_lock);
-+		status = nfserr_bad_stateid;
-+		goto out_unlock_stid;
-+	}
-+	spin_unlock(&ls->ls_lock);
-+
- 	*lsp = ls;
- 	return 0;
- 
-@@ -594,6 +604,20 @@ nfsd4_return_all_layouts(struct nfs4_layout_stateid *ls,
- 	spin_unlock(&ls->ls_lock);
- }
- 
-+void nfsd4_return_revoked_layout(struct nfs4_layout_stateid *ls)
-+{
-+	LIST_HEAD(reaplist);
-+
-+	/*
-+	 * The caller holds a stateid reference until segment draining ends.
-+	 * Wait for any LAYOUTGET that passed the CLOSED check.
-+	 */
-+	mutex_lock(&ls->ls_mutex);
-+	nfsd4_return_all_layouts(ls, &reaplist);
-+	mutex_unlock(&ls->ls_mutex);
-+	nfsd4_free_layouts(&reaplist);
-+}
-+
- void
- nfsd4_return_all_client_layouts(struct nfs4_client *clp)
- {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 920967dd6..02bfbd242 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5837,6 +5837,24 @@ nfsd4_find_existing_open(struct nfs4_file *fp, struct nfsd4_open *open)
- 	return ret;
- }
- 
-+/* cl_lock is held; layout stateid status also requires ls_lock. */
-+static bool nfsd4_stid_is_closed(struct nfs4_stid *s)
-+{
-+	struct nfs4_layout_stateid *ls;
-+	bool closed;
-+
-+	lockdep_assert_held(&s->sc_client->cl_lock);
-+
-+	if (s->sc_type != SC_TYPE_LAYOUT)
-+		return s->sc_status & SC_STATUS_CLOSED;
-+
-+	ls = layoutstateid(s);
-+	spin_lock(&ls->ls_lock);
-+	closed = s->sc_status & SC_STATUS_CLOSED;
-+	spin_unlock(&ls->ls_lock);
-+	return closed;
-+}
-+
- static void nfsd4_drop_revoked_stid(struct nfs4_stid *s)
- 	__releases(&s->sc_client->cl_lock)
- {
-@@ -5871,9 +5889,24 @@ static void nfsd4_drop_revoked_stid(struct nfs4_stid *s)
- 		break;
- 	case SC_TYPE_LAYOUT:
- 		ls = layoutstateid(s);
-+		spin_lock(&ls->ls_lock);
-+		if (s->sc_status & SC_STATUS_CLOSED) {
-+			spin_unlock(&ls->ls_lock);
-+			spin_unlock(&cl->cl_lock);
-+			break;
-+		}
-+		s->sc_status |= SC_STATUS_CLOSED;
-+		spin_unlock(&ls->ls_lock);
-+		/*
-+		 * The IDR does not own a layout stateid reference. Keep ls
-+		 * alive while draining worker and segment references below;
-+		 * the final put releases this temporary reference.
-+		 */
-+		refcount_inc(&s->sc_count);
- 		list_del_init(&ls->ls_perclnt);
- 		spin_unlock(&cl->cl_lock);
- 		nfsd4_stop_layout_fence(ls);
-+		nfsd4_return_revoked_layout(ls);
- 		nfs4_put_stid(s);
- 		break;
- 	default:
-@@ -7899,6 +7932,8 @@ static void nfs40_clean_admin_revoked(struct nfsd_net *nn,
- 		unsigned long id, tmp;
- 		struct nfs4_stid *stid;
- 
-+		if (clp->cl_minorversion != 0)
-+			continue;
- 		if (atomic_read(&clp->cl_admin_revoked) == 0)
- 			continue;
- 		if (is_client_expired(clp))
-@@ -8698,7 +8733,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 
- 	spin_lock(&cl->cl_lock);
- 	s = find_stateid_locked(cl, stateid);
--	if (!s || s->sc_status & SC_STATUS_CLOSED)
-+	if (!s || nfsd4_stid_is_closed(s))
- 		goto out_unlock;
- 	if (s->sc_status & SC_STATUS_ADMIN_REVOKED) {
- 		nfsd4_drop_revoked_stid(s);
-diff --git a/fs/nfsd/pnfs.h b/fs/nfsd/pnfs.h
-index 559df0e5b..9b0f17a4d 100644
---- a/fs/nfsd/pnfs.h
-+++ b/fs/nfsd/pnfs.h
-@@ -75,6 +75,7 @@ struct nfsd4_deviceid_map *nfsd4_find_devid_map(int idx);
- #ifdef CONFIG_NFSD_PNFS
- void nfsd4_setup_layout_type(struct svc_export *exp);
- void nfsd4_return_all_client_layouts(struct nfs4_client *);
-+void nfsd4_return_revoked_layout(struct nfs4_layout_stateid *ls);
- void nfsd4_return_all_file_layouts(struct nfs4_client *clp,
- 		struct nfs4_file *fp);
- void nfsd4_close_layout(struct nfs4_layout_stateid *ls);
-@@ -93,6 +94,11 @@ static inline void nfsd4_setup_layout_type(struct svc_export *exp)
- static inline void nfsd4_return_all_client_layouts(struct nfs4_client *clp)
- {
- }
-+
-+static inline void nfsd4_return_revoked_layout(struct nfs4_layout_stateid *ls)
-+{
-+}
-+
- static inline void nfsd4_return_all_file_layouts(struct nfs4_client *clp,
- 		struct nfs4_file *fp)
- {
-
-base-commit: d918c664efd5ec6a7309e98f567fb018bcde0e11
--- 
-2.50.1 (Apple Git-155)
+On Wed, Sep 30, 2026 at 9:45=E2=80=AFAM Chuck Lever <cel@kernel.org> wrote:
+>
+> I'm passing along a sashiko review finding here. It was confirmed
+> with Claude Fable 5.
+>
+> ----
+>
+> commit ba79c2d330cd7f4c60c83de92ba0d54184b97c08
+> Author: Jinpyo Lee <bint4b13@gmail.com>
+>
+> nfsd: drain pNFS fence work during state teardown
+>
+> Stop the layout fence worker from being scheduled once teardown starts,
+> and synchronously cancel or drain it before the layout's client
+> association is released, so the worker cannot use a freed nfs4_client.
+>
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index f487ef0916d9..3d5792b6e997 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+>
+> > @@ -5870,6 +5871,7 @@ static void nfsd4_drop_revoked_stid(struct nfs4_s=
+tid *s)
+> >               ls =3D layoutstateid(s);
+> >               list_del_init(&ls->ls_perclnt);
+> >               spin_unlock(&cl->cl_lock);
+> > +             nfsd4_stop_layout_fence(ls);
+> >               nfs4_put_stid(s);
+> >               break;
+>
+> Which reference keeps ls alive across nfsd4_stop_layout_fence() here?
+> nfsd4_free_stateid() reaches this case through find_stateid_locked(),
+> which takes no reference of its own, and the only status it tests first
+> is SC_STATUS_CLOSED, which the layout case never sets. So two
+> FREE_STATEID operations for the same admin-revoked layout stateid can
+> both arrive here, and the nfs4_put_stid() below drops the same hash
+> reference in each. nfsd40_drop_revoked_stid() has the same shape.
+>
+> Before this patch that race is a double put. With ls_fence_mutex in
+> front of the put, the second caller sleeps in mutex_lock() until the
+> first caller's nfs4_put_stid() frees the stateid, then wakes on the
+> freed ls_fence_mutex and takes the freed ls_lock in
+> nfsd4_stop_layout_fence(). Can that be reached from two slots of the
+> same session?
+>
+> The SC_TYPE_DELEG case of revoke_one_stid() takes an extra reference to
+> guard against a concurrent FREE_STATEID, and the delegation recall path
+> sets SC_STATUS_CLOSED under cl_lock for the same reason. Would setting
+> SC_STATUS_CLOSED under cl_lock in this case, before the unlock, close
+> the window? Since the race predates this patch, that guard probably
+> wants its own patch ahead of this one, with its own Fixes: tag.
+>
+> --
+> Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
