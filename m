@@ -1,38 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E5F0948C402
-	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 12:33:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A0B4B470E89
+	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 12:33:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791808438; cv=none; b=NKuq2OWCiyF/3gQ3HvoxvAytPZsZVttaiZ8tMyvNdjCoyAbRVIIRe+sDAAld+w8GhcyLEWNjr9ygsgAoE8ih0UfTWKY86CXQ9RwB1VnP9+g4g5+D8C1qLn9hJKNaQ93soc3aPQElx7LATHyPI+4bG7liByUzKBCEl05qD8kLuiQ=
+	t=1791808439; cv=none; b=JmTslojM3twBZV0LsE3T7MWsbcX8UKZmrfnurTa597hY4s15TBiQEFdnVWov4LEfXD2m3fe176rtTtp6Ts1gvJ9uSEfw3GSkgsUNN+jShxsHXqpDzOwcbUldnY3AjG3Wl3xGoC5I4BWa61tcCsq8x7BvEPKd+fnwNryyuiM9eNk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791808438; c=relaxed/simple;
-	bh=zxsrDgKFNfPcKrIMVNkib/pYnHv/tY8ywqpRRqTb6QQ=;
+	s=arc-20240116; t=1791808439; c=relaxed/simple;
+	bh=EWqgEuJffnPXJ2k+lPXWGYoX6RIvYLpg+S7uYPovy2E=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=GuCso5lWVzDZIZ1NYzBke53j8iQgrl4DDkdSspXr4p9ulKn0NkfYyMtB7UIiXWljst3rrAE+nPI5lYO+T0zVdFD6G/2oSF/v6bjNMYpbHspJr9JLc2VqLhTIkBJolqsY6vtJFeNNs/QyowbamBUJuCglQQ6V0nZnrXWiKTgbErQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=RcOfHrJV; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=kgHEgTWPqU0w/wEDMNWQU1yrLMkStfEoIGuhS+EgO9Avz9SpMNYYg7Y0dnI3DhGBQQxmSn8lKzvA4EdezIpg+vPM5B0qZWGsog3lVJxzDqfSU3b7cPfdZGavjuG8076C7WnjK55FOAXp10lp9X1l9JCyjjnsc7xL8+ZPWIrPgQ8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WslOa0dB; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="RcOfHrJV"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 41D5C1F0089E;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WslOa0dB"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 033061F0089D;
 	Mon, 12 Oct 2026 12:33:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791808437;
-	bh=3TVBXFcAOSGWgbgaGAy7UrVXq9+mRjH/0oNWZrTNU6A=;
+	s=k20260515; t=1791808438;
+	bh=6PfWNmZ9Sb3E/GCjzpyDmFkcdMr+ug5xs52fcjXECX0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=RcOfHrJVf0lTI9aT71WxPq1+TM3mYtNStXIFlqLnX3H7RAI9czZoSp+CG2fhTtVXw
-	 aPuH2V+U8r5sChQ+cDVA6wI/cKRUJeEWfuIYiy+L/t2J6oveSPXYCzC1nlUeZNqzda
-	 mGP1YW5pRSxp2sEGEnVsvL5jVW9qMqY0qYarS0vjhI+Db64yXmZ3LZWeA5SiNNxVZG
-	 bs3b6+mnNHhPzMxRgadelrqctr2naoBeJKLAe/Zuvw/1arJmT3MnTULli/8yg4419R
-	 jM1KjpqkZYtzE0WCxdGVep6iHSeAoKqyCP+lV55EUm7xqNt34peLMYw6Mtw2KZFBOu
-	 qqJeq3xgDUe7g==
+	b=WslOa0dBH/n4KDVI2YdFBWld/J1VZnpLUaP7TBexF4I6BoLIENTNuWzoqtkTsalaJ
+	 SiKBtrAY8Vx/uHkwMEpiDStoIo0y1PDJdmic1JmiFuN3eMaXcac/sUGIfkoY86LLX9
+	 yp4ZtxV5+uaQpcU+sJwVnqq0fzMj6olcd3ICDZRcvh7d6jhRXtv+GXmcw3eUFB4UZo
+	 m/n1x53SitbwSFEL3Hy56mPBnN+n1mv0QBdlpnoODWTN1SxNIYfcimFKbRgEcbmArW
+	 FOxWJwGxzkZ7yooS6a1sJne9+mZNPmxa8NwsGtU0/yOlb5THhTisfzd6gdAS5QNAAV
+	 b/7PbscHmE5pA==
 From: Anna Schumaker <anna@kernel.org>
 To: linux-nfs@vger.kernel.org,
 	trond.myklebust@hammerspace.com
 Cc: anna@kernel.org
-Subject: [PATCH 2/3] NFS: Modernize the callback decode_bitmap() function
-Date: Mon, 12 Oct 2026 08:33:45 -0400
-Message-ID: <20261012123346.123126-3-anna@kernel.org>
+Subject: [PATCH 3/3] NFS: Modernize decode_getdevinfo() bitmap decoding
+Date: Mon, 12 Oct 2026 08:33:46 -0400
+Message-ID: <20261012123346.123126-4-anna@kernel.org>
 X-Mailer: git-send-email 2.56.0
 In-Reply-To: <20261012123346.123126-1-anna@kernel.org>
 References: <20261012123346.123126-1-anna@kernel.org>
@@ -46,68 +46,56 @@ Content-Transfer-Encoding: 8bit
 
 From: Anna Schumaker <anna.schumaker@hammerspace.com>
 
-The sunrpc function xdr_stream_decode_uint32_array() is already designed
-to decode arrays of integers with all necessary bounds checking. Update
-the decode_bitmap() function to call this and map the return value into
-something the callback handler expects.
+Use the decode_bitmap4() function for decoding notification bitmaps.
+This function calls xdr_stream_decode_uint32_array() to do proper bounds
+and overflow checking.
 
 Signed-off-by: Anna Schumaker <anna.schumaker@hammerspace.com>
 ---
- fs/nfs/callback_xdr.c | 24 +++++++-----------------
- 1 file changed, 7 insertions(+), 17 deletions(-)
+ fs/nfs/nfs4xdr.c | 22 ++--------------------
+ 1 file changed, 2 insertions(+), 20 deletions(-)
 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 5a1f05469268..b6ecfb73d850 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -100,24 +100,14 @@ static __be32 decode_fh(struct xdr_stream *xdr, struct nfs_fh *fh)
- 	return 0;
- }
- 
--static __be32 decode_bitmap(struct xdr_stream *xdr, uint32_t *bitmap)
-+static __be32 decode_bitmap(struct xdr_stream *xdr, __u32 *bitmap,
-+			    size_t bitmap_size)
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 4d12b97f423e..c0971af20154 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -6064,7 +6064,7 @@ static int decode_getdeviceinfo(struct xdr_stream *xdr,
  {
--	__be32 *p;
--	unsigned int attrlen;
-+	ssize_t status;
+ 	struct pnfs_device *pdev = res->pdev;
+ 	__be32 *p;
+-	uint32_t len, type;
++	uint32_t type;
+ 	int status;
  
+ 	status = decode_op_hdr(xdr, OP_GETDEVICEINFO);
+@@ -6099,26 +6099,8 @@ static int decode_getdeviceinfo(struct xdr_stream *xdr,
+ 		return -EIO;
+ 
+ 	/* Parse notification bitmap, verifying that it is zero. */
 -	p = xdr_inline_decode(xdr, 4);
--	if (unlikely(p == NULL))
-+	status = xdr_stream_decode_uint32_array(xdr, bitmap, bitmap_size);
-+	if (unlikely(status < 0))
- 		return htonl(NFS4ERR_RESOURCE);
--	attrlen = ntohl(*p);
--	p = xdr_inline_decode(xdr, attrlen << 2);
--	if (unlikely(p == NULL))
--		return htonl(NFS4ERR_RESOURCE);
--	if (likely(attrlen > 0))
--		bitmap[0] = ntohl(*p++);
--	if (attrlen > 1)
--		bitmap[1] = ntohl(*p++);
--	if (attrlen > 2)
--		bitmap[2] = ntohl(*p);
+-	if (unlikely(!p))
++	if (decode_bitmap4(xdr, &res->notification, 1) < 0)
+ 		return -EIO;
+-	len = be32_to_cpup(p);
+-	if (len) {
+-		uint32_t i;
+-
+-		p = xdr_inline_decode(xdr, 4 * len);
+-		if (unlikely(!p))
+-			return -EIO;
+-
+-		res->notification = be32_to_cpup(p++);
+-		for (i = 1; i < len; i++) {
+-			if (be32_to_cpup(p++)) {
+-				dprintk("%s: unsupported notification\n",
+-					__func__);
+-				return -EIO;
+-			}
+-		}
+-	}
  	return 0;
  }
  
-@@ -182,7 +172,7 @@ static __be32 decode_getattr_args(struct svc_rqst *rqstp,
- 	status = decode_fh(xdr, &args->fh);
- 	if (unlikely(status != 0))
- 		return status;
--	return decode_bitmap(xdr, args->bitmap);
-+	return decode_bitmap(xdr, args->bitmap, ARRAY_SIZE(args->bitmap));
- }
- 
- static __be32 decode_recall_args(struct svc_rqst *rqstp,
-@@ -458,7 +448,7 @@ static __be32 decode_recallany_args(struct svc_rqst *rqstp,
- 	if (unlikely(p == NULL))
- 		return htonl(NFS4ERR_BADXDR);
- 	args->craa_objs_to_keep = ntohl(*p++);
--	status = decode_bitmap(xdr, bitmap);
-+	status = decode_bitmap(xdr, bitmap, ARRAY_SIZE(bitmap));
- 	if (unlikely(status))
- 		return status;
- 	args->craa_type_mask = bitmap[0];
 -- 
 2.56.0
 
