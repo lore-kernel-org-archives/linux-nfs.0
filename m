@@ -1,38 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1392E470E89
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E5F0948C402
 	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 12:33:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791808438; cv=none; b=N+lePrkbH8sYMZxA2cuhRStoG/nP/jr1ZGt/kpTajUClyJxHaWACj+gGiM3hR0UFb12UnIesukaMjBJVcFZ5Tj+EvdTewUKp1nHjne2WZbTN3wYLxRCLwDTkMCMBf4U1Fata5CXeVk3q2/qAKQ8RWCYonfc5vpwb2dwT/WjOA9I=
+	t=1791808438; cv=none; b=NKuq2OWCiyF/3gQ3HvoxvAytPZsZVttaiZ8tMyvNdjCoyAbRVIIRe+sDAAld+w8GhcyLEWNjr9ygsgAoE8ih0UfTWKY86CXQ9RwB1VnP9+g4g5+D8C1qLn9hJKNaQ93soc3aPQElx7LATHyPI+4bG7liByUzKBCEl05qD8kLuiQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1791808438; c=relaxed/simple;
-	bh=wwerEkw5epiHyGSFLcmqwe/l6r3Z/e0KFSucLW0KJkI=;
+	bh=zxsrDgKFNfPcKrIMVNkib/pYnHv/tY8ywqpRRqTb6QQ=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=bC/l/yZWw3zbqMgSCF/hfLS0U//UYB2gWnelFAWFHZTG01xmLbljP+joooR0oXtjNx6ru9CWX1Od4gEQl+KjVYpgIvpkstIO7A+lW5lHotLopjogpUd3zvpmoJynpLb5gJlknchJhMESTto82gqYnmQEibNTbyDrxWz6lgMw0UI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=J72/aUyI; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=GuCso5lWVzDZIZ1NYzBke53j8iQgrl4DDkdSspXr4p9ulKn0NkfYyMtB7UIiXWljst3rrAE+nPI5lYO+T0zVdFD6G/2oSF/v6bjNMYpbHspJr9JLc2VqLhTIkBJolqsY6vtJFeNNs/QyowbamBUJuCglQQ6V0nZnrXWiKTgbErQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=RcOfHrJV; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="J72/aUyI"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7A40B1F0089C;
-	Mon, 12 Oct 2026 12:33:56 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="RcOfHrJV"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 41D5C1F0089E;
+	Mon, 12 Oct 2026 12:33:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1791808437;
-	bh=dNE/s89IoYbVPJvjR7+h5rc5IkTd+ictHp3UPU0Uofo=;
+	bh=3TVBXFcAOSGWgbgaGAy7UrVXq9+mRjH/0oNWZrTNU6A=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=J72/aUyImPP5TlB495NARzU7Y0GjLhPSMa8LCQwatklfkhgk2TlVsy/zaD9nHFBvt
-	 dSHMbHt0+Rs9h5zmVlMEg4ZkHRnSAtmoqJzcnBdfQ49NUVWFFOg9ykHFxlePxqmdR4
-	 oWk+OKgVigskE206GkSE+CpnoRo1Rew/MsifltubRWKNn/m2twhs6G02+ju+py8dC/
-	 1Swv0VRQe8jRlZ9gsOKrLOx+JLoPtm96qaoWUi4WdqSvizOu8t/KlPZskNu6pbyVPf
-	 SbGZ/XqkBdPohcdafZJCTR2KSuyZc4QK8tb+azbj6yirVFnp0s+P7Ms2gnAADg0qap
-	 WtbLA9kHJq6Rg==
+	b=RcOfHrJVf0lTI9aT71WxPq1+TM3mYtNStXIFlqLnX3H7RAI9czZoSp+CG2fhTtVXw
+	 aPuH2V+U8r5sChQ+cDVA6wI/cKRUJeEWfuIYiy+L/t2J6oveSPXYCzC1nlUeZNqzda
+	 mGP1YW5pRSxp2sEGEnVsvL5jVW9qMqY0qYarS0vjhI+Db64yXmZ3LZWeA5SiNNxVZG
+	 bs3b6+mnNHhPzMxRgadelrqctr2naoBeJKLAe/Zuvw/1arJmT3MnTULli/8yg4419R
+	 jM1KjpqkZYtzE0WCxdGVep6iHSeAoKqyCP+lV55EUm7xqNt34peLMYw6Mtw2KZFBOu
+	 qqJeq3xgDUe7g==
 From: Anna Schumaker <anna@kernel.org>
 To: linux-nfs@vger.kernel.org,
 	trond.myklebust@hammerspace.com
 Cc: anna@kernel.org
-Subject: [PATCH 1/3] NFS: Have decode_pnfs_layout_types() use XDR's decode_uint32_array()
-Date: Mon, 12 Oct 2026 08:33:44 -0400
-Message-ID: <20261012123346.123126-2-anna@kernel.org>
+Subject: [PATCH 2/3] NFS: Modernize the callback decode_bitmap() function
+Date: Mon, 12 Oct 2026 08:33:45 -0400
+Message-ID: <20261012123346.123126-3-anna@kernel.org>
 X-Mailer: git-send-email 2.56.0
 In-Reply-To: <20261012123346.123126-1-anna@kernel.org>
 References: <20261012123346.123126-1-anna@kernel.org>
@@ -46,60 +46,68 @@ Content-Transfer-Encoding: 8bit
 
 From: Anna Schumaker <anna.schumaker@hammerspace.com>
 
-Rather than hardcoding in an alternative that doesn't properly check for
-32-bit overflow during decoding.
+The sunrpc function xdr_stream_decode_uint32_array() is already designed
+to decode arrays of integers with all necessary bounds checking. Update
+the decode_bitmap() function to call this and map the return value into
+something the callback handler expects.
 
 Signed-off-by: Anna Schumaker <anna.schumaker@hammerspace.com>
 ---
- fs/nfs/nfs4xdr.c | 33 +++++++++------------------------
- 1 file changed, 9 insertions(+), 24 deletions(-)
+ fs/nfs/callback_xdr.c | 24 +++++++-----------------
+ 1 file changed, 7 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 740f3bc4a19d..4d12b97f423e 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4924,32 +4924,17 @@ static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr,
- static int decode_pnfs_layout_types(struct xdr_stream *xdr,
- 				    struct nfs_fsinfo *fsinfo)
- {
--	__be32 *p;
--	uint32_t i;
-+	ssize_t nlayouttypes;
- 
--	p = xdr_inline_decode(xdr, 4);
--	if (unlikely(!p))
--		return -EIO;
--	fsinfo->nlayouttypes = be32_to_cpup(p);
-+	nlayouttypes = xdr_stream_decode_uint32_array(xdr,
-+						      fsinfo->layouttype,
-+						      NFS_MAX_LAYOUT_TYPES);
-+	if (nlayouttypes == -EMSGSIZE)
-+		nlayouttypes = NFS_MAX_LAYOUT_TYPES;
-+	if (nlayouttypes < 0)
-+		return nlayouttypes;
- 
--	/* pNFS is not supported by the underlying file system */
--	if (fsinfo->nlayouttypes == 0)
--		return 0;
--
--	/* Decode and set first layout type, move xdr->p past unused types */
--	p = xdr_inline_decode(xdr, fsinfo->nlayouttypes * 4);
--	if (unlikely(!p))
--		return -EIO;
--
--	/* If we get too many, then just cap it at the max */
--	if (fsinfo->nlayouttypes > NFS_MAX_LAYOUT_TYPES) {
--		printk(KERN_INFO "NFS: %s: Warning: Too many (%u) pNFS layout types\n",
--			__func__, fsinfo->nlayouttypes);
--		fsinfo->nlayouttypes = NFS_MAX_LAYOUT_TYPES;
--	}
--
--	for(i = 0; i < fsinfo->nlayouttypes; ++i)
--		fsinfo->layouttype[i] = be32_to_cpup(p++);
-+	fsinfo->nlayouttypes = nlayouttypes;
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 5a1f05469268..b6ecfb73d850 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -100,24 +100,14 @@ static __be32 decode_fh(struct xdr_stream *xdr, struct nfs_fh *fh)
  	return 0;
  }
  
+-static __be32 decode_bitmap(struct xdr_stream *xdr, uint32_t *bitmap)
++static __be32 decode_bitmap(struct xdr_stream *xdr, __u32 *bitmap,
++			    size_t bitmap_size)
+ {
+-	__be32 *p;
+-	unsigned int attrlen;
++	ssize_t status;
+ 
+-	p = xdr_inline_decode(xdr, 4);
+-	if (unlikely(p == NULL))
++	status = xdr_stream_decode_uint32_array(xdr, bitmap, bitmap_size);
++	if (unlikely(status < 0))
+ 		return htonl(NFS4ERR_RESOURCE);
+-	attrlen = ntohl(*p);
+-	p = xdr_inline_decode(xdr, attrlen << 2);
+-	if (unlikely(p == NULL))
+-		return htonl(NFS4ERR_RESOURCE);
+-	if (likely(attrlen > 0))
+-		bitmap[0] = ntohl(*p++);
+-	if (attrlen > 1)
+-		bitmap[1] = ntohl(*p++);
+-	if (attrlen > 2)
+-		bitmap[2] = ntohl(*p);
+ 	return 0;
+ }
+ 
+@@ -182,7 +172,7 @@ static __be32 decode_getattr_args(struct svc_rqst *rqstp,
+ 	status = decode_fh(xdr, &args->fh);
+ 	if (unlikely(status != 0))
+ 		return status;
+-	return decode_bitmap(xdr, args->bitmap);
++	return decode_bitmap(xdr, args->bitmap, ARRAY_SIZE(args->bitmap));
+ }
+ 
+ static __be32 decode_recall_args(struct svc_rqst *rqstp,
+@@ -458,7 +448,7 @@ static __be32 decode_recallany_args(struct svc_rqst *rqstp,
+ 	if (unlikely(p == NULL))
+ 		return htonl(NFS4ERR_BADXDR);
+ 	args->craa_objs_to_keep = ntohl(*p++);
+-	status = decode_bitmap(xdr, bitmap);
++	status = decode_bitmap(xdr, bitmap, ARRAY_SIZE(bitmap));
+ 	if (unlikely(status))
+ 		return status;
+ 	args->craa_type_mask = bitmap[0];
 -- 
 2.56.0
 
