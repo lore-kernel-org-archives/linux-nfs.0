@@ -1,160 +1,182 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ej1-f43.google.com (mail-ej1-f43.google.com [209.85.218.43])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B22D53DEFF1;
-	Tue, 13 Oct 2026 10:15:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791886550; cv=none; b=LHNV2+skj8NlyrdR4RCIn9IjDCFEWWKZA6xhwwgv2J3Z8qQjcX9oAEy99Zji0siC3OZSP/3m8ADMCum2s+N4hV5/ckPVG3hBaPw8WA0u4AFvWkBaLI/Hpv17RvWvI4/+10yuiIrLb0LVng4sfFOp5VTopzvhFuwDwIvLNFrEmLE=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791886550; c=relaxed/simple;
-	bh=yH0RlSjasJVtxJz2L4bygZ31Sm66c6PG9hYfruCGQjk=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=f28mpeHBlj/HBdieIOO+6cBZA71ZqrbctrGy6QFYe00cKPFKpbNB0YeL5DgaaH7AyMzz2MFAo7jgxGOiMIOQDRvmrzIAuQ4pUNKqoVmiCd67NlbU7n9DKvv6hJIWslvmrsCA7sDpgvCP0P1JOMTmLogysbwKpNF9YqIThznrh8I=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=D23ldwya; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 803DC427F8F
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2026 10:44:26 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.43
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1791888269; cv=pass; b=WIKjpd0eiByk/XRnbe69eiXiy9Uzpcdao8DXabStIGB6RlvAdINWsKGFdsfMRw7Zbml/EQjmp+R0Ni50muy/xGsl+zdtsSgdXygA0KZkFn4fZui+zDuXUZlxNzHjj/o1NV4Ss1E7P02LbA5n3kzqc5eWJPgj7gox/cwGN791wYE=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1791888269; c=relaxed/simple;
+	bh=PelTeFwd5ud7mnoUu0LqIyINYO9v9og7hyCKjE+gurc=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=W/w+13uW3lFLJXX84XJk4qrX8SULLeG3kupk+IjcW1AbCufXH84o5JmBKQfsVUElzbJuLBlvywa6plxxQAQBD4UcfLPUwAJWBAtVZG1DhFUBHN4Hn+OgQ/b6DWbGwocl7x/aLfyXXoXxh8JMGh01Wcd98kjdqsv0UMg/2DWdwnY=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=dneg.com; spf=pass smtp.mailfrom=dneg.com; dkim=pass (2048-bit key) header.d=dneg.com header.i=@dneg.com header.b=Ef83ps0A; arc=pass smtp.client-ip=209.85.218.43
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=dneg.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dneg.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="D23ldwya"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A6F761F00898;
-	Tue, 13 Oct 2026 10:15:48 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791886549;
-	bh=yH0RlSjasJVtxJz2L4bygZ31Sm66c6PG9hYfruCGQjk=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=D23ldwyaxZzGXr829U3HVPbAKZtcPHIwFBQSXmPdf72OPVCgTZyVVSfDGM3nmFs06
-	 T18XPphP8lhuDuTtXOiNnnkuVNzcjNWg8U9+iUQFGbzpO04PutqBg61pH9SnZgvMqE
-	 pK7pKSKIbSJXeXRfic36Aj+d3Wqa1ycpWtzsnSlEOEUTghyhvx9fSppfKLGg1fL5xg
-	 fdbjzBEI5SBT6FjmeDzZnL3tbDrrsHqiyxOLnDne4kMEl9RJZ4Ww7Z82uLFpEE860o
-	 vaotWu0I3+CMpNnlR9segiLjd2vgun/V99c/aOqHdsXfGNWD2AlcbM/LF2uffKH1XR
-	 rJXpIRqKt1cvw==
-Message-ID: <e67eb43ccee21fc4271269e56be668b3dbf1b055.camel@kernel.org>
-Subject: Re: [REGRESSION] 7.2.4: nfsd sends CB_OFFLOAD with all-zero
- stateid, async NFSv4.2 COPY never completes
-From: Jeff Layton <jlayton@kernel.org>
-To: Sasha Levin <sashal@kernel.org>, stable@vger.kernel.org
-Cc: Chuck Lever <cel@kernel.org>, linux-kernel@vger.kernel.org, 
-	linux-nfs@vger.kernel.org, Lubos Rendek <l.rendek@proxmox.com>, 
-	regressions@lists.linux.dev, Fabian =?ISO-8859-1?Q?Gr=FCnbichler?=
-	 <f.gruenbichler@proxmox.com>
-Date: Tue, 13 Oct 2026 06:15:46 -0400
-In-Reply-To: <2026-10-12-1-daily-reply-0001-nfsd-cb-offload-zero-stateid@kernel.org>
-References: <1791797151.oll70jtyaa.astroid@yuna.none>
-	 <2026-10-12-1-daily-reply-0001-nfsd-cb-offload-zero-stateid@kernel.org>
-Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
- keydata=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
- QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-2.fc44) 
+	dkim=pass (2048-bit key) header.d=dneg.com header.i=@dneg.com header.b="Ef83ps0A"
+Received: by mail-ej1-f43.google.com with SMTP id a640c23a62f3a-c2acc1e170cso451046366b.1
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2026 03:44:26 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1791888265; cv=none;
+        d=google.com; s=arc-20260327;
+        b=n8hC6KsmtIUoriIdSS6Vu9VRQe4hQXhSJnsqx4/UQXqU2b0JRBp4HBOcj850L644an
+         bHZ9E+zl9zd4eYXtGUbKWB/VkrcgqWQX0d+hxJ7xM6XeFuP5NLcnsEmByGQK2GLD+4Nu
+         U9MTa4MuN0RjMPzJim+GicyG3QS5ynqI924X2paT/X13z4U+pStb/7LZXtakyqtxAFYU
+         JPiwYhIx1a43pIgRpKzLQTtnMz+1GxQE+aKmc9GVY6jL2lqz9RhdK4xRYMY/0s1lREAZ
+         XxIRQafbLyBFGp03X026wOIah09WjeAivB9+SsQgvOWFRRgfC0Yv7nXaeNXBsMMZ3kwR
+         +0pg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:dkim-signature;
+        bh=VgQkjFUz0Kq5wc1rWCSsIQFYXBAR5PgY4WxoDpZtyJ0=;
+        fh=7ixGAM3SPf33Qnfeumy/VOSn1X/qitB0MUDgzFdfF2g=;
+        b=DUF9yjst4dWcJgRDx/DKq3jsC7lzLctC18WSvJfyuVQiAkBVIlhxmY51NhYpf18RS7
+         Mao/FL9cVCOI1ng8NSqG3mVIqheZ0Jf8ppG44UyNyuQyP4/KfJymYrJcBjPvxQBLuBbP
+         KLRk3T7WJ99/5fvpqWM+UZ1DmgAYDX5Cqzqkj6UtuczzAJ6+iQfTk1GsLFDr9kkAYWZj
+         ewl+1/INtLb00lxxF41YVlZ68aw9f4l3EPAg1pDBbGV5QLjheOrJsL+xFF2/DBtooPsc
+         S+KaV/2rjWRbq47I52Wonm3yMNOo9QJguaCzHtyfoeYEDz0TGAwTJ/Dq2rQhw+vlhLBs
+         WSsQ==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dneg.com; s=google; t=1791888265; x=1792493065; darn=vger.kernel.org;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=VgQkjFUz0Kq5wc1rWCSsIQFYXBAR5PgY4WxoDpZtyJ0=;
+        b=Ef83ps0A9eB61HeKmj9MUPxwLvkKuGBdnGyjMmBDDoXZjqVmkpB7JCCbSFTIMU1O81
+         Dt2gd1bz3npeQth6eFHSfT/q0/lcqN1GJJE3DnDjEq0/cvZBkUK6wAFTScbN/oHdREgc
+         xxYa8SNV5St5nC5kr3Fp5jK5dufkEVUoceR18VwZmk5fG1w+QUq/Iu8Ec+zgN1flsa25
+         vJv3PEL3sgdlxRosCI5xubiuUTYMwGm8IYng6uryuhgWasTC15RSAyBIx/o/wEVxr5Z9
+         yIr09MV+vGY6KlRSzFGqnohq8URD3COQew7Jr2eAfbxbnZUJzR1smMmq4XU2+avHa7y+
+         nlOA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1791888265; x=1792493065;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=VgQkjFUz0Kq5wc1rWCSsIQFYXBAR5PgY4WxoDpZtyJ0=;
+        b=ZQEtlfek++n66WbZA5leNiwVCpSpHqJcV38mJCdj2GZ3d9V4eWlKjhaT+jvLDExonU
+         Ab4yhVjahJditfd4FUvRpOhGyn6rV8ipQJvD+s0ZbcOJkYTXhzHf4Dbijkjv7od2+OKB
+         7x0zLRiiLdoOLZ3+uzPba/3jme47GgoXs8HCwbPtaBEteBol2bMBOxlXr8Q0hIlOztTw
+         OlDJokxkq6Ls3m5fJUb6Hdlv7moTcJZ2GwYEg1SmspgTb9VFMOz9w4iuiecSZf5CSMc/
+         qFqPpuONjHif90RPDIdp8MYXl4cJT4duq9bKtgWDAXqby+tBoSgCEAqv82NIyeBO01KL
+         LcSg==
+X-Forwarded-Encrypted: i=1; AKwUvByFvXNo7kVIFX48834OzRyaorDXXL9IDfWGFyN3OKDF5/FIVs8FFUzfP+DsyBAZisYftl2q06EtCQ8=@vger.kernel.org
+X-Gm-Message-State: AFq9FYLz5HX5H00ZNR0eggNMWcF2toRN09bzleKLeQO0t1Cnm8IAeT3b
+	hjLzkDnTmVIJON+QQ4eqrMQCdsXeySu8BKjLIPkMqqozD1R4wOmMIn1Bk+uhjbynj0VFC/qL9Pg
+	WMfuQzOPUiwMbFsDt2I2BqwzIJCECVs4chTAyT3pQtQ==
+X-Gm-Gg: AYBFou2BxjwDhtG4LSPsDXmgQ/v/RcWrVPIJ//GWlQa+fqAThjKySKX32dbtjqkeur4
+	AO3ROtpCxLLALx+sRy6epFF3QRiIGInSM7x7Em+VTVPZx8f7Zl7ZPcRhyfl6RTkzde0QKk0duhm
+	kizs801Vozx53FR5R6+k8UgdRAs/oVCDUjAHIejcVB3LKIlr/ZDbdNjVAtLbUKTTsRefn3JwMPY
+	G74mg1izfH/Hp1sJxQVK3kk/VuSe1f7ZH/74Xq3rW+RgSZ2icVaxEQ3sQXp8Pkp/S/BcZEWNcE3
+	apyQom7coR8B3AKXo1viNWCdgkjEkCsNp6cCHaqd1dvDuW6M8CI6e7qUg+UYyUEl5oLhoD5Bno1
+	rtQ5L0HwZBro=
+X-Received: by 2002:a17:907:e158:b0:c34:e9fe:82ed with SMTP id
+ a640c23a62f3a-c34e9fe8db4mr344907066b.28.1791888264638; Tue, 13 Oct 2026
+ 03:44:24 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+References: <20260910220242.2165023-1-dhowells@redhat.com> <20261011.cachefiles-seek-hole-walk.pchmelar@innovatrics.com>
+ <1655915.1791879248@warthog.procyon.org.uk>
+In-Reply-To: <1655915.1791879248@warthog.procyon.org.uk>
+From: Daire Byrne <daire@dneg.com>
+Date: Tue, 13 Oct 2026 11:43:48 +0100
+X-Gm-Features: AclHuK_oVCRmnPd9NH08Wt-JPyd6g1EMor68YJAilUyzKCf7DPZ-awFW_Pr3mM8
+Message-ID: <CAPt2mGPPYTv=mBo=ysFt49t9=6AVh=P4uvHh4EwZ4Xh=ZULo=Q@mail.gmail.com>
+Subject: Re: [PATCH v12 0/5] netfs, cachefiles: Changes for next, primarily
+ occupancy tracking-related
+To: David Howells <dhowells@redhat.com>
+Cc: Petr Chmelar <petr.chmelar@innovatrics.com>, Christian Brauner <christian@brauner.io>, 
+	Paulo Alcantara <pc@manguebit.org>, Matthew Wilcox <willy@infradead.org>, 
+	Namjae Jeon <linkinjeon@kernel.org>, Marc Dionne <marc.dionne@auristor.com>, 
+	Stefan Metzmacher <metze@samba.org>, Eric Van Hensbergen <ericvh@kernel.org>, 
+	Dominique Martinet <asmadeus@codewreck.org>, Ilya Dryomov <idryomov@gmail.com>, netfs@lists.linux.dev, 
+	linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, 
+	linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, v9fs@lists.linux.dev, 
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-On Mon, 2026-10-12 at 10:59 -0400, Sasha Levin wrote:
-> > AFAICT (for 7.2.x) you queued a full pick of
-> >=20
-> > f307b4f7ed17 nfsd: split nfsd4_copy into transient and durable async co=
-py objects
-> >=20
-> > in
-> >=20
-> > 0b2963340727 nfsd: split nfsd4_copy into transient and durable async co=
-py objects
-> >=20
-> > despite Jeff stating the following up-thread:
-> >=20
-> > > We should probably just take Lubos' two-line fix as a separate one-of=
-f
-> > > patch for stable. Backporting the COPY code refactor is too risky IMO=
-.
-> >=20
-> > Was this intentional, or an accident?
->=20
-> That was not what Jeff recommended, thanks for catching it. The full pick=
- is
-> now dropped from the 7.2 and 6.18 queues.
->=20
-> Jeff, Chuck: could one of you send that fix as a proper signed-off patch =
-for
-> 7.2.y and 6.18.y?
+Hi,
 
-Lubis, since you did the original patch, would you like to send ones
-for those releases? Then Chuck and I can just send R-b's for it. If
-not, then I'll plan to send some.
+I don't know if it's particularly useful (or relevant), but we set an
+extent hint size of 8MB on the backing XFS filesystem for
+fscache/cachefiles.
 
-Thanks,
---=20
-Jeff Layton <jlayton@kernel.org>
+For our workloads (mostly larger files), this seems to work quite well
+in keeping down the extent counts on the cachefiles objects. It's
+perhaps not very space efficient at first, but it seems to improve
+over time as more data is cached.
+
+Also, compared to XFS, ext4 seems to do a better job of keeping the
+extent counts lower even without an extent hint.
+
+In terms of granularity, I think we'd be fine with something like 256k
+(as we are with 8MB). But we would still want to be able to cache a
+wide range of file sizes (4k -> TBs).
+
+We also have a particularly horrible random IO 4k workload where the
+files are MBs on disk but get read in random 4k chunks over a few
+hours. We specifically detect these reads and have a (readahead)
+daemon that goes and reads the entire file into cache rather than
+waiting for it to grow organically (in 4k chunks).
+
+Daire
+
+
+On Tue, 13 Oct 2026 at 09:28, David Howells <dhowells@redhat.com> wrote:
+>
+> Petr Chmelar <petr.chmelar@innovatrics.com> wrote:
+>
+> > The cover letter leaves non-contiguous objects, which still use
+> > SEEK_DATA/SEEK_HOLE, for a later series.  We hit that case badly in
+> > production, so here are numbers in case they help with its priority.
+>
+> I know.  But it's a tricky problem to solve as I need to store a map of the
+> content somewhere.  xattrs are painful as I can only read or write them
+> atomically and as whole blobs - and also I'm not sure if I need to limit the
+> size of any given xattr to 512 bytes.  Further, the xattr wangling interface
+> inside the kernel assumes a flat virtual buffer rather than taking an I/O
+> iterator.
+>
+> I have patches that store a bitmap in an xattr, with 1 bit per 256K block of
+> cachefile, for a 512 byte xattr able to map up to 1G of file size.  I need to
+> revisit this at some point soon.  It may be better to switch to storing an
+> extent list, but:
+>
+> > On our NFS clients (Ubuntu, v6.8, cache on XFS), a sequential read of a
+> > fully cached 184 GB object with 1,080,732 extents ran at 0.4 MB/s.
+>
+> Trying to store a million+ extent records in a single xattr would kind of
+> suck.  Now, it might be possible to collapse that somewhat if a lot of the
+> extents are virtually sequential within the file, since I don't care about
+> physical sequentiality.
+>
+> Also, can you tell if you have a preferred cache granularity?  Would a 256K
+> granularity, say, use too much space?
+>
+> > I expect the right fix is for cachefiles to track what it has written
+> > itself, as CONTENT_ALL now does for contiguous files, rather than
+> > something like the above.
+>
+> Indeed - as mentioned above.
+>
+> > I can send the workaround if it's useful as a reference,
+>
+> If you could, that would be great!
+>
+> > and I'm happy to test whatever you plan for this case on our workload.
+>
+> Thanks.  Now I just need to reproduce your bug.  Note that I posted another
+> cachefiles patch that Christian hasn't picked up yet:
+>
+> https://lore.kernel.org/linux-fsdevel/1091807.1791483394@warthog.procyon.org.uk/T/#u
+>
+> David
+>
+>
