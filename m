@@ -1,166 +1,160 @@
-Received: from mail-wm1-f54.google.com (mail-wm1-f54.google.com [209.85.128.54])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24E5539EF20
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2026 09:56:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.54
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B22D53DEFF1;
+	Tue, 13 Oct 2026 10:15:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791885402; cv=none; b=sYeDJ1HnaBQuNUvoAtt8QYlSPmF8aV7UXGZ8BQfYNOW2hgRn+/WtRF/57mhxrxVjW11gWtwwakELkXUdluM6p32xpzjKeHeqViiUyNW/3cm3IMoy3VNpaDBRBL2dvgXgPDRmKjny/eji3Fk4t5kgnfVpZpRLd7qVTlnw0b7iCXA=
+	t=1791886550; cv=none; b=LHNV2+skj8NlyrdR4RCIn9IjDCFEWWKZA6xhwwgv2J3Z8qQjcX9oAEy99Zji0siC3OZSP/3m8ADMCum2s+N4hV5/ckPVG3hBaPw8WA0u4AFvWkBaLI/Hpv17RvWvI4/+10yuiIrLb0LVng4sfFOp5VTopzvhFuwDwIvLNFrEmLE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791885402; c=relaxed/simple;
-	bh=HFJ4UjRCkhaihkIH92sybsRJA7S5NLo3OntK/t8+1bY=;
-	h=From:To:Cc:Subject:Message-ID:In-Reply-To:References:Date:
-	 MIME-Version:Content-Type; b=Vuy60l0uuz9TKE3FTq0DwO5ASFl2vtngAare1bH7EBUWsOqRel2LiVWD1nxJ8oWRLhiagfXaZ9e5gP+XYYJ/TR2oBoXSwH/DnmKFxdeqnBFEqcp8tmn/BntZwFFrgWzN6mlOF+5TfURPsJGJnkt3lOH2nRDeYZkvuOyjeNJAmhc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=innovatrics.com; spf=pass smtp.mailfrom=innovatrics.com; dkim=pass (1024-bit key) header.d=innovatrics.com header.i=@innovatrics.com header.b=f2qTN+IP; arc=none smtp.client-ip=209.85.128.54
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=innovatrics.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=innovatrics.com
+	s=arc-20240116; t=1791886550; c=relaxed/simple;
+	bh=yH0RlSjasJVtxJz2L4bygZ31Sm66c6PG9hYfruCGQjk=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=f28mpeHBlj/HBdieIOO+6cBZA71ZqrbctrGy6QFYe00cKPFKpbNB0YeL5DgaaH7AyMzz2MFAo7jgxGOiMIOQDRvmrzIAuQ4pUNKqoVmiCd67NlbU7n9DKvv6hJIWslvmrsCA7sDpgvCP0P1JOMTmLogysbwKpNF9YqIThznrh8I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=D23ldwya; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=innovatrics.com header.i=@innovatrics.com header.b="f2qTN+IP"
-Received: by mail-wm1-f54.google.com with SMTP id 5b1f17b1804b1-4a171b677d2so16280925e9.0
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2026 02:56:40 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=innovatrics.com; s=google; t=1791885399; x=1792490199; darn=vger.kernel.org;
-        h=content-type:mime-version:date:references:in-reply-to:message-id
-         :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=St+5KkhKptBQbmhWMvm7sQZJ2JL6wlGqGqKQDJo/9iM=;
-        b=f2qTN+IPbgAf9AFTnqIFnA0+EFd9chhkqWbo9ujAYlUoIIB6b94DVLEFvuMMx4MDht
-         rDU7HE0clCOb2uv2Ax05WtETaT+AAYaHDmmY2vekq4etv11VynKz/Uhw/cEtYcYLnVSJ
-         +0JDljA8j7m5b9RdH1PAEZPDC3Xf6DttepzLE=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791885399; x=1792490199;
-        h=content-type:mime-version:date:references:in-reply-to:message-id
-         :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=St+5KkhKptBQbmhWMvm7sQZJ2JL6wlGqGqKQDJo/9iM=;
-        b=ahloB2j6eVTJsKNtts6KiC84jYoJe32zlq2Qg6KQlc4Po4tHZP8+io6j4LxxxoyIRa
-         rRyLSlohzj5VlM9pGvuOJCDm94VpnZfN/gZcn7p6VoS4aJiGdzvxGraa6yxUObgWMQ+7
-         R86dcUwuSmdAQc3cImkoLyTbXG1C5VqAVexjJMPuRRvUgqvWwO0F1MQGhkdhoiAiZ5LY
-         tFdAqpk3z0j9vr2krx0UVXPYYjYnSq7AMcSHGpwJo2hNVDJcGf7bOhr2Pd6h4XFd3tey
-         OWZp4GFm0rE/iIX9ew3jWCoJHA7Vbq5ZlcO2SBUfQs+i2+27kpLQHtSp6ec+w3vG6E/U
-         j/uA==
-X-Forwarded-Encrypted: i=1; AKwUvBwneN5WliNAJ+FDJmA8ECbaWU7hY7ASQwD9QrTS8Z6NZrAmBTi3GoQI7h6jJ+W2BKcdiFLFEviHuso=@vger.kernel.org
-X-Gm-Message-State: AFq9FYJ624I5PXGibEy9W7TbTDeML3IBKKw6u0Swrrs+StSe+6WxoDkc
-	WoW+LwqaVR9skqIgCGPId0yr20THRUJeF4xYiOS/kso+k6KR/ZDa7k6I6WQ7uB6pRA==
-X-Gm-Gg: AYBFou39J3qPhWW63DthuQwz5TLg4LVeRF6syHcKTdqsRuMjDZnz4rb4zmlNtbDOw9p
-	HJ7RdPHVusD5fxT40Fy7A8V0yCEqEo48/Wjs9ZQITxstbBo4KMYVzzrTCxE17HpYtUv70fFluNW
-	8O1N2EJuVGWbpO9VmImicTpJnR1e5PdbETko1Y/NTgtRYVCgSXN84fmp6yfqCdpbbQZ6qK8CgCq
-	Hx0jZE0jgo0F4VV+oo7hJ/WK+wZ7JTz5UQjYZ/6lPR7MJA3+7zTan1j/txazSxXJZUFarKlqTR0
-	CwDIekSqVktuy1Lw3PECzun/bB90qtpvMHO+cmHhZV0RNUi2iYp8Ptyd2bgD1owqMKQAvHFnGUn
-	ZhCNYmLd2hEGpDIC11RqLLh/5AJ+hEQ3Tv4muU6DJazEjrJ5eNSxKbQN5967eDE7C1FrW6nx3oJ
-	qQP1QX1LJZvYtTX4tyI6npxsIBrL6S/FuwMt9c3eXiOLYaYCcEi/8goD2w4tdjZf1g6wJoOdGpv
-	WS9r2/Dx83451tW4+smsRZFQhiydHMjAR+7ykT0QFS/+uWc5k8NGXZ7598fJl8FW0eiLpTCgh60
-	Qf1560FgcFi9irvlF7b3ejmBGqOZytY=
-X-Received: by 2002:a05:600c:1c07:b0:4a1:b044:9ccd with SMTP id 5b1f17b1804b1-4a1b0449d00mr3292955e9.28.1791885399299;
-        Tue, 13 Oct 2026 02:56:39 -0700 (PDT)
-Received: from [10.11.72.5] (bip-static-148.213-81-147.telecom.sk. [213.81.147.148])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4a19f249692sm289830295e9.3.2026.10.13.02.56.38
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 13 Oct 2026 02:56:38 -0700 (PDT)
-From: Petr Chmelar <petr.chmelar@innovatrics.com>
-To: David Howells <dhowells@redhat.com>
-Cc: Christian Brauner <christian@brauner.io>,
-    Paulo Alcantara <pc@manguebit.org>,
-    Matthew Wilcox <willy@infradead.org>,
-    Namjae Jeon <linkinjeon@kernel.org>,
-    Marc Dionne <marc.dionne@auristor.com>,
-    Stefan Metzmacher <metze@samba.org>,
-    Eric Van Hensbergen <ericvh@kernel.org>,
-    Dominique Martinet <asmadeus@codewreck.org>,
-    Ilya Dryomov <idryomov@gmail.com>,
-    netfs@lists.linux.dev,
-    linux-afs@lists.infradead.org,
-    linux-cifs@vger.kernel.org,
-    linux-nfs@vger.kernel.org,
-    ceph-devel@vger.kernel.org,
-    v9fs@lists.linux.dev,
-    linux-fsdevel@vger.kernel.org,
-    linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v12 4/5] cachefiles: Don't rely on backing fs storage map
- for most use cases
-Message-ID: <20261013.cachefiles-partial-zeros-trace.pchmelar@innovatrics.com>
-In-Reply-To: <1655268.1791878098@warthog.procyon.org.uk>
-References: <20260910220242.2165023-1-dhowells@redhat.com>
- <20260910220242.2165023-5-dhowells@redhat.com>
- <20261011.cachefiles-partial-zeros.pchmelar@innovatrics.com>
- <1655268.1791878098@warthog.procyon.org.uk>
-Date: Tue, 13 Oct 2026 09:56:37 +0000
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="D23ldwya"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A6F761F00898;
+	Tue, 13 Oct 2026 10:15:48 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1791886549;
+	bh=yH0RlSjasJVtxJz2L4bygZ31Sm66c6PG9hYfruCGQjk=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=D23ldwyaxZzGXr829U3HVPbAKZtcPHIwFBQSXmPdf72OPVCgTZyVVSfDGM3nmFs06
+	 T18XPphP8lhuDuTtXOiNnnkuVNzcjNWg8U9+iUQFGbzpO04PutqBg61pH9SnZgvMqE
+	 pK7pKSKIbSJXeXRfic36Aj+d3Wqa1ycpWtzsnSlEOEUTghyhvx9fSppfKLGg1fL5xg
+	 fdbjzBEI5SBT6FjmeDzZnL3tbDrrsHqiyxOLnDne4kMEl9RJZ4Ww7Z82uLFpEE860o
+	 vaotWu0I3+CMpNnlR9segiLjd2vgun/V99c/aOqHdsXfGNWD2AlcbM/LF2uffKH1XR
+	 rJXpIRqKt1cvw==
+Message-ID: <e67eb43ccee21fc4271269e56be668b3dbf1b055.camel@kernel.org>
+Subject: Re: [REGRESSION] 7.2.4: nfsd sends CB_OFFLOAD with all-zero
+ stateid, async NFSv4.2 COPY never completes
+From: Jeff Layton <jlayton@kernel.org>
+To: Sasha Levin <sashal@kernel.org>, stable@vger.kernel.org
+Cc: Chuck Lever <cel@kernel.org>, linux-kernel@vger.kernel.org, 
+	linux-nfs@vger.kernel.org, Lubos Rendek <l.rendek@proxmox.com>, 
+	regressions@lists.linux.dev, Fabian =?ISO-8859-1?Q?Gr=FCnbichler?=
+	 <f.gruenbichler@proxmox.com>
+Date: Tue, 13 Oct 2026 06:15:46 -0400
+In-Reply-To: <2026-10-12-1-daily-reply-0001-nfsd-cb-offload-zero-stateid@kernel.org>
+References: <1791797151.oll70jtyaa.astroid@yuna.none>
+	 <2026-10-12-1-daily-reply-0001-nfsd-cb-offload-zero-stateid@kernel.org>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-2.fc44) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 
-David Howells <dhowells@redhat.com> wrote:
+On Mon, 2026-10-12 at 10:59 -0400, Sasha Levin wrote:
+> > AFAICT (for 7.2.x) you queued a full pick of
+> >=20
+> > f307b4f7ed17 nfsd: split nfsd4_copy into transient and durable async co=
+py objects
+> >=20
+> > in
+> >=20
+> > 0b2963340727 nfsd: split nfsd4_copy into transient and durable async co=
+py objects
+> >=20
+> > despite Jeff stating the following up-thread:
+> >=20
+> > > We should probably just take Lubos' two-line fix as a separate one-of=
+f
+> > > patch for stable. Backporting the COPY code refactor is too risky IMO=
+.
+> >=20
+> > Was this intentional, or an accident?
+>=20
+> That was not what Jeff recommended, thanks for catching it. The full pick=
+ is
+> now dropped from the 7.2 and 6.18 queues.
+>=20
+> Jeff, Chuck: could one of you send that fix as a proper signed-off patch =
+for
+> 7.2.y and 6.18.y?
 
-> Unfortunately, I can't reproduce this.  Can you get me some tracing?
-
-Thanks for looking.  The trace shows reads served from the cache over
-ranges that were never written to it; details below.
-
-I think the reason you don't see it is how the file gets into the cache,
-which I should have said in the report.  In your run, fio lays the file
-out through the mount, so the client fills its cache sequentially and the
-object ends up CONTENT_ALL.  In ours, the client never writes the file:
-it is written on the server side beforehand, and the client's cache fills
-only as the client reads it, at random offsets, so the object stays
-BACKFS_MAP.  That is how our training nodes use the cache: they read data
-sets that they didn't write, mostly at random offsets.
-
-I reran it on 9f8b64f66 over 9p with your tracepoints enabled, with the
-same result: 936 of 4096 64 KiB blocks wrong, 825 of them zeros, first
-wrong blocks 10, 13, 15, 24, 26 and 27.  I'm sending you the trace
-off-list; it is 790 KB as bzip2.
-
-What the trace shows:
-
- - After the random reads the object is set to BACKFS_MAP:
-
-     cachefiles_coherency: o=00000001 SET ok   B=c4 oz=10000000 c=3
-
-   After dropping the page cache it is looked up again (o=00000002 OK,
-   c=3) and set to c=4.
-
- - Before the full read, WRIT TERM subrequests cover 2048 of the 4096
-   64 KiB blocks, as expected for half the file.
-
- - During the full read, READ subrequests from the cache cover 2143
-   blocks, and 936 of those never had a WRIT: the same count as the wrong
-   blocks, starting with the same blocks, 10, 13, 15, 24, 26 and 27.
-   For example this one read:
-
-     R=0000285a[1] READ TERM  f=110 s=7c000 7c000/7c000 s=7 e=0
-
-   covers 0xa0000-0xb0000, 0xd0000-0xe0000 and 0xf0000-0xf8000, and no
-   write ever reached those ranges.  The writes around it were:
-
-     R=00002291[3] WRIT TERM  f=100 s=70000 20000/20000 s=6 e=0
-     R=000024dc[1] WRIT TERM  f=100 s=90000 10000/10000 s=16 e=0
-     R=00002291[4] WRIT TERM  f=100 s=b0000 20000/20000 s=9 e=0
-     R=000024dc[2] WRIT TERM  f=100 s=e0000 10000/10000 s=3 e=0
-
-So for the BACKFS_MAP object, the occupancy the read is based on treats
-the holes between those writes as data.
-
-> One further question occurs to me: does the entire 256M file fit in the
-> test VM's memory?
-
-Yes.  The VM has 7946 MiB of memory with 7498 MiB available, and the page
-cache is dropped before the full read.
-
-The setup, for reference:
-
- - 9f8b64f66 with netfs, fscache, cachefiles, 9p and 9p fscache built in;
-   QEMU without KVM, 4 vCPUs, 8 GiB RAM
- - 9p: QEMU virtfs local, security_model=none, the host directory on XFS;
-   mounted with trans=virtio,version=9p2000.L,cache=fscache,msize=1048576
- - part.bin: 256 MiB from /dev/urandom, written on the host before the
-   mount
- - cache: XFS on a loop device in the guest, cachefilesd 0.10.10
-
-The trace analysis was done with LLM assistance.
+Lubis, since you did the original patch, would you like to send ones
+for those releases? Then Chuck and I can just send R-b's for it. If
+not, then I'll plan to send some.
 
 Thanks,
-Petr
+--=20
+Jeff Layton <jlayton@kernel.org>
