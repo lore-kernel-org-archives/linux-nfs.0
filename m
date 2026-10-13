@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 47CBA4F68A4
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2026 12:49:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 012F24F93DA
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2026 12:49:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791895761; cv=none; b=Y4SrgnxLQRR2KY1/1tT9fMxapc3ZvF/E41ST3XZNhhDhhbpeDcsQeEZPJDu9WevW3LYWixFECs1BMUQkJomcCtj+MQRaXhW7YN8aXjnHPa2hLXwf/vebulkLZeKhDeGMQDmoHogtXb8UbqQmLhR8R0F+CAN7Ej/gMJzl7cxBpYw=
+	t=1791895762; cv=none; b=WZuzS8kKGSASDY8pFlXT0Fcpvl0dcLPLC6/Vrwn2Gr7xKC07Abo9AjDTYL1SSfWhVtrnLAhORR5LKwpuCeyGHJ7hD6h/dIHZVdYw+/y+ZGc/Wkz7EXbhuHIsUlrtw4q4XvICqyOB4WJk2GX8W48lbrsnKW4uBVNdGvyLDLA2SeY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791895761; c=relaxed/simple;
-	bh=lBhmSFm/3dspQhzsrJ+Wds7SBB3/CxzUgLQBOV1HCBM=;
+	s=arc-20240116; t=1791895762; c=relaxed/simple;
+	bh=hPsfFxeS+kBZ2nQlHMSWgDgtwk/G25H49tyC2UlteYs=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=uydP90x+agZFGNDiyVeq9oBBQq+TRwI3SQ4a0+hsOtwg4uKerr+BD7CQhGJhvE052hsI8xjO+paw9ilN1BvZ9n7jnc4CTLlmheyrzHDSVv/y/j86Ji4V3A4gkDXfgxONhwe8D0zw7aT5wot1VGWN9/UK2LLJtdEVnYLeo3Vz1VI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WLLnYptM; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=un3QNzX8inKR1NwF+kY7wfoFQ70Ow7UScK/th2bTQqVGjBwcMpfdu92u3mitOizr2EqjD31cdf+pYoZEpWD+V0Yeo1gPTv1ppJetZh+e3VDUkBJD4UBlR2MwZTplUw/otgqUoOfxU1eFkW9LWGiDTOXisBVjM1kJvqDZSlcrXVY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VCoWh4/B; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WLLnYptM"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8F61E1F0089B;
-	Tue, 13 Oct 2026 12:49:19 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VCoWh4/B"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 58B1B1F00899;
+	Tue, 13 Oct 2026 12:49:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1791895760;
-	bh=CuYHJlGl/2K/Jm6NMbYMAxp++nnQDwxU3g62zirPWK8=;
+	bh=Wgo8FI2+U9U34SMmxCjEcoJ3OTfF0LN/Pc0Xkz5+5S0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=WLLnYptM+tSJrHd0ljfxaWV1kAqO8doFl7QVRZRmriv5pnyTx0d0ai2GbYzJysnM5
-	 lCOUErHKb1R3gkMpPb80ykzSKF2bYE6jH9a3RAzRBOAzeY4RPA0pB3ikeDc+221PZC
-	 tIbNbwPKgoVOeJijVgOU1SPI0Z6KJjWCnV7bVIIF1+ZSCY3Q73kj5UIBtKohuwuFj1
-	 o2f4cj9Lg2meP9otGFz91Syh5l/ymGeR2kQZyanZIXSyGiZ8liOEJcCc+8VUSIyNRa
-	 iJeF0LkoPPp0qTcWdIAYSSzg98cOz3suIR4ZR4iHoyPCMWz0fxwVAfkfWkDaGqWFmq
-	 854j7sVm+77bQ==
+	b=VCoWh4/BaO8OqqMP3z+3Og3ZKr36doSHospva2fQNepXh1p5drhmzWNiMFSYn4mLY
+	 FBrYDR3n0pWS9plpXHIcaBH4MmH0navtUM8HUF8aBIAaNJ2B+8Zjgy9JrrOHxQOCtJ
+	 DbdB//Uft4Ri4I3j2PMnS6H+i7wzoMhcVo8HTvcucc/8Zq9hknXUhJkSqC5X08kyie
+	 nRdNpy5Q+eTHtSPhnbMEzEwen0IvxZbt/sTvj3TDn/H8W+OQivxDAK2VD/FDXb96GA
+	 WcQj0N4VnK12uF6iUvHcJu/TzRXcSTzjcAj+9FZwgdQE4GwcLwbRM2v3w5Nb64f60A
+	 ytOSoy+gCp/XA==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 06/34] NFSD: Relocate the NFSv3 XDR storage union into nfs3proc.c
-Date: Tue, 13 Oct 2026 08:49:10 -0400
-Message-ID: <20261013124913.316726-5-cel@kernel.org>
+Subject: [PATCH v3 07/34] NFSD: Use xdrgen XDR functions for the NFSv3 NULL procedure
+Date: Tue, 13 Oct 2026 08:49:11 -0400
+Message-ID: <20261013124913.316726-6-cel@kernel.org>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20261013124913.316726-1-cel@kernel.org>
 References: <20261013124913.316726-1-cel@kernel.org>
@@ -47,178 +47,73 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-union nfsd3_xdrstore and the NFS3_SVC_XDRSIZE macro it feeds exist
-only to size service result buffers, yet xdr3.h exposes them to
-every file that includes the header. This couples the NFSv3 XDR type
-layout to translation units that have no stake in a service's buffer
-size.
+Update the NFSPROC3_NULL entry in the nfsd_procedures3 array
+to use the generated XDR encoder and decoder functions
+(xdrgen_svc_decode_void and xdrgen_svc_encode_void) instead of the
+hand-written nfssvc_decode_voidarg and nfssvc_encode_voidres.
 
-Three svc_version structures drew their vs_xdrsize from the shared
-union: nfsd_version3 in nfs3proc.c and the two NFSACL programs,
-nfsd_acl_version2 and nfsd_acl_version3. Give each its own storage
-union next to the version structure it sizes, listing only that
-program's own argument and result types, and compute vs_xdrsize from
-sizeof of the local union. NFS3_SVC_XDRSIZE then has no users left
-and is removed from xdr3.h.
-
-The svc layer allocates rqstp->rq_resp at sv_xdrsize -- the largest
-vs_xdrsize among a program's versions -- and clears it to the
-dispatched procedure's pc_ressize, so each union must bound the
-largest result its version encodes. The NFSACL programs previously
-borrowed the full NFSv3 union; sizing them from their own result
-types is both tighter and self-contained. This mirrors the recent
-lockd conversion, which confined each NLM version's storage union to
-the file that defines the version structure.
+Also update pc_xdrressize to 0 since the NULL procedure returns
+a void result with no XDR-encoded data.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs2acl.c  | 15 ++++++++++++++-
- fs/nfsd/nfs3acl.c  | 12 +++++++++++-
- fs/nfsd/nfs3proc.c | 30 +++++++++++++++++++++++++++++-
- fs/nfsd/xdr3.h     | 30 ------------------------------
- 4 files changed, 54 insertions(+), 33 deletions(-)
+ fs/nfsd/nfs3proc.c | 35 +++++++++++++++++++++++------------
+ 1 file changed, 23 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
-index 13904e2740bf..db0e260f447d 100644
---- a/fs/nfsd/nfs2acl.c
-+++ b/fs/nfsd/nfs2acl.c
-@@ -452,10 +452,23 @@ static const struct svc_procedure nfsd_acl_procedures2[5] = {
- 	},
- };
- 
-+/*
-+ * Storage requirements for XDR arguments and results.
-+ */
-+union nfsd_acl2_xdrstore {
-+	struct nfsd3_getaclargs		getaclargs;
-+	struct nfsd3_setaclargs		setaclargs;
-+	struct nfsd3_accessargs		accessargs;
-+	struct nfsd_fhandle		fhandle;
-+	struct nfsd3_getaclres		getaclres;
-+	struct nfsd_attrstat		attrstat;
-+	struct nfsd3_accessres		accessres;
-+};
-+
- const struct svc_version nfsd_acl_version2 = {
- 	.vs_vers	= 2,
- 	.vs_nproc	= ARRAY_SIZE(nfsd_acl_procedures2),
- 	.vs_proc	= nfsd_acl_procedures2,
- 	.vs_dispatch	= nfsd_dispatch,
--	.vs_xdrsize	= NFS3_SVC_XDRSIZE,
-+	.vs_xdrsize	= sizeof(union nfsd_acl2_xdrstore),
- };
-diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
-index 5219ec634587..324cfdd7b262 100644
---- a/fs/nfsd/nfs3acl.c
-+++ b/fs/nfsd/nfs3acl.c
-@@ -294,11 +294,21 @@ static const struct svc_procedure nfsd_acl_procedures3[3] = {
- 	},
- };
- 
-+/*
-+ * Storage requirements for XDR arguments and results.
-+ */
-+union nfsd_acl3_xdrstore {
-+	struct nfsd3_getaclargs		getaclargs;
-+	struct nfsd3_setaclargs		setaclargs;
-+	struct nfsd3_getaclres		getaclres;
-+	struct nfsd3_attrstat		attrstat;
-+};
-+
- const struct svc_version nfsd_acl_version3 = {
- 	.vs_vers	= 3,
- 	.vs_nproc	= ARRAY_SIZE(nfsd_acl_procedures3),
- 	.vs_proc	= nfsd_acl_procedures3,
- 	.vs_dispatch	= nfsd_dispatch,
--	.vs_xdrsize	= NFS3_SVC_XDRSIZE,
-+	.vs_xdrsize	= sizeof(union nfsd_acl3_xdrstore),
- };
- 
 diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 200e084d749b..180601d2d139 100644
+index 180601d2d139..0c4109bde2bb 100644
 --- a/fs/nfsd/nfs3proc.c
 +++ b/fs/nfsd/nfs3proc.c
-@@ -1184,10 +1184,38 @@ static const struct svc_procedure nfsd_procedures3[22] = {
- 	},
- };
+@@ -130,10 +130,21 @@ static __be32 nfsd3_map_status(__be32 status)
+ }
  
-+/*
-+ * Storage requirements for XDR arguments and results.
-+ */
-+union nfsd3_xdrstore {
-+	struct nfsd3_sattrargs		sattrargs;
-+	struct nfsd3_diropargs		diropargs;
-+	struct nfsd3_readargs		readargs;
-+	struct nfsd3_writeargs		writeargs;
-+	struct nfsd3_createargs		createargs;
-+	struct nfsd3_renameargs		renameargs;
-+	struct nfsd3_linkargs		linkargs;
-+	struct nfsd3_symlinkargs	symlinkargs;
-+	struct nfsd3_readdirargs	readdirargs;
-+	struct nfsd3_diropres 		diropres;
-+	struct nfsd3_accessres		accessres;
-+	struct nfsd3_readlinkres	readlinkres;
-+	struct nfsd3_readres		readres;
-+	struct nfsd3_writeres		writeres;
-+	struct nfsd3_renameres		renameres;
-+	struct nfsd3_linkres		linkres;
-+	struct nfsd3_readdirres		readdirres;
-+	struct nfsd3_fsstatres		fsstatres;
-+	struct nfsd3_fsinfores		fsinfores;
-+	struct nfsd3_pathconfres	pathconfres;
-+	struct nfsd3_commitres		commitres;
-+	struct nfsd3_getaclres		getaclres;
-+};
+ /*
+- * NULL call.
++ * A full specification of each of the following NFSv3 procedures is
++ * available in RFC 1813 Section 3.3.
+  */
+-static __be32
+-nfsd3_proc_null(struct svc_rqst *rqstp)
 +
- const struct svc_version nfsd_version3 = {
- 	.vs_vers	= 3,
- 	.vs_nproc	= ARRAY_SIZE(nfsd_procedures3),
- 	.vs_proc	= nfsd_procedures3,
- 	.vs_dispatch	= nfsd_dispatch,
--	.vs_xdrsize	= NFS3_SVC_XDRSIZE,
-+	.vs_xdrsize	= sizeof(union nfsd3_xdrstore),
- };
-diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-index 60c7fe131e2e..35fb715e7c3f 100644
---- a/fs/nfsd/xdr3.h
-+++ b/fs/nfsd/xdr3.h
-@@ -243,36 +243,6 @@ struct nfsd3_fhandle_pair {
- 	struct svc_fh		fh2;
- };
++/**
++ * nfsd3_proc_null - NULL: Do nothing
++ * @rqstp: RPC transaction context
++ *
++ * Return:
++ *   %rpc_success:		RPC executed successfully
++ *
++ * RPC synopsis:
++ *   void NFSPROC3_NULL(void) = 0;
++ */
++static __be32 nfsd3_proc_null(struct svc_rqst *rqstp)
+ {
+ 	return rpc_success;
+ }
+@@ -925,15 +936,15 @@ nfsd3_proc_commit(struct svc_rqst *rqstp)
  
--/*
-- * Storage requirements for XDR arguments and results.
-- */
--union nfsd3_xdrstore {
--	struct nfsd3_sattrargs		sattrargs;
--	struct nfsd3_diropargs		diropargs;
--	struct nfsd3_readargs		readargs;
--	struct nfsd3_writeargs		writeargs;
--	struct nfsd3_createargs		createargs;
--	struct nfsd3_renameargs		renameargs;
--	struct nfsd3_linkargs		linkargs;
--	struct nfsd3_symlinkargs	symlinkargs;
--	struct nfsd3_readdirargs	readdirargs;
--	struct nfsd3_diropres 		diropres;
--	struct nfsd3_accessres		accessres;
--	struct nfsd3_readlinkres	readlinkres;
--	struct nfsd3_readres		readres;
--	struct nfsd3_writeres		writeres;
--	struct nfsd3_renameres		renameres;
--	struct nfsd3_linkres		linkres;
--	struct nfsd3_readdirres		readdirres;
--	struct nfsd3_fsstatres		fsstatres;
--	struct nfsd3_fsinfores		fsinfores;
--	struct nfsd3_pathconfres	pathconfres;
--	struct nfsd3_commitres		commitres;
--	struct nfsd3_getaclres		getaclres;
--};
--
--#define NFS3_SVC_XDRSIZE		sizeof(union nfsd3_xdrstore)
--
- bool nfs3svc_decode_fhandleargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfs3svc_decode_sattrargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfs3svc_decode_diropargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ static const struct svc_procedure nfsd_procedures3[22] = {
+ 	[NFSPROC3_NULL] = {
+-		.pc_func = nfsd3_proc_null,
+-		.pc_decode = nfssvc_decode_voidarg,
+-		.pc_encode = nfssvc_encode_voidres,
+-		.pc_argsize = sizeof(struct nfsd_voidargs),
+-		.pc_argzero = sizeof(struct nfsd_voidargs),
+-		.pc_ressize = sizeof(struct nfsd_voidres),
+-		.pc_cachetype = RC_NOCACHE,
+-		.pc_xdrressize = ST,
+-		.pc_name = "NULL",
++		.pc_func	= nfsd3_proc_null,
++		.pc_decode	= xdrgen_svc_decode_void,
++		.pc_encode	= xdrgen_svc_encode_void,
++		.pc_argsize	= XDR_void,
++		.pc_argzero	= 0,
++		.pc_ressize	= 0,
++		.pc_cachetype	= RC_NOCACHE,
++		.pc_xdrressize	= XDR_void,
++		.pc_name	= "NULL",
+ 	},
+ 	[NFSPROC3_GETATTR] = {
+ 		.pc_func = nfsd3_proc_getattr,
 -- 
 2.55.0
 
