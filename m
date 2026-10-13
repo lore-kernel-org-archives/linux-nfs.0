@@ -1,179 +1,112 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from mailout3.samsung.com (mailout3.samsung.com [203.254.224.33])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A5E234D0A0F
-	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 22:03:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3599F41440A
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2026 01:32:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.254.224.33
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791842613; cv=none; b=tMX1K25I3HOxQSXKapH0M5/8Ys6X6/SngJHOi1VenNnq5wsE1sA395VhE8sxyAHso4j2bneAsPFOspDMFguY7TFx5ajdRG4DW76FT/3pS9I8qsqMhTTzYmNO04MA9OKBEJSnV6SvSOIzheSeFjYaEQV1g2LYgTmaREnUX/C12CE=
+	t=1791855125; cv=none; b=DEvQTV8h1qQZ0nz696QV+PWWSWqlIituI2p+tZ9JUBoO06uArhHRBwZNsxn3W72VuBf4KmkP+tMWNbdXvpqigaVa0OW/h3T9Sw8Gf+GkyOEmigKwfsC3Iv4qT3wqvsoKV7F5PsVrITDetLIXURygA5q4ayQvDTEhKhouU7aY9m0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791842613; c=relaxed/simple;
-	bh=yrXZwSgmi2Jn059HG7h9INyLCVULcB7tByKtcucViZo=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Ykbhu0lxjnDCrunVq/HXdPHzD9MxOeC23/PjLyTSR3PYNmBcubTsFSGxJUCQvkxSq04GMQkCrpw9J2+yKhd+qYadQjgS+zV+/wZyunlUZa+22kaDvRkVU0Wb6CiJHzTMQL2h6B7J/2Hw4Q80saRuC8I1BBkJrZNhC/cjR89DqXA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ndHP/1fs; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791855125; c=relaxed/simple;
+	bh=idMX5yjXEYO7wOauDUhlwU9op3jmAaxp8ofbmmlqgfc=;
+	h=Mime-Version:Subject:From:To:CC:In-Reply-To:Message-ID:Date:
+	 Content-Type:References; b=P4JCpihTBz6kpnlRo4EoTkxMtl4KjOrM+/lrJKuiHbxF1llNGL1Wj8B/4Qx8YAUC450nxjazDAwdaxmuMZq7e6/zcB385jQoaFT0wpLRNOdwm3kHyJzaqxZ3i/QUJODHJPZrAdyclNL5TpHirwR9YFq2LXfltfl4du573N4KVhc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=FdihwLgr; arc=none smtp.client-ip=203.254.224.33
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ndHP/1fs"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DB2CE1F008A1;
-	Mon, 12 Oct 2026 22:03:31 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791842612;
-	bh=3E620jFfzGEkKTJWYWgCZ2XvNBUMrtpCi3OzYMk4ACk=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=ndHP/1fsUnBq/ap1qRC18Pl2Cl3depsd37SgphsauoimJJwK1/LszZsNa88YY6iT3
-	 62ju2ftkJ9Q0QEgjFuN/oW2AP9V46kuPoWdBPfhVvae1oM+1en+UhOcV+dhFDlOkpZ
-	 y209YxCrZ0qz+2B+BeU3N+IA+RVxaIX5IA/J/C/Jx6x48FVaXgaOTVeBmL9yVXrx63
-	 nbEmRBS3TfOCKz8viWN/r8DaOURmzTXCONJjRL5wIUEuRIWqIFoHuWlbA0jGYHXE3P
-	 cFGQECxTbeMKmV7hISjBQorshZEMwXAFrDOTFmjrdYuGH452U78YV0AtmMIcYhhue8
-	 3WR8s1LffCPgA==
-From: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neil@brown.name>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 01/34] NFSD: Report a first-batch readdir error in the reply status
-Date: Mon, 12 Oct 2026 18:02:56 -0400
-Message-ID: <20261012220329.309998-2-cel@kernel.org>
-X-Mailer: git-send-email 2.55.0
-In-Reply-To: <20261012220329.309998-1-cel@kernel.org>
-References: <20261012220329.309998-1-cel@kernel.org>
+	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="FdihwLgr"
+Received: from epcas2p3.samsung.com (unknown [182.195.41.55])
+	by mailout3.samsung.com (KnoxPortal) with ESMTP id 20261013013200epoutp033773ec52145aeaea4c81239195f0f49f~d8r0QWhl92605426054epoutp03Y
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2026 01:32:00 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout3.samsung.com 20261013013200epoutp033773ec52145aeaea4c81239195f0f49f~d8r0QWhl92605426054epoutp03Y
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
+	s=mail20170921; t=1791855120;
+	bh=b2wRoMcomqylst5Dp7BtwRuc75Xrdr2sGwl1cj2yqaI=;
+	h=Subject:Reply-To:From:To:CC:In-Reply-To:Date:References:From;
+	b=FdihwLgrg5HH5PrTrTbPhFaUDaUYiuZKGgp2i2BAiHrPAtBXaeq5Ar7hVKbFQbqIF
+	 IzIcIklHCCRVmsgB1CARzdxvjRgY4EDxFCWfaiMJ5T4h2ZFmrCunCNyWsITlQKmh1b
+	 /JZ1EWYA5Y1xAtT0YQA0lO8+kTDPxWSXTCLDh3Rg=
+Received: from epsnrtp01.localdomain (unknown [182.195.42.153]) by
+	epcas2p3.samsung.com (KnoxPortal) with ESMTPS id
+	20261013013200epcas2p35f3cd7367bed795a25beeb1b587b3527~d8rzyKzwX1789417894epcas2p3D;
+	Tue, 13 Oct 2026 01:32:00 +0000 (GMT)
+Received: from epcas2p4.samsung.com (unknown [182.195.38.211]) by
+	epsnrtp01.localdomain (Postfix) with ESMTP id 4j3cJH5n0tz6B9m9; Tue, 13 Oct
+	2026 01:31:59 +0000 (GMT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Mime-Version: 1.0
+Subject: RE:(2) [PATCH] xfs: mark the inode preallocated for pNFS write
+ layouts past EOF
+Reply-To: daejun7.park@samsung.com
+Sender: Daejun Park <daejun7.park@samsung.com>
+From: Daejun Park <daejun7.park@samsung.com>
+To: Christoph Hellwig <hch@lst.de>
+CC: Carlos Maiolino <cem@kernel.org>, "linux-xfs@vger.kernel.org"
+	<linux-xfs@vger.kernel.org>, "Darrick J. Wong" <djwong@kernel.org>, Dave
+	Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, Jeff Layton
+	<jlayton@kernel.org>, Dai Ngo <Dai.Ngo@oracle.com>, Sergey Bashirov
+	<sergeybashirov@gmail.com>, "linux-nfs@vger.kernel.org"
+	<linux-nfs@vger.kernel.org>, "linux-kernel@vger.kernel.org"
+	<linux-kernel@vger.kernel.org>, "stable@vger.kernel.org"
+	<stable@vger.kernel.org>, Daejun Park <daejun7.park@samsung.com>
+X-Priority: 3
+X-Content-Kind-Code: NORMAL
+In-Reply-To: <20261012124118.GB32488@lst.de>
+X-CPGS-Detection: blocking_info_exchange
+X-Drm-Type: N,general
+X-Msg-Generator: Mail
+X-Msg-Type: PERSONAL
+X-Reply-Demand: N
+Message-ID: <20261013013159epcms2p3fea98953ac15bf1c1505057e5cd2c5ba@epcms2p3>
+Date: Tue, 13 Oct 2026 10:31:59 +0900
+X-CMS-MailID: 20261013013159epcms2p3fea98953ac15bf1c1505057e5cd2c5ba
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+X-Sendblock-Type: AUTO_CONFIDENTIAL
+CMS-TYPE: 102P
+X-CPGSPASS: Y
+X-CPGSPASS: Y
+cpgsPolicy: CPGSC10-223,Y
+X-CFilter-Loop: Reflected
+X-CMS-RootMailID: 20261012124126epcas2p136e362cfd7a8ec3b16cca7d192565650
+References: <20261012124118.GB32488@lst.de>
+	<20261012-xfs-pnfs-eof-prealloc-v1-1-e4864d917a00@samsung.com>
+	<CGME20261012124126epcas2p136e362cfd7a8ec3b16cca7d192565650@epcms2p3>
 
-The NFSv2 READDIR encoder pulls directory entries while the reply
-is encoded, after the status word is committed. nfsd_readdir_open()
-does not read from the directory, so an iterate_dir() failure on the
-first batch surfaces only in nfsd_readdir_next(), where nothing can
-turn it into a status. The reply carries NFS_OK, no entries, and eof
-false. The client resends the same cookie and receives the same reply,
-so a directory that fails with -EIO or -ENOENT traps it in a loop.
+On Mon, Oct 12, 2026 at 02:41:18PM +0200, Christoph Hellwig wrote:
+> > +		if (write && !(ip->i_diflags & XFS_DIFLAG_PREALLOC) &&
+> > +		    imap.br_startoff + imap.br_blockcount >
+> > +		    XFS_B_TO_FSB(mp, XFS_ISIZE(ip))) {
+> > +			error = xfs_fs_map_update_inode(ip);
+> > +			if (!error)
+> > +				error = xfs_log_force_inode(ip);
+> > +			if (error)
+> > +				goto out_unlock;
+> > +		}
+>
+> Let's avoid the code duplication here.  Add a boolean flag that
+> we need the update, set it both for the new allocation in the if
+> le, and based on the condition here, and then do the update
+> in a separate conditional below.
+>
+> And mayne the xfs_log_force_inode should move into
+> xfs_fs_map_update_inode while we're at it.
 
-Read the first batch in nfsd_readdir_open() so the error selects the
-reply status before any of it is committed. An error on a later batch
-still cuts the list short with eof false. The client's follow-up
-request then starts from that cookie and gets the error in its status.
+Will do both in v2. xfs_fs_map_blocks() sets a flag for the allocation
+and for a write mapping that ends past EOF over blocks that are already
+there, and calls xfs_fs_map_update_inode() once after the if/else.
+xfs_fs_map_update_inode() forces the log after committing the
+transaction, so the separate xfs_log_force_inode() calls go away.
 
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- fs/nfsd/vfs.c | 76 +++++++++++++++++++++++++++++++++------------------
- 1 file changed, 50 insertions(+), 26 deletions(-)
+The behaviour does not change: the update still happens under the
+IOLOCK, before the blocks are handed out. On nfsd-testing with the same
+reproducer, the inode is marked at LAYOUTGET, blockgc keeps the blocks,
+and the LAYOUTCOMMIT after 360 seconds succeeds with the data in place,
+as with v1.
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index c7dd94697f2f..c753d3257f1e 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -2397,6 +2397,33 @@ static bool nfsd_buffered_filldir(struct dir_context *ctx, const char *name,
- 	return true;
- }
- 
-+/*
-+ * Read the next batch of entries.  Returns false at end of directory
-+ * (@iter->eof set) or on a filesystem error (@iter->host_err set).
-+ */
-+static bool nfsd_readdir_fill(struct nfsd_readdir_iter *iter)
-+{
-+	/* Between batches the resume cookie advances past the last. */
-+	if (iter->batched)
-+		iter->offset = vfs_llseek(iter->file, 0, SEEK_CUR);
-+
-+	iter->used = 0;
-+	iter->full = 0;
-+	iter->host_err = iterate_dir(iter->file, &iter->ctx);
-+	if (iter->full)
-+		iter->host_err = 0;
-+	if (iter->host_err < 0)
-+		return false;
-+	if (!iter->used) {
-+		iter->eof = true;
-+		return false;
-+	}
-+	iter->batched = true;
-+	iter->pos = iter->page;
-+	iter->remaining = iter->used;
-+	return true;
-+}
-+
- /**
-  * nfsd_readdir_open - open a directory for streaming readdir
-  * @rqstp: RPC transaction context
-@@ -2404,13 +2431,15 @@ static bool nfsd_buffered_filldir(struct dir_context *ctx, const char *name,
-  * @offsetp: seek offset at which to resume reading
-  * @iter: OUT: directory reader to initialize
-  *
-- * On success the directory is open and positioned at @offsetp, and
-- * @iter is ready for nfsd_readdir_next().  The caller must release
-- * @iter with nfsd_readdir_close() once done, including on error paths
-- * that follow a successful open.
-+ * On success the directory is open and positioned at @offsetp, the
-+ * first batch of entries has been read, and @iter is ready for
-+ * nfsd_readdir_next().  The caller must release @iter with
-+ * nfsd_readdir_close() once done, including on error paths that
-+ * follow a successful open.
-  *
-- * Return: nfs_ok on success, otherwise an nfsstat code.  On error @iter
-- * is left safe to pass to nfsd_readdir_close().
-+ * Return: nfs_ok on success, otherwise an nfsstat code, including the
-+ * error from reading the first batch.  On error @iter is left safe to
-+ * pass to nfsd_readdir_close().
-  */
- __be32 nfsd_readdir_open(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 			 loff_t *offsetp, struct nfsd_readdir_iter *iter)
-@@ -2446,6 +2475,17 @@ __be32 nfsd_readdir_open(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	iter->file = file;
- 	iter->fhp = fhp;
- 	iter->offset = offset;
-+
-+	/*
-+	 * The first batch is read here so a filesystem error surfaces
-+	 * in the reply status.  Once the encoder has committed nfs_ok,
-+	 * an error can only be reported as a short list.
-+	 */
-+	if (!nfsd_readdir_fill(iter) && iter->host_err) {
-+		err = nfserrno(iter->host_err);
-+		nfsd_readdir_close(iter);
-+		return err;
-+	}
- 	return nfs_ok;
- 
- out_close:
-@@ -2470,26 +2510,10 @@ struct buffered_dirent *nfsd_readdir_next(struct nfsd_readdir_iter *iter)
- 	struct buffered_dirent *de;
- 	unsigned int reclen;
- 
--	while (iter->remaining <= 0) {
--		/* Between batches the resume cookie advances past the last. */
--		if (iter->batched)
--			iter->offset = vfs_llseek(iter->file, 0, SEEK_CUR);
--
--		iter->used = 0;
--		iter->full = 0;
--		iter->host_err = iterate_dir(iter->file, &iter->ctx);
--		if (iter->full)
--			iter->host_err = 0;
--		if (iter->host_err < 0)
--			return NULL;
--		if (!iter->used) {
--			iter->eof = true;
--			return NULL;
--		}
--		iter->batched = true;
--		iter->pos = iter->page;
--		iter->remaining = iter->used;
--	}
-+	if (iter->eof || iter->host_err)
-+		return NULL;
-+	if (iter->remaining <= 0 && !nfsd_readdir_fill(iter))
-+		return NULL;
- 
- 	de = (struct buffered_dirent *)iter->pos;
- 	iter->offset = de->offset;
--- 
-2.55.0
-
+I will wait a few days for other comments on v1 and then send v2.
