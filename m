@@ -1,307 +1,278 @@
-Received: from mail-pj1-f44.google.com (mail-pj1-f44.google.com [209.85.216.44])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EBBC43CBE89
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2026 06:00:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.44
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 363FE417BD2;
+	Tue, 13 Oct 2026 06:00:51 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791871238; cv=none; b=Gi6ryIgpYFY786bhQJl6Rn2QdXeLLDOPM2SXfghN/ug+2FH+EwPj0W/QJK76NOYPHj79ZxxVcUYQMRWYNgWAVoe7pmF7WFFhTp8LbJA9rZXqvkGPSI+4aH6cvxVWLul+HkfbZ/TKA+5bem5VRuX78fKqzY4JTxxif/OdgAmwPak=
+	t=1791871252; cv=none; b=ufj0c90Vq3lYa2iooeNOYKZYyg5gX8v7LkCkzxmLol9wSDWhsC4myhso4jhEdSg823UHCBJSzXo5iPTmwHoT5JGlIr+upmg7YlCXEMj9w3Ufs7gSkbx3Xh/9QyTOaaAPmoaQooVf5uzWKdOSn2mPMD8BHQIdfhAIoP9foXWTJL8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791871238; c=relaxed/simple;
-	bh=YYRWZl4u3Uh21mQ++xbyke7rOxG/1RLoQw/Of8q5WT0=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=hvq0R22niThwTiq2pehnVf3Hu+P075XsYi/HbH3nke51Qi1ktTf7R6oQJ2XvUlzqN1tZfP6I/EP8XrZizvdC/Bdlfbv7IwLHN9MMZj1k9S+8vJBgtZKUSjaVI/bB+qPaj/hY0mV2LTEySm7EOZVK/BvnbBgw53R0lILNJJziO28=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=qFOu6A/R; arc=none smtp.client-ip=209.85.216.44
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1791871252; c=relaxed/simple;
+	bh=Yt008CfEfxBHGf9w9KSlikBfgqk+enAZ8EMPBqjDBFo=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=FED4eoiyaM1e9WSV4PARrfkzXjaqKbqY221xoJWUalzxEGnbascd4e04BWYfiYXnrymWaNTdStpkDQ8/vy8ujJKi9nfuHYQtj+zzhdtSEWrW+KuyGesQ31gUqoWFDXFWvvXoy7s0ULm97bjTvAy5nCjQIFp0xE+nTlKbPI9XVXQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=uQR3X7tt; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="qFOu6A/R"
-Received: by mail-pj1-f44.google.com with SMTP id 98e67ed59e1d1-3a7fecf8440so1283293a91.1
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2026 23:00:36 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1791871236; x=1792476036; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=odGcP4OG/NlpBPBL4aEpmzbDePI14gC8lqg8uBJDoEU=;
-        b=qFOu6A/RWATz+hD+o5rlQDy8IKPe1gYF/OUeGQ8SRlis0lPrxRqepGrNC47ghZneE1
-         f/98oT656fr+UgPyUsKJdDJNiHSW6Nh5oaesb/o6eZSJaDQhnlBUUYmBLKtYRCJPOCS+
-         TcRtvEKNSUMEitpTUnhsmxLCnS8T5ZBM84z0DWBmjhGkQuAKarkuZoCV6BoCfem8lT5+
-         wkMq4eqwrb8v381BKGWxWmrCk7uHzY7fjs5XQ59hFQGvHm8006kbwrGpkaFxBS5RTvV6
-         Epx/nCCfCB76P+VxCpVAujkGNgG4ER94aJYsN8uwm1OTteRqGxY23JloSRRmkdD5Cz93
-         0Llw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791871236; x=1792476036;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=odGcP4OG/NlpBPBL4aEpmzbDePI14gC8lqg8uBJDoEU=;
-        b=dohO2bkZqcn+x380196luV9bRPNeuN9AuQwwjjg5J6NECFGJJ34a0TJvs51nYz6aT+
-         wOs+Wy/pS9VsoituPKx8E25mwq8JIQtKDpEG3tjBWOmaAwVdS3diX7+ooOMUz2wNOfaf
-         2qjfWeW0S8nc7TuBpqkuCRj6ZdQsx3UAyn+SIhTfptiR59SKxvIvHikYxOAgrvFKkGjZ
-         4oD+WTv33YLN+yge+srsEZ/ZC3awupBRASxhc1jJsEyK9acXB3hOZnAyKx379IILBEJN
-         xBPq/aZ/XB6c+LuvXbxWkh4nwapd1oSTzzvmTZZKdeNtibv6g47RRqVHJwcWm/D8h/Ue
-         S5sQ==
-X-Gm-Message-State: AFq9FYIMv+T/DYPKHzO7Aux/1UQIgGFXzl3Km0PfeYGwL+OinL8RniwQ
-	5coWpByZpREeZuwQT+EmMB2j18v1y5o3JSmLyjvB2AsoFt9hdeH/yrJEIF5muaVn5XU=
-X-Gm-Gg: AYBFou0QE2wiseq3GgtWU1S62o+YV0/rAxy3ATl1Xw4DO1iWVJEFthddvSyQEL6xp4g
-	rznN3Nmc2dW1qv1/NL6bvEALn2fgDvDiPUARaE0qPA3mbIqkglpUI4/5AMq38piv987LrOzX7h0
-	Ve/pSYF6Q3qre95TYTpSWYhj4CgxDHcRiKQ1yMqk0ODgVabtZxtnWi5F1E5DERHmCaEqojNiVzQ
-	oNp3/58TZb14HWZuuOGWn24s34UJ9xf+Pu+epdaews2aa3g/Ruq5/sz5MIvV7YU/oHdFe/yW3w7
-	MQRNGh8bnecCnQq0OWGROY1FgyJdIdPNjnKQ0L5W/MxV0U0DxhKYZX2rbdTRtdcommUVocRRwfc
-	/5s1cecRoHA3w6vObZh6Vdm+I/aTNA/Wgsntr63lUsdLMlVnCdyPzfdmiqndhvHqDUcatBJAMqh
-	Uef2aJIDR5cL9sD4TQpYQiUc4ynOlM9O/bTo5OauTNgEorVswAXLi3SauQNjIkCMMuOT3TMZD74
-	KGQ2RU=
-X-Received: by 2002:a17:90a:e704:b0:3aa:fc22:8aaa with SMTP id 98e67ed59e1d1-3ab3b0951e9mr9730377a91.67.1791871236081;
-        Mon, 12 Oct 2026 23:00:36 -0700 (PDT)
-Received: from bintable.localdomain ([123.215.20.10])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3ab38ddac6dsm18592915a91.7.2026.10.12.23.00.33
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 12 Oct 2026 23:00:35 -0700 (PDT)
-From: Jinpyo Lee <bint4b13@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	linux-kernel@vger.kernel.org,
-	bobtobabz@gmail.com,
-	stable@vger.kernel.org
-Subject: [PATCH v2] nfsd: prevent a double put of revoked layout stateids
-Date: Tue, 13 Oct 2026 15:00:21 +0900
-Message-ID: <20261013060021.46543-1-bint4b13@gmail.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <133aa8197620ef4f36a48faa62c207f5ee12c0a0.camel@kernel.org>
-References: <133aa8197620ef4f36a48faa62c207f5ee12c0a0.camel@kernel.org>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="uQR3X7tt"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id AC9C4C2BCFA;
+	Tue, 13 Oct 2026 06:00:51 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1791871251;
+	bh=Yt008CfEfxBHGf9w9KSlikBfgqk+enAZ8EMPBqjDBFo=;
+	h=From:Date:Subject:To:Cc:Reply-To:From;
+	b=uQR3X7ttolbaJUo+oExrkCcdRXepNxq/rzcASUiSlj1c4ZVFQugRwhIfYcrlE+TTT
+	 4Mr6TxREseJc9pmysptMpEH/R7rnkQbaQkc3/YraPwpP8VPRFi/NXy3ij1tBkHqLsZ
+	 Evh/QjsBDxW1aAPA5HrhiBzfmL6qxmSoIqN6RYbAzV826e7SQ+2RNXelFWuZiqwpJQ
+	 DXPF8sFtnaKFzetCs0onh7OKMew1hPzHatNAXDJoW3JY2PbhEDbLBp7Olx/mEQnb/e
+	 BMKKaC3Z00jb5npceYonNPqk7maI7shZmIlT8FZLgA+IHu5LIDJNtS1GuK/vkN1UVf
+	 T28c05Mu3c4FA==
+Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 97657CA9ECF;
+	Tue, 13 Oct 2026 06:00:51 +0000 (UTC)
+From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
+Date: Tue, 13 Oct 2026 15:00:51 +0900
+Subject: [PATCH] xfs: refuse a pNFS LAYOUTCOMMIT of a range without blocks
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261013-xfs-pnfs-commit-hole-v1-1-740912db9102@samsung.com>
+X-B4-Tracking: v=1; b=H4sIABLJzWoC/x2MywqAIBAAfyX23IIP6PUr0UFszYXS0IhA+veky
+ 8AcZgpkSkwZpqZAopszx1BFtg1Yb8JGyGt1UEJ1UkiFj8t4hgobj4Mv9HEntFoYGo0aeqehpmc
+ ix8+/nZf3/QDDdNEmZgAAAA==
+To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
+ Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, 
+ Jeff Layton <jlayton@kernel.org>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Sergey Bashirov <sergeybashirov@gmail.com>, linux-nfs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791871250; l=9109;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=Bi4Nh3asVtu3vWZjxDBfgpyfYTuGljO1+XtVfwgnRxg=;
+ b=GJqo7QNKAmRq/d9iJKVk3On4jj+V5vkQ+9TS4l7MnfsXzSyF+O8KdRohMmv2I/kKXd7LoHWCA
+ Oe2Go/UzGOUDmEBGh8aEPEUs9/OQAC5FynZst6240gEZUDE3YejQomQ
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
+ auth_id=1122
+X-Original-From: Daejun Park <daejun7.park@samsung.com>
+Reply-To: daejun7.park@samsung.com
 
-nfsd4_free_stateid() finds an admin-revoked layout stateid with
-find_stateid_locked(), which does not acquire a reference. The layout
-case drops cl_lock without marking the stateid closed, then stops fence
-work and calls nfs4_put_stid() without owning a reference. Concurrent
-disposal can therefore access a freed layout stateid or drop a reference
-owned by another holder.
+From: Daejun Park <daejun7.park@samsung.com>
 
-Mark the layout stateid CLOSED under cl_lock so only one disposal caller
-proceeds. Take a temporary reference before dropping cl_lock and hold it
-while stopping fence work and draining the remaining layout segments,
-then release that reference with the final put. This keeps the stateid
-alive even though its IDR owns no reference and its layout segments are
-being removed.
+xfs_fs_commit_blocks() passes every range that a pNFS client commits to
+xfs_iomap_write_unwritten(), whatever is mapped there, and the range can
+be a hole. nfsd does not check the extents of a block or SCSI layout
+LAYOUTCOMMIT against the layouts it handed out, and for a reclaim during
+the grace period it has no layouts to check against, so a client can
+commit a range that it never had a layout for. Blocks under a layout can
+also be freed: blockgc frees blocks past EOF that were already allocated
+when a write layout handed them out, and a check in nfsd would not
+notice that.
 
-Use cl_lock for the CLOSED update in LAYOUTRETURN as well, matching the
-common stateid locking rule. Retain ls_mutex from the last segment removal
-through the CLOSED update, and recheck CLOSED under cl_lock after taking
-ls_mutex in LAYOUTGET. This prevents a stale LAYOUTGET from adding a
-segment after the drain. Also make the newly allocated layout stateid the
-error-path put target and update the status-locking comment.
+For a hole, xfs_bmapi_write() with XFS_BMAPI_CONVERT allocates new
+blocks as written extents, while the transaction only reserved blocks
+for bmbt splits. A hole larger than that reservation shuts XFS down:
 
-Restrict nfs40_clean_admin_revoked() to NFSv4.0 clients. Its timer is
-armed only by v4.0 revocations, while session clients dispose of revoked
-stateids through FREE_STATEID. Skipping session clients prevents the scan
-from repeatedly selecting a CLOSED stateid that remains in the IDR while
-an in-flight operation holds a reference.
+  XFS (nvme0n1): Corruption of in-memory data (0x8) detected at
+    xfs_trans_mod_sb+0x817/0x960 (fs/xfs/xfs_trans.c:351).
+    Shutting down filesystem.
 
-The vulnerability research and validation were conducted by members of
-the Tobabz team as part of the Best of the Best 15th program.
+A smaller hole gets blocks that nobody wrote mapped into the file as
+data, so readers see whatever those blocks held, and the LAYOUTCOMMIT
+succeeds.
 
-Fixes: 86b9898920a6 ("NFSD: Handle layout stid in nfsd4_drop_revoked_stid()")
-Suggested-by: Chuck Lever <cel@kernel.org>
+With pynfs as the client and an RW layout for the first 64 KiB of a
+2 MiB sparse file, a LAYOUTCOMMIT of 64 KiB at offset 1 MiB, which no
+layout covered, got NFS4ERR_IO and shut XFS down. A LAYOUTCOMMIT of
+4 KiB at 1 MiB got NFS4_OK, and the file got a written block there. The
+client wrote nothing to the device in either case.
+
+A client may only write to blocks that a layout handed out, and
+xfs_fs_map_blocks() allocates blocks for any hole in a write layout, so
+a committed range without blocks holds nothing that can be committed.
+Check all the ranges before converting any of them, and fail the commit
+with -EIO if one has a hole or a delalloc extent, as
+xfs_pnfs_validate_isize() does when the new size falls into one. A
+commit refused this way converts nothing: LAYOUTCOMMIT has a single
+status, and after a partial conversion the client could not tell which
+of its extents were committed. The iolock, held across the check and
+the conversion, keeps blocks from being removed in between.
+
+With this, both LAYOUTCOMMITs get NFS4ERR_IO, XFS keeps running and no
+block is allocated. A LAYOUTCOMMIT of the laid-out range together with
+the 64 KiB hole also gets NFS4ERR_IO and converts nothing, so the
+laid-out range stays unwritten.
+
+Also clamp the client's length to what is left below the size before
+adding it to the offset, instead of clamping the sum. The sum can wrap
+around. A wrapped range would skip the new check, and the conversion
+loop already passes the client's length, unclamped, to
+xfs_iomap_write_unwritten(). xfs_bmapi_write() then fails an assertion
+on XFS_DEBUG kernels, which is a BUG with XFS_ASSERT_FATAL, and
+otherwise returns -ENOSR, which nfsd warns about as a non-standard
+errno. With the clamp, an extent of 2^64 - 4 KiB at 4 KiB in the same
+file is checked only up to the size. It gets NFS4ERR_IO for the hole
+after the laid-out range, without a warning or an assertion.
+
+Fixes: 527851124d10 ("xfs: implement pNFS export operations")
 Cc: stable@vger.kernel.org
-Assisted-by: LLM
-Signed-off-by: Jinpyo Lee <bint4b13@gmail.com>
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-Changes since v1:
-- Address Jeff Layton's concern by using cl_lock for layout CLOSED
-  checks and updates, without a type-dependent stateid status helper.
-- Move LAYOUTRETURN's CLOSED update outside ls_lock while retaining
-  ls_mutex, and update the status-locking documentation.
-- Clarify the LAYOUTGET serialization and v4.0 cleanup restriction.
-- Credit Chuck Lever's suggestion and mark the fix for stable review.
-- Rebase onto nfsd-testing c807415bc69013a5f162264ee0e14f8742c182f7.
+Tested on nfsd-testing d918c664efd5 with the same change on top, all in
+QEMU guests with KASAN and lockdep. The block layout was on an NVMe/TCP
+namespace exported by nvmet. The client was pynfs, except for fstests,
+which ran on the Linux NFSv4.2 client. XFS_DEBUG kernels were used for
+one run of the pynfs tests with the patch and for the wrap case without
+it. XFS for-next also has commit e3c682dd1130 ("xfs: map pNFS layouts to
+the end of the extent again") in xfs_fs_map_blocks(), which nfsd-testing
+does not have. xfs_fs_commit_blocks() and xfs_iomap_write_unwritten()
+are the same in both trees. The pynfs tests for this are local; I can
+post them if they are wanted.
 
-Validated on the above nfsd-testing base (2026-10-13):
-- Applied cleanly, passed strict checkpatch, and built and booted an x86_64
-  kernel with GCC 13.3, W=1, Generic KASAN, lockdep, and pNFS block and
-  SCSI layouts enabled.
-- Loopback pNFS SCSI read, shrink, integrity, revocation, and cleanup tests
-  passed, as did NFSv4.2, NFSv4.0, and NFSv3 read/write, fio CRC32C, and
-  unmount tests. Tracing observed two successful LAYOUTRETURNs reach the
-  modified CLOSED update and release their stateids.
-- Two concurrent FREE_STATEID requests from different slots of one NFSv4.1
-  session returned one success and one NFS4ERR_BAD_STATEID. A test-only
-  two-second pause forced the losing request into the disposal window;
-  tracing observed CLOSED, exactly one revoked-layout drain, and one
-  layout-state free.
-- No KASAN, lockdep, refcount, list-corruption, WARNING, or Oops report
-  occurred, and kernel taint remained zero through fixture cleanup.
+ - A LAYOUTCOMMIT of a 64 KiB hole: NFS4ERR_IO and shutdown without the
+   patch. With it, NFS4ERR_IO, no shutdown and nothing allocated, in 5
+   runs.
+ - A LAYOUTCOMMIT of a 4 KiB hole: NFS4_OK and a written block in the
+   file without the patch. With it, NFS4ERR_IO and nothing allocated.
+ - The laid-out range and the 64 KiB hole in one LAYOUTCOMMIT: shutdown
+   without the patch. With it, NFS4ERR_IO, and fiemap on the server
+   shows the laid-out range still unwritten.
+ - An extent at 4 KiB with a length of 2^64 - 4 KiB: NFS4ERR_IO and
+   "nfsd: non-standard errno: -63" without the patch, and with
+   XFS_DEBUG "Assertion failed: bma.nallocs >= *nmap" in
+   xfs_bmapi_write(). With it, NFS4ERR_IO and no warning, also with
+   XFS_DEBUG.
+ - Blocks past EOF freed by blockgc under a layout, without "xfs: mark
+   the inode preallocated for pNFS write layouts past EOF" [1]: the
+   LAYOUTCOMMIT after the client's write shut XFS down without this
+   patch and got NFS4ERR_IO with it. The client's data is still lost
+   there; [1] keeps those blocks.
+ - pynfs block and blockextent: same as without the patch (BLOCK3 fails
+   either way, on a bug in the test).
+ - fstests generic/075, 091 and 263 over the block layout, with and
+   without the patch: 075 fails with an fsx size error either way, and
+   XFS refused none of the 10331 LAYOUTCOMMITs with the patch.
+ - W=1 builds of fs/xfs/xfs_pnfs.o with the patch on XFS for-next
+   0be6da616ab5 and on nfsd-testing d918c664efd5: no warnings.
 
-Build note: Existing format-truncation warnings in target_core_transport.c
-were excluded from WERROR; W=1 and WERROR remained enabled otherwise.
+-EIO follows xfs_pnfs_validate_isize() and reaches the client as
+NFS4ERR_IO. No errno maps to NFS4ERR_BADLAYOUT, and the Linux client
+treats NFS4ERR_BADLAYOUT on a LAYOUTCOMMIT as success. For a reclaim,
+RFC 8881 section 18.42.3 requires NFS4ERR_RECLAIM_BAD, which nfsd would
+have to map.
 
-The full xfstests suite was not run. Earlier v1 runtime results are not
-used as validation of this revision.
+An nfsd check of the extents against the layouts would be a separate
+change, and for the reasons above would not make this one unnecessary.
+The shutdown came up in the review of the ->map_blocks series [2].
 
- fs/nfsd/nfs4layouts.c | 34 ++++++++++++++++++++++++++++++++--
- fs/nfsd/nfs4state.c   | 14 ++++++++++++++
- fs/nfsd/pnfs.h        |  6 ++++++
- fs/nfsd/state.h       |  5 ++---
- 4 files changed, 54 insertions(+), 5 deletions(-)
+xfs_pnfs_validate_isize() reads the extents under XFS_ILOCK_SHARED,
+which xfs_iread_extents() does not allow when they are not loaded yet.
+That needs a separate fix.
 
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index 898776c9d..749ace97e 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -312,6 +312,7 @@ nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
- 		status = nfserr_jukebox;
- 		if (!ls)
- 			goto out;
-+		stid = &ls->ls_stid;
- 		mutex_lock(&ls->ls_mutex);
- 	} else {
- 		ls = container_of(stid, struct nfs4_layout_stateid, ls_stid);
-@@ -324,6 +325,15 @@ nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
- 			goto out_unlock_stid;
- 	}
- 
-+	/* A new or looked-up stateid may have been closed before ls_mutex. */
-+	spin_lock(&stid->sc_client->cl_lock);
-+	if (stid->sc_status & SC_STATUS_CLOSED) {
-+		spin_unlock(&stid->sc_client->cl_lock);
-+		status = nfserr_bad_stateid;
-+		goto out_unlock_stid;
-+	}
-+	spin_unlock(&stid->sc_client->cl_lock);
-+
- 	*lsp = ls;
+[1] https://lore.kernel.org/r/20261012-xfs-pnfs-eof-prealloc-v1-1-e4864d917a00@samsung.com
+[2] https://lore.kernel.org/r/20261012024846epcms2p7cccc5c988b2553b3f831070eb17e0455@epcms2p7
+---
+ fs/xfs/xfs_pnfs.c | 60 ++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 57 insertions(+), 3 deletions(-)
+
+diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
+index ab38561700..da60154198 100644
+--- a/fs/xfs/xfs_pnfs.c
++++ b/fs/xfs/xfs_pnfs.c
+@@ -272,6 +272,46 @@ xfs_pnfs_validate_isize(
  	return 0;
- 
-@@ -537,12 +547,18 @@ nfsd4_return_file_layouts(struct svc_rqst *rqstp,
- 			nfs4_inc_and_copy_stateid(&lrp->lr_sid, &ls->ls_stid);
- 		lrp->lrs_present = true;
- 	} else {
--		trace_nfsd_layoutstate_unhash(&ls->ls_stid.sc_stateid);
--		ls->ls_stid.sc_status |= SC_STATUS_CLOSED;
- 		lrp->lrs_present = false;
- 	}
- 	spin_unlock(&ls->ls_lock);
- 
-+	if (!lrp->lrs_present) {
-+		/* ls_mutex prevents a LAYOUTGET from adding another segment. */
-+		spin_lock(&ls->ls_stid.sc_client->cl_lock);
-+		ls->ls_stid.sc_status |= SC_STATUS_CLOSED;
-+		spin_unlock(&ls->ls_stid.sc_client->cl_lock);
-+		trace_nfsd_layoutstate_unhash(&ls->ls_stid.sc_stateid);
-+	}
-+
- 	mutex_unlock(&ls->ls_mutex);
- 	nfs4_put_stid(&ls->ls_stid);
- 	nfsd4_free_layouts(&reaplist);
-@@ -594,6 +610,20 @@ nfsd4_return_all_layouts(struct nfs4_layout_stateid *ls,
- 	spin_unlock(&ls->ls_lock);
  }
  
-+void nfsd4_return_revoked_layout(struct nfs4_layout_stateid *ls)
++/*
++ * Ensure the committed range is backed by allocated blocks. A client may only
++ * write to blocks that a layout handed out, xfs_fs_map_blocks() allocates
++ * blocks for any hole in a write layout, and no layout hands out a delalloc
++ * extent. A hole or a delalloc extent in the range was either never laid out
++ * or lost its blocks after the layout was handed out, so nothing the client
++ * wrote can be committed there. Converting a hole would also allocate blocks
++ * that the transaction did not reserve.
++ */
++static int
++xfs_pnfs_validate_commit(
++	struct xfs_inode	*ip,
++	xfs_off_t		start,
++	xfs_off_t		end)
 +{
-+	LIST_HEAD(reaplist);
++	struct xfs_mount	*mp = ip->i_mount;
++	xfs_fileoff_t		offset_fsb = XFS_B_TO_FSBT(mp, start);
++	xfs_fileoff_t		end_fsb = XFS_B_TO_FSB(mp, end);
++	struct xfs_bmbt_irec	imap;
++	uint			lock_flags;
++	int			nimaps;
++	int			error = 0;
 +
-+	/*
-+	 * The caller holds a stateid reference until segment draining ends.
-+	 * Wait for any LAYOUTGET that passed the CLOSED check.
-+	 */
-+	mutex_lock(&ls->ls_mutex);
-+	nfsd4_return_all_layouts(ls, &reaplist);
-+	mutex_unlock(&ls->ls_mutex);
-+	nfsd4_free_layouts(&reaplist);
-+}
-+
- void
- nfsd4_return_all_client_layouts(struct nfs4_client *clp)
- {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 26d2d56a5..1740b86eb 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5873,9 +5873,21 @@ static void nfsd4_drop_revoked_stid(struct nfs4_stid *s)
- 		break;
- 	case SC_TYPE_LAYOUT:
- 		ls = layoutstateid(s);
-+		if (s->sc_status & SC_STATUS_CLOSED) {
-+			spin_unlock(&cl->cl_lock);
++	lock_flags = xfs_ilock_data_map_shared(ip);
++	while (offset_fsb < end_fsb) {
++		nimaps = 1;
++		error = xfs_bmapi_read(ip, offset_fsb, end_fsb - offset_fsb,
++				&imap, &nimaps, 0);
++		if (error)
++			break;
++		if (!nimaps || !xfs_bmap_is_real_extent(&imap)) {
++			error = -EIO;
 +			break;
 +		}
-+		s->sc_status |= SC_STATUS_CLOSED;
-+		/*
-+		 * The IDR does not own a layout stateid reference. Keep ls
-+		 * alive while draining worker and segment references below;
-+		 * the final put releases this temporary reference.
-+		 */
-+		refcount_inc(&s->sc_count);
- 		list_del_init(&ls->ls_perclnt);
- 		spin_unlock(&cl->cl_lock);
- 		nfsd4_stop_layout_fence(ls);
-+		nfsd4_return_revoked_layout(ls);
- 		nfs4_put_stid(s);
- 		break;
- 	default:
-@@ -7901,6 +7913,8 @@ static void nfs40_clean_admin_revoked(struct nfsd_net *nn,
- 		unsigned long id, tmp;
- 		struct nfs4_stid *stid;
- 
-+		if (clp->cl_minorversion != 0)
-+			continue;
- 		if (atomic_read(&clp->cl_admin_revoked) == 0)
- 			continue;
- 		if (is_client_expired(clp))
-diff --git a/fs/nfsd/pnfs.h b/fs/nfsd/pnfs.h
-index 559df0e5b..9b0f17a4d 100644
---- a/fs/nfsd/pnfs.h
-+++ b/fs/nfsd/pnfs.h
-@@ -75,6 +75,7 @@ struct nfsd4_deviceid_map *nfsd4_find_devid_map(int idx);
- #ifdef CONFIG_NFSD_PNFS
- void nfsd4_setup_layout_type(struct svc_export *exp);
- void nfsd4_return_all_client_layouts(struct nfs4_client *);
-+void nfsd4_return_revoked_layout(struct nfs4_layout_stateid *ls);
- void nfsd4_return_all_file_layouts(struct nfs4_client *clp,
- 		struct nfs4_file *fp);
- void nfsd4_close_layout(struct nfs4_layout_stateid *ls);
-@@ -93,6 +94,11 @@ static inline void nfsd4_setup_layout_type(struct svc_export *exp)
- static inline void nfsd4_return_all_client_layouts(struct nfs4_client *clp)
- {
- }
-+
-+static inline void nfsd4_return_revoked_layout(struct nfs4_layout_stateid *ls)
-+{
++		offset_fsb = imap.br_startoff + imap.br_blockcount;
++	}
++	xfs_iunlock(ip, lock_flags);
++	return error;
 +}
 +
- static inline void nfsd4_return_all_file_layouts(struct nfs4_client *clp,
- 		struct nfs4_file *fp)
- {
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 79dfa47b8..63b581104 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -148,9 +148,8 @@ struct nfs4_stid {
-  * nn->deleg_lock protects sc_status for hashed delegation stateids.
-  * ->cl_lock protects the bits set as one is disposed of
-  * (SC_STATUS_CLOSED, SC_STATUS_FREEABLE, SC_STATUS_FREED) and
-- * sc_status for open and lock stateids. ->st_mutex also protects
-- * sc_status for open stateids. ->ls_lock protects sc_status for
-- * layout stateids.
-+ * sc_status for open, lock, and layout stateids. ->st_mutex also protects
-+ * sc_status for open stateids.
-  */
  /*
-  * For an open stateid kept around *only* to process close replays.
+  * Make sure the blocks described by maps are stable on disk.  This includes
+  * converting any unwritten extents, flushing the disk cache and updating the
+@@ -305,6 +345,22 @@ xfs_fs_commit_blocks(
+ 		size = new_size;
+ 	}
+ 
++	/*
++	 * Check all of the maps before converting any of them, so that a commit
++	 * refused for a hole or a delalloc extent converts nothing.
++	 */
++	for (i = 0; i < nr_maps; i++) {
++		u64 start = maps[i].offset;
++		u64 end;
++
++		if (start >= size)
++			continue;
++		end = start + min_t(u64, maps[i].length, size - start);
++		error = xfs_pnfs_validate_commit(ip, start, end);
++		if (error)
++			goto out_drop_iolock;
++	}
++
+ 	for (i = 0; i < nr_maps; i++) {
+ 		u64 start, length, end;
+ 
+@@ -312,9 +368,7 @@ xfs_fs_commit_blocks(
+ 		if (start > size)
+ 			continue;
+ 
+-		end = start + maps[i].length;
+-		if (end > size)
+-			end = size;
++		end = start + min_t(u64, maps[i].length, size - start);
+ 
+ 		length = end - start;
+ 		if (!length)
 
-base-commit: c807415bc69013a5f162264ee0e14f8742c182f7
+---
+base-commit: 0be6da616ab5031ea6419dc4fe0bf0e378fb6757
+change-id: 20261012-xfs-pnfs-commit-hole-c30ae9a287f3
+
+Best regards,
 -- 
-2.50.1 (Apple Git-155)
+Daejun Park <daejun7.park@samsung.com>
+
+
