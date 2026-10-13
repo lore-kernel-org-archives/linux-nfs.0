@@ -1,278 +1,178 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 363FE417BD2;
-	Tue, 13 Oct 2026 06:00:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C2204397B1B
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2026 07:55:22 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791871252; cv=none; b=ufj0c90Vq3lYa2iooeNOYKZYyg5gX8v7LkCkzxmLol9wSDWhsC4myhso4jhEdSg823UHCBJSzXo5iPTmwHoT5JGlIr+upmg7YlCXEMj9w3Ufs7gSkbx3Xh/9QyTOaaAPmoaQooVf5uzWKdOSn2mPMD8BHQIdfhAIoP9foXWTJL8=
+	t=1791878124; cv=none; b=WmXeOZPDBaD4ODSMbVu/hxCRAGhsyY+FEN8jysBBsRvxVIsPORm+JojQhMkCl5oQ5kRi+xxDk/AFOaCB8zBgmeK40CbZdKwR8e0y6xh5x3MtNtVgYcX0okrDHM1pBaUcFvms7IzdZGbll0SH1hWX+B/6Heo+P9vTq2NuqiFP6VU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791871252; c=relaxed/simple;
-	bh=Yt008CfEfxBHGf9w9KSlikBfgqk+enAZ8EMPBqjDBFo=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=FED4eoiyaM1e9WSV4PARrfkzXjaqKbqY221xoJWUalzxEGnbascd4e04BWYfiYXnrymWaNTdStpkDQ8/vy8ujJKi9nfuHYQtj+zzhdtSEWrW+KuyGesQ31gUqoWFDXFWvvXoy7s0ULm97bjTvAy5nCjQIFp0xE+nTlKbPI9XVXQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=uQR3X7tt; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1791878124; c=relaxed/simple;
+	bh=RPlfzWYmM8FirW88IjwmpVbxiR/zbaOepgou5oQs+ac=;
+	h=From:In-Reply-To:References:To:Cc:Subject:MIME-Version:
+	 Content-Type:Date:Message-ID; b=dbS9hquYMQpf8OOnd9wlCaycrcj3aiapyclXEKiTPP1RtZxTpJ1kbFLe0lL+haQNWpiUrxDJi19gUWbBzgHKewQcqlJMaaCP+JApy4FP9XlJTZiuVGcfGVkz4UeyTd2V6zFMV+LGo/zKj24diBBe4p/OR7r1zlf7eVb7wvzlwMU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=gGj6PS0s; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="uQR3X7tt"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id AC9C4C2BCFA;
-	Tue, 13 Oct 2026 06:00:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1791871251;
-	bh=Yt008CfEfxBHGf9w9KSlikBfgqk+enAZ8EMPBqjDBFo=;
-	h=From:Date:Subject:To:Cc:Reply-To:From;
-	b=uQR3X7ttolbaJUo+oExrkCcdRXepNxq/rzcASUiSlj1c4ZVFQugRwhIfYcrlE+TTT
-	 4Mr6TxREseJc9pmysptMpEH/R7rnkQbaQkc3/YraPwpP8VPRFi/NXy3ij1tBkHqLsZ
-	 Evh/QjsBDxW1aAPA5HrhiBzfmL6qxmSoIqN6RYbAzV826e7SQ+2RNXelFWuZiqwpJQ
-	 DXPF8sFtnaKFzetCs0onh7OKMew1hPzHatNAXDJoW3JY2PbhEDbLBp7Olx/mEQnb/e
-	 BMKKaC3Z00jb5npceYonNPqk7maI7shZmIlT8FZLgA+IHu5LIDJNtS1GuK/vkN1UVf
-	 T28c05Mu3c4FA==
-Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 97657CA9ECF;
-	Tue, 13 Oct 2026 06:00:51 +0000 (UTC)
-From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
-Date: Tue, 13 Oct 2026 15:00:51 +0900
-Subject: [PATCH] xfs: refuse a pNFS LAYOUTCOMMIT of a range without blocks
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="gGj6PS0s"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1791878121;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=CaDYtVwJjGFlT9vzY/XFr3IPNhGIGR2PZeK9wCQ1Tvk=;
+	b=gGj6PS0sNj6RbN1b9VfhrFSHp5DMI3NECxrObVQdkpL/xYKOPxweqDiXSkhrjytJiiiiKo
+	30HZSSqa0KSiLIzVyHItIX9enPcv3WImpQZdCKB0LjN5QF5o32zr6WUle3a/msB9YuQo2u
+	RKeTL5Hare5HHYBaAmIQt9/4ol+JjMA=
+Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-58-rUZAsi6DMcieVbVMGWpCBQ-1; Tue,
+ 13 Oct 2026 07:55:12 +0000
+X-MC-Unique: rUZAsi6DMcieVbVMGWpCBQ-1
+X-Mimecast-MFC-AGG-ID: rUZAsi6DMcieVbVMGWpCBQ_1791878109
+Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 972E618009D3;
+	Tue, 13 Oct 2026 07:55:06 +0000 (UTC)
+Received: from warthog.procyon.org.uk (unknown [10.44.48.11])
+	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 3345430001B9;
+	Tue, 13 Oct 2026 07:54:59 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+	Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+	Kingdom.
+	Registered in England and Wales under Company Registration No. 3798903
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20261011.cachefiles-partial-zeros.pchmelar@innovatrics.com>
+References: <20261011.cachefiles-partial-zeros.pchmelar@innovatrics.com> <20260910220242.2165023-1-dhowells@redhat.com> <20260910220242.2165023-5-dhowells@redhat.com>
+To: Petr Chmelar <petr.chmelar@innovatrics.com>
+Cc: dhowells@redhat.com, Christian Brauner <christian@brauner.io>,
+    Paulo Alcantara <pc@manguebit.org>,
+    Matthew Wilcox <willy@infradead.org>,
+    Namjae Jeon <linkinjeon@kernel.org>,
+    Marc Dionne <marc.dionne@auristor.com>,
+    Stefan Metzmacher <metze@samba.org>,
+    Eric Van Hensbergen <ericvh@kernel.org>,
+    Dominique Martinet <asmadeus@codewreck.org>,
+    Ilya Dryomov <idryomov@gmail.com>, netfs@lists.linux.dev,
+    linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org,
+    linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+    v9fs@lists.linux.dev, linux-fsdevel@vger.kernel.org,
+    linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v12 4/5] cachefiles: Don't rely on backing fs storage map for most use cases
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261013-xfs-pnfs-commit-hole-v1-1-740912db9102@samsung.com>
-X-B4-Tracking: v=1; b=H4sIABLJzWoC/x2MywqAIBAAfyX23IIP6PUr0UFszYXS0IhA+veky
- 8AcZgpkSkwZpqZAopszx1BFtg1Yb8JGyGt1UEJ1UkiFj8t4hgobj4Mv9HEntFoYGo0aeqehpmc
- ix8+/nZf3/QDDdNEmZgAAAA==
-To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
- Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, 
- Jeff Layton <jlayton@kernel.org>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Sergey Bashirov <sergeybashirov@gmail.com>, linux-nfs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791871250; l=9109;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=Bi4Nh3asVtu3vWZjxDBfgpyfYTuGljO1+XtVfwgnRxg=;
- b=GJqo7QNKAmRq/d9iJKVk3On4jj+V5vkQ+9TS4l7MnfsXzSyF+O8KdRohMmv2I/kKXd7LoHWCA
- Oe2Go/UzGOUDmEBGh8aEPEUs9/OQAC5FynZst6240gEZUDE3YejQomQ
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
- auth_id=1122
-X-Original-From: Daejun Park <daejun7.park@samsung.com>
-Reply-To: daejun7.park@samsung.com
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <1655267.1791878098.1@warthog.procyon.org.uk>
+Content-Transfer-Encoding: quoted-printable
+Date: Tue, 13 Oct 2026 08:54:58 +0100
+Message-ID: <1655268.1791878098@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
 
-From: Daejun Park <daejun7.park@samsung.com>
+Petr Chmelar <petr.chmelar@innovatrics.com> wrote:
 
-xfs_fs_commit_blocks() passes every range that a pNFS client commits to
-xfs_iomap_write_unwritten(), whatever is mapped there, and the range can
-be a hole. nfsd does not check the extents of a block or SCSI layout
-LAYOUTCOMMIT against the layouts it handed out, and for a reclaim during
-the grace period it has no layouts to check against, so a client can
-commit a range that it never had a layout for. Blocks under a layout can
-also be freed: blockgc frees blocks past EOF that were already allocated
-when a write layout handed them out, and a check in nfsd would not
-notice that.
+> Reproducer: random 64 KiB reads covering half of a 256 MiB file of
+> random data, then a full read after dropping the page cache, compared
+> with the original per 64 KiB block:
+> =
 
-For a hole, xfs_bmapi_write() with XFS_BMAPI_CONVERT allocates new
-blocks as written extents, while the transaction only reserved blocks
-for bmbt splits. A hole larger than that reservation shuts XFS down:
+>   fio --name=3Dhalf --filename=3D/mnt/part.bin --rw=3Drandread --bs=3D64=
+k \
+>       --ioengine=3Dpsync --fadvise_hint=3Drandom --size=3D256m --io_size=
+=3D128m \
+>       --randrepeat=3D1
+>   sync; echo 3 > /proc/sys/vm/drop_caches
+>   cmp /mnt/part.bin /path/to/original
 
-  XFS (nvme0n1): Corruption of in-memory data (0x8) detected at
-    xfs_trans_mod_sb+0x817/0x960 (fs/xfs/xfs_trans.c:351).
-    Shutting down filesystem.
+Unfortunately, I can't reproduce this.  Can you get me some tracing?
 
-A smaller hole gets blocks that nobody wrote mapped into the file as
-data, so readers see whatever those blocks held, and the LAYOUTCOMMIT
-succeeds.
+echo 65536 >/sys/kernel/tracing/buffer_size_kb
+echo 1 >/sys/kernel/tracing/events/netfs/netfs_read/enable
+echo 1 >/sys/kernel/tracing/events/netfs/netfs_write/enable
+echo 1 >/sys/kernel/tracing/events/netfs/netfs_rreq/enable
+echo 1 >/sys/kernel/tracing/events/netfs/netfs_sreq/enable
+echo 1 >/sys/kernel/tracing/events/netfs/netfs_failure/enable
+echo 1 >/sys/kernel/tracing/events/cachefiles/cachefiles_coherency/enable
 
-With pynfs as the client and an RW layout for the first 64 KiB of a
-2 MiB sparse file, a LAYOUTCOMMIT of 64 KiB at offset 1 MiB, which no
-layout covered, got NFS4ERR_IO and shut XFS down. A LAYOUTCOMMIT of
-4 KiB at 1 MiB got NFS4_OK, and the file got a written block there. The
-client wrote nothing to the device in either case.
+before running, then after running do:
 
-A client may only write to blocks that a layout handed out, and
-xfs_fs_map_blocks() allocates blocks for any hole in a write layout, so
-a committed range without blocks holds nothing that can be committed.
-Check all the ranges before converting any of them, and fail the commit
-with -EIO if one has a hole or a delalloc extent, as
-xfs_pnfs_validate_isize() does when the new size falls into one. A
-commit refused this way converts nothing: LAYOUTCOMMIT has a single
-status, and after a partial conversion the client could not tell which
-of its extents were committed. The iolock, held across the check and
-the conversion, keeps blocks from being removed in between.
+cat /sys/kernel/tracing/trace | bzip2 -9 >/tmp/cachefiles-bug.trace.bz2
 
-With this, both LAYOUTCOMMITs get NFS4ERR_IO, XFS keeps running and no
-block is allocated. A LAYOUTCOMMIT of the laid-out range together with
-the 64 KiB hole also gets NFS4ERR_IO and converts nothing, so the
-laid-out range stays unwritten.
+When I do this and grep the trace output for 'WRITEBACK\|WRIT TERM\|cachef=
+iles'
+it all looks reasonable, looking something like:
 
-Also clamp the client's length to what is left below the size before
-adding it to the offset, instead of clamping the sum. The sum can wrap
-around. A wrapped range would skip the new check, and the conversion
-loop already passes the client's length, unclamped, to
-xfs_iomap_write_unwritten(). xfs_bmapi_write() then fails an assertion
-on XFS_DEBUG kernels, which is a BUG with XFS_ASSERT_FATAL, and
-otherwise returns -ENOSR, which nfsd warns about as a non-standard
-errno. With the clamp, an extent of 2^64 - 4 KiB at 4 KiB in the same
-file is checked only up to the size. It gets NFS4ERR_IO for the hole
-after the laid-out range, without a warning or an assertion.
+fio-5895 : netfs_write: R=3D00001301 WRITEBACK c=3D00000006 o=3D00000004 i=
+=3Dc6a742 by=3D0-ffffffffffffffff
+fio-5895 : netfs_sreq: R=3D00001301[2] WRIT TERM  f=3D100 s=3D0 100000/100=
+000 s=3D7 e=3D0
+fio-5895 : netfs_sreq: R=3D00001301[4] WRIT TERM  f=3D100 s=3D100000 10000=
+0/100000 s=3D15 e=3D0
+fio-5895 : netfs_sreq: R=3D00001301[6] WRIT TERM  f=3D100 s=3D200000 10000=
+0/100000 s=3D23 e=3D0
+fio-5895 : netfs_sreq: R=3D00001301[8] WRIT TERM  f=3D100 s=3D300000 10000=
+0/100000 s=3D0 e=3D0
+fio-5895 : netfs_sreq: R=3D00001301[a] WRIT TERM  f=3D100 s=3D400000 10000=
+0/100000 s=3D8 e=3D0
+fio-5895 : netfs_sreq: R=3D00001301[c] WRIT TERM  f=3D100 s=3D500000 10000=
+0/100000 s=3D16 e=3D0
+fio-5895 : netfs_sreq: R=3D00001301[e] WRIT TERM  f=3D100 s=3D600000 10000=
+0/100000 s=3D24 e=3D0
+...
+fio-5895 : netfs_sreq: R=3D00001301[1f4] WRIT TERM  f=3D100 s=3Df900000 10=
+0000/100000 s=3D15 e=3D0
+fio-5895 : netfs_sreq: R=3D00001301[1f6] WRIT TERM  f=3D100 s=3Dfa00000 10=
+0000/100000 s=3D23 e=3D0
+fio-5895 : netfs_sreq: R=3D00001301[1f8] WRIT TERM  f=3D100 s=3Dfb00000 10=
+0000/100000 s=3D0 e=3D0
+fio-5895 : netfs_sreq: R=3D00001301[1fa] WRIT TERM  f=3D100 s=3Dfc00000 10=
+0000/100000 s=3D8 e=3D0
+fio-5895 : netfs_sreq: R=3D00001301[1fc] WRIT TERM  f=3D100 s=3Dfd00000 10=
+0000/100000 s=3D16 e=3D0
+fio-5895 : netfs_sreq: R=3D00001301[1fe] WRIT TERM  f=3D100 s=3Dfe00000 10=
+0000/100000 s=3D24 e=3D0
+fio-5895 : netfs_sreq: R=3D00001301[200] WRIT TERM  f=3D100 s=3Dff00000 10=
+0000/100000 s=3D1 e=3D0
+ kworker : cachefiles_coherency: o=3D00000004 SET ok   B=3D46012e oz=3D100=
+00000 c=3D2 aux=3D0 dsk=3D0
 
-Fixes: 527851124d10 ("xfs: implement pNFS export operations")
-Cc: stable@vger.kernel.org
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
----
-Tested on nfsd-testing d918c664efd5 with the same change on top, all in
-QEMU guests with KASAN and lockdep. The block layout was on an NVMe/TCP
-namespace exported by nvmet. The client was pynfs, except for fstests,
-which ran on the Linux NFSv4.2 client. XFS_DEBUG kernels were used for
-one run of the pynfs tests with the patch and for the wrap case without
-it. XFS for-next also has commit e3c682dd1130 ("xfs: map pNFS layouts to
-the end of the extent again") in xfs_fs_map_blocks(), which nfsd-testing
-does not have. xfs_fs_commit_blocks() and xfs_iomap_write_unwritten()
-are the same in both trees. The pynfs tests for this are local; I can
-post them if they are wanted.
+You can see the writes to the cache terminating and then the cache is set =
+c=3D2
+which is CACHEFILES_CONTENT_ALL indicating that the cache file has no hole=
+s in
+it.
 
- - A LAYOUTCOMMIT of a 64 KiB hole: NFS4ERR_IO and shutdown without the
-   patch. With it, NFS4ERR_IO, no shutdown and nothing allocated, in 5
-   runs.
- - A LAYOUTCOMMIT of a 4 KiB hole: NFS4_OK and a written block in the
-   file without the patch. With it, NFS4ERR_IO and nothing allocated.
- - The laid-out range and the 64 KiB hole in one LAYOUTCOMMIT: shutdown
-   without the patch. With it, NFS4ERR_IO, and fiemap on the server
-   shows the laid-out range still unwritten.
- - An extent at 4 KiB with a length of 2^64 - 4 KiB: NFS4ERR_IO and
-   "nfsd: non-standard errno: -63" without the patch, and with
-   XFS_DEBUG "Assertion failed: bma.nallocs >= *nmap" in
-   xfs_bmapi_write(). With it, NFS4ERR_IO and no warning, also with
-   XFS_DEBUG.
- - Blocks past EOF freed by blockgc under a layout, without "xfs: mark
-   the inode preallocated for pNFS write layouts past EOF" [1]: the
-   LAYOUTCOMMIT after the client's write shut XFS down without this
-   patch and got NFS4ERR_IO with it. The client's data is still lost
-   there; [1] keeps those blocks.
- - pynfs block and blockextent: same as without the patch (BLOCK3 fails
-   either way, on a bug in the test).
- - fstests generic/075, 091 and 263 over the block layout, with and
-   without the patch: 075 fails with an fsx size error either way, and
-   XFS refused none of the 10331 LAYOUTCOMMITs with the patch.
- - W=1 builds of fs/xfs/xfs_pnfs.o with the patch on XFS for-next
-   0be6da616ab5 and on nfsd-testing d918c664efd5: no warnings.
+That happens pretty much as soon as fio lays out its file and then all fut=
+ure
+accesses are just reads from the cache.
 
--EIO follows xfs_pnfs_validate_isize() and reaches the client as
-NFS4ERR_IO. No errno maps to NFS4ERR_BADLAYOUT, and the Linux client
-treats NFS4ERR_BADLAYOUT on a LAYOUTCOMMIT as success. For a reclaim,
-RFC 8881 section 18.42.3 requires NFS4ERR_RECLAIM_BAD, which nfsd would
-have to map.
+Looking at the UPLD lines is interesting:
 
-An nfsd check of the extents against the layouts would be a separate
-change, and for the reasons above would not make this one unnecessary.
-The shutdown came up in the review of the ->map_blocks series [2].
+fio-5895 : netfs_sreq: R=3D00001301[185] UPLD TERM  f=3D110 s=3Dc1fedd0 ff=
+fe8/fffe8 s=3D8 e=3D0
+fio-5895 : netfs_sreq: R=3D00001301[187] UPLD TERM  f=3D110 s=3Dc2fedb8 ff=
+fe8/fffe8 s=3D16 e=3D0
+fio-5895 : netfs_sreq: R=3D00001301[189] UPLD TERM  f=3D110 s=3Dc3feda0 ff=
+fe8/fffe8 s=3D24 e=3D0
+fio-5895 : netfs_sreq: R=3D00001301[18b] UPLD TERM  f=3D110 s=3Dc4fed88 ff=
+fe8/fffe8 s=3D1 e=3D0
 
-xfs_pnfs_validate_isize() reads the extents under XFS_ILOCK_SHARED,
-which xfs_iread_extents() does not allow when they are not loaded yet.
-That needs a separate fix.
+I guess 9P can't quite squeeze 1M of data in a packet as metadata has to g=
+o in
+as well.
 
-[1] https://lore.kernel.org/r/20261012-xfs-pnfs-eof-prealloc-v1-1-e4864d917a00@samsung.com
-[2] https://lore.kernel.org/r/20261012024846epcms2p7cccc5c988b2553b3f831070eb17e0455@epcms2p7
----
- fs/xfs/xfs_pnfs.c | 60 ++++++++++++++++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 57 insertions(+), 3 deletions(-)
+One further question occurs to me: does the entire 256M file fit in the te=
+st
+VM's memory?
 
-diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
-index ab38561700..da60154198 100644
---- a/fs/xfs/xfs_pnfs.c
-+++ b/fs/xfs/xfs_pnfs.c
-@@ -272,6 +272,46 @@ xfs_pnfs_validate_isize(
- 	return 0;
- }
- 
-+/*
-+ * Ensure the committed range is backed by allocated blocks. A client may only
-+ * write to blocks that a layout handed out, xfs_fs_map_blocks() allocates
-+ * blocks for any hole in a write layout, and no layout hands out a delalloc
-+ * extent. A hole or a delalloc extent in the range was either never laid out
-+ * or lost its blocks after the layout was handed out, so nothing the client
-+ * wrote can be committed there. Converting a hole would also allocate blocks
-+ * that the transaction did not reserve.
-+ */
-+static int
-+xfs_pnfs_validate_commit(
-+	struct xfs_inode	*ip,
-+	xfs_off_t		start,
-+	xfs_off_t		end)
-+{
-+	struct xfs_mount	*mp = ip->i_mount;
-+	xfs_fileoff_t		offset_fsb = XFS_B_TO_FSBT(mp, start);
-+	xfs_fileoff_t		end_fsb = XFS_B_TO_FSB(mp, end);
-+	struct xfs_bmbt_irec	imap;
-+	uint			lock_flags;
-+	int			nimaps;
-+	int			error = 0;
-+
-+	lock_flags = xfs_ilock_data_map_shared(ip);
-+	while (offset_fsb < end_fsb) {
-+		nimaps = 1;
-+		error = xfs_bmapi_read(ip, offset_fsb, end_fsb - offset_fsb,
-+				&imap, &nimaps, 0);
-+		if (error)
-+			break;
-+		if (!nimaps || !xfs_bmap_is_real_extent(&imap)) {
-+			error = -EIO;
-+			break;
-+		}
-+		offset_fsb = imap.br_startoff + imap.br_blockcount;
-+	}
-+	xfs_iunlock(ip, lock_flags);
-+	return error;
-+}
-+
- /*
-  * Make sure the blocks described by maps are stable on disk.  This includes
-  * converting any unwritten extents, flushing the disk cache and updating the
-@@ -305,6 +345,22 @@ xfs_fs_commit_blocks(
- 		size = new_size;
- 	}
- 
-+	/*
-+	 * Check all of the maps before converting any of them, so that a commit
-+	 * refused for a hole or a delalloc extent converts nothing.
-+	 */
-+	for (i = 0; i < nr_maps; i++) {
-+		u64 start = maps[i].offset;
-+		u64 end;
-+
-+		if (start >= size)
-+			continue;
-+		end = start + min_t(u64, maps[i].length, size - start);
-+		error = xfs_pnfs_validate_commit(ip, start, end);
-+		if (error)
-+			goto out_drop_iolock;
-+	}
-+
- 	for (i = 0; i < nr_maps; i++) {
- 		u64 start, length, end;
- 
-@@ -312,9 +368,7 @@ xfs_fs_commit_blocks(
- 		if (start > size)
- 			continue;
- 
--		end = start + maps[i].length;
--		if (end > size)
--			end = size;
-+		end = start + min_t(u64, maps[i].length, size - start);
- 
- 		length = end - start;
- 		if (!length)
-
----
-base-commit: 0be6da616ab5031ea6419dc4fe0bf0e378fb6757
-change-id: 20261012-xfs-pnfs-commit-hole-c30ae9a287f3
-
-Best regards,
--- 
-Daejun Park <daejun7.park@samsung.com>
-
+Thanks,
+David
 
