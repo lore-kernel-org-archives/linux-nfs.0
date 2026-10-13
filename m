@@ -1,186 +1,124 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from verein.lst.de (verein.lst.de [213.95.11.211])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 427AA3DB33C;
-	Tue, 13 Oct 2026 11:47:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E32F44B95C2;
+	Tue, 13 Oct 2026 12:04:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.95.11.211
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791892080; cv=none; b=TYhiM7EFe9kjOBojO9nzjnO7PtFhdYaCrRV5x6axdEOn38eW6NtFNM1AoGcS0v+cvTqr7vEltG9a4Mle7PPcONriFmCpc5YSLSQVJy3vS8X2mcPEKTtzamTcDFREEo/0R5oCwPWpugQ7WfozFizfzSEn2AROGu1PobDuC3WdEpQ=
+	t=1791893053; cv=none; b=sQ4ROap0Ttx+aU5yLPL7E6eR2dnG4osy3QLs6wQoKFi67JGhz49tVigSQejfNO2wk/axw0jTmpPUOQAVST9mOIhxFWVDDUnkuIMNJNbVm9TStAG+5Tw1NWiJr5z8pdYOZ2Py/ELwlh+tLTslxpcMKz2cjwFL0KtYsfNoCR6it7I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791892080; c=relaxed/simple;
-	bh=o6sARfxGQJNJVYqwHvvJQqvQOCgPoJokBZqHW2HTn8I=;
-	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
-	 Content-Disposition; b=eNQWR6eTDtmsKtx8d31CgMPlruawsq+cdbHAvGyK3t2PWdYmVdODWTE8g7VusA6SoIZojfqpA1nt5dpdXi5vNYlfAIgyeer4o4Ak9lXnkopHnRPraYDKLbUkH57AKCiGcpIC3ooTm35BpEmMdu+pUEqEtYNdGGSkGDgOsRjzmsU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=T8dzxUKt; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="T8dzxUKt"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1572D1F00893;
-	Tue, 13 Oct 2026 11:47:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791892078;
-	bh=mJfBsSrl6RT1dyIbZP2nGyCTvVy4nbBrUrd1tAwn/3k=;
-	h=Date:From:To:Cc:Subject;
-	b=T8dzxUKtpodwdI5cwlxvBuMfd8FlweGY1jP0OGKXA25MgbEVqQeeioV0QzfDYNvlZ
-	 pvABkOPArORfshxvywrB58dhRT4Ff7j8/GqHR7y1YTVBka8YOalM4U8vAJTT9QgIif
-	 36FcaonTjddZCIBcNA+uRPq8AEBgjcPNsC18T38ZFTqoCQ/dB70tOTze6M0T6IFaSn
-	 +HsCWPWndmUR6wawSdz7p+VxaxQVK+NwXnu9qAN7GdjIIkDHkz6ony3gPIeTUIvkx7
-	 0E/uL4R5k5S1oRPCUuimnfLZOSkEIbegLHJeaEAhLbGUWpQPnjjqUK/Ok+Uk6YwLDU
-	 4BfVG/hURjPQg==
-Date: Tue, 13 Oct 2026 12:47:53 +0100
-From: Mark Brown <broonie@kernel.org>
-To: Anna Schumaker <anna@kernel.org>, Trond Myklebust <trondmy@gmail.com>,
-	NFS Mailing List <linux-nfs@vger.kernel.org>
-Cc: Anna Schumaker <anna.schumaker@hammerspace.com>,
-	Chuck Lever <cel@kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Linux Next Mailing List <linux-next@vger.kernel.org>,
-	Tim Menninger <tmenninger@everpuredata.com>,
-	Trond Myklebust <trond.myklebust@hammerspace.com>,
-	Yongjian Mu <ymu@everpuredata.com>
-Subject: linux-next: manual merge of the nfs-anna tree with the nfs tree
-Message-ID: <as4aacUf2Q78FMvY@sirena.org.uk>
+	s=arc-20240116; t=1791893053; c=relaxed/simple;
+	bh=cYNuoVj+0b74qYjMmfINj5qejPfZPrH8RThi6u5dHtw=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=Io6WtneAciZv3hCicXi2kigZhUCgnMrNhhvg3clyKRsHqLEUfsQ9ep1//S9ZT+/erNCu3U2DL7C3B2u4pbvtwAvuCyxwqtQUhbDOqTw9oZSJ5cONGbAMYlBsvdCmSuwSvrZpYklebHaR6vPjYCKHrMVfDLZrnBa14xbRJA6yU4M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de; spf=pass smtp.mailfrom=lst.de; arc=none smtp.client-ip=213.95.11.211
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
+Received: by verein.lst.de (Postfix, from userid 2407)
+	id 5F892227A88; Tue, 13 Oct 2026 14:04:00 +0200 (CEST)
+Date: Tue, 13 Oct 2026 14:04:00 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: daejun7.park@samsung.com
+Cc: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org,
+	Christoph Hellwig <hch@lst.de>,
+	"Darrick J. Wong" <djwong@kernel.org>,
+	Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>, Dai Ngo <Dai.Ngo@oracle.com>,
+	Sergey Bashirov <sergeybashirov@gmail.com>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org
+Subject: Re: [PATCH] xfs: refuse a pNFS LAYOUTCOMMIT of a range without
+ blocks
+Message-ID: <20261013120359.GB2944@lst.de>
+References: <20261013-xfs-pnfs-commit-hole-v1-1-740912db9102@samsung.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha512;
-	protocol="application/pgp-signature"; boundary="uVRrn9RlIwHa/1AR"
-Content-Disposition: inline
-
-
---uVRrn9RlIwHa/1AR
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+In-Reply-To: <20261013-xfs-pnfs-commit-hole-v1-1-740912db9102@samsung.com>
+User-Agent: Mutt/1.5.17 (2007-11-01)
 
-Hi all,
+On Tue, Oct 13, 2026 at 03:00:51PM +0900, Daejun Park via B4 Relay wrote:
+> From: Daejun Park <daejun7.park@samsung.com>
+> 
+> xfs_fs_commit_blocks() passes every range that a pNFS client commits to
+> xfs_iomap_write_unwritten(), whatever is mapped there, and the range can
+> be a hole. nfsd does not check the extents of a block or SCSI layout
+> LAYOUTCOMMIT against the layouts it handed out, and for a reclaim during
+> the grace period it has no layouts to check against, so a client can
+> commit a range that it never had a layout for. Blocks under a layout can
+> also be freed: blockgc frees blocks past EOF that were already allocated
+> when a write layout handed them out, and a check in nfsd would not
+> notice that.
 
-Today's linux-next merge of the nfs-anna tree got a conflict in:
+blockgc really should not free them due to the prealloc inode flag.
+Do you still see that with your prefix flag setting fix?  If so we
+have a deeper problem.
 
-  net/sunrpc/xprtrdma/rpc_rdma.c
 
-between commit:
+> With this, both LAYOUTCOMMITs get NFS4ERR_IO, XFS keeps running and no
+> block is allocated. A LAYOUTCOMMIT of the laid-out range together with
+> the 64 KiB hole also gets NFS4ERR_IO and converts nothing, so the
+> laid-out range stays unwritten.
 
-  a0db57fee35ec ("xprtrdma: Fix Write chunk payload corruption on a short r=
-eply header")
+Yeah, I think even when blockgc should not happen a sanity check
+for misbehaving clients is a good idea.
 
-=66rom the nfs tree and commit:
+> it. XFS for-next also has commit e3c682dd1130 ("xfs: map pNFS layouts to
+> the end of the extent again") in xfs_fs_map_blocks(), which nfsd-testing
+> does not have. xfs_fs_commit_blocks() and xfs_iomap_write_unwritten()
+> are the same in both trees. The pynfs tests for this are local; I can
+> post them if they are wanted.
 
-  9ee534a759123 ("xprtrdma: trim head iovec when the payload arrives via a =
-Write chunk")
+It would be great to get these included in pynfs.
 
-=66rom the nfs-anna tree.
+Also a little doc on your setup to run pynfs in client mode against
+nfsd with block/scsilayout would probably useful.
 
-I fixed it up (see below) and can carry the fix as necessary. This
-is now fixed as far as linux-next is concerned, but any non trivial
-conflicts should be mentioned to your upstream maintainer when your tree
-is submitted for merging.  You may also want to consider cooperating
-with the maintainer of the conflicting tree to minimise any particularly
-complex conflicts.
+> +/*
+> + * Ensure the committed range is backed by allocated blocks. A client may only
+> + * write to blocks that a layout handed out, xfs_fs_map_blocks() allocates
+> + * blocks for any hole in a write layout, and no layout hands out a delalloc
+> + * extent. A hole or a delalloc extent in the range was either never laid out
+> + * or lost its blocks after the layout was handed out, so nothing the client
+> + * wrote can be committed there. Converting a hole would also allocate blocks
+> + * that the transaction did not reserve.
+> + */
+> +static int
+> +xfs_pnfs_validate_commit(
+> +	struct xfs_inode	*ip,
+> +	xfs_off_t		start,
+> +	xfs_off_t		end)
+> +{
+> +	struct xfs_mount	*mp = ip->i_mount;
+> +	xfs_fileoff_t		offset_fsb = XFS_B_TO_FSBT(mp, start);
+> +	xfs_fileoff_t		end_fsb = XFS_B_TO_FSB(mp, end);
+> +	struct xfs_bmbt_irec	imap;
+> +	uint			lock_flags;
+> +	int			nimaps;
+> +	int			error = 0;
+> +
+> +	lock_flags = xfs_ilock_data_map_shared(ip);
+> +	while (offset_fsb < end_fsb) {
+> +		nimaps = 1;
+> +		error = xfs_bmapi_read(ip, offset_fsb, end_fsb - offset_fsb,
+> +				&imap, &nimaps, 0);
+> +		if (error)
+> +			break;
+> +		if (!nimaps || !xfs_bmap_is_real_extent(&imap)) {
+> +			error = -EIO;
+> +			break;
+> +		}
+> +		offset_fsb = imap.br_startoff + imap.br_blockcount;
+> +	}
+> +	xfs_iunlock(ip, lock_flags);
+> +	return error;
 
-This one definitely needs double checking.
+As soon as we drop the lock, the result might be stale.  So I suspect
+we want a CONVERT_ONLY flag to xfs_bmapi_write that makes it refuse
+to allocate blocks instead in one atomic operation.
 
-diff --combined net/sunrpc/xprtrdma/rpc_rdma.c
-index ba8bdca8a49fb,7e5713367291e..0000000000000
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@@ -984,12 -984,16 +984,16 @@@ void rpcrdma_reset_cwnd(struct rpcrdma_
-   * @rqst: controlling RPC request
-   * @srcp: points to RPC message payload in receive buffer
-   * @copy_len: remaining length of receive buffer content
--  * @pad: Write chunk pad bytes needed (zero for pure inline)
-+  * @writelist: bytes conveyed by the Write chunk (zero for pure inline)
-   *
-   * The upper layer has set the maximum number of bytes it can
-   * receive in each component of rq_rcv_buf. These values are set in
-   * the head.iov_len, page_len, tail.iov_len, and buflen fields.
-   *
-+  * For READ replies with a Write chunk, the payload is already in
-+  * the page list. An overestimated head length and buflen can be
-+  * reduced without moving reply data.
-+  *
-   * Unlike the TCP equivalent (xdr_partial_copy_from_skb), in
-   * many cases this function simply updates iov_base pointers in
-   * rq_rcv_buf to point directly to the received reply data, to
-@@@ -998,13 -1002,16 +1002,16 @@@
-   * Returns the count of bytes which had to be memcopied.
-   */
-  static unsigned long
-- rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int=
- pad)
-+ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len,
-+ 		     u32 writelist)
-  {
-  	unsigned long fixup_copy_count;
-  	int i, npages, curlen;
-  	char *destp;
-  	struct page **ppages;
-  	int page_base;
-+ 	int pad =3D writelist & 3;
-+ 	unsigned int delta;
- =20
-  	/* The head iovec is redirected to the RPC reply message
-  	 * in the receive buffer, to avoid a memcopy.
-@@@ -1016,8 -1023,20 +1023,20 @@@
-  	 * head.iov_len bytes are copied into the page list.
-  	 */
-  	curlen =3D rqst->rq_rcv_buf.head[0].iov_len;
-- 	if (curlen > copy_len)
-+ 	if (curlen > copy_len) {
-+ 		/* These READ replies have no inline fields after the payload.
-+ 		 * Trim the head without moving the directly-placed data.
-+ 		 */
-+ 		if (writelist) {
-+ 			delta =3D curlen - copy_len;
-+=20
-+ 			rqst->rq_rcv_buf.head[0].iov_len =3D copy_len;
-+ 			rqst->rq_private_buf.head[0].iov_len =3D copy_len;
-+ 			rqst->rq_rcv_buf.buflen -=3D delta;
-+ 			rqst->rq_private_buf.buflen -=3D delta;
-+ 		}
-  		curlen =3D copy_len;
-+ 	}
-  	srcp +=3D curlen;
-  	copy_len -=3D curlen;
- =20
-@@@ -1243,19 -1262,9 +1262,19 @@@ rpcrdma_decode_msg(struct rpcrdma_xprt=20
- =20
-  	/* Build the RPC reply's Payload stream in rqst->rq_rcv_buf */
-  	base =3D (char *)xdr_inline_decode(xdr, 0);
- -	rpclen =3D xdr_stream_remaining(xdr);
- +	rpclen =3D rep->rr_hdrbuf.len - xdr_stream_pos(xdr);
- +	if (writelist)
- +		rpclen &=3D ~3;
- +	if (unlikely(!rpclen))
- +		return -EIO;
- +	if (writelist && rpclen < rqst->rq_rcv_buf.head[0].iov_len) {
- +		rqst->rq_rcv_buf.head[0].iov_len =3D rpclen;
- +		rqst->rq_private_buf.head[0].iov_len =3D rpclen;
- +	}
- +
-  	r_xprt->rx_stats.fixup_copy_count +=3D
- -		rpcrdma_inline_fixup(rqst, base, rpclen, writelist);
- +		rpcrdma_inline_fixup(rqst, base, rpclen,
- +				     xdr_pad_size(writelist));
- =20
-  	r_xprt->rx_stats.total_rdma_reply +=3D writelist;
-  	return rpclen + xdr_align_size(writelist);
-
---uVRrn9RlIwHa/1AR
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQEzBAABCgAdFiEEreZoqmdXGLWf4p/qJNaLcl1Uh9AFAmrOGmgACgkQJNaLcl1U
-h9B4hgf/XZT4PY5+VTnMuDjQozfJIhFb3bwjKmTUBYJSaWxHqTLKjKwC2kCq5uS3
-D+98UnIj7LhWZ3xdcvrvo/x9NyN/UBLaVB+ZALKCL80ZTLbGS5koocC4tP19aPOu
-gaLWbbq/Vx4hZEAESSNy0YSsOFvdSZuTyB8WMRIhbIRJ8Myo/kVPEXpyRwArWpnU
-EnmIo3w1OJ7LbW9E8zRvrC1+3ohGyTYQNA1fCyYsTA4k2F4Kcms/FIUzg3GcVZzn
-aZGvKYTPZSXcO5SRTNS5zCH1ce8IBR2nGlS06KV3DJlqh5LZwCowbf9ZUJE09JdJ
-G4jANezHfD22Lc1CX55djO2ZB8d2Wg==
-=8vv0
------END PGP SIGNATURE-----
-
---uVRrn9RlIwHa/1AR--
