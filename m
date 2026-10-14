@@ -1,32 +1,32 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6D6584F85C0;
-	Wed, 14 Oct 2026 11:06:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 447484F68AD;
+	Wed, 14 Oct 2026 11:25:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791976008; cv=none; b=I+yZ8M4nbDkTOjGjCW01P2xmqqQ7g5nao1pHgtXsvDvs+exhPI0euf+jd06lowXvW7Ac6uZZMih76ukm0VsY+2OqjYWUzjOTS+vtV5XuqWZpBEJlH7bKrpB1DPyyVmhNcwMffHAnKYyHV+pos48Dvms1WvVolgZqqSo1+dV39mg=
+	t=1791977125; cv=none; b=HdsTC73ORJ1iGc3dgHJJ0DQWeDZz5t1WOrQxcMDrLVxDOTmoKJgTdf/lkA9Yft7WM7/YZ4QK/TfwVb/toWFT8Dstsa6A3S+hOGB0kUcCFhUm75OAMKqRZ/Cp46H0skowhUckudfSOs3nNTY9ydesUTJJOmWxfRk86AoL7jM9Uug=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791976008; c=relaxed/simple;
-	bh=cveKd6utIgrb+XTdlcv1LbUdWOZ8L+hkWeDCe9rFzSA=;
+	s=arc-20240116; t=1791977125; c=relaxed/simple;
+	bh=zlNhcOiYM45XdTcF5px0i3ouBXZyJ0ML4wrVx43z5eg=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=HhOhUYmNP8WmV1zHelPOyRa+KmpwHAOAzKg6UG3ijtOVV7KXZjUMq4pW6it9UpuY+RIOytvag8ccFz53xHMHIZlozhaW25chOxoi08QutvckSQ25NwFnyN3j2vmV9218yfp0EelwBBrcWOOZED1HzfwkpiMGg5cUmSJ/1/XKH0s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fudU6f2G; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=dtyxz8HctoJ4gPoUO55wYRvgmdHd4Esr/gQwtum/ZNaxLsyEM6f/tDa+PNKSsz5xSy4lO2eno1YWl0DYALFQAHT2y7UclB8SFOmpe5rAGq+eNjGfDDGif7go9zR0wkp9LBbKQUFEmGW5j3FCBIQSXwA0YBier4p6BwdzLJ4cmUQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=etanuT07; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fudU6f2G"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D37631F00893;
-	Wed, 14 Oct 2026 11:06:41 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="etanuT07"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F0F8A1F000FF;
+	Wed, 14 Oct 2026 11:25:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791976002;
-	bh=SbnxO2zfcVMp/eis9EADsLfcP4WozFhv0XRLEaNlAs0=;
+	s=k20260515; t=1791977123;
+	bh=zlNhcOiYM45XdTcF5px0i3ouBXZyJ0ML4wrVx43z5eg=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=fudU6f2GY/0009ztfQ5XhPrFUVO25Tjr0lVVpxDMfUsORW4jjbXh6MttqQ1T2b9uF
-	 94GRwbXhKFrVv69eppQmMcnetEtkHhnxNTcZz6bg+kd+Q6d7o2UxgH6lquZsHatKG+
-	 mJN8QDfF8IjZrNx9PEo9nOplkcnKTlWC7G+DGm6Lyl49Lo6SjpUgIxdSb4i6H1RsgG
-	 bj/Fjx5FbOBsX8wBC2V5hemGDEna44ZQ7IhYYWxGtmcfKiku3RUmCUr8I2szI7pZPz
-	 UgMrRILsk1eK5U+MRvq+4f+jeV328/mr4i1tJQD+qmaKcDjEU1AxnKUbCayPGkOHDn
-	 gAIyJTB/nLYNg==
-Message-ID: <4616c5cefcad5ff4dd660f9db69a9962fddd28ef.camel@kernel.org>
+	b=etanuT07UT7vFazWN3k9z1uC4m5M91KEIY3wn4mRySDnzHlChluDU2hUVG9b5S7Ni
+	 iz1akjXeIEW9QKybCHj+dUU/HnePkyAJUM3m2LPmP02aaJCf+5NgeNVGva6R1GtNRX
+	 vjFI2evYBI9r7RaJsQHw1PCMtRtJkyKireBGctBsZ+9Bo1ZDgAWtDH+u1VP6JZWslW
+	 CCDBoAeN+J+IiZzTMX7QVS4TTw6p96W4PTXvPNjoS5be5WG2D/x8P2+AkxADoSeCQs
+	 DYuB1Jm2lCsy+q74a0QOupYD4rnRsD8WCd+uXD9KgR2oRH0SZ5e2zhEvoLa7v3GE29
+	 UhG/sZqb4MChA==
+Message-ID: <574bebd564ccb710cb5217998fdda5588361d12d.camel@kernel.org>
 Subject: Re: [PATCH v2 5/7] nfsd: keep polling a layout recall answered with
  NFS4ERR_OLD_STATEID
 From: Jeff Layton <jlayton@kernel.org>
@@ -37,10 +37,11 @@ Cc: Christoph Hellwig <hch@lst.de>, Benjamin Coddington
  <bcodding@redhat.com>,  Trond Myklebust <trondmy@kernel.org>, Anna
  Schumaker <anna@kernel.org>, linux-nfs@vger.kernel.org, 
 	linux-kernel@vger.kernel.org
-Date: Wed, 14 Oct 2026 07:06:40 -0400
-In-Reply-To: <20261014-nfsd-layout-recall-v2-5-764462bddfd1@samsung.com>
+Date: Wed, 14 Oct 2026 07:25:21 -0400
+In-Reply-To: <4616c5cefcad5ff4dd660f9db69a9962fddd28ef.camel@kernel.org>
 References: <20261014-nfsd-layout-recall-v2-0-764462bddfd1@samsung.com>
-	 <20261014-nfsd-layout-recall-v2-5-764462bddfd1@samsung.com>
+		 <20261014-nfsd-layout-recall-v2-5-764462bddfd1@samsung.com>
+	 <4616c5cefcad5ff4dd660f9db69a9962fddd28ef.camel@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -125,157 +126,45 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2026-10-14 at 16:30 +0900, Daejun Park via B4 Relay wrote:
-> From: Daejun Park <daejun7.park@samsung.com>
+On Wed, 2026-10-14 at 07:06 -0400, Jeff Layton wrote:
+> On Wed, 2026-10-14 at 16:30 +0900, Daejun Park via B4 Relay wrote:
+> > From: Daejun Park <daejun7.park@samsung.com>
+> >=20
+> > When a client answers CB_LAYOUTRECALL with NFS4_OK and still holds
+> > layouts, nfsd4_cb_layout_done() sends the callback again after 10 ms to
+> > see if the client is done. The repeat carries the stateid of the first
+> > callback, although RFC 8881 section 12.5.3 has the server increment the
+> > seqid in each CB_LAYOUTRECALL request.
+> >=20
+> > The same section makes the seqid of a processed CB_LAYOUTRECALL the
+> > current seqid of the client. Since commit dce72920c81b ("NFSv4.1: if
+> > referring calls are complete, trust the stateid argument"), which is in
+> > v6.8, the Linux client answers a recall whose seqid is not newer than
+> > its own with NFS4ERR_OLD_STATEID, unless a LAYOUTRETURN is on the wire
+> > (NFS4ERR_DELAY) or the layouts are gone (NFS4ERR_NOMATCHING_LAYOUT).
+> > Before that commit it answered a repeat of the recall it was working
+> > on with NFS4_OK until its LAYOUTRETURN was prepared, and with
+> > NFS4ERR_OLD_STATEID from then until nfsd had processed the LAYOUTRETURN
+> > (read from the code, not run). So a client from v6.8 on that needs
+> > more than 10 ms to finish its I/O and to send LAYOUTRETURN answers the
+> > second callback with NFS4ERR_OLD_STATEID, and an older client can
+> > answer a later one that way.
+> >=20
 >=20
-> When a client answers CB_LAYOUTRECALL with NFS4_OK and still holds
-> layouts, nfsd4_cb_layout_done() sends the callback again after 10 ms to
-> see if the client is done. The repeat carries the stateid of the first
-> callback, although RFC 8881 section 12.5.3 has the server increment the
-> seqid in each CB_LAYOUTRECALL request.
+> What eventually breaks this cycle? The client has a newer layout, so it
+> returns NFS4ERR_OLD_STATEID to the CB_LAYOUTRECALL, and now the server
+> is going to continually retransmit that request. What makes the server
+> eventually give up?
 >=20
-> The same section makes the seqid of a processed CB_LAYOUTRECALL the
-> current seqid of the client. Since commit dce72920c81b ("NFSv4.1: if
-> referring calls are complete, trust the stateid argument"), which is in
-> v6.8, the Linux client answers a recall whose seqid is not newer than
-> its own with NFS4ERR_OLD_STATEID, unless a LAYOUTRETURN is on the wire
-> (NFS4ERR_DELAY) or the layouts are gone (NFS4ERR_NOMATCHING_LAYOUT).
-> Before that commit it answered a repeat of the recall it was working
-> on with NFS4_OK until its LAYOUTRETURN was prepared, and with
-> NFS4ERR_OLD_STATEID from then until nfsd had processed the LAYOUTRETURN
-> (read from the code, not run). So a client from v6.8 on that needs
-> more than 10 ms to finish its I/O and to send LAYOUTRETURN answers the
-> second callback with NFS4ERR_OLD_STATEID, and an older client can
-> answer a later one that way.
+> Or am I misunderstanding what causes this?
+>=20
 >=20
 
-What eventually breaks this cycle? The client has a newer layout, so it
-returns NFS4ERR_OLD_STATEID to the CB_LAYOUTRECALL, and now the server
-is going to continually retransmit that request. What makes the server
-eventually give up?
+Oh, I think I see. The next patch makes it retransmit the
+CB_LAYOUTRECALL with a more up-to-date stateid. That should eventually
+resolve itself, I think.
 
-Or am I misunderstanding what causes this?
-
-> nfsd4_cb_layout_done() takes that as a failed recall. With the block
-> layout it logs "client ... failed to respond to layout recall.
-> Fencing.." and runs /sbin/nfsd-recall-failed, with the SCSI layout it
-> fences the client with a persistent reservation preempt, and in both
-> cases nfsd4_cb_layout_release() drops the layouts. Section 12.5.5
-> requires the server to wait one lease period after a recall before it
-> takes further action. Here the client is still using the layout: its
-> I/O can be in flight when the conflicting operation goes on, and what
-> it has written to newly allocated blocks stays unwritten on the server,
-> because the layout is gone when the client wants to commit it.
->=20
-> Clients doing O_DIRECT I/O in 1 MiB requests on one file for 30 seconds,
-> block layout on XFS. "after" is this patch with "nfsd: make the time
-> limit of a layout recall work", on nfsd-testing 32eb1a60b456.
->=20
-> Recalls that ended in the failure path, out of the recalls sent:
->=20
->                                                    before      after
->   2 clients read (different halves of the file)    7 / 9       0 / 9
->   2 clients write                                  8 / 9       0 / 9
->   3 clients write                                  19 / 20     0 / 20
->   2 clients write, the server writes 4 KiB to
->   the file every 50 ms                             216 / 229   0 / 250
->=20
-> Blocks that read back as zeroes on the server, out of the 1 MiB blocks
-> that the clients wrote to a new file with O_DIRECT, followed by one
-> successful fsync():
->=20
->                                                    before      after
->   2 clients write                                  6 / 564     0 / 481
->   3 clients write                                  11 / 527    0 / 569
->   1 client writes, the server sets the file size
->   every second                                     21 / 469    0 / 504
->   2 clients write, file preallocated               8 / 601     0 / 602
->   1 client writes, 1 client reads                  4 / 493     0 / 508
->=20
-> One client writing through a block layout whose path to the device is
-> cut for 15 seconds while it can still talk to the server, and a 4 KiB
-> write to the file on the server:
->=20
->                                                    before      after
->   the write on the server takes                    0.05 s      15.6 s
->   the recall                                       fails       completes
->   /sbin/nfsd-recall-failed is run                  yes         no
->=20
-> Before, the write of the client that was in flight when the layout was
-> recalled was stuck for 18.5 seconds and no WRITE was sent to the
-> server, so it reached the device about 15 seconds after the write on
-> the server had returned. After, the write on the server waits for it.
->=20
-> Two clients writing one file with the SCSI layout on an nvmet-tcp
-> namespace: before, both recalls sent ended in nfsd4_scsi_fence_client(),
-> the number of registrants on the namespace went from 4 to 2, and both
-> clients logged reservation conflicts and did the rest of the run
-> through the server. The same with a new file, after a fresh boot: both
-> clients were fenced, and one of the 630 blocks they had written read
-> back as zeroes. After, no client is fenced and no block is lost.
->=20
-> Handle NFS4ERR_OLD_STATEID like NFS4ERR_DELAY: the client has seen the
-> recall, so keep polling until the layouts are returned or the time limit
-> is reached. Apply this only together with three earlier patches in this
-> series: the limit only works with "nfsd: make the time limit of a
-> layout recall work", with "nfsd: run the fence script when a block
-> layout lease break times out" a block layout client is fenced when the
-> lease break gives up, and "nfsd: answer NFS4ERR_DELAY instead of
-> waiting for a layout recall" keeps nfsd threads out of the longer wait.
-> Kernels before v7.1 do not have the lease break timeout that the second
-> of them fixes. There, an operation on the server that does not come
-> from nfsd, and an nfsd thread that still ends up in the filesystem's
-> break, waits until the recall ends, for at most two lease periods. Such
-> a kernel already waits that way, without a limit, for a client that
-> keeps answering NFS4ERR_DELAY, and RFC 8881 section 12.5.5 asks the
-> server to wait at least one lease period before it fences.
->=20
-> The poll sends the callback every 10 ms for as long as the client
-> holds the layout, as it already does for a client that answers
-> NFS4ERR_DELAY. With a client that needs long to return the layout
-> that is about 100 callbacks a second, for up to two lease periods.
->=20
-> A client can also answer this way without having processed the recall,
-> when a LAYOUTRETURN that left layouts behind has moved its seqid past
-> the seqid of the recall. With this patch alone it is then polled until
-> the time limit and fenced, where it used to be fenced at once, and
-> LAYOUTGETs for the file fail with NFS4ERR_RECALLCONFLICT meanwhile;
-> "nfsd: poll a layout recall with a new seqid when the client is past
-> it", later in this series, gives such a client a new seqid.
->=20
-> This keeps the poll as it is for a client that has answered NFS4_OK.
-> Sending each repeat with a new seqid, or ending the callback on NFS4_OK
-> and letting the LAYOUTRETURN finish the recall, would follow the RFC;
-> both are larger changes than a fix for stable kernels should be.
->=20
-> Fixes: 6b9b21073d3b ("nfsd: give up on CB_LAYOUTRECALLs after two lease p=
-eriods")
-> Signed-off-by: Daejun Park <daejun7.park@samsung.com>
-> ---
->  fs/nfsd/nfs4layouts.c | 8 ++++++++
->  1 file changed, 8 insertions(+)
->=20
-> diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-> index 8bcf4d5380..5692d0aee7 100644
-> --- a/fs/nfsd/nfs4layouts.c
-> +++ b/fs/nfsd/nfs4layouts.c
-> @@ -863,7 +863,15 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, stru=
-ct rpc_task *task)
->  	switch (task->tk_status) {
->  	case 0:
->  	case -NFS4ERR_DELAY:
-> +	case -NFS4ERR_OLD_STATEID:
->  		/*
-> +		 * RFC 8881 section 12.5.3 wants a new seqid in each
-> +		 * CB_LAYOUTRECALL request. The poll below sends the request
-> +		 * again with the seqid of the first one. A client that has
-> +		 * processed that one is at its seqid or past it, and the
-> +		 * Linux client answers the repeat with NFS4ERR_OLD_STATEID
-> +		 * while it is returning the layouts.
-> +		 *
->  		 * Anything left? If not, then call it done. Note that we don't
->  		 * take the spinlock since this is an optimization and nothing
->  		 * should get added until the cb counter goes to zero.
-
+It would make sense to squash 5 and 6 together so we don't end up with
+this endless cycle if this happens on a bisect.
 --=20
 Jeff Layton <jlayton@kernel.org>
