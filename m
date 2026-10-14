@@ -1,38 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F2FCB39FCD7;
-	Wed, 14 Oct 2026 03:42:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24509391E5B;
+	Wed, 14 Oct 2026 03:43:10 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791949379; cv=none; b=qFt0AZH3EdOPYXdzu0X2mCfYSQbhUR9skUEztHngbXhXfH0l5YGwM2yMDG3Q1f2pAjUrFHrH6gJvmh4JnE17lIZGRZATNuxr/4rUxwefyOfUgvsBfjbR/70WYId8/eP5MkqriESZUIG96xfTCZ2G4tR2v0GCVt3PjzdeB7+mZ/s=
+	t=1791949391; cv=none; b=plFHHoC0skbraOi7MYu0gC+E/hwRN+h+zY1ogGDnKAj627p7XD8li4P8kYlSMaCJAJzOp3HaueDsTWg4BpGVb8Crr3mwAm+HPpIk/BHSptIWHIH5tUpWSUQf7wIoQpZo16mlfCk7z4ECmyc+0TRK5W+zJFxrw/ACcqIYbQSbB10=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791949379; c=relaxed/simple;
-	bh=LHzFOmq/a+lyPtSBjNoJEO3MjrbmhrHhyDkpiPxXg7g=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=IpgvNYzlMoFmQ+ff2bnu5TQuur15/g/uuR76HQVj7KgSj5fEupcYwVQji36yO1rWcvKgqxsHk/s0IKR5fRCCIhl7yEwU09DI++BLlHxerQDXXqAfiwYCmZrfLr5BY866WqzHwU5Gi5tbwrXvAqpEEZ5ZUb4lWoEKJ++21hn2y1g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Byrmib9M; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1791949391; c=relaxed/simple;
+	bh=7jaEf+DSc3ZErWV7GdzaWAdh1OASwLxdqWsXrm+gVDE=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=tOUQZmjW9bWoJm/l298L8fX88MMgJdOqYKu7zHBdCDDCH0IlgX7OSDScdfI6MAfIAr3Fk4KE/BZ/c+zqKoXFnhektuiI16bfhvuuAZrJFPRF2XYTG4zo655RTXUFTAp+W5wEINwZuBNVpTOUzrVXd0rrMYr/SsxZxKlzR0T26AA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=i0k0P4VC; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Byrmib9M"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 6EC1CC2BCC7;
-	Wed, 14 Oct 2026 03:42:58 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="i0k0P4VC"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id A225FC2BCF5;
+	Wed, 14 Oct 2026 03:43:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1791949378;
-	bh=LHzFOmq/a+lyPtSBjNoJEO3MjrbmhrHhyDkpiPxXg7g=;
+	s=k20201202; t=1791949390;
+	bh=7jaEf+DSc3ZErWV7GdzaWAdh1OASwLxdqWsXrm+gVDE=;
 	h=From:Subject:Date:To:Cc:Reply-To:From;
-	b=Byrmib9Mvu5RWINk66OKA1ZB5+j3n5GcHPuemywGgN4CoL2f0sZLAaQPePINY6lE9
-	 8rhlu7b+0fouuDn5HF2FU+o48SJPew7Ve/Yw98p6V9TVtCVcLpL2b5NHqdeV2pCxMr
-	 hIsqC+OP4sJ5l6EAev+MVPedZPx3YR0GioIepLCr95Pe/INLjL+cU4nCYzkyDRXl98
-	 YOWY48zTJKUaM+Z7sh1LMh+CKRK7pO0zZoRAE2LC1GUAhpfJV8KbMZ151HevZWNU/h
-	 Anweh2FxEeXuwKG+PKIV9zEmGMtp9RlljQ/AmTRCmA/lyTyz9MonUrOrhMLJ9eF5rK
-	 xaI+qsoK3Uk9g==
+	b=i0k0P4VCB7g40OdBO9ifahjBuxaoytYGw6AL/F5gDhcVt7VA8hmfFsCbzgSOJJg9D
+	 6ez0hEUWT1W27yoCUAlXL313IlHbuMNWu8Rr4CGfT2ysvToLPN60hQl/4e4wUZ86S4
+	 785kmCSosCnlPUytcwtk458q9XgGlsw58mUzIBlTne8yP5eXrW+CMyqlCJJbStZDdJ
+	 of8F4G2RHgzRALlCaG4Oh/m7PDMSiKpLQRaYD4r8lYz9nit9/ML7DQ/3fpEL8jLRsX
+	 WMTaW4s2hqtYrPC0BmFxLV/e1vUcfv90lwyVu6MJddgGINM0C7bEhlzH6VQHs1v4vp
+	 MZK0Xak1kUuJg==
 Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 42814CC6B1C;
-	Wed, 14 Oct 2026 03:42:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8C8EDCC6B1C;
+	Wed, 14 Oct 2026 03:43:10 +0000 (UTC)
 From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
-Subject: [PATCH v2 0/2] xfs: refuse pNFS LAYOUTCOMMITs of ranges without
- blocks
-Date: Wed, 14 Oct 2026 12:42:57 +0900
-Message-Id: <20261014-xfs-pnfs-commit-hole-v2-0-d3a02a79ab6c@samsung.com>
+Subject: [PATCH v2 0/2] xfs: make pNFS LAYOUTCOMMIT stable the way
+ fdatasync does
+Date: Wed, 14 Oct 2026 12:43:09 +0900
+Message-Id: <20261014-xfs-pnfs-commit-datasync-v2-0-c11341a189b5@samsung.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -41,23 +41,22 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAEH6zmoC/22NQQ6CQAxFr0K6tmZajIgr72FYjDBAE5khUyQYw
- t0dSdy5afJ+/n9dQV0Up3DNVohuFpXgE/Ahg7q3vnMoTWJgw2cyxLi0iqNPpw7DIBP24emwzo1
- 1peVL0eaQpmN0rSy79l4l7kWnEN/7l5m+6U+Y/xfOhITFyZTEzaMkwze1g758d0wtqLZt+wCbc
- jrRugAAAA==
+X-B4-Tracking: v=1; b=H4sIAE36zmoC/42NTQ6CQAyFr0K6toZWI+KKexgWk6FAFwxkigRCu
+ LsjJ3Dzku/l/exgElUMXtkOURY1HUMCvmTgexc6QW0SA+f8oJxuuLaGU0jix2HQGRs3O9uCx9w
+ XfOeiIHEMqT5FaXU9p9914l5tHuN2Pi30c/8YXQgJ2RFL+yzFN2VlbrBP6K4pCfVxHF+cqERMw
+ gAAAA==
 To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
 Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
  Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, 
  Jeff Layton <jlayton@kernel.org>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Sergey Bashirov <sergeybashirov@gmail.com>, linux-nfs@vger.kernel.org, 
- Andrey Albershteyn <aalbersh@kernel.org>, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
+ linux-kernel@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791949377; l=5569;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791949389; l=8008;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=LHzFOmq/a+lyPtSBjNoJEO3MjrbmhrHhyDkpiPxXg7g=;
- b=XoR+j2rGgjPTJF4tYYjhWR9C16Nr/Wxic59Lt1AhbYan1sa81jBgNUtwC6ySyHQbR0bfFFpZ1
- w/vkPNtccwDAIeFP6FGKaMkzHq4C+NRDPGiJ+zWXQS4QKe5ZQHEL7pn
+ bh=7jaEf+DSc3ZErWV7GdzaWAdh1OASwLxdqWsXrm+gVDE=;
+ b=er4d8e0QmqyM1euukGiZzo2JIqFIpYmRUmmQb/OUAyL5f0Iu86Bwf25A0OlKJQcVzFWEdbG20
+ 4qIpSgCtZuCCbh936jya1oHFEWueDYvLYUv+LFmp3ZMJHhRAQVHxVE0
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
@@ -65,110 +64,144 @@ X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
 X-Original-From: Daejun Park <daejun7.park@samsung.com>
 Reply-To: daejun7.park@samsung.com
 
-xfs_fs_commit_blocks() converts whatever range a pNFS client commits.
-For a range without blocks, the conversion allocates blocks that the
-transaction did not reserve and shuts XFS down, or maps blocks that
-nobody wrote into the file. Patch 1 refuses such a commit with a new
-XFS_BMAPI_CONVERT_ONLY flag for xfs_bmapi_write(). Patch 2 clamps the
-committed length before adding it to the offset, as the sum can wrap.
+Patch 2 stops forcing the log for a LAYOUTCOMMIT that converts nothing
+and keeps the size, and flushes the data device cache instead, the way
+fdatasync does. Patch 1 moves the log force helper of fsync next to
+xfs_log_force_inode() so that xfs_pnfs.c can use it.
 
 Changes in v2:
-- Refuse the hole in xfs_bmapi_write() with a new
-  XFS_BMAPI_CONVERT_ONLY flag, as Christoph suggested, instead of
-  checking all the ranges first. A range before the hole is now
-  converted before the commit fails; v1 converted nothing.
-- Drop the blockgc case from the message: with "xfs: mark the inode
-  preallocated for pNFS write layouts past EOF" [1], blockgc keeps
-  those blocks.
-- Split the length clamp into patch 2. It fixes a separate bug.
-- Link to v1: https://lore.kernel.org/r/20261013-xfs-pnfs-commit-hole-v1-1-740912db9102@samsung.com
+- New patch 1: move xfs_fsync_flush_log() next to
+  xfs_log_force_inode() in xfs_inode.c as __xfs_log_force_inode(),
+  and make xfs_log_force_inode() a wrapper around it (Christoph). It
+  stays in xfs_inode.c rather than xfs_log.c because
+  xfs_log_force_inode() is already there and xfs_log.c does not deal
+  with inode log items.
+- Patch 2 calls __xfs_log_force_inode() instead of exporting
+  xfs_fsync_flush_log() from xfs_file.c, and is otherwise unchanged.
+- Do not factor the end of xfs_file_fsync() into a shared helper, as
+  offered in v1 (Christoph: overkill for two function calls).
+- Link to v1: https://lore.kernel.org/r/20261013-xfs-pnfs-commit-datasync-v1-1-2a12ef89ecd9@samsung.com
 
-XFS_BMAPI_CONVERT_ONLY takes bit 12 of the bmapi flags, which "xfs: add
-XFS_BMAPI_UNWRITTEN to unmap unwritten extents in __xfs_bunmapi()" in
-the fs-verity series [2] also uses. Whichever goes in second needs to
-move to bit 13. The name was used before, by a flag that commit
-26b91c728b2d ("xfs: make COW fork unwritten extent conversions more
-robust") removed. That flag only skipped the allocation and went on to
-map the hole; this one stops before it.
+With patch 2, the timestamps of a LAYOUTCOMMIT that converts nothing
+and keeps the size, and the change attribute that nfsd derives from
+i_version and the ctime, are not made stable before the reply goes
+out. After a server crash, a
+client that cached the file before the LAYOUTCOMMIT could see the old
+change attribute again and keep its stale cache until the file changes.
+A WRITE with DATA_SYNC4 already leaves the timestamps that way ("persist
+data only" in nfsd_vfs_write(), nfsd4_iocb_flags() in nfsd-testing),
+although there the client asks for it, and the comment above
+nfsd4_change_attribute() assumes a stable change attribute only for
+directories.
 
-This series and v2 of "xfs: make pNFS LAYOUTCOMMIT stable the way
-fdatasync does", sent at the same time, both change
-xfs_fs_commit_blocks(). They apply in either order.
+On a sync export, nfsd makes most metadata operations stable before it
+replies: commit_metadata() after SETATTR, ALLOCATE, DEALLOCATE, create,
+link, rename and unlink, and a full fsync for CLONE and, as RFC 8881
+section 18.3.4 asks, for COMMIT. With this patch, a LAYOUTCOMMIT on a
+sync export replies before its timestamps are stable, unlike those.
+LAYOUTCOMMIT is not that COMMIT: section 12.5.4 says "The data should be
+written and committed to the appropriate storage devices before the
+LAYOUTCOMMIT occurs", and of durability it says only that for block
+layouts LAYOUTCOMMIT may require committing the block list to stable
+storage, which this patch keeps. If nfsd wants LAYOUTCOMMIT to follow
+the sync export option anyway, ->commit_blocks can take a datasync
+argument as ->fsync does, but sync is the default, so the gain would
+then be limited to async exports.
 
-Tested on nfsd-testing d918c664efd5 with the same two patches on top,
-in QEMU guests with KASAN and lockdep. The block layout was on an
-NVMe/TCP namespace exported by nvmet. The client was pynfs, except for
-fstests, which ran on the Linux NFSv4.2 client. XFS for-next also has
-commit e3c682dd1130 ("xfs: map pNFS layouts to the end of the extent
-again"), which nfsd-testing does not have. xfs_bmapi_write(),
-xfs_iomap_write_unwritten(), xfs_fs_commit_blocks() and
-xfs_dio_write_end_io() are the same in both trees, and so is the
-changed line in xfs_end_ioend_write().
+Tested on nfsd-testing d918c664efd5 with the same changes, in QEMU
+guests: nfsd on XFS (mkfs.xfs defaults, internal log, sync export), the
+block layout on an NVMe/TCP namespace exported by nvmet from another
+guest, and the Linux NFSv4.2 client. The series applies to XFS for-next
+0be6da616ab5 as is. The measurements below were taken with v1; v2 only
+moves the log force helper, and the v2 runs listed after them show the
+same behaviour.
 
- - A LAYOUTCOMMIT of a 64 KiB hole: NFS4ERR_IO and shutdown without the
-   series. With it, NFS4ERR_IO, no shutdown and nothing allocated, in 5
-   runs.
- - A LAYOUTCOMMIT of a 4 KiB hole: NFS4_OK and a written block in the
-   file without the series. With it, NFS4ERR_IO and nothing allocated.
- - The laid-out range and the 64 KiB hole in one LAYOUTCOMMIT: shutdown
-   without the series. With it, NFS4ERR_IO, and fiemap on the server
-   shows the laid-out range written and nothing allocated in the hole.
- - An extent at 4 KiB with a length of 2^64 - 4 KiB: NFS4ERR_IO and
-   "nfsd: non-standard errno: -63" without the series, and with
-   XFS_DEBUG "Assertion failed: bma.nallocs >= *nmap" in
-   xfs_bmapi_write(). With patch 1 alone, the same nfsd warning. With
-   both, NFS4ERR_IO and no warning, also with XFS_DEBUG.
- - Blocks past EOF freed by blockgc under a layout, without [1]: the
-   LAYOUTCOMMIT after the client's write shut XFS down without the
-   series and got NFS4ERR_IO with it.
- - pynfs block and blockextent, also with XFS_DEBUG: same as without
-   the series (BLOCK3 fails either way, on a bug in the test).
- - fstests generic/075, 091 and 263 over the block layout: 075 fails
-   with an fsx size error with and without the series, and XFS refused
-   none of the 10384 LAYOUTCOMMITs with it.
- - O_DIRECT and buffered writes into preallocated space on the
-   server's own XFS, the other callers of xfs_iomap_write_unwritten():
-   converted as before, on the XFS_DEBUG kernel.
+nfsd-testing does not have commit e3c682dd1130 ("xfs: map pNFS layouts
+to the end of the extent again"), which only changes LAYOUTGET, nor the
+for-next changes to the log cache flushes (xlog_flush_data_caches() and
+XLOG_ICL_NEED_FLUSH_LOG), which only matter with an external log or an
+rt device.
+
+ - Overwrites of written files, each write followed by fsync, KASAN
+   and lockdep off. The namespace was backed by a partition of a
+   Samsung 990 PRO (volatile write cache), given to the nvmet guest as
+   virtio-blk with cache=none. virtio-blk has no FUA, so REQ_FUA became
+   a write plus a cache flush there. Medians of 5 runs, with the
+   kernels without and with the patch alternating; "ms each" is the
+   time in xfs_fs_commit_blocks() per LAYOUTCOMMIT:
+
+     threads  file    write   without    with  commits  ms each
+     1        16 MiB  64 KiB   800 ms  473 ms   256   2.4 -> 1.1
+     4        16 MiB  64 KiB  1083 ms 1011 ms  1024   2.6 -> 2.5
+     1         4 MiB   4 KiB  3101 ms 1841 ms  1024   2.6 -> 1.5
+
+   With the patch no LAYOUTCOMMIT forced the log, and the log was
+   written at most once per run. With 4 writers the gain is smaller:
+   without the patch their log forces are partly shared, and with it
+   their cache flushes queue up. Overwrites of 64 MiB files in 4 MiB
+   writes by 4 threads took 1150 ms instead of 1328 ms, medians of 3
+   runs that overlap (1114 to 1214 ms against 1181 to 1424 ms) and did
+   not alternate.
+ - New files, 4 threads writing 64 MiB each in 4 MiB writes, each
+   write followed by fsync: every LAYOUTCOMMIT still forced the log, as
+   before.
+ - A crash right after a LAYOUTCOMMIT of an extent that the server had
+   just converted with a direct write, before that conversion was
+   written to the log: the server preallocated 4 MiB and wrote it with
+   O_DIRECT, the client overwrote it through the layout and called
+   fsync, and the server VM was killed. After mount, the extent was
+   written and held the client's data, with and without the patch (2
+   runs each). A prototype that only flushed the cache when the range
+   was written in memory and the size did not change lost the data in
+   both runs: the extent came back unwritten.
+ - The same crash after the client wrote a new 4 MiB file through the
+   layout and called fsync (allocation, conversion and a new size):
+   size, extent and data were all there, with and without the patch
+   (2 runs each).
+ - With a KASAN and lockdep kernel, and no warnings from either: pynfs
+   block and blockextent, same as without the patch (BLOCK3 fails
+   either way, on a bug in the test); fstests generic/075, 091 and 263
+   over the block layout, where 075 fails with an fsx size error as it
+   does without the patch, and none of the 10337 LAYOUTCOMMITs failed.
+   The pynfs tests also passed the same way on an XFS_DEBUG kernel with
+   XFS_ASSERT_FATAL.
+ - v2, both patches: the overwrite of a 16 MiB file in 64 KiB writes,
+   each followed by fsync, made 256 LAYOUTCOMMITs with no log write
+   and one cache flush each, as with v1 (2 runs each, host file
+   backing). The two crash cases gave the same results as above (2
+   runs each). pynfs block and blockextent gave the same results on
+   KASAN and lockdep, XFS_DEBUG, and patch 1 alone, with no warnings.
+   In fstests generic/075, 091 and 263 over the block layout on the
+   KASAN and lockdep kernel, 075 failed with an fsx size error as
+   before, none of the 10373 LAYOUTCOMMITs failed, and there were no
+   warnings.
+ - v2, fsync and fdatasync on the server's own XFS, counted from
+   /proc/fs/xfs/stat over 5 calls each: an overwrite followed by
+   fdatasync forced the log 0 times, an overwrite followed by fsync 5
+   times, and an extending write followed by fdatasync 5 times. That
+   is the same as with v1, and the same with patch 1 alone.
  - fstests -g quick on a local XFS (mkfs.xfs defaults from xfsprogs
    6.6.0, 10 GiB TEST and SCRATCH devices, KASAN and lockdep off),
    with and without the series: 1017 tests ran, and the same 5 failed
    either way (generic/453, 454, 563, 794 and xfs/261). Also the same
-   with both series applied.
+   with v2 of "xfs: refuse pNFS LAYOUTCOMMITs of ranges without
+   blocks", sent at the same time, applied as well.
  - W=1 builds of the changed files after each patch, on XFS for-next
    0be6da616ab5 and on nfsd-testing: no warnings.
 
-No test reaches the delalloc case of the new flag. It takes the same
-branch as a hole.
-
-For stable, patch 2 applies to every LTS tree, but should not go in
-without patch 1: on its own, the clamped extent reaches the hole and
-shuts XFS down, as a LAYOUTCOMMIT of a hole already does there. Patch 1
-needs a backport for 7.2 and older, which do not have
-fs/xfs/xfs_ioend.c.
-
-xfs_pnfs_validate_isize() reads the extents under XFS_ILOCK_SHARED,
-which xfs_iread_extents() does not allow when they are not loaded yet.
-That needs a separate fix.
-
-[1] https://lore.kernel.org/r/20261012-xfs-pnfs-eof-prealloc-v1-1-e4864d917a00@samsung.com
-[2] https://lore.kernel.org/r/20261002223705.2175542-14-aalbersh@kernel.org
-
 ---
 Daejun Park (2):
-      xfs: refuse a pNFS LAYOUTCOMMIT of a range without blocks
-      xfs: clamp a pNFS LAYOUTCOMMIT extent before computing its end
+      xfs: move xfs_fsync_flush_log() next to xfs_log_force_inode()
+      xfs: make pNFS LAYOUTCOMMIT stable the way fdatasync does
 
- fs/xfs/libxfs/xfs_bmap.c | 14 ++++++++++++++
- fs/xfs/libxfs/xfs_bmap.h | 10 +++++++++-
- fs/xfs/xfs_file.c        |  2 +-
- fs/xfs/xfs_ioend.c       |  2 +-
- fs/xfs/xfs_iomap.c       |  7 ++++---
- fs/xfs/xfs_iomap.h       |  3 ++-
- fs/xfs/xfs_pnfs.c        | 13 +++++++++----
- 7 files changed, 40 insertions(+), 11 deletions(-)
+ fs/xfs/xfs_file.c  | 44 +-------------------------------------------
+ fs/xfs/xfs_inode.c | 42 +++++++++++++++++++++++++++++++++++++-----
+ fs/xfs/xfs_inode.h |  2 ++
+ fs/xfs/xfs_pnfs.c  | 21 +++++++++++++++------
+ 4 files changed, 55 insertions(+), 54 deletions(-)
 ---
 base-commit: 0be6da616ab5031ea6419dc4fe0bf0e378fb6757
-change-id: 20261012-xfs-pnfs-commit-hole-c30ae9a287f3
+change-id: 20261013-xfs-pnfs-commit-datasync-0c7242771ea2
 
 Best regards,
 -- 
