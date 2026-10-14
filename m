@@ -1,141 +1,109 @@
-Received: from mx1.white.stw.pengutronix.de (mx1.white.stw.pengutronix.de [185.203.200.13])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-qk1-f173.google.com (mail-qk1-f173.google.com [209.85.222.173])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C231A4746B4
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Oct 2026 13:18:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=185.203.200.13
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791983906; cv=pass; b=TpD9rtpKYq9jlHG1icSPBOG8Fsl6ECPKmS3Fu9Tc88sCt4RHPsoKtXr8u25Tl0BQYQfzDN1pROB0JYx/MbVQ/4gHEbmDY88bo6yBo1L11toO78/K+XPrCF71xAEg3WhVmdGb81L7q19TFuHzx1oU/S50KUVrifbkZW4pP02nMWg=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791983906; c=relaxed/simple;
-	bh=aw0tRmF79ID3voeirmW2J4qZveWT8KuDhMpN45C/Wm0=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=qj6dbpwBASKprn2OkMpOTajICTizf+HkHpHCfEMA/1ldQFF6ff37lmja66KGz3MjWM8J9PM+cY8HUfIMbivFrzNkJu2zGNeBScL2dwDVPfAmt2pv4LqvYyny7WFXiMpyMsAg/JcmjowfiXFnjBbKScPV2QvEn7AhqR5hTvy4RUw=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=pengutronix.de; spf=pass smtp.mailfrom=pengutronix.de; dkim=pass (2048-bit key) header.d=pengutronix.de header.i=@pengutronix.de header.b=T9zcASYD; arc=pass smtp.client-ip=185.203.200.13
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=pengutronix.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=pengutronix.de
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 540045226B4
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Oct 2026 14:09:38 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.173
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1791986979; cv=none; b=DWOJy0LfnVqjqArae7A0tBpTgy7MOXULjaNFuDjEYv0NHouwNJ0/vDEKE9MtsbKyRk7zeY3Z5kFdanfdTnOd9edpRVC8Aw9HkSiYN077G/J5Q4UVst52z0YY2Z1xR1NpY4r9RQBFhNYEIb+C3auJWWBGT+L2IVNIC1XIDfKBWg0=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1791986979; c=relaxed/simple;
+	bh=39mqxoQ4FzxldK/jr8JEqlZcLe/X52JSnqR6pmEuz00=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=VjI/BjHhNxuBM2sCHp60yAuvd8N4p/H+SxM8Cg92QE+ycSOO9jdeWrb27KcgjwJIRC+ESkIlzaRET1m6xk6EBb4iVia1DAHn6HYR1ilHYPHFpbFBflLNfzZO4Ovi/J5lY6rx7W76hqT9JX2PHtuAOgcBfdKDWk+l4IieZjRaYBM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com; spf=pass smtp.mailfrom=toxicpanda.com; dkim=pass (2048-bit key) header.d=toxicpanda.com header.i=@toxicpanda.com header.b=hHK6r5m+; arc=none smtp.client-ip=209.85.222.173
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=toxicpanda.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=pengutronix.de header.i=@pengutronix.de header.b="T9zcASYD"
-Received: from drehscheibe.grey.stw.pengutronix.de (drehscheibe.grey.stw.pengutronix.de [IPv6:2a0a:edc0:0:c01:1d::a2])
-	(Authenticated sender: relay-from-drehscheibe.grey.stw.pengutronix.de)
-	by mx1.white.stw.pengutronix.de (Postfix) with ESMTPSA id C4BB32018A0;
-	Wed, 14 Oct 2026 15:18:21 +0200 (CEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=pengutronix.de;
-	s=20260414; t=1791983901;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=vbSf9EvKWKZmhjC3Y7oO5YeQ4qHZxORfnOTCUDaB6J8=;
-	b=T9zcASYDRKDe/+Xi4rOOLYAMI26vibL6dHF5Hp2bqY0oG1Oz7vxMIR4j74RUCpNOSEWvaX
-	r3GiK1d0QwbxsNwnj6oxhV/TtdhTe+GJObwGYI7SJTm4dJZaBDca+eDshymuOaPcGHZ2/W
-	EAVY5Nh2lew1X5f6jMJDjQc8v7PZmv4/yl/YbgqAOXCkUqTG+eISsaqJ0YbTkouhu6meFI
-	lQLamJF0+BoBxGaizLpvP3qeLbIa6gQNOZnuRmK0Mib/sZa2H+kJloTYgyxnd7c2DDgZho
-	mvMRHhSlstT3HmIML9WwAr90K6PwWRhM59obrR0+lIf5g3A8NewKAwWPD0bI8g==
-ARC-Seal: i=1; s=20260414; d=pengutronix.de; t=1791983901; a=rsa-sha256;
-	cv=none;
-	b=EFvYCzm8NllRT1pEGI0t4flKmPh3HKEeYgwn1uhyqYgUKNcxRDqdRdw9w1Qgk5/wMsLKEf
-	LMLJxWPTrWEREGtiV4vdGbnoMXSej8NiVxrUb8hSZ9BZHKQ9gjZMfH6tG+ZH03drjMw3VR
-	N/+OT41UiH7YmO+yvqiuZhskLIDHycI34rRMzIvxjt6kHz+v2tpZ076nENtZglY30fm9Sm
-	q/luFp7OzKvAySt+7p9G0ffskekvqiss45uJvY4lOHN69412V0If6vzFlriSbV3Eq5yRhH
-	JxAANztFi+ixHzQrf1APT6T/rOWrvTRTixeOJyITT01ASa3a+KzVZYGoAijIyw==
-ARC-Authentication-Results: i=1;
-	ORIGINATING;
-	auth=pass smtp.auth=relay-from-drehscheibe.grey.stw.pengutronix.de smtp.mailfrom=s.pueschel@pengutronix.de
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=pengutronix.de;
-	s=20260414; t=1791983901;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=vbSf9EvKWKZmhjC3Y7oO5YeQ4qHZxORfnOTCUDaB6J8=;
-	b=IH9TT45DA2A4V3+vo8KybU/9riHCLQyqNJMSDWkBP2cifSJoLmJUPUGE24cdCGhE315dcD
-	2ktgKH6iQSR+L2l+H3vaB0Tz2/d3qfL659ABeANK9y6ZThpHjmCZO2mHUA5N31uZ+nWep6
-	OqrBo14esoBieDIzqwk7JUJIggh6HtCPXJorWROHN87k3pn+T2le09wniiK+byfeOybZTa
-	cq5Tloa2q3wZSYWlfilXryhfNPUd32ooEdOQVsnlSV1EmjyqitBr38PSUp3crmev1YSIeP
-	v7JOwwNF6HEsy/xtoROmKCME+YqtpINjqVGQEUFbMvd855UA8c2TKLs9o+b3wA==
-Received: from ptz.office.stw.pengutronix.de ([2a0a:edc0:0:900:1d::77] helo=peter.mobile.pengutronix.de)
-	by drehscheibe.grey.stw.pengutronix.de with esmtp (Exim 4.96)
-	(envelope-from <s.pueschel@pengutronix.de>)
-	id 1xGys9-005rdH-2B;
-	Wed, 14 Oct 2026 15:18:21 +0200
-From: =?utf-8?q?Sven_P=C3=BCschel?= <s.pueschel@pengutronix.de>
-Date: Wed, 14 Oct 2026 15:17:59 +0200
-Subject: [nfs-utils PATCH] configure: use AS_IF when PKG_CHECK_MODULES is
- used
+	dkim=pass (2048-bit key) header.d=toxicpanda.com header.i=@toxicpanda.com header.b="hHK6r5m+"
+Received: by mail-qk1-f173.google.com with SMTP id af79cd13be357-93e706a6ba9so541271785a.2
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Oct 2026 07:09:38 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=toxicpanda.com; s=google; t=1791986977; x=1792591777; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:date:subject:cc:to:from:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=3/Rdq16RXcxQlW9vLdkggo7RE79oEveipYzoAMSsoeU=;
+        b=hHK6r5m+YL08aTQqdE500oGvofyolfuOrJ1AHmWONTk3jYoWyqZBS+EniR2mfsCpRa
+         7RYYioCIMIpl1yGTR8ThJqIWdjMpZDvFmmT7rkOz0tcin2xd3RzoS5F14JKq/XDk0J0S
+         qJOI4NwhVy5oIBiU1dWNk5LBKTgzzL9xFo54ZC8K1jlwuS7PPsVbjr1gWa5t0tPl8onX
+         tERlwwyNyYA0KdhGIZNX3yO+fWRVwxBiQ9409adWXo/VHalNbZ/QSsqsefaODBJX6so0
+         /+SRAik1Pl+KjQppsIQYZSeXk1zjQZ83d+3ZCY7IDbKT4TIRKfVX9O0s9Aajklq6z6f3
+         6zxw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1791986977; x=1792591777;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:date:subject:cc:to:from:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=3/Rdq16RXcxQlW9vLdkggo7RE79oEveipYzoAMSsoeU=;
+        b=WWjVsmS9TGFNke0GZcH0a7uRqbs62UrBuB41fLrEiL03cTwi4/o+RYh8Vk8BtiVKDL
+         deiY7H2Gq9grmmQVg43O7az6QVkQ2J+1cyL2USyNvrHd5p1EMqv50VIoxFY5RKv9lfbc
+         LchcqLepPK/94kl7bil3OBZgImpxdlN2FEf1tZ9jtxpB6U5ZEg1vXoyV2rlSjIDmI+4t
+         NsDRdzI7UHwWQ15C/1SrH0FVkpqMDmv+p3IqrDsmCvgitp61UVDYfWz6YKBaeQs8SWyq
+         Y5fnqCf8Nrk2Kq7R2gkwQQO9dfzsZ5Gn4Hbci/9dMtRKhn3OeFerY9U5Ve1YQhoztkKz
+         XOUQ==
+X-Forwarded-Encrypted: i=1; AKwUvBzKhsqUKVrgH5aMLfhm5Lbkw/B2CMFZblnq2Ety6iMvis4oVe6vOAIyjc4yk9oIDzDZPmInfkRaZ6M=@vger.kernel.org
+X-Gm-Message-State: AFq9FYJgivp+D13H0JVwrZUrUqkO5pjG7o7+XO0x/i3K1vHTxWdjOmbw
+	J31yqyCujsirg+28EnL0Woz8TbpDoJJ6PJRIKVSXziug4WraDy1lMNmfCR5YORWfyx0=
+X-Gm-Gg: AYBFou0ULX7N5WmIYEGxp70KFELwzKnI3rstr1x0j1lUIE8nXaObvl6noqNIgcPrayw
+	qNjXRDFDlxMPfGbb9BUneDBHQC8VXejZKS7WH3KZ7RoLbrc1sc4Zul6hm3CB+vaD1DyrXp6owz5
+	ltonpF70lJ4Z9/0pLgyBArtzWyzHBU9oNlK6TtJFkhq9Mh7zYabY2AeacLNFHdh0QTWXGtwOoXw
+	rXC7j/vT3DJtHLFAxeV30gm3anZzARPHLonDmH8VQZFQ3eoak38/vW7fkdGe55l6wEn88VVbKB4
+	9c6nX2pYuwUUqiFnJCmhQJrFwqcKJTLlkEIXU39SBQkRKAKds7pgMfM5m10bNTuhnSphtcRlNJX
+	kGyK4ZTsPgShXdyh5KpsbZAJThb84UPXnRUPgO/P94GG43iHI/UuV26Jpsf2wrJ7oCfmYn8ZgPg
+	Ds6/GchNQncjEugazSMcQsfqHKIMmTEAAyo/c0EgJjOoEecM8w7VCU6VgjzSB4bYbKjBwkYgis9
+	arkID7ED+Oz9xbI
+X-Received: by 2002:a05:620a:2988:b0:939:f49c:1b30 with SMTP id af79cd13be357-93ebd225501mr2597059885a.13.1791986977046;
+        Wed, 14 Oct 2026 07:09:37 -0700 (PDT)
+Received: from toxicpanda.com ([153.61.196.251])
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-93ef5090050sm498788685a.40.2026.10.14.07.09.36
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 14 Oct 2026 07:09:36 -0700 (PDT)
+From: Josef Bacik <josef@toxicpanda.com>
+To: netdev-bot+sinfo@kernel.org
+Cc: "David S. Miller" <davem@davemloft.net>,
+ Eric Dumazet <edumazet@kernel.org>,
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
+ Simon Horman <horms@kernel.org>, Andrew Lunn <andrew+netdev@lunn.ch>,
+ David Ahern <dsahern@kernel.org>, Ido Schimmel <idosch@nvidia.com>,
+ Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
+ Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>,
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+ Mina Almasry <almasrymina@google.com>, Kaiyuan Zhang <kaiyuanz@google.com>,
+ Willem de Bruijn <willemb@google.com>, netdev@vger.kernel.org,
+ linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+ stable@vger.kernel.org
+Subject: Re: [PATCH net v2] net: skbuff: make skb_copy_and_csum_bits() report
+ unreadable frags
+Date: Wed, 14 Oct 2026 14:04:45 +0000
+Message-ID: <179198668564045.2.8478350980557034137@toxicpanda.com>
+In-Reply-To: <179191473048.99822.411131589969126386@kernel.org>
+References: <20261013-b4-skb-segment-nosg-unreadable-v2-1-6c28d8ffa51e@toxicpanda.com>
+ <179191473048.99822.411131589969126386@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261014-fixconfigureasif-v1-1-0d2013f719e4@pengutronix.de>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMyw5AMBCF4VeRWWuidfcqYlE1ZSxKOohEvLti+
- SXn/BcwekKGJrrA40FMiwuQcQRm0m5EQUMwqEQVMpGZsHSaxVkad4+ayYoS87pMq9yqoYZwWz2
- GzZdsu9+89zOa7e3AfT+CnVaadAAAAA==
-X-Change-ID: 20261014-fixconfigureasif-7e597385f2d9
-To: linux-nfs@vger.kernel.org
-Cc: kernel@pengutronix.de, 
- =?utf-8?q?Sven_P=C3=BCschel?= <s.pueschel@pengutronix.de>
-X-Mailer: b4 0.15.2
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
 
-Use AS_IF when PKG_CHECK_MODULES is used to avoid it's required macros
-being expanded inside the test. Otherwise these required macros are not
-available to subsequent PKG_CHECK_MODULES invocations, if the first
-invocation is disabled, which therefore fails to find the package.
+On Tue, Oct 13, 2026 at 06:05:30PM +0000, netdev-bot+sinfo@kernel.org wrote:
+>  - Whether the issue was actually triggered, or is only theoretical
+>    (e.g. found by code inspection). If it was triggered please include
+>    the symptoms, like the stack trace or error messages.
 
-Without this running `./configure --disable-nfsrahead` fails:
+It was found by the Sashiko review of ab9414ed70bd and then triggered
+with a test module, not on devmem hardware.  The module builds a TCPv4
+GSO skb with 3000 bytes of payload in a page frag marked unreadable and
+calls skb_segment() on it with features == 0.  Without this patch that
+returns 3 segments whose payloads are all zeroes, each with a
+SKB_GSO_CB()->csum of 0, which is the correct checksum for zeroes.
+There's no stack trace or error, the data is just silently replaced.
+With this patch skb_segment() returns -EFAULT.
 
-   checking for libnl-3.0 >= 3.1... no
-   configure: error: in '[redacted]/nfs-utils':
-   configure: error: A pkg-config implementation could not be found or
-   is too old.  Make sure it is in your PATH or set the PKG_CONFIG
-   environment variable to the full path to pkg-config.
-
-Signed-off-by: Sven Püschel <s.pueschel@pengutronix.de>
----
-Noticed while updating the version in PTXDist, which disables most
-options in it's host package of nfs-utils.
----
- configure.ac | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/configure.ac b/configure.ac
-index 71ec1841..de6e63a4 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -242,10 +242,10 @@ AC_ARG_ENABLE(nfsrahead,
- 	enable_nfsrahead=$enableval,
- 	enable_nfsrahead="yes")
- 	AM_CONDITIONAL(CONFIG_NFSRAHEAD, [test "$enable_nfsrahead" = "yes" ])
--	if test "$enable_nfsrahead" = yes; then
-+	AS_IF([test "$enable_nfsrahead" = yes], [
- 		dnl Check for -lmount
- 		PKG_CHECK_MODULES([LIBMOUNT], [mount])
--	fi
-+	])
- 
- AC_ARG_ENABLE(nfsdcltrack,
- 	[AS_HELP_STRING([--enable-nfsdcltrack],[enable NFSv4 clientid tracking programs @<:@default=no@:>@])],
-@@ -276,11 +276,11 @@ AC_ARG_ENABLE(nfsdctl,
- 	enable_nfsdctl=$enableval,
- 	enable_nfsdctl="yes")
- 	AM_CONDITIONAL(CONFIG_NFSDCTL, [test "$enable_nfsdctl" = "yes" ])
--	if test "$enable_nfsdctl" = yes; then
-+	AS_IF([test "$enable_nfsdctl" = yes], [
- 		AC_DEFINE([HAVE_NFSD_NETLINK], 1,
- 	  		[Define to 1 if nfsd generic netlink support is available])
- 		PKG_CHECK_MODULES(LIBREADLINE, readline)
--	fi
-+	])
- 
- AC_ARG_ENABLE(nfsv4server,
- 	[AS_HELP_STRING([--enable-nfsv4server],[enable support for NFSv4 only server  @<:@default=no@:>@])],
-
----
-base-commit: 5090e0bb662c53b4552b28b121ac2c2c434adb2e
-change-id: 20261014-fixconfigureasif-7e597385f2d9
-
-Best regards,
---  
-Sven Püschel <s.pueschel@pengutronix.de>
-
+Thanks,
+Josef
