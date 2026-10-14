@@ -1,38 +1,37 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B5D933CF21E
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Oct 2026 04:10:26 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1EAA533B966;
+	Wed, 14 Oct 2026 04:32:13 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791951026; cv=none; b=IWoyL2IW+79t3iDQaz3SpS/pMG5by/4usp239VxDP7oohbLe6+IbU0rg6sIxe2ss1DYqaSrC1GeQNuP9/gBF/L2jJ5S/PpoZFLm4NwZib1cjxz6moAsSBGiivtp+J3cin9W8keU3QfHBY/B6OWrbcFOGXQghQcm99ytMI5mHDnQ=
+	t=1791952334; cv=none; b=QmCwsiGU0xukyJasMSEU1h8EshHRXwkBJmD5oQE7NVViQIXuqzM0LZMI2B9qcqVD4HhDi7J31l6k91ekcoDkQyEW2rk0omYdiXOg02kn6KyCROUx1+RzxVQdZvOgNQLIbKxhgKJPOp7QKcsHHOpYyPRMeo4uBn+sbYWahdTz7wM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791951026; c=relaxed/simple;
-	bh=hfOeuKg0mIg/DX7gf0/ycdJxrP+6Ax9Ni1D/fTDQmGM=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=HTd5KfgD6RXp8pcvzx6nK0b35KKQOTazNOrHK1xxbbBSMP20Tel/hcKqw+ung38d1cbeETyw6QdqlFczR8bDNQYj53+fYUFkBY/CzV+ro/axZf1SCaQ3MpQIernaqkgytvay1LWhbZb+ymHqqGsStosB5bPzZpiQ9eDgf++aR9Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=a3xVAYq+; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1791952334; c=relaxed/simple;
+	bh=ur7+FHtQRlJi/lD/zSd9JpoAMj+T59oSQksHdn4+HwY=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=g2bJ9vJC6fTHd/w9wJ8LPStWMyw7B43crOLpHlDw/nh/w6OI6ktbMQwvW1QACI/SI+J2lxI4GL1aY8VufCwowQD0fcYFzguXvFQOKvBg+44Dh+M5Ojjh6Uom/t5kMN8Minc8s6Vx+HswAW51czeRTrUavnzwfkaZC2nMkw0Q6/k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cLOFQvTX; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="a3xVAYq+"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 6A546C4AF09;
-	Wed, 14 Oct 2026 04:10:26 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cLOFQvTX"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 859B8C2BCC7;
+	Wed, 14 Oct 2026 04:32:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1791951026;
-	bh=hfOeuKg0mIg/DX7gf0/ycdJxrP+6Ax9Ni1D/fTDQmGM=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To:From;
-	b=a3xVAYq+kon66uFLse+1zXrJK8cGkDoDZPlMhSaoDEdKXNcluM/P1WiMBjVU6eLSE
-	 tr0Ps4/CP/h4VPWVcPwj7/0NGNtYc9JG92YaiikRrZ9HHGxO5IHBdOLUdvB0KVbPjo
-	 rIDPuUHfEv6QM0+Uk3ZXaBdrCZVjZyhOGdjKDtMMKt8rIPrKvVuBxJsH3xU2ayYTh+
-	 J/4yCiDio/cMdXm9vib9rvN/gCVtEGU7yyzY3QDZiFQ9LJRm66g3itH5eVzRSnxMee
-	 6zL8/8YXrrqMaY+m3CHd37SGf4URjFzOqjMJ3vkBatTWVos0q8GvJafxI+Z5nlWkPz
-	 NyqG1mFuFPojg==
+	s=k20201202; t=1791952333;
+	bh=ur7+FHtQRlJi/lD/zSd9JpoAMj+T59oSQksHdn4+HwY=;
+	h=From:Date:Subject:To:Cc:Reply-To:From;
+	b=cLOFQvTXHvf8J4WmVyb8wn9wuD7GrFtLZs+lXYdjIy7jgJ3I4bbHHabkb1nGXlQhT
+	 jfqQxCG4UNa+CUXW3Ybin4+R1oaBw/o3uHAhq2kJZf8bIqREXHgmgW73UpW9yOfgZ+
+	 2bcFa7LOM1JGGAbVNW5AbHkjqjF/yqkntiGEs7jsQhvVLJqMjk175Qc7+7Aa2OAi7w
+	 LUe9zbkak4hSIpGompMhQBxjHid8naJgNoKDaa+/Mz0ljC9SBZ8ghT8DfrB5chQICp
+	 FewY0zM0YSM3cTW+RSTAsCccl/X+n2dhcdik6IgUVaCw90Vbm8fk9FwKu4wcq9idmd
+	 EBrS2/qBSCALw==
 Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4E461CC6B20;
-	Wed, 14 Oct 2026 04:10:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A4B2CC6B19;
+	Wed, 14 Oct 2026 04:32:13 +0000 (UTC)
 From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
-Date: Wed, 14 Oct 2026 13:10:27 +0900
-Subject: [PATCH pynfs 2/3] Add tests for LAYOUTCOMMITs of ranges without
- blocks in a block layout
+Date: Wed, 14 Oct 2026 13:32:13 +0900
+Subject: [PATCH v2] xfs: mark the inode preallocated for pNFS write layouts
+ past EOF
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -41,19 +40,24 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261014-pynfs-block-commit-v1-2-1723979f495f@samsung.com>
-References: <20261014-pynfs-block-commit-v1-0-1723979f495f@samsung.com>
-In-Reply-To: <20261014-pynfs-block-commit-v1-0-1723979f495f@samsung.com>
-To: Calum Mackay <calum.mackay@oracle.com>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>, 
- Jeff Layton <jlayton@kernel.org>, Christoph Hellwig <hch@lst.de>, 
- Dai Ngo <dai.ngo@oracle.com>, Daejun Park <daejun7.park@samsung.com>
+Message-Id: <20261014-xfs-pnfs-eof-prealloc-v2-1-f303fd5e9dfb@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAMwFz2oC/3WNQQqDMBBFryKz7pRMEK1d9R7FRYijBjSRjBWL5
+ O5NpdtuBt7//DcHCEfHAvfigMibExd8Bn0pwI7GD4yuywxa6YqUanDvBRefD4cel8hmmoLFsua
+ GrCVdE0He5qJ3++l9tplHJ2uI7/PNRt/0ZyT9x7gREnJ5q8quodoo9RAzy8sPVxtmaFNKH0snH
+ QK8AAAA
+To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
+ Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, 
+ Jeff Layton <jlayton@kernel.org>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Sergey Bashirov <sergeybashirov@gmail.com>, linux-nfs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791951025; l=7745;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791952332; l=8033;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=WVFejkVr5yteMDS17OJC7agj1PodBWv4RBiX7EkvTYE=;
- b=U6s7Y89ANtEIKiJ8NEXgIXLCK+D1ntN8ZjwOI4fmGmJ7rh6Nc1UxWrhF4B44a0nfMfrwUElS3
- audiYQHs8/mDKAc7qXtLc1y9K7WvqdmkdiVHH74/WXMR3ALJnsmVjMT
+ bh=bEReiYttB04ZTw2Z9VcNZ7acbQRp6SzbI6ILhHZiYoQ=;
+ b=XOvAOBRrjjf0HyNi+fXmNnga99W+wZ7il+21cOBEHZbVHPzc4yBqkcgUPAgh8FX1alLXfaCjF
+ gn4WsV73lOJBJZnVfJ9Ev5VWxP5wUhHvFr2mFkm86bvmEY1J1hjics7
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
@@ -63,176 +67,189 @@ Reply-To: daejun7.park@samsung.com
 
 From: Daejun Park <daejun7.park@samsung.com>
 
-BLOCK6 gets an RW layout for the first 64 KiB of a 2 MiB file without
-blocks and commits that range. BLOCK7 to BLOCK10 commit ranges that no
-layout covered instead: a 64 KiB hole, the laid-out range together with
-that hole, a one-block hole, and an extent that starts at the second
-block and whose offset + length wraps around 2^64. Per RFC 5663
-section 2.3.2, a LAYOUTCOMMIT commits regions that a layout handed out
-as PNFS_BLOCK_INVALID_DATA, so the server must refuse those. After
-the refused LAYOUTCOMMIT, the tests also check that the server can
-still GETATTR the file and that its space used did not grow. The client
-writes nothing to the volume.
+xfs_fs_map_blocks() marks the inode XFS_DIFLAG_PREALLOC after it
+allocates blocks for a write layout, so that xfs_free_eofblocks() does
+not free blocks past EOF that a client may write to. But a write layout
+for a range past EOF where blocks are already allocated, such as the
+speculative preallocation of buffered writes, gets those blocks without
+an allocation, and the inode is not marked. blockgc, or the release of
+the file, then frees them without breaking the layout. The client still
+writes to them, and they may belong to another file by then.
 
-On Linux, nfsd does not check the committed extents against the layouts
-it handed out, and XFS converted whatever range it got. A 64 KiB hole
-shut XFS down, a one-block hole got NFS4_OK and a block of whatever the
-volume held mapped into the file, and the wrapping extent got
-NFS4ERR_IO with a "non-standard errno" warning from nfsd. "xfs: refuse
-a pNFS LAYOUTCOMMIT of a range without blocks" and "xfs: clamp a pNFS
-LAYOUTCOMMIT extent before computing its end" fix that.
+With pynfs as the client, a file grown to 1 MiB by two buffered writes
+on the server had 960 KiB preallocated past EOF, and an RW LAYOUTGET for
+that range got it as one INVALID_DATA extent, without the inode being
+marked. About 300 seconds later, with the default
+speculative_prealloc_lifetime, blockgc freed those blocks while the
+layout was still held. When the client then wrote through the layout and
+sent LAYOUTCOMMIT, xfs_fs_commit_blocks() found a hole where the
+unwritten extent had been, and xfs_iomap_write_unwritten() allocated for
+it with no blocks reserved:
 
+  XFS (nvme0n1): Corruption of in-memory data (0x8) detected at
+    xfs_trans_mod_sb+0x817/0x960 (fs/xfs/xfs_trans.c:351).
+    Shutting down filesystem.
+  ...
+   xfs_trans_mod_sb+0x817/0x960
+   xfs_alloc_vextent_finish+0x2e7/0x990
+   xfs_alloc_vextent_start_ag+0x25d/0x720
+   xfs_bmap_btalloc+0xdd2/0x1720
+   xfs_bmapi_allocate+0x197/0xf90
+   xfs_bmapi_write+0x4d0/0xb60
+   xfs_iomap_write_unwritten+0x307/0x7e0
+   xfs_fs_commit_blocks+0x1d9/0x630
+   nfsd4_block_proc_layoutcommit+0x5c2/0x7d0
+   nfsd4_layoutcommit+0x4b5/0xa20
+
+The client got NFS4ERR_IO, in six runs out of six. When small files were
+written on the server after blockgc, with a sync first so that the freed
+extents were no longer busy, they got those blocks, and the client's
+write through the layout replaced 978944 bytes of their data before the
+LAYOUTCOMMIT. A LAYOUTGET and LAYOUTCOMMIT 30 seconds apart, before
+blockgc runs, leave the client's data in place.
+
+Mark the inode also when a write mapping ends past EOF and nothing was
+allocated, the same way as for an allocation, before the blocks are
+handed out. With this, the same test keeps the blocks past blockgc, and
+the LAYOUTCOMMIT after 360 seconds succeeds with the data in place.
+
+To share the update with the allocation case, set a local update_inode
+flag in both cases, call xfs_fs_map_update_inode() in one place below
+them, and move the log force into xfs_fs_map_update_inode().
+
+Fixes: 527851124d10 ("xfs: implement pNFS export operations")
+Cc: stable@vger.kernel.org
+Reported-by: Chuck Lever <cel@kernel.org>
+Link: https://lore.kernel.org/r/4de5356f-bc4d-4f1a-9c81-fce09b1b46fd@slotpi15m67
 Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
- nfs4.1/server41tests/st_block.py | 136 +++++++++++++++++++++++++++++++++++++++
- 1 file changed, 136 insertions(+)
+Changes in v2:
+- Set a local update_inode flag in both cases and update the inode in
+  one place, and move xfs_log_force_inode() into
+  xfs_fs_map_update_inode(), as Christoph suggested:
+  https://lore.kernel.org/r/20261012124118.GB32488@lst.de
+- Link to v1: https://lore.kernel.org/r/20261012-xfs-pnfs-eof-prealloc-v1-1-e4864d917a00@samsung.com
 
-diff --git a/nfs4.1/server41tests/st_block.py b/nfs4.1/server41tests/st_block.py
-index 6c30585..36d7652 100644
---- a/nfs4.1/server41tests/st_block.py
-+++ b/nfs4.1/server41tests/st_block.py
-@@ -303,3 +303,139 @@ def testRWExtentsContiguous(t, env):
-        blocks[1][1] != blocks[0][1] + bs or blocks[2][1] != blocks[1][1] + bs:
-         t.pass_warn("The three blocks are not contiguous on the volume, "
-                     "so there were no extents to merge")
-+
-+def _commit_setup(t, env):
-+    """Make a 2 MiB file without blocks and get an RW layout for its
-+    first 64 KiB, which makes the server allocate those blocks.
-+
-+    Returns the session, the file handle, the layout stateid, the block
-+    size and the first extent of the layout.
-+    """
-+    sess = env.c1.new_pnfs_client_session(env.testname(t))
-+    bs = get_blocksize(sess, use_obj(env.opts.path))
-+    if 65536 % bs:
-+        t.fail_support("Block size %d does not divide 64 KiB" % bs)
-+    res = create_file(sess, env.testname(t), access=OPEN4_SHARE_ACCESS_BOTH)
-+    check(res)
-+    fh = res.resarray[-1].object
-+    open_stateid = res.resarray[-2].stateid
-+    res = sess.compound([op.putfh(fh),
-+                         op.setattr(open_stateid, {FATTR4_SIZE: 2 << 20})])
-+    check(res, msg="SETATTR of the size to 2 MiB")
-+    res = sess.compound([op.putfh(fh),
-+                         op.layoutget(False, LAYOUT4_BLOCK_VOLUME,
-+                                      LAYOUTIOMODE4_RW, 0, 65536, bs,
-+                                      open_stateid, 0xffff)])
-+    check(res, msg="RW LAYOUTGET of the first 64 KiB")
-+    layout_stateid = res.resarray[-1].logr_stateid
-+    extents = []
-+    for layout in res.resarray[-1].logr_layout:
-+        p = BlockUnpacker(layout.loc_body)
-+        extents += p.unpack_pnfs_block_layout4().blo_extents
-+        p.done()
-+    if not extents:
-+        fail("No extents in the layout")
-+    return sess, fh, layout_stateid, bs, extents[0]
-+
-+def _commit(sess, fh, layout_stateid, vol_id, extents):
-+    """LAYOUTCOMMIT the extents, a list of (file offset, length, volume
-+    offset), as written"""
-+    p = BlockPacker()
-+    p.pack_pnfs_block_layoutupdate4(pnfs_block_layoutupdate4(
-+        [pnfs_block_extent4(vol_id, foff, length, soff,
-+                            PNFS_BLOCK_READWRITE_DATA)
-+         for foff, length, soff in extents]))
-+    return sess.compound([op.putfh(fh),
-+                          op.layoutcommit(0, 2 << 20, False, layout_stateid,
-+                                          newoffset4(False),
-+                                          newtime4(True, get_nfstime()),
-+                                          layoutupdate4(LAYOUT4_BLOCK_VOLUME,
-+                                                        p.get_buffer()))])
-+
-+def _space_used(sess, fh):
-+    res = sess.compound([op.putfh(fh), op.getattr(1 << FATTR4_SPACE_USED)])
-+    check(res, msg="GETATTR after the LAYOUTCOMMIT")
-+    return res.resarray[-1].obj_attributes[FATTR4_SPACE_USED]
-+
-+def _commit_refused(sess, fh, lo_stateid, vol_id, extents, what):
-+    """The LAYOUTCOMMIT must fail, and the server must still be able to
-+    GETATTR the file and must not have allocated anything for it"""
-+    before = _space_used(sess, fh)
-+    res = _commit(sess, fh, lo_stateid, vol_id, extents)
-+    if res.status == NFS4_OK:
-+        fail("LAYOUTCOMMIT of %s succeeded" % what)
-+    after = _space_used(sess, fh)
-+    if after > before:
-+        fail("Space used grew from %d to %d after the refused LAYOUTCOMMIT "
-+             "of %s" % (before, after, what))
-+
-+def testCommitLaidOut(t, env):
-+    """LAYOUTCOMMIT of the range of an RW layout
-+
-+    FLAGS: block
-+    CODE: BLOCK6
-+    """
-+    sess, fh, lo_stateid, bs, e = _commit_setup(t, env)
-+    res = _commit(sess, fh, lo_stateid, e.bex_vol_id,
-+                  [(0, 65536, e.bex_storage_offset)])
-+    check(res, msg="LAYOUTCOMMIT of the range of the layout")
-+
-+def testCommitHole(t, env):
-+    """LAYOUTCOMMIT of a hole that no layout covered must fail
-+
-+    Per RFC 5663 section 2.3.2, a LAYOUTCOMMIT commits extents that a
-+    layout handed out as PNFS_BLOCK_INVALID_DATA, so there is nothing
-+    the client could have written to a hole that it never got a layout
-+    for. The client writes nothing to the volume here. After the
-+    LAYOUTCOMMIT fails, the server must still be able to GETATTR the
-+    file, and its space used must not have grown.
-+
-+    FLAGS: block
-+    CODE: BLOCK7
-+    DEPEND: BLOCK6
-+    """
-+    sess, fh, lo_stateid, bs, e = _commit_setup(t, env)
-+    _commit_refused(sess, fh, lo_stateid, e.bex_vol_id,
-+                    [(1 << 20, 65536, e.bex_storage_offset)],
-+                    "a 64 KiB hole that no layout covered")
-+
-+def testCommitLaidOutAndHole(t, env):
-+    """LAYOUTCOMMIT of the range of an RW layout and a hole must fail
-+
-+    FLAGS: block
-+    CODE: BLOCK8
-+    DEPEND: BLOCK6
-+    """
-+    sess, fh, lo_stateid, bs, e = _commit_setup(t, env)
-+    _commit_refused(sess, fh, lo_stateid, e.bex_vol_id,
-+                    [(0, 65536, e.bex_storage_offset),
-+                     (1 << 20, 65536, e.bex_storage_offset + 65536)],
-+                    "the laid out range and a hole that no layout covered")
-+
-+def testCommitBlockHole(t, env):
-+    """LAYOUTCOMMIT of a one-block hole that no layout covered must fail
-+
-+    FLAGS: block
-+    CODE: BLOCK9
-+    DEPEND: BLOCK6
-+    """
-+    sess, fh, lo_stateid, bs, e = _commit_setup(t, env)
-+    _commit_refused(sess, fh, lo_stateid, e.bex_vol_id,
-+                    [(1 << 20, bs, e.bex_storage_offset)],
-+                    "a one-block hole that no layout covered")
-+
-+def testCommitWrap(t, env):
-+    """LAYOUTCOMMIT of an extent whose offset + length wraps must fail
-+
-+    The extent starts at the second block of the layout and runs past
-+    2^64. The server must not treat the length as if it ended below the
-+    offset, and the extent covers the hole after the layout.
-+
-+    FLAGS: block
-+    CODE: BLOCK10
-+    DEPEND: BLOCK6
-+    """
-+    sess, fh, lo_stateid, bs, e = _commit_setup(t, env)
-+    _commit_refused(sess, fh, lo_stateid, e.bex_vol_id,
-+                    [(bs, 2**64 - bs, e.bex_storage_offset)],
-+                    "an extent that wraps around 2^64")
+Tested on nfsd-testing d918c664efd5 with the same change on top, all in
+QEMU guests with KASAN and lockdep, XFS on an NVMe/TCP namespace shared
+by the server and the client. In fs/xfs/xfs_pnfs.c, XFS for-next
+differs from that tree only by commit e3c682dd1130 ("xfs: map pNFS
+layouts to the end of the extent again"), which does not change the
+outcome of the new check.
 
+- the reproducer above (local pynfs tests, not posted), with the layout
+  held for 360 seconds, and with small files written on the server after
+  blockgc, with and without a sync first: with the patch the inode is
+  marked preallocated at LAYOUTGET, blockgc keeps the 960 KiB, and the
+  LAYOUTCOMMIT succeeds with the client's data in place and the small
+  files untouched. Without it, on the same base, both small-file
+  variants had blockgc free the blocks and the LAYOUTCOMMIT shut XFS
+  down;
+- pynfs block, with BLOCK5 from patch 1/3 of the pynfs series at
+  https://lore.kernel.org/r/20261014-pynfs-block-commit-v1-0-1723979f495f@samsung.com
+  (its BLOCK6 to BLOCK10 need the LAYOUTCOMMIT series below) and four
+  local layout extent tests, with and without XFS_DEBUG:
+  13 pass, BLOCK3 fails with NFS4ERR_BADXDR for its empty layoutupdate,
+  as without this patch;
+- fstests generic/075, 091 and 263 with the Linux client over the block
+  layout: only 075 fails, with an fsx size error, as without this patch,
+  and xfs_fs_commit_blocks() returned 0 for all 10324 LAYOUTCOMMITs;
+- W=1 builds of fs/xfs/xfs_pnfs.o on XFS for-next 0be6da616ab5 and on
+  nfsd-testing d918c664efd5: no warnings.
+
+This patch and v2 of "xfs: refuse pNFS LAYOUTCOMMITs of ranges without
+blocks" and of "xfs: make pNFS LAYOUTCOMMIT stable the way fdatasync
+does", sent earlier today, all change fs/xfs/xfs_pnfs.c. They apply to
+XFS for-next in any order, with the same result:
+https://lore.kernel.org/r/20261014-xfs-pnfs-commit-hole-v2-0-d3a02a79ab6c@samsung.com
+https://lore.kernel.org/r/20261014-xfs-pnfs-commit-datasync-v2-0-c11341a189b5@samsung.com
+
+Dave's "XFS: Atomic multi-extent operations via rolling transactions"
+V2 rewrites this code in 37/38: the inode update moves into the
+allocation transaction, and the path that allocates nothing returns
+early. A write mapping that ends past EOF without an allocation would
+still need the flag set there:
+https://lore.kernel.org/r/20260819001442.1451892-38-dgc@kernel.org
+
+Chuck pointed this out in the review of the ->map_blocks series, whose
+patch 7 will carry the same check for all mappings of a call:
+https://lore.kernel.org/r/4de5356f-bc4d-4f1a-9c81-fce09b1b46fd@slotpi15m67
+---
+ fs/xfs/xfs_pnfs.c | 34 +++++++++++++++++++++++++---------
+ 1 file changed, 25 insertions(+), 9 deletions(-)
+
+diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
+index ab38561700..a9f0b472f3 100644
+--- a/fs/xfs/xfs_pnfs.c
++++ b/fs/xfs/xfs_pnfs.c
+@@ -110,7 +110,15 @@ xfs_fs_map_update_inode(
+ 	ip->i_diflags |= XFS_DIFLAG_PREALLOC;
+ 
+ 	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
+-	return xfs_trans_commit(tp);
++	error = xfs_trans_commit(tp);
++	if (error)
++		return error;
++
++	/*
++	 * Force the log so that the blocks handed out to the client are
++	 * guaranteed to be present even after a server crash.
++	 */
++	return xfs_log_force_inode(ip);
+ }
+ 
+ /*
+@@ -134,6 +142,7 @@ xfs_fs_map_blocks(
+ 	uint			lock_flags;
+ 	int			error = 0;
+ 	u64			seq;
++	bool			update_inode = false;
+ 
+ 	if (xfs_is_shutdown(mp))
+ 		return -EIO;
+@@ -221,20 +230,27 @@ xfs_fs_map_blocks(
+ 				end_fsb - offset_fsb, 0, &imap, &seq);
+ 		if (error)
+ 			goto out_unlock;
++		update_inode = true;
++	} else {
++		xfs_iunlock(ip, lock_flags);
+ 
+ 		/*
+-		 * Ensure the next transaction is committed synchronously so
+-		 * that the blocks allocated and handed out to the client are
+-		 * guaranteed to be present even after a server crash.
++		 * Blocks past EOF that were allocated for buffered writes, such
++		 * as speculative preallocation, can be freed by
++		 * xfs_free_eofblocks() without breaking the layout unless the
++		 * inode is marked as preallocated. Mark it before handing them
++		 * out for writing, as for blocks allocated above.
+ 		 */
++		if (write && !(ip->i_diflags & XFS_DIFLAG_PREALLOC) &&
++		    imap.br_startoff + imap.br_blockcount >
++		    XFS_B_TO_FSB(mp, XFS_ISIZE(ip)))
++			update_inode = true;
++	}
++
++	if (update_inode) {
+ 		error = xfs_fs_map_update_inode(ip);
+-		if (!error)
+-			error = xfs_log_force_inode(ip);
+ 		if (error)
+ 			goto out_unlock;
+-
+-	} else {
+-		xfs_iunlock(ip, lock_flags);
+ 	}
+ 	xfs_iunlock(ip, XFS_IOLOCK_EXCL);
+ 
+
+---
+base-commit: 0be6da616ab5031ea6419dc4fe0bf0e378fb6757
+change-id: 20261009-xfs-pnfs-eof-prealloc-47e91cc12711
+
+Best regards,
 -- 
-2.43.0
+Daejun Park <daejun7.park@samsung.com>
 
 
