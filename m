@@ -1,97 +1,115 @@
-Received: from mail-ed1-f99.google.com (mail-ed1-f99.google.com [209.85.208.99])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mailout2.samsung.com (mailout2.samsung.com [203.254.224.25])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4454B5581F3
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2026 21:29:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.99
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C687421A453
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Oct 2026 01:40:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.254.224.25
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791926957; cv=none; b=uWMT//mKPF7ymR5af1PQ5pBEb9cfrr9w4zrtqWO2mlGrcf8bIxJdGqsQPF+oAm8+/HZ5Tfzf6Jcov1SZzOKaUXIkNMpHWGO6yJKlvA0hnHUiChGxfzt9l6ElWZ5q+/r0YX3iEpzg0/N3SlItfx/Q6bMHGHdhzrUJaxPkkR8iCM4=
+	t=1791942023; cv=none; b=VmTYMKtsHU0xmwPHBbeRuE/f4+cF9euI6C7pmP2jNlobM4ckFieVTrHEc3dg+y/YnkmwquTGXf9jPGHwtYTjrBY6WcmvhCpqfitUtYTXgHEZTHuIrnz6ogfAe5/I5FR6l2sp4zOS2DA5PUvrlTzrnjC/hTearhRg+H9nruYyASw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791926957; c=relaxed/simple;
-	bh=Ohf+Jpl/D7AXu0XpfGAbb99OwlB2fyEd5gSUwMdqWEo=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=Zj6kToNDnigROuR1W5zXdr+vN3DlRMjLQ/BvicaGHmSaRSUPBcs8qwh6xmgt4dqsoC2QtnLys65vUdFSIG6dCAltbicFLSLt2npwzspa0p1s5I8qi6cyosFyZVaz3CZjHyiEDsjm+4piBehQcyv/pPyzXiXrE4HkQMsLIV11Sug=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com; spf=pass smtp.mailfrom=everpuredata.com; dkim=pass (2048-bit key) header.d=everpuredata.com header.i=@everpuredata.com header.b=I+GOs7IZ; arc=none smtp.client-ip=209.85.208.99
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=everpuredata.com
+	s=arc-20240116; t=1791942023; c=relaxed/simple;
+	bh=YoN78TWBlmpx0A6DZIRcttrESlXSOSTvIOjKF9tTnoE=;
+	h=Mime-Version:Subject:From:To:CC:In-Reply-To:Message-ID:Date:
+	 Content-Type:References; b=hVBPFPbVhaecfD54W1JgXoV2FEt+1IYlVCL7SYFMIcyGzeMIJrGr9+n9+Ll2PljfvtOOSMDjM+lf3uA+cveIlXWRJnTqZwW+D8StDk+9if8yrJ/PduEaX2J6tCtDzi91KtUC/ONtIYCJgkYLIpvphXeIRAyU7tU4dcf3lEBDbKA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=iBiXfFju; arc=none smtp.client-ip=203.254.224.25
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=everpuredata.com header.i=@everpuredata.com header.b="I+GOs7IZ"
-Received: by mail-ed1-f99.google.com with SMTP id 4fb4d7f45d1cf-6afa651700eso5020936a12.2
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2026 14:29:15 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=everpuredata.com; s=google; t=1791926953; x=1792531753; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=Ohf+Jpl/D7AXu0XpfGAbb99OwlB2fyEd5gSUwMdqWEo=;
-        b=I+GOs7IZ+Ob+n5R8RNTLBF9Bco001h25+huRSPjtcbnOZzyE7cm6UjfdWe3rfGlOdG
-         ghlkGkqhQdOHyrTgtMfHkkRdkxo/v3rheKyc8QozBZ0Lb0Jznyo6ZXN3uPXnUM0+qC/X
-         fMHjbllCSAaCnAj7NKMTClkfVGC82iSz0LNwFOXPArPXWcYvwRM0jmNXJPTmfGagp9tn
-         PoNCBfEQ5SQkXeB0qv6z7y9aqhr+tnzBvebwLbhQ411xiCOgj1x9j9QCU4MhtAXFIAW5
-         n5Y7wwKyf87P+EFPeJI5djtU5Mc6SMhCXRTCjFhabkTfqJFKvVQYZdanpWT5OPO00Vl8
-         aQUA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791926953; x=1792531753;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=Ohf+Jpl/D7AXu0XpfGAbb99OwlB2fyEd5gSUwMdqWEo=;
-        b=Nxe1BRYvDoMdwqUor9HW/vGmrTPnR2S/tzA4F6w/uWCGGEb7FI4y7E6ibO3RGBgI9b
-         3PnJ1REC2Ted96+6tCd3PYRMSwPpUeWCOvUyb4/rJh8tAUCh/aGjJAEav4XZG9+8Cm7B
-         aaRuBY+h5UXH54UFQ/nKtwqTZvz2oEW85b3MMfbrId2mmzCoK+vQgtDkQGkphmZAm57Y
-         baOGebk0VshfkjDqgnK43tPCKDTxYH+UfqnP5j3rBp/EI2WGGAFMFmXTwlVsWzQPLpB2
-         xOxYW2fbh/Bt+r16SEFysU66TvjPl0EQurmOdFY7EoOLmyvjhLgtVQET4GKbaANUCpCv
-         N2pQ==
-X-Forwarded-Encrypted: i=1; AKwUvBzNS1PLEkT9n8U0G6aUy60PEuapFID+xhpcF5vLqlc1rcibqYZJEiZ8eecn3THrpPHjAh9Nm2W7R/I=@vger.kernel.org
-X-Gm-Message-State: AFq9FYLDfYjzQV2POMmmxB7NrsqoPIv1BWH+LmA9oiYj3bSRfq6Fv5pS
-	wjjNShvRrR4L+Sce/LDDTCHQBar3YWm4EelYFygXOpBNL+xRtyqR1uR/RFrIS64efOgkDgHdGMH
-	qE/mXnItl1W64mNCExvLRAaxrpKeA4dn1IGNI
-X-Gm-Gg: AYBFou0G+nlxqAf6lcQ5xyxK57UdeFy9KCssFjoUbjMZ+cssbWwk/eAkn2ST1TBbTx8
-	ExtWpNfhA9FozCVP3hNGAIrkpmMQNRYxcFimruXIEyCibuBM2ZaGGIuXbKXCls3d4AubMtQmpqQ
-	HmODRM0LcO6+5eCYy5XCmfp0bt6O5Jnix13/PnX5sDVShQyfPFHGNNYoyvqSYl2SsVtZEkxZVhf
-	cTZFXTaqETvh07AWu9BBk3Wey7g9LyHz1KLX+EDkEa3+3hR5BAj7TP67vi/DFiFqRiKtC7kevY2
-	iDsEe8m8CtCtzHQVzuU1onfLuy8ixwQVRCH7w4nskjd20ANARINGF7+Wy10dsoRu+mkYjuC/qXQ
-	R/YBwf0CX/O/tE5J1ZvzvbApmjVQfNZc/vUOSmlo=
-X-Received: by 2002:a05:6402:44d1:b0:6b1:c6fa:c461 with SMTP id 4fb4d7f45d1cf-6b1c6fac66fmr4159999a12.9.1791926953336;
-        Tue, 13 Oct 2026 14:29:13 -0700 (PDT)
-Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.128])
-        by smtp-relay.gmail.com with ESMTPS id 4fb4d7f45d1cf-6b203832dfbsm329944a12.6.2026.10.13.14.29.13
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 13 Oct 2026 14:29:13 -0700 (PDT)
-X-Relaying-Domain: everpuredata.com
-Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
-	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id B9F90341570;
-	Tue, 13 Oct 2026 14:29:11 -0700 (PDT)
-From: Tim Menninger <tmenninger@everpuredata.com>
-To: broonie@kernel.org
-Cc: anna@kernel.org,
-	trondmy@gmail.com,
-	linux-nfs@vger.kernel.org,
-	anna.schumaker@hammerspace.com,
-	cel@kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-next@vger.kernel.org,
-	trond.myklebust@hammerspace.com,
-	ymu@everpuredata.com
-Subject: Re: linux-next: manual merge of the nfs-anna tree with the nfs tree
-Date: Tue, 13 Oct 2026 21:29:11 +0000
-Message-Id: <20261013212911.2212308-1-tmenninger@everpuredata.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <as4aacUf2Q78FMvY@sirena.org.uk>
-References: <as4aacUf2Q78FMvY@sirena.org.uk>
+	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="iBiXfFju"
+Received: from epcas2p1.samsung.com (unknown [182.195.41.53])
+	by mailout2.samsung.com (KnoxPortal) with ESMTP id 20261014014018epoutp024f95c3c6836ede17a6deafe0f306e35e~eQcWaT6g91346613466epoutp020
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Oct 2026 01:40:18 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout2.samsung.com 20261014014018epoutp024f95c3c6836ede17a6deafe0f306e35e~eQcWaT6g91346613466epoutp020
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
+	s=mail20170921; t=1791942018;
+	bh=1d+d0jVHgB0EadQMkTGvrSCW+JV5YjB/dJMefH+YkxU=;
+	h=Subject:Reply-To:From:To:CC:In-Reply-To:Date:References:From;
+	b=iBiXfFjuvp/91UceZp/C0Ow1sIBAEGzLqydF9emm/GvnYF2JeNMEywCjIomPbgqE8
+	 kc3gZ8THLPH17D/01CW1kccTR5PFyF7pGBWSTdk88Uy8DzpxAyrGw7ncCXySaFKLK8
+	 BCKlUdb4DUSqhknqrg5/2+GQ2hLKmHwA8AmiMIGQ=
+Received: from epsnrtp03.localdomain (unknown [182.195.42.155]) by
+	epcas2p2.samsung.com (KnoxPortal) with ESMTPS id
+	20261014014017epcas2p24aaeaae47c415e988a530ec528956580~eQcVs79Zi3261832618epcas2p2D;
+	Wed, 14 Oct 2026 01:40:17 +0000 (GMT)
+Received: from epcas2p4.samsung.com (unknown [182.195.38.211]) by
+	epsnrtp03.localdomain (Postfix) with ESMTP id 4j4DRP4mnxz3hhT4; Wed, 14 Oct
+	2026 01:40:17 +0000 (GMT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Mime-Version: 1.0
+Subject: RE:(2) [PATCH] xfs: refuse a pNFS LAYOUTCOMMIT of a range without
+ blocks
+Reply-To: daejun7.park@samsung.com
+Sender: Daejun Park <daejun7.park@samsung.com>
+From: Daejun Park <daejun7.park@samsung.com>
+To: Christoph Hellwig <hch@lst.de>
+CC: Carlos Maiolino <cem@kernel.org>, "linux-xfs@vger.kernel.org"
+	<linux-xfs@vger.kernel.org>, "Darrick J. Wong" <djwong@kernel.org>, Dave
+	Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, Jeff Layton
+	<jlayton@kernel.org>, Dai Ngo <Dai.Ngo@oracle.com>, Sergey Bashirov
+	<sergeybashirov@gmail.com>, "linux-nfs@vger.kernel.org"
+	<linux-nfs@vger.kernel.org>, "linux-kernel@vger.kernel.org"
+	<linux-kernel@vger.kernel.org>, "stable@vger.kernel.org"
+	<stable@vger.kernel.org>, Daejun Park <daejun7.park@samsung.com>
+X-Priority: 3
+X-Content-Kind-Code: NORMAL
+In-Reply-To: <20261013120359.GB2944@lst.de>
+X-CPGS-Detection: blocking_info_exchange
+X-Drm-Type: N,general
+X-Msg-Generator: Mail
+X-Msg-Type: PERSONAL
+X-Reply-Demand: N
+Message-ID: <20261014014017epcms2p7ab0ff4f1356d695c55514bd7ccaebadf@epcms2p7>
+Date: Wed, 14 Oct 2026 10:40:17 +0900
+X-CMS-MailID: 20261014014017epcms2p7ab0ff4f1356d695c55514bd7ccaebadf
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+X-Sendblock-Type: AUTO_CONFIDENTIAL
+CMS-TYPE: 102P
+X-CPGSPASS: Y
+X-CPGSPASS: Y
+cpgsPolicy: CPGSC10-223,Y
+X-CFilter-Loop: Reflected
+X-CMS-RootMailID: 20261013120408epcas2p19974f8ffd4afa0b0cc5a4f19e9218004
+References: <20261013120359.GB2944@lst.de>
+	<20261013-xfs-pnfs-commit-hole-v1-1-740912db9102@samsung.com>
+	<CGME20261013120408epcas2p19974f8ffd4afa0b0cc5a4f19e9218004@epcms2p7>
 
-I tested the original reproducer on v7.3-rc4 and confirmed the issue was
-present. I then applied the combined patch from Mark's merge resolution,
-and the reproducer passed.
+On Tue, Oct 13, 2026 at 02:03:59PM +0200, Christoph Hellwig wrote:
+> blockgc really should not free them due to the prealloc inode flag.
+> Do you still see that with your prefix flag setting fix?  If so we
+> have a deeper problem.
 
-So at least for the issue I originally reported, the merge resolution
-appears correct.
+I don't see it with "xfs: mark the inode preallocated for pNFS write
+layouts past EOF" applied: in the same test, blockgc keeps the blocks
+and the LAYOUTCOMMIT succeeds with the client's data in place. The
+sentence was about trees without that patch, so I'll drop it in v2 and
+keep the reclaim case and the range that was never laid out.
 
-Thanks, Tim
+> It would be great to get these included in pynfs.
+>
+> Also a little doc on your setup to run pynfs in client mode against
+> nfsd with block/scsilayout would probably useful.
+
+Sure, I'll send them to pynfs with a short README section on the setup,
+on top of the block layout test I posted earlier:
+https://lore.kernel.org/r/20261006002622epcms2p38e492aef17fdf79e48b05c9aada2918d@epcms2p3
+
+> As soon as we drop the lock, the result might be stale.  So I suspect
+> we want a CONVERT_ONLY flag to xfs_bmapi_write that makes it refuse
+> to allocate blocks instead in one atomic operation.
+
+The IOLOCK held across both keeps truncate, fallocate and blockgc out
+today, but the flag doesn't depend on that, so v2 does it that way:
+xfs_bmapi_write() takes a new XFS_BMAPI_CONVERT_ONLY flag that fails for
+a hole or a delalloc extent instead of allocating, and
+xfs_fs_commit_blocks() passes it through xfs_iomap_write_unwritten().
+
+One difference from v1: a LAYOUTCOMMIT with a laid-out range followed by
+a hole now converts the laid-out range before it fails.
+xfs_fs_commit_blocks() already left earlier extents converted when a
+later one failed, and the Linux client resends all of its extents after
+a failed LAYOUTCOMMIT, so I don't think that matters.
