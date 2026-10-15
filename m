@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B68944A441F
-	for <linux-nfs@vger.kernel.org>; Thu, 15 Oct 2026 23:33:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D51DC3EA947
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Oct 2026 23:33:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792107199; cv=none; b=NYLSpSizxvtcOmjhJLck7Ig5oN7He4YkL9bWpgRKG2YikBG98r02F8zfedLy7oLNycMe4zJCPq3MiXLTb2p2sB21LFN69mEos213Xpm04TUXZLDDDGkLD6Ct3VHKNz8zGm63wLkTYebktAFwxJZoTHfTiN98gsYJQbgKsv2oZTo=
+	t=1792107201; cv=none; b=ZIkUSiMqwDrSMyM2gA1St4BEJwZOfPH3nla02v+2udxpAbNsRsHavSqOjY9DXiwW32NKusDzfxb9a6gk+BuGwHaoc5M2PBEz6po4BcpPp6G2UJOEfKJhPx+3M+ffONWtM6l8RAFxG09hl2uS5GiXpv7wG3DCfJbfTaLjd30SzHk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792107199; c=relaxed/simple;
-	bh=QqBUav8oXeue5ROG8hZcMqVSL4lem2lZepOpScjxtOo=;
+	s=arc-20240116; t=1792107201; c=relaxed/simple;
+	bh=NDnAnxixoLimel2FFb9zEOOh1HsN7SG32BjklyIkF9w=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=AeNd0tPq0vastx4w3kxxfKrCdUAjyxJgbF4KvVsCoEQW1ZA9SY8Bf50ld9GC2cKn00Y/OGpUP0Jg1gpP+Qpn69PEPQPAsqJhTJbYDOMcsZ0k9+jwyW2NupWrWgZwlYuiJu1rtnq1qs/VWaZ02U+jQAo7FRnc4zdb/pTWINfGRXg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mfPATXj0; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=pzAURjiTvzKt7VEK71xMj+ykjBUD0ZmQi+xq2w/gzbcJlCKAOEarvnvjRyG0yg707fNZ1obFLX1r86EQ0N7XGrW1b3tJgdEgVM4p+xT2FdWfYuYGycjY/2jYoE0FNH2eQxyS8eBsPRrVSXSxGTXu8cKkcGNSh9JQivIOW/4SeLA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nzbWYI9v; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mfPATXj0"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2DD9B1F000C4;
-	Thu, 15 Oct 2026 23:33:18 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nzbWYI9v"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5DAAE1F000C5;
+	Thu, 15 Oct 2026 23:33:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792107198;
-	bh=GBemQGCyU69s/WwVOcpeFu3LvfmHsaYEii5qBAWj8sU=;
+	s=k20260515; t=1792107199;
+	bh=S7mWB/HkMvRX+27OJfDRqz0u/1c8hcSR7gHODYE36DU=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=mfPATXj0eeL7I/tBnomc8jXLBJvcptUsUIIYEFBrrlRLnm4cvc3GaA2dbhlVLw3qL
-	 dEijXgXG8BD4+HA8/PAMwN4hhY7gzJQDkiTqay9tCJV6MWYSn4V0f2LdHrZj4CzHZc
-	 f3F6cmfNIPgyVlqoMeUk77YI/V+xuyrbdteztkeKJ2pU1cJ0xoXYTRzyx6MCLb/4lS
-	 HQ9eiMzmnITZlfJOLi9FrFQRV8mut60fZzLLONV8Gcel2gBPYG7GMiPchDk30Zjw1u
-	 OxZBpnYqSmEhuSydt+VBWsTQcVJUCydlaBbeQnnax0DzOsHxjMK+u7IKCOZfHkCtRi
-	 CeiNr35uGOLgQ==
+	b=nzbWYI9vKI/tTDUA+H9ofYVeqMcDs9WFXnQxapTZvclGE1hgFml0C4R4jzSpqtKJr
+	 4MdQr23HDPHbhPWfOHlpbdkMSfvFW7U7dp2+f+CTrwfw+d+oDEwbQizRruYkFAAI9N
+	 L++c8R1O3e4tn4B4d3jkdkEIaq9SlIY9iWicWz52cw1yOyoCe0rzoOifjvAs9tqDLg
+	 i7+DCKlkiAafmVZ6c5zcMCHLYwdyxgovbSaDz1YshG92cMXd42jSmBeqSqNpd+WYWV
+	 H6h3HVHc637r1NlyaS3HfK5DcRfID+ZcMUio7YjcEJ3XvpvyVzb1GdLt45UNs15Gum
+	 7NUjIRr94h+lg==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Chuck Lever <cel@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>
@@ -38,9 +38,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Jens Axboe <axboe@kernel.dk>,
 	Matthew Wilcox <willy@infradead.org>,
 	linux-mm@kvack.org
-Subject: [PATCH v4 06/10] NFSD: persist a synchronous direct-mode WRITE once, after all of its segments
-Date: Thu, 15 Oct 2026 19:33:05 -0400
-Message-ID: <20261015233309.42999-7-snitzer@kernel.org>
+Subject: [PATCH v4 07/10] mm: add folio_mark_dropbehind() to mark a folio dropbehind and account it
+Date: Thu, 15 Oct 2026 19:33:06 -0400
+Message-ID: <20261015233309.42999-8-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20261015233309.42999-1-snitzer@kernel.org>
 References: <20261015233309.42999-1-snitzer@kernel.org>
@@ -52,98 +52,96 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-nfsd_direct_write() may issue a WRITE as up to three segments: a
-buffered prefix, a direct middle and a buffered suffix.  For a
-FILE_SYNC or DATA_SYNC WRITE the kiocb carries IOCB_DSYNC and every
-segment inherits it, so generic_write_sync() runs a range fsync after
-each segment: up to three cache flushes and log forces per WRITE.
+A folio allocated by an RWF_DONTCACHE write is marked dropbehind before
+it is dirtied, so folio_account_dirtied() adds it to WB_DONTCACHE_DIRTY
+and folio_clear_dirty_for_io() or folio_account_cleaned() subtracts it
+when it is cleaned.  Nothing marks a folio that already exists.  A
+caller that sets PG_dropbehind on a folio that is already dirty
+unbalances the counter: the clean subtracts what was never added, and
+once the counter goes negative, wb_stat_sum() reads it as zero and the
+DONTCACHE writeback kick stops writing anything back for every writer
+on that bdi_writeback.
 
-Strip IOCB_DSYNC and IOCB_SYNC from the per-segment flags of a split
-WRITE, and of an unsplit buffered WRITE, and persist the WRITE once with
-vfs_fsync_range() over the bytes actually written, after the last
-segment.  Durability is unchanged: the reply is not sent until the
-fsync completes, and datasync mirrors the previous per-segment choice
-(IOCB_SYNC present means metadata too).  An fsync failure is returned
-like a write failure.
+Add folio_mark_dropbehind(), the inverse of the clear in
+__filemap_get_folio_mpol(): with the folio locked, mark it and, if it is
+dirty, add it to WB_DONTCACHE_DIRTY.  The folio lock orders this
+against dirtying and against folio_clear_dirty_for_io().  A concurrent
+lookup without FGP_DONTCACHE that clears the flag again subtracts what
+this added.
 
-A WRITE issued whole as direct I/O keeps its flags: iomap already
-completes it in one step, and can complete a DATA_SYNC overwrite of
-allocated blocks with FUA writes and no cache flush.
+The name follows folio_set_dirty() and folio_mark_dirty(): the first
+only sets PG_dirty, the second also accounts the dirty folio.
+folio_set_dropbehind() likewise only sets PG_dropbehind, and
+folio_mark_dropbehind() also accounts it in WB_DONTCACHE_DIRTY.
 
-Besides the fewer flushes, the sync now runs after the last segment is
-written.  A later commit relies on that order: it marks the page shared
-with a neighbouring WRITE for dropping only after writing it, and the
-WRITE's own fsync is then the writeback that drops the page.
+A later commit uses it in NFSD to drop a page shared by two misaligned
+WRITEs once both have written it.
 
+Cc: Jeff Layton <jlayton@kernel.org>
+Cc: Jens Axboe <axboe@kernel.dk>
+Cc: Matthew Wilcox (Oracle) <willy@infradead.org>
+Cc: linux-mm@kvack.org
 Assisted-by: LLM
 Signed-off-by: Mike Snitzer <snitzer@kernel.org>
 ---
- .../filesystems/nfs/nfsd-io-modes.rst         |  4 +++-
- fs/nfsd/vfs.c                                 | 20 ++++++++++++++++++-
- 2 files changed, 22 insertions(+), 2 deletions(-)
+ include/linux/pagemap.h |  1 +
+ mm/filemap.c            | 31 +++++++++++++++++++++++++++++++
+ 2 files changed, 32 insertions(+)
 
-diff --git a/Documentation/filesystems/nfs/nfsd-io-modes.rst b/Documentation/filesystems/nfs/nfsd-io-modes.rst
-index 90bf1038453cc..c1cc974640cfe 100644
---- a/Documentation/filesystems/nfs/nfsd-io-modes.rst
-+++ b/Documentation/filesystems/nfs/nfsd-io-modes.rst
-@@ -141,7 +141,9 @@ Misaligned WRITE:
-     has no effect on the O_DIRECT segment unless the filesystem services
-     it with buffered IO instead, as XFS does when it cannot invalidate
-     page cache that overlaps the segment. The iomap_dio_invalidate_fail
--    trace event reports such a fallback.
-+    trace event reports such a fallback. A split FILE_SYNC or DATA_SYNC
-+    WRITE is persisted once, after all of its segments are written, not
-+    once per segment.
- 
-     If NFSD does not split a misaligned WRITE, it issues the whole WRITE
-     as a single DONTCACHE buffered IO (normal buffered IO if the
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 7e65328de7c86..249358256d2f5 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1426,16 +1426,27 @@ nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- {
- 	struct nfsd_write_dio_seg segments[3];
- 	struct file *file = nf->nf_file;
-+	loff_t start = kiocb->ki_pos;
- 	unsigned int nsegs, i;
-+	int sync_flags;
- 	ssize_t host_err;
- 	size_t expected;
- 
- 	nsegs = nfsd_write_dio_iters_init(nf, rqstp->rq_bvec, nvecs,
- 					  kiocb, *cnt, segments);
- 
-+	/*
-+	 * Persist a synchronous WRITE once, after all of its segments.  A
-+	 * WRITE issued whole as direct I/O keeps IOCB_DSYNC, so iomap can
-+	 * still complete a DATA_SYNC overwrite with FUA writes.
-+	 */
-+	sync_flags = kiocb->ki_flags & (IOCB_DSYNC | IOCB_SYNC);
-+	if (nsegs == 1 && (segments[0].flags & IOCB_DIRECT))
-+		sync_flags = 0;
-+
- 	*cnt = 0;
- 	for (i = 0; i < nsegs; i++) {
--		kiocb->ki_flags = segments[i].flags;
-+		kiocb->ki_flags = segments[i].flags & ~sync_flags;
- 		if (kiocb->ki_flags & IOCB_DIRECT)
- 			trace_nfsd_write_direct(rqstp, fhp, kiocb->ki_pos,
- 						segments[i].iter.count);
-@@ -1453,6 +1464,13 @@ nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 			break;	/* partial write */
- 	}
- 
-+	if (sync_flags && *cnt) {
-+		host_err = vfs_fsync_range(file, start, start + *cnt - 1,
-+					   !(sync_flags & IOCB_SYNC));
-+		if (host_err < 0)
-+			return host_err;
-+	}
-+
- 	return 0;
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 0adfa6605653d..3012bd95812a1 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -1310,6 +1310,7 @@ void end_page_writeback(struct page *page);
+ void folio_end_writeback(struct folio *folio);
+ void folio_end_writeback_no_dropbehind(struct folio *folio);
+ void folio_end_dropbehind(struct folio *folio);
++void folio_mark_dropbehind(struct folio *folio);
+ void folio_wait_stable(struct folio *folio);
+ void __folio_mark_dirty(struct folio *folio, struct address_space *, int warn);
+ void folio_account_cleaned(struct folio *folio, struct bdi_writeback *wb);
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 00fd89cf6f550..ed7e4dbea653f 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1644,6 +1644,37 @@ void folio_end_dropbehind(struct folio *folio)
  }
+ EXPORT_SYMBOL_GPL(folio_end_dropbehind);
  
++/**
++ * folio_mark_dropbehind - mark an existing folio dropbehind
++ * @folio: the folio, locked by the caller
++ *
++ * Mark @folio so that the writeback that cleans it drops it.  A folio that
++ * is already dirty is added to WB_DONTCACHE_DIRTY, as folio_account_dirtied()
++ * would have added it had it been marked when dirtied, so that the clean
++ * that subtracts it leaves the counter balanced.
++ */
++void folio_mark_dropbehind(struct folio *folio)
++{
++	struct address_space *mapping = folio->mapping;
++
++	VM_WARN_ON_ONCE_FOLIO(!folio_test_locked(folio), folio);
++
++	if (folio_test_dropbehind(folio))
++		return;
++	folio_set_dropbehind(folio);
++	if (mapping && folio_test_dirty(folio) &&
++	    mapping_can_writeback(mapping)) {
++		struct inode *inode = mapping->host;
++		struct bdi_writeback *wb;
++		struct wb_lock_cookie cookie = {};
++
++		wb = unlocked_inode_to_wb_begin(inode, &cookie);
++		wb_stat_mod(wb, WB_DONTCACHE_DIRTY, folio_nr_pages(folio));
++		unlocked_inode_to_wb_end(inode, &cookie);
++	}
++}
++EXPORT_SYMBOL_GPL(folio_mark_dropbehind);
++
+ /**
+  * folio_end_writeback_no_dropbehind - End writeback against a folio.
+  * @folio: The folio.
 -- 
 2.52.0
 
