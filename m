@@ -1,121 +1,75 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wr1-f41.google.com (mail-wr1-f41.google.com [209.85.221.41])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F72A3E8C65;
-	Thu, 15 Oct 2026 17:15:10 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B258053C3C9
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Oct 2026 17:28:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.41
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792084521; cv=none; b=fTZveS5EoPHaU6zznlsIHwAmdaw0km/aGMTXOPkgLRVYXQh0CRrbX888eE9+QTpPFr7PraSE1vob890tpFCaLsqvMeK5CZsAxlk+6goQ4D+tmJ/m9QOiVsju0xF7nxgdBF5dY47rSQ4RSueUpbUkKa91mPHsQ2qoMyssQIZd4Uc=
+	t=1792085342; cv=none; b=Sm4Ygb82q5Qbg56iBOS6Bf90ipCrIDMG3anLArBVeot7lUJFoqwwnukP+TyodMkZu7kC0YoLntiaIPaIPntIL7e40jWEgtel8d59oXeqSF4jUSH+C5jejwk0tIr0Vpl6oebUrhHVj6BWNkdYK28EWIC9ASDVJ9jALaQrIY5+GQA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792084521; c=relaxed/simple;
-	bh=FKi2GRw0/DfB2JTqzz/P6bqM5og0fc1AosC0jadjyYM=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=PzzL34D3GkjdzdUrxjG+xGOpkTvUFpfV5l5RQI3Kgqb3PQNI5tARkxH+NY61o/6SXAcmcwxIDKR4/SeBX5umeMYSZEdd6biKjiqZdeUgt/0cCKuH+FmRvJmLvo1AG7mBKK0Ugm4N+m+HgCQDMEBbnHRIazBuKzAw+WoZVhqqgVw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=KqG/5rh3; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1792085342; c=relaxed/simple;
+	bh=gSNO9YK5nfjHkWHYjlyrDKyJyoyba2/FQKYBvshQ5Lg=;
+	h=Message-ID:Date:From:To:Subject:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=ZCMtCog4sFEOoFTHSiVGRd5NqD+QjWEjRzM2Y0UAHgzblZAhc2jWkn2eDeaGt6BU6X4HVtFJmmLf8pkSj4Bf7RzGku0j7N2aERnixu0WMbsDoR6yiWDFRo97fIN62xPUVDdTFSFODrIRBN8pZ+IljqJBvHByvd3fLS2+4qhOu64=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Q664c+w1; arc=none smtp.client-ip=209.85.221.41
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="KqG/5rh3"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 031021F000C5;
-	Thu, 15 Oct 2026 17:15:09 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792084510;
-	bh=EK8XBl26tKatGMspH1QCKi7VVl9wawFfJPm0jQOPQAY=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=KqG/5rh3i7vA4DLv0FzWp6LnQgFHdQlqhdavKKGIP/KJhYHZmIw5QPB5lV5d9grEx
-	 mQwKIE6OkpTC74XXQ4ZnG3yKjbXYvyrGGwNMIq3V0FhabutQfpucFA08I5iCTMnz5q
-	 ukJIxQZAy1hfaIdbS0NzEewoob50MmhMjaNZh3EvvxlhlhJCjaWqOVIus7Aa7Vi+eV
-	 jpQLa5j05qdUq8gSN1jnVeN1/GS+T+1UqTRDwoW2GQfKkR2L80O1ZnCXGcqpbAynRr
-	 MVTsOOXjlG3S88jK3+H+to6GJKRS1NN02VrB73NhRgg347pCjnuIbWfa38Jm3D2+/Z
-	 spkgbOCWCo9hQ==
-Message-ID: <b0e11c64a2cacb1582e44020de115895fcc6ed0e.camel@kernel.org>
-Subject: Re: [PATCH 6.18.y] nfsd: fix all-zero stateid in CB_OFFLOAD for
- async COPY
-From: Jeff Layton <jlayton@kernel.org>
-To: Lubos Rendek <l.rendek@proxmox.com>, stable@vger.kernel.org
-Cc: Sasha Levin <sashal@kernel.org>, Chuck Lever <cel@kernel.org>, 
-	linux-nfs@vger.kernel.org, regressions@lists.linux.dev, 
-	linux-kernel@vger.kernel.org, Fabian =?ISO-8859-1?Q?Gr=FCnbichler?=
-	 <f.gruenbichler@proxmox.com>
-Date: Thu, 15 Oct 2026 13:15:07 -0400
-In-Reply-To: <20261015005725.550511-1-l.rendek@proxmox.com>
-References: <bb39cba3-c4a3-4fc4-b078-c92752cf483a@proxmox.com>
-	 <20261015005725.550511-1-l.rendek@proxmox.com>
-Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
- keydata=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
- QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-2.fc44) 
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Q664c+w1"
+Received: by mail-wr1-f41.google.com with SMTP id ffacd0b85a97d-48441a2ba1bso1135712f8f.1
+        for <linux-nfs@vger.kernel.org>; Thu, 15 Oct 2026 10:28:49 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1792085328; x=1792690128; darn=vger.kernel.org;
+        h=mime-version:content-transfer-encoding:content-type:references
+         :in-reply-to:subject:to:from:date:message-id:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=gSNO9YK5nfjHkWHYjlyrDKyJyoyba2/FQKYBvshQ5Lg=;
+        b=Q664c+w1snR8189IOMGs9JglgkMEtlkdv8yyCqJWKrEGDIoj1FnETrI1vR58xO0gXT
+         KrG6js8t2Xw21R/5pgmZLAm5LYgUMkR4dmUtG8YhPR+rjRcc5cBv+CeFp+yjBlwica4p
+         LA6PvIXli+gcbkr+w8ZXR25SIIf0soHL0QsHMFzCnaQsEU7TK5+BYXpuh2kjNFv8R2zn
+         qxv0WRrtuDl49zahZRBre4hJM3pXuVbuhVnGlf1sMIxp3GDR0b+VM8bYB3ZHeR4eLGHm
+         ODX/1dn39/YfYLI6S0p7tcMLcKFALcnQr2t3IDNuLucz6xVAW6kpaltRUV38mCEab08R
+         C8pg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1792085328; x=1792690128;
+        h=mime-version:content-transfer-encoding:content-type:references
+         :in-reply-to:subject:to:from:date:message-id:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=gSNO9YK5nfjHkWHYjlyrDKyJyoyba2/FQKYBvshQ5Lg=;
+        b=XzVvlqPXq4ZalxzBHqaj5qLjFNAs4nE1hN0JNeYlG4EzaxsOOKqpZHfXhJ76Mqni/F
+         ET1joU/sMBi63PeygRCIN1VYkL2sK2emy9vptRwLtH57wDlx2/3YZpcHuRx6ESSsf+E7
+         60ZKzYzOJN1jPQ4WsOKKa5wOFCVc8xfbdZEgFi/TOMGWF4ffxsTFBBkQ9kL2nS7gpHby
+         xd9Z66egQO98YA/6mp9DLLzwcEFCQ88mmO31wdyKEe9Bee9UDmsGaF+h04R4qR+2mRD/
+         XMv92J8ETCBfS9TQ7pVHWKNsQXT3RZlaLkvtlMGxoDZDf80BltpNi3ehTHXncqiYFTs2
+         oyCA==
+X-Gm-Message-State: AFq9FYJsy8qnrbb/vachHDlTxohAWLCdchZyTpCwIPN3Lm7gcxAN9lnG
+	kjA5eghruEBFUXE/BC7Zi8HUtVJpxqYwoVrT0RaQeM6zHTC0AocTHE2MH8DnN6OBcHY=
+X-Gm-Gg: AYBFou0UN7FooGK2Ev1vk5xLyool9CVyqWvLnFEEOesjX+nWZlOkg7pEhWTG8nnisob
+	xf31i2SMzILDM+2eZG3iTYrX91UAv2mQx8MgZPm3PJ23HVbgBg2G0o9ddTu8QRqhqidoEllfCTl
+	mxj75eVVMf7uTt30hrC3905shKf10w3Fp902mp0ksMF1CaZsV7iUKu/gL3527NutlhFeXxQ4j3u
+	tnl4vUz2fJ1O8fsworAZBakmfQpio9X+KFxJIVkSPVXGt6vTgGPjWfpCen2VzzoPGBARVI5Z/j/
+	yz2+2lFRphWVhP3xyCaFyo9YO03k2KTloWW9vF1zU2X7r1Oybc72HJlEYorKJe20uM5yDhGBq5k
+	6lANfIJEyJ1I9Ej3ULklLKiIbsbPObgmASd1B4uaPQ8kpIJoUL9bjrO8yyLFE/O7vUSYRedUJvM
+	wdNt1DTvKIFIUQf1uG1zU3ZKYjY+khF7ysnT2m0C6HIzIAptjkkTcMkIzSj4gyVg5aM/ybE26rf
+	tYalA==
+X-Received: by 2002:a05:6000:3108:b0:48d:d736:4df7 with SMTP id ffacd0b85a97d-48dd7364f87mr27729886f8f.30.1792085327597;
+        Thu, 15 Oct 2026 10:28:47 -0700 (PDT)
+Received: from SurHub.localdomain ([102.213.68.193])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-48de0ac36f9sm19097036f8f.36.2026.10.15.10.28.46
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 15 Oct 2026 10:28:47 -0700 (PDT)
+Message-ID: <6ad10d4f.869db401.313f36.ee1e@mx.google.com>
+Date: Thu, 15 Oct 2026 10:28:47 -0700 (PDT)
+From: Abdifatah Suruur <suruurism@gmail.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] lockd: fix use-after-free in nlmsvc_retry_blocked()
+In-Reply-To: <6dbeec76-a55d-4e41-9115-99d199997497@slotpi15m67>
+References: <20260930202212.1482-1-suruurism@gmail.com>
+ <6dbeec76-a55d-4e41-9115-99d199997497@slotpi15m67>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -123,54 +77,28 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2026-10-15 at 11:57 +1100, Lubos Rendek wrote:
-> [ There is no upstream commit: this fixes the 6.18.y backport of
->   d0beaee498e1. Mainline fixed the problem as part of the async COPY
->   rework in commit f307b4f7ed17 ("nfsd: split nfsd4_copy into transient
->   and durable async copy objects"), which is too risky to backport. ]
->=20
-> Since commit 9b4e5e9ba5ae ("nfsd: fix stale s2s_cp_stateids IDR entry
-> for async COPY"), nfsd4_copy() calls dup_copy_fields() before the copy
-> stateid is created and then writes the new stateid only into the COPY
-> result. The async copy's own cp_res.cb_stateid stays zero, so
-> nfsd4_send_cb_offload() sends CB_OFFLOAD with an all-zero stateid. The
-> client cannot match it to its pending COPY and waits forever in
-> nfs42_proc_copy().
->=20
-> Also copy the new stateid into async_copy->cp_res.cb_stateid. Calling
-> dup_copy_fields() after nfs4_init_copy_state() instead is not an
-> option, because dup_copy_fields() also copies cp_stateid and would
-> overwrite the stateid that the backport moved to the async copy.
->=20
-> Tested on 6.18.56 with an NFSv4.2 server-side COPY between two
-> exports: with this change the copy completes and CB_OFFLOAD carries
-> the same stateid as the COPY reply. Without it, cp(1) hangs on
-> 6.18.55; the affected code in nfsd4_copy() is the same in 6.18.56.
->=20
-> Fixes: 9b4e5e9ba5ae ("nfsd: fix stale s2s_cp_stateids IDR entry for async=
- COPY")
-> Closes: https://lore.kernel.org/stable/7cc824c4-632d-49df-ae5e-cfcbb5bf76=
-ad@proxmox.com/
-> Assisted-by: Claude:claude-opus-5-5
-> Signed-off-by: Lubos Rendek <l.rendek@proxmox.com>
-> ---
->  fs/nfsd/nfs4proc.c | 2 ++
->  1 file changed, 2 insertions(+)
->=20
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index bc14c3939..aeab09dde 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -2084,6 +2084,8 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_com=
-pound_state *cstate,
->  			goto out_dec_async_copy_err;
->  		memcpy(&result->cb_stateid, &async_copy->cp_stateid.cs_stid,
->  			sizeof(result->cb_stateid));
-> +		memcpy(&async_copy->cp_res.cb_stateid, &async_copy->cp_stateid.cs_stid=
-,
-> +		       sizeof(async_copy->cp_res.cb_stateid));
->  		if ((READ_ONCE(copy->nf_dst->nf_file->f_mode) &
->  			       FMODE_NOCMTIME) !=3D 0)
->  			async_copy->attr_update =3D true;
+Resending in plain text: the list rejected my earlier reply as HTML.
+Chuck already has this; apologies for the duplicate.
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+Hi Chuck,
+
+Thanks for the quick review and the detailed explanation -- both points
+are well taken.
+
+On the retry path: I hadn't checked nfsd-testing before sending; agreed,
+it's the same fix in the same place. I'll drop this patch and base any
+future lockd/NFSD work on your nfsd-testing branch.
+
+On nlmsvc_notify_blocked(): you're right, and thanks for spelling it
+out. I missed that __locks_wake_up_blocks() clears waiter->flc_blocker
+only after lm_notify returns (the smp_store_release in fs/locks.c), so
+any concurrent locks_delete_block() from the GRANT_RES/CANCEL paths has
+to acquire blocked_lock_lock and wait for the callback to finish. The
+list reference can't be dropped between the spin_unlock() and the
+svc_wake_up(), so there's no window there. Please disregard that hunk.
+
+Thanks again for the explanation -- it also tells me where to look next
+time.
+
+Regards,
+Abdifatah
