@@ -1,104 +1,200 @@
-Received: from mail-wr1-f41.google.com (mail-wr1-f41.google.com [209.85.221.41])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B258053C3C9
-	for <linux-nfs@vger.kernel.org>; Thu, 15 Oct 2026 17:28:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.41
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D1FCA30E0EE
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Oct 2026 18:30:22 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792085342; cv=none; b=Sm4Ygb82q5Qbg56iBOS6Bf90ipCrIDMG3anLArBVeot7lUJFoqwwnukP+TyodMkZu7kC0YoLntiaIPaIPntIL7e40jWEgtel8d59oXeqSF4jUSH+C5jejwk0tIr0Vpl6oebUrhHVj6BWNkdYK28EWIC9ASDVJ9jALaQrIY5+GQA=
+	t=1792089028; cv=none; b=akfdP3W4XWwiR56L5dpH+OD1R8xm1P289J0O7N+tTpbZdNWyI+5o/m1HMpxzns0R+VGici8Vm/tmJig1O9RmGesZeK/Xxl8206b39hg/yVkZTalOpP4Is72cW8HlKamfnAviTi8zYbWzKXhooyoR75H2caWQnucPmWM/oqZnYxQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792085342; c=relaxed/simple;
-	bh=gSNO9YK5nfjHkWHYjlyrDKyJyoyba2/FQKYBvshQ5Lg=;
-	h=Message-ID:Date:From:To:Subject:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=ZCMtCog4sFEOoFTHSiVGRd5NqD+QjWEjRzM2Y0UAHgzblZAhc2jWkn2eDeaGt6BU6X4HVtFJmmLf8pkSj4Bf7RzGku0j7N2aERnixu0WMbsDoR6yiWDFRo97fIN62xPUVDdTFSFODrIRBN8pZ+IljqJBvHByvd3fLS2+4qhOu64=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Q664c+w1; arc=none smtp.client-ip=209.85.221.41
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1792089028; c=relaxed/simple;
+	bh=3n63+mZEYnTl/Mw5t3lSEbJBvZxUH2MTWG5Qrlz6do0=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=fDm++7iLpHiNaIzV8cUiHzIsPMC2+p24ZmMmJijwYUJrHPAsDNZo+x00UkyPqgXcnByf5tHltdKLdcM7gsS9XK4Q6OrQMUQbXjIcQT7V006dcKPTvT13m/8Rc41s2llQoRKSv2inzTfpxUb/U/j/r5J1947mQCf5jDw1mDXVHEE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=dXhBugc7; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Q664c+w1"
-Received: by mail-wr1-f41.google.com with SMTP id ffacd0b85a97d-48441a2ba1bso1135712f8f.1
-        for <linux-nfs@vger.kernel.org>; Thu, 15 Oct 2026 10:28:49 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1792085328; x=1792690128; darn=vger.kernel.org;
-        h=mime-version:content-transfer-encoding:content-type:references
-         :in-reply-to:subject:to:from:date:message-id:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=gSNO9YK5nfjHkWHYjlyrDKyJyoyba2/FQKYBvshQ5Lg=;
-        b=Q664c+w1snR8189IOMGs9JglgkMEtlkdv8yyCqJWKrEGDIoj1FnETrI1vR58xO0gXT
-         KrG6js8t2Xw21R/5pgmZLAm5LYgUMkR4dmUtG8YhPR+rjRcc5cBv+CeFp+yjBlwica4p
-         LA6PvIXli+gcbkr+w8ZXR25SIIf0soHL0QsHMFzCnaQsEU7TK5+BYXpuh2kjNFv8R2zn
-         qxv0WRrtuDl49zahZRBre4hJM3pXuVbuhVnGlf1sMIxp3GDR0b+VM8bYB3ZHeR4eLGHm
-         ODX/1dn39/YfYLI6S0p7tcMLcKFALcnQr2t3IDNuLucz6xVAW6kpaltRUV38mCEab08R
-         C8pg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792085328; x=1792690128;
-        h=mime-version:content-transfer-encoding:content-type:references
-         :in-reply-to:subject:to:from:date:message-id:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=gSNO9YK5nfjHkWHYjlyrDKyJyoyba2/FQKYBvshQ5Lg=;
-        b=XzVvlqPXq4ZalxzBHqaj5qLjFNAs4nE1hN0JNeYlG4EzaxsOOKqpZHfXhJ76Mqni/F
-         ET1joU/sMBi63PeygRCIN1VYkL2sK2emy9vptRwLtH57wDlx2/3YZpcHuRx6ESSsf+E7
-         60ZKzYzOJN1jPQ4WsOKKa5wOFCVc8xfbdZEgFi/TOMGWF4ffxsTFBBkQ9kL2nS7gpHby
-         xd9Z66egQO98YA/6mp9DLLzwcEFCQ88mmO31wdyKEe9Bee9UDmsGaF+h04R4qR+2mRD/
-         XMv92J8ETCBfS9TQ7pVHWKNsQXT3RZlaLkvtlMGxoDZDf80BltpNi3ehTHXncqiYFTs2
-         oyCA==
-X-Gm-Message-State: AFq9FYJsy8qnrbb/vachHDlTxohAWLCdchZyTpCwIPN3Lm7gcxAN9lnG
-	kjA5eghruEBFUXE/BC7Zi8HUtVJpxqYwoVrT0RaQeM6zHTC0AocTHE2MH8DnN6OBcHY=
-X-Gm-Gg: AYBFou0UN7FooGK2Ev1vk5xLyool9CVyqWvLnFEEOesjX+nWZlOkg7pEhWTG8nnisob
-	xf31i2SMzILDM+2eZG3iTYrX91UAv2mQx8MgZPm3PJ23HVbgBg2G0o9ddTu8QRqhqidoEllfCTl
-	mxj75eVVMf7uTt30hrC3905shKf10w3Fp902mp0ksMF1CaZsV7iUKu/gL3527NutlhFeXxQ4j3u
-	tnl4vUz2fJ1O8fsworAZBakmfQpio9X+KFxJIVkSPVXGt6vTgGPjWfpCen2VzzoPGBARVI5Z/j/
-	yz2+2lFRphWVhP3xyCaFyo9YO03k2KTloWW9vF1zU2X7r1Oybc72HJlEYorKJe20uM5yDhGBq5k
-	6lANfIJEyJ1I9Ej3ULklLKiIbsbPObgmASd1B4uaPQ8kpIJoUL9bjrO8yyLFE/O7vUSYRedUJvM
-	wdNt1DTvKIFIUQf1uG1zU3ZKYjY+khF7ysnT2m0C6HIzIAptjkkTcMkIzSj4gyVg5aM/ybE26rf
-	tYalA==
-X-Received: by 2002:a05:6000:3108:b0:48d:d736:4df7 with SMTP id ffacd0b85a97d-48dd7364f87mr27729886f8f.30.1792085327597;
-        Thu, 15 Oct 2026 10:28:47 -0700 (PDT)
-Received: from SurHub.localdomain ([102.213.68.193])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-48de0ac36f9sm19097036f8f.36.2026.10.15.10.28.46
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 15 Oct 2026 10:28:47 -0700 (PDT)
-Message-ID: <6ad10d4f.869db401.313f36.ee1e@mx.google.com>
-Date: Thu, 15 Oct 2026 10:28:47 -0700 (PDT)
-From: Abdifatah Suruur <suruurism@gmail.com>
-To: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] lockd: fix use-after-free in nlmsvc_retry_blocked()
-In-Reply-To: <6dbeec76-a55d-4e41-9115-99d199997497@slotpi15m67>
-References: <20260930202212.1482-1-suruurism@gmail.com>
- <6dbeec76-a55d-4e41-9115-99d199997497@slotpi15m67>
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="dXhBugc7"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F3AC61F000C4;
+	Thu, 15 Oct 2026 18:30:21 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1792089022;
+	bh=kMk9HeC0gdwWXCsH6P2NJQOl/jdcrGwW4AYDreY7rhk=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=dXhBugc7RI2d2GtQlTlZfN2ZAzUu3ipXbUVSDtSHDzAfKanYTpgPQB9GYW0rbFw1o
+	 U0ljajpRTEfM3+iVSP3fV5eCc9BcrcGt4wW1gMPRqrW9fObdI2CSEezUIKUblDZuYg
+	 8WvDY2rtLPIyBxOJZMliK9vRlbssJ7SAiAWXFjZ44+3kZOVDqHHPCmJpR2B6F9Zq7n
+	 U6Z0Mq8NGVV1GPSYb/QBKrm5JPz80zbR2O2MoyfxpnMuiCXqZCSe+A+vBB3j1xJD8t
+	 nKrxNwKeXQqeaPVcBi+qNocBpf+8IApqwuRgCRqdAsVhwSFFRsQmly+bOayNWQ2Z4o
+	 CUUk/H6VIzfnw==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 595D6F40068;
+	Thu, 15 Oct 2026 14:30:21 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Thu, 15 Oct 2026 14:30:21 -0400
+X-ME-Sender: <xms:vRvRalSkR27Z3KIUE2bhnCfGP-n5ZRvrWnH52MMqynlz2rNWeNQ4uA>
+    <xme:vRvRaplDI4NETiQ4zTPkBfAFBI7LdwB-Vk6AyzTu8LczkkemR9ho4VFyQdDoJrL1q
+    C4J8GUZfZb7C9YVT7zIy-3owtw-Soms_YDeIqbtTOCG-9L8y0VykA>
+X-ME-Proxy-Cause: dmFkZTFGCXUpm5Xr62M/7C4QIwj/D+XUT6kXD4XVd4K4EBujtfTkFqUfpaGtiVln76l7Md
+    kpuiJwSppkkLsRtYwXf5eEEbD3Awn/5A+elMPnceijz4MfgDsaaMpNuM6oFnIjs5IhiS4C
+    3+kKuGZwuq5Sazw3OIH/hlPqo7Jxjf3gkkPaLnMW/F1wjzvu0UJ9A/UygxP3d40Cf3DO56
+    gMsNNDVGlEsqGjxzLTJzxgX0zhC+c8MHsyDlyx8VGRViL6icM8qeNXP/iYkecAVCH/AG66
+    iGDq2bjqxI/uzbzxKWlH5alRfbVDKFLGYwpJPKAvELmw9mRrjaqwF1jLkz8LPRm7DcggPa
+    MmxbO/AZaKkFsM/pfmBJjihbrmZ4PgLO/So1VS/BW9azehKYQMAxPl802fAfMNK8C0bT81
+    CodzA0I8p9ke8MMseHUACNcx6vyn7JsC21Wdk1NFVOMaSOtgGWmgwqHuEIYAtv1wQJZoPQ
+    ghS8o+COPjN9Bqf5W2hbw2ve/bM42MhYhyA9WK4ZUi/JaMONxDR8UInfhK6kn8p9ZDkflh
+    gVfsD7Y4qc6h8KzX1/w+WEDAEsUtKcZ9lthdVxobNdJMVwsQt2tDoyHUk/4Chq/D329C4k
+    pHTcEN8JRyF+xwvjCG61qHYi8HVFwF69R37zZqspUABMckJ0ZhXHFo9l09Ow
+X-ME-Proxy: <xmx:vRvRav4WzG3TBqImmZNuV74w05onCO6knkvgVLHpeSDhgVRSqD1_PQ>
+    <xmx:vRvRagtp50-lys6cwUx5Bi9Qf3m8DkZpziJ5WCN20li7VWS3zOuCKg>
+    <xmx:vRvRah3VXBYzbooyPeV92zRtYQUtO4L9Jd23Uo1yFREF3vaHE0146A>
+    <xmx:vRvRapoIabwH279qot2ZcJCthaczTyH7LHjvz1bzAdX9jPyO8OUDsA>
+    <xmx:vRvRahKc9Vb7xLlljTwr9j23nqE3dyLMplNhBlla7OzHmT7zht71WGY3>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 2A0AA782738; Thu, 15 Oct 2026 14:30:21 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+X-ThreadId: AmqPMHVnhD9w
+Date: Thu, 15 Oct 2026 14:30:01 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Andrei-Alexandru Bleortu" <me@andrei-z.com>,
+ "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>
+Cc: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, linux-kernel@vger.kernel.org,
+ linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Message-Id: <ddd5a532-bdb2-4976-9b1b-6470414473ec@app.fastmail.com>
+In-Reply-To: <20261015124826.2962950-2-me@andrei-z.com>
+References: <20261015124826.2962950-1-me@andrei-z.com>
+ <20261015124826.2962950-2-me@andrei-z.com>
+Subject: Re: [PATCH 1/1] xprtrdma: Post small RPC Calls inline
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-Resending in plain text: the list rejected my earlier reply as HTML.
-Chuck already has this; apologies for the duplicate.
 
-Hi Chuck,
 
-Thanks for the quick review and the detailed explanation -- both points
-are well taken.
+On Thu, Oct 15, 2026, at 8:48 AM, Andrei-Alexandru Bleortu wrote:
+> rpcrdma_ep_create() asks for no inline data, so every RPC Call is
+> posted by reference. Before the HCA can transmit a Call it has to
+> DMA-read the transport header and the RPC message from host memory,
+> and for a small Call that read is on the latency path of every RPC.
+>
+> Ask for 256 bytes of inline data per Send WR when creating the QP. If
+> the device refuses, ask for less. Intel irdma has a fixed limit of 216,
+> 101 or 48 bytes, depending on the generation, and Alibaba erdma one of
+> 96. On those devices, found by vendor ID, try these limits first, then
+> step down 16 bytes at a time to none. libfabric's verbs provider also
+> probes the inline limit by trial QP creation.
+>
+> Post a Call with IB_SEND_INLINE when its SGEs cover only the
+> persistently mapped transport header and head buffers and it fits in the
+> granted size. Calls with page or tail SGEs, and larger Calls, are posted
+> by reference as before. IB_SEND_INLINE is unrelated to the RPC-over-RDMA
+> inline threshold.
+>
+> Providers copy inline data from sg_list[].addr as a kernel virtual
+> address, so on the inline path the SGEs point at the regbufs' virtual
+> addresses. These SGEs are rebuilt for every Send and are not used for
+> unmapping: rpcrdma_sendctx_dma_unmap() starts at the third SGE, and the
+> regbufs stay mapped.
+>
+> fio ran 4 KiB direct I/O at queue depth 1 on an NFSv3 mount of a tmpfs
+> export, between two Xeon Platinum 8360Y hosts with ConnectX-6 Dx over
+> RoCEv2 at 100 Gb/s on a 7.0 kernel. An earlier version of this patch
+> lowered the mean completion latency of random writes by 0.1923 us
+> (95% CI 0.1139-0.2769) and of random reads by 0.2705 us (0.1908-0.3502).
+> That version made the same check in frwr_send() and asked for 512
+> bytes. The largest Call in those runs was 216 bytes.
 
-On the retry path: I hadn't checked nfsd-testing before sending; agreed,
-it's the same fix in the same place. I'll drop this patch and base any
-future lockd/NFSD work on your nfsd-testing branch.
+These mean completion latency gains are noise compared to the client's
+own RPC tasking machinery. Perhaps the additional code complexity is
+not worth it yet.
 
-On nlmsvc_notify_blocked(): you're right, and thanks for spelling it
-out. I missed that __locks_wake_up_blocks() clears waiter->flc_blocker
-only after lm_notify returns (the smp_store_release in fs/locks.c), so
-any concurrent locks_delete_block() from the GRANT_RES/CANCEL paths has
-to acquire blocked_lock_lock and wait for the callback to finish. The
-list reference can't be dropped between the spin_unlock() and the
-svc_wake_up(), so there's no window there. Please disregard that hunk.
 
-Thanks again for the explanation -- it also tells me where to look next
-time.
+> Assisted-by: LLM
+> Signed-off-by: Andrei-Alexandru Bleortu <me@andrei-z.com>
 
-Regards,
-Abdifatah
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 54957295a631..2e8a7fb6b1a6 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -55,6 +55,7 @@
+>  #include <linux/sunrpc/addr.h>
+>  #include <linux/sunrpc/svc_rdma.h>
+>  #include <linux/log2.h>
+> +#include <linux/pci_ids.h>
+> 
+>  #include <asm/barrier.h>
+> 
+> @@ -63,6 +64,44 @@
+>  #include "xprt_rdma.h"
+>  #include <trace/events/rpcrdma.h>
+> 
+> +/* Bytes of inline data (IB_SEND_INLINE) to ask for on each Send WR.
+> + * This is unrelated to the RPC-over-RDMA inline threshold.
+> + */
+> +#define RPCRDMA_WQE_INLINE_SIZE	(256)
+> +#define RPCRDMA_WQE_INLINE_STEP	(16)
+> +
+> +/* The verbs API cannot report a device's inline data limit. Some
+> + * drivers have a fixed one: Intel irdma 216, 101 or 48 depending on
+> + * the generation, Alibaba erdma 96.
+
+The table itself already states this, so the above comment does not
+add value.
+
+
+>                                       Try those first, by vendor ID,
+> + * then step down RPCRDMA_WQE_INLINE_STEP bytes at a time to zero.
+> + * libfabric's verbs provider also probes the limit
+> + * (vrb_find_max_inline()).
+> + */
+> +static const struct {
+> +	u32	vendor_id;
+> +	u32	max_inline;
+> +} rpcrdma_inline_limits[] = {
+> +	{ PCI_VENDOR_ID_INTEL, 216 },
+> +	{ PCI_VENDOR_ID_INTEL, 101 },
+> +	{ PCI_VENDOR_ID_INTEL, 48 },
+> +	{ PCI_VENDOR_ID_ALIBABA, 96 },
+> +};
+
+General policy is not to put device-specific details like this
+in ULP code. So, NACK on holding these numbers in a table in
+the rpcrdma.ko module.
+
+I didn't look at the other ULPs you modified, but I expect that
+they have a similar need to obtain this value. That suggests you
+should first add a helper function to the IB core, or provide
+the value in the qp attrs.
+
+The retry-based approach means a connect can take over a dozen
+QP creation retries on a device that does not support
+IB_SEND_INLINE. To avoid the retry, you might consider adding a
+new QP creation flag, say IB_QP_CREATE_INLINE_CLAMP, that changes
+one rule of ib_create_qp(): with the flag set, a driver that
+cannot grant the requested cap.max_inline_data grants the largest
+value this QP can support instead of failing with -EINVAL, and
+reports it back in cap.max_inline_data as it already does for
+the rounded-up value. Zero is a legal answer, which is what mlx4,
+pvrdma and rdmavt already return for kernel QPs.
+
+The smaller sizes these devices provide are barely larger than
+the RPC/RDMA transport header. It might be best to set a lower
+bound (don't use inline at all for devices with inline limits
+that can't cover the RPC/RDMA and RPC headers).
+
+Also, at least for mlx5, the inline limit trades directly
+against send queue depth and the QP's host memory footprint.
+
+TL;DR: I'm not convinced adding several dozen lines of code
+pays for a tenth of a microsecond latency improvement.
+
+
+-- 
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
