@@ -1,184 +1,107 @@
-Received: from canpmsgout04.his.huawei.com (canpmsgout04.his.huawei.com [113.46.200.219])
+Received: from vtj.irix.systems (vtj.irix.systems [82.76.27.144])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1FB3C5275B2;
-	Thu, 15 Oct 2026 12:21:18 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.219
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7625B525A61;
+	Thu, 15 Oct 2026 12:48:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=82.76.27.144
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792066879; cv=none; b=Kl65voyMA5gaaJkhf7n4i5sby3QCs6YQsr1JkGz5f71GbofsMIjd2oeR1cYZPt2VMtaTq35lreG1Z5genbVbJ3iVaL8jOxTPcNHLZ+2nE3vQrFibYAzvBZ5b36Cqu3lfzw08LZ30GRs8j5r9Pa6NMUGh10HDIZ7RXacCyjGClaI=
+	t=1792068518; cv=none; b=FnUyCx83M5nBUSBWCUStwFlGIpajLbSFApvjXjRhtOZwM1GJ0l+XjYrqvxguNqXu+7Zwc5AvU3ieah/tOxM+tc41gimir2lAhMBqPTGWMiADKKUoSl7gk++vLVei9d0CDuqSq9MuL9GhxSURiEaV83HbNFrcSTR/LgAMibGN4MA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792066879; c=relaxed/simple;
-	bh=FLFyRRHhJi6tZU18s+v2YoKZn2fIoW7LNdezj0jo31A=;
-	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=iv1QuBRVqLULYOHQRPaKkcpTC/kNxSzv4oXnWyv2UCfHLGAphhYT1kx7NzmzmFnaHnt91f0R4s/N0NZwXk45eRkEWk5QUDrL0PhE1pJs+xKbSQ2e5UUREkGzlkhMtwQ1qYjW4GiAKVHcPa+I0M+MHJb8wneR0tB5EfIUn+y462k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=wNSiwWKR; arc=none smtp.client-ip=113.46.200.219
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+	s=arc-20240116; t=1792068518; c=relaxed/simple;
+	bh=z07TVzYXM1jRmFoR6nl9/1yYUtyer7YepNvmldlBkG4=;
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=cflvRmvvqYARwW2p1gyKIiHRxlZ2a5SSqXdazGbKJQy+/4xFllEuZuBiLm0YHMQpRW6jVLx337PwDKCG+rksvr6epRjHAI32cloLhmQi68se42W0+TzPw5vraVXA6E2Qlj7dJLqJ0bMVMw1TW9/Wn7MBN9y97CZukBOE6TNG3L0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=andrei-z.com; spf=pass smtp.mailfrom=andrei-z.com; dkim=pass (2048-bit key) header.d=andrei-z.com header.i=@andrei-z.com header.b=X1UOeabO; arc=none smtp.client-ip=82.76.27.144
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=andrei-z.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=andrei-z.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="wNSiwWKR"
-dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
-	c=relaxed/relaxed; q=dns/txt;
-	h=From;
-	bh=VESGW3TkU2bTfPpPgP4UR7E6JTjX0tkAQhUuZU9C/tM=;
-	b=wNSiwWKRvOV1fjcErXNkqErXQUmQG3eZuwQkj3Zu6VFMiHhxXORXqjDrFe8LUISRsPYsZW2e2
-	XQPGavZQkQgiZRnvDs0uHkrRCuZtCv9Ii/3WQe+SgmFIlieaRlAE3u38ZstYmsJIs87/e1uCN43
-	22ZWBtq2ZdGrbDeJX79IZTo=
-Received: from mail.maildlp.com (unknown [172.19.163.104])
-	by canpmsgout04.his.huawei.com (SkyGuard) with ESMTPS id 4j56LH4HWVz1prLV;
-	Thu, 15 Oct 2026 20:08:55 +0800 (CST)
-Received: from whupemk100010.china.huawei.com (unknown [7.152.184.41])
-	by mail.maildlp.com (Postfix) with ESMTPS id E96A04056E;
-	Thu, 15 Oct 2026 20:21:15 +0800 (CST)
-Received: from octopus.huawei.com (10.67.174.191) by
- whupemk100010.china.huawei.com (7.152.184.41) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.2562.45; Thu, 15 Oct 2026 20:21:10 +0800
-From: Cai Xinchen <caixinchen1@huawei.com>
-To: <mic@digikod.net>, <gnoack@google.com>, <paul@paul-moore.com>,
-	<jmorris@namei.org>, <serge@hallyn.com>, <corbet@lwn.net>,
-	<skhan@linuxfoundation.org>
-CC: <ast@kernel.org>, <daniel@iogearbox.net>, <andrii@kernel.org>,
-	<eddyz87@gmail.com>, <memxor@gmail.com>, <martin.lau@linux.dev>,
-	<song@kernel.org>, <yonghong.song@linux.dev>, <jolsa@kernel.org>,
-	<emil@etsalapatis.com>, <ihor.solodrai@linux.dev>, <rdunlap@infradead.org>,
-	<gregkh@linuxfoundation.org>, <rafael@kernel.org>, <dakr@kernel.org>,
-	<johan@kernel.org>, <dlemoal@kernel.org>, <hch@lst.de>, <axboe@kernel.dk>,
-	<viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
-	<dhowells@redhat.com>, <code@tyhicks.com>, <linkinjeon@kernel.org>,
-	<sj1557.seo@samsung.com>, <yuezhang.mo@sony.com>,
-	<hirofumi@mail.parknet.co.jp>, <cel@kernel.org>, <jlayton@kernel.org>,
-	<neil@brown.name>, <okorniev@redhat.com>, <Dai.Ngo@oracle.com>,
-	<tom@talpey.com>, <hyc.lee@gmail.com>, <miklos@szeredi.hu>,
-	<amir73il@gmail.com>, <senozhatsky@chromium.org>,
-	<chenxiaosong@chenxiaosong.com>, <kpsingh@kernel.org>, <matt@bobrowski.net>,
-	<rostedt@goodmis.org>, <mhiramat@kernel.org>,
-	<mathieu.desnoyers@efficios.com>, <john.johansen@canonical.com>,
-	<georgia.garcia@canonical.com>, <zohar@linux.ibm.com>,
-	<roberto.sassu@huawei.com>, <dmitry.kasatkin@gmail.com>,
-	<eric.snowberg@oracle.com>, <stephen.smalley.work@gmail.com>,
-	<omosnacek@gmail.com>, <casey@schaufler-ca.com>, <takedakn@nttdata.co.jp>,
-	<penguin-kernel@I-love.SAKURA.ne.jp>, <xiujianfeng@huawei.com>,
-	<nanx95726@gmail.com>, <djwong@kernel.org>, <lujialin4@huawei.com>,
-	<bpf@vger.kernel.org>, <linux-doc@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>, <linux-security-module@vger.kernel.org>,
-	<driver-core@lists.linux.dev>, <linux-block@vger.kernel.org>,
-	<linux-fsdevel@vger.kernel.org>, <netfs@lists.linux.dev>,
-	<ecryptfs@vger.kernel.org>, <exfat@lists.linux.dev>,
-	<linux-nfs@vger.kernel.org>, <ntfs@lists.linux.dev>,
-	<linux-unionfs@vger.kernel.org>, <linux-cifs@vger.kernel.org>,
-	<linux-trace-kernel@vger.kernel.org>, <apparmor@lists.ubuntu.com>,
-	<linux-integrity@vger.kernel.org>, <selinux@vger.kernel.org>,
-	<linux-kselftest@vger.kernel.org>
-Subject: [PATCH v2 -next 18/18] Documentation: Update landlock doc for metadata rights
-Date: Thu, 15 Oct 2026 20:54:24 +0800
-Message-ID: <20261015125425.3246251-19-caixinchen1@huawei.com>
-X-Mailer: git-send-email 2.18.0.huawei.25
-In-Reply-To: <20261015125425.3246251-1-caixinchen1@huawei.com>
-References: <20261015125425.3246251-1-caixinchen1@huawei.com>
+	dkim=pass (2048-bit key) header.d=andrei-z.com header.i=@andrei-z.com header.b="X1UOeabO"
+Received: from MAILGW-HP.hp.vtj.corp.irix.systems (localhost [127.0.0.1])
+	by vtj.irix.systems (Proxmox) with ESMTP id 7673B21344;
+	Thu, 15 Oct 2026 15:48:29 +0300 (EEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=andrei-z.com; h=
+	cc:cc:content-transfer-encoding:content-type:content-type:date
+	:from:from:message-id:mime-version:reply-to:subject:subject:to
+	:to; s=sig1; bh=Wi062/qPlsR7jF1ZZXk4rpe47tL9Gsd6z4BWAhu7j6k=; b=
+	X1UOeabOkYWhowKKGkRwBZiKLKEvazzijM4nUDhSOKM/nCGl83PcmEANiEeU18im
+	SNj1RJyrOuPWmXmMwI8qP9OHu1gjFjlW213jPg83RTOLvw68bmmbbjY1wAGQc4C6
+	qz/cj95OQ6AAU1bAR7A4vcAbz+uQrThf8TiB9GODglyQ7K5DbBu2UzquBFkDc+HV
+	X9T/dQzVzPRgd2DMgBrEC8ilZciNXBRy+xcelb+j4h/ydTVRhiKaCv5JG2/bCmGr
+	vrS4XdtokVQIKOObbtEXt9t347S6m5gzYlsMeexuYRWaGY5fe5+vQfnF4ZEcFYis
+	IDBJFlCBwKY+8vj5H9Pq5Q==
+Received: from VTJ-MX.corp.irix.systems (unknown [IPv6:2a02:2f04:1:9c24::6])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by vtj.irix.systems (Proxmox) with ESMTPS id 5BDD4211F2;
+	Thu, 15 Oct 2026 15:48:27 +0300 (EEST)
+Received: from [10.89.11.73] (10.57.8.14) by VTJ-MX.corp.irix.systems
+ (2a02:2f04:1:9c24::6) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.2562.49; Thu, 15 Oct
+ 2026 15:48:27 +0300
+From: Andrei-Alexandru Bleortu <me@andrei-z.com>
+To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
+	<linux-nfs@vger.kernel.org>
+CC: Andrei-Alexandru Bleortu <me@andrei-z.com>, Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, Olga
+ Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey
+	<tom@talpey.com>, <linux-kernel@vger.kernel.org>
+Subject: [PATCH 0/1] xprtrdma: Post small RPC Calls inline
+Date: Thu, 15 Oct 2026 15:48:25 +0300
+Message-ID: <20261015124826.2962950-1-me@andrei-z.com>
+X-Mailer: git-send-email 2.56.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Content-Type: text/plain
-X-ClientProxiedBy: kwepems500001.china.huawei.com (7.221.188.70) To
- whupemk100010.china.huawei.com (7.152.184.41)
+X-ClientProxiedBy: VTJ-MX.corp.irix.systems (2a02:2f04:1:9c24::6) To
+ VTJ-MX.corp.irix.systems (2a02:2f04:1:9c24::6)
 
-Update the user space documentation for the new
-LANDLOCK_ACCESS_FS_READ_METADATA and
-LANDLOCK_ACCESS_FS_WRITE_METADATA access rights: add them to the
-example ruleset attributes, extend the ABI version fallback switch
-to remove them for ABI < 13, and document their semantics in a new
-"File metadata" section, including the fact that only explicit
-metadata changes requested by user space are restricted.
+The client posts every RPC Call by reference, so the HCA reads it from
+host memory before transmitting. This patch asks for 256 bytes of
+inline data at QP creation and posts small Calls with IB_SEND_INLINE.
+If the device refuses, it asks for less. The commit message has the
+details and the measurements.
 
-The new section also warns that most of the time,
-LANDLOCK_ACCESS_FS_READ_METADATA should be granted together with
-LANDLOCK_ACCESS_FS_READ_FILE and LANDLOCK_ACCESS_FS_READ_DIR:
-programs commonly read metadata alongside file contents and
-directory listings (e.g. with stat(2)) and do not expect such calls
-to fail, while denying only READ_FILE or READ_DIR does not hide
-metadata.
+The matching server change, "svcrdma: Post small Replies inline", is
+going to the NFSD maintainers on its own. The two do not depend on
+each other.
 
-Assisted-by: opencode: glm-5.3
-Signed-off-by: Cai Xinchen <caixinchen1@huawei.com>
----
- Documentation/userspace-api/landlock.rst | 47 +++++++++++++++++++++++-
- 1 file changed, 46 insertions(+), 1 deletion(-)
+It builds with W=1 on Anna's linux-next without new warnings. I tested
+it in a QEMU guest with rdma_rxe on a dummy netdev. The NFS client and
+server ran on the same host over RDMA, using NFSv3 and NFSv4.1.
+8 MiB of 4 KiB O_DIRECT writes and reads, and 200 small files,
+compared equal. 9836 Calls went inline and 214 by reference.
 
-diff --git a/Documentation/userspace-api/landlock.rst b/Documentation/userspace-api/landlock.rst
-index 3d45b956b640..62fe39a8b61e 100644
---- a/Documentation/userspace-api/landlock.rst
-+++ b/Documentation/userspace-api/landlock.rst
-@@ -87,7 +87,9 @@ to be explicit about the denied-by-default access rights.
-             LANDLOCK_ACCESS_FS_REFER |
-             LANDLOCK_ACCESS_FS_TRUNCATE |
-             LANDLOCK_ACCESS_FS_IOCTL_DEV |
--            LANDLOCK_ACCESS_FS_RESOLVE_UNIX,
-+            LANDLOCK_ACCESS_FS_RESOLVE_UNIX |
-+            LANDLOCK_ACCESS_FS_READ_METADATA |
-+            LANDLOCK_ACCESS_FS_WRITE_METADATA,
-         .handled_access_net =
-             LANDLOCK_ACCESS_NET_BIND_TCP |
-             LANDLOCK_ACCESS_NET_CONNECT_TCP |
-@@ -159,6 +161,10 @@ version, and only use the available subset of access rights:
-         ruleset_attr.handled_permissions &=
-             ~(LANDLOCK_PERMISSION_NAMESPACE_USE |
-               LANDLOCK_PERMISSION_CAPABILITY_USE);
-+        /* Removes metadata rights for ABI < 13 */
-+        ruleset_attr.handled_access_fs &=
-+            ~(LANDLOCK_ACCESS_FS_READ_METADATA |
-+              LANDLOCK_ACCESS_FS_WRITE_METADATA);
-     }
- 
- This enables the creation of an inclusive ruleset that will contain our rules.
-@@ -669,6 +675,45 @@ for writing, sidestepping the ``LANDLOCK_ACCESS_FS_TRUNCATE`` right.
- 
- The truncate right is associated with the opened file (see below).
- 
-+File metadata
-+-------------
-+
-+The ``LANDLOCK_ACCESS_FS_READ_METADATA`` right governs reading file and
-+directory metadata: :manpage:`stat(2)` and friends,
-+:manpage:`getxattr(2)`, :manpage:`listxattr(2)` and friends, and POSIX ACL
-+reads.
-+
-+The ``LANDLOCK_ACCESS_FS_WRITE_METADATA`` right governs explicit changes to
-+file and directory metadata: :manpage:`chmod(2)` and friends,
-+:manpage:`chown(2)` and friends, :manpage:`utimensat(2)`,
-+:manpage:`setxattr(2)`, :manpage:`removexattr(2)` and friends, and POSIX ACL
-+changes.  Both rights apply to files and directories alike.
-+
-+Implicit metadata changes performed by the kernel are not restricted by
-+``LANDLOCK_ACCESS_FS_WRITE_METADATA``: reading a file may update its access
-+time, writing a file updates its modification and change times and may change
-+the file size, and writing to or truncating a file with a set-user-ID or
-+set-group-ID bit clears these bits.  File size changes through
-+:manpage:`truncate(2)` and friends are governed by
-+``LANDLOCK_ACCESS_FS_TRUNCATE`` instead.  Metadata change requests that do
-+not change any attribute (e.g. :manpage:`chown(2)` with owner and group
-+``-1``) are not restricted either.
-+
-+.. warning::
-+
-+   Many programs read metadata as part of reading file contents or listing
-+   directories (e.g. calling :manpage:`stat(2)` before or after
-+   :manpage:`open(2)`), and do not expect such calls to fail with
-+   ``EACCES``.  Most of the time, ``LANDLOCK_ACCESS_FS_READ_METADATA``
-+   should therefore be granted together with
-+   ``LANDLOCK_ACCESS_FS_READ_FILE`` and ``LANDLOCK_ACCESS_FS_READ_DIR``.
-+   Conversely, denying only ``LANDLOCK_ACCESS_FS_READ_FILE`` or
-+   ``LANDLOCK_ACCESS_FS_READ_DIR`` does not hide metadata: it remains
-+   readable through :manpage:`stat(2)` and friends unless
-+   ``LANDLOCK_ACCESS_FS_READ_METADATA`` is denied as well.  Tailored
-+   programs that do not read metadata at all can still deny this right to
-+   further restrict their sandbox.
-+
- Rights associated with file descriptors
- ---------------------------------------
- 
+I also made rxe refuse inline requests above a limit and report a
+chosen vendor ID. The data still compared equal in each case:
+
+  vendor ID   limit        QP got
+  Intel       216/101/48   216/101/48 bytes
+  Alibaba     96           96 bytes
+  rxe         101          96 bytes
+
+At 216 bytes 5632 Calls went inline; at 96 or 101 only 3 did, as most
+Calls in this test are larger. The guest kernel also carried the
+svcrdma patch. Its xprtrdma client code is linux-next's without two
+later commits, 0b5bb4e586f7 and 9ee534a75912, which do not change how
+Calls are posted.
+
+I wrote this patch with an LLM coding assistant (Claude Code), which
+also drafted the commit message and ran the build and the VM test.
+
+Andrei-Alexandru Bleortu (1):
+  xprtrdma: Post small RPC Calls inline
+
+ net/sunrpc/xprtrdma/rpc_rdma.c | 30 ++++++++++++++++++
+ net/sunrpc/xprtrdma/verbs.c    | 58 +++++++++++++++++++++++++++++++++-
+ 2 files changed, 87 insertions(+), 1 deletion(-)
+
+
+base-commit: 9ee534a75912361308b1f956bc3e7895a082a422
 -- 
-2.18.0.huawei.25
+2.56.0
+
 
