@@ -1,38 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 33F7E43BDC2;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5BE6F442B06;
 	Thu, 15 Oct 2026 04:08:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792037282; cv=none; b=fP7K7aZsLpwyjUvfI6OvO4IRcZ/Hy+eJ/ODxWs923vaFEm2M1Iz/0/5xuZeE0v51yPjcpuK2+ND0DATUvMySln6nqigm6a150gVs8BOFUswS+6/WhzQ9PME4QqRL5sDcL53oqIvVymPTEaoCjCUYzO6WGqBeyHiW5uSBZhrK+bg=
+	t=1792037282; cv=none; b=ut22ZLxsuQqMcIGw8O8K69UXZ1iQzXzflnfWXTVMF2t/6YNIMVmVA6aubZmyyyPPSs5JK4bDmMVFyOjO/s7FNDRL84fAyuDPs5GNCSFuKSJQFnODMKRDRmCeR+oAYqZEP+BAy4Cn8e70K362kAfmw7NICkTScwNjFTHP5TpvuEU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1792037282; c=relaxed/simple;
-	bh=5YMcUgmHuwZ09iRYdxUe+lH9zpyUBdXx1A6AMXut68I=;
+	bh=KVJdd+T3uIRZnvVAfEoOlXhe4M35NTbYuhmM1q3xR6g=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=j/gMp55MRdtrHWFwGksM+ic8vC2Cis/Q1vQtEW3F43dvk1/Dh1SfJ1/XS1p9/tctzA29NCzpr6Jkt/mfeQTkL+PDeuHZsH00Ue72ez9W7rRnpddfGT1w162bO/j+AgarIIGUFIGPDtAYzMPW9tAhEO1idGrAjV88Lgkw0AfUm+s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Jys4+AdL; arc=none smtp.client-ip=10.30.226.201
+	 In-Reply-To:To:Cc; b=smHUhP1drxCm7Mx6LVn4sYI3yCHJklHlCE2+kedp1lzk4VRk5sWgKMz8nP5JNRJpUEwqUVCR6PMs+rNoCsjh4FgaTWpQCXcW+PkbM7HougEoFwNcz19FketSi4W5kDV1eFwilc2+aXxUTxsyQUFO//S0c8L7k4lctDeQfK4lm5s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=d5VfNqY+; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Jys4+AdL"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 03858C4AF11;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="d5VfNqY+"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 2C744C2BCF4;
 	Thu, 15 Oct 2026 04:08:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
 	s=k20201202; t=1792037282;
-	bh=5YMcUgmHuwZ09iRYdxUe+lH9zpyUBdXx1A6AMXut68I=;
+	bh=KVJdd+T3uIRZnvVAfEoOlXhe4M35NTbYuhmM1q3xR6g=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To:From;
-	b=Jys4+AdLgNli27mEwyal1Nqz6zEfrqoCA0N0HckAEDJsyIbXUROK1IeNEW8cRZKoc
-	 mFaacnbNNk4MS/KxKWwNQwkgsBTBctZceRXgFimEpOOo7DCQ50AyfC3GnJuVvm+tEi
-	 fvMg+CZXB8nTXzkEisV28/PBI1fX7jygLrcwvtKwIWWq//Kb0G60ZAJh7F5Nq5GMgS
-	 WvYQktJgSfyMRFE8ERlil8Uk08BQf1NF0wWihsuMlXKlW+GSL8nK7rwRfFRDMq1Emq
-	 PyyNOm9Wr6rkNo0N719Ijbd0UUGjWVt+GT8JRYqpNw26uqBsVT+5PizIYsFh8wnmwl
-	 kGusDvPpNu2vw==
+	b=d5VfNqY+qaou69RU84OxfD85fzM3jWhJSzCsrM1hk/QcZ77aMnbGftf8ry4bMV+zb
+	 pGIbxuoogm5U04iueCduK87jbYhU5rPeDBAayJ/3RVDsvPWCGRks3dj7E+QU2WG2NP
+	 yFF82zlD5GgCtrR3TeLUU6Y1CSdHVyJs4rS6LHGrB8rrCnlHjdP9GLOlhTquetaWIM
+	 9WDTFlc8HCiaYZs9Bh0wam704XxpwjKtB7hwlwSiEPHVsiypXWCcTnf9KudRFZ1zhR
+	 I284atgtKxgr+8Gh2KyUZhi/HrMNeKmFpsBJE0Uj+oa8dMXI5gs7Sxtj4ESXUXAQUS
+	 kArXyKWenUNtw==
 Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DDB2CCC6B35;
-	Thu, 15 Oct 2026 04:08:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 16464CC6B34;
+	Thu, 15 Oct 2026 04:08:02 +0000 (UTC)
 From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
-Date: Thu, 15 Oct 2026 13:08:03 +0900
-Subject: [PATCH v3 4/9] xfs: clamp a pNFS LAYOUTCOMMIT extent before
- computing its end
+Date: Thu, 15 Oct 2026 13:08:05 +0900
+Subject: [PATCH v3 6/9] xfs: clamp the pNFS layout range to the maximum
+ file size
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -41,7 +41,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-xfs-pnfs-batch-v3-4-54fc7b2e467d@samsung.com>
+Message-Id: <20261015-xfs-pnfs-batch-v3-6-54fc7b2e467d@samsung.com>
 References: <20261015-xfs-pnfs-batch-v3-0-54fc7b2e467d@samsung.com>
 In-Reply-To: <20261015-xfs-pnfs-batch-v3-0-54fc7b2e467d@samsung.com>
 To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
@@ -53,11 +53,11 @@ Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792037279; l=1903;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792037279; l=3120;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=nP9RMvT+2/zi+VUBuU+Zdw9BhC8rbBfOGbPtZzbzLCE=;
- b=La7YdO6HQ29YYGK2deefgEYqYjXWO93FBIe/kNxCnQaF3rPsrAYUHGCejz6CPD7zRsQgWtmQG
- g08sI+bXZ5DB4lbDCflXjIj1Xnrwp6Ui5w9uG4HhltMncWKnZ+yz8Rr
+ bh=HkXHLaerQy7L3O36QppvIObPyQlmL50/D/DNtjGlnkQ=;
+ b=LqASexY1iLzqthrK79pOK8C9pJZdmxilJSF6tiRF1JJindNmgyFz5vyed4YaDN0FaSTakuoXE
+ fvXpmB+dBhjChhTAEV0baycXtqgFuKjdttfTifb3YNdiIenhggu5EBn
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
@@ -67,50 +67,73 @@ Reply-To: daejun7.park@samsung.com
 
 From: Daejun Park <daejun7.park@samsung.com>
 
-xfs_fs_commit_blocks() clamps the end of each committed extent to the
-file size, but computes the end as offset + length first. A length
-from the client can make that sum wrap around, and the loop then
-passes the client's length, unclamped, to xfs_iomap_write_unwritten().
-The range wraps there as well, and xfs_bmapi_write() maps nothing.
-Before the previous two patches, that failed an assertion on XFS_DEBUG
-kernels, which is a BUG with XFS_ASSERT_FATAL, and otherwise returned
--ENOSR, which nfsd warns about as a non-standard errno. With
-XFS_BMAPI_CONVERT_ONLY, the LAYOUTCOMMIT fails with -EIO and converts
-nothing, even when every block up to the size is allocated.
+xfs_fs_map_blocks() checks the range of a layout with
 
-With pynfs as the client and an RW layout for the first 64 KiB of a
-2 MiB sparse file, a LAYOUTCOMMIT of 2^64 - 4 KiB at 4 KiB got
-NFS4ERR_IO, "nfsd: non-standard errno: -63" and a WARNING, or the
-assertion on XFS_DEBUG. With the previous two patches, it gets
-NFS4ERR_IO and the laid-out range stays unwritten.
+	if (offset > limit)
+		goto out_unlock;
+	if (offset > limit - length)
+		length = limit - offset;
 
-Clamp the length to what is left below the size before adding it to
-the offset. The extent then ends at the size, its allocated part is
-converted, and the LAYOUTCOMMIT gets NFS4ERR_IO at the hole after it.
+limit - length is computed in u64, so a length larger than the limit
+wraps and the length is not clamped. nfsd passes the LAYOUTGET range
+through, and RFC 8881 lets a client ask for NFS4_UINT64_MAX bytes, for
+the rest of the file. offset + length then wraps to offset - 1, end_fsb
+rounds back to offset_fsb, and xfs_bmapi_read() maps nothing. For a read
+layout, xfs_bmbt_to_iomap() then gets an uninitialized imap: with a
+zeroed stack it logs "Access to block zero", marks the data fork sick
+and fails with -EFSCORRUPTED, and otherwise the mapping is whatever was
+on the stack and can reach the client. For a write layout,
+xfs_iomap_write_direct() is called with a count of zero, which trips an
+ASSERT with XFS_DEBUG. An offset of 2^63 or more, which nfsd accepts
+too, becomes negative in the loff_t argument and passes the first check.
+
+Reject a negative offset and an offset at the limit, and compare the
+length with what is left up to the limit, which cannot wrap once the
+offset is below it.
+
+With pynfs as the client, a READ LAYOUTGET for NFS4_UINT64_MAX bytes at
+offset 0 got NFS4ERR_IO, as did an RW one, which also made nfsd warn
+about the non-standard errno -63, and a READ LAYOUTGET at offset 2^63
+got NFS4ERR_IO as well. With this patch and the previous one, the one at
+2^63 gets NFS4ERR_INVAL, the RW one gets NFS4ERR_NOSPC before anything
+is allocated, as the range up to the maximum file size cannot be
+reserved, and the server logs nothing. The READ one gets NFS4ERR_INVAL
+as well: nfsd, which maps a layout one extent at a time since
+commit cc6c40e09d7b ("NFSD/blocklayout: Support multiple extents per
+LAYOUTGET"), asks again from the maximum file size on. An RW one on a
+file whose first 64 KiB are allocated, with a loga_maxcount that has
+room for one extent, is granted 0+65536.
+
+This depends on the previous patch. Without it, an RW LAYOUTGET to the
+end of the file, whose length is now clamped instead of wrapping, asks
+xfs_iomap_write_direct() for every block up to the maximum file size,
+which wraps the block reservation and shuts the filesystem down where it
+got NFS4ERR_IO before.
 
 Fixes: 527851124d10 ("xfs: implement pNFS export operations")
 Cc: stable@vger.kernel.org
 Signed-off-by: Daejun Park <daejun7.park@samsung.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
 ---
- fs/xfs/xfs_pnfs.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+ fs/xfs/xfs_pnfs.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
-index 7ff83274a5..19eb18e129 100644
+index 19eb18e129..9a578a2d02 100644
 --- a/fs/xfs/xfs_pnfs.c
 +++ b/fs/xfs/xfs_pnfs.c
-@@ -328,9 +328,7 @@ xfs_fs_commit_blocks(
- 		if (start > size)
- 			continue;
+@@ -176,9 +176,9 @@ xfs_fs_map_blocks(
+ 	if (!write)
+ 		limit = max(limit, round_up(i_size_read(inode),
+ 				     inode->i_sb->s_blocksize));
+-	if (offset > limit)
++	if (offset < 0 || offset >= limit)
+ 		goto out_unlock;
+-	if (offset > limit - length)
++	if (length > limit - offset)
+ 		length = limit - offset;
  
--		end = start + maps[i].length;
--		if (end > size)
--			end = size;
-+		end = start + min_t(u64, maps[i].length, size - start);
- 
- 		length = end - start;
- 		if (!length)
+ 	error = filemap_write_and_wait(inode->i_mapping);
 
 -- 
 2.43.0
