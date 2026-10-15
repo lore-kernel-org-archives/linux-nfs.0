@@ -1,38 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8470044E67D;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 72460445AC1;
 	Thu, 15 Oct 2026 04:08:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792037282; cv=none; b=LX2eaf5fw5OX5LRWCeaRF4nKzNfq1KvFIWxXheiCVSxO1kbqMttawQMAOv6rXQxAa9UUrUGi1mOKwh/wbFwFB3AirBwph5pAvmt2SDvgskkVE44iHJ2KrG+w+n0ZJnIZtK2n6aRL2Age5Lm2+p5om7mGVbJG+LHqig6tg2tnAC4=
+	t=1792037282; cv=none; b=eK76XLuZYatIejoQbCp6pTwMO22LQBYykvox2fhYH+zHiLPMe03cCbW0rIjM2lhU1XwlrhmNEsTe6XVyOvVyzTfUwFI3bM5KVas/epb82/9cshGPk/Chpi6HKxzXhpYeY1RqJN1aJwggsZrxcqzJs5bptO1DQduTzLNG0rt/3a0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1792037282; c=relaxed/simple;
-	bh=EzSriMXwgbWdACuiB6Takyd0shE/guI8fknm7v/QBJ4=;
+	bh=rW5AndWU3Af4bl/pCZGgqXXiHphHH7uGID1+TCuaRQA=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=MCKP5rwrMYjGLi1EIsWErDiJFIpHYF4kFdc2d3JEXlz+POpUQTcfq4PE8CBjpbrkJ61CTtr63C5luSrJbpSlmQIOChZ8Oluh0lIdg1j2TTqx423seX8ax5RrVQTWIbE7LCeXcTKUBu7KPchC+Y+db4fDDZp++92ubrrjaBtq5os=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=A3LHTeZS; arc=none smtp.client-ip=10.30.226.201
+	 In-Reply-To:To:Cc; b=opfCGSRpmuKc42pB98U8sQwFMcXhKfNLCbWg3Q8YPOhumI+kSApWhxTDDVwPq6LN0ht+YBct3HE695HD+cxDN5uExa+i7XcQNF4PDTy1P6oDObQi3V8dJ0xdMIVAmG5405uA7Vz1l0Qi9xoNfX8sTNrdHkAbyBiBjBdU+jCldqk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AoHDhERM; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="A3LHTeZS"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 60832C4AF0C;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AoHDhERM"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 3F0E9C2BCFD;
 	Thu, 15 Oct 2026 04:08:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
 	s=k20201202; t=1792037282;
-	bh=EzSriMXwgbWdACuiB6Takyd0shE/guI8fknm7v/QBJ4=;
+	bh=rW5AndWU3Af4bl/pCZGgqXXiHphHH7uGID1+TCuaRQA=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To:From;
-	b=A3LHTeZSGH+IQy6WCz1zUGGjiRoEwcMJGapBXzVNIGkH//C0NdawA7UDIFVuN39aM
-	 4prsERRSEHZ1nuniiGTy6F0JiORRzwGbsAnic/v8bN3vezLLrARi/OkY+BTBmHYbTr
-	 EwRm3VHu3Yu2F3Up6/886tlcsXKBjQxg9rJIQ2Ab2yvXX8KXMLw42frxM8mt/Twqan
-	 L3UHLJ5scvhbjC9j8rSbePBsbwto0t9qncTtNsB1umJGA96Cs8SA8mffJc8RbfJm9P
-	 pYInSg1Ei32evR2iC08/glZGaMO5xPaPoFxfzlivT/Hs+T9Tm3O09r10OwGAzABY1D
-	 YjrR0ydLXBi3Q==
+	b=AoHDhERM+QZYZBHsLe0D65FMFCogrUDOEwpuIWRTTwzgQI+Dgf8pG4YNY1Zswbo8j
+	 w+R7oh6d1qPbKN+rgW9PHqO2EhJKpL2Ch+ss9jJaGwwg3cbHskaCvpBikvle85cxtt
+	 0vOO6bfF47+OP+VMzR9HfZkdrVXEXxJtC787sukolNDmB6qLezWN49R7/a4MfWR+QQ
+	 CaKAwezzamPWKocm9AwgAGz+p/csorokVX+hFluuTCLxrYYiLriTvnjBOdC8Yo8BVv
+	 XOxGiEL5NFCPtYBxB1hmZccyA/369IK/iOBzTefM0w1mg24yQaXS4Ulch+oh+gRNQw
+	 2TTKvmdWYy3VQ==
 Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4E229CC6B1C;
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2AC0FCC6B30;
 	Thu, 15 Oct 2026 04:08:02 +0000 (UTC)
 From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
-Date: Thu, 15 Oct 2026 13:08:08 +0900
-Subject: [PATCH v3 9/9] xfs: make pNFS LAYOUTCOMMIT stable the way
- fdatasync does
+Date: Thu, 15 Oct 2026 13:08:06 +0900
+Subject: [PATCH v3 7/9] xfs: take the invalidate lock while mapping a pNFS
+ layout
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -41,7 +41,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-xfs-pnfs-batch-v3-9-54fc7b2e467d@samsung.com>
+Message-Id: <20261015-xfs-pnfs-batch-v3-7-54fc7b2e467d@samsung.com>
 References: <20261015-xfs-pnfs-batch-v3-0-54fc7b2e467d@samsung.com>
 In-Reply-To: <20261015-xfs-pnfs-batch-v3-0-54fc7b2e467d@samsung.com>
 To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
@@ -52,11 +52,11 @@ Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>,
  Andrey Albershteyn <aalbersh@kernel.org>, linux-nfs@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792037279; l=5333;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792037279; l=2310;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=laXqq7TOR45+FMXiIBI9lNIgwekJrK+v7NewiqiFklI=;
- b=NJF1MfjxR3IHODdcVM2tSGuKwM5IgMC5wu+oG+8UnocjZul1G50vNBL6vt9Bjq36/aDguk1Dg
- FWfMvMRD11iDUudMZWe2fdD7CoFRW1hxHVcrgppvCk+mH/Gi2tOU8TJ
+ bh=Y4pj8g534AU8Fw0hQevx0icUrGeA3TFnaiTLae8Dzlc=;
+ b=mKegVXQlLtC4uQGjv6FqhI2dMP4jLVun5IlFw/GEsIpfExYWsFuqkyrwqzxHECAGejDKJfgNo
+ XkA3iXcrUQSADuQVz3d78+/CsoteVG8P55RBF1ILN9Hb2XhF3wDWCwv
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
@@ -66,116 +66,64 @@ Reply-To: daejun7.park@samsung.com
 
 From: Daejun Park <daejun7.park@samsung.com>
 
-xfs_fs_commit_blocks() commits the timestamp update of every
-LAYOUTCOMMIT as a synchronous transaction, so every LAYOUTCOMMIT forces
-the log. When the client only overwrote blocks that were already written
-on disk and the size does not change, the only metadata that this log
-force makes stable for the file is the new timestamps. fdatasync after
-the same overwrite does not force the log: a timestamp-only change does
-not set ili_datasync_seq, and without it xfs_file_fsync() only flushes
-the cache of the device that holds the file data. The comment above
-xfs_fs_commit_blocks() says that it relies on always committing a
-transaction, and that it would otherwise have to flush the cache the way
-fsync does for a datasync.
+xfs_fs_map_blocks() flushes and invalidates the page cache of the file
+under the iolock and then maps the range, but a write fault takes only
+the invalidate lock (XFS_MMAPLOCK_SHARED in __xfs_write_fault()), not
+the iolock. A fault on a shared mapping of the file can therefore add a
+delalloc extent to the range between the flush and the mapping, which
+trips the ASSERT on DELAYSTARTBLOCK, or is handed to nfsd, which warns
+about a filesystem that returned a delalloc extent and refuses the
+layout.
 
-Do it the way fdatasync does: log the timestamps as XFS_ILOG_TIMESTAMP
-when the size does not change, commit the transaction without
-XFS_TRANS_SYNC, force the log up to ili_datasync_seq, and flush the
-cache of the device that holds the file data unless that log force wrote
-an iclog. The unwritten extent conversions and a new size set
-ili_datasync_seq, so a LAYOUTCOMMIT that converts extents or changes the
-size still forces the log. So does a conversion that was done earlier,
-for example by a direct write on the server: ili_datasync_seq stays set
-until that conversion is on disk, so the log force covers it.
+Take the invalidate lock in exclusive mode together with the iolock, as
+__xfs_file_fallocate() does, so that page faults wait until the layout
+has been mapped.
 
-With the block layout on an NVMe/TCP namespace in QEMU, backed by a
-partition of an NVMe SSD with a volatile write cache, one client process
-overwriting a 16 MiB file in 64 KiB writes, each followed by fsync, took
-473 ms instead of 800 ms (median of 5 runs). On average a LAYOUTCOMMIT
-spent 1.1 ms in xfs_fs_commit_blocks() instead of 2.4 ms, and none wrote
-an iclog. With 4 KiB writes to a 4 MiB file it took 1841 ms instead of
-3101 ms. A LAYOUTCOMMIT now issues an empty cache flush instead of a log
-write with REQ_PREFLUSH and REQ_FUA. The guest that ran nvmet reached
-the SSD through virtio-blk, which has no FUA, so there the FUA cost a
-second cache flush. The gain should be smaller with native FUA and on a
-device without a volatile write cache. It is also smaller with several
-writers: 4 threads overwriting 16 MiB files in 64 KiB writes took
-1011 ms instead of 1083 ms. LAYOUTCOMMITs of new files force the log as
-before.
+Not marked for stable: the race needs a process on the server that
+writes to a shared mapping of the file while a client gets a layout for
+the same range, and the comment above xfs_break_leased_layouts() already
+leaves such writers unsynchronized with pNFS clients.
 
-As with fdatasync, the timestamps of a LAYOUTCOMMIT that converts
-nothing and keeps the size, and the change attribute that nfsd derives
-from the ctime, reach the disk with a later log write instead of before
-the reply, at the latest the one that the log worker issues every 30 s
-by default. After a crash in that window, the change attribute can go
-back to the value it had before the LAYOUTCOMMIT, while the data the
-client wrote is on disk. The Linux client sends LAYOUTCOMMIT from both
-fsync() and fdatasync() (pnfs_generic_sync() ignores datasync), so
-fsync() on a block layout client now gets the timestamp guarantee of
-fdatasync(). RFC 8881 section 12.5.4 says that LAYOUTCOMMIT may require
-committing the block list to stable storage, which this keeps, and
-section 12.5.4.1 only asks that the updated attributes be visible when
-it completes.
-
+Suggested-by: Darrick J. Wong <djwong@kernel.org>
+Link: https://lore.kernel.org/r/20260519145949.GH9555@frogsfrogsfrogs
 Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
- fs/xfs/xfs_pnfs.c | 21 +++++++++++++++------
- 1 file changed, 15 insertions(+), 6 deletions(-)
+ fs/xfs/xfs_pnfs.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
 diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
-index dd2df30717..14c115638f 100644
+index 9a578a2d02..3d97b29b54 100644
 --- a/fs/xfs/xfs_pnfs.c
 +++ b/fs/xfs/xfs_pnfs.c
-@@ -296,10 +296,12 @@ xfs_pnfs_validate_isize(
-  * converting any unwritten extents, flushing the disk cache and updating the
-  * time stamps.
-  *
-- * Note that we rely on the caller to always send us a timestamp update so that
-- * we always commit a transaction here.  If that stops being true we will have
-- * to manually flush the cache here similar to what the fsync code path does
-- * for datasyncs on files that have no dirty metadata.
-+ * Like fdatasync, a commit that only updates the timestamps does not force the
-+ * log: they are logged as XFS_ILOG_TIMESTAMP and reach the disk with a later
-+ * log write. The log is forced up to the last change that a datasync needs,
-+ * such as the unwritten extent conversions or a new size, and the cache of the
-+ * device holding the file data is flushed if that log force did not write an
-+ * iclog itself.
-  */
- static int
- xfs_fs_commit_blocks(
-@@ -313,6 +315,7 @@ xfs_fs_commit_blocks(
- 	struct xfs_trans	*tp;
- 	struct timespec64	now;
- 	bool			update_isize = false;
-+	int			log_flushed = 0;
- 	int			error, i;
- 	loff_t			size;
+@@ -168,8 +168,11 @@ xfs_fs_map_blocks(
+ 	 * similar to direct I/O, except that the synchronization is much more
+ 	 * complicated.  See the comment near xfs_break_leased_layouts
+ 	 * for a detailed explanation.
++	 *
++	 * Take the invalidate lock as well, so that page faults cannot add
++	 * delalloc extents to the range while it is being mapped.
+ 	 */
+-	xfs_ilock(ip, XFS_IOLOCK_EXCL);
++	xfs_ilock(ip, XFS_IOLOCK_EXCL | XFS_MMAPLOCK_EXCL);
  
-@@ -369,7 +372,8 @@ xfs_fs_commit_blocks(
- 
- 	xfs_ilock(ip, XFS_ILOCK_EXCL);
- 	xfs_trans_ijoin(tp, ip, XFS_ILOCK_EXCL);
--	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
-+	xfs_trans_log_inode(tp, ip,
-+			update_isize ? XFS_ILOG_CORE : XFS_ILOG_TIMESTAMP);
- 
- 	now = inode_set_ctime_current(inode);
- 	inode_set_atime_to_ts(inode, now);
-@@ -380,8 +384,13 @@ xfs_fs_commit_blocks(
- 		ip->i_disk_size = new_size;
+ 	error = -EINVAL;
+ 	limit = mp->m_super->s_maxbytes;
+@@ -252,13 +255,13 @@ xfs_fs_map_blocks(
+ 		if (error)
+ 			goto out_unlock;
  	}
+-	xfs_iunlock(ip, XFS_IOLOCK_EXCL);
++	xfs_iunlock(ip, XFS_IOLOCK_EXCL | XFS_MMAPLOCK_EXCL);
  
--	xfs_trans_set_sync(tp);
- 	error = xfs_trans_commit(tp);
-+	if (error)
-+		goto out_drop_iolock;
-+
-+	error = xfs_log_force_inode(ip, true, &log_flushed);
-+	if (!error && !log_flushed)
-+		error = blkdev_issue_flush(xfs_inode_buftarg(ip)->bt_bdev);
+ 	error = xfs_bmbt_to_iomap(ip, iomap, &imap, 0, 0, seq);
+ 	*device_generation = mp->m_generation;
+ 	return error;
+ out_unlock:
+-	xfs_iunlock(ip, XFS_IOLOCK_EXCL);
++	xfs_iunlock(ip, XFS_IOLOCK_EXCL | XFS_MMAPLOCK_EXCL);
+ 	return error;
+ }
  
- out_drop_iolock:
- 	xfs_iunlock(ip, XFS_IOLOCK_EXCL);
 
 -- 
 2.43.0
