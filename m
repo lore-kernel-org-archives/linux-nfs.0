@@ -1,30 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 58C813E1231
-	for <linux-nfs@vger.kernel.org>; Thu, 15 Oct 2026 23:33:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 436143F410D
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Oct 2026 23:33:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792107192; cv=none; b=Wf30RWeWU+Qkn5qS67ggwaVDwqGLvF8TeiT9W4+y/i7GiNPHpYOArmJUnoBl8aj86ondyq5XUJKz3RSa8z8UycZtDfNUCH/EoogIHr5YiYy5sQ4XUXsEEd3Aiy15URtpTyDqH/gD0E553kreVEAIBKHFNIyubaw6c3ImkoVPuzQ=
+	t=1792107193; cv=none; b=C+M2+sl5HDVrQPqUCUTAqCeITchSjtqff8f2aLzAXRxOJ0Al+6p1eY+RFT3dITcZ99WIFsos86KIS/Jg2hhqXEHgOofdb4yMcU+k3z99IZCFoZ79QXlOr9W6sRqtRJCC8DLYd3CiJ3H3HAR23rtRQtVPVScEq57h0oMzjQtv4DI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792107192; c=relaxed/simple;
-	bh=/6fdy2CVTJzgLgsJppjNRiivkMkPWBQtO6NwrvLfCjI=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=turazfzphVV4w3pbaS+DN4L+UaV6rrQdGb/8uCMzEIYwi/kMEhR3h12VRM4rz0IU6Qy2I+BdsTpA9LzIYxBM+0jhr4wpDeC4Cxdu4L40mJnIPMqYZpH26PIsFjTz+BE4hYTDVEg1y5Kxii8XKsj4tyb3apHhPQ4bN7ONa0AmQc8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=lCKps5B6; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1792107193; c=relaxed/simple;
+	bh=ru43zY+ptqs1q0hQ+82XHvX2Uz1hE8Ec0UNzIGxZTl0=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=P6gNe29M7slOYnsAV0+3612cLWpoaE8vLVYdbkx0WVulVRuoK4uLLxY+bZPZ3VjOXvviFTHPwlFNkYV3KfUIp77bmckbIi8yiPBLog3pv0cVScBhvk19+B0X+lK8CwBseDXOD0F+y95QcpkRx41RTbiYHCBpzVxFqBnksxz4CS8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=be41zlYX; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="lCKps5B6"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AA0F21F000C4;
-	Thu, 15 Oct 2026 23:33:10 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="be41zlYX"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EB8B11F000C5;
+	Thu, 15 Oct 2026 23:33:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792107190;
-	bh=9RMtPUFCuYN30zPTOxaGP7huxuPCnbVGVzaU0gv5SsI=;
-	h=From:To:Cc:Subject:Date;
-	b=lCKps5B6tN64QKfcqzZ+RvB8Bg9M2RNeDCYDu0l2x4NEpOBEv/Qt/WQS/GeVg5mSO
-	 3woRdrHgR38uBxhq0wBN7zmc5rQ1M38acBff9t7a4ujmC14ahLM06ZVdOPiPg+MDZl
-	 46mH4NBvArwphbtKGpiyhzm2plfvbxp77yigFieZdFhNhgIj13IHrXv1NUbSRmvowU
-	 k48PKvIMOka8AQZJXw6we4g/Qx+uixODaHVHtlkom3rEBefzN3bF+D2F4hWWqGe/7q
-	 TytPwN7eZHvftsj63ipPhEKRs6nEZFCnv1IQMEC0JWSC/EX7mH117tF6l7SB8ZXiVS
-	 tFK7D6tQrSf+Q==
+	s=k20260515; t=1792107192;
+	bh=yrooXPF1hhM/MoxFNqM1PlbQKoKP+pEqMYFgXl1fs10=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=be41zlYXUQwD44Jok0NtpSZ7o7ilsOn6jKjPFtuvyJHNm3+kodNq4v40to+kjFRdj
+	 ZARjFHoJQIv2iv98pPQxGx57CCiP5L6T4m5JO3TJJff1ic+46QKwKTTizNXPy5pr9W
+	 GJ/VtgUSaQN4LqJPxmsPEoaLpOPjsR2pSDr3t6qkDhG+6it/oST3jJm+tlBxJQb/EX
+	 khz2+kHpIpKpudb2QsVoD4d8AjDP0bZRXJ6shDv4HM4WgZ/J/qfyHneU5iUUHGFzme
+	 ki/0SoGnV8vR0QbGGqEhw2j1yvbY0t2oE5EFuLsrhVKLy/vNaKMiTXi5CKK7yuKk38
+	 Hpbrkzcv7z1aw==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Chuck Lever <cel@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>
@@ -37,10 +38,12 @@ Cc: linux-nfs@vger.kernel.org,
 	Jens Axboe <axboe@kernel.dk>,
 	Matthew Wilcox <willy@infradead.org>,
 	linux-mm@kvack.org
-Subject: [PATCH v4 00/10] NFSD: keep direct-mode I/O out of the page cache
-Date: Thu, 15 Oct 2026 19:32:59 -0400
-Message-ID: <20261015233309.42999-1-snitzer@kernel.org>
+Subject: [PATCH v4 01/10] NFSD: cut a misaligned direct-mode WRITE at page boundaries
+Date: Thu, 15 Oct 2026 19:33:00 -0400
+Message-ID: <20261015233309.42999-2-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
+In-Reply-To: <20261015233309.42999-1-snitzer@kernel.org>
+References: <20261015233309.42999-1-snitzer@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -49,177 +52,108 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Hi,
+nfsd_write_dio_iters_init() splits a misaligned direct-mode WRITE into a
+direct middle and buffered ends so that as little of it as possible goes
+through the page cache.  That only works if direct and buffered I/O never
+meet inside a page: the direct middle invalidates the page cache over its
+range, so a middle that starts or stops inside the page a buffered end
+writes has that page dropped, and whichever of the two neighbouring
+WRITEs comes second has to read it back from the device.
 
-This series refines the heuristics NFSD_IO_DIRECT already uses, mostly
-on the WRITE path and in one corner of the READ path: the io_cache_write
-and io_cache_read modes where an aligned request goes to the filesystem
-as O_DIRECT, with DONTCACHE for the parts a misaligned WRITE cannot issue
-directly.
+The middle was cut at the file system's direct I/O offset alignment:
 
-It does not knowingly undercut anything the existing upstream code is
-built on.  An aligned WRITE is still one O_DIRECT write and an aligned
-READ is still one O_DIRECT read.  A misaligned WRITE is still split into
-a direct middle and buffered ends, and by default those ends are still
-DONTCACHE where the filesystem supports it.  io_cache_read and
-io_cache_write mean what they did, and nothing new is asked of the
-filesystem.  What changes is where the split is cut and when it is worth
-making, which READs are worth expanding, how often a synchronous WRITE
-is persisted, and what happens to the page two misaligned WRITEs share.
+	prefix_end = round_up(offset, offset_align);
+	middle_end = round_down(orig_end, offset_align);
 
-1/10 is a stable fix.  A misaligned WRITE is split into a direct middle
-and buffered ends, and the middle was cut at the filesystem's DIO offset
-alignment.  Where the page is larger than that alignment (16 and 64 KiB
-pages over 4096-byte blocks, or 4 KiB pages over 512-byte blocks) the
-middle then starts or stops inside the page a buffered end writes, its
-invalidation drops that page, and whichever of the two neighbouring
-WRITEs comes second reads it back from the device.  A misaligned end is
-now cut at a multiple of the larger of the alignment and the page size.
-An end that is already DIO-aligned gets no buffered segment and stays
-where it is, so a DIO-aligned WRITE is still issued direct on every page
-size.  Such an end can share its page with a buffered neighbour, but
-NFSD's direct WRITEs are synchronous and XFS holds its IOLOCK across
-iomap_dio_rw(), the page cache invalidation after the write included,
-so the neighbour cannot dirty that page in between and make the
-invalidation fail.
+On 4 KiB pages over 4096-byte blocks that alignment is the page size,
+the cut is a page boundary, and the problem cannot arise.  It is broken
+wherever the page is larger than the alignment: 16 and 64 KiB pages over
+4096-byte blocks, and 4 KiB pages over 512-byte blocks.  There a
+misaligned WRITE costs a read per shared page on top of its three I/Os.
 
-2/10 also marks the direct middle IOCB_DONTCACHE, for when XFS
-re-issues it as buffered I/O (-ENOTBLK) because something else has
-dirtied page cache in its range, such as a local process writing the
-exported file through mmap, which XFS's IOLOCK does not keep out.
+Cut each end of a WRITE on its own:
 
-3/10 splits a misaligned WRITE only for a direct middle of at least
-direct_misaligned_min_bytes (debugfs, default 8192), and moves the
-segment flag decisions into nfsd_write_dio_iters_init(), both from
-Christoph's suggested diff.  The threshold counts bytes: with 1/10 a
-split WRITE's middle is whole pages, and a threshold of two pages would
-demand a 32 KiB middle on 16 KiB pages and 128 KiB on 64 KiB pages.
+- an end that is already an offset_align multiple needs no buffered
+  segment, and the middle starts or stops there, mid-page or not.  A
+  WRITE aligned to the device stays entirely direct at every page size;
+- a misaligned end needs a buffered segment whatever is done, and that
+  segment now runs to the nearest page boundary inside the WRITE.
 
-4/10 (Jonathan) adds direct_misaligned_dontcache (default Y), which
-selects whether the parts that are not O_DIRECT are DONTCACHE or
-cached.
+That is one rule: a misaligned end is cut at a multiple of the larger of
+offset_align and PAGE_SIZE, which are both powers of two.
 
-5/10 stops expanding a READ smaller than its alignment into one or two
-whole aligned device reads.  The check sits in nfsd_direct_read_ok(),
-beside the last-operation-in-COMPOUND check now in nfsd-testing.
+The segments still tile exactly the bytes of the WRITE: a buffered end
+grows inward, at the middle's expense, never outward.  A misaligned WRITE
+that holds no whole page has no middle and is issued as one buffered
+segment.  Where the offset alignment is a page-size multiple nothing
+changes.
 
-6/10 persists a FILE_SYNC or DATA_SYNC WRITE that is split, or issued
-buffered, once after all of its segments, instead of once per segment:
-one fsync where there were up to three.  A WRITE issued whole as
-O_DIRECT keeps IOCB_DSYNC, so iomap can still complete a DATA_SYNC
-overwrite with FUA writes.
+nfsd-io-modes.rst said that DONTCACHE is not used for the misaligned
+segments, which the write loop already contradicted: every segment
+without IOCB_DIRECT gets IOCB_DONTCACHE when the file system supports
+it.  Replace that sentence with one that says so, next to one that
+describes the new cut.
 
-7/10 is an mm patch: folio_mark_dropbehind() marks an existing folio
-dropbehind and keeps WB_DONTCACHE_DIRTY balanced when the folio is
-already dirty, as folio_mark_dirty() does for PG_dirty where
-folio_set_dirty() only sets the flag.  Marking an already dirty folio
-with folio_set_dropbehind() instead drives the counter negative, and
-the DONTCACHE writeback kick then stops writing anything back for every
-writer on that bdi_writeback.
+Fixes: 06c5c97293e3 ("NFSD: Implement NFSD_IO_DIRECT for NFS WRITE")
+Cc: stable@vger.kernel.org
+Assisted-by: LLM
+Signed-off-by: Mike Snitzer <snitzer@kernel.org>
+---
+ Documentation/filesystems/nfs/nfsd-io-modes.rst |  9 ++++++---
+ fs/nfsd/vfs.c                                   | 13 +++++++++++++
+ 2 files changed, 19 insertions(+), 3 deletions(-)
 
-8/10 is also mm: it reports WB_DONTCACHE_DIRTY in the bdi debugfs stats,
-as BdiDontcacheDirty and per bdi_writeback as WbDontcacheDirty, summed
-over the per-cpu batches since the flusher targets the summed value.
-The counter drives the DONTCACHE writeback kick but was not reported
-anywhere; this is how the balance 7/10 keeps was observed.  It carries
-Fixes: for the commit that added the counter.
-
-7/10 and 8/10 are Cc'd to linux-mm and need an mm ack.
-
-9/10 calls folio_mark_dropbehind() to keep the page two misaligned
-WRITEs share until both have written it, with no state in NFSD: 704
-device reads for 42895 WRITEs where there were 45144 for 45664
-(47008-byte records, 32 interleaved writers, 4 KiB pages), and on a
-four-server pNFS flexfiles rig 0.003 device reads per record instead of
-0.014-0.015, about 2.9 GiB of page-cache growth instead of 11 GiB, and
-2.4% to 4.9% more write throughput.
-
-10/10 adds tracepoints for how each direct-mode READ and WRITE was
-serviced, and why a WRITE was not issued direct.
-
-The series applies to cel/nfsd-testing (78c334bc5ae6) and each patch
-builds with W=1 with no warnings.
-
-Changes since v3:
-- Dropped "NFSD: Enable return of an updated stable_how to NFS
-  clients" and "NFSD: add direct-mode WRITE settings that persist each
-  WRITE" (v3 8/9 and 9/9).  The rest of the series does not depend on
-  them.
-- New 1/10, NFSD: cut a misaligned direct-mode WRITE at page
-  boundaries (Cc: stable).  v3 cut the direct middle where the DIO
-  offset alignment falls, which is a page boundary only when that
-  alignment is the page size.
-- Rebased onto the current cel/nfsd-testing.  5/10's size check moved
-  into nfsd_direct_read_ok().
-- Descriptions, comments and nfsd-io-modes.rst corrected throughout,
-  among them: 2/10 says what can still make XFS re-issue the middle
-  buffered once 1/10 keeps it off the pages the buffered ends share;
-  3/10 says why a WRITE misaligned in memory is not split; 4/10 no
-  longer misstates what the split threshold decides.
-- 3/10: the threshold is direct_misaligned_min_bytes (default 8192)
-  instead of direct_misaligned_num_pages (default 2).  On 4 KiB pages
-  the default is unchanged.  The debugfs file is renamed with its unit,
-  so a value written to the old name is not read as bytes.
-- 6/10: a WRITE issued whole as O_DIRECT keeps IOCB_DSYNC; v3 turned a
-  DATA_SYNC overwrite into a plain write plus an fsync.
-- New 7/10, mm: add folio_mark_dropbehind().  v3 marked an already
-  dirty folio dropbehind directly; the clean that follows subtracts it
-  from WB_DONTCACHE_DIRTY, which never counted it, so the counter
-  drifted negative and stopped the DONTCACHE writeback kick for the
-  whole bdi_writeback.
-- New 8/10, mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats.  Reports
-  the counter 7/10 keeps balanced; Fixes: Jeff's commit that added it.
-- 9/10: claims a page only where a buffered segment covers it partly, at
-  either end of any segment, so a multi-page start or end segment and a
-  sub-page WRITE are handled; claims for a split WRITE at any DIO offset
-  alignment, since 1/10 keeps the direct middle out of the claimed
-  pages; does not claim when the mapping's minimum folio is larger than
-  a page; allocates with __GFP_WRITE; does not mark a page a short
-  write did not reach; a FILE_SYNC or DATA_SYNC WRITE marks its shared
-  pages after its own fsync, when they are clean, so they are not
-  counted as DONTCACHE dirty and do not wake the writeback kick.  The
-  description no longer says marking must not be accounted or that the
-  kick targets marked folios.
-- 10/10: the DONTCACHE state is its own tracepoint argument instead of a
-  bit ORed into the disposition (nsegs is dropped; it follows from the
-  segment sizes); the redundant #include "vfs.h" is gone;
-  NFSD_WRITE_DIO_NO_ALIGN is renamed NFSD_WRITE_DIO_NO_ALIGNMENT to
-  match its string; mem_offset is 0 for a WRITE with no payload.
-
-v3: https://lore.kernel.org/linux-nfs/20261001045502.48381-1-snitzer@kernel.org/
-v2: https://lore.kernel.org/linux-nfs/20260929231329.22018-1-snitzer@kernel.org/
-v1: https://lore.kernel.org/linux-nfs/20260929173423.16149-1-snitzer@kernel.org/
-
-Thanks,
-Mike
-
-Jonathan Flynn (1):
-  NFSD: add direct_misaligned_dontcache debugfs knob
-
-Mike Snitzer (9):
-  NFSD: cut a misaligned direct-mode WRITE at page boundaries
-  NFSD: mark the direct middle of a split WRITE IOCB_DONTCACHE as well
-  NFSD: only split a direct-mode WRITE for a worthwhile direct middle
-  NFSD: do not use direct I/O for a READ smaller than its alignment
-  NFSD: persist a synchronous direct-mode WRITE once, after all of its segments
-  mm: add folio_mark_dropbehind() to mark a folio dropbehind and account it
-  mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats
-  NFSD: keep boundary page of a split direct-mode WRITE until both writers complete
-  NFSD: add tracing for how direct-mode READ and WRITE are serviced
-
- .../filesystems/nfs/nfsd-io-modes.rst         |  93 +++++-
- fs/nfsd/debugfs.c                             |  25 ++
- fs/nfsd/nfsd.h                                |   2 +
- fs/nfsd/trace.h                               |  77 +++++
- fs/nfsd/vfs.c                                 | 265 +++++++++++++++---
- fs/nfsd/vfs.h                                 |   9 +
- include/linux/pagemap.h                       |   1 +
- mm/backing-dev.c                              |  11 +
- mm/filemap.c                                  |  31 ++
- 9 files changed, 473 insertions(+), 41 deletions(-)
-
-
-base-commit: 78c334bc5ae61d23ca1cc2e43079c620f1d40866
+diff --git a/Documentation/filesystems/nfs/nfsd-io-modes.rst b/Documentation/filesystems/nfs/nfsd-io-modes.rst
+index 0fd6e82478fe6..1916b2eee58ad 100644
+--- a/Documentation/filesystems/nfs/nfsd-io-modes.rst
++++ b/Documentation/filesystems/nfs/nfsd-io-modes.rst
+@@ -126,9 +126,12 @@ Misaligned WRITE:
+     middle and end as needed. The large middle segment is DIO-aligned
+     and the start and/or end are misaligned. Buffered IO is used for the
+     misaligned segments and O_DIRECT is used for the middle DIO-aligned
+-    segment. DONTCACHE buffered IO is _not_ used for the misaligned
+-    segments because using normal buffered IO offers significant RMW
+-    performance benefit when handling streaming misaligned WRITEs.
++    segment. A misaligned start or end segment runs to the nearest page
++    boundary inside the WRITE, not just to the nearest DIO-aligned
++    offset, so the O_DIRECT segment never shares a page with a buffered
++    one; a start or end that is already DIO-aligned gets no buffered
++    segment at all. If the filesystem supports FOP_DONTCACHE, the
++    misaligned segments are marked DONTCACHE.
+ 
+ Tracing:
+     The nfsd_read_direct trace event shows how NFSD expands any
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index f4069da853725..ed5903c3becac 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1324,6 +1324,7 @@ nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
+ 	size_t prefix, middle, suffix;
+ 	loff_t offset = iocb->ki_pos;
+ 	unsigned int nsegs = 0;
++	u32 cut;
+ 
+ 	/*
+ 	 * Check if direct I/O is feasible for this write request.
+@@ -1338,6 +1339,18 @@ nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
+ 	orig_end = offset + total;
+ 	middle_end = round_down(orig_end, offset_align);
+ 
++	/*
++	 * The direct middle invalidates the page cache over its range, so it
++	 * must not share a page with a buffered end.  An aligned end needs no
++	 * buffered segment; a misaligned one is cut on a page boundary even
++	 * where the offset alignment is finer than a page.
++	 */
++	cut = max_t(u32, offset_align, PAGE_SIZE);
++	if (prefix_end != offset)
++		prefix_end = min(round_up(offset, cut), orig_end);
++	if (middle_end != orig_end)
++		middle_end = max(round_down(orig_end, cut), prefix_end);
++
+ 	prefix = prefix_end - offset;
+ 	middle = middle_end - prefix_end;
+ 	suffix = orig_end - middle_end;
 -- 
 2.52.0
 
