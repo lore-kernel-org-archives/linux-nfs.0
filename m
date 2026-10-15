@@ -1,38 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 895DE44F54C;
-	Thu, 15 Oct 2026 04:08:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 44B7B31F985;
+	Thu, 15 Oct 2026 04:15:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792037282; cv=none; b=DCgF2MLQf6/dAg7Uje2dHQyNFHKKKTPUk2NUDD3biDkFvbWmQ4UOhpJ/zijAFDNcpv9wY/BJrVDvfaE/hJw+/ykIbjb2yp0AZN2J0xFf84vhJ6PQniNOZizctbtsWAEUe+7dUo6II5z6mp4zIkbSVioGbwlwPj4IhDsDWhe7IrA=
+	t=1792037744; cv=none; b=lciNRpntvzQ3tfsNdPp+82c1EyRZ60x+FKcbx3Luu2iCKi5WstKHfHYi0GoAjUfL1Oao/ywvSW3aAYKWmJN6UMzV8pyMUyJMY9CeVkVB1WoSyr4YF1JUgfKL+8VVYrEkbyUdRioiXh+8DTiFfDWU00yhlwysFD5DGaWRlpUENTc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792037282; c=relaxed/simple;
-	bh=o9LtJ8MKDySwi83KhGSWbJr1Ty8G1B0bj4qaGAlVqTw=;
+	s=arc-20240116; t=1792037744; c=relaxed/simple;
+	bh=p0UFzdfv0vbv6OCp19Rsw/9rZhg/VgCOTwrkyCBJe9Q=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=g8dYQnZVikDhi13Tj9Oc1LliK8McJLThBt5cZuKXg/BHWCaVVp/veAUWIFhe0BXFIGLO+0Vaz8KUGOdzBs7YfY1Nb1aecrh+ZZUp9OOQPWZv0MYFx18xAGNVejQzlsXEUuOcaXp3OlW4TS/kw/SYh9nnJdy6ZsqFnznU3TtIa24=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZJYrdqpM; arc=none smtp.client-ip=10.30.226.201
+	 In-Reply-To:To:Cc; b=LsTef93m8gpolgVSTaCK1GGSOtal6DY0NtGBuhWEhf9DQYUyqb/wucE5R/k/4alaCNUUoDrpaAyt78xbgcCga6y3ekRx6IyDew1IKGHMHM8M478HA06JY4ns98+JP9gm9yvCQ7Q8oj08EftIlsS7+WcRTvx0yCKHl/PYvqEUoDw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AJp/dGbs; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZJYrdqpM"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 4F6CDC2BD00;
-	Thu, 15 Oct 2026 04:08:02 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AJp/dGbs"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id DD835C2BCC7;
+	Thu, 15 Oct 2026 04:15:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1792037282;
-	bh=o9LtJ8MKDySwi83KhGSWbJr1Ty8G1B0bj4qaGAlVqTw=;
+	s=k20201202; t=1792037744;
+	bh=p0UFzdfv0vbv6OCp19Rsw/9rZhg/VgCOTwrkyCBJe9Q=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To:From;
-	b=ZJYrdqpM8J8w2kYiwVkcaSyXrIKXt00EoCUBJa2SXoKYnw35IsRB7e2FR3kjmvccG
-	 CDCFR5uXpaJCfNcdHhmNGVPNt+VHsLRTCxe7Ya3AFEs9/vyS4U/Sp4hRWObKEK9oz5
-	 FdOOVbhwFRpGS8GoAWi2+lMf47A72EdI6dn9yTaxlegxzdumasf+j14HYdUA54E/Kf
-	 Ht4Zr6Uw/COBsaIR33pscCdiFHan8UAF/s/y5JrLkK7/FJpgAYfb9I2qBFP2SqZ0kV
-	 byrDn/XKxJ8htiU8H7eENgDZJyBzYk73dRfEzIHqeKHbZINFkQd6qKxSnUqw2UtnZM
-	 dJOS9sXo/5YeQ==
+	b=AJp/dGbsSwsWivLVDepiGszDMsqs6LlcmerJHY5kffEA/+E2ced3RBsRjAoZYHAP0
+	 pqJmHhyTanmHzoZKQKP3cvtKgoXn6g5RIYsbTUXBTvN5t1DWWPjaR7q7a8IM5wgziY
+	 d96uVT/rOw1+qmduzCSgXmBCg8BvtrbRO5oqCKoj0gyAInsN68d+YQIUd167MP0KpG
+	 gwbBD4GRyajwZXDXHt3/9WlmAP+X1QrKUsKGxanziDncRr7v7rhDMrrktisU6Kr/W6
+	 XfiI69M08z0iKwZWKx8ulp0VdGbAgyuHmhnudwUjj/pmD1n22J4qdGznQJXi4fOenp
+	 em/bDzG0bkQCQ==
 Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3CA95CC6B35;
-	Thu, 15 Oct 2026 04:08:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B9B27CC6B2E;
+	Thu, 15 Oct 2026 04:15:43 +0000 (UTC)
 From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
-Date: Thu, 15 Oct 2026 13:08:07 +0900
-Subject: [PATCH v3 8/9] xfs: add datasync and log_flushed arguments to
- xfs_log_force_inode()
+Date: Thu, 15 Oct 2026 13:15:42 +0900
+Subject: [PATCH v3 1/7] nfsd: fail a LAYOUTGET in progress when the layout
+ lease is broken
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -41,22 +41,23 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-xfs-pnfs-batch-v3-8-54fc7b2e467d@samsung.com>
-References: <20261015-xfs-pnfs-batch-v3-0-54fc7b2e467d@samsung.com>
-In-Reply-To: <20261015-xfs-pnfs-batch-v3-0-54fc7b2e467d@samsung.com>
-To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
- Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, 
- Jeff Layton <jlayton@kernel.org>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Sergey Bashirov <sergeybashirov@gmail.com>, 
- Andrey Albershteyn <aalbersh@kernel.org>, linux-nfs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
+Message-Id: <20261015-nfsd-layout-recall-v3-1-ba3269f8ca22@samsung.com>
+References: <20261015-nfsd-layout-recall-v3-0-ba3269f8ca22@samsung.com>
+In-Reply-To: <20261015-nfsd-layout-recall-v3-0-ba3269f8ca22@samsung.com>
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
+Cc: Christoph Hellwig <hch@lst.de>, 
+ Benjamin Coddington <bcodding@redhat.com>, 
+ Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+ linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792037279; l=8173;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792037741; l=6973;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=i5pmSpgPvKL2p/TWenNt7p6UkAXFU8tFUyEe6dL784Q=;
- b=joouWB55/BV9WQHPyfpGZmpjjU3kSoKV2KO8DcD1lk33Oduf1a2oT6vCf2U4UzRQJkIXWv/nq
- KMDvpmMliCAB6MdOHqBY1GsLBjNDB82p3VFwJ4SMCCoW1NhG5mksVMk
+ bh=UHjOKqzQ9RO0EXVgO/M+DZnuxR5oW0bRzMWIC+pdsLs=;
+ b=bYPR7sWCfnLc+bm4ti8MbEgj8AoT8ZxtSQEruWqSBKSZb8g/U1CzTW83dsDnLq5g2ZNEEU2xi
+ A8dP336AdJPBxFnN33v49tbGKbi8ed6wc2NRpAi7P6lv1eoi1lCYjVN
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
@@ -66,226 +67,178 @@ Reply-To: daejun7.park@samsung.com
 
 From: Daejun Park <daejun7.park@samsung.com>
 
-xfs_log_force_inode() is xfs_fsync_flush_log() without a datasync
-variant and without the log_flushed result, plus a check for an inode
-without a log item. Add the datasync and log_flushed arguments to
-xfs_log_force_inode(), move the body and the comment of
-xfs_fsync_flush_log() into it, and call it from xfs_file_fsync(), so
-that code outside xfs_file.c can force the log for a datasync. The other
-callers pass false and NULL. The next patch uses it in the pNFS
-LAYOUTCOMMIT path.
+A layout stateid takes its FL_LAYOUT lease when it is allocated, before
+the first layout is added to it. When the lease is broken in between,
+nfsd4_recall_file_layout() finds no layouts and does nothing. The
+LAYOUTGET then hands out a layout that is not recalled: the lease is
+already marked as breaking, so ->lm_break() is not called for it again.
+The breaker waits until the client gives the layout up by itself or the
+lease break time is over; with the SCSI layout the client is then
+fenced although it was never sent a recall. While the breaker waits,
+kernel_setlease() fails for new layout stateids and the LAYOUTGETs of
+other clients get NFS4ERR_DELAY.
 
-No functional change: xfs_file_fsync() only calls it for an inode with a
-log item, and the other callers force the log as before.
+Commit c5c707f96fc9 ("nfsd: implement pNFS layout recalls") marked such
+a layout stateid as recalled, and since nothing kept the LAYOUTGET from
+adding its layout afterwards, that layout was never recalled. Commit
+fb610c4dbc99 ("nfsd: fix race to check ls_layouts") therefore made the
+recall skip a layout stateid without layouts, which left the case
+above.
 
-Suggested-by: Christoph Hellwig <hch@lst.de>
-Link: https://lore.kernel.org/r/20261014130124.GA15407@lst.de
+Let the lease break mark such a layout stateid as recalled again, and
+make nfsd4_insert_layout() refuse to add layouts to a recalled layout
+stateid, which is what was missing the first time. The LAYOUTGET fails
+with NFS4ERR_RECALLCONFLICT, the layout stateid is freed and the lease
+goes away. No callback is sent for it; the new
+nfsd_layout_recall_empty tracepoint shows where fi_lo_recalls was
+raised without one. NFS4ERR_RECALLCONFLICT is what nfsd already answers
+to a LAYOUTGET for a file with a recall in progress, also when the
+recall went to another client (RFC 8881 section 15.1.14.3: "a
+conflicting recall operation that is currently in progress for that
+object"). The check in nfsd4_insert_layout() also covers a
+layout stateid with layouts that is recalled between the checks in
+nfsd4_layoutget() and nfsd4_insert_layout().
+
+Only a lease break does this. A LAYOUTGET that finds a layout stateid
+without layouts of another client leaves it alone, as before.
+
+The window is the time a LAYOUTGET needs from allocating the layout
+stateid to inserting the layout.
+
+Two clients writing to one file while the server writes 4 KiB to it
+every 50 ms, for 30 seconds, block layout (the runs without this patch
+on nfsd-testing 32eb1a60b456, the runs with it with this whole series).
+Without this patch one write on the server took 9.7 seconds in one run
+and 13.9 seconds in another, in both until the clients were done; in a
+third run it did not happen. With this patch the longest write on the
+server took 55 ms.
+
+To see the new path at work, a delay of 100 ms was added to LAYOUTGET
+between the two steps for one pair of runs. Without the patch the
+second write on the server took 30 seconds, the whole run. With it the
+longest write took 108 ms and nfsd_layout_recall_empty fired 16 times.
+(With that delay every LAYOUTGET meets a write on the server, so the
+clients got no layout in that run. It shows the path and nothing else.)
+
+Fixes: c5c707f96fc9 ("nfsd: implement pNFS layout recalls")
 Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/xfs/xfs_export.c  |  2 +-
- fs/xfs/xfs_file.c    | 50 ++++----------------------------------------------
- fs/xfs/xfs_inode.c   | 36 ++++++++++++++++++++++++++++++++----
- fs/xfs/xfs_inode.h   |  3 ++-
- fs/xfs/xfs_pnfs.c    |  2 +-
- fs/xfs/xfs_zone_gc.c |  2 +-
- 6 files changed, 41 insertions(+), 54 deletions(-)
+ fs/nfsd/nfs4layouts.c | 49 +++++++++++++++++++++++++++++++++++++++++++------
+ fs/nfsd/trace.h       |  1 +
+ 2 files changed, 44 insertions(+), 6 deletions(-)
 
-diff --git a/fs/xfs/xfs_export.c b/fs/xfs/xfs_export.c
-index 9afda52ed1..9dd6dd8c27 100644
---- a/fs/xfs/xfs_export.c
-+++ b/fs/xfs/xfs_export.c
-@@ -234,7 +234,7 @@ STATIC int
- xfs_fs_nfs_commit_metadata(
- 	struct inode		*inode)
+diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+index f2f8620fd5..c33935f486 100644
+--- a/fs/nfsd/nfs4layouts.c
++++ b/fs/nfsd/nfs4layouts.c
+@@ -346,14 +346,15 @@ nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
+ }
+ 
+ static void
+-nfsd4_recall_file_layout(struct nfs4_layout_stateid *ls)
++nfsd4_recall_file_layout_locked(struct nfs4_layout_stateid *ls)
  {
--	return xfs_log_force_inode(XFS_I(inode));
-+	return xfs_log_force_inode(XFS_I(inode), false, NULL);
- }
+-	spin_lock(&ls->ls_lock);
++	lockdep_assert_held(&ls->ls_lock);
++
+ 	if (ls->ls_recalled)
+-		goto out_unlock;
++		return;
  
- const struct export_operations xfs_export_operations = {
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 720f4a9b40..27176a4808 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -76,49 +76,7 @@ xfs_dir_fsync(
- 	struct xfs_inode	*ip = XFS_I(file->f_mapping->host);
+ 	if (list_empty(&ls->ls_layouts))
+-		goto out_unlock;
++		return;
  
- 	trace_xfs_dir_fsync(ip);
--	return xfs_log_force_inode(ip);
--}
--
--/*
-- * All metadata updates are logged, which means that we just have to push the
-- * journal to the required sequence number than holds the updates. We track
-- * datasync commits separately to full sync commits, and hence only need to
-- * select the correct sequence number for the log force here.
-- *
-- * We don't have to serialise against concurrent modifications, as we do not
-- * have to wait for modifications that have not yet completed. We define a
-- * transaction commit as completing when the commit sequence number is updated,
-- * hence if the sequence number has not updated, the sync operation has been
-- * run before the commit completed and we don't have to wait for it.
-- *
-- * If we have concurrent fsync/fdatasync() calls, the sequence numbers remain
-- * set on the log item until - at least - the journal flush completes. In
-- * reality, they are only cleared when the inode is fully unpinned (i.e.
-- * persistent in the journal and not dirty in the CIL), and so we rely on
-- * xfs_log_force_seq() either skipping sequences that have been persisted or
-- * waiting on sequences that are still in flight to correctly order concurrent
-- * sync operations.
-- */
--static int
--xfs_fsync_flush_log(
--	struct xfs_inode	*ip,
--	bool			datasync,
--	int			*log_flushed)
--{
--	struct xfs_inode_log_item *iip = ip->i_itemp;
--	xfs_csn_t		seq = 0;
--
--	spin_lock(&iip->ili_lock);
--	if (datasync)
--		seq = iip->ili_datasync_seq;
--	else
--		seq = iip->ili_commit_seq;
--	spin_unlock(&iip->ili_lock);
--
--	if (!seq)
--		return 0;
--
--	return xfs_log_force_seq(ip->i_mount, seq, XFS_LOG_SYNC, log_flushed);
-+	return xfs_log_force_inode(ip, false, NULL);
- }
- 
- STATIC int
-@@ -151,7 +109,7 @@ xfs_file_fsync(
- 	 * no modifications to this inode that need to be pushed out.
- 	 */
- 	if (ip->i_itemp) {
--		error = xfs_fsync_flush_log(ip, datasync, &log_flushed);
-+		error = xfs_log_force_inode(ip, datasync, &log_flushed);
- 		if (error)
- 			return error;
+ 	ls->ls_recalled = true;
+ 	atomic_inc(&ls->ls_stid.sc_file->fi_lo_recalls);
+@@ -363,7 +364,34 @@ nfsd4_recall_file_layout(struct nfs4_layout_stateid *ls)
+ 		refcount_inc(&ls->ls_stid.sc_count);
+ 		nfsd4_run_cb(&ls->ls_recall);
  	}
-@@ -1599,7 +1557,7 @@ __xfs_file_fallocate(
- 	}
- 
- 	if (!error && xfs_file_sync_writes(file))
--		error = xfs_log_force_inode(ip);
-+		error = xfs_log_force_inode(ip, false, NULL);
- 
- out_unlock:
- 	xfs_iunlock(ip, iolock);
-@@ -1750,7 +1708,7 @@ xfs_file_remap_range(
- 		goto out_unlock;
- 
- 	if (xfs_file_sync_writes(file_in) || xfs_file_sync_writes(file_out))
--		xfs_log_force_inode(dest);
-+		xfs_log_force_inode(dest, false, NULL);
- out_unlock:
- 	xfs_iunlock2_remapping(src, dest);
- 	if (ret)
-diff --git a/fs/xfs/xfs_inode.c b/fs/xfs/xfs_inode.c
-index 15b62574b8..0d1c9531cd 100644
---- a/fs/xfs/xfs_inode.c
-+++ b/fs/xfs/xfs_inode.c
-@@ -2669,11 +2669,36 @@ xfs_irele(
+-out_unlock:
++}
++
++static void
++nfsd4_recall_file_layout(struct nfs4_layout_stateid *ls)
++{
++	spin_lock(&ls->ls_lock);
++	nfsd4_recall_file_layout_locked(ls);
++	spin_unlock(&ls->ls_lock);
++}
++
++/*
++ * A lease break also has to stop a LAYOUTGET that is in progress. Its
++ * layout stateid has the lease and no layouts yet, so there is nothing to
++ * recall, and the breaker goes on once that layout stateid is gone. Mark it
++ * as recalled without sending a callback: nfsd4_insert_layout() then fails
++ * the LAYOUTGET instead of handing out a layout after the break.
++ */
++static void
++nfsd4_break_file_layout(struct nfs4_layout_stateid *ls)
++{
++	spin_lock(&ls->ls_lock);
++	if (!ls->ls_recalled && list_empty(&ls->ls_layouts)) {
++		ls->ls_recalled = true;
++		atomic_inc(&ls->ls_stid.sc_file->fi_lo_recalls);
++		trace_nfsd_layout_recall_empty(&ls->ls_stid.sc_stateid);
++	} else {
++		nfsd4_recall_file_layout_locked(ls);
++	}
+ 	spin_unlock(&ls->ls_lock);
  }
  
- /*
-- * Ensure all committed transactions touching the inode are written to the log.
-+ * Ensure all committed transactions touching the inode are written to the log,
-+ * or with @datasync only those that fdatasync has to wait for.
-+ *
-+ * All metadata updates are logged, which means that we just have to push the
-+ * journal to the required sequence number that holds the updates. We track
-+ * datasync commits separately to full sync commits, and hence only need to
-+ * select the correct sequence number for the log force here.
-+ *
-+ * We don't have to serialise against concurrent modifications, as we do not
-+ * have to wait for modifications that have not yet completed. We define a
-+ * transaction commit as completing when the commit sequence number is updated,
-+ * hence if the sequence number has not updated, the sync operation has been
-+ * run before the commit completed and we don't have to wait for it.
-+ *
-+ * If we have concurrent fsync/fdatasync() calls, the sequence numbers remain
-+ * set on the log item until - at least - the journal flush completes. In
-+ * reality, they are only cleared when the inode is fully unpinned (i.e.
-+ * persistent in the journal and not dirty in the CIL), and so we rely on
-+ * xfs_log_force_seq() either skipping sequences that have been persisted or
-+ * waiting on sequences that are still in flight to correctly order concurrent
-+ * sync operations.
-+ *
-+ * If @log_flushed is not NULL, it is set when the log force wrote an iclog,
-+ * which flushes the device caches before the log write.
-  */
- int
- xfs_log_force_inode(
--	struct xfs_inode	*ip)
-+	struct xfs_inode	*ip,
-+	bool			datasync,
-+	int			*log_flushed)
- {
- 	struct xfs_inode_log_item *iip = ip->i_itemp;
- 	xfs_csn_t		seq = 0;
-@@ -2682,12 +2707,15 @@ xfs_log_force_inode(
- 		return 0;
- 
- 	spin_lock(&iip->ili_lock);
--	seq = iip->ili_commit_seq;
-+	if (datasync)
-+		seq = iip->ili_datasync_seq;
-+	else
-+		seq = iip->ili_commit_seq;
- 	spin_unlock(&iip->ili_lock);
- 
- 	if (!seq)
- 		return 0;
--	return xfs_log_force_seq(ip->i_mount, seq, XFS_LOG_SYNC, NULL);
-+	return xfs_log_force_seq(ip->i_mount, seq, XFS_LOG_SYNC, log_flushed);
- }
- 
- /*
-diff --git a/fs/xfs/xfs_inode.h b/fs/xfs/xfs_inode.h
-index 1fa442b646..6dfd9271e6 100644
---- a/fs/xfs/xfs_inode.h
-+++ b/fs/xfs/xfs_inode.h
-@@ -595,7 +595,8 @@ int		xfs_ifree(struct xfs_trans *, struct xfs_inode *);
- int		xfs_itruncate_extents_flags(struct xfs_trans **,
- 				struct xfs_inode *, int, xfs_fsize_t, int);
- 
--int		xfs_log_force_inode(struct xfs_inode *ip);
-+int		xfs_log_force_inode(struct xfs_inode *ip, bool datasync,
-+				int *log_flushed);
- void		xfs_iunpin_wait(xfs_inode_t *);
- #define xfs_ipincount(ip)	((unsigned int) atomic_read(&ip->i_pincount))
- 
-diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
-index 3d97b29b54..dd2df30717 100644
---- a/fs/xfs/xfs_pnfs.c
-+++ b/fs/xfs/xfs_pnfs.c
-@@ -118,7 +118,7 @@ xfs_fs_map_update_inode(
- 	 * Force the log so that the blocks handed out to the client are
- 	 * guaranteed to be present even after a server crash.
+@@ -442,6 +470,10 @@ nfsd4_insert_layout(struct nfsd4_layoutget *lgp, struct nfs4_layout_stateid *ls)
+ 	if (nfserr)
+ 		goto out;
+ 	spin_lock(&ls->ls_lock);
++	if (ls->ls_recalled) {
++		nfserr = nfserr_recallconflict;
++		goto out_unlock_ls;
++	}
+ 	list_for_each_entry(lp, &ls->ls_layouts, lo_perstate) {
+ 		if (layouts_try_merge(&lp->lo_seg, seg))
+ 			goto done;
+@@ -460,6 +492,10 @@ nfsd4_insert_layout(struct nfsd4_layoutget *lgp, struct nfs4_layout_stateid *ls)
+ 	if (nfserr)
+ 		goto out;
+ 	spin_lock(&ls->ls_lock);
++	if (ls->ls_recalled) {
++		nfserr = nfserr_recallconflict;
++		goto out_unlock_ls;
++	}
+ 	list_for_each_entry(lp, &ls->ls_layouts, lo_perstate) {
+ 		if (layouts_try_merge(&lp->lo_seg, seg))
+ 			goto done;
+@@ -470,6 +506,7 @@ nfsd4_insert_layout(struct nfsd4_layoutget *lgp, struct nfs4_layout_stateid *ls)
+ 	new = NULL;
+ done:
+ 	nfs4_inc_and_copy_stateid(&lgp->lg_sid, &ls->ls_stid);
++out_unlock_ls:
+ 	spin_unlock(&ls->ls_lock);
+ out:
+ 	spin_unlock(&fp->fi_lock);
+@@ -806,7 +843,7 @@ nfsd4_layout_lm_break(struct file_lease *fl)
+ 	 * Enforce break lease timeout to prevent NFSD
+ 	 * thread from hanging in __break_lease.
  	 */
--	return xfs_log_force_inode(ip);
-+	return xfs_log_force_inode(ip, false, NULL);
+-	nfsd4_recall_file_layout(fl->c.flc_owner);
++	nfsd4_break_file_layout(fl->c.flc_owner);
+ 	return false;
  }
  
- /*
-diff --git a/fs/xfs/xfs_zone_gc.c b/fs/xfs/xfs_zone_gc.c
-index 54b70ed292..cea5447a88 100644
---- a/fs/xfs/xfs_zone_gc.c
-+++ b/fs/xfs/xfs_zone_gc.c
-@@ -1018,7 +1018,7 @@ xfs_zone_gc_reset_zones(
- 		struct xfs_gc_bio	*chunk;
- 		struct bio		*bio;
- 
--		xfs_log_force_inode(rtg_rmap(rtg));
-+		xfs_log_force_inode(rtg_rmap(rtg), false, NULL);
- 
- 		next = rtg_group(rtg)->xg_next_reset;
- 		rtg_group(rtg)->xg_next_reset = NULL;
+diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+index e5d19c6f48..abfdbc637c 100644
+--- a/fs/nfsd/trace.h
++++ b/fs/nfsd/trace.h
+@@ -679,6 +679,7 @@ DEFINE_STATEID_EVENT(layout_get_lookup_fail);
+ DEFINE_STATEID_EVENT(layout_commit_lookup_fail);
+ DEFINE_STATEID_EVENT(layout_return_lookup_fail);
+ DEFINE_STATEID_EVENT(layout_recall);
++DEFINE_STATEID_EVENT(layout_recall_empty);
+ DEFINE_STATEID_EVENT(layout_recall_done);
+ DEFINE_STATEID_EVENT(layout_recall_fail);
+ DEFINE_STATEID_EVENT(layout_recall_release);
 
 -- 
 2.43.0
