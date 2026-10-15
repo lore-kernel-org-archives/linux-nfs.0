@@ -1,38 +1,38 @@
-Received: from canpmsgout05.his.huawei.com (canpmsgout05.his.huawei.com [113.46.200.220])
+Received: from canpmsgout09.his.huawei.com (canpmsgout09.his.huawei.com [113.46.200.224])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 651E45372E7;
-	Thu, 15 Oct 2026 12:20:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.220
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 05C675226BF;
+	Thu, 15 Oct 2026 12:20:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.224
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792066843; cv=none; b=D1i847SAY9lgSfaA6QAd3hFslpcrScHidJjpGHPJ4PTxpGod9/d1yZXA3nrb9p6kXOTML1hqwo6fhadUNgxsM3BYdq/2HnMq0GfWtsxcNc0QHDOu8atWsvvB01eqqx1Mplp2yH5j0GxU5fE9xNEQoXsVRm1Ci6URA9dPT5oyfUk=
+	t=1792066848; cv=none; b=nfl34p9kSUJ31JbrSOS73MzWhWHDJKM5f49eYM99h2DdsumhtIikrO1BnxZ6dHyFG3NBICggTL8r/fJeYK/cStAfbFwZtgUH/qB2zso11tX73IKgk8bGyFK3W2B1WpPP0WL6u1jbmCn5hBeI17D4BnhTP86cZ7IxFtTAAtzI2Jc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792066843; c=relaxed/simple;
-	bh=2bihL+VmPVzsyi8BeBMCUBE7Vj526f5OwZizyPtbp3c=;
+	s=arc-20240116; t=1792066848; c=relaxed/simple;
+	bh=2bxLdI6VOiJt0xn3o9lGFQxHplhhvPNt15X+fhAvhzA=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=WoW5sqq/CuzRrnpIoEdLqcDYIS4oMD3nkj+zyW7lfpgheXyQkSvjRQTfjN7jAgBEmNXIEXH7s4Oh6x82iSJ0YTBelh7KFQbRQCUPqxIB2JNHXViR9FnoXNK+B8V0LpxeACpmb6wIlAEIkErHrDCCp2qOugB+DSE0iLpTvtPizTk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=mtltaizu; arc=none smtp.client-ip=113.46.200.220
+	 MIME-Version:Content-Type; b=dhKq5W2ezZwvX7wBPxYZx7+9edG0R1EoSLZSGeaJ/m1IH0xzhKbEY6pA8lXZyuNlB49LNfC39OdfaLMOW7PQ/TrF1ZDR6gNLCNwSFUWlTw7zDX23lpIkenu58zXGLoawr8i28sLIO2H9cYu1XdTsoQwqaowGbrMkbfGwjac7O/Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=r7+PUcnv; arc=none smtp.client-ip=113.46.200.224
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="mtltaizu"
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="r7+PUcnv"
 dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
 	c=relaxed/relaxed; q=dns/txt;
 	h=From;
-	bh=0NL7t1IOQI7TCN8tbrASMpELo+7IH0n7ig6Mp4vGcws=;
-	b=mtltaizueEGr6F08yK2ggPXNlAS9E1dxFJb6ANeJWD41V3sEUmveJ9r4HTg3aWX92w6vijzvl
-	7Mab3c45zSlKkttzm0M5dNANr2It9J/Zmgx5YKcDkOgCdLucBuLRKuztMfNGdsrbIHbBG08Frt4
-	692m0rC4mSy18bB5vROP0/8=
-Received: from mail.maildlp.com (unknown [172.19.162.140])
-	by canpmsgout05.his.huawei.com (SkyGuard) with ESMTPS id 4j56L30Vtgz12LF9;
-	Thu, 15 Oct 2026 20:08:43 +0800 (CST)
+	bh=qngDhSmNmuWNxbBpTxfWuO1dG6ZIIlZ/T8uTgHJAqlQ=;
+	b=r7+PUcnvMytPCWNm1UDtHlTaKqL9YLAHolVVUhBH601rygyggvPn4GgryzBAJ6bbosYOlUDcv
+	htBMTKlLLolFe98b8q33ala4Mi55H5jhaRJqMZNdlYoMXtOzns4CYqdfCmKYtgpMbzKBehO9rqR
+	EG5yEegC00+1OxpqCJdW4tA=
+Received: from mail.maildlp.com (unknown [172.19.163.127])
+	by canpmsgout09.his.huawei.com (SkyGuard) with ESMTPS id 4j56Ls2TnJz1cyPY;
+	Thu, 15 Oct 2026 20:09:25 +0800 (CST)
 Received: from whupemk100010.china.huawei.com (unknown [7.152.184.41])
-	by mail.maildlp.com (Postfix) with ESMTPS id 6A5F5202E6;
-	Thu, 15 Oct 2026 20:20:36 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 58B1F40572;
+	Thu, 15 Oct 2026 20:20:41 +0800 (CST)
 Received: from octopus.huawei.com (10.67.174.191) by
  whupemk100010.china.huawei.com (7.152.184.41) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.2562.45; Thu, 15 Oct 2026 20:20:31 +0800
+ 15.2.2562.45; Thu, 15 Oct 2026 20:20:36 +0800
 From: Cai Xinchen <caixinchen1@huawei.com>
 To: <mic@digikod.net>, <gnoack@google.com>, <paul@paul-moore.com>,
 	<jmorris@namei.org>, <serge@hallyn.com>, <corbet@lwn.net>,
@@ -69,9 +69,9 @@ CC: <ast@kernel.org>, <daniel@iogearbox.net>, <andrii@kernel.org>,
 	<linux-trace-kernel@vger.kernel.org>, <apparmor@lists.ubuntu.com>,
 	<linux-integrity@vger.kernel.org>, <selinux@vger.kernel.org>,
 	<linux-kselftest@vger.kernel.org>
-Subject: [PATCH v2 -next 10/18] LSM: rename inode_getattr to path_getattr
-Date: Thu, 15 Oct 2026 20:54:16 +0800
-Message-ID: <20261015125425.3246251-11-caixinchen1@huawei.com>
+Subject: [PATCH v2 -next 11/18] LSM: rename inode_setattr to path_setattr
+Date: Thu, 15 Oct 2026 20:54:17 +0800
+Message-ID: <20261015125425.3246251-12-caixinchen1@huawei.com>
 X-Mailer: git-send-email 2.18.0.huawei.25
 In-Reply-To: <20261015125425.3246251-1-caixinchen1@huawei.com>
 References: <20261015125425.3246251-1-caixinchen1@huawei.com>
@@ -85,336 +85,273 @@ Content-Type: text/plain
 X-ClientProxiedBy: kwepems500001.china.huawei.com (7.221.188.70) To
  whupemk100010.china.huawei.com (7.152.184.41)
 
-The inode_getattr hook receives a struct path, so rename it to
-path_getattr to follow the path_* naming convention used for the
+The inode_setattr hook receives a struct path, so rename it to
+path_setattr to follow the path_* naming convention used for the
 other hooks that take a struct path (path_chmod, path_chown, ...).
-Rename the security_inode_getattr() inline wrapper to
-security_path_getattr() and the SELinux, Smack, AppArmor, TOMOYO and
-Landlock implementations accordingly.
-
-BPF programs attach to LSM hooks and to the security_*() wrappers by
-name ("lsm/inode_getattr", "fentry/security_inode_getattr"), so
-update the BPF selftests to the new names, along with the d_path BTF
-allowlist in kernel/trace/bpf_trace.c.
+Rename the security_inode_setattr() inline wrapper to
+security_path_setattr() and the SELinux, Smack, EVM and Landlock
+implementations accordingly.
 
 Assisted-by: opencode: glm-5.3
 Signed-off-by: Cai Xinchen <caixinchen1@huawei.com>
 ---
- fs/stat.c                                                   | 4 ++--
- include/linux/lsm_hook_defs.h                               | 2 +-
- include/linux/security.h                                    | 4 ++--
- kernel/bpf/bpf_lsm.c                                        | 2 +-
- kernel/trace/bpf_trace.c                                    | 2 +-
- security/apparmor/lsm.c                                     | 4 ++--
- security/landlock/fs.c                                      | 4 ++--
- security/security.c                                         | 6 +++---
- security/selinux/hooks.c                                    | 4 ++--
- security/smack/smack_lsm.c                                  | 6 +++---
- security/tomoyo/tomoyo.c                                    | 6 +++---
- tools/testing/selftests/bpf/prog_tests/d_path.c             | 2 +-
- tools/testing/selftests/bpf/progs/test_d_path.c             | 2 +-
- .../selftests/bpf/progs/test_d_path_check_rdonly_mem.c      | 2 +-
- tools/testing/selftests/bpf/progs/test_d_path_check_types.c | 2 +-
- tools/testing/selftests/bpf/progs/verifier_vfs_accept.c     | 2 +-
- 16 files changed, 27 insertions(+), 27 deletions(-)
+ fs/attr.c                         | 4 ++--
+ fs/bpf_fs_kfuncs.c                | 2 +-
+ fs/exfat/file.c                   | 2 +-
+ fs/fat/file.c                     | 2 +-
+ include/linux/lsm_hook_defs.h     | 2 +-
+ include/linux/security.h          | 4 ++--
+ kernel/bpf/bpf_lsm.c              | 2 +-
+ security/integrity/evm/evm_main.c | 6 +++---
+ security/landlock/fs.c            | 4 ++--
+ security/security.c               | 8 ++++----
+ security/selinux/hooks.c          | 4 ++--
+ security/smack/smack_lsm.c        | 6 +++---
+ 12 files changed, 23 insertions(+), 23 deletions(-)
 
-diff --git a/fs/stat.c b/fs/stat.c
-index a2e63c6c45b7..06e4a5dcea57 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -172,7 +172,7 @@ EXPORT_SYMBOL_GPL(generic_fill_statx_atomic_writes);
-  * @request_mask: STATX_xxx flags indicating what the caller wants
-  * @query_flags: Query mode (AT_STATX_SYNC_TYPE)
+diff --git a/fs/attr.c b/fs/attr.c
+index 3a05e50d9c51..c8bf69e60971 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -518,7 +518,7 @@ static int do_notify_change(const struct path *const path,
+ 	 * filesystem, were already checked on the user-facing path.
+ 	 */
+ 	if (path) {
+-		error = security_inode_setattr(path, attr);
++		error = security_path_setattr(path, attr);
+ 		if (error)
+ 			return error;
+ 	}
+@@ -555,7 +555,7 @@ static int do_notify_change(const struct path *const path,
+  * @attr:	new attributes
+  * @delegated_inode: returns inode, if the inode is delegated
   *
-- * Get attributes without calling security_inode_getattr.
-+ * Get attributes without calling security_path_getattr.
+- * Like notify_change(), but no security_inode_setattr() hook is called:
++ * Like notify_change(), but no security_path_setattr() hook is called:
+  * this is the variant to use for internal forwards, where the LSM
+  * checks were already performed on the user-facing path.
   *
-  * Currently the only caller other than vfs_getattr is internal to the
-  * filehandle lookup code, which uses only the inode number and returns no
-@@ -260,7 +260,7 @@ int vfs_getattr(const struct path *path, struct kstat *stat,
- {
- 	int retval;
+diff --git a/fs/bpf_fs_kfuncs.c b/fs/bpf_fs_kfuncs.c
+index 35ccd98a4de6..6500d8419bc1 100644
+--- a/fs/bpf_fs_kfuncs.c
++++ b/fs/bpf_fs_kfuncs.c
+@@ -568,7 +568,7 @@ BTF_ID(func, bpf_lsm_inode_post_setattr)
+ BTF_ID(func, bpf_lsm_inode_post_setxattr)
+ BTF_ID(func, bpf_lsm_inode_removexattr)
+ BTF_ID(func, bpf_lsm_inode_rmdir)
+-BTF_ID(func, bpf_lsm_inode_setattr)
++BTF_ID(func, bpf_lsm_path_setattr)
+ BTF_ID(func, bpf_lsm_inode_setxattr)
+ BTF_ID(func, bpf_lsm_inode_unlink)
+ BTF_SET_END(d_inode_locked_hooks)
+diff --git a/fs/exfat/file.c b/fs/exfat/file.c
+index 0d431c0b595b..51ed20e27429 100644
+--- a/fs/exfat/file.c
++++ b/fs/exfat/file.c
+@@ -551,7 +551,7 @@ static int exfat_ioctl_set_attributes(struct file *file, u32 __user *user_attr)
+ 	 * out the RO attribute for checking by the security
+ 	 * module, just because it maps to a file mode.
+ 	 */
+-	err = security_inode_setattr(&file->f_path, &ia);
++	err = security_path_setattr(&file->f_path, &ia);
+ 	if (err)
+ 		goto out_unlock_inode;
  
--	retval = security_inode_getattr(path);
-+	retval = security_path_getattr(path);
- 	if (unlikely(retval))
- 		return retval;
- 	return vfs_getattr_nosec(path, stat, request_mask, query_flags);
+diff --git a/fs/fat/file.c b/fs/fat/file.c
+index 4f8dbca28667..5178561906dd 100644
+--- a/fs/fat/file.c
++++ b/fs/fat/file.c
+@@ -92,7 +92,7 @@ static int fat_ioctl_set_attributes(struct file *file, u32 __user *user_attr)
+ 	 * out the RO attribute for checking by the security
+ 	 * module, just because it maps to a file mode.
+ 	 */
+-	err = security_inode_setattr(&file->f_path, &ia);
++	err = security_path_setattr(&file->f_path, &ia);
+ 	if (err)
+ 		goto out_unlock_inode;
+ 
 diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
-index 25655b3eca71..ea1df85b5fd4 100644
+index ea1df85b5fd4..b0dd9f4a6a38 100644
 --- a/include/linux/lsm_hook_defs.h
 +++ b/include/linux/lsm_hook_defs.h
-@@ -146,7 +146,7 @@ LSM_HOOK(int, 0, inode_setattr, const struct path *path,
+@@ -142,7 +142,7 @@ LSM_HOOK(int, 0, inode_follow_link, struct dentry *dentry, struct inode *inode,
+ 	 bool rcu)
+ LSM_HOOK(int, 0, inode_permission, const struct mnt_idmap *idmap,
+ 	 struct inode *inode, int mask)
+-LSM_HOOK(int, 0, inode_setattr, const struct path *path,
++LSM_HOOK(int, 0, path_setattr, const struct path *path,
  	 struct iattr *attr)
  LSM_HOOK(void, LSM_RET_VOID, inode_post_setattr, const struct mnt_idmap *idmap,
  	 struct dentry *dentry, int ia_valid)
--LSM_HOOK(int, 0, inode_getattr, const struct path *path)
-+LSM_HOOK(int, 0, path_getattr, const struct path *path)
- LSM_HOOK(int, 0, inode_xattr_skipcap, const char *name)
- LSM_HOOK(int, 0, inode_setxattr, const struct path *path,
- 	 const char *name, const void *value, size_t size, int flags)
 diff --git a/include/linux/security.h b/include/linux/security.h
-index 633c8225524a..630a19a63291 100644
+index 630a19a63291..340eb2d0c1a2 100644
 --- a/include/linux/security.h
 +++ b/include/linux/security.h
-@@ -431,7 +431,7 @@ int security_inode_permission(const struct mnt_idmap *idmap, struct inode *inode
- int security_inode_setattr(const struct path *path, struct iattr *attr);
+@@ -428,7 +428,7 @@ int security_inode_follow_link(struct dentry *dentry, struct inode *inode,
+ 			       bool rcu);
+ int security_inode_permission(const struct mnt_idmap *idmap, struct inode *inode,
+ 			      int mask);
+-int security_inode_setattr(const struct path *path, struct iattr *attr);
++int security_path_setattr(const struct path *path, struct iattr *attr);
  void security_inode_post_setattr(const struct mnt_idmap *idmap, struct dentry *dentry,
  				 int ia_valid);
--int security_inode_getattr(const struct path *path);
-+int security_path_getattr(const struct path *path);
- int security_inode_setxattr(const struct path *path,
- 			    const char *name, const void *value,
- 			    size_t size, int flags);
-@@ -1007,7 +1007,7 @@ security_inode_post_setattr(const struct mnt_idmap *idmap, struct dentry *dentry
- 			    int ia_valid)
- { }
- 
--static inline int security_inode_getattr(const struct path *path)
-+static inline int security_path_getattr(const struct path *path)
- {
+ int security_path_getattr(const struct path *path);
+@@ -996,7 +996,7 @@ static inline int security_inode_permission(const struct mnt_idmap *idmap,
  	return 0;
  }
+ 
+-static inline int security_inode_setattr(const struct path *path,
++static inline int security_path_setattr(const struct path *path,
+ 					 struct iattr *attr)
+ {
+ 	return 0;
 diff --git a/kernel/bpf/bpf_lsm.c b/kernel/bpf/bpf_lsm.c
-index f58dce888ff4..293f849879e2 100644
+index 293f849879e2..32f84356933e 100644
 --- a/kernel/bpf/bpf_lsm.c
 +++ b/kernel/bpf/bpf_lsm.c
-@@ -335,7 +335,7 @@ BTF_ID(func, bpf_lsm_file_receive)
- 
- BTF_ID(func, bpf_lsm_inode_create)
- BTF_ID(func, bpf_lsm_inode_free_security)
--BTF_ID(func, bpf_lsm_inode_getattr)
-+BTF_ID(func, bpf_lsm_path_getattr)
- BTF_ID(func, bpf_lsm_inode_getxattr)
- BTF_ID(func, bpf_lsm_inode_mknod)
- BTF_ID(func, bpf_lsm_inode_need_killpriv)
-diff --git a/kernel/trace/bpf_trace.c b/kernel/trace/bpf_trace.c
-index 195f78db9bda..6f3664718842 100644
---- a/kernel/trace/bpf_trace.c
-+++ b/kernel/trace/bpf_trace.c
-@@ -961,7 +961,7 @@ BPF_CALL_3(bpf_d_path, const struct path *, path, char *, buf, u32, sz)
- BTF_SET_START(btf_allowlist_d_path)
- #ifdef CONFIG_SECURITY
- BTF_ID(func, security_file_permission)
--BTF_ID(func, security_inode_getattr)
-+BTF_ID(func, security_path_getattr)
- BTF_ID(func, security_file_open)
- #endif
- #ifdef CONFIG_SECURITY_PATH
-diff --git a/security/apparmor/lsm.c b/security/apparmor/lsm.c
-index 9d572cf8486b..a2886f6ece78 100644
---- a/security/apparmor/lsm.c
-+++ b/security/apparmor/lsm.c
-@@ -456,7 +456,7 @@ static int apparmor_path_chown(const struct path *path, kuid_t uid, kgid_t gid)
- 	return common_perm_cond(OP_CHOWN, path, AA_MAY_CHOWN);
- }
- 
--static int apparmor_inode_getattr(const struct path *path)
-+static int apparmor_path_getattr(const struct path *path)
- {
- 	return common_perm_cond(OP_GETATTR, path, AA_MAY_GETATTR);
- }
-@@ -1785,7 +1785,7 @@ static struct security_hook_list apparmor_hooks[] __ro_after_init = {
- 	LSM_HOOK_INIT(path_chmod, apparmor_path_chmod),
- 	LSM_HOOK_INIT(path_chown, apparmor_path_chown),
- 	LSM_HOOK_INIT(path_truncate, apparmor_path_truncate),
--	LSM_HOOK_INIT(inode_getattr, apparmor_inode_getattr),
-+	LSM_HOOK_INIT(path_getattr, apparmor_path_getattr),
- 
- 	LSM_HOOK_INIT(file_open, apparmor_file_open),
- 	LSM_HOOK_INIT(file_receive, apparmor_file_receive),
-diff --git a/security/landlock/fs.c b/security/landlock/fs.c
-index f56277c67a24..439a6159e24a 100644
---- a/security/landlock/fs.c
-+++ b/security/landlock/fs.c
-@@ -1678,7 +1678,7 @@ static int hook_path_truncate(const struct path *const path)
- 	return current_check_access_path(path, LANDLOCK_ACCESS_FS_TRUNCATE);
- }
- 
--static int hook_inode_getattr(const struct path *const path)
-+static int hook_path_getattr(const struct path *const path)
- {
- 	return current_check_access_path(path,
- 					LANDLOCK_ACCESS_FS_READ_METADATA);
-@@ -2215,7 +2215,7 @@ static struct security_hook_list landlock_hooks[] __ro_after_init = {
- 	LSM_HOOK_INIT(path_unlink, hook_path_unlink),
- 	LSM_HOOK_INIT(path_rmdir, hook_path_rmdir),
- 	LSM_HOOK_INIT(path_truncate, hook_path_truncate),
--	LSM_HOOK_INIT(inode_getattr, hook_inode_getattr),
-+	LSM_HOOK_INIT(path_getattr, hook_path_getattr),
- 	LSM_HOOK_INIT(inode_file_getattr, hook_inode_file_getattr),
- 	LSM_HOOK_INIT(inode_setattr, hook_inode_setattr),
- 	LSM_HOOK_INIT(inode_file_setattr, hook_inode_file_setattr),
-diff --git a/security/security.c b/security/security.c
-index 10b331749889..c7cb96db7299 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -1926,18 +1926,18 @@ void security_inode_post_setattr(const struct mnt_idmap *idmap, struct dentry *d
+@@ -345,7 +345,7 @@ BTF_ID(func, bpf_lsm_inode_readlink)
+ BTF_ID(func, bpf_lsm_inode_removexattr)
+ BTF_ID(func, bpf_lsm_inode_rename)
+ BTF_ID(func, bpf_lsm_inode_rmdir)
+-BTF_ID(func, bpf_lsm_inode_setattr)
++BTF_ID(func, bpf_lsm_path_setattr)
+ BTF_ID(func, bpf_lsm_inode_setxattr)
+ BTF_ID(func, bpf_lsm_inode_symlink)
+ BTF_ID(func, bpf_lsm_inode_unlink)
+diff --git a/security/integrity/evm/evm_main.c b/security/integrity/evm/evm_main.c
+index 0d8d82536151..a44776e5f1a7 100644
+--- a/security/integrity/evm/evm_main.c
++++ b/security/integrity/evm/evm_main.c
+@@ -951,14 +951,14 @@ static int evm_attr_change(const struct mnt_idmap *idmap,
  }
  
  /**
-- * security_inode_getattr() - Check if getting file attributes is allowed
-+ * security_path_getattr() - Check if getting file attributes is allowed
-  * @path: file
+- * evm_inode_setattr - prevent updating an invalid EVM extended attribute
++ * evm_path_setattr - prevent updating an invalid EVM extended attribute
+  * @path: pointer to the affected object
+  * @attr: iattr structure containing the new file attributes
   *
-  * Check permission before obtaining file attributes.
+  * Permit update of file attributes when files have a valid EVM signature,
+  * except in the case of them having an immutable portable signature.
+  */
+-static int evm_inode_setattr(const struct path *path,
++static int evm_path_setattr(const struct path *path,
+ 			     struct iattr *attr)
+ {
+ 	unsigned int ia_valid = attr->ia_valid;
+@@ -1199,7 +1199,7 @@ static int __init init_evm(void)
+ }
+ 
+ static struct security_hook_list evm_hooks[] __ro_after_init = {
+-	LSM_HOOK_INIT(inode_setattr, evm_inode_setattr),
++	LSM_HOOK_INIT(path_setattr, evm_path_setattr),
+ 	LSM_HOOK_INIT(inode_post_setattr, evm_inode_post_setattr),
+ 	LSM_HOOK_INIT(inode_copy_up_xattr, evm_inode_copy_up_xattr),
+ 	LSM_HOOK_INIT(inode_setxattr, evm_inode_setxattr),
+diff --git a/security/landlock/fs.c b/security/landlock/fs.c
+index 439a6159e24a..0ec923c9cbd9 100644
+--- a/security/landlock/fs.c
++++ b/security/landlock/fs.c
+@@ -1691,7 +1691,7 @@ static int hook_inode_file_getattr(const struct path *const path,
+ 					LANDLOCK_ACCESS_FS_READ_METADATA);
+ }
+ 
+-static int hook_inode_setattr(const struct path *const path,
++static int hook_path_setattr(const struct path *const path,
+ 			      struct iattr *const attr)
+ {
+ 	unsigned int ia_valid = attr->ia_valid;
+@@ -2217,7 +2217,7 @@ static struct security_hook_list landlock_hooks[] __ro_after_init = {
+ 	LSM_HOOK_INIT(path_truncate, hook_path_truncate),
+ 	LSM_HOOK_INIT(path_getattr, hook_path_getattr),
+ 	LSM_HOOK_INIT(inode_file_getattr, hook_inode_file_getattr),
+-	LSM_HOOK_INIT(inode_setattr, hook_inode_setattr),
++	LSM_HOOK_INIT(path_setattr, hook_path_setattr),
+ 	LSM_HOOK_INIT(inode_file_setattr, hook_inode_file_setattr),
+ 	LSM_HOOK_INIT(inode_setxattr, hook_inode_setxattr),
+ 	LSM_HOOK_INIT(inode_getxattr, hook_inode_getxattr),
+diff --git a/security/security.c b/security/security.c
+index c7cb96db7299..f008f127b6f2 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -1890,7 +1890,7 @@ int security_inode_permission(const struct mnt_idmap *idmap, struct inode *inode
+ }
+ 
+ /**
+- * security_inode_setattr() - Check if setting file attributes is allowed
++ * security_path_setattr() - Check if setting file attributes is allowed
+  * @path: file
+  * @attr: new attributes
+  *
+@@ -1901,13 +1901,13 @@ int security_inode_permission(const struct mnt_idmap *idmap, struct inode *inode
   *
   * Return: Returns 0 if permission is granted.
   */
--int security_inode_getattr(const struct path *path)
-+int security_path_getattr(const struct path *path)
+-int security_inode_setattr(const struct path *path, struct iattr *attr)
++int security_path_setattr(const struct path *path, struct iattr *attr)
  {
  	if (unlikely(IS_PRIVATE(d_backing_inode(path->dentry))))
  		return 0;
--	return call_int_hook(inode_getattr, path);
-+	return call_int_hook(path_getattr, path);
+-	return call_int_hook(inode_setattr, path, attr);
++	return call_int_hook(path_setattr, path, attr);
  }
+-EXPORT_SYMBOL_GPL(security_inode_setattr);
++EXPORT_SYMBOL_GPL(security_path_setattr);
  
  /**
+  * security_inode_post_setattr() - Update the inode after a setattr operation
 diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 0a841777fe12..93e3d9223e34 100644
+index 93e3d9223e34..44c7fe660bdb 100644
 --- a/security/selinux/hooks.c
 +++ b/security/selinux/hooks.c
-@@ -3376,7 +3376,7 @@ static int selinux_inode_setattr(const struct path *path,
- 	return dentry_has_perm(cred, dentry, av);
+@@ -3346,7 +3346,7 @@ static int selinux_inode_permission(const struct mnt_idmap *idmap,
+ 	return rc;
  }
  
--static int selinux_inode_getattr(const struct path *path)
-+static int selinux_path_getattr(const struct path *path)
+-static int selinux_inode_setattr(const struct path *path,
++static int selinux_path_setattr(const struct path *path,
+ 				 struct iattr *iattr)
  {
- 	struct task_security_struct *tsec;
- 
-@@ -7756,7 +7756,7 @@ static struct security_hook_list selinux_hooks[] __ro_after_init = {
+ 	const struct cred *cred = current_cred();
+@@ -7755,7 +7755,7 @@ static struct security_hook_list selinux_hooks[] __ro_after_init = {
+ 	LSM_HOOK_INIT(inode_readlink, selinux_inode_readlink),
  	LSM_HOOK_INIT(inode_follow_link, selinux_inode_follow_link),
  	LSM_HOOK_INIT(inode_permission, selinux_inode_permission),
- 	LSM_HOOK_INIT(inode_setattr, selinux_inode_setattr),
--	LSM_HOOK_INIT(inode_getattr, selinux_inode_getattr),
-+	LSM_HOOK_INIT(path_getattr, selinux_path_getattr),
+-	LSM_HOOK_INIT(inode_setattr, selinux_inode_setattr),
++	LSM_HOOK_INIT(path_setattr, selinux_path_setattr),
+ 	LSM_HOOK_INIT(path_getattr, selinux_path_getattr),
  	LSM_HOOK_INIT(inode_xattr_skipcap, selinux_inode_xattr_skipcap),
  	LSM_HOOK_INIT(inode_setxattr, selinux_inode_setxattr),
- 	LSM_HOOK_INIT(inode_post_setxattr, selinux_inode_post_setxattr),
 diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
-index 8cfe5d522246..43b9877d6a00 100644
+index 43b9877d6a00..2cf786ee3752 100644
 --- a/security/smack/smack_lsm.c
 +++ b/security/smack/smack_lsm.c
-@@ -1293,12 +1293,12 @@ static int smack_inode_setattr(const struct path *path,
+@@ -1265,14 +1265,14 @@ static int smack_inode_permission(const struct mnt_idmap *idmap, struct inode *i
  }
  
  /**
-- * smack_inode_getattr - Smack check for getting attributes
-+ * smack_path_getattr - Smack check for getting attributes
-  * @path: path to extract the info from
+- * smack_inode_setattr - Smack check for setting attributes
++ * smack_path_setattr - Smack check for setting attributes
+  * @idmap: idmap of the mount
+  * @dentry: the object
+  * @iattr: for the force flag
   *
   * Returns 0 if access is permitted, an error code otherwise
   */
--static int smack_inode_getattr(const struct path *path)
-+static int smack_path_getattr(const struct path *path)
+-static int smack_inode_setattr(const struct path *path,
++static int smack_path_setattr(const struct path *path,
+ 			       struct iattr *iattr)
  {
  	struct smk_audit_info ad;
- 	struct inode *inode = d_backing_inode(path->dentry);
-@@ -5179,7 +5179,7 @@ static struct security_hook_list smack_hooks[] __ro_after_init = {
+@@ -5178,7 +5178,7 @@ static struct security_hook_list smack_hooks[] __ro_after_init = {
+ 	LSM_HOOK_INIT(inode_rmdir, smack_inode_rmdir),
  	LSM_HOOK_INIT(inode_rename, smack_inode_rename),
  	LSM_HOOK_INIT(inode_permission, smack_inode_permission),
- 	LSM_HOOK_INIT(inode_setattr, smack_inode_setattr),
--	LSM_HOOK_INIT(inode_getattr, smack_inode_getattr),
-+	LSM_HOOK_INIT(path_getattr, smack_path_getattr),
+-	LSM_HOOK_INIT(inode_setattr, smack_inode_setattr),
++	LSM_HOOK_INIT(path_setattr, smack_path_setattr),
+ 	LSM_HOOK_INIT(path_getattr, smack_path_getattr),
  	LSM_HOOK_INIT(inode_xattr_skipcap, smack_inode_xattr_skipcap),
  	LSM_HOOK_INIT(inode_setxattr, smack_inode_setxattr),
- 	LSM_HOOK_INIT(inode_post_setxattr, smack_inode_post_setxattr),
-diff --git a/security/tomoyo/tomoyo.c b/security/tomoyo/tomoyo.c
-index c66e02ed8ee3..901eefa84ea6 100644
---- a/security/tomoyo/tomoyo.c
-+++ b/security/tomoyo/tomoyo.c
-@@ -112,13 +112,13 @@ static int tomoyo_bprm_check_security(struct linux_binprm *bprm)
- }
- 
- /**
-- * tomoyo_inode_getattr - Target for security_inode_getattr().
-+ * tomoyo_path_getattr - Target for security_path_getattr().
-  *
-  * @path: Pointer to "struct path".
-  *
-  * Returns 0 on success, negative value otherwise.
-  */
--static int tomoyo_inode_getattr(const struct path *path)
-+static int tomoyo_path_getattr(const struct path *path)
- {
- 	return tomoyo_path_perm(TOMOYO_TYPE_GETATTR, path, NULL);
- }
-@@ -570,7 +570,7 @@ static struct security_hook_list tomoyo_hooks[] __ro_after_init = {
- 	LSM_HOOK_INIT(path_mknod, tomoyo_path_mknod),
- 	LSM_HOOK_INIT(path_link, tomoyo_path_link),
- 	LSM_HOOK_INIT(path_rename, tomoyo_path_rename),
--	LSM_HOOK_INIT(inode_getattr, tomoyo_inode_getattr),
-+	LSM_HOOK_INIT(path_getattr, tomoyo_path_getattr),
- 	LSM_HOOK_INIT(file_ioctl, tomoyo_file_ioctl),
- 	LSM_HOOK_INIT(file_ioctl_compat, tomoyo_file_ioctl),
- 	LSM_HOOK_INIT(path_chmod, tomoyo_path_chmod),
-diff --git a/tools/testing/selftests/bpf/prog_tests/d_path.c b/tools/testing/selftests/bpf/prog_tests/d_path.c
-index 1a2a2f1abf03..9877c098e5c1 100644
---- a/tools/testing/selftests/bpf/prog_tests/d_path.c
-+++ b/tools/testing/selftests/bpf/prog_tests/d_path.c
-@@ -160,7 +160,7 @@ static void test_d_path_basic(void)
- 
- 	if (CHECK(!bss->called_stat,
- 		  "stat",
--		  "trampoline for security_inode_getattr was not called\n"))
-+		  "trampoline for security_path_getattr was not called\n"))
- 		goto cleanup;
- 
- 	if (CHECK(!bss->called_close,
-diff --git a/tools/testing/selftests/bpf/progs/test_d_path.c b/tools/testing/selftests/bpf/progs/test_d_path.c
-index 561b2f861808..b97c203e3992 100644
---- a/tools/testing/selftests/bpf/progs/test_d_path.c
-+++ b/tools/testing/selftests/bpf/progs/test_d_path.c
-@@ -19,7 +19,7 @@ int called_stat = 0;
- int called_close = 0;
- int path_match_fallocate = 0;
- 
--SEC("fentry/security_inode_getattr")
-+SEC("fentry/security_path_getattr")
- int BPF_PROG(prog_stat, struct path *path, struct kstat *stat,
- 	     __u32 request_mask, unsigned int query_flags)
- {
-diff --git a/tools/testing/selftests/bpf/progs/test_d_path_check_rdonly_mem.c b/tools/testing/selftests/bpf/progs/test_d_path_check_rdonly_mem.c
-index 27c27cff6a3a..5e0e3d4828d7 100644
---- a/tools/testing/selftests/bpf/progs/test_d_path_check_rdonly_mem.c
-+++ b/tools/testing/selftests/bpf/progs/test_d_path_check_rdonly_mem.c
-@@ -7,7 +7,7 @@
- 
- extern const int bpf_prog_active __ksym;
- 
--SEC("fentry/security_inode_getattr")
-+SEC("fentry/security_path_getattr")
- int BPF_PROG(d_path_check_rdonly_mem, struct path *path, struct kstat *stat,
- 	     __u32 request_mask, unsigned int query_flags)
- {
-diff --git a/tools/testing/selftests/bpf/progs/test_d_path_check_types.c b/tools/testing/selftests/bpf/progs/test_d_path_check_types.c
-index 7e02b7361307..fba3d527b4df 100644
---- a/tools/testing/selftests/bpf/progs/test_d_path_check_types.c
-+++ b/tools/testing/selftests/bpf/progs/test_d_path_check_types.c
-@@ -11,7 +11,7 @@ struct {
- 	__uint(max_entries, 1 << 12);
- } ringbuf SEC(".maps");
- 
--SEC("fentry/security_inode_getattr")
-+SEC("fentry/security_path_getattr")
- int BPF_PROG(d_path_check_rdonly_mem, struct path *path, struct kstat *stat,
- 	     __u32 request_mask, unsigned int query_flags)
- {
-diff --git a/tools/testing/selftests/bpf/progs/verifier_vfs_accept.c b/tools/testing/selftests/bpf/progs/verifier_vfs_accept.c
-index 55398c04290a..55e292a41d30 100644
---- a/tools/testing/selftests/bpf/progs/verifier_vfs_accept.c
-+++ b/tools/testing/selftests/bpf/progs/verifier_vfs_accept.c
-@@ -54,7 +54,7 @@ int BPF_PROG(get_task_exe_file_and_put_kfunc_from_argument,
- 	return 0;
- }
- 
--SEC("lsm.s/inode_getattr")
-+SEC("lsm.s/path_getattr")
- __success
- int BPF_PROG(path_d_path_from_path_argument, struct path *path)
- {
 -- 
 2.18.0.huawei.25
 
