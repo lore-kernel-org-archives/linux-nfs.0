@@ -1,95 +1,181 @@
-Received: from mailout2.samsung.com (mailout2.samsung.com [203.254.224.25])
+Received: from smtp-o-1.desy.de (smtp-o-1.desy.de [131.169.56.154])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4454541A55C
-	for <linux-nfs@vger.kernel.org>; Thu, 15 Oct 2026 07:23:10 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.254.224.25
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3C723231842
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Oct 2026 09:58:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=131.169.56.154
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792048999; cv=none; b=Mbsjqru+asa9lH0wl61sBOv94G2yUa6FdjFLF609uqUM04NOJW/Rgx7fTEaRTLnAEfB91r9+PAboPsjoxn4JnNm43WYHZaiQHtK8zQfRMZOmjY8V9qaLou4uXKkxW1700CgMaaqpA1Tw1rO21YuC3ljz9hmIgUFsc1Y9e6IPT1A=
+	t=1792058301; cv=none; b=fmYZ3VGWVhTWtqyv3PDeHVIqohYCYRvJVQTri1DbllsIZXVDj5TdRHCDC6V3vV2Bs+A307LOMHnBOOthlqrp7f6bpdfR2LwgPcxHusw38XcRXQBtRdDl5P0MBaDSB/Ac3cmoSAChg7H+CqikO2wR8LWdRwBbeK/IMptIkaAMLGM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792048999; c=relaxed/simple;
-	bh=PtXIDX13fP+iqj3+gIFVKLJBnzkOyRNgQGSwKBXgoZY=;
-	h=Mime-Version:Subject:From:To:CC:In-Reply-To:Message-ID:Date:
-	 Content-Type:References; b=CaLT5HYrsTKENtDzlr3bWHf5PT6wHpYgzKis4P8xp0Cu6NYQvL9CrkzFtzCND0ZnBl0c+LVnPGCe31TO7aTIOaVBKoz/5khGmh8qnMLb8JfbYdY11bI3XSBRgmAah3HIoeE/BhpcfPqEECrO3SlmABDSLQxYn0NQMot/+C/lADk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=tG9SLedw; arc=none smtp.client-ip=203.254.224.25
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
+	s=arc-20240116; t=1792058301; c=relaxed/simple;
+	bh=RMYxru2h89UntrjZ1JsOCXlAeJM5EMvGpuBOLWSAAo8=;
+	h=Date:From:To:Cc:Message-ID:In-Reply-To:References:Subject:
+	 MIME-Version:Content-Type; b=PE8tpYCeaHkiQ2UJY6N+egyjnwFDm75zASe2MoSjJWDS3pUs/LxoWG39xbu4yE2DZxPYIlWoNieOYtIBs2ZrwW3Rqj1MvRPE1bcDPubdkcA+dg0qL39/0NroQK+QMugmQ8yaHIfvzIsinoPgvVPJTPbrSWXkXLofJeiBpfp6KIo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=desy.de; spf=pass smtp.mailfrom=desy.de; dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b=XC68FoKm; arc=none smtp.client-ip=131.169.56.154
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=desy.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=desy.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="tG9SLedw"
-Received: from epcas2p2.samsung.com (unknown [182.195.41.54])
-	by mailout2.samsung.com (KnoxPortal) with ESMTP id 20261015072308epoutp0299b7409621bef035f5aa4c71421af862~eow_KSkmt1473814738epoutp02g
-	for <linux-nfs@vger.kernel.org>; Thu, 15 Oct 2026 07:23:08 +0000 (GMT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout2.samsung.com 20261015072308epoutp0299b7409621bef035f5aa4c71421af862~eow_KSkmt1473814738epoutp02g
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
-	s=mail20170921; t=1792048988;
-	bh=mzgpWt5GGty/dFKO10uL2LGjZTMzcw//rSUxcOQYofI=;
-	h=Subject:Reply-To:From:To:CC:In-Reply-To:Date:References:From;
-	b=tG9SLedwVr0vpK5hrhsLcjRFy4vU7d3uzWRTnosQ7qElVSsEd8rSezGJL7NZuqQCQ
-	 x0AEqEKXa7X+j3divkqDityEP4FfysxXihy8Zb49665FO5XdEvA2y4WC/JDVcpwVrY
-	 yY/S+B/dNJEko2hJ+W/3enow5tZk5auugztj3gZw=
-Received: from epsnrtp03.localdomain (unknown [182.195.42.155]) by
-	epcas2p1.samsung.com (KnoxPortal) with ESMTPS id
-	20261015072308epcas2p1a5fd64d6aad5cfe556346c3fc133828b~eow9zGyFZ0873508735epcas2p1B;
-	Thu, 15 Oct 2026 07:23:08 +0000 (GMT)
-Received: from epcas2p1.samsung.com (unknown [182.195.38.209]) by
-	epsnrtp03.localdomain (Postfix) with ESMTP id 4j500X1cZ8z3hhT9; Thu, 15 Oct
-	2026 07:23:08 +0000 (GMT)
+	dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b="XC68FoKm"
+Received: from smtp-buf-3.desy.de (smtp-buf-3.desy.de [131.169.56.166])
+	by smtp-o-1.desy.de (Postfix) with ESMTP id 3DD9311F746
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Oct 2026 11:58:09 +0200 (CEST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-1.desy.de 3DD9311F746
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
+	t=1792058289; bh=Zno1aOZVAdvmFozVVMTfaa+S7QnrcF/kL8FfHahc0yU=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
+	b=XC68FoKmn6eCjjdbP/EtV0KNJgjNWGDRCnANw5U0IePDWaBErRGjQdsyV2b81g437
+	 dNdHDmnJfp2Q0Ufq29P+b1cAa4PVbg1B2ixs56T6+oB7wmaHmqgFuq6EsjyOwEWbyH
+	 qbUBaMdOYB6AD7JxSytIWLT5BoSxDo+jj6KMWrxg=
+Received: from smtp-m-2.desy.de (smtp-m-2.desy.de [131.169.56.130])
+	by smtp-buf-3.desy.de (Postfix) with ESMTP id 314CBC0040;
+	Thu, 15 Oct 2026 11:58:09 +0200 (CEST)
+Received: from b1722.mx.srv.dfn.de (b1722.mx.srv.dfn.de [IPv6:2001:638:d:c302:acdc:1979:2:e7])
+	by smtp-m-2.desy.de (Postfix) with ESMTP id 276C5160043;
+	Thu, 15 Oct 2026 11:58:09 +0200 (CEST)
+Received: from smtp-intra-2.desy.de (smtp-intra-2.desy.de [IPv6:2001:638:700:1038::1:53])
+	by b1722.mx.srv.dfn.de (Postfix) with ESMTP id 7BF9016005F;
+	Thu, 15 Oct 2026 11:58:08 +0200 (CEST)
+Received: from z-mbx-3.desy.de (z-mbx-3.desy.de [131.169.55.141])
+	by smtp-intra-2.desy.de (Postfix) with ESMTP id 4C07720044;
+	Thu, 15 Oct 2026 11:58:08 +0200 (CEST)
+Date: Thu, 15 Oct 2026 11:58:08 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Cc: Mike Snitzer <snitzer@kernel.org>, trondmy <trondmy@kernel.org>, 
+	anna <anna@kernel.org>
+Message-ID: <1376472961.6381734.1792058288217.JavaMail.zimbra@desy.de>
+In-Reply-To: <20261010221839.42172-1-tigran.mkrtchyan@desy.de>
+References: <20261010221839.42172-1-tigran.mkrtchyan@desy.de>
+Subject: Re: [PATCH 0/2] pnfs/flexfiles: make DS connect application
+ interrupt resistent
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0
-Subject: RE:(2) [PATCH v3 5/9] xfs: refuse a direct allocation whose block
- reservation would wrap
-Reply-To: daejun7.park@samsung.com
-Sender: Daejun Park <daejun7.park@samsung.com>
-From: Daejun Park <daejun7.park@samsung.com>
-To: Christoph Hellwig <hch@lst.de>
-CC: Carlos Maiolino <cem@kernel.org>, "linux-xfs@vger.kernel.org"
-	<linux-xfs@vger.kernel.org>, "Darrick J. Wong" <djwong@kernel.org>, Dave
-	Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, Jeff Layton
-	<jlayton@kernel.org>, Dai Ngo <Dai.Ngo@oracle.com>, Sergey Bashirov
-	<sergeybashirov@gmail.com>, Andrey Albershteyn <aalbersh@kernel.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"stable@vger.kernel.org" <stable@vger.kernel.org>, Daejun Park
-	<daejun7.park@samsung.com>
-X-Priority: 3
-X-Content-Kind-Code: NORMAL
-In-Reply-To: <20261015060932.GD14035@lst.de>
-X-CPGS-Detection: blocking_info_exchange
-X-Drm-Type: N,general
-X-Msg-Generator: Mail
-X-Msg-Type: PERSONAL
-X-Reply-Demand: N
-Message-ID: <20261015072307epcms2p858823bf9dcc139b102794d87e2efe5e2@epcms2p8>
-Date: Thu, 15 Oct 2026 16:23:07 +0900
-X-CMS-MailID: 20261015072307epcms2p858823bf9dcc139b102794d87e2efe5e2
+MIME-Version: 1.0
+Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-256; 
+	boundary="----=_Part_6381735_1122327683.1792058288234"
+X-Mailer: Zimbra 10.1.21_GA_4899 (ZimbraWebClient - FF158 (Linux)/10.1.21_GA_4899)
+X-Zimbra-Message-Verification: hash=SHA256;guid=OGFiMWRkYmUwNDdlYzM4ZTg1NGZkYzJmZDI2ZWVmNjIwMmVjYTEwYWUzOGIwMTM3MjJkZmMyY2Q2MDZmYjYxYg==
+Thread-Topic: pnfs/flexfiles: make DS connect application interrupt resistent
+Thread-Index: j3LdEzMcBautDIN3mgO7O2wESPtKog==
+
+------=_Part_6381735_1122327683.1792058288234
+Date: Thu, 15 Oct 2026 11:58:08 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Cc: Mike Snitzer <snitzer@kernel.org>, trondmy <trondmy@kernel.org>, 
+	anna <anna@kernel.org>
+Message-ID: <1376472961.6381734.1792058288217.JavaMail.zimbra@desy.de>
+In-Reply-To: <20261010221839.42172-1-tigran.mkrtchyan@desy.de>
+References: <20261010221839.42172-1-tigran.mkrtchyan@desy.de>
+Subject: Re: [PATCH 0/2] pnfs/flexfiles: make DS connect application
+ interrupt resistent
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 7bit
-Content-Type: text/plain; charset="utf-8"
-X-Sendblock-Type: AUTO_CONFIDENTIAL
-CMS-TYPE: 102P
-X-CPGSPASS: Y
-X-CPGSPASS: Y
-cpgsPolicy: CPGSC10-223,Y
-X-CFilter-Loop: Reflected
-X-CMS-RootMailID: 20261015060942epcas2p4bcb321d2f040673f793404daa724e83c
-References: <20261015060932.GD14035@lst.de>
-	<20261015-xfs-pnfs-batch-v3-0-54fc7b2e467d@samsung.com>
-	<20261015-xfs-pnfs-batch-v3-5-54fc7b2e467d@samsung.com>
-	<CGME20261015060942epcas2p4bcb321d2f040673f793404daa724e83c@epcms2p8>
+X-Mailer: Zimbra 10.1.21_GA_4899 (ZimbraWebClient - FF158 (Linux)/10.1.21_GA_4899)
+X-Zimbra-Message-Verification: hash=SHA256;guid=OGFiMWRkYmUwNDdlYzM4ZTg1NGZkYzJmZDI2ZWVmNjIwMmVjYTEwYWUzOGIwMTM3MjJkZmMyY2Q2MDZmYjYxYg==
+Thread-Topic: pnfs/flexfiles: make DS connect application interrupt resistent
+Thread-Index: j3LdEzMcBautDIN3mgO7O2wESPtKog==
 
-On Thu, Oct 15, 2026 at 08:09:32AM +0200, Christoph Hellwig wrote:
-> I think the limit needs to be lower, as xfs_bmapi_write can't hand
-> out such large limits.  We'll also need to make sure pnfs can
-> request multiple maps.
 
-Thanks, I'll limit the count to XFS_MAX_BMBT_EXTLEN in v4. nfsd asks
-again for the rest of the range since commit cc6c40e09d7b
-("NFSD/blocklayout: Support multiple extents per LAYOUTGET"), and
-letting a single ->map_blocks call return several mappings is what
-patches 4, 5, 7 and 8 of the ->map_blocks series did [1]; I'll resend
-those for the next cycle.
+Dear NFS fellows,
 
-[1] https://lore.kernel.org/r/20261008-xfs-nfsd-map-blocks-v1-0-560026cdccb6@samsung.com
+I will appreciate comments on this series, including the separate krb5i handshake patch.
+
+Thanks in advance,
+   Tigran.
+
+----- Original Message -----
+> From: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+> To: "trondmy" <trondmy@kernel.org>, "anna" <anna@kernel.org>
+> Cc: "linux-nfs" <linux-nfs@vger.kernel.org>, "Mike Snitzer" <snitzer@kernel.org>, "Tigran Mkrtchyan"
+> <tigran.mkrtchyan@desy.de>
+> Sent: Sunday, 11 October, 2026 00:18:37
+> Subject: [PATCH 0/2] pnfs/flexfiles: make DS connect application interrupt resistent
+
+> In our testing we hit a situation where the pNFS flexfiles client
+> goes into an infinite loop. The application spawns one reader process
+> per CPU core to read multiple files in parallel, and kills the readers
+> once a fixed time budget expires. The killed processes never exit.
+> 
+> We have identified three issues:
+> 
+> - Concurrent connections to data servers are serialized in
+>  nfs4_discover_server_trunking() (not addressed yet).
+> 
+> - Regardless of the configured security flavor, the client always
+>  tries krb5i first, addressed in a separate patch:
+>  https://lore.kernel.org/linux-nfs/20261009155802.540179-1-tigran.mkrtchyan@desy.de/T/#u
+> 
+> - ff_layout_pg_init_read() and ff_layout_pg_init_write() retry in a
+>  loop with ssleep() when no data server is available. Since ssleep()
+>  is uninterruptible and the loop does not check for fatal signals,
+>  a task with SIGKILL pending never leaves the loop.
+> 
+> These two patches address the last issue.
+> 
+> The patches tested on 7.3-rc3 and RHEL 5.14.0-757 kernels (with
+> backport).
+> 
+> Tigranve  Mkrtchyan (2):
+>  pNFS/flexfiles: make pg_init retry loops killable
+>  pNFS/flexfiles: don't report an interrupted DS connect as a DS error
+> 
+> fs/nfs/flexfilelayout/flexfilelayout.c    | 23 ++++++++++++++++++++---
+> fs/nfs/flexfilelayout/flexfilelayoutdev.c |  5 +++++
+> 2 files changed, 25 insertions(+), 3 deletions(-)
+> 
+> --
+> 2.56.0
+
+------=_Part_6381735_1122327683.1792058288234
+Content-Type: application/pkcs7-signature; name=smime.p7s; smime-type=signed-data
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Description: S/MIME Cryptographic Signature
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExDzANBglghkgBZQMEAgEFADCABgkqhkiG9w0BBwEAAKCAMIIF
+2zCCBEOgAwIBAgIQF4XHXEetKIAlPr4cevwe6zANBgkqhkiG9w0BAQsFADBUMQswCQYDVQQGEwJO
+TDEZMBcGA1UECgwQR0VBTlQgVmVyZW5pZ2luZzEqMCgGA1UEAwwhR0VBTlQgVENTIEF1dGhlbnRp
+Y2F0aW9uIFJTQSBDQSA1MB4XDTI2MDgxOTEwMjQyMloXDTI3MDkxODEwMjQyMVowgakxEzARBgoJ
+kiaJk/IsZAEZFgNvcmcxFjAUBgoJkiaJk/IsZAEZFgZ0ZXJlbmExEzARBgoJkiaJk/IsZAEZFgN0
+Y3MxCzAJBgNVBAYTAkRFMS4wLAYDVQQKDCVEZXV0c2NoZXMgRWxla3Ryb25lbi1TeW5jaHJvdHJv
+biBERVNZMSgwJgYDVQQDDB9UaWdyYW4gTWtydGNoeWFuIHRpZ3JhbkBkZXN5LmRlMIIBojANBgkq
+hkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA1eVMTvYES3GLqhn0zqaiJ3+XELMB9tHgwI+HtD3+n3V8
+tmPEw6Rkoo+3WKEg/Mo1vgJrGaYROtXEaS5fGx+AAMa9vVJyfPMjumhcIjXUXl2CU5HbCAu08grX
+czcniDMT5QRR/W7n17XA3aK+okPpX51RTk4sg5r3JXglII8htTr3qNLNvH1a9xF3ha79h+24H2ST
++sYiCgG4xBSmkwZiS/to00/aQ95WQ3vDbfNrPWwItWBecf7EqVuopNHLhODCfnVxdbovoGn6ro/+
+dDup9DtKC6EyYT3GiNEr/1eogutQXgS5H8xNc8qnJy5XhuVi8heqQZ94gohqoR44a5QELk3znB92
+PLDpW2Gl1N1+SXdXe7QnpOivsYQHIFIGsTzAsMlKP6Cdl7dfRVsymfp8ZAZCyA3fBg9K0Ir/C9rd
+PHPAL4rUphHBlL6Em+GF0LO39HrJhpAFzT9n0dYVR31gQ49VsgttPdYniQ9dnIL0X5/FEOkq9zvp
+ogJ9ByBlPW5/AgMBAAGjggFRMIIBTTAfBgNVHSMEGDAWgBSDrT4rvBOJjYgJHL8g3F+4MVXq8TBX
+BggrBgEFBQcBAQRLMEkwRwYIKwYBBQUHMAKGO2h0dHA6Ly9jcnQuZ2VhbnQtcHJ2LmhhcmljYS5n
+ci9HRUFOVC1UQ1MtQ2xpZW50LUF1dGgtUjUuY2VyMDUGA1UdIAQuMCwwDAYKKoZIhvdMBQICBTAN
+BgsqhkiG90wFAgMDAzANBgsqhkiG90wFAgMBAjAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYBBQUH
+AwQwTAYDVR0fBEUwQzBBoD+gPYY7aHR0cDovL2NybC5nZWFudC1wcnYuaGFyaWNhLmdyL0dFQU5U
+LVRDUy1DbGllbnQtQXV0aC1SNS5jcmwwHQYDVR0OBBYEFCFcUBIsi3uUE1kq670tMz37WCGaMA4G
+A1UdDwEB/wQEAwIFoDANBgkqhkiG9w0BAQsFAAOCAYEAYnxTcPN9abeQXN8K8LPynNHsq08LUVDd
+ROKGdsmCdVJLdDLI4VF2qxw/hyPALNb2XrjnYz6F7zpsOjGWh13IpDCN1ydcy14kurOq0XWeXPuJ
+Cwh2+Q35xZX0CiMxDXVV8HbW5DLSkmMti5lAshu47KgJmQc2OqRY2Fx1A4d/eAsNfP0tmF6Z6wpW
+AtTd2F0Tlv9yovu5uRWlSBrQOgzTKA4L9yELBtFwxZfRJXf7TdzJqcEmOxZqcRkA8vGMCTcaRzaQ
+4az1+q6raJV8DvkKjtxrxg+CyjlY2ARFev1ofuPUXlJ2RGA1hhFuSWPIg/FFRiAUYkEkyrFSEmsx
+ZhGuRFuikFrg9+lpqNv2Qnx8VHi0ZWZXRCbua2qv8bpYLv17jVSfUPT65Iha/0zVZiE9YeeE4r62
+WH6cQdKylQM4vw0iVSgdbxA59um3VKi10sVGJnA076uEvCJw05tVpBb7Ac6CpIgPFJ2A/QzhFm5V
+u+aRa6gZyRqPl0tGh5YNmmVkAAAxggLkMIIC4AIBATBoMFQxCzAJBgNVBAYTAk5MMRkwFwYDVQQK
+DBBHRUFOVCBWZXJlbmlnaW5nMSowKAYDVQQDDCFHRUFOVCBUQ1MgQXV0aGVudGljYXRpb24gUlNB
+IENBIDUCEBeFx1xHrSiAJT6+HHr8HuswDQYJYIZIAWUDBAIBBQCggc4wGAYJKoZIhvcNAQkDMQsG
+CSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMjYxMDE1MDk1ODA4WjAtBgkqhkiG9w0BCTQxIDAe
+MA0GCWCGSAFlAwQCAQUAoQ0GCSqGSIb3DQEBCwUAMC8GCSqGSIb3DQEJBDEiBCCXynHDRNY85DnQ
+LwMlqryg2kLM+lKmRw582jYWpQ9H8TA0BgkqhkiG9w0BCQ8xJzAlMAoGCCqGSIb3DQMHMA4GCCqG
+SIb3DQMCAgIAgDAHBgUrDgMCBzANBgkqhkiG9w0BAQsFAASCAYBz8bcoYkcurJtN+stm2NNZotDW
+MvV2cFF9TYNNFWQCAnZX8jNlcJMDB0mBma9azXFeie3daL4zN26XMwrNKGqsdCAfAKTevLxtA92x
+cgObreyj9ybkoTsjj2lC7EvnKZBCGOQJXaR6WyMHuF4FzSWH+8A33uD6e+Yide160QSkK5MQJ3dx
+4RgVDWx2Axn6BhDejZhGbvy6waV0uZqgi3+6Ikrr1lk823WJT5CuWXn6U0IgVaP3FiNqB/BwA13Z
+6boxJuDDLqHtSfYLXM5gPGr7uQSx9nhRSsaRJPLh7zbE+srznfn4Fono7BC/0+Lu2nqRcPr3Tzzc
+WevlLqwUfGeTfuPRaGVfBdO7h8TGacmN0/6gLwDqjdOLLTZI3MFvv66Of0C063XbJM4FpX/ueosg
+/PB68IgLa5AYHA4Z0R6w8VgxKcvUL+lMnj5RwugpBIg9pnyr7K/xDNbk1rvPjhJwa7KdFRXbfU2f
+mBa2M3FiNee/mbRqf7/82pKy54N1OEEAAAAAAAA=
+------=_Part_6381735_1122327683.1792058288234--
