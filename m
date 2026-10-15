@@ -1,33 +1,33 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2303A3624D3;
-	Thu, 15 Oct 2026 17:14:51 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F72A3E8C65;
+	Thu, 15 Oct 2026 17:15:10 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792084505; cv=none; b=bQIAp9YWDxs3Rl3MpQxtifh2I9sS8VSbv4X2vKgQ55THATP/cM9NDB2G7CT46jxfkTsmTuBxpA/EOLUHmSPH/anxclBQ11YFSCpFriIgZDeKZ72yqSUjhlMAv2tFyv+jBnQt17JJ/A30Gq2ub20Ft93Gwat8FgmCO9tJQr6UMsk=
+	t=1792084521; cv=none; b=fTZveS5EoPHaU6zznlsIHwAmdaw0km/aGMTXOPkgLRVYXQh0CRrbX888eE9+QTpPFr7PraSE1vob890tpFCaLsqvMeK5CZsAxlk+6goQ4D+tmJ/m9QOiVsju0xF7nxgdBF5dY47rSQ4RSueUpbUkKa91mPHsQ2qoMyssQIZd4Uc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792084505; c=relaxed/simple;
-	bh=eZt1UaUU1vVsBntHCLv6tEKj/sW21ddy9aCK090k4Xk=;
+	s=arc-20240116; t=1792084521; c=relaxed/simple;
+	bh=FKi2GRw0/DfB2JTqzz/P6bqM5og0fc1AosC0jadjyYM=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=Roz5wT3gDhUO5C9e6ISmnthQOA97rv86mKW5LH6t4X38ofh/VevCmjCuMk2+Eorbad6l85b8tEIC3cOCxuFhYCd8NOUx4+UU9lvKm9F0Exb2LoC393vQQWne9lh39xWR5fID9dn8bEch+5MEi/k0q8EmYSR3MVhQBDdxmof/d1U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fhISbsyO; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=PzzL34D3GkjdzdUrxjG+xGOpkTvUFpfV5l5RQI3Kgqb3PQNI5tARkxH+NY61o/6SXAcmcwxIDKR4/SeBX5umeMYSZEdd6biKjiqZdeUgt/0cCKuH+FmRvJmLvo1AG7mBKK0Ugm4N+m+HgCQDMEBbnHRIazBuKzAw+WoZVhqqgVw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=KqG/5rh3; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fhISbsyO"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C18561F000C4;
-	Thu, 15 Oct 2026 17:14:50 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="KqG/5rh3"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 031021F000C5;
+	Thu, 15 Oct 2026 17:15:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792084491;
-	bh=KLdykWTLGoPKYRJKwfyasOnAusZA7QJ5FaONPm+7FFM=;
+	s=k20260515; t=1792084510;
+	bh=EK8XBl26tKatGMspH1QCKi7VVl9wawFfJPm0jQOPQAY=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=fhISbsyOr19DwR/zy3EgBIzPH1Ysf2RMXimt6k7bgWBs1T12fu2FFUwIlXW+69+h4
-	 jOoz7Jy8/6hXk+uXF+KKKGPXkKBst9FVF8kCNXL67RGzJyVEv3YO/u6QIDe8MUE7FS
-	 kQnsd+4tPbzPDUP08T479szl//OXJzBjRyTaE36/qb+5d9WeDDWy7W5VJdChKlnD3o
-	 TKVVNkwX0JRm8eg2gezK/CT2iMV1Sf21P+EQJvBtd4spb4g0blo64O3nGZMTrQAJu2
-	 H4N5l1BTyeZHcQHjOOOAKxTXl3lx97UrO9IJ0CcGtkOzuhZ0lhXnAQs2zBg//X2c1D
-	 xosgbGX5gBYVQ==
-Message-ID: <41e63ab9155a4fca2ac377dfa3dc2a07518a3eee.camel@kernel.org>
-Subject: Re: [PATCH 7.2.y] nfsd: fix all-zero stateid in CB_OFFLOAD for
+	b=KqG/5rh3i7vA4DLv0FzWp6LnQgFHdQlqhdavKKGIP/KJhYHZmIw5QPB5lV5d9grEx
+	 mQwKIE6OkpTC74XXQ4ZnG3yKjbXYvyrGGwNMIq3V0FhabutQfpucFA08I5iCTMnz5q
+	 ukJIxQZAy1hfaIdbS0NzEewoob50MmhMjaNZh3EvvxlhlhJCjaWqOVIus7Aa7Vi+eV
+	 jpQLa5j05qdUq8gSN1jnVeN1/GS+T+1UqTRDwoW2GQfKkR2L80O1ZnCXGcqpbAynRr
+	 MVTsOOXjlG3S88jK3+H+to6GJKRS1NN02VrB73NhRgg347pCjnuIbWfa38Jm3D2+/Z
+	 spkgbOCWCo9hQ==
+Message-ID: <b0e11c64a2cacb1582e44020de115895fcc6ed0e.camel@kernel.org>
+Subject: Re: [PATCH 6.18.y] nfsd: fix all-zero stateid in CB_OFFLOAD for
  async COPY
 From: Jeff Layton <jlayton@kernel.org>
 To: Lubos Rendek <l.rendek@proxmox.com>, stable@vger.kernel.org
@@ -35,10 +35,10 @@ Cc: Sasha Levin <sashal@kernel.org>, Chuck Lever <cel@kernel.org>,
 	linux-nfs@vger.kernel.org, regressions@lists.linux.dev, 
 	linux-kernel@vger.kernel.org, Fabian =?ISO-8859-1?Q?Gr=FCnbichler?=
 	 <f.gruenbichler@proxmox.com>
-Date: Thu, 15 Oct 2026 13:14:47 -0400
-In-Reply-To: <20261015005340.550134-1-l.rendek@proxmox.com>
+Date: Thu, 15 Oct 2026 13:15:07 -0400
+In-Reply-To: <20261015005725.550511-1-l.rendek@proxmox.com>
 References: <bb39cba3-c4a3-4fc4-b078-c92752cf483a@proxmox.com>
-	 <20261015005340.550134-1-l.rendek@proxmox.com>
+	 <20261015005725.550511-1-l.rendek@proxmox.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -123,13 +123,13 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2026-10-15 at 11:53 +1100, Lubos Rendek wrote:
-> [ There is no upstream commit: this fixes the 7.2.y backport of
+On Thu, 2026-10-15 at 11:57 +1100, Lubos Rendek wrote:
+> [ There is no upstream commit: this fixes the 6.18.y backport of
 >   d0beaee498e1. Mainline fixed the problem as part of the async COPY
 >   rework in commit f307b4f7ed17 ("nfsd: split nfsd4_copy into transient
 >   and durable async copy objects"), which is too risky to backport. ]
 >=20
-> Since commit 14b978e8d05c ("nfsd: fix stale s2s_cp_stateids IDR entry
+> Since commit 9b4e5e9ba5ae ("nfsd: fix stale s2s_cp_stateids IDR entry
 > for async COPY"), nfsd4_copy() calls dup_copy_fields() before the copy
 > stateid is created and then writes the new stateid only into the COPY
 > result. The async copy's own cp_res.cb_stateid stays zero, so
@@ -142,12 +142,12 @@ On Thu, 2026-10-15 at 11:53 +1100, Lubos Rendek wrote:
 > option, because dup_copy_fields() also copies cp_stateid and would
 > overwrite the stateid that the backport moved to the async copy.
 >=20
-> Tested on 7.2.10 with an NFSv4.2 server-side COPY between two
+> Tested on 6.18.56 with an NFSv4.2 server-side COPY between two
 > exports: with this change the copy completes and CB_OFFLOAD carries
-> the same stateid as the COPY reply. Without it, cp(1) hangs on 7.2.4
-> and 7.2.9; the affected code in nfsd4_copy() is the same in 7.2.10.
+> the same stateid as the COPY reply. Without it, cp(1) hangs on
+> 6.18.55; the affected code in nfsd4_copy() is the same in 6.18.56.
 >=20
-> Fixes: 14b978e8d05c ("nfsd: fix stale s2s_cp_stateids IDR entry for async=
+> Fixes: 9b4e5e9ba5ae ("nfsd: fix stale s2s_cp_stateids IDR entry for async=
  COPY")
 > Closes: https://lore.kernel.org/stable/7cc824c4-632d-49df-ae5e-cfcbb5bf76=
 ad@proxmox.com/
@@ -158,10 +158,10 @@ ad@proxmox.com/
 >  1 file changed, 2 insertions(+)
 >=20
 > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 939749709..7c2955796 100644
+> index bc14c3939..aeab09dde 100644
 > --- a/fs/nfsd/nfs4proc.c
 > +++ b/fs/nfsd/nfs4proc.c
-> @@ -2243,6 +2243,8 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_com=
+> @@ -2084,6 +2084,8 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_com=
 pound_state *cstate,
 >  			goto out_dec_async_copy_err;
 >  		memcpy(&result->cb_stateid, &async_copy->cp_stateid.cs_stid,
