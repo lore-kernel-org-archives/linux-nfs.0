@@ -1,140 +1,92 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from proxmox-new.maurer-it.com (proxmox-new.maurer-it.com [94.136.29.106])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 80A0E4A3F17
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Oct 2026 21:02:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F64C25B0A4;
+	Thu, 15 Oct 2026 00:54:55 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=94.136.29.106
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792011754; cv=none; b=t0REN7xYhYnvJIW1EQ9JNyiOBUtOJdvmEgDM5oFY6GywU0WCGt/LHvRNQ0g+H5DG9B7Ja1HE6bAn8TYs/3oi064M2oYHlwuYYHlTjq3jI9q5rFfaxyJiRj700TH1qNHY7UYbW8e/1NC8j0Co1ZlndrXDzivRSk95pzxwnJ7uhZQ=
+	t=1792025698; cv=none; b=PdI4Sg/2803/nrjP5jfb6U7ItU5GNgG2ncq4ykuVAmNRrFNR3yor2jyO2g9TktvUQtuDXdquzVmfzq3HGhSLazNjTvJ3NZZjtL3c439XHjyzkCHbye73APZMeuXVHPM+oWrpZFeX5mIX9kat0Wk734p6Cbt7o1DtvWmMvwowfmQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792011754; c=relaxed/simple;
-	bh=TvG4W/3smH1SrnK+ubkpwEwbY36jix3e0NSx7nZ3+Is=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=sJ2ZXXTCIWG6NOYLI7Cklfoi4rusQm05Fy7EsVV5YNzy+JK3U5pMugrjVxDua7qk/7lKoCSv4/RdqHDcRKm6wve7x4e8n76ttlefuPmHy4ISua2p53vfpapov+DsrVKEYX4rWn/oSA+r9We35W2VJDUwaQC9fvCAebOuhaOcoQ0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Gc1SSS7b; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Gc1SSS7b"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 915D71F000C4;
-	Wed, 14 Oct 2026 21:02:32 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792011753;
-	bh=JaQpHsaZfFhDlyGWaEp+LKDKCD6glj1JvFGpPP9mp8o=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=Gc1SSS7bCaMvbUKRFLLN8PMBNGjlvEHngHvADV6t3TIEvZClZF4fs6xs7OJzgDutK
-	 +I6e+8IktbFVLAB2MNjJrQjn8neC7uvi7YEP0Q+x1JypheC8pPTrPCclx+NU6vsQw7
-	 Jp34aTZukDK3Pkw2W08dDOPPWYjNpxrwwx+DVT3hSuIkIbkwanX3cqmb1dKQmJrS0+
-	 vPJH4goF2zV3sdfWXjl1FGe3AkGFv0cJGRRqMadh0CGf4hlAhffrOGvAwVTX43NXj+
-	 AANBjHmKmvzomGyqvP4AeBdA7uN5FbUWwD2RbBsHFh3gHbAWRQZloiwamxvKdWSAhv
-	 xvV+DycQsWTHQ==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id F29EBF40067;
-	Wed, 14 Oct 2026 17:02:31 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Wed, 14 Oct 2026 17:02:31 -0400
-X-ME-Sender: <xms:5-3PamCE1ISMU7dcqRnQmJwda6JlvPd_310rtmqJPd2jFY_3swCUJA>
-    <xme:5-3ParVweaF0kFGsEL2S4r5SSXUNzMQ-5hRVJXwL_ag90dBMysASfEHcwfEJVSVSr
-    MrkcHs3keH8afgLB3Sny_wWectFl96D7PgjkenywuhIlwEu39OruYU>
-X-ME-Proxy-Cause: dmFkZTEwUguday2YbiRcB+yZiZclpacU3BNifeyW+rylXDmjYZLgJ1+KcRUeOVJvM3ukzw
-    HRlJc4JakDPJbKPkTkJAYaBQ1ZCr37akHcae3W0g4uJ3zMswgDg2AEIAlXV6O4Shlvkw9Y
-    Flj0QZZgspfpu3mFyZ2l1xhOaWPtHwETMgFE3nB6eg8zcsPEc8hoRcu+J2fxqWXU+pzCac
-    zpYrYB9WIYT78hJpqOuBbsu2oa9oO0jgX5ywI9kRvxj53qkGOs1nzxrj6QVQoSvYxmynry
-    /DUf83zo2HkXgQ5fq8zw2shvc4nq+RszcecDnnLOyDA187H0YP1TBMfF0ATASnx9t7zhKq
-    kdprEq2RSBnAJzny+/R4KY5ZoczBCw2tiQrpOKZg+VIPDVwLNM9CsryAQMAKRcVwofPEjw
-    NIIHa7d2QKO/idXecowXnWKLiU7hSXHmVq1qmp2tYBBeJXFWBe3DVWABvdh6e3o1J03oQy
-    7qQWK9537gF5YBlfdIwrBgi/QB3UVa4AEFqAdtOXp25y2DaS7A18PZJQGBIvRyevWV9L03
-    vlTv6dR6JzLwpo+v17UmYhQULVp+sHOYur+yrr6LLbk7cjx2MioDn0A029dN992Kx3CRb9
-    cmNv+c7YgUfwBkSELYUERyDnALgD2/Cw5g4G2mi4UpK89jNE4NG8ce4J6AqA
-X-ME-Proxy: <xmx:5-3Paj4xmumUr-Vpigvb0qf3S_L2Ry8Qu8SF6IkEsIHJTuV8vkJY7Q>
-    <xmx:5-3PahB9C1OyleR7BtT61QLmJni5xEhas7HiArcNJGQYHDOnG5xvaQ>
-    <xmx:5-3Pap-tmaL4sp_373_sErosmBSs7Ke7oJy_-Pj1QD_ixCPVCd9uqQ>
-    <xmx:5-3PakFFapAAwuneqeJ3_4pqSc2WbPqW01MO1-PaLYuCmGuBVOevTg>
-    <xmx:5-3PajQEVKpQUB0rGOqELBqTcqdavvOPlZt57-QsGfHwSZZKYF34VQSX>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id CFF36782738; Wed, 14 Oct 2026 17:02:31 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=arc-20240116; t=1792025698; c=relaxed/simple;
+	bh=UcXfq2s8RBg/mdMLs5Sze1N6LCsFPoK+hasLw7OL0Iw=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=gUGDqdMpOuJh+e+0XrlVMRSiPA+IOqxmL54a9OWZjm8f4mGpclPPoCxe8zMF8h4OsqEriqPNkGh3YGXmSGboW0Mk6aVFsg9iOOdxSqk9gDFZoHpwOCzt7v+qzkLlqYy1SBKKaAUhTtTYr0hk0n9oUgkfZHg3H9nJNp9ELNWBOUU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=proxmox.com; spf=pass smtp.mailfrom=proxmox.com; arc=none smtp.client-ip=94.136.29.106
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=proxmox.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=proxmox.com
+Received: from proxmox-new.maurer-it.com (localhost.localdomain [127.0.0.1])
+	by proxmox-new.maurer-it.com (Proxmox) with ESMTP id 5958242301;
+	Thu, 15 Oct 2026 02:54:48 +0200 (CEST)
+From: Lubos Rendek <l.rendek@proxmox.com>
+To: stable@vger.kernel.org
+Cc: Jeff Layton <jlayton@kernel.org>,
+	Sasha Levin <sashal@kernel.org>,
+	Chuck Lever <cel@kernel.org>,
+	linux-nfs@vger.kernel.org,
+	regressions@lists.linux.dev,
+	linux-kernel@vger.kernel.org,
+	=?UTF-8?q?Fabian=20Gr=C3=BCnbichler?= <f.gruenbichler@proxmox.com>
+Subject: [PATCH 7.2.y] nfsd: fix all-zero stateid in CB_OFFLOAD for async COPY
+Date: Thu, 15 Oct 2026 11:53:40 +1100
+Message-ID: <20261015005340.550134-1-l.rendek@proxmox.com>
+X-Mailer: git-send-email 2.47.3
+In-Reply-To: <bb39cba3-c4a3-4fc4-b078-c92752cf483a@proxmox.com>
+References: <bb39cba3-c4a3-4fc4-b078-c92752cf483a@proxmox.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AH8T3UFXz8G7
-Date: Wed, 14 Oct 2026 17:02:11 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: daejun7.park@samsung.com
-Cc: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Christoph Hellwig" <hch@lst.de>,
- "Benjamin Coddington" <bcodding@redhat.com>,
- "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
- linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Message-Id: <166857d6-bb91-4731-8a94-a6a7fbb722e4@slotpi15m67>
-In-Reply-To: <20261014-nfsd-layout-recall-v2-4-764462bddfd1@samsung.com>
-References: <20261014-nfsd-layout-recall-v2-0-764462bddfd1@samsung.com>
- <20261014-nfsd-layout-recall-v2-4-764462bddfd1@samsung.com>
-Subject: Re: [PATCH v2 4/7] nfsd: run the fence script when a block layout lease break
- times out
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-Bm-Milter-Handled: 55990f41-d878-4baa-be0a-ee34c49e34d2
+X-Bm-Transport-Timestamp: 1792025687393
 
-On 10/14/26, Daejun Park wrote:
-> @@ -1004,7 +1075,33 @@ static void nfsd4_layout_fence_worker(struct work_struct *work)
->  	clp = ls->ls_stid.sc_client;
->  	nn = net_generic(clp->net, nfsd_net_id);
->  	bdev = nf->nf_file->f_path.mnt->mnt_sb->s_bdev;
-> -	if (nfsd4_layout_ops[ls->ls_layout_type]->fence_client(ls, nf)) {
-> +	ops = nfsd4_layout_ops[ls->ls_layout_type];
-> +	if (!ops->fence_client) {
-> +		struct nfsd4_fence_script *fs = ls->ls_fence_script;
-> +
-> +		/*
-> +		 * The layout type cannot fence. Run the fence script, as a
-> +		 * failed recall does, and give the lease up once it is done.
-> +		 */
-> +		if (!fs) {
-> +			fs = nfsd4_start_fence_script(ls, nf);
-> +			ls->ls_fence_script = fs;
-> +		}
-> +		nfsd_file_put(nf);
-> +		/* Pairs with nfsd4_fence_script_work() */
-> +		if (fs && smp_load_acquire(&fs->done))
-> +			goto dispose;
-> +		spin_lock(&ls->ls_lock);
-> +		if (ls->ls_fence_stopped) {
-> +			spin_unlock(&ls->ls_lock);
-> +			goto dispose;
-> +		}
-> +		mod_delayed_work(system_dfl_wq, &ls->ls_fence_work,
-> +				 NFSD4_FENCE_SCRIPT_POLL);
-> +		spin_unlock(&ls->ls_lock);
-> +		return;
-> +	}
+[ There is no upstream commit: this fixes the 7.2.y backport of
+  d0beaee498e1. Mainline fixed the problem as part of the async COPY
+  rework in commit f307b4f7ed17 ("nfsd: split nfsd4_copy into transient
+  and durable async copy objects"), which is too risky to backport. ]
 
-When nfsd4_start_fence_script() returns NULL, fs stays NULL,
-the done check is skipped, and the worker re-arms itself every
-100 ms until an allocation succeeds. The fence_client failure
-path right below backs off through ls_fence_delay and warns
-once; this path does neither. A GFP_KERNEL allocation this
-small rarely fails, so the practical exposure is tiny, but the
-retry could reuse ls_fence_delay rather than the script poll
-interval when fs is NULL.
+Since commit 14b978e8d05c ("nfsd: fix stale s2s_cp_stateids IDR entry
+for async COPY"), nfsd4_copy() calls dup_copy_fields() before the copy
+stateid is created and then writes the new stateid only into the COPY
+result. The async copy's own cp_res.cb_stateid stays zero, so
+nfsd4_send_cb_offload() sends CB_OFFLOAD with an all-zero stateid. The
+client cannot match it to its pending COPY and waits forever in
+nfs42_proc_copy().
 
-Also, the fence script can run twice for one stateid. The
-lease break times out first and this worker runs it. If
-the client stays silent, the CB_LAYOUTRECALL later reaches its
-two-lease-period cutoff and nfsd4_cb_layout_done() runs it
-again through nfsd4_cb_layout_fail(), since that path checks
-only whether layouts remain and never ls_fenced. For a dead
-client both fire. nfsd4_cb_layout_done() could skip the fence
-when ls_fenced is already set.
+Also copy the new stateid into async_copy->cp_res.cb_stateid. Calling
+dup_copy_fields() after nfs4_init_copy_state() instead is not an
+option, because dup_copy_fields() also copies cp_stateid and would
+overwrite the stateid that the backport moved to the async copy.
 
-Related: nfsd4_cb_layout_fail() now builds the same address
-string and s_id that nfsd4_start_fence_script() builds, and
-hands them to the same helper. If the first became a call to
-the second, the two fence triggers would share one argv
-construction.
+Tested on 7.2.10 with an NFSv4.2 server-side COPY between two
+exports: with this change the copy completes and CB_OFFLOAD carries
+the same stateid as the COPY reply. Without it, cp(1) hangs on 7.2.4
+and 7.2.9; the affected code in nfsd4_copy() is the same in 7.2.10.
 
+Fixes: 14b978e8d05c ("nfsd: fix stale s2s_cp_stateids IDR entry for async COPY")
+Closes: https://lore.kernel.org/stable/7cc824c4-632d-49df-ae5e-cfcbb5bf76ad@proxmox.com/
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: Lubos Rendek <l.rendek@proxmox.com>
+---
+ fs/nfsd/nfs4proc.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 939749709..7c2955796 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -2243,6 +2243,8 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			goto out_dec_async_copy_err;
+ 		memcpy(&result->cb_stateid, &async_copy->cp_stateid.cs_stid,
+ 			sizeof(result->cb_stateid));
++		memcpy(&async_copy->cp_res.cb_stateid, &async_copy->cp_stateid.cs_stid,
++		       sizeof(async_copy->cp_res.cb_stateid));
+ 		if ((READ_ONCE(copy->nf_dst->nf_file->f_mode) &
+ 			       FMODE_NOCMTIME) != 0)
+ 			async_copy->attr_update = true;
 -- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+2.47.3
+
+
