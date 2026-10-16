@@ -1,657 +1,136 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2F775400DF0
-	for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2026 14:16:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C230344236A
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2026 14:34:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792160193; cv=none; b=kkvopuGIZYwBEuv53t7OizCiEJgAmzLaJp3MDxEF8n2Zhwgo7FnprMyTSuzlf2KZ+83vkA63XQnG4FZtPnTKCqATfAN9Ckv831wG2ERUu7xKccka3zyEEYpehugOmGZZKnZ+CWjpaAQZvK6AAQcNIkBW2x/x//xsjHNbcvZwWUc=
+	t=1792161285; cv=none; b=kcUw9U1aNCu8W/qxGXk699u1d2ngMybokwj1BRofGsB5gI5gBwgww5PSCFWoTNk5w3UC5gwVioL8wgW78VKI0oiHzv5h61dFboXJcEEePAijNFTUwP7d3DnXaylQ2Wl55czcO3L9hCS3/M+XIuZXork9bK4Du4WMQ5TCTBKYLJI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792160193; c=relaxed/simple;
-	bh=o7d44Qx6c+B6JcW3vvijYaUw7f8RcWt7MBUfa1hSmzM=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=D3LzXdOqRbArbxPutEYJLV0ZSlqjwpET6F1Oh0K7KNu193nmQczlkhBVBjWspmOTVq4rgXg09v58hUe6OI9GSr9xY98n4kw3OZHyI05+2H/8vgDqwc7CsAbihTCQwxg38Uyb5UWVEoO/7Qd/Rvy71g20kg2c4VG+8pnvtUL9584=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=edzyc9xJ; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1792161285; c=relaxed/simple;
+	bh=4Xmk20YAouaBsLJ2zaHEh4Co848DUBzF0HOruCgy7x0=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=JKurHKA732a0wxg2DnUQQiwFD22afV44FA03hc+NJpLoGWgY4vCv+zt+t6qnJbfNfmkxCGbqY0bTiXAoL9358OyTsrwd3eJVcYFORI+wzrfHb8yJ/+/GsuTXnV4uPTtK4w6ib819oxu1mRYm4mD02XY72j4PoiRC4alsiLikQ0E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=FvQvgYbc; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="edzyc9xJ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 44A2B1F000CC;
-	Fri, 16 Oct 2026 14:16:22 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="FvQvgYbc"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 417C81F000C4;
+	Fri, 16 Oct 2026 14:34:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792160182;
-	bh=JaZMn8tACtNgo2jT8OwOrH+9Y4MUOJ8avYSH6jvXDnc=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=edzyc9xJL5Zz/Z9Hf2j6AwOe85H+g/FiQtCE24uj3TJjBphq7qBXwrXPfYCx7fQSo
-	 gcgbNNfXWh9gVPAkn5V9j6ng3O/8X+/AcIsNrrD4rl4aRmrCzZgWqPXKnZBcNpQJFJ
-	 Tt89WH5w4qaJwDeJ+vXXx49AA0/rCodjywjJa5QBg0Es+hQnKqLEO7JXa/Rs9YTwMy
-	 5+dlj1ucz8CpTx3TnYA1bEwmGCyXVI7ZMyqMH4HAUGsps1bolzjTiis4fGeYhIcaZY
-	 Ln2M39KRq93+iwJhjsEcLyqio88zAMSmrNQQOnVsursi/A0zujlKT5eNxashHYkYj1
-	 HJx6O7zA9G+Xw==
-From: Jeff Layton <jlayton@kernel.org>
-Date: Fri, 16 Oct 2026 10:15:43 -0400
-Subject: [PATCH nfs-utils 7/7] Add MAINTAINERS file and get_maintainer.pl
+	s=k20260515; t=1792161284;
+	bh=sieuFFnp2vwR6zEgQpCZJ9ZpLYS3Tw1RExv8zbF0RRA=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=FvQvgYbcehFolCjpEGrCcMRwSTFQBNMMHLy8Y0h40HYEtM46SFYu8h51NH/mIwUVN
+	 zCevd/jQ/3BvljiiunKumFg1AVgRucjNa1JQrfhBhvyjilrxSJiDOxd+zz+B+P3JR1
+	 80QenB26sgVkRsj9KK2nF/YXhrcs6oa9bB2w0lnZCNkzKPChc3e31pczqsqFNzYdx6
+	 XcOdbXpYy3HcZNe/i/sdyXNp9M2VVZHwPYCxecpoAij8r413WBEqr4ULsEkmpbhwsk
+	 La5QktI4/4fWAG9NZYT7FHiw9Zn3bW2P2hkGdt1g6jBeugnQiYuKa/6z73iXeACfIY
+	 uSZZbWTC/ZTag==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 99361F40066;
+	Fri, 16 Oct 2026 10:34:43 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Fri, 16 Oct 2026 10:34:43 -0400
+X-ME-Sender: <xms:AzbSamyxrJHaKBKXY8hknZc_0yVzzY1neDh2r60bSnOAknUa_m7LEQ>
+    <xme:AzbSatFmDUE9EqootCwJYYuGiCRPBKoLck06C4Vh90BW4yghamoaYyXnfO5l5l67M
+    vocki6OCnT9rU9WOvkXle5WeFEQhUudCCNrkVvJGxqpf-_s8sCNEP-v>
+X-ME-Proxy-Cause: dmFkZTF4z7V4Ey2iY6xxLCyuyY0qeyxSrefaQYO2sk/c0+1wL9iovk2LKnJHHcDa3HiP6j
+    Si3buioX6X+S+lknpevHaxnx1/5rOYH67dvlF9r3Qoqdtvt8kJXGkwNhxlw1JSZlE0PRh9
+    ZvsSCutfnS6ibvBytfc8Eez2pc6GlYusPaBdeyNWARtmkGoHCx3LBdzjzeYLk5JYQzS4A1
+    lKFHcWBpkLgCDW/B4CipMSn+S2jlLwuDe8PHv1qdOERmKHuUy5QgEN9i9CnfRr9ujQcC8y
+    9JvZcvDRVETAbTU6a4Yqa+/Wf4fuz0ATkglddUtkwjiPYe0AMlMkOf68tXOgAjdeHCAUL9
+    by1/qm6GqNhIH+9rpyDt33Hwq0HfKZ8t1fnj2t0edA2VezlBEEXZYkjFFo7yf0lPO1L/l8
+    3yhAxyvOdBMRuqQSbgBu+Rsh4XT9PAFPRbw8LfYDLrw/tKYQ2If9aRl830TzF49rK3ARI1
+    cqzbrqadqW7xZTIC0lSIVTxUOc1q//2dBpRb86G1090NXsk3LFbLlfmDKFWt4aXw0wP4yw
+    1X8VMMaAaoVmFdfupPpLoGPTDWxJqyvrzv6I9ebMS49UYuKgD+avHPGVrO/anl5I4UnynL
+    6Yc3c7uhftcwSTbfLTDXHoTfGmFMcCm9pRmva+oeBKxd9L3EAfYyTnc7RIDg
+X-ME-Proxy: <xmx:AzbSamMO5I_v6vOwbpHa1bWMG5MUowbq7vuAnEsvBC9aPqteKfAvXQ>
+    <xmx:AzbSasuVFS82npQNZCSu1LMCl-zc0DSwGMjJI0PBV6Y8GTAHzYwe2A>
+    <xmx:AzbSagWlSvz7eC-V8VyZOB_k08ZwrL5Z3pDOyUnzCBEB8tA2IIFpXw>
+    <xmx:AzbSaktCOP0kHziqN3uU8DFIj8IE9pyWRdnN2C3RCc13p3yRUonN4g>
+    <xmx:AzbSasWlevEAVD0edYqJD_CGwQtxQwrPaqyrknaBIDjETQRbQjNUHTuN>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 72949782738; Fri, 16 Oct 2026 10:34:43 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+X-ThreadId: AV0wmJNhj1I7
+Date: Fri, 16 Oct 2026 10:34:23 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "HeonJe Lee" <lhjnano@gmail.com>
+Cc: linux-nfs@vger.kernel.org, jlayton@kernel.org
+Message-Id: <62b23f24-5fb5-4459-aec6-635697a40eae@slotpi15m67>
+In-Reply-To: <20261015114755.33331-1-lhjnano@gmail.com>
+References: <20261015114755.33331-1-lhjnano@gmail.com>
+Subject: Re: [PATCH] NFSD: wait for nfsdcld to open the cld pipe
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-netlink-noproc-v1-7-42791f4b6eb5@kernel.org>
-References: <20261016-netlink-noproc-v1-0-42791f4b6eb5@kernel.org>
-In-Reply-To: <20261016-netlink-noproc-v1-0-42791f4b6eb5@kernel.org>
-To: Steve Dickson <steved@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=18907; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=o7d44Qx6c+B6JcW3vvijYaUw7f8RcWt7MBUfa1hSmzM=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq0jGyc7kCiVEBO0app3H5svBdK8BWnLqN3bEO7
- 0z1WzDi1yaJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCatIxsgAKCRAADmhBGVaC
- FQJKD/9ROEjCRZ1/alvYIxLmiPduYKIEKfPWgy1/xbroAEW0E7LcuJQdmfmOjUqWqJITZYSNcmB
- CBz4KCmE8O4dMuXY92qk+rNFjptQ282q9i1iJ2dqAVAn2jLGL78BTmZLuuw7nC68MEEk1n1NilA
- PzxEcssmaJT35f4AE3mlkLAL738zZXIPH5iC5hXDkUH/afQLx32ropbhPQkRoJLTEZ0gD6Ymww4
- et+CEYOU1hqgDc9FlOzX+XOeQbC6dwKoxdVqHs//PP3140PVLVL1u3EtK/QduNxm4Vgo9ySpeMe
- MnqH4KWEYe22hnGTHgoG/vVGc5eji3xH1dW8rgYNMsiZBPRkTr4ZNX4CzhUBbPNVf710wO/TY7Z
- TcBnWc9luokSmmodG/Y8JaOsb1UzzKqNjGoeU6MjV9ILzwv9HSj65hnXXElebcNnfso8FqPmsKZ
- 0aip0gqH5G9FkesNO3/CMPdrS9eN0c+dUqXuETx/S30HKFVh8j/nqyUqtC/QD1JSAeUaxjc+9Q0
- lKGWBhqN3ZgTWg5yvCz1ByDYkOITWLyan33hBH1Yvy3XEaMsTYDvoHXKeySpYabUwUDn9bK1aY8
- 0vEP4nFVZ6MwTfNPgazSgwpa+R1DEzRZPs6p0UKlWBytx6YSJYxTdVwi5F5UoB1Eyi9cZ0JyrNd
- SIkAs+CdLt0UJNg==
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-b4 prep --auto-to-cc looks for scripts/get_maintainer.pl at the top of
-the tree and runs it to collect To/Cc addresses. Add a kernel-style
-MAINTAINERS file plus a minimal get_maintainer.pl that implements the
-F/X/N/K match types, ship both in make dist, and cover the b4 flag sets
-with a new test.
+On 10/15/26 7:47 AM, HeonJe Lee wrote:
+> When nfsd starts, nfsd4_cld_tracking_init() waits up to one second
+> for nfsdcld to open the freshly created cld pipe and fails the
+> entire nfsd startup if it does not. nfsdcld is the only supported
+> client tracking backend, so a slow daemon takes NFS down entirely.
 
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- MAINTAINERS                   |  58 +++++++
- Makefile.am                   |   2 +
- scripts/get_maintainer.pl     | 375 ++++++++++++++++++++++++++++++++++++++++++
- tests/Makefile.am             |   2 +-
- tests/t0003-get-maintainer.sh | 101 ++++++++++++
- 5 files changed, 537 insertions(+), 1 deletion(-)
+Thanks for the report!
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-new file mode 100644
-index 000000000000..1638220f6b71
---- /dev/null
-+++ b/MAINTAINERS
-@@ -0,0 +1,58 @@
-+List of maintainers and how to submit nfs-utils changes
-+====================================================
-+
-+Patches for nfs-utils are reviewed on the linux-nfs mailing list and
-+applied by the maintainer.  There is no pull request workflow.
-+
-+Mailing list: linux-nfs@vger.kernel.org (plain text, inline patches,
-+typically with git send-email or b4 send).  Because the list is shared
-+with the kernel NFS client and server code, prefix nfs-utils patch
-+subjects with [PATCH nfs-utils] so the target tree is obvious.
-+
-+This file uses the same section format as the Linux kernel MAINTAINERS
-+file.  scripts/get_maintainer.pl reads it and prints the people and
-+lists to Cc on a patch; "b4 prep --auto-to-cc" runs that script for
-+you.  For example:
-+
-+	scripts/get_maintainer.pl <patch>
-+	b4 prep --auto-to-cc
-+
-+Every patch must carry a Signed-off-by: trailer (Developer's
-+Certificate of Origin, as in the kernel).
-+
-+Descriptions of section entries
-+-------------------------------
-+
-+	M: *Mail* patches to: FullName <address@domain>
-+	R: Designated *Reviewer*: FullName <address@domain>
-+	   These reviewers should be Cc'd on patches.
-+	L: *Mailing list* that is relevant to this area
-+	S: *Status*, one of the following:
-+	   Supported:	Someone is actually paid to look after this.
-+	   Maintained:	Someone actually looks after it.
-+	   Odd Fixes:	It has a maintainer but they don't have time to do
-+			much other than throw the odd patch in.
-+	   Orphan:	No current maintainer.
-+	   Obsolete:	Old code, replaced by a better system.
-+	T: *SCM* tree type and location.
-+	F: *Files* and directories wildcard patterns.
-+	   A trailing slash includes all files and subdirectory files.
-+	   F:	utils/mountd/	all files in and below utils/mountd
-+	   One pattern per line.  Multiple F: lines acceptable.
-+	X: *Excluded* files and directories that are NOT maintained, same
-+	   rules as F:.  Exclusions are tested before file matches.
-+	N: Files and directories *Regex* patterns.
-+	   One pattern per line.  Multiple N: lines acceptable.
-+	K: *Content regex* (perl extended) pattern match in a patch or file.
-+	   One regex pattern per line.  Multiple K: lines acceptable.
-+
-+Maintainers List
-+----------------
-+
-+NFS-UTILS
-+M:	Steve Dickson <steved@redhat.com>
-+L:	linux-nfs@vger.kernel.org
-+S:	Maintained
-+T:	git git://git.linux-nfs.org/projects/steved/nfs-utils.git
-+F:	*
-+F:	*/
-diff --git a/Makefile.am b/Makefile.am
-index 72ad4ba7ff42..0c0ed27d71a5 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -8,6 +8,8 @@ MAINTAINERCLEANFILES = Makefile.in
- 
- EXTRA_DIST = \
- 	autogen.sh \
-+	MAINTAINERS \
-+	scripts/get_maintainer.pl \
- 	\
- 	aclocal/bsdsignals.m4 \
- 	aclocal/getrandom.m4 \
-diff --git a/scripts/get_maintainer.pl b/scripts/get_maintainer.pl
-new file mode 100755
-index 000000000000..90b31c2864de
---- /dev/null
-+++ b/scripts/get_maintainer.pl
-@@ -0,0 +1,375 @@
-+#!/usr/bin/perl
-+#
-+# scripts/get_maintainer.pl -- report whom to Cc on an nfs-utils patch
-+#
-+# Copyright (C) 2026  Jeff Layton <jlayton@kernel.org>
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License
-+# as published by the Free Software Foundation; either version 2
-+# of the License, or (at your option) any later version.
-+#
-+# This program is distributed in the hope that it will be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write to the Free Software Foundation, Inc.,
-+# 51 Franklin Street, Fifth Floor, Boston, MA 0211-1301 USA
-+#
-+# Reads the MAINTAINERS file at the top of the tree (same section format
-+# as the Linux kernel MAINTAINERS file) and prints the matching M:, R:
-+# and L: entries for the files in a patch.  This is a deliberately small
-+# subset of the kernel scripts/get_maintainer.pl: the F:, X:, N: and K:
-+# match types are supported, but there is no git history fallback and no
-+# interactive mode.  It understands the option subset that "b4 prep
-+# --auto-to-cc" passes, so that command works out of the box:
-+#
-+#	scripts/get_maintainer.pl <patch>
-+#	scripts/get_maintainer.pl -f <file>...
-+#	scripts/get_maintainer.pl --self-test
-+
-+use strict;
-+use warnings;
-+use Getopt::Long qw(:config no_auto_abbrev);
-+use File::Basename qw(basename dirname);
-+use Cwd qw(abs_path);
-+
-+my $P = basename($0);
-+
-+my $email_maintainer = 1;
-+my $email_reviewer = 1;
-+my $email_list = 1;
-+my $output_roles = 1;
-+my $output_rolestats = 0;
-+my $output_separator;
-+my $output_multiline = 1;
-+my $do_keywords = 1;
-+my $from_filename = 0;
-+my $maintainer_path;
-+my $self_test;
-+my $show_help = 0;
-+
-+# Accepted and ignored: this implementation never mines git history,
-+# so the git options (and the informational ones below) are no-ops.
-+my %ignored;
-+
-+if (!GetOptions(
-+	'm!' => \$email_maintainer,
-+	'r!' => \$email_reviewer,
-+	'l!' => \$email_list,
-+	'roles!' => \$output_roles,
-+	'rolestats!' => \$output_rolestats,
-+	'separator=s' => \$output_separator,
-+	'multiline!' => \$output_multiline,
-+	'remove-duplicates!' => \$ignored{remove_duplicates},
-+	'f|file' => \$from_filename,
-+	'mpath|maintainer-path=s' => \$maintainer_path,
-+	'k|keywords!' => \$do_keywords,
-+	'self-test:s' => \$self_test,
-+	'help|h|?' => \$show_help,
-+	'email!' => \$ignored{email},
-+	'git!' => \$ignored{git},
-+	'git-all-signature-types!' => \$ignored{git_all_signature_types},
-+	'git-blame!' => \$ignored{git_blame},
-+	'git-blame-signatures!' => \$ignored{git_blame_signatures},
-+	'git-fallback!' => \$ignored{git_fallback},
-+	'git-chief-penguins!' => \$ignored{git_chief_penguins},
-+	'git-min-signatures=i' => \$ignored{git_min_signatures},
-+	'git-max-maintainers=i' => \$ignored{git_max_maintainers},
-+	'git-min-percent=i' => \$ignored{git_min_percent},
-+	'git-since=s' => \$ignored{git_since},
-+	'hg-since=s' => \$ignored{hg_since},
-+	'mailmap!' => \$ignored{mailmap},
-+	'n!' => \$ignored{n},
-+	's!' => \$ignored{s},
-+	'fixes!' => \$ignored{fixes},
-+	'moderated!' => \$ignored{moderated},
-+	'pattern-depth=i' => \$ignored{pattern_depth},
-+	'fe|file-emails!' => \$ignored{file_emails},
-+    )) {
-+    die "usage: $P [options] patchfile\n";
-+}
-+
-+if ($show_help) {
-+    usage();
-+    exit 0;
-+}
-+
-+$output_roles = 1 if ($output_rolestats);
-+$output_multiline = 0
-+    if (defined $output_separator && $output_separator ne ", ");
-+
-+if (-t STDIN && !@ARGV && !defined $self_test) {
-+    die "$P: missing patchfile or -f file - use --help if necessary\n";
-+}
-+
-+my $topdir = find_toplevel();
-+my $maint_file = $maintainer_path // "$topdir/MAINTAINERS";
-+die "$P: MAINTAINER file not found '$maint_file'\n" if (!-f $maint_file);
-+
-+my @sections = read_maintainer_file($maint_file);
-+
-+if (defined $self_test) {
-+    exit(self_test($maint_file, \@sections) ? 1 : 0);
-+}
-+
-+my (@files, @content);
-+if ($from_filename) {
-+    # Accept absolute paths by trimming the tree prefix, like the kernel script
-+    @files = map { my $f = $_; $f =~ s@^\Q$topdir\E/@@; $f } @ARGV;
-+} elsif (@ARGV) {
-+    foreach my $patch (@ARGV) {
-+	open(my $fh, '<', $patch)
-+	    or die "$P: Can't open $patch: $!\n";
-+	push(@content, <$fh>);
-+	close($fh);
-+    }
-+    @files = patch_files(\@content);
-+} else {
-+    @content = <STDIN>;
-+    @files = patch_files(\@content);
-+}
-+
-+# In -f mode with keyword matching, scan the named files themselves.
-+if ($from_filename && $do_keywords) {
-+    foreach my $file (@files) {
-+	next if ($file =~ m@\bMAINTAINERS$@);
-+	my $path = $file =~ m@^/@ ? $file : "$topdir/$file";
-+	next if (!-f $path);
-+	open(my $fh, '<', $path) or next;
-+	push(@content, <$fh>);
-+	close($fh);
-+    }
-+}
-+
-+my @matches = match_sections(\@sections, \@files, \@content);
-+
-+my @out;
-+my %seen;
-+foreach my $m (@matches) {
-+    my ($section, $type, $addr) = @$m;
-+    next if ($type eq 'M' && !$email_maintainer);
-+    next if ($type eq 'R' && !$email_reviewer);
-+    next if ($type eq 'L' && !$email_list);
-+    my $key = $addr =~ /<([^>]+)>/ ? $1 : $addr;
-+    next if ($seen{$key}++);
-+    if ($output_roles) {
-+	my $role = $type eq 'M' ? maintainer_role($section->{S})
-+	    : $type eq 'R' ? 'reviewer'
-+	    : 'open list';
-+	$addr .= " ($role:$section->{name})";
-+    }
-+    push(@out, $addr);
-+}
-+
-+if ($output_multiline) {
-+    print "$_\n" foreach (@out);
-+} elsif (@out) {
-+    print join($output_separator // ", ", @out) . "\n";
-+}
-+
-+exit 0;
-+
-+sub usage {
-+    print <<EOT;
-+usage: $P [options] patchfile
-+       $P [options] -f file...
-+       $P --self-test
-+
-+Print the MAINTAINERS entries (maintainers, reviewers, lists) for the
-+files changed by a patch.  With no patchfile argument, the patch is
-+read from standard input.
-+
-+  --m, --r, --l	    include maintainers, reviewers, lists
-+		    (prefix with "no" to exclude, e.g. --nom)
-+  --roles	    show roles (default)
-+  --rolestats	    show roles (no statistics in this implementation)
-+  --separator=X	    join addresses with X instead of newlines
-+  -f, --file	    arguments are file names, not patches
-+  --mpath=PATH	    use PATH as the MAINTAINERS file
-+  -k, --keywords    match K: content patterns (default)
-+  --self-test	    validate the MAINTAINERS file
-+
-+The --git* options are accepted for compatibility with the kernel
-+scripts/get_maintainer.pl and b4, but ignored: this implementation
-+only matches MAINTAINERS patterns, it never mines git history.
-+EOT
-+}
-+
-+sub find_toplevel {
-+    my $dir = qx(git rev-parse --show-toplevel 2>/dev/null);
-+    chomp $dir if (defined $dir);
-+    if (!defined $dir || $dir eq '' || !-d $dir) {
-+	# Not in a git checkout (e.g. a release tarball): the tree top
-+	# is the parent of the directory holding this script.
-+	$dir = dirname(abs_path($0)) . '/..';
-+    }
-+    return $dir;
-+}
-+
-+sub read_maintainer_file {
-+    my ($file) = @_;
-+
-+    open(my $maint, '<', $file)
-+	or die "$P: Can't open MAINTAINERS file '$file': $!\n";
-+    my @sections;
-+    my $cur;
-+    while (<$maint>) {
-+	chomp;
-+	if (/^([A-Z]):\s*(.*)/) {
-+	    my ($type, $raw) = ($1, $2);
-+	    my $value = $raw;
-+	    next if (!defined $cur);
-+	    # The first field line promotes a pending header to a real
-+	    # section, so preamble text never becomes a section.
-+	    if (!$cur->{_kept}++) {
-+		push(@sections, $cur);
-+	    }
-+	    if ($type eq 'F' || $type eq 'X') {
-+		$value =~ s@\.@\\.@g;	## Convert . to \.
-+		$value =~ s/\*/.*/g;	## Convert * to .*
-+		$value =~ s/\?/./g;	## Convert ? to .
-+		# A pattern naming a real directory matches everything below it
-+		if ($raw !~ m@/$@ && -d "$topdir/$raw") {
-+		    $value .= '/';
-+		}
-+	    }
-+	    if ($type eq 'S') {
-+		$cur->{S} = $value;
-+	    } else {
-+		push(@{$cur->{$type}}, $value);
-+	    }
-+	} elsif (!/^\s*$/ && !/^\s*#/) {
-+	    $cur = { name => $_, S => 'Maintained', _kept => 0 };
-+	}
-+    }
-+    close($maint);
-+    return @sections;
-+}
-+
-+sub patch_files {
-+    my ($lines) = @_;
-+    my @files;
-+    foreach (@$lines) {
-+	if (/^diff --git a\/(\S+) b\/(\S+)\s*$/) {
-+	    push(@files, $1, $2);
-+	} elsif (/^rename (?:from|to) (\S+)\s*$/) {
-+	    push(@files, $1);
-+	} elsif (/^ mode change [0-7]+ => [0-7]+ (\S+)\s*$/) {
-+	    push(@files, $1);
-+	} elsif (/^\+\+\+\s+(\S+)/ || /^---\s+(\S+)/) {
-+	    my $filename = $1;
-+	    next if ($filename eq '/dev/null');
-+	    $filename =~ s@^[^/]*/@@;
-+	    push(@files, $filename);
-+	}
-+    }
-+    return @files;
-+}
-+
-+# Same matching rules as the kernel file_match_pattern(): a pattern with
-+# a trailing slash is a directory prefix; anything else must match from
-+# the start with the same number of path components.
-+sub file_match_pattern {
-+    my ($file, $pattern) = @_;
-+    if (substr($pattern, -1) eq '/') {
-+	return 1 if ($file =~ m@^$pattern@);
-+    } else {
-+	if ($file =~ m@^$pattern@) {
-+	    my $s1 = ($file =~ tr@/@/@);
-+	    my $s2 = ($pattern =~ tr@/@/@);
-+	    return 1 if ($s1 == $s2);
-+	}
-+    }
-+    return 0;
-+}
-+
-+sub match_sections {
-+    my ($sections, $files, $content) = @_;
-+    my (@matches, %added);
-+    foreach my $file (@$files) {
-+	foreach my $section (@$sections) {
-+	    my $matched = 0;
-+	    if (grep { file_match_pattern($file, $_) } @{$section->{X} // []}) {
-+		next;
-+	    }
-+	    $matched = 1
-+		if (grep { file_match_pattern($file, $_) } @{$section->{F} // []});
-+	    if (!$matched) {
-+		foreach my $re (@{$section->{N} // []}) {
-+		    if ($file =~ m/$re/) {
-+			$matched = 1;
-+			last;
-+		    }
-+		}
-+	    }
-+	    if ($matched && !$added{$section->{name}}++) {
-+		push_section_addrs(\@matches, $section);
-+	    }
-+	}
-+    }
-+    if ($do_keywords) {
-+	foreach my $section (@$sections) {
-+	    next if ($added{$section->{name}});
-+	    next if (!@{$section->{K} // []});
-+	    foreach my $line (@$content) {
-+		foreach my $re (@{$section->{K}}) {
-+		    if ($line =~ m/$re/) {
-+			push_section_addrs(\@matches, $section);
-+			$added{$section->{name}} = 1;
-+			last;
-+		    }
-+		}
-+		last if ($added{$section->{name}});
-+	    }
-+	}
-+    }
-+    return @matches;
-+}
-+
-+sub push_section_addrs {
-+    my ($matches, $section) = @_;
-+    foreach my $type (qw(M R L)) {
-+	foreach my $addr (@{$section->{$type} // []}) {
-+	    push(@$matches, [$section, $type, $addr]);
-+	}
-+    }
-+}
-+
-+sub maintainer_role {
-+    my ($status) = @_;
-+    my $role = lc($status // '');
-+    return 'supporter' if ($role eq 'supported');
-+    return 'maintainer' if ($role eq 'maintained');
-+    return 'odd fixer' if ($role eq 'odd fixes');
-+    return 'orphan minder' if ($role eq 'orphan');
-+    return 'obsolete minder' if ($role eq 'obsolete');
-+    return 'chief penguin' if ($role eq 'buried alive in reporters');
-+    return $role ne '' ? $role : 'maintainer';
-+}
-+
-+sub self_test {
-+    my ($file, $sections) = @_;
-+    my $errors = 0;
-+    foreach my $section (@$sections) {
-+	my $has_addr = (@{$section->{M} // []} ||
-+			@{$section->{R} // []} ||
-+			@{$section->{L} // []});
-+	if (!$has_addr && $section->{S} !~ /orphan|obsolete/i) {
-+	    print "$file: section without email address: $section->{name}\n";
-+	    $errors++;
-+	}
-+	if (!@{$section->{F} // []} && !@{$section->{N} // []} &&
-+	    !@{$section->{K} // []}) {
-+	    print "$file: section without file match: $section->{name}\n";
-+	    $errors++;
-+	}
-+    }
-+    if (!$errors) {
-+	print "$file: self-test passed (" . scalar(@$sections) .
-+	    " section(s))\n";
-+    }
-+    return $errors;
-+}
-diff --git a/tests/Makefile.am b/tests/Makefile.am
-index a199ce073c84..851b88acb3df 100644
---- a/tests/Makefile.am
-+++ b/tests/Makefile.am
-@@ -11,5 +11,5 @@ SUBDIRS = nsm_client
- 
- MAINTAINERCLEANFILES = Makefile.in
- 
--TESTS = t0001-statd-basic-mon-unmon.sh
-+TESTS = t0001-statd-basic-mon-unmon.sh t0003-get-maintainer.sh
- EXTRA_DIST = test-lib.sh $(TESTS)
-diff --git a/tests/t0003-get-maintainer.sh b/tests/t0003-get-maintainer.sh
-new file mode 100755
-index 000000000000..34039dd47b78
---- /dev/null
-+++ b/tests/t0003-get-maintainer.sh
-@@ -0,0 +1,101 @@
-+#!/bin/bash
-+#
-+# t0003-get-maintainer.sh -- check scripts/get_maintainer.pl
-+#
-+# Copyright (C) 2026  Jeff Layton <jlayton@kernel.org>
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License
-+# as published by the Free Software Foundation; either version 2
-+# of the License, or (at your option) any later version.
-+#
-+
-+command -v perl >/dev/null 2>&1 || {
-+	echo "SKIP: perl is not installed"
-+	exit 77
-+}
-+
-+BASEDIR=`dirname "$0"`
-+TOPDIR=`realpath "$BASEDIR/.."`
-+GETMAINT="$TOPDIR/scripts/get_maintainer.pl"
-+
-+[ -x "$GETMAINT" ] || {
-+	echo "SKIP: $GETMAINT is not executable"
-+	exit 77
-+}
-+
-+# The exact flag sets b4 prep --auto-to-cc uses for To: and Cc:
-+TO_FLAGS="--nogit --nogit-fallback --nogit-chief-penguins --norolestats --nol"
-+CC_FLAGS="--nogit --nogit-fallback --nogit-chief-penguins --norolestats --nom"
-+
-+# A synthetic patch touching a nested file and a top-level file
-+PATCH=`mktemp`
-+trap "rm -f $PATCH" EXIT
-+cat > "$PATCH" <<'EOF'
-+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-+--- a/utils/mountd/mountd.c
-++++ b/utils/mountd/mountd.c
-+@@ -1 +1 @@
-+-old();
-++new();
-+diff --git a/README b/README
-+--- a/README
-++++ b/README
-+@@ -1 +1 @@
-+-old
-++new
-+EOF
-+
-+TCOUNT=0
-+TPASS=0
-+
-+check() {
-+	local name="$1"; shift
-+	TCOUNT=$((TCOUNT + 1))
-+	if "$@" >/dev/null 2>&1; then
-+		echo "PASS $name"
-+		TPASS=$((TPASS + 1))
-+	else
-+		echo "FAIL $name"
-+	fi
-+}
-+
-+to_lists_maintainer() {
-+	$GETMAINT $TO_FLAGS < "$PATCH" | grep -q steved@redhat.com
-+}
-+
-+to_excludes_list() {
-+	! $GETMAINT $TO_FLAGS < "$PATCH" | grep -q vger.kernel.org
-+}
-+
-+cc_lists_list() {
-+	$GETMAINT $CC_FLAGS < "$PATCH" | grep -q linux-nfs@vger.kernel.org
-+}
-+
-+cc_excludes_maintainer() {
-+	! $GETMAINT $CC_FLAGS < "$PATCH" | grep -q steved@redhat.com
-+}
-+
-+default_lists_both() {
-+	[ $($GETMAINT < "$PATCH" | wc -l) -eq 2 ]
-+}
-+
-+file_top_level() {
-+	$GETMAINT -f README | grep -q steved@redhat.com
-+}
-+
-+file_nested() {
-+	$GETMAINT -f utils/mountd/mountd.c | grep -q steved@redhat.com
-+}
-+
-+check self-test $GETMAINT --self-test
-+check b4-To-lists-maintainer to_lists_maintainer
-+check b4-To-excludes-list to_excludes_list
-+check b4-Cc-lists-list cc_lists_list
-+check b4-Cc-excludes-maintainer cc_excludes_maintainer
-+check default-lists-both default_lists_both
-+check file-top-level file_top_level
-+check file-nested file_nested
-+
-+echo "$TPASS/$TCOUNT tests passed"
-+[ "$TPASS" -eq "$TCOUNT" ]
+
+> In the field this was observed as a 44 minute outage after nfsd
+> restarted alongside twenty plus other services.
+
+I don't see how a 44-minute outage follows from the kernel code
+path above. If you have the journal from that restart, I'd like to
+see the NFSD and nfsdcld timestamps around it. More on that below.
+
+
+> The cld pipe queues upcalls for late readers
+> (RPC_PIPE_WAIT_FOR_OPEN). Drop the cld_running() pre-check and let
+> the GetVersion upcall sit in the queue: nfsdcld picks it up as soon
+> as it opens the pipe, and the 30 second rpc_pipefs queue timeout
+> purges it with -ETIMEDOUT if the daemon never shows up. A missing
+> nfsdcld now delays nfsd start by up to 30 seconds before failing,
+> instead of failing outright at one second.
+
+Running NFSD without nfsdcld is a legitimate configuration. Test rigs
+and ephemeral servers do it and accept that clients cannot reclaim
+after a server restart.
+
+The comment you removed explains that the pre-check exists precisely
+so that an absent daemon does not cost the 30-second rpc_pipefs
+timeout. It also says the wait is short because nfsdcld "should
+already be running before nfsd is started." That assumption is
+where the actual bug is.
+
+nfs-server.service already has After=nfsdcld.service. The ordering
+does not help because nfsdcld calls daemon(0, 0) before it opens its
+sqlite database and before cld_pipe_init() installs the inotify
+watch on the rpc_pipefs directory. Its unit is Type=forking, so
+systemd considers nfsdcld started as soon as the parent exits, while
+the child may still be running schema migration or, on the first
+start after an upgrade, importing legacy nfsdcltrack records. On a
+busy boot that window is easily longer than a second.
+
+The other nfs-utils daemons that systemd has to wait for (gssd,
+svcgssd, idmapd, statd, exportd) use the daemon_init() and
+daemon_ready() helpers in support/nfs/mydaemon.c, where the parent
+does not exit until the child reports that it is ready. nfsdcld
+never adopted them. Converting it, with daemon_ready() after
+cld_pipe_init() succeeds, makes the existing service ordering mean
+what the kernel comment assumes. Once the watch is installed, the
+latency from pipe creation to open is one event-loop wakeup, which a
+one-second wait covers with plenty of margin.
+
+Please consider a fix in nfsdcld rather than in the kernel. If your
+journal shows nfsdcld already had its watch in place and still
+opened the pipe more than a second after nfsd created it, that would
+be evidence the kernel needs a longer wait, and I'd reconsider a
+kernel code change.
+
 
 -- 
-2.56.0
-
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
