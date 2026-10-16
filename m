@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AC4274DE710
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A7F343126DF
 	for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2026 14:16:24 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792160189; cv=none; b=ul78jVId46wHuOE0kdh5YEBCAhCI+hkdBXVRF/qFRV3bTm2Qlo0JvzCWzn2YGwUImiTds3m7nTXzdXi00P8fxfC6M+i2vjzEutzLxSlVG1MY0pfFlcdkvBKgkf2r6c1q23ouJiU3TyXHlRNQV4gAzhu3LWxgM5buM/7xpByH4rk=
+	t=1792160192; cv=none; b=H4SiIoc9zWcN/PvNLan5BsGd9BxKCUzBYRwFBTSavQqEGDcgF2Jk4pMZFKjTp3dYqpG4CiE4TWGfW9s0uZQOkDQRxLC6GDZNIMFzanu1Kfq+2SvbLQzJAOHPRS//ZtfKknENyrG8yUrWQfxY0nsYv4GbPsC3ghgUfvPThMmMGYI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792160189; c=relaxed/simple;
-	bh=GDSh0lZTgwwtanjzcfDZ5+T5kHjGzP5j1SA6C8sXB/I=;
+	s=arc-20240116; t=1792160192; c=relaxed/simple;
+	bh=OIzcKedsg6wAvnP5b+NYIqacuSe8RX3LimqiKTu0jQo=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=blKW+Qhp8Ny2lZrEemXSQNqsGlUTO9pcNv7hQ8lgLDGwpPt7fM9GXUNsockHF0qgTunJq724UQrAJ0TwgLdLL2YvXwAXTbzrZtlBxodsefkPqymQOTbNONlvZAIk0haDp1atx78cNdZ1fUN5Xbp9xrluR5O7RdEd4L+0K6az08c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OfRzZmb9; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=pc+JD+SLj7W/rnacg9Ueu4zC8jIKChLg8W2tiEyWStwDOEdXGMiWQAWZAJkAHSkPP+kTqLpHTLAy75yIt1QdC4eZsooIBEBRDOVn4dBwkPlPVZUIXegTTlNb5yxcMBunONzJRvZwco1Dc8ivaF4lzg5uKgCpoHBs0TvPtWwza7g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mLvaYBUH; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OfRzZmb9"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4DC621F000CA;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mLvaYBUH"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C35541F000CB;
 	Fri, 16 Oct 2026 14:16:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792160181;
-	bh=WaZp01kQgXBqu0DsS8l3oGNXqxvGVZ4mrN989kPs25M=;
+	s=k20260515; t=1792160182;
+	bh=rY3Gq3kifKMQhKgL90Tx78lyyxNSsIIs/86nskXHj9s=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=OfRzZmb9CVpQkOFyA8lPvN68l/aA66qv5Olz+Fvz1e8vdhDVyFgt8GRvzbHjCM65U
-	 3yfUT4ibnOPycMHGinYHMsyHx7QXd4jOj3dYt2CFU0YFPTib5eRfhv7Zy78U7FfSLy
-	 QhdMGC6kY1fy6HGvUzxZv9mquE0vplcLWFvbfXPOMWo/Mnv+WMXas97Q3Cxi6s30GM
-	 ebUfPGWCPv7UDZB4gX13AXRUOn/nLAZaZUIorpc/PWn0yBnsgefJsSXNR0NOxw06ja
-	 QKOthI5He18UPKrpW+HbiUuEKKXr5OtP0l1wO+h7Wd+INuWJW+FY/lPM2HE1YakLu0
-	 vq6yXKWHPdfrQ==
+	b=mLvaYBUHniYWeomfrc7bQsM4kIoFqFP3ldujyuoY8beJJy0+oUKGZah77MPxoezTA
+	 zBEgC2lthX+fOkMs4ytiyW2flL9LOGUd213uheMauwBEb8qDzlw1WmC7OZAEv4uO38
+	 YsGBe7lF2MZkUVYIMgm03Hfm+8JJHNXIbLkZBJNpE8oNGYvBdMwbbIur9HiHHIJ5hL
+	 wND7qVxEZOezRYKr4nu7vjQtyaxAS6erli/jnkLSvtQJEAIMIf1tY/ydFOu7hbBbiv
+	 Eu+c1paIbgD08sNCX1gX0tyKCwsWrtQ660ezoZ2Fintag0zewB9d3zolQk/XNY0vDQ
+	 xcGbcd577a7JA==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Fri, 16 Oct 2026 10:15:41 -0400
-Subject: [PATCH nfs-utils 5/7] nfsref: flush the export caches with
- cache_flush()
+Date: Fri, 16 Oct 2026 10:15:42 -0400
+Subject: [PATCH nfs-utils 6/7] mountd/exportd: always give pseudo-root
+ directories a path-based uuid
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,181 +38,96 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-netlink-noproc-v1-5-42791f4b6eb5@kernel.org>
+Message-Id: <20261016-netlink-noproc-v1-6-42791f4b6eb5@kernel.org>
 References: <20261016-netlink-noproc-v1-0-42791f4b6eb5@kernel.org>
 In-Reply-To: <20261016-netlink-noproc-v1-0-42791f4b6eb5@kernel.org>
 To: Steve Dickson <steved@redhat.com>
 Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4327; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=GDSh0lZTgwwtanjzcfDZ5+T5kHjGzP5j1SA6C8sXB/I=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq0jGyTnn3ySZSelyjyvoAl04Ilfr7JFlEDIwc+
- tNUy5yrvo+JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCatIxsgAKCRAADmhBGVaC
- Fe1qEACAs7Y++SCCjeWfcrdQzf7T7k5DKHnWjS23wpFo5yg0FOOAzhxWtGozSNUfxAdNNEW8Air
- 2IqIlLAGPBPUGymHAmJ8Q1AD5hWShI1UWVxy0BV7eZeiqtUHNMjG+3G0ZB/29OCYyLZteVdmZio
- U9qQnF2lA2XBWL2fNVeXuGIpG54YcaHaBlByS0WNHsCqyNzI1goCZL2drC9k096DKrlvnH2Ki6X
- zAqEyY5/RsU/DqpBR2v4wCkYeuYYneBYAhNTlHfj8qZu9SbIuGVMkQTiYmh8Mn5YRHbq3/xv4U4
- zzRDRGeOE7QWefB0RbSAQBdTTc/TdCgAV2bKPVqacbLAPP1OVg13Uk1Mi64TGqHPk3Ib4x4ALxK
- bwZmoN56mJbGR0dbZpwWe65jMMtJEH5Y9sWPdJaL+bVg5iiTqtw0Rd1xHDQxAiI8Oa7w5vw8TZ5
- cVYCy08F1uBuj4sUR3CKFRMldJYOg+FU65iHWeN9IgL+LklIiUu4ZYKwbgN+A/3U0exnGW/RTAz
- OhTKnKTNZXRZi/69+hWn6e0QPHWys6PP+36n03tCYrgVFqHgWcnx1RUUI9UAfY4g+STy8qpeC8u
- TRIbITYIoYL+iZGco1rxng84U5FN0ny6YBfkWLT7pYCZuL4kUx/+rSzHyIPPWtPTvU20yIms/bH
- UXYpCBOFROZE1Kg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2785; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=OIzcKedsg6wAvnP5b+NYIqacuSe8RX3LimqiKTu0jQo=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq0jGyGXSW2K2w6Po4RF9umoMRgDy7atsqbCqud
+ /omQCX95gqJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCatIxsgAKCRAADmhBGVaC
+ FR3/D/0T+BYR+os0ILaaOvmvfoHEuV/nVQi9si9NSZuLZdJHVh8QkLckdP46ylz+bIsGvC7fCF1
+ CDeMQwawZDpmRjTUOAaG7cw4NJ99p7plQoXZkyGy8RW1RGK8FvtowMReToRXq2QEq30RuXfYJHU
+ 38J8DOQBeqtlezgtJ9IuXkYva6UGo63afxFU32IcFBbraJOVBS58AzAiscYcPZR3IG0ziJJFboC
+ kiX1dO93i2PVwtKKWAPlU4+HVkKWV3fYXZkTWn0KrMwZDU3nnSGhv/BDY/q8937r5gBy4L6OxoB
+ ZaA6xrc0upZ1Vf6o6mllLdrZqXY5DApve48Oqmjpf47OqIorvyd0hfMCcxzjfguFsRGVoMuEVFS
+ lpkC2QCmSTm+nMKH0/RcERhx2zn4aNN0SYJJ60/qjFAxUctrOIPQTWPy+numrX1JeE70bnhmZwd
+ MeJK+Rv/SJGJzX3Ex3ypv0ZcCBorpgB2C6IhRdtiHc7E6GxiMwXD6GifwVOVzCbv4gK62PPO8HB
+ 0rR4JT0oj4rCz9GVI0K1YBARb1g/R0jvG8T34lTiqWd38rrBMHksgrSLikwmK2XyxU+pYwPj4fj
+ YQmsOfWqKgPqrccyeRhu0jXyMSYbTgYJI7PB6LEB/4gvNeHmSjVhqGVdqH4n3jnMPuSOBN6QQoU
+ 4wAJbMKvVh0tvRw==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-junction_flush_exports_cache() writes the /proc/net/rpc/*/flush files
-itself. Call libexport's cache_flush() instead, which flushes over
-netlink and falls back to the same /proc files.
+c5528f40f9db ("Fix NFSv4 export of tmpfs filesystems") made
+v4root_create() generate a uuid from the path only when export_test()
+says the directory cannot be exported without one, leaving others on
+the filesystem's own uuid. In practice export_test() fails nearly every
+time, so the path-based uuid is what pseudo-root directories get:
 
-- nfsref now links libexport.a and libnl, and defines no_netlink for
-  cache_flush().
-- Its callers ignore the FedFsStatus; it now always returns FEDFS_OK.
+- export_test() needs the "-test-client-" auth_domain, which only lives
+  as long as an ip_map entry that references it.
+- With netlink, nothing creates that entry: exportfs's can_test()
+  returns before writing it. The kernel answers ENOENT.
+- With /proc, can_test() creates it, but exportfs's own cache_flush()
+  frees it before mountd rebuilds the pseudo-root.
+
+The fs uuid is only used when mountd rebuilds the pseudo-root during
+the brief window in an exportfs run on a live server, and then that
+directory's filehandle differs from every other time.
+
+Always use the path-based uuid below "/". That keeps what servers have
+done since c5528f40f9db, closes that window, and drops a write to
+/proc/net/rpc/nfsd.export/channel that ran even with netlink.
+
+Also keep uuid_s in scope until export_create() has used it; eep.e_uuid
+pointed at it after the block that declared it had ended.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- support/junction/export-cache.c | 82 +++--------------------------------------
- utils/nfsref/Makefile.am        |  4 +-
- utils/nfsref/nfsref.c           |  5 +++
- 3 files changed, 13 insertions(+), 78 deletions(-)
+ support/export/v4root.c | 16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
 
-diff --git a/support/junction/export-cache.c b/support/junction/export-cache.c
-index 00187c019d60..09b69743b874 100644
---- a/support/junction/export-cache.c
-+++ b/support/junction/export-cache.c
-@@ -23,96 +23,24 @@
-  *	http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
-  */
+diff --git a/support/export/v4root.c b/support/export/v4root.c
+index ff1d6e1c0bde..38286b91ede0 100644
+--- a/support/export/v4root.c
++++ b/support/export/v4root.c
+@@ -85,24 +85,26 @@ v4root_create(char *path, nfs_export *export)
+ 	nfs_export *exp;
+ 	struct exportent eep;
+ 	struct exportent *curexp = &export->m_export;
++	char uuid_s[UUID_STR_LEN];
  
--#include <sys/types.h>
--#include <sys/stat.h>
--
- #include <stdbool.h>
--#include <stdio.h>
--#include <stdlib.h>
--#include <string.h>
--#include <unistd.h>
--#include <fcntl.h>
--#include <time.h>
--
+ 	dupexportent(&eep, &pseudo_root.m_export);
+ 	eep.e_ttl = default_ttl;
+ 	eep.e_hostname = curexp->e_hostname;
+ 	strncpy(eep.e_path, path, sizeof(eep.e_path)-1);
+-	if (strcmp(path, "/") != 0)
+-		eep.e_flags &= ~NFSEXP_FSID;
  
- #include "junction.h"
-+#include "nfslib.h"
- #include "xlog.h"
+-	if (strcmp(path, "/") != 0 &&
+-	    !export_test(&eep, 0)) {
+-		/* Need a uuid - base it on path using a fixed seed that
+-		 * was generated randomly.
++	if (strcmp(path, "/") != 0) {
++		/*
++		 * Some filesystems (tmpfs, say) cannot be exported without an
++		 * fsid or uuid, so give every pseudo-root directory below "/"
++		 * one.  Base it on the path, using a fixed seed that was
++		 * generated randomly, so that its filehandle never changes.
+ 		 */
+ 		const char seed_s[] = "39c6b5c1-3f24-4f4e-977c-7fe6546b8a25";
+ 		uuid_t seed, uuid;
+-		char uuid_s[UUID_STR_LEN];
+ 		unsigned int i, j;
  
--/**
-- * Ordered list of proc files to poke when requesting an NFSD cache flush
-- */
--static const char *junction_proc_files[] = {
--	"/proc/net/rpc/auth.unix.ip/flush",
--	"/proc/net/rpc/auth.unix.gid/flush",
--	"/proc/net/rpc/nfsd.fh/flush",
--	"/proc/net/rpc/nfsd.export/flush",
--	NULL,
--};
--
--/**
-- * Write time into one file
-- *
-- * @param pathname NUL-terminated C string containing POSIX pathname of file to write
-- * @param flushtime NUL-terminated C string containing current time in seconds since the Epoch
-- * @return a FedFsStatus code
-- */
--static FedFsStatus
--junction_write_time(const char *pathname, const char *flushtime)
--{
--	FedFsStatus retval;
--	ssize_t len;
--	int fd;
--
--	fd = open(pathname, O_RDWR);
--	if (fd == -1) {
--		xlog(D_GENERAL, "%s: Failed to open %s: %m",
--			__func__, pathname);
--		/* If the proc files don't exist, no server
--		 * is running on this system */
--		return FEDFS_ERR_NO_CACHE_UPDATE;
--	}
--
--	len = write(fd, flushtime, strlen(flushtime));
--	if (len != (ssize_t)strlen(flushtime)) {
--		xlog(D_GENERAL, "%s: Failed to write %s: %m",
--			__func__, pathname);
--		/* If the proc files exist but the update failed,
--		 * we don't know the state of the cache */
--		retval = FEDFS_ERR_UNKNOWN_CACHE;
--	} else
--		/* Cache flush succeeded */
--		retval = FEDFS_OK;
--
--	(void)close(fd);
--	return retval;
--}
--
- /**
-  * Flush the kernel NFSD's exports cache
-  *
-+ * cache_flush() uses netlink when the kernel offers it, and falls back
-+ * to the /proc flush files otherwise.
-+ *
-  * @return a FedFsStatus code
-  */
- FedFsStatus
- junction_flush_exports_cache(void)
- {
--	FedFsStatus retval;
--	char flushtime[20];
--	unsigned int i;
--	time_t now;
--
- 	xlog(D_CALL, "%s: Flushing NFSD caches...", __func__);
--
--	now = time(NULL);
--	if (now == -1) {
--		xlog(D_GENERAL, "%s: time(3) failed", __func__);
--		return FEDFS_ERR_SVRFAULT;
--	}
--	snprintf(flushtime, sizeof(flushtime), "%lld\n", (long long)now);
--
--	for (i = 0; junction_proc_files[i] != NULL; i++) {
--		retval = junction_write_time(junction_proc_files[i], flushtime);
--		if (retval != FEDFS_OK)
--			return retval;
--	}
-+	cache_flush();
- 	return FEDFS_OK;
- }
-diff --git a/utils/nfsref/Makefile.am b/utils/nfsref/Makefile.am
-index 2409dd00cfa1..6a602a8e68eb 100644
---- a/utils/nfsref/Makefile.am
-+++ b/utils/nfsref/Makefile.am
-@@ -29,7 +29,9 @@ sbin_PROGRAMS		= nfsref
- nfsref_SOURCES		= add.c lookup.c nfsref.c remove.c
- LDADD			= ../../support/nfs/libnfs.la \
- 			  ../../support/junction/libjunction.la \
--			  $(LIBXML2) $(LIBCAP)
-+			  ../../support/export/libexport.a \
-+			  $(LIBXML2) $(LIBCAP) \
-+			  $(LIBNL3_LIBS) $(LIBNLGENL3_LIBS)
- 
- man8_MANS		= nfsref.man
- 
-diff --git a/utils/nfsref/nfsref.c b/utils/nfsref/nfsref.c
-index aa8414b425fb..f66f11a3d4bc 100644
---- a/utils/nfsref/nfsref.c
-+++ b/utils/nfsref/nfsref.c
-@@ -43,6 +43,11 @@
- #include "xlog.h"
- #include "nfsref.h"
- 
-+/**
-+ * Lets cache_flush() try netlink before the /proc flush files
-+ */
-+int no_netlink;
++		eep.e_flags &= ~NFSEXP_FSID;
 +
- /**
-  * Short form command line options
-  */
+ 		uuid_parse(seed_s, seed);
+ 		uuid_generate_sha1(uuid, seed, path, strlen(path));
+ 		uuid_unparse_upper(uuid, uuid_s);
 
 -- 
 2.56.0
