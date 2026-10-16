@@ -1,44 +1,43 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 20B234718DE
-	for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2026 11:08:45 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C916A3B6C15
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2026 11:18:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792148931; cv=none; b=Eh1lnpKzkyZgDs+IlAN3l0axtf2Q+dhujYD+z+3RUuJhD8seVgFy8+Vo5jwcQb5qWGNx4hX+8S2oXasMFTqy7Dty72Jc9n7MJSy+AEBGhkkNSy2sM6ERHkVntqypuEPgFHmoCW56+iPjIPBeXat1Ys5Dtz2aoxCuj2fwtQ5gCz0=
+	t=1792149499; cv=none; b=VQMXmCjBi6Yk5ZWtzUy9lmX3radBhgfgOrHrHhozZFd/fGW9fqgJJNz2/LjL2HD5vH+31yGYgvU5zAzE5X2y0dXh+qkYRM/g9scJhtio0iPO5jjxG2nLz21lPEt+SrHVf9QYG55xexnTps+cdVayQ8vLNcKZub536qnxGHvZD+M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792148931; c=relaxed/simple;
-	bh=g93u0iEDRT57WoAaybkF5oxykKUqM4hJnxZ+8bkUWb8=;
+	s=arc-20240116; t=1792149499; c=relaxed/simple;
+	bh=G2feSMjmmvFgFba/626eVKnxJau39YEFGdcxjGZOfdI=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=o2OQn+I/7I4/kXECC8b9E4g6P0cVMAZGJE6eINFnfBWP6jpvqBOvzYyUbTwBu32b6eJWbIOllc9lInVZxuh4+/ZMzu997tEKjaPBdjxfw8A+TddJdMq8rNj6xEFAmyC2e8Op/HSa15KDsBmL8d3q5NhheQN5uymbOA0QLJslNWk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CXp9Bvkx; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=ZEqaVwlBAkeAEHQniJ7p5QDj2WVUsxcw9Bf3EfcYtWdHMCF1k0+W+fGiYV7/LzMY7b0GvIy54vRw7GUiB6KJkjoSklotWN76NXfERAGDHbDIuBnkTOdMwd+zma7Ed4lcuBFedHQzFJ84l7T3aSX0qMoUnQ5iaZrFe0Hn6MiCVDw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=lGun4XNF; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CXp9Bvkx"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9358E1F000C4;
-	Fri, 16 Oct 2026 11:08:44 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="lGun4XNF"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 887B51F000C4;
+	Fri, 16 Oct 2026 11:18:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792148925;
-	bh=aYzwZzPUAR9vzLqrTt0PYsxt+sI0CPAGuOXSlgLa8qk=;
+	s=k20260515; t=1792149497;
+	bh=aQmVzZIVo4Cy0sgPzXllYD8IK37O7VSIcN/u0dlrwMg=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=CXp9BvkxyXrMX2C1xpAnRsd9f/pQ/VB2ySjX5mzI47VWE74jGEh2QGs5RMRW8ufsB
-	 lBYRb6QY/1FDHDnrHPkD1+re/UKlECaa/FqyP0y8dfJD1jeBsj8Wdtpcg7aV8HhpQI
-	 8yLnFPv6GB2p1ql0WBPafv55dqdNXmKZ/ngMn0Q2fF6vXYjX41ZXjGkY/UlzMqyUNY
-	 wYT84VOjAUTxr6ozRlT0BiYETLZFQqA3leg/ATg5wnm+/gGymfb3AQL66C2mXYMVpn
-	 Qp9xVPQ2yQTuo2OMxS/HSCZRMOvf0Rw9QkQG6W3v1/poTBFMbcOBR6lcymWB2HGieC
-	 CPJa/0wdN42jA==
-Message-ID: <1299ad92163f2eb8fecc06165b3b52f7904f09e9.camel@kernel.org>
-Subject: Re: [PATCH v4 07/10] mm: add folio_mark_dropbehind() to mark a
- folio dropbehind and account it
+	b=lGun4XNFnUSytMvv4V3VHsZlLlnPY2nQJPm8i8Ukvi4yKZwFX3EwZI7U8jBNJ6yaT
+	 iyKM3XA3nbK99GFd1bBFLjIwP6y8jeOmUWDDVp+r7bxUJaULB1yBO+Ol8wY8Lp6HeX
+	 /wTdfC0UB5PXhh+QW5olgD1O6+1Zq9VCQIlGfH3QJQMZYepjq1RZdbHHEhdo4B3K/R
+	 ZkPUmZ0890ZZEP2owXaIUnbOa73MtWTq4F/ZmgG+98PWGNR123oc481BrHWHDbMHk1
+	 pVoRVjvUSWXsJEzl3CR+7D2EwI8b5U6D2N3Pz7yzcOmdm7mozYfxva/T4jtr0DFGYl
+	 HaSFoqXrNnTWA==
+Message-ID: <224b94f6797ab29cde44f37b4145778829bc41c8.camel@kernel.org>
+Subject: Re: [PATCH v4 00/10] NFSD: keep direct-mode I/O out of the page
+ cache
 From: Jeff Layton <jlayton@kernel.org>
 To: Mike Snitzer <snitzer@kernel.org>, Chuck Lever <cel@kernel.org>
 Cc: linux-nfs@vger.kernel.org, NeilBrown <neil@brown.name>, Olga
  Kornievskaia	 <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
  Talpey <tom@talpey.com>,  Christoph Hellwig	 <hch@lst.de>, Jens Axboe
  <axboe@kernel.dk>, Matthew Wilcox <willy@infradead.org>, 	linux-mm@kvack.org
-Date: Fri, 16 Oct 2026 07:08:41 -0400
-In-Reply-To: <20261015233309.42999-8-snitzer@kernel.org>
+Date: Fri, 16 Oct 2026 07:18:13 -0400
+In-Reply-To: <20261015233309.42999-1-snitzer@kernel.org>
 References: <20261015233309.42999-1-snitzer@kernel.org>
-	 <20261015233309.42999-8-snitzer@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -123,106 +122,195 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2026-10-15 at 19:33 -0400, Mike Snitzer wrote:
-> A folio allocated by an RWF_DONTCACHE write is marked dropbehind before
-> it is dirtied, so folio_account_dirtied() adds it to WB_DONTCACHE_DIRTY
-> and folio_clear_dirty_for_io() or folio_account_cleaned() subtracts it
-> when it is cleaned.  Nothing marks a folio that already exists.  A
-> caller that sets PG_dropbehind on a folio that is already dirty
-> unbalances the counter: the clean subtracts what was never added, and
-> once the counter goes negative, wb_stat_sum() reads it as zero and the
-> DONTCACHE writeback kick stops writing anything back for every writer
-> on that bdi_writeback.
+On Thu, 2026-10-15 at 19:32 -0400, Mike Snitzer wrote:
+> Hi,
 >=20
-> Add folio_mark_dropbehind(), the inverse of the clear in
-> __filemap_get_folio_mpol(): with the folio locked, mark it and, if it is
-> dirty, add it to WB_DONTCACHE_DIRTY.  The folio lock orders this
-> against dirtying and against folio_clear_dirty_for_io().  A concurrent
-> lookup without FGP_DONTCACHE that clears the flag again subtracts what
-> this added.
+> This series refines the heuristics NFSD_IO_DIRECT already uses, mostly
+> on the WRITE path and in one corner of the READ path: the io_cache_write
+> and io_cache_read modes where an aligned request goes to the filesystem
+> as O_DIRECT, with DONTCACHE for the parts a misaligned WRITE cannot issue
+> directly.
 >=20
-> The name follows folio_set_dirty() and folio_mark_dirty(): the first
-> only sets PG_dirty, the second also accounts the dirty folio.
-> folio_set_dropbehind() likewise only sets PG_dropbehind, and
-> folio_mark_dropbehind() also accounts it in WB_DONTCACHE_DIRTY.
+> It does not knowingly undercut anything the existing upstream code is
+> built on.  An aligned WRITE is still one O_DIRECT write and an aligned
+> READ is still one O_DIRECT read.  A misaligned WRITE is still split into
+> a direct middle and buffered ends, and by default those ends are still
+> DONTCACHE where the filesystem supports it.  io_cache_read and
+> io_cache_write mean what they did, and nothing new is asked of the
+> filesystem.  What changes is where the split is cut and when it is worth
+> making, which READs are worth expanding, how often a synchronous WRITE
+> is persisted, and what happens to the page two misaligned WRITEs share.
 >=20
-> A later commit uses it in NFSD to drop a page shared by two misaligned
-> WRITEs once both have written it.
+> 1/10 is a stable fix.  A misaligned WRITE is split into a direct middle
+> and buffered ends, and the middle was cut at the filesystem's DIO offset
+> alignment.  Where the page is larger than that alignment (16 and 64 KiB
+> pages over 4096-byte blocks, or 4 KiB pages over 512-byte blocks) the
+> middle then starts or stops inside the page a buffered end writes, its
+> invalidation drops that page, and whichever of the two neighbouring
+> WRITEs comes second reads it back from the device.  A misaligned end is
+> now cut at a multiple of the larger of the alignment and the page size.
+> An end that is already DIO-aligned gets no buffered segment and stays
+> where it is, so a DIO-aligned WRITE is still issued direct on every page
+> size.  Such an end can share its page with a buffered neighbour, but
+> NFSD's direct WRITEs are synchronous and XFS holds its IOLOCK across
+> iomap_dio_rw(), the page cache invalidation after the write included,
+> so the neighbour cannot dirty that page in between and make the
+> invalidation fail.
 >=20
-> Cc: Jeff Layton <jlayton@kernel.org>
-> Cc: Jens Axboe <axboe@kernel.dk>
-> Cc: Matthew Wilcox (Oracle) <willy@infradead.org>
-> Cc: linux-mm@kvack.org
-> Assisted-by: LLM
-> Signed-off-by: Mike Snitzer <snitzer@kernel.org>
-> ---
->  include/linux/pagemap.h |  1 +
->  mm/filemap.c            | 31 +++++++++++++++++++++++++++++++
->  2 files changed, 32 insertions(+)
+> 2/10 also marks the direct middle IOCB_DONTCACHE, for when XFS
+> re-issues it as buffered I/O (-ENOTBLK) because something else has
+> dirtied page cache in its range, such as a local process writing the
+> exported file through mmap, which XFS's IOLOCK does not keep out.
 >=20
-> diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-> index 0adfa6605653d..3012bd95812a1 100644
-> --- a/include/linux/pagemap.h
-> +++ b/include/linux/pagemap.h
-> @@ -1310,6 +1310,7 @@ void end_page_writeback(struct page *page);
->  void folio_end_writeback(struct folio *folio);
->  void folio_end_writeback_no_dropbehind(struct folio *folio);
->  void folio_end_dropbehind(struct folio *folio);
-> +void folio_mark_dropbehind(struct folio *folio);
->  void folio_wait_stable(struct folio *folio);
->  void __folio_mark_dirty(struct folio *folio, struct address_space *, int=
- warn);
->  void folio_account_cleaned(struct folio *folio, struct bdi_writeback *wb=
-);
-> diff --git a/mm/filemap.c b/mm/filemap.c
-> index 00fd89cf6f550..ed7e4dbea653f 100644
-> --- a/mm/filemap.c
-> +++ b/mm/filemap.c
-> @@ -1644,6 +1644,37 @@ void folio_end_dropbehind(struct folio *folio)
->  }
->  EXPORT_SYMBOL_GPL(folio_end_dropbehind);
-> =20
-> +/**
-> + * folio_mark_dropbehind - mark an existing folio dropbehind
-> + * @folio: the folio, locked by the caller
-> + *
-> + * Mark @folio so that the writeback that cleans it drops it.  A folio t=
-hat
-> + * is already dirty is added to WB_DONTCACHE_DIRTY, as folio_account_dir=
-tied()
-> + * would have added it had it been marked when dirtied, so that the clea=
-n
-> + * that subtracts it leaves the counter balanced.
-> + */
-> +void folio_mark_dropbehind(struct folio *folio)
-> +{
-> +	struct address_space *mapping =3D folio->mapping;
-> +
-> +	VM_WARN_ON_ONCE_FOLIO(!folio_test_locked(folio), folio);
-> +
-> +	if (folio_test_dropbehind(folio))
-> +		return;
-> +	folio_set_dropbehind(folio);
-> +	if (mapping && folio_test_dirty(folio) &&
-> +	    mapping_can_writeback(mapping)) {
-> +		struct inode *inode =3D mapping->host;
-> +		struct bdi_writeback *wb;
-> +		struct wb_lock_cookie cookie =3D {};
-> +
-> +		wb =3D unlocked_inode_to_wb_begin(inode, &cookie);
-> +		wb_stat_mod(wb, WB_DONTCACHE_DIRTY, folio_nr_pages(folio));
-> +		unlocked_inode_to_wb_end(inode, &cookie);
-> +	}
-> +}
-> +EXPORT_SYMBOL_GPL(folio_mark_dropbehind);
-> +
->  /**
->   * folio_end_writeback_no_dropbehind - End writeback against a folio.
->   * @folio: The folio.
+> 3/10 splits a misaligned WRITE only for a direct middle of at least
+> direct_misaligned_min_bytes (debugfs, default 8192), and moves the
+> segment flag decisions into nfsd_write_dio_iters_init(), both from
+> Christoph's suggested diff.  The threshold counts bytes: with 1/10 a
+> split WRITE's middle is whole pages, and a threshold of two pages would
+> demand a 32 KiB middle on 16 KiB pages and 128 KiB on 64 KiB pages.
+>=20
+> 4/10 (Jonathan) adds direct_misaligned_dontcache (default Y), which
+> selects whether the parts that are not O_DIRECT are DONTCACHE or
+> cached.
+>=20
+> 5/10 stops expanding a READ smaller than its alignment into one or two
+> whole aligned device reads.  The check sits in nfsd_direct_read_ok(),
+> beside the last-operation-in-COMPOUND check now in nfsd-testing.
+>=20
+> 6/10 persists a FILE_SYNC or DATA_SYNC WRITE that is split, or issued
+> buffered, once after all of its segments, instead of once per segment:
+> one fsync where there were up to three.  A WRITE issued whole as
+> O_DIRECT keeps IOCB_DSYNC, so iomap can still complete a DATA_SYNC
+> overwrite with FUA writes.
+>=20
+> 7/10 is an mm patch: folio_mark_dropbehind() marks an existing folio
+> dropbehind and keeps WB_DONTCACHE_DIRTY balanced when the folio is
+> already dirty, as folio_mark_dirty() does for PG_dirty where
+> folio_set_dirty() only sets the flag.  Marking an already dirty folio
+> with folio_set_dropbehind() instead drives the counter negative, and
+> the DONTCACHE writeback kick then stops writing anything back for every
+> writer on that bdi_writeback.
+>=20
+> 8/10 is also mm: it reports WB_DONTCACHE_DIRTY in the bdi debugfs stats,
+> as BdiDontcacheDirty and per bdi_writeback as WbDontcacheDirty, summed
+> over the per-cpu batches since the flusher targets the summed value.
+> The counter drives the DONTCACHE writeback kick but was not reported
+> anywhere; this is how the balance 7/10 keeps was observed.  It carries
+> Fixes: for the commit that added the counter.
+>=20
+> 7/10 and 8/10 are Cc'd to linux-mm and need an mm ack.
+>=20
+> 9/10 calls folio_mark_dropbehind() to keep the page two misaligned
+> WRITEs share until both have written it, with no state in NFSD: 704
+> device reads for 42895 WRITEs where there were 45144 for 45664
+> (47008-byte records, 32 interleaved writers, 4 KiB pages), and on a
+> four-server pNFS flexfiles rig 0.003 device reads per record instead of
+> 0.014-0.015, about 2.9 GiB of page-cache growth instead of 11 GiB, and
+> 2.4% to 4.9% more write throughput.
+>=20
+> 10/10 adds tracepoints for how each direct-mode READ and WRITE was
+> serviced, and why a WRITE was not issued direct.
+>=20
+> The series applies to cel/nfsd-testing (78c334bc5ae6) and each patch
+> builds with W=3D1 with no warnings.
+>=20
+> Changes since v3:
+> - Dropped "NFSD: Enable return of an updated stable_how to NFS
+>   clients" and "NFSD: add direct-mode WRITE settings that persist each
+>   WRITE" (v3 8/9 and 9/9).  The rest of the series does not depend on
+>   them.
+> - New 1/10, NFSD: cut a misaligned direct-mode WRITE at page
+>   boundaries (Cc: stable).  v3 cut the direct middle where the DIO
+>   offset alignment falls, which is a page boundary only when that
+>   alignment is the page size.
+> - Rebased onto the current cel/nfsd-testing.  5/10's size check moved
+>   into nfsd_direct_read_ok().
+> - Descriptions, comments and nfsd-io-modes.rst corrected throughout,
+>   among them: 2/10 says what can still make XFS re-issue the middle
+>   buffered once 1/10 keeps it off the pages the buffered ends share;
+>   3/10 says why a WRITE misaligned in memory is not split; 4/10 no
+>   longer misstates what the split threshold decides.
+> - 3/10: the threshold is direct_misaligned_min_bytes (default 8192)
+>   instead of direct_misaligned_num_pages (default 2).  On 4 KiB pages
+>   the default is unchanged.  The debugfs file is renamed with its unit,
+>   so a value written to the old name is not read as bytes.
+> - 6/10: a WRITE issued whole as O_DIRECT keeps IOCB_DSYNC; v3 turned a
+>   DATA_SYNC overwrite into a plain write plus an fsync.
+> - New 7/10, mm: add folio_mark_dropbehind().  v3 marked an already
+>   dirty folio dropbehind directly; the clean that follows subtracts it
+>   from WB_DONTCACHE_DIRTY, which never counted it, so the counter
+>   drifted negative and stopped the DONTCACHE writeback kick for the
+>   whole bdi_writeback.
+> - New 8/10, mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats.  Reports
+>   the counter 7/10 keeps balanced; Fixes: Jeff's commit that added it.
+> - 9/10: claims a page only where a buffered segment covers it partly, at
+>   either end of any segment, so a multi-page start or end segment and a
+>   sub-page WRITE are handled; claims for a split WRITE at any DIO offset
+>   alignment, since 1/10 keeps the direct middle out of the claimed
+>   pages; does not claim when the mapping's minimum folio is larger than
+>   a page; allocates with __GFP_WRITE; does not mark a page a short
+>   write did not reach; a FILE_SYNC or DATA_SYNC WRITE marks its shared
+>   pages after its own fsync, when they are clean, so they are not
+>   counted as DONTCACHE dirty and do not wake the writeback kick.  The
+>   description no longer says marking must not be accounted or that the
+>   kick targets marked folios.
+> - 10/10: the DONTCACHE state is its own tracepoint argument instead of a
+>   bit ORed into the disposition (nsegs is dropped; it follows from the
+>   segment sizes); the redundant #include "vfs.h" is gone;
+>   NFSD_WRITE_DIO_NO_ALIGN is renamed NFSD_WRITE_DIO_NO_ALIGNMENT to
+>   match its string; mem_offset is 0 for a WRITE with no payload.
+>=20
+> v3: https://lore.kernel.org/linux-nfs/20261001045502.48381-1-snitzer@kern=
+el.org/
+> v2: https://lore.kernel.org/linux-nfs/20260929231329.22018-1-snitzer@kern=
+el.org/
+> v1: https://lore.kernel.org/linux-nfs/20260929173423.16149-1-snitzer@kern=
+el.org/
+>=20
+> Thanks,
+> Mike
+>=20
+> Jonathan Flynn (1):
+>   NFSD: add direct_misaligned_dontcache debugfs knob
+>=20
+> Mike Snitzer (9):
+>   NFSD: cut a misaligned direct-mode WRITE at page boundaries
+>   NFSD: mark the direct middle of a split WRITE IOCB_DONTCACHE as well
+>   NFSD: only split a direct-mode WRITE for a worthwhile direct middle
+>   NFSD: do not use direct I/O for a READ smaller than its alignment
+>   NFSD: persist a synchronous direct-mode WRITE once, after all of its se=
+gments
+>   mm: add folio_mark_dropbehind() to mark a folio dropbehind and account =
+it
+>   mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats
+>   NFSD: keep boundary page of a split direct-mode WRITE until both writer=
+s complete
+>   NFSD: add tracing for how direct-mode READ and WRITE are serviced
+>=20
+>  .../filesystems/nfs/nfsd-io-modes.rst         |  93 +++++-
+>  fs/nfsd/debugfs.c                             |  25 ++
+>  fs/nfsd/nfsd.h                                |   2 +
+>  fs/nfsd/trace.h                               |  77 +++++
+>  fs/nfsd/vfs.c                                 | 265 +++++++++++++++---
+>  fs/nfsd/vfs.h                                 |   9 +
+>  include/linux/pagemap.h                       |   1 +
+>  mm/backing-dev.c                              |  11 +
+>  mm/filemap.c                                  |  31 ++
+>  9 files changed, 473 insertions(+), 41 deletions(-)
+>=20
+>=20
+> base-commit: 78c334bc5ae61d23ca1cc2e43079c620f1d40866
 
-This patch and #8 need to be split out and merged via the mm tree.
-They're related but the rest of the series doesn't specifically depend
-on them, and I doubt Chuck wants to carry them.
+I think this all looks good and should be good optimizations.
 
+I take back what I said earlier about splitting the mm: patches out --
+you do need the new helper for the later patches in the series. It's
+fairly self-contained though so maybe it's not a big deal to carry #7
+in the nfsd tree. Note that sashiko has some comments about a potential
+race there too. #8 seems like it should go via mm tree though.
+
+The other thing we should consider is whether to make the new controls
+you're adding to debugfs into netlink controls instead. I see no reason
+not to do that and it'll save us from having to convert them later.
 --=20
 Jeff Layton <jlayton@kernel.org>
