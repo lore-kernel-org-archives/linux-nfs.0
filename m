@@ -1,76 +1,77 @@
-Received: from mail-ot1-f51.google.com (mail-ot1-f51.google.com [209.85.210.51])
+Received: from mail-ot1-f46.google.com (mail-ot1-f46.google.com [209.85.210.46])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C7EED4DA9BA
-	for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2026 15:36:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 750654E73A8
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2026 15:43:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.46
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792164979; cv=none; b=QgioINqYRXqXvhC1XTzdKtRKK687A5EvQs/jdELSfD/Fov8K6f+taO+TShxm58Cpz26iMK4GjFYEKA5icHToQ676dDcZEXEIhdeXZ/CzmoqE+/XStXUWCzg25x8Fw0eESjDcJiu6/nuZePs2Y9h8LL2Aq6sWcx/C+b9jfYSdYd4=
+	t=1792165425; cv=none; b=OgCmJXXOb8OQ9u2LCvd0uuyTHJ/+Is6+c1cT4D6IwfV9nTWRj8sZtD0zaxLgiAlmPaih6Xx9mm+rF5MsYau782U8tn9TlUCwU/S2fKW3oXGKLswPva5W8AqY9rXGL9i84JX7+loJeFTa95i7bmOAHM1SQhGN/kuFnetuseveNGA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792164979; c=relaxed/simple;
-	bh=0yRPDap4esDl76+FEHmUuaDNc8qa7omtSHQhGmcTbtU=;
+	s=arc-20240116; t=1792165425; c=relaxed/simple;
+	bh=W3IbJgKoDqrD/rDFntIL2y19bm17P+UUtb6LKK9vtXQ=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=rxOXu+CacA4yHT9svO+ylEGEQidEEjLSlqUP+me0KcpvyJXzfa9Z3GRz4ko/BCAogPrdMSVL2V1lh2UO1Yl5Q1w28Ug/liPeYYPBep/mLwmOp9fpRtsFShovdQMOuLgiuVRUtaMl+3OUGrdBxpLQhuKhT8Uq/WIeEedol06Jep8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=f/1VQhXA; arc=none smtp.client-ip=209.85.210.51
+	 MIME-Version:Content-Type; b=uKgTClzJyMsA7r8xaaflBmu/gmUWsw70oTIADuJSOe7/iM0mzpxFwo0j4I28fNzf+G/UrXTaZKxuIwdUHooT+Y3YKThP6soctzCxojLiCba6fRzGCDv5tc6o1bbdwFWHXhKdT4fqLxRl6/cp+znkqXbbGPZXnUOCuAUzjE7ypD0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=niKgcoEB; arc=none smtp.client-ip=209.85.210.46
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="f/1VQhXA"
-Received: by mail-ot1-f51.google.com with SMTP id 46e09a7af769-7f432ac553fso6720948a34.3
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2026 08:36:17 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="niKgcoEB"
+Received: by mail-ot1-f46.google.com with SMTP id 46e09a7af769-843ea301d60so309708a34.0
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2026 08:43:44 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1792164976; x=1792769776; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1792165423; x=1792770223; darn=vger.kernel.org;
         h=content-type:mime-version:references:in-reply-to:message-id:date
          :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=dGRFsoI37EZtITqC7lNGXtb4cq5JxauEPW0sfje8uQA=;
-        b=f/1VQhXAYst8srmQRilAyaOEj/T3nFxlUqN2pKkhG186n+mB0ZrO8LiTEkduOL/rXM
-         TIEk7icdFUzcgCfMX2D0x9s5DPzKD8CPbIuxVCd1ckE6PKhIVOxfYv9UbBmmjHtb2JK2
-         L8iHLmesyrARi8+PyYUwLI7RL/5fNSbPcGExcaJpkbd+hWOST/DYKf8rNyQt89/negXS
-         L264YnJSmnmVNTaxM1O3AI4t0ms3Dpr78Tr7ClJroOGXFVbVe9mvL1bbKTtveDwxJ3ej
-         Up0pWK09rH4357O6vhkhVwR0Zdv34GTfyY9NfqOZ9x4dzGELmlWHpa3UKqnxqsHzoSMd
-         GdDw==
+        bh=3tFFFiMwu3rBvdKgwC5eml9Ot1DFSy/iaQYkSX+cyDU=;
+        b=niKgcoEBxFo7wvXkQvghQuGJyzd9G03NuXu5Iy2k121i407zUWnPvMC0zx9xaeTIWf
+         vU8fT2C7xjLlpFWOtGGg1XbktoKO1TT7XHU5PXuxJA0suwnQVNnzYy9l9sJtZNezDp7+
+         708nsCg1+Kr8VwVL3acOikWz1HPfkQjJ1C8yGicOb73Za2iQEZPaTwkOaiAuj10fzIEF
+         fGi2g0szr0VoxgQGMOkhM5kkodW8DAlvIKtPSsEJ7wKOeukLzXKT57rtD8uTuILSLvtk
+         EJox60UmW7zFeG+9mzyupF1YAoNOucMkAgDoz3eUMJiL2n/zNXyqvmNBGa8Vvsz8ZnYI
+         TV9w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792164976; x=1792769776;
+        d=1e100.net; s=20260707; t=1792165423; x=1792770223;
         h=content-type:mime-version:references:in-reply-to:message-id:date
          :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=dGRFsoI37EZtITqC7lNGXtb4cq5JxauEPW0sfje8uQA=;
-        b=Etn0Dz5lHTO7F4anoC4wTjqNJyM5LpugNNwJXfwDVEES6WISGSKhcrAKdlL5R6Qwoh
-         p2iuesx4jQZMc1Z9nFdx6BARr5mv+4U2EBJT72SOiBTTaTF7dh96qWxjOwiKUbj/6WDx
-         dyeqtdXOTSkgPdeHW/D3zrpa/ZeuN/CPuP45jUkZLoGkYRiat2PLqdlTD5kFh/Oz4mCa
-         Fxjw1oXCz5TAGx+SqUVdIzB0/mHjqtLXDq8bXump6+m+vH5wTpcrBliP0YH+g/BUraMw
-         jmgup7o9XsqaM/kMKpdJzjFh2pwU6iHDm4Fbb2l+rkVeZaAwrmHwFHEIGKCYweacWoLW
-         VL5Q==
-X-Forwarded-Encrypted: i=1; AKwUvBwUnPIvu3J7HnJIPTRrUmyC9Y8CxDcqJMXoijeYrZ+VO0jsGWnYlnUpi8+If+L7wGhwA4nV6mPR0/g=@vger.kernel.org
-X-Gm-Message-State: AFq9FYKuXnKpbnOwXuQAGv9Mtone1DnjjKDFUhBBY2jba/DxJUPtRmwH
-	JmcjRRPjInDnxQYit/U+diez6tH0MBaa5Iel9Fr/18rQY2GJLF/ZvLaAm1ckBpJezps=
-X-Gm-Gg: AYBFou11Kc6xOqmL3RXOJs6WsNS/WY5W/FfQP3kqXYxNaZA5FeAQu8fg4Hrvx7sskQt
-	cwQH6y+QJs8zlsQSmDp3TWNxaVZE0tK48v3FHmFWGTSzP+PcNVyE5VwPTwck9CdgC7vUKy27vCJ
-	f5ktc7NSHNe3Y/wuoL3KwwWEZA2VsnjJtalbIr1eKoTreYVYPdHcCOOoYE5JnvO9z38Q9Fx8gGj
-	lsVJbrs8iEVY+oSI5RcW6lNVC7qrGauJTB+5cavJamjOKsjVCg6EJpKuZdVA4H6VBD1ARGpL3hs
-	0g5lpxI9GLqJflJoFoGAu8VJLiXOvtp/VQsq1PUAoQn4zyJRnSGtjpWeCp2Q5ojaqQh2/Q0DvmL
-	q02Y0lm5NVTyR54Qup68l4g761WUcr9+cYSXCl4UrbMchF1SbKfS7Z0dVzskfBnZq0LMUmgpk6T
-	RdgFDNymZyAGiQxVx/IVzB5Im/4X9ltzCo3wqOb4K2WTwa+sxMG+PvVwqMPEtGzmkfnndqb2CaF
-	YjcWpOBRWPMGoUw/A==
-X-Received: by 2002:a05:6830:6604:b0:822:e9bf:6445 with SMTP id 46e09a7af769-83094e7df4amr21696572a34.9.1792164976237;
-        Fri, 16 Oct 2026 08:36:16 -0700 (PDT)
+        bh=3tFFFiMwu3rBvdKgwC5eml9Ot1DFSy/iaQYkSX+cyDU=;
+        b=c+nSOSj4WbMBtZr0ykLOvtRyzCymI45lg8o6yyEN3sJDk1YxQd9rnqcmTmU8sDCX1o
+         yOtSyRTqDHGpE/hhv7QRshSj+YW52HryxOlq1/hgC5lbGEapil24vkwT7H2RSQHoEJMx
+         WYoycwfFiGhNDLtuwAWsR1OddQLKqM3bciWplyqXbL2bVJkCN8qBdnVSru1fpSriqSl9
+         8jkmLFIlQSPe0E5RkQ72q9BWGMmZ5nCK6HyKzfs9Nr2c/TWaKH9E+5v0rva2QZ/bWaLA
+         EOc7156nRRDBmTzy43ZvwdqdDN+dQ5EQ6NtKeMuA/S2TiqoaYt9F5rO9YcXYDn6vXmHx
+         Z0HA==
+X-Forwarded-Encrypted: i=1; AKwUvByhn/EwvloyH5f9V3A2PtVnV5HpIIH1UEJWswJf63jn2t7/rwiKdHJBCRhbwsX2xb2qpvdqBtQYBME=@vger.kernel.org
+X-Gm-Message-State: AFq9FYKhsDxDMId+g1/HTAQDFVcRQ0kLxdLoF5kffZGaK7tQG9q0K/h6
+	MSxazP9Zzj4pXqq7D1LXHLTUs4U5GkBcM+sJpcipt9k+Gh3pOik3BuLefSDk++IcmNYIrkBB15d
+	gLRPu
+X-Gm-Gg: AYBFou1XrvP8oIUk/PgeDDd9m7EBOhyeAmXbdAKFjyqd3nkWp7BLtsAODgygVQuT3/h
+	z+dEyYCFZDjG2Rvhyi8E6tHzHXiVSCnbYNKxqIywuCPWxYKRmR5N+jkfsZbvBTknxWDWBTKx+Gq
+	dccfFhZhHfMsX2RMErls+ZvSSix5JMS6uaeMQ9dYDszf5aFXZDPjQhqtXki4Ih7ggFPQWJfjL/R
+	gWkdUd6HdQuU9nc3VXgRtt4/wSytVh8s39LyMTUG5KMDhAd2ess83zcJ4RaqSWPfmJQLCwsSRgM
+	lRpm7SHnczJH5gEW4ZPfJTdSe8i3Q+20hIVhsZgGZYRlH892VHyrrIeR/b33kQQqtFHYbX+HDg4
+	Wh7JneFpjbxgO71cIPFugNqR+tEL47UrNbUAFq4zDLeVEFHj0S09qYZS0SSDCwluCJg+eHD0lNX
+	Xlw8W6Qu7ID4w2/hZAtjO3B0dJrzDRIezehqPs1mXjLQVfGZvfDylRfZnb0iadTlNMa14gnZFV4
+	8Y0S+HRdXforWWwyg==
+X-Received: by 2002:a05:6830:25d2:b0:82a:bf47:a080 with SMTP id 46e09a7af769-8309815d97fmr20400336a34.27.1792165423175;
+        Fri, 16 Oct 2026 08:43:43 -0700 (PDT)
 Received: from [192.168.254.51] ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-842a4a00f0asm1917535a34.5.2026.10.16.08.36.15
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-842a6e12e06sm2040750a34.22.2026.10.16.08.43.42
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 16 Oct 2026 08:36:15 -0700 (PDT)
+        Fri, 16 Oct 2026 08:43:42 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Jeff Layton <jlayton@kernel.org>
 Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH nfs-utils 4/7] exportfs/mountd/exportd: get export
- features from the netlink policy
-Date: Fri, 16 Oct 2026 11:36:14 -0400
+Subject: Re: [PATCH nfs-utils 6/7] mountd/exportd: always give pseudo-root
+ directories a path-based uuid
+Date: Fri, 16 Oct 2026 11:43:41 -0400
 X-Mailer: MailMate (2.0r6272)
-Message-ID: <08D3D3E6-A6FE-4337-8A79-8EC8A9960191@hammerspace.com>
-In-Reply-To: <20261016-netlink-noproc-v1-4-42791f4b6eb5@kernel.org>
+Message-ID: <1322CC7B-28BF-471B-BE56-7BB428CAF589@hammerspace.com>
+In-Reply-To: <20261016-netlink-noproc-v1-6-42791f4b6eb5@kernel.org>
 References: <20261016-netlink-noproc-v1-0-42791f4b6eb5@kernel.org>
- <20261016-netlink-noproc-v1-4-42791f4b6eb5@kernel.org>
+ <20261016-netlink-noproc-v1-6-42791f4b6eb5@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -81,17 +82,30 @@ Content-Type: text/plain
 
 On 16 Oct 2026, at 10:15, Jeff Layton wrote:
 
-> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-> index 97d62ff4b157..a7c145543075 100644
-> --- a/support/include/exportfs.h
-> +++ b/support/include/exportfs.h
-> @@ -170,9 +170,15 @@ struct nfskey *			key_lookup(char *hname);
->  struct nfsd_export_policy {
->  	unsigned int	flags;		/* export flags it knows */
->  	unsigned int	secinfo_flags;	/* flags that may vary per flavor */
-> +	int		max_attr;	/* highest svc_export netlink attribute,
+> c5528f40f9db ("Fix NFSv4 export of tmpfs filesystems") made
+> v4root_create() generate a uuid from the path only when export_test()
+> says the directory cannot be exported without one, leaving others on
+> the filesystem's own uuid. In practice export_test() fails nearly every
+> time, so the path-based uuid is what pseudo-root directories get:
+>
+> - export_test() needs the "-test-client-" auth_domain, which only lives
+>   as long as an ip_map entry that references it.
+> - With netlink, nothing creates that entry: exportfs's can_test()
+>   returns before writing it. The kernel answers ENOENT.
+> - With /proc, can_test() creates it, but exportfs's own cache_flush()
+>   frees it before mountd rebuilds the pseudo-root.
+>
+> The fs uuid is only used when mountd rebuilds the pseudo-root during
+> the brief window in an exportfs run on a live server, and then that
+> directory's filehandle differs from every other time.
+>
+> Always use the path-based uuid below "/". That keeps what servers have
+> done since c5528f40f9db, closes that window, and drops a write to
+> /proc/net/rpc/nfsd.export/channel that ran even with netlink.
+>
+> Also keep uuid_s in scope until export_create() has used it; eep.e_uuid
+> pointed at it after the block that declared it had ended.
 
-^^ the value gets copied in from the export_policy_dump, but never used.  Do
-you need this somewhere else?
+Oh yeah, nice catch.  This change almost deserves its own Fixes: patch.
 
 Ben
