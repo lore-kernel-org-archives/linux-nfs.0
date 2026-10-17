@@ -1,181 +1,194 @@
-Received: from mail-wr1-f43.google.com (mail-wr1-f43.google.com [209.85.221.43])
+Received: from mail-ej1-f46.google.com (mail-ej1-f46.google.com [209.85.218.46])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 35A4D3E5A17
-	for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2026 20:12:07 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.43
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792181536; cv=none; b=dS8ZURgnPVETiwaqc7E/Kc4lWmBHFBZzY0selr+A4yf5zl5VCAkgq4OA31GpspHAn/9Fnl1tMtA5R2WoiYVfkOhFMsjCxJUwup0FjmZIvBD4k0UwumiMtrotZxyX0QU/zhUfUBymy7QuUeYHf4kFQ54yDmAFVwCrkMbaFC76vCY=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792181536; c=relaxed/simple;
-	bh=G9vzDtONtXjwSvyBkiUxo/rVI5oYHoJJZUqH8P+1vpg=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=QtulkejUiS3pFDPpYebAggRlGFFqXjSTkYlMiGky/R840IVtZeIsFgyjuLed8adrguIi4Ma0THo1XPwkgcDhkmFms1REjZNL6zD5+00pzmB6IF0l2mNODqZvbKlR+jcva6MS5+sGGIqxahwoiFfvknYLDiC2RPWADoQwcXZ62Oo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=NgUrpsJz; arc=none smtp.client-ip=209.85.221.43
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE1713B71A7
+	for <linux-nfs@vger.kernel.org>; Sat, 17 Oct 2026 17:01:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.46
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1792256507; cv=pass; b=SmAlWLIUNS4FossnJNRxPfDe7lCOd+p1c3cBoCE8pfz02WHjaI5BToQJrYaUWldDCHF9pZtSJmAunyQmJhqX8laA791TGhNrT/V5zXMymiC8EsUnUp04OEvE+3q+eOM2lKduVe+e3zc1ji2idze41wPUlyJ6SyTRf5r3QdU3lFM=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1792256507; c=relaxed/simple;
+	bh=U+6k4tHlCud8+uUSxkQ4oc7bHvr6VbuB6EP3jJQcORo=;
+	h=MIME-Version:From:Date:Message-ID:Subject:To:Content-Type; b=CUziPwX2cG9wM4ThWXYryCdCWtzZCq23PwmO9L3o9KW/3qSB7g7rtNHRhkewQIg/pA5sUDJyeSeBi1IqcNtKdRNNx9GPDiQTmtQEz5pedMWmXfGTNDwK5jIXqHvayWaS5pSLrSdb94UUorzMWCPvnl0IQJiS1hN4PaXMCMa5cuU=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=grlab.org; spf=pass smtp.mailfrom=grlab.org; dkim=pass (2048-bit key) header.d=grlab.org header.i=@grlab.org header.b=F73hsA0a; arc=pass smtp.client-ip=209.85.218.46
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=grlab.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=grlab.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="NgUrpsJz"
-Received: by mail-wr1-f43.google.com with SMTP id ffacd0b85a97d-48df0fa43c5so272572f8f.0
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2026 13:12:07 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=grlab.org header.i=@grlab.org header.b="F73hsA0a"
+Received: by mail-ej1-f46.google.com with SMTP id a640c23a62f3a-c2dc63f8d8aso135936066b.0
+        for <linux-nfs@vger.kernel.org>; Sat, 17 Oct 2026 10:01:45 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1792256504; cv=none;
+        d=google.com; s=arc-20260327;
+        b=KPRRMK4NFXdBYq7t9ZEnZYprjFBDBPVyrZF8J7grnmJANvAQe0OeU6TiEbkCHHTk5+
+         If4Mq/f1Ygd+xOhmz9NHbujsaXFiLZvaLi0DE2lm7VowF2IiBA4ZwCwsXZ++D/W22GWp
+         UpL3dbGxNyBUgNHIGo4MwSCkXMrKQt6IZutnj8DUdhAR2Abzf9+WmLEmFZpP+5i/JIWc
+         Tsod6qsH5TYdsP6EmG+tBPlbQ8okA3CwutaFFDlOROCu8/ZUdk3iFEJhCamuVed7L3/T
+         zG7cH/fL/TdyVbGfK3zxy0kB9QOmT76TgA8pMFRtFD9z6YkONxuu0M4IPsSVgIIWkvCW
+         jugA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=to:subject:message-id:date:from:mime-version:dkim-signature;
+        bh=CNLbLgDfaJhkepNzIqsjX6bsMXnjXdo1KXiQco00KUE=;
+        fh=Mys3y4MwsHRytUQMpdfGBn3oGRYLcLloxNwkFYMYMmg=;
+        b=pUatLPPuhU7GemUWWttdkLMD+PpMzvTOPT3JLdq8dUILKZ8dUuKcHm7htg3ksgfqnE
+         We9THzlDG9TeTyJ6EfaR2qcBCgu9K6iqdLUB7eectJjZtXq/oWfUSzWb0EGSmtHM4hRn
+         OTiN9whHlu4ducY4rSxdulzwZ5cUOGNLTtjzXpcagVIecEhHJGJiagcbtGY382jxhARG
+         HcQxKVZbZXQvzRBphV2qT2RzrEJbI6g0fN1sR9E8BX2I7+wq8gE6AoBqXuG1gM5r89HK
+         Oo02DVrXB7vYnxEKAY/CHSO/vSKLczv1M8FCMGGKrFYyQ+gU5pkay/OG9WShF/V/AKcr
+         DPjg==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1792181526; x=1792786326; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=zjXifzsuYpS0FQruVBIsTQMHaxQeJksSexJHZzpqVro=;
-        b=NgUrpsJz/8taruCUfoCYAMQ+wjsLvg/rafWJ/EZsybJ1PrJho39nuae4HasPW1Imfo
-         DFh5wwAN5w9SOY6I6MUkMkwktGVpwNmh0ZLbpFEGTpXBLk3pZd/9cydm9bHZY9HD6hLk
-         6RofufK6co5PQ2TQmheVf3auue8vdFtssrshr9mzTWB/rmkl4KbmJZQGQ07fJxIDnsLA
-         xiJbvChkpxPC41PT/ZE5WXSGvoumIOtN9tQ6sGCCS33BBSMMc9grkmdyqOrcS5R+dd8Y
-         rkisTqZz1NFYCSn7lTNgc8ohQCEPBLyzHieiejo8cdXEL3IssP7A2bUBEQxemSnj4pNr
-         8sAQ==
+        d=grlab.org; s=google; t=1792256504; x=1792861304; darn=vger.kernel.org;
+        h=content-type:to:subject:message-id:date:from:mime-version:from:to
+         :cc:subject:date:message-id:reply-to:content-type;
+        bh=CNLbLgDfaJhkepNzIqsjX6bsMXnjXdo1KXiQco00KUE=;
+        b=F73hsA0aGwchjJfTtVj+1N7/uQBqu2uIC0nSzKFkiEvGH8xi/aRTATImoOdaqBTAxB
+         BAwKvXlmETImCaPIxQUdx0R2q0kOMagIVk4GAL7vat6aeFGO9U8QSC2NH8F6HHQa3qBr
+         dgNC0SuGIrx7iDDVu7ytd5A1WkNG1bkma3UtZrBiAhStEQtqGuvBySp5qhcYLWy9u3C2
+         7gTlVuSobda/AP80pc+VMYu7gv1icQb0Q1L5vTgOXIdQ+B4Wzyp1NX/NeHBJD/kJy4j+
+         kEWvp1nkC3jSkAotUQpfNpDGymd3crkkjxp3OSaXNqag/AdJpH/2lZBFD8EZTeyTRhg6
+         uZFA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792181526; x=1792786326;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=zjXifzsuYpS0FQruVBIsTQMHaxQeJksSexJHZzpqVro=;
-        b=BQspT8wxqJdooqETkLED7bPriLGAwhDdLHOTDcpoJBTb0rh17gprgGQ33OtW//nbpO
-         DB185Xwm7rHJrMInbqVZxkxrin14+mqMekEIzQrD59Z9ci2aVzdwPQPpwDrEqkshUSN2
-         K4zQOlHfVEurPQpaFXurCkWWlqzWzHkZaLvvKpQhIbBUKGSwoPCuHNGA9w3ISwd9DkYv
-         riO2rSXi5CWPUZEbNfptAKJKyt7RqhhoLgXq7U0Eghkl+aXJFNWjdtxvAeYKADbmbVdg
-         PBt3HyaQt3SBD1nphA4oWPOswCsD0hannaBRhlANl2fASPTmJ14aAxYIpjjZKLloo1oJ
-         m4hw==
-X-Forwarded-Encrypted: i=1; AKwUvBwTxQoIG5fQD2F7tyrR4m9rWgg/8bOCbwfyfa1yuNI4uIR25zNHYW2HZ8xrXlmQDRFeA2mZOaVmLsc=@vger.kernel.org
-X-Gm-Message-State: AFq9FYJxCLO6yf1J4BDh2iHGrbh66zbDQy8BNFLrBx8ckR6ph8C4fnQm
-	wSuj5/9r+ijjnAjDZXiYofHoA5yvPc0DOyyinJBGCvvrLisTaouY2Yra
-X-Gm-Gg: AYBFou1rshS5AxnM56IjxTG8EnAEx8kh8ppptdpuJbmKL883j/VtazPIGSyV8K6tSwd
-	nGsToPCzlIDhdCTDqgc0jnHEK+q6DvPSTgVEhireX2x2DyTxchQeUVG2E6eeV/uRGOwliHp2mja
-	+V1iCvM3GGeU4cfq0RcBWRfmnzpDbMOFnyFq/0u+iUfBMMULz7MulAYnd856eGccyA3MQCqCvSu
-	lRrnrL9yWLHN9/3hQ1vD0kaW9GbSRZtNIo98WHkh/bUf3i28BmIzm9ECLLrXiLkkOWWPJkwzY2F
-	/UCIG8UF8XWuBazYwzAFsJjudRquGxtdTQPr4eE7hO4VKfJEwj5xTSsZOV7sNd7IQ7k8llQzW8t
-	KLVTll4sDzdOQU4ZrkbWL6qer4XrGuk6y0ZrslHhVLeRfwV3Aakqwo53m3YLADqf1ZkIwIVaQOe
-	ej5PMiGTo4PfiCqoxW31cITzCV9akekvZuV8h4Ou9qrdrJMV4EiqEBbgxA6jPOl4HxZSJl/HObh
-	6uVNljtFLzzmvEAv+xiKTJisrUcAM++5o1rucqWs49vzjeP
-X-Received: by 2002:a5d:584f:0:b0:48d:fbe0:62e1 with SMTP id ffacd0b85a97d-48dfbe06466mr8802951f8f.27.1792181525887;
-        Fri, 16 Oct 2026 13:12:05 -0700 (PDT)
-Received: from DESKTOP-IR7J1S9.localdomain ([105.98.84.113])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-48dfdc4eecasm6905340f8f.13.2026.10.16.13.12.03
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 16 Oct 2026 13:12:05 -0700 (PDT)
-From: Drif Abdelmalek Mohamed Said <drifabdelmalekmohamedsaid@gmail.com>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>
-Cc: NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	"David S . Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Jakub Kicinski <kuba@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>,
-	linux-nfs@vger.kernel.org,
-	netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Drif Abdelmalek Mohamed Said <drifabdelmalekmohamedsaid@gmail.com>,
-	syzbot+ae55a0fac80c73c938ac@syzkaller.appspotmail.com
-Subject: [PATCH] net: sunrpc: fix null-ptr-deref Read in xprt_reserve
-Date: Fri, 16 Oct 2026 21:12:00 +0100
-Message-ID: <20261016201201.4185-1-drifabdelmalekmohamedsaid@gmail.com>
-X-Mailer: git-send-email 2.43.0
+        d=1e100.net; s=20260707; t=1792256504; x=1792861304;
+        h=content-type:to:subject:message-id:date:from:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=CNLbLgDfaJhkepNzIqsjX6bsMXnjXdo1KXiQco00KUE=;
+        b=aeoDiDTmXV23J31iTxNFgp5Ab3cSn/XSVCDppHEqn0eUfqIOOM424H1eyFjYXu+KAV
+         h6Y1MK1RZvRnEjWZzlWoeNlSuJHEY5rS4BDr+BKZy2CVmuJK+poV5zEvyU+DS8gEREgK
+         nNiBtwwKPJHcJajQE9eH72LuQjnxIIa9AcUXasXxn4KgSFjJXMVrjEY/+8FN+VImmjN0
+         rCje0vKaBk83Hme2nx9qzJPmoXT5B7oe2tFWWHsFgSziZS4zdrl7+5X8NnnOfKBL2V5R
+         1tv9Ynr4kzh9uMsB/kSglp3F7rk6Z6PeDa4IqQbxuAgB9viCyOh1iCWVYag3Vy4LwQht
+         6QlA==
+X-Gm-Message-State: AFq9FYJQzUeSw5NYLEqpQs3ihuAWdjWeDrq5vGM9Yb4Vd6arWBWwmymk
+	RXAK/0bsOs4pWpPrt3Fvd+pTIk+T1glhKBy0rrqrx5bLmXt831uJ7w2PHe1GscoQ8dvKQDg0FCz
+	lKT7eTNs+epZ5GItaV3hyI0wI1ohBUqMHHkUombRg2dEtvMbSH7B86cg=
+X-Gm-Gg: AYBFou0CDeWRdD4gbMVI/bLwuQrSedq96KkM8xPTXmx3VEvnWyaxxCAmzuMbQoe/wmZ
+	NVpxRa3kpsLfrQ/ENG42SP6E1/TKuufed/R1Kah5QOk53BPMmQKu8vbAHbiWi4EW9iYpVsIfJHA
+	B+EglnL0sGtYcjIG9wgWviapr8KhptOTXz7z+6xqrsXsRqW8qcfSA5KKZdfkPkgh5rVpXccw2E6
+	gV880g3mswKP2HLH4aFYi32ZlMFBXiT4qQDgjodI/QTx13Q70lTkGvsdywI5oNgAw9WeDbZo7ji
+	ISq2YovQFWiDpRafTtEVjmQBFYk6Ljg8aJifzKazv85mOgKPm2/ZOEO1ENTX3xXoln2H6W4kbFP
+	AKEJ95DXRDG3E/GTBl24Mw2djmuueWRPN74NGRw9VBI2pARwJBglMiC+RfYIn00CBhedtYXQcgi
+	M9IrFlwhlMV+A3uZPt901T0Jq0/w==
+X-Received: by 2002:a17:907:6e9f:b0:c41:1750:59a2 with SMTP id
+ a640c23a62f3a-c419d54062cmr241711366b.12.1792256503305; Sat, 17 Oct 2026
+ 10:01:43 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+From: Oleksandr Kulkov <oleksandr.kulkov@grlab.org>
+Date: Sat, 17 Oct 2026 19:01:31 +0200
+X-Gm-Features: AclHuK-OM1hc9D7V-wQq9ImfOewio5rgQDcrsinx7bD9_Z275xRA1Aqdji8f9wk
+Message-ID: <CAL57+vDpROMWjN7QuPbm2CQd=B0hZPTM6h7Cv6q-Gd_rQSTSMg@mail.gmail.com>
+Subject: nfs-utils: temporary NSS errors cached as empty group lists
+To: linux-nfs@vger.kernel.org
+Content-Type: multipart/mixed; boundary="0000000000003a26d6065e0c3c27"
 
-syzbot reported:
+--0000000000003a26d6065e0c3c27
+Content-Type: text/plain; charset="UTF-8"
 
-BUG: KASAN: null-ptr-deref in instrument_atomic_read
-     include/linux/instrumented.h:82 [inline]
-BUG: KASAN: null-ptr-deref in _test_bit
-     include/asm-generic/bitops/instrumented-non-atomic.h:141 [inline]
-BUG: KASAN: null-ptr-deref in xprt_throttle_congested
-     net/sunrpc/xprt.c:1708 [inline]
-BUG: KASAN: null-ptr-deref in xprt_reserve+0xe2/0x2c0 net/sunrpc/xprt.c:1948
-Read of size 8 at addr 0000000000000628 by task syz.8.3118/20390
+Hello,
 
-Call Trace:
- <TASK>
- dump_stack_lvl+0xe8/0x150 lib/dump_stack.c:120
- kasan_report+0x117/0x150 mm/kasan/report.c:595
- check_region_inline mm/kasan/generic.c:-1 [inline]
- kasan_check_range+0x264/0x2c0 mm/kasan/generic.c:200
- instrument_atomic_read include/linux/instrumented.h:82 [inline]
- _test_bit include/asm-generic/bitops/instrumented-non-atomic.h:141 [inline]
- xprt_throttle_congested net/sunrpc/xprt.c:1708 [inline]
- xprt_reserve+0xe2/0x2c0 net/sunrpc/xprt.c:1948
- __rpc_execute+0x526/0x1280 net/sunrpc/sched.c:947
- rpc_execute+0x1c1/0x390 net/sunrpc/sched.c:1023
- rpc_run_task+0x4a6/0x660 net/sunrpc/clnt.c:1269
- rpc_ping_noreply net/sunrpc/clnt.c:2944 [inline]
- rpc_create_xprt+0x452/0xa90 net/sunrpc/clnt.c:494
- rpc_create+0x649/0x900 net/sunrpc/clnt.c:619
- gssp_rpc_create net/sunrpc/auth_gss/gss_rpc_upcall.c:107 [inline]
- set_gssp_clnt+0x188/0x2d0 net/sunrpc/auth_gss/gss_rpc_upcall.c:131
- write_gssp+0x21e/0x310 net/sunrpc/auth_gss/svcauth_gss.c:1423
- pde_write fs/proc/inode.c:330 [inline]
- proc_reg_write+0x1e9/0x2e0 fs/proc/inode.c:342
- vfs_write+0x296/0xba0 fs/read_write.c:685
- ksys_write+0x150/0x270 fs/read_write.c:739
- do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
- do_syscall_64+0x166/0x520 arch/x86/entry/syscall_64.c:84
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
+With --manage-gids, auth_unix_gid() in support/export/cache.c treats a
+getpwuid() failure like an unknown user: it replies with an empty group
+list and the normal cache expiry, without checking errno. This can prolong
+access denial after a directory-service outage ends.
 
-The GSS proxy client setup races with sysfs. xprt_switch_alloc() publishes
-the transport in sysfs before rpc_new_client() sets xprt->main = true. The
-sysfs offline handler rejects writes when main is already true, so
-userspace can set XPRT_OFFLINE in that window.
+Could distinguishable lookup errors use a bounded retry or shorter cache
+lifetime, while still denying access until group membership is known?
 
-The initial RPC then runs with the only transport offline.
-xprt_is_active() only rejects a transport whose refcount is zero
-or whose XPRT_OFFLINE bit is set, and a transport that is still on the switch's
-list always holds a reference.
+The attached reproducer uses the unchanged handler from commit
+5090e0bb662c53b4552b28b121ac2c2c434adb2e, with synthetic NSS responses,
+time=100000 and TTL=1800:
 
-xprt_switch_find_first_entry() returns NULL, rpc_task_get_next_xprt()
-returns NULL with it, and since rpc_task_set_transport() returns void,
-the task continues with tk_xprt == NULL until xprt_reserve() dereferences it.
+  known user:        200001 101800 2 200001 200002
+  unknown user:      200001 101800 0
+  lookup error/EIO:  200001 101800 0
 
-Mark the first transport as main in xprt_switch_alloc() before creating the
-sysfs entries, and drop the assignment from rpc_new_client().
+Run:
+  cc -Wall -O0 nfs-cache-reproducer.c -o nfs-cache-reproducer
+  ./nfs-cache-reproducer
 
-Fixes: e091853ebdb4 ("SUNRPC mark the first transport")
-Reported-by: syzbot+ae55a0fac80c73c938ac@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=ae55a0fac80c73c938ac
-Signed-off-by: Drif Abdelmalek Mohamed Said <drifabdelmalekmohamedsaid@gmail.com>
----
- net/sunrpc/clnt.c          | 1 -
- net/sunrpc/xprtmultipath.c | 1 +
- 2 files changed, 1 insertion(+), 1 deletion(-)
+This tests the procfs handler, not full daemon/kernel integration or the
+netlink path. We also found a separate nss_ldap bug that hides the error;
+its proposed fix is https://github.com/PADL/nss_ldap/pull/16.
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 6cedc824cf82..aa9f9c185c02 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -419,7 +419,6 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args,
- 	}
- 
- 	rpc_clnt_set_transport(clnt, xprt, timeout);
--	xprt->main = true;
- 	xprt_iter_init(&clnt->cl_xpi, xps);
- 	xprt_switch_put(xps);
- 
-diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
-index 3ba818d637be..5e2d43d6c643 100644
---- a/net/sunrpc/xprtmultipath.c
-+++ b/net/sunrpc/xprtmultipath.c
-@@ -159,6 +159,7 @@ struct rpc_xprt_switch *xprt_switch_alloc(struct rpc_xprt *xprt,
- 		atomic_long_set(&xps->xps_queuelen, 0);
- 		xps->xps_net = NULL;
- 		INIT_LIST_HEAD(&xps->xps_xprt_list);
-+		xprt->main = true;
- 		xps->xps_iter_ops = &rpc_xprt_iter_singular;
- 		rpc_sysfs_xprt_switch_setup(xps, xprt, gfp_flags);
- 		xprt_switch_add_xprt_locked(xps, xprt);
--- 
-2.43.0
+Thanks,
+Oleksandr
 
+--0000000000003a26d6065e0c3c27
+Content-Type: text/x-csrc; charset="US-ASCII"; name="nfs-cache-reproducer.c"
+Content-Disposition: attachment; filename="nfs-cache-reproducer.c"
+Content-Transfer-Encoding: base64
+Content-ID: <f_mvcn6zzd0>
+X-Attachment-Id: f_mvcn6zzd0
+
+LyoKICogTWluaW1hbCBsb2NhbCByZXByb2R1Y3Rpb24gZm9yIG5mcy11dGlscyBhdXRoX3VuaXhf
+Z2lkIGVycm9yIGNhY2hpbmcuCiAqIFRoZSBhdXRoX3VuaXhfZ2lkIGZ1bmN0aW9uIGlzIGNvcGll
+ZCB1bmNoYW5nZWQgZnJvbSBuZnMtdXRpbHMgY29udHJpYnV0b3JzOgogKiBodHRwczovL2dpdGh1
+Yi5jb20vbGludXgtbmZzL25mcy11dGlscy9ibG9iLzUwOTBlMGJiNjYyYzUzYjQ1NTJiMjhiMTIx
+YWMyYzJjNDM0YWRiMmUvc3VwcG9ydC9leHBvcnQvY2FjaGUuYwogKiBEaXN0cmlidXRlZCB1bmRl
+ciB0aGUgbmZzLXV0aWxzIHByb2plY3QncyBHUEwgdGVybXM7IHNlZSBpdHMgQ09QWUlORyBmaWxl
+LgogKiBPdGhlciBmdW5jdGlvbnMgYmVsb3cgYXJlIHN5bnRoZXRpYyB0ZXN0IGZpeHR1cmVzLiBO
+byByZWFsIHVzZXJzIG9yIHNlY3JldHMuCiAqLwojaW5jbHVkZSA8c3lzL3NvY2tldC5oPgojaW5j
+bHVkZSA8dW5pc3RkLmg+CiNpbmNsdWRlIDxwd2QuaD4KI2luY2x1ZGUgPHN0ZGlvLmg+CiNpbmNs
+dWRlIDxzdGRsaWIuaD4KI2luY2x1ZGUgPHN0cmluZy5oPgojaW5jbHVkZSA8dGltZS5oPgojaW5j
+bHVkZSA8ZXJybm8uaD4KI2luY2x1ZGUgPGFzc2VydC5oPgojZGVmaW5lIFJQQ19DSEFOX0JVRl9T
+SVpFIDgxOTIKI2RlZmluZSBJTklUSUFMX01BTkFHRURfR1JPVVBTIDEwMAojZGVmaW5lIExfRVJS
+T1IgMAojZGVmaW5lIHhsb2coLi4uKSBhYm9ydCgpCnN0YXRpYyBpbnQgZGVmYXVsdF90dGw9MTgw
+MCwgbW9kZTsKc3RhdGljIHN0cnVjdCBwYXNzd2QgZml4dHVyZT17LnB3X25hbWU9InRlc3R1c2Vy
+IiwucHdfdWlkPTIwMDAwMSwucHdfZ2lkPTIwMDAwMX07CnN0YXRpYyBzdHJ1Y3QgcGFzc3dkICpt
+b2NrX2dldHB3dWlkKHVpZF90IHVpZCl7YXNzZXJ0KHVpZD09MjAwMDAxKTtlcnJubz0obW9kZT09
+Mj9FSU86MCk7cmV0dXJuIG1vZGU9PTA/JmZpeHR1cmU6TlVMTDt9CnN0YXRpYyBpbnQgbW9ja19n
+ZXRncm91cGxpc3QoY29uc3QgY2hhciAqbmFtZSxnaWRfdCBnaWQsZ2lkX3QgKmdyb3VwcyxpbnQg
+Km4peyh2b2lkKW5hbWU7YXNzZXJ0KCpuPj0yKTtncm91cHNbMF09Z2lkO2dyb3Vwc1sxXT0yMDAw
+MDI7Km49MjtyZXR1cm4gMjt9CnN0YXRpYyB0aW1lX3QgbW9ja190aW1lKHRpbWVfdCAqcCl7aWYo
+cCkqcD0xMDAwMDA7cmV0dXJuIDEwMDAwMDt9CnN0YXRpYyBpbnQgcXdvcmRfZ2V0X3VpbnQoY2hh
+ciAqKnAsdW5zaWduZWQgKm4pe2NoYXIgKmVuZDsqbj1zdHJ0b3VsKCpwLCZlbmQsMTApO2lmKGVu
+ZD09KnApcmV0dXJuIC0xOypwPWVuZDtyZXR1cm4gMDt9CnN0YXRpYyB2b2lkIHF3b3JkX2FkZHVp
+bnQoY2hhciAqKnAsaW50ICpsZWZ0LHVuc2lnbmVkIG4pe2ludCBjb3VudD1zbnByaW50ZigqcCwq
+bGVmdCwiJXUgIixuKTthc3NlcnQoY291bnQ+MCYmY291bnQ8KmxlZnQpOypwKz1jb3VudDsqbGVm
+dC09Y291bnQ7fQpzdGF0aWMgdm9pZCBxd29yZF9hZGRlb2woY2hhciAqKnAsaW50ICpsZWZ0KXth
+c3NlcnQoKmxlZnQ+MSk7KigqcCkrKz0nXG4nOy0tKmxlZnQ7fQojZGVmaW5lIGdldHB3dWlkIG1v
+Y2tfZ2V0cHd1aWQKI2RlZmluZSBnZXRncm91cGxpc3QgbW9ja19nZXRncm91cGxpc3QKI2RlZmlu
+ZSB0aW1lIG1vY2tfdGltZQpzdGF0aWMgdm9pZCBhdXRoX3VuaXhfZ2lkKGludCBmKQp7CgkvKiBS
+ZXF1ZXN0IGFyZQoJICogIHVpZAoJICogcmVwbHkgaXMKCSAqICB1aWQgZXhwaXJ5IGNvdW50IGxp
+c3Qgb2YgZ3JvdXAgaWRzCgkgKi8KCXVpZF90IHVpZDsKCXN0cnVjdCBwYXNzd2QgKnB3OwoJc3Rh
+dGljIGdpZF90ICpncm91cHMgPSBOVUxMOwoJc3RhdGljIGludCBncm91cHNfbGVuID0gMDsKCWdp
+ZF90ICptb3JlX2dyb3VwczsKCWludCBuZ3JvdXBzOwoJaW50IHJ2LCBpOwoJY2hhciBidWZbUlBD
+X0NIQU5fQlVGX1NJWkVdLCAqYnA7CglpbnQgYmxlbjsKCglpZiAoZ3JvdXBzX2xlbiA9PSAwKSB7
+CgkJZ3JvdXBzID0gbWFsbG9jKHNpemVvZihnaWRfdCkgKiBJTklUSUFMX01BTkFHRURfR1JPVVBT
+KTsKCQlpZiAoIWdyb3VwcykKCQkJcmV0dXJuOwoKCQlncm91cHNfbGVuID0gSU5JVElBTF9NQU5B
+R0VEX0dST1VQUzsKCX0KCgluZ3JvdXBzID0gZ3JvdXBzX2xlbjsKCglibGVuID0gcmVhZChmLCBi
+dWYsIHNpemVvZihidWYpKTsKCWlmIChibGVuIDw9IDAgfHwgYnVmW2JsZW4tMV0gIT0gJ1xuJykg
+cmV0dXJuOwoJYnVmW2JsZW4tMV0gPSAwOwoKCWJwID0gYnVmOwoJaWYgKHF3b3JkX2dldF91aW50
+KCZicCwgJnVpZCkgIT0gMCkKCQlyZXR1cm47CgoJcHcgPSBnZXRwd3VpZCh1aWQpOwoJaWYgKCFw
+dykKCQlydiA9IC0xOwoJZWxzZSB7CgkJcnYgPSBnZXRncm91cGxpc3QocHctPnB3X25hbWUsIHB3
+LT5wd19naWQsIGdyb3VwcywgJm5ncm91cHMpOwoJCWlmIChydiA9PSAtMSAmJiBuZ3JvdXBzID49
+IGdyb3Vwc19sZW4pIHsKCQkJbW9yZV9ncm91cHMgPSByZWFsbG9jKGdyb3Vwcywgc2l6ZW9mKGdp
+ZF90KSpuZ3JvdXBzKTsKCQkJaWYgKCFtb3JlX2dyb3VwcykKCQkJCXJ2ID0gLTE7CgkJCWVsc2Ug
+ewoJCQkJZ3JvdXBzID0gbW9yZV9ncm91cHM7CgkJCQlncm91cHNfbGVuID0gbmdyb3VwczsKCQkJ
+CXJ2ID0gZ2V0Z3JvdXBsaXN0KHB3LT5wd19uYW1lLCBwdy0+cHdfZ2lkLAoJCQkJCQkgIGdyb3Vw
+cywgJm5ncm91cHMpOwoJCQl9CgkJfQoJfQoKCWJwID0gYnVmOyBibGVuID0gc2l6ZW9mKGJ1Zik7
+Cglxd29yZF9hZGR1aW50KCZicCwgJmJsZW4sIHVpZCk7Cglxd29yZF9hZGR1aW50KCZicCwgJmJs
+ZW4sIHRpbWUoMCkgKyBkZWZhdWx0X3R0bCk7CglpZiAocnYgPj0gMCkgewoJCXF3b3JkX2FkZHVp
+bnQoJmJwLCAmYmxlbiwgbmdyb3Vwcyk7CgkJZm9yIChpPTA7IGk8bmdyb3VwczsgaSsrKQoJCQlx
+d29yZF9hZGR1aW50KCZicCwgJmJsZW4sIGdyb3Vwc1tpXSk7Cgl9IGVsc2UKCQlxd29yZF9hZGR1
+aW50KCZicCwgJmJsZW4sIDApOwoJcXdvcmRfYWRkZW9sKCZicCwgJmJsZW4pOwoJaWYgKGJsZW4g
+PD0gMCB8fCB3cml0ZShmLCBidWYsIGJwIC0gYnVmKSAhPSBicCAtIGJ1ZikKCQl4bG9nKExfRVJS
+T1IsICJhdXRoX3VuaXhfZ2lkOiBlcnJvciB3cml0aW5nIHJlcGx5Iik7Cn0KCmludCBtYWluKHZv
+aWQpewogY29uc3QgY2hhciAqbmFtZXNbXT17ImV4aXN0aW5nX3VzZXIiLCJ1bmtub3duX3VzZXIi
+LCJ0ZW1wb3JhcnlfbG9va3VwX2Vycm9yIn07CiBjaGFyIHNhdmVkWzNdWzI1Nl07CiBmb3IobW9k
+ZT0wO21vZGU8Mzttb2RlKyspewogIGludCBwYWlyWzJdO2Fzc2VydCghc29ja2V0cGFpcihBRl9V
+TklYLFNPQ0tfU1RSRUFNLDAscGFpcikpOwogIGFzc2VydCh3cml0ZShwYWlyWzBdLCIyMDAwMDFc
+biIsNyk9PTcpO2F1dGhfdW5peF9naWQocGFpclsxXSk7CiAgc3NpemVfdCBuPXJlYWQocGFpclsw
+XSxzYXZlZFttb2RlXSxzaXplb2Yoc2F2ZWRbbW9kZV0pLTEpO2Fzc2VydChuPjApO3NhdmVkW21v
+ZGVdW25dPTA7CiAgcHJpbnRmKCJjYXNlPSVzIHJlcGx5PSVzIixuYW1lc1ttb2RlXSxzYXZlZFtt
+b2RlXSk7Y2xvc2UocGFpclswXSk7Y2xvc2UocGFpclsxXSk7CiB9CiBhc3NlcnQoc3Ryc3RyKHNh
+dmVkWzBdLCIyIDIwMDAwMSAyMDAwMDIiKSk7YXNzZXJ0KCFzdHJjbXAoc2F2ZWRbMV0sc2F2ZWRb
+Ml0pKTsKIHB1dHMoImNhc2VzX2NoZWNrZWQ9My8zIHRyYW5zaWVudF9lcnJvcl9hbmRfbWlzc2lu
+Z191c2VyX2VtaXRfc2FtZV9yZXBseT15ZXMiKTsKfQo=
+--0000000000003a26d6065e0c3c27--
