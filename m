@@ -1,117 +1,92 @@
-Received: from mail-wm1-f52.google.com (mail-wm1-f52.google.com [209.85.128.52])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83FF94B828F
-	for <linux-nfs@vger.kernel.org>; Sun, 18 Oct 2026 14:15:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.52
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8269B40A93E
+	for <linux-nfs@vger.kernel.org>; Sun, 18 Oct 2026 17:47:23 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792332939; cv=none; b=iB69N2wKUHL1/LXnrpAxjC7J27Tj7QBT6w9nKPnrruPR0fsSyk/O2SDfIbMw6VEaIZDOZj9LKioUkImXlY79bqMRhPD6qSxb+z3kDP3k/+feyEnqqtAFqt1dQhEoAql4v3AI0dIH/gDnXCNjbWz4GLuOhfZ+HB+iDfIIfxroVC4=
+	t=1792345645; cv=none; b=BTh8XABJ7u4cR5V/RYuW8+Zsl7PoBuz84UeCgHNeHzncqc1iMBigIicExLxhMunvb0pPZ8O9j1TCz4iVzqYhArCF2mT9pk15iLdHXwZNv6nZdS86q0xw7gUKAaWVzrak+nO6h98XCbit5DSdRPokTPKeafl+YWMkJiyOyhApREY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792332939; c=relaxed/simple;
-	bh=Yaf6iuLHe8actk3BKFm9qaT5HChHLGZtnasGXPCiPMM=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=CTjs+b61Ndca6sNB8KdrqHvEoCCIwF2oS+uAoPGtEjMqDp1rA1RS2zK6p0BNv6Wp6VXfVp21IRDt/K2oETWrzcSL9MTVRFi5SfcUAy/c5rfFpLSuWLl8w18K8fNzB0f0Vh+WXXrt3QTELDVq/d0s2viOZl92k4Wav4o40Dj7mB4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=NexwS/Kq; arc=none smtp.client-ip=209.85.128.52
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1792345645; c=relaxed/simple;
+	bh=KQGvNDmpZgQdAi9iTEBzCM8yUKZ6HEfTrzIc8DfMX08=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=Wxw66gNj7R7gi9iYEQYoJAFjnoEFxtx0I5pTd2l5Sy7Hi5tND8dtRJse9lgtDQKL8dI+Qm2C3Ug4YMRj9+uez0HWIZS/r7Z4ZTjtPD3U7cgFaRXjpOb2nRyvq3DCBnRE70j601PYAYVS2ltgb8ntARJQ6iG+q4onAKP2ds68KqQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Xvp1L8UB; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="NexwS/Kq"
-Received: by mail-wm1-f52.google.com with SMTP id 5b1f17b1804b1-4a1b07c3c5fso14737175e9.1
-        for <linux-nfs@vger.kernel.org>; Sun, 18 Oct 2026 07:15:35 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1792332933; x=1792937733; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=KmiEv9QYBY76uU+OzcAGvNIgjVHfk6qce+e5ESrDlrA=;
-        b=NexwS/KqA7PCwfO5MXw9vRrs1Fafcsr4g6sIjODrjsIATzDi6y2Kubmsm4s7ya1B0r
-         cuRrb1KjFaSlsPIRQ302Q+rWkVSIhEQ8W8d4eF8EsXW2NfgI2ds/gpoki4pGMJzH4M+G
-         Hne3WAlCHiT8csAXNe6xwkC+mdSoE/G+QegpSyhrfykgXHofy9Rt8vtqBq+nFG9v3Vpx
-         wollY9md8LLeYq5JcqudXKOLChbXt0UuXVXnqepoAMrskhfco7w8mtQAwpnForQgD7a3
-         otZ4vKYxVT0otQB8Xwc7og84AaIEbsbwNUfFf5ME4atgQ3kNt/TcSTSLaM1VD1/xBiwr
-         7bTQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792332933; x=1792937733;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=KmiEv9QYBY76uU+OzcAGvNIgjVHfk6qce+e5ESrDlrA=;
-        b=v+PCwhMDjjikxMaHjCHFAFUeO0I1nwYyrQoLHW4fare6rwyxMfhsrosXgz3d/haWWP
-         956hspdNYOb5FYgCNbxA5u3JFQ5JpAyju7VALSwIpIO31UMSB88zaiO6SOcrEwRGTslS
-         YtKKKNunyvAfjx44dCCt1A0DnICGNSJp02vIza0xF9L4OISV2ugLxV17I/XIsADZ6ro8
-         Kt0YM0a2Q+VLSPJni7wO0CwBD/+q/cGBe6G8TmrbvVncJdvOmQJwqpehAHcEgt1iQK7T
-         xgZyCBQf6H7SO30XD+BBE1GGtJr0xF90doZX1pKvc/rpIW9qsqiAN1lnctUXrQIh/Dtz
-         0sZw==
-X-Forwarded-Encrypted: i=1; AKwUvBxXy0YyN7pfF4uI8V2aU8oX1Ze93TXCOJoFChUPuNDH/f9MvYkzGX4EAA/AO4mCZWNRaadNNGQUIjI=@vger.kernel.org
-X-Gm-Message-State: AFq9FYKm91oXNxiJu/qZW5MgRNmhNIcWi3ateG/Ye6O4BZKNRS9ql3Qa
-	PHIhD8jw9vhinQnFteBBJVC+0cvgul5VNUXGSVZ2WnrFuj7isERmgOWo
-X-Gm-Gg: AYBFou2kiiHWMis66ys//pmIh23DuuymrTAXuq9aSB8cs5xxk/TqkbK3+Khz73/qOSR
-	90Om6ddR/qj678N1t4gKuXj86zQ3zFO4+dFxo0a4uW+ScEtELg1/9iIlPQPbq40uEWWjq9JupSR
-	otJJPlHw13SYvm6d+Y4Pr3U8bUc0l+NmiS2ebQQ7/gAeu0auOlhHwERUb7zCYd5LQbQTTXzP5LG
-	2RVda77aWdt+lUpzi78NtJWzzXXfv93u9T2426lwQnD/2VBqdnnTFGMB0r22p/EDitzhne0Lr4J
-	Sg+xK27PjoQS3bV0V0O7uCWR6MuxHNCjJMMgVLsQ16v8MO2DxSmG4ovvCOzSalncnEZfPriv9yF
-	rKk7ojz8i6cPe02vO3JPfRFZVKlOSc7FYcGq4xCYvvw9YBJTh6MtgBigTp6A2oCqymUK0T783fB
-	yRBuI6qjMIkrDFDe9zE+6cwMrU0AkXgC2BhY+yzME0Ocga77AyvIdRg3b2T7PLlnt9jeVcQdIqK
-	zrpr468t2p7DVpX5+Ngi5U=
-X-Received: by 2002:a05:600c:1393:b0:4a1:d248:25b5 with SMTP id 5b1f17b1804b1-4a1d760e327mr106868805e9.24.1792332933237;
-        Sun, 18 Oct 2026 07:15:33 -0700 (PDT)
-Received: from LAPTOP-AVI.taile24b5.ts.net ([2a06:c701:4778:c500:d430:1e43:f3d6:7b9e])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-48dfd4f8bd9sm17717587f8f.35.2026.10.18.07.15.31
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 18 Oct 2026 07:15:32 -0700 (PDT)
-From: Avi Weiss <thnkslprpt@gmail.com>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>
-Cc: Jeff Layton <jlayton@kernel.org>,
-	Lance Shelton <lance.shelton@hammerspace.com>,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Avi Weiss <thnkslprpt@gmail.com>
-Subject: [PATCH] NFS: update ctime for atime-only UTIME_NOW requests
-Date: Sun, 18 Oct 2026 17:15:28 +0300
-Message-ID: <20261018141528.1985569-1-thnkslprpt@gmail.com>
-X-Mailer: git-send-email 2.43.0
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Xvp1L8UB"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 591581F000C5;
+	Sun, 18 Oct 2026 17:47:22 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1792345643;
+	bh=fsDYzNlJTjk7An950ACgs6r7S95dyvCKvzejzrWXnlE=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=Xvp1L8UBQQYsPmtQFrQub9XAbqf9iDcVQ+qyKH5+p7SFyZs1l8uTScA/1lA/AHsDe
+	 /3Kopk3QpcxV2WchBztW/d9Opf5XxbbgkjROYpNLLCxZIpXTGfN2piULxAdppf9UDR
+	 jyya202bY54VvLq3yylAdy81XwP32gxuy1TuWsrFL5IIX8s7utOyzQcuKwZ7V0NA8g
+	 xy6+mQQqJxUPbT+tgxfVMg/iyFw4PuitiB3ri5EcPcJgzommE9FpcQWzXljFNLEJ2+
+	 /GR7UTb8nd8y1Pve7xgBlDO+ebUiQDiT58yva/kufBfQ1pjV/dZSdf2tQJC+fpzVzP
+	 DSXayftAfhoHA==
+From: Chuck Lever <cel@kernel.org>
+To: Jeff Layton <jlayton@kernel.org>,
+	Mike Snitzer <snitzer@kernel.org>
+Cc: linux-nfs@vger.kernel.org,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	Christoph Hellwig <hch@lst.de>,
+	Jens Axboe <axboe@kernel.dk>,
+	Matthew Wilcox <willy@infradead.org>,
+	linux-mm@kvack.org
+Subject: Re: [PATCH v4 00/10] NFSD: keep direct-mode I/O out of the page cache
+Date: Sun, 18 Oct 2026 13:47:18 -0400
+Message-ID: <179234561005.678493.856092392865379039.b4-ty@b4>
+X-Mailer: git-send-email 2.54.0
+In-Reply-To: <20261015233309.42999-1-snitzer@kernel.org>
+References: <20261015233309.42999-1-snitzer@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
-When an NFS client holds a timestamp delegation, utimensat()
-with atime set to UTIME_NOW and mtime set to UTIME_OMIT reaches
-nfs_setattr() with ATTR_TIMES_SET but without ATTR_ATIME_SET.
+On Thu, 15 Oct 2026 19:32:59 -0400, Mike Snitzer wrote:
+> This series refines the heuristics NFSD_IO_DIRECT already uses, mostly
+> on the WRITE path and in one corner of the READ path: the io_cache_write
+> and io_cache_read modes where an aligned request goes to the filesystem
+> as O_DIRECT, with DONTCACHE for the parts a misaligned WRITE cannot issue
+> directly.
+> 
+> It does not knowingly undercut anything the existing upstream code is
+> built on.  An aligned WRITE is still one O_DIRECT write and an aligned
+> READ is still one O_DIRECT read.  A misaligned WRITE is still split into
+> a direct middle and buffered ends, and by default those ends are still
+> DONTCACHE where the filesystem supports it.  io_cache_read and
+> io_cache_write mean what they did, and nothing new is asked of the
+> filesystem.  What changes is where the split is cut and when it is worth
+> making, which READs are worth expanding, how often a synchronous WRITE
+> is persisted, and what happens to the page two misaligned WRITEs share.
+> 
+> [...]
 
-There may be other paths that can reach here as well.
+Applied to nfsd-testing, thanks!
 
-The delegated-atime fast path treats this as an implicit atime
-update, clears ATTR_ATIME and returns success without updating
-ctime.
+[01/10] NFSD: cut a misaligned direct-mode WRITE at page boundaries
+        commit: 80728157d1bd1bfba745ead39a0459622d1f5017
+[02/10] NFSD: mark the direct middle of a split WRITE IOCB_DONTCACHE as well
+        commit: c5d5ac48860343d7741ceb5c9024509b4aa7e2ad
+[03/10] NFSD: only split a direct-mode WRITE for a worthwhile direct middle
+        commit: fcd8823db80e218372d9c5ec6bc207e915ea4863
+[04/10] NFSD: add direct_misaligned_dontcache debugfs knob
+        commit: b99724228837563893326517a589565e0fbcf45b
+[05/10] NFSD: do not use direct I/O for a READ smaller than its alignment
+        commit: dae8320b4dc640d9ee99b1cd7f2e5da910828982
+[06/10] NFSD: persist a synchronous direct-mode WRITE once, after all of its segments
+        commit: b4e06bef38843c8b909d0b4317dfaaf87dba6d72
 
-Add check for ATTR_TIMES_SET along with ATTR_ATIME_SET (OR) so
-explicit timestamp requests use the normal SETATTR path while
-incidental atime updates can keep using the local shortcut.
-
-Fixes: e12912d94137 ("NFSv4: Add support for delegated atime and mtime attributes")
-Signed-off-by: Avi Weiss <thnkslprpt@gmail.com>
----
- fs/nfs/inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 3022454f7698..255d7369cb3c 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -740,7 +740,7 @@ nfs_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 	} else if (nfs_have_delegated_atime(inode) &&
- 		   attr->ia_valid & ATTR_ATIME &&
- 		   !(attr->ia_valid & ATTR_MTIME)) {
--		if (!(attr->ia_valid & ATTR_ATIME_SET)) {
-+		if (!(attr->ia_valid & (ATTR_ATIME_SET | ATTR_TIMES_SET))) {
- 			nfs_update_delegated_atime(inode);
- 			attr->ia_valid &= ~ATTR_ATIME;
- 		}
-
-base-commit: 32c52ec87d6245ee2d12ed5dd509e40062939b50
--- 
-2.43.0
+--
+Chuck Lever
 
