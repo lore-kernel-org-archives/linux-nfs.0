@@ -1,35 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4CB8A4E2F38
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 88BD243E48B
 	for <linux-nfs@vger.kernel.org>; Mon, 19 Oct 2026 11:46:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792410400; cv=none; b=C+dhYzvIs70Z1NI0j1dftxMdklFlqaOCjSl33b/UoC8/CNnFAvlT0kNNrB6m8KuuJQyiZq58oX3BVUZdgRY76Q0bewcEt7OvzrAKnqa6IhOHPvtY7SyYkZYhacnir/n/WyK7iM8X/ulHubJK/S6mT5/qrJEzNQ4iR92S17IJj+c=
+	t=1792410400; cv=none; b=BM0LePt2/VpzXeSDSFcPFVH5Z92486ZwmHTeXoPnBpGJn7blTezCSobUOeVahhnBmmUQAANq1+RisTJNYcFEyY7nmorQXYUwwOSe+B/fKBBDtV2fwEP1YP96u/+GFBgKlerlLzeVzXI1O1LnGqzA9NFrsh0VBJLcVLPyKrHSob8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1792410400; c=relaxed/simple;
-	bh=gFpDGvWSKjhPZk8D0f+umJMOiDhmEi3VG/Jd0eONB60=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=fJqao4BPkhryRLHOdwUfZcGEhoF9SDPyPyQE24TT5gtDRg1cxsAg6BM8xbbYjTBUfjr+zP6VsOAyRukNwOOKAO+OXPUFWFTj1/mF4268sYBNGwQrP48nHOYAQyiYVXD3WZ8byqU8pwe0Rpm4ZQLr/PEE42llnYsa7MpRVHwxUJk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MeObMwUg; arc=none smtp.client-ip=100.103.45.18
+	bh=hZ7Wsr2SqgEK1L9vQUajjOJtUgVK/34m8TQjbqaOp0g=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=FX5KrAJMGQ6YrfBmFekmwZ79DNRsl1SJaT9P5coI2aquqEmesMYs8rS/gjiamaD0HDvHjg5iWv0MAsAhgn7ncbPHVsXldf76o7A/0mRZbSQZ6w7AbnrgGwEfSG7ZResrdxhRTb21kSm5MjNKgADjQ5lin6C4hoybEoQkmr5nv3c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=F/z1d7Nf; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MeObMwUg"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 853C21F000C4;
-	Mon, 19 Oct 2026 11:46:38 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="F/z1d7Nf"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 17F3B1F000C6;
+	Mon, 19 Oct 2026 11:46:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792410398;
-	bh=u3UyF4vZ3HlXstieOl7+gdGlfY67QKeSPGEx9NaZ29o=;
-	h=From:Subject:Date:To:Cc;
-	b=MeObMwUgXS6l2JJllfTv8hGdLgTwqBOPCgqxCqEMBlWeogzfuFUxzh/w3NlKAaAMU
-	 9dKqFNRpsoIIsMy1oiW0cJFk4ABAi8LXykk4Gv8Ybuaq/lt3VQhjGSxn+aNZzWmI0c
-	 n7a1KHgtcQH4X9c1sICG+qtwwnyx5WCHyZO6PguhKvbanusTazHUVySo7paSfUNNAu
-	 CfKeoTaaDnUPOTQKYQia9cTbMpT7wprpm7JJNmH8Oo0N9qtsBs8Sv+tq/+yArs0/vc
-	 s5aHyVK3p5r+EeQWI+V8HCPDNEvR1NQs333ZEtAsHD8mZxgP47jNSdLzdK2ZT7qlkr
-	 F+Y03CzTW+CTg==
+	s=k20260515; t=1792410399;
+	bh=y6KDdESeQgheGjfbeLuOizJXON9g54kAiR1OeISazbo=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=F/z1d7Nf0m692E7tO1obc14wfQl68OIlGmjaL3PcMX3dZTTzecWHhWdDUpqsZToct
+	 PVpDI0MbW94QtVg7FP80f+kU5OgD4VIQgdk0CUZR3M48VTGVGEeMB7lAkXFhWnSCPs
+	 toPzIB+NmZfF1YeW2bbupag1r9nhUVi1QWdjnBePK/KZeqLChgAK8mGvPi2sF7PTLe
+	 GptFoTcKx6hmlz/EAe01WsbQrZeotqp/rkoSN/tBvYmm6+qaYjiH/suUzQaiXHE4c5
+	 MqIVYYKikr67+cZpv0FaUTHYSq84rG7nE7bDk39HnnkgwR3/dC+uZceNwd2nCrmZW8
+	 NmavHox/9CCtA==
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH nfs-utils v2 0/7] mountd/exportfs/nfsref: netlink loose
- ends and bug fixes
-Date: Mon, 19 Oct 2026 07:46:20 -0400
-Message-Id: <20261019-netlink-noproc-v2-0-7d09a49b574b@kernel.org>
+Date: Mon, 19 Oct 2026 07:46:21 -0400
+Subject: [PATCH nfs-utils v2 1/7] mountd: accept -L for --no-netlink
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,83 +37,54 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNzQ6CMBCEX8Xs2TVthfpz8j0MBwsLbCBbskWiI
- by7DXePX2bmmxUSKVOC+2EFpYUTR8ngjgeo+5d0hNxkBmect8Z6FJpHlgElThprvNI5hLIwjfM
- e8mhSavmzC58gbcL3zGOCKkc9pznqd79a7F74Z10sGizc5WbbIngK5WMgFRpPUTuotm37ATkPm
- B+4AAAA
-X-Change-ID: 20261016-netlink-noproc-8e3bb540d266
+Message-Id: <20261019-netlink-noproc-v2-1-7d09a49b574b@kernel.org>
+References: <20261019-netlink-noproc-v2-0-7d09a49b574b@kernel.org>
+In-Reply-To: <20261019-netlink-noproc-v2-0-7d09a49b574b@kernel.org>
 To: Steve Dickson <steved@redhat.com>
 Cc: Ben Coddington <bcodding@hammerspace.com>, linux-nfs@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2368; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=gFpDGvWSKjhPZk8D0f+umJMOiDhmEi3VG/Jd0eONB60=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq1gMXrNlptuJVRNc1oRwDDQegXEXjTCZ5N3Gqq
- 1NmrsBhGFGJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCatYDFwAKCRAADmhBGVaC
- FSE5D/4sCesgvkUwq1oZ4oSXN1gpNpFNiGXRYNWUEc/ixDCkLwHyjr3zt7hlLcIWO3afSfDemkQ
- AIJOBrVzfJzxWQzAO7jmjVG46A6O/tAz5/jq6e6ZrYRmDqZKG3+F+kTuKhTKyxdADCpVzfqfgln
- 4g9JaVzqu4Z05nESIENiWmROsmdilloRFDZndNSzvPJlOSHfpbobhPwHyI/+kI+j1ci68LoOolA
- +sQNf+ZscrAFSG9we8zRnNetGXpKKAuG/xLUczm+6EFsOhIL1lyhRnM3pSqo+9FnX7GnV/e+l9Q
- Is1RcC1Q6kHCN9953vqFYJbA+YH7YVhB5Kp8DihPaIhOXCPyku4NMwATPD1YgI+pbEcLEb5iNmv
- 0/92kFjda7BJ/k4I+ZonL90aCN5weQGzoo5pmalSMHCpUx1DJ/8sFNEL/dJhd3yDkrPYBySDrW3
- OkVHNiEJVZUOz8Fd9V6OAYPZr4fjBLuhAPxfltEINPhYHVbnWYcSedmCsy690tPMZ1UwPLj5EOO
- HQ2S8MJ3dZf1eNtWD0HqC0ZBANNxfsB9x99XMbR8k32/k0a7Bbx83qVJ7Gju7DmqoCYMjJxiGj0
- IWEW7Ki8A5l1g+EheX1uo/EihNpU+8lCyrFOBpu8lGSnjOqT8MVtbRoaaBILSM2swtwtRlNTBFS
- Utkh8TjsKiySyog==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=955; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=hZ7Wsr2SqgEK1L9vQUajjOJtUgVK/34m8TQjbqaOp0g=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq1gMc2Sw5smAHEEUZfLgqyPIhlXD/xybG5FKQc
+ RXl5v3rZ1OJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCatYDHAAKCRAADmhBGVaC
+ FY9jD/9yEAvoKrg71DwSOf/rH5A2zHfYp3Lih/CaMOSXo9l5rfpwJ5fz6+QPIo+mPqmB5WE52gz
+ Y99Rkl8HcdYrT9dtUgHDoXKcuVJFibmnX1zxOC9CAEAE/hcGO8H9KKJ/jPBcnIrXBpW7RFTO8py
+ AAKMHvbY5QQgGDtvLcbA8F2X66sgp3ar+NPvaz9Ao567JJZcJtwK03KL0StYdRuf0Vm/yp2Npf3
+ zegKh1CTluASvJXYVOZHcDb0ycx+Le3Hho4k7vQGaqHaLpoJQ1FOd43k3QNWRD8b1J/mBqoFzay
+ eMty1LHTt00k+SsMCc1gJIfu3PINMqhJhFDyIVdptPIoaoFEYH3SXdluDukuOWWVWOxxmL4TlIs
+ tUbeenOaKXUT33hXgSY0gQwG8wyBnE5X/p70jzwaHgKAkrEoZfqx3alScNDx4WyAjBJbGkWdXJB
+ /izbEyVlC+OA4Z+PxhrPVc3vWpol9nk5UIrfxbSULFG8yG/FHec5l1yGhnEWRfgphApfi/53Qbo
+ O2jwKMHY6iHkJmSMa9G0jsn6k6BshyPUTfNJ8kT6n0ZcWSaDYz9NvPc03xRuomiTSiQKYDKoWUZ
+ lyigQgoxJHrO4MwBXIFCSA3nk8kDt98vlzd3c+dQ1bIRueWzfHUAst3g4bcqsp6jYYafjysk3zV
+ uYoBKzg8S77Q5tA==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-There are some cases where mountd will use /proc even when netlink is
-available, and agentic review of this code also found some bugs.
+The -L short option was documented and handled but left out of
+shortopts, so "rpc.mountd -L" prints the usage and exits 1.
 
-This set fixes it to use netlink in more situations when it's available,
-and also throws in some bugfixes and cleanups. The last patch in the
-series adds a MAINTAINERS file and the machinery that allows b4
-workflows to work properly with nfs-utils.
-
+Fixes: 60c383830537 ("mountd/exportd/exportfs: add --no-netlink option to disable netlink")
+Reviewed-by: Benjamin Coddington <bcodding@hammerspace.com>
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
-Changes in v2:
-- Add Fixes: tag to patch that forces a path-based uuid
-- Drop the currently unused max_attr field from nfsd_export_policy
-- Fix default value of $output_roles in get_maintainer.pl
-- Use script location to determine top of git tree
-- Link to v1: https://lore.kernel.org/r/20261016-netlink-noproc-v1-0-42791f4b6eb5@kernel.org
+ utils/mountd/mountd.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
----
-Jeff Layton (7):
-      mountd: accept -L for --no-netlink
-      mountd: prime the kernel caches over netlink on MOUNT
-      exports: describe the kernel's export features with struct nfsd_export_policy
-      exportfs/mountd/exportd: get export features from the netlink policy
-      nfsref: flush the export caches with cache_flush()
-      mountd/exportd: always give pseudo-root directories a path-based uuid
-      Add MAINTAINERS file and get_maintainer.pl
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 92d8c4690efc..da1124b5c411 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -81,7 +81,7 @@ static struct option longopts[] =
+ 	{ "apply-root-cred", 0, 0, 'c' },
+ 	{ NULL, 0, 0, 0 }
+ };
+-static char shortopts[] = "o:nFd:p:P:hH:N:V:vurs:t:gliT:c";
++static char shortopts[] = "o:nFd:p:P:hH:N:V:vurs:t:gliLT:c";
+ 
+ #define NFSVERSBIT(vers)	(0x1 << (vers - 1))
+ #define NFSVERSBIT_ALL		(NFSVERSBIT(2) | NFSVERSBIT(3) | NFSVERSBIT(4))
 
- MAINTAINERS                     |  58 +++++++
- Makefile.am                     |   2 +
- configure.ac                    |  24 +++
- scripts/get_maintainer.pl       | 370 ++++++++++++++++++++++++++++++++++++++++
- support/export/Makefile.am      |   4 +-
- support/export/cache.c          | 124 ++++++++++++--
- support/export/export_policy.c  | 258 ++++++++++++++++++++++++++++
- support/export/v4root.c         |  22 +--
- support/include/exportfs.h      |  13 +-
- support/include/nfs/export.h    |   5 +
- support/junction/export-cache.c |  82 +--------
- support/nfs/exports.c           |  47 +++--
- tests/Makefile.am               |   2 +-
- tests/t0003-get-maintainer.sh   | 140 +++++++++++++++
- utils/exportfs/exportfs.c       |   2 +
- utils/mountd/mountd.c           |   2 +-
- utils/nfsref/Makefile.am        |   4 +-
- utils/nfsref/nfsref.c           |   5 +
- 18 files changed, 1034 insertions(+), 130 deletions(-)
----
-base-commit: 5090e0bb662c53b4552b28b121ac2c2c434adb2e
-change-id: 20261016-netlink-noproc-8e3bb540d266
-
-Best regards,
 -- 
-Jeff Layton <jlayton@kernel.org>
+2.56.0
 
