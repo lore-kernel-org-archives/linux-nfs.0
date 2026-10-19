@@ -1,45 +1,45 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 28FE34F183A;
-	Mon, 19 Oct 2026 13:59:16 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6626458E2D0;
+	Mon, 19 Oct 2026 13:59:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792418359; cv=none; b=he7KzJjgFELYExnm83b6TMeCsyDib0t3bCwUANgNI5gcesTIp8/tqidSpnY1B4kBqRs+/QdWTRZrkRFLSnBw/VaOMy89RDtsgTJk1mXB1CTBjQgjhjoGIxz4+eSkqoMhztXQJwUCkXcxymTSvfvRz0pVF8VDP24AciMEb82CTX0=
+	t=1792418389; cv=none; b=XCsm+VenT2rQ03hUaxn4DF2hBrZPgK4GFS2KMTFZZN/U+U1fLnL/qAsGlX5s1/GsuKZLrNM3y6DAzsYzVmk5rmg4eG2upJb8SG3OZHnLUA/VtQLeW1iPZMM7/mqGlfivz+owlq8ZLcqnzX5YbQ/k4so5nKWwhR6sRTfKzI/x1so=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792418359; c=relaxed/simple;
-	bh=sIaMVIx2/CeVjggQmKtFTDO92nOiBGIHRXKql9+UEas=;
+	s=arc-20240116; t=1792418389; c=relaxed/simple;
+	bh=cgKVFLr0+c/hGzVtMAmQ+i54QNz5vkIE01Ft4DJJccA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=hnIFhKTEeDr8uBfjUtsQNVPAYrNIrCiMKM19RxQokcYWYlySY1qxXPYmGmhUimTKiPlvnVD4Ehj82tlX93cw8j+fw2SubPe3RaULQfxi49J6ocVkL8zHs8vAegF+OfAfd13O5EmYt1yijhUXl2HtCvrsrqPw4VKVFaAbZptvptI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cd4Rr39g; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version:Content-Type; b=umpmgy3OfcDRf1W8jR61leJjgcXyndk8sSjX3W2aFlVDzSuJw2R+lAgEvMEkPZSbP6Vwf2WqhR1o2xMbeDbxQ4GSFwNQThGy8Cch0/pcdK0mXt1PZqt7Ae8kCigJbmQQlAX7ELEomq6CfqtYAo765YQQmDDGq7WXmCENSGhp0gc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gqZT4QeO; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cd4Rr39g"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0307A1F000C4;
-	Mon, 19 Oct 2026 13:59:14 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gqZT4QeO"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 53C041F000C4;
+	Mon, 19 Oct 2026 13:59:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792418356;
-	bh=ichSf4TdWpTOdRexvrIgI0skTn5DtcC0xaCxkjGpiiU=;
+	s=k20260515; t=1792418387;
+	bh=Aw/JLA9/UpFCTx8TsXOKLFf8Hk1exadsPhTfEEqhu14=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=cd4Rr39gN6SkDIvkhPPd7aMLEL6GR+pNTQV8dVQglCqd7QorYwfshKgmcMut3lqNE
-	 dp7vTUjbYYoVkg8pgq/oyZZm9qrukKT5YQmYGC2d2TWIkpM/gWQ9ZfjDgkZxHIT1W4
-	 0jLNzo2MeGxo+HdGMavyFgLHPFquByj7SpV3Nu7Cv8aRLRjywtSeLLLBVjduRiL+ie
-	 CxoY5+xR3Ay5cwWAxaPcc5FVa5JaKZM7Q5BBMENPqAm6254oA2vYXF4DzHbuALsKva
-	 T5gTBBFnMtXZHm70yvqKyZlS0H/1rkpEh4+28nfz/BzU3xpX5mgOgxtZVIF3azHPoR
-	 5PfYrr1uPhzzg==
+	b=gqZT4QeO46FnHXsIJ4PKqil6dmVufbpl8/m58fONPVSIkBHZdwWDFSqBsMuCBbpBw
+	 0sFDicuKl0NrUUV81EhDJsXAB7gpOSSXOsQ2DCrnVsISjmDcDIckOgrWrXnGIDfwm5
+	 vDLlF+RBDcqEbJh0kFOVH4w1yEHaqt7eimk04to7UOcAzzhhS2jot/NTvte5qnQFB0
+	 vr8rf+995SbXPmH9/pthED3pw3dv416BzN6T0KcQppmGMUWEOLYpe6wUonDE255Km0
+	 GxsuvSfpBUedqM1khOJ90YqbEVlHhHufMP90a0szu5ZuBqpY8rDPjH7Hkj9m6ZLPHD
+	 jMBBa7YpajdCw==
 From: Sasha Levin <sashal@kernel.org>
 To: patches@lists.linux.dev,
 	stable@vger.kernel.org
-Cc: Benjamin Coddington <ben.coddington@hammerspace.com>,
-	Benjamin Coddington <bcodding@hammerspace.com>,
+Cc: ZhangGuoDong <zhangguodong@kylinos.cn>,
+	Jackie Liu <liuyun01@kylinos.cn>,
 	Trond Myklebust <trond.myklebust@hammerspace.com>,
 	Sasha Levin <sashal@kernel.org>,
 	trondmy@kernel.org,
 	anna@kernel.org,
 	linux-nfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH AUTOSEL 6.18] NFSv4/flexfiles: report cancelled I/O as a layout error
-Date: Mon, 19 Oct 2026 09:48:00 -0400
-Message-ID: <20261019135441.1420968-189-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 6.18-6.12] NFS: Verify symlink inode before caching target
+Date: Mon, 19 Oct 2026 09:48:24 -0400
+Message-ID: <20261019135441.1420968-213-sashal@kernel.org>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261019135441.1420968-1-sashal@kernel.org>
 References: <20261019135441.1420968-1-sashal@kernel.org>
@@ -55,476 +55,338 @@ X-stable-base: Linux 6.18.57
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-From: Benjamin Coddington <ben.coddington@hammerspace.com>
+From: ZhangGuoDong <zhangguodong@kylinos.cn>
 
-[ Upstream commit 4a013b0e881e0466cc2c6a5518d2f6cda3a4f19f ]
+[ Upstream commit 3265f1998ae9a9282a8a6ca95467d9572d6ebb82 ]
 
-When a layout is recalled or revoked the client cancels its in-flight I/O
-so the layout can be returned.  The metadata server needs to learn that
-this I/O to the storage device did not complete, so that it can reconcile
-the affected mirror instance (or, if none remains, take other action).
+nfs_symlink() copies the symlink target into a folio before issuing the
+SYMLINK RPC.  After a successful reply, it caches that folio in the
+instantiated inode mapping and assumes that the dentry now names a
+symlink.
 
-The cancellation completed with -EAGAIN, which ff_layout_io_track_ds_error()
-does not recognise: it fell through the switch and recorded nothing, so no
-error was reported to the server.
+If the dentry is instantiated with a non-symlink inode, the raw symlink
+target folio can be inserted into the wrong mapping.  When that inode is
+a directory, reclaim or unmount later calls nfs_readdir_clear_array()
+through nfs_dir_aops and interprets the symlink target as a readdir
+cache array, which can lead to invalid kfree() calls.
 
--EAGAIN is overloaded in the RPC layer, so rather than key the reporting on
-it, cancel the I/O with -ECANCELED and map that to NFS4ERR_NXIO in
-ff_layout_io_track_ds_error() -- the status the client already reports for
-the transport errors that leave an in-flight write incomplete.  The
-cancelled I/O is then reported to the server via LAYOUTERROR / LAYOUTRETURN.
+A vmcore from a 4.19-based kernel showed the crash when reclaiming a
+directory mapping on unmount:
 
-Unlike a genuine transport error, though, we aborted the I/O ourselves and
-have no evidence the device is at fault, so once the error is recorded we
-skip marking the device unreachable and forcing a further layout return.
+  Stack trace:
+   nfs_readdir_clear_array+0x4d/0x70 [nfs]
+   page_cache_free_page.isra.35+0x1a/0x90
+   delete_from_page_cache_batch+0x1cf/0x2c0
+   truncate_inode_pages_range+0x24d/0x910
+   [...]
+   nfs_evict_inode+0x15/0x30 [nfs]
+   evict+0x115/0x2b0
+   dispose_list+0x48/0x60
+   evict_inodes+0x16c/0x1b0
+   generic_shutdown_super+0x3f/0x120
+   nfs_kill_super+0x1b/0x40 [nfs]
+   deactivate_locked_super+0x3f/0x70
+   cleanup_mnt+0x3b/0x80
 
-The retry disposition is unchanged from the original -EAGAIN cancellation:
-both NFS4ERR_NXIO and -ECANCELED are no-ops in ff_layout_async_handle_error(),
-which still resets the I/O to pNFS (or the MDS), so it is re-driven as before.
+The current code still has the same unchecked cache insertion pattern,
+so it may be susceptible to the same failure mode.
 
-Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
+Verify that the instantiated inode is a symlink before caching the
+target folio.  If the type is wrong, drop the suspect dentry and skip
+the cache insertion while preserving the successful SYMLINK result.
+
+Co-developed-by: Jackie Liu <liuyun01@kylinos.cn>
+Signed-off-by: Jackie Liu <liuyun01@kylinos.cn>
+Signed-off-by: ZhangGuoDong <zhangguodong@kylinos.cn>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
 
 LLM Generated explanations, may be completely bogus:
 
-The local tree is **6.12.111** (`pending-6.12`). The buggy cancel path
-is present here; the candidate is not.
+## Phase 1: Commit message forensics
 
-===============================================================
-PHASE 1: COMMIT MESSAGE FORENSICS
-===============================================================
+**Step 1.1: Subject line**
+Record: **[NFS]** **[Verify]** Verify the instantiated inode is a
+symlink before inserting the SYMLINK target folio into the page cache.
 
-**Step 1.1: PARSE THE SUBJECT LINE**
-Record: `[NFSv4/flexfiles] [report] report cancelled I/O as a layout
-error`
-
-**Step 1.2: PARSE ALL COMMIT MESSAGE TAGS**
+**Step 1.2: Tags**
 Record:
-- Signed-off-by: Benjamin Coddington `<bcodding@hammerspace.com>`
-  (author)
-- Signed-off-by: Trond Myklebust `<trond.myklebust@hammerspace.com>`
-  (NFS maintainer)
+- Co-developed-by: Jackie Liu \<liuyun01@kylinos.cn\>
+- Signed-off-by: Jackie Liu \<liuyun01@kylinos.cn\>
+- Signed-off-by: ZhangGuoDong \<zhangguodong@kylinos.cn\>
+- Signed-off-by: Trond Myklebust \<trond.myklebust@hammerspace.com\>
+  (NFS client maintainer)
 - No Fixes:, Reported-by:, Tested-by:, Reviewed-by:, Acked-by:, Link:,
-  or Cc: stable (absence expected)
-- Author in git: Benjamin Coddington `<ben.coddington@hammerspace.com>`
-- Upstream SHA (on `all-next`, not in this tree):
-  `4a013b0e881e0466cc2c6a5518d2f6cda3a4f19f` (2026-06-25)
+  or Cc: stable (absence is expected for this review)
+- Mainline SHA: `3265f1998ae9a9282a8a6ca95467d9572d6ebb82` (authored
+  2026-07-03, committed by Trond 2026-08-17, merged to Linus in `nfs-
+  for-7.3-1`)
 
-**Step 1.3: ANALYZE THE COMMIT BODY TEXT**
-Record:
-- Bug: on layout recall/revoke the client cancels in-flight DS I/O so
-  the layout can be returned. Cancellation used `-EAGAIN`, which
-  `ff_layout_io_track_ds_error()` does not recognize, so it records
-  nothing and the MDS never learns the I/O did not complete.
-- Symptom: MDS cannot reconcile the affected flexfiles mirror (or take
-  other action if no instance remains). Incomplete writes can sit on a
-  DS with no write layout held.
-- Root cause: `-EAGAIN` is overloaded in the RPC layer and is not in the
-  tracked-error switch (default: return).
-- Fix: cancel with `-ECANCELED`, map that to `NFS4ERR_NXIO` (same status
-  already used for transport errors that leave a write incomplete),
-  report via LAYOUTERROR / LAYOUTRETURN, but skip marking the device
-  unreachable and skip forcing another layout return.
-- Retry path: unchanged; both `NFS4ERR_NXIO` and `-ECANCELED` fall
-  through `ff_layout_async_handle_error()` to RESET_TO_PNFS /
-  RESET_TO_MDS.
+**Step 1.3: Body**
+Record: After a successful SYMLINK RPC, `nfs_symlink()` inserts the pre-
+copied target folio into `d_inode(dentry)->i_mapping` without checking
+that the dentry is actually a symlink. If that inode is a directory,
+later reclaim/unmount runs `nfs_readdir_clear_array()` via
+`nfs_dir_aops.free_folio` and treats the symlink text as a readdir cache
+array, leading to invalid `kfree()`. A 4.19 vmcore showed exactly that
+stack on unmount. The author states the same unchecked insertion still
+exists. Failure mode: invalid free / memory corruption / crash during
+unmount or mapping reclaim.
 
-**Step 1.4: DETECT HIDDEN BUG FIXES**
-Record: Not disguised. This is an explicit protocol/correctness fix:
-cancelled I/O was silently dropped instead of being reported to the MDS.
+**Step 1.4: Hidden bug fix?**
+Record: Not hidden. This is an explicit crash/corruption fix. The
+“verify before caching” wording is a missing type check, not cleanup.
 
-===============================================================
-PHASE 2: DIFF ANALYSIS - LINE BY LINE
-===============================================================
+## Phase 2: Diff analysis
 
-**Step 2.1: INVENTORY THE CHANGES**
-Record:
-- File: `fs/nfs/flexfilelayout/flexfilelayout.c` (+22 / -1)
-- Functions: `ff_layout_io_track_ds_error()`, `ff_layout_cancel_io()`
-- Scope: single-file surgical fix
+**Step 2.1: Inventory**
+Record: One file, `fs/nfs/dir.c`. **+6 / −0**. Function:
+`nfs_symlink()`. Single-file surgical fix.
 
-**Step 2.2: UNDERSTAND THE CODE FLOW CHANGE**
-Record:
-- Hunk 1 (switch): `-ECANCELED` now maps to `NFS4ERR_NXIO` and continues
-  into `ff_layout_track_ds_error()` instead of hitting `default:
-  return`.
-- Hunk 2: after recording the error, `if (error == -ECANCELED) goto
-  out;` skips `ff_layout_mark_ds_unreachable()` and
-  `pnfs_error_mark_layout_for_return()`.
-- Hunk 3: `rpc_cancel_tasks(clnt, -EAGAIN, ...)` becomes
-  `rpc_cancel_tasks(clnt, -ECANCELED, ...)`.
-- Prepare paths (`ff_layout_*_prepare_common`) still `rpc_exit(task,
-  -EAGAIN)` for invalid lsegs. That is I/O that was never sent; it is
-  correctly left alone.
+**Step 2.2: Control-flow change**
+Record: After `NFS_PROTO(dir)->symlink()` returns 0, the old code always
+set the dentry verifier and tried
+`filemap_add_folio(d_inode(dentry)->i_mapping, folio, 0, …)`. After the
+change, `unlikely(!d_is_symlink(dentry))` causes `d_drop(dentry)`,
+`folio_put(folio)`, and `return 0` (RPC still succeeded). The success
+path is unchanged for real symlinks.
 
-**Step 2.3: IDENTIFY THE BUG MECHANISM**
-Record:
-- Category: logic / protocol correctness (missing error reporting), with
-  data-integrity impact on flexfiles mirrors.
-- Mechanism: cancelled in-flight RPC completed with an unrecognized
-  errno, so no `nfs4_ff_layout_ds_err` was queued and LAYOUTERROR /
-  LAYOUTRETURN carried no I/O error.
+**Step 2.3: Bug mechanism**
+Record: **Memory safety / type confusion.** A folio of symlink text is
+inserted into a directory mapping whose `a_ops->free_folio` is
+`nfs_readdir_clear_array()`. That function maps the folio as `struct
+nfs_cache_array` and `kfree()`s `array[i].name` for `i < array->size`.
+Path-string bytes as `size`/pointers yield invalid `kfree()`. Also
+avoids a possible NULL deref if `d_inode(dentry)` is NULL (negative
+dentry after splice).
 
-**Step 2.4: ASSESS THE FIX QUALITY**
-Record:
-- Obviously correct: use a dedicated errno, record it as the same NXIO
-  the client already reports for incomplete writes, and do not condemn
-  the device for a client-initiated abort.
-- Minimal; no API or structural change.
-- Regression risk: low. `nfs_pgio_result()` treats any non-zero
-  `rw_done()` return the same, so `-ECANCELED` vs `-EAGAIN` does not
-  change the resend path. Verified in
-  `ff_layout_async_handle_error_v4()`: `NFS4ERR_NXIO` is a no-op in the
-  op_status switch; `-ECANCELED` is not a connection error, then
-  RESET_TO_PNFS/MDS. v3 already deleted the deviceid on `-EAGAIN`
-  (default) and still does so on `-ECANCELED`.
+**Step 2.4: Fix quality**
+Record: Obviously correct and minimal. `d_is_symlink()` is the right VFS
+helper. Skipping cache insert is already treated as non-fatal (“READLINK
+will get the missing page from the server”). `d_drop()` avoids leaving a
+wrong-type dentry hashed with a verifier. Regression risk is low: the
+common success path is unchanged; the new path only runs on a type
+mismatch.
 
-===============================================================
-PHASE 3: GIT HISTORY INVESTIGATION
-===============================================================
+## Phase 3: Git history
 
-**Step 3.1: BLAME THE CHANGED LINES**
-Record:
-- Error switch introduced in `dd52128afdde` (Trond, 2015-08-20) — never
-  handled `-EAGAIN`.
-- `ff_layout_cancel_io()` and the `-EAGAIN` cancel introduced in
-  `b739a5bd9d9f18` ("NFSv4/flexfiles: Cancel I/O if the layout is
-  recalled or revoked", 2022-10-05, first in v6.1-rc1).
-- That cancel commit is an ancestor of HEAD.
+**Step 3.1: Blame**
+Record: Unchecked cache insertion comes from `873101b337767` (“NFS: copy
+symlinks into page cache before sending NFS SYMLINK request”,
+2006-09-22). That commit is an ancestor of this tree (`git merge-base
+--is-ancestor` exit 0). Folio conversion is `f003a717ae908` (2023); same
+pattern, `add_to_page_cache` → `filemap_add_folio`. Directory
+`free_folio = nfs_readdir_clear_array` is present at
+`fs/nfs/dir.c:71-73`.
 
-**Step 3.2: FOLLOW THE FIXES: TAG**
-Record: No Fixes: tag. The introducing commit is `b739a5bd9d9f18`,
-present in this tree.
+**Step 3.2: Fixes: tag**
+Record: None. Introducer is `873101b337767`, present here since 2.6-era
+NFS.
 
-**Step 3.3: CHECK FILE HISTORY FOR RELATED CHANGES**
-Record:
-- Same pattern already in this tree: `1630224189cc4` (ENETDOWN),
-  `dd7d7ee3ba2a7` (EINVAL), `7836d75467e9d` (RDMA) — all add cases to
-  this switch so the MDS is told.
-- This commit is patch 3/3 of "pNFS/flexfiles: honor clora_changed and
-  report cancelled I/O".
-- Patch 2 (`aceaa5991bdf7` "honor clora_changed when recalling a
-  layout") is **not** in this tree. It only changes *when* cancel runs
-  (skip cancel if `clora_changed` is false). This commit does not call
-  any new helper from patch 2.
+**Step 3.3: File history**
+Record: Recent `fs/nfs/dir.c` work is readdir/verifier/`atomic_open`
+(including `df214a74b5f2a` ENXIO on O_CREAT of an existing symlink).
+Those are related NFS type-confusion issues but not prerequisites. This
+patch is standalone.
 
-**Step 3.4: CHECK THE AUTHOR'S OTHER COMMITS**
-Record: Benjamin Coddington (Hammerspace) is a regular NFS/pNFS
-contributor. Trond (NFS maintainer, also Hammerspace) applied it.
+**Step 3.4: Author**
+Record: ZhangGuoDong / Jackie Liu (Kylin). Not subsystem maintainers.
+Trond (maintainer) signed off and put it in `nfs-for-7.3-1`. Same author
+also has `pnfs/blocklayout` leak fixes in this tree.
 
-**Step 3.5: CHECK FOR DEPENDENT/PREREQUISITE COMMITS**
-Record:
-- Semantic fix is standalone: change the cancel errno and handle it in
-  the existing switch.
-- Clean apply is **not** standalone against this tree. Mainline added
-  `dss_id` via later striped-layout commits (`8a8e0f5566edc`,
-  `a1491919c8805`, `20b1d75fb840c`, …). Those are **not** in HEAD. This
-  tree only has `d1830d0740d72` (data-structure support) and still uses
-  `mirror->dss[0]` / no `dss_id` argument.
-- `git apply --check` of the mainline diff: hunk 1 applied (offset
-  -177); hunk 2 failed on the `dss_id` argument. A 6.12 backport is a
-  small context edit, not a rewrite.
+**Step 3.5: Dependencies**
+Record: Needs `d_is_symlink()` (in `include/linux/dcache.h` here) and
+folio-based `nfs_symlink()` (present via `f003a717ae908`). No other
+commits required. Insertion context around `nfs_set_verifier()` is
+unique in this file.
 
-===============================================================
-PHASE 4: MAILING LIST AND EXTERNAL RESEARCH
-===============================================================
+## Phase 4: Mailing list / external
 
-**Step 4.1: FIND THE ORIGINAL PATCH DISCUSSION**
-Record:
-- `b4 dig -c 4a013b0e881e0` → https://patch.msgid.link/b5ed2050a2fa573ad
-  9a2bcf7769f23397e480f2a.1782388900.git.bcodding@hammerspace.com
-- Series: v1 (2026-06-24) then v2 (2026-06-25). Applied version is v2
-  3/3.
-- Cover letter: RFC 8881 §20.3.3; since `b739a5bd9d9f` the client
-  cancels DS I/O on every recall; when it *does* cancel (changed recall
-  or revoke), report `NFS4ERR_NXIO` so the MDS can reconcile.
-- v2 changes were only for patches 1–2 (Anna: kerneldoc, `FILE_INODE` /
-  `inode->i_ino`). Patch 3 was unchanged.
+**Step 4.1: Original submission**
+Record: `b4 dig -c 3265f1998ae9a9282a8a6ca95467d9572d6ebb82` →
+https://patch.msgid.link/20260703065448.210255-1-zhang.guodong@linux.dev
+v1 only (2026-07-03). Saved mbox has the patch and **no replies**. Trond
+applied it as-is (same +6 hunk). Lore HTML was 403 (Anubis); discussion
+content was recovered via b4.
 
-**Step 4.2: CHECK WHO REVIEWED THE PATCH**
-Record:
-- Recipients: Trond Myklebust, Anna Schumaker, linux-nfs@vger.kernel.org
-- Anna reviewed v1 1/3 and 2/3 only (tracepoint inode id; kerneldoc for
-  `cancel_io`). No NAK. No comments on 3/3.
-- Trond applied the series (Signed-off-by).
-- No reviewer Cc: stable.
+**Step 4.2: Recipients (`b4 dig -w`)**
+Record: Trond Myklebust, Anna Schumaker, linux-nfs@vger.kernel.org,
+ZhangGuoDong, Jackie Liu. Right maintainers/list.
 
-**Step 4.3: SEARCH FOR THE BUG REPORT**
-Record: No syzbot, bugzilla, or external user report. The description is
-a vendor/protocol failure (Hammerspace flexfiles MDS cannot reconcile
-after cancel). WebFetch to lore returned 403; discussion was recovered
-via `b4 dig -m`.
+**Step 4.3: Bug report**
+Record: No public bugzilla/syzbot link. Evidence is a 4.19 vmcore stack
+in the commit message (unmount → `nfs_readdir_clear_array`).
 
-**Step 4.4: CHECK FOR RELATED PATCHES AND SERIES**
-Record:
-- 1/3: tracepoint only — not required for this fix.
-- 2/3: stop cancelling on unchanged recalls — complementary RFC
-  behavior, not a compile/runtime dependency of 3/3. Without it, 6.12
-  still cancels on every recall, so this fix would send NXIO on more
-  recalls than post-series mainline. That is more conservative for the
-  MDS (reconcile), not a crash path.
-- Other cancel callers (`pnfs_mark_matching_lsegs_invalid`,
-  teardown/return with cancel) remain even after 2/3.
+**Step 4.4: Series**
+Record: Standalone `[PATCH]`, not `n/m`. Same 7.3 NFS pull also has
+NFSv3 symlink/`atomic_open` fixes; those are separate.
 
-**Step 4.5: CHECK STABLE MAILING LIST HISTORY**
-Record: No stable-list discussion found (lore.kernel.org/stable search
-via WebFetch was 403). UNVERIFIED: whether anyone already requested or
-rejected this for stable.
+**Step 4.5: Stable list**
+Record: Lore stable search 403. Trond’s 7.3 pull listed this under
+**“Other bugfixes”**, not “Stable fixes”. That is categorization, not a
+NAK. No stable-thread rejection found.
 
-===============================================================
-PHASE 5: CODE SEMANTIC ANALYSIS
-===============================================================
+## Phase 5: Semantic / call graph
 
-**Step 5.1: IDENTIFY KEY FUNCTIONS IN THE DIFF**
-Record: `ff_layout_io_track_ds_error()`, `ff_layout_cancel_io()`.
+**Step 5.1: Functions**
+Record: `nfs_symlink()` only.
 
-**Step 5.2: TRACE CALLERS**
-Record:
-- `ff_layout_io_track_ds_error()`: `ff_layout_read_done_cb()`,
-  `ff_layout_write_done_cb()`, `ff_layout_commit_done_cb()` — DS I/O
-  completion.
-- `ff_layout_cancel_io()`: registered as
-  `pnfs_layoutdriver_type.cancel_io`.
-- `pnfs_lseg_cancel_io()` → `pnfs_mark_matching_lsegs_invalid()` (line
-  744) and `pnfs_mark_matching_lsegs_return()` (line 2678).
-- Those run on CB_LAYOUTRECALL, layout return, revoke, and teardown.
+**Step 5.2: Callers**
+Record: `nfs_dir_inode_operations.symlink`,
+`nfs3_dir_inode_operations.symlink`, `nfs4_dir_inode_operations.symlink`
+all point at `nfs_symlink`. `vfs_symlink()` → `dir->i_op->symlink()`
+from `do_symlinkat` / `symlink(2)`.
 
-**Step 5.3: TRACE CALLEES**
-Record: `ff_layout_track_ds_error()` queues `nfs4_ff_layout_ds_err`;
-`ff_layout_send_layouterror()` / `ff_layout_encode_ioerr()` send
-LAYOUTERROR / LAYOUTRETURN. `rpc_cancel_tasks()` →
-`rpc_task_try_cancel()`.
+**Step 5.3: Callees**
+Record: `NFS_PROTO(dir)->symlink` (`nfs_proc_symlink` /
+`nfs3_proc_symlink` / `nfs4_proc_symlink`) instantiate via
+`nfs_instantiate` / `nfs_add_or_obtain` → `nfs_fhget` +
+`d_splice_alias`. Then `filemap_add_folio`. Directory inodes get
+`i_data.a_ops = &nfs_dir_aops` in `fs/nfs/inode.c` (`S_ISDIR` branch).
 
-**Step 5.4: FOLLOW THE CALL CHAIN**
-Record: Reachable from normal pNFS flexfiles file I/O plus MDS
-CB_LAYOUTRECALL. Not a raw syscall crash path; it is a common path for
-any flexfiles mount under layout recall/return.
+**Step 5.4: Reachability**
+Record: Yes — unprivileged `symlink(2)` on an NFS mount. Crash is later
+(reclaim/unmount), not at syscall return.
 
-**Step 5.5: SEARCH FOR SIMILAR PATTERNS**
-Record: Same switch already maps transport failures to `NFS4ERR_NXIO`.
-This is the same class of fix, for a client-initiated cancel that
-previously fell on the floor.
+**Step 5.5: Similar patterns**
+Record: Same class as `nfs_atomic_open_v23()` not checking `d_is_reg()`
+after CREATE (fixed in this tree by `df214a74b5f2a`). NFS create paths
+can attach a different type than the client assumed.
 
-===============================================================
-PHASE 6: CROSS-REFERENCING AGAINST THE LOCAL TREE
-===============================================================
+## Phase 6: This tree (pending-6.12 / 6.12.111)
 
-**Step 6.1: DOES THE BUGGY CODE EXIST IN THIS TREE?**
-Record: Yes.
-- Tree: `p-6.12-3-gc504cf0baa3d8`, `VERSION=6 PATCHLEVEL=12
-  SUBLEVEL=111`.
-- `git merge-base --is-ancestor 4a013b0e881e0 HEAD` → not an ancestor
-  (fix not present).
-- `ff_layout_cancel_io()` still uses `-EAGAIN` (line 2196).
-- `ff_layout_io_track_ds_error()` has no `-ECANCELED` case; default
-  returns without recording (lines 1369–1370).
-- Bug introduced in v6.1 (`b739a5bd9d9f18`); present for the whole 6.12
-  lifetime.
+**Step 6.1: Buggy code present?**
+Record: **Yes.** `nfs_symlink()` at `fs/nfs/dir.c:2612-2665` has the
+unchecked `filemap_add_folio(d_inode(dentry)->i_mapping, …)` after RPC
+success. `nfs_dir_aops.free_folio = nfs_readdir_clear_array` still
+`kfree`s names from folio contents. `3265f1998ae9` is **not** an
+ancestor of HEAD.
 
-**Step 6.2: CHECK FOR BACKPORT COMPLICATIONS**
-Record: Minor conflicts. Need to drop `dss_id` from
-`ff_layout_track_ds_error()` / `ff_layout_mark_ds_unreachable()` and
-keep the single `dss[0]` cancel loop. Not a semantic rewrite.
+**Step 6.2: Backport difficulty**
+Record: **Clean apply.** Hunk context is the `return error;` /
+`nfs_set_verifier()` sequence, identical here. Later mainline `%llu` for
+`i_ino` is outside this hunk.
 
-**Step 6.3: CHECK IF RELATED FIXES ARE ALREADY HERE**
-Record: No equivalent cancel-reporting fix. Related NXIO mappings
-(ENETDOWN, EINVAL, EPROTO/ENODEV) are already here and do not cover
-cancel.
+**Step 6.3: Related fixes already here?**
+Record: No `d_is_symlink()` guard in `nfs_symlink()`. `df214a74b5f2a` is
+a different type-check (open/CREATE), not this cache-insert bug.
 
-===============================================================
-PHASE 7: SUBSYSTEM AND MAINTAINER CONTEXT
-===============================================================
+## Phase 7: Subsystem
 
-**Step 7.1: IDENTIFY THE SUBSYSTEM AND ITS CRITICALITY**
-Record: `fs/nfs/flexfilelayout` — NFSv4.1 pNFS flexfiles client.
-**IMPORTANT** (not core VFS; production for flexfiles MDS deployments).
-`CONFIG_PNFS_FLEXFILE_LAYOUT` defaults to `NFS_V4`.
+**Step 7.1:** NFS client (`fs/nfs/`). **IMPORTANT** — common networked
+filesystem; not core mm/VFS, but widely deployed
+(enterprise/Android/embedded).
 
-**Step 7.2: ASSESS SUBSYSTEM ACTIVITY**
-Record: Active. Recent 6.12 backports include NO_IO_THRU_MDS, zero-FH
-rejection, NFS-level error handling, ENETDOWN reporting.
+**Step 7.2:** Actively maintained; this is a long-standing pattern, not
+a brand-new subsystem.
 
-===============================================================
-PHASE 8: IMPACT AND RISK ASSESSMENT
-===============================================================
+## Phase 8: Impact and risk
 
-**Step 8.1: DETERMINE WHO IS AFFECTED**
-Record: Flexfiles pNFS clients (`CONFIG_PNFS_FLEXFILE_LAYOUT`). Not
-universal; real production users (Hammerspace and other flexfiles MDS).
+**Step 8.1:** NFS client users who create symlinks (`symlink(2)`). All
+of NFSv2/v3/v4 client.
 
-**Step 8.2: DETERMINE THE TRIGGER CONDITIONS**
-Record: Layout recall, revoke, or return while DS read/write/commit RPCs
-are in flight. Common on flexfiles (recall on close, lease recovery,
-restriping). Not an unprivileged local exploit; it is a networked MDS
-callback plus in-flight I/O.
+**Step 8.2:** Trigger is **not** every `symlink()`. It needs the post-
+RPC dentry to not be a symlink: NFSv2 LOOKUP-after-SYMLINK race, missing
+fh/attrs then LOOKUP, server wrong type, or fh alias onto a directory
+inode. Unprivileged users can call `symlink(2)`; the crash is delayed to
+reclaim/unmount.
 
-**Step 8.3: DETERMINE THE FAILURE MODE SEVERITY**
-Record: MDS is not told that in-flight writes did not complete, so it
-may not reconcile a mirror. Later reads can see a stale or incomplete
-replica. **HIGH** (data integrity / stale data), not a kernel oops.
+**Step 8.3:** Failure mode: invalid `kfree` / memory corruption / oops
+on unmount. **CRITICAL**.
 
-**Step 8.4: CALCULATE RISK-BENEFIT RATIO**
-Record:
-- Benefit: HIGH for flexfiles — MDS can reconcile after cancel/revoke.
-- Risk: LOW — +22 lines, contained, retry path unchanged. Extra NXIO
-  reports on 6.12’s still-unconditional cancel are conservative, not a
-  hang/crash.
-- Ratio: benefit outweighs risk.
+**Step 8.4:** Benefit **high** (prevents unmount crash/corruption). Risk
+**very low** (6 lines, success path unchanged, cache skip already
+defined as optional). Ratio strongly favors backport.
 
-===============================================================
-PHASE 9: FINAL SYNTHESIS
-===============================================================
+## Phase 9: Synthesis
 
-**Step 9.1: COMPILE THE EVIDENCE**
+**For:**
+- Real crash with vmcore stack (`nfs_readdir_clear_array` on unmount).
+- Same insertion vs directory `free_folio` pattern is in this 6.12 tree.
+- Bug dates to 2006 (`873101b337767`).
+- 6-line type check; NFS maintainer signed off.
+- Userspace-reachable via `symlink(2)`.
+- Also avoids NULL `d_inode` if instantiation left a non-
+  symlink/negative dentry.
+- Applies cleanly; no new APIs.
 
-FOR:
-- Real bug: cancelled DS I/O is invisible to the MDS.
-- Data-integrity impact on flexfiles mirrors.
-- Code is in this 6.12 tree since v6.1.
-- Small, obviously correct, maintainer-applied.
-- Same reporting pattern already backported here (ENETDOWN, EINVAL,
-  RDMA).
-- Retry disposition verified unchanged.
+**Against:**
+- Trigger is uncommon (race/server/fh mismatch), not every symlink.
+- No Fixes:/Cc: stable (expected; not a NO reason).
+- Trond grouped it as “other bugfixes” in the 7.3 pull, not “stable
+  fixes”.
+- Mailing list had no public review comments (silent apply).
+- Crash evidence is 4.19; current kernels are folio-based but the type-
+  confusion is unchanged.
 
-AGAINST:
-- Patch 3/3 of a series; 2/3 (narrower cancel) is not here.
-- Mainline diff needs a small `dss_id`-free backport.
-- No crash/UAF/CVE; flexfiles-specific.
-- No Fixes:/Cc: stable/user report (expected for this queue).
+**Unresolved:** Exact 4.19 race vs this tree is not re-reproduced here.
+The local code still matches the described mechanism.
 
-UNRESOLVED:
-- Stable-list history (lore/stable WebFetch 403).
-- How every flexfiles MDS implementation reacts to extra NXIO on
-  unchanged recalls (without patch 2). Conservative, not a kernel
-  regression.
+**Stable rules:**
+1. Obviously correct and tested? **PASS** — type check + drop/skip
+   cache; maintainer applied v1 unchanged.
+2. Real user-visible bug? **PASS** — production vmcore.
+3. Important (crash/corruption)? **PASS** — invalid `kfree` on unmount.
+4. Small/contained? **PASS** — +6 lines, one function.
+5. No new features/APIs? **PASS**.
+6. Applies to this tree? **PASS**.
 
-**Step 9.2: APPLY THE STABLE RULES CHECKLIST**
-1. Obviously correct and tested? **PASS** — mapped like existing
-   transport errors; applied by the NFS maintainer.
-2. Fixes a real bug that affects users? **PASS** — MDS cannot reconcile
-   after cancel.
-3. Important issue? **PASS** — data integrity / stale flexfiles mirrors
-   (HIGH, not oops).
-4. Small and contained? **PASS** — +22/-1, one file.
-5. No new features or APIs? **PASS**
-6. Can apply to the local tree? **PASS** — needs a trivial context
-   backport (no `dss_id`); buggy code is here.
+**Exception category:** None needed; it is a normal bugfix.
 
-**Step 9.3: CHECK FOR EXCEPTION CATEGORIES**
-Record: None (not a device ID, quirk, DT, build, or docs fix). Qualifies
-as a normal important bugfix.
-
-**Step 9.4: MAKE YOUR DECISION**
-This should be backported to this 6.12 tree. The cancel path exists, the
-MDS is not told, and the fix is small. Adapt the hunks to the `dss[0]` /
-no-`dss_id` signatures; do not pull the striped-layout series.
-
-What it solves for stable users: after layout recall/revoke, in-flight
-flexfiles I/O is cancelled so the layout can return, but 6.12 records
-nothing. The MDS then cannot reconcile the mirror. Mapping cancel to
-`NFS4ERR_NXIO` and sending LAYOUTERROR / LAYOUTRETURN closes that hole
-without marking the device dead or changing retry.
-
-Risk vs benefit: low risk, high benefit on flexfiles. Companion patch 2
-(honor `clora_changed`) is a separate RFC behavior change and is not
-required for this reporting fix to work.
+This tree is **6.12.111** (`pending-6.12`). The buggy path is here, the
+fix is surgical, and the failure is a crash with memory corruption. It
+should be backported.
 
 Verification:
-- [Phase 1] Tags: only author + Trond SOBs; no Fixes/Reported-by/Cc
-  stable
-- [Phase 1] Upstream SHA `4a013b0e881e0` on all-next; `git merge-base
-  --is-ancestor` → not in HEAD
-- [Phase 2] Diff: +22/-1 in one file; `-EAGAIN` → `-ECANCELED`; new NXIO
-  case; skip unreachable/return
-- [Phase 2] `NFS4ERR_NXIO` and `NFSERR_NXIO` both equal 6
-- [Phase 2] `nfs_pgio_result()`: non-zero `rw_done()` skips
-  `nfs_set_pgio_error` for both errnos
-- [Phase 2] v4/v3 async handlers: retry disposition matches the commit
-  text
-- [Phase 3] Blame: switch from `dd52128afdde` (2015); cancel from
-  `b739a5bd9d9f18` (v6.1), ancestor of HEAD
-- [Phase 3] Similar backports already here: `1630224189cc4`,
-  `dd7d7ee3ba2a7`, `7836d75467e9d`
-- [Phase 3] Patch 2 `aceaa5991bdf7` is not an ancestor of HEAD
-- [Phase 4] `b4 dig -c 4a013b0e881e0`: v2 3/3 at the msgid.link above
-- [Phase 4] `b4 dig -a`: v1 then v2; 3/3 unchanged
-- [Phase 4] `b4 dig -w`: Trond, Anna, linux-nfs
-- [Phase 4] Anna v1 review: nits on 1/3 and 2/3 only; no NAK of 3/3
-- [Phase 4] Cover letter recovered from `/tmp/ff-cancel-thread.mbox`
-- [Phase 5] Callers: read/write/commit done_cb; cancel via
-  `pnfs_lseg_cancel_io` from recall/return/invalidate
-- [Phase 6] `git describe HEAD` → `p-6.12-3-gc504cf0baa3d8`; `make
-  kernelversion` → 6.12.111
-- [Phase 6] Local cancel still `-EAGAIN` at flexfilelayout.c:2196; no
-  `-ECANCELED` in `fs/nfs`
-- [Phase 6] `git apply --check` failed on `dss_id` hunk; striped error-
-  path commits not in HEAD
-- [Phase 8] Failure mode: unreported incomplete DS I/O →
-  unreconciliation / stale mirror, HIGH
-- UNVERIFIED: stable@ discussion (lore 403)
+- [Phase 1] Tags parsed from provided message and GitHub `3265f1998ae9`;
+  no Fixes/Cc:stable; Trond SOB confirmed.
+- [Phase 2] Diff is +6 in `nfs_symlink()` only; compared to local
+  `fs/nfs/dir.c:2612-2665`.
+- [Phase 3] `git blame` on `nfs_symlink`; introducer `873101b337767` is
+  ancestor; `git merge-base --is-ancestor 3265f1998ae9 HEAD` → not in
+  this tree.
+- [Phase 3] `nfs_dir_aops.free_folio = nfs_readdir_clear_array` at lines
+  71-73; `nfs_readdir_clear_array` kfree loop at 221-231; directory
+  `a_ops` set in `inode.c` ~501-505.
+- [Phase 4] `b4 dig -c 3265f1998ae9` → lore msgid
+  `20260703065448.210255-1-zhang.guodong@linux.dev`; `-a` v1 only; `-w`
+  Trond+Anna+linux-nfs; mbox has no replies.
+- [Phase 4] Openwall 7.3 pull lists this under other bugfixes:
+  https://lists.openwall.net/linux-kernel/2026/08/26/1997
+- [Phase 4] Lore HTML 403; used b4 mbox instead.
+- [Phase 5] Grep: v2/v3/v4 dir `i_op->symlink = nfs_symlink`;
+  `vfs_symlink` in `fs/namei.c`.
+- [Phase 6] `make kernelversion` → 6.12.111; `git describe HEAD` →
+  `p-6.12-3-gc504cf0baa3d8`; insertion context unique; `d_is_symlink`
+  exists.
+- [Phase 8] Failure mode from vmcore + local `nfs_readdir_clear_array`
+  code: invalid kfree, CRITICAL.
+- UNVERIFIED: Could not re-run the 4.19 workload; mechanism match is
+  from code, not a new repro.
 
 **YES**
 
- fs/nfs/flexfilelayout/flexfilelayout.c | 23 ++++++++++++++++++++++-
- 1 file changed, 22 insertions(+), 1 deletion(-)
+ fs/nfs/dir.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 8099bfc4fe2f8..c708724bb53f2 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1546,6 +1546,17 @@ static void ff_layout_io_track_ds_error(struct pnfs_layout_segment *lseg,
- 		case -EACCES:
- 			*op_status = status = NFS4ERR_ACCESS;
- 			break;
-+		case -ECANCELED:
-+			/*
-+			 * In-flight I/O we cancelled to return a recalled or
-+			 * revoked layout.  Report it as a failure to reach the
-+			 * device (NFS4ERR_NXIO), like the transport errors
-+			 * above, so the server can reconcile the affected mirror
-+			 * instance.  We aborted the I/O ourselves rather than
-+			 * observe the device fail, so don't condemn it below.
-+			 */
-+			*op_status = status = NFS4ERR_NXIO;
-+			break;
- 		default:
- 			return;
- 		}
-@@ -1556,6 +1567,15 @@ static void ff_layout_io_track_ds_error(struct pnfs_layout_segment *lseg,
- 				       mirror, dss_id, offset, length, status, opnum,
- 				       nfs_io_gfp_mask());
- 
-+	/*
-+	 * I/O we cancelled ourselves to return a recalled or revoked layout
-+	 * is reported above so the server can reconcile the mirror, but we
-+	 * have no evidence the device is at fault: don't mark it unreachable
-+	 * or force a return.
-+	 */
-+	if (error == -ECANCELED)
-+		goto out;
-+
- 	switch (status) {
- 	case NFS4ERR_DELAY:
- 	case NFS4ERR_GRACE:
-@@ -1575,6 +1595,7 @@ static void ff_layout_io_track_ds_error(struct pnfs_layout_segment *lseg,
- 						  lseg);
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 38b0834e3ebf1..0d8ac9a7448af 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2632,6 +2632,12 @@ int nfs_symlink(struct mnt_idmap *idmap, struct inode *dir,
+ 		return error;
  	}
  
-+out:
- 	dprintk("%s: err %d op %d status %u\n", __func__, err, opnum, status);
- }
++	if (unlikely(!d_is_symlink(dentry))) {
++		d_drop(dentry);
++		folio_put(folio);
++		return 0;
++	}
++
+ 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
  
-@@ -2465,7 +2486,7 @@ static void ff_layout_cancel_io(struct pnfs_layout_segment *lseg)
- 			clnt = ds_clp->cl_rpcclient;
- 			if (!clnt)
- 				continue;
--			if (!rpc_cancel_tasks(clnt, -EAGAIN,
-+			if (!rpc_cancel_tasks(clnt, -ECANCELED,
- 					      ff_layout_match_io, lseg))
- 				continue;
- 			rpc_clnt_disconnect(clnt);
+ 	/*
 -- 
 2.53.0
 
