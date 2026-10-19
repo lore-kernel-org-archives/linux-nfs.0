@@ -1,123 +1,109 @@
-Received: from mail-wm1-f44.google.com (mail-wm1-f44.google.com [209.85.128.44])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from canpmsgout06.his.huawei.com (canpmsgout06.his.huawei.com [113.46.200.221])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D2523494291
-	for <linux-nfs@vger.kernel.org>; Mon, 19 Oct 2026 12:26:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.44
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C388E4F4043;
+	Mon, 19 Oct 2026 13:16:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.221
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792412806; cv=none; b=eP9KRz08IayI2A9Tc5UslOvgFNmCm7X2SQ89OJch47ggXa1sDrQr6FxolyMGG04lpF0H19Cp51gwiA9XhSZSH+EE0wIJu4EjBtXuo/BS8FdFqH8RW8+R6V0wYCuPibJENJ0mqsnQFT9T/tPLO7aaV127+I9KiqBQ+JejtQdFqAc=
+	t=1792415807; cv=none; b=p9y034GIKmj4+x2ziW0SHvyiIy6KpV+4gM9hwHkf4SpI1WD5bNfXvlk6wmN02Rykiv/Br/YOrfokJtDWhbEBp2w5wD0E0f5eDZcI/DEJ7vTGT4uuIJEFNn/JnaJavg/lZ5aEaSbn/jbmcPsYyQrdRAZjxIa4CWLcNWCO2ECsWMI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792412806; c=relaxed/simple;
-	bh=2J4QDg/aPsDzAlpppkrAn+r7m+C0v3TwtrRFcMn0Hq0=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=UlZjL3/OQUdy2vxvIj+z44UXUGcumiyhakq7vwLDq/3V7QyIfiseSdLBRO4E9PxR4USyDrr75uPiJ/42rcvM1fIeIJDbv6tTJD/2O4B4CPLAzjR6AY3PXwrefPBxNHgOxwXv8bOvRVZKOdweG57Cui+FVKyLE4g3czSAoxc3RY8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=klLcXACd; arc=none smtp.client-ip=209.85.128.44
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1792415807; c=relaxed/simple;
+	bh=KEfUjJ+sWeyEpypWIo35O6elA0OeVZ28l/vNOIqBtYE=;
+	h=Message-ID:Date:MIME-Version:Subject:To:CC:References:From:
+	 In-Reply-To:Content-Type; b=mA5/VZwc5jpK8Yvou1ZFTHU80J2mswJ24LI3Boh1XORYUYOGJ7C3SX5xYGegXqi5nVbI2fdtrTIwxSDnvltkUUHaL/joIQZGSrD+FMg0OC0iXHsb3acLJ3cEb/9DU9OTaiHq+y4juD2qWTHboD48rp66iSVaQvrOSQp+um4GJGs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=CGjJxHSS; arc=none smtp.client-ip=113.46.200.221
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="klLcXACd"
-Received: by mail-wm1-f44.google.com with SMTP id 5b1f17b1804b1-4a1ec92f655so6309515e9.0
-        for <linux-nfs@vger.kernel.org>; Mon, 19 Oct 2026 05:26:35 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1792412794; x=1793017594; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=EtKFCm4Kb4fRyfZVN6sFqWcdE1J66fmbQkE6r6uUAyc=;
-        b=klLcXACdA2X+s7HCk4dX/NKhaCCFnczanr/W2bKJSEjkf3+aVXYcl5Qsk1fD9xGBH2
-         LwvVNje72D993rHpXuM08ZiqwrZmr9uy3ChTkPWDwzMWAmPl64DCAqTtXvwLYH8SylET
-         F4bFDLrGVAr27oiUN3XAa6h/gqSGmw4Z9j2ws9/zYQUR2VKOPre3kn54ZD3BmWCcX2Im
-         IpXEWXQYiCcNIh34dyE0XwHHIZ8frX0kYd/0YoB2ndR0qEv5NRo/OC0kKCqkHbrpKzM0
-         Sf/EXIVxurWWMEQIkMArr6o7bd8I9SEzcbLB7Tx//32T6whFxw41ih/81ZCC9P6ZbpYP
-         v8tQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792412794; x=1793017594;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=EtKFCm4Kb4fRyfZVN6sFqWcdE1J66fmbQkE6r6uUAyc=;
-        b=ZZivIodTE8hjlXaJgAcMkEYslBb2VWmGrhIIHKihhop5ukddXMFLL/W1nWoAkFLe/4
-         irSDvO25DEFxOzR+S7Ue1igVCnZUr0jiI1IA/Y9VjUYdsO1cq+xpkaEXr2i8ZshA7CNP
-         cET7DJEKj53uQ4/TguHtS4r8d55eLnSQG64PkIx1Lyr/MPA/rbTnH7Rw4OE3tvFUcJtJ
-         q7U36GrUloZguwnpFVzBuTEfJK4nxZ3llTWwkpZokSkREibhOINWMl9vE61zUygnBlrW
-         FHp3m1iqYlpHTb4XrnqOfzhEtsMVbuI0RJYLgL0FPQLtSoP0UrP09UvJqKqBEYi9AasF
-         cHEA==
-X-Forwarded-Encrypted: i=1; AKwUvBx6ZG0d7LzpgCoVnYscgNIn9hMti396orvFu9MU+3eknXBVlv5Yu0vVwC4V9jpIufbgom3uQo12Fpo=@vger.kernel.org
-X-Gm-Message-State: AFq9FYKUpbMcGAL0nhy4a+9UQW3Ka4skn+tAtYNMXEGJmTExvZz3cD4c
-	uxItm2EqwrlLOFXbkR6MPSQ02n1UC2f+QePkBV1D/eOekKScANtG5VOk
-X-Gm-Gg: AYBFou1P8R/sQ/5IEqKH8Ac0xpJVJXwAyqzAdYSJZ/x0w3F6yF8XAKpsI5TPvVkanWe
-	PlyjYhCWAMkFZUzoafRW4rh11vpA+N6aHEx2MBi/jIjA44T0wYcHk2I0LRpHz1FkZJvFkQQf4QH
-	tZum1klZo2O9rnLJ5hyKQ/UbMDha4QSEX0zKUx4UJr8hmSXGTMEE/6LScEuDbfQKIX5AKsQGJEk
-	ao2HMM93cfmJ6LxrFXw+SKUmx7xx93I4AhZlgyMjwH5x7x5kMQWimuw7amNc1uyQ/pkmrNlvY8E
-	7mGxD+UJPr8qQUJzAL3JJ6RSoBF3AKRTZuIwle/UimuUGfvg5D2CrcMMJ4d6XFSGImT5jtTJp38
-	LqmFfTw5MUmFel6zHMxSEpx4jjxtf8m6AUqjBpMOE2r4ZNO+ppN5eYzt+dbFlh+GnnYfNMTLv2P
-	dxl9mc6GJR6pCunEAXz3fxtIjzQB8zN5fvUZ/s8uyB43GNMmA0NIIkTT8HCVnZdSCuG6qyMOCFS
-	PNGRU2jpWp4Tyg=
-X-Received: by 2002:a7b:c3c1:0:b0:4a1:8849:17ae with SMTP id 5b1f17b1804b1-4a1c663b460mr182215415e9.1.1792412793709;
-        Mon, 19 Oct 2026 05:26:33 -0700 (PDT)
-Received: from localhost.localdomain ([2a06:c701:4778:c500:e497:1486:f91f:acf4])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-48dfd4e7889sm23101961f8f.24.2026.10.19.05.26.32
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 19 Oct 2026 05:26:33 -0700 (PDT)
-From: Avi Weiss <thnkslprpt@gmail.com>
-To: Trond Myklebust <trondmy@kernel.org>
-Cc: Anna Schumaker <anna@kernel.org>,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH] NFS: restore directory index when resuming readdir
-Date: Mon, 19 Oct 2026 15:26:30 +0300
-Message-ID: <20261019122630.200561-1-thnkslprpt@gmail.com>
-X-Mailer: git-send-email 2.43.0
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="CGjJxHSS"
+dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
+	c=relaxed/relaxed; q=dns/txt;
+	h=From;
+	bh=KEfUjJ+sWeyEpypWIo35O6elA0OeVZ28l/vNOIqBtYE=;
+	b=CGjJxHSSLnLyFiBJ6fmCvw7MlJSp71N6IQMPcQkTfVBF4w4+qhSNBqybtc2YkWCvE5LwoEOVU
+	nkl6Q6kL3AgrL1evhkMPi2OeyEjemmmAVgbOgxQlks5tBhbrz4Ra7a12Oy27gvkosJfa6xtd7mk
+	IO1wVoLvEGKoMecheF6kbbs=
+Received: from mail.maildlp.com (unknown [172.19.162.223])
+	by canpmsgout06.his.huawei.com (SkyGuard) with ESMTPS id 4j7bfV0G5ZzRhrQ;
+	Mon, 19 Oct 2026 21:16:34 +0800 (CST)
+Received: from whupemk100010.china.huawei.com (unknown [7.152.184.41])
+	by mail.maildlp.com (Postfix) with ESMTPS id 3320840575;
+	Mon, 19 Oct 2026 21:16:37 +0800 (CST)
+Received: from [10.67.110.140] (10.67.110.140) by
+ whupemk100010.china.huawei.com (7.152.184.41) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.2562.45; Mon, 19 Oct 2026 21:16:30 +0800
+Message-ID: <5e6e9ac9-172e-4434-a333-8bcad9e026de@huawei.com>
+Date: Mon, 19 Oct 2026 21:16:28 +0800
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2 -next 09/18] landlock: Add READ_METADATA and
+ WRITE_METADATA access rights
+To: Justin Suess <utilityemal77@gmail.com>
+CC: <mic@digikod.net>, <gnoack@google.com>, <paul@paul-moore.com>,
+	<jmorris@namei.org>, <serge@hallyn.com>, <corbet@lwn.net>,
+	<skhan@linuxfoundation.org>, <ast@kernel.org>, <daniel@iogearbox.net>,
+	<andrii@kernel.org>, <eddyz87@gmail.com>, <memxor@gmail.com>,
+	<martin.lau@linux.dev>, <song@kernel.org>, <yonghong.song@linux.dev>,
+	<jolsa@kernel.org>, <emil@etsalapatis.com>, <ihor.solodrai@linux.dev>,
+	<rdunlap@infradead.org>, <gregkh@linuxfoundation.org>, <rafael@kernel.org>,
+	<dakr@kernel.org>, <johan@kernel.org>, <dlemoal@kernel.org>, <hch@lst.de>,
+	<axboe@kernel.dk>, <viro@zeniv.linux.org.uk>, <brauner@kernel.org>,
+	<jack@suse.cz>, <dhowells@redhat.com>, <code@tyhicks.com>,
+	<linkinjeon@kernel.org>, <sj1557.seo@samsung.com>, <yuezhang.mo@sony.com>,
+	<hirofumi@mail.parknet.co.jp>, <cel@kernel.org>, <jlayton@kernel.org>,
+	<neil@brown.name>, <okorniev@redhat.com>, <Dai.Ngo@oracle.com>,
+	<tom@talpey.com>, <hyc.lee@gmail.com>, <miklos@szeredi.hu>,
+	<amir73il@gmail.com>, <senozhatsky@chromium.org>,
+	<chenxiaosong@chenxiaosong.com>, <kpsingh@kernel.org>, <matt@bobrowski.net>,
+	<rostedt@goodmis.org>, <mhiramat@kernel.org>,
+	<mathieu.desnoyers@efficios.com>, <john.johansen@canonical.com>,
+	<georgia.garcia@canonical.com>, <zohar@linux.ibm.com>,
+	<roberto.sassu@huawei.com>, <dmitry.kasatkin@gmail.com>,
+	<eric.snowberg@oracle.com>, <stephen.smalley.work@gmail.com>,
+	<omosnacek@gmail.com>, <casey@schaufler-ca.com>, <takedakn@nttdata.co.jp>,
+	<penguin-kernel@i-love.sakura.ne.jp>, <xiujianfeng@huawei.com>,
+	<nanx95726@gmail.com>, <djwong@kernel.org>, <lujialin4@huawei.com>,
+	<bpf@vger.kernel.org>, <linux-doc@vger.kernel.org>,
+	<linux-kernel@vger.kernel.org>, <linux-security-module@vger.kernel.org>,
+	<driver-core@lists.linux.dev>, <linux-block@vger.kernel.org>,
+	<linux-fsdevel@vger.kernel.org>, <netfs@lists.linux.dev>,
+	<ecryptfs@vger.kernel.org>, <exfat@lists.linux.dev>,
+	<linux-nfs@vger.kernel.org>, <ntfs@lists.linux.dev>,
+	<linux-unionfs@vger.kernel.org>, <linux-cifs@vger.kernel.org>,
+	<linux-trace-kernel@vger.kernel.org>, <apparmor@lists.ubuntu.com>,
+	<linux-integrity@vger.kernel.org>, <selinux@vger.kernel.org>,
+	<linux-kselftest@vger.kernel.org>
+References: <20261015125425.3246251-1-caixinchen1@huawei.com>
+ <20261015125425.3246251-10-caixinchen1@huawei.com> <atI20Vs7Du9-g1Hz@zenbox>
+Content-Language: en-US
+From: Cai Xinchen <caixinchen1@huawei.com>
+In-Reply-To: <atI20Vs7Du9-g1Hz@zenbox>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Transfer-Encoding: 7bit
+X-ClientProxiedBy: kwepems500002.china.huawei.com (7.221.188.17) To
+ whupemk100010.china.huawei.com (7.152.184.41)
 
-nfs_readdir() restores the cached folio index and cookie when
-resuming directory iteration, but leaves current_index at zero.
-In 32-bit index mode, nfs_readdir_search_for_cookie() then
-reports a folio-relative offset instead of the absolute entry
-position.
+Hello Justin,
 
-Restore current_index from the saved logical folio index before
-searching the cache.
+Thank you for the review, and for thinking the implications through so
+carefully -- the concrete scenarios you describe were very helpful to
+settle the design.
 
-This solution relies on the current behavior of 
-nfs_readdir_seek_next_array(), where folio_index advances by 
-one and current_index advances by nfs_readdir_array_maxentries()
-for each full, nonterminal folio.
+I agree it should be a conscious
+decision: the next revision will make the *_METADATA checked at open time
 
-Fixes: f648022faa68e ("NFS: Convert readdir page cache to use a cookie based index")
-Signed-off-by: Avi Weiss <thnkslprpt@gmail.com>
----
-I tried a couple other ways of recovering current_index like 
-tracking it with a new variable in nfs_open_dir_context and 
-deriving it from ctx->pos but the first option ended up expanding
-the change-set drastically and the 2nd option had an issue of 
-freshness after directory changes.
+and follow the mechanic for the truncate right
 
-I was able to reproduce both the failure and confirm the fix is valid
-locally.
-
- fs/nfs/dir.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 49394123bd09..a1ad04b2f307 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1253,6 +1253,8 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 	spin_lock(&file->f_lock);
- 	desc->dir_cookie = dir_ctx->dir_cookie;
- 	desc->folio_index = dir_ctx->page_index;
-+	desc->current_index = (loff_t)desc->folio_index *
-+			      nfs_readdir_array_maxentries();
- 	desc->last_cookie = dir_ctx->last_cookie;
- 	desc->attr_gencount = dir_ctx->attr_gencount;
- 	desc->eof = dir_ctx->eof;
-
-base-commit: c03c1a14507dfaf8b856c2608f9ac216021fc222
--- 
-2.43.0
-
+On 10/16/2026 10:44 PM, Justin Suess wrote:
+> LANDLOCK_ACCESS_FS_*_METADATA should be checked at open time and follow
+> the mechanic for the truncate right. Otherwise the access for already
+> opened file descriptors would be changed. See hook_file_open in
+> security/landlock/fs.c and this discussion here [1]
+>
+> It should have clear documentation for this as well.
