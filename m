@@ -1,98 +1,73 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.49
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1792432213;
-	b=C/6o2eBFtIICsEuxqbwz2TIwPF/CKIqlFJmRNbI+QfwdTp3DIeasQyo8zFBxOTOCa2Yt
-	 Qr+wRn0GNuM1nqxm5bkS+lFcnO27WENUCQ9244sNbPZ8u9tbve1gcNCZcb7JOPLjtUf0f
-	 tAdEMyFTi0GJ0VpRNwDiKRrigAtkLlKngnY9CobOnTj+6RyI8JRzFZgl2hCdFbXpukcMU
-	 6DxQjWQpx4/ueR+WXDckkrWzK7ZCqpzHlBlStfJJecZB4+w3QJNgnaaKwObRxq+6YNj86
-	 m81QUEdhLhJMtzrgdkeWtTTfK8FLwTyrdnqzlDglNvXCGR+4EJNOIFd6pYFnzoetsXw==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792432213;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:MIME-Version:References:
-	 In-Reply-To:From:Date:X-Gm-Features:Message-ID:Subject:To:
-	 Content-Type;
-	bh=SMhnz8nmfeCa3vbVXb+2Iln/tpnO8JT5gUr+zaobt+Q=;
-	b=PTpAP5nis+GXC9Y5FRg3bvlXYMttnxdQetc96Ew1pPo9RjQBXu3ghqO/BixYRGQezMhK
-	 CNvEhp1bszWn/vh/jPhTpHIbeoWsruKq+ESWnuV9f05VuAthfYKkzhGwWBVz/nnEIIM/d
-	 ssgqnAkM8n/ytJZ8om+fn+MKFfCxZH+RHtsVdtFuhTC6v3u9Ol5jChovu5H5mSpqIeDGC
-	 O+1CCx1kKZsJRz4mKA8j47ZgMQDsNNHU3Sd6OLno0aAfpQu7wtpMBbuqfaLV9ZuJfp7Lp
-	 HcwfUAEuc5N/VyZ3Cfzz68aYq/R+5/IsnxRXjZ8U9N0qVsSaS9zQ4lDNrB1lAR2k7Vg==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=QDrr5W3E;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.49
-Received: from mail-ot1-f49.google.com (mail-ot1-f49.google.com [209.85.210.49])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1792434849;
+	b=U7zdzkAO+sNHTzaDPVhJjfkByowTkJn198cxT5RpxOXX047jPyDYX1wVGst61s/S+YUJ
+	 Gm/ZO5eI4yMjKo41iGm89I/gf9qwd4NyFrn7mEK8I4kHlUlidCXvCMQyFbnKp9KXgALH1
+	 AZzyys3EtjzHYpKdtyzcWLc2PahFsd0Uh6z76vYhAfbsJi17F3zNgox1cEBe8fUgFFaK+
+	 /m3208E/pDjVjaNRuQI5ZbQ4zwsQJL3bGYZQEC3hO88zonOGTkshzTxQ/AYBwt81EGBRy
+	 IdbqrvSc46coCtS4ZA2qlz9L4PCngzI0rtC21Np9fcsX9F6tRE8TC1+fW4nRB2jVhPA==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792434849;
+	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
+	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
+	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
+	 References:Subject:Content-Type:Content-Transfer-Encoding;
+	bh=fpSk/CbNOxgm/YwPtWLbatYprzPLT2PIdzvPIH54y58=;
+	b=nnZpJ860R13x4t3fO4G7L1wEA/yWJHge9ot0XUGjtIE34Xvn8wwI3oDESIIX6BPlK4S2
+	 ZGW6ZdP5a+yUPBeF6WKfHMC3OeDTn+DVjoZuvoUhZ1YsxjVtw4qPULV5mMt/Bu8dekCuT
+	 7OUNp+7pMc5K2gsUFvQPsSvt4iQHg0CNgYelG/9osH70LcfOpyJMtSi0vPaZNe4ykPaj2
+	 Y1NQmXN6rEl3KvfZO3eDhUIdovugyu6VqUoVSN1Ibn+JGb1CLiVzO+n8SM8pyA183vCdP
+	 Au2QTibT0DwYCDpSknYK5iC/AWE41A8IKbbI4Ts3hLX2sYSrJh+qm1q+hCwdZT/DmSw==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mcN3jL0x;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE478606A319
-	for <linux-nfs@vger.kernel.org>; Mon, 19 Oct 2026 17:50:12 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org DE478606A319
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A84FF606A31D
+	for <linux-nfs@vger.kernel.org>; Mon, 19 Oct 2026 18:34:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=QDrr5W3E
-Received: by mail-ot1-f49.google.com with SMTP id 46e09a7af769-7f48c750afcso1205381a34.0
-        for <linux-nfs@vger.kernel.org>; Mon, 19 Oct 2026 10:50:12 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1792432212; cv=none;
-        d=google.com; s=arc-20260327;
-        b=hgsP2r53+QQxOU9YktEqo/4xOi5y/0BzpgE8MFEoCQ+XjnaJZhBfgm9xZgs91+GdI0
-         Nxy/qoKFxpks4WKq995rx6NFSZq8JhwV1kbZd7y8T5YQgKoDhCkGHFwUBDdxUSoCxyhJ
-         HO0Yah8aoQGL/NCWQCgkE+aLP1PmQqTqc2myxTFLbOkzwQ1dQScZu+7l/CgUd7oSdQOH
-         LPVqwy+dQ3K/PjIGuIsBp2kwet0iL9Wm4I02B1M6+/ckb4nXAj8t1G/s7InLavH0uV4y
-         klz+mkiMlH611rZTvdbsgqrOtJgvB4vravasYd7vOcqqpp1O8JxWzFZmAKdJD7PCLgBH
-         xtuQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
-         :dkim-signature;
-        bh=SMhnz8nmfeCa3vbVXb+2Iln/tpnO8JT5gUr+zaobt+Q=;
-        fh=Mys3y4MwsHRytUQMpdfGBn3oGRYLcLloxNwkFYMYMmg=;
-        b=gKGbB8PzIeznolt5vchC9o3fucOu5I3XpegtDqEYHhT/wTwAeETyj2w4CIXQzC8EPN
-         /5QFbOKF9zrsw6sGZx9Jn0njOPD1/WMZD3JQNyhTdBhLYZa47b8s39I7T3uesmd8Qy7C
-         AdHQrNeNqzMzcZD7KgvV2L+vhuOcX+qQEvdt3CVTcOxl+78V+R7N3MuFd8eJvgnBpzf4
-         DjIp+NwABL7Uj4oVobswIc32h3g3eUiYM/HWb2QJ+15IgA9NEgJLibtVMbXO7Tn9h5el
-         sLM5w7PZ6twhWYpP42eMUxe0cAqbkerxMhf1MJqh1L27NKKU6p6lv8cUE86uGL/5JFjY
-         08iw==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1792432212; x=1793037012; darn=vger.kernel.org;
-        h=content-type:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=SMhnz8nmfeCa3vbVXb+2Iln/tpnO8JT5gUr+zaobt+Q=;
-        b=QDrr5W3ElAYTGPdxmNlSO/ppv+jWwbSKAM49TznhHbqYpxu/d1QPHxiPuNeK4RkSSE
-         yW35xYy6BKv5myNVFED4QjVQDV/9xcQ/cBXq1vCbFfhZPWjfk63Y3CR8IXE48v7dMjcr
-         d6ReX9bRB19rjnVkv6XnvZ0VbAowAPUw6gOvjiiN3M22wiRk6LRwED8MnHfSIQD7rdMR
-         3NyE5wsL6hsLE+CERBf/rUK2NDkGhD2x1QLAPnAgvgR4OPG+efADu4st1DWUVBT8APC3
-         BNFiMAmn+PbdpciB84OE12VKupSo6i7StpW5ek5RSU0ZVQncWTqoJJaZRs2jw3kox7D9
-         Vn/Q==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792432212; x=1793037012;
-        h=content-type:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=SMhnz8nmfeCa3vbVXb+2Iln/tpnO8JT5gUr+zaobt+Q=;
-        b=V4e2wpek4/9vYHasn4kqsCphWdDVYKJuWV34ba6oUeJc18ufjT9V1DVlbc1VCFFXQ0
-         0ATyWwGavG2v2ENsLYuC1e2xpUz3pn6uV6hNSC3WZXQeNVfjb0KOrqDSWqORGk07eHc/
-         gZPdhXnY8AZlcd1AskN7EQ6Lwjl8DVNWrs0Q2fpOyauL0C4sfh+cQjsSHx1UayzYmvmd
-         lQcQ7wj047J5Aa99DjLLQkNIQNBIiMZix+eMpdQBzvU80KlQLcngm3ifEhp2KEx6ltpb
-         +V7K/ZAD+hUG0oXjIFDdRrUlcBE3NDKSQwkQxtP9tt+Gnab1dIsl4JqJXDZ6CWqILvhY
-         zeDQ==
-X-Gm-Message-State: AFq9FYJ9p5f+d9TeE3GtHtNXRW9vV0EiY/lTgJSyj6RMPB1CkSyk7RS7
-	OabXs9v5466IwRYd8Xx+irdoV/RiJxSdopOY5D2yY+XebmEyxsDiMAXY4p9Qo98FCHlHv2gQLLR
-	lbTZpTEmLbY+TAygzdtfXgzipCZl47ocyxV2Wyuo/jw==
-X-Gm-Gg: AYBFou0ea76CHRwT4MwG1Yf2bhq97R57rbjwVAM9zA2WI5WysgN2cw1/hddmOZrnWkf
-	RovFvfnzWdzsvSFbzDXHMDa7/1kBV0XcMgPC4FkG562HXSQ5M6NR3qngpFBAllsxjgCzE2V0IRa
-	x9ckLAEc8D+xA+2Okew4Sv9WAhb9as98u/dyCwk4QwL0IETi7D9CejWEB+IEs5agSh7lFj6GUjH
-	57kdJkvjBypTOH41o7bMfJBz9WmyPTFvqP065P5fvFN+nEBdA7j2kPQrWA+DG7poh4/mU9i37xW
-	PZ9Kxb1ofTsIeJoMyWncRytrjKxr45IvkVphXbxHPSAuxM+DC0J75KRe9lTpEhoraMBgZm564VM
-	Ad4Ou+HaSEvj9/YnmLsT8924=
-X-Received: by 2002:a05:6830:4421:b0:81b:9724:8724 with SMTP id
- 46e09a7af769-844fe783338mr7812929a34.11.1792432211829; Mon, 19 Oct 2026
- 10:50:11 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mcN3jL0x
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E46431F000C4;
+	Mon, 19 Oct 2026 18:34:08 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1792434849;
+	bh=fpSk/CbNOxgm/YwPtWLbatYprzPLT2PIdzvPIH54y58=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=mcN3jL0x7o07gopqYbe6aQDb3uAGUgaxOQsFsgcY4yYkKSBZUled8S3ng4uax5VRQ
+	 Y9ronnjw4+MQOAJ9bcE2XPVTC+D0sSvIDnqGKDIIoCDTO/HgDglU463/FRXUWMyIOl
+	 E69fanaXZo4amEpW0sIDvIE7dZ29p4YQTGmgqlH8Y9Q3F3yUyHBPIX/qrx2UehUV5H
+	 9nVtpPvCTMSm5twqXn/1Tb/qG6qUozGvtyuLn3/J5tLlNrz5sAjX4XrwemqsZ+4L/b
+	 78TxvmfIOzAkm0A0Igc0PpVop3siJ/0JzrnNxWlqiz7gDtTzm+i5tF/yB3WuJrcYRe
+	 f3y9qRN7JpvjQ==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 4D490F4006C;
+	Mon, 19 Oct 2026 14:34:08 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Mon, 19 Oct 2026 14:34:08 -0400
+X-ME-Sender: <xms:oGLWaiqFvBURSSl0gU0eKj5KT_8cztuwHdKcJzxtN62_DMkj1os5AA>
+    <xme:oGLWardCL6tbTZv4_8WDs5ufaImxCQYHhXsOCmshAhUZX4msruc9eO9PKjrOh7H4l
+    965XpDX4It-QlSsGFKWqt0ZIfzSMnP77CFjGn8babFZiYpXFAJkSa0>
+X-ME-Proxy-Cause: dmFkZTGU9dwEU4XRK5nfGJiAm4glnmpJQKWEZoqJtiBJkpSTPtHDUzcNFeKIV1MVYcCjaB
+    efQJ3D5ne3hBoH3g4G+5JTBy2dhL/NzUjEcCd+BKoakAPgCNfsgXVatn7K99IqrxC6wkvh
+    f4fbA5ujaLZZuTYe2mCnFgn7FxpCHqpKccrLgc8HDKj5jnv15GFdyQD448mH2wGhK6BKrj
+    yMg9Z1NF84Y98QZDVhK8TeJ2DayFiMqv3Tc3085uI9nJS8haoO7AhZVKfxsPTam18dQUX4
+    8jIE8Bd4OBWK4W5B+7a89Tju+Lo5PS0G5hg7LtnbEPb46Ao+zMycFo6IGpGotsiACSPPKu
+    n0Z3qJ6TLWRoynA1ICgbyIOI7SLHtquS6bEjnt/cfBzzF6PMEDQi1G+3jIuUx/Jb2fVxWv
+    UNTS2qjqCGQaMD+Zw5/mw10mpm/+KIDA8WNGtfsdTENCHHLdAfJOmBhYI8GvEHrKBTosCv
+    bcttISHXbnuav/VEFCbLqjn8eoZa60VOlJCbA3oB2kOIMYLlm0mFTIXt2HXTS6vUpjTMQt
+    n1JR5r+xM0IWuvKj3MXhSqv+gx9bmiCYBWVaEGB/pI7iadcisLm2WuOYQvlKrNAm/ZGoXx
+    tvbQsHJ9RW30Hz3VAAr1wWodOp7THzk2LTtEjRffH/gjhMQaXPe8u4finxog
+X-ME-Proxy: <xmx:oGLWavga5e8muFHTMT035QeK7vBI_wV2cOpOZB08fRRcN1NMQzB2tQ>
+    <xmx:oGLWakIdZhKUF7o5oh9j00VmfqpaThVo1RXc9HEVoJQVKeWPMPOmJA>
+    <xmx:oGLWaunONJIGdi-BAwdqq2J-acghmrbjGtT_mgDw7TciE8A3gdkeGQ>
+    <xmx:oGLWasPtl9EdzlHrFRNJNN9LJTTq05cjyP6goD9Yjcte01adCvc1NA>
+    <xmx:oGLWao6PAYSqOEbEf6Nt5kRINYVMyKxFvGlFOgEvVy6hpj5_u6h6ha4r>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 1A8A0782738; Mon, 19 Oct 2026 14:34:08 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -102,37 +77,83 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <20261019101117.54038-1-thnkslprpt@gmail.com> <20261019140519.GJ989762@ZenIV>
-In-Reply-To: <20261019140519.GJ989762@ZenIV>
-From: Avi Weiss <thnkslprpt@gmail.com>
-Date: Mon, 19 Oct 2026 20:50:00 +0300
-X-Gm-Features: AclHuK_94hVBSk9s5VslYdMxIjiFzqln8jlpNyVSWL-jzBirNVTnCTO9ahg02dE
-Message-ID: <CAKOB7-aN6WBWYw+CTpCm9UfxS9Uv9Pbbyz9frdzhWyiqawwxJQ@mail.gmail.com>
-Subject: Re: [PATCH] sunrpc: instantiate rpc_pipefs dentry before publishing it
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+X-ThreadId: AS6kSLE8WzSk
+Date: Mon, 19 Oct 2026 14:33:47 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Mike Snitzer" <snitzer@kernel.org>
+Cc: "Jeff Layton" <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
+ NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
+ "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
+ "Christoph Hellwig" <hch@lst.de>, "Jens Axboe" <axboe@kernel.dk>,
+ "Matthew Wilcox" <willy@infradead.org>, linux-mm@kvack.org,
+ linux-fsdevel@vger.kernel.org
+Message-Id: <f39bfe92-8676-4241-bb4e-bccd838ab99b@slotpi15m67>
+In-Reply-To: <20261019150725.1507-2-snitzer@kernel.org>
+References: <20261019150725.1507-1-snitzer@kernel.org>
+ <20261019150725.1507-2-snitzer@kernel.org>
+Subject: Re: [PATCH v5 1/6] NFSD: add tracing for how direct-mode READ and WRITE are
+ serviced
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-I was thinking of, for example, an existing NFSv4 client when
-rpc_pipefs is mounted later. The mount creates the dentry for
-it's idmap pipe, while an owner/group lookup could queue a
-legacy idmap upcall on the same pipe.
-
-The upcall doesn't take pipefs_sb_lock, and rpc_queue_upcall()
-uses d_inode() once pipe->dentry is non-NULL, even with no readers.
-That seems like it could leave a window before d_make_persistent()
-completes.
-
-I think there are other ways possible as well.
-
-
-On Mon, 19 Oct 2026 at 17:05, Al Viro <viro@zeniv.linux.org.uk> wrote:
+On Mon, Oct 19, 2026, at 11:07 AM, Mike Snitzer wrote:
+> Add:
 >
-> On Mon, Oct 19, 2026 at 01:11:17PM +0300, Avi Weiss wrote:
-> > rpc_mkpipe_dentry() publishes pipe->dentry before
-> > d_make_persistent() attaches its inode. A concurrent
-> > rpc_queue_upcall() or rpc_timeout_upcall_queue() can
-> > conceivably dereference the dentry while d_inode() is NULL.
->
-> Details, please...  I have no objections against the reordering
-> per se, but I would like to understand the scenario leading to
-> such a concurrent call.
+>  - nfsd_write_dio_split, emitted once per direct-mode WRITE before any
+>    segment is issued.  It records the advertised offset and memory
+>    alignments, the payload's offset within its first page, the start,
+>    middle and end segment sizes, a disposition naming the path taken
+>    (direct, no_alignment, too_small, no_middle, mem_misaligned), and
+>    whether buffered segments are issued IOCB_DONTCACHE.
+
+Let's define a single event class and then use DEFINE_EVENT per outcome,
+rather than one event with a disposition field. You'll notice this
+pattern is used elsewhere in trace.h.
+
+So nfsd_write_dio_class with the alignment and segment-size fields, and
+nfsd_write_dio_direct, _no_alignment, _too_small, _no_middle,
+_mem_misaligned fired at the site that makes each decision. An admin
+chasing "why isn't this direct" then enables only the decline events.
+
+Also, let's give the READ side the same treatment so admins can see
+the decisions that prevent reads from going direct.
+
+With the per-outcome events in place, the dontcache field on the
+per-WRITE event is redundant: nfsd_write_direct/_dontcache/_vector
+already say how each segment was issued. As it stands it also
+misreports the direct middle, which carries dontcache_flags
+regardless of direct_misaligned_dontcache. Consider dropping that
+field.
+
+A few less critical items:
+
+- nfsd_write_dontcache and nfsd_write_vector are emitted only from
+  nfsd_direct_write(). The io_cache_write=dontcache and =buffered
+  paths in nfsd_vfs_write() emit neither, so the new DONTCACHE event
+  never fires in DONTCACHE mode and the commit message's "now fires
+  only for normal buffered I/O" isn't right either. nfsd_iter_read()
+  covers all three modes; please make the WRITE side match.
+
+- If any enum from vfs.h ends up in a TP_PROTO, note that trace.h's
+  own #include "vfs.h" is after the per-class events. It builds today
+  only because xdr4.h pulls vfs.h in first. Move the include up with
+  the other headers.
+
+- mem_offset records bvec[0].bv_offset, but the mem_misaligned test
+  is on bv_offset + prefix. With prefix=100 the event shows
+  mem_offset=0 next to a mem_misaligned verdict. Record the quantity
+  that was actually tested.
+
+- The doc says iomap_dio_invalidate_fail "reports an O_DIRECT middle
+  segment that the filesystem serviced with buffered IO instead". It
+  reports one cause of that, on iomap filesystems only. ext4's
+  fallbacks are silent. Let's narrow the wording.
+
+- The doc talks about start/middle/end segments while the event
+  prints prefix/middle/suffix. Let's pick one vocabulary.
+
+Jeff's comment about the ki_flags test in the hot path stands on its
+own. I'll leave that between you and Jeff.
+
+-- 
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
