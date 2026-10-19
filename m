@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792422452;
-	b=XlP+RrZl32sA2jq1gemXuTzp7/lo29GzaEbyz+gQk2BN1gLzLlcm5Yox80W9eeJu/6BX
-	 Bzyp7ySz8H19ajtTlRI2e9XxbuMXz8mSh2QWmXMBdyhTzd/pUOjXFNr91C7CPUVq7sgJo
-	 OS4mUC7x9BlN24eVOUq33lc1C9O5M8238G5UrtTQf2J1hoSW0kmGXhteXkAzl4+xWE9K3
-	 K+yBI6tmgvFrIKgxGC9iifCkCXsc5lYz018CBAFw7SzO7T4YRLk922mEFsUsyTtnuxiRA
-	 6V0pw2+C57dXqArM2ME61DIrZ09GtFPO3zwGIe+1Oaa/w4GA/8KIuI0M6eB2IrdouFA==
+	t=1792422450;
+	b=HbR9Kn6E4KE2nsocudWYwF+MCAwsPP+q6HRF4TXq9d9WDOWjM9uSiygixVVf8jGRDcEs
+	 Rd2kyKXnRuSNatQBR6GohrnK1DCd7GT7U20dKYs5Fe0xNKbknR2SpwFB3osUPuSNjs51q
+	 hu0lwPlCVSk1YfFD3T6Gx4Zlq1lTrD/ryuKeCUQ5vGdaoKd9n2oIhhDLTrHJXhbi1CoyT
+	 ZhGcisx5R1zetJlDd6Cm2fQZXK0bJbAgTOjm1CFZWV0QoIajOH9C7kxGtOai7ItQ3EwY/
+	 GFk7L2l+yXYz0kwY03qgVSCZKbqkqRfvlw+EYh942Bdvt2DfkycSjf5sBb1OJ5ZHrWA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792422452;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792422450;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=XAW+AstcWY6xdbUMT8c6ejV79mSagbIvsiRflolJ1vg=;
-	b=K6nMQrFt42glG+DpuR673gvHw7ENZXHjq+o24VhodGT7hn/wLR0b4IA6BkZv9l7irvmz
-	 mCBi1e9ldTyZxdODrlS1DtxRMFSTv2h6MbUnMGWZr54ykjO+zNj/SjJsri7ch/D9GgUuJ
-	 Tg48QCHLXlbjtjfpBLhurJrp8z1JuCLzVpws9Z7PnptkrWkYrb5v052l4LNwHnO7H8Nw5
-	 +zJf2Ck+frCmg8AcIH7ID/LixSLvXGja9eBiyYa6phMVHyofa9opf4rowUAL5mGli/nKC
-	 3gB+4ABojcNTBZMPnPHneNnFk10IuLScOksVQMX4lXvvqOgVZ2JnNZqkIuBdwM0rwKg==
+	bh=KYIFZnbJ/tQXvMmHyoqaiwEU9dnEoX51wTobPwpbUYk=;
+	b=MAyylYJx2KEkGmAg2agDowo2Ujn/ZkCx6AoHlMQnxqKcg6i0/ZDX/S5DBi45jIV/zsau
+	 JIiT/+Afx0ySx1W/ZVjLnNozSZOma6oGdPtQP+QIzR1JyEOvm7Wl/GZVmL7EbBtCx/w3E
+	 m1a/ZjaXWc07zVICMxWqzLY6rIf1NiKeKs3XvmAh1qcugtfXue0ZP1hbXa02MM0uFmXiP
+	 VnFw432mMUbUYPw2W1XMAB2WFUXcFj0FcjkjZ6ovbCPCqL3ZgHZOKV96xLtVdGBEdKXLt
+	 1TvxCPfkBR4vVqJo+ogA5XknnBuFAdnN2GjYeiIYFpDP7qZIcOzvqFM5qK2aH+xaHTw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=B9CLWqxz;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="Q7/5HC2y";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4E787608342E;
-	Mon, 19 Oct 2026 15:07:32 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B68036083439;
+	Mon, 19 Oct 2026 15:07:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=B9CLWqxz
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A14DE1F000C4;
-	Mon, 19 Oct 2026 15:07:31 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Q7/5HC2y
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3EE711F000C4;
+	Mon, 19 Oct 2026 15:07:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792422451;
-	bh=XAW+AstcWY6xdbUMT8c6ejV79mSagbIvsiRflolJ1vg=;
+	s=k20260515; t=1792422449;
+	bh=KYIFZnbJ/tQXvMmHyoqaiwEU9dnEoX51wTobPwpbUYk=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=B9CLWqxzzRjvfuihRqvaLRG+rbfVKJu2ObMot/c0U3Lo0hdtcwZNtfKO29/O2Bu/b
-	 videMyr2SxDpPaQyRShXtzk1ZPsoo0UILYTwfkx/cpPLi4AMu2+9HDhiXC0GdvyLgM
-	 wP0Z4ThjZPKUDicGiqUKq8nuv3t0LGi90/YoSZTOgjOju/GO3HnER5M/jbUYL2x0lp
-	 dgQLxiefE80zbHvh8k5gOkT00LVb01Y2HW2zNWB0opiTQdboTU9ZofIQ3Pz4LvyyFe
-	 pC0mYnJii/23DUipruQXPnjK6FEYC6ZGbE9/dWwkK7bHL8hTBYvqTuKalRTsv5lJiy
-	 IxveDDQCRuqMA==
+	b=Q7/5HC2yuwRStW9uT0uRx6ddM3dspudm2S30vTdZhfxrJmdHNXGuppUxH6i1DtdhH
+	 XjJjNTLHPLxrW+qWvrEpd8QN+onnmwyIgNnBd0fQwuSdK92xPdtwMt1w7M4+Xwq/mn
+	 f2iPBxoQzG7PyD7Pe9C0ddHHi4/2k5vc/xBQBeN3Jth1U9QUpRRAYBhKd3j951VokQ
+	 /sZR+wL4hUIgfRCuk/OZ791Cf+jBc8dVRwgXpTXGpeKjA+vV2F30ax7BGlHDmLNjPB
+	 QO4zLIX/y1ygzGKb0ZtRKtxszT+/Cz4bUJLMDo/w8DN5pAkzhrfg/g0lPdI+dMDHY4
+	 K/2eHdhpPreFw==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Chuck Lever <cel@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>
@@ -52,9 +52,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Matthew Wilcox <willy@infradead.org>,
 	linux-mm@kvack.org,
 	linux-fsdevel@vger.kernel.org
-Subject: [PATCH v5 4/6] mm, iomap: keep a partly covered page until an uncached write completes it
-Date: Mon, 19 Oct 2026 11:07:23 -0400
-Message-ID: <20261019150725.1507-5-snitzer@kernel.org>
+Subject: [PATCH v5 2/6] mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats
+Date: Mon, 19 Oct 2026 11:07:21 -0400
+Message-ID: <20261019150725.1507-3-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20261019150725.1507-1-snitzer@kernel.org>
 References: <20261019150725.1507-1-snitzer@kernel.org>
@@ -69,160 +69,85 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-An uncached (RWF_DONTCACHE) buffered write marks drop-behind every folio
-it creates, so writeback drops each one as soon as this write's data is
-on disk.  A page the write covers only partly is usually shared with the
-neighbouring write, the one that ends or starts in it.  Once the first
-of the two has been written back, the page is gone, and the second has
-to read the block back from disk before it can write its part: one read
-per misaligned write.
+The per-bdi_writeback WB_DONTCACHE_DIRTY counter drives how much the
+flusher writes back in response to an IOCB_DONTCACHE kick, but it is
+not reported anywhere, so the DONTCACHE dirty backlog can only be
+inferred from MemFree/Cached movement.
 
-Measured locally on XFS (emulated 4Kn NVMe, 4 KiB pages), 32 threads
-writing interleaved records to one file with pwritev2(), 1 GiB per run,
-before and after this patch:
+Report it as BdiDontcacheDirty in /sys/kernel/debug/bdi/<dev>/stats
+and as WbDontcacheDirty in the per-wb stats, next to the
+Reclaimable line.  Use wb_stat_sum() rather than wb_stat() to fold in
+the per-cpu batches: the flusher targets the summed value and small
+backlogs would otherwise read as zero.
 
-  record  flags                     4 KiB device       MiB/s
-  bytes                             reads per write
-                                    before   after     before  after
-  47008   RWF_DONTCACHE             0.97     0.000     831     2281
-  47008   RWF_DONTCACHE|RWF_DSYNC   0.99     0.000     601     1227
-  6000    RWF_DONTCACHE             0.97     0.000     121      488
-  6000    RWF_DONTCACHE|RWF_DSYNC   0.99     0.000      90      206
-
-Before this patch every write waited for its read, and because XFS holds
-its IOLOCK exclusively across a buffered write, the other 31 writers
-waited too: both record sizes ran at about 20 thousand writes a second,
-one device read per write; after it nothing is read back.  With
-RWF_DSYNC each write still waits for its own sync, so the gain is
-smaller: the uncached write now runs as fast as the same write without
-RWF_DONTCACHE, 1237 and 209 MiB/s against 1227 and 206 in the table.
-Records of 49152 bytes, which cover only whole pages, read nothing
-before or after.
-
-NFSD DIRECT issues the misaligned ends of a WRITE as buffered uncached
-segments and gains the same way.  Without any handling of the shared
-page, 32 interleaved writers of 47008-byte records read 45144 blocks
-for 45664 WRITEs; with this patch, and no NFSD code for the shared page,
-0.0001 to 0.0008 blocks per WRITE whether each record is sent as one
-FILE_SYNC WRITE, as two one after the other, as two together, or as two
-UNSTABLE.  The page cache then marks the completed page while it is
-still dirty, so each segment of a stable WRITE wakes the DONTCACHE
-writeback kick (23 to 65 thousand rounds a run); the next two patches
-let NFSD mark it after its sync instead.
-
-Let the write path say which pages a write covers only partly
-(FGP_DONTCACHE_EDGE, set by iomap when the write starts inside a page or
-ends before its end) and get such a page as a single page.  A folio
-created for it is not marked, so writing back this write's part does not
-drop it.  A folio found uptodate is the neighbour's, already written:
-this write completes it, so mark it, under the folio lock and before its
-own data goes in, and the writeback that cleans both writes' data drops
-it.  The folio lock orders the two writes, so the second always finds
-the first's data in place.
-
-A page whose neighbour never writes, such as the last page of a file,
-stays cached until reclaim.  A partly covered page another task had
-cached and that is uptodate is now dropped after the write's writeback,
-where before an uncached write never dropped a page it did not create.
-
-Only iomap file systems say which pages a write covers partly so far;
-write_begin_get_folio() users such as ext4 and the NFS client do not.
-With blocks smaller than a page, a write that crosses an extent boundary
-inside a page asks for it as two partly covered halves, so the page,
-though one write covers it whole, stays cached until reclaim.
-
+Fixes: 88d6f128d06d ("mm: track DONTCACHE dirty pages per bdi_writeback")
+Cc: Jeff Layton <jlayton@kernel.org>
+Cc: Jens Axboe <axboe@kernel.dk>
+Cc: Matthew Wilcox (Oracle) <willy@infradead.org>
+Cc: linux-mm@kvack.org
 Assisted-by: LLM
 Signed-off-by: Mike Snitzer <snitzer@kernel.org>
 ---
- fs/iomap/buffered-io.c  | 12 +++++++++++-
- include/linux/pagemap.h |  5 +++++
- mm/filemap.c            | 19 ++++++++++++++++++-
- 3 files changed, 34 insertions(+), 2 deletions(-)
+ mm/backing-dev.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
-index 0a5ebfda90f1..780a0186045d 100644
---- a/fs/iomap/buffered-io.c
-+++ b/fs/iomap/buffered-io.c
-@@ -802,8 +802,18 @@ struct folio *iomap_get_folio(struct iomap_iter *iter, loff_t pos, size_t len)
+diff --git a/mm/backing-dev.c b/mm/backing-dev.c
+index 18e999053bae..b8a2c27e07fa 100644
+--- a/mm/backing-dev.c
++++ b/mm/backing-dev.c
+@@ -46,6 +46,7 @@ struct wb_stats {
+ 	unsigned long nr_dirty_time;
+ 	unsigned long nr_writeback;
+ 	unsigned long nr_reclaimable;
++	unsigned long nr_dontcache_dirty;
+ 	unsigned long nr_dirtied;
+ 	unsigned long nr_written;
+ 	unsigned long dirty_thresh;
+@@ -78,6 +79,12 @@ static void collect_wb_stats(struct wb_stats *stats,
  
- 	if (iter->flags & IOMAP_NOWAIT)
- 		fgp |= FGP_NOWAIT;
--	if (iter->flags & IOMAP_DONTCACHE)
-+	if (iter->flags & IOMAP_DONTCACHE) {
- 		fgp |= FGP_DONTCACHE;
-+		/*
-+		 * A page this write covers only partly is shared with a
-+		 * neighbouring write: get it as a single page, which is
-+		 * kept until the write that completes it.
-+		 */
-+		if (offset_in_page(pos) || len < PAGE_SIZE) {
-+			fgp |= FGP_DONTCACHE_EDGE;
-+			len = min_t(size_t, len, PAGE_SIZE - offset_in_page(pos));
-+		}
-+	}
- 	fgp |= fgf_set_order(len);
- 
- 	return __filemap_get_folio(iter->inode->i_mapping, pos >> PAGE_SHIFT,
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 3012bd95812a..0c1d6bd09aa0 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -701,6 +701,10 @@ pgoff_t page_cache_prev_miss(struct address_space *mapping,
-  * * %FGP_NOWAIT - Don't block on the folio lock.
-  * * %FGP_STABLE - Wait for the folio to be stable (finished writeback)
-  * * %FGP_DONTCACHE - Uncached buffered IO
-+ * * %FGP_DONTCACHE_EDGE - With %FGP_DONTCACHE: the write covers this page
-+ *   only partly, and a neighbouring write may complete it.  A folio created
-+ *   for it is not marked drop-behind; a folio found uptodate is, as the
-+ *   write that completes it.
-  * * %FGP_WRITEBEGIN - The flags to use in a filesystem write_begin()
-  *   implementation.
-  */
-@@ -715,6 +719,7 @@ typedef unsigned int __bitwise fgf_t;
- #define FGP_FOR_MMAP		((__force fgf_t)0x00000040)
- #define FGP_STABLE		((__force fgf_t)0x00000080)
- #define FGP_DONTCACHE		((__force fgf_t)0x00000100)
-+#define FGP_DONTCACHE_EDGE	((__force fgf_t)0x00000200)
- #define FGF_GET_ORDER(fgf)	(((__force unsigned)fgf) >> 26)	/* top 6 bits */
- 
- #define FGP_WRITEBEGIN		(FGP_LOCK | FGP_WRITE | FGP_CREAT | FGP_STABLE)
-diff --git a/mm/filemap.c b/mm/filemap.c
-index ed7e4dbea653..0397ec771547 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2016,6 +2016,16 @@ struct folio *__filemap_get_folio_mpol(struct address_space *mapping,
- 
- 	if (fgp_flags & FGP_STABLE)
- 		folio_wait_stable(folio);
-+
+ 	stats->nr_writeback += wb_stat(wb, WB_WRITEBACK);
+ 	stats->nr_reclaimable += wb_stat(wb, WB_RECLAIMABLE);
 +	/*
-+	 * An uncached write that covers this folio only partly, finding it
-+	 * uptodate, is the write that completes it: the neighbouring write
-+	 * that left it here has written its part.  Mark it now, under the
-+	 * folio lock, so the writeback that cleans both writes' data drops it.
++	 * Sum the per-cpu batches: the dontcache flusher targets this
++	 * counter via wb_stat_sum() and small backlogs would otherwise
++	 * read as zero here.
 +	 */
-+	if ((fgp_flags & FGP_DONTCACHE) && (fgp_flags & FGP_DONTCACHE_EDGE) &&
-+	    (fgp_flags & FGP_LOCK) && folio_test_uptodate(folio))
-+		folio_mark_dropbehind(folio);
- no_page:
- 	if (!folio && (fgp_flags & FGP_CREAT)) {
- 		unsigned int min_order = mapping_min_folio_order(mapping);
-@@ -2053,7 +2063,14 @@ struct folio *__filemap_get_folio_mpol(struct address_space *mapping,
- 			/* Init accessed so avoid atomic mark_page_accessed later */
- 			if (fgp_flags & FGP_ACCESSED)
- 				__folio_set_referenced(folio);
--			if (fgp_flags & FGP_DONTCACHE)
-+			/*
-+			 * A folio the write covers only partly is left
-+			 * unmarked, so that writing back this write's part
-+			 * does not drop it before a neighbouring write has
-+			 * written the rest.
-+			 */
-+			if ((fgp_flags & FGP_DONTCACHE) &&
-+			    !(fgp_flags & FGP_DONTCACHE_EDGE))
- 				__folio_set_dropbehind(folio);
- 
- 			err = filemap_add_folio(mapping, folio, index, gfp);
++	stats->nr_dontcache_dirty += wb_stat_sum(wb, WB_DONTCACHE_DIRTY);
+ 	stats->nr_dirtied += wb_stat(wb, WB_DIRTIED);
+ 	stats->nr_written += wb_stat(wb, WB_WRITTEN);
+ 	stats->wb_thresh += wb_calc_thresh(wb, stats->dirty_thresh);
+@@ -125,6 +132,7 @@ static int bdi_debug_stats_show(struct seq_file *m, void *v)
+ 	seq_printf(m,
+ 		   "BdiWriteback:       %10lu kB\n"
+ 		   "BdiReclaimable:     %10lu kB\n"
++		   "BdiDontcacheDirty:  %10lu kB\n"
+ 		   "BdiDirtyThresh:     %10lu kB\n"
+ 		   "DirtyThresh:        %10lu kB\n"
+ 		   "BackgroundThresh:   %10lu kB\n"
+@@ -139,6 +147,7 @@ static int bdi_debug_stats_show(struct seq_file *m, void *v)
+ 		   "state:              %10lx\n",
+ 		   K(stats.nr_writeback),
+ 		   K(stats.nr_reclaimable),
++		   K(stats.nr_dontcache_dirty),
+ 		   K(stats.wb_thresh),
+ 		   K(dirty_thresh),
+ 		   K(background_thresh),
+@@ -163,6 +172,7 @@ static void wb_stats_show(struct seq_file *m, struct bdi_writeback *wb,
+ 		   "WbCgIno:           %10lu\n"
+ 		   "WbWriteback:       %10lu kB\n"
+ 		   "WbReclaimable:     %10lu kB\n"
++		   "WbDontcacheDirty:  %10lu kB\n"
+ 		   "WbDirtyThresh:     %10lu kB\n"
+ 		   "WbDirtied:         %10lu kB\n"
+ 		   "WbWritten:         %10lu kB\n"
+@@ -179,6 +189,7 @@ static void wb_stats_show(struct seq_file *m, struct bdi_writeback *wb,
+ #endif
+ 		   K(stats->nr_writeback),
+ 		   K(stats->nr_reclaimable),
++		   K(stats->nr_dontcache_dirty),
+ 		   K(stats->wb_thresh),
+ 		   K(stats->nr_dirtied),
+ 		   K(stats->nr_written),
 -- 
 2.52.0
 
