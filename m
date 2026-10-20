@@ -1,79 +1,79 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
 ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1792465727;
-	b=z+7hxHAGyxkQu15HYCiv8rRJkKC5op0BHuwyjBy9Gb4METJGSlQkKVbuXYEyKH2tij2f
-	 aRWwQFMLTCYBq7qhmL3VtXvc3x5kQujjsbb79kRE2QVT054y+5JUDfC4oWGp5svAc7r45
-	 RNye26OEjHQF8Sg2RftPWn7/suYdmAL5q/+MJHNLkAOz7OqUZN360RbZkdV5yM8AVfq8K
-	 vLZswCDON+iZafH+y8G58VgU1DcAunmrac1iyFmuXkY7N0Orhls0+UY9WeOWHQELk6cVg
-	 2wXCHPRdIBt5L0E0+o57JrB3+Jj9fZ1gR0gpzCWxCuHdrAKWlykibEpwKy/vzxww0dQ==
+	t=1792465728;
+	b=MxomSiT/Nl1U3b2h9CbbkDUCjZRNVMSYUYS8lO1KI861jm+fbCUgmMtbSSeUJ9jY8khL
+	 IBfUI6W1z10aZoLcZlfAVBw7I5WfgpIx34BUC2ZyvOKgO8GJamCb4VMySjZprm8kOrvjr
+	 X4gbd6gbKxCsRM5Mwnk2BqsIK50qwxcHEP/mDlMtDNa4Wu28F4jZHLRt8Xp/ItPmseS/i
+	 qseDCyUlrvrH2klRkYg4ZIZBuodWXff7bZI67GevzO6ix71fW95qcR9eoYyg4zJct+GEZ
+	 URwTm+YDFM6HNdYNi+HMNEqPemi3MWBk66eIQb2m1FCiDSs2KMyBmRo9uRtqHdmzH9w==
 ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792465727;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792465728;
 	h=Received:DKIM-Signature:Received:From:Date:Subject:MIME-Version:
 	 Content-Type:Message-Id:References:In-Reply-To:To:Cc:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
 	 X-Original-From:Reply-To:Content-Transfer-Encoding;
-	bh=xTAaZm8z237tbVsE73/vOrMvUznMWOKNs1DvgC/tVG0=;
-	b=vI78uFth/LJ4JoaWfxU5vVZq62zOQb0r/EWjXWnRo4NxEX9s2XuujmFPkq8OQgIlsXyL
-	 Q0Phn1MZK9WmhU+nMG1xYF3qs6XI39qrRbUrwc/ka/BQ97byBtSlIqPBIcdatZbLTdreo
-	 CfNNzFgHilE6MVoozPm8bfUO/SMb0YtJEC07vV2t/A52dawhnnT09ZZPtPDU5zMRwVxHV
-	 Awq0iaVPuz+qhiPx/U4desFJnsosYG6D04fHaZawcoWivwLqsdsDbwaJkZlSJdqI5uytj
-	 AKoAIM+HkYuUmZcqg0S70J/nGz/cSQM9jcPcrecgLSsS5bSzryc0OCYwE5Secny19FA==
+	bh=X85kjBINdVfaDrnJk8BmLgtcQVuPyF+arFPTAr2kSiA=;
+	b=IjE8ZrM0zibWhFCGu5OhDK+VbkGpXTcaobBqZFmQPKNXddMCTlMOeDPhAoobfBn7A7cp
+	 zPMc61sy3UKc7o4pXbX8F/yxnNqqSCzhcN/okn3FQNwBIEvtV0VvJhCVzNefJ2nGp1Mon
+	 Rf7WnbYWmhXhJftp7EnP11vRvSSPzAp4PkNNCMbNR658uUyvvOag3K44UmrWondSVjfmw
+	 GB5IC6a0WkcvNsefKVTH87Ue7JKGEu9ffxqdSipnPBC9dnNrMC/NzurJBSmRYvfv3CSlF
+	 MpxlAI+qAIqJ+DboC1RE+jnk6gHYn7Xso8X8RtXfS4bhXfI5usE9GBZb/Fh+03EAY1g==
 ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="lvyq4R1/";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=UKugfJKk;
 	arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AD00D606A319;
-	Tue, 20 Oct 2026 03:08:46 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CEA79606A330;
+	Tue, 20 Oct 2026 03:08:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lvyq4R1/
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=UKugfJKk
 Authentication-Results: smtp.kernel.org; arc=none smtp.remote-ip=100.80.115.77
 ARC-Seal: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256; cv=none;
-	t=1792465726;
-	b=ppby/bNwph2PzzUIywEOFah2bRppfYId0sG0shMOzwTo9SZyrs5uyIsFdk06NiJrup8Q
-	 kB2jvNBiRqdsgGLnlNcV/70LOOgtEpQz+FoG/p+TEDTUt+jAx0MGPrg+jTrNvZs2h7pNP
-	 sQw499NpboUwv+NYZvFGbTi/Me/Q3nDq9m8jFnDU/dIlDMbVsZzjX63OM+f0z0PxevfrP
-	 NEcH/9buoL2CpWARlS71tPOYS8GmZ2Hv8PSGnftG+jGQ7KhIik2vws0t/5QSmJmeDtf22
-	 ecZ61wktzKNh+n2S9iqsoR9Pd56N7HmxbQdbIgPrpvHs/agBsMrx2EEYG9qylpiKBYg==
+	t=1792465727;
+	b=01BAHbIRQjkTfxrofa+wG5FNmcfKQhKwnTwCWsLFdrpJTO2KAQfrpJJahYlvRtzEfdhA
+	 3UaBRqc4OCCvmWphSexTOn3VBPC5peeUGhJ3emW04HvWWcoI5a6Musg1ubEaqt/RZjrxy
+	 mDB/8Fd6D2EJlgH9EZmmvLwszzkDjigf/sYpa6NT85OI1C57hjVHostqpuRXcawdtJJPo
+	 aGxMvZzZ7rZkoMAtSSzOWbp5YzH8d5gK7K0BKb75jfPG90YiFmK4ozNl9OIZNt5i2Vj/X
+	 wmYpw2L5QFbB5HEtjcF4zITxLiOwrP/+3namI7yZTrbZgLcbljGrlfVhe0hLpJZVGvw==
 ARC-Message-Signature: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256;
-	c=relaxed/relaxed; t=1792465726;
+	c=relaxed/relaxed; t=1792465727;
 	h=DKIM-Signature:Received:From:Date:Subject:MIME-Version:Content-Type:
 	 Message-Id:References:In-Reply-To:To:Cc:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
 	 X-Original-From:Reply-To:Content-Transfer-Encoding;
-	bh=xTAaZm8z237tbVsE73/vOrMvUznMWOKNs1DvgC/tVG0=;
-	b=NIDwghuw7fiBhcTzqkajtdHojuZJrOJ44g8U27M4rHdgvDoQDr6RBz9ga6W1PdOWBQG+
-	 VSqRcOtvdqKlQxOfp6U2+audRxBtBs2RRbqYmOhfyM0hsSiUrVdY3r1GgzldEwaNu5SLT
-	 GZg4qUK8fU6xuioJYwu4iuO7ptkc/f0VahAZFpUrBHSaC/RlI4TV5VDW+Yg+3alzqpyEE
-	 0UuUdNaRK+7jETFzJoBz3Ub/d3IGTNSaOyb76Sesl6WwkNl6mSNiUhxTLT9ASwCG5OF23
-	 3vo0Em+9bbjaXBDiGcb7o15deC/qgDaF5Nr0JdMGEw2/hjuA3lNBya5FybBhO+xQctA==
+	bh=X85kjBINdVfaDrnJk8BmLgtcQVuPyF+arFPTAr2kSiA=;
+	b=oU9ZLgkJzWxHT4njS3hb1Bvhe+liCzrpCEOhq6FWljvkZWQdklPe+I3D71rc/2D6tQqi
+	 AiR9GuEE2WvIpi4dGqeitmojEqLKoABnY+VWAR/uxlYiSs5k7ryaH2C1e+EXT4UryHs61
+	 6+YGUMpH5PnELgyok8/i0mUlqzhuGcVVdP8u5qhW/QE5Wl5ILHj4YQAfkzD4VVXYQWpUa
+	 eGZghf/O2bCe6FSL6OlK2MR47IbTQ74s4f1/sG1QKHTd2Uoi2GY7Rcsg28fL99SG2+Ndy
+	 +nvIhicdPWLBTRQGqO/l4wNp6oADDYrwoEgMdpji43K7lAqIPPk5yJ9QPvn3oH32OjA==
 ARC-Authentication-Results: i=1; smtp.kernel.org; 
 	arc=none smtp.remote-ip=100.80.115.77
 Received: from lkml.kernel.org (nexus.subspace.kernel.org [100.80.115.77])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.kernel.org (Postfix) with ESMTPS id 7E60D1F000C5;
-	Tue, 20 Oct 2026 03:08:45 +0000 (UTC)
+	by smtp.kernel.org (Postfix) with ESMTPS id B78FD1F000D2;
+	Tue, 20 Oct 2026 03:08:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792465726;
-	bh=xTAaZm8z237tbVsE73/vOrMvUznMWOKNs1DvgC/tVG0=;
+	s=k20260515; t=1792465727;
+	bh=X85kjBINdVfaDrnJk8BmLgtcQVuPyF+arFPTAr2kSiA=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To;
-	b=lvyq4R1/uADh3u/2pcOiqxeguraKX3vzK6U9pEy6OYJFqWjqsqmvgU/NZtiCtoHbI
-	 +3JbdIloiUzblHt8cTk9jqPvCUv056p2tvv/xnLGXyG96l8lMP/EFqmbqitDCp80Jv
-	 1j2zVDMvf2ntjqhHwPjUHidiI2jAEd46NcONauz7kImkkKTx2YLcRzzKeaokFufPCL
-	 CEu3AAL7AgrsH5HNKxAkBV8msQNGelSKGgKVDlaLdWP1RDLTM/RlgXkkmHAShWK7Ns
-	 7nNsWUvXMNnkqA9J3Jrxd1DqH1l3WTdQJv03w63g8n9G6nBa8Ag0Xr+LHW32i3RCp7
-	 erxsv3+E4/BZw==
+	b=UKugfJKkCygObdhUzVIYqOiNhL/INB/Jw3M1kv0sEA/a/SkutNYQx70urkknExQuu
+	 6ENKj7kb439k/kLtxmEp8qf1VZj3Q6ro59QOSabf0KhQ2yMUtWeH9/S++mj9JDo5Ac
+	 q6YNWNhXuHD2WnCG7XFisJttOBFLcWDT4pstKsaCSw46vFxIlASF8V5JDSgVwaTFwc
+	 AtZ1FkQtJxdnsFLHVg2yulwT0FGlGc+YkH810tAIUcsUqRbHsrvONQ7xe1G85OoPwV
+	 ImIvTkRj6pzXYoThDQIachF8Rsf2Zto3easAJOumSuzQTyULfQD8xE5RCOJ2gmNWNm
+	 P3d+otNBYltGw==
 Received: from nexus.subspace.kernel.org (localhost [IPv6:::1])
-	by lkml.kernel.org (Postfix) with ESMTP id D8D0F40724;
-	Tue, 20 Oct 2026 03:08:44 +0000 (UTC)
+	by lkml.kernel.org (Postfix) with ESMTP id 04B754163C;
+	Tue, 20 Oct 2026 03:08:45 +0000 (UTC)
 From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
-Date: Tue, 20 Oct 2026 12:08:44 +0900
-Subject: [PATCH v4 1/9] xfs: mark the inode preallocated for pNFS write
- layouts past EOF
+Date: Tue, 20 Oct 2026 12:08:49 +0900
+Subject: [PATCH v4 6/9] xfs: clamp the pNFS layout range to the maximum
+ file size
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -84,7 +84,7 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Message-Id: <20261020-xfs-pnfs-batch-v4-1-9230fa2ca4a4@samsung.com>
+Message-Id: <20261020-xfs-pnfs-batch-v4-6-9230fa2ca4a4@samsung.com>
 References: <20261020-xfs-pnfs-batch-v4-0-9230fa2ca4a4@samsung.com>
 In-Reply-To: <20261020-xfs-pnfs-batch-v4-0-9230fa2ca4a4@samsung.com>
 To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
@@ -96,11 +96,11 @@ Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792465723; l=4923;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792465723; l=3202;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=it5adWS9VVvPuY0ITgRqYR086T8ESLe2HmaMPU312mg=;
- b=6/A0c+NxAsvLwkMk6jhP36UTYjdpBwysLDUm7rqRWDSOqTh5qjbCB7LGrrgDCGevd/GPefLSd
- 058TR9Xc1+CBJOhKykfGapewtIMEMM7vYYvyhN5tlM7tIWKU5Z9do+j
+ bh=vQ4LiIt/NmuGWeXUIuUBhafpRniW8Y+jVNMB3njYRIg=;
+ b=WkjR1eO3nwiHnjf+AcrqF6WyicGfW4bFYQ8JFirI6W6xxUaW/dFBjRLXth+BIFfF35zmRfWax
+ 7chTQs8YL5VBnCR2ZjtnwxE8hB3Zk++BYqu4uv1RUMfqa7Em4gkZOpt
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
@@ -111,131 +111,75 @@ Content-Transfer-Encoding: 7bit
 
 From: Daejun Park <daejun7.park@samsung.com>
 
-xfs_fs_map_blocks() marks the inode XFS_DIFLAG_PREALLOC after it
-allocates blocks for a write layout, so that xfs_free_eofblocks() does
-not free blocks past EOF that a client may write to. But a write layout
-for a range past EOF where blocks are already allocated, such as the
-speculative preallocation of buffered writes, gets those blocks without
-an allocation, and the inode is not marked. blockgc, or the release of
-the file, then frees them without breaking the layout. The client still
-writes to them, and they may belong to another file by then.
+xfs_fs_map_blocks() checks the range of a layout with
 
-With pynfs as the client, a file grown to 1 MiB by two buffered writes
-on the server had 960 KiB preallocated past EOF, and an RW LAYOUTGET for
-that range got it as one INVALID_DATA extent, without the inode being
-marked. About 300 seconds later, with the default
-speculative_prealloc_lifetime, blockgc freed those blocks while the
-layout was still held. When the client then wrote through the layout and
-sent LAYOUTCOMMIT, xfs_fs_commit_blocks() found a hole where the
-unwritten extent had been, and xfs_iomap_write_unwritten() allocated for
-it with no blocks reserved:
+	if (offset > limit)
+		goto out_unlock;
+	if (offset > limit - length)
+		length = limit - offset;
 
-  XFS (nvme0n1): Corruption of in-memory data (0x8) detected at
-    xfs_trans_mod_sb+0x817/0x960 (fs/xfs/xfs_trans.c:351).
-    Shutting down filesystem.
-  ...
-   xfs_trans_mod_sb+0x817/0x960
-   xfs_alloc_vextent_finish+0x2e7/0x990
-   xfs_alloc_vextent_start_ag+0x25d/0x720
-   xfs_bmap_btalloc+0xdd2/0x1720
-   xfs_bmapi_allocate+0x197/0xf90
-   xfs_bmapi_write+0x4d0/0xb60
-   xfs_iomap_write_unwritten+0x307/0x7e0
-   xfs_fs_commit_blocks+0x1d9/0x630
-   nfsd4_block_proc_layoutcommit+0x5c2/0x7d0
-   nfsd4_layoutcommit+0x4b5/0xa20
+limit - length is computed in u64, so a length larger than the limit
+wraps and the length is not clamped. nfsd passes the LAYOUTGET range
+through, and RFC 8881 lets a client ask for NFS4_UINT64_MAX bytes, for
+the rest of the file. offset + length then wraps to offset - 1, end_fsb
+rounds back to offset_fsb, and xfs_bmapi_read() maps nothing. For a read
+layout, xfs_bmbt_to_iomap() then gets an uninitialized imap: with a
+zeroed stack it logs "Access to block zero", marks the data fork sick
+and fails with -EFSCORRUPTED, and otherwise the mapping is whatever was
+on the stack and can reach the client. For a write layout,
+xfs_iomap_write_direct() is called with a count of zero, which trips an
+ASSERT with XFS_DEBUG. An offset of 2^63 or more, which nfsd accepts
+too, becomes negative in the loff_t argument and passes the first check.
 
-The client got NFS4ERR_IO, in six runs out of six. When small files were
-written on the server after blockgc, with a sync first so that the freed
-extents were no longer busy, they got those blocks, and the client's
-write through the layout replaced 978944 bytes of their data before the
-LAYOUTCOMMIT. A LAYOUTGET and LAYOUTCOMMIT 30 seconds apart, before
-blockgc runs, leave the client's data in place.
+Reject a negative offset and an offset at the limit, and compare the
+length with what is left up to the limit, which cannot wrap once the
+offset is below it.
 
-Mark the inode also when a write mapping ends past EOF and nothing was
-allocated, the same way as for an allocation, before the blocks are
-handed out. With this, the same test keeps the blocks past blockgc, and
-the LAYOUTCOMMIT after 360 seconds succeeds with the data in place.
+With pynfs as the client, a READ LAYOUTGET for NFS4_UINT64_MAX bytes at
+offset 0 got NFS4ERR_IO, as did an RW one on an empty file, which also
+made nfsd warn
+about the non-standard errno -63, and a READ LAYOUTGET at offset 2^63
+got NFS4ERR_IO as well. With this patch and the previous one, the one at
+2^63 gets NFS4ERR_INVAL, the RW one gets NFS4ERR_NOSPC after nfsd has
+allocated one extent after the other until fewer than
+XFS_MAX_BMBT_EXTLEN blocks were free, which left less than 8 GiB of the
+32 GiB free, and the server logs nothing. The READ one gets NFS4ERR_INVAL
+as well: nfsd, which maps a layout one extent at a time since
+commit cc6c40e09d7b ("NFSD/blocklayout: Support multiple extents per
+LAYOUTGET"), asks again from the maximum file size on. An RW one on a
+file whose first 64 KiB are allocated, with a loga_maxcount that has
+room for one extent, is granted 0+65536.
 
-To share the update with the allocation case, set a local update_inode
-flag in both cases, call xfs_fs_map_update_inode() in one place below
-them, and move the log force into xfs_fs_map_update_inode().
+This depends on the previous patch. Without it, an RW LAYOUTGET to the
+end of the file, whose length is now clamped instead of wrapping, asks
+xfs_iomap_write_direct() for every block up to the maximum file size,
+which wraps the block reservation and shuts the filesystem down where it
+got NFS4ERR_IO before.
 
 Fixes: 527851124d10 ("xfs: implement pNFS export operations")
 Cc: stable@vger.kernel.org
-Reported-by: Chuck Lever <cel@kernel.org>
-Link: https://lore.kernel.org/r/4de5356f-bc4d-4f1a-9c81-fce09b1b46fd@slotpi15m67
 Signed-off-by: Daejun Park <daejun7.park@samsung.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
 ---
- fs/xfs/xfs_pnfs.c | 34 +++++++++++++++++++++++++---------
- 1 file changed, 25 insertions(+), 9 deletions(-)
+ fs/xfs/xfs_pnfs.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
-index ab38561700..a9f0b472f3 100644
+index 401a790299..7b508f63d3 100644
 --- a/fs/xfs/xfs_pnfs.c
 +++ b/fs/xfs/xfs_pnfs.c
-@@ -110,7 +110,15 @@ xfs_fs_map_update_inode(
- 	ip->i_diflags |= XFS_DIFLAG_PREALLOC;
+@@ -176,9 +176,9 @@ xfs_fs_map_blocks(
+ 	if (!write)
+ 		limit = max(limit, round_up(i_size_read(inode),
+ 				     inode->i_sb->s_blocksize));
+-	if (offset > limit)
++	if (offset < 0 || offset >= limit)
+ 		goto out_unlock;
+-	if (offset > limit - length)
++	if (length > limit - offset)
+ 		length = limit - offset;
  
- 	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
--	return xfs_trans_commit(tp);
-+	error = xfs_trans_commit(tp);
-+	if (error)
-+		return error;
-+
-+	/*
-+	 * Force the log so that the blocks handed out to the client are
-+	 * guaranteed to be present even after a server crash.
-+	 */
-+	return xfs_log_force_inode(ip);
- }
- 
- /*
-@@ -134,6 +142,7 @@ xfs_fs_map_blocks(
- 	uint			lock_flags;
- 	int			error = 0;
- 	u64			seq;
-+	bool			update_inode = false;
- 
- 	if (xfs_is_shutdown(mp))
- 		return -EIO;
-@@ -221,20 +230,27 @@ xfs_fs_map_blocks(
- 				end_fsb - offset_fsb, 0, &imap, &seq);
- 		if (error)
- 			goto out_unlock;
-+		update_inode = true;
-+	} else {
-+		xfs_iunlock(ip, lock_flags);
- 
- 		/*
--		 * Ensure the next transaction is committed synchronously so
--		 * that the blocks allocated and handed out to the client are
--		 * guaranteed to be present even after a server crash.
-+		 * Blocks past EOF that were allocated for buffered writes, such
-+		 * as speculative preallocation, can be freed by
-+		 * xfs_free_eofblocks() without breaking the layout unless the
-+		 * inode is marked as preallocated. Mark it before handing them
-+		 * out for writing, as for blocks allocated above.
- 		 */
-+		if (write && !(ip->i_diflags & XFS_DIFLAG_PREALLOC) &&
-+		    imap.br_startoff + imap.br_blockcount >
-+		    XFS_B_TO_FSB(mp, XFS_ISIZE(ip)))
-+			update_inode = true;
-+	}
-+
-+	if (update_inode) {
- 		error = xfs_fs_map_update_inode(ip);
--		if (!error)
--			error = xfs_log_force_inode(ip);
- 		if (error)
- 			goto out_unlock;
--
--	} else {
--		xfs_iunlock(ip, lock_flags);
- 	}
- 	xfs_iunlock(ip, XFS_IOLOCK_EXCL);
- 
+ 	error = filemap_write_and_wait(inode->i_mapping);
 
 -- 
 2.43.0
