@@ -1,73 +1,102 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.222.170
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792523395;
-	b=Hq3IHiBH/7B1wbGMtnaaNMSKQkoQQtD+0zW+oOc0+Nj1aljbOcAH2PMqtqaQ+E7WwNQX
-	 XBRgG9TfcMbUdV0w8PskkptCYiId8Ix5PKxzfqGwUkVqk9Jrj7Y7wEghYDrpKT3sJaUDa
-	 zbyUTkX04w+XDsfSyedxyKm98RKVuwYfZjdZoBKFiIL73OqS9azUAVHkwfB9qfMfF27MC
-	 1RUKPggYO1KsY/6lTNi1BHRgF3M7D36l0g2eKKLPjmEh30r04p5wO2uOT/Djx8erUH0Sj
-	 9Sx+59L4vZdHVsTZn1XqX2ZRaG0d92fM1DI8vSv3d1J47/u1La0tY3wHVAEY4pOtQnA==
+	t=1792533830;
+	b=O8lPswSKeeCNL5OUjKXVjaxAmeRNBS9IafbWb9k5K0UV4Hm6CMNGe07vBLsMx9NBICPu
+	 nnkyxLILa5L1PBexVMA4M87rqt0V64+9V21TwAF8Pq3ESrzeywvgep3bNe1nJtPWP7xKI
+	 LdnP7M6zs8da3XQQ30/XvPvbzWaXOZNyezLYExefegctAujcdEUnm/Nl8EOyvHuIbgLJa
+	 FwoMLFaWzsmevWG8BdP20h5TeUK9c+xUEij259k87uMFUF5TlTvaRVc6vhDWtl6H5ivN7
+	 Zhu0/AjiAmX36IV2Fl1VXJylVTcwWx3NMm0WUcQ9h93VzL1sTHIqFX833L+ajE249vw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792523395;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=ovQlggD95czzIsSuFFFOXTejTXPO0gwu2CoTMYAFg3I=;
-	b=YNAS2J0w6cA75OyjiTsRBKDQDXQnPq2IaoobInTO2DzU0XxrAo6EXOZiObUqu84Lmmxk
-	 S0GU056rOATBHeNbt8lzKZMA8p7nYp2nj2oI6Gk938WtLvCg99IW3OiCWa92SPvUMVc86
-	 ZQpBKYWbbWWO6YAPq3gkwu8M+nb+78Np2h4C8wdB3VsEZts2XZgOYCroKMpbxFdehMXWQ
-	 ljEp13pondw7cE8dbzUDfGohHMWRLa5mbCIyVJiXhMm5oc+izpRiuTUUN3XLsIpQldPZV
-	 w96/YvXldKTysohIackDs/Bbk3p7ZLl9CF+KbYxaTjGX7sOHl1J8yPXx9r4VhZaz+UA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792533830;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:Sender:From:
+	 X-Google-Original-From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 MIME-Version:Content-Transfer-Encoding;
+	bh=oiJsb2ENhg2Lat5WWUqDnx4kJNVMy/Qtqe/7sshNmdw=;
+	b=qli4le0teu/CTts7/o2m09V4hDdfamMVHf12mHizPIb7/nTVqLKicIqX4dkgzVfPPPH8
+	 nA1eQhByGA83sfx6IS71Rd/rzzb5WyWRrnGVnsPyusAs2Qqu3EQMmFx9iaw3DhNpLKdSt
+	 9YOEqBptrlLF4w2/zxNFttpZbpeE4lno4am/ZSy5Xy2N+1kcw+BLWEHl9JSBGZwwMaIJJ
+	 ScyN/ueSojOeglfQLLIHS6KkwOjz/nnPJPbPwrKhaCZxby10RiU1M71yRJdOHHfEmYVom
+	 zvnAqqEaYLkj2buOKzsizjP0gS+jB8LHGek5MnwWPGJNLQ7Vj7NwAVMqOxEdZDHBY8A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kI2foLsg;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=hammerspace.com;
+	spf=pass smtp.mailfrom=hammerspace.com;
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=ZFnNhEve;
+	arc=none smtp.remote-ip=209.85.222.170
+Received: from mail-qk1-f170.google.com (mail-qk1-f170.google.com [209.85.222.170])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 05E03606A31A;
-	Tue, 20 Oct 2026 19:09:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D5372606A31A
+	for <linux-nfs@vger.kernel.org>; Tue, 20 Oct 2026 22:03:49 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D5372606A31A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kI2foLsg
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 56DC31F000CC;
-	Tue, 20 Oct 2026 19:09:54 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792523394;
-	bh=ovQlggD95czzIsSuFFFOXTejTXPO0gwu2CoTMYAFg3I=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=kI2foLsgTSi2oRjIn+pQp2BXj5cltiuRUDb0t1B24devT1wip+qLzQ7PGNKkeXfOE
-	 1Z7yFYWk/cvjfzl8O5KI64zLictROqeheNNf6I0VjlekIJ/h43CXwSH//4dQwYcxGS
-	 JrPGh8o+n4858dEiC7MGOYl74wJIgH37C+ZB7+/KqcKifRa4NkK2ADqTNC2xg9xSDX
-	 QAUbm0c6XZd58Is0NAKyY/qIYS87B9ZUv0EpRSLL5L7Nin8wB3lJUFMT+2V8TFgCH5
-	 ioma9vkJhTbcVAPHPQMjBdlvnPm27hX8Gy9dL0/gtEs1Gd3jRIN2mXq+uOj5fuBq94
-	 h9+b0+w4bBYrQ==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 9A1B9F40066;
-	Tue, 20 Oct 2026 15:09:53 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Tue, 20 Oct 2026 15:09:53 -0400
-X-ME-Sender: <xms:gbzXamUKYcrpjssOOc8DSkfGhDF3WP6CDCm42jwm6Ag_vgpr7Pwb1A>
-    <xme:gbzXatb-UmH5Tg9Z1FmjWRODpdsDsGXAocNTRlKA4Mgn2sExwCJ2W-faSAb3NnJk9
-    LtDrxQNe1rA0c2DaBEjXF8oaO74NqmpWahY8gLEZzj1waAPOl6aT9As>
-X-ME-Proxy-Cause: dmFkZTGKdi/GfMzdxPHGEfvPy1C1gOrwx57H13otpJGvmTnAe20XYgdujii0sMUac7KkMs
-    pAFmLHMLuJk8b63/774vYB8yUtnFZCNuxxhZMfMMJ/F0ezeVyJ/O3+82AQmPAUfko69eEy
-    hSzRfKmYXuJnYF69XIWfscf4lTCRCwct7WhCfqxjvDEqL4D8UO1lQ/Dd2SGfo2ZKHz4u0A
-    DBfl2RVHNlWZPyNmXmLwmLsBUV+b4TGVTMvdFNppJyxguAaigQlcEuxa+U8yymreP00FS3
-    L3icWQhoiwgy1iiYPRsIZqYVtSHmqkrKkzwUS06VNSRwLHAQc9LZRpDPYTao+7QlkIx4E7
-    IEPiYnAX8QNyXOQyGM5geHPDDdchiLIq88fSBYBCajn/waHMdZVxTNeayoJPEBrBmFvCGu
-    Xg3hzfDNvLYPuesntGklFkqXSxew64sW5ZfBU+MMZ4j90R0ZQAeLfvNcTXV/GEAqMu+qR3
-    ESp2vCFw5KLX4pYsYVFGyvR1SawUQgfRn02M6hbP36YG7JxEq2wXhu3QlCy6G9hoqpYR39
-    9ghgAi5538zAwW0BYtEbFFRM9wmEdAjnD56wgvCYQq5RC76FzqzE3mKs4KuUCauWQzZ0iJ
-    L1NCnu1BRYziuEgIZKI1VhyDVBsWV/KNki+DmlnN+O7SLbnwWx6Zd/GorhEQ
-X-ME-Proxy: <xmx:gbzXanJisgjiNJBilY8UeCrmHgG-hfDn4Nq1OeNb1iOVLGsUlOYwhw>
-    <xmx:gbzXasjtmPfPbqJPsHtRPhjJS2YlkEY2nE2QD3F82GWzx5okwHepRg>
-    <xmx:gbzXao-t1RGQPQo8YZTLJ6Xxhw6QP4R5ZiZ5Zf2b8bKp7VuT5xdWRg>
-    <xmx:gbzXaooWtJdUWYhyxuqrr07_x_JxRSYZd4DmAXEqqVz3HFpzhsirZA>
-    <xmx:gbzXalOey-wvnwk2iTj9kw-EY9uSORXHHrHkQqyv1QHyTcUhAW6Ostxd>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 6D45F782738; Tue, 20 Oct 2026 15:09:53 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=ZFnNhEve
+Received: by mail-qk1-f170.google.com with SMTP id af79cd13be357-93e515769d3so9157985a.3
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Oct 2026 15:03:49 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=hammerspace.com; s=google; t=1792533829; x=1793138629; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:sender:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=oiJsb2ENhg2Lat5WWUqDnx4kJNVMy/Qtqe/7sshNmdw=;
+        b=ZFnNhEve6ZaDIrkguLQFu3os/T1+WWLU+NkPNPa3zlr5VoP2WAmB5cP/ygoSWe18gi
+         V2wCc1wPOdsQXV3LkCChpHcVzF/0IV8q26+djSJwnGBpKOlEL/FaOkf8Ex0jRPmTMOBf
+         isH/oqd6+DmkuQtMkltxBXZ83AxLUyxe5hbcsIzumtmDMH1Q1hDYvXZgKOhfZ0n0oeP5
+         TaoalkoFXzlmsyM7FNK5tUDSUssInWk2g6+tRhvtA9R/8jB5Hlswqa/K+KHQRbDTxB+r
+         dyym+XJDe6qRcmXh6yRAydBXVvA9CLi8lAdrZqrCopTUCLgxM2Tf1RtbMIN9XEFJub/5
+         X9EQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1792533829; x=1793138629;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:sender:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=oiJsb2ENhg2Lat5WWUqDnx4kJNVMy/Qtqe/7sshNmdw=;
+        b=S4d/A+iYGE6hM4Zdb3ZfzQKQhOBKIvMYdIqpSRvnOjny2NrjFpkqAK09biJZ5nE0NF
+         LkpQq/9RozAphgvNByBPiJ5bxrJ624xzidEOF5NTA3ry+2VA43uepUaXYp5g3gjeoeNs
+         aGW3EUPZgnujPPe03MXtZKj9J209QkeyE69LnESNTqaJ93hovuT3QeC0cuLMIr+pJbpg
+         UwNgGnN8ApIR7XryL5sGyBcfNFin+DeLBBQ7dIk0HqLHJ4TIrJM4r/F4yGnGW2RdneL7
+         QYv6x7s3n5KgiQJmgs07OMoEA+m7nVbbzlpTpjQBoqikVWw+ZVemiX9HsRGVQZIm1JRu
+         1r/A==
+X-Gm-Message-State: AFq9FYKQHWR+6eBNSvIzyBCpdVKvlmaUxYvpRIE8s2r6wygDZu8gNSsQ
+	oj0GfxWItFDnuVXexPCWW0Jdtikt38sE/WAYK5cc518BpJTBBiwcjmYT9SutGa9/E9M=
+X-Gm-Gg: AYBFou0lhLgYWY4D0AQcOI5WYIkBuOjPYV9P3nUL7EqbbZ+oHVBDTJbM0cG0Yu8VoiP
+	Hj+RLiUWT2pV/mgeCpwFcDv47+grDALdbWHGCTq0+G9OKl6sg0pdfue38A6jUaIf9vR3Or5aQ8H
+	A0zKVRmJgaPiGLn/5DriEaD5FmLnavFIgLxLCjjTI1/cVesz4LPzLBwsrffXh3gML+jBpNHhRvB
+	rtH5bf2859TgSc5Rj6MjrVtWa7e55nZLsRSJF7eshB+ACPelxprlzRbiKG4Hr4ZEcPjFECDdNsa
+	CSnz1Tx2upmmbwzhtvggLmNkbHVJW98EmLscngvhRgGBOB+WbSYS6ITATlvKBlxUMDksakCXU8E
+	Lov/ExhIr/O8KsRSCPD6kFMpAGeuylTmwO+OCETjx8CQaFg0Ifa36syT71hvymd/3r4SohrVCgh
+	7avNMYEGRb41rqYRpigQFrD9rJUSE/z8EsDFxqkRS4IbMHpNhrGY9TorNRgO5Ry4/aZVATfsgv4
+	UpO1YN4WqAkwZFFlJLwYX4KUkNYImL5GDq3jeP0PcV87uqmEJultDqhEXp9P+wru82Tw+IRhbSQ
+	cOrz4TnpFXmsIhQzdQWl8jYwf6VSoBkEn3dPLzRWd+3IZgtx+fmt0mfkaDLaj+RXig==
+X-Received: by 2002:a05:620a:690e:b0:93f:52c5:a32 with SMTP id af79cd13be357-93f57f7aff1mr111231185a.83.1792533828633;
+        Tue, 20 Oct 2026 15:03:48 -0700 (PDT)
+Received: from localhost (pool-68-160-167-46.bstnma.fios.verizon.net. [68.160.167.46])
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-93f56ddd369sm92332385a.21.2026.10.20.15.03.47
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 20 Oct 2026 15:03:47 -0700 (PDT)
+Sender: Mike Snitzer <mike.snitzer@hammerspace.com>
+From: Mike Snitzer <snitzer@hammerspace.com>
+X-Google-Original-From: Mike Snitzer <snitzer@kernel.org>
+To: Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>
+Cc: linux-nfs@vger.kernel.org,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	Christoph Hellwig <hch@lst.de>,
+	Jens Axboe <axboe@kernel.dk>,
+	Matthew Wilcox <willy@infradead.org>,
+	Jonathan Corbet <corbet@lwn.net>,
+	linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org
+Subject: [PATCH v7 0/5] mm, iomap, NFSD: stop uncached writes reading back shared pages
+Date: Tue, 20 Oct 2026 18:03:41 -0400
+Message-ID: <20261020220346.28020-1-snitzer@kernel.org>
+X-Mailer: git-send-email 2.44.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,46 +106,78 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: AY0IOz-isJ-R
-Date: Tue, 20 Oct 2026 15:09:25 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Jeff Layton" <jlayton@kernel.org>
-Cc: "Donald Hunter" <donald.hunter@gmail.com>,
- "Jakub Kicinski" <kuba@kernel.org>, "David S. Miller" <davem@davemloft.net>,
- "Eric Dumazet" <edumazet@kernel.org>, "Paolo Abeni" <pabeni@redhat.com>,
- "Simon Horman" <horms@kernel.org>, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>, "Shuah Khan" <shuah@kernel.org>,
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
- linux-nfs@vger.kernel.org, linux-kselftest@vger.kernel.org
-Message-Id: <e776dd28-44c9-42fa-b2c1-fd1491e4c231@slotpi15m67>
-In-Reply-To: <20261020-nfsd-filehandle-get-v1-1-8c54f625800b@kernel.org>
-References: <20261020-nfsd-filehandle-get-v1-1-8c54f625800b@kernel.org>
-Subject: Re: [PATCH] nfsd: add NFSD_CMD_FILEHANDLE_GET for root filehandle lookup
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-Hi Jeff, thanks for the patch. Review findings:
+Hi,
 
-1. The selftest's proc_filehandle() cannot parse the /proc reply.
-   write_filehandle() emits the handle via qword_addhex(), which
-   prefixes the hex digits with "\x" (net/sunrpc/cache.c), so the
-   first hexval() call fails and the function returns -EIO.
+Please consider this v7 for the v7.5 development cycle, so that it can
+go upstream in the v7.5 merge window.
 
-2. The new binary is missing from tools/testing/selftests/nfsd/
-   .gitignore, unlike the four sibling programs listed there.
+An uncached (RWF_DONTCACHE) buffered write drops each page it writes
+once that page is written back.  A page the write covers only partly is
+shared with the neighbouring write, and once the first of the two has
+been written back the second has to read it back from disk before it
+can write its part.  32 threads writing interleaved records to one file
+on XFS (emulated 4Kn NVMe, 4 KiB pages), before and after 3/5:
 
-3. The yaml doc for maxsize and the kernel-doc claim the handle is
-   capped at @maxsize, but the code silently clamps to NFS3_FHSIZE.
-   A caller passing 128 gets a 64-byte handle with no error.
+  record  pwritev2() flags          4 KiB device       MiB/s
+  bytes                             reads per write
+                                    before   after     before  after
+  47008   RWF_DONTCACHE             0.97     0.000     831     2281
+  47008   RWF_DONTCACHE|RWF_DSYNC   0.99     0.000     601     1227
+  6000    RWF_DONTCACHE             0.97     0.000     121      488
+  6000    RWF_DONTCACHE|RWF_DSYNC   0.99     0.000      90      206
 
-4. My sashiko instance here noted that fh_proc_mount() leaves
-   self->mnt behind when mount(2) fails after mkdir() succeeds, so
-   teardown's rmdir() of the tmpdir fails.
+3/5 has the page cache keep such a page for the write that completes
+it.  4/5 lets a writer that syncs its own write, as NFSD does for a
+stable WRITE, complete those pages itself once the sync is done.  5/5
+is the NFSD change that uses it.  1/5 reports the DONTCACHE dirty count
+in the bdi debugfs stats, and 2/5 adds folio_mark_dropbehind(), which
+3/5 and 4/5 use.
 
-Can you send a v2 that addresses these issues?
+The prerequisite NFSD changes are staged in cel/nfsd-testing, through
+ad42983b887e ("NFSD: add tracing for how direct-mode READ and WRITE
+are serviced"), which was v6's 1/6.  This series applies on top of it,
+and each patch builds with W=1 with no warnings.
 
+1/5 to 4/5 are mm, with small iomap changes in 3/5 and 4/5, and are Cc'd
+to linux-mm and linux-fsdevel.  If the mm and iomap maintainers are
+agreeable, their acks would let Chuck take the series through the nfsd
+tree.
+
+Changes since v6:
+- v6 1/6 dropped: Chuck applied it to cel/nfsd-testing as ad42983b887e.
+- 1/5 to 4/5 (v6 2/6 to 5/6) are unchanged; 5/5 (v6 6/6) only differs
+  in context, from its rebase.
+
+v6: https://lore.kernel.org/linux-nfs/atbfEbgMU6UGkn2X@kernel.org/
+v5: https://lore.kernel.org/linux-nfs/20261019150725.1507-1-snitzer@kernel.org/
+v4: https://lore.kernel.org/linux-nfs/20261015233309.42999-1-snitzer@kernel.org/
+v3: https://lore.kernel.org/linux-nfs/20261001045502.48381-1-snitzer@kernel.org/
+v2: https://lore.kernel.org/linux-nfs/20260929231329.22018-1-snitzer@kernel.org/
+v1: https://lore.kernel.org/linux-nfs/20260929173423.16149-1-snitzer@kernel.org/
+
+Thanks,
+Mike
+
+Mike Snitzer (5):
+  mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats
+  mm: add folio_mark_dropbehind() to mark a folio dropbehind and account it
+  mm, iomap: keep a partly covered page until an uncached write completes it
+  mm, iomap: let an uncached writer complete its shared pages itself
+  NFSD: drop a shared boundary page only once both WRITEs have written it
+
+ .../filesystems/nfs/nfsd-io-modes.rst         |  17 +++
+ fs/iomap/buffered-io.c                        |  16 ++-
+ fs/iomap/trace.h                              |   3 +-
+ fs/nfsd/vfs.c                                 |  99 ++++++++++++++--
+ include/linux/fs.h                            |   8 +-
+ include/linux/iomap.h                         |   1 +
+ include/linux/pagemap.h                       |  12 ++
+ mm/backing-dev.c                              |  11 ++
+ mm/filemap.c                                  | 106 +++++++++++++++++-
+ 9 files changed, 257 insertions(+), 16 deletions(-)
 
 -- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+2.52.0
+
