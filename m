@@ -1,104 +1,59 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.219.47
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792533833;
-	b=4OApMo0dYtpoI4kj/zCF0SZpYTaPy9/V01uDMLuSXs5F0M5sS6gYL/F3mLyG6H9yVIU/
-	 BlG0zPjP4nEQGsm9NoI5xpeubeLk72ogSNMtKzIcBmcXUCMuS43gPqOyHqNoN8y+f7uRx
-	 4j27lEd/4TPyWByQ8nISZi5SfFEzEPWstWamfMHj3I03jW6LFaZsoz7WgxaR+wdVNTXum
-	 gs7//bKOlF+ksdAwdgQoCD+3pnu2vmGoIXP5N3NmBXRhb45rb2oJ8QfAooR1ENq+B6h5F
-	 iKI4ME9taJmTKI+OBqyKGlVnj64nHQIuPGZHsQ6ia0SvqWitfvsF3Cjh+HzPnxOEEtA==
+	t=1792534315;
+	b=lZHj0akjM+Li1503AuKrO8TiPcj194Kg9lzCZH7QjoSneI5Ww+U8QfLiekdsalcvoqSi
+	 8jExMxEYM9dsZsg1m3vhqh8R946LcqDzCERHjdP73Jil3/Z9QgD+4tBnmwx7A2H71pzif
+	 7UdkETkJRkPW3/FrF0wWQLtWeHR8xR+TbvT3+uXuCcIT657D3uiLtPWQSVYB0HOkRIM2e
+	 5ZstnytLLjCP0nzmn+UKae93/mBfEyrXGpkgugKnIXgYWQp9Uaa/FRHJ2RsHkVg2EcR85
+	 sIUKSi9BS7G/zTH7XJykNfw9PchpOkOV2hquaxNzqrhm1BVwMlySu2Uxzruvd9uhqyA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792533833;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:Sender:From:
-	 X-Google-Original-From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=7y3NOM7xqvWmL65AFq+ZWC79CgE7opPLQwAIectARfc=;
-	b=s8fAyMCf+r0291pVSa203I9KnvjdjMEq9IYajmsjfNSdoqwpRkRaPQdGtwuMzu7QePTl
-	 DLn1mwwvsmeRD3NXZP+udI96JutU7+q8P50HdD2zHeKB2hMT00+1OR1tcMi6YJrzFBJm/
-	 XODO9xMh14Y2YUaa3sdMQGCqyd2tiqkpiTjo8E2EbiL7XOgrIb22w4XVy2oMnBRSkBnGP
-	 HbB5qf5X4bctWVbryrPB0o1GSayxSfmKrwRzysfI/WD4zBpqKUHUnGXBiESZltfkKtmHV
-	 ehP+CvKQs2Pcb2UWzahb9eS8vw+4xPbhsFp7J41sPjmdNhRdV0VjGvkLek7+EUcQIQg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792534315;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=NpFLan+/UuwgnzMCO1yKW0YhIn6YvxfWrSCdFI7nkSg=;
+	b=wjX/jsmkgO7EZ9HohDPPf2OFGkGu64zVKGRP7oVf4kJIvc6UheOceO7T6bXkUlYWcOc/
+	 jolpuQUPBHW/B4eBvhIrvzldLCeaicUUeQkeDkIfBMK2ph3YiLAjhumvqptc6NPVnhYBM
+	 VU3AgkfYRO/sa0Yz+RAC1x35cIjWmi7gVRfYAddNQxSSQxdkJSTFjelpeDwKix6pThnsP
+	 0Al0MrbQl0EbXJk6Y6vmJEfE6pB9455eD2vhVdH8TKpGEiRgguLSf7u7cuLl0GnoJr4u8
+	 b+gAgKNyz2m2k2deUJpgftfFa17Bq4hlZIURP/YNRGYXaXNCFlWKLykS13o3ixCYMsA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=hammerspace.com;
-	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=e7v4dX4R;
-	arc=none smtp.remote-ip=209.85.219.47
-Received: from mail-qv1-f47.google.com (mail-qv1-f47.google.com [209.85.219.47])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="N1/nEJWO";
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1BED6606A324
-	for <linux-nfs@vger.kernel.org>; Tue, 20 Oct 2026 22:03:52 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 1BED6606A324
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 62AF0606A319;
+	Tue, 20 Oct 2026 22:11:55 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=e7v4dX4R
-Received: by mail-qv1-f47.google.com with SMTP id 6a1803df08f44-91ba8fcc684so1307306d6.3
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Oct 2026 15:03:52 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1792533832; x=1793138632; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:sender:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=7y3NOM7xqvWmL65AFq+ZWC79CgE7opPLQwAIectARfc=;
-        b=e7v4dX4RkKze3IRJFHlD90GiiRunjf1dW7R0ovnU+GL0YUvG5uNrO6oe7nd8vkHp1d
-         ctyvI/jFJ6jCQ+EsmGNt9g9uXCJayx5vTOHlB0/45prHxEnD01+WxzIuTZ9oKFA0Je7B
-         xJolL9Gu2l+kSm7jYJvJfA20olJm6WWRpHH7XHyh6uLzWntCtpCmcq4HaN0MkHR2DqXA
-         l0w4btT6vddD/K6vPrJWBxM98p8iiNa1cksHwaZQwwnUtDC/hGh5q+iP9tfRDHGYNdqe
-         tqdrfSxhuf5O/ugDKxdhepK5xgcERJbyZZFD0Wipn9BQXiH1MJ9Iqhwi/936FbfaUMUT
-         38pw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792533832; x=1793138632;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:sender:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=7y3NOM7xqvWmL65AFq+ZWC79CgE7opPLQwAIectARfc=;
-        b=gwnMJboGJJmF9qTm3IPhMQtRayV5qwLkGqwArNTjLOo4VTBjZ++KSQFP4H6BexNp+D
-         +lKMz7/eub3VNYuOn9DeP+kaXFoYD5yROywQMqjiYHFOtxYnjMOSW+L3ic/+Lem/+gB1
-         go7I2RlEC7F5FO/VFaca1DOc/NvM1RdvBpHPxh+3PH/MwBUwppznHsrpP6oPT1sPQE3A
-         xCwBToFLTnQXfqz1zxMAxWIqZcwC7c3Uiu6pNFiVPjtUmY+xIwgCR9tY2DHK4iHI9Q5N
-         ICyLg15zwCs7DbSBzmQCqwWW2L73/8kkOw3Hmo8g22NcEMUtUDBTZsiOdoslWiKaAX8e
-         b72A==
-X-Gm-Message-State: AFq9FYKm2AnVm+YzSLRAF3cWS/PDXb3te7bgimdTT8GEkjYm64nrLTHw
-	sSl+UM5ZqnKbqCgLezgIMeA3vQuFqg9CpJfXvk5ci3+HJ3/Ckfpku7Vt4TPiYiRxZJI=
-X-Gm-Gg: AYBFou27NivChwlXYfy5plVnm5rwGaE/95LhKOji+V7zuyR+ulQbyl5wRBx3IcWK3j4
-	TwO1zOVdzDxDqkLpMvB+fQODx+LuGercvvV6JMmw2wrEDPzcSjm0u/++ewU1J7bXNHDluv2L4lU
-	OZtH1lMSg+v8eZkrmFostjSPaOh9cm0PuiQRXjgzw2ocG0oMtaSSLpU9RUdpVQz9Cr7q5e5RgnJ
-	9F9Wbj6D16tyhqUvIr5Y87TGnn7Uw0uyR9W0GDbShzNsfoI/SjrQozCBxbchqEnv2tkObBdQI/Y
-	kI64imAKtB5UAR+ULfcCVDBPN+/Y2Ny6m4GqKRn3rnKZtFwtoti1Ze/KlS6ar9RralontI22AZw
-	ifV7Rua9ZgMigpHGhU9bUyaHWHoABsfj6vMvGD99JYP219KwPA77/hbs6pjfkzufgN4a+XVTCwW
-	dvGJQXfRwaL92YTlxKHc8dy4J+ZsdIuHoK2IOnQC3a0rO1RrwB4A5/gwHMm45lGgxI0gP19479M
-	c1Z/ejzg9Qbdn5Fbf8jW+WaUlamC8QhPsERzjlbRMGxWheWz/Kw87Iuk/9YBQSpawOIr2Mp5Q==
-X-Received: by 2002:a05:6214:1bcd:b0:917:a2ba:e481 with SMTP id 6a1803df08f44-91c12edd30fmr2833036d6.15.1792533831883;
-        Tue, 20 Oct 2026 15:03:51 -0700 (PDT)
-Received: from localhost (pool-68-160-167-46.bstnma.fios.verizon.net. [68.160.167.46])
-        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-91c10b70c43sm8732996d6.10.2026.10.20.15.03.51
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 20 Oct 2026 15:03:51 -0700 (PDT)
-Sender: Mike Snitzer <mike.snitzer@hammerspace.com>
-From: Mike Snitzer <snitzer@hammerspace.com>
-X-Google-Original-From: Mike Snitzer <snitzer@kernel.org>
-To: Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	NeilBrown <neil@brown.name>,
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=N1/nEJWO
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C52651F000C9;
+	Tue, 20 Oct 2026 22:11:54 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1792534315;
+	bh=NpFLan+/UuwgnzMCO1yKW0YhIn6YvxfWrSCdFI7nkSg=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=N1/nEJWOj9GL0Tc5obFWdlcWohS41ITXgsBTMTdVcUdZ3M00ZixvCMaMTMsT+OwuD
+	 g+ycxH/HAME4S/LIjYo4Kd1fXkJ9oXBw5XyrL07bK8TqBU9/bmJBrSqTQD+z8WMqqt
+	 6XE1bszg5xZjnxqWX/Mj+fra/ygDz3ypMGHygi7DlO35STxFgn0c+Z7lzr5hJIFh71
+	 MQg8Ov3kzBbxTKTQHk4DyH2htibCiDlwcpufA9EdsVjApsDhlrKxmZTukgkryU/TW0
+	 34qnmroxipBVxkKxhm8too4dCWsX2bRYOffBv9HSWUA13VZjpGo8WJ6nzNTYAZ2D41
+	 Xxh5crpem99iw==
+Date: Tue, 20 Oct 2026 18:11:53 -0400
+From: Mike Snitzer <snitzer@kernel.org>
+To: Mike Snitzer <snitzer@hammerspace.com>
+Cc: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+	linux-nfs@vger.kernel.org, NeilBrown <neil@brown.name>,
 	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	Christoph Hellwig <hch@lst.de>,
-	Jens Axboe <axboe@kernel.dk>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
 	Matthew Wilcox <willy@infradead.org>,
-	Jonathan Corbet <corbet@lwn.net>,
-	linux-mm@kvack.org,
+	Jonathan Corbet <corbet@lwn.net>, linux-mm@kvack.org,
 	linux-fsdevel@vger.kernel.org
-Subject: [PATCH v7 2/5] mm: add folio_mark_dropbehind() to mark a folio dropbehind and account it
-Date: Tue, 20 Oct 2026 18:03:43 -0400
-Message-ID: <20261020220346.28020-3-snitzer@kernel.org>
-X-Mailer: git-send-email 2.44.0
-In-Reply-To: <20261020220346.28020-1-snitzer@kernel.org>
+Subject: Re: [PATCH v7 1/5] mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats
+Message-ID: <atfnKRbYfnwwi_Tb@kernel.org>
 References: <20261020220346.28020-1-snitzer@kernel.org>
+ <20261020220346.28020-2-snitzer@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -108,98 +63,100 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261020220346.28020-2-snitzer@kernel.org>
 
-A folio allocated by an RWF_DONTCACHE write is marked dropbehind before
-it is dirtied, so folio_account_dirtied() adds it to WB_DONTCACHE_DIRTY
-and folio_clear_dirty_for_io() or folio_account_cleaned() subtracts it
-when it is cleaned.  Nothing marks a folio that already exists.  A
-caller that sets PG_dropbehind on a folio that is already dirty
-unbalances the counter: the clean subtracts what was never added, and
-once the counter goes negative, wb_stat_sum() reads it as zero and the
-DONTCACHE writeback kick stops writing anything back for every writer
-on that bdi_writeback.
+On Tue, Oct 20, 2026 at 06:03:42PM -0400, Mike Snitzer wrote:
+> The per-bdi_writeback WB_DONTCACHE_DIRTY counter drives how much the
+> flusher writes back in response to an IOCB_DONTCACHE kick, but it is
+> not reported anywhere, so the DONTCACHE dirty backlog can only be
+> inferred from MemFree/Cached movement.
+> 
+> Report it as BdiDontcacheDirty in /sys/kernel/debug/bdi/<dev>/stats
+> and as WbDontcacheDirty in the per-wb stats, next to the
+> Reclaimable line.  Use wb_stat_sum() rather than wb_stat() to fold in
+> the per-cpu batches: the flusher targets the summed value and small
+> backlogs would otherwise read as zero.
+> 
+> Fixes: 88d6f128d06d ("mm: track DONTCACHE dirty pages per bdi_writeback")
+> Cc: Jeff Layton <jlayton@kernel.org>
 
-Add folio_mark_dropbehind(), the inverse of the clear in
-__filemap_get_folio_mpol(): with the folio locked, mark it and, if it is
-dirty, add it to WB_DONTCACHE_DIRTY.  The folio lock orders this
-against dirtying and against folio_clear_dirty_for_io().  A concurrent
-lookup without FGP_DONTCACHE that clears the flag again subtracts what
-this added.
+FYI, I forgot to pick up Jeff's provided review tag for this patch:
 
-The name follows folio_set_dirty() and folio_mark_dirty(): the first
-only sets PG_dirty, the second also accounts the dirty folio.
-folio_set_dropbehind() likewise only sets PG_dropbehind, and
-folio_mark_dropbehind() also accounts it in WB_DONTCACHE_DIRTY.
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
 
-A later commit uses it in NFSD to drop a page shared by two misaligned
-WRITEs once both have written it.
+see: https://lore.kernel.org/linux-nfs/2bee53783a2372b8dc715350b6f6d2ad5d8770ff.camel@kernel.org/
 
-Cc: Jeff Layton <jlayton@kernel.org>
-Cc: Jens Axboe <axboe@kernel.dk>
-Cc: Matthew Wilcox (Oracle) <willy@infradead.org>
-Cc: linux-mm@kvack.org
-Assisted-by: LLM
-Signed-off-by: Mike Snitzer <snitzer@kernel.org>
----
- include/linux/pagemap.h |  1 +
- mm/filemap.c            | 31 +++++++++++++++++++++++++++++++
- 2 files changed, 32 insertions(+)
+Thanks,
+Mike
 
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 0adfa6605653..3012bd95812a 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -1310,6 +1310,7 @@ void end_page_writeback(struct page *page);
- void folio_end_writeback(struct folio *folio);
- void folio_end_writeback_no_dropbehind(struct folio *folio);
- void folio_end_dropbehind(struct folio *folio);
-+void folio_mark_dropbehind(struct folio *folio);
- void folio_wait_stable(struct folio *folio);
- void __folio_mark_dirty(struct folio *folio, struct address_space *, int warn);
- void folio_account_cleaned(struct folio *folio, struct bdi_writeback *wb);
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 00fd89cf6f55..ed7e4dbea653 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1644,6 +1644,37 @@ void folio_end_dropbehind(struct folio *folio)
- }
- EXPORT_SYMBOL_GPL(folio_end_dropbehind);
- 
-+/**
-+ * folio_mark_dropbehind - mark an existing folio dropbehind
-+ * @folio: the folio, locked by the caller
-+ *
-+ * Mark @folio so that the writeback that cleans it drops it.  A folio that
-+ * is already dirty is added to WB_DONTCACHE_DIRTY, as folio_account_dirtied()
-+ * would have added it had it been marked when dirtied, so that the clean
-+ * that subtracts it leaves the counter balanced.
-+ */
-+void folio_mark_dropbehind(struct folio *folio)
-+{
-+	struct address_space *mapping = folio->mapping;
-+
-+	VM_WARN_ON_ONCE_FOLIO(!folio_test_locked(folio), folio);
-+
-+	if (folio_test_dropbehind(folio))
-+		return;
-+	folio_set_dropbehind(folio);
-+	if (mapping && folio_test_dirty(folio) &&
-+	    mapping_can_writeback(mapping)) {
-+		struct inode *inode = mapping->host;
-+		struct bdi_writeback *wb;
-+		struct wb_lock_cookie cookie = {};
-+
-+		wb = unlocked_inode_to_wb_begin(inode, &cookie);
-+		wb_stat_mod(wb, WB_DONTCACHE_DIRTY, folio_nr_pages(folio));
-+		unlocked_inode_to_wb_end(inode, &cookie);
-+	}
-+}
-+EXPORT_SYMBOL_GPL(folio_mark_dropbehind);
-+
- /**
-  * folio_end_writeback_no_dropbehind - End writeback against a folio.
-  * @folio: The folio.
--- 
-2.52.0
-
+> Cc: Jens Axboe <axboe@kernel.dk>
+> Cc: Matthew Wilcox (Oracle) <willy@infradead.org>
+> Cc: linux-mm@kvack.org
+> Assisted-by: LLM
+> Signed-off-by: Mike Snitzer <snitzer@kernel.org>
+> ---
+>  mm/backing-dev.c | 11 +++++++++++
+>  1 file changed, 11 insertions(+)
+> 
+> diff --git a/mm/backing-dev.c b/mm/backing-dev.c
+> index 18e999053bae..b8a2c27e07fa 100644
+> --- a/mm/backing-dev.c
+> +++ b/mm/backing-dev.c
+> @@ -46,6 +46,7 @@ struct wb_stats {
+>  	unsigned long nr_dirty_time;
+>  	unsigned long nr_writeback;
+>  	unsigned long nr_reclaimable;
+> +	unsigned long nr_dontcache_dirty;
+>  	unsigned long nr_dirtied;
+>  	unsigned long nr_written;
+>  	unsigned long dirty_thresh;
+> @@ -78,6 +79,12 @@ static void collect_wb_stats(struct wb_stats *stats,
+>  
+>  	stats->nr_writeback += wb_stat(wb, WB_WRITEBACK);
+>  	stats->nr_reclaimable += wb_stat(wb, WB_RECLAIMABLE);
+> +	/*
+> +	 * Sum the per-cpu batches: the dontcache flusher targets this
+> +	 * counter via wb_stat_sum() and small backlogs would otherwise
+> +	 * read as zero here.
+> +	 */
+> +	stats->nr_dontcache_dirty += wb_stat_sum(wb, WB_DONTCACHE_DIRTY);
+>  	stats->nr_dirtied += wb_stat(wb, WB_DIRTIED);
+>  	stats->nr_written += wb_stat(wb, WB_WRITTEN);
+>  	stats->wb_thresh += wb_calc_thresh(wb, stats->dirty_thresh);
+> @@ -125,6 +132,7 @@ static int bdi_debug_stats_show(struct seq_file *m, void *v)
+>  	seq_printf(m,
+>  		   "BdiWriteback:       %10lu kB\n"
+>  		   "BdiReclaimable:     %10lu kB\n"
+> +		   "BdiDontcacheDirty:  %10lu kB\n"
+>  		   "BdiDirtyThresh:     %10lu kB\n"
+>  		   "DirtyThresh:        %10lu kB\n"
+>  		   "BackgroundThresh:   %10lu kB\n"
+> @@ -139,6 +147,7 @@ static int bdi_debug_stats_show(struct seq_file *m, void *v)
+>  		   "state:              %10lx\n",
+>  		   K(stats.nr_writeback),
+>  		   K(stats.nr_reclaimable),
+> +		   K(stats.nr_dontcache_dirty),
+>  		   K(stats.wb_thresh),
+>  		   K(dirty_thresh),
+>  		   K(background_thresh),
+> @@ -163,6 +172,7 @@ static void wb_stats_show(struct seq_file *m, struct bdi_writeback *wb,
+>  		   "WbCgIno:           %10lu\n"
+>  		   "WbWriteback:       %10lu kB\n"
+>  		   "WbReclaimable:     %10lu kB\n"
+> +		   "WbDontcacheDirty:  %10lu kB\n"
+>  		   "WbDirtyThresh:     %10lu kB\n"
+>  		   "WbDirtied:         %10lu kB\n"
+>  		   "WbWritten:         %10lu kB\n"
+> @@ -179,6 +189,7 @@ static void wb_stats_show(struct seq_file *m, struct bdi_writeback *wb,
+>  #endif
+>  		   K(stats->nr_writeback),
+>  		   K(stats->nr_reclaimable),
+> +		   K(stats->nr_dontcache_dirty),
+>  		   K(stats->wb_thresh),
+>  		   K(stats->nr_dirtied),
+>  		   K(stats->nr_written),
+> -- 
+> 2.52.0
+> 
