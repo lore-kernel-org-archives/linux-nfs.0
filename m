@@ -1,73 +1,79 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792434849;
-	b=U7zdzkAO+sNHTzaDPVhJjfkByowTkJn198cxT5RpxOXX047jPyDYX1wVGst61s/S+YUJ
-	 Gm/ZO5eI4yMjKo41iGm89I/gf9qwd4NyFrn7mEK8I4kHlUlidCXvCMQyFbnKp9KXgALH1
-	 AZzyys3EtjzHYpKdtyzcWLc2PahFsd0Uh6z76vYhAfbsJi17F3zNgox1cEBe8fUgFFaK+
-	 /m3208E/pDjVjaNRuQI5ZbQ4zwsQJL3bGYZQEC3hO88zonOGTkshzTxQ/AYBwt81EGBRy
-	 IdbqrvSc46coCtS4ZA2qlz9L4PCngzI0rtC21Np9fcsX9F6tRE8TC1+fW4nRB2jVhPA==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792434849;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=fpSk/CbNOxgm/YwPtWLbatYprzPLT2PIdzvPIH54y58=;
-	b=nnZpJ860R13x4t3fO4G7L1wEA/yWJHge9ot0XUGjtIE34Xvn8wwI3oDESIIX6BPlK4S2
-	 ZGW6ZdP5a+yUPBeF6WKfHMC3OeDTn+DVjoZuvoUhZ1YsxjVtw4qPULV5mMt/Bu8dekCuT
-	 7OUNp+7pMc5K2gsUFvQPsSvt4iQHg0CNgYelG/9osH70LcfOpyJMtSi0vPaZNe4ykPaj2
-	 Y1NQmXN6rEl3KvfZO3eDhUIdovugyu6VqUoVSN1Ibn+JGb1CLiVzO+n8SM8pyA183vCdP
-	 Au2QTibT0DwYCDpSknYK5iC/AWE41A8IKbbI4Ts3hLX2sYSrJh+qm1q+hCwdZT/DmSw==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mcN3jL0x;
-	arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1792465727;
+	b=z+7hxHAGyxkQu15HYCiv8rRJkKC5op0BHuwyjBy9Gb4METJGSlQkKVbuXYEyKH2tij2f
+	 aRWwQFMLTCYBq7qhmL3VtXvc3x5kQujjsbb79kRE2QVT054y+5JUDfC4oWGp5svAc7r45
+	 RNye26OEjHQF8Sg2RftPWn7/suYdmAL5q/+MJHNLkAOz7OqUZN360RbZkdV5yM8AVfq8K
+	 vLZswCDON+iZafH+y8G58VgU1DcAunmrac1iyFmuXkY7N0Orhls0+UY9WeOWHQELk6cVg
+	 2wXCHPRdIBt5L0E0+o57JrB3+Jj9fZ1gR0gpzCWxCuHdrAKWlykibEpwKy/vzxww0dQ==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792465727;
+	h=Received:DKIM-Signature:Received:From:Date:Subject:MIME-Version:
+	 Content-Type:Message-Id:References:In-Reply-To:To:Cc:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
+	 X-Original-From:Reply-To:Content-Transfer-Encoding;
+	bh=xTAaZm8z237tbVsE73/vOrMvUznMWOKNs1DvgC/tVG0=;
+	b=vI78uFth/LJ4JoaWfxU5vVZq62zOQb0r/EWjXWnRo4NxEX9s2XuujmFPkq8OQgIlsXyL
+	 Q0Phn1MZK9WmhU+nMG1xYF3qs6XI39qrRbUrwc/ka/BQ97byBtSlIqPBIcdatZbLTdreo
+	 CfNNzFgHilE6MVoozPm8bfUO/SMb0YtJEC07vV2t/A52dawhnnT09ZZPtPDU5zMRwVxHV
+	 Awq0iaVPuz+qhiPx/U4desFJnsosYG6D04fHaZawcoWivwLqsdsDbwaJkZlSJdqI5uytj
+	 AKoAIM+HkYuUmZcqg0S70J/nGz/cSQM9jcPcrecgLSsS5bSzryc0OCYwE5Secny19FA==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="lvyq4R1/";
+	arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A84FF606A31D
-	for <linux-nfs@vger.kernel.org>; Mon, 19 Oct 2026 18:34:09 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AD00D606A319;
+	Tue, 20 Oct 2026 03:08:46 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mcN3jL0x
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E46431F000C4;
-	Mon, 19 Oct 2026 18:34:08 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lvyq4R1/
+Authentication-Results: smtp.kernel.org; arc=none smtp.remote-ip=100.80.115.77
+ARC-Seal: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256; cv=none;
+	t=1792465726;
+	b=ppby/bNwph2PzzUIywEOFah2bRppfYId0sG0shMOzwTo9SZyrs5uyIsFdk06NiJrup8Q
+	 kB2jvNBiRqdsgGLnlNcV/70LOOgtEpQz+FoG/p+TEDTUt+jAx0MGPrg+jTrNvZs2h7pNP
+	 sQw499NpboUwv+NYZvFGbTi/Me/Q3nDq9m8jFnDU/dIlDMbVsZzjX63OM+f0z0PxevfrP
+	 NEcH/9buoL2CpWARlS71tPOYS8GmZ2Hv8PSGnftG+jGQ7KhIik2vws0t/5QSmJmeDtf22
+	 ecZ61wktzKNh+n2S9iqsoR9Pd56N7HmxbQdbIgPrpvHs/agBsMrx2EEYG9qylpiKBYg==
+ARC-Message-Signature: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256;
+	c=relaxed/relaxed; t=1792465726;
+	h=DKIM-Signature:Received:From:Date:Subject:MIME-Version:Content-Type:
+	 Message-Id:References:In-Reply-To:To:Cc:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
+	 X-Original-From:Reply-To:Content-Transfer-Encoding;
+	bh=xTAaZm8z237tbVsE73/vOrMvUznMWOKNs1DvgC/tVG0=;
+	b=NIDwghuw7fiBhcTzqkajtdHojuZJrOJ44g8U27M4rHdgvDoQDr6RBz9ga6W1PdOWBQG+
+	 VSqRcOtvdqKlQxOfp6U2+audRxBtBs2RRbqYmOhfyM0hsSiUrVdY3r1GgzldEwaNu5SLT
+	 GZg4qUK8fU6xuioJYwu4iuO7ptkc/f0VahAZFpUrBHSaC/RlI4TV5VDW+Yg+3alzqpyEE
+	 0UuUdNaRK+7jETFzJoBz3Ub/d3IGTNSaOyb76Sesl6WwkNl6mSNiUhxTLT9ASwCG5OF23
+	 3vo0Em+9bbjaXBDiGcb7o15deC/qgDaF5Nr0JdMGEw2/hjuA3lNBya5FybBhO+xQctA==
+ARC-Authentication-Results: i=1; smtp.kernel.org; 
+	arc=none smtp.remote-ip=100.80.115.77
+Received: from lkml.kernel.org (nexus.subspace.kernel.org [100.80.115.77])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	(No client certificate requested)
+	by smtp.kernel.org (Postfix) with ESMTPS id 7E60D1F000C5;
+	Tue, 20 Oct 2026 03:08:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792434849;
-	bh=fpSk/CbNOxgm/YwPtWLbatYprzPLT2PIdzvPIH54y58=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=mcN3jL0x7o07gopqYbe6aQDb3uAGUgaxOQsFsgcY4yYkKSBZUled8S3ng4uax5VRQ
-	 Y9ronnjw4+MQOAJ9bcE2XPVTC+D0sSvIDnqGKDIIoCDTO/HgDglU463/FRXUWMyIOl
-	 E69fanaXZo4amEpW0sIDvIE7dZ29p4YQTGmgqlH8Y9Q3F3yUyHBPIX/qrx2UehUV5H
-	 9nVtpPvCTMSm5twqXn/1Tb/qG6qUozGvtyuLn3/J5tLlNrz5sAjX4XrwemqsZ+4L/b
-	 78TxvmfIOzAkm0A0Igc0PpVop3siJ/0JzrnNxWlqiz7gDtTzm+i5tF/yB3WuJrcYRe
-	 f3y9qRN7JpvjQ==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 4D490F4006C;
-	Mon, 19 Oct 2026 14:34:08 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Mon, 19 Oct 2026 14:34:08 -0400
-X-ME-Sender: <xms:oGLWaiqFvBURSSl0gU0eKj5KT_8cztuwHdKcJzxtN62_DMkj1os5AA>
-    <xme:oGLWardCL6tbTZv4_8WDs5ufaImxCQYHhXsOCmshAhUZX4msruc9eO9PKjrOh7H4l
-    965XpDX4It-QlSsGFKWqt0ZIfzSMnP77CFjGn8babFZiYpXFAJkSa0>
-X-ME-Proxy-Cause: dmFkZTGU9dwEU4XRK5nfGJiAm4glnmpJQKWEZoqJtiBJkpSTPtHDUzcNFeKIV1MVYcCjaB
-    efQJ3D5ne3hBoH3g4G+5JTBy2dhL/NzUjEcCd+BKoakAPgCNfsgXVatn7K99IqrxC6wkvh
-    f4fbA5ujaLZZuTYe2mCnFgn7FxpCHqpKccrLgc8HDKj5jnv15GFdyQD448mH2wGhK6BKrj
-    yMg9Z1NF84Y98QZDVhK8TeJ2DayFiMqv3Tc3085uI9nJS8haoO7AhZVKfxsPTam18dQUX4
-    8jIE8Bd4OBWK4W5B+7a89Tju+Lo5PS0G5hg7LtnbEPb46Ao+zMycFo6IGpGotsiACSPPKu
-    n0Z3qJ6TLWRoynA1ICgbyIOI7SLHtquS6bEjnt/cfBzzF6PMEDQi1G+3jIuUx/Jb2fVxWv
-    UNTS2qjqCGQaMD+Zw5/mw10mpm/+KIDA8WNGtfsdTENCHHLdAfJOmBhYI8GvEHrKBTosCv
-    bcttISHXbnuav/VEFCbLqjn8eoZa60VOlJCbA3oB2kOIMYLlm0mFTIXt2HXTS6vUpjTMQt
-    n1JR5r+xM0IWuvKj3MXhSqv+gx9bmiCYBWVaEGB/pI7iadcisLm2WuOYQvlKrNAm/ZGoXx
-    tvbQsHJ9RW30Hz3VAAr1wWodOp7THzk2LTtEjRffH/gjhMQaXPe8u4finxog
-X-ME-Proxy: <xmx:oGLWavga5e8muFHTMT035QeK7vBI_wV2cOpOZB08fRRcN1NMQzB2tQ>
-    <xmx:oGLWakIdZhKUF7o5oh9j00VmfqpaThVo1RXc9HEVoJQVKeWPMPOmJA>
-    <xmx:oGLWaunONJIGdi-BAwdqq2J-acghmrbjGtT_mgDw7TciE8A3gdkeGQ>
-    <xmx:oGLWasPtl9EdzlHrFRNJNN9LJTTq05cjyP6goD9Yjcte01adCvc1NA>
-    <xmx:oGLWao6PAYSqOEbEf6Nt5kRINYVMyKxFvGlFOgEvVy6hpj5_u6h6ha4r>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 1A8A0782738; Mon, 19 Oct 2026 14:34:08 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1792465726;
+	bh=xTAaZm8z237tbVsE73/vOrMvUznMWOKNs1DvgC/tVG0=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To;
+	b=lvyq4R1/uADh3u/2pcOiqxeguraKX3vzK6U9pEy6OYJFqWjqsqmvgU/NZtiCtoHbI
+	 +3JbdIloiUzblHt8cTk9jqPvCUv056p2tvv/xnLGXyG96l8lMP/EFqmbqitDCp80Jv
+	 1j2zVDMvf2ntjqhHwPjUHidiI2jAEd46NcONauz7kImkkKTx2YLcRzzKeaokFufPCL
+	 CEu3AAL7AgrsH5HNKxAkBV8msQNGelSKGgKVDlaLdWP1RDLTM/RlgXkkmHAShWK7Ns
+	 7nNsWUvXMNnkqA9J3Jrxd1DqH1l3WTdQJv03w63g8n9G6nBa8Ag0Xr+LHW32i3RCp7
+	 erxsv3+E4/BZw==
+Received: from nexus.subspace.kernel.org (localhost [IPv6:::1])
+	by lkml.kernel.org (Postfix) with ESMTP id D8D0F40724;
+	Tue, 20 Oct 2026 03:08:44 +0000 (UTC)
+From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
+Date: Tue, 20 Oct 2026 12:08:44 +0900
+Subject: [PATCH v4 1/9] xfs: mark the inode preallocated for pNFS write
+ layouts past EOF
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,83 +83,161 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: AS6kSLE8WzSk
-Date: Mon, 19 Oct 2026 14:33:47 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Mike Snitzer" <snitzer@kernel.org>
-Cc: "Jeff Layton" <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
- NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
- "Christoph Hellwig" <hch@lst.de>, "Jens Axboe" <axboe@kernel.dk>,
- "Matthew Wilcox" <willy@infradead.org>, linux-mm@kvack.org,
- linux-fsdevel@vger.kernel.org
-Message-Id: <f39bfe92-8676-4241-bb4e-bccd838ab99b@slotpi15m67>
-In-Reply-To: <20261019150725.1507-2-snitzer@kernel.org>
-References: <20261019150725.1507-1-snitzer@kernel.org>
- <20261019150725.1507-2-snitzer@kernel.org>
-Subject: Re: [PATCH v5 1/6] NFSD: add tracing for how direct-mode READ and WRITE are
- serviced
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
+Message-Id: <20261020-xfs-pnfs-batch-v4-1-9230fa2ca4a4@samsung.com>
+References: <20261020-xfs-pnfs-batch-v4-0-9230fa2ca4a4@samsung.com>
+In-Reply-To: <20261020-xfs-pnfs-batch-v4-0-9230fa2ca4a4@samsung.com>
+To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
+ Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, 
+ Jeff Layton <jlayton@kernel.org>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Sergey Bashirov <sergeybashirov@gmail.com>, 
+ Andrey Albershteyn <aalbersh@kernel.org>, linux-nfs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792465723; l=4923;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=it5adWS9VVvPuY0ITgRqYR086T8ESLe2HmaMPU312mg=;
+ b=6/A0c+NxAsvLwkMk6jhP36UTYjdpBwysLDUm7rqRWDSOqTh5qjbCB7LGrrgDCGevd/GPefLSd
+ 058TR9Xc1+CBJOhKykfGapewtIMEMM7vYYvyhN5tlM7tIWKU5Z9do+j
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
+ auth_id=1122
+X-Original-From: Daejun Park <daejun7.park@samsung.com>
+Reply-To: daejun7.park@samsung.com
 Content-Transfer-Encoding: 7bit
 
-On Mon, Oct 19, 2026, at 11:07 AM, Mike Snitzer wrote:
-> Add:
->
->  - nfsd_write_dio_split, emitted once per direct-mode WRITE before any
->    segment is issued.  It records the advertised offset and memory
->    alignments, the payload's offset within its first page, the start,
->    middle and end segment sizes, a disposition naming the path taken
->    (direct, no_alignment, too_small, no_middle, mem_misaligned), and
->    whether buffered segments are issued IOCB_DONTCACHE.
+From: Daejun Park <daejun7.park@samsung.com>
 
-Let's define a single event class and then use DEFINE_EVENT per outcome,
-rather than one event with a disposition field. You'll notice this
-pattern is used elsewhere in trace.h.
+xfs_fs_map_blocks() marks the inode XFS_DIFLAG_PREALLOC after it
+allocates blocks for a write layout, so that xfs_free_eofblocks() does
+not free blocks past EOF that a client may write to. But a write layout
+for a range past EOF where blocks are already allocated, such as the
+speculative preallocation of buffered writes, gets those blocks without
+an allocation, and the inode is not marked. blockgc, or the release of
+the file, then frees them without breaking the layout. The client still
+writes to them, and they may belong to another file by then.
 
-So nfsd_write_dio_class with the alignment and segment-size fields, and
-nfsd_write_dio_direct, _no_alignment, _too_small, _no_middle,
-_mem_misaligned fired at the site that makes each decision. An admin
-chasing "why isn't this direct" then enables only the decline events.
+With pynfs as the client, a file grown to 1 MiB by two buffered writes
+on the server had 960 KiB preallocated past EOF, and an RW LAYOUTGET for
+that range got it as one INVALID_DATA extent, without the inode being
+marked. About 300 seconds later, with the default
+speculative_prealloc_lifetime, blockgc freed those blocks while the
+layout was still held. When the client then wrote through the layout and
+sent LAYOUTCOMMIT, xfs_fs_commit_blocks() found a hole where the
+unwritten extent had been, and xfs_iomap_write_unwritten() allocated for
+it with no blocks reserved:
 
-Also, let's give the READ side the same treatment so admins can see
-the decisions that prevent reads from going direct.
+  XFS (nvme0n1): Corruption of in-memory data (0x8) detected at
+    xfs_trans_mod_sb+0x817/0x960 (fs/xfs/xfs_trans.c:351).
+    Shutting down filesystem.
+  ...
+   xfs_trans_mod_sb+0x817/0x960
+   xfs_alloc_vextent_finish+0x2e7/0x990
+   xfs_alloc_vextent_start_ag+0x25d/0x720
+   xfs_bmap_btalloc+0xdd2/0x1720
+   xfs_bmapi_allocate+0x197/0xf90
+   xfs_bmapi_write+0x4d0/0xb60
+   xfs_iomap_write_unwritten+0x307/0x7e0
+   xfs_fs_commit_blocks+0x1d9/0x630
+   nfsd4_block_proc_layoutcommit+0x5c2/0x7d0
+   nfsd4_layoutcommit+0x4b5/0xa20
 
-With the per-outcome events in place, the dontcache field on the
-per-WRITE event is redundant: nfsd_write_direct/_dontcache/_vector
-already say how each segment was issued. As it stands it also
-misreports the direct middle, which carries dontcache_flags
-regardless of direct_misaligned_dontcache. Consider dropping that
-field.
+The client got NFS4ERR_IO, in six runs out of six. When small files were
+written on the server after blockgc, with a sync first so that the freed
+extents were no longer busy, they got those blocks, and the client's
+write through the layout replaced 978944 bytes of their data before the
+LAYOUTCOMMIT. A LAYOUTGET and LAYOUTCOMMIT 30 seconds apart, before
+blockgc runs, leave the client's data in place.
 
-A few less critical items:
+Mark the inode also when a write mapping ends past EOF and nothing was
+allocated, the same way as for an allocation, before the blocks are
+handed out. With this, the same test keeps the blocks past blockgc, and
+the LAYOUTCOMMIT after 360 seconds succeeds with the data in place.
 
-- nfsd_write_dontcache and nfsd_write_vector are emitted only from
-  nfsd_direct_write(). The io_cache_write=dontcache and =buffered
-  paths in nfsd_vfs_write() emit neither, so the new DONTCACHE event
-  never fires in DONTCACHE mode and the commit message's "now fires
-  only for normal buffered I/O" isn't right either. nfsd_iter_read()
-  covers all three modes; please make the WRITE side match.
+To share the update with the allocation case, set a local update_inode
+flag in both cases, call xfs_fs_map_update_inode() in one place below
+them, and move the log force into xfs_fs_map_update_inode().
 
-- If any enum from vfs.h ends up in a TP_PROTO, note that trace.h's
-  own #include "vfs.h" is after the per-class events. It builds today
-  only because xdr4.h pulls vfs.h in first. Move the include up with
-  the other headers.
+Fixes: 527851124d10 ("xfs: implement pNFS export operations")
+Cc: stable@vger.kernel.org
+Reported-by: Chuck Lever <cel@kernel.org>
+Link: https://lore.kernel.org/r/4de5356f-bc4d-4f1a-9c81-fce09b1b46fd@slotpi15m67
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/xfs/xfs_pnfs.c | 34 +++++++++++++++++++++++++---------
+ 1 file changed, 25 insertions(+), 9 deletions(-)
 
-- mem_offset records bvec[0].bv_offset, but the mem_misaligned test
-  is on bv_offset + prefix. With prefix=100 the event shows
-  mem_offset=0 next to a mem_misaligned verdict. Record the quantity
-  that was actually tested.
-
-- The doc says iomap_dio_invalidate_fail "reports an O_DIRECT middle
-  segment that the filesystem serviced with buffered IO instead". It
-  reports one cause of that, on iomap filesystems only. ext4's
-  fallbacks are silent. Let's narrow the wording.
-
-- The doc talks about start/middle/end segments while the event
-  prints prefix/middle/suffix. Let's pick one vocabulary.
-
-Jeff's comment about the ki_flags test in the hot path stands on its
-own. I'll leave that between you and Jeff.
+diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
+index ab38561700..a9f0b472f3 100644
+--- a/fs/xfs/xfs_pnfs.c
++++ b/fs/xfs/xfs_pnfs.c
+@@ -110,7 +110,15 @@ xfs_fs_map_update_inode(
+ 	ip->i_diflags |= XFS_DIFLAG_PREALLOC;
+ 
+ 	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
+-	return xfs_trans_commit(tp);
++	error = xfs_trans_commit(tp);
++	if (error)
++		return error;
++
++	/*
++	 * Force the log so that the blocks handed out to the client are
++	 * guaranteed to be present even after a server crash.
++	 */
++	return xfs_log_force_inode(ip);
+ }
+ 
+ /*
+@@ -134,6 +142,7 @@ xfs_fs_map_blocks(
+ 	uint			lock_flags;
+ 	int			error = 0;
+ 	u64			seq;
++	bool			update_inode = false;
+ 
+ 	if (xfs_is_shutdown(mp))
+ 		return -EIO;
+@@ -221,20 +230,27 @@ xfs_fs_map_blocks(
+ 				end_fsb - offset_fsb, 0, &imap, &seq);
+ 		if (error)
+ 			goto out_unlock;
++		update_inode = true;
++	} else {
++		xfs_iunlock(ip, lock_flags);
+ 
+ 		/*
+-		 * Ensure the next transaction is committed synchronously so
+-		 * that the blocks allocated and handed out to the client are
+-		 * guaranteed to be present even after a server crash.
++		 * Blocks past EOF that were allocated for buffered writes, such
++		 * as speculative preallocation, can be freed by
++		 * xfs_free_eofblocks() without breaking the layout unless the
++		 * inode is marked as preallocated. Mark it before handing them
++		 * out for writing, as for blocks allocated above.
+ 		 */
++		if (write && !(ip->i_diflags & XFS_DIFLAG_PREALLOC) &&
++		    imap.br_startoff + imap.br_blockcount >
++		    XFS_B_TO_FSB(mp, XFS_ISIZE(ip)))
++			update_inode = true;
++	}
++
++	if (update_inode) {
+ 		error = xfs_fs_map_update_inode(ip);
+-		if (!error)
+-			error = xfs_log_force_inode(ip);
+ 		if (error)
+ 			goto out_unlock;
+-
+-	} else {
+-		xfs_iunlock(ip, lock_flags);
+ 	}
+ 	xfs_iunlock(ip, XFS_IOLOCK_EXCL);
+ 
 
 -- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+2.43.0
+
+
