@@ -1,92 +1,83 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.49
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.133.124
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792480502;
-	b=XuOkNY6Jtnv6iIAAWB01gHL11lEzlEqKoJ08YaXNL+HJAUDAXwtBpn6ImecoAL3bnBjm
-	 YC4gk8X1USbVqp5aFZlajDMZVwMhvQP/MqeZGwk/mktSAXHILg8AvYJdgAy/oXUXI2Y7E
-	 a6EPhZcqes3VJ0Z1lhP/j6YSTQktzlAOe5lWh1BzTsp9crjtDOmnMrEGyKbtoFx1ePCEk
-	 ayXOwg06LzfkM2QZe4WkIDZ17hwA5f60WVv7UEVjJBRMpSae9X0Cbl26BqiYERKDdZilf
-	 mr6BuIxAQcoxl5OU16IzpCHGT81fBaiwGiN73xyLkbLujB3C1pBExxkmpPaGdpAW4ig==
+	t=1792482361;
+	b=OZ9UoNHIMnmyM+9a2y+VCqg1/SnRhY7u4ByyE9lTyhxFrBJ0c0Hy1AwjMYwPYuOHecMH
+	 J1XhCAOhHkZlGz7oY92sWoifZAWqyJn2lHi7JkXib1zQFSlSBKYNtia7eUbPjTW6ucWix
+	 GA8ITb8hTHSiVDOayVTl0nEd7CNvRNXmar1AMotDdO/pCNwLDITY96o1ZmooScS9fITP+
+	 rnBT3efFTsA+aRgEIhU9HFFg7QikryJ2PJl7DagYSiJwThgGFcsAdUDSendXw5jL5d7Gh
+	 2BFZiYkPWQXI4XtnA0gbKlcRAZPOPH9Vxk8n9t8nl7zabgSoOfMkhDdiVRPf3sHIbYw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792480502;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=aeybFht21ximE2zGrDhdYkm9IGgBZ7NtmVQeskPV6cc=;
-	b=FvJlUcUlHgQ/EyajudmnZYzqWPs/28qT5KP+OFsmotvKNYQ5i9P4gztxDY3A2Y90WJHG
-	 LG38vbYkJDjQk3ZdjAlvs+XmlO/a+5MxbpEoJVgwEDmV860y6A8W8h0PoVRFL1B4aWIVA
-	 V7LMkvwJqNmsUkscWkOT2P1X61FuR+rpOsa6RuHAx+PNsiXc14Mw8czDsH+BMuibUg/fF
-	 oT4hw27eJHuHMklIZKcUwO2l1/7DbLrbLktnuaMAOEmX2lmOyDagH1GcTIL/mw4mu1uMe
-	 pVV81ZXXr82pLHgaDZvRKQBaFANeSYCsN7ZFNOHWo3bRs8j/S/wMmn4gEW5B5cw+GTA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792482361;
+	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
+	 X-Mimecast-MFC-AGG-ID:Received:Received:Organization:From:In-Reply-To:
+	 References:To:Cc:Subject:MIME-Version:Content-Type:Content-ID:Date:
+	 Message-ID:X-Scanned-By;
+	bh=etJHoXzss+lLgalBskXJJBLUzw7KY5e4yuY8e35KdUo=;
+	b=nzuRQMO6YoNSKfp5B+kpqQa+6AKqJXC9FzfUuZCBFx3q2Vm26TYltFyVWVQpl9+elmRI
+	 65p0r/pRh0yEG1/0nTlaFHBOIcoJRQG0zNKOFwX1AsgPsE+S9J4oZLq6z8AqLASrBWyNX
+	 XC2KsZtvJ5ltr+VtJAHY5x5pazyXHGwqXudtpQa+Hcvf6+dczO/am9VuV+Kcbo1lceheH
+	 xgMy8gtGdjLaEdQOUVUzGmKaO3/d0QJ0PZv9+Fkf1auTS7O7j33LKPJzTpvt+cNsiGfta
+	 tQMsUahm+pjjCOUzA3mOsSKLk5fPicW3NOBMhlm7jzjQ/coGJ9xkDlrQhFiBAihKQnA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=PY3AVgY5;
-	arc=none smtp.remote-ip=209.85.221.49
-Received: from mail-wr1-f49.google.com (mail-wr1-f49.google.com [209.85.221.49])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=pass header.from=redhat.com;
+	spf=pass smtp.mailfrom=redhat.com;
+	arc=none smtp.remote-ip=170.10.133.124
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2F7DA606A31C
-	for <linux-nfs@vger.kernel.org>; Tue, 20 Oct 2026 07:15:02 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2F7DA606A31C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=PY3AVgY5
-Received: by mail-wr1-f49.google.com with SMTP id ffacd0b85a97d-48bbb06e746so1441848f8f.3
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Oct 2026 00:15:01 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1792480500; x=1793085300; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=aeybFht21ximE2zGrDhdYkm9IGgBZ7NtmVQeskPV6cc=;
-        b=PY3AVgY57S8OAeGOHlwBWVsIg/NkQZwFT2yp1fnavp4cTzU+Ac0WjtpV0VtH2XaRhK
-         fJOf+jVnOfGoc+8NWjh19dHG1T/cCZ9NcBZURl9TDZba98Pkg2Mvh4B4i5dBNs+rC0PE
-         ZYrU1yPdyL8+tXTvK6TJwxLandvcWYDpABTxjWZTepQnwwpUIjqhhJugS3DQKN0RPbl7
-         IXpeF9WhiocrE3CPYczt8OZQjeMrz9Irgapr8L2cElkYuQdt+Z1AUNHcLAuRZu8XXXmH
-         QL6OlIFdmPvgq3DSp5t6R2KqIq3ZolFC2L0D86YL72QDKW5nFH4yYD2uDFRUzkrqpBCw
-         BFNg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792480500; x=1793085300;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=aeybFht21ximE2zGrDhdYkm9IGgBZ7NtmVQeskPV6cc=;
-        b=lN/Zx/TOEq1DzbNXqjI3oq+yZ/PG4mH4D+PbbgvvGGpmRirEo9MZfcOlV8VjJ9/0Ui
-         NdEduqPczvdtf15ejdPANk6WR9YjAM45MxxMfbb1j++qYXoGPVj04FIi5w/7N5RroWzm
-         /qa4oHoIbGVl5U8nGgWR7H6owTF8GxsCjvzAmzIk7V/v3mKV4BUbnThAntjRZ7r/qa0u
-         LxTrLviVSIlAG7cx4uw8DCtWfKVQMr/wVbAS2TmMvmHhwxFx2J23WGet2lcxCqA3Fg8H
-         t2yCp4cB7Z9XPRXIlt4MhLOZ03TTGzdb/I9sZGT0NPfA+ul5tbiGmIepw3TML62GPW3x
-         Z4Ng==
-X-Forwarded-Encrypted: i=1; AKwUvBxsVz84sMWmDo/F0ECpnB3PbLa7nOJ50f0Xg61NqVZkdcy8UjI0BCblJ+t5u4RaShszCM7sRpGti9k=@vger.kernel.org
-X-Gm-Message-State: AFq9FYIeDPh6OstsHtnjqhjF+x7muRw/nlJSAzMVMfTZJDiycChJKGGG
-	/IP/rM9HH9r8phwPhKXSt5BqZIZvIQ9OiAnh7z7HIFzvYYAsppVwJYrE
-X-Gm-Gg: AYBFou1oEvWemG7BeIfoenxPTUEBB1lsnEZeIpIf0+USR73aVLX9YhR8Aje79iY96Qy
-	mV0DueXUQ6yk0I/NRVegWOjxma6ZvPfC0NUKvsIMgX31EjIEm4ssxmfSuRoX+GQCZJVMB49LaEF
-	YAajQND0no/uHUGeGEPDbnJvEnMMqOu5iR198FRZWOgwApR/fSDvnxlQIJyFiNtNzIclXyidqB0
-	wJImRDrFKGfrpBwBLRTZDFVbTfosRB8olReEviIWgXYsJXeg6GpCECncdL/3ikrE+gzFS8Y7/M8
-	Qt6GuiskDkM8r5pa1D5sEw3AZkOjGF58M4u/OcExq3mvrOp0Qj7ihgjEFw4YrdjUj/mY0bmnp1P
-	kCWPzcs7VH1+9D1vbLncRDPl4mvNyBQWhocU0HEV8oxC7obYNGQeyw3DCitcGY7RBzV16zC+sLa
-	V8U5fXJEMSkDNZt8Onusbam/fqyMFYDyoqhIQkOaID6YT0g/pVDxtEYhiXuXRD4H7OESOwbq736
-	9u8Zp1A9EOxxW8=
-X-Received: by 2002:adf:e19a:0:b0:48e:6f:a9c1 with SMTP id ffacd0b85a97d-48e07fa6ffamr20565735f8f.54.1792480500303;
-        Tue, 20 Oct 2026 00:15:00 -0700 (PDT)
-Received: from localhost.localdomain ([2a06:c701:4778:c500:9306:24f1:3e60:eff0])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-48e1d6dbf12sm4250248f8f.1.2026.10.20.00.14.59
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 20 Oct 2026 00:14:59 -0700 (PDT)
-From: Avi Weiss <thnkslprpt@gmail.com>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Chuck Lever <cel@kernel.org>
-Cc: Anna Schumaker <anna@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: wake poll waiters when an empty pipe is unlinked
-Date: Tue, 20 Oct 2026 10:14:55 +0300
-Message-ID: <20261020071455.775967-1-thnkslprpt@gmail.com>
-X-Mailer: git-send-email 2.43.0
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B9D0606A31E
+	for <linux-nfs@vger.kernel.org>; Tue, 20 Oct 2026 07:46:01 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 7B9D0606A31E
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1792482360;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=etJHoXzss+lLgalBskXJJBLUzw7KY5e4yuY8e35KdUo=;
+	b=J6bi+HON5JEnEMRX4uOvqdwDXS7ecIx6hyDTRJVovu6FbalX7eAdrSjo4SaufbB99bwMc4
+	ZVeQ+FmeBBA3/nGVcanI+wP/2abli5Rs7jPe7x/3Lpjp3gzpF2RvhclPpdKNc3uhx07bQo
+	UDuetjF7Rf9bjzFYT7oumkehhE0VOMc=
+Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-672-y-UzeCQONTON4CooZ3kcPw-1; Tue,
+ 20 Oct 2026 07:45:55 +0000
+X-MC-Unique: y-UzeCQONTON4CooZ3kcPw-1
+X-Mimecast-MFC-AGG-ID: y-UzeCQONTON4CooZ3kcPw_1792482352
+Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id B27DD1955DC3;
+	Tue, 20 Oct 2026 07:45:50 +0000 (UTC)
+Received: from warthog.procyon.org.uk (unknown [10.44.48.11])
+	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id CED701800446;
+	Tue, 20 Oct 2026 07:45:43 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+	Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+	Kingdom.
+	Registered in England and Wales under Company Registration No. 3798903
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <1995693.1791971125@warthog.procyon.org.uk>
+References: <1995693.1791971125@warthog.procyon.org.uk> <20261013.cachefiles-partial-zeros-trace.pchmelar@innovatrics.com> <20260910220242.2165023-1-dhowells@redhat.com> <20260910220242.2165023-5-dhowells@redhat.com> <20261011.cachefiles-partial-zeros.pchmelar@innovatrics.com> <1655268.1791878098@warthog.procyon.org.uk>
+To: Petr Chmelar <petr.chmelar@innovatrics.com>
+Cc: dhowells@redhat.com, Christian Brauner <christian@brauner.io>,
+    Paulo Alcantara <pc@manguebit.org>,
+    Matthew Wilcox <willy@infradead.org>,
+    Namjae Jeon <linkinjeon@kernel.org>,
+    Marc Dionne <marc.dionne@auristor.com>,
+    Stefan Metzmacher <metze@samba.org>,
+    Eric Van Hensbergen <ericvh@kernel.org>,
+    Dominique Martinet <asmadeus@codewreck.org>,
+    Ilya Dryomov <idryomov@gmail.com>, netfs@lists.linux.dev,
+    linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org,
+    linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+    v9fs@lists.linux.dev, linux-fsdevel@vger.kernel.org,
+    linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v12 4/5] cachefiles: Don't rely on backing fs storage map for most use cases
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -96,43 +87,15 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <2648475.1792482342.1@warthog.procyon.org.uk>
+Date: Tue, 20 Oct 2026 08:45:42 +0100
+Message-ID: <2648476.1792482342@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
 
-When an empty rpc_pipefs pipe is unlinked, rpc_purge_list() returns
-without waking the pipe wait queue. An existing epoll waiter can
-remain blocked even though rpc_pipe_poll() reports EPOLLHUP and
-EPOLLERR for the disconnected pipe.
+Hi Petr,
 
-Wake the wait queue after clearing RPC_I(inode)->pipe so existing
-poll waiters are notified regardless of whether messages were purged.
+Note that these patches are now upstream with this change incorporated.
 
-Fixes: 9842ef3557ab ("SUNRPC: rpc_timeout_upcall_queue should not sleep")
-Signed-off-by: Avi Weiss <thnkslprpt@gmail.com>
----
-
-Tested with an empty rpc_pipefs pipe in QEMU:
-- 7.3.0 baseline: fresh poll() reports HUP/ERR (0x18),
-  but an existing epoll_wait() times out.
-- 7.3.0 with this patch: fresh poll() reports HUP/ERR (0x18),
-  and epoll_wait() returns events=0x18.
-
- net/sunrpc/rpc_pipe.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 9d349cfbc4831..68b4e040a77d9 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -191,6 +191,7 @@ rpc_close_pipes(struct dentry *dentry)
- 	cancel_delayed_work_sync(&pipe->queue_timeout);
- 	rpc_inode_setowner(inode, NULL);
- 	RPC_I(inode)->pipe = NULL;
-+	wake_up(&RPC_I(inode)->waitq);
- 	inode_unlock(inode);
- }
- 
-
-base-commit: c03c1a14507dfaf8b856c2608f9ac216021fc222
--- 
-2.43.0
+David
 
