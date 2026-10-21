@@ -1,57 +1,56 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=173.212.254.19
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792552572;
-	b=RFxasV+pvufpiYWbohdoxp4txfXa8EYgSxN1ms9JdlGRWdoylLCGcozlzmqQzKxtTrvB
-	 fS3UoIS5U6fYhdPyBtBEdT1xgHabLc+EcyjXaxh6Eo5OnxHpD/+2kFHk7WEG6LpIRo/wD
-	 U0F45QK1FLGX8xrUQE9ashP9VcfBU4ktwzOYRrCDwp9YM3Jxr9pWyARFpgPCbCvt/BZOz
-	 mSwhTTSQevwMjV2UzkZj+DmoaW/H6MUFf/cOznV3aZ+lZcU7NNYhi658H3yaRQs96k/hS
-	 Sw8mT8RPhryq5QsApaUYMp8X+C/vdsLc2ABxcl/q7/oyxpmhMLumKf2XyKW2e6Nf4Lg==
+	t=1792552578;
+	b=B0la0eDSlEDsRd6PENdzSYjdGSOdnZdoQZmjaLFz/j7HQiZZZiVnZvmjyuOJesQylbYc
+	 OFbPrcTgc6njHasCwRgTpc9/jQESSVa5yo6OEJXpJFGrI6Wo5RAyzZj7IHJI8IqpRW2JN
+	 +aj77Z9RPRefP0MKxrABWxnrbmQFCoJC69xYTmwH8/06SIjIyeYlOYp6UeGIFJzbjGf37
+	 qvMCyUp9HNJZH9GzCkWs/v0WQz/iZgDeJZmfEZgaX2ei3Bc7bv/6eM++7Lw9BNdfg/joZ
+	 RH3FWGDQJa5nnxzNn+nNCRO3ow2bMzZVZ6f1Ki+dxe+Nbcnr6JPurd1bF1e1SxyGfcQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792552572;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792552578;
 	h=DMARC-Filter:DKIM-Signature:Received:Message-ID:In-Reply-To:
 	 References:From:Subject:To:Cc:Date;
-	bh=UPUH03U6Oabgaw9Qqnvvk6Mc/Q2z5xz5SUzWvs/+Al4=;
-	b=EwnNVHk+gjoAaryj6uywwvhSlHQlclFkFc2IvxODpfQ1c3rZFCWt5DV2jW6Ya3WyN+y8
-	 x0sJA1KqPjjblWiSmFoV9YKUtKicBExSpJpzD4AicCXbwMbTqqZgPsX/B0LpRNhFdESKh
-	 yiFOLLafjj4ak50EL3pBDfdQD35q0CFqItmF8KGD6cTM6yY0dgd9HEY3P0rdSVnDeYtYJ
-	 QO6pJ52uTs8FUEa0eAvb9L1tYzYJbcusEkr8Xo7IpkAm82AMHwJwyAmVwzaruBjUkak/r
-	 KRaGzlMoOkQ1EJl1t1Cr4cp7NklyfrAAz6nV/mK9jJSVJyNhc1Zh2MS48iuercCOJ+Q==
+	bh=zex3zkPBhFWKfPKx8to+rRp0ONmQ0UbhV0TLwAUCCQA=;
+	b=zhmxpROUDFizLoNtXFkB2kRep8HJe2xveFyj8MBIH51TSkguKSu9LXZhbd5UUd9/g+/g
+	 4Vr8RuzGZhBMCWBzA81xIKBELaKVbYv0CH07ekiW0EVs33Pjr6QQVWGfvkDWYxBemHug1
+	 6KxySeqByzF5HHGsXFRLTSAVfX8k1SMflNcU1NsZR5ZROLjJLgSqO9USj94cDgyCVOgfO
+	 prN9sNP8WCM61LphFYe+j4qfsg3isJAAvWjZ0iH30R1QyNp9q2rWpZMzFS5sbHS82Hmgu
+	 SMg6awyPXcMoQrscEctDrmeoqHznN6Wwc3M+x93i+MbiQusjj3w6f/yd4A199y11R/g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=tuxist.de;
 	spf=fail smtp.mailfrom=tuxist.de;
-	dkim=pass header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=C7mvnSm6;
+	dkim=pass header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=FGzibVGE;
 	arc=none smtp.remote-ip=173.212.254.19
 Received: from groupware.tuxist.de (groupware.tuxist.de [173.212.254.19])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 682B2606B558;
-	Wed, 21 Oct 2026 03:16:11 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 682B2606B558
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 48EAB606A912;
+	Wed, 21 Oct 2026 03:16:18 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 48EAB606A912
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=tuxist.de
 Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=tuxist.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=C7mvnSm6
+	dkim=pass (2048-bit key, unprotected) header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=FGzibVGE
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=tuxist.de; s=201705;
-	t=1792552569; bh=gzbOefoC556RIfcul7jBVCLRyUZiYNXLUGDOS94vR1g=;
+	t=1792552576; bh=IORN8HpiFolYxgOFw1dmhLuz4Wix28EOhU1Si/uNADU=;
 	h=In-Reply-To:References:From:Subject:To:Cc:Date:From;
-	b=C7mvnSm6jg0A+SyE9a9O+BkYpGvEjGYeBIZ7edK6j03DBVQg9JU91qj9+ToeAtI6R
-	 vYkPrhPVxZnZWd3UA0A3iD2k91OvNQpHOc7WhcszRclmL7btxh/pZbHxietrULDbtA
-	 i96s50gIcWKD2ep6y7Z4tD36cndcFk5LrGhxBuCUN/07qXmfZSNDjnVqW3E8MfGX2U
-	 jcyxBqeHSEVCQHAMRmVd+cihxhXVdXpgNtr0RGeQqZ821zUy7JdPIXz9hfPVqe72FA
-	 akg7FQWtu4IUGDvDnk1Z3n198NlnOawpQQL1NgC2KGHY6HI34hFnv9iv7LMQ++uc5L
-	 vjcPugG1tY97g==
+	b=FGzibVGEM6vyViUIFazPySG2uG8tsGK/AjhYNaRdZIMeE0UoLWBLHPBrYjE/m+AsS
+	 fIqlFoy1cyvxvUPqjBlKGxJ0bArq93kq+/ydOLzasGfHT8XdawR7br3nGdhE5Q8bud
+	 mN/SGgjIywc2/P1AJpAs4gnVJm9uAkt77egEdLAZA5kPW6rkAmSdlmPzRlUAx30Ycy
+	 +LV/g2TewIqtqenS7Z7DLWu3p+Qjw/rT3Yo6/4z7uEiAVzRCsbgZZdHq2llO7uLIT8
+	 RV86bA6fRuEVrgBqpAZewvfa2fIXylkY+PbFD0pufO1e028btbYqkF1zHK4vTtGyBV
+	 3jnT7USvzsPvA==
 Received: from [10.1.1.106] (unknown [10.1.2.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by groupware.tuxist.de (Postfix) with ESMTPSA id 98C978A08F4;
-	Wed, 21 Oct 2026 05:16:08 +0200 (CEST)
-Message-ID: <88afe10ca34a89b9a0776752d6583cda3cdf747c.1792552161.git.jan.koester@tuxist.de>
+	by groupware.tuxist.de (Postfix) with ESMTPSA id 7895E8A0938;
+	Wed, 21 Oct 2026 05:16:15 +0200 (CEST)
+Message-ID: <b6c3e5df169940a45831966c180f27889958e1a7.1792552161.git.jan.koester@tuxist.de>
 In-Reply-To: <cover.1792552161.git.jan.koester@tuxist.de>
 References: <cover.1792552161.git.jan.koester@tuxist.de>
 From: Jan Koester <jan.koester@tuxist.de>
-Subject: [RFC PATCH v2 14/41] nfsd: don't hand out uid 0 for read layouts of
- UUID-owned files
+Subject: [RFC PATCH v2 16/41] ecryptfs: hash daemons by kuid_hash()
 To: Christian Brauner <brauner@kernel.org>,
     Alexander Viro <viro@zeniv.linux.org.uk>,
     "Serge E. Hallyn" <serge@hallyn.com>
@@ -70,7 +69,7 @@ Cc: Jan Kara <jack@suse.cz>,
     audit@vger.kernel.org,
     keyrings@vger.kernel.org,
     linux-kernel@vger.kernel.org
-Date: Wed, 21 Oct 2026 05:15:34 +0200
+Date: Wed, 21 Oct 2026 05:15:36 +0200
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -80,35 +79,30 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 
-Read-only flexfile layout segments use the owner's uid plus one, so the
-client gets no write access on the data server. For a UUID or GUID
-owner from_kuid() is -1 and the "plus one" makes it 0, root. Use the
-overflow uid for them instead.
+The daemon hash uses from_kuid(&init_user_ns, euid), which puts all UUID
+and GUID users into one bucket. Lookups compare the kuid, so this only
+costs time; use kuid_hash().
 
 Assisted-by: Claude:claude-opus-5-5
 
 Signed-off-by: Jan Koester <jan.koester@tuxist.de>
 ---
- fs/nfsd/flexfilelayout.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ fs/ecryptfs/messaging.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/flexfilelayout.c b/fs/nfsd/flexfilelayout.c
-index 6d531285ab..f459d2c1c1 100644
---- a/fs/nfsd/flexfilelayout.c
-+++ b/fs/nfsd/flexfilelayout.c
-@@ -51,7 +51,11 @@ nfsd4_ff_proc_layoutget(struct svc_rqst *rqstp, struct inode *inode,
+diff --git a/fs/ecryptfs/messaging.c b/fs/ecryptfs/messaging.c
+index 73c7b8215e..4e2524f786 100644
+--- a/fs/ecryptfs/messaging.c
++++ b/fs/ecryptfs/messaging.c
+@@ -21,7 +21,7 @@ static struct hlist_head *ecryptfs_daemon_hash;
+ DEFINE_MUTEX(ecryptfs_daemon_hash_mux);
+ static int ecryptfs_hash_bits;
+ #define ecryptfs_current_euid_hash(uid) \
+-	hash_long((unsigned long)from_kuid(&init_user_ns, current_euid()), ecryptfs_hash_bits)
++	hash_long((unsigned long)kuid_hash(current_euid()), ecryptfs_hash_bits)
  
- 	/* Do not allow a IOMODE_READ segment to have write pemissions */
- 	if (seg->iomode == IOMODE_READ) {
--		u = from_kuid(&init_user_ns, inode->i_uid) + 1;
-+		/* any uid but the owner's; a UUID or GUID has no "+ 1" */
-+		if (uid_is_legacy(inode->i_uid))
-+			u = from_kuid(&init_user_ns, inode->i_uid) + 1;
-+		else
-+			u = overflowuid;
- 		fl->uid = make_kuid(&init_user_ns, u);
- 	} else
- 		fl->uid = inode->i_uid;
+ static u32 ecryptfs_msg_counter;
+ static struct ecryptfs_msg_ctx *ecryptfs_msg_ctx_arr;
 -- 
 2.56.0
 
