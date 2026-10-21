@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792578116;
-	b=NL8ZpqZCWWwYYFAZoHYONQvHTrjJ09JyOIcJWYDNMqW4NcqVVRHJtR6mshvcfn6xXTW/
-	 5K7ttWzjWPAbK+2ufHIYXrJjzhaQpeU2tPcQGUjCNfbrwnUjwLO5X861cWLUvJm2f1Ie6
-	 cd0x7u0edN2SpdLWWefE0Mq6hC8uXaHNhpVd3nXSJg1+Xg8eTG0AEnwZBJGS2WDbqS5Qt
-	 KS45fbYnkOkbV5cfHNVjQm/lcg9BBpqSGyfcZUQtrBWqD/bvDpTil5Bhd17yFid/q5Nfl
-	 +fIK2p7KqPRYuNXwDPXKGxoYStzV4f5NAwcF8+e7oUjKE53YXyHuMxluFKkdx4qPODQ==
+	t=1792578331;
+	b=EjVzvbXI2YAzzrCLsIYrfiWEnd927BfHxKr3trAVqtA0xeUH1X+eY+ZQ1tNmQ3/oZkd/
+	 AG6Rvngehp2HdbB6EBonC6VPmHMZzSOXETGaIjq26xWm/q0yBcFeF1qHDxx1/UIZ3I3D+
+	 c+KoYKbiTwjqnvGMdwegLkRdjWMC2j4bqjZyAv3Y9g6ZxOGMRhl9FtHHvRJ4FXwAleb2E
+	 f/8UKmzHMwmX/BmfSz1Bp2elPrNlryd3/Umz/s+7XVGaUWow0rdSCbYxixeJ5koIbMd5S
+	 1WsRw1qGpd9BSWZ6OJEuUmouul55SxUcpEuCK95De5AM/rqx85QPKe0sLZYtVOdFxVw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792578116;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792578331;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=IzO1E6ikKD8tl2Wsl1moqCKEq1l/nX4FZiTYItV58uI=;
-	b=Na30fbzbmF9ffbf88MZXidvz/GwP0bvyyaD5DJk/Q175LC/IAkZyAsAw9tbrBeHJXGew
-	 Yj9KBnaxHHKLm4e+o3xU3WHlgccBbjGC/vR5XkxsaDOEw/KiR2OV8Rer6hQiN0T36I6VV
-	 b7GZ1oBOsEmadAlzHtTKZxFP071Vtj1g3VMS/Ez+QR3ez3BVmy4lcQ3G26HCEXxiB+hsw
-	 oQbDef1Xa03LNaoDIQdKyN64ZILCgsOYNCVtf99Zq+QowwesxjDx8vdwrSrSVUaOwlZGz
-	 nsFCXFOEpna5ytlOKlJOg89WjYA1ebqNAN1bCyNDjeyclaf8lFc8+D1q7N2uPX8DcOA==
+	bh=fyUFCbuePzC+XG2QW79bsjnDsYBX6lH465Zgu9TmAmA=;
+	b=T2aptLONDZ2m5Bod8KFCpux1s6M9OaOa1yPs22mnoS5ue0+JTk1mN0AnlVruz1JdNdjn
+	 KD9IO4KYJJyJAXQHgBhVaRFTDfaSCx9MGomCYtaD9fze25gP5h4wPjoICXDw5B0FkjLnG
+	 Vxl+ptGIJe3wpnkY7i6mKdzZcSE8WozuQaWKTGgAiD3ImJYPHrHD35yWs6/Pkr8oC9IlF
+	 rLpYm4t4wUI5AVjaAWUHwbM2zDC5cvQaX3bk6tUsIYdjUobyk7L1UBUXbhA/B5/xwqQsn
+	 rBg3fzJU42xxXsK970nb2+gAtg4Di8dKSVJymu4mO4lJ6I9uNmdO51icOjAzRRKa4hQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mxIJkEAE;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WN+IUwrT;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 812FE606A31A;
-	Wed, 21 Oct 2026 10:21:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0DB99606A319;
+	Wed, 21 Oct 2026 10:25:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mxIJkEAE
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1A92D1F000C9;
-	Wed, 21 Oct 2026 10:21:37 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WN+IUwrT
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9B4A41F000C9;
+	Wed, 21 Oct 2026 10:25:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792578116;
-	bh=IzO1E6ikKD8tl2Wsl1moqCKEq1l/nX4FZiTYItV58uI=;
+	s=k20260515; t=1792578330;
+	bh=fyUFCbuePzC+XG2QW79bsjnDsYBX6lH465Zgu9TmAmA=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=mxIJkEAEUemoHzqFpjGOGsISTWbamBRSUja5/+PShimgeDu5pEKvopKkpU417cjQS
-	 LUqwYcw1SBOPpayMExd/35Gnzu6vWNYtpIRwMBn1YzbAVoItArpZDVk3V/2yxpBUSt
-	 9fzVhM7CM1JzxX/30rMD4LM/SMeQgvPK71uLA9cJ6KKuCcL9byzvEuq3NKJpBNSfkI
-	 hOZZhVe1KN8bfJmLl2/aV98mPzJLBOsp6PiULbCuee+h9exCxuOQwZCmfAA20lj/Y5
-	 rZglUOVWEtzU9bw0QJBCz7xQiasZhWom0scGxlDmBqafUSH/ovyAfRSFdg3IQhiHli
-	 c6Wa6I1EvnH2g==
-Date: Wed, 21 Oct 2026 12:21:35 +0200
+	b=WN+IUwrT7l8rUPNHcaU/+gEKsExM+ioOu7ktOtPja5M+dDNUVwHb0vzRVzDdLmi2l
+	 ZVZx7zVWlmJhAl69UxYI+zhszNbxVxTNXOBiS7d6CtNd6WfNLIPJPJhmVTj0hz17Wh
+	 CBPrxhvYRreyd+T8w2TaPEcsFSkV4dKf9ocMHO00y4EhqsJSxfLpthpPmknHsz6GHD
+	 XVMxmeCP5wmxvrqe1pag4NI9ASSec8djC8iso0wCeNRusCl3OXQPYTQT30aPNOVjPM
+	 aOLdakMoHfKRaCd3xb8lP0LDs+OVib+4+C4N3+fUQQocX68feX4bzSiBxNtciCBsuG
+	 N0l+7t93qoF8A==
+Date: Wed, 21 Oct 2026 12:25:10 +0200
 From: Christian Brauner <brauner@kernel.org>
 To: Cai Xinchen <caixinchen1@huawei.com>
 Cc: mic@digikod.net, gnoack@google.com, paul@paul-moore.com, 
@@ -67,10 +67,10 @@ Cc: mic@digikod.net, gnoack@google.com, paul@paul-moore.com,
 	linux-nfs@vger.kernel.org, ntfs@lists.linux.dev, linux-unionfs@vger.kernel.org, 
 	linux-cifs@vger.kernel.org, linux-trace-kernel@vger.kernel.org, apparmor@lists.ubuntu.com, 
 	linux-integrity@vger.kernel.org, selinux@vger.kernel.org, linux-kselftest@vger.kernel.org
-Subject: Re: [PATCH v2 -next 01/18] fs: pass struct path to notify_change()
-Message-ID: <20261021-nanotechnologie-gebadet-gepaukt-52a950759f0a@brauner>
+Subject: Re: [PATCH v2 -next 00/18] landlock: Add READ_METADATA and
+ WRITE_METADATA access rights
+Message-ID: <20261021-neugierig-abgemacht-umbenannt-c77d1addf517@brauner>
 References: <20261015125425.3246251-1-caixinchen1@huawei.com>
- <20261015125425.3246251-2-caixinchen1@huawei.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -82,17 +82,26 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20261015125425.3246251-2-caixinchen1@huawei.com>
+In-Reply-To: <20261015125425.3246251-1-caixinchen1@huawei.com>
 
-On Thu, Oct 15, 2026 at 08:54:07PM +0800, Cai Xinchen wrote:
-> notify_change() takes a struct mnt_idmap and a struct dentry even
-> though all of its callers either already hold a struct path (or a
-> struct file) or have to pass &nop_mnt_idmap because no idmapped
-> mount is involved.  Switch the helper and its declaration to take a
-> struct path instead and derive the idmap and dentry from it.
+> - The hooks consistently take struct path rather than struct file.  The
+>   VFS call sites involved (chmod(2), chown(2), utimensat(2), xattr(2)
+>   and ACL syscalls) operate on paths, and several of them (lstat(2),
+>   lchown(2), llistxattr(2), ...) have no struct file to begin with.
+> 
+> - struct inode_operations->setattr still receives (idmap, dentry, attr).
+>   Only the VFS boundary (notify_change()) and the LSM hook layer see the
+>   path, which keeps the refactor contained to fs/attr.c and the LSM
+>   infrastructure instead of touching every filesystem.
 
-No, the idmap needs to be passed separately. The whole point is that
-during path lookup mnt->mnt_idmap can change. So mnt->mnt_idmap is taken
-of the mount at the time it was checked and passed down to the
-filesystem so that the VFS and the filesystem are guaranteed to see the
-same idmap.
+I have no problem with that provided:
+
+* all hooks take a const struct path argument
+* idmaps are passed separately so that VFS and filesystems are
+  guaranteed to see the same idmap
+* nobody gets any guarantees whatsoever wrt to path->mnt aka vfsmount
+
+  layout and implementation details might change tomorrow and mounts are
+  subtle beasts so the security layer gets to keep pieces if it does
+  things that the VFS hasn't explicitly sanctioned as a guaranteed
+  property. Things continue to be in flux.
