@@ -1,56 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=173.212.254.19
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792552636;
-	b=5AL1FcCdcXVete/8UGTaCwzuVnKZEl499mX5eU3vU2kkalyi/fVYo2y1XcpgmKPsKJ1U
-	 dHLP7oL/lbd1jtyDFHZY5KlfnmjdDrJ9RDV/hVLjDKseM8cHuLXdCi7xLDrajdO6Q+UQo
-	 Cyi0sddZoSFbirGLuAadFxPrLenbuW2cSaLbk0WzvGYZwNlz/edjzHczwgOndbXxvu9w1
-	 LJj5LGveq5AhfmW57ykMdfVHu/35m/DVX2J3FL/RXJ8KLxqjIOSHZzVWk91U0UlRKCQCD
-	 p2NFMoZeD+mSfPBmplFmetHsT2Jc6+Cf50rQzi8Cc1Ds7KzRye8gMpKKz6STU7YOldg==
+	t=1792552642;
+	b=dK80fWA7IsaNsTU2ji3zEoE3FvMJsfxEdNC2PjNYo8fNday/T8rpL5EfS9qvxzZRX/IU
+	 O17tMeL9U0OO7f6CR5NNvw+RTnDtVZst+/SxpeTwRAKBOEMt42ShhCXOF/VAVPTCjYn0L
+	 kXmLAHUCgQKskvZUO9xDYjG6LyDPlkqMmyMds2Zpjj8zOc5NLvgmZSul7pNtpqrDJUl1r
+	 KfnJvo9kKOkTmKavOMCAybt+8KELIUWrmvIwzLySxD17eIRbKaJJlR4nefVe0c3QKypOF
+	 yl3rqgjP7hLvSOeup5Q6lbBWBLEqwEFoPVUGS0iRlESfudvWUBXbtRTtUxwOFHfnV5g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792552636;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792552642;
 	h=DMARC-Filter:DKIM-Signature:Received:Message-ID:In-Reply-To:
 	 References:From:Subject:To:Cc:Date;
-	bh=PYtCM8AZCT6uaJfSrx0BOZ+0uHQZVP/Z/KdzZbvlZJ0=;
-	b=aTEW6LXwuVuxk/5ELvlqs5IHdKpwphNQ+T85mDtZYMmizvTAme5x9LTMtlyvzL2LLVJX
-	 /MGJx1M4ani0U3nQvpZ1ORdCV+bQuAHDsY6Zkh4W0mhxMTcbS/pgZOO2zhzLpBmgvTle9
-	 7NConjwvBL58xClLUdSEEWyOavvBaBc/VjCzkMbiLybt4xgELOzakH1Zxu7Vp6xDpZgUk
-	 u2nThS1gT9RuVMktE5TLaAq7nDJwcIsRSZNQQZuJAUtD63zqhdLS9+Cqdhv+cl7MV0iXM
-	 EUkQbC1IcSpgRh3LMR4e9Hzypqa2tf5ufNNrFkN8VTLWuyYIpid+atwa+fOMoQtuEwA==
+	bh=tdj0VV7sirueGx4sdVLtYMWM+BMK+LmplvK9FFGAILo=;
+	b=VjzwFqwfGTfb5B27wmLGnj4Cy6jlnrl3xqVMrLsKcCJNG423lP6cNrcx53GAtVs+JdWF
+	 HOGvh5a8XgZvdQmGHIKQIR5QtKYbhmU5KBzCVSM5edSqkjIkaMT0OSOH9JiwGT5TPWlPd
+	 sGSqAV3nfxTbBnGWPiyjXppy24SPQMajajYH4u/55ZHocOIKExMVuT4SLfZc15Qq/CL+5
+	 jkJBCIZL/rWukwTO2/dMnAGFSToitp7/rMpHDmKkYycVYcqPgXPpb1VIP/np65gS1Q+d8
+	 n6mqadmmtIyo65VkGJhy4gfEN/VaC1qv8DM6xnWU87N7LNGU3P8DC92gWRLUe2Vb6ug==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=tuxist.de;
 	spf=fail smtp.mailfrom=tuxist.de;
-	dkim=pass header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=aFbSe6vz;
+	dkim=pass header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=ZRz84cAN;
 	arc=none smtp.remote-ip=173.212.254.19
 Received: from groupware.tuxist.de (groupware.tuxist.de [173.212.254.19])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8B58160779CD;
-	Wed, 21 Oct 2026 03:17:15 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 8B58160779CD
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1526460A3E63;
+	Wed, 21 Oct 2026 03:17:22 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 1526460A3E63
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=tuxist.de
 Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=tuxist.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=aFbSe6vz
+	dkim=pass (2048-bit key, unprotected) header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=ZRz84cAN
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=tuxist.de; s=201705;
-	t=1792552633; bh=YMnWTj9au5/Tn2L6+FyQDCou1t3SlsDfGkZwpfIj2wQ=;
+	t=1792552640; bh=Vws6vCdcEF3qUKpK8cPCFQjsf4YRBxpo4ZNVRrSM11s=;
 	h=In-Reply-To:References:From:Subject:To:Cc:Date:From;
-	b=aFbSe6vzYnxQOasfNGnMc2AmHeAZd3awQACfsGIMhiWm7a1jy9iung+k6mmkjFihq
-	 ezNd4/Ui7rvTHMmta86DrGE8P6szY3N5L4fkDoDUhsZ/eYBqCVqUYIGHkpzB+9ZocS
-	 c4Ymndv2T7OnAih6Ot/XyhNVCkNdjEllYepyKl4lbnCl0U6/F9euiOVI3icLH4oP1v
-	 anVB/8Gq388jBYOiTKjaRD2IapP6bra4n8DZYK/IvvSKZAT33N4ZfNObDWx6bZfVNC
-	 +KRpXtyIeADEHZ3b9OlmFjwXnDY8PY3ON1IUx9QsoX8hRd+INdCEEJMPUYUFZvZx1R
-	 wxOW0gXCilXsg==
+	b=ZRz84cANoQeEua855iQ9k3LYxDZP/yGFssDaUiW7U/6rUhzxS9w5N4W32JZiZfNVq
+	 Ba4DfguYLYboJNUmVcd0l+n7UBTitI3fMhx/QiiLP9RKYcHtntRsJd/m8DOl6T2qin
+	 ofaiGqRLOHWuBAbKv+vl3x4Wx+4/5klCI7ZwLYo21xT6xXY4MhcE6fIo1ur0/NJRmt
+	 cIl5/2XWEg6TYNNPWFdHBWIlQkiD2tz3sUnlxD6WXy5nV1ToibP9S3CfnPcxbuiF+n
+	 nX+HjySuSoKGkRTdVC2eVwzeFghyD4eUoWZkzo5TW88TZCe508x3MN6tYmKGHl+4tA
+	 Guv8oDGJ+v0hw==
 Received: from [10.1.1.106] (unknown [10.1.2.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by groupware.tuxist.de (Postfix) with ESMTPSA id 391D48A08F4;
-	Wed, 21 Oct 2026 05:17:13 +0200 (CEST)
-Message-ID: <d8a3b0587e8123c56058d097fbd2d5fa00cf7bd6.1792552161.git.jan.koester@tuxist.de>
+	by groupware.tuxist.de (Postfix) with ESMTPSA id BF59E8A0927;
+	Wed, 21 Oct 2026 05:17:19 +0200 (CEST)
+Message-ID: <d93b11e2c7d4e82e0076dddf812cc5137bc34771.1792552161.git.jan.koester@tuxist.de>
 In-Reply-To: <cover.1792552161.git.jan.koester@tuxist.de>
 References: <cover.1792552161.git.jan.koester@tuxist.de>
 From: Jan Koester <jan.koester@tuxist.de>
-Subject: [RFC PATCH v2 33/41] posix_acl: support UUID and GUID entries
+Subject: [RFC PATCH v2 35/41] Documentation: describe UUID and GUID user and
+ group ids
 To: Christian Brauner <brauner@kernel.org>,
     Alexander Viro <viro@zeniv.linux.org.uk>,
     "Serge E. Hallyn" <serge@hallyn.com>
@@ -69,7 +70,7 @@ Cc: Jan Kara <jack@suse.cz>,
     audit@vger.kernel.org,
     keyrings@vger.kernel.org,
     linux-kernel@vger.kernel.org
-Date: Wed, 21 Oct 2026 05:15:53 +0200
+Date: Wed, 21 Oct 2026 05:15:55 +0200
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -79,273 +80,208 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 
-The ACL xattrs carry 32 bit ids, so ACL_USER and ACL_GROUP entries for
-UUID and GUID users and groups could neither be set nor shown.
-
-Add version 3 of the xattr format, whose entries hold an id kind and
-16 bytes of id. setxattr() takes version 2 and 3; getxattr() returns
-version 3 only if the ACL has such an entry the caller can see, so
-existing tools keep getting version 2 for everything else.
-
-set_posix_acl() refuses UUID and GUID entries with -EOVERFLOW on
-filesystems without SB_I_UID_R, whose ACL formats can't store them.
+Describe __kernel_uid_r_t, the rules for UUID and GUID ids (overflow
+ids in classic interfaces, the initial user namespace only, filesystems
+with SB_I_UID_R), the *_r system calls, the extended interfaces (statx,
+socket credentials, siginfo, SysV IPC, keyctl, POSIX ACLs, procfs,
+audit) and the current limitations.
 
 Assisted-by: Claude:claude-opus-5-5
 
 Signed-off-by: Jan Koester <jan.koester@tuxist.de>
 ---
- fs/posix_acl.c                       | 123 ++++++++++++++++++++++++++-
- include/linux/posix_acl_xattr.h      |  31 +++++++
- include/uapi/linux/posix_acl_xattr.h |  19 +++++
- 3 files changed, 171 insertions(+), 2 deletions(-)
+ Documentation/userspace-api/index.rst |   1 +
+ Documentation/userspace-api/uid_r.rst | 169 ++++++++++++++++++++++++++
+ 2 files changed, 170 insertions(+)
+ create mode 100644 Documentation/userspace-api/uid_r.rst
 
-diff --git a/fs/posix_acl.c b/fs/posix_acl.c
-index 18b302f941..bcb0663fe2 100644
---- a/fs/posix_acl.c
-+++ b/fs/posix_acl.c
-@@ -19,6 +19,8 @@
- #include <linux/cred.h>
- #include <linux/posix_acl.h>
- #include <linux/posix_acl_xattr.h>
-+#include <linux/uidgid_r.h>
-+#include <linux/unaligned.h>
- #include <linux/xattr.h>
- #include <linux/export.h>
- #include <linux/user_namespace.h>
-@@ -741,16 +743,62 @@ static int posix_acl_fix_xattr_common(const void *value, size_t size)
- 		return -EINVAL;
- 	if (size < sizeof(struct posix_acl_xattr_header))
- 		return -EINVAL;
--	if (header->a_version != cpu_to_le32(POSIX_ACL_XATTR_VERSION))
-+	if (header->a_version == cpu_to_le32(POSIX_ACL_XATTR_VERSION_R))
-+		count = posix_acl_xattr_count_r(size);
-+	else if (header->a_version == cpu_to_le32(POSIX_ACL_XATTR_VERSION))
-+		count = posix_acl_xattr_count(size);
-+	else
- 		return -EOPNOTSUPP;
+diff --git a/Documentation/userspace-api/index.rst b/Documentation/userspace-api/index.rst
+index a68b1bea57..fcac7703fa 100644
+--- a/Documentation/userspace-api/index.rst
++++ b/Documentation/userspace-api/index.rst
+@@ -22,6 +22,7 @@ System calls
+    ioctl/index
+    mseal
+    rseq
++   uid_r
  
--	count = posix_acl_xattr_count(size);
- 	if (count < 0)
- 		return -EINVAL;
- 
- 	return count;
- }
- 
-+/* The entries of a version 3 ACL xattr into @acl; -EINVAL if malformed */
-+static int posix_acl_from_xattr_r(struct user_namespace *userns,
-+				  const struct posix_acl_xattr_entry_r *entry,
-+				  struct posix_acl *acl)
-+{
-+	struct __kernel_uid_r id;
+ Security-related interfaces
+ ===========================
+diff --git a/Documentation/userspace-api/uid_r.rst b/Documentation/userspace-api/uid_r.rst
+new file mode 100644
+index 0000000000..c080485455
+--- /dev/null
++++ b/Documentation/userspace-api/uid_r.rst
+@@ -0,0 +1,169 @@
++.. SPDX-License-Identifier: GPL-2.0
 +
-+	for (int n = 0; n < acl->a_count; n++, entry++) {
-+		struct posix_acl_entry *acl_e = &acl->a_entries[n];
++===========================================
++UUID and GUID user and group ids (``*_r``)
++===========================================
 +
-+		acl_e->e_tag  = le16_to_cpu(entry->e_tag);
-+		acl_e->e_perm = le16_to_cpu(entry->e_perm);
++Besides the classic 32 bit numbers, user and group ids can be UUIDs
++(RFC 9562, version 4) or Microsoft GUIDs. A process can run as such a
++user, files can be owned by one, and ACLs, keys, IPC objects, sockets and
++signals carry them. The classic system calls keep their 32 bit ids; a new
++family of calls, named after them with an ``_r`` suffix, and extensions of
++existing interfaces handle all kinds of id.
 +
-+		memset(&id, 0, sizeof(id));
-+		id.type = le32_to_cpu(entry->e_type);
-+		if (id.type == UID_R_LEGACY)
-+			id.legacy = get_unaligned_le32(entry->e_id);
-+		else
-+			memcpy(id.uuid, entry->e_id, sizeof(id.uuid));
++The id type
++===========
 +
-+		switch (acl_e->e_tag) {
-+		case ACL_USER_OBJ:
-+		case ACL_GROUP_OBJ:
-+		case ACL_MASK:
-+		case ACL_OTHER:
-+			break;
-+		case ACL_USER:
-+			acl_e->e_uid = make_kuid_r(userns, &id);
-+			if (!uid_valid(acl_e->e_uid))
-+				return -EINVAL;
-+			break;
-+		case ACL_GROUP:
-+			acl_e->e_gid = make_kgid_r(userns, &id);
-+			if (!gid_valid(acl_e->e_gid))
-+				return -EINVAL;
-+			break;
-+		default:
-+			return -EINVAL;
-+		}
-+	}
-+	return 0;
-+}
++``<linux/uidgid_r.h>`` defines ``__kernel_uid_r_t`` (and
++``__kernel_gid_r_t``, the same type)::
 +
- /**
-  * posix_acl_from_xattr - convert POSIX ACLs from backing store to VFS format
-  * @userns: the filesystem's idmapping
-@@ -795,6 +843,13 @@ struct posix_acl *posix_acl_from_xattr(struct user_namespace *userns,
- 		return ERR_PTR(-ENOMEM);
- 	acl_e = acl->a_entries;
- 
-+	if (header->a_version == cpu_to_le32(POSIX_ACL_XATTR_VERSION_R)) {
-+		if (posix_acl_from_xattr_r(userns, (const void *)(header + 1),
-+					   acl))
-+			goto fail;
-+		return acl;
-+	}
++	typedef struct __kernel_uid_r {
++		__u32 type;
++		union {
++			__u32 legacy;
++			__u8 uuid[16];
++			__u8 guid[16];
++		};
++	} __kernel_uid_r_t;
 +
- 	for (end = entry + count; entry != end; acl_e++, entry++) {
- 		acl_e->e_tag  = le16_to_cpu(entry->e_tag);
- 		acl_e->e_perm = le16_to_cpu(entry->e_perm);
-@@ -874,6 +929,61 @@ posix_acl_to_xattr(struct user_namespace *user_ns, const struct posix_acl *acl,
- }
- EXPORT_SYMBOL (posix_acl_to_xattr);
- 
-+/* Like vfs_posix_acl_to_xattr(), in version 3 */
-+static ssize_t vfs_posix_acl_to_xattr_r(struct mnt_idmap *idmap,
-+					struct inode *inode,
-+					const struct posix_acl *acl,
-+					void *buffer, size_t size)
-+{
-+	struct posix_acl_xattr_header *ext_acl = buffer;
-+	struct posix_acl_xattr_entry_r *ext_entry;
-+	struct user_namespace *fs_userns = i_user_ns(inode);
-+	struct user_namespace *caller_userns = current_user_ns();
-+	struct __kernel_uid_r id;
-+	ssize_t real_size;
-+	bool mapped;
++``type`` is one of:
 +
-+	real_size = posix_acl_xattr_size_r(acl->a_count);
-+	if (!buffer)
-+		return real_size;
-+	if (real_size > size)
-+		return -ERANGE;
++``UID_R_NONE`` (0)
++	No id. An all-zero id is never root. The ``set*id_r()`` and
++	``chown_r()`` calls take it, like a ``NULL`` pointer or a classic
++	``-1``, as "leave unchanged".
 +
-+	ext_entry = (void *)(ext_acl + 1);
-+	ext_acl->a_version = cpu_to_le32(POSIX_ACL_XATTR_VERSION_R);
++``UID_R_LEGACY`` (1)
++	A classic id in ``legacy``.
 +
-+	for (int n = 0; n < acl->a_count; n++, ext_entry++) {
-+		const struct posix_acl_entry *acl_e = &acl->a_entries[n];
++``UID_R_UUID`` (2)
++	A UUID in ``uuid``, in network byte order. It must be version 4 with
++	the RFC 9562 variant.
 +
-+		ext_entry->e_tag  = cpu_to_le16(acl_e->e_tag);
-+		ext_entry->e_perm = cpu_to_le16(acl_e->e_perm);
-+		memset(&id, 0, sizeof(id));
-+		mapped = true;
-+		switch (acl_e->e_tag) {
-+		case ACL_USER:
-+			mapped = from_kuid_r(caller_userns, vfsuid_into_kuid(
-+				make_vfsuid(idmap, fs_userns, acl_e->e_uid)), &id);
-+			break;
-+		case ACL_GROUP:
-+			mapped = from_kgid_r(caller_userns, vfsgid_into_kgid(
-+				make_vfsgid(idmap, fs_userns, acl_e->e_gid)), &id);
-+			break;
-+		}
-+		/* no mapping: the classic -1, as in version 2 */
-+		if (!mapped) {
-+			id.type = UID_R_LEGACY;
-+			id.legacy = ACL_UNDEFINED_ID;
-+		}
-+		ext_entry->e_type = cpu_to_le32(id.type);
-+		memset(ext_entry->e_id, 0, sizeof(ext_entry->e_id));
-+		if (id.type == UID_R_LEGACY)
-+			put_unaligned_le32(id.legacy, ext_entry->e_id);
-+		else if (id.type != UID_R_NONE)
-+			memcpy(ext_entry->e_id, id.uuid, sizeof(ext_entry->e_id));
-+	}
-+	return real_size;
-+}
++``UID_R_GUID`` (3)
++	A GUID in ``guid`` as Windows stores it: Data1, Data2 and Data3
++	little endian. The nil GUID is not allowed.
 +
- /**
-  * vfs_posix_acl_to_xattr - convert from kernel to userspace representation
-  * @idmap: idmap of the mount
-@@ -902,6 +1012,11 @@ static ssize_t vfs_posix_acl_to_xattr(struct mnt_idmap *idmap,
- 	vfsuid_t vfsuid;
- 	vfsgid_t vfsgid;
- 
-+	/* UUIDs and GUIDs the caller can see need version 3 */
-+	if (posix_acl_has_id_r(acl) && current_user_ns() == &init_user_ns)
-+		return vfs_posix_acl_to_xattr_r(idmap, inode, acl, buffer,
-+						size);
++Bytes past the member ``type`` selects must be zero. The struct is 20
++bytes on every ABI, so none of the calls needs a compat variant.
 +
- 	real_size = posix_acl_xattr_size(acl->a_count);
- 	if (!buffer)
- 		return real_size;
-@@ -956,6 +1071,10 @@ set_posix_acl(struct mnt_idmap *idmap, struct dentry *dentry,
- 		int ret = posix_acl_valid(inode->i_sb->s_user_ns, acl);
- 		if (ret)
- 			return ret;
-+		/* UUID and GUID entries only where the filesystem stores them */
-+		if (posix_acl_has_id_r(acl) &&
-+		    !(inode->i_sb->s_iflags & SB_I_UID_R))
-+			return -EOVERFLOW;
- 	}
- 	return inode->i_op->set_acl(idmap, dentry, acl, type);
- }
-diff --git a/include/linux/posix_acl_xattr.h b/include/linux/posix_acl_xattr.h
-index 9e1892525e..307d543bce 100644
---- a/include/linux/posix_acl_xattr.h
-+++ b/include/linux/posix_acl_xattr.h
-@@ -32,6 +32,37 @@ posix_acl_xattr_count(size_t size)
- 	return size / sizeof(struct posix_acl_xattr_entry);
- }
- 
-+static inline size_t
-+posix_acl_xattr_size_r(int count)
-+{
-+	return (sizeof(struct posix_acl_xattr_header) +
-+		(count * sizeof(struct posix_acl_xattr_entry_r)));
-+}
++The text form of an id (in procfs, audit records, key descriptions and
++``/proc/<pid>/loginuid``) is a decimal number, a UUID
++``xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`` or a GUID in braces
++``{xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}``.
 +
-+static inline int
-+posix_acl_xattr_count_r(size_t size)
-+{
-+	if (size < sizeof(struct posix_acl_xattr_header))
-+		return -1;
-+	size -= sizeof(struct posix_acl_xattr_header);
-+	if (size % sizeof(struct posix_acl_xattr_entry_r))
-+		return -1;
-+	return size / sizeof(struct posix_acl_xattr_entry_r);
-+}
++Rules
++=====
 +
-+/* Whether an ACL_USER or ACL_GROUP entry of @acl is a UUID or GUID */
-+static inline bool posix_acl_has_id_r(const struct posix_acl *acl)
-+{
-+	for (int n = 0; n < acl->a_count; n++) {
-+		const struct posix_acl_entry *e = &acl->a_entries[n];
++- Interfaces with 32 bit ids show a UUID or GUID as the overflow id
++  (``/proc/sys/kernel/overflowuid`` and ``overflowgid``), as the 16 bit
++  system calls do for ids above 65535.
 +
-+		if ((e->e_tag == ACL_USER && !uid_is_legacy(e->e_uid)) ||
-+		    (e->e_tag == ACL_GROUP && !gid_is_legacy(e->e_gid)))
-+			return true;
-+	}
-+	return false;
-+}
++- UUIDs and GUIDs are not part of any ``uid_map`` or ``gid_map``: they
++  exist in the initial user namespace only. Elsewhere they show as the
++  overflow id, can't be set, and no capability in another namespace gives
++  privilege over them. Only ``CAP_SETUID``/``CAP_SETGID`` in the initial
++  namespace can switch to one.
 +
- #ifdef CONFIG_FS_POSIX_ACL
- struct posix_acl *posix_acl_from_xattr(struct user_namespace *user_ns,
- 				       const void *value, size_t size);
-diff --git a/include/uapi/linux/posix_acl_xattr.h b/include/uapi/linux/posix_acl_xattr.h
-index 506380f0b9..a44a515079 100644
---- a/include/uapi/linux/posix_acl_xattr.h
-+++ b/include/uapi/linux/posix_acl_xattr.h
-@@ -36,4 +36,23 @@ struct posix_acl_xattr_header {
- 	__le32			a_version;
- };
- 
-+/*
-+ * Version 3: the ids of ACL_USER and ACL_GROUP entries can also be UUIDs
-+ * and GUIDs. e_type is a UID_R_* kind (<linux/uidgid_r.h>); a classic id
-+ * is in the first four bytes of e_id, little endian, a UUID or GUID takes
-+ * all of it in the byte order of __kernel_uid_r_t. Other entries have
-+ * e_type UID_R_NONE.
-+ *
-+ * getxattr() returns version 2 unless an entry has a UUID or GUID;
-+ * setxattr() takes both.
-+ */
-+#define POSIX_ACL_XATTR_VERSION_R	0x0003
++- Idmapped mounts map classic ids and pass UUIDs and GUIDs unchanged, on
++  filesystems of the initial user namespace.
 +
-+struct posix_acl_xattr_entry_r {
-+	__le16			e_tag;
-+	__le16			e_perm;
-+	__le32			e_type;
-+	__u8			e_id[16];
-+};
++- Only filesystems that can store them accept UUID and GUID owners and ACL
++  entries; others refuse with ``EOVERFLOW``, for ``chown`` as well as for
++  creating a file as such a user. tmpfs and ramfs do, and ext4 with the
++  ``uid_r`` feature (``mke2fs -O uid_r``; a read-only compatible feature,
++  inodes of at least 256 bytes). ``tune2fs -O uid_r`` turns it on later; on
++  a mounted filesystem through ``EXT4_IOC_SET_TUNE_SB_PARAM``, which makes
++  it usable at once, otherwise at the next mount or remount.
 +
- #endif	/* __UAPI_POSIX_ACL_XATTR_H */
++System calls
++============
++
++All take pointers to ``__kernel_uid_r_t`` and return 0 or a negative
++error, unless noted otherwise.
++
++=================  =======================================================
++``getuid_r``       ``(uid_r *uid)``, also ``geteuid_r``, ``getgid_r``,
++                   ``getegid_r``
++``setuid_r``       ``(const uid_r *uid)``, also ``setgid_r``
++``setreuid_r``     ``(const uid_r *ruid, const uid_r *euid)``, also
++                   ``setregid_r``
++``setresuid_r``    ``(const uid_r *ruid, const uid_r *euid, const uid_r
++                   *suid)``, also ``setresgid_r``
++``getresuid_r``    ``(uid_r *ruid, uid_r *euid, uid_r *suid)``, also
++                   ``getresgid_r``; ``NULL`` pointers are skipped
++``setfsuid_r``     ``(const uid_r *uid, uid_r *old)``, also
++                   ``setfsgid_r``. Unlike ``setfsuid()`` it fails with
++                   ``EPERM`` instead of silently, and returns the old id
++                   in ``*old``; a ``NULL`` *uid* only queries it.
++``getgroups_r``    ``(int size, gid_r *list)``, returns the number of
++                   groups like ``getgroups()``
++``setgroups_r``    ``(int size, const gid_r *list)``; "no id" is not
++                   allowed in the list
++``chown_r``        ``(const char *path, const uid_r *user, const gid_r
++                   *group)``, also ``lchown_r``, ``fchown_r(int fd, ...)``
++                   and ``fchownat_r(int dfd, const char *path, ..., int
++                   flags)``
++=================  =======================================================
++
++Supplementary groups are sorted by kind (classic, UUID, GUID) and value.
++
++Other interfaces
++================
++
++``statx()``
++	``STATX_UID_R`` and ``STATX_GID_R`` report ``stx_uid_r`` and
++	``stx_gid_r``.
++
++Sockets
++	``SO_PEERCRED_R`` returns a ``struct __kernel_ucred_r`` (pid, uid,
++	gid), ``SO_PEERGROUPS_R`` the peer's groups as ``__kernel_gid_r_t``.
++	``SO_PASSCRED_R`` asks for ``SCM_CREDENTIALS_R`` messages with a
++	``struct __kernel_ucred_r``; they can be sent with the rules of
++	``SCM_CREDENTIALS``. Netlink keeps classic ids in its messages.
++
++Signals
++	``siginfo_t`` has ``si_uid_r``, the sender's uid, at offset 96 in
++	every layout; ``signalfd_siginfo`` has ``ssi_uid_r``. It is
++	``UID_R_NONE`` where the kernel doesn't set it; ``waitid()`` fills it
++	in.
++
++System V IPC
++	``IPC_STAT_R`` and ``IPC_SET_R`` for ``msgctl()``, ``semctl()`` and
++	``shmctl()`` read and set a ``struct ipc_perm_r`` (key, mode, uid,
++	gid, cuid, cgid).
++
++Keys
++	``KEYCTL_CHOWN_R`` takes ``__kernel_uid_r_t`` owner and group.
++
++POSIX ACLs
++	Version 3 of the ACL xattr format (``POSIX_ACL_XATTR_VERSION_R``)
++	has ``struct posix_acl_xattr_entry_r`` entries with an id kind and
++	16 bytes of id. ``getxattr()`` returns version 3 only if an entry is
++	a UUID or GUID; ``setxattr()`` takes both versions.
++
++procfs
++	``/proc/<pid>/status`` has ``Uid_r:``, ``Gid_r:`` and ``Groups_r:``
++	lines with the text form of the ids; ``/proc/<pid>/loginuid`` reads
++	and writes UUIDs and GUIDs as text.
++
++Audit
++	Records show UUIDs and GUIDs in their text form; classic ids are
++	printed as before.
++
++RPCSEC_GSS upcalls
++	The text (v1) upcall to gssd names a UUID or GUID user as
++	``uid_r=<text form>`` instead of ``uid=<number>``; gssd versions that
++	don't know it find no ``uid=`` and refuse the upcall. A downcall for
++	such a user starts with the uid ``-1`` (never valid) followed by the
++	user as ``__kernel_uid_r_t``, then the usual fields. The binary (v0)
++	upcall can't carry such users and fails with ``EACCES``.
++
++Limitations
++===========
++
++- Quotas don't account UUID and GUID owners; quota files hold 32 bit ids.
++- RPCSEC_GSS needs a gssd that knows ``uid_r=`` for UUID and GUID users.
++- UUID and GUID users can't create unprivileged ublk devices.
++- Audit filter rules, SafeSetID policies and IMA policy rules name
++  classic ids only.
 -- 
 2.56.0
 
