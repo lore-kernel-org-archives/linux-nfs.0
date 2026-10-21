@@ -1,56 +1,56 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=173.212.254.19
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792552599;
-	b=wah+5N8TMjaVXSg4QKyKvG6Fb6zyaiiC5NCwDRiDAu1BrdmS/qb4n1pl2vHhg3NFtfKH
-	 yJgPpjSYIlDWeCwJxvgLZNzj71ePBcDnf5YZnRUzam6+2m0SNmEwLwi4szjNls3MqUFdA
-	 52XX8GCAsUlhXv7KLkEktZsS6p+a7YBscerc08/PbCosHh2dzUHIUmn525j4OGFNeiFyj
-	 HTve10aYB6m01+K4djCCOKnPLBdFPvAtZ4DweKcFRWcHJeMrxr1tgH5trDyWszPI8NOrr
-	 ne2ATdXysAnWPI4BX68RVRhhvt+KZo4cR75zLuacdbuAAIYyByYXMoAU6OSJpYbZWQg==
+	t=1792552609;
+	b=tuvzwwFaYT9bXoDLq4eXrznsJYIToZ4tnJrH9zqeB/zocppDHxhQtRXKXlo5aV0lgC+w
+	 a0QpUeNQmzlqBp+zaVz0smkNAl03rc7I7kR0/LFv1BVSIYh+Z34PoKq/nJbioTvyJusb6
+	 bVIvPF08Ssf7KmXskj9E8sJ6QbXYXFNCnYr/IVksuKjRzKuWfN7QTTw9hbKfYen6luhdB
+	 EODU0OXnI0UPYAbjaYUWrCNbex2UC3/Ov4XfvELxVBLWwLhZLEQXEYciyev7Zh6cM/fxf
+	 uBH0tkLop/zmA+QyGAwSz5Ula8oyiMGtav9d/BpBB5Zp60n+XklIoEDq3B/pej2sb+A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792552599;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792552609;
 	h=DMARC-Filter:DKIM-Signature:Received:Message-ID:In-Reply-To:
 	 References:From:Subject:To:Cc:Date;
-	bh=FrlK+4v6tISSCo0hgOXhUqR4jvlPBThqmhMhDsD7inI=;
-	b=PwRAHZ7NIPZ0nFlJIwk4dB3swNpUMea3D43lKc4sNEjB6z34LfcT8EXvGf6mkYApOJhY
-	 fHREkWEmhmgOIW9tdqqCNTcRYl5/yDEwLqMSrYu6vsq6hoEyPVmfSgVSaU4/oOW+/3KIU
-	 F8WUd4pN1bGEzxpqtBxZ+uq9/WtKHb5QcVOv2xfnz3y6RWOHg1UxLoKTIo2WH+LYab2zn
-	 O7yRrLtJqnULnKbvrmhtqnXZxIjiRZgRqXu0WTY4y2vW4iw7IgHX/gwC7mEMjeFUpo9hf
-	 nRVf8Dq0Kuoui85G6V5jgEses1qI1KEbqG7cEkbdpqmfX0wmJYWguKL5qs8bEJj0Jnw==
+	bh=XPetBJfDkAzAZ8UTDQicbQRK+iH8jjbopwvCHr+wr6I=;
+	b=xlRKqqNnHr5O2yYiHYPDxlX6Xrp63nWY9XDVOY5Ly/pIbS6Gd0vm3t8GDN8qzivoNUEp
+	 B7pDyQdjxfIY81Vbx1f28QUtwUcva9WqSryJk2RYW+btwyeX5D6sOd/FUpJ96oEj8tAy2
+	 y3Bc9zo4hqIe+seRORQEDx56+tC+EaRd4iUwfNrUoGDPmntyqntd2sUQiSVveAzkUPiSu
+	 X0QEsMrjF2NcjuX+qUxUK9FXLkOZrUYPBGsHTBNjDwO6eILxgTsPP2pTChVZ2xkMZYoyk
+	 8sxHUX47lvcw+QXHIbaemqTOcX9NyNyvdbGUZYEshnbhYwkOUv3hM4BP82WbDBu1NKw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=tuxist.de;
 	spf=fail smtp.mailfrom=tuxist.de;
-	dkim=pass header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=KX5swtju;
+	dkim=pass header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=MvZnv28O;
 	arc=none smtp.remote-ip=173.212.254.19
 Received: from groupware.tuxist.de (groupware.tuxist.de [173.212.254.19])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3B86860A6F47;
-	Wed, 21 Oct 2026 03:16:38 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3B86860A6F47
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5BE5A607095A;
+	Wed, 21 Oct 2026 03:16:48 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 5BE5A607095A
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=tuxist.de
 Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=tuxist.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=KX5swtju
+	dkim=pass (2048-bit key, unprotected) header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=MvZnv28O
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=tuxist.de; s=201705;
-	t=1792552596; bh=PNV+j5X8PaQS4BJAGJu1rKZrfJvQMnkNu76c7vN73vE=;
+	t=1792552606; bh=vR17OcW5DP2to57LMQkJCXz9sOVicwks2xNBVa+gK/c=;
 	h=In-Reply-To:References:From:Subject:To:Cc:Date:From;
-	b=KX5swtju8hh8/l4MZt2tvdzTlEN1jWBflaHHA8YIPBXGohsuiaB70RyrnppNte9lt
-	 fn96DqxLwZCiUmSZg+FkpeXTe/TBX+uBpSkBK4t7jxq+vYe/Q7O4Os/f9kYcya3B9H
-	 oqRWl3GDbwINkJSuNYLVwn+HQNhKqdZ/zDboLu7oWj7ehimRPc5BR2p/OxgGkwvXIP
-	 UHG0CFjsgl68QtIM6JHhNhWSh7fLfG7QufRAvcBD1gwyvtEx8wG4fV2/i1EVX/772F
-	 d4FSnQNUiNR5XBA4Ezz1A4eYPZ0eabXEDEQVSlB6cFokUeinE5lvYxnoPCnbjaPo6y
-	 YBMEvJSMRnGAA==
+	b=MvZnv28OBDboO1Uckg4VHuK/UCnr5rurzSeDn9rh3CM8Oi+8NpNgWNtkIccYx5qyF
+	 ndW6QFNpKp4H1P/4JvmDSWzdVIoAEaNqTq0xoPzvfxt/e9z2vys6oMeRq/oKDBtAKX
+	 +aN+sOmHrfuEdV51ZZ2r9g7Wr8TdKTAbfDMuwOcjaJRjx2hJlcsYGzARDsqfxqV/ox
+	 pXIMjzH5sYuB/rluXQcqmrcXuXG3EFvM9A7sdlk/Mb+bGwKBVX2e/Nd0FT74brAjMl
+	 Uv8wqwMlruNGr/0anQBZWwG1U3ZR6i99bXdWRuTg5MYbLZTBKM77f30XEu7RAoTaFi
+	 ZGVDd4t4+1GaQ==
 Received: from [10.1.1.106] (unknown [10.1.2.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by groupware.tuxist.de (Postfix) with ESMTPSA id DF2598A0927;
-	Wed, 21 Oct 2026 05:16:35 +0200 (CEST)
-Message-ID: <014ca715d4d35199cda084420f0c7b8163d64cab.1792552161.git.jan.koester@tuxist.de>
+	by groupware.tuxist.de (Postfix) with ESMTPSA id B90608A096E;
+	Wed, 21 Oct 2026 05:16:45 +0200 (CEST)
+Message-ID: <1151adfbb3aeae57cb26df8723287857f8d0af57.1792552161.git.jan.koester@tuxist.de>
 In-Reply-To: <cover.1792552161.git.jan.koester@tuxist.de>
 References: <cover.1792552161.git.jan.koester@tuxist.de>
 From: Jan Koester <jan.koester@tuxist.de>
-Subject: [RFC PATCH v2 22/41] arch: wire up the *_r uid and gid system calls
+Subject: [RFC PATCH v2 25/41] uidgid: parse and print ids in their text form
 To: Christian Brauner <brauner@kernel.org>,
     Alexander Viro <viro@zeniv.linux.org.uk>,
     "Serge E. Hallyn" <serge@hallyn.com>
@@ -69,7 +69,7 @@ Cc: Jan Kara <jack@suse.cz>,
     audit@vger.kernel.org,
     keyrings@vger.kernel.org,
     linux-kernel@vger.kernel.org
-Date: Wed, 21 Oct 2026 05:15:42 +0200
+Date: Wed, 21 Oct 2026 05:15:45 +0200
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -79,573 +79,243 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 
-Assign 472-491 on all architectures (582-601 on alpha) to getuid_r,
-geteuid_r, getgid_r, getegid_r, setuid_r, setgid_r, setreuid_r,
-setregid_r, setresuid_r, getresuid_r, setresgid_r, getresgid_r,
-setfsuid_r, setfsgid_r, getgroups_r, setgroups_r, chown_r, lchown_r,
-fchown_r and fchownat_r.
+Add helpers for interfaces that pass ids as text:
 
-__kernel_uid_r_t has the same layout on all ABIs, so the compat ABIs
-use the native entry points.
+- make_kuid_str()/make_kgid_str() parse what kuid_str() writes: a
+  decimal number, a UUID, or a GUID in braces,
+- kuid_str_munged()/kgid_str_munged() write an id as seen from a user
+  namespace, the overflow id if it has no mapping there,
+- kuid_str_signed()/kgid_str_signed() write a legacy id as a signed
+  number, for output that used "%d",
+- KUID_STR() and friends wrap them as expressions with a buffer of the
+  enclosing block, so that printf-like calls can replace
+  "%u", from_kuid(&init_user_ns, uid) by "%s", KUID_STR(uid) and print
+  legacy ids exactly as before.
 
 Assisted-by: Claude:claude-opus-5-5
 
 Signed-off-by: Jan Koester <jan.koester@tuxist.de>
 ---
- arch/alpha/kernel/syscalls/syscall.tbl      | 20 ++++++++++
- arch/arm/tools/syscall.tbl                  | 20 ++++++++++
- arch/arm64/tools/syscall_32.tbl             | 20 ++++++++++
- arch/m68k/kernel/syscalls/syscall.tbl       | 20 ++++++++++
- arch/microblaze/kernel/syscalls/syscall.tbl | 20 ++++++++++
- arch/mips/kernel/syscalls/syscall_n32.tbl   | 20 ++++++++++
- arch/mips/kernel/syscalls/syscall_n64.tbl   | 20 ++++++++++
- arch/mips/kernel/syscalls/syscall_o32.tbl   | 20 ++++++++++
- arch/parisc/kernel/syscalls/syscall.tbl     | 20 ++++++++++
- arch/powerpc/kernel/syscalls/syscall.tbl    | 20 ++++++++++
- arch/s390/kernel/syscalls/syscall.tbl       | 20 ++++++++++
- arch/sh/kernel/syscalls/syscall.tbl         | 20 ++++++++++
- arch/sparc/kernel/syscalls/syscall.tbl      | 20 ++++++++++
- arch/x86/entry/syscalls/syscall_32.tbl      | 20 ++++++++++
- arch/x86/entry/syscalls/syscall_64.tbl      | 20 ++++++++++
- arch/xtensa/kernel/syscalls/syscall.tbl     | 20 ++++++++++
- include/uapi/asm-generic/unistd.h           | 43 ++++++++++++++++++++-
- scripts/syscall.tbl                         | 20 ++++++++++
- 18 files changed, 382 insertions(+), 1 deletion(-)
+ include/linux/uidgid.h |  19 ++++++
+ kernel/uidgid_r.c      | 152 +++++++++++++++++++++++++++++++++++++++--
+ 2 files changed, 167 insertions(+), 4 deletions(-)
 
-diff --git a/arch/alpha/kernel/syscalls/syscall.tbl b/arch/alpha/kernel/syscalls/syscall.tbl
-index 52e3538cc7..dbf741faf9 100644
---- a/arch/alpha/kernel/syscalls/syscall.tbl
-+++ b/arch/alpha/kernel/syscalls/syscall.tbl
-@@ -512,3 +512,23 @@
- 580	common	listns				sys_listns
- 581	common	rseq_slice_yield		sys_rseq_slice_yield
- 582	common	fchroot				sys_fchroot
-+583	common	getuid_r		sys_getuid_r
-+584	common	geteuid_r		sys_geteuid_r
-+585	common	getgid_r		sys_getgid_r
-+586	common	getegid_r		sys_getegid_r
-+587	common	setuid_r		sys_setuid_r
-+588	common	setgid_r		sys_setgid_r
-+589	common	setreuid_r		sys_setreuid_r
-+590	common	setregid_r		sys_setregid_r
-+591	common	setresuid_r		sys_setresuid_r
-+592	common	getresuid_r		sys_getresuid_r
-+593	common	setresgid_r		sys_setresgid_r
-+594	common	getresgid_r		sys_getresgid_r
-+595	common	setfsuid_r		sys_setfsuid_r
-+596	common	setfsgid_r		sys_setfsgid_r
-+597	common	getgroups_r		sys_getgroups_r
-+598	common	setgroups_r		sys_setgroups_r
-+599	common	chown_r		sys_chown_r
-+600	common	lchown_r		sys_lchown_r
-+601	common	fchown_r		sys_fchown_r
-+602	common	fchownat_r		sys_fchownat_r
-diff --git a/arch/arm/tools/syscall.tbl b/arch/arm/tools/syscall.tbl
-index 55717ed32c..82219c1d42 100644
---- a/arch/arm/tools/syscall.tbl
-+++ b/arch/arm/tools/syscall.tbl
-@@ -487,3 +487,23 @@
- 470	common	listns				sys_listns
- 471	common	rseq_slice_yield		sys_rseq_slice_yield
- 472	common	fchroot				sys_fchroot
-+473	common	getuid_r		sys_getuid_r
-+474	common	geteuid_r		sys_geteuid_r
-+475	common	getgid_r		sys_getgid_r
-+476	common	getegid_r		sys_getegid_r
-+477	common	setuid_r		sys_setuid_r
-+478	common	setgid_r		sys_setgid_r
-+479	common	setreuid_r		sys_setreuid_r
-+480	common	setregid_r		sys_setregid_r
-+481	common	setresuid_r		sys_setresuid_r
-+482	common	getresuid_r		sys_getresuid_r
-+483	common	setresgid_r		sys_setresgid_r
-+484	common	getresgid_r		sys_getresgid_r
-+485	common	setfsuid_r		sys_setfsuid_r
-+486	common	setfsgid_r		sys_setfsgid_r
-+487	common	getgroups_r		sys_getgroups_r
-+488	common	setgroups_r		sys_setgroups_r
-+489	common	chown_r		sys_chown_r
-+490	common	lchown_r		sys_lchown_r
-+491	common	fchown_r		sys_fchown_r
-+492	common	fchownat_r		sys_fchownat_r
-diff --git a/arch/arm64/tools/syscall_32.tbl b/arch/arm64/tools/syscall_32.tbl
-index df2d1d82fb..9e64c3e51a 100644
---- a/arch/arm64/tools/syscall_32.tbl
-+++ b/arch/arm64/tools/syscall_32.tbl
-@@ -484,3 +484,23 @@
- 470	common	listns				sys_listns
- 471	common	rseq_slice_yield		sys_rseq_slice_yield
- 472	common	fchroot				sys_fchroot
-+473	common	getuid_r		sys_getuid_r
-+474	common	geteuid_r		sys_geteuid_r
-+475	common	getgid_r		sys_getgid_r
-+476	common	getegid_r		sys_getegid_r
-+477	common	setuid_r		sys_setuid_r
-+478	common	setgid_r		sys_setgid_r
-+479	common	setreuid_r		sys_setreuid_r
-+480	common	setregid_r		sys_setregid_r
-+481	common	setresuid_r		sys_setresuid_r
-+482	common	getresuid_r		sys_getresuid_r
-+483	common	setresgid_r		sys_setresgid_r
-+484	common	getresgid_r		sys_getresgid_r
-+485	common	setfsuid_r		sys_setfsuid_r
-+486	common	setfsgid_r		sys_setfsgid_r
-+487	common	getgroups_r		sys_getgroups_r
-+488	common	setgroups_r		sys_setgroups_r
-+489	common	chown_r		sys_chown_r
-+490	common	lchown_r		sys_lchown_r
-+491	common	fchown_r		sys_fchown_r
-+492	common	fchownat_r		sys_fchownat_r
-diff --git a/arch/m68k/kernel/syscalls/syscall.tbl b/arch/m68k/kernel/syscalls/syscall.tbl
-index ba7a4d8903..6b82f0265f 100644
---- a/arch/m68k/kernel/syscalls/syscall.tbl
-+++ b/arch/m68k/kernel/syscalls/syscall.tbl
-@@ -472,3 +472,23 @@
- 470	common	listns				sys_listns
- 471	common	rseq_slice_yield		sys_rseq_slice_yield
- 472	common	fchroot				sys_fchroot
-+473	common	getuid_r		sys_getuid_r
-+474	common	geteuid_r		sys_geteuid_r
-+475	common	getgid_r		sys_getgid_r
-+476	common	getegid_r		sys_getegid_r
-+477	common	setuid_r		sys_setuid_r
-+478	common	setgid_r		sys_setgid_r
-+479	common	setreuid_r		sys_setreuid_r
-+480	common	setregid_r		sys_setregid_r
-+481	common	setresuid_r		sys_setresuid_r
-+482	common	getresuid_r		sys_getresuid_r
-+483	common	setresgid_r		sys_setresgid_r
-+484	common	getresgid_r		sys_getresgid_r
-+485	common	setfsuid_r		sys_setfsuid_r
-+486	common	setfsgid_r		sys_setfsgid_r
-+487	common	getgroups_r		sys_getgroups_r
-+488	common	setgroups_r		sys_setgroups_r
-+489	common	chown_r		sys_chown_r
-+490	common	lchown_r		sys_lchown_r
-+491	common	fchown_r		sys_fchown_r
-+492	common	fchownat_r		sys_fchownat_r
-diff --git a/arch/microblaze/kernel/syscalls/syscall.tbl b/arch/microblaze/kernel/syscalls/syscall.tbl
-index c55a5c96f4..5b414aa124 100644
---- a/arch/microblaze/kernel/syscalls/syscall.tbl
-+++ b/arch/microblaze/kernel/syscalls/syscall.tbl
-@@ -478,3 +478,23 @@
- 470	common	listns				sys_listns
- 471	common	rseq_slice_yield		sys_rseq_slice_yield
- 472	common	fchroot				sys_fchroot
-+473	common	getuid_r		sys_getuid_r
-+474	common	geteuid_r		sys_geteuid_r
-+475	common	getgid_r		sys_getgid_r
-+476	common	getegid_r		sys_getegid_r
-+477	common	setuid_r		sys_setuid_r
-+478	common	setgid_r		sys_setgid_r
-+479	common	setreuid_r		sys_setreuid_r
-+480	common	setregid_r		sys_setregid_r
-+481	common	setresuid_r		sys_setresuid_r
-+482	common	getresuid_r		sys_getresuid_r
-+483	common	setresgid_r		sys_setresgid_r
-+484	common	getresgid_r		sys_getresgid_r
-+485	common	setfsuid_r		sys_setfsuid_r
-+486	common	setfsgid_r		sys_setfsgid_r
-+487	common	getgroups_r		sys_getgroups_r
-+488	common	setgroups_r		sys_setgroups_r
-+489	common	chown_r		sys_chown_r
-+490	common	lchown_r		sys_lchown_r
-+491	common	fchown_r		sys_fchown_r
-+492	common	fchownat_r		sys_fchownat_r
-diff --git a/arch/mips/kernel/syscalls/syscall_n32.tbl b/arch/mips/kernel/syscalls/syscall_n32.tbl
-index 9ae88e4eac..ed6bddb005 100644
---- a/arch/mips/kernel/syscalls/syscall_n32.tbl
-+++ b/arch/mips/kernel/syscalls/syscall_n32.tbl
-@@ -411,3 +411,23 @@
- 470	n32	listns				sys_listns
- 471	n32	rseq_slice_yield		sys_rseq_slice_yield
- 472	n32	fchroot				sys_fchroot
-+473	n32	getuid_r		sys_getuid_r
-+474	n32	geteuid_r		sys_geteuid_r
-+475	n32	getgid_r		sys_getgid_r
-+476	n32	getegid_r		sys_getegid_r
-+477	n32	setuid_r		sys_setuid_r
-+478	n32	setgid_r		sys_setgid_r
-+479	n32	setreuid_r		sys_setreuid_r
-+480	n32	setregid_r		sys_setregid_r
-+481	n32	setresuid_r		sys_setresuid_r
-+482	n32	getresuid_r		sys_getresuid_r
-+483	n32	setresgid_r		sys_setresgid_r
-+484	n32	getresgid_r		sys_getresgid_r
-+485	n32	setfsuid_r		sys_setfsuid_r
-+486	n32	setfsgid_r		sys_setfsgid_r
-+487	n32	getgroups_r		sys_getgroups_r
-+488	n32	setgroups_r		sys_setgroups_r
-+489	n32	chown_r		sys_chown_r
-+490	n32	lchown_r		sys_lchown_r
-+491	n32	fchown_r		sys_fchown_r
-+492	n32	fchownat_r		sys_fchownat_r
-diff --git a/arch/mips/kernel/syscalls/syscall_n64.tbl b/arch/mips/kernel/syscalls/syscall_n64.tbl
-index 83dc93a071..716ea51670 100644
---- a/arch/mips/kernel/syscalls/syscall_n64.tbl
-+++ b/arch/mips/kernel/syscalls/syscall_n64.tbl
-@@ -387,3 +387,23 @@
- 470	n64	listns				sys_listns
- 471	n64	rseq_slice_yield		sys_rseq_slice_yield
- 472	n64	fchroot				sys_fchroot
-+473	n64	getuid_r		sys_getuid_r
-+474	n64	geteuid_r		sys_geteuid_r
-+475	n64	getgid_r		sys_getgid_r
-+476	n64	getegid_r		sys_getegid_r
-+477	n64	setuid_r		sys_setuid_r
-+478	n64	setgid_r		sys_setgid_r
-+479	n64	setreuid_r		sys_setreuid_r
-+480	n64	setregid_r		sys_setregid_r
-+481	n64	setresuid_r		sys_setresuid_r
-+482	n64	getresuid_r		sys_getresuid_r
-+483	n64	setresgid_r		sys_setresgid_r
-+484	n64	getresgid_r		sys_getresgid_r
-+485	n64	setfsuid_r		sys_setfsuid_r
-+486	n64	setfsgid_r		sys_setfsgid_r
-+487	n64	getgroups_r		sys_getgroups_r
-+488	n64	setgroups_r		sys_setgroups_r
-+489	n64	chown_r		sys_chown_r
-+490	n64	lchown_r		sys_lchown_r
-+491	n64	fchown_r		sys_fchown_r
-+492	n64	fchownat_r		sys_fchownat_r
-diff --git a/arch/mips/kernel/syscalls/syscall_o32.tbl b/arch/mips/kernel/syscalls/syscall_o32.tbl
-index 9c62429c9b..5f7178745f 100644
---- a/arch/mips/kernel/syscalls/syscall_o32.tbl
-+++ b/arch/mips/kernel/syscalls/syscall_o32.tbl
-@@ -460,3 +460,23 @@
- 470	o32	listns				sys_listns
- 471	o32	rseq_slice_yield		sys_rseq_slice_yield
- 472	o32	fchroot				sys_fchroot
-+473	o32	getuid_r		sys_getuid_r
-+474	o32	geteuid_r		sys_geteuid_r
-+475	o32	getgid_r		sys_getgid_r
-+476	o32	getegid_r		sys_getegid_r
-+477	o32	setuid_r		sys_setuid_r
-+478	o32	setgid_r		sys_setgid_r
-+479	o32	setreuid_r		sys_setreuid_r
-+480	o32	setregid_r		sys_setregid_r
-+481	o32	setresuid_r		sys_setresuid_r
-+482	o32	getresuid_r		sys_getresuid_r
-+483	o32	setresgid_r		sys_setresgid_r
-+484	o32	getresgid_r		sys_getresgid_r
-+485	o32	setfsuid_r		sys_setfsuid_r
-+486	o32	setfsgid_r		sys_setfsgid_r
-+487	o32	getgroups_r		sys_getgroups_r
-+488	o32	setgroups_r		sys_setgroups_r
-+489	o32	chown_r		sys_chown_r
-+490	o32	lchown_r		sys_lchown_r
-+491	o32	fchown_r		sys_fchown_r
-+492	o32	fchownat_r		sys_fchownat_r
-diff --git a/arch/parisc/kernel/syscalls/syscall.tbl b/arch/parisc/kernel/syscalls/syscall.tbl
-index 88adc4016c..47a8a13983 100644
---- a/arch/parisc/kernel/syscalls/syscall.tbl
-+++ b/arch/parisc/kernel/syscalls/syscall.tbl
-@@ -471,3 +471,23 @@
- 470	common	listns				sys_listns
- 471	common	rseq_slice_yield		sys_rseq_slice_yield
- 472	common	fchroot				sys_fchroot
-+473	common	getuid_r		sys_getuid_r
-+474	common	geteuid_r		sys_geteuid_r
-+475	common	getgid_r		sys_getgid_r
-+476	common	getegid_r		sys_getegid_r
-+477	common	setuid_r		sys_setuid_r
-+478	common	setgid_r		sys_setgid_r
-+479	common	setreuid_r		sys_setreuid_r
-+480	common	setregid_r		sys_setregid_r
-+481	common	setresuid_r		sys_setresuid_r
-+482	common	getresuid_r		sys_getresuid_r
-+483	common	setresgid_r		sys_setresgid_r
-+484	common	getresgid_r		sys_getresgid_r
-+485	common	setfsuid_r		sys_setfsuid_r
-+486	common	setfsgid_r		sys_setfsgid_r
-+487	common	getgroups_r		sys_getgroups_r
-+488	common	setgroups_r		sys_setgroups_r
-+489	common	chown_r		sys_chown_r
-+490	common	lchown_r		sys_lchown_r
-+491	common	fchown_r		sys_fchown_r
-+492	common	fchownat_r		sys_fchownat_r
-diff --git a/arch/powerpc/kernel/syscalls/syscall.tbl b/arch/powerpc/kernel/syscalls/syscall.tbl
-index cfbb70039f..66fb8e0146 100644
---- a/arch/powerpc/kernel/syscalls/syscall.tbl
-+++ b/arch/powerpc/kernel/syscalls/syscall.tbl
-@@ -563,3 +563,23 @@
- 470	common	listns				sys_listns
- 471	nospu	rseq_slice_yield		sys_rseq_slice_yield
- 472	common	fchroot				sys_fchroot
-+473	nospu	getuid_r		sys_getuid_r
-+474	nospu	geteuid_r		sys_geteuid_r
-+475	nospu	getgid_r		sys_getgid_r
-+476	nospu	getegid_r		sys_getegid_r
-+477	nospu	setuid_r		sys_setuid_r
-+478	nospu	setgid_r		sys_setgid_r
-+479	nospu	setreuid_r		sys_setreuid_r
-+480	nospu	setregid_r		sys_setregid_r
-+481	nospu	setresuid_r		sys_setresuid_r
-+482	nospu	getresuid_r		sys_getresuid_r
-+483	nospu	setresgid_r		sys_setresgid_r
-+484	nospu	getresgid_r		sys_getresgid_r
-+485	nospu	setfsuid_r		sys_setfsuid_r
-+486	nospu	setfsgid_r		sys_setfsgid_r
-+487	nospu	getgroups_r		sys_getgroups_r
-+488	nospu	setgroups_r		sys_setgroups_r
-+489	nospu	chown_r		sys_chown_r
-+490	nospu	lchown_r		sys_lchown_r
-+491	nospu	fchown_r		sys_fchown_r
-+492	nospu	fchownat_r		sys_fchownat_r
-diff --git a/arch/s390/kernel/syscalls/syscall.tbl b/arch/s390/kernel/syscalls/syscall.tbl
-index 1b45e68a21..dd7e3eca14 100644
---- a/arch/s390/kernel/syscalls/syscall.tbl
-+++ b/arch/s390/kernel/syscalls/syscall.tbl
-@@ -399,3 +399,23 @@
- 470	common	listns				sys_listns
- 471	common	rseq_slice_yield		sys_rseq_slice_yield
- 472	common	fchroot				sys_fchroot
-+473	common	getuid_r		sys_getuid_r
-+474	common	geteuid_r		sys_geteuid_r
-+475	common	getgid_r		sys_getgid_r
-+476	common	getegid_r		sys_getegid_r
-+477	common	setuid_r		sys_setuid_r
-+478	common	setgid_r		sys_setgid_r
-+479	common	setreuid_r		sys_setreuid_r
-+480	common	setregid_r		sys_setregid_r
-+481	common	setresuid_r		sys_setresuid_r
-+482	common	getresuid_r		sys_getresuid_r
-+483	common	setresgid_r		sys_setresgid_r
-+484	common	getresgid_r		sys_getresgid_r
-+485	common	setfsuid_r		sys_setfsuid_r
-+486	common	setfsgid_r		sys_setfsgid_r
-+487	common	getgroups_r		sys_getgroups_r
-+488	common	setgroups_r		sys_setgroups_r
-+489	common	chown_r		sys_chown_r
-+490	common	lchown_r		sys_lchown_r
-+491	common	fchown_r		sys_fchown_r
-+492	common	fchownat_r		sys_fchownat_r
-diff --git a/arch/sh/kernel/syscalls/syscall.tbl b/arch/sh/kernel/syscalls/syscall.tbl
-index ace068dff0..e5a7558785 100644
---- a/arch/sh/kernel/syscalls/syscall.tbl
-+++ b/arch/sh/kernel/syscalls/syscall.tbl
-@@ -476,3 +476,23 @@
- 470	common	listns				sys_listns
- 471	common	rseq_slice_yield		sys_rseq_slice_yield
- 472	common	fchroot				sys_fchroot
-+473	common	getuid_r		sys_getuid_r
-+474	common	geteuid_r		sys_geteuid_r
-+475	common	getgid_r		sys_getgid_r
-+476	common	getegid_r		sys_getegid_r
-+477	common	setuid_r		sys_setuid_r
-+478	common	setgid_r		sys_setgid_r
-+479	common	setreuid_r		sys_setreuid_r
-+480	common	setregid_r		sys_setregid_r
-+481	common	setresuid_r		sys_setresuid_r
-+482	common	getresuid_r		sys_getresuid_r
-+483	common	setresgid_r		sys_setresgid_r
-+484	common	getresgid_r		sys_getresgid_r
-+485	common	setfsuid_r		sys_setfsuid_r
-+486	common	setfsgid_r		sys_setfsgid_r
-+487	common	getgroups_r		sys_getgroups_r
-+488	common	setgroups_r		sys_setgroups_r
-+489	common	chown_r		sys_chown_r
-+490	common	lchown_r		sys_lchown_r
-+491	common	fchown_r		sys_fchown_r
-+492	common	fchownat_r		sys_fchownat_r
-diff --git a/arch/sparc/kernel/syscalls/syscall.tbl b/arch/sparc/kernel/syscalls/syscall.tbl
-index 5b9fe0e814..974556f815 100644
---- a/arch/sparc/kernel/syscalls/syscall.tbl
-+++ b/arch/sparc/kernel/syscalls/syscall.tbl
-@@ -518,3 +518,23 @@
- 470	common	listns				sys_listns
- 471	common	rseq_slice_yield		sys_rseq_slice_yield
- 472	common	fchroot				sys_fchroot
-+473	common	getuid_r		sys_getuid_r
-+474	common	geteuid_r		sys_geteuid_r
-+475	common	getgid_r		sys_getgid_r
-+476	common	getegid_r		sys_getegid_r
-+477	common	setuid_r		sys_setuid_r
-+478	common	setgid_r		sys_setgid_r
-+479	common	setreuid_r		sys_setreuid_r
-+480	common	setregid_r		sys_setregid_r
-+481	common	setresuid_r		sys_setresuid_r
-+482	common	getresuid_r		sys_getresuid_r
-+483	common	setresgid_r		sys_setresgid_r
-+484	common	getresgid_r		sys_getresgid_r
-+485	common	setfsuid_r		sys_setfsuid_r
-+486	common	setfsgid_r		sys_setfsgid_r
-+487	common	getgroups_r		sys_getgroups_r
-+488	common	setgroups_r		sys_setgroups_r
-+489	common	chown_r		sys_chown_r
-+490	common	lchown_r		sys_lchown_r
-+491	common	fchown_r		sys_fchown_r
-+492	common	fchownat_r		sys_fchownat_r
-diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
-index 2c172ef48d..32f8dfd8cb 100644
---- a/arch/x86/entry/syscalls/syscall_32.tbl
-+++ b/arch/x86/entry/syscalls/syscall_32.tbl
-@@ -478,3 +478,23 @@
- 470	i386	listns			sys_listns
- 471	i386	rseq_slice_yield	sys_rseq_slice_yield
- 472	i386	fchroot			sys_fchroot
-+473	i386	getuid_r	sys_getuid_r
-+474	i386	geteuid_r	sys_geteuid_r
-+475	i386	getgid_r	sys_getgid_r
-+476	i386	getegid_r	sys_getegid_r
-+477	i386	setuid_r	sys_setuid_r
-+478	i386	setgid_r	sys_setgid_r
-+479	i386	setreuid_r	sys_setreuid_r
-+480	i386	setregid_r	sys_setregid_r
-+481	i386	setresuid_r	sys_setresuid_r
-+482	i386	getresuid_r	sys_getresuid_r
-+483	i386	setresgid_r	sys_setresgid_r
-+484	i386	getresgid_r	sys_getresgid_r
-+485	i386	setfsuid_r	sys_setfsuid_r
-+486	i386	setfsgid_r	sys_setfsgid_r
-+487	i386	getgroups_r	sys_getgroups_r
-+488	i386	setgroups_r	sys_setgroups_r
-+489	i386	chown_r		sys_chown_r
-+490	i386	lchown_r	sys_lchown_r
-+491	i386	fchown_r	sys_fchown_r
-+492	i386	fchownat_r	sys_fchownat_r
-diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
-index d5b6045b00..e89eaeba19 100644
---- a/arch/x86/entry/syscalls/syscall_64.tbl
-+++ b/arch/x86/entry/syscalls/syscall_64.tbl
-@@ -397,6 +397,26 @@
- 470	common	listns			sys_listns
- 471	common	rseq_slice_yield	sys_rseq_slice_yield
- 472	common	fchroot			sys_fchroot
-+473	common	getuid_r	sys_getuid_r
-+474	common	geteuid_r	sys_geteuid_r
-+475	common	getgid_r	sys_getgid_r
-+476	common	getegid_r	sys_getegid_r
-+477	common	setuid_r	sys_setuid_r
-+478	common	setgid_r	sys_setgid_r
-+479	common	setreuid_r	sys_setreuid_r
-+480	common	setregid_r	sys_setregid_r
-+481	common	setresuid_r	sys_setresuid_r
-+482	common	getresuid_r	sys_getresuid_r
-+483	common	setresgid_r	sys_setresgid_r
-+484	common	getresgid_r	sys_getresgid_r
-+485	common	setfsuid_r	sys_setfsuid_r
-+486	common	setfsgid_r	sys_setfsgid_r
-+487	common	getgroups_r	sys_getgroups_r
-+488	common	setgroups_r	sys_setgroups_r
-+489	common	chown_r		sys_chown_r
-+490	common	lchown_r	sys_lchown_r
-+491	common	fchown_r	sys_fchown_r
-+492	common	fchownat_r	sys_fchownat_r
+diff --git a/include/linux/uidgid.h b/include/linux/uidgid.h
+index ac7786f760..03ece8a4cb 100644
+--- a/include/linux/uidgid.h
++++ b/include/linux/uidgid.h
+@@ -190,6 +190,25 @@ static inline u32 kgid_hash(kgid_t gid)
  
- #
- # Due to a historical design error, certain syscalls are numbered differently
-diff --git a/arch/xtensa/kernel/syscalls/syscall.tbl b/arch/xtensa/kernel/syscalls/syscall.tbl
-index d354bb2317..6c80877a6e 100644
---- a/arch/xtensa/kernel/syscalls/syscall.tbl
-+++ b/arch/xtensa/kernel/syscalls/syscall.tbl
-@@ -443,3 +443,23 @@
- 470	common	listns				sys_listns
- 471	common	rseq_slice_yield		sys_rseq_slice_yield
- 472	common	fchroot				sys_fchroot
-+473	common	getuid_r		sys_getuid_r
-+474	common	geteuid_r		sys_geteuid_r
-+475	common	getgid_r		sys_getgid_r
-+476	common	getegid_r		sys_getegid_r
-+477	common	setuid_r		sys_setuid_r
-+478	common	setgid_r		sys_setgid_r
-+479	common	setreuid_r		sys_setreuid_r
-+480	common	setregid_r		sys_setregid_r
-+481	common	setresuid_r		sys_setresuid_r
-+482	common	getresuid_r		sys_getresuid_r
-+483	common	setresgid_r		sys_setresgid_r
-+484	common	getresgid_r		sys_getresgid_r
-+485	common	setfsuid_r		sys_setfsuid_r
-+486	common	setfsgid_r		sys_setfsgid_r
-+487	common	getgroups_r		sys_getgroups_r
-+488	common	setgroups_r		sys_setgroups_r
-+489	common	chown_r		sys_chown_r
-+490	common	lchown_r		sys_lchown_r
-+491	common	fchown_r		sys_fchown_r
-+492	common	fchownat_r		sys_fchownat_r
-diff --git a/include/uapi/asm-generic/unistd.h b/include/uapi/asm-generic/unistd.h
-index 5b7e77a7c7..8475635005 100644
---- a/include/uapi/asm-generic/unistd.h
-+++ b/include/uapi/asm-generic/unistd.h
-@@ -867,8 +867,49 @@ __SYSCALL(__NR_rseq_slice_yield, sys_rseq_slice_yield)
- #define __NR_fchroot 472
- __SYSCALL(__NR_fchroot, sys_fchroot)
- 
-+#define __NR_getuid_r 473
-+__SYSCALL(__NR_getuid_r, sys_getuid_r)
-+#define __NR_geteuid_r 474
-+__SYSCALL(__NR_geteuid_r, sys_geteuid_r)
-+#define __NR_getgid_r 475
-+__SYSCALL(__NR_getgid_r, sys_getgid_r)
-+#define __NR_getegid_r 476
-+__SYSCALL(__NR_getegid_r, sys_getegid_r)
-+#define __NR_setuid_r 477
-+__SYSCALL(__NR_setuid_r, sys_setuid_r)
-+#define __NR_setgid_r 478
-+__SYSCALL(__NR_setgid_r, sys_setgid_r)
-+#define __NR_setreuid_r 479
-+__SYSCALL(__NR_setreuid_r, sys_setreuid_r)
-+#define __NR_setregid_r 480
-+__SYSCALL(__NR_setregid_r, sys_setregid_r)
-+#define __NR_setresuid_r 481
-+__SYSCALL(__NR_setresuid_r, sys_setresuid_r)
-+#define __NR_getresuid_r 482
-+__SYSCALL(__NR_getresuid_r, sys_getresuid_r)
-+#define __NR_setresgid_r 483
-+__SYSCALL(__NR_setresgid_r, sys_setresgid_r)
-+#define __NR_getresgid_r 484
-+__SYSCALL(__NR_getresgid_r, sys_getresgid_r)
-+#define __NR_setfsuid_r 485
-+__SYSCALL(__NR_setfsuid_r, sys_setfsuid_r)
-+#define __NR_setfsgid_r 486
-+__SYSCALL(__NR_setfsgid_r, sys_setfsgid_r)
-+#define __NR_getgroups_r 487
-+__SYSCALL(__NR_getgroups_r, sys_getgroups_r)
-+#define __NR_setgroups_r 488
-+__SYSCALL(__NR_setgroups_r, sys_setgroups_r)
-+#define __NR_chown_r 489
-+__SYSCALL(__NR_chown_r, sys_chown_r)
-+#define __NR_lchown_r 490
-+__SYSCALL(__NR_lchown_r, sys_lchown_r)
-+#define __NR_fchown_r 491
-+__SYSCALL(__NR_fchown_r, sys_fchown_r)
-+#define __NR_fchownat_r 492
-+__SYSCALL(__NR_fchownat_r, sys_fchownat_r)
+ char *kuid_str(kuid_t uid, char buf[KID_STR_LEN]);
+ char *kgid_str(kgid_t gid, char buf[KID_STR_LEN]);
++char *kuid_str_signed(kuid_t uid, char buf[KID_STR_LEN]);
++char *kgid_str_signed(kgid_t gid, char buf[KID_STR_LEN]);
 +
- #undef __NR_syscalls
--#define __NR_syscalls 473
-+#define __NR_syscalls 493
++/*
++ * The text form of an id as an expression, in a buffer that lives until
++ * the end of the enclosing block -- for "%s" in place of "%u" (or "%d",
++ * with the _D variants, which write a legacy id as a signed number) of
++ * from_kuid(&init_user_ns, uid) in printf-like calls.
++ */
++#define KUID_STR(uid)	kuid_str(uid, (char [KID_STR_LEN]) {})
++#define KGID_STR(gid)	kgid_str(gid, (char [KID_STR_LEN]) {})
++#define KUID_STR_D(uid)	kuid_str_signed(uid, (char [KID_STR_LEN]) {})
++#define KGID_STR_D(gid)	kgid_str_signed(gid, (char [KID_STR_LEN]) {})
++char *kuid_str_munged(struct user_namespace *to, kuid_t uid,
++		      char buf[KID_STR_LEN]);
++char *kgid_str_munged(struct user_namespace *to, kgid_t gid,
++		      char buf[KID_STR_LEN]);
++kuid_t make_kuid_str(struct user_namespace *from, const char *str);
++kgid_t make_kgid_str(struct user_namespace *from, const char *str);
+ 
+ #ifdef CONFIG_USER_NS
+ 
+diff --git a/kernel/uidgid_r.c b/kernel/uidgid_r.c
+index d71aecddb2..9bba60f413 100644
+--- a/kernel/uidgid_r.c
++++ b/kernel/uidgid_r.c
+@@ -12,6 +12,7 @@
+ #include <linux/uidgid.h>
+ #include <linux/uidgid_r.h>
+ #include <linux/user_namespace.h>
++#include <linux/uuid.h>
  
  /*
-  * 32 bit systems traditionally used different
-diff --git a/scripts/syscall.tbl b/scripts/syscall.tbl
-index 0ab5316051..10f9ff35d9 100644
---- a/scripts/syscall.tbl
-+++ b/scripts/syscall.tbl
-@@ -413,3 +413,23 @@
- 470	common	listns				sys_listns
- 471	common	rseq_slice_yield		sys_rseq_slice_yield
- 472	common	fchroot				sys_fchroot
-+473	common	getuid_r		sys_getuid_r
-+474	common	geteuid_r		sys_geteuid_r
-+475	common	getgid_r		sys_getgid_r
-+476	common	getegid_r		sys_getegid_r
-+477	common	setuid_r		sys_setuid_r
-+478	common	setgid_r		sys_setgid_r
-+479	common	setreuid_r		sys_setreuid_r
-+480	common	setregid_r		sys_setregid_r
-+481	common	setresuid_r		sys_setresuid_r
-+482	common	getresuid_r		sys_getresuid_r
-+483	common	setresgid_r		sys_setresgid_r
-+484	common	getresgid_r		sys_getresgid_r
-+485	common	setfsuid_r		sys_setfsuid_r
-+486	common	setfsgid_r		sys_setfsgid_r
-+487	common	getgroups_r		sys_getgroups_r
-+488	common	setgroups_r		sys_setgroups_r
-+489	common	chown_r		sys_chown_r
-+490	common	lchown_r		sys_lchown_r
-+491	common	fchown_r		sys_fchown_r
-+492	common	fchownat_r		sys_fchownat_r
+  * Whether @id is well formed: a known type, reserved bytes zero, a UUID of
+@@ -278,11 +279,12 @@ int put_kgid_r(struct user_namespace *to, kgid_t kgid,
+ }
+ EXPORT_SYMBOL(put_kgid_r);
+ 
+-static char *kid_str(u32 type, u32 legacy, const uuid_t *b, char *buf)
++static char *kid_str(u32 type, u32 legacy, const uuid_t *b, char *buf,
++		     bool sgn)
+ {
+ 	switch (type) {
+ 	case KID_LEGACY:
+-		snprintf(buf, KID_STR_LEN, "%u", legacy);
++		snprintf(buf, KID_STR_LEN, sgn ? "%d" : "%u", legacy);
+ 		break;
+ 	case KID_UUID:
+ 		snprintf(buf, KID_STR_LEN, "%pUb", b);
+@@ -304,7 +306,7 @@ static char *kid_str(u32 type, u32 legacy, const uuid_t *b, char *buf)
+  */
+ char *kuid_str(kuid_t uid, char buf[KID_STR_LEN])
+ {
+-	return kid_str(uid.type, __kuid_val(uid), &uid.uuid, buf);
++	return kid_str(uid.type, __kuid_val(uid), &uid.uuid, buf, false);
+ }
+ EXPORT_SYMBOL(kuid_str);
+ 
+@@ -318,6 +320,148 @@ EXPORT_SYMBOL(kuid_str);
+  */
+ char *kgid_str(kgid_t gid, char buf[KID_STR_LEN])
+ {
+-	return kid_str(gid.type, __kgid_val(gid), &gid.uuid, buf);
++	return kid_str(gid.type, __kgid_val(gid), &gid.uuid, buf, false);
+ }
+ EXPORT_SYMBOL(kgid_str);
++
++/**
++ * kuid_str_signed - like kuid_str(), but a legacy uid as a signed number
++ * @uid: the kuid
++ * @buf: buffer of KID_STR_LEN bytes
++ *
++ * For callers that used to print from_kuid() with "%d".
++ *
++ * Return: @buf.
++ */
++char *kuid_str_signed(kuid_t uid, char buf[KID_STR_LEN])
++{
++	return kid_str(uid.type, __kuid_val(uid), &uid.uuid, buf, true);
++}
++EXPORT_SYMBOL(kuid_str_signed);
++
++/**
++ * kgid_str_signed - like kgid_str(), but a legacy gid as a signed number
++ * @gid: the kgid
++ * @buf: buffer of KID_STR_LEN bytes
++ *
++ * For callers that used to print from_kgid() with "%d".
++ *
++ * Return: @buf.
++ */
++char *kgid_str_signed(kgid_t gid, char buf[KID_STR_LEN])
++{
++	return kid_str(gid.type, __kgid_val(gid), &gid.uuid, buf, true);
++}
++EXPORT_SYMBOL(kgid_str_signed);
++
++/*
++ * Parses the text forms of kuid_str() -- a decimal number, a UUID, a GUID
++ * in braces -- with an optional trailing newline.
++ */
++static int kid_r_from_str(const char *str, struct __kernel_uid_r *id)
++{
++	char buf[KID_STR_LEN];
++	size_t len = strlen(str);
++
++	if (len && str[len - 1] == '\n')
++		len--;
++	if (!len || len >= sizeof(buf))
++		return -EINVAL;
++	memcpy(buf, str, len);
++	buf[len] = '\0';
++	memset(id, 0, sizeof(*id));
++
++	if (len == UUID_STRING_LEN) {
++		id->type = UID_R_UUID;
++		return uuid_parse(buf, (uuid_t *)id->uuid);
++	}
++	if (len == UUID_STRING_LEN + 2 && buf[0] == '{' && buf[len - 1] == '}') {
++		buf[len - 1] = '\0';
++		id->type = UID_R_GUID;
++		return guid_parse(buf + 1, (guid_t *)id->guid);
++	}
++	id->type = UID_R_LEGACY;
++	return kstrtou32(buf, 10, &id->legacy);
++}
++
++/**
++ * make_kuid_str - map the text form of a uid into a kuid
++ * @from: user namespace the uid is in
++ * @str: a decimal number, a UUID, or a GUID in braces; a trailing newline
++ *       is allowed
++ *
++ * Return: the kuid, INVALID_UID if @str is malformed or has no mapping in
++ * @from.
++ */
++kuid_t make_kuid_str(struct user_namespace *from, const char *str)
++{
++	struct __kernel_uid_r id;
++
++	if (kid_r_from_str(str, &id))
++		return INVALID_UID;
++	return make_kuid_r(from, &id);
++}
++EXPORT_SYMBOL(make_kuid_str);
++
++/**
++ * make_kgid_str - map the text form of a gid into a kgid
++ * @from: user namespace the gid is in
++ * @str: a decimal number, a UUID, or a GUID in braces; a trailing newline
++ *       is allowed
++ *
++ * Return: the kgid, INVALID_GID if @str is malformed or has no mapping in
++ * @from.
++ */
++kgid_t make_kgid_str(struct user_namespace *from, const char *str)
++{
++	struct __kernel_uid_r id;
++
++	if (kid_r_from_str(str, &id))
++		return INVALID_GID;
++	return make_kgid_r(from, &id);
++}
++EXPORT_SYMBOL(make_kgid_str);
++
++/**
++ * kuid_str_munged - text form of a kuid in a user namespace
++ * @to: user namespace the uid is wanted in
++ * @uid: the kuid
++ * @buf: buffer of KID_STR_LEN bytes
++ *
++ * Return: @buf, holding the uid in @to like kuid_str() does, overflowuid if
++ * @uid has no mapping there.
++ */
++char *kuid_str_munged(struct user_namespace *to, kuid_t uid,
++		      char buf[KID_STR_LEN])
++{
++	if (!kuid_has_mapping(to, uid))
++		snprintf(buf, KID_STR_LEN, "%u", overflowuid);
++	else if (uid_is_legacy(uid))
++		snprintf(buf, KID_STR_LEN, "%u", from_kuid(to, uid));
++	else
++		kuid_str(uid, buf);
++	return buf;
++}
++EXPORT_SYMBOL(kuid_str_munged);
++
++/**
++ * kgid_str_munged - text form of a kgid in a user namespace
++ * @to: user namespace the gid is wanted in
++ * @gid: the kgid
++ * @buf: buffer of KID_STR_LEN bytes
++ *
++ * Return: @buf, holding the gid in @to like kgid_str() does, overflowgid if
++ * @gid has no mapping there.
++ */
++char *kgid_str_munged(struct user_namespace *to, kgid_t gid,
++		      char buf[KID_STR_LEN])
++{
++	if (!kgid_has_mapping(to, gid))
++		snprintf(buf, KID_STR_LEN, "%u", overflowgid);
++	else if (gid_is_legacy(gid))
++		snprintf(buf, KID_STR_LEN, "%u", from_kgid(to, gid));
++	else
++		kgid_str(gid, buf);
++	return buf;
++}
++EXPORT_SYMBOL(kgid_str_munged);
 -- 
 2.56.0
 
