@@ -1,80 +1,79 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
 ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1792544585;
-	b=jZfJ1dWQnAa/rps6v6eWy1GbDc+PVXNTc9phFCj3DqQK55hyALl+7eHEkQWR/cql+yTD
-	 vtOy/QTqyOMpnbVJ+ROvCDTRH0pEu0lA3vxjMWsAaBcKRd/OsRqqJhoU+EkmOLU9Q0ops
-	 wg/ylq9xW4UXEj33RsOKp+h7zl593F9kS9GNzKxiHj/uzgrmVQ6mjDrps7CPXic0R57v5
-	 luB86SXbeMubKqxLBXOwqQ54ugBljXYnxFgoFZ4w3q4PF3AKV/wgX8Nk+RJ98ZaLBHpeV
-	 m7e+BkVofuDRHV1srnYYiXilLhnZbcefnDRtL579wav770EzxmtgEWfvhabNuhtS2Lw==
+	t=1792544586;
+	b=Bv1mQC752gMgWW5BoAnkyogtLy5tyHq9xqkBpIqGENfQerFxeew9LOeobCCnzHZJrLXD
+	 +STIM2H3ofkaTmVzIH6dkCT8R/BcMtIIYtQ34EfbveU2qdYIUuvt1nLpcL5EG7KSJAN+w
+	 vhOWTOd8gDWrzJLddZYTs6927bpNchv1BIj9+tRmVxTrh56GTMDEJQqbVGZYTWZp4FTFU
+	 Fqtc8AWABein0ccC1XYTYILGco29zzWQ5pewPPdn8iI1acWvvcNBDd8RbUT1jzz/R0MCa
+	 HEQ2rfl9de1tgimVxd0e9thFOSPYQdhwOvDqNyJULYcDrIPEFmIC8GYX0DCAA/ivuNA==
 ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792544585;
-	h=Received:DKIM-Signature:Received:From:Subject:Date:Message-Id:
-	 MIME-Version:Content-Type:Content-Transfer-Encoding:X-B4-Tracking:To:
-	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
-	 X-Original-From:Reply-To;
-	bh=2cxadE+XkRmw3dpcSXKSNnhH6J4weMWFHOAVUQYu93w=;
-	b=Dg4EdfwKkWrAsncc5I3NnB3BRrYaPosCKn5E/mIDAXFy4Bt/GBxZ054xGfBHL60fG/SO
-	 JQP7DU02EUFGv1Mu8VziUDYVUJ7YNnko2rhJ5nNoCOOHYkFOETxUOJuhgNx+H+4DjRK5q
-	 1n0jkR09Jlkoo7FkEFufy7dmp9Ks6tGCMQm9WTKg0TY0n23SUIg7wnqClx2QYNJnCMNU8
-	 gaMIDZxYzheYh5W76Cgfhdwvn0zAeSzV89I2dK9q9vDdFOmSSsmUETDxFkMV52oOUF+Xu
-	 NhRT8mH+LRvMkRbRpigRrbJ6PK6JWRyQvux+ZAZzBuhfY10KEp9bZFzUlO+qMiVDDZQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792544586;
+	h=Received:DKIM-Signature:Received:From:Date:Subject:MIME-Version:
+	 Content-Type:Message-Id:References:In-Reply-To:To:Cc:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
+	 X-Original-From:Reply-To:Content-Transfer-Encoding;
+	bh=ZlnvUHDwkjxP2Tsft5ngVTUhp+k9A8Q4gjAO6rLkhDQ=;
+	b=oUxPA1hdJMAeBfT2ZpnbaL4bo4zXRAZlVqD1TwYWKYiO03cfxBM2ef81AbIujF1FgVRQ
+	 rrni2j9iqbZi5FGY2cKnojq6PYDpDgW3wyn4Ku8K/wG754LZ7V+AnAd4jsWt4FaW7Amjq
+	 h5RfZocQevMzhZ1NPlmJYn69Fw2aKomjQ5bJl/QJRqQgJ28EU0WE56lplZCnN9aAbwEAy
+	 t1YKlMKBh6mAJlci9cguH2zb9nLai0jG1H1gJX//R1TwQArwFQThhMhrZv+1ujJlX0m1h
+	 4hl/np2aTKI++c3ezvoGQKhu1LvIWrM5qN58T5WP/Qr2Qp3P4HvWePPbWYsVL9X0OJg==
 ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=IJYaEqsS;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hEcL5s2U;
 	arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2622A606A319;
-	Wed, 21 Oct 2026 01:03:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E5A66606A31E;
+	Wed, 21 Oct 2026 01:03:05 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=IJYaEqsS
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hEcL5s2U
 Authentication-Results: smtp.kernel.org; arc=none smtp.remote-ip=100.80.115.77
 ARC-Seal: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256; cv=none;
-	t=1792544584;
-	b=QsTnnO+McE9TAlyFcLQ6koTYsfhp/0xWcW5bnScjqdlJ0kBBEcIOSVwgpGsC0VQeKU+5
-	 T9V5Z81v8diEPzFhZJj0suz26hp2a1n3Lb1G9J3m9cG7S6kUHd7pED4I8+3uiMlZyMz63
-	 SBAM7wAoF2caHryWuhRJztnr7hlWJTnms5q/Te0iyDwTJ7ZJY0gbCP5xqaBbPBrLFUlA1
-	 Vavqcq1V+HaCAPt8oyv3dbUte92JqXkSRtW8qZzbwsLh3gZaZRUrIc2VX1M+QAAHtYOsv
-	 eGrYv5KB8FkdYY/9N/u+aHV4HlDnijrUfxamBZhaU0b+NhM0SqnoqkcUJGA8rj4ba4w==
+	t=1792544585;
+	b=en40+YYgJoP3d0j5pUID/Ca2QGXlNQcPy47kp66ssqIeIbnmHbVb01Nxbk781POmiCxp
+	 Uc74QlKrG0xDewB3wfD1DJTkZSm8cYay9xzRje1WJ6ESuxvvT4f0MrZsbQ0r/7c74gQjD
+	 r3ZRqyfrHI5TGgfjT7pxzGFK7/SZPVzGwZLGcEu1W5X+eYln63mcFO9T56il/29uYCRwb
+	 9w4xhGyHXmuY4uyllSne4gPCcDChX+mzbZY5N/WjTpEwkn+KYE53rq1uWXOYczqcCoryY
+	 8uX3qwtRDWbeOYXv3Cj5YixWDV2LzgxJsSQQK8ip5nvYI223ef1nfLv0XCWdhufIAUw==
 ARC-Message-Signature: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256;
-	c=relaxed/relaxed; t=1792544584;
-	h=DKIM-Signature:Received:From:Subject:Date:Message-Id:MIME-Version:
-	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:To:Cc:X-Mailer:
+	c=relaxed/relaxed; t=1792544585;
+	h=DKIM-Signature:Received:From:Date:Subject:MIME-Version:Content-Type:
+	 Message-Id:References:In-Reply-To:To:Cc:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
-	 X-Original-From:Reply-To;
-	bh=2cxadE+XkRmw3dpcSXKSNnhH6J4weMWFHOAVUQYu93w=;
-	b=ciGoAcH+3YLuJB2/Rl2+C9MxoiJaCG3iw1PpkoOw54Q9cm71dqIWR/dmi8eJoXcDFpEt
-	 61QG+ZtkZIXgT+UF6ex/IBWnfuwcJlZljxRaJDIkDqMbWW8FPw5yMwCWbiMVLeIBaXSfn
-	 91aXs3tf0IFUBUuqmB7ngrcQuW9fLrY11UEiU+OujbU1O7JRZA0qGyKSWQK7Le1kqa8v1
-	 HYKxnTRCwuoXqixKe1Vx54xf6Wu8LDLYafQLKZPE2ulQxqVhHXSlPWZFwDbfCx/9hfJRo
-	 zJsDjDWjUnogMpD3ikFiPduR2Q1m0GsEF8ZVKY+IcvP0/+lbsGuWM8mGdG8gPeGcGpg==
+	 X-Original-From:Reply-To:Content-Transfer-Encoding;
+	bh=ZlnvUHDwkjxP2Tsft5ngVTUhp+k9A8Q4gjAO6rLkhDQ=;
+	b=UTM26evLSc7UHFuA9wp8krt5EolmUQRRLJoq9+ALX9FzDiwAX5ej08HsFDC701hTATeX
+	 SnvFWlqgiVBlPODX/DO5l8Cz2Od+be2H40p5Rn5zTyB8m+nuhpLh/rfeihyfQzS1abcOW
+	 4jBC1ISMNNywhrFGDX7bqyStyS2M26Aa/6GxS3BqCjqudrndVWigmY+/AHP+LrMbukVvP
+	 8gkWZd30clfl2bnO3gVFXVffcll/5etzjAadgggFmCUn2hASo2AERBN4Mzxr5eiQvQXvX
+	 iYudT+E0ju6SgGCbyTFqAREvrtwFn/p88RvYgbDIqp5lMz5ivM/m1nIL0oYhnP6JiNg==
 ARC-Authentication-Results: i=1; smtp.kernel.org; 
 	arc=none smtp.remote-ip=100.80.115.77
 Received: from lkml.kernel.org (nexus.subspace.kernel.org [100.80.115.77])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.kernel.org (Postfix) with ESMTPS id 09B9F1F000CA;
+	by smtp.kernel.org (Postfix) with ESMTPS id 0A3C51F000CD;
 	Wed, 21 Oct 2026 01:03:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792544584;
-	bh=2cxadE+XkRmw3dpcSXKSNnhH6J4weMWFHOAVUQYu93w=;
-	h=From:Subject:Date:To:Cc:Reply-To;
-	b=IJYaEqsSoH8ufTHNTGRsNPOsfaweakqq1yOoVER+/KzKLRPmi61NT/L5X74N6uih6
-	 PjUQJvk5meruK5uJANQBSCx5nj7NTQ5tUN0dRLjAAmfgvV1joiNsox0APWYlGfbjBx
-	 s5bRlPUwGNnPGu9Bn4rRW1nmjH/X7rkoKH70DUc7smh06In3GnI1IW+OlkVZJmCZ7L
-	 J0zrZw8iURGrZFTUN4K78GMrD0n1j3BYdtB319C1qymRtIvYuCrvze7+Vajp/LRdtM
-	 GTQywjNXACtE5mUaZ+9RLVEvwjR8+M/SG3JmuPMhvj3hlcwhS78F4+mJ0j9ur3guVD
-	 3KNR8ypxlToqw==
+	s=k20260515; t=1792544585;
+	bh=ZlnvUHDwkjxP2Tsft5ngVTUhp+k9A8Q4gjAO6rLkhDQ=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To;
+	b=hEcL5s2UeUpeDy9xNra/4mDSjlO7yFTHup904LLYvK3+sElRdF4DhLAl8SjKduKR0
+	 iOjIJaBUQ3JbQnVaWDnfplTwTx8Q2Fk1GPQREDujzNRfCwr2EZwr/KYEBrdKSHrs1X
+	 Om8QswY/0lpR3vcbdTnT7bKItxiqUo8jnYIMtI04YNE//zupzgKtpBt5nNTRUREi3j
+	 B73POBeX+jEGqeQROq2haLaltcsAI53hb1nmvhteEbfM44kMVyVH3qfqyFsSXVQbFV
+	 FaRA9smldWlABXuuJrTwZz4yJEMlgqb81BDjlmSrI9CU6l7w6t2uP5F4M++rD6DRXX
+	 wDXbh7AziTL4g==
 Received: from nexus.subspace.kernel.org (localhost [IPv6:::1])
-	by lkml.kernel.org (Postfix) with ESMTP id 5E23943283;
+	by lkml.kernel.org (Postfix) with ESMTP id 664804326F;
 	Wed, 21 Oct 2026 01:03:03 +0000 (UTC)
 From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
-Subject: [PATCH 0/4] nfsd: keep a layout whose recall overtakes the
- LAYOUTGET reply
-Date: Wed, 21 Oct 2026 10:03:02 +0900
-Message-Id: <20261021-nfsd-layout-refcall-v1-0-797096b92377@samsung.com>
+Date: Wed, 21 Oct 2026 10:03:03 +0900
+Subject: [PATCH 1/4] nfsd: share the grant slot record between delegations
+ and layouts
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -85,10 +84,9 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAEYP2GoC/x2MQQqAIBAAvxJ7bkFFhPpKdDBda0EstKKI/p50H
- IaZBwplpgJ980CmkwuvqYJsG3CLTTMh+8qghDJSKIkpFI/R3uuxY6bgbIxoxKRD502ntYdablX
- w9V+H8X0/Z0sSOmUAAAA=
+Message-Id: <20261021-nfsd-layout-refcall-v1-1-797096b92377@samsung.com>
+References: <20261021-nfsd-layout-refcall-v1-0-797096b92377@samsung.com>
+In-Reply-To: <20261021-nfsd-layout-refcall-v1-0-797096b92377@samsung.com>
 To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
  NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
@@ -98,125 +96,312 @@ Cc: Christoph Hellwig <hch@lst.de>,
  linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792544582; l=6203;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792544582; l=10984;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=XlCKRZQ1Fv9OeSsQKdpQstdH4Advnnpuw/c9IVwOY00=;
- b=b9UWjxDBjAJawimMTjzQWvdWHqUwcQSLcF0zdn1tTGiz2LWdHrbprPCdpdNrH1Ol/zHjvhZl5
- 3vCKJI3trb8Bbdfh/OJJprEmFOxrp2T1411qwoC5+pXOgQZRLDSLdnh
+ bh=QxHRB7614mP6+oETtTBuCFRB1KVGlQKvj8Q12/DfSdI=;
+ b=eKim2/0cJbVCijvaBHTQfuyw/RRyVLn9IZvHZ7bpaa1a+B6KPv0UmgFwr7mK7AZ3GcZImktni
+ ylRI18fak0CChCTj1q4GrhhmU7Nc7D2dDt4IQ8tgNXCVTtepODp/UgJ
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
  auth_id=1122
 X-Original-From: Daejun Park <daejun7.park@samsung.com>
 Reply-To: daejun7.park@samsung.com
+Content-Transfer-Encoding: 7bit
 
-With [3], a client that writes to a file through the metadata server
-while it does I/O through a layout of the same file gets
-NFS4ERR_RECALLCONFLICT for LAYOUTGET after LAYOUTGET. One Linux block
-layout client writing 1 MiB blocks with O_DIRECT through its layout and
-512 bytes at the middle of a page, which it sends through the metadata
-server, to the same file did 54, 54 and 51 of its 1 MiB writes in 30
-seconds in three runs with patches 1 to 3. Patch 4 lets such a LAYOUTGET
-succeed with an immediate recall instead when the lease break comes from
-the same client (244, 249 and 241). That recall can overtake the
-LAYOUTGET reply: a client that does not know the layout stateid yet
-answers NFS4ERR_NOMATCHING_LAYOUT, nfsd drops the layout, and the Linux
-client loses the writes it then sends through it, which read back as
-zeroes although fsync() succeeded. Without patches 2 and 3, patch 4 lost
-85 of 600, 87 of 584 and 79 of 600 blocks. The same race exists today
-with a client that is slow to process a LAYOUTGET reply. Patch 2 has the
-details.
+From: Daejun Park <daejun7.park@samsung.com>
 
-Patch 1 lets layouts share the record of the slot that carried a grant
-with the delegation code [1]. Patch 2 resends the recall once, as the
-delegation code does, when the client answers NFS4ERR_NOMATCHING_LAYOUT
-before the slot of the LAYOUTGET has retired. Patch 3 names the
-LAYOUTGET as a referring call (RFC 8881 sections 2.10.6.3 and
-12.5.5.2.1), so that a client that honors it holds the recall back; the
-Linux client does with [2]. The resend comes first because the referring
-call alone does not help the Linux client without [2] once it needs
-more than half a second: it then answers NFS4ERR_NOMATCHING_LAYOUT
-anyway, and the half second it waits makes more recalls meet an
-unprocessed reply.
+The delegation code remembers the forward-channel slot that carried the
+request that granted a delegation (dl_recall_grant), tests whether the
+client has retired that slot since (nfsd4_recall_grant_slot_retired()),
+and names the request as a referring call in the CB_SEQUENCE of a
+recall. The next two patches need the same for layouts.
 
-A pNFS client writes 1 MiB blocks with O_DIRECT to a new file for 60
-seconds next to an NFSv4.0 client writing to another range of it, with a
-test-only delay of one second in the pNFS client before
-pnfs_layout_process(). Blocks that read back as zeroes / blocks written
-through a layout, and the NFSv4.0 client, two runs each:
+Make the record a type of its own, struct nfsd4_grant_slot, and move the
+code that fills it in, the slot test and the code that adds the
+referring call into nfsd41_record_grant_slot(),
+nfsd41_grant_slot_retired() and nfsd41_cb_referring_grant(), named for
+the session machinery they depend on. The flag that was part of the
+delegation's record stays with the delegation, as
+dl_recall_retired_at_send.
 
-  nfsd-testing                         14/58, 14/57  600 in 15.0, 15.3 s
-  + patch 1, referring call, no resend 31/56, 29/56  600 in 33.9, 32.4 s
-  + patches 1 and 2                    0/27, 0/26    600 in 37.8, 51.9 s
-  + patches 1 to 3                     0/23, 0/23    71, 76 in 62 s
-  + patches 1 to 4                     0/25, 0/27    600 in 28.6, 27.9 s
-  + patches 1 to 4, [2] on client      0/19, 0/23    600 in 40.9, 32.8 s
+No change in behavior.
 
-Every block lost was one whose reply the recall overtook. Patch 4 does
-not act in this test, as the lease breaks come from the other client, so
-patches 1 to 3 and 1 to 4 behave the same here. The cost is on the
-writer that breaks the lease: a recall that meets a LAYOUTGET reply the
-client has not processed within half a second lasts at least two and a
-half seconds, and WRITEs through the metadata server get NFS4ERR_DELAY
-meanwhile. With fs.lease-break-time at two seconds or less, such a
-recall outlasts the lease break and the client is fenced. The NFSv4.0
-client needs about 15 seconds plus, for each recall that meets an
-unprocessed reply, nothing on nfsd-testing, half a second with the
-referring call alone, two seconds with patches 1 and 2, and two and a
-half from patch 3 on. Such recalls numbered 14 and 14, 31 and 29, 11 and
-18, 23 and 23, and 5 and 5 in the rows above without [2]. How many there
-are varies between runs: in twelve runs with patches 1
-to 3 or 1 to 4, 23 or 24 met an unprocessed reply in eight, and the
-NFSv4.0 client wrote 6 to 76 blocks in a minute; in the other four it
-finished in 20.3 to 49.1 seconds. Two runs do not rank the stages.
-
-With a delay of four seconds, longer than the resend covers, a client
-without [2] loses every block whose reply the recall overtakes: 7 and 8
-of 15 with patches 1 and 2, where the NFSv4.0 client was done after 29.0
-and 31.5 seconds and broke no lease after that, and 15 of 15 in each of
-two runs with patches 1 to 4, where it was still writing after 60
-seconds. With [2], none (8 and 9 blocks).
-
-QEMU guests (nvmet-tcp target, nfsd on XFS, NFSv4.2 block layout clients
-and an NFSv4.0 client), nfsd-testing b4e06bef3884 with KASAN and
-lockdep; no KASAN or lockdep report from nfsd or the clients. SCSI and
-flexfiles layouts were not tested. Without the delay, one block read
-back as zeroes in one of 17 runs of 30 seconds on nfsd-testing, in a run
-that was not traced; the eight traced ones showed no recall overtaking a
-reply. One boot of the target VM, on an image with patch 1 and the
-referring call only, reported "BUG: KASAN: wild-memory-access in
-do_raw_spin_lock" 0.6 seconds in, before any NFS traffic; twelve more
-boots did not repeat it. pynfs BLOCK3 fails with NFS4ERR_BADXDR with and
-without the series; local recall tests (not posted) pass from patch 2
-on.
-
-The series applies on nfsd-testing, which has [1] and [3]. Patch 2 needs
-patches of [3] that it names, patch 3 should not go before v7.1, and
-patch 4 needs patches 2 and 3.
-
-[1] https://lore.kernel.org/r/20260802-nfsd-deleg-destroy-badhandle-v1-0-323aa7196055@kernel.org
-[2] https://lore.kernel.org/r/20261020-nfs-referring-call-delay-v1-1-0be8f0608f7c@samsung.com
-[3] https://lore.kernel.org/r/20261015-nfsd-layout-recall-v3-0-ba3269f8ca22@samsung.com
-
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-Daejun Park (4):
-      nfsd: share the grant slot record between delegations and layouts
-      nfsd: resend a layout recall once before trusting NOMATCHING_LAYOUT
-      nfsd: send a referring call with CB_LAYOUTRECALL
-      nfsd: do not fail a LAYOUTGET on a lease break by the same client
+ fs/nfsd/nfs4state.c | 115 ++++++++++++++++++++++++++++++++++++----------------
+ fs/nfsd/state.h     |  24 +++++++----
+ 2 files changed, 96 insertions(+), 43 deletions(-)
 
- fs/nfsd/nfs4layouts.c | 144 +++++++++++++++++++++++++++++++++++++++++++++-----
- fs/nfsd/nfs4proc.c    |   6 +++
- fs/nfsd/nfs4state.c   | 115 +++++++++++++++++++++++++++-------------
- fs/nfsd/state.h       |  53 ++++++++++++++++---
- fs/nfsd/trace.h       |   2 +
- 5 files changed, 264 insertions(+), 56 deletions(-)
----
-base-commit: b4e06bef38843c8b909d0b4317dfaaf87dba6d72
-change-id: 20261021-nfsd-layout-refcall-60b4f9d6944d
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f2b52ba901..735eaa4b7f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1291,7 +1291,7 @@ __alloc_init_deleg(struct nfs4_client *clp, struct nfs4_file *fp,
+ 	dp->dl_recalled = false;
+ 	dp->dl_recall_rejected = false;
+ 	dp->dl_recall_grant.valid = false;
+-	dp->dl_recall_grant.retired_at_send = false;
++	dp->dl_recall_retired_at_send = false;
+ 	get_nfs4_file(fp);
+ 	dp->dl_stid.sc_file = fp;
+ 	nfsd4_init_cb(&dp->dl_recall, dp->dl_stid.sc_client,
+@@ -6251,37 +6251,49 @@ bool nfsd_wait_for_delegreturn(struct svc_rqst *rqstp, struct inode *inode)
+  * gen_sessionid() composes a sessionid from the client's clientid and a
+  * sequence counter, so the sequence alone identifies the granting session.
+  */
+-static void nfsd4_recall_grant_sessionid(const struct nfs4_delegation *dp,
+-					 struct nfsd4_sessionid *sid)
++static void nfsd41_grant_slot_sessionid(struct nfs4_client *clp,
++					const struct nfsd4_grant_slot *grant,
++					struct nfsd4_sessionid *sid)
+ {
+-	sid->clientid = dp->dl_stid.sc_client->cl_clientid;
+-	sid->sequence = dp->dl_recall_grant.sessionid_seq;
++	sid->clientid = clp->cl_clientid;
++	sid->sequence = grant->sessionid_seq;
+ 	sid->reserved = 0;
+ }
+ 
+-static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
++/**
++ * nfsd41_grant_slot_retired - has the client seen the reply to a grant?
++ * @clp: client that sent the granting request
++ * @grant: forward-channel slot that carried the request
++ *
++ * Context: Takes nn->client_lock.
++ *
++ * Return: true if the client has gone on to use the slot for a later
++ * request, or has given the slot up, so that it must have received the
++ * reply. False if that cannot be shown, and if @grant is not valid.
++ */
++bool nfsd41_grant_slot_retired(struct nfs4_client *clp,
++			       const struct nfsd4_grant_slot *grant)
+ {
+-	struct nfs4_client *clp = dp->dl_stid.sc_client;
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 	struct nfsd4_session *ses;
+ 	struct nfsd4_sessionid sid;
+ 	bool retired = false;
+ 	void *entry;
+ 
+-	if (!dp->dl_recall_grant.valid)
++	if (!grant->valid)
+ 		return false;
+ 
+-	nfsd4_recall_grant_sessionid(dp, &sid);
++	nfsd41_grant_slot_sessionid(clp, grant, &sid);
+ 
+ 	/*
+-	 * A missing session does not prove the client saw the grant: a
++	 * A missing session does not prove the client saw the reply: a
+ 	 * DESTROY_SESSION unhashes its own session before the reply to
+ 	 * that compound is encoded.
+ 	 */
+ 	spin_lock(&nn->client_lock);
+ 	ses = __find_in_sessionid_hashtbl((struct nfs4_sessionid *)&sid,
+ 					  clp->net);
+-	entry = ses ? xa_load(&ses->se_slots, dp->dl_recall_grant.slotid) : NULL;
++	entry = ses ? xa_load(&ses->se_slots, grant->slotid) : NULL;
+ 	if (xa_is_value(entry)) {
+ 		/*
+ 		 * A slot is freed only once the client has acknowledged
+@@ -6294,18 +6306,49 @@ static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
+ 
+ 		/*
+ 		 * A reactivated slot was freed and rebuilt, so the same
+-		 * acknowledgment applies. The seqid test errs toward
+-		 * revoking: a rebuilt slot restarting at seqid 1 matches
+-		 * an old grant.
++		 * acknowledgment applies. The seqid test errs toward "not
++		 * retired", the side on which the callers do not take the
++		 * client's answer at once: a rebuilt slot restarting at
++		 * seqid 1 matches an old grant.
+ 		 */
+ 		retired = (slot->sl_flags & NFSD4_SLOT_REUSED) ||
+ 			  ((slot->sl_flags & NFSD4_SLOT_INITIALIZED) &&
+-			   slot->sl_seqid != dp->dl_recall_grant.seqid);
++			   slot->sl_seqid != grant->seqid);
+ 	}
+ 	spin_unlock(&nn->client_lock);
+ 	return retired;
+ }
+ 
++/**
++ * nfsd41_cb_referring_grant - name a granting request as referring call
++ * @cb: callback that refers to state the request created
++ * @clp: client that sent the request
++ * @grant: forward-channel slot that carried the request
++ *
++ * Does nothing if @grant is not valid.
++ *
++ * Context: May sleep. Caller serializes access to @cb, as for
++ * nfsd41_cb_referring_call().
++ */
++void nfsd41_cb_referring_grant(struct nfsd4_callback *cb,
++			       struct nfs4_client *clp,
++			       const struct nfsd4_grant_slot *grant)
++{
++	struct nfsd4_sessionid sid;
++
++	if (!grant->valid)
++		return;
++	nfsd41_grant_slot_sessionid(clp, grant, &sid);
++	nfsd41_cb_referring_call(cb, (struct nfs4_sessionid *)&sid,
++				 grant->slotid, grant->seqid);
++}
++
++static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
++{
++	return nfsd41_grant_slot_retired(dp->dl_stid.sc_client,
++					 &dp->dl_recall_grant);
++}
++
+ /*
+  * ->prepare does not run on every send: nfsd4_run_cb_work() skips it
+  * on a requeue, and a retry via rpc_restart_call_prepare() re-enters
+@@ -6315,9 +6358,9 @@ static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
+  */
+ static void nfsd4_refresh_recall_grant(struct nfs4_delegation *dp)
+ {
+-	dp->dl_recall_grant.retired_at_send =
++	dp->dl_recall_retired_at_send =
+ 			nfsd4_recall_grant_slot_retired(dp);
+-	if (dp->dl_recall_grant.retired_at_send)
++	if (dp->dl_recall_retired_at_send)
+ 		nfsd41_cb_destroy_referring_call_list(&dp->dl_recall);
+ }
+ 
+@@ -6345,15 +6388,9 @@ static bool nfsd4_cb_recall_prepare(struct nfsd4_callback *cb)
+ 
+ 	nfsd4_refresh_recall_grant(dp);
+ 
+-	if (dp->dl_recall_grant.valid && !dp->dl_recall_grant.retired_at_send) {
+-		struct nfsd4_sessionid sid;
+-
+-		nfsd4_recall_grant_sessionid(dp, &sid);
+-		nfsd41_cb_referring_call(&dp->dl_recall,
+-					 (struct nfs4_sessionid *)&sid,
+-					 dp->dl_recall_grant.slotid,
+-					 dp->dl_recall_grant.seqid);
+-	}
++	if (!dp->dl_recall_retired_at_send)
++		nfsd41_cb_referring_grant(&dp->dl_recall, dp->dl_stid.sc_client,
++					  &dp->dl_recall_grant);
+ 	return true;
+ }
+ 
+@@ -6405,7 +6442,7 @@ static int nfsd4_cb_recall_done(struct nfsd4_callback *cb,
+ 		 * the grant. Trust the rejection only if the slot had
+ 		 * retired when this recall was sent.
+ 		 */
+-		if (dp->dl_recall_grant.retired_at_send) {
++		if (dp->dl_recall_retired_at_send) {
+ 			nfsd4_deleg_recall_rejected(dp);
+ 			return 1;
+ 		}
+@@ -7014,19 +7051,25 @@ static bool nfsd4_want_read_deleg(const struct nfsd4_open *open)
+ 		OPEN4_SHARE_ACCESS_WANT_READ_DELEG;
+ }
+ 
+-static void
+-nfs4_delegation_record_grant_slot(struct nfs4_delegation *dp,
+-				 const struct nfsd4_compound_state *cstate)
++/**
++ * nfsd41_record_grant_slot - remember the slot that carries a request
++ * @grant: record to fill in
++ * @cstate: compound state of the request
++ *
++ * Leaves @grant alone for a request without a session (NFSv4.0).
++ */
++void nfsd41_record_grant_slot(struct nfsd4_grant_slot *grant,
++			      const struct nfsd4_compound_state *cstate)
+ {
+ 	const struct nfsd4_sessionid *sid;
+ 
+ 	if (!cstate->session)
+ 		return;
+ 	sid = (struct nfsd4_sessionid *)cstate->session->se_sessionid.data;
+-	dp->dl_recall_grant.sessionid_seq = sid->sequence;
+-	dp->dl_recall_grant.slotid = cstate->slot->sl_index;
+-	dp->dl_recall_grant.seqid = cstate->slot->sl_seqid;
+-	dp->dl_recall_grant.valid = true;
++	grant->sessionid_seq = sid->sequence;
++	grant->slotid = cstate->slot->sl_index;
++	grant->seqid = cstate->slot->sl_seqid;
++	grant->valid = true;
+ }
+ 
+ static struct nfs4_delegation *
+@@ -7135,7 +7178,7 @@ nfs4_set_delegation(struct nfsd4_open *open,
+ 	 * visible to lease breakers. A conflicting open can drive
+ 	 * CB_RECALL to completion from that point on.
+ 	 */
+-	nfs4_delegation_record_grant_slot(dp, cstate);
++	nfsd41_record_grant_slot(&dp->dl_recall_grant, cstate);
+ 
+ 	if (stp->st_stid.sc_export)
+ 		dp->dl_stid.sc_export = exp_get(stp->st_stid.sc_export);
+@@ -10771,7 +10814,7 @@ nfsd_get_dir_deleg(struct nfsd4_compound_state *cstate,
+ 	dp = alloc_init_dir_deleg(clp, fp);
+ 	if (!dp)
+ 		goto out_delegees;
+-	nfs4_delegation_record_grant_slot(dp, cstate);
++	nfsd41_record_grant_slot(&dp->dl_recall_grant, cstate);
+ 	if (cstate->current_fh.fh_export)
+ 		dp->dl_stid.sc_export =
+ 			exp_get(cstate->current_fh.fh_export);
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 5f43668486..2c00b334c3 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -276,6 +276,14 @@ struct nfsd4_cb_notify {
+ 	struct nfsd4_callback		ncn_cb;		// notify4 callback
+ };
+ 
++/* Forward-channel slot that carried a request which created state */
++struct nfsd4_grant_slot {
++	u32			sessionid_seq;
++	u32			slotid;
++	u32			seqid;
++	bool			valid;
++};
++
+ /*
+  * Represents a delegation stateid. The nfs4_client holds references to these
+  * and they are put when it is being destroyed or when the delegation is
+@@ -315,13 +323,8 @@ struct nfs4_delegation {
+ 	bool			dl_setattr;
+ 
+ 	/* Forward-channel slot that carried the granting request */
+-	struct {
+-		u32			sessionid_seq;
+-		u32			slotid;
+-		u32			seqid;
+-		bool			valid;
+-		bool			retired_at_send;
+-	} dl_recall_grant;
++	struct nfsd4_grant_slot	dl_recall_grant;
++	bool			dl_recall_retired_at_send;
+ 
+ 	union {
+ 		/* for CB_GETATTR */
+@@ -949,6 +952,13 @@ extern void nfsd41_cb_referring_call(struct nfsd4_callback *cb,
+ 				     struct nfs4_sessionid *sessionid,
+ 				     u32 slotid, u32 seqno);
+ extern void nfsd41_cb_destroy_referring_call_list(struct nfsd4_callback *cb);
++extern void nfsd41_record_grant_slot(struct nfsd4_grant_slot *grant,
++				     const struct nfsd4_compound_state *cstate);
++extern bool nfsd41_grant_slot_retired(struct nfs4_client *clp,
++				      const struct nfsd4_grant_slot *grant);
++extern void nfsd41_cb_referring_grant(struct nfsd4_callback *cb,
++				      struct nfs4_client *clp,
++				      const struct nfsd4_grant_slot *grant);
+ extern void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
+ 		const struct nfsd4_callback_ops *ops, enum nfsd4_cb_op op);
+ extern bool nfsd4_run_cb(struct nfsd4_callback *cb);
 
-Best regards,
 -- 
-Daejun Park <daejun7.park@samsung.com>
+2.43.0
 
 
