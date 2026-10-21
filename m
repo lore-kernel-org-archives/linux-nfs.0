@@ -1,79 +1,79 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
 ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1792544585;
-	b=Gx+iyN8OHdLXfq3M+fy6Z4hjJV3ZpvvTCB2WlMBICm7ZigzaUw0eE+zlS6HLWvu/FOtt
-	 juJz57E7gqnSzSNpoy/GNkLT6NzMGud2ZtCVAIESKwunHFHVDdqO3bKA0n09RVG4xvaht
-	 BazskMmIRK5Mu4Uf9Pp6JqTMxLCn4oLrFU+NLZ+RdVwyYPJ1MK5rNBPxcsDEDjWiMO/K0
-	 FWAXq9ja0t4bhdD++UEZZN1ddHOPrGnUKnNTAHyjTQn4Hm272h67GzKHjMtnMFe2Slspe
-	 +UQyMsLmhDfuURFhaUE0TW6skfBwjfq13OZYeQxadKi4JIKJPtntHNN8VPwZAXu8V2A==
+	t=1792544586;
+	b=jPJ4JdbCslsQAE0pO50rX8B7HA88PjC2HsYzZ/9obbWabdmr+RTufkt4sEf3Kh6/Siou
+	 ZFC3pn9RgkA12iM+aK7k+DDxXeyTi9fAzH0o1ogegnuvY0WUrteAnbszIGa5EboLtWvIv
+	 LbalvrBqdGpOjbnrLD2GDjM3vyZ8LWq0ncbRyyqVK4yfSBMW4Ivg/4SHb/FeM/bNK2vk0
+	 WBSbb/gToUV0+Bcf6t6bSBD1ZAkrxU93iRwjHhZtWeLOCfYxEJMHy1/w/zzuiTGduInXZ
+	 6GOtanHj9Z1TRHrdUM5Uacu6cu2zmnqn5Vf5tvMWhjmSvFnU4ixYECf5cVdkWFSKnRA==
 ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792544585;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792544586;
 	h=Received:DKIM-Signature:Received:From:Date:Subject:MIME-Version:
 	 Content-Type:Message-Id:References:In-Reply-To:To:Cc:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
 	 X-Original-From:Reply-To:Content-Transfer-Encoding;
-	bh=NIDAoXnhmtMqwEmHVBz4r4e+Kg9rOUoih/N4m0yB6ZE=;
-	b=DhvdAuV1fL+rYhGk2yEWLyEz/kfeJqdvgicEh//DzrnKDt0Fp0MjJESVwDEI88cgqD1J
-	 q0mW2CLC6QySfiFSvIWp8pAKuq8ogyTk3w25Bi+SKcjd3HrWBgjl+BOS8uKw7YWC2sV25
-	 ozshD2zOUJtNRIeW0OkzoLXnV1VNUu/yVdNk8l8K6p7ezeputEpQ7V5Y1hS5EUZYinHa4
-	 LUe0pUL+ooHSO+kdEvUHHQj21sQqt/xrKQ5dV4v8BaohlC1wOSJj59DDgdfkqeDhQYNOo
-	 pzIu8PtZ/Dilts+SkwmfFhjHmKLBKisJEaI3BDHk4mxffP+2LYwUtyyAHrI1MXmwiRA==
+	bh=k2tfDj7xvyxwHEgPGacPd+ZElw5+Yt3doiWL7ua3O9s=;
+	b=h3tjmXZhvujmIONCasMKR0k3utXAwf0znR5Qm8A+arOSoVNAsoUhjMEsdRDws91YKfxW
+	 PjEk+czR3SmfH7SHMggntl4Rrbs1oJUaqVRQKrEPD49Sw9BM6HwSy3M6ssVHeZFMU4s+q
+	 +vF23z3XKmqmkLBKaLcVYCtfDoutRo+s/hfVH22ACo1oIVumfN5ZyfJV5sWdUUdkj2Pl4
+	 EbTuXxiQhtkXBvho41bmNWNahjsfPrPZdVL+N4BB/Naap14ad7SYhe60whemsbEnMCXj8
+	 61RxHYxXRlsyiutzvQkSMSU5oCw10fo+NuoIFg3M9bifMXycomjpuo9FsEdP4wbhfmg==
 ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KzHOy20L;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fy6s6MTH;
 	arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B54D606A31A;
-	Wed, 21 Oct 2026 01:03:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4246D606A325;
+	Wed, 21 Oct 2026 01:03:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KzHOy20L
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fy6s6MTH
 Authentication-Results: smtp.kernel.org; arc=none smtp.remote-ip=100.80.115.77
 ARC-Seal: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256; cv=none;
-	t=1792544585;
-	b=KMPSoRf4J+D4K5cDtxvxuvBQfKazKGY3Uupxspg8lrzisj4yr6X0IcmXjwkAuQ4/f1SW
-	 K4IZgqEzmI0EJphIRE6rsLE8MF93xxcILapI3U7UwxL3S5zl94w8LFgZAvB5g8ddK00lk
-	 dxZyP38+OORr67BxX0Sg3YivbkG1t8qB9yTh7R6hfTQw8emswjBQ7/GNKDojXmeh6roDW
-	 6QZvftbftL5sEBpdNO8dS7PT6HLueNRM6ujJbd3KmNojUUxibp3QGCa9PD0XlubeNWT7g
-	 cN9TWs8NAMRne7/3LP8iH0h8pxvEWnYdVkDUF1n7zy1QlHcAcwhrTVEHIMCv1KMDJjw==
+	t=1792544586;
+	b=zcNyaeRxZ2X0SBbuur6DtuxzhCuNpjHVDJZTtGWjhFzXOYIIv79XiCl/4pXFXhQrvpJA
+	 a/6xPpW/W8XKvAejZKj4yBhfYe41CyAiAJWz1ld0G34pW7eh3PjT7XJdZ0uqNUW9O68Kv
+	 /KQyPVgAiH+I0/Xm9U3YYSH8VPGWeGKDoS9z6uBEqnukaMgBYs11i2B6tUrb5S7c7Xmeg
+	 xHEQP0BJy3YRRYNY/eFO+Q1/f2a4umKX7vOHhy8DWuBRpQ/M1p3GqdDc8UP+7OVLJuU2w
+	 FTbh+JdVeLanJp2R6U+WMpB8yKrh5htgXieUlLhLrc4hVtJ5D0ls/s5I4fTfY6zkrcw==
 ARC-Message-Signature: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256;
-	c=relaxed/relaxed; t=1792544585;
+	c=relaxed/relaxed; t=1792544586;
 	h=DKIM-Signature:Received:From:Date:Subject:MIME-Version:Content-Type:
 	 Message-Id:References:In-Reply-To:To:Cc:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
 	 X-Original-From:Reply-To:Content-Transfer-Encoding;
-	bh=NIDAoXnhmtMqwEmHVBz4r4e+Kg9rOUoih/N4m0yB6ZE=;
-	b=AHwUb3HqiPNa+B09Ha0FnA+tkqXsYFefXkWkdSER7FSQ4RUlU50QlGOtRuThy4QM+orF
-	 mI2ryVhgAY2T7RHAi6zwYWgc5LWmgLQZ+9DTL1EJNupzuC6t7v8Bev9Vu0O3N0xG03HRu
-	 wWx5rk7Ba9XO0iEyuzSV7Eouhh6fRyfgNowwCxvMVDxALEFtcn6lemNqrJXiyxVSavwq9
-	 38/pKueUil8fn+HOnFiwJAKLQC3flK4micG72Pz83V2s9blqiH9sq8R5Jk3Im8NtGs+SF
-	 7frUnO97H7pdiTdm3TvoHv2MPrV9GqI5g5sbmg1z2XLBe7EFPaAI1fHDb2wItIQQZtw==
+	bh=k2tfDj7xvyxwHEgPGacPd+ZElw5+Yt3doiWL7ua3O9s=;
+	b=XUAGdbp+YeIA8oR2V/nyajD+YeyYvgV9iD8msfThCDJXrS81k/OsI97P2HDNnUA+eTMF
+	 h1lxY68DiryzlMehnDXmW/peFyxNoWEznubNnWi+MewOpikA4ecATNEEO+a8QYcqNiCCX
+	 fJzZMM4kZJPYf++VmHYftH7IPVERJwgwskf6yvTFKmS4Q1InQWfqABRh5pEvn2bYuMdeB
+	 pkUTI+P17d2DkKnbyHZTrfkk4IM6B44D8Rwh34a+0BZ73bV0HYNAO+eGIDsAQUrhmaRRM
+	 lwS8THepVoBVbPOeJmvzPps9lP1P5QuI+3wRCHgqWu8vUNPmztthU2RlYBj1s8KtTsA==
 ARC-Authentication-Results: i=1; smtp.kernel.org; 
 	arc=none smtp.remote-ip=100.80.115.77
 Received: from lkml.kernel.org (nexus.subspace.kernel.org [100.80.115.77])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.kernel.org (Postfix) with ESMTPS id 097911F000C9;
+	by smtp.kernel.org (Postfix) with ESMTPS id 0A06D1F000CB;
 	Wed, 21 Oct 2026 01:03:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1792544585;
-	bh=NIDAoXnhmtMqwEmHVBz4r4e+Kg9rOUoih/N4m0yB6ZE=;
+	bh=k2tfDj7xvyxwHEgPGacPd+ZElw5+Yt3doiWL7ua3O9s=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To;
-	b=KzHOy20LC79WUMHOV5RL0LskBZyETjp/JJoiX4KX/mz8e/r0v08DPGD8fs8Kdb4fU
-	 eadMu1qp3qe9HeBEWC3bMBSq8SHw7K6zrIaiPmETvK16YRrqR8ufPPYeUOpWlp5VLD
-	 fFg7+aVU6q7JdQYL+YPCIE8b6I+KGwZks5O+t02ONxVzON62S0iXVnc04aZgiZSgw2
-	 cmFss7gflKZb5MkjCReftfTCtwfOz+dgtWgvczkhunSUAGJ5BsrZ8e0Z8tu6DSfRch
-	 2oiqK/xojgYQrBTAr4rk/0TwPXOYKml8Afiw//UwFfHxk333KHIlnX1WMthzoo4s52
-	 XLNf0sKKEpS5Q==
+	b=fy6s6MTHpJC7DjFOii1LnpZuyB1a0IHGhbEamAVN8zw6ARKB6VdFwJXMDAPS2l51q
+	 mEH74BE1+xN3vgeLNUK0nXRe8PkJ5WTpHKjx57XFJuGpxUvU5wKUNjv7Kme7bCNe8v
+	 WnGjWYuhCsBOUJdNHZ7fhsNFkFQUnCriqMvYfRrwJbp2lY1t686MUMH1WM9pBTGaS5
+	 40kN2/ymKO3kzHECSo3p5Av0GbNv4H/jHHNRpjzxs1WURgVrGHROsoWxFKaKkoC7fl
+	 EL+FrZjq6k06fXWO+FCJV5NSbL2mUmCMeBcetCOZ9Tw8CWAOF8aJTFaop2t5kugPD1
+	 KxcxHkkJPHGBQ==
 Received: from nexus.subspace.kernel.org (localhost [IPv6:::1])
-	by lkml.kernel.org (Postfix) with ESMTP id 7B42143290;
+	by lkml.kernel.org (Postfix) with ESMTP id 6DE6E43287;
 	Wed, 21 Oct 2026 01:03:03 +0000 (UTC)
 From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
-Date: Wed, 21 Oct 2026 10:03:06 +0900
-Subject: [PATCH 4/4] nfsd: do not fail a LAYOUTGET on a lease break by the
- same client
+Date: Wed, 21 Oct 2026 10:03:04 +0900
+Subject: [PATCH 2/4] nfsd: resend a layout recall once before trusting
+ NOMATCHING_LAYOUT
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -84,7 +84,7 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Message-Id: <20261021-nfsd-layout-refcall-v1-4-797096b92377@samsung.com>
+Message-Id: <20261021-nfsd-layout-refcall-v1-2-797096b92377@samsung.com>
 References: <20261021-nfsd-layout-refcall-v1-0-797096b92377@samsung.com>
 In-Reply-To: <20261021-nfsd-layout-refcall-v1-0-797096b92377@samsung.com>
 To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
@@ -96,11 +96,11 @@ Cc: Christoph Hellwig <hch@lst.de>,
  linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792544582; l=12853;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792544582; l=11784;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=JCuGa7HbHYd3/G/Txl5rtH7+m3X1MhOD7vksMy5gAr4=;
- b=5tU9uAoq1qm/eF1LT7kdBCDS7y/+E1a6lPR83L/Kun95/lbuI019h1YsuB8L3JN2CSWk0t+rI
- QBaf/CHKJNZA5/hqB3kvbBePbxOONCHjU9sVy0FTF9kKRR57aoicnrF
+ bh=1awGlEX3eaa62kNCVXfBAkAaQI+ZyZMa5d0+Jm6EidI=;
+ b=ed8Co4rP8FG0WBEIYDC7ASPctXJGM3QIHi9LrxmoKOcA/WQmuORjxCtY+JPabjuyeFyB/qhVd
+ w6gz2hm8NrpAW5wVWfTfQvpLA5I+J8s5QHJQsRjGZlmfEQDqgCMRv4o
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
@@ -111,288 +111,246 @@ Content-Transfer-Encoding: 7bit
 
 From: Daejun Park <daejun7.park@samsung.com>
 
-"nfsd: fail a LAYOUTGET in progress when the layout lease is broken"
-fails a LAYOUTGET whose layout stateid has no layouts yet when the lease
-is broken, so that no layout is handed out after the break without a
-recall. Since "nfsd: answer NFS4ERR_DELAY instead of waiting for a
-layout recall", a WRITE through the metadata server that meets a layout
-of its own client gets NFS4ERR_DELAY, and the Linux client resends it
-every 0.1 seconds; a resend breaks the lease of any LAYOUTGET that the
-same client has in progress. A client that writes through the metadata
-server while it does I/O through a layout of the same file, as the Linux
-client does for O_DIRECT writes that are not aligned to a page, then
-gets NFS4ERR_RECALLCONFLICT for LAYOUTGET after LAYOUTGET, and waits up
-to 15 seconds between them.
+When the lease of a layout is broken right after nfsd has handed the
+layout out, the CB_LAYOUTRECALL can reach the client before the reply to
+the LAYOUTGET. A client that does not know the layout stateid yet
+answers NFS4ERR_NOMATCHING_LAYOUT, nfsd4_cb_layout_done() takes that as
+the end of the recall and drops the layouts, and the client then gets
+the reply and writes through a layout that the server no longer has.
 
-When the break comes from a request of the client that holds the layout
-stateid, nfsd4_break_file_layout() notes that the break met a LAYOUTGET
-in progress and when the break times out (fl_break_time), and
-nfsd4_insert_layout() recalls the layout as soon as it adds it. The
-LAYOUTGET succeeds and the client is asked for the layout back at once.
-nfsd4_layout_breaker_is_holder() finds the client of the breaker as
-nfsd_breaker_owns_lease() does for delegations. A break by another
-client or by a local process fails the LAYOUTGET as before, and the
-conflicting operation goes ahead without waiting for a recall, unless a
-break by the holder came first. The new case is traced as
-nfsd_layout_break_pending.
+The Linux client loses those writes. Its next LAYOUTGET with that layout
+stateid gets NFS4ERR_BAD_STATEID, and it calls
+pnfs_mark_layout_stateid_invalid(), which clears NFS_INO_LAYOUTCOMMIT
+and the layout segments; the block layout driver drops the extents it
+has written through the layout with the layout header. No LAYOUTCOMMIT
+is sent for them, they stay unwritten extents on the server, they read
+back as zeroes, and fsync() on the client succeeds.
 
-A LAYOUTGET that would add its layout after the break has timed out
-fails as before, whether or not the timeout has been noticed yet:
-time_out_leases() notices it only when another lease operation on the
-file comes, and a layout added in between would be recalled when it is
-already due and have its client fenced if that operation comes before
-the layout is back. When the timeout is noticed first,
-nfsd4_layout_lm_breaker_timedout() marks the layout stateid recalled, so
-that the LAYOUTGET fails. A layout added shortly before the break times
-out is recalled with what is left of fs.lease-break-time, and its client
-is fenced if it does not return the layout by then, where the LAYOUTGET
-failed before this patch. With the default of 45 seconds that takes a
-LAYOUTGET that has been in progress for most of that time.
+Since "nfsd: fail a LAYOUTGET in progress when the layout lease is
+broken", a lease break that meets the LAYOUTGET before it has added its
+layout fails it, so the recall can only overtake the reply to a
+LAYOUTGET that has added its layout. In eight traced runs of the test
+below without a delay on the client, no recall overtook a reply; with a
+test-only delay of one second the client lost every block whose reply
+the recall overtook.
 
-The recall is queued before the LAYOUTGET reply is sent and can reach
-the client first; a client that answers NFS4ERR_NOMATCHING_LAYOUT then
-would have its layout thrown away while it uses it. The resent recall of
-"nfsd: resend a layout recall once before trusting NOMATCHING_LAYOUT"
-and the referring call that CB_LAYOUTRECALL carries since "nfsd: send a
-referring call with CB_LAYOUTRECALL" cover that, for a client that takes
-the reply in within about three seconds or holds the recall back, which
-is why this comes after them.
+The delegation code has the same problem with NFS4ERR_BAD_STATEID [1].
+It trusts the answer if the slot that carried the grant had retired when
+the recall was sent, and otherwise sends the recall once more after two
+seconds. Do the same for layouts. nfsd4_layoutget() records the slot of
+the request in the layout stateid once the layout has been added, while
+it still holds ls_mutex, which nfsd4_cb_layout_prepare() takes as well.
+->prepare notes whether that slot had retired, and when the client
+answers NFS4ERR_NOMATCHING_LAYOUT while layouts are left, the slot had
+not retired and the client has not answered NFS4_OK to this recall,
+->done sends the recall once more after two seconds. The Linux client
+frees the slot of a LAYOUTGET only after pnfs_layout_process() has taken
+the layout in.
 
-One client writing 1 MiB blocks with O_DIRECT through its block layout
-and 512 bytes at the middle of a page through the metadata server to the
-same file, for 30 seconds: before this patch 54, 54 and 51 of the 1 MiB
-writes were done in three runs, as the LAYOUTGETs failed and the client
-backed off; with it 244, 249 and 241, with no 1 MiB block lost. The 512
-byte writes went from 5054, 4992 and 5072 to 1309, 1117 and 1415: the
-client now holds a layout most of the time, and such a WRITE meets it
-and gets NFS4ERR_DELAY. The same change without the two patches above
-lost 85 of 600, 87 of 584 and 79 of 600 blocks.
+The resend repeats the request with its seqid, as the polls do, although
+RFC 8881 section 12.5.3 has a new seqid for each request: a client that
+did not take the request in expects that seqid next, whether or not it
+has processed the LAYOUTGET reply since, and the Linux client answers a
+seqid that skips one with NFS4ERR_DELAY unless the recall names
+referring calls that are complete, which this patch does not send.
 
-With fs.lease-break-time at one second and a test-only delay before
-nfsd4_insert_layout(), a 512 byte write through the metadata server 0.3
-seconds into the LAYOUTGET broke the lease and was resent every 0.1
-seconds; the first resend after the break timed out came 37 to 44 ms
-after it. A layout added 25 to 29 ms before the break timed out was
-recalled at once and returned in each of five runs, without fencing.
-LAYOUTGETs that would add their layout about 17 or 30 ms after the break
-had timed out, before that resend, failed with NFS4ERR_RECALLCONFLICT in
-each of five runs at each offset. With the test of the deadline taken
-out, they handed the layout out. At 17 ms the client returned it before
-the resend in each of five runs, and nothing was fenced; at 30 ms the
-resend timed the break out while the client still held the layout, and
-had it fenced, in four of five, and came first in the fifth.
+A client that took the request in answers the resend with
+NFS4ERR_OLD_STATEID: when the Linux client has the layout stateid but no
+layout segment that the recall matches, initiate_file_draining() takes
+in the seqid of the recall before it answers NFS4ERR_NOMATCHING_LAYOUT.
+"nfsd: keep polling a layout recall answered with NFS4ERR_OLD_STATEID"
+has the polls carry a new seqid then, which the client answers afresh. A
+LAYOUTRETURN during the delay that returns the last layout does not stop
+the resend, but the answer to it then ends the recall without fencing
+the client, as "nfsd: do not fence a client for a layout recall with no
+layouts left" has it. The resend is traced as nfsd_layout_recall_resend.
 
-With a test-only delay of three seconds and a local write on the server
-that breaks the lease during that delay and goes ahead one second later,
-the LAYOUTGET fails with NFS4ERR_RECALLCONFLICT with this patch, as
-without it, in each of three runs: a local process is not the holder, so
-this patch leaves that case alone. With another client breaking the
-lease, as in the test of "nfsd: resend a layout recall once before
-trusting NOMATCHING_LAYOUT" without the delay, the 1 MiB writes went on
-with the whole series as without it: 600 blocks in each of three runs of
-30 seconds, as in each of six without the series, and no recall overtook
-a reply.
+The answer to the resend is trusted, where the delegation code trusts it
+only if the slot has retired by then and otherwise leaves the delegation
+to the laundromat, which revokes it. The counterpart for a layout is to
+poll until the slot retires and fence the client after two lease
+periods, and a client that is idle leaves its slot unretired also when
+it really has no layout.
 
-No Fixes: tag, as "nfsd: fail a LAYOUTGET in progress when the layout
-lease is broken" is not upstream yet. Where that patch is backported,
-this one is needed too, but only together with the two patches before
-it, so only where "NFSD: Send referring calls with CB_RECALL" and its
-series are, and not before v7.1.
+The resend covers a client that takes the reply in within the two
+seconds before it; a client that takes longer still loses the data. The
+next patch lets a client that honors referring calls hold the recall
+back instead.
 
+The resend costs the writer that broke the lease. A pNFS block layout
+client writes 1 MiB blocks with O_DIRECT to a new file for 60 seconds
+while an NFSv4.0 client writes to another range of it, so that the
+writes of the NFSv4.0 client keep breaking the layout lease. With a
+test-only delay of one second in the pNFS client before
+pnfs_layout_process(), 14 of 58 and 14 of 57 blocks written through a
+layout read back as zeroes in two runs, each one a block whose LAYOUTGET
+reply the recall overtook. With this patch none did (27 and 26 blocks),
+although the recall overtook the reply 11 and 18 times. The NFSv4.0
+client wrote all its 600 blocks in 15.0 and 15.3 seconds without this
+patch and in 37.8 and 51.9 seconds with it: each recall that overtook a
+reply lasted two seconds longer, and the WRITEs of the NFSv4.0 client
+got NFS4ERR_DELAY meanwhile. With fs.lease-break-time at two seconds or
+less, a resent recall can outlast the lease break and have the client
+fenced, also one that really has no layout, where the recall used to end
+at its first answer. Without the delay, both clients wrote all their 600
+blocks in each of three traced runs of 30 seconds with this patch, and
+no recall overtook a reply.
+
+The writer pays also when the client that holds the layout is idle: in a
+test where a client read a file, kept it open and did no further I/O
+while another client wrote to it, the write ended 12.1 seconds after the
+first read with this patch and 8.8 seconds after it without; the writer
+starts 8 seconds after the reader starts. The idle client answered
+NFS4ERR_NOMATCHING_LAYOUT to the recall and to the resend.
+
+This needs the previous patch, and with it [1], and from "nfsd: layout
+recall and lease break fixes" [2] the patches named above: without
+"nfsd: keep polling a layout recall answered with NFS4ERR_OLD_STATEID",
+the NFS4ERR_OLD_STATEID answer to the resend has the client fenced.
+
+Link: https://lore.kernel.org/r/20260802-nfsd-deleg-destroy-badhandle-v1-8-323aa7196055@kernel.org # [1]
+Link: https://lore.kernel.org/r/20261015-nfsd-layout-recall-v3-0-ba3269f8ca22@samsung.com # [2]
+Fixes: c5c707f96fc9 ("nfsd: implement pNFS layout recalls")
 Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
- fs/nfsd/nfs4layouts.c | 81 ++++++++++++++++++++++++++++++++++++++++++++-------
- fs/nfsd/state.h       | 11 +++++++
+ fs/nfsd/nfs4layouts.c | 45 +++++++++++++++++++++++++++++++++++++++++++--
+ fs/nfsd/nfs4proc.c    |  6 ++++++
+ fs/nfsd/state.h       | 10 ++++++++++
  fs/nfsd/trace.h       |  1 +
- 3 files changed, 82 insertions(+), 11 deletions(-)
+ 4 files changed, 60 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index 33d78595f7..834f73a6f5 100644
+index 679da5ba96..78ce4fc94d 100644
 --- a/fs/nfsd/nfs4layouts.c
 +++ b/fs/nfsd/nfs4layouts.c
-@@ -333,6 +333,8 @@ nfsd4_alloc_layout_stateid(struct nfsd4_compound_state *cstate,
+@@ -330,6 +330,7 @@ nfsd4_alloc_layout_stateid(struct nfsd4_compound_state *cstate,
+ 	}
  
  	ls->ls_recall_start = 0;
- 	ls->ls_grant.valid = false;
-+	ls->ls_break_pending = false;
-+	ls->ls_break_time = 0;
++	ls->ls_grant.valid = false;
  	ls->ls_fenced = false;
  	ls->ls_fence_inflight = false;
  	ls->ls_fence_stopped = false;
-@@ -456,16 +458,42 @@ nfsd4_recall_file_layout(struct nfs4_layout_stateid *ls)
- 	spin_unlock(&ls->ls_lock);
- }
- 
-+/* Whether the lease break comes from a request of the client of @ls */
-+static bool
-+nfsd4_layout_breaker_is_holder(const struct nfs4_layout_stateid *ls)
-+{
-+	struct svc_rqst *rqstp = nfsd_current_rqst();
-+	struct nfsd_thread_local_info *ntli;
-+
-+	if (!nfsd_v4client(rqstp))
-+		return false;
-+	ntli = rqstp->rq_private;
-+	return *ntli->ntli_lease_breaker == ls->ls_stid.sc_client;
-+}
-+
- /*
-- * A layout stateid with no layouts belongs to a LAYOUTGET in progress
-- * and already holds the lease. Mark the stateid recalled so that
-- * nfsd4_insert_layout() fails the LAYOUTGET and the lease is released.
-+ * A lease break also has to reach a LAYOUTGET in progress, whose layout
-+ * stateid holds the lease but has no layouts yet. Mark the stateid
-+ * recalled so that nfsd4_insert_layout() fails the LAYOUTGET and the
-+ * lease is released. When the break comes from a request of the same
-+ * client, as a WRITE through the metadata server that the Linux client
-+ * sends next to its I/O through the layout, failing its LAYOUTGET would
-+ * have it back off and fail again: note the break and its deadline
-+ * instead, and let nfsd4_insert_layout() recall the layout as soon as it
-+ * adds it, unless the break is past its deadline by then.
-+ * ->lm_break() is not called again for a lease that is already breaking.
-  */
- static void
--nfsd4_break_file_layout(struct nfs4_layout_stateid *ls)
-+nfsd4_break_file_layout(struct nfs4_layout_stateid *ls,
-+			unsigned long break_time)
+@@ -880,11 +881,22 @@ nfsd4_cb_layout_prepare(struct nfsd4_callback *cb)
  {
- 	spin_lock(&ls->ls_lock);
--	if (!ls->ls_recalled && list_empty(&ls->ls_layouts)) {
-+	if (!ls->ls_recalled && list_empty(&ls->ls_layouts) &&
-+	    nfsd4_layout_breaker_is_holder(ls)) {
-+		ls->ls_break_pending = true;
-+		ls->ls_break_time = break_time;
-+		trace_nfsd_layout_break_pending(&ls->ls_stid.sc_stateid);
-+	} else if (!ls->ls_recalled && list_empty(&ls->ls_layouts)) {
- 		ls->ls_recalled = true;
- 		atomic_inc(&ls->ls_stid.sc_file->fi_lo_recalls);
- 		trace_nfsd_layout_recall_empty(&ls->ls_stid.sc_stateid);
-@@ -475,6 +503,18 @@ nfsd4_break_file_layout(struct nfs4_layout_stateid *ls)
- 	spin_unlock(&ls->ls_lock);
+ 	struct nfs4_layout_stateid *ls =
+ 		container_of(cb, struct nfs4_layout_stateid, ls_recall);
++	struct nfs4_client *clp = ls->ls_stid.sc_client;
++	struct nfsd4_grant_slot grant;
+ 
+ 	mutex_lock(&ls->ls_mutex);
+ 	nfs4_inc_and_copy_stateid(&ls->ls_recall_sid, &ls->ls_stid);
++	grant = ls->ls_grant;
+ 	mutex_unlock(&ls->ls_mutex);
+ 	ls->ls_recall_accepted = false;
++	/*
++	 * A layout stateid with layouts has its slot recorded, as
++	 * nfsd4_layoutget() records it under ls_mutex; without one there
++	 * is no reply to wait for.
++	 */
++	ls->ls_recall_retired_at_send = !grant.valid ||
++		nfsd41_grant_slot_retired(clp, &grant);
++	ls->ls_recall_resent = false;
+ 	return true;
  }
  
-+/*
-+ * Whether the lease break noted by nfsd4_break_file_layout() is past its
-+ * deadline. A layout added now would be recalled too late, whether or
-+ * not time_out_leases() has noticed the timeout yet.
-+ */
-+static bool
-+nfsd4_layout_break_expired(const struct nfs4_layout_stateid *ls)
-+{
-+	return ls->ls_break_pending && ls->ls_break_time &&
-+	       time_after(jiffies, ls->ls_break_time);
-+}
-+
- static inline u64
- layout_end(struct nfsd4_layout_seg *seg)
- {
-@@ -550,7 +590,7 @@ nfsd4_insert_layout(struct nfsd4_layoutget *lgp, struct nfs4_layout_stateid *ls)
- 	if (nfserr)
- 		goto out;
- 	spin_lock(&ls->ls_lock);
--	if (ls->ls_recalled) {
-+	if (ls->ls_recalled || nfsd4_layout_break_expired(ls)) {
- 		nfserr = nfserr_recallconflict;
- 		goto out_unlock_ls;
- 	}
-@@ -572,7 +612,7 @@ nfsd4_insert_layout(struct nfsd4_layoutget *lgp, struct nfs4_layout_stateid *ls)
- 	if (nfserr)
- 		goto out;
- 	spin_lock(&ls->ls_lock);
--	if (ls->ls_recalled) {
-+	if (ls->ls_recalled || nfsd4_layout_break_expired(ls)) {
- 		nfserr = nfserr_recallconflict;
- 		goto out_unlock_ls;
- 	}
-@@ -586,6 +626,10 @@ nfsd4_insert_layout(struct nfsd4_layoutget *lgp, struct nfs4_layout_stateid *ls)
- 	new = NULL;
- done:
- 	nfs4_inc_and_copy_stateid(&lgp->lg_sid, &ls->ls_stid);
-+	if (ls->ls_break_pending) {
-+		ls->ls_break_pending = false;
-+		nfsd4_recall_file_layout_locked(ls);
-+	}
- out_unlock_ls:
- 	spin_unlock(&ls->ls_lock);
- out:
-@@ -1087,7 +1131,7 @@ nfsd4_layout_lm_break(struct file_lease *fl)
- 	 * Enforce break lease timeout to prevent NFSD
- 	 * thread from hanging in __break_lease.
- 	 */
--	nfsd4_break_file_layout(fl->c.flc_owner);
-+	nfsd4_break_file_layout(fl->c.flc_owner, fl->fl_break_time);
- 	return false;
- }
- 
-@@ -1278,7 +1322,9 @@ static void nfsd4_layout_fence_worker(struct work_struct *work)
-  *
-  * Schedule a worker to fence the client from accessing the block device.
-  * If the layout type has no fence operation, the worker runs the fence
-- * script instead.
-+ * script instead. If a lease break of its own client met the LAYOUTGET
-+ * of a layout stateid that has no layouts yet, mark it recalled instead,
-+ * so that the LAYOUTGET fails.
-  *
-  * This function runs under the protection of the spin_lock flc_lock.
-  * At this time, the file_lease associated with the layout stateid is
-@@ -1318,8 +1364,21 @@ nfsd4_layout_lm_breaker_timedout(struct file_lease *fl)
- 		spin_unlock(&ls->ls_lock);
- 		return false;
- 	}
--	if (list_empty(&ls->ls_layouts) ||
--			!refcount_inc_not_zero(&ls->ls_stid.sc_count)) {
-+	if (list_empty(&ls->ls_layouts)) {
+@@ -915,8 +927,10 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
+ 		 * The poll reuses the recall's seqid, against RFC 8881
+ 		 * section 12.5.3, so a client returning its layouts answers
+ 		 * NFS4ERR_OLD_STATEID too. A client that has not taken the
+-		 * recall up is past that seqid, e.g. after a LAYOUTRETURN,
+-		 * and gets a new one. ls_mutex could block rpciod, so the bump
++		 * recall up is past that seqid and gets a new one: after a
++		 * LAYOUTRETURN, or when the resend below repeats the seqid of a
++		 * recall that the Linux client took in although it matched no
++		 * layout segment. ls_mutex could block rpciod, so the bump
+ 		 * relies on sc_lock.
+ 		 */
+ 		if (!ls->ls_recall_accepted) {
+@@ -994,6 +1008,33 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
+ 		}
+ 		return 1;
+ 	case -NFS4ERR_NOMATCHING_LAYOUT:
 +		/*
-+		 * The lease goes away and the conflicting operation goes
-+		 * ahead, so a LAYOUTGET that the break met must not add a
-+		 * layout any more: fail it as nfsd4_insert_layout() fails one
-+		 * on a recalled layout stateid.
++		 * The recall can reach the client before the reply to the
++		 * LAYOUTGET that added the layout, and a client that has not
++		 * processed that reply answers this way too. As the
++		 * delegation code does for NFS4ERR_BAD_STATEID, trust the
++		 * answer if the slot of the LAYOUTGET had retired when the
++		 * recall was sent, and send the recall once more after a
++		 * delay otherwise. Unlike the delegation code, trust the
++		 * answer to that resend: not trusting it would end in fencing
++		 * the client, and an idle client leaves its slot unretired
++		 * also when it has no layout. A client that has answered
++		 * NFS4_OK to this recall knew the layout stateid, so its
++		 * answer to a poll is trusted at once.
++		 *
++		 * The resend repeats the request with its seqid, as the polls
++		 * do, although RFC 8881 section 12.5.3 has a new one for each
++		 * request: a client that did not take the request in expects
++		 * that seqid next, and a client that did answers
++		 * NFS4ERR_OLD_STATEID, which the polls handle.
 +		 */
-+		if (ls->ls_break_pending && !ls->ls_recalled) {
-+			ls->ls_recalled = true;
-+			atomic_inc(&ls->ls_stid.sc_file->fi_lo_recalls);
++		if (!list_empty(&ls->ls_layouts) && !ls->ls_recall_accepted &&
++		    !ls->ls_recall_retired_at_send && !ls->ls_recall_resent) {
++			ls->ls_recall_resent = true;
++			trace_nfsd_layout_recall_resend(&ls->ls_recall_sid);
++			rpc_delay(task, 2 * HZ);
++			return 0;
 +		}
-+		spin_unlock(&ls->ls_lock);
-+		return true;
-+	}
-+	if (!refcount_inc_not_zero(&ls->ls_stid.sc_count)) {
- 		spin_unlock(&ls->ls_lock);
- 		return true;
- 	}
+ 		trace_nfsd_layout_recall_done(&ls->ls_stid.sc_stateid);
+ 		task->tk_status = 0;
+ 		return 1;
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index a50f9dcb3a..506007cac5 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -2968,6 +2968,12 @@ nfsd4_layoutget(struct svc_rqst *rqstp,
+ 		goto out_put_stid;
+ 
+ 	nfserr = nfsd4_insert_layout(lgp, ls);
++	/*
++	 * Under ls_mutex, which nfsd4_cb_layout_prepare() takes as well, so
++	 * that a recall of the new layout finds the slot recorded.
++	 */
++	if (!nfserr)
++		nfsd41_record_grant_slot(&ls->ls_grant, cstate);
+ 
+ out_put_stid:
+ 	mutex_unlock(&ls->ls_mutex);
 diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 075fd3d107..805bbdc16e 100644
+index 2c00b334c3..71a4b6fa5a 100644
 --- a/fs/nfsd/state.h
 +++ b/fs/nfsd/state.h
-@@ -862,6 +862,17 @@ struct nfs4_layout_stateid {
- 	/* The client has answered NFS4_OK to the recall */
+@@ -863,6 +863,16 @@ struct nfs4_layout_stateid {
  	bool				ls_recall_accepted;
  	bool				ls_recalled;
-+	/*
-+	 * A lease break of this client met a LAYOUTGET in progress: recall
-+	 * the layout it adds, or fail it once the break is past its time.
-+	 * Under ls_lock.
-+	 */
-+	bool				ls_break_pending;
-+	/*
-+	 * fl_break_time of that break: 0 if it does not time out.
-+	 * Under ls_lock.
-+	 */
-+	unsigned long			ls_break_time;
  	struct mutex			ls_mutex;
- 	/*
- 	 * Forward-channel slot that carried the last LAYOUTGET that added
++	/*
++	 * Forward-channel slot that carried the last LAYOUTGET that added
++	 * a layout to this layout stateid, or extended one by merging.
++	 * Under ls_mutex. Until that slot retires, the client may not
++	 * have processed the reply to the LAYOUTGET.
++	 */
++	struct nfsd4_grant_slot		ls_grant;
++	/* Recall state for ->done, reset in ->prepare */
++	bool				ls_recall_retired_at_send;
++	bool				ls_recall_resent;
+ 
+ 	struct delayed_work		ls_fence_work;
+ 	struct mutex			ls_fence_mutex; /* serializes fence shutdown */
 diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index bd031b7124..5471ec825a 100644
+index e0908cb21c..bd031b7124 100644
 --- a/fs/nfsd/trace.h
 +++ b/fs/nfsd/trace.h
-@@ -680,6 +680,7 @@ DEFINE_STATEID_EVENT(layout_commit_lookup_fail);
- DEFINE_STATEID_EVENT(layout_return_lookup_fail);
+@@ -681,6 +681,7 @@ DEFINE_STATEID_EVENT(layout_return_lookup_fail);
  DEFINE_STATEID_EVENT(layout_recall);
  DEFINE_STATEID_EVENT(layout_recall_empty);
-+DEFINE_STATEID_EVENT(layout_break_pending);
  DEFINE_STATEID_EVENT(layout_recall_done);
- DEFINE_STATEID_EVENT(layout_recall_resend);
++DEFINE_STATEID_EVENT(layout_recall_resend);
  DEFINE_STATEID_EVENT(layout_recall_new_seqid);
+ DEFINE_STATEID_EVENT(layout_recall_fail);
+ DEFINE_STATEID_EVENT(layout_recall_release);
 
 -- 
 2.43.0
