@@ -1,62 +1,65 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=91.218.175.85
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792673275;
-	b=LQMqQWbbUYcmacHJOtfAzRJp/MfDo44NVZyF6wZVg6qlk5SRwwkbVI3kVLUd2BDm/x3I
-	 aBewX0mMeSO1B84AukcbvDNkPXCyRStqE48HYSbcteRtBYBeR1U3MqK3HcvAA8BEe6tSa
-	 +UEw06+Junt2SV1nLmEanDhLoRCeNHrzPXwUp7BTpULf1kCK02xWpm7cVheG1N0/vJN4Z
-	 D1n098mXUATH409s03JR7sef9MVt2dDO94Eh4fFm/059Ypvrh9jGEVRdm44iWN23Rg+HI
-	 mY1sJ2TDOghWSe5lR+RE57DfpSQzJtycYH//c4GakvCOLMRJZworcEBsnd4v6agLo2g==
+	t=1792674159;
+	b=vBy4fzSijSJVWcvNJltPzqwVrglbsvHyYJint2ktXNACAEvAveUPX0Wg9k6jMhCAzGLK
+	 M2d24+ooCoToFcgbBlXBUIIv4BHxMN2eqp12nhme+tFSosvh0+/oQ3ArXxWrvWUUMtjfX
+	 GmXbggfDdoBfOH44GXMmeHukJrFxJkJEBUNdRgfly2jE8ioAu5gjMyztiXc/Db5h2jAWo
+	 wwSSmIJV+O6P8nL5Upz6HaZe3OzOYTyJ1LMrAs17SATDlwEVPAOEVr1NpCqwlp67vGvaF
+	 9WjlNz86RuQq5zd5TeTQFyOuiZMSOpxRI4m/daL8bkpDZB+jgRIc6qgXTvz4vPk0VoA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792673275;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 In-Reply-To:References:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=H44omwwK3lb/BN9U2vv/UuziAk2eqYKNvI4mmjizaks=;
-	b=xUnTPdv/FLMsqovsgBVZRc5E++Y5g/40n6IQLdINH7hNcZqoDD30bwzqAqcrzeiY7oc1
-	 /MPvX1c6NbS58OuaziMcvJNpizd0NcXNCr3+4zCVA/lu3FoWu2AUpqrJjT0rUu0TfXvQy
-	 Y/Y+euXyqKKueEdoZOTkItQfTpOHOMoyzqFQqRHBtGTDQU+XaT8wu97XGs1BrgSTi2pEa
-	 OAJ2/7hQxZHnh8F1gJCHQ95vBcx24Q52cviMKhNW/rHVEEN2cnVVhAnKgjhS0MXRxLcdn
-	 K35D0YS4CEmWEDs/NDAYTp9kD85YzUGjFmKxQNUDOu5B/XAGtsJLu2Qctt5CN6C0t5w==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792674159;
+	h=DMARC-Filter:X-Envelope-To:DKIM-Signature:X-Envelope-To:Received:
+	 X-Mizu-Trace-ID:X-Migadu-Flow:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=QaSV8A+DkRJxdjBJ52VGx2q6CxzJmPLWhUU+QwPg4ks=;
+	b=XjhDbeiMiOHmuBLU32jTnepykHlZtyFQmvOwKz+YWq48/POBTcMCnqBjdjX+HVY3a/TV
+	 uitoESeRsNTkKsBCKQQjdWOMx/ASIQuWwn8wYutzDGdNe1KuOHeLiucof3Fai6j5tGgtl
+	 aEUxCUxxq7IkF8AUr59B4fG25K7DFIrEWU2ZpC2ftM2diA78sohel1gkYZyTHVOymR/Ca
+	 8XRIXs2fNXI4wL8u+EE1V+bU9Ua+Rkmqj5LVvpprGcjOWs+qvFoUfot+aQsCbREr1DSTK
+	 G6zxTdrv6lB5oXqzI5sye4u5VmNfh6qd2AYbgM0PPCj6JJl6c7G3w3MKFBHfIWK6ygQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=f9rG4GGq;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=linux.dev;
+	spf=pass smtp.mailfrom=linux.dev;
+	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=NYiOL2aH;
+	arc=none smtp.remote-ip=91.218.175.85
+Received: from mta0.migadu.com (out-85.mta0.migadu.com [91.218.175.85])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 85DA3606A319;
-	Thu, 22 Oct 2026 12:47:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 14671606A31F
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2026 13:02:37 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 14671606A31F
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=f9rG4GGq
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 433C51F000C1;
-	Thu, 22 Oct 2026 12:47:54 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792673275;
-	bh=H44omwwK3lb/BN9U2vv/UuziAk2eqYKNvI4mmjizaks=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=f9rG4GGqxaNQOUF0C72yOLZ5gj+TZEtxbIq0Vcy8I+Zn5ZChbInjMqU66I/1tpdqQ
-	 ewlaNmIVgbDNT+BEDLNyXdZpxE0QKeqQAgJxfyu3hRn/jba5W2rDKOf26aIaLjF1zl
-	 O7Om5hrlXkiLNhTsJFW6lcczXxEyN5kTBbjoZBBwDzlmagIi3MjIJKlDsWQ/26O7vt
-	 mnsA581LNLrKdjFKLSrGNemYJBKybzq+iUBPBdDoQ+gckhNclfnRnJjJcqG5PJDSrg
-	 +C7gFlbesKX/aPtGDg4f08sfdxSOENZfhdVqX+emNz+ZIuYUgFIvvI0TIT8zoNhD+P
-	 zZef+SpjBLZJw==
-From: Chuck Lever <cel@kernel.org>
-To: Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	Hyunsol Mun <muumthf@gmail.com>
-Cc: linux-nfs@vger.kernel.org,
-	linux-rdma@vger.kernel.org,
-	bobtobabz@gmail.com,
+	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=NYiOL2aH
+X-Envelope-To: linux-nfs@vger.kernel.org
+DKIM-Signature: a=rsa-sha256; bh=Blk5PcHa+mtRw2PyDvEKfMHAEAMT011jjsUT7gNzPRI=;
+ c=simple/simple; d=linux.dev;
+ h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
+ t=1792674156; v=1; x=1793278956;
+ b=NYiOL2aHwYbhphng9Va624cVzGa0vU0DNgH3SgHqUB+tthpnyr2mLU6qsIBU3yl5atyh+dg7
+ TlicbWLP+HDJ9ZOCn1VMmGnk+981CDRjr6QpseqGt3xNC9BOAKxB8FeUP+zQg0fWq0q3crur27N
+ 0+VjArtJDc1l43XJDYR7qpos=
+X-Envelope-To: linux-nfs@vger.kernel.org
+Received: by smtp.migadu.com with ESMTPS id 9a0127de9735825e;
+	Thu, 22 Oct 2026 13:02:36 +0000
+X-Mizu-Trace-ID: 9a0127de9735825e
+X-Migadu-Flow: FLOW_OUT
+Date: Thu, 22 Oct 2026 15:02:30 +0200
+From: "Pankaj Raghav (Samsung)" <pankaj.raghav@linux.dev>
+To: Daejun Park <daejun7.park@samsung.com>
+Cc: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org, 
+	Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
+	Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+	Dai Ngo <Dai.Ngo@oracle.com>, Sergey Bashirov <sergeybashirov@gmail.com>, 
+	Andrey Albershteyn <aalbersh@kernel.org>, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
 	stable@vger.kernel.org
-Subject: Re: [PATCH] svcrdma: silently discard undersized messages
-Date: Thu, 22 Oct 2026 08:47:50 -0400
-Message-ID: <179267326422.2409795.16633003264114396479.b4-ty@b4>
-X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20261022034629.430954-1-muumthf@gmail.com>
-References: <20261022034629.430954-1-muumthf@gmail.com>
+Subject: Re: [PATCH v4 5/9] xfs: limit the count of a pNFS write allocation
+ to one extent
+Message-ID: <atoImJxtg70XcIjS@quentin>
+References: <20261020-xfs-pnfs-batch-v4-0-9230fa2ca4a4@samsung.com>
+ <20261020-xfs-pnfs-batch-v4-5-9230fa2ca4a4@samsung.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -66,27 +69,64 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261020-xfs-pnfs-batch-v4-5-9230fa2ca4a4@samsung.com>
 
-On Thu, 22 Oct 2026 12:46:29 +0900, Hyunsol Mun wrote:
-> RFC 8166 requires an RPC-over-RDMA message shorter than the 28-byte
-> minimum header to be silently discarded because its XID cannot be
-> trusted.
+> With pynfs as the client and a 32 GiB XFS, an RW LAYOUTGET at offset 0
+> of an empty file for 16 TiB shut the filesystem down: "Corruption of
+> in-memory data (0x8) detected at xfs_trans_mod_sb". With this patch it
+> gets NFS4ERR_NOSPC, also with XFS_DEBUG, XFS keeps running, and less
+> than 8 GiB of the filesystem, one extent's worth, is left free. One
+> for 100 GiB ends the same way, where it got NFS4ERR_NOSPC with nothing
+> allocated before. One for 16 GiB, which fits, is granted the same
+> three extents as before.
 > 
-> svc_rdma_xdr_decode_req() instead returns -EINVAL when the fixed header
-> cannot be decoded. svc_rdma_recvfrom() turns that into an RDMA_ERROR,
-> whose encoder copies the first two words from rc_recv_buf without
-> checking rc_byte_len. A zero- to seven-byte SEND can therefore return
-> up to eight bytes that were not supplied by the peer.
+> Suggested-by: Darrick J. Wong <djwong@kernel.org>
+> Link: https://lore.kernel.org/r/20261008154017.GO2705364@frogsfrogsfrogs
+> Suggested-by: Christoph Hellwig <hch@lst.de>
+> Link: https://lore.kernel.org/r/20261015060932.GD14035@lst.de
+> Fixes: 527851124d10 ("xfs: implement pNFS export operations")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+> ---
+>  fs/xfs/xfs_pnfs.c | 8 ++++++++
+>  1 file changed, 8 insertions(+)
 > 
-> [...]
+> diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
+> index 19eb18e129..401a790299 100644
+> --- a/fs/xfs/xfs_pnfs.c
+> +++ b/fs/xfs/xfs_pnfs.c
+> @@ -224,6 +224,14 @@ xfs_fs_map_blocks(
+>  		else if (nimaps && imap.br_startblock == HOLESTARTBLOCK)
+>  			end_fsb = min(end_fsb, imap.br_startoff +
+>  					       imap.br_blockcount);
+> +		/*
+> +		 * xfs_bmapi_write() maps at most XFS_MAX_BMBT_EXTLEN blocks
+> +		 * in one mapping, so don't reserve blocks for more. The
+> +		 * range comes from a client, and its block count may not
+> +		 * even fit the 32-bit reservation. The rest of the range
+> +		 * is mapped by a later call.
+> +		 */
+> +		end_fsb = min(end_fsb, offset_fsb + XFS_MAX_BMBT_EXTLEN);
 
-Applied to nfsd-testing, thanks!
+Isn't it better we add this in xfs_direct_write_iomap_begin() instead of
+adding it in pnfs?
 
-[1/1] svcrdma: silently discard undersized messages
-      commit: 667147c17f15824c00a5b2fcfdb66283c3f4cad6
+Something like this:
 
---
-Chuck Lever
+diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
+index 329c745e3120..50cf7b0cfc76 100644
+--- a/fs/xfs/xfs_iomap.c
++++ b/fs/xfs/xfs_iomap.c
+@@ -284,6 +284,7 @@ xfs_iomap_write_direct(
+        int                     nr_exts = XFS_IEXT_ADD_NOSPLIT_CNT;
+ 
+        ASSERT(count_fsb > 0);
++       count_fsb = min_t(xfs_filblks_t, count_fsb, XFS_MAX_BMBT_EXTLEN);
+ 
+        resaligned = xfs_aligned_fsb_count(offset_fsb, count_fsb,
+                                           xfs_get_extsz_hint(ip));
 
+-- 
+Pankaj
