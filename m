@@ -1,73 +1,65 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=91.218.175.234
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792671762;
-	b=k7KICwHIrYyT2eqZZ/UC+bOg3U7uG5vH6LMBj/z+kVJmcbATdvBxpG3R+JrSMzaSAL4v
-	 uUIixNzRQExBkKPloo0UtL1gnahfhz7RzjCMYf5baz2z+PFymkMyOB2+F3slJeWvwP9DK
-	 NLyqMDTTEpy5gdPrW3IDiMehkz4kaH5kUehbm+MvgUFz0xDvJz9xtcJDzH1Et8QbrE2ZG
-	 PmUtWQcXLGeNKQNM4HXuHE2xQ9W3Y8wGgjWcOsxoRyo0qc21SReJ4PbTWy/fOuAkpZEjE
-	 +gQJFFte/gWcsnRgkgj4eq9mv8YOJPZ5vlRcey6zR29koGE57x8JBMR9RKLqDwHy7vw==
+	t=1792672904;
+	b=Go7OMCCpcEizOP4XWvx5JD6M3gRZF6hRBXnLgOw3rcSPsGYFaRnS9Ai/RdJMrNX+UHy6
+	 KEfO8EKhuyYh9Da38XLCFgHo8LjoV+Ar+5lW2Tdn3uUZ1b/H37SDZBjVrOoqQQvArt3h8
+	 8QfaKy8+DSMYc9SDb60JCRd6ERNGYy8ag6vfd5lSy1on+h+moh5DHuse0gdSxY5ZX6cQe
+	 qZv4yEOCRHaV4mWXufhZ+wb/eXEKvTEB3gCcP1DYoDHwUZohRR9zgHN46ZYgMoMpDIzNM
+	 dSCTJLEzDsrVb/vPYIh4IKAktsUvwjP+pF8i1B7lIj6z57iq1AT9A2dJGEE1E59gOMA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792671762;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=lL31NV31uswmFcMG4uuUkHmQjZyahNmfA5NSd7S2PCE=;
-	b=yGEVtYziSsYQIfppUSx/M2ZrGcNPInDFFXgAFWa8EnxvdS/Co12pn9pzuXN8/saJwimb
-	 AYyE3ECpmQZbsP5LY2ZYLdDWnZG9gBi5+eFts3i8HVVg5nGIW6vwiJcyJLeG6NeXqddmy
-	 v8AvLwd2ttOhey1JFnJnzPXoznLX2/eNDLXOnfVSq9j4PvQzY9eK8My8jORF9jqtOMHVH
-	 TItacNiqtTFTS5fsvK8tV/E2c6Q+0QQ5MKnnl7F3tOTtcmNqDrWRBeOyvnYQiqh7jq3aQ
-	 oidIi9RL8Vz/A9Vz5H2g/Lz3wL26c38cRPcdqEAjNqF77An1Q8WHx/0RkRtY9acaE+g==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792672904;
+	h=DMARC-Filter:X-Envelope-To:DKIM-Signature:X-Envelope-To:Received:
+	 X-Mizu-Trace-ID:X-Migadu-Flow:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=wbJWk78mn0OUQjjb5FrHOIhob0gYSClNRqitvSrG/2I=;
+	b=fwgf0LlYfYpYJGWh8s1vGJ9HY+22D3OSDmT+JSpzJhZA2kNlr7mItnMJ5c4lPxfSiren
+	 ECResJ5sMDi9JyI19hVzoQGVhIiDLTkq6m7RBxrtePypC2uTBbhmPRCh6/IW2bVafhC5a
+	 B2UGAAQa4guCodQ7xCV5dHffxl6LvHM3m6uOitetLhzhRjKNGlWiE9J8BGQS8D0/HNdX/
+	 yVnbXyBjj1SF+nwB0MdoTrYkVezUNxVOi+Es5FXOb9v5E5ovRzqQ3A/n6I8cd8XVfnXi8
+	 TwKy/Wq581fhNbnCYdj/vXNJ+cz2TkQeCX6OyO5tf5lhpYgJEUqfry75CjXliR80e5w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Bt0jWbiz;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=linux.dev;
+	spf=pass smtp.mailfrom=linux.dev;
+	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=dW2RC3nC;
+	arc=none smtp.remote-ip=91.218.175.234
+Received: from mta0.migadu.com (out-234.mta0.migadu.com [91.218.175.234])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B4B25606A330;
-	Thu, 22 Oct 2026 12:22:41 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 380E8606A31A
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2026 12:41:42 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 380E8606A31A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Bt0jWbiz
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 69F3D1F000C8;
-	Thu, 22 Oct 2026 12:22:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792671761;
-	bh=lL31NV31uswmFcMG4uuUkHmQjZyahNmfA5NSd7S2PCE=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=Bt0jWbizqx66731kLA6kosw5my+SlsB/HO8xOpeR3vZEp39NxsXpl8DESXCe7H9Hn
-	 JTaeZkqkkt69uyt7SwCyzy88aEo/W2K8nbpsC8cCd/j662Xsn48Xric4mMspRIqBJz
-	 63Tb6hkvaNNKQEXghIMoPUHVmTTQ3G1Gfk60jwr6H88obzgjk2UL+cXGzCihJqGjZo
-	 TKKgLOCqwUUBLJTnEyYvidFFqrUQ6FuIkolNyumv96enHU+5CiIGxiI5u+V7ZH0N+3
-	 oA4/nN5M77GBybn6yacx8sHvnIyBsv3ijZwV4B3PabBCu5pzrgzs/lCvNFFy2c7Spo
-	 MBVV4I01ymxEw==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id A6318F40066;
-	Thu, 22 Oct 2026 08:22:40 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Thu, 22 Oct 2026 08:22:40 -0400
-X-ME-Sender: <xms:EADaaqo4P5HBSsoNBgXPIudVHkM40F8o3QPUBTZrV9j6H6BwiCvnmA>
-    <xme:EADaajewGikZPo64jHwVqJ-bfg96T1gskx5ifsdUTaHBtkpiXCh6IIRhOlpjkw2VA
-    kmx0_u5a0RqL_HumYw1QTN5uTk8rZk7g2ZY8daAqiGyai4lCFOb0dSg>
-X-ME-Proxy-Cause: dmFkZTE3Fpze23TlqyVGyIy3s5PLt5OWXDy2UHCpyIE5k6lPzEIPomiBsHPATLF2K1H1Hd
-    18SnlC+P96utND4XNW8QhOm18ZzRAcjg8CyAXuQhZLsHbQ5l3RS7x9D+rBYGBsBZRdsWH8
-    /+InIJuZqt1on3Keyt0g6cFzrK977OTPXZycnLgTK373M5uaM1IcDeEWvQwuwlH1tPyN1o
-    rNlw4u5yzp6BQEF7SSFFvkzqOPB3mfCLS/E1MqC5N0eYaYfKctZl0HDbpSP77OyLKNIEob
-    c7X/iKNQ6EJqB6zwrNTuXHpe3mgFLrmI6sZ5tGQWW13WZBnieG1IiBHwaNoHR6t+pcRMb2
-    8hVOp2+EAczRf/hbBvVV1LPK2dJW0NWDpkU9oqE7do8UQWYqU0LHH0mMGP51K+J5IjF5Fv
-    MuTQh5CIOJ7HWWu8Bia5oY5cwyc6zWJV2lCDA348r12KL90wh+ja+INtnB90hkZSNZ0Hco
-    TOk5hvFohtP/ulks6Af13LFag2HMpfCQNUWHv4jG4tXXAnXeRnVQEseRUxzdBd28KB2KEg
-    axArrD03vbz7QQhRxusooSQ55fCt78F8sqSV5tODL24PEhsGxxsUXyDxTFw9LKuayY+veM
-    kCb6QdJsMtsttBYRbNmUbxFAc+8h2qXeJ/Gq6sb88eUlajTO+FUOQJzedK4A
-X-ME-Proxy: <xmx:EADaapN_PmoHOmf9UNR0fY0WRns62xO1e8mq0kzAPS7PqX21sUoT8A>
-    <xmx:EADaatigbKtdPJSrw-bQE739vn6sABgaIyoB5B4dAYWu8niEvwWnhg>
-    <xmx:EADaangibXOc70IRgrN3AyhJopla7ssf5dpdRd09ASTFNgUwAdn5wg>
-    <xmx:EADaasJODjQ5vnn1TtRk15rwv2WTpd3IVpEYK0Xr2ELx20UxP6UE-w>
-    <xmx:EADaamniSqU9BHobPa5tOa0mgiLLjABXDk3vl6Wh6mYR6ORTlUf3tHEq>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 84B50782738; Thu, 22 Oct 2026 08:22:40 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=dW2RC3nC
+X-Envelope-To: linux-nfs@vger.kernel.org
+DKIM-Signature: a=rsa-sha256; bh=h6l8HPo9Y9nflW29RMe4Ez3evRSBhkhVHZB03PLHvzM=;
+ c=simple/simple; d=linux.dev;
+ h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
+ t=1792672901; v=1; x=1793277701;
+ b=dW2RC3nC7g713Ol6NnP1YzzBuoxQLyYyJnIVzuYrCZIqjUcrGIrTFyB+Cyr+NvEkofrE2LKl
+ E0iTIJi+zW/BRooXlW+Kz6j393U3cuAPCVIZfYrCijPcVLJzCR7nFLWDAndVKGK+BcTzYpTz2qk
+ M0M8Uv4RzEbYBBgeWSI0HcUI=
+X-Envelope-To: linux-nfs@vger.kernel.org
+Received: by smtp.migadu.com with ESMTPS id a85b208720a85165;
+	Thu, 22 Oct 2026 12:41:41 +0000
+X-Mizu-Trace-ID: a85b208720a85165
+X-Migadu-Flow: FLOW_OUT
+Date: Thu, 22 Oct 2026 14:41:31 +0200
+From: "Pankaj Raghav (Samsung)" <pankaj.raghav@linux.dev>
+To: Daejun Park <daejun7.park@samsung.com>
+Cc: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org, 
+	Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
+	Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+	Dai Ngo <Dai.Ngo@oracle.com>, Sergey Bashirov <sergeybashirov@gmail.com>, 
+	Andrey Albershteyn <aalbersh@kernel.org>, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	stable@vger.kernel.org
+Subject: Re: [PATCH v4 1/9] xfs: mark the inode preallocated for pNFS write
+ layouts past EOF
+Message-ID: <atoEW7EUgDXKS7gh@quentin>
+References: <20261020-xfs-pnfs-batch-v4-0-9230fa2ca4a4@samsung.com>
+ <20261020-xfs-pnfs-batch-v4-1-9230fa2ca4a4@samsung.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,68 +69,73 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: Ag9yIq03xO8V
-Date: Thu, 22 Oct 2026 08:22:20 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Giorgi Kobakhia" <gkobakhi@asu.edu>, "Jeff Layton" <jlayton@kernel.org>
-Cc: NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
- "Xiang Mei" <xmei5@asu.edu>, linux-nfs@vger.kernel.org,
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Message-Id: <d8952be8-7ee8-4c57-aea3-9f19011b377f@app.fastmail.com>
-In-Reply-To: <20261021203817.3898293-1-gkobakhi@asu.edu>
-References: <20261021203817.3898293-1-gkobakhi@asu.edu>
-Subject: Re: [PATCH] svcrdma: bound check rc_curpage in svc_rdma_build_read_segment
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261020-xfs-pnfs-batch-v4-1-9230fa2ca4a4@samsung.com>
 
-
-
-On Wed, Oct 21, 2026, at 4:38 PM, Giorgi Kobakhia wrote:
-> The existing guard in the end of loop is not enough for bounding
-> rc_curpage, because it only checks if some part of the chunk goes beyond
-> the rq_maxpages.
->
->     if (len && ((head->rc_curpage + 1) > rqstp->rq_maxpages))
-> 	goto out_put;
->
-> If the chunk exactly fills up the pages, then len is 0, guard is skipped
-> and the next chunk makes head->rc_curpage go over rq_maxpages.
->
-> Commit 81381d1a90de ("svcrdma: Adjust the number of entries in
-> svc_rdma_recv_ctxt::rc_pages") made OOB accessible, since it
-> shrunk the rc_pages array size to rc_maxpages.
->
-> Commit d1bea0ce35b6 ("svcrdma: bound check rq_pages index in inline
-> path") added a loop-top "rc_curpage >= rq_maxpages" guard in nearby
-> function svc_rdma_copy_inline_range(). The same check would guard it in
-> svc_rdma_build_read_segment().
->
-> OOB write is triggered in svc_rdma_process_read_list():
->
->  BUG: KASAN: slab-out-of-bounds in svc_rdma_process_read_list
->         (svc_rdma_rw.c:1148 svc_rdma_rw.c:1197)
->  Write of size 8
->
->  Call Trace:
->   svc_rdma_process_read_list (svc_rdma_rw.c:1148 svc_rdma_rw.c:1197)
->   svc_rdma_recvfrom (net/sunrpc/xprtrdma/svc_rdma_recvfrom.c:1022)
->   svc_recv (net/sunrpc/svc_xprt.c:870 net/sunrpc/svc_xprt.c:968)
->   nfsd (fs/nfsd/nfssvc.c:919)
->
-> Add bound check for rc_curpage in the beginning of the loop.
->
-> Fixes: 81381d1a90de ("svcrdma: Adjust the number of entries in 
-> svc_rdma_recv_ctxt::rc_pages")
+On Tue, Oct 20, 2026 at 12:08:44PM +0900, Daejun Park wrote:
+> xfs_fs_map_blocks() marks the inode XFS_DIFLAG_PREALLOC after it
+> allocates blocks for a write layout, so that xfs_free_eofblocks() does
+> not free blocks past EOF that a client may write to. But a write layout
+> for a range past EOF where blocks are already allocated, such as the
+> speculative preallocation of buffered writes, gets those blocks without
+> an allocation, and the inode is not marked. blockgc, or the release of
+> the file, then frees them without breaking the layout. The client still
+> writes to them, and they may belong to another file by then.
+> 
+> With pynfs as the client, a file grown to 1 MiB by two buffered writes
+> on the server had 960 KiB preallocated past EOF, and an RW LAYOUTGET for
+> that range got it as one INVALID_DATA extent, without the inode being
+> marked. About 300 seconds later, with the default
+> speculative_prealloc_lifetime, blockgc freed those blocks while the
+> layout was still held. When the client then wrote through the layout and
+> sent LAYOUTCOMMIT, xfs_fs_commit_blocks() found a hole where the
+> unwritten extent had been, and xfs_iomap_write_unwritten() allocated for
+> it with no blocks reserved:
+> 
+>   XFS (nvme0n1): Corruption of in-memory data (0x8) detected at
+>     xfs_trans_mod_sb+0x817/0x960 (fs/xfs/xfs_trans.c:351).
+>     Shutting down filesystem.
+>   ...
+>    xfs_trans_mod_sb+0x817/0x960
+>    xfs_alloc_vextent_finish+0x2e7/0x990
+>    xfs_alloc_vextent_start_ag+0x25d/0x720
+>    xfs_bmap_btalloc+0xdd2/0x1720
+>    xfs_bmapi_allocate+0x197/0xf90
+>    xfs_bmapi_write+0x4d0/0xb60
+>    xfs_iomap_write_unwritten+0x307/0x7e0
+>    xfs_fs_commit_blocks+0x1d9/0x630
+>    nfsd4_block_proc_layoutcommit+0x5c2/0x7d0
+>    nfsd4_layoutcommit+0x4b5/0xa20
+> 
+> The client got NFS4ERR_IO, in six runs out of six. When small files were
+> written on the server after blockgc, with a sync first so that the freed
+> extents were no longer busy, they got those blocks, and the client's
+> write through the layout replaced 978944 bytes of their data before the
+> LAYOUTCOMMIT. A LAYOUTGET and LAYOUTCOMMIT 30 seconds apart, before
+> blockgc runs, leave the client's data in place.
+> 
+> Mark the inode also when a write mapping ends past EOF and nothing was
+> allocated, the same way as for an allocation, before the blocks are
+> handed out. With this, the same test keeps the blocks past blockgc, and
+> the LAYOUTCOMMIT after 360 seconds succeeds with the data in place.
+> 
+> To share the update with the allocation case, set a local update_inode
+> flag in both cases, call xfs_fs_map_update_inode() in one place below
+> them, and move the log force into xfs_fs_map_update_inode().
+> 
+> Fixes: 527851124d10 ("xfs: implement pNFS export operations")
 > Cc: stable@vger.kernel.org
-> Assisted-by: LLM
-> Tested-by: Xiang Mei <xmei5@asu.edu>
-> Signed-off-by: Giorgi Kobakhia <gkobakhi@asu.edu>
+> Reported-by: Chuck Lever <cel@kernel.org>
+> Link: https://lore.kernel.org/r/4de5356f-bc4d-4f1a-9c81-fce09b1b46fd@slotpi15m67
+> Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/xfs/xfs_pnfs.c | 34 +++++++++++++++++++++++++---------
+>  1 file changed, 25 insertions(+), 9 deletions(-)
 
-Commit 4e84914d70a0 "svcrdma: account for inline bytes in Read chunk page
-budget" in the nfsd-testing branch already carries this guard and addresses
-the same KASAN report. Thanks for the independent confirmation.
-
+Looks good,
+Reviewed-by: Pankaj Raghav <p.raghav@samsung.com>
 
 -- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+Pankaj
