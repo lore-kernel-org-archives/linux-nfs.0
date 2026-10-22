@@ -1,94 +1,73 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=37.230.196.243
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792669837;
-	b=HGA3V4mi7dhelqc5Ewwj8eX5LpcI22Aw5Lb5sUuXbV4JlL5lCxROiMyN6EqwHqcQlPqe
-	 /8mKiS6Zzno/1+zimaJynwOOlH62Uaq2GoEyBNYMA1LYY5iyGl8b4ZuVKel154koSfgUE
-	 czUiyX+pj3UxPk9VRwdsXGi9wEz94alVhXZ6sd+ajKcKmjiSqA4xXAIWKwrISFVCdZty4
-	 7mbTEXoeRo+vhchix7ZfJ1GTaSPRjEbEc1GVbmKln3Cgq6ca89QZO8eb9y9XniSyygkUv
-	 +JzXJFyAqft7yUAw9qOadiHhK46gmPTva9DylGEO/PhAN1P4V3F6XswEImX4JMZOhdg==
+	t=1792671762;
+	b=k7KICwHIrYyT2eqZZ/UC+bOg3U7uG5vH6LMBj/z+kVJmcbATdvBxpG3R+JrSMzaSAL4v
+	 uUIixNzRQExBkKPloo0UtL1gnahfhz7RzjCMYf5baz2z+PFymkMyOB2+F3slJeWvwP9DK
+	 NLyqMDTTEpy5gdPrW3IDiMehkz4kaH5kUehbm+MvgUFz0xDvJz9xtcJDzH1Et8QbrE2ZG
+	 PmUtWQcXLGeNKQNM4HXuHE2xQ9W3Y8wGgjWcOsxoRyo0qc21SReJ4PbTWy/fOuAkpZEjE
+	 +gQJFFte/gWcsnRgkgj4eq9mv8YOJPZ5vlRcey6zR29koGE57x8JBMR9RKLqDwHy7vw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792669837;
-	h=DMARC-Filter:DKIM-Signature:Received:Received:Received:From:To:Cc:
-	 Subject:Date:Message-ID:X-Mailer:MIME-Version:
-	 Content-Transfer-Encoding:X-KSMG-AntiPhishing:X-KSMG-AntiSpam-Auth:
-	 X-KSMG-AntiSpam-Envelope-From:X-KSMG-AntiSpam-Info:
-	 X-KSMG-AntiSpam-Interceptor-Info:X-KSMG-AntiSpam-Lua-Profiles:
-	 X-KSMG-AntiSpam-Method:X-KSMG-AntiSpam-Rate:X-KSMG-AntiSpam-Status:
-	 X-KSMG-AntiSpam-Version:X-KSMG-AntiVirus:X-KSMG-AntiVirus-Status:
-	 X-KSMG-LinksScanning:X-KSMG-Message-Action:X-KSMG-Rule-ID;
-	bh=3oJECff/6TmNjjeVvttGOtHn9ZcQvbn4GEFnSWveklU=;
-	b=x4WSyoAhVNnXtoSZ6BlHK+S4nAmQo10GPMKWspTZqasguSBwCKaEEb/9o20Vp3I+NDMy
-	 RzXgHjSJxi8zN53LzGlQqX4fkFm0ieyoLjkVP7zB9QzTEMSSk7gQ1JlGN24jQf75KOamv
-	 EJPZ5oX9iO2Nt4xHQUZkn5qx7CmuUEeiT1Nn0CJf0cFgON5M3zEpOuLhTNl1kycbNQYhb
-	 zjlxddsuR81oof1cJ7u5xQZl8wqYCVvrlFfbrRpvPFJEVpy+JgSzMePFe2//riXegMcfh
-	 QVNpJqyq/mf+L1rmhpwi5IXk7SqPf27zzEJguNBgjd3dI5ziMTPQnCeGAdQVVRLCyxg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792671762;
+	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
+	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
+	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
+	 References:Subject:Content-Type:Content-Transfer-Encoding;
+	bh=lL31NV31uswmFcMG4uuUkHmQjZyahNmfA5NSd7S2PCE=;
+	b=yGEVtYziSsYQIfppUSx/M2ZrGcNPInDFFXgAFWa8EnxvdS/Co12pn9pzuXN8/saJwimb
+	 AYyE3ECpmQZbsP5LY2ZYLdDWnZG9gBi5+eFts3i8HVVg5nGIW6vwiJcyJLeG6NeXqddmy
+	 v8AvLwd2ttOhey1JFnJnzPXoznLX2/eNDLXOnfVSq9j4PvQzY9eK8My8jORF9jqtOMHVH
+	 TItacNiqtTFTS5fsvK8tV/E2c6Q+0QQ5MKnnl7F3tOTtcmNqDrWRBeOyvnYQiqh7jq3aQ
+	 oidIi9RL8Vz/A9Vz5H2g/Lz3wL26c38cRPcdqEAjNqF77An1Q8WHx/0RkRtY9acaE+g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=astralinux.ru;
-	spf=pass smtp.mailfrom=astralinux.ru;
-	dkim=pass header.d=astralinux.ru header.i=@astralinux.ru header.a=rsa-sha256 header.s=mail header.b=HTyTEdqo;
-	arc=none smtp.remote-ip=37.230.196.243
-Received: from mail-gw01.astralinux.ru (mail-gw01.astralinux.ru [37.230.196.243])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Bt0jWbiz;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6C6D5606A319;
-	Thu, 22 Oct 2026 11:50:33 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6C6D5606A319
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=astralinux.ru
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=astralinux.ru
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B4B25606A330;
+	Thu, 22 Oct 2026 12:22:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=astralinux.ru header.i=@astralinux.ru header.a=rsa-sha256 header.s=mail header.b=HTyTEdqo
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=astralinux.ru;
-	s=mail; t=1792669830;
-	bh=RoWr8fDzA3UyiihscIKqmbkE7eoSYQCoE7+XgXJK44A=;
-	h=From:To:Cc:Subject:Date:From;
-	b=HTyTEdqoYwizTzEYXMjLAM94msMUUplS2R0b9qpWvlMv9sotVUSxUt2vrGgEtLITG
-	 /Zpk26HeDyflyFT8rV3DAeJCck/2TdWCCplJXLLL0qiP+m92h4dLk4vSAsodwAD4H0
-	 YQTCcr43mePI0lzg5HsSNJ7w61IEUqMqv7zM9osCwEWoty/3T7jkxJyypSdLr8IX2/
-	 qfXQ9G2DnpQ4vcwM2OqGzSAgTCVqkOibrYbvcq8ipuTQwH95z0KJU0MsvtW9zNMSYH
-	 pRv4pssvBIPHJlGzTE1MnueOeTz9A4ZCcpEZVgG7uZTRkRmM1PFsQlp3fcLSZibt5g
-	 vgX0JEO/Tiymw==
-Received: from gca-sc-a-srv-ksmg01.astralinux.ru (localhost [127.0.0.1])
-	by mail-gw01.astralinux.ru (Postfix) with ESMTP id 03268259D9;
-	Thu, 22 Oct 2026 14:50:30 +0300 (MSK)
-Received: from new-mail.astralinux.ru (unknown [10.205.207.10])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (P-256) server-digest SHA256)
-	(No client certificate requested)
-	by mail-gw01.astralinux.ru (Postfix) with ESMTPS;
-	Thu, 22 Oct 2026 14:50:27 +0300 (MSK)
-Received: from DESKTOP-D46TNHI (unknown [10.198.49.111])
-	by new-mail.astralinux.ru (Postfix) with ESMTPA id 4j9Pbk4BDfz2Khh;
-	Thu, 22 Oct 2026 14:50:26 +0300 (MSK)
-From: Mikhail Dmitrichenko <mdmitrichenko@astralinux.ru>
-To: stable@vger.kernel.org,
-	Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: Mikhail Dmitrichenko <mdmitrichenko@astralinux.ru>,
-	Sasha Levin <sashal@kernel.org>,
-	Chris Mason <clm@meta.com>,
-	Chuck Lever <cel@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Jakub Kicinski <kuba@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>,
-	linux-nfs@vger.kernel.org,
-	netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	lvc-project@linuxtesting.org,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Anna Schumaker <anna.schumaker@hammerspace.com>
-Subject: [PATCH 5.10] xprtrdma: Fix bcall rep leak and unbounded peek
-Date: Thu, 22 Oct 2026 14:50:02 +0300
-Message-ID: <20261022115004.1615-1-mdmitrichenko@astralinux.ru>
-X-Mailer: git-send-email 2.54.0.windows.1
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Bt0jWbiz
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 69F3D1F000C8;
+	Thu, 22 Oct 2026 12:22:41 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1792671761;
+	bh=lL31NV31uswmFcMG4uuUkHmQjZyahNmfA5NSd7S2PCE=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=Bt0jWbizqx66731kLA6kosw5my+SlsB/HO8xOpeR3vZEp39NxsXpl8DESXCe7H9Hn
+	 JTaeZkqkkt69uyt7SwCyzy88aEo/W2K8nbpsC8cCd/j662Xsn48Xric4mMspRIqBJz
+	 63Tb6hkvaNNKQEXghIMoPUHVmTTQ3G1Gfk60jwr6H88obzgjk2UL+cXGzCihJqGjZo
+	 TKKgLOCqwUUBLJTnEyYvidFFqrUQ6FuIkolNyumv96enHU+5CiIGxiI5u+V7ZH0N+3
+	 oA4/nN5M77GBybn6yacx8sHvnIyBsv3ijZwV4B3PabBCu5pzrgzs/lCvNFFy2c7Spo
+	 MBVV4I01ymxEw==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id A6318F40066;
+	Thu, 22 Oct 2026 08:22:40 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Thu, 22 Oct 2026 08:22:40 -0400
+X-ME-Sender: <xms:EADaaqo4P5HBSsoNBgXPIudVHkM40F8o3QPUBTZrV9j6H6BwiCvnmA>
+    <xme:EADaajewGikZPo64jHwVqJ-bfg96T1gskx5ifsdUTaHBtkpiXCh6IIRhOlpjkw2VA
+    kmx0_u5a0RqL_HumYw1QTN5uTk8rZk7g2ZY8daAqiGyai4lCFOb0dSg>
+X-ME-Proxy-Cause: dmFkZTE3Fpze23TlqyVGyIy3s5PLt5OWXDy2UHCpyIE5k6lPzEIPomiBsHPATLF2K1H1Hd
+    18SnlC+P96utND4XNW8QhOm18ZzRAcjg8CyAXuQhZLsHbQ5l3RS7x9D+rBYGBsBZRdsWH8
+    /+InIJuZqt1on3Keyt0g6cFzrK977OTPXZycnLgTK373M5uaM1IcDeEWvQwuwlH1tPyN1o
+    rNlw4u5yzp6BQEF7SSFFvkzqOPB3mfCLS/E1MqC5N0eYaYfKctZl0HDbpSP77OyLKNIEob
+    c7X/iKNQ6EJqB6zwrNTuXHpe3mgFLrmI6sZ5tGQWW13WZBnieG1IiBHwaNoHR6t+pcRMb2
+    8hVOp2+EAczRf/hbBvVV1LPK2dJW0NWDpkU9oqE7do8UQWYqU0LHH0mMGP51K+J5IjF5Fv
+    MuTQh5CIOJ7HWWu8Bia5oY5cwyc6zWJV2lCDA348r12KL90wh+ja+INtnB90hkZSNZ0Hco
+    TOk5hvFohtP/ulks6Af13LFag2HMpfCQNUWHv4jG4tXXAnXeRnVQEseRUxzdBd28KB2KEg
+    axArrD03vbz7QQhRxusooSQ55fCt78F8sqSV5tODL24PEhsGxxsUXyDxTFw9LKuayY+veM
+    kCb6QdJsMtsttBYRbNmUbxFAc+8h2qXeJ/Gq6sb88eUlajTO+FUOQJzedK4A
+X-ME-Proxy: <xmx:EADaapN_PmoHOmf9UNR0fY0WRns62xO1e8mq0kzAPS7PqX21sUoT8A>
+    <xmx:EADaatigbKtdPJSrw-bQE739vn6sABgaIyoB5B4dAYWu8niEvwWnhg>
+    <xmx:EADaangibXOc70IRgrN3AyhJopla7ssf5dpdRd09ASTFNgUwAdn5wg>
+    <xmx:EADaasJODjQ5vnn1TtRk15rwv2WTpd3IVpEYK0Xr2ELx20UxP6UE-w>
+    <xmx:EADaamniSqU9BHobPa5tOa0mgiLLjABXDk3vl6Wh6mYR6ORTlUf3tHEq>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 84B50782738; Thu, 22 Oct 2026 08:22:40 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -98,122 +77,68 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-KSMG-AntiPhishing: NotDetected
-X-KSMG-AntiSpam-Auth: dkim=none
-X-KSMG-AntiSpam-Envelope-From: mdmitrichenko@astralinux.ru
-X-KSMG-AntiSpam-Info: LuaCore: 131 0.3.131 f330ffd1b9dcd8f1d29707120f19686573775fe7, {Tracking_from_domain_doesnt_match_to}, new-mail.astralinux.ru:7.1.1;127.0.0.199:7.1.2;astralinux.ru:7.1.1;d41d8cd98f00b204e9800998ecf8427e.com:7.1.1, FromAlignment: s
-X-KSMG-AntiSpam-Interceptor-Info: scan successful
-X-KSMG-AntiSpam-Lua-Profiles: 206897 [Oct 22 2026]
-X-KSMG-AntiSpam-Method: none
-X-KSMG-AntiSpam-Rate: 0
-X-KSMG-AntiSpam-Status: not_detected
-X-KSMG-AntiSpam-Version: 6.1.1.27
-X-KSMG-AntiVirus: Kaspersky Secure Mail Gateway, version 2.1.0.7854, bases: 2026/10/22 03:54:00 #28723736
-X-KSMG-AntiVirus-Status: NotDetected, skipped
-X-KSMG-LinksScanning: NotDetected
-X-KSMG-Message-Action: skipped
-X-KSMG-Rule-ID: 1
+X-ThreadId: Ag9yIq03xO8V
+Date: Thu, 22 Oct 2026 08:22:20 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Giorgi Kobakhia" <gkobakhi@asu.edu>, "Jeff Layton" <jlayton@kernel.org>
+Cc: NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
+ "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
+ "Xiang Mei" <xmei5@asu.edu>, linux-nfs@vger.kernel.org,
+ netdev@vger.kernel.org, linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Message-Id: <d8952be8-7ee8-4c57-aea3-9f19011b377f@app.fastmail.com>
+In-Reply-To: <20261021203817.3898293-1-gkobakhi@asu.edu>
+References: <20261021203817.3898293-1-gkobakhi@asu.edu>
+Subject: Re: [PATCH] svcrdma: bound check rc_curpage in svc_rdma_build_read_segment
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-From: Chris Mason <clm@meta.com>
 
-commit c7653d5cebc8492c77ec0415b5e9c0fb3e644bc6 upstream.
 
-rpcrdma_is_bcall() decodes a reply's first words to decide whether
-the frame is a backchannel call. Two issues in that decode path
-let a short or malformed reply leak the receive buffer and drain
-the Receive queue.
+On Wed, Oct 21, 2026, at 4:38 PM, Giorgi Kobakhia wrote:
+> The existing guard in the end of loop is not enough for bounding
+> rc_curpage, because it only checks if some part of the chunk goes beyond
+> the rq_maxpages.
+>
+>     if (len && ((head->rc_curpage + 1) > rqstp->rq_maxpages))
+> 	goto out_put;
+>
+> If the chunk exactly fills up the pages, then len is 0, guard is skipped
+> and the next chunk makes head->rc_curpage go over rq_maxpages.
+>
+> Commit 81381d1a90de ("svcrdma: Adjust the number of entries in
+> svc_rdma_recv_ctxt::rc_pages") made OOB accessible, since it
+> shrunk the rc_pages array size to rc_maxpages.
+>
+> Commit d1bea0ce35b6 ("svcrdma: bound check rq_pages index in inline
+> path") added a loop-top "rc_curpage >= rq_maxpages" guard in nearby
+> function svc_rdma_copy_inline_range(). The same check would guard it in
+> svc_rdma_build_read_segment().
+>
+> OOB write is triggered in svc_rdma_process_read_list():
+>
+>  BUG: KASAN: slab-out-of-bounds in svc_rdma_process_read_list
+>         (svc_rdma_rw.c:1148 svc_rdma_rw.c:1197)
+>  Write of size 8
+>
+>  Call Trace:
+>   svc_rdma_process_read_list (svc_rdma_rw.c:1148 svc_rdma_rw.c:1197)
+>   svc_rdma_recvfrom (net/sunrpc/xprtrdma/svc_rdma_recvfrom.c:1022)
+>   svc_recv (net/sunrpc/svc_xprt.c:870 net/sunrpc/svc_xprt.c:968)
+>   nfsd (fs/nfsd/nfssvc.c:919)
+>
+> Add bound check for rc_curpage in the beginning of the loop.
+>
+> Fixes: 81381d1a90de ("svcrdma: Adjust the number of entries in 
+> svc_rdma_recv_ctxt::rc_pages")
+> Cc: stable@vger.kernel.org
+> Assisted-by: LLM
+> Tested-by: Xiang Mei <xmei5@asu.edu>
+> Signed-off-by: Giorgi Kobakhia <gkobakhi@asu.edu>
 
-First, the speculative peek
+Commit 4e84914d70a0 "svcrdma: account for inline bytes in Read chunk page
+budget" in the nfsd-testing branch already carries this guard and addresses
+the same KASAN report. Thanks for the independent confirmation.
 
-    p = xdr_inline_decode(xdr, 0);
-    /* five p++ reads follow */
 
-asks xdr_inline_decode() for zero bytes, which returns xdr->p
-without consulting xdr->end. The five subsequent __be32 reads can
-then walk up to 20 bytes past the wire payload into stale regbuf
-contents and misclassify the reply as a backchannel call.
-
-Second, after the post-peek
-
-    p = xdr_inline_decode(xdr, 3 * sizeof(*p));
-    if (unlikely(!p))
-            return true;
-
-the short-header arm returns true without calling
-rpcrdma_bc_receive_call(). The contract with the caller is that a
-true return transfers ownership of rep to the backchannel path:
-
-    rpcrdma_reply_handler()
-      if (rpcrdma_is_bcall(r_xprt, rep))
-              return;        /* bare return, skips out_post */
-      ...
-    out_post:
-      rpcrdma_post_recvs(r_xprt, credits + ...);
-
-Because rpcrdma_bc_receive_call() never ran, no one took rep, but
-rpcrdma_reply_handler still bare-returns past rpcrdma_rep_put()
-and rpcrdma_post_recvs(). The rep, with its persistently
-DMA-mapped receive buffer, is orphaned on rb_all_reps and freed
-only at transport teardown. This completion reposts nothing, so
-its slot is reclaimed only when a later forward-channel reply
-reaches out_post and rpcrdma_post_recvs() allocates a fresh rep to
-backfill; absent that traffic the Receive queue drains and the
-peer's Sends draw RNR NAKs.
-
-Fix by consulting xdr->end after the zero-length peek so the five
-__be32 reads cannot run unless 20 bytes of wire payload remain. A
-byte-precise comparison against xdr->end is required because a
-non-4-aligned receive rounds the stream's word count up past the
-true payload. Also return false from the short-header arm so the
-reply falls through the normal out_norqst cleanup chain
-(rpcrdma_rep_put() plus rpcrdma_post_recvs()).
-
-Fixes: 41c8f70f5a3d ("xprtrdma: Harden backchannel call decoding")
-Assisted-by: kres:claude-opus-4-7
-Signed-off-by: Chris Mason <clm@meta.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Anna Schumaker <anna.schumaker@hammerspace.com>
-[ mdmitrichenko: 5.10 lacks commit 84dff5eb86ce ("rpcrdma: Fix
-  comments about reverse-direction operation"), which replaced the
-  out_short label with a direct return. Return false directly here as
-  well and drop the out_short label together with its pr_warn(), which
-  would be unused otherwise. ]
-Signed-off-by: Mikhail Dmitrichenko <mdmitrichenko@astralinux.ru>
----
-Backport fix for CVE-2026-72466
- net/sunrpc/xprtrdma/rpc_rdma.c | 8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index b8174c77dfe1..c9e179b7366e 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -1146,6 +1146,8 @@ rpcrdma_is_bcall(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep)
- 
- 	/* Peek at stream contents without advancing. */
- 	p = xdr_inline_decode(xdr, 0);
-+	if ((char *)xdr->end - (char *)p < 5 * XDR_UNIT)
-+		return false;
- 
- 	/* Chunk lists */
- 	if (xdr_item_is_present(p++))
-@@ -1170,14 +1172,10 @@ rpcrdma_is_bcall(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep)
- 	 */
- 	p = xdr_inline_decode(xdr, 3 * sizeof(*p));
- 	if (unlikely(!p))
--		goto out_short;
-+		return false;
- 
- 	rpcrdma_bc_receive_call(r_xprt, rep);
- 	return true;
--
--out_short:
--	pr_warn("RPC/RDMA short backward direction call\n");
--	return true;
- }
- #else	/* CONFIG_SUNRPC_BACKCHANNEL */
- {
 -- 
-2.43.0
-
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
