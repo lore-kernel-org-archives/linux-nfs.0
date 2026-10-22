@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792677238;
-	b=vwgO2923agv3BzALiZoOT2zkul6RCa9ZGsi81ciNuoHnaXjT3o4/udnsCtkLL5P5dCnm
-	 +5BPtnFE5IyO/Vcg9/ZGy61G9YpGMJ69HOlkmL4Am9zsEIXjQBXMshapRinRwjwQjAekf
-	 BcR9ri1n9t8eXaTfj4n9NjakaCBrsdcs8YT76AD5xN53gzLWHlbT1+0qwlvXVu5Hzc4DF
-	 Rjj+ai0A3e5vO6GCXA6n6X/m3XbN8k8YIcbeEvuH1RqWbVouWe+UQUsFiu1yvvRA0ztjs
-	 K9u7SiEGe/2/UvVUsbgxTdS6VTqop57r/y8vNhVuym2rNUN48sbN1f0COCmzIme10PQ==
+	t=1792677239;
+	b=jPv6C5jOaQklB3/LwMiITIBPeEXb6L1Oj2medkrmObvPqF9BCV1SJ9RhG5x+kbJIhwdc
+	 Ie3h0e/kfY6bQce/R4d7E33knOY1VwEFSXg+v4rmxPg2yEkPPnn2wwz3Uark1NolUaXei
+	 lcaORSSteyRdxIbR01380xwymIehDVmRqungxlT9yt61/jOw+ucklr78xs/yPjHNpZZME
+	 iqfSLxWxfmO0qvXt8W8ubJfRU6bGQE3p2cWEvgll5aCpuTdcZAhqxe4sJZpvOylqce4Bw
+	 p6UV16GHxjk488d8oolwbYllGV5K2Ex1t1iBt+t5eKaL0Ue9tu7GN/OtTDOAv8AeOgA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792677238;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792677239;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=KYrKCeGh8wjNaUIa5KBnc/r9+htegOGs4zi1rVPnML8=;
-	b=C8UPizl/zUXt7pUL6qWMLeUICLWDNfXaVnGxpxtBoFGuRfkFaybjBrIm7eJM/ak/LNUe
-	 pHLnyjb2SaY0Fp8BBesXpQkPANUiQt2o+6KhaIZ6GyrrgGWdtXYstwo5rIldAxmQwnBbQ
-	 hX32DDUOvW/GmgC9A75Tu9VljfnWSuLll63WcLVYCke55usNKnyKrISF8IlIqEqTNpMB0
-	 8K7d+wMyCGsfDXsdlNqY19seVx9aDfPIKRfIuWU1P0gT+qEe2vf82CXSf0KFfNaKkLOcc
-	 TyuVClwjAgHCbQnquEheqHe5qw7unAMqmfhL/TEhlzlfn8oAD5frL76kGqA2vqivjbA==
+	bh=l/SYOztz3S1wk1X+qq29s1VhuKD7EJEaLUhpfaRqnBY=;
+	b=H/Qw5ryLAi80hBVgilplXO7ORR2xu0ksetlaI3rXzWzHp7GWWYLG2bRbwXqFd5swUhMv
+	 MeGnaseWkqO8Avayq/WewsWhyv7JL6RxEt29dKoLJF+dGRfB+3W4cw/g0Erv4hgFeyuOg
+	 I1JFgSCZgQleeqXbXxsACsb2YrUhjYNyA8aG7SGA0runtu+qd1fzywn5GBAedmPMT9DKs
+	 HE9KaO2RVSts5hbu5SqyqfOgZRIPjTIAaoaqGTqL16+kuK+8cJboU98cIdnaHGZHHDBqw
+	 C06obQJHN8O5Ik8254WbVOS4xCX7CbC4nTm2UXwoSts8fSnIaqPFXr1kQ+gFyWUbFUw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZP+hscM3;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NNoOVqI0;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8A0F660A2629
-	for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2026 13:53:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 508FD60A383A
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2026 13:53:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZP+hscM3
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A4F991F000C8;
-	Thu, 22 Oct 2026 13:53:57 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NNoOVqI0
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6D33C1F000C3;
+	Thu, 22 Oct 2026 13:53:58 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792677238;
-	bh=KYrKCeGh8wjNaUIa5KBnc/r9+htegOGs4zi1rVPnML8=;
+	s=k20260515; t=1792677239;
+	bh=l/SYOztz3S1wk1X+qq29s1VhuKD7EJEaLUhpfaRqnBY=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=ZP+hscM3Wwmk/OSh3BX7zxgCNjI355Ok1oXOuHDruy3ZsscIG+Q15kfJdonNTgXNH
-	 qGUiqNonSkYXG8NUz2IEnyU/b043PK1F2QS2ei8FKZfZS5dkZ1ymdiiBxulEfOBwoM
-	 x1V4ZEKoj7fOYR5w685l9y1hLbrOI160DloD0o875JbId9WCHd0Klr1I8oDOF8Uh9H
-	 IsQDTGnoU3FJ4nCx23CMliYesnE/fkOMManb46AWDL8kP19WPtXqOqxFz1KsHCLCLy
-	 hZwesZkBXGbS+1tNspgpXT8L7OXmNi+lDD6zb/qoPYChHrdG1n0N/kntnw+dKDh05W
-	 RqtQD+KX9E3kg==
+	b=NNoOVqI0EMBhRgJiXv/O5AzOHGCaow+KJFicZ7fmAffpEYJuzEyeUQsCqsaywj6M5
+	 B4AuX2qKEHy4Qw5knwsUOXDGapIKn2f2IBnf5iy7sEWKLEHXgGRE73Qm0aCcI/PJFO
+	 n143tNw23yZ6uYbANpBOW/Ej5VrASfLWdicugP/gyvUQ0Jryyw24qjHgVSvAhlFm8s
+	 6y7v1qPz+bLsWG/i3pHDFp15MCkHbTly0ne4hPGfbmN00PeJADKgiv0BZJ0pHrWd6V
+	 sgtA0/95swa4vUp8DCEnYXru98jkZFQPjhEY8+u0y3PKBPHOSmo2iLg8zJkoarrS4U
+	 1IGmzPHdFKCew==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -46,9 +46,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 16/17] NFSD: Use xdrgen XDR functions for the NFS-ACL v2 ACCESS procedure
-Date: Thu, 22 Oct 2026 09:53:40 -0400
-Message-ID: <20261022135341.14265-17-cel@kernel.org>
+Subject: [PATCH v1 17/17] NFSD: Map every NFS_ACLv2 reply status into aclstat2
+Date: Thu, 22 Oct 2026 09:53:41 -0400
+Message-ID: <20261022135341.14265-18-cel@kernel.org>
 X-Mailer: git-send-email 2.56.0
 In-Reply-To: <20261022135341.14265-1-cel@kernel.org>
 References: <20261022135341.14265-1-cel@kernel.org>
@@ -63,246 +63,66 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Convert the NFS-ACL version 2 ACCESS procedure to xdrgen. As with
-the GETATTR conversion, neither direction needs a hand-written XDR
-tail: ACCESS2args carries a file handle and an access bitmask, so
-the generated nfs_acl_svc_decode_ACCESS2args decodes the argument
-in full, and ACCESS2res carries a status word and, on success, the
-file attributes and the granted access bits, so the generated
-nfs_acl_svc_encode_ACCESS2res emits the entire reply. On an error
-status the encoder emits only the status word, matching what the
-hand-written encoder produced. Wrapper structures bridge the
-generated ACCESS2args and ACCESS2res types and the legacy svc_fh
-and scratch kstat that the NFSD VFS layer still uses.
+nfsacld_map_status() translates only the three fh_verify() statuses
+that have no NFSv2 equivalent, so every other status reaches the
+encoder unchanged. fh_verify() returns nfserr_perm for a request from
+an insecure port, and both it and fh_getattr() pass errno values
+through nfserrno(), which yields nfserr_jukebox for ENOMEM, EAGAIN,
+and ETIMEDOUT and nfserr_serverfault for an errno its table does not
+list. NFS_ACL version 2 shares its status space with NFSv2, so 10008
+and 10006 are values an NFS_ACLv2 client cannot interpret.
+draft-ietf-nfsv4-nfs-acl Section 5.1.5 lists the status values an
+NFS_ACLv2 server returns, and these are not among them.
 
-The procedure's pc_argzero is zero because the generated decoder
-writes the whole ACCESS2args, making the earlier defensive memset
-of the argument buffer unnecessary.
-
-Because nfsacld_proc_access() now fills in the reply attributes and
-releases the file handle itself, the fh_getattr() call moves into
-the proc function and the separate ->pc_release callback is dropped.
-This makes it straightforward to confirm the handle is released on
-every flow.
-
-ACCESS was the only remaining user of the file-local struct
-nfsd3_accessargs and struct nfsd3_accessres, so this removes those
-definitions, the hand-written accessargs decoder and accessres
-encoder, and the ST and AT size macros that only the ACCESS entry
-still referenced. The svcxdr_decode_fhandle, svcxdr_encode_stat,
-and svcxdr_encode_fattr declarations lose their last callers here
-and are removed as well.
-
-While rewriting the procedure entry, correct its pc_name from the
-stale "SETATTR" to "ACCESS".
+Pass through the statuses that are members of aclstat2 and map the
+rest to ACL2ERR_IO, the status nfsacld_map_errno() already uses for
+an unlisted errno. Translate nfserr_notsupp to ACL2ERR_NOTSUPP, the
+status nfsacld_map_errno() returns for EOPNOTSUPP. The existing
+BADHANDLE, NOFILEHANDLE, and WRONGSEC translations are unchanged.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs2acl.c | 132 ++++++++++++++++------------------------------
- 1 file changed, 45 insertions(+), 87 deletions(-)
+ fs/nfsd/nfs2acl.c | 23 ++++++++++++++++++-----
+ 1 file changed, 18 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
-index d4261ef076bd..a805d2ac76db 100644
+index a805d2ac76db..b4ab0bb1808d 100644
 --- a/fs/nfsd/nfs2acl.c
 +++ b/fs/nfsd/nfs2acl.c
-@@ -95,22 +95,19 @@ struct GETATTR2res_wrapper {
- 
- static_assert(offsetof(struct GETATTR2res_wrapper, xdrgen) == 0);
- 
--struct nfsd3_accessargs {
-+struct ACCESS2args_wrapper {
-+	struct ACCESS2args	xdrgen;
- 	struct svc_fh		fh;
--	__u32			access;
- };
- 
--struct nfsd3_accessres {
--	__be32			status;
--	struct svc_fh		fh;
--	__u32			access;
-+static_assert(offsetof(struct ACCESS2args_wrapper, xdrgen) == 0);
-+
-+struct ACCESS2res_wrapper {
-+	struct ACCESS2res	xdrgen;
- 	struct kstat		stat;
- };
- 
--bool svcxdr_decode_fhandle(struct xdr_stream *xdr, struct svc_fh *fhp);
--bool svcxdr_encode_stat(struct xdr_stream *xdr, __be32 status);
--bool svcxdr_encode_fattr(struct svc_rqst *rqstp, struct xdr_stream *xdr,
--			 const struct svc_fh *fhp, const struct kstat *stat);
-+static_assert(offsetof(struct ACCESS2res_wrapper, xdrgen) == 0);
- 
- /*
-  * These maps are identical to the NFSv3 maps (nfs3proc.c). This enables
-@@ -514,28 +511,41 @@ static __be32 nfsacld_proc_getattr(struct svc_rqst *rqstp)
- 	return rpc_success;
- }
- 
--/*
-- * Check file access
-+/**
-+ * nfsacld_proc_access - ACCESS: Check access permission
-+ * @rqstp: RPC transaction context
-+ *
-+ * Return:
-+ *   %rpc_success:		RPC executed successfully
-+ *
-+ * RPC synopsis:
-+ *   ACCESS2res ACLPROC2_ACCESS(ACCESS2args) = 4;
-  */
- static __be32 nfsacld_proc_access(struct svc_rqst *rqstp)
+@@ -187,15 +187,28 @@ static __be32 nfsacld_map_errno(int errno)
+ static __be32 nfsacld_map_status(__be32 status)
  {
--	struct nfsd3_accessargs *argp = rqstp->rq_argp;
--	struct nfsd3_accessres *resp = rqstp->rq_resp;
-+	struct ACCESS2args_wrapper *argp = rqstp->rq_argp;
-+	struct ACCESS2res_wrapper *resp = rqstp->rq_resp;
-+	struct svc_fh *fhp = &argp->fh;
- 
-+	nfsacld_fhandle_to_svc_fh(fhp, &argp->xdrgen.fh);
- 	dprintk("nfsd: ACCESS(2acl)   %s 0x%x\n",
--			SVCFH_fmt(&argp->fh),
--			argp->access);
-+			SVCFH_fmt(fhp), argp->xdrgen.access);
- 
--	fh_copy(&resp->fh, &argp->fh);
--	resp->access = argp->access;
--
--	resp->status = nfsd_access(rqstp, &resp->fh, &nfsd2_access_maps,
--				   &resp->access, NULL);
--	if (resp->status != acl2_ok)
-+	resp->xdrgen.status = nfsd_access(rqstp, fhp, &nfsd2_access_maps,
-+					  &argp->xdrgen.access, NULL);
-+	if (resp->xdrgen.status != acl2_ok)
- 		goto out;
--	resp->status = fh_getattr(&resp->fh, &resp->stat);
-+	resp->xdrgen.status = fh_getattr(fhp, &resp->stat);
-+
- out:
--	resp->status = nfsacld_map_status(resp->status);
-+	if (resp->xdrgen.status == acl2_ok) {
-+		struct ACCESS2resok *resok = &resp->xdrgen.u.resok;
-+
-+		resok->access = argp->xdrgen.access;
-+		nfsacld_stat_to_fattr(rqstp, &resok->attr, &resp->stat, fhp);
-+	}
-+	fh_put(fhp);
-+	resp->xdrgen.status = nfsacld_map_status(resp->xdrgen.status);
- 	return rpc_success;
- }
- 
-@@ -733,47 +743,6 @@ bool nfs_acl2_secattr_decode_end(struct xdrgen_aggregate_cursor *c, bool ok)
- 	return posix_acl_from_nfsacl(acl) == 0;
- }
- 
--/*
-- * XDR decode functions
-- */
--
--static bool
--nfsaclsvc_decode_accessargs(struct svc_rqst *rqstp, struct xdr_stream *xdr)
--{
--	struct nfsd3_accessargs *args = rqstp->rq_argp;
--
--	if (!svcxdr_decode_fhandle(xdr, &args->fh))
--		return false;
--	if (xdr_stream_decode_u32(xdr, &args->access) < 0)
--		return false;
--
--	return true;
--}
--
--/*
-- * XDR encode functions
-- */
--
--/* ACCESS */
--static bool
--nfsaclsvc_encode_accessres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
--{
--	struct nfsd3_accessres *resp = rqstp->rq_resp;
--
--	if (!svcxdr_encode_stat(xdr, resp->status))
--		return false;
--	switch (resp->status) {
--	case acl2_ok:
--		if (!svcxdr_encode_fattr(rqstp, xdr, &resp->fh, &resp->stat))
--			return false;
--		if (xdr_stream_encode_u32(xdr, resp->access) < 0)
--			return false;
+ 	switch (status) {
++	case acl2_ok:
++	case acl2err_perm:
++	case acl2err_noent:
++	case acl2err_io:
++	case acl2err_acces:
++	case acl2err_inval:
++	case acl2err_nospc:
++	case acl2err_rofs:
++	case acl2err_notsupp:
++	case acl2err_dquot:
++	case acl2err_stale:
++		return status;
+ 	case cpu_to_be32(NFS4ERR_NOFILEHANDLE):
+ 	case cpu_to_be32(NFS3ERR_BADHANDLE):
+-		status = acl2err_stale;
 -		break;
--	}
--
--	return true;
--}
--
++		return acl2err_stale;
+ 	case cpu_to_be32(NFS4ERR_WRONGSEC):
+-		status = acl2err_acces;
+-		break;
++		return acl2err_acces;
++	case cpu_to_be32(NFS3ERR_NOTSUPP):
++		return acl2err_notsupp;
++	default:
++		return acl2err_io;
+ 	}
+-	return status;
+ }
+ 
  /*
-  * XDR release functions
-  */
-@@ -785,13 +754,6 @@ static void nfsaclsvc_release_getacl(struct svc_rqst *rqstp)
- 	posix_acl_release(resp->acl_default);
- }
- 
--static void nfsaclsvc_release_access(struct svc_rqst *rqstp)
--{
--	struct nfsd3_accessres *resp = rqstp->rq_resp;
--
--	fh_put(&resp->fh);
--}
--
- static void nfsaclsvc_release_setacl(struct svc_rqst *rqstp)
- {
- 	struct SETACL2args_wrapper *argp = rqstp->rq_argp;
-@@ -800,9 +762,6 @@ static void nfsaclsvc_release_setacl(struct svc_rqst *rqstp)
- 	posix_acl_release(argp->acl_default);
- }
- 
--#define ST 1		/* status*/
--#define AT 21		/* attributes */
--
- static const struct svc_procedure nfsd_acl_procedures2[5] = {
- 	[ACLPROC2_NULL] = {
- 		.pc_func	= nfsacld_proc_null,
-@@ -851,16 +810,15 @@ static const struct svc_procedure nfsd_acl_procedures2[5] = {
- 		.pc_name	= "GETATTR",
- 	},
- 	[ACLPROC2_ACCESS] = {
--		.pc_func = nfsacld_proc_access,
--		.pc_decode = nfsaclsvc_decode_accessargs,
--		.pc_encode = nfsaclsvc_encode_accessres,
--		.pc_release = nfsaclsvc_release_access,
--		.pc_argsize = sizeof(struct nfsd3_accessargs),
--		.pc_argzero = sizeof(struct nfsd3_accessargs),
--		.pc_ressize = sizeof(struct nfsd3_accessres),
--		.pc_cachetype = RC_NOCACHE,
--		.pc_xdrressize = ST+AT+1,
--		.pc_name = "SETATTR",
-+		.pc_func	= nfsacld_proc_access,
-+		.pc_decode	= nfs_acl_svc_decode_ACCESS2args,
-+		.pc_encode	= nfs_acl_svc_encode_ACCESS2res,
-+		.pc_argsize	= sizeof(struct ACCESS2args_wrapper),
-+		.pc_argzero	= 0,
-+		.pc_ressize	= sizeof(struct ACCESS2res_wrapper),
-+		.pc_cachetype	= RC_NOCACHE,
-+		.pc_xdrressize	= NFS_ACL2_ACCESS2res_sz,
-+		.pc_name	= "ACCESS",
- 	},
- };
- 
-@@ -871,11 +829,11 @@ union nfsd_acl2_xdrstore {
- 	struct GETACL2args_wrapper	getaclargs;
- 	struct SETACL2args_wrapper	setaclargs;
- 	struct GETATTR2args_wrapper	getattrargs;
--	struct nfsd3_accessargs		accessargs;
-+	struct ACCESS2args_wrapper	accessargs;
- 	struct GETACL2res_wrapper	getaclres;
- 	struct SETACL2res_wrapper	setaclres;
- 	struct GETATTR2res_wrapper	getattrres;
--	struct nfsd3_accessres		accessres;
-+	struct ACCESS2res_wrapper	accessres;
- };
- 
- const struct svc_version nfsd_acl_version2 = {
 -- 
 2.56.0
 
