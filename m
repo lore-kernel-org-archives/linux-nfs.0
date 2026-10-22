@@ -1,40 +1,81 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.37.145.25
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=37.230.196.243
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792655425;
-	b=QU1tCXWVVxmpZhXV4RtL5ffDzKmgTMZKpJJR9FGfqjX46RuxpF1YZBxmeR9VzZWc3q/8
-	 nHsj39/Ntag7+NoDffOFPrAopuBIDSkaG46cueevgOXCJH002NTzE/pC+6jA5NVXMmvxC
-	 4hcC9OiysTyFzsL68pUriSyA1ubietQFjAqQv8xoROIZj5D+K+9nlxZzYLGiQ5gIp7hU+
-	 aLdZU/8SgEyb3C71icbmw/3vubPad4lNnbQvr/v7UU+e5GJn+jqmRJR3zzfahmiVm4ozC
-	 +JB9Z+eb+6bvT1EyUNJK/pN2BAoUcpr+MuXLiXcwyRsvgJM1nWUugxEQun7aXKR/NBA==
+	t=1792662061;
+	b=ja9ID9VRtD1SAbqranInSAAXQoNxcMYH8lxBiHJSNgLQEp0cOAuQMLE7uRHgmZwFiYSM
+	 afThurnCYzBpY6H+M+yKerxdBc8tRG5cE9S5SQXdg7D/TCDxCZ2dmJwsf1D/lWJLhHeCx
+	 Rq7KMFM2kVf/u5mSLlsq9Sce2TpwCpnACNGZTgAJeFk2q2+acKN9gIUThJF/ZYl4gkdU4
+	 HG/BASt5BFzBgZA6CBq7reul1tq59UwdVg+jlinrnsdO2p5x6nNpRQG9mQKR5HZSThKKk
+	 X40oDiU7F7jkCOvzB48R0mhO/uBc1nCEqgEpZuOKt7Eh9OKK9EMp/oXsnNCJ/0ryBxQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792655425;
-	h=DMARC-Filter:Received:Message-ID:Date:MIME-Version:User-Agent:
-	 Subject:To:Cc:References:From:In-Reply-To:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=QV+zN2xUewUmdQImdTxG7PLvSY4gZjRJOD9j8lRSP+Q=;
-	b=2XPqzool8/QHCkEZ0g86P4zmN29rumAxFfcMwBIsubv9hf+YLMMhxKmvN3XGjhdX7CNc
-	 stL6dQ5v7+oEpLoiioi8MNp+JmpJ07QbygX7fjdLmXwH6RrzmEu6z8cp1htvLuoEKsl1i
-	 N6nbJwa+RJ5TNlOkyrNuGAc22I2O4a1KSqXGQHEBqT87PpPW79mocpY5Z3lKH7tED2NO9
-	 t3KQeqWFfqvywvJ67+8YL4p9vvNcGBNMfgIBi10eIHzjmcsuVwxBT+tyr10z/RMQRa+s0
-	 HemceRX3zyql3C48aVgLwIwxQSIyKvzvuy7Myfecg5QZwTSqzaK4h4jKRNxAX9BtSvg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792662061;
+	h=DMARC-Filter:DKIM-Signature:Received:Received:Received:From:To:Cc:
+	 Subject:Date:Message-ID:X-Mailer:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:X-KSMG-AntiPhishing:X-KSMG-AntiSpam-Auth:
+	 X-KSMG-AntiSpam-Envelope-From:X-KSMG-AntiSpam-Info:
+	 X-KSMG-AntiSpam-Interceptor-Info:X-KSMG-AntiSpam-Lua-Profiles:
+	 X-KSMG-AntiSpam-Method:X-KSMG-AntiSpam-Rate:X-KSMG-AntiSpam-Status:
+	 X-KSMG-AntiSpam-Version:X-KSMG-AntiVirus:X-KSMG-AntiVirus-Status:
+	 X-KSMG-LinksScanning:X-KSMG-Message-Action:X-KSMG-Rule-ID;
+	bh=VkX6/hxg6tGP+Na+8+f6fQRtPVGU63YxkS54Fjitld0=;
+	b=NvoVgFzbarkgi+Yp0ZUnWDhTSZ54EdFcgHor5sTnZgHMX+E6P0fOnIFC9rLEWrC823Rl
+	 I0B58XSHQA7ufJd4J7X0SitBf+Vbsz2Cm8vNdjMXN+6bfT6pVbW9tEGMGCcjpZglPmEpj
+	 GucmCVpmOwEjvz95d6JnkPE84dh5TLnLSY+XyyASosN76+nQIDFNh4fljMBrgjIXACXad
+	 l1DPuFrrRk43mhmchaayMY0/iZREZTR/jJV+Q7p1YJCatIoPxX35npEatTBxTJtJefZXy
+	 pNHKXHZPJGLazU/Zu/LTpu+vhOyAkKcC9fykLwA+mEuqBMC5AH0H2YMI3t75qCssHYg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=iap-kborn.de;
-	spf=pass smtp.mailfrom=iap-kborn.de;
-	arc=none smtp.remote-ip=195.37.145.25
-Received: from mailx.iap-kborn.de (mailx.iap-kborn.de [195.37.145.25])
+	dmarc=pass header.from=astralinux.ru;
+	spf=pass smtp.mailfrom=astralinux.ru;
+	dkim=pass header.d=astralinux.ru header.i=@astralinux.ru header.a=rsa-sha256 header.s=mail header.b=m2QDR8rV;
+	arc=none smtp.remote-ip=37.230.196.243
+Received: from mail-gw01.astralinux.ru (mail-gw01.astralinux.ru [37.230.196.243])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2CCF4606A31B;
-	Thu, 22 Oct 2026 07:50:22 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2CCF4606A31B
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=iap-kborn.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=iap-kborn.de
-Received: from [195.37.145.130] (pcdueff.iap-kborn.de [195.37.145.130])
-	by mailx.iap-kborn.de (Postfix) with ESMTPSA id 1483E3B90E3;
-	Thu, 22 Oct 2026 09:50:15 +0200 (CEST)
-Message-ID: <4ca06c28-d4f1-4876-a9e7-16488c18a380@iap-kborn.de>
-Date: Thu, 22 Oct 2026 09:50:15 +0200
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6E544606A31A;
+	Thu, 22 Oct 2026 09:40:52 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6E544606A31A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=astralinux.ru
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=astralinux.ru
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=astralinux.ru header.i=@astralinux.ru header.a=rsa-sha256 header.s=mail header.b=m2QDR8rV
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=astralinux.ru;
+	s=mail; t=1792662043;
+	bh=eLxqJqOnXKPl8NOR565h9c6QuRkURN7KkC0Ml4xZeEk=;
+	h=From:To:Cc:Subject:Date:From;
+	b=m2QDR8rVQ4Siq3hgKZli95eyy4GL2idh5Oi38kf5zEGo50bBe3QAHUfPeLIBIwiU4
+	 7y5hiSZH3IUz+t0neF31idwxCypZTMYLwMBa6JlOEhHiNJRNWcdRZPf0BHzlyuQhBH
+	 5xbVz7A58Z2fXg7b204K0tFUAP/YF98jzs/FJAaxc8vL2Q1FqsD3saKxJmIo/tjh+A
+	 XRjoFx7rNDfYG0HOaVZEeOpdN7WBUdL2RQmAn0hWJR3TyHJHQz+aaz2AKXmbKKHnyP
+	 s9eap+l6JTwdxeyhgZx7x7G7LYYk3BnTfuASws64HsrOfseELfyLipbe2Xnzc6qF7n
+	 0BBrIeRgId0+A==
+Received: from gca-sc-a-srv-ksmg01.astralinux.ru (localhost [127.0.0.1])
+	by mail-gw01.astralinux.ru (Postfix) with ESMTP id 5359825867;
+	Thu, 22 Oct 2026 12:40:43 +0300 (MSK)
+Received: from new-mail.astralinux.ru (unknown [10.205.207.6])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (P-256) server-digest SHA256)
+	(No client certificate requested)
+	by mail-gw01.astralinux.ru (Postfix) with ESMTPS;
+	Thu, 22 Oct 2026 12:40:41 +0300 (MSK)
+Received: from DESKTOP-D46TNHI (unknown [10.198.49.111])
+	by new-mail.astralinux.ru (Postfix) with ESMTPA id 4j9Lk12Nt3zNlm;
+	Thu, 22 Oct 2026 12:40:41 +0300 (MSK)
+From: Mikhail Dmitrichenko <mdmitrichenko@astralinux.ru>
+To: stable@vger.kernel.org,
+	Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Mikhail Dmitrichenko <mdmitrichenko@astralinux.ru>,
+	Sasha Levin <sashal@kernel.org>,
+	=?UTF-8?q?J=C3=A9r=C3=A9my=20Jean?= <Jeremy.Jean@oss.cyber.gouv.fr>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	lvc-project@linuxtesting.org,
+	Trond Myklebust <trond.myklebust@hammerspace.com>
+Subject: [PATCH 5.10/5.15] NFSv4.1: zero referring call lists before decoding
+Date: Thu, 22 Oct 2026 12:37:39 +0300
+Message-ID: <20261022093742.1216-1-mdmitrichenko@astralinux.ru>
+X-Mailer: git-send-email 2.54.0.windows.1
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -44,127 +85,66 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [BUG] NFSv4.1 client hang in nfs4_drain_slot_tbl under concurrent
- workload against Windows NFS server
-To: =?UTF-8?B?6YOt546y5YW0?= <guolingxing@supcon.com>,
- Rick Macklem <rick.macklem@gmail.com>
-Cc: Lionel Cons <lionelcons1972@gmail.com>, linux-nfs@vger.kernel.org,
- linux-kernel@vger.kernel.org
-References: <552f72d1.1c692.19e389e8ea4.Coremail.guolingxing@supcon.com>
-From: Peter Schubert <schubert@iap-kborn.de>
-In-Reply-To: <552f72d1.1c692.19e389e8ea4.Coremail.guolingxing@supcon.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
+X-KSMG-AntiPhishing: NotDetected
+X-KSMG-AntiSpam-Auth: dkim=none
+X-KSMG-AntiSpam-Envelope-From: mdmitrichenko@astralinux.ru
+X-KSMG-AntiSpam-Info: LuaCore: 131 0.3.131 f330ffd1b9dcd8f1d29707120f19686573775fe7, {Tracking_from_domain_doesnt_match_to}, astralinux.ru:7.1.1;new-mail.astralinux.ru:7.1.1;127.0.0.199:7.1.2;d41d8cd98f00b204e9800998ecf8427e.com:7.1.1, FromAlignment: s
+X-KSMG-AntiSpam-Interceptor-Info: scan successful
+X-KSMG-AntiSpam-Lua-Profiles: 206889 [Oct 22 2026]
+X-KSMG-AntiSpam-Method: none
+X-KSMG-AntiSpam-Rate: 0
+X-KSMG-AntiSpam-Status: not_detected
+X-KSMG-AntiSpam-Version: 6.1.1.27
+X-KSMG-AntiVirus: Kaspersky Secure Mail Gateway, version 2.1.0.7854, bases: 2026/10/22 03:54:00 #28723736
+X-KSMG-AntiVirus-Status: NotDetected, skipped
+X-KSMG-LinksScanning: NotDetected
+X-KSMG-Message-Action: skipped
+X-KSMG-Rule-ID: 1
 
+From: Jérémy Jean <Jeremy.Jean@oss.cyber.gouv.fr>
 
-Am 18.05.2026 um 03:06 schrieb 郭玲兴:
->   Hi Rick, hi Lionel
->
-> ...
->
-> Regarding the "soft" mount option: understood. We will retest
-> with a hard mount as well.
->
-> One question is whether the observed behavior is expected.
-> Even if a soft mount contributes to the problem, is it expected
-> that a single RPC timeout can leave the client in a state with
-> no forward progress, blocked in nfs4_drain_slot_tbl, and with
-> lease renewal no longer occurring? Or would that more likely
-> indicate a client-side recovery bug?
->
->
-> Thanks,
-> Guo Lingxing
->
->
-Hi,
+commit 8fa4804fe62ca4155a2d8fc2789d630376cbf2fc upstream.
 
-we have independently observed what appears to be the same NFSv4.1 
-client hang against Microsoft Server for NFS, but with several important 
-differences from the May 2026 report:
+decode_cb_sequence_args() allocates csa_rclists with kmalloc_objs(), so
+each referring_call_list starts uninitialized. decode_rc_list() assigns
+rcl_refcalls only when rcl_nrefcalls is nonzero. A valid list with zero
+referring calls therefore leaves the pointer uninitialized, and
+nfs4_callback_sequence() later passes stale slab contents to kfree().
 
-- the mounts are HARD, not soft
-- sec=krb5 (RPCSEC_GSS), not AUTH_SYS
-- observed on Linux 5.15 and Linux 6.8 clients
-- Windows Server for NFS is from the Windows Server 2019 / build 17763 
-family
-- the trigger is strongly correlated with a Windows/NFS server restart, 
-especially two rapid consecutive restarts during Windows servicing
+Allocate csa_rclists with kzalloc_objs() so every rcl_refcalls member is
+NULL from the beginning, including valid empty referring call lists.
 
-Mount options:
-   vers=4.1,rw,hard,timeo=1200,retrans=5,sec=krb5,proto=tcp
+Fixes: 4aece6a19cf7 ("nfs41: cb_sequence xdr implementation")
+Assisted-by: Codex:gpt-5
+Signed-off-by: Jérémy Jean <Jeremy.Jean@oss.cyber.gouv.fr>
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+[ mdmitrichenko: kzalloc_objs() does not exist in 5.10 and 5.15, so
+  replace the kmalloc_array() call with kcalloc() instead. ]
+Signed-off-by: Mikhail Dmitrichenko <mdmitrichenko@astralinux.ru>
+---
+Backport fix for CVE-2026-90104
+ fs/nfs/callback_xdr.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-We currently have two affected clients preserved in the hung state.
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index c8f5a0555ad2..cc9a19467b88 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -419,9 +419,9 @@ static __be32 decode_cb_sequence_args(struct svc_rqst *rqstp,
+ 	args->csa_nrclists = ntohl(*p++);
+ 	args->csa_rclists = NULL;
+ 	if (args->csa_nrclists) {
+-		args->csa_rclists = kmalloc_array(args->csa_nrclists,
+-						  sizeof(*args->csa_rclists),
+-						  GFP_KERNEL);
++		args->csa_rclists = kcalloc(args->csa_nrclists,
++					    sizeof(*args->csa_rclists),
++					    GFP_KERNEL);
+ 		if (unlikely(args->csa_rclists == NULL))
+ 			return htonl(NFS4ERR_RESOURCE);
+ 
+-- 
+2.43.0
 
-Client A (Linux 5.15):
-   nfsv4 SEQUENCE ... q:xprt_pending
-   two nfsv4 GETATTR tasks ... q:ForeChannel Slot table
-
-All of these use the same TCP transport to the Windows NFS server.
-
-Client B (Linux 6.8):
-   nfsv4 SEQUENCE ... q:xprt_pending
-
-The NFS state-manager thread is blocked in:
-   nfs4_drain_slot_tbl
-   nfs4_reset_session
-   nfs4_state_manager
-   nfs4_run_state_manager
-
-`lease_expired` continuously increases on the affected clients.
-
-A 135-second tcpdump on Client B showed only TCP ACK packets between client
-and server and no NFS RPC payload. The same SEQUENCE XID remained blocked on
-q:xprt_pending before and after the capture.
-
-Windows-side state at the same time:
-- healthy Linux clients: TotalSessions=1 and an NFS session exists
-- affected clients: the client record may still exist, but TotalSessions=0;
-   Get-NfsSession and Get-NfsOpenFile return no objects
-- one affected client is no longer listed by Get-NfsMountedClient at all,
-   while the Linux client still waits on the stale local NFSv4.1 state
-
-Historical correlation:
-We have more than two independent incidents where the Windows NFS 
-service/server was
-restarted twice in rapid succession. In both cases one Linux client 
-entered a
-persistent abnormal NFS client state immediately afterwards. In the current
-incident multiple Linux clients are affected while other clients recovered
-normally.
-
-This seems to indicate a client-side recovery deadlock: the server is 
-back and
-TCP is healthy, but the Linux client no longer sends useful NFS traffic 
-because
-a SEQUENCE/session slot never drains, and the state manager can wait 
-indefinitely
-in nfs4_drain_slot_tbl.
-
-Questions:
-1. Is there a known path where an outstanding NFSv4.1 SEQUENCE RPC can 
-remain on
-    xprt_pending while session recovery waits for the corresponding slot 
-to drain?
-2. Should nfs4_drain_slot_tbl be able to wait indefinitely in this 
-situation?
-3. When the server has lost the old session and is reachable again, 
-should the
-    client force teardown/recreation of the local session rather than 
-waiting for
-    the old slot forever?
-4. Is there an existing patch or additional tracepoint/debug data that 
-would be
-    useful while we still have affected clients preserved in the hung state?
-
-The May 2026 report appears closely related:
-https://www.spinics.net/lists/kernel/msg6188959.html
-
-We can provide the full SUNRPC debugfs output, mountstats, state-manager 
-stacks,
-Windows NFS session output, tcpdump, and timestamps of both server restart
-incidents.
-
-Regards,
-Peter Schubert
