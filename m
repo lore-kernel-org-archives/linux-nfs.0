@@ -1,52 +1,52 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=91.218.175.234
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=91.218.175.32
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792672904;
-	b=Go7OMCCpcEizOP4XWvx5JD6M3gRZF6hRBXnLgOw3rcSPsGYFaRnS9Ai/RdJMrNX+UHy6
-	 KEfO8EKhuyYh9Da38XLCFgHo8LjoV+Ar+5lW2Tdn3uUZ1b/H37SDZBjVrOoqQQvArt3h8
-	 8QfaKy8+DSMYc9SDb60JCRd6ERNGYy8ag6vfd5lSy1on+h+moh5DHuse0gdSxY5ZX6cQe
-	 qZv4yEOCRHaV4mWXufhZ+wb/eXEKvTEB3gCcP1DYoDHwUZohRR9zgHN46ZYgMoMpDIzNM
-	 dSCTJLEzDsrVb/vPYIh4IKAktsUvwjP+pF8i1B7lIj6z57iq1AT9A2dJGEE1E59gOMA==
+	t=1792673038;
+	b=n3PgqqY8MyLw53G3MWEN/HVwBWmuKy/+nn+CMJcWIFvwoKhwn+kxSql8GW8BvVuVCRF7
+	 ksZjWIx5rTHaCQ5ZmGtKVwyCS8tpCj+NV74BiX2gV6MhD9vp/XiZ5Pqe/S/5jn6kaTdoJ
+	 wkxcAXrAw3VoI2dZq6VNhkZYeIgRkywlsOSUD3oilGH9sAvHA5b5FSGGpD6Ni6hUTd6Ms
+	 z+GwNzZOdiM7SG2Vo4pRjn3Jq1yZhTgfqtN6PnhhdJhiW4/j5PsTdvAXqx0QouqbzTkuT
+	 klCVcr8apY7m6zizY8+D4dDXEVS9/K8TJrEirXQMmZjdVTBI7UUCs1NzPl4aERCnb2g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792672904;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792673038;
 	h=DMARC-Filter:X-Envelope-To:DKIM-Signature:X-Envelope-To:Received:
 	 X-Mizu-Trace-ID:X-Migadu-Flow:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=wbJWk78mn0OUQjjb5FrHOIhob0gYSClNRqitvSrG/2I=;
-	b=fwgf0LlYfYpYJGWh8s1vGJ9HY+22D3OSDmT+JSpzJhZA2kNlr7mItnMJ5c4lPxfSiren
-	 ECResJ5sMDi9JyI19hVzoQGVhIiDLTkq6m7RBxrtePypC2uTBbhmPRCh6/IW2bVafhC5a
-	 B2UGAAQa4guCodQ7xCV5dHffxl6LvHM3m6uOitetLhzhRjKNGlWiE9J8BGQS8D0/HNdX/
-	 yVnbXyBjj1SF+nwB0MdoTrYkVezUNxVOi+Es5FXOb9v5E5ovRzqQ3A/n6I8cd8XVfnXi8
-	 TwKy/Wq581fhNbnCYdj/vXNJ+cz2TkQeCX6OyO5tf5lhpYgJEUqfry75CjXliR80e5w==
+	bh=UkGp6BXx3IuoHMShnEhbwsGFOzhfzFScR0VSZnp16i4=;
+	b=5X2wNgPjXhZ92Ya1KKrDVSj9QrXzsm0DxC5SZYA7llfiYzKyvGu80wqT8xpVTd10oF9m
+	 02u1hbv6Y4Vvgkb7VejvttNaB9CAF491VIdE1D8DettjfP/4AF3ZZWbaLczJ7jcDc2TKI
+	 4NP+6lXIAzRhPoLIosQPjWLuCtiDUEW5e6fCY7qLUQ9GyWis0BnrhfalTA+7rl9on7y7B
+	 V00f8NKiKO9/Q+2DWySz99rAKO+gdCO8l2c8X90qqzh9srsF2OTbEKZs7i8cAvmM+ySbo
+	 Y2XRJ4CRgDYej7rzWTkjZTM9SpMGU1XhVY11Gid/mSl47Fv8xcBRgd0jl1l61+dTY9A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=linux.dev;
 	spf=pass smtp.mailfrom=linux.dev;
-	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=dW2RC3nC;
-	arc=none smtp.remote-ip=91.218.175.234
-Received: from mta0.migadu.com (out-234.mta0.migadu.com [91.218.175.234])
+	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=uxw2kJqi;
+	arc=none smtp.remote-ip=91.218.175.32
+Received: from mta0.migadu.com (out-32.mta0.migadu.com [91.218.175.32])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 380E8606A31A
-	for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2026 12:41:42 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 380E8606A31A
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 64AE4606A31D
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2026 12:43:57 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 64AE4606A31D
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=dW2RC3nC
+	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=uxw2kJqi
 X-Envelope-To: linux-nfs@vger.kernel.org
-DKIM-Signature: a=rsa-sha256; bh=h6l8HPo9Y9nflW29RMe4Ez3evRSBhkhVHZB03PLHvzM=;
+DKIM-Signature: a=rsa-sha256; bh=w2pJzoKE8UHSFd+7kOrW3IFF8LKzi7qBZip0c8TTrbg=;
  c=simple/simple; d=linux.dev;
  h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
- t=1792672901; v=1; x=1793277701;
- b=dW2RC3nC7g713Ol6NnP1YzzBuoxQLyYyJnIVzuYrCZIqjUcrGIrTFyB+Cyr+NvEkofrE2LKl
- E0iTIJi+zW/BRooXlW+Kz6j393U3cuAPCVIZfYrCijPcVLJzCR7nFLWDAndVKGK+BcTzYpTz2qk
- M0M8Uv4RzEbYBBgeWSI0HcUI=
+ t=1792673035; v=1; x=1793277835;
+ b=uxw2kJqiiGGHUBaLnBFDFZyIi/7wwupJu8dX2QV9ndJ0t+zO+9wwx9WcXPmZM3OQ2N4r9X6A
+ FUzbHWDTLBQsPZosc7IpvZvBTCxkVF4MVaPqtvv2+dBVAMLmmwCzQiO3qPmjHoZU/dqzNtTmi34
+ BFHGSMUG8b4EUoTpOfEWaCgQ=
 X-Envelope-To: linux-nfs@vger.kernel.org
-Received: by smtp.migadu.com with ESMTPS id a85b208720a85165;
-	Thu, 22 Oct 2026 12:41:41 +0000
-X-Mizu-Trace-ID: a85b208720a85165
+Received: by smtp.migadu.com with ESMTPS id 5534752695d82903;
+	Thu, 22 Oct 2026 12:43:55 +0000
+X-Mizu-Trace-ID: 5534752695d82903
 X-Migadu-Flow: FLOW_OUT
-Date: Thu, 22 Oct 2026 14:41:31 +0200
+Date: Thu, 22 Oct 2026 14:43:50 +0200
 From: "Pankaj Raghav (Samsung)" <pankaj.raghav@linux.dev>
 To: Daejun Park <daejun7.park@samsung.com>
 Cc: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org, 
@@ -55,11 +55,11 @@ Cc: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org,
 	Dai Ngo <Dai.Ngo@oracle.com>, Sergey Bashirov <sergeybashirov@gmail.com>, 
 	Andrey Albershteyn <aalbersh@kernel.org>, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
 	stable@vger.kernel.org
-Subject: Re: [PATCH v4 1/9] xfs: mark the inode preallocated for pNFS write
- layouts past EOF
-Message-ID: <atoEW7EUgDXKS7gh@quentin>
+Subject: Re: [PATCH v4 2/9] xfs: add a flag to convert unwritten extents
+ without allocating blocks
+Message-ID: <atoEubjhGZgA2WQk@quentin>
 References: <20261020-xfs-pnfs-batch-v4-0-9230fa2ca4a4@samsung.com>
- <20261020-xfs-pnfs-batch-v4-1-9230fa2ca4a4@samsung.com>
+ <20261020-xfs-pnfs-batch-v4-2-9230fa2ca4a4@samsung.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -71,70 +71,92 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261020-xfs-pnfs-batch-v4-1-9230fa2ca4a4@samsung.com>
+In-Reply-To: <20261020-xfs-pnfs-batch-v4-2-9230fa2ca4a4@samsung.com>
 
-On Tue, Oct 20, 2026 at 12:08:44PM +0900, Daejun Park wrote:
-> xfs_fs_map_blocks() marks the inode XFS_DIFLAG_PREALLOC after it
-> allocates blocks for a write layout, so that xfs_free_eofblocks() does
-> not free blocks past EOF that a client may write to. But a write layout
-> for a range past EOF where blocks are already allocated, such as the
-> speculative preallocation of buffered writes, gets those blocks without
-> an allocation, and the inode is not marked. blockgc, or the release of
-> the file, then frees them without breaking the layout. The client still
-> writes to them, and they may belong to another file by then.
+On Tue, Oct 20, 2026 at 12:08:45PM +0900, Daejun Park wrote:
+> xfs_bmapi_write() with XFS_BMAPI_CONVERT converts unwritten extents to
+> written ones, and allocates blocks for any hole or delalloc extent it
+> finds in the range. A caller that may only convert blocks that are
+> already allocated has to look at the mapping first, and the mapping can
+> change once the ILOCK is dropped.
 > 
-> With pynfs as the client, a file grown to 1 MiB by two buffered writes
-> on the server had 960 KiB preallocated past EOF, and an RW LAYOUTGET for
-> that range got it as one INVALID_DATA extent, without the inode being
-> marked. About 300 seconds later, with the default
-> speculative_prealloc_lifetime, blockgc freed those blocks while the
-> layout was still held. When the client then wrote through the layout and
-> sent LAYOUTCOMMIT, xfs_fs_commit_blocks() found a hole where the
-> unwritten extent had been, and xfs_iomap_write_unwritten() allocated for
-> it with no blocks reserved:
+> Add XFS_BMAPI_CONVERT_ONLY. With it, xfs_bmapi_write() stops at a hole
+> or a delalloc extent instead of allocating blocks and returns the
+> mappings that it converted before it. If the range starts with a hole or
+> a delalloc extent, it returns -ENOSR, as it does when a delalloc
+> conversion maps nothing in the range. Nothing has been changed then, and
+> the caller decides what to do with its transaction.
 > 
->   XFS (nvme0n1): Corruption of in-memory data (0x8) detected at
->     xfs_trans_mod_sb+0x817/0x960 (fs/xfs/xfs_trans.c:351).
->     Shutting down filesystem.
->   ...
->    xfs_trans_mod_sb+0x817/0x960
->    xfs_alloc_vextent_finish+0x2e7/0x990
->    xfs_alloc_vextent_start_ag+0x25d/0x720
->    xfs_bmap_btalloc+0xdd2/0x1720
->    xfs_bmapi_allocate+0x197/0xf90
->    xfs_bmapi_write+0x4d0/0xb60
->    xfs_iomap_write_unwritten+0x307/0x7e0
->    xfs_fs_commit_blocks+0x1d9/0x630
->    nfsd4_block_proc_layoutcommit+0x5c2/0x7d0
->    nfsd4_layoutcommit+0x4b5/0xa20
+> A flag of this name was removed by commit 26b91c728b2d ("xfs: make COW
+> fork unwritten extent conversions more robust"). That one skipped the
+> allocation and still mapped the hole; this one stops before it.
 > 
-> The client got NFS4ERR_IO, in six runs out of six. When small files were
-> written on the server after blockgc, with a sync first so that the freed
-> extents were no longer busy, they got those blocks, and the client's
-> write through the layout replaced 978944 bytes of their data before the
-> LAYOUTCOMMIT. A LAYOUTGET and LAYOUTCOMMIT 30 seconds apart, before
-> blockgc runs, leave the client's data in place.
+> "xfs: refuse a pNFS LAYOUTCOMMIT of a range without blocks" uses it,
+> which is why this is marked for stable.
 > 
-> Mark the inode also when a write mapping ends past EOF and nothing was
-> allocated, the same way as for an allocation, before the blocks are
-> handed out. With this, the same test keeps the blocks past blockgc, and
-> the LAYOUTCOMMIT after 360 seconds succeeds with the data in place.
-> 
-> To share the update with the allocation case, set a local update_inode
-> flag in both cases, call xfs_fs_map_update_inode() in one place below
-> them, and move the log force into xfs_fs_map_update_inode().
-> 
-> Fixes: 527851124d10 ("xfs: implement pNFS export operations")
+> Suggested-by: Christoph Hellwig <hch@lst.de>
+> Link: https://lore.kernel.org/r/20261013120359.GB2944@lst.de
 > Cc: stable@vger.kernel.org
-> Reported-by: Chuck Lever <cel@kernel.org>
-> Link: https://lore.kernel.org/r/4de5356f-bc4d-4f1a-9c81-fce09b1b46fd@slotpi15m67
 > Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 > Reviewed-by: Christoph Hellwig <hch@lst.de>
 > ---
->  fs/xfs/xfs_pnfs.c | 34 +++++++++++++++++++++++++---------
->  1 file changed, 25 insertions(+), 9 deletions(-)
+>  fs/xfs/libxfs/xfs_bmap.c | 14 ++++++++++++--
+>  fs/xfs/libxfs/xfs_bmap.h | 10 +++++++++-
+>  2 files changed, 21 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/xfs/libxfs/xfs_bmap.c b/fs/xfs/libxfs/xfs_bmap.c
+> index ca49bf4a50..95c0178b44 100644
+> --- a/fs/xfs/libxfs/xfs_bmap.c
+> +++ b/fs/xfs/libxfs/xfs_bmap.c
+> @@ -4130,6 +4130,8 @@ xfs_bmapi_finish(
+>   * Returns a negative error code on failure, including -ENOSPC when it could not
+>   * allocate any blocks and -ENOSR when it did allocate blocks to convert a
+>   * delalloc range, but those blocks were before the passed in range.
+> + * With XFS_BMAPI_CONVERT_ONLY, it stops at a hole or a delalloc extent instead
+> + * of allocating blocks, and returns -ENOSR if it stops before mapping anything.
+>   */
+>  int
+>  xfs_bmapi_write(
+> @@ -4189,6 +4191,8 @@ xfs_bmapi_write(
+>  	 */
+>  	ASSERT((flags & (XFS_BMAPI_PREALLOC | XFS_BMAPI_ZERO)) !=
+>  			(XFS_BMAPI_PREALLOC | XFS_BMAPI_ZERO));
+> +	ASSERT(!(flags & XFS_BMAPI_CONVERT_ONLY) ||
+> +	       (flags & XFS_BMAPI_CONVERT));
+>  
+>  	if (XFS_IS_CORRUPT(mp, !xfs_ifork_has_extents(ifp)) ||
+>  	    XFS_TEST_ERROR(mp, XFS_ERRTAG_BMAPIFORMAT)) {
+> @@ -4237,6 +4241,9 @@ xfs_bmapi_write(
+>  		 * that we found, if any.
+>  		 */
+>  		if (need_alloc || wasdelay) {
+> +			if (flags & XFS_BMAPI_CONVERT_ONLY)
+> +				break;
+> +
+>  			bma.eof = eof;
+>  			bma.conv = !!(flags & XFS_BMAPI_CONVERT);
+>  			bma.wasdel = wasdelay;
+> @@ -4332,10 +4339,13 @@ xfs_bmapi_write(
+>  	 *
+>  	 * To avoid a successful return with *nmap set to 0, return the magic
+>  	 * -ENOSR error code for this particular case so that the caller can
+> -	 * handle it.
+> +	 * handle it. The same goes for XFS_BMAPI_CONVERT_ONLY stopping at a
+> +	 * hole or a delalloc extent at the start of the range, in which case
+> +	 * nothing has been changed.
+>  	 */
+>  	if (!n) {
+> -		ASSERT(bma.nallocs >= *nmap);
+> +		ASSERT(bma.nallocs >= *nmap ||
+> +		       (flags & XFS_BMAPI_CONVERT_ONLY));
+Minor nit:
 
-Looks good,
+The following might be more explicit here:
+
+ASSERT((flags & XFS_BMAPI_CONVERT_ONLY) ? bma.nallocs == 0 :
+                                         bma.nallocs >= *nmap);
+
+Otherwise, the patch looks good.
 Reviewed-by: Pankaj Raghav <p.raghav@samsung.com>
 
 -- 
