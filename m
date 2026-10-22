@@ -1,52 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792696538;
-	b=rtO1xQ0lBwdpDkDpgNEsyLsHcNHzxq1jmulaL3AbxZL53155buEgyU/ZoZTgDLxU1jk7
-	 ERba1cT/spWNIw/rY6D8sW9h33hYwVHqzGuLz3susWtuY3caBGtFo1cSontNIJANhxZXr
-	 DKftmRM0QN3Hxs0IvlYUsBClSGiHXMd/kB9NWxUi3HMce/f5JOU3pAeUThHdBPJgh1A/X
-	 1lvsUPhKQaIuiS0LYDthy2qqUzmc8fcWcXd/Xi4gL+qM2iO7SGUr3Pnmd5ge5Mg+eXT2N
-	 Be523sTgutCkykfNKxZvUXhWQHiLf6Ic7kjr+Mx4OGf1COFgBi6FKl7K5GiRUfDpGCg==
+	t=1792702440;
+	b=HLwGVkgKX/FnXHh5vGThVB08xIB1wARmY3sRlKP+MAWz7qbqYsGGwPkE1XUfvuiCOd6B
+	 EFVgVtf9s6LbRKvyEH1gQzoka+P1s0PHHqk6B/Ir56UD8ppPKKBFrrOcvbfBN6gy66twS
+	 MZQbe+xLNQDPFiJvSOSz1sPKqnvcSRfIAkLzz4WrjJfNa/HiYLQ6oz1c6/1Usc5eEAM1U
+	 7OFN4wUncuxfl5TQtzVPP0H37s87zfcG/Vo7r0LfgH+/SDy6aRUFiIU1zYCnnKDdGQuRM
+	 +lYh2P68iILTslmzk1czseAtw8Ifi4y95QC8n78xoRVXyxuoWsSa8t3eQbrBdID79lQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792696538;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792702440;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 MIME-Version:Content-Type:Content-Transfer-Encoding;
-	bh=OYbVSiq9gMoCoikDWdvSWgHNA/JlaBVavasL/SrwvaY=;
-	b=3B07PDfyGiGKX0R9zWkEFp0NGPPPZl3sZAMfWsSk0P8EEJZXckUJR5frorCpE/UHoCis
-	 lrTlevHbCbKAV0IsJcfZefff/SKTaJSgV8+1lWG5Q40wEdRiXNJSGYCu64bEniROPS3uE
-	 Bk81Ciog9eUB+5K7HJyBwOWO3MTr1rBBZGAwTUDdZIDJUQfmlfr4r4EeTreywMPx0PiqK
-	 cvNwIA85DMO94QW3nRWDiESAnLCnxuOUNGs63PKqGGFHP8YoKBuGyYTJ9Jj+wCg3ux7ox
-	 MDVOR0GgYtxEe3tiVEpqzn16Q/+B4gGKoX8KO+XOwgEyVy/VCOMEa8cMtR8Cy6Z7M9Q==
+	 MIME-Version:Content-Transfer-Encoding;
+	bh=OfF5VQBX8+FpvRRHsdD+Ho28/GSeQhKKMW4P+H4zV+0=;
+	b=p2H6blmWGkkAYsgpMUqaXLVQ+ONgy+75sz1GcDc4DNv4ORNXP9TMh1qHfclXP/zj+ssE
+	 4PI6+RIbaCkyBd5L87Y+KzIQSx2GeVHwYYdTesS2Q+a6/srYsGmy/2faHGQM+6zXTlh6T
+	 LAEzOc6l5TxvKAsfeRrb3nzVb2UK/H+XUZzGNuuMBRBwrRanJI53P4rx4WokoFHk4FTvf
+	 pZ+6yII/bMUnAq9Zat0pbWutb+BiiPQ0T9/d7rFCvuArzGpr/AR3AD2tkdCtMCm1ekD9h
+	 pm+4rPcwsJcuqSJhzID1aNWWED984LdQALuRbZ7MZPU1TRy728/Bfvj2SfSUm7RGTrQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JBTBekKe;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Kgj0iHvP;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 17427606A327;
-	Thu, 22 Oct 2026 19:15:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B369606A31A
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2026 20:54:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JBTBekKe
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3DC1C1F01825;
-	Thu, 22 Oct 2026 19:15:37 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Kgj0iHvP
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6B0E61F01825;
+	Thu, 22 Oct 2026 20:53:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792696537;
-	bh=OYbVSiq9gMoCoikDWdvSWgHNA/JlaBVavasL/SrwvaY=;
+	s=k20260515; t=1792702440;
+	bh=OfF5VQBX8+FpvRRHsdD+Ho28/GSeQhKKMW4P+H4zV+0=;
 	h=From:To:Cc:Subject:Date;
-	b=JBTBekKeEGyEtBw7bZtgGZqml/ddgutWegWtHvzcSZAc9XtSZVZVZetUGIg1mtDh6
-	 53lCVBa+jronbCP7ZVJFpZFU8GGWDEkWKvz0LkqHuQ9CggbNIMM4l3EU4X5/op9l28
-	 M915CfwHJYhvZJF80p8PeVbHI4o50g9mSSw9l+3C0DZVX7/k0IpTMh11/jzKeHZCfb
-	 LlyPg7QXBYhTPSYGh5iXuGJ3HGWSzaBVgzoZwfZpnVV1iYMzNSyCqp/eajpOTJI/do
-	 milzSpMp3QzSCA1rNVyS2ylY8S+JFDVwV3o/XexBbJCsQFF4PcLO0vzQk7B6CzXHN1
-	 z6/oXRK/gP2hQ==
+	b=Kgj0iHvPbEFdIohXkOZt17qdC/rNffEjQaLnjNcL58NQ0bg0jcOAu9z45H7ZtEgR4
+	 DjxvwSae7dSdMQin7WHuI86PURnvdCm/GYbCJvj+FAovc9Nx5+PnQH+4B9DhyoOwE4
+	 B1BSu2LlY8nUf6uIk8BipAJUwS8aSoaQnhm006Fc4VHYKSGCtZmO96Bydy9GKS+LRL
+	 txOBpo5HauvmQkyZIgSKrxwZuR/Hay+CznOOeXzuUrKHg325f+wF9okXLp1xYZBEp/
+	 NH9cMZdKW7nCamB203MesdQ/v47KZgBe3pRGrTsiot1AJMzX4PqIsor0bAiqzEY99O
+	 N21yimvuAKYVw==
 From: Chuck Lever <cel@kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Jeff Layton <jlayton@kernel.org>,
-	<linux-nfs@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>
-Subject: [GIT PULL] NFSD changes for v7.4
-Date: Thu, 22 Oct 2026 15:15:30 -0400
-Message-ID: <20261022191536.3094786-1-cel@kernel.org>
+To: NeilBrown <neilb@ownmail.net>,
+	Jeff Layton <jlayton@kernel.org>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <dai.ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>
+Cc: <linux-nfs@vger.kernel.org>,
+	Mohammed Alquraini <mohammed.saad.alquraini@gmail.com>
+Subject: [PATCH] SUNRPC: Fix use-after-free in svc_age_temp_xprts_now()
+Date: Thu, 22 Oct 2026 16:53:57 -0400
+Message-ID: <20261022205357.3239985-1-cel@kernel.org>
 X-Mailer: git-send-email 2.54.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -57,401 +60,78 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-The following changes since commit a90ee4305c4a5df72c11b31dacfdc76e00fcf78a:
+svc_age_temp_xprts_now() moves each matching temporary transport
+onto a local list under sv_lock, then drops the lock and walks the
+local list without holding a reference on any of them. In the
+meantime svc_delete_xprt() can take sv_lock, unlink the same
+xpt_list node, and drop the transport's last reference. An idle
+temporary transport holds only that one reference, so a peer FIN
+that arrives between the two loops frees the svc_sock out from under
+the second loop. The notifier then sets XPT_CLOSE in freed memory,
+and svc_xprt_enqueue() reads xpt_flags and xpt_server from the freed
+object and queues that object on a pool for an nfsd thread. KASAN
+reports a slab-use-after-free in svc_xprt_enqueue() under
+nfsd_inetaddr_event(), with the object freed by svc_sock_free() on
+an nfsd thread.
 
-  Linux 7.3-rc6 (2026-10-04 13:45:25 -0700)
+The two-phase walk dates from when the second loop called into the
+socket layer and could sleep. Commit 546125d16142 ("sunrpc: don't
+call sleeping functions from the notifier block callbacks") moved
+that work to the nfsd threads, so nothing left in the second loop
+needs sv_lock dropped. Mark and enqueue each matching transport
+under sv_lock in a single pass, as svc_age_temp_xprts() already
+does, so that svc_delete_xprt() cannot unlink and free a transport
+the notifier is still touching.
 
-are available in the Git repository at:
+Fixes: c3d4879e01be ("sunrpc: Add a function to close temporary transports immediately")
+Reported-by: Mohammed Alquraini <mohammed.saad.alquraini@gmail.com>
+Signed-off-by: Chuck Lever <cel@kernel.org>
+---
+ net/sunrpc/svc_xprt.c | 16 ++++------------
+ 1 file changed, 4 insertions(+), 12 deletions(-)
 
-  https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git tags/nfsd-7.4
+Mohammed, thanks for the report. Please test and report your results.
 
-for you to fetch changes up to eafb6de800781f0a1be5cdd98d150620041d8b27:
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 5db42e53be62..076c624fe675 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -1075,29 +1075,21 @@ void svc_age_temp_xprts_now(struct svc_serv *serv, struct sockaddr *server_addr)
+ {
+ 	struct svc_xprt *xprt;
+ 	struct list_head *le, *next;
+-	LIST_HEAD(to_be_closed);
+ 
+ 	spin_lock_bh(&serv->sv_lock);
+ 	list_for_each_safe(le, next, &serv->sv_tempsocks) {
+ 		xprt = list_entry(le, struct svc_xprt, xpt_list);
+-		if (rpc_cmp_addr(server_addr, (struct sockaddr *)
+-				&xprt->xpt_local)) {
+-			dprintk("svc_age_temp_xprts_now: found %p\n", xprt);
+-			list_move(le, &to_be_closed);
+-		}
+-	}
+-	spin_unlock_bh(&serv->sv_lock);
+-
+-	while (!list_empty(&to_be_closed)) {
+-		le = to_be_closed.next;
++		if (!rpc_cmp_addr(server_addr, (struct sockaddr *)
++				&xprt->xpt_local))
++			continue;
+ 		list_del_init(le);
+-		xprt = list_entry(le, struct svc_xprt, xpt_list);
+ 		set_bit(XPT_CLOSE, &xprt->xpt_flags);
+ 		set_bit(XPT_KILL_TEMP, &xprt->xpt_flags);
+ 		dprintk("svc_age_temp_xprts_now: queuing xprt %p for closing\n",
+ 				xprt);
+ 		svc_xprt_enqueue(xprt);
+ 	}
++	spin_unlock_bh(&serv->sv_lock);
+ }
+ EXPORT_SYMBOL_GPL(svc_age_temp_xprts_now);
+ 
+-- 
+2.54.0
 
-  SUNRPC: use assign_bit() where applicable (2026-10-11 23:13:07 -0400)
-
-----------------------------------------------------------------
-NFSD 7.4 Release Notes
-
-Jeff Layton extended the netlink listener-set operation so that a
-management daemon can register NFSD's programs with rpcbind itself.
-This prevents an unresponsive rpcbind from stalling NFSD adminis-
-tration for a minute at a time.
-
-Bulk delegation recall now adjusts the number of delegations it
-wants returned, based on memory pressure. The previous mechanism
-was spec-conformant, but it requested all delegations to be
-returned at once. Clients are free to return few or none in such
-cases, but requesting smaller batches of delegations is more
-neighborly.
-
-In preparation for handling TLS KeyUpdate, the server's TCP receive
-path has been reworked to handle control records. In the process,
-the use of sock_recvmsg was replaced with ->read_sock, which contends
-less with other holders of the socket lock.
-
-NFSv2 XDR code is now generated by xdrgen, which mechanically
-generates the encoders and decoders from the RPC language
-specification for the protocol. Replacing hand-built XDR code
-makes prototyping new protocol elements faster, reduces errors, and
-improves memory safety. Replacement of XDR code for newer NFS
-versions will continue in subsequent releases of NFSD.
-
-The remaining bulk of changes in v7.4 is bug fixes, clean-ups, and
-small optimizations. Sincere thanks to all contributors, reviewers,
-testers, and bug reporters who participated in the v7.4 NFSD
-development cycle.
-
-----------------------------------------------------------------
-Aldo Ariel Panzardo (5):
-      nfsd: propagate SETXATTR value decode errors
-      NFSD: copy SETXATTR data from all XDR buffer segments
-      nfsd: zero NFSv4 COMPOUND tag padding
-      nfsd: clear XDR padding in GETXATTR replies
-      nfsd: use xdr_encode_opaque_fixed for all GETXATTR fragments
-
-Ameer Hamza (4):
-      nfsd: fix race between client_info_show() and free_client()
-      sunrpc: treat empty auth.unix.gid replies as negative entries
-      sunrpc: honor the netlink unix_gid NEGATIVE flag
-      nfsd: don't modify a session slot when replaying its cached reply
-
-Cen Zhang (Microsoft Security FORGE Labs) (1):
-      nfsd: hold cl_lock in client_has_openowners()
-
-Chris Mason (1):
-      sunrpc: pin gss module across auth_domain RCU free
-
-Chuck Lever (124):
-      NFSD: Move XDR encoding helpers out of xdr4.h
-      NFSD: Move pre-xdr'ed status codes out of nfsd.h
-      NFSD: Remove two unused NFSv4 constants
-      NFSD: Relocate NFSv4-internal constants to state.h
-      NFSD: Evacuate NFSv4 entry-point prototypes from nfsd.h
-      NFSD: Move nfsd_v4client() out of nfsd.h
-      NFSD: Map flex file layout IDs through the request's user namespace
-      NFS: Add linux/nfs_fh.h
-      lockd: Switch linux/nfs.h to linux/nfs_fh.h
-      NFSD: Use struct knfsd_fh in struct pnfs_ff_layout
-      nfs_common: Remove unused nfs_ssc_client_ops infrastructure
-      NFSD: Hoist nfs42_ssc_open() into fs/nfs_common/nfs_ssc.c
-      nfs_common: Synchronize access to the SSC client ops table
-      NFSD: Split linux/nfs_ssc.h
-      NFS: Move definition of enum nfs3_stable_how
-      NFSD: Replace nfsd_write()'s "stable" argument with "iocb_flags"
-      NFSD: Move the RPC program definition for LOCALIO
-      nfs_common: Remove "#include <linux/nfs.h>" from linux/nfslocalio.h
-      NFSD: Tighten header includes in localio.c
-      NFSD: Name the fh_maxsize value that carries no NFS version
-      NFSD: Don't apply NFS version-specific behavior to LOCALIO requests
-      NFSD: Budget the CB_SEQUENCE opcode and referring call array count
-      NFSD: Budget the CB_RECALL truncate field
-      NFSD: Budget the CB_LAYOUTRECALL recall stateid
-      NFSD: Budget the CB_OFFLOAD opcode
-      NFSD: Budget the CB_NOTIFY_LOCK opcode
-      NFSD: Budget the CB_RECALL_ANY opcode
-      NFSD: Correct locking documentation for delegation sc_status
-      NFSD: Destroy a recalled delegation the client does not hold
-      NFSD: Send referring calls with CB_RECALL
-      NFSD: Point contributors and sashiko.dev to the nfsd-testing branch
-      SUNRPC: Do not credit control-record octets to the RPC stream
-      SUNRPC: Reject a TLS alert record that is not two octets
-      SUNRPC: Treat every TLS error alert as fatal
-      SUNRPC: Resume receiving after a TLS control record
-      NFSD: Replace NFS3_ACCESS_FULL in nfsd4_access()
-      NFSD: Move version-specific ACCESS maps into per-version code
-      NFSD: Make the write verifier reset helper available outside vfs.c
-      NFSD: Move NFSv4-specific CLONE logic into nfsd4_clone()
-      NFSD: Remove xdr-related headers from fs/nfsd/vfs.c
-      SUNRPC: Reject a socket that already has an svc_sock attached
-      NFSD: Fail a pool_threads read whose reply does not fit
-      nfsd: set op->status when an operation's header cannot be encoded
-      NFSD: Do not send CB_RECALL_ANY to NFSv4.0 clients
-      NFSD: Count the delegations held by each client
-      NFSD: Name directory delegations in the CB_RECALL_ANY type mask
-      NFSD: Send a meaningful CB_RECALL_ANY keep count
-      NFSD: Count delegations per network namespace
-      NFSD: Give delegations their own state shrinker
-      NFSD: Pace the state shrinker's scan requests
-      NFSD: Apportion CB_RECALL_ANY recalls among clients
-      NFSD: Move the nfs3.h include out of nfsd.h
-      NFSD: Include <linux/nfs_fh.h> where struct nfs_fh is used
-      NFSD: Clean up header guards in fs/nfsd/xdr.h
-      NFSD: Resolve the recall-any mask names in the trace format
-      SUNRPC: Separate the TLS control-record receive from its policy
-      SUNRPC: Close the transport on an unhandled TLS record type
-      SUNRPC: Flush a received record's pages once it is complete
-      SUNRPC: Receive RPC records with ->read_sock
-      SUNRPC: Bypass sock_recvmsg() for the TLS control-record receive
-      lockd: Fix use-after-free in nlmsvc_retry_blocked
-      lockd: Serialize block retries against host teardown
-      NFSD: Fix out-of-bounds read in the rpc_status dump
-      NFSD: Fix POSIX ACL leak in unexecuted NFSv4 COMPOUND operations
-      NFS: Import NFS3ERR definitions
-      NFSD: Rework be32 nfserr definitions
-      NFSD: Replace the use of include/trace/misc/nfs.h
-      svcrdma: Grant credits from the clamped sc_max_requests
-      svcrdma: Clear XPT_DATA when the last receive context is consumed
-      SUNRPC: Skip xpt_reserved accounting for non-UDP transports
-      NFSD: Return NFSERR_ISDIR for NFSv2 READ and WRITE on a non-regular file
-      NFSD: Don't complete a cld upcall the daemon has not read
-      NFSD: Move the cld upcall message out of the caller's stack frame
-      NFSD: Complete a cld upcall when copying its reply fails
-      NFSD: Reject an oversized principal hash from nfsdcld
-      pnfs/blocklayout: Complete a device upcall only on its own reply
-      NFSD: Set nn->cld_net before registering the cld pipe
-      NFSD: Complete a cld upcall when the daemon closes the pipe
-      pnfs/blocklayout: Complete a device upcall when the pipe is closed
-      SUNRPC: Copy the deferred RPC Call from the head buffer
-      NFSD: return NFS4ERR_EXIST for a guarded OPEN of a non-regular object
-      SUNRPC: Carry a generated-codec context pointer in struct xdr_stream
-      SUNRPC: Bind the svc_rqst to its XDR streams
-      SUNRPC: Add svcxdr_encode_opaque_payload()
-      xdrgen: Pass the containing struct name to member codec emitters
-      xdrgen: Add a "pragma pages" directive
-      SUNRPC: Add svcxdr_decode_opaque_payload()
-      xdrgen: Extend the pages directive to page-resident arguments
-      xdrgen: Add hook-driven aggregate codec for variable-length arrays
-      xdrgen: Extend the aggregate codec to optional-data list members
-      xdrgen: Stream optional-data aggregate lists during encode
-      xdrgen: Reject a "pragma pages" union arm declared as an opaque
-      xdrgen: Report unsupported client-side directives without a traceback
-      xdrgen: Document that aggregate members of a struct share an element type
-      xdrgen: Update the aggregate_members comment for optional-data lists
-      NFSD: map fh_verify() status codes for NFS_ACLv2 replies
-      NFSD: map fh_verify() status codes for NFS_ACLv3 replies
-      Documentation: Add the RPC language description of NFSv2
-      NFSD: Add infrastructure for generating NFSv2 XDR encoders and decoders
-      NFSD: Use xdrgen-generated NFSv2 protocol definitions
-      NFSD: Remove '#include "xdr.h"' from fs/nfsd/xdr3.h
-      NFSD: Relocate the NFSv2 XDR storage union into nfsproc.c
-      NFSD: Use xdrgen XDR functions for the NFSv2 NULL procedure
-      NFSD: Use xdrgen XDR functions for NFSv2 GETATTR procedure
-      NFSD: Use xdrgen XDR functions for NFSv2 SETATTR procedure
-      NFSD: Use xdrgen XDR functions for the NFSv2 ROOT procedure
-      NFSD: Use xdrgen XDR functions for the NFSv2 LOOKUP procedure
-      NFSD: Use xdrgen XDR functions for NFSv2 READLINK procedure
-      NFSD: Use xdrgen XDR functions for NFSv2 READ procedure
-      NFSD: Use xdrgen XDR functions for the NFSv2 WRITECACHE procedure
-      NFSD: Use xdrgen XDR functions for NFSv2 WRITE procedure
-      NFSD: Refactor nfsd_proc_create()
-      NFSD: Use xdrgen XDR functions for NFSv2 CREATE procedure
-      NFSD: Use xdrgen XDR functions for the NFSv2 REMOVE procedure
-      NFSD: Use xdrgen XDR functions for the NFSv2 RENAME procedure
-      NFSD: Use xdrgen XDR functions for the NFSv2 LINK procedure
-      NFSD: Use xdrgen XDR functions for NFSv2 SYMLINK procedure
-      NFSD: Use xdrgen XDR functions for NFSv2 MKDIR procedure
-      NFSD: Use xdrgen XDR functions for NFSv2 RMDIR procedure
-      NFSD: Use xdrgen XDR functions for the NFSv2 STATFS procedure
-      NFSD: Use xdrgen XDR functions for NFSv2 READDIR arguments
-      NFSD: Add a streaming directory reader
-      NFSD: Refactor NFSv2 directory cookie encoding
-      NFSD: Use xdrgen XDR functions for NFSv2 READDIR results
-
-David Flynn (1):
-      nfsd: fetch direct I/O alignment for files handed to the filecache
-
-Jeff Layton (23):
-      nfsd: pass caller-provided attrmask storage into nfsd4_setup_notify_entry4()
-      nfsd: back CB_NOTIFY notify_mask words with per-delegation storage
-      NFSD: cap the number of listeners accepted in listener_set
-      NFSD: validate transport name in listener_set before serv creation
-      SUNRPC: keep the first error in svc_register()
-      SUNRPC: bound the local rpcbind client timeout to 1s
-      NFSD: report listener creation failures through extack
-      SUNRPC: report local rpcbind calls that get no answer
-      SUNRPC: stop svc_register() once rpcbind stops answering
-      SUNRPC: stop the svc_unregister() sweep once rpcbind stops answering
-      SUNRPC: stop unregistering listeners once rpcbind stops answering
-      NFSD: stop registering with rpcbind after a failure in listener_set
-      selftests/nfsd: exercise listener_set request validation
-      selftests/nfsd: add a per-netns rpcbind stub and the listener round-trips
-      selftests/nfsd: check that listener_set asks rpcbind once
-      selftests/nfsd: check that listener removal asks rpcbind once
-      nfsd: don't offer flexfiles layouts when NFSv3 isn't being served
-      nfsd: shorten extack string returned with dodgy listener
-      SUNRPC: allow a service to opt out of rpcbind registration
-      NFSD: add a userspace-rpcbind flag to listener_set
-      NFSD: honour the userspace-rpcbind flag in listener_set
-      NFSD: report registerable programs in the listener_set reply
-      selftests/nfsd: exercise the userspace-rpcbind listener_set flag
-
-Jérémy Jean (2):
-      nfsd: preflight SEQUENCE replies before accepting a slot
-      SUNRPC: fix oversized GSS proxy token copy
-
-Karl Mehltretter (2):
-      NFSD: docs: Fix pNFS SCSI Kconfig symbol
-      svcrdma: Fix svc_rdma_recv_cid_init() kernel-doc
-
-NeilBrown (17):
-      nfsd: honour client-provided attributes for NFS4_CREATE_EXCLUSIVE4_1
-      nfsd: move check_nfsd_access() call into nfsd_cross_mnt()
-      nfsd: correctly handle CREATE of mounted-on files
-      nfsd: replace fh_fill_both_attrs() with fh_fill_post_noop()
-      nfsd: move fh_want_write() after preamble in nfsd4_create_file()
-      nfsd: move more nfs-specific code into preamble of nfsd4_create_file()
-      nfsd: remove subtlety from nfsd4_create_file()
-      nfsd: in nfsd4_create_file() let VFS report if file was created.
-      nfsd: nfsd4_create_file(): Move NFSD_MAY_CREATE check earlier
-      nfsd: fh_want_write) failure need not be immediately fatal for nfsd4_create_file()
-      nfsd: (almost) always open file in nfsd4_create_file()
-      nfsd: reduce range of directory lock in nfsd4_create_file()
-      nfsd: open-code nfsd4_vfs_create() into nfsd4_create_file()
-      nfsd: move some code out of the d_really_is_negative() branch in nfsd4_create_file()
-      nfsd: reduce want-write range in nfsd4_create_file()
-      nfsd: move v0 checking out of nfsd_check_obj_isreg()
-      nfsd: separate out VFS-specific code from nfsd4_create_file()
-
-Peng Fan (1):
-      SUNRPC: use assign_bit() where applicable
-
-Wentao Liang (1):
-      nfsd: Fix id-to-name cache entry leak in idtoname_parse()
-
-Zhiling Zou (1):
-      SUNRPC: trace an accepted transport before publishing it
-
-Zijing Yin (1):
-      SUNRPC: fix netns use-after-free in write_gssp()
-
- Documentation/admin-guide/nfs/pnfs-scsi-server.rst |    2 +-
- Documentation/netlink/specs/nfsd.yaml              |   55 +-
- Documentation/sunrpc/xdr/nfs2.x                    |  254 +++
- MAINTAINERS                                        |    4 +-
- fs/lockd/svc.c                                     |    1 -
- fs/lockd/svclock.c                                 |   33 +-
- fs/lockd/trace.h                                   |    1 -
- fs/lockd/xdr.h                                     |    2 +-
- fs/namei.c                                         |    2 +
- fs/nfs/blocklayout/blocklayout.h                   |    5 -
- fs/nfs/blocklayout/rpc_pipefs.c                    |   79 +-
- fs/nfs/netns.h                                     |    5 +-
- fs/nfs/nfs4file.c                                  |    1 +
- fs/nfs/super.c                                     |   25 -
- fs/nfs_common/common.c                             |    5 +-
- fs/nfs_common/nfs_ssc.c                            |  126 +-
- fs/nfsd/Makefile                                   |   15 +-
- fs/nfsd/blocklayout.c                              |    1 +
- fs/nfsd/blocklayoutxdr.c                           |   11 +
- fs/nfsd/export.c                                   |    8 +-
- fs/nfsd/export.h                                   |    3 +-
- fs/nfsd/filecache.c                                |    5 +-
- fs/nfsd/flexfilelayout.c                           |   24 +-
- fs/nfsd/flexfilelayoutxdr.c                        |    9 +-
- fs/nfsd/flexfilelayoutxdr.h                        |    8 +-
- fs/nfsd/localio.c                                  |   10 +-
- fs/nfsd/lockd.c                                    |    5 +-
- fs/nfsd/netlink.c                                  |    5 +-
- fs/nfsd/netns.h                                    |   17 +-
- fs/nfsd/nfs2acl.c                                  |   66 +-
- fs/nfsd/nfs2xdr_gen.c                              | 1079 ++++++++++++
- fs/nfsd/nfs2xdr_gen.h                              |   46 +
- fs/nfsd/nfs3acl.c                                  |   16 +
- fs/nfsd/nfs3proc.c                                 |   79 +-
- fs/nfsd/nfs3xdr.c                                  |    6 +
- fs/nfsd/nfs4acl.c                                  |    1 +
- fs/nfsd/nfs4callback.c                             |    8 +-
- fs/nfsd/nfs4ctl.h                                  |   83 +
- fs/nfsd/nfs4idmap.c                                |    5 +-
- fs/nfsd/nfs4layouts.c                              |    5 +-
- fs/nfsd/nfs4proc.c                                 |  475 +++---
- fs/nfsd/nfs4recover.c                              |   92 +-
- fs/nfsd/nfs4state.c                                |  587 ++++++-
- fs/nfsd/nfs4xdr.c                                  |  227 ++-
- fs/nfsd/nfscache.c                                 |    1 +
- fs/nfsd/nfsctl.c                                   |  323 +++-
- fs/nfsd/nfsd.h                                     |  243 +--
- fs/nfsd/nfserr.h                                   |  159 ++
- fs/nfsd/nfsfh.c                                    |   73 +-
- fs/nfsd/nfsfh.h                                    |   33 +-
- fs/nfsd/nfsproc.c                                  | 1597 ++++++++++++------
- fs/nfsd/nfssvc.c                                   |   74 +-
- fs/nfsd/nfsxdr.c                                   |  606 ++-----
- fs/nfsd/state.h                                    |   46 +-
- fs/nfsd/trace.h                                    |   45 +-
- fs/nfsd/vfs.c                                      |  537 +++---
- fs/nfsd/vfs.h                                      |   79 +-
- fs/nfsd/xdr.h                                      |  173 +-
- fs/nfsd/xdr3.h                                     |    5 +-
- fs/nfsd/xdr4.h                                     |  156 +-
- fs/nfsd/xdr4cb.h                                   |   20 +-
- include/linux/nfs.h                                |   55 +-
- include/linux/nfs3.h                               |   43 +
- include/linux/nfs4.h                               |    6 +
- include/linux/nfs_common.h                         |    4 +-
- include/linux/nfs_fh.h                             |   63 +
- include/linux/nfs_ssc.h                            |   69 +-
- include/linux/nfsd_ssc.h                           |   38 +
- include/linux/nfslocalio.h                         |   11 +-
- include/linux/sunrpc/clnt.h                        |    3 +-
- include/linux/sunrpc/svc.h                         |   95 +-
- include/linux/sunrpc/svc_rdma.h                    |    2 +-
- include/linux/sunrpc/svc_xprt.h                    |    5 +-
- include/linux/sunrpc/xdr.h                         |    1 +
- include/linux/sunrpc/xdrgen/_defs.h                |   34 +
- include/linux/sunrpc/xdrgen/nfs2.h                 |  298 ++++
- include/trace/misc/nfs.h                           |   13 +-
- include/uapi/linux/nfsd_netlink.h                  |   20 +
- net/sunrpc/auth_gss/svcauth_gss.c                  |   29 +-
- net/sunrpc/rpcb_clnt.c                             |   34 +-
- net/sunrpc/svc.c                                   |   72 +-
- net/sunrpc/svc_xprt.c                              |   83 +-
- net/sunrpc/svcauth_unix.c                          |    9 +
- net/sunrpc/svcsock.c                               |  508 +++---
- net/sunrpc/xdr.c                                   |    3 +
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c            |   18 +-
- net/sunrpc/xprtrdma/svc_rdma_transport.c           |    3 +-
- tools/net/sunrpc/xdrgen/README                     |  154 +-
- tools/net/sunrpc/xdrgen/generators/pointer.py      |   68 +-
- tools/net/sunrpc/xdrgen/generators/struct.py       |  203 ++-
- tools/net/sunrpc/xdrgen/generators/union.py        |   69 +-
- tools/net/sunrpc/xdrgen/grammars/xdr.lark          |    2 +
- tools/net/sunrpc/xdrgen/subcmds/source.py          |   19 +-
- .../templates/C/pointer/decoder/pages_opaque.j2    |    6 +
- .../templates/C/pointer/definition/pages_opaque.j2 |    5 +
- .../templates/C/pointer/encoder/pages_opaque.j2    |   10 +
- .../C/struct/declaration/aggregate_hooks.j2        |   14 +
- .../templates/C/struct/decoder/aggregate_array.j2  |   33 +
- .../C/struct/decoder/aggregate_optional.j2         |   10 +
- .../templates/C/struct/decoder/pages_opaque.j2     |    6 +
- .../templates/C/struct/definition/pages_opaque.j2  |    5 +
- .../templates/C/struct/encoder/aggregate_array.j2  |   37 +
- .../C/struct/encoder/aggregate_optional.j2         |   29 +
- .../templates/C/struct/encoder/pages_opaque.j2     |   10 +
- .../templates/C/union/encoder/pages_opaque.j2      |   10 +
- tools/net/sunrpc/xdrgen/xdr_ast.py                 |  506 ++++++
- tools/testing/selftests/Makefile                   |    1 +
- tools/testing/selftests/nfsd/.gitignore            |    1 +
- tools/testing/selftests/nfsd/Makefile              |    6 +
- tools/testing/selftests/nfsd/config                |   14 +
- .../testing/selftests/nfsd/nfsd_netlink_listener.c | 1721 ++++++++++++++++++++
- tools/testing/selftests/nfsd/settings              |    1 +
- 112 files changed, 9312 insertions(+), 2813 deletions(-)
- create mode 100644 Documentation/sunrpc/xdr/nfs2.x
- create mode 100644 fs/nfsd/nfs2xdr_gen.c
- create mode 100644 fs/nfsd/nfs2xdr_gen.h
- create mode 100644 fs/nfsd/nfs4ctl.h
- create mode 100644 fs/nfsd/nfserr.h
- create mode 100644 include/linux/nfs_fh.h
- create mode 100644 include/linux/nfsd_ssc.h
- create mode 100644 include/linux/sunrpc/xdrgen/nfs2.h
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/pointer/decoder/pages_opaque.j2
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/pointer/definition/pages_opaque.j2
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/pointer/encoder/pages_opaque.j2
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/declaration/aggregate_hooks.j2
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/decoder/aggregate_array.j2
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/decoder/aggregate_optional.j2
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/decoder/pages_opaque.j2
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/definition/pages_opaque.j2
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/encoder/aggregate_array.j2
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/encoder/aggregate_optional.j2
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/struct/encoder/pages_opaque.j2
- create mode 100644 tools/net/sunrpc/xdrgen/templates/C/union/encoder/pages_opaque.j2
- create mode 100644 tools/testing/selftests/nfsd/.gitignore
- create mode 100644 tools/testing/selftests/nfsd/Makefile
- create mode 100644 tools/testing/selftests/nfsd/config
- create mode 100644 tools/testing/selftests/nfsd/nfsd_netlink_listener.c
- create mode 100644 tools/testing/selftests/nfsd/settings
