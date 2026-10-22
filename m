@@ -1,56 +1,61 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792702440;
-	b=HLwGVkgKX/FnXHh5vGThVB08xIB1wARmY3sRlKP+MAWz7qbqYsGGwPkE1XUfvuiCOd6B
-	 EFVgVtf9s6LbRKvyEH1gQzoka+P1s0PHHqk6B/Ir56UD8ppPKKBFrrOcvbfBN6gy66twS
-	 MZQbe+xLNQDPFiJvSOSz1sPKqnvcSRfIAkLzz4WrjJfNa/HiYLQ6oz1c6/1Usc5eEAM1U
-	 7OFN4wUncuxfl5TQtzVPP0H37s87zfcG/Vo7r0LfgH+/SDy6aRUFiIU1zYCnnKDdGQuRM
-	 +lYh2P68iILTslmzk1czseAtw8Ifi4y95QC8n78xoRVXyxuoWsSa8t3eQbrBdID79lQ==
+	t=1792705101;
+	b=I5Jeab4IIYr3Zo3e1QgA6rHZo+58bG06hc/pw6kMwp/oRNlWXdprU2dZVIN21jrbnpsu
+	 AVeM2u5RLZRSoqHvpkmYz+B1OIgn6BjOm1vyvOgnR13NnshkAO8Ks4NqGM/fV3DlrIv1e
+	 5AIxDoyIeHZpYwoZAGGwZdFJGGDGvU1pdfSMSLliSUizy1/N2CpSTy7TkZoBf8hM+B3Hg
+	 bjoAq4+3hNuUdKbkgrYEdAA8Buk91WBISuClQdq0gG0gCQ8zq4jwgtPcrf4V7DkP+ly76
+	 cvFYgK/7eVZVI5eLvQnJ6IQeD5Bf0legatoqeqkOvD27PkrD0hTnmqDB5kt5WY40Lnw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792702440;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=OfF5VQBX8+FpvRRHsdD+Ho28/GSeQhKKMW4P+H4zV+0=;
-	b=p2H6blmWGkkAYsgpMUqaXLVQ+ONgy+75sz1GcDc4DNv4ORNXP9TMh1qHfclXP/zj+ssE
-	 4PI6+RIbaCkyBd5L87Y+KzIQSx2GeVHwYYdTesS2Q+a6/srYsGmy/2faHGQM+6zXTlh6T
-	 LAEzOc6l5TxvKAsfeRrb3nzVb2UK/H+XUZzGNuuMBRBwrRanJI53P4rx4WokoFHk4FTvf
-	 pZ+6yII/bMUnAq9Zat0pbWutb+BiiPQ0T9/d7rFCvuArzGpr/AR3AD2tkdCtMCm1ekD9h
-	 pm+4rPcwsJcuqSJhzID1aNWWED984LdQALuRbZ7MZPU1TRy728/Bfvj2SfSUm7RGTrQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792705101;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=50yYjaY+y96cqwOxv67YA9yqjn2siKXdLV0ULyvr6yM=;
+	b=jauxFwWR6QCpWoWbfmbBdDd7nW4S7ta3eYCjDa8r2AiuZXfQTwVvKv5udYUyg7p9FiPY
+	 K1BJAnVh1mIo4GC8kp7CrM8mp3TAFocSPa/dfh78qb44IC7wuTfXTv31N7j3jSsLZp3iD
+	 zB2W0NwxlUAefctKOqGZUiJhaoLawZZ56eHbctkA/0Y/LrKLwpFLH13s/KD8ahcgVsViX
+	 JpPrJkeytxE0X+2UcBD1ROliBiitM4x75yStsRr7k36T6coWOaNNCwSZyBZxJ5sOs5mjJ
+	 7SogFW1bTiwJwI9Rm10/szbDOsohsn+Jj1t7nx32ruex//2lfZRI7izouBXwUzuP+Bw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Kgj0iHvP;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PBRo7gdT;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B369606A31A
-	for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2026 20:54:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8A7CF606A319;
+	Thu, 22 Oct 2026 21:38:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Kgj0iHvP
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6B0E61F01825;
-	Thu, 22 Oct 2026 20:53:59 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PBRo7gdT
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F0D6F1F01825;
+	Thu, 22 Oct 2026 21:38:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792702440;
-	bh=OfF5VQBX8+FpvRRHsdD+Ho28/GSeQhKKMW4P+H4zV+0=;
-	h=From:To:Cc:Subject:Date;
-	b=Kgj0iHvPbEFdIohXkOZt17qdC/rNffEjQaLnjNcL58NQ0bg0jcOAu9z45H7ZtEgR4
-	 DjxvwSae7dSdMQin7WHuI86PURnvdCm/GYbCJvj+FAovc9Nx5+PnQH+4B9DhyoOwE4
-	 B1BSu2LlY8nUf6uIk8BipAJUwS8aSoaQnhm006Fc4VHYKSGCtZmO96Bydy9GKS+LRL
-	 txOBpo5HauvmQkyZIgSKrxwZuR/Hay+CznOOeXzuUrKHg325f+wF9okXLp1xYZBEp/
-	 NH9cMZdKW7nCamB203MesdQ/v47KZgBe3pRGrTsiot1AJMzX4PqIsor0bAiqzEY99O
-	 N21yimvuAKYVw==
-From: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neilb@ownmail.net>,
-	Jeff Layton <jlayton@kernel.org>,
+	s=k20260515; t=1792705101;
+	bh=50yYjaY+y96cqwOxv67YA9yqjn2siKXdLV0ULyvr6yM=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=PBRo7gdTqnIgoF150jineM85hgi4fjPmYFKIpfo9uOJ3lkItGY2msTBCZ/KMO/gJd
+	 540aDBCg2Qy8Imwg5leZFDWqhK/IwgEYZAJ4IlaQ4yAWqyuh3Y8sJ4xWzOMt8yxPx8
+	 uKUB1YmDavp37wgBX1ZlFbL3ZqOgVa9tzNb+sjjJ2ynEMuUqGeK3I4H3YHhupVmYbJ
+	 tmn8flTmxnbuEALgeCiu4Dt2nhEL7ykZvjSzmIdQThmrnYSpQ6XyW/k2FKMJmAulfD
+	 KGX5027pXdOKb7aNtIZ2cfDHqnAmTAcVQJv/hBvVSzAtzSZ0hrCxig+NCXi42nu7F4
+	 6u5/9hr6xYOmw==
+Date: Thu, 22 Oct 2026 17:38:20 -0400
+From: Mike Snitzer <snitzer@kernel.org>
+To: Jeff Layton <jlayton@kernel.org>
+Cc: Mike Snitzer <snitzer@hammerspace.com>, Chuck Lever <cel@kernel.org>,
+	linux-nfs@vger.kernel.org, NeilBrown <neil@brown.name>,
 	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>,
-	Mohammed Alquraini <mohammed.saad.alquraini@gmail.com>
-Subject: [PATCH] SUNRPC: Fix use-after-free in svc_age_temp_xprts_now()
-Date: Thu, 22 Oct 2026 16:53:57 -0400
-Message-ID: <20261022205357.3239985-1-cel@kernel.org>
-X-Mailer: git-send-email 2.54.0
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
+	Matthew Wilcox <willy@infradead.org>,
+	Jonathan Corbet <corbet@lwn.net>, linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH v7 3/5] mm, iomap: keep a partly covered page until an
+ uncached write completes it
+Message-ID: <atqCTLf42kkGZmSd@kernel.org>
+References: <20261020220346.28020-1-snitzer@kernel.org>
+ <20261020220346.28020-4-snitzer@kernel.org>
+ <c3842f844845a0c461ed7a895cff3a6d3d3f74c0.camel@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -60,78 +65,131 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <c3842f844845a0c461ed7a895cff3a6d3d3f74c0.camel@kernel.org>
 
-svc_age_temp_xprts_now() moves each matching temporary transport
-onto a local list under sv_lock, then drops the lock and walks the
-local list without holding a reference on any of them. In the
-meantime svc_delete_xprt() can take sv_lock, unlink the same
-xpt_list node, and drop the transport's last reference. An idle
-temporary transport holds only that one reference, so a peer FIN
-that arrives between the two loops frees the svc_sock out from under
-the second loop. The notifier then sets XPT_CLOSE in freed memory,
-and svc_xprt_enqueue() reads xpt_flags and xpt_server from the freed
-object and queues that object on a pool for an nfsd thread. KASAN
-reports a slab-use-after-free in svc_xprt_enqueue() under
-nfsd_inetaddr_event(), with the object freed by svc_sock_free() on
-an nfsd thread.
+On Wed, Oct 21, 2026 at 10:36:07AM -0400, Jeff Layton wrote:
+> On Tue, 2026-10-20 at 18:03 -0400, Mike Snitzer wrote:
+> > An uncached (RWF_DONTCACHE) buffered write marks drop-behind every folio
+> > it creates, so writeback drops each one as soon as this write's data is
+> > on disk.  A page the write covers only partly is usually shared with the
+> > neighbouring write, the one that ends or starts in it.  Once the first
+> > of the two has been written back, the page is gone, and the second has
+> > to read the block back from disk before it can write its part: one read
+> > per misaligned write.
+> > 
+> > Measured locally on XFS (emulated 4Kn NVMe, 4 KiB pages), 32 threads
+> > writing interleaved records to one file with pwritev2(), 1 GiB per run,
+> > before and after this patch:
+> > 
+> >   record  flags                     4 KiB device       MiB/s
+> >   bytes                             reads per write
+> >                                     before   after     before  after
+> >   47008   RWF_DONTCACHE             0.97     0.000     831     2281
+> >   47008   RWF_DONTCACHE|RWF_DSYNC   0.99     0.000     601     1227
+> >   6000    RWF_DONTCACHE             0.97     0.000     121      488
+> >   6000    RWF_DONTCACHE|RWF_DSYNC   0.99     0.000      90      206
+> > 
+> > Before this patch every write waited for its read, and because XFS holds
+> > its IOLOCK exclusively across a buffered write, the other 31 writers
+> > waited too: both record sizes ran at about 20 thousand writes a second,
+> > one device read per write; after it nothing is read back.  With
+> > RWF_DSYNC each write still waits for its own sync, so the gain is
+> > smaller: the uncached write now runs as fast as the same write without
+> > RWF_DONTCACHE, 1237 and 209 MiB/s against 1227 and 206 in the table.
+> > Records of 49152 bytes, which cover only whole pages, read nothing
+> > before or after.
+> > 
+> > NFSD DIRECT issues the misaligned ends of a WRITE as buffered uncached
+> > segments and gains the same way.  Without any handling of the shared
+> > page, 32 interleaved writers of 47008-byte records read 45144 blocks
+> > for 45664 WRITEs; with this patch, and no NFSD code for the shared page,
+> > 0.0001 to 0.0008 blocks per WRITE whether each record is sent as one
+> > FILE_SYNC WRITE, as two one after the other, as two together, or as two
+> > UNSTABLE.  The page cache then marks the completed page while it is
+> > still dirty, so each segment of a stable WRITE wakes the DONTCACHE
+> > writeback kick (23 to 65 thousand rounds a run); the next two patches
+> > let NFSD mark it after its sync instead.
+> > 
+> > Let the write path say which pages a write covers only partly
+> > (FGP_DONTCACHE_EDGE, set by iomap when the write starts inside a page or
+> > ends before its end) and get such a page as a single page.  A folio
+> > created for it is not marked, so writing back this write's part does not
+> > drop it.  A folio found uptodate is the neighbour's, already written:
+> > this write completes it, so mark it, under the folio lock and before its
+> > own data goes in, and the writeback that cleans both writes' data drops
+> > it.  The folio lock orders the two writes, so the second always finds
+> > the first's data in place.
+> > 
+> > A page whose neighbour never writes, such as the last page of a file,
+> > stays cached until reclaim.  A partly covered page another task had
+> > cached and that is uptodate is now dropped after the write's writeback,
+> > where before an uncached write never dropped a page it did not create.
+> > 
+> > Only iomap file systems say which pages a write covers partly so far;
+> > write_begin_get_folio() users such as ext4 and the NFS client do not.
+> > With blocks smaller than a page, a write that crosses an extent boundary
+> > inside a page asks for it as two partly covered halves, so the page,
+> > though one write covers it whole, stays cached until reclaim.
+> > 
+> > Assisted-by: LLM
+> > Signed-off-by: Mike Snitzer <snitzer@kernel.org>
+> > ---
+> >  fs/iomap/buffered-io.c  | 12 +++++++++++-
+> >  include/linux/pagemap.h |  5 +++++
+> >  mm/filemap.c            | 19 ++++++++++++++++++-
+> >  3 files changed, 34 insertions(+), 2 deletions(-)
+> > 
+> 
+> The nfsd case typically uses buffered or DONTCACHE for the unaligned
+> sub-page-sized "ends" when direct is in force, so mostly these ends get
+> submitted as small (< PAGE_SIZE or folio_size()) buffered I/Os.
 
-The two-phase walk dates from when the second loop called into the
-socket layer and could sleep. Commit 546125d16142 ("sunrpc: don't
-call sleeping functions from the notifier block callbacks") moved
-that work to the nfsd threads, so nothing left in the second loop
-needs sv_lock dropped. Mark and enqueue each matching transport
-under sv_lock in a single pass, as svc_age_temp_xprts() already
-does, so that svc_delete_xprt() cannot unlink and free a transport
-the notifier is still touching.
-
-Fixes: c3d4879e01be ("sunrpc: Add a function to close temporary transports immediately")
-Reported-by: Mohammed Alquraini <mohammed.saad.alquraini@gmail.com>
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- net/sunrpc/svc_xprt.c | 16 ++++------------
- 1 file changed, 4 insertions(+), 12 deletions(-)
-
-Mohammed, thanks for the report. Please test and report your results.
-
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 5db42e53be62..076c624fe675 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -1075,29 +1075,21 @@ void svc_age_temp_xprts_now(struct svc_serv *serv, struct sockaddr *server_addr)
- {
- 	struct svc_xprt *xprt;
- 	struct list_head *le, *next;
--	LIST_HEAD(to_be_closed);
+Yes.
  
- 	spin_lock_bh(&serv->sv_lock);
- 	list_for_each_safe(le, next, &serv->sv_tempsocks) {
- 		xprt = list_entry(le, struct svc_xprt, xpt_list);
--		if (rpc_cmp_addr(server_addr, (struct sockaddr *)
--				&xprt->xpt_local)) {
--			dprintk("svc_age_temp_xprts_now: found %p\n", xprt);
--			list_move(le, &to_be_closed);
--		}
--	}
--	spin_unlock_bh(&serv->sv_lock);
--
--	while (!list_empty(&to_be_closed)) {
--		le = to_be_closed.next;
-+		if (!rpc_cmp_addr(server_addr, (struct sockaddr *)
-+				&xprt->xpt_local))
-+			continue;
- 		list_del_init(le);
--		xprt = list_entry(le, struct svc_xprt, xpt_list);
- 		set_bit(XPT_CLOSE, &xprt->xpt_flags);
- 		set_bit(XPT_KILL_TEMP, &xprt->xpt_flags);
- 		dprintk("svc_age_temp_xprts_now: queuing xprt %p for closing\n",
- 				xprt);
- 		svc_xprt_enqueue(xprt);
- 	}
-+	spin_unlock_bh(&serv->sv_lock);
- }
- EXPORT_SYMBOL_GPL(svc_age_temp_xprts_now);
- 
--- 
-2.54.0
+> Why do we need this special casing instead of just making those
+> unaligned ends use regular buffered I/O? Isn't it basically the same
+> thing?
 
+No.
+
+For the first of the two writes that share a page it is the same
+thing: 3/5 gets that page as a single page and doesn't mark it
+drop-behind, just as a regular buffered write wouldn't.  The
+difference is what happens after the second write completes the page.
+With regular buffered I/O the page stays cached until reclaim; with
+3/5 the second write marks it, and the writeback that cleans both
+writes' data drops it.
+
+That difference is the point of NFSD DIRECT: each misaligned WRITE
+leaves one shared page behind, so with buffered ends the page cache
+grows by about a page per WRITE and nothing ever reads it.  We
+measured exactly the alternative you describe, with NFSD's
+direct_misaligned_dontcache knob, on IOR-hard (47008-byte O_DIRECT
+records, 192 ranks on 3 clients, 4 NFS servers, XFS on NVMe, 240 s):
+
+  ends written as                write MiB/s  device reads  page cache
+                                              per record    growth
+  regular buffered               35,140       0.000         +653.7 GiB
+  DONTCACHE, the shared page     34,463       0.015         +10.7 GiB
+  kept until completed
+
+Same rate, and neither reads back, but buffered ends filled ~650 GiB of
+page cache in four minutes (about one 4 KiB page per 47008-byte record,
+8.7% of everything written), which a longer run turns into reclaim.
+The second row is an NFSD-only version of this (the shared page
+claimed in nfsd itself); Chuck asked for it to live in mm, which is
+patches 3/5 to 5/5 of this series -- which yields even less "device
+reads per record" than the 0.015 result above (again, because mm is
+the proper place for these changes, less unqualified work by NFSD).
+
+And it isn't only NFSD's: any RWF_DONTCACHE writer whose writes share
+pages reads each one back today (0.97 reads per write in the cover
+letter's pwritev2() table, 831 -> 2281 MiB/s with 3/5), because
+writeback drops the page after the first of the two writes.  Making
+those writes use regular buffered I/O isn't an option for an
+application that asked for RWF_DONTCACHE.
+
+Thanks,
+Mike
