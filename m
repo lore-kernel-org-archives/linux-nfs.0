@@ -1,73 +1,92 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.53
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792693720;
-	b=iSWyHerdTG3M1kmURRzG5H/oClKAKt+tWHmNh+iXwJVI7hj4RjgZ5N+tUrDXKcfpDNUx
-	 GOVlO7sA9x9HiWSu5MiWWY9Fu9Gi/nhOhbIZLJVfANdMLqoYKzqCV6p1WHxRd2EZzyYGN
-	 UGjMzfEwmkPxOx1rbIObU+GFtT/xzHaRIAo63xfe/mG1QCG03Js6dTwyaKM4Ec5FvBxT2
-	 DOC44Y4MfeUQJ3o2k7Ud3odimRQ9+IIV4cU8+N4kGHDw5QraRZQ+YPzU7u+xf3ALIR0/X
-	 aEZJMGnw/buHI8mBLWlZYVyWVoGbjMNGU87G86aZodcZ+7NlB6rPYDICA7dOa1K6qRw==
+	t=1792694606;
+	b=lxxFy+BaW4lhzxdNk2PYPhrtZan66nMg3XBC+/bzAJrwAwpMry4ve4E6LcNYPSXGH3z8
+	 U37xu+GE+tg0CnClmqePJr1QQqmB9pTsZ3MPAoQah4FoO1mC/tr1ELCbI+u2ih6Q0N03a
+	 hdJ1sZ3aHLMgkMTsKVjx00yjekZaOlm+3Sgj4TsrcGcS5W5mVt3j5oHDiY4bvoH1Z8h6V
+	 /MQCgwvPquYcYOcZe8QK7rNxXASbAXXKWOMDmLzUNUsnImpQ13+BMzpj+Wk5oNz4xK41H
+	 sx5GsP6MowbCqO9GiwTAhOFD+hw6bDDo1j+mclrR7J2TejJ4BZ/e07X2bgQsldgehhQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792693720;
-	h=DMARC-Filter:Received:DKIM-Signature:Received:Date:From:To:Cc:
-	 Subject:Message-ID:References:MIME-Version:Content-Type:
-	 Content-Disposition:In-Reply-To;
-	bh=JYh+FSmeD5zBdSGmLXfoWsuKx9ehvUO73Rr6qnSc3X8=;
-	b=q2jeoFXVcHXEOtC7BLZShlpaBYwK/SJLg2zdx40FExmpNo77z5hNYH2XyvPdY+PHFq5d
-	 XT8eBizZuEC7c47fnT7OoOiF8BbW9C+FGKBolamsGBNKcQY47TYa0E/fEoRipHF6iT5b9
-	 aKB2EVsu6AJhpZXstjoGXo+zreaeQXey3RT/1150tQHG4BZ3fIz5gBHbahefWs3ISw5eg
-	 aou8hK+duEVfw4WBkHzR2GisKxWedu+ZqT7P+EpOo4Bv1fDjTGkNfDkUfM8O5P8eDX3mI
-	 NXRD0HvLEEjx2n/IWwJeCid6DSXaaokco/rX5VPT9vaFssx6VblQO2EUqiLBYQHRpdA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792694606;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=4TPL7MrPkZPEGgLFwRpHG0hwOCiY+0pCQuikmLA7G3U=;
+	b=ceqF9SFk77Jjd2RMOZ+2wh5+kYinJBrOgiM0eaG44wLxTyVMDAtyh6Vo0UuPPdmSnMg/
+	 JaQ0eks/udjAzRg+PHPFOMBC2l4lmjz/CLsuOMQfbjqTv0tRi6ctJGWx9RmBrWoXZ7IEb
+	 QahK5361NgNLlLk4STTcF+EezFju1L25YwLMcMZPePHIA4S9WkwQx8pSboAnCjXIvBdjz
+	 PIvTuShvLB7ol8Qbokl94V0XZWx1au6dJnzTFhWwPAYnUa2WKt9okIOru1C1LpmjYqlHk
+	 KT8qRAbMw4D/Klq/LMJ+6V1X/A0blKjJQWdOfrTmI2HE2bQw14tDHIuXE8SHZs3pzfg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=mit.edu;
-	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=FB4rIzmo;
-	arc=none smtp.remote-ip=18.9.28.11
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=lFMM6DdU;
+	arc=none smtp.remote-ip=209.85.128.53
+Received: from mail-wm1-f53.google.com (mail-wm1-f53.google.com [209.85.128.53])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 07720606A330
-	for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2026 18:28:39 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 07720606A330
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9CB72606A31D
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2026 18:43:25 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9CB72606A31D
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=FB4rIzmo
-Received: from macsyma.thunk.org (pool-108-26-156-23.bstnma.fios.verizon.net [108.26.156.23])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 69MIRtlq008340
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 22 Oct 2026 14:27:56 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1792693680; bh=JYh+FSmeD5zBdSGmLXfoWsuKx9ehvUO73Rr6qnSc3X8=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=FB4rIzmodCuc/ai76PzcPn8NKTCLCBgJQn5lG4OsNurD082LpzxvtWFDvX0WpozMi
-	 G5Wxrp5EKZivFppsyR/34R27Liveb8SHZHVPaUoS8ZK0SZqi5QIowbJZ3A3OxbM4VC
-	 T6wusZBLcMx4TA37NCtnpi9VcygARe/ydMqEQL+dUU2EOTWaGTS6Vg7HOcXefp/15T
-	 d7nP4c/UgU10vdDcWJP9aCfO9onPi6Wq2o/TdsUsdoFN9dfgwzIj5Cp6zqZxHaVWNY
-	 x9vDg8JooiFE5P2IxXk6tkIe6BLRPcasmFTfgbGaiWHz4u1SVqCZ6O7DWx0DCQCJGP
-	 /VtU8vRIAggOg==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 96FCB22114B9; Thu, 22 Oct 2026 14:26:55 -0400 (EDT)
-Date: Thu, 22 Oct 2026 14:26:55 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Casey Schaufler <casey@schaufler-ca.com>
-Cc: Jan Koester <jan.koester@tuxist.de>,
-        Christian Brauner <brauner@kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Serge E. Hallyn" <serge@hallyn.com>, Jan Kara <jack@suse.cz>,
-        Paul Moore <paul@paul-moore.com>, Arnd Bergmann <arnd@arndb.de>,
-        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-security-module@vger.kernel.org, linux-arch@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, netdev@vger.kernel.org,
-        audit@vger.kernel.org, keyrings@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [RFC PATCH v2 00/41] UUID and GUID user and group ids (*_r
- system calls)
-Message-ID: <atpNJINlFhQ0M3Y6@mit.edu>
-References: <cover.1792552161.git.jan.koester@tuxist.de>
- <018ca365-ce9b-424c-b600-bd9c8aefc9a1@schaufler-ca.com>
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=lFMM6DdU
+Received: by mail-wm1-f53.google.com with SMTP id 5b1f17b1804b1-4a20803a757so757215e9.0
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2026 11:43:25 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1792694604; x=1793299404; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=4TPL7MrPkZPEGgLFwRpHG0hwOCiY+0pCQuikmLA7G3U=;
+        b=lFMM6DdU142DGDDpen5ibUZI0qU71coDlaMr6I6XYb9y2AeLQ+AAJF3yoegosvKtA5
+         /8uqJKyGQRdYicr7VzDJe2Xz0/zNqI8VmrDenS/YV627RA6bc3sfqOwPCDVS8Ev/wBUG
+         mAfUfKrLf50shby5xHhdDlWPyo91oB4lboXxAE6HRCGk6Ws2xUP2wOhaKdxGFl65+VV8
+         t7Mk2tXzYRavcRmR0jIJvk3dpBqLegcERoERq9HxYANOaP6VJXMBKIxL/DaRAc40AsMz
+         lL+xKIBLdF15BdIeDkUnj3/aTps9eckfOVauENul8Oe6tpKyv0sViqg0NNZknAEtLlX3
+         HjvQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1792694604; x=1793299404;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=4TPL7MrPkZPEGgLFwRpHG0hwOCiY+0pCQuikmLA7G3U=;
+        b=r25JWkuX/Yr23uYQqIhatdLG44/mCdJvHWFkjMX3LUtgJVJ3Nvbrj+rAQoWUIAdlIr
+         WAYUdWl2Pwc+WlVLo15pizEapnzaYXTdD2v4L//EzZLiK5pasaMvBDKBUjghPz0T4NqM
+         G2a8H/Vmh8t5ApBOrnytJYPLAek8VX1s/7S4lqs0QWpRWU53jjMFrDPTQQxT+SbyD76h
+         +d/vD21HtOQLpeOFqLq1o2xWATqYIOWgsvKeZ1zBPlGqbl05zGyv5Gy+3cfjH4lza4g4
+         nWl3dP+FL6lNhPKGedfbfpq+HKK35kSpV1d2U947jEw7xRG34/P4FMkyLWnGTegXxkT0
+         LJeA==
+X-Forwarded-Encrypted: i=1; AKwUvBxzG5e34teZDvSQv5kZ5LQUaVllA/NJfU+jZfk+h5gFmYQZLU/s7P+CUGq7kbMT8k/7DYyRgtLPe6A=@vger.kernel.org
+X-Gm-Message-State: AFq9FYJQa8J4iqOTBF2mbm00hCLPehQkAvkaBXGXkZivDpHO8g9VhEp0
+	Z8fFZjWWIaKuEuaHNqLr0005nrGL1efgNb8etU6TkAfImm9SlFelV+Y6
+X-Gm-Gg: AYBFou3ZI1wH/NV6va+eyDRscDEGBPaEqe+AWDdkUWqmPj6FgF+lP7guAEeCtwbXhVX
+	4k/1Yh25pziaAthF7YF7/WzEH5a+UO2y6BTOHL85C6FiLYONIV2zN9XdIBLhzaTzizrKKMgTD31
+	ttOSdOA8gGbHfBy8V2GZItzTgMhfYRqtucO5t4wi4zGMjfDiJYYd6UuZyAslxCQ6dXwNveq9rS8
+	G9L4kBOt5glGW9IkmIbvHvTfpy9Ul9UHOmtKn+TDlIiSedW+kYglJOmxp+CFDCiKZO7o/+YBrtS
+	Zl/F+F0z+v0YbK8UcvMTjRawZKGTH2Vbp/W8zVw/7l4mp/7JDjUsfXDNzD4uggZ5x8uwhgcWnsv
+	XWxEEILic0mBcCWU01XKJHCeup+zZ1cBjs3dNJPEzQ4/CuHJ2JfoTDQadvvgRD9mLPAoeD8D+iG
+	RyJor2ylCuxr8JwY2TeVc2AP8p+T9gs0U6MrOXZ+MWOuNutm/Pbd9xRIA65FLg15vbVSXS3qXfa
+	PZmekBs43WsPj9atzRpcgilh+z9U8p+s8wnLLSGbnNjGk8duzSRFkw8/VnnvxgyTy0xoziwtTkb
+	oEQ0
+X-Received: by 2002:a05:600c:1c09:b0:4a1:e3e2:93e0 with SMTP id 5b1f17b1804b1-4a1fdd3b20emr124757195e9.32.1792694603589;
+        Thu, 22 Oct 2026 11:43:23 -0700 (PDT)
+Received: from LAPTOP-AVI.taile24b5.ts.net ([147.234.101.15])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-48e379cf522sm102672f8f.17.2026.10.22.11.43.20
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 22 Oct 2026 11:43:22 -0700 (PDT)
+From: Avi Weiss <thnkslprpt@gmail.com>
+To: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>
+Cc: Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] SUNRPC: preserve timeout policy when cloning clients
+Date: Thu, 22 Oct 2026 21:43:16 +0300
+Message-ID: <1596f1b91f9f6ad14a75e3889ab80ba7d98cb52e.1792694006.git.thnkslprpt@gmail.com>
+X-Mailer: git-send-email 2.43.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,45 +96,44 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <018ca365-ce9b-424c-b600-bd9c8aefc9a1@schaufler-ca.com>
+Content-Transfer-Encoding: 8bit
 
-On Thu, Oct 22, 2026 at 10:00:16AM -0500, Casey Schaufler wrote:
-> 
-> I can't see this being acceptable for a variety of reasons, including
-> but not limited to performance and configuration complexity. It's a
-> general solution for a special case or two, and the impact is significant.
+rpc_clone_client() and rpc_clone_client_set_auth() leave the
+timeout argument unset, causing rpc_new_client() to use the
+transport defaults instead of the parent's configured
+timeout. This also affects pNFS data-server clients and
+changes their request timeout and initial RTT calculations.
 
-Yeah. I agree it's a non-starter.  For one thing, it requires
-replacing every single system call which uses a 32-bit uid or gid ---
-either as an input parameter, a return value, or in a structure, such
-as, "struct stat".  It also requires making breaking changes into
-on-disk file formats that use a uid --- for example, /etc/passwd,
-/etc/group, utmp/wtmp, etc.  If it will also break compatibility with
-remote file systems that don't use a Windows SID --- e.g., nfsv3, AFS,
-etc.  And that's before we even get to breaking things like tar files, etc.
+Use the parent's cl_timeout when no timeout is specified.
+Preserve explicitly supplied timeout overrides.
 
-I'll also note that customers that are most likely to need to use the
-abominationm of Windows SIDs are also those that are likely to be
-using proprietary third party binaries --- you know, silly things like
-SAP R/3, Oracle Enterprise Database, db2, etc.  And if you use Windows
-SIDs as user id's in your /etc/passwd, then binaries that are still
-using the traditional system calls will get the overflow 32-bit number
---- and break.
+Fixes: 1b63a75180c6 ("SUNRPC: Refactor rpc_clone_client()")
+Signed-off-by: Avi Weiss <thnkslprpt@gmail.com>
+---
+Tested under x86_64 QEMU - without the patch, both clone
+APIs replaced a configured 5-second initial timeout and 
+16 retries with 60 seconds and 2 retries. After the fix, 
+the configured timeout values and request timeout
+calculations were preserved as expected.
 
-I suspect it will be much more useful to simply add a supplementary
-user id and group id which is only used by those file systems that
-*care* about Windows SID's, and assume that everything else will use
-true, traditional Unix uids and gids.  I also suspect that we should
-be stashing the supplementary id's as extended attributes for the file
-systems.  That way we can much more quickly and easily add support to
-ext4, xfs, btrfs, etc., as file systems that can be used as backing
-stores for NFSv4 and CIFS for those (few) environments that care about
-Windows SID's.
+ net/sunrpc/clnt.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-						- Ted
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 6cedc824cf82..0f6e44a11d83 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -653,6 +653,8 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
+ 	}
+ 	args->servername = xprt->servername;
+ 	args->nodename = clnt->cl_nodename;
++	if (!args->timeout)
++		args->timeout = clnt->cl_timeout;
+ 
+ 	new = rpc_new_client(args, xps, xprt, clnt);
+ 	if (IS_ERR(new))
 
-P.S., From my perspective, Windows SID's are actually the legacy
-ID's. especially as more and more people flee Microslop's Windows 11
-and moving to Linux and MacOS.  :-)
+base-commit: 7be4bc52fd9e0e55dc9a2e0232b89427d2c4b614
+-- 
+2.43.0
+
