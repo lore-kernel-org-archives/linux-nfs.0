@@ -1,65 +1,79 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=91.218.175.85
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792674159;
-	b=vBy4fzSijSJVWcvNJltPzqwVrglbsvHyYJint2ktXNACAEvAveUPX0Wg9k6jMhCAzGLK
-	 M2d24+ooCoToFcgbBlXBUIIv4BHxMN2eqp12nhme+tFSosvh0+/oQ3ArXxWrvWUUMtjfX
-	 GmXbggfDdoBfOH44GXMmeHukJrFxJkJEBUNdRgfly2jE8ioAu5gjMyztiXc/Db5h2jAWo
-	 wwSSmIJV+O6P8nL5Upz6HaZe3OzOYTyJ1LMrAs17SATDlwEVPAOEVr1NpCqwlp67vGvaF
-	 9WjlNz86RuQq5zd5TeTQFyOuiZMSOpxRI4m/daL8bkpDZB+jgRIc6qgXTvz4vPk0VoA==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792674159;
-	h=DMARC-Filter:X-Envelope-To:DKIM-Signature:X-Envelope-To:Received:
-	 X-Mizu-Trace-ID:X-Migadu-Flow:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=QaSV8A+DkRJxdjBJ52VGx2q6CxzJmPLWhUU+QwPg4ks=;
-	b=XjhDbeiMiOHmuBLU32jTnepykHlZtyFQmvOwKz+YWq48/POBTcMCnqBjdjX+HVY3a/TV
-	 uitoESeRsNTkKsBCKQQjdWOMx/ASIQuWwn8wYutzDGdNe1KuOHeLiucof3Fai6j5tGgtl
-	 aEUxCUxxq7IkF8AUr59B4fG25K7DFIrEWU2ZpC2ftM2diA78sohel1gkYZyTHVOymR/Ca
-	 8XRIXs2fNXI4wL8u+EE1V+bU9Ua+Rkmqj5LVvpprGcjOWs+qvFoUfot+aQsCbREr1DSTK
-	 G6zxTdrv6lB5oXqzI5sye4u5VmNfh6qd2AYbgM0PPCj6JJl6c7G3w3MKFBHfIWK6ygQ==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=linux.dev;
-	spf=pass smtp.mailfrom=linux.dev;
-	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=NYiOL2aH;
-	arc=none smtp.remote-ip=91.218.175.85
-Received: from mta0.migadu.com (out-85.mta0.migadu.com [91.218.175.85])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1792674643;
+	b=GwT8VkXRXyeYiqLUtvSjRrCILXxQPmkTIJmhtZ0ctgttz8egsWMzG+Cs74hUNEBjqoab
+	 u0KknN66AHev8DqhWdRAjsZv9Hf4IIF7RhrCWmT1gYA+ElYx6cHTQ+gvDwLg61NLzvr3s
+	 e9R8QciVWRVbxMx3dNCFEaVRfKLkySwnweNCQkK0qYsXALEiUJ9x1ZmBNZkc3M3oOMzU1
+	 tGmPb8r9ad1xl3PS8yL5jGX9l6HEFez1Hc9OJjZw1C28bF109Mi0Aq7rKRCuuRtiKIlkq
+	 b5MaqCSIVKq2D3hactvpbQEkpi6cggWgzLUJenhPpqLc+nACwZxKTtzCR55nRZE6PVw==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792674643;
+	h=Received:DKIM-Signature:Received:From:Date:Subject:MIME-Version:
+	 Content-Type:Message-Id:X-B4-Tracking:X-Change-ID:To:Cc:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
+	 X-Original-From:Reply-To:Content-Transfer-Encoding;
+	bh=uf/Yl1+TUmTsZIOD4UAniucQk2JfyznSXtDPAOEOeac=;
+	b=eimHHYadTPaych4j6PnKpcWx6aE2bwgOzLOmOCMpLruJj03VHPdDGtzk7K3MAR2hAwoc
+	 eefRrjR9dta0WUAzzo5oaIZ+QhXT8DdEy5/UVxbRFOhDbNThh95o+yhMUhqWS4Ajacnq6
+	 DpCJkCLlqDwKg3IeQIfXDsx3YOkWITyD18KpPiWkxoEy6LhJ1S5riTvc5RxWl94qBPxZV
+	 P8O7wzufY95nn/ZGHPEyyTzE6r0W+AiGfsdRYKOvt7Yw+LoWa0roRK4T5RYEaoc2S0AH2
+	 btZzQJIcSJOie9AVJCi2dErqaAsJNQimbSu7BfFLO6+Xb8Cc3K5rAfkqRIEESDXUCnw==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=J0Dshjbm;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2AE23606A31A;
+	Thu, 22 Oct 2026 13:10:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=J0Dshjbm
+Authentication-Results: smtp.kernel.org; arc=none smtp.remote-ip=100.80.115.77
+ARC-Seal: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256; cv=none;
+	t=1792674642;
+	b=zzza3F/HnZBePVDCOggjy9KMPnRMWRDp1DwkFKK14ToC2AO+dqR76JTql3rErhu8ONUH
+	 gJ6wreRw2TD6YAUtEX/hQ9nyC3DpNGd2XnTlY+6ugD5nglCQ7Nz397OODxvmP9AakesSL
+	 J6cmk7uLJc8JyOH5tU4jHgBgQmqXp4vvJixI1vlAHYeWf8X1y2AKjKmZ+60RfbS2DIvuE
+	 sUGC9XMyjsZSRTe2ABFIh3nZmkfVM8sdjy+l/1VEhQc5uYj9FeElAdoP4qcrTLJa4nOi9
+	 L6wpldmshubcMkQ+oLlTKoNtd1a/kAgEAOcaQEq8gc9pDqepYLijWN9pvfUFZjHFRCA==
+ARC-Message-Signature: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256;
+	c=relaxed/relaxed; t=1792674642;
+	h=DKIM-Signature:Received:From:Date:Subject:MIME-Version:Content-Type:
+	 Message-Id:X-B4-Tracking:X-Change-ID:To:Cc:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
+	 X-Original-From:Reply-To:Content-Transfer-Encoding;
+	bh=uf/Yl1+TUmTsZIOD4UAniucQk2JfyznSXtDPAOEOeac=;
+	b=ae7iJHMEGamdpgGeJiv7lBUznzxdmouOpsDcnGRLKInYQm5nNuGqvoqxrTOqBQAh2GO8
+	 TQ6aQJqNrb0YQqZZ0nCkgPUBHLeWcOxSjCHM0NC/Ihv3myzefBinu3D5j5cZNpvPOH4FG
+	 3gx2/e5rL1HyMvo1EsO2oYmUrYAk43hfpIewvX9iznbHDrbeebMhhUw/DwICX6HlNZVuc
+	 Nk+mjNaEnVuDft/yhAmzmzUqE8S6c21NKfN4P2G3kgByKkBN4pMTRh3Zp38YqY6rLuy2M
+	 tApw22Gg1XRaF1MoTzM+K5qDyvgl5XnD2+nsAeXGnmVRRCNvBjPxxuo8ONRixm+2FAA==
+ARC-Authentication-Results: i=1; smtp.kernel.org; 
+	arc=none smtp.remote-ip=100.80.115.77
+Received: from lkml.kernel.org (nexus.subspace.kernel.org [100.80.115.77])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 14671606A31F
-	for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2026 13:02:37 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 14671606A31F
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=NYiOL2aH
-X-Envelope-To: linux-nfs@vger.kernel.org
-DKIM-Signature: a=rsa-sha256; bh=Blk5PcHa+mtRw2PyDvEKfMHAEAMT011jjsUT7gNzPRI=;
- c=simple/simple; d=linux.dev;
- h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
- t=1792674156; v=1; x=1793278956;
- b=NYiOL2aHwYbhphng9Va624cVzGa0vU0DNgH3SgHqUB+tthpnyr2mLU6qsIBU3yl5atyh+dg7
- TlicbWLP+HDJ9ZOCn1VMmGnk+981CDRjr6QpseqGt3xNC9BOAKxB8FeUP+zQg0fWq0q3crur27N
- 0+VjArtJDc1l43XJDYR7qpos=
-X-Envelope-To: linux-nfs@vger.kernel.org
-Received: by smtp.migadu.com with ESMTPS id 9a0127de9735825e;
-	Thu, 22 Oct 2026 13:02:36 +0000
-X-Mizu-Trace-ID: 9a0127de9735825e
-X-Migadu-Flow: FLOW_OUT
-Date: Thu, 22 Oct 2026 15:02:30 +0200
-From: "Pankaj Raghav (Samsung)" <pankaj.raghav@linux.dev>
-To: Daejun Park <daejun7.park@samsung.com>
-Cc: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org, 
-	Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
-	Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
-	Dai Ngo <Dai.Ngo@oracle.com>, Sergey Bashirov <sergeybashirov@gmail.com>, 
-	Andrey Albershteyn <aalbersh@kernel.org>, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	stable@vger.kernel.org
-Subject: Re: [PATCH v4 5/9] xfs: limit the count of a pNFS write allocation
- to one extent
-Message-ID: <atoImJxtg70XcIjS@quentin>
-References: <20261020-xfs-pnfs-batch-v4-0-9230fa2ca4a4@samsung.com>
- <20261020-xfs-pnfs-batch-v4-5-9230fa2ca4a4@samsung.com>
+	by smtp.kernel.org (Postfix) with ESMTPS id 2AE9B1F000C2;
+	Thu, 22 Oct 2026 13:10:42 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1792674642;
+	bh=uf/Yl1+TUmTsZIOD4UAniucQk2JfyznSXtDPAOEOeac=;
+	h=From:Date:Subject:To:Cc:Reply-To;
+	b=J0Dshjbm2JK06SH1TGRWffD/2+GZ49uNByLL/gITFRJIeWv5ilpVPykLpdcD8B8Eu
+	 s6XOAi3RBGJlkPso/Nmt59cPXV3JCaj0pQKUBfn3wRZPms+HB0t+dCAyEceU2Qydbg
+	 Y2707RDsBEdzT0Jb63oZvXtvnxmSsyFezsx9DFjSnGDadZNrq8wjya6udpnXiq4lCo
+	 uquZ+9lPWcpKsuRplVdgnTIwYbh++TuwPEbTaXtolGpKn38tv8THg6zr7DfdeYsr0a
+	 MXb4JPYo7ZL7hy227Aimpj2NsmMWDITL81svgGYioXePc72w3lWPHIsUy/bZu5Tgpc
+	 IrWfYHLEB5l5g==
+Received: from nexus.subspace.kernel.org (localhost [IPv6:::1])
+	by lkml.kernel.org (Postfix) with ESMTP id 7AE854349D;
+	Thu, 22 Oct 2026 13:10:41 +0000 (UTC)
+From: Michael Lowman via B4 Relay <devnull+michael.d.lowman.gmail.com@kernel.org>
+Date: Thu, 22 Oct 2026 15:10:26 +0200
+Subject: [PATCH] SUNRPC: avoid possible page reuse from
+ svcauth_gss_wrap_integ()
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -69,64 +83,101 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261020-xfs-pnfs-batch-v4-5-9230fa2ca4a4@samsung.com>
+Content-Type: text/plain; charset="utf-8"
+Message-Id: <20261022-integ-page-reuse-v1-1-fbe571857d4f@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQqDMBCE4VeRPRvYpNgWX0U8xDi120OUrEpBf
+ HejHj+G+TdSJIFSXWyUsIrKGDNsWVD4+jjASJ9Njt3Tsn0ZiTMGM/m8JCwKwz1XD7w7Dt5Rvk0
+ JH/lfyaa9rUv3Q5jPDu37ARxRp2p0AAAA
+X-Change-ID: 20261017-integ-page-reuse-0d053e8b0ca2
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
+ Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Michael Lowman <michael.d.lowman@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2485;
+ i=michael.d.lowman@gmail.com; h=from:subject:message-id;
+ bh=J5FcyzJj5w1NI+B2kzsCRu8psxQMF7yI9ZjgbLBQU78=;
+ b=owEBiQF2/pANAwAKAbhUyZi0A3mzAcsmYgBq2gtMggRxlwYUWnxU0m3X2axlVUp3BHI1AbrpI
+ CcRqyeIECWJAU8EAAEKADkWIQR42JpeMFqVv37vF7e4VMmYtAN5swUCatoLTBscbWljaGFlbC5k
+ Lmxvd21hbkBnbWFpbC5jb20ACgkQuFTJmLQDebPbwwgAqbu3jYLWuD/72zzMOa2jnbH02bFL5v2
+ x5MGr66dgVYycOiwAqRtQ40b7GIctSGkOQsQlDTPxbpNMbvd0YpRrWE1/mgVSeG7eF+93WUmqYH
+ lNT8PRqcoR2hcnWAKTEA0mdEhPgVDrB/zUPV2qBn6wHN81SyXukJyWF/EdJxSYKVBZ0pnOOT0ht
+ tl8z/laCrVntlhgebqoG7aZK/OoLOzYuRfcMJlfJtDgl4aGEu0SRs1oB5YtZHj0c5RjfutDwSeA
+ draF82Tm0QhuLM58HX9+u3bMzhV6F4nfzr/9+zsGoWqgMEnrLqaJ6n6mIjA9s3I2/We4sqlnw82
+ 2Gpamr6wdzQ==
+X-Developer-Key: i=michael.d.lowman@gmail.com; a=openpgp;
+ fpr=6E281440251F4A47DCA99700FD4D12FE546354BA
+X-Endpoint-Received: by B4 Relay for michael.d.lowman@gmail.com/default
+ with auth_id=1283
+X-Original-From: Michael Lowman <michael.d.lowman@gmail.com>
+Reply-To: michael.d.lowman@gmail.com
+Content-Transfer-Encoding: 7bit
 
-> With pynfs as the client and a 32 GiB XFS, an RW LAYOUTGET at offset 0
-> of an empty file for 16 TiB shut the filesystem down: "Corruption of
-> in-memory data (0x8) detected at xfs_trans_mod_sb". With this patch it
-> gets NFS4ERR_NOSPC, also with XFS_DEBUG, XFS keeps running, and less
-> than 8 GiB of the filesystem, one extent's worth, is left free. One
-> for 100 GiB ends the same way, where it got NFS4ERR_NOSPC with nothing
-> allocated before. One for 16 GiB, which fits, is granted the same
-> three extents as before.
-> 
-> Suggested-by: Darrick J. Wong <djwong@kernel.org>
-> Link: https://lore.kernel.org/r/20261008154017.GO2705364@frogsfrogsfrogs
-> Suggested-by: Christoph Hellwig <hch@lst.de>
-> Link: https://lore.kernel.org/r/20261015060932.GD14035@lst.de
-> Fixes: 527851124d10 ("xfs: implement pNFS export operations")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Daejun Park <daejun7.park@samsung.com>
-> ---
->  fs/xfs/xfs_pnfs.c | 8 ++++++++
->  1 file changed, 8 insertions(+)
-> 
-> diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
-> index 19eb18e129..401a790299 100644
-> --- a/fs/xfs/xfs_pnfs.c
-> +++ b/fs/xfs/xfs_pnfs.c
-> @@ -224,6 +224,14 @@ xfs_fs_map_blocks(
->  		else if (nimaps && imap.br_startblock == HOLESTARTBLOCK)
->  			end_fsb = min(end_fsb, imap.br_startoff +
->  					       imap.br_blockcount);
-> +		/*
-> +		 * xfs_bmapi_write() maps at most XFS_MAX_BMBT_EXTLEN blocks
-> +		 * in one mapping, so don't reserve blocks for more. The
-> +		 * range comes from a client, and its block count may not
-> +		 * even fit the 32-bit reservation. The rest of the range
-> +		 * is mapped by a later call.
-> +		 */
-> +		end_fsb = min(end_fsb, offset_fsb + XFS_MAX_BMBT_EXTLEN);
+From: Michael Lowman <michael.d.lowman@gmail.com>
 
-Isn't it better we add this in xfs_direct_write_iomap_begin() instead of
-adding it in pnfs?
+Commit 7702378ac4d4 ("SUNRPC: Convert svcauth_gss_wrap_integ() to
+use xdr_stream()") and its parent changed from calculating the
+integrity checksum in-place in an unused part of the response buffer
+to calculating in a scratch buffer and appending it to the response
+stream. While the unused part of the response buffer happened to
+always end on the first page, the append always occurs on the last.
 
-Something like this:
+If less than 32 bytes remain before the page boundary, some or all
+of the checksum will be written to the next page. But since the xdr
+functions do not update the response's page accounting, the page
+will be immediately available for reuse. Data from another request
+will overwrite the portion of the checksum on the new page.
 
-diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
-index 329c745e3120..50cf7b0cfc76 100644
---- a/fs/xfs/xfs_iomap.c
-+++ b/fs/xfs/xfs_iomap.c
-@@ -284,6 +284,7 @@ xfs_iomap_write_direct(
-        int                     nr_exts = XFS_IEXT_ADD_NOSPLIT_CNT;
+Avoid this by marking the page as used when needed.
+
+Signed-off-by: Michael Lowman <michael.d.lowman@gmail.com>
+Fixes: 7702378ac4d4 ("SUNRPC: Convert svcauth_gss_wrap_integ() to use xdr_stream()")
+---
+When running several reads in parallel from an NFSv4 mount using
+sec=krb5i, I find that the checksum is often invalid; of ten 64k
+reads of ten different files launched in parallel, usually eight fail.
+I observed that this did not occur when using sec=krb5p, and that
+part of the checksum appeared to be overwritten with valid data
+from other packets. After building with the attached change, I
+no longer experience read failures.
+---
+ net/sunrpc/auth_gss/svcauth_gss.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 43839e805531..4219cfb2e88a 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1835,6 +1835,17 @@ static int svcauth_gss_wrap_integ(struct svc_rqst *rqstp)
+ 		goto wrap_failed;
+ 	xdr_commit_encode(xdr);
  
-        ASSERT(count_fsb > 0);
-+       count_fsb = min_t(xfs_filblks_t, count_fsb, XFS_MAX_BMBT_EXTLEN);
++	/**
++	 * While the data protocol normally accounts for pages
++	 * used in the encode of the operation, the checksum is
++	 * written by the above xdr_stream_encode_opaque and can therefore
++	 * end up in the next page.
++	 * Update the request's bookkeeping to avoid reusing the page for the
++	 * next request while it's still referenced by this one.
++	 */
++	if (xdr->page_ptr + 1 > rqstp->rq_next_page)
++		rqstp->rq_next_page = xdr->page_ptr + 1;
++
+ out:
+ 	return 0;
  
-        resaligned = xfs_aligned_fsb_count(offset_fsb, count_fsb,
-                                           xfs_get_extsz_hint(ip));
 
--- 
-Pankaj
+---
+base-commit: eafb6de800781f0a1be5cdd98d150620041d8b27
+change-id: 20261017-integ-page-reuse-0d053e8b0ca2
+
+Best regards,
+--  
+Michael Lowman <michael.d.lowman@gmail.com>
+
+
