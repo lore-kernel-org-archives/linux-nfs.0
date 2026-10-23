@@ -1,72 +1,72 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792777543;
-	b=yT6WK/pBueT+8aFUI7D4LdU29jDTMo5/89IEpqxn9ajemxzrl+Pa8UuY3TkpRkwqhVjz
-	 mdN1B1uFOmKm4R4FSC/Q2NX2+MfbIqrunGKNi43YO669GJOSfBeliqNEFDbgjEGvEQywf
-	 iO+C+fmZyd7rAm9aE7lSkrzyYIOyby+p3f3mW5FeHhTK/UUxKXtj5erK+BKEwW5+bSx9E
-	 00D5ciMS9pVcCwtByYfNXBdjokhIeTa3w+WWyUxeZdV2V8Bdswg2kkp66R/gG005QvuvW
-	 1HqWYT1MUu1noy653WwReGScqMXiOGqHUOh7fjOxENcFyZV+ShrvYINY2UPz9IpTBRA==
+	t=1792778573;
+	b=GPSRQZbjTQwjsYsYOmESmikVMcCcjK3coGCGySGZOZxgO+0vsKjNJCA8VOe2FVcSeHOs
+	 mypltDsqjTFEnArSbbCeLtXLWgPPGo+dl6rPgEBqAMYamUeH+RhDjDUd36J2P1UvJ1Fci
+	 YykDoNr9QgI+cJpuebZkAwLzaPiGEI6Eyyj18JDCYcWB5bZdrOdYGPbBRZsVamfQwm0vk
+	 qUIr9efj/ZnyoocN7nbrcbOl3hDWfX2MlRiEtcU6NK16lyTCOz/KflBORybOBEqFiILQL
+	 3kS3VqcCUP24qSzbUTNB+y+sv0+1tJ/5l52p8/XWXUuAjuwByu3s1IBkVXZh4YRoWng==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792777543;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792778573;
 	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
 	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
 	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
 	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=+K8VmVMqKOof2bN/ApBJbL1jV/83LdW4iTCquE9kKQw=;
-	b=SQAJMZXV96Ouss/q3/6QhHy43Y7mO1GmjPU2bJcWqxguT8QlY9IjEkHLN3Cqw1H1SXQp
-	 HR2R5Nb15FN2k2aPtpASdNH8Y8EapVQVUN3e8g91024SsA6MMfaPIWtBgG6Yq82VcTQ4c
-	 GNgMkXbiXZasx0o3OAUWcvKGJhFY+lNjBq51vxYW0d0yXODjEU4qS23+tBoSDcPGZj1mr
-	 CLmGTZRiof2wpW8J35cEYJs1Ft633m7JQtoMZbD4RvRYNh77j8Rm1u9dxzLKG9lOF7sOY
-	 hoX62IJLgaAszblMAFgnH9kg8vz5S0hZvkfkRjIDcBwjilW9mPmrNxtvHgn6TjThu2A==
+	bh=bZrsg2pWespOvQA5Cm/os7o0gRFOlPEwnPF14eOssXg=;
+	b=2hFasL52EwtqIiEjawvRzk1f8mILXqHWEcFAbaeJNP5oWfBDkxUeIc0+7JHCLATrSflp
+	 w7YtGfXBNyDGNzMb+DOyKZIngB3wJ0YNpCR09CAV7AhN/uGTY2sql1jTiS5aApdJ3OAwE
+	 hA8Z9ADJ8Ez5vsi1Koh13TgnZqDmFHpDXod9XTvcGLWOxqSF56pUk1JwvVdxSbobgHCbG
+	 Lcbv1xsUWVs4QCXrK/+r+qPGduAQJsG6mk0enljjng17B0Gz8m+3luz6ya3QLLzKh8MpE
+	 37GaxFjiLPKgdxtodK8hgpNppXTEjES0iiejGF9c0BSoa4lRTAhwM53D89vVIAEZYaA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MKrt8z95;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Aj+dSzOM;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3548F606A31A;
-	Fri, 23 Oct 2026 17:45:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 086EC606A31A;
+	Fri, 23 Oct 2026 18:02:52 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MKrt8z95
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6F4E61F01829;
-	Fri, 23 Oct 2026 17:45:42 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Aj+dSzOM
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 39CB81F01825;
+	Fri, 23 Oct 2026 18:02:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792777542;
-	bh=+K8VmVMqKOof2bN/ApBJbL1jV/83LdW4iTCquE9kKQw=;
+	s=k20260515; t=1792778572;
+	bh=bZrsg2pWespOvQA5Cm/os7o0gRFOlPEwnPF14eOssXg=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=MKrt8z95nduJMsZ46pem/LKNckFHs4IOKk0GiFUkc3kcey7f8+E15FB5XwT6Vw94A
-	 ROw7OoY/0zcGxwSht62YfzAZPKY5kg+9qq+99CUpROhWdi68EVj1Oow08v1xWlk60w
-	 rOyCjvc1N9sycWvglR7FXgBk3MQoeHL9wS4ZbjDg8lNW9hQ/E4xfuafur/6cixXsUK
-	 3wk8bvH6TjHQ46YUyxGTiOCspzoTqaDpdqrPlO05KH7WJHHVQa2Gk1xHFiA69+5O1c
-	 GTUI9mbf/OJD05Z4QeGfzXWSugs0/vBBSDlOJSJM8Yck8onToyGp2RC66pUFuzHAH9
-	 rvh1MsNeZ+prw==
+	b=Aj+dSzOMnsNbCR85xA/8UlAwulQhgqVg6s0SrBEqHv9mtw8ZgcDexSbb4CkRT//wi
+	 v3kUyDg+++Ja0Q75FYiSDv71UehLwrfB+O7Gnv4AXBNWJMzILACZrSllAliLZkCa15
+	 o6aqE2Q/cmr/gIzJqK2q2lQLU0kJAZDMyeKL6yHlOFnWn1CTDHldHlYOIgWBYu4vZP
+	 Tc+pMFBrp3jqked8wbIVFEIj2TjVLnjHOzE3Uwp8nuQbfD+MM088uof+nmBDktRrJe
+	 Rte9BZoHmWClW4bAguJv/+eSu3vaONzWwBgVGsoFSpLCYyQGwpBVtk7i8ELyfBfOQq
+	 yfff6/eg9SPkg==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id A82B9F40067;
-	Fri, 23 Oct 2026 13:45:41 -0400 (EDT)
+	by mailfauth.phl.internal (Postfix) with ESMTP id 80E54F40067;
+	Fri, 23 Oct 2026 14:02:51 -0400 (EDT)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Fri, 23 Oct 2026 13:45:41 -0400
-X-ME-Sender: <xms:RZ3baiRgESbIfk8wp9J4GDntN9ZHLzKsIejKjhDrXylUTqZSc7OtIA>
-    <xme:RZ3baikbhYbg9_KJmjqNbuHwj38uFWUCI2e8xlDBrTc3Im5t3Okte2kkFF2N884-h
-    JmO15WeN1S5CFsTC_hXbiFczUcd5m4vWa_gQlRzGZJpLWX65XNR5yU>
-X-ME-Proxy-Cause: dmFkZTGw9D+wWvKhDs5hJFHaE33hWLdp5MJJPRON22Zj+F2eCnb7T3BTPUqogEpOQrGpoU
-    X53T4/KSX1qcP6T682bAHoWiDbSAvDlKrXjoqUAXHJ+X7DuUjowthh/75oLiGbHVGRrYvy
-    Ovxp/qIK0TBACpUtpr9HPOhI/W2aQ0NGI72CDCLfYSyzrinyf2y5Gqt9WZXJirg/VcS2wT
-    KyOdEZpnkBtl+peUqWtft1knu0XgIWpBIBcqUUnM3VtMFZcAeRnPDS9Gxo76KWvXUoNzCf
-    +dUggxkUwUiEH4RQkmSeyVrhCYKPh8Ucvj6N6zYPK0vcUWmb3W2SiJCxsX5b/HNxc5KZsP
-    9xHa/wLBKF8Pm7Hmru+7M0hW2UddErbUSA563BeoGzDDauHiqI1VMpsakrbLG7zeJKmGhZ
-    59c/kcupFWVb//JPZAPvOQID0NUlNil8cywKpk8d07LqtLq3EvK9a4DVpp2RknuyHnVZk+
-    TSoi+tRv/xUCqRV71Cesv/nC/VV7NoGe8xlYVKq7mbxfT80K4U5WlLP3TVWPr4WCnCwbYC
-    g7V2SxXA4RaWKiweCOGD6TSOVF/MJQ+dqamZc7tLBcz09vNRR7UyYR+xdb7h3O8GmdSNsr
-    BsPc8f3hwH/a5Ln1Hhp1tYUMJKBRmSg2BFXhm+zQj8nQ4ZFlsNITgmC5qhww
-X-ME-Proxy: <xmx:RZ3banEdxmK5GIshwTV18B6HDRUCrQjQGipd6QkFV_2NDPHigXiZlQ>
-    <xmx:RZ3bahBbpDx8lD1TeNgaYKt4j52Xvakw_Dqt3-AyFnLwcJ1aeh2P3Q>
-    <xmx:RZ3batAIeciA0vfdxa-vLOKT4C0Nei_1GaGckaDgGvsrsuGL6l70lg>
-    <xmx:RZ3bavOT-TZZgCJvN4KIld23RQQWCYjYGbtxo7kiHmSm0ousICc6JQ>
-    <xmx:RZ3bahOeq4hd0P8PRPwhP2_dJRcQC3CEJ4Fu4AdiaOIuvO2BJXKZSJrM>
+  by phl-compute-10.internal (MEProxy); Fri, 23 Oct 2026 14:02:51 -0400
+X-ME-Sender: <xms:S6HbagXwiaqr3QQa8mcKJMCCl0A5tExUO_ARWNRgWdnxCmCwXt3mbw>
+    <xme:S6HbavaDigAlOx9NBgiqLnf9j_nbj46ULziwWS7rv6GhMyjeixANJLCLDoRNg_pYO
+    gM-WYPMEefKPWVAYpObjVfbEFLaSg_XHynorfWcIEqt1Ll898H2Phs>
+X-ME-Proxy-Cause: dmFkZTEsjtUgDJBYap9qhUMKtLl9jqAKBBCnlwmhLjGIDNZw3TLRNdHTHOB8CQWCO1JeDp
+    N3Pu+F5dM5iHuZcPbzp9i09R+ylsLhkbbtgt/zFNnqdc8eceJNMzrbAVEPDIH5Lo83I8O0
+    fTnjURMbv4p45dKB7JImhqCVy+ht/Nzc3MVaFRSHcGDE7qDBLc2gE8rjAXGydetLjSn+Re
+    r957l+gjjUzVbZ7iJ+oRwxWPDUyed3S795zKEv0bK0lWx17hc1QXWn78cGXMy3fZe+4UcP
+    i2hXydb20Ke7aQ4kI+xbLKOBui3Gki6zQaeK/i1HxT6zkn97Ax8VvXKgE2MsP+mUfXh7c2
+    yPlu8bKhhcspbdWoLwtnPqs0s+3j706W+cAsMKIhXDzHm6U4PaJCpWnY7L4bRikigB43T8
+    WkEG1JyeAcOBksaEIOy2x3njkWVZYaSen1VNLp9eovWmKbs6D/hkmChVaITVz5l5syJDsm
+    fRiJNrZ307xbgdS7lM6cj45h7YaRXyN+IjvfKlMwLf0YVJhj3rVsImoBsGRUXscOZhtMJa
+    oRBKGreY2k2//AdPdV1m4JGXwNNVQno6iW5bTbP8L1YeyOoSU1ABe2h4F9aM2N4LL6j9Tk
+    Qm8PiJU+ircvFjjLUtztJ/bzzRX61lY604tCKmiyuxsjUTjQPuTRu3pHKCMw
+X-ME-Proxy: <xmx:S6HbakR-jYIoYwXIRdBhFKTcjqGhAL6u0dfa31zw7pk954ikuv1N-w>
+    <xmx:S6HbahP_xi-y2UaJmrV_FSuf-jz7hgZTqxB1RnNVkKUFkp0Hk69eJw>
+    <xmx:S6Hbai6ylFS0lDbDCtRkMPvMb29bzbEuCQ2VXyR_3mRouaNnGlmjAg>
+    <xmx:S6HbasWkd_WwvzEwPKt1PG9Seb72hy94Og311jgMPKo6Gm9aBDagKQ>
+    <xmx:S6HbahOWeR7JGc9YMaKxwne2Er0gWAC_-flNWaIl_1fAxLJ9WOwKmhd9>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 8303778273B; Fri, 23 Oct 2026 13:45:41 -0400 (EDT)
+	id 5945D782738; Fri, 23 Oct 2026 14:02:51 -0400 (EDT)
 X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -77,97 +77,70 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: AnedLfdbxVbc
-Date: Fri, 23 Oct 2026 13:45:21 -0400
+X-ThreadId: A-i9QTM-Cdfw
+Date: Fri, 23 Oct 2026 14:02:31 -0400
 From: "Chuck Lever" <cel@kernel.org>
-To: "Mike Snitzer" <snitzer@kernel.org>, "Jeff Layton" <jlayton@kernel.org>
-Cc: linux-nfs@vger.kernel.org, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Christoph Hellwig" <hch@lst.de>,
- "Jens Axboe" <axboe@kernel.dk>,
- "Matthew Wilcox (Oracle)" <willy@infradead.org>,
- "Jonathan Corbet" <corbet@lwn.net>, linux-mm@kvack.org,
- linux-fsdevel@vger.kernel.org
-Message-Id: <36498551-15ee-4a55-9757-54aa8a07085a@app.fastmail.com>
-In-Reply-To: <20261023024548.71123-2-snitzer@kernel.org>
-References: <20261023024548.71123-1-snitzer@kernel.org>
- <20261023024548.71123-2-snitzer@kernel.org>
-Subject: Re: [PATCH v8 1/7] NFSD: cut a misaligned direct-mode WRITE at the mapping's
- smallest folio
+To: "Zhiling Zou" <zhilinz@nebusec.ai>, linux-nfs@vger.kernel.org,
+ netdev@vger.kernel.org
+Cc: "Trond Myklebust" <trondmy@kernel.org>,
+ "Anna Schumaker" <anna@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
+ NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
+ "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
+ davem@davemloft.net, "Eric Dumazet" <edumazet@kernel.org>,
+ "Paolo Abeni" <pabeni@redhat.com>, "Simon Horman" <horms@kernel.org>,
+ vega@nebusec.ai
+Message-Id: <5f83b574-224f-4db1-a2f9-60f11a236197@app.fastmail.com>
+In-Reply-To: 
+ <1106d411594bbf7d4ee8deb7f3a0281475c258c4.1792734713.git.zhilinz@nebusec.ai>
+References: <cover.1792734713.git.zhilinz@nebusec.ai>
+ <1106d411594bbf7d4ee8deb7f3a0281475c258c4.1792734713.git.zhilinz@nebusec.ai>
+Subject: Re: [PATCH net 1/1] SUNRPC: reject AUTH_TLS on backchannel requests
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
 
 
-On Thu, Oct 22, 2026, at 10:45 PM, Mike Snitzer wrote:
-> nfsd_write_dio_iters_init() cuts a misaligned end of a direct-mode
-> WRITE at a multiple of the larger of offset_align and PAGE_SIZE, so
-> that the direct middle, which invalidates the page cache over its
-> range, never shares a page with a buffered end.  But where the
-> mapping's minimum folio order makes the smallest folio a block larger
-> than a page, the page cache holds that block as one folio: an end cut
-> on a page boundary inside a block leaves the middle and the buffered
-> end in the same folio.  The middle's invalidation then drops the folio
-> the end wrote, and whichever of the two neighbouring WRITEs comes second
-> reads the block back.
+On Fri, Oct 23, 2026, at 1:55 AM, Zhiling Zou wrote:
+> svc_process_bc() processes reverse-direction calls with rqstp->rq_xprt
+> set to NULL. A backchannel caller can supply RPC_AUTH_TLS, which selects
+> svcauth_tls_accept(). That handler dereferences rq_xprt while checking
+> for transport handshake support, causing a NULL pointer dereference
+> before the RPC program can reject the request.
 >
-> Cut a misaligned end at a multiple of the smallest folio the mapping
-> allows as well.  Where that is a page, nothing changes.
+> Reject AUTH_TLS credentials when no service transport is present. The
+> backchannel request is then denied without accessing rq_xprt.
 >
-> Fixes: 80728157d1bd ("NFSD: cut a misaligned direct-mode WRITE at page 
-> boundaries")
-> Signed-off-by: Mike Snitzer <snitzer@kernel.org>
+> Fixes: 74aaf96feaca ("SUNRPC: Teach server to recognize RPC_AUTH_TLS")
+> Cc: stable@vger.kernel.org
+> Reported-by: Vega <vega@nebusec.ai>
+> Assisted-by: LLM
+> Signed-off-by: Zhiling Zou <zhilinz@nebusec.ai>
 > ---
->  fs/nfsd/vfs.c | 14 ++++++++------
->  1 file changed, 8 insertions(+), 6 deletions(-)
+>  net/sunrpc/svcauth_unix.c | 5 +++++
+>  1 file changed, 5 insertions(+)
 >
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 9219f8eb386d..ade00dabef18 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -1452,13 +1452,15 @@ nfsd_write_dio_iters_init(struct svc_rqst 
-> *rqstp, struct svc_fh *fhp,
+> diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+> index 31a1bc60a5f6d..bac38f3ce9a6c 100644
+> --- a/net/sunrpc/svcauth_unix.c
+> +++ b/net/sunrpc/svcauth_unix.c
+> @@ -1128,6 +1128,11 @@ svcauth_tls_accept(struct svc_rqst *rqstp)
+>  		rqstp->rq_auth_stat = rpc_autherr_badcred;
+>  		return SVC_DENIED;
+>  	}
+> +	if (unlikely(!xprt)) {
+> +		/* Backchannel requests do not have a service transport. */
+> +		rqstp->rq_auth_stat = rpc_autherr_badcred;
+> +		return SVC_DENIED;
+> +	}
 > 
->  	/*
->  	 * The direct middle invalidates the page cache over its range, so it
-> -	 * must not share a page with a buffered end.  An aligned end needs no
-> -	 * buffered segment; a misaligned one is cut on a page boundary even
-> -	 * where the offset alignment is finer than a page.  A WRITE may end
-> -	 * at OFFSET_MAX, so the prefix is sized as a distance rather than
-> -	 * by rounding @offset up, which could wrap.
-> +	 * must not share a folio with a buffered end.  An aligned end needs no
-> +	 * buffered segment; a misaligned one is cut on a boundary of the
-> +	 * smallest folio the mapping allows, a page or, where the block is
-> +	 * larger, a block, even where the offset alignment is finer.  A WRITE
-> +	 * may end at OFFSET_MAX, so the prefix is sized as a distance rather
-> +	 * than by rounding @offset up, which could wrap.
->  	 */
-> -	cut = max_t(u32, offset_align, PAGE_SIZE);
-> +	cut = max3(offset_align, PAGE_SIZE,
-> +		   mapping_min_folio_nrbytes(nf->nf_file->f_mapping));
->  	prefix_end = offset;
->  	if (!IS_ALIGNED(offset, offset_align))
->  		prefix_end += min_t(loff_t, cut - (offset & (cut - 1)), total);
+>  	/* Signal that mapping to nobody uid/gid is required */
+>  	cred->cr_uid = INVALID_UID;
 > -- 
-> 2.52.0
+> 2.55.0
 
-PAGE_SIZE looks dead in the max3(). mapping_min_folio_nrbytes() is always
-at least PAGE_SIZE, so the cut is just max(offset_align, min folio). The
-new commit message and comment both describe three independent bounds, but
-the accurate statement is two: the DIO offset alignment and the mapping's
-smallest folio.
-
-Also I would like to keep the helper's unsigned long type instead of
-narrowing to u32.
-
-Post an updated version of the v7 patch so we can test and review that
-as a single change. This will also archive that revision in the lore
-archive. This will likely result in merge conflicts with subsequent
-patches in the series. If those are just comment conflicts I can fix
-those up when I apply the revised version.
-
-Do not include the new revision of this patch in v9. v9 is now patches
-destined for the MM tree(s) while this patch goes to NFSD.
+Commit a54a573bceaf, "sunrpc: reject AUTH_TLS on backchannel to prevent
+NULL-deref in svcauth_tls_accept", now in the nfsd-testing branch,
+already addresses this issue. Thanks for confirming the finding!
 
 
 -- 
