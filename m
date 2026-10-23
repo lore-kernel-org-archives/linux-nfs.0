@@ -1,65 +1,68 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=95.215.58.233
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=113.46.200.220
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792753851;
-	b=aV+ETAeFfXy4W8r3IAUyXAZcN/gfPT8jn7V6z5jxRPvTLVHVwWui80S4wMP+b1+mteKJ
-	 ZWSWrUw1W7oRiPTmcmt62xSbe+IhaylK4/re5dFZXmfubq6V3/zMBj+ZwAMAC83i88IFT
-	 fktaKGSV5vc4TasBiHbQEDggPZri5DcNNDAYeN5KdYF9gRcLgUFDsIbxHbWWDaWR4IcZ8
-	 uzwIFfINczyW4WedLvvC3hRT5XmwmRlL+TRlSz6V7pJ7ha0Rfp1WMcu9AwNutkdWqNQdR
-	 ztWAUQWfVxkiKlBqLaroPw1ESk6umRkeS25sEo34HJi9P2fnxIiqrGxBOWb13p69Z1w==
+	t=1792758232;
+	b=daVvtYS+NCAv9HO/Mde2PTTgxEn0Z/6zvXawBFeRJMLA4xEb7AdczdyYbYy0NLTDgxeK
+	 hTMizT6CF5FKGNO/JhkAvwDdLbbBJPAHHuutLBAR7jZ8UyAxjjCJ3xHxHNVb9BGGmQrlv
+	 K9IrUNTYMLzWCMB3p3JmdWQ8poPPrkhtFSMN8yxPQn0X01x/+YCSpKX4q6q3W440GygwJ
+	 YvCs6AnUC5dIg0hiJnn1b42+hr5DSSeHXVJG+9gB1lgBqhYe0nwOOPd/t89w0NJ0Olgs3
+	 DyxO0f2DES/Y33brRTwA2smDRDee9DqrtAdLDIMa+ejZ91+7zDGO6aIibf6Psx3RIdg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792753851;
-	h=DMARC-Filter:X-Envelope-To:DKIM-Signature:X-Envelope-To:Received:
-	 X-Mizu-Trace-ID:X-Migadu-Flow:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=W7+3hjvD5m826P7DsODL2DpmAYEEQnglUyqR3Z6Iq18=;
-	b=Ceo+XlfQsfk7QYaq+i9EXwJrQ+yEgLRyy4d/3PrRbnY3oQpzgx3gyTa5MA02TzBWJGNN
-	 +GhmLHRbPwDW/WaJ6FxNal2xKFkQidh18LgG01wwdlFTa0zehCNy4kWojKUmOZPZ1ZNPd
-	 6Zn13AderQuLCmePs6CAMPHntzcNOyX4n0YkokmqjlIXUxdBijZ+boGP3a4MIGyfKtbiO
-	 L75g2ePRceHpztB1MDlsWhg9v3B5p/gCxnN3pNQ+u2tHnl4swaDgXYTFWInGkMp2xgIqS
-	 12Bq247/iUZ+xoKJJD7Xs5ABi5awBmLIUeFvK1ZcPu+pf5yBGDCxalfJs7FmbAlXcaQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792758232;
+	h=DMARC-Filter:dkim-signature:Received:Received:Received:From:To:CC:
+	 Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding:Content-Type:X-Originating-IP:
+	 X-ClientProxiedBy;
+	bh=wk3324vvbrlF1HvcgQMN7mpDc727JcjF7E1+c41AfH8=;
+	b=h58M2+seX8WQ3nwq25FxL9YrKFgAj1te7aV0QojIqGy2CYZVIKnW70vjsWsCMZK2gdFQ
+	 9i2G7xzNKTSS2DR2yEen9t13beBk3CjpaxbohnvFDSE5/KVjyf5M4PDU2DNQPSdhssqQk
+	 NOGYq8dtQgov5AsIIKbinkTcGaODA4qR787O29RPwsxV+CjUPTzjo7N6G/T6vrH16/bmc
+	 ok+zndNbE03Kf+cbk9DFDxo9vcI23WoQ+XTT1jqDesBLXK5HXuFWLNgsg1RiwZn94C9pf
+	 ESyUEhRr68v7MYBDQHzMWlUSxpH/81Zm5bcZM5Mq6U7lE/CW96TLB+AQfPRHYQECDKg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=linux.dev;
-	spf=pass smtp.mailfrom=linux.dev;
-	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=vKHR1znC;
-	arc=none smtp.remote-ip=95.215.58.233
-Received: from mta1.migadu.com (out-233.mta1.migadu.com [95.215.58.233])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=pass header.from=huawei.com;
+	spf=pass smtp.mailfrom=huawei.com;
+	dkim=pass header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=yzt8kfNk;
+	arc=none smtp.remote-ip=113.46.200.220
+Received: from canpmsgout05.his.huawei.com (canpmsgout05.his.huawei.com [113.46.200.220])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 76783606A31D
-	for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2026 11:10:49 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 76783606A31D
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1C05D606A31F;
+	Fri, 23 Oct 2026 12:23:48 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 1C05D606A31F
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=vKHR1znC
-X-Envelope-To: linux-nfs@vger.kernel.org
-DKIM-Signature: a=rsa-sha256; bh=lTWrsqfwjl6Xh0ZSuBODjEwfl4/jYFcVJyZ7FckM1Ao=;
- c=simple/simple; d=linux.dev;
- h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
- t=1792753847; v=1; x=1793358647;
- b=vKHR1znCiBjytHElULTzSiq05ekQOKvsYfdAyl8Vep2EwsNGCeulRmJgabXVKxdkHLZ+BKWv
- OO1AYRSaNEsAeRbNGF3YI434B2VsdOXfStJoK38dpfCeW3Kn3EP+lp3pRDxD6EKdeb6xN376R+t
- tQAcbIfmos6wg1DtQ5pZTPA8=
-X-Envelope-To: linux-nfs@vger.kernel.org
-Received: by smtp.migadu.com with ESMTPS id 9081e9ea27b95ccd;
-	Fri, 23 Oct 2026 11:10:47 +0000
-X-Mizu-Trace-ID: 9081e9ea27b95ccd
-X-Migadu-Flow: FLOW_OUT
-Date: Fri, 23 Oct 2026 13:10:34 +0200
-From: "Pankaj Raghav (Samsung)" <pankaj.raghav@linux.dev>
-To: Daejun Park <daejun7.park@samsung.com>
-Cc: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org, 
-	Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
-	Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
-	Dai Ngo <Dai.Ngo@oracle.com>, Sergey Bashirov <sergeybashirov@gmail.com>, 
-	Andrey Albershteyn <aalbersh@kernel.org>, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	stable@vger.kernel.org
-Subject: Re: [PATCH v4 6/9] xfs: clamp the pNFS layout range to the maximum
- file size
-Message-ID: <attAFOxxELxAxoJo@quentin>
-References: <20261020-xfs-pnfs-batch-v4-0-9230fa2ca4a4@samsung.com>
- <20261020-xfs-pnfs-batch-v4-6-9230fa2ca4a4@samsung.com>
+	dkim=pass (1024-bit key, unprotected) header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=yzt8kfNk
+dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
+	c=relaxed/relaxed; q=dns/txt;
+	h=From;
+	bh=wk3324vvbrlF1HvcgQMN7mpDc727JcjF7E1+c41AfH8=;
+	b=yzt8kfNk0oTyQy+AXUGorgCXXI0VEg/6p0l1U0nV+ORVrZsROmcT5k0verxjfAWe37iunFazd
+	f9lNpUnt5C1jgzZzzBJR87PDw+4mG34xKqt2pCvlYEDOQaUgBmZ7lP8tAJipkiJgnAQme6dUpHI
+	zKN+Jf2wlfI0nv34nogSXqs=
+Received: from mail.maildlp.com (unknown [172.19.162.144])
+	by canpmsgout05.his.huawei.com (SkyGuard) with ESMTPS id 4jB2Hm4shcz12LFP;
+	Fri, 23 Oct 2026 20:23:48 +0800 (CST)
+Received: from whupemk300014.china.huawei.com (unknown [7.152.185.8])
+	by mail.maildlp.com (Postfix) with ESMTPS id 46D674056D;
+	Fri, 23 Oct 2026 20:23:46 +0800 (CST)
+Received: from huawei.com (10.50.85.128) by whupemk300014.china.huawei.com
+ (7.152.185.8) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.2562.45; Fri, 23 Oct
+ 2026 20:23:44 +0800
+From: Li Xiasong <lixiasong1@huawei.com>
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, NeilBrown
+	<neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo
+	<Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, Trond Myklebust
+	<trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
+CC: <linux-nfs@vger.kernel.org>, <linux-rdma@vger.kernel.org>,
+	<stable@vger.kernel.org>, <yuehaibing@huawei.com>,
+	<zhangchangzhong@huawei.com>, <weiyongjun1@huawei.com>
+Subject: [PATCH 0/3] rpcrdma: Fix device removal races and endpoint cleanup
+Date: Fri, 23 Oct 2026 20:50:30 +0800
+Message-ID: <20261023125033.528835-1-lixiasong1@huawei.com>
+X-Mailer: git-send-email 2.34.1
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -69,63 +72,57 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261020-xfs-pnfs-batch-v4-6-9230fa2ca4a4@samsung.com>
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: kwepems500001.china.huawei.com (7.221.188.70) To
+ whupemk300014.china.huawei.com (7.152.185.8)
 
-On Tue, Oct 20, 2026 at 12:08:49PM +0900, Daejun Park wrote:
-> xfs_fs_map_blocks() checks the range of a layout with
-> 
-> 	if (offset > limit)
-> 		goto out_unlock;
-> 	if (offset > limit - length)
-> 		length = limit - offset;
-> 
-> limit - length is computed in u64, so a length larger than the limit
-> wraps and the length is not clamped. nfsd passes the LAYOUTGET range
-> through, and RFC 8881 lets a client ask for NFS4_UINT64_MAX bytes, for
-> the rest of the file. offset + length then wraps to offset - 1, end_fsb
-> rounds back to offset_fsb, and xfs_bmapi_read() maps nothing. For a read
-> layout, xfs_bmbt_to_iomap() then gets an uninitialized imap: with a
-> zeroed stack it logs "Access to block zero", marks the data fork sick
-> and fails with -EFSCORRUPTED, and otherwise the mapping is whatever was
-> on the stack and can reach the client. For a write layout,
-> xfs_iomap_write_direct() is called with a count of zero, which trips an
-> ASSERT with XFS_DEBUG. An offset of 2^63 or more, which nfsd accepts
-> too, becomes negative in the loff_t argument and passes the first check.
-> 
-> Reject a negative offset and an offset at the limit, and compare the
-> length with what is left up to the limit, which cannot wrap once the
-> offset is below it.
-> 
-> With pynfs as the client, a READ LAYOUTGET for NFS4_UINT64_MAX bytes at
-> offset 0 got NFS4ERR_IO, as did an RW one on an empty file, which also
-> made nfsd warn
-> about the non-standard errno -63, and a READ LAYOUTGET at offset 2^63
-> got NFS4ERR_IO as well. With this patch and the previous one, the one at
-> 2^63 gets NFS4ERR_INVAL, the RW one gets NFS4ERR_NOSPC after nfsd has
-> allocated one extent after the other until fewer than
-> XFS_MAX_BMBT_EXTLEN blocks were free, which left less than 8 GiB of the
-> 32 GiB free, and the server logs nothing. The READ one gets NFS4ERR_INVAL
-> as well: nfsd, which maps a layout one extent at a time since
-> commit cc6c40e09d7b ("NFSD/blocklayout: Support multiple extents per
-> LAYOUTGET"), asks again from the maximum file size on. An RW one on a
-> file whose first 64 KiB are allocated, with a loga_maxcount that has
-> room for one extent, is granted 0+65536.
-> 
-> This depends on the previous patch. Without it, an RW LAYOUTGET to the
-> end of the file, whose length is now clamped instead of wrapping, asks
-> xfs_iomap_write_direct() for every block up to the maximum file size,
-> which wraps the block reservation and shuts the filesystem down where it
-> got NFS4ERR_IO before.
-> 
-> Fixes: 527851124d10 ("xfs: implement pNFS export operations")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Daejun Park <daejun7.park@samsung.com>
-> Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
-> ---
+This series fixes races and endpoint cleanup issues in the RPC-over-RDMA
+device removal paths.
 
-Looks good,
-Reviewed-by: Pankaj Raghav <p.raghav@samsung.com>
+Notification registration is not serialized with device removal. Removal
+can free the per-device private data while registration is still using it,
+or finish walking the notification array before a new registration is
+published. In addition, the notification walk does not hold references to
+the objects containing the notifications, allowing concurrent unregister
+and teardown to free an object before its removal callback is invoked.
+
+On the client side, the device removal callback only forces a transport
+disconnect. A connect worker waiting for re_connect_status to change can
+remain asleep, preventing endpoint cleanup. An established endpoint can
+also retain its connection reference because CMA suppresses subsequent
+DISCONNECTED callbacks after entering the device removal state.
+
+Patch 1 serializes notification registration with the transition to device
+removal and protects access to the per-device private data.
+
+Patch 2 uses the same mutex to serialize notification reference acquisition
+with unregister, and holds a reference across each removal callback.
+Callbacks and reference release run outside the mutex to allow teardown
+to unregister notifications.
+
+Patch 3 records device removal in the endpoint connection status and wakes
+a waiting connect worker. For an established connection, atomic state
+transitions ensure that the first path to leave the established state
+releases the connection reference exactly once. It also handles connection
+establishment racing with removal and propagates final endpoint release
+to CMA where needed.
+
+The patches are ordered by dependency: patch 2 uses the serialization
+introduced by patch 1, and patch 3 relies on the callback lifetime
+protection added by patch 2.
+
+Li Xiasong (3):
+  rpcrdma: Serialize notification registration with device removal
+  rpcrdma: Pin notifications during removal callbacks
+  xprtrdma: Wake connect worker on device removal
+
+ include/linux/sunrpc/rdma_rn.h           |  6 ++-
+ net/sunrpc/xprtrdma/ib_client.c          | 56 +++++++++++++++++----
+ net/sunrpc/xprtrdma/svc_rdma_transport.c | 19 +++++++-
+ net/sunrpc/xprtrdma/verbs.c              | 62 +++++++++++++++++++-----
+ 4 files changed, 119 insertions(+), 24 deletions(-)
+
 -- 
-Pankaj
+2.34.1
+
