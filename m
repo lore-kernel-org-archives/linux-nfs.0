@@ -1,72 +1,72 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792784145;
-	b=Yg7/cqh5iweMMNNB/IsQKSXLyJAJJtaYdaF+Be1jRBZCO4Vinjbr5vNF3j1RIQnS58S9
-	 9lQqWO/9187fmVWANkmzsqtdVJEGrypU0IAiPH8aARaoadl9bIJSyPVtOs/7pXI1F7Q2r
-	 yeIsZM3C2tpQAoSjTjOVpUVuz1L9z3usfmXse5vXFzFfOsLdjGdUcGwZx2qBKtFzhZlma
-	 khBG2H0TMqLMiwtnQON5BK4gWXRFCXMqGqWGGSKjGSAHtcULrWMv4YwAqi76j4xC2ixF3
-	 NJtjGVDYkSK1kN9gtDuISqa/3KvZFWK9St2dVMmN2APXBsdTwqDTJtheI6Cpot/Ar0g==
+	t=1792785693;
+	b=hyHHrBu74MhwKroJndZazUyHI08Q+PFGe1np0Xqzs/do9DOO51emkeSvr5T8ck3g47sh
+	 S+yLFtfv7mzClCg6T4bPJty1/qd+M9s6MbO36M0lfY6WjpRAdaFGWf+iudGJCSnh9xXAE
+	 /qQE4zocQGZRSfvUJtIS2M1MsIkoPLzFmkta8s5wa5ElwOXV0W7ugsQEg562xSmyxOwyJ
+	 MqyBt6k0H08pFn0MkyP9HsqZrisgNgAU+MKk43PoF4j+qVlKzvwfH5Nv+N9mg8Iu5A9Qk
+	 t7DTmgEf2bsMCRUe9GX1Yj7NUbwykBYZldU8YnBzuSibMP8V0zY8J6WJo0kivHq0xDA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792784145;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792785693;
 	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
 	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
 	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
 	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=Zs7T4voI7+RxGzrZ++HmmoP/YnO9yckMQ0Kw6Kbht0k=;
-	b=fKQTkZUML6vW9M9S1iGhnUWfZC3/4Cvjkui3rKvCiAvFptwsSyKQiwC1itSROrtZX28j
-	 fyOpQmHlHtwzJJE4fO4RF4lnPWYduDF1ZM/9sW1wOZuOugjwTiAoGNF1pgToovr6x+wxr
-	 aEL5y2biPnIVCiktDvJ4efvSNBpDePqx9igbldJTUs78/FIRWVBoJOMnxKII6CWGU8PSU
-	 iN0yzqM5rh0TOtUepLMgAf04zELToIWjfZLn0zY0kXC/nlQT709aeVbAJ8kQhpjBdBM72
-	 SY6NouIFQBbRcnLvUhFmAYBl7RyRxul7oUxDUFIsGWoeJxZSMriMa+RLu4zfQFbWTSw==
+	bh=83dTVyz0p3AkNgmbCP0B/0Rsb2Y7EcIdwhNXZ0ef3CU=;
+	b=lP5MRtK2uAy8iRgW50cfpvj/ucOYO4eBerBMPi9Uuc+N6TKScghcWyfJFZ7CbTyBPL2K
+	 TSYMJlPudO3mOHTU9dEIsRqNtIXA+Gkxle35kql2FqWwiX3Uh4d2JyM0cUxI51D15Zc39
+	 219esJFvDIbKPff0KjKSihKmnPNt9syjvxYpXhRAtfmWJJshoH/79t1/cc9EANp7Cx+cV
+	 Z8wBSfoyreqTd2YSTnLu2b9bm6+T55T11hYIbGiJk3XnRfkNx7Gx1/LBCiuCa0ZvatD1v
+	 yiLYhb30T0ApLCBqLFPpAiUq44f/mqN4eILN9MpghNhHX2auHNEayE6L8XcJNglV8IQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=A0DD4lXs;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=IGua9sbi;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D0B12606A31E;
-	Fri, 23 Oct 2026 19:35:44 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE37460A262D;
+	Fri, 23 Oct 2026 20:01:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=A0DD4lXs
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1E9661F01825;
-	Fri, 23 Oct 2026 19:35:44 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=IGua9sbi
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2F1871F01825;
+	Fri, 23 Oct 2026 20:01:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792784144;
-	bh=Zs7T4voI7+RxGzrZ++HmmoP/YnO9yckMQ0Kw6Kbht0k=;
+	s=k20260515; t=1792785692;
+	bh=83dTVyz0p3AkNgmbCP0B/0Rsb2Y7EcIdwhNXZ0ef3CU=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=A0DD4lXss60vVfZXx6rRdnCsXtIOj/WVdsw/rW47pHjEuqHmQUEU4yDzgkVpREM9j
-	 /59XyaP5GEVKF1EE9JgH87lwWRmo3KEDr2DUfPXn9Yyq3SiVcB/koqWIw8zULQpt+A
-	 wOMWwvb1AkveR3Cwd6xnwB96khs3ujCEMnSUeq3g4sUdO9a74qG63y1dxXQC1IUsYg
-	 VL32FUprkLQ8PapIN6DbISamSOMsaA0Nm/ktD2PVWMAZlSD1Jo7cgPySFC65l4Pl4V
-	 IiMRqV+/bNNBY5ER8lv3ggrLvAU+zg5Mhrh70tgJrkKAugY5FhUjSlEVsea7lRWA6o
-	 k2+qbZmhA21pg==
+	b=IGua9sbiZvxXE9t5mnd9LaHC1TIZfDMAaoXaEO3+IzeRAzJW74uBbIpURdPA5E2F7
+	 OR1KmqBWnTfAQTWkQkp8S4+9uE3jFoC/D8PFl24WwwwCcoH8NeIc3uZEDNS5l4YoYK
+	 FxmWgnP/yVZRb72cDWfPJaf6+GGRfV1A4CzF1MCE0DsqSwkewSWYIXpc5c07sfdnW8
+	 ThdAOh7/nakAzPmSXazynTO6Erz+EhSn/zjMNj+6WMMxdKQf04QOSG7NUSY3i7Gzsy
+	 n0+UTvxUZl7CQXBUWzT7ErJ0IBRAPWXvEEZCKj6JsgcN4TLAbsr/QR0B2DLNF01OSt
+	 oH3cWINARbIOw==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 60E21F40066;
-	Fri, 23 Oct 2026 15:35:43 -0400 (EDT)
+	by mailfauth.phl.internal (Postfix) with ESMTP id 57222F40069;
+	Fri, 23 Oct 2026 16:01:31 -0400 (EDT)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Fri, 23 Oct 2026 15:35:43 -0400
-X-ME-Sender: <xms:D7fbaunzMAOv8iCTYdk7QSRjiqd9HotGs3zGWt68tMV0RKdzouRaiA>
-    <xme:D7fbagoEVhuEOG1OH6iyXlpPLobWg_RA7yE1uCk1Au6z7ri0FwBZJ_WMaL4FlLVAS
-    Qftmb7T-vCvYCJVLTuZjZHI4IHxsG91d_lJWps9AnweHn-rzRUws2M>
-X-ME-Proxy-Cause: dmFkZTF0Ps9SNVaUJQPiKp6jAEKBtJH3suwWaCJtgK5t5IwPpvijAg27gGGBInaZhdAFz8
-    rCwABSnLfE6ZKIRA0+DpPVXkeeuzdDxQmbesG88MGwJtf+FIUv2YwIxXt5SIBB80gRsjbT
-    tDJyBHuNQb6uizWbX1oyPUVbvf+DDgEt0I08jdCapzjFVUsNLppx7BRwfXxuh8CKI0A9YD
-    TirKFJEy+vpavEmSAgJRgyHmqt4OC6N39lwcLuWrzfqNI3zmeAaq/Xa5r/mZG7AkW6cX2y
-    pLiMWWACX+dYaP7DWp4HO2iFw95sHN82RAUfP5PODh+TeVyUPPSOk7yMwD9upN5SFVAMFS
-    HS8t3pB/neRzFq/48DZaOHBU7OMQKvA4keVltWtYMxu8zL8vVZEbChWzSaemIC/Npq/RVG
-    p6l9pgaqbmc8Sr+/HBzUBla8bD10L7R1KDdiiqGe9osI87Zpgo2b5yr164VMp/mw9ASGib
-    d0zkTrGPjJH3U7D5fd0u65K3z0fqbP/OsJzqx0n+zM+gz+pRdTGjsoUFmuKxZBWA2IfqbZ
-    p40QxJlYI4FZKKvdrtSxiYik8cirQnJ6XWtzofxBVJazl6PJnTug9HtLtr3khwPu2Kbte3
-    zPoZj7bEXRqYaSB7v5qm7TdE4WZCkU/MIIpubHMysFYPXDH4jLehqQcEAIKQ
-X-ME-Proxy: <xmx:D7fbaj040DXvTj75qIXxZjMNFhry_KEnCy73vwtCYiviuSuoRP9O7Q>
-    <xmx:D7fbauc_S_t2t_fLD9uo8VckSrJKdQFfv92NVC9OhB-BEUpM_B6zLQ>
-    <xmx:D7fbaoVQIxjEedRlejv7YXk_pVHm_XFy6SU7uCtZrF-NqHQ-MRHOsQ>
-    <xmx:D7fbam_bMRkze1zkoFlAGv0-_T-7kdNXHmEhW5CIRHVX-YVsViHr5A>
-    <xmx:D7fbaijIer4azbnPm1GE6Vnmanq4opMvFfGBDn5_bSAhvKH95Cil7SW3>
+  by phl-compute-10.internal (MEProxy); Fri, 23 Oct 2026 16:01:31 -0400
+X-ME-Sender: <xms:G73barP9AXVm5jOgncs3VboEjrQujvNFP4z8w-jxW8zt1J096JBDzQ>
+    <xme:G73bagyrWpJuBwpX2tlUc2b1tAQf2kbq3xZ37wX_zub_uKv3iSs3OQcRXdvMIvnkb
+    00e8_XrTrjT626866BNM_VpURgDCA1L7Jjvcj-w7puokwcto3lismw>
+X-ME-Proxy-Cause: dmFkZTFLSgFQCdwjP+L2UOGlp4WBYK1w9l8llu21sPp5qrLcIM9wEhZ5L3lCE5gVar5uoV
+    0yXU70fnczRS7CeKNq4kG2axPkKPLlf2zruTC6G6wf8jtkvf1PQnkbfb7OU5eKXgAggKW7
+    1dnMDtSM6msg+UOTpcS1Jx1AeIcfXNMOl0ycYI08D0bOPYt/3mD8s9PBmBAcN9MDeBJZNP
+    r9ivTRHOAr7NtHBxO2bODLqiKzdD4s+CGS2tZwcLgBTwgkMuQAFpyvQff0KoIk6VpgrlBr
+    bb3RLpjL51WkCBGwLUpQwIRW4YyB8BYzld7nU7mxmPzJJNCeWrBjkJDdICnEQmUA2g6qU+
+    Zi/Y/Vbg1Ct38fmWOLUkk1Gt6+o8ScL2Espptc8SIWzJ4b1pCeCGCPXyRzgmxeDLk9ym6p
+    BUsrl5aFv667VTJ+YSld4x19p8BVONFBk6SbEjw+ZUP7PTdNenbGeOYpRDRUEt0J4zhc50
+    6K0pSiSXm9gIFEo2mciW+qT9HEY5y//Q2q7eUW6OiRXR17j+5WDmhAQA7Vh/RfHF6g2wwq
+    0TErGVKVS30EUdJoHvI6ttUDNATMdUmBdszS7lCC0q33x5QAROoReJlGSyNcs4Md65CY70
+    pPQ0Z+nsltAraVnJ6BARJRVclWQm0vKiPcRlWKOkXyPob6Hskm4xowKmWHFw
+X-ME-Proxy: <xmx:G73batZUw0A_D0YznD8DjEUAuBJq751BFaSStcFGkjFEf-FMv1oqdg>
+    <xmx:G73batW8p94nPpt75Hl6C_le6M7DRkAimv45xGoRJvYGrT212l_IPg>
+    <xmx:G73bargMqKEBLRL6Cs90K7fmSwyUyygeAngWzG9bHhlLgnaxtcUTTQ>
+    <xmx:G73barv7CxGzL1kdYWCnxnMLGdqorpe_MnmnuR6V-v0NrGEPrqL07w>
+    <xmx:G73bak6La4kGGtadX1viPaWU-wkIH6kiVrN4wVxtcZKtnQnUZYqVUx0H>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 417D678273B; Fri, 23 Oct 2026 15:35:43 -0400 (EDT)
+	id 2257E78273D; Fri, 23 Oct 2026 16:01:26 -0400 (EDT)
 X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -77,105 +77,57 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: AQ3ibqN4uOeg
-Date: Fri, 23 Oct 2026 15:35:23 -0400
+X-ThreadId: ALXHXgarDijJ
+Date: Fri, 23 Oct 2026 16:01:06 -0400
 From: "Chuck Lever" <cel@kernel.org>
-To: "Li Xiasong" <lixiasong1@huawei.com>
-Cc: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>, linux-nfs@vger.kernel.org,
- linux-rdma@vger.kernel.org, stable@vger.kernel.org, yuehaibing@huawei.com,
- zhangchangzhong@huawei.com, weiyongjun1@huawei.com
-Message-Id: <2edeb013-f54f-44dd-b327-a21481d19601@slotpi15m67>
-In-Reply-To: <20261023125033.528835-4-lixiasong1@huawei.com>
-References: <20261023125033.528835-1-lixiasong1@huawei.com>
- <20261023125033.528835-4-lixiasong1@huawei.com>
-Subject: Re: [PATCH 3/3] xprtrdma: Wake connect worker on device removal
+To: "Avi Weiss" <thnkslprpt@gmail.com>
+Cc: trondmy@kernel.org, anna@kernel.org, linux-nfs@vger.kernel.org,
+ stable@vger.kernel.org
+Message-Id: <f5a152d2-2f76-409a-823a-b2a7bc5abef2@slotpi15m67>
+In-Reply-To: <20261023084819.609293-1-thnkslprpt@gmail.com>
+References: <20261023084819.609293-1-thnkslprpt@gmail.com>
+Subject: Re: [PATCH] SUNRPC: Fix TCP-with-TLS transport class identification
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
-On 10/23/26 8:50 AM, Li Xiasong wrote:
->  	case RDMA_CM_EVENT_ESTABLISHED:
->  		rpcrdma_ep_get(ep);
-> -		ep->re_connect_status = 1;
-> +		switch (cmpxchg(&ep->re_connect_status, 0, 1)) {
+On 10/23/26 4:48 AM, Avi Weiss wrote:
+> xs_setup_tcp_tls() assigns the ordinary TCP transport class to
+> a TCP-with-TLS transport. When rpc_clnt_add_xprt() is called
+> with an unspecified transport type, it inherits the class
+> identifier and can create an unencrypted TCP transport.
 
->  	case RDMA_CM_EVENT_UNREACHABLE:
->  		ep->re_connect_status = -ENETUNREACH;
->  		goto wake_connect_worker;
+Confirmed: rpc_clnt_add_xprt() copies cl_xprtsec into the create
+args, but when the caller leaves the ident at zero it fills the
+ident from xprt_class->ident of the existing transport. With the
+wrong class pointer that ident names plain TCP, so
+xprt_create_transport() dispatches to xs_setup_tcp(), which never
+looks at args->xprtsec. The TLS policy is dropped and no error is
+returned.
 
->  	case RDMA_CM_EVENT_DISCONNECTED:
-> -		ep->re_connect_status = -ECONNABORTED;
-> +		status = xchg(&ep->re_connect_status, -ECONNABORTED);
->  		rpcrdma_force_disconnect(ep);
-> -		return rpcrdma_ep_put(ep);
-> +		if (status == 1)
-> +			return rpcrdma_ep_put(ep);
-> +		return 0;
+The effect is a silent policy downgrade on a mount that asked for
+xprtsec=tls or xprtsec=mtls. The primary transport still completes
+its handshake, but every transport added with an unspecified ident
+is a cleartext TCP connection that the xprt switch then uses for
+ordinary application RPCs. NFSv4 trunk discovery is the main
+caller; the xprt_switch add_xprt sysfs attribute reaches the same
+code and is also fixed here.
 
-UNREACHABLE can arrive on an established connection. On RoCE,
-cma_netevent_work_handler() delivers RDMA_CM_EVENT_UNREACHABLE to
-every cm_id whose cached neighbour hardware address changed, and it
-filters only the DESTROYING and DEVICE_REMOVAL states. A connected
-cm_id in RDMA_CM_CONNECT passes that filter.
+Against a server that requires TLS, the added trunks fail to
+connect and the mount loses the multipath it was supposed to gain.
+Against a server that accepts both policies, the client sends
+application data unencrypted on those trunks, with nothing in the
+logs or mount options to show it, even though TLS would have worked
+for that session. Nice catch!
 
-When that happens, the UNREACHABLE case above overwrites status 1
-with -ENETUNREACH without releasing the ESTABLISHED reference. The
-later DISCONNECTED event then sees status != 1 and skips its put.
-The ep and its cm_id are never freed.
+As a potential follow-up patch, xs_setup_tcp() still accepts args
+with a TLS xprtsec policy and silently builds a plaintext transport.
+Nothing passes it that combination after this fix, but a check that
+returns -EACCES when args->xprtsec.policy is not RPC_XPRTSEC_NONE,
+mirroring the switch in xs_setup_tcp_tls(), would turn any
+recurrence of this class of bug into a connection failure instead of
+silently using cleartext.
 
-Before this patch, DISCONNECTED put unconditionally, so this path
-did not leak. Therefore UNREACHABLE needs the same xchg treatment as
-ADDR_CHANGE: when the previous status was 1, force a disconnect and
-return rpcrdma_ep_put(ep). CONNECT_ERROR and REJECTED cannot arrive
-after ESTABLISHED, so those can stay as plain stores, though making
-all three consistent would be easier to reason about.
-
-
-> +	case 1:
-> +		rpcrdma_force_disconnect(ep);
-> +		/* DEVICE_REMOVAL prevents a later DISCONNECTED event. */
-> +		rpcrdma_ep_put(ep);
-> +		break;
-
-I don't think this comment is accurate, and the patch description
-repeats the same rationale. Leon or Jason can correct me if I'm
-wrong.
-
-ib_core removes clients in LIFO order, and xprtrdma registers its
-client after rdma_cm. So rpcrdma_remove_one() runs before rdma_cm's
-removal handler, and it does not return until every ep on the device
-has unregistered. No xprtrdma cm_id ever reaches the
-RDMA_CM_DEVICE_REMOVAL state while its ep exists. That is why the
-DEVICE_REMOVAL CM event was taken out of this handler in the first
-place.
-
-After the forced disconnect here, rpcrdma_xprt_disconnect() calls
-rdma_disconnect(), and the DREP or the DREQ timeout still produces
-an RDMA_CM_EVENT_DISCONNECTED. The put above is correct, but only
-because the DISCONNECTED case now sees -ENODEV from its xchg and
-skips its own put. Someone who trusts this comment could later
-remove that guard and double-put.
-
-Let's reword both the comment and the description to state the
-actual invariant: the first event that moves re_connect_status away
-from 1 owns the ESTABLISHED reference.
-
-Also, moving the ESTABLISHED put to ADDR_CHANGE and to the removal
-callback means the final rpcrdma_ep_put() for a connected ep can
-now happen in rpcrdma_xprt_disconnect(), which frees the ep and
-only then calls rdma_destroy_id(). The DISCONNECTED event that
-rdma_disconnect() provokes is dispatched while the cm_id is still
-in RDMA_CM_CONNECT. If it lands between kfree(ep) and
-rdma_destroy_id() taking the handler mutex,
-rpcrdma_cm_event_handler() runs with id->context pointing at freed
-memory.
-
-Before this patch a connected ep's last put was always inside the
-DISCONNECTED handler itself, so CMA ordered the free and the cm_id
-destruction for us. The window is narrow, but I don't see what
-closes it now. Am I missing something?
+Reviewed-by: Chuck Lever <cel@kernel.org>
 
 
 -- 
