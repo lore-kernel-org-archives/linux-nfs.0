@@ -1,93 +1,73 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.48
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792766320;
-	b=nfAJUs2rGwoXSGOdzAkhOoQ8D5gDsoNQDvWLNz+ech0W97T1nKhe5L24EAeO5TlPDERF
-	 8bR8Y51LdGQkic3JQGZZkA5EIYZ4O8emWYvWiMfcACptI/Yj7aeMEgM2YSGXaziXX5Eqk
-	 IwZiGwTRfcETzAg9NaPeHjbC/hzfSIr+PULd3XAllN0N6fp2CoAdkF9Uy4BfBniyB5PLS
-	 oU4WIBG/bQhhVM5DJYbn93YUDeOWDf7IrGkuFcG0YcyShGAiyKG4C0ZulaoCwwJcOhtUs
-	 oLRcBakPmM9jT7qm9renDhh+RBvQD565bcGWx6vyw7suF2xr4nq4MgNCRurP/zREGdQ==
+	t=1792777543;
+	b=yT6WK/pBueT+8aFUI7D4LdU29jDTMo5/89IEpqxn9ajemxzrl+Pa8UuY3TkpRkwqhVjz
+	 mdN1B1uFOmKm4R4FSC/Q2NX2+MfbIqrunGKNi43YO669GJOSfBeliqNEFDbgjEGvEQywf
+	 iO+C+fmZyd7rAm9aE7lSkrzyYIOyby+p3f3mW5FeHhTK/UUxKXtj5erK+BKEwW5+bSx9E
+	 00D5ciMS9pVcCwtByYfNXBdjokhIeTa3w+WWyUxeZdV2V8Bdswg2kkp66R/gG005QvuvW
+	 1HqWYT1MUu1noy653WwReGScqMXiOGqHUOh7fjOxENcFyZV+ShrvYINY2UPz9IpTBRA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792766320;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:X-Google-Original-From:To:Cc:Subject:Date:X-Mailer:Message-ID:
-	 In-Reply-To:References:MIME-Version:Content-Type;
-	bh=8kBP06/wOlnERuCqJs+Y5bm/y6KqBpdjzMi3s4CcFqM=;
-	b=Pfg6QU31SkLo/9DRJCvVflA8lyvtTkxsOi1N/ssS32rOLw3kowavHalvCQbGSCf7LWd4
-	 wAV6cbRf+B1uuYZRDunlyAt+FSHN/DjaaOEq3PzrdFLwbrboGB5xNFikciPmI9ddUn+SR
-	 w+rW5AzqWOtHw4d99k9jrpJJ4W6rEMR1l+ktoTpKGa1doLmhB+SuZZn9mO5rtK3JEFdYi
-	 jTh8To1FRevPZfVLS38i1Gl+DdACp5O1k4HosK0mn9N++O/4zfaS24R+a+aE4vRmToPtl
-	 sijmf3xMHx5wKWVg/Siuve1YlrO9oiNPPkn3BQMpnhisxMIyZmqhsJ3+ciTr82LKlKw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792777543;
+	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
+	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
+	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
+	 References:Subject:Content-Type:Content-Transfer-Encoding;
+	bh=+K8VmVMqKOof2bN/ApBJbL1jV/83LdW4iTCquE9kKQw=;
+	b=SQAJMZXV96Ouss/q3/6QhHy43Y7mO1GmjPU2bJcWqxguT8QlY9IjEkHLN3Cqw1H1SXQp
+	 HR2R5Nb15FN2k2aPtpASdNH8Y8EapVQVUN3e8g91024SsA6MMfaPIWtBgG6Yq82VcTQ4c
+	 GNgMkXbiXZasx0o3OAUWcvKGJhFY+lNjBq51vxYW0d0yXODjEU4qS23+tBoSDcPGZj1mr
+	 CLmGTZRiof2wpW8J35cEYJs1Ft633m7JQtoMZbD4RvRYNh77j8Rm1u9dxzLKG9lOF7sOY
+	 hoX62IJLgaAszblMAFgnH9kg8vz5S0hZvkfkRjIDcBwjilW9mPmrNxtvHgn6TjThu2A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=hammerspace.com;
-	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=LgrTemra;
-	arc=none smtp.remote-ip=209.85.210.48
-Received: from mail-ot1-f48.google.com (mail-ot1-f48.google.com [209.85.210.48])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MKrt8z95;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E5252606A31A
-	for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2026 14:38:34 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E5252606A31A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3548F606A31A;
+	Fri, 23 Oct 2026 17:45:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=LgrTemra
-Received: by mail-ot1-f48.google.com with SMTP id 46e09a7af769-7f84a55cc06so555119a34.2
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2026 07:38:34 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1792766314; x=1793371114; darn=vger.kernel.org;
-        h=content-type:mime-version:references:in-reply-to:message-id:date
-         :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=8kBP06/wOlnERuCqJs+Y5bm/y6KqBpdjzMi3s4CcFqM=;
-        b=LgrTemra783sa+ZxdZU6VF2t1/CBhSZTakPoKDDnqRhwM+Cyo5l7vdQZOd2ULAzkin
-         Qi6WxoWZkZKyM6NmxjfLu3v9wIbidpPs9EREXZXorPg3G6SlheMzuZJNxRDpjDlKWgUn
-         Mzc0DSyDc94g3QeXFqUAhnrb/DCHy5OZmF2VZdswK3CCEKr2rufeKmt5xCVMWW34yDkQ
-         QXORijeTC9K4Et44lXGEfhb6ewHNblhu9XjYTizos1yVYjgK727XB3EpnDPy0dpqQfaK
-         6ghokHtT7xF2O4hM0ZgXPOwocxAdmBv3XbxyVFiSONwbOZM4opGFAK5icV5UAetdOaXp
-         GjUQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792766314; x=1793371114;
-        h=content-type:mime-version:references:in-reply-to:message-id:date
-         :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=8kBP06/wOlnERuCqJs+Y5bm/y6KqBpdjzMi3s4CcFqM=;
-        b=al3oDDF7Zp6eRLNO4QEF03m+cIuAoTYCKuViZVx2Gfoujceb/v4V6eRuAlgBUaXUVT
-         dpMXdtQ8tn3I+fV2A16li5PLtSLvC7KkD90QhXkTaaYQ2YS4/cx3plHINmvBDi4nIgl4
-         UAlE2YObjfCNfufRksNqe0JIKm8FsiC0B6BR/mr/K/nKTZCBebj6wXtmmx6TbSuAId8J
-         w34vPKCwlE9Hnh6JcVbrmG2B65534SUhVWqP7n9uqqw+3cL8djt7I9bv6FE7TKBSrIUN
-         2O1uy2V6OcW5LoznnGbZntBXXxIxXee2KIUrtMtlpGp33ZxwPGC1P2aNeMWBiXELBKxF
-         IZpQ==
-X-Forwarded-Encrypted: i=1; AKwUvBybaBzhyRYxrr91VPS5kGEC0EjT4efW0UH0z/TkIYXNlJ97T5UA9sbZFeE3tbRC6Q/EfCa2v86Cb50=@vger.kernel.org
-X-Gm-Message-State: AFq9FYL2xrhfpR11WeiHKh3/bz91zSS+OVBGo7d4wNsVtICMeLCp9M0m
-	6oF5wSK/6zl3tBjYbjg0HH+r6uj9TPcJTccKHOIq4pJHH6yRq6vzmskAF1J5ooaKsEk=
-X-Gm-Gg: AYBFou1tFZR1Fac4LoFaSQpZVA3NhteNivBtS5EROicG1FvDbis71jNcK2xWgCgzlkd
-	8g69ByBvG9cjSaXaxuysT6bp41og8pmKHLHg/J1UtYE/6esdlFiPuTKe9OHw29+iSNqrmT9pxhB
-	HOwMFHc3Im3V9/KYKkkrh+zMX5IhRlIqv06RQ1WqIrxVdLonKt0pL599d67YAfpQ1tUcpMbenIQ
-	U4/N06QkNd3rJutMjBKayXSfsfY0rEzvzOUKyeFlEkEzMelE2Kz8lmBqaQXOOp9yHdCjztyyOJp
-	93lAiUidwDRYVVvgYX7kLZUv44Z5MbE8neEhL/wNubN0cQ1UPYD6Mu29x+ylQ9Cq6N+X0ps2/vn
-	93NnAh+dPC8ts6FfjH0a0rqikIPhfThqv+yzmqP8v/o0n43Q1TZUXorHBFWGPQYKUWsDEOu5yTc
-	zvt/5YXYdWzt+NXbEx1mKnf3aeTQbeKVZ7RouGlCwCgb8vt5ROzxD2t85Hmc0ObkKe+sUBptB1U
-	uxrFlDfn+t0wXCPVBZr7jdTvG8MSRLLOdMV+Yt5q+FMythVl1mwiHiVTqYv6pU5Tw18DLnh3g==
-X-Received: by 2002:a05:6808:150b:b0:4f4:857c:98ae with SMTP id 5614622812f47-55be80c4668mr1554002b6e.11.1792766313526;
-        Fri, 23 Oct 2026 07:38:33 -0700 (PDT)
-Received: from [192.168.254.51] ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-55be987bb39sm1555431b6e.11.2026.10.23.07.38.32
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 23 Oct 2026 07:38:33 -0700 (PDT)
-From: Benjamin Coddington <ben.coddington@hammerspace.com>
-X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
-To: Avi Weiss <thnkslprpt@gmail.com>
-Cc: trondmy@kernel.org, anna@kernel.org, cel@kernel.org,
- linux-nfs@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH] SUNRPC: Fix TCP-with-TLS transport class identification
-Date: Fri, 23 Oct 2026 10:38:31 -0400
-X-Mailer: MailMate (2.0r6272)
-Message-ID: <FCA6692A-E79E-46E4-8349-D4A77B818476@hammerspace.com>
-In-Reply-To: <20261023084819.609293-1-thnkslprpt@gmail.com>
-References: <20261023084819.609293-1-thnkslprpt@gmail.com>
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MKrt8z95
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6F4E61F01829;
+	Fri, 23 Oct 2026 17:45:42 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1792777542;
+	bh=+K8VmVMqKOof2bN/ApBJbL1jV/83LdW4iTCquE9kKQw=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=MKrt8z95nduJMsZ46pem/LKNckFHs4IOKk0GiFUkc3kcey7f8+E15FB5XwT6Vw94A
+	 ROw7OoY/0zcGxwSht62YfzAZPKY5kg+9qq+99CUpROhWdi68EVj1Oow08v1xWlk60w
+	 rOyCjvc1N9sycWvglR7FXgBk3MQoeHL9wS4ZbjDg8lNW9hQ/E4xfuafur/6cixXsUK
+	 3wk8bvH6TjHQ46YUyxGTiOCspzoTqaDpdqrPlO05KH7WJHHVQa2Gk1xHFiA69+5O1c
+	 GTUI9mbf/OJD05Z4QeGfzXWSugs0/vBBSDlOJSJM8Yck8onToyGp2RC66pUFuzHAH9
+	 rvh1MsNeZ+prw==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id A82B9F40067;
+	Fri, 23 Oct 2026 13:45:41 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Fri, 23 Oct 2026 13:45:41 -0400
+X-ME-Sender: <xms:RZ3baiRgESbIfk8wp9J4GDntN9ZHLzKsIejKjhDrXylUTqZSc7OtIA>
+    <xme:RZ3baikbhYbg9_KJmjqNbuHwj38uFWUCI2e8xlDBrTc3Im5t3Okte2kkFF2N884-h
+    JmO15WeN1S5CFsTC_hXbiFczUcd5m4vWa_gQlRzGZJpLWX65XNR5yU>
+X-ME-Proxy-Cause: dmFkZTGw9D+wWvKhDs5hJFHaE33hWLdp5MJJPRON22Zj+F2eCnb7T3BTPUqogEpOQrGpoU
+    X53T4/KSX1qcP6T682bAHoWiDbSAvDlKrXjoqUAXHJ+X7DuUjowthh/75oLiGbHVGRrYvy
+    Ovxp/qIK0TBACpUtpr9HPOhI/W2aQ0NGI72CDCLfYSyzrinyf2y5Gqt9WZXJirg/VcS2wT
+    KyOdEZpnkBtl+peUqWtft1knu0XgIWpBIBcqUUnM3VtMFZcAeRnPDS9Gxo76KWvXUoNzCf
+    +dUggxkUwUiEH4RQkmSeyVrhCYKPh8Ucvj6N6zYPK0vcUWmb3W2SiJCxsX5b/HNxc5KZsP
+    9xHa/wLBKF8Pm7Hmru+7M0hW2UddErbUSA563BeoGzDDauHiqI1VMpsakrbLG7zeJKmGhZ
+    59c/kcupFWVb//JPZAPvOQID0NUlNil8cywKpk8d07LqtLq3EvK9a4DVpp2RknuyHnVZk+
+    TSoi+tRv/xUCqRV71Cesv/nC/VV7NoGe8xlYVKq7mbxfT80K4U5WlLP3TVWPr4WCnCwbYC
+    g7V2SxXA4RaWKiweCOGD6TSOVF/MJQ+dqamZc7tLBcz09vNRR7UyYR+xdb7h3O8GmdSNsr
+    BsPc8f3hwH/a5Ln1Hhp1tYUMJKBRmSg2BFXhm+zQj8nQ4ZFlsNITgmC5qhww
+X-ME-Proxy: <xmx:RZ3banEdxmK5GIshwTV18B6HDRUCrQjQGipd6QkFV_2NDPHigXiZlQ>
+    <xmx:RZ3bahBbpDx8lD1TeNgaYKt4j52Xvakw_Dqt3-AyFnLwcJ1aeh2P3Q>
+    <xmx:RZ3batAIeciA0vfdxa-vLOKT4C0Nei_1GaGckaDgGvsrsuGL6l70lg>
+    <xmx:RZ3bavOT-TZZgCJvN4KIld23RQQWCYjYGbtxo7kiHmSm0ousICc6JQ>
+    <xmx:RZ3bahOeq4hd0P8PRPwhP2_dJRcQC3CEJ4Fu4AdiaOIuvO2BJXKZSJrM>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 8303778273B; Fri, 23 Oct 2026 13:45:41 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -97,40 +77,98 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
+X-ThreadId: AnedLfdbxVbc
+Date: Fri, 23 Oct 2026 13:45:21 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Mike Snitzer" <snitzer@kernel.org>, "Jeff Layton" <jlayton@kernel.org>
+Cc: linux-nfs@vger.kernel.org, NeilBrown <neil@brown.name>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, "Christoph Hellwig" <hch@lst.de>,
+ "Jens Axboe" <axboe@kernel.dk>,
+ "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+ "Jonathan Corbet" <corbet@lwn.net>, linux-mm@kvack.org,
+ linux-fsdevel@vger.kernel.org
+Message-Id: <36498551-15ee-4a55-9757-54aa8a07085a@app.fastmail.com>
+In-Reply-To: <20261023024548.71123-2-snitzer@kernel.org>
+References: <20261023024548.71123-1-snitzer@kernel.org>
+ <20261023024548.71123-2-snitzer@kernel.org>
+Subject: Re: [PATCH v8 1/7] NFSD: cut a misaligned direct-mode WRITE at the mapping's
+ smallest folio
 Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-On 23 Oct 2026, at 4:48, Avi Weiss wrote:
 
-> xs_setup_tcp_tls() assigns the ordinary TCP transport class to
-> a TCP-with-TLS transport. When rpc_clnt_add_xprt() is called
-> with an unspecified transport type, it inherits the class
-> identifier and can create an unencrypted TCP transport.
+
+On Thu, Oct 22, 2026, at 10:45 PM, Mike Snitzer wrote:
+> nfsd_write_dio_iters_init() cuts a misaligned end of a direct-mode
+> WRITE at a multiple of the larger of offset_align and PAGE_SIZE, so
+> that the direct middle, which invalidates the page cache over its
+> range, never shares a page with a buffered end.  But where the
+> mapping's minimum folio order makes the smallest folio a block larger
+> than a page, the page cache holds that block as one folio: an end cut
+> on a page boundary inside a block leaves the middle and the buffered
+> end in the same folio.  The middle's invalidation then drops the folio
+> the end wrote, and whichever of the two neighbouring WRITEs comes second
+> reads the block back.
 >
-> Looks like a copy-paste error from the commit 3 years ago.
+> Cut a misaligned end at a multiple of the smallest folio the mapping
+> allows as well.  Where that is a page, nothing changes.
 >
-> NFSv4 trunk discovery uses an unspecified transport type when
-> adding server-advertised addresses. If the additional transport
-> passes server-identity validation, it can be admitted to the
-> client's transport switch.
+> Fixes: 80728157d1bd ("NFSD: cut a misaligned direct-mode WRITE at page 
+> boundaries")
+> Signed-off-by: Mike Snitzer <snitzer@kernel.org>
+> ---
+>  fs/nfsd/vfs.c | 14 ++++++++------
+>  1 file changed, 8 insertions(+), 6 deletions(-)
 >
-> An isolated loopback test reproduced plaintext application RPC
-> transmission for TLS- and mTLS-configured clients, including
-> an unpinned TLS-client RPC that selected the added transport.
->
-> Assign the TCP-with-TLS class instead. With the fix, the
-> plaintext-only test peer receives TLS negotiation probes but
-> no application payloads.
->
-> Fixes: 75eb6af7acdf ("SUNRPC: Add a TCP-with-TLS RPC transport class")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Avi Weiss <thnkslprpt@gmail.com>
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 9219f8eb386d..ade00dabef18 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -1452,13 +1452,15 @@ nfsd_write_dio_iters_init(struct svc_rqst 
+> *rqstp, struct svc_fh *fhp,
+> 
+>  	/*
+>  	 * The direct middle invalidates the page cache over its range, so it
+> -	 * must not share a page with a buffered end.  An aligned end needs no
+> -	 * buffered segment; a misaligned one is cut on a page boundary even
+> -	 * where the offset alignment is finer than a page.  A WRITE may end
+> -	 * at OFFSET_MAX, so the prefix is sized as a distance rather than
+> -	 * by rounding @offset up, which could wrap.
+> +	 * must not share a folio with a buffered end.  An aligned end needs no
+> +	 * buffered segment; a misaligned one is cut on a boundary of the
+> +	 * smallest folio the mapping allows, a page or, where the block is
+> +	 * larger, a block, even where the offset alignment is finer.  A WRITE
+> +	 * may end at OFFSET_MAX, so the prefix is sized as a distance rather
+> +	 * than by rounding @offset up, which could wrap.
+>  	 */
+> -	cut = max_t(u32, offset_align, PAGE_SIZE);
+> +	cut = max3(offset_align, PAGE_SIZE,
+> +		   mapping_min_folio_nrbytes(nf->nf_file->f_mapping));
+>  	prefix_end = offset;
+>  	if (!IS_ALIGNED(offset, offset_align))
+>  		prefix_end += min_t(loff_t, cut - (offset & (cut - 1)), total);
+> -- 
+> 2.52.0
 
-Hi Avi - does this also fix the problem where the sysfs "add_xprt" silently
-failed to perform STARTTLS for the new xprt?  If so, this is significant fix
-IMO, and worth mentioning for products that might use that interface.
+PAGE_SIZE looks dead in the max3(). mapping_min_folio_nrbytes() is always
+at least PAGE_SIZE, so the cut is just max(offset_align, min folio). The
+new commit message and comment both describe three independent bounds, but
+the accurate statement is two: the DIO offset alignment and the mapping's
+smallest folio.
 
-Thanks for this.
+Also I would like to keep the helper's unsigned long type instead of
+narrowing to u32.
 
-Reviewed-by: Benjamin Coddington <bcodding@hammerspace.com>
+Post an updated version of the v7 patch so we can test and review that
+as a single change. This will also archive that revision in the lore
+archive. This will likely result in merge conflicts with subsequent
+patches in the series. If those are just comment conflicts I can fix
+those up when I apply the revised version.
 
-Ben
+Do not include the new revision of this patch in v9. v9 is now patches
+destined for the MM tree(s) while this patch goes to NFSD.
+
+
+-- 
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
