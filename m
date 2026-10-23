@@ -1,60 +1,97 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.41
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792764729;
-	b=RmmKQ4u2GhBwihw/+XTaBGNsAVcLXJ1nhQWBjQHHWNQrX3H9XyZZoPnoTtmEm8riNddz
-	 zgo0+3CpbGPodUjdlhnAD3INbo5LbJ5wQdlLYf0SuC7rKTUDwKxVPl50RNoX5RsmebAZ9
-	 /e7iq3CAp9KGk+8Ef5uTGUx3iAGAiMM+zeaPVsIBhhatmBoxiC+ZI2ibLck9C4exGZ/fU
-	 7wasXawtHB1LSNvlLbI6QWodXPCDg8tbN6k8yzEVgLWF0ptusqE9Re94CkTcPPCLvFo8U
-	 vrMH4eJP2pf2Y13XYtpyCtFMaKMJVZQse55i+xu3e7EJtXxTZCJq68mmPTYw6HmN7bw==
+	t=1792764995;
+	b=qknQByYbLGfgpP6IvaPctlyHYsDqzGMSHusW9aILEgeINsd/sHE+DpSdKlTnzBalLmZa
+	 V/lRACS+olJU7/CvvojCYT5qiVOZr1q9YpTAFKXk/tBKN5tYbXJsFa96trkw1jqwACxB7
+	 ku+9LDQzimR9Ul+bhzR1pR9sYGKdjnG8D5WPue3lS968NgU/aDB1GTeIX4M7lfOJmdsC6
+	 mv0M3jhX+qk/D42QersPCBXjjIm1GENyBPNc+Pgd/PdWsNaxmu8+ERZnly5ogSA6XJxKj
+	 Rq1K5TRjrqZbcrPAC53h136b278Jr/kdj3DjEv63qYyl2r095TJ4xQrwaodLGo4KdlA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792764729;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=cIhIHAuUJsyJ2bLrJWbRfcrJhHgsjoA+0BiCek5rlmE=;
-	b=CUmFCmOOG9bVoEFhfFKen5kzJ/yC9fY2PA8JG2lfSHfoLNrLimW0PBejIJy7EBI0nQoG
-	 K9yBuJBeZKm5np+aFC8UTCGoHsy1ESVCNLnZphJsGAZoisV39IDVcziyzWOAXaxu6lAiD
-	 j7oBtuhzlgf9EbQ+Gs44jonyAV39TuyF+3IBKJPjfD0FZLyIsIwWuBx6HTTaYvMqDjkor
-	 Ey2CyG98EtjprjJx/9j5kY22ro2ka440bMAifWeSqQZwasrWO5FiQKm4tglf9dJMpwaf5
-	 VHO4KgShX4zwNtMV5U4xO926XxRRqPHRhHyvCLb7/uPamInhoRzpKMrOfjS42RWhTeA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792764995;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:X-Google-Original-From:To:Cc:Subject:Date:X-Mailer:Message-ID:
+	 In-Reply-To:References:MIME-Version:Content-Type;
+	bh=NKB9EdW/UP/4nyminPprlgRfTROBUfQT9S0Hjy2s9TY=;
+	b=0N3urcB6CGdnliAI4u6XU6TbXS4B41bggunK8FcwAfZTQZrs+IGawZ5SYuYVdpqqZtTL
+	 1+mrWCFexp7hODZX0eYZFBJcPGeMJGaCo5JfWNGr2N+2sE1YU8Ele8rWlQNQcmTo0a6sW
+	 DSL4+l0+fAkZ03s1ulec0XkIIvW4P2fCV/WTYaiE4hrd68hWvBFxGZ/9trh1nHPeusa91
+	 uslyth2l662IpJnNUB76t1RdWNNVo2bvB72F4/bwF2Qo/GcN9lf97/rqI7DBHtjsAq+Ow
+	 lTAuim1u6i/CPcIWoSTW+ExBClK88qooGTiKC9p1Jv0tNJ+g3Yr1zbI05UnoG3iOieA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BOy3ZWYR;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=hammerspace.com;
+	spf=pass smtp.mailfrom=hammerspace.com;
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=NNVHwayy;
+	arc=none smtp.remote-ip=209.85.161.41
+Received: from mail-oo1-f41.google.com (mail-oo1-f41.google.com [209.85.161.41])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 335D1606A31D;
-	Fri, 23 Oct 2026 14:12:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8F016606A31A
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2026 14:16:35 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 8F016606A31A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BOy3ZWYR
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 82AB21F01825;
-	Fri, 23 Oct 2026 14:12:08 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792764728;
-	bh=cIhIHAuUJsyJ2bLrJWbRfcrJhHgsjoA+0BiCek5rlmE=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=BOy3ZWYRjoveUK8W+po/jFDD8LEHrWegphHy+k3GAc2Tp0axnnLdExP1eTTEGh0Lh
-	 MrH8vx1kjtCygjUfbn3TzevSKCul04wT+xi9OqT4tOKCkDeV8lK47HIc35kYuDgR+1
-	 drrnZQj46R1o8M20sfl44ttj2UKZgs8tUUS3Yh9cg8ShLS4GJzmOq3I+tp6lC391p3
-	 7VY8442ECb45QnMpkfKWKJUpc62mCty2ja2eOhekv1A84DyUGBuaP50zrVjz2zeZ0Y
-	 wJ8GmKp+QXcc14ysTKGe/U/362HGnxMEE9zp/rtrGr3ITbSiS06hVLYQY7qIQNICXi
-	 yFvHORASiS2zw==
-Date: Fri, 23 Oct 2026 10:12:07 -0400
-From: Mike Snitzer <snitzer@kernel.org>
-To: Jeff Layton <jlayton@kernel.org>
-Cc: Chuck Lever <cel@kernel.org>, linux-nfs@vger.kernel.org,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
-	Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
-	Matthew Wilcox <willy@infradead.org>,
-	Jonathan Corbet <corbet@lwn.net>, linux-mm@kvack.org,
-	linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH v8 0/7] mm, iomap, NFSD: stop uncached writes reading
- back shared pages
-Message-ID: <attrN9__XXJNSfuW@kernel.org>
-References: <20261023024548.71123-1-snitzer@kernel.org>
- <9b43a1aec170ee810ef5fd2a2ab1288bad6508fd.camel@kernel.org>
+	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=NNVHwayy
+Received: by mail-oo1-f41.google.com with SMTP id 006d021491bc7-6f74f6b46abso456920eaf.0
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2026 07:16:35 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=hammerspace.com; s=google; t=1792764994; x=1793369794; darn=vger.kernel.org;
+        h=content-type:mime-version:references:in-reply-to:message-id:date
+         :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=NKB9EdW/UP/4nyminPprlgRfTROBUfQT9S0Hjy2s9TY=;
+        b=NNVHwayywSyZOL0UAzj2h5PIgiuefctRUcD8r5i5+qsSwLo9NRUqsmA0wOlfOrPyMa
+         Vfr/W0abzVsfGnlKrzlJ1h4Izhy6gFttVzqZ30+KnQfDkP5S44g+ubyfqwV8WWqrU3qL
+         2aHPJGtbddJv0rYBpYn8s+SWHJajSafzxo9OfW1B9a+ukAge/3uaPgjhBTvex15AInGd
+         GtI1IIel+TFrPWxyaIHqUZXjJ73ZmX8pf8l3M1ixb4H+qM777/bzYaQ1ROTRRaRhqZdu
+         HhpLdvECHqe8Zw1dIPwi8Uu2wDyVKH4gtg5g34c0KaXHtXYQvrouf+sufByfTXbFEIuO
+         Wwtg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1792764994; x=1793369794;
+        h=content-type:mime-version:references:in-reply-to:message-id:date
+         :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=NKB9EdW/UP/4nyminPprlgRfTROBUfQT9S0Hjy2s9TY=;
+        b=WxLdoEcxBWHjWvFVaThKifucB0suxyoNPJEmLnx/cvNdZ7H+ZUOmD9qfCIQ2P+pDFb
+         ZT5j6KlCd07ZhrBD2QPZm05+5CNSSqjugB3RBsF3XG6cEknJkoF0QLWNcRydAfEKok8+
+         KwV7KmJev2EuPMuOKGvp4Ab7qMapUq1q2glU8h8AQaEFNvuMXekCsYFN+mbUuxWmNUeW
+         PiNnzDfUln4NwpQbGy0Foiifl28rIqSgt+SSQkxQT2hkCj/0ywcDvUrg3UQ/dNLxSimF
+         Q84vfKD3UOTZ5bHPlDIPqjUhDA8A5fkdtpma9UO7fna3jHw4zPaaxdMU4GZ3Tm/W2XhL
+         SCmg==
+X-Forwarded-Encrypted: i=1; AKwUvBysI1ROCUk1oOUiNZVpwXvjOqadOV1SEyJctMauwsimeufjQ2+KmZTJAdrk7Tvibs9tTzR2u4qHU3c=@vger.kernel.org
+X-Gm-Message-State: AFq9FYIo+jCzt1zwOiVIeRZEP05lj31ZfREeusdpb9I5YxgZBAwetNju
+	pXNFeZClL6ypkzONmBaVxrG5vTVmHvx8T+njCQitlJadnjeKphcxbAjCxSybmPp0u9M=
+X-Gm-Gg: AYBFou222vFPRqhOQ9iHDrUD83XE2lYNz+we0O+qFwtHbekljNo3oTLhQ1zu4UpX47a
+	dErcczbDyUezQvrqGWkxkRFqkot0g4W8xrM+m1k4/mDnamK24zJ8M/TVJKOxe0MmjafAuE7Salu
+	lFQMcaKWWJ++d5MlSvZD19Tzfn+g+l8yB/SonXpe1r/hLcMSuFc5VGvlN5MTrbZKVKO/CR8RyrL
+	Paeu7qlwKqQwjyJ4K7Ymwq6GxSTSxiXv5ukWP3++8AYSlkfoPTQK3qhGsrspnTzwnSTS8eOA2T5
+	Ex3MZ0eVkbV5hcRmsbtcA4oOsYFTDC/jigSHwDw428SdphETgXgnNe32ZafosnuaQzoqzDDhVyH
+	aQRQncQPUDVkHRq0Q+phBidKVMRjOPclYYBnDY5SSLwo/o4RuhGnn5dWtmbourN4/hkFRSwrAJ1
+	117ieocfVzVpVpRqtwH4ePRERcZdB8MsEFoDyRnHCkePEvW15IuZMkRFIeGTAZ9EURL0IdtcYz2
+	G1Uh/BKe4nL4IQjthzCz3HEgAOANcBlilf48EHKxNDdV5PSA/hp1l93xWhNj9Z5fe8R4SAhF6o=
+X-Received: by 2002:a05:6820:1ca7:b0:6e2:3d8b:a007 with SMTP id 006d021491bc7-70b889c7159mr1509380eaf.32.1792764994407;
+        Fri, 23 Oct 2026 07:16:34 -0700 (PDT)
+Received: from [192.168.254.51] ([66.97.168.37])
+        by smtp.gmail.com with ESMTPSA id 006d021491bc7-70b9ae1a41fsm122266eaf.5.2026.10.23.07.16.33
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 23 Oct 2026 07:16:33 -0700 (PDT)
+From: Benjamin Coddington <ben.coddington@hammerspace.com>
+X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
+To: Roberto Bergantinos Corpas <rbergant@redhat.com>,
+ Mike Snitzer <snitzer@kernel.org>
+Cc: Antonio Alvarez Feijoo <antonio.feijoo@suse.com>,
+ linux-nfs@vger.kernel.org, Mike Snitzer <snitzer@kernel.org>,
+ Anna Schumaker <anna.schumaker@hammerspace.com>,
+ Trond Myklebust <trond.myklebust@hammerspace.com>
+Subject: Re: [PATCH] NFSv4/flexfiles: add a soft dependency on nfsv3
+Date: Fri, 23 Oct 2026 10:16:32 -0400
+X-Mailer: MailMate (2.0r6272)
+Message-ID: <1925D89E-8A84-4FE3-95BC-93061E6578BC@hammerspace.com>
+In-Reply-To: <CACWnjLzVeXAfVWgg_YTqtNTDd7LXSkM9dA0znwdPLY=4226bbQ@mail.gmail.com>
+References: <20260902133554.28863-1-antonio.feijoo@suse.com>
+ <CACWnjLzVeXAfVWgg_YTqtNTDd7LXSkM9dA0znwdPLY=4226bbQ@mail.gmail.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -64,77 +101,38 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <9b43a1aec170ee810ef5fd2a2ab1288bad6508fd.camel@kernel.org>
+Content-Type: text/plain
 
-On Fri, Oct 23, 2026 at 06:57:09AM -0400, Jeff Layton wrote:
-> 
-> It might not hurt to have your LLM simplify the patch descriptions
-> here. I find that my appetite for reading claude-ish walls of text has
-> waned in recent weeks. This skill helps a lot:
-> 
->     https://github.com/danyuchn/asd-ste100-skill
+On 23 Oct 2026, at 8:30, Roberto Bergantinos Corpas wrote:
 
-Thanks, I've now trained my claude monkey with it. But I'm sure it'll
-still throw feces periodically.
+> There is another problematic case for this problem : if an
+> unprivileged container attempts pNFS I/O, SELinux may block the
+> request_module() call, leading to a writeback hang instead of a boot hang.
+>
+> Having the module pre-loaded at mount time avoids that scenario too.
 
-Also, I've reviewed the sashiko review of this v8, that you kindly
-forwarded this morning, and 3 of the 7 issues it flagged were real.
+I think this is a stronger case than the nfs-root, which already requires a
+sysadmin to have knowledge and desire to configure the client a certain way,
+and can certainly apply the work-around.
 
-I don't want to spam the lists more than I already have by immediately
-posting v9... but it has needed changes, blech.  I'll at least wait to
-see if Chuck picks up 1/7 to fold into the commit it fixes which is
-already staged in cel/nfsd-testing (and if so I'll move Chuck and Jeff
-to cc and upgrade -mm and -fsdevel to the To: for v9's posting...)
+Roberto's case would look functional to the admin, and the failure would
+happen later and be difficult to diagnose.
 
-But here is the changelog for pending v9, in case it helps reviewers
-side-step reporting something in v8 that is already addressed in v9:
+I think Fixes: 7a375cafc14e (7.2.y) is the accurate tag, though - because
+before that the -EPROTONOSUPPORT would fall back to the MDS - it gives the
+WARN, but doesn't hang the system.
 
-Changes since v8, from the sashiko findings Jeff Layton relayed:
-- 2/7 and 4/7: a folio is counted in WB_DONTCACHE_DIRTY only when both
-  PG_dirty and its dirty tag are set.  v8 tested the tag alone.
-  __folio_cancel_dirty() clears PG_dirty but leaves the tag, so a
-  cancelled folio that stays cached kept a stale tag.  2/7 then
-  uncounted such a folio twice, and 4/7 counted it and never uncounted
-  it.
-- 7/7: NFSD finds the edges a buffered segment shares by the mapping's
-  smallest folio, as iomap does, not by page.  On 16 KiB blocks, a WRITE
-  written as one buffered segment can have page-aligned ends inside a
-  block.  Nothing completed those edges, and the folios stayed cached
-  until reclaim.  NFSD also completes a segment's first edge only when
-  the write reached the end of the segment's bytes in that unit.  A
-  short write that stopped inside the unit had not written its part.
-- 1/7 and 5/7: a paragraph each on a limit the review raised.  1/7
-  cannot keep a larger cached folio, left by readahead, from spanning
-  the cut.  5/7 marks the folio before iomap validates the iomap.  A
-  stale iomap stopped by a fatal signal then leaves a mark on a folio
-  this write did not complete.  Both cost one read-back and no data.
-- 3/7 and 6/7: unchanged.
+I also think 7a375cafc14e also needs a follow-on fix (Cc: Mike) - because it
+now causes permanent failure cases to retry forever- we should probably just
+fail the IO.
 
-Longer form for the fixes that fell out from the v8 sashiko review:
+The last thing here is that the MODULE_SOFTDEP is just informative, it only
+advises modprobe and initramfs builders.  It not going to fix
+CONFIG_NFS_V4=y with CONFIG_NFS_V3=n or m.  So - I think we should just make
+flexfiles publish a hard dependency on a v3 symbol, which fixes the module
+dependency directly, and also fixup Kconfig so that there aren't unexpected
+build failures as a result.
 
-2/7, the stale dirty tag: real.  __folio_cancel_dirty() uncounts a
-dropbehind folio and clears PG_dirty, but leaves PAGECACHE_TAG_DIRTY
-set.  Only writeback and truncation clear the tag, and writeback skips
-a clean folio.  So a cancelled folio that stays cached keeps a stale
-tag, and my clear path uncounted it a second time.  The same stale tag
-made folio_mark_dropbehind() in 4/7 count a clean folio that nothing
-would uncount.  v9 tests PG_dirty as well as the tag in both places.
-A folio is counted only when both are set.  The race the tag closes
-stays closed.  A dirtier that has set PG_dirty but not yet counted the
-folio has not set the tag either.
+My 2 cents,
 
-7/7, the PAGE_SIZE edge tests: real.  On 16 KiB blocks, a WRITE written
-as one buffered segment can have page-aligned ends inside a block.
-iomap left those edges for NFSD to complete, and NFSD never asked about
-them.  Those folios stayed cached until reclaim.  v9 finds the edges by the
-mapping's smallest folio, as iomap does.  Measured on the loop device,
-whose dma_alignment of 511 makes every TCP payload memory-misaligned.
-NFSD then writes each WRITE as one buffered segment.  32 writers of
-12288-byte records: v8 left all 32,736 pages of a 128 MiB file
-resident.  v9 leaves 1,348 of 262,080 pages of a 1 GiB file, 0.5%.
-
-7/7, the short write that completes the first edge: real, and the cost
-is one read-back on the retry.  v9 completes the first edge only when
-the write reached the end of the segment's bytes in that unit.
+Ben
