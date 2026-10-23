@@ -1,52 +1,114 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=103.168.172.146
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792789912;
-	b=ZIUHyJRAgxTkAOfitqckJ63K6pjjGNWtUkPgMcC2HsrGsDZTqWFnXi2ywWks2wJEwrtw
-	 SCpGDO/TPTZEwHHN1J7Gwpqstto5TmPTL2ElYLV/eStH1PFH3WXmedewtCm8BPCXsCHJe
-	 yhY7y6tuzxzXVBpjeNCRf5IUNVwiOc6NGtOxISt+OfNsAW4+LlBxa6nAw2Z4nNaP9qxSJ
-	 7QPPBsEyWTVTkIsBPnpFCYBrphV8QI81NFtF+mjAS1kUrk0+RujbI5LHzlqO18w0RWQvH
-	 xeKO5nxR5W1zhEMqtgNN5TWmbtUeVHTKuQCcZofU2gMDwE0VsbeuMGCb1RzJfAPGR2w==
+	t=1792795108;
+	b=iwnmltmwE54QYLC5jat5yQkmNtrZ67W3b768TJG01IwXjuin10jSrgCrlgimlZcfajnN
+	 qjMWdB+zjS690cnRZpqvNkt4TpmXNqzcXjPQEiZPHP6eULZl2VW2yT71auu9gho5i7c1n
+	 +oY9jiVT3UMcLOgFCJpvejqndYdVdAF1x9KaUMFKHeX3acRx/14Xeme+4ntKLKqQrSwn0
+	 KzEMla9JG90bHcGMZWPz0pOIE5v6FEKUN6/G9Nu/0Ki4Uouc3EfNTsOhtBeOgvz7a8Die
+	 iDMdV6Bx9oTBQLIp92eFiS34au7eBs7f5v0vON44xlI+xc4K12J3M/DIYTIJfLJnv8w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792789912;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 MIME-Version:Content-Type:Content-Transfer-Encoding;
-	bh=4BdW6OI7woyrNw3g7V3FStfomukHSGT51EXRCyHNXGM=;
-	b=Y/0T3RynzYCW8b6QjyLId2kxuEr9VBmGfqMwThUQqKysQ0GzgLrTTH2W/gJo7/HMUYew
-	 feSaICXazpOaDTGZKRt3WsN2ox3sCjozDEHXIyMGXOisYjITauH2bXqqiCXjoU53jbpWF
-	 MWRSA7Sxv4LA0b6jY+r1L4Ie7JotW2eGfyESY+etObK5QF37Ka/KtBYMQHZcBGI8Bn7eq
-	 Kqyc3L5k76ca0YreHhP5jbNUED965mblc/hHv0B1MZ8sHci6/jKQ1YKrC6HSwMyQSwySD
-	 AfxYTNcA5kpG0IZEgNP5DdtwCV3ge15hK3T85D7uyy9i52+0tKuqY50qCIkESmm0nxw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792795108;
+	h=DMARC-Filter:Received:Received:DKIM-Signature:DKIM-Signature:
+	 X-DKIM2-Info:DKIM2-Signature:X-DKIM2-Info:Message-Instance:
+	 X-ME-Sender:X-ME-Received:X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:
+	 Received:Content-Type:Content-Transfer-Encoding:MIME-Version:From:To:
+	 Cc:Subject:In-reply-to:References:Date:Message-id:Reply-To;
+	bh=CXpjL5aV+fL/tQYDIsd7gu8pYrT13G45saJG84Sqomw=;
+	b=Ky8UuC7pvi1igLYdTkjQxmcnB65exd6yXCEcHP8tkF34m5iNnEKB9r6aix0Dp9TP+2la
+	 kcWnfgUTK/RKXmWzMEnf4XhzBqsSAJso2U8rBG62Blz4tc916vmrUaXCGlp8e7z4JjWVJ
+	 AQRmK4eHliTcjD8lFumZRHBGtLWJvqPe6NyTi1XRguLGb9Uw1XMq/0T51rrsbXQz9WkxL
+	 2cUplZlXXZe06YwnE9tXU3UaFahS13YIbOLIxsrnKFVndYk/9vYui2Y+6BM66Uy/72GUz
+	 H4O9SdrAHLqQxOy6IoSgqEnzWL6K3ASXt7ZzfGxUnGy8XOlClUC50dsJ6iQ4AypjSSQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nlRSLwQ5;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=ownmail.net;
+	spf=pass smtp.mailfrom=ownmail.net;
+	dkim=pass header.d=ownmail.net header.i=@ownmail.net header.a=rsa-sha256 header.s=fm2 header.b=k9NO7nUw;
+	dkim=pass header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm2 header.b="Y7J+9/EW";
+	arc=none smtp.remote-ip=103.168.172.146
+Received: from fout-a3-smtp.messagingengine.com (fout-a3-smtp.messagingengine.com [103.168.172.146])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 257DE606A31A
-	for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2026 21:11:51 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 61A64606A31E
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2026 22:38:27 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 61A64606A31E
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nlRSLwQ5
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7CDA61F01825;
-	Fri, 23 Oct 2026 21:11:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792789911;
-	bh=4BdW6OI7woyrNw3g7V3FStfomukHSGT51EXRCyHNXGM=;
-	h=From:To:Cc:Subject:Date;
-	b=nlRSLwQ5aTU7j03IAyRLi/UDKzIZfP3072BLp7mSE0dNDZ1jJ4fLDlFfaiqE6hZWU
-	 To72LFIVOBZh1dw510Uw4HD3kBfbCIdBviFRrH5ZHEzOejNRUNQ5HGDSqZH/sj35GQ
-	 pKlPpuhAx+4aFx1Fsobxj46q9/Lo1xvol23uVpfJ2krPUUtoWNRikulnshJXtFHvVj
-	 9TaHDZql6KV9wJqxATSswgty5H7ciTJG5EIQIyrtf+idYdZvXkXzuXtPtYzVV3Xg2R
-	 I3AAk2LnQVQvQYFvDXnRnM1Tn4ZngWNX2zLAuI8wUfT1TweZwP4aD1Lpz+H6/zygTi
-	 Iwb2G0mBMS64Q==
-From: Anna Schumaker <anna@kernel.org>
-To: linux-nfs@vger.kernel.org,
-	torvalds@linux-foundation.org
-Cc: anna@kernel.org
-Subject: [GIT PULL] Please Pull NFS Client Updates for Linux 7.4
-Date: Fri, 23 Oct 2026 17:11:49 -0400
-Message-ID: <20261023211150.485518-1-anna@kernel.org>
-X-Mailer: git-send-email 2.56.0
+	dkim=pass (2048-bit key, unprotected) header.d=ownmail.net header.i=@ownmail.net header.a=rsa-sha256 header.s=fm2 header.b=k9NO7nUw;
+	dkim=pass (2048-bit key, unprotected) header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm2 header.b=Y7J+9/EW
+Received: from phl-compute-01.internal (phl-compute-01.internal [10.202.2.41])
+	by mailfout.phl.internal (Postfix) with ESMTP id 89C1EEC018D
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2026 18:38:26 -0400 (EDT)
+Received: from phl-frontend-04 ([10.202.2.163])
+  by phl-compute-01.internal (MEProxy); Fri, 23 Oct 2026 18:38:26 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
+	cc:cc:content-transfer-encoding:content-type:content-type:date
+	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to; s=fm2; t=
+	1792795106; x=1792881506; bh=CXpjL5aV+fL/tQYDIsd7gu8pYrT13G45saJ
+	G84Sqomw=; b=k9NO7nUwus6pgom+xJ3Prj6B7WYKUU6iuNkvaMBD4fEtpk5/Tyl
+	+nITaTlHB+oLEhndk/KHP8Dt6B/+XbLy1+qZfUa+hTkpV75NAHRK7ud14lokFSJM
+	0ZHmL3XQSHT+LCp3031Ju1pFelvJOLUXWrC+zHGHwuYD/BiD34vMi2Sw1wwh9boy
+	5Ar1R03kPEn+OXIFlRAM5WZ4xOSvYtksf/caK9sGPD+F9/kbbbBB0FATprhLYFD9
+	KBEcSUPYE06e6i5S1Nh9Qm1Bcm0Ammz3hDNtDkqRURgMrGC8tGjbneeNpND65Fnq
+	DBd5heCpHPzJNEeg+luBU85MGhSHySANDig==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm2; t=1792795106; x=
+	1792881506; bh=CXpjL5aV+fL/tQYDIsd7gu8pYrT13G45saJG84Sqomw=; b=Y
+	7J+9/EWOXaB0LzEx5mgwKelbGgi89TUuSfSSKznxAuR7DNlDhCe+F10bXsHoTi6d
+	S08Lvz+/9ihvDuCRl+DDVGVNGMhi06Q3KAI1qs0xFkchU1/C0CjH0HzcZwchFbu1
+	DsV52aHkXYeRdcA22Pg8ThUxJIDtCFyXmNm6ri3l9q6PEHNSF1TSQpqac4ZYwoci
+	irtZPU2zirm3pv3M4kc0+4Hfb3ML567EoKqYi2l6gEq4YJs7mLhH0x836hBT9BTv
+	oJTxq6Q+b99kBFxsbVLzAYTJbXlqRaHaU0Odnb9Rcob2XW4tvWufp3Q+Fd6grqZo
+	hUVPqef1AH2llpB3K7ZXQ==
+X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-07;
+	repo=github.com/dkim2wg/interop; date=2026-10-18; sw=lmtpprox;
+	action=sign d=ownmail.net a=rsa-sha256;
+DKIM2-Signature: i=1; m=1; t=1792795106; d=ownmail.net;
+	mf=PG5laWxiQG93bm1haWwubmV0Pg==;
+	rt=PGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc+;
+	s=fm2:rsa-sha256:PYKnZQ93XuydqFrZ5JPgnkm4YzzdcKCcjeWmOakVnju1uoM
+	vMNRtRaQjgtLFA6EfInj18ZcyJDySauC3Z5T1ZLXI6sl/Qkq4DGVYyXXdO+0GQ3r
+	L/y4fax6zGtS2KO1XnscGanY08u+I015qHq27sudXsWZA//VTJo9t8ZPUcmiwf8b
+	RqB9kHp2O2xtXOU58GZMvUrI/wmdfJBU9hN5qraiS99v4gNLhy+X7OVzEvnKovnQ
+	YApcdD6h4bfmj0lDfcKJxW6woXFB0Sg1WwgDGRmFKdxgqZobGxUisfE/4/2eyy/e
+	5CzCPyHtwB/8o8/f1B29GSYMgrsmZFJWKjiO05w==;
+X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-07;
+	repo=github.com/dkim2wg/interop; date=2026-10-18; sw=lmtpprox;
+	action=mi-m=1; hc=13;
+	hn=cc,content-transfer-encoding,content-type,date,feedback-id,
+	from,in-reply-to,message-id,mime-version,references,reply-to,
+	subject,to;
+Message-Instance: m=1; h=sha256:KmLnJKZDRE19PAX56rvC54Ee6o1ap2dCE9utRFVjjL0=:wEUenmc4EYB8ur+IAcaeJAPVN3w/PSx3oXhanP+XV3c=;
+X-ME-Sender: <xms:4uHbagj4QnAUlrcQZct5Cbs--ItFzGvlkiKsie4pFfwxInLm0Bt54g>
+    <xme:4uHbanRRM_H6eAsin1dYZv6--GGXkDplmBKmBCeJ1oPPik87i5SHq_3Sn86hPr3zp
+    GX-0dPhYL3DcC53edx7vnatP3VvfdJR6glD8hGIQzQjWMyI3BY>
+X-ME-Received: <xmr:4uHbahYqRnSzPGk0LwAw7gpA5LX39nDoszXFiZ36shL4DWZcscgJzDuCeNCz1U0oFqz9IlSeXablvRe39zUTSrCNtIQRhK4>
+X-ME-Proxy-Cause: dmFkZTG3Q/70zTOldkKwQ/nRgy4pIRffckwi2d0zpsPIWfS8PNEp1RPAIJQ+x4vQcGat3g
+    qzQdPStc3TCac79qZLXbXiD3sTtVOHHv5cqUO1Wd+MwnhD0WzDnwjLyE8D1QBMRZ7Q3PXG
+    zjxO1rKtu2atByIb/LLvCdY896C8BgpqdgbIwmsyP3bfg8lLjtyy1K1KC97OCP8Li3II3v
+    BfY9tHc/0LsAp61D4lhkbW0+R9rbMeDd+9etu8BTxzXXVbxKxJxRdiFACgx4/sL3n/EIde
+    4TPcJjZ/Ri7DlwgnKPWVVOP8jqSk37nWVK5cfE0Q8ZpFFKxpP5+CKFxupBfedjqGeHqaAY
+    Ps5NSPTyhLbgfZd84yro+dup3JiuMW6kKtCgerFIyzbKVHBAUOjUIldRsPIRmJ+igIp3fy
+    PtR9hqheMmajfBBchViUWLWyviR6XtD2Hz7ijxcFALDL9qkqVZ2elQnrYfrlfJuoxrSOrF
+    v7lw4XZmc9Ffv3wqSSftRZSUCu+Yc+9NmuFvzB/L1xaeKvuf4oUsHDrW/fV82GMN9ueRDN
+    eue/iSTcuaqJzYD0iWtxDmiNH2GfKDxc/7yhPj8sw610ii4+5lilSf1/buThdElax9LfgJ
+    Y4YkzjykyTuzKmRY9rGkBhvu/+2DS4HX4hgbv/i0lbwVSBR+weE8EP5l+Pag
+X-ME-Proxy: <xmx:4uHbakSC3GKcUcsT3aQ3WTEn1GdBsYRvZNtVYa7VCKMjI_CTUEyuyg>
+    <xmx:4uHbag-qZxOfqU5eNfQ8tYsyt_Je-LSBSer_6MgfIZuui0Hle2BJ2Q>
+    <xmx:4uHbakhN8urUjjOdSgzTyxskPC0P0OxBqN_fSZIt-VK2GjoklUbdbg>
+    <xmx:4uHbahbRSjFaFCYIoNzBQG6nNzukQO_PmNXmusvcsyERO649tkhe9A>
+    <xmx:4uHbasFkA85Uc_YspYqqeG3u4x7oct4lPV_fPyRLidJNztOtYYmhHag0>
+Feedback-ID: i9d664b8f:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA; Fri,
+ 23 Oct 2026 18:38:22 -0400 (EDT)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -56,186 +118,115 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+From: NeilBrown <neilb@ownmail.net>
+To: "Jonathan Flynn" <jonathan.flynn@hammerspace.com>
+Cc: "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
+ "Alexander Viro" <viro@zeniv.linux.org.uk>,
+ "Christian Brauner" <brauner@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
+ "Jan Kara" <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+ linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] nfs: set NFS_FSDATA_BLOCKED before invalidating d_seq
+In-reply-to: <20261023192215.1795577-1-jonathan.flynn@hammerspace.com>
+References: <20261023015239.2163480-2-neilb@ownmail.net>
+  <20261023192215.1795577-1-jonathan.flynn@hammerspace.com>
+Date: Sat, 24 Oct 2026 09:38:18 +1100
+Message-id: <179279509880.1157394.17104184170834248641@noble.neil.brown.name>
+Reply-To: NeilBrown <neil@brown.name>
 
-Hi Linus,
+On Sat, 24 Oct 2026, Jonathan Flynn wrote:
+> block_revalidate() calls write_seqcount_invalidate(&dentry->d_seq) and
+> only then sets dentry->d_fsdata to NFS_FSDATA_BLOCKED.  Because ->d_seq
+> is invalidated before NFS_FSDATA_BLOCKED is set, an RCU-walk open can
+> get past an unlink that is in progress.
+> 
+> The barrier in write_seqcount_invalidate() is issued before the
+> increment, so it orders only the stores made before the call.  An
+> RCU-walk lookup that samples ->d_seq after the increment can still read
+> the old ->d_fsdata, and so ->d_revalidate() accepts the dentry.  The
+> walker then waits for ->d_lock in lockref_get_not_dead(), takes its
+> reference, and passes the ->d_seq recheck in __legitimize_path(),
+> because ->d_seq still holds the value the walker sampled.  By then
+> nfs_unlink() has seen d_count() == 1 and sends the REMOVE instead of
+> silly-renaming, so the open proceeds on a file the server is removing.
+> 
+> Set NFS_FSDATA_BLOCKED first, then call write_seqcount_invalidate().  A
+> walker that samples the new ->d_seq then also sees NFS_FSDATA_BLOCKED
+> and returns -ECHILD.  A walker that sampled the old ->d_seq fails the
+> recheck and retries in ref-walk, which waits for the unlink to finish.
+> __d_drop() follows the same order: unhash the dentry, then invalidate
+> ->d_seq.
+> 
+> Also correct the comment in block_revalidate(): the ->d_seq recheck is
+> in __legitimize_path() and try_to_unlazy_next(), not in
+> legitimize_mnt().
+> 
+> Signed-off-by: Jonathan Flynn <jonathan.flynn@hammerspace.com>
+> ---
+> Neil, this answers Sashiko's second point on 1/9: v3 still calls
+> write_seqcount_invalidate() before it sets NFS_FSDATA_BLOCKED.  This
+> patch applies on top of v3; fold it into 1/9 if you prefer.
+> 
+> The window with the v3 order:
+> 
+>   CPU0: nfs_unlink(), ->d_lock held     CPU1: RCU-walk open, same name
+>   d_count() == 1, no silly-rename
+>   write_seqcount_invalidate(&d_seq)
+>                                         __d_lookup_rcu() samples the
+>                                           new ->d_seq
+>                                         ->d_revalidate() reads ->d_fsdata,
+>                                           not yet NFS_FSDATA_BLOCKED
+>   d_fsdata = NFS_FSDATA_BLOCKED
+>   spin_unlock(&dentry->d_lock)
+>   REMOVE sent                           lockref_get_not_dead() takes a ref
+>                                         read_seqcount_retry() passes
+>                                         the open proceeds
 
-The following changes since commit a90ee4305c4a5df72c11b31dacfdc76e00fcf78a:
+Thanks. This diagram is really helpful.
 
-  Linux 7.3-rc6 (2026-10-04 13:45:25 -0700)
+I think I will move the d_fsdata = NFS_FSDATA_BLOCKED assignment before
+the comment and maybe add a bit of explanation.
 
-are available in the Git repository at:
+Thanks for helping me understand this problem.
 
-  git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-7.4-1
+NeilBrown
 
-for you to fetch changes up to ef30b3efb7e8bae94d790a6503a595e1051323e7:
 
-  Merge commit '211cda4fdf33011cee39f8970c4625b207142d6b' of git://git.linux-nfs.org/projects/trondmy/linux-nfs.git into anna/linux-next (2026-10-21 14:26:57 -0400)
+> 
+> Your afs 1/5 also sets DCACHE_BLOCKED after write_seqcount_invalidate().
+> 
+>  fs/nfs/dir.c | 11 ++++++++---
+>  1 file changed, 8 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 53cd3adf3ffe..79331e0fa044 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -1879,15 +1879,20 @@ static void block_revalidate(struct dentry *dentry)
+>  	/* Any new reference that could lead to an open
+>  	 * will either:
+>  	 *  - take ->d_lock in lookup_open() -> d_lookup() or
+> -	 *  - will check d_seq in legitimize_mnt()
+> +	 *  - will check d_seq in __legitimize_path() or try_to_unlazy_next()
+>  	 *
+>  	 * Holding this lock and invalidating ->d_seq ensures we cannot
+>  	 * race with __nfs_lookup_revalidate().
+>  	 */
+>  	lockdep_assert_held(&dentry->d_lock);
+> -	write_seqcount_invalidate(&dentry->d_seq);
+> -
+>  	dentry->d_fsdata = NFS_FSDATA_BLOCKED;
+> +
+> +	/*
+> +	 * Set NFS_FSDATA_BLOCKED before invalidating ->d_seq: the barrier in
+> +	 * write_seqcount_invalidate() orders only earlier stores, so an
+> +	 * RCU-walk that samples the new ->d_seq also sees NFS_FSDATA_BLOCKED.
+> +	 */
+> +	write_seqcount_invalidate(&dentry->d_seq);
+>  }
+>  
+>  static void unblock_revalidate(struct dentry *dentry)
+> -- 
+> 2.43.0
+> 
+> 
 
-----------------------------------------------------------------
-NFS Client Updates for Linux 7.4
-
-New Features:
- * Modernize the direct I/O path
- * Size the LAYOUTGET reply buffer for wide flexfiles layouts
- * Flexfiles device notifications and caching for wide striped layouts
- * isolate mTLS client credentials by network namespace
-
-Bugfixes:
- * Various localio, flexfiles, xprtrdma, and TLS fixes
- * Merged bugfixes from Trond that he was unable to send during the 7.3-rc cycle
-
-Other Cleanups and Improvements:
- * Split up pNFS block layout and SCSI layout support
-
-Thanks,
- Anna
-
-----------------------------------------------------------------
-Anna Schumaker (1):
-      Merge commit '211cda4fdf33011cee39f8970c4625b207142d6b' of git://git.linux-nfs.org/projects/trondmy/linux-nfs.git into anna/linux-next
-
-Benjamin Coddington (34):
-      NFSv4.1/pnfs: suspend pNFS on NFS4ERR_TOOSMALL from LAYOUTGET
-      NFSv4.1/pnfs: derive loga_maxcount from the LAYOUTGET reply buffer
-      NFSv4.1/pnfs: retry LAYOUTGET with a larger reply buffer on NFS4ERR_TOOSMALL
-      NFSv4.1/pnfs: treat an oversized LAYOUTGET reply as -EMSGSIZE
-      NFSv4.1/pnfs: remember when a server needs a larger LAYOUTGET reply buffer
-      NFSv4/flexfiles: allocate the per-mirror stripe array with kvzalloc_objs
-      NFSv4/pnfs: Free the netid when draining a data-server address list
-      NFSv4/flexfiles: Use the full 64-bit stripe_unit
-      NFSv4/pnfs: bound the CB_NOTIFY_DEVICEID array count before allocating
-      pNFS: Fix CB_NOTIFY_DEVICEID CHANGE to consume ndc_immediate
-      NFSv4/flexfiles: Use the full 64-bit offset for read DS selection
-      NFSv4/flexfiles: Bound page coalescing on the absolute stripe offset
-      NFSv4/filelayout: Anchor page coalescing on pattern_offset
-      NFSv4/flexfiles: Reference the device node across DS setup
-      NFSv4/flexfiles: Carry the device node reference across each I/O
-      NFSv4/flexfiles: Hold a device node reference for layoutstats encoding
-      NFSv4/flexfiles: Make the pinned device node pointer RCU-managed
-      pNFS: Add a reresolve_deviceid layout driver hook
-      NFSv4/flexfiles: Implement in-place device re-resolve on CHANGE
-      NFSv4: Dispatch CB_NOTIFY_DEVICEID CHANGE to an in-place refresh
-      NFSv4/flexfiles: Honor ndc_immediate on CB_NOTIFY_DEVICEID CHANGE
-      pNFS: Discard a GETDEVICEINFO reply that raced a CHANGE notification
-      pNFS: Add deviceid reference query and collection walkers
-      NFSv4/pnfs: Recover revoked layouts on a deleted deviceID
-      NFSv4/pnfs: Confirm a deviceID delete via GETDEVICEINFO
-      NFSv4/pnfs: Dispatch CB_NOTIFY_DEVICEID DELETE to race recovery
-      NFSv4/pnfs: Grow the deviceid cache hash table
-      NFSv4/pnfs: Re-home the data-server cache onto hash buckets
-      NFSv4/pnfs: Key the data-server cache by its address set and version
-      NFSv4/flexfiles: Add a dataserver_nconnect cap
-      NFSv4/flexfiles: report the intended opnum when DS connection setup fails
-      pNFS: allow layout drivers to cancel I/O to a single device
-      NFSv4/flexfiles: only cancel I/O to a failed mirror instance
-      NFSv4/flexfiles: fail I/O to the data server once a lock is lost
-
-Chuck Lever (10):
-      xprtrdma: Fix Write chunk payload corruption on a short reply header
-      NFS: use TCP for MOUNT when xprtsec= selects TLS
-      SUNRPC: reject a client-side TLS alert record that is not two octets
-      SUNRPC: treat every client-side TLS error alert as fatal
-      SUNRPC: fold xs_sock_process_cmsg() into its only caller
-      NFS: name the init_nfs_fs() error labels
-      NFS: allocate the .nfs keyring per network namespace
-      SUNRPC: pass a keyring serial number to the TLS handshake
-      NFS: name the namespace .nfs keyring in the x509 handshake
-      NFS: add a key type that reveals the namespace .nfs keyring serial number
-
-Jimmy Zuber (1):
-      NFS: Fix stale negative cache on failed nfs_mkdir()
-
-Jinpyo Lee (1):
-      nfs/localio: pin UUIDs during global invalidation
-
-Jérémy Jean (1):
-      NFS: filelayout: calculate dense stripe width in 64 bits
-
-Mike Snitzer (6):
-      NFS/localio: fix nfs_local_dio_misaligned tracepoint
-      NFS/localio: detect a short read or write before the iterator has moved
-      NFS/localio: report the stability a DIO WRITE actually has
-      pNFS/flexfiles: honor FF_FLAGS_NO_IO_THRU_MDS over the mdsthreshold hint
-      pNFS/flexfiles: don't read through MDS when previous layout forbid it
-      pNFS/flexfiles: don't reset to MDS for v4 error when previous layout forbid it
-
-Pranjal Shrivastava (5):
-      nfs: make nfs_page pin-aware
-      nfs: track number of pinned pages in nfs_page
-      nfs: introduce nfs_release_request_list helper
-      nfs: migrate direct I/O to iov_iter_extract_pages
-      nfs: introduce nfs_direct_extract_pages helper
-
-Roberto Bergantinos Corpas (2):
-      NFS: return DENIED in decode_lock_denied if we cannot decode owner
-      nfs: set gencount on protocol-specific remove
-
-Scott Mayhew (1):
-      nfs: split up block layout and SCSI layout support
-
-Tigran Mkrtchyan (4):
-      nfs/flexfile: fix doc of nfs4_ff_layout_prepare_ds function
-      nfsv4/pnfs: use the MDS authflavor for data server connections
-      pNFS/flexfiles: make pg_init retry loops killable
-      pNFS/flexfiles: don't report an interrupted DS connect as a DS error
-
-Tim Menninger (1):
-      xprtrdma: prevent disconnect feedback during endpoint teardown
-
-Trond Myklebust (1):
-      NFSv4: Fix a regression in the handling of CB_RECALL_ANY
-
-Yongjian Mu (1):
-      xprtrdma: trim head iovec when the payload arrives via a Write chunk
-
- Documentation/filesystems/nfs/index.rst   |   1 +
- Documentation/filesystems/nfs/keyring.rst |  69 ++++
- fs/nfs/Kconfig                            |  17 +-
- fs/nfs/blocklayout/Makefile               |   3 +-
- fs/nfs/blocklayout/blocklayout.c          | 119 +++++--
- fs/nfs/blocklayout/dev.c                  |  32 +-
- fs/nfs/callback_proc.c                    |  23 +-
- fs/nfs/callback_xdr.c                     |   9 +-
- fs/nfs/client.c                           |  17 +-
- fs/nfs/delegation.c                       |   3 +-
- fs/nfs/dir.c                              |  15 +-
- fs/nfs/direct.c                           | 139 ++++----
- fs/nfs/filelayout/filelayout.c            |  17 +-
- fs/nfs/filelayout/filelayoutdev.c         |  19 +-
- fs/nfs/flexfilelayout/flexfilelayout.c    | 519 +++++++++++++++++++++---------
- fs/nfs/flexfilelayout/flexfilelayout.h    |  48 +--
- fs/nfs/flexfilelayout/flexfilelayoutdev.c | 219 ++++++++-----
- fs/nfs/fs_context.c                       |   2 +
- fs/nfs/inode.c                            | 211 ++++++++----
- fs/nfs/internal.h                         |  34 +-
- fs/nfs/localio.c                          |  31 +-
- fs/nfs/netns.h                            |  14 +-
- fs/nfs/nfs3client.c                       |  10 +-
- fs/nfs/nfs3proc.c                         |   8 +
- fs/nfs/nfs4_fs.h                          |   5 +
- fs/nfs/nfs4client.c                       |  16 +-
- fs/nfs/nfs4proc.c                         | 141 ++++++++
- fs/nfs/nfs4state.c                        |  45 ++-
- fs/nfs/nfs4xdr.c                          |   5 +-
- fs/nfs/nfstrace.h                         |   5 +-
- fs/nfs/pagelist.c                         |  66 +++-
- fs/nfs/pnfs.c                             | 388 ++++++++++++++++++++--
- fs/nfs/pnfs.h                             | 102 +++++-
- fs/nfs/pnfs_dev.c                         |  30 +-
- fs/nfs/pnfs_nfs.c                         | 110 +++++--
- fs/nfs/proc.c                             |   8 +
- fs/nfs/read.c                             |   2 +-
- fs/nfs/write.c                            |   2 +-
- fs/nfs_common/nfslocalio.c                | 101 +++++-
- include/linux/nfs_fs_sb.h                 |   8 +
- include/linux/nfs_page.h                  |   8 +-
- include/linux/nfs_xdr.h                   |   2 +
- include/linux/nfslocalio.h                |  12 +
- include/linux/sunrpc/xprt.h               |   1 +
- net/sunrpc/xprtrdma/rpc_rdma.c            |  39 ++-
- net/sunrpc/xprtrdma/verbs.c               |   9 +-
- net/sunrpc/xprtsock.c                     |  70 ++--
- 47 files changed, 2136 insertions(+), 618 deletions(-)
- create mode 100644 Documentation/filesystems/nfs/keyring.rst
