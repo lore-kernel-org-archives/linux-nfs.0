@@ -1,58 +1,90 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=113.46.200.222
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.42
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792737102;
-	b=TS5548k+iAHufYgIiUYXNqKtGMyUZMoZTRO1guZIi/hgpZjcOx86YjNPP5dv6SQZ+GaH
-	 Gsy0D+V7+SJ2kyDKSpTg8/cAYO6TK5/dQuBPBxEPW2tAeZ5Hsn6PzazkKmjWI7kFDM0XO
-	 NV7kRDn0183vM6V+VgIdSmA0XHDyb/8VGRm3vc/LKshW0fJ8fpUsshTjIYmNiIB0nBy9+
-	 ntmL9VJs9sNtB67REuvR7XL7piv1S+1iUDKDs6oOqTvZuuUhVmDJWqn1SZ7gkceeh2ssU
-	 Gtx9WGMPWbQyf/UpgSP4YVsWgInhp7NI4GgX7MOrRwX1bnuDSjvOTKfTDGTL6jw/jzw==
+	t=1792745306;
+	b=DJFq0lytpU7VbUM9Q+NkeCkB0OPuMI7e2LZSK0cd7zjlTq4KWsSa78I9WyJBWfqFcdc4
+	 GUi6KwOPHusPeRSIj2fUAeWywoOsA6ra8gwcIxtck63KkSfYqQABWhdFFORdcCLdMGOdq
+	 thZJTMuI90dHDJFkIT2OAXTvyFvqyUVuVggcnhKBMC4IIp3WdPu/tZ/cSp+ou/cfovXvj
+	 tymbv6aPzsulnOoj6rcYZc6IWP5h+edWUlCHC0zRe2EkSuwvkoQeICr4Mq8NPQlQfVQbF
+	 sMA4YjqAkelL9I3zlKj3Ra8TrAYjYCfVhS72EU3vj+QwvNtbvx1w+sAiEOrsGTaEWfw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792737102;
-	h=DMARC-Filter:dkim-signature:Received:Received:Received:Message-ID:
-	 Date:MIME-Version:User-Agent:Subject:To:CC:References:
-	 Content-Language:From:In-Reply-To:Content-Type:
-	 Content-Transfer-Encoding:X-Originating-IP:X-ClientProxiedBy;
-	bh=33tGxL4pQ37PAm6R2PA7y86/iQoPs+fP5QCASbIaiW4=;
-	b=xn1+RmYFdw7qrRYR9dl4JePRPxfSHmmoUuaMKbgZZPOQAU8LUTVS6MbyGc47mZGqmVMA
-	 9hTK5GHmkortqh/zmUl090slU7WW19KEOc/khfyQt8XE7JZiE8qgBaiDJ/eO1Kti9f0PI
-	 qzcEO95xoZzoJor2hANil8Yo/0sqFeiN0KWxzcn3SFcHtjmeHStqPTepLi10yjPOZ3IWO
-	 evsgaKf9GmrBjAUeMMfcNX8c+IgzgehralFgEcmf/hjRqa7AKO7RQhQKOBzZPP8OdZdl2
-	 ei84XwgD2c79KBKlc4HQnYg9BlEbzOf+pFLcu4BNZQKHr6kX0qNZr0u6HsvLcXsVqiQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792745306;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
+	 Date:Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=F6Klyh0k2DMvnciL91BfEqRQ5lu6e2socN2fUvplmJA=;
+	b=iKhEBxcnvPDYbqwYBFrrWsoCxwWPq2U5yQgcS2RL/+ZsXEtyMGQNHfw39GnadqNTC4xU
+	 dx7U5c2pdWdpy2NJzobuBrJPC2hGeuhGmSCcsUkOGzdbG0okzQqyRfJSrdm2eYY23qdEc
+	 ehAh498oxrwTecjN2z7QwkVQGG9HKhCkxZxpQZNcEVF3+G2kzt4scDyFdyS3dBlBObQWc
+	 dV7YzDs+w0VJJSTewZs5QiZy/XZpoL+hL9D8SNTW1U8AQafQSf+qrJZ6rDWUNDHE+rjRx
+	 jZeHtVapWUrs9bH38S91jpfrNanAXpqPGp3jNwE+dvtWN03nlxXZxLLL7OJwtqO+Dhg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=huawei.com;
-	spf=pass smtp.mailfrom=huawei.com;
-	dkim=pass header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=fjsQ8MHy;
-	arc=none smtp.remote-ip=113.46.200.222
-Received: from canpmsgout07.his.huawei.com (canpmsgout07.his.huawei.com [113.46.200.222])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=Pc7S+pI0;
+	arc=none smtp.remote-ip=209.85.128.42
+Received: from mail-wm1-f42.google.com (mail-wm1-f42.google.com [209.85.128.42])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C2176606A31B;
-	Fri, 23 Oct 2026 06:31:39 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C2176606A31B
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C1E0B606A31F
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2026 08:48:25 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C1E0B606A31F
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=fjsQ8MHy
-dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
-	c=relaxed/relaxed; q=dns/txt;
-	h=From;
-	bh=33tGxL4pQ37PAm6R2PA7y86/iQoPs+fP5QCASbIaiW4=;
-	b=fjsQ8MHyFLg2DKpb+rChWOhrQ6Agx+aJ4B3WloBfzhk5I42lfFR8N28XAuSRbTqFZgHgChm3O
-	4OwNSVOJK87cDrNiMupTVhF9pAM7IdBGhA0OswOr1fHmf/8LmJiA8sNJ5JxoASQ+9LC7G7GDo6P
-	DlcW4ZEJB+N+XLWejTOA2kU=
-Received: from mail.maildlp.com (unknown [172.19.163.163])
-	by canpmsgout07.his.huawei.com (SkyGuard) with ESMTPS id 4j9tTJ5rsczLlWr;
-	Fri, 23 Oct 2026 14:31:32 +0800 (CST)
-Received: from whupemk100010.china.huawei.com (unknown [7.152.184.41])
-	by mail.maildlp.com (Postfix) with ESMTPS id 10C6B40594;
-	Fri, 23 Oct 2026 14:31:36 +0800 (CST)
-Received: from [10.67.110.140] (10.67.110.140) by
- whupemk100010.china.huawei.com (7.152.184.41) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.2562.45; Fri, 23 Oct 2026 14:31:29 +0800
-Message-ID: <a2832263-3e3b-4d05-98bd-dc006d5be689@huawei.com>
-Date: Fri, 23 Oct 2026 14:31:28 +0800
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=Pc7S+pI0
+Received: by mail-wm1-f42.google.com with SMTP id 5b1f17b1804b1-4a1fe9efc0eso6345565e9.2
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2026 01:48:25 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1792745304; x=1793350104; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=F6Klyh0k2DMvnciL91BfEqRQ5lu6e2socN2fUvplmJA=;
+        b=Pc7S+pI0JXKhYwN2qAfpmiYFWvf0iq4V1IM2XBk0p5KiC6vtCBllx2sjknvhh1LNT7
+         uorj6HxSdCzFMzFOsj2zY8Y36vMbEqMkBbBRlfxH6wVloK8QQP8VUaQn57++bWCjgoJ+
+         J4g2kCzi0/bxvJnyObGj//7NJnQM41djmObkoJRuO8ENzftSYUG76YnBInFZpbR1QMtx
+         NCJ29sBladKrAVZz5RloPAfeSdQQdLv4UOO3bbRFn8BhxrycQLefpblL/cysyN24B6pG
+         j8gKU1uT1kPzWzPtzzSwIZoDWYXS7OfYj7vqNlUrDAaSR46w/A9wnM1fyhQmhmtClaaR
+         a3GA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1792745304; x=1793350104;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=F6Klyh0k2DMvnciL91BfEqRQ5lu6e2socN2fUvplmJA=;
+        b=wQz+sEY/1pldru1Ul/OlKDfLTGeTbhWR3th2buzMHGSPEn15gWBKfw0ATa1b2CO/2w
+         fCcdUpztQl1kpeNfyojxt4x0ht+wiNxLpmjS2WHdeJhlulSyWHmeumYvFRrmVd8YOsVM
+         ijclDGYMQzpyX7TjCogSghi+ABnK5jh4eAxIu6DZvBKyg6te8+pamjo5vxS6A1JxxCjb
+         zX4Okt9OPfI2r9U2aHjOrGbmtBVL6UO9PQf3eoqAeSEgUZ9L6yI/4+BYrCwHgvec4S99
+         SbvcJpEA8mu4Pksj1H7GxDYR84XfTOjxNFsRWA+dYs4EFha8IkcqUREiQpX2z9Y4W81B
+         0WSg==
+X-Gm-Message-State: AFq9FYJt2XD/B4qKMX0nSsHHJwJ4txpvZbryUMjSRhP+arFEdQEvkOGx
+	sBa3wL9ht/aUIFTmL/LVj+JdJrhD0twqHI1wN8EvCMzOsZIOfaBxeGfl
+X-Gm-Gg: AYBFou1nOfm/XBiudeRQX5fPfsFdh9se1TkJbpKZe9IL8Q3z3XvcxHQnbgAiEfF1U/R
+	9+GS2yp6I6sq8rvKc5amgjrkrI9KejMJc3A0ywuE/m3qVybFvoicX3nXnPJomZYuhmk0ablHw5k
+	37vxQJjX90jg8mqzcnjd5fe1JgF0Um8PYEvWwjcNiINmdjWVVW5h9HkYt3hvjvd5/yt7Oezsh43
+	L8tTOpb5WZEULvxFZV2w0A91ZVsRjte3JtOBce7E1GDcGlc2DSzOrnTI33ieNb9WC0T5vO/a6v4
+	CXSVhCQxlVqVnQydot36NzqG23QRUaqduWYKQ67kiV4RohlEKlvJUqgDTg2Z2avi828eGRJh8Qu
+	l8QJkaIfCuDFXzYAEXsuGlbzHRwIu/RZ9XkgEqWP9xXhdhXJbEWWiH8zBYWYaszaE099jmcAbHy
+	xzm9P9ECCIHPqb2yKtw8SzYRPDAnI14G77kcRTdXSLXe13JAarZ9oUIgpBVXmkUWuKLaXA/OaUz
+	od/J7aVxFDLx/GzR7MsU1VSom5fAJ2EuOyE9AgLJ6ZgOVuho1RkakT7dwbmhVV0qSHKPXpQ3g==
+X-Received: by 2002:a05:600c:3b96:b0:4a1:eccb:53eb with SMTP id 5b1f17b1804b1-4a211cb88a6mr29706125e9.6.1792745303675;
+        Fri, 23 Oct 2026 01:48:23 -0700 (PDT)
+Received: from localhost.localdomain ([2a06:c701:4778:c500:4fad:2c9a:1a55:76b5])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4a211b291b8sm41702955e9.1.2026.10.23.01.48.22
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 23 Oct 2026 01:48:23 -0700 (PDT)
+From: Avi Weiss <thnkslprpt@gmail.com>
+To: trondmy@kernel.org,
+	anna@kernel.org,
+	cel@kernel.org
+Cc: linux-nfs@vger.kernel.org,
+	Avi Weiss <thnkslprpt@gmail.com>,
+	stable@vger.kernel.org
+Subject: [PATCH] SUNRPC: Fix TCP-with-TLS transport class identification
+Date: Fri, 23 Oct 2026 11:48:19 +0300
+Message-ID: <20261023084819.609293-1-thnkslprpt@gmail.com>
+X-Mailer: git-send-email 2.43.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -62,66 +94,48 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2 -next 01/18] fs: pass struct path to notify_change()
-To: Christian Brauner <brauner@kernel.org>
-CC: <mic@digikod.net>, <gnoack@google.com>, <paul@paul-moore.com>,
-	<jmorris@namei.org>, <serge@hallyn.com>, <corbet@lwn.net>,
-	<skhan@linuxfoundation.org>, <ast@kernel.org>, <daniel@iogearbox.net>,
-	<andrii@kernel.org>, <eddyz87@gmail.com>, <memxor@gmail.com>,
-	<martin.lau@linux.dev>, <song@kernel.org>, <yonghong.song@linux.dev>,
-	<jolsa@kernel.org>, <emil@etsalapatis.com>, <ihor.solodrai@linux.dev>,
-	<rdunlap@infradead.org>, <gregkh@linuxfoundation.org>, <rafael@kernel.org>,
-	<dakr@kernel.org>, <johan@kernel.org>, <dlemoal@kernel.org>, <hch@lst.de>,
-	<axboe@kernel.dk>, <viro@zeniv.linux.org.uk>, <jack@suse.cz>,
-	<dhowells@redhat.com>, <code@tyhicks.com>, <linkinjeon@kernel.org>,
-	<sj1557.seo@samsung.com>, <yuezhang.mo@sony.com>,
-	<hirofumi@mail.parknet.co.jp>, <cel@kernel.org>, <jlayton@kernel.org>,
-	<neil@brown.name>, <okorniev@redhat.com>, <Dai.Ngo@oracle.com>,
-	<tom@talpey.com>, <hyc.lee@gmail.com>, <miklos@szeredi.hu>,
-	<amir73il@gmail.com>, <senozhatsky@chromium.org>,
-	<chenxiaosong@chenxiaosong.com>, <kpsingh@kernel.org>, <matt@bobrowski.net>,
-	<rostedt@goodmis.org>, <mhiramat@kernel.org>,
-	<mathieu.desnoyers@efficios.com>, <john.johansen@canonical.com>,
-	<georgia.garcia@canonical.com>, <zohar@linux.ibm.com>,
-	<roberto.sassu@huawei.com>, <dmitry.kasatkin@gmail.com>,
-	<eric.snowberg@oracle.com>, <stephen.smalley.work@gmail.com>,
-	<omosnacek@gmail.com>, <casey@schaufler-ca.com>, <takedakn@nttdata.co.jp>,
-	<penguin-kernel@i-love.sakura.ne.jp>, <xiujianfeng@huawei.com>,
-	<nanx95726@gmail.com>, <djwong@kernel.org>, <lujialin4@huawei.com>,
-	<bpf@vger.kernel.org>, <linux-doc@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>, <linux-security-module@vger.kernel.org>,
-	<driver-core@lists.linux.dev>, <linux-block@vger.kernel.org>,
-	<linux-fsdevel@vger.kernel.org>, <netfs@lists.linux.dev>,
-	<ecryptfs@vger.kernel.org>, <exfat@lists.linux.dev>,
-	<linux-nfs@vger.kernel.org>, <ntfs@lists.linux.dev>,
-	<linux-unionfs@vger.kernel.org>, <linux-cifs@vger.kernel.org>,
-	<linux-trace-kernel@vger.kernel.org>, <apparmor@lists.ubuntu.com>,
-	<linux-integrity@vger.kernel.org>, <selinux@vger.kernel.org>,
-	<linux-kselftest@vger.kernel.org>
-References: <20261015125425.3246251-1-caixinchen1@huawei.com>
- <20261015125425.3246251-2-caixinchen1@huawei.com>
- <20261021-nanotechnologie-gebadet-gepaukt-52a950759f0a@brauner>
-Content-Language: en-US
-From: Cai Xinchen <caixinchen1@huawei.com>
-In-Reply-To: <20261021-nanotechnologie-gebadet-gepaukt-52a950759f0a@brauner>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
 Content-Transfer-Encoding: 8bit
-X-ClientProxiedBy: kwepems100002.china.huawei.com (7.221.188.206) To
- whupemk100010.china.huawei.com (7.152.184.41)
 
-Thanks for the explanation, you are right.  I will restore the idmap as 
-a separate argument
+xs_setup_tcp_tls() assigns the ordinary TCP transport class to
+a TCP-with-TLS transport. When rpc_clnt_add_xprt() is called
+with an unspecified transport type, it inherits the class
+identifier and can create an unencrypted TCP transport.
 
-On 10/21/2026 6:21 PM, Christian Brauner wrote:
-> On Thu, Oct 15, 2026 at 08:54:07PM +0800, Cai Xinchen wrote:
->> notify_change() takes a struct mnt_idmap and a struct dentry even
->> though all of its callers either already hold a struct path (or a
->> struct file) or have to pass &nop_mnt_idmap because no idmapped
->> mount is involved.  Switch the helper and its declaration to take a
->> struct path instead and derive the idmap and dentry from it.
-> No, the idmap needs to be passed separately. The whole point is that
-> during path lookup mnt->mnt_idmap can change. So mnt->mnt_idmap is taken
-> of the mount at the time it was checked and passed down to the
-> filesystem so that the VFS and the filesystem are guaranteed to see the
-> same idmap.
+Looks like a copy-paste error from the commit 3 years ago.
+
+NFSv4 trunk discovery uses an unspecified transport type when
+adding server-advertised addresses. If the additional transport
+passes server-identity validation, it can be admitted to the
+client's transport switch.
+
+An isolated loopback test reproduced plaintext application RPC
+transmission for TLS- and mTLS-configured clients, including
+an unpinned TLS-client RPC that selected the added transport.
+
+Assign the TCP-with-TLS class instead. With the fix, the
+plaintext-only test peer receives TLS negotiation probes but
+no application payloads.
+
+Fixes: 75eb6af7acdf ("SUNRPC: Add a TCP-with-TLS RPC transport class")
+Cc: stable@vger.kernel.org
+Signed-off-by: Avi Weiss <thnkslprpt@gmail.com>
+---
+ net/sunrpc/xprtsock.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 7f60723fa64d..62a51eabc353 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -3499,7 +3499,7 @@ static struct rpc_xprt *xs_setup_tcp_tls(struct xprt_create *args)
+ 	transport = container_of(xprt, struct sock_xprt, xprt);
+ 
+ 	xprt->prot = IPPROTO_TCP;
+-	xprt->xprt_class = &xs_tcp_transport;
++	xprt->xprt_class = &xs_tcp_tls_transport;
+ 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
+ 
+ 	xprt->bind_timeout = XS_BIND_TO;
+-- 
+2.43.0
+
