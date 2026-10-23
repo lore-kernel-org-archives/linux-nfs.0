@@ -1,79 +1,114 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1792721425;
-	b=o2g4oQvd7aUTTfxk9xQscbS/zIUBOWLQRaUUXtGjaR99qk75GR2v2NkGTgY4QJXR8sDL
-	 ghC4SeUaAW0w0RrgknkhSGrysrQTAkwRCgnNMoz6Rxpb3dR+836ToItocEPuZIdgAmZAr
-	 L/v9TbYTt71CYO2wLi42Q5oHVTDL9BGY5z1NZIEjcwYpHETguQ/fKNWA/9Y4BSNb9i+/r
-	 CXTimGMEWlaEeqOxnf5lbk4ZBS38HpVGk+su3xmnN/zmoXfC+B0UJQ2iwHcYCN37+Vdc0
-	 ejkFRXv77ctGAUsw638x0NTtT0tVwf+acHcWu/VG86CEdQvSmzkhrb3lS/42Mlc+NtA==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792721425;
-	h=Received:DKIM-Signature:Received:From:Date:Subject:MIME-Version:
-	 Content-Type:Message-Id:References:In-Reply-To:To:Cc:X-Mailer:
-	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
-	 X-Original-From:Reply-To:Content-Transfer-Encoding;
-	bh=BdSyN9ysyXHMKO8KNdsgTNSXQHVHgle91T1HXMSwig4=;
-	b=QxtOPWOl9RMz53JNp7pUVaSR5Jv/ldzeeBVQqIHl3tFxJfPKYJ+k4rytV1Jdcok8qqb0
-	 Kuaqgu3b3PkImicPC9OxPqz/w1OYNG6kl6P0ZQ5Q8aANxsAs1qu4rqf2hhrCVU7cvWGgQ
-	 6bzOo+WUwfkwRqp23xPH/JwI41r7XXsfBn2da8QSKbLpwafnKynnoZsIYfXkY4jzxlmNV
-	 UWrJH2K4N6RekuvDTsaK2gtF1DXT7Zq7de1vxJ3hYSPWR3+8X8lwkPmHlspIegqsUnQ+j
-	 qw1lpjEZupQvz2aRWmIIZLGKY0F5i+WhV4tH3NHrwbGlHyZU1jLD8x5kHzh1yS2tokg==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LRe7jH8Z;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=202.12.124.155
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1792721592;
+	b=xlMAt2t3N6eXPhhJIF2GMq9ml5wPP51XZB2JC6/Aum2fMBTaFK3p/HpZKHjMSz4XXuMw
+	 lCpylUP6r4pcZjQZpkDdSfMiuePYeY27DXENSrYCb0ROialC6QfPDQ5PcERzL2HBh2bZd
+	 hYuKSv7z1vLlOCX9hPLZdXChMs/t17zfQuG+/0nO+D0gZZFbt4YEXSIR2hd8X2TL/qMa8
+	 nbJMJb2WUQI2hKGspTYAYViNUgF9ACCpG3bzEnBWpRPJ/oTOnr/nsVh2iO08Cr+a61dyJ
+	 dPJCOsuMHUnQRo+LI245o3S3W9r2FAUdUA8LJBC8OnDPJp61MQR44E9sm/hJc6Cc32A==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792721592;
+	h=DMARC-Filter:Received:Received:DKIM-Signature:DKIM-Signature:
+	 X-DKIM2-Info:DKIM2-Signature:X-DKIM2-Info:Message-Instance:
+	 X-ME-Sender:X-ME-Received:X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:
+	 Received:Content-Type:Content-Transfer-Encoding:MIME-Version:From:To:
+	 Cc:Subject:In-reply-to:References:Date:Message-id:Reply-To;
+	bh=Uw5Phl+jnGQlfGydObsNY6zvTlA90v7yxA5srNSw0TA=;
+	b=UecXBr1mN0HiMdZdoiT13zuYOCFfrh9YRw4eeFrdERwkLHGdZALC4qXLP/V1Wcvy+k97
+	 XBmvevAF1hLyfhzu4JXYvBMSOLP2E6wm2t7zzRhQUzqkgPARN8BIkykg4iILbQdeY/rIA
+	 culno31kkmoolrGB518HG+zGONZt6R2CCi8mIz7h9hbjq7hDIpOvOzqHSaWaZdHWCHTzo
+	 Mi4OGr5pl0DaLhHMWHDox/PaSUmKBk4AX/8sqe0G52nn5ZC2EJPB06/xLiFLvhMB2DMH3
+	 ahoYFkUAmNoUHubjOPC4I1CY9sFiNbEAj7IiMSpwxi/r0FNSdmX9QbvDbmqQrMZnAFg==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=ownmail.net;
+	spf=pass smtp.mailfrom=ownmail.net;
+	dkim=pass header.d=ownmail.net header.i=@ownmail.net header.a=rsa-sha256 header.s=fm2 header.b=XQ7wAWX7;
+	dkim=pass header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm2 header.b="O/7H0bze";
+	arc=none smtp.remote-ip=202.12.124.155
+Received: from fhigh-b4-smtp.messagingengine.com (fhigh-b4-smtp.messagingengine.com [202.12.124.155])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8680D606A326;
-	Fri, 23 Oct 2026 02:10:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E5B1C606A325
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2026 02:13:11 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E5B1C606A325
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LRe7jH8Z
-Authentication-Results: smtp.kernel.org; arc=none smtp.remote-ip=100.80.115.77
-ARC-Seal: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256; cv=none;
-	t=1792721424;
-	b=CTCrL0wrGt44TOGPvVLUMo0e2OeU5rxTAKSixTvcAoOUOHWDh9AFbvrM1Q7C1/a0WTNf
-	 9dmkSqp2kfsPYfbVuwgOHxl22BLA0Wzf0o75nlgYNddFjP7Gy5XBr2yV/sJcrPAm3ByDp
-	 Tvtdft4TKAJAXvOlPMHYDVBxwwbjeCzDJvpbZdUonOlPYaa1H1zFCyDlfLS7U/mOZJ3s0
-	 57dFuFK027+ykf3oPWJhhAiHETsc84U0/AJrAeQ73YiqiPwFCq2vkoOYNHNQftXAPNoos
-	 9nZsKECuPEEplHk6F4wT/VDoWjUO7x0EwLGvTEk9QOegN/n1o7Luj9QajmVfxtK7sIw==
-ARC-Message-Signature: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256;
-	c=relaxed/relaxed; t=1792721424;
-	h=DKIM-Signature:Received:From:Date:Subject:MIME-Version:Content-Type:
-	 Message-Id:References:In-Reply-To:To:Cc:X-Mailer:
-	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
-	 X-Original-From:Reply-To:Content-Transfer-Encoding;
-	bh=BdSyN9ysyXHMKO8KNdsgTNSXQHVHgle91T1HXMSwig4=;
-	b=KL5bgvIxNGWLTY8+QnEBg+EzJ6Sw8IZmfwy0C11SibOdJwURwTEvxdbNx31X0MB5zEqs
-	 8Xsy5FnP4QVSHpocjKrlvuCP7yrh/Mpo7qpgWI8BDtia4ooyTJSgXVC4RUN2t9r7bTjff
-	 l6rVB0lhwTbrAPEXBe8qOd/0B49lNFwqOLzgx69BnXj0LUm2Z/lQhwxlfqYdNzmNgXmqM
-	 b+vadjl1x9+PB3l54wTniKZWWlXsSTfIqPtmDXTHcmGk7RZRcckZTvVxAV9eagXJMBazR
-	 JBakV3JvUlTEvWEvp3SHcNYZvj/boT6xGxxSBbGoUAu8p4zP2qyCSr8BrlaiOVISPhA==
-ARC-Authentication-Results: i=1; smtp.kernel.org; 
-	arc=none smtp.remote-ip=100.80.115.77
-Received: from lkml.kernel.org (nexus.subspace.kernel.org [100.80.115.77])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
-	(No client certificate requested)
-	by smtp.kernel.org (Postfix) with ESMTPS id D418F1F031E1;
-	Fri, 23 Oct 2026 02:10:21 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792721424;
-	bh=BdSyN9ysyXHMKO8KNdsgTNSXQHVHgle91T1HXMSwig4=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To;
-	b=LRe7jH8Zpw+TSWmPJ4s3lvaiRBCWwek7Q7AI2ufqbOSOVcDNdCYqMcO9LsIIhI8IM
-	 sk8jwyK0J9Q5l62NobkuFCl2/kez0D2B3zQ1MaS/fpIKQhoa0WtwaR7gf+2WqGlGva
-	 xHn0BdhsJMPpaqamoIVaL63K+EywybHxA8F/0DFbmLEs34I54pC7OAlJCne5G6Oi40
-	 y0F3L5fweNLQgOONt3+pfc4Ome1e0/eIPP5A3WE6yRFQIEZxtYJSwl5LznLo4hIqfV
-	 ROh06TmXxdn1SeitXcipzNvq1p1qHWUx2CnD/CnY3i3rPmwB2dSbrrgBC7MS9kp09a
-	 e2sejrrcFNg6g==
-Received: from nexus.subspace.kernel.org (localhost [IPv6:::1])
-	by lkml.kernel.org (Postfix) with ESMTP id 4A2F942196;
-	Fri, 23 Oct 2026 02:10:21 +0000 (UTC)
-From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
-Date: Fri, 23 Oct 2026 11:10:23 +0900
-Subject: [PATCH v2 2/4] nfsd: resend a layout recall once before trusting
- NOMATCHING_LAYOUT
+	dkim=pass (2048-bit key, unprotected) header.d=ownmail.net header.i=@ownmail.net header.a=rsa-sha256 header.s=fm2 header.b=XQ7wAWX7;
+	dkim=pass (2048-bit key, unprotected) header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm2 header.b=O/7H0bze
+Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
+	by mailfhigh.stl.internal (Postfix) with ESMTP id 0A8CF7A01D6
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2026 22:13:11 -0400 (EDT)
+Received: from phl-frontend-04 ([10.202.2.163])
+  by phl-compute-04.internal (MEProxy); Thu, 22 Oct 2026 22:13:11 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
+	cc:cc:content-transfer-encoding:content-type:content-type:date
+	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to; s=fm2; t=
+	1792721590; x=1792807990; bh=Uw5Phl+jnGQlfGydObsNY6zvTlA90v7yxA5
+	srNSw0TA=; b=XQ7wAWX7V5xbdJzVhweiWm+ng8gZpEOV3cFlY64UU/seWxzs10R
+	axZbR2/2hmNVeR19bNavJYYS9ODHG4cNH9ltftr0wQyTbYUznsMyFWqWPESSRl0x
+	fbKWpsNFJ3bAoh+xLqgcrtJNsvypUfrvJ830y1jJzOa7FLQc7KtnNx4Ol16r+wLL
+	aG2mBmp5hqHH0vpX7nN35bHkHngdlO3KRHQ0PnNfkQSIiXP2OnQeGXHedOtraX7+
+	A2rLFG1TmpKrEBDJfho6iS9aYHzXAd+7WIjt0iuIWX2giMhJnpqc38XFm4NYzfuF
+	T0BZamTXMLPokr8XL+PcLql328x6hM5ltog==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm2; t=1792721590; x=
+	1792807990; bh=Uw5Phl+jnGQlfGydObsNY6zvTlA90v7yxA5srNSw0TA=; b=O
+	/7H0bzeMsVY6te6i7zjKhSN5RNIFUDTCOj/j0MMz6vX7Z6Cp3kNJRfJb5Go0b4X5
+	DyL5y9G7ZGTXrOpTE3a6GPmEAjF3UBOOuEmK9YSkOaW7c8P55HRGf+VIj4EEHCAq
+	z+FWeD9vLtPxOLfFgXP1uP5Z/NKuapb2lgEQzE9+V8b/zwPSQeKgjoPdlEG12GXg
+	3PPwWgCIlntJVLG/M2oh2rJySDYNRiWx9MKioSDgLfoxGDWYQw25PyV7h1yqfPhl
+	/RsReLxGI2Itb2Q1972yKaY/Y94LdSevwOEG0PzwJMJ3g3E6foxXhwTcatYQ9Bnf
+	UdEBGFWFv8leN+aFFE2Lg==
+X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-07;
+	repo=github.com/dkim2wg/interop; date=2026-10-18; sw=lmtpprox;
+	action=sign d=ownmail.net a=rsa-sha256;
+DKIM2-Signature: i=1; m=1; t=1792721590; d=ownmail.net;
+	mf=PG5laWxiQG93bm1haWwubmV0Pg==;
+	rt=PGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc+;
+	s=fm2:rsa-sha256:Rvp6AQH2MXeV2QrQS1PKnla1aKLLFCTLiC2D2a2X5kzrkiU
+	1ANbetnXg9NN7V1j9untcLiG8dohz9WVPZKVyiMroKk69dcxNiR/1gqzQdA87/Ae
+	ce2po5b/3KuSeV/h7ICqDSxmuYhMU+UhTob9vzQahLV8qQNJ6EgdwaeDAtZQswPi
+	3DLHEIyplJrA4zOKimFGYG0OFwc1/xBljXzOGPiBrt1EPsths+eXmfRxfGc++LoW
+	C/qO+1E/+RYE7HTDTDq0rV8NucYc7VF26nUfi0CCop4t0c8nswL1VxB6jvKuED6f
+	zA5tlbEtmUrHNGzjg5g060R3tcPdoUZIll71ZWQ==;
+X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-07;
+	repo=github.com/dkim2wg/interop; date=2026-10-18; sw=lmtpprox;
+	action=mi-m=1; hc=13;
+	hn=cc,content-transfer-encoding,content-type,date,feedback-id,
+	from,in-reply-to,message-id,mime-version,references,reply-to,
+	subject,to;
+Message-Instance: m=1; h=sha256:KL4MpElFCwPxBmhQ30a2jZdliYQy8Jd0U7UQ2guYkUY=:h2qW+d5UBjraUGnf5cx1HCMv9rVqr7a0oDls1LZR6Vs=;
+X-ME-Sender: <xms:tsLaauYrOidHhDrBG8caTtFUEE5VqWrkiXr2n13ROvw4tW-jOjkcvw>
+    <xme:tsLaajpZC-IuxkMwlPwUqnKtKw-cldv9gGI0L8L0YmJ9pGmS4dcBK_dlQO-ET-0UY
+    HW15dKK97RVjC25663WrNM2NRFJqIzc7pgLN69YPVRNnGBnAyfx>
+X-ME-Received: <xmr:tsLaarP1uukBE-ECzvvjfoDr0OT33eiU-D7n2nfQaLt31Kx-kPfkjnBRaHlMnafnhdkCNAaW951JylAExW7byW3_b5gw4Gc>
+X-ME-Proxy-Cause: dmFkZTFdvXPd9Ea6sfdEYENBRwHvLMtEyCrkneRCdXYWqX0yLlrcASxmZ7h+qgcOBmSIC6
+    uNn2m16QaS2p9iqJOQ73TXyKx9Ob2u8GpeKnma7EwKE8YXdLDM36J6/Uq4J3RRSbXbarjQ
+    vTvJMRPBqo4qod5t36JT7xkzCc+RX8WpGBxmM2CIe/ZcZq8lcv6p0DcD50lSQj8Zsz5Ql3
+    Oy61Mr1F030V00a40GdmPjdybNZ02g7ZSDxUfHP8iRaaseOcaV9Xg7ilpAwZRAQWOoNEm6
+    j5sn1jedYA36aMPMq0p2mD306HwuE71UBg2gWS7qvb5biicLV86UpUX0ddIs82DznfIHBZ
+    v64JhAZpq1zjwdmxtZJ535ea+W70iOx4oQIHS/2TtvqZtlREDAFOJSWSpYzjPKi6+tLljK
+    +ffjFRosudEHZqkJzrD+JRzTttEOxAR2YI5PeVu5RUT7evU3VraB/MsXHzSBqtVjyMLaXw
+    8ZNyf5OGO3Ozhar2Q2gBgXGxmRcIv0QODWZ3df4UG7cXCKrxQYOTg2vYSvwdMnIycJPSqM
+    lwitFP5XyeLCLgpFtUPmd3ps9zeWALjJ+bKBidAZUaSU/VerU2gQAJuUCRNe6vse3MqOe1
+    f6PIBTP1N3u1PPGno9/afXgpyyQJQnR8r9DeI4gJzmSA+2Y56V9rQ11O2csQ
+X-ME-Proxy: <xmx:tsLaamrdDMdL8LlF_ZMHISYR6C0SjWWOpapwjLQdmDC4LQ4noLrhRg>
+    <xmx:tsLaaodW1KCp0jJFNu1mg5jJfGbGAEWEYMIjPeL9f-IMio4x8KqDsw>
+    <xmx:tsLaakSB52jJeUex_OjRJy3P28rnBS2X7wA1goz-zNLSUOTWymP1aQ>
+    <xmx:tsLaapZ9Pz_HvKmWO-TeKB14NEqSCj-j-mrioe2XyIRPR30r7kC-HQ>
+    <xmx:tsLaapZ6h-sHUdvQP1xt2Zz5QvIew-C57ZdFmo_v6bJtdcMQcGdd8qST>
+Feedback-ID: i9d664b8f:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA; Thu,
+ 22 Oct 2026 22:13:08 -0400 (EDT)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -83,430 +118,104 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Message-Id: <20261023-nfsd-layout-refcall-v2-2-2160bddced0c@samsung.com>
-References: <20261023-nfsd-layout-refcall-v2-0-2160bddced0c@samsung.com>
-In-Reply-To: <20261023-nfsd-layout-refcall-v2-0-2160bddced0c@samsung.com>
-To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
- NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
-Cc: Christoph Hellwig <hch@lst.de>, 
- Benjamin Coddington <ben.coddington@hammerspace.com>, 
- Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792721421; l=17899;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=kOmvM+6LAwF5h2tgKzc/ZfMJdDK9z8svYelvajNxF0c=;
- b=ue73yf5Ejs5qkBscbqq/qS9HpyX5ZZdPqedJ1a9jeSnVCgbWFzA+AHyrnjg8hHorSevxLWJKq
- 9kCLoBYw5d5BtsG9AgDGtNJOL7ZFMhsEqRpZga2AhqLUtzDBlnyZQC4
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
- auth_id=1122
-X-Original-From: Daejun Park <daejun7.park@samsung.com>
-Reply-To: daejun7.park@samsung.com
-Content-Transfer-Encoding: 7bit
+From: NeilBrown <neilb@ownmail.net>
+To: "Chuck Lever" <cel@kernel.org>
+Cc: "Jeff Layton" <jlayton@kernel.org>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <dai.ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org,
+ "Mohammed Alquraini" <mohammed.saad.alquraini@gmail.com>
+Subject: Re: [PATCH] SUNRPC: Fix use-after-free in svc_age_temp_xprts_now()
+In-reply-to: <20261022205357.3239985-1-cel@kernel.org>
+References: <20261022205357.3239985-1-cel@kernel.org>
+Date: Fri, 23 Oct 2026 13:13:06 +1100
+Message-id: <179272158618.2068970.8461283113546660302@noble.neil.brown.name>
+Reply-To: NeilBrown <neil@brown.name>
 
-From: Daejun Park <daejun7.park@samsung.com>
+On Fri, 23 Oct 2026, Chuck Lever wrote:
+> svc_age_temp_xprts_now() moves each matching temporary transport
+> onto a local list under sv_lock, then drops the lock and walks the
+> local list without holding a reference on any of them. In the
+> meantime svc_delete_xprt() can take sv_lock, unlink the same
+> xpt_list node, and drop the transport's last reference. An idle
+> temporary transport holds only that one reference, so a peer FIN
+> that arrives between the two loops frees the svc_sock out from under
+> the second loop. The notifier then sets XPT_CLOSE in freed memory,
+> and svc_xprt_enqueue() reads xpt_flags and xpt_server from the freed
+> object and queues that object on a pool for an nfsd thread. KASAN
+> reports a slab-use-after-free in svc_xprt_enqueue() under
+> nfsd_inetaddr_event(), with the object freed by svc_sock_free() on
+> an nfsd thread.
+>=20
+> The two-phase walk dates from when the second loop called into the
+> socket layer and could sleep. Commit 546125d16142 ("sunrpc: don't
+> call sleeping functions from the notifier block callbacks") moved
+> that work to the nfsd threads, so nothing left in the second loop
+> needs sv_lock dropped. Mark and enqueue each matching transport
+> under sv_lock in a single pass, as svc_age_temp_xprts() already
+> does, so that svc_delete_xprt() cannot unlink and free a transport
+> the notifier is still touching.
+>=20
+> Fixes: c3d4879e01be ("sunrpc: Add a function to close temporary transports =
+immediately")
+> Reported-by: Mohammed Alquraini <mohammed.saad.alquraini@gmail.com>
+> Signed-off-by: Chuck Lever <cel@kernel.org>
 
-When the lease of a layout is broken right after nfsd has handed the
-layout out, the CB_LAYOUTRECALL can reach the client before the reply to
-the LAYOUTGET. A client that does not know the layout stateid yet
-answers NFS4ERR_NOMATCHING_LAYOUT, nfsd4_cb_layout_done() takes that as
-the end of the recall and drops the layouts, and the client then gets
-the reply and writes through a layout that the server no longer has.
+Reviewed-by: NeilBrown <neil@brown.name>
 
-The Linux client loses those writes. Its next LAYOUTGET with that layout
-stateid gets NFS4ERR_BAD_STATEID, and it calls
-pnfs_mark_layout_stateid_invalid(), which clears NFS_INO_LAYOUTCOMMIT
-and the layout segments; the block layout driver drops the extents it
-has written through the layout with the layout header. No LAYOUTCOMMIT
-is sent for them, they stay unwritten extents on the server, they read
-back as zeroes, and fsync() on the client succeeds.
+Everything being moved into the locked region is safe in that context,
+so this is a nice simplification as well as being a bug-fix.
 
-Since "nfsd: fail a LAYOUTGET in progress when the layout lease is
-broken", a lease break that meets the LAYOUTGET before it has added its
-layout fails it, so the recall can only overtake the reply to a
-LAYOUTGET that has added its layout. In three traced runs of the test
-below without a delay on the client, a recall overtook a reply once, and
-the client lost that block; with a test-only delay of one second it lost
-every block whose reply the recall overtook.
+Thanks,
+NeilBrown
 
-The delegation code has the same problem with NFS4ERR_BAD_STATEID [1].
-It trusts the answer if the slot that carried the grant had retired when
-the recall was sent, and otherwise sends the recall once more after two
-seconds. Do the same for layouts. The layouts of a layout stateid can
-come from several LAYOUTGETs on several slots, so the layout stateid
-keeps a record of each LAYOUTGET that added a layout or merged into
-one. nfsd4_layoutget() allocates the record before
-->proc_layoutget() allocates any blocks, and fails with NFS4ERR_DELAY
-if it cannot, so that no layout goes out without one. Once the layout
-has been added, nfsd4_record_layout_grant() puts the record on the list
-while ls_mutex, which nfsd4_cb_layout_prepare() takes as well, is still
-held. Records whose slots have retired are dropped there and in
-->prepare, which notes whether any is left. When the client answers
-NFS4ERR_NOMATCHING_LAYOUT while layouts are left, a record was left at
-the send and the client has not answered NFS4_OK to this recall, ->done
-sends the recall once more after two seconds. The Linux client frees
-the slot of a LAYOUTGET only after pnfs_layout_process() has taken the
-layout in.
 
-Only the first LAYOUTGET of a layout stateid can meet a client that
-does not know it, as every later one presents the layout stateid. A
-client that has sent a later one tells a reply that arrives late by its
-seqid (RFC 8881 section 12.5.5.2.1.2). So the list keeps the latest
-NFSD4_LAYOUT_MAX_GRANTS (eight) records and drops the oldest one past
-that. Records of a destroyed session, which never show as retired, leave
-the same way.
-
-The resend repeats the request with its seqid, as the polls do, although
-RFC 8881 section 12.5.3 has a new seqid for each request: a client that
-did not take the request in expects that seqid next, whether or not it
-has processed the LAYOUTGET reply since, and the Linux client answers a
-seqid that skips one with NFS4ERR_DELAY unless the recall names
-referring calls that are complete, which this patch does not send.
-
-A client that took the request in answers the resend with
-NFS4ERR_OLD_STATEID: when the Linux client has the layout stateid but no
-layout segment that the recall matches, initiate_file_draining() takes
-in the seqid of the recall before it answers NFS4ERR_NOMATCHING_LAYOUT.
-"nfsd: keep polling a layout recall answered with NFS4ERR_OLD_STATEID"
-has the polls carry a new seqid then, which the client answers afresh. A
-LAYOUTRETURN during the delay that returns the last layout does not stop
-the resend, but the answer to it then ends the recall without fencing
-the client, as "nfsd: do not fence a client for a layout recall with no
-layouts left" has it. The resend is traced as nfsd_layout_recall_resend.
-
-The answer to the resend is trusted, where the delegation code trusts it
-only if the slot has retired by then and otherwise leaves the delegation
-to the laundromat, which revokes it. The counterpart for a layout is to
-poll until the slot retires, which an idle Linux client does only with
-its lease renewal, two thirds of a lease period after its last request,
-and only on its lowest free slot. Every LAYOUTGET for the file fails
-meanwhile, and a recall that comes from a lease break has the client
-fenced after fs.lease-break-time, also when it really has no layout.
-
-The resend covers a client that takes the reply in within the two
-seconds before it; a client that takes longer still loses the data. The
-next patch lets a client that honors referring calls hold the recall
-back instead.
-
-The resend costs the writer that broke the lease. A pNFS block layout
-client writes 1 MiB blocks with O_DIRECT to a new file for 60 seconds
-while an NFSv4.0 client writes to another range of it, so that the
-writes of the NFSv4.0 client keep breaking the layout lease. With a
-test-only delay of one second in the pNFS client before
-pnfs_layout_process(), 13 of 57 and 14 of 58 blocks written through a
-layout read back as zeroes in two runs, each one a block whose
-LAYOUTGET reply the recall overtook. With this patch none did (30 and
-41 blocks), although the recall overtook the reply 3 times in each run.
-The NFSv4.0 client wrote all its 600 blocks in 14.6 and 15.0 seconds
-without this patch and in 21.2 and 20.9 seconds with it: each recall
-that overtook a reply lasted two seconds longer, and the WRITEs of the
-NFSv4.0 client got NFS4ERR_DELAY meanwhile. With fs.lease-break-time at
-two seconds or less, a resent recall can outlast the lease break and
-have the client fenced, also one that really has no layout, where the
-recall used to end at its first answer.
-
-The writer pays also when the client that holds the layout is idle: in a
-test where a client read a file, kept it open and did no further I/O
-while another client wrote to it, the write ended 11.8 seconds after the
-first read with this patch and 8.8 seconds after it without; the writer
-starts 8 seconds after the reader starts. The idle client answered
-NFS4ERR_NOMATCHING_LAYOUT to the recall and to the resend. That stays so
-with the referring call of the next patch: a client that processed the
-reply long ago finds the referring call complete and answers
-NFS4ERR_NOMATCHING_LAYOUT again (11.9 seconds with the whole series),
-and nfsd cannot tell a client that waits for referring calls from one
-that does not.
-
-This needs the previous patch, and with it [1], and from "nfsd: layout
-recall and lease break fixes" the patches named above: without
-"nfsd: keep polling a layout recall answered with NFS4ERR_OLD_STATEID",
-the NFS4ERR_OLD_STATEID answer to the resend has the client fenced.
-
-Link: https://lore.kernel.org/r/20260802-nfsd-deleg-destroy-badhandle-v1-8-323aa7196055@kernel.org # [1]
-Link: https://lore.kernel.org/r/20261015-nfsd-layout-recall-v3-0-ba3269f8ca22@samsung.com
-Fixes: c5c707f96fc9 ("nfsd: implement pNFS layout recalls")
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
----
- fs/nfsd/nfs4layouts.c | 107 +++++++++++++++++++++++++++++++++++++++++++++++++-
- fs/nfsd/nfs4proc.c    |  12 ++++++
- fs/nfsd/pnfs.h        |   3 ++
- fs/nfsd/state.h       |  20 ++++++++++
- fs/nfsd/trace.h       |   1 +
- 5 files changed, 141 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index 679da5ba96..fdce9ddeba 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -238,6 +238,7 @@ nfsd4_free_layout_stateid(struct nfs4_stid *stid)
- 	struct nfs4_layout_stateid *ls = layoutstateid(stid);
- 	struct nfs4_client *clp = ls->ls_stid.sc_client;
- 	struct nfs4_file *fp = ls->ls_stid.sc_file;
-+	struct nfsd4_layout_grant *lg, *next;
- 
- 	trace_nfsd_layoutstate_free(&ls->ls_stid.sc_stateid);
- 
-@@ -254,6 +255,8 @@ nfsd4_free_layout_stateid(struct nfs4_stid *stid)
- 	if (ls->ls_recalled)
- 		atomic_dec(&ls->ls_stid.sc_file->fi_lo_recalls);
- 
-+	list_for_each_entry_safe(lg, next, &ls->ls_grants, lg_list)
-+		kfree(lg);
- 	kmem_cache_free(nfs4_layout_stateid_cache, ls);
- }
- 
-@@ -310,6 +313,7 @@ nfsd4_alloc_layout_stateid(struct nfsd4_compound_state *cstate,
- 	INIT_LIST_HEAD(&ls->ls_perfile);
- 	spin_lock_init(&ls->ls_lock);
- 	INIT_LIST_HEAD(&ls->ls_layouts);
-+	INIT_LIST_HEAD(&ls->ls_grants);
- 	mutex_init(&ls->ls_mutex);
- 	mutex_init(&ls->ls_fence_mutex);
- 	ls->ls_layout_type = layout_type;
-@@ -592,6 +596,66 @@ nfsd4_insert_layout(struct nfsd4_layoutget *lgp, struct nfs4_layout_stateid *ls)
- 	return nfserr;
- }
- 
-+/* Forget the LAYOUTGETs whose replies the client has seen. */
-+static void
-+nfsd4_prune_layout_grants(struct nfs4_layout_stateid *ls)
-+{
-+	struct nfs4_client *clp = ls->ls_stid.sc_client;
-+	struct nfsd4_layout_grant *lg, *next;
-+
-+	lockdep_assert_held(&ls->ls_mutex);
-+	list_for_each_entry_safe(lg, next, &ls->ls_grants, lg_list) {
-+		if (nfsd41_grant_slot_retired(clp, &lg->lg_slot)) {
-+			list_del(&lg->lg_list);
-+			kfree(lg);
-+		}
-+	}
-+}
-+
-+/**
-+ * nfsd4_record_layout_grant - remember a LAYOUTGET that added a layout
-+ * @ls: layout stateid that the LAYOUTGET added a layout to or merged into
-+ * @lg: record for the LAYOUTGET, which @ls takes over
-+ * @cstate: compound state of the LAYOUTGET
-+ *
-+ * RFC 8881 section 2.10.6.3 has a recall carry every such request until
-+ * its slot retires. Keeping the latest NFSD4_LAYOUT_MAX_GRANTS instead
-+ * bounds the record and the CB_LAYOUTRECALL request. Every LAYOUTGET
-+ * after the first one of a layout stateid presents that layout stateid,
-+ * so a layout stateid with more than one record is known to the client,
-+ * which tells a reply that arrives late by its seqid (RFC 8881 section
-+ * 12.5.5.2.1.2); the Linux client drops such a reply
-+ * (pnfs_layout_stateid_blocked()). Past NFSD4_LAYOUT_MAX_GRANTS, the
-+ * oldest record goes; that is also how records of a destroyed session,
-+ * which never show as retired, leave.
-+ *
-+ * Context: Caller holds ls_mutex, which nfsd4_cb_layout_prepare() takes
-+ * as well, so that a recall of the new layout finds the LAYOUTGET
-+ * recorded. Takes nn->client_lock.
-+ */
-+void
-+nfsd4_record_layout_grant(struct nfs4_layout_stateid *ls,
-+			  struct nfsd4_layout_grant *lg,
-+			  const struct nfsd4_compound_state *cstate)
-+{
-+	struct nfsd4_layout_grant *old;
-+
-+	nfsd4_prune_layout_grants(ls);
-+	if (list_count_nodes(&ls->ls_grants) >= NFSD4_LAYOUT_MAX_GRANTS) {
-+		old = list_first_entry(&ls->ls_grants,
-+				       struct nfsd4_layout_grant, lg_list);
-+		list_del(&old->lg_list);
-+		kfree(old);
-+	}
-+	lg->lg_slot.valid = false;
-+	nfsd41_record_grant_slot(&lg->lg_slot, cstate);
-+	if (!lg->lg_slot.valid) {
-+		kfree(lg);
-+		return;
-+	}
-+	list_add_tail(&lg->lg_list, &ls->ls_grants);
-+}
-+
- static void
- nfsd4_free_layouts(struct list_head *reaplist)
- {
-@@ -883,8 +947,16 @@ nfsd4_cb_layout_prepare(struct nfsd4_callback *cb)
- 
- 	mutex_lock(&ls->ls_mutex);
- 	nfs4_inc_and_copy_stateid(&ls->ls_recall_sid, &ls->ls_stid);
-+	/*
-+	 * nfsd4_layoutget() records each LAYOUTGET that adds a layout
-+	 * under ls_mutex. With none left whose slot has not retired, there
-+	 * is no reply to wait for.
-+	 */
-+	nfsd4_prune_layout_grants(ls);
-+	ls->ls_recall_retired_at_send = list_empty(&ls->ls_grants);
- 	mutex_unlock(&ls->ls_mutex);
- 	ls->ls_recall_accepted = false;
-+	ls->ls_recall_resent = false;
- 	return true;
- }
- 
-@@ -915,8 +987,10 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
- 		 * The poll reuses the recall's seqid, against RFC 8881
- 		 * section 12.5.3, so a client returning its layouts answers
- 		 * NFS4ERR_OLD_STATEID too. A client that has not taken the
--		 * recall up is past that seqid, e.g. after a LAYOUTRETURN,
--		 * and gets a new one. ls_mutex could block rpciod, so the bump
-+		 * recall up is past that seqid and gets a new one: after a
-+		 * LAYOUTRETURN, or when the resend below repeats the seqid of a
-+		 * recall that the Linux client took in although it matched no
-+		 * layout segment. ls_mutex could block rpciod, so the bump
- 		 * relies on sc_lock.
- 		 */
- 		if (!ls->ls_recall_accepted) {
-@@ -994,6 +1068,35 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
- 		}
- 		return 1;
- 	case -NFS4ERR_NOMATCHING_LAYOUT:
-+		/*
-+		 * The recall can reach the client before the reply to a
-+		 * LAYOUTGET that added a layout, and a client that has not
-+		 * processed that reply answers this way too. As the
-+		 * delegation code does for NFS4ERR_BAD_STATEID, trust the
-+		 * answer if the slots of the LAYOUTGETs had retired when the
-+		 * recall was sent, and send the recall once more after a
-+		 * delay otherwise. Unlike the delegation code, trust the
-+		 * answer to that resend: not trusting it would end in fencing
-+		 * the client, and an idle client leaves its slot unretired
-+		 * also when it has no layout. A client that has not
-+		 * processed the reply by the resend still has its layout
-+		 * dropped. A client that has answered NFS4_OK to this recall
-+		 * knew the layout stateid, so its answer to a poll is trusted
-+		 * at once.
-+		 *
-+		 * The resend repeats the request with its seqid, as the polls
-+		 * do, although RFC 8881 section 12.5.3 has a new one for each
-+		 * request: a client that did not take the request in expects
-+		 * that seqid next, and a client that did answers
-+		 * NFS4ERR_OLD_STATEID, which the polls handle.
-+		 */
-+		if (!list_empty(&ls->ls_layouts) && !ls->ls_recall_accepted &&
-+		    !ls->ls_recall_retired_at_send && !ls->ls_recall_resent) {
-+			ls->ls_recall_resent = true;
-+			trace_nfsd_layout_recall_resend(&ls->ls_recall_sid);
-+			rpc_delay(task, 2 * HZ);
-+			return 0;
-+		}
- 		trace_nfsd_layout_recall_done(&ls->ls_stid.sc_stateid);
- 		task->tk_status = 0;
- 		return 1;
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index a50f9dcb3a..c4c451dc0a 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -2904,6 +2904,7 @@ nfsd4_layoutget(struct svc_rqst *rqstp,
- 	struct svc_fh *current_fh = &cstate->current_fh;
- 	const struct nfsd4_layout_ops *ops;
- 	struct nfs4_layout_stateid *ls;
-+	struct nfsd4_layout_grant *lg = NULL;
- 	__be32 nfserr;
- 	int accmode = NFSD_MAY_READ_IF_EXEC | NFSD_MAY_OWNER_OVERRIDE;
- 
-@@ -2962,16 +2963,27 @@ nfsd4_layoutget(struct svc_rqst *rqstp,
- 	if (atomic_read(&ls->ls_stid.sc_file->fi_lo_recalls))
- 		goto out_put_stid;
- 
-+	/* Allocate the record first, so that every layout handed out has one */
-+	nfserr = nfserr_jukebox;
-+	lg = kmalloc_obj(*lg);
-+	if (!lg)
-+		goto out_put_stid;
-+
- 	nfserr = ops->proc_layoutget(rqstp, d_inode(current_fh->fh_dentry),
- 				     current_fh, lgp);
- 	if (nfserr)
- 		goto out_put_stid;
- 
- 	nfserr = nfsd4_insert_layout(lgp, ls);
-+	if (!nfserr) {
-+		nfsd4_record_layout_grant(ls, lg, cstate);
-+		lg = NULL;
-+	}
- 
- out_put_stid:
- 	mutex_unlock(&ls->ls_mutex);
- 	nfs4_put_stid(&ls->ls_stid);
-+	kfree(lg);
- out:
- 	return nfserr;
- }
-diff --git a/fs/nfsd/pnfs.h b/fs/nfsd/pnfs.h
-index e5f2e11c88..b2fcc28bf2 100644
---- a/fs/nfsd/pnfs.h
-+++ b/fs/nfsd/pnfs.h
-@@ -61,6 +61,9 @@ __be32 nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
- 		bool create, u32 layout_type, struct nfs4_layout_stateid **lsp);
- __be32 nfsd4_insert_layout(struct nfsd4_layoutget *lgp,
- 		struct nfs4_layout_stateid *ls);
-+void nfsd4_record_layout_grant(struct nfs4_layout_stateid *ls,
-+		struct nfsd4_layout_grant *lg,
-+		const struct nfsd4_compound_state *cstate);
- __be32 nfsd4_return_file_layouts(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *cstate,
- 		struct nfsd4_layoutreturn *lrp);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 2c00b334c3..b3338cf171 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -848,6 +848,15 @@ static inline struct nfs4_ol_stateid *openlockstateid(struct nfs4_stid *s)
- 
- struct nfsd4_fence_script;
- 
-+/* A LAYOUTGET that added a layout, until its slot retires */
-+struct nfsd4_layout_grant {
-+	struct list_head		lg_list;
-+	struct nfsd4_grant_slot		lg_slot;
-+};
-+
-+/* The most LAYOUTGETs that a layout stateid keeps records of */
-+#define NFSD4_LAYOUT_MAX_GRANTS		8
-+
- struct nfs4_layout_stateid {
- 	struct nfs4_stid		ls_stid;
- 	struct list_head		ls_perclnt;
-@@ -863,6 +872,17 @@ struct nfs4_layout_stateid {
- 	bool				ls_recall_accepted;
- 	bool				ls_recalled;
- 	struct mutex			ls_mutex;
-+	/*
-+	 * The latest NFSD4_LAYOUT_MAX_GRANTS LAYOUTGETs that added a
-+	 * layout to this layout stateid or merged into one, and whose
-+	 * slots had not retired when last looked at. Under ls_mutex.
-+	 * Until a slot retires, the client may not have processed the reply
-+	 * to the LAYOUTGET it carried.
-+	 */
-+	struct list_head		ls_grants;
-+	/* Recall state for ->done, reset in ->prepare */
-+	bool				ls_recall_retired_at_send;
-+	bool				ls_recall_resent;
- 
- 	struct delayed_work		ls_fence_work;
- 	struct mutex			ls_fence_mutex; /* serializes fence shutdown */
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 951af645d1..a2c21d491a 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -830,6 +830,7 @@ DEFINE_STATEID_EVENT(layout_return_lookup_fail);
- DEFINE_STATEID_EVENT(layout_recall);
- DEFINE_STATEID_EVENT(layout_recall_empty);
- DEFINE_STATEID_EVENT(layout_recall_done);
-+DEFINE_STATEID_EVENT(layout_recall_resend);
- DEFINE_STATEID_EVENT(layout_recall_new_seqid);
- DEFINE_STATEID_EVENT(layout_recall_fail);
- DEFINE_STATEID_EVENT(layout_recall_release);
-
--- 
-2.43.0
-
+> ---
+>  net/sunrpc/svc_xprt.c | 16 ++++------------
+>  1 file changed, 4 insertions(+), 12 deletions(-)
+>=20
+> Mohammed, thanks for the report. Please test and report your results.
+>=20
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 5db42e53be62..076c624fe675 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -1075,29 +1075,21 @@ void svc_age_temp_xprts_now(struct svc_serv *serv, =
+struct sockaddr *server_addr)
+>  {
+>  	struct svc_xprt *xprt;
+>  	struct list_head *le, *next;
+> -	LIST_HEAD(to_be_closed);
+> =20
+>  	spin_lock_bh(&serv->sv_lock);
+>  	list_for_each_safe(le, next, &serv->sv_tempsocks) {
+>  		xprt =3D list_entry(le, struct svc_xprt, xpt_list);
+> -		if (rpc_cmp_addr(server_addr, (struct sockaddr *)
+> -				&xprt->xpt_local)) {
+> -			dprintk("svc_age_temp_xprts_now: found %p\n", xprt);
+> -			list_move(le, &to_be_closed);
+> -		}
+> -	}
+> -	spin_unlock_bh(&serv->sv_lock);
+> -
+> -	while (!list_empty(&to_be_closed)) {
+> -		le =3D to_be_closed.next;
+> +		if (!rpc_cmp_addr(server_addr, (struct sockaddr *)
+> +				&xprt->xpt_local))
+> +			continue;
+>  		list_del_init(le);
+> -		xprt =3D list_entry(le, struct svc_xprt, xpt_list);
+>  		set_bit(XPT_CLOSE, &xprt->xpt_flags);
+>  		set_bit(XPT_KILL_TEMP, &xprt->xpt_flags);
+>  		dprintk("svc_age_temp_xprts_now: queuing xprt %p for closing\n",
+>  				xprt);
+>  		svc_xprt_enqueue(xprt);
+>  	}
+> +	spin_unlock_bh(&serv->sv_lock);
+>  }
+>  EXPORT_SYMBOL_GPL(svc_age_temp_xprts_now);
+> =20
+> --=20
+> 2.54.0
+>=20
+>=20
 
