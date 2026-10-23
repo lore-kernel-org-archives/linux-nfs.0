@@ -1,59 +1,58 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792752847;
-	b=K/DiLtS8ovUZ/NDu4qavIFXKG/iptlSQUOXEqGKYPVbL/S0pByA/hrJwWFxGtYG1YDky
-	 wezSBjR++Bqd3v5NDjOBRkZnS8CLU9wNjoPtAuUF4s9qP/m052AwZjYNXmFGah5zZja7e
-	 O30COoAmndlXYJTySI8e2rImM5ThzNlRZbiD6rlcr2n+AXfsjXhvAZmOFqfbxzP0XatH5
-	 csLTa17DUHpIJimygftJUCmIqVAZJEEDXPKhiwPRwAcsA1s2Ia4B0/eSsswewSThC1tpU
-	 ueq6mucg+pQA300F5rMcJOvZAkpoQfvqhVEtObHmfIhWyKzfKvkESQJbWhOQ7Umm8qw==
+	t=1792753034;
+	b=Cllku954NaFQniE6pxFVGOTJPj1MaQkg+R+PtP6ETzKv4hX92yhxX4p2jG92xNyFTnO2
+	 QBcwW4ZW8ZIjTJwlp8gVrWIXQj5kNJfzGJ35aqL+7FOizFli43puLx+eQ/DbFc35Xl46l
+	 BdWLq3ohyaSWLJ0L6q5W3woBw46xSjTebc9PsVyo8mVlZ21s/aSstVdqc7TKImlSZCiOA
+	 pIWwdEDIsoTE+ppgyX8dV1ZWtFkyDXEYLbzpoea93trz8FHnE+Xkm2/HCgYDzD40ZGnxn
+	 4n3TnPMNNunvOqeb433v/GXBc/fiw5ndbDoFi+epDExvh4K7CCtyvyWNI1y5p47tdug==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792752847;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792753034;
 	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
 	 In-Reply-To:References:Autocrypt:Content-Type:
 	 Content-Transfer-Encoding:User-Agent:MIME-Version;
-	bh=gKSFMECEykel+aWXVUZFoLCD0zBG2IyltALKHo187sw=;
-	b=YBdBDorKQv31l7Hk6tP7ylEotAPdndmVFffgaq2hr9ANxgf5UYvtXaVAGIaAkU0JpGKD
-	 OccSarwkqLzXvV+JFcvWGHUlidaWCufPYlR+b3Zp/rAVAUmKA67jJ850rtZtG7RPz57Wd
-	 Gs5yArs0WIna8bEN+JRPwkkZkqkhE7fGKhUar6zPlUWmJaA/5fArwjfENN2TQJKZEGotC
-	 rBQ/XDAskVZ0x4xh9Nle8pAgfSTlnKQ5LaAFgFVFWgpCeEWkeRvF5ONl9SdvwObM2pvzO
-	 rrN47L+ifnUgvfsV99S8tZeq5yeKX1OopGvU7UPtWb88E7Gw+rMPIK/omm65jPzJpGQ==
+	bh=AZy3vSXQuFsVXgDu4mp0Kw/AOG663vFWNbTt1QMJvQo=;
+	b=1qd7b5bS7rZYDOq7ykpy6cNKZuL0P7/jx1Gr5rvyUl3FdIGMTn6OktT3hKZgg+UoxwNp
+	 kdmXXXTA+fi/E6rMCerTcfXVs6R3A9Jwca4F63tpSePJg/OAJP4w7X0D+B/CLgFPjVr8R
+	 0NAAxX5UOr+z9u8+tmuEmmdBRhrADb4Osx8m7cs5ddtrqJZMRyLibW2D6oKQH5LWC1ct+
+	 YwcRDH5AyyZj+1y/OVUYIC4vOx5UcaHKEbny8ssrDpVu0XS9umiMfzYbSuUy/l3tEhePQ
+	 Rp8YxI7Sw8mkGmMKXV9hs3m1G2qR5IfySdHNXo5tknGz8AMxz+L0beESNJN0lON8iww==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dQWIQREG;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=clD++HFp;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3EDE9606A321;
-	Fri, 23 Oct 2026 10:54:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 47FEF606A31B;
+	Fri, 23 Oct 2026 10:57:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dQWIQREG
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EFB3F1F01829;
-	Fri, 23 Oct 2026 10:54:05 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=clD++HFp
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E649F1F01825;
+	Fri, 23 Oct 2026 10:57:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792752846;
-	bh=gKSFMECEykel+aWXVUZFoLCD0zBG2IyltALKHo187sw=;
+	s=k20260515; t=1792753033;
+	bh=AZy3vSXQuFsVXgDu4mp0Kw/AOG663vFWNbTt1QMJvQo=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=dQWIQREG1NmrqU90hCX403D+xaWWFlQhz4uS77hOBG4WYEKxd1tBVtkIBIN8Jd7qe
-	 QWmDIdSYYpdW5zZPXp0kTo71TyleYIiqdywmhuJy5QoLKsFfpIF7R1yTANff5P9InJ
-	 qP7XuzxP6+cSd+FsF8Zo0Vp3jjYfbl3KVO0EfPCnsPu0CSWETwCaxhXKdwFvE+ZVBC
-	 4hKo9XhUKsNqedW7fHHjWEo2Y/dHOGb0iXb8buZFPmpIs9wEze/zCQZOFQXXeKlTBF
-	 suUVTKOKwzeKa50dDesamBl+BpXdJ/JOmpcP2B0ROIdNhK2YBthJUXwfDZXoCmmPRH
-	 fR7LvsmaBBudQ==
-Message-ID: <2f97e4ed4ea0d1869505436be9040f810d631460.camel@kernel.org>
-Subject: Re: [PATCH v2 0/4] nfsd: keep a layout whose recall overtakes the
- LAYOUTGET reply
+	b=clD++HFpIMJt5lFVSwNArhp2/vBs1rRNdXKpSeyrbn2PGQCodef/gW7FnXsNXcipR
+	 sb8xMFQ1PSwA2V6OuRZbg2rlDpqj1a06L8n/etzVQWUngdD7VCS5F8g1MS2Pj6hTQs
+	 tn2bhz0DUoNpVyqGdWjwujA1C8N09H4spcItVHRK/cJFm7W9VxW5q2GxFOXq1w2+JQ
+	 ZXEcs64hmuB5/TYhO7UyshFWiObRjNqgYngEFrlzV4jf5QxmapQ5zhzCv7+w1oaAki
+	 L6ks2VOWkTti73T9soedlZHX3Rxe9VNqT7oS4r6AVsy0XsdKTxc+YTzGnhmbYJMVN1
+	 E3eqpeHwVW81w==
+Message-ID: <9b43a1aec170ee810ef5fd2a2ab1288bad6508fd.camel@kernel.org>
+Subject: Re: [PATCH v8 0/7] mm, iomap, NFSD: stop uncached writes reading
+ back shared pages
 From: Jeff Layton <jlayton@kernel.org>
-To: daejun7.park@samsung.com, Chuck Lever <cel@kernel.org>, NeilBrown
-	 <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo
-	 <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
-Cc: Christoph Hellwig <hch@lst.de>, Benjamin Coddington	
- <ben.coddington@hammerspace.com>, Trond Myklebust <trondmy@kernel.org>,
- Anna Schumaker <anna@kernel.org>, linux-nfs@vger.kernel.org,
- linux-kernel@vger.kernel.org
-Date: Fri, 23 Oct 2026 06:54:03 -0400
-In-Reply-To: <20261023-nfsd-layout-refcall-v2-0-2160bddced0c@samsung.com>
-References: <20261023-nfsd-layout-refcall-v2-0-2160bddced0c@samsung.com>
+To: Mike Snitzer <snitzer@kernel.org>, Chuck Lever <cel@kernel.org>
+Cc: linux-nfs@vger.kernel.org, NeilBrown <neil@brown.name>, Olga
+ Kornievskaia	 <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
+ Talpey <tom@talpey.com>,  Christoph Hellwig	 <hch@lst.de>, Jens Axboe
+ <axboe@kernel.dk>, Matthew Wilcox <willy@infradead.org>,  Jonathan Corbet	
+ <corbet@lwn.net>, linux-mm@kvack.org, linux-fsdevel@vger.kernel.org
+Date: Fri, 23 Oct 2026 06:57:09 -0400
+In-Reply-To: <20261023024548.71123-1-snitzer@kernel.org>
+References: <20261023024548.71123-1-snitzer@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -141,183 +140,147 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 
-On Fri, 2026-10-23 at 11:10 +0900, Daejun Park via B4 Relay wrote:
-> With [3], a client that writes to a file through the metadata server
-> while it does I/O through a layout of the same file gets
-> NFS4ERR_RECALLCONFLICT for LAYOUTGET after LAYOUTGET. One Linux block
-> layout client writing 1 MiB blocks with O_DIRECT through its layout and
-> 512 bytes at the middle of a page, which it sends through the metadata
-> server, to the same file did 51, 54 and 12 of its 1 MiB writes in 30
-> seconds in three runs with patches 1 to 3. Patch 4 lets such a LAYOUTGET
-> succeed with an immediate recall instead when the lease break comes from
-> the same client (240, 249 and 244). That recall can overtake the
-> LAYOUTGET reply: a client that does not know the layout stateid yet
-> answers NFS4ERR_NOMATCHING_LAYOUT, nfsd drops the layout, and the Linux
-> client loses the writes it then sends through it, which read back as
-> zeroes although fsync() succeeded. Without patches 2 and 3, patch 4 lost
-> 75 of 600, 79 of 589 and 87 of 600 blocks. The same race exists today:
-> on nfsd-testing, a recall overtook a LAYOUTGET reply in one of three 30
-> second runs of the test below without its delay, and that block read
-> back as zeroes. A block layout client can take long to process a reply,
-> as pnfs_layout_process() may need a GETDEVICEINFO and a blkmapd upcall
-> for a new device while it holds the slot of the LAYOUTGET. Patch 2 has
-> the details.
+On Thu, 2026-10-22 at 22:45 -0400, Mike Snitzer wrote:
+> Hi,
 >=20
-> Patch 1 lets layouts share the record of the slot that carried a grant
-> with the delegation code [1]. Patch 2 resends the recall once, as the
-> delegation code does, when the client answers NFS4ERR_NOMATCHING_LAYOUT
-> before the slots of the LAYOUTGETs have retired. Patch 3 names those
-> LAYOUTGETs as referring calls (RFC 8881 sections 2.10.6.3 and
-> 12.5.5.2.1), so that a client that honors them holds the recall back;
-> the Linux client does with [2]. The resend comes first because the
-> referring call alone does not help the Linux client without [2] once it
-> needs more than half a second: it then answers NFS4ERR_NOMATCHING_LAYOUT
-> anyway, and the half second it waits makes each such recall longer.
+> Please consider this v8 for the v7.5 development cycle, so that it can
+> go upstream in the v7.5 merge window.
 >=20
-> A pNFS client writes 1 MiB blocks with O_DIRECT to a new file for 60
-> seconds next to an NFSv4.0 client writing to another range of it, with a
-> test-only delay of one second in the pNFS client before
-> pnfs_layout_process(). Blocks that read back as zeroes / blocks written
-> through a layout, and the NFSv4.0 client, two runs each:
+> An uncached (RWF_DONTCACHE) buffered write drops each page it writes
+> once that page is written back.  A page the write covers only partly is
+> shared with the neighbouring write, and once the first of the two has
+> been written back the second has to read it back from disk before it
+> can write its part.  32 threads writing interleaved records to one file
+> on XFS (emulated 4Kn NVMe, 4 KiB pages), before and after 5/7:
 >=20
->   nfsd-testing                         13/57, 14/58  600 in 14.6, 15.0 s
->   + patches 1 and 2                    0/30, 0/41    600 in 21.2, 20.9 s
->   + patches 1 to 3                     0/20, 0/28    600 in 35.8, 25.2 s
->   + patches 1 to 4                     0/23, 0/24    62, 9 in 60 s
->   + patches 1 to 4, [2] on client      0/22, 0/24    227, 15 in 60 s
+>   record  pwritev2() flags          4 KiB device       MiB/s
+>   bytes                             reads per write
+>                                     before   after     before  after
+>   47008   RWF_DONTCACHE             0.97     0.0005    831     2281
+>   47008   RWF_DONTCACHE|RWF_DSYNC   0.99     0.0005    601     1227
+>   6000    RWF_DONTCACHE             0.97     0.0001    121      488
+>   6000    RWF_DONTCACHE|RWF_DSYNC   0.99     0.0002     90      206
 >=20
-> The NFSv4.0 client stops after 60 seconds. Every block lost was one
-> whose reply the recall overtook. Patch 4 did not act in this test
-> (nfsd_layout_break_pending did not fire), as the lease breaks come from
-> the other client; rows 3 and 4 differ in how many recalls met an
-> unprocessed reply: 8 and 4 against 23 and 24, which in row 4 is every
-> LAYOUTGET. The cost is on the writer that breaks the lease: a recall
-> that meets a LAYOUTGET reply the client has not processed within half a
-> second lasts at least two and a half seconds, and WRITEs through the
-> metadata server get NFS4ERR_DELAY meanwhile. The NFSv4.0 client needs
-> about 15 seconds plus, for each such recall, nothing on nfsd-testing,
-> two seconds with patches 1 and 2, and two and a half from patch 3 on;
-> such recalls numbered 13 and 14, 3 and 3, 8 and 4, and 23 and 24 in the
-> rows above without [2]. Each one also keeps the NFSv4.0 client breaking
-> the lease for longer, so the count feeds on itself and varies between
-> runs of the same code; two runs do not rank the stages. With
-> fs.lease-break-time at two seconds or less, such a recall outlasts the
-> lease break and the client is fenced.
+> What is left after is metadata: 49152-byte records, which cover only
+> whole pages, read 0.0005 per write either way.  The test program and
+> script that produced this table, and how to run them, are in:
+> https://lore.kernel.org/linux-nfs/atqJBS8MlYfeUU-t@kernel.org/
 >=20
-> With a delay of four seconds, longer than the resend covers, a client
-> without [2] loses every block whose reply the recall overtakes: 8 of 15
-> in each of two runs with patches 1 and 2, where the NFSv4.0 client was
-> done after 31.5 and 31.2 seconds and broke no lease after that, and 15
-> of 15 in each of two runs with patches 1 to 3 and with patches 1 to 4,
-> where it was still writing after 60 seconds. With [2], none (11 and 7
-> blocks).
+> 5/7 has the page cache keep such a page for the write that completes
+> it.  6/7 lets a writer that syncs its own write, as NFSD does for a
+> stable WRITE, complete those pages itself once the sync is done.  7/7
+> is the NFSD change that uses it.  3/7 reports the DONTCACHE dirty count
+> in the bdi debugfs stats, and 4/7 adds folio_mark_dropbehind(), which
+> 5/7 and 6/7 use.
 >=20
-> QEMU guests (nvmet-tcp target, nfsd on XFS, NFSv4.2 block layout clients
-> and an NFSv4.0 client), nfsd-testing 764ffa45f3f2 with KASAN and
-> lockdep; no KASAN or lockdep report from nfsd or the clients. SCSI and
-> flexfiles layouts were not tested. Without the delay, no recall overtook
-> a reply with the series in three runs of 30 seconds. The runs of patch 4
-> around the deadline of a lease break are from v1, on nfsd-testing
-> b4e06bef3884; patch 4 is the same code in v2. One boot of the metadata
-> server VM, on an image of v1, reported "BUG: KASAN: wild-memory-access
-> in do_raw_spin_lock" 0.5 seconds in, during identify_cpu() and before
-> any NFS traffic, as one boot did in the v1 tests. pynfs BLOCK3 fails
-> with NFS4ERR_BADXDR with and without the series; local recall tests (not
-> posted) pass with the series, and two of them fail on nfsd-testing.
+> 1/7 and 2/7 are fixes the review of v7 turned up in code that is
+> already queued or upstream, and each stands on its own:
 >=20
-> The series applies on nfsd-testing, which has [1] and [3]. Patch 2 needs
-> patches of [3] that it names, patch 3 should not go before v7.1, and
-> patch 4 needs patches 2 and 3.
+> - 1/7 fixes 80728157d1bd ("NFSD: cut a misaligned direct-mode WRITE at
+>   page boundaries") in cel/nfsd-testing: where the mapping's smallest
+>   folio is a block larger than a page, NFSD cut a WRITE's misaligned
+>   ends inside a block, so the direct middle and a buffered end shared
+>   it.  Chuck, maybe best to fold into 80728157d1bd ?
+> - 2/7 fixes 88d6f128d06d ("mm: track DONTCACHE dirty pages per
+>   bdi_writeback"), in v7.3: a cached lookup that clears the dropbehind
+>   flag could take a folio off WB_DONTCACHE_DIRTY that was never counted
+>   there, or leave one counted with nothing to uncount it.  It applies
+>   to v7.3 as it is, if the mm side would rather take it alone.
 >=20
-> [1] https://lore.kernel.org/r/20260802-nfsd-deleg-destroy-badhandle-v1-0-=
-323aa7196055@kernel.org
-> [2] https://lore.kernel.org/r/20261020-nfs-referring-call-delay-v1-1-0be8=
-f0608f7c@samsung.com
-> [3] https://lore.kernel.org/r/20261015-nfsd-layout-recall-v3-0-ba3269f8ca=
-22@samsung.com
+> The prerequisite NFSD changes are staged in cel/nfsd-testing; this
+> series applies on top of it at 6d13b7f74eec ("NFSD: Map every NFS_ACLv2
+> reply status into aclstat2"), and each patch builds with W=3D1 with no
+> warnings.
 >=20
-> ---
-> Changes in v2:
-> - 2/4: keep a record of each LAYOUTGET whose slot has not retired, up
->   to the latest eight, instead of the last one only (Sashiko). A
->   LAYOUTGET that cannot allocate its record fails with NFS4ERR_DELAY
->   before any blocks are allocated.
-> - 3/4: name every recorded LAYOUTGET as a referring call (Sashiko), and
->   make room for eight in NFS4_enc_cb_layout_sz, which had room for one.
->   In a pynfs test (not posted) with two LAYOUTGETs on two slots, v1
->   named the second only and v2 names both, in each of five runs.
-> - 3/4: nfsd41_cb_referring_call() and nfsd41_cb_referring_grant() report
->   an allocation failure. A recall that could not name a LAYOUTGET does
->   not trust NFS4ERR_NOMATCHING_LAYOUT; it is sent again every two
->   seconds until the client answers otherwise or the recall ends as the
->   polls do (Sashiko). With a test-only switch that fails the allocation
->   and the four second delay, v1 lost 8 of 15 blocks in each of two runs
->   and v2 none. A client that answers NFS4ERR_NOMATCHING_LAYOUT to such a
->   recall is fenced as one that does not answer, after fs.lease-break-time
->   or two lease periods, and every LAYOUTGET for the file, its own
->   included, fails until then. The end of the polls and the fencing move
->   into helpers.
-> - 2/4, 4/4: the answer to the resend is still trusted when the slot of
->   the LAYOUTGET has not retired (Sashiko on 2/4 and 4/4). Once the
->   recall names the LAYOUTGET, waiting for it is the client's part: RFC
->   8881 section 12.5.5.2.1 says the client MUST wait for the referenced
->   calls before it processes the recall, and the Linux client does with
->   [2]. Waiting for the slot to retire instead waits for the client's
->   next request on that slot. An idle Linux client sends only its lease
->   renewal, two thirds of a lease period after its last request (60
->   seconds by default) and on its lowest free slot, and does not use a
->   higher slot again until it is busy. Until then every LAYOUTGET for the
->   file fails, and a recall that comes from a lease break has the client
->   fenced after fs.lease-break-time (45 seconds by default) although it
->   has no layout. An earlier version that polled until the slot retired,
->   behind an idle reader that answered NFS4ERR_NOMATCHING_LAYOUT 1112
->   times, ended the write 23 seconds after the reader's first read,
->   against 13 seconds when resending once, on that older base; the writer
->   starts 8 seconds after the reader, and the poll ended only because the
->   reader read again 20 seconds after its first read. On nfsd-testing the
->   write ends 8.8 seconds after the first read without the series and
->   11.8 with patches 1 and 2: the resend costs the writer 3 seconds, also
->   with [2], as nfsd cannot tell a client that waits for referring calls
->   from one that does not. The comment in nfsd4_cb_layout_done() now says
->   what is left at risk.
-> - Rebased on nfsd-testing 764ffa45f3f2 and tested there.
-> - Link to v1: https://lore.kernel.org/r/20261021-nfsd-layout-refcall-v1-0=
--797096b92377@samsung.com
+> 2/7 to 6/7 are mm, with small iomap changes in 5/7 and 6/7, and are
+> Cc'd to linux-mm and linux-fsdevel.  If the mm and iomap maintainers
+> are agreeable, their acks would let Chuck take the series through the
+> nfsd tree.  But whatever approach the maintainers prefer for this kind
+> of cross-subsystem merge is obviously fine.
 >=20
-> ---
-> Daejun Park (4):
->       nfsd: share the grant slot record between delegations and layouts
->       nfsd: resend a layout recall once before trusting NOMATCHING_LAYOUT
->       nfsd: send a referring call with CB_LAYOUTRECALL
->       nfsd: do not fail a LAYOUTGET on a lease break by the same client
+> Changes since v7, from Jeff's review and the sashiko findings he
+> relayed:
+> - 1/7 and 2/7 are new (above).
+> - 3/7 (v7 1/5): a comment dropped; Jeff's Reviewed-by.
+> - 4/7 (v7 2/5): folio_mark_dropbehind() counted a folio as DONTCACHE
+>   dirty when it found PG_dirty set, but PG_dirty is set before
+>   folio_account_dirtied() counts the folio, without the folio lock, so
+>   a folio marked in between was counted twice.  It now sets the flag
+>   and tests the dirty tag, which is set in the same i_pages section that
+>   counts the folio, under the i_pages lock.
+> - 5/7 (v7 3/5): the edge is the smallest folio the mapping allows, a
+>   page or a block where blocks are larger, both in iomap's test and in
+>   what is marked: a larger folio found there, left by readahead or
+>   another buffered write, is no longer marked whole.
+> - 6/7 (v7 4/5): an edge already clean is dropped before the folio lock
+>   is released, not after with a trylock that could miss it; and only
+>   an edge-sized folio, as in 5/7.
+> - 7/7 (v7 5/5): unchanged.
 >=20
->  fs/nfsd/nfs4callback.c |  13 +-
->  fs/nfsd/nfs4layouts.c  | 325 ++++++++++++++++++++++++++++++++++++++++---=
-------
->  fs/nfsd/nfs4proc.c     |  12 ++
->  fs/nfsd/nfs4state.c    | 118 ++++++++++++------
->  fs/nfsd/pnfs.h         |   3 +
->  fs/nfsd/state.h        |  65 ++++++++--
->  fs/nfsd/trace.h        |   2 +
->  fs/nfsd/xdr4cb.h       |   6 +-
->  8 files changed, 439 insertions(+), 105 deletions(-)
-> ---
-> base-commit: 764ffa45f3f2189cd86ec6d46d248fc0440507b6
-> change-id: 20261021-nfsd-layout-refcall-60b4f9d6944d
+> Tested on XFS on an emulated 4Kn NVMe, 4 KiB pages, 32 threads of
+> interleaved 47008-byte records (12288 bytes where noted), 4 KiB device
+> reads per write, v7 against v8:
 >=20
-> Best regards,
+>                                              v7        v8
+>   RWF_DONTCACHE over large folios
+>     readahead left                          0.94      0.0026
+>   RWF_DONTCACHE, 16 KiB blocks              1.62      0.0014
+>     12288-byte records                      2.89      0.0004
+>   NFS WRITEs through NFSD DIRECT,
+>     16 KiB blocks                           3.46      0.0016
+>=20
+> (v7 in 128 MiB runs, v8 in 1 GiB runs; on 16 KiB blocks one block read
+> back per write is 4.0 here.)  In every run of v8, BdiDontcacheDirty
+> (3/7) was back at 0 after the final sync, including runs mixing
+> uncached writes, cached writes and mmap stores on one file, and every
+> record verified.
+>=20
+> v7: https://lore.kernel.org/linux-nfs/20261020220346.28020-1-snitzer@kern=
+el.org/
+> v6: https://lore.kernel.org/linux-nfs/atbfEbgMU6UGkn2X@kernel.org/
+> v5: https://lore.kernel.org/linux-nfs/20261019150725.1507-1-snitzer@kerne=
+l.org/
+> v4: https://lore.kernel.org/linux-nfs/20261015233309.42999-1-snitzer@kern=
+el.org/
+> v3: https://lore.kernel.org/linux-nfs/20261001045502.48381-1-snitzer@kern=
+el.org/
+> v2: https://lore.kernel.org/linux-nfs/20260929231329.22018-1-snitzer@kern=
+el.org/
+> v1: https://lore.kernel.org/linux-nfs/20260929173423.16149-1-snitzer@kern=
+el.org/
+>=20
+> Thanks,
+> Mike
+>=20
+> Mike Snitzer (7):
+>   NFSD: cut a misaligned direct-mode WRITE at the mapping's smallest foli=
+o
+>   mm: take a folio off WB_DONTCACHE_DIRTY only if it was counted there
+>   mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats
+>   mm: add folio_mark_dropbehind() to mark a folio dropbehind and account =
+it
+>   mm, iomap: keep a partly covered page until an uncached write completes=
+ it
+>   mm, iomap: let an uncached writer complete its shared pages itself
+>   NFSD: drop a shared boundary page only once both WRITEs have written it
+>=20
+>  .../filesystems/nfs/nfsd-io-modes.rst         |  17 ++
+>  fs/iomap/buffered-io.c                        |  20 +-
+>  fs/iomap/trace.h                              |   3 +-
+>  fs/nfsd/vfs.c                                 | 113 ++++++++--
+>  include/linux/fs.h                            |   8 +-
+>  include/linux/iomap.h                         |   1 +
+>  include/linux/pagemap.h                       |  12 ++
+>  mm/backing-dev.c                              |   6 +
+>  mm/filemap.c                                  | 193 ++++++++++++++++--
+>  9 files changed, 338 insertions(+), 35 deletions(-)
+>=20
+>=20
+> base-commit: 6d13b7f74eec16e08d5e7f772ee119432a14ef2c
 
-
-I'm still reviewing this set. The code itself looks OK for the most
-part, from what I can tell, but the patch descriptions are definitely a
-bit too wordy.
-
-Maybe see if you can train your LLM to cut down on the extra verbiage?
-More info is not necessarily better. It would be nice to have more
-succinct descriptions here.
-
-I'll just leave this here too since it does seem to help cut down the
-claude-ish run-on-sentences:
+It might not hurt to have your LLM simplify the patch descriptions
+here. I find that my appetite for reading claude-ish walls of text has
+waned in recent weeks. This skill helps a lot:
 
     https://github.com/danyuchn/asd-ste100-skill
 
