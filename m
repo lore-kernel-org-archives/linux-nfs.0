@@ -1,73 +1,100 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.179
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792778573;
-	b=GPSRQZbjTQwjsYsYOmESmikVMcCcjK3coGCGySGZOZxgO+0vsKjNJCA8VOe2FVcSeHOs
-	 mypltDsqjTFEnArSbbCeLtXLWgPPGo+dl6rPgEBqAMYamUeH+RhDjDUd36J2P1UvJ1Fci
-	 YykDoNr9QgI+cJpuebZkAwLzaPiGEI6Eyyj18JDCYcWB5bZdrOdYGPbBRZsVamfQwm0vk
-	 qUIr9efj/ZnyoocN7nbrcbOl3hDWfX2MlRiEtcU6NK16lyTCOz/KflBORybOBEqFiILQL
-	 3kS3VqcCUP24qSzbUTNB+y+sv0+1tJ/5l52p8/XWXUuAjuwByu3s1IBkVXZh4YRoWng==
+	t=1792783340;
+	b=THixQi800asJC0ju3mYvWAn1TIgTLraqj/bVMCzXFLV06uHQyLU+bYgRYK3QNzW6+etR
+	 EiXlRMJximvGrryIC1q2rWhE4+w2o3SFVW+csdI7oY95IEKFtW8ebSxMlEbeyRygsySIB
+	 KddImztk75z9Ev8prJilNM+GboucIXVcehENZr4v3a3DunJiEkTtwU3eHkSBHAbx8yYlI
+	 4FWmEnvg+BruwC9sBLLJCahNFtuhODa4dCHPxmZHJ0WQIKfZf0nULPGceyk3oA78PYY2y
+	 +Fo8PCCvzyyLht7sVjZsAGjtBAd8mnRVUf8nYOTU+oIuphEironou7Z1LI+pCbl5TWQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792778573;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=bZrsg2pWespOvQA5Cm/os7o0gRFOlPEwnPF14eOssXg=;
-	b=2hFasL52EwtqIiEjawvRzk1f8mILXqHWEcFAbaeJNP5oWfBDkxUeIc0+7JHCLATrSflp
-	 w7YtGfXBNyDGNzMb+DOyKZIngB3wJ0YNpCR09CAV7AhN/uGTY2sql1jTiS5aApdJ3OAwE
-	 hA8Z9ADJ8Ez5vsi1Koh13TgnZqDmFHpDXod9XTvcGLWOxqSF56pUk1JwvVdxSbobgHCbG
-	 Lcbv1xsUWVs4QCXrK/+r+qPGduAQJsG6mk0enljjng17B0Gz8m+3luz6ya3QLLzKh8MpE
-	 37GaxFjiLPKgdxtodK8hgpNppXTEjES0iiejGF9c0BSoa4lRTAhwM53D89vVIAEZYaA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792783340;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
+	 MIME-Version:Content-Transfer-Encoding;
+	bh=2O8huCNDA9D6LhH8u5r2l7pNtY046Fm8Q9bS6RsUJDY=;
+	b=Uoq6gakxs+lorLL3pz6RdOzBwEZA+Sw0ttLzF4JisSft4dwSC1hN0blMeVUc6PV2MCyy
+	 rwXT9HGEnabpuE2AxiivCywBAFvFZc4YFIafDHmdT/10RBhCnYZUaSMJ6Y3DV8GmE81Rz
+	 ErzjDguSWmNCa6ytG9oXM5FMLgVoLJNMvxX1KTT0CWYIDsnIr9Oh9Q3az5ki0/h4wRxbk
+	 mwccfHSmH7JSPrMZzrAYQxMuDRbAZFfssHRgp99pB5Odr1T00StIMNOiNSgdgRLKuF08i
+	 15R2gOSQ3GRNJHjdttD4rrAXU8omAos6xC2mwwir0FkB2yq97wzfNiCCQU36Zse70Yw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Aj+dSzOM;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=hammerspace.com;
+	spf=pass smtp.mailfrom=hammerspace.com;
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=FYo2dUm9;
+	arc=none smtp.remote-ip=209.85.167.179
+Received: from mail-oi1-f179.google.com (mail-oi1-f179.google.com [209.85.167.179])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 086EC606A31A;
-	Fri, 23 Oct 2026 18:02:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 530D9606A31D
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2026 19:22:19 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 530D9606A31D
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Aj+dSzOM
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 39CB81F01825;
-	Fri, 23 Oct 2026 18:02:52 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792778572;
-	bh=bZrsg2pWespOvQA5Cm/os7o0gRFOlPEwnPF14eOssXg=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=Aj+dSzOMnsNbCR85xA/8UlAwulQhgqVg6s0SrBEqHv9mtw8ZgcDexSbb4CkRT//wi
-	 v3kUyDg+++Ja0Q75FYiSDv71UehLwrfB+O7Gnv4AXBNWJMzILACZrSllAliLZkCa15
-	 o6aqE2Q/cmr/gIzJqK2q2lQLU0kJAZDMyeKL6yHlOFnWn1CTDHldHlYOIgWBYu4vZP
-	 Tc+pMFBrp3jqked8wbIVFEIj2TjVLnjHOzE3Uwp8nuQbfD+MM088uof+nmBDktRrJe
-	 Rte9BZoHmWClW4bAguJv/+eSu3vaONzWwBgVGsoFSpLCYyQGwpBVtk7i8ELyfBfOQq
-	 yfff6/eg9SPkg==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 80E54F40067;
-	Fri, 23 Oct 2026 14:02:51 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Fri, 23 Oct 2026 14:02:51 -0400
-X-ME-Sender: <xms:S6HbagXwiaqr3QQa8mcKJMCCl0A5tExUO_ARWNRgWdnxCmCwXt3mbw>
-    <xme:S6HbavaDigAlOx9NBgiqLnf9j_nbj46ULziwWS7rv6GhMyjeixANJLCLDoRNg_pYO
-    gM-WYPMEefKPWVAYpObjVfbEFLaSg_XHynorfWcIEqt1Ll898H2Phs>
-X-ME-Proxy-Cause: dmFkZTEsjtUgDJBYap9qhUMKtLl9jqAKBBCnlwmhLjGIDNZw3TLRNdHTHOB8CQWCO1JeDp
-    N3Pu+F5dM5iHuZcPbzp9i09R+ylsLhkbbtgt/zFNnqdc8eceJNMzrbAVEPDIH5Lo83I8O0
-    fTnjURMbv4p45dKB7JImhqCVy+ht/Nzc3MVaFRSHcGDE7qDBLc2gE8rjAXGydetLjSn+Re
-    r957l+gjjUzVbZ7iJ+oRwxWPDUyed3S795zKEv0bK0lWx17hc1QXWn78cGXMy3fZe+4UcP
-    i2hXydb20Ke7aQ4kI+xbLKOBui3Gki6zQaeK/i1HxT6zkn97Ax8VvXKgE2MsP+mUfXh7c2
-    yPlu8bKhhcspbdWoLwtnPqs0s+3j706W+cAsMKIhXDzHm6U4PaJCpWnY7L4bRikigB43T8
-    WkEG1JyeAcOBksaEIOy2x3njkWVZYaSen1VNLp9eovWmKbs6D/hkmChVaITVz5l5syJDsm
-    fRiJNrZ307xbgdS7lM6cj45h7YaRXyN+IjvfKlMwLf0YVJhj3rVsImoBsGRUXscOZhtMJa
-    oRBKGreY2k2//AdPdV1m4JGXwNNVQno6iW5bTbP8L1YeyOoSU1ABe2h4F9aM2N4LL6j9Tk
-    Qm8PiJU+ircvFjjLUtztJ/bzzRX61lY604tCKmiyuxsjUTjQPuTRu3pHKCMw
-X-ME-Proxy: <xmx:S6HbakR-jYIoYwXIRdBhFKTcjqGhAL6u0dfa31zw7pk954ikuv1N-w>
-    <xmx:S6HbahP_xi-y2UaJmrV_FSuf-jz7hgZTqxB1RnNVkKUFkp0Hk69eJw>
-    <xmx:S6Hbai6ylFS0lDbDCtRkMPvMb29bzbEuCQ2VXyR_3mRouaNnGlmjAg>
-    <xmx:S6HbasWkd_WwvzEwPKt1PG9Seb72hy94Og311jgMPKo6Gm9aBDagKQ>
-    <xmx:S6HbahOWeR7JGc9YMaKxwne2Er0gWAC_-flNWaIl_1fAxLJ9WOwKmhd9>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 5945D782738; Fri, 23 Oct 2026 14:02:51 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=FYo2dUm9
+Received: by mail-oi1-f179.google.com with SMTP id 5614622812f47-4af173320f9so728732b6e.2
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2026 12:22:19 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=hammerspace.com; s=google; t=1792783338; x=1793388138; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=2O8huCNDA9D6LhH8u5r2l7pNtY046Fm8Q9bS6RsUJDY=;
+        b=FYo2dUm9IDzTxiP+JO3yjXkilEcWtyqPRXdTw0z6K6HCizYBBurOEvQmtvbdr2iDnq
+         QOJIdi5+DONOLbX7xJgVbVsIbf04NypIzEO3tcy288Z6vSFmcaVoDaN6TJHKPkkogNVF
+         xFJ1YYIxkNaIEli8ASWpSHHMdWWy01QKtqatUP8e1jTjCyNRIMmyRkK5FenOsDGYFjbG
+         XyeuPwZgY0aH5cKpMyt4KlwnO0l/KoDDWVfou2z2L4R6CSaBxoGNjidw++L66qsx/WP/
+         VwqCGOPLM3/n8nYMbnLGpoC+d4oSShK31P+Tj4SpbC50hAEpJK8FTcWAbt3fNUj1xeaD
+         xxhA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1792783338; x=1793388138;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=2O8huCNDA9D6LhH8u5r2l7pNtY046Fm8Q9bS6RsUJDY=;
+        b=nwu6GQSyEEUBtO4hX95RC8D74TrqAcAL4lVLPeRZdsr1VSc8E5FbBPDkYOl3KIGqCA
+         +Pkk7h7KOB2vZ6d8bKuWSxdnp0+5xVLY92uuP5Vf+1eA+Cs1B+pyP+Qha/nxuLjC/GFR
+         T21OaLQuLKl5HXCajkQ9vXStvgxbjUETdWkStE2bQJFz1jmtg7LDcwPnjtPbmqao4YKc
+         ZR/yrR9ekuPZIHxMTPZbSJUI5D6XYxodAlzwD0jeH/ATaYx2jiAuTuh6a81OfCjgqFvl
+         iNme2xbPNpON1upZs/kpw+fX14TzGtmE90qtD6NUt7x6bl4qO11qx9ve60NRikxob5zR
+         qHlA==
+X-Forwarded-Encrypted: i=1; AKwUvBw8N2bBkPlF51KindcpKw5a68VxtTji0zF/ms9hOVXoteWb8Mr49Wc72RqPfBokrfL9gxD9QyWs0LU=@vger.kernel.org
+X-Gm-Message-State: AFq9FYLio8L2kjaQ/kh0uLjwUi3HKKWFW664xow7yPVy195mWP2UnGPb
+	3xhgKoEsGXuADhR0KjXsrun6tAQhAIF0GvpUZnkGA87CZ6hOyFcFiJB5AgBp/48yunU=
+X-Gm-Gg: AYBFou3fg57fRK4GFpl3RqWDyDiS9LNRM7VrTr8uxQp3kW7qkhOYsy+gPT/1ErrVGdH
+	TYlt80RPVOmdSqs1jL7kC2DGVCenUZ9z8yU32xE5aqUQibXL5Qi7FBUJasCgF9YXHfMc+xruzU2
+	IWsQZ7ncrKO70uXaUhs7A+aAygXWyrM4NVVhqH0Qape6QZee6hNtdLAvQ4q90E5cSXT/tfsR2dk
+	2CaMGcc6SUgNs/oXJcZ8YDA7TRXzfI114JAQNpIF2e1I0VXWqeGpBP8YfSsJNYXNaJs8eJLCbSW
+	w/DGCdoLcaSTX5vn0Zgw2VxkmrYE7v8WYMg1vC16OY0mock4AxgqxImWNhtzy62tdNhtoTsFvZH
+	TaPWjAZSgew0BW4NT58L4ef6rmp23W99Ho4hvCyXGFweqRqtBGX3UfC8yp4byLXUKaBEnjagap/
+	0x6AGiuM+BZwMecInj05+MGsWwHt0fg+XKOU6wkizC+zoPZWgCWxVtJBBbskDbNyZFKhvudk9rc
+	H2k3Ju/20RyXEJUrf2i+gbNctTWlJL3Cs6abCpHB0nUT8xM8BWlv6VVOjzw3oOWhcdt6oMBiOik
+	2ctp4cawafy9m84t9H8Fm0A=
+X-Received: by 2002:a05:6808:1982:b0:4f4:3790:65fd with SMTP id 5614622812f47-55c002b7e97mr146807b6e.29.1792783338131;
+        Fri, 23 Oct 2026 12:22:18 -0700 (PDT)
+Received: from localhost (75-163-200-235.clsp.qwest.net. [75.163.200.235])
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-55bfe114ba4sm409050b6e.3.2026.10.23.12.22.15
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 23 Oct 2026 12:22:16 -0700 (PDT)
+From: Jonathan Flynn <jonathan.flynn@hammerspace.com>
+To: NeilBrown <neilb@ownmail.net>
+Cc: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Christian Brauner <brauner@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH] nfs: set NFS_FSDATA_BLOCKED before invalidating d_seq
+Date: Fri, 23 Oct 2026 13:22:15 -0600
+Message-ID: <20261023192215.1795577-1-jonathan.flynn@hammerspace.com>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <20261023015239.2163480-2-neilb@ownmail.net>
+References: <20261023015239.2163480-2-neilb@ownmail.net>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,71 +104,88 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: A-i9QTM-Cdfw
-Date: Fri, 23 Oct 2026 14:02:31 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Zhiling Zou" <zhilinz@nebusec.ai>, linux-nfs@vger.kernel.org,
- netdev@vger.kernel.org
-Cc: "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
- NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
- davem@davemloft.net, "Eric Dumazet" <edumazet@kernel.org>,
- "Paolo Abeni" <pabeni@redhat.com>, "Simon Horman" <horms@kernel.org>,
- vega@nebusec.ai
-Message-Id: <5f83b574-224f-4db1-a2f9-60f11a236197@app.fastmail.com>
-In-Reply-To: 
- <1106d411594bbf7d4ee8deb7f3a0281475c258c4.1792734713.git.zhilinz@nebusec.ai>
-References: <cover.1792734713.git.zhilinz@nebusec.ai>
- <1106d411594bbf7d4ee8deb7f3a0281475c258c4.1792734713.git.zhilinz@nebusec.ai>
-Subject: Re: [PATCH net 1/1] SUNRPC: reject AUTH_TLS on backchannel requests
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
+block_revalidate() calls write_seqcount_invalidate(&dentry->d_seq) and
+only then sets dentry->d_fsdata to NFS_FSDATA_BLOCKED.  Because ->d_seq
+is invalidated before NFS_FSDATA_BLOCKED is set, an RCU-walk open can
+get past an unlink that is in progress.
 
+The barrier in write_seqcount_invalidate() is issued before the
+increment, so it orders only the stores made before the call.  An
+RCU-walk lookup that samples ->d_seq after the increment can still read
+the old ->d_fsdata, and so ->d_revalidate() accepts the dentry.  The
+walker then waits for ->d_lock in lockref_get_not_dead(), takes its
+reference, and passes the ->d_seq recheck in __legitimize_path(),
+because ->d_seq still holds the value the walker sampled.  By then
+nfs_unlink() has seen d_count() == 1 and sends the REMOVE instead of
+silly-renaming, so the open proceeds on a file the server is removing.
 
-On Fri, Oct 23, 2026, at 1:55 AM, Zhiling Zou wrote:
-> svc_process_bc() processes reverse-direction calls with rqstp->rq_xprt
-> set to NULL. A backchannel caller can supply RPC_AUTH_TLS, which selects
-> svcauth_tls_accept(). That handler dereferences rq_xprt while checking
-> for transport handshake support, causing a NULL pointer dereference
-> before the RPC program can reject the request.
->
-> Reject AUTH_TLS credentials when no service transport is present. The
-> backchannel request is then denied without accessing rq_xprt.
->
-> Fixes: 74aaf96feaca ("SUNRPC: Teach server to recognize RPC_AUTH_TLS")
-> Cc: stable@vger.kernel.org
-> Reported-by: Vega <vega@nebusec.ai>
-> Assisted-by: LLM
-> Signed-off-by: Zhiling Zou <zhilinz@nebusec.ai>
-> ---
->  net/sunrpc/svcauth_unix.c | 5 +++++
->  1 file changed, 5 insertions(+)
->
-> diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-> index 31a1bc60a5f6d..bac38f3ce9a6c 100644
-> --- a/net/sunrpc/svcauth_unix.c
-> +++ b/net/sunrpc/svcauth_unix.c
-> @@ -1128,6 +1128,11 @@ svcauth_tls_accept(struct svc_rqst *rqstp)
->  		rqstp->rq_auth_stat = rpc_autherr_badcred;
->  		return SVC_DENIED;
->  	}
-> +	if (unlikely(!xprt)) {
-> +		/* Backchannel requests do not have a service transport. */
-> +		rqstp->rq_auth_stat = rpc_autherr_badcred;
-> +		return SVC_DENIED;
-> +	}
-> 
->  	/* Signal that mapping to nobody uid/gid is required */
->  	cred->cr_uid = INVALID_UID;
-> -- 
-> 2.55.0
+Set NFS_FSDATA_BLOCKED first, then call write_seqcount_invalidate().  A
+walker that samples the new ->d_seq then also sees NFS_FSDATA_BLOCKED
+and returns -ECHILD.  A walker that sampled the old ->d_seq fails the
+recheck and retries in ref-walk, which waits for the unlink to finish.
+__d_drop() follows the same order: unhash the dentry, then invalidate
+->d_seq.
 
-Commit a54a573bceaf, "sunrpc: reject AUTH_TLS on backchannel to prevent
-NULL-deref in svcauth_tls_accept", now in the nfsd-testing branch,
-already addresses this issue. Thanks for confirming the finding!
+Also correct the comment in block_revalidate(): the ->d_seq recheck is
+in __legitimize_path() and try_to_unlazy_next(), not in
+legitimize_mnt().
 
+Signed-off-by: Jonathan Flynn <jonathan.flynn@hammerspace.com>
+---
+Neil, this answers Sashiko's second point on 1/9: v3 still calls
+write_seqcount_invalidate() before it sets NFS_FSDATA_BLOCKED.  This
+patch applies on top of v3; fold it into 1/9 if you prefer.
 
+The window with the v3 order:
+
+  CPU0: nfs_unlink(), ->d_lock held     CPU1: RCU-walk open, same name
+  d_count() == 1, no silly-rename
+  write_seqcount_invalidate(&d_seq)
+                                        __d_lookup_rcu() samples the
+                                          new ->d_seq
+                                        ->d_revalidate() reads ->d_fsdata,
+                                          not yet NFS_FSDATA_BLOCKED
+  d_fsdata = NFS_FSDATA_BLOCKED
+  spin_unlock(&dentry->d_lock)
+  REMOVE sent                           lockref_get_not_dead() takes a ref
+                                        read_seqcount_retry() passes
+                                        the open proceeds
+
+Your afs 1/5 also sets DCACHE_BLOCKED after write_seqcount_invalidate().
+
+ fs/nfs/dir.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 53cd3adf3ffe..79331e0fa044 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1879,15 +1879,20 @@ static void block_revalidate(struct dentry *dentry)
+ 	/* Any new reference that could lead to an open
+ 	 * will either:
+ 	 *  - take ->d_lock in lookup_open() -> d_lookup() or
+-	 *  - will check d_seq in legitimize_mnt()
++	 *  - will check d_seq in __legitimize_path() or try_to_unlazy_next()
+ 	 *
+ 	 * Holding this lock and invalidating ->d_seq ensures we cannot
+ 	 * race with __nfs_lookup_revalidate().
+ 	 */
+ 	lockdep_assert_held(&dentry->d_lock);
+-	write_seqcount_invalidate(&dentry->d_seq);
+-
+ 	dentry->d_fsdata = NFS_FSDATA_BLOCKED;
++
++	/*
++	 * Set NFS_FSDATA_BLOCKED before invalidating ->d_seq: the barrier in
++	 * write_seqcount_invalidate() orders only earlier stores, so an
++	 * RCU-walk that samples the new ->d_seq also sees NFS_FSDATA_BLOCKED.
++	 */
++	write_seqcount_invalidate(&dentry->d_seq);
+ }
+ 
+ static void unblock_revalidate(struct dentry *dentry)
 -- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+2.43.0
+
