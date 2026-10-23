@@ -1,129 +1,79 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=202.12.124.155
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792720439;
-	b=Nx6T5m7XdNclt0uSh/hnD9k8tK9DiGar56Eul9qh5TSBDdLcOJAT2ZZjWxGjMZtzf6CH
-	 rhvxLZF1fXIaM/WsO/fQD0OKWdb2gp5ooEuPKbqGjuBlJtq/iNCDiiV74maATUaONELbA
-	 sWxmSyMiDdLLCu2ANXOD0sX23ze1qbvwhcx2PbdgFze84FvMsYk+qBufx2YZQB/nbBkuD
-	 cBMx5bmxfZSkww17stdDQBerc7JPY6j5X9FOemBRAOP80OTxuboCNHXceIfdknJWjq0TV
-	 Tul+TqZa3xZLQde6a+R3OfVTNVCDnHdM8fXL9LYL6mMwiVQzBcR3AQhM1jaGvz3FveQ==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792720439;
-	h=DMARC-Filter:Received:Received:DKIM-Signature:DKIM-Signature:
-	 X-DKIM2-Info:DKIM2-Signature:X-DKIM2-Info:Message-Instance:
-	 X-ME-Sender:X-ME-Received:X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:
-	 Received:From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:
-	 References:Reply-To:MIME-Version:Content-Transfer-Encoding;
-	bh=RVq/2P9DqOvSd/SUc2jDV62p6VisQDoGzSYtS6+dLwY=;
-	b=ful57oTLCIHJqjas3v6RT5ajy0xZr6qsdDow4+TNdrZV2kR933lQz8+S23/tyxbSRmwC
-	 QzCeP4VsZ7cZVP/tcYkSR+QofozR+X7FL2Jttrlg4AVe4/QToux/t4To0/VRaceVTivN7
-	 QwsuVr+uqW9D/uudjqnkEfGpAQA15ppcwi4cJE7Jietck/BHmqsmWDcg6Z8j8kuWfsNKr
-	 GawSMN6wvGG21cAS7DsAVUqt7EpzrCnPdivgs7D7bN6tYripPSGEEdX3fah3dgzyAokSl
-	 O0hsMC6CV75FnQFd3Cg1Og6Gp3kKmcHVdH+1Olc0fUciEOAJzlVVSCi7P0zclDPOY4Q==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=ownmail.net;
-	spf=pass smtp.mailfrom=ownmail.net;
-	dkim=pass header.d=ownmail.net header.i=@ownmail.net header.a=rsa-sha256 header.s=fm2 header.b=PqgOt6by;
-	dkim=pass header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm2 header.b=DdCk0Qn4;
-	arc=none smtp.remote-ip=202.12.124.155
-Received: from fhigh-b4-smtp.messagingengine.com (fhigh-b4-smtp.messagingengine.com [202.12.124.155])
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1792721425;
+	b=kGlXoM6sNE/747V8o+kMNk6c9Kn+faD3vB7Rz4DWJWwK8fcePqLZKJX8f50P74QcYJHQ
+	 s2W2Qwjh0h4/9qG0ok95KLKqbPtEBgmshoH5cuPiG+Dugbv9h5x0cxMNo7mI1knILia6n
+	 ixDzqyvCQAgGJHF+ZrwMc2l5pJMhGIDaFa3v16lX32cn8LuB44xjP84GsjJGwj0x92u9y
+	 /FlDUC/yllVR3QNnHPrroJK2sD1wvAfk/Vit6a3OkomL+dXlF/c7gF0OCBmnpi+yA93oV
+	 o7vt+wa32hCSCxzuhdMGH/1IYiKZFLkUdGNPWvmajgGrTEeBF2PljUW87uXyFS1J9KA==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792721425;
+	h=Received:DKIM-Signature:Received:From:Date:Subject:MIME-Version:
+	 Content-Type:Message-Id:References:In-Reply-To:To:Cc:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
+	 X-Original-From:Reply-To:Content-Transfer-Encoding;
+	bh=ZlnvUHDwkjxP2Tsft5ngVTUhp+k9A8Q4gjAO6rLkhDQ=;
+	b=nr5/iGlcNV6i5MdakKt2HG1lcaV2PdRnrYecGBnsp0BBN+3qqMyXlYlzbnENTCsLMYFr
+	 QsiUjm7mxbEddS0G2zsZGlsZM0uquXfWIla0pWzxrq5ypKSRao1QYrFj+IoOC1GuzVdNv
+	 wu5d+fbsaU2vn1CTpWEbtHw1brhPCmJbd2iuWklw7fajoe2oevLsPq7dGlisCrljEjPj7
+	 tWm8e9MxqUlhto4LnySgm7SOvPqd3ea5cvk98sDEBrd3YXc9V16JShSGxl2F2zEJJu6ak
+	 ZRBNH2Ur1SlGqSI73yP0VTi3oWpibl5mw9tVI49LVKrxGPwM2vxbJtCwhx3WWyvMatg==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=V3nUeMnt;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 06CA9606A32A
-	for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2026 01:53:59 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 06CA9606A32A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B3F77606A328;
+	Fri, 23 Oct 2026 02:10:24 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=ownmail.net header.i=@ownmail.net header.a=rsa-sha256 header.s=fm2 header.b=PqgOt6by;
-	dkim=pass (2048-bit key, unprotected) header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm2 header.b=DdCk0Qn4
-Received: from phl-compute-08.internal (phl-compute-08.internal [10.202.2.48])
-	by mailfhigh.stl.internal (Postfix) with ESMTP id 843297A0136
-	for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2026 21:53:58 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-08.internal (MEProxy); Thu, 22 Oct 2026 21:53:58 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:date:date:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm2; t=1792720438;
-	 x=1792806838; bh=RVq/2P9DqOvSd/SUc2jDV62p6VisQDoGzSYtS6+dLwY=; b=
-	PqgOt6byZqSUBDF45L5BrHG9gLXqxb4sMebjWBFFQ8qwRk3+5NEqU39ocbBjPaMT
-	vNmGmf4+uqmdswduIIkX4odpxkE+hFiHqPFY3z3GEFQTOQrHOXyzIbzvBpOrcbFN
-	DRAV/s2g6uDBu46BdU6YBc8zSY3MJiL7angdmHMsEdaenW+WrlTOKWTFaWs9aRLK
-	/LpQzxghqyG+P2Of0hVLQN90SLP0z8Dnc97ZQZ4VWzwPKxe2hFL5vch4BYb6Fcw8
-	C4s7NHNzFJ//ZRB/xBrXg3NTWVhSlRMP7WCjG3jnFPxbh6sCWcRz7lBXzFPwq48n
-	77j9AldxBrjp/OmaH2I1Vg==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:date:date:feedback-id:feedback-id:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm2; t=1792720438; x=1792806838; bh=R
-	Vq/2P9DqOvSd/SUc2jDV62p6VisQDoGzSYtS6+dLwY=; b=DdCk0Qn4ADfWwqqI5
-	0vDxBujOe+gM/X679ubfxWxK80+8ar0xqPAvmJukpbA1V2sYxwN05pi9pyA3JT6W
-	AJvB4BnnjQIUDboxEJ7MLyK8nyHyiupC1JAMteMkvKaRHODbpjfog0xUJgHKBuYq
-	shKnYJsD4vWltSWC+AyxG0o3jrDiaK31NysjUt6lRd/oii6ILOSOppl5VhoXzsxw
-	8+cuRANhrNMTR3MGRrOhKQUqWFu7Rhf0hO60/UDQsZOmSzRSkEFOdcnCugFLLDoz
-	FyMxr1lVQo1CrkNqNw0ikhgeVZ7ujEnufYPn2GzVoNsKBSDJneXDdq1TLnRnPg8Y
-	K3pQw==
-X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-07;
-	repo=github.com/dkim2wg/interop; date=2026-10-18; sw=lmtpprox;
-	action=sign d=ownmail.net a=rsa-sha256;
-DKIM2-Signature: i=1; m=1; t=1792720438; d=ownmail.net;
-	mf=PG5laWxiQG93bm1haWwubmV0Pg==;
-	rt=PGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc+;
-	s=fm2:rsa-sha256:QeY5+SqHoGPE02e536lwzItAYQXptq+a7tkFLL8ueBoufTr
-	3f94NX5sb5Q0u3UoCxPl1eOLgn3GzvkN6t3TePgR+pjv/ijaQ7vBmAqbWgtroavS
-	su+DRR0eEpNVul+4F2dbt3la2B1jNrz5uBer+12VYbSTJogGUj94UUUZmU5juIa4
-	qY1jdi3Z4C5uU0ORMVqsu0M0A02x7O5hy+mbMcmyx8rC/yljBAaq7rnU3xU3mhEg
-	eY+spkbBUi5tv4d2M0NHpVn1gz6zxXgfvzqmI9YJz+dVHeFblYCsJK8g+xSIYDgB
-	dYVof05nPJT9R5/q3RfPAw5WVvsi4yZjBRKGDTQ==;
-X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-07;
-	repo=github.com/dkim2wg/interop; date=2026-10-18; sw=lmtpprox;
-	action=mi-m=1; hc=12;
-	hn=cc,content-transfer-encoding,date,feedback-id,from,
-	in-reply-to,message-id,mime-version,references,reply-to,subject,
-	to;
-Message-Instance: m=1; h=sha256:SUxWPAa76G+3J0BQgxjYGhnhkctOZz0OjwX+Qt2INl4=:Jzdoskc8GKuUpVMhQrT9kCRl7eYzsrnrC28Cb5pFoRU=;
-X-ME-Sender: <xms:Nr7aanaLH_WFjaT8ut84_gk2P3XGdET96aMHbIWM2F3IzpGDzgUDYw>
-    <xme:Nr7aapdm98p9_pkFl5aVTVKyCz_K5htnSiWl0RtVONepqLPJHAFbLNxg7FsJVJ79o
-    qRv1t08OeXbF9V6XIG34eJdvWuYwiArD9lA9tUxo9atN0tcg7k>
-X-ME-Received: <xmr:Nr7aakkw1JL43h4DapU2Nx5Rgbk8GmbPaXJfOIRGgiY1ieE08GLuixGOCL3aLUm0Y5rbmhGHqLWvJgC5Pw5BznMYxEeooEw>
-X-ME-Proxy-Cause: dmFkZTGCU2C8LOtpzuJKBi1InDLHlNatP6eswYZhMCAg5KFSChFuQSzcwHD+aQ9/vrRRBT
-    PRJ979y5LX2CCwU9KvwphqkfVN8xdJjsuhFWxYcSW7iHv5QRHO4uQEmDITrLqp1GRCZ/Pi
-    LwwmFZD9WpyauMgffwGB18R5w3bKodCdeqC3/ObEPlMcbbppdJLaFyTTDyX0bB1lAjcTlL
-    3S2VAMDU1+MWLcMCX2h6tbaH22OB1zIqDfceCiaBHTaP1hZnRcgcOwhshK/Wg2U5r+TjaE
-    6XPaJ1CN6c09RR4MB+rmNIIlc/gd+hsgFo0OvXkgovCNHAq7i5DKwcOVIB5AOwUn8xRCG1
-    VwByEB7KPZji5uXPe2VNyujs6Iznv7OkFg1fLyoxe8dhiy5a7II7/CIx32ZTvWPNI0LnSi
-    LF94AESxbQetFf7FgJqp1M3D15csyJ/4KRVDUMUGHgN/7maGFVhMOmevwQ+uGxPJgQr9N5
-    qLQY+GMqArgvo5STTSM1b5S5E/f+/4q/F/SySHkJ/KAM4eRtKX31f7uHviCLauHbLyLmlW
-    vFjUytMaegM1/z09/sey4/hJIhVlCZfo8IfYxltgtywGmKosOPDFngVotZJ2uxSFuMYjBd
-    F7DjVq1Fq2FnV2Co1A7fiAgUZWYDQiP8Du90JCuVSGYXOPhr+gJoeqGq6r0w
-X-ME-Proxy: <xmx:Nr7aap2cCNI6Vm4znHPwW4_FtBRnA67FEoPNrwpzeSga4S7JUSg9LA>
-    <xmx:Nr7aatcl3ESWPK3snz4_GhxuOzbgM4F8TPFkxXJmlm4F7XCAYVwMYA>
-    <xmx:Nr7aajZXYTJRhSlmGPvPLlOPJMw9pl5wFj6m0HglQoBNgdZ4lTx44w>
-    <xmx:Nr7aaiFoD6vQabaBLRzxJgxqUszoNnH5vdCIS6GSgQmArr7sh3QBUQ>
-    <xmx:Nr7aagT27HCRDgw2vnMe-sEt1pv9ay8n9BiRkxVYYBrLhOmINHXPdaWj>
-Feedback-ID: i9d664b8f:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Thu,
- 22 Oct 2026 21:53:55 -0400 (EDT)
-From: NeilBrown <neilb@ownmail.net>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>
-Cc: Jeff Layton <jlayton@kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH v3 9/9] nfs: use d_duplicate()
-Date: Fri, 23 Oct 2026 12:50:19 +1100
-Message-ID: <20261023015239.2163480-10-neilb@ownmail.net>
-X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
-In-Reply-To: <20261023015239.2163480-1-neilb@ownmail.net>
-References: <20261023015239.2163480-1-neilb@ownmail.net>
-Reply-To: NeilBrown <neil@brown.name>
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=V3nUeMnt
+Authentication-Results: smtp.kernel.org; arc=none smtp.remote-ip=100.80.115.77
+ARC-Seal: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256; cv=none;
+	t=1792721424;
+	b=RUjaWOoJzfVmdHRLd7YVckjFPKPBW/7RpXfyeAjBoIE+Vg9JKClq7Pn95lBXNctAqQam
+	 L0UTvAKhj8YJ23F066xuEmPb/sl2d11ySEZzS2WHBdTzUzhVEO+Xoi5l/lK8MLIBP8fif
+	 6QuagR+rvsV2Sse6cMM/lbwdyGsNKPf8YZ+QCt6QWaDTisD3fwCQJsNCn9bFI0Ya8BRNL
+	 Y50sMZNCWE5+Q6dvhPCGOb9Z1SNKR7o44Ybt1TKxMGLLBuwcd/+dshW+sGC7yDKQSCx+/
+	 oQPXA9HIrPeC/ZLRgcXemdhtpZ10WsVaVCUrklXTSOlg0RYI4sBpQlR/A5qVTgwVqhw==
+ARC-Message-Signature: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256;
+	c=relaxed/relaxed; t=1792721424;
+	h=DKIM-Signature:Received:From:Date:Subject:MIME-Version:Content-Type:
+	 Message-Id:References:In-Reply-To:To:Cc:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
+	 X-Original-From:Reply-To:Content-Transfer-Encoding;
+	bh=ZlnvUHDwkjxP2Tsft5ngVTUhp+k9A8Q4gjAO6rLkhDQ=;
+	b=fJ7gq47SwcrzY3uV+2THR/6cUI4+AWseEOdoxNZuecSt5GRHdIdgrWCSMnHqNU9ZUGy2
+	 mxO3EHMtTubz9goHZPNE8W3kokIXgDHKV0oWCEHqrL983IyK3ExHbnmhe1npzSr/G612G
+	 /jJ5an48TilIvq6gpqLjJXoLGTx1fBK1PB2zIiasBee/LSt6XigBmBUE4BMDwtl1XiTGo
+	 ryJXTzS40Ad+jttk9sIMnn7YZ5RxFjJekds+iBseZD+Ak7x2IUgm6XkP7pryM2QVwvBud
+	 FEEQ0nCut6qwDQa91S9GcKFu6bdQuP60Ux5XMEUTDBgyODlonbT719FMDDnShiAlbwg==
+ARC-Authentication-Results: i=1; smtp.kernel.org; 
+	arc=none smtp.remote-ip=100.80.115.77
+Received: from lkml.kernel.org (nexus.subspace.kernel.org [100.80.115.77])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	(No client certificate requested)
+	by smtp.kernel.org (Postfix) with ESMTPS id D40F41F01829;
+	Fri, 23 Oct 2026 02:10:21 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1792721424;
+	bh=ZlnvUHDwkjxP2Tsft5ngVTUhp+k9A8Q4gjAO6rLkhDQ=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To;
+	b=V3nUeMnt1lpFpHYtSuN/zxttIpZVW8nF54/E/j5BeQU3dK4a91F1ZEVpZnlFcenxL
+	 PG3mOO0DFMh29AX77n6tUOZ0bcdxqlda7j4dbqnMfym1ykR5mQQggt7VRKTs8i8rF+
+	 fK2wLrhVt7L+oKOCCAeiIa0yCcvSSE31DCXTPYpLpi7lDEr64veNSGbbiDkOxIAF/Z
+	 70d+kCQP2TiXt3kbn4vOWdON+C8Dk67TN1AMb+TcSU4gGitNzpb3Wuc++7Xjodr1Ij
+	 m42xu/Q7zYCCiTmds2OIrSgvt2cFLK9j8M6jZDfGbfQb6pgFWtnxmgmTPIL5Mv9tUK
+	 yQRi9yFB4jXuQ==
+Received: from nexus.subspace.kernel.org (localhost [IPv6:::1])
+	by lkml.kernel.org (Postfix) with ESMTP id 408C542194;
+	Fri, 23 Oct 2026 02:10:21 +0000 (UTC)
+From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
+Date: Fri, 23 Oct 2026 11:10:22 +0900
+Subject: [PATCH v2 1/4] nfsd: share the grant slot record between
+ delegations and layouts
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -133,54 +83,325 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Message-Id: <20261023-nfsd-layout-refcall-v2-1-2160bddced0c@samsung.com>
+References: <20261023-nfsd-layout-refcall-v2-0-2160bddced0c@samsung.com>
+In-Reply-To: <20261023-nfsd-layout-refcall-v2-0-2160bddced0c@samsung.com>
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
+Cc: Christoph Hellwig <hch@lst.de>, 
+ Benjamin Coddington <ben.coddington@hammerspace.com>, 
+ Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+ linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792721421; l=10984;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=QxHRB7614mP6+oETtTBuCFRB1KVGlQKvj8Q12/DfSdI=;
+ b=i9FJEuH2Uv6+d6KTY6L9PHRBUOL+a4YIb3twxCRgzupw10ETrvoPGcdJ9aMHvdQGjW7sUGGuX
+ srwN+5zlXMbAQk6nH7857iEEjCEVpv/S5DaKxLbZpEC+tEhAY26ayEu
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
+ auth_id=1122
+X-Original-From: Daejun Park <daejun7.park@samsung.com>
+Reply-To: daejun7.park@samsung.com
+Content-Transfer-Encoding: 7bit
 
-From: NeilBrown <neil@brown.name>
+From: Daejun Park <daejun7.park@samsung.com>
 
-As preparation for d_alloc_parallel() being allowed without the
-directory locked, use d_duplicate() to duplicate a dentry for silly
-rename.
+The delegation code remembers the forward-channel slot that carried the
+request that granted a delegation (dl_recall_grant), tests whether the
+client has retired that slot since (nfsd4_recall_grant_slot_retired()),
+and names the request as a referring call in the CB_SEQUENCE of a
+recall. The next two patches need the same for layouts.
 
-This results in an in-lookup name, so d_lookup_done() must be called.
+Make the record a type of its own, struct nfsd4_grant_slot, and move the
+code that fills it in, the slot test and the code that adds the
+referring call into nfsd41_record_grant_slot(),
+nfsd41_grant_slot_retired() and nfsd41_cb_referring_grant(), named for
+the session machinery they depend on. The flag that was part of the
+delegation's record stays with the delegation, as
+dl_recall_retired_at_send.
 
-Signed-off-by: NeilBrown <neil@brown.name>
+No change in behavior.
+
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
- fs/nfs/dir.c | 13 ++++++++-----
- 1 file changed, 8 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4state.c | 115 ++++++++++++++++++++++++++++++++++++----------------
+ fs/nfsd/state.h     |  24 +++++++----
+ 2 files changed, 96 insertions(+), 43 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 49283f533d6e..f02b1b068d93 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2802,11 +2802,12 @@ int nfs_rename(const struct mnt_idmap *idmap, struct inode *old_dir,
- 			spin_unlock(&new_dentry->d_lock);
- 
- 			/* copy the target dentry's name */
--			dentry = d_alloc(new_dentry->d_parent,
--					 &new_dentry->d_name);
--			if (!dentry)
-+			dentry = d_duplicate(new_dentry);
-+			if (IS_ERR(dentry)) {
-+				/* Keep using -ETXTBSY error */
-+				dentry = NULL;
- 				goto out;
--
-+			}
- 			/* silly-rename the existing target ... */
- 			err = nfs_sillyrename(new_dir, new_dentry);
- 			if (err)
-@@ -2871,8 +2872,10 @@ int nfs_rename(const struct mnt_idmap *idmap, struct inode *old_dir,
- 		nfs_dentry_handle_enoent(old_dentry);
- 
- 	/* new dentry created? */
--	if (dentry)
-+	if (dentry) {
-+		d_lookup_done(dentry);
- 		dput(dentry);
-+	}
- 	return error;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f2b52ba901..735eaa4b7f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1291,7 +1291,7 @@ __alloc_init_deleg(struct nfs4_client *clp, struct nfs4_file *fp,
+ 	dp->dl_recalled = false;
+ 	dp->dl_recall_rejected = false;
+ 	dp->dl_recall_grant.valid = false;
+-	dp->dl_recall_grant.retired_at_send = false;
++	dp->dl_recall_retired_at_send = false;
+ 	get_nfs4_file(fp);
+ 	dp->dl_stid.sc_file = fp;
+ 	nfsd4_init_cb(&dp->dl_recall, dp->dl_stid.sc_client,
+@@ -6251,37 +6251,49 @@ bool nfsd_wait_for_delegreturn(struct svc_rqst *rqstp, struct inode *inode)
+  * gen_sessionid() composes a sessionid from the client's clientid and a
+  * sequence counter, so the sequence alone identifies the granting session.
+  */
+-static void nfsd4_recall_grant_sessionid(const struct nfs4_delegation *dp,
+-					 struct nfsd4_sessionid *sid)
++static void nfsd41_grant_slot_sessionid(struct nfs4_client *clp,
++					const struct nfsd4_grant_slot *grant,
++					struct nfsd4_sessionid *sid)
+ {
+-	sid->clientid = dp->dl_stid.sc_client->cl_clientid;
+-	sid->sequence = dp->dl_recall_grant.sessionid_seq;
++	sid->clientid = clp->cl_clientid;
++	sid->sequence = grant->sessionid_seq;
+ 	sid->reserved = 0;
  }
- EXPORT_SYMBOL_GPL(nfs_rename);
+ 
+-static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
++/**
++ * nfsd41_grant_slot_retired - has the client seen the reply to a grant?
++ * @clp: client that sent the granting request
++ * @grant: forward-channel slot that carried the request
++ *
++ * Context: Takes nn->client_lock.
++ *
++ * Return: true if the client has gone on to use the slot for a later
++ * request, or has given the slot up, so that it must have received the
++ * reply. False if that cannot be shown, and if @grant is not valid.
++ */
++bool nfsd41_grant_slot_retired(struct nfs4_client *clp,
++			       const struct nfsd4_grant_slot *grant)
+ {
+-	struct nfs4_client *clp = dp->dl_stid.sc_client;
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 	struct nfsd4_session *ses;
+ 	struct nfsd4_sessionid sid;
+ 	bool retired = false;
+ 	void *entry;
+ 
+-	if (!dp->dl_recall_grant.valid)
++	if (!grant->valid)
+ 		return false;
+ 
+-	nfsd4_recall_grant_sessionid(dp, &sid);
++	nfsd41_grant_slot_sessionid(clp, grant, &sid);
+ 
+ 	/*
+-	 * A missing session does not prove the client saw the grant: a
++	 * A missing session does not prove the client saw the reply: a
+ 	 * DESTROY_SESSION unhashes its own session before the reply to
+ 	 * that compound is encoded.
+ 	 */
+ 	spin_lock(&nn->client_lock);
+ 	ses = __find_in_sessionid_hashtbl((struct nfs4_sessionid *)&sid,
+ 					  clp->net);
+-	entry = ses ? xa_load(&ses->se_slots, dp->dl_recall_grant.slotid) : NULL;
++	entry = ses ? xa_load(&ses->se_slots, grant->slotid) : NULL;
+ 	if (xa_is_value(entry)) {
+ 		/*
+ 		 * A slot is freed only once the client has acknowledged
+@@ -6294,18 +6306,49 @@ static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
+ 
+ 		/*
+ 		 * A reactivated slot was freed and rebuilt, so the same
+-		 * acknowledgment applies. The seqid test errs toward
+-		 * revoking: a rebuilt slot restarting at seqid 1 matches
+-		 * an old grant.
++		 * acknowledgment applies. The seqid test errs toward "not
++		 * retired", the side on which the callers do not take the
++		 * client's answer at once: a rebuilt slot restarting at
++		 * seqid 1 matches an old grant.
+ 		 */
+ 		retired = (slot->sl_flags & NFSD4_SLOT_REUSED) ||
+ 			  ((slot->sl_flags & NFSD4_SLOT_INITIALIZED) &&
+-			   slot->sl_seqid != dp->dl_recall_grant.seqid);
++			   slot->sl_seqid != grant->seqid);
+ 	}
+ 	spin_unlock(&nn->client_lock);
+ 	return retired;
+ }
+ 
++/**
++ * nfsd41_cb_referring_grant - name a granting request as referring call
++ * @cb: callback that refers to state the request created
++ * @clp: client that sent the request
++ * @grant: forward-channel slot that carried the request
++ *
++ * Does nothing if @grant is not valid.
++ *
++ * Context: May sleep. Caller serializes access to @cb, as for
++ * nfsd41_cb_referring_call().
++ */
++void nfsd41_cb_referring_grant(struct nfsd4_callback *cb,
++			       struct nfs4_client *clp,
++			       const struct nfsd4_grant_slot *grant)
++{
++	struct nfsd4_sessionid sid;
++
++	if (!grant->valid)
++		return;
++	nfsd41_grant_slot_sessionid(clp, grant, &sid);
++	nfsd41_cb_referring_call(cb, (struct nfs4_sessionid *)&sid,
++				 grant->slotid, grant->seqid);
++}
++
++static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
++{
++	return nfsd41_grant_slot_retired(dp->dl_stid.sc_client,
++					 &dp->dl_recall_grant);
++}
++
+ /*
+  * ->prepare does not run on every send: nfsd4_run_cb_work() skips it
+  * on a requeue, and a retry via rpc_restart_call_prepare() re-enters
+@@ -6315,9 +6358,9 @@ static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
+  */
+ static void nfsd4_refresh_recall_grant(struct nfs4_delegation *dp)
+ {
+-	dp->dl_recall_grant.retired_at_send =
++	dp->dl_recall_retired_at_send =
+ 			nfsd4_recall_grant_slot_retired(dp);
+-	if (dp->dl_recall_grant.retired_at_send)
++	if (dp->dl_recall_retired_at_send)
+ 		nfsd41_cb_destroy_referring_call_list(&dp->dl_recall);
+ }
+ 
+@@ -6345,15 +6388,9 @@ static bool nfsd4_cb_recall_prepare(struct nfsd4_callback *cb)
+ 
+ 	nfsd4_refresh_recall_grant(dp);
+ 
+-	if (dp->dl_recall_grant.valid && !dp->dl_recall_grant.retired_at_send) {
+-		struct nfsd4_sessionid sid;
+-
+-		nfsd4_recall_grant_sessionid(dp, &sid);
+-		nfsd41_cb_referring_call(&dp->dl_recall,
+-					 (struct nfs4_sessionid *)&sid,
+-					 dp->dl_recall_grant.slotid,
+-					 dp->dl_recall_grant.seqid);
+-	}
++	if (!dp->dl_recall_retired_at_send)
++		nfsd41_cb_referring_grant(&dp->dl_recall, dp->dl_stid.sc_client,
++					  &dp->dl_recall_grant);
+ 	return true;
+ }
+ 
+@@ -6405,7 +6442,7 @@ static int nfsd4_cb_recall_done(struct nfsd4_callback *cb,
+ 		 * the grant. Trust the rejection only if the slot had
+ 		 * retired when this recall was sent.
+ 		 */
+-		if (dp->dl_recall_grant.retired_at_send) {
++		if (dp->dl_recall_retired_at_send) {
+ 			nfsd4_deleg_recall_rejected(dp);
+ 			return 1;
+ 		}
+@@ -7014,19 +7051,25 @@ static bool nfsd4_want_read_deleg(const struct nfsd4_open *open)
+ 		OPEN4_SHARE_ACCESS_WANT_READ_DELEG;
+ }
+ 
+-static void
+-nfs4_delegation_record_grant_slot(struct nfs4_delegation *dp,
+-				 const struct nfsd4_compound_state *cstate)
++/**
++ * nfsd41_record_grant_slot - remember the slot that carries a request
++ * @grant: record to fill in
++ * @cstate: compound state of the request
++ *
++ * Leaves @grant alone for a request without a session (NFSv4.0).
++ */
++void nfsd41_record_grant_slot(struct nfsd4_grant_slot *grant,
++			      const struct nfsd4_compound_state *cstate)
+ {
+ 	const struct nfsd4_sessionid *sid;
+ 
+ 	if (!cstate->session)
+ 		return;
+ 	sid = (struct nfsd4_sessionid *)cstate->session->se_sessionid.data;
+-	dp->dl_recall_grant.sessionid_seq = sid->sequence;
+-	dp->dl_recall_grant.slotid = cstate->slot->sl_index;
+-	dp->dl_recall_grant.seqid = cstate->slot->sl_seqid;
+-	dp->dl_recall_grant.valid = true;
++	grant->sessionid_seq = sid->sequence;
++	grant->slotid = cstate->slot->sl_index;
++	grant->seqid = cstate->slot->sl_seqid;
++	grant->valid = true;
+ }
+ 
+ static struct nfs4_delegation *
+@@ -7135,7 +7178,7 @@ nfs4_set_delegation(struct nfsd4_open *open,
+ 	 * visible to lease breakers. A conflicting open can drive
+ 	 * CB_RECALL to completion from that point on.
+ 	 */
+-	nfs4_delegation_record_grant_slot(dp, cstate);
++	nfsd41_record_grant_slot(&dp->dl_recall_grant, cstate);
+ 
+ 	if (stp->st_stid.sc_export)
+ 		dp->dl_stid.sc_export = exp_get(stp->st_stid.sc_export);
+@@ -10771,7 +10814,7 @@ nfsd_get_dir_deleg(struct nfsd4_compound_state *cstate,
+ 	dp = alloc_init_dir_deleg(clp, fp);
+ 	if (!dp)
+ 		goto out_delegees;
+-	nfs4_delegation_record_grant_slot(dp, cstate);
++	nfsd41_record_grant_slot(&dp->dl_recall_grant, cstate);
+ 	if (cstate->current_fh.fh_export)
+ 		dp->dl_stid.sc_export =
+ 			exp_get(cstate->current_fh.fh_export);
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 5f43668486..2c00b334c3 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -276,6 +276,14 @@ struct nfsd4_cb_notify {
+ 	struct nfsd4_callback		ncn_cb;		// notify4 callback
+ };
+ 
++/* Forward-channel slot that carried a request which created state */
++struct nfsd4_grant_slot {
++	u32			sessionid_seq;
++	u32			slotid;
++	u32			seqid;
++	bool			valid;
++};
++
+ /*
+  * Represents a delegation stateid. The nfs4_client holds references to these
+  * and they are put when it is being destroyed or when the delegation is
+@@ -315,13 +323,8 @@ struct nfs4_delegation {
+ 	bool			dl_setattr;
+ 
+ 	/* Forward-channel slot that carried the granting request */
+-	struct {
+-		u32			sessionid_seq;
+-		u32			slotid;
+-		u32			seqid;
+-		bool			valid;
+-		bool			retired_at_send;
+-	} dl_recall_grant;
++	struct nfsd4_grant_slot	dl_recall_grant;
++	bool			dl_recall_retired_at_send;
+ 
+ 	union {
+ 		/* for CB_GETATTR */
+@@ -949,6 +952,13 @@ extern void nfsd41_cb_referring_call(struct nfsd4_callback *cb,
+ 				     struct nfs4_sessionid *sessionid,
+ 				     u32 slotid, u32 seqno);
+ extern void nfsd41_cb_destroy_referring_call_list(struct nfsd4_callback *cb);
++extern void nfsd41_record_grant_slot(struct nfsd4_grant_slot *grant,
++				     const struct nfsd4_compound_state *cstate);
++extern bool nfsd41_grant_slot_retired(struct nfs4_client *clp,
++				      const struct nfsd4_grant_slot *grant);
++extern void nfsd41_cb_referring_grant(struct nfsd4_callback *cb,
++				      struct nfs4_client *clp,
++				      const struct nfsd4_grant_slot *grant);
+ extern void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
+ 		const struct nfsd4_callback_ops *ops, enum nfsd4_cb_op op);
+ extern bool nfsd4_run_cb(struct nfsd4_callback *cb);
+
 -- 
-2.50.0.107.gf914562f5916.dirty
+2.43.0
+
 
