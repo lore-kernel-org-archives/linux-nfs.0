@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792879920;
-	b=Z8XR39nzTk6EQmDXOa5DX1rIVhCUXh+2h1W026nBJP4lj1byjjnimiLkVBabREE/tb0a
-	 NZiuAUwLY0YPE31AfG7lJLMA1uhyI7+CgSmLQkzpOyp18KoJN+POXgQq0Xa/oJPIl5/a3
-	 4e/u2gkaiRv4foor+X06MX93KVuDn7cGK0OWCfmzdn29uoKtz7w4+EWCygPGhHRDxCRE5
-	 gwAKKsporPs2DQ7S8WN4ANg+AOk41eLLOGJ+clAr7v460QH5tiT6dL/eAYCvOhd1jqho9
-	 cCuKVGxBnOECEEONrnjnATUIABkQDAauDgXehAkdSOzSCMSwjx2/WSRRwGMKvCNwlOg==
+	t=1792879921;
+	b=PzFY8deP0kNyJ4IxBET2zHgWjZ1p+wp5y7LdFGCWxbO8SG1IKLg1g20ljyV5GzxrhrsT
+	 SuW33CPEXJECtLrxNMml3ttPJ05g5RqeiWvY8HrHlX15vlUXWj2Jwk964vQkThaPOQUTb
+	 oypSvlo8Q6UCVUpbycAn/eNCGVn2wXa1IQaIeVBVUkzWLuwYrgp+M6zg8Hivmt/YOsOHV
+	 Cs+MbNGLWZxEiBm6f3qcVg2yP9jg4vZuYfUL186Jo3Y2Da6mFVMDP2Y2Q97GKG5fEvk5E
+	 BiPeFsb/Kczjrk1o3xmHfyl49NaIbKvhnD8j09PaSE9pXheBN1hmae16/8tLXtIOq5w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792879920;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792879921;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=ZzKU6IyObChzl3lwHoNfMnHSLmzyeXJpuhSqPEbdypg=;
-	b=1e+Rvd+IGV3pQtbVYESF6nwsIjN44gd/zt7oX+OaI/sTuLwuoIonY/1vxyKtuY2ZcB7e
-	 VNZ8JcKAnFOBla5Sr4NYcfTKwKTriv+ZeBFXudJEYtiQHVQXdmLEhQjlop4jOTngODf4T
-	 1FyA3pVZHhcOO5qQqqYlSia0CHvlDe1d0mqAEkLx4fkDVPQ91uzmz2h09IkmvI4tPxQSE
-	 WtB13VOoMKpObYTwnJ6DmHL69faFpFiZcq6xx4xwJusDSvkw/lLq8PheUYOp5C3+MQU5q
-	 H6gPaaPRN9fDEFS7cpfvLR2GbxyFn3GS0skBs9IGZligIWi+UWuLacmtks7CkbgKOsw==
+	bh=+uHt5ugACxF92GmAXG21dbtKzmG3MWXoLirSoj5NyQs=;
+	b=mm6RlD85r3rKVUmD3GVk5fE7zLPrg3fbEjFWk/B6VAyikk4+Y8cyMjcZ1GAc+sQjlbwW
+	 ClU9UTG5My44905eZIBuE03w2PY4Cvomo0G9GWu7DudXNgSvDWQQGof6yk4NT/6DUCL1X
+	 WMrIafknA2ivZQp6FmblfvHRimiFLKZBY3NA2/P9cl5W+fZQnJGHFxkNx3Y5Wt3m7Qkd+
+	 wGAoHz+JhvZ+g66/NF0AW5CR7a3LGgRvYITziXxRWuhkkZ7c4XyouI/l4sJpURobqJiVQ
+	 ZoR7yrD1Cq3Acd/hJgFdX20jj3WCOhRyP22mbHvMVli9bsDasXqeslkWurep/qXVdJA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nuVJg5UL;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WX9VXTnC;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BA6DB606A31E;
-	Sat, 24 Oct 2026 22:11:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 022B2606A33A;
+	Sat, 24 Oct 2026 22:12:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nuVJg5UL
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2D0501F01825;
-	Sat, 24 Oct 2026 22:11:59 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WX9VXTnC
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 719491F031E6;
+	Sat, 24 Oct 2026 22:12:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792879919;
-	bh=ZzKU6IyObChzl3lwHoNfMnHSLmzyeXJpuhSqPEbdypg=;
+	s=k20260515; t=1792879920;
+	bh=+uHt5ugACxF92GmAXG21dbtKzmG3MWXoLirSoj5NyQs=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=nuVJg5UL0GJQsA2XXA/fsHKR71oP0tCTYmsPpWoEbRUt6guzY1R6ZuRJoePOYp28v
-	 wKwZ5LUmGxR6AFNfbd1sflvccmtcn7Gj4ius8GHY1qTPdq6EW9OsvJwCw9sM5ZCefH
-	 DmChg7jcgVWV0nnFGs9fqVe00vya7N6MbrjsYGyaCqR8ZMtUFH7SRr+X8gDNHwfH6J
-	 znAcb4d2EocjM9hdbUXRbcY3IQZ1otVZN2RWC1J4w/AW91tECGzV6+YM+ApoVAAreE
-	 OCjE4oMe6+uT6qT7JFWSH5QZfR2C5EcX7BlJXIDTu2j7jfCjRikxAsvfzP+9FeFmey
-	 V6m6Nvl1yTcfw==
+	b=WX9VXTnCxua7vslZA+8lU7rQ0XUIpOvTThiZ/q65RXWa7tfplGStvdZnyGWRuvTFk
+	 xaLNEckzMMDI9drFF3vG1Id3n8z8Mgi2jRHaUbGcEhiBaPs+55OrF3+guqxOqpCuBx
+	 SXptlYVzHShCXjC20M8jlkPA4vdunJln+piRZ603RaRSOwkR5RWT3Dj0d0ATYO3fvu
+	 CwRPN4xDOga0t9ku6TE4aXtxxVJREhLav6iI2e/yjopBskaR2bwEeqJY+ksgp+k5hi
+	 M5uLNoSrROzqI+bIZ+QtEoNyqRmQ7NJfXkWilpT6BwOiNq7BMfI5bVpEnKwjlXwPMo
+	 XyW0ZfNCCM7yQ==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Matthew Wilcox <willy@infradead.org>,
 	linux-mm@kvack.org,
@@ -52,10 +52,11 @@ Cc: Chuck Lever <cel@kernel.org>,
 	Tom Talpey <tom@talpey.com>,
 	Christoph Hellwig <hch@lst.de>,
 	Jens Axboe <axboe@kernel.dk>,
-	Jonathan Corbet <corbet@lwn.net>
-Subject: [PATCH v9 5/6] mm, iomap: let an uncached writer complete its shared pages itself
-Date: Sat, 24 Oct 2026 18:11:51 -0400
-Message-ID: <20261024221152.6965-6-snitzer@kernel.org>
+	Jonathan Corbet <corbet@lwn.net>,
+	Jonathan Flynn <jonathan.flynn@hammerspace.com>
+Subject: [PATCH v9 6/6] NFSD: drop a shared boundary page only once both WRITEs have written it
+Date: Sat, 24 Oct 2026 18:11:52 -0400
+Message-ID: <20261024221152.6965-7-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20261024221152.6965-1-snitzer@kernel.org>
 References: <20261024221152.6965-1-snitzer@kernel.org>
@@ -70,313 +71,313 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The write that completes a page an uncached write covers only partly
-marks it drop-behind as it writes, while the page is dirty, so the page
-counts as DONTCACHE dirty and the DONTCACHE writeback kick writes it
-back.  A writer that syncs its write itself, once, after several
-segments -- NFSD answering a stable WRITE, the NFS client's LOCALIO path
--- issues each segment without IOCB_DSYNC, so every segment's kick
-writes back pages its own sync is about to write.  Measured with NFSD
-DIRECT and 32 writers of 47008-byte records: with the previous patch
-alone, 23,000 to 65,000 kick rounds a run, where NFSD marking the pages
-itself after its sync had taken 51 to 274; with this patch and NFSD
-using it, a FILE_SYNC WRITE wakes the kick not at all.
+A buffered DONTCACHE segment of a direct-mode WRITE -- the misaligned
+start or end of a split WRITE, or the whole of one too small to split --
+covers its first and last unit only partly when it does not start or end
+on a unit boundary.  The unit is the smallest folio the mapping allows: a
+page, or a block where the block is larger than a page.  Such a unit is
+shared with the neighbouring WRITE, which may arrive before, after or at
+the same time, from any client.
 
-Let such a writer complete those pages itself.  IOCB_DONTCACHE_DEFER
-(IOMAP_DONTCACHE_DEFER, FGP_DONTCACHE_DEFER) leaves a partly covered page
-unmarked even when the write finds it uptodate.  Right before the writer
-writes such a page, it calls filemap_dontcache_edge_completes() with the
-range that this write covers in the page.  The helper locks the folio and
-asks folio_dontcache_edge_written() whether the neighbouring write wrote
-its part.  If it did, this write completes the page.  When the write and
-its sync finish, filemap_dontcache_edge_complete() completes the page
-under the folio lock:
+The page cache keeps a page an uncached write covers only partly for the
+write that completes it ("mm, iomap: keep a partly covered page until an
+uncached write completes it"), so the second WRITE does not have to read
+it back from disk.  Left at that, the page cache marks the page drop-
+behind while it is still dirty, which counts it as DONTCACHE dirty and
+wakes the DONTCACHE writeback kick for every segment of a stable WRITE,
+only to write back what NFSD's single fsync is about to write.
 
-- It first waits for writeback that is in flight.  That bio has no mark,
-  so its completion would not drop the folio.
-- It marks a dirty page, which then counts as DONTCACHE dirty, and wakes
-  the DONTCACHE writeback kick.  The kick from generic_write_sync() came
-  before the mark.
-- It drops a clean page that is not mapped at once, without a mark.
-  filemap_end_dropbehind() would clear such a mark outside the i_pages
-  lock.  A store through a mapping in between could count the folio as
-  DONTCACHE dirty, and nothing would uncount it.
-- It marks a clean page that is mapped, for the writeback that cleans a
-  later store.
+Issue the buffered segments IOCB_DONTCACHE_DEFER and mark the pages here
+instead ("mm, iomap: let an uncached writer complete its shared pages
+itself").  Immediately before writing a segment, NFSD asks
+filemap_dontcache_edge_completes() whether the neighbouring WRITE wrote
+its part of each unit that the segment covers only partly.  It passes the
+range that the segment covers in that unit.  Once the whole WRITE, its
+fsync included, is complete, it calls filemap_dontcache_edge_complete()
+for those units, which drops a clean one at once.  A short write that
+stopped inside the segment's first unit has not written its part of that
+edge, so NFSD completes the first edge only when the write reached the
+end of the segment's bytes in that unit.  An UNSTABLE WRITE marks the
+units dirty, and the writeback that cleans them, by the flusher or for
+the client's COMMIT, drops them.
 
-The helper drops the page before it releases the folio lock.  A drop
-after the unlock, with folio_end_dropbehind()'s trylock, would leave a
-page that another task locks in between for reclaim.  As in the default
-path, both helpers take only a folio of the smallest size the mapping
-allows, and leave a larger one cached.
+A page whose neighbouring WRITE never arrives, such as the last page of
+the file, or arrives at the same time, so that neither finds the other's
+part, stays cached until it is reclaimed.  Nothing changes when the
+buffered segments are normal buffered I/O (direct_misaligned_dontcache
+is N, or the file system lacks FOP_DONTCACHE); the page cache keeps
+partly covered pages only for file systems that use iomap for buffered
+writes.
 
-Two writes that arrive together may both find the page absent before
-either has written; that page is then left cached until reclaim, which
-the folio-lock ordering of the default path avoids.
+Measured with 32 interleaved writers of 47008-byte records over an
+emulated 4Kn NVMe with 4 KiB pages, NFSD DIRECT with
+direct_misaligned_dontcache=Y, each run from a freshly made file system:
+device reads per WRITE are 0.0001-0.0002 whether each record is one
+FILE_SYNC WRITE, two sent one after the other, two sent together, or two
+sent UNSTABLE, against 45144 reads for 45664 WRITEs with no shared-page
+handling, and the DONTCACHE writeback kick does not run at all for the
+FILE_SYNC WRITEs.
 
+On a four-server pNFS flexfiles rig (x86_64, 4 KiB logical blocks), three
+clients writing 47008-byte records for 240 s against 640 nfsd threads per
+server, keeping the shared page took device reads from 0.014-0.015 per
+record to 0.003, page-cache growth over the write phase from about
+11 GiB to 2.9 GiB, and write throughput up by 2.4% to 4.9%, with read
+throughput unchanged.  Keeping every boundary page cached instead, with
+direct_misaligned_dontcache=N, grows the page cache by about 630 GiB over
+the same runs.
+
+Reported-by: Jonathan Flynn <jonathan.flynn@hammerspace.com>
 Signed-off-by: Mike Snitzer <snitzer@kernel.org>
 ---
 
 Notes:
     Notes on the v8 review questions, with the code that answers each:
     
-    - Writeback in flight.  filemap_dontcache_edge_complete() calls
-      folio_wait_writeback() under the folio lock before it tests
-      PG_dirty.
-    - Writeback kick.  The helper calls
-      filemap_dontcache_kick_writeback() after it releases the folio
-      lock, and only if it marked a dirty folio.
-    - WB_DONTCACHE_DIRTY for a clean folio.  A clean folio that is not
-      mapped is not marked.  folio_unmap_invalidate() drops it under the
-      folio lock.  If a store dirties it first, folio_unmap_invalidate()
-      finds PG_dirty under the i_pages lock and keeps the folio.  The
-      folio has no mark, so it has no WB_DONTCACHE_DIRTY count to lose.
-      The helper marks only a dirty folio, or a mapped clean folio, with
-      folio_mark_dropbehind() (3/6).
-    - Blocks smaller than the folio.  filemap_dontcache_edge_completes()
-      gets the folio with FGP_LOCK and calls
-      folio_dontcache_edge_written() (4/6) with the range of this write.
-      FGP_DONTCACHE prevents the lookup from clearing a mark.
-    - Two writes that arrive together.  The commit message states this
-      limit: the page stays cached until reclaim.  Data is not affected.
-    - Flag values.  IOCB_DONTCACHE_DEFER (1 << 24) follows
-      IOCB_HAS_METADATA (1 << 23).  IOMAP_DONTCACHE_DEFER (1 << 11)
-      follows IOMAP_DONTCACHE (1 << 10).  FGP_DONTCACHE_DEFER (0x400) is
-      below the order bits (FGF_GET_ORDER() uses bits 26 to 31).
+    - Unit size.  nfsd_write_dio_seg_hold() uses
+      mapping_min_folio_nrbytes(), as iomap_get_folio() does (4/6).  A
+      block larger than the page is one unit in both places.
+    - Short write.  NFSD completes the first edge only if written is at
+      least first_len.  It completes the last edge only if the write
+      covered the whole segment.
+    - Release after an error.  NFSD does this on purpose.  A segment
+      whose write failed is not held: nheld increases only after a write
+      that returns >= 0.  A held segment wrote its bytes, so its edges
+      contain the data of both WRITEs.  After an fsync error, the
+      release still runs: the folio is clean when its writeback ends,
+      and the helper drops it as DONTCACHE writeback would.  The error
+      stays in the mapping and NFSD returns it.  The release changes
+      only what stays cached, never data.
+    - Unset fields.  For a segment that holds nothing,
+      nfsd_write_dio_seg_hold() returns early, and first_len is not set.
+      complete_first and complete_last are then false, so
+      nfsd_write_dio_seg_release() does not read first_len.
+    - Array size.  nsegs is at most 3, so nheld is at most 3 (holds[3]).
+    - Two WRITEs that arrive together.  The commit message states this
+      limit: the page stays cached until reclaim.
 
- fs/iomap/buffered-io.c  |  6 ++-
- fs/iomap/trace.h        |  3 +-
- include/linux/fs.h      |  8 +++-
- include/linux/iomap.h   |  1 +
- include/linux/pagemap.h |  7 ++++
- mm/filemap.c            | 92 ++++++++++++++++++++++++++++++++++++++++-
- 6 files changed, 112 insertions(+), 5 deletions(-)
+ .../filesystems/nfs/nfsd-io-modes.rst         |  17 +++
+ fs/nfsd/vfs.c                                 | 116 ++++++++++++++++--
+ 2 files changed, 121 insertions(+), 12 deletions(-)
 
-diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
-index eb1f7f019a852..e60a6ec5a1aa3 100644
---- a/fs/iomap/buffered-io.c
-+++ b/fs/iomap/buffered-io.c
-@@ -817,6 +817,8 @@ struct folio *iomap_get_folio(struct iomap_iter *iter, loff_t pos, size_t len)
- 		 */
- 		if (off || len < unit) {
- 			fgp |= FGP_DONTCACHE_EDGE;
-+			if (iter->flags & IOMAP_DONTCACHE_DEFER)
-+				fgp |= FGP_DONTCACHE_DEFER;
- 			len = min_t(size_t, len, unit - off);
- 		}
- 	}
-@@ -829,7 +831,7 @@ struct folio *iomap_get_folio(struct iomap_iter *iter, loff_t pos, size_t len)
- 	 * smaller than the folio, the edge this write completes is not
- 	 * uptodate yet: mark it if its other blocks are.
- 	 */
--	if ((fgp & FGP_DONTCACHE_EDGE) &&
-+	if ((fgp & FGP_DONTCACHE_EDGE) && !(fgp & FGP_DONTCACHE_DEFER) &&
- 	    !IS_ERR(folio) && !folio_test_uptodate(folio) &&
- 	    folio_dontcache_edge_written(folio, pos, len))
- 		folio_mark_dropbehind(folio);
-@@ -1334,6 +1336,8 @@ iomap_file_buffered_write(struct kiocb *iocb, struct iov_iter *i,
- 		iter.flags |= IOMAP_NOWAIT;
- 	if (iocb->ki_flags & IOCB_DONTCACHE)
- 		iter.flags |= IOMAP_DONTCACHE;
-+	if (iocb->ki_flags & IOCB_DONTCACHE_DEFER)
-+		iter.flags |= IOMAP_DONTCACHE_DEFER;
+diff --git a/Documentation/filesystems/nfs/nfsd-io-modes.rst b/Documentation/filesystems/nfs/nfsd-io-modes.rst
+index 0e69b5fdd6756..9c663ce97c48f 100644
+--- a/Documentation/filesystems/nfs/nfsd-io-modes.rst
++++ b/Documentation/filesystems/nfs/nfsd-io-modes.rst
+@@ -167,6 +167,23 @@ Misaligned WRITE:
+     above. Set it to N for a workload that reads back or rewrites what
+     it just wrote.
  
- 	while ((ret = iomap_iter(&iter, ops)) > 0)
- 		iter.status = iomap_write_iter(&iter, i, write_ops);
-diff --git a/fs/iomap/trace.h b/fs/iomap/trace.h
-index e1ea8392cf47d..4f0343eeed1b4 100644
---- a/fs/iomap/trace.h
-+++ b/fs/iomap/trace.h
-@@ -104,7 +104,8 @@ DEFINE_RANGE_EVENT(iomap_zero_iter);
- 	{ IOMAP_UNSHARE,	"UNSHARE" }, \
- 	{ IOMAP_DAX,		"DAX" }, \
- 	{ IOMAP_ATOMIC,		"ATOMIC" }, \
--	{ IOMAP_DONTCACHE,	"DONTCACHE" }
-+	{ IOMAP_DONTCACHE,	"DONTCACHE" }, \
-+	{ IOMAP_DONTCACHE_DEFER, "DONTCACHE_DEFER" }
++    The page holding a start or end segment is shared with the
++    neighbouring WRITE, which may arrive before, after or at the same
++    time, from any client. So that the second WRITE to such a page does
++    not have to read it back from disk, the page cache keeps a page an
++    uncached write covers only partly, unmarked, for the write that
++    completes it. NFSD asks, immediately before writing a start or end
++    segment, whether the neighbouring WRITE has already written its
++    part; if it has, NFSD marks the page DONTCACHE once its own WRITE,
++    including its fsync, is complete, and the page is dropped. A page
++    whose neighbouring WRITE never arrives, or arrives at the same time,
++    stays cached until it is reclaimed. The first and last pages of a
++    WRITE that is not split are handled the same way.
++
++    None of this applies when the start and end segments are normal
++    buffered IO, or for a filesystem that does not use iomap for
++    buffered writes.
++
+ Tracing:
+     The nfsd_read_direct trace event marks a READ that NFSD issues as
+     O_DIRECT. It records the offset and length the client requested.
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 9219f8eb386d0..0b62c4659e547 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1387,6 +1387,7 @@ static int wait_for_concurrent_writes(struct file *file)
+ struct nfsd_write_dio_seg {
+ 	struct iov_iter			iter;
+ 	int				flags;
++	bool				claim;		/* completes shared pages */
+ };
  
- #define IOMAP_F_FLAGS_STRINGS \
- 	{ IOMAP_F_NEW,		"NEW" }, \
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index f9d1e05e8ae68..ad181b6ce6b4f 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -357,6 +357,11 @@ struct readahead_control;
- /* kiocb is a read or write operation submitted by fs/aio.c. */
- #define IOCB_AIO_RW		(1 << 22)
- #define IOCB_HAS_METADATA	(1 << 23)
+ static unsigned long
+@@ -1406,6 +1407,82 @@ nfsd_write_dio_seg_init(struct nfsd_write_dio_seg *segment,
+ 		iov_iter_advance(&segment->iter, start);
+ 	iov_iter_truncate(&segment->iter, len);
+ 	segment->flags = iocb->ki_flags;
++	segment->claim = false;
++}
++
++/* The shared pages a segment completes, and how much of it was written. */
++struct nfsd_write_dio_hold {
++	loff_t	first, last;
++	size_t	first_len;	/* the segment's bytes in its first unit */
++	bool	complete_first, complete_last;
++	size_t	written;
++};
++
 +/*
-+ * With IOCB_DONTCACHE: the caller completes the pages the write covers only
-+ * partly itself, see filemap_dontcache_edge_complete().
++ * A page that a buffered DONTCACHE segment covers only partly is shared with
++ * the neighbouring WRITE.  The page cache keeps it, unmarked, for the write
++ * that completes it; the segment is issued IOCB_DONTCACHE_DEFER so that this
++ * WRITE, not the page cache, marks it, once the whole WRITE, its fsync
++ * included, is complete.  Ask whether the neighbour has already written its
++ * part immediately before writing @seg: asking earlier gives the neighbour
++ * time to write its part and find this WRITE's part missing.
 + */
-+#define IOCB_DONTCACHE_DEFER	(1 << 24)
- 
- /* for use in trace events */
- #define TRACE_IOCB_STRINGS \
-@@ -374,7 +379,8 @@ struct readahead_control;
- 	{ IOCB_NOIO,		"NOIO" }, \
- 	{ IOCB_ALLOC_CACHE,	"ALLOC_CACHE" }, \
- 	{ IOCB_AIO_RW,		"AIO_RW" }, \
--	{ IOCB_HAS_METADATA,	"AIO_HAS_METADATA" }
-+	{ IOCB_HAS_METADATA,	"AIO_HAS_METADATA" }, \
-+	{ IOCB_DONTCACHE_DEFER,	"DONTCACHE_DEFER" }
- 
- struct kiocb {
- 	struct file		*ki_filp;
-diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-index bc7ae6327dbf8..f3509d495a92a 100644
---- a/include/linux/iomap.h
-+++ b/include/linux/iomap.h
-@@ -212,6 +212,7 @@ struct iomap_write_ops {
- #endif /* CONFIG_FS_DAX */
- #define IOMAP_ATOMIC		(1 << 9) /* torn-write protection */
- #define IOMAP_DONTCACHE		(1 << 10)
-+#define IOMAP_DONTCACHE_DEFER	(1 << 11) /* see IOCB_DONTCACHE_DEFER */
- 
- /*
-  * Return the existing mapping at pos, or reserve space starting at pos for up
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 0b151c1201082..73c906e782b7e 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -705,6 +705,9 @@ pgoff_t page_cache_prev_miss(struct address_space *mapping,
-  *   only partly, and a neighbouring write may complete it.  A folio created
-  *   for it is not marked drop-behind; a folio found uptodate is, as the
-  *   write that completes it.
-+ * * %FGP_DONTCACHE_DEFER - With %FGP_DONTCACHE_EDGE: the caller completes the
-+ *   page itself (filemap_dontcache_edge_complete()), so a folio found uptodate
-+ *   is not marked either.
-  * * %FGP_WRITEBEGIN - The flags to use in a filesystem write_begin()
-  *   implementation.
-  */
-@@ -720,6 +723,7 @@ typedef unsigned int __bitwise fgf_t;
- #define FGP_STABLE		((__force fgf_t)0x00000080)
- #define FGP_DONTCACHE		((__force fgf_t)0x00000100)
- #define FGP_DONTCACHE_EDGE	((__force fgf_t)0x00000200)
-+#define FGP_DONTCACHE_DEFER	((__force fgf_t)0x00000400)
- #define FGF_GET_ORDER(fgf)	(((__force unsigned)fgf) >> 26)	/* top 6 bits */
- 
- #define FGP_WRITEBEGIN		(FGP_LOCK | FGP_WRITE | FGP_CREAT | FGP_STABLE)
-@@ -1317,6 +1321,9 @@ void folio_end_writeback_no_dropbehind(struct folio *folio);
- void folio_end_dropbehind(struct folio *folio);
- void folio_mark_dropbehind(struct folio *folio);
- bool folio_dontcache_edge_written(struct folio *folio, loff_t pos, size_t len);
-+bool filemap_dontcache_edge_completes(struct address_space *mapping,
-+				      loff_t pos, size_t len);
-+void filemap_dontcache_edge_complete(struct address_space *mapping, loff_t pos);
- void folio_wait_stable(struct folio *folio);
- void __folio_mark_dirty(struct folio *folio, struct address_space *, int warn);
- void folio_account_cleaned(struct folio *folio, struct bdi_writeback *wb);
-diff --git a/mm/filemap.c b/mm/filemap.c
-index d7bbea442a019..be9997aa5ac48 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1742,6 +1742,94 @@ bool folio_dontcache_edge_written(struct folio *folio, loff_t pos, size_t len)
- }
- EXPORT_SYMBOL_GPL(folio_dontcache_edge_written);
- 
-+/**
-+ * filemap_dontcache_edge_completes - will this write complete a shared page?
-+ * @mapping: the file's mapping
-+ * @pos: file offset of the first byte the write covers in the page
-+ * @len: bytes the write covers in the page
-+ *
-+ * For an uncached writer that completes the pages it covers only partly
-+ * itself (IOCB_DONTCACHE_DEFER).  Call right before writing such a page: it
-+ * is in the page cache, with the neighbouring write's part written, when
-+ * that write came first, and this write then completes it (see
-+ * folio_dontcache_edge_written()).  Two writes that arrive together may both
-+ * find it absent.  The page is then left cached, unmarked, until reclaim.
-+ *
-+ * Return: true if the caller is to call filemap_dontcache_edge_complete()
-+ * once its write, including any sync of it, is done.
-+ */
-+bool filemap_dontcache_edge_completes(struct address_space *mapping,
-+				      loff_t pos, size_t len)
++static void
++nfsd_write_dio_seg_hold(struct file *file, const struct nfsd_write_dio_seg *seg,
++			loff_t pos, size_t len, struct nfsd_write_dio_hold *hold)
 +{
-+	struct folio *folio;
-+	bool ret;
++	struct address_space *mapping = file->f_mapping;
++	size_t unit, last_len;
++	loff_t mask, last_unit;
++	bool one_unit, head, tail;
 +
-+	/*
-+	 * FGP_DONTCACHE: a plain lookup would clear a drop-behind mark.
-+	 * FGP_LOCK: the per-block state of the folio is read under its lock.
-+	 */
-+	folio = __filemap_get_folio(mapping, pos >> PAGE_SHIFT,
-+				    FGP_LOCK | FGP_DONTCACHE, 0);
-+	if (IS_ERR(folio))
-+		return false;
-+	ret = folio_dontcache_edge_written(folio, pos, len);
-+	folio_unlock(folio);
-+	folio_put(folio);
-+	return ret;
-+}
-+EXPORT_SYMBOL_GPL(filemap_dontcache_edge_completes);
-+
-+/**
-+ * filemap_dontcache_edge_complete - drop a shared page both writes have written
-+ * @mapping: the file's mapping
-+ * @pos: any byte offset within the page
-+ *
-+ * A page already written back is dropped now.  A dirty page is marked
-+ * drop-behind, counts as DONTCACHE dirty, and the DONTCACHE writeback kick
-+ * is woken, so the writeback that cleans it drops it.  A caller that syncs
-+ * its write calls this after the sync.  A page that is clean but mapped is
-+ * marked for the writeback that cleans a later store through the mapping.
-+ * A folio larger than the smallest the mapping allows is left as it is: it
-+ * holds more than the two writes' page, and it cannot be dropped in part.
-+ */
-+void filemap_dontcache_edge_complete(struct address_space *mapping, loff_t pos)
-+{
-+	struct folio *folio;
-+	bool kick = false;
-+
-+	folio = __filemap_get_folio(mapping, pos >> PAGE_SHIFT,
-+				    FGP_LOCK | FGP_DONTCACHE, 0);
-+	if (IS_ERR(folio))
++	hold->first = pos;
++	hold->last = pos + len - 1;
++	hold->complete_first = false;
++	hold->complete_last = false;
++	hold->written = 0;
++	if (!seg->claim || !len)
 +		return;
-+	if (!filemap_dontcache_edge_unit(mapping, folio))
-+		goto out;
-+	/*
-+	 * A writeback already in flight was submitted without the mark, and
-+	 * its completion would not drop the folio.  Wait for it.
-+	 */
-+	folio_wait_writeback(folio);
-+	if (folio_test_dirty(folio)) {
-+		folio_mark_dropbehind(folio);
-+		kick = true;
-+	} else if (folio_mapped(folio)) {
-+		folio_mark_dropbehind(folio);
-+	} else {
-+		/*
-+		 * Drop it now, with the lock still held, and without a mark.
-+		 * A mark set here and cleared again outside the i_pages lock
-+		 * could miss a store through a mapping that counts the folio
-+		 * as DONTCACHE dirty in between.
-+		 */
-+		folio_unmap_invalidate(mapping, folio, 0);
-+	}
-+out:
-+	folio_unlock(folio);
-+	folio_put(folio);
-+	if (kick)
-+		filemap_dontcache_kick_writeback(mapping);
-+}
-+EXPORT_SYMBOL_GPL(filemap_dontcache_edge_complete);
 +
++	/*
++	 * The unit two writes share is the smallest folio the mapping allows:
++	 * a page, or a block where the block is larger.  Only a unit the
++	 * segment covers partly is shared.
++	 */
++	unit = mapping_min_folio_nrbytes(mapping);
++	mask = ~(loff_t)(unit - 1);
++	one_unit = (hold->first & mask) == (hold->last & mask);
++	head = hold->first & (unit - 1);
++	tail = (hold->last + 1) & (unit - 1);
++	last_unit = hold->last & mask;
++	last_len = (hold->last & (unit - 1)) + 1;
++
++	hold->first_len = min_t(size_t, len,
++				unit - (hold->first & (unit - 1)));
++	if (head || (one_unit && tail))
++		hold->complete_first =
++			filemap_dontcache_edge_completes(mapping, hold->first,
++							 hold->first_len);
++	if (!one_unit && tail)
++		hold->complete_last =
++			filemap_dontcache_edge_completes(mapping, last_unit,
++							 last_len);
++}
++
++/* Drop the shared pages this WRITE was the second of two to write. */
++static void
++nfsd_write_dio_seg_release(struct file *file,
++			   const struct nfsd_write_dio_hold *hold)
++{
++	struct address_space *mapping = file->f_mapping;
++
++	/* A short write may have stopped inside the first unit. */
++	if (hold->complete_first && hold->written >= hold->first_len)
++		filemap_dontcache_edge_complete(mapping, hold->first);
++	/* A short write did not reach the last unit. */
++	if (hold->complete_last &&
++	    hold->written == hold->last - hold->first + 1)
++		filemap_dontcache_edge_complete(mapping, hold->last);
+ }
+ 
+ static unsigned int
+@@ -1428,7 +1505,9 @@ nfsd_write_dio_iters_init(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 
+ 	if (nf->nf_file->f_op->fop_flags & FOP_DONTCACHE)
+ 		dontcache_flags = IOCB_DONTCACHE;
+-	buffered_flags = nfsd_direct_misaligned_dontcache ? dontcache_flags : 0;
++	/* NFSD marks their shared pages itself, see nfsd_write_dio_seg_hold() */
++	buffered_flags = nfsd_direct_misaligned_dontcache && dontcache_flags ?
++			 dontcache_flags | IOCB_DONTCACHE_DEFER : 0;
+ 
+ 	/*
+ 	 * Check if direct I/O is feasible for this write request.
+@@ -1483,7 +1562,8 @@ nfsd_write_dio_iters_init(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	if (prefix) {
+ 		nfsd_write_dio_seg_init(&segments[nsegs], bvec,
+ 					nvecs, total, 0, prefix, iocb);
+-		segments[nsegs++].flags |= buffered_flags;
++		segments[nsegs].flags |= buffered_flags;
++		segments[nsegs++].claim = !!buffered_flags;
+ 	}
+ 
+ 	nfsd_write_dio_seg_init(&segments[nsegs], bvec, nvecs,
+@@ -1516,7 +1596,8 @@ nfsd_write_dio_iters_init(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	if (suffix) {
+ 		nfsd_write_dio_seg_init(&segments[nsegs], bvec, nvecs, total,
+ 					prefix + middle, suffix, iocb);
+-		segments[nsegs++].flags |= buffered_flags;
++		segments[nsegs].flags |= buffered_flags;
++		segments[nsegs++].claim = !!buffered_flags;
+ 	}
+ 	return nsegs;
+ 
+@@ -1525,6 +1606,7 @@ nfsd_write_dio_iters_init(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	nfsd_write_dio_seg_init(&segments[0], bvec, nvecs, total, 0,
+ 				total, iocb);
+ 	segments[0].flags |= buffered_flags;
++	segments[0].claim = !!buffered_flags;
+ 	return 1;
+ }
+ 
+@@ -1533,12 +1615,13 @@ nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		  struct nfsd_file *nf, unsigned int nvecs,
+ 		  unsigned long *cnt, struct kiocb *kiocb)
+ {
++	struct nfsd_write_dio_hold holds[3];
+ 	struct nfsd_write_dio_seg segments[3];
+ 	struct file *file = nf->nf_file;
+ 	loff_t start = kiocb->ki_pos;
+-	unsigned int nsegs, i;
++	unsigned int nsegs, nheld = 0, i;
++	ssize_t host_err = 0;
+ 	int sync_flags;
+-	ssize_t host_err;
+ 	size_t expected;
+ 
+ 	nsegs = nfsd_write_dio_iters_init(rqstp, fhp, nf, rqstp->rq_bvec,
+@@ -1567,23 +1650,32 @@ nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 					kiocb->ki_flags);
+ 
+ 		expected = iov_iter_count(&segments[i].iter);
+-
++		nfsd_write_dio_seg_hold(file, &segments[i], kiocb->ki_pos,
++					expected, &holds[nheld]);
+ 		host_err = vfs_iocb_iter_write(file, kiocb, &segments[i].iter);
+ 		if (host_err < 0)
+-			return host_err;
++			break;
++		holds[nheld++].written = host_err;
+ 		*cnt += host_err;
+ 		if (host_err < (ssize_t)expected)
+ 			break;	/* partial write */
+ 	}
+ 
+-	if (sync_flags && *cnt) {
++	if (host_err >= 0 && sync_flags && *cnt)
+ 		host_err = vfs_fsync_range(file, start, start + *cnt - 1,
+ 					   !(sync_flags & IOCB_SYNC));
+-		if (host_err < 0)
+-			return host_err;
+-	}
+ 
+-	return 0;
++	/*
++	 * Mark the pages this WRITE shares with its neighbours for dropping
++	 * only once the WRITE is complete, including its fsync if it has one.
++	 * A page marked while still dirty is counted as DONTCACHE dirty and
++	 * wakes the DONTCACHE writeback kick; a page marked once clean is
++	 * simply dropped.
++	 */
++	for (i = 0; i < nheld; i++)
++		nfsd_write_dio_seg_release(file, &holds[i]);
++
++	return host_err < 0 ? host_err : 0;
+ }
+ 
  /**
-  * folio_end_writeback_no_dropbehind - End writeback against a folio.
-  * @folio: The folio.
-@@ -2135,8 +2223,8 @@ struct folio *__filemap_get_folio_mpol(struct address_space *mapping,
- 	 * more than they wrote and cannot be dropped in part.
- 	 */
- 	if ((fgp_flags & FGP_DONTCACHE) && (fgp_flags & FGP_DONTCACHE_EDGE) &&
--	    (fgp_flags & FGP_LOCK) && folio_test_uptodate(folio) &&
--	    filemap_dontcache_edge_unit(mapping, folio))
-+	    !(fgp_flags & FGP_DONTCACHE_DEFER) && (fgp_flags & FGP_LOCK) &&
-+	    folio_test_uptodate(folio) && filemap_dontcache_edge_unit(mapping, folio))
- 		folio_mark_dropbehind(folio);
- no_page:
- 	if (!folio && (fgp_flags & FGP_CREAT)) {
 -- 
 2.52.0
 
