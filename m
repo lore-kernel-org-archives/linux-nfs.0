@@ -1,58 +1,73 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792869144;
-	b=0Bn4lC9bWe2oUoJlIPFuz7ikCeBA84EsmeXIVv0xsBuKfqdS3YAcGSCn15fzzedskDhT
-	 Yov3FoIlG1vEmXoQPQ6ZvHhn//OQ4Jt/CRYLs+OGvpm7cf30plcRjNr87La0EdFeZ1JZF
-	 8Yw8SMk2GRx902NLCy6HXQUtSHA/ADml0w2HsjWZZ9S4dBdmshgSZzLZyX5HZ0xKvPrBr
-	 fwy7Rcf9qxyCEtIbu99O7y89Z9wyRjuTMGHm2bAlki/a8n5GmleZT8u9EHShTwrUvUgV9
-	 ufpFhHW19b2QTDHyFzBNL0xgKQUs9RctCtMDxe2uy5YzGgzlOtZbPOzX03NvVetNOyA==
+	t=1792874042;
+	b=PuPzNl0GPwrV7DCvy/yXFHKG+JDm7J1xj/Rq+fhzLrzKgF2+83NPegwAC0M2JJUojW02
+	 x3VVOW4gwSbh92hvfDP2BJ7gBAdqt9QchFI0Py4HJctpnPU+j/+RUVJTphlw0XrLtuBMG
+	 hxYvW4ev0ivTg6fjXpWdvfhj3NA5sFGI6k3NWdwSnouCAfkEPNor/L9nDNDdWqOV3TyaQ
+	 26N4GJgNsZuz7JOwY/Dc6NavmKZNr0nJEneRyvcticRjjBHtMVZqwXvGGwxSvtx38dq7l
+	 hm2dll7UfwnRgVw5avL/C+K5tEQBCEDtXoXTnkN3t9QK1xkx+7+1dMv2PeWEwuAxxMw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792869144;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 MIME-Version:Content-Type:Content-Disposition;
-	bh=tWWiAhD1q3SGqZytIYj8Vfqab8KfOk5ANJFgDlntlxg=;
-	b=B/0k3vj9+vQ6Lb8W3ZK4IDkhWlhKRTzz1O0H+xZuGgiBeFHVEeL+sEPIcEO0GNKTkTpL
-	 NSYsNvXHX0wvdDmK0VK78NajDHuNz6bEXPMf+oqyw794pcpuZT0QjWQv4TNOIIhY0TSr+
-	 UWWYX5Vb0DIEJyOd7BmO14eWSwSy3UuVdP3/YMG0qgKELvo1PEWgf7PfJPNWiXTSsq0St
-	 hU8RzGaCzRgga7vbjmA+ElsCoNjRh3mSpARME1Gx1kYR3pb+vhIL8NVQecvnFTU16vSNv
-	 hc7SUmAt8kR+8LJT/U6rKnTa6DjrxFr+vKSSbH8aozC9RteaZLWbIH65YLlOgfMHUQg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792874042;
+	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
+	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
+	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
+	 References:Subject:Content-Type:Content-Transfer-Encoding;
+	bh=O7nLcz1aNrpXPgG2U6sTiNfVNPhilwU8KCVwrhsEzN8=;
+	b=wjXP6XNIHfhKQLJHrF7Sb4g8agzTA+pXqOkct/bBjRmjZgG4VEk69w/u84sdBarzgG6P
+	 krD+NNzV7mUQPyFbOl5o1F8b/+/gPIqal1uz85MeOXCHzf9J3Xt45rL41Vgu1MWs1Wf6C
+	 EErS5YgR1C23/Wh3Tf9CQo3vDWP6UWLE7GIuPKoOJymE/6ZrbeBRQr2b1zvIuvZ/ELJW/
+	 C5UCTLX22YdKccq8/jxppiae4/TWKQBf6Km8dxVbjn5o/zrm2uXd+lyCofDZ+zTJFdntZ
+	 mQ9bzALNXJ+LEuXZNh2EuQAJ6Y1epbMFgq9mgZPnz6Qjz0xvEypRxjt+tp29M4zu1yA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=k4vB6PT7;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=W42fxIhr;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F0711606A31A;
-	Sat, 24 Oct 2026 19:12:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B263E606A31A
+	for <linux-nfs@vger.kernel.org>; Sat, 24 Oct 2026 20:34:01 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=k4vB6PT7
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4B5A01F01825;
-	Sat, 24 Oct 2026 19:12:23 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=W42fxIhr
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DC3231F01825;
+	Sat, 24 Oct 2026 20:34:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792869143;
-	bh=tWWiAhD1q3SGqZytIYj8Vfqab8KfOk5ANJFgDlntlxg=;
-	h=Date:From:To:Cc:Subject;
-	b=k4vB6PT74tlNmxhi9L2GOANsPAVqfX1q2JmIvaC2bdL0QQzOXPu91DEM+YEY8YmL7
-	 Ipn+cIXjJJj92UpMbUzvspL0eLaZHA8WyBl9grp+FeepHs0AZnPwVytpeFbtHaP3s7
-	 qcE5YOJW23SbpEB3S75h3GCouQSguWnZgE2FuztQv8N77fweEp9pyqXMEu6/68CCPR
-	 0zEY8OoEA8qIul/i2czY+AkLUo8+RlW77envDwY21N0biXqvJCAFcQeePCioHJjz/1
-	 1Mi4JIs/NL1A7o25TPjX9YiUoWKFry33ar3PRFcxFFXf0UJkCbKBLhBMfxghp/9gl+
-	 jF8UX1y1CZ1Hw==
-Date: Sat, 24 Oct 2026 15:12:22 -0400
-From: Mike Snitzer <snitzer@kernel.org>
-To: Chuck Lever <cel@kernel.org>
-Cc: Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
-	Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
-	"Matthew Wilcox (Oracle)" <willy@infradead.org>,
-	Jonathan Corbet <corbet@lwn.net>, linux-mm@kvack.org,
-	linux-fsdevel@vger.kernel.org
-Subject: [PATCH cel/nfsd-testing replacement] NFSD: cut a misaligned
- direct-mode WRITE at folio boundaries
-Message-ID: <at0DFod8CcUfus2S@kernel.org>
+	s=k20260515; t=1792874041;
+	bh=O7nLcz1aNrpXPgG2U6sTiNfVNPhilwU8KCVwrhsEzN8=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=W42fxIhr47saKJxDBN33os610d+2MnQ5JSI2dyujkrCTdEawMk7lXyc44u8SklQH+
+	 +Tbit8mRRAylqLpSc8jW2LAbpXuaytqIUJzlT2+h0dNUi2ZxBQIiZdlgT9ptcEYhMc
+	 SPxDkJDwsGDJiLICTI85ckgblt9K+3MqOge4K5Vwgzhalcbshr0Y4Mo5mRIfekaw+b
+	 vGQs5xrSi1d6YzlOAFjNQF3RRqr9Nd5+gi0z9wGM1cqCjhJ5jdot2EUkC2Ectg/VWc
+	 ZNLf3SdpltCR3Y5YpjeVOcnNd4G4BnxQHuSWzcNZ13DtK3MSIJElMoDtesgNLMf85M
+	 NT1iPGMdYViEQ==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 2195DF40066;
+	Sat, 24 Oct 2026 16:34:00 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Sat, 24 Oct 2026 16:34:00 -0400
+X-ME-Sender: <xms:OBbdasXBEhCYaJDoi2OQ5PyZnpcwt1OPFMvU0k-E7rOw_RXIPJd67A>
+    <xme:OBbdarZSPgUiGJlQuli88OHf8tpkGCNi0_4-FjQnEs8uvkh5jcQBZlzeU6jcN2dAM
+    Cucnm4lEJ2Ni4HGLyikQ5_xaN2JVIN7PgJlW6k6Se_H7GPQLHqg3Ts>
+X-ME-Proxy-Cause: dmFkZTGwYMEl2mCs5p0brRKIzGlpOKhwc72KvvComrstgAtMrp12ajk54Uqe+lvmteVFnf
+    34La8X6kvH3cXXDZOOLPfNz9eDYrh/9S5eWAZaKsFWHMiMmQ5qUdRjGg2GXKKkaYwh0IMc
+    +ke0nNVyPplZh8Kly+JouQykSlFnMktvutSC5N6iFWKDfCFzeyr4MAlmw8v7vi76jRe103
+    D1A9/ntlJvnEtUCsLvjHLuDsUUcx1xKqiMODWBwe5saWkWvHtN83QW4/nfDwzFDqcxV06F
+    3+nIz1pM2tcr+PuU8rjsJuu+g4v2KBJasjZPkloN1i4QUtnCn5H3kqf37Ghmd4CwRK/Oam
+    POPk5SmDjdb189/NFqCF+teQi0uD4O31YQvhGxTtjeyfUgAbjmJg55223Bc+qlGaVSs0hA
+    avFRHFT7RfqKFXPl29hSt76dJexKr1R4xWyprSVBQcj9CManwLfNVLxWgwwTWDu2VzpxTp
+    dd0LQ2BNJ4m1mIaj5VVfChducw3tBC04kXDVulBUvSB3OoJk/8gORWOM0r5IQAFAHkCr9M
+    C+5pgU5maFnCnaOjlJ5DiUnA4PZdpi/kGshfeDDrPjTM0pEoJRwuKFxCaNcBxKIoxTjHKb
+    t+8MpC2M3Lwf9zAYOhjZz5PUmcvmKeJDgoJAXjxW6ozi0VFpZJ7lnOCLSgZw
+X-ME-Proxy: <xmx:OBbdakuvXevDTGn70BgYkmc5JtPv7AzrTx1ahJ7K1J8MDYrhjKK9Ww>
+    <xmx:OBbdaiJzNJSeXTZyDLmuh6-qoq_rNDWurxlLPnLtiZzP9s2N9CBwqg>
+    <xmx:OBbdat9l0iB8d6qkpom6613gf9_M0CU0eoqXwvbn2UkTO5QpR_Sucw>
+    <xmx:OBbdarwZ_Z42G_7bQxG-uRygCtil3ktTV6alrYrRTy_alRSVVw7v5w>
+    <xmx:OBbdaq44DUxC7Xhdco_RPdtcduM15fsYsUe8gIW74bZrqBHQwBWEQQYt>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id EEDB9782738; Sat, 24 Oct 2026 16:33:59 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -62,153 +77,50 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+X-ThreadId: A4vVj0r1ngN7
+Date: Sat, 24 Oct 2026 16:33:39 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Jorge Mora" <jmora1300@gmail.com>
+Cc: linux-nfs@vger.kernel.org, trondmy@kernel.org, anna@kernel.org,
+ Rakesh.Bhargava@netapp.com, Mohit.Kumar@netapp.com, mora@netapp.com
+Message-Id: <425e2489-72a0-49c6-8a69-21069a878aa4@slotpi15m67>
+In-Reply-To: <20261024164633.256458-1-mora@netapp.com>
+References: <20261024164633.256458-1-mora@netapp.com>
+Subject: Re: [PATCH] xprtrdma: fix race between frwr_unmap_sync() and transport
+ disconnect
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-nfsd_write_dio_iters_init() splits a misaligned direct-mode WRITE into a
-direct middle and buffered ends.  Then as little of the WRITE as
-possible goes through the page cache.  That works only if direct and
-buffered I/O never meet inside a folio.  The direct middle invalidates
-the page cache over its range.  So a middle that starts or stops inside
-the folio of a buffered end drops that folio.  Then the second of the
-two neighbouring WRITEs reads it back from the device.
+On Sat, Oct 24, 2026, at 12:46 PM, Jorge Mora wrote:
+> Other consequences of the same race are a use of ep after
+> rpcrdma_ep_put() frees it, and rpcrdma_flush_disconnect() dereferencing
+> r_xprt->rx_ep after disconnect cleared it.
 
-The middle was cut at the file system's direct I/O offset alignment:
+...
 
-        prefix_end = round_up(offset, offset_align);
-        middle_end = round_down(orig_end, offset_align);
+>  - rpcrdma_xprt_disconnect() sets rb_closing after rdma_disconnect(),
+>    waits for rb_unmap_users to reach zero after draining the QP and
+>    before releasing reps, reqs and MRs, and clears rx_ep and rb_closing
+>    under rb_lock before dropping the ep reference.
+>  - rpcrdma_flush_disconnect() tolerates a NULL rx_ep.
 
-Where that alignment is a multiple of the smallest folio the mapping
-allows, the cut is a folio boundary, and the problem cannot occur.  This
-is the case for 4 KiB pages over 4096-byte blocks.  It is broken where
-the smallest folio is larger than the alignment.  Examples are 16 and
-64 KiB pages over 4096-byte blocks, and 4 KiB pages over 512-byte
-blocks.
+Let's drop the reorder and the rpcrdma_flush_disconnect() hunk.
 
-Another is a block larger than the page, which the page cache holds as
-one folio.  There a misaligned WRITE costs a read per shared folio on
-top of its three I/Os.
+The only new reader of rx_ep that runs without the transport send
+lock is frwr_unmap_sync(), and rb_closing already gates it. It
+returns before touching the ep whenever rb_closing is set, and
+rb_closing stays set until the locked section that clears rx_ep. So
+keep the ep put where it is today, and clear rx_ep and rb_closing
+together under rb_lock after the put. A late frwr_unmap_sync() caller
+then bails on rb_closing before it can see a stale pointer.
 
-Cut each end of a WRITE on its own:
+So the rpcrdma_flush_disconnect() change addresses a problem the
+patch itself introduces, not a pre-existing one. Removing both keeps
+the fix to just two pieces: claiming a req's MRs under rb_lock, and
+waiting for claimants before disconnect releases the MRs and the ep.
+The sentence in the patch description about rpcrdma_flush_disconnect()
+dereferencing a cleared rx_ep can be removed too.
 
-- an end that is already an offset_align multiple needs no buffered
-  segment, and the middle starts or stops there, inside a folio or not.
-  A WRITE aligned to the device stays fully direct at every page size.
-- a misaligned end needs a buffered segment in any case.  That segment
-  now runs to the nearest boundary of the smallest folio inside the
-  WRITE.
 
-That is one rule: a misaligned end is cut at a multiple of the larger of
-offset_align and mapping_min_folio_nrbytes().  Both are powers of two.
-
-The segments still tile exactly the bytes of the WRITE: a buffered end
-grows inward, at the middle's expense, never outward.  A misaligned
-WRITE that holds no whole folio of the smallest size has no middle, and
-is issued as one buffered segment.  Where offset_align is a multiple of
-the smallest folio, nothing changes.
-
-A folio larger than the smallest that the mapping allows can still span
-the cut.  Readahead or an earlier buffered write can leave one, and only
-the lookup that finds it learns its size.  The direct middle then
-invalidates it as a whole, and the neighbouring WRITE reads its part
-back once.  Direct I/O always has that read-back for a cached folio, and
-the cut cannot prevent it.
-
-nfsd-io-modes.rst said that DONTCACHE is not used for the misaligned
-segments.  The write loop already contradicted that: every segment
-without IOCB_DIRECT gets IOCB_DONTCACHE when the file system supports
-it.  Replace that sentence with one that says so, next to one that
-describes the new cut.
-
-Fixes: 06c5c97293e3 ("NFSD: Implement NFSD_IO_DIRECT for NFS WRITE")
-Cc: stable@vger.kernel.org
-Signed-off-by: Mike Snitzer <snitzer@kernel.org>
----
-This replaces 80728157d1bd ("NFSD: cut a misaligned direct-mode WRITE at
-page boundaries") in cel/nfsd-testing.  Changes from that commit:
-
-- the cut is max_t(unsigned long, offset_align,
-  mapping_min_folio_nrbytes(nf->nf_file->f_mapping)).  PAGE_SIZE is
-  gone, and cut keeps the helper's unsigned long type.
-- the subject, the commit message, the comment and nfsd-io-modes.rst
-  name two bounds: the DIO offset alignment and the mapping's smallest
-  folio.
-
-It also takes the place of v8 1/7, which will not be in v9.
-
-Heads-up for applying the commits after 80728157d1bd: of the 27 in
-cel/nfsd-testing (6d13b7f74eec), only fcd8823db80e ("NFSD: only split a
-direct-mode WRITE for a worthwhile direct middle") conflicts, in
-nfsd-io-modes.rst.  Take its paragraph with "page" changed to "folio" in
-"nearest page boundary" and "never shares a page".  Nothing conflicts in
-code.  The other 26 apply cleanly, and the result differs from
-cel/nfsd-testing only in this change.
-
- .../filesystems/nfs/nfsd-io-modes.rst         |  9 ++++++---
- fs/nfsd/vfs.c                                 | 20 +++++++++++++++++--
- 2 files changed, 24 insertions(+), 5 deletions(-)
-
-diff --git a/Documentation/filesystems/nfs/nfsd-io-modes.rst b/Documentation/filesystems/nfs/nfsd-io-modes.rst
-index 0fd6e82478fe6..8f5e6872f1004 100644
---- a/Documentation/filesystems/nfs/nfsd-io-modes.rst
-+++ b/Documentation/filesystems/nfs/nfsd-io-modes.rst
-@@ -126,9 +126,12 @@ Misaligned WRITE:
-     middle and end as needed. The large middle segment is DIO-aligned
-     and the start and/or end are misaligned. Buffered IO is used for the
-     misaligned segments and O_DIRECT is used for the middle DIO-aligned
--    segment. DONTCACHE buffered IO is _not_ used for the misaligned
--    segments because using normal buffered IO offers significant RMW
--    performance benefit when handling streaming misaligned WRITEs.
-+    segment. A misaligned start or end segment runs to the nearest folio
-+    boundary inside the WRITE, not just to the nearest DIO-aligned
-+    offset, so the O_DIRECT segment never shares a folio with a buffered
-+    one; a start or end that is already DIO-aligned gets no buffered
-+    segment at all. If the filesystem supports FOP_DONTCACHE, the
-+    misaligned segments are marked DONTCACHE.
- 
- Tracing:
-     The nfsd_read_direct trace event shows how NFSD expands any
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index c4b32e41b4c5e..f18309d4609b7 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1396,6 +1396,7 @@ nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
- 	size_t prefix, middle, suffix;
- 	loff_t offset = iocb->ki_pos;
- 	unsigned int nsegs = 0;
-+	unsigned long cut;
- 
- 	/*
- 	 * Check if direct I/O is feasible for this write request.
-@@ -1406,9 +1407,24 @@ nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
- 	    unlikely(total < max(offset_align, mem_align)))
- 		goto no_dio;
- 
--	prefix_end = round_up(offset, offset_align);
- 	orig_end = offset + total;
--	middle_end = round_down(orig_end, offset_align);
-+
-+	/*
-+	 * The direct middle invalidates the page cache over its range, so it
-+	 * must not share a folio with a buffered end.  An aligned end needs no
-+	 * buffered segment.  A misaligned one is cut on a boundary of the
-+	 * smallest folio the mapping allows, even where the offset alignment
-+	 * is finer.  A WRITE may end at OFFSET_MAX, so the prefix is sized as
-+	 * a distance rather than by rounding @offset up, which could wrap.
-+	 */
-+	cut = max_t(unsigned long, offset_align,
-+		    mapping_min_folio_nrbytes(nf->nf_file->f_mapping));
-+	prefix_end = offset;
-+	if (!IS_ALIGNED(offset, offset_align))
-+		prefix_end += min_t(loff_t, cut - (offset & (cut - 1)), total);
-+	middle_end = orig_end;
-+	if (!IS_ALIGNED(orig_end, offset_align))
-+		middle_end = max(round_down(orig_end, cut), prefix_end);
- 
- 	prefix = prefix_end - offset;
- 	middle = middle_end - prefix_end;
-
-base-commit: 4e84914d70a0194e18bba6d814cfe71b340aadc8
 -- 
-2.52.0
-
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
