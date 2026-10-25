@@ -1,65 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792940381;
-	b=q/wLgci+V2wib6sDcKfJJPjgiecAM9Nlfx7xtrh+/WlL1vR1Ja7/F1UrAJViEDVjxvLy
-	 uLysxh/PkhCnHgdCpWdHqj7kSgUV7POR4t0Y0tZoSka8aY6nGT3PPKvF/uwTcDCnlm3xj
-	 K64+16NCkwZnT1wOG2l3HDhLchh+q6zBOiy8uaqfiYQaPxGBelWBd7F16xpzjGylC3lEZ
-	 EfiSK/1/IjK43xQc4A1oeXcAQJf+CRFMENqTLLOjC7ixICDc2CTo4uYlbpgFajCSsaKgq
-	 5T5fI6fZ7QAIP2H3eADnubhXDGxtYx9e12LriQxlu5WBDfiYoCpExBJpL/40y/BVL/A==
+	t=1792946519;
+	b=IVlFebuVJQF3XaYwJkjhs8jm4r0W+HSuHby4ia0kQNPY7Ud/h2U7BWJB45Ls0NWio0lS
+	 iEd9En9ajMO6hmtzmnIHd2nUL52rdwMoucfRpDIXBlrlvxnJDelzQ1DConQno1xnyWbHz
+	 /L1ZVO20oWrnt+xXv2sTahc15wKW/ZBUJ/aTUmZc6CAnBf/Ao0FnjflaDzkL2qbiOwnDF
+	 LXptecb+M+EceOSdAdkEzOBUS8jdcU8M34z06JJCfGmbhy6ZJxakPa9eibKCfPAlTjfGc
+	 l/JVNXcAc2gNkCUrkULwhTsyi51cZoOvUrxQzVRITqgTDWUuLWq4BS3PvS1PDJS5fEg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792940381;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792946519;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 In-Reply-To:References:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=ypAazgUbAvcxzmZkxRES4uqcUMkrnn//bRJm+xkJQNQ=;
-	b=M4WVxAEAw//URSbaZMBmz5BYZUTGefcnXZVr2TZfXa3u5U+B50UJGD/pMrOswqvyOUsb
-	 RkxWkjb8XayVslEJDlRKa0hFB7Dj04c+q9r+erGUffx5R0tNESu3uLTUx5qASq13TCrLo
-	 amkokrHzHa27Y82Zz/+LEgaZM388Z6eXLZenMKrv21mXiTnUQbcnd62BKTwX4MqbeXPP2
-	 f3c3zTQC2KMU09BJzClerKKoABHy6cLrH9Z8kBmkz4Iwo+1C/djhgDHrSIa8kyeIF8+JR
-	 cqfVGpluWYftlVy8FjvFTaDWKhpgytCscc0wKktuJ7ACxQoClLhWS+CfpErdKKKjcGw==
+	 MIME-Version:Content-Transfer-Encoding;
+	bh=FMyzbSBnt+5KvbIq2hA16c9sKO3amj+pJNWPArtZsew=;
+	b=QCIsO+0ebtkNQSFod2iqbklfHI4CodfFHJnDj6VjVU2i0kWpDQCgVgse24bQLTZLVp4Z
+	 bbWgb9mXV1Ji8riAIIN6sJHwkKA0L0SBuKKw81OQOMuUoGXMQkCxMEdhE/CRYGU0HhTE7
+	 wQSs3kVlpn//sKC9lezvCefOxC84PzvJq+WRjK+m9xJ+/LMOWpH8wT+Q9awzkMHNQ6te5
+	 Fq5AZUiwEmDcBuYb6zubKieYr9qtaFQPf17EuWKDm5PB3Ofxs/56QNAIH5I038JWpnRXV
+	 whaxM16zmhnmblu8BsMSk0P4RU+hwgx2BBKoV4gWm22inVV/f0hkn4a8RLC1nNrrsSw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GjcPZQK5;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=h5X6THF2;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C7126606A31A;
-	Sun, 25 Oct 2026 14:59:40 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8C521606A31A
+	for <linux-nfs@vger.kernel.org>; Sun, 25 Oct 2026 16:41:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GjcPZQK5
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 30F851F01825;
-	Sun, 25 Oct 2026 14:59:39 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=h5X6THF2
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D18A61F01825;
+	Sun, 25 Oct 2026 16:41:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792940380;
-	bh=ypAazgUbAvcxzmZkxRES4uqcUMkrnn//bRJm+xkJQNQ=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=GjcPZQK5iFURP6dUTzxcQVaYijWU2eWa1KT+DK3eUv/g/RyN5lMD431tjUXYA/Pih
-	 ylmqKCA2WjGbgXyrlDjat63QU3ZBE+Bf1rbZhowUGRXZWhffTzFaV2Vpf/A6sRMeKY
-	 ZDCXtLFsDGPFYfL+9yzKajcL8wRlQAN3TwcxAwRDy95EUgxZcWd8mIvQ6Jcqtgh7E1
-	 3FOpGqXpaM6j8nruSkESHqLyv/qvEbtxMxri2V8ctfEOe0csR1+xOmE/ZbeKy1Eyi6
-	 a/i5YgfoQcCA6qJ4fzZFUz8X4tJnaC2mnBAFx5d9//rR0TJEvQbXar7rzqNKFLRwoH
-	 IHrUeLBVXHnHQ==
+	s=k20260515; t=1792946519;
+	bh=FMyzbSBnt+5KvbIq2hA16c9sKO3amj+pJNWPArtZsew=;
+	h=From:To:Cc:Subject:Date;
+	b=h5X6THF2SimgA0zHeVxsqTQKuVw7pmdvvpX8Ki1G1m0ktBqU//tSmpM+tHYbR7aMh
+	 kXsmJZNEKZbJSdKl76kxdY3C7Rz1TNPJLJPB39dHnjEuaZbjMKNZILnTrMqWGFjgKh
+	 Z7eghN5L7MIFX30UZ8J5LijxjBvUsvNQCkNMndgDtJ20jRf2sSFQZZHsip3KqVHBBU
+	 JzOV8DCd39kTh7nj49yh9o5ESWDnuB2BG59etS4iv6Zi5Ogn7PRpsQkN6AuwfPRcH1
+	 sPLdOivfDJPA4KxUCNaXLC2T+bqZDxahuSjjDEX0uaUoGomPquIQPl+KwozVE4C4zg
+	 +Bi+ZtrJR3HkA==
 From: Chuck Lever <cel@kernel.org>
-To: Mike Snitzer <snitzer@kernel.org>
-Cc: Jeff Layton <jlayton@kernel.org>,
-	linux-nfs@vger.kernel.org,
-	NeilBrown <neil@brown.name>,
+To: NeilBrown <neil@brown.name>,
+	Jeff Layton <jlayton@kernel.org>,
 	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	Christoph Hellwig <hch@lst.de>,
-	Jens Axboe <axboe@kernel.dk>,
-	"Matthew Wilcox (Oracle)" <willy@infradead.org>,
-	Jonathan Corbet <corbet@lwn.net>,
-	linux-mm@kvack.org,
-	linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH cel/nfsd-testing replacement] NFSD: cut a misaligned direct-mode WRITE at folio boundaries
-Date: Sun, 25 Oct 2026 10:59:36 -0400
-Message-ID: <179294034533.680410.17193539426864107681.b4-ty@b4>
-X-Mailer: git-send-email 2.54.0
-In-Reply-To: <at0DFod8CcUfus2S@kernel.org>
-References: <at0DFod8CcUfus2S@kernel.org>
+	Dai Ngo <dai.ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>
+Cc: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v1 0/4] xdrgen fixes
+Date: Sat, 24 Oct 2026 21:46:12 -0400
+Message-ID: <20261025014616.22236-1-cel@kernel.org>
+X-Mailer: git-send-email 2.56.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -69,25 +59,22 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
-On Sat, 24 Oct 2026 15:12:22 -0400, Mike Snitzer wrote:
-> nfsd_write_dio_iters_init() splits a misaligned direct-mode WRITE into a
-> direct middle and buffered ends.  Then as little of the WRITE as
-> possible goes through the page cache.  That works only if direct and
-> buffered I/O never meet inside a folio.  The direct middle invalidates
-> the page cache over its range.  So a middle that starts or stops inside
-> the folio of a buffered end drops that folio.  Then the second of the
-> two neighbouring WRITEs reads it back from the device.
-> 
-> [...]
+Four fixes I found while converting NFSD's NFS_ACLv3 XDR encoders
+and decoders to use xdrgen.
 
-Applied to nfsd-testing, thanks!
+Chuck Lever (4):
+  xdrgen: Handle a union whose arms are all void
+  xdrgen: Key the width tables by type name only
+  xdrgen: Register optional-data names only for typedefs
+  xdrgen: Take a union's numeric discriminant width from the declaration
 
-[1/1] NFSD: cut a misaligned direct-mode WRITE at folio boundaries
-      commit: cc9bb083d84fd52259476346a852a1e0ef2419db
+ include/linux/sunrpc/xdrgen/nfs3.h     |  8 ++---
+ include/linux/sunrpc/xdrgen/nfs_acl2.h |  2 +-
+ tools/net/sunrpc/xdrgen/xdr_ast.py     | 42 +++++---------------------
+ 3 files changed, 13 insertions(+), 39 deletions(-)
 
---
-Chuck Lever
+-- 
+2.56.0
 
