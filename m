@@ -1,59 +1,65 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792940363;
-	b=ppghqDW+1y0o3JRZR89DoB1cMv4JZtcscrz5Pxg5hJ9daa6Lm+WA+88OQSfRveX2VpLx
-	 Xmc/SZ75BeRxfF/AMA2/JyAmEnls3OcZB+kCpnChtrTwxpaBC7FTc6YPYsjf+muKcvVpG
-	 TUZjO146uXPwDVCtmAUgqRJy4JNt0qbJXmf5SJmB/v3LYOCEtRh9pFr9nYPZGWQTfyBDL
-	 GJ9SHSL+QtrVoK0BL6tG7ebXjO4+7BoXjJQAZKGrX3biOW9n98RxsWBrT8m8yx4aJlKJa
-	 9sHGYlSIGRKW/YNhbmPCvhJoYGRPnptqnoTIVukrVvpegTuIN/DyuFTYmDdMr89/8ZA==
+	t=1792940381;
+	b=q/wLgci+V2wib6sDcKfJJPjgiecAM9Nlfx7xtrh+/WlL1vR1Ja7/F1UrAJViEDVjxvLy
+	 uLysxh/PkhCnHgdCpWdHqj7kSgUV7POR4t0Y0tZoSka8aY6nGT3PPKvF/uwTcDCnlm3xj
+	 K64+16NCkwZnT1wOG2l3HDhLchh+q6zBOiy8uaqfiYQaPxGBelWBd7F16xpzjGylC3lEZ
+	 EfiSK/1/IjK43xQc4A1oeXcAQJf+CRFMENqTLLOjC7ixICDc2CTo4uYlbpgFajCSsaKgq
+	 5T5fI6fZ7QAIP2H3eADnubhXDGxtYx9e12LriQxlu5WBDfiYoCpExBJpL/40y/BVL/A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792940363;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792940381;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding;
-	bh=BsoLW6CkCRX5iCjzQsw1HbyRGsIpupAhBj6yUe3KgDw=;
-	b=AKKAh1PdV/e1LiG4eMjiA/TgliD43Hq6/HhBnnvhBx2VIv0XmNpb8peXW+Lb+Xg8ejR8
-	 5eMql2iBeQ27cx4fgBRI56Zo9kUrXlOKwnbxZ/PZKlkMe7LWa3KnkpACCtbv17HocP0Zt
-	 WKOZgERXUfZU7b1a+0aW4KQBLrTgWk6ejC5lcofBLXHZytrTC9NotUG2mKdHg8UVH/zIz
-	 wSXLDZleu/75jFgUJyg1i9O9kxG0dLSNfT0slPlrMO06vsDJWKjB/zDw9mr3p8Kshbdmc
-	 aksnpT1cQc5yJj11wV74nNXYOS5K+IvIM+px043i1bIf/Xf0dsun8w2/87IM3LR6nQA==
+	bh=ypAazgUbAvcxzmZkxRES4uqcUMkrnn//bRJm+xkJQNQ=;
+	b=M4WVxAEAw//URSbaZMBmz5BYZUTGefcnXZVr2TZfXa3u5U+B50UJGD/pMrOswqvyOUsb
+	 RkxWkjb8XayVslEJDlRKa0hFB7Dj04c+q9r+erGUffx5R0tNESu3uLTUx5qASq13TCrLo
+	 amkokrHzHa27Y82Zz/+LEgaZM388Z6eXLZenMKrv21mXiTnUQbcnd62BKTwX4MqbeXPP2
+	 f3c3zTQC2KMU09BJzClerKKoABHy6cLrH9Z8kBmkz4Iwo+1C/djhgDHrSIa8kyeIF8+JR
+	 cqfVGpluWYftlVy8FjvFTaDWKhpgytCscc0wKktuJ7ACxQoClLhWS+CfpErdKKKjcGw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oYvxjhEA;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GjcPZQK5;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 277B0606A31A
-	for <linux-nfs@vger.kernel.org>; Sun, 25 Oct 2026 14:59:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C7126606A31A;
+	Sun, 25 Oct 2026 14:59:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oYvxjhEA
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 157FF1F01825;
-	Sun, 25 Oct 2026 14:59:22 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GjcPZQK5
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 30F851F01825;
+	Sun, 25 Oct 2026 14:59:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792940362;
-	bh=BsoLW6CkCRX5iCjzQsw1HbyRGsIpupAhBj6yUe3KgDw=;
+	s=k20260515; t=1792940380;
+	bh=ypAazgUbAvcxzmZkxRES4uqcUMkrnn//bRJm+xkJQNQ=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=oYvxjhEAnDtPJ57nzWvSu15C2SqfN0St8CIK/2iFO6ATdAd2fiY9v9SKdY7/UZ8l1
-	 5DoNSBzOeC8dUWgxqTXUy/zAhJyefKr3jjaO2QhY4QqjuEsITULCxSewl32BP2P2uP
-	 1TXBt6XYfxDJdwooW9RlFXdsa3AiDPrf3CMTcIOpMJaap9iNIA67VF8nUCQq4Qws8b
-	 0EbRr6JVna3qMUnV/ZfniOSqKc41xHyQspxIVI5rLavnOqxtUJQWssoQiawIFYji2i
-	 kAPPvLwrf16pG3zAX2lxfmDOxNyFxIDLpwQbrtjXEYiwxkRHTN7UoTS8r9Es5tmLqe
-	 J4quTWRk0okIQ==
+	b=GjcPZQK5iFURP6dUTzxcQVaYijWU2eWa1KT+DK3eUv/g/RyN5lMD431tjUXYA/Pih
+	 ylmqKCA2WjGbgXyrlDjat63QU3ZBE+Bf1rbZhowUGRXZWhffTzFaV2Vpf/A6sRMeKY
+	 ZDCXtLFsDGPFYfL+9yzKajcL8wRlQAN3TwcxAwRDy95EUgxZcWd8mIvQ6Jcqtgh7E1
+	 3FOpGqXpaM6j8nruSkESHqLyv/qvEbtxMxri2V8ctfEOe0csR1+xOmE/ZbeKy1Eyi6
+	 a/i5YgfoQcCA6qJ4fzZFUz8X4tJnaC2mnBAFx5d9//rR0TJEvQbXar7rzqNKFLRwoH
+	 IHrUeLBVXHnHQ==
 From: Chuck Lever <cel@kernel.org>
-To: jlayton@kernel.org,
-	Jakub Klus <jklus@redhat.com>
-Cc: neil@brown.name,
-	okorniev@redhat.com,
-	Dai.Ngo@oracle.com,
-	tom@talpey.com,
-	linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] SUNRPC: fix delayed cache cleanup in write_flush
-Date: Sun, 25 Oct 2026 10:59:18 -0400
-Message-ID: <179294034526.680410.15627456302829977609.b4-ty@b4>
+To: Mike Snitzer <snitzer@kernel.org>
+Cc: Jeff Layton <jlayton@kernel.org>,
+	linux-nfs@vger.kernel.org,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	Christoph Hellwig <hch@lst.de>,
+	Jens Axboe <axboe@kernel.dk>,
+	"Matthew Wilcox (Oracle)" <willy@infradead.org>,
+	Jonathan Corbet <corbet@lwn.net>,
+	linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH cel/nfsd-testing replacement] NFSD: cut a misaligned direct-mode WRITE at folio boundaries
+Date: Sun, 25 Oct 2026 10:59:36 -0400
+Message-ID: <179294034533.680410.17193539426864107681.b4-ty@b4>
 X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20261023132821.3273867-1-jklus@redhat.com>
-References: <20261023132821.3273867-1-jklus@redhat.com>
+In-Reply-To: <at0DFod8CcUfus2S@kernel.org>
+References: <at0DFod8CcUfus2S@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -66,23 +72,21 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
-On Fri, 23 Oct 2026 15:28:21 +0200, Jakub Klus wrote:
-> When writing to the cache flush control file, write_flush() advances
-> cd->flush_time so newly added entries aren't prematurely invalidated.
-> 
-> However, write_flush() was also assigning this future timestamp to
-> cd->nextcheck. When cache_clean() runs, it sees that cd->nextcheck is
-> in the future and skips cleaning the cache buckets. Rapid flushes (such
-> as running `exportfs -ua` followed by `exportfs -r`, which can happen
-> during systemctl restart nfs-server on RHEL) push cd->nextcheck
-> further out, leaving old tombstone entries stuck in RAM.
+On Sat, 24 Oct 2026 15:12:22 -0400, Mike Snitzer wrote:
+> nfsd_write_dio_iters_init() splits a misaligned direct-mode WRITE into a
+> direct middle and buffered ends.  Then as little of the WRITE as
+> possible goes through the page cache.  That works only if direct and
+> buffered I/O never meet inside a folio.  The direct middle invalidates
+> the page cache over its range.  So a middle that starts or stops inside
+> the folio of a buffered end drops that folio.  Then the second of the
+> two neighbouring WRITEs reads it back from the device.
 > 
 > [...]
 
 Applied to nfsd-testing, thanks!
 
-[1/1] SUNRPC: fix delayed cache cleanup in write_flush
-      commit: fa5ce71d54eee315c5cdc95ca85bb1eae5336d4e
+[1/1] NFSD: cut a misaligned direct-mode WRITE at folio boundaries
+      commit: cc9bb083d84fd52259476346a852a1e0ef2419db
 
 --
 Chuck Lever
