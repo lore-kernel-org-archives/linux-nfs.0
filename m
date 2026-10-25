@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793050589;
-	b=DoQddkUgoUQjg9xxVZ2NlPAVAZDEEsvcBr2vug7y9OfHE0sYvlho73uk04nC80PFUWEN
-	 bMIPHfqY6LJdUdR/QLj9RomXN2upEavKoA2BBt4uuk45rY+/CG+yKq3y2tEmlhq4GZLx4
-	 Fd3Ay9itBXy1Ifum07QJ3OhI590dOnvTiSp8YK+VoYTWqoRSlXpKja7NgSz2GqC/seBsm
-	 j4IQ2EJ60vGjHXp0154Kfy9H5tYIjEXpE9oKKs8LA0j+V2J32cYk5mWxg93S0ICkTG0Uk
-	 agCIv4J/5zU/ADTDD7w/Vrdxgr6+PXDdbLQauQISKl1WkDBz8Vzr05dswCIrjZjn8Bw==
+	t=1793050590;
+	b=kj/36MgRKThPWdbCgh5sQ7IB8hLzl8gABau3j2HFScHadRk634MXucGYCbwV7AB67m5O
+	 H0sLlSC33TLHEu39sl2jZlU1Gc9/zvmgAV5zwTPGEahl2c3d0Z2qBkGaQrkYgWQVo3/jM
+	 ltv8KxaA5pOj9l9JV/ekhv+bHq/0qlL5NVLMHUqxtHl2UwFpd/mNDhE4m78t07tHeLwVk
+	 LDf2BMNpz1ySUYy82lB1V4tpK5uvxS19SQ1+BkQwrZ9g0eu3KrENwkuUJ91JPKQVgvjGb
+	 qmEwbqzqCzRadCZUgDG+8f5NqsSngxrhwKNVx3mFi+eGb5G7RaZh6F9aj+xXRcQFbGg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793050589;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793050590;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=kN8NtnqvdYRT1NYa7F+ug7iwEdr5iPT3WCxCr93g4B8=;
-	b=m537CTtmuIiKNuFgo42Cl25xNzkTz7vJEhzqob+R0xDMONvKd1Ln/NcmApcWtx9rFiZf
-	 OqDS3d0Wl8xF6TmlvoitSTUtoptwdXJE4oHXD25UwA+eRCfTt+rxjt6V+drjiY5ncenZj
-	 eJutDbvq8ZOIhbsFjVOHOPMZGsooxRctASNHjyEXbrdSMvQriVnwkhxdZqSdscwI+OPZ5
-	 ZtyWQ7m4IPYV4E5HE+6N9EdUkZ3UTUcmtbynC6EdDqUfLKpwKkEJz12kGIL99ilw3WZ5B
-	 t3fS+pBAZabZgMmbNH7NbPRKO1QxXwkH1RbIIZoSNqNld0Q3GrLFr4jPLenX1RjRj2g==
+	bh=HarieD7BhEtLMxzo//zT3OKEfJ3HRfK4EC2GbqU25/A=;
+	b=gELhjRFQJLRWPSIeFcldWbA+GCk9k15l9EE0ToaxDB6dgJnKn+EkN+ZLg7DCVxkKDLm3
+	 JD991EZZoQqQvm6z5B+m4oI8U3apsSVkMHfOQ10flEWJoZihVebQ+EDuWdi+MPpizz2hN
+	 fxLQYlN/lnWVO1r92m1Uq5LZNrRr15CFYvWNeHeB/4K0fl0mQBOGRshUUG3RxFBqhwcMv
+	 NitdrtfT1tsJorjb4YVSlWAnRhmFp3QA+Mxi750xPjaQiy1L/QE8sQ/zq/ZsqU/nIhkoA
+	 ltoOMwtNsiIv9SGhGQu3jGSdSgvqJ4M/Ry4dU0h6CfkagYQWHIK0pPtVoj2nlbHSSRQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="KpeWUhJ/";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XUzwnyV+;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2B51F606A323
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 21:36:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3CBC0606A322
+	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 21:36:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KpeWUhJ/
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 661E31F01825;
-	Mon, 26 Oct 2026 21:36:28 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XUzwnyV+
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 509491F01828;
+	Mon, 26 Oct 2026 21:36:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793050589;
-	bh=kN8NtnqvdYRT1NYa7F+ug7iwEdr5iPT3WCxCr93g4B8=;
+	s=k20260515; t=1793050590;
+	bh=HarieD7BhEtLMxzo//zT3OKEfJ3HRfK4EC2GbqU25/A=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=KpeWUhJ/p8aa2/2VJih/x/9279O4YT1zKSD14mbvZe5aRpiQ0lsphKbVjQXRnNn9O
-	 r8A4td6g/+yxQeBdKmGfTwSnFYMPTlDq7TJmc1p0pvtUuuYlyEDlX+c0NLKhsYdLRZ
-	 7/C3lWUZSgntOmGQLkCNencg4tb3VJ0cBJsqBLcvZqk+FwBaxLqqvNHubQZdm1HMJy
-	 Ge1IXkIdyQwdusoSw7f/arMbhEdg2Iu3IwvOOQRzEFL1KFqc2KVMfpZG7eVYh/6sWk
-	 rQlkih2M6RC8PMvWbmkcMZU28e7B9kC8Q4UYeJOwEzQSYLSbLaXPvp2ljiEmRsN8dA
-	 vx4vgrSE3kC8A==
+	b=XUzwnyV+MndhzjzaRaxsfwNMj8qFB39FIzw1n6yDAzxgoYeadrm31Y+Fdbd3n/8VI
+	 quooUhpcoYtb4rffye81afDUcFo49MmnTzNC9LLFcgnfr9hZE5fnu5EVMeCWQ4/GG5
+	 PU/+KxKTBeH5mmX1aunU4WeoRvZ1bcBe8PH/+StBFmgtZBUuAH0zCxzHlEMMqn28fR
+	 JsVd+YL/8wO7Bpx2yFO1Si4C6o5WxW3d8Z3+r/HZjUPmIqquz1pvJfTOsFHpQVqshC
+	 V50Jffj0lv8pFxTfJbsrF1dd/T0tJ3qYzColQgL+3GAbAHTcK1zcfraS7nHDUE+rVM
+	 5JHo8RtSzpjtQ==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -46,9 +46,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 12/13] NFSD: Share the attribute conversion helpers with the NFS_ACL procs
-Date: Sun, 25 Oct 2026 11:16:21 -0400
-Message-ID: <20261025151622.141025-13-cel@kernel.org>
+Subject: [PATCH v1 13/13] nfs_common: Remove the unused NFS ACL stream codecs
+Date: Sun, 25 Oct 2026 11:16:22 -0400
+Message-ID: <20261025151622.141025-14-cel@kernel.org>
 X-Mailer: git-send-email 2.56.0
 In-Reply-To: <20261025151622.141025-1-cel@kernel.org>
 References: <20261025151622.141025-1-cel@kernel.org>
@@ -63,403 +63,176 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-nfs2acl.c and nfs3acl.c each carry a private copy of the kstat to
-fattr conversion that nfsproc.c and nfs3proc.c already implement,
-down to the fsid selection and the symlink size clamp, along with a
-private definition of the path length limit the clamp uses. The
-copies exist because the NFS_ACL protocol descriptions define fattr,
-fattr3, and post_op_attr themselves, so the NFS_ACL proc files cannot
-include the native NFSv2 and NFSv3 generated headers, and xdr.h and
-xdr3.h pull those in. A fix to a native helper has to be repeated by
-hand in its NFS_ACL copy.
+nfs_stream_encode_acl() and nfs_stream_decode_acl() served the
+hand-rolled NFSD codecs for the NFS_ACLv2 and NFS_ACLv3 GETACL and
+SETACL procedures. Those procedures now encode and decode ACL entries
+through generated codecs, and the NFS client has always used the
+xdr_buf variants, so neither function has a caller.
 
-Add fattr.h, which declares nfsd_stat_to_fattr() and
-nfsd3_fill_post_op_attr() against incomplete struct types. The
-NFS_ACL copies of the attribute types match the native ones member
-for member, so each translation unit completes the types from its
-own protocol header and the helpers link across them. Export
-nfsd_stat_to_fattr() from nfsproc.c, move the nfsd3_fill_post_op_attr()
-prototype out of xdr3.h, and drop the NFS_ACL copies. With
-nfsd3_fill_post_op_attr() fetching the attributes itself, the
-NFS_ACLv3 result wrappers no longer carry a kstat.
+Remove both functions, their exports, and their declarations.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/fattr.h   | 20 ++++++++++
- fs/nfsd/nfs2acl.c | 99 ++++-------------------------------------------
- fs/nfsd/nfs3acl.c | 87 ++---------------------------------------
- fs/nfsd/nfsproc.c |  3 +-
- fs/nfsd/xdr3.h    |  3 +-
- 5 files changed, 34 insertions(+), 178 deletions(-)
- create mode 100644 fs/nfsd/fattr.h
+ fs/nfs_common/nfsacl.c | 125 -----------------------------------------
+ include/linux/nfsacl.h |   6 --
+ 2 files changed, 131 deletions(-)
 
-diff --git a/fs/nfsd/fattr.h b/fs/nfsd/fattr.h
-new file mode 100644
-index 000000000000..7ea116c6a63c
---- /dev/null
-+++ b/fs/nfsd/fattr.h
-@@ -0,0 +1,20 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * Attribute conversion helpers shared by the NFS and NFS_ACL procs.
-+ */
-+
-+#ifndef _NFSD_FATTR_H
-+#define _NFSD_FATTR_H
-+
-+struct fattr;
-+struct kstat;
-+struct post_op_attr;
-+struct svc_fh;
-+struct svc_rqst;
-+
-+void nfsd_stat_to_fattr(struct svc_rqst *rqstp, struct fattr *fattr,
-+			const struct kstat *stat, const struct svc_fh *fhp);
-+void nfsd3_fill_post_op_attr(struct svc_rqst *rqstp, struct post_op_attr *attr,
-+			     struct svc_fh *fhp);
-+
-+#endif /* _NFSD_FATTR_H */
-diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
-index 504dc57e9b8e..efb18b65217d 100644
---- a/fs/nfsd/nfs2acl.c
-+++ b/fs/nfsd/nfs2acl.c
-@@ -7,7 +7,6 @@
+diff --git a/fs/nfs_common/nfsacl.c b/fs/nfs_common/nfsacl.c
+index a66294fcfb6e..cb43fa203a2c 100644
+--- a/fs/nfs_common/nfsacl.c
++++ b/fs/nfs_common/nfsacl.c
+@@ -141,79 +141,6 @@ int nfsacl_encode(struct xdr_buf *buf, unsigned int base, struct inode *inode,
+ }
+ EXPORT_SYMBOL_GPL(nfsacl_encode);
  
- #include <linux/gfp.h>
- #include <linux/fs.h>
--#include <linux/filelock.h>
- #include <linux/nfsacl.h>
- #include <linux/nfs3.h>
- #include <linux/nfs4.h>
-@@ -20,19 +19,12 @@
- #include "nfsd.h"
- #include "auth.h"
- #include "vfs.h"
-+#include "fattr.h"
- 
- #define NFSDDBG_FACILITY	NFSDDBG_PROC
- 
- #define NFS_ACL_MASK		(NA_ACL | NA_ACLCNT | NA_DFACL | NA_DFACLCNT)
- 
--/*
-- * The generated <linux/sunrpc/xdrgen/nfs_acl2.h> defines enum ftype, so
-- * <uapi/linux/nfs.h> (which also defines enum nfs_ftype with the same
-- * NFNON..NFLNK enumerators) and the generated nfs2 header cannot be
-- * included here. Define the inherited NFSv2 constant we need.
+-/**
+- * nfs_stream_encode_acl - Encode an NFSv3 ACL
+- *
+- * @xdr: an xdr_stream positioned to receive an encoded ACL
+- * @inode: inode of file whose ACL this is
+- * @acl: posix_acl to encode
+- * @encode_entries: whether to encode ACEs as well
+- * @typeflag: ACL type: NFS_ACL_DEFAULT or zero
+- *
+- * Return values:
+- *   %false: The ACL could not be encoded
+- *   %true: @xdr is advanced to the next available position
 - */
--#define NFS_MAXPATHLEN 1024
+-bool nfs_stream_encode_acl(struct xdr_stream *xdr, struct inode *inode,
+-			   struct posix_acl *acl, int encode_entries,
+-			   int typeflag)
+-{
+-	const size_t elem_size = XDR_UNIT * 3;
+-	u32 entries = (acl && acl->a_count >= 3) ?
+-		      max_t(int, acl->a_count, 4) : 0;
+-	struct nfsacl_encode_desc nfsacl_desc = {
+-		.desc = {
+-			.elem_size = elem_size,
+-			.array_len = encode_entries ? entries : 0,
+-			.xcode = xdr_nfsace_encode,
+-		},
+-		.acl = acl,
+-		.typeflag = typeflag,
+-		.uid = inode->i_uid,
+-		.gid = inode->i_gid,
+-	};
+-	struct nfsacl_simple_acl aclbuf;
+-	unsigned int base;
+-	int err;
 -
- struct posix_acl;
- 
- /*
-@@ -232,81 +224,6 @@ nfsacld_fhandle_to_svc_fh(struct svc_fh *fhp, const fhandle *fhandle)
- 	memcpy(&fhp->fh_handle.fh_raw, fhandle, FHSIZE);
+-	if (entries > NFS_ACL_MAX_ENTRIES)
+-		return false;
+-	if (xdr_stream_encode_u32(xdr, entries) < 0)
+-		return false;
+-
+-	if (encode_entries && acl && acl->a_count == 3) {
+-		struct posix_acl *acl2 =
+-			container_of(&aclbuf.acl, struct posix_acl, hdr);
+-
+-		/* Avoid the use of posix_acl_alloc().  nfsacl_encode() is
+-		 * invoked in contexts where a memory allocation failure is
+-		 * fatal.  Fortunately this fake ACL is small enough to
+-		 * construct on the stack. */
+-		posix_acl_init(acl2, 4);
+-
+-		/* Insert entries in canonical order: other orders seem
+-		 to confuse Solaris VxFS. */
+-		acl2->a_entries[0] = acl->a_entries[0];  /* ACL_USER_OBJ */
+-		acl2->a_entries[1] = acl->a_entries[1];  /* ACL_GROUP_OBJ */
+-		acl2->a_entries[2] = acl->a_entries[1];  /* ACL_MASK */
+-		acl2->a_entries[2].e_tag = ACL_MASK;
+-		acl2->a_entries[3] = acl->a_entries[2];  /* ACL_OTHER */
+-		nfsacl_desc.acl = acl2;
+-	}
+-
+-	base = xdr_stream_pos(xdr);
+-	if (!xdr_reserve_space(xdr, XDR_UNIT +
+-			       elem_size * nfsacl_desc.desc.array_len))
+-		return false;
+-	err = xdr_encode_array2(xdr->buf, base, &nfsacl_desc.desc);
+-	if (err)
+-		return false;
+-
+-	return true;
+-}
+-EXPORT_SYMBOL_GPL(nfs_stream_encode_acl);
+-
+-
+ struct nfsacl_decode_desc {
+ 	struct xdr_array2_desc desc;
+ 	unsigned int count;
+@@ -380,55 +307,3 @@ int nfsacl_decode(struct xdr_buf *buf, unsigned int base, unsigned int *aclcnt,
+ 		   nfsacl_desc.desc.array_len;
  }
- 
--static __always_inline void
--nfsacld_timespec64_to_timeval(struct timeval *dst,
--			      const struct timespec64 *src)
--{
--	dst->seconds = src->tv_sec;
--	dst->useconds = src->tv_nsec / NSEC_PER_USEC;
--}
+ EXPORT_SYMBOL_GPL(nfsacl_decode);
 -
--static u32
--nfsacld_mode_to_ftype(umode_t mode)
--{
--	switch (mode & S_IFMT) {
--	case S_IFREG:  return NFREG;
--	case S_IFDIR:  return NFDIR;
--	case S_IFBLK:  return NFBLK;
--	case S_IFCHR:  return NFCHR;
--	case S_IFLNK:  return NFLNK;
--	/*
--	 * The NFSv2 protocol's ftype enum does not provide specific values
--	 * for sockets and FIFOs.
--	 */
--	case S_IFSOCK: return NFNON;
--	case S_IFIFO:  return NFNON;
--	}
--	return NFNON;
--}
--
--static void
--nfsacld_stat_to_fattr(struct svc_rqst *rqstp, struct fattr *fattr,
--		      const struct kstat *stat, const struct svc_fh *fhp)
--{
--	struct user_namespace *userns = nfsd_user_namespace(rqstp);
--	struct timespec64 time;
--	u32 fsid;
--
--	fattr->type = nfsacld_mode_to_ftype(stat->mode);
--	fattr->mode = stat->mode;
--	fattr->nlink = stat->nlink;
--	fattr->uid = from_kuid_munged(userns, stat->uid);
--	fattr->gid = from_kgid_munged(userns, stat->gid);
--	if (S_ISLNK(stat->mode) && stat->size > NFS_MAXPATHLEN)
--		fattr->size = NFS_MAXPATHLEN;
--	else
--		fattr->size = stat->size;
--	fattr->blocksize = stat->blksize;
--	if (S_ISCHR(stat->mode) || S_ISBLK(stat->mode))
--		fattr->rdev = new_encode_dev(stat->rdev);
--	else
--		fattr->rdev = 0xffffffff;
--	fattr->blocks = stat->blocks;
--
--	switch (fsid_source(fhp)) {
--	case FSIDSOURCE_FSID:
--		fsid = (u32)fhp->fh_export->ex_fsid;
--		break;
--	case FSIDSOURCE_UUID:
--		fsid = ((u32 *)fhp->fh_export->ex_uuid)[0];
--		fsid ^= ((u32 *)fhp->fh_export->ex_uuid)[1];
--		fsid ^= ((u32 *)fhp->fh_export->ex_uuid)[2];
--		fsid ^= ((u32 *)fhp->fh_export->ex_uuid)[3];
--		break;
--	default:
--		fsid = new_encode_dev(stat->dev);
--		break;
--	}
--	fattr->fsid = fsid;
--	fattr->fileid = stat->ino;
--
--	nfsacld_timespec64_to_timeval(&fattr->atime, &stat->atime);
--	time = stat->mtime;
--	lease_get_mtime(d_inode(fhp->fh_dentry), &time);
--	nfsacld_timespec64_to_timeval(&fattr->mtime, &time);
--	nfsacld_timespec64_to_timeval(&fattr->ctime, &stat->ctime);
--}
--
- /**
-  * nfsacld_proc_null - NULL: Do nothing
-  * @rqstp: RPC transaction context
-@@ -358,8 +275,8 @@ static __be32 nfsacld_proc_getacl(struct svc_rqst *rqstp)
- 	if (resp->xdrgen.status != acl2_ok)
- 		goto out;
- 
--	nfsacld_stat_to_fattr(rqstp, &resp->xdrgen.u.resok.attr, &resp->stat,
--			      fhp);
-+	nfsd_stat_to_fattr(rqstp, &resp->xdrgen.u.resok.attr, &resp->stat,
-+			   fhp);
- 
- 	if (resp->mask & (NA_ACL | NA_ACLCNT)) {
- 		acl = get_inode_acl(inode, ACL_TYPE_ACCESS);
-@@ -476,8 +393,8 @@ static __be32 nfsacld_proc_setacl(struct svc_rqst *rqstp)
- 
- out:
- 	if (resp->xdrgen.status == acl2_ok)
--		nfsacld_stat_to_fattr(rqstp, &resp->xdrgen.u.resok.attr,
--				      &resp->stat, fhp);
-+		nfsd_stat_to_fattr(rqstp, &resp->xdrgen.u.resok.attr,
-+				   &resp->stat, fhp);
- 	/* argp->acl_{access,default} are released in nfsaclsvc_release_setacl. */
- 	fh_put(fhp);
- 	resp->xdrgen.status = nfsacld_map_status(resp->xdrgen.status);
-@@ -517,8 +434,8 @@ static __be32 nfsacld_proc_getattr(struct svc_rqst *rqstp)
- 
- out:
- 	if (resp->xdrgen.status == acl2_ok)
--		nfsacld_stat_to_fattr(rqstp, &resp->xdrgen.u.resok.attr,
--				      &resp->stat, fhp);
-+		nfsd_stat_to_fattr(rqstp, &resp->xdrgen.u.resok.attr,
-+				   &resp->stat, fhp);
- 	fh_put(fhp);
- 	resp->xdrgen.status = nfsacld_map_status(resp->xdrgen.status);
- 	return rpc_success;
-@@ -555,7 +472,7 @@ static __be32 nfsacld_proc_access(struct svc_rqst *rqstp)
- 		struct ACCESS2resok *resok = &resp->xdrgen.u.resok;
- 
- 		resok->access = argp->xdrgen.access;
--		nfsacld_stat_to_fattr(rqstp, &resok->attr, &resp->stat, fhp);
-+		nfsd_stat_to_fattr(rqstp, &resok->attr, &resp->stat, fhp);
- 	}
- 	fh_put(fhp);
- 	resp->xdrgen.status = nfsacld_map_status(resp->xdrgen.status);
-diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
-index 66bb650e99f4..2ba499422869 100644
---- a/fs/nfsd/nfs3acl.c
-+++ b/fs/nfsd/nfs3acl.c
-@@ -7,7 +7,6 @@
- 
- #include <linux/gfp.h>
- #include <linux/fs.h>
--#include <linux/filelock.h>
- #include <linux/nfsacl.h>
- #include <linux/nfs4.h>
- 
-@@ -17,17 +16,10 @@
- #include "nfsd.h"
- #include "auth.h"
- #include "vfs.h"
-+#include "fattr.h"
- 
- #define NFS_ACL_MASK		(NA_ACL | NA_ACLCNT | NA_DFACL | NA_DFACLCNT)
- 
--/*
-- * The generated <linux/sunrpc/xdrgen/nfs_acl3.h> defines the NFSv3
-- * inherited types (nfs_fh3, fattr3, post_op_attr, ...), so the native
-- * NFSv3 headers that also define them cannot be included here. Define
-- * the one inherited NFSv3 constant needed for symlink size clamping.
+-/**
+- * nfs_stream_decode_acl - Decode an NFSv3 ACL
+- *
+- * @xdr: an xdr_stream positioned at an encoded ACL
+- * @aclcnt: OUT: count of ACEs in decoded posix_acl
+- * @pacl: OUT: a dynamically-allocated buffer containing the decoded posix_acl
+- *
+- * Return values:
+- *   %false: The encoded ACL is not valid
+- *   %true: @pacl contains a decoded ACL, and @xdr is advanced
+- *
+- * On a successful return, caller must release *pacl using posix_acl_release().
 - */
--#define NFS3_MAXPATHLEN		PATH_MAX
--
- /*
-  * Wrapper structures combine xdrgen types with legacy structures.
-  * The xdrgen field must be first so the structure can be cast
-@@ -47,7 +39,6 @@ struct GETACL3res_wrapper {
- 	struct posix_acl	*acl_default;
- 	kuid_t			uid;
- 	kgid_t			gid;
--	struct kstat		stat;
- };
- 
- static_assert(offsetof(struct GETACL3res_wrapper, xdrgen) == 0);
-@@ -70,7 +61,6 @@ static_assert(offsetof(struct SETACL3args_wrapper, xdrgen) == 0);
- 
- struct SETACL3res_wrapper {
- 	struct SETACL3res	xdrgen;
--	struct kstat		stat;
- };
- 
- static_assert(offsetof(struct SETACL3res_wrapper, xdrgen) == 0);
-@@ -159,72 +149,6 @@ nfs3acl_decode_fh(const struct nfs_fh3 *fh, struct svc_fh *fhp)
- 	return true;
- }
- 
--static u32
--nfs3acl_mode_to_ftype3(umode_t mode)
+-bool nfs_stream_decode_acl(struct xdr_stream *xdr, unsigned int *aclcnt,
+-			   struct posix_acl **pacl)
 -{
--	switch (mode & S_IFMT) {
--	case S_IFREG:  return NF3REG;
--	case S_IFDIR:  return NF3DIR;
--	case S_IFBLK:  return NF3BLK;
--	case S_IFCHR:  return NF3CHR;
--	case S_IFLNK:  return NF3LNK;
--	case S_IFSOCK: return NF3SOCK;
--	case S_IFIFO:  return NF3FIFO;
+-	const size_t elem_size = XDR_UNIT * 3;
+-	struct nfsacl_decode_desc nfsacl_desc = {
+-		.desc = {
+-			.elem_size = elem_size,
+-			.xcode = pacl ? xdr_nfsace_decode : NULL,
+-		},
+-	};
+-	unsigned int base;
+-	u32 entries;
+-
+-	if (xdr_stream_decode_u32(xdr, &entries) < 0)
+-		return false;
+-	if (entries > NFS_ACL_MAX_ENTRIES)
+-		return false;
+-
+-	base = xdr_stream_pos(xdr);
+-	if (!xdr_inline_decode(xdr, XDR_UNIT + elem_size * entries))
+-		return false;
+-	nfsacl_desc.desc.array_maxlen = entries;
+-	if (xdr_decode_array2(xdr->buf, base, &nfsacl_desc.desc))
+-		return false;
+-
+-	if (pacl) {
+-		if (entries != nfsacl_desc.desc.array_len ||
+-		    posix_acl_from_nfsacl(nfsacl_desc.acl) != 0) {
+-			posix_acl_release(nfsacl_desc.acl);
+-			return false;
+-		}
+-		*pacl = nfsacl_desc.acl;
 -	}
--	return NF3REG;
+-	if (aclcnt)
+-		*aclcnt = entries;
+-	return true;
 -}
--
--static void
--nfs3acl_stat_to_fattr3(struct svc_rqst *rqstp, struct fattr3 *fattr,
--		       const struct kstat *stat, const struct svc_fh *fhp)
--{
--	struct user_namespace *userns = nfsd_user_namespace(rqstp);
--	u64 fsid;
--
--	fattr->type = nfs3acl_mode_to_ftype3(stat->mode);
--	fattr->mode = stat->mode & S_IALLUGO;
--	fattr->nlink = stat->nlink;
--	fattr->uid = from_kuid_munged(userns, stat->uid);
--	fattr->gid = from_kgid_munged(userns, stat->gid);
--	if (S_ISLNK(stat->mode) && stat->size > NFS3_MAXPATHLEN)
--		fattr->size = NFS3_MAXPATHLEN;
--	else
--		fattr->size = stat->size;
--	fattr->used = (u64)stat->blocks << 9;
--	fattr->rdev.specdata1 = MAJOR(stat->rdev);
--	fattr->rdev.specdata2 = MINOR(stat->rdev);
--
--	switch (fsid_source(fhp)) {
--	case FSIDSOURCE_FSID:
--		fsid = (u64)fhp->fh_export->ex_fsid;
--		break;
--	case FSIDSOURCE_UUID:
--		fsid = ((u64 *)fhp->fh_export->ex_uuid)[0];
--		fsid ^= ((u64 *)fhp->fh_export->ex_uuid)[1];
--		break;
--	default:
--		fsid = (u64)huge_encode_dev(fhp->fh_dentry->d_sb->s_dev);
--	}
--	fattr->fsid = fsid;
--	fattr->fileid = stat->ino;
--
--	fattr->atime.seconds = stat->atime.tv_sec;
--	fattr->atime.nseconds = stat->atime.tv_nsec;
--	fattr->mtime.seconds = stat->mtime.tv_sec;
--	fattr->mtime.nseconds = stat->mtime.tv_nsec;
--	fattr->ctime.seconds = stat->ctime.tv_sec;
--	fattr->ctime.nseconds = stat->ctime.tv_nsec;
--}
--
--static void
--nfs3acl_encode_post_op_attr(struct svc_rqst *rqstp, struct post_op_attr *attr,
--			    struct kstat *stat, const struct svc_fh *fhp)
--{
--	attr->attributes_follow = true;
--	lease_get_mtime(d_inode(fhp->fh_dentry), &stat->mtime);
--	nfs3acl_stat_to_fattr3(rqstp, &attr->u.attributes, stat, fhp);
--}
--
- /*
-  * A minimal (three-entry) ACL travels as four wire entries: the
-  * POSIX entries plus a synthesized NA_CLASS_OBJ mask. The wire
-@@ -284,9 +208,7 @@ static __be32 nfsd3_proc_getacl(struct svc_rqst *rqstp)
- 		goto out;
- 	inode = d_inode(fhp->fh_dentry);
- 
--	if (!fhp->fh_no_wcc && fh_getattr(fhp, &resp->stat) == acl3_ok)
--		nfs3acl_encode_post_op_attr(rqstp, &resp->xdrgen.u.resok.attr,
--					    &resp->stat, fhp);
-+	nfsd3_fill_post_op_attr(rqstp, &resp->xdrgen.u.resok.attr, fhp);
- 
- 	if (argp->xdrgen.mask & ~NFS_ACL_MASK) {
- 		resp->xdrgen.status = acl3err_inval;
-@@ -411,10 +333,7 @@ static __be32 nfsd3_proc_setacl(struct svc_rqst *rqstp)
- 	 * resok and resfail both open with a post_op_attr, so filling
- 	 * the resok arm serves either status.
- 	 */
--	if (!fhp->fh_no_wcc && fhp->fh_dentry &&
--	    fh_getattr(fhp, &resp->stat) == acl3_ok)
--		nfs3acl_encode_post_op_attr(rqstp, &resp->xdrgen.u.resok.attr,
--					    &resp->stat, fhp);
-+	nfsd3_fill_post_op_attr(rqstp, &resp->xdrgen.u.resok.attr, fhp);
- 	/* argp->acl_{access,default} are released in nfs3svc_release_setacl. */
- 	fh_put(fhp);
- 	resp->xdrgen.status = nfsd3_map_status(resp->xdrgen.status);
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 39e5caa8e286..2f8da62ad6b0 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -15,6 +15,7 @@
- #include "cache.h"
- #include "xdr.h"
- #include "vfs.h"
-+#include "fattr.h"
- #include "nfserr.h"
- #include "trace.h"
- 
-@@ -189,7 +190,7 @@ nfsd_mode_to_ftype(umode_t mode)
- 	return NFNON;
- }
- 
--static void
-+void
- nfsd_stat_to_fattr(struct svc_rqst *rqstp, struct fattr *fattr,
- 		   const struct kstat *stat, const struct svc_fh *fhp)
- {
-diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-index 90dadcacdf2b..ae8afec767ef 100644
---- a/fs/nfsd/xdr3.h
-+++ b/fs/nfsd/xdr3.h
-@@ -12,6 +12,7 @@
- #include <linux/sunrpc/xdrgen/nfs3.h>
- 
- #include "vfs.h"
-+#include "fattr.h"
- 
- #define NF3NON		(0)
- #define NF3BAD		(8)
-@@ -147,8 +148,6 @@ void nfs3svc_release_readdirplusres(struct svc_rqst *rqstp);
- 
- void nfs3svc_encode_cookie3(struct xdr_stream *xdr, unsigned int pos,
- 			    u64 cookie);
--void nfsd3_fill_post_op_attr(struct svc_rqst *rqstp, struct post_op_attr *attr,
--			     struct svc_fh *fhp);
- void nfsd3_fill_post_op_fh3(struct post_op_fh3 *post_op_fh,
- 			    const struct svc_fh *fhp, u8 *data);
+-EXPORT_SYMBOL_GPL(nfs_stream_decode_acl);
+diff --git a/include/linux/nfsacl.h b/include/linux/nfsacl.h
+index 5160f30151e8..4ad81b2b2623 100644
+--- a/include/linux/nfsacl.h
++++ b/include/linux/nfsacl.h
+@@ -30,12 +30,6 @@ nfsacl_encode(struct xdr_buf *buf, unsigned int base, struct inode *inode,
+ extern int
+ nfsacl_decode(struct xdr_buf *buf, unsigned int base, unsigned int *aclcnt,
+ 	      struct posix_acl **pacl);
+-extern bool
+-nfs_stream_decode_acl(struct xdr_stream *xdr, unsigned int *aclcnt,
+-		      struct posix_acl **pacl);
+-extern bool
+-nfs_stream_encode_acl(struct xdr_stream *xdr, struct inode *inode,
+-		      struct posix_acl *acl, int encode_entries, int typeflag);
+ extern int
+ posix_acl_from_nfsacl(struct posix_acl *acl);
  
 -- 
 2.56.0
