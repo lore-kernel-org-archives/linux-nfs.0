@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792946520;
-	b=lsA4dCLtPd/qjW632d9LoTw26klCrCD657fWZG88JiAocBDtJKN37or4zlU0esurteta
-	 c53JoEE0RJ1ZI2RVGVUy6R3wanyNW1Qi7i4wAqgetyt8EYyGoY30fQmK1FJqC8DbeHwiZ
-	 3R2KE/kHRJDKADmHrqkctpczPY5unq+nSQBKrjQTp9+WOkD2KbtwLk//+21axLJGUQ/91
-	 ihUQXffd/GHem1J2tmm2GNgCFyy7zD1drEXVfXuvZftCNaw/pkj+g2D0TSo0lQt0j5R/k
-	 +Y5D8I2gUS/4D7Sa7ljY3oLGdDOO2MYTMSQ9ko/7nloDqSgkriWYd4ARoREJJXofF0w==
+	t=1792946521;
+	b=lk57HTl1Ue9KrCqel01sFYk6kHjvPwWj/nj84s9OkyzYQi01yu4QginuDXGBAI+SYWYN
+	 zdynpnH1IT+S7Iu3/1B2+okXuALzPr8/7kjdC9b8CiDWaCc2nec4k6XM13/1rR6VRSE5s
+	 mPM4UYFxxRVJK04/t5OfO6qMJL3LPFcEpEszil6LEw6IwKSNfZnqvyXpAc5t6WdteKgsH
+	 TXaQ3KIdqBs92LrTb13Q4YGsMJ85mMet4VoYwjXNKhxGdLH5MDn2VJxoeVLD81S5ruCjw
+	 NrBXmI1q4LkPWofp54UxR/RaqpFKJza7nODbFL2/JR61y0J+pDPg4mitpL2SldvrLJg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792946520;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792946521;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=5NBCb+LcYiWfFmw/IJY/SON7i22i/Nab5GONBNYn/AY=;
-	b=iJOiPFOW9yh+VwUdq6AO9wHwRlKfXFZuEJnI0JM0R7z88wIq7NkjPI62XjrfcJ2+o/Wv
-	 I/s4HAqodZfWnGB/KSitAQXnwOKmDP0txkOOtxi3Ot5nr54AASOf5NzJjb2Mwc9IBcpO/
-	 0sho3m4gBzBVFn1hCoS0oXfh/68LkOtlA6I6sMUoEztwviSEg/blu4IphOkV+fLAvUWHE
-	 TCEICHDo5bASn7AuRYwUgQ6FYrst3Ho8qSL3InFgLCqtKdkkXT9jDRvUm1+l5D0auRAdj
-	 qllBvqnsjUuoJDyNCXPFsr3w8njeocoeFi+TOxiFlG1LsiWK/NzVBxQE0RZJFJxKtOg==
+	bh=HyJpl2AhDy+O5EMOk+PWmlo/mwzEC/li8Yvh3Hma95U=;
+	b=wVa+ylwhN3CnBnb5N5nokqCR1xTpDFTdAAnjdii8+JxetXwF+ZMnrHMKXISgvfZBA7Kw
+	 TDDSIySdM64YLiObyH2i0KGG4CySq+qzo36oPvoFPe30dY0uy9TzOwXu06iVjyfwxNLIq
+	 Qlw68jUpvIscL4Rt8f85+flSTDs0TGN5u0i8jO7ZxyyPbQfhVeNO19zzmeXZt9Mi1zdZ/
+	 NzbORKYF8mjsfdPZ7SdqAvRrEXa2LnVMHtejiXSR/FP2JwcWTh2Pp9UCFlhW8L40WWG/d
+	 RKbTO1NJ7PeCekvIMKXywPTqx/jemZLZi4e4QTykyoHDvTmiBEa/qcbsgf8nA3qr/8w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ARuc7fTY;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Tzj0aTgM;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5FC9D606A320
-	for <linux-nfs@vger.kernel.org>; Sun, 25 Oct 2026 16:42:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83B07606A31A
+	for <linux-nfs@vger.kernel.org>; Sun, 25 Oct 2026 16:42:01 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ARuc7fTY
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4F9A01F01829;
-	Sun, 25 Oct 2026 16:41:59 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Tzj0aTgM
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6DE7F1F031E4;
+	Sun, 25 Oct 2026 16:42:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792946520;
-	bh=5NBCb+LcYiWfFmw/IJY/SON7i22i/Nab5GONBNYn/AY=;
+	s=k20260515; t=1792946521;
+	bh=HyJpl2AhDy+O5EMOk+PWmlo/mwzEC/li8Yvh3Hma95U=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=ARuc7fTYOpgBajSxlxY3Qsqa78XAOlwGYxbRqA2AB4ZG6uCWCKuSWLjXvAFAKdlxV
-	 FX1mQvmxv8PjUalZaxnT92RMC+97juNJOB/z2qvHAzjGr/uBANKYqk6dJG0sy1t4g4
-	 gaI8NI0x3EcfteX+mLX8fEKrEtsLaH+C/A38y3UjGIruMgsk1D+svGxRFuYaKkbkyU
-	 oKrbjZJlpkQGT/3L/egeT9wXLgYq3Ts0Ls73VxohcD6W8+ZlkT50LqWlSQt2RZUGJL
-	 6p+tsOWpTLivGRxvDziDLPuKmc8tz9pJ+sJFe28GgJBQhTRp3KO2tCgfg4DkhYHLGj
-	 jvYHz4KB8DR/w==
+	b=Tzj0aTgMjoCW+htfwX9Mfoz6QTY88dIA3jEQyibag6izeW7leuTi2vgtu+IBb60aR
+	 fwZ2cuRFL84IrJeuZ1E9m6Kr2mOMnRuo74204yo41zbXyVonHdzApnIxhmUeVX89lk
+	 x6g1c3shuDXI53F0jj8WZY0VyGQ73Dklv0Zy7mzNKaA28vO+5ki7ld++A8Tuf2TPKr
+	 7IdiYwJWUffrB8smeCzZDoUP6Jt3d8PLbA5M1RoU/sHtxS1lqixI95O203vb5uEIE+
+	 cEWjFgtg8zsZOrAHX7lPIELnFMynl7hCjhPpIN2lPMXmcYapDERVJw0w/Tga5DzI2+
+	 wMNWtsnXvxl3A==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -46,9 +46,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 1/4] xdrgen: Handle a union whose arms are all void
-Date: Sat, 24 Oct 2026 21:46:13 -0400
-Message-ID: <20261025014616.22236-2-cel@kernel.org>
+Subject: [PATCH v1 2/4] xdrgen: Key the width tables by type name only
+Date: Sat, 24 Oct 2026 21:46:14 -0400
+Message-ID: <20261025014616.22236-3-cel@kernel.org>
 X-Mailer: git-send-email 2.56.0
 In-Reply-To: <20261025014616.22236-1-cel@kernel.org>
 References: <20261025014616.22236-1-cel@kernel.org>
@@ -63,35 +63,167 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-_XdrUnion.symbolic_width() assigns its result variable only when
-an arm's width exceeds the running maximum, and the maximum starts
-at zero. A union whose arms are all void has no such arm, so the
-return statement reads a variable that was never bound. The
-definitions command then reports "cannot access local variable
-'width'" and exits without generating the header. The sibling
-max_width() method starts from zero and handles the same union.
+Every declaration class registers its width in max_widths and
+symbolic_widths under its own name, and a declaration's name is the
+field name when it appears inside a struct or a union. Those tables
+are otherwise keyed by type name, so a field named after a type
+overwrites that type's entry. In nfs_acl2.x, "unsigned int uid" in
+struct fattr replaces the entry for the "uid" typedef, and the
+generated NFS_ACL2_aclent_sz sizes the aclent id as XDR_unsigned_int
+rather than NFS_ACL2_uid_sz. In nfs3.x, the "time_how set_it"
+discriminant of set_atime replaces the entry a "bool set_it"
+discriminant registered, so the generated set_mode3, set_uid3,
+set_gid3, and set_size3 size macros count a time_how in place of a
+bool. The macros evaluate to the right value only because the
+colliding types happen to share a width.
 
-Start the symbolic width from an empty list, so an all-void union
-reports just the width of its discriminant.
+Register a declaration's width under its name only when the
+declaration is a typedef, where the name is the new type's name, and
+compute a union discriminant's width from the discriminant itself
+rather than looking it up by name. Regenerate the affected headers;
+only size macros change.
 
-Fixes: ce5a75d9939f ("xdrgen: XDR width for union types")
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- tools/net/sunrpc/xdrgen/xdr_ast.py | 1 +
- 1 file changed, 1 insertion(+)
+ include/linux/sunrpc/xdrgen/nfs3.h     |  8 +++----
+ include/linux/sunrpc/xdrgen/nfs_acl2.h |  2 +-
+ tools/net/sunrpc/xdrgen/xdr_ast.py     | 32 +++-----------------------
+ 3 files changed, 8 insertions(+), 34 deletions(-)
 
+diff --git a/include/linux/sunrpc/xdrgen/nfs3.h b/include/linux/sunrpc/xdrgen/nfs3.h
+index 734f60f502c6..4e0b0afe8227 100644
+--- a/include/linux/sunrpc/xdrgen/nfs3.h
++++ b/include/linux/sunrpc/xdrgen/nfs3.h
+@@ -885,13 +885,13 @@ enum {
+ 	(XDR_bool + NFS3_nfs_fh3_sz)
+ #define NFS3_time_how_sz                (XDR_int)
+ #define NFS3_set_mode3_sz               \
+-	(NFS3_time_how_sz + NFS3_mode3_sz)
++	(XDR_bool + NFS3_mode3_sz)
+ #define NFS3_set_uid3_sz                \
+-	(NFS3_time_how_sz + NFS3_uid3_sz)
++	(XDR_bool + NFS3_uid3_sz)
+ #define NFS3_set_gid3_sz                \
+-	(NFS3_time_how_sz + NFS3_gid3_sz)
++	(XDR_bool + NFS3_gid3_sz)
+ #define NFS3_set_size3_sz               \
+-	(NFS3_time_how_sz + NFS3_size3_sz)
++	(XDR_bool + NFS3_size3_sz)
+ #define NFS3_set_atime_sz               \
+ 	(NFS3_time_how_sz + NFS3_nfstime3_sz)
+ #define NFS3_set_mtime_sz               \
+diff --git a/include/linux/sunrpc/xdrgen/nfs_acl2.h b/include/linux/sunrpc/xdrgen/nfs_acl2.h
+index cc0b0db4c738..98dcada4786c 100644
+--- a/include/linux/sunrpc/xdrgen/nfs_acl2.h
++++ b/include/linux/sunrpc/xdrgen/nfs_acl2.h
+@@ -232,7 +232,7 @@ enum {
+ #define NFS_ACL2_o_mode_sz              \
+ 	(XDR_unsigned_short)
+ #define NFS_ACL2_aclent_sz              \
+-	(XDR_int + XDR_unsigned_int + NFS_ACL2_o_mode_sz)
++	(XDR_int + NFS_ACL2_uid_sz + NFS_ACL2_o_mode_sz)
+ #define NFS_ACL2_secattr_sz             \
+ 	(XDR_unsigned_int + XDR_int + XDR_unsigned_int + (NFS_ACL_MAX_ENTRIES * (NFS_ACL2_aclent_sz)) + XDR_int + XDR_unsigned_int + (NFS_ACL_MAX_ENTRIES * (NFS_ACL2_aclent_sz)))
+ #define NFS_ACL2_ftype_sz               (XDR_int)
 diff --git a/tools/net/sunrpc/xdrgen/xdr_ast.py b/tools/net/sunrpc/xdrgen/xdr_ast.py
-index 5b2a78ca745c..537f056a0c27 100644
+index 537f056a0c27..a3595aa40a57 100644
 --- a/tools/net/sunrpc/xdrgen/xdr_ast.py
 +++ b/tools/net/sunrpc/xdrgen/xdr_ast.py
-@@ -546,6 +546,7 @@ class _XdrUnion(_XdrAst):
-     def symbolic_width(self) -> List:
+@@ -186,10 +186,6 @@ class _XdrFixedLengthOpaque(_XdrDeclaration):
          """Return list containing XDR width of type's components"""
-         max_width = 0
-+        width = []
-         for case in self.cases:
-             if case.arm.max_width() > max_width:
-                 max_width = case.arm.max_width()
+         return ["XDR_QUADLEN(" + self.size + ")"]
+ 
+-    def __post_init__(self):
+-        max_widths[self.name] = self.max_width()
+-        symbolic_widths[self.name] = self.symbolic_width()
+-
+ 
+ @dataclass
+ class _XdrVariableLengthOpaque(_XdrDeclaration):
+@@ -210,10 +206,6 @@ class _XdrVariableLengthOpaque(_XdrDeclaration):
+             widths.append("XDR_QUADLEN(" + self.maxsize + ")")
+         return widths
+ 
+-    def __post_init__(self):
+-        max_widths[self.name] = self.max_width()
+-        symbolic_widths[self.name] = self.symbolic_width()
+-
+ 
+ @dataclass
+ class _XdrString(_XdrDeclaration):
+@@ -234,10 +226,6 @@ class _XdrString(_XdrDeclaration):
+             widths.append("XDR_QUADLEN(" + self.maxsize + ")")
+         return widths
+ 
+-    def __post_init__(self):
+-        max_widths[self.name] = self.max_width()
+-        symbolic_widths[self.name] = self.symbolic_width()
+-
+ 
+ @dataclass
+ class _XdrFixedLengthArray(_XdrDeclaration):
+@@ -257,10 +245,6 @@ class _XdrFixedLengthArray(_XdrDeclaration):
+         item_width = " + ".join(symbolic_widths[self.spec.type_name])
+         return ["(" + self.size + " * (" + item_width + "))"]
+ 
+-    def __post_init__(self):
+-        max_widths[self.name] = self.max_width()
+-        symbolic_widths[self.name] = self.symbolic_width()
+-
+ 
+ @dataclass
+ class _XdrVariableLengthArray(_XdrDeclaration):
+@@ -283,10 +267,6 @@ class _XdrVariableLengthArray(_XdrDeclaration):
+             widths.append("(" + self.maxsize + " * (" + item_width + "))")
+         return widths
+ 
+-    def __post_init__(self):
+-        max_widths[self.name] = self.max_width()
+-        symbolic_widths[self.name] = self.symbolic_width()
+-
+ 
+ @dataclass
+ class _XdrOptionalData(_XdrDeclaration):
+@@ -307,8 +287,6 @@ class _XdrOptionalData(_XdrDeclaration):
+     def __post_init__(self):
+         structs.add(self.name)
+         pass_by_reference.add(self.name)
+-        max_widths[self.name] = self.max_width()
+-        symbolic_widths[self.name] = self.symbolic_width()
+ 
+ 
+ @dataclass
+@@ -327,10 +305,6 @@ class _XdrBasic(_XdrDeclaration):
+         """Return list containing XDR width of type's components"""
+         return symbolic_widths[self.spec.type_name]
+ 
+-    def __post_init__(self):
+-        max_widths[self.name] = self.max_width()
+-        symbolic_widths[self.name] = self.symbolic_width()
+-
+ 
+ @dataclass
+ class _XdrVoid(_XdrDeclaration):
+@@ -475,8 +449,8 @@ class _XdrTypedef(_XdrAst):
+                     varlen_object_typedefs[new_type.name] = varlen_object_typedefs[
+                         new_type.spec.type_name
+                     ]
+-                max_widths[new_type.name] = self.max_width()
+-                symbolic_widths[new_type.name] = self.symbolic_width()
++        max_widths[self.declaration.name] = self.max_width()
++        symbolic_widths[self.declaration.name] = self.symbolic_width()
+ 
+ 
+ def pages_member_maxsize(field: _XdrDeclaration):
+@@ -555,7 +529,7 @@ class _XdrUnion(_XdrAst):
+             if self.default.arm.max_width() > max_width:
+                 max_width = self.default.arm.max_width()
+                 width = self.default.arm.symbolic_width()
+-        return symbolic_widths[self.discriminant.name] + width
++        return self.discriminant.symbolic_width() + width
+ 
+     def __post_init__(self):
+         structs.add(self.name)
 -- 
 2.56.0
 
