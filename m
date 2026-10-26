@@ -1,120 +1,110 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=170.10.133.124
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1793016581;
-	b=BU3Tn+rqKCd1UjmUA1eKOA9uNsxH3/MwZxqH0Rb96nrmt0cBvgFmiUiQE/GZO3J8WqHh
-	 h754PVcz3Jy0bD80L17B6CoRkhdS7hhiz4POZpl41ufYLCZBGl2wSMKPL4xoFQUHJkndi
-	 6ZQDOlWeWB+VmP2ap4EwKdt0RlcEEN42MD9fU5PBhYtKr2sQ/OWpOp4dm0NvOSsp8lgPP
-	 aut4vyQRC17zpnJkNyLl9KFVxkntuRJAQdBZAysy9Y4gxWtwwNjxPWvYlPC25KK3dZtyR
-	 fqTZHlH9ypKlWK5kh1q0wqK2tv8QYlnLrdZbxapuUked0TuroL8F2R6u1a+45/A6Xng==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793016581;
-	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
-	 X-Mimecast-MFC-AGG-ID:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 X-Received:MIME-Version:References:In-Reply-To:From:Date:
-	 X-Gm-Features:Message-ID:Subject:To:Cc:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=nrzZwmbiTICzxQaTpBGGNc1jTSBru89vupNxwMA5qvc=;
-	b=d0y6jpq72byGgAT1JiY8aulGtYGVF3VSxuMSIwUemuwp61DrnOZgiak6QvcPOV8/DHAv
-	 9DKQeXsnJZNJuv5CqlAjDFEVFBNxFbkB2dzrDJZUTmHw/v+jBgGYavX3sq0W5NLNRvNvs
-	 jGpBxWUiWzAZq25f+ArrjwdJ/KshPMIZ5ukY6u1Np++p2MPb0cs/htI2VoCqCThWREVTQ
-	 lKBb+UlMrRfMEfkaEQHYf1hkD8vLZNlvji1bfnCs2OCvmbtBZg3s33OuXvMau3X1GMbjd
-	 FVLaT0xdarB5Nf4JxLHqbX5Jy6V5sPvnaOpi+AjOQiCkrBelDnfXX/PSsvxLex8yugg==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=redhat.com;
-	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=bQ5f9cW1;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b="rXCi/AXw";
-	arc=pass header.oldest-pass=0 smtp.remote-ip=170.10.133.124
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1793019667;
+	b=dr2zQGDJjIO9DKXBswhF8SjzcIi9X8HT3aC8VzN/Fheho5BOSg4PnaU8mptGJjhJ/mYi
+	 otSfMPYvwhfKFRmUwqBlLO9O4RZWNGKm010NJG60Zam3xSYywFrrtacChZgaGVZzAqhOk
+	 53C7sJlkiWTR50rnZX5cbtnn9DGGC9da/Igr49arByIOg1E2OkKdkYgmKk9B1jd2ItHmX
+	 w6l23y82E0N72BBaJxSDxu0q3xJmq8ipEzzgYCXb/VUdv6vXwr7z4HzIpCsAZR3Eu7GnX
+	 00auRrWGVqMUREkZy1RToL7uy9SyqpPdlGrOdn1AEBDnivhAtHzdXHe3Aj1Ph/nbLuA==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793019667;
+	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
+	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
+	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
+	 In-Reply-To:X-Rspamd-Queue-Id:X-Spam-Level:X-Rspamd-Server:
+	 X-Rspamd-Action:X-Spam-Flag:X-Spamd-Result:X-Spam-Score;
+	bh=ZVvR8/vPkVFRStnVaizcQOKEZOW0iOsbBk9wkmC0Mj8=;
+	b=kBwYwBKT1wtvTUbRpnf+MkA3OHy0sCCpFmI8EII+MKvbAL65lY6tsQADT/wlndHuhM23
+	 FxZDVPph5LPKfWDeYRm+2Ol8DsVFL9zdS2EvECjLzYR1lxbFtYhjMGNtrlyeyX74RJUOl
+	 SxQ9NLdPR777GJWdI+29I4oqlUijYwHQqcD1l5U4yAg9rENADtgxqbjHlB0Pw1WpyZt6x
+	 +SdCppJo8giaVHhiP8XE0+ytUxxXun62ymrUxx7cOJWdnfPGpeuvoXLv2oEXnQTsoDXMm
+	 dXvaTW12WWi7bDiJPccEOPK5UAtQ/jcsDJHf0dItNZcZRoRdtiIN+RxOuV0zn62dhnA==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dmarc=none header.from=suse.cz;
+	spf=pass smtp.mailfrom=suse.cz;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=yxS9FDwj;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=FwPZWA1d;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=ADBqsyFF;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=B5ghY57L;
+	arc=none smtp.remote-ip=195.135.223.130
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EF83760A261F
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 12:09:40 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org EF83760A261F
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91B55606A31B;
+	Mon, 26 Oct 2026 13:01:06 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 91B55606A31B
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=bQ5f9cW1;
-	dkim=pass (2048-bit key, unprotected) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=rXCi/AXw
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1793016579;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
+	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=yxS9FDwj;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=FwPZWA1d;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=ADBqsyFF;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=B5ghY57L
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id ED958222CD;
+	Mon, 26 Oct 2026 13:01:02 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1793019664; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=nrzZwmbiTICzxQaTpBGGNc1jTSBru89vupNxwMA5qvc=;
-	b=bQ5f9cW1pjZkjs6HvJlEGsHeikldWmvZ826RwSFXsDqWGaaVoRJrQjt0KUq6W23Z/dxMtb
-	aZh8oBqwZYf/B1thv3+Xhta+SqDxJhvcmO60qX/V0O3Dlffvz4Fp8wvx+gjfgD2V0QeyXA
-	AlkBxQjgObO0gHYrgGLhCat2JJVUmp0=
-Received: from mail-dy1-f199.google.com (mail-dy1-f199.google.com
- [74.125.82.199]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-146-vco_ZstjNHionuda9RE-FQ-1; Mon, 26 Oct 2026 08:09:38 -0400
-X-MC-Unique: vco_ZstjNHionuda9RE-FQ-1
-X-Mimecast-MFC-AGG-ID: vco_ZstjNHionuda9RE-FQ_1793016577
-Received: by mail-dy1-f199.google.com with SMTP id 5a478bee46e88-3692c5b061bso11149768eec.1
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 05:09:38 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1793016577; cv=none;
-        d=google.com; s=arc-20260327;
-        b=fz7UckXPME3UTmvDZ5chP4Rvph0FMpLq6wy0iX+9eg+hx1zPesPzm9QlUxY+5VDyBG
-         Hu6XwhKLirjP2ZqcCGRLKKauwPUWXkTDiP5Y8ssNjv781536wx8P8p3M5cA/V8bwT9L3
-         KWQ+XFYW+LKat+aAeCxHRBA7fk2V637MvxI6TTX8P4GRL4KbNygtwDW7ffWD6f1q91Pl
-         jTNuR962z3hx6+8bYO8xz6dMP3ELkpTQ4dUNYtib5XSTLQGawQCQuSJE0h27jiLHSJLh
-         B2oPn9tiT/M4Nu/l0O6QhxSWWs0M8WQoZcdvtLR+7NVo7ASo00dB63QKysl/6F41MN2j
-         gtsw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=nrzZwmbiTICzxQaTpBGGNc1jTSBru89vupNxwMA5qvc=;
-        fh=XRq347533adRWY5otFq/Mnill6zxBelsPXGgpap39vQ=;
-        b=lmYspxWmMV2YTxwoLWZC7zPNOiLQJ6H5YzpqBxL9CIyKVx3YPm6DARqUnlsDaQphLF
-         96WrfEycUPom8+Dq9xB/o41f8N9XuSGEmTo7NHuewr18uGjvdDk8hIZFVF3L7cZ4QxtK
-         mZfHnKXI3uuR8QgiELNLp/KBsG9r8/OtaQj73bBlERauqHSAQ7pyUqZdXrehLpOm4suu
-         +5GJAQuKtWOWqANSiVdgxIzAIJvJzanT+B6vaPiyfiOPipCuJLJjojDZJLs1uviiWaLr
-         RPY3CJ6GrdNbENADIu/tzsI2hTK8sOJX5dC7ek5H0VS3+xtP95DoAsCrwMpguqkI2+Go
-         CVFg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1793016577; x=1793621377; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=nrzZwmbiTICzxQaTpBGGNc1jTSBru89vupNxwMA5qvc=;
-        b=rXCi/AXwrO3tWOwe10aLDupnsWRuLF3sWjUaa+m4LD05fU8q8ESWHyQX4b2jdgTlor
-         LKiSSIejHGNPrs2wKhC8Tc8O5+meXSUc0BrWPee8diKGWtKXRLfAO3ueVIXLSfPNE0kN
-         fq8TP/0ccShBPaxxVJIvOEGAJhYghlZmkkjC/0dy7d6UeUezBVcWlFAHk9IxZKKgmcgt
-         CyfPgppYKGYCmZ9IgkI0evUqZplZIKEnqeT/vWZSfd4u/gLSsVqC5m8A/FrJxxusqQIn
-         lYIPk9moKo2gPsPnE/3QYtdPbL+hMdgs8xEnt8oKwRf9DGD8UMSeH6mQgAPPqt0MM0Pj
-         pcFg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793016577; x=1793621377;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=nrzZwmbiTICzxQaTpBGGNc1jTSBru89vupNxwMA5qvc=;
-        b=eIFmrCkTyIUR90r9pTKznSu/xQRdIfDonS2Ydz9zxwNyb+iPB8j3PCxir2i7+g9cOx
-         euQUKqYAiSXlTdj7tpBhVsJJizMt8Am9lksZLrU4mOyuJnWw0q0oeYUKL23x+B69xdFk
-         ZSc4Tqfl67IWZnkRNUphv6yHIV0fp/EXarLhh6K/5HT0KHkJWb+Z1yLo0Rf3ffha8vq0
-         /pVhNz0sG2mqTEFmoyVSmnpbGR8MA9eR0rTL8nZW9yy5e99fEMMN+n0otdCSPlK3WT2o
-         2lErI3DC9G3AcpyvySOfbDby+kDjHUUSKkMij3hqD558EPgm0Q/1Hi55Q/l2tpITb3lL
-         g/gw==
-X-Forwarded-Encrypted: i=1; AKwUvBwjQ8cE79T4omJfU/zjoec4Cmog7Aujfan3FrzzHVYU+wfmC76TNf/V73S5bnWfYkita/fCREdC3XE=@vger.kernel.org
-X-Gm-Message-State: AFq9FYJxr03rLz4fb8U/JcZuhYvSGMueg0VS6jzqzjEeC+Cq/0+/HA43
-	m96kNlEDmWDuScwdfqV9FrSgKeLYntZCKWcOWXP2HZu4hfevmFvJwkzpQ+85Q5UFAV/wNKIUdba
-	MWa1mzqQE4TTYkNrmUQPGQXHDChJ05V5XPMzH9CgTkMD63O14W9FF4Hf6Ixwbn7Y0JRSsekg5R6
-	zNWkI1yGriad1tUQYzWQXYZvuenVnGhTFbSdZ5y7fm10DNEZE=
-X-Gm-Gg: AYBFou1UKzdetQgoQ20wqkp4R+eyP1SDVMEKwEEi71esA0t02Jtoda8q2XFdSz+0vPK
-	e5p+PVej6NfnJ/otr2HzBWiVXxRsxE3TUuIl8dTz9M69yyJmI0U4uHmIK3p3Y8+XiDxx1xM4qm1
-	RTo+cOBjVENcVA2U4xI1eptYewzRrprgbA//XdaGwRxm1kW23EHVViEFcP
-X-Received: by 2002:a05:7301:1602:b0:369:fd32:79fe with SMTP id 5a478bee46e88-369fd3294bfmr5007208eec.17.1793016577207;
-        Mon, 26 Oct 2026 05:09:37 -0700 (PDT)
-X-Received: by 2002:a05:7301:1602:b0:369:fd32:79fe with SMTP id
- 5a478bee46e88-369fd3294bfmr5007178eec.17.1793016576598; Mon, 26 Oct 2026
- 05:09:36 -0700 (PDT)
+	bh=ZVvR8/vPkVFRStnVaizcQOKEZOW0iOsbBk9wkmC0Mj8=;
+	b=yxS9FDwjEthDr6gpT+8E0Hhv7czGi1FcGngK3+U+31zorp8Y88ojShwmdyhmapORqcywoG
+	20jlAyA3NoEP2XiCJGaLrp8vlhmpfeFH3KRKKPSsmqrnoIpn9wMQiTfoo8WtD6NAkUKdR2
+	ep1qzDVwQNDQwk7IdM/Fn7R6R/ybH9A=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1793019664;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ZVvR8/vPkVFRStnVaizcQOKEZOW0iOsbBk9wkmC0Mj8=;
+	b=FwPZWA1d7393CQtx2xk6xIa5ARejrxq59hWGvkcRCn8b6JmfdhSuR7MySCcquFOCw28oKK
+	MwNsEEd7YFw2QdDA==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=ADBqsyFF;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=B5ghY57L
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1793019662; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ZVvR8/vPkVFRStnVaizcQOKEZOW0iOsbBk9wkmC0Mj8=;
+	b=ADBqsyFFDf8/RduuUBqT2VLneVtUVz45qxGEnzDNSJ6DjaY7rCcZDHMdDlobVXJtbULzqw
+	02RO7LAzZKzTMbyF/s8sQw/EDiv/zZTUDpCGt4UwqB5KNp7yJHsqLBKAxgAC9bAmIrvD6d
+	1d87355WGuJTyS6StCNJz8exV68gcNk=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1793019662;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ZVvR8/vPkVFRStnVaizcQOKEZOW0iOsbBk9wkmC0Mj8=;
+	b=B5ghY57LbYWjz+dF40Qrg1Cw6IDGF5Qn7AwfVuNKMTR3YWuu+ovY7mzqPnIylrcGmW77gq
+	GIIlvVJ606g1QKCA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id BEFF013408;
+	Mon, 26 Oct 2026 13:01:02 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id ruRAJg5P32pjWQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 26 Oct 2026 13:01:02 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 4D3CCA1419; Mon, 26 Oct 2026 14:00:58 +0100 (CET)
+Date: Mon, 26 Oct 2026 14:00:58 +0100
+From: Jan Kara <jack@suse.cz>
+To: Christian Brauner <brauner@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org, 
+	linux-nfs@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>, 
+	Jan Kara <jack@suse.cz>, Aleksa Sarai <cyphar@cyphar.com>, Chris Mason <mason@kernel.org>, 
+	stable@vger.kernel.org
+Subject: Re: [PATCH 0/7] proc: block mounts below /proc/<pid>/net and on the
+ links into /proc/self
+Message-ID: <zdwikcjfr2h3a5lifdjuw7dwrrqcptjxsyuqh4pd7hihhmwke4@k7pegq4xwfxi>
+References: <20261024-work-procfs-fixes-v1-0-46b03c3a8fac@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -124,97 +114,201 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <20260902133554.28863-1-antonio.feijoo@suse.com>
- <CACWnjLzVeXAfVWgg_YTqtNTDd7LXSkM9dA0znwdPLY=4226bbQ@mail.gmail.com>
- <1925D89E-8A84-4FE3-95BC-93061E6578BC@hammerspace.com> <1015823097.11117914.1792766124992.JavaMail.zimbra@desy.de>
-In-Reply-To: <1015823097.11117914.1792766124992.JavaMail.zimbra@desy.de>
-From: Roberto Bergantinos Corpas <rbergant@redhat.com>
-Date: Mon, 26 Oct 2026 13:09:24 +0100
-X-Gm-Features: AclHuK-6GMPAFFtFccR9RZYJADau6Vb2EhlVJL5KSGFdtkr4RZ9whD1d77HtksY
-Message-ID: <CACWnjLzZ1Xb-YABbSSJxj_Rc=WAPfxHDtD52V0VJbPQs3ENErA@mail.gmail.com>
-Subject: Re: [PATCH] NFSv4/flexfiles: add a soft dependency on nfsv3
-To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-Cc: Benjamin Coddington <ben.coddington@hammerspace.com>, Mike Snitzer <snitzer@kernel.org>, 
-	Antonio Alvarez Feijoo <antonio.feijoo@suse.com>, linux-nfs <linux-nfs@vger.kernel.org>, 
-	Anna Schumaker <anna.schumaker@hammerspace.com>, 
-	Trond Myklebust <trond.myklebust@hammerspace.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261024-work-procfs-fixes-v1-0-46b03c3a8fac@kernel.org>
+X-Rspamd-Queue-Id: ED958222CD
+X-Spam-Level: 
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Action: no action
+X-Spam-Flag: NO
+X-Spamd-Result: default: False [-13.01 / 50.00];
+	SUSE_INTERNAL_BYPASS(-9.00)[];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	URIBL_BLOCKED(0.00)[suse.cz:dkim,suse.cz:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_COUNT_THREE(0.00)[3];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCVD_TLS_LAST(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RCPT_COUNT_SEVEN(0.00)[9];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	FROM_EQ_ENVFROM(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.cz:dkim,suse.cz:email,suse.com:email]
+X-Spam-Score: -13.01
 
-On Fri, Oct 23, 2026 at 4:40=E2=80=AFPM Mkrtchyan, Tigran
-<tigran.mkrtchyan@desy.de> wrote:
->
->
-> Frankly, I think this is my change that has introduced the trouble:
->
-> a68c6fbb638a ("nfs41: drop dependency between flexfiles layout driver and=
- NFSv3 modules")
+On Sat 24-10-26 12:38:26, Christian Brauner wrote:
+> In Linux 6.12 I stopped allowing mounts on the entries below
+> /proc/<pid>/fd/, /proc/<pid>/fdinfo/ and /proc/<pid>/map_files/ (cf.
+> [1]). This extends that to two more groups of entries:
+> 
+> (1) Everything below /proc/<pid>/net/.
+> 
+>     proc_net_d_revalidate() fails on every lookup since 1fde6f21d90f
+>     ("proc: fix /proc/net/* after setns(2)"). lookup_fast() answers that
+>     with d_invalidate() which detaches every mount on the dentry. That
+>     affects every mount namespace and includes locked mounts.
+> 
+>     So a mask on /proc/<pid>/net/dev goes away the first time anybody
+>     looks the name up. The directory is 0555 so anybody really means
+>     anybody. This is reproducible with a container that masks
+>     /proc/<pid>/net/dev with a locked bind mount and a stat() by nobody
+>     in the initial namespaces makes the real file show up again. So it's
+>     pointless.
+> 
+>     A mount that can't stick is better refused than taken away. I also
+>     have a version that makes proc_net_d_revalidate() check the network
+>     namespace instead so mounts there stick. But I think that's
+>     bullsh*t. It would make mounts on the net entries of other processes
+>     stick as well and the few users that try to mount there fail today
+>     anyway (see below).
+> 
+> (2) The links into /proc/self: /proc/self, /proc/thread-self,
+>     /proc/mounts, /proc/net and the afs and nfs links below /proc/fs/.
+> 
+>     These resolve to a different directory for every process. A mount
+>     on the link itself is crossed by every lookup through it in that
+>     mount namespace, so it redirects all processes at once. Mounting
+>     through the links keeps working and lands on the caller's own entry
+>     as before.
+> 
+> What I really wanted was to block mounting on anything below
+> /proc/<pid>/. That was the big hammer I mentioned in [1] years ago. We
+> can't... I did a pretty exhaustive survey of who mounts on the entries
+> below /proc/<pid>/ or on the links into it:
+> 
+> - GitHub code search and regex searches on Sourcegraph
+> - Debian Code Search over unstable
+> - the systemd units of every binary package in Debian 11, 12, 13 and
+>   sid, Ubuntu 22.04, 24.04 and 26.04, Fedora 43 and 44, CentOS Stream
+>   10, openSUSE Leap 16 and Tumbleweed and Arch
+> - clones of 46 container runtimes and orchestrators, the sandboxes
+>   (systemd, bubblewrap, flatpak, firejail, snapd, nsjail, minijail,
+>   Chromium and Firefox), Android and the rooting tools on top of it,
+>   and the AppArmor and SELinux policies
+> - detection rules, issue trackers, lore, LWN and the Q&A sites
+> 
+> The legitimate users all mount on entries of the process that does the
+> mount:
+> 
+> (1) systemd units that list /proc/self/... in ReadOnlyPaths=,
+>     ReadWritePaths= or ReadWriteDirectories=. systemd resolves
+>     /proc/self in the child of the service and binds the entry onto
+>     itself before it execs the service. If the mount fails the unit
+>     fails with 226/NAMESPACE and the "-" prefix doesn't help. That's
+>     netdata in Debian 11 and 12 and Ubuntu 22.04 and 24.04, opendht in
+>     Debian 12 and sid, Ubuntu 24.04 and Arch, accountsservice 22.x in
+>     Debian 12 and Ubuntu 22.04, OpenSearch 3, wazuh-indexer, TrueNAS
+>     SCALE, OONI's backend and the JupyterHub systemdspawner example. Of
+>     the 731 unit files on GitHub that name a /proc path in one of these
+>     directives 53 name an entry of the service itself.
+> 
+> (2) systemd's make_filesystem() binds /dev/null over /proc/self/mounts
+>     before it execs mkfs.btrfs so that it doesn't refuse a device whose
+>     other partitions are mounted. systemd-repart, systemd-homed and
+>     systemd-makefs use that.
+> 
+> (3) mkosi binds a fake /proc/self/mountinfo for grub-bios-setup.
+> 
+> (4) runc applies maskedPaths such as /proc/1/environ from the
+>     container's init when a config asks for it, bwrap does the same
+>     from its pid 1, firejail hides the name of its pid 1 and clampdown
+>     masks /proc/1/mem.
+> 
+> (5) Shell scripts that mount on /proc/$$/... and then exec, e.g.,
+>     luci-app-shadowrt on OpenWrt.
+> 
+> (6) Tests in systemd, elogind, LXC, libpathrs and bun.
+> 
+> Fedora's SELinux policy even grants fsadm_t and init_t the permission to
+> mount over their own entries because of (1) and (2). Sad, very sad...
+> 
+> Everything else I found is malware or offensive tooling:
+> 
+> Hiding a process by mounting over /proc/<pid> is catalogued as MITRE
+> ATT&CK T1564.013 and used in the wild by TeamTNT, Commando Cat, the KONO
+> DIO DA miner, KV-botnet, UNC2891 and kbotne. hackshell and emp3r0r ship
+> it and Elastic's endpoint rule kills any process that does it.
+> 
+> So blocking all of /proc/<pid>/ would break units in released
+> distributions and systemd itself. A rule that only lets a process
+> mount on its own entries, and on a directory only a bind of itself,
+> keeps (1) to (4) working, except for a few bwrap sandboxes that put a
+> tmpfs over directories like /proc/1/task, and stops all of the attacks.
+> I have that as well but it's not really a fix so we can delay it.
+> 
+> The remaining entries of a process only fail pid_revalidate() once the
+> task is gone and proc_flush_pid() invalidates them when it is reaped.
+> Their mounts go away together with the task and nothing gets revealed.
+> 
+> Nothing I found mounts on the links themselves and crun even has a
+> test that expects it to fail. The handful of units that mask entries
+> below /proc/<pid>/net/, e.g., Algo VPN's ReadOnlyPaths=/proc/net/pfkey
+> for strongswan, already fail today.
+> 
+> systemd's own lookup invalidates the dentry before it can bind onto it.
+> With this series they fail the same way. Apart from tests in libpathrs
+> and securejoin that had to be adapted the only fallout from the 6.12
+> change we found is one small project that handed libmount's new mount
+> api a /proc/self/fd/N target that move_mount() doesn't follow without
+> MOVE_MOUNT_T_SYMLINKS. Ubuntu even backported the 6.12 change to their
+> 22.04 and 24.04 kernels this year.
+> 
+> Nuke this crap.
+> 
+> [1]: https://lore.kernel.org/r/20240806-work-procfs-v1-0-fb04e1d09f0c@kernel.org
+> 
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-Im not sure of this, that enables flexfiles when NFS_V3=3Dn at compile
-time, but i think it does not prevent
-the actual hangs at runtime. If i understand this correctly the hang
-requires nfsv3 not loaded at runtime
-(which can happen with NFS_V3=3Dm) + no MDS fallback (7a375cafc14e) +
-i.e. unprivileged container.
+Makes sense to me although I don't dare to judge all possible consequences
+(I don't have much practical experience with container runtimes that play
+these games). Anyway, feel free to add:
 
+Acked-by: Jan Kara <jack@suse.cz>
 
->
->
-> ----- Original Message -----
-> > From: "Benjamin Coddington" <ben.coddington@hammerspace.com>
-> > To: "Roberto Bergantinos Corpas" <rbergant@redhat.com>, "Mike Snitzer" =
-<snitzer@kernel.org>
-> > Cc: "Antonio Alvarez Feijoo" <antonio.feijoo@suse.com>, "linux-nfs" <li=
-nux-nfs@vger.kernel.org>, "Mike Snitzer"
-> > <snitzer@kernel.org>, "Anna Schumaker" <anna.schumaker@hammerspace.com>=
-, "Trond Myklebust"
-> > <trond.myklebust@hammerspace.com>
-> > Sent: Friday, 23 October, 2026 16:16:32
-> > Subject: Re: [PATCH] NFSv4/flexfiles: add a soft dependency on nfsv3
->
-> > On 23 Oct 2026, at 8:30, Roberto Bergantinos Corpas wrote:
-> >
-> >> There is another problematic case for this problem : if an
-> >> unprivileged container attempts pNFS I/O, SELinux may block the
-> >> request_module() call, leading to a writeback hang instead of a boot h=
-ang.
-> >>
-> >> Having the module pre-loaded at mount time avoids that scenario too.
-> >
-> > I think this is a stronger case than the nfs-root, which already requir=
-es a
-> > sysadmin to have knowledge and desire to configure the client a certain=
- way,
-> > and can certainly apply the work-around.
-> >
-> > Roberto's case would look functional to the admin, and the failure woul=
-d
-> > happen later and be difficult to diagnose.
-> >
-> > I think Fixes: 7a375cafc14e (7.2.y) is the accurate tag, though - becau=
-se
-> > before that the -EPROTONOSUPPORT would fall back to the MDS - it gives =
-the
-> > WARN, but doesn't hang the system.
-> >
-> > I also think 7a375cafc14e also needs a follow-on fix (Cc: Mike) - becau=
-se it
-> > now causes permanent failure cases to retry forever- we should probably=
- just
-> > fail the IO.
-> >
-> > The last thing here is that the MODULE_SOFTDEP is just informative, it =
-only
-> > advises modprobe and initramfs builders.  It not going to fix
-> > CONFIG_NFS_V4=3Dy with CONFIG_NFS_V3=3Dn or m.  So - I think we should =
-just make
-> > flexfiles publish a hard dependency on a v3 symbol, which fixes the mod=
-ule
-> > dependency directly, and also fixup Kconfig so that there aren't unexpe=
-cted
-> > build failures as a result.
-> >
-> > My 2 cents,
-> >
-> > Ben
+								Honza
 
+> ---
+> Christian Brauner (7):
+>       proc: don't let an entry below /proc/<pid>/net be a mountpoint
+>       proc: don't let /proc/self and /proc/thread-self be mountpoints
+>       proc: don't let /proc/mounts and /proc/net be mountpoints
+>       afs: create /proc/fs/afs with proc_self_symlink()
+>       nfs: create the /proc/fs/nfsfs links with proc_self_symlink()
+>       proc: explain which entries can't be mountpoints
+>       selftests/proc: test which entries can't be mountpoints
+> 
+>  fs/afs/main.c                                   |   2 +-
+>  fs/nfs/client.c                                 |   4 +-
+>  fs/proc/generic.c                               |  31 ++++-
+>  fs/proc/internal.h                              |  18 ++-
+>  fs/proc/proc_net.c                              |   2 +-
+>  fs/proc/root.c                                  |   2 +-
+>  fs/proc/self.c                                  |   2 +
+>  fs/proc/thread_self.c                           |   2 +
+>  include/linux/proc_fs.h                         |   5 +
+>  tools/testing/selftests/proc/.gitignore         |   1 +
+>  tools/testing/selftests/proc/Makefile           |   1 +
+>  tools/testing/selftests/proc/proc-unmountable.c | 150 ++++++++++++++++++++++++
+>  12 files changed, 208 insertions(+), 12 deletions(-)
+> ---
+> base-commit: 7be4bc52fd9e0e55dc9a2e0232b89427d2c4b614
+> change-id: 20261024-work-procfs-fixes-8b21a6d17448
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
