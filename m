@@ -1,59 +1,64 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=203.254.224.33
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792977307;
-	b=DtFhiU9nW0tH+YYu8GEeav/ukeiRMCTW6gvged5ibnQx9sqjNRmjt9q1cgGFoLkS5e6+
-	 x+K0lSd1CYInfCXYt6s4wvMNQE2MrFhNS20N3NWdgPld1F7QO7j5dsUPuFGtstzl5SUEj
-	 Gg+w8tDO4OA32dFLMViLV+8NcObnnf3yWIY6vtWClXCmrW00Wh0agXagLOw86qNSJNJNG
-	 RdmsG4fo3vOti/JpqTUihPvgjaBtc1FPS6+eEmIUDDbVgiAM8IFD7ov8UuSzDGxNLdygH
-	 Gx4orEnZwfpG/UxC+Hj1CejCJNj8sEZBChmEefY2KKMmUZSoczYmrP6CVeqayEh+GLw==
+	t=1792980499;
+	b=n2JU+x6fYH1B81NCrWiJtsuDqKo24lGo1FhJXtTRNiRk6CUNixlYjBYNKGwOZEcOCREh
+	 1ldXeIFfOc3mz3PABVP1+tJ/xjKCTTYSqK7zQOOGeKMEpBPyPratJOKi7eHW8cKZIpKu3
+	 smhVu0hZIdKoRReXfNgG0e0LXhlxrOOFjQcCaJwA8GMgcOeFRT80M9SJszPPjB4BXPn8U
+	 l795JDB/Qd+F1489YNJhAPjUxA1SxMP9ZLOEfhIPI+GRUNNUwQMR4AECbcgLVVM0fpuQ4
+	 uR+EnQ+i+yyrtmgPmmBZDQ8E7SDJC687doJf1VGmNK1HClI72yk+2zaRZTIxcVAd65w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792977307;
-	h=DMARC-Filter:Received:DKIM-Filter:DKIM-Signature:Received:Received:
-	 Mime-Version:Subject:Reply-To:Sender:From:To:CC:X-Priority:
-	 X-Content-Kind-Code:In-Reply-To:X-CPGS-Detection:X-Drm-Type:
-	 X-Msg-Generator:X-Msg-Type:X-Reply-Demand:Message-ID:Date:
-	 X-CMS-MailID:Content-Transfer-Encoding:Content-Type:X-Sendblock-Type:
-	 CMS-TYPE:X-CPGSPASS:X-CPGSPASS:cpgsPolicy:X-CFilter-Loop:
-	 X-CMS-RootMailID:References;
-	bh=FYICWiP/sodvW/eWoG1M+2lNLwpn+fHqlwqD0Rs9/EA=;
-	b=BU7Pw6xg3CEXhsKoApFECnCQ8hETLJK5DlKEmtGzJ1jpNLf/TFVvOjj2dv2aOGCcb/Xe
-	 Qpu5jqvzBPLTnnzKI79fhA8WcRFyGbnViL6J1CMz+vmNAn7+wqMbSnWuVU5ToJj26WxC0
-	 78yQQf889n5INKZ/LR9YGklhYhAaSGs5JF3s/cVAPIW88zeq0huCjT5ch+bPxFG64mQUb
-	 Pufeym5zKEYxxU1bKOTIIi27WlylkDIEnd68acgXSjWHh9PiqdzI0pg15MIGuuvxxH7dc
-	 k6/I4pjJuk5i2sYu5p50DUxH02GTKBrf2ytHqALxbUrqvdRoBYNm+uLdOwUxnquCZRw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792980499;
+	h=Received:DKIM-Signature:Received:Subject:From:In-Reply-To:References:
+	 X-PR-Tracked-List-Id:X-PR-Tracked-Message-Id:X-PR-Tracked-Remote:
+	 X-PR-Tracked-Commit-Id:X-PR-Merge-Tree:X-PR-Merge-Refname:
+	 X-PR-Merge-Commit-Id:Message-Id:Date:To:Cc;
+	bh=Ix0wrZzojA4CGxvR1XdARcUpTBNmrQFIhIZivg3bS6I=;
+	b=DSMuuQRcQmV0juSDlerctT/gtKE5hH5+K+8bz+5WXUpx4dVOc74Y+nd740/sZghd0sNf
+	 SbRXRUFjdpmfb2GiBiv+Xwm6qvR2AKAgsGvEg+1uW8qyqM4whl+h65p+U8DYRFzEDKQUM
+	 W8R9aCpufceOpe9cZvcCpbduNd8y4EKoDtxDcI5EwEvlQN2prBv1Q1h7go0UHNMfht5Mz
+	 RsmiQDUdL+sE1PybWrDTl9cfDeXs1g0klo1eYHzlSyHC802BPQnv7GdhNdTseN61vjE80
+	 YufQRp8ya9MqA9TuKYFXZFcC9M8gm3RxQmADcVrV8QSKN72Ok7rpNJ+vPqudO+gKAmw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=samsung.com;
-	spf=pass smtp.mailfrom=samsung.com;
-	dkim=pass header.d=samsung.com header.i=@samsung.com header.a=rsa-sha256 header.s=mail20170921 header.b=W1xEYFAJ;
-	arc=none smtp.remote-ip=203.254.224.33
-Received: from mailout3.samsung.com (mailout3.samsung.com [203.254.224.33])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Qj1KfF73;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 289AB606A31B
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 01:15:04 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 289AB606A31B
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 70F1B606A31A
+	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 02:08:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=samsung.com header.i=@samsung.com header.a=rsa-sha256 header.s=mail20170921 header.b=W1xEYFAJ
-Received: from epcas2p1.samsung.com (unknown [182.195.41.53])
-	by mailout3.samsung.com (KnoxPortal) with ESMTP id 20261026011457epoutp039a062c93b328ec912e06f099506b4c79~h71oheqlE2677526775epoutp03b
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 01:14:57 +0000 (GMT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout3.samsung.com 20261026011457epoutp039a062c93b328ec912e06f099506b4c79~h71oheqlE2677526775epoutp03b
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
-	s=mail20170921; t=1792977297;
-	bh=FYICWiP/sodvW/eWoG1M+2lNLwpn+fHqlwqD0Rs9/EA=;
-	h=Subject:Reply-To:From:To:CC:In-Reply-To:Date:References:From;
-	b=W1xEYFAJcH/Xn6IhCKLEl84FECn7GPYLPqvLjSHO6ilMQEpuaW4cPPGbk+KNT+QRZ
-	 ol9F3VhDO/SLtVqtfDSL3gv9uGfkQ8P7RbbbtY8hXOf2Cg/VXbdG6EmurJKN1Jbl5c
-	 iH6f0Hbcm+jzfLMWLyIIc40C1RbSOEQeo1Eigfbw=
-Received: from epsnrtp02.localdomain (unknown [182.195.42.154]) by
-	epcas2p2.samsung.com (KnoxPortal) with ESMTPS id
-	20261026011456epcas2p2bd53bec33c1f05dab69207a944e62831~h71n31WhC1803618036epcas2p2H;
-	Mon, 26 Oct 2026 01:14:56 +0000 (GMT)
-Received: from epcas2p3.samsung.com (unknown [182.195.38.208]) by
-	epsnrtp02.localdomain (Postfix) with ESMTP id 4jCbJc04Yfz2SSKh; Mon, 26 Oct
-	2026 01:14:56 +0000 (GMT)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Qj1KfF73
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4E0801F01828;
+	Mon, 26 Oct 2026 02:08:19 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1792980499;
+	bh=Ix0wrZzojA4CGxvR1XdARcUpTBNmrQFIhIZivg3bS6I=;
+	h=Subject:From:In-Reply-To:References:Date:To:Cc;
+	b=Qj1KfF73GHhj4FWn+F8ZCUs55wN9J3s1sOiq+fb/Xs15aPYTBvGcj6E/NBoPCyFKk
+	 1+xHP4UBhfDcI2bzFJdqrD/0xGmXlQWhc43tyIFlMrosRP9yQ7rw2NHa1viB7SrQT3
+	 9xp2S82O8SvoX3g24wownppuTXy9cPT5pBiqaWhCJVWcxPU07qNBM1PI0uSS8I8dDp
+	 GnsuBe+l23ejYNHgmDaIxiCfoBIYVRTsXfn6o2uacHT3qSELtCtAvkLpTcljdQQX9F
+	 RrR4TdItuFAtrncc+NGBvF98jccCSAQ45ut/DlyvPKjoV4hZg7Y6MT3yrZt4HX756R
+	 0jBrWdYP1FXsw==
+Received: from [10.30.226.235] (localhost [IPv6:::1])
+	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 445AC39EA760;
+	Mon, 26 Oct 2026 02:08:19 +0000 (UTC)
+Subject: Re: [GIT PULL] Please Pull NFS Client Updates for Linux 7.4
+From: pr-tracker-bot@kernel.org
+In-Reply-To: <20261023211150.485518-1-anna@kernel.org>
+References: <20261023211150.485518-1-anna@kernel.org>
+X-PR-Tracked-List-Id: <linux-nfs.vger.kernel.org>
+X-PR-Tracked-Message-Id: <20261023211150.485518-1-anna@kernel.org>
+X-PR-Tracked-Remote: git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-7.4-1
+X-PR-Tracked-Commit-Id: ef30b3efb7e8bae94d790a6503a595e1051323e7
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: 9e089e670e9ad1caf4a5b2b63e01b2dc076efbe3
+Message-Id: <179298049774.2358720.2738343874770066025.pr-tracker-bot@kernel.org>
+Date: Mon, 26 Oct 2026 02:08:17 +0000
+To: Anna Schumaker <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org, torvalds@linux-foundation.org, anna@kernel.org
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -62,52 +67,16 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
-Mime-Version: 1.0
-Subject: RE:(2) [PATCH v2 0/4] nfsd: keep a layout whose recall overtakes
- the LAYOUTGET reply
-Reply-To: daejun7.park@samsung.com
-Sender: Daejun Park <daejun7.park@samsung.com>
-From: Daejun Park <daejun7.park@samsung.com>
-To: Jeff Layton <jlayton@kernel.org>, Chuck Lever <cel@kernel.org>,
-	NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai
-	Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
-CC: Christoph Hellwig <hch@lst.de>, Benjamin Coddington
-	<ben.coddington@hammerspace.com>, Trond Myklebust <trondmy@kernel.org>, Anna
-	Schumaker <anna@kernel.org>, "linux-nfs@vger.kernel.org"
-	<linux-nfs@vger.kernel.org>, "linux-kernel@vger.kernel.org"
-	<linux-kernel@vger.kernel.org>, Daejun Park <daejun7.park@samsung.com>
-X-Priority: 3
-X-Content-Kind-Code: NORMAL
-In-Reply-To: <2f97e4ed4ea0d1869505436be9040f810d631460.camel@kernel.org>
-X-CPGS-Detection: blocking_info_exchange
-X-Drm-Type: N,general
-X-Msg-Generator: Mail
-X-Msg-Type: PERSONAL
-X-Reply-Demand: N
-Message-ID: <20261026011455epcms2p34ab803ddbfe392dfe82d17f9fc21678e@epcms2p3>
-Date: Mon, 26 Oct 2026 10:14:55 +0900
-X-CMS-MailID: 20261026011455epcms2p34ab803ddbfe392dfe82d17f9fc21678e
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain; charset="utf-8"
-X-Sendblock-Type: AUTO_CONFIDENTIAL
-CMS-TYPE: 102P
-X-CPGSPASS: Y
-X-CPGSPASS: Y
-cpgsPolicy: CPGSC10-223,Y
-X-CFilter-Loop: Reflected
-X-CMS-RootMailID: 20261023105411epcas2p275c8e03b419be02713d4fa676f4bb0f9
-References: <2f97e4ed4ea0d1869505436be9040f810d631460.camel@kernel.org>
-	<20261023-nfsd-layout-refcall-v2-0-2160bddced0c@samsung.com>
-	<CGME20261023105411epcas2p275c8e03b419be02713d4fa676f4bb0f9@epcms2p3>
 
-> I'm still reviewing this set. The code itself looks OK for the most
-> part, from what I can tell, but the patch descriptions are definitely a
-> bit too wordy.
-[...]
->     https://github.com/danyuchn/asd-ste100-skill
+The pull request you sent on Fri, 23 Oct 2026 17:11:49 -0400:
 
-Thanks for the pointer, and for taking the time to review this. Agreed,
-the descriptions are too long. I'll trim them down in v3, after the rest
-of your review.
+> git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-7.4-1
 
-Daejun
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/9e089e670e9ad1caf4a5b2b63e01b2dc076efbe3
+
+Thank you!
+
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/prtracker.html
