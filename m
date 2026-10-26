@@ -1,133 +1,120 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793015088;
-	b=kU/aPBhY2YXURlHEY2/AayeyXiYkt8Ca2Hj/Zh6vS03MFdEQtYvAjbMfUr+4dWRpGHwG
-	 lzQIvDsSOZ02uFmmQUSr5xQ+LNe7aaI4n4Qt4Vi0fU8oIEGkaR0Da59Z9LUeAaL/HOvhb
-	 1k9wGv7YiaNuZA4SL+Pglh0T38d23/dDNGl5irdvRKNDjsUbt4LMp5iJYo+lPdtuySVIY
-	 Lo5X/GTNR+Fnr63SRq3gQNLp6j7+myoJ2UsU5Yo7K0YdzJyDzBYSSe8A+2qIUCyHjPzo3
-	 VF4+xiJIhc4MxyrTs2uX16mb2tWYsgEyqg/bCWWjWNAa6KLqGjAyw3RMLWrRXH3kbrw==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793015088;
-	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
-	 In-Reply-To:References:Autocrypt:Content-Type:
-	 Content-Transfer-Encoding:User-Agent:MIME-Version;
-	bh=8P5JS9PoZYbqQsZyFg8dcp8YRhmxl2i7lJ/oJ6s7ONk=;
-	b=sPvna3j8hpXNQ9sB+6QFsNB6+g1fmvefDhCU4kj7YJexBBVtqxdhPN9KBAVIYVzHQJaE
-	 xq2qruNlHpDsF77xQNF4vMFFR2FD2bS4EVylNhu5HQXm6ubR/pasjCPS65J+A7sR5nIQd
-	 4BzL+wH8j95CLkAQwRhdnDAMHwRTvQbNvSSz/gKMUZUGQ+0Z0a9d6zNwWe9K6XihHgP0i
-	 wfPbkCIukGQMtOFpKsH4/1AfGlro8cEDh07YISBX+Swou6QkERS5eyBgVUkUp1Ev0sWFw
-	 01MWQiWRzarpvnNgnKB4j1JUuj5jy6+SRPu8JcqtzGW6yhZHuIfMHkp1hopoWPwngCA==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aXJ0HbCd;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=170.10.133.124
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1793016581;
+	b=BU3Tn+rqKCd1UjmUA1eKOA9uNsxH3/MwZxqH0Rb96nrmt0cBvgFmiUiQE/GZO3J8WqHh
+	 h754PVcz3Jy0bD80L17B6CoRkhdS7hhiz4POZpl41ufYLCZBGl2wSMKPL4xoFQUHJkndi
+	 6ZQDOlWeWB+VmP2ap4EwKdt0RlcEEN42MD9fU5PBhYtKr2sQ/OWpOp4dm0NvOSsp8lgPP
+	 aut4vyQRC17zpnJkNyLl9KFVxkntuRJAQdBZAysy9Y4gxWtwwNjxPWvYlPC25KK3dZtyR
+	 fqTZHlH9ypKlWK5kh1q0wqK2tv8QYlnLrdZbxapuUked0TuroL8F2R6u1a+45/A6Xng==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793016581;
+	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
+	 X-Mimecast-MFC-AGG-ID:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
+	 X-Received:MIME-Version:References:In-Reply-To:From:Date:
+	 X-Gm-Features:Message-ID:Subject:To:Cc:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=nrzZwmbiTICzxQaTpBGGNc1jTSBru89vupNxwMA5qvc=;
+	b=d0y6jpq72byGgAT1JiY8aulGtYGVF3VSxuMSIwUemuwp61DrnOZgiak6QvcPOV8/DHAv
+	 9DKQeXsnJZNJuv5CqlAjDFEVFBNxFbkB2dzrDJZUTmHw/v+jBgGYavX3sq0W5NLNRvNvs
+	 jGpBxWUiWzAZq25f+ArrjwdJ/KshPMIZ5ukY6u1Np++p2MPb0cs/htI2VoCqCThWREVTQ
+	 lKBb+UlMrRfMEfkaEQHYf1hkD8vLZNlvji1bfnCs2OCvmbtBZg3s33OuXvMau3X1GMbjd
+	 FVLaT0xdarB5Nf4JxLHqbX5Jy6V5sPvnaOpi+AjOQiCkrBelDnfXX/PSsvxLex8yugg==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=redhat.com;
+	spf=pass smtp.mailfrom=redhat.com;
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=bQ5f9cW1;
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b="rXCi/AXw";
+	arc=pass header.oldest-pass=0 smtp.remote-ip=170.10.133.124
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 62615606A31E
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 11:44:48 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EF83760A261F
+	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 12:09:40 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org EF83760A261F
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aXJ0HbCd
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6B0841F01825;
-	Mon, 26 Oct 2026 11:44:47 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793015088;
-	bh=8P5JS9PoZYbqQsZyFg8dcp8YRhmxl2i7lJ/oJ6s7ONk=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=aXJ0HbCdavslPZm7d3pSap/gKBuPa1ZSRqmoeY6MDLjVF/RHEYVab1DvGHQdTWxa5
-	 OtaX6Go6OiepdzQKsAWnGfSt/fo9Bym2rzuB68xv8wVxA2I5r3II9w1VcsiP7itO5f
-	 uA3CRj1jKuloUO0otRM7HwkwjRJByLJzNugeANnNSIF7mb9sm2lTnOcd0qsbf9jZuc
-	 HwQjonliW6nAA28wn4nKkvIU+ymIWS3OjAstX4HC/1RJncIazY3FW9TZdvfmZTMbP2
-	 eNvc2sBCYLnDPnsGG5tdiH/3/Ez49e7/ThmyVr3zZEEe88DMzFjqh7mU9kC6xSYi66
-	 6GtqgCZYd7M7w==
-Message-ID: <7b253b36a75d36827a0aaf387485d642a0e92662.camel@kernel.org>
-Subject: Re: [PATCH] SUNRPC: Fix use-after-free in svc_age_temp_xprts_now()
-From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neilb@ownmail.net>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org, Mohammed Alquraini
-	 <mohammed.saad.alquraini@gmail.com>
-Date: Mon, 26 Oct 2026 07:44:44 -0400
-In-Reply-To: <20261022205357.3239985-1-cel@kernel.org>
-References: <20261022205357.3239985-1-cel@kernel.org>
-Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
- keydata=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
- QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-2.fc44) 
+	dkim=pass (1024-bit key, unprotected) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=bQ5f9cW1;
+	dkim=pass (2048-bit key, unprotected) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=rXCi/AXw
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1793016579;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=nrzZwmbiTICzxQaTpBGGNc1jTSBru89vupNxwMA5qvc=;
+	b=bQ5f9cW1pjZkjs6HvJlEGsHeikldWmvZ826RwSFXsDqWGaaVoRJrQjt0KUq6W23Z/dxMtb
+	aZh8oBqwZYf/B1thv3+Xhta+SqDxJhvcmO60qX/V0O3Dlffvz4Fp8wvx+gjfgD2V0QeyXA
+	AlkBxQjgObO0gHYrgGLhCat2JJVUmp0=
+Received: from mail-dy1-f199.google.com (mail-dy1-f199.google.com
+ [74.125.82.199]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-146-vco_ZstjNHionuda9RE-FQ-1; Mon, 26 Oct 2026 08:09:38 -0400
+X-MC-Unique: vco_ZstjNHionuda9RE-FQ-1
+X-Mimecast-MFC-AGG-ID: vco_ZstjNHionuda9RE-FQ_1793016577
+Received: by mail-dy1-f199.google.com with SMTP id 5a478bee46e88-3692c5b061bso11149768eec.1
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 05:09:38 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1793016577; cv=none;
+        d=google.com; s=arc-20260327;
+        b=fz7UckXPME3UTmvDZ5chP4Rvph0FMpLq6wy0iX+9eg+hx1zPesPzm9QlUxY+5VDyBG
+         Hu6XwhKLirjP2ZqcCGRLKKauwPUWXkTDiP5Y8ssNjv781536wx8P8p3M5cA/V8bwT9L3
+         KWQ+XFYW+LKat+aAeCxHRBA7fk2V637MvxI6TTX8P4GRL4KbNygtwDW7ffWD6f1q91Pl
+         jTNuR962z3hx6+8bYO8xz6dMP3ELkpTQ4dUNYtib5XSTLQGawQCQuSJE0h27jiLHSJLh
+         B2oPn9tiT/M4Nu/l0O6QhxSWWs0M8WQoZcdvtLR+7NVo7ASo00dB63QKysl/6F41MN2j
+         gtsw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=nrzZwmbiTICzxQaTpBGGNc1jTSBru89vupNxwMA5qvc=;
+        fh=XRq347533adRWY5otFq/Mnill6zxBelsPXGgpap39vQ=;
+        b=lmYspxWmMV2YTxwoLWZC7zPNOiLQJ6H5YzpqBxL9CIyKVx3YPm6DARqUnlsDaQphLF
+         96WrfEycUPom8+Dq9xB/o41f8N9XuSGEmTo7NHuewr18uGjvdDk8hIZFVF3L7cZ4QxtK
+         mZfHnKXI3uuR8QgiELNLp/KBsG9r8/OtaQj73bBlERauqHSAQ7pyUqZdXrehLpOm4suu
+         +5GJAQuKtWOWqANSiVdgxIzAIJvJzanT+B6vaPiyfiOPipCuJLJjojDZJLs1uviiWaLr
+         RPY3CJ6GrdNbENADIu/tzsI2hTK8sOJX5dC7ek5H0VS3+xtP95DoAsCrwMpguqkI2+Go
+         CVFg==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1793016577; x=1793621377; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=nrzZwmbiTICzxQaTpBGGNc1jTSBru89vupNxwMA5qvc=;
+        b=rXCi/AXwrO3tWOwe10aLDupnsWRuLF3sWjUaa+m4LD05fU8q8ESWHyQX4b2jdgTlor
+         LKiSSIejHGNPrs2wKhC8Tc8O5+meXSUc0BrWPee8diKGWtKXRLfAO3ueVIXLSfPNE0kN
+         fq8TP/0ccShBPaxxVJIvOEGAJhYghlZmkkjC/0dy7d6UeUezBVcWlFAHk9IxZKKgmcgt
+         CyfPgppYKGYCmZ9IgkI0evUqZplZIKEnqeT/vWZSfd4u/gLSsVqC5m8A/FrJxxusqQIn
+         lYIPk9moKo2gPsPnE/3QYtdPbL+hMdgs8xEnt8oKwRf9DGD8UMSeH6mQgAPPqt0MM0Pj
+         pcFg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793016577; x=1793621377;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=nrzZwmbiTICzxQaTpBGGNc1jTSBru89vupNxwMA5qvc=;
+        b=eIFmrCkTyIUR90r9pTKznSu/xQRdIfDonS2Ydz9zxwNyb+iPB8j3PCxir2i7+g9cOx
+         euQUKqYAiSXlTdj7tpBhVsJJizMt8Am9lksZLrU4mOyuJnWw0q0oeYUKL23x+B69xdFk
+         ZSc4Tqfl67IWZnkRNUphv6yHIV0fp/EXarLhh6K/5HT0KHkJWb+Z1yLo0Rf3ffha8vq0
+         /pVhNz0sG2mqTEFmoyVSmnpbGR8MA9eR0rTL8nZW9yy5e99fEMMN+n0otdCSPlK3WT2o
+         2lErI3DC9G3AcpyvySOfbDby+kDjHUUSKkMij3hqD558EPgm0Q/1Hi55Q/l2tpITb3lL
+         g/gw==
+X-Forwarded-Encrypted: i=1; AKwUvBwjQ8cE79T4omJfU/zjoec4Cmog7Aujfan3FrzzHVYU+wfmC76TNf/V73S5bnWfYkita/fCREdC3XE=@vger.kernel.org
+X-Gm-Message-State: AFq9FYJxr03rLz4fb8U/JcZuhYvSGMueg0VS6jzqzjEeC+Cq/0+/HA43
+	m96kNlEDmWDuScwdfqV9FrSgKeLYntZCKWcOWXP2HZu4hfevmFvJwkzpQ+85Q5UFAV/wNKIUdba
+	MWa1mzqQE4TTYkNrmUQPGQXHDChJ05V5XPMzH9CgTkMD63O14W9FF4Hf6Ixwbn7Y0JRSsekg5R6
+	zNWkI1yGriad1tUQYzWQXYZvuenVnGhTFbSdZ5y7fm10DNEZE=
+X-Gm-Gg: AYBFou1UKzdetQgoQ20wqkp4R+eyP1SDVMEKwEEi71esA0t02Jtoda8q2XFdSz+0vPK
+	e5p+PVej6NfnJ/otr2HzBWiVXxRsxE3TUuIl8dTz9M69yyJmI0U4uHmIK3p3Y8+XiDxx1xM4qm1
+	RTo+cOBjVENcVA2U4xI1eptYewzRrprgbA//XdaGwRxm1kW23EHVViEFcP
+X-Received: by 2002:a05:7301:1602:b0:369:fd32:79fe with SMTP id 5a478bee46e88-369fd3294bfmr5007208eec.17.1793016577207;
+        Mon, 26 Oct 2026 05:09:37 -0700 (PDT)
+X-Received: by 2002:a05:7301:1602:b0:369:fd32:79fe with SMTP id
+ 5a478bee46e88-369fd3294bfmr5007178eec.17.1793016576598; Mon, 26 Oct 2026
+ 05:09:36 -0700 (PDT)
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -137,79 +124,97 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
+References: <20260902133554.28863-1-antonio.feijoo@suse.com>
+ <CACWnjLzVeXAfVWgg_YTqtNTDd7LXSkM9dA0znwdPLY=4226bbQ@mail.gmail.com>
+ <1925D89E-8A84-4FE3-95BC-93061E6578BC@hammerspace.com> <1015823097.11117914.1792766124992.JavaMail.zimbra@desy.de>
+In-Reply-To: <1015823097.11117914.1792766124992.JavaMail.zimbra@desy.de>
+From: Roberto Bergantinos Corpas <rbergant@redhat.com>
+Date: Mon, 26 Oct 2026 13:09:24 +0100
+X-Gm-Features: AclHuK-6GMPAFFtFccR9RZYJADau6Vb2EhlVJL5KSGFdtkr4RZ9whD1d77HtksY
+Message-ID: <CACWnjLzZ1Xb-YABbSSJxj_Rc=WAPfxHDtD52V0VJbPQs3ENErA@mail.gmail.com>
+Subject: Re: [PATCH] NFSv4/flexfiles: add a soft dependency on nfsv3
+To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+Cc: Benjamin Coddington <ben.coddington@hammerspace.com>, Mike Snitzer <snitzer@kernel.org>, 
+	Antonio Alvarez Feijoo <antonio.feijoo@suse.com>, linux-nfs <linux-nfs@vger.kernel.org>, 
+	Anna Schumaker <anna.schumaker@hammerspace.com>, 
+	Trond Myklebust <trond.myklebust@hammerspace.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-On Thu, 2026-10-22 at 16:53 -0400, Chuck Lever wrote:
-> svc_age_temp_xprts_now() moves each matching temporary transport
-> onto a local list under sv_lock, then drops the lock and walks the
-> local list without holding a reference on any of them. In the
-> meantime svc_delete_xprt() can take sv_lock, unlink the same
-> xpt_list node, and drop the transport's last reference. An idle
-> temporary transport holds only that one reference, so a peer FIN
-> that arrives between the two loops frees the svc_sock out from under
-> the second loop. The notifier then sets XPT_CLOSE in freed memory,
-> and svc_xprt_enqueue() reads xpt_flags and xpt_server from the freed
-> object and queues that object on a pool for an nfsd thread. KASAN
-> reports a slab-use-after-free in svc_xprt_enqueue() under
-> nfsd_inetaddr_event(), with the object freed by svc_sock_free() on
-> an nfsd thread.
->=20
-> The two-phase walk dates from when the second loop called into the
-> socket layer and could sleep. Commit 546125d16142 ("sunrpc: don't
-> call sleeping functions from the notifier block callbacks") moved
-> that work to the nfsd threads, so nothing left in the second loop
-> needs sv_lock dropped. Mark and enqueue each matching transport
-> under sv_lock in a single pass, as svc_age_temp_xprts() already
-> does, so that svc_delete_xprt() cannot unlink and free a transport
-> the notifier is still touching.
->=20
-> Fixes: c3d4879e01be ("sunrpc: Add a function to close temporary transport=
-s immediately")
-> Reported-by: Mohammed Alquraini <mohammed.saad.alquraini@gmail.com>
-> Signed-off-by: Chuck Lever <cel@kernel.org>
-> ---
->  net/sunrpc/svc_xprt.c | 16 ++++------------
->  1 file changed, 4 insertions(+), 12 deletions(-)
->=20
-> Mohammed, thanks for the report. Please test and report your results.
->=20
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index 5db42e53be62..076c624fe675 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -1075,29 +1075,21 @@ void svc_age_temp_xprts_now(struct svc_serv *serv=
-, struct sockaddr *server_addr)
->  {
->  	struct svc_xprt *xprt;
->  	struct list_head *le, *next;
-> -	LIST_HEAD(to_be_closed);
-> =20
->  	spin_lock_bh(&serv->sv_lock);
->  	list_for_each_safe(le, next, &serv->sv_tempsocks) {
->  		xprt =3D list_entry(le, struct svc_xprt, xpt_list);
-> -		if (rpc_cmp_addr(server_addr, (struct sockaddr *)
-> -				&xprt->xpt_local)) {
-> -			dprintk("svc_age_temp_xprts_now: found %p\n", xprt);
-> -			list_move(le, &to_be_closed);
-> -		}
-> -	}
-> -	spin_unlock_bh(&serv->sv_lock);
-> -
-> -	while (!list_empty(&to_be_closed)) {
-> -		le =3D to_be_closed.next;
-> +		if (!rpc_cmp_addr(server_addr, (struct sockaddr *)
-> +				&xprt->xpt_local))
-> +			continue;
->  		list_del_init(le);
-> -		xprt =3D list_entry(le, struct svc_xprt, xpt_list);
->  		set_bit(XPT_CLOSE, &xprt->xpt_flags);
->  		set_bit(XPT_KILL_TEMP, &xprt->xpt_flags);
->  		dprintk("svc_age_temp_xprts_now: queuing xprt %p for closing\n",
->  				xprt);
->  		svc_xprt_enqueue(xprt);
->  	}
-> +	spin_unlock_bh(&serv->sv_lock);
->  }
->  EXPORT_SYMBOL_GPL(svc_age_temp_xprts_now);
-> =20
+On Fri, Oct 23, 2026 at 4:40=E2=80=AFPM Mkrtchyan, Tigran
+<tigran.mkrtchyan@desy.de> wrote:
+>
+>
+> Frankly, I think this is my change that has introduced the trouble:
+>
+> a68c6fbb638a ("nfs41: drop dependency between flexfiles layout driver and=
+ NFSv3 modules")
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+Im not sure of this, that enables flexfiles when NFS_V3=3Dn at compile
+time, but i think it does not prevent
+the actual hangs at runtime. If i understand this correctly the hang
+requires nfsv3 not loaded at runtime
+(which can happen with NFS_V3=3Dm) + no MDS fallback (7a375cafc14e) +
+i.e. unprivileged container.
+
+
+>
+>
+> ----- Original Message -----
+> > From: "Benjamin Coddington" <ben.coddington@hammerspace.com>
+> > To: "Roberto Bergantinos Corpas" <rbergant@redhat.com>, "Mike Snitzer" =
+<snitzer@kernel.org>
+> > Cc: "Antonio Alvarez Feijoo" <antonio.feijoo@suse.com>, "linux-nfs" <li=
+nux-nfs@vger.kernel.org>, "Mike Snitzer"
+> > <snitzer@kernel.org>, "Anna Schumaker" <anna.schumaker@hammerspace.com>=
+, "Trond Myklebust"
+> > <trond.myklebust@hammerspace.com>
+> > Sent: Friday, 23 October, 2026 16:16:32
+> > Subject: Re: [PATCH] NFSv4/flexfiles: add a soft dependency on nfsv3
+>
+> > On 23 Oct 2026, at 8:30, Roberto Bergantinos Corpas wrote:
+> >
+> >> There is another problematic case for this problem : if an
+> >> unprivileged container attempts pNFS I/O, SELinux may block the
+> >> request_module() call, leading to a writeback hang instead of a boot h=
+ang.
+> >>
+> >> Having the module pre-loaded at mount time avoids that scenario too.
+> >
+> > I think this is a stronger case than the nfs-root, which already requir=
+es a
+> > sysadmin to have knowledge and desire to configure the client a certain=
+ way,
+> > and can certainly apply the work-around.
+> >
+> > Roberto's case would look functional to the admin, and the failure woul=
+d
+> > happen later and be difficult to diagnose.
+> >
+> > I think Fixes: 7a375cafc14e (7.2.y) is the accurate tag, though - becau=
+se
+> > before that the -EPROTONOSUPPORT would fall back to the MDS - it gives =
+the
+> > WARN, but doesn't hang the system.
+> >
+> > I also think 7a375cafc14e also needs a follow-on fix (Cc: Mike) - becau=
+se it
+> > now causes permanent failure cases to retry forever- we should probably=
+ just
+> > fail the IO.
+> >
+> > The last thing here is that the MODULE_SOFTDEP is just informative, it =
+only
+> > advises modprobe and initramfs builders.  It not going to fix
+> > CONFIG_NFS_V4=3Dy with CONFIG_NFS_V3=3Dn or m.  So - I think we should =
+just make
+> > flexfiles publish a hard dependency on a v3 symbol, which fixes the mod=
+ule
+> > dependency directly, and also fixup Kconfig so that there aren't unexpe=
+cted
+> > build failures as a result.
+> >
+> > My 2 cents,
+> >
+> > Ben
+
