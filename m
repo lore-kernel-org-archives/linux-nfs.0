@@ -1,94 +1,97 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.50
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.160.42
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793057274;
-	b=k8O3sURxjdO5bn9P/a/wgHPAtByrx0tEZlnn48X4y4N6B0Fnh//uYWEIAoYK1Lqtr8U/
-	 IrQ/fVBtZ168/sWxLj0zQVYjlYmqhsj+SBmgiKZgRNax2mM9kaGc2z3ZmoMRvqxUGr75Y
-	 DG176UNUYoFJobq3Wx40ZonldX6/9dfudIEkbXtrvggCCCkSV5YsyNtUr01eUo6YS6+Gc
-	 VplLEoKaumBnCsNM5AllNr58nVspaDpj72ydHIpmqZ30TP0sO+bxcLhd5hW1xLRdx+P07
-	 og2a5mRTckYmhdu1IeoCk60YGqNGMnaL2kh40VFuVVQXaBSpIq7457kbx2KpKu4aXDw==
+	t=1793058262;
+	b=R7HFiUYIaM2O4z49b+NxGFZfi0ZmmcUlA07gY9qZB8ednaW3lCO7/31qw68lGeGEJGDe
+	 NtlHjU13ZGCVC5lyVXbOlRWKeNAY+gKH8p5+LV5GYxkEv55lXDQe95nJn1DRTSpw0YwNm
+	 U5RqsZ1pDlhdenha/brDl3SjkSWsw5tsaI8P9fUZ4wtOsKObOCCV/PlDW+r7ZmCmyA4lW
+	 2npANe8ctOyHb3T1Sb+84wfouteGxAgLHoFGiEPbTiP4aTFa8sRLoqK1QrUa4WRDskLJN
+	 ESD7MTSu6Gh6hTJFQwp9jS+QirJavTItNqzQULp8obGbyoAQZfVymV5dsLvcjgQvQkw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793057274;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793058262;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
-	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:
+	 X-Google-Original-From:To:Cc:Subject:Date:X-Mailer:Message-ID:
+	 In-Reply-To:References:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding;
-	bh=IUZeQP6zWoDBevTGz755Qp6CZmqiuevebAzjTg0ZcXg=;
-	b=jf/TRguHsWgMMs5ZjCFdqTeHJwW03pGij/9niRaoJButoeEGFFkX3uVrhYQ1UAmr9yGE
-	 SrRR+0QaXXNEcZiwok9pkPb+V0PRbrkT0ltk1m0eDMTkc+arGHko/PF4y2h0autDvpb2K
-	 0rq97pvLR+KSmPIpbC5PIZwoSDRLZ0lrOXDPc+Yn8GToz8V9Z44SHwrNzv+lRw/0MAzs5
-	 mtbWtJnVPrTTYH4xb4x2/cYISeJBz9l01Ae/SErOfgaNcZ0VSsLqUB2lqZIZfwZNQQQph
-	 TYx5VaZdgnaDj3S+62YuH3M/iJIWm9oduFGneu8W+yOeN539Sxmzrl2wpFaUFAnnSRQ==
+	bh=IYtPiKQaOepWd6dhkXMRUBUfHAWsPVK7jupgm9kyE58=;
+	b=AuJpEArbkueoZiAfuw8916z4GLDU2o5vPwtAGCYbluIyDpPc040V0I9GiDtfr+VLbjmw
+	 /ko3qDaserqH5/lpD8zeDosjLSlLmq+FaCLNX4WSkDelaMIVx7h1l+Au1TPxR5xKV90yG
+	 mj9rBUlyPiSARwH+Jovl84/Qjc6CuxxF7cPnryiZxxHiZvw4S7b9a2ZwNttKXIyOmylNY
+	 +yrA4LzVR6PAdPKDR2Q5LT214qjWORBIIqk11emXBU+2dQKhRRMSpHhPIIflbhlJpEuG8
+	 1XiJsjwGuM6JEVs38mdhvvyxIfdHCDpm/aULN2SNvL+TFLNFZ7Ud+TNVUi6lFTEjLmw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=hammerspace.com;
 	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=ZYkEvoSJ;
-	arc=none smtp.remote-ip=209.85.210.50
-Received: from mail-ot1-f50.google.com (mail-ot1-f50.google.com [209.85.210.50])
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=NgRCOMjK;
+	arc=none smtp.remote-ip=209.85.160.42
+Received: from mail-oa1-f42.google.com (mail-oa1-f42.google.com [209.85.160.42])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DBD7B606A326
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 23:27:53 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org DBD7B606A326
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1AA52606A31A
+	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 23:44:21 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 1AA52606A31A
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=ZYkEvoSJ
-Received: by mail-ot1-f50.google.com with SMTP id 46e09a7af769-81b54d0cb17so3658387a34.1
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 16:27:53 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=NgRCOMjK
+Received: by mail-oa1-f42.google.com with SMTP id 586e51a60fabf-4a85c656c58so1248754fac.3
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 16:44:21 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1793057273; x=1793662073; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=IUZeQP6zWoDBevTGz755Qp6CZmqiuevebAzjTg0ZcXg=;
-        b=ZYkEvoSJIGykfnRQ7Y9JWvXASdKFjU+5mihk0D6nBczB6fc7FCiTSTdCyxiQ1MJWTF
-         rI5ttEdcZN+ygneksIevf5cDIBgmn0pqWBiVSWIDqO65nfPLzu9ABBgE+VNQ6iCg0neP
-         xCzvtbjGkwrssu4EbzMl7XcNW3R0r0ssqJrkcWIBZQ5J0nq2t5RhpekUJkT4yQUvA3iO
-         Tuokx3S89CJK3/k/jlJxOqr6HrNsiuYVR8L1H17FLM8h2LoKMFJ35Zh307HsBgtb+69K
-         TAbCz7DJFiuB+yKuF2varTDwbboL405Ajaa6cikazZLM/+LEc8gHBgwB7xwSVUj9Vc8i
-         V+Aw==
+        d=hammerspace.com; s=google; t=1793058261; x=1793663061; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:date:subject:cc:to:from:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=IYtPiKQaOepWd6dhkXMRUBUfHAWsPVK7jupgm9kyE58=;
+        b=NgRCOMjKqZLQ1xcqLNkNjJMFSB0dQfJQySsC0B6iAl74VmMwkk0pKB0/LsCc90b1Pc
+         TvaP27cXASQlfENkoPzi38mDwubjSTMZquvNrBzKINzRpq3e+3wAkPGOEk+WjUUwbGe7
+         rKnMdu83Y8XbMp88hSw6JlrnUNELXVVRuZgSCb5hZSAO7bwv0i4HI26liO2CtlmqYgfZ
+         8UX8KzANHbxjFvsJ0C+yBwgyOoJkXh+1lh3O9k+iUNvOktuxir3wFGNmyuNrlUlzHjHo
+         O87+vgVBnxR3sjfwAqUBYL7mfHfanH00iFSCppGQud0JQSQ2uKoh/b05bmufPhi5IOeF
+         JG2Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793057273; x=1793662073;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=IUZeQP6zWoDBevTGz755Qp6CZmqiuevebAzjTg0ZcXg=;
-        b=FXbrk5xtAt1ZPOjUOf1Em9LWlPIiMjQZcaZi0w2EC9cwW2+1QsytpuuA6N5CB4ya3D
-         af2unOoaTe/0Yhfr63cE+5xp1cd+OnwnPEE6KZ/oeTSKkStwebJA/68+PULtTvMNmd9Q
-         KXu/n9GTovjgDGxd+5y/NLHU78r0EDjlnOumI6k7lOV7m2uOOoB/HZGUGdLhjJJOLIhp
-         JedU256fQZA9pEMG09O2iHnXQkPr7Luh9j5zGIkusqFIGteeprWGwT/85WcYP6eWoP1+
-         CSp+L9bxSXYTo645R2eCxms0XLwwiWVI619RavlMF+pZ+5h7DPHcmPGl4VOr5jNN7uiX
-         mSMw==
-X-Gm-Message-State: AFq9FYIGOLY8NmhLJXEL2ryMu9I4TjVQOlBaEi+Ld/0s81y/v5PJ+w+V
-	iDtpIGk1iTgGwBeWOQ7/vfkz1+kejpQB2I82wxxDoW8FP+B9nPYLFSW9MLlEihquRDc=
-X-Gm-Gg: AYBFou1TIX+wP790w9VuWunMixXya1lz2XkDXItEw0PCyxz8zhcHP5JxA7I3eEmPt2c
-	YcvgLmM/M69FW/ojf3nqmjpb3P33Y3InkfSraWpp0sTYgRHxBuiip+4/SPvS2lEd4tuFNHMJVaX
-	T62j79A2iP85R2Obnm1ZqdIdNRKCXm01TpJR5ks50FvoEqAhFOndWFpM6x916daL9S2XXAUaq51
-	wr2BzMvi8XDOATxp3QTVS3I1zWmBftogbJ0nm41ylf+VBhLFOYGqQOmdOZ8A+ym30PvZni58Eg9
-	ysk2o8gqp761wS08EUI3bxw+IOy8BuSfkLSDpwlMlUaT11V5Jwc2gaRxhk54oIk3MP4Yzb7Es86
-	AzKoMVfVKytc1UpRaZJVE72LU31B/KHrrTf/md12kNL4lOxmAcJQGdkAprq2sC4ht9T1gUOebT/
-	BpC/IKkD0CLnzBMrIPDx54Hl/HZ7DBhrhuhGRz4t9b0ZeUZObRNyJDU9HbcERwLoBmNLuXRTuqe
-	J1Kzmh+TvEUTn4EQQxiIUXuJbAmK8mj90Rui67jL8lZKQNkntzyE+Qt5GuXjqD77kALHszIlffN
-	B+CTJn1OtWjZPr8LQyz49422/8M=
-X-Received: by 2002:a05:6830:4408:b0:824:659a:adbf with SMTP id 46e09a7af769-850fde29ef0mr6761148a34.5.1793057272791;
-        Mon, 26 Oct 2026 16:27:52 -0700 (PDT)
-Received: from bcodding.csb.hammerspace.com ([12.117.181.174])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-850fc002444sm9060774a34.23.2026.10.26.16.27.51
+        d=1e100.net; s=20260707; t=1793058261; x=1793663061;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:date:subject:cc:to:from:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=IYtPiKQaOepWd6dhkXMRUBUfHAWsPVK7jupgm9kyE58=;
+        b=GE7EWgWRyDQuTz3lUJAPfIagtUQ+BnzzCwIMox3U+/A1MASkV9ClXyMAwSpeYOK9iM
+         pGneqrluwsdw0G52L9/QIYhf3P0vXdHrakGRtsk5OA1UWSWaWFBaVtDK7MbnCisCR6qr
+         eHfTtgu29qVsreSGVbfZVWUf+Dw8+KCeBzpGxSm6uR23FN8LwlklEuYm218C+cTZOUI6
+         BDkPWRB5jCpZtxEEvnoHOBb5cAfag/0iObFKqhF/nRMEdGzAmxoV9hY+U35saaSMjnnI
+         asu0P7tevS7QQkX873nrUdSso5EzSHCezdfdc0ywe7LWkmwUqDHI4JcvICeeTtOVAuR4
+         D4FA==
+X-Gm-Message-State: AFq9FYIirmNaYFlGFJkvkpX2oSls5UpogW47Mf5AZwr+YUClWyWeJRZP
+	5D5XGdI7dTzso4sRR/ue0b3L7khnP6reI/f2CCip1kYBHu6n3bIXa8h6KCNzXA+e4L2ntyGMkn/
+	2CQ1u
+X-Gm-Gg: AYBFou1hy/gkOgUFoy1eDPAHpWASx00Gb4sPI6jRImVt3S7t7ZVSDBq4deAyMj9Nmvp
+	JeWK+xSYpe0xTDRV+y0nwYqxjfCGow/ahsrMm57KAUUYwgeQZ3h9x8TKrE3zvAY/nz4PrLzONCy
+	1V7diacbM9gdaP7V1KqqG7AOrX6DPRNBnysBjHN725UZrTSxp//JDwMhSZI3/BV0ipQYGnmEIhq
+	WFMlJHNJBK+ySkONOrWmAyXIHqQyBDAy+JzS5OptpMAKpkiDqzcLrN5k/3gq0KPSMhDPiuvPUWo
+	tvQQglaqPXLjvpi4kCjOZ8ICCvmxq/v2YQWjhroqxfMhfLNCsRkyWNsvSNHey2gXKlgl86N9OYx
+	7DOKU8RlmsOLWNX3Vz/QlGGPNXiSPlg5x9HCesNslpwhdjABlzw5MiVbtU1favK+U5xy1eR3aB2
+	JS8trvJcNc90YK5dIktHw1/jwHV59jg3x/94mon5ureLL+PQ943/occCORJiFCdp5oh7Po+fa7x
+	lh/HDASXPWnP5H76cxNbE7W4BIMAxRnzsylXEUS6yZcVlwOEOZBkFN5WGrV6zKdlz3q/OJOu2yD
+	FZw=
+X-Received: by 2002:a05:6870:40c9:b0:4a6:9418:da4e with SMTP id 586e51a60fabf-4a83f6af848mr4812859fac.60.1793058260900;
+        Mon, 26 Oct 2026 16:44:20 -0700 (PDT)
+Received: from [192.168.254.51] ([12.117.181.174])
+        by smtp.gmail.com with ESMTPSA id 586e51a60fabf-4a8431c012esm6022880fac.11.2026.10.26.16.44.19
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 26 Oct 2026 16:27:52 -0700 (PDT)
+        Mon, 26 Oct 2026 16:44:20 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	Daejun Park <daejun7.park@samsung.com>,
-	Christoph Hellwig <hch@lst.de>
-Subject: [PATCH v2 1/2] pnfs/blocklayout: don't mark extents committed after a failed LAYOUTCOMMIT
-Date: Mon, 26 Oct 2026 19:27:48 -0400
-Message-ID: <8b5b2e8ecc7e1150c9b4505d1094da893db2e1a6.1792157092.git.bcodding@hammerspace.com>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <cover.1792157092.git.bcodding@hammerspace.com>
-References: <cover.1792157092.git.bcodding@hammerspace.com>
+X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
+To: Jorge Mora <jmora1300@gmail.com>
+Cc: linux-nfs@vger.kernel.org, trondmy@kernel.org, anna@kernel.org,
+ Rakesh.Bhargava@netapp.com, Mohit.Kumar@netapp.com, mora@netapp.com
+Subject: Re: [PATCH] NFSv4/flexfiles: calculate stripe boundaries from the
+ file offset
+Date: Mon, 26 Oct 2026 16:44:18 -0700
+X-Mailer: MailMate (2.0r6272)
+Message-ID: <17C675FE-0C61-412B-ADA1-882013ACC7B7@hammerspace.com>
+In-Reply-To: <20261024140811.51694-1-mora@netapp.com>
+References: <20261024140811.51694-1-mora@netapp.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -98,40 +101,16 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-From: Benjamin Coddington <bcodding@hammerspace.com>
+On 24 Oct 2026, at 7:08, Jorge Mora wrote:
 
-bl_cleanup_layoutcommit() decides whether the server converted the
-extents from res.status, which only decode_layoutcommit() sets.  When the
-compound fails before the LAYOUTCOMMIT op is decoded, as with a soft
-timeout or an error on PUTFH, res.status is still zero and
-ext_tree_mark_committed() turns the extents into
-PNFS_BLOCK_READWRITE_DATA, although the server may not have converted
-them.
+> From: Rakesh Bhargava <Rakesh.Bhargava@netapp.com>
 
-Fall back to the task status when res.status is zero.
+Hi Jorge, Rakesh — this is the same change as "NFSv4/flexfiles: Bound page
+coalescing on the absolute stripe offset" (v4 06/24 of the flexfiles
+device-notification series), which Anna has in her linux-next as
+a84c62c4f037. Your base, 18a80121193c, is from Trond's tree and predates it.
 
-Fixes: b2be7811dd94 ("pnfsblock: cleanup_layoutcommit")
-Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
----
- fs/nfs/blocklayout/blocklayout.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index d54a141a89b3..aafcb8e30057 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -794,7 +794,8 @@ bl_prepare_layoutcommit(struct nfs4_layoutcommit_args *arg)
- static void
- bl_cleanup_layoutcommit(struct nfs4_layoutcommit_data *lcdata)
- {
--	ext_tree_mark_committed(&lcdata->args, lcdata->res.status);
-+	ext_tree_mark_committed(&lcdata->args,
-+				lcdata->res.status ?: lcdata->task.tk_status);
- }
- 
- static int
--- 
-2.53.0
-
+Ben
