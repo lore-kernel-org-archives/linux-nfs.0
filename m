@@ -1,97 +1,90 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.46
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.43
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793055715;
-	b=W9R5NLQf/rUVwK9cq/jqycV1+cE7+EFX+YlRzEiRc90O32LbS2QFE8jDS+DHmOcaTNuA
-	 46zFvBKJYH0JfWuJIbwDR3Ub3OV0rPPUuRZMtTfD5MY2r+NkdnNVqk8u1mJNHYHh3ioqT
-	 RmkmBoufRCcPcXG07f3/ER8/CuLPjdUKbmwbHi7fHWf/OH1NoZdn01Q4wTw9mt25W8BY5
-	 aqhBnhvcMuhZQNgsV8ac9BANoklv9fPxYHVuWMHgo0DmmIznyR+23VFhgKlU5JddWTmNv
-	 2Jr3p01+OgnJFKkMhBIfZ/GKCmyYLlAQAkgLlv12LYSKwMvic86WGI++brNSNRsMp5Q==
+	t=1793057273;
+	b=OsscJYCW832fjN7PRqCX+vcBMblp/4EtuVyAbre64V5zmIqaPBPIvaEsplg5+acO3gfb
+	 sTGxbVtGaGDnRJB7mBjGwMJS1OxxYGq8U1ubLZoNg8d4neXk2ZVHwVzE/EwP6eezFRLdy
+	 W1+4dnQZ2jFp59BqYSDhgLXsN7p218Ta8KUno2QgzzOAZhUD0oQojUTkfucGeJBI1VjJz
+	 VHafKrqxGHzyS316y4F0ebqtLcIU/bg/Ln+ILWKVam1ihdnogfMs8+PxW7T0GuDhYpjqu
+	 IFOEAUNZwZIccToOuwoQ7xLF0G6cq1nvQYPcPWWQs1mMYzlAR+omyq0LvYCm6CbzbHQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793055715;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793057273;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:X-Google-Original-From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=c0h4dPwM7Lc2ThvwHjpwKfbW4C8bAJIrwdRbNwJK6ik=;
-	b=fQ+Fz6JI2sNSaBI932dFzq9wItS3X2FYi8x9u776Kmma3yhe7QpOkBSHy4JQxLpt3108
-	 kBl9KwMM3l1gaN2FU7lnDt+i3f67FWK7UGeMVlXwzC3xCq9RaOi5iB1mOtuEfBAbAQhva
-	 XtlgP6vV+G0TdiFUGsrAoKygS6VoYwOHiPKSepf8lHiNdMk3qCSG6oBwh5TaHtWFfxnOW
-	 4hE7p60FdLIMd3jpulGwn7dTD0E62iv/evxgQytG7pVbp37Yr1sq4LljMiitjZftznonv
-	 kPBjbAvuxi1x3VvuWVe6SvB35THKOCBms+clXobT30KVsh8ecMBNVVJr7BlW8RwBPlA==
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
+	 Date:Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=qTUbE4gUNOmuR+M/OTh3wI21D46ahF64ycqlKwwOWwA=;
+	b=3REDeFK3vuM4gy8kVaBUW8pN0hLiy7eZvw6vJNWMH39mLIgEIWiggIVwy/72Ghq9wuxX
+	 2w4Sh+Fzsp9IhmBUxS2XuhQEqZEPxc2kfaVq2lTdzChYDRos7AWjPwAYE7wzw4mCe60XS
+	 ZogCb2kx6Xh8upVQf6cKbYOhMAjHxjxIwL4ENJN+xIFPFDzT4CKfC1by8ECfCwxEBx8Fx
+	 oWzzQrowO6EtguMmlB6C9rB3ukhxnoJB+aWF3lerjA1E4+Wq6f7T/h1JrCab+VmtayP0k
+	 ZTPQBIczGKIvcpHrEjjfVGaymsJBUhsdtGAkRM50F7Adw2RnGcmdT7IDk632EyRj6bA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=JJA4LueD;
-	arc=none smtp.remote-ip=209.85.221.46
-Received: from mail-wr1-f46.google.com (mail-wr1-f46.google.com [209.85.221.46])
+	dmarc=pass header.from=hammerspace.com;
+	spf=pass smtp.mailfrom=hammerspace.com;
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=lW64BrJ6;
+	arc=none smtp.remote-ip=209.85.210.43
+Received: from mail-ot1-f43.google.com (mail-ot1-f43.google.com [209.85.210.43])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 79B8D606A31B
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 23:01:55 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 79B8D606A31B
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 082A7606A31B
+	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 23:27:52 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 082A7606A31B
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=JJA4LueD
-Received: by mail-wr1-f46.google.com with SMTP id ffacd0b85a97d-48e20edd106so3048059f8f.1
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 16:01:55 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=lW64BrJ6
+Received: by mail-ot1-f43.google.com with SMTP id 46e09a7af769-854b6e2e41fso767520a34.3
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 16:27:52 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1793055714; x=1793660514; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1793057272; x=1793662072; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=c0h4dPwM7Lc2ThvwHjpwKfbW4C8bAJIrwdRbNwJK6ik=;
-        b=JJA4LueDcJQO8MY4dVrb5Xb2+MSwjo5dLXPT75rPafojjir+k/OsWyG9+UrwTdhM+9
-         pKIl0y/fpvExNndABZxIiVys+KKNt2agaeNb6vvMU8F4PMbPB0p406kPxzNBlu5s4sf3
-         PFHyAnGP0t8N/Wuvna7ENMT7wsaLxaWJtoz1KE4ykuQGf1/cLEngOiapYlwtyNA/g4UA
-         5eyTVqY4UTDfu0FyLphVkWzZdthBj2C+CoAM5MtYMrypUXtWIl9rmk51XucuQ/zYlbwE
-         NpWpWL79pg1sYXtLkeAR3GngK3Pq2LBqDj8tsiPQ1rTO7z5ox3PMlpvgnZyNG8VYn9BR
-         Gz6A==
+        bh=qTUbE4gUNOmuR+M/OTh3wI21D46ahF64ycqlKwwOWwA=;
+        b=lW64BrJ6VSygY1PD7mpm68rUToXMXgT/LthTubDk8cyTsz9xeuegWKmi61rK48zeS9
+         Qq8XyNZXxXmC4wRYedSBSDglw40eBHmV4JU3+3hM9h/My7hUr/lOJaFuPcSOnWBe+jbU
+         vFE9NBBYwC7BsrYSgJjvnXou6u3e/c+7mVJluoKAfJvTbWMaFSz3FZjhS+t4xBIY2C/8
+         AbIT3CYCGKMlQyjVQI40Fl1QWQ4kr/S/VSOb2Nfl6h+ky1igLybwYf91F8yL4SmpJ0gG
+         agP1r4HK48R0EPwyqLYTkdqw74bAFXdMscjaF7hF/r20rVMJBBKLmbpOpr8ycpI6xAuW
+         Hxjg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793055714; x=1793660514;
+        d=1e100.net; s=20260707; t=1793057272; x=1793662072;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=c0h4dPwM7Lc2ThvwHjpwKfbW4C8bAJIrwdRbNwJK6ik=;
-        b=QdlB1go0RwI66O9Wcv+4xBNO7kQAQp6tlHb4+JIHuQGJR+fVJljnbmBLjHEED2q6W5
-         DOWVeShPwEbNyGvPpy+3NB8N9YgSPod+3RqaT/MepuOJ3sAT7EKhJQifew/ZZ9fRA7c2
-         1HFbKxhoi4hl89vNDImiu9L1T97KNt2oulEbBlVNdbIw0BaIJhJpULrj4AB2ECnqiZVA
-         W8ILSWk4E6PdGuLFEiNzt8GQ64KyaAfmTTgwQ1hn5gSKwJ+l6Gyws3q5fMvUggUY5xce
-         e7/et/eUoaqNN5bxEZCn1mTMPva0N1mDi+YSGmVFyU0z6uAsZX5p3WjKg//M6YDnHeLQ
-         C/9w==
-X-Forwarded-Encrypted: i=1; AKwUvBzZrs1L+WWYNWGGiX8JkzX27J5gAax48L4O1n+6AvFWeTFe6mc1+YrCb+KI6J7eahrQyBaSoBI3paM=@vger.kernel.org
-X-Gm-Message-State: AFq9FYIK1S91XiT8wP7R2FUGahFN3x3LyQVsd3ovhNkFaVd4Hh+ViL6B
-	kauX0qhu2gBRDhz1jyPbxygWwZ98Llqr2TOEzafU+GF/U+ee30pHnlc=
-X-Gm-Gg: AYBFou0Li/cqevG17qSaKmbPKSgiaAojnuqkxmPV0Y8xYTsclee+6qfuwYBfBhtqrEs
-	pusVcjNOIWYt4zif+UZmhSRdvFoOApaextOAoi2bqimxk2sKKBUFgUKA4JVwErs/RcY6zZE5JC3
-	Nr5oqpsoFZCHCkWj17YaXF4bAmBXQ5JAmnsM0h76jarCroaW688E68ptwd7IhprK3BaUj65C59s
-	eRAMbZzpN+sxy8X399597BS5u0pK2OVR7Tsx9Ull1YOOjEoku/S1hblXOGtVatSoTpdTYYaDsfX
-	8D8zrsddXATg0WePWYCJ5+USKBfhgioNcIaZRPfWVnMkW6ch3aXzCy9ABD+TMRmT2yZUQROMkbJ
-	C2NhFfObE8XVsym3+Q5ojx7hoM7IwfTOyEuEH3urz81ENoSI+l6TpbUOwrQuqdjhUBdEYCmzU8U
-	7ub30NNQh0SF9G9AX2kFIJDWLVonZAzPeeew3iiiQy1nS3AWF9+El//d0Npqu3+lzHjN2lDw8u0
-	BWTph9H2zhMZBD6/R0ny7Ch0aqKP9hN99u5/w==
-X-Received: by 2002:adf:fe8f:0:b0:48c:67d6:a87a with SMTP id ffacd0b85a97d-48e3eb8bdbbmr11263342f8f.32.1793055713530;
-        Mon, 26 Oct 2026 16:01:53 -0700 (PDT)
-Received: from debian.. ([2001:41d0:303:db6b::])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-48e3eb40733sm14827198f8f.0.2026.10.26.16.01.51
+        bh=qTUbE4gUNOmuR+M/OTh3wI21D46ahF64ycqlKwwOWwA=;
+        b=IyJisqfywkkgygYkSXU5tiflcjyg4jdErnJLhajdzRPmINf49vvXhM9kbkWEzxmeAf
+         S2aGkUHMheSj4zvfPjW7QMmNCprVUu4m9uiQtjPjmvLSybT460oXoay2CcSBoyMee6FI
+         gkRsTilpwWCWY/VwUxbmzhHkOFLuAXFLfDTR5R1alkEGWvQka2KCZYGbeIAsztfC4zTf
+         axs2g/7X4gKNiTtf+KNPRqeII3TbxBTMKyLIpDr5TfAcbRhrMC5t9dnqQtjv7FYEfvTR
+         LHxBDlRFInS3KqOd+49wp9YIyqjvfuBMSCrAkCVhlDWgAOVGTrCUsOGfUlgS05OcGdJI
+         wVOw==
+X-Gm-Message-State: AFq9FYJ1zoymHB/Vu0Paw4GJ8JZmM7vFT2TB+yTrFq5ujQWtuO4kNc6b
+	tlGag0It2+73QZd9XUjBeQfCTE2TmSsdLGERy/9ZnCdbtUd4PD1V5ocg094E0g2qn7E=
+X-Gm-Gg: AYBFou1lpwu/zDcLkKD3R2i1YDjKh6LMYOjHgdVI+r4hoU8zGusEeR9aky/YoFOhay5
+	2WbzpcQuMxoB2l/PpybFEP2bfsHPL/zvM70D6DvFQIpP3TpESvD4/fYHP6JbnE1sCjaugE9aJhM
+	cZGDgwBKmzuRz2En2mMMTjzthTmm+hpXtYuXB3PgWvIugLyGvz+CrWpfjvMQqQI2GexioShBYef
+	rZUY0deeXPpgWpOxi9UarpJ3H4mP19RKVJkRI/QEXDrvh5/m3rnUx2fiXkPZFZuah/QoW8gbXtR
+	UwLL54eUeT4NkN1iyzIa0hfkKZe6HPkuVO7UjIDMfPZztrRb4H5fBYOB00/DIlJbypz6b4tQ+x8
+	h9rhKtnrjJNxLeaeSxKO6/IUxf6jLo7HrmKPdi+KIS1I9lRKQ1GIibJaC8qysc8F8xF5AKzHdyh
+	C+BGfqrIoWLyj0K+38uorLsbPzhDiWzHePgfP9vGJy5BbPsV+FdPA2HyFKpJ4yQixjc9H57EaTi
+	HzSw3BkdpGzzooF0fq6sTQzWQ/DY4l5bNSqrU57kokfiD++0z9q8jHl20HjWZzDEeGA7WbMiocG
+	OBhC0KXMX7rSf5PoqgkOw7XbNveJ+CvpJPc3wMuahxxRvJaH
+X-Received: by 2002:a05:6830:43a8:b0:814:57a9:4243 with SMTP id 46e09a7af769-850feac96e2mr6086294a34.17.1793057271624;
+        Mon, 26 Oct 2026 16:27:51 -0700 (PDT)
+Received: from bcodding.csb.hammerspace.com ([12.117.181.174])
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-850fc002444sm9060774a34.23.2026.10.26.16.27.50
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 26 Oct 2026 16:01:52 -0700 (PDT)
-From: Tristan Madani <tristmd@gmail.com>
-X-Google-Original-From: Tristan Madani <tristan@talencesecurity.com>
-To: Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>
-Cc: NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	stable@vger.kernel.org,
-	tristan@talencesecurity.com
-Subject: [PATCH] nfsd: pin client reference across async copy reaper cleanup
-Date: Mon, 26 Oct 2026 23:01:51 +0000
-Message-ID: <20261026230151.2474608-1-tristan@talencesecurity.com>
-X-Mailer: git-send-email 2.47.3
+        Mon, 26 Oct 2026 16:27:51 -0700 (PDT)
+From: Benjamin Coddington <ben.coddington@hammerspace.com>
+To: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org,
+	Daejun Park <daejun7.park@samsung.com>,
+	Christoph Hellwig <hch@lst.de>
+Subject: [PATCH v2 0/2] pnfs/blocklayout: report LAYOUTCOMMIT failures
+Date: Mon, 26 Oct 2026 19:27:47 -0400
+Message-ID: <cover.1792157092.git.bcodding@hammerspace.com>
+X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -103,88 +96,46 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-nfsd4_async_copy_reaper() detaches completed async copies from the
-client list and later calls cleanup_async_copy(), which eventually
-drops the stid reference via nfs4_put_stid().  That path accesses
-stid->sc_client unconditionally, but the client is not pinned during
-the cleanup phase.
+From: Benjamin Coddington <bcodding@hammerspace.com>
 
-A concurrent expire_client() or force_expire_client() can free the
-client between the nn->client_lock drop and the cleanup loop, leaving
-nfs4_put_stid() with a stale sc_client pointer.
+Data a block or SCSI layout client writes into unwritten extents becomes
+file data only when a LAYOUTCOMMIT succeeds.  A server that has revoked
+the layout answers NFS4ERR_BADLAYOUT, nfs4_layoutcommit_done() ignores
+it, and fsync() and close() return 0 for data that reads back as
+zeroes.  nfsd reaches this through its recall failure path today, and
+the layout recall series [1] makes it more likely.
 
-This is the same missed pattern that Chuck Lever addressed in seven
-other nfsd4_laundromat() paths with cl_rpc_users pinning (v7.3-rc2).
-The async copy reaper was not covered by that series.
+Patch 1 keeps the extents uncommitted when the LAYOUTCOMMIT fails before
+its result is decoded.  Patch 2 records a writeback error when extents go
+uncommitted and returns it from the block/SCSI ->sync.  The files and
+flexfiles layouts are unchanged.
 
-Fix this by:
-  1. Skipping expired clients (cl_time == 0) during iteration.
-  2. Taking a cl_rpc_users reference before moving the copy to the
-     reaplist.
-  3. Dropping the reference with put_client_no_renew() after
-     cleanup_async_copy().
+NB: these are compile-tested only; I don't have a setup handy that can
+revoke the layout..
 
-Export put_client_no_renew() so it is accessible from nfs4proc.c.
+Changes since v1:
+- Patch 2: replace pnfs_generic_sync() with bl_sync() in the block
+  layout driver (Christoph).
+- Patch 2: check the raw wb_err value instead of a sample, so ->sync
+  from inode revalidation no longer returns an older unseen writeback
+  error from every stat() (sashiko).
 
-Fixes: ac0514f4d198 ("NFSD: Add a laundromat reaper for async copy state")
-Cc: stable@vger.kernel.org
-Signed-off-by: Tristan Madani <tristan@talencesecurity.com>
----
- fs/nfsd/nfs4proc.c  | 5 +++++
- fs/nfsd/nfs4state.c | 2 +-
- fs/nfsd/state.h     | 1 +
- 3 files changed, 7 insertions(+), 1 deletion(-)
+v1: https://lore.kernel.org/linux-nfs/cover.1792097970.git.bcodding@hammerspace.com/
+[1] https://lore.kernel.org/linux-nfs/20261015-nfsd-layout-recall-v3-0-ba3269f8ca22@samsung.com/
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 50c07561e31f3..1f36afceb1fe1 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1501,6 +1501,9 @@ void nfsd4_async_copy_reaper(struct nfsd_net *nn)
- 			if (test_bit(NFSD4_COPY_F_OFFLOAD_DONE,
- 				     &copy->cp_copy.cp_flags)) {
- 				if (!--copy->cp_ttl) {
-+					if (clp->cl_time == 0)
-+						continue;
-+					atomic_inc(&clp->cl_rpc_users);
- 					list_del_init(&copy->copies);
- 					list_add(&copy->copies, &reaplist);
- 				}
-@@ -1513,8 +1516,10 @@ void nfsd4_async_copy_reaper(struct nfsd_net *nn)
- 	while (!list_empty(&reaplist)) {
- 		copy = list_first_entry(&reaplist, struct nfsd4_async_copy,
- 					copies);
-+		clp = copy->cp_stid.sc_client;
- 		list_del_init(&copy->copies);
- 		cleanup_async_copy(copy);
-+		put_client_no_renew(clp);
- 	}
- }
- 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9c4adf3110aea..10e864ca7407a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -252,7 +252,7 @@ static void put_client_no_renew_locked(struct nfs4_client *clp)
- 		__put_client_locked(clp, false);
- }
- 
--static void put_client_no_renew(struct nfs4_client *clp)
-+void put_client_no_renew(struct nfs4_client *clp)
- {
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 2d00a411c6634..1d3a7e35bb9ff 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -918,6 +918,7 @@ extern void nfsd4_shutdown_callback(struct nfs4_client *);
- extern void nfsd4_shutdown_copy(struct nfs4_client *clp);
- void nfsd4_put_client(struct nfs4_client *clp);
- void nfsd4_async_copy_reaper(struct nfsd_net *nn);
-+void put_client_no_renew(struct nfs4_client *clp);
- bool nfsd4_has_active_async_copies(struct nfs4_client *clp);
- void nfsd_update_cmtime_attr(struct file *f, unsigned int flags);
- extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(struct xdr_netobj name,
+Benjamin Coddington (2):
+  pnfs/blocklayout: don't mark extents committed after a failed
+    LAYOUTCOMMIT
+  pnfs/blocklayout: report data lost to a failed LAYOUTCOMMIT
+
+ fs/nfs/blocklayout/blocklayout.c | 20 +++++++++++++++++---
+ fs/nfs/blocklayout/extent_tree.c | 14 +++++++++++---
+ fs/nfs/pnfs.c                    |  7 -------
+ fs/nfs/pnfs.h                    |  1 -
+ 4 files changed, 28 insertions(+), 14 deletions(-)
+
+
+base-commit: a90ee4305c4a5df72c11b31dacfdc76e00fcf78a
 -- 
-2.47.3
+2.53.0
 
