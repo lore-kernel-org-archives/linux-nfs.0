@@ -1,73 +1,97 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.46
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793055060;
-	b=qFSXifX0GirRUz1wM+3kuikIma/zzGnyYPuJM9vWPQB3CSR9MX0jaVv00XMJIkUEmxdF
-	 NXxovfIzrbQ2+aDYF0R2cMCC5xe7h/ApJ99s80nqmsN6CDdGCaVr4IoMEMCFLq3SjrKIK
-	 MabRbFSIFLbj0b7AuyQhPtgZpXt1SZ44XpiEBG6Re2IApZoyQC9zGs81V2UTK3ACjnJ3+
-	 MfIVfZHvaDc1CiN/sDzP+i5K2zA3iwAIWGuHasqCMzPdcFdR7MoBYQPWrms4gjnGWiV+l
-	 gaIXpgguzO3aA5o2xeQsenJpK6OuHhZQxyA37XeHlAweToRKZXLwRx7M3OjQnReoZxg==
+	t=1793055715;
+	b=W9R5NLQf/rUVwK9cq/jqycV1+cE7+EFX+YlRzEiRc90O32LbS2QFE8jDS+DHmOcaTNuA
+	 46zFvBKJYH0JfWuJIbwDR3Ub3OV0rPPUuRZMtTfD5MY2r+NkdnNVqk8u1mJNHYHh3ioqT
+	 RmkmBoufRCcPcXG07f3/ER8/CuLPjdUKbmwbHi7fHWf/OH1NoZdn01Q4wTw9mt25W8BY5
+	 aqhBnhvcMuhZQNgsV8ac9BANoklv9fPxYHVuWMHgo0DmmIznyR+23VFhgKlU5JddWTmNv
+	 2Jr3p01+OgnJFKkMhBIfZ/GKCmyYLlAQAkgLlv12LYSKwMvic86WGI++brNSNRsMp5Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793055060;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=tjMt5dr2gWGDrECxnpxp9ywZnq9belcTErdkR5YLT1A=;
-	b=mfeqdq98dw4YkOGyi5UMHC/Bj+YpMr+9VgF1iRPypUADfVkq/TQ0fzD62NcaYwT8zsly
-	 c0w1E7Wk6FJRaALBOusTsgaqTgwgMxYh5MBR+tSl8WkrIcpx5aLY+US7oWGCMPQAPnP3C
-	 1eSWo58xtOFSyPtdN95vP0B/yDGxAV5f5xYilG2IanOjj+ajlHAaZsfZfvEv0ZtYsXGXd
-	 fWQ5K5DdMu/C1lOnbm5qvLAx5TuUnco34nc2uuJg0lYR9e1V0tlut5UZ6OKo0jKQsGEiG
-	 oVGi3vAPpGyqpviqfwQbZ16sCZEfxeuM0abKEHCeEyE2mAWhlobWP5ZfUd477JxIRcQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793055715;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:X-Google-Original-From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 MIME-Version:Content-Transfer-Encoding;
+	bh=c0h4dPwM7Lc2ThvwHjpwKfbW4C8bAJIrwdRbNwJK6ik=;
+	b=fQ+Fz6JI2sNSaBI932dFzq9wItS3X2FYi8x9u776Kmma3yhe7QpOkBSHy4JQxLpt3108
+	 kBl9KwMM3l1gaN2FU7lnDt+i3f67FWK7UGeMVlXwzC3xCq9RaOi5iB1mOtuEfBAbAQhva
+	 XtlgP6vV+G0TdiFUGsrAoKygS6VoYwOHiPKSepf8lHiNdMk3qCSG6oBwh5TaHtWFfxnOW
+	 4hE7p60FdLIMd3jpulGwn7dTD0E62iv/evxgQytG7pVbp37Yr1sq4LljMiitjZftznonv
+	 kPBjbAvuxi1x3VvuWVe6SvB35THKOCBms+clXobT30KVsh8ecMBNVVJr7BlW8RwBPlA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=K239FPuc;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=JJA4LueD;
+	arc=none smtp.remote-ip=209.85.221.46
+Received: from mail-wr1-f46.google.com (mail-wr1-f46.google.com [209.85.221.46])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3968606A31A
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 22:50:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 79B8D606A31B
+	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 23:01:55 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 79B8D606A31B
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=K239FPuc
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 882D81F01825
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 22:50:59 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793055059;
-	bh=tjMt5dr2gWGDrECxnpxp9ywZnq9belcTErdkR5YLT1A=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=K239FPuccObejCn8W2wrF+LS4pwAP03MkzzpTJJq9W5PpKdExc3G8gRZ01gFTCAVM
-	 EG6S9AIbkS4lBiBNXwF27k9HZmlmUb55rHG72M15w2+CIGgsbfh1NGVVh4zvGq6TqH
-	 rX8wvBPS51AdXkuZ7wOmIk6FsKji0EuxYc4xudlzQBLcytcBGNM1WE97JeR3GLjn36
-	 WqNPDE1CUQ6FNgZAXznbaMHkYUc4XK89Uo3wuFLMMtwPzN2zrZNp4ctvKpPHzs6yx0
-	 2sx0fRjcY62QEXsSOC5hOH69rt/HtDaRwNPQQ5XHCc2oVIJosr0IIK+1hCi0rU8MVh
-	 CCFZD1xqdj0kw==
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailfauth.phl.internal (Postfix) with ESMTP id C7C66F40066;
-	Mon, 26 Oct 2026 18:50:58 -0400 (EDT)
-Received: from phl-imap-04 ([10.202.2.82])
-  by phl-compute-02.internal (MEProxy); Mon, 26 Oct 2026 18:50:58 -0400
-X-ME-Sender: <xms:UtnfajEznxXnn3xzGmPWWsQioMAuSz7vZXId8KEEnojf59HFDbhA9g>
-    <xme:UtnfarKlgcenpySetfB7ioiB16UH8IEg-n8XjDm54wmlRuLpCZOqWaNRvn2iKJg5p
-    A-DB1_RzfC4FlqZQnuPX0fhs7nBN_1VF94IGnP8n_tx514bgkGJqFst>
-X-ME-Proxy-Cause: dmFkZTFx5OR4ex25bHFlDpUv81Qn0gmMR+nXyzXVfhiMBYg7d/+SAPMuxSW4Jux9HmLtWO
-    lxheHjJUoA3CsXsVngbRAge3vYV6kvMft8z7vJWCadi6L00pH1Jz4ybM44IgNM3afJP5Qe
-    j13Zu3st24Rmh9akPV4ybXeNNVKB/3AJ3izKXBbybXHO5j3A8f4Bz++AvA1CKl3FHZUnSJ
-    IWqeQr6aInjnfdWspzizLVU8TnCIinxMrgLad+enQkoXlmMMkCQky6HJ0D+4Lx6F0r4Zyl
-    xXLdoIoeC59q23mWms+xN3Hk/qMoSkpk3s5JJFasXUyXQSGaX9Wb42hRzLaSgpxQheF8UW
-    U9d2rs8uNhti4TU5YXOuVRQYw8tNqFGYVQcJ011LSDuYQsOLqnVA38NtBXjfeDTgUUyJtn
-    mpmm+jhRzygcyzqWqGH9dGz1qYUUJEO6rXbVWwSZLls+g09z7572esPO5jUZ6gQ0nKVYDw
-    hE4KPE48Oc/6BKsc+OLt2Kj2nUN9m/z8KbeYQlEHakOPKdNO4PjzFs4bRVvnCERrsPHnji
-    7NVCJDs2/L6BDtV69pnpHXtlflbpAlDyaX1HWSpiJIiNMcOYqQVkSkidRY3kSbrOADusue
-    fxq3i7FxOG87oHSNuEBeR4SYBD0kGTBVqzXvCZl6vWNozp9pTr01LbcxZ5QA
-X-ME-Proxy: <xmx:UtnfatdgOKCIG177HoBXCbDfKJZyVBapJi0TREeTugWY6CsUqZ7hWA>
-    <xmx:Utnfar7T5SXZfalMUXN8Rey2AV2Uo3w5dTqQqepDygYTcx4QTkdMrQ>
-    <xmx:Utnfakuw9N1l2EU2qkVRPOVImnNzhb5SGjCVL0n7XlztdzTRWRZdIw>
-    <xmx:UtnfarjRAzm_TmOZdi2P9GZxOwHz4xIzzwlcBuPSPj42eGUaaLQzYw>
-    <xmx:Utnfavr2hQ6DdHHH7EF64t6YAOhJ6tjXBAYNSLWDuCTUdWiNL3GYDgXB>
-Feedback-ID: i20964851:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id A86FBB6006E; Mon, 26 Oct 2026 18:50:58 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=JJA4LueD
+Received: by mail-wr1-f46.google.com with SMTP id ffacd0b85a97d-48e20edd106so3048059f8f.1
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2026 16:01:55 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1793055714; x=1793660514; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=c0h4dPwM7Lc2ThvwHjpwKfbW4C8bAJIrwdRbNwJK6ik=;
+        b=JJA4LueDcJQO8MY4dVrb5Xb2+MSwjo5dLXPT75rPafojjir+k/OsWyG9+UrwTdhM+9
+         pKIl0y/fpvExNndABZxIiVys+KKNt2agaeNb6vvMU8F4PMbPB0p406kPxzNBlu5s4sf3
+         PFHyAnGP0t8N/Wuvna7ENMT7wsaLxaWJtoz1KE4ykuQGf1/cLEngOiapYlwtyNA/g4UA
+         5eyTVqY4UTDfu0FyLphVkWzZdthBj2C+CoAM5MtYMrypUXtWIl9rmk51XucuQ/zYlbwE
+         NpWpWL79pg1sYXtLkeAR3GngK3Pq2LBqDj8tsiPQ1rTO7z5ox3PMlpvgnZyNG8VYn9BR
+         Gz6A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793055714; x=1793660514;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=c0h4dPwM7Lc2ThvwHjpwKfbW4C8bAJIrwdRbNwJK6ik=;
+        b=QdlB1go0RwI66O9Wcv+4xBNO7kQAQp6tlHb4+JIHuQGJR+fVJljnbmBLjHEED2q6W5
+         DOWVeShPwEbNyGvPpy+3NB8N9YgSPod+3RqaT/MepuOJ3sAT7EKhJQifew/ZZ9fRA7c2
+         1HFbKxhoi4hl89vNDImiu9L1T97KNt2oulEbBlVNdbIw0BaIJhJpULrj4AB2ECnqiZVA
+         W8ILSWk4E6PdGuLFEiNzt8GQ64KyaAfmTTgwQ1hn5gSKwJ+l6Gyws3q5fMvUggUY5xce
+         e7/et/eUoaqNN5bxEZCn1mTMPva0N1mDi+YSGmVFyU0z6uAsZX5p3WjKg//M6YDnHeLQ
+         C/9w==
+X-Forwarded-Encrypted: i=1; AKwUvBzZrs1L+WWYNWGGiX8JkzX27J5gAax48L4O1n+6AvFWeTFe6mc1+YrCb+KI6J7eahrQyBaSoBI3paM=@vger.kernel.org
+X-Gm-Message-State: AFq9FYIK1S91XiT8wP7R2FUGahFN3x3LyQVsd3ovhNkFaVd4Hh+ViL6B
+	kauX0qhu2gBRDhz1jyPbxygWwZ98Llqr2TOEzafU+GF/U+ee30pHnlc=
+X-Gm-Gg: AYBFou0Li/cqevG17qSaKmbPKSgiaAojnuqkxmPV0Y8xYTsclee+6qfuwYBfBhtqrEs
+	pusVcjNOIWYt4zif+UZmhSRdvFoOApaextOAoi2bqimxk2sKKBUFgUKA4JVwErs/RcY6zZE5JC3
+	Nr5oqpsoFZCHCkWj17YaXF4bAmBXQ5JAmnsM0h76jarCroaW688E68ptwd7IhprK3BaUj65C59s
+	eRAMbZzpN+sxy8X399597BS5u0pK2OVR7Tsx9Ull1YOOjEoku/S1hblXOGtVatSoTpdTYYaDsfX
+	8D8zrsddXATg0WePWYCJ5+USKBfhgioNcIaZRPfWVnMkW6ch3aXzCy9ABD+TMRmT2yZUQROMkbJ
+	C2NhFfObE8XVsym3+Q5ojx7hoM7IwfTOyEuEH3urz81ENoSI+l6TpbUOwrQuqdjhUBdEYCmzU8U
+	7ub30NNQh0SF9G9AX2kFIJDWLVonZAzPeeew3iiiQy1nS3AWF9+El//d0Npqu3+lzHjN2lDw8u0
+	BWTph9H2zhMZBD6/R0ny7Ch0aqKP9hN99u5/w==
+X-Received: by 2002:adf:fe8f:0:b0:48c:67d6:a87a with SMTP id ffacd0b85a97d-48e3eb8bdbbmr11263342f8f.32.1793055713530;
+        Mon, 26 Oct 2026 16:01:53 -0700 (PDT)
+Received: from debian.. ([2001:41d0:303:db6b::])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-48e3eb40733sm14827198f8f.0.2026.10.26.16.01.51
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 26 Oct 2026 16:01:52 -0700 (PDT)
+From: Tristan Madani <tristmd@gmail.com>
+X-Google-Original-From: Tristan Madani <tristan@talencesecurity.com>
+To: Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>
+Cc: NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org,
+	tristan@talencesecurity.com
+Subject: [PATCH] nfsd: pin client reference across async copy reaper cleanup
+Date: Mon, 26 Oct 2026 23:01:51 +0000
+Message-ID: <20261026230151.2474608-1-tristan@talencesecurity.com>
+X-Mailer: git-send-email 2.47.3
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,84 +101,90 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: ARxNhz-O7gxF
-Date: Mon, 26 Oct 2026 15:50:38 -0700
-From: "Anna Schumaker" <anna@kernel.org>
-To: "Chuck Lever" <cel@kernel.org>, NeilBrown <neil@brown.name>,
- "Jeff Layton" <jlayton@kernel.org>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <dai.ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <3ed2b4d0-9ce8-4cdb-8332-d8edcda629aa@app.fastmail.com>
-In-Reply-To: <20261025151622.141025-12-cel@kernel.org>
-References: <20261025151622.141025-1-cel@kernel.org>
- <20261025151622.141025-12-cel@kernel.org>
-Subject: Re: [PATCH v1 11/13] NFS: Move NFSACL_MAXPAGES into fs/nfs/nfs3_fs.h
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-Hi Chuck,
+nfsd4_async_copy_reaper() detaches completed async copies from the
+client list and later calls cleanup_async_copy(), which eventually
+drops the stid reference via nfs4_put_stid().  That path accesses
+stid->sc_client unconditionally, but the client is not pinned during
+the cleanup phase.
 
-On Sun, Oct 25, 2026, at 8:16 AM, Chuck Lever wrote:
-> Only the NFSv3 client's ACL code reads NFSACL_MAXPAGES, yet the macro
-> lives in <linux/nfsacl.h>, where it is the last reference to
-> NFS_ACL_MAX_ENTRIES. <linux/nfsacl.h> no longer includes
-> <uapi/linux/nfsacl.h>, so a file that includes only the kernel header
-> cannot expand NFSACL_MAXPAGES. Move the macro next to its users and
-> include nfs3_fs.h from nfs3xdr.c.
+A concurrent expire_client() or force_expire_client() can free the
+client between the nn->client_lock drop and the cleanup loop, leaving
+nfs4_put_stid() with a stale sc_client pointer.
 
-I assume this should go through the NFSD tree with the rest of the
-patch series? If so:
+This is the same missed pattern that Chuck Lever addressed in seven
+other nfsd4_laundromat() paths with cl_rpc_users pinning (v7.3-rc2).
+The async copy reaper was not covered by that series.
 
-Acked-by: Anna Schumaker <anna.schumaker@hammerspace.com>
+Fix this by:
+  1. Skipping expired clients (cl_time == 0) during iteration.
+  2. Taking a cl_rpc_users reference before moving the copy to the
+     reaplist.
+  3. Dropping the reference with put_client_no_renew() after
+     cleanup_async_copy().
 
->
-> Signed-off-by: Chuck Lever <cel@kernel.org>
-> ---
->  fs/nfs/nfs3_fs.h       | 3 +++
->  fs/nfs/nfs3xdr.c       | 1 +
->  include/linux/nfsacl.h | 3 ---
->  3 files changed, 4 insertions(+), 3 deletions(-)
->
-> diff --git a/fs/nfs/nfs3_fs.h b/fs/nfs/nfs3_fs.h
-> index ffcabadb3546..09663adae033 100644
-> --- a/fs/nfs/nfs3_fs.h
-> +++ b/fs/nfs/nfs3_fs.h
-> @@ -11,6 +11,9 @@
->   * nfs3acl.c
->   */
->  #ifdef CONFIG_NFS_V3_ACL
-> +#define NFSACL_MAXPAGES		((2*(8+12*NFS_ACL_MAX_ENTRIES) + PAGE_SIZE-1) \
-> +				 >> PAGE_SHIFT)
-> +
->  extern struct posix_acl *nfs3_get_acl(struct inode *inode, int type, bool rcu);
->  extern int nfs3_set_acl(const struct mnt_idmap *idmap, struct dentry *dentry,
->  			struct posix_acl *acl, int type);
-> diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-> index 3251c1434e71..19ab2fe84b8c 100644
-> --- a/fs/nfs/nfs3xdr.c
-> +++ b/fs/nfs/nfs3xdr.c
-> @@ -25,6 +25,7 @@
->  #include <linux/nfs_common.h>
-> 
->  #include "internal.h"
-> +#include "nfs3_fs.h"
->  #include "nfstrace.h"
-> 
->  #define NFSDBG_FACILITY		NFSDBG_XDR
-> diff --git a/include/linux/nfsacl.h b/include/linux/nfsacl.h
-> index 403f5f5144e3..5160f30151e8 100644
-> --- a/include/linux/nfsacl.h
-> +++ b/include/linux/nfsacl.h
-> @@ -10,9 +10,6 @@
->  #include <linux/posix_acl.h>
->  #include <linux/sunrpc/xdr.h>
-> 
-> -#define NFSACL_MAXPAGES		((2*(8+12*NFS_ACL_MAX_ENTRIES) + PAGE_SIZE-1) \
-> -				 >> PAGE_SHIFT)
-> -
->  #define NFS_ACL_MAX_ENTRIES_INLINE	(5)
->  #define NFS_ACL_INLINE_BUFSIZE	((2*(2+3*NFS_ACL_MAX_ENTRIES_INLINE)) << 2)
-> 
-> -- 
-> 2.56.0
+Export put_client_no_renew() so it is accessible from nfs4proc.c.
+
+Fixes: ac0514f4d198 ("NFSD: Add a laundromat reaper for async copy state")
+Cc: stable@vger.kernel.org
+Signed-off-by: Tristan Madani <tristan@talencesecurity.com>
+---
+ fs/nfsd/nfs4proc.c  | 5 +++++
+ fs/nfsd/nfs4state.c | 2 +-
+ fs/nfsd/state.h     | 1 +
+ 3 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 50c07561e31f3..1f36afceb1fe1 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1501,6 +1501,9 @@ void nfsd4_async_copy_reaper(struct nfsd_net *nn)
+ 			if (test_bit(NFSD4_COPY_F_OFFLOAD_DONE,
+ 				     &copy->cp_copy.cp_flags)) {
+ 				if (!--copy->cp_ttl) {
++					if (clp->cl_time == 0)
++						continue;
++					atomic_inc(&clp->cl_rpc_users);
+ 					list_del_init(&copy->copies);
+ 					list_add(&copy->copies, &reaplist);
+ 				}
+@@ -1513,8 +1516,10 @@ void nfsd4_async_copy_reaper(struct nfsd_net *nn)
+ 	while (!list_empty(&reaplist)) {
+ 		copy = list_first_entry(&reaplist, struct nfsd4_async_copy,
+ 					copies);
++		clp = copy->cp_stid.sc_client;
+ 		list_del_init(&copy->copies);
+ 		cleanup_async_copy(copy);
++		put_client_no_renew(clp);
+ 	}
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9c4adf3110aea..10e864ca7407a 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -252,7 +252,7 @@ static void put_client_no_renew_locked(struct nfs4_client *clp)
+ 		__put_client_locked(clp, false);
+ }
+ 
+-static void put_client_no_renew(struct nfs4_client *clp)
++void put_client_no_renew(struct nfs4_client *clp)
+ {
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 2d00a411c6634..1d3a7e35bb9ff 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -918,6 +918,7 @@ extern void nfsd4_shutdown_callback(struct nfs4_client *);
+ extern void nfsd4_shutdown_copy(struct nfs4_client *clp);
+ void nfsd4_put_client(struct nfs4_client *clp);
+ void nfsd4_async_copy_reaper(struct nfsd_net *nn);
++void put_client_no_renew(struct nfs4_client *clp);
+ bool nfsd4_has_active_async_copies(struct nfs4_client *clp);
+ void nfsd_update_cmtime_attr(struct file *f, unsigned int flags);
+ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(struct xdr_netobj name,
+-- 
+2.47.3
+
