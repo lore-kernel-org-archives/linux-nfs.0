@@ -1,55 +1,59 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793110023;
-	b=BAiOSVR6QUdclgEaY6+G1ezRSeWuF4Ta3HOmMsT8RzqhowPg8JBwNOXgedQuxXqa7L/X
-	 vjSn4Q7L6d3MOfsx0SxVpRmNxko+hHsepJjKtVADCpTHD8kiKNozA0EIgH1XcRNgtBU41
-	 vFTkIGDRD66eQUk3amJ2GDli0Y0HtgvPQ32bccsTZcRpcNdt43drpyYm5AQE3x43BlIG5
-	 hrUb+Sgep5vdmgoJNGPMZTyv/ZlMQJLjIW4LJDN74box6T9PhMqW9Xv7a7BWkeZ5IUKId
-	 KVh15CukEP+pxMPB0kF5ay2qlZBkTUeWu3DODgetUFma7x/hEGQZ3rybiVndFLapMFg==
+	t=1793111522;
+	b=pwDqlkgBVkYHja0jvUBN5CvrteRkMflfCsCR/UECcVAia7UWV58VnYsPYkNgj5NjvEcx
+	 N/BnnbWVknl8ld+yFwqNYUfD6tkBw/DKcnCMc5JHxE4KCT04qOUESHtcVx/NxZRIgqaHG
+	 SLncoqqmZwppeE6rkWpxEb+RH8yurTAmzVFVGwOI7EoYEQpL7hEkK5nMI9ruELZuS3DF/
+	 PQW/9h+xwZGRSmN7/cKzhWAfEVUwa32RbKLAVtJ7MOph2V2Cc+0fQHXedn8gIWuxdTC32
+	 V3xGAITqpp7GHmRKLGeVoj5U8st52nLA+ZmSuK7wBNLr6ZMUEncaPuvJBmWQzH/eHcQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793110023;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793111522;
 	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
 	 In-Reply-To:References:Autocrypt:Content-Type:
 	 Content-Transfer-Encoding:User-Agent:MIME-Version;
-	bh=YwTNaMD5lI5hgEiov0Cdg/QgXITCu4SvbBtFQNeAJAw=;
-	b=w45rTOvqgJku5mfCiuwV4ioOgvhVEnxWjdNCQHTVzLyHcuv0aBpFHeJX+AABWm4ANEM/
-	 kBdEYcg1QCb8EjEV9aD90FXVDPiz3Q2IUJD5rJh2deB6EfvGL84pLj4u8/9tqlYvi9Ilv
-	 CUEhde31tek92OH4YTYAKOtDw+iUHkpCpH8kT7f/DBQKppXHIyRU/Olv3R45pA97BOvhl
-	 g9N4edh3bQpGPbs39rVrDXkiUUXaBVW5t4iPA9QIfFkvrYWmAKalZ/p0oC45EowOk9ir7
-	 cSAvde9/q3IhFTJxTwQ0kfCTgrjHWoJknDQjQx+B5k96NHfLR39f1kaszxuMVEk/BIg==
+	bh=jnV/zbHlczBvT7OWrHzxgEdKY9M+Nd6Op+Y0PO93fvk=;
+	b=kE1OWJOEYC22pVNsxj6Ij7aAUbH9hRdR26jqUgYUxlKWpc7mLUifhuYiJtGQC62IgpVC
+	 bwyC9rXGAn6maDU3PB6YnA3k87b4t6Os0MDkejU3yAbXCDbihzGIeA11aDH0RVfaZLEd/
+	 H9wu+EZAWydAvffWbmx0pDuBpbdyZcSz1mjlPLsdWp9eze7xw1Lm9ROFA9qp2WsMxUH+c
+	 5kAup53o5+TCIgV+3dhdBzeygPF3imZ2ct0gxvWvAEtvdGzLUqjHWdDsjApGTNXvN5nsS
+	 VSA47SunmJSAPtiVNzxzeicp9SIWXBVAExRTGx5a657AbNrl6MSWfbSSubcs2fjPPvg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="Rmai/DAh";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=j05vy9Ux;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9D8C9606A31F
-	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2026 14:07:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 56144606A322;
+	Tue, 27 Oct 2026 14:32:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Rmai/DAh
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BCC501F01825;
-	Tue, 27 Oct 2026 14:07:02 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=j05vy9Ux
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 26B8F1F01825;
+	Tue, 27 Oct 2026 14:32:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793110023;
-	bh=YwTNaMD5lI5hgEiov0Cdg/QgXITCu4SvbBtFQNeAJAw=;
+	s=k20260515; t=1793111522;
+	bh=jnV/zbHlczBvT7OWrHzxgEdKY9M+Nd6Op+Y0PO93fvk=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=Rmai/DAh00MPb9d9mvceGlrFac1FFEE5hpTanJ+fTcLylyo9bSBv5LVveRtKZY2xy
-	 f3aaROXRpVoopy8kBOtWJIiB8fsXeeO9B/IqbVVhMKfan5mC2UOVfJbOmoPP5E0OXx
-	 /70wzUa+VLQdrX3H3egBBFRqQooxgrACMUeraOLIZgTTcdTSdL2xuhCg2iJ96wg5in
-	 uyNL2VGKT+A/OgEYCusQcXw5a05y81ZfWKxwbe7ExyFHq/edwaLfgb5PcJ97N23RmD
-	 zUDn8Pxi0IJq+vdqtwNHBif+nwwh2yRwLseYH6bXrtaU41CBDBZ0wzoNYT4u15atAt
-	 gB4Mb3VlXayaw==
-Message-ID: <822a1bb3a8ce7a257f608f487dd7c15241866b89.camel@kernel.org>
-Subject: Re: [PATCH v1 0/2] User namespaces for NFSD's NFS_ACL implementation
+	b=j05vy9UxbquH0DCLUBNFlbj73LBDWr9DkbMK7QYTqsckETUCGGIWU3G98N/BWFGM6
+	 hkBvIArftZ5eGUGhQCuIRuQGM4EjuI8JQfeyWmRAm2HULYpKfcl4rqwsF9E3Iqkg+L
+	 FxaqZyTME6rpbyuVJdvJ6lfRpK4/rfDMGW46qYFBJzFPgBDZa+qyDxkjXjPUfYq6rO
+	 LX/PzYp/hDPShAY+6/DOG2ScmnVQXAfhv/3OxqmN1PLWeAJRhZJKptNXTGiX02E8UZ
+	 7Kk7C64ad80sqyJSrEJiN2z4vLRoNAwbNvhldt72/fJABWGEV/6EUD/69yiCZT/1pP
+	 62zbCCWGWGHMA==
+Message-ID: <fc2ea8d6f2cd9ae83d38941f90386aac6638a497.camel@kernel.org>
+Subject: Re: [PATCH v9 0/6] mm, iomap, NFSD: stop uncached writes reading
+ back shared pages
 From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 27 Oct 2026 10:07:00 -0400
-In-Reply-To: <20261027135158.164034-1-cel@kernel.org>
-References: <20261027135158.164034-1-cel@kernel.org>
+To: Mike Snitzer <snitzer@kernel.org>, Matthew Wilcox <willy@infradead.org>,
+ 	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org
+Cc: Chuck Lever <cel@kernel.org>, linux-nfs@vger.kernel.org, NeilBrown	
+ <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo	
+ <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, Christoph Hellwig
+ <hch@lst.de>,  Jens Axboe <axboe@kernel.dk>, Jonathan Corbet
+ <corbet@lwn.net>
+Date: Tue, 27 Oct 2026 10:31:58 -0400
+In-Reply-To: <20261024221152.6965-1-snitzer@kernel.org>
+References: <20261024221152.6965-1-snitzer@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -137,21 +141,168 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 
-On Tue, 2026-10-27 at 09:51 -0400, Chuck Lever wrote:
-> Interpret NFS_ACL UIDs and GIDs within the server's user namespace.
-> This matches the way NFSv2 and NFSv3 handle UIDs and GIDs.
+On Sat, 2026-10-24 at 18:11 -0400, Mike Snitzer wrote:
+> Hi,
 >=20
-> The NFS_ACLv2 support is probably never going to be used at this
-> point, but it is harmless to keep feature parity with v3.
+> Please consider this v9 for the v7.5 development cycle, so that it can
+> go upstream in the v7.5 merge window.
 >=20
-> Chuck Lever (2):
->   NFSD: Map NFS_ACLv2 entry IDs through the request's user namespace
->   NFSD: Map NFS_ACLv3 entry IDs through the request's user namespace
+> An uncached (RWF_DONTCACHE) buffered write drops each page it writes
+> once that page is written back.  A page the write covers only partly is
+> shared with the neighbouring write.  Once the first of the two is
+> written back, the second reads the page back from disk before it writes
+> its part.  32 threads wrote interleaved records to one file on
+> XFS (emulated 4Kn NVMe, 4 KiB pages).  Before and after 4/6:
 >=20
->  fs/nfsd/nfs2acl.c | 14 ++++++++------
->  fs/nfsd/nfs3acl.c | 14 ++++++++------
->  2 files changed, 16 insertions(+), 12 deletions(-)
+>   record  pwritev2() flags          4 KiB device       MiB/s
+>   bytes                             reads per write
+>                                     before   after     before  after
+>   47008   RWF_DONTCACHE             0.97     0.0005    831     2281
+>   47008   RWF_DONTCACHE|RWF_DSYNC   0.99     0.0005    601     1227
+>   6000    RWF_DONTCACHE             0.97     0.0001    121      488
+>   6000    RWF_DONTCACHE|RWF_DSYNC   0.99     0.0002     90      206
+>=20
+> What is left after is metadata.  49152-byte records cover only whole
+> pages, and they read 0.0005 per write either way.  The test program and
+> script that produced this table, and how to run them, are in:
+> https://lore.kernel.org/linux-nfs/atqJBS8MlYfeUU-t@kernel.org/
+>=20
+> 4/6 has the page cache keep such a page for the write that completes
+> it.  5/6 lets a writer that syncs its own write complete those pages
+> itself once the sync is done.  NFSD does that for a stable WRITE.  6/6
+> is the NFSD change that uses it.  2/6 reports the DONTCACHE dirty count
+> in the bdi debugfs stats.  3/6 adds folio_mark_dropbehind(), which 4/6
+> and 5/6 use.
+>=20
+> 1/6 fixes 88d6f128d06d ("mm: track DONTCACHE dirty pages per
+> bdi_writeback"), in v7.3.  A cached lookup that clears the dropbehind
+> flag could uncount a folio that was never counted.  It could also leave
+> a folio counted with nothing to uncount it.  The patch applies to v7.3
+> as it is, if the mm side would rather take it alone.
+>=20
+> v8 1/7 is not in this series.  As Chuck asked, I post it on its own.  It
+> is a revised version of 80728157d1bd ("NFSD: cut a misaligned
+> direct-mode WRITE at page boundaries") in cel/nfsd-testing.  This series
+> applies on cel/nfsd-testing at 6d13b7f74eec ("NFSD: Map every
+> NFS_ACLv2 reply status into aclstat2"), with or without that revision.
+> Each patch builds with W=3D1 with no warnings.
+>=20
+> 1/6 to 5/6 are mm, with small iomap changes in 4/6 and 5/6.  They are
+> Cc'd to linux-mm and linux-fsdevel.  If the mm and iomap maintainers
+> are agreeable, their acks would let Chuck take the series through the
+> nfsd tree.  But whatever approach the maintainers prefer for this kind
+> of cross-subsystem merge is obviously fine.
+>=20
+> Changes since v8, from two independent sashiko reviews of v8: the one
+> Jeff Layton relayed, and the one that sashiko-bot posted to linux-mm.
+> Some findings were in both.
+> - 1/6 and 3/6 (both reviews): a folio is counted in WB_DONTCACHE_DIRTY
+>   only when both PG_dirty and its dirty tag are set.  v8 tested the tag
+>   alone.  __folio_cancel_dirty() clears PG_dirty but leaves the tag, and
+>   so does writeback that stops at EOF after folio_clear_dirty_for_io().
+>   A folio that stays cached then keeps a stale tag.  1/6 uncounted such
+>   a folio twice, and 3/6 counted it and never uncounted it.
+> - 4/6, 5/6 and 6/6 (second review): with blocks smaller than the folio,
+>   iomap tracks uptodate per block.  The edge that a write completes is
+>   then not uptodate when the write finds it, so it was never marked and
+>   stayed cached until reclaim.  This happens with 4 KiB blocks on 16 or
+>   64 KiB pages.  The new folio_dontcache_edge_written() also accepts a
+>   folio whose blocks outside this write are uptodate.
+>   filemap_dontcache_edge_completes() takes the range that the write
+>   covers, and 6/6 passes it.
+> - 5/6 (second review): filemap_dontcache_edge_complete() now waits for
+>   writeback in flight, which could not drop the folio.  It also kicks
+>   DONTCACHE writeback when it marks a dirty folio.  The earlier kick
+>   came before the mark.  It drops a clean folio that is not mapped
+>   without a mark.  A mark that filemap_end_dropbehind() then cleared
+>   outside the i_pages lock could leave WB_DONTCACHE_DIRTY counted.
+> - 6/6 (both reviews): NFSD finds the edges that a buffered segment
+>   shares by the mapping's smallest folio, as iomap does, not by page.
+>   On 16 KiB blocks, a WRITE written as one buffered segment can have
+>   page-aligned ends inside a block.  Nothing completed those edges.
+>   NFSD also completes a segment's first edge only when the write
+>   reached the end of the segment's bytes in that unit (first review).
+> - 4/6 (first review): a paragraph on a limit.  4/6 marks the folio
+>   before iomap validates the iomap.  A stale iomap stopped by a fatal
+>   signal then leaves a mark on a folio that this write did not complete.
+>   This costs one read-back and no data.
+> - 2/6: unchanged.
+>=20
+> Patches 1, 3, 4, 5 and 6 carry notes below the --- line.  The notes
+> give each question from the v8 reviews, and the code, lock or check
+> that answers it.  This includes the limits that the series keeps on
+> purpose.
+>=20
+> Before posting, I ran a third review of v9 locally, with Sashiko's
+> review stages and the review prompts it uses.  It found no new
+> problems.
+>=20
+> Measured for 6/6 on 16 KiB-block XFS over the loop device.  Its
+> dma_alignment is 511, so every TCP payload is memory-misaligned and
+> NFSD writes each WRITE as one buffered segment.  32 writers of 12288-byte
+> records, 1 GiB: v8 left all 32,736 pages of a 128 MiB file resident.
+> v9 leaves 948 of 262,080 pages (0.4%) and reads 0.0003 blocks per
+> record.  The v8 results hold.  In every run BdiDontcacheDirty was 0
+> after the final sync.  That includes runs that mix uncached writes,
+> cached writes and mmap stores on one file.  Every record verified.
+>=20
+> I measured all of v9 again on 4 KiB pages, with XFS blocks of 1 KiB
+> and 2 KiB over the loop device.  These blocks are smaller than the page.
+> 32 writers wrote 47008-byte records, 1 GiB.  Uncached application writes
+> left 0 of 261,850 pages resident.  NFSD left 497 (1 KiB blocks) and 349
+> (2 KiB blocks).  LOCALIO left 854 and 949.  Every path read 0.0001
+> blocks per record.  A kernel without these fixes, on a 128 MiB run with
+> 1 KiB blocks, left about one page for every two records.  Uncached
+> writes through NFSD, cached writes and mmap stores ran together on one
+> file, with 4 KiB and 1 KiB blocks.  BdiDontcacheDirty was 0 after every
+> round, and every record verified.  I did not test kernels with 16 KiB
+> or 64 KiB pages.
+>=20
+> v8: https://lore.kernel.org/linux-nfs/20261023024548.71123-1-snitzer@kern=
+el.org/
+> v7: https://lore.kernel.org/linux-nfs/20261020220346.28020-1-snitzer@kern=
+el.org/
+> v6: https://lore.kernel.org/linux-nfs/atbfEbgMU6UGkn2X@kernel.org/
+> v5: https://lore.kernel.org/linux-nfs/20261019150725.1507-1-snitzer@kerne=
+l.org/
+> v4: https://lore.kernel.org/linux-nfs/20261015233309.42999-1-snitzer@kern=
+el.org/
+> v3: https://lore.kernel.org/linux-nfs/20261001045502.48381-1-snitzer@kern=
+el.org/
+> v2: https://lore.kernel.org/linux-nfs/20260929231329.22018-1-snitzer@kern=
+el.org/
+> v1: https://lore.kernel.org/linux-nfs/20260929173423.16149-1-snitzer@kern=
+el.org/
+>=20
+> Thanks,
+> Mike
+>=20
+> Mike Snitzer (6):
+>   mm: take a folio off WB_DONTCACHE_DIRTY only if it was counted there
+>   mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats
+>   mm: add folio_mark_dropbehind() to mark a folio dropbehind and account =
+it
+>   mm, iomap: keep a partly covered page until an uncached write completes=
+ it
+>   mm, iomap: let an uncached writer complete its shared pages itself
+>   NFSD: drop a shared boundary page only once both WRITEs have written it
+>=20
+>=20
+>  .../filesystems/nfs/nfsd-io-modes.rst         |  17 ++
+>  fs/iomap/buffered-io.c                        |  36 ++-
+>  fs/iomap/trace.h                              |   3 +-
+>  fs/nfsd/vfs.c                                 | 116 +++++++-
+>  include/linux/fs.h                            |   8 +-
+>  include/linux/iomap.h                         |   1 +
+>  include/linux/pagemap.h                       |  14 +
+>  mm/backing-dev.c                              |   6 +
+>  mm/filemap.c                                  | 265 +++++++++++++++++-
+>  9 files changed, 435 insertions(+), 31 deletions(-)
+>=20
+>=20
+> base-commit: 6d13b7f74eec16e08d5e7f772ee119432a14ef2c
 
-Seems like the correct thing to do.
+This all looks good to me at this point. This is a mixed mm and nfsd
+set though. How do you envision this being merged?
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
