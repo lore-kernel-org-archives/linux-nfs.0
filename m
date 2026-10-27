@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793109122;
-	b=GHzGs2B8irWKVmk7NQOweNKs32O/WKwbKCI5e+8RN5iHkFb+WTI1RwXtgV5k2PqAGYwe
-	 6WA+tlDvFxqbrgcIz9z0TU5earWGUBtTsnMAr6GYaGnEqReTCNnEkv+n/RlCWbzvqevcH
-	 YoDzbPwXlRcjZFF0x8az07Lx0FjlDLr1cxvXBGKZRmXfek289k3h0cx+tFhF0T6po0oDV
-	 IpVIHH5SDGsYd42bjyLmZBAaAIpCdrfR2TUVxSqI4h4IjJiIcS/UIZuJDp63I6Qb/Z3WB
-	 VcByd7QgdYUTDDm1Se6r41evVMNAOMcNCTNUGWUoq4dLfDpuK+xMmKnKzbvTuHTc9ag==
+	t=1793109123;
+	b=CT4lvspRiSoSHicvYszoTUBCBMkCSI9scXK2M9VInYHN3REzHjWGuHlt7TBOdQhDuGHe
+	 E1qRdAm1RvNevH5/UYpiSsSy3SF4ikVU3KeYDVLmOKy89U4tELQCZO8gZiO2sQf+PLuWt
+	 FUb0fUwat/ErBfIEHHjzmhUWE2ZreRbKWsWj8WIlDwIHop58yIsAZUIDQHnnHe1SfeVlA
+	 +7A1LwLmbeIcv3Ihgp8BKC+KCUsB5M4/5HXftNSnQDvnb2X6EmuSixuMofeKgsGkjNIiY
+	 001jW9ZX6QzA1wc8gQGr32wQBOluZFSI8x+lHGKNhHe2X0/bS1BAkTrldFFX+vfULzw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793109122;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793109123;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=aNOXvyKD/8TXXpu5EjOKvn26a0UnfOUKicQBaq5loU0=;
-	b=MRpQuAgCBtNRiT+a5yxzvyJX27kgdWxutDjDWagQV8BTLezqo6jBhwtLQ47CUBWSwspf
-	 k1xIjvMb+wccKXjJpwFI004RU/LekE30qNgxRpA1a7l6Eo2opUPa1ybL9OHS9zQi84C4d
-	 6DiZd2DCiTENg1HCyuBuzTAdFvwUNWZ/p8hANRE/mol3Oj8it1U1g/Kp6EIBYWdLRZCYm
-	 CwmZQ4K9mfrh7cCQspvAfC6a1G5sBc/5t5Pci5kIvCnl5K4ub7dF9EOWQOc+kn6uNezF+
-	 ctxdPANt8G1Cd6oCdKHJPPDbtElbDHxK2Twwl4kK326zOcBjOQuWVZmO2zB/N/V/tCA==
+	bh=6N6gr0n21ZUbaOSGT3hBoEuV0Akrsrxoyqq7KPCJ1Rc=;
+	b=0JvNGEQZ8naUa56r8f1GLNt5GmZxcDiwJB4qlHovrX1zf+C5Xhf4ivy/meafrbs4Qs6F
+	 f64Fqd6JDP3fn+nCht+ruCI8kqwgdNxN1ySCzARfLcRD3e0o+XeDbwyoo3ag3MYfLDHKO
+	 IVNrcDSfjfc93gBsVVEdMa1eF2kc2WJWCT8aFEKwqRO6oxgSvH66tixxt12nXHWRFNdfT
+	 TOl8Yq0C0+2dSHOKSigPcIy+mCKqzi5BGF9fJM8AVI4NFEJotnNSP2dzRKyG7/lJGigr+
+	 nAnghFfIkxqDkeEfluFHJWrn6bpO62iDO6ZDXragxSBBEWFt5z1NAMPx+QFvw7kzB7g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=avEBqvpM;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kVHWlHbt;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1ADA7606A31A
-	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2026 13:52:01 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4774C606A31A
+	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2026 13:52:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=avEBqvpM
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E0A7D1F031E0;
-	Tue, 27 Oct 2026 13:52:00 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kVHWlHbt
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 251F41F01825;
+	Tue, 27 Oct 2026 13:52:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793109121;
-	bh=aNOXvyKD/8TXXpu5EjOKvn26a0UnfOUKicQBaq5loU0=;
+	s=k20260515; t=1793109122;
+	bh=6N6gr0n21ZUbaOSGT3hBoEuV0Akrsrxoyqq7KPCJ1Rc=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=avEBqvpMIBUVs8IFytG+0hBeq1lvtEJnHDJm/bSt2nYWcGlLcFoLZTv0KjN1alDZf
-	 oziIL8MLDradJSGIdX6+Mdym8A9fwaQge2qXvwi6kvp2plrmPJzmF57iOv7u4c35hc
-	 CFqbw/uFQAdR+P6mVIwToX/ZsqzQuH9CBSpWmI8BX2Jam81/wN8T97Zl99MbG80/Et
-	 N8f2SVEpc0HU4kz9vHbYz9UYPiPNYtxbiceTpuyohOKqF7BeKfIz2REJEMEHj2Oisp
-	 2JoZU/NBitx/Yk2MSNt4je4tZLgGlB394NyO7MRUVCWxXTEoMxGNkY4D5L9pZuXtIb
-	 v2ZZWDZ7uxJEg==
+	b=kVHWlHbtu5kZjKm6ozyVd06hQDoioBfyTmJgeBhD+jzW37atX083oifTsi7wpzRIZ
+	 OxLr6nYBt3vu2NGDEPohLRaUUMfsrfb367kCouy/zTP7PikOXzwYYQYD3IEtwNAeaQ
+	 gfzcwZnIS+S8fl/BzVj+Fph3Zk8AD+9wHT2CKaHG66mlvPZNBX5IPO/e10Hj7O5kNE
+	 L+9//8OGFrhH/b8zTrJbXfabP5HSdWYmMupsgH205qnvhalFEEC3ExPfh4NFUCR5xA
+	 ehOfDDRUPfDowkNP+zdRHp0hI8+o1YJ9MFZTZn/3joJ7px0WJ6CGItbvQSysuyRvwt
+	 8nqVlZTYJQvWQ==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -46,9 +46,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 1/2] NFSD: Map NFS_ACLv2 entry IDs through the request's user namespace
-Date: Tue, 27 Oct 2026 09:51:57 -0400
-Message-ID: <20261027135158.164034-2-cel@kernel.org>
+Subject: [PATCH v1 2/2] NFSD: Map NFS_ACLv3 entry IDs through the request's user namespace
+Date: Tue, 27 Oct 2026 09:51:58 -0400
+Message-ID: <20261027135158.164034-3-cel@kernel.org>
 X-Mailer: git-send-email 2.56.0
 In-Reply-To: <20261027135158.164034-1-cel@kernel.org>
 References: <20261027135158.164034-1-cel@kernel.org>
@@ -63,8 +63,8 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The NFS_ACLv2 GETACL encoder and SETACL decoder translate each ACL
-entry's ID with init_user_ns, while the fattr in the same reply goes
+The NFS_ACLv3 GETACL encoder and SETACL decoder translate each ACL
+entry's ID with init_user_ns, while the fattr3 in the same reply goes
 through nfsd_user_namespace(). When the transport's credential comes
 from a non-initial user namespace, GETACL reports host-global IDs
 beside namespace-relative ownership attributes, and SETACL installs
@@ -74,37 +74,37 @@ the same mismatch.
 
 Translate every entry ID in the request's user namespace. On encode,
 use the munged variants so an ID with no mapping in that namespace is
-reported as overflowuid, as nfsd_stat_to_fattr() already does. On
-decode, an ID with no mapping fails the existing uid_valid() and
+reported as overflowuid, as nfsd3_fill_post_op_attr() already does.
+On decode, an ID with no mapping fails the existing uid_valid() and
 gid_valid() checks, and the decoder reports the ACL as invalid.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs2acl.c | 14 ++++++++------
+ fs/nfsd/nfs3acl.c | 14 ++++++++------
  1 file changed, 8 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
-index b846624dfe82..8b6e3d717217 100644
---- a/fs/nfsd/nfs2acl.c
-+++ b/fs/nfsd/nfs2acl.c
-@@ -510,6 +510,7 @@ bool nfs_acl2_secattr_encode(struct xdrgen_aggregate_cursor *c,
+diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
+index 70e685ba1167..b426b3e64df8 100644
+--- a/fs/nfsd/nfs3acl.c
++++ b/fs/nfsd/nfs3acl.c
+@@ -378,6 +378,7 @@ bool nfs_acl3_secattr_encode(struct xdrgen_aggregate_cursor *c,
  			     struct aclent *out)
  {
  	struct svc_rqst *rqstp = c->ctx;
 +	struct user_namespace *userns = nfsd_user_namespace(rqstp);
- 	struct GETACL2res_wrapper *resp = rqstp->rq_resp;
- 	bool dfacl = c->member_id == NFS_ACL2_SECATTR_DFACLENT;
+ 	struct GETACL3res_wrapper *resp = rqstp->rq_resp;
+ 	bool dfacl = c->member_id == NFS_ACL3_SECATTR_DFACLENT;
  	struct posix_acl *acl = dfacl ? resp->acl_default : resp->acl_access;
-@@ -536,16 +537,16 @@ bool nfs_acl2_secattr_encode(struct xdrgen_aggregate_cursor *c,
+@@ -404,16 +405,16 @@ bool nfs_acl3_secattr_encode(struct xdrgen_aggregate_cursor *c,
  	out->type = tag | typeflag;
  	switch (tag) {
  	case ACL_USER_OBJ:
--		out->id = from_kuid(&init_user_ns, resp->stat.uid);
-+		out->id = from_kuid_munged(userns, resp->stat.uid);
+-		out->id = from_kuid(&init_user_ns, resp->uid);
++		out->id = from_kuid_munged(userns, resp->uid);
  		break;
  	case ACL_GROUP_OBJ:
--		out->id = from_kgid(&init_user_ns, resp->stat.gid);
-+		out->id = from_kgid_munged(userns, resp->stat.gid);
+-		out->id = from_kgid(&init_user_ns, resp->gid);
++		out->id = from_kgid_munged(userns, resp->gid);
  		break;
  	case ACL_USER:
 -		out->id = from_kuid(&init_user_ns, entry->e_uid);
@@ -116,16 +116,16 @@ index b846624dfe82..8b6e3d717217 100644
  		break;
  	default:
  		/*
-@@ -632,6 +633,7 @@ bool nfs_acl2_secattr_decode(struct xdrgen_aggregate_cursor *c,
+@@ -500,6 +501,7 @@ bool nfs_acl3_secattr_decode(struct xdrgen_aggregate_cursor *c,
  			     const struct aclent *in)
  {
  	struct svc_rqst *rqstp = c->ctx;
 +	struct user_namespace *userns = nfsd_user_namespace(rqstp);
- 	struct SETACL2args_wrapper *argp = rqstp->rq_argp;
- 	bool dfacl = c->member_id == NFS_ACL2_SECATTR_DFACLENT;
+ 	struct SETACL3args_wrapper *argp = rqstp->rq_argp;
+ 	bool dfacl = c->member_id == NFS_ACL3_SECATTR_DFACLENT;
  	struct posix_acl *acl = dfacl ? argp->acl_default : argp->acl_access;
-@@ -651,14 +653,14 @@ bool nfs_acl2_secattr_decode(struct xdrgen_aggregate_cursor *c,
- 	switch (in->type & ~NA_ACL_DEFAULT) {
+@@ -528,14 +530,14 @@ bool nfs_acl3_secattr_decode(struct xdrgen_aggregate_cursor *c,
+ 	switch (entry->e_tag) {
  	case ACL_USER:
  		/* An id with no kernel mapping makes the ACL invalid. */
 -		entry->e_uid = make_kuid(&init_user_ns, in->id);
