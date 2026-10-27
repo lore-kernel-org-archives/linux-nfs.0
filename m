@@ -1,73 +1,141 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793123715;
-	b=sLohU1/46mo+INuxrU+56x05lYjyTDZ1yT4vCZ1HxR01e8YlT/6U2rX+VhOHtfCttkix
-	 koiQ2JJVqJHrFlYixOzNkTy6bWuHgIACyeT+g8XlvQTAazfV4OXQ6pm/9FjbbP6gGwUvO
-	 X7bngcK7T8uFY2tidJlQT6QCHo0grVgWN3vPGCh8N0/nKQMLuecH0QWNHuaYIqG9rMxKN
-	 skrDXhbcuotC1yA79f5WM6xXqbhgQ4QIuApdSrsZfnIYTV7rZatf90TpAhB1iOOHhpl8k
-	 IMvFNXYRusL6hVPa7YCRCNwU020lxpcnyljR37FK0ZbspTMnoy6spSxqysgXTNoA+sA==
+	t=1793123985;
+	b=CVYo0/7+B1zonEMzPkutmPKuY1hi0zA0/m3nEwzvpGnuMweePFqSfh89nQYNn6wT5cw3
+	 4lg+PBMk+UzWOuX1hUZ9Kfk43W9wnPmHf6KkT69FIhz2w7UesVv11L1pfxxHkEimjw9J/
+	 aki3n3DM8s7gZg6XOoE3n5E/E51EsYk7AMOJcq8TCiqLPEZC2Pfm0sIZXgC5gtDsjYB8X
+	 qjsQFuAnBbklhfKur77s9hsGAMDdEjNM3s35eUdmBpQhE0+Sr6ZkruV/U7FrzXcJKytI1
+	 Kv4ZaUkauoqRMaSyE2eqexYqmhBPafnVcyRkTMXhsKB0EHFVkyS1taGkpQmNyOvcEGQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793123715;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=0mrx6dW9Zr+Dr9/qeyAc5RF2aw4BQ2JE9fRD0hY1390=;
-	b=XRml/jXmzLGyO3oIkvX80BsiiQU+vIKq/tlVry/obUU0Jirz+mrRBK+LjpvYDvaL+NGE
-	 CSxbEKBXWrAjfyKleogQhruH4qPHkesDlBAn8a/IDcz5SRYq1zaKjAmwR1fJH3uvnhJsL
-	 zAao5tbpX4i5alX7UlvSVkTIeNiGjbo1p6FEvbayOfLmHavhR9Izy2GYWft3ux6C5/IaA
-	 LOeOmFDADNeO3E7Ft9S9Ci2xGLkhzVNrCaU1Bmx8uGVYCtCHqFb6LFUXrW8Ecc/w2cR1o
-	 80o9Pi9pwkOIWbkq6reqaFsNz2HpRaA35CIGK8BehrAL5Yi1xJfvvJ3LaXl1g9PtBlw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793123985;
+	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
+	 In-Reply-To:References:Autocrypt:Content-Type:
+	 Content-Transfer-Encoding:User-Agent:MIME-Version;
+	bh=zNuaeVQHNQqFUJa+PqI7b/TO/F47lbspMzWZbs2KJoM=;
+	b=oazxnNoDNC1pI14MMId2onHwZE7YSHi1vv5O4uKuwsHVkbQKMr+3ynHigX/8jENql0se
+	 eVIXItak+jozr6ktRH77neRjZVLOSSwS48jEd73/WnnpbcsKni+3Cs4J+z7ZO+vWduMfm
+	 EZqmz/HJqPJhwX+6WS4+Vlfc/YVQFb4DVTyohYoW5IAO3YWTXxYmu3qdsjdxhh8j24moF
+	 HuvxqrTGB8qLIJx53vzv0R2t8fusEwtpaQuvgIxZ4rtflG3vG0JVX8vA7HrzUAGdnRI+V
+	 pQ9aOeNajMM2iPhcLbg7bGD8ikc5r06nsYyRKewETI+hkge6x4p6BPxujuQu+IYf45w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="mK/52XWT";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ax7OJx6p;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9AB74606A31A;
-	Tue, 27 Oct 2026 17:55:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8B850606A31A;
+	Tue, 27 Oct 2026 17:59:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mK/52XWT
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BACA71F031E1;
-	Tue, 27 Oct 2026 17:55:14 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ax7OJx6p
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9CC631F01825;
+	Tue, 27 Oct 2026 17:59:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793123715;
-	bh=0mrx6dW9Zr+Dr9/qeyAc5RF2aw4BQ2JE9fRD0hY1390=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=mK/52XWT+LwA3pvGFxW6JdZ9O3EDLQtcz4nNydxwh6TNBvXIqLdcwI/Lm63QtjkW/
-	 iwuDWHk1gcBfZE/2aMB76c2i8vCGsVmiJgS/fVek06Z7srY8ej6i/oFmIopagVJgbJ
-	 6Ug3mj3B9yjduPG0wp9bHJwNvTHIwOsSePdSGu0oHrRj+ppl1cJjdfE+fxbk6/hbWw
-	 jtt0eWsht0zH/CibsuZvwCcRppXkN3Os3DdrN0ujvUXRVMAVvC51+Kz6I6bIAS4fCO
-	 huegC5Tp3Rvv2bgfxNOV55du+3aKEJDc/9ginRfIIGxcgDHJ56VAcklHJRzIP1XIK8
-	 WHtLsLxsJE1rw==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 175A7F40066;
-	Tue, 27 Oct 2026 13:55:14 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Tue, 27 Oct 2026 13:55:14 -0400
-X-ME-Sender: <xms:guXgaman8m8hgd29DBbfO0xquouuaF63VCxwrcbXwoKZtzKlluYRmA>
-    <xme:guXgakO-TU7GF3RWMi2SuxdHIW2BSakqv4RSsr_F7E7Cw3tAlHicfGp5uQll4piAt
-    m9fgfezxOGiF1dWOuJ-j1Q_dHM9Z1pemOtRk9zDXPmcSIWNg2G1Zgxp>
-X-ME-Proxy-Cause: dmFkZTGI9CojnDj3sv0b6BqjhYlTeOZC/1LMQMQRhBfJPKZasjYu2smuB14iFup+QyVhIn
-    +wRYv8QwDL/+DY62uEp8Q+HOnFHvD7rwE1l9eksvmCCsI6MmOKcQqna/q870xLkqA1Ivox
-    VEz18a9f9mkn8pHpGVSzyCS3Fu+sct+aT+w/wTdTGQxM480eEce2U8LQSHx1zcWrPjsoyx
-    U6j9qVJq5Z3KEqlMens3621XVw20guShzqM0pcSF8xC3AV2sy/5cfqeelO/euLCbHq3/Ey
-    F/Cntis2al8fW0jTz22BY/upZy6F84TNqFPM0d5dbJouq7VKKh0wWGBi4fSypE2lZ+y5lA
-    lEk6bUC8MvxfAPmQ9VDxp9Z0Xdwc20kz9yCsVQvwFBRz9GUHifCNXbOK3sXfiuTDqA6aBi
-    5JXPeJlIzb5XvqTV199IbLjIoC9fDmhYMZkYT8rTFkxjQlb7bD7kdjsIVXAiTVHNTjdW6d
-    tr4l/mAymjHZyldJmxlo24jP8UmPJTHsAra30DlAoG4olIsxMuw/fkUfsnyal9oGQNmBIV
-    LQuiA9RlHfgmqeyUsYCB/KdfIbwCW0gdQQeDBja5OOSfUPYLA1o70g/bQGs+NJ5j7PzgCd
-    hh+Znj1lKL9IelEXy+OeXTGoaMZh9nCFYLJx+1rfUea9VknCUYgBjyBM5KZQ
-X-ME-Proxy: <xmx:guXgamK10hOP4AolDM0NxWIA6Y7v2MbUJktv-xtBRjWTXAxBGQoTDA>
-    <xmx:guXgarWdPQh7eU8J71laT2bYi66VP1FkBwuUanqaM_PoliqAxlsLgw>
-    <xmx:guXgarM8gC6qlZlKhJLl5s8-TYAgt4hwimjrlDGlCLTIvRsIRAKL9w>
-    <xmx:guXganmx70fuW7hK34LZVofJFSq3Vjtp7qj7qud2PR95CHw6EMMscw>
-    <xmx:guXgauUrz-o9CzS11td64alLhWrobzJFLayyZ_O0qTkIY0TH8ZpD3so4>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id E806E782738; Tue, 27 Oct 2026 13:55:13 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1793123985;
+	bh=zNuaeVQHNQqFUJa+PqI7b/TO/F47lbspMzWZbs2KJoM=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=ax7OJx6p4umsu2oVnHrePRQPcEr5Z602yD1I7UIqAseRRa6me8ZFktJfQYURMg2Jv
+	 LtcrAx8nujniNItLa9TGApRpM0W2nT2CQi7gUHHIMTeOVym36GyvkI0Vf9lsLp1vVS
+	 l21xeaz/NkxPNUMJIMD0upztwHjaM75WQHGR1ZSDBKf6k2HVIp0PQ/FFO9r826Xau8
+	 EKd8oma/FmNOz+34gMhWypP6BefzqGtBLqi55L/LZyX3uozLcvIvH/MGJcZ8bJyvom
+	 eSUPSeMRQjuQN04/YD7do5hTlBrcc7uj304pokkdZplwto5Xda4eQnWHczbnRQXW6a
+	 6CA9BT9M/jTRg==
+Message-ID: <31238159b7a4753e0a10c9f8b9fdecc4b92fb2f5.camel@kernel.org>
+Subject: Re: [PATCH 2/6] NFSD: Apply per-export I/O modes to READ and WRITE
+From: Jeff Layton <jlayton@kernel.org>
+To: Chuck Lever <cel@kernel.org>
+Cc: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, Trond Myklebust
+ <trondmy@kernel.org>,  Anna Schumaker	 <anna@kernel.org>, Jonathan Corbet
+ <corbet@lwn.net>, Shuah Khan	 <skhan@linuxfoundation.org>, Randy Dunlap
+ <rdunlap@infradead.org>, Mike Snitzer	 <snitzer@kernel.org>, Donald Hunter
+ <donald.hunter@gmail.com>, Jakub Kicinski	 <kuba@kernel.org>, "David S.
+ Miller" <davem@davemloft.net>, Eric Dumazet	 <edumazet@kernel.org>, Paolo
+ Abeni <pabeni@redhat.com>, Simon Horman	 <horms@kernel.org>, Steve Dickson
+ <steved@redhat.com>, netdev@vger.kernel.org, 	linux-kernel@vger.kernel.org,
+ linux-nfs@vger.kernel.org, 	linux-doc@vger.kernel.org
+Date: Tue, 27 Oct 2026 13:59:41 -0400
+In-Reply-To: <ad5ac019-34ac-4c7f-8b90-cde8a0dc0546@slotpi15m67>
+References: <20261027-export-iomode-v1-0-262ed932a036@kernel.org>
+	 <20261027-export-iomode-v1-2-262ed932a036@kernel.org>
+	 <ad5ac019-34ac-4c7f-8b90-cde8a0dc0546@slotpi15m67>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-2.fc44) 
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,73 +145,57 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: AGB9D7c4hmNR
-Date: Tue, 27 Oct 2026 13:54:53 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Jeff Layton" <jlayton@kernel.org>
-Cc: NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
- "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
- "Jonathan Corbet" <corbet@lwn.net>, "Shuah Khan" <skhan@linuxfoundation.org>,
- "Randy Dunlap" <rdunlap@infradead.org>, "Mike Snitzer" <snitzer@kernel.org>,
- "Donald Hunter" <donald.hunter@gmail.com>,
- "Jakub Kicinski" <kuba@kernel.org>, "David S. Miller" <davem@davemloft.net>,
- "Eric Dumazet" <edumazet@kernel.org>, "Paolo Abeni" <pabeni@redhat.com>,
- "Simon Horman" <horms@kernel.org>, "Steve Dickson" <steved@redhat.com>,
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
- linux-nfs@vger.kernel.org, linux-doc@vger.kernel.org
-Message-Id: <ad5ac019-34ac-4c7f-8b90-cde8a0dc0546@slotpi15m67>
-In-Reply-To: <20261027-export-iomode-v1-2-262ed932a036@kernel.org>
-References: <20261027-export-iomode-v1-0-262ed932a036@kernel.org>
- <20261027-export-iomode-v1-2-262ed932a036@kernel.org>
-Subject: Re: [PATCH 2/6] NFSD: Apply per-export I/O modes to READ and WRITE
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
 
-On 10/27/26 12:45 PM, Jeff Layton wrote:
-> Resolve each export's effective I/O mode (explicit setting, else the
-> global io_cache_read/write knob) in nfsd_iter_read and nfsd_vfs_write,
-> and skip splice for reads on exports whose effective read mode is not
-> buffered. Update the debugfs knob comments to match.
+On Tue, 2026-10-27 at 13:54 -0400, Chuck Lever wrote:
+> On 10/27/26 12:45 PM, Jeff Layton wrote:
+> > Resolve each export's effective I/O mode (explicit setting, else the
+> > global io_cache_read/write knob) in nfsd_iter_read and nfsd_vfs_write,
+> > and skip splice for reads on exports whose effective read mode is not
+> > buffered. Update the debugfs knob comments to match.
+>=20
+> [ ... ]
+>=20
+> > -	if (file->f_op->splice_read && nfsd_read_splice_ok(rqstp))
+> > +	if (file->f_op->splice_read && nfsd_read_splice_ok(rqstp) &&
+> > +	    nfsd_read_iomode(fhp->fh_export) =3D=3D NFSD_IO_BUFFERED)
+> >  		err =3D nfsd_splice_read(rqstp, fhp, file, offset, count, eof);
+>=20
+> nfsd_io_cache_read_set() still sets nfsd_disable_splice_read whenever
+> the global knob is switched to dontcache or direct, so
+> nfsd_read_splice_ok() returns false before this per-export test is
+> reached. An export pinned to riomode=3Dbuffered on such a server never
+> gets splice; it falls through to nfsd_iter_read() and does vector
+> buffered reads. The same applies to the splice_ok decisions in
+> nfsd4_encode_read() and nfsd4_encode_read_plus_data().
+>=20
+> Patch 3/6 says an explicit per-export setting pins that export's
+> IO mode "regardless of the global knob", and that isn't quite true
+> now for the buffered case.
+>=20
+> I need to think carefully about the interaction between the "disable
+> splice" setting, which is global, and the per-export I/O setting.
+>=20
 
-[ ... ]
+Maybe disable_splice should be an export option of its own? It seems
+like that should be doable.
 
-> -	if (file->f_op->splice_read && nfsd_read_splice_ok(rqstp))
-> +	if (file->f_op->splice_read && nfsd_read_splice_ok(rqstp) &&
-> +	    nfsd_read_iomode(fhp->fh_export) == NFSD_IO_BUFFERED)
->  		err = nfsd_splice_read(rqstp, fhp, file, offset, count, eof);
+> Separately, on the names of the export options: "riomode" and
+> "wiomode" are hard to read, and "mode" might suggest "permission bits"
+> to an administrator. How about read_io=3D and write_io=3D instead? They
+> follow the underscore style of the other multi-word export options
+> (no_subtree_check, root_squash, security_label) and read naturally:
+>=20
+>   /srv/data  client(rw,read_io=3Ddirect,write_io=3Ddontcache)
+>=20
+> The values buffered, dontcache, and direct then carry the meaning
+> without "cache" or "mode" in the name.
+>=20
+> The name appears in the exports syntax, the nfsd.export/content
+> output, the netlink YAML spec, and the forthcoming nfs-utils series,
+> so it's worth settling before v2 and before the nfs-utils side gets
+> merged.
+>=20
 
-nfsd_io_cache_read_set() still sets nfsd_disable_splice_read whenever
-the global knob is switched to dontcache or direct, so
-nfsd_read_splice_ok() returns false before this per-export test is
-reached. An export pinned to riomode=buffered on such a server never
-gets splice; it falls through to nfsd_iter_read() and does vector
-buffered reads. The same applies to the splice_ok decisions in
-nfsd4_encode_read() and nfsd4_encode_read_plus_data().
-
-Patch 3/6 says an explicit per-export setting pins that export's
-IO mode "regardless of the global knob", and that isn't quite true
-now for the buffered case.
-
-I need to think carefully about the interaction between the "disable
-splice" setting, which is global, and the per-export I/O setting.
-
-Separately, on the names of the export options: "riomode" and
-"wiomode" are hard to read, and "mode" might suggest "permission bits"
-to an administrator. How about read_io= and write_io= instead? They
-follow the underscore style of the other multi-word export options
-(no_subtree_check, root_squash, security_label) and read naturally:
-
-  /srv/data  client(rw,read_io=direct,write_io=dontcache)
-
-The values buffered, dontcache, and direct then carry the meaning
-without "cache" or "mode" in the name.
-
-The name appears in the exports syntax, the nfsd.export/content
-output, the netlink YAML spec, and the forthcoming nfs-utils series,
-so it's worth settling before v2 and before the nfs-utils side gets
-merged.
-
-
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+Ok, I'll look at renaming them. Thanks for the initial review!
+--=20
+Jeff Layton <jlayton@kernel.org>
