@@ -1,96 +1,73 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=37.230.196.243
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793103817;
-	b=Lc1DW/dX/05PvVCtyVTcjppRE4IEmXAfPx/CAcEBKvTBBYhbfosOkBqXcjO7XzuwLBZj
-	 37dJXXCrkF0UbUrY0+suwGwA9MI5Yum+t3UBnOF11idpNhlHaHU9AyDuMHQTMuZ6cb0p/
-	 iPqZAOYvQ74eaRfUl79OGCAATU4/DMYXUmZR79GJ21GjGUvyOHRy4Ott2k1Nn9KuNhZI/
-	 k2ga/EehoNZaXG0x82BKdWbc4YR3a8fCoTsv/ZqjEKjAGrrUG2T99mbBDGtTlcgLkz3TP
-	 TQo4k5AtEw3uyDmTx7eib68+KJgfrTIlff9cXmXwgL1+3OQskAaToQdSyk6GvHawaRw==
+	t=1793108317;
+	b=OdctFWER5fB2Uy5kBqAHomxu/fcO9DuF4Wy+IFGT2ohrnzoFtxzgbIOfowpUDG2x2xUl
+	 rQEAja+vc6+XpXq8rhje02a2BieTnlhAx6U5YErt6L7qEhldtBqh888tMZru2+zJrZWNH
+	 y3vbFzenbjREj3AXRcRwoRZ4BBsSQOjnayGaVuGOijAz3vWwLwCrrFkuTMrwYSTQrY+Ab
+	 pwHPkOKnf7TlWNB2zOq+GXz7WjwbpUkA3sI/TbbgHziJYq/1zW9OyDBeHNFNB5nGs7z6J
+	 bkTmxWP1sgsAvj2v8YSAu0KBiXx78T57RATLp4JqGfjm+LFR8QS37rw0heGRS9Q29tw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793103817;
-	h=DMARC-Filter:DKIM-Signature:Received:Received:Received:From:To:Cc:
-	 Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
-	 Content-Transfer-Encoding:X-KSMG-AntiPhishing:X-KSMG-AntiSpam-Auth:
-	 X-KSMG-AntiSpam-Envelope-From:X-KSMG-AntiSpam-Info:
-	 X-KSMG-AntiSpam-Interceptor-Info:X-KSMG-AntiSpam-Lua-Profiles:
-	 X-KSMG-AntiSpam-Method:X-KSMG-AntiSpam-Rate:X-KSMG-AntiSpam-Status:
-	 X-KSMG-AntiSpam-Version:X-KSMG-AntiVirus:X-KSMG-AntiVirus-Status:
-	 X-KSMG-LinksScanning:X-KSMG-Message-Action:X-KSMG-Rule-ID;
-	bh=FTFcRVxMB4E8A0mIeQ6+07gtdiaeR91Z3SjJqQ7IfCI=;
-	b=TLqQ9BFdwZrz9ze5SEuh4wYuOC7MVPb5H1WntI5EUF7ewjFAU8aFz7Fq4SaYwONI1lZ2
-	 Y8zXNfvsoEHh3GuR4RUC9W651Cv4gpf0cmsv9g7F70tJvaEg6tzB5FezNmXWx4VAYJKqN
-	 YDYyYQtdt6slk6sQQBE5/ff2EvzA+Qmi0c08D/JjBUJ8+fVXaBuccF3ades83hjpd4liV
-	 OxKLD5jWIDnTO6zWTfxGFm2M3BRuGB9VU3XPNCN95t2UpwKGLH4NVDZ4mra2zpGTI8KNi
-	 0kotOIu//O7RpqyxBe2VQpli/XKPIINAqojSQBb81qlIJy9fp+b5vKouZLzQn0r6BBQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793108317;
+	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
+	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
+	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
+	 References:Subject:Content-Type:Content-Transfer-Encoding;
+	bh=4wgyAUtxoYsHUq2vOhTXGeF7hsURu9DbNvr2JxybX0U=;
+	b=SUH3GN5flSfSv2Iht7BhbnzvJdh3qp2EusvcxqjgR9nceExF1Hnhz0ILw3CAivbljX//
+	 FK16OEsFvhN1o+v8NhWKO8fAuk5sHduuro7Lj//OHd4e8v5IaumQHqWiMH8AYKgZc9ay+
+	 MT3mR6rM8ftC17HlTk7Jdm9qmnEGXVk5gkU63bsuPgfvOTy0IZWhr0JQ5s3eyrOpzm0/Q
+	 g7YFHAGpfFVmFeVWVWnCeKYnLeJO2TVRhv6ii46aptP7w4GHGLxs1aX+d61SU2gxccFxk
+	 cYEZH6FTnnF5HDbwUeFSy6WbjcN2JM8rfokbpm3Ff0vBESXQKiZ/0S90KHj3eowEjuQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=astralinux.ru;
-	spf=pass smtp.mailfrom=astralinux.ru;
-	dkim=pass header.d=astralinux.ru header.i=@astralinux.ru header.a=rsa-sha256 header.s=mail header.b=hFKJRVee;
-	arc=none smtp.remote-ip=37.230.196.243
-Received: from mail-gw01.astralinux.ru (mail-gw01.astralinux.ru [37.230.196.243])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kO0iEAQP;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0F4FC606A31F;
-	Tue, 27 Oct 2026 12:23:33 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 0F4FC606A31F
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=astralinux.ru
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=astralinux.ru
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2EBF2606A325
+	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2026 13:38:36 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=astralinux.ru header.i=@astralinux.ru header.a=rsa-sha256 header.s=mail header.b=hFKJRVee
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=astralinux.ru;
-	s=mail; t=1793103811;
-	bh=+DLuIycq3dkVz8VhBjz2SPbDt/Mra4q7R1NANeLIGgU=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=hFKJRVee5mtL6M0LCGp8YfRpTsw5P74ZIVgUg9hV4F+M4MF4iwpiyoYgvpdxTrKzM
-	 F1K4Lh7r2t1MqeCJQ/uYbAfGaFkz5+c4xAPLaVw2Iuu9ySanyZI9740UY5Xq/XzAZt
-	 /CSmRdxru1qJbfV2nvW4jB2nH2+6gODAmGcCB73A1ZXm8nxG6L8ryMYl9454f6l6tj
-	 Jq61bQLzHIlZ/+KBSg3CZtnsFIy3WBgo/UN5e0WC6/eU9tUbblSrR7cwJIDWd1EijE
-	 r24s/PwTt1Oz6PhwR0F4VEWowUKKY3t7FCmz7Xs1COmeLRNRRO5YspgwBbFwJEkyS8
-	 0mpfGHp9a9ulg==
-Received: from gca-sc-a-srv-ksmg01.astralinux.ru (localhost [127.0.0.1])
-	by mail-gw01.astralinux.ru (Postfix) with ESMTP id 4951B25FE9;
-	Tue, 27 Oct 2026 15:23:31 +0300 (MSK)
-Received: from new-mail.astralinux.ru (unknown [10.205.207.10])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (P-256) server-digest SHA256)
-	(No client certificate requested)
-	by mail-gw01.astralinux.ru (Postfix) with ESMTPS;
-	Tue, 27 Oct 2026 15:23:30 +0300 (MSK)
-Received: from DESKTOP-D46TNHI (unknown [10.198.50.125])
-	by new-mail.astralinux.ru (Postfix) with ESMTPA id 4jDTds5sdDz2w2H;
-	Tue, 27 Oct 2026 15:02:57 +0300 (MSK)
-From: Mikhail Dmitrichenko <mdmitrichenko@astralinux.ru>
-To: stable@vger.kernel.org,
-	Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: Mikhail Dmitrichenko <mdmitrichenko@astralinux.ru>,
-	Sasha Levin <sashal@kernel.org>,
-	Chris Mason <clm@meta.com>,
-	Chuck Lever <cel@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Jakub Kicinski <kuba@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>,
-	linux-nfs@vger.kernel.org,
-	netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	lvc-project@linuxtesting.org,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Anna Schumaker <anna.schumaker@hammerspace.com>
-Subject: [PATCH 5.10 v2 2/2] xprtrdma: Fix bcall rep leak and unbounded peek
-Date: Tue, 27 Oct 2026 15:01:38 +0300
-Message-ID: <20261027120143.1596-3-mdmitrichenko@astralinux.ru>
-X-Mailer: git-send-email 2.54.0.windows.1
-In-Reply-To: <20261027120143.1596-1-mdmitrichenko@astralinux.ru>
-References: <20261027120143.1596-1-mdmitrichenko@astralinux.ru>
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kO0iEAQP
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B0E131F01825
+	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2026 13:38:36 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793108316;
+	bh=4wgyAUtxoYsHUq2vOhTXGeF7hsURu9DbNvr2JxybX0U=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=kO0iEAQPsTt/cp1YGtMUaYFz3lLjWMxQuBw4L/9zF67BzrPyDDctfpcvezBpLBbV1
+	 bGYa8GZfFYqTR8C6aikcybgnkogcZgWFpNplbI9LJK3y3RGz8pHQhbkgF1mKEsG6q7
+	 9Xbj8lVab83zdRvZcLY36+8CKckJuZJFjxWX/ZllRkdUl9fqDU1nR10hfPV3H9Gx/E
+	 uLagTX6hHtc7WiM48LETEQVY+Prro4f5bg3ecTcbnkh/cbgJCMgax0cFn725hbPJ5y
+	 AYdrm2TsSPw2pFUjV2Yg0IgUNaVkeDGMpHgTCeJ8ioWl0bp3GQmwtzWd4uq3x/7s14
+	 avmwaUATXvFXQ==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 0EB37F40066;
+	Tue, 27 Oct 2026 09:38:36 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Tue, 27 Oct 2026 09:38:36 -0400
+X-ME-Sender: <xms:W6ngagsCdM8wggJU5eEqw23mkTSHnR5VimuP5CbvzaKjN3oqkm_Cig>
+    <xme:W6ngaoSU7dW4mVPF59dOMvLr1U4beRggSDPvIcAlg8pAN5pw65LruEWurlg9FMAZq
+    dDHF91D0I-ODuWxun9o3L65H4eBNzR-5FGRUAor2G79y6DWk0NRPB-K>
+X-ME-Proxy-Cause: dmFkZTGZxu4SiG05ueDQEZeu+6fWxwmYtcso3/rWUUsricWFIQPIRp+cXnTf9MUKOQ39eG
+    7IRalJBKNW2RcTxBqwgtPhH82bDVZBrEwtsGaJl29X6DsOuB7dee+NnxD2B0/hocz7Zwjf
+    LJFO0dauFX3JLKyvo+0ohP3loERyH6y9LxqDOZTN+adCqummkoCeMpDbc99/cU9tRQMNR7
+    X7Gm2bd7Lg+V/bK28HsQ3Vjk63oXVi31kCkl3PJ+z2AnZmjtzp69af+70YIIqcZTJYQwP9
+    4x1kNSIhYVAUsfSvKmKUmcBJKxHDrEfWqaoJpL4WdSE6rt+mWJqfkt9hOsIMBOHKKcozY/
+    7ncGFTJhFOWjm+D4bhvitSTpy3CzoN9UiZ6j1JagrcUPBl2i7wHxY5GtRvl0nET6mGBKJ5
+    ++SXBLN6uPWsHN5NiVOxFANpRV7cOBzqJcGBK5TE2BDFS+nBIlALLhrA5PH2smzUsJpzZO
+    5G3pQjPXhyVSCmDzq5FXoT85bD9LM2Vj4oOZiNUWY4BboyPIoz/ARqPA6UiqEFsuiUOFcB
+    NpNY5b6z1EvfNJQr6lz3SjhqFUVncCn+mbbOAD+W8SbKU30p3jnpkSQKDYSNOeAVJhdZWF
+    kXYBc6c3xPzpGO4clYKAoWrBczmrswZIUf0yFFH4okrOdZwvUv6r0OuljoPQ
+X-ME-Proxy: <xmx:W6ngavSqpIKKirkF3A-T0g2pu-fWP0AygY50ju8nPJSDOZSxlifyWA>
+    <xmx:XKngao8SFoUVv1wzyDKKA7k-KuqVs08b9AeXXdB-T7QLS9dS1001aw>
+    <xmx:XKngagYjYSYDDt_GXvYQJqcKNeSUOC8PSL96AHi0xJbCShI1boXXPg>
+    <xmx:XKngaprT03yc_kMFvhWAgnKhX3k51q-eB2dukGEBSNlNL2yDSYyulw>
+    <xmx:XKngakS4kws4ZvHWWDp_C_A-Rukk3QK3IkB5VyGeM0Ltbmmg76D1ICvP>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id D861A78273B; Tue, 27 Oct 2026 09:38:35 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -100,110 +77,41 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-KSMG-AntiPhishing: NotDetected
-X-KSMG-AntiSpam-Auth: dkim=none
-X-KSMG-AntiSpam-Envelope-From: mdmitrichenko@astralinux.ru
-X-KSMG-AntiSpam-Info: LuaCore: 132 0.3.132 b92628ca234da971a1a6d61b32804bb3075f0fd2, {Tracking_from_domain_doesnt_match_to}, new-mail.astralinux.ru:7.1.1;d41d8cd98f00b204e9800998ecf8427e.com:7.1.1;astralinux.ru:7.1.1;127.0.0.199:7.1.2, FromAlignment: s
-X-KSMG-AntiSpam-Interceptor-Info: scan successful
-X-KSMG-AntiSpam-Lua-Profiles: 207024 [Oct 27 2026]
-X-KSMG-AntiSpam-Method: none
-X-KSMG-AntiSpam-Rate: 0
-X-KSMG-AntiSpam-Status: not_detected
-X-KSMG-AntiSpam-Version: 6.1.1.27
-X-KSMG-AntiVirus: Kaspersky Secure Mail Gateway, version 2.1.0.7854, bases: 2026/10/27 10:49:00 #28748526
-X-KSMG-AntiVirus-Status: NotDetected, skipped
-X-KSMG-LinksScanning: NotDetected
-X-KSMG-Message-Action: skipped
-X-KSMG-Rule-ID: 1
+X-ThreadId: AhcSeGgFL0jV
+Date: Tue, 27 Oct 2026 09:38:15 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Tristan Madani" <tristmd@gmail.com>
+Cc: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org,
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org,
+ tristan@talencesecurity.com
+Message-Id: <cc343ef0-1277-4c57-8db7-bd9d80e1429f@slotpi15m67>
+In-Reply-To: <20261026230151.2474608-1-tristan@talencesecurity.com>
+References: <20261026230151.2474608-1-tristan@talencesecurity.com>
+Subject: Re: [PATCH] nfsd: pin client reference across async copy reaper cleanup
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-From: Chris Mason <clm@meta.com>
+On 10/26/26 7:01 PM, Tristan Madani wrote:
+> nfsd4_async_copy_reaper() detaches completed async copies from the
+> client list and later calls cleanup_async_copy(), which eventually
+> drops the stid reference via nfs4_put_stid().  That path accesses
+> stid->sc_client unconditionally, but the client is not pinned during
+> the cleanup phase.
 
-commit c7653d5cebc8492c77ec0415b5e9c0fb3e644bc6 upstream.
+Thanks for the report. The same bug is already fixed here:
 
-rpcrdma_is_bcall() decodes a reply's first words to decide whether
-the frame is a backchannel call. Two issues in that decode path
-let a short or malformed reply leak the receive buffer and drain
-the Receive queue.
+  0941ff1cda56 ("nfsd: hold client reference while reaping async copies")
+  https://lore.kernel.org/linux-nfs/20260928083050.642664-1-bint4b13@gmail.com/
 
-First, the speculative peek
+For future NFSD submissions, please base on the nfsd-testing
+branch at
 
-    p = xdr_inline_decode(xdr, 0);
-    /* five p++ reads follow */
+  https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git
 
-asks xdr_inline_decode() for zero bytes, which returns xdr->p
-without consulting xdr->end. The five subsequent __be32 reads can
-then walk up to 20 bytes past the wire payload into stale regbuf
-contents and misclassify the reply as a backchannel call.
+per Documentation/filesystems/nfs/nfsd-maintainer-entry-profile.rst.
 
-Second, after the post-peek
 
-    p = xdr_inline_decode(xdr, 3 * sizeof(*p));
-    if (unlikely(!p))
-            return true;
-
-the short-header arm returns true without calling
-rpcrdma_bc_receive_call(). The contract with the caller is that a
-true return transfers ownership of rep to the backchannel path:
-
-    rpcrdma_reply_handler()
-      if (rpcrdma_is_bcall(r_xprt, rep))
-              return;        /* bare return, skips out_post */
-      ...
-    out_post:
-      rpcrdma_post_recvs(r_xprt, credits + ...);
-
-Because rpcrdma_bc_receive_call() never ran, no one took rep, but
-rpcrdma_reply_handler still bare-returns past rpcrdma_rep_put()
-and rpcrdma_post_recvs(). The rep, with its persistently
-DMA-mapped receive buffer, is orphaned on rb_all_reps and freed
-only at transport teardown. This completion reposts nothing, so
-its slot is reclaimed only when a later forward-channel reply
-reaches out_post and rpcrdma_post_recvs() allocates a fresh rep to
-backfill; absent that traffic the Receive queue drains and the
-peer's Sends draw RNR NAKs.
-
-Fix by consulting xdr->end after the zero-length peek so the five
-__be32 reads cannot run unless 20 bytes of wire payload remain. A
-byte-precise comparison against xdr->end is required because a
-non-4-aligned receive rounds the stream's word count up past the
-true payload. Also return false from the short-header arm so the
-reply falls through the normal out_norqst cleanup chain
-(rpcrdma_rep_put() plus rpcrdma_post_recvs()).
-
-Fixes: 41c8f70f5a3d ("xprtrdma: Harden backchannel call decoding")
-Assisted-by: kres:claude-opus-4-7
-Signed-off-by: Chris Mason <clm@meta.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Anna Schumaker <anna.schumaker@hammerspace.com>
-Signed-off-by: Mikhail Dmitrichenko <mdmitrichenko@astralinux.ru>
----
-Backport fix for CVE-2026-72466
- net/sunrpc/xprtrdma/rpc_rdma.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index bb5648133b10..c9e179b7366e 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -1146,6 +1146,8 @@ rpcrdma_is_bcall(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep)
- 
- 	/* Peek at stream contents without advancing. */
- 	p = xdr_inline_decode(xdr, 0);
-+	if ((char *)xdr->end - (char *)p < 5 * XDR_UNIT)
-+		return false;
- 
- 	/* Chunk lists */
- 	if (xdr_item_is_present(p++))
-@@ -1170,7 +1172,7 @@ rpcrdma_is_bcall(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep)
- 	 */
- 	p = xdr_inline_decode(xdr, 3 * sizeof(*p));
- 	if (unlikely(!p))
--		return true;
-+		return false;
- 
- 	rpcrdma_bc_receive_call(r_xprt, rep);
- 	return true;
 -- 
-2.43.0
-
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
