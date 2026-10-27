@@ -1,50 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793119841;
-	b=n3Q2JQAzdzAsxijJuMzH9ycwMwp6gi+roBzJPVR5pp/p4f5yp+16ZUg7kkD67g1ruUzB
-	 6bhNYHOg2a0vPCuUlfVKf080kXbGjARMZeEisNbqZ7i1Vlhh9P/h5QQNZwqgs3zC6uITO
-	 punR/95bIB8Hu5b1PjzaZ7uTmTUwW9vL+XS3LbnbYt6x7PuzlD1qEtPsCvynBV5wYh86J
-	 aNSHEJUVh2lbgS4a+CZMPaJPmz+SaNljrIz2W9Ku4yPwf0YXyULx5LbVOFNr+F15nzDH2
-	 yo9ToHQLn7WjmSJ0jW41P1ED+WrtU/hDgL80mSWoQpbHdBOXuSO4nOyU8UME6osQDZQ==
+	t=1793119842;
+	b=PjFFib2ChqH2JFqeFfdwRvd+epGR8aSv9nH629AgAHqVwESHGHC6WEFU0GWgh+b+Euh5
+	 QhC6yBmmMOzxgfXzEoONM/eDzp1nHpHEilkvDFrE1c4hVXplUw4RStHreWEJA+cIEi7JX
+	 jYHqJNDtMtuj+zBdizoUM0J/OTPhQ2jhUDa166Nr2GMhtbPU1n/34UJhZA7lHouanxqPn
+	 dHuUqkfHny4M76hmS9DwIGoJOVUF2JCC5yzg600sGpSVwQatm8vGZMmx2UUdXzWopx54Q
+	 iOtuqD/8gjiPZeUZgFVeCevDf9jVtzzGaKGNowdTqqcYa3Mhs2Befi6RhClre7GBA4g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793119841;
-	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
-	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
-	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=PiNiZlyIn6rnyx/Vojjxwk7USrBsVZHQWvpWZuR4mr8=;
-	b=h3dg1JBhKDMdJHoipxB0CvbnY5aZAou5EJhgINVuQR0sL2AOu11txpm0DmSCKCYTDwVN
-	 k+2EQn3+DMerRpMroSE4h6mI59mqUDU5zPFsn5Kf/PVqKQ8/C6fFvyBtFKNEK432ZLouj
-	 vuq0jqEZy6R78iRiLDNLX8zdQyW4iPB/NI2KYXh2XOVzxqImFV7vfMp5ItjXbxCkDZsmk
-	 7bOcInjL1v4Rc9Lc8De1MpC0Dlemw7ul1jkHxJX2Dxu4IAsRHR6mTZLOD8lsGxffmkwz/
-	 mup8qRVXfduMLQmTxpqCThzkzDN9qDOAJlPiteKx3ThqWFe4/KlquFywcEPmIxJtB9Q==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793119842;
+	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
+	 X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=X4f3A1ORy0x7vrd+xR8bc7ok8qguF+03XH0uco0/AKw=;
+	b=O1Td85EYMUAvigX11sYDuEA1uu2QwV3laPMbv5DZI8B8jIFyzKF6rvk3BqlhjvWgbPnq
+	 mUhc5pIoGiBVioH5gJtnZJ+gTJv7m2q/VcwFU9YMHJUyf4NUMQ3wWi2mGveCVXFqeyPDg
+	 l0B2h7zDJ8g7m7Zro8VBEkbVZRiix0znl6zS+VD0J6wz5a04BVFmcSljFAkU6o8mKho9b
+	 b41I6q1J432OsYGqQCvptaYGmD+JGcC0Flkp5FnDdOQSUOEdx7x0zzqjyHxN75P7VBHvT
+	 929+6/I3e1pBHHRbn0Wd4ygPZClMcms92BARq056OMVaONrQrEVo49B/O4MGeqVJJVg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nA9X2TIb;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="cFzt/eCr";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0BA20606A31A
-	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2026 16:50:40 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B5ABD606A31F
+	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2026 16:50:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nA9X2TIb
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B76381F01825;
-	Tue, 27 Oct 2026 16:50:39 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cFzt/eCr
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C11071F01828;
+	Tue, 27 Oct 2026 16:50:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793119840;
-	bh=PiNiZlyIn6rnyx/Vojjxwk7USrBsVZHQWvpWZuR4mr8=;
-	h=From:Subject:Date:To:Cc;
-	b=nA9X2TIbfL9VxYmElnGRES2rMl0UkBXjWnOmN+P4Nvvusnq9huG/4h6uoebuBlwjC
-	 pTfbHJ7jmkRNIeW7WLtq5flKp4HmDjzy1bx6y7SjxWDkpGsgZfoKp2OFJHgwUFftrC
-	 9WqnpcgOoYSUgDLszZbEi7VOt9Y4j+pchtiEreubiWxq90r5CZBLlukZI2whLAMldL
-	 2PIjwrvtg8Juuuq7XawJf4QqW5P8sTRfHFstCxtqL7+4J84LhX7ICuW5/kFlgPTDSW
-	 aQ5qePcMoAmB9ialq6QCFvraI/aN3sWUZ9VMVNLdss+yt9gTArgF3bD1uHmv/amGk5
-	 KrQk0AjXlbX1w==
+	s=k20260515; t=1793119841;
+	bh=X4f3A1ORy0x7vrd+xR8bc7ok8qguF+03XH0uco0/AKw=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=cFzt/eCrkfwX7XPHhu64gyJGzYfDCRyHXyUCOlfScocrYV/DR+FR5Zfa2Humm/kNn
+	 fyFpHZRdRETEdb9U1gz4gaexDWumBYyQ9heR4gZv7m0azaNMByLBak4SfLyeB3gInt
+	 961xIvtSBZuQZ63RGphGxwLMWVxNx4e11sDObQUSEKoH46gtVN/9qNGr1JjqQZ7piN
+	 jKtRi+E+WCg0QcwmpicMADmBT+M2hs/ZKDyrnCoB1gIOQy8PcNCua1dw+GeuRBpBZ9
+	 gjg4nU5MZ0IiikkAT+pyalruzbd3L+gUi6puzh9QLvfoqAu0mpwK4v1SetjeFrQI4o
+	 BSn8rhN+G5FWA==
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH nfs-utils 0/4] exports: add support for new riomode= and
- wiomode= export options
-Date: Tue, 27 Oct 2026 12:50:22 -0400
-Message-Id: <20261027-master-v1-0-6f1f7a35a83b@kernel.org>
+Date: Tue, 27 Oct 2026 12:50:23 -0400
+Subject: [PATCH nfs-utils 1/4] exportfs/mountd/exportd: track the
+ svc_export policy highest attribute
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -56,10 +55,9 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MTQqAIBBA4avErBPSfqSuEi2sxhooC8ciCO+et
- Pzg8V5g9IQMXfaCx5uYDpcg8wym1bgFBc3JoArVyEJWYjcc0IuxNnZuWiy1VpDi06Ol5x/14Cy
- LK9DGMMT4AScjTgJjAAAA
-X-Change-ID: 20261014-master-b5afd69e3772
+Message-Id: <20261027-master-v1-1-6f1f7a35a83b@kernel.org>
+References: <20261027-master-v1-0-6f1f7a35a83b@kernel.org>
+In-Reply-To: <20261027-master-v1-0-6f1f7a35a83b@kernel.org>
 To: Steve Dickson <steved@redhat.com>, Chuck Lever <cel@kernel.org>, 
  NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
@@ -67,64 +65,81 @@ To: Steve Dickson <steved@redhat.com>, Chuck Lever <cel@kernel.org>,
  Mike Snitzer <snitzer@kernel.org>
 Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1963; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=GrUcURDl/WMPdhMBLOK2RPJChSvIJiNwePslf0wRJOw=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq4NZe4ofHnv2JI4+YJNqag9ATX6Ie3VdOCUeeu
- 2/g4dOsmfqJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCauDWXgAKCRAADmhBGVaC
- FdX+EAChVCYFzMYb/MTck3f1rNGTpJdntTb1wJpTlGoTCae/N4ZYAUeVQgR2TbPOoRRKtWxIaS9
- c2QwCerdvLUt5ghra2nx3SeN/mNIktQRzB+nO2g/cGAH2LiBbeplGUtbMfbbnZYtAyvTbRmPWFM
- GPmyUOA/8hl1t7AoSAerCFPkeQ0lcR/f9KkiMAhDH5dh0HqGWKw0/9YJ/vEpwD9eh/F8BnakJih
- uGOdy+MMsOO/9RQPgaDjlR4IQRcj2Q36Y4Ed9bcf4pURm+EJLCdjaqz6p5Xe7kHqc58kgrsEZWk
- q0E4PcbsIlORwNRtnrDEw0EGL0ijI6Bkd/lb35pOr8gbXGTEgdbSBNrUAub8ZpXTVWP0u6X+wXs
- F8gcf3rtNVWJbib0wN6IWbU9FrUzLQo7uW0Bxpac6lCRUeLuoENc0r4FCHeLz8ZArswzCSMayIU
- qRyUtmEMsje4FoDqDfFon4FlBXeP7aqvZF7inudADPfFjcz7bxK9r6vfjA3AoAW1+2AJjFWPOKn
- /e8d6c8u4XVkitSvhuEdh4HfbT4egH3BdG8kMRjsTPUX1iLZPPbD+MCm+5uJRu+UiYAIJU8kNe/
- X8CQvR2wh+l2dAq/L8qaasws63MI70GuGx2heT35RArnI/uTlYPdUWa/VgusnbAsfwDCUg77x2E
- hMSbxPWp3r+lYIA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2251; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=K1+quiOCFzxm6ulbw4AtHIuR/uILoCs7iUd/bbYBetU=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq4NZepWD0F0DwvICAyzqD4KLZsZ8oe+2spljK2
+ W+i55dSmD2JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCauDWXgAKCRAADmhBGVaC
+ FexmEADJrI6EUAfcSlukFvdfihIf7AZZYWgRo6jS/78FcPPQsY422Hr23tmgzFdXAYR2d+6vPG+
+ 14icmYsf5t1i6uobO5B/dF+2rAvBLcJ8j9B87sj4utpx7tAIvr2+P0Yi9xWZjKhH2nmia9YiCwi
+ hOV8cfyHMVwLfcYToBIS/hjJe/wRAU6vhk7bD6WdOuvE6wN0msbHXTDrVk0qmnVL58+X/odRR8O
+ 7qcpna4GrMqYn9iYy+C8JMUCiDaodFTvnMqnGiI4VPTMIIfelu5Wr13KAvygX/cmpDVFfbx0n2Y
+ iO02ncKo3pk7/yn8MU5W97xsfpZxtXWbOGVe0zgE2vnH0GJAuXxpfi/mRCYZ+u++OlCMXbEvy2s
+ I4pc5GHVADW13eRwrMgvxnplf07g6GazxgP/WgxoTAzE+i+RpjlCPH5VZlrLaiyRSwWj4gGQRo3
+ iZDDoi7J4G9NdtSZUYO07UA7tXdJypaOgro8aIbWSGib0lqItQTXDvf7PAELRTQLBkPktyMRnX6
+ Ii3byFloygrM7++OWAUAttExdH9fNsjDWRZIVVrwNyfVlbQbSFIAkPKsbI4wrnisH0kZda5uuY7
+ 2cVCWZ9SWR/F6Wsqi4aR+jsjPAQAzOnWEnG7dh6GQaRqCz1Z8j/k0aPY9Y2rktmnxvZiM5ZLFK9
+ aDm38XibJqrX9OQ==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-This patchset adds support for riomode= and wiomode= export options to
-exportd and mountd. This is the companion patchset to [1].
-
-The last patch in this adds a new nfsd-iomode-advisor script that
-watches various stats on the server and advises the admin what mode to
-use.
-
-I consider the advisor optional as it was largely vibe-coded. I'm not
-sure I'd trust its advice that far, but it's probably better than
-guessing.
-
-[1]: https://lore.kernel.org/linux-nfs/20261027-export-iomode-v1-0-262ed932a036@kernel.org/
+Record max_attr, the highest attribute in the kernel svc_export netlink
+policy, in struct nfsd_export_policy. Follow-on work needs it to avoid
+sending attributes that an older kernel would reject the whole entry
+over.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
-Jeff Layton (4):
-      exportfs/mountd/exportd: track the svc_export policy highest attribute
-      exports: Add riomode= and wiomode= export options
-      exportfs: Display and document riomode= and wiomode=
-      nfsd-iomode-advisor: recommend riomode= and wiomode= for an export
+ support/export/export_policy.c | 7 ++++++-
+ support/include/exportfs.h     | 2 ++
+ 2 files changed, 8 insertions(+), 1 deletion(-)
 
- configure.ac                                      |    3 +-
- support/export/cache.c                            |   59 +-
- support/export/export_policy.c                    |   29 +-
- support/export/v4root.c                           |    2 +
- support/include/exportfs.h                        |    3 +
- support/include/nfsd_netlink.h                    |   12 +
- support/include/nfslib.h                          |   14 +
- support/nfs/exports.c                             |   51 +
- tools/Makefile.am                                 |    2 +-
- tools/nfsd-iomode-advisor/Makefile.am             |   14 +
- tools/nfsd-iomode-advisor/nfsd-iomode-advisor.man |  232 ++++
- tools/nfsd-iomode-advisor/nfsd-iomode-advisor.py  | 1198 +++++++++++++++++++++
- utils/exportfs/exportfs.c                         |   34 +
- utils/exportfs/exports.man                        |   22 +
- 14 files changed, 1671 insertions(+), 4 deletions(-)
----
-base-commit: 0ed4324cbbb8020039d338d597c1422a980f7085
-change-id: 20261014-master-b5afd69e3772
+diff --git a/support/export/export_policy.c b/support/export/export_policy.c
+index 9c0a099fb0c2..a0170cb87f91 100644
+--- a/support/export/export_policy.c
++++ b/support/export/export_policy.c
+@@ -40,6 +40,7 @@ struct export_policy_dump {
+ 	int		done;
+ 	int		do_idx;		/* the op's own policy */
+ 	/* per policy: */
++	int		max_attr[NL_POLICY_SLOTS];
+ 	int		reqs_idx[NL_POLICY_SLOTS];	/* REQUESTS nests this */
+ 	uint64_t	flags_mask[NL_POLICY_SLOTS];	/* mask of FLAGS */
+ };
+@@ -106,6 +107,8 @@ static void nl_policy_attrs(struct export_policy_dump *d, struct nlattr *attr)
+ 		nla_for_each_nested(a, pol, arem) {
+ 			int type = nla_type(a);
+ 
++			if (d->max_attr[idx] < type)
++				d->max_attr[idx] = type;
+ 			nla_for_each_nested(p, a, rem)
+ 				nl_policy_type_attr(d, idx, type, p);
+ 		}
+@@ -219,8 +222,10 @@ int nfsd_export_policy_query(struct nfsd_export_policy *pol)
+ 	 * every kernel with the netlink export interface.
+ 	 */
+ 	cached.secinfo_flags = NFSEXP_SECINFO_FLAGS;
++	cached.max_attr = d.max_attr[svc];
+ 	have_cached = true;
+-	xlog(D_NETLINK, "svc_export policy: flags 0x%x", cached.flags);
++	xlog(D_NETLINK, "svc_export policy: max attribute %d, flags 0x%x",
++	     cached.max_attr, cached.flags);
+ 	*pol = cached;
+ 	ret = 0;
+ out:
+diff --git a/support/include/exportfs.h b/support/include/exportfs.h
+index d762e4533560..a7c145543075 100644
+--- a/support/include/exportfs.h
++++ b/support/include/exportfs.h
+@@ -170,6 +170,8 @@ struct nfskey *			key_lookup(char *hname);
+ struct nfsd_export_policy {
+ 	unsigned int	flags;		/* export flags it knows */
+ 	unsigned int	secinfo_flags;	/* flags that may vary per flavor */
++	int		max_attr;	/* highest svc_export netlink attribute,
++					 * 0 if it did not say */
+ };
+ 
+ struct nfsd_export_policy *get_export_features(void);
 
-Best regards,
 -- 
-Jeff Layton <jlayton@kernel.org>
+2.56.0
 
