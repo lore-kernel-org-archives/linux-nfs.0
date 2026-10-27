@@ -1,48 +1,50 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793119537;
-	b=x+OLCJyXLcJ8r3dmwb6C4O6hurKCVXpUcspWueGha8BzOiCn7Kc1r8UiFgGM66spIvwP
-	 eX/6+LTlsAZCeQhj5d4mhAVbeJ4RhDxoC+cN0L8UcMy/gBjuha8b50iQJgEZaTk/jY1BW
-	 dvU2Jdqaqd1upR7s5+ARThl5TRRfluAA0hLdxwAegOxWbED//qqONxalHo2rkIOXyEZRS
-	 uc2SrEhBbvFpyueDK2YSIm0ccy0+lMiwg02Gfi+Slxnlp/HR1V/W2vZbbNProxuBH+mdu
-	 K1gkR4VjaA0wd96nKxar08CSo6dTeTOejekg/3FJiGEZadQLf2xuaFUjRzMzM6p5NFg==
+	t=1793119535;
+	b=IufDODw5+lpTHbCVZD0fDpdqzSs016pPKkrGgUkEbEmg1py4y0gHFXNdKpRc9YFIEz1N
+	 Uvc3Je4wFIh+utNOJEBl9OX3HaGhiEhJDxqvhZMktqwBg0hL/3e+FahA1ns9de+15zIxl
+	 7Iw/r1bEQ/jjNQDwmGNNHPGYp+rM+Q3DgHXMNb0109L+sbmmMH3XRLzlobCnageRYzDg8
+	 y6n6Tsjh2hVFL+NZNAPWsErvE0UVPIPoBJnIg0k4N0q3S2wYBPn8e/+eQHVh8Apb8ZRky
+	 gP89a2RkmBVKknm+Ysk0M2MSvYBkSkODhgwsTdHwM65wi8wifXnSC5qqYOy5Myu1Liw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793119537;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=xUYigCvdbYoBnZAGcI/0TDCoxrEgpe/MyCh3ilHzZSA=;
-	b=noz5ZTSw7ZrGhUFkut8xtP8wc8um3CMX1holmaTZ9amvDtiPRrnvQb1gJMeunDGiFF6z
-	 K8h/0hQMH3FtFbvqX5o7H/KCN2cLUNcWGUphD0T98wL1GZ/gJ9ORWdcrsBvfbSpQENx0y
-	 MBJThLk+vNN4EMdDVEqzI6yosHtFq3Mle1vMcEKkGtIWD1Jo2Wkbii6N1S7xfpWCjxrhr
-	 5o0ex18orJH+vFHzTVlkmU6/8pn4OhX9nK888smKiAfiXpxdAM1kbp2PDllkOmIcTLn4R
-	 KvzIdzTMwYwu9wVe3sXqDHi4PZoZE8RdozAmkDUgiDv1p1SzJnOqDWkKms/Anm0LTvw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793119535;
+	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
+	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=PGsZM7u08kBDzsq3JsRau31sMD5eNroObYlAR6vvhvc=;
+	b=ihpA8vyI1ovWJLtdEnRQcgKSPW8pvObW/Kg145ktYNpFnR4j3UpAFI3Q67H4S29jqK29
+	 CD8s4e+A8/yi6iqMUWAvxX0vF3k4u3Kal6Jj6iadUv02swhgomEobgBgOqQjw+Qbzo7qV
+	 o3I4Q8HzFJmNAgH7xAf1AdrovAtlDCNFANngJNeVu6CxctN8UoHTH7GimIh0tqfMNwkbz
+	 ERwbgR0fIDgz7cmuWcQJvgKPYRzpSqTKMg6ZkdlpAEV9S6RbpH8UrS+Q6OJ/fm+pC0HE5
+	 BWKrQoSgXpnQQ3sY310r/6C/89H4czT/x516Ju0kW6U85VXMmn9o3M1j/ld0sSg6/Bw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=FPYY14Ti;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aeGTj+fy;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A2D9C606A32C;
-	Tue, 27 Oct 2026 16:45:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=FPYY14Ti
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id ADA2F1F031E1;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DDF4E606A31A;
 	Tue, 27 Oct 2026 16:45:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aeGTj+fy
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C01B51F01825;
+	Tue, 27 Oct 2026 16:45:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793119536;
-	bh=xUYigCvdbYoBnZAGcI/0TDCoxrEgpe/MyCh3ilHzZSA=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=FPYY14TipKSvE1TQ0rBebwwH5uxecjW9VzWAzLwOsrxHprEO+GtFS+W8e4n9JNOBS
-	 hjTONgfV6moQie4dy0WK76fZC8ItQTngxFMz1vaLj7d7IBkDxZfGf5+lh5+rdUAi8i
-	 Qfz7SrG9vew98c0gj2K4mq59K+ARIf08s4IXbcP7XnmHnzmOsOuCRSRJgfZnKJB9wv
-	 n1WogOhMa8u1tyCCQ7HdZ35jHwdXAMnSY8wp9q6SwnVCeLbLLCVEOkVs8eWjwush/m
-	 PB8qdT9veIBy8io2l4sbAS04BedCVMmlLknQ/i2BzZV0HKpdcpggZsEC4bic/VqGMt
-	 nvIXv+uPDYODw==
+	s=k20260515; t=1793119534;
+	bh=PGsZM7u08kBDzsq3JsRau31sMD5eNroObYlAR6vvhvc=;
+	h=From:Subject:Date:To:Cc;
+	b=aeGTj+fyDl4hV/f5XtV27vuCzdz+p6/moVu6zPnO5SslTX7EvASDhIlPoJN6FyfAh
+	 YxLEOLGdIevDAD9flchLImGUDOf/frCgvaoBCNy/r4nk5nN251Yc9EymOlIWkQqGxC
+	 72yxVG8k8hxfdul7jkH8yqgevzo+C58al1nn2ylQEtVbam9dFRiJ4L+iweEqfa7sXH
+	 iu/15qRrwX7+Z3Z2wyVwt98OS+izrcLN48Uyu5rtEu6HqATBYrmWpRrLfYSk4c/nPv
+	 OSl4/NW5MnjXLJ9RNXRrj9F/CksUSRm5Q7nX9ZUNYZEBibzCpRz/zMaNR8iEnuBrhF
+	 QxCgqt5TmqRwA==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Tue, 27 Oct 2026 12:45:24 -0400
-Subject: [PATCH 1/6] NFSD: Add per-export read/write I/O mode settings
+Subject: [PATCH 0/6] nfsd: add new export options for controlling
+ read/write iomode
+Date: Tue, 27 Oct 2026 12:45:23 -0400
+Message-Id: <20261027-export-iomode-v1-0-262ed932a036@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,9 +56,10 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261027-export-iomode-v1-1-262ed932a036@kernel.org>
-References: <20261027-export-iomode-v1-0-262ed932a036@kernel.org>
-In-Reply-To: <20261027-export-iomode-v1-0-262ed932a036@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBMcI9GuEi0qp5pFGRohiHdPW
+ r7F/xkiBaYIQ5Mh0MuR/VWBbQPrMV87CXbVoKTSKLETlG4fHsH+9I4ELr0m64w1CqE2d6CN0/8
+ bp1I+haqgyl8AAAA=
+X-Change-ID: 20261013-export-iomode-1b56e9d89821
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>, Trond Myklebust <trondmy@kernel.org>, 
@@ -70,289 +73,74 @@ Cc: Steve Dickson <steved@redhat.com>, netdev@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, 
  linux-doc@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=9835; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=iigo9Aodjf5K3VN3B51AdctQtb+Azf7tewPW4EsewkE=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq4NUqjbx1HWJ0N3CNUDr7Se2pAeI20v3SFChpM
- 3P6FvmeklKJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCauDVKgAKCRAADmhBGVaC
- FZGXD/9InSwyeB4MlqvRHZGKOYbErqw5fBSI5VDfWwrMnf6sBMAwvxk2xiTXBiEnadcnluLIB48
- 7j4I0yDQ7JSQtlK4gr31lpVFgW66vmlNNqxEEQtKko3NVBs0+7do0bBHvum/w6tnqRaY/XjEhvQ
- 0p3LA8rEr6sEKCmtbEIhnrTeza+RnapyP9qvTk+DKvANTfOKZZ8PVYOBwgw3uttczLgPXMuejV6
- AkyfA9TZsW4gyTC2NuoAIb+HYkV0ZUeA4N3q3nd3DT3XKkhhGW5kd217g1/IG0ZZ7lYb2yZNqF9
- fn9K3jbfBlFyZgJS7W8Vi7zianvxrJdwtGW42X2pJ2eZOla3x1cnLnEl16xTidxv48eA0vF5sMU
- WQACqqJYkkQCwdHSvCdJ3I59dYU76+73iLmhiFKgjO7gd7OZYoD1t9lrq6FjG+hJYZGATiV10Q0
- Sv5R75pyZ4/liU14tTiMt8uGUM0nmyHwi4bUM2pZcr0o2KV/S/YX6AbzhMOtxtR73kRDElODAld
- 9FEm4YfshP7kD8Rge1jY5/4lFwE66CsgwHBCZbK21vVSJ7/ggo4ZVXQZ/4gGodEnz/5x7FZ3Noo
- zEZZfIEDxSFIlYQ7sEuJomKNpu6/1bhNkyVSZqWSJmCklk9JnTGMJ0cUjWo7SvKoV/jKHYJBIP9
- nWem791eYk1HUyw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2474; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=BqM1sCZZyL9Y1KM+SrCA16ZGFxzt0cs/vuqpxotswZk=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq4NUqw4XsvML0QysKFUNy1jr5ilH2gCvGydELq
+ 79euJX3S8SJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCauDVKgAKCRAADmhBGVaC
+ FSq/D/9ahPYNnHFC04PHIlvDgTI/gL3psd3jVQXtCsAYkauGUU27tIYoA0zqPUM+5AkeFxWsBYf
+ HZNWNKNHgQyQnzHzEpLw9XAncVxpLmu16fSXGDy0IDuht5HlVjvEJHyrmSSTVlA9Nh81G/FVQef
+ RGA1Y84RZG2eiV7Jwam7OEeWg1o7/bXgfPg8Aw23rmV0ERgA8wRDPScyGhB1McGOug3mRVj0Pes
+ igi28376ACw29mYBMtikYd4pK38VegPQB6VBXtfEdj/sz0DQ1H6HL9LuitMDjuTBg30LZZctGtM
+ 9n1i0EgGAwCJrliScNLP8wrGAPICfMTnE6rbekjI2K8bm9UCTLHsLKcGmZVRjcoaB1jTgs+QXLM
+ JObVhEHV+B8CyMeBO0I6UaE3FhoM4CIMRvOCZh8EFEFL+USfkAO6IGJ108C7NFZJfTqZw6RRyDG
+ 8poGt0DB96xuydpPc1hMz+HEfJUrY79TAaTjDpOUDkU9t6cGaZylZgA7sanFbRXgfThX5irEKBx
+ BL8wHwgWL2sbMQEXihJsJhCAynnUq+pZ6yiR3ARCHUEe7senxKgx8oaw8e21Z4vNiNivyK+ywj0
+ CCQZTzT/auHeHBU1emZ1FWT8aro9M4ZZR0h4qh6lp8c7KpTD9Wx4aKiDHYU3s7X1O+SBPXMqzJ3
+ XcNPE6u4Y04Y5YA==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Add ex_riomode/ex_wiomode to struct svc_export along with a
-kernel-internal NFSD_IO_DEFAULT value meaning "follow the global debugfs
-knob".
+When we originally added support for the dontcache and direct iomodes to
+nfsd, we added global debugfs switches to control them. That was fine for
+experimentation but the goal was always to move these controls to
+something more permanent.
 
-Add an io-mode enum to the nfsd netlink spec so the mode values are
-uAPI (NFSD_IO_MODE_*), and define NFSD_IO_BUFFERED/DONTCACHE/DIRECT in
-terms of it. The generated NLA_POLICY_MAX policy range-checks the new
-read-iomode/write-iomode attributes.
+This patch series adds a new set of riomode= and wiomode= export
+options. With this, we can set the read and write iomode on a per-export
+basis to either buffered, direct or dontcache.
 
-Parse those attributes, copy the settings on cache update, and report
-them in nfsd.export/content. The new options are netlink-only.
+The debugfs knobs stick around and govern the default iomode when it's
+not set on the export. Eventually these controls should also be moved to
+something more permanent (or maybe just be removed), but I've left that
+as a future change.
+
+The last patch adds new documentation that attempts to give the admin
+some guidance on choosing r/wiomode settings.
+
+A companion nfs-utils patchset will follow that adds support for these
+options to exportfs/mountd, and adds a new script to help users choose
+iomode settings.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- Documentation/netlink/specs/nfsd.yaml | 24 ++++++++++++++++++++++++
- fs/nfsd/export.c                      | 28 ++++++++++++++++++++++++++--
- fs/nfsd/export.h                      |  2 ++
- fs/nfsd/netlink.c                     |  4 +++-
- fs/nfsd/netlink.h                     |  2 +-
- fs/nfsd/nfsd.h                        | 17 +++++++++++++----
- include/uapi/linux/nfsd_netlink.h     | 12 ++++++++++++
- 7 files changed, 81 insertions(+), 8 deletions(-)
+Jeff Layton (6):
+      NFSD: Add per-export read/write I/O mode settings
+      NFSD: Apply per-export I/O modes to READ and WRITE
+      NFSD: Document per-export riomode= and wiomode= options
+      NFSD: Keep per-export statistics across export cache updates
+      NFSD: Count the storage reads of each export's READs
+      NFSD: Document how to choose an IO mode
 
-diff --git a/Documentation/netlink/specs/nfsd.yaml b/Documentation/netlink/specs/nfsd.yaml
-index a4991206b45e..eb42ba65619d 100644
---- a/Documentation/netlink/specs/nfsd.yaml
-+++ b/Documentation/netlink/specs/nfsd.yaml
-@@ -56,6 +56,16 @@ definitions:
-     name: nfsclnt-idmax
-     value: 1024
-     header: linux/nfsd/export.h
-+  -
-+    type: enum
-+    name: io-mode
-+    doc: >-
-+      NFS READ/WRITE I/O mode. These values match the global io_cache_read
-+      and io_cache_write debugfs settings.
-+    entries:
-+      - buffered
-+      - dontcache
-+      - direct
- 
- attribute-sets:
-   -
-@@ -302,6 +312,20 @@ attribute-sets:
-       -
-         name: fsid
-         type: s32
-+      -
-+        name: read-iomode
-+        type: u32
-+        enum: io-mode
-+        doc: >-
-+          Per-export NFS READ I/O mode. When absent, the export follows
-+          the global io_cache_read setting.
-+      -
-+        name: write-iomode
-+        type: u32
-+        enum: io-mode
-+        doc: >-
-+          Per-export NFS WRITE I/O mode. When absent, the export follows
-+          the global io_cache_write setting.
-   -
-     name: svc-export-reqs
-     attributes:
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 265ea8fd31c6..c71350965789 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -838,14 +838,14 @@ static int check_export(const struct path *path, int *flags,
- static int nfsd_nl_parse_one_export(struct cache_detail *cd,
- 				    struct nlattr *attr)
- {
--	struct nlattr *tb[NFSD_A_SVC_EXPORT_FSID + 1];
-+	struct nlattr *tb[NFSD_A_SVC_EXPORT_WRITE_IOMODE + 1];
- 	struct auth_domain *dom = NULL;
- 	struct svc_export exp = {}, *expp;
- 	struct nlattr *secinfo_attr;
- 	struct timespec64 boot;
- 	int err, rem;
- 
--	err = nla_parse_nested(tb, NFSD_A_SVC_EXPORT_FSID, attr,
-+	err = nla_parse_nested(tb, NFSD_A_SVC_EXPORT_WRITE_IOMODE, attr,
- 			       nfsd_svc_export_nl_policy, NULL);
- 	if (err)
- 		return err;
-@@ -873,6 +873,8 @@ static int nfsd_nl_parse_one_export(struct cache_detail *cd,
- 	exp.cd = cd;
- 	exp.ex_devid_map = NULL;
- 	exp.ex_xprtsec_modes = NFSEXP_XPRTSEC_ALL;
-+	exp.ex_riomode = NFSD_IO_DEFAULT;
-+	exp.ex_wiomode = NFSD_IO_DEFAULT;
- 
- 	/* expiry (required, wallclock seconds) */
- 	if (!tb[NFSD_A_SVC_EXPORT_EXPIRY]) {
-@@ -986,6 +988,12 @@ static int nfsd_nl_parse_one_export(struct cache_detail *cd,
- 			}
- 		}
- 
-+		/* read-iomode / write-iomode (optional u32) */
-+		if (tb[NFSD_A_SVC_EXPORT_READ_IOMODE])
-+			exp.ex_riomode = nla_get_u32(tb[NFSD_A_SVC_EXPORT_READ_IOMODE]);
-+		if (tb[NFSD_A_SVC_EXPORT_WRITE_IOMODE])
-+			exp.ex_wiomode = nla_get_u32(tb[NFSD_A_SVC_EXPORT_WRITE_IOMODE]);
-+
- 		err = check_export(&exp.ex_path, &exp.ex_flags,
- 				   exp.ex_uuid);
- 		if (err)
-@@ -1342,6 +1350,8 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
- 	exp.cd = cd;
- 	exp.ex_devid_map = NULL;
- 	exp.ex_xprtsec_modes = NFSEXP_XPRTSEC_ALL;
-+	exp.ex_riomode = NFSD_IO_DEFAULT;
-+	exp.ex_wiomode = NFSD_IO_DEFAULT;
- 
- 	/* expiry */
- 	err = get_expiry(&mesg, &exp.h.expiry_time);
-@@ -1462,6 +1472,12 @@ static int is_export_stats_file(struct seq_file *m)
- 	return !strcmp(m->file->f_path.dentry->d_name.name, "export_stats");
- }
- 
-+static const char * const nfsd_iomode_names[] = {
-+	[NFSD_IO_BUFFERED]	= "buffered",
-+	[NFSD_IO_DONTCACHE]	= "dontcache",
-+	[NFSD_IO_DIRECT]	= "direct",
-+};
-+
- static int svc_export_show(struct seq_file *m,
- 			   struct cache_detail *cd,
- 			   struct cache_head *h)
-@@ -1498,6 +1514,12 @@ static int svc_export_show(struct seq_file *m,
- 	    !test_bit(CACHE_NEGATIVE, &h->flags)) {
- 		exp_flags(m, exp->ex_flags, exp->ex_fsid,
- 			  exp->ex_anon_uid, exp->ex_anon_gid, &exp->ex_fslocs);
-+		if (exp->ex_riomode != NFSD_IO_DEFAULT)
-+			seq_printf(m, ",riomode=%s",
-+				   nfsd_iomode_names[exp->ex_riomode]);
-+		if (exp->ex_wiomode != NFSD_IO_DEFAULT)
-+			seq_printf(m, ",wiomode=%s",
-+				   nfsd_iomode_names[exp->ex_wiomode]);
- 		if (exp->ex_uuid) {
- 			int i;
- 			seq_puts(m, ",uuid=");
-@@ -1564,6 +1586,8 @@ static void export_update(struct cache_head *cnew, struct cache_head *citem)
- 		new->ex_flavors[i] = item->ex_flavors[i];
- 	}
- 	new->ex_xprtsec_modes = item->ex_xprtsec_modes;
-+	new->ex_riomode = item->ex_riomode;
-+	new->ex_wiomode = item->ex_wiomode;
- }
- 
- static struct cache_head *svc_export_alloc(void)
-diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
-index 117fb28db1e0..0e832990a12c 100644
---- a/fs/nfsd/export.h
-+++ b/fs/nfsd/export.h
-@@ -77,6 +77,8 @@ struct svc_export {
- 	struct cache_detail	*cd;
- 	struct rcu_head		ex_rcu;
- 	unsigned long		ex_xprtsec_modes;
-+	s8			ex_riomode;
-+	s8			ex_wiomode;
- 	struct export_stats	*ex_stats;
- };
- 
-diff --git a/fs/nfsd/netlink.c b/fs/nfsd/netlink.c
-index 4ea6a7c1ce7f..5c35764e62d1 100644
---- a/fs/nfsd/netlink.c
-+++ b/fs/nfsd/netlink.c
-@@ -42,7 +42,7 @@ const struct nla_policy nfsd_sock_nl_policy[NFSD_A_SOCK_TRANSPORT_NAME + 1] = {
- 	[NFSD_A_SOCK_TRANSPORT_NAME] = { .type = NLA_NUL_STRING, },
- };
- 
--const struct nla_policy nfsd_svc_export_nl_policy[NFSD_A_SVC_EXPORT_FSID + 1] = {
-+const struct nla_policy nfsd_svc_export_nl_policy[NFSD_A_SVC_EXPORT_WRITE_IOMODE + 1] = {
- 	[NFSD_A_SVC_EXPORT_SEQNO] = { .type = NLA_U64, },
- 	[NFSD_A_SVC_EXPORT_CLIENT] = { .type = NLA_NUL_STRING, },
- 	[NFSD_A_SVC_EXPORT_PATH] = { .type = NLA_NUL_STRING, },
-@@ -56,6 +56,8 @@ const struct nla_policy nfsd_svc_export_nl_policy[NFSD_A_SVC_EXPORT_FSID + 1] =
- 	[NFSD_A_SVC_EXPORT_XPRTSEC] = NLA_POLICY_MASK(NLA_U32, 0x7),
- 	[NFSD_A_SVC_EXPORT_FLAGS] = NLA_POLICY_MASK(NLA_U32, 0x3ffff),
- 	[NFSD_A_SVC_EXPORT_FSID] = { .type = NLA_S32, },
-+	[NFSD_A_SVC_EXPORT_READ_IOMODE] = NLA_POLICY_MAX(NLA_U32, 2),
-+	[NFSD_A_SVC_EXPORT_WRITE_IOMODE] = NLA_POLICY_MAX(NLA_U32, 2),
- };
- 
- const struct nla_policy nfsd_version_nl_policy[NFSD_A_VERSION_ENABLED + 1] = {
-diff --git a/fs/nfsd/netlink.h b/fs/nfsd/netlink.h
-index 57fc86c63b1d..db00e06de15c 100644
---- a/fs/nfsd/netlink.h
-+++ b/fs/nfsd/netlink.h
-@@ -19,7 +19,7 @@ extern const struct nla_policy nfsd_expkey_nl_policy[NFSD_A_EXPKEY_PATH + 1];
- extern const struct nla_policy nfsd_fslocation_nl_policy[NFSD_A_FSLOCATION_PATH + 1];
- extern const struct nla_policy nfsd_fslocations_nl_policy[NFSD_A_FSLOCATIONS_LOCATION + 1];
- extern const struct nla_policy nfsd_sock_nl_policy[NFSD_A_SOCK_TRANSPORT_NAME + 1];
--extern const struct nla_policy nfsd_svc_export_nl_policy[NFSD_A_SVC_EXPORT_FSID + 1];
-+extern const struct nla_policy nfsd_svc_export_nl_policy[NFSD_A_SVC_EXPORT_WRITE_IOMODE + 1];
- extern const struct nla_policy nfsd_version_nl_policy[NFSD_A_VERSION_ENABLED + 1];
- 
- int nfsd_nl_rpc_status_get_dumpit(struct sk_buff *skb,
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index b520b51692b0..8b4bed37b46b 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -16,6 +16,7 @@
- #include <linux/sunrpc/svc_xprt.h>
- 
- #include <uapi/linux/nfsd/debug.h>
-+#include <uapi/linux/nfsd_netlink.h>
- 
- #undef ifdebug
- #ifdef CONFIG_SUNRPC_DEBUG
-@@ -134,10 +135,18 @@ extern bool nfsd_disable_splice_read __read_mostly;
- extern bool nfsd_delegts_enabled __read_mostly;
- 
- enum {
--	/* Any new NFSD_IO enum value must be added at the end */
--	NFSD_IO_BUFFERED,
--	NFSD_IO_DONTCACHE,
--	NFSD_IO_DIRECT,
-+	/* Values are uAPI: per-export modes are sent over netlink */
-+	NFSD_IO_BUFFERED	= NFSD_IO_MODE_BUFFERED,
-+	NFSD_IO_DONTCACHE	= NFSD_IO_MODE_DONTCACHE,
-+	NFSD_IO_DIRECT		= NFSD_IO_MODE_DIRECT,
-+	/*
-+	 * Kernel-internal only: a per-export mode of NFSD_IO_DEFAULT
-+	 * means "follow the global nfsd_io_cache_read/write knob".
-+	 * It is never sent across the kernel-userspace interface.
-+	 * It is -1 so that it stays distinct from all present and
-+	 * future mode values.
-+	 */
-+	NFSD_IO_DEFAULT = -1,
- };
- 
- extern u64 nfsd_io_cache_read __read_mostly;
-diff --git a/include/uapi/linux/nfsd_netlink.h b/include/uapi/linux/nfsd_netlink.h
-index dcd2126d848b..6628ed7c0922 100644
---- a/include/uapi/linux/nfsd_netlink.h
-+++ b/include/uapi/linux/nfsd_netlink.h
-@@ -59,6 +59,16 @@ enum nfsd_rpcbind_flags {
- 	NFSD_RPCBIND_FLAGS_NO_UDP = 1,
- };
- 
-+/*
-+ * NFS READ/WRITE I/O mode. These values match the global io_cache_read and
-+ * io_cache_write debugfs settings.
-+ */
-+enum nfsd_io_mode {
-+	NFSD_IO_MODE_BUFFERED,
-+	NFSD_IO_MODE_DONTCACHE,
-+	NFSD_IO_MODE_DIRECT,
-+};
-+
- enum {
- 	NFSD_A_CACHE_NOTIFY_CACHE_TYPE = 1,
- 
-@@ -185,6 +195,8 @@ enum {
- 	NFSD_A_SVC_EXPORT_XPRTSEC,
- 	NFSD_A_SVC_EXPORT_FLAGS,
- 	NFSD_A_SVC_EXPORT_FSID,
-+	NFSD_A_SVC_EXPORT_READ_IOMODE,
-+	NFSD_A_SVC_EXPORT_WRITE_IOMODE,
- 
- 	__NFSD_A_SVC_EXPORT_MAX,
- 	NFSD_A_SVC_EXPORT_MAX = (__NFSD_A_SVC_EXPORT_MAX - 1)
+ Documentation/filesystems/nfs/nfsd-io-modes.rst | 194 +++++++++++++++++
+ Documentation/netlink/specs/nfsd.yaml           |  24 +++
+ fs/nfsd/debugfs.c                               |   6 +-
+ fs/nfsd/export.c                                | 268 +++++++++++++++++++++---
+ fs/nfsd/export.h                                |  19 ++
+ fs/nfsd/netlink.c                               |   4 +-
+ fs/nfsd/netlink.h                               |   2 +-
+ fs/nfsd/netns.h                                 |   6 +
+ fs/nfsd/nfs4xdr.c                               |   6 +-
+ fs/nfsd/nfsd.h                                  |  17 +-
+ fs/nfsd/stats.h                                 |  33 +++
+ fs/nfsd/vfs.c                                   |  59 +++++-
+ fs/nfsd/vfs.h                                   |   2 +
+ include/uapi/linux/nfsd_netlink.h               |  12 ++
+ 14 files changed, 599 insertions(+), 53 deletions(-)
+---
+base-commit: fa65fd6d503d4e965ae27b1a75969e097569390a
+change-id: 20261013-export-iomode-1b56e9d89821
 
+Best regards,
 -- 
-2.56.0
+Jeff Layton <jlayton@kernel.org>
 
