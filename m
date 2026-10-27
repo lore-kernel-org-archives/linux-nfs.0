@@ -1,101 +1,96 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.214.174
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=37.230.196.243
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793102254;
-	b=q8Gq1f1LqtV5KWW8yBm+NKvj8V/vgFM/RFOBIVLU73ItvWSz7lTjzJDAwB37KuFm41eT
-	 bHJHOmq5jjMspqQAFC95KvTh5l/GfoTTWELAIAUT9Yygn6s7XhikYU7Dgq75OCG/z7jEP
-	 89Ftb+HaJxjdy6fip+2ixErNlgevGmXYHHW6DHEbt32aDw4pWBb7nnt61JUpWYvX39ZWo
-	 OeoYmJ6tuc5HTiHAB8ToQ0BLhyLcb+ye0mNUdXGegNAAkxD0MyHK7YM8ZIjGQOY6r3AWl
-	 lgHn1mRnvgOmoAEwMxN4PxUmxvZ/u93Mme48o10k23SlN5GnewLfkK44znql2NGYeZw==
+	t=1793102591;
+	b=3xUvVK9SQ7GiawZ/hCuVamT/BxYHRGKn6iGHh+o8IsSMjQ2GSy2wkTrTS0IWBKkIJHB1
+	 Ea4m2yal3bcaZVrXMUtqbBOF8nUuxuGr9VtmHfHuuhxn4FlwMHqRguXBcFLdhwwzW9gtr
+	 BnAln+Qpxxf/XodVLzj7tWSeOFDBgRJ9WQuJ1SVkQTFNiu66SgsXPEqvdme0xr7UhbPpy
+	 1lYWFy2j9CkmU+KdsZhUksny1RmNXbuYZbp1Yfkxf913NQ3dRuVUZy9Ucb2P/l1o4GPH9
+	 3KB2DEzg33LRTnIJ86zp9fghc+eo8qbxblkfBWD+kU7IwZLXNNevRAB4RbOcNEo0SAQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793102254;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:Date:From:To:Cc:
-	 Subject:Message-ID:References:MIME-Version:Content-Type:
-	 Content-Disposition:In-Reply-To;
-	bh=U88qweYnCYrU71r8T0Ehm+T7NZ7CYd13glJQesIl94g=;
-	b=2u7MJp3dgsmER/r5+Xt9HYii9sR+tbMUuZBlooECfLnuOE58elsgGdycovajLFNsxyHQ
-	 s/4sRmItkqSSlFnERKQ/TY+43+nP5Odj9PY/wSPbDzXKylGMvrvLqE3HT3Hw1xQ3tXJic
-	 slDnDC7TLRDSI7h9B2ufpLMjHUITe1k1anGiilG3US+tuUQuQDy/599A5RTUj4noE/4CQ
-	 Vd+q+4Yf0FHPSVCvG2X8k5rtg5i9rok+LIlbzWueP8AaJIqJ/XCSmOUnmfvK/Ay7qx0fO
-	 i/fSIHz4ppeTZn3yUhV+qSPQjrH7cwZVl9dEWSU1oXn6DcmsV4KFkh6G8QxGsJKP2hQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793102591;
+	h=DMARC-Filter:DKIM-Signature:Received:Received:Received:From:To:Cc:
+	 Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
+	 Content-Transfer-Encoding:X-KSMG-AntiPhishing:X-KSMG-AntiSpam-Auth:
+	 X-KSMG-AntiSpam-Envelope-From:X-KSMG-AntiSpam-Info:
+	 X-KSMG-AntiSpam-Interceptor-Info:X-KSMG-AntiSpam-Lua-Profiles:
+	 X-KSMG-AntiSpam-Method:X-KSMG-AntiSpam-Rate:X-KSMG-AntiSpam-Status:
+	 X-KSMG-AntiSpam-Version:X-KSMG-AntiVirus:X-KSMG-AntiVirus-Status:
+	 X-KSMG-LinksScanning:X-KSMG-Message-Action:X-KSMG-Rule-ID;
+	bh=Xk/3IAbzd1VTf1sorpQhYh140qhCaxvlTgIx+6FQd9A=;
+	b=GzglyaE5ra6NVJb7nRafEAno6Ra7cmFJOElNnnu0ShM5ziBUljZ9KHZUNn7RlCYjyJIW
+	 kqLD1O2mOLu9Tz/w61mtx+r6sH8Hvd977VcftSOQiZ2hFV44DnrPJmCmSOnOgPssy+R+Z
+	 WKKqWINS6fuPnVoD4hBeBcD///K6pGBnV8BAxqANZurZfpieRDzlLxdPxoqGfoDrx4Pa9
+	 Lp1fWrsomlJNybD2oR5sZ7wBPeqwVQ6FO/3fcMAwrI/5sqTZmKYRnyY7pKL0QBPePH9d8
+	 0tjpObYn8AOYKHPBq7SLcV5SrQ9eya9Ig14loPcvZl1B0snsEbv7occtp5jsvI9VCCA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=google.com;
-	spf=pass smtp.mailfrom=google.com;
-	dkim=pass header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20251104 header.b=MWn5tv2T;
-	arc=none smtp.remote-ip=209.85.214.174
-Received: from mail-pl1-f174.google.com (mail-pl1-f174.google.com [209.85.214.174])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=pass header.from=astralinux.ru;
+	spf=pass smtp.mailfrom=astralinux.ru;
+	dkim=pass header.d=astralinux.ru header.i=@astralinux.ru header.a=rsa-sha256 header.s=mail header.b=UoyobN5W;
+	arc=none smtp.remote-ip=37.230.196.243
+Received: from mail-gw01.astralinux.ru (mail-gw01.astralinux.ru [37.230.196.243])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9BE70606A31D
-	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2026 11:57:33 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9BE70606A31D
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 78FC660A262A;
+	Tue, 27 Oct 2026 12:03:07 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 78FC660A262A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=astralinux.ru
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=astralinux.ru
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20251104 header.b=MWn5tv2T
-Received: by mail-pl1-f174.google.com with SMTP id d9443c01a7336-2ea7f9c11e6so52765ad.0
-        for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2026 04:57:33 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20251104; t=1793102253; x=1793707053; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=U88qweYnCYrU71r8T0Ehm+T7NZ7CYd13glJQesIl94g=;
-        b=MWn5tv2T6nORDeJlQMGcbmz+uBELnLCHME98VH01oxejJGbCyGKqQvoYP7SB7tNzfD
-         fM4lpxigjR4nEWb1/NfNxyRTHKIZxjM1brk43cS15K37TfS0M/0TtT8OVt2e89FNfSSX
-         eFBXqk2qG8sUrc9fZejphgPPjd28UAjshJjh77JTbgNUuodEUxyOPogHGFzQCTkUEGXi
-         ZFIJ1BdAI0mp8oz39hADY8jXtwzx4I1GjJek5MAhLC9sbrr22nx+2UnNndl4rJRyIPtQ
-         tKu3VdgEgnf/C6kPIuhNkEVZYiT7zhQ0v8l78a+igWsJLKXYfGFRUltlbMJoh2Pj7wGQ
-         QRGg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793102253; x=1793707053;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=U88qweYnCYrU71r8T0Ehm+T7NZ7CYd13glJQesIl94g=;
-        b=UVCzyxvizAhr5gW/FbCjOrdXnq/s6bFaLUgEqN/t8jECnkWKCCN5cmMm0fGfvsZuy2
-         JtS2F2QNn09EhyR9BU61zIWMGx8cBwCr4co+8XsU4wprKsV1HUhx+i5mJtmbTA4eELfh
-         z7ZsmMQMcxbnebq1n01wpFuz+srRigT3Ap8IH3rwwCdq+WiRZR0BjKGa7bdFWU0GWqfG
-         ayP+4q4rEsX/9R6qedKf05NO11nBlKhroznqNsJw5Bd7rUhC1YERzjcAdmdBVYYisspP
-         fE4yj75r/RYkdarUJZzm+VYsdjg/4R29V1uu1IyfgbwKZq/vnPEf5ELpD3GhR/DRs0Yx
-         5GGw==
-X-Gm-Message-State: AFq9FYJAS7YLZbEU+WJnpjyEYZ6XAKxlsfVCvhiZOJ6JEIzlLavxI0Dc
-	gUgktuamDtvvnwSY5/QVxm0TbuxI/iUOV7E+u5d+tv4HXYNA6AzBejl1qFuYAZTEaw==
-X-Gm-Gg: AYBFou31IdREssUB6pT0i1T6PkIPVkK8HLLCMltVQkNSe98BbgPgC02Vx3hm5Kga4Mc
-	h6eVPSHuqyA9YQ6kXmgydRUAZsuD3XhDKhgXQ7c8JR+jaTvpyY/iSB1HCohTbL22aP0oLx2x2U5
-	TRTeqmleCR7ral9qY5zrCKOplsiMP6+qIG4KPArDnIdF/ZiKTVBwrrE9z7FaQ0kJQywU2f59pDj
-	1tau2Q9dvO9LartE8FaQmtHRZsrFqHWRw+KElNfRmRIz+5PAmlyha3AT1Goy71T652ELLwQDhxT
-	UODeoyo5sRd4B5cAktvm5Utx1ejapV8g87ZpgE6/2Ghsik+8/9q7szKA1n8AsL5Vm6mPtry7SgF
-	Tq+PWnE4TJXRlgcRM9Y3IliudnsmWya/C8NOJ8wroR+WLJQ+2vgafQN5b/8f4rnwAxuRsjEfo/4
-	o7BpzCM8Lir/ropVhMHFKSVPFP6uwwN+X10jWsIwgVkN7nY9jyfWrMAB+aUPU7a6jaIyltbUEsR
-	d8KEFc3biKcobRL/3yARPm94XBkXIQyPh09cIcS9NUiIAP4Xyo++yht/TwtjPPjeAuGMQ+Arg06
-	jZl/FLO358W7W5pHYdOfIjgStybTw0G8M7ybh0E=
-X-Received: by 2002:a17:902:fc87:b0:2ea:1fa0:8068 with SMTP id d9443c01a7336-2eae7be30b6mr4320395ad.16.1793102252395;
-        Tue, 27 Oct 2026 04:57:32 -0700 (PDT)
-Received: from google.com (105.211.142.34.bc.googleusercontent.com. [34.142.211.105])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3ae4064f4bdsm3633646a91.11.2026.10.27.04.57.28
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 27 Oct 2026 04:57:31 -0700 (PDT)
-Date: Tue, 27 Oct 2026 11:57:25 +0000
-From: Pranjal Shrivastava <praan@google.com>
-To: Leon Romanovsky <leon@kernel.org>
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>, Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>, linux-kernel@vger.kernel.org,
-	Christoph Hellwig <hch@lst.de>,
-	Logan Gunthorpe <logang@deltatee.com>,
-	Jason Gunthorpe <jgg@ziepe.ca>, linux-pci@vger.kernel.org,
-	linux-rdma@vger.kernel.org, Shivaji Kant <shivajikant@google.com>,
+	dkim=pass (2048-bit key, unprotected) header.d=astralinux.ru header.i=@astralinux.ru header.a=rsa-sha256 header.s=mail header.b=UoyobN5W
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=astralinux.ru;
+	s=mail; t=1793102583;
+	bh=YWoolVgm2Ixluif9oj3rIYs3Yoa5Ka1lDDAT8MCYdfk=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=UoyobN5Wle8Hb0w9IdgnZ+siA/tNG7uUg0NF0kOV5aEFVGthGSjxzrOY2jYARwdLy
+	 jar4TukEip4Ektz+ER+VHW8aVHBNMnnqIwUM63lyHM1r/bqr5i3iwenKcl13VIzinX
+	 YhVJesQJCB3r4AvUeRdYiQCR2vsa8rW2cv34NSSQk7QCs1saRmvUMmBAH1Zy0UMH9m
+	 JWGZxlZbxCTVK8y7yHktAohlEOZ239L5lBRsFgnuEN2ot7RnD2qaFBQT+0/W1gOWD+
+	 cwODVBpgwQBg+7jJIA+zM5mC+saw4pr5hMDW1V61pMjfaCqW3F5pBPOJc0LzKrUoNk
+	 Zu+jD+5MxTc3g==
+Received: from gca-sc-a-srv-ksmg01.astralinux.ru (localhost [127.0.0.1])
+	by mail-gw01.astralinux.ru (Postfix) with ESMTP id 16C7B259D7;
+	Tue, 27 Oct 2026 15:03:03 +0300 (MSK)
+Received: from new-mail.astralinux.ru (unknown [10.205.207.10])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (P-256) server-digest SHA256)
+	(No client certificate requested)
+	by mail-gw01.astralinux.ru (Postfix) with ESMTPS;
+	Tue, 27 Oct 2026 15:02:57 +0300 (MSK)
+Received: from DESKTOP-D46TNHI (unknown [10.198.50.125])
+	by new-mail.astralinux.ru (Postfix) with ESMTPA id 4jDTdr20WPz2w2G;
+	Tue, 27 Oct 2026 15:02:56 +0300 (MSK)
+From: Mikhail Dmitrichenko <mdmitrichenko@astralinux.ru>
+To: stable@vger.kernel.org,
+	Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Mikhail Dmitrichenko <mdmitrichenko@astralinux.ru>,
+	Sasha Levin <sashal@kernel.org>,
+	Chris Mason <clm@meta.com>,
+	Chuck Lever <cel@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>,
-	Unnati Sachan <unnatisachan@google.com>
-Subject: Re: [RFC PATCH v1 4/8] xprtrdma: return -EREMOTEIO on P2PDMA map
- failure
-Message-ID: <auCRpd73dok7Yys7@google.com>
-References: <20261006233248.705086-1-praan@google.com>
- <20261006233248.705086-5-praan@google.com>
- <20261012070134.GG27033@unreal>
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@kernel.org>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>,
+	linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	lvc-project@linuxtesting.org,
+	Chuck Lever <chuck.lever@oracle.com>,
+	Anna Schumaker <Anna.Schumaker@Netapp.com>
+Subject: [PATCH 5.10 v2 1/2] rpcrdma: Fix comments about reverse-direction operation
+Date: Tue, 27 Oct 2026 15:01:37 +0300
+Message-ID: <20261027120143.1596-2-mdmitrichenko@astralinux.ru>
+X-Mailer: git-send-email 2.54.0.windows.1
+In-Reply-To: <20261027120143.1596-1-mdmitrichenko@astralinux.ru>
+References: <20261027120143.1596-1-mdmitrichenko@astralinux.ru>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -105,74 +100,124 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261012070134.GG27033@unreal>
+Content-Transfer-Encoding: 8bit
+X-KSMG-AntiPhishing: NotDetected
+X-KSMG-AntiSpam-Auth: dkim=none
+X-KSMG-AntiSpam-Envelope-From: mdmitrichenko@astralinux.ru
+X-KSMG-AntiSpam-Info: LuaCore: 132 0.3.132 b92628ca234da971a1a6d61b32804bb3075f0fd2, {Tracking_from_domain_doesnt_match_to}, {Tracking_interpol}, new-mail.astralinux.ru:7.1.1;127.0.0.199:7.1.2;d41d8cd98f00b204e9800998ecf8427e.com:7.1.1;astralinux.ru:7.1.1, FromAlignment: s
+X-KSMG-AntiSpam-Interceptor-Info: scan successful
+X-KSMG-AntiSpam-Lua-Profiles: 207024 [Oct 27 2026]
+X-KSMG-AntiSpam-Method: none
+X-KSMG-AntiSpam-Rate: 0
+X-KSMG-AntiSpam-Status: not_detected
+X-KSMG-AntiSpam-Version: 6.1.1.27
+X-KSMG-AntiVirus: Kaspersky Secure Mail Gateway, version 2.1.0.7854, bases: 2026/10/27 10:49:00 #28748526
+X-KSMG-AntiVirus-Status: NotDetected, skipped
+X-KSMG-LinksScanning: NotDetected
+X-KSMG-Message-Action: skipped
+X-KSMG-Rule-ID: 1
 
-On Mon, Oct 12, 2026 at 10:01:34AM +0300, Leon Romanovsky wrote:
-> On Tue, Oct 06, 2026 at 11:32:44PM +0000, Pranjal Shrivastava wrote:
-> > ib_dma_map_sg() returns 0 on any failure, so frwr_map() cannot tell
-> > why a mapping failed and reports -EIO. Use ib_dma_map_sgtable_attrs()
-> > instead, which returns the reason. Pass up -EREMOTEIO, which means
-> > the device cannot reach the P2PDMA memory, so the RPC fails with the
-> > same error as other P2PDMA refusals. Every other mapping failure
-> > still returns -EIO.
-> > 
-> > Signed-off-by: Pranjal Shrivastava <praan@google.com>
-> > ---
-> >  net/sunrpc/xprtrdma/frwr_ops.c | 15 ++++++++++-----
-> >  1 file changed, 10 insertions(+), 5 deletions(-)
-> > 
-> > diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-> > index e83cef19e656..a55d5e11c0e2 100644
-> > --- a/net/sunrpc/xprtrdma/frwr_ops.c
-> > +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-> > @@ -293,7 +293,8 @@ int frwr_map(struct rpcrdma_xprt *r_xprt,
-> >  	bool sg_gaps = ep->re_mrtype == IB_MR_TYPE_SG_GAPS;
-> >  	unsigned int max_depth = ep->re_max_fr_depth;
-> >  	struct ib_reg_wr *reg_wr;
-> > -	int i, n, dma_nents;
-> > +	struct sg_table sgt;
-> > +	int i, n, dma_nents, ret;
-> >  	struct ib_mr *ibmr;
-> >  	u8 key;
-> >  
-> > @@ -381,10 +382,13 @@ int frwr_map(struct rpcrdma_xprt *r_xprt,
-> >  	mr->mr_dir = rpcrdma_data_dir(writing);
-> >  	mr->mr_nents = i;
-> >  
-> > -	dma_nents = ib_dma_map_sg(ep->re_id->device, mr->mr_sg, mr->mr_nents,
-> > -				  mr->mr_dir);
-> > -	if (!dma_nents)
-> > +	/* Unlike ib_dma_map_sg(), this reports why a mapping failed */
-> > +	sgt.sgl = mr->mr_sg;
-> > +	sgt.orig_nents = mr->mr_nents;
-> > +	ret = ib_dma_map_sgtable_attrs(ep->re_id->device, &sgt, mr->mr_dir, 0);
-> 
-> Please avoid using this function. We are gradually moving away from SG tables
-> in the RDMA code.
-> 
-> In general, it is never good thing to built API around try-and-fail
-> approach. It will require from us to be aware of "specific" usage for
-> the return value from one subsystem by another.
-> 
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Fair, I'll drop ib_dma_map_sgtable_attrs(), keep ib_dma_map_sg() as it 
-is today, and check reachability explicitly before mapping instead.
+commit 84dff5eb86ceb2a356d5409fc1af21a366bf3c35 upstream.
 
-rpcrdma_p2pdma_allowed() already asks ib_dma_pci_p2p_dma_supported()
-whether the device can do P2PDMA at all. It would also run
-pci_p2pdma_state() against the device's dma_device for the payload
-pages, and refuse the RPC with -EREMOTEIO on
-PCI_P2PDMA_MAP_NOT_SUPPORTED. A mapping failure then stays a plain
--EIO, and nothing depends on the DMA layer's return value.
+During the final stages of publication of RFC 8167, reviewers
+requested that we use the term "reverse direction" rather than
+"backwards direction". Update comments to reflect this preference.
 
-xprtrdma can be built as a module, though, and pci_p2pdma_state() is
-an inline wrapper around __pci_p2pdma_update_state(), which isn't
-exported. I see two ways to handle that: export
-__pci_p2pdma_update_state() as is, or add a small exported helper in
-p2pdma.c that returns the map type for a page and a device, e.g.
-pci_p2pdma_page_map_type(). Which would you prefer?
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Reviewed-by: Tom Talpey <tom@talpey.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Stable-dep-of: c7653d5cebc8 ("xprtrdma: Fix bcall rep leak and unbounded peek")
+Signed-off-by: Mikhail Dmitrichenko <mdmitrichenko@astralinux.ru>
+---
+ net/sunrpc/xprtrdma/backchannel.c          | 4 ++--
+ net/sunrpc/xprtrdma/rpc_rdma.c             | 6 +-----
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c | 4 ++--
+ net/sunrpc/xprtrdma/xprt_rdma.h            | 6 +++---
+ 4 files changed, 8 insertions(+), 12 deletions(-)
 
-Thanks,
-Praan
+diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
+index c92c1aac270a..31514e4d81ff 100644
+--- a/net/sunrpc/xprtrdma/backchannel.c
++++ b/net/sunrpc/xprtrdma/backchannel.c
+@@ -2,7 +2,7 @@
+ /*
+  * Copyright (c) 2015 Oracle.  All rights reserved.
+  *
+- * Support for backward direction RPCs on RPC/RDMA.
++ * Support for reverse-direction RPCs on RPC/RDMA.
+  */
+ 
+ #include <linux/sunrpc/xprt.h>
+@@ -208,7 +208,7 @@ static struct rpc_rqst *rpcrdma_bc_rqst_get(struct rpcrdma_xprt *r_xprt)
+ }
+ 
+ /**
+- * rpcrdma_bc_receive_call - Handle a backward direction call
++ * rpcrdma_bc_receive_call - Handle a reverse-direction Call
+  * @r_xprt: transport receiving the call
+  * @rep: receive buffer containing the call
+  *
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index b8174c77dfe1..bb5648133b10 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -1170,14 +1170,10 @@ rpcrdma_is_bcall(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep)
+ 	 */
+ 	p = xdr_inline_decode(xdr, 3 * sizeof(*p));
+ 	if (unlikely(!p))
+-		goto out_short;
++		return true;
+ 
+ 	rpcrdma_bc_receive_call(r_xprt, rep);
+ 	return true;
+-
+-out_short:
+-	pr_warn("RPC/RDMA short backward direction call\n");
+-	return true;
+ }
+ #else	/* CONFIG_SUNRPC_BACKCHANNEL */
+ {
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+index feac8c26fb87..2e860c68735f 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+@@ -2,7 +2,7 @@
+ /*
+  * Copyright (c) 2015-2018 Oracle.  All rights reserved.
+  *
+- * Support for backward direction RPCs on RPC/RDMA (server-side).
++ * Support for reverse-direction RPCs on RPC/RDMA (server-side).
+  */
+ 
+ #include <linux/sunrpc/svc_rdma.h>
+@@ -59,7 +59,7 @@ void svc_rdma_handle_bc_reply(struct svc_rqst *rqstp,
+ 	spin_unlock(&xprt->queue_lock);
+ }
+ 
+-/* Send a backwards direction RPC call.
++/* Send a reverse-direction RPC Call.
+  *
+  * Caller holds the connection's mutex and has already marshaled
+  * the RPC/RDMA request.
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 73c8ab89456b..a89605e14f2f 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -95,9 +95,9 @@ struct rpcrdma_ep {
+ 	unsigned int		re_inline_recv;	/* negotiated */
+ };
+ 
+-/* Pre-allocate extra Work Requests for handling backward receives
+- * and sends. This is a fixed value because the Work Queues are
+- * allocated when the forward channel is set up, long before the
++/* Pre-allocate extra Work Requests for handling reverse-direction
++ * Receives and Sends. This is a fixed value because the Work Queues
++ * are allocated when the forward channel is set up, long before the
+  * backchannel is provisioned. This value is two times
+  * NFS4_DEF_CB_SLOT_TABLE_SIZE.
+  */
+-- 
+2.43.0
+
