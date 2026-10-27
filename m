@@ -1,55 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793098565;
-	b=yisnqKNkVHNxgBPLhcsrDUsLh1H0IN80rWvUtM5pw/L6vHkZMi7sQK3BchfE75AKJlaB
-	 rQuawp1lPl6crHMm5fcyJ1ChiFoCKV0oy5w6hZJXDElR+HVKmD8iBS5IQcnoDeTE0hHJN
-	 RHjt6zYs38BXLrAg934yeKTOhgfJxfai2ivuzPN9VixN63B1P9SzX8t50h0G+9Bm1kVQ9
-	 g6+WzIcOxtVxxQL8fO2sAuOFZhWLlrgpWQe8WlJp5KbamRkrQtQcfzf9rWklTps/34gLx
-	 va/Lhy4VJEQyfVvmep2E3LdRlCFnbB0HNg2t/FOXuFaUkRILYBtkIU/Sy+LNN0NJp7Q==
+	t=1793098715;
+	b=pZfE+PcvthCBlYwI4j0yJ20cBycjwFhzDP/+r5hwxtbAM9fNHYlub/Yb+2ckxPRFjQUw
+	 4KR3Wk74ngxDMt8HIgS7KpEam6jEAZdkFEKVDB7KX7TNKdbMCqf5IWNhUnRdArPQNHffc
+	 9DTiOBW+/J22Rj27xNf3voiijGJBj708buo4KBvnJKAjfh6bi/HtMXlSpSJaMvfhGZucg
+	 y4tR87hzIlHclvueae4LiHLJ1k9Ob52S06JbJF/phd3pH5k/xGamlJ6ykUdeAfOq1MNIK
+	 y/cap/3o1tV6TDasgP/WTzOZvWFlKsh+DYsroDom9ctu9vsWswpK6qqC/4Sp35YVlbQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793098565;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793098715;
 	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
 	 In-Reply-To:References:Autocrypt:Content-Type:
 	 Content-Transfer-Encoding:User-Agent:MIME-Version;
-	bh=SEU4y0bHZ8fq2fNi38LOGxlT66iBjpH+GQW+7AVDCbU=;
-	b=BWvtPm5fmenKZlB84sMGQmcLns1jvxnrjzcw48u4L9u2U555+A44HVaFdpg58RGwdTrj
-	 qklv9m/dyykGZctqpGUUV1yp2Yb3utTZKOtxsryVC8UhGmy4b2OCQpfUKbZb1waZcNZuu
-	 qbMpTFxzT2oQgxxEUhFeg+VvyZMp4q3XDTKqq7W0ECWdOJfrnkqChTkfAUm6QDCX6Dn9G
-	 iYRNIf02/p1dQSYzHQzqLFxcxEtVrZV9ladZup/cOmP+rDwzSOMOj/QXXfwrv7nz11td1
-	 AeS0H5xwOaaK8n7TU7FbIH2gDrBgg2sDX1XtNuv3+WqyEO9E7rjTGkr5HCq5klxW3Og==
+	bh=NvyIA+aWyz4S5FPVdXSTLrggEVJP8b3aFjTgPX2tYCc=;
+	b=vendOjue6HMTGSGGoWdCR2INyFc4cnU52bt+JaeyuFPBa2ir0JMijtSZAeiiqcr0MQyX
+	 tPBrKO5rQvJwB+HpwrOyfVKQ1XgUXSDpusQRrwLM8SBmIKNFdNbXuxcG+TpYit25g5Hnm
+	 KgJoZgxajImylL6TYfnhOSxHuxshPPo2qKWH6AxPXTcPrw26qewCWa5Zz1SX8Iz8vMwrh
+	 w9nSy8ryQTgMaCW1JigGIpAiv+be4u8pMmkT4rjZ6vgKWyTnS0XFLklxfNb+N701ZWtBc
+	 iX6UYtdvHQMUYTtfetEt27GpBT+0y/DxW9iQLt78OtNHkM9jUxAFOUAbJyjm2bpxgnA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GPIMWUkg;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Q96Yy3I7;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D0A59606A31D
-	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2026 10:56:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AC8A0606A31A;
+	Tue, 27 Oct 2026 10:58:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GPIMWUkg
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DFBC81F01200;
-	Tue, 27 Oct 2026 10:56:03 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Q96Yy3I7
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 733F61F01825;
+	Tue, 27 Oct 2026 10:58:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793098564;
-	bh=SEU4y0bHZ8fq2fNi38LOGxlT66iBjpH+GQW+7AVDCbU=;
+	s=k20260515; t=1793098714;
+	bh=NvyIA+aWyz4S5FPVdXSTLrggEVJP8b3aFjTgPX2tYCc=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=GPIMWUkgwsrIpCt6P6XoaXY/9Vpk9l7Jx9ybbLqsR9yzFLPvCyGo3PA95sx8DIObN
-	 6in6VvZKf2ktRH582pnf62/cl0YA3gdmWAB5XLG/xB1hczxsrZlKsvAbSiN/mZc9M3
-	 kLE1wwCUR9HLFSd6Fv8EtDX+yJ2IV2QNewlCN3a5wUf+xrM+BufxUkYqoyISNTgd5/
-	 g561yBJZRCVK5UuNqr9MM3CYodBvBMINv0/cMGQzRHI/Ui/hTMRMnCchUOPU2ODa6O
-	 +ds0aXnCkhq3j3kbIITtRdaM3qXCs8//Hm3e1gHkJYC9wVto9oy5cMYs8murYD6B4w
-	 LfYlQg1laCI9g==
-Message-ID: <deb7bc7a5f67003f363b0f13ff9c79b69c7e0ecb.camel@kernel.org>
-Subject: Re: [PATCH v1 00/13] Convert server-side NFS_ACLv3 XDR to use xdrgen
+	b=Q96Yy3I7bW+2W4Oe+RN1HBOY5feEQ/ihLXuXj8lrejsRMde5f3/V97SCWtUgbqXMH
+	 uOZGjkB4HuKQamFfEi4elfCLPvBTGLoavMZ7SLyOnZZMQBitK14ErvEelWaCWH2fxO
+	 1UXUITOEfwn7sLup1aYTxhp+67ND5UvUV9uXqjAnFgdLJ1WYRIymH9NcoVlkLEbYnz
+	 nfQTY9ju8Myjt5sZRXgpOJlrq5UzrHj0YEZ96sLqms3orji7iQKAFgsBrSUw6BHukV
+	 HRAoxJglzBzqp0fSgEfPh9/n5s7pkNcZURmOEmAzVRNcTGAkf1T15bhCWewqpln5JH
+	 Cr5l3jsqGMzug==
+Message-ID: <715d2efa3fd7abe8ce9a42f365bac9f88912b6ad.camel@kernel.org>
+Subject: Re: [PATCH] nfsd: pin client reference across async copy reaper
+ cleanup
 From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 27 Oct 2026 06:56:01 -0400
-In-Reply-To: <20261025151622.141025-1-cel@kernel.org>
-References: <20261025151622.141025-1-cel@kernel.org>
+To: Tristan Madani <tristmd@gmail.com>, Chuck Lever <cel@kernel.org>
+Cc: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+ linux-nfs@vger.kernel.org, 	linux-kernel@vger.kernel.org,
+ stable@vger.kernel.org, 	tristan@talencesecurity.com
+Date: Tue, 27 Oct 2026 06:58:30 -0400
+In-Reply-To: <20261026230151.2474608-1-tristan@talencesecurity.com>
+References: <20261026230151.2474608-1-tristan@talencesecurity.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -137,50 +139,92 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 
-On Sun, 2026-10-25 at 11:16 -0400, Chuck Lever wrote:
-> Replace NFSD's NFS_ACLv3 XDR encoders and decoders with code that is
-> mechanically generated from the protocol's RPC language description.
-> No RFC defines NFS_ACL. The description in nfs_acl3.x is copied from
-> draft-ietf-nfsv4-nfs-acl.
+On Mon, 2026-10-26 at 23:01 +0000, Tristan Madani wrote:
+> nfsd4_async_copy_reaper() detaches completed async copies from the
+> client list and later calls cleanup_async_copy(), which eventually
+> drops the stid reference via nfs4_put_stid().  That path accesses
+> stid->sc_client unconditionally, but the client is not pinned during
+> the cleanup phase.
 >=20
-> Chuck Lever (13):
->   Documentation: Add the RPC language description of NFS_ACLv3
->   NFSD: Add infrastructure for generating NFS_ACLv3 XDR encoders and
->     decoders
->   NFSD: Remove '#include "xdr3.h"' from nfs3acl.c
->   NFSD: New NFS_ACLv3 status codes
->   NFSD: Use xdrgen XDR functions for the NFS-ACL v3 NULL procedure
->   NFSD: Implement NFS-ACL v3 ACL encoding and decoding with xdrgen
->   NFSD: Use xdrgen XDR functions for the NFS-ACL v3 GETACL procedure
->   NFSD: Use xdrgen XDR functions for the NFS-ACL v3 SETACL procedure
->   NFSD: Map every NFS_ACLv3 reply status into aclstat3
->   NFSD: Remove the hand-coded XDR helpers for the NFS_ACLv3 procedures
->   NFS: Move NFSACL_MAXPAGES into fs/nfs/nfs3_fs.h
->   NFSD: Share the attribute conversion helpers with the NFS_ACL procs
->   nfs_common: Remove the unused NFS ACL stream codecs
+> A concurrent expire_client() or force_expire_client() can free the
+> client between the nn->client_lock drop and the cleanup loop, leaving
+> nfs4_put_stid() with a stale sc_client pointer.
 >=20
->  Documentation/sunrpc/xdr/nfs_acl3.x    | 273 ++++++++
->  fs/nfs/nfs3_fs.h                       |   3 +
->  fs/nfs/nfs3xdr.c                       |   1 +
->  fs/nfs_common/nfsacl.c                 | 125 ----
->  fs/nfsd/Makefile                       |  13 +-
->  fs/nfsd/fattr.h                        |  20 +
->  fs/nfsd/nfs2acl.c                      |  99 +--
->  fs/nfsd/nfs3acl.c                      | 623 +++++++++++++-----
->  fs/nfsd/nfs3xdr.c                      | 166 -----
->  fs/nfsd/nfs_acl3xdr_gen.c              | 839 +++++++++++++++++++++++++
->  fs/nfsd/nfs_acl3xdr_gen.h              |  36 ++
->  fs/nfsd/nfsproc.c                      |   3 +-
->  fs/nfsd/xdr3.h                         |   8 +-
->  include/linux/nfsacl.h                 |   9 -
->  include/linux/sunrpc/xdrgen/nfs_acl3.h | 284 +++++++++
->  15 files changed, 1948 insertions(+), 554 deletions(-)
->  create mode 100644 Documentation/sunrpc/xdr/nfs_acl3.x
->  create mode 100644 fs/nfsd/fattr.h
->  create mode 100644 fs/nfsd/nfs_acl3xdr_gen.c
->  create mode 100644 fs/nfsd/nfs_acl3xdr_gen.h
->  create mode 100644 include/linux/sunrpc/xdrgen/nfs_acl3.h
+> This is the same missed pattern that Chuck Lever addressed in seven
+> other nfsd4_laundromat() paths with cl_rpc_users pinning (v7.3-rc2).
+> The async copy reaper was not covered by that series.
+>=20
+> Fix this by:
+>   1. Skipping expired clients (cl_time =3D=3D 0) during iteration.
+>   2. Taking a cl_rpc_users reference before moving the copy to the
+>      reaplist.
+>   3. Dropping the reference with put_client_no_renew() after
+>      cleanup_async_copy().
+>=20
+> Export put_client_no_renew() so it is accessible from nfs4proc.c.
+>=20
+> Fixes: ac0514f4d198 ("NFSD: Add a laundromat reaper for async copy state"=
+)
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Tristan Madani <tristan@talencesecurity.com>
+> ---
+>  fs/nfsd/nfs4proc.c  | 5 +++++
+>  fs/nfsd/nfs4state.c | 2 +-
+>  fs/nfsd/state.h     | 1 +
+>  3 files changed, 7 insertions(+), 1 deletion(-)
+>=20
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 50c07561e31f3..1f36afceb1fe1 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1501,6 +1501,9 @@ void nfsd4_async_copy_reaper(struct nfsd_net *nn)
+>  			if (test_bit(NFSD4_COPY_F_OFFLOAD_DONE,
+>  				     &copy->cp_copy.cp_flags)) {
+>  				if (!--copy->cp_ttl) {
+> +					if (clp->cl_time =3D=3D 0)
+> +						continue;
+> +					atomic_inc(&clp->cl_rpc_users);
+>  					list_del_init(&copy->copies);
+>  					list_add(&copy->copies, &reaplist);
+>  				}
+> @@ -1513,8 +1516,10 @@ void nfsd4_async_copy_reaper(struct nfsd_net *nn)
+>  	while (!list_empty(&reaplist)) {
+>  		copy =3D list_first_entry(&reaplist, struct nfsd4_async_copy,
+>  					copies);
+> +		clp =3D copy->cp_stid.sc_client;
+>  		list_del_init(&copy->copies);
+>  		cleanup_async_copy(copy);
+> +		put_client_no_renew(clp);
+>  	}
+>  }
+> =20
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 9c4adf3110aea..10e864ca7407a 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -252,7 +252,7 @@ static void put_client_no_renew_locked(struct nfs4_cl=
+ient *clp)
+>  		__put_client_locked(clp, false);
+>  }
+> =20
+> -static void put_client_no_renew(struct nfs4_client *clp)
+> +void put_client_no_renew(struct nfs4_client *clp)
+>  {
+>  	struct nfsd_net *nn =3D net_generic(clp->net, nfsd_net_id);
+> =20
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 2d00a411c6634..1d3a7e35bb9ff 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -918,6 +918,7 @@ extern void nfsd4_shutdown_callback(struct nfs4_clien=
+t *);
+>  extern void nfsd4_shutdown_copy(struct nfs4_client *clp);
+>  void nfsd4_put_client(struct nfs4_client *clp);
+>  void nfsd4_async_copy_reaper(struct nfsd_net *nn);
+> +void put_client_no_renew(struct nfs4_client *clp);
+>  bool nfsd4_has_active_async_copies(struct nfs4_client *clp);
+>  void nfsd_update_cmtime_attr(struct file *f, unsigned int flags);
+>  extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(struct xdr_net=
+obj name,
 
-This all looks fine to me.
-
-Acked-by: Jeff Layton <jlayton@kernel.org>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
