@@ -1,57 +1,99 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793109123;
-	b=CT4lvspRiSoSHicvYszoTUBCBMkCSI9scXK2M9VInYHN3REzHjWGuHlt7TBOdQhDuGHe
-	 E1qRdAm1RvNevH5/UYpiSsSy3SF4ikVU3KeYDVLmOKy89U4tELQCZO8gZiO2sQf+PLuWt
-	 FUb0fUwat/ErBfIEHHjzmhUWE2ZreRbKWsWj8WIlDwIHop58yIsAZUIDQHnnHe1SfeVlA
-	 +7A1LwLmbeIcv3Ihgp8BKC+KCUsB5M4/5HXftNSnQDvnb2X6EmuSixuMofeKgsGkjNIiY
-	 001jW9ZX6QzA1wc8gQGr32wQBOluZFSI8x+lHGKNhHe2X0/bS1BAkTrldFFX+vfULzw==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793109123;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=6N6gr0n21ZUbaOSGT3hBoEuV0Akrsrxoyqq7KPCJ1Rc=;
-	b=0JvNGEQZ8naUa56r8f1GLNt5GmZxcDiwJB4qlHovrX1zf+C5Xhf4ivy/meafrbs4Qs6F
-	 f64Fqd6JDP3fn+nCht+ruCI8kqwgdNxN1ySCzARfLcRD3e0o+XeDbwyoo3ag3MYfLDHKO
-	 IVNrcDSfjfc93gBsVVEdMa1eF2kc2WJWCT8aFEKwqRO6oxgSvH66tixxt12nXHWRFNdfT
-	 TOl8Yq0C0+2dSHOKSigPcIy+mCKqzi5BGF9fJM8AVI4NFEJotnNSP2dzRKyG7/lJGigr+
-	 nAnghFfIkxqDkeEfluFHJWrn6bpO62iDO6ZDXragxSBBEWFt5z1NAMPx+QFvw7kzB7g==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kVHWlHbt;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.217.44
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1793109903;
+	b=3gZ0ihDM9kUt6jF9gS/LbGEWTCmVf717+aMRRUg/rA7jPsyMBhMJ7WNy+ARVKgGiiwDv
+	 MRG3yRmujWDZausVvLeOV/P94RUjtdfHMrcs09lo/IEaMQtBWnU6v7TOXcc4py4ggG2yq
+	 MtR3y63SO9IZrKX0GvIm1L51esIZ/fMxKlwqnCJ5FTjxX3e3MdpJoPLsBwQ5RbxPDeY9R
+	 on8wlqYFjvfB4OWkGb+P94zcNSFq/2vVoTMe9Ac93z7zmDZqQLtxTPrb+sAWaMg7WIlHK
+	 i2Ey0+h1IUI7RigmXFB8gQfg7DksIRCGQZAkjklifCYVNhHC6i1nrbkVPyd5Wz3oyQw==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793109903;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
+	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
+	 Message-ID:Subject:To:Cc:Content-Type;
+	bh=W7qpgLW06+QZrv93vDvbBbOUt30oIfC1Mu6jHbXPALI=;
+	b=pEAG2zFeNkDuhC56QL9WFWe+OamFjIoBBMdQh/PmDcVgSFHqu+XefN8PxCuL809fCJDJ
+	 aqUMIO49lNiXOgGpzxZo/FXLvxdnz+Dfma5LgGglX9JHsHEoDV4hpojHw8sAHVWbtvUOa
+	 yiUDG7OwEAJs2xxWZlOb42u1w/yHCNMn7TxfrJW9DSxiZpsKNi/oc0gqGnH24MsLvwxOv
+	 qN8HxgtWoqx8JV2+CmQ78szneLr0O1bbBFzIIYYk+qbVcF+OE4lVPmjuQqfPRxa+3G3go
+	 CQCyEzSQuUo2tCMSHUFtkSo0vdazotg5h8EONTWZpQP3lseHtpD7GozjCmiBV+ULBhQ==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=f4CKSjku;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.217.44
+Received: from mail-vs1-f44.google.com (mail-vs1-f44.google.com [209.85.217.44])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4774C606A31A
-	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2026 13:52:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC750606A31B
+	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2026 14:05:02 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org EC750606A31B
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kVHWlHbt
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 251F41F01825;
-	Tue, 27 Oct 2026 13:52:01 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793109122;
-	bh=6N6gr0n21ZUbaOSGT3hBoEuV0Akrsrxoyqq7KPCJ1Rc=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=kVHWlHbtu5kZjKm6ozyVd06hQDoioBfyTmJgeBhD+jzW37atX083oifTsi7wpzRIZ
-	 OxLr6nYBt3vu2NGDEPohLRaUUMfsrfb367kCouy/zTP7PikOXzwYYQYD3IEtwNAeaQ
-	 gfzcwZnIS+S8fl/BzVj+Fph3Zk8AD+9wHT2CKaHG66mlvPZNBX5IPO/e10Hj7O5kNE
-	 L+9//8OGFrhH/b8zTrJbXfabP5HSdWYmMupsgH205qnvhalFEEC3ExPfh4NFUCR5xA
-	 ehOfDDRUPfDowkNP+zdRHp0hI8+o1YJ9MFZTZn/3joJ7px0WJ6CGItbvQSysuyRvwt
-	 8nqVlZTYJQvWQ==
-From: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neil@brown.name>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 2/2] NFSD: Map NFS_ACLv3 entry IDs through the request's user namespace
-Date: Tue, 27 Oct 2026 09:51:58 -0400
-Message-ID: <20261027135158.164034-3-cel@kernel.org>
-X-Mailer: git-send-email 2.56.0
-In-Reply-To: <20261027135158.164034-1-cel@kernel.org>
-References: <20261027135158.164034-1-cel@kernel.org>
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=f4CKSjku
+Received: by mail-vs1-f44.google.com with SMTP id ada2fe7eead31-7c2f48f3a96so1422424137.1
+        for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2026 07:05:02 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1793109902; cv=none;
+        d=google.com; s=arc-20260327;
+        b=DPahNU2qiiI/g1Ro9TaAM/d3hgy3VBxzyTnfHlIcTbuNFgU9I4bzQja/AEV3dE9r/K
+         6DXvM3a2pvBJczj6CKT9WY5TIDmnAgnc2jnbAmcvpo+a0IR5sUB8h2JkcpvlvIYrCvq9
+         F6MEr5vtb/2A9GCb4vltgx9N7m0oR5UVHuhKJ1oovJai3rkL5HzEPk8vc/wTlQOZ/9vc
+         lz9gZ6E8NNjmTN0Pi6f5sUhvjqghwP3E+lzRpkdcOmZn7nUed1UWMVU1o9bXewUMBh/y
+         dp/9AeKtYQK23RCHYCpm1oino2jsQ7HqPd51+oAbQn19C+LHo2gMNaa9i9GRtre//PWz
+         I9aw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:dkim-signature;
+        bh=W7qpgLW06+QZrv93vDvbBbOUt30oIfC1Mu6jHbXPALI=;
+        fh=JgrymsDLGBpsqEER4KoLHJmU9UidvuYhLQ5WJYtbmHc=;
+        b=gULg3yoG5PKVnw/cUQWC/vXHYDa0s1zisSSGUfpzbUccUklxIlsOJDC+UR9vd1gflY
+         ruy0FytwJwInjTK6E3+mIb6rIeizheF+qq/kCnSmgGPP8lCdntcWlx+6pIHBoK11wnzc
+         mucitWNKBTxzjXyZsTWmDe493NMU83aonvy5NhH3Ykr2Jm+rdrNDa0K3CAbCeLWoUfGo
+         PcyRkJkuv56Sgw5w306mDhkabzGFXJU9cFwFPxhAGyH+YX99nuv7YgTPHZPrssJzCF5n
+         7Sk6BGXGOYKPB9ZIkfIwNNZer2qQi7V/SznRPjoM1Uj/ZrUedc+xU8laoMjEN+L6+XAv
+         YOEQ==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1793109902; x=1793714702; darn=vger.kernel.org;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=W7qpgLW06+QZrv93vDvbBbOUt30oIfC1Mu6jHbXPALI=;
+        b=f4CKSjku6gUhocCowGjqd8WSenkgeuJb5RsCcPvqoahEPcMOi8Ba4l72MvO/FVe1oZ
+         AAJ+J2pDTco6WxfDjEJW5eGVZgxq0k0JaGF8ku8MuKrvKSEVVIXCfU16ix1Zf/NdyWhO
+         8b4dbTsRpXqiILHVmpdb7M3wJLbMZd097wjwzoArfFSPGldtQ3kpM6d6rgLspTXbXPNm
+         ufkvzR1c1+ONm1gOcHPQ6sMd+tSLzZ5tGJoCUS77b7vR1PJQSxx7kwoPsyOzJsn2tQBu
+         gOMPd2I1m4rnMLlCKgXdqEFXeMcdTxpmxq4FFPJ/r4tBJfl85fxXzCJPZjnX5VJtyBLF
+         mc4w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793109902; x=1793714702;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=W7qpgLW06+QZrv93vDvbBbOUt30oIfC1Mu6jHbXPALI=;
+        b=J/QKbfLl2aE1I2SRsnV6cJL/2ootOTrwbPCu/oWVRTmSPn3NMcepgBNA81NhPy62N2
+         OhwIEoLAjqxNqE+DIDPgtVA/mkPIMvV+wkgJCYsF7YwHbdVTW+MnPItdFZXpG2PC821N
+         3q9EmvrPdNa8JATn3wg2udQtbXYFqcOyAZQn5IiSfyK59VzNcsIVSggu9LdjkehyMmMz
+         BUdmdGMjV7D89aHG2ZQhzOQQQ8zZhy8jOtM0hzgUSq/+g3cTyqmlUmJk4309uIb8NEb/
+         tgENJUsFIWk3K83L35JQu2WaGpWxnrmQQL6OUuzNkxK80teoKuRfjQ+TkqXS+2DysOrE
+         vIDQ==
+X-Forwarded-Encrypted: i=1; AKwUvBzW5IGj4H2kjBK47oe48sGO1jIHe3YexTQ4yKKvIaWPXiHKKHpa0aA7aFdjTCuHPFpbOSCVSfOO0c8=@vger.kernel.org
+X-Gm-Message-State: AFq9FYL+5+m4ptaiviHaQB5VI1gO8+p9I9UQAlaZJLlHC2gm7HrI/GU8
+	wuLLGw0BS6/HUp3m1kk9NqII2uSsCSjxjxjh/3W/ZAQf5DrWmiBz15MFKrtNAATrXLMJG/vtxZO
+	jRcht0x4E8vVR0HyOc3oC62HhHCVdQcCDF1t2
+X-Gm-Gg: AYBFou3NKWiwFT4JLGw8wZKvWSVj1TR1oX7mHWsfdc9gl/JSBJi99KEs5mrIXvwLQ7q
+	lHJGKA0XzSePJ+ER74VCp7hY0DrZU0WWfBSYzRfBy8KakPLgWqzluOhYTyT32u7qlGYx8bXuXr6
+	qtWHMNFvvW6tAZkRTVzvgjm9Br87NxfzXxNLA6E0nw5mcW0ZfY5RyacIFu3bP17cxrZGkiWjo8/
+	DxrkUScubP971bmKHWNS2wmnXMoVUbaP2QOvC0H3uRmpeNLwopjpD2/Xvp+kHlULA2gw2clSdnE
+	H/3ZdfgYDOuvi+Yz3hm8vdcv21huUTs9MUbl+sXVIg2Z+uwpYdoETGWRQ2sz/Nvv2mPI/sF6Vm6
+	amwMMD0ZhqDJ+TffSIvIE/CFHSxpgqozaxgH5
+X-Received: by 2002:a05:6102:3309:b0:7ca:e2c1:9a0f with SMTP id
+ ada2fe7eead31-7ce5cd20f82mr2802725137.17.1793109901915; Tue, 27 Oct 2026
+ 07:05:01 -0700 (PDT)
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -61,86 +103,72 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20260802195328.175328-1-f3lix.dev@gmx.de>
+In-Reply-To: <20260802195328.175328-1-f3lix.dev@gmx.de>
+From: Cedric Blancher <cedric.blancher@gmail.com>
+Date: Tue, 27 Oct 2026 15:04:25 +0100
+X-Gm-Features: AclHuK_UpWvnj9vrPaA3gM9vlPqsDL7lIYE2q4KB2vEFQmM7Zny2Xldd1i_stCA
+Message-ID: <CALXu0UcEbcHbb4F+pKG1vM5XmgTcuHiLn8Y6y_hQJAYjMdZeMg@mail.gmail.com>
+Subject: Re: [PATCH] NFSv4.2: request mode after CLONE
+To: Felix Hoffmann <f3lix.dev@gmx.de>
+Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+	Peng Tao <tao.peng@primarydata.com>, linux-nfs@vger.kernel.org, 
+	linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-The NFS_ACLv3 GETACL encoder and SETACL decoder translate each ACL
-entry's ID with init_user_ns, while the fattr3 in the same reply goes
-through nfsd_user_namespace(). When the transport's credential comes
-from a non-initial user namespace, GETACL reports host-global IDs
-beside namespace-relative ownership attributes, and SETACL installs
-named entries for whichever host-global principals share the wire
-IDs. The fs/nfs_common/nfsacl.c helpers these codecs replaced had
-the same mismatch.
+On Sun, 2 Aug 2026 at 21:58, Felix Hoffmann <f3lix.dev@gmx.de> wrote:
+>
+> The NFS server can clear setuid and setgid bits when CLONE modifies the
+> destination.  The client currently omits mode from the post-operation
+> attributes, so the cached mode can retain setid bits after the server has
+> removed them.  A local process can then execute the file using those stale
+> privilege bits.
+>
+> Request mode in the CLONE compound's GETATTR.  This lets the ordered
+> post-operation update install the server's mode before CLONE returns.
+>
+> Fixes: e5341f3a5762 ("nfs42: add CLONE proc functions")
+> Cc: stable@vger.kernel.org
+> Assisted-by: Codex:gpt-5
+> Signed-off-by: Felix Hoffmann <f3lix.dev@gmx.de>
+> ---
+> Tested on x86-64 using an NFSv4.2 loopback mount with Linux NFSD and a
+> Btrfs export:
+>
+>   - before this change, the client retained mode 04775 while the server
+>     stored mode 0775, and the privilege transition reproduced in 10/10
+>     non-debug runs
+>   - with this change, both client and server reported mode 0775 and no
+>     privilege transition occurred in 10/10 non-debug runs or 3/3 KASAN
+>     runs
+>
+> The reproducer requires write authorization to the destination; NFSD
+> rejected the same operation against a non-writable 04755 file with EACCES.
+> A working reproducer is available privately on request.
+>
+>  fs/nfs/nfs42proc.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+> index ab86246fc364..35a4909d51b7 100644
+> --- a/fs/nfs/nfs42proc.c
+> +++ b/fs/nfs/nfs42proc.c
+> @@ -1302,7 +1302,8 @@ static int _nfs42_proc_clone(struct rpc_message *msg, struct file *src_f,
+>                 return -ENOMEM;
+>
+>         nfs4_bitmask_set(dst_bitmask, server->cache_consistency_bitmask,
+> -                        dst_inode, NFS_INO_INVALID_BLOCKS);
+> +                        dst_inode,
+> +                        NFS_INO_INVALID_BLOCKS | NFS_INO_INVALID_MODE);
+>
+>         status = nfs4_call_sync(server->client, server, msg,
+>                                 &args.seq_args, &res.seq_res, 0);
 
-Translate every entry ID in the request's user namespace. On encode,
-use the munged variants so an ID with no mapping in that namespace is
-reported as overflowuid, as nfsd3_fill_post_op_attr() already does.
-On decode, an ID with no mapping fails the existing uid_valid() and
-gid_valid() checks, and the decoder reports the ACL as invalid.
+Felix, did you report this issue to other NFS client implementations,
+like FreeBSD or libnfs?
 
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- fs/nfsd/nfs3acl.c | 14 ++++++++------
- 1 file changed, 8 insertions(+), 6 deletions(-)
-
-diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
-index 70e685ba1167..b426b3e64df8 100644
---- a/fs/nfsd/nfs3acl.c
-+++ b/fs/nfsd/nfs3acl.c
-@@ -378,6 +378,7 @@ bool nfs_acl3_secattr_encode(struct xdrgen_aggregate_cursor *c,
- 			     struct aclent *out)
- {
- 	struct svc_rqst *rqstp = c->ctx;
-+	struct user_namespace *userns = nfsd_user_namespace(rqstp);
- 	struct GETACL3res_wrapper *resp = rqstp->rq_resp;
- 	bool dfacl = c->member_id == NFS_ACL3_SECATTR_DFACLENT;
- 	struct posix_acl *acl = dfacl ? resp->acl_default : resp->acl_access;
-@@ -404,16 +405,16 @@ bool nfs_acl3_secattr_encode(struct xdrgen_aggregate_cursor *c,
- 	out->type = tag | typeflag;
- 	switch (tag) {
- 	case ACL_USER_OBJ:
--		out->id = from_kuid(&init_user_ns, resp->uid);
-+		out->id = from_kuid_munged(userns, resp->uid);
- 		break;
- 	case ACL_GROUP_OBJ:
--		out->id = from_kgid(&init_user_ns, resp->gid);
-+		out->id = from_kgid_munged(userns, resp->gid);
- 		break;
- 	case ACL_USER:
--		out->id = from_kuid(&init_user_ns, entry->e_uid);
-+		out->id = from_kuid_munged(userns, entry->e_uid);
- 		break;
- 	case ACL_GROUP:
--		out->id = from_kgid(&init_user_ns, entry->e_gid);
-+		out->id = from_kgid_munged(userns, entry->e_gid);
- 		break;
- 	default:
- 		/*
-@@ -500,6 +501,7 @@ bool nfs_acl3_secattr_decode(struct xdrgen_aggregate_cursor *c,
- 			     const struct aclent *in)
- {
- 	struct svc_rqst *rqstp = c->ctx;
-+	struct user_namespace *userns = nfsd_user_namespace(rqstp);
- 	struct SETACL3args_wrapper *argp = rqstp->rq_argp;
- 	bool dfacl = c->member_id == NFS_ACL3_SECATTR_DFACLENT;
- 	struct posix_acl *acl = dfacl ? argp->acl_default : argp->acl_access;
-@@ -528,14 +530,14 @@ bool nfs_acl3_secattr_decode(struct xdrgen_aggregate_cursor *c,
- 	switch (entry->e_tag) {
- 	case ACL_USER:
- 		/* An id with no kernel mapping makes the ACL invalid. */
--		entry->e_uid = make_kuid(&init_user_ns, in->id);
-+		entry->e_uid = make_kuid(userns, in->id);
- 		if (!uid_valid(entry->e_uid)) {
- 			argp->invalid = true;
- 			return true;
- 		}
- 		break;
- 	case ACL_GROUP:
--		entry->e_gid = make_kgid(&init_user_ns, in->id);
-+		entry->e_gid = make_kgid(userns, in->id);
- 		if (!gid_valid(entry->e_gid)) {
- 			argp->invalid = true;
- 			return true;
+Ced
 -- 
-2.56.0
-
+Cedric Blancher <cedric.blancher@gmail.com>
+[https://plus.google.com/u/0/+CedricBlancher/]
+Institute Pasteur
