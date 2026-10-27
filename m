@@ -1,50 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793119535;
-	b=IufDODw5+lpTHbCVZD0fDpdqzSs016pPKkrGgUkEbEmg1py4y0gHFXNdKpRc9YFIEz1N
-	 Uvc3Je4wFIh+utNOJEBl9OX3HaGhiEhJDxqvhZMktqwBg0hL/3e+FahA1ns9de+15zIxl
-	 7Iw/r1bEQ/jjNQDwmGNNHPGYp+rM+Q3DgHXMNb0109L+sbmmMH3XRLzlobCnageRYzDg8
-	 y6n6Tsjh2hVFL+NZNAPWsErvE0UVPIPoBJnIg0k4N0q3S2wYBPn8e/+eQHVh8Apb8ZRky
-	 gP89a2RkmBVKknm+Ysk0M2MSvYBkSkODhgwsTdHwM65wi8wifXnSC5qqYOy5Myu1Liw==
+	t=1793119540;
+	b=dUn1KzpCeWFkaojguuxdWC1TAJ6B94urB0jAgKlrf/XAUZaaVPkf826x8FX7ZvE7jojb
+	 2EO4YHYFJvKGoks0qumpGLJZBWCVa0Aob71TXKgRgOVtiKGCjw8Vf0QFKvX5308UNnCBu
+	 BVRcqj5Ge6mhGOYcJgHXk6JUC9hHFncN2sKYIB/qQAu5NCdSEIWq/C8D7rLAh2ltn6aBZ
+	 SFmBCr/tYjUtJ2om17rDDcX2IzUkEwkInceodOYyt+w+Kj8VpL2e9o4aIWVlbreCh0An2
+	 56Xq5pCgphWgcB4fe34PuLFcnpZBgrmsdYCjxX2KCLCbJNqPvbw3Yp9T89yo4+HRqSw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793119535;
-	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
-	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
-	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=PGsZM7u08kBDzsq3JsRau31sMD5eNroObYlAR6vvhvc=;
-	b=ihpA8vyI1ovWJLtdEnRQcgKSPW8pvObW/Kg145ktYNpFnR4j3UpAFI3Q67H4S29jqK29
-	 CD8s4e+A8/yi6iqMUWAvxX0vF3k4u3Kal6Jj6iadUv02swhgomEobgBgOqQjw+Qbzo7qV
-	 o3I4Q8HzFJmNAgH7xAf1AdrovAtlDCNFANngJNeVu6CxctN8UoHTH7GimIh0tqfMNwkbz
-	 ERwbgR0fIDgz7cmuWcQJvgKPYRzpSqTKMg6ZkdlpAEV9S6RbpH8UrS+Q6OJ/fm+pC0HE5
-	 BWKrQoSgXpnQQ3sY310r/6C/89H4czT/x516Ju0kW6U85VXMmn9o3M1j/ld0sSg6/Bw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793119540;
+	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
+	 X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=GB8C8xwzyc/IL+AqJ93PS/uMKHHeD77qm1hgNww9A+k=;
+	b=0Js66aggM0uwcW+zk30OTdnmzX6lmX8kq6Ya0o9mKU09lqsrzr6dxvqanWnP2g1T4JiZ
+	 bNfFof28v+Ohtl0OmAn/3SFWUlBMDMMpHHQx1Pc90ncHBZP6OZI67zZKcGTGBL9iL40f2
+	 0BKFLgsZh1um33PC8npMLAXYjmuuOe6h/tClZEmXHRtX7gzGbl0N48sAMwmJ5a5zPYqPP
+	 HSohluRb62IO2gYQKn8xgPOOnddvkuOALGgjN0+lY+Y5J/RSXSZukIT6YzrPwe6Wm2oma
+	 llVlK1ucJLEvCXwKuK/mgVr/JOzdawG6C80NQr2QGXAYMgF9trZo4dJQevi3ZOpdyqw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aeGTj+fy;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mEukjEnx;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DDF4E606A31A;
-	Tue, 27 Oct 2026 16:45:34 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 954D860A2603;
+	Tue, 27 Oct 2026 16:45:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aeGTj+fy
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C01B51F01825;
-	Tue, 27 Oct 2026 16:45:32 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mEukjEnx
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 858E81F031E1;
+	Tue, 27 Oct 2026 16:45:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793119534;
-	bh=PGsZM7u08kBDzsq3JsRau31sMD5eNroObYlAR6vvhvc=;
-	h=From:Subject:Date:To:Cc;
-	b=aeGTj+fyDl4hV/f5XtV27vuCzdz+p6/moVu6zPnO5SslTX7EvASDhIlPoJN6FyfAh
-	 YxLEOLGdIevDAD9flchLImGUDOf/frCgvaoBCNy/r4nk5nN251Yc9EymOlIWkQqGxC
-	 72yxVG8k8hxfdul7jkH8yqgevzo+C58al1nn2ylQEtVbam9dFRiJ4L+iweEqfa7sXH
-	 iu/15qRrwX7+Z3Z2wyVwt98OS+izrcLN48Uyu5rtEu6HqATBYrmWpRrLfYSk4c/nPv
-	 OSl4/NW5MnjXLJ9RNXRrj9F/CksUSRm5Q7nX9ZUNYZEBibzCpRz/zMaNR8iEnuBrhF
-	 QxCgqt5TmqRwA==
+	s=k20260515; t=1793119540;
+	bh=GB8C8xwzyc/IL+AqJ93PS/uMKHHeD77qm1hgNww9A+k=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=mEukjEnxYMltTz1wAC8RoSbvvJie3CcwmSWnfZnPavnqROGsmE2q0cCiB6Ll/4XSm
+	 7yCyJqmm2hWSriYFGkXIXK0QrssyEbYrurzcOXa9ioMs468MJL8cNxwzT785XPuO/U
+	 a0iEzb11/sdnxUkYTLXPStjLFCT3XeiBU6gDgTvaCVgx8gQLKO/6FfrCVOhHcqX5KS
+	 cTtzfFlTqVjxECcefA8XQf42YiuwjHASAxFoSlJeRpyhcSTyjwx37ggJDUSRpShW+n
+	 jYQREKeKaDFY+A6hmVM5/SxXVEsYENLVXyfAeodNbzCHaX3R6Wgxln5pI6/vfIYQMH
+	 qrTkmhEMc55vg==
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH 0/6] nfsd: add new export options for controlling
- read/write iomode
-Date: Tue, 27 Oct 2026 12:45:23 -0400
-Message-Id: <20261027-export-iomode-v1-0-262ed932a036@kernel.org>
+Date: Tue, 27 Oct 2026 12:45:26 -0400
+Subject: [PATCH 3/6] NFSD: Document per-export riomode= and wiomode=
+ options
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -56,10 +55,9 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBMcI9GuEi0qp5pFGRohiHdPW
- r7F/xkiBaYIQ5Mh0MuR/VWBbQPrMV87CXbVoKTSKLETlG4fHsH+9I4ELr0m64w1CqE2d6CN0/8
- bp1I+haqgyl8AAAA=
-X-Change-ID: 20261013-export-iomode-1b56e9d89821
+Message-Id: <20261027-export-iomode-v1-3-262ed932a036@kernel.org>
+References: <20261027-export-iomode-v1-0-262ed932a036@kernel.org>
+In-Reply-To: <20261027-export-iomode-v1-0-262ed932a036@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>, Trond Myklebust <trondmy@kernel.org>, 
@@ -73,74 +71,69 @@ Cc: Steve Dickson <steved@redhat.com>, netdev@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, 
  linux-doc@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2474; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=BqM1sCZZyL9Y1KM+SrCA16ZGFxzt0cs/vuqpxotswZk=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq4NUqw4XsvML0QysKFUNy1jr5ilH2gCvGydELq
- 79euJX3S8SJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCauDVKgAKCRAADmhBGVaC
- FSq/D/9ahPYNnHFC04PHIlvDgTI/gL3psd3jVQXtCsAYkauGUU27tIYoA0zqPUM+5AkeFxWsBYf
- HZNWNKNHgQyQnzHzEpLw9XAncVxpLmu16fSXGDy0IDuht5HlVjvEJHyrmSSTVlA9Nh81G/FVQef
- RGA1Y84RZG2eiV7Jwam7OEeWg1o7/bXgfPg8Aw23rmV0ERgA8wRDPScyGhB1McGOug3mRVj0Pes
- igi28376ACw29mYBMtikYd4pK38VegPQB6VBXtfEdj/sz0DQ1H6HL9LuitMDjuTBg30LZZctGtM
- 9n1i0EgGAwCJrliScNLP8wrGAPICfMTnE6rbekjI2K8bm9UCTLHsLKcGmZVRjcoaB1jTgs+QXLM
- JObVhEHV+B8CyMeBO0I6UaE3FhoM4CIMRvOCZh8EFEFL+USfkAO6IGJ108C7NFZJfTqZw6RRyDG
- 8poGt0DB96xuydpPc1hMz+HEfJUrY79TAaTjDpOUDkU9t6cGaZylZgA7sanFbRXgfThX5irEKBx
- BL8wHwgWL2sbMQEXihJsJhCAynnUq+pZ6yiR3ARCHUEe7senxKgx8oaw8e21Z4vNiNivyK+ywj0
- CCQZTzT/auHeHBU1emZ1FWT8aro9M4ZZR0h4qh6lp8c7KpTD9Wx4aKiDHYU3s7X1O+SBPXMqzJ3
- XcNPE6u4Y04Y5YA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1817; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=tID4IlMuFhv5yZcgOANZ4uc88Bl+HXEK9e9IOMUPHv4=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq4NUr5gZE1rmlenWxSejnj76cZJIYlfvQgIIUU
+ uamQ+rnZfiJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCauDVKwAKCRAADmhBGVaC
+ FXHCD/sHz2MdswliBO2lFn2K+F8f6SxCuRrCMpsmCLSwMPx+8B998ElmkKyBUMDZq424ga4b0Wm
+ VwKnGp5WnXa4mudKwQZE43NniGX+DgpGTVIhjeruha0L21rnqz82ffy7JrGd7bsj4zBfdD4yEZl
+ NmWbD7EfYoSvYwZZ7lyHyQxGDLC3vWo45uQK14r/Y/lVFtrDhlA9SXJv5+iP0pBMZ+mgtgq8lyp
+ diK/CMLAiKYjLFohF7ql9YSMSZ3K/+HEkSLMusSqy1T+KHZlD5My2cAuD+4BFqR3fNvbHipLTMk
+ /ZwRW0nT552accSs0CbvEv4EJLREBlLwqGGGTUDYQNF5mCQr+Ez5LsqTNijn4YQvjrRd7T3ff2p
+ sxqT1yeUB9g63QM2Z+ZV4FvY0sPv0YisA/K0Pm5N/zJRM5v5K8dEnXBkKPj2p8s/jfQ2IVXMace
+ D/MDajG6CI8Re4SjgaQIol5DblNRxrHPJGFJZUBljixOyLr/gwZfwCOEj5l6eiVR2xBkl8unpac
+ 6TNLnqI9wstOH8yJ9ehDHS/doHBpQUaAU69Yo0AKC8y35c97x1CirUahXADLpZTtF4ICVgxc0YR
+ 5Jo1II0WaCj62RA3MNNavNZ8JG4/SddckuPek4Issjnz9ozBtpRLCGMQGrmR1IWk/Diworj2ABW
+ mhQbOPrvkBND8Jw==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-When we originally added support for the dontcache and direct iomodes to
-nfsd, we added global debugfs switches to control them. That was fine for
-experimentation but the goal was always to move these controls to
-something more permanent.
-
-This patch series adds a new set of riomode= and wiomode= export
-options. With this, we can set the read and write iomode on a per-export
-basis to either buffered, direct or dontcache.
-
-The debugfs knobs stick around and govern the default iomode when it's
-not set on the export. Eventually these controls should also be moved to
-something more permanent (or maybe just be removed), but I've left that
-as a future change.
-
-The last patch adds new documentation that attempts to give the admin
-some guidance on choosing r/wiomode settings.
-
-A companion nfs-utils patchset will follow that adds support for these
-options to exportfs/mountd, and adds a new script to help users choose
-iomode settings.
+Describe the new export options and their precedence over the global
+debugfs knobs.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
-Jeff Layton (6):
-      NFSD: Add per-export read/write I/O mode settings
-      NFSD: Apply per-export I/O modes to READ and WRITE
-      NFSD: Document per-export riomode= and wiomode= options
-      NFSD: Keep per-export statistics across export cache updates
-      NFSD: Count the storage reads of each export's READs
-      NFSD: Document how to choose an IO mode
+ Documentation/filesystems/nfs/nfsd-io-modes.rst | 26 +++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
 
- Documentation/filesystems/nfs/nfsd-io-modes.rst | 194 +++++++++++++++++
- Documentation/netlink/specs/nfsd.yaml           |  24 +++
- fs/nfsd/debugfs.c                               |   6 +-
- fs/nfsd/export.c                                | 268 +++++++++++++++++++++---
- fs/nfsd/export.h                                |  19 ++
- fs/nfsd/netlink.c                               |   4 +-
- fs/nfsd/netlink.h                               |   2 +-
- fs/nfsd/netns.h                                 |   6 +
- fs/nfsd/nfs4xdr.c                               |   6 +-
- fs/nfsd/nfsd.h                                  |  17 +-
- fs/nfsd/stats.h                                 |  33 +++
- fs/nfsd/vfs.c                                   |  59 +++++-
- fs/nfsd/vfs.h                                   |   2 +
- include/uapi/linux/nfsd_netlink.h               |  12 ++
- 14 files changed, 599 insertions(+), 53 deletions(-)
----
-base-commit: fa65fd6d503d4e965ae27b1a75969e097569390a
-change-id: 20261013-export-iomode-1b56e9d89821
+diff --git a/Documentation/filesystems/nfs/nfsd-io-modes.rst b/Documentation/filesystems/nfs/nfsd-io-modes.rst
+index f06fa1b9d406..6b29275e9128 100644
+--- a/Documentation/filesystems/nfs/nfsd-io-modes.rst
++++ b/Documentation/filesystems/nfs/nfsd-io-modes.rst
+@@ -41,6 +41,32 @@ corresponding IO operation's debugfs interface, e.g.::
+ If you experiment with NFSD's IO modes on a recent kernel and have
+ interesting results, please report them to linux-nfs@vger.kernel.org
+ 
++NFSD PER-EXPORT IO MODES
++========================
++
++In addition to the global debugfs knobs above, the IO mode may be set
++independently for each export via the ``riomode=`` and ``wiomode=``
++export options, e.g.::
++
++  /srv/data  client(ro,riomode=direct,wiomode=dontcache)
++
++Each option accepts one of ``buffered``, ``dontcache``, or ``direct``,
++with the same meanings as the corresponding debugfs values.
++
++An export without an explicit ``riomode=`` (or ``wiomode=``) setting
++follows the global ``io_cache_read`` (or ``io_cache_write``) knob, so
++the effective default for both reads and writes remains buffered IO.
++An explicit per-export setting pins that export's IO mode regardless
++of the global knob.
++
++As with the global setting, a read IO mode of ``dontcache`` or
++``direct`` disables the use of splice for reads via that export.
++
++The per-export settings are reported in
++/proc/net/rpc/nfsd.export/content, e.g.::
++
++  /srv/data  client(...,riomode=direct,wiomode=dontcache)
++
+ NFSD DONTCACHE
+ ==============
+ 
 
-Best regards,
 -- 
-Jeff Layton <jlayton@kernel.org>
+2.56.0
 
