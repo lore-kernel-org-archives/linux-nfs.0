@@ -1,55 +1,55 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=113.46.200.216
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=113.46.200.218
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793101156;
-	b=EsmWmTeeanEspkkTGcQQNJGEjMnZ4XLxsBWFmWHtUjkVjC2KS3gyze5nKmSAqSZeBHcf
-	 UlPnjo/Kk2AICtWkYyJs9fYaD3oY2/JUpS9XnhRnXDot34jw9louc0AyDrnYLs7u/spB0
-	 LPzeERJqvA5taxBPMCUwoz2pt7ipQMbVaBHK5As2WwykKVPyXuYUaUGj2rpJKPEuVl5t2
-	 Hl14RIsQupxBU+O2icsVt/9KBcQLr/wXOJJ98LLkHQVV0CHwElkvO09SGAxrKHdoNYCdN
-	 qUD77+614i7JkMIyna00+CedUQY0bm6IlY9fyi6pgbb1jDuLfPGStkJfToLVmEXzBTg==
+	t=1793101146;
+	b=NHZ9VNrR3/zhkgaiF7SaALieAGTPKs+sYiaw6fJBpH8RxqkIcKWKQW53AVoZQi6mSol4
+	 Ydaip/GEEgkqu6Ei+DRZk8eDJ+KOXbGxp9xbBbTDX6HKxUGuf0zhTqE84y/UaeRI+XOGL
+	 5jUaw2NP4HWjVrlO4gOOxnIIyvu8ZezkqUQsDxckO22rq+FBa3ufnghXUwoYqhxj6j+Uv
+	 0Q+2jqrSs2dfaC3uCHYNUYoP7esXARj0NCZRnHQjX72PAwzu3mMzwhbiqXm53DwjBKAvJ
+	 YiAAjoSArzy1gayNrtjyo1tvONN3vmtTaDU4XFwgUltqH3C+mzG2oGitxSvptXqLuVA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793101156;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793101146;
 	h=DMARC-Filter:dkim-signature:Received:Received:Received:From:To:CC:
 	 Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Type:X-Originating-IP:X-ClientProxiedBy;
-	bh=pbtF9rHOBMB76Zrz7Y2+clA84G2qSGU1yDHvsoJ3Byk=;
-	b=umJg8ZdOVTE/iT2nsnDMOobKMsBoSc00fvHTO3mY/zWu8lDopFmA3xf3g0HKAXtxaIZz
-	 2LwdEjin0iLsZxMUJ+5cw8tRHURC9adV52VtYsoAkJ4xLAPQ01IfRf9FOuaIctCCJzt1t
-	 iBtGo1g9TtmZh2rB1R02v/9J8szakuipdjczpaCd7lx8cNjvh5DoKD+eZnvZIrw7jnkcT
-	 ZuaPtNqsNuOGokF4Z6c+I71MGJ7hTehqWS0g+ZJy3dBehyw+PHAIOqD5jxs6Acohe6qpR
-	 uh0lg1JLVhwxwLlw53Fur8ZgBVDcCyqpIqh9MSjHPKs1TAU9eiVno9u3a2r7peS2zvw==
+	bh=YJLumQG4zZfTPvuSJgxE/h6tSrN687TQmidzif2KOyU=;
+	b=Ex1E6dPUNY99eDl9YVSuwE35lJqgOLUNo0sMVQzqLEi4Ro1/hnEIGWTzkQreUUJCSfXd
+	 QG3ErWldF0kgQzkO5b46V/FawoFwPvT7JDp4dZqQXAj6XukNIY/GhqH5UPtV0sFD0OkxD
+	 v6qqz8rF1MqkH5UTrJ23mqLOibVRZEkK8k3YifdmZ9qSHwsyoumScrEez/4noD/MuaWha
+	 qWDjvaKyUtT5B8imeRZdcttrgVRUG3dHN4NCS7EgEYhf4VNRX78lvWCVqZH04Gz//rnUZ
+	 Vzne2Sa393gLDTEh1aqu5QPc+eutQCIQ+8sNEGWreiKsijpDqbf8bAecGj4Z7ajYHMw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=huawei.com;
 	spf=pass smtp.mailfrom=huawei.com;
-	dkim=pass header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=iGtuxZLm;
-	arc=none smtp.remote-ip=113.46.200.216
-Received: from canpmsgout01.his.huawei.com (canpmsgout01.his.huawei.com [113.46.200.216])
+	dkim=pass header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=f4BADt5A;
+	arc=none smtp.remote-ip=113.46.200.218
+Received: from canpmsgout03.his.huawei.com (canpmsgout03.his.huawei.com [113.46.200.218])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A44C1606A329;
-	Tue, 27 Oct 2026 11:39:15 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org A44C1606A329
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F034E606A338;
+	Tue, 27 Oct 2026 11:39:04 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org F034E606A338
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=iGtuxZLm
+	dkim=pass (1024-bit key, unprotected) header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=f4BADt5A
 dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
 	c=relaxed/relaxed; q=dns/txt;
 	h=From;
-	bh=pbtF9rHOBMB76Zrz7Y2+clA84G2qSGU1yDHvsoJ3Byk=;
-	b=iGtuxZLm4EpMl/0QJL+e3PpLOHmpOizN9lihGl/Ajtg2/cG20t9R7s0iT6wOd+U6aqa65BWDp
-	/Q90U+dHJyViooI3rOWF/ZEGJq1Hd+sEnoXkX7l6d5ZE3YuUF8F15ysI7w57ahz3SVLmqyA+Mws
-	/TXMFA+SkiNNl2Y0Wl0QGwc=
-Received: from mail.maildlp.com (unknown [172.19.162.197])
-	by canpmsgout01.his.huawei.com (SkyGuard) with ESMTPS id 4jDT6J5k81z1T4G1;
-	Tue, 27 Oct 2026 19:39:04 +0800 (CST)
+	bh=YJLumQG4zZfTPvuSJgxE/h6tSrN687TQmidzif2KOyU=;
+	b=f4BADt5ATbNEjliZle7M5BZ0Tu4lnABZbBxaRIwfeiPiXyKKt25EkCHWnBzmE3P7hMoJApx+G
+	kiv80GQRJ0OgM4ke2WBtp/WHo0L4SpwBlm6IMGjHjllHdXzKwgAVJb0VJTrsgC7YdQfnpuk+i43
+	mjib9GSjJLrmTKHySL8cQ+M=
+Received: from mail.maildlp.com (unknown [172.19.163.104])
+	by canpmsgout03.his.huawei.com (SkyGuard) with ESMTPS id 4jDT636JRKzpStY;
+	Tue, 27 Oct 2026 19:38:51 +0800 (CST)
 Received: from whupemk100010.china.huawei.com (unknown [7.152.184.41])
-	by mail.maildlp.com (Postfix) with ESMTPS id 276E24057D;
-	Tue, 27 Oct 2026 19:39:13 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id C57DC4058F;
+	Tue, 27 Oct 2026 19:39:02 +0800 (CST)
 Received: from octopus.huawei.com (10.67.174.191) by
  whupemk100010.china.huawei.com (7.152.184.41) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.2562.45; Tue, 27 Oct 2026 19:39:07 +0800
+ 15.2.2562.45; Tue, 27 Oct 2026 19:38:57 +0800
 From: Cai Xinchen <caixinchen1@huawei.com>
 To: <mic@digikod.net>, <gnoack@google.com>, <paul@paul-moore.com>,
 	<jmorris@namei.org>, <serge@hallyn.com>, <corbet@lwn.net>,
@@ -88,9 +88,9 @@ CC: <ast@kernel.org>, <daniel@iogearbox.net>, <andrii@kernel.org>,
 	<linux-trace-kernel@vger.kernel.org>, <apparmor@lists.ubuntu.com>,
 	<linux-integrity@vger.kernel.org>, <selinux@vger.kernel.org>,
 	<linux-kselftest@vger.kernel.org>
-Subject: [PATCH v3 -next 14/18] LSM: rename inode_setsecctx to path_setsecctx
-Date: Tue, 27 Oct 2026 20:11:47 +0800
-Message-ID: <20261027121151.1887650-15-caixinchen1@huawei.com>
+Subject: [PATCH v3 -next 12/18] LSM: rename the inode posix acl hooks to path_*_acl hooks
+Date: Tue, 27 Oct 2026 20:11:45 +0800
+Message-ID: <20261027121151.1887650-13-caixinchen1@huawei.com>
 X-Mailer: git-send-email 2.18.0.huawei.25
 In-Reply-To: <20261027121151.1887650-1-caixinchen1@huawei.com>
 References: <20261027121151.1887650-1-caixinchen1@huawei.com>
@@ -107,143 +107,496 @@ Content-Type: text/plain
 X-ClientProxiedBy: kwepems500002.china.huawei.com (7.221.188.17) To
  whupemk100010.china.huawei.com (7.152.184.41)
 
-The inode_setsecctx hook receives a struct path, so rename it to
-path_setsecctx to follow the path_* naming convention used for the
+The inode_set_acl, inode_get_acl and inode_remove_acl hooks receive a
+struct path, so rename them to path_set_acl, path_get_acl and
+path_remove_acl to follow the path_* naming convention used for the
 other hooks that take a struct path (path_chmod, path_chown, ...).
-Rename the security_inode_setsecctx() inline wrapper to
-security_path_setsecctx() and the SELinux and Smack implementations
-accordingly.
+Rename the security_inode_*_acl() inline wrappers to
+security_path_*_acl() and the SELinux, Smack, EVM and IMA
+implementations accordingly.  The inode_post_set_acl and
+inode_post_remove_acl notification hooks still take a dentry and keep
+their names.
 
 Signed-off-by: Cai Xinchen <caixinchen1@huawei.com>
 ---
- fs/nfsd/vfs.c                 | 2 +-
- include/linux/lsm_hook_defs.h | 2 +-
- include/linux/security.h      | 4 ++--
- security/security.c           | 8 ++++----
- security/selinux/hooks.c      | 4 ++--
- security/smack/smack_lsm.c    | 4 ++--
- 6 files changed, 12 insertions(+), 12 deletions(-)
+ fs/posix_acl.c                        |  6 ++--
+ include/linux/lsm_hook_defs.h         |  6 ++--
+ include/linux/security.h              | 44 +++++++++++++--------------
+ security/integrity/evm/evm_main.c     | 26 ++++++++--------
+ security/integrity/ima/ima_appraise.c | 20 ++++++------
+ security/security.c                   | 32 +++++++++----------
+ security/selinux/hooks.c              | 26 ++++++++--------
+ security/smack/smack_lsm.c            | 32 +++++++++----------
+ 8 files changed, 96 insertions(+), 96 deletions(-)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 870756842882..3362ac3e1a41 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -628,7 +628,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 			break;
- 	}
- 	if (attr->na_seclabel && attr->na_seclabel->len)
--		attr->na_labelerr = security_inode_setsecctx(&path,
-+		attr->na_labelerr = security_path_setsecctx(&path,
- 			attr->na_seclabel->data, attr->na_seclabel->len);
- 	if (IS_ENABLED(CONFIG_FS_POSIX_ACL) && attr->na_dpacl) {
- 		if (!S_ISDIR(inode->i_mode))
+diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+index 487e17e91e2b..5feeb651fa85 100644
+--- a/fs/posix_acl.c
++++ b/fs/posix_acl.c
+@@ -1130,7 +1130,7 @@ int vfs_set_acl(const struct mnt_idmap *idmap, const struct path *path,
+ 	if (error)
+ 		goto out_inode_unlock;
+ 
+-	error = security_inode_set_acl(idmap, path, acl_name, kacl, file);
++	error = security_path_set_acl(idmap, path, acl_name, kacl, file);
+ 	if (error)
+ 		goto out_inode_unlock;
+ 
+@@ -1189,7 +1189,7 @@ struct posix_acl *vfs_get_acl(const struct mnt_idmap *idmap,
+ 	 * The VFS has no restrictions on reading POSIX ACLs so calling
+ 	 * something like xattr_permission() isn't needed. Only LSMs get a say.
+ 	 */
+-	error = security_inode_get_acl(idmap, path, acl_name, file);
++	error = security_path_get_acl(idmap, path, acl_name, file);
+ 	if (error)
+ 		return ERR_PTR(error);
+ 
+@@ -1243,7 +1243,7 @@ int vfs_remove_acl(const struct mnt_idmap *idmap, const struct path *path,
+ 	if (error)
+ 		goto out_inode_unlock;
+ 
+-	error = security_inode_remove_acl(idmap, path, acl_name, file);
++	error = security_path_remove_acl(idmap, path, acl_name, file);
+ 	if (error)
+ 		goto out_inode_unlock;
+ 
 diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
-index 683c4d7a8024..5b25077d17e5 100644
+index 4f3d19bf4644..7602a3074375 100644
 --- a/include/linux/lsm_hook_defs.h
 +++ b/include/linux/lsm_hook_defs.h
-@@ -334,7 +334,7 @@ LSM_HOOK(int, 0, inode_notifysecctx, struct inode *inode, void *ctx, u32 ctxlen)
-  * taking a struct path; the VFS makes no guarantees with regard to
-  * @path->mnt.
-  */
--LSM_HOOK(int, 0, inode_setsecctx, const struct path *path, void *ctx, u32 ctxlen)
-+LSM_HOOK(int, 0, path_setsecctx, const struct path *path, void *ctx, u32 ctxlen)
- LSM_HOOK(int, -EOPNOTSUPP, inode_getsecctx, struct inode *inode,
- 	 struct lsm_context *cp)
- 
+@@ -173,15 +173,15 @@ LSM_HOOK(int, 0, inode_file_setattr, const struct path *path,
+ 	 struct file_kattr *fa, struct file *file)
+ LSM_HOOK(int, 0, inode_file_getattr, const struct path *path,
+ 	 struct file_kattr *fa, struct file *file)
+-LSM_HOOK(int, 0, inode_set_acl, const struct mnt_idmap *idmap,
++LSM_HOOK(int, 0, path_set_acl, const struct mnt_idmap *idmap,
+ 	 const struct path *path, const char *acl_name,
+ 	 struct posix_acl *kacl, struct file *file)
+ LSM_HOOK(void, LSM_RET_VOID, inode_post_set_acl, struct dentry *dentry,
+ 	 const char *acl_name, struct posix_acl *kacl)
+-LSM_HOOK(int, 0, inode_get_acl, const struct mnt_idmap *idmap,
++LSM_HOOK(int, 0, path_get_acl, const struct mnt_idmap *idmap,
+ 	 const struct path *path, const char *acl_name,
+ 	 struct file *file)
+-LSM_HOOK(int, 0, inode_remove_acl, const struct mnt_idmap *idmap,
++LSM_HOOK(int, 0, path_remove_acl, const struct mnt_idmap *idmap,
+ 	 const struct path *path, const char *acl_name,
+ 	 struct file *file)
+ LSM_HOOK(void, LSM_RET_VOID, inode_post_remove_acl, const struct mnt_idmap *idmap,
 diff --git a/include/linux/security.h b/include/linux/security.h
-index edba134db8f6..cf683b89737b 100644
+index afbc12c6e614..305b92c0494c 100644
 --- a/include/linux/security.h
 +++ b/include/linux/security.h
-@@ -597,7 +597,7 @@ int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
- void security_release_secctx(struct lsm_context *cp);
- void security_inode_invalidate_secctx(struct inode *inode);
- int security_inode_notifysecctx(struct inode *inode, void *ctx, u32 ctxlen);
--int security_inode_setsecctx(const struct path *path, void *ctx, u32 ctxlen);
-+int security_path_setsecctx(const struct path *path, void *ctx, u32 ctxlen);
- int security_inode_getsecctx(struct inode *inode, struct lsm_context *cp);
- int security_locked_down(enum lockdown_reason what);
- int lsm_fill_user_ctx(struct lsm_ctx __user *uctx, u32 *uctx_len,
-@@ -1649,7 +1649,7 @@ static inline int security_inode_notifysecctx(struct inode *inode, void *ctx, u3
- {
- 	return -EOPNOTSUPP;
+@@ -440,17 +440,17 @@ int security_path_setxattr(const struct mnt_idmap *idmap,
+ 			   const struct path *path, const char *name,
+ 			   const void *value, size_t size, int flags,
+ 			   struct file *file);
+-int security_inode_set_acl(const struct mnt_idmap *idmap,
+-			   const struct path *path, const char *acl_name,
+-			   struct posix_acl *kacl, struct file *file);
++int security_path_set_acl(const struct mnt_idmap *idmap,
++			  const struct path *path, const char *acl_name,
++			  struct posix_acl *kacl, struct file *file);
+ void security_inode_post_set_acl(struct dentry *dentry, const char *acl_name,
+ 				 struct posix_acl *kacl);
+-int security_inode_get_acl(const struct mnt_idmap *idmap,
+-			   const struct path *path, const char *acl_name,
+-			   struct file *file);
+-int security_inode_remove_acl(const struct mnt_idmap *idmap,
+-			      const struct path *path, const char *acl_name,
+-			      struct file *file);
++int security_path_get_acl(const struct mnt_idmap *idmap,
++			  const struct path *path, const char *acl_name,
++			  struct file *file);
++int security_path_remove_acl(const struct mnt_idmap *idmap,
++			     const struct path *path, const char *acl_name,
++			     struct file *file);
+ void security_inode_post_remove_acl(const struct mnt_idmap *idmap,
+ 				    struct dentry *dentry,
+ 				    const char *acl_name);
+@@ -1030,11 +1030,11 @@ static inline int security_path_setxattr(const struct mnt_idmap *idmap,
+ 	return cap_inode_setxattr(path, name, value, size, flags, file);
  }
--static inline int security_inode_setsecctx(const struct path *path, void *ctx, u32 ctxlen)
-+static inline int security_path_setsecctx(const struct path *path, void *ctx, u32 ctxlen)
+ 
+-static inline int security_inode_set_acl(const struct mnt_idmap *idmap,
+-					 const struct path *path,
+-					 const char *acl_name,
+-					 struct posix_acl *kacl,
+-					 struct file *file)
++static inline int security_path_set_acl(const struct mnt_idmap *idmap,
++				       const struct path *path,
++				       const char *acl_name,
++				       struct posix_acl *kacl,
++				       struct file *file)
  {
- 	return -EOPNOTSUPP;
+ 	return 0;
  }
+@@ -1044,18 +1044,18 @@ static inline void security_inode_post_set_acl(struct dentry *dentry,
+ 					       struct posix_acl *kacl)
+ { }
+ 
+-static inline int security_inode_get_acl(const struct mnt_idmap *idmap,
+-					 const struct path *path,
+-					 const char *acl_name,
+-					 struct file *file)
++static inline int security_path_get_acl(const struct mnt_idmap *idmap,
++				       const struct path *path,
++				       const char *acl_name,
++				       struct file *file)
+ {
+ 	return 0;
+ }
+ 
+-static inline int security_inode_remove_acl(const struct mnt_idmap *idmap,
+-					    const struct path *path,
+-					    const char *acl_name,
+-					    struct file *file)
++static inline int security_path_remove_acl(const struct mnt_idmap *idmap,
++					  const struct path *path,
++					  const char *acl_name,
++					  struct file *file)
+ {
+ 	return 0;
+ }
+diff --git a/security/integrity/evm/evm_main.c b/security/integrity/evm/evm_main.c
+index 025606fe5fe8..a0702eeba02b 100644
+--- a/security/integrity/evm/evm_main.c
++++ b/security/integrity/evm/evm_main.c
+@@ -8,7 +8,7 @@
+  *
+  * File: evm_main.c
+  *	implements evm_path_setxattr, evm_inode_post_setxattr,
+- *	evm_path_removexattr, evm_verifyxattr, and evm_inode_set_acl.
++ *	evm_path_removexattr, evm_verifyxattr, and evm_path_set_acl.
+  */
+ 
+ #define pr_fmt(fmt) "EVM: "fmt
+@@ -689,7 +689,7 @@ static inline int evm_inode_set_acl_change(const struct mnt_idmap *idmap,
+ #endif
+ 
+ /**
+- * evm_inode_set_acl - protect the EVM extended attribute from posix acls
++ * evm_path_set_acl - protect the EVM extended attribute from posix acls
+  * @idmap: idmap of the mount
+  * @path: pointer to the affected object
+  * @acl_name: name of the posix acl
+@@ -702,10 +702,10 @@ static inline int evm_inode_set_acl_change(const struct mnt_idmap *idmap,
+  *
+  * Return: zero on success, -EPERM on failure.
+  */
+-static int evm_inode_set_acl(const struct mnt_idmap *idmap,
+-			     const struct path *path,
+-			     const char *acl_name, struct posix_acl *kacl,
+-			     struct file *file)
++static int evm_path_set_acl(const struct mnt_idmap *idmap,
++			    const struct path *path,
++			    const char *acl_name, struct posix_acl *kacl,
++			    struct file *file)
+ {
+ 	enum integrity_status evm_status;
+ 	struct dentry *dentry = path->dentry;
+@@ -746,7 +746,7 @@ static int evm_inode_set_acl(const struct mnt_idmap *idmap,
+ }
+ 
+ /**
+- * evm_inode_remove_acl - Protect the EVM extended attribute from posix acls
++ * evm_path_remove_acl - Protect the EVM extended attribute from posix acls
+  * @idmap: idmap of the mount
+  * @path: pointer to the affected object
+  * @acl_name: name of the posix acl
+@@ -758,11 +758,11 @@ static int evm_inode_set_acl(const struct mnt_idmap *idmap,
+  *
+  * Return: zero on success, -EPERM on failure.
+  */
+-static int evm_inode_remove_acl(const struct mnt_idmap *idmap,
+-				const struct path *path,
+-				const char *acl_name, struct file *file)
++static int evm_path_remove_acl(const struct mnt_idmap *idmap,
++			       const struct path *path,
++			       const char *acl_name, struct file *file)
+ {
+-	return evm_inode_set_acl(idmap, path, acl_name, NULL, file);
++	return evm_path_set_acl(idmap, path, acl_name, NULL, file);
+ }
+ 
+ static void evm_reset_status(struct inode *inode)
+@@ -1217,9 +1217,9 @@ static struct security_hook_list evm_hooks[] __ro_after_init = {
+ 	LSM_HOOK_INIT(inode_copy_up_xattr, evm_inode_copy_up_xattr),
+ 	LSM_HOOK_INIT(path_setxattr, evm_path_setxattr),
+ 	LSM_HOOK_INIT(inode_post_setxattr, evm_inode_post_setxattr),
+-	LSM_HOOK_INIT(inode_set_acl, evm_inode_set_acl),
++	LSM_HOOK_INIT(path_set_acl, evm_path_set_acl),
+ 	LSM_HOOK_INIT(inode_post_set_acl, evm_inode_post_set_acl),
+-	LSM_HOOK_INIT(inode_remove_acl, evm_inode_remove_acl),
++	LSM_HOOK_INIT(path_remove_acl, evm_path_remove_acl),
+ 	LSM_HOOK_INIT(inode_post_remove_acl, evm_inode_post_remove_acl),
+ 	LSM_HOOK_INIT(path_removexattr, evm_path_removexattr),
+ 	LSM_HOOK_INIT(inode_post_removexattr, evm_inode_post_removexattr),
+diff --git a/security/integrity/ima/ima_appraise.c b/security/integrity/ima/ima_appraise.c
+index c701dce1e837..8b12f73afa62 100644
+--- a/security/integrity/ima/ima_appraise.c
++++ b/security/integrity/ima/ima_appraise.c
+@@ -795,10 +795,10 @@ static int ima_path_setxattr(const struct mnt_idmap *idmap,
+ 	return result;
+ }
+ 
+-static int ima_inode_set_acl(const struct mnt_idmap *idmap,
+-			     const struct path *path,
+-			     const char *acl_name, struct posix_acl *kacl,
+-			     struct file *file)
++static int ima_path_set_acl(const struct mnt_idmap *idmap,
++			   const struct path *path,
++			   const char *acl_name, struct posix_acl *kacl,
++			   struct file *file)
+ {
+ 	if (evm_revalidate_status(acl_name))
+ 		ima_reset_appraise_flags(d_backing_inode(path->dentry), -1);
+@@ -823,19 +823,19 @@ static int ima_path_removexattr(const struct mnt_idmap *idmap,
+ 	return result;
+ }
+ 
+-static int ima_inode_remove_acl(const struct mnt_idmap *idmap,
+-				 const struct path *path,
+-				 const char *acl_name, struct file *file)
++static int ima_path_remove_acl(const struct mnt_idmap *idmap,
++				const struct path *path,
++				const char *acl_name, struct file *file)
+ {
+-	return ima_inode_set_acl(idmap, path, acl_name, NULL, file);
++	return ima_path_set_acl(idmap, path, acl_name, NULL, file);
+ }
+ 
+ static struct security_hook_list ima_appraise_hooks[] __ro_after_init = {
+ 	LSM_HOOK_INIT(inode_post_setattr, ima_inode_post_setattr),
+ 	LSM_HOOK_INIT(path_setxattr, ima_path_setxattr),
+-	LSM_HOOK_INIT(inode_set_acl, ima_inode_set_acl),
++	LSM_HOOK_INIT(path_set_acl, ima_path_set_acl),
+ 	LSM_HOOK_INIT(path_removexattr, ima_path_removexattr),
+-	LSM_HOOK_INIT(inode_remove_acl, ima_inode_remove_acl),
++	LSM_HOOK_INIT(path_remove_acl, ima_path_remove_acl),
+ };
+ 
+ void __init init_ima_appraise_lsm(const struct lsm_id *lsmid)
 diff --git a/security/security.c b/security/security.c
-index 919763c61994..fa14bf5dd036 100644
+index bca46f5444bd..13778c83fd3a 100644
 --- a/security/security.c
 +++ b/security/security.c
-@@ -4131,7 +4131,7 @@ int security_inode_notifysecctx(struct inode *inode, void *ctx, u32 ctxlen)
- EXPORT_SYMBOL(security_inode_notifysecctx);
- 
- /**
-- * security_inode_setsecctx() - Change the security label of an inode
-+ * security_path_setsecctx() - Change the security label of an inode
-  * @path: inode (the VFS makes no guarantees with regard to @path->mnt)
-  * @ctx: secctx
-  * @ctxlen: length of secctx
-@@ -4146,11 +4146,11 @@ EXPORT_SYMBOL(security_inode_notifysecctx);
-  *
-  * Return: Returns 0 on success, error on failure.
-  */
--int security_inode_setsecctx(const struct path *path, void *ctx, u32 ctxlen)
-+int security_path_setsecctx(const struct path *path, void *ctx, u32 ctxlen)
- {
--	return call_int_hook(inode_setsecctx, path, ctx, ctxlen);
-+	return call_int_hook(path_setsecctx, path, ctx, ctxlen);
+@@ -1969,7 +1969,7 @@ int security_path_setxattr(const struct mnt_idmap *idmap,
  }
--EXPORT_SYMBOL(security_inode_setsecctx);
-+EXPORT_SYMBOL(security_path_setsecctx);
  
  /**
-  * security_inode_getsecctx() - Get the security label of an inode
+- * security_inode_set_acl() - Check if setting posix acls is allowed
++ * security_path_set_acl() - Check if setting posix acls is allowed
+  * @idmap: idmap of the mount
+  * @path: file (the VFS makes no guarantees with regard to @path->mnt)
+  * @acl_name: acl name
+@@ -1981,14 +1981,14 @@ int security_path_setxattr(const struct mnt_idmap *idmap,
+  *
+  * Return: Returns 0 if permission is granted.
+  */
+-int security_inode_set_acl(const struct mnt_idmap *idmap,
+-			   const struct path *path, const char *acl_name,
+-			   struct posix_acl *kacl, struct file *file)
++int security_path_set_acl(const struct mnt_idmap *idmap,
++			  const struct path *path, const char *acl_name,
++			  struct posix_acl *kacl, struct file *file)
+ {
+ 	if (unlikely(IS_PRIVATE(d_backing_inode(path->dentry))))
+ 		return 0;
+-	return call_int_hook(inode_set_acl, idmap, path, acl_name, kacl,
+-			       file);
++	return call_int_hook(path_set_acl, idmap, path, acl_name, kacl,
++			     file);
+ }
+ 
+ /**
+@@ -2009,7 +2009,7 @@ void security_inode_post_set_acl(struct dentry *dentry, const char *acl_name,
+ }
+ 
+ /**
+- * security_inode_get_acl() - Check if reading posix acls is allowed
++ * security_path_get_acl() - Check if reading posix acls is allowed
+  * @idmap: idmap of the mount
+  * @path: file (the VFS makes no guarantees with regard to @path->mnt)
+  * @acl_name: acl name
+@@ -2020,17 +2020,17 @@ void security_inode_post_set_acl(struct dentry *dentry, const char *acl_name,
+  *
+  * Return: Returns 0 if permission is granted.
+  */
+-int security_inode_get_acl(const struct mnt_idmap *idmap,
+-			   const struct path *path, const char *acl_name,
+-			   struct file *file)
++int security_path_get_acl(const struct mnt_idmap *idmap,
++			  const struct path *path, const char *acl_name,
++			  struct file *file)
+ {
+ 	if (unlikely(IS_PRIVATE(d_backing_inode(path->dentry))))
+ 		return 0;
+-	return call_int_hook(inode_get_acl, idmap, path, acl_name, file);
++	return call_int_hook(path_get_acl, idmap, path, acl_name, file);
+ }
+ 
+ /**
+- * security_inode_remove_acl() - Check if removing a posix acl is allowed
++ * security_path_remove_acl() - Check if removing a posix acl is allowed
+  * @idmap: idmap of the mount
+  * @path: file (the VFS makes no guarantees with regard to @path->mnt)
+  * @acl_name: acl name
+@@ -2041,13 +2041,13 @@ int security_inode_get_acl(const struct mnt_idmap *idmap,
+  *
+  * Return: Returns 0 if permission is granted.
+  */
+-int security_inode_remove_acl(const struct mnt_idmap *idmap,
+-			      const struct path *path, const char *acl_name,
+-			      struct file *file)
++int security_path_remove_acl(const struct mnt_idmap *idmap,
++			     const struct path *path, const char *acl_name,
++			     struct file *file)
+ {
+ 	if (unlikely(IS_PRIVATE(d_backing_inode(path->dentry))))
+ 		return 0;
+-	return call_int_hook(inode_remove_acl, idmap, path, acl_name, file);
++	return call_int_hook(path_remove_acl, idmap, path, acl_name, file);
+ }
+ 
+ /**
 diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 8bafa530806e..cd04b09a8a7d 100644
+index 62053a9f7d9e..e0aaaee537d1 100644
 --- a/security/selinux/hooks.c
 +++ b/security/selinux/hooks.c
-@@ -7157,7 +7157,7 @@ static int selinux_inode_notifysecctx(struct inode *inode, void *ctx, u32 ctxlen
- /*
-  *	called with inode->i_mutex locked
-  */
--static int selinux_inode_setsecctx(const struct path *path, void *ctx, u32 ctxlen)
-+static int selinux_path_setsecctx(const struct path *path, void *ctx, u32 ctxlen)
- {
- 	return __vfs_setxattr_locked(&nop_mnt_idmap, path, XATTR_NAME_SELINUX,
- 				     ctx, ctxlen, 0, NULL, NULL);
-@@ -7831,7 +7831,7 @@ static struct security_hook_list selinux_hooks[] __ro_after_init = {
- 	LSM_HOOK_INIT(release_secctx, selinux_release_secctx),
- 	LSM_HOOK_INIT(inode_invalidate_secctx, selinux_inode_invalidate_secctx),
- 	LSM_HOOK_INIT(inode_notifysecctx, selinux_inode_notifysecctx),
--	LSM_HOOK_INIT(inode_setsecctx, selinux_inode_setsecctx),
-+	LSM_HOOK_INIT(path_setsecctx, selinux_path_setsecctx),
- 
- 	LSM_HOOK_INIT(unix_stream_connect, selinux_socket_unix_stream_connect),
- 	LSM_HOOK_INIT(unix_may_send, selinux_socket_unix_may_send),
-diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
-index 95a048bcf3a6..b3475253e879 100644
---- a/security/smack/smack_lsm.c
-+++ b/security/smack/smack_lsm.c
-@@ -4998,7 +4998,7 @@ static int smack_inode_notifysecctx(struct inode *inode, void *ctx, u32 ctxlen)
- 				       ctxlen, 0);
+@@ -3477,24 +3477,24 @@ static int selinux_path_setxattr(const struct mnt_idmap *idmap,
+ 			    &ad);
  }
  
--static int smack_inode_setsecctx(const struct path *path, void *ctx, u32 ctxlen)
-+static int smack_path_setsecctx(const struct path *path, void *ctx, u32 ctxlen)
+-static int selinux_inode_set_acl(const struct mnt_idmap *idmap,
+-				 const struct path *path,
+-				 const char *acl_name, struct posix_acl *kacl,
+-				 struct file *file)
++static int selinux_path_set_acl(const struct mnt_idmap *idmap,
++				const struct path *path,
++				const char *acl_name, struct posix_acl *kacl,
++				struct file *file)
  {
- 	return __vfs_setxattr_locked(&nop_mnt_idmap, path, XATTR_NAME_SMACK,
- 				     ctx, ctxlen, 0, NULL, NULL);
-@@ -5323,7 +5323,7 @@ static struct security_hook_list smack_hooks[] __ro_after_init = {
- 	LSM_HOOK_INIT(lsmprop_to_secctx, smack_lsmprop_to_secctx),
- 	LSM_HOOK_INIT(secctx_to_secid, smack_secctx_to_secid),
- 	LSM_HOOK_INIT(inode_notifysecctx, smack_inode_notifysecctx),
--	LSM_HOOK_INIT(inode_setsecctx, smack_inode_setsecctx),
-+	LSM_HOOK_INIT(path_setsecctx, smack_path_setsecctx),
- 	LSM_HOOK_INIT(inode_getsecctx, smack_inode_getsecctx),
- 	LSM_HOOK_INIT(inode_copy_up, smack_inode_copy_up),
- 	LSM_HOOK_INIT(inode_copy_up_xattr, smack_inode_copy_up_xattr),
+ 	return dentry_has_perm(current_cred(), path->dentry, FILE__SETATTR);
+ }
+ 
+-static int selinux_inode_get_acl(const struct mnt_idmap *idmap,
+-				 const struct path *path,
+-				 const char *acl_name, struct file *file)
++static int selinux_path_get_acl(const struct mnt_idmap *idmap,
++				const struct path *path,
++				const char *acl_name, struct file *file)
+ {
+ 	return dentry_has_perm(current_cred(), path->dentry, FILE__GETATTR);
+ }
+ 
+-static int selinux_inode_remove_acl(const struct mnt_idmap *idmap,
+-				    const struct path *path,
+-				    const char *acl_name, struct file *file)
++static int selinux_path_remove_acl(const struct mnt_idmap *idmap,
++				   const struct path *path,
++				   const char *acl_name, struct file *file)
+ {
+ 	return dentry_has_perm(current_cred(), path->dentry, FILE__SETATTR);
+ }
+@@ -7745,9 +7745,9 @@ static struct security_hook_list selinux_hooks[] __ro_after_init = {
+ 	LSM_HOOK_INIT(path_removexattr, selinux_path_removexattr),
+ 	LSM_HOOK_INIT(inode_file_getattr, selinux_inode_file_getattr),
+ 	LSM_HOOK_INIT(inode_file_setattr, selinux_inode_file_setattr),
+-	LSM_HOOK_INIT(inode_set_acl, selinux_inode_set_acl),
+-	LSM_HOOK_INIT(inode_get_acl, selinux_inode_get_acl),
+-	LSM_HOOK_INIT(inode_remove_acl, selinux_inode_remove_acl),
++	LSM_HOOK_INIT(path_set_acl, selinux_path_set_acl),
++	LSM_HOOK_INIT(path_get_acl, selinux_path_get_acl),
++	LSM_HOOK_INIT(path_remove_acl, selinux_path_remove_acl),
+ 	LSM_HOOK_INIT(inode_getsecurity, selinux_inode_getsecurity),
+ 	LSM_HOOK_INIT(inode_setsecurity, selinux_inode_setsecurity),
+ 	LSM_HOOK_INIT(inode_listsecurity, selinux_inode_listsecurity),
+diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+index eed06cf7af99..95a048bcf3a6 100644
+--- a/security/smack/smack_lsm.c
++++ b/security/smack/smack_lsm.c
+@@ -1551,7 +1551,7 @@ static int smack_path_removexattr(const struct mnt_idmap *idmap,
+ }
+ 
+ /**
+- * smack_inode_set_acl - Smack check for setting posix acls
++ * smack_path_set_acl - Smack check for setting posix acls
+  * @idmap: idmap of the mnt this request came from
+  * @path: the object
+  * @acl_name: name of the posix acl
+@@ -1560,10 +1560,10 @@ static int smack_path_removexattr(const struct mnt_idmap *idmap,
+  *
+  * Returns 0 if access is permitted, an error code otherwise
+  */
+-static int smack_inode_set_acl(const struct mnt_idmap *idmap,
+-			       const struct path *path,
+-			       const char *acl_name, struct posix_acl *kacl,
+-			       struct file *file)
++static int smack_path_set_acl(const struct mnt_idmap *idmap,
++			      const struct path *path,
++			      const char *acl_name, struct posix_acl *kacl,
++			      struct file *file)
+ {
+ 	struct smk_audit_info ad;
+ 	int rc;
+@@ -1577,7 +1577,7 @@ static int smack_inode_set_acl(const struct mnt_idmap *idmap,
+ }
+ 
+ /**
+- * smack_inode_get_acl - Smack check for getting posix acls
++ * smack_path_get_acl - Smack check for getting posix acls
+  * @idmap: idmap of the mnt this request came from
+  * @path: the object
+  * @acl_name: name of the posix acl
+@@ -1585,9 +1585,9 @@ static int smack_inode_set_acl(const struct mnt_idmap *idmap,
+  *
+  * Returns 0 if access is permitted, an error code otherwise
+  */
+-static int smack_inode_get_acl(const struct mnt_idmap *idmap,
+-			       const struct path *path,
+-			       const char *acl_name, struct file *file)
++static int smack_path_get_acl(const struct mnt_idmap *idmap,
++			      const struct path *path,
++			      const char *acl_name, struct file *file)
+ {
+ 	struct smk_audit_info ad;
+ 	int rc;
+@@ -1601,7 +1601,7 @@ static int smack_inode_get_acl(const struct mnt_idmap *idmap,
+ }
+ 
+ /**
+- * smack_inode_remove_acl - Smack check for getting posix acls
++ * smack_path_remove_acl - Smack check for removing posix acls
+  * @idmap: idmap of the mnt this request came from
+  * @path: the object
+  * @acl_name: name of the posix acl
+@@ -1609,9 +1609,9 @@ static int smack_inode_get_acl(const struct mnt_idmap *idmap,
+  *
+  * Returns 0 if access is permitted, an error code otherwise
+  */
+-static int smack_inode_remove_acl(const struct mnt_idmap *idmap,
+-				  const struct path *path,
+-				  const char *acl_name, struct file *file)
++static int smack_path_remove_acl(const struct mnt_idmap *idmap,
++				 const struct path *path,
++				 const char *acl_name, struct file *file)
+ {
+ 	struct smk_audit_info ad;
+ 	int rc;
+@@ -5205,9 +5205,9 @@ static struct security_hook_list smack_hooks[] __ro_after_init = {
+ 	LSM_HOOK_INIT(inode_post_setxattr, smack_inode_post_setxattr),
+ 	LSM_HOOK_INIT(path_getxattr, smack_path_getxattr),
+ 	LSM_HOOK_INIT(path_removexattr, smack_path_removexattr),
+-	LSM_HOOK_INIT(inode_set_acl, smack_inode_set_acl),
+-	LSM_HOOK_INIT(inode_get_acl, smack_inode_get_acl),
+-	LSM_HOOK_INIT(inode_remove_acl, smack_inode_remove_acl),
++	LSM_HOOK_INIT(path_set_acl, smack_path_set_acl),
++	LSM_HOOK_INIT(path_get_acl, smack_path_get_acl),
++	LSM_HOOK_INIT(path_remove_acl, smack_path_remove_acl),
+ 	LSM_HOOK_INIT(inode_getsecurity, smack_inode_getsecurity),
+ 	LSM_HOOK_INIT(inode_setsecurity, smack_inode_setsecurity),
+ 	LSM_HOOK_INIT(inode_listsecurity, smack_inode_listsecurity),
 -- 
 2.18.0.huawei.25
 
