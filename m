@@ -1,68 +1,56 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=80.241.56.171
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=203.254.224.24
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793079325;
-	b=q+AGo6VXyxw1IY45R86gjtuQMGpyGOUPV3y6ZfQYHSayX869Ba5T6QYMOlW03R+gXVFI
-	 rgXtu+AAb+vB+xslF+iMifMZNoBg+A/Z0kk69A8pWok09BpAuauyaPPxQNKHbSUz4z1cd
-	 EAneatXem/TzpVlfzBfdpy0lccwODh6g6VFrAsi2MUB7ne0tHYoqhNnp8z1ATMUgAInU7
-	 CRXGBDVQub6hN9S+S8F4BfZYd9zbRx5nid7VmcaT6vw+Q1AcMOldI1HLntmw3HjIaTkSO
-	 s9cDKDsmFj+qf28Bv7bu3Zay7F3fizD2d78kZhk925aFxf2MbJSwEZZTz1bvd4iWG4A==
+	t=1793089906;
+	b=p/jYiYGPtmCT9SS0C4vLVp8DAnZxnoYdECuUa2SIbS1xv+uJytPtZo/C8wrrSGJYpkvu
+	 W8T+tGuSEgJf5oaAdZ4/fbho0BzeHihp4YGdJ3yWvojX4snGaMxTnz6NhDFYXGxij1z5J
+	 p+miEHxb9IWZVR4tTM3la54EkYrZCM2mm4ThYSm/jVG1LCkYx3BdYLrp3+OA0LxRhvPfJ
+	 PVlmBSUkeq1+EhdfcBOBuGEI7hrPu15oTa381XNRaQw8krJnICQu6BtptvTnl7ocmWVYq
+	 MsnADiuncW0DKNwk5sGFc9l7d2PXbKmKjJulbsBl9oN/7AWLxwPcRG/A71QbRdCBzfA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793079325;
-	h=DMARC-Filter:Received:DKIM-Signature:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Rspamd-Queue-Id;
-	bh=pecqxhy441AdUrYYTH+JW9ncF8Dlsdnr56Yn2X9/Cwk=;
-	b=KgdLcvJJ+sZGP+rrPERFkyJNIgnxVbcofcG2TMKCvrOfSlmGf1xL28Cx+Zoz7WJ2Sfig
-	 4rtmB7Y63TZnX8Xa/vR7Ck0Kdyt1BIVpESvi/69rRZ97KJfo6EYCglpjRCE+GEGezCuxB
-	 jcHIbpSQPGLzMDVPlw37L7TxWUp49+9ir1tmewxn2wg7miDy8lnBNYPZ1HsB/dneJBG+u
-	 2oRTvlu5TDCU2bzson1HPpfTsfvezxlkmbw2yiOIIMKI18isrX4fOYtFb0fz9ark7elx+
-	 WtHXjchStolWDwpqzMtm1NtWcHVvpy0RG+1lcS41wgaZ2L43SEKvKxkMO8vbB62xgsg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793089906;
+	h=DMARC-Filter:Received:DKIM-Filter:DKIM-Signature:Received:Received:
+	 Mime-Version:Subject:Reply-To:Sender:From:To:CC:X-Priority:
+	 X-Content-Kind-Code:In-Reply-To:X-CPGS-Detection:X-Drm-Type:
+	 X-Msg-Generator:X-Msg-Type:X-Reply-Demand:Message-ID:Date:
+	 X-CMS-MailID:Content-Transfer-Encoding:Content-Type:X-Sendblock-Type:
+	 CMS-TYPE:X-CPGSPASS:X-CPGSPASS:cpgsPolicy:X-CFilter-Loop:
+	 X-CMS-RootMailID:References;
+	bh=P1MNsw8Rzo4tDNmS4iyrSef2YaeHjBn+VyXBlrSW+E8=;
+	b=1plCig1x25z9fJQ2uLfiHBGY2+IMu1LcmxihjTO6Rn41usxa2lO5smazeaspakAPC/6I
+	 +DxucCTbdRlVoOekJl8CHVeFOjOXvoFWRfAF5TIDcbnm8RaoigQXJ+d/cfIGgrsXTxbVj
+	 QeEUXKnaDjUImv0smtWoZpqSWdYUwYsl1mapHwtUAGuxChlSo60fngFFPJSBDGOqKQmsp
+	 Y16vfUyIJEHKieeevwwt2ABBSDRAPF/IFc8tVsftvok/d5sxDB22OHoPW6+BSrxZQpC6a
+	 QrfT3Iy4s01OKdZxFmBKxS4T4q5WPKMlrs39hlDlNRKTyIGtTuZOJ3JZYpIN5plLfFg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=cyphar.com;
-	spf=pass smtp.mailfrom=cyphar.com;
-	dkim=pass header.d=cyphar.com header.i=@cyphar.com header.a=rsa-sha256 header.s=MBO0001 header.b=heAP3XQj;
-	arc=none smtp.remote-ip=80.241.56.171
-Received: from mout-p-201.mailbox.org (mout-p-201.mailbox.org [80.241.56.171])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dmarc=pass header.from=samsung.com;
+	spf=pass smtp.mailfrom=samsung.com;
+	arc=none smtp.remote-ip=203.254.224.24
+Received: from mailout1.samsung.com (mailout1.samsung.com [203.254.224.24])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AFF60606A31A;
-	Tue, 27 Oct 2026 05:35:24 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org AFF60606A31A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=cyphar.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=cyphar.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=cyphar.com header.i=@cyphar.com header.a=rsa-sha256 header.s=MBO0001 header.b=heAP3XQj
-Received: from smtp1.mailbox.org (smtp1.mailbox.org [IPv6:2001:67c:2050:b231:465::1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519MLKEM768 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mout-p-201.mailbox.org (Postfix) with ESMTPS id 4jDK2T70cZzMlGZ;
-	Tue, 27 Oct 2026 06:35:13 +0100 (CET)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=cyphar.com; s=MBO0001;
-	t=1793079314;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=pecqxhy441AdUrYYTH+JW9ncF8Dlsdnr56Yn2X9/Cwk=;
-	b=heAP3XQj/2C13my8Zq1fVtfEWzAwvFlv018k/Fzi93G0Tg6V2DIgs2UmR2/DjWCEYC0+Eo
-	q/yk8NhDYmL8jz4W6eyjcCqggLDdQZlkfozojZxVXDFMpSj4wdaZbw2b06DH3byv4o4DkM
-	l1RU0LawwMq//FDnQx6jk+rWw+eKQzic6Cz/16wTtt9oOG2ccgE+sf0ADkUlZs15C7K95B
-	5p1WyW4mFb7CLXmtiGNPeWwIhW6ocNQ986u9WE78KB04PDsQTOAQKngNHZoiQHNo9HOnS6
-	5JVkXUgJRdoKOKJmJYTw1/SZ5xO2/EvLikss5GwSGlRBme219e67pqpJyC9Muw==
-Authentication-Results: outgoing_mbo_mout;
-	dkim=none;
-	spf=pass (outgoing_mbo_mout: domain of cyphar@cyphar.com designates 2001:67c:2050:b231:465::1 as permitted sender) smtp.mailfrom=cyphar@cyphar.com
-Date: Tue, 27 Oct 2026 06:34:59 +0100
-From: Aleksa Sarai <cyphar@cyphar.com>
-To: Christian Brauner <brauner@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org, 
-	linux-nfs@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>, 
-	Jan Kara <jack@suse.cz>, Chris Mason <mason@kernel.org>, stable@vger.kernel.org
-Subject: Re: [PATCH 0/7] proc: block mounts below /proc/<pid>/net and on the
- links into /proc/self
-Message-ID: <2026-10-27-glad-unseen-agency-overture-T2ffBN@cyphar.com>
-References: <20261024-work-procfs-fixes-v1-0-46b03c3a8fac@kernel.org>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 88C48606A31E
+	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2026 08:31:38 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 88C48606A31E
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
+Received: from epcas2p3.samsung.com (unknown [182.195.41.55])
+	by mailout1.samsung.com (KnoxPortal) with ESMTP id 20261027083136epoutp0101ea87a8cc9d7068dbf8c994b506e6e3~iVcKyPWKy0935609356epoutp01n
+	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2026 08:31:36 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout1.samsung.com 20261027083136epoutp0101ea87a8cc9d7068dbf8c994b506e6e3~iVcKyPWKy0935609356epoutp01n
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
+	s=mail20170921; t=1793089896;
+	bh=P1MNsw8Rzo4tDNmS4iyrSef2YaeHjBn+VyXBlrSW+E8=;
+	h=Subject:Reply-To:From:To:CC:In-Reply-To:Date:References:From;
+	b=Zxk8Qhls8BBg+NPsUF50iS7ZHqaxG91eqx3BUrQD9bv9ZourUO+zG+3mTBtkBBqBF
+	 uSDL5Tzb5FwIXahv4DleJC6VhHvmEi4y5+ZSLUOO23U87u+d8kTJtxT3M1Kq1GEnHz
+	 6J5ZkcALnOk1539NHIQSiwZGj4cxdZTJfcbGw57U=
+Received: from epsnrtp03.localdomain (unknown [182.195.42.155]) by
+	epcas2p4.samsung.com (KnoxPortal) with ESMTPS id
+	20261027083135epcas2p4540c5ad7f4d5bc2c255d423e1283d4e7~iVcKWU0-x1805918059epcas2p4C;
+	Tue, 27 Oct 2026 08:31:35 +0000 (GMT)
+Received: from epcas2p4.samsung.com (unknown [182.195.38.205]) by
+	epsnrtp03.localdomain (Postfix) with ESMTP id 4jDNxz4gM3z3hhT3; Tue, 27 Oct
+	2026 08:31:35 +0000 (GMT)
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -71,84 +59,57 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha512;
-	protocol="application/pgp-signature"; boundary="fwq2dkicka26nbxc"
-Content-Disposition: inline
-In-Reply-To: <20261024-work-procfs-fixes-v1-0-46b03c3a8fac@kernel.org>
-X-Rspamd-Queue-Id: 4jDK2T70cZzMlGZ
+Mime-Version: 1.0
+Subject: RE:(2) [PATCH v4 2/9] xfs: add a flag to convert unwritten extents
+ without allocating blocks
+Reply-To: daejun7.park@samsung.com
+Sender: Daejun Park <daejun7.park@samsung.com>
+From: Daejun Park <daejun7.park@samsung.com>
+To: "Pankaj Raghav (Samsung)" <pankaj.raghav@linux.dev>
+CC: Carlos Maiolino <cem@kernel.org>, "linux-xfs@vger.kernel.org"
+	<linux-xfs@vger.kernel.org>, Christoph Hellwig <hch@lst.de>, "Darrick J.
+ Wong" <djwong@kernel.org>, Dave Chinner <dgc@kernel.org>, Chuck Lever
+	<cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, Dai Ngo
+	<Dai.Ngo@oracle.com>, Sergey Bashirov <sergeybashirov@gmail.com>, Andrey
+	Albershteyn <aalbersh@kernel.org>, "linux-nfs@vger.kernel.org"
+	<linux-nfs@vger.kernel.org>, "linux-kernel@vger.kernel.org"
+	<linux-kernel@vger.kernel.org>, "stable@vger.kernel.org"
+	<stable@vger.kernel.org>, Daejun Park <daejun7.park@samsung.com>
+X-Priority: 3
+X-Content-Kind-Code: NORMAL
+In-Reply-To: <atoEubjhGZgA2WQk@quentin>
+X-CPGS-Detection: blocking_info_exchange
+X-Drm-Type: N,general
+X-Msg-Generator: Mail
+X-Msg-Type: PERSONAL
+X-Reply-Demand: N
+Message-ID: <20261027083135epcms2p81a1eecd6f9277131d458bd28ebe80ec4@epcms2p8>
+Date: Tue, 27 Oct 2026 17:31:35 +0900
+X-CMS-MailID: 20261027083135epcms2p81a1eecd6f9277131d458bd28ebe80ec4
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+X-Sendblock-Type: AUTO_CONFIDENTIAL
+CMS-TYPE: 102P
+X-CPGSPASS: Y
+X-CPGSPASS: Y
+cpgsPolicy: CPGSC10-223,Y
+X-CFilter-Loop: Reflected
+X-CMS-RootMailID: 20261022124400epcas2p11d97ce2b0b9b4009ba8cabe1068b58e8
+References: <atoEubjhGZgA2WQk@quentin>
+	<20261020-xfs-pnfs-batch-v4-0-9230fa2ca4a4@samsung.com>
+	<20261020-xfs-pnfs-batch-v4-2-9230fa2ca4a4@samsung.com>
+	<CGME20261022124400epcas2p11d97ce2b0b9b4009ba8cabe1068b58e8@epcms2p8>
 
+On Thu, Oct 22, 2026 at 02:43:50PM +0200, Pankaj Raghav wrote:
+> Minor nit:
+>
+> The following might be more explicit here:
+>
+> ASSERT((flags & XFS_BMAPI_CONVERT_ONLY) ? bma.nallocs == 0 :
+>                                          bma.nallocs >= *nmap);
 
---fwq2dkicka26nbxc
-Content-Type: text/plain; protected-headers=v1; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-Subject: Re: [PATCH 0/7] proc: block mounts below /proc/<pid>/net and on the
- links into /proc/self
-MIME-Version: 1.0
+Thanks, that is clearer, and it holds: with XFS_BMAPI_CONVERT_ONLY the
+loop stops before xfs_bmapi_allocate(), the only place that counts an
+allocation. I'll use it in v5.
 
-On 2026-10-24, Christian Brauner <brauner@kernel.org> wrote:
-> Nuke this crap.
->=20
-> [1]: https://lore.kernel.org/r/20240806-work-procfs-v1-0-fb04e1d09f0c@ker=
-nel.org
->=20
-> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
-> ---
-> Christian Brauner (7):
->       proc: don't let an entry below /proc/<pid>/net be a mountpoint
->       proc: don't let /proc/self and /proc/thread-self be mountpoints
->       proc: don't let /proc/mounts and /proc/net be mountpoints
->       afs: create /proc/fs/afs with proc_self_symlink()
->       nfs: create the /proc/fs/nfsfs links with proc_self_symlink()
->       proc: explain which entries can't be mountpoints
->       selftests/proc: test which entries can't be mountpoints
-
-I love it, nuke it from orbit.
-
-Reviewed-by: Aleksa Sarai <aleksa@amutable.com>
-
-The proc_net_d_revalidate() thing is particularly wild, I'm surprised it
-hadn't come up to us in bug reports in the past ~10 years. I guess
-nobody cared enough to try to mask it?
-
-And yeah, it's a shame we couldn't kill this entirely but I'm looking
-forward to the patch you mentioned that restricts who and what can be
-over-mounted.
-
->  fs/afs/main.c                                   |   2 +-
->  fs/nfs/client.c                                 |   4 +-
->  fs/proc/generic.c                               |  31 ++++-
->  fs/proc/internal.h                              |  18 ++-
->  fs/proc/proc_net.c                              |   2 +-
->  fs/proc/root.c                                  |   2 +-
->  fs/proc/self.c                                  |   2 +
->  fs/proc/thread_self.c                           |   2 +
->  include/linux/proc_fs.h                         |   5 +
->  tools/testing/selftests/proc/.gitignore         |   1 +
->  tools/testing/selftests/proc/Makefile           |   1 +
->  tools/testing/selftests/proc/proc-unmountable.c | 150 ++++++++++++++++++=
-++++++
->  12 files changed, 208 insertions(+), 12 deletions(-)
-> ---
-> base-commit: 7be4bc52fd9e0e55dc9a2e0232b89427d2c4b614
-> change-id: 20261024-work-procfs-fixes-8b21a6d17448
-
---=20
-Aleksa Sarai
-Founding Engineer at Amutable
-https://www.cyphar.com/
-
---fwq2dkicka26nbxc
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iJAEABYKADkWIQS2TklVsp+j1GPyqQYol/rSt+lEbwUCauA4AhsUgAAAAAAEAA5t
-YW51MiwyLjUrMS4xMiwyLDIACgkQKJf60rfpRG8zcgD4pkFLYeDZVdXN5GDUvD9c
-CsEU8XPAyz89oIBWCTK5DQD8Cfps5SlaPxsKxDl/J77PthZtQSrxiN4R3gpAGYHC
-qwE=
-=819b
------END PGP SIGNATURE-----
-
---fwq2dkicka26nbxc--
+Daejun
