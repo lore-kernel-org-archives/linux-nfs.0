@@ -1,72 +1,72 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793115427;
-	b=d0QdAxS76Bc/HkqgAsypgIWAYKA/5cTqVlgHYPGbz+/bYwhJqTM/3YlJp/d1Q5hvheYS
-	 xm4DdJUqN887m2BVbpdOlQ8ux7zfvWT7z2fB/xaDv4RU60SK8XpMtCvZH2Ux+j05hOIhL
-	 sz6miiuk068n5tB91BVWJjRSjUa6Ganhbr7nLaWyY98QJD0E90OrlzuAYxOnKcS+zg+mG
-	 5eGOuoTn8unSKX56n6VWGRIeIjMA5hnah1dAasAcZK/JgXll3tSP+O97siuhcKKr92/sL
-	 3nvB+Me/S40M/PgKdV7NL112v6+duQkWsN7unmtUvs+wC/Hl9ZTBr6V2LdiGRsSDfYA==
+	t=1793115690;
+	b=vAGgbfwNv2gTvHfkAvvEzsPNaoD54uV2EgJ6IrGSqS131K3mR1uJl90z5s3PqS74HiZa
+	 Q8raIhj/01CYI7Dc3HiLz0FNYUHdyAG5QeBs5ng6IbbtWGl/fCAtb2AmYmN62W7AZF9tH
+	 4ClG4Ljc2dzydJa3qTwm2A3n88D+M1P6gmQEdVLfRJW6YdECg+3GlcjtVLLiw3pmfrfo7
+	 6PKmeGO/qDZqxkMy3PoBTpR8UPvroG22Nkw1UOdzbLemBq6V5ObTrZfYLG+nEp/iZiZYo
+	 oG+tltlWYF8Ih0CZPNVDIObaqI70ihxrqWaAPscBgsf8jGzsMw4WmP5S4EgzL+V5N/A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793115427;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793115690;
 	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
 	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
 	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
 	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=92Q/t3i/yf5QKlLrQvvhU5XIPi5Hv5PZF11rRsSNhc8=;
-	b=niweq5CeCgtlGwxTC3bIF956K+BeSx18xfVM3mfjPFi3+LJJfQi1pXIkEEYkQAGWIPwZ
-	 +HzBKzCvza9xMkCNSy75n1rTqWzpK98lysH0GCoEh9FqXyaQOjtxuQT40mZBaj8Ppbhm8
-	 kngPVqMOBTpjc72zl409uwmGfpr5oY73kV3O2Q/aQqPxvYFCcuMoAWlvudHOeiEJoJ3fn
-	 QpcvPGTfgCt95/WJwB4RLm622lhriRu5vip/MVRJzqkjYbcm+94+UWRRE+elO4eEY3cD1
-	 q/Va1S4E/IXNuF/HelnnvPmLVGNlub6u4Fk4Xi6nzTVucsaUHeQSst3DlG9GQ3WtABg==
+	bh=Ag0ghHEewxIOhXRku5slk0/T3YltAZ8n4kNBd3rHwoM=;
+	b=jELk7xtqixiSgcb/CF8aKvu/Pq14Tp7v7Y/NhJ8UnLSr3DaEpsn+SzT5y8uZfIoVWE0X
+	 ubY9FvWfj8EL1EE8vShQ9xQfkNC8Lng2n3y800fpTQo1vG0VX61ahubN9xy396ZxLrVC0
+	 EpRdJM+D4VwROFgIOXpukYxcXyZZlyss/A/jvvpliExUk7X41MBoW7HEpLpPQ0Dcq2ym9
+	 Z28KOMYqIR7humGVD3bOre8jn2Rt7eUDWu9/DpPKaf4PRDZonn6t5I2hNnzZVk/ih6cTb
+	 dD1l1112FgX5I5uTpBR0tR18RIKEjxEeaVemyel4GzkSaVFVD1Fue8OKwYamLx3YYfQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VDdjpUOt;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ldzm1JZd;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3D03F60A381D;
-	Tue, 27 Oct 2026 15:37:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 505E9606A31D
+	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2026 15:41:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VDdjpUOt
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3CFC81F01417;
-	Tue, 27 Oct 2026 15:37:06 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ldzm1JZd
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D469D1F01828;
+	Tue, 27 Oct 2026 15:41:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793115426;
-	bh=92Q/t3i/yf5QKlLrQvvhU5XIPi5Hv5PZF11rRsSNhc8=;
+	s=k20260515; t=1793115690;
+	bh=Ag0ghHEewxIOhXRku5slk0/T3YltAZ8n4kNBd3rHwoM=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=VDdjpUOttVw+UDMKsX6SfZvW+4AeEAuz79UHRmb2D0Tr6A98yFSMdw010PGIbmMDD
-	 nkdkgftqln5ZqLXxsvSlBhq6wYoUBQ1xNVjiJSHbWGW9CmegVgzPlAU2xQTO0lh5p4
-	 TDVhZ9fTowvkecTr8r0vH048cj4V5TMptzCk6FEniXnIvrGpNLWRZUzGUB9y7rD1wx
-	 eiIs7IG95UKZoHCmujYswgro+KdWke9w8v0TlJPygb9ReNPGWyY3zsGrQ2txcsuSM7
-	 V3Cow8mOrEap48I7nOaVizOz99qCcG8Zh2C6jPekE3wrE5N4E7tep8Crbo3nC6h6ss
-	 50YAS3MgjBenQ==
+	b=ldzm1JZdI5v6KexczdTPQlKgksYySr5d60AomYkxIlrhFy6QCQuUQKHXS8W+61zSW
+	 97fm0WI8+M51A85SJeE+GFkPbigjDUO61RpYpk3gwUTmHb6Bag7OSs212tMAPUYVci
+	 gCs/BuQ0wuSgvKBbrE0KeOJb1K3csNpEaVxB4kiXs/yITV5Vl8Jj1UUMLuLZZPkhSM
+	 dZHCWtb/18fQ6h/pCD11BskaM6QiIDWYRPkOKCMaK7rIb8J2GSoKAAGjgthm6i/jur
+	 CnrYEIoEwSFQZlBxTvol/J5uPz9I+KwXySQv4SdZcVqRLNYdhnugx5pGlboratKj06
+	 vkFO9aw9GX6dg==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 6F6F0F4006A;
-	Tue, 27 Oct 2026 11:37:05 -0400 (EDT)
+	by mailfauth.phl.internal (Postfix) with ESMTP id 40B03F4006A;
+	Tue, 27 Oct 2026 11:41:29 -0400 (EDT)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Tue, 27 Oct 2026 11:37:05 -0400
-X-ME-Sender: <xms:IcXgamKZ7Cwo0cO4yPJzsbKeJH0q8h6Deza_HEEdHBORkCMRxlXpiA>
-    <xme:IcXgao8ucvBAKYvgEmr07A5uNDvo0uhOyGcK--XCtRdADVZnOU5eq57D6doUA83WH
-    Hv-C16x4Ss9WrXjVpKdPUkbmMaWB-HwV0H-By_u_SZ4etaBgJYo5Lo2>
-X-ME-Proxy-Cause: dmFkZTEiN13F17KZNcYQn0KpaQrc0EhDk+XKiDQJgU+uJboiU/uuWPy7dUNQDQwAIQwjRn
-    mgQANYsin+L0bTP5DRE1L5OMNHtiZgR/kusJ027yBtcJwj54sU9asDJb++xhf0RuWXWYYC
-    LfV7kqMcFmPvzSzSHxBUQRcAGr5P1lcJfPGnxFFEi2E4gIxbNzNOlw9Z7tnJLkrw/rc4Mk
-    ZGaw+jvnzy7MVhiIhGOgImNdEnfMvo3DkSiIB+t8MGzGtbHifzUxdDTPiD/eW4Nva9/oDQ
-    7rnnwOllVB4TkxM8pihg4YNHqwojCvYRJvA/LXnS71lSzFP1YFJNqIaZl9VwLZZvEE+sIQ
-    EBehBdjSFYPFS3bYQWwacKHiw7x0Ks4anHmueo9r7o+TCLAdcicr1wFli+ed7ZkXzP3EHc
-    5uNOsYDv2dfYKbGnaVSFNZtlX+fOWxfOy4fa8SN4BNaoxOqSOghLmb6v3S/mXy6LDXqBke
-    IEWQyfR+tznpCJ4VpoN8CIVDKW14axG0ZV0O/ZngpV1HD7RSoCPL/Vf2QijxBMRjhWJBy3
-    n7mam6dt/AR+TlWpOiV8VTpJPAITHNiFkwXEsqvLqCBnoh0/D4BdTbM4jhPP/DV2KhpdtG
-    qhKSI4YWJqOOx3Hf+xh3Lwd+UGAGMJcW6kwihl1578/7bQq373gqIhU2NZ4w
-X-ME-Proxy: <xmx:IcXgalay_xjdWFFFlOK68gTkUC_95JtL6x9SYKSOVoVYjZ0bNcyIFA>
-    <xmx:IcXgap4VTtTuo_6kpw4aYBMdoFjKF4lzMft4_tMcuUpXumuNaWL4vw>
-    <xmx:IcXgaqkbGRz2a8mSCI7mw79t1y_UxUU2C7sdpEKpyY-JSIulPrnvBQ>
-    <xmx:IcXgapHqzVrn6Jd-1MNX1vTDwKYrx62B2ngJuOouo2dRS51kRinhbA>
-    <xmx:IcXgajhtl9ZdWCVcDvj8Kygnp6SMTr9sj_r-Y7sLESoMBx_TOO_Fc7Lf>
+  by phl-compute-10.internal (MEProxy); Tue, 27 Oct 2026 11:41:29 -0400
+X-ME-Sender: <xms:KcbgagZrYrC9TlPrLkNe9mSMeYf3gMFO8e-ROicFaa_Kemsynb-WZQ>
+    <xme:KcbgamPJJT-esQBQgKSAzFUzADOQC01wBIMMDtYwJTB-30qLYpY-I2dmUI4ysWF-8
+    opwKvYEKNKdupHC4BCiMJDehjLnXFAFy40O2eGyyuoybAnCZ44h-Amp>
+X-ME-Proxy-Cause: dmFkZTEcEhOPJJZepPGARJ6mYcQm6nzIyqxydvSUFgkyUtXHeD0iolO9k11Yl+CnM0yr7W
+    l5fX9unwUztnvV9rJ62ZXKLQnfv1ZwWL3nBxo/zvahBNW/sJag3Qk2Mi3FpxzSb9c6zYC9
+    ipXwNeim8dn5+DzwhEVXJpZi9cvkLK/qOQV3hxfTTCjLjfPJvw/Wg4VQLLeZDY1FISBIvo
+    NZ74B1ihgQL2SZIflIWRlSohcIK7LSaNdRmpBnjqDp3LUiw8uklGOJ1gFXkUEUUPsEx08Y
+    hcvJ4F7ORIaQNKiCC/bZT1RY91Nfc9oP7qGVZsSh5BNJ/SYg02bZ1k5QmczXOyeMubEAlR
+    MyoHfNyfaoL6fEk59N9IJGIKMwpt22wlpopvldogKtja8h3oYAHzxSMiQje2GzcQJf7uqI
+    T5+XaI5O0md9O7oJ2s066HsuVpTAmRsKXRbmEHplzReLIiokVVXLLsYADUFzE5IoRenQZS
+    XbIDt4VHbJXBXdr4qmk2WSR+h0+Aa52Ub58jVk0amCGu8U6Vp2IDLy2OAI2eZ5vweP0gIJ
+    ikKW0WoDOAvSVZtW0ruZDdlYQGUoXQtL2sHt25QNkMMv8mN+U9g3jrtObH7E2cYW7VZwg+
+    XwezNkfAuIGfDX6UqL3tyAi946plK5ePq3R+80+cyjJHBAOFXZceH2KCFqiQ
+X-ME-Proxy: <xmx:KcbgaiSlgBlt3oyTLBz9f6cmNOCEFRaqeSQiMwGJVFklBq0ikefPBQ>
+    <xmx:KcbgaocWBHQIXNV7chN5aFnnBGgHXqanwCzX5uR-4m8wAYbv_h4Qfw>
+    <xmx:KcbgauC1IzCDf4h8B3E-eexS-OYGerTCu0BKrnmKdCZZrW7lFyEGjw>
+    <xmx:KcbgaikQadEOKMQRe13TeaLBiCW4BxLMtbdhq73RME_VBfsT_Lqz5g>
+    <xmx:KcbgahcT53VfZVhX8FFDgpyLBhv1hrqvuz0OVKJRHxOiIzskDwQ7V4T1>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id C4568782738; Tue, 27 Oct 2026 11:37:04 -0400 (EDT)
+	id 1E60C782738; Tue, 27 Oct 2026 11:41:29 -0400 (EDT)
 X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -77,189 +77,201 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: AzmA6W_5FSQB
-Date: Tue, 27 Oct 2026 11:36:44 -0400
+X-ThreadId: AqDuBGFLn2G-
+Date: Tue, 27 Oct 2026 11:41:08 -0400
 From: "Chuck Lever" <cel@kernel.org>
-To: "Jeff Layton" <jlayton@kernel.org>, "Mike Snitzer" <snitzer@kernel.org>,
- "Matthew Wilcox (Oracle)" <willy@infradead.org>, linux-mm@kvack.org,
- linux-fsdevel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Christoph Hellwig" <hch@lst.de>,
- "Jens Axboe" <axboe@kernel.dk>, "Jonathan Corbet" <corbet@lwn.net>
-Message-Id: <70ef3172-9631-4e19-9b8e-4722427a5a83@app.fastmail.com>
-In-Reply-To: <fc2ea8d6f2cd9ae83d38941f90386aac6638a497.camel@kernel.org>
-References: <20261024221152.6965-1-snitzer@kernel.org>
- <fc2ea8d6f2cd9ae83d38941f90386aac6638a497.camel@kernel.org>
-Subject: Re: [PATCH v9 0/6] mm, iomap, NFSD: stop uncached writes reading back shared
- pages
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+To: "Adolph Zeng" <coderzeng@gmail.com>, "Jeff Layton" <jlayton@kernel.org>,
+ NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
+ "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <11396b5a-249c-4710-9a1f-c078fc50e9ab@app.fastmail.com>
+In-Reply-To: 
+ <IA1PR12MB662781C8C09627A5CDEBF39DF4602@IA1PR12MB6627.namprd12.prod.outlook.com>
+References: 
+ <SY9P300MB153090355AAD017CD7216634A6602@SY9P300MB1530.AUSP300.PROD.OUTLOOK.COM>
+ <IA1PR12MB662781C8C09627A5CDEBF39DF4602@IA1PR12MB6627.namprd12.prod.outlook.com>
+Subject: Re: [PATCH] nfsd: prevent SAVEFH from bypassing export security
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
 
 
-On Tue, Oct 27, 2026, at 10:31 AM, Jeff Layton wrote:
-> On Sat, 2026-10-24 at 18:11 -0400, Mike Snitzer wrote:
->> Hi,
->> 
->> Please consider this v9 for the v7.5 development cycle, so that it can
->> go upstream in the v7.5 merge window.
->> 
->> An uncached (RWF_DONTCACHE) buffered write drops each page it writes
->> once that page is written back.  A page the write covers only partly is
->> shared with the neighbouring write.  Once the first of the two is
->> written back, the second reads the page back from disk before it writes
->> its part.  32 threads wrote interleaved records to one file on
->> XFS (emulated 4Kn NVMe, 4 KiB pages).  Before and after 4/6:
->> 
->>   record  pwritev2() flags          4 KiB device       MiB/s
->>   bytes                             reads per write
->>                                     before   after     before  after
->>   47008   RWF_DONTCACHE             0.97     0.0005    831     2281
->>   47008   RWF_DONTCACHE|RWF_DSYNC   0.99     0.0005    601     1227
->>   6000    RWF_DONTCACHE             0.97     0.0001    121      488
->>   6000    RWF_DONTCACHE|RWF_DSYNC   0.99     0.0002     90      206
->> 
->> What is left after is metadata.  49152-byte records cover only whole
->> pages, and they read 0.0005 per write either way.  The test program and
->> script that produced this table, and how to run them, are in:
->> https://lore.kernel.org/linux-nfs/atqJBS8MlYfeUU-t@kernel.org/
->> 
->> 4/6 has the page cache keep such a page for the write that completes
->> it.  5/6 lets a writer that syncs its own write complete those pages
->> itself once the sync is done.  NFSD does that for a stable WRITE.  6/6
->> is the NFSD change that uses it.  2/6 reports the DONTCACHE dirty count
->> in the bdi debugfs stats.  3/6 adds folio_mark_dropbehind(), which 4/6
->> and 5/6 use.
->> 
->> 1/6 fixes 88d6f128d06d ("mm: track DONTCACHE dirty pages per
->> bdi_writeback"), in v7.3.  A cached lookup that clears the dropbehind
->> flag could uncount a folio that was never counted.  It could also leave
->> a folio counted with nothing to uncount it.  The patch applies to v7.3
->> as it is, if the mm side would rather take it alone.
->> 
->> v8 1/7 is not in this series.  As Chuck asked, I post it on its own.  It
->> is a revised version of 80728157d1bd ("NFSD: cut a misaligned
->> direct-mode WRITE at page boundaries") in cel/nfsd-testing.  This series
->> applies on cel/nfsd-testing at 6d13b7f74eec ("NFSD: Map every
->> NFS_ACLv2 reply status into aclstat2"), with or without that revision.
->> Each patch builds with W=1 with no warnings.
->> 
->> 1/6 to 5/6 are mm, with small iomap changes in 4/6 and 5/6.  They are
->> Cc'd to linux-mm and linux-fsdevel.  If the mm and iomap maintainers
->> are agreeable, their acks would let Chuck take the series through the
->> nfsd tree.  But whatever approach the maintainers prefer for this kind
->> of cross-subsystem merge is obviously fine.
->> 
->> Changes since v8, from two independent sashiko reviews of v8: the one
->> Jeff Layton relayed, and the one that sashiko-bot posted to linux-mm.
->> Some findings were in both.
->> - 1/6 and 3/6 (both reviews): a folio is counted in WB_DONTCACHE_DIRTY
->>   only when both PG_dirty and its dirty tag are set.  v8 tested the tag
->>   alone.  __folio_cancel_dirty() clears PG_dirty but leaves the tag, and
->>   so does writeback that stops at EOF after folio_clear_dirty_for_io().
->>   A folio that stays cached then keeps a stale tag.  1/6 uncounted such
->>   a folio twice, and 3/6 counted it and never uncounted it.
->> - 4/6, 5/6 and 6/6 (second review): with blocks smaller than the folio,
->>   iomap tracks uptodate per block.  The edge that a write completes is
->>   then not uptodate when the write finds it, so it was never marked and
->>   stayed cached until reclaim.  This happens with 4 KiB blocks on 16 or
->>   64 KiB pages.  The new folio_dontcache_edge_written() also accepts a
->>   folio whose blocks outside this write are uptodate.
->>   filemap_dontcache_edge_completes() takes the range that the write
->>   covers, and 6/6 passes it.
->> - 5/6 (second review): filemap_dontcache_edge_complete() now waits for
->>   writeback in flight, which could not drop the folio.  It also kicks
->>   DONTCACHE writeback when it marks a dirty folio.  The earlier kick
->>   came before the mark.  It drops a clean folio that is not mapped
->>   without a mark.  A mark that filemap_end_dropbehind() then cleared
->>   outside the i_pages lock could leave WB_DONTCACHE_DIRTY counted.
->> - 6/6 (both reviews): NFSD finds the edges that a buffered segment
->>   shares by the mapping's smallest folio, as iomap does, not by page.
->>   On 16 KiB blocks, a WRITE written as one buffered segment can have
->>   page-aligned ends inside a block.  Nothing completed those edges.
->>   NFSD also completes a segment's first edge only when the write
->>   reached the end of the segment's bytes in that unit (first review).
->> - 4/6 (first review): a paragraph on a limit.  4/6 marks the folio
->>   before iomap validates the iomap.  A stale iomap stopped by a fatal
->>   signal then leaves a mark on a folio that this write did not complete.
->>   This costs one read-back and no data.
->> - 2/6: unchanged.
->> 
->> Patches 1, 3, 4, 5 and 6 carry notes below the --- line.  The notes
->> give each question from the v8 reviews, and the code, lock or check
->> that answers it.  This includes the limits that the series keeps on
->> purpose.
->> 
->> Before posting, I ran a third review of v9 locally, with Sashiko's
->> review stages and the review prompts it uses.  It found no new
->> problems.
->> 
->> Measured for 6/6 on 16 KiB-block XFS over the loop device.  Its
->> dma_alignment is 511, so every TCP payload is memory-misaligned and
->> NFSD writes each WRITE as one buffered segment.  32 writers of 12288-byte
->> records, 1 GiB: v8 left all 32,736 pages of a 128 MiB file resident.
->> v9 leaves 948 of 262,080 pages (0.4%) and reads 0.0003 blocks per
->> record.  The v8 results hold.  In every run BdiDontcacheDirty was 0
->> after the final sync.  That includes runs that mix uncached writes,
->> cached writes and mmap stores on one file.  Every record verified.
->> 
->> I measured all of v9 again on 4 KiB pages, with XFS blocks of 1 KiB
->> and 2 KiB over the loop device.  These blocks are smaller than the page.
->> 32 writers wrote 47008-byte records, 1 GiB.  Uncached application writes
->> left 0 of 261,850 pages resident.  NFSD left 497 (1 KiB blocks) and 349
->> (2 KiB blocks).  LOCALIO left 854 and 949.  Every path read 0.0001
->> blocks per record.  A kernel without these fixes, on a 128 MiB run with
->> 1 KiB blocks, left about one page for every two records.  Uncached
->> writes through NFSD, cached writes and mmap stores ran together on one
->> file, with 4 KiB and 1 KiB blocks.  BdiDontcacheDirty was 0 after every
->> round, and every record verified.  I did not test kernels with 16 KiB
->> or 64 KiB pages.
->> 
->> v8: https://lore.kernel.org/linux-nfs/20261023024548.71123-1-snitzer@kernel.org/
->> v7: https://lore.kernel.org/linux-nfs/20261020220346.28020-1-snitzer@kernel.org/
->> v6: https://lore.kernel.org/linux-nfs/atbfEbgMU6UGkn2X@kernel.org/
->> v5: https://lore.kernel.org/linux-nfs/20261019150725.1507-1-snitzer@kernel.org/
->> v4: https://lore.kernel.org/linux-nfs/20261015233309.42999-1-snitzer@kernel.org/
->> v3: https://lore.kernel.org/linux-nfs/20261001045502.48381-1-snitzer@kernel.org/
->> v2: https://lore.kernel.org/linux-nfs/20260929231329.22018-1-snitzer@kernel.org/
->> v1: https://lore.kernel.org/linux-nfs/20260929173423.16149-1-snitzer@kernel.org/
->> 
->> Thanks,
->> Mike
->> 
->> Mike Snitzer (6):
->>   mm: take a folio off WB_DONTCACHE_DIRTY only if it was counted there
->>   mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats
->>   mm: add folio_mark_dropbehind() to mark a folio dropbehind and account it
->>   mm, iomap: keep a partly covered page until an uncached write completes it
->>   mm, iomap: let an uncached writer complete its shared pages itself
->>   NFSD: drop a shared boundary page only once both WRITEs have written it
->> 
->> 
->>  .../filesystems/nfs/nfsd-io-modes.rst         |  17 ++
->>  fs/iomap/buffered-io.c                        |  36 ++-
->>  fs/iomap/trace.h                              |   3 +-
->>  fs/nfsd/vfs.c                                 | 116 +++++++-
->>  include/linux/fs.h                            |   8 +-
->>  include/linux/iomap.h                         |   1 +
->>  include/linux/pagemap.h                       |  14 +
->>  mm/backing-dev.c                              |   6 +
->>  mm/filemap.c                                  | 265 +++++++++++++++++-
->>  9 files changed, 435 insertions(+), 31 deletions(-)
->> 
->> 
->> base-commit: 6d13b7f74eec16e08d5e7f772ee119432a14ef2c
+On Tue, Oct 27, 2026, at 8:44 AM, Adolph Zeng wrote:
+> An AUTH_SYS NFSv4 client can read or write a file on a sec=3Dkrb5p
+> export using another client's valid OPEN stateid by inserting
+> SAVEFH between PUTFH and READ or WRITE.
 >
-> This all looks good to me at this point. This is a mixed mm and nfsd
-> set though. How do you envision this being merged?
+> PUTFH resolves the handle with NFSD_MAY_BYPASS_GSS, expecting
+> a later security check. SAVEFH carries OP_HANDLES_WRONGSEC even though
+> it only saves the handle, so PUTFH skips NFS4ERR_WRONGSEC. Stateid I/O
+> can then reuse a cached nfsd_file.
 >
-> Reviewed-by: Jeff Layton <jlayton@kernel.org>
+> The original report exported /srv/nfs-sec to * with these options:
+>
+>   rw,sync,no_subtree_check,fsid=3D0,sec=3Dkrb5p,secure,root_squash
+>
+> The 0600, nobody:nogroup file /srv/nfs-sec/secret.txt held 32 random
+> bytes. A Kerberos privacy NFSv4.0 client ran SETCLIENTID, OPEN and
+> OPEN_CONFIRM, then kept its read/write stateid live. A separate
+> AUTH_SYS client used UID/GID 65534 and a reserved source port.
+>
+> The AUTH_SYS client enumerated a bounded range of nearby clientid
+> counters, stateid numbers and seqids to find the live OPEN stateid.
+> With it, PUTFH, READ returned NFS4ERR_WRONGSEC, while PUTFH, SAVEFH,
+> READ returned the file data and PUTFH, SAVEFH, WRITE changed it. The
+> Kerberos client subsequently read the changed contents.
+>
+> SAVEFH leaves CURRENT_FH in place. When deciding whether PUTFH must
+> report NFS4ERR_WRONGSEC, look past SAVEFH to the first operation that
+> uses or replaces CURRENT_FH. If another PUTFH replaces it, leave the
+> earlier PUTFH unchecked, as required by RFC 8881 Section 2.6.3.1.1.
+>
+> Local COPY and CLONE consume SAVED_FH as the source. Check the
+> saved export with check_nfsd_access() before using its stateid:
+> a cached open stateid can otherwise bypass the sec=3D policy. Map
+> NFS4ERR_WRONGSEC to NFS4ERR_ACCESS at COPY or CLONE, since neither
+> operation permits NFS4ERR_WRONGSEC. The check also applies when
+> SECINFO_NO_NAME or RESTOREFH intervenes. LINK and RENAME already
+> check their saved handle in their own paths.
+>
+> An inter-server COPY carries a foreign SAVED_FH. The source server
+> validates it; the destination must not apply its own export policy
+> to that handle. The destination PUTFH still checks its local export.
+>
+> KASAN guests reproduced the NFSv4.0 and local NFSv4.2 bypasses on
+> d135ab453a74. With this patch, direct READ and SAVEFH READ/WRITE
+> returned NFS4ERR_WRONGSEC. Local COPY/CLONE with a protected saved
+> source returned NFS4ERR_ACCESS; foreign-handle inter-server COPY
+> completed.
+>
+> Fixes: 68d93184352f ("nfsd4: fix wrongsec handling for PUTFH + op case=
+s")
+> Assisted-by: LLM
+> Signed-off-by: Zeng Adolph <coderzeng@hotmail.com>
+> ---
+> Testing: two x86_64 guests covered the original NFSv4.0 report,
+> six SAVEFH security boundaries, NFSv4.2 local COPY/CLONE, and a
+> foreign-handle inter-server COPY. W=3D1 nfs4proc.o built with
+> CONFIG_NFSD_V4_2_INTER_SSC enabled and disabled. The ASan/UBSan
+> decision harness passed 262 cases. The KASAN guest reported no
+> KASAN, Oops, or NFSD warnings.
+>
+>  fs/nfsd/nfs4proc.c | 36 +++++++++++++++++++-----------------
+>  1 file changed, 19 insertions(+), 17 deletions(-)
+>
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index a50f9dcb3..25fb7fb61 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1491,6 +1491,11 @@ nfsd4_verify_copy(struct svc_rqst *rqstp, struc=
+t=20
+> nfsd4_compound_state *cstate,
+>  =E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82if (!cstate->save_fh.fh_=
+dentry)
+>  =E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=
+=82=E2=80=82=E2=80=82=E2=80=82return nfserr_nofilehandle;
+>
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82/* A cached open stateid=
+ does not authorize the saved source export. */
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82status =3D check_nfsd_ac=
+cess(cstate->save_fh.fh_export, rqstp);
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82if (status)
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=
+=82=E2=80=82=E2=80=82=E2=80=82return nfserr_acces;
+> +
+>  =E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82status =3D nfs4_preproce=
+ss_stateid_op(rqstp, cstate, &cstate->save_fh,
+>  =E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=
+=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=
+=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=
+=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82    src_stateid, RD_STAT=
+E, src, NULL);
+>  =E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82if (status)
+> @@ -3237,32 +3242,29 @@ static bool need_wrongsec_check(struct svc_rqs=
+t *rqstp)
+>  =E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82struct nfsd4_compoundres=
+ *resp =3D rqstp->rq_resp;
+>  =E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82struct nfsd4_compoundarg=
+s *argp =3D rqstp->rq_argp;
+>  =E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82struct nfsd4_op *this =3D=
+ &argp->ops[resp->opcnt - 1];
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82struct nfsd4_op *next =3D=
+ &argp->ops[resp->opcnt];
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82struct nfsd4_op *next;
+>  =E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82const struct nfsd4_opera=
+tion *thisd =3D OPDESC(this);
+>  =E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82const struct nfsd4_opera=
+tion *nextd;
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82unsigned int i;
+>
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82/*
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 * Most ops check wronse=
+c on our own; only the putfh-like ops
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 * have special rules.
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 */
+>  =E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82if (!(thisd->op_flags & =
+OP_IS_PUTFH_LIKE))
+>  =E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=
+=82=E2=80=82=E2=80=82=E2=80=82return false;
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82/*
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 * rfc 5661 2.6.3.1.1.6:=
+ don't bother erroring out a
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 * put-filehandle operat=
+ion if we're not going to use the
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 * result:
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 */
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82if (argp->opcnt =3D=3D r=
+esp->opcnt)
+> +
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82/* SAVEFH does not consu=
+me the current filehandle. */
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82for (i =3D resp->opcnt; =
+i < argp->opcnt; i++) {
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=
+=82=E2=80=82=E2=80=82=E2=80=82next =3D &argp->ops[i];
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=
+=82=E2=80=82=E2=80=82=E2=80=82if (next->opnum !=3D OP_SAVEFH)
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=
+=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=
+=82=E2=80=82break;
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82}
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82if (i =3D=3D argp->opcnt)
+>  =E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=
+=82=E2=80=82=E2=80=82=E2=80=82return false;
+> +
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82next =3D &argp->ops[i];
+>  =E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82if (next->opnum =3D=3D O=
+P_ILLEGAL)
+>  =E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=
+=82=E2=80=82=E2=80=82=E2=80=82return false;
+>  =E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82nextd =3D OPDESC(next);
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82/*
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 * Rest of 2.6.3.1.1: ce=
+rtain operations will return WRONGSEC
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 * errors themselves as =
+necessary; others should check for them
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 * now:
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 */
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82return !(nextd->op_flags=
+ & OP_HANDLES_WRONGSEC);
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82return !(nextd->op_flags=
+ &
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=
+=82=E2=80=82=E2=80=82=E2=80=82  (OP_HANDLES_WRONGSEC | OP_IS_PUTFH_LIKE)=
+);
+>  }
+>
+>  #ifdef CONFIG_NFSD_V4_2_INTER_SSC
+> --
+> 2.43.0
 
-My recommendation was take all of this through the MM tree, since
-the NFSD patch looks like the first consumer of the work, and it
-depends on how the MM API is changed during review.
+My concern with this fix is that it addresses the issue for READ
+and WRITE, but not for COPY/CLONE, which can involve a foreign
+filehandle which fails the server's local security policy checks.
+
+I'm interested to hear especially from Neil, who was working in
+this area a while ago.
 
 
--- 
+--=20
 Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
