@@ -1,48 +1,48 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=45.254.49.198
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=101.71.155.101
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793174631;
-	b=OOg+6Ls5hILrDa2PRZDaHP93BgPukGZhEwlfYB03MN6HuaeZ8bHTjNhDgJuICv3qkme9
-	 excTn7oEZzXrlEsZCYoq1UdB/7v2gJxykncKcq+oA8s9bPmh4+neMcn709NXC3WfhC2Tq
-	 61gft4WpmaQm7aq1E32S+xai3POZaPtNE1ZRtK+qvU0zE6cfhhASZxS+rqt6bczYMdqCq
-	 J1F5SweeGAKNXJISpXqQpT6wcjnrditjLAcnmveNEDyNQ/foo1kqbLqgPBve07vFTXASG
-	 MbOSSr//vHo7mUIKewLP0TZF0b8VwpJiFHwu4YcNL572L3uiM3Bn5jII5Rl4aSUGquA==
+	t=1793174626;
+	b=UKE5xxqaVqIsDH2fBAeMcJL4sJV10JMoZrSCsE05DuZwMO/iQwztPqGsAicepS/lfxNA
+	 Vz06qROyrm5gW7IN9Om/+g3Vl3fiS2xN1aqF+7E3jBY2GnLXEBL8vhom3dVOQPULSNNn8
+	 dZ72oG5edyu1DEmFptDTpcc/5oL0qsySaMCpkO7F7Eb9+/M2pr1thzDTLwtViOiDgnw7P
+	 ZBTZDVwgLBo6fxK+/bAZt62faeN1KjkHiKL3ivMtQt1MItCKEZWwFy2kmOlkuY/c601ed
+	 Q6wDoY+u2MP490j9LRCFNmNQBtwDw4b/9LzPKlhfJ6GW25hMSximyGO1tIHsBsRH4Zw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793174631;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793174626;
 	h=DMARC-Filter:Received:From:Date:Message-ID:To:Cc:Subject:
 	 MIME-Version:Content-Type:X-HM-Tid:X-HM-MType:X-HM-Spam-Status:
 	 DKIM-Signature;
-	bh=dMrVTSthOkYpzFQ83hr1uNnYvwIo+RF5nc39RF0pFT4=;
-	b=FMyjW2n996J1fLbRZ0wg0QMsBEA4Uk3EWxJ91RoMH7BoUNWwU6Ec34FNthxqDMgHvLpw
-	 9pFdRvHCTlIj+zb7PJ9aXLIDouqT5k8KVYrnGkH5CJlrDvYNeyGYJYrZQdwWDkMCey7Nu
-	 XhH6S6ijBrtQfloRN2AT0tgyfdZrtPVy/pWaimF7fs5FpPs6tAwcxup2p2GoJCFR/D+1u
-	 5/lXOlzykxc8g5VLbAdayjBAYrDpPgbUcKAMmf/N1rtMzYzum8luWKfdVPHpyO8QX+BSs
-	 ROOpTSC9vn4MY0TfSKZ0uXcCZbSNus8v8wzMOTMuVEOc9xp+EV4NpBUVGGEgcdPfXKQ==
+	bh=o2kEwPfVTMOA/pIzaCthC00GMXnOjvIJ9h/WOHo64FQ=;
+	b=QdUQXDxR/GC/gsUOFgKVeXqAoWJdpQOu+CfAvIaHjSEgz0H5eIJetle7y5Qd7yzosQap
+	 GmqrGnAkGljeN4j+722wGfccb1UkNLyRbQJDF1ktBwhGq5/va9mn/HNH+6+Xj7810qwgB
+	 FoTvdoJf1jarhilA2lIH43gl2tpHOs9jqruPgUnO5H1hC1ytSNFx/CsYVLAL10fxXaaY0
+	 W/KOUS4Bm9xeP9e8d1gH4uSS8y3KgJZabE+PVttqovCmP2vJFhVqOd8xRzr/bgfZICwJy
+	 kOFI+usWr9ExaRP3peEQGTT5X48kVv6lpx3zwZjghvFSTjmGaqbCxEFooM/PLA0SGrQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=stu.pku.edu.cn;
 	spf=pass smtp.mailfrom=stu.pku.edu.cn;
-	dkim=pass header.d=stu.pku.edu.cn header.i=@stu.pku.edu.cn header.a=rsa-sha256 header.s=default header.b=iK4cDW75;
-	arc=none smtp.remote-ip=45.254.49.198
-Received: from mail-m49198.qiye.163.com (mail-m49198.qiye.163.com [45.254.49.198])
+	dkim=pass header.d=stu.pku.edu.cn header.i=@stu.pku.edu.cn header.a=rsa-sha256 header.s=default header.b=Llfw6By5;
+	arc=none smtp.remote-ip=101.71.155.101
+Received: from mail-m155101.qiye.163.com (mail-m155101.qiye.163.com [101.71.155.101])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 09CEC606A31A
-	for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2026 08:03:47 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 09CEC606A31A
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3D5EC606A31E
+	for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2026 08:03:42 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3D5EC606A31E
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=stu.pku.edu.cn
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=stu.pku.edu.cn
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=stu.pku.edu.cn header.i=@stu.pku.edu.cn header.a=rsa-sha256 header.s=default header.b=iK4cDW75
+	dkim=pass (1024-bit key, unprotected) header.d=stu.pku.edu.cn header.i=@stu.pku.edu.cn header.a=rsa-sha256 header.s=default header.b=Llfw6By5
 Received: from 1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.ip6.arpa (unknown [61.37.18.60])
-	by smtp.qiye.163.com (Hmail) with ESMTP id 52a2336bf;
-	Wed, 28 Oct 2026 16:03:42 +0800 (GMT+08:00)
+	by smtp.qiye.163.com (Hmail) with ESMTP id 52a2336ba;
+	Wed, 28 Oct 2026 16:03:36 +0800 (GMT+08:00)
 From: Yifan Zhang <yfzhang23@stu.pku.edu.cn>
-Date: Wed, 28 Oct 2026 16:03:40 +0800
-Message-ID: <179317462025.87538.12362003258355443382@stu.pku.edu.cn>
+Date: Wed, 28 Oct 2026 16:03:34 +0800
+Message-ID: <179317461419.87500.1435945951937634987@stu.pku.edu.cn>
 To: linux-nfs@vger.kernel.org
 Cc: cel@kernel.org, jlayton@kernel.org, neil@brown.name, okorniev@redhat.com,
  Dai.Ngo@oracle.com, tom@talpey.com
-Subject: [BUG] nfsd: async COPY cancel tracepoint dereferences cleared client
+Subject: [BUG] nfsd: OP_ILLEGAL indexes beyond spo_must_allow bitmap
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -52,502 +52,72 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============2735155024747995143=="
-X-HM-Tid: 0aa18189502c03a2kunm961eb23e1c1618
+Content-Type: multipart/mixed; boundary="===============5971564931900082107=="
+X-HM-Tid: 0aa1818937f003a2kunmeca319e41c1601
 X-HM-MType: 10
 X-HM-Spam-Status: e1kfGhgUHx5ZQUtXWQgPGg8OCBgUHx5ZQUlOS1dZFg8aDwILHllBWSg2Ly
-	tZV1koWUFITzdXWRgWCB1ZQUpXWS1ZQUlXWQ8JGhUIEh9ZQVkaTE8eVkpOS0hLQxoaH0hKTFYeHw
+	tZV1koWUFITzdXWRgWCB1ZQUpXWS1ZQUlXWQ8JGhUIEh9ZQVlDSU1JVk0ZHkgYTB1LHh9IQlYeHw
 	5VEwETFhoSFyQUDg9ZV1kYEgtZQVlNSlVITFVKQ1VNS1lXWRYaDxIVHRRZQVlLVUtVS1VLWQY+
 DKIM-Signature: a=rsa-sha256;
-	b=iK4cDW75xQ3fxbrYev+0K8XkowHRApudyQ0+K6teJ+GFbBgMQVo0I5KKQN0aCNM/WkETs3hd/0Z7S3zD2jEPBJm3+QKoEaghwD13hQr9O6WantRbQ69cR8UumYcke8jAiu8TMUaAa+BpIPJVmIZEGPlxmk2OGuj1J4vMIAJlg4A=; c=relaxed/relaxed; s=default; d=stu.pku.edu.cn; v=1;
-	bh=dMrVTSthOkYpzFQ83hr1uNnYvwIo+RF5nc39RF0pFT4=;
+	b=Llfw6By5yjddgZgXZkPOwYDuJwGiS8IrMj8Pyrfo94YX4M6kXovi1pnMDsLdsIBUh/II4JqqQpO6rmNkQNOU+VIvfpEg31Hecj+iKWgw+WbHKm90mL5x4PsGzarQLlb8N9Y6e0JdRqprjF9YIdqMSZ49+H8ijYZzR5md4lfCgRE=; c=relaxed/relaxed; s=default; d=stu.pku.edu.cn; v=1;
+	bh=o2kEwPfVTMOA/pIzaCthC00GMXnOjvIJ9h/WOHo64FQ=;
 	h=date:mime-version:subject:message-id:from;
 
---===============2735155024747995143==
+--===============5971564931900082107==
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 7bit
 
 Hello,
 
-I found a deterministic NULL-pointer read in the NFSD async COPY cancel
-tracepoint. I reproduced it on two independent boots of an unmodified Linux
-v7.3 KASAN kernel. Both runs reported:
+I found an out-of-bounds bitmap read in nfsd4_spo_must_allow() when an
+NFSv4.1 COMPOUND contains an invalid operation number. I reproduced it on two
+independent boots of an unmodified Linux v7.3 KASAN kernel. Both runs
+reported:
 
-  BUG: KASAN: null-ptr-deref in
-  trace_event_raw_event_nfsd_copy_async_done_class+0x7d6/0xa30
-  Read of size 28 at addr 00000000000000a8
-  nfsd4_stop_copy
-  nfsd4_shutdown_copy
-  __destroy_client
-  nfs4_state_shutdown_net
-  nfsd_destroy_serv
+  BUG: KASAN: slab-out-of-bounds in nfsd4_spo_must_allow+0x2ec/0x4d0
+  Read of size 8 by task nfsd
+  nfsd4_spo_must_allow
+  check_security_flavor
+  check_nfsd_access
+  nfsd4_proc_compound
 
-nfsd4_unhash_copy() clears copy->cp_copy.cp_clp before calling
-nfsd4_stop_copy(). When the nfsd_copy_async_cancel trace event is enabled,
-the event class then copies copy->cp_clp->cl_addr, causing a 28-byte read from
-NULL + 0xa8.
+nfsd4_decode_compound() converts an out-of-range wire operation to
+OP_ILLEGAL (10044) and retains it in the decoded operation array.
+nfsd4_spo_must_allow() later scans that array and calls test_bit() with the
+operation number without a range check. On x86-64, the two-word
+spo_must_allow bitmap is indexed at word 156.
 
-The attached reproducer starts a local NFSv4.2 server, creates two ordinary
-files, enables the cancel tracepoint, obtains an async COPY stateid, and stops
-NFSD so client shutdown takes the failing path. nfsd_spo_framework.c is a
-small RPC/server-bootstrap source included by repro.c. Build them in the same
-directory with:
+The attached C reproducer starts a loopback NFSv4.1 server, creates an
+ordinary fsid=0 export that allows AUTH_SYS, establishes a session with
+AUTH_NULL, and sends:
+
+  COMPOUND [SEQUENCE, PUTROOTFH, GETFH, 0xffffffff]
+
+It can be built with:
 
   cc -O2 repro.c -o repro
 
-The reproducer runs deterministically on the default syzkaller ext4 image and
-creates only two regular files.
+The trigger is deterministic and runs over loopback on the default syzkaller
+ext4 image.
 
-CVE-2026-89675 concerns an async-COPY use-after-free during cancel and
-shutdown. It does not cover the tracepoint dereference after cp_clp has been
-cleared.
+CVE-2023-53680 fixed an OP_ILLEGAL index into OPDESC() in the decoder, and
+CVE-2025-38430 added the non-COMPOUND procedure check in
+nfsd4_spo_must_allow(). This report reaches a separate bitmap index from a
+valid NFSv4.1 COMPOUND.
 
-Moving the trace before cp_clp is cleared, or caching cl_addr before unhashin=
-g,
-would avoid the NULL dereference.
+A minimal fix is to skip operation numbers above LAST_NFS4_OP before calling
+test_bit(). A regression test can use a valid session followed by
+PUTROOTFH, GETFH, and an illegal final opcode.
 
-Attached are the reproducer sources, KASAN report, and kernel config.
+Attached are the reproducer, KASAN report, and kernel config.
 
 Regards,
 Yifan Zhang
 
---===============2735155024747995143==
+--===============5971564931900082107==
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: quoted-printable
 Content-Disposition: attachment; filename="repro.c"
-MIME-Version: 1.0
-
-#define _GNU_SOURCE
-
-#include <sched.h>
-#include <poll.h>
-
-/*
- * Reuse the small, dependency-free RPC/NFS server bootstrap from the
- * OP_ILLEGAL reproducer.  Rename its main so this file can provide a v4.2
- * COPY-specific driver while keeping the wire helpers in one audited place.
- */
-#define main spo_framework_main
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wreturn-type"
-#include "nfsd_spo_framework.c"
-#pragma GCC diagnostic pop
-#undef main
-
-enum {
-	OP_LOOKUP_COPY =3D 15,
-	OP_SAVEFH_COPY =3D 32,
-	OP_COPY_COPY =3D 60,
-	OP_OFFLOAD_CANCEL_COPY =3D 66,
-	CLD_GET_VERSION_COPY =3D 5,
-};
-
-/* Linux UAPI include/uapi/linux/nfsd/cld.h, protocol version 1. */
-struct cld_name_copy {
-	uint16_t len;
-	uint8_t id[1024];
-} __attribute__((packed));
-
-struct cld_msg_copy {
-	uint8_t version;
-	uint8_t command;
-	int16_t status;
-	uint32_t xid;
-	union {
-		int64_t grace_time;
-		struct cld_name_copy name;
-		uint8_t max_version;
-	} __attribute__((packed)) payload;
-} __attribute__((packed));
-
-static pid_t start_cld_responder(void)
-{
-	const char *root =3D "/var/lib/nfs/rpc_pipefs";
-	const char *pipe =3D "/var/lib/nfs/rpc_pipefs/nfsd/cld";
-	pid_t pid;
-
-	ensure_dir("/var", 0755);
-	ensure_dir("/var/lib", 0755);
-	ensure_dir("/var/lib/nfs", 0755);
-	ensure_dir(root, 0755);
-	if (mount_fs("rpc_pipefs", root, "rpc_pipefs", NULL) < 0 &&
-	    errno !=3D EBUSY)
-		die("mount(rpc_pipefs)");
-	ensure_dir("/var/lib/nfs/rpc_pipefs/nfsd", 0755);
-
-	pid =3D fork();
-	if (pid < 0)
-		die("fork(nfsdcld responder)");
-	if (pid =3D=3D 0) {
-		struct cld_msg_copy msg;
-		int fd, tries;
-
-		for (tries =3D 0; tries < 2000; tries++) {
-			fd =3D open(pipe, O_RDWR | O_CLOEXEC);
-			if (fd >=3D 0)
-				break;
-			if (errno !=3D ENOENT && errno !=3D ENXIO)
-				die("open(nfsd/cld)");
-			usleep(1000);
-		}
-		if (tries =3D=3D 2000)
-			fail("nfsd/cld did not appear");
-		fprintf(stderr, "[+] volatile nfsdcld responder opened %s\n", pipe);
-		for (;;) {
-			struct pollfd pfd =3D { .fd =3D fd, .events =3D POLLIN };
-			ssize_t n;
-
-			if (poll(&pfd, 1, -1) < 0) {
-				if (errno =3D=3D EINTR)
-					continue;
-				die("poll(nfsd/cld)");
-			}
-			n =3D read(fd, &msg, sizeof(msg));
-
-			if (n < 0 && errno =3D=3D EINTR)
-				continue;
-			if (n =3D=3D 0)
-				continue;
-			if (n < 0)
-				die("read(nfsd/cld)");
-			if ((size_t)n !=3D sizeof(msg))
-				fail("short nfsdcld upcall");
-			fprintf(stderr, "[+] nfsdcld command=3D%u xid=3D%u\n",
-				msg.command, msg.xid);
-			msg.status =3D 0;
-			if (msg.command =3D=3D CLD_GET_VERSION_COPY)
-				msg.payload.max_version =3D 1;
-			write_all(fd, &msg, sizeof(msg));
-		}
-	}
-	return pid;
-}
-
-static void force_and_wait_end_grace(void)
-{
-	char answer[4];
-	int fd, tries;
-
-	for (tries =3D 0; tries < 100000; tries++) {
-		fd =3D open("/proc/fs/nfsd/v4_end_grace", O_RDONLY | O_CLOEXEC);
-		if (fd < 0)
-			die("open(v4_end_grace)");
-		memset(answer, 0, sizeof(answer));
-		if (read(fd, answer, sizeof(answer) - 1) < 0)
-			die("read(v4_end_grace)");
-		close(fd);
-		if (answer[0] =3D=3D 'Y')
-			return;
-		if (tries =3D=3D 0)
-			write_control("/proc/fs/nfsd/v4_end_grace", "Y\n", true);
-		sched_yield();
-	}
-	fail("grace did not end after force request");
-}
-
-static void put_u64_copy(struct xbuf *b, uint64_t v)
-{
-	put_u32(b, (uint32_t)(v >> 32));
-	put_u32(b, (uint32_t)v);
-}
-
-static void build_exchange_id_v42(struct xbuf *b)
-{
-	uint64_t nonce =3D ((uint64_t)time(NULL) << 32) ^ (uint32_t)getpid();
-	char owner[48];
-	int n;
-
-	b->len =3D 0;
-	compound_header(b, 2, 1);
-	put_u32(b, OP_EXCHANGE_ID);
-	put_raw(b, &nonce, sizeof(nonce));
-	n =3D snprintf(owner, sizeof(owner), "copy-cancel-%ld-%ld",
-		     (long)getpid(), (long)time(NULL));
-	if (n < 0 || (size_t)n >=3D sizeof(owner))
-		fail("owner string construction failed");
-	put_opaque(b, owner, (uint32_t)n);
-	put_u32(b, 0); /* eia_flags */
-	put_u32(b, 0); /* SP4_NONE */
-	put_u32(b, 0); /* client_impl_id<> */
-}
-
-static void build_create_session_v42(struct xbuf *b,
-				     const uint8_t clientid[8], uint32_t seqid)
-{
-	b->len =3D 0;
-	compound_header(b, 2, 1);
-	put_u32(b, OP_CREATE_SESSION);
-	put_raw(b, clientid, 8);
-	put_u32(b, seqid);
-	put_u32(b, 0); /* flags */
-	put_channel_attrs(b, 4096, 16);
-	put_channel_attrs(b, 4096, 4);
-	put_u32(b, 0);             /* callback program */
-	put_u32(b, 1);             /* callback_sec_parms4 count */
-	put_u32(b, RPC_AUTH_NULL); /* selected flavor */
-}
-
-static void put_sequence_copy(struct xbuf *b, const uint8_t sessionid[16],
-			      uint32_t seqid)
-{
-	put_u32(b, OP_SEQUENCE);
-	put_raw(b, sessionid, 16);
-	put_u32(b, seqid);
-	put_u32(b, 0); /* slot id */
-	put_u32(b, 0); /* highest slot id */
-	put_u32(b, 0); /* cache_this */
-}
-
-static void build_async_copy(struct xbuf *b, const uint8_t sessionid[16])
-{
-	static const uint8_t zero_stateid[16];
-
-	b->len =3D 0;
-	compound_header(b, 2, 8);
-	put_sequence_copy(b, sessionid, 1);
-	put_u32(b, OP_PUTROOTFH);
-	put_u32(b, OP_LOOKUP_COPY);
-	put_opaque(b, "src", 3);
-	put_u32(b, OP_SAVEFH_COPY);
-	put_u32(b, OP_PUTROOTFH);
-	put_u32(b, OP_LOOKUP_COPY);
-	put_opaque(b, "dst", 3);
-	put_u32(b, OP_COPY_COPY);
-	put_raw(b, zero_stateid, sizeof(zero_stateid)); /* source stateid */
-	put_raw(b, zero_stateid, sizeof(zero_stateid)); /* destination stateid */
-	put_u64_copy(b, 0);              /* source offset */
-	put_u64_copy(b, 0);              /* destination offset */
-	put_u64_copy(b, 32U * 1024U * 1024U); /* byte count */
-	put_u32(b, 1); /* consecutive */
-	put_u32(b, 0); /* synchronous=3Dfalse */
-	put_u32(b, 0); /* source server list: intra-server COPY */
-	put_u32(b, OP_GETFH); /* keeps the operation count/result easy to audit */
-}
-
-static void build_offload_cancel(struct xbuf *b,
-				 const uint8_t sessionid[16],
-				 const uint8_t stateid[16])
-{
-	b->len =3D 0;
-	compound_header(b, 2, 2);
-	put_sequence_copy(b, sessionid, 2);
-	put_u32(b, OP_OFFLOAD_CANCEL_COPY);
-	put_raw(b, stateid, 16);
-}
-
-static void parse_compound_prefix(struct xcur *c)
-{
-	uint32_t status, count;
-
-	if (!get_u32(c, &status) || !skip_opaque(c) || !get_u32(c, &count))
-		fail("short COMPOUND reply");
-	if (status !=3D 0) {
-		fprintf(stderr, "[-] COMPOUND failed: NFS status=3D%u opcount=3D%u\n",
-			status, count);
-		exit(EXIT_FAILURE);
-	}
-}
-
-static void expect_op_copy(struct xcur *c, uint32_t expected)
-{
-	uint32_t op, status;
-
-	if (!get_u32(c, &op) || !get_u32(c, &status))
-		fail("short operation reply");
-	if (op !=3D expected || status !=3D 0) {
-		fprintf(stderr,
-			"[-] unexpected operation reply: wanted=3D%u got=3D%u status=3D%u\n",
-			expected, op, status);
-		exit(EXIT_FAILURE);
-	}
-}
-
-static void skip_sequence_result(struct xcur *c)
-{
-	expect_op_copy(c, OP_SEQUENCE);
-	if (!skip_raw(c, 16 + 5 * sizeof(uint32_t)))
-		fail("short SEQUENCE result");
-}
-
-static void parse_copy_stateid(const struct xbuf *reply, uint32_t xid,
-			       uint8_t stateid[16])
-{
-	struct xcur c =3D parse_rpc_reply(reply, xid);
-	uint32_t callback_count;
-
-	parse_compound_prefix(&c);
-	skip_sequence_result(&c);
-	expect_op_copy(&c, OP_PUTROOTFH);
-	expect_op_copy(&c, OP_LOOKUP_COPY);
-	expect_op_copy(&c, OP_SAVEFH_COPY);
-	expect_op_copy(&c, OP_PUTROOTFH);
-	expect_op_copy(&c, OP_LOOKUP_COPY);
-	expect_op_copy(&c, OP_COPY_COPY);
-	if (!get_u32(&c, &callback_count) || callback_count !=3D 1 ||
-	    !get_raw(&c, stateid, 16))
-		fail("COPY did not return one callback stateid");
-	/* wr_count, wr_committed, verifier, consecutive, synchronous */
-	if (!skip_raw(&c, 8 + 4 + 8 + 4 + 4))
-		fail("short COPY result");
-	expect_op_copy(&c, OP_GETFH);
-	if (!skip_opaque(&c))
-		fail("short GETFH result");
-}
-
-static void make_copy_files(const char *dir)
-{
-	char src[512], dst[512];
-	uint8_t block[65536];
-	int sfd, dfd;
-	size_t total =3D 0;
-
-	memset(block, 0x5a, sizeof(block));
-	if (snprintf(src, sizeof(src), "%s/src", dir) >=3D (int)sizeof(src) ||
-	    snprintf(dst, sizeof(dst), "%s/dst", dir) >=3D (int)sizeof(dst))
-		fail("export path too long");
-	sfd =3D open(src, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
-	if (sfd < 0)
-		die("create source file");
-	if (fchmod(sfd, 0666) < 0)
-		die("chmod source file");
-	while (total < 32U * 1024U * 1024U) {
-		write_all(sfd, block, sizeof(block));
-		total +=3D sizeof(block);
-	}
-	close(sfd);
-	dfd =3D open(dst, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
-	if (dfd < 0)
-		die("create destination file");
-	if (fchmod(dfd, 0666) < 0)
-		die("chmod destination file");
-	close(dfd);
-}
-
-static void enable_cancel_tracepoint(void)
-{
-	const char *root =3D "/sys/kernel/tracing";
-	char path[256];
-
-	ensure_dir(root, 0755);
-	if (mount_fs("tracefs", root, "tracefs", NULL) < 0 && errno !=3D EBUSY) {
-		root =3D "/sys/kernel/debug/tracing";
-		ensure_dir("/sys/kernel/debug", 0755);
-		ensure_dir(root, 0755);
-		if (mount_fs("tracefs", root, "tracefs", NULL) < 0 && errno !=3D EBUSY)
-			die("mount(tracefs)");
-	}
-	if (snprintf(path, sizeof(path),
-		     "%s/events/nfsd/nfsd_copy_async_cancel/enable", root) >=3D
-	    (int)sizeof(path))
-		fail("tracepoint path too long");
-	write_control(path, "1\n", true);
-	fprintf(stderr, "[+] enabled %s\n", path);
-}
-
-static void configure_nfsd_copy(const char *export_path)
-{
-	char line[1024];
-	time_t expiry =3D time(NULL) + 3600;
-	pid_t cld_pid;
-
-	if (geteuid() !=3D 0)
-		fail("run as root");
-	if (mkdir("/proc/fs/nfsd", 0555) < 0 && errno !=3D EEXIST)
-		die("mkdir(/proc/fs/nfsd)");
-	if (mount_fs("nfsd", "/proc/fs/nfsd", "nfsd", NULL) < 0 &&
-	    errno !=3D EBUSY)
-		die("mount(nfsd)");
-	write_control("/proc/fs/nfsd/versions", "-2 -3 +4 +4.1 +4.2\n", true);
-	cld_pid =3D start_cld_responder();
-	configure_loopback();
-	install_listener();
-	ensure_dir(export_path, 0755);
-	make_copy_files(export_path);
-
-	snprintf(line, sizeof(line), "nfsd 127.0.0.1 %lld copy-repro\n",
-		 (long long)expiry);
-	write_control("/proc/net/rpc/auth.unix.ip/channel", line, true);
-	snprintf(line, sizeof(line),
-		 "copy-repro %s %lld %u 65534 65534 0 secinfo 1 0 %u\n",
-		 export_path, (long long)expiry, EXPORT_FLAGS, EXPORT_FLAGS);
-	write_control("/proc/net/rpc/nfsd.export/channel", line, true);
-	snprintf(line, sizeof(line), "copy-repro 1 \\x00000000 %lld %s\n",
-		 (long long)expiry, export_path);
-	write_control("/proc/net/rpc/nfsd.fh/channel", line, true);
-	write_control("/proc/fs/nfsd/threads", "2\n", true);
-	/*
-	 * End startup grace through the supported control operation.  The tiny
-	 * responder above provides volatile client tracking for this disposable
-	 * VM; it stores nothing and touches no filesystem metadata.  Polling Y
-	 * is a condition wait, not a fixed timing delay.
-	 */
-	force_and_wait_end_grace();
-	(void)cld_pid;
-}
-
-int main(int argc, char **argv)
-{
-	const char *export_path =3D "/nfsd-copy-export";
-	uint8_t clientid[8], sessionid[16], copy_stateid[16];
-	struct xbuf req =3D {0}, reply =3D {0};
-	struct xcur c;
-	uint32_t exchange_seqid =3D 0;
-	uint32_t xid =3D 0x434f5000U;
-	int fd;
-
-	if (argc > 1 && argv[1][0] =3D=3D '/')
-		export_path =3D argv[1];
-	setup_minimal_mounts();
-	configure_nfsd_copy(export_path);
-	enable_cancel_tracepoint();
-	fd =3D connect_nfsd();
-
-	build_exchange_id_v42(&req);
-	if (!rpc_roundtrip(fd, xid, &req, &reply))
-		fail("EOF during EXCHANGE_ID");
-	c =3D parse_compound_ok(parse_rpc_reply(&reply, xid), OP_EXCHANGE_ID);
-	if (!get_raw(&c, clientid, sizeof(clientid)) ||
-	    !get_u32(&c, &exchange_seqid))
-		fail("short EXCHANGE_ID result");
-
-	build_create_session_v42(&req, clientid, exchange_seqid);
-	if (!rpc_roundtrip(fd, ++xid, &req, &reply))
-		fail("EOF during CREATE_SESSION");
-	c =3D parse_compound_ok(parse_rpc_reply(&reply, xid), OP_CREATE_SESSION);
-	if (!get_raw(&c, sessionid, sizeof(sessionid)))
-		fail("short CREATE_SESSION result");
-	fprintf(stderr, "[+] NFSv4.2 session established\n");
-
-	build_async_copy(&req, sessionid);
-	if (!rpc_roundtrip(fd, ++xid, &req, &reply)) {
-		fprintf(stderr, "[-] EOF during COPY\n");
-		finish();
-	}
-	parse_copy_stateid(&reply, xid, copy_stateid);
-	fprintf(stderr, "[+] async COPY returned callback stateid\n");
-	fprintf(stderr,
-		"[+] stopping NFSD; client shutdown unhashes COPY before cancel trace\n");
-	write_control("/proc/fs/nfsd/threads", "0\n", true);
-	fprintf(stderr, "[!] NFSD shutdown returned; inspect kernel log\n");
-	finish();
-
-	build_offload_cancel(&req, sessionid, copy_stateid);
-	fprintf(stderr, "[+] sending OFFLOAD_CANCEL with cancel tracepoint enabled\n=
-");
-	if (!rpc_roundtrip(fd, ++xid, &req, &reply)) {
-		fprintf(stderr, "[+] connection closed; inspect kernel log\n");
-		finish();
-	}
-	fprintf(stderr, "[!] OFFLOAD_CANCEL replied; inspect kernel log\n");
-	dump_xdr_words(&reply);
-	close(fd);
-	finish();
-}
-
---===============2735155024747995143==
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: attachment; filename="nfsd_spo_framework.c"
 MIME-Version: 1.0
 
 #define _GNU_SOURCE
@@ -1191,86 +761,109 @@ int main(int argc, char **argv)
 	finish();
 }
 
---===============2735155024747995143==
+--===============5971564931900082107==
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: quoted-printable
 Content-Disposition: attachment; filename="kasan.txt"
 MIME-Version: 1.0
 
-[   24.227498] BUG: KASAN: null-ptr-deref in trace_event_raw_event_nfsd_copy_=
-async_done_class+0x7d6/0xa30
-[   24.228026] Read of size 28 at addr 00000000000000a8 by task nfsd_copy_can=
-ce/1
-[   24.228172]=20
-[   24.228734] CPU: 1 UID: 0 PID: 1 Comm: nfsd_copy_cance Not tainted 7.3.0 #=
-8 PREEMPT(lazy)=20
-[   24.228871] Hardware name: QEMU Ubuntu 24.04 PC v2 (i440FX + PIIX, arch_ca=
+[   28.627040] BUG: KASAN: slab-out-of-bounds in nfsd4_spo_must_allow+0x2ec/0=
+x4d0
+[   28.627572] Read of size 8 at addr ffff88800eefc7e0 by task nfsd/103
+[   28.627710]=20
+[   28.628283] CPU: 0 UID: 0 PID: 103 Comm: nfsd Not tainted 7.3.0 #8 PREEMPT=
+(lazy)=20
+[   28.628424] Hardware name: QEMU Ubuntu 24.04 PC v2 (i440FX + PIIX, arch_ca=
 ps fix, 1996), BIOS 1.16.3-debian-1.16.3-2 04/01/2014
-[   24.229135] Call Trace:
-[   24.229228]  <TASK>
-[   24.229340]  dump_stack_lvl+0x7b/0xa0
-[   24.229514]  kasan_report+0xce/0x100
-[   24.229607]  ? trace_event_raw_event_nfsd_copy_async_done_class+0x7d6/0xa30
-[   24.229689]  kasan_check_range+0x105/0x1b0
-[   24.229763]  __asan_memcpy+0x23/0x60
-[   24.229861]  trace_event_raw_event_nfsd_copy_async_done_class+0x7d6/0xa30
-[   24.229939]  ? __pfx_pick_task_fair+0x10/0x10
-[   24.230011]  ? __pfx_trace_event_raw_event_nfsd_copy_async_done_class+0x10=
-/0x10
-[   24.230091]  ? _raw_spin_lock+0x85/0xe0
-[   24.230170]  ? __pfx__raw_spin_lock+0x10/0x10
-[   24.230250]  nfsd4_stop_copy+0x27e/0x310
-[   24.230336]  nfsd4_shutdown_copy+0x1ad/0x2d0
-[   24.230413]  ? __destroy_client+0x65d/0xad0
-[   24.230491]  __destroy_client+0x683/0xad0
-[   24.230567]  ? __pfx___destroy_client+0x10/0x10
-[   24.230639]  ? entry_SYSCALL_64_after_hwframe+0x77/0x7f
-[   24.230713]  nfs4_state_shutdown_net+0x596/0xba0
-[   24.230803]  ? __pfx_nfs4_state_shutdown_net+0x10/0x10
-[   24.230891]  nfsd_destroy_serv+0x344/0x480
-[   24.230965]  ? __pfx_nfsd_destroy_serv+0x10/0x10
-[   24.231044]  nfsd_svc+0x4d1/0x720
-[   24.231115]  write_threads+0x2bd/0x560
-[   24.231188]  ? __pfx_write_threads+0x10/0x10
-[   24.231266]  ? kasan_save_track+0x14/0x30
-[   24.231335]  ? _copy_from_user+0x55/0x90
-[   24.231414]  ? __pfx_write_threads+0x10/0x10
-[   24.231485]  nfsctl_transaction_write+0xd4/0x130
-[   24.231561]  vfs_write+0x26c/0xd00
-[   24.231647]  ? __pfx_nfsctl_transaction_write+0x10/0x10
-[   24.231724]  ? __pfx_vfs_write+0x10/0x10
-[   24.231801]  ? putname+0x93/0xe0
-[   24.231863]  ? do_sys_openat2+0x12a/0x1b0
-[   24.231927]  ? __pfx_do_sys_openat2+0x10/0x10
-[   24.231989]  ? clockevents_program_event+0x1a0/0x830
-[   24.232082]  ? fdget_pos+0x1c1/0x520
-[   24.232146]  ksys_write+0x114/0x200
-[   24.232224]  ? __pfx_ksys_write+0x10/0x10
-[   24.232303]  ? __hrtimer_rearm_deferred+0x181/0x480
-[   24.232399]  do_syscall_64+0xdd/0x4a0
-[   24.232467]  entry_SYSCALL_64_after_hwframe+0x77/0x7f
-[   24.232604] RIP: 0033:0x4219c4
-[   24.233041] Code: 89 02 48 c7 c0 ff ff ff ff eb bd 66 2e 0f 1f 84 00 00 00=
- 00 00 90 f3 0f 1e fa 80 3d 9d 66 09 00 00 74 13 b8 01 00 00 00 0f 05 <48> 3d=
- 00 f0 ff ff 77 54 c3 0f 1f 00 55 48 89 e5 48 83 ec 20 48 89
-[   24.233158] RSP: 002b:00007ffd72b69458 EFLAGS: 00000202 ORIG_RAX: 00000000=
-00000001
-[   24.233327] RAX: ffffffffffffffda RBX: 0000000000000004 RCX: 0000000000421=
-9c4
-[   24.233402] RDX: 0000000000000002 RSI: 000000000048e672 RDI: 0000000000000=
-004
-[   24.233464] RBP: 000000000048e672 R08: 0000000000000045 R09: 00007ffd72b69=
-4d0
-[   24.233527] R10: 0000000000000000 R11: 0000000000000202 R12: 000000000048e=
-342
-[   24.233600] R13: 00007ffd72b6db10 R14: 00007ffd72b698f0 R15: 0000000000000=
-003
-[   24.233688]  </TASK>
-[   24.233777] =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+[   28.628662] Call Trace:
+[!] server repli[   28.628745]  <TASK>
+[   28.628857]  dump_stack_lvl+0x7b/0xa0
+ed (88 bytes); i[   28.629006]  print_report+0xd0/0x630
+nspect dmesg for[   28.629086]  ? __pfx__raw_spin_lock_irqsave+0x10/0x10
+ the KASAN read[   28.629169]  ? __hrtimer_rearm_deferred+0x181/0x480
+[   28.629274]  ? nfsd4_spo_must_allow+0x2ec/0x4d0
 
---===============2735155024747995143==
+[   28.629349]  kasan_report+0xce/0x100
+[   28.629415]  ? nfsd4_spo_must_allow+0x2ec/0x4d0
+[   28.629499]  kasan_check_range+0x105/0x1b0
+[diag] reply XDR[   28.629572]  nfsd4_spo_must_allow+0x2ec/0x4d0
+ words:[   28.629658]  check_security_flavor+0x1a1/0x2a0
+[   28.629746]  check_nfsd_access+0x42/0x60
+[   28.629827]  nfsd4_proc_compound+0x10ce/0x2210
+ 53504f02[   28.629917]  nfsd_dispatch+0x281/0x7e0
+[   28.629993]  ? __pfx_nfsd_dispatch+0x10/0x10
+[   28.630063]  ? xdr_inline_decode+0x105/0x5f0
+ 00000001[   28.630156]  svc_process_common+0xf0e/0x1830
+[   28.630237]  ? __pfx_svc_process_common+0x10/0x10
+ 00000000[   28.630305]  ? schedule_timeout+0x141/0x240
+[   28.630369]  ? __pfx_nfsd_dispatch+0x10/0x10
+[   28.630437]  ? xdr_inline_decode+0x105/0x5f0
+ 00000000[   28.630518]  ? xdr_init_decode+0x227/0x3c0
+[   28.630592]  svc_process+0x627/0xba0
+[   28.630662]  ? ktime_get+0xe7/0x1c0
+ 00000000[   28.630725]  svc_recv+0x1940/0x2450
+[   28.630797]  ? __pfx_svc_recv+0x10/0x10
+[   28.630866]  ? unshare_fs_struct+0x11d/0x1d0
+ 00000000[   28.630944]  nfsd+0x34e/0xc40
+[   28.631014]  ? __pfx_nfsd+0x10/0x10
+ 00002720[   28.631075]  ? __pfx_kthread_affine_node+0x10/0x10
+[   28.631142]  ? __kthread_parkme+0x10e/0x190
+[   28.631228]  ? __pfx_nfsd+0x10/0x10
+ 00000000[   28.631291]  kthread+0x2fe/0x400
+[   28.631347]  ? recalc_sigpending+0x18c/0x220
+[   28.631414]  ? __pfx_kthread+0x10/0x10
+ 00000002[   28.631475]  ret_from_fork+0x3f7/0x680
+[   28.631541]  ? __pfx_ret_from_fork+0x10/0x10
+[   28.631610]  ? __switch_to+0x743/0xf60
+ 00000035[   28.631690]  ? __pfx_kthread+0x10/0x10
+[   28.631750]  ret_from_fork_asm+0x1a/0x30
+[   28.631866]  </TASK>
+ 00000000[   28.631945]=20
+[   28.632008] The buggy address belongs to the object at ffff88800eefc4a0
+[   28.632008]  which belongs to the cache nfs4_client of size 1336
+[   28.632089] The buggy address is located 832 bytes inside of
+[   28.632089]  allocated 1336-byte region [ffff88800eefc4a0, ffff88800eefc9d=
+8)
+ 8c89df6a[   28.632150]=20
+[   28.632225] The buggy address belongs to the physical page:
+[   28.632626] page: refcount:0 mapcount:0 mapping:0000000000000000 index:0xf=
+fff88800eefc4a0 pfn:0xeef8
+ 4a0d6b5c[   28.632939] head: order:3 mapcount:0 entire_mapcount:0 nr_pages_m=
+apped:0 pincount:0
+[   28.633022] flags: 0x100000000000240(workingset|head|node=3D0|zone=3D1)
+[   28.633511] page_type: f5(slab)
+ 01000000[   28.633893] raw: 0100000000000240 ffff88800b054280 ffff88800b0533=
+10 ffff88800b053310
+[   28.633965] raw: ffff88800eefc4a0 000000020016000c 00000000f5000000 000000=
+0000000000
+[   28.634066] head: 0100000000000240 ffff88800b054280 ffff88800b053310 ffff8=
+8800b053310
+ 00000000[   28.634124] head: ffff88800eefc4a0 000000020016000c 00000000f5000=
+000 0000000000000000
+[   28.634180] head: 0100000000000003 fffffffffffffe01 00000000ffffffff 00000=
+000ffffffff
+[   28.634238] head: 0000000000000000 0000000000000000 00000000ffffffff 00000=
+00000000008
+ 00000001[   28.634307] page dumped because: kasan: bad access detected
+[   28.634339]=20
+[   28.634358] Memory state around the buggy address:
+ 00000000[   28.634600]  ffff88800eefc680: fc fc fc fc fc fc fc fc fc fc fc f=
+c fc fc fc fc
+[   28.634665]  ffff88800eefc700: fc fc fc fc fc fc fc fc fc fc fc fc fc fc f=
+c fc
+[   28.634722] >ffff88800eefc780: fc fc fc fc fc fc fc fc fc fc fc fc fc fc f=
+c fc
+ 00000000[   28.634769]                                                      =
+  ^
+[   28.634856]  ffff88800eefc800: fc fc fc fc fc fc fc fc fc fc fc fc fc fc f=
+c fc
+[   28.634896]  ffff88800eefc880: fc fc fc fc fc fc fc fc fc fc fc fc fc fc f=
+c fc
+ 00000000[   28.634951] =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+
+--===============5971564931900082107==
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: quoted-printable
 Content-Disposition: attachment; filename="config"
@@ -7141,4 +6734,4 @@ CONFIG_IO_URING_ZCRX=3Dy
 CONFIG_IO_URING_BPF=3Dy
 CONFIG_IO_URING_BPF_OPS=3Dy
 
---===============2735155024747995143==--
+--===============5971564931900082107==--
