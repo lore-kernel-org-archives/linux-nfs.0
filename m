@@ -1,48 +1,90 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.47
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793196643;
-	b=V+IK90L9DGFWCBTlSUrI/HW1VWCu6opHgtkAVG0GBKF5lFMQbPSIXS/3EiZYHgZvWAbf
-	 sYiCD0pUfkUS+BMReFXc8gkNWP5HK5gyZ5oKTDBDMkwEdU/xX/sKv9XUIgn9qMTBee12O
-	 0BJRg/0CfS/1036rqS6CNgklPiQ6LfGKhzM2U4As70UgEbc6QOvfk0SgRkieFjcfAOGyR
-	 Pa/NwYN/02sVPnwoGS6/7R7FmxCWyBR3E/Ubn9ILIiRTYErFPazsI1cxOlicH8vO2ks99
-	 3KfYxeH7W0hxCznLhb1stkEtp2A46/UbBZ+VbKeJhBZSIlR1pYwHT+OFBocjMH/xanA==
+	t=1793202978;
+	b=4tFLyoo4NzEtSgxRjCYbU3N1UtbNqoGZUEPDAKraasLJ94l59ZFaTxMLDfvsnHwjIwTX
+	 tYI2j89/tvrS4+z2xDh8PjM6om3J2FBu+BvW+UDM5xR8w7r40QrF59TaeeTk+koAXR0O/
+	 K3q3vSrW/1OpDe++kcDhQt65DRhqpWZ5XbP27etbKXJzjfFU5YTGoEKs6eusNXFMIF2Lv
+	 aXDP43053VL/2ioWwwU3MPRHru0q/QHVj1OvLq8HVudC2dWRL4+jPcGLVsUqyoFbCqDth
+	 qHeuPZSJjKrzGyXok3CFdITLFFTWGx4IXBdR4/tx9s6ijSh9Q+JT9PQVo3+bJiXBU3w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793196643;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:X-B4-Tracking:X-Change-ID:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=4BRT1/zIsyosY6pflwCLcmCWvRIh0NtUfvIwl0z89uk=;
-	b=bpuXrhrkRCiF/JyyyZpBInN1bMVuPN4XpFfARGFXTbzlaDd0F9YEBKKHRrS6GXqvSv5u
-	 ik52KweOo15u9ISdfq0vZs8wZsEEjHqYv56e4iu6W2WlNmAg2Nh7Y7s9iqFEAcgZ+CrLa
-	 6vfJ136OvuKqiM0VIbfAw86HRX4BKFfRfjyCtAyDd6A4eaUvkyGFU7GGYx1Nce8SJ4+3W
-	 7U+kt27ddrwlGGCo5pVyOJqvJTvj+GNVChX4NtqGrXdRSuYIqq5Eg/QSydh5ek4OcSeVh
-	 NLl6OY6ENDVB5PlqnT3WAfyU0fRhE4EdB5PQrB2hNlTfS8Z/Uhz4azbowV4fh/9rwQA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793202978;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
+	 Date:Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=TwQ0+8ZvdUT1O3GPDhpAHooDamQzPq6EqiTfiCc09AA=;
+	b=blmQ8odB7R5nbX8JwPhUtZDcTPhLJxXzVYYmzsmgN5kWcfvmklMEKrLGEzUfT87TIGqa
+	 a+eCv5RBbpsjPFkyOYA6IHURDWjGag95xIAzohdvLYxtmWBOMqbcSBcH/DZDlyjq9O0sU
+	 8YyY56x7euUeOxqhctiObmw88NpBshXGnX5E5swZRLgOovuwlbRBegTZ54KE+9Y302Puq
+	 6FI+esI36SSW7Nfk0HGyqfH5bF37SRRPfZJTI8sHobj8vY5A3gIbngiiqkBgx00cI76vB
+	 xuO1BYrFVV1WeWOfwRCrLKWsMGRw/pNhrYArDPloh+R/mP9ePSbcDxw2/UyVlXmh4rA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bBa8TRTF;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=hammerspace.com;
+	spf=pass smtp.mailfrom=hammerspace.com;
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=oApL3Q7W;
+	arc=none smtp.remote-ip=209.85.210.47
+Received: from mail-ot1-f47.google.com (mail-ot1-f47.google.com [209.85.210.47])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E0BE6606A31A;
-	Wed, 28 Oct 2026 14:10:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D2F14606A336
+	for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2026 15:56:10 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D2F14606A336
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bBa8TRTF
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 063B21F01825;
-	Wed, 28 Oct 2026 14:10:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793196642;
-	bh=4BRT1/zIsyosY6pflwCLcmCWvRIh0NtUfvIwl0z89uk=;
-	h=From:Date:Subject:To:Cc;
-	b=bBa8TRTFmzcrgllgJTEQt/b18VFkSZgtDfE+SbqhcyGmU/5t2Uxq8yrr180hcmOse
-	 TuaY0Hui4WzYPU3tzs3hLbw5yHMrNcLL0HJNJtyjuHLYowyItXtPDZrr1UYm7RZWfW
-	 dOcw2LSsTvw/3bq3zjsroRL0aXysE3BBIqYIa/84hdIzCsYY4PHp9PSzM/yCHIFX9I
-	 tTSJ96pxTUiWyuFvLi/h3SJ9OCxDU8zDYtqbm9TPKHetU7cLPe5ErtbIemLqlcdeV1
-	 yo5Zj2QtYGb8Mw2+jwArarRczpngQvfmzuqxb8d8/e3KlJQg3taIo/rz7sQutp9bcz
-	 fXf+6jJOQRd6Q==
-From: Jeff Layton <jlayton@kernel.org>
-Date: Wed, 28 Oct 2026 10:10:38 -0400
-Subject: [PATCH] NFSD: Don't dereference cp_clp in async COPY tracepoints
+	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=oApL3Q7W
+Received: by mail-ot1-f47.google.com with SMTP id 46e09a7af769-823b938464fso788078a34.2
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2026 08:56:10 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=hammerspace.com; s=google; t=1793202970; x=1793807770; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=TwQ0+8ZvdUT1O3GPDhpAHooDamQzPq6EqiTfiCc09AA=;
+        b=oApL3Q7W5ylq5BLgCO8at4e4Oa7bQTrQazQyO3s4IrwroRBscKdwNEfffQ8IJLIG/V
+         mwJwQscDtS3Q5UWKIyKgHnDQEaTY8e8x1AkjRzJkeRwYVRmlp8u1CleycOCYvLAuc3to
+         IYa7eyujOo9sPAmfYyQ43riLmy1BdbEUZimH+eChjaqinkg9zIzwpgy3/0jE+H/TrlDz
+         NDhwuxhB5i422icJv9UKcK2z4OzuwwH+uj5XBk7ywhqzaViwYWXAQVLscyHKMmexjk3Z
+         recxDlIMrxpwPRq8TQjv2QNQKOAoKYTwjFW8FSUhjfmuY9xpw90+VUgC2ruSFKsHeMXf
+         U2sA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793202970; x=1793807770;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=TwQ0+8ZvdUT1O3GPDhpAHooDamQzPq6EqiTfiCc09AA=;
+        b=P3P6+cwT/+zopkkiu06HeJ+V0jQUpW3MZfKFgMVfKsqmE4EWU18XmH/0lYIfb/rE/z
+         WWSZAcQp+ER+o9reFFRPZvSu2CV3rZYeMDQAYJ66/6wbCcqtqH/I1nmawl1pzdoGa7YQ
+         PtHZZNX0t9AAFbqgyocBvy0/53BNQPm31QLHii6Z9lc6+Fm/Mvt7RRUhWSHnKnD47slN
+         03WUQxFq1qv+ItRnQgaIoHwHxWqP5mDABnNyhkdnfSTUI4BF1GTU2q6OYnjUAp+C67yl
+         iLqVDVKOofz8ZC94eSACHwtRY3gZ8bfVnj83KJXvmooWmwPXTWQLKelY/Z5QzPdu0tA6
+         74Jw==
+X-Gm-Message-State: AFq9FYLZiMBXG18epsBHLv2CEHrF1aDGeMh/xaw9pAq6lWOxd/HWw/S5
+	xWrMNTQiYylo6nvHRNtfODFd71M/hFXZfiYaOIodpyL0KqKCYvLGGcCyJuqugLc0NqgyAW1irwX
+	6jXMj
+X-Gm-Gg: AYBFou3mW4bHVQx5MLsayA/keXVzblqQqojxiPUsjXDuGVgJ6wEW481keqU9o+/JvD1
+	h6XN9mFEBgYbaVxxTffSS+El2HFNMPx5tkjvy83dYARplvrSV7/ps0BTVmpoktf85RGu3Tymx2y
+	ZWNGKLA0IHdNGaN5qtuqSXhFPx1t88BU7UVh5BI+Sq+SxysZQ1XnGkCcIQ04z4AcnzwC9V5BlFr
+	nphXu7DvabHI/ce4CnoOzzwpr0SBQZJOWtQKsp0xFueMjTL36rqb8qNTNVnmcknWz8J+GSEFQfv
+	yfLT8JXKUsD3xUTMK8mahVG87oSdfObKk0jERjMVEWFpnnxc16fGP+rRRiq0hZTCLF84oy51HBy
+	i5rA8vRfEDhpZn+Br7U7Fi9EQYXIvP84YTE3WgnDVgyIadT2IbJZQjhCr782T06FTbKzRe4pRT6
+	GeA/vjvc/kZqSeZClkoTkiOgjUkym6XHE/6PEScp3NlzNC1aZt6LBgHlHGcoxkEmmBwd+vb1/Bp
+	kYeOm0sm9o7Pmcq9zaWSzs87Q432LnkmoZ7CwidRos727u1TadS7nMJ1paFLTLfeXav3MGAnSAb
+	BZwFj4erdRwmNyoQmEAilU74yyBW+O7tBW61lIrbTsFENlj6UNo/RiKfVVxHQyPzDOZqreEY8aC
+	t
+X-Received: by 2002:a05:6808:1b06:b0:53c:af69:84dd with SMTP id 5614622812f47-563821793camr1813628b6e.12.1793202969693;
+        Wed, 28 Oct 2026 08:56:09 -0700 (PDT)
+Received: from bcodding.csb.hammerspace.com ([12.117.181.174])
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-563ee386839sm198427b6e.0.2026.10.28.08.56.08
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 28 Oct 2026 08:56:09 -0700 (PDT)
+From: Benjamin Coddington <ben.coddington@hammerspace.com>
+To: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2] pNFS: don't send _NOMATCHING_LAYOUT if still doing IO on a layout
+Date: Wed, 28 Oct 2026 11:56:07 -0400
+Message-ID: <2e7ae55d6eacf80d2b65f7231933460dd198ae49.1793134903.git.bcodding@hammerspace.com>
+X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -52,179 +94,109 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261028-nfsd-testing-v1-1-9116f59c4f77@kernel.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDAyML3by04hTdktTiksy8dF3D1FRTszRLY5PkFAsloJaCotS0zAqwcdG
- xtbUAjziGVF4AAAA=
-X-Change-ID: 20261028-nfsd-testing-1ee56f934cd8
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
- Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Yifan Zhang <yfzhang23@stu.pku.edu.cn>, Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5285; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=QYbxlce+C/ZVlhxVFqskvOP8wo7FVTQi2Vz0y8YHBks=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq4gJhAVeCNCBdbp2kMFoqe/kXKJ/TezOsiLOnP
- 4yR1lATPbCJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCauICYQAKCRAADmhBGVaC
- FcPfEACwAyKUMMMkFCnqqYT7+9JRBzrYZg0LtdPs8izC+hFnAiR01ZvLfpJ6aJvaJmKlN6wj/q5
- xuR+u27Qsnwp2r/JJMrdxUN5HJPoij7GtlPPsczKmI5VyBNXcCMSmF6U8+8kgBj0pjiQBSBFFbv
- MttRvrOL/ZOp0QjyssyHYCJHP4Oo9QrgiYCBldlofxrg0ltez2jzzg2EeG8zu0fWePr/j2o/fGB
- FyduMAYPkAuhu8TrNP0/hOtWYaJOnSrmOg6fvlOcyXtB9AMzpiZNMfn45CcLtarqkc8eGqvJI9p
- J8pNPfl99Ap08KKJ9UBVQKBR2imjYXxhctgf4cNlt06jV7lZL1kLGbx5gyQ84PQNKtHX1WfB5sY
- avOv+dqh7gaYQvHW2bavBRKyHN8Y2liwdmpqLkWvhYNzzfaNXYbtnc0wyQANtRWsCA898uoQvZt
- mIq/3mz0+Yym0hjsIgD/+NHphXOB4xhuvKNFwoG+Aa+teQZFoZQfZvTAXVOBBRefKlygJ9h6gDQ
- Ifd6bdyYKUMPHpB3izc4ykM94ymhfzthwttkOtz75vr/xGMB/+Ok5+hHgeyZNMZ/MSloVqcosM6
- bgQA7ZJQbttVuVIIXjEj3IJdwb8RkxOLK5hQlhrJMsWmSWAKGf+E3TKtnCBMY2wFElV9YGOorlC
- pGkoM60BLksDUdw==
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
+Content-Transfer-Encoding: 8bit
 
-nfsd4_unhash_copy() and find_async_copy() clear cp_clp before
-nfsd4_stop_copy() fires trace_nfsd_copy_async_cancel(), which reads
-copy->cp_clp->cl_addr: NULL deref on shutdown or OFFLOAD_CANCEL. The
-kthread's nfsd_copy_async{,_done} events race the same clear.
+From: Benjamin Coddington <bcodding@hammerspace.com>
 
-Pass the client explicitly: cp_stid.sc_client for async copies (never
-cleared), cstate->clp for the sync paths.
+When a bulk CB_LAYOUTRECALL finds layout segments still referenced by
+outstanding I/O, pnfs_layout_free_bulk_destroy_list() invalidates the
+layout stateid, sets NFS_LAYOUT_BULK_RECALL, and the client replies
+NFS4ERR_DELAY.  If the server resends the recall, then
+pnfs_layout_bulk_destroy_byserver_locked() can skip layouts with an invalid
+stateid, so the resend finds nothing and the client replies
+NFS4ERR_NOMATCHING_LAYOUT with the I/O still in flight.  The server then
+treats the layout as gone, and that I/O can reach the storage device after
+the recall has completed.
 
-Reported-by: Yifan Zhang <yfzhang23@stu.pku.edu.cn>
-Closes: https://lore.kernel.org/linux-nfs/179317462025.87538.12362003258355443382@stu.pku.edu.cn/
-Fixes: 62a8642ba00a ("NFSD: Fix nfsd4_shutdown_copy()")
-Fixes: 62c0f6eaf050 ("nfsd: fix UAF in async copy cancel and shutdown")
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
+When answering a bulk recall, don't skip an invalid layout that still has
+NFS_LAYOUT_BULK_RECALL set.  pnfs_mark_layout_stateid_invalid() reports its
+remaining segments, and the recall is answered with NFS4ERR_DELAY until the
+last segment is freed and the flag is cleared.
+
+The other walkers, reboot recovery and lease expiry, keep skipping these
+layouts.  They send no reply to the server, and reboot recovery would
+otherwise retry on -EAGAIN without sleeping until the I/O completed.
+
+Fixes: b85f562049cc ("pNFS: Skip invalid stateids when doing a bulk destroy")
+Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfsd/nfs4proc.c | 10 +++++-----
- fs/nfsd/trace.h    | 20 ++++++++++++--------
- 2 files changed, 17 insertions(+), 13 deletions(-)
+v2: only revisit these layouts when answering a bulk recall, so that
+    reboot recovery doesn't loop on -EAGAIN while the I/O is outstanding.
+---
+ fs/nfs/pnfs.c | 18 +++++++++++-------
+ 1 file changed, 11 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index a50f9dcb3a31..b572210ee526 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1653,7 +1653,7 @@ static void release_copy_files(struct nfsd4_copy *copy);
- 
- static void nfsd4_stop_copy(struct nfsd4_async_copy *copy)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 4f9c0f639014..00acd9827395 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -845,7 +845,8 @@ pnfs_layout_add_bulk_destroy_list(struct inode *inode,
+ static int
+ pnfs_layout_bulk_destroy_byserver_locked(struct nfs_client *clp,
+ 		struct nfs_server *server,
+-		struct list_head *layout_list)
++		struct list_head *layout_list,
++		enum pnfs_layout_destroy_mode mode)
+ 	__must_hold(&clp->cl_lock)
+ 	__must_hold(RCU)
  {
--	trace_nfsd_copy_async_cancel(&copy->cp_copy);
-+	trace_nfsd_copy_async_cancel(copy->cp_stid.sc_client, &copy->cp_copy);
- 	/*
- 	 * Join the kthread before releasing its resources. The task_struct is
- 	 * pinned in nfsd4_copy(), so kthread_stop() is safe even after the
-@@ -2245,7 +2245,7 @@ static int nfsd4_do_async_copy(void *data)
- 	struct nfsd4_copy *copy = &async->cp_copy;
- 	__be32 nfserr = nfs_ok;
+@@ -853,7 +854,9 @@ pnfs_layout_bulk_destroy_byserver_locked(struct nfs_client *clp,
+ 	struct inode *inode;
  
--	trace_nfsd_copy_async(copy);
-+	trace_nfsd_copy_async(async->cp_stid.sc_client, copy);
- 	if (nfsd4_ssc_is_inter(copy)) {
- 		struct file *filp;
+ 	list_for_each_entry_safe(lo, next, &server->layouts, plh_layouts) {
+-		if (test_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags) ||
++		if ((test_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags) &&
++		     (mode != PNFS_LAYOUT_BULK_RETURN ||
++		      !test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags))) ||
+ 		    test_bit(NFS_LAYOUT_INODE_FREEING, &lo->plh_flags) ||
+ 		    !list_empty(&lo->plh_bulk_destroy))
+ 			continue;
+@@ -932,7 +935,7 @@ int pnfs_layout_destroy_byfsid(struct nfs_client *clp, struct nfs_fsid *fsid,
+ 			continue;
+ 		if (pnfs_layout_bulk_destroy_byserver_locked(clp,
+ 				server,
+-				&layout_list) != 0)
++				&layout_list, mode) != 0)
+ 			goto restart;
+ 	}
+ 	rcu_read_unlock();
+@@ -942,7 +945,8 @@ int pnfs_layout_destroy_byfsid(struct nfs_client *clp, struct nfs_fsid *fsid,
+ }
  
-@@ -2280,7 +2280,7 @@ static int nfsd4_do_async_copy(void *data)
- 	 * joining.
- 	 */
- 	set_bit(NFSD4_COPY_F_COMPLETED, &copy->cp_flags);
--	trace_nfsd_copy_async_done(copy);
-+	trace_nfsd_copy_async_done(async->cp_stid.sc_client, copy);
- 	atomic_dec(&copy->cp_nn->pending_async_copies);
- 	if (copy->cp_res.wr_bytes_written > 0 && copy->attr_update)
- 		nfsd_update_cmtime_attr(copy->nf_dst->nf_file, 0);
-@@ -2306,7 +2306,7 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ static void pnfs_layout_build_destroy_list_byclient(struct nfs_client *clp,
+-						    struct list_head *list)
++						    struct list_head *list,
++						    enum pnfs_layout_destroy_mode mode)
+ {
+ 	struct nfs_server *server;
  
- 	copy->cp_clp = cstate->clp;
- 	if (nfsd4_ssc_is_inter(copy)) {
--		trace_nfsd_copy_inter(copy);
-+		trace_nfsd_copy_inter(cstate->clp, copy);
- 		if (!inter_copy_offload_enable || nfsd4_copy_is_sync(copy)) {
- 			status = nfserr_notsupp;
- 			goto out;
-@@ -2317,7 +2317,7 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 			goto out;
- 		}
- 	} else {
--		trace_nfsd_copy_intra(copy);
-+		trace_nfsd_copy_intra(cstate->clp, copy);
- 		status = nfsd4_setup_intra_ssc(rqstp, cstate, copy);
- 		if (status)
- 			goto out;
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 951af645d1cb..e7b186307c21 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -2481,9 +2481,10 @@ TRACE_EVENT(nfsd_ctl_fh_key_set,
+@@ -951,7 +955,7 @@ static void pnfs_layout_build_destroy_list_byclient(struct nfs_client *clp,
+ restart:
+ 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+ 		if (pnfs_layout_bulk_destroy_byserver_locked(clp, server,
+-							     list) != 0)
++							     list, mode) != 0)
+ 			goto restart;
+ 	}
+ 	rcu_read_unlock();
+@@ -962,7 +966,7 @@ static int pnfs_layout_do_destroy_byclid(struct nfs_client *clp,
+ 					 struct list_head *list,
+ 					 enum pnfs_layout_destroy_mode mode)
+ {
+-	pnfs_layout_build_destroy_list_byclient(clp, list);
++	pnfs_layout_build_destroy_list_byclient(clp, list, mode);
+ 	return pnfs_layout_free_bulk_destroy_list(list, mode);
+ }
  
- DECLARE_EVENT_CLASS(nfsd_copy_class,
- 	TP_PROTO(
-+		const struct nfs4_client *clp,
- 		const struct nfsd4_copy *copy
- 	),
--	TP_ARGS(copy),
-+	TP_ARGS(clp, copy),
- 	TP_STRUCT__entry(
- 		__field(bool, intra)
- 		__field(bool, async)
-@@ -2526,7 +2527,7 @@ DECLARE_EVENT_CLASS(nfsd_copy_class,
- 		__entry->src_cp_pos = copy->cp_src_pos;
- 		__entry->dst_cp_pos = copy->cp_dst_pos;
- 		__entry->cp_count = copy->cp_count;
--		__assign_sockaddr(addr, &copy->cp_clp->cl_addr,
-+		__assign_sockaddr(addr, &clp->cl_addr,
- 				sizeof(struct sockaddr_in6));
- 	),
- 	TP_printk("client=%pISpc intra=%d async=%d "
-@@ -2547,8 +2548,9 @@ DECLARE_EVENT_CLASS(nfsd_copy_class,
- 
- #define DEFINE_COPY_EVENT(name)				\
- DEFINE_EVENT(nfsd_copy_class, nfsd_copy_##name,	\
--	TP_PROTO(const struct nfsd4_copy *copy),	\
--	TP_ARGS(copy))
-+	TP_PROTO(const struct nfs4_client *clp,		\
-+		 const struct nfsd4_copy *copy),	\
-+	TP_ARGS(clp, copy))
- 
- DEFINE_COPY_EVENT(inter);
- DEFINE_COPY_EVENT(intra);
-@@ -2580,9 +2582,10 @@ TRACE_EVENT(nfsd_copy_done,
- 
- DECLARE_EVENT_CLASS(nfsd_copy_async_done_class,
- 	TP_PROTO(
-+		const struct nfs4_client *clp,
- 		const struct nfsd4_copy *copy
- 	),
--	TP_ARGS(copy),
-+	TP_ARGS(clp, copy),
- 	TP_STRUCT__entry(
- 		__field(int, status)
- 		__field(bool, intra)
-@@ -2627,7 +2630,7 @@ DECLARE_EVENT_CLASS(nfsd_copy_async_done_class,
- 		__entry->src_cp_pos = copy->cp_src_pos;
- 		__entry->dst_cp_pos = copy->cp_dst_pos;
- 		__entry->cp_count = copy->cp_count;
--		__assign_sockaddr(addr, &copy->cp_clp->cl_addr,
-+		__assign_sockaddr(addr, &clp->cl_addr,
- 				sizeof(struct sockaddr_in6));
- 	),
- 	TP_printk("client=%pISpc status=%d intra=%d async=%d "
-@@ -2650,8 +2653,9 @@ DECLARE_EVENT_CLASS(nfsd_copy_async_done_class,
- #define DEFINE_COPY_ASYNC_DONE_EVENT(name)		\
- DEFINE_EVENT(nfsd_copy_async_done_class,		\
- 	nfsd_copy_async_##name,				\
--	TP_PROTO(const struct nfsd4_copy *copy),	\
--	TP_ARGS(copy))
-+	TP_PROTO(const struct nfs4_client *clp,		\
-+		 const struct nfsd4_copy *copy),	\
-+	TP_ARGS(clp, copy))
- 
- DEFINE_COPY_ASYNC_DONE_EVENT(done);
- DEFINE_COPY_ASYNC_DONE_EVENT(cancel);
-
----
-base-commit: 19bbac00ad1cfa28e9127488f161ffc2ac03fad4
-change-id: 20261028-nfsd-testing-1ee56f934cd8
-
-Best regards,
+@@ -999,7 +1003,7 @@ static void pnfs_layout_build_recover_list_byclient(struct nfs_client *clp,
+ 		if (!(server->caps & NFS_CAP_REBOOT_LAYOUTRETURN))
+ 			continue;
+ 		if (pnfs_layout_bulk_destroy_byserver_locked(clp, server,
+-							     list) != 0)
++					list, PNFS_LAYOUT_INVALIDATE) != 0)
+ 			goto restart;
+ 	}
+ 	rcu_read_unlock();
 -- 
-Jeff Layton <jlayton@kernel.org>
+2.53.0
 
