@@ -1,54 +1,59 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793188622;
-	b=RHeRsVDPUSctnVAL6TGC/wdQSKw6ZZw/zOwzJzwhRXvu073BWz4dDsEIcmsmBnlXKbZX
-	 o/24fa6NSNOXVi5sUB2nmTqsOKyGq52P7kJkxbdWgcfGYWtm7mpvT4X8YPCxU9rK+thFO
-	 i0jEAbfr3k3prbf1jt+WQhuhySXBoZ2Yv4+TZSo1LbDpIpduoVn0ZjeBdCZmp/erc4ikr
-	 N6FWZ0yb4jYv3MR/6NkVFTpcbmOZCSsbTBorslsHeZrmy7m4GDyc2SqSXjIKzZF1P1Nd9
-	 fIuyVob/Ll8L9RuR3mzqSHxc03Tasf1S/eX79zC7nWoFvoPABlI/wXIQIi6nuxNKmQg==
+	t=1793195883;
+	b=cH8EeIznW4Z1Hzpk1PEoqxG2qVogbSn9qPdqHX2qvf4Li1BGbn++SzKmlV/EFDzx+sih
+	 hxEW4fh8qnxgKjP2xSwIXcPWI6qmtfeq7jwhoVrHgP5M0htWVQEdlzm+4R/1kSu4K4t2b
+	 xFcBl4mclUaKC8mfcvqcYYN2am3ybeNPjzDvEqu3cAcioZ5zOAIYzeYjpoPKNCEuHQwyL
+	 /Q/n/DIjE4kJkznqP1e9V6rZDxHX4Ap2JTaW7qkGwpSXMswa0BQUkSYi1hLPX6+JBxveg
+	 GNs0dXDGIMA/8ujLXveMNnk97RLni6qjOcpF/sVVmDAxKflEiuCGLgOMoiylflQebIw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793188622;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793195883;
 	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
 	 In-Reply-To:References:Autocrypt:Content-Type:
 	 Content-Transfer-Encoding:User-Agent:MIME-Version;
-	bh=QTXHedQzwvA5bg7fNp0/N/1yO3lR6q9IKvAIoxY04l0=;
-	b=fTzaJYO92tCtz159RJXzsEnTNBpWcNSiNWawnclvWM70sEUVN9ib2gljSUXFeI8g+3YZ
-	 Q2uxcn54etQMs5EAKtpbKMBogt6HN/0b11WARf9tzK1F+Xe5nVLA+WWLe0rxJLS0ZGnLZ
-	 knP5F/3Ko0I026t7VFKmaKFwcJjDhAQdg5S56SA/OR9HeF8BfFIutvfV6NdtLHFC8T3PV
-	 g4PkqvaJ8QJCMLOqxFFox+/h6wfxvsoNd7oOOX7AxWbP6f/XQMG2fvwSpl+myTks2TmVk
-	 RerrfSRJeZp2ihphHxYW6QGsrCQdeJkr3Uh/5DIVtUjzAWNsNsT3OX360WXu9+BCEbQ==
+	bh=xxDei/pwqldghsjmR/BnTDVh+RQr86nmUfxm/AdaCGc=;
+	b=Ha8op03QiV+TA7JsCasBa7sht9Tt2MohrSOwzZr2kbGPKypWJJSODspMF/6Fj5odGi/p
+	 w6lDDmPockKF2Y4vpwNXPveU6wrd5lD8mDo1UmiH8Hh39pUpoRBS3kf3W7Qwg2LVsR2Q5
+	 qIslLMadh1GxNDcPzJCE6Cv6qaMd1+HVSl96lkAD9po7xqaNIjL+jOgzKc+kGDsDl/IoG
+	 Zku7o670G4IcTsNCCxaOqOhwRXztuISQDz35AkJtj8uFwgCt7UkvIeERRIu3TzYdBbuB2
+	 XihvFEWs7K+KkPA+I5ulQdyJdM/qrHB2A8wWkm8/zN48GXKge/Xe836PHT2HXzed4qA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=k1DwQoPC;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=j3WUV9f8;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 72679606A31A
-	for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2026 11:57:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CDBC4606A31A
+	for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2026 13:58:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=k1DwQoPC
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 813561F01825;
-	Wed, 28 Oct 2026 11:57:01 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=j3WUV9f8
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 198AB1F01825;
+	Wed, 28 Oct 2026 13:58:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793188622;
-	bh=QTXHedQzwvA5bg7fNp0/N/1yO3lR6q9IKvAIoxY04l0=;
+	s=k20260515; t=1793195882;
+	bh=xxDei/pwqldghsjmR/BnTDVh+RQr86nmUfxm/AdaCGc=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=k1DwQoPC1X2q7JXazf4zaQBAkhIwUGP+H9KlG/CKBhcZ7xEf/1IeR48W36Lb307c6
-	 QjfgQqhfN7pdfTc4J/IWfLtjKno5d+29Itl2HNjy3+Zw8T8B/OVqz2AliZpkFGFZSx
-	 CMGLuSedkHiNYUH62kLF+NoqeK5MFnoLAAAWUC8yor1xoDYXKCAz+Uryv6Y0bG7Ti7
-	 xi7ZQp7QF/bHorDxng2nz3hJ+FRgirv1uTeSVDdLWKWQXRxN+2Ub/ObQnVmJz8ETd+
-	 7WyKufpiuBEOod+6umu2/qbQcslABJmb8uIipm8Kw1XigqSHme8fPfb3S8vc7z/2W0
-	 Q7TjHTCNWxKzw==
-Message-ID: <72c83650ea7139dfd38334fca840f2bc85b5b075.camel@kernel.org>
-Subject: Re: [BUG] nfsd: OP_ILLEGAL indexes beyond spo_must_allow bitmap
+	b=j3WUV9f8dXQ9KIkMkEbGV+PIMzCRZTQTY4nlLOMMfow039znxR1UPTZShcHhKDEbu
+	 Ls8tF9NL7B+VSbbt0OpNfKbqnmWltCLZa0ORLZQ6rtGV4UpaXTc/v7ZplexzbIVPRk
+	 gSXO/qG4MDXrmnkxwIL1CqNXd9oV27MtKG95FjxAXh3erfC4F4DmXl8LOeQC63JtPp
+	 58A0atAXsfQl7xWLJjseJMxM9mHETHnqkuGZOXA2fpn9bum8GbnsW27aHeMsdowDsn
+	 f0hOenQWZCnE0D17sQDhylvC5DNP05VqSXc5ynWSVhwkOD1o+8ryXRt9plTeAfGDP3
+	 btZozUluwwDXg==
+Message-ID: <462ce95bb4f642249a660a73d6f5150ff61adf56.camel@kernel.org>
+Subject: Re: [PATCH] nfsd: prevent SAVEFH from bypassing export security
 From: Jeff Layton <jlayton@kernel.org>
-To: Yifan Zhang <yfzhang23@stu.pku.edu.cn>, linux-nfs@vger.kernel.org
-Cc: cel@kernel.org, neil@brown.name, okorniev@redhat.com,
- Dai.Ngo@oracle.com, 	tom@talpey.com
-Date: Wed, 28 Oct 2026 07:56:58 -0400
-In-Reply-To: <179317461419.87500.1435945951937634987@stu.pku.edu.cn>
-References: <179317461419.87500.1435945951937634987@stu.pku.edu.cn>
+To: Adolph Zeng <coderzeng@gmail.com>, "cel@kernel.org" <cel@kernel.org>, 
+ "neil@brown.name"
+	 <neil@brown.name>, "okorniev@redhat.com" <okorniev@redhat.com>, 
+ "Dai.Ngo@oracle.com"
+	 <Dai.Ngo@oracle.com>, "tom@talpey.com" <tom@talpey.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Wed, 28 Oct 2026 09:57:58 -0400
+In-Reply-To: <IA1PR12MB662781C8C09627A5CDEBF39DF4602@IA1PR12MB6627.namprd12.prod.outlook.com>
+References: 
+	<SY9P300MB153090355AAD017CD7216634A6602@SY9P300MB1530.AUSP300.PROD.OUTLOOK.COM>
+	 <IA1PR12MB662781C8C09627A5CDEBF39DF4602@IA1PR12MB6627.namprd12.prod.outlook.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -136,61 +141,241 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 
-On Wed, 2026-10-28 at 16:03 +0800, Yifan Zhang wrote:
-> Hello,
+On Tue, 2026-10-27 at 12:44 +0000, Adolph Zeng wrote:
 >=20
-> I found an out-of-bounds bitmap read in nfsd4_spo_must_allow() when an
-> NFSv4.1 COMPOUND contains an invalid operation number. I reproduced it on=
- two
-> independent boots of an unmodified Linux v7.3 KASAN kernel. Both runs
-> reported:
+> Hi,
+> I was informed that Hotmail may reject incoming messages from kernel.org,=
+ so I am switching to this Gmail address to avoid missing any replies.
+> My original patch was sent from coderzeng@hotmail.com. Please use coderze=
+ng@gmail.com for any further correspondence.
+> Apologies for the inconvenience.
+> Best regards,
+> Adolph Zeng
+> From: Zeng Adolph <coderzeng@hotmail.com>
+> Sent: Tuesday, October 27, 2026 8:40 PM
+> To: cel@kernel.org <cel@kernel.org>; jlayton@kernel.org <jlayton@kernel.o=
+rg>; neil@brown.name <neil@brown.name>; okorniev@redhat.com <okorniev@redha=
+t.com>; Dai.Ngo@oracle.com <Dai.Ngo@oracle.com>; tom@talpey.com <tom@talpey=
+.com>
+> Cc: linux-nfs@vger.kernel.org <linux-nfs@vger.kernel.org>
+> Subject: [PATCH] nfsd: prevent SAVEFH from bypassing export security
 >=20
->   BUG: KASAN: slab-out-of-bounds in nfsd4_spo_must_allow+0x2ec/0x4d0
->   Read of size 8 by task nfsd
->   nfsd4_spo_must_allow
->   check_security_flavor
->   check_nfsd_access
->   nfsd4_proc_compound
+> =C2=A0
 >=20
-> nfsd4_decode_compound() converts an out-of-range wire operation to
-> OP_ILLEGAL (10044) and retains it in the decoded operation array.
-> nfsd4_spo_must_allow() later scans that array and calls test_bit() with t=
-he
-> operation number without a range check. On x86-64, the two-word
-> spo_must_allow bitmap is indexed at word 156.
 >=20
-> The attached C reproducer starts a loopback NFSv4.1 server, creates an
-> ordinary fsid=3D0 export that allows AUTH_SYS, establishes a session with
-> AUTH_NULL, and sends:
+> An AUTH_SYS NFSv4 client can read or write a file on a sec=3Dkrb5p
+> export using another client's valid OPEN stateid by inserting
+> SAVEFH between PUTFH and READ or WRITE.
 >=20
->   COMPOUND [SEQUENCE, PUTROOTFH, GETFH, 0xffffffff]
 >=20
-> It can be built with:
+> PUTFH resolves the handle with NFSD_MAY_BYPASS_GSS, expecting
+> a later security check. SAVEFH carries OP_HANDLES_WRONGSEC even though
+> it only saves the handle, so PUTFH skips NFS4ERR_WRONGSEC. Stateid I/O
+> can then reuse a cached nfsd_file.
 >=20
->   cc -O2 repro.c -o repro
 >=20
-> The trigger is deterministic and runs over loopback on the default syzkal=
-ler
-> ext4 image.
+> The original report exported /srv/nfs-sec to * with these options:
 >=20
-> CVE-2023-53680 fixed an OP_ILLEGAL index into OPDESC() in the decoder, an=
-d
-> CVE-2025-38430 added the non-COMPOUND procedure check in
-> nfsd4_spo_must_allow(). This report reaches a separate bitmap index from =
-a
-> valid NFSv4.1 COMPOUND.
 >=20
-> A minimal fix is to skip operation numbers above LAST_NFS4_OP before call=
-ing
-> test_bit(). A regression test can use a valid session followed by
-> PUTROOTFH, GETFH, and an illegal final opcode.
+> =C2=A0 rw,sync,no_subtree_check,fsid=3D0,sec=3Dkrb5p,secure,root_squash
 >=20
-> Attached are the reproducer, KASAN report, and kernel config.
 >=20
-> Regards,
-> Yifan Zhang
+> The 0600, nobody:nogroup file /srv/nfs-sec/secret.txt held 32 random
+> bytes. A Kerberos privacy NFSv4.0 client ran SETCLIENTID, OPEN and
+> OPEN_CONFIRM, then kept its read/write stateid live. A separate
+> AUTH_SYS client used UID/GID 65534 and a reserved source port.
+>=20
+>=20
+> The AUTH_SYS client enumerated a bounded range of nearby clientid
+> counters, stateid numbers and seqids to find the live OPEN stateid.
+> With it, PUTFH, READ returned NFS4ERR_WRONGSEC, while PUTFH, SAVEFH,
+> READ returned the file data and PUTFH, SAVEFH, WRITE changed it. The
+> Kerberos client subsequently read the changed contents.
+>=20
+>=20
+> SAVEFH leaves CURRENT_FH in place. When deciding whether PUTFH must
+> report NFS4ERR_WRONGSEC, look past SAVEFH to the first operation that
+> uses or replaces CURRENT_FH. If another PUTFH replaces it, leave the
+> earlier PUTFH unchecked, as required by RFC 8881 Section 2.6.3.1.1.
+>=20
+>=20
+> Local COPY and CLONE consume SAVED_FH as the source. Check the
+> saved export with check_nfsd_access() before using its stateid:
+> a cached open stateid can otherwise bypass the sec=3D policy. Map
+> NFS4ERR_WRONGSEC to NFS4ERR_ACCESS at COPY or CLONE, since neither
+> operation permits NFS4ERR_WRONGSEC. The check also applies when
+> SECINFO_NO_NAME or RESTOREFH intervenes. LINK and RENAME already
+> check their saved handle in their own paths.
+>=20
+>=20
+> An inter-server COPY carries a foreign SAVED_FH. The source server
+> validates it; the destination must not apply its own export policy
+> to that handle. The destination PUTFH still checks its local export.
+>=20
+>=20
+> KASAN guests reproduced the NFSv4.0 and local NFSv4.2 bypasses on
+> d135ab453a74. With this patch, direct READ and SAVEFH READ/WRITE
+> returned NFS4ERR_WRONGSEC. Local COPY/CLONE with a protected saved
+> source returned NFS4ERR_ACCESS; foreign-handle inter-server COPY
+> completed.
+>=20
+> Fixes: 68d93184352f ("nfsd4: fix wrongsec handling for PUTFH + op cases")
+> Assisted-by: LLM
+> Signed-off-by: Zeng Adolph <coderzeng@hotmail.com>
+> ---
+> Testing: two x86_64 guests covered the original NFSv4.0 report,
+> six SAVEFH security boundaries, NFSv4.2 local COPY/CLONE, and a
+> foreign-handle inter-server COPY. W=3D1 nfs4proc.o built with
+> CONFIG_NFSD_V4_2_INTER_SSC enabled and disabled. The ASan/UBSan
+> decision harness passed 262 cases. The KASAN guest reported no
+> KASAN, Oops, or NFSD warnings.
+>=20
 
-I believe this is already fixed in Chuck's nfsd-testing branch in
-commit 2ce8ab98091b.
+This needs to be sent as a proper inline patch. We can't apply this as
+it's whitespace-damaged.
+
+Also, some suggestions from Claude below that look valid:
+
+
+>=20
+> =C2=A0fs/nfsd/nfs4proc.c | 36 +++++++++++++++++++-----------------
+> =C2=A01 file changed, 19 insertions(+), 17 deletions(-)
+>=20
+>=20
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index a50f9dcb3..25fb7fb61 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1491,6 +1491,11 @@ nfsd4_verify_copy(struct svc_rqst *rqstp, struct n=
+fsd4_compound_state *cstate,
+> =C2=A0=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82if (!cstate->save_fh.f=
+h_dentry)
+> =C2=A0=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=
+=80=82=E2=80=82=E2=80=82=E2=80=82return nfserr_nofilehandle;
+> =C2=A0
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82/* A cached open stateid do=
+es not authorize the saved source export. */
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82status =3D check_nfsd_acces=
+s(cstate->save_fh.fh_export, rqstp);
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82if (status)
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=
+=E2=80=82=E2=80=82=E2=80=82return nfserr_acces;
+> +
+
+This is a point fix for the one remaining saved-fh consumer. The common
+factor in every variant of this bug is that nfs4_check_file() only
+calls nfsd_permission() when it finds a cached nfsd_file. It never
+checks the security flavor:
+
+fs/nfsd/nfs4state.c:nfs4_check_file() {
+	nf =3D nfs4_find_file(s, flags);
+	if (nf) {
+		status =3D nfsd_permission(&rqstp->rq_cred,
+					 fhp->fh_export, fhp->fh_dentry,
+				acc | NFSD_MAY_OWNER_OVERRIDE);
+
+Only the nfsd_file_acquire() path goes through fh_verify(). Would it be
+worth also adding a check_nfsd_access() there (mapped to nfserr_acces),
+as a backstop in case there are other op orderings that skip the PUTFH
+check?
+
+> =C2=A0=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82status =3D nfs4_prepro=
+cess_stateid_op(rqstp, cstate, &cstate->save_fh,
+> =C2=A0=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=
+=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=
+=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=
+=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 =C2=A0 =C2=A0src_stateid, RD_=
+STATE, src, NULL);
+> =C2=A0=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82if (status)
+> @@ -3237,32 +3242,29 @@ static bool need_wrongsec_check(struct svc_rqst *=
+rqstp)
+> =C2=A0=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82struct nfsd4_compoundr=
+es *resp =3D rqstp->rq_resp;
+> =C2=A0=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82struct nfsd4_compounda=
+rgs *argp =3D rqstp->rq_argp;
+> =C2=A0=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82struct nfsd4_op *this =
+=3D &argp->ops[resp->opcnt - 1];
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82struct nfsd4_op *next =3D &=
+argp->ops[resp->opcnt];
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82struct nfsd4_op *next;
+> =C2=A0=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82const struct nfsd4_ope=
+ration *thisd =3D OPDESC(this);
+> =C2=A0=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82const struct nfsd4_ope=
+ration *nextd;
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82unsigned int i;
+> =C2=A0
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82/*
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 * Most ops check wronsec o=
+n our own; only the putfh-like ops
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 * have special rules.
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 */
+> =C2=A0=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82if (!(thisd->op_flags =
+& OP_IS_PUTFH_LIKE))
+> =C2=A0=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=
+=80=82=E2=80=82=E2=80=82=E2=80=82return false;
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82/*
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 * rfc 5661 2.6.3.1.1.6: do=
+n't bother erroring out a
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 * put-filehandle operation=
+ if we're not going to use the
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 * result:
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 */
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82if (argp->opcnt =3D=3D resp=
+->opcnt)
+> +
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82/* SAVEFH does not consume =
+the current filehandle. */
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82for (i =3D resp->opcnt; i <=
+ argp->opcnt; i++) {
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=
+=E2=80=82=E2=80=82=E2=80=82next =3D &argp->ops[i];
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=
+=E2=80=82=E2=80=82=E2=80=82if (next->opnum !=3D OP_SAVEFH)
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=
+=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=
+=80=82break;
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82}
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82if (i =3D=3D argp->opcnt)
+> =C2=A0=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=
+=80=82=E2=80=82=E2=80=82=E2=80=82return false;
+> +
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82next =3D &argp->ops[i];
+
+This isn't a bug, but next already points to argp->ops[i] when the loop
+breaks early, so isn't this assignment redundant?
+
+> =C2=A0=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82if (next->opnum =3D=3D=
+ OP_ILLEGAL)
+> =C2=A0=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=
+=80=82=E2=80=82=E2=80=82=E2=80=82return false;
+> =C2=A0=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82nextd =3D OPDESC(next)=
+;
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82/*
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 * Rest of 2.6.3.1.1: certa=
+in operations will return WRONGSEC
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 * errors themselves as nec=
+essary; others should check for them
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 * now:
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82 */
+> -=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82return !(nextd->op_flags & =
+OP_HANDLES_WRONGSEC);
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82return !(nextd->op_flags &
+> +=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=E2=80=82=
+=E2=80=82=E2=80=82=E2=80=82 =C2=A0(OP_HANDLES_WRONGSEC | OP_IS_PUTFH_LIKE))=
+;
+
+This isn't a bug, but the existing comments explaining which RFC rule
+each test implements were dropped. The function now encodes three
+separate rules (2.6.3.1.1.1 for SAVEFH, 2.6.3.1.1.2 for consecutive
+put-filehandle ops, 2.6.3.1.1.6 for end of compound). Could the
+comments be kept and updated to cite the RFC 8881 sections instead?
+
+> =C2=A0}
+> =C2=A0
+> =C2=A0#ifdef CONFIG_NFSD_V4_2_INTER_SSC
+> --
+> 2.43.0
+>=20
+
 --=20
 Jeff Layton <jlayton@kernel.org>
