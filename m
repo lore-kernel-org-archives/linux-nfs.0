@@ -1,130 +1,60 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=202.12.124.145
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793160704;
-	b=zMOBa2uhkh9q9AwGCPgBVELqNu22IYr4Hm9X3oYMvAY7Cjll+s5qkaheKKSQAx+4xzc2
-	 P2nRVJob4aFolUqnUW06tCvTkAD5Jah3HwIMkmqpq4Gj0m2/TRwxttM4q4HRO/+PUYV09
-	 JkXEPqarPaTBmiP+8Syt0LgR9Tx7HYWIiQG0rcJSUoQYfmFGXviU/9i1D9IQjo7aiscUe
-	 Gz/pmm9/rrVCzqwR8PUD4gg11Xmur4zcxCkQblD+qxyytZpzUvfi0flzvpZ4tlJSTrWw+
-	 7ojV80bfE77372B6kkBMkaK4SqF+98bDc69c9JkIlrYo7ftApLunQHMKJNd0TvH9pPA==
+	t=1793164376;
+	b=3edL4KXozAQsWPx0DlNDzwH2Aun4S5Tbnf56/iAQ6tdrWsFRxvbyN614125/gJWKExz/
+	 nrcRdd67r/ebuCHwywxYXh1KhPvDmwDLr60/KyMWFa+nJIQKBO5Q00EAEJJtC6FBJMJrS
+	 h+csfxke347LvsnzFfjxdMcBt0vp/PgwGw1zfG1ibp2mJ8JeyTgj/wwwQo+laULIlm5St
+	 nLkIMyDNNWMxKwM9NAipUcZyxj/4QfAAIobiCbWZEwrTvk4Qe04Bp42OECCl9cRc8W/5k
+	 4d86onPDbZ2BFZlVQJDDoJRlBSvKo7hiDYYdi9Fjj1Oa8PrB8xAYwrhhcUpZY5YPT1A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793160704;
-	h=DMARC-Filter:Received:Received:DKIM-Signature:DKIM-Signature:
-	 X-DKIM2-Info:DKIM2-Signature:X-DKIM2-Info:Message-Instance:
-	 X-ME-Sender:X-ME-Received:X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:
-	 Received:From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:
-	 References:Reply-To:MIME-Version:Content-Transfer-Encoding;
-	bh=s5SjjUi/ZVlMwSasSkYfA0uEsuHMg3rnpf66UCpaQzY=;
-	b=bV4pJ6iAtjom8mygZyhc+CUil7+XzuZEXrWbdn9CSnZIgrwf/lfFuU2w92gbQTXVHRf/
-	 V/SEgrUmdCZKdeqqsUxRMtvVOtOtfNCve9wpdjCvlOlfJXThejO67RASpF5SxRrCJeRrB
-	 eabF/88Kz102MbZXGhniwZoQiw6tLptFXkzUtnRy7TBKx5u3vxpVjwVdgimZrwxXbji8a
-	 jXjOhL6x9BXpIdfSJMEItmIchSYWGYxB1iMWbjlBHQShWbezJYEzGFiFeadF0GtRUXjJe
-	 vfw4T7VGDtn59qdRckLaIMqHOtjdaP0uOzNXojohp+4QhrEDR04gDTlvQjIpbC98A4A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793164376;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=NHqc2iluLzBkHlrPz5vi8Qhq+QGWsc1OSshMmigJpRY=;
+	b=TCahruJpbxR+NMfpq31koCxh4leQPB036ADQ14uU5fc+eSfmRaGFozQ8Xm3Xt9dAPO7I
+	 QM0qto8zsrUSpMIQMnbuETmEiHCbUc8X/vmabjB/wU7G1QZXzmkpgAVE9EouIN4vrfi93
+	 ad3DhUkW4YCLlmsKXW8xihgEhBGaojP+/KXGzAriq0Ixt24s/rpFsaRtAuSfNgpCQfVOQ
+	 5NAxrMZEbqzjVJcYg9QEs4zyu3cK/He5mSEXNfdJYfAMQwBXTSdQEJVccBpHZqFer7nYr
+	 41cWecETr9QsXjOzFtqRBj2LpZ6zeU2X3ZdgAaBuIgb8ETMqPFiksx/pce3UHACYKgA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=ownmail.net;
-	spf=pass smtp.mailfrom=ownmail.net;
-	dkim=pass header.d=ownmail.net header.i=@ownmail.net header.a=rsa-sha256 header.s=fm2 header.b=UPSjZxPF;
-	dkim=pass header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm2 header.b=NdBzTrxT;
-	arc=none smtp.remote-ip=202.12.124.145
-Received: from fout-b2-smtp.messagingengine.com (fout-b2-smtp.messagingengine.com [202.12.124.145])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gPhJibQl;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2B47E606A321
-	for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2026 04:11:43 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2B47E606A321
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 875AC606A31D;
+	Wed, 28 Oct 2026 05:12:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=ownmail.net header.i=@ownmail.net header.a=rsa-sha256 header.s=fm2 header.b=UPSjZxPF;
-	dkim=pass (2048-bit key, unprotected) header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm2 header.b=NdBzTrxT
-Received: from phl-compute-08.internal (phl-compute-08.internal [10.202.2.48])
-	by mailfout.stl.internal (Postfix) with ESMTP id 995A11D00179
-	for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2026 00:11:42 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-08.internal (MEProxy); Wed, 28 Oct 2026 00:11:42 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:date:date:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm2; t=1793160702;
-	 x=1793247102; bh=s5SjjUi/ZVlMwSasSkYfA0uEsuHMg3rnpf66UCpaQzY=; b=
-	UPSjZxPFhjVqNfUZQFKFy1BOmUjVnDoxioJsZKlyojnQBGlVl8wht4Z1To3+zngE
-	7A7ViRMewRXnhmuys2d82S7zBHL7tJ8X8mhm7zFrUtrvgOrxqW0OW3xCTSHGcpOB
-	S+AC5OHBagOK5bhbamrnroLEWXyZ6Wtwnt3zdLmKkz9HjGn/h+hHEiFgBjaHg4N7
-	SKOdQ1KBwXbm+Bc5mFBj68qhsgcpnGQzcbHeNdIjTxiVczkXtILv7yHaTUYpaYmJ
-	lftPhCqrZ3f3rwMfEfxvEqEONOxWFXPxplToQapN1UHiOq0DXzFzOchxLZNiBGc5
-	jJSecYCvLt9LLF4nKg2JKg==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:date:date:feedback-id:feedback-id:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm2; t=1793160702; x=1793247102; bh=s
-	5SjjUi/ZVlMwSasSkYfA0uEsuHMg3rnpf66UCpaQzY=; b=NdBzTrxTx+HsS8vQz
-	ZRSisboaK39TD4wCMqUm7gE6xyiYkpZMxcd0U0qLCqj3+KbwA9gb3qdQdwwohCz2
-	4Mb75B6L+no5kn+uBnjZc13vPQgd19Fgbd2lQ8aum9ozpx1zdrvimn6DyLLypK/q
-	5jyIqTeen7EXmb97nAZwXQhX7PEVTP1J2o/Ac34rTcr7FOWy4HyUR58q5m69YA3b
-	LgvYpedBNssRh5HvhgHn5/wIUK+aWLB4HTD5yo59WHoQB3pknihlGBm8cgpI5JLm
-	UFW1pZee736msAqOPZAEtXvpcQxBFExD5SM/BQCuOGdy2tx0yBNFI7KMOiw/Dpef
-	915Hg==
-X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-07;
-	repo=github.com/dkim2wg/interop; date=2026-10-18; sw=lmtpprox;
-	action=sign d=ownmail.net a=rsa-sha256;
-DKIM2-Signature: i=1; m=1; t=1793160702; d=ownmail.net;
-	mf=PG5laWxiQG93bm1haWwubmV0Pg==;
-	rt=PGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc+;
-	s=fm2:rsa-sha256:e2CYyqG6XWeWOPJaCyqfDln8N291D5Mtbkt2P82Eewiyl2O
-	8WYNLkkdfjSg4ANkfMURDzTS3eVLt8cm3Zpjn0yeuFGQ4qQ4bcYXydNT7//9FJCC
-	4tnvibMHj+FuCZVfV06G6eWE2gRtTJNcjmYIoSFnae5zBgCVFkGrtRhmH0aYMd/F
-	gXxTD9xpvXvM51X7k16QKUTQ3HLcJDZ32L60AKuoougyp4nLH8OTZkhfR+RW6OM9
-	JiO1Zag+f67N1dcbBJGttmK9Dbc9u/MVKmFTXUYEzf7GOQ6io4KsL1ZKY2D5r4vD
-	vZ2s61Moo77PObbEgT10wG7R1gPPeraQcvy6aVg==;
-X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-07;
-	repo=github.com/dkim2wg/interop; date=2026-10-18; sw=lmtpprox;
-	action=mi-m=1; hc=12;
-	hn=cc,content-transfer-encoding,date,feedback-id,from,
-	in-reply-to,message-id,mime-version,references,reply-to,subject,
-	to;
-Message-Instance: m=1; h=sha256:JsyRHPmGnYAREVQ4AB1EWWADBCzO4KVaI4ixwGe/9Ko=:yMX3YBooGzqTZZwNHdCOdj+Mc1rORAII2DHM9hHa1m0=;
-X-ME-Sender: <xms:_nXhapxVkG1XPVzSiewUilhk92d5-UuMr5qpP600PPztJylHnRxf4Q>
-    <xme:_nXhanghp-mkqD_VdC5P5pO2dwPvbgQblUrNQtjjJxQVzEQ7BhO85BOv2Ykz-93Xh
-    vimMdff0NjgSaPlCzezp2pxIIVuqIeBmJXdvzAAF3BRemPwBJs>
-X-ME-Received: <xmr:_nXhaspTKYaB2w3bXat66UcAXSl0enWMe5mhMoMesGYKbIREm1HoTYnYv4_PiKBTwZCFU7YGtMeFs_JdIUiLZds8HDPrx8Q>
-X-ME-Proxy-Cause: dmFkZTFqL9d6vtBCb+NcWzd/7SiNibAA9OzG8/8ItNoKhrCbp6apHJN0xGHTCiaM1Ns9eo
-    Lr4mu7Y4yew0MDnBN6JXNQRuaqzU16LCUJ7ad9et0QcMvgBWEXRg1603Ru5AglHe2+TxKv
-    ydoMFP7Hms9hJwmlbMuKnQeaW1uHkQOzd/uAKOtWzI+liIsbjRbrwDvwZz57yfNjJsYMfS
-    GK3j7TzeoY+fFbVyhaDEEKjSfaVH0uPQQGvy9QSfC9U8EamqqN/pxHKYIXHw2LlfOVJIla
-    6PTXYyJsCWjbbbyiBydX7EBzCiMYy0tMvaOQy2L3pkcXcIGHXyMFUhmiaWdxscS01qQePc
-    JL/jbBMG2iKPpvdhOjzv7zrWNAxg5FMVApg3CJq5fU1Mo6leEcgKWhSewqYwG5dOEEVusZ
-    +u8BY/YQYY92v9t9Ih+WFNRvd6Q5SyjzQtxFMLNFIzdVPi4ycj+/IAEPSfnrE1oDK7Vesx
-    NouUg3ZkTmo/peAKqTVNjLXIMRaF90rEMCKmwXSX8JhOcJ38IldvKKB+5H/bj4Rmcy2ole
-    bymt/uNr7MWlWZjwx0rcWXKPWASwiDt7b7udiNrMtty4i9tQdOtwep+Gk0/a/yJXW5ZdnX
-    kiqqCXqCblkd7z19ZeZwNawU5SxceRGrjEXAoderlzns5QtkvazUKdQARf5w
-X-ME-Proxy: <xmx:_nXhauj7_KHcC4EmjMawEAjqnGSJbaLiYi7x7nNZSfR_R2u_Lph_4Q>
-    <xmx:_nXhauPMtHw8F_2l8_LkofY4LelaJhdxHoLeuTMHbb0tDFazyj6fhg>
-    <xmx:_nXhaoyZhAFu5KQyMVk7QeEqYf_zPFDJMzTrAdELHUHlp3ilKuDXjw>
-    <xmx:_nXhagpiyoTXpL_0xvf7zktYRQeAZMJDz8p_ILLPcy6LIYcEYth1bA>
-    <xmx:_nXhatWUu9BoiEs9-omT_rY02PpOppJUw8TVk9h7pZRjarbuDIevWRX9>
-Feedback-ID: i9d664b8f:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Wed,
- 28 Oct 2026 00:11:39 -0400 (EDT)
-From: NeilBrown <neilb@ownmail.net>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>,
-	Jonathan Flynn <jonathan.flynn@hammerspace.com>
-Cc: Jeff Layton <jlayton@kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH v4 9/9] nfs: use d_duplicate()
-Date: Wed, 28 Oct 2026 15:06:37 +1100
-Message-ID: <20261028041023.3738553-10-neilb@ownmail.net>
-X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
-In-Reply-To: <20261028041023.3738553-1-neilb@ownmail.net>
-References: <20261028041023.3738553-1-neilb@ownmail.net>
-Reply-To: NeilBrown <neil@brown.name>
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gPhJibQl
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 045CD1F01829;
+	Wed, 28 Oct 2026 05:12:55 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793164376;
+	bh=NHqc2iluLzBkHlrPz5vi8Qhq+QGWsc1OSshMmigJpRY=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=gPhJibQlhr66uy40ZULtu24Lm5U8ODdpfi+3/4UEoEqT/2XInnndDjW3NbMUyAgGe
+	 oU9+2/D0FZnfr+0F7/GdT/dJ/XkvxfvGK09PiTiVAHzs5pgoGo0g+QwlEO/NEMJz0b
+	 MqwO5uMj80ITxyZf/bx6m58zhOCu/zKVqw65+fkxHb9c5l4CbNbVKjYeML/st7hS62
+	 MKBtWXPdswocV5FGa9dB77/o52Evz1Dr3um7H+T1T26w72FdJ/KtuoxoxsGhS5dOER
+	 Z2n15c/bv+trMAU94e5JXXLwgoSrSe6C4B1jjaGVcZImVbxl25L1n6+Z0/RK3w0MrC
+	 6RsVy91S7eUrA==
+Date: Wed, 28 Oct 2026 01:12:55 -0400
+From: Mike Snitzer <snitzer@kernel.org>
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+	"Matthew Wilcox (Oracle)" <willy@infradead.org>
+Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org, NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
+	Jonathan Corbet <corbet@lwn.net>
+Subject: Re: [PATCH v9 0/6] mm, iomap, NFSD: stop uncached writes reading
+ back shared pages
+Message-ID: <auGEV03MkzR2W85B@kernel.org>
+References: <20261024221152.6965-1-snitzer@kernel.org>
+ <fc2ea8d6f2cd9ae83d38941f90386aac6638a497.camel@kernel.org>
+ <70ef3172-9631-4e19-9b8e-4722427a5a83@app.fastmail.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -134,55 +64,73 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <70ef3172-9631-4e19-9b8e-4722427a5a83@app.fastmail.com>
 
-From: NeilBrown <neil@brown.name>
+On Tue, Oct 27, 2026 at 11:36:44AM -0400, Chuck Lever wrote:
+> 
+> 
+> On Tue, Oct 27, 2026, at 10:31 AM, Jeff Layton wrote:
+> > On Sat, 2026-10-24 at 18:11 -0400, Mike Snitzer wrote:
+> >> Hi,
+> >> 
+> >> Please consider this v9 for the v7.5 development cycle, so that it can
+> >> go upstream in the v7.5 merge window.
+> >> 
+> >> An uncached (RWF_DONTCACHE) buffered write drops each page it writes
+> >> once that page is written back.  A page the write covers only partly is
+> >> shared with the neighbouring write.  Once the first of the two is
+> >> written back, the second reads the page back from disk before it writes
+> >> its part.  32 threads wrote interleaved records to one file on
+> >> XFS (emulated 4Kn NVMe, 4 KiB pages).  Before and after 4/6:
+> >> 
+> >>   record  pwritev2() flags          4 KiB device       MiB/s
+> >>   bytes                             reads per write
+> >>                                     before   after     before  after
+> >>   47008   RWF_DONTCACHE             0.97     0.0005    831     2281
+> >>   47008   RWF_DONTCACHE|RWF_DSYNC   0.99     0.0005    601     1227
+> >>   6000    RWF_DONTCACHE             0.97     0.0001    121      488
+> >>   6000    RWF_DONTCACHE|RWF_DSYNC   0.99     0.0002     90      206
+> >> 
+> >> What is left after is metadata.  49152-byte records cover only whole
+> >> pages, and they read 0.0005 per write either way.  The test program and
+> >> script that produced this table, and how to run them, are in:
+> >> https://lore.kernel.org/linux-nfs/atqJBS8MlYfeUU-t@kernel.org/
+> >> 
+> >> 4/6 has the page cache keep such a page for the write that completes
+> >> it.  5/6 lets a writer that syncs its own write complete those pages
+> >> itself once the sync is done.  NFSD does that for a stable WRITE.  6/6
+> >> is the NFSD change that uses it.  2/6 reports the DONTCACHE dirty count
+> >> in the bdi debugfs stats.  3/6 adds folio_mark_dropbehind(), which 4/6
+> >> and 5/6 use.
 
-As preparation for d_alloc_parallel() being allowed without the
-directory locked, use d_duplicate() to duplicate a dentry for silly
-rename.
+<snip>
 
-This results in an in-lookup name, so d_lookup_done() must be called.
+> >
+> > This all looks good to me at this point. This is a mixed mm and nfsd
+> > set though. How do you envision this being merged?
+> >
+> > Reviewed-by: Jeff Layton <jlayton@kernel.org>
 
-Acked-by: Anna Schumaker <anna.schumaker@hammerspace.com>
-Signed-off-by: NeilBrown <neil@brown.name>
----
- fs/nfs/dir.c | 13 ++++++++-----
- 1 file changed, 8 insertions(+), 5 deletions(-)
+Thanks for the review Jeff
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 4ceab6209e4a..1a5f64ed26b6 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2819,11 +2819,12 @@ int nfs_rename(const struct mnt_idmap *idmap, struct inode *old_dir,
- 			spin_unlock(&new_dentry->d_lock);
- 
- 			/* copy the target dentry's name */
--			dentry = d_alloc(new_dentry->d_parent,
--					 &new_dentry->d_name);
--			if (!dentry)
-+			dentry = d_duplicate(new_dentry);
-+			if (IS_ERR(dentry)) {
-+				/* Keep using -ETXTBSY error */
-+				dentry = NULL;
- 				goto out;
--
-+			}
- 			/* silly-rename the existing target ... */
- 			err = nfs_sillyrename(new_dir, new_dentry);
- 			if (err)
-@@ -2888,8 +2889,10 @@ int nfs_rename(const struct mnt_idmap *idmap, struct inode *old_dir,
- 		nfs_dentry_handle_enoent(old_dentry);
- 
- 	/* new dentry created? */
--	if (dentry)
-+	if (dentry) {
-+		d_lookup_done(dentry);
- 		dput(dentry);
-+	}
- 	return error;
- }
- EXPORT_SYMBOL_GPL(nfs_rename);
--- 
-2.50.0.107.gf914562f5916.dirty
+> My recommendation was take all of this through the MM tree, since
+> the NFSD patch looks like the first consumer of the work, and it
+> depends on how the MM API is changed during review.
 
+Chuck, I agree, the mm changes would certainly do well to go through
+the mm tree.  But the 6/6 NFSD patch that makes use of the preceding
+mm dontcache interface changes requires 4 of the 6 prerequisite
+changes to NFSD DIRECT that have have staged in cel/nfsd-testing.
+
+So I think we might need a post-merge NFSD tree for 7.5 that applies
+the 6/6 NFSD change ontop of the changes that would land through mm.
+
+Willy, I would like to work with you (and others in mm if they are
+interested), Jeff and Chuck between now and April 2027 to see these
+changes accepted for the 7.5 merge window. And if that were to happen
+I cannot wait to celebrate with all of you at LSF/MM in Portugal!
+
+Thanks,
+Mike
