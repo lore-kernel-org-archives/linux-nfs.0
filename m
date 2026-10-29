@@ -1,49 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793275546;
-	b=cE+2m1g6saVuqqTW1gZ/fQ0LoZIbMnINDk5InnpGIqwHZyTXrEowzR1Bb879iRq7MiWi
-	 arqMX3haA7T/fMsxx2uL8hvzcOsj1f9zyneMrcV2qlCLy2Z3JDCaH02Xw0JqgVPJf5Fr7
-	 oeR+/6HR7XaiOtqFHgdX6tUY5Cg5J4jSmfOcwXCBnC7A7XbRvxsoZU+mex4pWE2WBFdlC
-	 m+fddfhpAmXfPpWME9q+bHSvo0mwGY5E6T/VO1D5OEVNzE/ag/NxMn57RKkqoyBLQ6Jax
-	 fQVitNQiCr9fRBv0L1cEYMH/11HbiLZ64bzn6VDl18B0dfLYJJA3lYGz7qYb54VK70g==
+	t=1793275553;
+	b=vns06+8n/7OFN8w6vLM1jl6a1F2+PbkezzUgyhAgDobH/zYeY/5fyPMDvy969LJtcznq
+	 Gpom+8EZSc0s8xcHYn6c4QpQLIvvsVssHOU0OijV7kAo/exJLqy7H476eow+YIyTnEXz9
+	 PIY13sio1Sa+iy7NQlBwiSCHLtq9loqo11X++YXJsDLYJEaRYKGYmYC4Dqjtz4AAWQeOp
+	 89KG2UYjHnCXfJ8D1w+eLYmoxL48bN3eJfHSKAJAZgxw+wQeBk6zqpqFJjegURjhAkI0a
+	 pG8aX5/OoiGtvTYXA6RGz10XF3XcisO0kIWUAIQH2QYCFjONv+DptYkH0UrG47bEHSA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793275546;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793275553;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=Xp5Z6NBRUna+X+Nwp4QLQcBmqe140nsg4kc2CEFfGXU=;
-	b=MpgnaJKYW8/t968d+i+UEx8hW1y7/4QdkJCLgsZiqRnIWnbsX4VSRzlK2dFwNh1HmCsM
-	 i8vbtM5qwOcxQ4xmKaJw7b5MewUZcX7nOZbODu7wFsTkVXFZXGDZzLsu27qz9xRdNgErh
-	 IsYx+Unxn5RohTdY4/SW/8aBujTPp/nAzpLAPsM/bLqyrCEfiZOsrvCw+1bEs+f5DaRyJ
-	 tkhOcFpK4x4+2fdu5dCWMtOVyraVMU+8RnksWXjCyrUuQAar0Frsg6N2h0WW6NTylnaGn
-	 2bvoKqnvSqfrOx5jERsmDUPCwnTduD0nJGA+pHjBoFr4ZUGx4QL0c1buMtSyXFLaEnw==
+	bh=4iJ4lWXExv+RfGay5KC5PfyDalOA2jKNer9jnroQJeU=;
+	b=RvrEeq5tqlU/qZqtsPYsJYg50q5bpjjJSCYwjqLTgcxNOAdZTndHUABDkzxf18pLux1E
+	 it4WapZ/VIwwQ0DRtw/C8nYBpM4uayerjya/0ALJNKvXCqh9BeuR2M2/GCRhpBoXwHZlI
+	 zLFpjwWpF8rZdQdl/F+rr4V0BEQbiH1WHlavGFFVJk19eiM/T+ujPf2BixxVZRZpwMNHL
+	 ONPzVIAkTATNJgUVqnCW+e85QWl3pd8ChZnZb3HNrcWv9spl0frrgXvm1Hg284rX8XqtK
+	 1isUTP/HjBB3aSl1ieZTW5qF6kNJBgAfGKe8in4wPKBnXKw7ieG3JpOx48WwVYrFByQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DSBGjcZM;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iomdypTv;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E0F96606A31A;
-	Thu, 29 Oct 2026 12:05:45 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0DD79606A320;
+	Thu, 29 Oct 2026 12:05:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DSBGjcZM
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2E78B1F031E1;
-	Thu, 29 Oct 2026 12:05:44 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iomdypTv
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 036321F031E5;
+	Thu, 29 Oct 2026 12:05:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793275545;
-	bh=Xp5Z6NBRUna+X+Nwp4QLQcBmqe140nsg4kc2CEFfGXU=;
+	s=k20260515; t=1793275547;
+	bh=4iJ4lWXExv+RfGay5KC5PfyDalOA2jKNer9jnroQJeU=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=DSBGjcZMksQW+jZTOZrOQfMChlkK72ylhLwqFrvZfW5jk/ax5rZbUeSbN0TgFfF3y
-	 cxuN4jcYH77zMYS+JxhUuX2rIP/q5yFKxrjLvayXGsA6IDKRCA9LCjSku9vBKhME+j
-	 bWjwr+mMxR+OE+PUuBo3pW6su9+PMohl06MR2wzBOM8gaVU+QvM0NdSoy7VJgGN49j
-	 ufGpHqWRYpVw8JxGKmJQKLFh4crx9u1AbKaMOxmHX/BIVUOvXZiizye4mSSx3JgUWq
-	 e8n/Mim2P4mKnGFLOL2FS7dnLGaxERn/C7Dk6BQgibOuxwvH1NNffN5WoKj5hN0aHj
-	 ffrj2pICXijnQ==
+	b=iomdypTvZQIMLWImvLyZSeMqZ7GRZcm6sOcC0S+HVjLCkjem9mnPplw2Yiuh/qXUS
+	 I4/w9yN69PHPShB5KMePUmhNj2il27fRTNtKj+xoPxB7bQfxwnkujFPTNB3tAWuQPw
+	 sJCtPMyl7DMJPoL0Ei9WDUFkQ3R393Z1BR91SbheN/jpb5ViC6lfmV7GV6DiWn5QSb
+	 L8kWkLyarFPduIZSFKieL7LUjXYaVFZZVfPNcVU2al5LavERHXPhA+g/0yuzEFJOVm
+	 DZUYeTetbiIvQY5k+pq2H2FSwY4Pv+CimIOJfq08GeK1vaMKNTx0dGKwQJaV2j+Ogt
+	 cDEzL4Xzs0K7w==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Thu, 29 Oct 2026 08:05:18 -0400
-Subject: [PATCH v2 5/6] NFSD: Count the storage reads of each export's
- READs
+Date: Thu, 29 Oct 2026 08:05:19 -0400
+Subject: [PATCH v2 6/6] NFSD: Document how to choose an IO mode
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-export-iomode-v2-5-fe8ec6251a36@kernel.org>
+Message-Id: <20261029-export-iomode-v2-6-fe8ec6251a36@kernel.org>
 References: <20261029-export-iomode-v2-0-fe8ec6251a36@kernel.org>
 In-Reply-To: <20261029-export-iomode-v2-0-fe8ec6251a36@kernel.org>
 To: Donald Hunter <donald.hunter@gmail.com>, 
@@ -71,203 +70,217 @@ Cc: Steve Dickson <steved@redhat.com>, netdev@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, 
  linux-doc@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6660; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=dQERPU3OneW2TFDnT8M0DRvQJt9QKP7O5oyeTHTbcLA=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq4zaOIU2AclDnmrsC/bX1K5gWNN64Ftl8rvy5d
- b2zmDR7r3aJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCauM2jgAKCRAADmhBGVaC
- FWy4EACTGnea+ZxGQRS3EiAhcdUdwKOhLrUuzsnopDjRJsckN6DxxLtmZFnf2rCv5r1OISsPose
- i2z4ysEH+dfTXuUZg6wCAPUustABlM7l9fMf5DkR/j65FhWYXehkggHtlupaibInCkyrEhiaZFj
- EbW28N+Qy1LeK3QJGK53lTg7WRrj7scyCdVnr1b0nORHOY7S4DLyK6SMXDcSoj/+9AjxPdimdGZ
- 2N096LuXIU44pqXI3O1m0anWVyOJa3PRYx+a6XR0T4Mtdg+Tfh2AIdi1xf+39o1dKWMsqc6Zx6V
- KyirMFLavFUumSZH4L8p7GqczCBv6M6buQL8zVs9QDbicHbjT24ZjYR/IzSHhpdqEbsNdwBcp04
- pxxTQMGJUMEB/63Fudypf0LooMV8+bJYViGnWGkjrePCL2L4tjXkniXyVlBnzI3AyzK2cJeoeHW
- Z9z1K5Y8buNFWhRwBa6YPuIlpKE3vdQmsubv9Sb1IWkxZARo6/9uvpMdi5UH4ns42hKy6T2BbC8
- s/MH/YwqA13ROubrkh3FRXHZgN/8UZpI00N9UXFVFDi8zWiEukW+wF5q22hjihwFazfh8IrwW1B
- Rcui/xuLBgK8pkg7GBO9VgJGSP17mF30piAZgJ+c5djYVRFQt0v8XOfyqdS064TU/yjHHICmLrb
- 3FWUeQT47Z1kiQQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8695; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=yE2bCSOokjUEj1po9XIzO+SKll2jKyIeQhppobQc1QU=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq4zaOIt1OzOAFIx/Tqkr6ypYGRqUreMaslU3lM
+ GFpIyumD6mJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCauM2jgAKCRAADmhBGVaC
+ FSs3EACteuSamD1oyvQMYQZKFltKnZtUenbce49ToZhHPsuMyqtfLbeGYw6DnhVkLLUWRIePDIZ
+ X44unaBBh39QFuozRrKcMbEHItSIV4FQN6Bh5zTdXdoa9lgaRJdEZ0I9i1aKsVCfV2VIloHrNVh
+ Y3o9Gp/DKg/CLBMUJPROUhPgkBq4It6J4GSml87ETqtsh1BE8f+lnxrRNYRM2m8Q9GaqIMbuBxg
+ sopi6fGSgQA0eAHp7PbK2R93zUr13O1N3nWAbl7kGvjJ1t3x1dCOxvYfkwS3bqRsBixrXMR+K2v
+ 1+nGD1wAQxy+U1LQQM5gGFN4SRtUb7rlFj9jOlM1aNPgh52brRGW7R8copo6qsnhnjUKBmi7Dt8
+ 0gSd4uNeq00HmuaHN3MiJ9aZRH55ROLgayvfrYhbzJcHkXUVEwLtSOzkUP0VI/XYv0Dc6WOpxOD
+ F/vlF9X4I7y7+XTaIFaeBaH7wyf0cSRzapaigm3TfIsmQdzfHkxEXLB5w1IdhsGfhj17m0uSWoM
+ MMayBj1hy5BcR6qdLCaa1LB0ZGo/r4XzyxqJGoWAYzvfTmA3T6hXY2HOntOP6bYHZeQLx3zay91
+ ksrsmePAJgvYM7K9Zt9QyvsgvOTnyStb58hUdd3DdqC3e7JlRcX+FqS8aJ3Z07xMCxy3KzpGmgB
+ IA2pzQXgChZAD7Q==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-The page cache miss ratio of an export is the best indicator of the IO
-mode that suits it, but NFSD reports only the bytes that READ returned.
-Comparing that with the reads of the block device is approximate: the
-device can hold other exports or local data, the count includes every
-user of the device, and btrfs can span devices.
+Admins have no guidance on when to pick buffered, dontcache, or direct
+IO for an export. Add a section that:
 
-submit_bio() charges read bytes to the submitting task. Take a snapshot
-of current->ioac.read_bytes when a READ starts, and add the difference
-to a new io_read_storage counter of the export when it finishes. This
-includes the readahead that the READ started and the metadata that it
-needed, and works the same for buffered, dontcache, direct and splice
-reads. export_stats shows the counter only with
-CONFIG_TASK_IO_ACCOUNTING, so a missing counter means it is not
-available.
+- explains why a low server page cache hit rate is normal (clients
+  cache their own re-reads)
+- lists the workload conditions that favor each IO mode
+- describes existing metrics to measure: per-export miss ratio from
+  export_stats vs. block device reads, workingset refault counters,
+  cachestat(2), reclaim cost (PSI, allocstall, compact_stall), and
+  client mountstats byte counters
+- notes that refault counters do not see dontcache or direct IO, so
+  measure while the export uses buffered IO
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/export.c |  4 ++++
- fs/nfsd/export.h |  1 +
- fs/nfsd/stats.h  | 33 +++++++++++++++++++++++++++++++++
- fs/nfsd/vfs.c    | 20 ++++++++++++++------
- 4 files changed, 52 insertions(+), 6 deletions(-)
+ Documentation/filesystems/nfs/nfsd-io-modes.rst | 168 ++++++++++++++++++++++++
+ 1 file changed, 168 insertions(+)
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 2b83f2836b0e..3971bcee4214 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -1675,6 +1675,10 @@ static int svc_export_show(struct seq_file *m,
- 			   export_stats_sum(stats, EXP_STATS_IO_READ));
- 		seq_printf(m, "\tio_write: %lld\n",
- 			   export_stats_sum(stats, EXP_STATS_IO_WRITE));
-+		if (IS_ENABLED(CONFIG_TASK_IO_ACCOUNTING))
-+			seq_printf(m, "\tio_read_storage: %lld\n",
-+				   export_stats_sum(stats,
-+						    EXP_STATS_IO_READ_STORAGE));
- 		seq_putc(m, '\n');
- 		return 0;
- 	}
-diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
-index b9306a360c19..dcff16618edf 100644
---- a/fs/nfsd/export.h
-+++ b/fs/nfsd/export.h
-@@ -53,6 +53,7 @@ enum {
- 	EXP_STATS_FH_STALE,
- 	EXP_STATS_IO_READ,
- 	EXP_STATS_IO_WRITE,
-+	EXP_STATS_IO_READ_STORAGE,
- 	EXP_STATS_COUNTERS_NUM
- };
- 
-diff --git a/fs/nfsd/stats.h b/fs/nfsd/stats.h
-index aabfbb1a9c71..d88d2229a4c7 100644
---- a/fs/nfsd/stats.h
-+++ b/fs/nfsd/stats.h
-@@ -9,6 +9,7 @@
- 
- #include <uapi/linux/nfsd/stats.h>
- #include <linux/percpu_counter.h>
-+#include <linux/sched.h>
- 
- #include "export.h"
- #include "netns.h"
-@@ -97,6 +98,38 @@ static inline void nfsd_stats_io_write_add(struct nfsd_net *nn,
- 					 amount);
- }
- 
-+/**
-+ * nfsd_storage_read_bytes - bytes the current task has read from storage
-+ *
-+ * submit_bio() charges read bytes to the submitting task, so the change
-+ * across a READ is what that READ, including the readahead it starts,
-+ * read from storage instead of the page cache.
-+ *
-+ * Return: the task's storage read byte count, or zero without
-+ * CONFIG_TASK_IO_ACCOUNTING.
-+ */
-+static inline u64 nfsd_storage_read_bytes(void)
-+{
-+#ifdef CONFIG_TASK_IO_ACCOUNTING
-+	return current->ioac.read_bytes;
-+#else
-+	return 0;
-+#endif
-+}
+diff --git a/Documentation/filesystems/nfs/nfsd-io-modes.rst b/Documentation/filesystems/nfs/nfsd-io-modes.rst
+index 1ad30518c234..99da98430be1 100644
+--- a/Documentation/filesystems/nfs/nfsd-io-modes.rst
++++ b/Documentation/filesystems/nfs/nfsd-io-modes.rst
+@@ -283,3 +283,171 @@ Tracing:
+     segment that it could not invalidate. Only a filesystem that uses
+     iomap for direct IO emits it, and other fallbacks, such as ext4's
+     own, are not traced.
 +
-+/**
-+ * nfsd_stats_io_read_storage_add - Count storage bytes read for an NFS READ
-+ * @exp: target export
-+ * @amount: byte count
-+ */
-+static inline void nfsd_stats_io_read_storage_add(struct svc_export *exp,
-+						  s64 amount)
-+{
-+	if (exp && exp->ex_stats && amount > 0)
-+		percpu_counter_add_local(&exp->ex_stats->counter[EXP_STATS_IO_READ_STORAGE],
-+					 amount);
-+}
++CHOOSING AN NFSD IO MODE
++========================
 +
- static inline void nfsd_stats_payload_misses_inc(struct nfsd_net *nn)
- {
- 	percpu_counter_inc(&nn->counter[NFSD_STATS_PAYLOAD_MISSES]);
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 779ad3a61172..a8cf41e4dfea 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1113,8 +1113,11 @@ static u32 nfsd_eof_on_read(struct file *file, loff_t offset, ssize_t len,
- 
- static __be32 nfsd_finish_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 			       struct file *file, loff_t offset,
--			       unsigned long *count, u32 *eof, ssize_t host_err)
-+			       unsigned long *count, u32 *eof, ssize_t host_err,
-+			       u64 storage_start)
- {
-+	nfsd_stats_io_read_storage_add(fhp->fh_export,
-+				       nfsd_storage_read_bytes() - storage_start);
- 	if (host_err >= 0) {
- 		struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
-@@ -1145,12 +1148,14 @@ __be32 nfsd_splice_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 			struct file *file, loff_t offset, unsigned long *count,
- 			u32 *eof)
- {
-+	u64 storage_start = nfsd_storage_read_bytes();
- 	ssize_t host_err;
- 
- 	trace_nfsd_read_splice(rqstp, fhp, offset, *count);
- 	host_err = vfs_splice_to_actor(file, offset, *count,
- 				       nfsd_direct_splice_actor, rqstp);
--	return nfsd_finish_read(rqstp, fhp, file, offset, count, eof, host_err);
-+	return nfsd_finish_read(rqstp, fhp, file, offset, count, eof, host_err,
-+				storage_start);
- }
- 
- /*
-@@ -1168,7 +1173,7 @@ __be32 nfsd_splice_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- static noinline_for_stack __be32
- nfsd_direct_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		 struct nfsd_file *nf, loff_t offset, unsigned long *count,
--		 struct page **page, u32 *eof)
-+		 struct page **page, u32 *eof, u64 storage_start)
- {
- 	u64 dio_start, dio_end;
- 	unsigned long v, total;
-@@ -1226,7 +1231,7 @@ nfsd_direct_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	}
- 
- 	return nfsd_finish_read(rqstp, fhp, nf->nf_file, offset, count,
--				eof, host_err);
-+				eof, host_err, storage_start);
- }
- 
- static bool nfsd_direct_read_ok(struct svc_rqst *rqstp, struct svc_fh *fhp,
-@@ -1324,6 +1329,7 @@ __be32 nfsd_iter_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	struct page **page = buf->pages + (buf->page_len >> PAGE_SHIFT);
- 	unsigned int base = buf->page_len & ~PAGE_MASK;
- 	struct file *file = nf->nf_file;
-+	u64 storage_start = nfsd_storage_read_bytes();
- 	unsigned long v, total;
- 	struct iov_iter iter;
- 	struct kiocb kiocb;
-@@ -1338,7 +1344,8 @@ __be32 nfsd_iter_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	case NFSD_IO_DIRECT:
- 		if (nfsd_direct_read_ok(rqstp, fhp, nf, offset, *count))
- 			return nfsd_direct_read(rqstp, fhp, nf, offset,
--						count, page, eof);
-+						count, page, eof,
-+						storage_start);
- 		fallthrough;
- 	case NFSD_IO_DONTCACHE:
- 		if (file->f_op->fop_flags & FOP_DONTCACHE)
-@@ -1367,7 +1374,8 @@ __be32 nfsd_iter_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 				  kiocb.ki_flags);
- 	iov_iter_bvec(&iter, ITER_DEST, rqstp->rq_bvec, v, *count - total);
- 	host_err = vfs_iocb_iter_read(file, &kiocb, &iter);
--	return nfsd_finish_read(rqstp, fhp, file, offset, count, eof, host_err);
-+	return nfsd_finish_read(rqstp, fhp, file, offset, count, eof, host_err,
-+				storage_start);
- }
- 
- /*
++The correct IO mode for an export depends on the workload of its
++clients. The most important question is this: does NFSD read the same
++data again before the page cache evicts it?
++
++NFS clients keep their own page cache. When a client reads the same
++data again, its own cache usually supplies the data. The READ request
++does not get to the server. Thus, the server page cache helps mostly
++in these conditions:
++
++- Different clients read the same data.
++- A client reads data that a different client wrote recently.
++- A client reads data again after its own page cache evicted the data.
++
++A low server page cache hit rate is thus normal. It does not by itself
++show that buffered IO is the wrong choice.
++
++Use buffered IO for an export when:
++
++- The working set of the export fits in server memory.
++- Many clients read the same files.
++- Clients send small or misaligned WRITEs. The page cache collects
++  these WRITEs and writes them to storage in larger units.
++
++Use dontcache IO for an export when:
++
++- Clients read or write most data only one time.
++- The working set of the export is much larger than server memory.
++- The data of the export causes the page cache to evict data of other
++  exports.
++
++If the underlying filesystem does not support dontcache, NFSD uses
++buffered IO instead. See NFSD DONTCACHE above.
++
++Use direct IO for an export when the conditions for dontcache are true,
++and also:
++
++- Clients send large, aligned READs and WRITEs.
++- Page reclaim uses a large quantity of CPU time, or makes IO stop.
++
++Change the IO mode of one export at a time. Compare the metrics below
++before and after each change.
++
++Metrics to monitor
++------------------
++
++The metrics that follow can help you choose an IO mode. Measure them
++while the export uses buffered IO.
++
++Miss ratio for each export
++~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++``/proc/fs/nfsd/export_stats`` shows the number of bytes that NFSD read
++(``io_read``) and wrote (``io_write``) for each export and client. If the
++kernel has ``CONFIG_TASK_IO_ACCOUNTING``, it also shows the number of
++bytes that storage supplied for these READs (``io_read_storage``). This
++value includes the readahead that the READs started, and the filesystem
++metadata that they needed.
++
++The kernel adds an export to ``export_stats`` when a client first uses
++it. The counters of an export continue when mountd refreshes the export
++or when ``exportfs -r`` flushes the export cache. They restart if the
++export stays out of the export cache for an hour. The start time shows
++when the counters started.
++
++Measure ``io_read`` and ``io_read_storage`` over the same interval. Then
++divide the increase of ``io_read_storage`` by the increase of
++``io_read``. This is the miss ratio of the export.
++
++- A ratio near 1 shows that storage supplies almost all data that NFSD
++  reads. The page cache gives little benefit. Dontcache or direct IO
++  can be a better choice.
++- A ratio much smaller than 1 shows that the page cache supplies a
++  large part of the data. Buffered IO is probably the correct choice.
++- A ratio larger than 1 shows that readahead reads data that clients
++  do not request, for example with small random READs.
++
++Without ``io_read_storage``, compare ``io_read`` with the number of bytes
++that the block device read. Field 3 of ``/sys/block/<dev>/stat`` shows
++the device reads in 512-byte sectors. You can also use iostat(1). This
++ratio is for all exports on the device. Local applications also cause
++device reads. Thus, this ratio is only an approximate value.
++
++Reads of recently evicted data
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++When page reclaim evicts a file page, the kernel records the eviction.
++If a task reads that page again soon, the kernel counts a refault.
++``/proc/vmstat`` shows these counters:
++
++- ``workingset_refault_file``: the number of file pages that the kernel
++  read again soon after their eviction.
++- ``workingset_activate_file``: the number of refaulted file pages that
++  the kernel identified as part of the working set.
++- ``pgsteal_kswapd`` and ``pgsteal_direct``: the number of pages that
++  page reclaim freed.
++
++Use these counters as follows:
++
++- The ``pgsteal`` counters increase quickly, but
++  ``workingset_refault_file`` stays near zero. This shows that clients
++  read most data only one time. To find the export that causes this,
++  use the miss ratio above or cachestat(2).
++- ``workingset_refault_file`` increases quickly. This shows that clients
++  read the data again, but the page cache is too small to keep it.
++  Set dontcache or direct IO on other exports that read data only one
++  time. This gives more page cache to this workload.
++
++These counters are for the full system, not for each export. Dontcache
++IO drops pages without a record of the eviction. Direct IO does not use
++the page cache. Thus, these counters do not include exports that use
++dontcache or direct IO.
++
++Page cache state of a file
++~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++The cachestat(2) system call shows the page cache state of a range in a
++file. It is available in Linux 6.5 and later. Its output includes:
++
++- ``nr_cache``: the number of pages in the page cache.
++- ``nr_dirty`` and ``nr_writeback``: the number of pages that wait for
++  writeback, or that are in writeback.
++- ``nr_evicted``: the number of pages that the kernel evicted.
++- ``nr_recently_evicted``: the number of evicted pages that would cause
++  a refault if a task read them now.
++
++Use cachestat(2) on the frequently used files of an export. This gives
++data for each export. Monitor ``nr_recently_evicted`` on the files of
++one export while a different export is busy. If the value increases,
++the busy export causes the page cache to evict useful data. Set
++dontcache or direct IO on the busy export.
++
++fincore(1) shows how much of a file is in the page cache.
++
++Cost of page reclaim
++~~~~~~~~~~~~~~~~~~~~
++
++Direct IO helps most when page reclaim uses much CPU time or makes IO
++stop. Monitor these metrics:
++
++- ``/proc/pressure/memory``: the "some" and "full" lines show the
++  percentage of time that tasks waited for memory.
++- ``allocstall_*`` and ``pgscan_direct`` in ``/proc/vmstat``: direct
++  reclaim activity.
++- ``compact_stall`` in ``/proc/vmstat``: memory compaction stalls.
++- The CPU time of the kswapd and kcompactd kernel threads.
++- ``Dirty`` and ``Writeback`` in ``/proc/meminfo``, for WRITE workloads.
++
++High values can occur while NFSD moves large quantities of data that
++clients use only one time. In this condition, direct IO can decrease
++the CPU load and make IO performance more constant.
++
++Client page cache
++~~~~~~~~~~~~~~~~~
++
++On a Linux NFS client, the ``bytes:`` line in ``/proc/self/mountstats``
++shows the bytes that applications read (field 1). It also shows the
++bytes that the client read from the server (field 5). mountstats(8) and
++nfsiostat(8) also show these values.
++
++Field 5 can be much smaller than field 1. This shows that the client
++page cache supplies most reads. In this condition, the server page
++cache keeps copies of data that the clients already have. If other
++clients do not read the same data, dontcache IO on the server can be a
++better choice.
 
 -- 
 2.56.0
