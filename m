@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1793281276;
-	b=PxGD7eWw2IkSa+IVrDwszu7TteT6QMDshorVAeN2TUlfJnI21Iu2dXcpoQQ78lC7ayNy
-	 KgMPHjKdBrswFUwWFeVY8bAKxMo92pzlkc1rhloxYWXRlxt3p5QcxoGg8M9kMIUPEgbP4
-	 KMqDnW22gxR3bK9Tni6xbj/AyoonHRrG1MFSN3ipt3ZvlvzE0aJeiPsk5Mk0YlLe+0Gmt
-	 eveL6/3/F5VRxZfbKy1vBtWj+0Oep3ZIH/McAD+VTFz3aFpmBcWE34ox2INPQY5YRIBol
-	 1VXykaq/l7guvoZJpcO4DfurAtZR0VogUQwT+3bODabG6A1hLfoKqHifiZOOspDwx1Q==
+	b=GY+1VtcxPigQz3mMSXQflcs1mHP2Vcvxr2+u8m4KEBFtQ+LngddwnKPSIALEu9ksc1O+
+	 ORPVEZEt0yyMUP3gC4IPGXFbWvQmdKePsAqIapkfZVJwbWNDA1uPR3aU0swshUacnQsUD
+	 sqEGeLkYlAuHD1zl0ESlUyqmNTzfu8QjTKbTb2F/3b8iNlytfCsXoLFs4kLqsdh8/3KdZ
+	 ldEX22UFtP/+P9N5SwXZFlyuEunjtYnG3GV9Wg7vbIlj/CFlW9WrmGQ1qZDcCQ7a/VmyD
+	 3J5dYCe8iEoGF9JsZ5F+5vtb6cKtxZBzqWY7mOUq6kh+xbrwUMlhSwg7abX8FMtcgtg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1793281276;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=XL1lAn3vAWFPf9PcA4BhixZyHFuj0H7Sum8FCmZEJho=;
-	b=shdG8O5Xf0FoVDUWadm+uzLEWRubAiF56YxSFYu+OjWoHGMXPAUb3V5o3bI90dlxkARK
-	 vqV3HpuwL9KAx7urqFTFbVhFreeOJdcikCSbg3sSykJki2ZCVOjjq/5Ls5+flH1oWzKG7
-	 av7Yac8b2YarWDqMoxLCCDC2dZDNi7kcGqNJB0e2/Kz8OC4kEdT/zM2glvE+xj/zQDGWv
-	 fWs6HJakXQQewBLKTf1toRkXGy1Igvl1NncQwlPz3lXvrmF0zXay72MMr1J6JEyHYWZ11
-	 mcHvKNjn2R14Tc8srj0dOzK+s4gLlTEWeF+qUpOIq9lSgYeE5b1SRuEELN1hFNTdiGw==
+	bh=29Oh/oZBFa22tCLYhtkn0CLBy/knTtwIJDkasxHm/fw=;
+	b=JXwkWsRjAAV+45/erj8UJn2uf5og5+IgSZgWhQARaDP4euiB1rvh1C/tg1oRWbx1gCrw
+	 F1jwcvnhh1t9Dlxb55cguVD95pC8tIrvUVHAMobvTU/DIXz1g8x+o02LymSVN1AnPkiS7
+	 9XI5p9X1WV2nQ38Q3TzzDxyQH9OnNVuiVk8yaHt5k/cM2m+XghvuAoKtVWlYfozH2I5l/
+	 oNhWtB6XmHvRdqHkHjnNe6K6KsAW1k2j3TFxRUuvi0kMZN+gLb9Lo4o4XtMJKpQQtPFqt
+	 9UUYtOvTfTdYB/KH9hHgTT20Bx9n8uR1BgXYN24Xv8R2EelazGDeXzsXF3sM+WU6NSQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LSBByxn1;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JBQcbLUI;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DC34C606A320
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 13:41:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A4112606A323
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 13:41:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LSBByxn1
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BE6FB1F01828;
-	Thu, 29 Oct 2026 13:41:14 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JBQcbLUI
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DE7EA1F031E2;
+	Thu, 29 Oct 2026 13:41:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793281275;
-	bh=XL1lAn3vAWFPf9PcA4BhixZyHFuj0H7Sum8FCmZEJho=;
+	s=k20260515; t=1793281276;
+	bh=29Oh/oZBFa22tCLYhtkn0CLBy/knTtwIJDkasxHm/fw=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=LSBByxn1Vv+s/d1wPshlFEVU83vtU6lQuHbnlCUfbIX6RjUdXoMp9YdBDDvbqKbbu
-	 2SxXXJ7R8nlj9+ahGRy3Pz9mPYgsgV79UYdqcQembTzIiDAujGT5FkAiJ4syqwNhgH
-	 OZUTSoWOder3xE7wg3zFmp+7EvUYjpqFusu9z8bdqI9nHASH7dK0M/opbVHRQLcnps
-	 RXd5qgJXwxU/XQoxFpg/BmbA7zbODmRdjG2ZHPDvpV6Cvg6Qsopj4rr14UgTJI9bvr
-	 +BEZ6blYtu2LsXGxDK4Mbjqg4DSlBWs7hTRIXLTJgKFfOc0YFIXc8KAZxJeQVgIyi+
-	 7SQxvcXaS2VIw==
+	b=JBQcbLUIMM85mEZMUZKrdS+Q2enCagizJ2xw5ppzk5lRGsEu/+fAOwX9xwzNnoTib
+	 gBOYRqyyNZ+Q8KBt/aXAXd/2tjRS7An4+M1BOuhCKxcwL1SbZNlyRhZ5zNZI6nsb4h
+	 fbeBN9Ro4Cjjvad0ouFUdDBKRCbqyip24XFc14geUk/7mNu8sqYIOCC+mHu8NjOS9B
+	 H5MgoXYMERzl9H98EvI3phntX6DjwsW4zWqSgRggrMQX4QcoexX/I6gLDNp9/CDV7O
+	 15sei5YNmtPjQsoVhVpzuD3otBo9s6cRtSahRorLdiXtuUyJm4GrmAGKk5h0hvPIMC
+	 wrwtwc5j/Bmlg==
 From: Chuck Lever <cel@kernel.org>
-Date: Thu, 29 Oct 2026 09:40:59 -0400
-Subject: [PATCH 01/10] NFSD: Serialize forced client expiry with state
- shutdown
+Date: Thu, 29 Oct 2026 09:41:00 -0400
+Subject: [PATCH 02/10] NFSD: Check machine credentials before expiring a
+ client in DESTROY_CLIENTID
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-random-stateids-v1-1-8648878fec8c@kernel.org>
+Message-Id: <20261029-random-stateids-v1-2-8648878fec8c@kernel.org>
 References: <20261029-random-stateids-v1-0-8648878fec8c@kernel.org>
 In-Reply-To: <20261029-random-stateids-v1-0-8648878fec8c@kernel.org>
 To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
@@ -63,117 +63,72 @@ To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org
 X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3384; i=cel@kernel.org;
- h=from:subject:message-id; bh=AoXRbHOPXctx6FkvJy29LZdVPetMCHoGs7nnYuv0ZaM=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq40z38DMSkCBWi9mgP+ovU/JOT9fLmDnXEyzoq
- 7OBWiqrFwCJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCauNM9wAKCRAzarMzb2Z/
- l6OYD/9L/fZtevHWG3jJVzi4w0FjWOBXQW0mwIgvxXPFnRadcXl1G3ubYWIBmFJ/6kh85705qls
- 6vXi5WO3TLDoY9cdPK4sKEiKxLZyLLpUqZJIqNJ0DjAu6aLxN8FuoL7tT9MFkFOeHzml2fsjcUu
- avTaG8wOf0pkH52vR5dm0MZPhQ15b2sfYPZXrCdPREY5RMa9pDI4uQmFUd7hz07k2ASDSR4GDLn
- ukksfScxSQDn7SKM1uTGOCf3CtWXdv4gFhGg1rnXs7dnXNq0TonKEuFt4HhWO8G6x7evUki0//A
- ow74voYQob+mn6eCx4MIJwPhFaiexItntdZl/Ledy1fYgsUqwqC2ZlQVuPXuc4oBpI1EI85KEMo
- A32r/xDE9RlsE6OFoJw0B0wcBsDB/lrHcHPIzesn1LoKA7P3jibDhknSDwbkBA254WZMRhE5/4x
- mkb4B18VtdWxrnD5W+n1sGY0t0QJNGTTdNycDHqXSFRU8BDbMeB6NnL3ykZlReUxJXIxq5MieSK
- rgep0jSZWYJBAOtLlPhUhNvom8aOHI7AvFzD6vPuKw/iOVzE29VbGBi/E2UE75g9q7jEzogaXli
- m/0Y8DMGIUev5e1STbPabjY82f6NxZOYl2c7r+NI2BbuX5fZC6Ela4alV8k9BQO9vn0VMTRedCl
- Q1RnpK9NiRSCalw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1756; i=cel@kernel.org;
+ h=from:subject:message-id; bh=2GltPGbwxabjEB2PW21iDkfRaCvHRxOHoB1rlrOUgk8=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq40z3M38tFiExR+t2K5nmG2Lg81++HL+RuMYrg
+ /7vX99Vu+mJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCauNM9wAKCRAzarMzb2Z/
+ lyC9D/9jVdaQXcqJC+EHRgVuMYgZtox7sC315MyFzvtQAaysde0bZUt9u4WwDL3oamxpRifVOd+
+ dstWDeT+kjMjNZXHg1dbjRYybdC5MuvGxO2WZMdqfDEJKkL+4VwtWzn48l/fHNBkop2RHLpTkLZ
+ 3wM/6Qe7ANT+b9lKK6661b4M//bdjo/py2xYxiWI+OC7YQUMZxFoRDLaZRgMNCH+MZ1E22xNbtN
+ o4Hb7Vf2wPnv2EtqwbubOcNpmjFk6VbunSmbSsz/2R2JEueeu0JgMggDLxHGhMHBKjxW/paw5cF
+ kXa2P04vi0llVw64+qPHId6bwLbeDmmJGpr0p4ox6cVzCSsPKDjraTEPb9RAfU2/Z6M2ayUXePz
+ CYXTXCGBZNS5VqEadQOb8eFlwN2NmHkPT22PtzftQ4PcodbfIMOfMulXu98S3GuZ+UrnDRJgVJK
+ yiuvgbhe6GEBkP7ARZ1ZKLEwpMgExPHJqYnfWIFLp/ptFFevkbsOu6b8XDunVY8GwHwEXDdDFhP
+ BfVFvHSh2+hKglmfy4+gqgOKQf7Ow5bSp7N7lEpJwbQjtQ+DQEmfmUcd5ubTN1qvVKxXuL+vxm1
+ BHeXDw9iKkGz1cwsoMIRZmss48+fTFSQT215LyZ2zL3xK87+uWy5O0d6/4wHK86/jsKBRorjecn
+ +6wz00DMLWq8Dcw==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-client_ctl_write() pins the client only through the nfsdfs kref and
-calls force_expire_client() without nn->nfsd_mutex.
-nfs4_state_shutdown_net() walks the client hash tables with only that
-mutex held. A write of "expire" that races with the shutdown unhashes
-its client under client_lock, so the walk never sees that client. The
-write's expire_client() then runs __destroy_client() after the
-shutdown has freed the hash tables, disabled the laundromat, freed
-nn->client_tracking_ops, and destroyed the nfsd_file and nfs4_file
-caches that the destroy puts references into.
+nfsd4_destroy_clientid() calls mark_client_expired_locked() on a
+confirmed client before it checks the machine credential.
+mark_client_expired_locked() unhashes the client, and when the
+credential check then fails the error path clears clp, so
+expire_client() never runs. The nfs4_client is gone from every lookup
+table but never freed. A requester that knows only the clientid of an
+NFSv4.1 client that has destroyed its sessions can orphan a client
+that registered SP4_MACH_CRED to prevent exactly that.
 
-Take nn->nfsd_mutex in force_expire_client() around the unhash and
-the destroy, once cl_rpc_users has drained, and proceed only while
-NFSD_NET_UP is set, as nfsd4_revoke_states() already requires of its
-callers. Under the mutex the shutdown either has not started, so the
-forced expiry completes before the walk, or has finished, so the
-write fails with ENXIO. The two waits stay outside the mutex, which
-the netlink export handlers also take.
+Check the credential before mark_client_expired_locked(). A request
+carrying the wrong credential now fails with NFS4ERR_WRONG_CRED even
+when the client is busy, where it previously failed with
+NFS4ERR_DELAY first.
 
-Fixes: 89c905beccbb ("nfsd: allow forced expiration of NFSv4 clients")
+Fixes: fd699b8a48c0 ("nfsd: don't destroy clients that are busy")
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs4state.c | 26 ++++++++++++++++++++------
- 1 file changed, 20 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4state.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index f2b52ba901cb..a613a9f6c330 100644
+index a613a9f6c330..f0e4fe5be21a 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -3595,7 +3595,7 @@ static const struct file_operations client_states_fops = {
-  * so the caller has a guarantee that the client's locks are gone by
-  * the time the write returns:
-  */
--static void force_expire_client(struct nfs4_client *clp)
-+static bool force_expire_client(struct nfs4_client *clp)
- {
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 	bool already_expired;
-@@ -3608,27 +3608,40 @@ static void force_expire_client(struct nfs4_client *clp)
- 	 * this client or is seen by this wait_event().
- 	 */
- 	spin_lock(&nn->client_lock);
-+	if (list_empty(&clp->cl_lru) && clp->cl_time) {
-+		spin_unlock(&nn->client_lock);
-+		return false;
+@@ -5314,9 +5314,6 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp,
+ 			status = nfserr_clientid_busy;
+ 			goto out;
+ 		}
+-		status = mark_client_expired_locked(conf);
+-		if (status)
+-			goto out;
+ 		clp = conf;
+ 	} else if (unconf)
+ 		clp = unconf;
+@@ -5329,6 +5326,14 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp,
+ 		status = nfserr_wrong_cred;
+ 		goto out;
+ 	}
++	if (conf) {
++		/* Unhashes conf; expire_client() must follow */
++		status = mark_client_expired_locked(conf);
++		if (status) {
++			clp = NULL;
++			goto out;
++		}
 +	}
- 	clp->cl_time = 0;
- 	spin_unlock(&nn->client_lock);
- 
- 	wait_event(expiry_wq, atomic_read(&clp->cl_rpc_users) == 0);
-+
-+	mutex_lock(&nn->nfsd_mutex);
-+	if (!test_bit(NFSD_NET_UP, &nn->flags)) {
-+		mutex_unlock(&nn->nfsd_mutex);
-+		return false;
-+	}
- 	spin_lock(&nn->client_lock);
- 	already_expired = list_empty(&clp->cl_lru);
- 	if (!already_expired)
- 		unhash_client_locked(clp);
- 	spin_unlock(&nn->client_lock);
--
- 	if (!already_expired)
- 		expire_client(clp);
--	else
-+	mutex_unlock(&nn->nfsd_mutex);
-+
-+	if (already_expired)
- 		wait_event(expiry_wq, clp->cl_nfsd_dentry == NULL);
-+	return true;
- }
- 
- static ssize_t client_ctl_write(struct file *file, const char __user *buf,
- 				   size_t size, loff_t *pos)
- {
--	char *data;
- 	struct nfs4_client *clp;
-+	ssize_t ret = -ENXIO;
-+	char *data;
- 
- 	data = simple_transaction_get(file, buf, size);
- 	if (IS_ERR(data))
-@@ -3638,9 +3651,10 @@ static ssize_t client_ctl_write(struct file *file, const char __user *buf,
- 	clp = get_nfsdfs_clp(file_inode(file));
- 	if (!clp)
- 		return -ENXIO;
--	force_expire_client(clp);
-+	if (force_expire_client(clp))
-+		ret = 7;
- 	nfsd4_put_client(clp);
--	return 7;
-+	return ret;
- }
- 
- static const struct file_operations client_ctl_fops = {
+ 	trace_nfsd_clid_destroyed(&clp->cl_clientid);
+ 	unhash_client_locked(clp);
+ out:
 
 -- 
 2.56.0
