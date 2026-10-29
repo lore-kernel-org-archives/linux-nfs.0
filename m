@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793281276;
-	b=GY+1VtcxPigQz3mMSXQflcs1mHP2Vcvxr2+u8m4KEBFtQ+LngddwnKPSIALEu9ksc1O+
-	 ORPVEZEt0yyMUP3gC4IPGXFbWvQmdKePsAqIapkfZVJwbWNDA1uPR3aU0swshUacnQsUD
-	 sqEGeLkYlAuHD1zl0ESlUyqmNTzfu8QjTKbTb2F/3b8iNlytfCsXoLFs4kLqsdh8/3KdZ
-	 ldEX22UFtP/+P9N5SwXZFlyuEunjtYnG3GV9Wg7vbIlj/CFlW9WrmGQ1qZDcCQ7a/VmyD
-	 3J5dYCe8iEoGF9JsZ5F+5vtb6cKtxZBzqWY7mOUq6kh+xbrwUMlhSwg7abX8FMtcgtg==
+	t=1793281277;
+	b=1KduSc7He3Ags706kMvIkJIeszQ/ugWR2STarAvW6skP+kgsUxuQI/nGxjoKXRhLCS/q
+	 rVHrJHU5TvtAGCVpuXYU31FaFkHyxlEqPT4x0tXgpExhcHs02sM7dbuICF3ySxgl3y4CT
+	 /z1otm80NGURTxAXqRiAmNcK3Uhbq5lXRPqqUwaMAchPV5mATTk7C1sQbGq+3N73dQmWn
+	 LayzFklerL+sFLv3iCzLVcSPuQUxaG2imNMi/aNS8Pi2vPNJn+i/1mYWurlnW83KUXZKI
+	 w3isjHb4JcQzs3xVM0NoL79kTlXn0xTvanal1uipxWmMl101DtH4JSao/2aGtP4oi6Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793281276;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793281277;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=29Oh/oZBFa22tCLYhtkn0CLBy/knTtwIJDkasxHm/fw=;
-	b=JXwkWsRjAAV+45/erj8UJn2uf5og5+IgSZgWhQARaDP4euiB1rvh1C/tg1oRWbx1gCrw
-	 F1jwcvnhh1t9Dlxb55cguVD95pC8tIrvUVHAMobvTU/DIXz1g8x+o02LymSVN1AnPkiS7
-	 9XI5p9X1WV2nQ38Q3TzzDxyQH9OnNVuiVk8yaHt5k/cM2m+XghvuAoKtVWlYfozH2I5l/
-	 oNhWtB6XmHvRdqHkHjnNe6K6KsAW1k2j3TFxRUuvi0kMZN+gLb9Lo4o4XtMJKpQQtPFqt
-	 9UUYtOvTfTdYB/KH9hHgTT20Bx9n8uR1BgXYN24Xv8R2EelazGDeXzsXF3sM+WU6NSQ==
+	bh=EoH2a37imCA+Eao1URNOrSQLLPu7rXRjNBQWBXElPb8=;
+	b=hCEkzTieELFGI7TBeQaK8MljH2QANTcudA10ggZrnJlsZ3DIMb45M6jyRy/b3DnvKFaS
+	 sqLw7Ivkm5W+M3NJ2zwnCLyWKjVDbZqOsJCBHJZVOrzvZLou4DArEVGJiHsM/TgSamN3i
+	 ZedOWne492DbkVr9xINXKsFJ1nAZc0c+nHmPRlvPp+wIicY4EOh+4jnyeEyEalrCMaqPU
+	 9GGeGEBFIjell2TcDjQOac6IuLdnAenDmd8xAS876ZghExUT1rKxMK4qVD5zE853RNdap
+	 2/Muo6x0/be6LGzhFBOzcUDej+01PlSE6okTAA1VKuZ3XJlfP+5q9nXJp1EiJro+c6w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JBQcbLUI;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kdBx9RcY;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A4112606A323
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 13:41:16 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8C082606A31F
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 13:41:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JBQcbLUI
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DE7EA1F031E2;
-	Thu, 29 Oct 2026 13:41:15 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kdBx9RcY
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BB73E1F031E4;
+	Thu, 29 Oct 2026 13:41:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793281276;
-	bh=29Oh/oZBFa22tCLYhtkn0CLBy/knTtwIJDkasxHm/fw=;
+	s=k20260515; t=1793281277;
+	bh=EoH2a37imCA+Eao1URNOrSQLLPu7rXRjNBQWBXElPb8=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=JBQcbLUIMM85mEZMUZKrdS+Q2enCagizJ2xw5ppzk5lRGsEu/+fAOwX9xwzNnoTib
-	 gBOYRqyyNZ+Q8KBt/aXAXd/2tjRS7An4+M1BOuhCKxcwL1SbZNlyRhZ5zNZI6nsb4h
-	 fbeBN9Ro4Cjjvad0ouFUdDBKRCbqyip24XFc14geUk/7mNu8sqYIOCC+mHu8NjOS9B
-	 H5MgoXYMERzl9H98EvI3phntX6DjwsW4zWqSgRggrMQX4QcoexX/I6gLDNp9/CDV7O
-	 15sei5YNmtPjQsoVhVpzuD3otBo9s6cRtSahRorLdiXtuUyJm4GrmAGKk5h0hvPIMC
-	 wrwtwc5j/Bmlg==
+	b=kdBx9RcYym2j6FdDTJy//3HJ7xmiQ9XGAMWlaLhaGc2+c6za7uLR/9KpFEF7dMlrt
+	 xuFp46VRtZ0bAyZq8Di/RgwRIHWwBsJHN0f9FfbMakMMccDVoV1h/HgX5rxar51nCY
+	 D9SmRvPf8oOszTqvDc1JXp5hIA4lsMoqMluH0Xt2fPAnk3Lr3IUHbBOBsIU6CWqbvq
+	 u6Xdj1y5Pg+NL/e2JIaJNh1RiHxZhUmScmGBdBuwws8ahfDbkIIk18mz732heCZj+x
+	 xjGjdj01DmPFgiUWtN5YLqdsUaRjhRNlZ/DuXNoQ2wzs0FOSkNdB9RKtiLxHaH3NHy
+	 4qsWGj9Ej8i/g==
 From: Chuck Lever <cel@kernel.org>
-Date: Thu, 29 Oct 2026 09:41:00 -0400
-Subject: [PATCH 02/10] NFSD: Check machine credentials before expiring a
- client in DESTROY_CLIENTID
+Date: Thu, 29 Oct 2026 09:41:01 -0400
+Subject: [PATCH 03/10] NFSD: Make nn->boot_time strictly increase across
+ state starts
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-random-stateids-v1-2-8648878fec8c@kernel.org>
+Message-Id: <20261029-random-stateids-v1-3-8648878fec8c@kernel.org>
 References: <20261029-random-stateids-v1-0-8648878fec8c@kernel.org>
 In-Reply-To: <20261029-random-stateids-v1-0-8648878fec8c@kernel.org>
 To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
@@ -63,72 +63,63 @@ To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org
 X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1756; i=cel@kernel.org;
- h=from:subject:message-id; bh=2GltPGbwxabjEB2PW21iDkfRaCvHRxOHoB1rlrOUgk8=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq40z3M38tFiExR+t2K5nmG2Lg81++HL+RuMYrg
- /7vX99Vu+mJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCauNM9wAKCRAzarMzb2Z/
- lyC9D/9jVdaQXcqJC+EHRgVuMYgZtox7sC315MyFzvtQAaysde0bZUt9u4WwDL3oamxpRifVOd+
- dstWDeT+kjMjNZXHg1dbjRYybdC5MuvGxO2WZMdqfDEJKkL+4VwtWzn48l/fHNBkop2RHLpTkLZ
- 3wM/6Qe7ANT+b9lKK6661b4M//bdjo/py2xYxiWI+OC7YQUMZxFoRDLaZRgMNCH+MZ1E22xNbtN
- o4Hb7Vf2wPnv2EtqwbubOcNpmjFk6VbunSmbSsz/2R2JEueeu0JgMggDLxHGhMHBKjxW/paw5cF
- kXa2P04vi0llVw64+qPHId6bwLbeDmmJGpr0p4ox6cVzCSsPKDjraTEPb9RAfU2/Z6M2ayUXePz
- CYXTXCGBZNS5VqEadQOb8eFlwN2NmHkPT22PtzftQ4PcodbfIMOfMulXu98S3GuZ+UrnDRJgVJK
- yiuvgbhe6GEBkP7ARZ1ZKLEwpMgExPHJqYnfWIFLp/ptFFevkbsOu6b8XDunVY8GwHwEXDdDFhP
- BfVFvHSh2+hKglmfy4+gqgOKQf7Ow5bSp7N7lEpJwbQjtQ+DQEmfmUcd5ubTN1qvVKxXuL+vxm1
- BHeXDw9iKkGz1cwsoMIRZmss48+fTFSQT215LyZ2zL3xK87+uWy5O0d6/4wHK86/jsKBRorjecn
- +6wz00DMLWq8Dcw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1689; i=cel@kernel.org;
+ h=from:subject:message-id; bh=AAeai+b6gr6727RAaFLxVMTacuuxXfR/lwWPdwAvU4g=;
+ b=owEBbAKT/ZANAwAKATNqszNvZn+XAcsmYgBq40z3pcC8gYss2xEj1/Dapsx5vkCmMmKcU+FMA
+ q0Rtto7P1iJAjIEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCauNM9wAKCRAzarMzb2Z/
+ l0HhD/iRM87KpB6QBPErHYPJPGwYNlAQQwQwsePMBvYsJ7PLIFztnIURnKtl+tjQ0ix+Afyf1Zs
+ gDf0Jw1r2wm0idZyGNXJp352aerl4bwKCfnCnXcZWAIBHjE3ZGFDI+mO+5cVQ75k1ozLkeBAkEA
+ dppDYByoV9HDY4PWm2IHJU1ypZK8C5PXYwABrbsdwnOYiTiORv3QCWKf9Yi5BsckupmC1V2TcEv
+ dEesngSKKg2Cac6ElcABqNJtuNKl7zq4KfIQpdMJ5jw/jFnAvz2Y53QWxXCah8uno0YIq8ueL3x
+ rlO8vf5Pq6ewejFjBEkE8TM3Bwk4MszI+Q/lfz95F8hda7JWX4X7e0bC9geJ/kfUrcbBHp6TnJT
+ GvwncdsmwA6LNJyzmvHd99vEPC0d71VLElDJIWrcz1tmQXyZHRKGWRuybdsM9fB0hsEH+ul8ipc
+ U/WXqfb/xnTeSn08/PD4r50UxYOxX5+XRhFnbvNNQC0C95dbk9bSM96fvWRV+3e2asC079ELBDM
+ yxZ5XI+Xchn0shiZzgNdkiZU2ptqHYEd0FjkRC1dsGg6D92KyPo77hUbxlKP6NJ6wq02sA5ASHX
+ zkZKdacZD/HByLQyGysSJcuqZflsg7E/eVTUKUDoAvQcvBnwRe1sue0y93nVnXjrE+QWYvAKyQR
+ MgGF7NnZ1+U4r
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-nfsd4_destroy_clientid() calls mark_client_expired_locked() on a
-confirmed client before it checks the machine credential.
-mark_client_expired_locked() unhashes the client, and when the
-credential check then fails the error path clears clp, so
-expire_client() never runs. The nfs4_client is gone from every lookup
-table but never freed. A requester that knows only the clientid of an
-NFSv4.1 client that has destroyed its sessions can orphan a client
-that registered SP4_MACH_CRED to prevent exactly that.
+STALE_CLIENTID() tells a clientid issued by a previous NFSD instance
+from a current one by its cl_boot word, (u32)nn->boot_time sampled at
+each state start. nfs4_state_create_net() sets nn->boot_time to
+ktime_get_real_seconds(), so two starts within one wall-clock second
+record the same cl_boot. NFSD then rejects a pre-restart clientid on
+an NFSv4.0 RENEW as EXPIRED instead of STALE_CLIENTID. The NFS client
+treats the restart as a lease expiry and does not reclaim.
 
-Check the credential before mark_client_expired_locked(). A request
-carrying the wrong credential now fails with NFS4ERR_WRONG_CRED even
-when the client is busy, where it previously failed with
-NFS4ERR_DELAY first.
+nn->boot_time persists across starts within a netns. When a fresh
+reading is not greater than the stored value, use the stored value
+plus one.
 
-Fixes: fd699b8a48c0 ("nfsd: don't destroy clients that are busy")
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs4state.c | 11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs4state.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a613a9f6c330..f0e4fe5be21a 100644
+index f0e4fe5be21a..5f9c3f2f13e7 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -5314,9 +5314,6 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp,
- 			status = nfserr_clientid_busy;
- 			goto out;
- 		}
--		status = mark_client_expired_locked(conf);
--		if (status)
--			goto out;
- 		clp = conf;
- 	} else if (unconf)
- 		clp = unconf;
-@@ -5329,6 +5326,14 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp,
- 		status = nfserr_wrong_cred;
- 		goto out;
- 	}
-+	if (conf) {
-+		/* Unhashes conf; expire_client() must follow */
-+		status = mark_client_expired_locked(conf);
-+		if (status) {
-+			clp = NULL;
-+			goto out;
-+		}
-+	}
- 	trace_nfsd_clid_destroyed(&clp->cl_clientid);
- 	unhash_client_locked(clp);
- out:
+@@ -10212,6 +10212,7 @@ set_max_delegations(void)
+ static int nfs4_state_create_net(struct net *net)
+ {
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	time64_t previous_boot;
+ 	int i;
+ 
+ 	nn->conf_id_hashtbl = kmalloc_objs(struct list_head, CLIENT_HASH_SIZE);
+@@ -10233,7 +10234,10 @@ static int nfs4_state_create_net(struct net *net)
+ 		INIT_LIST_HEAD(&nn->sessionid_hashtbl[i]);
+ 	nn->conf_name_tree = RB_ROOT;
+ 	nn->unconf_name_tree = RB_ROOT;
++	previous_boot = nn->boot_time;
+ 	nn->boot_time = ktime_get_real_seconds();
++	if (nn->boot_time <= previous_boot)
++		nn->boot_time = previous_boot + 1;
+ 	nn->boot_time_bt = ktime_get_boottime_seconds();
+ 	clear_bit(NFSD_NET_GRACE_ENDED, &nn->flags);
+ 	clear_bit(NFSD_NET_GRACE_END_FORCED, &nn->flags);
 
 -- 
 2.56.0
