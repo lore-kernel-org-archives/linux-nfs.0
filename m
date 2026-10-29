@@ -1,82 +1,82 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.218.45
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.218.46
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793250897;
-	b=voAEPZF09R02kZT+Q5b34ogGPeqpA0ThMNNTc5jrR1QlUXQuDCOpB0fgb98apw6jmSio
-	 vrcvk9/AKVlnbyGvf9zXEKP/b90ICK+nN0XJHfhb3lcdD/ZlSF8OVHzGWdI0FqerYVYP5
-	 Qbg51ngzTWjV8Nn61obAPJ0veh2YznaaZEiPoGMERXJMZ4xVymvjK6RhBpQWrpQGnPOOl
-	 EFEm+/ZVntRmv18Udsrqu4zNehqK830uEi9oqcI1T+pm+OAq+QRQj+NXhRLiXaWgIW1vw
-	 2MftTyUMYxJWYGntwdlBrqz3J4fGV9RU4BIdEJB0wrXvAM3tqP/P1XGAOFjDcRUwgHQ==
+	t=1793255987;
+	b=YR2E6SLBkn38lBFnnZlSF6a0z7hikijXUI9GMhNnY78zn4R8pVp97QcAY4MxUbD+5Yqp
+	 lGpcO7LwCoQ6l/9F7hiUlqnllBCdA+RlG9bb2AHrHx73jfLdn/3CMaTTI2OmC0U3+Zhq6
+	 zfBkZ/sv9B+Gy5okSQGrzj/HaCSpKKMUG/vcNecRSpGIReQhrcCtippI5LyyXp88jZlOJ
+	 HqiBZ+/ryXGcqRXFwk3MlBisfQ3IN7uiXxBO+4oRuXRqdcoLnFPDVTwJGageD1VtwYBhb
+	 7YQPwhtVSUY4DaqdErVkdCfbXtKOfzEbDjAzeIulXhUH2NLyPh2SJ4cr16AX7ga3+dA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793250897;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793255987;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=l/0yP+DUG39nMtaQgXZ0GTdGQBwRdE0N5+A0y/fSWNw=;
-	b=AD7CePdQX2/pwdb/zMZ216bLPVcN+mT7zdQO/uP7QUtEGlKCbnqRp8JEcIBteoJFSFnV
-	 wS7sqSkurq9xfwWuHZKuMSAsU75Bc7+MEj7yEcfN/c8KBFZ96Dxwi1EwIP5MkBplbgG2n
-	 5KqRglsZgdkZbzRTYebn57gdQcnzjpa/zZO154/qYgjVogqXrbldbfcL/u53yQPCEgVfT
-	 o9NoTUYULuyv9t3w1viqhV16mcnYJkmDVYksc+Z4hmNs/auWsQhRrvZvqxLss/g3IMc/C
-	 xp2VYAYNJS54gFLmD1yAr/AcnBZp520E16KL+5/E9GnImza8f/s9j+AQ2FnZD1O+QOw==
+	bh=N0dM/TOkco5YL18nim0RnIz/lAqfOrL79pLGi5IcLr4=;
+	b=0h8Zt5RIJRdOS37cFTZZe9nSYAzzUQAKM+9osx/xLbY91jv9Ei6KK2cFMQn6liAg6fj6
+	 1qkaCAW6ffXDdlw/VuM29rKaABxQ/3Ch1fbQisknZViEcESNn20kxv1f9eDqCH1ExHFPJ
+	 KPraYrtUoyfMhQGITZunJv9jrkPpsX0MghnFSrfyNATKp/toc+hV+2UEmgkj/Ro+kUXK+
+	 hXcDBk0a6wp2jGOUvdT3WrsRpoGidpIT0Aj5S5rGfF8GhQXE3HwTR2KfOIcT+x7XvAiCb
+	 lx09QIS5A0uN1czns0Zd8svbn7ProXCNnNswe2DkPjQPsYD9iGen3RhK4V92ljtuGlw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=kkVvegft;
-	arc=none smtp.remote-ip=209.85.218.45
-Received: from mail-ej1-f45.google.com (mail-ej1-f45.google.com [209.85.218.45])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=c6oi6iRb;
+	arc=none smtp.remote-ip=209.85.218.46
+Received: from mail-ej1-f46.google.com (mail-ej1-f46.google.com [209.85.218.46])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 53656606A31A
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 05:14:56 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 53656606A31A
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 92A7A606A31A
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 06:39:46 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 92A7A606A31A
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=kkVvegft
-Received: by mail-ej1-f45.google.com with SMTP id a640c23a62f3a-c434376dbebso72891966b.1
-        for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2026 22:14:56 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=c6oi6iRb
+Received: by mail-ej1-f46.google.com with SMTP id a640c23a62f3a-c418e215671so225607666b.0
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2026 23:39:46 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1793250895; x=1793855695; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1793255985; x=1793860785; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=l/0yP+DUG39nMtaQgXZ0GTdGQBwRdE0N5+A0y/fSWNw=;
-        b=kkVvegftI86Ao6bqmriLa/IK9Me4kKfmo+52bF1BHWj8O/Kb1Xodi/XpVEh1Ms9Ic8
-         kA7CQ1+y+aZwZnPcWuRU5u5jMu/+AFROtuiYLCs6z+NdDX8lPhaBUY4gHt9/3zSArKK/
-         P4bH7TLnWAjmE8wwqv+S0TJZMffsB9JFO7VZ47NH2e8WIViBAtPcdelEnveLHqfFg7Y4
-         wyIfm1CnejBIGah9EAV6QL25jw+roziOl70FhzG4Cq1rXicxcIFt3YLkPkn79afr+Wjl
-         YPWnVTxJ3ZhkQyVOBvAgbyBrxo/zix7nrrsJV8vor+YDHdp8N4aDTcIkx3TV0jwzJhey
-         JyKQ==
+        bh=N0dM/TOkco5YL18nim0RnIz/lAqfOrL79pLGi5IcLr4=;
+        b=c6oi6iRbD/iAiqdF61LSL+6UEs/Sxp8htXYF/lxKDZp9dnh5riyod2b1Ql2EEJgqtS
+         CNMYCFnlIWJb+xpzkjT87vwBkWMUTgj+5eD1MznLTjgLLo7fHuJk0CyF1rPv+F0arPk9
+         FtM73BIg01PUZDxtRQsfC3AqpktHgaBSX+3b/uOG1WRUMge6S52nFUePAd/g/N2D7s+/
+         mD9ExTZeGJiWuFua44PR6753Nro3fIsupbWuOr8BtwLTnpwqFAz9WBUifWPrYDcIhZ/d
+         W6LRKC06r3gKHCo9Q1VZzW2o0eC3zYCZo/20wLONx13qzA2LJrCefzksUGmXbM+0vmru
+         ixeA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793250895; x=1793855695;
+        d=1e100.net; s=20260707; t=1793255985; x=1793860785;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=l/0yP+DUG39nMtaQgXZ0GTdGQBwRdE0N5+A0y/fSWNw=;
-        b=uB/CagfkAQY9GXh82FrsHS0mtzMw23KjycWxmv9oeVNRPrrud5VSsyKKfJqP36nbab
-         kqG016PfT80t6kKMjYqLkhcbofc0uo31cySDvRRnO4eonV6sq0V9gF196Nj2b2vWXDbn
-         xyPQ8sEl4MSZ40jneiW+syTGLsG8grGNV57tJGhetd0VoezogYhVWkM1MAdUTcMV7kPx
-         qwF3xcQxH1CA6HTjl5u3D7NNSdv0I0YbRv/A80M6By/dHHC9rPw5jWg8Cs0Agb6Sn/Vu
-         zcqrzJGHs+cr9nRRGyFM1QrKo5bsynj9fEOzKKWgmggB9nGTC7aO8FZe2/4vc6Pol7Vy
-         UD3g==
-X-Gm-Message-State: AFq9FYLr1WSV6nPS4HYd8YVlyM4/QD1UE4ZWRwjFxUM/amZwmBqjQKxM
-	KB2Kwg1f+Q+XBU25u5jmFNuYLE3Okfq8PmUo5cr/UCaBV9GfF5dS+Qv3VoxWib3/5/o=
-X-Gm-Gg: AYBFou0esWkC4GhgHfzv+TvepQTKTeBh/FNFwbSkTJzEoHUyrnUvormgZW96arcbivV
-	LcNoXXwNrka2RdCj5ZO01crrLdIyMS1EMV3IFmk+OM0q7MOYmGsaCcBBa1CX45uiI4DAziaYiTI
-	diF81uvh8yXr0Uz06hMHB/MREVpPmRubQe69JIMEm252CU1up1lonGwuTfQ4I8TZOGmWFtH+ePw
-	hR2YChJLV3gqEkY7eHPHDRDGNKVrpUnKiVejlu+gKk/cSiKvQkL4Yo8tY0d18XQewEUqLEAuq9w
-	QIWDV4a8jrW7w1pK/irYdBLtYid7KHq124Ugzr58LHcZR+hjrYDuM4T8r+BTQWfKbpMpE45pr0i
-	LlhwhNp8uVGCiJaAOPTNVJrjvV3zGtcSvsavCx9bk9qeAfJ12lyd+hTD5zBs2gjoqLeX3nV5Dcr
-	SgpP1s9sPwgfbblc5pf35hmCBb3IIlL6bP3K6tkrX+ROpP3svNM0b1/krJ3kJ6JfHzS+51DSU4a
-	RDhsUf8RswiyVSNE86nNVXzs+5Nx70dytMBhhorG9xP1cPU/NbTqcOJRTD7/VlZqn6fOq5ub2ii
-	5/gfkWqnW4Acr5YPLglqZzuDYDaNYV8Sc5DHaqoO9vhLMu3LtBRbKJYpxvHM1Xf2fGUsraJ3
-X-Received: by 2002:a17:907:3e19:b0:c48:a838:c17e with SMTP id a640c23a62f3a-c49d1307e11mr110454466b.14.1793250894206;
-        Wed, 28 Oct 2026 22:14:54 -0700 (PDT)
+        bh=N0dM/TOkco5YL18nim0RnIz/lAqfOrL79pLGi5IcLr4=;
+        b=x6ui9LMsW9zWKzHsEWlKYx2M6HhVioQhUQ5Qh2RpjL1tsfwDu4moNQ1FL4lFx64Jxi
+         euOtt09g/ORHF3cRNpoWRcfFOVvyW9WRvHPQb959atVl01IbH1I8nYJCN6iY32OePr9G
+         ubNUJ7CzASSc0X3tLwOuCTXfmC7J7rPe7ocPAj7kQnI9Cs/uWI9Msb+L8DgYAp8xS8AH
+         7H30+ceE4qxEq2TWxpWJxG37Mm3zJxg34Vi3EwCiU9xq2Bbn12YS/f12bZ15AImIaZLv
+         I2ZzUBNBceX76MkGEK7uENjQc/3ptgJKch7E0GWPUwCMCfUcy3G2/dyLFvhnZ+jRTell
+         //vw==
+X-Gm-Message-State: AFq9FYIj8lh9xukO2r9Y4rC4V6Bu0ybWyN8ai6UyBFUrOA2e8pJ3kTkD
+	XzhKyrwIB/O87Z9oDeUBFu68EXtDIRcKTq+NIKMQjdaCZ5cYvoD+OD4X
+X-Gm-Gg: AYBFou2dk4P+lxkl+fQ8oDN9141cmo6iH3UDJ06SbiBq44d5wHR0fwbSFtOxDW9KKqz
+	XhBJK+mWNiTCZ5NjK5mzGdlILOfUmXtA3JN1/of/HLhmndimLMklsqKJEUJWXMC95VceEi6l3w+
+	wfRJhmBjBDp9jd0ZwfZCv57NTf1OD5Yk8c3t17N9l3F5OiB7GhAwkDG1zdXOhhir+c62dCzyqOk
+	NaBru7zeOURv6NNjhcHXfx1eudhZEPDO3DnMADFDMBt0Sh+SHhgNIy+aiUZwYEV/3nNJHf7EwKC
+	zdGhdLNoc46vjsL57sC7G1CcbAOftANkbiBsYMc1a7jLs4Q5MLihpFt5/Z/la+eaiFZkv6AKcOH
+	Z5iDjPI47GRDMyoXdepj7P/QHwglYuoMZ+Mqq9XoPuuGfIcKyn7Gs7LfL0Q0JNeXeYhykL3LnJX
+	eIc4TTr4yRJHDayIXG3oDxlGg07nrLi/FYPwCmzATlnnEJk4rTVg2Efj/M5gh1pgmKIQ/uiGm3w
+	w5ErVN/PG267Ms/MekVuJS7Alhal/y+yy6mhsyq0VDBxJJjV9ItD4x5jNDyVBx8fiziUIOBRWau
+	Hll4j2yir2OPmOAHtqhNt/ICrr2q3+uq89u9Agn6T+iU2RRdeSuJoZA2kVLxZXj0KUyg0BIE
+X-Received: by 2002:a17:906:ef07:b0:c2d:bd87:7fa7 with SMTP id a640c23a62f3a-c49bded29f8mr378705866b.24.1793255984396;
+        Wed, 28 Oct 2026 23:39:44 -0700 (PDT)
 Received: from localhost.localdomain (173.242.112.181.16clouds.com. [173.242.112.181])
-        by smtp.gmail.com with ESMTPSA id 4fb4d7f45d1cf-6b49644bcd7sm2296581a12.33.2026.10.28.22.14.50
+        by smtp.gmail.com with ESMTPSA id a640c23a62f3a-c4992141068sm474572266b.60.2026.10.28.23.39.41
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 28 Oct 2026 22:14:53 -0700 (PDT)
+        Wed, 28 Oct 2026 23:39:43 -0700 (PDT)
 From: VeroFess <coderzeng@gmail.com>
 To: cel@kernel.org,
 	jlayton@kernel.org,
@@ -85,12 +85,12 @@ To: cel@kernel.org,
 	Dai.Ngo@oracle.com,
 	tom@talpey.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3] nfsd: enforce export security for NFSv4 filehandles and stateids
-Date: Thu, 29 Oct 2026 13:14:30 +0800
-Message-ID: <20261029051430.96326-1-coderzeng@gmail.com>
+Subject: [PATCH v4] nfsd: enforce export security for NFSv4 filehandles and stateids
+Date: Thu, 29 Oct 2026 14:39:16 +0800
+Message-ID: <20261029063917.138184-1-coderzeng@gmail.com>
 X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20261029013648.12015-1-coderzeng@gmail.com>
-References: <20261029013648.12015-1-coderzeng@gmail.com>
+In-Reply-To: <20261029051430.96326-1-coderzeng@gmail.com>
+References: <20261029051430.96326-1-coderzeng@gmail.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -157,9 +157,15 @@ The fsid=0 lookup uses the request's auth domains to find an export;
 it does not itself enforce the export's sec= policy.
 
 Pass NFSD_MAY_SECINFO to fh_verify() so it skips the starting export's
-flavor and xprtsec policy checks. A SECINFO mount crossing also skips
-the source export's policy check. The directory type, secure-port, and
-execute-permission checks still apply. Ordinary LOOKUP and LOOKUPP
+security flavor check. RFC 8881 section 2.6.3.1.1.5 forbids SECINFO
+from returning NFS4ERR_WRONGSEC, so it must report the flavors even
+when the caller's flavor is not one the export accepts. The export's
+transport policy (xprtsec=) is a transport-layer requirement, not part
+of the flavor negotiation SECINFO performs, so SECINFO does not bypass
+it: fh_verify() still applies check_xprtsec_policy(). A SECINFO mount
+crossing likewise skips only the crossed-into export's flavor check and
+keeps its transport policy. The directory type, secure-port, transport,
+and execute-permission checks still apply. Ordinary LOOKUP and LOOKUPP
 continue to enforce export security.
 
 The LOOKUP check controls whether a client obtains a new child handle.
@@ -184,6 +190,19 @@ Fixes: 04f4ad16b231 ("nfsd4: implement secinfo_no_name")
 Assisted-by: LLM
 Signed-off-by: VeroFess <coderzeng@gmail.com>
 ---
+Changes since v3:
+  Narrow the SECINFO exemption to the RPC security flavor check only.
+  v3 also skipped the export's xprtsec= transport policy for SECINFO,
+  which let a plaintext client run SECINFO against a TLS-only export.
+  RFC 8881 only requires SECINFO to avoid NFS4ERR_WRONGSEC for the
+  security flavor; the transport requirement is separate and remains
+  enforced. __fh_verify() now skips only check_security_flavor() for
+  SECINFO. Because a SECINFO lookup can cross a mount or step up to a
+  parent, nfsd_lookup_dentry() re-checks check_xprtsec_policy() whenever
+  it selects a different export object, so a SECINFO that crosses into a
+  stricter transport is still denied while the already-verified starting
+  export is not checked twice.
+
 Changes since v2:
   SECINFO_NO_NAME(PARENT) uses the parent lookup path. The selected-export
   check added in v2 made it return NFS4ERR_WRONGSEC when the parent export
@@ -215,6 +234,32 @@ Tests and review notes:
   SECINFO can distinguish existing from nonexistent names while
   negotiating security flavors. This is consistent with the protocol's
   security negotiation semantics.
+
+  On v4 of this patch, a plaintext client querying an xprtsec=tls,
+  sec=sys export had SECINFO rejected with NFS4ERR_WRONGSEC, matching
+  GETATTR and LOOKUP; v3 had allowed that SECINFO. A plaintext SECINFO
+  that crossed a mount into an xprtsec=tls child export was likewise
+  rejected, while SECINFO of a non-TLS sibling and of a sec=krb5p
+  export without xprtsec= still succeeded, so the flavor exemption is
+  intact. An xprtsec=mtls export behaved the same for a plaintext
+  client, both as the starting export and across a mount crossing. The
+  TLS-session-without-peer-authentication case that distinguishes mtls
+  from tls was not exercised at runtime; it uses the same
+  check_xprtsec_policy() path. Tested on v4.0, v4.1 and v4.2.
+
+  nfsd_lookup_dentry() has three callers; only nfsd4_secinfo() and the
+  SECINFO_NO_NAME(PARENT) helper pass for_secinfo=true, and both run
+  fh_verify() on the starting export first. svc_export objects are
+  immutable once published (a policy change installs a new object and
+  expires the old, which held references keep unchanged), so a filehandle
+  reference gives a stable policy view for the request. The transport
+  re-check keys on export-object identity (exp != fhp->fh_export): any
+  switch re-authorizes the new object, and the unchanged starting object
+  is not re-verified. Call counts observed with a kprobe on
+  check_xprtsec_policy() were one for a non-crossing SECINFO and two for
+  a crossing one (starting export plus crossed-into export), consistent
+  with that design; the counts are evidence, not the correctness
+  argument, which rests on the immutable-reference model above.
 
   The original SAVEFH READ/WRITE tests returned NFS4ERR_WRONGSEC at
   PUTFH. SAVEFH alone, a replacement PUTFH and
@@ -265,11 +310,11 @@ base-commit: bcd97658ca9be5a691eff14065a8f2dcfef6bbaf
  fs/nfsd/nfs4proc.c  | 80 +++++++++++++++++++++++++++++++++++----------
  fs/nfsd/nfs4state.c |  8 ++++-
  fs/nfsd/nfs4xdr.c   |  8 ++++-
- fs/nfsd/nfsfh.c     | 15 +++++----
+ fs/nfsd/nfsfh.c     | 16 +++++++--
  fs/nfsd/trace.h     |  3 +-
- fs/nfsd/vfs.c       | 32 +++++++++++++-----
+ fs/nfsd/vfs.c       | 49 ++++++++++++++++++++++-----
  fs/nfsd/vfs.h       |  4 ++-
- 7 files changed, 114 insertions(+), 36 deletions(-)
+ 7 files changed, 135 insertions(+), 33 deletions(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
 index a50f9dcb3..d0eebd3cd 100644
@@ -482,31 +527,24 @@ index 4d9834446..daf2ad77d 100644
  			nfserr = nfserr_toosmall;
  			goto fail;
 diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index f1ba5a14b..2627c344a 100644
+index f1ba5a14b..901948f0b 100644
 --- a/fs/nfsd/nfsfh.c
 +++ b/fs/nfsd/nfsfh.c
-@@ -451,10 +451,11 @@ __fh_verify(struct svc_rqst *rqstp,
- 		goto out;
- 
- 	/*
--	 * NLM is allowed to bypass the xprtsec policy check because lockd
--	 * doesn't support xprtsec.
-+	 * SECINFO queries the export's policy, so neither the RPC flavor nor
-+	 * the transport need match it. Keep the inode permission check below.
-+	 * NLM also bypasses xprtsec because lockd does not support it.
- 	 */
--	if (!(access & NFSD_MAY_NLM)) {
-+	if (!(access & (NFSD_MAY_NLM | NFSD_MAY_SECINFO))) {
- 		error = check_xprtsec_policy(exp, rqstp);
- 		if (error)
- 			goto out;
-@@ -471,9 +472,11 @@ __fh_verify(struct svc_rqst *rqstp,
+@@ -471,9 +471,19 @@ __fh_verify(struct svc_rqst *rqstp,
  			&& exp->ex_path.dentry == dentry)
  		may_bypass_gss = true;
  
 -	error = check_security_flavor(exp, rqstp, may_bypass_gss);
 -	if (error)
 -		goto out;
++	/*
++	 * SECINFO reports an export's RPC security flavors, and RFC 8881
++	 * section 2.6.3.1.1.5 forbids it from returning NFS4ERR_WRONGSEC, so
++	 * it must succeed even when the caller's flavor is not one the export
++	 * accepts.  Skip only the flavor check for SECINFO.  The export's
++	 * xprtsec= policy constrains the transport security mode and stays
++	 * enforced above, independently of the RPC flavor negotiation.
++	 */
 +	if (!(access & NFSD_MAY_SECINFO)) {
 +		error = check_security_flavor(exp, rqstp, may_bypass_gss);
 +		if (error)
@@ -530,7 +568,7 @@ index 951af645d..a7d9f9d7b 100644
  TRACE_EVENT(nfsd_compound,
  	TP_PROTO(
 diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index f59a55f89..63ebde0fd 100644
+index f59a55f89..0012c68d6 100644
 --- a/fs/nfsd/vfs.c
 +++ b/fs/nfsd/vfs.c
 @@ -124,14 +124,14 @@ nfserrno(int errno)
@@ -597,7 +635,31 @@ index f59a55f89..63ebde0fd 100644
  
  			if (nfserr) {
  				dput(dentry);
-@@ -337,9 +348,13 @@ nfsd_lookup(struct svc_rqst *rqstp, struct svc_fh *fhp, const char *name,
+@@ -297,6 +308,23 @@ nfsd_lookup_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 			}
+ 		}
+ 	}
++	/*
++	 * For SECINFO the caller's fh_verify() has already checked the
++	 * starting export's xprtsec= policy.  A mount crossing or parent
++	 * traversal above can switch to a different export; since
++	 * svc_export objects are immutable once published, re-check the
++	 * transport policy only for that new export.  The flavor is left
++	 * for SECINFO to report (RFC 8881 section 2.6.3.1.1.5).
++	 */
++	if (for_secinfo && exp != fhp->fh_export) {
++		__be32 nfserr = check_xprtsec_policy(exp, rqstp);
++
++		if (nfserr) {
++			dput(dentry);
++			exp_put(exp);
++			return nfserr;
++		}
++	}
+ 	*dentry_ret = dentry;
+ 	*exp_ret = exp;
+ 	return 0;
+@@ -337,9 +365,13 @@ nfsd_lookup(struct svc_rqst *rqstp, struct svc_fh *fhp, const char *name,
  	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_EXEC);
  	if (err)
  		return err;
@@ -612,7 +674,7 @@ index f59a55f89..63ebde0fd 100644
  	/*
  	 * Note: we compose the file handle now, but as the
  	 * dentry may be negative, it may need to be updated.
-@@ -348,6 +363,7 @@ nfsd_lookup(struct svc_rqst *rqstp, struct svc_fh *fhp, const char *name,
+@@ -348,6 +380,7 @@ nfsd_lookup(struct svc_rqst *rqstp, struct svc_fh *fhp, const char *name,
  	if (!err && d_really_is_negative(dentry))
  		err = nfserr_noent;
  
