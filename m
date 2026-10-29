@@ -1,48 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793281283;
-	b=ICOcLeO3n7tEceD8H6grWAP/RsjSuAIdwm2pZXNTleMKwnAZJq25CRnHPyBvfv57J+IU
-	 M8hUf+2ryTZNdRSG/nzElWPpcK4RftubJRHhZ3hjim+iCIEnf9vgvIaolY++RecpGROhU
-	 323t+PrJG6Pswg3KaXtJaqel25kTpFrdA39LGz3+8w02ckLC+kFlwXINtbdB9UTQuE+le
-	 vRfQkk5lBSx9CmiM5p2g8ZF2pi59SrijIDK1qUILslP8n6JmG2MbhdFCSGwNxm/p8sxlw
-	 TeZFGZiMGXUXnDIEKm+m4As/ljUnnr6308pIYEm2jB8e7mgLVziUi0CfuWUDBfYs2tA==
+	t=1793281284;
+	b=kL2txpPrz5bCWmAJBFzSlN5D2Ra9ERP+M1dj7RQnNoW7p4YVXB8K5nUdVIBKkieHXRXx
+	 uuwHhlGCa33/mou3alp4s/tamCS8ObKHaCVKElWWG80UjdLIpX1eqpk6WO450mGAe85vG
+	 zaLug2O0KgocnSSh+aXT8qAwcsk/SJTJSTMBbQLg8HjS2ybs7HYyHNpxZG3hFsCOSAmvU
+	 INV+aMGreYkKWDd67E18rTeN8OEiaoThjh+1hRBpE/FDsnbhNCYPKx71kjK+X9OiroLYl
+	 cbvPcpHPgRIPFHuIra0qY7y20BSXuivRQtTMpcyJuNnl5utXf2V1Zm3pfycaFN2Ks4w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793281283;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793281284;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=ft8m/yed1mb7bWrRxpRJTs7eGR8hHZqBo2Aak2nQTv0=;
-	b=oDbjDW7yVIKU4tCR82KKlhpKLjLEq/tfRCSzXNk1Y4Csj8w/FltxWBuhtHwVPKkequU+
-	 +a258wPs+3cy96b68ggzsdeh4W8hwSqDRq4qouyD52F30BNkd3LHAvGxsZTOwNbDkSoio
-	 x9Wm5Z8A88NjxYLzYFgrPikQo5Asfj1Ni0PVLrnaC3OqVZARIS97ZXnXTk0fvs4JNOT4v
-	 OJdiL3iCkIEhrIzb3Pv5kvfWYAnyPCg8FcXv4/6QBuRvVjc8wKgDViaZ+eubsb6CIrA4H
-	 kkAt81/gkE3N2dYVl8K1c6BG9OdYXE2AfSXIqvmuBYs5RLVqVirlswFwxn96hwiorsA==
+	bh=TU5CX+6BvbAKGdtJo9CZUQuqDYjuV+hDEt39g1ed288=;
+	b=YttyD+nunwcKF3w9PP94IfQYuA7BrQiSrIkkpk/OaBuGEDY8KrDq7iQUh2IqOYT9oQhH
+	 tPkJfaOfnWkmkZfZYnt/dPrwRe67UAvhClaMRqGFVlXA7GNuxNxPjp5Cnwj/5xSZ2T+2E
+	 SfETFFw7ZU/X8yA7pNIfqAfQd3bI7dCeO501Tz0cmyeYBeYLAFDXjuQFRku6B9DdgK6c6
+	 GcO02oho5HjmwojVqQW+dY0M/GJ1YPJdGYOoVs6nnlXQcP+axOQwD9o0/WOEsMYya8unc
+	 WoHMcoUfDvrt2+DOOqGAwUmrK89uS6aDqc/4W8TtOoC2ugnmWLTlgJdTsMQozMStYWQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ApxV01xr;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LwO8iGaA;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A738D606A325
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 13:41:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A38CF606A325
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 13:41:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ApxV01xr
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C05FF1F01829;
-	Thu, 29 Oct 2026 13:41:21 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LwO8iGaA
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BF33C1F031E5;
+	Thu, 29 Oct 2026 13:41:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793281282;
-	bh=ft8m/yed1mb7bWrRxpRJTs7eGR8hHZqBo2Aak2nQTv0=;
+	s=k20260515; t=1793281283;
+	bh=TU5CX+6BvbAKGdtJo9CZUQuqDYjuV+hDEt39g1ed288=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=ApxV01xrqBhGmSCqs85JC9P8SlDqODLeuKs+qZ6PHwT6oqklYkbXdVXWyC5jcDyk9
-	 RberkUUxnTW9SAs7ZZLoDwvBnYGDpbYch21OZ5PFYEhT9J+sVqjr32fy+r/zvUleyo
-	 KOMjJX9tczohzVZ+vHRonS48S3V1d3SGcHx8H+isIoNR5qMhXzwY6aLP31bhseZyfE
-	 C5I6SFjIkNyjq54owtTjKFIeBOkBdGaP+agF/91tgzXGRF0ogOrbByMwwjNG1W2pHs
-	 57pXhby7w92UViyAFL7jER7G9HI6nJ04xYXocJ2JIlmr6iAdKP/Dv0U6rsPz/t+PR2
-	 c7xaUqJumVLuw==
+	b=LwO8iGaAmqOGeOy2WIuxTP24cyGi8HwlcgUC82kFAKrMnlZ110eeNlXbxwMEg9C9d
+	 Jc6zpc51MwbA6DFyTHEn8VcjvDveGSnM6yplFsocaXUMqmTZzB+PSv4yswsGLkUJX4
+	 P3bMHo+6iP0bXyDJqfkUpG9Xikmj4gOsHpB2xwf8cvQmjHKO/oSbsjxvHH7qMcTZlN
+	 bjehzPogDqvuYuI7OacmrvzZS67TSKVo8JJI4hSNdhdU1oJxf1Tsl/LDXOCCDHZslw
+	 klXC5At6cY5x+PbBFSRWiCpqdDPyBUXh/z5UnLnxt9xMBfzrSgERJAWo5GN3XBSzY1
+	 Kr7TS1Y6j39XA==
 From: Chuck Lever <cel@kernel.org>
-Date: Thu, 29 Oct 2026 09:41:06 -0400
-Subject: [PATCH 08/10] NFSD: Put a random word in each COPY_NOTIFY stateid
+Date: Thu, 29 Oct 2026 09:41:07 -0400
+Subject: [PATCH 09/10] NFSD: Fill the session ID's sequence and reserved
+ words at random
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-random-stateids-v1-8-8648878fec8c@kernel.org>
+Message-Id: <20261029-random-stateids-v1-9-8648878fec8c@kernel.org>
 References: <20261029-random-stateids-v1-0-8648878fec8c@kernel.org>
 In-Reply-To: <20261029-random-stateids-v1-0-8648878fec8c@kernel.org>
 To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
@@ -62,150 +63,233 @@ To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org
 X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5125; i=cel@kernel.org;
- h=from:subject:message-id; bh=fn/sZyna3fWgqGo0xX7b0a50rKmEeAANobU83tA96WY=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq40z33DWBgYIjhOwlAuc2tGf+XlHfXom4q0gvp
- r1CqPeJJHOJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCauNM9wAKCRAzarMzb2Z/
- l/cnEACm8WX2rN7mURo944mN9VZHs9Vs19+0uz9aJ1RWZSJbEAPZlLSfwQ7PQrOIk+4lSI7e8vG
- Y14khQZvtVi7Qmbkuez+66sXQckrNGI1Mu/bGoHj3ok3yOF5bVwq5qUmTws0+WLyddKydNZ7Rd1
- fOiGgAnWJkGwR68CjyKPGVVfNWe/M21a6lECWAn0eCIghrMKCSQca1E7He0lfjrmiWterotEbRw
- vx0TRg8DvM4g2wcmOSoB1YRjx78RqTHoaNXktarPglAuXM91Rp7F/EsO1BMyaSOTdT07SBC69Fm
- GGmooDoRIHbEolXQA97LhtWYxRkH5RKjlx24pVqGR39W/A4cgtWl+Qy/fujLH+p38JusxJ/WfzM
- lltLh4C6Q4OGLvpw1seTqCx4/MG83kPg3jK3ULjJ92Ghzjc4KJtKelb4Sz9tkuotrJyu0TGFJbx
- Gg+/8cobhaUkiLkdbFXyiqLEaOiauiFmL9LvdIYSs39ADQQf4Utz/KfD3hShZETaAYWGoB1PAJW
- SxW6uxpyuOrW1qczw3xd3ae6pNdkhirAaYBHfNHkzqtaYI285Ed6LubrAo19x/BmjdWqc6X8OHC
- gcqUl0ee/wSBqdCzr2Y5MBLaq2nwqkcU0IA2zrVpS+151rojB98tihuzym+omCKiPmuDLnkCkYM
- OefHWTVTrfSsXJg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=7865; i=cel@kernel.org;
+ h=from:subject:message-id; bh=G8vQOpoCX7TySiYmKyWFEQ5MYcDxT/QZTkM5bePzfWg=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq40z3vwliCVmeWURJIekDUk2tntQuSMKlGB9St
+ hkGoAcnFfGJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCauNM9wAKCRAzarMzb2Z/
+ l8V3EACRKiBNHXRX7srE/8NeEyStfiM5dLyXL7ERd8OmMK9mPLsEmpy6A43+NslgttTy7uYbbRP
+ T2cd17pQtLOUpMNMp+9Jcpphp7bZMALgHX++ugUPUc0ZzARKALqZRJkj2lLAgUCjUTZkfUyIs4A
+ /gEGItSaa9xgxN4GzfndCtizS+jxSCFuzt98KGS0EuPjOmiu4wTqTQa7xo3ai0p4XBl+Kmzj+a1
+ 70xko5UgjIQBC6s+wLnNWy6kJvM9wONes4uUvGvd6NSPfJsaZOIv6ZV0kWosdKh8OtyAC6f3/h8
+ I4GsAoeg0QlfAlkBJTxJpnnX+FMAPwJ4yCpoGuzwSVAmnokrtRRwO4sGnC1vUIjPnX9gAillXye
+ 5dRHRNwoY2pNEo1FSVbjfrOREs9RZq4JvADlYr77QIAm9SM69kRf4ZXCSYDWzfNDdZlahdmMvtc
+ vNpy8Z10mm57l/RvkZuKFaFVKPqzfakjhpcWFCXvBuJ2ifDl4aA15T/JAzd9A3hR6eJYrc9MB2T
+ xhWP2ntXBGnKFtGFqiQN8kB00TR32ZvDkduJB2eXLHROrSvw0zFf6ntiDYMacxNSKbTyqUCUWKM
+ Nw7nokh5fdDqvr/Kfyy3QrjzXvngpetd+ACAJURpxb4481EaSmwLcm0XzyUUlSCxNlNDO7i4/0/
+ UAB5r3gjlnhqVKw==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-nfs4_init_cp_state() allocates the nn->s2s_cp_stateids key with
-idr_alloc_cyclic() from 0, so a COPY_NOTIFY stateid's so_id counts up
-across the netns and is guessable. Its cl_id word is a fixed sentinel
-and manage_cpntf_state() does not check the generation, so within one
-NFSD instance the so_id is the whole of the token.
+gen_sessionid() fills a session ID's sequence word from a file-scope
+counter that counts every CREATE_SESSION across all netns, and zeroes
+the reserved word. Under SP4_NONE, which the Linux client requests by
+default, the session ID is a bearer token: nfsd4_sequence() checks no
+credential and nfsd4_destroy_session() succeeds for any requester
+holding the ID. A requester that knows a client's clientid reads the
+counter from its own CREATE_SESSION reply and reaches the victim's
+session within a few hundred SEQUENCE probes, after which it can
+poison the victim's reply cache, drive OPEN and LOCK against the
+victim's owners, or destroy the session. RFC 8881 Section 2.10.8.3
+offers only SP4_MACH_CRED and SP4_SSV against this attack.
 
-Fill the cl_id word from get_random_u32() at creation and have
-manage_cpntf_state() compare the presented word with the stored one
-after the so_id lookup. The key stays cyclic: a random key would carry
-the same secret, but spread over a 2^31 key space each entry would
-occupy about 1.1 KB of radix nodes shared with no neighbor, against
-under 10 bytes for consecutive keys, with no cap on COPY_NOTIFY states
-per client.
+Fill the two words with one 64-bit random value. RFC 8881
+places no uniqueness, reuse, or ordering rule on session IDs, so the
+only uniqueness NFSD needs is that no two live sessions share one:
+nfsd4_assign_sessionid_locked() rejects a value that matches a hashed
+session and returns NFS4ERR_DELAY after NFSD4_RANDOM_RETRIES misses.
 
-The token's clientid must still never name a live client. nfsd4_read()
-and nfsd4_seek() try the IDR only after the per-client lookup fails
-with NFS4ERR_BAD_STATEID. A token word equal to the session client's
-cl_id, with the so_id landing on one of its stateids, would be handled
-as that stateid or rejected with NFS4ERR_OLD_STATEID. Keep the two
-spaces disjoint with one bit: nfs4_init_cp_state() sets bit 31 of the
-token word and nfsd4_assign_clid_locked() clears it in every clientid.
+Generating the ID cannot stay in init_session(), which runs after
+nfsd4_create_session() has expired the replaced client and confirmed
+the new one. nfsd4_create_session() generates the ID at the end of
+Phase 2, after check_slot_seqid() has ruled out a replay, and on
+exhaustion takes the out_expired_error path so NFS4ERR_DELAY stays
+out of the reply cache.
+
+nfsd4_sequence() returns NFS4ERR_BADSESSION for a wrong clientid and
+a wrong sequence alike, so a requester that knows the clientid still
+faces a 2^64 search.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/netns.h     |  6 +-----
- fs/nfsd/nfs4state.c | 31 ++++++++++++++++---------------
- 2 files changed, 17 insertions(+), 20 deletions(-)
+ fs/nfsd/nfs4state.c | 59 +++++++++++++++++++++++++++++++++++++++++------------
+ fs/nfsd/state.h     | 15 +++++++++++++-
+ 2 files changed, 60 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 2677d746e77a..217dfdb3d738 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -179,11 +179,7 @@ struct nfsd_net {
- 	struct completion nfsd_net_confirm_done;
- 	struct completion nfsd_net_free_done;
- 
--	/*
--	 * clientid and stateid data for construction of net unique COPY
--	 * stateids.
--	 */
--	u32		s2s_cp_cl_id;
-+	/* stateid data for construction of net unique COPY stateids */
- 	struct idr	s2s_cp_stateids;
- 	spinlock_t	s2s_cp_lock;
- 	atomic_t	pending_async_copies;
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 78f69a188d34..a2189a5a3dc2 100644
+index a2189a5a3dc2..de8950c7ad90 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -70,6 +70,13 @@
-  */
- #define NFSD4_RANDOM_RETRIES	16
+@@ -92,8 +92,6 @@ static const stateid_t close_stateid = {
+ 	.si_generation = 0xffffffffU,
+ };
  
-+/*
-+ * Set in every COPY_NOTIFY token's cl_id word and cleared in every
-+ * clientid, so the per-client stateid lookup never resolves a token
-+ * before the IDR lookup runs.
-+ */
-+#define NFSD4_CPNTF_CLID_BIT	BIT(31)
+-static u64 current_sessionid = 1;
+-
+ bool nfsd_delegts_enabled __read_mostly = true;
+ 
+ #define ZERO_STATEID(stateid) (!memcmp((stateid), &zero_stateid, sizeof(stateid_t)))
+@@ -2300,15 +2298,14 @@ void nfsd4_bump_seqid(struct nfsd4_compound_state *cstate, __be32 nfserr)
+ }
+ 
+ static void
+-gen_sessionid(struct nfsd4_session *ses)
++gen_sessionid(struct nfsd4_session *ses, u64 rand)
+ {
+ 	struct nfs4_client *clp = ses->se_client;
+ 	struct nfsd4_sessionid *sid;
+ 
+ 	sid = (struct nfsd4_sessionid *)ses->se_sessionid.data;
+ 	sid->clientid = clp->cl_clientid;
+-	sid->sequence = current_sessionid++;
+-	sid->reserved = 0;
++	nfsd4_sessionid_set_rand(sid, rand);
+ }
+ 
+ /*
+@@ -2633,13 +2630,15 @@ nfsd_slot_shrinker_scan(struct shrinker *s, struct shrink_control *sc)
+ 	return freed;
+ }
+ 
+-static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, struct nfs4_client *clp, struct nfsd4_create_session *cses)
++static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new,
++			 struct nfs4_client *clp,
++			 struct nfsd4_create_session *cses, u64 sessionid_rand)
+ {
+ 	int idx;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 
+ 	new->se_client = clp;
+-	gen_sessionid(new);
++	gen_sessionid(new, sessionid_rand);
+ 
+ 	INIT_LIST_HEAD(&new->se_conns);
+ 
+@@ -2700,6 +2699,29 @@ __find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net)
+ 	return NULL;
+ }
+ 
++/* A candidate need only differ from the ID of every live session. */
++static __be32 nfsd4_assign_sessionid_locked(struct net *net,
++					    const clientid_t *clid, u64 *rand)
++{
++	struct nfs4_sessionid candidate __aligned(4);
++	struct nfsd4_sessionid *sid = (struct nfsd4_sessionid *)candidate.data;
++	int i;
 +
- #define all_ones {{ ~0, ~0}, ~0}
- static const stateid_t one_stateid = {
- 	.si_generation = ~0,
-@@ -1000,7 +1007,9 @@ static int nfs4_init_cp_state(struct nfsd_net *nn, copy_stateid_t *stid,
- 	int new_id;
++	sid->clientid = *clid;
++	for (i = 0; i < NFSD4_RANDOM_RETRIES; i++) {
++		u64 value = get_random_u64();
++
++		nfsd4_sessionid_set_rand(sid, value);
++		if (!__find_in_sessionid_hashtbl(&candidate, net)) {
++			*rand = value;
++			return nfs_ok;
++		}
++	}
++	pr_warn_ratelimited("NFSD: no unused session ID after %d tries\n",
++			    NFSD4_RANDOM_RETRIES);
++	return nfserr_jukebox;
++}
++
+ static struct nfsd4_session *
+ find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net,
+ 		__be32 *ret)
+@@ -4752,6 +4774,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 	struct nfs4_client *old = NULL;
+ 	struct nfsd4_session *new;
+ 	struct nfsd4_conn *conn;
++	u64 sessionid_rand;
+ 	__be32 status = 0;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
  
- 	stid->cs_stid.si_opaque.so_clid.cl_boot = (u32)nn->boot_time;
--	stid->cs_stid.si_opaque.so_clid.cl_id = nn->s2s_cp_cl_id;
-+	/* so_id is cyclic, so this word carries the token's secret. */
-+	stid->cs_stid.si_opaque.so_clid.cl_id = get_random_u32() |
-+						NFSD4_CPNTF_CLID_BIT;
+@@ -4808,6 +4831,16 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 		goto out_cache_error;
+ 	}
  
- 	idr_preload(GFP_KERNEL);
- 	spin_lock(&nn->s2s_cp_lock);
-@@ -3226,9 +3235,7 @@ static __be32 nfsd4_assign_clid_locked(struct nfs4_client *clp,
- 		return nfs_ok;
++	/*
++	 * Assign the session ID before Phase 3 so a failure expires and
++	 * confirms nothing.
++	 */
++	status = nfsd4_assign_sessionid_locked(SVC_NET(rqstp),
++					       &cr_ses->clientid,
++					       &sessionid_rand);
++	if (status)
++		goto out_expired_error;
++
+ 	/* RFC 8881 Section 18.36.4 Phase 3: Client ID confirmation. */
+ 	if (conf) {
+ 		status = nfserr_wrong_cred;
+@@ -4843,7 +4876,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 	/* Report the correct number of backchannel slots */
+ 	cr_ses->back_channel.maxreqs = new->se_cb_highest_slot + 1;
  
- 	for (i = 0; i < NFSD4_RANDOM_RETRIES; i++) {
--		id = get_random_u32();
--		if (id == nn->s2s_cp_cl_id)
--			continue;
-+		id = get_random_u32() & ~NFSD4_CPNTF_CLID_BIT;
- 		if (!cl_id_in_use_locked(nn, id)) {
- 			clp->cl_clientid.cl_id = id;
- 			return nfs_ok;
-@@ -5822,8 +5829,6 @@ nfsd4_init_leases_net(struct nfsd_net *nn)
- 	nn->nfsd4_lease = 90;	/* default lease time */
- 	nn->nfsd4_grace = 90;
- 	nn->clverifier_counter = get_random_u32();
--	/* The COPY_NOTIFY sentinel clientid used by nfs4_init_cp_state() */
--	nn->s2s_cp_cl_id = 0;
- 	/* So the first client directory in a fresh netns is named 2. */
- 	atomic_set(&nn->client_display_counter, 1);
+-	init_session(rqstp, new, conf, cr_ses);
++	init_session(rqstp, new, conf, cr_ses, sessionid_rand);
+ 	nfsd4_get_session_locked(new);
  
-@@ -8630,18 +8635,15 @@ __be32 manage_cpntf_state(struct nfsd_net *nn, stateid_t *st,
- 	copy_stateid_t *cps_t;
- 	struct nfs4_cpntf_state *state = NULL;
+ 	memcpy(cr_ses->sessionid.data, new->se_sessionid.data,
+@@ -6360,15 +6393,15 @@ bool nfsd_wait_for_delegreturn(struct svc_rqst *rqstp, struct inode *inode)
+ }
  
--	if (st->si_opaque.so_clid.cl_id != nn->s2s_cp_cl_id)
--		return nfserr_bad_stateid;
--	/*
--	 * With a fixed sentinel clientid, the all-zero stateid and a token
--	 * from a previous nfsd instance both match cl_id, so cl_boot has
--	 * to carry the check.
--	 */
-+	/* A token from a previous NFSD instance can name a live key. */
- 	if (st->si_opaque.so_clid.cl_boot != (u32)nn->boot_time)
- 		return nfserr_bad_stateid;
- 	spin_lock(&nn->s2s_cp_lock);
- 	/* s2s_cp_stateids holds only COPY_NOTIFY stateids */
- 	cps_t = idr_find(&nn->s2s_cp_stateids, st->si_opaque.so_id);
-+	if (cps_t && cps_t->cs_stid.si_opaque.so_clid.cl_id !=
-+		     st->si_opaque.so_clid.cl_id)
-+		cps_t = NULL;
- 	if (cps_t) {
- 		state = container_of(cps_t, struct nfs4_cpntf_state,
- 				     cp_stateid);
-@@ -8651,8 +8653,7 @@ __be32 manage_cpntf_state(struct nfsd_net *nn, stateid_t *st,
- 				  sizeof(clientid_t))) {
- 			/*
- 			 * OFFLOAD_CANCEL: only the creating client may cancel.
--			 * so_id is guessable, so without this check any client
--			 * could free another's cpntf state.
-+			 * The destination server holds the token too.
- 			 */
- 			state = NULL;
- 			goto unlock;
+ /*
+- * gen_sessionid() composes a sessionid from the client's clientid and a
+- * sequence counter, so the sequence alone identifies the granting session.
++ * gen_sessionid() composes a sessionid from the client's clientid and
++ * a 64-bit random value, so the random half alone identifies the
++ * granting session.
+  */
+ static void nfsd4_recall_grant_sessionid(const struct nfs4_delegation *dp,
+ 					 struct nfsd4_sessionid *sid)
+ {
+ 	sid->clientid = dp->dl_stid.sc_client->cl_clientid;
+-	sid->sequence = dp->dl_recall_grant.sessionid_seq;
+-	sid->reserved = 0;
++	nfsd4_sessionid_set_rand(sid, dp->dl_recall_grant.sessionid_rand);
+ }
+ 
+ static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
+@@ -7135,7 +7168,7 @@ nfs4_delegation_record_grant_slot(struct nfs4_delegation *dp,
+ 	if (!cstate->session)
+ 		return;
+ 	sid = (struct nfsd4_sessionid *)cstate->session->se_sessionid.data;
+-	dp->dl_recall_grant.sessionid_seq = sid->sequence;
++	dp->dl_recall_grant.sessionid_rand = nfsd4_sessionid_rand(sid);
+ 	dp->dl_recall_grant.slotid = cstate->slot->sl_index;
+ 	dp->dl_recall_grant.seqid = cstate->slot->sl_seqid;
+ 	dp->dl_recall_grant.valid = true;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 4ed417bf2262..d9aecef95bae 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -316,7 +316,7 @@ struct nfs4_delegation {
+ 
+ 	/* Forward-channel slot that carried the granting request */
+ 	struct {
+-		u32			sessionid_seq;
++		u64			sessionid_rand;
+ 		u32			slotid;
+ 		u32			seqid;
+ 		bool			valid;
+@@ -500,6 +500,19 @@ struct nfsd4_sessionid {
+ 	u32		reserved;
+ };
+ 
++/* The sequence and reserved words together hold one 64-bit random value */
++static inline void nfsd4_sessionid_set_rand(struct nfsd4_sessionid *sid,
++					    u64 rand)
++{
++	sid->sequence = lower_32_bits(rand);
++	sid->reserved = upper_32_bits(rand);
++}
++
++static inline u64 nfsd4_sessionid_rand(const struct nfsd4_sessionid *sid)
++{
++	return ((u64)sid->reserved << 32) | sid->sequence;
++}
++
+ /*
+  *       State                Meaning                  Where set
+  * --------------------------------------------------------------------------
 
 -- 
 2.56.0
