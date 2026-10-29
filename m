@@ -1,48 +1,50 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793275553;
-	b=vns06+8n/7OFN8w6vLM1jl6a1F2+PbkezzUgyhAgDobH/zYeY/5fyPMDvy969LJtcznq
-	 Gpom+8EZSc0s8xcHYn6c4QpQLIvvsVssHOU0OijV7kAo/exJLqy7H476eow+YIyTnEXz9
-	 PIY13sio1Sa+iy7NQlBwiSCHLtq9loqo11X++YXJsDLYJEaRYKGYmYC4Dqjtz4AAWQeOp
-	 89KG2UYjHnCXfJ8D1w+eLYmoxL48bN3eJfHSKAJAZgxw+wQeBk6zqpqFJjegURjhAkI0a
-	 pG8aX5/OoiGtvTYXA6RGz10XF3XcisO0kIWUAIQH2QYCFjONv+DptYkH0UrG47bEHSA==
+	t=1793275825;
+	b=3aJW4l7N8Co5LnJnOHLgbwGnfnyVTFdcZ57fdN3ghPWJoVLoDF8BFSXKZrC0VQ83DqIE
+	 185nGASUVpOLi0fNXTXEwCnFGk4liVAsTleaqk59kbEI+E4Yv0nRJhlsz3C83ndonlGQI
+	 s+d5RZ7Y18zsME1FEXPBBHdApj7lRUK/o3c6rEPs0AgDmYV32leqPMlehzBrqpEI8bY8r
+	 77xht1gRcd0M79MUUAHqFJ6wEQkyLMNeBAz3jAC8/uGyrUUmPNsC8KxF2TWhrTV3eeL4e
+	 XmfMMql78XXW5wbm84xGToeVotXFOBTA8/RuHHAJTNTyBNizH+3pg0DYlQsZ94Cf2fw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793275553;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=4iJ4lWXExv+RfGay5KC5PfyDalOA2jKNer9jnroQJeU=;
-	b=RvrEeq5tqlU/qZqtsPYsJYg50q5bpjjJSCYwjqLTgcxNOAdZTndHUABDkzxf18pLux1E
-	 it4WapZ/VIwwQ0DRtw/C8nYBpM4uayerjya/0ALJNKvXCqh9BeuR2M2/GCRhpBoXwHZlI
-	 zLFpjwWpF8rZdQdl/F+rr4V0BEQbiH1WHlavGFFVJk19eiM/T+ujPf2BixxVZRZpwMNHL
-	 ONPzVIAkTATNJgUVqnCW+e85QWl3pd8ChZnZb3HNrcWv9spl0frrgXvm1Hg284rX8XqtK
-	 1isUTP/HjBB3aSl1ieZTW5qF6kNJBgAfGKe8in4wPKBnXKw7ieG3JpOx48WwVYrFByQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793275825;
+	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
+	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=QR1i+yww90bVu0i+4wVLQKrdMbTQqUVkz2XMMpA1+Ik=;
+	b=l5Ko3Tvvv+HWBDTcVENEbxYW+PVa11epIiPRYYZO6SXun15rWqQEb1JuPjjZwG5ONyNN
+	 k2+ZOi1vFH/cyHlj0FoT6g4ldS8LchHC4iyo6e50r9Vu5Hr1BfLx1tr55Ttb2dVl0YOvW
+	 GPEFTWgXn/vywC5o/Q8+P6mwwOroaV0jxSu5ShRqYCZ4q9Bxjbxpy8W9hEeBwyK9j9So9
+	 NKtv+T7YW1sPjInWw2aReSjskR+4cp7YTTxx8mVG2PSD5X5pdNznJ94xR4uIYFmg1J5Vh
+	 3B03IVRl8dfKsUOPL5Xad6j3iFyxg5AMg/R+H2g/fkeatozRD7ceSVc1q6tlsXMJwOQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iomdypTv;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QE8ItHK6;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0DD79606A320;
-	Thu, 29 Oct 2026 12:05:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 25365606A31A
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 12:10:25 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iomdypTv
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 036321F031E5;
-	Thu, 29 Oct 2026 12:05:45 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QE8ItHK6
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2BEBD1F01828;
+	Thu, 29 Oct 2026 12:10:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793275547;
-	bh=4iJ4lWXExv+RfGay5KC5PfyDalOA2jKNer9jnroQJeU=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=iomdypTvZQIMLWImvLyZSeMqZ7GRZcm6sOcC0S+HVjLCkjem9mnPplw2Yiuh/qXUS
-	 I4/w9yN69PHPShB5KMePUmhNj2il27fRTNtKj+xoPxB7bQfxwnkujFPTNB3tAWuQPw
-	 sJCtPMyl7DMJPoL0Ei9WDUFkQ3R393Z1BR91SbheN/jpb5ViC6lfmV7GV6DiWn5QSb
-	 L8kWkLyarFPduIZSFKieL7LUjXYaVFZZVfPNcVU2al5LavERHXPhA+g/0yuzEFJOVm
-	 DZUYeTetbiIvQY5k+pq2H2FSwY4Pv+CimIOJfq08GeK1vaMKNTx0dGKwQJaV2j+Ogt
-	 cDEzL4Xzs0K7w==
+	s=k20260515; t=1793275825;
+	bh=QR1i+yww90bVu0i+4wVLQKrdMbTQqUVkz2XMMpA1+Ik=;
+	h=From:Subject:Date:To:Cc;
+	b=QE8ItHK6sA+W5jFRJR60BS+Es8SWUSiMLMoXhVRabg7cYOFxjD3xM/+jysedqHaCq
+	 qr4/s6YsYU2rz85FYc489rz477GUZJYj0rb6ipmgcDWv0mdsVqSAy6vaV/eBIUOzmV
+	 WOLYKD1UnGMeTElcvXsK14VqPl61T3+w66cz9x7VZU6qGgTXBp45MSBkZEHm7LRRGv
+	 1dtmSjnOx1LgN84zRnChZOmT0vo13WyZOA1/fpEneHGRM45W51UEBk8SvwSavlYprO
+	 EHK1g2PUIgNuWxj/++aFpXMmgSKeqm5pm981VVED1PS1TYbrEIOlKmUlu+CkkAFTPE
+	 XdSYBu4c6KraQ==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Thu, 29 Oct 2026 08:05:19 -0400
-Subject: [PATCH v2 6/6] NFSD: Document how to choose an IO mode
+Subject: [PATCH nfs-utils v2 0/4] exports: add support for new read_io= and
+ write_io= export options
+Date: Thu, 29 Oct 2026 08:10:07 -0400
+Message-Id: <20261029-master-v2-0-32bfc6ac16da@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,234 +56,83 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-export-iomode-v2-6-fe8ec6251a36@kernel.org>
-References: <20261029-export-iomode-v2-0-fe8ec6251a36@kernel.org>
-In-Reply-To: <20261029-export-iomode-v2-0-fe8ec6251a36@kernel.org>
-To: Donald Hunter <donald.hunter@gmail.com>, 
- Jakub Kicinski <kuba@kernel.org>, "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, Chuck Lever <cel@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/zWNQQ6CMBBFr0JmbQ0t0qor72FYFJnCRCxmBomG9
+ O42GJcv/+X9FQSZUOBcrMC4kNAUM5hdAbfBxx4VdZnBlMbqUh/Uw8uMrNrah86esHLOQJafjIH
+ eW+gKMYh6zTQKNHkaSOaJP9vFojfhVzPuX1u0KpUNOjhf1f5YtZc7csRxP3EPTUrpC7Mnj2uoA
+ AAA
+X-Change-ID: 20261014-master-b5afd69e3772
+To: Steve Dickson <steved@redhat.com>, Chuck Lever <cel@kernel.org>, 
  NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
  Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>
-Cc: Steve Dickson <steved@redhat.com>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, 
- linux-doc@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
+ Mike Snitzer <snitzer@kernel.org>
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=8695; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=yE2bCSOokjUEj1po9XIzO+SKll2jKyIeQhppobQc1QU=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq4zaOIt1OzOAFIx/Tqkr6ypYGRqUreMaslU3lM
- GFpIyumD6mJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCauM2jgAKCRAADmhBGVaC
- FSs3EACteuSamD1oyvQMYQZKFltKnZtUenbce49ToZhHPsuMyqtfLbeGYw6DnhVkLLUWRIePDIZ
- X44unaBBh39QFuozRrKcMbEHItSIV4FQN6Bh5zTdXdoa9lgaRJdEZ0I9i1aKsVCfV2VIloHrNVh
- Y3o9Gp/DKg/CLBMUJPROUhPgkBq4It6J4GSml87ETqtsh1BE8f+lnxrRNYRM2m8Q9GaqIMbuBxg
- sopi6fGSgQA0eAHp7PbK2R93zUr13O1N3nWAbl7kGvjJ1t3x1dCOxvYfkwS3bqRsBixrXMR+K2v
- 1+nGD1wAQxy+U1LQQM5gGFN4SRtUb7rlFj9jOlM1aNPgh52brRGW7R8copo6qsnhnjUKBmi7Dt8
- 0gSd4uNeq00HmuaHN3MiJ9aZRH55ROLgayvfrYhbzJcHkXUVEwLtSOzkUP0VI/XYv0Dc6WOpxOD
- F/vlF9X4I7y7+XTaIFaeBaH7wyf0cSRzapaigm3TfIsmQdzfHkxEXLB5w1IdhsGfhj17m0uSWoM
- MMayBj1hy5BcR6qdLCaa1LB0ZGo/r4XzyxqJGoWAYzvfTmA3T6hXY2HOntOP6bYHZeQLx3zay91
- ksrsmePAJgvYM7K9Zt9QyvsgvOTnyStb58hUdd3DdqC3e7JlRcX+FqS8aJ3Z07xMCxy3KzpGmgB
- IA2pzQXgChZAD7Q==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2274; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=NGzXvq1mp3+chR8mzG3UYuV+RtQdw927IiH1KCV92VE=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq4zeuwZLmety9+cxoFEqfHMfirHLq5n/8aMzxs
+ 2eDbYG5VdeJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCauM3rgAKCRAADmhBGVaC
+ FacGEADWkovF3wA7Q8wo+8ELsxfOEk/Tgtbuxg38s881mjL2XtXvTOkhQiSfRwU54uY7NivZb6F
+ y9NddgKMtVTWHmY6JE6kwyS3IOaz6hFoAs+i4RJ/HIinkk+42xF+9Xi2ktFwxoe13dmm/NmFJvw
+ 0KhcnjJ5uWasoRVSVBzRm6Qcb6BA5/fha3XSMvCCWTqiYNX7aSzc7DLfjWdWDd0vXOjfxIJl8eP
+ d2WA5i8RWdYgcwl7cdt9g5/37mqFRwoVqVAINQj5Ob7EL+Sl4P/qNxDCkX+UnEg7pRYuVXCnyAO
+ rHssz8usYvQajvjDb9yGka6FC7f1aJ+IWk/ZoFc5R0IEwMEgka8Qq+yWWDkWh4osHcwY10lEVuA
+ txs6fiQH7M3NFT+T5fwCNs3ju0YmfItujjpsPzyoXogQ7XJ9fSAk+hoVhbkHxbOTQ5BSsQbbTMW
+ 6svGHVlsTLY/zbcjjgfbUhPiij9WuqJii1XPqurIzk9wNC1cXJYW+XhubzdfntIyWD8uljy7Fg8
+ Z7oij91I/9hVa70hyBfOUzr/RmPqbmYNOdTGMh0SdmM+kfiSEbvf1u8JG81vNLzEgfq05vWnZBp
+ XHKJd0saor0eMbA8emvUDLM//ZoyrHOrzAouBlOxXhmtq/QzTAuvFtp0+AnNRmiLy2una3KFuWo
+ /PTx0vlSR6sxoxQ==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Admins have no guidance on when to pick buffered, dontcache, or direct
-IO for an export. Add a section that:
+This is the companion patch series to [1]. Chuck suggested we change the
+export options to read_io= and write_io=. That's the only real change
+in this version.
 
-- explains why a low server page cache hit rate is normal (clients
-  cache their own re-reads)
-- lists the workload conditions that favor each IO mode
-- describes existing metrics to measure: per-export miss ratio from
-  export_stats vs. block device reads, workingset refault counters,
-  cachestat(2), reclaim cost (PSI, allocstall, compact_stall), and
-  client mountstats byte counters
-- notes that refault counters do not see dontcache or direct IO, so
-  measure while the export uses buffered IO
+The last patch in this adds a new nfsd-iomode-advisor script that
+watches various stats on the server and advises the admin what mode to
+use.
+
+I consider the advisor optional as it was largely vibe-coded. I'm not
+sure I'd trust its advice that far, but it's probably better than
+guessing. I did test it on a range of different machine types and it
+seemed to do the right thing.
+
+[1]: https://lore.kernel.org/linux-nfs/20261029-export-iomode-v2-6-fe8ec6251a36@kernel.org/
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- Documentation/filesystems/nfs/nfsd-io-modes.rst | 168 ++++++++++++++++++++++++
- 1 file changed, 168 insertions(+)
+Changes in v2:
+- Rename riomode=/wiomode= to read_io=/write_io= to match the kernel series.
+- Link to v1: https://lore.kernel.org/r/20261027-master-v1-0-6f1f7a35a83b@kernel.org
 
-diff --git a/Documentation/filesystems/nfs/nfsd-io-modes.rst b/Documentation/filesystems/nfs/nfsd-io-modes.rst
-index 1ad30518c234..99da98430be1 100644
---- a/Documentation/filesystems/nfs/nfsd-io-modes.rst
-+++ b/Documentation/filesystems/nfs/nfsd-io-modes.rst
-@@ -283,3 +283,171 @@ Tracing:
-     segment that it could not invalidate. Only a filesystem that uses
-     iomap for direct IO emits it, and other fallbacks, such as ext4's
-     own, are not traced.
-+
-+CHOOSING AN NFSD IO MODE
-+========================
-+
-+The correct IO mode for an export depends on the workload of its
-+clients. The most important question is this: does NFSD read the same
-+data again before the page cache evicts it?
-+
-+NFS clients keep their own page cache. When a client reads the same
-+data again, its own cache usually supplies the data. The READ request
-+does not get to the server. Thus, the server page cache helps mostly
-+in these conditions:
-+
-+- Different clients read the same data.
-+- A client reads data that a different client wrote recently.
-+- A client reads data again after its own page cache evicted the data.
-+
-+A low server page cache hit rate is thus normal. It does not by itself
-+show that buffered IO is the wrong choice.
-+
-+Use buffered IO for an export when:
-+
-+- The working set of the export fits in server memory.
-+- Many clients read the same files.
-+- Clients send small or misaligned WRITEs. The page cache collects
-+  these WRITEs and writes them to storage in larger units.
-+
-+Use dontcache IO for an export when:
-+
-+- Clients read or write most data only one time.
-+- The working set of the export is much larger than server memory.
-+- The data of the export causes the page cache to evict data of other
-+  exports.
-+
-+If the underlying filesystem does not support dontcache, NFSD uses
-+buffered IO instead. See NFSD DONTCACHE above.
-+
-+Use direct IO for an export when the conditions for dontcache are true,
-+and also:
-+
-+- Clients send large, aligned READs and WRITEs.
-+- Page reclaim uses a large quantity of CPU time, or makes IO stop.
-+
-+Change the IO mode of one export at a time. Compare the metrics below
-+before and after each change.
-+
-+Metrics to monitor
-+------------------
-+
-+The metrics that follow can help you choose an IO mode. Measure them
-+while the export uses buffered IO.
-+
-+Miss ratio for each export
-+~~~~~~~~~~~~~~~~~~~~~~~~~~
-+
-+``/proc/fs/nfsd/export_stats`` shows the number of bytes that NFSD read
-+(``io_read``) and wrote (``io_write``) for each export and client. If the
-+kernel has ``CONFIG_TASK_IO_ACCOUNTING``, it also shows the number of
-+bytes that storage supplied for these READs (``io_read_storage``). This
-+value includes the readahead that the READs started, and the filesystem
-+metadata that they needed.
-+
-+The kernel adds an export to ``export_stats`` when a client first uses
-+it. The counters of an export continue when mountd refreshes the export
-+or when ``exportfs -r`` flushes the export cache. They restart if the
-+export stays out of the export cache for an hour. The start time shows
-+when the counters started.
-+
-+Measure ``io_read`` and ``io_read_storage`` over the same interval. Then
-+divide the increase of ``io_read_storage`` by the increase of
-+``io_read``. This is the miss ratio of the export.
-+
-+- A ratio near 1 shows that storage supplies almost all data that NFSD
-+  reads. The page cache gives little benefit. Dontcache or direct IO
-+  can be a better choice.
-+- A ratio much smaller than 1 shows that the page cache supplies a
-+  large part of the data. Buffered IO is probably the correct choice.
-+- A ratio larger than 1 shows that readahead reads data that clients
-+  do not request, for example with small random READs.
-+
-+Without ``io_read_storage``, compare ``io_read`` with the number of bytes
-+that the block device read. Field 3 of ``/sys/block/<dev>/stat`` shows
-+the device reads in 512-byte sectors. You can also use iostat(1). This
-+ratio is for all exports on the device. Local applications also cause
-+device reads. Thus, this ratio is only an approximate value.
-+
-+Reads of recently evicted data
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-+
-+When page reclaim evicts a file page, the kernel records the eviction.
-+If a task reads that page again soon, the kernel counts a refault.
-+``/proc/vmstat`` shows these counters:
-+
-+- ``workingset_refault_file``: the number of file pages that the kernel
-+  read again soon after their eviction.
-+- ``workingset_activate_file``: the number of refaulted file pages that
-+  the kernel identified as part of the working set.
-+- ``pgsteal_kswapd`` and ``pgsteal_direct``: the number of pages that
-+  page reclaim freed.
-+
-+Use these counters as follows:
-+
-+- The ``pgsteal`` counters increase quickly, but
-+  ``workingset_refault_file`` stays near zero. This shows that clients
-+  read most data only one time. To find the export that causes this,
-+  use the miss ratio above or cachestat(2).
-+- ``workingset_refault_file`` increases quickly. This shows that clients
-+  read the data again, but the page cache is too small to keep it.
-+  Set dontcache or direct IO on other exports that read data only one
-+  time. This gives more page cache to this workload.
-+
-+These counters are for the full system, not for each export. Dontcache
-+IO drops pages without a record of the eviction. Direct IO does not use
-+the page cache. Thus, these counters do not include exports that use
-+dontcache or direct IO.
-+
-+Page cache state of a file
-+~~~~~~~~~~~~~~~~~~~~~~~~~~
-+
-+The cachestat(2) system call shows the page cache state of a range in a
-+file. It is available in Linux 6.5 and later. Its output includes:
-+
-+- ``nr_cache``: the number of pages in the page cache.
-+- ``nr_dirty`` and ``nr_writeback``: the number of pages that wait for
-+  writeback, or that are in writeback.
-+- ``nr_evicted``: the number of pages that the kernel evicted.
-+- ``nr_recently_evicted``: the number of evicted pages that would cause
-+  a refault if a task read them now.
-+
-+Use cachestat(2) on the frequently used files of an export. This gives
-+data for each export. Monitor ``nr_recently_evicted`` on the files of
-+one export while a different export is busy. If the value increases,
-+the busy export causes the page cache to evict useful data. Set
-+dontcache or direct IO on the busy export.
-+
-+fincore(1) shows how much of a file is in the page cache.
-+
-+Cost of page reclaim
-+~~~~~~~~~~~~~~~~~~~~
-+
-+Direct IO helps most when page reclaim uses much CPU time or makes IO
-+stop. Monitor these metrics:
-+
-+- ``/proc/pressure/memory``: the "some" and "full" lines show the
-+  percentage of time that tasks waited for memory.
-+- ``allocstall_*`` and ``pgscan_direct`` in ``/proc/vmstat``: direct
-+  reclaim activity.
-+- ``compact_stall`` in ``/proc/vmstat``: memory compaction stalls.
-+- The CPU time of the kswapd and kcompactd kernel threads.
-+- ``Dirty`` and ``Writeback`` in ``/proc/meminfo``, for WRITE workloads.
-+
-+High values can occur while NFSD moves large quantities of data that
-+clients use only one time. In this condition, direct IO can decrease
-+the CPU load and make IO performance more constant.
-+
-+Client page cache
-+~~~~~~~~~~~~~~~~~
-+
-+On a Linux NFS client, the ``bytes:`` line in ``/proc/self/mountstats``
-+shows the bytes that applications read (field 1). It also shows the
-+bytes that the client read from the server (field 5). mountstats(8) and
-+nfsiostat(8) also show these values.
-+
-+Field 5 can be much smaller than field 1. This shows that the client
-+page cache supplies most reads. In this condition, the server page
-+cache keeps copies of data that the clients already have. If other
-+clients do not read the same data, dontcache IO on the server can be a
-+better choice.
+---
+Jeff Layton (4):
+      exportfs/mountd/exportd: track the svc_export policy highest attribute
+      exports: Add read_io= and write_io= export options
+      exportfs: Display and document read_io= and write_io=
+      nfsd-iomode-advisor: recommend read_io= and write_io= for an export
 
+ configure.ac                                      |    3 +-
+ support/export/cache.c                            |   59 +-
+ support/export/export_policy.c                    |   29 +-
+ support/export/v4root.c                           |    2 +
+ support/include/exportfs.h                        |    3 +
+ support/include/nfsd_netlink.h                    |   12 +
+ support/include/nfslib.h                          |   14 +
+ support/nfs/exports.c                             |   51 +
+ tools/Makefile.am                                 |    2 +-
+ tools/nfsd-iomode-advisor/Makefile.am             |   14 +
+ tools/nfsd-iomode-advisor/nfsd-iomode-advisor.man |  232 ++++
+ tools/nfsd-iomode-advisor/nfsd-iomode-advisor.py  | 1198 +++++++++++++++++++++
+ utils/exportfs/exportfs.c                         |   34 +
+ utils/exportfs/exports.man                        |   22 +
+ 14 files changed, 1671 insertions(+), 4 deletions(-)
+---
+base-commit: 0ed4324cbbb8020039d338d597c1422a980f7085
+change-id: 20261014-master-b5afd69e3772
+
+Best regards,
 -- 
-2.56.0
+Jeff Layton <jlayton@kernel.org>
 
