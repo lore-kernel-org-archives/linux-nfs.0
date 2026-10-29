@@ -1,83 +1,83 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.50
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.46
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793297404;
-	b=5Yp1jshfyY/tTcOykIpT/mWDTc/wICxMnuokhRvAYILx6bCIomdLfremhMgLqWaWpCtB
-	 LzYLNXNLEkJmu/ul6ZEU2EQcr71QukbiqUXFjoCUQhZhEyxCLsZjeuG8ovy4nZvkhjTPq
-	 +QteVU9IVWJzcqeDlwEBBi86SoHYE3QkZZBQEDMMlgogqLuExTlfB2zrT9POOHTvFoMMp
-	 TFGagpLls7uEercFijXHsMBAzTeOW2+GFFnFkyjiaMiCMbNzqj9t8JJrTDN2+OU7rDxS4
-	 eSxEp1Y7KiXlqy6/ddm1Z/arY7IaIKI/DZjvbe/I8inDoPCjrPsZZ63nNtT6T8GNJGg==
+	t=1793297400;
+	b=TZqXEDM6/21JWf3fKVUc+Wc9zP8CnGaPfiI/ClBHXnVsdFOkreuxsNNhspN8M6laT8FL
+	 6Pzv8enCQIu3VvyxjSPUj7Md7fghhsA68udDQYCLBMCrdwhB4G2dcHvCC/VjlPOg6dgt3
+	 Npv1JK2ZSEVhWfWw0guPvzZdOc6TgozsaCcE1Mu6oGKOSsXAu7wGPjNYAl+jPHQ5U3yOq
+	 a0hlATx934O8gezeFjfDb7tiL9xSOFcVsmvBW15X1cO57nMFAsylI+rhBCnX7heqdaSnV
+	 ZRcCohvtobe40oUhKKeM5ulth8+f9oMhU1jpz2ssVaeW5O9MRlghNysEZapllFxmLag==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793297404;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793297400;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
 	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
 	 MIME-Version:Content-Transfer-Encoding;
-	bh=O11jiG57nemh67LvGOodj7boyGYJ53ph3c5MQLBtbwQ=;
-	b=gmisquAWgm1ROiYKHZVgUf4tzl/rmxtPxSdr6m9Mt7jfGTNKbfkzxqVqx84RGENYC+gl
-	 4PN1vqiHDuFgTH6yNW/EJheI4+hSmmiYG5nxGkohBs+nieRvzKxhR7PUlnplv0S75sp0E
-	 3XMNXDamV3NMU8OBzBx+gzrwrZj4UziJKTWhvrqzuQe/0JREwslvXU48dlUxtNqwYP+Iu
-	 /6xTl6Y4o10G0KKZqKPj7gi5PzJXaM6Upgt0BGuD22Ld2N50uIV/qrmb7jtA9itFWBluF
-	 6PDwrucIeAAfhkhpzq1vCMjRO1V+hSMj7XxKhvtm+tb+NUmzKIvhKgNf4bAuTrBmHkQ==
+	bh=s15KPFvSCwNiVaqBAYJFg7BNb25ktBO5/NM/9ViUK+E=;
+	b=MFFcfRpKA1r0d4C+TCSng7tZvf2fnXgUGMQr20enp8rEsKEtV7xNo1g7pAbsSyawJCT7
+	 feQPAqu7sBerCzz+ZHIfyBovd8tBDBvK5iR1PVHKW5cNCxyW2iSnqPcRnEXmN9JWmdNj/
+	 Jn/Dd+5iclYEh6CX2uYd88Z2IGV0JsgleVF34CrjjfIuoBuNA5z+M8/+6G0sShr6O8CYr
+	 zr2FST3kQXxrUly6t+Rb4FSN6nmmKMYP2LHD4QTi8FdUvE/S5oDHldaRvcxPPxtOc/d5u
+	 nhV1rB33PWZVPkDH1Ejy3Lpi5/8tOTTBY0/wg4ooDerhUPtOK9RdJ6QSkI98eHiVbDQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=hammerspace.com;
 	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=Nny3L9pL;
-	arc=none smtp.remote-ip=209.85.210.50
-Received: from mail-ot1-f50.google.com (mail-ot1-f50.google.com [209.85.210.50])
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=VHAaoFOq;
+	arc=none smtp.remote-ip=209.85.210.46
+Received: from mail-ot1-f46.google.com (mail-ot1-f46.google.com [209.85.210.46])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5AD4C60A3839
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 18:10:03 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 5AD4C60A3839
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AF5A660A262F
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 18:09:59 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org AF5A660A262F
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=Nny3L9pL
-Received: by mail-ot1-f50.google.com with SMTP id 46e09a7af769-843b6f8e2c7so2732649a34.1
-        for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 11:10:03 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=VHAaoFOq
+Received: by mail-ot1-f46.google.com with SMTP id 46e09a7af769-843a4ca671eso1211645a34.2
+        for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 11:09:59 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1793297402; x=1793902202; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1793297398; x=1793902198; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=O11jiG57nemh67LvGOodj7boyGYJ53ph3c5MQLBtbwQ=;
-        b=Nny3L9pL2u7eGhEMUwOOxsAKWvGmBqGCQw6aYjuubJRSDm4UNvFpJp335cLrXzbxRV
-         uNSBqsSFJ+qgYzjCXZVD/p6gWJCSv0uX7mpUjxGvKiSnDGBGjWMQva2a3Fnnv+b+PMld
-         JzKqDxJ3IV/hZRydfHFBOrnIAC8bT5pUziS2DzqupxlCilg30kQnYPJCVUomEc/I2/Hd
-         UfTZngjdorjkqw15ve3SSoPBARhrVnSpB6nw9hTc1jg1dH9vIqjry/uAhF5+dykSsOl5
-         q9rjRQd8jO9N1bDzjJfAsskgJA0Cuf9qnPQJ+YYND7Ivni0MYV9X0wXvzZ3jQIzpPmTS
-         zZEA==
+        bh=s15KPFvSCwNiVaqBAYJFg7BNb25ktBO5/NM/9ViUK+E=;
+        b=VHAaoFOqccV0hFbc/ilFGOCwBwlm7TlXY62UVXoSJHQ6ULl7rIxY59eOHwq0CF9/io
+         uHUH5dNGfW/I6lhPVAh1H4wl2sE+JeC5MUR7zR8iFZcLo83oTar/Ry3m6+IHkan6JPXp
+         m8yPcXCpfLKjhJ1tr27UMZxgXiTjjZ1jB5zwZj8j/4LeMnwZbNb0IYPUMYVNbhsCkAjS
+         7FJCNZnQJpgwLJo7Sfn8xu+cf7XjBdAcnz1xKs+65uWE3QDT5DOvkhQY1QJpC2Ll+8uF
+         9ack3+/n9ZsYHkPe91Zh4sm35qFh/wyOPftUXrqDqZNtR3wbp+nTsCMweOAnQu+vjU/U
+         9NyA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793297402; x=1793902202;
+        d=1e100.net; s=20260707; t=1793297398; x=1793902198;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=O11jiG57nemh67LvGOodj7boyGYJ53ph3c5MQLBtbwQ=;
-        b=sFB07rjnwRdCQMcmTp07heBE5RcMIRGCKJ+aAQo7qEpx+XOCLb/+sOa2Sqvmg7Dft1
-         s4rO2zRueOKyrYdtLJG1WMC9Dht9G+HtD8REQwjMIHpxA4BI8y0TK7c1tNQwEk1nnfwT
-         dlAiWyd4+e5ytFg6LaWXPus0B321iH5NbAwmNaUf1QnemS2uh3pb+nXfw+OZSoZius+U
-         CsQCRbjIP7XT+16zc5mXNBDWRcp39L6YopPd+4BychKBARrs9DtrskbdGGbYNWeI5DqU
-         mNr/cBJSygOc7ZNTJOzcNf4StEP4Zz1l0DsPijTF28h4tFie02joxoI8Y3H4bWSI/7fr
-         4e9g==
-X-Forwarded-Encrypted: i=1; AKwUvBzrXqIm3jIoNnn7XI0bNYhCxK5B9bAGnHcvuD+nMNg6tAN53XqWmux4B72Tblb5+Jkhb8tnr7YcxGc=@vger.kernel.org
-X-Gm-Message-State: AFq9FYLVqv5PgpahCWr7YUymkSLLiXwonX00iNb4Rxw8DCjfClY4DTpj
-	MptoCfOtRdeEgBgtDsEd9C2NJyt5D0A9S6HJ2zRiTghPDThVDOupSmRnmh8IDQULCWg=
-X-Gm-Gg: AYBFou0Td7fQWhKmT1nEqEpo3+XLavoemVJA5I4LzAfbQPct7YANdHU4OTLXegmMFvO
-	hABVZADdzSIe1z5dmTmtj2t0/WP56KIfCiO3zCbiaPF12ThoIdq3ZCUYPnsGGJNqXvZGIpjwY5v
-	QI2vj6Lc7hiTTUqUKxlaCX99JDzDD0z48ynQhOFF7W7GM3QmOU/lce5J20B7wakNeaNi2KMXvN1
-	yjA2xhRVaZ1Wmtv0tJaCaIrXWdTKolX9wIZkeQQ7U4cQz/OHw/yiPb/x94hw/ufL2eCqCdbloVq
-	Vs9gh8T+6EVwhJ7ws8U1TFxFr94+UAbFobkP+ffrjrdGM7G4MOjzOtLMLe4PCxfj8QCTk72nWuB
-	QI2ZMZK+IbVm3/7DPB1/LWuNnRxRdaB4xp6W1/MRNoA0IqXCuXhVYusL5p7DWpx9Np5+QpGJbtv
-	5/nA1T5EhGBB4gh66Av6Z4TvBwOn7ajQtXXZaMbZ6J2uNQNRnyeGNKiwH55SDoM70XaQr7AwSto
-	X/UVxnvFWU2kAx8SNW9zs9tQ3dB4lXx3raVpuViaghhAK2TT5aqboHJS2XEDP1YgQAi3afPoMSB
-	4m+GVwfWOeuS5whFjaygU/TytyBHKj3T4L1jn7emfgyVLp4rDA42ipYDJSmYKrqRVHlhxZzb
-X-Received: by 2002:a05:6820:82b:b0:703:4abb:5628 with SMTP id 006d021491bc7-714f256d526mr50115eaf.64.1793297401863;
-        Thu, 29 Oct 2026 11:10:01 -0700 (PDT)
+        bh=s15KPFvSCwNiVaqBAYJFg7BNb25ktBO5/NM/9ViUK+E=;
+        b=y5+qKKyWawVTi7IEkAt4Ub7fQQXohw4HqcnlxFmu5PV3eZ/eUnPwnTNG2jp8PpFyRp
+         xajzCoyozMHkTN4whq59BO0QLAKzGg/RIOmtWfL9IEWVBIiQ+R8Q5hduqhPQFE3CA6cV
+         Xvsa98GpRdbQqWnIlFy5uEzk0/3ymmxNQl9c+xKE/OM/GehGSZ+Uy9kfIRbHFAHes8YY
+         HAqb7Ne5qQe7yj7wnthjrQCVfFKl9dWBh/+B4aUco/mmPwBKi006bEvcioqcXQidJvzF
+         kcW9f704yoq89wGsDE1pUxEFSHsP345AWZCrCWlaUoEKX8uLxFtHjvkOj1KDI59Z1Zg2
+         /0KQ==
+X-Forwarded-Encrypted: i=1; AKwUvByzkV7deqIiL8MC4Os8P/i4cxXQZdcpXos01VwZ4ToOVWtUwkW1jeRvdi/MeeMt4YArNjtrf4SP018=@vger.kernel.org
+X-Gm-Message-State: AFq9FYLAEODVL09WqfP6eJdTDNgbFwXVnnEE5gbBPV1MNXVOoS76fSRH
+	X6AsXgXo/BxQgV6cklWatAy8A1hhlJ9qjHUc4E6BAgNGqjg7B5RV42/uGFB+azbsDfg=
+X-Gm-Gg: AYBFou2UaJ8n+nZ9LhcfUl+Szc95gMHVMJWMUw3hDoKc0H3kjsXcWVRGsX92XItHMjw
+	149jQy0MkbFsN9bV/W/aplw1lSIpGXjgXTpn1kL73R6KVqgVCBcqwB+J4TDM6OtPUVbf6HKXIgD
+	6LlucBIW+nptnTg2qiGz3pDsqRCW/fmb03hBzfEJLUfcTz/PyJehsqCVbJBfG2J6Vvf2Nug9vu2
+	UIcEyFgkpacIoMFB7DLOrFbAZOdGmyGfU6eP7B9y+1w63/KaVoBz9lRInW8rMOPJNHkIHeiyE9b
+	yzm7KQgwBS/ChT+M0SdVg8RB5Uq71LhZuuGRAK77S9upsUQ7qNkOalsZG4H1ULEbPF08DTnLJ/q
+	9VrJm+ncQN6NYqTuwrI3fLBBZI7WEL0Y5F8SIdY9hEc8sUdVI8r9YfciVDTpGYy2oS8OhplPhUC
+	5rBJdwQJTeKZ2X5F7MGyvT8vEk7RaS1e9fkYs1ZH3+JmqlK9eM2aXrF6QTsMPA7it6RkF6e3j2m
+	LM93frwpz1DYrJLMc6vlfKzxoGpV3SS6SlAI9lWI/KJ2KGzvLkiWnXWeG7ei0qdK3GJJ1SOhKrU
+	zMX8H6/rgMJi3AcQIu49N4rRvz6LZ5yGssoGEN4N2o/KqQz/PskTqoE7iEYfRq6uEhtGpGXG
+X-Received: by 2002:a05:6830:4120:b0:81c:dbd7:65dc with SMTP id 46e09a7af769-85abf770d16mr4912244a34.7.1793297398266;
+        Thu, 29 Oct 2026 11:09:58 -0700 (PDT)
 Received: from localhost (75-163-200-235.clsp.qwest.net. [75.163.200.235])
-        by smtp.gmail.com with ESMTPSA id 006d021491bc7-714f287d04fsm35324eaf.0.2026.10.29.11.10.00
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-85d3545b847sm156364a34.7.2026.10.29.11.09.57
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 29 Oct 2026 11:10:01 -0700 (PDT)
+        Thu, 29 Oct 2026 11:09:57 -0700 (PDT)
 From: Jonathan Flynn <jonathan.flynn@hammerspace.com>
 To: NeilBrown <neil@brown.name>,
 	Alexander Viro <viro@zeniv.linux.org.uk>,
@@ -92,13 +92,12 @@ Cc: Jeff Layton <jlayton@kernel.org>,
 	linux-nfs@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH RFC 02/12] vfs: allow the parent lock to be shared for O_CREAT
-Date: Thu, 29 Oct 2026 12:09:47 -0600
-Message-ID: <20261029180957.387138-3-jonathan.flynn@hammerspace.com>
+Subject: [PATCH RFC 00/12] vfs, nfs: concurrent create and unlink in one directory
+Date: Thu, 29 Oct 2026 12:09:45 -0600
+Message-ID: <20261029180957.387138-1-jonathan.flynn@hammerspace.com>
 X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20261029180957.387138-1-jonathan.flynn@hammerspace.com>
+In-Reply-To: <20261028041023.3738553-1-neilb@ownmail.net>
 References: <20261028041023.3738553-1-neilb@ownmail.net>
- <20261029180957.387138-1-jonathan.flynn@hammerspace.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -110,436 +109,152 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The VFS chooses the mode of the parent directory's lock for an open from
-the open flags alone: O_CREAT takes it exclusive, everything else
-shared.  That choice is made before any filesystem method is reachable,
-so a filesystem has nowhere to say that it does not need the exclusive
-lock for a create.  For a network filesystem the consequence is direct:
-a create is a server round trip, and the exclusive parent lock
-serializes those round trips, so creates in one directory proceed one
-round trip at a time however many threads are creating.
+Hi Neil,
 
-Add an ->iop_flags field to struct inode_operations, mirroring
-->fop_flags, with one flag, IOPF_ATOMIC_OPEN_CREATE_SHARED.  It is
-transitional: it chooses how the parent is locked for a create, and goes
-away once the VFS no longer takes the parent lock for one.  When a
-directory's operations set it and provide ->atomic_open(), lookup_open()
-takes the parent shared for an O_CREAT open as well, and then passes
-->atomic_open() only an in-lookup dentry; dentry_create(), which nfsd
-uses, is still called with the parent held exclusive.  A filesystem
-that does not set the flag sees no change: the field is zero.  The
-field is the last member of a cacheline-aligned structure, so it
-occupies padding that was already there and no existing member moves.
+Thank you for this series; it is what makes these patches possible.  I
+had them on your v3 and have rebased them onto v4.  They extend it so
+that processes on one NFSv4 client can create and remove files in one
+directory concurrently.
 
-With the parent held shared, exclusion for the name being created
-comes from the in-lookup protocol that lookup already relies on under a
-shared lock: the first thread to resolve a name publishes an in-lookup
-dentry that a second finds and waits on, and the name enters the main
-hash once.  Every other directory-modifying operation -- create without
-an open, link, unlink, symlink, mkdir, rmdir, mknod and rename -- still
-takes the parent exclusive, so a shared create runs concurrently only
-with other creates and with what already holds the parent shared:
-lookup, readdir and opens without O_CREAT.  Unlink joins them only
-where a filesystem also provides ->unlink_shared(), added later in
-this series.
+  operations per second   parent exclusive   parent shared   ratio
+  creates                            2,616          29,939   11.4x
+  removals                           2,157          32,360   15.0x
 
-One case keeps the exclusive lock even where the flag is set: a
-superblock on which two names the dcache tells apart can be one
-directory entry, as on a case-insensitive server whose client does not
-fold case.  The in-lookup protocol would exclude a second create of
-"foo" but not a create of "FOO", so such a filesystem sets
-SB_I_NAMES_COLLIDE in ->s_iflags, and may set or clear it while
-mounted; creates in its directories then take the parent exclusive.
+One client, 96 processes in one directory, each creating files (open
+O_CREAT, a small write, close) for a set time, then removing them all;
+NFSv4.2 to a pNFS metadata server that is not knfsd; your v4, the 7.4
+VFS changes it builds on, the three silly-delete fixes and this series
+on a 7.3-based kernel, among other patches.  Each row switched only its
+own path, by a test-only module parameter not in this series, with the
+other path on; one run each.  The creates row comes from 300 s of
+creates.  The removals row comes from 120 s of creates, and each of its
+runs removed about 3.7 million files; the removal rates vary with that
+number, so it is given.  With the parent held exclusive, operations go
+one server round trip at a time.  2/12 quotes an earlier measurement,
+on a 7.1.13-based kernel.
 
-The VFS has one gap of its own to close.  A cached negative dentry that
-revalidates reaches the atomic-open method already hashed, outside the
-in-lookup protocol: safe under the exclusive lock, but under a shared
-one two threads could each hash a dentry for the name, leaving two
-hashed dentries for one name with nothing to detect it.  So, for a
-create with the parent held shared, reject such a dentry and go round
-the existing loop, so that ->atomic_open() is then only ever handed an
-in-lookup dentry.  On the filesystem that opts in later in this series
-this happens on every such create over a cached negative dentry, not
-only in a race, at the cost of a dentry allocation and an unhash but no
-extra round trip.  The rest of what the exclusive lock provided, for
-the filesystem's own per-directory state and for a plain open of the
-same name, becomes the filesystem's responsibility, as
-Documentation/filesystems/locking.rst now states.
+How it works.  2/12 lets a filesystem have the parent locked shared for
+O_CREAT (a flag in a new ->iop_flags field), and 6/12 for unlink(2)
+(->unlink_shared() and ->unlink_shared_done()).  The dentry then
+excludes the name: for a create, its in-lookup state, all
+nfs_atomic_open() needs since your 3/9; for a removal, an NFS mark that
+lookups, opens and creates of the name wait on until
+->unlink_shared_done(), which the VFS calls after the fsnotify delete
+event, if any.  What NFS cannot order that way, such as an open file,
+it hands back to ->unlink() under the exclusive lock; where the server
+reports itself case-insensitive or not case-preserving, NFS sets
+SB_I_NAMES_COLLIDE (3/12) and both keep the exclusive lock.  Both paths
+call d_alloc_parallel() under the shared lock, as lookup does.  When
+your directory-locking changes lift d_alloc_parallel() above i_rwsem,
+these calls have to move with lookup's; the exclusion does not change,
+and the opt-ins go once the VFS stops taking the parent lock (2/12,
+6/12).
 
-Since NeilBrown's "VFS: move mnt_want_write() and locking into
-lookup_open()", lookup_open() takes and drops the parent lock itself,
-so the flag is read there, once per pass, and decides both the lock
-mode and the rejection, with nothing threaded through a signature.
-With CONFIG_DEBUG_VFS, lookup_open() also warns if a create made with
-the parent held shared is about to hand ->atomic_open() a dentry that
-is not in-lookup; lockdep cannot see a missing exclusion, so nothing
-else would catch one.
+Patch flow:
+  prereq   1  store re-read server capabilities in one step, for 3
+  create   2  VFS opt-in to take the parent lock shared for O_CREAT
+           3  NFS sets SB_I_NAMES_COLLIDE where names can collide
+           4  NFSv4 directories opt in for O_CREAT
+  remove   5  factor vfs_unlink() into a helper, no functional change
+           6  VFS opt-in: ->unlink_shared(), ->unlink_shared_done()
+           7  a second ->d_fsdata mark, for removals under a shared lock
+           8  keep a dentry carrying that mark hashed
+           9  no new dentries from a listing that a removal overlapped
+          10  the removal method, handing back what it cannot order
+          11  look a name up again once its removal has unhashed it
+          12  NFSv4 directories opt in for unlink
 
-This relies on in-lookup dentries being allocated with the parent's
-->i_rwsem held, as d_alloc_parallel() is here.  NeilBrown's
-"multiple-filesystems: prepare for changes to VFS locking" plans to
-invert that order; if it does, the lookup of the name being created
-moves ahead of the shared parent lock, and the exclusion, which is the
-dentry's in-lookup state and not the parent lock, is unchanged.
+Three fixes for the silly-delete hand-off, which your 2/9 makes
+reachable, are posted separately, in reply to 2/9.
 
-Measured with "nfs: concurrent O_CREAT in one NFSv4 directory" on a
-7.1.13-based kernel carrying an earlier revision of both patches, using
-a test-only switch, not part of this series, to choose the lock mode at
-run time: with 60 processes on one client creating files (open with
-O_CREAT, a small write, close) in one directory, creates went from
-about 2,700 a second with the parent held exclusive to about 29,700
-with it held shared.  The shared rate stayed about flat from one to
-four clients, because one client already reached the server's limit.
+Tested on the same kernel over NFSv4.2, with the new paths on and off:
+removal races (with listings, and with tasks killed); O_EXCL creates
+racing unlink, with a kernel-side check that no revalidation trusted a
+removed entry; inotify event order; two clients; and an overlayfs mount
+whose lower file another client renamed away and back.  All passed,
+with no kernel warning or hung task, except the two-client test's check
+that nothing was left behind: on this kernel and on one with an earlier
+revision of this series, it found one silly-renamed file in three of
+four runs, with the new paths off as well as on, so they are not the
+cause.  Each time, the file left behind was not the one that had been
+silly-renamed: the silly-rename's RENAME, which goes by name, had moved
+another file of that name onto the hidden name.  A PROVE_LOCKING and
+KASAN build ran the removal, killed-task and O_EXCL tests with no
+report.  A case-insensitive server, where two spellings of a name never
+made two files, was tested on that earlier revision only; that code has
+not changed since.  Not run: fstests, knfsd as the server, NFSv4.0 or
+4.1, directory delegations (the server grants none), CONFIG_DEBUG_VFS, a
+weakly ordered CPU.
 
-Signed-off-by: Jonathan Flynn <jonathan.flynn@hammerspace.com>
----
+One question: are the opt-ins in 2/12 and 6/12 acceptable as interim
+interfaces until the directory-locking changes land?
 
-Notes:
-    For reviewers and review tools; not part of the changelog.
-    
-    An automated review of this patch (Claude Code running Sashiko's
-    review prompts) reported that locking.rst misdescribes a d_rehash()
-    of the in-lookup dentry, because a concurrent d_alloc_parallel()
-    would find that dentry on the in-lookup chain and wait on it.  It
-    was checked and dropped: atomic_open() calls d_lookup_done() as soon
-    as ->atomic_open() returns, and that takes the dentry off the
-    in-lookup chain without the ->i_dir_seq window.  A
-    d_alloc_parallel() that sampled ->i_dir_seq and missed the hash
-    before the d_rehash(), and scans the chain after the
-    d_lookup_done(), neither retries nor waits, and hashes a second
-    dentry for the name: the outcome the text describes.
+The series applies to 83f32c773255 in Linus's tree on top of your v4
+and the three silly-delete fixes.  fs/ compiles there without warnings
+at every commit, with and without CONFIG_DEBUG_VFS and lockdep; I have
+run it only on the 7.3-based kernel above.
 
- .../filesystems/directory-locking.rst         | 19 ++++
- Documentation/filesystems/locking.rst         | 81 ++++++++++++++++-
- fs/namei.c                                    | 86 +++++++++++++++++--
- include/linux/fs.h                            | 35 ++++++++
- include/linux/fs/super_types.h                |  1 +
- 5 files changed, 214 insertions(+), 8 deletions(-)
+Tools: these patches, their changelogs, the race tests and this letter
+were written with Claude Code, using Anthropic's Claude Opus 5 and
+Claude Opus 5.5 models, at my direction over many sessions: I chose
+among the designs it proposed and directed each revision.  It found, by
+reading the code, the bug that 1/12 fixes: while the client reads a
+server's capabilities again, a capability the server still offers can
+look missing.  The three silly-delete fixes, posted separately, say
+which of their problems it found and how they were tested.
 
-diff --git a/Documentation/filesystems/directory-locking.rst b/Documentation/filesystems/directory-locking.rst
-index 6fdf0b02df..316f10cb3d 100644
---- a/Documentation/filesystems/directory-locking.rst
-+++ b/Documentation/filesystems/directory-locking.rst
-@@ -25,6 +25,25 @@ For our purposes all operations fall in 6 classes:
- 
- 	* lock the directory we are accessing (exclusive)
- 
-+	An O_CREAT open is the one exception: if the filesystem has set
-+	IOPF_ATOMIC_OPEN_CREATE_SHARED in ->iop_flags and its superblock has
-+	not set SB_I_NAMES_COLLIDE, its ->atomic_open() for such an open is
-+	called with the directory locked shared, and exclusion for the name
-+	being created comes from the in-lookup state of the dentry instead -
-+	see Documentation/filesystems/locking.rst.
-+	That takes an existing lock in shared mode; it adds no lock and no
-+	new ordering, so the ordering analysis below is unaffected.  That
-+	holds while d_alloc_parallel() is called with the parent's ->i_rwsem
-+	held, as it is here; once in-lookup dentries are taken before
-+	->i_rwsem, the create's lookup has to move ahead of the shared parent
-+	lock with them.
-+
-+	Such a create can sleep waiting for an in-lookup dentry while
-+	holding the parent shared.  That is not a new wait: a shared-mode
-+	lookup already does it, and no thread that has published an
-+	in-lookup dentry needs the parent's ->i_rwsem to finish with it, so
-+	the waiter cannot be blocking the thread that must wake it.
-+
- 3. object removal.  Locking rules:
- 
- 	* lock the parent (exclusive)
-diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
-index f7363ad770..c04df4c746 100644
---- a/Documentation/filesystems/locking.rst
-+++ b/Documentation/filesystems/locking.rst
-@@ -120,7 +120,7 @@ listxattr:	no
- fiemap:		no
- update_time:	no
- sync_lazytime:	no
--atomic_open:	shared (exclusive if O_CREAT is set in open flags)
-+atomic_open:	shared (exclusive if O_CREAT unless the fs opts in)
- tmpfile:	no
- fileattr_get:	no or exclusive
- fileattr_set:	exclusive
-@@ -135,6 +135,85 @@ get_offset_ctx  no
- 	involved.
- 	->rename() has ->i_rwsem exclusive on any subdirectory that changes parent.
- 
-+	->atomic_open() with O_CREAT set is called with ->i_rwsem on the
-+	parent held exclusive, unless the filesystem has set
-+	IOPF_ATOMIC_OPEN_CREATE_SHARED in the ->iop_flags of that
-+	directory's ->i_op; then lookup_open() calls it with ->i_rwsem held
-+	shared, as ->atomic_open() without O_CREAT already is;
-+	dentry_create(), which nfsd uses, is still called with it held
-+	exclusive.  The flag is a property of the ->i_op instance, so it
-+	applies to every directory using it.  It is ignored unless the
-+	filesystem also provides ->atomic_open(): without that method the
-+	parent is still taken exclusive, so ->create() is never called with
-+	->i_rwsem held shared.
-+
-+	IOPF_ATOMIC_OPEN_CREATE_SHARED is transitional: it chooses how the
-+	parent is locked for a create, and goes away once the VFS no longer
-+	takes the parent lock for one.
-+
-+	Setting IOPF_ATOMIC_OPEN_CREATE_SHARED is a statement that the
-+	filesystem does not rely on the exclusive parent lock to exclude
-+	other creates in the same directory, or to serialize its own
-+	per-directory state.  Creates in one directory may then run
-+	concurrently with each other, with an ->atomic_open() for the same
-+	or another name without O_CREAT, and with ->lookup() and
-+	->iterate_shared().  What excludes two creates of the same name is
-+	the in-lookup protocol: whenever ->atomic_open() is called with
-+	O_CREAT set and ->i_rwsem held shared, the VFS guarantees that the
-+	dentry passed is in-lookup (d_in_lookup() is true), so a concurrent
-+	lookup or create of that name finds it in the in-lookup hash and
-+	waits for it.  With ->i_rwsem held exclusive - on a superblock that
-+	has set SB_I_NAMES_COLLIDE, or through dentry_create() - the dentry
-+	need not be in-lookup and may be a hashed negative one, as before.
-+	Nothing else changes: ->create(), ->link(), ->unlink(), ->mkdir(),
-+	->rmdir(), ->mknod(), ->symlink() and ->rename() still take
-+	->i_rwsem exclusive on the parent, so a create holding it shared
-+	still excludes them.
-+
-+	The flag is also ignored, and the parent taken exclusive, on a
-+	superblock that has set SB_I_NAMES_COLLIDE in ->s_iflags.  A
-+	filesystem sets that bit when two names the dcache compares as
-+	different - byte for byte, or through ->d_hash() and ->d_compare()
-+	where it has them - can be one directory entry, as they are on a
-+	case-insensitive server whose client does not fold case in the
-+	dcache.  The in-lookup protocol is per name as the dcache compares
-+	names, so there it would exclude a second create of "foo" and not a
-+	create of "FOO".  A filesystem whose ->d_compare() already makes such
-+	names equal, as a casefolded directory's does, has no reason to set
-+	it.  The bit may change while the filesystem is mounted.  The VFS
-+	reads it for each open before it takes the parent lock, so an open
-+	that read it clear may still be running shared when it is set.
-+
-+	A filesystem that sets the flag must publish its result on the
-+	dentry passed to ->atomic_open() with d_splice_alias() or d_add(),
-+	which hash it and end the in-lookup state together, inside the
-+	parent's ->i_dir_seq window, or with d_add_ci(), which leaves it
-+	unhashed and publishes a dentry of the case-exact name that way.
-+	It must not hash it with d_rehash().  d_rehash() takes ->d_lock and
-+	adds the name to the dentry hash, nothing more: the in-lookup state
-+	does not end, no ->i_dir_seq window is taken, and the waiters are
-+	not woken.  A concurrent d_alloc_parallel() for the name then
-+	neither finds a reason to retry nor has anything to wait for, and
-+	hashes a second dentry for it.  The result is two hashed dentries
-+	for one name with independent inode state, lookups getting either,
-+	and nothing in the VFS detecting the condition.
-+
-+	The guarantee is for the O_CREAT opener only.  Under the shared lock
-+	an O_CREAT open can run concurrently with a plain open of the same
-+	name, and only the O_CREAT one is handed an in-lookup dentry; the
-+	other may be holding a dentry it found hashed and revalidated.  That
-+	pairing is not new - two plain opens of one name can already reach
-+	->atomic_open() that way under the same shared lock - and the VFS
-+	does not close it.  A filesystem setting this flag is responsible
-+	for it, as it is today.  One way, which NFS uses, is for
-+	->d_revalidate() to report a cached negative dentry invalid when
-+	LOOKUP_OPEN is set without LOOKUP_CREATE: lookup_open() then drops
-+	it and calls d_alloc_parallel() itself, so the plain open is also
-+	handed an in-lookup dentry, or waits on the creator's.  Calling
-+	d_alloc_parallel() from ->atomic_open() instead relies on in-lookup
-+	dentries being allocated under ->i_rwsem, which is planned to
-+	change.
-+
- See Documentation/filesystems/directory-locking.rst for more detailed discussion
- of the locking scheme for directory operations.
- 
-diff --git a/fs/namei.c b/fs/namei.c
-index 96c6594039..ce10a408d3 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -4414,12 +4414,49 @@ static struct dentry *atomic_open(const struct path *path, struct dentry *dentry
- 	return dentry;
- }
- 
-+/*
-+ * Can this directory's ->atomic_open() be given an O_CREAT open with
-+ * i_rwsem held shared?  The method must be present: without it
-+ * lookup_open() goes on to break the directory lease and call ->create(),
-+ * and the in-lookup protocol covers neither, so a filesystem that sets the
-+ * flag and supplies no ->atomic_open keeps the exclusive lock rather than
-+ * silently losing exclusion.
-+ *
-+ * Nor on a superblock that has set SB_I_NAMES_COLLIDE.  The in-lookup state
-+ * that stands in for the exclusive lock is per name as the dcache compares
-+ * names, so where the filesystem makes one entry of two names the dcache
-+ * holds apart, it excludes a second create of "foo" but not a create of
-+ * "FOO", while the exclusive lock excluded both.  The filesystem may learn
-+ * that about a superblock only after a directory has taken its ->i_op, and
-+ * may learn it again, so it is a superblock bit and not an ops-table flag.
-+ * It is tested last, so only an O_CREAT open in a directory that has opted
-+ * in reads it.
-+ *
-+ * The bit is read once per pass of lookup_open(), before the parent lock is
-+ * taken.  An open that read it clear may still run shared after the
-+ * filesystem has set it, until that open completes; every open that reads
-+ * it set takes the parent exclusive and so excludes the shared ones.
-+ */
-+static inline bool atomic_open_create_shared(struct inode *dir)
-+{
-+	const struct inode_operations *iop = dir->i_op;
-+
-+	return iop->atomic_open &&
-+	       (iop->iop_flags & IOPF_ATOMIC_OPEN_CREATE_SHARED) &&
-+	       !(READ_ONCE(dir->i_sb->s_iflags) & SB_I_NAMES_COLLIDE);
-+}
-+
- /*
-  * Look up and maybe create and open the last component.
-  *
-- * Takes the parent inode lock itself, exclusive if O_CREAT was requested and
-- * shared otherwise, and drops it again before returning.  The caller must not
-- * hold it.
-+ * Takes the parent inode lock itself, and drops it again before returning;
-+ * the caller must not hold it.  O_CREAT normally takes it exclusive, every
-+ * other open shared.  A directory whose ->atomic_open() has declared
-+ * IOPF_ATOMIC_OPEN_CREATE_SHARED takes it shared for O_CREAT as well,
-+ * unless its superblock has set SB_I_NAMES_COLLIDE, and
-+ * the dentry handed to ->atomic_open() is then guaranteed to be in-lookup:
-+ * that in-lookup state, not the parent lock, is what excludes another opener
-+ * of the same name.
-  *
-  * On success returns the dentry of the last component.  If FMODE_OPENED is set
-  * on file->f_mode the file was also opened and attached to @file; otherwise
-@@ -4440,6 +4477,7 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
- 	int error, create_error;
- 	umode_t mode;
- 	bool got_write;
-+	bool create_shared;
- 	unsigned int shared_flag;
- 
- retry:
-@@ -4447,7 +4485,22 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
- 	got_write = false;
- 	mode = op->mode;
- 	create_error = 0;
--	shared_flag = (open_flag & O_CREAT) ? 0 : LOOKUP_SHARED;
-+	/*
-+	 * One evaluation of atomic_open_create_shared(), which reads ->i_op
-+	 * and the superblock's SB_I_NAMES_COLLIDE, decides the lock mode, the
-+	 * unlock at out: and the in-lookup guarantee this function then owes
-+	 * ->atomic_open(), so the three cannot disagree.  It is after retry:,
-+	 * so a delegation retry re-reads it for the lock it is about to take.
-+	 *
-+	 * LOOKUP_SHARED states how the parent is locked, so it follows the
-+	 * lock and not O_CREAT.  create_shared is the narrower question --
-+	 * O_CREAT holding the parent shared -- and only that case may reject
-+	 * a hashed negative dentry below.
-+	 */
-+	create_shared = (open_flag & O_CREAT) &&
-+			atomic_open_create_shared(dir_inode);
-+	shared_flag = (!(open_flag & O_CREAT) || create_shared) ?
-+		      LOOKUP_SHARED : 0;
- 
- 	if (open_flag & (O_CREAT | O_TRUNC | O_WRONLY | O_RDWR)) {
- 		got_write = !mnt_want_write(nd->path.mnt);
-@@ -4478,10 +4531,23 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
- 			break;
- 
- 		error = d_revalidate(dir_inode, &nd->last, dentry, nd->flags);
--		if (likely(error > 0))
--			break;
--		if (error)
-+		if (unlikely(error < 0))
- 			goto out_dput;
-+		/*
-+		 * A valid dentry would normally end the loop here.  With the
-+		 * parent held shared a negative one cannot: hashed and not
-+		 * in-lookup, it leaves ->atomic_open() no exclusion for this
-+		 * name, because __d_add() takes the i_dir_seq window only for
-+		 * an in-lookup dentry but rehashes any dentry it finds
-+		 * unhashed, so once this one has been dropped a second opener
-+		 * can hash the same name independently.
-+		 * Reject it and go round; d_alloc_parallel() then returns an
-+		 * in-lookup dentry.  On a negative, d_invalidate() is an
-+		 * unhash and nothing more.  A positive is kept: it is returned
-+		 * just below and never reaches ->atomic_open().
-+		 */
-+		if (likely(error > 0) && (!create_shared || dentry->d_inode))
-+			break;
- 		d_invalidate(dentry);
- 		dput(dentry);
- 		dentry = NULL;
-@@ -4519,6 +4585,12 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
- 	if (create_error)
- 		open_flag &= ~O_CREAT;
- 	if (dir_inode->i_op->atomic_open) {
-+		/*
-+		 * With the parent held shared, this dentry being in-lookup is
-+		 * what excludes another opener of the same name.  The loop
-+		 * above established it and nothing since can have cleared it.
-+		 */
-+		VFS_WARN_ON_ONCE(create_shared && !d_in_lookup(dentry));
- 		if (nd->flags & LOOKUP_DIRECTORY)
- 			open_flag |= O_DIRECTORY;
- 		dentry = atomic_open(&nd->path, dentry, file, open_flag, mode,
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 3e240579e2..f14520194b 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1995,6 +1995,8 @@ enum fs_update_time {
- 	FS_UPD_CMTIME,
- };
- 
-+typedef unsigned int __bitwise iop_flags_t;
-+
- struct inode_operations {
- 	struct dentry * (*lookup) (struct inode *,struct dentry *, unsigned int);
- 	const char * (*get_link) (struct dentry *, struct inode *, struct delayed_call *);
-@@ -2038,8 +2040,41 @@ struct inode_operations {
- 			    struct dentry *dentry, struct file_kattr *fa);
- 	int (*fileattr_get)(struct dentry *dentry, struct file_kattr *fa);
- 	struct offset_ctx *(*get_offset_ctx)(struct inode *inode);
-+	iop_flags_t iop_flags;
- } ____cacheline_aligned;
- 
-+/*
-+ * ->atomic_open() may be called with the parent directory's i_rwsem held
-+ * shared even when O_CREAT is set.  A filesystem setting this accepts that,
-+ * for such an open, the only exclusion against another opener of the same
-+ * name is the in-lookup state of the dentry it is given:
-+ *
-+ *  - that dentry is always in-lookup (DCACHE_PAR_LOOKUP), so a concurrent
-+ *    d_alloc_parallel() for the name finds it and waits on it;
-+ *  - it must be hashed only through d_add() or d_splice_alias(), which end
-+ *    the in-lookup state under the parent's i_dir_seq (d_add_ci() leaves it
-+ *    unhashed and publishes the case-exact name instead).  Hashing it
-+ *    with d_rehash() instead loses the exclusion: the name becomes findable
-+ *    without the in-lookup state ending, so a concurrent d_alloc_parallel()
-+ *    neither waits nor retries and a second dentry for the name can be
-+ *    hashed;
-+ *  - d_drop() on it does not break that: it unhashes from the main hash
-+ *    only, leaving the in-lookup hash entry and the waiters in place;
-+ *  - no other directory-modifying operation becomes concurrent.  ->create,
-+ *    ->link, ->unlink, ->symlink, ->mkdir, ->rmdir, ->mknod and ->rename
-+ *    still run with i_rwsem held exclusive, so an O_CREAT open is
-+ *    serialized against all of them.  It runs concurrently with other
-+ *    O_CREAT opens, with an ->atomic_open() for the same or another name
-+ *    without O_CREAT, and with ->lookup() and ->iterate_shared(), which
-+ *    already run with i_rwsem held shared.
-+ *
-+ * Ignored unless the filesystem also provides ->atomic_open, and ignored on
-+ * a superblock with SB_I_NAMES_COLLIDE set in ->s_iflags: there the in-lookup
-+ * state of "foo" does not exclude a create of "FOO", which the filesystem
-+ * may make the same entry, so the parent is taken exclusive.
-+ */
-+#define IOPF_ATOMIC_OPEN_CREATE_SHARED	((__force iop_flags_t)(1 << 0))
-+
- /* Did the driver provide valid mmap hook configuration? */
- static inline bool can_mmap_file(struct file *file)
- {
-diff --git a/include/linux/fs/super_types.h b/include/linux/fs/super_types.h
-index ecd96aeb1c..91f1522a0d 100644
---- a/include/linux/fs/super_types.h
-+++ b/include/linux/fs/super_types.h
-@@ -352,5 +352,6 @@ struct super_block {
- #define SB_I_NOIDMAP	0x00002000	/* No idmapped mounts on this superblock */
- #define SB_I_ALLOW_HSM	0x00004000	/* Allow HSM events on this superblock */
- #define SB_I_NO_DATA_INTEGRITY	0x00008000 /* fs cannot guarantee data persistence on sync */
-+#define SB_I_NAMES_COLLIDE	0x00010000 /* names the dcache tells apart can be one entry */
- 
- #endif /* _LINUX_FS_SUPER_TYPES_H */
+Thanks,
+Jonathan
+
+Jonathan Flynn (12):
+  nfs: update a server's capabilities in one step
+  vfs: allow the parent lock to be shared for O_CREAT
+  nfs: tell the VFS when two names can be one entry on the server
+  nfs: concurrent O_CREAT in one NFSv4 directory
+  vfs: factor file removal into a helper, no functional change
+  vfs: let a filesystem remove files with the parent directory locked
+    shared
+  nfs: add a second mark for a removal made with the parent locked
+    shared
+  nfs: keep the dentry of a shared-parent removal hashed
+  nfs: do not cache a name from a listing that a removal overlapped
+  nfs: add the removal method for a parent directory locked shared
+  nfs: look a name up again once its removal has unhashed it
+  nfs: remove files with the parent directory locked shared on NFSv4
+
+ .../filesystems/directory-locking.rst         |  60 +++
+ Documentation/filesystems/locking.rst         | 259 ++++++++++++-
+ Documentation/filesystems/porting.rst         |  35 ++
+ Documentation/filesystems/vfs.rst             |  25 ++
+ fs/namei.c                                    | 360 +++++++++++++++++-
+ fs/nfs/client.c                               |   1 +
+ fs/nfs/dir.c                                  | 300 ++++++++++++++-
+ fs/nfs/inode.c                                |   2 +
+ fs/nfs/internal.h                             | 211 ++++++++++
+ fs/nfs/nfs4file.c                             |   9 +-
+ fs/nfs/nfs4proc.c                             |  35 +-
+ fs/nfs/nfstrace.h                             |   2 +
+ fs/nfs/super.c                                |   2 +
+ fs/nfs/unlink.c                               |  16 +-
+ include/linux/fs.h                            |  72 ++++
+ include/linux/fs/super_types.h                |   1 +
+ include/linux/nfs_fs.h                        |  28 ++
+ 17 files changed, 1361 insertions(+), 57 deletions(-)
+
+
+base-commit: 83f32c773255720a661aa45d83e36278135f23f5
+prerequisite-patch-id: 3405b4d6ab8b0bf24ba63a898083d617deec4f24
+prerequisite-patch-id: 096657d6d80d7ca533ccb574d2af65611ede4af2
+prerequisite-patch-id: 1a2319c14739918aef86116647fea28ae85ad4df
+prerequisite-patch-id: 725cb18c3936d50141ef27dafc159bf50b64a5bd
+prerequisite-patch-id: b39cdd352b97e2cd247311fd5db620dbff227bd7
+prerequisite-patch-id: f9f3f0e945cadf96113d4ac9ab8f7b0c207af4e5
+prerequisite-patch-id: 4c09a15390bb556d79bea1ee733f52a58bec80ef
+prerequisite-patch-id: 7c026717a97b2c86a169539822f5d14650f68f8a
+prerequisite-patch-id: a702d54495d0f3d7f88b82411d884dcf5aacf9a0
+prerequisite-patch-id: a7e7263e8916612f3e4b767946b5d9259029f50e
+prerequisite-patch-id: a8e5414df9d9912dcdf9bb1dbb2811ce326a1e1f
+prerequisite-patch-id: e8050b998d5790f3bb4311bc65011735ed7d8b2f
 -- 
 2.43.0
 
