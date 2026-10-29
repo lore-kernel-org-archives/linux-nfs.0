@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793281281;
-	b=yDxckye49hL1yvioiBLjGp+njA9xRmvb8CJ01txTWgrNQOv49vKNi0vCiNytZKq0nLsF
-	 /YfGWJXdp88Cs0h+WPW8CTcqV9QFqhXi0Eer7iirot9kmZo0j7X4JEa0dhP6Bl1rLrVRP
-	 JS+2EqUtYVZxuTELf4rO1sf8EwQ/AlIPRq0Zec0sDI0BKq2kW1CHqmGGzKQYzymfkRZqJ
-	 PpMNizJErPtjLstzS1kRrIc8ugNDTREfZKlC9ia935jvYBCQju9edt2TXTBQtMKbdowUG
-	 FXdkkTZq6pIO8grL0BPxnDugeN8Cu2jKLT9LS5/rp06Gv3pLzJ8SSXQ6w10ZWXifO0A==
+	t=1793281282;
+	b=tXJ8zf4IllctxBjJjzhnnDKkOC8WQZy/5eKoTWW27xaYruxyYK+RDg09WZv1x1A6fehC
+	 IlYe1wpNJnpItC6p6yMU/zx9gEUYX5lfyyEd0UoSQtQ2ktQV6QKp9BoESfppbWl6dFi9I
+	 kL7ErD5j1TDT8/oBlTQNB0xeZfveUeryyguOOcw8O/Fk9TMR1z6OVqxGJE5sb9Ai6ImXQ
+	 k1RZ+fZ4QYk9KduaTk4dszGqTJjylM6np4tdmdXO9likIRRiLLOXseMHimCUcQg5lyVJV
+	 MVDegyBa42c3RXM01lNHyRHV1VqtlPE9lVSgj6WWPEUXxlgFxaJKpZ+KKFnjpl+PwNg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793281281;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793281282;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=g+Tit1C6cHHCvh64ed+uoqzBX77S1bWWY8LiX81dQMM=;
-	b=3cpR4QVUZ7khNQIrMC1XZmj/r0c/6LHA3VpIY6RNA2E070hIyCZ4WBLAHbZdfr6LpQ3P
-	 ATzVhIYXufRxHvppRlJefYttjT7kJufue7ZXmi235yMwM41esnBs4gwHTKgKevEBDh7i6
-	 ivH0wV5yNdiTDJNGvAOTw6tH6zIbAQMhOGpBl2qzoiebh4ka76tFUc0XWVoQVMEEqCv+G
-	 a44t0HWtT65hoY33/uEiRuludec2DlRTjSaeT+xCdogZVYm3qSHKrjOfJFuWk0R556lkM
-	 AmYcQdLvHDDK6NNmqLZYQ6YPaA9KZm+ck34jXVnZ6E1W65q0GFE+VXevW6+aLQ4hwzQ==
+	bh=YykY1h0vsEP7iI6IGeQZJRI2CizACCWjN/47EdIXV68=;
+	b=L/SEmovINJ2vC3J60M8WDNqeNLOtbeeC47+nTITZt0ACp+RRCmQb0p5Pusc3ocLq1vGI
+	 OcZV9xLlTqILmN+v/FYXJeL2rSZb7lFUbZvcjOVyhvZKzOCstPF2A8pui0Fb7jEcswsnz
+	 dYsnZY+dLIYx35Igo6z82L1pqGRzE+xVlEOFbjcPhLhxa4yZW0i+0J5GRIS29+IteDSVP
+	 19UFN95keiQROya9CsSnE5To6zn3x97nJQ9u8mVGsyDqa3nX/EjJSoeQzSijTAvrt7VzP
+	 NTTRIgiKgm3Pvq5krVcwcSyE7CY/pHqiF7FzRCa845QswIX4dSkI+reudZvPxx1kn6A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ndJK4geB;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kpPNyQdw;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B1D37606A31F
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 13:41:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A80F0606A32E
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 13:41:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ndJK4geB
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C34A01F031EA;
-	Thu, 29 Oct 2026 13:41:19 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kpPNyQdw
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C815F1F031E2;
+	Thu, 29 Oct 2026 13:41:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793281280;
-	bh=g+Tit1C6cHHCvh64ed+uoqzBX77S1bWWY8LiX81dQMM=;
+	s=k20260515; t=1793281281;
+	bh=YykY1h0vsEP7iI6IGeQZJRI2CizACCWjN/47EdIXV68=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=ndJK4geBuoQqb1UrjCf7fjHzmoVjLecoDL1kZWAtvH+pNFvH0dSUSD1L4VvxZYNms
-	 XX0jXqvTIyguKcmrIE/I6J0nb64lNrr1eaZfbQ5q3unVZHgGsON+neFYliKpGkVLiN
-	 zvDudRSXsSsuxsBxsRCGEwXezSd+Wsfyw5lzhDGucQkhxCnN+Q8ZxGuxsPifJN+64W
-	 seH5+G7Xtkv+v4thE3s5/sVzvwodEYheY5iEti1NIZUJHVwMkglBM48oNr9LRyAfkU
-	 Jz9I3/BrjYrxL3PPeE1y6rIRPGULwGLGqmJxcKTLiAlV84NVwABLRgmhtSsGq3lfcT
-	 itqaMKu4wmDnA==
+	b=kpPNyQdwfKy5TT/3Nu31ODOtkVH784iLjEy04Vq8/vNVlR6lq+0ZDdijjfq2esGC6
+	 Flx1R3s5NVcZMoOju0kKf+Tit5BumRjahYutHZST07qlhpwUuvbbzOjUZLU4pioJdH
+	 Fdqq5UeAC3ej5oLDBPrFVqzBOSwwjlc1gMj4DbcXHT5gRNm53rW5e2tGZHV6hXbomF
+	 2bKlln4+No4ZL/zxEqK8t1ki2DGo0C9eC9MgmHz8BXsBImWBPxe3qm+9P/xnwoP4YE
+	 UNWhKC9ni17WGyYoAEIvjC4mknG8XSNo5jgXWq8xtfCVyjs8auVOwqu6Yi6KifOXrg
+	 LBVWygN2aywiA==
 From: Chuck Lever <cel@kernel.org>
-Date: Thu, 29 Oct 2026 09:41:04 -0400
-Subject: [PATCH 06/10] NFSD: Stop disclosing the conflicting lock holder in
- a lock denial
+Date: Thu, 29 Oct 2026 09:41:05 -0400
+Subject: [PATCH 07/10] NFSD: Destroy the COPY_NOTIFY stateid IDR at netns
+ teardown
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-random-stateids-v1-6-8648878fec8c@kernel.org>
+Message-Id: <20261029-random-stateids-v1-7-8648878fec8c@kernel.org>
 References: <20261029-random-stateids-v1-0-8648878fec8c@kernel.org>
 In-Reply-To: <20261029-random-stateids-v1-0-8648878fec8c@kernel.org>
 To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
@@ -63,155 +63,82 @@ To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org
 X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5044; i=cel@kernel.org;
- h=from:subject:message-id; bh=wG1RELbHmrvQ3wPajpXiESYS/cvYLgu9p+BdjXoVfwI=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq40z39H0iphv5cuMG6+Ctz0ZDV1Aave8p2JFw6
- 6aEkylKkoiJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCauNM9wAKCRAzarMzb2Z/
- l1BhEAC8fRIqJ2pnX2sw+USdwsnMT2VR/xhnEjPYwG8IaQjgS+Bw7IHXm7SjbhV7Hg3ruRRY1m2
- AS9sFmwCR+E2cZ/2cFfnWJfBF+xpcqZtqBHjFG/RlD78X85rDAZoXXnOhUWFUFTb4ls4fQDwuw7
- ypttwot9bTC5NTx+6VpsiF++kEHAIJXGSnUPkB8CTf22PjhidBLjL9pTDz4C2cjFUweuyKcjmle
- pi0zXDnnUqIoPEnqu7p0Zbyk+uQ2laU8uF9Kv2L0p4GYbLYlGO5RqXwU+XlCOz6xXRKV8g3skSk
- bCA6e9OEwNbp7DF8DFFFz7oEVeNKH3mO91ULKogU75VCngApEf80Mhii32D0RiCV3ELYxWPebWD
- 4MH+t4Pj0Y5OXBzBx2FK0gNAsmZ4cQjPNSmHNeJT5mYifEHjHRL0PmU+6/VUWks58THxmYlNeS+
- onPL/jd3/4GlIPebUdqpvOpDhClORri4y+Oajk1pTbhdn3zWy57M072SuGKKRmoJ0QQmGXp7sVd
- nEFqGApfAE4MrKN44J0uUCGeKp3fLYzjA2YYDNzo8UAKjn8YW2Aoi+dy8bDXWgIxr/n+mbrTWgh
- WXYJQkKAQaSwGwDOznQsLaCPwz6QhPhnJHh1HLMjZXyReylPzUeJ40AMSmkfIn/xdjg6sBrYojf
- WauX9C4AUiuYNSQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2242; i=cel@kernel.org;
+ h=from:subject:message-id; bh=HyFvpNz25844i755wAJApfvW10A5+jLv7IIaTO7BBG4=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq40z3p1EFruamdJNm6HCKiBnGaydEOqwB87q8a
+ wFzZdvCjrKJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCauNM9wAKCRAzarMzb2Z/
+ l3XwD/0eat6Mr57ZoAMAehNe5+qZsiyViLPhBflwGfphJ9EwGh/jelxIlS3Cx38fFomlCfJnnGu
+ M98euUHqKnza05KnKwfu0ptbaGpc4nZ+HVOt7oCKnFqbqF63O6nbOSgV+mLCc3Vm+fnvcEq6/s2
+ uTpdTuw/7kTYIXkSIjmliePq4EMJzCSmxBzxwwWs6bvfsh7USndW56FP9oiarWCX9hoohAQKnbQ
+ CV7klBiSAnMuAjh1YOeds51O+xcG9GEBUVXSoSE1NvOKheAsotYMUhqEzi5DratVhkyh1vnnyTX
+ ruRek4FE0rrz49KRr6k8ZVB5VRDFpA78lua5gw9+mPlMU99zy8dcOBpKJ+ou8d9ZnpQEFW3x2NS
+ 2nyzDmYTgyJGF1NAuIyAOu+OMNfbuHxrVSA0VOPxi3pUJ5MrOWN6kTeotbGfp0KWCaqhXj9B5Hb
+ gX3DqVEpSaEwMoE3Z4KXd0EhtmHnwLSfmpextxFheuu4d1dSZRBk8DOzuC2dKJcaJkSkhp2KasC
+ 0dl2kpFT+12L2jEKm17NZkA1je9Qonw5r8YTbvoaFUTITMyafgHb7TMpClteT+TxLHFcnCRDrZU
+ E/EMdykVD6//7Wbz3F1VM0HCn0go3IjzmU7r56gp9nf0gjYa1wElpxImkJwPhGjNt/r+XdSDRKQ
+ xjSXaJfXTTQAnUA==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-nfs4_set_lock_denied() copies the conflicting lock holder's
-cl_clientid into ld_clientid, and nfsd4_encode_lock4denied() puts
-that clientid on the wire in every LOCK and LOCKT denial. One LOCKT
-against a file where another client holds a conflicting byte-range
-lock hands the requester that holder's full clientid. NFSv4.0
-resolves a presented stateid against the client named inside the
-stateid rather than the caller, so a disclosed clientid lets an
-attacker skip the clientid search that a random cl_id is meant to
-force.
+nfs4_state_destroy_net() frees a netns's client hash tables but never
+drains or destroys nn->s2s_cp_stateids. The IDR empties only as the
+walked clients' stids reach their final put, and
+nfs4_state_create_net() runs idr_init() on it again at the next start.
 
-RFC 7530 Sections 16.10 and 16.11 return the conflicting lock's owner
-but do not require the holder's real clientid. RFC 8881 Section
-18.10.3 does: a server returning NFS4ERR_DENIED MUST set the clientid
-of the denied owner. This change departs from that requirement on
-purpose. The nevermind branch already returns a zero clientid and an
-empty owner when a non-NFSv4 owner holds the conflict, so every
-client already copes with that reply, and the Linux NFS client
-discards the denied owner.
+A parent stid can outlive the client walk:
+nfsd4_deleg_getattr_conflict() holds a delegation reference across its
+callback wait from any netns that exports the same inode. The re-init
+orphans that stid's COPY_NOTIFY entries, and a later idr_remove() by
+so_id on the fresh IDR can remove an unrelated entry. The IDR's radix
+nodes leak as well.
 
-Route every denial through the nevermind behavior. ld_owner.data is
-then always NULL, so remove nfsd4_lock_release() and
-nfsd4_lockt_release() and their op_release entries.
+After the client walk, revoke every surviving entry and destroy the
+IDR under s2s_cp_lock. The late put then finds an empty sc_cp_list and
+never touches the IDR. A survivor draws no warning: a late delegation
+release is legitimate.
+
+This patch depends on "NFSD: Serialize forced client expiry with
+state shutdown", which keeps a forced expire_client() from running
+after the walk.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs4proc.c  |  2 --
- fs/nfsd/nfs4state.c | 42 +++++++++---------------------------------
- fs/nfsd/xdr4.h      |  2 --
- 3 files changed, 9 insertions(+), 37 deletions(-)
+ fs/nfsd/nfs4state.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index a50f9dcb3a31..d1527e7f23bc 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -3923,7 +3923,6 @@ static const struct nfsd4_operation nfsd4_ops[] = {
- 	},
- 	[OP_LOCK] = {
- 		.op_func = nfsd4_lock,
--		.op_release = nfsd4_lock_release,
- 		.op_flags = OP_MODIFIES_SOMETHING |
- 				OP_NONTRIVIAL_ERROR_ENCODE,
- 		.op_name = "OP_LOCK",
-@@ -3932,7 +3931,6 @@ static const struct nfsd4_operation nfsd4_ops[] = {
- 	},
- 	[OP_LOCKT] = {
- 		.op_func = nfsd4_lockt,
--		.op_release = nfsd4_lockt_release,
- 		.op_flags = OP_NONTRIVIAL_ERROR_ENCODE,
- 		.op_name = "OP_LOCKT",
- 		.op_rsize_bop = nfsd4_lock_rsize,
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3c8ad25bfc89..eda976e826cc 100644
+index eda976e826cc..78f69a188d34 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -9339,23 +9339,15 @@ static const struct lock_manager_operations nfsd_posix_mng_ops  = {
- static inline void
- nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny)
+@@ -10369,6 +10369,7 @@ static void
+ nfs4_state_destroy_net(struct net *net)
  {
--	struct nfs4_lockowner *lo;
--
--	if (fl->fl_lmops == &nfsd_posix_mng_ops) {
--		lo = (struct nfs4_lockowner *) fl->c.flc_owner;
--		xdr_netobj_dup(&deny->ld_owner, &lo->lo_owner.so_owner,
--						GFP_KERNEL);
--		if (!deny->ld_owner.data)
--			/* We just don't care that much */
--			goto nevermind;
--		deny->ld_clientid = lo->lo_owner.so_client->cl_clientid;
--	} else {
--nevermind:
--		deny->ld_owner.len = 0;
--		deny->ld_owner.data = NULL;
--		deny->ld_clientid.cl_boot = 0;
--		deny->ld_clientid.cl_id = 0;
--	}
+ 	int i;
++	copy_stateid_t *cps_t;
+ 	struct nfs4_client *clp = NULL;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+@@ -10388,6 +10389,20 @@ nfs4_state_destroy_net(struct net *net)
+ 		}
+ 	}
+ 
 +	/*
-+	 * RFC 8881 Section 18.10.3 requires the conflicting holder's
-+	 * clientid here, but returning it discloses that clientid to any
-+	 * client that can provoke a denial.
++	 * A parent stid can outlive the client walk above. Revoking its
++	 * COPY_NOTIFY entries under s2s_cp_lock empties its sc_cp_list before
++	 * the stid's final put, so the put never reaches an IDR destroyed here
++	 * or reinitialized by the next start.
 +	 */
-+	deny->ld_owner.len = 0;
-+	deny->ld_owner.data = NULL;
-+	deny->ld_clientid.cl_boot = 0;
-+	deny->ld_clientid.cl_id = 0;
- 	deny->ld_start = fl->fl_start;
- 	deny->ld_length = NFS4_MAX_UINT64;
- 	if (fl->fl_end != NFS4_MAX_UINT64)
-@@ -9842,14 +9834,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	return status;
- }
- 
--void nfsd4_lock_release(union nfsd4_op_u *u)
--{
--	struct nfsd4_lock *lock = &u->lock;
--	struct nfsd4_lock_denied *deny = &lock->lk_denied;
--
--	kfree(deny->ld_owner.data);
--}
--
- /*
-  * The NFSv4 spec allows a client to do a LOCKT without holding an OPEN,
-  * so we do a temporary open here just to get an open file to pass to
-@@ -9955,14 +9939,6 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	return status;
- }
- 
--void nfsd4_lockt_release(union nfsd4_op_u *u)
--{
--	struct nfsd4_lockt *lockt = &u->lockt;
--	struct nfsd4_lock_denied *deny = &lockt->lt_denied;
--
--	kfree(deny->ld_owner.data);
--}
--
- __be32
- nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	    union nfsd4_op_u *u)
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index ec198993429e..ecab2249e9bd 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -900,10 +900,8 @@ extern __be32 nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *, union nfsd4_op_u *u);
- extern __be32 nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *,
- 		union nfsd4_op_u *u);
--extern void nfsd4_lock_release(union nfsd4_op_u *u);
- extern __be32 nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *,
- 		union nfsd4_op_u *u);
--extern void nfsd4_lockt_release(union nfsd4_op_u *u);
- extern __be32 nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *,
- 		union nfsd4_op_u *u);
- extern __be32
++	spin_lock(&nn->s2s_cp_lock);
++	idr_for_each_entry(&nn->s2s_cp_stateids, cps_t, i)
++		revoke_cpntf_state_locked(nn, container_of(cps_t,
++							   struct nfs4_cpntf_state,
++							   cp_stateid));
++	idr_destroy(&nn->s2s_cp_stateids);
++	spin_unlock(&nn->s2s_cp_lock);
++
+ 	kfree(nn->sessionid_hashtbl);
+ 	kfree(nn->unconf_id_hashtbl);
+ 	kfree(nn->conf_id_hashtbl);
 
 -- 
 2.56.0
