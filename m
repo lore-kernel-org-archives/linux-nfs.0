@@ -1,48 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793297193;
-	b=l1A19NwADLDl+O8hmK6KLhwCLVW2994dHFqaSTwgMufcC/Ex8lYm5xenyxdsNIBVjkNJ
-	 6Hjc1YfJYnEw3JR+ufFi9ZzVZCLC/PWUta4Cz1AQrfO/hv8RGUmf3G+W3edUsgqqd9pxG
-	 QbPTILqulUat1ZCFLbBqRsnpnZJdZv1JZKeXt1jhNdnycNL4tXGZOGMiZWMcnOgdvsPa4
-	 Ur8h4CqrstvoBNNf1L6Z89rW4zrzYsY+AhYt1TdJmMYCCIxgnNWyijrr56OKi35Y+22jx
-	 lqakW0ozFDHvlhIlRHOSd3N6JY5L+9dG8KGTW6yEVwehqDRzwPhBSKqX0/UiAGyvhFw==
+	t=1793297194;
+	b=fGuGGg3vU0NFRK7zgb+r55VGmGJqsP6jmcm22SAtajdabHhjsUzLVz5WTfzimgy9XCRQ
+	 yo0izn4/SyDuA3yVUOxkPGrhZYwCi7V9nEEk/axOlVtX2ToNnVp2jb0jjYlh/7SyJBD/X
+	 lKw/oYF2eEn/9wJQG5Pm67IHfwqdLaczSE06QtV633HljWtqFZx1kUAbjC8JwklIVrxlU
+	 sgivetyd6TK6848oXALpnA7JT7JE0ruSxvZA9ghYzc7gjhAnaUujCVXTZdtnAlH90AO36
+	 nhT3d8I2QxoSucWf7NAWQoxFtVr5hRxz3ag46aHCzWf4G9VIMh98IprdfKGTQY4Lxag==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793297193;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793297194;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=aQoJ0kdGX/KqOCXFrr+2y2vXrY+ucfKhkfqW8m5w8mE=;
-	b=JdpxyRXGMFE8bir5Wgjj25xHtTJGa6jLlW2KYu5AP4zVZXAWuLaBfvzc1J5Z2XuzO8YI
-	 phNbQ4yjuK2E435h+6rl59fvxcMOTPnCFNbEWX/Bsd75fuM+lV5IKxAGpK0UViyQ1RUmM
-	 19fDunYbfb048e/6cuHC1ydA68Or83cssuh45R8e68BrVSwmeUO3P4MB8+6+cWTtMFtYi
-	 mTMdiJ7xBw11JCwwvkwmP0fVD8C1GLyK0KZJgoTAFvxdDoy/vkhKsoOIo8wEHJjtGm98+
-	 WcNXrfKPkOoVVT3R0LaB6Ay5N/seuw9C8s7bCip0yr8E14uafUAHNlqNe8K1wqrOAZQ==
+	bh=oGTfG9+HaRXu/Uo5E0AZ/j/OClh08L+TICEqwhiWbzg=;
+	b=W6h497VetMZARTuT59QOMDKCpUxZN5LtPLStkR5oitmrqTH34HqRtZHGoo/DOjkTQRUs
+	 64ZuZkgTMNwenM77i9WNjhD1CrUFZjW22hCTw2yIJIoXGrgPjUfnhdb+sX3hS/0y9fNhY
+	 XlIGJfsxXMb/AdNupzqp1Ej665KgZbt3ShtZ/3b3n9vyiVxLCIX2XrwnS5DOV5VICrf+L
+	 KcOl/XkMe9MJwmhTRqbylmYk/OmoKvq6yvK9tzkeaUwffoG02Ye0hi1UOP6NeukfguiWb
+	 uVaJ1aFkQfaocl4aBV+RVj69UOnT2rwByVbOlpedzp6+HoGfKEZ1CV0tC5ypa79TJbw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Y13P3kNM;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZLoqGI1p;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD9E9606A32E
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 18:06:32 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BFE30606A33E
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 18:06:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Y13P3kNM
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DF89C1F031EB;
-	Thu, 29 Oct 2026 18:06:31 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZLoqGI1p
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BD1C41F01825;
+	Thu, 29 Oct 2026 18:06:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793297192;
-	bh=aQoJ0kdGX/KqOCXFrr+2y2vXrY+ucfKhkfqW8m5w8mE=;
+	s=k20260515; t=1793297193;
+	bh=oGTfG9+HaRXu/Uo5E0AZ/j/OClh08L+TICEqwhiWbzg=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=Y13P3kNMtZ/eCOy8PiXbocNUQQDGykWi1aoKLGY5DBig2NMFr5nla1lRxXAFNeq8Z
-	 2W3p/JaabHf+pH+h5jApjQ70k7xZ26W5Ii1N6Hd3iqTnEVxkgpzX/tcw5H+DdCBjsZ
-	 mzwN2V1Oo9ZINIv4v589AP+Lk3It2coa67EaaVT3Hl8Meb5nebthgvXtcsdjDuDS1S
-	 h7Cvg4ApMJA2Uj0HUx1Zi7qKXcpOsM3GE8Y/JZt64SoHZchXt5DGH3JuHxbYJhRRke
-	 su+/ESjUSotneMbpLouZr9hPS1SyPyj9gRRPPpLfX6ZmumkVHva50s3LHGlOXP1OnC
-	 ugywe6EGGC0RA==
+	b=ZLoqGI1pkh/FWjKDAnl7IKOmJpm6JXwJ+fXmuOZzj486afhcJtqgJzdoYEVso/AWN
+	 J0x/WktxMuVk5+sI/hRVZGI6p7RL3uU1RpB+I2XXQQlu607aUY7RTji1UephGjiNlD
+	 DWepMBhT/anE8waDxV/n1XV3LYH2e0+1931kBc6LchZPuX9nlSNrDXB177KP5W/8M0
+	 LsdQYTCBLrEZjl2SMUf/Z4PNZIHPfC2OcMXmALbxJwyvY1kTKHcjZRAK6Xod/9BCz+
+	 Ebw6Tm6/40arfzadL1zMnG6QEPAkGb5XB1IZSgk9dHuYmMRA5NNMk2ozwCXlbcBXYa
+	 FM+bJLXZukFyA==
 From: Chuck Lever <cel@kernel.org>
-Date: Thu, 29 Oct 2026 14:06:18 -0400
-Subject: [PATCH v7 12/13] NFSD: Remove DRC checksum and payload_misses stat
+Date: Thu, 29 Oct 2026 14:06:19 -0400
+Subject: [PATCH v7 13/13] SUNRPC: Advance the acked position on TLS
+ connections
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-duplicate-reply-cache-v7-12-f3b0f3cf5bc7@kernel.org>
+Message-Id: <20261029-duplicate-reply-cache-v7-13-f3b0f3cf5bc7@kernel.org>
 References: <20261029-duplicate-reply-cache-v7-0-f3b0f3cf5bc7@kernel.org>
 In-Reply-To: <20261029-duplicate-reply-cache-v7-0-f3b0f3cf5bc7@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -63,423 +64,328 @@ To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
 Cc: Rick Macklem <rmacklem@uoguelph.ca>, linux-nfs@vger.kernel.org, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=15165; i=cel@kernel.org;
- h=from:subject:message-id; bh=1WqRGpLOqEkIME7dChzhqOcbPfcFrVvCB81kHKuzpoI=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq44scphcxKAe+HHJp38A090tZTSdQJiPZI4VTC
- bXxO6TPPJ6JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCauOLHAAKCRAzarMzb2Z/
- l/lDD/4mPKmCzb+SMXK8Da2NUWVjDjBQnXqMF58c36LQYNpBGWZlaQ7Ta52BXtCqiCNEDd2IGtS
- Tov3JPdCixmpyW0udpR44dMdK46i+jJmWpq6Y+TZ+tE9O232xWRJRgWnU1fs4TRyc2d7WSq2s9w
- U3ompemJRofRYd+PA+rPK0ZVBiUDGL7FNMKKgE8sT+MeY2jojXVmXSLH32dTMUlJXTN7jiNV68V
- VJojA5Yo/7Gnv35LJxEaHAMIyynUhBLtyT5VwBMYZyoTUDi1luHSaOf5sooAu4Urz9AhZ7IJ3Bo
- CEysAH2iEF6eZzXm0ewnLnIGtXPmAlKSoOewiH5FQiLflFuh7KO5gExsHi9k5SPOZGqfTvkWft2
- UMGxTjIK03R2rQ7TiwNUy+zUXvlBWUkj00K7LWhperxTxt373tsB8nU+lbTrX2faAU1oW2nS4z2
- 0zSP7Q5paAghIVddMc10y2GkgYpwFMAkGebkp7S0afto4jDpo3ck/3HUZHpXIj3YEdZka/qclln
- hZjNCpPM3gVrpMBFgWnR+TO2VzkSyEHtXbWvjCo1GMW4J7MpfUpbHWCqKpqUiB4qWvS7uQZc8Wa
- tePjuc1TbtyZThoAMu7snj6LvqJtW72ztBFrzcBvYUDG8R8tnOIVA6ocfa06fKaDYU/WNr/67VA
- nv+5DOxbyiwg4tA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=12434; i=cel@kernel.org;
+ h=from:subject:message-id; bh=WuGXFkzEAZhIBSaH9wt/5Ozlyjmsfw7CEi1blnDSMYo=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq44scf40F8KO/LZpYetdOyg7bQ+5Ee85zdNOZR
+ B7lYY3ldTCJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCauOLHAAKCRAzarMzb2Z/
+ l7o6D/9GEoSF7Q5A2jvetjcR6iYoypRi4+I6TdcUW2drcCt6sq2QumZHK7xBWX6MH05QZ6XYWiu
+ Db6hu1Fg7lSY7/hwAa8Q8Pl2yjaPn2aS1B48Ew0+r7j46+QgKL6ApatkdJ4NoCO5YYozenMfN1P
+ 6SGrH3FklB+j83MP6hKaX+lt2YkdOFidCHhtOY1vcd74u7G63x67LxOFxGx0n2dns9NcJwMhjQ2
+ dnOP+RWOr88zyGoaMmpke7ub5TZbQhVVkxmeQdQnRfDaUjr2KX6NYmBPV1tcrToicE8p+SqN1JB
+ HAbO0HUa8Z56gkHkHiS+EZ5in93iwbvE1wYMsTLtjXyZzDOdfAOl48Gk7UlDtzz/KiAcK6o+98z
+ n0m+2K65BfoWg/1vPgR8PGsQgNsHm0B/yOpBS9JS9oa7vGatiZhw+QqZjwWKdqajuOTq1fAjhEm
+ E+wipSMPQPr/6oezDqcbhYq04xjsZRtUHQ1n3AdeT+fr+5+eDGsKpMsIVCrH0t405W6eQ0WLM4w
+ htPKPm7S3l9HpSQlumn/nAmpDkalz8htr0vqQdI63BQSem5SxBG5fQpEsHe3A/Fd8/VGTD63BL9
+ 6YxDnMW41bJ5Q9VkKHpUYswzwYZiy/Rdqh3iQ3FgCCnxAlFXWdLIpjAi6/tx7hGS5AJBk3UZLk0
+ Etew9owCMUqAqWg==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-nfsd_cache_csum() costs CPU on every non-idempotent request. It also
-prevents the use of zero-copy RDMA receives for WRITE and SYMLINK
-because the payload must be in the server's memory before the DRC
-lookup can run.
+The DRC retires an entry once its reply lies at or below the
+transport's xpt_acked_pos, the position svc_tcp_update_acked()
+advances as TCP acknowledgments arrive. When XPT_TLS_SESSION is set,
+svc_tcp_update_acked() leaves xpt_acked_pos alone, because kTLS can
+return a full count from sendmsg() while a record is still waiting to
+reach TCP. DRC entries on TLS connections therefore never retire by
+acknowledgment.
 
-Commit 01a7decf7593 ("nfsd: keep a checksum of the first 256 bytes
-of request") added the checksum when a growing cache made XID
-collisions easier to hit. It is the only guard against a reused
-XID: two calls with the same procedure and equal-length arguments
-match on every other key field.
+Advance xpt_acked_pos on a TLS connection when no record is open,
+awaiting encryption, or parked on a short TCP send. Every field the
+check reads is declared in include/net/tls.h, so the predicate lives
+beside its one caller rather than in net/tls. After the change,
+a TLS connection takes the socket lock once per reply, as a plain
+TCP connection already does. Record in svcsock_tcp_acked why a reply
+published no position.
 
-Acknowledgment-based eviction retires a TCP or RDMA entry once the
-transport confirms delivery and a later request from the same
-connection visits its bucket. Three kinds of entry outlast that: the
-entries a connection has issued since it last visited each bucket,
-entries from a connection the client has since closed, which no
-later request can evict because their transport is gone, and UDP
-entries. Those wait out RC_EXPIRE, or longer in a bucket that no
-miss visits, since only a miss prunes expired entries. A collision
-needs the same XID from the same address and port while the entry
-lasts. The Linux NFS client's XIDs are sequential from a seed drawn
-with get_random_u32(), so an XID recurs only after 2^32 calls, and
-a rebooted client does not replay its previous sequence. A client
-that restarts its sequence from a fixed value and rebinds its
-previous source port while the entry lasts is unguarded, but a
-client that repeats a live XID cannot reliably match replies to its
-own calls anyway.
+On the receive side, copied_seq does not track plaintext under kTLS.
+tls_strp_msg_consume() advances copied_seq by the whole ciphertext
+record once the record is decrypted, before svc_tcp_recv_actor()
+sees any of its plaintext, and in copy mode the strparser advances
+copied_seq while pulling the ciphertext in. A record that spans the
+end of one call and the start of a retransmit leaves the
+retransmit's plaintext on rx_list, uncounted in xpt_recv_pending,
+with copied_seq already at the mark. Withhold the position while
+sk_is_readable() reports plaintext on rx_list or a record ready in
+the strparser.
 
-A call whose XID matches an entry sent on the same connection is
-therefore a retransmit. TCP and RDMA deliver the queued reply or
-drop the connection, so drop the call as though the entry were
-still in progress rather than replaying it. A match from another
-connection, or from UDP, is replayed as before.
+The close_notify alert and the FIN sent at detach go out without
+xpt_mutex. Both are non-blocking and never drop the socket lock
+mid-push, so their bytes either reach write_seq and lower the position,
+or park and hold it.
 
-Remove the checksum, the nfsd_drc_mismatch tracepoint, and the
-payload_misses stat that counted checksum-detected collisions.
-nfsd_dispatch() no longer snapshots the argument stream before
-decoding, and with k_csum gone, struct nfsd_cacherep shrinks to 136
-bytes.
-
-The "payload misses" line disappears from
-/proc/fs/nfsd/reply_cache_stats. No known userspace tool parses it.
-
-Assisted-by: LLM
-Reviewed-by: NeilBrown <neil@brown.name>
-Link: https://patch.msgid.link/20260921-duplicate-reply-cache-v6-12-db5e13fd9944@kernel.org
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- .../ABI/testing/procfs-nfsd-reply_cache_stats      | 11 +--
- fs/nfsd/cache.h                                    |  9 +-
- fs/nfsd/netns.h                                    |  2 -
- fs/nfsd/nfscache.c                                 | 96 ++++------------------
- fs/nfsd/nfssvc.c                                   | 10 +--
- fs/nfsd/stats.h                                    |  5 --
- fs/nfsd/trace.h                                    | 24 ------
- 7 files changed, 23 insertions(+), 134 deletions(-)
+ include/linux/sunrpc/svcsock.h |  9 ++++
+ include/trace/events/sunrpc.h  | 23 ++++++++--
+ net/sunrpc/svcsock.c           | 96 +++++++++++++++++++++++++++++++++++-------
+ 3 files changed, 109 insertions(+), 19 deletions(-)
 
-diff --git a/Documentation/ABI/testing/procfs-nfsd-reply_cache_stats b/Documentation/ABI/testing/procfs-nfsd-reply_cache_stats
-index 57ed5f8e6597..7a22ac7c1ccd 100644
---- a/Documentation/ABI/testing/procfs-nfsd-reply_cache_stats
-+++ b/Documentation/ABI/testing/procfs-nfsd-reply_cache_stats
-@@ -19,19 +19,16 @@ Description:
- 		cache misses             s64     Requests not found in cache
- 		not cached               s64     Idempotent requests that
- 		                                 bypass the cache
--		payload misses           s64     XID matched but request
--		                                 checksum did not
- 		longest chain len        u32     Longest hash chain observed
- 		cachesize at longest     u32     Cache size when longest
- 		                                 chain was recorded
- 		=======================  ======  ==========================
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 0fa62f9c6465..bd5cd79c1870 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -49,12 +49,21 @@ struct svc_sock {
+ 	u32			sk_acked_rcv;
  
- 		Counter fields (cache hits, cache misses, not cached,
--		payload misses, mem usage) are maintained with per-cpu
--		counters and may briefly show stale values under
--		concurrent load. There is no way to reset these
--		counters; consumers should compute rates by sampling
--		over time.
-+		mem usage) are maintained with per-cpu counters and
-+		may briefly show stale values under concurrent load.
-+		There is no way to reset these counters; consumers
-+		should compute rates by sampling over time.
+ 	struct completion	sk_handshake_done;
++	/* tls ULP installed, recorded once; the ULP has no removal path */
++	bool			sk_tls_ulp;
  
- 		New fields may be appended in future kernels. Parsers
- 		should match on field name, not line position.
-diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-index 894e0b61cbfc..3491a10524d7 100644
---- a/fs/nfsd/cache.h
-+++ b/fs/nfsd/cache.h
-@@ -22,9 +22,7 @@ struct nfsd_net;
-  */
- struct nfsd_cacherep {
- 	struct {
--		/* Keep often-read xid, csum in the same cache line: */
- 		__be32			k_xid;
--		__wsum			k_csum;
- 		u32			k_proc;
- 		u32			k_prot;
- 		u32			k_vers;
-@@ -80,15 +78,12 @@ enum {
- /* Cache entries expire after this time period */
- #define RC_EXPIRE		(120 * HZ)
- 
--/* Checksum this amount of the request */
--#define RC_CSUMLEN		(256U)
--
- int	nfsd_drc_slab_create(void);
- void	nfsd_drc_slab_free(void);
- int	nfsd_reply_cache_init(struct nfsd_net *);
- void	nfsd_reply_cache_shutdown(struct nfsd_net *);
--int	nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
--			  unsigned int len, struct nfsd_cacherep **cacherep);
-+int	nfsd_cache_lookup(struct svc_rqst *rqstp,
-+			  struct nfsd_cacherep **cacherep);
- void	nfsd_cache_update(struct svc_rqst *rqstp, struct nfsd_cacherep *rp,
- 			  int cachetype, __be32 *statp);
- void	nfsd_cache_reply_sent(struct svc_rqst *rqstp);
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index fa3545963902..1d32846b1836 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -39,8 +39,6 @@ enum nfsd_net_flag {
+ 	/* received data */
+ 	unsigned long		sk_maxpages;
+ 	struct page *		sk_pages[] __counted_by(sk_maxpages);
  };
  
- enum {
--	/* cache misses due only to checksum comparison failures */
--	NFSD_STATS_PAYLOAD_MISSES,
- 	/* amount of memory (in bytes) currently consumed by the DRC */
- 	NFSD_STATS_DRC_MEM_USAGE,
- 	NFSD_STATS_RC_HITS,		/* repcache hits */
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index a5d95fa17717..12c9ab1c88c7 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -13,10 +13,8 @@
- #include <linux/slab.h>
- #include <linux/vmalloc.h>
- #include <linux/sunrpc/addr.h>
--#include <linux/highmem.h>
- #include <linux/log2.h>
- #include <linux/hash.h>
--#include <net/checksum.h>
- 
- #include "nfsd.h"
- #include "nfserr.h"
-@@ -90,8 +88,7 @@ nfsd_hashsize(unsigned int limit)
- }
- 
- static struct nfsd_cacherep *
--nfsd_cacherep_alloc(struct svc_rqst *rqstp, __wsum csum,
--		    struct nfsd_net *nn)
-+nfsd_cacherep_alloc(struct svc_rqst *rqstp, struct nfsd_net *nn)
- {
- 	struct nfsd_cacherep *rp;
- 
-@@ -110,7 +107,6 @@ nfsd_cacherep_alloc(struct svc_rqst *rqstp, __wsum csum,
- 		rp->c_key.k_prot = rqstp->rq_prot;
- 		rp->c_key.k_vers = rqstp->rq_vers;
- 		rp->c_key.k_len = rqstp->rq_arg.len;
--		rp->c_key.k_csum = csum;
- 		rp->c_xprt = rqstp->rq_xprt->xpt_id;
- 		rp->c_inflight = 0;
- 		rp->c_pos = 0;
-@@ -376,68 +372,10 @@ nfsd_reply_cache_scan(struct shrinker *shrink, struct shrink_control *sc)
- 	return freed;
- }
- 
--/**
-- * nfsd_cache_csum - Checksum incoming NFS Call arguments
-- * @buf: buffer containing a whole RPC Call message
-- * @start: starting byte of the NFS Call header
-- * @remaining: size of the NFS Call header, in bytes
-- *
-- * Compute a weak checksum of the leading bytes of an NFS procedure
-- * call header to help verify that a retransmitted Call matches an
-- * entry in the duplicate reply cache.
-- *
-- * To avoid assumptions about how the RPC message is laid out in
-- * @buf and what else it might contain (eg, a GSS MIC suffix), the
-- * caller passes us the exact location and length of the NFS Call
-- * header.
-- *
-- * Returns a 32-bit checksum value, as defined in RFC 793.
-- */
--static __wsum nfsd_cache_csum(struct xdr_buf *buf, unsigned int start,
--			      unsigned int remaining)
--{
--	unsigned int base, len;
--	struct xdr_buf subbuf;
--	__wsum csum = 0;
--	void *p;
--	int idx;
--
--	if (remaining > RC_CSUMLEN)
--		remaining = RC_CSUMLEN;
--	if (xdr_buf_subsegment(buf, &subbuf, start, remaining))
--		return csum;
--
--	/* rq_arg.head first */
--	if (subbuf.head[0].iov_len) {
--		len = min_t(unsigned int, subbuf.head[0].iov_len, remaining);
--		csum = csum_partial(subbuf.head[0].iov_base, len, csum);
--		remaining -= len;
--	}
--
--	/* Continue into page array */
--	idx = subbuf.page_base / PAGE_SIZE;
--	base = subbuf.page_base & ~PAGE_MASK;
--	while (remaining) {
--		p = page_address(subbuf.pages[idx]) + base;
--		len = min_t(unsigned int, PAGE_SIZE - base, remaining);
--		csum = csum_partial(p, len, csum);
--		remaining -= len;
--		base = 0;
--		++idx;
--	}
--	return csum;
--}
--
- static int
- nfsd_cache_key_cmp(const struct nfsd_cacherep *key,
--		   const struct nfsd_cacherep *rp, struct nfsd_net *nn)
-+		   const struct nfsd_cacherep *rp)
- {
--	if (key->c_key.k_xid == rp->c_key.k_xid &&
--	    key->c_key.k_csum != rp->c_key.k_csum) {
--		nfsd_stats_payload_misses_inc(nn);
--		trace_nfsd_drc_mismatch(nn, key, rp);
--	}
--
- 	return memcmp(&key->c_key, &rp->c_key, sizeof(key->c_key));
- }
- 
-@@ -461,7 +399,7 @@ nfsd_cache_insert(struct nfsd_drc_bucket *b, struct nfsd_cacherep *key,
- 		parent = *p;
- 		rp = rb_entry(parent, struct nfsd_cacherep, c_node);
- 
--		cmp = nfsd_cache_key_cmp(key, rp, nn);
-+		cmp = nfsd_cache_key_cmp(key, rp);
- 		if (cmp < 0)
- 			p = &parent->rb_left;
- 		else if (cmp > 0)
-@@ -490,28 +428,23 @@ nfsd_cache_insert(struct nfsd_drc_bucket *b, struct nfsd_cacherep *key,
- /**
-  * nfsd_cache_lookup - Find an entry in the duplicate reply cache
-  * @rqstp: Incoming Call to find
-- * @start: starting byte in @rqstp->rq_arg of the NFS Call header
-- * @len: size of the NFS Call header, in bytes
-  * @cacherep: OUT: DRC entry for this request
-  *
-- * Try to find an entry matching the current call in the cache. When none
-- * is found, we try to grab the oldest expired entry off the LRU list. If
-- * a suitable one isn't there, then drop the cache_lock and allocate a
-- * new one, then search again in case one got inserted while this thread
-- * didn't hold the lock.
-+ * On a miss, the entry created for this call is returned in
-+ * @cacherep. On a hit, the cached reply is encoded into @rqstp's
-+ * response.
-  *
-  * Return values:
-  *   %RC_DOIT: Process the request normally
-  *   %RC_REPLY: Reply from cache
-  *   %RC_DROPIT: Do not process the request further
-  */
--int nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
--		      unsigned int len, struct nfsd_cacherep **cacherep)
-+int nfsd_cache_lookup(struct svc_rqst *rqstp,
-+		      struct nfsd_cacherep **cacherep)
- {
- 	struct nfsd_net		*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 	struct nfsd_thread_local_info *ntli = rqstp->rq_private;
- 	struct nfsd_cacherep	*rp, *found;
--	__wsum			csum;
- 	struct nfsd_drc_bucket	*b;
- 	int type = ntli->ntli_cachetype;
- 	LIST_HEAD(dispose);
-@@ -525,13 +458,11 @@ int nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
- 		goto out;
- 	}
- 
--	csum = nfsd_cache_csum(&rqstp->rq_arg, start, len);
--
- 	/*
- 	 * Since the common case is a cache miss followed by an insert,
- 	 * preallocate an entry.
- 	 */
--	rp = nfsd_cacherep_alloc(rqstp, csum, nn);
-+	rp = nfsd_cacherep_alloc(rqstp, nn);
- 	if (!rp) {
- 		svc_xprt_recv_done(rqstp);
- 		goto out;
-@@ -587,6 +518,13 @@ int nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
- 	if (rp->c_state == RC_INPROG)
- 		goto out_trace;
- 
-+	/*
-+	 * The connection that carried the reply delivers it, so a
-+	 * retransmit on that connection needs no replay.
-+	 */
-+	if (rp->c_pos && rp->c_xprt == rqstp->rq_xprt->xpt_id)
-+		goto out_trace;
++/* Why svc_tcp_update_acked() did or did not publish a position */
++enum svc_tcp_acked_reason {
++	SVC_TCP_ACKED_PUBLISHED,
++	SVC_TCP_ACKED_NO_ULP,
++	SVC_TCP_ACKED_TX_PENDING,
++};
 +
- 	/* From the hall of fame of impractical attacks:
- 	 * Is this a user who tries to snoop on the cache? */
- 	rtn = RC_DOIT;
-@@ -762,8 +700,6 @@ int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
- 		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_RC_MISSES]));
- 	seq_printf(m, "not cached:            %lld\n",
- 		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_RC_NOCACHE]));
--	seq_printf(m, "payload misses:        %lld\n",
--		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_PAYLOAD_MISSES]));
- 	seq_printf(m, "longest chain len:     %u\n", nn->longest_chain);
- 	seq_printf(m, "cachesize at longest:  %u\n", nn->longest_chain_cachesize);
- 	return 0;
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 562bb06bb1ef..f504a9386557 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -1074,7 +1074,6 @@ int nfsd_dispatch(struct svc_rqst *rqstp)
- 	const struct svc_procedure *proc = rqstp->rq_procinfo;
- 	__be32 *statp = rqstp->rq_accept_statp;
- 	struct nfsd_cacherep *rp;
--	unsigned int start, len;
- 	__be32 *nfs_reply;
- 
- 	/*
-@@ -1083,13 +1082,6 @@ int nfsd_dispatch(struct svc_rqst *rqstp)
- 	 */
- 	ntli->ntli_cachetype = proc->pc_cachetype;
- 
--	/*
--	 * ->pc_decode advances the argument stream past the NFS
--	 * Call header, so grab the header's starting location and
--	 * size now for the call to nfsd_cache_lookup().
--	 */
--	start = xdr_stream_pos(&rqstp->rq_arg_stream);
--	len = xdr_stream_remaining(&rqstp->rq_arg_stream);
- 	if (!proc->pc_decode(rqstp, &rqstp->rq_arg_stream))
- 		goto out_decode_err;
- 
-@@ -1103,7 +1095,7 @@ int nfsd_dispatch(struct svc_rqst *rqstp)
- 	smp_store_release(&rqstp->rq_status_counter, rqstp->rq_status_counter | 1);
- 
- 	rp = NULL;
--	switch (nfsd_cache_lookup(rqstp, start, len, &rp)) {
-+	switch (nfsd_cache_lookup(rqstp, &rp)) {
- 	case RC_DOIT:
- 		break;
- 	case RC_REPLY:
-diff --git a/fs/nfsd/stats.h b/fs/nfsd/stats.h
-index aabfbb1a9c71..4a556dfbf64a 100644
---- a/fs/nfsd/stats.h
-+++ b/fs/nfsd/stats.h
-@@ -97,11 +97,6 @@ static inline void nfsd_stats_io_write_add(struct nfsd_net *nn,
- 					 amount);
- }
- 
--static inline void nfsd_stats_payload_misses_inc(struct nfsd_net *nn)
--{
--	percpu_counter_inc(&nn->counter[NFSD_STATS_PAYLOAD_MISSES]);
--}
--
- /**
-  * nfsd_stats_drc_mem_usage_add - Add memory used by a cache item
-  * @nn: target network namespace
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index ad31d36c7c8d..f37f537f12fe 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -1687,30 +1687,6 @@ TRACE_EVENT(nfsd_drc_found,
- 
+ static inline u32 svc_sock_reclen(struct svc_sock *svsk)
+ {
+ 	return be32_to_cpu(svsk->sk_marker) & RPC_FRAGMENT_SIZE_MASK;
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+index a5d914376627..a7e96e49e0d0 100644
+--- a/include/trace/events/sunrpc.h
++++ b/include/trace/events/sunrpc.h
+@@ -10,6 +10,7 @@
+ #include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/xprtsock.h>
+ #include <linux/sunrpc/svc_xprt.h>
++#include <linux/sunrpc/svcsock.h>
+ #include <net/tcp_states.h>
+ #include <linux/net.h>
+ #include <linux/tracepoint.h>
+@@ -2349,6 +2350,16 @@ TRACE_EVENT(svcsock_tcp_recv_short,
+ 	)
  );
  
--TRACE_EVENT(nfsd_drc_mismatch,
--	TP_PROTO(
--		const struct nfsd_net *nn,
--		const struct nfsd_cacherep *key,
--		const struct nfsd_cacherep *rp
--	),
--	TP_ARGS(nn, key, rp),
--	TP_STRUCT__entry(
--		__field(unsigned long long, boot_time)
--		__field(u32, xid)
--		__field(u32, cached)
--		__field(u32, ingress)
--	),
--	TP_fast_assign(
--		__entry->boot_time = nn->boot_time;
--		__entry->xid = be32_to_cpu(key->c_key.k_xid);
--		__entry->cached = (__force u32)key->c_key.k_csum;
--		__entry->ingress = (__force u32)rp->c_key.k_csum;
--	),
--	TP_printk("boot_time=%16llx xid=0x%08x cached-csum=0x%08x ingress-csum=0x%08x",
--		__entry->boot_time, __entry->xid, __entry->cached,
--		__entry->ingress)
--);
--
- DECLARE_EVENT_CLASS(nfsd_drc_entry_class,
++TRACE_DEFINE_ENUM(SVC_TCP_ACKED_PUBLISHED);
++TRACE_DEFINE_ENUM(SVC_TCP_ACKED_NO_ULP);
++TRACE_DEFINE_ENUM(SVC_TCP_ACKED_TX_PENDING);
++
++#define show_svc_tcp_acked_reason(reason)				\
++	__print_symbolic(reason,					\
++		{ SVC_TCP_ACKED_PUBLISHED,	"published" },		\
++		{ SVC_TCP_ACKED_NO_ULP,		"no_ulp" },		\
++		{ SVC_TCP_ACKED_TX_PENDING,	"tx_pending" })
++
+ TRACE_EVENT(svcsock_tcp_acked,
  	TP_PROTO(
- 		const struct nfsd_net *nn,
+ 		const struct svc_xprt *xprt,
+@@ -2356,10 +2367,12 @@ TRACE_EVENT(svcsock_tcp_acked,
+ 		u32 write_seq,
+ 		u32 snd_una,
+ 		u64 candidate,
+-		u64 acked_pos
++		u64 acked_pos,
++		enum svc_tcp_acked_reason reason
+ 	),
+ 
+-	TP_ARGS(xprt, send_pos, write_seq, snd_una, candidate, acked_pos),
++	TP_ARGS(xprt, send_pos, write_seq, snd_una, candidate, acked_pos,
++		reason),
+ 
+ 	TP_STRUCT__entry(
+ 		__field(u64, xpt_id)
+@@ -2368,6 +2381,7 @@ TRACE_EVENT(svcsock_tcp_acked,
+ 		__field(u64, acked_pos)
+ 		__field(u32, write_seq)
+ 		__field(u32, snd_una)
++		__field(unsigned int, reason)
+ 		__string(addr, xprt->xpt_remotebuf)
+ 	),
+ 
+@@ -2378,13 +2392,14 @@ TRACE_EVENT(svcsock_tcp_acked,
+ 		__entry->acked_pos = acked_pos;
+ 		__entry->write_seq = write_seq;
+ 		__entry->snd_una = snd_una;
++		__entry->reason = reason;
+ 		__assign_str(addr);
+ 	),
+ 
+-	TP_printk("addr=%s xpt_id=%llu send_pos=%llu write_seq=%u snd_una=%u candidate=%llu acked_pos=%llu",
++	TP_printk("addr=%s xpt_id=%llu send_pos=%llu write_seq=%u snd_una=%u candidate=%llu acked_pos=%llu reason=%s",
+ 		__get_str(addr), __entry->xpt_id, __entry->send_pos,
+ 		__entry->write_seq, __entry->snd_una, __entry->candidate,
+-		__entry->acked_pos
++		__entry->acked_pos, show_svc_tcp_acked_reason(__entry->reason)
+ 	)
+ );
+ 
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 63382f99cd74..0db448ce7729 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -36,6 +36,7 @@
+ #include <net/udp.h>
+ #include <net/tcp.h>
+ #include <net/tcp_states.h>
++#include <net/tls.h>
+ #include <net/tls_prot.h>
+ #include <net/handshake.h>
+ #include <linux/uaccess.h>
+@@ -409,6 +410,14 @@ static void svc_tcp_kill_temp_xprt(struct svc_xprt *xprt)
+ 	sock_no_linger(svsk->sk_sock->sk);
+ }
+ 
++/* XPT_TLS_SESSION reflects tlshd's report, not an installed TLS ULP. */
++static bool svc_tcp_has_tls_ulp(struct sock *sk)
++{
++	const struct inet_connection_sock *icsk = inet_csk(sk);
++
++	return icsk->icsk_ulp_ops && !strcmp(icsk->icsk_ulp_ops->name, "tls");
++}
++
+ /**
+  * svc_tcp_handshake_done - Handshake completion handler
+  * @data: address of xprt to wake
+@@ -426,8 +435,13 @@ static void svc_tcp_handshake_done(void *data, int status, key_serial_t peerid)
+ 	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
+ 
+ 	if (!status) {
++		struct sock *sk = svsk->sk_sk;
++
+ 		if (peerid != TLS_NO_PEERID)
+ 			set_bit(XPT_PEER_AUTH, &xprt->xpt_flags);
++		lock_sock(sk);
++		WRITE_ONCE(svsk->sk_tls_ulp, svc_tcp_has_tls_ulp(sk));
++		release_sock(sk);
+ 		set_bit(XPT_TLS_SESSION, &xprt->xpt_flags);
+ 	}
+ 	clear_bit(XPT_HANDSHAKE, &xprt->xpt_flags);
+@@ -1401,9 +1415,45 @@ static int svc_tcp_sendmsg(struct svc_sock *svsk, struct svc_rqst *rqstp,
+ }
+ 
+ /*
+- * Bytes the socket has not seen acknowledged all belong to the most
+- * recent replies, so sk_send_pos less that count is the acknowledged
+- * position.
++ * A false return means every byte sendmsg() has accepted has reached the
++ * TCP write queue, provided no other blocking sender is on the socket. With
++ * TLS_HW, a sender can drop the socket lock inside tcp_sendmsg_locked()
++ * while its record sits in neither partially_sent_record nor an
++ * open record. TLS_SW keeps the record on tx_list until the push
++ * succeeds. TLS_HW_RECORD keeps its send accounting in the TOE driver,
++ * beyond this check's reach, so TLS_HW_RECORD always counts as pending.
++ *
++ * tx_lock is the documented guard for the partially_sent_* fields, but
++ * every store to them and to tx_list runs with the socket owned: sendmsg(),
++ * the tx worker, and the write-space callback, which the backlog defers
++ * while a process owns the socket. Owning the socket therefore reads a
++ * consistent snapshot without contending with the worker for tx_lock.
++ */
++static bool svc_tls_tx_pending(const struct sock *sk)
++{
++	struct tls_context *ctx = tls_get_ctx(sk);
++	struct tls_sw_context_tx *sw;
++
++	sock_owned_by_me(sk);
++	if (ctx->partially_sent_record || ctx->pending_open_record_frags)
++		return true;
++	switch (ctx->tx_conf) {
++	case TLS_SW:
++		sw = tls_sw_ctx_tx(ctx);
++		return sw->open_rec || !list_empty(&sw->tx_list);
++	case TLS_HW:
++		return false;
++	default:
++		return true;
++	}
++}
++
++/*
++ * Unacknowledged bytes follow every older reply, and each reply occupies at
++ * least as many wire bytes as sk_send_pos counts for it. sk_send_pos less
++ * the unacknowledged count is therefore at or below the position the client
++ * has acknowledged. Backchannel calls, TLS framing, alerts, the FIN sent at
++ * detach, and a stale snd_una only lower the result.
+  *
+  * A call the peer sent before it acknowledged a reply precedes the
+  * acknowledgment in the stream, so rcv_nxt at this point covers the
+@@ -1414,13 +1464,17 @@ static int svc_tcp_sendmsg(struct svc_sock *svsk, struct svc_rqst *rqstp,
+  * socket lock keeps write_seq, snd_una, and rcv_nxt from moving between
+  * the reads and orders them against svc_tcp_acked_pos().
+  *
+- * Under kTLS, tls_sw_sendmsg() can return the full plaintext count
+- * with part of a record still waiting for socket write space, leaving
+- * write_seq short of the reply. Whether a record is pending is private
+- * to net/tls, so a TLS session publishes no acknowledged position.
++ * kTLS can return a full count from sendmsg() with a record not yet
++ * handed to TCP, and the tls tx worker advances write_seq outside
++ * xpt_mutex. Evaluate svc_tls_tx_pending() and read both sequence numbers
++ * under one lock_sock() so all three describe the same instant. xpt_mutex
++ * keeps every other blocking sender off the socket, as svc_tls_tx_pending()
++ * requires.
++ *
+  * tlshd installs the ULP before XPT_TLS_SESSION reports the session,
+- * so neither does a reply sent while XPT_HANDSHAKE is set. Test
+- * XPT_HANDSHAKE first: it is cleared after XPT_TLS_SESSION is set.
++ * so a reply sent while XPT_HANDSHAKE is set publishes no position. Test
++ * XPT_HANDSHAKE first: svc_tcp_handshake_done() sets XPT_TLS_SESSION before
++ * clearing XPT_HANDSHAKE.
+  */
+ static void svc_tcp_update_acked(struct svc_sock *svsk)
+ {
+@@ -1428,22 +1482,28 @@ static void svc_tcp_update_acked(struct svc_sock *svsk)
+ 	struct tcp_sock *tp = tcp_sk(sk);
+ 	u64 unacked, acked = 0, acked_pos;
+ 	u32 write_seq, snd_una;
++	enum svc_tcp_acked_reason reason = SVC_TCP_ACKED_PUBLISHED;
++	bool tls;
+ 
+-	if (test_bit(XPT_HANDSHAKE, &svsk->sk_xprt.xpt_flags) ||
+-	    test_bit(XPT_TLS_SESSION, &svsk->sk_xprt.xpt_flags))
++	if (test_bit(XPT_HANDSHAKE, &svsk->sk_xprt.xpt_flags))
+ 		return;
++	tls = test_bit(XPT_TLS_SESSION, &svsk->sk_xprt.xpt_flags);
++	if (tls && !READ_ONCE(svsk->sk_tls_ulp))
++		reason = SVC_TCP_ACKED_NO_ULP;
+ 	lock_sock(sk);
++	if (tls && reason == SVC_TCP_ACKED_PUBLISHED && svc_tls_tx_pending(sk))
++		reason = SVC_TCP_ACKED_TX_PENDING;
+ 	write_seq = READ_ONCE(tp->write_seq);
+ 	snd_una = READ_ONCE(tp->snd_una);
+ 	unacked = write_seq - snd_una;
+-	if (unacked < svsk->sk_send_pos)
++	if (reason == SVC_TCP_ACKED_PUBLISHED && unacked < svsk->sk_send_pos)
+ 		acked = svsk->sk_send_pos - unacked;
+ 	if (svc_xprt_advance_acked(&svsk->sk_xprt, acked))
+ 		svsk->sk_acked_rcv = READ_ONCE(tp->rcv_nxt);
+ 	acked_pos = atomic64_read(&svsk->sk_xprt.xpt_acked_pos);
+ 	release_sock(sk);
+ 	trace_svcsock_tcp_acked(&svsk->sk_xprt, svsk->sk_send_pos, write_seq,
+-				snd_una, acked, acked_pos);
++				snd_una, acked, acked_pos, reason);
+ }
+ 
+ /**
+@@ -1459,6 +1519,12 @@ static void svc_tcp_update_acked(struct svc_sock *svsk)
+  * and its lookup. A record in progress is counted from its first
+  * octet, so a partially read retransmit withholds the position too.
+  *
++ * Under kTLS, copied_seq advances by the whole ciphertext record when
++ * the strparser consumes it, before svc_tcp_recv_actor() sees any of
++ * its plaintext. Plaintext left on rx_list and a record ready in the
++ * strparser withhold the position as well; sk_is_readable() reports
++ * both.
++ *
+  * Context: process context. May take and release the socket lock.
+  * Return: xpt_acked_pos, or 0 while it cannot be acted on.
+  */
+@@ -1478,8 +1544,8 @@ static u64 svc_tcp_acked_pos(struct svc_rqst *rqstp)
+ 	pos = atomic64_read(&xprt->xpt_acked_pos);
+ 	pending = atomic_read(&xprt->xpt_recv_pending) -
+ 		  !!test_bit(RQ_RECV_PENDING, &rqstp->rq_flags);
+-	if (pending || before(READ_ONCE(tcp_sk(sk)->copied_seq),
+-			      svsk->sk_acked_rcv))
++	if (pending || sk_is_readable(sk) ||
++	    before(READ_ONCE(tcp_sk(sk)->copied_seq), svsk->sk_acked_rcv))
+ 		pos = 0;
+ 	release_sock(sk);
+ 	return pos;
 
 -- 
 2.56.0
