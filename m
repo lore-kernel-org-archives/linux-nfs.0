@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793281284;
-	b=kL2txpPrz5bCWmAJBFzSlN5D2Ra9ERP+M1dj7RQnNoW7p4YVXB8K5nUdVIBKkieHXRXx
-	 uuwHhlGCa33/mou3alp4s/tamCS8ObKHaCVKElWWG80UjdLIpX1eqpk6WO450mGAe85vG
-	 zaLug2O0KgocnSSh+aXT8qAwcsk/SJTJSTMBbQLg8HjS2ybs7HYyHNpxZG3hFsCOSAmvU
-	 INV+aMGreYkKWDd67E18rTeN8OEiaoThjh+1hRBpE/FDsnbhNCYPKx71kjK+X9OiroLYl
-	 cbvPcpHPgRIPFHuIra0qY7y20BSXuivRQtTMpcyJuNnl5utXf2V1Zm3pfycaFN2Ks4w==
+	t=1793281285;
+	b=Yj3MZYOcbpNYhPnUsurbYOJ1Bg8SWknpJ9CzF66gY7CL6ZMPHV+9lT/8W9jEGLWjQaGO
+	 mpuA2u9ChTHeoogrBgsPjGxemJqGWdfw1mmxcrzpK9ARoMmUHLZH37c9WMOlXT0VcRrL8
+	 AiDjVDnGLSGjlXr17kxSx8ZYYDQXliCsjJZON4z5lwDZNFerfa8CypPdx6IT3JasD3J4a
+	 ofHGmZM83INBPOvaxwMx1H+2lYh6/QWm5ng8p4QY6VTXwCSvkR28JzJDRu//sI7896JgR
+	 sfT6ZuOGVveGxgPaLEqCQhQhBrtmJpFyU9caMXbFPF2hP8yvZIo8cRD0TQkNlbqPB0w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793281284;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793281285;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=TU5CX+6BvbAKGdtJo9CZUQuqDYjuV+hDEt39g1ed288=;
-	b=YttyD+nunwcKF3w9PP94IfQYuA7BrQiSrIkkpk/OaBuGEDY8KrDq7iQUh2IqOYT9oQhH
-	 tPkJfaOfnWkmkZfZYnt/dPrwRe67UAvhClaMRqGFVlXA7GNuxNxPjp5Cnwj/5xSZ2T+2E
-	 SfETFFw7ZU/X8yA7pNIfqAfQd3bI7dCeO501Tz0cmyeYBeYLAFDXjuQFRku6B9DdgK6c6
-	 GcO02oho5HjmwojVqQW+dY0M/GJ1YPJdGYOoVs6nnlXQcP+axOQwD9o0/WOEsMYya8unc
-	 WoHMcoUfDvrt2+DOOqGAwUmrK89uS6aDqc/4W8TtOoC2ugnmWLTlgJdTsMQozMStYWQ==
+	bh=0fpsHQYZaWWrxqngMtWqN96sKqabDi1ASSem1kO6TFE=;
+	b=pQ+jZGB+x84hXXaKrc28ifXcz1XNNT1hn2KtE9HmLAXvb/AFOlxqbeoca0glIeP+8jDM
+	 dbZkGOxX71D+e4xoFsFtoGTujNAB1K/0uLZhJ2XusSxcnVMbgbKccZE0xmLguHrsTRKU0
+	 cTs71vgeXp1ROQrQK6nM+EmJ0UtXy8QCTcLnPBdJmCg6aFY3YAfYc/cwXAVUwXR5PiVtF
+	 3Qj/Fk3EBh72YSaTUEIjW04n/DRKVU+NffhZL+eRN//1pndJq8uel3fhpmI6JDBhgFXaw
+	 L3JLs+IGA+JXHPyD1mFHyJ3cNEMW5gw+v0N2WwDg8BPeMJkUFY6t8DUi8r9nubdLFzA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LwO8iGaA;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HFYl00cj;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A38CF606A325
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 13:41:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D5C33606A31E
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 13:41:24 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LwO8iGaA
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BF33C1F031E5;
-	Thu, 29 Oct 2026 13:41:22 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HFYl00cj
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B9B6B1F031E3;
+	Thu, 29 Oct 2026 13:41:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793281283;
-	bh=TU5CX+6BvbAKGdtJo9CZUQuqDYjuV+hDEt39g1ed288=;
+	s=k20260515; t=1793281284;
+	bh=0fpsHQYZaWWrxqngMtWqN96sKqabDi1ASSem1kO6TFE=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=LwO8iGaAmqOGeOy2WIuxTP24cyGi8HwlcgUC82kFAKrMnlZ110eeNlXbxwMEg9C9d
-	 Jc6zpc51MwbA6DFyTHEn8VcjvDveGSnM6yplFsocaXUMqmTZzB+PSv4yswsGLkUJX4
-	 P3bMHo+6iP0bXyDJqfkUpG9Xikmj4gOsHpB2xwf8cvQmjHKO/oSbsjxvHH7qMcTZlN
-	 bjehzPogDqvuYuI7OacmrvzZS67TSKVo8JJI4hSNdhdU1oJxf1Tsl/LDXOCCDHZslw
-	 klXC5At6cY5x+PbBFSRWiCpqdDPyBUXh/z5UnLnxt9xMBfzrSgERJAWo5GN3XBSzY1
-	 Kr7TS1Y6j39XA==
+	b=HFYl00cjirM1s0Uab9eLmrI6h2W/JHUa6bfXaNRFxWDSFT4APa7GXYLY+ENqLMeLY
+	 xc2+DTQqLufGzhL+DD6RnBPL2ANrfZaUjcDg3BycXFTn1SJE82cwTX0kJ4SWF5QZst
+	 7krYVivJToBhifN94fB/NY0FB7d2iqz9J0wibWOHU0SnO4/p4Xq03hkMhDa9bXwNZs
+	 NJYDs2VTQWJtqQdBGrCFp7vL7sCgLkheBSfuHheZ4rQqIZPIUQPRcxQMpvqtCLjNFY
+	 4ipzYrUYE4egAv7Lozu/q84t9YmchmZEq03oxbR/cP/Alh1Y12r3N4hwICX5mLDCn3
+	 OmJtirQXZDMbw==
 From: Chuck Lever <cel@kernel.org>
-Date: Thu, 29 Oct 2026 09:41:07 -0400
-Subject: [PATCH 09/10] NFSD: Fill the session ID's sequence and reserved
- words at random
+Date: Thu, 29 Oct 2026 09:41:08 -0400
+Subject: [PATCH 10/10] NFSD: Add KUnit tests for the random identifier
+ generators
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-random-stateids-v1-9-8648878fec8c@kernel.org>
+Message-Id: <20261029-random-stateids-v1-10-8648878fec8c@kernel.org>
 References: <20261029-random-stateids-v1-0-8648878fec8c@kernel.org>
 In-Reply-To: <20261029-random-stateids-v1-0-8648878fec8c@kernel.org>
 To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
@@ -63,233 +63,775 @@ To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org
 X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7865; i=cel@kernel.org;
- h=from:subject:message-id; bh=G8vQOpoCX7TySiYmKyWFEQ5MYcDxT/QZTkM5bePzfWg=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq40z3vwliCVmeWURJIekDUk2tntQuSMKlGB9St
- hkGoAcnFfGJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCauNM9wAKCRAzarMzb2Z/
- l8V3EACRKiBNHXRX7srE/8NeEyStfiM5dLyXL7ERd8OmMK9mPLsEmpy6A43+NslgttTy7uYbbRP
- T2cd17pQtLOUpMNMp+9Jcpphp7bZMALgHX++ugUPUc0ZzARKALqZRJkj2lLAgUCjUTZkfUyIs4A
- /gEGItSaa9xgxN4GzfndCtizS+jxSCFuzt98KGS0EuPjOmiu4wTqTQa7xo3ai0p4XBl+Kmzj+a1
- 70xko5UgjIQBC6s+wLnNWy6kJvM9wONes4uUvGvd6NSPfJsaZOIv6ZV0kWosdKh8OtyAC6f3/h8
- I4GsAoeg0QlfAlkBJTxJpnnX+FMAPwJ4yCpoGuzwSVAmnokrtRRwO4sGnC1vUIjPnX9gAillXye
- 5dRHRNwoY2pNEo1FSVbjfrOREs9RZq4JvADlYr77QIAm9SM69kRf4ZXCSYDWzfNDdZlahdmMvtc
- vNpy8Z10mm57l/RvkZuKFaFVKPqzfakjhpcWFCXvBuJ2ifDl4aA15T/JAzd9A3hR6eJYrc9MB2T
- xhWP2ntXBGnKFtGFqiQN8kB00TR32ZvDkduJB2eXLHROrSvw0zFf6ntiDYMacxNSKbTyqUCUWKM
- Nw7nokh5fdDqvr/Kfyy3QrjzXvngpetd+ACAJURpxb4481EaSmwLcm0XzyUUlSCxNlNDO7i4/0/
- UAB5r3gjlnhqVKw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=26347; i=cel@kernel.org;
+ h=from:subject:message-id; bh=RtcKNhpOl/6wSbzut2H3CLPhgMnSyZHcxeb8Nb7fvuA=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq40z355XKZ2BilpkHXwMqGJsp48rJ5n0YbXeXv
+ 13aPF1u28OJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCauNM9wAKCRAzarMzb2Z/
+ l0QyD/0aCIcJHrR21XbfZLpqW151jXDPX+bwY48lnFxu/6j1PaqfBN8ZnAFQj33lBqYZqI9tGkl
+ dJrMRICpEP/TIjSR2KVZO/K8AIskMoK3Aw9G14TKhLNIlE1XxpIE6m+2fQ5B6qR2p47T9yjQw7z
+ AGPSP+dTqRJk/bI0OzJIYCovjLDecPieexOw149d5eVo30W8HK7xIzo6SWFC2rUB/IIv96QZ3Z2
+ ubYx/Z0nHamd+GfAOk8icpFda9vCTVw+y/x4ooRYVnonawdJrYDkfNQdS8T9jMBpXXBrU5gj4+h
+ jBaGqWPJh8jmfa7pcHIIv0vcevduqrU24eRYmWx9NdTjk/XSy58t3kv3EXY1NT9IgWkmJArC53I
+ 0af4p89khErmhZPUVoYbT9nkXkpaGts92Ct+f8d6OYefk9MHLBEc7syiXweAVtWERg6UaMk8h7u
+ HrYgjVvJI2p3brSD35Q+fyAGxTcMQKE0Htk7vEv5htpu84R8eoUJPbbD2IwU8u1gyFoFvh1ogXC
+ 7r90thjYEEdYSAd6M1jv1ZBS2K46Y0NZbAg/gAvMRQw/JtTiQk0au73jG12uNntZrCtZ9Uzkruk
+ HidZj/+0ysJx6Q5k0WN56Ho3Dt6RpCDWMyk7zDYACuY6zTGmfdYPNYqzA2nBqaZ0UZvBiQF1XhT
+ 4O+w/WDVX7wMCvw==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-gen_sessionid() fills a session ID's sequence word from a file-scope
-counter that counts every CREATE_SESSION across all netns, and zeroes
-the reserved word. Under SP4_NONE, which the Linux client requests by
-default, the session ID is a bearer token: nfsd4_sequence() checks no
-credential and nfsd4_destroy_session() succeeds for any requester
-holding the ID. A requester that knows a client's clientid reads the
-counter from its own CREATE_SESSION reply and reaches the victim's
-session within a few hundred SEQUENCE probes, after which it can
-poison the victim's reply cache, drive OPEN and LOCK against the
-victim's owners, or destroy the session. RFC 8881 Section 2.10.8.3
-offers only SP4_MACH_CRED and SP4_SSV against this attack.
+The retry, mask, and collision branches of the clientid and session
+ID generators fire about once in 2^31 attempts per hashed client, and
+far less often for a session ID, so no workload reaches them and no
+wire test can force them. The same holds for the boot_time bump on a
+same-second restart and for the so_id allocator's non-reuse of a
+freed id. Nothing in the tree today can execute those paths on
+demand.
 
-Fill the two words with one 64-bit random value. RFC 8881
-places no uniqueness, reuse, or ordering rule on session IDs, so the
-only uniqueness NFSD needs is that no two live sessions share one:
-nfsd4_assign_sessionid_locked() rejects a value that matches a hashed
-session and returns NFS4ERR_DELAY after NFSD4_RANDOM_RETRIES misses.
-
-Generating the ID cannot stay in init_session(), which runs after
-nfsd4_create_session() has expired the replaced client and confirmed
-the new one. nfsd4_create_session() generates the ID at the end of
-Phase 2, after check_slot_seqid() has ruled out a replay, and on
-exhaustion takes the out_expired_error path so NFS4ERR_DELAY stays
-out of the reply cache.
-
-nfsd4_sequence() returns NFS4ERR_BADSESSION for a wrong clientid and
-a wrong sequence alike, so a requester that knows the clientid still
-faces a 2^64 search.
+Add CONFIG_NFSD_KUNIT_TEST and fs/nfsd/nfs4state_test.c, included at
+the bottom of nfs4state.c so the tests reach the static helpers. Wrap
+the three random identifier generators in functions that
+KUNIT_STATIC_STUB_REDIRECT can script, and factor the boot_time bump
+out of nfs4_state_create_net() into nfsd4_next_boot_time(), callable
+on a hand-built nfsd_net. Because the redirect applies only in the
+KUnit task, the suite scripts the random source and calls the helpers
+directly. It covers the retries, masks, and collisions at each
+generation site, the boot_time bump, the COPY_NOTIFY token checks,
+and so_id non-reuse. The ordering guarantees in EXCHANGE_ID,
+SETCLIENTID, and CREATE_SESSION need a constructed svc_rqst and are
+not tested here.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs4state.c | 59 +++++++++++++++++++++++++++++++++++++++++------------
- fs/nfsd/state.h     | 15 +++++++++++++-
- 2 files changed, 60 insertions(+), 14 deletions(-)
+ fs/nfsd/Kconfig          |  16 ++
+ fs/nfsd/nfs4state.c      |  43 +++-
+ fs/nfsd/nfs4state_test.c | 591 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 642 insertions(+), 8 deletions(-)
 
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index 3e4030b70194..b788f69568f3 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -178,3 +178,19 @@ config NFSD_V4_POSIX_ACLS
+ 	  clients that implement this draft is required.
+ 
+ 	  If unsure, say N.
++
++config NFSD_KUNIT_TEST
++	bool "KUnit tests for NFSD state allocation" if !KUNIT_ALL_TESTS
++	depends on NFSD_V4 && KUNIT
++	depends on NFSD=m || KUNIT=y
++	default KUNIT_ALL_TESTS
++	help
++	  This builds the KUnit tests for the random clientid, session ID,
++	  and COPY_NOTIFY stateid generators and related state allocation in
++	  nfs4state.c. The tests run when the nfsd module is loaded and
++	  report their results in TAP format.
++
++	  For more information on KUnit and unit tests in general, refer
++	  to the KUnit documentation in Documentation/dev-tools/kunit/.
++
++	  If unsure, say N.
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a2189a5a3dc2..de8950c7ad90 100644
+index de8950c7ad90..cafdf80f32de 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -92,8 +92,6 @@ static const stateid_t close_stateid = {
- 	.si_generation = 0xffffffffU,
- };
+@@ -46,6 +46,7 @@
+ #include <linux/fsnotify.h>
+ #include <linux/rhashtable.h>
+ #include <linux/nfsd_ssc.h>
++#include <kunit/static_stub.h>
  
--static u64 current_sessionid = 1;
--
- bool nfsd_delegts_enabled __read_mostly = true;
- 
- #define ZERO_STATEID(stateid) (!memcmp((stateid), &zero_stateid, sizeof(stateid_t)))
-@@ -2300,15 +2298,14 @@ void nfsd4_bump_seqid(struct nfsd4_compound_state *cstate, __be32 nfserr)
- }
- 
- static void
--gen_sessionid(struct nfsd4_session *ses)
-+gen_sessionid(struct nfsd4_session *ses, u64 rand)
- {
- 	struct nfs4_client *clp = ses->se_client;
- 	struct nfsd4_sessionid *sid;
- 
- 	sid = (struct nfsd4_sessionid *)ses->se_sessionid.data;
- 	sid->clientid = clp->cl_clientid;
--	sid->sequence = current_sessionid++;
--	sid->reserved = 0;
-+	nfsd4_sessionid_set_rand(sid, rand);
- }
- 
- /*
-@@ -2633,13 +2630,15 @@ nfsd_slot_shrinker_scan(struct shrinker *s, struct shrink_control *sc)
- 	return freed;
- }
- 
--static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, struct nfs4_client *clp, struct nfsd4_create_session *cses)
-+static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new,
-+			 struct nfs4_client *clp,
-+			 struct nfsd4_create_session *cses, u64 sessionid_rand)
- {
- 	int idx;
- 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
- 	new->se_client = clp;
--	gen_sessionid(new);
-+	gen_sessionid(new, sessionid_rand);
- 
- 	INIT_LIST_HEAD(&new->se_conns);
- 
-@@ -2700,6 +2699,29 @@ __find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net)
+ #include "xdr4.h"
+ #include "nfs4ctl.h"
+@@ -995,6 +996,19 @@ struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *sla
  	return NULL;
  }
  
-+/* A candidate need only differ from the ID of every live session. */
-+static __be32 nfsd4_assign_sessionid_locked(struct net *net,
-+					    const clientid_t *clid, u64 *rand)
++/* Wrap the random sources so nfs4state_test.c can script them. */
++static u32 nfsd4_get_random_u32(void)
 +{
-+	struct nfs4_sessionid candidate __aligned(4);
-+	struct nfsd4_sessionid *sid = (struct nfsd4_sessionid *)candidate.data;
-+	int i;
-+
-+	sid->clientid = *clid;
-+	for (i = 0; i < NFSD4_RANDOM_RETRIES; i++) {
-+		u64 value = get_random_u64();
-+
-+		nfsd4_sessionid_set_rand(sid, value);
-+		if (!__find_in_sessionid_hashtbl(&candidate, net)) {
-+			*rand = value;
-+			return nfs_ok;
-+		}
-+	}
-+	pr_warn_ratelimited("NFSD: no unused session ID after %d tries\n",
-+			    NFSD4_RANDOM_RETRIES);
-+	return nfserr_jukebox;
++	KUNIT_STATIC_STUB_REDIRECT(nfsd4_get_random_u32);
++	return get_random_u32();
 +}
 +
- static struct nfsd4_session *
- find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net,
- 		__be32 *ret)
-@@ -4752,6 +4774,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 	struct nfs4_client *old = NULL;
- 	struct nfsd4_session *new;
- 	struct nfsd4_conn *conn;
-+	u64 sessionid_rand;
- 	__be32 status = 0;
- 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
-@@ -4808,6 +4831,16 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 		goto out_cache_error;
- 	}
- 
-+	/*
-+	 * Assign the session ID before Phase 3 so a failure expires and
-+	 * confirms nothing.
-+	 */
-+	status = nfsd4_assign_sessionid_locked(SVC_NET(rqstp),
-+					       &cr_ses->clientid,
-+					       &sessionid_rand);
-+	if (status)
-+		goto out_expired_error;
++static u64 nfsd4_get_random_u64(void)
++{
++	KUNIT_STATIC_STUB_REDIRECT(nfsd4_get_random_u64);
++	return get_random_u64();
++}
 +
- 	/* RFC 8881 Section 18.36.4 Phase 3: Client ID confirmation. */
- 	if (conf) {
- 		status = nfserr_wrong_cred;
-@@ -4843,7 +4876,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 	/* Report the correct number of backchannel slots */
- 	cr_ses->back_channel.maxreqs = new->se_cb_highest_slot + 1;
+ /*
+  * Publish a COPY_NOTIFY stateid in nn->s2s_cp_stateids and link it onto the
+  * parent's sc_cp_list. That IDR holds only COPY_NOTIFY stateids.
+@@ -1006,7 +1020,7 @@ static int nfs4_init_cp_state(struct nfsd_net *nn, copy_stateid_t *stid,
  
--	init_session(rqstp, new, conf, cr_ses);
-+	init_session(rqstp, new, conf, cr_ses, sessionid_rand);
- 	nfsd4_get_session_locked(new);
+ 	stid->cs_stid.si_opaque.so_clid.cl_boot = (u32)nn->boot_time;
+ 	/* so_id is cyclic, so this word carries the token's secret. */
+-	stid->cs_stid.si_opaque.so_clid.cl_id = get_random_u32() |
++	stid->cs_stid.si_opaque.so_clid.cl_id = nfsd4_get_random_u32() |
+ 						NFSD4_CPNTF_CLID_BIT;
  
- 	memcpy(cr_ses->sessionid.data, new->se_sessionid.data,
-@@ -6360,15 +6393,15 @@ bool nfsd_wait_for_delegreturn(struct svc_rqst *rqstp, struct inode *inode)
+ 	idr_preload(GFP_KERNEL);
+@@ -2709,7 +2723,7 @@ static __be32 nfsd4_assign_sessionid_locked(struct net *net,
+ 
+ 	sid->clientid = *clid;
+ 	for (i = 0; i < NFSD4_RANDOM_RETRIES; i++) {
+-		u64 value = get_random_u64();
++		u64 value = nfsd4_get_random_u64();
+ 
+ 		nfsd4_sessionid_set_rand(sid, value);
+ 		if (!__find_in_sessionid_hashtbl(&candidate, net)) {
+@@ -3257,7 +3271,7 @@ static __be32 nfsd4_assign_clid_locked(struct nfs4_client *clp,
+ 		return nfs_ok;
+ 
+ 	for (i = 0; i < NFSD4_RANDOM_RETRIES; i++) {
+-		id = get_random_u32() & ~NFSD4_CPNTF_CLID_BIT;
++		id = nfsd4_get_random_u32() & ~NFSD4_CPNTF_CLID_BIT;
+ 		if (!cl_id_in_use_locked(nn, id)) {
+ 			clp->cl_clientid.cl_id = id;
+ 			return nfs_ok;
+@@ -10314,10 +10328,22 @@ set_max_delegations(void)
+ 	max_delegations = nr_free_buffer_pages() >> (20 - 2 - PAGE_SHIFT);
  }
  
- /*
-- * gen_sessionid() composes a sessionid from the client's clientid and a
-- * sequence counter, so the sequence alone identifies the granting session.
-+ * gen_sessionid() composes a sessionid from the client's clientid and
-+ * a 64-bit random value, so the random half alone identifies the
-+ * granting session.
-  */
- static void nfsd4_recall_grant_sessionid(const struct nfs4_delegation *dp,
- 					 struct nfsd4_sessionid *sid)
++/*
++ * Keep boot_time strictly increasing across a restart so clientids and
++ * stateids issued before the restart stay recognizably stale.
++ */
++static time64_t nfsd4_next_boot_time(struct nfsd_net *nn)
++{
++	time64_t now = ktime_get_real_seconds();
++
++	if (now <= nn->boot_time)
++		return nn->boot_time + 1;
++	return now;
++}
++
+ static int nfs4_state_create_net(struct net *net)
  {
- 	sid->clientid = dp->dl_stid.sc_client->cl_clientid;
--	sid->sequence = dp->dl_recall_grant.sessionid_seq;
--	sid->reserved = 0;
-+	nfsd4_sessionid_set_rand(sid, dp->dl_recall_grant.sessionid_rand);
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+-	time64_t previous_boot;
+ 	int i;
+ 
+ 	nn->conf_id_hashtbl = kmalloc_objs(struct list_head, CLIENT_HASH_SIZE);
+@@ -10339,10 +10365,7 @@ static int nfs4_state_create_net(struct net *net)
+ 		INIT_LIST_HEAD(&nn->sessionid_hashtbl[i]);
+ 	nn->conf_name_tree = RB_ROOT;
+ 	nn->unconf_name_tree = RB_ROOT;
+-	previous_boot = nn->boot_time;
+-	nn->boot_time = ktime_get_real_seconds();
+-	if (nn->boot_time <= previous_boot)
+-		nn->boot_time = previous_boot + 1;
++	nn->boot_time = nfsd4_next_boot_time(nn);
+ 	nn->boot_time_bt = ktime_get_boottime_seconds();
+ 	clear_bit(NFSD_NET_GRACE_ENDED, &nn->flags);
+ 	clear_bit(NFSD_NET_GRACE_END_FORCED, &nn->flags);
+@@ -11174,3 +11197,7 @@ nfsd_handle_dir_event(u32 mask, const struct inode *dir, const void *data,
+ 	nfsd_notify_event_put(evt);
+ 	return 0;
  }
- 
- static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
-@@ -7135,7 +7168,7 @@ nfs4_delegation_record_grant_slot(struct nfs4_delegation *dp,
- 	if (!cstate->session)
- 		return;
- 	sid = (struct nfsd4_sessionid *)cstate->session->se_sessionid.data;
--	dp->dl_recall_grant.sessionid_seq = sid->sequence;
-+	dp->dl_recall_grant.sessionid_rand = nfsd4_sessionid_rand(sid);
- 	dp->dl_recall_grant.slotid = cstate->slot->sl_index;
- 	dp->dl_recall_grant.seqid = cstate->slot->sl_seqid;
- 	dp->dl_recall_grant.valid = true;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 4ed417bf2262..d9aecef95bae 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -316,7 +316,7 @@ struct nfs4_delegation {
- 
- 	/* Forward-channel slot that carried the granting request */
- 	struct {
--		u32			sessionid_seq;
-+		u64			sessionid_rand;
- 		u32			slotid;
- 		u32			seqid;
- 		bool			valid;
-@@ -500,6 +500,19 @@ struct nfsd4_sessionid {
- 	u32		reserved;
- };
- 
-+/* The sequence and reserved words together hold one 64-bit random value */
-+static inline void nfsd4_sessionid_set_rand(struct nfsd4_sessionid *sid,
-+					    u64 rand)
++
++#if IS_ENABLED(CONFIG_NFSD_KUNIT_TEST)
++#include "nfs4state_test.c"
++#endif
+diff --git a/fs/nfsd/nfs4state_test.c b/fs/nfsd/nfs4state_test.c
+new file mode 100644
+index 000000000000..c44bbda8b49e
+--- /dev/null
++++ b/fs/nfsd/nfs4state_test.c
+@@ -0,0 +1,591 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * KUnit tests for the random clientid, session ID, and COPY_NOTIFY
++ * stateid generators in nfs4state.c. Included at the end of that file
++ * so the tests reach its static helpers. KUNIT_STATIC_STUB_REDIRECT()
++ * replaces a random source only in the KUnit task, so the tests call
++ * the helpers directly rather than driving them over the wire.
++ */
++#include <kunit/test.h>
++#include <linux/xarray.h>
++
++/*
++ * Script for nfsd4_get_random_u32(). Past the script's end the last
++ * value repeats, so a one-value script models a source stuck on one
++ * value.
++ */
++static u32 nfsd_clid_test_rng[NFSD4_RANDOM_RETRIES + 2];
++static unsigned int nfsd_clid_test_rng_len;
++static unsigned int nfsd_clid_test_rng_pos;
++static unsigned int nfsd_clid_test_rng_calls;
++
++static u32 nfsd_clid_test_random_u32(void)
 +{
-+	sid->sequence = lower_32_bits(rand);
-+	sid->reserved = upper_32_bits(rand);
++	nfsd_clid_test_rng_calls++;
++	if (nfsd_clid_test_rng_pos < nfsd_clid_test_rng_len)
++		return nfsd_clid_test_rng[nfsd_clid_test_rng_pos++];
++	return nfsd_clid_test_rng_len ?
++		nfsd_clid_test_rng[nfsd_clid_test_rng_len - 1] : 0;
 +}
 +
-+static inline u64 nfsd4_sessionid_rand(const struct nfsd4_sessionid *sid)
++static void nfsd_clid_test_script(const u32 *vals, unsigned int n)
 +{
-+	return ((u64)sid->reserved << 32) | sid->sequence;
++	unsigned int i;
++
++	n = min_t(unsigned int, n, ARRAY_SIZE(nfsd_clid_test_rng));
++	for (i = 0; i < n; i++)
++		nfsd_clid_test_rng[i] = vals[i];
++	nfsd_clid_test_rng_len = n;
++	nfsd_clid_test_rng_pos = 0;
++	nfsd_clid_test_rng_calls = 0;
 +}
 +
- /*
-  *       State                Meaning                  Where set
-  * --------------------------------------------------------------------------
++/* Script for nfsd4_get_random_u64(), repeating its last value the same way. */
++static u64 nfsd_sid_test_rng[NFSD4_RANDOM_RETRIES + 2];
++static unsigned int nfsd_sid_test_rng_len;
++static unsigned int nfsd_sid_test_rng_pos;
++static unsigned int nfsd_sid_test_rng_calls;
++
++static u64 nfsd_sid_test_random_u64(void)
++{
++	nfsd_sid_test_rng_calls++;
++	if (nfsd_sid_test_rng_pos < nfsd_sid_test_rng_len)
++		return nfsd_sid_test_rng[nfsd_sid_test_rng_pos++];
++	return nfsd_sid_test_rng_len ?
++		nfsd_sid_test_rng[nfsd_sid_test_rng_len - 1] : 0;
++}
++
++static void nfsd_sid_test_script(const u64 *vals, unsigned int n)
++{
++	unsigned int i;
++
++	n = min_t(unsigned int, n, ARRAY_SIZE(nfsd_sid_test_rng));
++	for (i = 0; i < n; i++)
++		nfsd_sid_test_rng[i] = vals[i];
++	nfsd_sid_test_rng_len = n;
++	nfsd_sid_test_rng_pos = 0;
++	nfsd_sid_test_rng_calls = 0;
++}
++
++static struct nfsd_net *nfsd_clid_test_net(struct kunit *test)
++{
++	struct nfsd_net *nn;
++	unsigned int i;
++
++	nn = kunit_kzalloc(test, sizeof(*nn), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, nn);
++	nn->conf_id_hashtbl = kunit_kmalloc_array(test, CLIENT_HASH_SIZE,
++						  sizeof(struct list_head),
++						  GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, nn->conf_id_hashtbl);
++	nn->unconf_id_hashtbl = kunit_kmalloc_array(test, CLIENT_HASH_SIZE,
++						    sizeof(struct list_head),
++						    GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, nn->unconf_id_hashtbl);
++	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
++		INIT_LIST_HEAD(&nn->conf_id_hashtbl[i]);
++		INIT_LIST_HEAD(&nn->unconf_id_hashtbl[i]);
++	}
++	spin_lock_init(&nn->client_lock);
++	return nn;
++}
++
++static struct nfs4_client *nfsd_clid_test_client(struct kunit *test,
++						 struct list_head *tbl, u32 id)
++{
++	struct nfs4_client *clp;
++
++	clp = kunit_kzalloc(test, sizeof(*clp), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, clp);
++	clp->cl_clientid.cl_id = id;
++	list_add(&clp->cl_idhash, &tbl[clientid_hashval(id)]);
++	return clp;
++}
++
++/*
++ * cl_id_in_use_locked() finds a hashed client of any minor version or
++ * expiry state, so no random id aliases one find_client_in_id_table()
++ * skips.
++ */
++static void nfsd_clid_in_use_test(struct kunit *test)
++{
++	struct nfsd_net *nn = nfsd_clid_test_net(test);
++	struct nfs4_client *expired, *other;
++	bool conf, unconf, exp, minor, free;
++
++	nfsd_clid_test_client(test, nn->conf_id_hashtbl, 0x1111);
++	nfsd_clid_test_client(test, nn->unconf_id_hashtbl, 0x2222);
++	expired = nfsd_clid_test_client(test, nn->conf_id_hashtbl, 0x3333);
++	expired->cl_time = 0;
++	other = nfsd_clid_test_client(test, nn->conf_id_hashtbl, 0x4444);
++	other->cl_minorversion = 1;
++
++	/* A failed expectation allocates with GFP_KERNEL, so check unlocked. */
++	spin_lock(&nn->client_lock);
++	conf = cl_id_in_use_locked(nn, 0x1111);
++	unconf = cl_id_in_use_locked(nn, 0x2222);
++	exp = cl_id_in_use_locked(nn, 0x3333);
++	minor = cl_id_in_use_locked(nn, 0x4444);
++	free = cl_id_in_use_locked(nn, 0x5555);
++	spin_unlock(&nn->client_lock);
++
++	KUNIT_EXPECT_TRUE(test, conf);
++	KUNIT_EXPECT_TRUE(test, unconf);
++	KUNIT_EXPECT_TRUE(test, exp);
++	KUNIT_EXPECT_TRUE(test, minor);
++	KUNIT_EXPECT_FALSE(test, free);
++}
++
++/*
++ * The COPY_NOTIFY bit is cleared from a random clientid without a retry,
++ * so no clientid can equal a token's cl_id word.
++ */
++static void nfsd_clid_mask_test(struct kunit *test)
++{
++	struct nfsd_net *nn = nfsd_clid_test_net(test);
++	struct nfs4_client *new;
++	static const u32 seq[] = { 0x1234 | NFSD4_CPNTF_CLID_BIT };
++	__be32 status;
++
++	new = kunit_kzalloc(test, sizeof(*new), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, new);
++	kunit_activate_static_stub(test, nfsd4_get_random_u32,
++				   nfsd_clid_test_random_u32);
++	nfsd_clid_test_script(seq, ARRAY_SIZE(seq));
++
++	spin_lock(&nn->client_lock);
++	status = nfsd4_assign_clid_locked(new, nn, NULL, NULL);
++	spin_unlock(&nn->client_lock);
++
++	KUNIT_EXPECT_TRUE(test, status == nfs_ok);
++	KUNIT_EXPECT_EQ(test, new->cl_clientid.cl_id, 0x1234);
++	KUNIT_EXPECT_EQ(test, nfsd_clid_test_rng_calls, 1);
++}
++
++static void nfsd_clid_collision_test(struct kunit *test)
++{
++	struct nfsd_net *nn = nfsd_clid_test_net(test);
++	struct nfs4_client *new, *expired, *other;
++	static const u32 seq[] = { 0xAAAA, 0xBBBB, 0xCCCC, 0xDDDD, 0xEEEE };
++	__be32 status;
++
++	nfsd_clid_test_client(test, nn->conf_id_hashtbl, 0xAAAA);
++	nfsd_clid_test_client(test, nn->unconf_id_hashtbl, 0xBBBB);
++	expired = nfsd_clid_test_client(test, nn->conf_id_hashtbl, 0xCCCC);
++	expired->cl_time = 0;
++	other = nfsd_clid_test_client(test, nn->conf_id_hashtbl, 0xDDDD);
++	other->cl_minorversion = 1;
++
++	new = kunit_kzalloc(test, sizeof(*new), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, new);
++	kunit_activate_static_stub(test, nfsd4_get_random_u32,
++				   nfsd_clid_test_random_u32);
++	nfsd_clid_test_script(seq, ARRAY_SIZE(seq));
++
++	spin_lock(&nn->client_lock);
++	status = nfsd4_assign_clid_locked(new, nn, NULL, NULL);
++	spin_unlock(&nn->client_lock);
++
++	KUNIT_EXPECT_TRUE(test, status == nfs_ok);
++	KUNIT_EXPECT_EQ(test, new->cl_clientid.cl_id, 0xEEEE);
++	KUNIT_EXPECT_EQ(test, nfsd_clid_test_rng_calls, 5);
++}
++
++static void nfsd_clid_stuck_test(struct kunit *test)
++{
++	struct nfsd_net *nn = nfsd_clid_test_net(test);
++	struct nfs4_client *new;
++	static const u32 seq[] = { 0xCAFE };
++	bool conf, unconf;
++	__be32 status;
++
++	nfsd_clid_test_client(test, nn->conf_id_hashtbl, 0xCAFE);
++	nfsd_clid_test_client(test, nn->unconf_id_hashtbl, 0xBEEF);
++
++	new = kunit_kzalloc(test, sizeof(*new), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, new);
++	kunit_activate_static_stub(test, nfsd4_get_random_u32,
++				   nfsd_clid_test_random_u32);
++	nfsd_clid_test_script(seq, ARRAY_SIZE(seq));
++
++	spin_lock(&nn->client_lock);
++	status = nfsd4_assign_clid_locked(new, nn, NULL, NULL);
++	conf = cl_id_in_use_locked(nn, 0xCAFE);
++	unconf = cl_id_in_use_locked(nn, 0xBEEF);
++	spin_unlock(&nn->client_lock);
++
++	KUNIT_EXPECT_TRUE(test, status == nfserr_jukebox);
++	KUNIT_EXPECT_EQ(test, new->cl_clientid.cl_id, 0);
++	KUNIT_EXPECT_EQ(test, nfsd_clid_test_rng_calls, NFSD4_RANDOM_RETRIES);
++	KUNIT_EXPECT_TRUE(test, conf);
++	KUNIT_EXPECT_TRUE(test, unconf);
++}
++
++/*
++ * A confirmed client with a matching verifier gets no random id. The
++ * SETCLIENTID callback-update path copies the confirmed client's
++ * clientid in copy_clid() instead.
++ */
++static void nfsd_clid_copy_clid_skip_test(struct kunit *test)
++{
++	struct nfsd_net *nn = nfsd_clid_test_net(test);
++	struct nfs4_client *new, *conf;
++	nfs4_verifier verf;
++	__be32 status;
++
++	conf = kunit_kzalloc(test, sizeof(*conf), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, conf);
++	memset(conf->cl_verifier.data, 0x5a, sizeof(conf->cl_verifier.data));
++	memcpy(verf.data, conf->cl_verifier.data, sizeof(verf.data));
++
++	new = kunit_kzalloc(test, sizeof(*new), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, new);
++	kunit_activate_static_stub(test, nfsd4_get_random_u32,
++				   nfsd_clid_test_random_u32);
++	nfsd_clid_test_script(NULL, 0);
++
++	spin_lock(&nn->client_lock);
++	status = nfsd4_assign_clid_locked(new, nn, conf, &verf);
++	spin_unlock(&nn->client_lock);
++
++	KUNIT_EXPECT_TRUE(test, status == nfs_ok);
++	KUNIT_EXPECT_EQ(test, new->cl_clientid.cl_id, 0);
++	KUNIT_EXPECT_EQ(test, nfsd_clid_test_rng_calls, 0);
++}
++
++/*
++ * A boot_time an hour ahead of the clock forces the same-second branch
++ * whatever the clock does during the test.
++ */
++static void nfsd_clid_boot_time_test(struct kunit *test)
++{
++	struct nfsd_net *nn = nfsd_clid_test_net(test);
++	time64_t previous = ktime_get_real_seconds() + 3600;
++
++	nn->boot_time = previous;
++
++	KUNIT_EXPECT_EQ(test, nfsd4_next_boot_time(nn), previous + 1);
++}
++
++static void nfsd_cp_test_idr_destroy(void *ctx)
++{
++	idr_destroy(ctx);
++}
++
++static struct nfsd_net *nfsd_cp_test_net(struct kunit *test)
++{
++	struct nfsd_net *nn;
++
++	nn = kunit_kzalloc(test, sizeof(*nn), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, nn);
++	spin_lock_init(&nn->s2s_cp_lock);
++	idr_init(&nn->s2s_cp_stateids);
++	KUNIT_ASSERT_EQ(test, 0,
++			kunit_add_action_or_reset(test, nfsd_cp_test_idr_destroy,
++						  &nn->s2s_cp_stateids));
++	return nn;
++}
++
++static void nfsd_cp_word_test(struct kunit *test)
++{
++	struct nfsd_net *nn = nfsd_cp_test_net(test);
++	static const u32 seq[] = { 0x1234, 0x5678 };
++	struct nfs4_cpntf_state *first, *second;
++	struct nfs4_stid *parent;
++
++	parent = kunit_kzalloc(test, sizeof(*parent), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, parent);
++	INIT_LIST_HEAD(&parent->sc_cp_list);
++	first = kunit_kzalloc(test, sizeof(*first), GFP_KERNEL);
++	second = kunit_kzalloc(test, sizeof(*second), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, first);
++	KUNIT_ASSERT_NOT_NULL(test, second);
++	INIT_LIST_HEAD(&first->cp_list);
++	INIT_LIST_HEAD(&second->cp_list);
++
++	kunit_activate_static_stub(test, nfsd4_get_random_u32,
++				   nfsd_clid_test_random_u32);
++	nfsd_clid_test_script(seq, ARRAY_SIZE(seq));
++	KUNIT_EXPECT_EQ(test, nfs4_init_cp_state(nn, &first->cp_stateid,
++						 parent), 1);
++	KUNIT_EXPECT_EQ(test, nfs4_init_cp_state(nn, &second->cp_stateid,
++						 parent), 1);
++
++	KUNIT_EXPECT_EQ(test, nfsd_clid_test_rng_calls, 2);
++	KUNIT_EXPECT_EQ(test, first->cp_stateid.cs_stid.si_opaque.so_clid.cl_id,
++			0x1234 | NFSD4_CPNTF_CLID_BIT);
++	KUNIT_EXPECT_EQ(test, second->cp_stateid.cs_stid.si_opaque.so_clid.cl_id,
++			0x5678 | NFSD4_CPNTF_CLID_BIT);
++	KUNIT_EXPECT_EQ(test, first->cp_stateid.cs_stid.si_opaque.so_id, 0);
++	KUNIT_EXPECT_EQ(test, second->cp_stateid.cs_stid.si_opaque.so_id, 1);
++	KUNIT_EXPECT_PTR_EQ(test, idr_find(&nn->s2s_cp_stateids, 1),
++			    &second->cp_stateid);
++}
++
++static struct nfs4_cpntf_state *nfsd_cp_test_entry(struct kunit *test,
++						   struct nfsd_net *nn,
++						   struct list_head *parent,
++						   const clientid_t *owner,
++						   u32 key, u32 word)
++{
++	struct nfs4_cpntf_state *cps;
++	u32 k = key;
++
++	/* Not kunit_kzalloc(): a successful revoke frees the entry. */
++	cps = kzalloc_obj(*cps);
++	KUNIT_ASSERT_NOT_NULL(test, cps);
++	cps->cp_p_clid = *owner;
++	cps->cp_stateid.cs_stid.si_opaque.so_clid.cl_boot = (u32)nn->boot_time;
++	cps->cp_stateid.cs_stid.si_opaque.so_clid.cl_id = word;
++	cps->cp_stateid.cs_stid.si_opaque.so_id = key;
++	cps->cp_stateid.cs_type = NFS4_COPYNOTIFY_STID;
++	refcount_set(&cps->cp_stateid.cs_count, 1);
++	list_add(&cps->cp_list, parent);
++	KUNIT_ASSERT_EQ(test, 0,
++			idr_alloc_u32(&nn->s2s_cp_stateids, &cps->cp_stateid,
++				      &k, k, GFP_KERNEL));
++	return cps;
++}
++
++/*
++ * A NULL @clp is the READ/SEEK form, which accepts any holder of a
++ * matching token, not only the creator. The creator's @clp is the
++ * OFFLOAD_CANCEL form. The checks run in an order that keeps the entry
++ * alive until the final revoke.
++ */
++static void nfsd_cp_token_check_test(struct kunit *test)
++{
++	struct nfsd_net *nn = nfsd_cp_test_net(test);
++	clientid_t a = { .cl_boot = 1000, .cl_id = 0xA },
++		   b = { .cl_boot = 1000, .cl_id = 0xB };
++	struct nfs4_client *clp_a, *clp_b;
++	struct nfs4_cpntf_state *cps, *found = NULL;
++	LIST_HEAD(parent);
++	stateid_t st = { };
++	__be32 bad_word, bad_boot, wrong_client, read_form, cancel_form;
++	void *after;
++
++	nn->boot_time = 1000;
++	clp_a = kunit_kzalloc(test, sizeof(*clp_a), GFP_KERNEL);
++	clp_b = kunit_kzalloc(test, sizeof(*clp_b), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, clp_a);
++	KUNIT_ASSERT_NOT_NULL(test, clp_b);
++	clp_a->cl_clientid = a;
++	clp_b->cl_clientid = b;
++
++	cps = nfsd_cp_test_entry(test, nn, &parent, &a, 0x4321, 0xC0FFEE);
++	st.si_opaque.so_clid.cl_boot = (u32)nn->boot_time;
++	st.si_opaque.so_clid.cl_id = 0xC0FFEE;
++	st.si_opaque.so_id = 0x4321;
++
++	st.si_opaque.so_clid.cl_id = 0xC0FFEE + 1;
++	bad_word = manage_cpntf_state(nn, &st, NULL, &found);
++	st.si_opaque.so_clid.cl_id = 0xC0FFEE;
++
++	st.si_opaque.so_clid.cl_boot = (u32)nn->boot_time + 1;
++	bad_boot = manage_cpntf_state(nn, &st, clp_a, &found);
++	st.si_opaque.so_clid.cl_boot = (u32)nn->boot_time;
++
++	wrong_client = manage_cpntf_state(nn, &st, clp_b, &found);
++	KUNIT_EXPECT_NULL(test, found);
++
++	read_form = manage_cpntf_state(nn, &st, NULL, &found);
++	KUNIT_EXPECT_PTR_EQ(test, found, cps);
++	KUNIT_EXPECT_EQ(test, refcount_read(&cps->cp_stateid.cs_count), 2);
++	if (read_form == nfs_ok)
++		refcount_dec(&cps->cp_stateid.cs_count);
++
++	cancel_form = manage_cpntf_state(nn, &st, clp_a, &found);
++	after = idr_find(&nn->s2s_cp_stateids, 0x4321);
++
++	KUNIT_EXPECT_TRUE(test, bad_word == nfserr_bad_stateid);
++	KUNIT_EXPECT_TRUE(test, bad_boot == nfserr_bad_stateid);
++	KUNIT_EXPECT_TRUE(test, wrong_client == nfserr_bad_stateid);
++	KUNIT_EXPECT_TRUE(test, read_form == nfs_ok);
++	KUNIT_EXPECT_TRUE(test, cancel_form == nfs_ok);
++	KUNIT_EXPECT_NULL(test, after);
++
++	/* A failed cancel leaves the entry in place, so free it here. */
++	if (after) {
++		idr_remove(&nn->s2s_cp_stateids, 0x4321);
++		kfree(cps);
++	}
++}
++
++static void nfsd_so_id_free_stid(struct nfs4_client *cl, struct kmem_cache *slab,
++				 struct nfs4_stid *stid)
++{
++	spin_lock(&cl->cl_lock);
++	idr_remove(&cl->cl_stateids, stid->sc_stateid.si_opaque.so_id);
++	spin_unlock(&cl->cl_lock);
++	kmem_cache_free(slab, stid);
++}
++
++static void nfsd_so_id_destroy_slab(void *ctx)
++{
++	kmem_cache_destroy(ctx);
++}
++
++static void nfsd_so_id_destroy_xa(void *ctx)
++{
++	xa_destroy(ctx);
++}
++
++/*
++ * nfs4_alloc_stid() hands out so_id values cyclically, so an id freed
++ * a moment ago is not handed out again.
++ */
++#define NFSD_SO_ID_TEST_COUNT	4096
++
++static void nfsd_so_id_nonreuse_test(struct kunit *test)
++{
++	struct kmem_cache *slab;
++	struct nfs4_client *cl;
++	struct xarray *seen;
++	unsigned int i;
++	int err;
++
++	cl = kunit_kzalloc(test, sizeof(*cl), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, cl);
++	spin_lock_init(&cl->cl_lock);
++	idr_init(&cl->cl_stateids);
++	KUNIT_ASSERT_EQ(test, 0,
++			kunit_add_action_or_reset(test, nfsd_cp_test_idr_destroy,
++						  &cl->cl_stateids));
++	slab = kmem_cache_create("nfsd_test_stid", sizeof(struct nfs4_stid), 0,
++				 0, NULL);
++	KUNIT_ASSERT_NOT_NULL(test, slab);
++	KUNIT_ASSERT_EQ(test, 0,
++			kunit_add_action_or_reset(test, nfsd_so_id_destroy_slab,
++						  slab));
++	/* Cleanup runs on another kthread, so @seen cannot live on this stack. */
++	seen = kunit_kzalloc(test, sizeof(*seen), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, seen);
++	xa_init(seen);
++	KUNIT_ASSERT_EQ(test, 0,
++			kunit_add_action_or_reset(test, nfsd_so_id_destroy_xa,
++						  seen));
++
++	for (i = 0; i < NFSD_SO_ID_TEST_COUNT; i++) {
++		struct nfs4_stid *stid = nfs4_alloc_stid(cl, slab, NULL);
++
++		KUNIT_ASSERT_NOT_NULL(test, stid);
++		err = xa_insert(seen, stid->sc_stateid.si_opaque.so_id,
++				xa_mk_value(1), GFP_KERNEL);
++		nfsd_so_id_free_stid(cl, slab, stid);
++		KUNIT_ASSERT_EQ(test, err, 0);
++		if (!(i & 1023))
++			cond_resched();
++	}
++}
++
++/*
++ * nfsd4_assign_sessionid_locked() takes a struct net, so build one whose
++ * net_generic() slot for nfsd points at the bare nfsd_net.
++ */
++static struct net *nfsd_sid_test_net(struct kunit *test, struct nfsd_net **nnp)
++{
++	struct net_generic *ng;
++	struct nfsd_net *nn;
++	struct net *net;
++	unsigned int i;
++
++	net = kunit_kzalloc(test, sizeof(*net), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, net);
++	ng = kunit_kzalloc(test, struct_size(ng, ptr, nfsd_net_id + 1),
++			   GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, ng);
++	nn = kunit_kzalloc(test, sizeof(*nn), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, nn);
++	nn->sessionid_hashtbl = kunit_kmalloc_array(test, SESSION_HASH_SIZE,
++						    sizeof(struct list_head),
++						    GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, nn->sessionid_hashtbl);
++	for (i = 0; i < SESSION_HASH_SIZE; i++)
++		INIT_LIST_HEAD(&nn->sessionid_hashtbl[i]);
++	spin_lock_init(&nn->client_lock);
++	ng->ptr[nfsd_net_id] = nn;
++	rcu_assign_pointer(net->gen, ng);
++	*nnp = nn;
++	return net;
++}
++
++static unsigned int nfsd_sid_test_count(struct nfsd_net *nn)
++{
++	struct nfsd4_session *se;
++	unsigned int i, n = 0;
++
++	for (i = 0; i < SESSION_HASH_SIZE; i++)
++		list_for_each_entry(se, &nn->sessionid_hashtbl[i], se_hash)
++			n++;
++	return n;
++}
++
++static void nfsd_sid_test(struct kunit *test)
++{
++	static const u64 taken = 0x1122334455667788ULL;
++	static const u64 seq[] = { taken, 0x0102030405060708ULL };
++	static const u64 stuck[] = { taken };
++	const clientid_t clid = { .cl_boot = 7, .cl_id = 0x99 };
++	struct nfsd4_sessionid *sid;
++	struct nfsd4_session *se;
++	struct nfsd_net *nn;
++	struct net *net;
++	__be32 status, stuck_status;
++	u64 rand = 0, stuck_rand = 0;
++	unsigned int before, after;
++
++	net = nfsd_sid_test_net(test, &nn);
++	se = kunit_kzalloc(test, sizeof(*se), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, se);
++	sid = (struct nfsd4_sessionid *)se->se_sessionid.data;
++	sid->clientid = clid;
++	sid->sequence = lower_32_bits(taken);
++	sid->reserved = upper_32_bits(taken);
++	list_add(&se->se_hash, &nn->sessionid_hashtbl[sid->sequence %
++						      SESSION_HASH_SIZE]);
++
++	kunit_activate_static_stub(test, nfsd4_get_random_u64,
++				   nfsd_sid_test_random_u64);
++	nfsd_sid_test_script(seq, ARRAY_SIZE(seq));
++	spin_lock(&nn->client_lock);
++	status = nfsd4_assign_sessionid_locked(net, &clid, &rand);
++	spin_unlock(&nn->client_lock);
++
++	KUNIT_EXPECT_TRUE(test, status == nfs_ok);
++	KUNIT_EXPECT_EQ(test, rand, seq[1]);
++	KUNIT_EXPECT_EQ(test, nfsd_sid_test_rng_calls, 2);
++
++	nfsd_sid_test_script(stuck, ARRAY_SIZE(stuck));
++	before = nfsd_sid_test_count(nn);
++	spin_lock(&nn->client_lock);
++	stuck_status = nfsd4_assign_sessionid_locked(net, &clid, &stuck_rand);
++	spin_unlock(&nn->client_lock);
++	after = nfsd_sid_test_count(nn);
++
++	KUNIT_EXPECT_TRUE(test, stuck_status == nfserr_jukebox);
++	KUNIT_EXPECT_EQ(test, stuck_rand, 0);
++	KUNIT_EXPECT_EQ(test, nfsd_sid_test_rng_calls, NFSD4_RANDOM_RETRIES);
++	KUNIT_EXPECT_EQ(test, before, after);
++}
++
++static struct kunit_case nfsd_clid_test_cases[] = {
++	KUNIT_CASE(nfsd_clid_in_use_test),
++	KUNIT_CASE(nfsd_clid_mask_test),
++	KUNIT_CASE(nfsd_clid_collision_test),
++	KUNIT_CASE(nfsd_clid_stuck_test),
++	KUNIT_CASE(nfsd_clid_copy_clid_skip_test),
++	KUNIT_CASE(nfsd_clid_boot_time_test),
++	KUNIT_CASE(nfsd_cp_word_test),
++	KUNIT_CASE(nfsd_cp_token_check_test),
++	KUNIT_CASE(nfsd_so_id_nonreuse_test),
++	KUNIT_CASE(nfsd_sid_test),
++	{}
++};
++
++static struct kunit_suite nfsd_clid_test_suite = {
++	.name = "nfsd-clientid",
++	.test_cases = nfsd_clid_test_cases,
++};
++
++kunit_test_suite(nfsd_clid_test_suite);
 
 -- 
 2.56.0
