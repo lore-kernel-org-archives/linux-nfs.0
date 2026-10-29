@@ -1,96 +1,99 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.45
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.218.44
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793302468;
-	b=lMS+ApfN2tL+nFlJgGMepJilFJ2GTuiKDay/cz2A2kf5Fx+hHx9henoOVBwfY2jhHqq2
-	 dsq9kWNrdp02YMw6aEn83xZzOnwhOveCfgrkZiZXWj/4ekAKOUoJE5O+u2olpceEN2JVV
-	 p0NCTc8QAEX2alaopk34aeWrdO5t6vHBN36H2jA+jGEYiKK/vTzqZh7mckVePPDy7H0/z
-	 ZK/+rivl+nhMKGsJOGzVKd9gAW9ipdak5/13REMmyy7ueEfporWhIpKe2V1n8n8zFHxhj
-	 63/+3GcwPBVp79CZnraxVFckhAq/8KcULuQGbB9LPc+aMK/9VpZnh5M7N/HySTuDcmQ==
+	t=1793309662;
+	b=3TT/Ow2YAs0gztheHVHuemhVOD9JZ9NsBQHGYdV8Xqxx534K8tyDTHDYojUpNzwou0S7
+	 76NCGvkp3WpC45NNG5D+H8JLIGdC/KqFlu/GjtNv0k2hldS5/2+A67VuND3UbmG7MecO1
+	 Zf/rGKXkePezqncEGpvZrRkZi3ZiJ5m6GLOeblzTBH9RaMiUKPdin5jlBaB8ltIJqWkBB
+	 MFa6TJGI2pq7eeSbmYhEPAY/R740EkqSp6OknjwUFaG7DQ2/zpToeTVe8ZYZhwGMR3MKs
+	 Hs1fsVPmNKhzrlDUd1gmQqstYHKngpHlMUukrg32niKCujaay63E83LnPDNYtuwn4WQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793302468;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793309662;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
-	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=PuLVebBATEeqqyn/PldQ4dGyEDIrLVXFLW5fCfzk680=;
-	b=D3SrzerVCupA0roRieyqqcbsqtyl6Fo55w2rBOm1x2GiDij9kVcLq1gzdDMdE7LLl/2D
-	 MsvjOUvro76/gmkpsx+Lop/9R47xbuteetzQZFVJOPgGjmpFkRkdwVr0NZp4HXdWddT2T
-	 Ii7+cKB30LVI+r6ncPn2KAS/vvr4ZH2KESp4LgawFJ3jxOED6jJRWbactKgmkTABU60bX
-	 7zCl2YnFwyWjoXi+Jek51fkADJqftonNPO+qWtF59k04qJDVDzjlTmoyMZq8/KKqO7HVU
-	 6LfZ2PG5Z17Oo9905MrfGhR5R9e5R6xXSQykQxqMh20XsbY6CjFnEdSqe17e/Eet2pw==
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
+	 Content-Type:MIME-Version:Content-Transfer-Encoding;
+	bh=MILUqHNsqMeib6qd7G8v6uTbXNOk64aE06RXzgflgTs=;
+	b=ii/f/N85qpy1cKc+APegtU+PY1S6tjU4PwRSodYDmcIC2+f2qZ8rOOqHlnVDQc7rtzaK
+	 LJnj5c7oT94pWe29RlaGUWueoNaVQRQvUDKGJ113lX90OO++nVLpVWetvXuq9T0NFqwKA
+	 qSYI6LOYaMfB2ZSKi1PEROInQlYMs5hxb70Xtha6/0cLfm0JxPLysNeSjc+MsNtWRkqYp
+	 dLB7ZtwpRszhtzA/psPX0piEzCwWkyQyo54zhf1GjsjL9h/v7aQikanVPsfwBIek0Uswt
+	 BqPVsefTaaW6VWfiYd9/BiKThF6P1TbFmD7gUSnxt2v+Ld0iVtw8SWPSeKQZGad3Qhw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=hammerspace.com;
-	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=ZrzhcgSQ;
-	arc=none smtp.remote-ip=209.85.210.45
-Received: from mail-ot1-f45.google.com (mail-ot1-f45.google.com [209.85.210.45])
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=UnNtzvCA;
+	arc=none smtp.remote-ip=209.85.218.44
+Received: from mail-ej1-f44.google.com (mail-ej1-f44.google.com [209.85.218.44])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4FBA4606A31A
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 19:34:28 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4FBA4606A31A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 16B19606A31A
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 21:34:21 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 16B19606A31A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=ZrzhcgSQ
-Received: by mail-ot1-f45.google.com with SMTP id 46e09a7af769-85d363fb73cso15446a34.1
-        for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 12:34:28 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=UnNtzvCA
+Received: by mail-ej1-f44.google.com with SMTP id a640c23a62f3a-c46822eefb6so344963466b.2
+        for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 14:34:21 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1793302467; x=1793907267; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=PuLVebBATEeqqyn/PldQ4dGyEDIrLVXFLW5fCfzk680=;
-        b=ZrzhcgSQygD274THC+YgR0ETYxRxxDuMXEEgdEkH9GGU8Atz8X8LERap+44pyynuRB
-         rfspesTVWpd7OTG2O5D7zRHGcxkTJko3pHywU4F67goYYHDlHjtzGJL3looKRWyMp81O
-         KkBcmn6N/ADjeEWMaigTciTTIbiar8ACavqNw3tVHDVgr0IKe7fH85Fe1Ef2udwFDgYa
-         fRUD2U9xZA3mBUlMDHqLG6taJe2xgwsATPpy1MV0/gojXQmpSMqSFh4OthalDX/Ps3kv
-         oR7G15PxE32f07xOtUA+poXU+7GXy5o2OYP+/baqLjXUrA80FFYygFcHUx3IICcBVBh4
-         exbw==
+        d=gmail.com; s=20260707; t=1793309660; x=1793914460; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:content-type:references
+         :in-reply-to:message-id:date:subject:cc:to:from:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=MILUqHNsqMeib6qd7G8v6uTbXNOk64aE06RXzgflgTs=;
+        b=UnNtzvCA97HHZGSUaahnPYByLv6/gMJwuud68cgF72V6bQ+fhMAi4f5DjrxquUmA6V
+         Hhijze4yfCaL+dhqAdGgQfIKIKBrqZidyIBGPQZfePLse4b+3Yqsyu8mQqPZXVBeOKO2
+         PcPkBmrADXp+sDynA3cYAcFGY9IF8ijW3++rCTW1USkpC63vkXkXYyFKYuZb4Kz3Fw/0
+         VcgiG7+cebWY1O/czgqcgPxYfCIvOv27OBz13nuZcvu9mCQGnbEfw3MKEI84bp+rOOzQ
+         lNK2Hy77xD0H4kgpKfaBDHnJ5twX5CAy1Sb0d0taCgOXSNcECKYC4Wc2ec4RhFxC8TM5
+         D9tg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793302467; x=1793907267;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=PuLVebBATEeqqyn/PldQ4dGyEDIrLVXFLW5fCfzk680=;
-        b=Pltx9ZeNKAl4MWpn8R3js1n5R6/Iv0oe1f1lRUU1iK/karKWZLlLDu0zAe+5N7k5Pd
-         OsQW0EiNXieiCNlgjwLAS1Ff2l2ZcLUfvpgK5aXqyCbS/Jp/0Rg93RmCAHmXcFXCHOan
-         xcP1HNKEHOWJMOL+peGCRamIh65LHJ/0xI+hmMCWGX2c84HeeQ7azEvvcxzEDGGFb2jS
-         qz5oNYldS2JoqLFpSNHyTLnA8zpaaTYDd8ul+3nXlpP+NWH0ClgYHDADnM3SZFGh0UWg
-         a/2/irzOAg5Z5ydud51PLOJ1KS2wgQX/3gQwTzGHXBpt0B8I4T6glzKNczsI+0mnEiBp
-         c6rQ==
-X-Gm-Message-State: AFq9FYIaV7aPECyRQeIgdIUVlOK7IVhpVw8jRB7yjwW1EAY/wuapRuyj
-	K3GC/xc0yBs41EZluOHL/uD5UwwbJKdq2eKeZL80DfXMC7IFZiwfQLVww+sf0ehFYyIF9Y4JCMg
-	AfNYd
-X-Gm-Gg: AYBFou2AoZa13Sy5OcFFQueIHYmUiDJSrYZTMXLHK366rQLZ72R89631f9gDtvMRcw7
-	sAQgjSMwRFtJFfaJSq4HBGX8ir3TnVbFempe8xwpYxqhD1aosVZ/vYj9Lg4UcjQ9Mon1HhjC/3C
-	VXKWOzjylMpWQe8oDT0XwrZWdROS3NzEShfph/NqKxbE8i2FloRUtHT4t626wGIbsWASzcBETcE
-	EDzst61Hcv+eZqLsrwgBhbbhIPpJnhmwYj8F5L+jUBZz8NbR6tkIgmwy0VY+fAXor9Ft6+Xcvtz
-	2WB4jadxHI+pQF31Xb5qihpgf1oGNk4NaKMhE07tEvj23a2MGxIixTkhiEk6DIg2vm5TkuDHB2m
-	Te+E/KNG10p8LiL3zv8NOuHieD/T+U1aS6XTGIKmo4N0c9ofaSZI9aafoPvnjJZ2VabqHcSlei5
-	nEngykJA/jtZtbNPK6i272mhwzIeNnbob4CTWuDAoZoJboAxQ4ZRn8kwAnVKVxaH8CgcScnCvpW
-	L0Qk82KTTivKOSfLTZjwb6xPkBBnXw8t9TvPWNJf3CN3tZ1V7fhz0ltLtOiyMzYiot/aAlt3PvB
-	OiR5wfJrmzf4HvIPfOnMT1NWJ7O1EmTaa+qNXYZDcllZ1k0EkFJOZrQzxxn75I2cUSTVzQUdYiO
-	x
-X-Received: by 2002:a05:6808:1925:b0:4c3:4e34:c69e with SMTP id 5614622812f47-5640d919f60mr292478b6e.8.1793302467138;
-        Thu, 29 Oct 2026 12:34:27 -0700 (PDT)
-Received: from bcodding.csb.hammerspace.com ([12.117.181.174])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-5640e37d046sm107380b6e.15.2026.10.29.12.34.25
+        d=1e100.net; s=20260707; t=1793309660; x=1793914460;
+        h=content-transfer-encoding:mime-version:content-type:references
+         :in-reply-to:message-id:date:subject:cc:to:from:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=MILUqHNsqMeib6qd7G8v6uTbXNOk64aE06RXzgflgTs=;
+        b=WbkeGjD7igNI/wm4onQuNhlZ5iiZF8F1YNn8YukUGc46Gzjb0i+CmCbY6o0/hymrbb
+         IcSQgVMRdMdE1Yt1XX3dP5Lys+TyK8PhKWOxFOOxVbm07Q+jPvH0L7GOp/P3PtaVZrN1
+         AJoyDk8WGYszMDvrBKoZeojUlfqIvf4q/fYDyZCiinvKzEG10Kmz7qLt+mK266gItRmH
+         6nrJJNA5HUiQNBaj/TxUBqj2CS1RcdLAssBFHEf513pDCgJKEAUpquIWZS9JPj8ZW0k5
+         qfFgLgW7uNRARH1HkpQO/BhgfvpuJeo5QtcY8TP4W4fRNqYJ0qMtlZsx1+PMITc1m45l
+         682A==
+X-Forwarded-Encrypted: i=1; AKwUvBxz1CDPdR3g+TloiazU8IIfMTZuxTBY1CzxnyuSd3POOZRSWpTRWsRkGBYwqq75q9Rjst1zNhF//p8=@vger.kernel.org
+X-Gm-Message-State: AFq9FYJaGG9Z5KltF0IOmT9AHBNbyMViQPIBQswTOHXObJ6F45E+ZBbH
+	1AMzsgVXnfLJHpa1rri1gCIpDofOJH+0GXemjctdmqKErI47aLeIIKPm
+X-Gm-Gg: AYBFou1wZ9t0sKBrS4qy4FjbdhrS/sH7V7G+7giHAB1ezT+8P/qsN1QWNkOujbaxHJ/
+	MatEo5ciBr9dmgQ/JYKFcWUO42fGuYc1WWOU8WQRvlw5Kp0ZuAVXYSxa7eiIgTNlQq7wimrnIhN
+	q/Zk2mh2dzIeUknE+uOHw8/HdjhjEMLkErnuiDzJuNVmbGBg9JV2e6kRfHISd0lBO0+U/M8acvq
+	Yf5YJPcvWhrvjorXP1xJkurvSECH0XrhX1mRdlJiesoqBmePpmJOkxKU0qCTerf8EH9MWMSpyui
+	9DStwTeJlxOins4Zdo81FIEkqk99of1bVG2fV/ogGSB6WDBgRz65w07yEuhNApQcxwGgClFs6rL
+	+Q6Qib/DVHszHkt0QzQ0wrRTgLOrOhUEiD/8+IxdJSi4yxONnPI9PW3xH9sAryGvwKlBdKaj2zT
+	nWKsDgVqpukbPG8sKXWP1rPEva0veISKh3HZblFaEb1XgRO73TcXKhk6AOJ0oKCR2EdELv8YZVv
+	mKD/6KYKyfafoiRy6TG/506oSUXpiCR/d5cTHlCEckLq71jKkZBOuJAQ9q+sbLkoXo+0fksieeQ
+	g/dSd9hrmom1DmNPlQPMluBX2RZjf1maKaJOHEAxtoCirnx3Ozz1YmGh060sQC3e2nIxdX0r
+X-Received: by 2002:a17:906:fa12:b0:c46:7645:874 with SMTP id a640c23a62f3a-c4ca7ac00afmr20378366b.48.1793309660002;
+        Thu, 29 Oct 2026 14:34:20 -0700 (PDT)
+Received: from localhost.localdomain (173.242.112.181.16clouds.com. [173.242.112.181])
+        by smtp.gmail.com with ESMTPSA id a640c23a62f3a-c4caa441ee9sm332366b.86.2026.10.29.14.34.16
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 29 Oct 2026 12:34:26 -0700 (PDT)
-From: Benjamin Coddington <ben.coddington@hammerspace.com>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	Daejun Park <daejun7.park@samsung.com>,
-	Christoph Hellwig <hch@lst.de>
-Subject: [PATCH v3 2/2] pnfs/blocklayout: report data lost to a failed LAYOUTCOMMIT
-Date: Thu, 29 Oct 2026 15:34:21 -0400
-Message-ID: <054f354ecaa596514da593698461206e356004ac.1793302358.git.bcodding@hammerspace.com>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <cover.1793302358.git.bcodding@hammerspace.com>
-References: <cover.1793302358.git.bcodding@hammerspace.com>
+        Thu, 29 Oct 2026 14:34:19 -0700 (PDT)
+From: VeroFess <coderzeng@gmail.com>
+To: cel@kernel.org
+Cc: jlayton@kernel.org,
+	neil@brown.name,
+	okorniev@redhat.com,
+	Dai.Ngo@oracle.com,
+	tom@talpey.com,
+	linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4] nfsd: enforce export security for NFSv4 filehandles and stateids
+Date: Fri, 30 Oct 2026 05:33:51 +0800
+Message-ID: <20261029213351.259069-1-coderzeng@gmail.com>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <acef1e3e-8c3a-4b8b-9341-5ff0280efa19@slotpi15m67>
+References: <20261029051430.96326-1-coderzeng@gmail.com> <20261029063917.138184-1-coderzeng@gmail.com> <acef1e3e-8c3a-4b8b-9341-5ff0280efa19@slotpi15m67>
+Content-Type: text/plain; charset="utf-8"
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -102,87 +105,131 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: Benjamin Coddington <bcodding@hammerspace.com>
+Hi Chuck,
 
-Data written through a block or SCSI layout into PNFS_BLOCK_INVALID_DATA
-extents stays unwritten on the server until a LAYOUTCOMMIT converts
-those extents.  When the LAYOUTCOMMIT fails, ext_tree_mark_committed()
-tags the extents written again so that a later LAYOUTCOMMIT can cover
-them, and reports nothing.  nfs4_layoutcommit_done() also zeroes the
-task status for NFS4ERR_BADLAYOUT, NFS4ERR_BADIOMODE,
-NFS4ERR_DELEG_REVOKED and NFS4ERR_GRACE, so a synchronous LAYOUTCOMMIT
-returns 0 for those.  A server that has revoked the layout answers
-NFS4ERR_BADLAYOUT; once the client drops that layout its extent tree
-goes with it, and fsync() and close() have returned 0 for data that
-reads back as zeroes.
+Thank you very much for offering to help develop the patches. I would
+like to take you up on that: I am happy to run follow-up tests and
+confirm the resulting series, but I am not in a position to develop
+the split patches myself. I ran isolated tests to answer your
+questions; results are inline below.
 
-When ext_tree_mark_committed() puts extents back, record -EIO in the
-mapping's writeback error and the superblock's.  close() already checks
-the writeback error after nfs_wb_all(), but nfs_file_fsync() checks it
-in nfs_file_fsync_commit(), before pnfs_sync_inode() sends the
-LAYOUTCOMMIT, so check the file again after pnfs_sync_inode().
+> The v4 revision of your patch appears to combine the original fix
+> with several unrelated changes to SECINFO, READDIR, LOOKUP, and
+> stateid processing. [...] Let's split the single patch into a series.
 
-Fixes: b2be7811dd94 ("pnfsblock: cleanup_layoutcommit")
-Suggested-by: Daejun Park <daejun7.park@samsung.com>
-Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
----
- fs/nfs/blocklayout/extent_tree.c | 14 +++++++++++---
- fs/nfs/file.c                    |  3 +++
- 2 files changed, 14 insertions(+), 3 deletions(-)
+Agreed that it should be split.
 
-diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
-index 7393118c42a2..e408dba57401 100644
---- a/fs/nfs/blocklayout/extent_tree.c
-+++ b/fs/nfs/blocklayout/extent_tree.c
-@@ -696,6 +696,7 @@ ext_tree_mark_committed(struct nfs4_layoutcommit_args *arg, int status)
- 	struct pnfs_block_layout *bl = BLK_LO2EXT(NFS_I(arg->inode)->layout);
- 	struct rb_root *root = &bl->bl_ext_rw;
- 	struct pnfs_block_extent *be;
-+	bool uncommitted = false;
- 
- 	dprintk("%s status %d\n", __func__, status);
- 
-@@ -709,11 +710,13 @@ ext_tree_mark_committed(struct nfs4_layoutcommit_args *arg, int status)
- 
- 		if (status) {
- 			/*
--			 * Mark as written and try again.
--			 *
--			 * XXX: some real error handling here wouldn't hurt..
-+			 * The server may not have converted these blocks, so
-+			 * what we wrote to them may not be part of the file.
-+			 * Keep them for a later LAYOUTCOMMIT, but tell fsync
-+			 * and close.
- 			 */
- 			be->be_tag = EXTENT_WRITTEN;
-+			uncommitted = true;
- 		} else {
- 			be->be_state = PNFS_BLOCK_READWRITE_DATA;
- 			be->be_tag = 0;
-@@ -723,4 +726,9 @@ ext_tree_mark_committed(struct nfs4_layoutcommit_args *arg, int status)
- 		be = ext_try_to_merge_right(root, be);
- 	}
- 	spin_unlock(&bl->bl_ext_lock);
-+
-+	if (uncommitted) {
-+		filemap_set_wb_err(arg->inode->i_mapping, -EIO);
-+		errseq_set(&arg->inode->i_sb->s_wb_err, -EIO);
-+	}
- }
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index e1bdd10b35f1..59174ffed242 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -277,6 +277,9 @@ nfs_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
- 		if (ret != 0)
- 			break;
- 		ret = pnfs_sync_inode(inode, !!datasync);
-+		if (ret != 0)
-+			break;
-+		ret = file_check_and_advance_wb_err(file);
- 		if (ret != 0)
- 			break;
- 		nredirtied = atomic_long_read(&nfsi->redirtied_pages);
--- 
-2.53.0
+> 1. The need_wrongsec_check() change by itself, with
+>    "Fixes: 68d93184352f". [...] Please confirm that with your
+>    reproducer on a kernel that has only this change.
 
+Confirmed. I built the v4 parent plus only the need_wrongsec_check()
+change, with no other NFSD change. Reusing a live krb5p OPEN stateid
+over an AUTH_SYS connection, PUTFH; SAVEFH; READ and PUTFH; SAVEFH;
+WRITE both returned NFS4ERR_WRONGSEC at PUTFH, the file was unchanged,
+and the krb5p owner could still read it. That change alone is enough
+for the reported sequence.
+
+> 2. The check_nfsd_access() call in nfsd4_verify_copy(), which covers
+>    both COPY and CLONE. [...] the source handle can reach COPY or
+>    CLONE unchecked even after patch 1.
+
+Reproduced on the patch-1-only kernel: AUTH_SYS direct READ of the
+krb5p source returned WRONGSEC, but PUTFH; SAVEFH; PUTFH; COPY
+completed and wrote the source bytes to the destination. Adding only
+the nfsd4_verify_copy() check made COPY return NFS4ERR_ACCESS and left
+the destination unchanged. CLONE is NFS4ERR_NOTSUPP on this ext4
+fixture with or without the check, so I could not demonstrate a
+reflink; its justification is the shared source-check path with COPY.
+So this is a separate concern from patch 1.
+
+> 3. Anything else, one change per patch, each with its own rationale
+>    and only the Fixes: tags that match its code. These do not need
+>    to go to stable.
+
+Understood; I have kept each finding below as its own separate
+concern.
+
+> COPY_NOTIFY does not carry OP_HANDLES_WRONGSEC, so in PUTFH;
+> COPY_NOTIFY the PUTFH already gets the deferred check_nfsd_access()
+> call in nfsd4_proc_compound(). [...] How can READ be denied while
+> COPY_NOTIFY succeeds? [...] Unless there is another path, I would
+> drop the nfs4_check_file() and COPY_NOTIFY hunks.
+
+You are right. That result came from an intermediate tree, before the
+selected-export check on LOOKUP; both compounds used PUTROOTFH; LOOKUP,
+and only READ took the nfs4_check_file() path. I rebuilt v4 with just
+those two guards removed: with a retained stateid after the export
+changed to krb5p, READ and COPY_NOTIFY were both rejected with
+NFS4ERR_WRONGSEC before the operation, in the direct, SAVEFH, LOOKUP,
+and RESTOREFH paths. I found no PUTFH; COPY_NOTIFY path that patch 1
+misses, so those two hunks and the COPY_NOTIFY claim do not look
+needed.
+
+> With this change, a client using any flavor can learn whether a name
+> exists in a directory on a sec=krb5p export. RFC 8881 Section
+> 2.6.3.1.1.5 allows that, and your patch description should clarify
+> that the code behavior is changed to conform with the spec.
+
+Confirmed. With directory traversal permission, AUTH_SYS SECINFO on a
+krb5p export returned OK for an existing name and NOENT for a missing
+one; without traversal permission both returned NFS4ERR_ACCESS. I
+agree the description should state this is an intentional,
+spec-conforming part of security negotiation.
+
+> Also, the new check_xprtsec_policy() call in nfsd_lookup_dentry()
+> returns nfserr_wrongsec from SECINFO when it crosses into an export
+> with a different xprtsec= policy. Is that not the NFS4ERR_WRONGSEC
+> return from SECINFO that the description says is forbidden?
+
+It is, and that is a real inconsistency in v4. Plaintext SECINFO
+crossing into an xprtsec=tls child returned NFS4ERR_WRONGSEC on
+NFSv4.0/4.1/4.2. I also tested a variant that maps a transport-policy
+mismatch to NFS4ERR_ACCESS (RFC 8881 Section 18.29.3) at the starting
+and selected-export checks: SECINFO then returned ACCESS instead of
+WRONGSEC, while ordinary LOOKUP still returned WRONGSEC. That test
+used a plaintext connection, not TLS. The unqualified "forbidden"
+wording in my description is wrong either way.
+
+> On a pseudo-root export, nfsd4_encode_entry4_fattr() always crosses
+> into child exports. [...] Could the encoder fall back to returning
+> the mountpoint's own attributes instead?
+
+I tried that. The unrestricted fallback made size-only READDIR
+succeed, but when the client requested FILEHANDLE it received the
+covered mountpoint's handle and could then list the hidden underlay
+(confirmed with a sentinel placed under the mount). So the
+unrestricted fallback is not safe. A restricted variant that falls
+back only when FILEHANDLE is not requested did behave: size-only
+READDIR succeeded; a FILEHANDLE request still returned ACCESS; an
+rdattr_error request reported WRONGSEC in the child entry; direct
+LOOKUP stayed WRONGSEC.
+
+> The new check_nfsd_access() call in nfsd_lookup() fixes a mount
+> crossing that never checks the child export. The CREATE paths do the
+> same crossing [...] If this check goes in, it probably belongs in
+> nfsd_cross_mnt() so that every caller gets it.
+
+Agreed, and the CREATE gap is real. On v4, AUTH_SYS NFSv2 CREATE and
+NFSv3 CREATE UNCHECKED returned a filehandle from the stricter child
+export (a bind-mounted single-file export); NFSv4.0/4.1/4.2 OPEN
+UNCHECKED already returned WRONGSEC at OPEN. Moving the selected-export
+check into nfsd_cross_mnt_common() made NFSv2/NFSv3 CREATE return
+ACCESS while ordinary CREATE in the same parent still succeeded, so
+the check does look like it belongs on the common mount-crossing path,
+with the SECINFO exception preserved.
+
+> Longer term, I would rather not keep adding check_nfsd_access()
+> calls to individual operations. A filehandle whose security check
+> PUTFH deferred could instead carry a "check pending" state [...]
+> That can come later, it does not need to hold up these fixes.
+
+That design makes sense to me, and I agree it need not block the
+split.
+
+Please go ahead and take things from here. I will confirm that the
+resulting series addresses the issue and no longer reproduces, and run
+any other tests you would like.
+
+Thanks,
+VeroFess
