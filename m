@@ -1,73 +1,99 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.182
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793287321;
-	b=gLeMiNjU6ubJ15i0mbEfa0k5JAU92Io5ybvN6NK6BKfencixzrXVvo/jHH3vVQMfvhhH
-	 +j5hmPI/HQtHKuw3yqmOfv+OSr09A17AR6Yw7hBanzBO0Hrahebh43nQe79NsK22bmuY1
-	 yFClTTL0IlBap6WfH2bMYPU5kjZtguir86Qa8BBXWcUQA4fAlcOyrUwgEWO3JPwwWBJMv
-	 NGd5A0t8Pap7TaAD9UXJYrdB0OO+cOoZC5rDmNw7HCL7oUNYaAx9NF8smODv+LZNBeph8
-	 JyQyR7q4v1iCnnpbeT/gCkTDwnJZeld0AVCxwM4GVWv5TkMsdFrQMrA5uaVseQRVMng==
+	t=1793296069;
+	b=TV/eWdfmKnkXqI6FVeIMkMv7T2E6zFJjlhIF8T83OUdOtLpoe+h65upapGDo2ZroKAgk
+	 mnHMnIDSQWmBUA8WzXN9YeL1p7st080L9WVsFH4eM+w3sh9T/DHgmv86nA+XF3XnPh9ad
+	 vX8uzANqNa60qMl46sD5oB2vNgQQZMY3YOJdKAr7ZLrlFviR2wCKiNUlndamCtCkxxSYY
+	 n1krbe4FqOP+ht6d2i7ahSIwF12G6W1fyZRisnpKhm8BcBdCIaxtHd7yUUOeYFcbVDveW
+	 WRlADFAZvObQV9hdIT6JOMuvijuuHCOcTMQ19GtFGIR2f1mXtI808x8+5nYZVblIplw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793287321;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=MDAHO1eflK9N2oBPp6z7e1EXsl8BnH1h5nZqN8C5OKQ=;
-	b=0dsBxwLBK13YuVI1pFjXqn4zTKfv/qnwQ/5oFSoYWX4gWHd1VV4CwxsLdUyIFPIFslWS
-	 bd9TxmncCVu5B06CU5W72Gd+PwyjmM0y4Fl/fBtBIs0vKMO/UgorIG1ww/VFVdFcAW/SA
-	 /dF/0l6VN6UHb+nYwO0qEnHsW3qalyfmBE7CSlGxIgrBG1YU0aChWIx2Jfo0aP9tNWSis
-	 1McTeKw00vhguo6moIXjZrju4cOOMc/CaWxV0QeEh7+PN6iV8IylM2HS6EraYO9K6kjPc
-	 5LzAbuULHl+QZauZAdeFviYCTWMRgmiOLEmIHF7pc3rpAqehT78BPHAAUyZZ2OaRYeg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793296069;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:X-Google-Original-From:To:Cc:Subject:Date:X-Mailer:Message-ID:
+	 In-Reply-To:References:MIME-Version:Content-Type;
+	bh=YtZuSZ+g775+4gNgncIQEf9lnwNLs5cNsigMBo9gc8o=;
+	b=hNzTFNyC9dtuqdmIfxf0fozgSG8mLtdJI2b2tDXBYQSxdQyjS3Il4vZwEzL3QJrmqJha
+	 i0GjY0G3RpHzDC1x9YXJTajFZ4ELayJ0C2Ymbcmi6ZCW7dHtMEhviIQJAhTbDx0JxFtQt
+	 gA+FuOeYMEKwyJykPfzkGk8dUFdumuG5wBiCHyHhsWlsua1rsmuQPr4TzdMsmHLXSbfIZ
+	 h9jaedb/7A9O1g0g/Xh4F79ttskiec6WB0OmqTTI2O4YJvDnvOyzYmHQEha50z9KDYE0x
+	 AKkUxoGdXv1AcR42oHx4CJWnjS/gb2ocWUx32rf6sdh/QMApGPm8/0brxR11MmeDqCw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=YxL7ffUK;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=hammerspace.com;
+	spf=pass smtp.mailfrom=hammerspace.com;
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=Ds+WsqlG;
+	arc=none smtp.remote-ip=209.85.167.182
+Received: from mail-oi1-f182.google.com (mail-oi1-f182.google.com [209.85.167.182])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 207FB606A31A
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 15:22:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE110606A31C
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 17:47:48 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org CE110606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=YxL7ffUK
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A18AA1F01824
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 15:22:00 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793287320;
-	bh=MDAHO1eflK9N2oBPp6z7e1EXsl8BnH1h5nZqN8C5OKQ=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=YxL7ffUKhRo4fYdRS6sK+nTvBfNXMIBQstIFcsXrWmr6QYaR5jxLPVeR5RPLC/M7C
-	 KDJgl8YKBVkdqTNtCYQR2FowBctTs8FMcpiRm0sfP3TeDZDqV8U1aHH05GWIgYeyIG
-	 crjNymDSgyW+3DNZzGpQoIagkN6ooAJ2Yq2PDqWhVHVGs5lmfWPrlHjzvAkNV4QQaD
-	 MMywNOZoWUMpL/lr/qLt6yY82GPjri2JGpnBjjPj3Y1VxDE4eq9yIwXOsJqxxb8vJM
-	 5Q11u82/UR6IcL3EUEL2sMNTCjF0zsv9vf6r8QEus5INpzoEQcLWAj68U2gdS1zArO
-	 mS6b4HmEiiqsw==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id DCE65F40067;
-	Thu, 29 Oct 2026 11:21:59 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Thu, 29 Oct 2026 11:21:59 -0400
-X-ME-Sender: <xms:l2TjatbkolpIsZmAKhdw0jQhEkvJYJKCQWw9GO79ZsTsK-j8Zr9YEA>
-    <xme:l2TjavOGylVvgvivz0PpgooYvgPdLAQwS9GNDivtRUyTgPfAiupJ0hYDGxIN42JZI
-    noH48RUSZz5akhtv4DA7ooTva7R-iIGLlMDhM9827DZmSlt6UegHAPX>
-X-ME-Proxy-Cause: dmFkZTFN/VaiqplX3teeJIaZH0QG1VlR6UUOeukdQLDkYWNN6p1l5h0esCed25mNbBFqG3
-    ZmyYtQsmQbNGEV2zdZOdDsCOuGMCVfjnxp4zenMUGDPMO+i4k7aBa1mc2sqAFzJgteP+Tp
-    VP5ygBVpaiJcshZ7uM9EI2U1liWotHfcWKJgoSZbMlu9v0r+A3J69QiIK+MrIb2+q3jn88
-    LGOt2LFOLlxdsFWvps2qUmlpKCPPSBrP1Uz6jUDh/D01swtkg2bHb4i/XVDLIvSduYaSWC
-    o4LA1ieZgxde+MgwVeRwpZN3WFihZDZ2gU9Xq9Cifg5PcvSmQw8CfMsfTMLNEdjGpEQIGW
-    ha+bBxWJhhkBP8Owjph+cv8vEJEr7UCJahl1FDymL4m1faxyeCFh8FOKhXOgIKU/NvEMof
-    o54LGvKwH9YsFX3FNvA4hz0LCf0yj2Q1Q3AIMXXqxhniiDLv2nfoyqm8A5Hy9CRkXV8Ud/
-    OEA2kS5Qan60wSDhRyjFkB38iW7pjkvf5vXWfbs+NG3VE7VhdqxA24QcIKp0KStG56LWrP
-    nP9jgEGRiX7yFNLrbKaqICniKqSCmNhtSdB4K3/HMUvlps4+G/cLfrC2fNE88L3L9jn+BC
-    quezsTE4aP+zqa7Cf5HuvOr+/ON6FDKIlQA5aOQ5xljyexcfT6Znb+dVzSOA
-X-ME-Proxy: <xmx:l2TjanTSNv_5kh5uFIoxlLqEp0rhLxteNQ9BUO_0bUHhDHoNshv_qw>
-    <xmx:l2TjapdBCxXOE-Y2J-zHDfVNXlN04cxmstJykvIEPMo0WT27_6251A>
-    <xmx:l2TjarBrocM2xfaeeyevVCCaohqd5gTiCWd_fVIoA2F6shgN3ydVeg>
-    <xmx:l2TjarlZCIvdzkRX8327HNmqYONPH-ZOtGUOPjUiO6h2zAMRYyPebQ>
-    <xmx:l2TjamfFkEtrC_zgleB3fbNXZZUCoCa8nQWmqBbcJ0BKrtExVl5eHNU6>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id BD4A178273C; Thu, 29 Oct 2026 11:21:59 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=Ds+WsqlG
+Received: by mail-oi1-f182.google.com with SMTP id 5614622812f47-53ec2cc397aso1601674b6e.1
+        for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 10:47:48 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=hammerspace.com; s=google; t=1793296068; x=1793900868; darn=vger.kernel.org;
+        h=content-type:mime-version:references:in-reply-to:message-id:date
+         :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=YtZuSZ+g775+4gNgncIQEf9lnwNLs5cNsigMBo9gc8o=;
+        b=Ds+WsqlGgktp7x1Vvpf7UdLimbAqyFLYsP8uKoMQcOE0xQkQVSRIFhOKNQ2V4Jw5NH
+         C8RFp1nUpxT2K7A9WF5OJILXNlcLw7fdvEBf4HhJuZiCvXwjr8hT2sVB9o00Jbl5bYds
+         DHD0Sb9DMGbDWGKWQnO0srGBQOq3zuqsmHC12/Hdv2RoTYq1MDq1tJBpRjKL9jiyXAfu
+         upDqhrTPQ01deupZusdy4lgTaSs1SbicN7ChknmHFx6IYxxgicHEXYohNdTphXQC6ppR
+         3zV/UsDZ+9FPAXF8bVWLcVeV+ecTHoMZcJvwVWx6iTG/Vm8/VqBly9XBI8XksFmJxCkm
+         5xOg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793296068; x=1793900868;
+        h=content-type:mime-version:references:in-reply-to:message-id:date
+         :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=YtZuSZ+g775+4gNgncIQEf9lnwNLs5cNsigMBo9gc8o=;
+        b=ffQjQ/4iF4PlEsUkpuHnbWT7cu55HsJUckzSN1ngHMNUb742RCFAQi32nwMfX+19ww
+         3Np3JyjjHDNdUz+Bi7GhJW+dEn+R4Qsffn94bky6nDmAVBS/qGX0g+aCqpoddgtoZipf
+         c4cMi/fFsUvcsmkwmaa2tJQ77wF3roytLI7Wan8WbvAhwaNLkujOXjH7N59oKiR2nCaM
+         +y1Ts6iqHjiHUBYY+11u8SYfIHeK+8PGUVIHI9OYCbOGlzSYfreudCowioKMfmsiC3mf
+         N5EKAAyZW2XVrNZPqVa3QS7bMpK1+w5jrrViBmIq330VJu/iz/rBqw1YLkArpATrrcwu
+         dlNQ==
+X-Forwarded-Encrypted: i=1; AKwUvBxbqY0SD3nrlFMCw1k/YZHqLvk7ghesHGK/Iaa8DGgXZaQkgTRc2cOZEe5s+dtpUOGis3bqTNvhe4k=@vger.kernel.org
+X-Gm-Message-State: AFq9FYKeUfbnpoFrDaxoSDDLXwqJxiQRMyeZXUo1W0ytTGZCPqp4LcOT
+	C5eaSM+MoTJvTzBHkOOsYH3hhjnPKPr+tUMG4E9jb+ES+vAHFT81Nk8eT6QwVPpV8YA=
+X-Gm-Gg: AYBFou0dvCcMb/7D9ZcR0r0y5xaXBUhiCcJoSZVTZZ4yQvNkmSsdrIOks1l9oFae2ok
+	69NcvcjxooPMMTx3CRWbC7WIR6Bqr+pLspAGeeazlSFlWlx5igqDiJQJkIc8wLHpnEm5r86xtM8
+	ugBvnwyHnBeZBw8oeJNwWHdzSBr+6UqnA9xAIqPl/HOtmnl4Q1i8iDqKRvExJ8+jM3PEESeylTV
+	3/Lnf9G8unxxLPxvqlE0POGwWeK0XyCcIQLq88HmU9RCMplcau9ZfKa9O2E0Fp+Bxc83h7q/BHN
+	ygSgSCwL1+eqmJHIYSB6Fxq/u9gVhh/Mx/0yk17SurSJ6wAj8mGZyBeN6A73Xvc5sQP6+b0Pxwl
+	dmu2JvNeNo9LONPYNZHKpxDYejzcq9/xVmDmLicikfJGjC3RHboDIIQcvJ4YGUXreA3GWmDSO0w
+	eN1ZWLJBSv7LU3gQZ8CqFv04hiQ9J2G0he15PBIybAukLKAV818gSL1/LF6dkBB7bk+KKaIiDqJ
+	PiCOEoZ9gcg4C0yTHk6S7fMVcyAOc0NQxiDu6eVy4BIdKImwo2wdE6Y3EcW5CRg2umFIoDf89kT
+	2JA5CNcZM5BVP3xi9w4zAcWCO16unH0VwzW5KNh9Fi6w3hktOgt9
+X-Received: by 2002:a05:6808:4f52:b0:53a:6769:c35b with SMTP id 5614622812f47-5638207f063mr5172478b6e.12.1793296067729;
+        Thu, 29 Oct 2026 10:47:47 -0700 (PDT)
+Received: from [192.168.254.51] ([12.117.181.174])
+        by smtp.gmail.com with ESMTPSA id 586e51a60fabf-4a904a366e4sm66337fac.17.2026.10.29.10.47.46
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 29 Oct 2026 10:47:47 -0700 (PDT)
+From: Benjamin Coddington <ben.coddington@hammerspace.com>
+X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
+To: Daejun Park <daejun7.park@samsung.com>
+Cc: Benjamin Coddington <ben.coddington@hammerspace.com>,
+ Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
+ linux-nfs@vger.kernel.org, Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH v2 2/2] pnfs/blocklayout: report data lost to a failed
+ LAYOUTCOMMIT
+Date: Thu, 29 Oct 2026 10:47:44 -0700
+X-Mailer: MailMate (2.0r6272)
+Message-ID: <C429AC88-BE4C-4062-860E-E0AB945C588D@hammerspace.com>
+In-Reply-To: <20261029064502epcms2p4465d31caeafe380380266d726846a28a@epcms2p4>
+References: <f1a9f1337cbbb4039a29fb5808d8c2944b9a112c.1792157092.git.bcodding@hammerspace.com>
+ <cover.1792157092.git.bcodding@hammerspace.com>
+ <CGME20261026232757epcas2p444964cd7bba66ebaecad170a85048e3b@epcms2p4>
+ <20261029064502epcms2p4465d31caeafe380380266d726846a28a@epcms2p4>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,104 +103,31 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: AOFvRjFAKDN3
-Date: Thu, 29 Oct 2026 11:21:39 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: VeroFess <coderzeng@gmail.com>
-Cc: jlayton@kernel.org, neil@brown.name, okorniev@redhat.com,
- Dai.Ngo@oracle.com, tom@talpey.com, linux-nfs@vger.kernel.org
-Message-Id: <acef1e3e-8c3a-4b8b-9341-5ff0280efa19@slotpi15m67>
-In-Reply-To: <20261029063917.138184-1-coderzeng@gmail.com>
-References: <20261029051430.96326-1-coderzeng@gmail.com>
- <20261029063917.138184-1-coderzeng@gmail.com>
-Subject: Re: [PATCH v4] nfsd: enforce export security for NFSv4 filehandles and
- stateids
 Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
 
-On 10/29/26 2:39 AM, VeroFess wrote:
-> An AUTH_SYS NFSv4.0 client can read or write a file on a sec=krb5p
-> export using another client's valid OPEN stateid by inserting
-> SAVEFH between PUTFH and READ or WRITE.
+On 28 Oct 2026, at 23:45, Daejun Park wrote:
 
-The v4 revision of your patch appears to combine the original fix with
-several unrelated changes to SECINFO, READDIR, LOOKUP, and stateid
-processing. That makes it unlikely to apply to the stable kernels
-that need the original fix. Let's split the single patch into a
-series.
+> Would it work to keep ->sync a plain pnfs_layoutcommit_inode() and
+> check the file in nfs_file_fsync() instead? I tested this:
+>
+> 		ret = pnfs_sync_inode(inode, !!datasync);
+> 		if (ret != 0)
+> 			break;
+> +		ret = file_check_and_advance_wb_err(file);
+> +		if (ret != 0)
+> +			break;
+>
+> With it, the first fsync() returned -EIO, the next fsync() and stat()
+> returned 0, and close() still returned -EIO.
 
-1. The need_wrongsec_check() change by itself, with
-   "Fixes: 68d93184352f". need_wrongsec_check() has not changed since
-   v5.10, so this patch should apply cleanly to every LTS kernel. As
-   far as I can tell it is enough to stop the PUTFH; SAVEFH; READ/WRITE
-   sequence in your report. Please confirm that with your reproducer
-   on a kernel that has only this change.
+Yeah, that's better. It also lets me drop the raw wb_err read, since
+nfs_file_fsync_commit() has already marked any older error seen by then.
 
-2. The check_nfsd_access() call in nfsd4_verify_copy(), which covers
-   both COPY and CLONE. RFC 8881 Section 2.6.3.1.1 forbids PUTFH from
-   returning NFS4ERR_WRONGSEC in PUTFH; SAVEFH; PUTFH, so the source
-   handle can reach COPY or CLONE unchecked even after patch 1.
+I'll send a v3 with your change in patch 2.  Ok to add your
+Suggested-by and Tested-by?
 
-3. Anything else, one change per patch, each with its own rationale and
-   only the Fixes: tags that match its code. These do not need to go to
-   stable.
+Was there another write before the close() that returned -EIO?  A
+failed LAYOUTCOMMIT doesn't set NFS_INO_LAYOUTCOMMIT again, so I'd only
+expect close() to fail if a later LAYOUTCOMMIT failed as well.
 
-Or, if you'd like to move on, I can take things from here and simply
-ask you to confirm that any new series addresses your issue and no
-longer reproduces.
-
-
-> COPY_NOTIFY validates a stateid without acquiring an nfsd_file, so it
-> misses that check. After an export was changed to sec=krb5p, an
-> AUTH_SYS COPY_NOTIFY using an existing stateid still issued a copy
-> stateid although AUTH_SYS READ was denied.
-
-COPY_NOTIFY does not carry OP_HANDLES_WRONGSEC, so in PUTFH;
-COPY_NOTIFY the PUTFH already gets the deferred check_nfsd_access()
-call in nfsd4_proc_compound(). That check uses the same fh_export that
-READ uses, and the PUTFH holds that export for the rest of the
-compound. How can READ be denied while COPY_NOTIFY succeeds? If the
-test compound included SAVEFH, patch 1 covers it. Unless there is
-another path, I would drop the nfs4_check_file() and COPY_NOTIFY
-hunks.
-
-
-> Pass NFSD_MAY_SECINFO to fh_verify() so it skips the starting export's
-> security flavor check.
-
-With this change, a client using any flavor can learn whether a name
-exists in a directory on a sec=krb5p export. RFC 8881 Section
-2.6.3.1.1.5 allows that, and your patch description should clarify
-that the code behavior is changed to conform with the spec.
-
-Also, the new check_xprtsec_policy() call in nfsd_lookup_dentry()
-returns nfserr_wrongsec from SECINFO when it crosses into an export
-with a different xprtsec= policy. Is that not the NFS4ERR_WRONGSEC
-return from SECINFO that the description says is forbidden?
-
-
-> When rdattr_error is not requested, return NFS4ERR_ACCESS for a flavor
-> mismatch; NFS4ERR_WRONGSEC is not a READDIR status.
-
-On a pseudo-root export, nfsd4_encode_entry4_fattr() always crosses
-into child exports. A client that does not request rdattr_error now
-gets NFS4ERR_ACCESS for the whole READDIR of the pseudo-root whenever
-any child export rejects its flavor. Could the encoder fall back to
-returning the mountpoint's own attributes instead?
-
-The new check_nfsd_access() call in nfsd_lookup() fixes a mount
-crossing that never checks the child export. The CREATE paths do the
-same crossing: NFSv3 CREATE UNCHECKED, NFSv2 CREATE, and NFSv4 OPEN
-UNCHECKED all call nfsd_cross_mnt() and then fh_compose() on the child.
-If this check goes in, it probably belongs in nfsd_cross_mnt() so that
-every caller gets it.
-
-Longer term, I would rather not keep adding check_nfsd_access() calls
-to individual operations. A filehandle whose security check PUTFH
-deferred could instead carry a "check pending" state that the COMPOUND
-loop enforces before any operation consumes it. That can come later,
-it does not need to hold up these fixes.
-
-
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+Ben
