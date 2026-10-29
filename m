@@ -1,91 +1,92 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.160.54
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.173
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793299322;
-	b=1dAiklNgEBYmE2uZr66rhsjk1Dv7ZzJVp6hAh6Gy+HkZFXMqFbEsfptFGGJhi1KFOEoR
-	 DgkROWOrt8OfBRzYyOTnqDRjdwfhPiebhajOKb5KGn5RVZeURDVDO6W6n9gih3d4pd3Or
-	 CjQoMx8sNklmrAN6bdNZ/CeaLE8N58ffTLpZqmdF5BFUlep7HrYAkAZWHVVpf2E9LPKQm
-	 u1PdohL/EnTgwGWAF7uncJbnDwT8PwZiH6eZGka6j/HhItcnttmwi16FN08QGo0Z4DIrd
-	 lNmZ1k+5698c89GNiKm1IOi6mUtACDTvd6SsK/KwA1d9CNOmQ//mQCl5CVo1b94iK/A==
+	t=1793299323;
+	b=u+YQEpHht8xJf+ofluQfS7E2gYheE6SZqy0HTblIR90AY4Ak3q/2vJeQQX6vDIKK6s37
+	 ZdUjnC5S0XKnAM50m+2RG5x/4qIB/gt7OfTAuwHXjyWClegrFs20vL5K95IORvEpdy7WI
+	 HIrpKnPhrIhspOajebg2wwC3jFWHlq8XlzIZtQT/9KstGAi/HSUiKyveqOqAFIMCLJsp4
+	 vkF8AxOJvk8TPW0d0aoU5lob+oTtlb8+5/kCNQQWjzyrz4KcJ9+cpQe6nvXyplMY8JwjE
+	 dInniLjtAiF7JyAtAbMQPTfB9StZzs54j+fAS6+CbUF1t5SIToz80PWryKdiFVN9ssA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793299322;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793299323;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=FDwY9FtGOHDe7jNvikwgfiiT+rgUAbOhwVOZRJEx4ds=;
-	b=wNmpkSKRwEwbwn9HmTojwy1TvinU0xFqlsmOQIRoSnnosFK0/0Nhu0SUuYUSNIHa5X4S
-	 nKsN6fqg4vpNERQtTgxSqIJmF1tFMLt5koiHMEE0hgtu2LUfVZGqLm0Vja6TxYArpkzll
-	 061+VUQ6B6bzH6FVezz7QBVtnpt317s1TpZ3BgZvfbw0SQJnsJMIEGmQ228ZWieu8YEkd
-	 ye8LxHyWgeOb63urN0Ln3WCgFYxWwLCXjieWJ2RcHi5vdJoiC8SQnjGNtHy9F4aQJpBu7
-	 +PeYWf/XzyD1BmOlB51IwryxDhg1oDtz3XDsnEtWQa7VvqcVZfZNDD6G8KHH5H2Wc2g==
+	bh=tV4RBjTx7Wl4ZN6hdiO9tQ1/KM9uIacPIvMREM6GoSI=;
+	b=PkdVLvY7mn8j8iI6uYs+hgh08Z+4f/ENFDBqQ8GRtcBeo6h+P4sQ3Q9N8qbBs5YRLnn/
+	 8w4Se0IjXR4pztLXz0s7rHZF1LPBz2uaPleDIvkfiU6Xy2t4tPztdCkq4ah46/KdejGgL
+	 PoMhSU86ocVCZ98/83gNm3MQamlYJkeGbYn0mzcYV5x9DoUpcjK69/h6dgemhQPc+7WrE
+	 Tcbk08kdh3EBp3Fj3j60iMzRnzl1FCwajReTA2VsluoQhkDBMkpAmBxuY6uZhUBM5vn4N
+	 HUfyIGUtzKXbWWMDE6pS7fkH0J/fgKVNZ3xsHgEIbxZlClwE0KpIXMp6f6odloQ5bJg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=hammerspace.com;
 	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=ashTaVuV;
-	arc=none smtp.remote-ip=209.85.160.54
-Received: from mail-oa1-f54.google.com (mail-oa1-f54.google.com [209.85.160.54])
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=pzAdM5K1;
+	arc=none smtp.remote-ip=209.85.167.173
+Received: from mail-oi1-f173.google.com (mail-oi1-f173.google.com [209.85.167.173])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 28661606A31E
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 18:42:01 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 28661606A31E
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 40173606A31E
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 18:42:03 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 40173606A31E
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=ashTaVuV
-Received: by mail-oa1-f54.google.com with SMTP id 586e51a60fabf-4877837890fso1429766fac.2
-        for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 11:42:01 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=pzAdM5K1
+Received: by mail-oi1-f173.google.com with SMTP id 5614622812f47-4b21f71613fso1674467b6e.2
+        for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 11:42:03 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1793299321; x=1793904121; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1793299322; x=1793904122; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=FDwY9FtGOHDe7jNvikwgfiiT+rgUAbOhwVOZRJEx4ds=;
-        b=ashTaVuV6XteB3eKbXZOHVnU6DzKDivWXKDIQE7D8s8KoenmJYxphGK7YScOecKOys
-         GkzMFsLP6s3dUPMU/02Oij7/e7i4wCl9KMS9SNIw1CII/3rtUudHB9kVN0YheeNdX62H
-         xe3oaRdj5vFqfgq5EK6/3C3ITBEMUwH8jGjbvpQGdFKqoeuHj/6kNsyPDzNM3lILNs5R
-         JWxznGV/rOiQ8YdsO+b0webgbickZaAqNcEW/Zfr361TLh1QVjfUgtTy1kwdBFRmSabI
-         d+uoOegi78geOV+hA9vkIbk+HpCfXE5BV6Gg/GwEmpLuarxIRUiyGzuPVs00EUqf0m1t
-         XJAA==
+        bh=tV4RBjTx7Wl4ZN6hdiO9tQ1/KM9uIacPIvMREM6GoSI=;
+        b=pzAdM5K11rultecKwJxU7KS0kmSBNjf/jA+der/8rhj7/ULblUoCH2IlYRurpXHjuD
+         H1vAQ6Wn2OjflOW4VWCKZSq9a0fit56S8azVG+R5SC9nlmIQrD2Zb6odGzt/Tjecck0R
+         IjNoBkyHNpEgGr37L3a4aJIAhy03F81AnXL7beuBAcIFQAdieef69XjAcszbCCocFcFm
+         tBzgeR7CobEE4CHMXgwJlVeZid3k/QG5ewZwVfKmXeRqkgz1kjnd82brPpafpJFXBEkq
+         AxoL2ksdU69ymttzcqPP6mbWvWDnNUANhZ76Rd+I79hfF9g2qf0iOGdzA7YeztEx7q7O
+         2cfw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793299321; x=1793904121;
+        d=1e100.net; s=20260707; t=1793299322; x=1793904122;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=FDwY9FtGOHDe7jNvikwgfiiT+rgUAbOhwVOZRJEx4ds=;
-        b=ll/+yERyYoZ1bvAg/omyOGejB/20cr3c7AA+aTV5fWPrBH7Ndmw491EtQbQcX1rxcd
-         hq9fYeEYEHRoSoyThYf6AxFPpp9niPl9wDW2SWIWOyvduCOy9NinLyrqAbK80KMaEtxZ
-         aRCGClZHBX0Z2pVVOGdqhHIeWz41WI8xUEm6Q2650IcIk0UgjBcttmxweTlqsTYntw3P
-         qHnZEFlvhSOx7oRr+Y6rrAQwhXGWiOHETxUxF4TPRqhpEskxKrd/3tMyOB8gGrDVllip
-         zO6ZroGtfjvIToBzUdvIW6/GQwwd1/1TDoHDPnW7GnH0fzACIhKNJPEUzP70zKOfFoFg
-         jshg==
-X-Gm-Message-State: AFq9FYIDNQpX6EhycLHSod0hXbdheQODs8Nusv5YdTeGDQ5TxDSfqWTP
-	TvaZcx41W31d27FGgV0eX2J4IqoNzr/in18VAJKVR9L+lNfg+L2vpHrrEt7csY0XgPo=
-X-Gm-Gg: AYBFou2U+4IuWv94rC//BX2HNHZQ4LIMD4i7X+3EWR9loIX2sLq1MM+93jU6v2MK8vp
-	gVU0sFIScZnsCpA/pLVwoJDFrBc8mKGWSqjxw4nSlGavxzUEWPdQfB/jF9dzoaKIrBxWbX4UcmU
-	u+mYSQVk65LIbr5n0I/jWi43DzP1+vh5WtqKFhvI80J/a0Zs2UnYnG6pjEjDPamRXFYqeqw1kKv
-	mxgS+eAee7HzYi1iD1awYu7z5BYTFP+PzU3r69/o1nW6XDx8Av4KOnFUeM7bThspGsgQbte08mf
-	OCoyYVXG4eToA61mEXfOxUmNlKri4IjMeERHdYUSX07yaXSfgxJKqKKc6lpS/R7dn8Zr6PtfrTr
-	ztgyKH1KCaXsMVH88FXy1atpICqm5UXW4FBYDRqHvK28LlZejr2ldJvEtm7jsv08IypFJZ4zD98
-	f7QQWFzjxvkwkwg75pezkbfX7DWwSPz5aWmxk2xtfsofPAhNzDJl5L49SJ7ewfTuTODTKm/igSg
-	Vov9HsQsJeIb8YVxbyZqkYep2LC1aQaQBlWCIQjP2ZQdlzbNuFgwAzkbMdST0fDI2pdLHaQ9XP0
-	lM1TXhKSFavdeaYJOmjdeLJ/3wiTijygj1mSVa6XLhRs1hDXfbia3Y54nbeKfgJdm08QICoWH4+
-	rG68ZD5hvMTHWp8lgWNF3iQ==
-X-Received: by 2002:a05:6808:1a1f:b0:4f5:eaac:517a with SMTP id 5614622812f47-5640d9293a1mr120707b6e.1.1793299320669;
-        Thu, 29 Oct 2026 11:42:00 -0700 (PDT)
+        bh=tV4RBjTx7Wl4ZN6hdiO9tQ1/KM9uIacPIvMREM6GoSI=;
+        b=y+mWJmRllDb9UBezI+CNvxjQH6FyJ9KPdTF8OyJQBa51ioASZbWLCRnD/pAbTEOZuC
+         cZN0lDR/F6k7Dat1q1fVq1FjcxXhvyxYSGDW0rsBmB+KfBdJ4It5T0bfF8fZjWD6rTu9
+         msH7E3gZ5UJ1aBetU8fxh070j/NJ3LdqCBe9GEn0NfKAzcrKXhq9tGGlQr6JAP9ZtTln
+         9YIXAqcL7BAoZ9i4FLaoxMoIOIF1EkNIX+XmVEWc/Nz+DY8WdacFXRoNGPKCBuVncqt5
+         wKIPudaeDPsUJWK33dJzppC7u0jS1CqPMw34w2WAhxJBK1MkNMXFfiKHCmfv+3v88bDl
+         r/qg==
+X-Gm-Message-State: AFq9FYL0ma5XXMahCh8eiFrkNGTQPG0kJo73tH9v+TcDqje9wRRT26+g
+	VbZGIN6Ch1VBO/ValIFZiyJL20SNbyvQlE5lR5Gwb34Xe518h1iKHD9xbaEKZ6j44EfxoSIijva
+	P113J
+X-Gm-Gg: AYBFou1Si3T4QMWCJFZEyC+CwiP3DsMW3dd+ZJ1nCUyzyU0rXl7BfKnGodn+atVjJdC
+	hWFWfWnFbw6UbYDlK+wx1FDp+yQyGZ9Od64goxSeqRG0UNxcqURFQpttiPeYirVDl1tjPGHKJCg
+	t7TMvzvmfen+QE2S4EYlliq2o9fySq6Dbg4GbrDUQX84ECr6ZYc/ppt/fGaNSqbaSFnZxtY0Ryh
+	OfNCEFtx8kY2Ww3aO5XViDlpWkjSa1C35pvA8YikpNSmD1qsBVy6/aV8t77cY4BC9WD/YtfxGzL
+	2WBBOCL7X4Hy3uQc73IuPEkT2c8Qi/o9b6H2T7lTV4eBVqns0C2RT/XGTQIDaMy8PxF2l0DlfQ0
+	ycfHQ1lkVxbb8Z/YiNANWJCE3kCSSY3DCAU9KhHTFzi3ddUXm/bgquRZyaWoSNA7Taqp5uZf1s/
+	lgCNdHCs9twt4+khBQeKOjS+6NYSZJO9wAlwjyYOx/gAlLvZNdsf7nKVg474Zza/u8NXvC3Sy5n
+	fZOea43g0uKMUS8jECgNWze2/6Y3829Votpr+3Kqnxk3LQv2/YG7rBRuPUvgPv90BrGaUyos8dL
+	1oMw9NC+Um6a0vCsPhHC50IG7EIdBjB3DZLzWZ8mKC/XNtNG2fCijO7bNq+EiWNjrgYj6jsiJ7k
+	M
+X-Received: by 2002:a05:6808:23c2:b0:4f4:7dda:99bb with SMTP id 5614622812f47-5640df7573dmr51028b6e.33.1793299322119;
+        Thu, 29 Oct 2026 11:42:02 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([12.117.181.174])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-5640e23b76asm7161b6e.11.2026.10.29.11.41.59
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-5640e23b76asm7161b6e.11.2026.10.29.11.42.00
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 29 Oct 2026 11:42:00 -0700 (PDT)
+        Thu, 29 Oct 2026 11:42:01 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>,
 	Mike Snitzer <snitzer@kernel.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/6] pNFS: don't leak layout segments when prepare_layoutcommit fails
-Date: Thu, 29 Oct 2026 14:41:51 -0400
-Message-ID: <1e9d777dde94463e57b323a960a572fab89a61ae.1793298149.git.bcodding@hammerspace.com>
+Subject: [PATCH 4/6] pNFS: don't send _NOMATCHING_LAYOUT if still doing IO on a layout
+Date: Thu, 29 Oct 2026 14:41:52 -0400
+Message-ID: <eaeab1fde6122edd52878588bf9d130aac16295a.1793298149.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1793298149.git.bcodding@hammerspace.com>
 References: <cover.1793298149.git.bcodding@hammerspace.com>
@@ -102,68 +103,114 @@ Content-Transfer-Encoding: 8bit
 
 From: Benjamin Coddington <bcodding@hammerspace.com>
 
-pnfs_list_write_lseg() clears NFS_LSEG_LAYOUTCOMMIT on each segment that
-needs a LAYOUTCOMMIT and moves the reference that flag held onto
-data->lseg_list, to be put when the LAYOUTCOMMIT completes.  If
-->prepare_layoutcommit() fails with anything but -ENOSPC, no LAYOUTCOMMIT
-is sent and data is freed with the segments still on that list, so their
-references are never put.  The segments and their layout header are then
-never freed.
+When a bulk CB_LAYOUTRECALL finds layout segments still referenced by
+outstanding I/O, pnfs_layout_free_bulk_destroy_list() invalidates the
+layout stateid, sets NFS_LAYOUT_BULK_RECALL, and the client replies
+NFS4ERR_DELAY.  If the server resends the recall, then
+pnfs_layout_bulk_destroy_byserver_locked() can skip layouts with an invalid
+stateid, so the resend finds nothing and the client replies
+NFS4ERR_NOMATCHING_LAYOUT with the I/O still in flight.  The server then
+treats the layout as gone, and that I/O can reach the storage device after
+the recall has completed.  The same happens on the first recall if another
+path, such as a DS error, invalidated the layout stateid while I/O was
+outstanding.
 
-Before freeing data, give each segment's reference back to
-NFS_LSEG_LAYOUTCOMMIT if the layout stateid is still valid and the flag
-hasn't been set again, so that the next LAYOUTCOMMIT, which the error path
-has already rescheduled, takes it.  That keeps a segment invalidated
-meanwhile pinned until its LAYOUTCOMMIT is sent, as it would have been.
-Otherwise put the reference with pnfs_list_write_lseg_done(): if the
-layout stateid was invalidated, every other LAYOUTCOMMIT reference has
-already been dropped, and if the flag was set again, it holds a reference
-of its own.
+When answering a bulk recall, don't skip an invalid layout that still has
+segments.  pnfs_mark_layout_stateid_invalid() reports them, and the recall
+is answered with NFS4ERR_DELAY until the last segment is freed.
+CB_RECALL_ANY takes the same path, so it also blocks LAYOUTGET on these
+layouts until they drain.  This relies on "pNFS: clear
+NFS_LAYOUT_BULK_RECALL when an invalid layout's last segment is freed"
+to clear the flag once the layout drains.
 
-Fixes: 5f919c9f10c1 ("pnfs: allow splicing pre-encoded pages into the layoutcommit args")
+The other walkers, used by reboot recovery and when recallable state is
+revoked, keep skipping these layouts.  They send no reply to the server,
+and reboot recovery would otherwise retry on -EAGAIN without sleeping
+until the I/O completed.
+
+Fixes: b85f562049cc ("pNFS: Skip invalid stateids when doing a bulk destroy")
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/pnfs.c | 20 ++++++++++++++++++--
- 1 file changed, 18 insertions(+), 2 deletions(-)
+v3: test for remaining segments instead of NFS_LAYOUT_BULK_RECALL, so a
+    layout invalidated by another path with I/O outstanding is also
+    answered with NFS4ERR_DELAY.
+v2: only revisit these layouts when answering a bulk recall, so that
+    reboot recovery doesn't loop on -EAGAIN while the I/O is outstanding.
+---
+ fs/nfs/pnfs.c | 18 +++++++++++-------
+ 1 file changed, 11 insertions(+), 7 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 6d391985fb21..5ba3ea23354d 100644
+index 5ba3ea23354d..70b3429726c9 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -3634,6 +3634,17 @@ static void pnfs_list_write_lseg(struct inode *inode, struct list_head *listp)
+@@ -846,7 +846,8 @@ pnfs_layout_add_bulk_destroy_list(struct inode *inode,
+ static int
+ pnfs_layout_bulk_destroy_byserver_locked(struct nfs_client *clp,
+ 		struct nfs_server *server,
+-		struct list_head *layout_list)
++		struct list_head *layout_list,
++		enum pnfs_layout_destroy_mode mode)
+ 	__must_hold(&clp->cl_lock)
+ 	__must_hold(RCU)
+ {
+@@ -854,7 +855,9 @@ pnfs_layout_bulk_destroy_byserver_locked(struct nfs_client *clp,
+ 	struct inode *inode;
+ 
+ 	list_for_each_entry_safe(lo, next, &server->layouts, plh_layouts) {
+-		if (test_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags) ||
++		if ((test_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags) &&
++		     (mode != PNFS_LAYOUT_BULK_RETURN ||
++		      list_empty(&lo->plh_segs))) ||
+ 		    test_bit(NFS_LAYOUT_INODE_FREEING, &lo->plh_flags) ||
+ 		    !list_empty(&lo->plh_bulk_destroy))
+ 			continue;
+@@ -933,7 +936,7 @@ int pnfs_layout_destroy_byfsid(struct nfs_client *clp, struct nfs_fsid *fsid,
+ 			continue;
+ 		if (pnfs_layout_bulk_destroy_byserver_locked(clp,
+ 				server,
+-				&layout_list) != 0)
++				&layout_list, mode) != 0)
+ 			goto restart;
  	}
+ 	rcu_read_unlock();
+@@ -943,7 +946,8 @@ int pnfs_layout_destroy_byfsid(struct nfs_client *clp, struct nfs_fsid *fsid,
  }
  
-+static void pnfs_list_write_lseg_undo(struct list_head *listp)
-+{
-+	struct pnfs_layout_segment *lseg, *tmp;
-+
-+	list_for_each_entry_safe(lseg, tmp, listp, pls_lc_list) {
-+		if (pnfs_layout_is_valid(lseg->pls_layout) &&
-+		    !test_and_set_bit(NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
-+			list_del_init(&lseg->pls_lc_list);
-+	}
-+}
-+
- static void pnfs_list_write_lseg_done(struct inode *inode, struct list_head *listp)
+ static void pnfs_layout_build_destroy_list_byclient(struct nfs_client *clp,
+-						    struct list_head *list)
++						    struct list_head *list,
++						    enum pnfs_layout_destroy_mode mode)
  {
- 	struct pnfs_layout_segment *lseg, *tmp;
-@@ -3766,8 +3777,13 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- 			set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags);
- 			if (end_pos > nfsi->layout->plh_lwb)
- 				nfsi->layout->plh_lwb = end_pos;
--			if (status != -ENOSPC)
--				goto out_unlock;
-+			if (status != -ENOSPC) {
-+				pnfs_list_write_lseg_undo(&data->lseg_list);
-+				spin_unlock(&inode->i_lock);
-+				pnfs_list_write_lseg_done(inode, &data->lseg_list);
-+				kfree(data);
-+				goto out;
-+			}
- 			spin_unlock(&inode->i_lock);
- 			mark_as_dirty = true;
- 		}
+ 	struct nfs_server *server;
+ 
+@@ -952,7 +956,7 @@ static void pnfs_layout_build_destroy_list_byclient(struct nfs_client *clp,
+ restart:
+ 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+ 		if (pnfs_layout_bulk_destroy_byserver_locked(clp, server,
+-							     list) != 0)
++							     list, mode) != 0)
+ 			goto restart;
+ 	}
+ 	rcu_read_unlock();
+@@ -963,7 +967,7 @@ static int pnfs_layout_do_destroy_byclid(struct nfs_client *clp,
+ 					 struct list_head *list,
+ 					 enum pnfs_layout_destroy_mode mode)
+ {
+-	pnfs_layout_build_destroy_list_byclient(clp, list);
++	pnfs_layout_build_destroy_list_byclient(clp, list, mode);
+ 	return pnfs_layout_free_bulk_destroy_list(list, mode);
+ }
+ 
+@@ -1000,7 +1004,7 @@ static void pnfs_layout_build_recover_list_byclient(struct nfs_client *clp,
+ 		if (!(server->caps & NFS_CAP_REBOOT_LAYOUTRETURN))
+ 			continue;
+ 		if (pnfs_layout_bulk_destroy_byserver_locked(clp, server,
+-							     list) != 0)
++					list, PNFS_LAYOUT_INVALIDATE) != 0)
+ 			goto restart;
+ 	}
+ 	rcu_read_unlock();
 -- 
 2.53.0
 
