@@ -1,83 +1,83 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.44
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.52
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793297401;
-	b=zTeCJABkco2qxEeQerQLGGEj1eQs10HoaYT8wDpd1F3eE60WQ5FEDruJgoUiPdv+mKfv
-	 doHIS3sflcO6bF6CklYcgeqNAuaSIprI+Xo9lu1KPvDD1atLD3YPSfgYLUQ1L+Bh3HoAz
-	 BstACk5qmC4aoyqmSF0LlirXuZEMKSIu+Nmid/yl32cG6sg/SK+sdZs1bSug82z6h88jr
-	 RoaWUhBUvyL1Hf1lhD8Phc9lCUW8aOdkoLOWbwR7GCcfgiaZ/gzWVjOycy6rx5jjWOAuF
-	 eS0Wdnuz5RijW9kOETRpqxa1cAIHSqTEA0WtfvrCkEfLLbQEGDpSYXMHm1+PG0fIaYg==
+	t=1793297407;
+	b=5KowYdNsJJ7+SyaUiVejv+TEF04B834T9tHcPsm/6e2PEZmlwBAXsYh5JT8f8WeNq0x2
+	 oJRK1W10zJ45ppon8hsPvdgliVDGmKv/+xf8fce6TqMYKl+VrlhHPlWqv5Rh/N6fiF/Z6
+	 1mCEPbe7E7FfO9FQCSkCNN+TjmXWDSOMmCiwUjXW2Ke+uYWcIWFb3Qw0SE9+RVxDx0ata
+	 16SeilAX71SpHNgchkx5ck6i91Djm1FMDGbvxqOUe2kXEWRPyWLo+CBg8tNkgKxjVkBCR
+	 lcWJKWzgaiUQzYQlev3r2V0NB8+gqu8UfN81YRY9tnKsnFP4NzZVqUtLmLpIwczBzbg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793297401;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793297407;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
 	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
 	 MIME-Version:Content-Transfer-Encoding;
-	bh=VIRuN5RJjbuv5CSzCNORIV49ClgI3heQ4aV2Bv/ASqI=;
-	b=gucyjSCHj2Q5eZsP4DhPhjVFCIeun/6zI9mkz8vB7w6/7aImPTFiaIOSvRZnVj82F+0s
-	 QX35UbIUF4l+r3KHWUpE+6/zdstduJVxWGVmuxuYHcR30IFnVoFin+DyhdYgE460Kvn5k
-	 giFR9oes16+wLRx6X0f7+0X7qeKPCO1Z9LmGUF83Y2ZN2N7UpZxUFnwqgoFpW8R1yRHTp
-	 /rCdavvcZVq2ZLxCGHbRa5UQSOHSdMQbaWKYmbnB/L4UzGYN96e7tENEh8ZVKreS2QmaL
-	 6M7AEZGbq1v3nX5ESd/TNu2dxKKsIDiQFUp19c7EiWZsGVHhogwklJKc77uJAIMLVCw==
+	bh=lY/j4BJTPHacq4th+geW3uU/xT9CmxLqWYLCqLTZczE=;
+	b=RyCTaIUaudbff7QbZ1f+XDjjqSvOwXp4aF4YU+ccMi3AEbBWzSVFYyH9ePQD++zbmqY4
+	 Xs7RXKCtKtMwciLXV9AgJiX4h4RMGM02gMw1H3kdY81iPv2e3CQjNL8+MvWg1HKkvT+h7
+	 ZEjQj6APQtcrIRjWQCAgSHoN6NloheGBJOkHVIk2/p1K4Jj+Al5UtX7n+BVOZwlaM3XNz
+	 F2sutFkTyktJtA1wKdEfKOF/4ZBFIvUceuGk0WebqjreCS1Cb+hT7am80ytahES6PoJ52
+	 BkEl5WEu1JLHR6XN9Qf/VTJVrS55H609y4A4ppi3XvuxFWFFcbThhaqozokfjyNi4sg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=hammerspace.com;
 	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=WZLxBgd3;
-	arc=none smtp.remote-ip=209.85.210.44
-Received: from mail-ot1-f44.google.com (mail-ot1-f44.google.com [209.85.210.44])
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=Ry1TF5jp;
+	arc=none smtp.remote-ip=209.85.210.52
+Received: from mail-ot1-f52.google.com (mail-ot1-f52.google.com [209.85.210.52])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AF7BC60A3806
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 18:10:00 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org AF7BC60A3806
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0623660A6F53
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 18:10:06 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 0623660A6F53
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=WZLxBgd3
-Received: by mail-ot1-f44.google.com with SMTP id 46e09a7af769-85a6c747dc9so743827a34.0
-        for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 11:10:00 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=Ry1TF5jp
+Received: by mail-ot1-f52.google.com with SMTP id 46e09a7af769-843a4ca671eso1211706a34.2
+        for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 11:10:06 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1793297400; x=1793902200; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1793297406; x=1793902206; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=VIRuN5RJjbuv5CSzCNORIV49ClgI3heQ4aV2Bv/ASqI=;
-        b=WZLxBgd3shKUN9MMxfxeWoZmoSQYqQnLq8nPl6E3Zj9r4MlVGXVCy7M50RgeVTldnT
-         QzFj53iiOXruAIVXf1MEj5jDvkLWMdRs3iT0mxxToRMGZ+ayO6ETyGc+nq7PoDNt2Gx9
-         YkQkzqm5bSa1e9r7FmarbxkfhbsqrEcIBpWIsHl6SKMsMGlN9zJXSX4ZUIuCdoa5xLj5
-         kHaXFxjOYlyyundHMLrv/EY/3B9cJY8Vf0e7+lpfd/dwd4T2l/KhC4HPAoXdrgVCuqBj
-         khWsYoU1VSkvWeCLGxvsw8NRcQMwmctajSHnaCdrAon9Ig5dwW+vqWMvyM6NsjeB39Qh
-         xHyg==
+        bh=lY/j4BJTPHacq4th+geW3uU/xT9CmxLqWYLCqLTZczE=;
+        b=Ry1TF5jpHfEtNb/wLvErDSS8ox5RnKxXAurma5fBS90BM/ds83g3mFR2ATwEzR8DL7
+         LVwlSKaZJySUADCRte4WXCkQq/GC1izQCx2MmN+Ca29mhrg/P1ThlGcHsKFoDCcGG6nR
+         7x5vE5eVuyZJ3utrbUtEf6i12A5SBsj8j2eHN1Nlet+iT4vloY3EUrZ2st31Cw8vozMy
+         Je+wyMqJp6Q0i3NADjc4eD9NiSRCeFvQKGH2wH3IhKOPEQSyE1+nb7RdhTwmVI1x4HWi
+         mK7WpuT2eNnX+6Z9h4obk2oaLUvW//10MbXgsxrtBNqePP791KDaZsFj2KztFPd42ge9
+         CigA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793297400; x=1793902200;
+        d=1e100.net; s=20260707; t=1793297406; x=1793902206;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=VIRuN5RJjbuv5CSzCNORIV49ClgI3heQ4aV2Bv/ASqI=;
-        b=0o3lI7B1ZhSHJO5ydcTk9alNVwzFvfNjFqVE5PD5ZRJOlfMyAnDrbqPC27OJubp9n5
-         j93F4xPQ2QhHvk3+OgcoYr7p59UjERLCMCRMJ3/6ZL1KzqOvgSWYl1XX7Z0vd4sT3bk0
-         1aCw1IAfeNNh35/iX8+O0IjWUyJPilo9x1JT8lZGSc1DrNNjKniYESV/xvvcOGuTkqBu
-         CuQ61D1j1t3nqs9IzyChmlDzNfXsTJjULu2WZ2QlpBsHStLyA1ITapLsF6ErCFJqpn1V
-         lz1IDZV2RHmlv3i5Z5AI+L9/NUWh8JcpaxWBdYjXcCerQXTmXmmz9dNY57zqSS95ns8P
-         HAkA==
-X-Forwarded-Encrypted: i=1; AKwUvBxBEbgYQSIp+BVq/U28xnrNr1Cs/y/GPUnWpTZuRvhz8ChB6Fd7j0n10wUP5zehjcFF7HUB4gTIV5w=@vger.kernel.org
-X-Gm-Message-State: AFq9FYIFlHEQYdHOy74iYTdaAO6QRL62AFsHKzSI1MJJACOREXVjbWVQ
-	YdAPj5gcNzz/OZ/Myvwi1Nl+15hvln2KFkKXIjhPVqcSk9B8veulaJFWUEjry2b2J/c=
-X-Gm-Gg: AYBFou2Nn2spDFigO20YroPBux0jAyDX52h3DXwlAxop4oBv3LYTQoBw/T00sVcJsSM
-	F5QogD3meoL2ZWaezkBeuXlTZWOO3ndI/1lpfdTP6xuiQhaahyaJGuSpKn0PdEU0uqNbcIzJXCd
-	uiGBg8HD3aIhySwmF7Nl81tanj9i0zfNnaoTwnICHkFcj4VExEs4FH6WNRqNcML/GVDEB0+rF62
-	0Xg1yx6YVwe+k/MV0xv50HzQ3H9Wgbs3L3qzfGdCT2+Hr4vpj7gml5XkB/QpKms/PSyhdGJhEHq
-	OvI2kwUuzgL7x26Ih5wATv7lgWS5+3r5QQJpoTWEjFvXki8b7+tjK1ujONr6XnHwkALJCTs2BhH
-	L6SNQxAqth3bmUingecfDB9WMekRxL34d7e3/35fhgBkS7KJODDbajjIeb/vnzM5tjfwbzMVN1g
-	nN5YEaAHwx0KKii1NSjGvuzhzNzlz8G/hgCQwYoPqkjEkv1/G7+/YzAh+JE2BoabrI/nfLsl4nL
-	G5lP62BQvinmsVoChxsD7YFqJEHPvu/Ry6PLSl2waN7aIXTQIASQoAkTv55RVMST4g9pqG0GnX4
-	rtFQWdEOuNoBRdtY2qmr3jG7Jc+WTK/xaDVOCA7uHmSnyAIwq/E/KzWiW8BMXHYJtN5pnNDj
-X-Received: by 2002:a05:6820:4ccc:b0:6dd:c600:ec2e with SMTP id 006d021491bc7-714ddecf85amr1873577eaf.19.1793297399528;
-        Thu, 29 Oct 2026 11:09:59 -0700 (PDT)
+        bh=lY/j4BJTPHacq4th+geW3uU/xT9CmxLqWYLCqLTZczE=;
+        b=B/r+TC1j+w685isgX6UrzGhAw3T0And/Wb1bglgTPFvq2UeQRJyaII3JBOVjtzfxtQ
+         aVY+EGKqQDDsGL2y8wt8UDuQOxKciw28iwu4qzR0IaJLLgWTzmslj90mk+cQ6Ton5JeX
+         Ovk3UxxT+eyrzDLF90saCAmOmcWQwMhQwyXCiWI1isF0FmOcll7alRIDSrvFpWCqap9q
+         9vRwLV3nb6zDet2Etz7skgTUSx7hbMQeCQ5mhnVzZ0wCqoJw5UwYQ17yOJ3yDOmUwxVe
+         x9Z25BHb5rFzB2yRffzGQnJgKP/vmgR7pNjsXa2LE6sbH7xZyqsQHgodVRRC/tbXLd5U
+         ehlg==
+X-Forwarded-Encrypted: i=1; AKwUvByl5k3DZiBVDFDifwy+bv6+8l5q10pgoTeco9OUHQLRmOMCZCFEOTkYAP8umgcwmKOKPdAny98JSK0=@vger.kernel.org
+X-Gm-Message-State: AFq9FYJQM2gT6VO3F62Jgf5hGhaUshlu7YIC969jOIOCbn8fSYGG/n9e
+	T3xCtnZm/iPRbcwVPKyL7DZFZu59Z/WCbJ6otOUy81aRV833nKuRayMsdo9AOgO2AMk=
+X-Gm-Gg: AYBFou18KQ5TSaaJyr4Zq24aibq/S2AhRXt9OaPKM4G+XZHw2Vx/nVdvIj5f+ahcuON
+	gO5m8nO8dhJqi6Ux2yrQOua8xglv8/mn06DDq9y8HrTBYHkaoWCiw2XNdt+9ZupACbErArXdDPy
+	45F5X4CWssD7j2sYSkdz4YOD1lgGhwFs91+Aw5sQaEr9SRkqzooDW87J1cfU1U5mZbTAZ7PQXtX
+	PMbL69WDqgmKKSBnO3PDu/H35zGPZDMZkP2Yg5+ZuRJ7RDYanQwbY1BiCHljf3LTdUa/18mxCXh
+	rN2NFM1e8mqfL+mTbmKyzvxvbjUNl6Dfdz7bQDrwdQjrkHy28oCTbTON9nUVn9VRKyN5Mb0zedh
+	YsHgwlYhmKBoKPYZDs2iTKMvg89SeYhGuonPSZnXZaZ53pTroK9pmb3MX8Upx0qREB1AUAQyAUd
+	+Rktta+MkKtSY9t92Jayg130AENv4iK5GuIc57XzODGoA2ERzON6lqsEzkGIVh7C2/1lIYJt0xp
+	SOu/DnmfnTtsqEhMFDXGnQkWBML2CNmFckvCMq++44nTQvUE86ts8PGCnOeTRjs+RhY8ASiUYUA
+	tSqqENjbsYiDnIdkY4D5usDyRAikh9f4x8kN5ch8NjEfKlqaq667vNYElBxaX+II7RhdW5nR
+X-Received: by 2002:a05:6830:34a1:b0:804:ec69:3979 with SMTP id 46e09a7af769-85ac090193bmr5308756a34.21.1793297405639;
+        Thu, 29 Oct 2026 11:10:05 -0700 (PDT)
 Received: from localhost (75-163-200-235.clsp.qwest.net. [75.163.200.235])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-85d354d12f2sm160242a34.17.2026.10.29.11.09.58
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-85d3501abc9sm213289a34.0.2026.10.29.11.10.04
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 29 Oct 2026 11:09:59 -0700 (PDT)
+        Thu, 29 Oct 2026 11:10:05 -0700 (PDT)
 From: Jonathan Flynn <jonathan.flynn@hammerspace.com>
 To: NeilBrown <neil@brown.name>,
 	Alexander Viro <viro@zeniv.linux.org.uk>,
@@ -92,9 +92,9 @@ Cc: Jeff Layton <jlayton@kernel.org>,
 	linux-nfs@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH RFC 01/12] nfs: update a server's capabilities in one step
-Date: Thu, 29 Oct 2026 12:09:46 -0600
-Message-ID: <20261029180957.387138-2-jonathan.flynn@hammerspace.com>
+Subject: [PATCH RFC 04/12] nfs: concurrent O_CREAT in one NFSv4 directory
+Date: Thu, 29 Oct 2026 12:09:49 -0600
+Message-ID: <20261029180957.387138-5-jonathan.flynn@hammerspace.com>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <20261029180957.387138-1-jonathan.flynn@hammerspace.com>
 References: <20261028041023.3738553-1-neilb@ownmail.net>
@@ -110,95 +110,94 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-When the client reads a server's capabilities again, on remount, on
-migration, or when a later mount reuses a filesystem that is already
-mounted, it clears a group of them and then sets again, one at a time,
-each one the server still offers.  Anything that tests one of them on
-another CPU in between sees it missing: a case-insensitive server looks
-case-sensitive, a server that supports security labels looks as if it
-does not.
+Set IOPF_ATOMIC_OPEN_CREATE_SHARED in nfs4_dir_inode_operations, so
+that the VFS takes the parent shared rather than exclusive for an
+O_CREAT open in an NFSv4 directory.  Creates of different names in one
+directory then stop serializing on the parent inode, except on a server
+that reports itself case-insensitive or not case-preserving, where
+"nfs: tell the VFS when two names can be one entry on the server" has
+set SB_I_NAMES_COLLIDE and creates keep the exclusive lock.
 
-Build the new set first and store it once, as the NFSv3 path already
-does.
+This is the only user of "vfs: allow the parent lock to be shared for
+O_CREAT", and what it needs from it is the guarantee that the dentry
+reaching the atomic-open method for a create is in-lookup.  NFSv4 keeps
+the dentry the VFS gives it when O_CREAT is set, and publishes the new
+inode on that dentry; because it is in-lookup, the dentry is not in the
+main hash, so dropping it is a no-op and publishing it is permitted.
+The name enters the hash exactly once, and until it does, a concurrent
+lookup or create of the same name finds the in-lookup dentry and waits.
 
-This was found by an AI coding assistant (Claude Code) reviewing how
-the client derives these capabilities, and has not been reproduced.
+NFS does not use the exclusive parent lock to serialize its own
+per-directory state, which is what that patch asks an opting-in
+filesystem to promise.  Both pieces of state a create touches are
+already under finer locks: the directory's change attribute and the
+cache-validity bookkeeping that moves with it are updated under the
+directory's own spinlock, and a dentry's directory verifier is stored
+under that dentry's lock.  Neither needs the parent lock held
+exclusive, or held at all.  The verifier is also ordered so that losing
+a race can only cost work: a verifier offered against a directory state
+it no longer reflects is declined rather than stored, so the failure
+direction is an extra revalidation, never a dentry claiming stale
+validity.
+
+Lookup and readdir already run with the parent held shared, and
+readdir already instantiates dentries there under that lock:
+nfs_prime_dcache() takes an in-lookup dentry with d_alloc_trylock(),
+skipping a name another thread holds in-lookup, and invalidates and
+retries a hashed dentry that no longer matches the listing.  A create
+joins concurrency NFS already handles.
+
+NeilBrown's "nfs: remove d_drop()/d_alloc_parallel() from
+nfs_atomic_open()" states that the method has exclusive access to the
+dentry in one of two ways: O_CREAT, where the parent is held exclusive,
+or a dentry carrying DCACHE_PAR_LOOKUP.  Setting the flag removes the
+first of those for open(2), which reaches the method through
+lookup_open(); nfsd reaches it through dentry_create(), which still
+holds the parent exclusive.  "vfs: allow the parent lock to be shared
+for O_CREAT" supplies the second in its place: with the parent held
+shared for a create, a hashed negative dentry is rejected and the
+lookup retried, so an in-lookup dentry is what reaches the method.
+NFS's invalidation of a cached negative for LOOKUP_OPEN and that
+rejection do not overlap: nfs_neg_need_reval() returns 0 for
+LOOKUP_CREATE before it can reach the LOOKUP_OPEN case that invalidates
+a cached negative, so the invalidation that covers a plain open never
+fires for a create, and the rejection in "vfs: allow the parent lock to
+be shared for O_CREAT" never fires for anything else.  The opener newly
+in company with a shared create is one opening the same name without
+O_CREAT, and that is the opener the invalidation covers.
+
+The flag goes on the NFSv4 directory operations only.  NFSv2 and NFSv3
+reach a different atomic-open path, which has not been analysed or
+exercised under a shared parent lock, so it does not get the flag;
+adding it later is one line.  Referral and automount directories are
+unaffected, since they are given different operations vectors.
+
+Every other directory-modifying operation still takes the parent
+exclusive; for unlink that changes when "nfs: remove files with the
+parent directory locked shared on NFSv4", later in this series, gives
+NFSv4 ->unlink_shared().
+
+The measured effect, from a 7.1.13-based kernel carrying an earlier
+revision of both patches, is in "vfs: allow the parent lock to be
+shared for O_CREAT".
 
 Signed-off-by: Jonathan Flynn <jonathan.flynn@hammerspace.com>
 ---
- fs/nfs/nfs4proc.c | 28 ++++++++++++++++++----------
- 1 file changed, 18 insertions(+), 10 deletions(-)
+ fs/nfs/nfs4proc.c | 1 +
+ 1 file changed, 1 insertion(+)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 22a2a4009d..113c199a6f 100644
+index fac8450b65..808bb8f1c1 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -3896,6 +3896,7 @@ static bool nfs4_server_delegtime_capable(struct nfs4_server_caps_res *res)
+@@ -10869,6 +10869,7 @@ static const struct inode_operations nfs4_dir_inode_operations = {
+ 	.setattr	= nfs_setattr,
+ 	.listxattr	= nfs4_listxattr,
+ 	.fileattr_get	= nfs_fileattr_get,
++	.iop_flags	= IOPF_ATOMIC_OPEN_CREATE_SHARED,
+ };
  
- static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle)
- {
-+	unsigned int caps;
- 	u32 minorversion = server->nfs_client->cl_minorversion;
- 	u32 bitmask[3] = {
- 		[0] = FATTR4_WORD0_SUPPORTED_ATTRS,
-@@ -3953,7 +3954,13 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
- 				     res.attr_bitmask[2];
- 		}
- 		memcpy(server->attr_bitmask, res.attr_bitmask, sizeof(server->attr_bitmask));
--		server->caps &=
-+		/*
-+		 * Build the new set in a local and store it once: a reader of
-+		 * server->caps during the probe, such as a remount or migration
-+		 * of a mounted filesystem, must not see these capabilities
-+		 * cleared and then set again one by one.
-+		 */
-+		caps = server->caps &
- 			~(NFS_CAP_ACLS | NFS_CAP_HARDLINKS | NFS_CAP_SYMLINKS |
- 			  NFS_CAP_SECURITY_LABEL | NFS_CAP_FS_LOCATIONS |
- 			  NFS_CAP_OPEN_XOR | NFS_CAP_DELEGTIME |
-@@ -3961,22 +3968,22 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
- 		server->fattr_valid = NFS_ATTR_FATTR_V4;
- 		if (res.attr_bitmask[0] & FATTR4_WORD0_ACL &&
- 				res.acl_bitmask & ACL4_SUPPORT_ALLOW_ACL)
--			server->caps |= NFS_CAP_ACLS;
-+			caps |= NFS_CAP_ACLS;
- 		if (res.has_links != 0)
--			server->caps |= NFS_CAP_HARDLINKS;
-+			caps |= NFS_CAP_HARDLINKS;
- 		if (res.has_symlinks != 0)
--			server->caps |= NFS_CAP_SYMLINKS;
-+			caps |= NFS_CAP_SYMLINKS;
- 		if (res.case_insensitive)
--			server->caps |= NFS_CAP_CASE_INSENSITIVE;
-+			caps |= NFS_CAP_CASE_INSENSITIVE;
- 		if ((res.attr_bitmask[0] & FATTR4_WORD0_CASE_PRESERVING) &&
- 		    !res.case_preserving)
--			server->caps |= NFS_CAP_CASE_NONPRESERVING;
-+			caps |= NFS_CAP_CASE_NONPRESERVING;
- #ifdef CONFIG_NFS_V4_SECURITY_LABEL
- 		if (res.attr_bitmask[2] & FATTR4_WORD2_SECURITY_LABEL)
--			server->caps |= NFS_CAP_SECURITY_LABEL;
-+			caps |= NFS_CAP_SECURITY_LABEL;
- #endif
- 		if (res.attr_bitmask[0] & FATTR4_WORD0_FS_LOCATIONS)
--			server->caps |= NFS_CAP_FS_LOCATIONS;
-+			caps |= NFS_CAP_FS_LOCATIONS;
- 		if (!(res.attr_bitmask[0] & FATTR4_WORD0_FILEID))
- 			server->fattr_valid &= ~NFS_ATTR_FATTR_FILEID;
- 		if (!(res.attr_bitmask[1] & FATTR4_WORD1_MODE))
-@@ -4009,9 +4016,10 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
- 
- 		if (res.open_caps.oa_share_access_want[0] &
- 		    NFS4_SHARE_WANT_OPEN_XOR_DELEGATION)
--			server->caps |= NFS_CAP_OPEN_XOR;
-+			caps |= NFS_CAP_OPEN_XOR;
- 		if (nfs4_server_delegtime_capable(&res))
--			server->caps |= NFS_CAP_DELEGTIME;
-+			caps |= NFS_CAP_DELEGTIME;
-+		WRITE_ONCE(server->caps, caps);
- 
- 		memcpy(server->cache_consistency_bitmask, res.attr_bitmask, sizeof(server->cache_consistency_bitmask));
- 		server->cache_consistency_bitmask[0] &= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
+ static const struct inode_operations nfs4_file_inode_operations = {
 -- 
 2.43.0
 
