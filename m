@@ -1,73 +1,50 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793375905;
-	b=yDsJQiieQI1JcsWq9aCENJux+qShKF33kKLpqpidG22flbLkGQWYglWMPRT8DAtDvUHJ
-	 JBp34AMUmy6w9mEoNOmwRi31ukD0OToMPeiQ8nIz1owZdvTn3oR5afZEjcCJuP4nElGs0
-	 JQRou/FBRxs5/zm5fkCtA4CtqcGeiaPcWs2qBj9yufMjI3nwU7x6as9aMzHqOfnUZez+m
-	 dcnGeBA8NPjrACMgdQb03BRNUkSQiy8A80JqtkszSOZp+NpeF6s3BZFYxRxqFGIl3NNNb
-	 UwOMdsMni2Ai6q0Drsz/CFJcuupZBVn8u1ghw/u79I3GSEbqsjpvrRosEoFcs8M1l3g==
+	t=1793395668;
+	b=iC+z4HHl0QOJ01hGP9j2Y5Hsrn8SHiW+LkC4gpPSAcsJZqKB786xOtbu2pd0g0dlqrQv
+	 VGjXiNC+Y0tG6j1s5S2hzvucWkvQwLyD0ne2+oN/bXh36lIKg8Vx/zmRU6QboFq/DbdiO
+	 wNSxvyeDNMzbgY/PrF8Dwf67f0np/rYoUK5brWAbRbMfcsvCzknZqDzLEXzV1eiERez3u
+	 UwhUeFG3HOBlVB8YeuD0gFLhGQ/xxfN+qiXlJo25zSPMr65QJzGZhdvC5c1OuhMQFNeZX
+	 xRymN9U6UEkqM+RIvEmxKNZTN5OyioTlx1RYm9fiif1muLyRtfqVQpg36IsClZhctvA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793375905;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=ugsmaR88kMN2oQcAWD1Lmksjvku/rI/ItVMJJDmlBq0=;
-	b=lGUTpe0dbUa8rUBjEg5WUBbBnQGiivcuNPC2XEOc6YKe6BME4dsJnjiucfk71T3s2akz
-	 pGSU5fopArbRmB2KiTbVBNKRyoG/hdAX/YthbBYprmwkyR3pvwCcrtQCoG05t8/KU9CVK
-	 WwuRKl0XoXkSZ+bsn36gNGZnHmOvl9gn7T0RfxP+b9dQZzDorpwAf+/JWiK4l+ZLGWBHM
-	 S5ld85YnPMj4dzZVajfR4xAO8noNKOkkfdeq7jXm0RkXTj4n5A45I/bQ4bvBjoaSiR8gB
-	 YPL+jNxd2YXipYC0q8tLZAUVAjsh7IcoLKaf1NJpbPa7WRXdOhM5GS95S2Tww9MlPhw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793395668;
+	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
+	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=jrXwnUw6tTuINTOdFLUYswDWEXstnj2zCyJ3r3e830M=;
+	b=KPqZ/hFnO0Meso2jgmvdmPHw0L01xMXHE9HWh2ld78i7IaL+9IJWAW9EUPOWOD8/oqRF
+	 d2UEgpCkH7loFNTHIFni6eXK3+23F/5UGNvAJQQYOGbxeKH2Tls1BrRAHw/UyiXXXI5ol
+	 CuOZp2HiS4nqi7s+uk+i4wC2gaJkE1VJOFidGi43Vqs6HYJeUjZzI/d9G8nOo2W6JGRNF
+	 mJa3yppvI4CBLUnHI1SEudRtWjsLbAbX1pR6OdwSwnt+Iw88D0cf3Ja+IxbGd9T4vSLTd
+	 g0jXqqGjNfNAv9uq4bOd4oG2bs4MqWQgyE0rwocfGYDU0n/s/CG4rz2hUXH9baksj3g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nNNSeTag;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=F2xVr44g;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CA55E606A31E
-	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 15:58:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 51C3060A260C
+	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 21:27:48 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nNNSeTag
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 35CD81F0093A;
-	Fri, 30 Oct 2026 15:58:24 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=F2xVr44g
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 392B41F000C1;
+	Fri, 30 Oct 2026 21:27:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793375904;
-	bh=ugsmaR88kMN2oQcAWD1Lmksjvku/rI/ItVMJJDmlBq0=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=nNNSeTagU0VnLwmLnkH1nohIhaYRCH2lunpUrGjaIoZFfzDW/iTWhoa+qg0PExDu7
-	 NdzNGKOnqTHswL5Pv2r1pDzIuct2s1g3GHq0ohTlQHmX0OmOPW8ql4xOsXYB+LOt2D
-	 tIsU8XFcgHsIp3HIdvLXZ5FbtSGvm+yljMEQgJOaJzo1q/ZPWkf49QQirKoMjQYV94
-	 eMLzdWhFNl6Sv/6PsVg250K2uU86rkmzZxk8ISce+HLJQzAl/uwcyOeqrmlIZ/jLJe
-	 gemS/OSze2et3FmW3HNt3t1kqel1wOLgD/rO1NBD7FkMwDVlot71c704CMD1DxuLfZ
-	 mP8kkoFI3lsnA==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 79EC7F40066;
-	Fri, 30 Oct 2026 11:58:23 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Fri, 30 Oct 2026 11:58:23 -0400
-X-ME-Sender: <xms:n77kai88DUUTglfGlBzBFUSsARsLm8mcTRcPnAT_Vf1BDdncVxGqgw>
-    <xme:n77katitl2PoKVuQrdmHAwJyjGP4GWke7yKwUovoyBvG0sOHcbhJAcz6UXpl_0HnL
-    pKd3fMlI51-x8n9l4Wb4XgORdOL3N_eZKnGEtnMCaQ3yudC4Jr22iDC>
-X-ME-Proxy-Cause: dmFkZTFX2upPFkA+ir9bI85RztKcmS3kRsRwGerZaHXB3r82fdvD+Vn3CiTcnvlqqZBK5N
-    FkoQehjBnWvafo++deD/r9jFhyYYlRkCbAvvWJwIcLB8S7hAw+7XetjvbNa1l4ndNmKoQ2
-    XpaoxUW4cfBU07x1tbA3YRxPXrkHWJzb8xBTKXAngKqBBSbj0/LYKUA+TqZdxk4U9nm1MH
-    Ky2ia/Ra0GU8Z6MQ/cSZlDaBEHFr8slQ5js2R7qX7RVGuRXJc6W6L1EQGFlj97VgKQJshx
-    megpW/RP3qrpm8xbJDA7m4dUVkd9VuVppeNl8t48yydw5dYVpzVwx7VfMP8/Nh8Sq/5seF
-    braCPQfNnHlmIFin+sJja71MzMGyoxIdC8gfW3qt6uDLe+FWXOEmaZUfE/6TXp/wLX07Iu
-    jRahXDcI0Pb1+OpLG5dfk93nP2j+CjdwENaBI52L8R877hS7pOhUmFqrus36Ke+AJ01tqk
-    sYdOGrcfA8tgLzXN3+0+HPFjMBqULSLw3MZST/KKDCJQn1upZ0mTenu8MD+trsbRVnwZZt
-    et5e14L9xdkO1V/VQepviz4bWlWJUgUOYOlVhNRkYHV8y1kXND4H84k2fCqEtZ1lOIYs5G
-    RDUUpjvv1I+jUdsIS3JE8Hp79M/VXm9aiibTWcY0Tspobnj7xKHUXEWtE2bQ
-X-ME-Proxy: <xmx:n77kas67i2dJfY7Ij99oON3YuJXbxqJmdsS6xhmwTZwzUEQhby6Z6w>
-    <xmx:n77kalqO7E-H-xlbN3ErPqTkitJ7IlKohvQ8uvHcrexUmGHO-hW_5w>
-    <xmx:n77kaujz9kAX0wWPsZfjXz-AHEM9Hsv6TlTqPEYLcp6Y6C9JEsiJ0g>
-    <xmx:n77kavLKuZxeXPqBvh7X7WVDFZwgcBOUlJYjvw3GfUkg8q_3YKxbNA>
-    <xmx:n77kauDeWwiCqYpm9WdX0KFaiKTcEzEg5b7-zY8TmIa9S8lVljIqvhY7>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 5B276782738; Fri, 30 Oct 2026 11:58:23 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1793395668;
+	bh=jrXwnUw6tTuINTOdFLUYswDWEXstnj2zCyJ3r3e830M=;
+	h=From:Subject:Date:To:Cc;
+	b=F2xVr44gsWfTMBguL01/9eb1h1HXYgfgxi4CF+GLDfpVYnMoFjaFC9MVEHB/7QFlb
+	 4DkW/WAbDC3z2ZHt+cxGDqssDVVNas7n4y/Ew+NugOVvYSaui21bfdH4xe7NFoL9dt
+	 FDlmJ31tstH/8OHSNZDjZWflLGYRf2pXdrof3pdV8tX9Ay8GRLkZ7negJ5Cu4t9P30
+	 pCQaHQLr3jcTlorINGDUN0TrMsKtkSG7UggqOVQMMR2rpVCeaKT5oJA31N+oKHjhUF
+	 KFIL29lHhAefWM4W5VN22NUAA2f8JgSMfYT1BvYn6Bo1I97r/NPTLiJy6Qa4R8reKH
+	 yMvWtVAhsZWlg==
+From: Chuck Lever <cel@kernel.org>
+Subject: [PATCH v5 0/3] NFSD: Enforce export security after a deferred
+ PUTFH check
+Date: Fri, 30 Oct 2026 17:27:34 -0400
+Message-Id: <20261030-verofess-v5-0-242eea2991f3@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,45 +54,112 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: Abyb5r1jT_QR
-Date: Fri, 30 Oct 2026 11:58:03 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Roland Mainz" <roland.mainz@nrubsig.org>
-Cc: linux-nfs@vger.kernel.org, jlayton@kernel.org
-Message-Id: <8b36e5be-be1a-46ac-8317-364e0c3cb193@slotpi15m67>
-In-Reply-To: 
- <CAKAoaQm__zC=xuL-gqzqdv4127Tv=Ro+6J7=utN0qBqG=RgUfg@mail.gmail.com>
-References: <20261029-random-stateids-v1-0-8648878fec8c@kernel.org>
- <877e743a38f4784f351615a9d72a4d6033a3869d.camel@kernel.org>
- <CAKAoaQm__zC=xuL-gqzqdv4127Tv=Ro+6J7=utN0qBqG=RgUfg@mail.gmail.com>
-Subject: Re: [PATCH 00/10] NFSD: Randomize clientids, session IDs, and COPY_NOTIFY
- tokens
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQrCMBREr1L+2mCaoKhXkS6SdNJ+kVTyYxFK7
+ 26iyze8NxsJMkPo1m2UsbLwkiqcDh2F2aUJisfKZLQ599pqtSIvESIqanPpPay9+kBVf2VE/vy
+ u7sOf5e0fCKX1zfBOoHx2KcxtCngeU5RRFUjhNNG+fwHHrU7ejwAAAA==
+X-Change-ID: 20261030-verofess-f0281be339bc
+To: VeroFess <coderzeng@gmail.com>, Chuck Lever <cel@kernel.org>, 
+ Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org
+X-Mailer: b4 0.17-dev-9c833
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3607; i=cel@kernel.org;
+ h=from:subject:message-id; bh=mGOttYmJqQ5d/onpnvFTFUSjgfw9P61WN18d9L/fI6s=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq5QvK4jGtVw5FdXxqcz0PrYa7BZggTZ+4HVx2P
+ PEjldBlDYWJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCauULygAKCRAzarMzb2Z/
+ l0WlEACCVtQAnMNCrxc7XheAduUClUpni7jELiw3UGhb592p47u1SOik5ipJFg/tf0qPzKH8MuJ
+ etdpgMwBdrGIj0+8FWy661jpOsNyxVPvHRPK+XybQnWqMedxr4TpZB5LFQHLUX2QP1UJW7FjGFJ
+ WoQNrbnkRPhhYJZgXU//o45JWG5/h672OVcuX/0/Rtwn4MTGS/guYnGqeY+GRMID7rO5Jw3cO/I
+ weOVfiSefr8v0gwTtHDFEQDSvqu4qzflglss6T5HMRlTOndyFavdN1lexnw9q2XoGzFHB0xfJrg
+ yAzj+cLqY/NnoG5pP2P8t50GOLubdMzmnEQuoOpHPLQMvkA+JmoxP5D2LaIMDF3aUStqcBxrIZk
+ qOy8W+hN5HcAftb/VCB8o6UYpdDcRGLqkQhN6QIhp3/AoM82i4AlsX1PGjmE6N4w5HC8+2IWCh6
+ 7VqbNHpN5MfTH/JoZgtBAnatSeqTMoRcFSuGzNZo40giFCjL5lDxAe4/fJbA12aY5fZhUJbMWCe
+ qK1NdDes2WVGL+cuKV83Lkpgpybmqmc2JKk3qx5Th5smpycFjHTDts/0CawAc8P8ayumYSNUqyL
+ 5GIbOysSG99vrI3ykdIn0yHOmS5tEVmRu5RNS3fMuWFtGnSJ22VJscI6nTxCsFZjKWQNB7Alcv6
+ 2S2MeBpiRR+9cPQ==
+X-Developer-Key: i=cel@kernel.org; a=openpgp;
+ fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-On Fri, Oct 30, 2026 at 11:39 AM Roland Mainz <roland.mainz@nrubsig.org> wrote:
-> IMO it would be nice to have a way to turn this off at NFS server startup...
+VeroFess reported that an AUTH_SYS NFSv4.0 client can read or write
+a file on a sec=krb5p export with another client's OPEN stateid by
+placing SAVEFH between PUTFH and the I/O operation. The v4 posting
+carried that fix together with changes to COPY, LOOKUP, READDIR, and
+SECINFO in one patch, which would not apply to the stable kernels
+that need the fix. This series splits that patch. The
+need_wrongsec_check() change stands alone (patch 1) and applies to
+every LTS kernel, and the remaining patches carry only the Fixes:
+tags that match their code. VeroFess developed the original fix with
+the assistance of an LLM, and an LLM assisted with the split and the
+commit messages in this series.
 
-I'd like to understand the use case better. Can you say concretely what
-consumes the contents of these tokens, and what breaks when they are
-random?
+VeroFess confirmed on a kernel with only the need_wrongsec_check()
+change that PUTFH; SAVEFH; READ and PUTFH; SAVEFH; WRITE return
+NFS4ERR_WRONGSEC, and on a kernel with that change plus the COPY
+source check that PUTFH; SAVEFH; PUTFH; COPY returns NFS4ERR_ACCESS.
+The series as posted has not been run against the reproducer yet.
+VeroFess has offered to do that.
 
-The protocol mandates that nothing on the client side should care about
-the non-sequence ID parts of these cookies. RFC 8881 defines the client
-ID as a server-chosen shorthand (Section 2.4), gives the stateid's
-"other" field no meaning beyond identifying a set of locks (Section
-8.2.2), and declares sessionid4 as an opaque array. The seqid field is
-the one part of a stateid that carries client-visible semantics, and
-this series leaves that field alone; it is still a monotonically
-increasing integer.
+After this series, NFSD still relies on per-operation
+check_nfsd_access() calls to enforce a PUTFH check that was deferred.
+A filehandle could instead carry a check-pending state that the
+COMPOUND loop enforces before any operation consumes the filehandle.
+Carrying such a state is later work.
 
-So if a client or a middlebox is interpreting these values, that is
-behavior the spec does not support, and I'm not inclined to add a knob
-to accommodate it. On the other hand, if the need is operational, say
-correlating packet captures with server-side events or diffing traces
-between runs, there may be a better way to provide that than
-predictable tokens.
+Based on nfsd-testing.
 
+---
+Changes in v5:
+- Split the single patch into three, each with its own Fixes: tags.
+- Drop the nfs4_check_file() and COPY_NOTIFY export checks.
+- Check the entered export in nfsd_cross_mnt() and nfsd_lookup_parent().
+- Replace the for_secinfo flag with NFSD_MAY_SECINFO.
+- Report a SECINFO transport policy mismatch as NFS4ERR_ACCESS.
+- Keep the PUTFH export check for NFSv4.0 PUTFH; SECINFO.
+- Link to v4: https://lore.kernel.org/r/20261029063917.138184-1-coderzeng@gmail.com
 
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+Changes in v4:
+- Skip only the flavor check for SECINFO; xprtsec= stays enforced.
+- Re-check xprtsec= when a SECINFO lookup selects another export.
+- Link to v3: https://lore.kernel.org/r/20261029051430.96326-1-coderzeng@gmail.com
+
+Changes in v3:
+- Use nfsd_lookup_dentry() for SECINFO_NO_NAME(PARENT).
+- Let SECINFO and SECINFO_NO_NAME(PARENT) query a strict starting export.
+- Skip the source export's policy check on a SECINFO mount crossing.
+- Link to v2: https://lore.kernel.org/r/20261029013648.12015-1-coderzeng@gmail.com
+
+Changes in v2:
+- Check cached stateid I/O and COPY_NOTIFY against the current export.
+- Check the selected export after LOOKUP and READDIR mount crossing.
+- Map READDIR's NFS4ERR_WRONGSEC to NFS4ERR_ACCESS without rdattr_error.
+- Add the missing Fixes: tags and regenerate the whitespace-damaged diff.
+- v1 was sent off-list.
+
+---
+VeroFess (3):
+      NFSD: Fix PUTFH wrongsec check when SAVEFH follows
+      NFSD: Check export security on the COPY and CLONE source
+      NFSD: Enforce export security on LOOKUP, READDIR, and SECINFO
+
+ fs/nfsd/export.c    |  6 ++--
+ fs/nfsd/nfs3proc.c  |  2 +-
+ fs/nfsd/nfs4proc.c  | 80 +++++++++++++++++++++++++++++++++++++----------------
+ fs/nfsd/nfs4state.c |  2 +-
+ fs/nfsd/nfs4xdr.c   |  8 ++++--
+ fs/nfsd/nfsfh.c     | 12 ++++++--
+ fs/nfsd/nfsproc.c   |  2 +-
+ fs/nfsd/trace.h     |  3 +-
+ fs/nfsd/vfs.c       | 60 ++++++++++++++++++++++++++--------------
+ fs/nfsd/vfs.h       | 17 +++++++++---
+ 10 files changed, 132 insertions(+), 60 deletions(-)
+---
+base-commit: d9130c9f6535392d423351ffb5521e7689cae6b6
+change-id: 20261030-verofess-f0281be339bc
+
+Best regards,
+--  
+Chuck Lever <cel@kernel.org>
+
