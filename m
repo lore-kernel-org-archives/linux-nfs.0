@@ -1,74 +1,74 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.129.124
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793340709;
-	b=FKey254ENim24nFr8++4qhMFqLAo68HTAfvXAOYrt42JcAmlj8XAuBoBfjwAciBLzlNb
-	 EQhLnpElmSbPbRh1KHd1GkyVv6PqKroBs+dzfb0ZuecJkluQGysCp94RScsduPvbfYcjg
-	 +2ojfChR6Zn3c0v7b2Q61rw+Awc0E6fQqymmqWkve5Q8tZEQu1IgpDariskhCFUt86FaX
-	 wQdUvcHrw8mmR3Vt3eVnKjoJlQMyLz/AM8T/UcHe9kPXCylrqOlXjUmNDwUvuNeeUWL1D
-	 PnTBKxNN5VxeCTWH5CYIHYx5whfQz1LBCSYQNeGwvY9OHNoLhPSz5Pvn7sgG4SPih6w==
+	t=1793340713;
+	b=PR9wU9cnw2YE4HJ6ouuOUHnSpjgpWkBc7Sm3/2m4mM++3no1BV1tDH22lAx5GUKUlyBd
+	 aXh8VNxThnnC0/oPc9gXPzhCpiqtLUuFn3vAefGXoRJHtpZI0PIEW7HMMGyWiMW5kjpaW
+	 mxUGrMrHBGRyXT5o+oRqxkiUR0v/zAciqRjzRoimX/LeQ5uosy7oL4bU3L436DtZ0/xUD
+	 kcgtE8tWevaQxEtun38Ud+WzVMH1AjRr60VgBwy1Fu8xgqzWYc8NrDQzez1DKG0K6/dK7
+	 T5sOz0yDYtBLpIpbqVJGN7zM9gmP1GliUsAHGtPMji5RT34CWm6uhT9WKHYkcFeTeew==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793340709;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793340713;
 	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
 	 X-Mimecast-MFC-AGG-ID:Received:Received:From:To:Cc:Subject:Date:
 	 Message-ID:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding:X-Scanned-By;
-	bh=OrCf3kyXeMaLZL6C6Xg0CMSov85+MJXcjjLnXZYlNaU=;
-	b=yg5dWu8E7m04pQEaQXXSvTv9eTMlVBZe6+maOsy0hm3e5q4ERRAA6itVjVfoUfECC/U6
-	 XYaXU6nwuQu3HSENtBg42EGVHiDFjqQSS7mkvuk+q4mAor4CFR9J3pIxEam/qFbpnSpVA
-	 5TY3pQKu/xFkJSee5gBAYU3eFXTVu7RSVaB2iCPNe8UbQTNAsZk0LjltVOFoVHQZbeUd8
-	 9FkXY+J/yVtwerke2e9xCYmfBFueefA1wvMaPxibHfSPc87rPkSxzpqFiMljJ9NDRLtog
-	 HD7uG9tye8EdRODdfoUesVmcXjszRv+QVfuhPuZu8yQBhU1AML8T98rcS/UDJDefuBQ==
+	bh=kmIzHb05k2QelXmG1lNmER/oasgGXTDA1Z4/XkET+c0=;
+	b=CftQV94EL+xo83LUVYENhBoN2Zfu9KoacT9By6LVwaVkacCiU022gfPbMjRZKxHaQU6O
+	 GWOLxAbb7gkYds8zB0ndkFcJmFZashJuMDb802JTmCRbXxmzTFRHri3SPSLLXj76/Vtn8
+	 0aDzAk3FQzriTc8dTTj2wCmVxW4DsvpzK0wbgiPjVR4Tsnghy7qNmIFqk5lzhtiijiQ5R
+	 /FTYfweq82bCd/oGKxPpQ8q+K29+Ne6i419n5SJq5nLjkotY9MFNWSNrGvj0w/pULy8A6
+	 eFsyr0G1dvOAKrS7wWKx7hN5+3I03Ufbi9apK7OtYAZ5ObxjQ3HU9yUzywxZrYDpCFQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=redhat.com;
 	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=BosExa5g;
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=M2kky83m;
 	arc=none smtp.remote-ip=170.10.129.124
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 680E6606A31A
-	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 06:11:48 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 680E6606A31A
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BB2A3606A31E
+	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 06:11:52 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org BB2A3606A31E
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=BosExa5g
+	dkim=pass (1024-bit key, unprotected) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=M2kky83m
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1793340707;
+	s=mimecast20190719; t=1793340711;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=OrCf3kyXeMaLZL6C6Xg0CMSov85+MJXcjjLnXZYlNaU=;
-	b=BosExa5giqV0s1o0k98inToXID1ibstQ+vqIVv64o2C+8fBFq6mk2udESqmdrb0h0KvHPU
-	pDPjKdS1shA3aVM27oAwNpyLWK2RiQhmPxeJmwPH9VHSXcHXmU8LuFFABQ5bDsEx87e54r
-	3vckKWANaQ9YFiYu6jrKjdzxenWC2Og=
-Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+	bh=kmIzHb05k2QelXmG1lNmER/oasgGXTDA1Z4/XkET+c0=;
+	b=M2kky83mfuemNGPOJOE63QnuApADn4myhMQpEfxZa2a8AmN/Xvs+WMDDTCP9R7fAuyU1z8
+	lr6SMc/4dEnf9oKZ8S6bDLs/KQX8MtZsfpjjD3mN1nRawSAWpjxoUziRco+DNwPG1oEsmM
+	FwEiwdcZNloylg2yENhygvGiCDR3dOs=
+Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-679-S-6_3wfhPeivqnIo__w-EA-1; Fri,
- 30 Oct 2026 02:11:43 -0400
-X-MC-Unique: S-6_3wfhPeivqnIo__w-EA-1
-X-Mimecast-MFC-AGG-ID: S-6_3wfhPeivqnIo__w-EA_1793340702
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-449-r1PFyLZQOZe3zbj3bT0wxQ-1; Fri,
+ 30 Oct 2026 02:11:42 -0400
+X-MC-Unique: r1PFyLZQOZe3zbj3bT0wxQ-1
+X-Mimecast-MFC-AGG-ID: r1PFyLZQOZe3zbj3bT0wxQ_1793340701
 Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 2708418002EB;
-	Fri, 30 Oct 2026 06:11:42 +0000 (UTC)
-Received: from fs-i40c-01.fast.eng.rdu2.dc.redhat.com (fs-i40c-01.fast.eng.rdu2.dc.redhat.com [10.6.54.119])
-	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 763EC3000738;
+	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 5EAED195604D;
 	Fri, 30 Oct 2026 06:11:41 +0000 (UTC)
+Received: from fs-i40c-01.fast.eng.rdu2.dc.redhat.com (fs-i40c-01.fast.eng.rdu2.dc.redhat.com [10.6.54.119])
+	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 843F530002C9;
+	Fri, 30 Oct 2026 06:11:40 +0000 (UTC)
 From: Abhinandan Ekande <aekande@redhat.com>
 To: trondmy@kernel.org,
 	anna@kernel.org
 Cc: dhowells@redhat.com,
 	linux-nfs@vger.kernel.org,
 	aekande@redhat.com
-Subject: [PATCH v2 2/2] NFS: honour the netfs subrequest range when issuing reads
-Date: Fri, 30 Oct 2026 02:11:38 -0400
-Message-ID: <20261030061138.237833-3-aekande@redhat.com>
+Subject: [PATCH v2 1/2] NFS: Accumulate transferred bytes on netfs read completion
+Date: Fri, 30 Oct 2026 02:11:37 -0400
+Message-ID: <20261030061138.237833-2-aekande@redhat.com>
 In-Reply-To: <20261030061138.237833-1-aekande@redhat.com>
 References: <20261030061138.237833-1-aekande@redhat.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -83,221 +83,53 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
 
-netfs splits the folio into folio_size/rsize subrequests. Each subrequest
-calls nfs_netfs_issue_read() separately. nfs_netfs_issue_read() discards
-subreq->start and subreq->len, converts them into a page index range, and
-hands each folio in that range to nfs_read_add_folio(), which submits the
-whole folio.
+When netfs retries a read subrequest that already made progress, it
+resets subreq->start and subreq->len to the full original extent and
+leaves subreq->transferred holding the byte count read so far.
 
-A folio larger than rsize is therefore read once per subrequest. On a
-mount with rsize=4096, a 128K (order-5) folio is covered by 32
-subrequests; each submits the whole folio, which nfs_pageio_add_request()
-splits into 32 RPCs at pg_bsize. That is 1024 concurrent READs for one
-folio, with every 4K page targeted by 32 of them, all pointing their
-receive buffer at the same page.
+nfs_netfs_alloc() is called on every ->issue_read(), including retries,
+and kzalloc()s netfs->transferred to zero. nfs_netfs_read_completion()
+only tracks the bytes read during the current ->issue_read() call.
+nfs_netfs_put() then assigns that value to sreq->transferred rather than
+adding to it.
 
-Under sec=sys every reply carries the same plaintext in the page, so
-the duplicate writes are byte-identical and only the wasted bandwidth
-remains.
-With sec=krb5p the payload is separately encrypted per reply, so the
-bytes on the wire differ even though the data is the same, and
-gss_unwrap_resp_priv() decrypts in place in rq_rcv_buf. One reply's
-ciphertext lands on top of another's before it is unwrapped, and the
-integrity check fails with GSS_S_FAILURE. The subrequest completes with
--EIO and netfs leaves the folio non-uptodate.
+The subrequest therefore reports less than it holds. If it hit EOF,
+nfs_netfs_read_completion() has set NETFS_SREQ_CLEAR_TAIL and the
+collector calls netfs_clear_unread(), which zeroes data that was already
+read and then marks the subrequest complete, with no error reported.
+Otherwise netfs_read_subreq_terminated() sees subreq->transferred <
+subreq->len with no error and, as NFS never sets
+NETFS_SREQ_MADE_PROGRESS, fails the read with -ENODATA.
 
-The defect dates to the netfs conversion but stayed latent at the
-common case of rsize of 4096 or greater and with order-0 folios,
-folio_size/rsize is 1 and each subrequest's whole folio read happens
-to cover exactly the range asked for. The 'commit 49b29a573da8 ("nfs:
-add support for large folios")' made folios up to order-5, which exposes
-the same loop at any rsize smaller than folio.
+Accumulate instead of assigning. The min_t() clamp is kept and now bounds
+the cumulative total.
 
-Fix nfs_netfs_issue_read() to intersect each folio with the subrequest's
-byte range and submit only that. nfs_read_add_folio() is split into a
-range taking helper, nfs_read_add_folio_range(). nfs_read_add_folio()
-keeps its existing behaviour, so the two legacy callers,
-nfs_do_read_folio() and nfs_readahead(), are unaffected.
+The retry is reached when a NETFS_READ_FROM_CACHE subrequest fails after
+a partial transfer and netfs reissues it against the server. It is masked
+today because nfs_netfs_issue_read() reads the whole folio for every
+subrequest, so the accumulator exceeds sreq->len on its own and the clamp
+arrives at the right answer by accident. Next patch in this series
+restricts the read to the subrequest's range and removes that masking.
 
-Once a request can cover only part of a folio,
-nfs_page_group_set_uptodate() must stop marking the whole folio uptodate.
-nfs_page_group_sync_on_bit() synchronises across one nfs_page group, not
-across the folio's other subrequests, so a group that completes cleanly
-would mark a folio that is only partly filled. Skip the marking when
-netfs owns the folio.
-
-With the patch, 30 MiB read over sec=krb5p,fsc,rsize=4096 issues exactly
-7680 READs, one per page, compared to earlier every page was fetched up
-to 32 times. Folio sizes and the netfs subrequest shape are unchanged.
-
-Fixes: 000dbe0bec05 ("NFS: Convert buffered read paths to use netfs when fscache is enabled")
+Fixes: ee4cdf7ba857 ("netfs: Speed up buffered reading")
 Cc: stable@vger.kernel.org
-Assisted-by: LLM
 Signed-off-by: Abhinandan Ekande <aekande@redhat.com>
 ---
- fs/nfs/fscache.c  | 21 ++++++++++++++----
- fs/nfs/internal.h |  4 ++++
- fs/nfs/read.c     | 56 ++++++++++++++++++++++++++++++-----------------
- 3 files changed, 57 insertions(+), 24 deletions(-)
+ fs/nfs/fscache.h | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
-index 9b7fdad4a920..eb5e54406e58 100644
---- a/fs/nfs/fscache.c
-+++ b/fs/nfs/fscache.c
-@@ -303,12 +303,14 @@ static void nfs_netfs_issue_read(struct netfs_io_subrequest *sreq)
- 	struct inode *inode = sreq->rreq->inode;
- 	struct nfs_open_context *ctx = sreq->rreq->netfs_priv;
- 	struct page *page;
-+	unsigned long long pos = sreq->start + sreq->transferred;
-+	unsigned long long end = sreq->start + sreq->len;
- 	unsigned long idx;
- 	pgoff_t start, last;
- 	int err;
- 
--	start = (sreq->start + sreq->transferred) >> PAGE_SHIFT;
--	last = ((sreq->start + sreq->len - sreq->transferred - 1) >> PAGE_SHIFT);
-+	start = pos >> PAGE_SHIFT;
-+	last = ((end - 1) >> PAGE_SHIFT);
- 
- 	nfs_pageio_init_read(&pgio, inode, false,
- 			     &nfs_async_read_completion_ops);
-@@ -322,8 +324,19 @@ static void nfs_netfs_issue_read(struct netfs_io_subrequest *sreq)
- 	pgio.pg_netfs = netfs; /* used in completion */
- 
- 	xa_for_each_range(&sreq->rreq->mapping->i_pages, idx, page, start, last) {
--		/* nfs_read_add_folio() may schedule() due to pNFS layout and other RPCs  */
--		err = nfs_read_add_folio(&pgio, ctx, page_folio(page));
-+		struct folio *folio = page_folio(page);
-+		unsigned long long fpos = folio_pos(folio);
-+		size_t fsize = folio_size(folio);
-+		size_t offset, len;
-+
-+		/* Read only the part of the folio the subrequest asked for. */
-+		offset = pos > fpos ? pos - fpos : 0;
-+		len = min(end, fpos + fsize) - (fpos + offset);
-+		if (!len)
-+			continue;
-+
-+		/* nfs_read_add_folio_range() may schedule() due to pNFS layout and other RPCs  */
-+		err = nfs_read_add_folio_range(&pgio, ctx, folio, offset, len);
- 		if (err < 0) {
- 			netfs->error = err;
- 			goto out;
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index f6f7f70b21e2..fafa381ca764 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -611,6 +611,10 @@ extern bool nfs_read_alloc_scratch(struct nfs_pgio_header *hdr, size_t size);
- extern int nfs_read_add_folio(struct nfs_pageio_descriptor *pgio,
- 			       struct nfs_open_context *ctx,
- 			       struct folio *folio);
-+extern int nfs_read_add_folio_range(struct nfs_pageio_descriptor *pgio,
-+				    struct nfs_open_context *ctx,
-+				    struct folio *folio,
-+				    size_t offset, size_t len);
- extern void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio);
- extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
- 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index e7497b029d6c..8d73fbd59d7f 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -132,8 +132,16 @@ static void nfs_readpage_release(struct nfs_page *req, int error)
- 
- static void nfs_page_group_set_uptodate(struct nfs_page *req)
- {
-+	struct folio *folio = nfs_page_to_folio(req);
- 	bool uptodate = false;
- 
-+	/*
-+	 * When netfs owns the folio it decides when the folio becomes
-+	 * uptodate; a request may cover only part of the folio.
-+	 */
-+	if (!nfs_netfs_folio_unlock(folio))
-+		return;
-+
- 	nfs_page_group_lock(req);
- 	if (!test_bit(PG_READ_FAILED, &req->wb_head->wb_flags) &&
- 	    nfs_page_group_sync_on_bit_locked(req, PG_UPTODATE))
-@@ -141,7 +149,7 @@ static void nfs_page_group_set_uptodate(struct nfs_page *req)
- 	nfs_page_group_unlock(req);
- 
- 	if (uptodate)
--		folio_mark_uptodate(nfs_page_to_folio(req));
-+		folio_mark_uptodate(folio);
- }
- 
- static void nfs_page_group_mark_read_failed(struct nfs_page *req)
-@@ -306,6 +314,31 @@ static void nfs_readpage_result(struct rpc_task *task,
- 		nfs_readpage_retry(task, hdr);
- }
- 
-+int nfs_read_add_folio_range(struct nfs_pageio_descriptor *pgio,
-+			     struct nfs_open_context *ctx,
-+			     struct folio *folio,
-+			     size_t offset, size_t len)
-+{
-+	struct nfs_page *new;
-+	int error;
-+
-+	new = nfs_page_create_from_folio(ctx, folio, false, offset, len);
-+	if (IS_ERR(new)) {
-+		error = PTR_ERR(new);
-+		if (nfs_netfs_folio_unlock(folio))
-+			folio_unlock(folio);
-+		return error;
-+	}
-+
-+	if (!nfs_pageio_add_request(pgio, new)) {
-+		nfs_list_remove_request(new);
-+		error = pgio->pg_error;
-+		nfs_readpage_release(new, error);
-+		return error;
-+	}
-+	return 0;
-+}
-+
- int nfs_read_add_folio(struct nfs_pageio_descriptor *pgio,
- 		       struct nfs_open_context *ctx,
- 		       struct folio *folio)
-@@ -314,9 +347,7 @@ int nfs_read_add_folio(struct nfs_pageio_descriptor *pgio,
- 	struct nfs_server *server = NFS_SERVER(inode);
- 	size_t fsize = folio_size(folio);
- 	unsigned int rsize = server->rsize;
--	struct nfs_page *new;
- 	unsigned int len, aligned_len;
--	int error;
- 
- 	len = nfs_folio_length(folio);
- 	if (len == 0)
-@@ -324,25 +355,10 @@ int nfs_read_add_folio(struct nfs_pageio_descriptor *pgio,
- 
- 	aligned_len = min_t(unsigned int, ALIGN(len, rsize), fsize);
- 
--	new = nfs_page_create_from_folio(ctx, folio, false, 0, aligned_len);
--	if (IS_ERR(new)) {
--		error = PTR_ERR(new);
--		if (nfs_netfs_folio_unlock(folio))
--			folio_unlock(folio);
--		goto out;
--	}
--
- 	if (len < fsize)
- 		folio_zero_segment(folio, len, fsize);
--	if (!nfs_pageio_add_request(pgio, new)) {
--		nfs_list_remove_request(new);
--		error = pgio->pg_error;
--		nfs_readpage_release(new, error);
--		goto out;
--	}
--	return 0;
--out:
--	return error;
-+
-+	return nfs_read_add_folio_range(pgio, ctx, folio, 0, aligned_len);
- }
- 
- /*
+diff --git a/fs/nfs/fscache.h b/fs/nfs/fscache.h
+index 9d86868f4998..1ab6b8ab6b4f 100644
+--- a/fs/nfs/fscache.h
++++ b/fs/nfs/fscache.h
+@@ -73,6 +73,7 @@ static inline void nfs_netfs_put(struct nfs_netfs_io_data *netfs)
+ 	 * length, and thus avoid netfs's "Subreq overread" warning message.
+ 	 */
+ 	netfs->sreq->transferred = min_t(s64, netfs->sreq->len,
++					 netfs->sreq->transferred +
+ 					 atomic64_read(&netfs->transferred));
+ 	netfs->sreq->error = netfs->error;
+ 	netfs_read_subreq_terminated(netfs->sreq);
 -- 
 2.55.0
 
