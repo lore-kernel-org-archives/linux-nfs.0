@@ -1,110 +1,89 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=52.101.43.27
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1793365662;
-	b=junuoUf68ejhYqnA8qNuFGiYF/tlxspWN3wEr2XswrB7lSRLrvOh06j49vsTkb3BtfDG
-	 9fc/5cxewRFiCOXQzaNUaar1V2ZWgdD7MUWNaUmC2Kepb69/bbQHfLWWuuvKDzGWSQmlt
-	 iZ/s21FfBU9N1Ny3pIgmr4YO/A7Ml+fppZfRIClx7iMmDmcptRm61cqUytnkvKDLJM7vj
-	 tOUfP8yFuniXXpQtej4n0ZPsAlcRAIcyrXmKIB9KmFyWtbgwAD+LlMw0kcdyG0Zc3NDlQ
-	 LQOhuc99RdbBhF/cQMDvMl1xjoyLe+EIrM6RU9L6UuMDTKXPzeMzwgZRQdf1ry7083g==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793365662;
-	h=DMARC-Filter:DKIM-Signature:Received:Received:
-	 X-MS-Exchange-Authentication-Results:Received-SPF:Received:Received:
-	 Received:From:To:CC:Subject:Date:Message-ID:X-Mailer:MIME-Version:
-	 Content-Transfer-Encoding:Content-Type:X-Originating-IP:
-	 X-ClientProxiedBy:X-EOPAttributedMessage:X-MS-PublicTrafficType:
-	 X-MS-TrafficTypeDiagnostic:X-MS-Office365-Filtering-Correlation-Id:
-	 X-MS-Exchange-SenderADCheck:X-MS-Exchange-AntiSpam-Relay:
-	 X-Microsoft-Antispam:X-Microsoft-Antispam-Message-Info:
-	 X-Forefront-Antispam-Report:
-	 X-MS-Exchange-AntiSpam-MessageData-ChunkCount:
-	 X-MS-Exchange-AntiSpam-MessageData-0:X-OriginatorOrg:
-	 X-MS-Exchange-CrossTenant-OriginalArrivalTime:
-	 X-MS-Exchange-CrossTenant-Network-Message-Id:
-	 X-MS-Exchange-CrossTenant-Id:
-	 X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp:
-	 X-MS-Exchange-CrossTenant-AuthSource:X-MS-Exchange-CrossTenant-AuthAs:
-	 X-MS-Exchange-CrossTenant-FromEntityHeader:
-	 X-MS-Exchange-Transport-CrossTenantHeadersStamped;
-	bh=ndTIG/JdXE75XLZ+cZ5rIZXXDnx/mFTgkIYLi9ECJ2U=;
-	b=v6U0sVFdXjaGnpmKnszM06lZ3eYMRJf25tPJyzVr4aVXYOQr+4TgOEuhoj8S/YRK0Pnc
-	 DnYcA169lI4AxmI2APTP/rlJ4mO1u0LHJJdSREomf2IQYNQJqdnfmtvgdNojmzC0oNF3e
-	 MO/VZ087YCB7e3TJJd3P4qvU17K+zTWJ5dx7oijDp2eiw9AJKT/WM77jlzJWU/Mq2urA0
-	 +4lWLOeuZczKF99C4b5njSzfweCb49pS4D05EZa8fYxtWRW4ZwGwuIwzmGLFnRzznpKNy
-	 txBrrqmzw44C7zs+HsYwX7CV+l4hD7VMZOCc31v9T+cSrZbd5LwbCoOQcopOdX4eUsg==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=nvidia.com;
-	spf=fail smtp.mailfrom=nvidia.com;
-	dkim=pass header.d=Nvidia.com header.i=@Nvidia.com header.a=rsa-sha256 header.s=selector2 header.b=mkk6EZ5X;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=52.101.43.27
-Received: from SJ2PR03CU001.outbound.protection.outlook.com (mail-westusazon11012027.outbound.protection.outlook.com [52.101.43.27])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange ECDHE (secp384r1) server-signature ECDSA (prime256v1) server-digest SHA256)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.54
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1793374225;
+	b=E1xdJDab+aUZmXmSzjYJHPawMwf8sY6Zo7gSUL4wupZhbS6gH+xWttqiQkBDtCU2AwF9
+	 gYm732UecnOwol5FHJq40Lt6g/3XxMm2HAnLH1jwadn9+nLgcN8Z3ocXZvctaHLzTHq5f
+	 MhRIuZUm66ahVKztehcNViz/hLYGpavy1fslweY4i+I52battZC4Z/g8uKPx30k7dgAax
+	 glWRf7EOR9JioRbNkJiahFBuun9LQIdml6zl/7jZA66t6y7iXZmQWQliPr5/SsyACuebQ
+	 YuRzN0bcnvsbP5jZ74Jje2sRfoe9eZg0Y/tsbgH2SPiNe3mrbgJbyr4ICMwbTr/h8Iw==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793374225;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
+	 Date:Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=Cj10TEVlv60fC01PtBjn/3X3LG3F7w2N7jGbdCC0dGs=;
+	b=MpYyQRt8irO2kiX2NtK30UCiYDiatDezK37LsrfXcA3kN6xWuGcVEP+Kp06mY9vKHuFz
+	 8rqsKGFdG/QueqCtVAGCQXmh8ymXAWMAOI+W64BzzLFobdDoPO+0vCjcF5Y6wZz/xA7kO
+	 N5NvXzYkEv6BuAxIs2Ki4v/PkeSLwib39TbJUdM18NpR4/WyOAr8DbxVTMQsKKT8h6j/c
+	 CRnW6T4P/QopWgeo7bw+0Vc66q1/dNZ6ew7vJGNa9rg5BXl1ZEt24r53W47zg9Cr45nvD
+	 PtJxZu8bvwpCCfT9ssaLCQYhqjsvvXawH1a92OINwfOKzhqV5y+zU4ryY51tX0xYx+g==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=hammerspace.com;
+	spf=pass smtp.mailfrom=hammerspace.com;
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=o+rPn0Bf;
+	arc=none smtp.remote-ip=209.85.161.54
+Received: from mail-oo1-f54.google.com (mail-oo1-f54.google.com [209.85.161.54])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 70F99606A335;
-	Fri, 30 Oct 2026 13:07:40 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 70F99606A335
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=nvidia.com
-Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=nvidia.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 86031606A324
+	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 15:30:25 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 86031606A324
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=Nvidia.com header.i=@Nvidia.com header.a=rsa-sha256 header.s=selector2 header.b=mkk6EZ5X
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=q9CSZ5V+xmwbrBiusYJZccNVdWrkfoQ+XZcCPmHEYsQBKjYhD/O5syy6dNFUsldSD4ZvfDCFxu1z6XcvOxAYI1R7hzYfhOLxlw7Oio+gPH5Vc7ufftpZdyXcpL4MU8vgn2RMLv1qCUxxxSLWFHKzriXIoEGdef1JcQYtJuJM5GFkPSuMDNlKtduZp+rIWCwTh06B0a+JBzZB1LbLDnGvz0/Q68FWMKHjoNKjW+5hW3WonE96Av5tq3TEVL4VhDXyhtf9sLeJ8ExgwtdqKepa4DHZ5y/1xiN795lVk0n+HorKaSWdmgnMr1aR/dujgPI4TSAHJEt6N3OwhP0c+tTEGA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=ndTIG/JdXE75XLZ+cZ5rIZXXDnx/mFTgkIYLi9ECJ2U=;
- b=kl9+XPFi/dcNBrcvCE27B+S0wrvfPve3SStjdDwuNVBd7gbTlgFoH2ilQKDPv2L+s4dlA73q7OvNCN5jyqndehz1Z4lGfgAkLIVMZZSnl9cqRKGYrP+IvIwh5+zHkB4WrC2mFohkCRlT8m4/fyC56Ansa4HHkVYi8SxhwxPpvrwyMiohDMvZ2Y3VrjrW30tAoSrjV28qITNr0eNN4ixPJ+wDgKaoK45HnWuD4KNUX56S8N1pAn4Hgbr2TN9N1erHT+OgzaemLEshvhenFyF8CtLIfPRC9C5yEYKtaVLOAMSuXkxlvK1Xj3vJd/K91DslyDXOM4aJrh2bDX1cKBdYPA==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass (sender ip is
- 216.228.117.160) smtp.rcpttodomain=kernel.org smtp.mailfrom=nvidia.com;
- dmarc=pass (p=reject sp=reject pct=100) action=none header.from=nvidia.com;
- dkim=none (message not signed); arc=none (0)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=Nvidia.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=ndTIG/JdXE75XLZ+cZ5rIZXXDnx/mFTgkIYLi9ECJ2U=;
- b=mkk6EZ5Xu6r7vyMgOteDudd8yxkGLTCJz3UUzr9VMfgEYy04WAc+wU9tbeKGcMZiwgPORr13ZnYpc6CvPsJk09WDbrsJp4RNh/7zZEidJyhIqmWm5RJS+TM80Yn22EeTp+/LH5Zl6DENPLCneIXPCEGPqgVn+F/LYsQsKBbe2H4xuC3kEI/do0IUGw3KBmrQIe4cjlQDR8aoS7SLHzINHQJVIj/3VcTU5Y2lP3jBh6zEI5Xhc7y4wvmo9ZiUFoJc9dL35fM7eiOIey7cCBOGP222CyaH//BS6cUmH9Nvypz201K+wpY8zEJyt2c7dd1Z4+9Uqqml2aR4s6x5Z3si7g==
-Received: from SJ0PR03CA0039.namprd03.prod.outlook.com (2603:10b6:a03:33e::14)
- by LV8PR12MB9335.namprd12.prod.outlook.com (2603:10b6:408:1fc::22) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.569.9; Fri, 30 Oct
- 2026 13:07:34 +0000
-Received: from MWH0EPF000C6188.namprd02.prod.outlook.com
- (2603:10b6:a03:33e:cafe::58) by SJ0PR03CA0039.outlook.office365.com
- (2603:10b6:a03:33e::14) with Microsoft SMTP Server (version=TLS1_3,
- cipher=TLS_AES_256_GCM_SHA384) id 15.21.546.22 via Frontend Transport; Fri,
- 30 Oct 2026 13:07:33 +0000
-X-MS-Exchange-Authentication-Results: mx.microsoft.com 1; spf=pass (sender IP
- is 216.228.117.160) smtp.mailfrom=nvidia.com; dkim=none (message not signed)
- header.d=none;dmarc=pass action=none header.from=nvidia.com;
-Received-SPF: Pass (protection.outlook.com: domain of nvidia.com designates
- 216.228.117.160 as permitted sender) receiver=protection.outlook.com;
- client-ip=216.228.117.160; helo=mail.nvidia.com; pr=C
-Received: from mail.nvidia.com (216.228.117.160) by
- MWH0EPF000C6188.mail.protection.outlook.com (10.167.249.120) with Microsoft
- SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.21.569.4 via Frontend Transport; Fri, 30 Oct 2026 13:07:33 +0000
-Received: from rnnvmail201.nvidia.com (10.129.68.8) by mail.nvidia.com
- (10.129.200.66) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.2562.56; Fri, 30 Oct
- 2026 06:07:12 -0700
-Received: from 8e48b22-lcelt.nvidia.com (10.126.230.37) by
- rnnvmail201.nvidia.com (10.129.68.8) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.2562.56; Fri, 30 Oct 2026 06:07:07 -0700
-From: Kal Cutter Conley <kalcutterc@nvidia.com>
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
-	Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, NeilBrown
-	<neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo
-	<Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, "David S. Miller"
-	<davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski
-	<kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, Simon Horman
-	<horms@kernel.org>
-CC: Kal Cutter Conley <kalcutterc@nvidia.com>, <linux-nfs@vger.kernel.org>,
-	<netdev@vger.kernel.org>, <linux-kernel@vger.kernel.org>
-Subject: [PATCH] sunrpc: fix lost wakeups when stopping service threads
-Date: Fri, 30 Oct 2026 14:06:28 +0100
-Message-ID: <20261030130629.103716-1-kalcutterc@nvidia.com>
+	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=o+rPn0Bf
+Received: by mail-oo1-f54.google.com with SMTP id 006d021491bc7-6deb848ddd7so661079eaf.0
+        for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 08:30:25 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=hammerspace.com; s=google; t=1793374224; x=1793979024; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=Cj10TEVlv60fC01PtBjn/3X3LG3F7w2N7jGbdCC0dGs=;
+        b=o+rPn0BfR2yWZBIr7llE/tDg+IpPzUJ/qr+jLbw+TzVkX89b1ChugcHBmIanwxSJGl
+         pEWcrf6PQPRoxZpbRNBk5HVIytZ2qbGr/R5bI5SUVc6wLl7646r9Dmqxz8JfMSq0hHkB
+         Bxbyd2IPBzzuCWiVTuwhEAaw4Ndxxb+JYtnIoxyuuIkxjrYF5Pcqnmf04nyTGurDF6z8
+         Cx6fCxZI+9iAardNsGhSdAWSjmyLcaA+CBBelhdVsXhpyiysYzFBfWBB1oUZ1gIFV4k+
+         xyT6vJALPd89aH1ieQt8c77XKDzhx0g1ydtHeGr6ZCFf6A7L8+3GBeonQ+YL9aYYltMi
+         mgMQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793374224; x=1793979024;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=Cj10TEVlv60fC01PtBjn/3X3LG3F7w2N7jGbdCC0dGs=;
+        b=t9l5yHMl9W3aKRCAPMuX91Ymh2O6qAPvCWZshp05CzqTxHFLGAbv63a0r0ZcQM3opN
+         0vdqmhOBE8G2jpkNWTpb30Bdo+LwtJLMQiO5eyw9rOy4hXVwOKevYaIMdDG2nIW2IGvr
+         qIEE/NiRjiQlhuMwzqvZyIiAQ0bFlSnjKO9H4nGen2g8B6nr3hbnFTU2rxynnxgf3fvU
+         d0/5gLNvnLasYkm4pxZ68cE28fBTGQC519id7tK4lU8zPooX1gEq1bQLQBgoAzUbL9uy
+         9MiOAtpftsPKE2icJIPVXVu4+YgqRmKJtbH8p2Sqgi7t/yh1e9yHMRE4xlodnDxMVBlx
+         hSyw==
+X-Gm-Message-State: AFq9FYIPVC2bbfOWBxuZDmuAsiY8hmoXRM0KmGWkLFzQHfGelcXaO8S/
+	o/Rtoer92IZhRc0buJpZVdhjNqCzbPO4fBNQRzDW8W8qhxBMJMU7C5G4OJfiJfydF4M=
+X-Gm-Gg: AYBFou2XZANSFJGzS3Q4YdVi4CVT3q7tjLYtdSooMJudSqPAgOO/AUiKP+ze7aV4v+S
+	P5RHJ/jv0SHV7UpWy2G86UiXk0Rgt5LluvdToiLSuL7FV8ZQFkTWfmyNjjJ0LhrpNkHvJC5aD+M
+	IQnSGAOWkeO3+9cG645l9A3FPW/HmxGUGysWxWb8PSKs6+/bm1vfRL5j1l+f/9DDUNAc6E9jLJW
+	CCP84Q5UQ4nEjEfXThJ/0LWphPYPhkjvlIo9BsiYIvkfxJGpaTXXVOXM1heLfJ1Mqn8x7nWROEn
+	J9eCG7HicNPiF4FnH5AhOi9KRmQctOK6JMAizfwiZKEB8keofTmf1ePGjOW+ydu6paOnc6blQEV
+	RSTfWRyVXpiHMLTsM8t3F2vnnmlLZjb34AFKwcmEPNJmJyEy9J2Ev0U1WmL2jFnlk2MfEqtYlov
+	/hXmV7upx8RR9koErV/QgS/eK31KLFzFwvJ8QsBuiLbyZ0unUV6eXfQjRDSoxOGYrbVtwIdfUG7
+	RnUx6cRCCtfr0DZZqZ+QiBFwPZ0YI8NgRLZ9/sPXPVGB3m67rZFGevhUppN8An8ppg6RPfsVBWp
+	tP7R5hNDXY7Jryij4i08S+oPv2uTIBhVRgiXL1fZL5Eef3xxG77srFPxz1LKADfgVqk4omiPzgF
+	bnFTIzJHaydTMPGUK+Y+o1FAaOsempzk=
+X-Received: by 2002:a05:6808:c413:b0:4c0:12f3:6007 with SMTP id 5614622812f47-5640d91b989mr1875965b6e.4.1793374224348;
+        Fri, 30 Oct 2026 08:30:24 -0700 (PDT)
+Received: from bcodding.csb.hammerspace.com (219.sub-174-201-19.myvzw.com. [174.201.19.219])
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-5640fe0fda0sm1840376b6e.13.2026.10.30.08.30.23
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 30 Oct 2026 08:30:23 -0700 (PDT)
+From: Benjamin Coddington <ben.coddington@hammerspace.com>
+To: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Mike Snitzer <snitzer@kernel.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 0/6] pNFS: don't reply NOMATCHING to a layout recall with I/O in flight
+Date: Fri, 30 Oct 2026 11:30:16 -0400
+Message-ID: <cover.1793373378.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -116,94 +95,91 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-ClientProxiedBy: rnnvmail202.nvidia.com (10.129.68.7) To
- rnnvmail201.nvidia.com (10.129.68.8)
-X-EOPAttributedMessage: 0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: MWH0EPF000C6188:EE_|LV8PR12MB9335:EE_
-X-MS-Office365-Filtering-Correlation-Id: d6741194-06a0-49d2-70b0-08df3686c313
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam:
-	BCL:0;ARA:13230040|36860700016|82310400026|23010399003|7416014|376014|1800799024|10067099003|18002099003|921020|56012099006|11063799006|261028144727099003|261026140227099003|261022105027099003|261021121427099003|261009223027099003;
-X-Microsoft-Antispam-Message-Info:
-	tsaYsvfIZBM1ulWLZqpQxhqO4R/1Rm+6DS/XuAHoq+mTvhU+G9UOJbLRPdflc5aoHi1VrbtgfFHMgpt8bd9tp78r1DE7JQR8XuKkDyVMsxNdEUEfruynp3jGE+GHn4JFbfgCrDQws5CBQNqvKD4XiysupyaNrwk6ZgJhv30rXVq3HXxGajIPjA7IN6UvQuQry/4k5z85x9Fx9X611ODuQNpNlf7HFJh0Y7WP60hIWq7GXngy1F2q0llR+sEFUMC473g0N4eCjtb/K6RvI85P9Udx3XUMnNXC0WZHRH5gX9Vq6J3ozC/iYM9AxIEud8JL0/qq4wPr6hjwuRafI+RJ3tl0JSMY7CjBDskz0VfQZu+Guj5TWiiLDgVCNquwa8ZNSZUjxNJbzVAP03aaRJFO3x23ROY1MFmjwA/te2Eq52HTU6ew2zjJCDQwhBz13yDmWTK0IF8hoa67TzVsYjAUOByBaXlyeg7Elc1C4H59gWe39fe9ybc0gqSJ/jgXsbyuhz+m1YD69BKOxSubOlzbHtcSzkMDz7IJBX+B5f3CJva3Gx/bVbU3YN95M7+Z0qkBPj7GMbUkXNzrdS7U+hIOvgNVx0AQrB3hNy/H6D1uwf3EVDq0uBxpjmjX3xkOYheBNI32carDljwr0FuiXq0Q4GcrY+Rj0EfktxymQ8CzbOvWIST1kmaERjp5UHLnfv0esTjHEdNksLImlFEvDJYwO9ot3p2DNMcfBrQdO/JmTA2O8Vbg9SwTlnAXfD4PExQ1
-X-Forefront-Antispam-Report:
-	CIP:216.228.117.160;CTRY:US;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:mail.nvidia.com;PTR:dc6edge1.nvidia.com;CAT:NONE;SFS:(13230040)(36860700016)(82310400026)(23010399003)(7416014)(376014)(1800799024)(10067099003)(18002099003)(921020)(56012099006)(11063799006)(261028144727099003)(261026140227099003)(261022105027099003)(261021121427099003)(261009223027099003);DIR:OUT;SFP:1101;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
-	E8TXqJXasH4ybrtA4Pc0H+GPtxIO/xHOsSyMjbSqu+k3M8fUawUXPXYob/QmINYb+r+VavWycJxsH3+PIp7kAsaQm0jm94RA6UfubSFo0/gV+NX7yvzOkGXELGDYf/2w+seG819X0AQx4GYLap9W87PkVwU+xm1lcqMkFNeaxf7VX5IAwDCdkJIv/sA0ZiCArI08aQaABakaxeSjNChveA6zOEnwHnBWseZE8M/YWc9TbK+CLx7XehAFHRgByQA8sBglX+fiO3SID/f31lTU1u976ZcUV5ByzzLEnTUqu5YZRzqvL0Wz5hih7TCgVLPNyUQW4t6+F8U0fnp7bNpEocPw7n5rMNg3uZV2EyDYrgw4EA6hXniwxVj3JjUnIi1IR75uChFvSGsfubU6x8YoUvx1dyG/VAWXv4Gw5wjT7qJZ3N7XAy/j5sAIRDXNqL4R
-X-OriginatorOrg: Nvidia.com
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 30 Oct 2026 13:07:33.5268
- (UTC)
-X-MS-Exchange-CrossTenant-Network-Message-Id: d6741194-06a0-49d2-70b0-08df3686c313
-X-MS-Exchange-CrossTenant-Id: 43083d15-7273-40c1-b7db-39efd9ccc17a
-X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=43083d15-7273-40c1-b7db-39efd9ccc17a;Ip=[216.228.117.160];Helo=[mail.nvidia.com]
-X-MS-Exchange-CrossTenant-AuthSource:
-	MWH0EPF000C6188.namprd02.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Anonymous
-X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: LV8PR12MB9335
 
-Stopping NFS can leave rpc.nfsd 0 in an uninterruptible wait with
-this stack:
+From: Benjamin Coddington <bcodding@hammerspace.com>
 
-  svc_stop_kthreads [sunrpc]
-  svc_set_num_threads [sunrpc]
-  nfsd_svc [nfsd]
-  write_threads [nfsd]
-  nfsctl_transaction_write [nfsd]
+A client can reply NFS4ERR_NOMATCHING_LAYOUT to a CB_LAYOUTRECALL while
+flexfiles DS I/O on that layout is still outstanding.  The server then
+treats the layout as returned, and that I/O can reach the storage device
+after the recall has completed.  We found two ways to get there:
 
-SP_NEED_VICTIM and SP_VICTIM_REMAINS remain set while all remaining
-nfsd threads sleep in svc_recv() and none has RQ_VICTIM set.
+ - A bulk recall (FSID or ALL) that finds segments pinned by I/O
+   invalidates the layout stateid and replies NFS4ERR_DELAY.  The resent
+   recall skips layouts with an invalid stateid, finds nothing, and gets
+   NFS4ERR_NOMATCHING_LAYOUT.
 
-The stop request is published with unordered set_bit() operations.
-svc_pool_wake_idle_thread() checks the idle list and task state before
-calling wake_up_process(). If it sees an empty list or TASK_RUNNING,
-it skips the wakeup and its memory barrier. The requester can therefore
-miss a sleeping worker while that worker misses the stop request.
+ - If another path has already invalidated the stateid without a
+   LAYOUTRETURN, for example pnfs_destroy_layout() after an ESTALE, then
+   either kind of recall gets NFS4ERR_NOMATCHING_LAYOUT right away.
 
-Order work publication before both lockless checks, even when no
-wakeup occurs. Pair with set_current_state() and llist_add() in
-svc_thread_wait_for_work(), so the worker observes the pending work or
-the requester observes the idle worker and wakes it.
+Patch 1 adds a tracepoint for bulk recall replies.  Patch 2 clears
+NFS_LAYOUT_BULK_RECALL once an invalid layout's last segment is freed;
+flexfiles marks every segment for return when its I/O completes, so the
+flag otherwise stays set until the layout header is freed.  Patch 3 fixes
+a leak of segment references when ->prepare_layoutcommit() fails, which
+would otherwise leave the next two patches answering NFS4ERR_DELAY
+forever.  Patch 4 has the bulk walker collect invalid layouts that still
+have segments, so the resent recall gets NFS4ERR_DELAY until they drain.
+Patch 5 does the same for a file recall, and sets NFS_LAYOUT_BULK_RECALL
+so that I/O needing a new layout doesn't wait on a LAYOUTGET the server
+won't grant while the recall is outstanding.  Patch 6 lets flexfiles
+writes go through the MDS while that recall drains, even when the layout
+carries FF_FLAGS_NO_IO_THRU_MDS, which RFC 8435 makes a hint; without it
+those writers retry without any delay until the drain finishes.
 
-Fixes: 60749cbe3d8a ("sunrpc: change sp_nrthreads from atomic_t to unsigned int.")
-Signed-off-by: Kal Cutter Conley <kalcutterc@nvidia.com>
----
- net/sunrpc/svc.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+Patch 4 was posted earlier on its own; its changelog is below the fold.
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index af8d87c1de83..f3cc63acc5e1 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -29,6 +29,8 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/bc_xprt.h>
- 
-+#include <asm/barrier.h>
-+
- #include <trace/events/sunrpc.h>
- 
- #include "fail.h"
-@@ -693,6 +695,13 @@ void svc_pool_wake_idle_thread(struct svc_pool *pool)
- 	struct svc_rqst	*rqstp;
- 	struct llist_node *ln;
- 
-+	/*
-+	 * Order work publication before the idle-list and task-state checks,
-+	 * even when wake_up_process() is skipped. Pairs with the barriers in
-+	 * set_current_state() and llist_add() in svc_thread_wait_for_work().
-+	 */
-+	smp_mb();
-+
- 	rcu_read_lock();
- 	ln = READ_ONCE(pool->sp_idle_threads.first);
- 	if (ln) {
+Tested by sending FSID, ALL and FILE recalls on demand, resent every
+second after NFS4ERR_DELAY, while the client's DS traffic was held (DS
+stopped, or dropped with iptables) during a 64MB O_DIRECT write:
 
-base-commit: b803428098f6fcd584db9f0499217b80e465bb34
+ - Unpatched, an FSID recall gets NFS4ERR_DELAY, then
+   NFS4ERR_NOMATCHING_LAYOUT on the first resend with the write still
+   held.
+
+ - Patched, FSID and ALL recalls get NFS4ERR_DELAY until the DS I/O
+   completes or times out, then NFS4ERR_NOMATCHING_LAYOUT.  With no I/O
+   outstanding the first reply is NFS4ERR_NOMATCHING_LAYOUT.
+
+ - Patched, with the layout invalidated by NFS4ERR_STALE on an
+   OPEN_DOWNGRADE, a file recall gets NFS4ERR_DELAY until the I/O
+   drains.  With clora_changed set the I/O is cancelled and the resend
+   gets NFS4ERR_NOMATCHING_LAYOUT.
+
+ - With FF_FLAGS_NO_IO_THRU_MDS, a second O_DIRECT writer to a file
+   whose recall was draining wrote its 8MB through the MDS in 23ms with
+   patch 6.  Without it, the writer retried about 330,000 times in ten
+   seconds until the hold was released.
+
+Patch 2 was not exercised directly: in these runs the layout header was
+freed once the I/O drained.
+
+Changes in v2:
+ - Patch 3: only reschedule the LAYOUTCOMMIT if the layout stateid is
+   still valid.  Putting the segment references could free the layout
+   header and leave NFS_INO_LAYOUTCOMMIT set, so the next
+   pnfs_layoutcommit_inode() dereferenced a NULL nfsi->layout.
+
+v1: https://lore.kernel.org/linux-nfs/cover.1793298149.git.bcodding@hammerspace.com/
+
+Benjamin Coddington (6):
+  NFSv4: add a tracepoint for bulk CB_LAYOUTRECALL replies
+  pNFS: clear NFS_LAYOUT_BULK_RECALL when an invalid layout's last
+    segment is freed
+  pNFS: don't leak layout segments when prepare_layoutcommit fails
+  pNFS: don't send _NOMATCHING_LAYOUT if still doing IO on a layout
+  pNFS: answer a file recall with NFS4ERR_DELAY while I/O drains
+  pNFS/flexfiles: write through the MDS while a recalled layout drains
+
+ fs/nfs/callback_proc.c                 |  19 ++++-
+ fs/nfs/flexfilelayout/flexfilelayout.c |   5 +-
+ fs/nfs/nfs4trace.h                     |  49 ++++++++++++
+ fs/nfs/pnfs.c                          | 105 +++++++++++++++++++++----
+ fs/nfs/pnfs.h                          |   4 +
+ 5 files changed, 163 insertions(+), 19 deletions(-)
+
+
+base-commit: ef30b3efb7e8bae94d790a6503a595e1051323e7
 -- 
 2.53.0
 
