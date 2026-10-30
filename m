@@ -1,94 +1,87 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.180
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=23.83.222.45
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793374234;
-	b=BMSh6FH5sxEKDSqh3/Doz2fP8B95d8Clr8J8dhsNlYrWnuH8NJ+Jp7VddN7MggSNPlXc
-	 bKfwfjqaulYAQFjR4IuvLLUlIUtTQaFKJ5u69cDG1e2c0+xE+ChBGHtaquSYaBqKFj8DL
-	 JT84NeLJPIE/3HWss1XVJgtMwJjb9EWrWSEmrCTvIn2goFagWR0XeeoueUJH6F21+RFxU
-	 gRywBVaM4sYxVssiVetMpjxmruzBvd0zb7DzWRA7o5buFs5BEtr4+cyqAXsqNx3O9Km/Z
-	 OfQ8iuy+1bNzWkmzM8Y6Y9ZnUoSgxVycGiIbJdUEM4n6c/6C115kwNGx+cnQmzJ34VA==
+	t=1793374773;
+	b=hgxLBK/ZImPZTEnNqbwYUHGDN5VNdo7Q7SenMnMcMsxlKqB2xuhor5tHhhFF8N8fnZ/9
+	 X9M6OlHDGwukniUFGgolLEzPdwLv+c2IMO32gy49ouUd96BH/9OUkQNlur1xsJ26kt5lc
+	 tDGAbBUC/zLPsQzaFFWpztXZKwf95IWehm1JaVryLD4LFjwdW9WriPpQMGT2QpMvKLUsr
+	 u5Lx7DmPSDwohZBuYisBk33wy5/gkW53e5QuRjE9QbFwQyMq/HEymHDAaLiVXvoWqyAwA
+	 m8cQaxkLW10xQ5ECqPmuv5G7ZLejRRXmOYj191nHHcM39NLTzn0/6MvyMRWJrVPhnJw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793374234;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
-	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
+	a=rsa-sha256; c=relaxed/relaxed; t=1793374773;
+	h=DMARC-Filter:X-Sender-Id:Received:Received:X-Sender-Id:X-MC-Relay:
+	 X-MailChannels-SenderId:X-MailChannels-Auth-Id:X-Illegal-Sponge:
+	 X-MC-Loop-Signature:X-MC-Ingress-Time:Received:Received:
+	 DKIM-Signature:Received:X-Gm-Message-State:X-Received:MIME-Version:
+	 References:In-Reply-To:From:Date:X-Gmail-Original-Message-ID:
+	 X-Gm-Features:Message-ID:Subject:To:Content-Type:
 	 Content-Transfer-Encoding;
-	bh=sS2XK6x44s2LZ5cw7jz9/RsCVGClFMSfZGP0rtBAbDI=;
-	b=g+pjqfluWI7EXGJGEQhEmbIQTImjxKMpp5Pzg9BtO2s7TrYb/WCOLTal6mefQjJrR8ot
-	 f5P0jjBDhK3m6/tZuSq+2fvjS86QU7V9KgUYHrh/ds6q0Y6Kk8+C0T+lpOS0NWfLtow7C
-	 ZrTL9tjR5U8zBs0I7IdYgZc9amJXfcF93P6On2UGyd3jk0SdEUVFJBn/Pa84fC0Eksrg2
-	 oT4NZddoLNpRAKmLhHSBEhpV0Jh7FaLnyweDKrzx7sRNPz4T51DDlF+Mza9oij/Z65hfd
-	 yDAVPPjBVrq25Xz6eQg+YvYsnz0g7LsoTGT2um2Sa0B0T50sLRtw1KLG/fAqApI5csA==
+	bh=ro5m+asWHdgxIRPHRbIXNYFeP2uek6H+pfLUT2P6194=;
+	b=Ks6P3Y++nzDncZamFYJmX0ktC0N1+B7vwKjHvYvMZhzl4wiDhI+RK/TefyxFeKtCDjKV
+	 ErMuWF5SN+oNL0sXndlVZ3mYKwhhJ7bmfzoDcX111vTiLLITXKAcV2+FL+cD7BIsOH9IT
+	 NbkPmFs5lFiPDRFJ3SQVW+R3B3pBE3dLaGwMTx+a0M4OVCciSAf+AolfCcV7/m3NWyf3M
+	 bk2F8FFZMeLMn+cQCvuSKwRYvM0YZb3D2cJM0cP0DQTuJC21m/17a3jMHnc3f+0fiDPdg
+	 s1VG0Z0d/2+LTveoinkqUjnz+dSatw2AEm7N5lwkEDUMVOzbU0aNWGtOCiIPN9svznw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=hammerspace.com;
-	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=BQFvwNWz;
-	arc=none smtp.remote-ip=209.85.167.180
-Received: from mail-oi1-f180.google.com (mail-oi1-f180.google.com [209.85.167.180])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=none header.from=nrubsig.org;
+	spf=fail smtp.mailfrom=nrubsig.org;
+	dkim=pass header.d=nrubsig.org header.i=@nrubsig.org header.a=rsa-sha256 header.s=dreamhost header.b="YNm/tVGX";
+	arc=none smtp.remote-ip=23.83.222.45
+Received: from crocodile.ash.relay.mailchannels.net (crocodile.ash.relay.mailchannels.net [23.83.222.45])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6053A606A32E
-	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 15:30:34 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6053A606A32E
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 27D0C606A31A
+	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 15:39:32 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 27D0C606A31A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nrubsig.org
+Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=nrubsig.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=BQFvwNWz
-Received: by mail-oi1-f180.google.com with SMTP id 5614622812f47-53c156ba662so445696b6e.1
-        for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 08:30:33 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1793374233; x=1793979033; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=sS2XK6x44s2LZ5cw7jz9/RsCVGClFMSfZGP0rtBAbDI=;
-        b=BQFvwNWz/JlqFxWCXSvu5mhmAepwNkwlsqLPjlc5rfMkaa7RICvYcuqhsa3aWDx2ia
-         xnKZNxDApINCeMI/YCYxkc2c/Z84vqt5Gy8WHGz2diJRgylFQJJR/i/WQDzayFN2PcTL
-         sEpE6za4dW3xROLwCNtiZl7sHYdXOFic6Yf2rQa9Yvv593pkP2gdFeonbA2J0p+m+JC9
-         TEppqfgYocGDZ3fCtRr6RdHawOiW9J3zJJbSyN8dFQOgWJzR8JgfV5V3QiUCNZY2KLqU
-         LvFy/sR6ni82r1bPmPpz6mz5Xqizp9cDdwCV4UEfmcGA8tc1WOW1DzHmzqL+vkmXB0yq
-         jIAg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793374233; x=1793979033;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=sS2XK6x44s2LZ5cw7jz9/RsCVGClFMSfZGP0rtBAbDI=;
-        b=roaedc/mkRuEU6aGcZoVWSo8ZlG1DzznaKAVFftLvpGv9htAXax3fhGfn8SUDHugcx
-         0vUcZiejY8dzwEHhRPuamNzkzPDc7JKn0EYUgxHyx1nhpoBHdWEMkL3Y5LtOk0oIR/Es
-         JZwBL7orD+mEIZ4jILiBILk1ZUVCZJXREOiqU2iUqsvQ+2O4rlqVR3yUaNuZPXA5nSiG
-         VTJo2wqo5vU4+gFMWnp2985mK8u4Nu38UP/qtSMv3gn0ZqmR7ycWNR7Ljge9OQIkxw32
-         n7MGxrbbtl0L5uRjmkSaSoG5rOj9dzIBLOKN9yRQuVz5KHyIAatt39LfqXTumbZEGzDS
-         BTzg==
-X-Gm-Message-State: AFq9FYLyzNMPEyeLKGOf2vKw+mUwnID8j41TwyAXOgPDGbOLqwSQwivk
-	tKDGunUCzdpkiUq57vyQuz1UYQsn5ZtarTPMFF6Im7LuiQyz3MSoWiVsiL7yZXRa2es=
-X-Gm-Gg: AYBFou0zXmM91gN+XeKcuszn8CHCU4eWqu8aMKsI2qc89SZmUj+OLzvUaArJ5VYkZ+d
-	G9SCydTMAdKppIoe/3DTBgDKnd6LEa3Kf4B3QF5WCW6c/nmkb4HdaGbCsJVESEQEqb54yo/k2BP
-	+x9O4HRWsLV/uwW6k9PxgfZQKZ73Lj3PADE5ZFOXIudWkDR0jZHmvKXLIJzfj9DRnbTn3K3D4tU
-	S46smZKJ7Gq9Aswosu/v6KJMmLNZak/uINpRj/7EgYu58IMlLPyiq617oUojx8Qbeju82hRXjdj
-	Vi7lKY+dJwr4m5PAzNV2xXNtTfvnrO2LT85hOLW1vdvF3fKEOh5o2Sm/4f7rnoJe6q0oqldNfQp
-	UXeXJ7prfMy2LfvIJT3KwX0SKVGzezyfPzdUZjqzC9h55pIBUby26cKXriHDc5R2QsYoBkqEE7t
-	OLjbWVuZ4AXWndrrm2ddSNYodHhQ/RZAtJQnAjI3EFk8tf3eRkfiVdbHS2Efw64OgrXcUQCLkZh
-	sbDa5tqgNgtagvFgyDJANsFa/NlX/2eGwZKSjT8qWT423cU2RHsHTSAqR3PAW/46WVIJJttjYR/
-	dksgjz2XQylHz2fbwCtclIYiCBK8hx1SBgO2X7ZS0AVslTzMZfAFhU+EjqwaXrA2Ld78TcAUKyH
-	7YDL9H6IyKpRYE/DqhRGPYLvf5w7GXwc=
-X-Received: by 2002:a05:6808:c40a:b0:4e8:721f:2824 with SMTP id 5614622812f47-5640df45e10mr1741736b6e.60.1793374232954;
-        Fri, 30 Oct 2026 08:30:32 -0700 (PDT)
-Received: from bcodding.csb.hammerspace.com (219.sub-174-201-19.myvzw.com. [174.201.19.219])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-5640fe0fda0sm1840376b6e.13.2026.10.30.08.30.31
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 30 Oct 2026 08:30:32 -0700 (PDT)
-From: Benjamin Coddington <ben.coddington@hammerspace.com>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Mike Snitzer <snitzer@kernel.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 6/6] pNFS/flexfiles: write through the MDS while a recalled layout drains
-Date: Fri, 30 Oct 2026 11:30:22 -0400
-Message-ID: <19211fc88f00f39a513bb1380e4675c066611bf8.1793373378.git.bcodding@hammerspace.com>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <cover.1793373378.git.bcodding@hammerspace.com>
-References: <cover.1793373378.git.bcodding@hammerspace.com>
+	dkim=pass (2048-bit key, unprotected) header.d=nrubsig.org header.i=@nrubsig.org header.a=rsa-sha256 header.s=dreamhost header.b=YNm/tVGX
+X-Sender-Id: dreamhost|x-authsender|gisburn@nrubsig.org
+Received: from relay.mailchannels.net (localhost [127.0.0.1])
+	by relay.mailchannels.net (Postfix) with ESMTP id 71F259437D9
+	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 15:39:26 +0000 (UTC)
+Received: from pdx1-sub0-mail-a246.dreamhost.com (trex-green-5.trex.outbound.svc.cluster.local [100.99.211.79])
+	(Authenticated sender: dreamhost)
+	by relay.mailchannels.net (Postfix) with ESMTPA id 4FCC194399E
+	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 15:39:26 +0000 (UTC)
+X-Sender-Id: dreamhost|x-authsender|gisburn@nrubsig.org
+X-MC-Relay: Neutral
+X-MailChannels-SenderId: dreamhost|x-authsender|gisburn@nrubsig.org
+X-MailChannels-Auth-Id: dreamhost
+X-Illegal-Sponge: 5462c9856c3a06fe_1793374766357_547058653
+X-MC-Loop-Signature: 1793374766357:3105927846
+X-MC-Ingress-Time: 1793374766357
+Received: from pdx1-sub0-mail-a246.dreamhost.com (pop.dreamhost.com
+ [64.90.62.162])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384)
+	by 100.99.211.79 (trex/8.0.2);
+	Fri, 30 Oct 2026 15:39:26 +0000
+Received: from mail-wm1-f52.google.com (mail-wm1-f52.google.com [209.85.128.52])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	(Authenticated sender: gisburn@nrubsig.org)
+	by pdx1-sub0-mail-a246.dreamhost.com (Postfix) with ESMTPSA id 4jGQJG1NQWz105H
+	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 08:39:26 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nrubsig.org;
+	s=dreamhost; t=1793374766;
+	bh=ro5m+asWHdgxIRPHRbIXNYFeP2uek6H+pfLUT2P6194=;
+	h=From:Date:Subject:To:Content-Type:Content-Transfer-Encoding;
+	b=YNm/tVGXvjFvXrXjzE1GZJdCh+RFW/J2dspN2h92L5J2l/Pu2Xy+zLcLiSSBABB9e
+	 W9iNdBDh0Gd/xXPr4+PSogs1Si4G+YuDQDNiFI2ZA2ZlwKPrwuPtaTigR+nx0v8uXm
+	 iVHQrTa34NXYjxrHnpWhmPncy7cDNLTJ0hO8E3vWh4jpyU12c2PJWNbXQfqj3jLZl1
+	 LAi2RMwQwFDITRiBqoDeiHU1JT/hs63uULvMzz/jm2lXaAkuCQdNJgbmwWEUBx5uIQ
+	 ipZGYM/agiJzwDaUBQnbWgx/HTAOkaa52KOXxe3cSRCWRCnV0v50g3j4sRe60IcwUR
+	 3YL6Afg4ud5zw==
+Received: by mail-wm1-f52.google.com with SMTP id 5b1f17b1804b1-4a5177d78c7so8744405e9.2
+        for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 08:39:26 -0700 (PDT)
+X-Gm-Message-State: AFq9FYJtIXm2h41nV05dtAHPJ/s7FsqJ6PDenjfOZ/DFJAVSjxSXMgHZ
+	WBb/MqWuuegIaz3E3n3EKgxLzvyMlG5TKgl15GdUiqOutakzy2pAokm3+dds1cpmFmSPLS9Oqsk
+	kY0uwqY04ItY8ohf6ScjZUFQHgndNTxg=
+X-Received: by 2002:a05:600c:c16a:b0:4a0:1c10:1372 with SMTP id
+ 5b1f17b1804b1-4ac18c74638mr57529525e9.27.1793374765035; Fri, 30 Oct 2026
+ 08:39:25 -0700 (PDT)
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -98,90 +91,95 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20261029-random-stateids-v1-0-8648878fec8c@kernel.org> <877e743a38f4784f351615a9d72a4d6033a3869d.camel@kernel.org>
+In-Reply-To: <877e743a38f4784f351615a9d72a4d6033a3869d.camel@kernel.org>
+From: Roland Mainz <roland.mainz@nrubsig.org>
+Date: Fri, 30 Oct 2026 16:38:46 +0100
+X-Gmail-Original-Message-ID: <CAKAoaQm__zC=xuL-gqzqdv4127Tv=Ro+6J7=utN0qBqG=RgUfg@mail.gmail.com>
+X-Gm-Features: AclHuK8ZyFqsDGq5UHSmCURcJLbh7fPPF0IhH323k8Ymz2-Ojmtmc8s5WB5ay-M
+Message-ID: <CAKAoaQm__zC=xuL-gqzqdv4127Tv=Ro+6J7=utN0qBqG=RgUfg@mail.gmail.com>
+Subject: Re: [PATCH 00/10] NFSD: Randomize clientids, session IDs, and
+ COPY_NOTIFY tokens
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-From: Benjamin Coddington <bcodding@hammerspace.com>
+On Fri, Oct 30, 2026 at 12:28=E2=80=AFPM Jeff Layton <jlayton@kernel.org> w=
+rote:
+>
+> On Thu, 2026-10-29 at 09:40 -0400, Chuck Lever wrote:
+> > NFSD currently assigns a clientid from a per-netns counter, a session
+> > ID's sequence word from a global counter, and a COPY_NOTIFY stateid's
+> > so_id from a cyclic allocator with a fixed clientid word. Each of the
+> > three is a bearer token. NFSv4.0 resolves a presented stateid against
+> > the client named inside it rather than the caller, and the errors the
+> > protocol mandates (EXPIRED for an unknown clientid, BAD_STATEID for a
+> > known clientid with an unknown index) let the two halves be searched
+> > separately. Under SP4_NONE, nfsd4_sequence() does not check a
+> > credential, so a session ID alone can reach another client's slot
+> > table. Adjacent counter values let a malicious requester find a
+> > neighbor's token in a few dozen probes by counting outward from its
+> > own.
+> >
+> > After this series, the clientid, the session ID, and the COPY_NOTIFY
+> > token's clientid word are random. Predicting a live clientid costs
+> > about 2^32 / C probes for C clients of the probe's minor version,
+> > and a session ID 2^64. An ordinary stateid's so_id stays cyclic, so
+> > it stays cheap to search once a clientid is known. RFC 8881 forbids
+> > reusing an "other" value for a different purpose, and the cyclic
+> > allocator is the non-reuse mechanism clients rely on.
+> >
+> > Tested with the new KUnit suite, pynfs 4.0 and 4.1 over loopback, and
+> > pynfs-based probes that confirm the three tokens are unpredictable,
+> > that a LOCKT denial no longer carries a clientid, and that a
+> > COPY_NOTIFY stateid with a wrong clientid word is rejected. A
+> > same-second restart loop confirmed STALE_CLIENTID on RENEW and a
+> > clean shutdown with live COPY_NOTIFY state.
+> >
+> > ---
+> > Chuck Lever (10):
+> >       NFSD: Serialize forced client expiry with state shutdown
+> >       NFSD: Check machine credentials before expiring a client in DESTR=
+OY_CLIENTID
+> >       NFSD: Make nn->boot_time strictly increase across state starts
+> >       NFSD: Give each client a display id independent of cl_id
+> >       NFSD: Generate the clientid at random instead of from a counter
+> >       NFSD: Stop disclosing the conflicting lock holder in a lock denia=
+l
+> >       NFSD: Destroy the COPY_NOTIFY stateid IDR at netns teardown
+> >       NFSD: Put a random word in each COPY_NOTIFY stateid
+> >       NFSD: Fill the session ID's sequence and reserved words at random
+> >       NFSD: Add KUnit tests for the random identifier generators
+> >
+> >  fs/nfsd/Kconfig          |  16 ++
+> >  fs/nfsd/netns.h          |   9 +-
+> >  fs/nfsd/nfs4layouts.c    |  10 +-
+> >  fs/nfsd/nfs4proc.c       |   2 -
+> >  fs/nfsd/nfs4state.c      | 308 ++++++++++++++++++------
+> >  fs/nfsd/nfs4state_test.c | 591 +++++++++++++++++++++++++++++++++++++++=
+++++++++
+> >  fs/nfsd/state.h          |  16 +-
+> >  fs/nfsd/xdr4.h           |   2 -
+> >  8 files changed, 867 insertions(+), 87 deletions(-)
+> > ---
+> > base-commit: 19bbac00ad1cfa28e9127488f161ffc2ac03fad4
+> > change-id: 20261029-random-stateids-c66f263d7800
+[snip]
+>
+> This seems reasonable overall, but I do wonder if trying to keep these
+> things non-guessable is a losing battle. I guess it doesn't hurt
+> anything.
 
-When a layout carries FF_FLAGS_NO_IO_THRU_MDS and pnfs_update_layout()
-returns no layout, ff_layout_pg_get_mirror_count_write() returns -EAGAIN,
-and nfs_writepages() and the O_DIRECT reschedule path retry the write at
-once.  pnfs_update_layout() returns no layout while NFS_LAYOUT_BULK_RECALL
-is set, which lasts until the I/O on a recalled layout completes, so
-writers spin for as long as that takes.
+IMO it would be nice to have a way to turn this off at NFS server startup..=
+.
 
-FF_FLAGS_NO_IO_THRU_MDS is a hint (RFC 8435, section 5.1.2), so while a
-recall is draining, write through the MDS instead.
+----
 
-Fixes: 1d62e659c0bf ("NFSv4/flexfiles: honor FF_FLAGS_NO_IO_THRU_MDS in pg_get_mirror_count_write")
-Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
----
- fs/nfs/flexfilelayout/flexfilelayout.c |  5 ++++-
- fs/nfs/pnfs.c                          | 19 +++++++++++++++++++
- fs/nfs/pnfs.h                          |  1 +
- 3 files changed, 24 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 9492d6bc1d1a..9777c83645ad 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1222,11 +1222,14 @@ ff_layout_pg_get_mirror_count_write(struct nfs_pageio_descriptor *pgio,
- 			NFS_I(pgio->pg_inode)->layout,
- 			pgio->pg_lseg);
- 	if (NFS_I(pgio->pg_inode)->layout &&
--	    ff_layout_hdr_no_fallback_to_mds(NFS_I(pgio->pg_inode)->layout)) {
-+	    ff_layout_hdr_no_fallback_to_mds(NFS_I(pgio->pg_inode)->layout) &&
-+	    !pnfs_layout_recall_draining(pgio->pg_inode)) {
- 		/*
- 		 * FF_FLAGS_NO_IO_THRU_MDS: no current lseg but the server's
- 		 * policy forbids MDS fallback.  Surface -EAGAIN so writeback
- 		 * retries rather than silently issuing the WRITE via MDS.
-+		 * The flag is a hint (RFC 8435 5.1.2), so don't wait for a
-+		 * draining recall.
- 		 */
- 		pgio->pg_error = -EAGAIN;
- 		goto out;
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index b0bdd40de4dd..ea87e95f1083 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -593,6 +593,25 @@ pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
- 		set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
- }
- 
-+/**
-+ * pnfs_layout_recall_draining - check for a recalled layout still in use
-+ * @inode: inode to check
-+ *
-+ * Returns true while I/O on a recalled layout keeps LAYOUTGET blocked.
-+ */
-+bool pnfs_layout_recall_draining(struct inode *inode)
-+{
-+	struct pnfs_layout_hdr *lo;
-+	bool ret;
-+
-+	spin_lock(&inode->i_lock);
-+	lo = NFS_I(inode)->layout;
-+	ret = lo && test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
-+	spin_unlock(&inode->i_lock);
-+	return ret;
-+}
-+EXPORT_SYMBOL_GPL(pnfs_layout_recall_draining);
-+
- static bool
- pnfs_cache_lseg_for_layoutreturn(struct pnfs_layout_hdr *lo,
- 		struct pnfs_layout_segment *lseg)
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 0fb3c7fd8a27..2a4a1d7699f1 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -310,6 +310,7 @@ bool nfs4_layout_refresh_old_stateid(nfs4_stateid *dst,
- 		struct pnfs_layout_range *dst_range,
- 		struct inode *inode);
- void pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo);
-+bool pnfs_layout_recall_draining(struct inode *inode);
- void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 			     const nfs4_stateid *new,
- 			     const struct cred *cred,
--- 
-2.53.0
-
+Bye,
+Roland
+--=20
+  __ .  . __
+ (o.\ \/ /.o) roland.mainz@nrubsig.org
+  \__\/\/__/  MPEG specialist, C&&JAVA&&Sun&&Unix programmer
+  /O /=3D=3D\ O\  TEL +49 641 3992797
+ (;O/ \/ \O;)
