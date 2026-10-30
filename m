@@ -1,13 +1,13 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=203.254.224.34
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=203.254.224.25
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793332620;
-	b=NT8h32RQJEd7Rtlq+tSLBtLSWqL3vlwtNB8nPyEQrVylPrxlijwP+klg3oxMXqLeYWid
-	 mHAbV6eVLs/8pF/aZtZsh45DHin8e58XHJRF7Y2xiBfvGqV/tZs1pfaSdZO2JAldwK8U7
-	 kGqJEfMSvZ2uyzv/mvRxGo3UIN/I8C2MdktIvJ8Z6dYIlndEsx79rUsEfJ8UDootpWkaZ
-	 tu27cqN8XBwAEglvQsT792lmFnCyE/sAvcTzDWBwB3c2l0aNUtgIb499FMBEHwYf+j0/2
-	 IF36iD+CuD5tI6GQKng6FzRbjbjCNejPmlSJHMPwkARbOCGc+1ttZKmYKg7S6JPJVHQ==
+	t=1793332704;
+	b=ET0h1/iM1QCMxD9yk0wtswsaxsMFD8EsByRiMhJoA6DhHAfFiQNPoejeLKvpnpltz5/s
+	 t9kACiw6YAJeeNBmvfg4stRGuaoNQ99uiHcgoiNAtEoJKx2h+Bqe0ExioAajOvd7cBAFA
+	 PtOSLhoAYqz/tJHEzfrcn3dRhvgf6Bs8MYkwGzrnETufI6mWYmdBHp9twGd5AKP6f0S1U
+	 AtHQbo/oAsFj3YuzIm/jpTukzx6nW7fj/1jAaJTHsXxAuzCiUQ5+NmKMGijM85LiiK7hD
+	 l92ND6W3MYSGbXxig2RWGgAkoc1n3mg4VEZr3VOuwARMDQAGSS4BlVOThk6h442XoVw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793332620;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793332704;
 	h=DMARC-Filter:Received:DKIM-Filter:DKIM-Signature:Received:Received:
 	 Mime-Version:Subject:Reply-To:Sender:From:To:CC:X-Priority:
 	 X-Content-Kind-Code:In-Reply-To:X-CPGS-Detection:X-Drm-Type:
@@ -15,45 +15,45 @@ ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	 X-CMS-MailID:Content-Transfer-Encoding:Content-Type:X-Sendblock-Type:
 	 CMS-TYPE:X-CPGSPASS:X-CPGSPASS:cpgsPolicy:X-CFilter-Loop:
 	 X-CMS-RootMailID:References;
-	bh=k7y5H+KgCQHh48QC5iqA8pI+doKg/Z4Z6K9J/eA0NYQ=;
-	b=JMIWoCKgGvoBArUzWn09YL0rZQCO9nEG+bIr4n11AB5UCe2R6AGF8iyTbtabDQ3qNxOQ
-	 Ln2P0n1b537TrQ/7At0IOjjjpoOQC++9WzvwxAYoHRWX/GAr0VOAlsI6pGY3xhagMM4mm
-	 dEkX4OEOnifTLRhZ18Ju1NBGOFA39NkNsrzIDYdRQJF02wo75fgSoysrTSYjYb6HquLZ9
-	 IcYZ1FGgyq+TDIiQklao75ixEDRHKpHSoJDshxRulOj0YYaa/gyZ25jzT/IdBMmnqj5Vx
-	 fFnhCPrOdG0jaytZiAP0t5mrYrkgDsvwqEgbze1WfI2hjOoepVxyu5j4stN1R2oeKrA==
+	bh=zUgWx4GG7nQpPVnN3H3kzUWlHZSJp8Dns2isdJHCWMk=;
+	b=YxYecyy0zDmijXrc/1CjyllJWfnNYgCZn6S6dbTsGJ9WFgTnyOn5NRGjirjAqbpMTTpC
+	 ZO0DQ6wnwmdL3SkI0Kj9QjR4PPWTKFWQ5QIJ15nQ9+p9VYjx+JLJwvTb25EtD84UbW+ZD
+	 0BXScwE8WwsCAkY++KDKRZt9h4nBoooYVJUmUGy9X8zNpkYht79orPyVRcLMZGE4h2Bt/
+	 gm5yOvN+qDhtDpWV9vE3Ohb+2oTqCwNscSy1whmZypDeAcUVv7j1K5dudf45j3MHTCwhJ
+	 QTQ4f1cftreYVBmF2NiqD87ldpTErRDFroMWAlqZT7s+ExZcCNxoT6YGoI3Ash3MtBA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=samsung.com;
 	spf=pass smtp.mailfrom=samsung.com;
-	dkim=pass header.d=samsung.com header.i=@samsung.com header.a=rsa-sha256 header.s=mail20170921 header.b=WUVYvEYV;
-	arc=none smtp.remote-ip=203.254.224.34
-Received: from mailout4.samsung.com (mailout4.samsung.com [203.254.224.34])
+	dkim=pass header.d=samsung.com header.i=@samsung.com header.a=rsa-sha256 header.s=mail20170921 header.b=tLpJQtZb;
+	arc=none smtp.remote-ip=203.254.224.25
+Received: from mailout2.samsung.com (mailout2.samsung.com [203.254.224.25])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E53BF606A31A
-	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 03:56:58 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E53BF606A31A
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 00A9D606A323
+	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 03:58:22 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 00A9D606A323
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=samsung.com header.i=@samsung.com header.a=rsa-sha256 header.s=mail20170921 header.b=WUVYvEYV
+	dkim=pass (1024-bit key, unprotected) header.d=samsung.com header.i=@samsung.com header.a=rsa-sha256 header.s=mail20170921 header.b=tLpJQtZb
 Received: from epcas2p3.samsung.com (unknown [182.195.41.55])
-	by mailout4.samsung.com (KnoxPortal) with ESMTP id 20261030035656epoutp04d6ce98fa4109259785978e8bccdfdd1d~jMoN3hsO83000630006epoutp04V
-	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 03:56:56 +0000 (GMT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout4.samsung.com 20261030035656epoutp04d6ce98fa4109259785978e8bccdfdd1d~jMoN3hsO83000630006epoutp04V
+	by mailout2.samsung.com (KnoxPortal) with ESMTP id 20261030035820epoutp029dc04f3a4264ace4b279ccdc96c4be79~jMpcDDc6B0738907389epoutp02g
+	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 03:58:20 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout2.samsung.com 20261030035820epoutp029dc04f3a4264ace4b279ccdc96c4be79~jMpcDDc6B0738907389epoutp02g
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
-	s=mail20170921; t=1793332616;
-	bh=k7y5H+KgCQHh48QC5iqA8pI+doKg/Z4Z6K9J/eA0NYQ=;
+	s=mail20170921; t=1793332700;
+	bh=zUgWx4GG7nQpPVnN3H3kzUWlHZSJp8Dns2isdJHCWMk=;
 	h=Subject:Reply-To:From:To:CC:In-Reply-To:Date:References:From;
-	b=WUVYvEYVVwufUrKCTy7bLPGNKqdrE1yXL/t7FR/Es9csFr6o9eP8XZuoxBrg9a6Gi
-	 qYKc7kCvT+oZ716IBjaVCyTIhABN7ZfwgMss4tqcwzlVajyZdxSgXgh4fdxncrXAdm
-	 M8+G0C1opHbLDRsbvv/vOtnG+MUGtivAhG4HC7yk=
+	b=tLpJQtZbM3CyMtSLgcRu8MW9wVm3LQBQ3p8fGdei6RAq6Kcq4N5od5MfkN6+kxlA2
+	 /cQKPS4VUDmzjQFrtqFXQG2R/QgkB4Tu+nSe3UB3525N5ORe3RuW3aig2OCW+1yfr3
+	 ZBeaii9kWuDLNLQrE094xGdpD7Jb+5an5ZxF/p1o=
 Received: from epsnrtp02.localdomain (unknown [182.195.42.154]) by
 	epcas2p1.samsung.com (KnoxPortal) with ESMTPS id
-	20261030035656epcas2p1a23ccc0f17909c0618c0f322691097b2~jMoNWI4eB2094620946epcas2p10;
-	Fri, 30 Oct 2026 03:56:56 +0000 (GMT)
-Received: from epcas2p4.samsung.com (unknown [182.195.38.211]) by
-	epsnrtp02.localdomain (Postfix) with ESMTP id 4jG6jh0Kp9z2SSKb; Fri, 30 Oct
-	2026 03:56:56 +0000 (GMT)
+	20261030035820epcas2p13fb76da0364c476189f2cf78971e553e~jMpb4DP_n2047120471epcas2p1A;
+	Fri, 30 Oct 2026 03:58:20 +0000 (GMT)
+Received: from epcas2p4.samsung.com (unknown [182.195.38.199]) by
+	epsnrtp02.localdomain (Postfix) with ESMTP id 4jG6lJ2SwPz2SSKf; Fri, 30 Oct
+	2026 03:58:20 +0000 (GMT)
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -63,7 +63,8 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 Mime-Version: 1.0
-Subject: RE: [PATCH v3 0/2] pnfs/blocklayout: report LAYOUTCOMMIT failures
+Subject: RE: [PATCH v3 2/2] pnfs/blocklayout: report data lost to a failed
+ LAYOUTCOMMIT
 Reply-To: daejun7.park@samsung.com
 Sender: Daejun Park <daejun7.park@samsung.com>
 From: Daejun Park <daejun7.park@samsung.com>
@@ -73,15 +74,15 @@ CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, Christoph
 	Hellwig <hch@lst.de>, Daejun Park <daejun7.park@samsung.com>
 X-Priority: 3
 X-Content-Kind-Code: NORMAL
-In-Reply-To: <cover.1793302358.git.bcodding@hammerspace.com>
+In-Reply-To: <054f354ecaa596514da593698461206e356004ac.1793302358.git.bcodding@hammerspace.com>
 X-CPGS-Detection: blocking_info_exchange
 X-Drm-Type: N,general
 X-Msg-Generator: Mail
 X-Msg-Type: PERSONAL
 X-Reply-Demand: N
-Message-ID: <20261030035655epcms2p1195ad019395d60cccef85ee6404f1bbe@epcms2p1>
-Date: Fri, 30 Oct 2026 12:56:55 +0900
-X-CMS-MailID: 20261030035655epcms2p1195ad019395d60cccef85ee6404f1bbe
+Message-ID: <20261030035819epcms2p4d812654812819bd39f5f79c499fb618b@epcms2p4>
+Date: Fri, 30 Oct 2026 12:58:19 +0900
+X-CMS-MailID: 20261030035819epcms2p4d812654812819bd39f5f79c499fb618b
 Content-Transfer-Encoding: 7bit
 Content-Type: text/plain; charset="utf-8"
 X-Sendblock-Type: AUTO_CONFIDENTIAL
@@ -90,27 +91,21 @@ X-CPGSPASS: Y
 X-CPGSPASS: Y
 cpgsPolicy: CPGSC10-223,Y
 X-CFilter-Loop: Reflected
-X-CMS-RootMailID: 20261029193427epcas2p23c4a29bb4ff78e1718bb5eeec0481315
-References: <cover.1793302358.git.bcodding@hammerspace.com>
-	<CGME20261029193427epcas2p23c4a29bb4ff78e1718bb5eeec0481315@epcms2p1>
+X-CMS-RootMailID: 20261029193431epcas2p2e4d09667120683dbaf654417fd8d7f61
+References: <054f354ecaa596514da593698461206e356004ac.1793302358.git.bcodding@hammerspace.com>
+	<cover.1793302358.git.bcodding@hammerspace.com>
+	<CGME20261029193431epcas2p2e4d09667120683dbaf654417fd8d7f61@epcms2p4>
 
-On Thu, Oct 29, 2026 at 03:34:19PM -0400, Benjamin Coddington wrote:
-> Daejun tested the patch 2 approach on v2 in VMs, against an nfsd that
-> answers a LAYOUTCOMMIT with NFS4ERR_BADLAYOUT; I've only compile-tested
-> v3.
+On 29 Oct 2026, at 10:47, Benjamin Coddington wrote:
+> I'll send a v3 with your change in patch 2.  Ok to add your
+> Suggested-by and Tested-by?
+>
+> Was there another write before the close() that returned -EIO?
 
-I ran v3 as posted on v7.3-rc6 with the same tests. The results match
-the change I tested on v2:
+Thanks, Suggested-by is fine.
 
-- fsync() returns -EIO once. The next fsync() on the same fd and on a
-  new fd returns 0.
-- stat() after a failed LAYOUTCOMMIT returns 0.
-- No KASAN or lockdep reports on the client or the server.
-
-Tested-by: Daejun Park <daejun7.park@samsung.com>
-
-On your question on v2: the close() that returned -EIO was in a
-separate test, not after the failed fsync():
+The close() that returned -EIO was in a separate test, not after the
+failed fsync():
 
 - New file, one 64k write, then close(), with one injected
   NFS4ERR_BADLAYOUT.
