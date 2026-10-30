@@ -1,104 +1,57 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.214.226
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793314848;
-	b=BMTXsXkuEiilH3C55YeCPSI+BQaBwjIsFbk/fx/aKxfSqAak3KpDqvh2h3Y+d6ZcAh4V
-	 T/lKlbi05FSktPznhz6d6y8LHOqk2wMjrhyWiGFUuDJZ/jsDRm58taAQczUJ2GpRp915u
-	 dLdI4I4+pPGfsp7WDJCAOR12rUsPLtutTLHYeUATfAVyoiY2Vbwv/OIMbIJ31MIx5BnIv
-	 X70ztOZnWt6486JWE1U62f5pcKVIH7q6qZR0r20YmRLT6EZa0HvenqGcfmqCsm7dRh91B
-	 RvWyzjsKzqRcQY3TeCNjUeciQxEHSiomqUItdxxMhrxO5Z0JM8eRTQXB73ecmS5WEog==
+	t=1793329284;
+	b=tOsHhbj9yHovZYBhO8s/8Lz/R6VbfVRlgRHEbzDCEluJUwFP9k1ICgTE7LYCYNY+Q/MV
+	 EYGjK7WCmyZHjcWbIQ5+J+3sLw3oMaSb+m8v9jvy1PAY6eHj2cjx/RNA4v/zzOR+5SKsH
+	 2395XLXVf2mAKV/Z8UbgUGbfDJDA9tdx8r2dymTvD6vRXW9jVKfGj96pNfogeh9JwgNBv
+	 tHPUIg2n6KNMtObQYCF0RQf6flFWz7jLCyUQnEZMeXEYTYq6IcrO8mbuUXuBH2zT/i2Qz
+	 BbYAo5sAkuP5H+Mu0gTNvKg5XW/PsHRDlshNLIi/QuQ6dCrLzUX+yftst0HQW3KB97Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793314848;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 X-Relaying-Domain:Received:From:To:Cc:Subject:Date:Message-ID:
-	 X-Mailer:In-Reply-To:References:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=wAkmuO04uLZ+w6vmRTOyMcrwMg7+Yeu0ajM/FtCfLDw=;
-	b=oESRMs0Ov+5NBWFeWRVttQ0CsMhbirG5PwPiR0luJNiTzrtEbTD1DBa5Dv8a/tr+APqg
-	 0QIWqwBOKzJRN27RIn2keukVlkHQ+Tcpcw11Sw+WkiDHelDtTWC5d3vEZ3OEnEpMh9Tdo
-	 u1eeVPbyzTIt6NH2ePk+t04kCjKzxdECTxBdmtRvcTA1959oo7wE7U/yemumDVjAAsWSV
-	 hVVmZhdaFLXJ4ekljzzLdOGPymPjfoZme/L8LYIrS+IKbKo0iQkQ8D9Mvy6rOIf7/OQlH
-	 hLA9/2gAcsLL8K7erEqdEqQAfbgsGf3Sny5lbMKIXFenifWQ7YysN1kI3UZNQo66gmw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793329284;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
+	bh=ddXiyi97dIToZ3RY6tAnA21giJXFFXfiHSd5Wv5fL+E=;
+	b=ne51iM4F352/8U7vCm7tEc7aQQ1gcn3P8AAx9Gn+j1Gj0Czo7uhJlJCz9TwWJ642FwgU
+	 gfPoiD6VcvuI4GbHOwuPEPolI1ZpC5xndsbUNiIB2r4I8aM3XjkqOiEkStqzeAi6rZKHZ
+	 ET43WuyiS9/QKznOalyWS476kkt09wRlA3JvtKYPEJqmW+LTIkfhwAD+xlbmKFGLEXwQZ
+	 1h99usJxJh0ykVSU/+IveNWaAQUtj36jdSps5MDxHU6i5Omir9NUs2YlGBwghenaUncr/
+	 zTOgRhvi2rBuYnR+w+kD+xBbEYWmpTHPKtcapp5eyyWNNUIRsDrqipLEKR4XG10luIw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=everpuredata.com;
-	spf=pass smtp.mailfrom=everpuredata.com;
-	dkim=pass header.d=everpuredata.com header.i=@everpuredata.com header.a=rsa-sha256 header.s=google header.b=GCbi1D1U;
-	arc=none smtp.remote-ip=209.85.214.226
-Received: from mail-pl1-f226.google.com (mail-pl1-f226.google.com [209.85.214.226])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MFJ47toe;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ED365606A31D
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 23:00:46 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org ED365606A31D
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=everpuredata.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE684606A31A
+	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 03:01:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=everpuredata.com header.i=@everpuredata.com header.a=rsa-sha256 header.s=google header.b=GCbi1D1U
-Received: by mail-pl1-f226.google.com with SMTP id d9443c01a7336-2e8246b13cbso1120415ad.2
-        for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2026 16:00:46 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=everpuredata.com; s=google; t=1793314846; x=1793919646; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=wAkmuO04uLZ+w6vmRTOyMcrwMg7+Yeu0ajM/FtCfLDw=;
-        b=GCbi1D1UmJ92ke82TBFSwVWyiHVpUnp9ZTyC42iQ4udcBo2eCz0oMhXae06qQwsX+P
-         3oBx8srzu9/J7nk03R0ySyKWycHTO+M3NzGbKv/uVDHnsBdnBDDIz6jnNC9lZK/Pn5Lh
-         kRPv/tigWoF2fkhBDWUXfkSxbIlt60RKTEkdqWLw0UQtSJ4xF3CyqYP6ZAqA93PyqUoG
-         3HrACz/6h768x1TrrVNUTaxhOo4Ze0zrCpCvaHLAewuGOWwqn7UQll1IgIRsXClhhgZ0
-         D1i0NBlWyal5k7cAgRXHqD3BvWWm3BQe3Mcft0g1a+LXnxL41jEA86NxSCFJ1ToF+g7P
-         9Acg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793314846; x=1793919646;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=wAkmuO04uLZ+w6vmRTOyMcrwMg7+Yeu0ajM/FtCfLDw=;
-        b=o6CmX46cW706iQxrQy/31VaXaVvlp74OS+Qs+ga1QWux2HvIlNeIX+5Lg9WzSGhz85
-         jetBm1E3eGEBjiiOs9AHTRbBs4ff72pbKp3UtRK8FFEVEbzvyN7WFYZ2Pp2NIXe4P0Vj
-         iNmVRZbNXcsyvSaKAfXYPK0vwy7TE+zY2OmxGvGCEPGNgcYbOiZwj9cQReJoGHrTxnYs
-         jSMOR3bGjKM3AAgSSutZKGwqnbneyzKged7zhQcO6KTwvKP1CySa70UGhc2hzMWQ1vBF
-         wx3cBpTMI44wNRqAz6HMA44xCTwE/cj0bE1kjN87BdWDUJtgxqQxgI1rjnWz/8kUAubn
-         agSg==
-X-Forwarded-Encrypted: i=1; AKwUvBxS9gnW9Nolz5J9BcCWVr4A/x7y4HzkQUi4LZtq/k3THr1FZJvDSnhGRC2RwFQtVk7ImXHwLmkW+U0=@vger.kernel.org
-X-Gm-Message-State: AFq9FYKqvfiDI3be4Kutu7V01Mm/Ui4HLcZxSBWN6UFGKRWOYzIdYmrq
-	fW1c6//piuOooxK1y4Zws/ZxR6P+R91BSFS/Vx46k4Wc2YA0+dD5R0Du9uoR7QRoZjLdrBbczFA
-	UXQTiZIjJ2qk+UA9LDa+Z9m2ZNKlyWLO73cyN
-X-Gm-Gg: AYBFou0VjLin/pZrx9kcIlnx+6FnfW6ve5GeKTvZqWt6vHvqJD0TZ4uHSDpnf7XgIni
-	LF8mzYxNBzouMGfz2cbTX9DU1ygXOZ4sp9ITebttEeYFpScqr+4FJudLeT9GGj0kF/PU6wR4K6B
-	7HXNhvZgZvSCAUk+8fUDAHEJCRXUzvuQMK6PKM7QcVuyCyqpCDGvZBSC7EhtiAP3ZjQV1bs1GQu
-	/I/Desg5hEivzurxvzF6p/uEh1VfmN1+/5Y8eVSJ8FQ0Qa7zWkO+yvl5n5Z2/yC+CNn/fCs856S
-	+Ccf2qdwf9NXmPBN5gwfjg47yD3FU7Oa9JgmnHXmLw6OL2lGWCbV23RMa08BDq/mM8Injjr5M67
-	WKR6dPkVpeBQ28p/9F8agS3KwbnR7fAQjNmh09EM=
-X-Received: by 2002:a17:90b:5827:b0:3ab:be66:ddb7 with SMTP id 98e67ed59e1d1-3ae897bae26mr304143a91.47.1793314845971;
-        Thu, 29 Oct 2026 16:00:45 -0700 (PDT)
-Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.129])
-        by smtp-relay.gmail.com with ESMTPS id 98e67ed59e1d1-3ae6e88749csm2871364a91.7.2026.10.29.16.00.45
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 29 Oct 2026 16:00:45 -0700 (PDT)
-X-Relaying-Domain: everpuredata.com
-Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
-	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id 22C0E3417A8;
-	Thu, 29 Oct 2026 16:00:45 -0700 (PDT)
-From: Tim Menninger <tmenninger@everpuredata.com>
-To: sashal@kernel.org
-Cc: broonie@kernel.org,
-	anna@kernel.org,
-	anna.schumaker@hammerspace.com,
-	trondmy@gmail.com,
-	trond.myklebust@hammerspace.com,
-	cel@kernel.org,
-	ymu@everpuredata.com,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-next@vger.kernel.org
-Subject: Re: [PATCH linux-next] xprtrdma: fix up the nfs/nfs-anna merge of the Write chunk head trim
-Date: Thu, 29 Oct 2026 23:00:44 +0000
-Message-ID: <20261029230045.1259914-1-tmenninger@everpuredata.com>
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MFJ47toe
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B0F751F000C1;
+	Fri, 30 Oct 2026 03:01:22 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793329283;
+	bh=ddXiyi97dIToZ3RY6tAnA21giJXFFXfiHSd5Wv5fL+E=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=MFJ47toeWXfViAUzmbIqce7+rqvFmZj88J/ujolZAUB7fVf0Ih48pk9gBuKfyuAnA
+	 XUTdLAP9AOZfTxvJQkSme4hqgjmEWPw5UaipxEHOqLVftdQ6Kb1ehpDZlkWZu+iWOG
+	 T+eE398lxg6km3X0DPpf8bTAfJwfcq585c9jfJQdyUXVzqhRyBnhvViTS1EHA8SFlZ
+	 kcbkkPWNICwW1WH+HJ50JYb8oTGStMOWy+rvrtt8zgjwKMDKBryUpIffRCJVncoRGj
+	 9lNvpSPiIW0dhLLxKqVxsq8cZbGm0IGdid/n2HZAwRkqgBhjYxSNyVWX6UEev26YTe
+	 YVemb+xQchaZw==
+From: Sasha Levin <sashal@kernel.org>
+To: Anna Schumaker <anna@kernel.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Chuck Lever <cel@kernel.org>,
+	Tim Menninger <tmenninger@everpuredata.com>,
+	linux-nfs@vger.kernel.org
+Subject: Re: [GIT PULL] Please Pull NFS Client Updates for Linux 7.4
+Date: Thu, 29 Oct 2026 23:01:21 -0400
+Message-ID: <20261030030121.3377197-1-sashal@kernel.org>
 X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20261020161346.3711926-1-sashal@kernel.org>
-References: <20261020161346.3711926-1-sashal@kernel.org>
+In-Reply-To: <20261023211150.485518-1-anna@kernel.org>
+References: <20261023211150.485518-1-anna@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -110,11 +63,48 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-I applied this fixup and A/B tested it with my reproducer. Both
-configurations pass.
+On Fri, Oct 23, 2026 at 05:11:49PM -0400, Anna Schumaker wrote:
+> * Various localio, flexfiles, xprtrdma, and TLS fixes
 
-I agree with the merge resolution; keeping the head trimming and
-buflen adjustment together in rpcrdma_inline_fixup() makes sense.
+Hi Anna,
 
-Tested-by: Tim Menninger <tmenninger@everpuredata.com>
-Reviewed-by: Tim Menninger <tmenninger@everpuredata.com>
+The rpc_rdma.c resolution in your merge of Trond's tree lost the buflen
+part of 9ee534a75912 ("xprtrdma: trim head iovec when the payload
+arrives via a Write chunk"). I think it needs this on top:
+
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index c0d5042f3b660..69d4e35d49ef5 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -1010,7 +1010,7 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len,
+ 	char *destp;
+ 	struct page **ppages;
+ 	int page_base;
+-	int pad = writelist & 3;
++	int pad = xdr_pad_size(writelist);
+ 	unsigned int delta;
+ 
+ 	/* The head iovec is redirected to the RPC reply message
+@@ -1267,14 +1267,9 @@ rpcrdma_decode_msg(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep,
+ 		rpclen &= ~3;
+ 	if (unlikely(!rpclen))
+ 		return -EIO;
+-	if (writelist && rpclen < rqst->rq_rcv_buf.head[0].iov_len) {
+-		rqst->rq_rcv_buf.head[0].iov_len = rpclen;
+-		rqst->rq_private_buf.head[0].iov_len = rpclen;
+-	}
+ 
+ 	r_xprt->rx_stats.fixup_copy_count +=
+-		rpcrdma_inline_fixup(rqst, base, rpclen,
+-				     xdr_pad_size(writelist));
++		rpcrdma_inline_fixup(rqst, base, rpclen, writelist);
+ 
+ 	r_xprt->rx_stats.total_rdma_reply += writelist;
+ 	return rpclen + xdr_align_size(writelist);
+
+I sent it earlier against -next, Tim tested it:
+https://lore.kernel.org/r/20261020161346.3711926-1-sashal@kernel.org
+
+-- 
+Thanks,
+Sasha
