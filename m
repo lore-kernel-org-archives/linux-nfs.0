@@ -1,76 +1,79 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.129.124
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793340713;
-	b=PR9wU9cnw2YE4HJ6ouuOUHnSpjgpWkBc7Sm3/2m4mM++3no1BV1tDH22lAx5GUKUlyBd
-	 aXh8VNxThnnC0/oPc9gXPzhCpiqtLUuFn3vAefGXoRJHtpZI0PIEW7HMMGyWiMW5kjpaW
-	 mxUGrMrHBGRyXT5o+oRqxkiUR0v/zAciqRjzRoimX/LeQ5uosy7oL4bU3L436DtZ0/xUD
-	 kcgtE8tWevaQxEtun38Ud+WzVMH1AjRr60VgBwy1Fu8xgqzWYc8NrDQzez1DKG0K6/dK7
-	 T5sOz0yDYtBLpIpbqVJGN7zM9gmP1GliUsAHGtPMji5RT34CWm6uhT9WKHYkcFeTeew==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793340713;
-	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
-	 X-Mimecast-MFC-AGG-ID:Received:Received:From:To:Cc:Subject:Date:
-	 Message-ID:In-Reply-To:References:MIME-Version:
-	 Content-Transfer-Encoding:X-Scanned-By;
-	bh=kmIzHb05k2QelXmG1lNmER/oasgGXTDA1Z4/XkET+c0=;
-	b=CftQV94EL+xo83LUVYENhBoN2Zfu9KoacT9By6LVwaVkacCiU022gfPbMjRZKxHaQU6O
-	 GWOLxAbb7gkYds8zB0ndkFcJmFZashJuMDb802JTmCRbXxmzTFRHri3SPSLLXj76/Vtn8
-	 0aDzAk3FQzriTc8dTTj2wCmVxW4DsvpzK0wbgiPjVR4Tsnghy7qNmIFqk5lzhtiijiQ5R
-	 /FTYfweq82bCd/oGKxPpQ8q+K29+Ne6i419n5SJq5nLjkotY9MFNWSNrGvj0w/pULy8A6
-	 eFsyr0G1dvOAKrS7wWKx7hN5+3I03Ufbi9apK7OtYAZ5ObxjQ3HU9yUzywxZrYDpCFQ==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=redhat.com;
-	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=M2kky83m;
-	arc=none smtp.remote-ip=170.10.129.124
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1793346036;
+	b=1kXG8CDgoWgvpxjUH/gL+GKa61Z0+iLBqTpGgyxalUYw9O1GAl7NT2FRENYsMFcDlMOr
+	 tpaJF2X8yGo/sFe+iMjXNFQhcyVED9ngPnfkdWcd3HaT4xFeZknOL297VhUBTTCHgmnPS
+	 OQJbjQbdViDfonZtl32uAwRj0ew3+rcp4LaSknPOiq+DboT20qQVARKe6n17kHHT4d7QJ
+	 iy3CV4h6TAroVr+U241F9bY9e9B+qDmUlvZPzm0u2fZ0sN7fHdoOuyv+RK5bHJIagcXfZ
+	 Alx36gmLwXnPrrX5PidcaQKqBWQJpa5AZPRMzZS2KD0XOV0bFFEHMo2wuJg9iOua0Jw==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793346036;
+	h=Received:DKIM-Signature:Received:From:Date:Subject:MIME-Version:
+	 Content-Type:Message-Id:X-B4-Tracking:To:Cc:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
+	 X-Original-From:Reply-To:Content-Transfer-Encoding;
+	bh=ZlYNTWGnsh5fremtLRvgVCnRqsnX/opydOiKsYvnaoc=;
+	b=eJ9Yq7pXQlOIMKgOk+5m8hd/loK6+4IXN7a4S0lP+ApdsYrFgKqQNxMXAh3WTADMm+3n
+	 1mrH3PdVk9yzbl7qAOGnFhQwlZD8a3RSlJVltTgFKiGtNtBuw6yCC2HBNZYcXLu5AZ3v9
+	 negMqEVwojaHo77iVYu76J7c/uuNuFCIp1MSRZVW1y2Aavf43ZeNfm68s0Pwi0NA5lOYt
+	 R4yVtJQWwN2MEilKJMrjNfwKwuTfEHXQ2QaR+gUQQdq8umSvtCykUAhNPWzEd6AR58kRv
+	 zDcLHACO/oi08iR+vtL6CDAzLMWNsMJtws+YW1bIMbAmTRiNyPMQF6GVsEPoWNC8sqg==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Zn48h8m5;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 94CA7606A31D
+	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 07:40:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Zn48h8m5
+Authentication-Results: smtp.kernel.org; arc=none smtp.remote-ip=100.80.115.77
+ARC-Seal: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256; cv=none;
+	t=1793346036;
+	b=c5OWiZVCR6plAK2fgOGJwjC3xP7ecejEA2c28Ozf+uM1vml//lr8azPDx5ss+1UEJXIK
+	 zKmqxZmaYqoSrwTNA9To4LQw6CH17gNX5qk4S07BmSax9sPhjym8KnkJWauIy0R95gzxR
+	 ND/2iMVG/EU4mKGns7A8Lx8wPO/i1zzIDbBpS+F/A8S6aOOpBfmtlQlKTVQbLKQI1ibXA
+	 6thVopxUceUlYbNLXwkkJHlXIc3cO0OQ6x+P2DHIJRywZnrTX43nRpxuyVd8WEz0GO8LJ
+	 6hBHkbyb3KYUq35v2kJOgSXtD9ObtK1VOEHuVx34Cuh5wb0FEvDqjMPS3Gi8FExgEag==
+ARC-Message-Signature: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256;
+	c=relaxed/relaxed; t=1793346036;
+	h=DKIM-Signature:Received:From:Date:Subject:MIME-Version:Content-Type:
+	 Message-Id:X-B4-Tracking:To:Cc:X-Mailer:X-Developer-Signature:
+	 X-Developer-Key:X-Endpoint-Received:X-Original-From:Reply-To:
+	 Content-Transfer-Encoding;
+	bh=ZlYNTWGnsh5fremtLRvgVCnRqsnX/opydOiKsYvnaoc=;
+	b=btC2aSNFWSU4KqUtJ+CEHpqGFzfzhVErim6G4h/Ruwx2Qv6j0hML9aLWRNXzCeFiWUFK
+	 Anrb5fwV/IVJS5ipnEafPJL4FGRHssvoc3hEZCEJW1OLAbHMSuCttLORXBQ/uG6XWbCBd
+	 BoI/pDAAuo1G7lzpzuhB8JpS0BDfOEI+KsEFpO4EvaNuwbnXzVgU8hkYoFYOu85XWp9xk
+	 XCeOiRlpB3lisQDRtmacQ8eadxCvYqxzfi+xPZ4oQ7P9xJAVjAcLfFxRAqdyjhX5WJeth
+	 fQYPH0Y08D3jxzJl8oK9iZCCBgULQYelvI7Yu+/dbtNCm7HNrBiScmMkG18KyYu760A==
+ARC-Authentication-Results: i=1; smtp.kernel.org; 
+	arc=none smtp.remote-ip=100.80.115.77
+Received: from lkml.kernel.org (nexus.subspace.kernel.org [100.80.115.77])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BB2A3606A31E
-	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 06:11:52 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org BB2A3606A31E
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=M2kky83m
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1793340711;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=kmIzHb05k2QelXmG1lNmER/oasgGXTDA1Z4/XkET+c0=;
-	b=M2kky83mfuemNGPOJOE63QnuApADn4myhMQpEfxZa2a8AmN/Xvs+WMDDTCP9R7fAuyU1z8
-	lr6SMc/4dEnf9oKZ8S6bDLs/KQX8MtZsfpjjD3mN1nRawSAWpjxoUziRco+DNwPG1oEsmM
-	FwEiwdcZNloylg2yENhygvGiCDR3dOs=
-Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-449-r1PFyLZQOZe3zbj3bT0wxQ-1; Fri,
- 30 Oct 2026 02:11:42 -0400
-X-MC-Unique: r1PFyLZQOZe3zbj3bT0wxQ-1
-X-Mimecast-MFC-AGG-ID: r1PFyLZQOZe3zbj3bT0wxQ_1793340701
-Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 5EAED195604D;
-	Fri, 30 Oct 2026 06:11:41 +0000 (UTC)
-Received: from fs-i40c-01.fast.eng.rdu2.dc.redhat.com (fs-i40c-01.fast.eng.rdu2.dc.redhat.com [10.6.54.119])
-	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 843F530002C9;
-	Fri, 30 Oct 2026 06:11:40 +0000 (UTC)
-From: Abhinandan Ekande <aekande@redhat.com>
-To: trondmy@kernel.org,
-	anna@kernel.org
-Cc: dhowells@redhat.com,
-	linux-nfs@vger.kernel.org,
-	aekande@redhat.com
-Subject: [PATCH v2 1/2] NFS: Accumulate transferred bytes on netfs read completion
-Date: Fri, 30 Oct 2026 02:11:37 -0400
-Message-ID: <20261030061138.237833-2-aekande@redhat.com>
-In-Reply-To: <20261030061138.237833-1-aekande@redhat.com>
-References: <20261030061138.237833-1-aekande@redhat.com>
+	by smtp.kernel.org (Postfix) with ESMTPS id 9F9871F000C1;
+	Fri, 30 Oct 2026 07:40:35 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793346036;
+	bh=ZlYNTWGnsh5fremtLRvgVCnRqsnX/opydOiKsYvnaoc=;
+	h=From:Date:Subject:To:Cc:Reply-To;
+	b=Zn48h8m566PtqIduJ3DrwxPqBUyahft19jBsRClKbakftiOdwI6F7siEA1yl/PBMV
+	 U80FSbA8Vx+30PRNfN0v61OS5DPYZ7Zdc/FV84ZmAE/ez0Brzc7VCJSoY0FN7kB43n
+	 0nxXvDacV4+1dlvnVdwwgqg1rr74C78ZQEfpMAcSMv8E1CtBYDdQxs7y0hvsI3GXZK
+	 9d7KM0k+/vKN7aSz1odAvq28JgALTT0z2pcfDVYjrNAyrlb5xL33bR9qVT28yXpEm3
+	 vmk9ov6b3qz8CRQPzNTRva+XsG2uIEfnrPMRybcJoavuv+GPM4Pqc222MooikBZCFe
+	 yVGriC0BD7fPw==
+Received: from nexus.subspace.kernel.org (localhost [IPv6:::1])
+	by lkml.kernel.org (Postfix) with ESMTP id 05868436B9;
+	Fri, 30 Oct 2026 07:40:35 +0000 (UTC)
+From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
+Date: Fri, 30 Oct 2026 16:40:35 +0900
+Subject: [PATCH] pnfs/blocklayout: don't let a READ layout hide written
+ extents
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -80,56 +83,103 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
+Content-Type: text/plain; charset="utf-8"
+Message-Id: <20261030-nfs-bl-ro-v1-1-2a0957b016c3@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAPJJ5GoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDA2MD3by0Yt2kHN2ifN3klKQ0MwOLNJM0gxQloPqCotS0zAqwWdGxtbU
+ A07nqblsAAAA=
+To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
+Cc: Christoph Hellwig <hch@lst.de>, 
+ Benjamin Coddington <ben.coddington@hammerspace.com>, 
+ linux-nfs@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793346034; l=2743;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=Vg6etV6xipx1KtXlbZppd+PVJsnrjMUfS5rmlQPPAX8=;
+ b=EsAhAGkMBbHjOtISsOnoWbk0zcXYFxK7Vsmd/tiA5mZ+N7kq4EtAjMqlyA9Dm34X3e+fUHM97
+ m5lpCG3qc27C4QS1mrcx99fb6EcvrICvzbYFbrPr+/yEaO2MFK1JaVh
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
+ auth_id=1122
+X-Original-From: Daejun Park <daejun7.park@samsung.com>
+Reply-To: daejun7.park@samsung.com
+Content-Transfer-Encoding: 7bit
 
-When netfs retries a read subrequest that already made progress, it
-resets subreq->start and subreq->len to the full original extent and
-leaves subreq->transferred holding the byte count read so far.
+From: Daejun Park <daejun7.park@samsung.com>
 
-nfs_netfs_alloc() is called on every ->issue_read(), including retries,
-and kzalloc()s netfs->transferred to zero. nfs_netfs_read_completion()
-only tracks the bytes read during the current ->issue_read() call.
-nfs_netfs_put() then assigns that value to sreq->transferred rather than
-adding to it.
+Once a client writes to an INVALID_DATA extent, reads must use it
+(RFC 5663, section 2.3.4). A READ layout fetched before LAYOUTCOMMIT
+can map the range as NONE_DATA. Lookups check read-only extents first.
+The client then reads zeroes until the layout is returned.
 
-The subrequest therefore reports less than it holds. If it hit EOF,
-nfs_netfs_read_completion() has set NETFS_SREQ_CLEAR_TAIL and the
-collector calls netfs_clear_unread(), which zeroes data that was already
-read and then marks the subrequest complete, with no error reported.
-Otherwise netfs_read_subreq_terminated() sees subreq->transferred <
-subreq->len with no error and, as NFS never sets
-NETFS_SREQ_MADE_PROGRESS, fails the read with -ENODATA.
+Do not add read-only extents over written or READ_WRITE_DATA extents.
 
-Accumulate instead of assigning. The min_t() clamp is kept and now bounds
-the cumulative total.
-
-The retry is reached when a NETFS_READ_FROM_CACHE subrequest fails after
-a partial transfer and netfs reissues it against the server. It is masked
-today because nfs_netfs_issue_read() reads the whole folio for every
-subrequest, so the accumulator exceeds sreq->len on its own and the clamp
-arrives at the right answer by accident. Next patch in this series
-restricts the read to the subrequest's range and removes that masking.
-
-Fixes: ee4cdf7ba857 ("netfs: Speed up buffered reading")
-Cc: stable@vger.kernel.org
-Signed-off-by: Abhinandan Ekande <aekande@redhat.com>
+Fixes: 8067253c8cc5 ("pnfs/blocklayout: rewrite extent tracking")
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
- fs/nfs/fscache.h | 1 +
- 1 file changed, 1 insertion(+)
+Against next-20261006. extent_tree.c is the same in next-20261029
+and in mainline 65ba8f34ec88.
 
-diff --git a/fs/nfs/fscache.h b/fs/nfs/fscache.h
-index 9d86868f4998..1ab6b8ab6b4f 100644
---- a/fs/nfs/fscache.h
-+++ b/fs/nfs/fscache.h
-@@ -73,6 +73,7 @@ static inline void nfs_netfs_put(struct nfs_netfs_io_data *netfs)
- 	 * length, and thus avoid netfs's "Subreq overread" warning message.
- 	 */
- 	netfs->sreq->transferred = min_t(s64, netfs->sreq->len,
-+					 netfs->sreq->transferred +
- 					 atomic64_read(&netfs->transferred));
- 	netfs->sreq->error = netfs->error;
- 	netfs_read_subreq_terminated(netfs->sreq);
+Tested against Linux nfsd on XFS: an O_DIRECT write into a range with
+no data, then a read across it, returned zeroes in 12 of 12 runs before
+and the written data after. generic/013, 091 and 263 pass.
+---
+ fs/nfs/blocklayout/extent_tree.c | 27 ++++++++++++++++++++++++++-
+ 1 file changed, 26 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
+index 7393118c42..40a6ab6329 100644
+--- a/fs/nfs/blocklayout/extent_tree.c
++++ b/fs/nfs/blocklayout/extent_tree.c
+@@ -252,6 +252,28 @@ __ext_tree_remove(struct rb_root *root,
+ 	return 0;
+ }
+ 
++/*
++ * Return the first extent at or after @start that a new read-only
++ * extent must not cover: an ro extent, or an rw extent before @end
++ * that reads use. An INVALID_DATA extent not yet written to does
++ * not count: reads of it use the ro extent below it (copy-on-write).
++ */
++static struct pnfs_block_extent *
++ext_tree_search_ro(struct pnfs_block_layout *bl, sector_t start, sector_t end)
++{
++	struct pnfs_block_extent *be = __ext_tree_search(&bl->bl_ext_ro, start);
++	struct pnfs_block_extent *rw;
++
++	if (be && be->be_f_offset < end)
++		end = be->be_f_offset;
++	for (rw = __ext_tree_search(&bl->bl_ext_rw, start);
++	     rw && rw->be_f_offset < end; rw = ext_tree_next(rw)) {
++		if (rw->be_state != PNFS_BLOCK_INVALID_DATA || rw->be_tag)
++			return rw;
++	}
++	return be;
++}
++
+ int
+ ext_tree_insert(struct pnfs_block_layout *bl, struct pnfs_block_extent *new)
+ {
+@@ -275,7 +297,10 @@ ext_tree_insert(struct pnfs_block_layout *bl, struct pnfs_block_extent *new)
+ 
+ 	spin_lock(&bl->bl_ext_lock);
+ retry:
+-	be = __ext_tree_search(root, new->be_f_offset);
++	if (root == &bl->bl_ext_ro)
++		be = ext_tree_search_ro(bl, new->be_f_offset, ext_f_end(new));
++	else
++		be = __ext_tree_search(root, new->be_f_offset);
+ 	if (!be || be->be_f_offset >= ext_f_end(new)) {
+ 		__ext_tree_insert(root, new, true);
+ 	} else if (new->be_f_offset >= be->be_f_offset) {
+
+---
+base-commit: eea3fef32a9cf36abcb5975a5a594e4135a6b026
+change-id: 20261030-nfs-bl-ro-cdbf608f4f0d
+
+Best regards,
 -- 
-2.55.0
+Daejun Park <daejun7.park@samsung.com>
+
 
