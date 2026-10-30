@@ -1,59 +1,79 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=203.254.224.25
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793332704;
-	b=ET0h1/iM1QCMxD9yk0wtswsaxsMFD8EsByRiMhJoA6DhHAfFiQNPoejeLKvpnpltz5/s
-	 t9kACiw6YAJeeNBmvfg4stRGuaoNQ99uiHcgoiNAtEoJKx2h+Bqe0ExioAajOvd7cBAFA
-	 PtOSLhoAYqz/tJHEzfrcn3dRhvgf6Bs8MYkwGzrnETufI6mWYmdBHp9twGd5AKP6f0S1U
-	 AtHQbo/oAsFj3YuzIm/jpTukzx6nW7fj/1jAaJTHsXxAuzCiUQ5+NmKMGijM85LiiK7hD
-	 l92ND6W3MYSGbXxig2RWGgAkoc1n3mg4VEZr3VOuwARMDQAGSS4BlVOThk6h442XoVw==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793332704;
-	h=DMARC-Filter:Received:DKIM-Filter:DKIM-Signature:Received:Received:
-	 Mime-Version:Subject:Reply-To:Sender:From:To:CC:X-Priority:
-	 X-Content-Kind-Code:In-Reply-To:X-CPGS-Detection:X-Drm-Type:
-	 X-Msg-Generator:X-Msg-Type:X-Reply-Demand:Message-ID:Date:
-	 X-CMS-MailID:Content-Transfer-Encoding:Content-Type:X-Sendblock-Type:
-	 CMS-TYPE:X-CPGSPASS:X-CPGSPASS:cpgsPolicy:X-CFilter-Loop:
-	 X-CMS-RootMailID:References;
-	bh=zUgWx4GG7nQpPVnN3H3kzUWlHZSJp8Dns2isdJHCWMk=;
-	b=YxYecyy0zDmijXrc/1CjyllJWfnNYgCZn6S6dbTsGJ9WFgTnyOn5NRGjirjAqbpMTTpC
-	 ZO0DQ6wnwmdL3SkI0Kj9QjR4PPWTKFWQ5QIJ15nQ9+p9VYjx+JLJwvTb25EtD84UbW+ZD
-	 0BXScwE8WwsCAkY++KDKRZt9h4nBoooYVJUmUGy9X8zNpkYht79orPyVRcLMZGE4h2Bt/
-	 gm5yOvN+qDhtDpWV9vE3Ohb+2oTqCwNscSy1whmZypDeAcUVv7j1K5dudf45j3MHTCwhJ
-	 QTQ4f1cftreYVBmF2NiqD87ldpTErRDFroMWAlqZT7s+ExZcCNxoT6YGoI3Ash3MtBA==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=samsung.com;
-	spf=pass smtp.mailfrom=samsung.com;
-	dkim=pass header.d=samsung.com header.i=@samsung.com header.a=rsa-sha256 header.s=mail20170921 header.b=tLpJQtZb;
-	arc=none smtp.remote-ip=203.254.224.25
-Received: from mailout2.samsung.com (mailout2.samsung.com [203.254.224.25])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1793333180;
+	b=GUGhMGxsf57K+8263hELojJH8/10G4aQ1KwsF1Bax1yLrtnqg/VJQTjVHUoVUTVSBXBA
+	 mLDakVKJLeQcYzb/YhCyQlFnPY4H7Vl5CwrJVDmLldHnA6Fjd5OGBTLb1bxsZ8CAikbWf
+	 k5arYmWMkAz8t01SlcyaW9azhgFoIDOwuo5PDMwCPccuRJC5WRktvRfxraLthsMniwWzQ
+	 D+JQ2VdnThwoavVIORQPMliiNpDwH5IbletTsMg72E1dI9a3SL7hTQWGxdvz3luQds8lS
+	 dHTW6AkUEirw5DCyVU4mqTEnexU75tvNPqlQJyfAqJvbc7i+WEWzU6vSbVVPqUfI/2w==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793333180;
+	h=Received:DKIM-Signature:Received:From:Date:Subject:MIME-Version:
+	 Content-Type:Message-Id:X-B4-Tracking:To:Cc:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
+	 X-Original-From:Reply-To:Content-Transfer-Encoding;
+	bh=7QjOaxnuqQRFLvn1pzdZ2frORY71AqJEELaR81AFzz8=;
+	b=sARb6F65JhDOdhjTTEXUdSP0KfJYjEX9HUWcj4rPWIhETnI3BGWYQ2+nuX4UsUHPykKR
+	 CbYHDywIqIOh1crzX6YbJpLbO5dV+pEKOkMWY5rn98JS0TXut4RcNl/zYgnWigQbU+NF8
+	 ycRZxpVhTMl4WJtecg9zSb61jTOln4UcKu8+Ug1DTohiPMQg5p50lZCw4GUucyIGdLyfN
+	 fjg/TzjSGeAZehKmLm/bVuZSYp8CsfLzdZIE5V/q9tX7jAvS02kYDLO1DbdAXQTWiVGi3
+	 dEDuglGMuqjHouzVTL9nR1RO5NGQiwRLZhn9kKiZOWPcURorFWVvVgtsmO7KGUtER5w==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=K17KlGia;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 00A9D606A323
-	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 03:58:22 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 00A9D606A323
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 976B0606A31A
+	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 04:06:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=samsung.com header.i=@samsung.com header.a=rsa-sha256 header.s=mail20170921 header.b=tLpJQtZb
-Received: from epcas2p3.samsung.com (unknown [182.195.41.55])
-	by mailout2.samsung.com (KnoxPortal) with ESMTP id 20261030035820epoutp029dc04f3a4264ace4b279ccdc96c4be79~jMpcDDc6B0738907389epoutp02g
-	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 03:58:20 +0000 (GMT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout2.samsung.com 20261030035820epoutp029dc04f3a4264ace4b279ccdc96c4be79~jMpcDDc6B0738907389epoutp02g
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
-	s=mail20170921; t=1793332700;
-	bh=zUgWx4GG7nQpPVnN3H3kzUWlHZSJp8Dns2isdJHCWMk=;
-	h=Subject:Reply-To:From:To:CC:In-Reply-To:Date:References:From;
-	b=tLpJQtZbM3CyMtSLgcRu8MW9wVm3LQBQ3p8fGdei6RAq6Kcq4N5od5MfkN6+kxlA2
-	 /cQKPS4VUDmzjQFrtqFXQG2R/QgkB4Tu+nSe3UB3525N5ORe3RuW3aig2OCW+1yfr3
-	 ZBeaii9kWuDLNLQrE094xGdpD7Jb+5an5ZxF/p1o=
-Received: from epsnrtp02.localdomain (unknown [182.195.42.154]) by
-	epcas2p1.samsung.com (KnoxPortal) with ESMTPS id
-	20261030035820epcas2p13fb76da0364c476189f2cf78971e553e~jMpb4DP_n2047120471epcas2p1A;
-	Fri, 30 Oct 2026 03:58:20 +0000 (GMT)
-Received: from epcas2p4.samsung.com (unknown [182.195.38.199]) by
-	epsnrtp02.localdomain (Postfix) with ESMTP id 4jG6lJ2SwPz2SSKf; Fri, 30 Oct
-	2026 03:58:20 +0000 (GMT)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=K17KlGia
+Authentication-Results: smtp.kernel.org; arc=none smtp.remote-ip=100.80.115.77
+ARC-Seal: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256; cv=none;
+	t=1793333180;
+	b=cJ+BMdeGaqOMIY3zTCnon9sWJeyguydKZYTTt3PG6pcmBtPQo87T60tPxEF6XRzdaJdG
+	 JgH4IhzN37tGWAcvKWTfM5SY1LvpLw+AK4otVK/RM7s0XKjfnP72grh4i19G0UEwEV+R0
+	 earzCNDq6lU/rd7dZpoQzxmXkVN4kUQhfjjgboD9wZP2hija/gswfp7sNomu0tDhMQg5+
+	 kfvGY0owAUon0LivtAVd1F5uOtd73JwDtiLjRxLVXumFIiiz3v7GBUUn9p+jrcJs+dtiR
+	 2Z0gWk+sj6WiFv3eleLHFTEvw00q6HRLNEhDB9mMNkveGomqfaWSyuI/tvrpZGxTn3g==
+ARC-Message-Signature: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256;
+	c=relaxed/relaxed; t=1793333180;
+	h=DKIM-Signature:Received:From:Date:Subject:MIME-Version:Content-Type:
+	 Message-Id:X-B4-Tracking:To:Cc:X-Mailer:X-Developer-Signature:
+	 X-Developer-Key:X-Endpoint-Received:X-Original-From:Reply-To:
+	 Content-Transfer-Encoding;
+	bh=7QjOaxnuqQRFLvn1pzdZ2frORY71AqJEELaR81AFzz8=;
+	b=WXFQHW45kzFov+3BT7AXjr6WvCQ0BMkjKGKAYmRwuWa7F67mp9bBSoP/ECGEauXykSgX
+	 gZkLH3Vqjva1reo0MQ+XgKbPNZCvnxyqycWhwwI/GsImvM6Qi8FSgBx7m+TScPIauOQgs
+	 MmKi9hWEm1fZrAs4U9zf+2q4JNjBuxUs960cyKZkvMpwAO1oPFwUDFsyLGET4cDF/CO+O
+	 P6R9VmYNeqn4E1jDixoJJO5bBRlh9dau/QEWWp8EV+U7V7z1LMW4uSjstb+kpa/ncUTtN
+	 2Pd4tlQ/v8Gggurl+XY9twpxIQlIZQwqwVBrLf/werT7Ecc46s5x99YXgpXuSGlrD5w==
+ARC-Authentication-Results: i=1; smtp.kernel.org; 
+	arc=none smtp.remote-ip=100.80.115.77
+Received: from lkml.kernel.org (nexus.subspace.kernel.org [100.80.115.77])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	(No client certificate requested)
+	by smtp.kernel.org (Postfix) with ESMTPS id C052D1F000C1;
+	Fri, 30 Oct 2026 04:06:19 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793333180;
+	bh=7QjOaxnuqQRFLvn1pzdZ2frORY71AqJEELaR81AFzz8=;
+	h=From:Date:Subject:To:Cc:Reply-To;
+	b=K17KlGiaVJ/txjcx3ZwWInuJphUCblEzJBj1fVq5pI2iV9k3dSEEarymfeZp/DTo4
+	 Zo0D4r5NpItrsLmCPeoHKDlNUAypNXkvUZz+mfb9AkHnalKQDoovnSUSm2+75cs2Xx
+	 mFy+03ZS/XIH+30Qyl0jgWaD6GlgeK2KEhzgadZrSihqG6/C/mzEuSJJg9O0tP6iVq
+	 436l3uQ6xd6dV/tFFIAgaMzL5d2WKKcU3PD37Ueer6NKvrHoa3VqXkBq0PmduYzlMm
+	 gKjWW5xklaEjwrH9KJ6ZE1hfDjF4e5eVKwLdzg1Wn3GIsMgleQAG2E81FIyIyJjKfI
+	 cPlNyj3/JJx0A==
+Received: from nexus.subspace.kernel.org (localhost [IPv6:::1])
+	by lkml.kernel.org (Postfix) with ESMTP id 1F79343632;
+	Fri, 30 Oct 2026 04:06:19 +0000 (UTC)
+From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
+Date: Fri, 30 Oct 2026 13:06:19 +0900
+Subject: [PATCH pynfs] BLOCK3: send an empty extent list in the second
+ LAYOUTCOMMIT
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -62,56 +82,77 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
-Mime-Version: 1.0
-Subject: RE: [PATCH v3 2/2] pnfs/blocklayout: report data lost to a failed
- LAYOUTCOMMIT
-Reply-To: daejun7.park@samsung.com
-Sender: Daejun Park <daejun7.park@samsung.com>
-From: Daejun Park <daejun7.park@samsung.com>
-To: Benjamin Coddington <ben.coddington@hammerspace.com>, Trond Myklebust
-	<trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, Christoph
-	Hellwig <hch@lst.de>, Daejun Park <daejun7.park@samsung.com>
-X-Priority: 3
-X-Content-Kind-Code: NORMAL
-In-Reply-To: <054f354ecaa596514da593698461206e356004ac.1793302358.git.bcodding@hammerspace.com>
-X-CPGS-Detection: blocking_info_exchange
-X-Drm-Type: N,general
-X-Msg-Generator: Mail
-X-Msg-Type: PERSONAL
-X-Reply-Demand: N
-Message-ID: <20261030035819epcms2p4d812654812819bd39f5f79c499fb618b@epcms2p4>
-Date: Fri, 30 Oct 2026 12:58:19 +0900
-X-CMS-MailID: 20261030035819epcms2p4d812654812819bd39f5f79c499fb618b
-Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-X-Sendblock-Type: AUTO_CONFIDENTIAL
-CMS-TYPE: 102P
-X-CPGSPASS: Y
-X-CPGSPASS: Y
-cpgsPolicy: CPGSC10-223,Y
-X-CFilter-Loop: Reflected
-X-CMS-RootMailID: 20261029193431epcas2p2e4d09667120683dbaf654417fd8d7f61
-References: <054f354ecaa596514da593698461206e356004ac.1793302358.git.bcodding@hammerspace.com>
-	<cover.1793302358.git.bcodding@hammerspace.com>
-	<CGME20261029193431epcas2p2e4d09667120683dbaf654417fd8d7f61@epcms2p4>
+Message-Id: <20261030-pynfs-block-empty-commit-v1-1-a1dcc3473ac1@samsung.com>
+X-B4-Tracking: v=1; b=H4sIALoX5GoC/x3MSQqEMBBA0atIrbtASxyv0rjQWGrRnYFExCDe3
+ eDyL96/ILAXDtBnF3g+JIg1KYpPBmobzcooc2qgnOoipw5dNEvA6W/VD1m7PaKyWsuOzdy0JU3
+ VSFRB4s7zIue7/sKrYLjvB9yJxclxAAAA
+To: Calum Mackay <calum.mackay@oracle.com>
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>, 
+ Jeff Layton <jlayton@kernel.org>, Christoph Hellwig <hch@lst.de>, 
+ Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793333178; l=1862;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=HzkblooUr65z9Ok3LlhdDkT+TzEVEd2JnZC43XXWaos=;
+ b=7alkc8rE+OY9hqxCuyFtqq8z9HIYa6If7Vedb3OK1vsdfY2wGAq1ET5Id+Hk68fpgyYTGKm0J
+ lzPsfxhOQgHBiodrADuN9I7lTnmgpQpnBODZhYND/df3NgIpijrC/Xt
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
+ auth_id=1122
+X-Original-From: Daejun Park <daejun7.park@samsung.com>
+Reply-To: daejun7.park@samsung.com
+Content-Transfer-Encoding: 7bit
 
-On 29 Oct 2026, at 10:47, Benjamin Coddington wrote:
-> I'll send a v3 with your change in patch 2.  Ok to add your
-> Suggested-by and Tested-by?
->
-> Was there another write before the close() that returned -EIO?
+From: Daejun Park <daejun7.park@samsung.com>
 
-Thanks, Suggested-by is fine.
+Under Python 3, BLOCK3 fails on every server with a TypeError: its
+second LAYOUTCOMMIT passes the str "" as the layout body. Send an
+empty pnfs_block_layoutupdate4 (RFC 5663, section 2.3.2) instead.
+It holds an extent count of zero.
 
-The close() that returned -EIO was in a separate test, not after the
-failed fsync():
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+---
+With b"" (the zero-length body BLOCK3 was written to send), nfsd
+answers NFS4ERR_BADXDR. With this patch, BLOCK3 passes on Linux
+nfsd over XFS (mainline 65ba8f34ec88).
+---
+ nfs4.1/server41tests/st_block.py | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-- New file, one 64k write, then close(), with one injected
-  NFS4ERR_BADLAYOUT.
-- The server got one LAYOUTCOMMIT, the one close() sent, and failed it.
-- close() returned -EIO, and 0 without the series.
+diff --git a/nfs4.1/server41tests/st_block.py b/nfs4.1/server41tests/st_block.py
+index 3cfc1c6..d43b7d5 100644
+--- a/nfs4.1/server41tests/st_block.py
++++ b/nfs4.1/server41tests/st_block.py
+@@ -158,7 +158,9 @@ def testEmptyCommit(t, env):
+                            layoutupdate4(LAYOUT4_BLOCK_VOLUME, p.get_buffer()))]
+     res = sess.compound(ops)
+     check(res)
+-    # Send another LAYOUTCOMMIT, with an empty opaque
++    # Send another LAYOUTCOMMIT, with an empty extent list
++    p = BlockPacker()
++    p.pack_pnfs_block_layoutupdate4(pnfs_block_layoutupdate4([]))
+     time = newtime4(True, get_nfstime())
+     ops = [op.putfh(fh),
+            op.layoutcommit(extent.bex_file_offset,
+@@ -166,7 +168,7 @@ def testEmptyCommit(t, env):
+                            False, lo_stateid2,
+                            newoffset4(True, 2 * 8192 - 1),
+                            time,
+-                           layoutupdate4(LAYOUT4_BLOCK_VOLUME, ""))]
++                           layoutupdate4(LAYOUT4_BLOCK_VOLUME, p.get_buffer()))]
+     res = sess.compound(ops)
+     check(res)
+ 
 
-I did not check close() after the failed fsync().
+---
+base-commit: cd4701827a8261fedbfb4c6e39029fb9671321a6
+change-id: 20261029-pynfs-block-empty-commit-7d7832b5a225
 
-Daejun
+Best regards,
+-- 
+Daejun Park <daejun7.park@samsung.com>
+
+
