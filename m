@@ -1,92 +1,66 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.208.97
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=202.108.3.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793403901;
-	b=QLYNsQB7ArQZAhme7jCWuxYoPVKPk8zUDsVi1rvN05X8aE+DVLZfZnxke9A0nxZDV4/e
-	 Rm+GlcE7cve7I4undXXjYdUVMSP4s9zPDnMX1x1PlOj+rIzOh4MGddu8HZHVB1dFZ2b5h
-	 zKMpwrWyjxdoqsgvU62NIDTQbGTyesqa2yWUND9D4oFXQ9SpcqWk77xW9wuvX6tctD92/
-	 AyeWm8ETz7csUineWIEs8MWsMemYWHrFWSLQGrCsw8jjsOJFowgySWK1sJdI/LLEGvN8q
-	 PJYhKqYeVHC7l5onPeshIPcKBNvjRBYIFMZL6eWIdC4k/DjdoHgx+6WdjNk6biSNxEw==
+	t=1793407636;
+	b=I8KAHAvJl7zIX5e84Cl+Rz6HuTT6C05fEI43/8keno1JJqoYXwEXXU5zF9qR0KgJvFY5
+	 fQ7jLzRAkpxhYl34f9S/4uTvhrJWUYHDb8eFIrH5zLwf4Gh+T0Cl3X0exIMls+p20GoC/
+	 F83E5t8Px4Ry2zx8VBMAgwdL44P6oDg8AH6fnHu+OSk6dNr/hqIKFOAqgdFppn3FAx/yN
+	 352QjOXR/SYzv2zWooePSAoR5/KROZ7KA+6lKyn4N70f+wlf0bnKxLCtUd8yF/B1XU928
+	 tJqcxIGwO+96LVQiGOLGHrkEtig0cOoTLKde3v9EYPUJEzcOM70yOhPviz/t5swH2Ww==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793403901;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:X-Relaying-Domain:
-	 Received:From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=ENPGEJQjHDmi0YXc71Juxw0DF5443i7C7rtlAkvii2U=;
-	b=5WdCpb3061OUtsf9VcCLUWKEHksG/B72R/QSlRk0McrhpYowCeFhW76bcpF0DpbqLZKq
-	 7e8x5juPNAtNK4TR1ntzGw2oWbpiloi+fvZK+zrOQKVzM0dObS+B4JyO/rNESQ63VI1UT
-	 pbpjRp4tt3mX00/tUwaS3AmU6cAzuE1UuKrwnRx1XhhhEs2NxK5y+D06hxYRwNEaoyVye
-	 413nylkA+j05fNJSbvRk3KKvzIeF4GggMwsUUBEua9M50IfqVMtmT95cxBLcmNw6qzAIA
-	 Nm9Y1wLdKWpYejJzWsgtA0X9dOJWHLXN2x71ehchdjrWNodDf97oVUJ7/iplp2n7hJg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793407636;
+	h=DMARC-Filter:DKIM-Signature:X-SMAIL-HELO:Received:X-Sender:X-Auth-ID:
+	 X-SMAIL-MID:X-SMAIL-UIID:From:To:Cc:Subject:Date:Message-ID:
+	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
+	bh=UCvegi+i1apDZdVVmEmHCl1vJCt7SNjmj4csEy7A/78=;
+	b=TYguqLWMWbNwcH+ikOqO9z+/f61Jq2YspASwhROsNLs31C2bpGk49zHK6gX7CqJb4Wjg
+	 nfgf54UhRyR1DIEprCobp2mrXnXF7LVmbREWc3M08DkzmyAI8cVY5Yu9UoT9ENAYoqHTr
+	 mIcWg+GTmM4DULHQNcVfHUhERywbU0Qi65s+4dz3DGvYEsFIAAxZ9wOiZ6z7JG2hv9yF3
+	 y1z8nzLgZQMYEyxt4IhTOWZ2KpH+b/HcSh3/qetnkhSgmbx0CJsH6B/wfdRgie7Lo+oyt
+	 +B7qTj5Si+hOcEydJhErB+TpFN5XzNP2VQ4D7xKrUweQRWl2VceLjurrwbvP/OKnLug==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=everpuredata.com;
-	spf=pass smtp.mailfrom=everpuredata.com;
-	arc=none smtp.remote-ip=209.85.208.97
-Received: from mail-ed1-f97.google.com (mail-ed1-f97.google.com [209.85.208.97])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dmarc=pass header.from=sina.com;
+	spf=pass smtp.mailfrom=sina.com;
+	dkim=pass header.d=sina.com header.i=@sina.com header.a=rsa-sha256 header.s=201208 header.b=DCJRq68V;
+	arc=none smtp.remote-ip=202.108.3.11
+Received: from r3-11.sinamail.sina.com.cn (r3-11.sinamail.sina.com.cn [202.108.3.11])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 69448606A31D
-	for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 23:44:55 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 69448606A31D
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=everpuredata.com
-Received: by mail-ed1-f97.google.com with SMTP id 4fb4d7f45d1cf-6b408f2d936so1615861a12.1
-        for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2026 16:44:55 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=everpuredata.com; s=google; t=1793403894; x=1794008694; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=ENPGEJQjHDmi0YXc71Juxw0DF5443i7C7rtlAkvii2U=;
-        b=ydriti7zC8uEtFrWzYDb1hmakiggIIPqyZubmQU3J5TGQfdMUBxqMCjS/7PGld049C
-         PIJXQpd3EPFL36vZE6F2udfB1t05qSE+ovPBVmYlQrlHpSQ55Lsqa2MCmzqNPh/a80Ac
-         BUiLE/kV6gr51kv4AuSQjItwP9IN+vcPj179bJjj0dKzPCU1B8GWZzM54JSsGvH/qm4l
-         SodEgcZXYiC8TKZzUXknTkCF1YSVmFMZwymRrfo0CdcigMJnCjHY0Qdl20GhmviAsod1
-         zr2WcqnCg9SM59uBUwjf/vujnxqU80D/Df9JZ3iYmi2S1rHJDtiKjxhgvKxkn7zkXpA7
-         Fo7g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793403894; x=1794008694;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=ENPGEJQjHDmi0YXc71Juxw0DF5443i7C7rtlAkvii2U=;
-        b=HhcBx8By5kpopva53aenQsjncUTT/3BZWLANMX4LrwEyo89SE9R1SIzLPEPhDl3lrs
-         LjgDRMA/ZO6y4tp6fetAVvCAD/EjCbjqu7NfJElqMXzUDHRKVYDNxfpxud5KKoAh0cM/
-         y1Ry9j7PZBPDiRWmRGtGIW3+urMuK7NYaw//sxFvLpP+zzL4a5UPhZ+Kfg8mb4yln3P/
-         WsalOuXJx9pQDgts5XRK6hkXkVHCKTJUhbmsN3AVaTQn+Xc4mKlfpt5in89sEDubLC1U
-         p0VvQXN1KT4GjrF3N9MoPJTzGW/i2LXaTabXWKsnZgrC6kkrE3nGJhSHLU4S3Td/gyXp
-         l0oQ==
-X-Gm-Message-State: AFq9FYJ5clzPE7P0FUgR20sNdo5yhpsd9oXhz+rn2FeZIMtQbD7XKsKf
-	+mf7vIsCGllgZ8FHjFwjQvIfzl62vnl7HBNm+izovR+H7Ca1+XobR1EBsevQpIfVZZl1swCrzWj
-	tYERAv04kL2c6Pck3ucPVhrcBpfJLRfKZ7sq4
-X-Gm-Gg: AYBFou1mOt+zQEeE+y3k1eV25UrsSx6DLQegZ7D27gViqGYAWUE+iMT+9otbJi7GnzE
-	6qomxiApuLEQrgHkYh0JyEGNbVyMgGrqttJOE1Twp+013g1tAKFnJV9IdlWTdEmpDTkZ3eUb/Fd
-	dJ6GNCFCd5FTOSS5YjnK+bu9YOrDR8FsHRC/mfErc+/Hf213z1rPL+ny3AMTqWVruwcp9/5raIc
-	IlMC3RDFHdRCDSdIyLusRTbeC0WEJKXWl5z0iBehAgLaUFyBShRmY6rKTY9neJH2U1Lh2fL+OZ1
-	z3HRuFmyLjE+1u+9tvIQ58wgMkC7pPs9V1DmB9qKFtTmLfFZsLWYLgEPz/eSkSmbfxRHv4Zpkx8
-	RYC1+GpoRNCxazQ5EWAVzCXcyNnPQVi2D9WW5ho0=
-X-Received: by 2002:aa7:c70b:0:b0:6aa:f14f:5571 with SMTP id 4fb4d7f45d1cf-6b4d5ee0692mr2076001a12.45.1793403893737;
-        Fri, 30 Oct 2026 16:44:53 -0700 (PDT)
-Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.129])
-        by smtp-relay.gmail.com with ESMTPS id 4fb4d7f45d1cf-6b4ec9f672esm196010a12.14.2026.10.30.16.44.53
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 30 Oct 2026 16:44:53 -0700 (PDT)
-X-Relaying-Domain: everpuredata.com
-Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
-	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id 403993404F8;
-	Fri, 30 Oct 2026 16:44:22 -0700 (PDT)
-From: Tim Menninger <tmenninger@everpuredata.com>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	stable@vger.kernel.org,
-	Jon Curley <jcurley@everpuredata.com>,
-	Eric Badger <ebadger@everpuredata.com>
-Subject: [PATCH] NFSv4: Prevent indefinite waits for out-of-order OPEN stateids
-Date: Fri, 30 Oct 2026 23:44:22 +0000
-Message-ID: <20261030234422.2367263-1-tmenninger@everpuredata.com>
-X-Mailer: git-send-email 2.53.0
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 394BD606A323
+	for <linux-nfs@vger.kernel.org>; Sat, 31 Oct 2026 00:47:13 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 394BD606A323
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sina.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sina.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key, unprotected) header.d=sina.com header.i=@sina.com header.a=rsa-sha256 header.s=201208 header.b=DCJRq68V
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=sina.com; s=201208; t=1793407634;
+	bh=UCvegi+i1apDZdVVmEmHCl1vJCt7SNjmj4csEy7A/78=;
+	h=From:Subject:Date:Message-ID;
+	b=DCJRq68V4I5T8V0jDpOrzk+Gk7RThJFghIsvDPtRjz85voPb1Omf2S4MCc53V2e2i
+	 aAhpRqgKErC2NFazQ16n9H8m/yfRCVy9g6JeJZAf5Tvc65/Jg+lWhrs1InXmxUEWbz
+	 e7m1DEgtEDlHVJ6LSlosjgSvW9TQjbMUWoHz06E0=
+X-SMAIL-HELO: localhost.localdomain
+Received: from unknown (HELO localhost.localdomain)([114.246.236.199])
+	by sina.com (10.54.253.34) with ESMTP
+	id 6AE53A860000686A; Sat, 31 Oct 2026 08:47:05 +0800 (CST)
+X-Sender: hdanton@sina.com
+X-Auth-ID: hdanton@sina.com
+Authentication-Results: sina.com;
+	 spf=none smtp.mailfrom=hdanton@sina.com;
+	 dkim=none header.i=none;
+	 dmarc=none action=none header.from=hdanton@sina.com
+X-SMAIL-MID: 8196726291870
+X-SMAIL-UIID: EE7AC67ADAD14D6B94E3B3DDB2C746CE-20261031-084705-1
+From: Hillf Danton <hdanton@sina.com>
+To: NeilBrown <neilb@ownmail.net>
+Cc: "Kal Cutter Conley" <kalcutterc@nvidia.com>,
+	"Chuck Lever" <cel@kernel.org>,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] sunrpc: fix lost wakeups when stopping service threads
+Date: Sat, 31 Oct 2026 08:46:56 +0800
+Message-ID: <20261031004657.251-1-hdanton@sina.com>
+In-Reply-To: <179340033904.269288.4611945330659974906@noble.neil.brown.name>
+References: 
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -98,61 +72,136 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-When processing an out-of-order OPEN stateid on an NFSv4.1 or later
-mount, nfs_set_open_stateid_locked() waits for stateid updates to be
-processed in order. A five-second timeout is intended to prevent
-indefinite waits when preceding updates never arrive.
+On Sat, 31 Oct 2026 09:45:39 +1100 NeilBrown wrote:
+> On Sat, 31 Oct 2026, Kal Cutter Conley wrote:
+> > Stopping NFS can leave rpc.nfsd 0 in an uninterruptible wait with
+> > this stack:
+> > 
+> >   svc_stop_kthreads [sunrpc]
+> >   svc_set_num_threads [sunrpc]
+> >   nfsd_svc [nfsd]
+> >   write_threads [nfsd]
+> >   nfsctl_transaction_write [nfsd]
+> > 
+> > SP_NEED_VICTIM and SP_VICTIM_REMAINS remain set while all remaining
+> > nfsd threads sleep in svc_recv() and none has RQ_VICTIM set.
+> > 
+> > The stop request is published with unordered set_bit() operations.
+> > svc_pool_wake_idle_thread() checks the idle list and task state before
+> > calling wake_up_process(). If it sees an empty list or TASK_RUNNING,
+> > it skips the wakeup and its memory barrier. The requester can therefore
+> > miss a sleeping worker while that worker misses the stop request.
+> > 
+> > Order work publication before both lockless checks, even when no
+> > wakeup occurs. Pair with set_current_state() and llist_add() in
+> > svc_thread_wait_for_work(), so the worker observes the pending work or
+> > the requester observes the idle worker and wakes it.
+> > 
+> > Fixes: 60749cbe3d8a ("sunrpc: change sp_nrthreads from atomic_t to unsigned int.")
+> > Signed-off-by: Kal Cutter Conley <kalcutterc@nvidia.com>
+> > ---
+> >  net/sunrpc/svc.c | 9 +++++++++
+> >  1 file changed, 9 insertions(+)
+> > 
+> > diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> > index af8d87c1de83..f3cc63acc5e1 100644
+> > --- a/net/sunrpc/svc.c
+> > +++ b/net/sunrpc/svc.c
+> > @@ -29,6 +29,8 @@
+> >  #include <linux/sunrpc/clnt.h>
+> >  #include <linux/sunrpc/bc_xprt.h>
+> >  
+> > +#include <asm/barrier.h>
+> > +
+> >  #include <trace/events/sunrpc.h>
+> >  
+> >  #include "fail.h"
+> > @@ -693,6 +695,13 @@ void svc_pool_wake_idle_thread(struct svc_pool *pool)
+> >  	struct svc_rqst	*rqstp;
+> >  	struct llist_node *ln;
+> >  
+> > +	/*
+> > +	 * Order work publication before the idle-list and task-state checks,
+> > +	 * even when wake_up_process() is skipped. Pairs with the barriers in
+> > +	 * set_current_state() and llist_add() in svc_thread_wait_for_work().
+> > +	 */
+> > +	smp_mb();
+> > +
+> 
+> I don't like this.  Stand-alone barriers are, I think, harder to read
+> than barriers combined with operations, like smp_load_acquire() or
+> similar.  And this one seems quite detached from anything.
+> 
+> If I understand correctly, the possible race is between
+> svc_thread_wait_for_work which includes:
+> 
+> 		llist_add(&rqstp->rq_idle, &pool->sp_idle_threads);
+> 		if (likely(svc_thread_should_sleep(rqstp)))
+> 
+> and svc_stop_kthread which includes:
+> 
+> 		set_bit(SP_NEED_VICTIM, &pool->sp_flags);
+> 		svc_pool_wake_idle_thread(pool);
+> 
+> The first sets ->sp_idle_threads.first and then checks SP_NEED_VICTIM
+> and the second sets SP_NEED_VICTIM and then checks
+> ->sp_idle_threads.first.
+> 
+> So we need barriers to ensure the values are seen is the expected order.
+> Have I missed anything?
+> 
+> llist_add() always calls try_cmpxchg() which is fully ordered, so no
+> extra barriers are needed there.
+> 
+> There is no barrier between the set_bit)( and the READ_ONCE() in
+> svc_pool_wake_idle_thread(), so you added one.  I agree that is correct
+> and solves the problem.
+> But it is only this call to svc_pool_wake_idle_thread() that needs a
+> barrier, not all calls.  So I would prefer the barrier went in
+> svc_stop_kthreads().   Do you have a reason for not including it there?
+> 
+> We do need a full memory barrier - a "release" on the set_bit and an
+> "acquire" on the test of ->sp_idle_threads.first
+> 
+> I would be happy with smp_load_acquire(->sp_idle_theads_first) in
+> svc_pool_wake_idle_thread().  I'm not sure it is needed though.
+> 
+> I would like set_bit_release(SP_NEED_VICTIM) in svc_stop_kthreads()
+> but we don't have that.
 
-However, each iteration calls schedule_timeout() with a fresh
-five-second timeout. An update to the shared open state can wake the
-caller without satisfying its ordering check. The remaining timeout
-is then discarded, and the next iteration starts another full wait.
+It is on the way [11].
 
-Under sustained concurrent OPEN/CLOSE activity on the same open state,
-repeated wakeups can prevent the timeout from ever expiring. Some
-tasks can remain stuck in update_open_stateid() while others continue
-making progress.
+[11] Subject: [PATCH 1/2] asm-generic/bitops: Add set_bit_release()
+https://lore.kernel.org/lkml/20261021095512.1345191-3-phasta@kernel.org/
 
-Compute a single deadline on entry and pass only the remaining time
-to schedule_timeout(). Once the deadline expires, take the existing
-timeout path rather than starting another wait. This prevents
-wakeups from extending the wait indefinitely.
-
-Observed on Linux 6.8.0 and reproduced on 7.3.0 with 96 concurrent
-O_RDWR|O_TRUNC open/close loops on one NFSv4.1/TCP file (nconnect=16).
-Ten workers made no progress for over 300 seconds while others ran.
-With the fix, all workers resumed after transient stalls.
-
-Fixes: c9399f21c215 ("NFSv4: Fix OPEN / CLOSE race")
-Cc: stable@vger.kernel.org
-Signed-off-by: Tim Menninger <tmenninger@everpuredata.com>
----
- fs/nfs/nfs4proc.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index e1018b03c1cbd..f2cb8e788c017 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1722,6 +1722,8 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state,
- {
- 	DEFINE_WAIT(wait);
- 	int status = 0;
-+	unsigned long deadline = jiffies + 5 * HZ;
-+	signed long remaining;
- 	for (;;) {
- 
- 		if (nfs_stateid_is_sequential(state, stateid))
-@@ -1756,7 +1758,8 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state,
- 
- 		if (!fatal_signal_pending(current) &&
- 		    !nfs_current_task_exiting()) {
--			if (schedule_timeout(5*HZ) == 0)
-+			remaining = (long)(deadline - jiffies);
-+			if (remaining <= 0 || schedule_timeout(remaining) == 0)
- 				status = -EAGAIN;
- 			else
- 				status = 0;
--- 
-2.53.0
-
+> We could do
+>    atomic_long_fetch_or_release(BIT(SP_NEED_VICTIM), (atomic_long_t*)&pool->sp_flags)
+> but that is ugly.
+> 
+> So I think the best solution is
+> 
+> 		set_bit(SP_NEED_VICTIM, &pool->sp_flags);
+> 		/* Order SP_NEED_VICTIM before testing sp_idle_threads,
+>                  * matching svc_thread_wait_for_work() which orders
+>                  * setting sp_idle_threads before testing the bit
+> 		 */
+> +               smp_mb__after_atomic();
+> 		svc_pool_wake_idle_thread(pool);
+> 
+> We probably need the same in svc_wake_up() after the set_bit().
+> 
+> Does this make the barriers easier to understand?
+> 
+> Thoughts?
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
+> >  	rcu_read_lock();
+> >  	ln = READ_ONCE(pool->sp_idle_threads.first);
+> >  	if (ln) {
+> > 
+> > base-commit: b803428098f6fcd584db9f0499217b80e465bb34
+> > -- 
+> > 2.53.0
