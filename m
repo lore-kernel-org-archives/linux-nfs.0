@@ -1,72 +1,61 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=51.159.188.251
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793466821;
-	b=3zbw6UdZa4FgB3Qy3DsufmqULx4iMJf9BG7zVAhqYsVdL1zQ+WEJORHr3nuqLOOkAJkN
-	 UPlrtRUXDFKgEy6/7ZVgQAf9NrLEMtViPZG0VpSwVBrqsVd4V1Es9Vb+6hFOIbF8VgEpp
-	 JMt+BGZKaiRAd3W2TJSNuYeBuL/ztyI78ww50caGNqASb6PCN6YudA6ecpQktyPmOjO35
-	 2bkmdqwMpUzZlP6YI7o0zRstaTDFZL93u0n3LsWRrGrDLZsJk3d+UcK8ZTy6ifIzwrM76
-	 iSXSzEyPwpz/nCI3mvUDLGuaXEP2XusxPqVvUVAD0NyW9EVZTDEOSaTHg6qgnhWl5tw==
+	t=1793472147;
+	b=VJ+iFkofKwWDXzIGS1+G51+hf0d7NzmlqG4oSj426XUiRqxkeDuke0TQc2HbcISMm0KR
+	 wzgQ50Ic90JsffmZHwDRoCRrFXgZOzctrImjoSOBcwmflOQ/dIbU3tJtfbq/Dmq70eFIi
+	 Nd2Sh/NuXpx4owc78jdpfjgPCliOfVS2CpG/amD97ih8ov/E9rLFkaOzUiIw6jjysijQF
+	 r/cLfb6Cqml6sTuhQ+BeE1Z/r6gEf1l5lOSqpRGMmgxnCHwClcwUAuswKr6LsuPKvcz5R
+	 J0X+iolsuEC2XERc/uQfnuQZHrb+ykQwz7eqaugJHzGP6piNAa/q4s3GJXyWuHNCFtw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793466821;
-	h=DMARC-Filter:DKIM-Signature:Received:From:To:Cc:Subject:Date:
-	 Message-ID:X-Mailer:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:X-AntiAbuse:X-AntiAbuse:X-AntiAbuse:
-	 X-AntiAbuse:X-AntiAbuse:X-Get-Message-Sender-Via:
-	 X-Authenticated-Sender:X-Source:X-Source-Args:X-Source-Dir;
-	bh=39qI15/gvYYxuDuo0yqQ2O0uqVDWTO8RyTVe8eRnfmQ=;
-	b=BT/obBtvkHDbG+P4QcxKzlYyRjhQJU/ztkxZSRPVI9lDY5OmRaiFJHxo9liSwkmFWjxl
-	 SaSOjT+2jOj9R3Tv8a+3gMaqMsEcxjHiYYKESJwGjeI/ZGIHgjs64A5E8aNM/EEEPX/f2
-	 wbeCGVVgLHXPVEIIEzyxNWjbSnPdVKzYGtIjpw/3FU4leY8G3xEX4QIPsC28PzTjfpJju
-	 64QlSDy6vAvs+z9kX7q08YCw2JSIecY8YhB74lGm7MSZhOB1/RURUj8tSvPci3FqGDUsE
-	 DnbTbQ4lLlUi5kFGyAaBg+QlTjdIkQGzSWtjakD80eLjNaZGDYRipuJaZZKgzl2E9Tw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793472147;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 In-Reply-To:References:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=v1eiqX8docxBHA/MpMD1bL0iQ8o/6yCcGdWuSGen3JU=;
+	b=U7RToMfMYDJrHPzMRXRbLxg1u1xYPFYfzD0EYaFTxF2E1pgOSCpf4iTJoa9Np4uTEBGe
+	 LGnGaEe2uuJclJxEYFQiiQfspzJSYOX6DF0S7EztYU/5Lq13eU3ckYwzmPYzVWQXSAd3b
+	 oOQU5B70RgAMN7glOLGt9+PepQ+GywPPn2l8M+u0V8u8rN2pb6ParrD/ufDiu2xhs327h
+	 EtZB0f7gx8GgFu0V///V10al4C4Af6tUyrWgdX6F/rDo4wEeMKvi+EiQdDaMVSPtTtY/b
+	 DeNzekmQj3qGEpDJEeTqQ/6nfi+FkFnXTBXrRM6O5IleMYyRfu9GmRpIOQLWE8zKf3w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=oss.cyber.gouv.fr;
-	spf=pass smtp.mailfrom=oss.cyber.gouv.fr;
-	dkim=pass header.d=oss.cyber.gouv.fr header.i=@oss.cyber.gouv.fr header.a=rsa-sha256 header.s=default header.b=X2F7T9wx;
-	arc=none smtp.remote-ip=51.159.188.251
-Received: from oss.cyber.gouv.fr (oss.cyber.gouv.fr [51.159.188.251])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GhuL52v2;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0DFBA606A31C;
-	Sat, 31 Oct 2026 17:13:39 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 0DFBA606A31C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=oss.cyber.gouv.fr
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oss.cyber.gouv.fr
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 54E53606A31A;
+	Sat, 31 Oct 2026 18:42:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=oss.cyber.gouv.fr header.i=@oss.cyber.gouv.fr header.a=rsa-sha256 header.s=default header.b=X2F7T9wx
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=oss.cyber.gouv.fr; s=default; h=Content-Transfer-Encoding:Content-Type:
-	MIME-Version:Message-ID:Date:Subject:Cc:To:From:Reply-To:Sender:Content-ID:
-	Content-Description:Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc
-	:Resent-Message-ID:In-Reply-To:References;
-	bh=39qI15/gvYYxuDuo0yqQ2O0uqVDWTO8RyTVe8eRnfmQ=; b=X2F7T9wxYNuG3UUoSCVrEU2qv8
-	Io1MDWNWnSPnbJ8lxNGxg/7GBrMlBcKyZVnQ8snAmbmeFjuAgWoRv6XtpS723QEWQhCs7KzWIaYqZ
-	6oriPhlP8saOJjXEp5U/o5TfY0k1/sPMICrWLh/ZevQi+ZVPnSV4eHduXXPqmwuvPzCBpvJR2ee6d
-	AFcozUsBDSvwnGYRYOATOJ3WuxctkZ5OthT1mjlCatSuZm9kKRFMr3TDiz0P7iy26Dw/1HdhAHeCg
-	n2XP47P/3Qf2meGP8Dm0cLPbCMX+sKKWcrmraQWRS2Z6n7lXQovf+vWmuv8qf88I+djxmZUkezjDu
-	5v11g+PQ==;
-Received: from [151.115.150.205] (port=37456 helo=gepetto..)
-	by pf-012.whm.fr-par.scw.cloud with esmtpsa  (TLS1.3) tls TLS_AES_256_GCM_SHA384
-	(Exim 4.100.1)
-	(envelope-from <Jeremy.Jean@oss.cyber.gouv.fr>)
-	id 1xNCe7-00000006Wj6-2Jt4;
-	Sat, 31 Oct 2026 18:13:31 +0100
-From: =?UTF-8?q?J=C3=A9r=C3=A9my=20Jean?= <Jeremy.Jean@oss.cyber.gouv.fr>
-To: Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GhuL52v2
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 293DF1F00A15;
+	Sat, 31 Oct 2026 18:42:26 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793472146;
+	bh=v1eiqX8docxBHA/MpMD1bL0iQ8o/6yCcGdWuSGen3JU=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=GhuL52v2tQWHHqDpMVCXdBVQ4AbXs9TMKrb40xfRUznVL1o/fAv4bB3n3nTL2bpjc
+	 VJa6fe93AdpEARFLu+PIO0rzcOgKidBjuiOmmP7a4wkCUVVmdykCs6xb+SWkhaOtf0
+	 kMzZMMGI8mq/0YVunxnYL6KORTJUVFR7waThwAtT3jSmAPoqXShJTljyxf/TBSmuGd
+	 of/wl5agA4whtCWy82/QlJtgf90syzkhP6zKMzFAN2OyThsSfiZpWCESt0XQbajrT7
+	 Lv8provko+SP0lo80o7ePoBNhh+HumYqotP+8PXzghtvZLvz9QW8Pe5klUEZ5fLUau
+	 zUUmkSO4SSOWQ==
+From: Chuck Lever <cel@kernel.org>
+To: Jeff Layton <jlayton@kernel.org>,
+	=?UTF-8?q?J=C3=A9r=C3=A9my=20Jean?= <Jeremy.Jean@oss.cyber.gouv.fr>
 Cc: NeilBrown <neil@brown.name>,
 	Olga Kornievskaia <okorniev@redhat.com>,
 	Dai Ngo <Dai.Ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>,
 	linux-nfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
-	=?UTF-8?q?J=C3=A9r=C3=A9my=20Jean?= <Jeremy.Jean@oss.cyber.gouv.fr>,
 	stable@vger.kernel.org
-Subject: [PATCH] nfsd: fix XDR tail bounds after spliced READ
-Date: Sat, 31 Oct 2026 17:10:59 +0000
-Message-ID: <20261031171057.1562342-3-Jeremy.Jean@oss.cyber.gouv.fr>
-X-Mailer: git-send-email 2.47.3
+Subject: Re: [PATCH] nfsd: fix XDR tail bounds after spliced READ
+Date: Sat, 31 Oct 2026 14:42:23 -0400
+Message-ID: <179347213462.1463036.1895447020089582210.b4-ty@b4>
+X-Mailer: git-send-email 2.54.0
+In-Reply-To: <20261031171057.1562342-3-Jeremy.Jean@oss.cyber.gouv.fr>
+References: <20261031171057.1562342-3-Jeremy.Jean@oss.cyber.gouv.fr>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -76,50 +65,25 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
-X-AntiAbuse: Primary Hostname - pf-012.whm.fr-par.scw.cloud
-X-AntiAbuse: Original Domain - vger.kernel.org
-X-AntiAbuse: Originator/Caller UID/GID - [47 12] / [47 12]
-X-AntiAbuse: Sender Address Domain - oss.cyber.gouv.fr
-X-Get-Message-Sender-Via: pf-012.whm.fr-par.scw.cloud: authenticated_id: jeremy.jean@oss.cyber.gouv.fr
-X-Authenticated-Sender: pf-012.whm.fr-par.scw.cloud: jeremy.jean@oss.cyber.gouv.fr
-X-Source: 
-X-Source-Args: 
-X-Source-Dir: 
 
-After a successful spliced READ, nfsd points the XDR tail at the
-unused bytes remaining in the first response page, so that later
-operation results are written into that space.
-nfsd4_encode_splice_read() correctly computes how much space is left
-there, but then moves xdr->end from its old value instead of using
-xdr->p. This gives the tail an incorrect size limit, which can cause
-an OOB write past the end of the page.
+On Sat, 31 Oct 2026 17:10:59 +0000, Jérémy Jean wrote:
+> After a successful spliced READ, nfsd points the XDR tail at the
+> unused bytes remaining in the first response page, so that later
+> operation results are written into that space.
+> nfsd4_encode_splice_read() correctly computes how much space is left
+> there, but then moves xdr->end from its old value instead of using
+> xdr->p. This gives the tail an incorrect size limit, which can cause
+> an OOB write past the end of the page.
+> 
+> [...]
 
-Keep the tail end at the current pointer plus the bounded remaining
-space.
+Applied to nfsd-testing, thanks!
 
-Fixes: 30596768b310 ("nfsd4: fix buflen calculation after read encoding")
-Cc: stable@vger.kernel.org
-Signed-off-by: Jérémy Jean <Jeremy.Jean@oss.cyber.gouv.fr>
----
- fs/nfsd/nfs4xdr.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+[1/1] nfsd: fix XDR tail bounds after spliced READ
+      commit: d650fb277960ef221f7fa2160072493aec418d65
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 606ddcb085c0..2f92b6dfd92c 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -5200,7 +5200,7 @@ static __be32 nfsd4_encode_splice_read(
- 	space_left = min_t(int, (void *)xdr->end - (void *)xdr->p,
- 				buf->buflen - buf->len);
- 	buf->buflen = buf->len + space_left;
--	xdr->end = (__be32 *)((void *)xdr->end + space_left);
-+	xdr->end = (__be32 *)((void *)xdr->p + space_left);
- 
- 	return nfs_ok;
- 
--- 
-2.47.3
+--
+Chuck Lever
 
