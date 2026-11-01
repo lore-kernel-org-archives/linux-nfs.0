@@ -1,112 +1,112 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=103.168.172.157
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=103.168.172.145
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793568553;
-	b=fYVnYZ/hzukglammdSSwYmzb/aiZleKPV26rNQeAFulFV/3XPHA6TFPjUfTw35+Xg2SW
-	 UO1ul6ppS2DGHDFPWnBjppzWYi0HgmdVipH/2Y0OeODmRKsA6kF0oZ4B81S+VwlCtItpe
-	 4JnKs4GD+4sWldNjA2W4dXuyyL5lgyIcVRAaqlA0IR02SLJJajV6li/uyRbtLWkB9YNb6
-	 o3uKic6O2utLVEPEbzVKurjMIq+3u3/nhY3eqU+HXxQZkm97B9WaG1Amr2hLKaeYWzEGs
-	 qZDaoDTv0s0Fju9oiLfJ7IyXTQIVK51lyj27bYskcPMkFhWqTxzkliVIwzIp3GiBypw==
+	t=1793569150;
+	b=3BRv5sRd3TtunpDhqPfNT2yH5wDcsZryZBNFbhAwWqq8yNDeHDHcSOmvopqL5pC33F1G
+	 kenq6XmIje9jHjLRm1CjgJHpAyj+hHwSiHYJ3PfKAvhkmxN7YQKigkhkloWQ0Da8WFt+f
+	 qmbS9QVViFe0uAaTr3+1DaZy2XytMtCgq55D0/o1WFdnlDXFxKRku9ZA4B7h+cfyA5/db
+	 aOt2f2ZIP9aU85f74+xpKebZaGyjn/H/zfWtZrVonZkBtPi1GzBMGU5784s2u+IbkOjeJ
+	 VrDwbos7BqZsm2oVakumMHEQifQVb0T9zFmMgKjXucIv/zt3/+DKM6MA4+HJYzaTKZQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793568553;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793569150;
 	h=DMARC-Filter:Received:Received:DKIM-Signature:DKIM-Signature:
 	 X-DKIM2-Info:DKIM2-Signature:X-DKIM2-Info:Message-Instance:
 	 X-ME-Sender:X-ME-Received:X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:
 	 Received:Content-Type:Content-Transfer-Encoding:MIME-Version:From:To:
 	 Cc:Subject:In-reply-to:References:Date:Message-id:Reply-To;
-	bh=4+Rkx3GQ7I6uDgxqLvKaPyUNc7ouJHNyu5UM0/cW7VE=;
-	b=ZloQR+TegMpDE8BC2n6E4V25TAq6zwDYfQdOTsbAY3Zsj8vEAArXw9HJMf9ADPXZDhuH
-	 XUUmqdDK4DE+n5RqXYmkqj5RAoBzq8hStYE9J2nPImaOJMG4cftni028e6FwwHAnt4W/+
-	 2mvYejLxasZ6gmOTm33kGkSH0WYu3cGTKKBheojhx/y7mriAoXKhuBJef2zebMwiGfWxA
-	 pcbBi2hp9bKs9c2W2YcXHNB/1wz7BCA+abkeWDriUtfPkWg40POUjtNg61WtciZnITSum
-	 Y5pO3prX6PjIOIoSrO9WDBLc9QKy4CO6/J2Ac22hJC8B4Db/UAZEMLN37/KdmMimalw==
+	bh=lwP8ycQo5PTTc/dYVB1SqGpgCjq4Sjj5i8p0oHH++Fw=;
+	b=p0nde1Qs3Wnz71P5kp6I5FK16er/h+iCxdNzr+uF/TlMcWq6nAPXWOkwiazyjKm+4cgA
+	 vLeLUYjlRoZR3fd1btKdDmPmGn0vhx5flPtCYYSoxg/Ubpz8T3Sx75hoq5oluNBRclhLo
+	 OZuaJfaynFIVrPXq5sSUIQWsnYRhYYt0+NmziwlL6+MuibR5fDe2p/bkYJgycwuhWGkIw
+	 t+/WGGyb2rpa+do/9V/vu33eSduGaUgAF8uJ1xA3Voqoyz/LgQkrNzdpsgaDMngBNO2af
+	 xkLITkbi45ZE3v2SIJ2h7hGqWWZHgctyarkEUJItcdreKfoWYRT7uMLAZ0Zswxb+VTw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=ownmail.net;
 	spf=pass smtp.mailfrom=ownmail.net;
-	dkim=pass header.d=ownmail.net header.i=@ownmail.net header.a=rsa-sha256 header.s=fm2 header.b=a1x2oBed;
-	dkim=pass header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm2 header.b=OTU05T+k;
-	arc=none smtp.remote-ip=103.168.172.157
-Received: from fhigh-a6-smtp.messagingengine.com (fhigh-a6-smtp.messagingengine.com [103.168.172.157])
+	dkim=pass header.d=ownmail.net header.i=@ownmail.net header.a=rsa-sha256 header.s=fm2 header.b=QPQwCMeP;
+	dkim=pass header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm2 header.b="D/wsx+xp";
+	arc=none smtp.remote-ip=103.168.172.145
+Received: from fout-a2-smtp.messagingengine.com (fout-a2-smtp.messagingengine.com [103.168.172.145])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 507D1606A324
-	for <linux-nfs@vger.kernel.org>; Sun,  1 Nov 2026 21:29:12 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 507D1606A324
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4DDF3606A326
+	for <linux-nfs@vger.kernel.org>; Sun,  1 Nov 2026 21:39:10 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4DDF3606A326
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=ownmail.net header.i=@ownmail.net header.a=rsa-sha256 header.s=fm2 header.b=a1x2oBed;
-	dkim=pass (2048-bit key, unprotected) header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm2 header.b=OTU05T+k
-Received: from phl-compute-05.internal (phl-compute-05.internal [10.202.2.45])
-	by mailfhigh.phl.internal (Postfix) with ESMTP id 80C7C1400172
-	for <linux-nfs@vger.kernel.org>; Sun,  1 Nov 2026 16:29:11 -0500 (EST)
+	dkim=pass (2048-bit key, unprotected) header.d=ownmail.net header.i=@ownmail.net header.a=rsa-sha256 header.s=fm2 header.b=QPQwCMeP;
+	dkim=pass (2048-bit key, unprotected) header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm2 header.b=D/wsx+xp
+Received: from phl-compute-07.internal (phl-compute-07.internal [10.202.2.47])
+	by mailfout.phl.internal (Postfix) with ESMTP id 5F944EC01DD
+	for <linux-nfs@vger.kernel.org>; Sun,  1 Nov 2026 16:39:09 -0500 (EST)
 Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-05.internal (MEProxy); Sun, 01 Nov 2026 16:29:11 -0500
+  by phl-compute-07.internal (MEProxy); Sun, 01 Nov 2026 16:39:09 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:content-type:date
 	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:reply-to:subject:subject:to:to; s=fm2; t=
-	1793568551; x=1793654951; bh=4+Rkx3GQ7I6uDgxqLvKaPyUNc7ouJHNyu5U
-	M0/cW7VE=; b=a1x2oBedTa5gOlHf9M2uHi9tX/JVIMqOeVHUGHv28j69tcVKB5g
-	m+QdU9CDlK45s+GQB2NgSx4p9s2kI4/Aq7zmNU8p/P+7q9hLW9MyqymMpyjki4sx
-	h/MbZf2mZ8XLk4s3EDJigI6DmJAig3uu8H3IGadm9dU2JVF9SckztKPSUQUiEVeE
-	+3BvsCkKZipTxCxrtR4c7vpv2Qtz3GEb5FXIjK5xgvN4EshvUQY2VYInOTqaTcPm
-	QO0qxTvnE3tkHcxnWAQGCzdRYpF94AZf5oN0oJnHQI/FpxY+lmADzW6rjwajY7FG
-	FEFADvDRh5xvz/665sLeOG7CVMJ606drhuw==
+	1793569149; x=1793655549; bh=lwP8ycQo5PTTc/dYVB1SqGpgCjq4Sjj5i8p
+	0oHH++Fw=; b=QPQwCMePetFFUPwt8j8EJD+0IvJrJMn8ExRukMKNL8ETLYPgcXZ
+	8eAfOmYulwMIUSHg59wrjdVQU+e0zjT4DU16JBK0YnMVC63vXYPjWSa6c7bG+Oa5
+	64gCHrSThjd36lTpk5oDdFydDrwtjqWzTPn+0wUW0QkQ1s/EpXRe2m4b8bEVM+bg
+	lohN+m6eKlBcp16ufl6eq4WO2AB6cgr5AOn+uo/TavBaX6R0seutjBt4mwXuP+z+
+	H7iUiwV1bOz6VBbjlK/+pPJZCXaQsnDp1qsjLPCwhWL9GW53P6BrSoEQQoio0Ef8
+	ENukQmzWRSwbrnSAHejTcwHHWufiG5xtF5w==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:content-type:date:date:feedback-id:feedback-id
 	:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm2; t=1793568551; x=
-	1793654951; bh=4+Rkx3GQ7I6uDgxqLvKaPyUNc7ouJHNyu5UM0/cW7VE=; b=O
-	TU05T+kBNG0v8txz8MRNxmYt8TPjHs7zwavdSDzrN6kI24FfrB4eF8F5ZUrHGWz9
-	/b/GwV2z5fV/d9L1RBwuiqz0soI62CgfPEKwNiDGKNPksAVKOZQzge9Di/ohWy++
-	WBctQs0eKTeVxFs4+STLR0hBeS1C4eWW+olchshUjKdG6MNg58TFRc8bfPrqUprG
-	S1EawR4/IJI06SvBpESsNFV6UgFrxvcfENk9nJ3CQvYcLVJw5ooP/xiH8JxgTPjb
-	S3LvnmeabB8G5ivTAhAtC+Ni1M+BKWQFPjZLp3ZS0UjpjAQs7EhML5umX3h0ru4h
-	w7dHFi2JmLrs0vFY60ztg==
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm2; t=1793569149; x=
+	1793655549; bh=lwP8ycQo5PTTc/dYVB1SqGpgCjq4Sjj5i8p0oHH++Fw=; b=D
+	/wsx+xpbN/A1Hyp2FDjyolI/Tt89QO+D03+5p6Fjo5stIp8l7Jt0UDmwxWB8LhqI
+	2pPMqQ+MeEQNgtdIUnJcZdWDlHBICte3Uiemlz5rnav5Ew2ayhRg5Niab7R7D4iB
+	S/oJlxZrQT5kAewXS7nBJi38iw7JiEAE52jKTTTnDQ+zST0EuyqXBBld/7gch5WB
+	vm4b6rH8fU7GYryCiDN1D+J2hJcGDohkMx9FZAUJ01te9J36HPblQlsY9DT1Vs1i
+	o3Zz9XHw7wjbYQR+ZvPe67rx1lQMt4oMGYQ9eVCD7Q/HdO49Dc+OKDA6dwG23esC
+	mCow/aA0iVLH185DTNdkA==
 X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-08;
 	repo=github.com/dkim2wg/interop; date=2026-10-28; sw=lmtpprox;
 	action=sign d=ownmail.net a=rsa-sha256;
-DKIM2-Signature: i=1; m=1; t=1793568551; d=ownmail.net;
+DKIM2-Signature: i=1; m=1; t=1793569149; d=ownmail.net;
 	mf=PG5laWxiQG93bm1haWwubmV0Pg==;
 	rt=PGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc+;
-	s=fm2:rsa-sha256:ILr9QNCKyto1nbhqCXnFpJ56YwvoOMUaaxxUURXM/0GVhxI
-	PR0YhQ0H1G9b2+pZpJDJySljSLhQ85abSAIX2QkwUNMKIrPNsCuu7sVVyicmjUp+
-	vPXb8cqPWb4YSrM7ORWbZA9CWnT7DMXP2f1K38Xr0AU0szaquMT2DKZaU68djKjE
-	bsTHCrwRF/y0W97kzTa5kQwr+Mbn9EKUOek0P+TxqHMViSO8dhYYP6d5UuMiNMZw
-	u3ry17puUPsj63cnvAI1GJc6+/I9fIqlU0Y8/xQL6wIW1F25O/dBaBdbtmnaaFNy
-	969yRXiqltGpB8ZDEhudP9b8vyiQCmQAWBKPXAg==;
+	s=fm2:rsa-sha256:KGppGhyc1MXAMeVgcQw02qxROBwMLMmz0i9M6klxjsSrRPe
+	6IfxOFMTGjbd1e6oRyO7HvPQgdiLFgL5RaRg88aZIJlPyQ6u+Gpu6FvX5FJypKxc
+	Z059P+UrFGfVvzePHIb7pC/kGw1WOQzokFo2k6u3o6RCTZnM99PCMo/nZOizxNxv
+	nFzansZGIKrWdsK9kUU8rvV4SYeR4JextJlyrWUyfb12UTyVt0LerL6zK+qsg3Ys
+	bakaPbzYsobzj6fruIfrmhECrkSl9m/C6hz7zzUlou52oaiJU0Zfzlin9x7iA3LD
+	bouMKBCfg20JlknfnP6F6X1sTJzrEgM0hIxqMmg==;
 X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-08;
 	repo=github.com/dkim2wg/interop; date=2026-10-28; sw=lmtpprox;
 	action=mi-m=1; hc=13;
 	hn=cc,content-transfer-encoding,content-type,date,feedback-id,
 	from,in-reply-to,message-id,mime-version,references,reply-to,
 	subject,to;
-Message-Instance: m=1; h=sha256:WUvppL31H65NuvEvp+bA+NhqjPmBDEZq6ABxS9qrTxA=:5AvZy7GVil8U9+BvclQES0J7RLBjeLccfzGxVbjLjyk=;
-X-ME-Sender: <xms:J6_naiCo76ZoJP0LWvUB4jzE-p4VjS3ZN7dV6jrJML1TKD5WA0x0sg>
-    <xme:J6_nagOXCBpiQ4N8iKNrJarUCrDqKIcl5RzBW5Xv2OLjwHpJgA-YX1WDsXi-HPPjK
-    3zZi3xdRwlzkM8czABtoR1JJljtkcC8y3Bj962jdqsxcem4kqA>
-X-ME-Received: <xmr:J6_navZY3OYE3mfUOv-ibTpk1sLGbyaJHr_uTuD7D_Yw49AROCST_La7V9OWajP0r-LW1BM33mMUHhbdaXLqWjD-2IbDJSA>
-X-ME-Proxy-Cause: dmFkZTEKrDxSHGgIzBmDpjjkIHPMxsCGK1CpNZ++cfdOy7KDq6R1lYMsRoD2uig6eGCoAn
-    aEJPMyD+WGR9xsWveWH7U/Pdb5dVDtaZAlTcDWifkENAKFNAM5H1JMNRiKx0mKcyQv9zX4
-    3z7Rj9CT3IseERoN0BIFtzIFIgm/M0X/MDC0zlANbAIGYYkP+Q2LF4nKDRg8LVId2AVsIN
-    RLC2R95fOvuuvSqlfbNHw+hFLLzHZOs2L1lBycDPnqlGaGvz4aZNDHI3Kk4yWAvIWPlz5T
-    WzDC1CZh2TD/klgUgN+CPfnKQBFccdMwfiRWwqsLoEIhLkcIBtXRfsrghpp//FlcFLrtnK
-    duIefnNhjUyTrdvXQ4HsHch3mBXucqYnTOOBqZs3VuUPjY04vVhA5CvAM2qNbEXNqR6Jta
-    dl/l4z/e7lVg0zTTzKnPIgVkm6mmJeo2KbL898L+nGuTpEZWRx/+YFjQGOtzsni0X3kVET
-    ZkH8E7zEmVBth2Ic5EzWjQgWWUaVs1KRAzJwgJyetitZSqQlOkWTeNvZS+xAFnlLAvEHhS
-    Z7pBfS35XHFo7cHxFWgWVcsKlTrahO8X0ulCjfI6wsQkumDM8daRpYo2yz5CbMYDZ6R+Bj
-    C6uqPYvSXonTipa5vQBYQYI5I4M73aCRLHOM3bEw00lUcKWEIGuwo5M64jzQ
-X-ME-Proxy: <xmx:J6_nantUdH57tA3pNrIvDQOjH9UmgiVTMg78qXtsTIe1MbfeA8C3fA>
-    <xmx:J6_napNJSE10rbNER5WO2YyxT-tbsbB8vRTeq973l8J8DyK2lQeS-Q>
-    <xmx:J6_nam6ElbaPQPRmhMGbDG2fgrogOQx8rkoWhpvjhqvGinkfwXhEIg>
-    <xmx:J6_nanStFJr1jZM0823oEHduBDLfQSrgaXN_UikbS7XF1zGUc-1oUg>
-    <xmx:J6_najjhTlMYQy3RLUIGfsqTXrwHu0NFPWJ80es98AxMl9d_DdQ9UPVY>
+Message-Instance: m=1; h=sha256:9miFjryQHO1KmqzSrqIhkMbNW6nxCHsBOp5thbTaWQg=:cVtjZT3UUBze5Ok+wlc4VpICLbO+9PQl2PYbEIz6XNI=;
+X-ME-Sender: <xms:fbHnamBcdk5IoTi85oEiGKd0tlnW7a_EkC3nrQ-Rl0cqdje5-W0IWA>
+    <xme:fbHnaqiyzJyutcOX2c4OFfzck5YeDxbQwRJRmmvCSL4wbWNOf5Xai1ZsMbHqV1yU5
+    X59bxWJ_8zVnw7oYenWjVXSVM_DDeCKYYKOzmdLGchALYMFubU>
+X-ME-Received: <xmr:fbHnagOQyTZ55ZHBED1uFuYCejOkxEVNjVDOtyVas4rge2dCqszyG5kD6mj-g17sYa2cJIYXrdSus5WQMQ9gZnBpoB_MD34>
+X-ME-Proxy-Cause: dmFkZTESt4xrVf4fNQ+NzKwfZGCmBFrlLRZWF+jX8JvRcuA+iW0T2FQSJ53rsW2kVCVHb4
+    Mc0Ewjf5XrUIBSRzZ9auFDECcQv7OsP6xoWhjWZT6TB0+QcsutEAKRe4kNkZ08lvF9peXt
+    jUU/beKrbBGvU53pvV8MCySR9Tn2vd/A/L+tqLMfrMfcptkIaOtKPtHQnA9hBHZm0uquFh
+    3ELqV+ppbI//yPqcoDQNyDvA5oy1sjOUpcsjtzk0TGBa+BchYzEzKNvJf4MOVqTXFd8aZg
+    yXvZqL5/wej2wCq4lVsmgJ+3YvbPh/umrtmOsgrIT78iVepVGwcLBgXYOHch9l2C9JnRQD
+    16YZ6G94fXrN/N73eClUCAgxHRjb3t035iZfX3KBm+5TOFTsoB27srPum4rM5eptzMHqTR
+    cQ/PPo9FahCl/oJHbp6DvcJ3S/DwirCWvUUe3ax+D0xIpbQ+oIE+KpwyDD2VqFOvETM/SD
+    ygRNZVoaX7oUgaXlHg3w4RYNg7KOEtBhrDn/NQCLcgNQ7GIEis5NybxYpd85cGGkAVQDWQ
+    aI2HYCSOja3iTs1yE9oR+FetLUfDFtv2XXvoz9mApytjnimXF/kRZPHdxFuNTOCOJoSJ1K
+    mCvyPdXTLIeir5p9XEa1IUe99gZpeRmTkqwzkdNtJtTj/xafBwvGI37ZEb8A
+X-ME-Proxy: <xmx:fbHnai8BsaiK-sfQpl9AfP5jDUbGQDy2L-BqbpovSTco0tC4WZDt4g>
+    <xmx:fbHnapcLhTbZPwmB1yevVuqTzmex5eDKhtiayrre5HBkX0xWtw-EEA>
+    <xmx:fbHnapx595Kuj4dWEy7B12uoYtRqqbgoniJjT6VrbhlY4E8JHRK9-A>
+    <xmx:fbHnamLEjtUTvZ0d6dr7rffeTI3GAw070hf5bh6ZkZiz3B0xwPUh7A>
+    <xmx:fbHnaiSeF-yV2U0g4CT3tIDI9S0kZYhkfV46YrXnSvKR1ke08ksSOmww>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Sun,
- 1 Nov 2026 16:29:09 -0500 (EST)
+ 1 Nov 2026 16:39:06 -0500 (EST)
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: quoted-printable
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -119,120 +119,74 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 From: NeilBrown <neilb@ownmail.net>
-To: "Chuck Lever" <cel@kernel.org>
-Cc: "Jeff Layton" <jlayton@kernel.org>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <dai.ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org
-Subject:
- Re: [PATCH v1] NFSD: Do not regrow a slot in the SEQUENCE that retired it
-In-reply-to: <20261101154742.1950822-1-cel@kernel.org>
-References: <20261101154742.1950822-1-cel@kernel.org>
-Date: Mon, 02 Nov 2026 08:29:04 +1100
-Message-id: <179356854478.547122.8943689348477321562@noble.neil.brown.name>
+To: "Haruka Kuze" <harukak@zohomail.eu>
+Cc: "Chuck Lever" <cel@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org,
+ linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] nfsd: don't access freed memory when cannot grant a write
+ delegation
+In-reply-to: <20261101212135.1231222-1-harukak@zohomail.eu>
+References: <20261101212135.1231222-1-harukak@zohomail.eu>
+Date: Mon, 02 Nov 2026 08:39:03 +1100
+Message-id: <179356914391.547122.3246865716471741922@noble.neil.brown.name>
 Reply-To: NeilBrown <neil@brown.name>
 
-On Mon, 02 Nov 2026, Chuck Lever wrote:
-> When a SEQUENCE acknowledges a smaller slot table, free_session_slots()
-> retires the slots above the target. If that SEQUENCE is on the new top
-> slot, the growth test later in the same nfsd4_sequence() call finds the
-> table at its target and allocates back the slot the call just freed.
+On Mon, 02 Nov 2026, Haruka Kuze wrote:
+> From: Haruka Kuze <harukak@zohomail.eu>
 >=20
-> The slot is retired and rebuilt inside one request, so a client with a
-> request outstanding on it never sees NFS4ERR_BADSLOT. A copy of the
-
-How would a client have a slot outstanding if it has acknowledged the
-smaller slot table?
-
-I accept that shrinking and the growing the slot table in one op could
-easily have edge cases and is best avoided, but I'd like to understand
-the motivation of the patch.
-
-
-> slot's first request passes the seqid 1 rule for a rebuilt slot and
-> executes a second time. A CREATE replayed this way returns
-> NFS4ERR_EXIST, reproduced with pynfs against a two-slot session and one
-> write to drop_caches. A retransmit of a request whose reply was lost
-> matches the retained seqid on the uninitialized rebuilt slot and gets
-> NFS4ERR_SEQ_MISORDERED, which the Linux client retries every 15 seconds
-> without limit.
+> nfs4_open_delegation() hashes the delegation before the call to
+> nfsd4_add_rdaccess_to_wrdeleg() and nfs4_delegation_stat(), both of which
+> can sleep, and it calls destroy_delegation() from the error path after
+> dropping the caller's reference.
 >=20
-> Skip the growth block in a call that retired slots. A retransmit that
-> arrives while the slot is retired now gets NFS4ERR_BADSLOT, which the
-> Linux client handles as a session reset. The next request on the top
-> live slot still grows the table on demand, so a copy delayed past that
-> request meets a rebuilt slot as before.
+> Moreover, a DELEGRETURN from same client can unhash the delegation and
+> drop the hash reference in this window, so nfs4_put_stid() frees it and
+> destroy_delegation() then reads freed memory.
 >=20
-> Fixes: fc8738c68d0b ("nfsd: add support for freeing unused session-DRC slot=
-s")
-> Signed-off-by: Chuck Lever <cel@kernel.org>
+> Call destroy_delegation() before dropping the caller reference.
+>=20
+> Fixes: c5967721e106 ("NFSD: handle GETATTR conflict with write delegation")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Haruka Kuze <harukak@zohomail.eu>
 > ---
->  fs/nfsd/nfs4state.c | 13 +++++++++++--
->  1 file changed, 11 insertions(+), 2 deletions(-)
+>  fs/nfsd/nfs4state.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 >=20
 > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index cafdf80f32de..1b8fe62cc756 100644
+> index 1de6c6d757c3..b13d05fe8993 100644
 > --- a/fs/nfsd/nfs4state.c
 > +++ b/fs/nfsd/nfs4state.c
-> @@ -5230,6 +5230,7 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_c=
-ompound_state *cstate,
->  	struct nfs4_client *clp;
->  	struct nfsd4_slot *slot;
->  	struct nfsd4_conn *conn;
-> +	bool retired =3D false;
->  	__be32 status;
->  	int buflen;
->  	u32 maxlen, respsize;
-> @@ -5301,9 +5302,11 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_=
-compound_state *cstate,
->  	    slot->sl_generation =3D=3D session->se_slot_gen &&
->  	    seq->maxslots <=3D session->se_target_maxslots &&
->  	    seq->slotid < session->se_target_maxslots &&
-> -	    !nfsd4_slots_inuse(session, session->se_target_maxslots))
-> +	    !nfsd4_slots_inuse(session, session->se_target_maxslots)) {
->  		/* Client acknowledged our reduce maxreqs */
->  		free_session_slots(session, session->se_target_maxslots);
-> +		retired =3D true;
-> +	}
-> =20
->  	buflen =3D (seq->cachethis) ?
->  			session->se_fchannel.maxresp_cached :
-> @@ -5360,8 +5363,14 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_=
-compound_state *cstate,
->  	 * configured maximum, not the running thread count, so a
->  	 * client resuming from idle can grow back before the pool
->  	 * scales up.
-> +	 *
-> +	 * A slot rebuilt in the call that retired it carries
-> +	 * no cached reply for its outstanding request, so a
-> +	 * retransmit of that request is executed again or fails
-> +	 * with SEQ_MISORDERED instead of BADSLOT.
+> @@ -7300,8 +7300,8 @@ nfs4_open_delegation(struct svc_rqst *rqstp, struct n=
+fsd4_open *open,
+>  		f =3D rcu_dereference_protected(dp->dl_stid.sc_file->fi_deleg_file, 1)->=
+nf_file;
+>  		if (!nfsd4_add_rdaccess_to_wrdeleg(rqstp, open, fh, stp) ||
+>  				!nfs4_delegation_stat(dp, currentfh, &stat)) {
+> -			nfs4_put_stid(&dp->dl_stid);
+>  			destroy_delegation(dp);
+> +			nfs4_put_stid(&dp->dl_stid);
 
-This comment could probably be improved.  As we don't (now) rebuild a
-slot in the call that retires it, "A slot rebuilt in the call that
-retires it" does not exist, so is not of interest...
-Maybe:
+So it seems strange to access the delegation after it has been
+"destroyed", but I can see that this change does fix a real problem.
 
-   Don't grow the slot table in the same call that retired some slots.
-   Doing that would mean the client never sees a confirmation
-   that the server dropped all the slots, so ...... something that I
-   don't understand yet.
+Maybe "destroy_delegation" isn't a good name for the function.
+Maybe "deactivate_delegation" or something like that.
 
-I don't object to any of the code here - I'm just not clear on
-motivation.
+That is a separate problem those.  This patch is good.  The one other
+use of destroy_delegation() is correctly followed by a nfs4_put_stid().
+
+Reviewed-by: NeilBrown <neil@brown.name>
 
 Thanks,
 NeilBrown
 
 
->  	 */
-> -	if (seq->slotid =3D=3D session->se_fchannel.maxreqs - 1 &&
-> +	if (!retired &&
-> +	    seq->slotid =3D=3D session->se_fchannel.maxreqs - 1 &&
->  	    session->se_target_maxslots >=3D session->se_fchannel.maxreqs) {
->  		int s =3D session->se_fchannel.maxreqs;
->  		int ceiling =3D min_t(int, NFSD_MAX_SLOTS_PER_SESSION,
+>  			goto out_no_deleg;
+>  		}
+>  		open->op_delegate_type =3D deleg_ts ? OPEN_DELEGATE_WRITE_ATTRS_DELEG :
 > --=20
-> 2.54.0
+> 2.55.0
 >=20
 >=20
 
