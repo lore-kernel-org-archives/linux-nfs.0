@@ -1,50 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1793548281;
-	b=XpG+jkaZIGJW4fjn/brrzRemIE/eb0hdKZiRvZB6FX5sCHBJ1rji4YlAGnPzVIMR6fma
-	 ayVybNIG/AMg6QeZpjtz9U5FDFtpNUzBQfma8X+M3ImFhu2J8W+Hn4pA5LuHCEl2fejv/
-	 h/DXpMqDuGOqNrIPSMlzcC5BjSd/kYXB1WlDT0KAnKpl9M5uDohQ+nleHNLDWlvjn7Qlo
-	 fmICKuMETFPWv/gORqArCQ9p6KgQN7mvd+iGe6jbNjhNbEe8Oqhbrpo460MU2SJuQ4/T1
-	 5pf2CzmLW2qG9xMFyS4bUqqhGW28TRHmDGBijZsQER8Xj2x/woJkDsb1GmdLPFqKySg==
+	b=Qw1RGMquo/W4nlOqWY9SgqKVvw8m1eqR9VcIuIzwG9zVudvqVVd51uhg5qvMLC1FCn6s
+	 FNTJ53JSYzegLXMPohcbcgUzREucPCEdj18nxxvRrl8MXveC1jTDRafbaPbs0VIUcM099
+	 hNRN5/DwUxauikeGeHRhSxkaNPBVFuSYUisCOGfK8AYQ7NmiICaPm8+oX6JLK08BeF01G
+	 bZEctMoOC4/Ad6XnLZH93in354X+XeZGRREnn7ucLN55TF1nfPhYELxSrGuFmiJOYuzvb
+	 gzkBwVfMkqnzr/fy7Y+uUjcVD5FYjiu3jym/DLRhKmrWbmFojcKghkCdddPtlMmvFrQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1793548281;
-	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
-	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
-	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=Cq+s2t+7tMsZIq2OvqLBiq37s3CihVFhMMqbQJ0kiVA=;
-	b=ow9h6u+T1XoM1w70GrfD2wpZU5KoqFojGv1LiaLoQzJ8rBVISuBoBtJw56x0hOwjNM+R
-	 Y5+A2yC9FZsbdcHJrb6UX9pJsB7hThFEhcofQNAIXG7StZB7yENq6s5PUYeGzs46U4C+K
-	 Abrx+JNWCee4BTUcRbgggNJykAlMoTgjI15h3/nGxvpUhYdiHS3hIn436fFDSsblKsiAE
-	 ESZYZG8GYIcevUppGGwrcxAGP/gXVqfWGiHiojr6bT3cNJYyHO68kC9dMkJX/7qdrM8JP
-	 TUUV4P2cEEvg2mgkIclN84AJjEbGpILH1P9S/+/ZEVvse84F+KCr5Fn6grXeI37RIyg==
+	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
+	 X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=WVS5Jb6NcVFcvnLidHwSb/0ROGlteL91TOkOg5df6xI=;
+	b=zpDP6AfUJWIPlDh7hpiBia7JeRAE0MiROCT4fBu0oej+M2+hagmY3ccE4miwvy83KnsU
+	 sPqeJoZG6OnqmMA5v7Hrj3ASne6+OjwmBnlo2/gNYtc6HqKJkRtDlzURIqsNR+5Wrmq+i
+	 oH4Kcp3Bm0CEHzbYZJoO6FpT2/f5bDz7HAo+B/rOAuG3MTDv+Ev1wifuss0CljqsTTEFC
+	 ilsQEi9EBeTDkaFhHDHIoiZDcMBZZqxyPzNKRcPU6UXWtLsNuLi4uvJIo02Dqo7fWzf95
+	 uBnDEQ6MDjfgyONRMuq8sN5YSiwEzSVJG1PTBgiTjHtVnKYLU5pztUGja+93VJZvJng==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Wwe+Q9Mg;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hGonle5E;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C010E606A324
-	for <linux-nfs@vger.kernel.org>; Sun,  1 Nov 2026 15:51:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 832D8606A32C
+	for <linux-nfs@vger.kernel.org>; Sun,  1 Nov 2026 15:51:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Wwe+Q9Mg
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B49501F0093A;
-	Sun,  1 Nov 2026 15:51:19 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hGonle5E
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 937C81F00A15;
+	Sun,  1 Nov 2026 15:51:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793548280;
-	bh=Cq+s2t+7tMsZIq2OvqLBiq37s3CihVFhMMqbQJ0kiVA=;
-	h=From:Subject:Date:To:Cc;
-	b=Wwe+Q9MgTSZQ/3/sLfzoyo3SEXMB03A9LO1WA0b+o//q/EqsSjpPbfNqwt9MkydlC
-	 QNxIv7KrPjqChRLheccgCGGl9ZIrsBfVeLbgKHvrdaFyjSOAJtrE7VcKUf49+JAxvS
-	 LDuQMAL0V/Q8gcuuRGjGzbFeIwuAn3k9xXOQq4gUdx0TypWTAJWmglw57nJ1R/CUQN
-	 MntKBmoudq8ZkfXaJ+6NdgWg+7s2xbxHm8u6N+2MNQLje+GDiYD1XtBtmPA4dxtI5M
-	 I9Tkofo9ZbmS5puWPrA13BysY+s8GCGUuK8e03OJVelYv5Q8DRB49A1JYAwjq00upU
-	 K61k/V90savXA==
+	s=k20260515; t=1793548281;
+	bh=WVS5Jb6NcVFcvnLidHwSb/0ROGlteL91TOkOg5df6xI=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=hGonle5EgosTef/asusRxLmYAjIxKv8Uc8+FXgOjVAQUyzxA0KmrLAAACqPH3b53n
+	 HL0aDIaw78IK5yLetCoOLoVsY78ytM3poaavcA4TCbrORfyfQcs230hKuBa+Mt+CKd
+	 PAckqEZwfcsMaW1Rn6Dlu/KQtJ5Cq69C73NMuwRysJMvGr8V+mJ7/j+k3VYmzL7D3c
+	 g3Va99JlljFhCXUREO2eZpxXhL6+pVG3pGn3JpSmGB5u8JHEqSHd03SPxQ7j8iUAg0
+	 Ufwo8wpgIDfjWmTyqQF/MuMH0ecnlAPGmrJC5GkjU6esWA4iAk9ABkQeKaztgoelY8
+	 lHqMuTTeSSS2A==
 From: Chuck Lever <cel@kernel.org>
-Subject: [PATCH v6 0/3] NFSD: Enforce export security after a deferred
- PUTFH check
-Date: Sun, 01 Nov 2026 10:51:09 -0500
-Message-Id: <20261101-verofess-v6-0-4d70097db7d3@kernel.org>
+Date: Sun, 01 Nov 2026 10:51:10 -0500
+Subject: [PATCH v6 1/3] NFSD: Fix PUTFH wrongsec check when SAVEFH follows
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -56,116 +54,135 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22OQQ7CIBBFr9KwFqVgG+vKe5gugA4tasDMINE0v
- bulbl2+yZv//8wI0AOxczUzhOzJx7BCu6uYnXQYgfthZSaFbGuhBM+A0QERd0KeagNKdcayVX8
- iOP/eoq79j+llbmBT+S+G0QTcoA52KicLj0NwNPAElHwYizJ5ShE/25zclKg/zbnhgsujBNCy6
- 2qnLnfAAI99xJH1y7J8ATFdR9LWAAAA
-X-Change-ID: 20261030-verofess-f0281be339bc
+Message-Id: <20261101-verofess-v6-1-4d70097db7d3@kernel.org>
+References: <20261101-verofess-v6-0-4d70097db7d3@kernel.org>
+In-Reply-To: <20261101-verofess-v6-0-4d70097db7d3@kernel.org>
 To: VeroFess <coderzeng@gmail.com>, Chuck Lever <cel@kernel.org>, 
  Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org
 X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3880; i=cel@kernel.org;
- h=from:subject:message-id; bh=k7W5qUwLSGhMon7lLOkbdzysAQ3NgfHlKLbkC12Ah2A=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq51/wjyBzEvfhktmbqWygPSZ76Zw45rnHqceVU
- JBKzQn05d6JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaudf8AAKCRAzarMzb2Z/
- lxt8D/9tRi3zgTHwraNULo5GZGXadyd24z5iFqm5Wdelo3Dld31ExLIuEJcgbUzr7H1oh29Qz5b
- 1/rHxbN2vh8aa5e58OtZm4cdffwJktybgegCKNzJ183iWz4JTvdethGPg1XhdPJ2GNGcJUu5XQH
- ypwWK6hksEBqtw0DEoEZSLfPBQdJQRzRvVtb5Z1TkDy9Jk7q7LyOHzcwi8vZ2Ag57AeHPEVdaPt
- Oq62+Q7HFZyY00/+wyOV1NhSOvks2vyWPaDibuuJUYM1aZ7aL+h/YZAVaSQ26/Gy4tIsuEtrFyu
- 9pqbXXA0VZWYzfQtn81pDhfDHgavGTX2PSUKO2PDIUchRhCuIFHW9SPVIq3465ufYO7nhIGZ7lh
- +vKdca5h7kDC3IivbkKB/aFKC/ZOWajQ0dgAlO5PBZ/Fmut1qFh15v4oKuL/PlN4jt25+gMNqYQ
- PyDLeBYRzTyJLULaEHE+zXsxXj31+ChZUP7Ce+gbt1WwY3iTg+08xaDUsmM04Htp9BD153es1Mc
- quqhZH2Apolc3OUUY77UAjsZQNjh6xHGAtWfxnby3VlFdAodJ1P9Q4NVn1uGECbNIGonpMmBD9V
- eOkGtblyQKsG6VoQRooYu1yeymHNCOCSsqPeiVi8ClVsT1VMBJ8Sez4vH1mREQ5n4x+fMvV6XDg
- WBcf8IXFFM7xU9g==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3800; i=cel@kernel.org;
+ h=from:subject:message-id; bh=/9md6L7PBJFdrZE/6SODF/WUjcSyUC1/l957VpvKYuw=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq51/2M5ksrHBtNjFQ0SU3LhrAjcuLQg9M+NGab
+ 5D9GoxwYsKJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaudf9gAKCRAzarMzb2Z/
+ l5mtD/9py4PpLR4do84WVwEQN6J2IPauXEeq3XrI+4oWid8yWLVQNAx4sr7zrfD+DL75ItY6YXs
+ 7m9f8Km3KYJ0mxBL26jkuu8mJ3/ELFsQtiGin/GU9ZscyV9hvSooiMaDIzO/CKAJsokl48kAJ2E
+ rxGDouck851O4rps8BvB7nNkIgsQ2NVTImMQL1vmmZQeI+xu43PxvHOkUWULtv5eG6/2saINBgj
+ kCY07LkMFQY9E1SV+6xaSxdJ2ieeFZP6niIWRrxOkp6gvCv1d2P5DVO9ztXR5930fndzYY/GB8t
+ caEoPsGVb3WC9faz62W5NKhwD8WRBohZV76SLyxGU9UPNmEDbR45nRACBPA8WAGrrKGHzn5gM6Z
+ O97dO5W0UJstDzxzI6dkcfcL3AkhJzZpTEA3K5x+9/7cTVZuWVcgvvxBKiA9Imb+KLCZ/2QrP7H
+ UewoKLMd+UEOGNPYvS+PQopcAWehtb3ZfS8vvammYntlzIPMluWgV7puHA2Xsv1zevz3X++MZHe
+ eQHWILbGvidP+afh5uQ56FTCXcjfuUQl/C4qNcRqe3qevi25r3OTKn5iGq+2Hoy1233b5zuVNfn
+ seAsGJ79WwatcYxvX7/H11XPO+IAWrOpcY7T0tTZnK/8WEvX6WcfVUzZ6bUxRj0OzccghcEQsHL
+ z6P/PzEmOZv/DfQ==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-VeroFess reported that an AUTH_SYS NFSv4.0 client can read or write
-a file on a sec=krb5p export with another client's OPEN stateid by
-placing SAVEFH between PUTFH and the I/O operation. The v4 posting
-carried that fix together with changes to COPY, LOOKUP, READDIR, and
-SECINFO in one patch, which would not apply to the stable kernels
-that need the fix. This series splits that patch. The
-need_wrongsec_check() change stands alone (patch 1) and applies to
-every LTS kernel, and the remaining patches carry only the Fixes:
-tags that match their code. VeroFess developed the original fix with
-the assistance of an LLM, and an LLM assisted with the split and the
-commit messages in this series.
+From: VeroFess <coderzeng@gmail.com>
 
-VeroFess confirmed on a kernel with only the need_wrongsec_check()
-change that PUTFH; SAVEFH; READ and PUTFH; SAVEFH; WRITE return
-NFS4ERR_WRONGSEC, and on a kernel with that change plus the COPY
-source check that PUTFH; SAVEFH; PUTFH; COPY returns NFS4ERR_ACCESS.
-The series as posted has not been run against the reproducer yet.
-VeroFess has offered to do that.
+An AUTH_SYS NFSv4.0 client can read or write a file on a sec=krb5p
+export using another client's valid OPEN stateid by inserting
+SAVEFH between PUTFH and READ or WRITE.
 
-After this series, NFSD still relies on per-operation
-check_nfsd_access() calls to enforce a PUTFH check that was deferred.
-A filehandle could instead carry a check-pending state that the
-COMPOUND loop enforces before any operation consumes the filehandle.
-Carrying such a state is later work.
+PUTFH resolves the handle with NFSD_MAY_BYPASS_GSS and defers the
+security flavor check to need_wrongsec_check(), which looks only at
+the next operation. SAVEFH carries OP_HANDLES_WRONGSEC even though
+it only saves the handle, so PUTFH skips NFS4ERR_WRONGSEC. The READ
+or WRITE that follows then reuses a cached nfsd_file.
 
-Based on nfsd-testing.
+With these export options:
 
+  rw,sync,no_subtree_check,fsid=0,sec=krb5p,secure,root_squash
+
+a Kerberos privacy NFSv4.0 client held an OPEN stateid. With the
+same stateid, PUTFH; READ over AUTH_SYS was rejected, but PUTFH;
+SAVEFH; READ and PUTFH; SAVEFH; WRITE succeeded, and the Kerberos
+client subsequently read the changed contents.
+
+SAVEFH leaves CURRENT_FH in place. When deciding whether PUTFH must
+report NFS4ERR_WRONGSEC, look past SAVEFH to the first operation
+that uses or replaces CURRENT_FH. If another PUTFH replaces it,
+leave the earlier PUTFH unchecked, as RFC 8881 Section 2.6.3.1.1
+requires. Drop OP_HANDLES_WRONGSEC from SAVEFH, which performs no
+check of its own and is never consulted once it is skipped.
+
+Fixes: 68d93184352f ("nfsd4: fix wrongsec handling for PUTFH + op cases")
+Signed-off-by: VeroFess <coderzeng@gmail.com>
+Tested-by: VeroFess <coderzeng@gmail.com>
+Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
-Changes in v6:
-- Verify the current filehandle in SECINFO_NO_NAME(CURRENT_FH) (sashiko).
-- Note that PUTFH still returns WRONGSEC for a GSS or xprtsec= mismatch.
-- Link to v5: https://patch.msgid.link/20261030-verofess-v5-0-242eea2991f3@kernel.org
+ fs/nfsd/nfs4proc.c | 35 +++++++++++++++++++++--------------
+ 1 file changed, 21 insertions(+), 14 deletions(-)
 
-Changes in v5:
-- Split the single patch into three, each with its own Fixes: tags.
-- Drop the nfs4_check_file() and COPY_NOTIFY export checks.
-- Check the entered export in nfsd_cross_mnt() and nfsd_lookup_parent().
-- Replace the for_secinfo flag with NFSD_MAY_SECINFO.
-- Report a SECINFO transport policy mismatch as NFS4ERR_ACCESS.
-- Keep the PUTFH export check for NFSv4.0 PUTFH; SECINFO.
-- Link to v4: https://lore.kernel.org/r/20261029063917.138184-1-coderzeng@gmail.com
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index d0290fce9187..50f38d6e147b 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -3237,32 +3237,39 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
+ 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+ 	struct nfsd4_compoundargs *argp = rqstp->rq_argp;
+ 	struct nfsd4_op *this = &argp->ops[resp->opcnt - 1];
+-	struct nfsd4_op *next = &argp->ops[resp->opcnt];
++	struct nfsd4_op *next = NULL;
+ 	const struct nfsd4_operation *thisd = OPDESC(this);
+ 	const struct nfsd4_operation *nextd;
++	unsigned int i;
+ 
+-	/*
+-	 * Most ops check wronsec on our own; only the putfh-like ops
+-	 * have special rules.
+-	 */
++	/* Only put-filehandle operations need a deferred WRONGSEC check. */
+ 	if (!(thisd->op_flags & OP_IS_PUTFH_LIKE))
+ 		return false;
++
+ 	/*
+-	 * rfc 5661 2.6.3.1.1.6: don't bother erroring out a
+-	 * put-filehandle operation if we're not going to use the
+-	 * result:
++	 * RFC 8881 Section 2.6.3.1.1.1: SAVEFH does not count as the
++	 * next operation.
+ 	 */
+-	if (argp->opcnt == resp->opcnt)
++	for (i = resp->opcnt; i < argp->opcnt; i++) {
++		next = &argp->ops[i];
++		if (next->opnum != OP_SAVEFH)
++			break;
++	}
++
++	/* RFC 8881 Section 2.6.3.1.1.6: nothing uses the filehandle. */
++	if (i == argp->opcnt)
+ 		return false;
++
+ 	if (next->opnum == OP_ILLEGAL)
+ 		return false;
+ 	nextd = OPDESC(next);
+ 	/*
+-	 * Rest of 2.6.3.1.1: certain operations will return WRONGSEC
+-	 * errors themselves as necessary; others should check for them
+-	 * now:
++	 * RFC 8881 Section 2.6.3.1.1.2: a later put-filehandle operation
++	 * replaces this one. Other marked operations check WRONGSEC
++	 * themselves.
+ 	 */
+-	return !(nextd->op_flags & OP_HANDLES_WRONGSEC);
++	return !(nextd->op_flags &
++		  (OP_HANDLES_WRONGSEC | OP_IS_PUTFH_LIKE));
+ }
+ 
+ #ifdef CONFIG_NFSD_V4_2_INTER_SSC
+@@ -4047,7 +4054,7 @@ static const struct nfsd4_operation nfsd4_ops[] = {
+ 	},
+ 	[OP_SAVEFH] = {
+ 		.op_func = nfsd4_savefh,
+-		.op_flags = OP_HANDLES_WRONGSEC | OP_MODIFIES_SOMETHING,
++		.op_flags = OP_MODIFIES_SOMETHING,
+ 		.op_name = "OP_SAVEFH",
+ 		.op_rsize_bop = nfsd4_only_status_rsize,
+ 	},
 
-Changes in v4:
-- Skip only the flavor check for SECINFO; xprtsec= stays enforced.
-- Re-check xprtsec= when a SECINFO lookup selects another export.
-- Link to v3: https://lore.kernel.org/r/20261029051430.96326-1-coderzeng@gmail.com
-
-Changes in v3:
-- Use nfsd_lookup_dentry() for SECINFO_NO_NAME(PARENT).
-- Let SECINFO and SECINFO_NO_NAME(PARENT) query a strict starting export.
-- Skip the source export's policy check on a SECINFO mount crossing.
-- Link to v2: https://lore.kernel.org/r/20261029013648.12015-1-coderzeng@gmail.com
-
-Changes in v2:
-- Check cached stateid I/O and COPY_NOTIFY against the current export.
-- Check the selected export after LOOKUP and READDIR mount crossing.
-- Map READDIR's NFS4ERR_WRONGSEC to NFS4ERR_ACCESS without rdattr_error.
-- Add the missing Fixes: tags and regenerate the whitespace-damaged diff.
-- v1 was sent off-list.
-
----
-VeroFess (3):
-      NFSD: Fix PUTFH wrongsec check when SAVEFH follows
-      NFSD: Check export security on the COPY and CLONE source
-      NFSD: Enforce export security on LOOKUP, READDIR, and SECINFO
-
- fs/nfsd/export.c    |  6 ++--
- fs/nfsd/nfs3proc.c  |  2 +-
- fs/nfsd/nfs4proc.c  | 84 ++++++++++++++++++++++++++++++++++++++---------------
- fs/nfsd/nfs4state.c |  2 +-
- fs/nfsd/nfs4xdr.c   |  8 +++--
- fs/nfsd/nfsfh.c     | 12 ++++++--
- fs/nfsd/nfsproc.c   |  2 +-
- fs/nfsd/trace.h     |  3 +-
- fs/nfsd/vfs.c       | 72 +++++++++++++++++++++++++--------------------
- fs/nfsd/vfs.h       | 43 +++++++++++++++++++++++----
- 10 files changed, 162 insertions(+), 72 deletions(-)
----
-base-commit: d9130c9f6535392d423351ffb5521e7689cae6b6
-change-id: 20261030-verofess-f0281be339bc
-
-Best regards,
---  
-Chuck Lever <cel@kernel.org>
+-- 
+2.56.0
 
