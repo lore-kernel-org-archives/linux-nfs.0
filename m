@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793632070;
-	b=ia1M7GP+uaZFHs5ac8tBoa1+n2lrYA4SxBJpjaLdNHIEFquzHJc/1re9CYQ0LT9Krx8j
-	 3hwjdv7TG49JjjGCUZRe4QJ/y1yluO9Jvpn+Pe/f0jM94P8T2UXUix1q18DTfvQ4us54R
-	 p1cxHTqhnDaUrxREefabW3StB5UlQJA7ZihqXHlHzjkG/qc2GurOkNvveEasjzPj6SJPj
-	 YU8TFooxLDcjjRjt2A4BGrddiLLclbvpi6O3nA9pq0aRF2hpKTA3wG5jrObGZqDkO9BrV
-	 k7I1g85br3sTec1Q99NRsKVKvPrsFnEk8mY1JM/s7y5U4wResNhNJCt92QgmEppuwsg==
+	t=1793632087;
+	b=Oafs2T6oiw1nPiSxcae4J3MzP2/z/vfbvn9e6B3wth8NQKMDkvoPMaYmWHPwXqlD3zFf
+	 XaHTzmPH59FLIj8TcIKzmeR+WDzAngStGcHa11BHnVud0GPMSwQvOOz69dvs0QRHc3+yx
+	 0YV4sSJMXz1w378tLGyXZk3OOHcMaYKokrBOaJWtvdXBJpSc8NsFcetOPeCTk4lvIvKDL
+	 fWSCDDFRLeeGZigvWvAuHa/401CmMwTa01LrNpR0zgrI0fVQE9FK6LLvlakrOYj1MvFFG
+	 NV/MLlPryw0QZHflz5C7bNCX6ZrSVVt3WZ3B15FV6+ysQ0X9n9nccVdCogzI4SWSWyQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793632070;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793632087;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer;
-	bh=lzi0v2Iw6r5Nf2GLOsMSQBwdPNX93e2TzGzGfD3oQvk=;
-	b=dCqC+geZgYa+16mFGtApa1HOqzz9b5NuIwVHT56mBNo6IlopgiFvWjFHhhqyGaGCKJY/
-	 GZbh/wyHMAuBDjq6/djbUyYyRvvD8Gf3KvE7gN4bwXcByYqKfDIGQgYSjumcUitg815Nh
-	 9ObIyVO/zNXU75lrQtRimuz+4iqToLA1XQHzDfwAoLnqQ8RFJcdrU6GRbmmHBotIwEdHy
-	 TQHHJyx1qKV3rqy2Jx1wxFV3S9RSbiEZglNM9aG03RGG/f20CGDsSxpx5t0SOaO6NmeNr
-	 JeRvke48lc+kWLgSuxexZwK3vDdd4Az5273sm+yeY+3qE0TTUK+9+hgldp9jdK/Ri7A==
+	bh=6VXp+nvPq44Iibfd7M3dnZqyMxw2lTQeTkLffGnpGI8=;
+	b=kvMG4MIWbBHoRX205kjSVlHUkt9sMfiNHMN0z+vYMjVrgemKCNCgdwOne9NYPmrEa/aP
+	 80ocBBhfgcqd/oKLoXfAIxNdvti+JTC1XnSf3lmP07Awsv/N7imw3nG2GfpWDjmk7t2kS
+	 5TlIGgWOEUaH8iBzJhp0trgWZ2UaCI8AvxdfIiGUzt1LR691rcVAr+3icnrdxQ85hXgbo
+	 834vOyhWPvbpGZoxDZYkMVzgFeoPm4BDcK2BCJqEiJPufEHrNK2RoYpyY3u3nwCJsq+9F
+	 LNkBoKjhOX/M4mUXsnPNLvo/CNUmNrM8RropzSwNrWwEfUrks2eS4mhQHHVLssDrTBw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kIoUwWZI;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=IJsS4rxO;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BC56760A34CD;
-	Mon,  2 Nov 2026 15:07:49 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 21FED60A0FF4;
+	Mon,  2 Nov 2026 15:08:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kIoUwWZI
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9C6921F00A18;
-	Mon,  2 Nov 2026 15:07:36 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=IJsS4rxO
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2E8D31F00A1B;
+	Mon,  2 Nov 2026 15:07:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793632069;
-	bh=lzi0v2Iw6r5Nf2GLOsMSQBwdPNX93e2TzGzGfD3oQvk=;
+	s=k20260515; t=1793632087;
+	bh=6VXp+nvPq44Iibfd7M3dnZqyMxw2lTQeTkLffGnpGI8=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=kIoUwWZIZJmPIDGcbCqUMn+ysgkkYH4B9KIOKwQcxHvHBenqGMDwfSExIyruQhbFw
-	 GSvSuGXqLlsS/+2bX4zY15r68FSJdvY7PhgxxV9bnP9Q3PrAcl12NmKthDnezkWdzA
-	 YQcdsHreaTBVFGkt5/ixU0O685iwRTrAmT2xH295OHXHJaGkHJFEIXEMqGqXCeqbKp
-	 nkpHGaPfZ7GY12qU7tMKJN88syBFW289W+duXDc1qru1IIyFkTan4orRc22NIVl3pP
-	 G9JHqYUFv0jVxFqVlQXSQgnsHBo0FeNBeFWC+sINyeJMsGIfziINB34GYCGOVyuJWO
-	 tkxpbHP0pDc6g==
+	b=IJsS4rxOrw0evPnx89c/k4QBxYWHpvmf5bC5nkZvS9heIkdiPMQ9+UGLYAqwXCeRo
+	 01xMhphWRq3Aq5SpmzQFwBYXFYqXKEaXV7aEPiCoGMFOQNxw7pWWisGb5yaQPmI5Sh
+	 tp1LULK9tthAvY5/hntPoT0wfDOVWswz1/lwzqVDgSpYEcKIVZ8JMYeE0wU54k61kO
+	 ToCwYStQ9aor3WEDfPrJ5VAU7p1igwmg/9f/J70vTmuPCQCbfb4H8bgp2jfpfxr9Bw
+	 Lja5YKZ94jQYHKXWFN6sFWb+EV8QZMwi+q9qWB4+h7zvBC2rh/ZxyN51W+VcpcOFR+
+	 oDn8HTPgDHHnA==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 16:01:45 +0100
-Subject: [PATCH RFC 18/22] macintosh/via-pmu: let procfs copy in writes to
- the options file
+Date: Mon, 02 Nov 2026 16:01:46 +0100
+Subject: [PATCH RFC 19/22] platform/x86: thinkpad_acpi: let procfs copy in
+ writes
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-arch-v1-18-c9492ab08480@kernel.org>
+Message-Id: <20261102-work-procfs-arch-v1-19-c9492ab08480@kernel.org>
 References: <20261102-work-procfs-arch-v1-0-c9492ab08480@kernel.org>
 In-Reply-To: <20261102-work-procfs-arch-v1-0-c9492ab08480@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -92,47 +92,57 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
 
-Implement ->proc_write_buf() so procfs copies in what is written before
-it pins the entry, and parse the option from that copy. Writes larger
-than PAGE_SIZE - 1 bytes fail with -EINVAL now.
+Implement ->proc_write_buf() so procfs copies in what is written to
+/proc/acpi/ibm/* before it pins the entry, and hand that copy to
+->write(). procfs already rejects writes larger than PAGE_SIZE - 1
+bytes.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/macintosh/via-pmu.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ drivers/platform/x86/lenovo/thinkpad_acpi.c | 14 +++-----------
+ 1 file changed, 3 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/macintosh/via-pmu.c b/drivers/macintosh/via-pmu.c
-index 49f929ae10e4..079c085be5d2 100644
---- a/drivers/macintosh/via-pmu.c
-+++ b/drivers/macintosh/via-pmu.c
-@@ -913,7 +913,7 @@ static int pmu_options_proc_show(struct seq_file *m, void *v)
+diff --git a/drivers/platform/x86/lenovo/thinkpad_acpi.c b/drivers/platform/x86/lenovo/thinkpad_acpi.c
+index 01e4c980fad6..b4f253da9536 100644
+--- a/drivers/platform/x86/lenovo/thinkpad_acpi.c
++++ b/drivers/platform/x86/lenovo/thinkpad_acpi.c
+@@ -881,33 +881,25 @@ static int dispatch_proc_show(struct seq_file *m, void *v)
  }
  
- static ssize_t pmu_options_proc_write(struct file *file,
--		const char __user *buffer, size_t count, loff_t *pos)
-+		char *buffer, size_t count, loff_t *pos)
+ static ssize_t dispatch_proc_write(struct file *file,
+-			const char __user *userbuf,
++			char *buf,
+ 			size_t count, loff_t *pos)
  {
- 	char tmp[33];
- 	char *label, *val;
-@@ -923,8 +923,7 @@ static ssize_t pmu_options_proc_write(struct file *file,
+ 	struct ibm_struct *ibm = pde_data(file_inode(file));
+-	char *kernbuf;
+ 	int ret;
+ 
+ 	if (!ibm || !ibm->write)
  		return -EINVAL;
- 	if (count > 32)
- 		count = 32;
--	if (copy_from_user(tmp, buffer, count))
--		return -EFAULT;
-+	memcpy(tmp, buffer, count);
- 	tmp[count] = 0;
+-	if (count > PAGE_SIZE - 1)
+-		return -EINVAL;
  
- 	label = tmp;
-@@ -958,7 +957,7 @@ static ssize_t pmu_options_proc_write(struct file *file,
+-	kernbuf = memdup_user_nul(userbuf, count);
+-	if (IS_ERR(kernbuf))
+-		return PTR_ERR(kernbuf);
+-	ret = ibm->write(kernbuf);
++	ret = ibm->write(buf);
+ 	if (ret == 0)
+ 		ret = count;
  
- static const struct proc_ops pmu_options_proc_ops = {
- 	.proc_show	= pmu_options_proc_show,
--	.proc_write	= pmu_options_proc_write,
-+	.proc_write_buf	= pmu_options_proc_write,
+-	kfree(kernbuf);
+-
+ 	return ret;
+ }
+ 
+ static const struct proc_ops dispatch_proc_ops = {
+ 	.proc_show	= dispatch_proc_show,
+-	.proc_write	= dispatch_proc_write,
++	.proc_write_buf	= dispatch_proc_write,
  };
- #endif
  
+ /****************************************************************************
 
 -- 
 2.53.0
