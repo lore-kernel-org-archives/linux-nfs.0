@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793633032;
-	b=mUTN4CicIbGNYeD9QDzlKkc3K72N5xVKeioZ8VCSOdVfdqI6Zqc6NDHipPT+tVsWdMrp
-	 +or2n4Z3LCuXfBRHZNZuiNEuTAkWLFCEfwUnTC8wjQxhSY/fhkTCBUD2hvjdXgKrZVu8S
-	 ue7d9przlc2hhz9YmIOK91iQZLGatOMJKY/xAOteS7F8bFF71nbzNpjAj2Bpav60jI9EN
-	 Vnp1BumkqmhBjYK9tcwadBLQ42aLpxmHUzQ/rFmGFY9rAhUdx4/dQKsVHRtR+PZGOozCA
-	 Do1l5cVYx7sQyGpHwZbSqC3Z5/fBrYUqXaYEW0osNUTguTRJ8Rhw+rr4nqNjnt1YPRg==
+	t=1793633052;
+	b=wHjdsBIM1A6xgE/tcKVXpezblP5eHRhuzQOtW6ITFnizJhESPQInJZ097wOhw4ktXwp4
+	 CdcJ6iS0QNL4YVFkLBBYm8qVuB+nNiigrw0MkYczrisAEtzL8eptls/6+KbpWngB7Omj0
+	 FYLGGfixUJm6mY3p5tJJDS9lW8WpxI2am+htxesGgdMDwBtRvl1ryngTgiqVrVgUOTNZj
+	 RtvHaM6CyaVlP+L2wtYNoZDr7UtiLSbu3AUTnG0vjoF0MVwIuQ/b6DBIzzt4Cv7m+dOow
+	 /Qga9+QWlCKqgbr2cyLRH4wAXEJTk+4/7P5dB6XIOGRhAKNX/zNSz3aQjHR7GTjOHZg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793633032;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793633052;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=e6t+ZjLlcl2UBfeg6Fa8p1cvIAPOQLpJeTR6f8fh14w=;
-	b=E6t6ED801NLs3O9y8Ap3LKmdn4lD+YXvhqfn2LSPyquRryk92a+Dr79egCClzQe4KA0n
-	 hVXIpU7SiG8ZphF3ibEAUR4wm/ozvCRKCQp2YClfGpBHQrdODuQSmxsSXO78NmbceG9x+
-	 M4rlR1dRCrCQQG8OL7veV1bVX9+rg3XE8Bp5Jwgt3seEMznSgy/ftGfReibRGwaBYocmI
-	 wRsokXaBWVG46ubYcO8eN2HJ3D5FqEKIokL0O0UH+fANeC75lFdjiaay6ROKWF/ArOLl5
-	 ifA8tvgS//9goCpyK594GiZrYnbqPAhqDo3xI9NnRQ8j8l+1GxC8UAjCTNjOZLlHWvQ==
+	bh=0DA6RuBvRtTkFqswtNQb2uYlEiZpU59l9tIHU1Ga2j8=;
+	b=xnr0d59GCbpg1Cj1gA6LxtkMTIUHiNkTQmQei5VqZMsulLzQyqRtm3y6dRHcVOr2ALlg
+	 mfZbjS2yQvUQU14NkP1VcEoAh9qIzkGE7N6D6re9AA2+MyCg/D91T1ao+D1J7PSdstvar
+	 iFwd4aO2Nmp/ygc3Fw12PgHJWknW4TUYGgbbDYg6uRj7OODNc2ejqMvt9O2WmsDlA7qFH
+	 TuXde/BsT73PPLfr1Ma6ZwHADTO8JHgEkDbWLgAJfNdONKsu2+GvY7v6IWUOQxjOREWKq
+	 J86vI2Xby8r1NWiNx71Y4z7LAfooq+c/2BvHC8ERTYsXmOsD1rOrP8fPpMI2bwEZidQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Vyc0TIAk;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Wzv23e35;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 066196070DB9;
-	Mon,  2 Nov 2026 15:23:51 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 767466098149;
+	Mon,  2 Nov 2026 15:24:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Vyc0TIAk
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 31AFC1F00A17;
-	Mon,  2 Nov 2026 15:23:34 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Wzv23e35
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 967341F00A16;
+	Mon,  2 Nov 2026 15:23:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793633031;
-	bh=e6t+ZjLlcl2UBfeg6Fa8p1cvIAPOQLpJeTR6f8fh14w=;
+	s=k20260515; t=1793633052;
+	bh=0DA6RuBvRtTkFqswtNQb2uYlEiZpU59l9tIHU1Ga2j8=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=Vyc0TIAkWtCaXuSIcqkzHLeKxyzrJXWfZdR7KJ6r92hFll9vSXVA6wBZRD3vYY+uB
-	 3sZVdE2NFmTbgG2ddW0Dunqa+sx427e4/M6eCyX7YNulxzXA/Y7RrUt1CRtv0WV1c1
-	 VnSdyrjZW1T7JnIrNFbHUTB5G0y2F7yNJ7aKsb2ZXNUPpTdBj7EAlKl0htLsJDFAU0
-	 GwPSMja/JtXpY9i9oMZ1zVIV10/ZlPAajmqJjQDUDjAhADIX3yaC33ZI9nceLo+jVL
-	 nntEU+f/qQxM5Cqc+RfMImzf9pBGn9CnD6PB9Mfk8jOBpiv3i5NqevVbA17WMV+SOd
-	 Cvqc70uXuktPA==
+	b=Wzv23e35LlF722Cfqg73FBGVnhxt+H5uTjMVTnB7asIIrTAol+UsSWODD3A9JMAWW
+	 CHeJx+/sOCjLZSq1s4VoynRxvWm7XhKnNjGUb4tFL3st5AhwGX1X8EXNyiNSob8zfe
+	 hPoA0Jwnc94AejcwzAl8mS34lOo0kwPJnFcg+lOSVQtUdf4OqaeMQYnXbxeWnmbXEb
+	 AX7yo9n+oT0VV5xUQw7x3ALW+dHnEd/WKJEInzk6ceYQfrGKcinK0xZJkLZt2jHfOm
+	 CKZoFbsH8Uf/vBc0GUbzhEZ6RBBP6OGx93Jv1yb/leud/4X919tLDeUZ9h/mDfqa8c
+	 5djzkG/VTzWXw==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 16:07:22 +0100
-Subject: [PATCH RFC 12/27] locking/lockdep: let procfs own the seq_file of
+Date: Mon, 02 Nov 2026 16:07:23 +0100
+Subject: [PATCH RFC 13/27] locking/lockdep: let procfs copy in writes to
  /proc/lock_stat
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-fs-v1-12-d09a996317b3@kernel.org>
+Message-Id: <20261102-work-procfs-fs-v1-13-d09a996317b3@kernel.org>
 References: <20261102-work-procfs-fs-v1-0-d09a996317b3@kernel.org>
 In-Reply-To: <20261102-work-procfs-fs-v1-0-d09a996317b3@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -91,102 +91,56 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2606; i=brauner@kernel.org;
- h=from:subject:message-id; bh=wBxYZkbuLq2vx9tHnE9HzeQESu+Hnu4x6fVoBaGOq2s=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG4U7TXpwSSf2Lct89uWhW6YtPjWvccbVb/PU9T+v
- vr4N3Ez/Y5SFgYxLgZZMUUWh3aTcLnlPBWbjTI1YOawMoEMYeDiFICJeLkzMrw79v+ffdeGm4Jz
- BNPPLvqwVv2j7OqCSNWSaz/OrW1U/T6D4X/epKx5u14mSBWsvqm6pl/ZYFGsw6souyT3eiYxK2W
- lbj4A
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1505; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=8vcSfGoyDeqLJaquRqiN2D+SQsNeRK8HAS3H3FbecE8=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG6k0HtsppuIOtP74Igd108lcc3fGSuzcnJdKhtD4
+ so7t2c0dZSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAExkkQEjQ+ONtmlOpu7yPdtO
+ f6mefC2DpTVNKs/EavHuEoFe/ryYWEaGI5/jjbfc+3ttHUtbJafnBWsGE6vUrY4/vk118NKbYRj
+ KAAA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Declare the seq_operations and let procfs open and free the seq_file.
-->proc_open() only takes the snapshot of the statistics now and
-->proc_release() frees it.
+Implement ->proc_write_buf() so procfs copies in what is written before
+it pins the entry, and look at the first character of that copy. Writes
+larger than PAGE_SIZE - 1 bytes fail with -EINVAL now.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- kernel/locking/lockdep_proc.c | 48 +++++++++++++++++++------------------------
- 1 file changed, 21 insertions(+), 27 deletions(-)
+ kernel/locking/lockdep_proc.c | 12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
 
 diff --git a/kernel/locking/lockdep_proc.c b/kernel/locking/lockdep_proc.c
-index 1916db9aa46b..9b034b5b94bd 100644
+index 9b034b5b94bd..2a66ea09c2aa 100644
 --- a/kernel/locking/lockdep_proc.c
 +++ b/kernel/locking/lockdep_proc.c
-@@ -638,40 +638,35 @@ static const struct seq_operations lockstat_ops = {
- 	.show	= ls_show,
- };
+@@ -669,18 +669,14 @@ static int lock_stat_open(struct inode *inode, struct file *file)
+ 	return 0;
+ }
  
-+/* procfs opens the seq_file */
- static int lock_stat_open(struct inode *inode, struct file *file)
+-static ssize_t lock_stat_write(struct file *file, const char __user *buf,
+-			       size_t count, loff_t *ppos)
++static ssize_t lock_stat_write(struct file *file, char *buf, size_t count,
++			       loff_t *ppos)
  {
--	int res;
--	struct lock_class *class;
- 	struct lock_stat_seq *data = vmalloc(sizeof(struct lock_stat_seq));
-+	struct lock_stat_data *iter;
-+	struct seq_file *m = file->private_data;
-+	struct lock_class *class;
-+	unsigned long idx;
+ 	struct lock_class *class;
+ 	unsigned long idx;
+-	char c;
  
- 	if (!data)
- 		return -ENOMEM;
- 
--	res = seq_open(file, &lockstat_ops);
--	if (!res) {
--		struct lock_stat_data *iter = data->stats;
--		struct seq_file *m = file->private_data;
--		unsigned long idx;
+ 	if (count) {
+-		if (get_user(c, buf))
+-			return -EFAULT;
 -
--		iterate_lock_classes(idx, class) {
--			if (!test_bit(idx, lock_classes_in_use))
--				continue;
--			iter->class = class;
--			lock_stats(class, &iter->stats);
--			iter++;
--		}
--
--		data->iter_end = iter;
-+	iter = data->stats;
-+	iterate_lock_classes(idx, class) {
-+		if (!test_bit(idx, lock_classes_in_use))
-+			continue;
-+		iter->class = class;
-+		lock_stats(class, &iter->stats);
-+		iter++;
-+	}
+-		if (c != '0')
++		if (buf[0] != '0')
+ 			return count;
  
--		sort(data->stats, data->iter_end - data->stats,
--				sizeof(struct lock_stat_data),
--				lock_stat_cmp, NULL);
-+	data->iter_end = iter;
- 
--		m->private = data;
--	} else
--		vfree(data);
-+	sort(data->stats, data->iter_end - data->stats,
-+			sizeof(struct lock_stat_data),
-+			lock_stat_cmp, NULL);
- 
--	return res;
-+	m->private = data;
-+	return 0;
- }
- 
- static ssize_t lock_stat_write(struct file *file, const char __user *buf,
-@@ -702,14 +697,13 @@ static int lock_stat_release(struct inode *inode, struct file *file)
- 	struct seq_file *seq = file->private_data;
- 
- 	vfree(seq->private);
--	return seq_release(inode, file);
-+	return 0;
- }
- 
+ 		iterate_lock_classes(idx, class) {
+@@ -703,7 +699,7 @@ static int lock_stat_release(struct inode *inode, struct file *file)
  static const struct proc_ops lock_stat_proc_ops = {
-+	.proc_seq_ops	= &lockstat_ops,
+ 	.proc_seq_ops	= &lockstat_ops,
  	.proc_open	= lock_stat_open,
- 	.proc_write	= lock_stat_write,
--	.proc_read	= seq_read,
--	.proc_lseek	= seq_lseek,
+-	.proc_write	= lock_stat_write,
++	.proc_write_buf	= lock_stat_write,
  	.proc_release	= lock_stat_release,
  };
  #endif /* CONFIG_LOCK_STAT */
