@@ -1,53 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793646670;
-	b=DdMXVxMXnHBUMbgHbdAZNVxrSU1dZobtZu3hfuFz5zmKNbt7/uOsD6CN6bj7YY5VpTYX
-	 2CWeHYru0iotgDu33jxpg981j2uYI65B0MGPdd6MYiH7T3exy11AamOp9aRZ3LY9AOlh3
-	 SJ5j09OoFVM0+nCg1vDS97rPUSORnWtel2x7JWTyhVJy51aZGtpNvhQvRCj5upRYLc3ag
-	 JgfwRYXWq4Z3dFErImttk9vyxni35oASVnZiYuZibA9ET6ibyKCx+op7iI7kXWkZsMRge
-	 t3R8SCRdgfBuGPDaCujdTZmF2Y+zDGud0HIHttBXr7wfofpVUfTWX/xP3A6wm5qTkBg==
+	t=1793646671;
+	b=CRSjGBLcML5E46h3lkoS4O4SCqn/PxK2s0kyTMWfpw8xW3sHlVYVmA6NHsJZY6P5R2HE
+	 uaY7GOr+By5+LbR8jyJxW1XKi8O2XsJYtuokCRdytWRqbA6e0fwAfov79Ym8t7I8+PL/O
+	 QeuSPOkynBR6p5aTfYHanzgEPEz3Wijh8RYpb4W0d+EOJDbRnBWsL+Ga9pFJmb4nNayKr
+	 yKrRfWB8MHSIYhab8ygkDsnUN4quMF2W4MG4QpCoHhRP1RgPhkP3/ZAFNa2QpUYbiOTsT
+	 IiZ1IrXQznG54aGHnXJFs1gp4hrUyMTcnSU9lZSoucR4wiQm9M4krgWJYMI75mlOe1Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793646670;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793646671;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=iMpfGYu7vzPaUDhbnJt2ry7XCm/uyqEFFdBBo0m94Ks=;
-	b=IrBRgEGXBlLRMoyp3FRs/dKSaNDSx+a3XipNl6gqDzEMIA7bp+8Eqn8lFHp57yv6sdRE
-	 7pInqTmkfWaSe99MvHt165KQpo6idAfTumOOk83UD5nN2T53aNZdxvqNeQoyAsnB0a2eD
-	 tj1urdaRIdPChSOD2lhXrIIc9Brj1knrZ7IMrXuKsCTsyio0ziJJIfROH4gYJr03w57Tb
-	 KN5GI4RY6GNTVgvowoPdlw9Gdh8s1CWAUbjYpB7ehJLcWnpjlcxSgVfmjgX1ITzAd74oo
-	 06mn22sR8BiZMUjvfBHlU8Wl31U8CDf7L4yVedipQL2OQKdopnhcs32U4t/bDjWT3jg==
+	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
+	bh=mKtZb/Ox9QwtvjfZxOjB6c9+8ROumITLAvdpeWdECcY=;
+	b=WiUHLZPUleet7o7L4PD72D5zG7fksJ2aA6WhxtbviSGeSSROH66q70HVlTTjH4SnS8T4
+	 JLEJuIfd8tU93KIkUqsybFLpAj7fKCQsm/DrjPwbQwSHD5U0NnFvUZIIVjeLActEjSP2U
+	 mJa0yRrGMuZgAN+X9/sJsS3wH5mIS6mK8ytk6ysQTXr3f2XsztfErozcBVoNcGfqWm113
+	 dnvIALGkBe1ga56PDTScBhG8nLHHxTfbXgovlMxzMxdTWdVFDQFdz+3KdkMJU8dXCCQir
+	 sULnVlDB+460hDaNZDp842CJmAEXGKE3fRbjq/l0oHxdOScNdtMo1KSu1CvEYpfkedQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="be5c/7hF";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QT74ruZ4;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 95284606A326
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 19:11:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8EE7E606A326
+	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 19:11:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=be5c/7hF
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F2A351F00A16;
-	Mon,  2 Nov 2026 19:11:09 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QT74ruZ4
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 316501F00A18;
+	Mon,  2 Nov 2026 19:11:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793646670;
-	bh=iMpfGYu7vzPaUDhbnJt2ry7XCm/uyqEFFdBBo0m94Ks=;
-	h=From:To:Cc:Subject:Date;
-	b=be5c/7hFRBfBXa2VZLFRFfakbLb2LqE6YQ/a5pyQW8gvgvwMj8+/kWx+sNjHFQPCl
-	 zIOPoKVwZRdNpRYb5N0FRsQ6dbqd+H5BXM2HuHauQWqeLQDIvpAqF2sf2lMEkevTO4
-	 XMUBv8RY/IGoEneTvlsYSQm/jbtC0VZe7Rlj6kUMidDs+SZtF8F8ealET14e/pR7lm
-	 kfQeHM+Da/6+b9ciHDNW+TBC/TehWHew9msAVw+qtYQ4gV0oRMR+TbPRO8RXzvnezr
-	 pv2DOVhcknj/ub2a4vkcucUY8pMpuxq+u8O+U2zgtQMPaov6/zd23wJhs1NmX9wZpG
-	 lWlYcfWelTd0g==
+	s=k20260515; t=1793646671;
+	bh=mKtZb/Ox9QwtvjfZxOjB6c9+8ROumITLAvdpeWdECcY=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=QT74ruZ4HAL6PKA6ClTZaT7KM/4pSLTsLJLRkwPfAhf3r+HgzF6V2mO9+tjNi+TQW
+	 3DlWFV+DxfwKoyvzJq074DYUf0poZ2GkXjipDaI9UPLGyrdpqYV9bfROKvNeKzzZnN
+	 JytTEDJKhF/Abs4NMb1iW0smc7rERROK880/JWEP1Pln5UnJNUPNrSEHDUaF6tV0Qo
+	 C5H1l42AlpgPjf5ecV4JQGlcty37QACGHeh5fKdsCPSYtQzf9KfT3gZhYEy+PqPDDF
+	 2IX6dko4+/hrYw+DGi0fge30VsNj9BJLNddenL6GVM4Zc06fIyAApHLh0CFvw7vDAk
+	 mF5ThQTK+yH5g==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Anna Schumaker <anna@kernel.org>,
 	Trond Myklebust <trondmy@kernel.org>
 Cc: linux-nfs@vger.kernel.org,
 	Jonathan Flynn <jonathan.flynn@hammerspace.com>
-Subject: [PATCH 00/11] NFSv4/flexfiles: scale layoutstats for striped layouts
-Date: Mon,  2 Nov 2026 14:10:58 -0500
-Message-ID: <20261102191109.13470-1-snitzer@kernel.org>
+Subject: [PATCH 01/11] NFSv4/flexfiles: move layoutstats accounting to a per-stripe lock
+Date: Mon,  2 Nov 2026 14:10:59 -0500
+Message-ID: <20261102191109.13470-2-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
+In-Reply-To: <20261102191109.13470-1-snitzer@kernel.org>
+References: <20261102191109.13470-1-snitzer@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -59,82 +61,209 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Hi,
+From: Jonathan Flynn <jonathan.flynn@hammerspace.com>
 
-Since striped flexfiles layouts were introduced, each stripe of a mirror
-carries its own read_stat and write_stat, but the lock protecting them
-stayed in the mirror.  For a RAID0-style layout (one mirror, many
-stripes) that lock is effectively per-file: every DS RPC takes it twice,
-once at prepare and once at completion, so striping multiplies RPC
-parallelism without multiplying lock parallelism.
+Since striped layouts were introduced, a mirror owns an array of
+struct nfs4_ff_layout_ds_stripe and each stripe carries its own
+read_stat and write_stat.  The lock protecting those statistics stayed
+behind in the mirror, so every DS RPC in the layout serialises on the
+same spinlock twice: once in ff_layout_{read,write}_prepare_common()
+and again on completion in ff_layout_{read,write}_count_stats().
 
-On a 64-core client reading one file from a 32-stripe layout with a
-128KiB stripe unit (~36.7 GB/s, ~275k NFSv3 READ RPCs/s), perf reports
-45% of all CPU in native_queued_spin_lock_slowpath, and 73% of the lock
-contention events come from the two layoutstats paths.
+For a RAID0-style layout (one mirror, many stripes) that lock is
+effectively per-file, and striping then multiplies RPC parallelism
+without multiplying lock parallelism.
 
-This series removes that bottleneck and, along the way, fixes what the
-server is told in LAYOUTSTATS for a striped mirror.
+On a 64-core client reading a single file from a 32-stripe layout with
+a 128KiB stripe unit (2MB O_DIRECT reads, ~36.7 GB/s, ~275k NFSv3 READ
+RPCs/s, i.e. ~550k acquisitions/s of one lock), perf reports 45% of all
+CPU in native_queued_spin_lock_slowpath, and lock:contention_begin
+attributes 73% of the contention events to the two layoutstats paths:
 
-Patches 1-2 (Jonathan) move the layoutstats lock into the stripe, next
-to the statistics it protects, and remove the now-unused mirror lock.
+  36.4%  rpc_exit_task -> ff_layout_read_count_stats ->
+         ff_layout_read_record_layoutstats_done -> _raw_spin_lock
+  36.3%  ff_layout_read_prepare_v3 ->
+         ff_layout_read_record_layoutstats_start -> _raw_spin_lock
 
-Patches 3-8 keep the per-stripe hot path to the stripe's own cachelines:
-  3: cacheline align the per-stripe statistics so neighbouring stripes
-     do not false-share
-  4: make dss_info->start_time write-once (try_cmpxchg64), removing its
-     dependence on any lock
-  5: drop the redundant atomic from the busy timer
-  6: pair the in-flight count with the layoutstats updates, under the
-     same lock, with lockdep assertions
-  7: derive ffil_ops_requested rather than storing it
-  8: give each direction its own lock and cacheline, so an I/O dirties
-     one line (the stripe shrinks from 384 to 320 bytes)
+Move the lock into struct nfs4_ff_layout_ds_stripe, next to the
+statistics it protects, so that I/O to different stripes no longer
+contends.  The reporting paths take the same per-stripe lock.
 
-Patches 9-10 fix LAYOUTSTATS reporting for striped mirrors:
-  9: drop NFS4_FF_MIRROR_STAT_AVAIL.  The per-mirror bit cost two atomic
-     RMWs per RPC on the mirror's shared cacheline, and since the first
-     stripe reported cleared it, a report carried only one
-     ff_layoutupdate4 per mirror: always the lowest usable dss_id.
- 10: rotate reporting across a mirror's stripes.  Callers cap a report
-     at four entries; resume each mirror's scan where the previous
-     report stopped, so every busy stripe is reported within
-     ceil(busy_stripes / 4) report intervals instead of only the first
-     four ever being reported.
+NFS4_FF_MIRROR_STAT_AVAIL is a mirror-wide bit operation and does not
+need the lock; set it outside the critical section so the mirror's
+cacheline is not written under it.
 
-Patch 11 takes the report decision (pointer chases into the mirror and
-layout, ktime_to_ms(), the last_report_time cmpxchg) out of the critical
-section, leaving the lock to cover two writes on one cacheline.
+ffl->last_report_time is shared by every mirror and stripe of a layout
+and was already updated under different mirror locks, so it was never
+serialised.  Make that explicit with a cmpxchg(): whichever racer wins
+sends the LAYOUTSTATS report.
 
-The wire encoding is unchanged; the values reported remain cumulative
-since the layout was granted.
+Signed-off-by: Jonathan Flynn <jonathan.flynn@hammerspace.com>
+Signed-off-by: Mike Snitzer <snitzer@hammerspace.com>
+---
+ fs/nfs/flexfilelayout/flexfilelayout.c | 45 +++++++++++++++-----------
+ fs/nfs/flexfilelayout/flexfilelayout.h |  2 ++
+ 2 files changed, 28 insertions(+), 19 deletions(-)
 
-The series is based on Anna's linux-next (nfs-for-7.4-1).
-
-Thanks,
-Mike
-
-Jonathan Flynn (2):
-  NFSv4/flexfiles: move layoutstats accounting to a per-stripe lock
-  NFSv4/flexfiles: drop the now-unused per-mirror lock
-
-Mike Snitzer (9):
-  NFSv4/flexfiles: cacheline align the per-stripe layoutstats
-  NFSv4/flexfiles: make dss_info->start_time write-once
-  NFSv4/flexfiles: drop the redundant atomic from the busy timer
-  NFSv4/flexfiles: pair the in-flight count with the layoutstats updates
-  NFSv4/flexfiles: derive ffil_ops_requested rather than storing it
-  NFSv4/flexfiles: give each direction its own lock and cacheline
-  NFSv4/flexfiles: drop NFS4_FF_MIRROR_STAT_AVAIL
-  NFSv4/flexfiles: rotate LAYOUTSTATS reporting across a mirror's stripes
-  NFSv4/flexfiles: take the report decision out of the critical section
-
- fs/nfs/flexfilelayout/flexfilelayout.c | 251 ++++++++++++++++---------
- fs/nfs/flexfilelayout/flexfilelayout.h |  74 ++++++--
- 2 files changed, 218 insertions(+), 107 deletions(-)
-
-
-base-commit: ef30b3efb7e8bae94d790a6503a595e1051323e7
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 9492d6bc1d1a7..bac0b7f559201 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -293,8 +293,10 @@ static struct nfs4_ff_layout_mirror *ff_layout_alloc_mirror(u32 dss_count,
+ 		return NULL;
+ 	}
+ 
+-	for (u32 dss_id = 0; dss_id < mirror->dss_count; dss_id++)
++	for (u32 dss_id = 0; dss_id < mirror->dss_count; dss_id++) {
++		spin_lock_init(&mirror->dss[dss_id].lock);
+ 		nfs_localio_file_init(&mirror->dss[dss_id].nfl);
++	}
+ 
+ 	return mirror;
+ }
+@@ -736,6 +738,7 @@ nfs4_ff_layoutstat_start_io(struct nfs4_ff_layout_mirror *mirror,
+ {
+ 	s64 report_interval = FF_LAYOUTSTATS_REPORT_INTERVAL;
+ 	struct nfs4_flexfile_layout *ffl = FF_LAYOUT_FROM_HDR(mirror->layout);
++	ktime_t last_report;
+ 
+ 	nfs4_ff_start_busy_timer(&layoutstat->busy_timer, now);
+ 	if (!mirror->dss[dss_id].start_time)
+@@ -744,13 +747,17 @@ nfs4_ff_layoutstat_start_io(struct nfs4_ff_layout_mirror *mirror,
+ 		report_interval = (s64)mirror->report_interval * 1000LL;
+ 	else if (layoutstats_timer != 0)
+ 		report_interval = (s64)layoutstats_timer * 1000LL;
+-	if (ktime_to_ms(ktime_sub(now, ffl->last_report_time)) >=
+-			report_interval) {
+-		ffl->last_report_time = now;
+-		return true;
+-	}
+ 
+-	return false;
++	/*
++	 * last_report_time is shared by every mirror and stripe of this
++	 * layout, so it was never serialised by the mirror lock either.
++	 * Make that explicit: whoever wins the cmpxchg() reports.
++	 */
++	last_report = READ_ONCE(ffl->last_report_time);
++	if (ktime_to_ms(ktime_sub(now, last_report)) < report_interval)
++		return false;
++
++	return try_cmpxchg64(&ffl->last_report_time, &last_report, now);
+ }
+ 
+ static void
+@@ -794,13 +801,13 @@ nfs4_ff_layout_stat_io_start_read(struct inode *inode,
+ {
+ 	bool report;
+ 
+-	spin_lock(&mirror->lock);
++	spin_lock(&mirror->dss[dss_id].lock);
+ 	report = nfs4_ff_layoutstat_start_io(
+ 		mirror, dss_id, &mirror->dss[dss_id].read_stat, now);
+ 	nfs4_ff_layout_stat_io_update_requested(
+ 		&mirror->dss[dss_id].read_stat, requested);
++	spin_unlock(&mirror->dss[dss_id].lock);
+ 	set_bit(NFS4_FF_MIRROR_STAT_AVAIL, &mirror->flags);
+-	spin_unlock(&mirror->lock);
+ 
+ 	if (report)
+ 		pnfs_report_layoutstat(inode, nfs_io_gfp_mask());
+@@ -813,12 +820,12 @@ nfs4_ff_layout_stat_io_end_read(struct rpc_task *task,
+ 		__u64 requested,
+ 		__u64 completed)
+ {
+-	spin_lock(&mirror->lock);
++	spin_lock(&mirror->dss[dss_id].lock);
+ 	nfs4_ff_layout_stat_io_update_completed(&mirror->dss[dss_id].read_stat,
+ 			requested, completed,
+ 			ktime_get(), task->tk_start);
++	spin_unlock(&mirror->dss[dss_id].lock);
+ 	set_bit(NFS4_FF_MIRROR_STAT_AVAIL, &mirror->flags);
+-	spin_unlock(&mirror->lock);
+ }
+ 
+ static void
+@@ -829,7 +836,7 @@ nfs4_ff_layout_stat_io_start_write(struct inode *inode,
+ {
+ 	bool report;
+ 
+-	spin_lock(&mirror->lock);
++	spin_lock(&mirror->dss[dss_id].lock);
+ 	report = nfs4_ff_layoutstat_start_io(
+ 		mirror,
+ 		dss_id,
+@@ -838,8 +845,8 @@ nfs4_ff_layout_stat_io_start_write(struct inode *inode,
+ 	nfs4_ff_layout_stat_io_update_requested(
+ 		&mirror->dss[dss_id].write_stat,
+ 		requested);
++	spin_unlock(&mirror->dss[dss_id].lock);
+ 	set_bit(NFS4_FF_MIRROR_STAT_AVAIL, &mirror->flags);
+-	spin_unlock(&mirror->lock);
+ 
+ 	if (report)
+ 		pnfs_report_layoutstat(inode, nfs_io_gfp_mask());
+@@ -856,11 +863,11 @@ nfs4_ff_layout_stat_io_end_write(struct rpc_task *task,
+ 	if (committed == NFS_UNSTABLE)
+ 		requested = completed = 0;
+ 
+-	spin_lock(&mirror->lock);
++	spin_lock(&mirror->dss[dss_id].lock);
+ 	nfs4_ff_layout_stat_io_update_completed(&mirror->dss[dss_id].write_stat,
+ 			requested, completed, ktime_get(), task->tk_start);
++	spin_unlock(&mirror->dss[dss_id].lock);
+ 	set_bit(NFS4_FF_MIRROR_STAT_AVAIL, &mirror->flags);
+-	spin_unlock(&mirror->lock);
+ }
+ 
+ static struct nfs4_ff_layout_ds *
+@@ -3071,13 +3078,13 @@ ff_layout_encode_ff_layoutupdate(struct xdr_stream *xdr,
+ 	p = xdr_reserve_space(xdr, 4 + fh->size);
+ 	xdr_encode_opaque(p, fh->data, fh->size);
+ 	/* ff_io_latency4 read */
+-	spin_lock(&dss_info->mirror->lock);
++	spin_lock(&dss_info->lock);
+ 	ff_layout_encode_io_latency(xdr,
+ 				    &dss_info->read_stat.io_stat);
+ 	/* ff_io_latency4 write */
+ 	ff_layout_encode_io_latency(xdr,
+ 				    &dss_info->write_stat.io_stat);
+-	spin_unlock(&dss_info->mirror->lock);
++	spin_unlock(&dss_info->lock);
+ 	/* nfstime4 */
+ 	ff_layout_encode_nfstime(xdr,
+ 				 ktime_sub(ktime_get(),
+@@ -3153,7 +3160,7 @@ ff_layout_mirror_prepare_stats(struct pnfs_layout_hdr *lo,
+ 			       NFS4_DEVICEID4_SIZE);
+ 			devinfo->offset = 0;
+ 			devinfo->length = NFS4_MAX_UINT64;
+-			spin_lock(&mirror->lock);
++			spin_lock(&dss_info->lock);
+ 			devinfo->read_count =
+ 			    dss_info->read_stat.io_stat.ops_completed;
+ 			devinfo->read_bytes =
+@@ -3162,7 +3169,7 @@ ff_layout_mirror_prepare_stats(struct pnfs_layout_hdr *lo,
+ 			    dss_info->write_stat.io_stat.ops_completed;
+ 			devinfo->write_bytes =
+ 			    dss_info->write_stat.io_stat.bytes_completed;
+-			spin_unlock(&mirror->lock);
++			spin_unlock(&dss_info->lock);
+ 			devinfo->layout_type = LAYOUT_FLEX_FILES;
+ 			devinfo->ld_private.ops = &layoutstat_ops;
+ 			priv->dss_info = dss_info;
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
+index 09c3cd6964fd6..54aa492bc0bac 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.h
++++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+@@ -86,6 +86,8 @@ struct nfs4_ff_layout_ds_stripe {
+ 	const struct cred __rcu		*ro_cred;
+ 	const struct cred __rcu		*rw_cred;
+ 	struct nfs_file_localio		nfl;
++	/* Protects read_stat, write_stat and start_time below */
++	spinlock_t			lock;
+ 	struct nfs4_ff_layoutstat	read_stat;
+ 	struct nfs4_ff_layoutstat	write_stat;
+ 	ktime_t				start_time;
 -- 
 2.52.0
 
