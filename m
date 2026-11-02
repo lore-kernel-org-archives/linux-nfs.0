@@ -1,51 +1,51 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793651485;
-	b=gZZg7xnNEHbRydDX/XUT033O72QwidjYKe6Xse5Ah58+HuVxpSiolzrW0GS3JPYeanlA
-	 Q60O/cKnUtppg3D8DUrk+8VrGwOvDivG/fzbO8c3vQKO66AxDU5BEhQqqoPA4qe9Oiqm/
-	 FPuOIOR53uieqUqTA3wvsMMEz9wjsZYEyPXM1EQKE20IDl2Nj5RuojGAq75ECtfJWtQMs
-	 0uABnBKtF5yyZvKCmKxvU1K90LM84BspPrqk3oTR+ghQGQI97tiJC9H1S1TsM+p08LaTU
-	 YTquWpknNFNukZBqNpT5WSu5ovZ80qxyXLX4ghAyJpnYq+9qRcjWRGBdkpDsHyK9fIQ==
+	t=1793651486;
+	b=2bkImtL8TpKP2G8hjmlOmlgo96NmE9AdDSSGFeZcCigaJj25arMCRs1VELeuRnWIZcAU
+	 94g+PBWBsM+GGky+OdlnHU2pLOhbBnMBuIdBdjVRzuA+I6T5jEbMfdD5hGMNC0XMKApL8
+	 +KsaHnzzVzkBw9uBajRkILnvBilO3zp4rFSXq+U6bCaW+sV9FigERWo+SJw7xWnyp33f7
+	 ocPlel9aHh10C7qyxNGUs2ZiQbSU+R0u+MzPEEtEg2qgyvxaiOPAUbdMyKBQ1Y2z5yvdU
+	 SawkPo3aXygjihxJ0aRD2fPyWp2KAnhdi2bDlnbdresLBdKMAcANKsnuG1xUZsXw+Xw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793651485;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793651486;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=AeAdQzSxxNekj5lo3PLPbqB21IFCQTUgkMuCTY+l6ZU=;
-	b=qom3RCBYuLW1vBaFY6fuKTkMmalsZxC1ix2acurwUYtUrnm7Nxzk9cQEmfvi/jKtIjcl
-	 1d5Ac9GOloKl0Ft/OSOjkgym+HtNNsQt2BQE8sbCasn1KhRoxZcVAPlQqDP0K7yO9ZfK6
-	 niaNxJJ+NGgfJ5A6i14cHTx+ruy6R7R4cRSMeXAjNR8jM+popCAgjQi37sRY/Z2R+K3iF
-	 1swhOrAH9UdgGOSI6Dw/RPayhLoa96UUenGDhTthIl7DIaxgBeKj9By0ArrHMt8yahS+0
-	 Rr8vB3h8UOPd70qwYGrEKQIOPq9SkcY5ZfNvalcPLmxEvr71hA2rSr9jYs3dzKiAG7A==
+	bh=eYkhgtT4CvsCJbzRVXneWueZyGa0/5bz9gPe31oNPdw=;
+	b=ZIohB/SSTmStyTjOVcUHDU08g+eEEaYHU5UqIKL7BWzpOhyujcJ42wqLE2BcisXeHsNq
+	 AKhunSIlp2DnCVsMBv10Evo+iB14PoMUETtIVnb2llSt8kLQGpqlLmJ4bOWAF7SVAO8aI
+	 XoL/HAzBaLhJjwPIgfgTAuoQsxHKwu3e8KYHIOOOSNFG36miaDkA+PurdfyuAtJ/Cy6l0
+	 z0tkRwCb2uITZ6cpWIqd49L2iqyzaOgnfY7gAL5jDEL1NY/I1d7n5XaXRkhvwIDRqSo80
+	 1NWRkggomNqwopZ22BaYV7qM6xWzcRY//QX+fUL2paF3AibMJj3w2m9VU6KevDNaYmA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lFGE21pN;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="MG/j8laY";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B8054606D82B
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 20:31:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3CBE3606D802
+	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 20:31:25 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lFGE21pN
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 488BC1F00A1E;
-	Mon,  2 Nov 2026 20:31:24 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MG/j8laY
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 83EF51F00A2E;
+	Mon,  2 Nov 2026 20:31:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793651484;
-	bh=AeAdQzSxxNekj5lo3PLPbqB21IFCQTUgkMuCTY+l6ZU=;
+	s=k20260515; t=1793651485;
+	bh=eYkhgtT4CvsCJbzRVXneWueZyGa0/5bz9gPe31oNPdw=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=lFGE21pNdyPgHlQ87eP07e08bqpNVk105cM4r3HlAUs1QASsYc0uRkixq458lfUss
-	 /Ao69ANiLULBWQU5KHvwUzCwvj5zSa03stphOaeAfcHbXRmvNfdis6AqYkI1FQFDJT
-	 o6uH53UM/ZeRaX/+iwXFKB2NFfi6bnTNJ4NcCSUOhCun9skRWoSLHuTY3QN3/j5egC
-	 q/BPxRNMO81bMtv3FJCnaRcU+QxcCB5RfNHiQ2PvcX90xXiiT7FGMoYoP5pqrW96JA
-	 BpAnoGOJ8E5GRwPHrFO+VRhxZ6Q/od/zi4wxP41LX31RP3THC8zZRDZzmzcnzMMglU
-	 TUyi77gHmzoZg==
+	b=MG/j8laYj14eLBk+S8x5CX4dKuhFC6SnShITUywYaGbitbffK3o2BkkRt9U0Sy3iZ
+	 aMwI/XiOJ1P+9TlDlFJgGkbsGWU9H7jp1/WeQvx9GSpVxaBaagPKR087WA0LwY0us4
+	 RnrvLwLtZk/mK6TmbifXzK6qLTWQI+Z0X/9rSz3fpeEl7BinvlSCh8xRQMoU447r7A
+	 lpKnxFzqt61hgeMSgDAABTPX//joUw7Vw5z9MUxBFIgYq/CvBxAPvKP3ihlcsvBLcW
+	 fxIocV921FOQj4d+TMObue6w5RKISVAEk7fdhlPrTrmScMzR2nhLG9EgvPGaQ6I9fx
+	 8uNhiSLi+jGxg==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Anna Schumaker <anna@kernel.org>,
 	Trond Myklebust <trondmy@kernel.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 2/4] NFS: don't run the release of a WRITE or COMMIT in the submitter
-Date: Mon,  2 Nov 2026 15:31:18 -0500
-Message-ID: <20261102203120.14600-3-snitzer@kernel.org>
+Subject: [PATCH v3 3/4] NFSv4/pnfs: don't run the release of a LAYOUTCOMMIT in the submitter
+Date: Mon,  2 Nov 2026 15:31:19 -0500
+Message-ID: <20261102203120.14600-4-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20261102203120.14600-1-snitzer@kernel.org>
 References: <20261102203120.14600-1-snitzer@kernel.org>
@@ -60,88 +60,59 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-nfs_initiate_pgio() and nfs_initiate_commit() start an asynchronous RPC
-task and then drop their reference to it with rpc_put_task(). If the
-task has already completed, that reference is the last one and
-rpc_put_task() runs the rpc_release() callback in the submitter rather
-than on nfsiod, where task_setup_data.workqueue asks for it to run.
+Since commit 472e25944981 ("NFSv4.1: Pin the inode and super block in
+asynchronous layoutcommit") nfs4_proc_layoutcommit() pins the inode and
+the superblock for an asynchronous LAYOUTCOMMIT with
+nfs_igrab_and_active(), and nfs4_layoutcommit_release() drops both with
+nfs_iput_and_deactive().
 
-The release of a WRITE or COMMIT releases write requests and, with
-them, what may be the last reference to an open context. The submitter
-is usually the flusher, which holds sb->s_umount and has set I_SYNC on
-the inode, so it can release neither the superblock nor the inode:
+The task is put with rpc_put_task(), so if it has already completed,
+the release runs in the submitter. nfs4_write_inode() sends an
+asynchronous LAYOUTCOMMIT from writeback, where the submitter is the
+flusher. It holds sb->s_umount and has set I_SYNC on the inode, so it
+can do neither the final iput() nor the final deactivate_super(). If
+the task has not completed, the release runs on rpciod, because the
+task has no workqueue.
 
-  wb_workfn
-    wb_writeback
-      writeback_sb_inodes
-        __writeback_single_inode
-          nfs_write_inode
-            __nfs_commit_inode
-              nfs_generic_commit_list
-                nfs_commit_list
-                  nfs_initiate_commit
-                    rpc_put_task
-                      rpc_free_task
-                        nfs_commit_release
-                          nfs_commitdata_release
-                            put_nfs_open_context
-                              nfs_sb_deactive
-                                deactivate_super   <- blocks on s_umount
+Give the asynchronous task nfsiod as its workqueue and put it with
+rpc_put_task_async(), as is done for WRITE and COMMIT. None of the
+callers that send an asynchronous LAYOUTCOMMIT waits for its release.
 
-This is the deadlock that was reported in 2014, see the link below.
+A synchronous LAYOUTCOMMIT is left as it is: it pins nothing, so its
+release has nothing of the kind to drop.
 
-Before commit bf294b41cefc ("SUNRPC: Close a race in
-__rpc_wait_for_completion_task()") the final rpc_put_task() always
-handed the release to the workqueue of the task. That commit made
-rpc_put_task() run the release in the caller, and added
-rpc_put_task_async() for callers that must not. Use it.
-
-nfs_initiate_pgio() also starts READs, whose release now always runs
-on nfsiod as well.
-
-Nothing depends on the release of a COMMIT having run by the time
-nfs_initiate_commit() returns: no caller has passed it FLUSH_SYNC since
-commit 64a93dbf25d3 ("NFS: Fix deadlocks in nfs_scan_commit_list()").
-Before that commit nfs_write_inode() did, from the flusher, and the
-wait then made the reference of the submitter the last one every time.
-
-Link: https://lore.kernel.org/linux-nfs/20140407135001.56ef9f36@notabene.brown/
-Fixes: bf294b41cefc ("SUNRPC: Close a race in __rpc_wait_for_completion_task()")
+Fixes: 472e25944981 ("NFSv4.1: Pin the inode and super block in asynchronous layoutcommit")
 Cc: stable@vger.kernel.org
 Signed-off-by: Mike Snitzer <snitzer@kernel.org>
 ---
- fs/nfs/pagelist.c | 3 ++-
- fs/nfs/write.c    | 3 ++-
- 2 files changed, 4 insertions(+), 2 deletions(-)
+ fs/nfs/nfs4proc.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 71f0ce2bc4eab..e87ad5651f4df 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -816,7 +816,8 @@ int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_header *hdr,
- 	task = rpc_run_task(&task_setup_data);
- 	if (IS_ERR(task))
- 		return PTR_ERR(task);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 0adc209dc5df1..47cc70ef30802 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -10152,6 +10152,7 @@ nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, bool sync)
+ 			return -EAGAIN;
+ 		}
+ 		task_setup_data.flags = RPC_TASK_ASYNC;
++		task_setup_data.workqueue = nfsiod_workqueue;
+ 	}
+ 	nfs4_init_sequence(NFS_SERVER(data->args.inode)->nfs_client,
+ 			   &data->args.seq_args, &data->res.seq_res, 1, 0);
+@@ -10162,7 +10163,11 @@ nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, bool sync)
+ 		status = task->tk_status;
+ 	trace_nfs4_layoutcommit(data->args.inode, &data->args.stateid, status);
+ 	dprintk("%s: status %d\n", __func__, status);
 -	rpc_put_task(task);
-+	/* The caller may be writeback: don't run rpc_release() here */
-+	rpc_put_task_async(task);
- 	return 0;
++	/* An asynchronous caller may be writeback: don't run rpc_release() here */
++	if (sync)
++		rpc_put_task(task);
++	else
++		rpc_put_task_async(task);
+ 	return status;
  }
- EXPORT_SYMBOL_GPL(nfs_initiate_pgio);
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index f38bbebffe4d7..766481c5870e6 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1677,7 +1677,8 @@ int nfs_initiate_commit(struct rpc_clnt *clnt, struct nfs_commit_data *data,
- 		return PTR_ERR(task);
- 	if (how & FLUSH_SYNC)
- 		rpc_wait_for_completion_task(task);
--	rpc_put_task(task);
-+	/* The caller may be writeback: don't run rpc_release() here */
-+	rpc_put_task_async(task);
- 	return 0;
- }
- EXPORT_SYMBOL_GPL(nfs_initiate_commit);
+ 
 -- 
 2.52.0
 
