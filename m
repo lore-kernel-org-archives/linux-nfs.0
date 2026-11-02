@@ -1,73 +1,52 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793654102;
-	b=Vl0jbq1YddNvBA8YmyzyA2STUSMZ4etYWnNi7jt1lpUo7xCEFcYuJjmDrQZuARKh/2tb
-	 Bgb3q01PgDlIKi2a11DWy4HSgXq222cHQTcgZSPQDzvxV2q5CZ8+VricdF3am1uwHQcwv
-	 H4Oc2AVCGsV/TjGKtRfW5WM654xKLKyc4rKw6C6TkA9JqHTCBC4J5v+LbGz3ZbjfZF3Ru
-	 uJ+1TwPV6/OrKDvv2uYKrfE4ZhSuKbnVIuB+FpQ/fE25Cg1hd6qzm5r0eecIbGkudbCer
-	 DZQnE3kFQ+aJXeXlCTdkGhXBvnSCqB7jNJVF2FiwkFGDpYlhMjwUwOB2Iuu0M+f739Q==
+	t=1793655834;
+	b=wfGxxaLWdEkfMZTOwKX5CpxF7A9ITcrhuWoccba2OI1uO9Kflc7KSuyz9tgaRqyUYlSn
+	 etN2COkVL7vvKPxLeSryArA1PwSBidDAP219tahvHJmAhLn/QSzNX144Jj6/c8ixIoXCu
+	 CqHYTFwbVSGOViHg46iCQb/tPHW7sKERuoFDDkEH8fE1BIsUz2No3qN+ZRTikssfrmklr
+	 N+IItpw9qn9ilNP8JkKtPhlLufnfNAtLeEZ+gz0tYP/oUSLC0eerBJ7Nq8nKPqO2spol1
+	 +YPkLb11Bw6ZyCxNQH/puhtBpCXeetVPmfn+ZibBWN7BnhAjnjTogXjy/4SmIlY43qw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793654102;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=IboT5prE1F2zgLUjN3M8JJkwTsSKYt9w9Q1ZY5Lm5jE=;
-	b=hLYDz3PA19h9Y9dZiVnP5KwgeXd7vQh2nzZMMsKtGA4/+GXfXVeGyjgmnJBnNTyKGs7J
-	 CHvEMMxiBaFEd6reHxQ0goHYWX4Kz5PPYb7te+xj5lQLdKORtElHXzr6T3uCZXsLK8P8C
-	 b8praB0HyoY1n34SYZZcwGOSC+x7lsTk2gBBo5m3IZLJfwUQmMl81Q87wbeXNlba92r3/
-	 7oVKzyXOCAt/nuDAXFsp3JHi60/Jxt71HS33yRdxmND3M3hbuMLJD4OglFZZE+Nsl6xD+
-	 m4CbrgSgL+Au+9CGoMp4d3X/ZuUC5+OYZm/nOBkbkHjF3GPqz7Dczif4TUKQT7iZRAA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793655834;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 MIME-Version:Content-Transfer-Encoding;
+	bh=jRzarDuVZbtg3YDbDnXxZ4uDppbaaB7s4SJ7+jaG+vk=;
+	b=GJC80V8Df9VfbVlLWPkahAbYSsCyntUO4cy+HHAY1vph7ShgjvmaftOD4JRiDuW5HTRz
+	 sZZC2PvL6ad6btSV+G68HrSKmhrsqHnKdK//uI2N5LHITpxygTZOIg4+DAAbd9WoVtzx5
+	 b/RMN9MaFS17dYbC903AeWas0nYBSXWyv1UdS6R9YzDvcG5pq6D0Do4FN6BTtirpgObRW
+	 vhdANCoBTGf7Eq8Hnn3vdFgGnGHOWqxDLj1E25MZ2387Gzo0n8lsgRpmPFaj16alfxzEt
+	 TCMnjbd9pEmkMow/JfgZ8Q90by2JDVHXkiQrYpkGeI9h1AHtEMYKQaIXZVIltos/wfA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="i4XS/+Qp";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=i5OMeuYA;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DC7B8606D834;
-	Mon,  2 Nov 2026 21:15:01 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 067D5606A327
+	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 21:43:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=i4XS/+Qp
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 405B91F00A1C;
-	Mon,  2 Nov 2026 21:14:59 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=i5OMeuYA
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1C5D31F00A16;
+	Mon,  2 Nov 2026 21:43:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793654101;
-	bh=IboT5prE1F2zgLUjN3M8JJkwTsSKYt9w9Q1ZY5Lm5jE=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=i4XS/+Qp/XJpkpHyhLatkkxrTnb76H0AyrbluP9UrYsSjjvFvYed65zWeP+n5bDMR
-	 T4jrppxwRxmsiUoLJtpEDBZOQUgSEb2I7JAqNJICoUtmRZqGDSr+AkbMY5KraB9hcp
-	 LJSetra0CCoguNvIXys8kMbF38qG79C7rZIljzi9OxsucTBr2qJtAKy2hNxphivV7X
-	 SqR7z4TvF6OS2jxQo3eWdNU0GD2TA876qUhcb25obxs7Qa0hq+gMR1c2AKZ0TYfXxl
-	 /PRnwvUkfYbroZLwoik/xUkslivJlp+q60cSPVqp80BDXlYt0jmnPbIlU0+2JbsucT
-	 rjIixFbj3/TrQ==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 3FB84F4006B;
-	Mon,  2 Nov 2026 16:14:59 -0500 (EST)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Mon, 02 Nov 2026 16:14:59 -0500
-X-ME-Sender: <xms:U_3oagUAPKL0KahIhejOYJwKEPfYb6twqYG_HHugM7_eLn8Er-TgPg>
-    <xme:U_3oavZTuzGHMfK0qXbinG0nc7CYskrIhJQ5eHOz_Ha7XvQtwnXU_T7hJPsGo9qg4
-    BhXiwA3Pdzj3QiIOE4JzHYJnc55BkwZtZcinLkFBcrDsA6sylLxQvo7>
-X-ME-Proxy-Cause: dmFkZTGSCWblgfsMhzNjEIN00ph1bmXztXGhYrK6FQCSJysx8m5mqsCTJHkCuZD0tpZuBG
-    pYnx6qST1krVMCyjpYhoMBo2TltjSYVP2LKGOkZnOBb4t//k/nGoJ/SIXKKJyIATQl84il
-    BuXRlRV3aPeB88TAd/llIDq/9PMZ1EzorVjUV4ox06mXS/IOKUqdbOTFcr2gFtJFq3Gx7F
-    Zq0nEujwlkDiPcDOX28riG6oQW7iLTgD6BaMnfnV9H0ADvTknFe8adm4EFa+o6I1mSuG3K
-    LJ3epAVfTBg3DuzNRu88aZuYWYeuI7KoVJah/eioVIkx6sAoHZjqyTVRvcNhYqHYgvNdOh
-    F7RoapMXPpPy7fnRDGp1EnOzRafp7mYLbQvUWevKonPpL0zVugnrni/xwOB0ZUdq15K6LL
-    U4eIWAyGEDjfaCYO/Dppo1HoBBuP1Ugp4Zki+kXZHcTkA1gjEQVaV70KrwrPcut26vPd/h
-    q5yJSVyn3x/Ch0xklWbVCXPbWoaIS17brwWPL/guaVzJxizQ0P/jgX0plm53NXTsLd+70V
-    110yVl467ZsRMKGBWdC4JnWQHbcxAMHjeZkhkyAsfOuCVSLebxwzvInrQKLcoImyb5UwHY
-    pO0Oc+d4/j2oJCRnrCOkOe51eLIclfMVgyBLq7y/6qqZiV8XA97NvuTzr1lg
-X-ME-Proxy: <xmx:U_3oatxqYhX0hWpcSGJgdTO64UmbQLn1zkSvkgmn2QN3P9YNu5WJ0w>
-    <xmx:U_3oav5HgW2k6KeJbHXAdQUNPTjXcBKAkESvLUwa5JME7gNZc5c0tQ>
-    <xmx:U_3oasSgNqIt2BaGeBZ12VcERyFoy0lpk1cdl0eiT57vWKlvWpphXg>
-    <xmx:U_3oaifZ0cTDaYHT72Jch7KjTqrgvVpyqwgckwFzCeMt7Uwl9HyKaw>
-    <xmx:U_3oapwU7EvPML2sBaImLYgTk9SsDSGibfYemkcHEOBIYG1GVrkdWT-b>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 181AE78273B; Mon,  2 Nov 2026 16:14:59 -0500 (EST)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1793655833;
+	bh=jRzarDuVZbtg3YDbDnXxZ4uDppbaaB7s4SJ7+jaG+vk=;
+	h=From:To:Cc:Subject:Date;
+	b=i5OMeuYA4CNVbbabbnNZGzevpeRrmf5EK8Q9WKV6ZNlCreLXIZvfSCxr50te90Fpn
+	 4JjTt/myVoMlfGrzaNjsiwZz6oZwV/FE2NJumoDxaIirA5AG2GNYjfb7CVz2fzzuOZ
+	 iZB1Ci1AMmfRKQ1qgKx7S1Nxr5bkaR0Bh2NITCi11/lqddP9VwtVMtQkSc56/LOCv6
+	 WKsdPDziq94b9/fuoZP+bwVYjwMzIbS3g2tUS4UidH6dVotV0xcTUKCA1VEN/LZ6eO
+	 ijZ6x7Tc5h6QReq02OB05vAW5oLU4uCC7b4dy3ImtDgR/hPwtdNRu65/ohrBtwgqjY
+	 MQYH1bFzar2pg==
+From: Chuck Lever <cel@kernel.org>
+To: Calum Mackay <calum.mackay@cdmnet.org>,
+	Jeff Layton <jlayton@kernel.org>
+Cc: <linux-nfs@vger.kernel.org>
+Subject: [PATCH pynfs v1] 4.0 server tests: remove RPLY14
+Date: Mon,  2 Nov 2026 16:43:51 -0500
+Message-ID: <20261102214351.602543-1-cel@kernel.org>
+X-Mailer: git-send-email 2.56.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,61 +56,50 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: AlKaHQIBeldV
-Date: Mon, 02 Nov 2026 16:14:38 -0500
-From: "Chuck Lever" <cel@kernel.org>
-To: "Christian Brauner" <brauner@kernel.org>, linux-fsdevel@vger.kernel.org
-Cc: "Linus Torvalds" <torvalds@linux-foundation.org>,
- "Jann Horn" <jannh@google.com>, "Josef Bacik" <josef@toxicpanda.com>,
- "Chris Mason" <mason@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
- NeilBrown <neil@brown.name>, "Eric Dumazet" <edumazet@kernel.org>,
- "Thomas Gleixner" <tglx@kernel.org>,
- "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Jonathan Corbet" <corbet@lwn.net>, "Christoph Hellwig" <hch@lst.de>,
- "Greg Kroah-Hartman" <gregkh@suse.de>,
- "Joel Granados" <joel.granados@kernel.org>, "Kees Cook" <kees@kernel.org>,
- "Jan Kara" <jack@suse.cz>, "Jan Kara" <jack@suse.com>,
- linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
- linux-acpi@vger.kernel.org, linux-kselftest@vger.kernel.org,
- linux-s390@vger.kernel.org,
- "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
- linux-um@lists.infradead.org, linux-wireless@vger.kernel.org,
- "Linuxppc Dev" <linuxppc-dev@lists.ozlabs.org>, netdev@vger.kernel.org,
- ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org,
- coreteam@netfilter.org, kexec@lists.infradead.org, linux-pci@vger.kernel.org,
- linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org,
- dri-devel@lists.freedesktop.org, ibm-acpi-devel@lists.sourceforge.net,
- jfs-discussion@lists.sourceforge.net, linux-alpha@vger.kernel.org,
- linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org,
- linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org,
- linux-sh@vger.kernel.org, linux-usb@vger.kernel.org,
- samba-technical@lists.samba.org, sparclinux@vger.kernel.org,
- linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org,
- linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net,
- "Takashi Iwai" <tiwai@suse.de>, linux-input@vger.kernel.org,
- linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org
-Message-Id: <961e7e3d-2117-48ee-8a7e-a7a851ec8ef8@app.fastmail.com>
-In-Reply-To: <20261102-work-procfs-fs-v1-6-d09a996317b3@kernel.org>
-References: <20261102-work-procfs-fs-v1-0-d09a996317b3@kernel.org>
- <20261102-work-procfs-fs-v1-6-d09a996317b3@kernel.org>
-Subject: Re: [PATCH RFC 06/27] nfsd: let procfs own the seq_file of
- /proc/fs/nfs/exports
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
+RPLY14 sends a CREATE, then resends it twice with the same XID on the
+same TCP connection and expects NFS4_OK each time. The other RPLY tests
+exercise the per-state-owner reply cache that RFC 7530 Section 9.1.7
+requires, or replay an idempotent LOOKUP. RPLY14 alone depends on an
+XID-based duplicate request cache, which RFC 7530 does not specify.
+Section 3.1.1 also forbids an NFSv4.0 client from retrying a request
+unless the transport connection has been broken.
 
+A recent NFSD change drops a retransmission that arrives on the
+connection that carried the original request, so RPLY14 now fails
+against NFSD. Reconnecting before the replay does not rescue the test.
+NFSD may evict a DRC entry once the client has acknowledged the cached
+reply, so the replayed CREATE executes a second time and fails with
+NFS4ERR_EXIST.
 
-On Mon, Nov 2, 2026, at 10:07 AM, Christian Brauner wrote:
-> Declare the seq_operations and let procfs open and free the seq_file.
-> ->proc_open() and ->proc_release() only set up ->private and take and
-> drop the reference to the network namespace now. Reading the file then
-> no longer holds up its removal.
->
-> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+Remove RPLY14 and record its code as retired.
 
-Acked-by: Chuck Lever <cel@kernel.org>
+Signed-off-by: Chuck Lever <cel@kernel.org>
+---
+ nfs4.0/servertests/st_replay.py | 12 +-----------
+ 1 file changed, 1 insertion(+), 11 deletions(-)
 
-
+diff --git a/nfs4.0/servertests/st_replay.py b/nfs4.0/servertests/st_replay.py
+index 48e5363432ec..7f490e3d48c3 100644
+--- a/nfs4.0/servertests/st_replay.py
++++ b/nfs4.0/servertests/st_replay.py
+@@ -250,14 +250,4 @@ def testOpenConfirmFail(t, env):
+     ops += [op.open_confirm(stateid, c.get_seqid(t.word())+1)]
+     _replay(env, c, ops, NFS4ERR_BAD_SEQID)
+ 
+-def testMkdirReplay(t, env):
+-    """REPLAY a succesful directory CREATE
+-
+-    FLAGS: replay all
+-    DEPEND: MKDIR
+-    CODE: RPLY14
+-    """
+-    c = env.c1
+-    c.init_connection()
+-    ops = c.go_home() + [op.create(createtype4(NF4DIR), t.word(), {})]
+-    _replay(env, c, ops)
++# RPLY14 permanently retired, please do not reuse
 -- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+2.56.0
+
