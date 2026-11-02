@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793631796;
-	b=MgqD5AXN7x/YhfAqJj7wWqN6abH3N3+RfN3INIGp5jmrXO7YHo0BJiWSjTWFd9mdXOQ4
-	 hrlKYwnSRYIVIf35a1ZYVDRAU6+AdaSliD+v4eVHcxOqlVAr+moPRKX4t+59zQHVfqmj+
-	 Oml34uG8rDnvAEzo6ufVvzSZhqaAVwhHEcFqBGQB52W9Zx+WVqNTOaQMbGeTzqkg3qg4V
-	 GJuL/iKjdbn6ztc/qd8r3xe3FEnFwRnz7OpUBd8UDqYgsMcrnbq9tMxV/sbFOKShrlSEx
-	 nDJTOuXJAPP9t2EUZqOBeiAVAOnr/GHCIvHi5sh/+i5t/8UA66ZY0GofEZBDu2fa0XA==
+	t=1793631812;
+	b=jvuczjW5stPh6f1t2BivJt1nAE5bqswo/r29afOJaPlSE2zeeXfcAhz2ALEJ3zJ5CZFo
+	 A23YaQhzUYd9rJD6w1jKkopOuO2ZJlY8QEjwJS3EJf41iGT1xh2T5veubehw+RSum6/Ii
+	 7bJmRTxaucnoAy8lWR42J1DxxlrW9E7vzOBs0zzwj4WY/by1Go+kzPURxwO/fs/VY+nc+
+	 t7QUTDXE8jbXbz7TOVi0Kz1nc4dppkDR97Xl1A69bWHimdQ65854MrGLV55JbJqjFW1hq
+	 lMrIkeX5D2RvSRF7oIcaLrjtHirbOmeVt1KfJ+hOyfuDzivFqWw4pUNXOyOeu1CA+Tg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793631796;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793631812;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer;
-	bh=SeSqWCgckwihcSErYyiMc6rZ3Zm4y3kjZ5EEGxJWIgU=;
-	b=3W7SwAoEWVXgSbT5v/jZe3iHsCpHfUeV25O9W93Sn3NrISAwhNs2DPkSsUq9j9q7zSXM
-	 fQ08hUQeESHf+ljqqOUTw7Mj+XzR77OsOjOgOmBKUNQmwKjwK4dlsAOWgtmxSwQpG5yTM
-	 bKa/u8h/lfRrDRi2Ts1zImd2M9o/qM/HjnFEog0gzZHgGFcv5kEFVT8gGCCcuVgL0sZaR
-	 dCgwHDWVMp2U97dFEcfU3WJlsuFyXm70vdMtPujJoyp0hjmPUuBBiiw9TzHwKuBjF8Zny
-	 Wo3bpcdYR6geTUSASY68Ft/isJdfZhOdLf76sz8IgyD0EqWq9QklowsX5gVVKhBGPkQ==
+	bh=oVeQwusVcdWt+t2MXjuQ/DhAoQowLCWkhlldD+EM/ro=;
+	b=TAOCg5Do/yxixTJOUb2HD3Ox27ebrpKDukLJ+XXRu6G3iLXrA+P502INe0L1Ze08+KLh
+	 E0e5DhmjFg/k2Hs8DyVjuBLgeaGaz5SurpyXN9zEgcStXthLm9QA+wvpcYyu9VqxcNLOf
+	 ArC3jthfywOtOWMPeEDHkDRToIAxZn8jBoPwqxEr274pJlNOosJ4777YOlSdgRbVJ0nF8
+	 sDoeMuh2G/dLdEiA80R0/snxTodiNCwrSx/mjtRzqX/19wc+IXsTWqgcAq2j9MZi51TeS
+	 Cv+oLPBDvwdGT7ms29HQW3IQdKlrnlZMQgVWIBZC6ouqoMVyZAEu0ZJztR1sfInytKg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CwNawf2u;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=OWjkcOBN;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2A670608260F;
-	Mon,  2 Nov 2026 15:03:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 39D5C60716C9;
+	Mon,  2 Nov 2026 15:03:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CwNawf2u
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 36FF31F00A18;
-	Mon,  2 Nov 2026 15:03:03 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=OWjkcOBN
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 822311F00A1A;
+	Mon,  2 Nov 2026 15:03:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793631795;
-	bh=SeSqWCgckwihcSErYyiMc6rZ3Zm4y3kjZ5EEGxJWIgU=;
+	s=k20260515; t=1793631812;
+	bh=oVeQwusVcdWt+t2MXjuQ/DhAoQowLCWkhlldD+EM/ro=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=CwNawf2uPczi8WJdPDNkHtSgDWIXAV10IshSH1eNh6O8W9BXkP2tEug+AdMt8nQZt
-	 380ZRltiSIxBcIZcWlnOLRJnpli4yznDcDX6tik4WmffnOqr144BmVKoQ7jmh10aLj
-	 xAc2Dh2kX4fj22+WC0AtCadmf5R8CNYLd8M/NFA0Xp8X5pkJQ1Mlk2iZ2DYC/2jliR
-	 ZPNHRMopA8L7QRp/6ITH6UKGjj9v8wUwbbdXfJb7+fQn27NXB1Qu0m5O94rsMJNxrl
-	 EJ7Px46au8wXJiUx591MNpF14s7TpJCkk+efIh02U2sqPl6KlYAL+Hv4MojyEgnZce
-	 +OkwRpXnT/WGA==
+	b=OWjkcOBNjrMUeTufmvVyzLqLuyvTySsw+dhv5IHxs/hieYtMOgOEszSyAJzpSCxpE
+	 ivhlaW3vverSeo9xxXMpCNv4uvFlwTOs2Rxv79ipdQZsAXLlNfjnYXqlikAzK9Rhwj
+	 fbSTM45jfTBK7jdKNJHzSS+yPm+jYE9xinTq6+vQkPrWwGMPkbWnlrXkqvWf+SEGzv
+	 NUr+FGlXFmobxkkYkI8iFyJMqEYyanfGZehuXpsHLl/Q30PMDmV9NESufDJsqM/FXP
+	 RzCWFajSSJkhhGsUeItsbwH1Bh143kv0KKo/cAPN6grVu2VmnCed1H7khCoprygo9o
+	 BRZHUp6nTcKrA==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 16:01:32 +0100
-Subject: [PATCH RFC 05/22] powerpc/rtas: let procfs copy in writes
+Date: Mon, 02 Nov 2026 16:01:33 +0100
+Subject: [PATCH RFC 06/22] powerpc/rtas: let procfs copy out reads
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-arch-v1-5-c9492ab08480@kernel.org>
+Message-Id: <20261102-work-procfs-arch-v1-6-c9492ab08480@kernel.org>
 References: <20261102-work-procfs-arch-v1-0-c9492ab08480@kernel.org>
 In-Reply-To: <20261102-work-procfs-arch-v1-0-c9492ab08480@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -91,278 +91,191 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
 
-Implement ->proc_write_buf() for the files in /proc/powerpc/rtas and
-/proc/ppc64/rtas so procfs copies in what is written before it pins the
-entry, and parse what was written from that copy.
+Implement ->proc_read_buf() for the error log and the flash files so
+procfs copies what is read to userspace after it unpinned the entry.
 
-firmware_flash, firmware_update and validate_flash take an image in 4k
-pieces and relied on writes coming up short. They keep doing that with
-PROC_ENTRY_SHORT_WRITES. Writes to the other files that are larger than
-PAGE_SIZE - 1 bytes fail with -EINVAL now.
-
-validate_flash only keeps the first 4k of the image and used to swallow
-whatever was written beyond that in one go. It takes at most 4k per
-write now, like for the part it keeps, so a writer has to loop there
-like it has to for the image itself.
+The error log hands out a record the way it did before, the record is
+consumed before it reaches userspace. A reader that passes a NULL buffer
+now loses a record like one that passed a bad buffer always did, instead
+of getting -EINVAL. The files can be spliced now, like every entry that
+is read through ->read_iter(). Note that a sendfile() from the error log
+into a target that fails or takes less than was read drops the records
+in between, splice_direct_to_actor() rewinds any seekable file like
+that and the error log doesn't hand a record out twice.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- arch/powerpc/kernel/rtas-proc.c  | 40 ++++++++++++++++++----------------------
- arch/powerpc/kernel/rtas_flash.c | 38 +++++++++++++++++---------------------
- 2 files changed, 35 insertions(+), 43 deletions(-)
+ arch/powerpc/kernel/rtas_flash.c | 24 ++++++++++++------------
+ arch/powerpc/kernel/rtasd.c      | 19 +++++--------------
+ 2 files changed, 17 insertions(+), 26 deletions(-)
 
-diff --git a/arch/powerpc/kernel/rtas-proc.c b/arch/powerpc/kernel/rtas-proc.c
-index ebf416840b3c..9598866f11cb 100644
---- a/arch/powerpc/kernel/rtas-proc.c
-+++ b/arch/powerpc/kernel/rtas-proc.c
-@@ -138,45 +138,45 @@ static unsigned long rtas_tone_volume = 0;
- static int ppc_rtas_sensors_show(struct seq_file *m, void *v);
- static int ppc_rtas_clock_show(struct seq_file *m, void *v);
- static ssize_t ppc_rtas_clock_write(struct file *file,
--		const char __user *buf, size_t count, loff_t *ppos);
-+		char *buf, size_t count, loff_t *ppos);
- static int ppc_rtas_progress_show(struct seq_file *m, void *v);
- static ssize_t ppc_rtas_progress_write(struct file *file,
--		const char __user *buf, size_t count, loff_t *ppos);
-+		char *buf, size_t count, loff_t *ppos);
- static int ppc_rtas_poweron_show(struct seq_file *m, void *v);
- static ssize_t ppc_rtas_poweron_write(struct file *file,
--		const char __user *buf, size_t count, loff_t *ppos);
-+		char *buf, size_t count, loff_t *ppos);
- 
- static ssize_t ppc_rtas_tone_freq_write(struct file *file,
--		const char __user *buf, size_t count, loff_t *ppos);
-+		char *buf, size_t count, loff_t *ppos);
- static int ppc_rtas_tone_freq_show(struct seq_file *m, void *v);
- static ssize_t ppc_rtas_tone_volume_write(struct file *file,
--		const char __user *buf, size_t count, loff_t *ppos);
-+		char *buf, size_t count, loff_t *ppos);
- static int ppc_rtas_tone_volume_show(struct seq_file *m, void *v);
- static int ppc_rtas_rmo_buf_show(struct seq_file *m, void *v);
- 
- static const struct proc_ops ppc_rtas_poweron_proc_ops = {
- 	.proc_show	= ppc_rtas_poweron_show,
--	.proc_write	= ppc_rtas_poweron_write,
-+	.proc_write_buf	= ppc_rtas_poweron_write,
- };
- 
- static const struct proc_ops ppc_rtas_progress_proc_ops = {
- 	.proc_show	= ppc_rtas_progress_show,
--	.proc_write	= ppc_rtas_progress_write,
-+	.proc_write_buf	= ppc_rtas_progress_write,
- };
- 
- static const struct proc_ops ppc_rtas_clock_proc_ops = {
- 	.proc_show	= ppc_rtas_clock_show,
--	.proc_write	= ppc_rtas_clock_write,
-+	.proc_write_buf	= ppc_rtas_clock_write,
- };
- 
- static const struct proc_ops ppc_rtas_tone_freq_proc_ops = {
- 	.proc_show	= ppc_rtas_tone_freq_show,
--	.proc_write	= ppc_rtas_tone_freq_write,
-+	.proc_write_buf	= ppc_rtas_tone_freq_write,
- };
- 
- static const struct proc_ops ppc_rtas_tone_volume_proc_ops = {
- 	.proc_show	= ppc_rtas_tone_volume_show,
--	.proc_write	= ppc_rtas_tone_volume_write,
-+	.proc_write_buf	= ppc_rtas_tone_volume_write,
- };
- 
- static int ppc_rtas_find_all_sensors(void);
-@@ -216,16 +216,14 @@ static int __init proc_rtas_init(void)
- 
- __initcall(proc_rtas_init);
- 
--static int parse_number(const char __user *p, size_t count, u64 *val)
-+static int parse_number(const char *p, size_t count, u64 *val)
- {
- 	char buf[40];
- 
- 	if (count > 39)
- 		return -EINVAL;
- 
--	if (copy_from_user(buf, p, count))
--		return -EFAULT;
--
-+	memcpy(buf, p, count);
- 	buf[count] = 0;
- 
- 	return kstrtoull(buf, 10, val);
-@@ -235,7 +233,7 @@ static int parse_number(const char __user *p, size_t count, u64 *val)
- /* POWER-ON-TIME                                                      */
- /* ****************************************************************** */
- static ssize_t ppc_rtas_poweron_write(struct file *file,
--		const char __user *buf, size_t count, loff_t *ppos)
-+		char *buf, size_t count, loff_t *ppos)
- {
- 	struct rtc_time tm;
- 	time64_t nowtime;
-@@ -269,15 +267,13 @@ static int ppc_rtas_poweron_show(struct seq_file *m, void *v)
- /* PROGRESS                                                           */
- /* ****************************************************************** */
- static ssize_t ppc_rtas_progress_write(struct file *file,
--		const char __user *buf, size_t count, loff_t *ppos)
-+		char *buf, size_t count, loff_t *ppos)
- {
- 	unsigned long hex;
- 
- 	if (count >= MAX_LINELENGTH)
- 		count = MAX_LINELENGTH -1;
--	if (copy_from_user(progress_led, buf, count)) { /* save the string */
--		return -EFAULT;
--	}
-+	memcpy(progress_led, buf, count); /* save the string */
- 	progress_led[count] = 0;
- 
- 	/* Lets see if the user passed hexdigits */
-@@ -301,7 +297,7 @@ static int ppc_rtas_progress_show(struct seq_file *m, void *v)
- /* CLOCK                                                              */
- /* ****************************************************************** */
- static ssize_t ppc_rtas_clock_write(struct file *file,
--		const char __user *buf, size_t count, loff_t *ppos)
-+		char *buf, size_t count, loff_t *ppos)
- {
- 	struct rtc_time tm;
- 	time64_t nowtime;
-@@ -660,7 +656,7 @@ static void get_location_code(struct seq_file *m, struct individual_sensor *s,
- /* INDICATORS - Tone Frequency                                        */
- /* ****************************************************************** */
- static ssize_t ppc_rtas_tone_freq_write(struct file *file,
--		const char __user *buf, size_t count, loff_t *ppos)
-+		char *buf, size_t count, loff_t *ppos)
- {
- 	u64 freq;
- 	int error = parse_number(buf, count, &freq);
-@@ -685,7 +681,7 @@ static int ppc_rtas_tone_freq_show(struct seq_file *m, void *v)
- /* INDICATORS - Tone Volume                                           */
- /* ****************************************************************** */
- static ssize_t ppc_rtas_tone_volume_write(struct file *file,
--		const char __user *buf, size_t count, loff_t *ppos)
-+		char *buf, size_t count, loff_t *ppos)
- {
- 	u64 volume;
- 	int error = parse_number(buf, count, &volume);
 diff --git a/arch/powerpc/kernel/rtas_flash.c b/arch/powerpc/kernel/rtas_flash.c
-index f1cd105f7426..77a4627f2507 100644
+index 77a4627f2507..5ebaee7683ef 100644
 --- a/arch/powerpc/kernel/rtas_flash.c
 +++ b/arch/powerpc/kernel/rtas_flash.c
-@@ -307,7 +307,7 @@ static ssize_t rtas_flash_read_num(struct file *file, char __user *buf,
-  * count is.  If the system is low on memory it will be just as well
-  * that we fail....
-  */
--static ssize_t rtas_flash_write(struct file *file, const char __user *buffer,
-+static ssize_t rtas_flash_write(struct file *file, char *buffer,
- 				size_t count, loff_t *off)
+@@ -269,7 +269,7 @@ static size_t get_flash_status_msg(int status, char *buf)
+ }
+ 
+ /* Reading the proc file will show status (not the firmware contents) */
+-static ssize_t rtas_flash_read_msg(struct file *file, char __user *buf,
++static ssize_t rtas_flash_read_msg(struct file *file, char *buf,
+ 				   size_t count, loff_t *ppos)
  {
  	struct rtas_update_flash_t *const uf = &rtas_update_flash_data;
-@@ -343,16 +343,11 @@ static ssize_t rtas_flash_write(struct file *file, const char __user *buffer,
- 		next_free = 0;
- 	}
+@@ -283,10 +283,10 @@ static ssize_t rtas_flash_read_msg(struct file *file, char __user *buf,
  
--	if (count > RTAS_BLK_SIZE)
--		count = RTAS_BLK_SIZE;
- 	p = kmem_cache_zalloc(flash_block_cache, GFP_KERNEL);
- 	if (!p)
- 		return -ENOMEM;
- 	
--	if(copy_from_user(p, buffer, count)) {
--		kmem_cache_free(flash_block_cache, p);
--		return -EFAULT;
--	}
-+	memcpy(p, buffer, count);
- 	fl->blocks[next_free].data = p;
- 	fl->blocks[next_free].length = count;
- 	fl->num_blocks++;
-@@ -390,7 +385,7 @@ static ssize_t manage_flash_read(struct file *file, char __user *buf,
- 	return simple_read_from_buffer(buf, count, ppos, msg, msglen);
+ 	/* Read as text message */
+ 	len = get_flash_status_msg(status, msg);
+-	return simple_read_from_buffer(buf, count, ppos, msg, len);
++	return memory_read_from_buffer(buf, count, ppos, msg, len);
  }
  
--static ssize_t manage_flash_write(struct file *file, const char __user *buf,
-+static ssize_t manage_flash_write(struct file *file, char *buf,
- 				size_t count, loff_t *off)
+-static ssize_t rtas_flash_read_num(struct file *file, char __user *buf,
++static ssize_t rtas_flash_read_num(struct file *file, char *buf,
+ 				   size_t count, loff_t *ppos)
+ {
+ 	struct rtas_update_flash_t *const uf = &rtas_update_flash_data;
+@@ -299,7 +299,7 @@ static ssize_t rtas_flash_read_num(struct file *file, char __user *buf,
+ 
+ 	/* Read as number */
+ 	sprintf(msg, "%d\n", status);
+-	return simple_read_from_buffer(buf, count, ppos, msg, strlen(msg));
++	return memory_read_from_buffer(buf, count, ppos, msg, strlen(msg));
+ }
+ 
+ /* We could be much more efficient here.  But to keep this function
+@@ -370,7 +370,7 @@ static void manage_flash(struct rtas_manage_flash_t *args_buf, unsigned int op)
+ 	args_buf->status = rc;
+ }
+ 
+-static ssize_t manage_flash_read(struct file *file, char __user *buf,
++static ssize_t manage_flash_read(struct file *file, char *buf,
+ 			       size_t count, loff_t *ppos)
  {
  	struct rtas_manage_flash_t *const args_buf = &rtas_manage_flash_data;
-@@ -401,9 +396,8 @@ static ssize_t manage_flash_write(struct file *file, const char __user *buf,
+@@ -382,7 +382,7 @@ static ssize_t manage_flash_read(struct file *file, char __user *buf,
+ 	mutex_unlock(&rtas_manage_flash_mutex);
  
- 	if ((args_buf->status == MANAGE_AUTH) || (count == 0))
- 		return count;
--		
--	if (get_user(cmd, buf))
--		return -EFAULT;
-+
-+	cmd = buf[0];
- 
- 	if (cmd == '0')
- 		op = RTAS_REJECT_TMP_IMG;
-@@ -471,7 +465,7 @@ static ssize_t validate_flash_read(struct file *file, char __user *buf,
- 	return simple_read_from_buffer(buf, count, ppos, msg, msglen);
+ 	msglen = sprintf(msg, "%d\n", status);
+-	return simple_read_from_buffer(buf, count, ppos, msg, msglen);
++	return memory_read_from_buffer(buf, count, ppos, msg, msglen);
  }
  
--static ssize_t validate_flash_write(struct file *file, const char __user *buf,
-+static ssize_t validate_flash_write(struct file *file, char *buf,
- 				    size_t count, loff_t *off)
+ static ssize_t manage_flash_write(struct file *file, char *buf,
+@@ -450,7 +450,7 @@ static int get_validate_flash_msg(struct rtas_validate_flash_t *args_buf,
+ 	return n;
+ }
+ 
+-static ssize_t validate_flash_read(struct file *file, char __user *buf,
++static ssize_t validate_flash_read(struct file *file, char *buf,
+ 			       size_t count, loff_t *ppos)
  {
  	struct rtas_validate_flash_t *const args_buf =
-@@ -494,11 +488,7 @@ static ssize_t validate_flash_write(struct file *file, const char __user *buf,
- 		args_buf->status = VALIDATE_INCOMPLETE;
+@@ -462,7 +462,7 @@ static ssize_t validate_flash_read(struct file *file, char __user *buf,
+ 	msglen = get_validate_flash_msg(args_buf, msg, VALIDATE_MSG_LEN);
+ 	mutex_unlock(&rtas_validate_flash_mutex);
+ 
+-	return simple_read_from_buffer(buf, count, ppos, msg, msglen);
++	return memory_read_from_buffer(buf, count, ppos, msg, msglen);
+ }
+ 
+ static ssize_t validate_flash_write(struct file *file, char *buf,
+@@ -623,7 +623,7 @@ static const struct rtas_flash_file rtas_flash_files[] = {
+ 		.handle		= RTAS_FN_IBM_UPDATE_FLASH_64_AND_REBOOT,
+ 		.status		= &rtas_update_flash_data.status,
+ 		.ops.proc_flags	= PROC_ENTRY_SHORT_WRITES,
+-		.ops.proc_read	= rtas_flash_read_msg,
++		.ops.proc_read_buf = rtas_flash_read_msg,
+ 		.ops.proc_write_buf = rtas_flash_write,
+ 		.ops.proc_write_size = RTAS_BLK_SIZE,
+ 		.ops.proc_release = rtas_flash_release,
+@@ -634,7 +634,7 @@ static const struct rtas_flash_file rtas_flash_files[] = {
+ 		.handle		= RTAS_FN_IBM_UPDATE_FLASH_64_AND_REBOOT,
+ 		.status		= &rtas_update_flash_data.status,
+ 		.ops.proc_flags	= PROC_ENTRY_SHORT_WRITES,
+-		.ops.proc_read	= rtas_flash_read_num,
++		.ops.proc_read_buf = rtas_flash_read_num,
+ 		.ops.proc_write_buf = rtas_flash_write,
+ 		.ops.proc_write_size = RTAS_BLK_SIZE,
+ 		.ops.proc_release = rtas_flash_release,
+@@ -645,7 +645,7 @@ static const struct rtas_flash_file rtas_flash_files[] = {
+ 		.handle		= RTAS_FN_IBM_VALIDATE_FLASH_IMAGE,
+ 		.status		= &rtas_validate_flash_data.status,
+ 		.ops.proc_flags	= PROC_ENTRY_SHORT_WRITES,
+-		.ops.proc_read	= validate_flash_read,
++		.ops.proc_read_buf = validate_flash_read,
+ 		.ops.proc_write_buf = validate_flash_write,
+ 		.ops.proc_write_size = VALIDATE_BUF_SIZE,
+ 		.ops.proc_release = validate_flash_release,
+@@ -655,7 +655,7 @@ static const struct rtas_flash_file rtas_flash_files[] = {
+ 		.filename	= "powerpc/rtas/" MANAGE_FLASH_NAME,
+ 		.handle		= RTAS_FN_IBM_MANAGE_FLASH_IMAGE,
+ 		.status		= &rtas_manage_flash_data.status,
+-		.ops.proc_read	= manage_flash_read,
++		.ops.proc_read_buf = manage_flash_read,
+ 		.ops.proc_write_buf = manage_flash_write,
+ 		.ops.proc_lseek	= default_llseek,
  	}
+diff --git a/arch/powerpc/kernel/rtasd.c b/arch/powerpc/kernel/rtasd.c
+index dd0df5e164a3..360ed2e30fd5 100644
+--- a/arch/powerpc/kernel/rtasd.c
++++ b/arch/powerpc/kernel/rtasd.c
+@@ -291,26 +291,18 @@ static int rtas_log_release(struct inode * inode, struct file * file)
+  * know that we can safely clear the events in NVRAM.
+  * Next we'll sit and wait for something else to log.
+  */
+-static ssize_t rtas_log_read(struct file * file, char __user * buf,
++static ssize_t rtas_log_read(struct file * file, char * buf,
+ 			 size_t count, loff_t *ppos)
+ {
+ 	int error;
+-	char *tmp;
+ 	unsigned long s;
+ 	unsigned long offset;
+ 
+-	if (!buf || count < rtas_error_log_buffer_max)
++	if (count < rtas_error_log_buffer_max)
+ 		return -EINVAL;
+ 
+ 	count = rtas_error_log_buffer_max;
  
 -	if (!access_ok(buf, count))
 -		return -EFAULT;
 -
--	if (copy_from_user(args_buf->buf + *off, buf, count))
--		return -EFAULT;
-+	memcpy(args_buf->buf + *off, buf, count);
+-	tmp = kmalloc(count, GFP_KERNEL);
+-	if (!tmp)
+-		return -ENOMEM;
+-
+ 	spin_lock_irqsave(&rtasd_log_lock, s);
  
- 	*off += count;
- 	return count;
-@@ -632,8 +622,10 @@ static const struct rtas_flash_file rtas_flash_files[] = {
- 		.filename	= "powerpc/rtas/" FIRMWARE_FLASH_NAME,
- 		.handle		= RTAS_FN_IBM_UPDATE_FLASH_64_AND_REBOOT,
- 		.status		= &rtas_update_flash_data.status,
-+		.ops.proc_flags	= PROC_ENTRY_SHORT_WRITES,
- 		.ops.proc_read	= rtas_flash_read_msg,
--		.ops.proc_write	= rtas_flash_write,
-+		.ops.proc_write_buf = rtas_flash_write,
-+		.ops.proc_write_size = RTAS_BLK_SIZE,
- 		.ops.proc_release = rtas_flash_release,
- 		.ops.proc_lseek	= default_llseek,
- 	},
-@@ -641,8 +633,10 @@ static const struct rtas_flash_file rtas_flash_files[] = {
- 		.filename	= "powerpc/rtas/" FIRMWARE_UPDATE_NAME,
- 		.handle		= RTAS_FN_IBM_UPDATE_FLASH_64_AND_REBOOT,
- 		.status		= &rtas_update_flash_data.status,
-+		.ops.proc_flags	= PROC_ENTRY_SHORT_WRITES,
- 		.ops.proc_read	= rtas_flash_read_num,
--		.ops.proc_write	= rtas_flash_write,
-+		.ops.proc_write_buf = rtas_flash_write,
-+		.ops.proc_write_size = RTAS_BLK_SIZE,
- 		.ops.proc_release = rtas_flash_release,
- 		.ops.proc_lseek	= default_llseek,
- 	},
-@@ -650,8 +644,10 @@ static const struct rtas_flash_file rtas_flash_files[] = {
- 		.filename	= "powerpc/rtas/" VALIDATE_FLASH_NAME,
- 		.handle		= RTAS_FN_IBM_VALIDATE_FLASH_IMAGE,
- 		.status		= &rtas_validate_flash_data.status,
-+		.ops.proc_flags	= PROC_ENTRY_SHORT_WRITES,
- 		.ops.proc_read	= validate_flash_read,
--		.ops.proc_write	= validate_flash_write,
-+		.ops.proc_write_buf = validate_flash_write,
-+		.ops.proc_write_size = VALIDATE_BUF_SIZE,
- 		.ops.proc_release = validate_flash_release,
- 		.ops.proc_lseek	= default_llseek,
- 	},
-@@ -660,7 +656,7 @@ static const struct rtas_flash_file rtas_flash_files[] = {
- 		.handle		= RTAS_FN_IBM_MANAGE_FLASH_IMAGE,
- 		.status		= &rtas_manage_flash_data.status,
- 		.ops.proc_read	= manage_flash_read,
--		.ops.proc_write	= manage_flash_write,
-+		.ops.proc_write_buf = manage_flash_write,
- 		.ops.proc_lseek	= default_llseek,
+ 	/* if it's 0, then we know we got the last one (the one in NVRAM) */
+@@ -338,15 +330,14 @@ static ssize_t rtas_log_read(struct file * file, char __user * buf,
  	}
- };
+ 
+ 	offset = rtas_error_log_buffer_max * (rtas_log_start & LOG_NUMBER_MASK);
+-	memcpy(tmp, &rtas_log_buf[offset], count);
++	memcpy(buf, &rtas_log_buf[offset], count);
+ 
+ 	rtas_log_start += 1;
+ 	rtas_log_size -= 1;
+ 	spin_unlock_irqrestore(&rtasd_log_lock, s);
+ 
+-	error = copy_to_user(buf, tmp, count) ? -EFAULT : count;
++	error = count;
+ out:
+-	kfree(tmp);
+ 	return error;
+ }
+ 
+@@ -359,7 +350,7 @@ static __poll_t rtas_log_poll(struct file *file, poll_table * wait)
+ }
+ 
+ static const struct proc_ops rtas_log_proc_ops = {
+-	.proc_read	= rtas_log_read,
++	.proc_read_buf	= rtas_log_read,
+ 	.proc_poll	= rtas_log_poll,
+ 	.proc_open	= rtas_log_open,
+ 	.proc_release	= rtas_log_release,
 
 -- 
 2.53.0
