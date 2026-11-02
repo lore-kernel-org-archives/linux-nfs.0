@@ -1,94 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.49
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793647658;
-	b=qJT/2Q3Lr06YeyxbC2FRu2In7T4ugQvp4XkNwKHnq2/irW/nSdNtmdj+TS21snDJ8PfP
-	 wuxhKvDZQ0AxHqQiQyhC0CQgNL6zFJhe8QyAMYpHC7zDapcOarv5gyhdWgN6HFegLmbkv
-	 /S7YM83ndvpIJ+XuSIiL+1FYEw4AIzS4dcyWqVynZiH41aAdCHt0ha105gJqADYuQ445s
-	 WxSaGMrKCF4W0nQcS7vTDfG4rt98k+bzc2IhlrCUD/uzRV9QxIE75tdyOpv3T89ARD6sM
-	 5l40gnkt68II+KvfZs+Z2L5KV0HmrnCdjw1gfGDXhKNFvLa5Lh0Amq8ByKIf3PcfeDw==
+	t=1793651483;
+	b=o3jbdN0KoFok5q94uw5w3lSrolCPRDqlfnydyupZ89HzrbyVY277M3+uxxjIrJqQyZWs
+	 5W+yWQiP1SP7tXhcXGUk8lTB0lHpokkiQy74InFRNve8bZVexc0AYr6D6Pp8LTlYmo4Nz
+	 YtWlw/zT/DWrWSTr5tmmwq2J4FeceCJmFQ0Ka/nnzsaQ1iIwWSmC71KUUDMbc0egeUftP
+	 D2tEc5fbSJ89x2Ew+sehf44pWScKhSUuFPuXUj4m73AFaS/sNU+nXQUtb39NM3D/gS68e
+	 keVzqkDaMULvD6ORaRFRgoM6EL8bp8/bdEG3wiRZhHK861gsyTaMIUd7oKhu7S6f2OQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793647658;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=5TEbyNKwRpbYrZWz4UfdyjbdbtGmZfyeOkfwZ7+qTCY=;
-	b=PXu9TMIr5Pvq2sn/b6mBdHC6eNQr2RHYBKmtUvdhaW8z7EeBGG1XJ6wg7VYwbFHRKNql
-	 7KABsI0qR3oIyshA2xgWEgQ6CK+mUs/upy4+HRv6L2JLZyzVPOVMouio3D23OvVez4Nbd
-	 wipOjZBTAJxKdcDitRS0IjZQGP41tt1jcBPRmajM41Gxj8k+BdtEmGM+PZrZfp+0lU/9q
-	 QAhGEfV+7bnFbfFlwxp3JKPwV+U4mBydtQiIRO4NkJMNUhj4yJaExXJCL8/c+jJzOzuAD
-	 eRvAD1vgMp0JeKBG/0B9yejarxVg5u2/HnCvS0noFJYDtzjWsPlyPLDTW8xeLNLdbwg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793651483;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
+	bh=7xcbpz3qOJJh9IzKBxf6M4aE91StvLXvkrlMkjuFTNk=;
+	b=fhRobSuDw88emNAZwwSweDnJ3+rlxpZJ9rTlY5CneLxB8kHI4B2zk3Kj2uDgxCnsVrdo
+	 pfHQCszuTy7QQyEOG1jJqu876CL1RjUGGTgEa+5I66WeTDzKdlCJ03x8i6Z6Hk8HH8B2S
+	 LlUHn7baZKZem68fcnYLi4p0GG5BdsQvTjTvuPhBtGJNFVKwNo8pkwpVJWcY20gmwJ/zL
+	 6U5gpnoIM8uKD+6SuAEsEUIGm4f0+eZCXJNNmhMV5akcoUfPwTXYJFQq6ZKH86zQbZs9l
+	 BwJVCMPynN+SzMvdK1kyNeuTwFCXOhmDy6p2lRLYR8oeA6WGGrZzLP2jHDr6g8KUKIg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=hammerspace.com;
-	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=dd8j+iNP;
-	arc=none smtp.remote-ip=209.85.210.49
-Received: from mail-ot1-f49.google.com (mail-ot1-f49.google.com [209.85.210.49])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VopOkLVv;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 80D12606A336
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 19:27:38 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 80D12606A336
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 88A39606D81D
+	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 20:31:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=dd8j+iNP
-Received: by mail-ot1-f49.google.com with SMTP id 46e09a7af769-8479f46ecd8so1429995a34.0
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2026 11:27:38 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1793647657; x=1794252457; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=5TEbyNKwRpbYrZWz4UfdyjbdbtGmZfyeOkfwZ7+qTCY=;
-        b=dd8j+iNPqTgOktCEjj6QOQvD3dv2SIEAF7eprJeDOMKupgLABLg8rcRE92duQMUetn
-         3ruSUvnHJFo07sujlgKRMaHWZNfJTIPm0Pbtu6pPbX++B5XnwTXxiML3gje9UhaSD/iv
-         z0gnVr1v002BEqPWdeCtURCGvVWe8MvdNuWjTl/ntcn11GijmfrRjGfiXIRVyH3WIBWS
-         OVWciRbNZMgjrljQSatL9OaxBQ5frSPa2Z6ZHRsxu3YcHN1tWyKT1qGuem/FFFLQrboN
-         WV1ML8iYAj4NujA9HcO/nQpCuJ8CgeEBwZL/WrqQ4jMmyMc5/KFnYjUk+Oo7D3v2+aEv
-         10SA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793647657; x=1794252457;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=5TEbyNKwRpbYrZWz4UfdyjbdbtGmZfyeOkfwZ7+qTCY=;
-        b=2GquKlc52vlQ4F9vzudUQhsi7P4TxdDvMPWrdoFm7NKAZSWeEzN1Xs9DEgCSmRVZMw
-         HBvP1bVLrUGqfbxysJKPKg15qyTxaPg5Ih9femciHrZe4P+af0SIpYkpmevKbSSoluG1
-         HlNzLBYR+IMaJTQ6J1KzXPhlMDtd/IrgWG1EQRmFzLGojKaF5VsVrwQ0jl2BhJWzdY9S
-         6BZvpewPvWKMPMNSQtSie7xj+2IiE30qf8of8I6VOMTub6J3+8zTkI2Wh8uGOzz/gsgQ
-         9DEpbXhHGOuz4uBx2UZ0SeDUU9Qb7Lxkn1Tu0nVXYKmocsZCr8UTwh+LMQNYiz7xvOC/
-         AbXg==
-X-Forwarded-Encrypted: i=1; AKwUvBwRbax4JN9D+pUxXmbVxqDb3tDv0JtCGODkg1pxC2ZiNU4jRH3v2EvRZA+udeEE1IwtL4fGQdU3J8o=@vger.kernel.org
-X-Gm-Message-State: AFq9FYLEmSpXjdpMFroOLHzZwDIdX1ClReAJgC3yJtkOJrDG8qRgQlLJ
-	H1WSEarEGEtpBH36+0h7O/X0AVOD+4mIp9ln6TYM9kgbwib1tIdbWv+lOtlfRr2kUic=
-X-Gm-Gg: AYBFou3+Sko1nENRiACuqI1PaTxDDNr5CTgk9YuBxzSGa6o3VqQLarQfWoybeud28G+
-	j7NkCMzGq7RVbzIc3VhmjhFD8zO5mcqByWlDqlHSuBvhrPa6w9PPgyqZ8TLMIADXLvDKB9Nrg0E
-	i+Rw3Jwa65wE8rL0bQWSU6lerNcT+xXUdClhTvdMOjP4Gwh4KTktgOCVJ3kjlyOReJSY9m2ix/A
-	XPm8aqw3o7OELhQgoSm2DTycF13U+CMbSRw9+16JTpZCSTif5U8Qtkk2jnHoIvGkjLuATA0teJ/
-	zdXK5nDWDjXItmQE7u2m2zHwcw7UzDHNUntH7dp8daMGozy7SRZqRIZXi5xZW+aTqcYlbKz4ZbE
-	X6H522MiirLq7eg2oryD6z1tRsqVlQSGh9m9Bq3f1GnZcjYvH0FFaKpXtDNFkB5ko+N5B62U+RJ
-	qDPDhKjB0wUnJIbtqwNUjFP8PHJA9GcW50MIoTwoU1gPJb2+lBZF0Vq7Wr3doqEKdNTjYHK9CZ1
-	QweHF3FggJBd2mzremEg6yNUew2esFMRWaaBG0+9ok8D15bFc1w+BK3sVsBxCQ7iqSGButFninZ
-	ApdLhK+YmNDLVKSAo+R1KBUdPfHdaPuagPVNvVFkm4YARAOlK9t2FUA4w1EIecSO
-X-Received: by 2002:a05:6830:4391:b0:85b:c75:dc65 with SMTP id 46e09a7af769-85d364a5597mr9385400a34.7.1793647657367;
-        Mon, 02 Nov 2026 11:27:37 -0800 (PST)
-Received: from localhost (174-24-9-35.clsp.qwest.net. [174.24.9.35])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-85d354d12f2sm9827185a34.17.2026.11.02.11.27.36
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 02 Nov 2026 11:27:36 -0800 (PST)
-From: Jonathan Flynn <jonathan.flynn@hammerspace.com>
-To: Benjamin Coddington <bcodding@hammerspace.com>
-Cc: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/2] NFSv4/pnfs: Keep data server connections across deviceid eviction
-Date: Mon,  2 Nov 2026 12:27:35 -0700
-Message-ID: <20261102192735.2158612-1-jonathan.flynn@hammerspace.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <cover.1789733774.git.bcodding@hammerspace.com>
-References: <cover.1789733774.git.bcodding@hammerspace.com>
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VopOkLVv
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0738B1F00A17;
+	Mon,  2 Nov 2026 20:31:22 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793651483;
+	bh=7xcbpz3qOJJh9IzKBxf6M4aE91StvLXvkrlMkjuFTNk=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=VopOkLVvAoeHj/ttgzhKO+EMTrSCQLY+Ae9/8m+ZRIcTxVE3U567yNXiwTUkJO/s9
+	 he6wslcPQSX4OcNYb+H/Zkri/FWnl0KsUt10wAJhkKR32wSTz0zfLRl4bEzz//c8Ty
+	 eEZRje52Wk57Vu75xRQpoNe4fkt91sMzXk+VI4kIMN2QNMSbd3ahIXJzPbrXlfc6i/
+	 U5nkxpfHriVukTIjXy741AIYfD+P87psa+U41dKLQkfck3jxqiOYnfVMwl4nvQDmX2
+	 W65U/Vpsv2NLXWDjqMD6kUI+wsVDnSZb/jatCw0B2T2tqe47yCvUJTokzyi0SuQoLq
+	 KZZg3yBg9MJQQ==
+From: Mike Snitzer <snitzer@kernel.org>
+To: Anna Schumaker <anna@kernel.org>,
+	Trond Myklebust <trondmy@kernel.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 1/4] NFS: don't release the open context of a failed write from writeback
+Date: Mon,  2 Nov 2026 15:31:17 -0500
+Message-ID: <20261102203120.14600-2-snitzer@kernel.org>
+X-Mailer: git-send-email 2.44.0
+In-Reply-To: <20261102203120.14600-1-snitzer@kernel.org>
+References: <20261102203120.14600-1-snitzer@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -100,17 +60,207 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-On 18 Sep 2026, Benjamin Coddington wrote:
-> Keep the nfs4_pnfs_ds hashed once its last user goes away, and reap it later
-> if nothing claims it.
+When a write fails with an error that nfs_error_is_fatal_on_server()
+accepts, nfs_do_writepage() and nfs_async_write_error() complete the
+request in the submitting thread: nfs_write_error() removes the request
+from the inode and drops the last reference to it. The request owns a
+reference to its open context, so if the file has already been closed
+this is also where the open context is released.
 
-I have been running both patches, on top of your flexfiles striping
-series, in a 7.3-based kernel on ten NFSv4.2 clients since September:
-flexfiles layouts striped across 240 volumes on ten data servers, with
-nconnect=16 to each data server and dataserver_linger at 3600, on top
-of other NFS patches.  With linger the data server connections stay up
-across layout returns, so I/O after a layout cycle does not wait for
-reconnects; with it short they are torn down and rebuilt as you
-describe.  No problems seen with it applied.
+Releasing an open context closes NFSv4 state and drops what may be the
+last reference to the dentry, the inode and the superblock. The
+submitting thread is usually the flusher, which may do none of that:
 
-Tested-by: Jonathan Flynn <jonathan.flynn@hammerspace.com>
+ - It holds sb->s_umount shared, or works on behalf of a sync(2) caller
+   that does. An open context does not keep a filesystem mounted, so
+   once it has been unmounted the open context can hold the last active
+   reference to the superblock, and deactivate_super() then waits for
+   s_umount forever:
+
+     wb_workfn
+       __writeback_inodes_wb
+         super_trylock_shared(sb)          <- s_umount held shared
+         writeback_sb_inodes
+           nfs_writepages
+             nfs_do_writepage              <- fatal error: out_launder
+               nfs_write_error
+                 nfs_release_request
+                   nfs_put_lock_context
+                     __put_nfs_open_context
+                       nfs_sb_deactive
+                         deactivate_super
+                           down_write(&sb->s_umount)   <- deadlock
+
+ - Since commit 169ebd90131b ("writeback: Avoid iput() from flusher
+   thread") it pins the inode with I_SYNC instead of a reference, so
+   that it never does the final iput(). evict() waits for I_SYNC, so if
+   dput() drops the last reference to a stale or sillyrenamed inode,
+   the flusher waits for itself:
+
+     wb_workfn
+       __writeback_inodes_wb
+         writeback_sb_inodes               <- sets I_SYNC
+           nfs_writepages
+             nfs_do_writepage
+               nfs_write_error
+                 nfs_release_request
+                   nfs_put_lock_context
+                     __put_nfs_open_context
+                       dput
+                         nfs_dentry_iput
+                           iput
+                             evict
+                               inode_wait_for_writeback   <- deadlock
+
+The first of these was hit on a 6.12-based client whose server began
+rejecting requests with AUTH_TOOWEAK (-EACCES). The flush worker hung in
+deactivate_super(), and every later automount of the same filesystem
+blocked in grab_super() behind it. The second was reproduced by failing
+the writeback of a sillyrenamed file that had been closed.
+
+A write that was sent is normally released by the RPC release callback,
+which runs on nfsiod; the next patch closes the case where it is not.
+Do the same for a write that fails before it is sent. Have
+nfs_write_error() hold the open context across the release of the
+request, and drop that reference with put_nfs_open_context_async(),
+which hands the release of the context to nfsiod if the reference is
+the last one.
+
+This does not change when or how a filesystem is shut down. Since
+commit 3d4ff43d895c ("nfs_open_context doesn't need struct path
+either") an open context pins the superblock instead of a mount, so an
+open context that outlives the last mount shuts the filesystem down
+when it is released. The completion of a write already does that from
+nfsiod.
+
+Fixes: a6598813a4c5 ("NFS: Don't write back further requests if there is a pending write error")
+Cc: stable@vger.kernel.org
+Signed-off-by: Mike Snitzer <snitzer@kernel.org>
+---
+ fs/nfs/inode.c         | 37 ++++++++++++++++++++++++++++++++++---
+ fs/nfs/internal.h      |  1 +
+ fs/nfs/write.c         |  5 +++++
+ include/linux/nfs_fs.h |  2 ++
+ 4 files changed, 42 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index fe7a05dec02fc..67114c4344942 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1237,13 +1237,11 @@ struct nfs_open_context *get_nfs_open_context(struct nfs_open_context *ctx)
+ }
+ EXPORT_SYMBOL_GPL(get_nfs_open_context);
+ 
+-static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
++static void nfs_free_open_context(struct nfs_open_context *ctx, int is_sync)
+ {
+ 	struct inode *inode = d_inode(ctx->dentry);
+ 	struct super_block *sb = ctx->dentry->d_sb;
+ 
+-	if (!refcount_dec_and_test(&ctx->lock_context.count))
+-		return;
+ 	if (!list_empty(&ctx->list)) {
+ 		spin_lock(&inode->i_lock);
+ 		list_del_rcu(&ctx->list);
+@@ -1260,12 +1258,45 @@ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
+ 	kfree_rcu(ctx, rcu_head);
+ }
+ 
++static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
++{
++	if (refcount_dec_and_test(&ctx->lock_context.count))
++		nfs_free_open_context(ctx, is_sync);
++}
++
+ void put_nfs_open_context(struct nfs_open_context *ctx)
+ {
+ 	__put_nfs_open_context(ctx, 0);
+ }
+ EXPORT_SYMBOL_GPL(put_nfs_open_context);
+ 
++static void nfs_free_open_context_work(struct work_struct *work)
++{
++	struct nfs_open_context *ctx =
++		container_of(work, struct nfs_open_context, free_work);
++
++	nfs_free_open_context(ctx, 0);
++}
++
++/**
++ * put_nfs_open_context_async - drop a reference from a caller that must not
++ *				release the open context itself
++ * @ctx: open context to drop
++ *
++ * Releasing an open context closes NFSv4 state and drops what may be the
++ * last reference to the dentry, the inode and the superblock. None of that
++ * is allowed in writeback, which holds sb->s_umount and has set I_SYNC on
++ * the inode. If this is the last reference, release the context from nfsiod,
++ * which is where the completion of a write releases it.
++ */
++void put_nfs_open_context_async(struct nfs_open_context *ctx)
++{
++	if (!refcount_dec_and_test(&ctx->lock_context.count))
++		return;
++	INIT_WORK(&ctx->free_work, nfs_free_open_context_work);
++	queue_work(nfsiod_workqueue, &ctx->free_work);
++}
++
+ static void put_nfs_open_context_sync(struct nfs_open_context *ctx)
+ {
+ 	__put_nfs_open_context(ctx, 1);
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index f6f7f70b21e24..cdf77ca012cee 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -527,6 +527,7 @@ extern int __init register_nfs_fs(void);
+ extern void __exit unregister_nfs_fs(void);
+ extern bool nfs_sb_active(struct super_block *sb);
+ extern void nfs_sb_deactive(struct super_block *sb);
++void put_nfs_open_context_async(struct nfs_open_context *ctx);
+ extern int nfs_client_for_each_server(struct nfs_client *clp,
+ 				      int (*fn)(struct nfs_server *, void *),
+ 				      void *data);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 7f173dbbeb9d9..f38bbebffe4d7 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -568,11 +568,16 @@ static struct nfs_page *nfs_lock_and_join_requests(struct folio *folio)
+ 
+ static void nfs_write_error(struct nfs_page *req, int error)
+ {
++	struct nfs_open_context *ctx;
++
++	/* The caller may be writeback, which must not release the context */
++	ctx = get_nfs_open_context(nfs_req_openctx(req));
+ 	trace_nfs_write_error(nfs_page_to_inode(req), req, error);
+ 	nfs_mapping_set_error(nfs_page_to_folio(req), error);
+ 	nfs_inode_remove_request(req);
+ 	nfs_page_end_writeback(req);
+ 	nfs_release_request(req);
++	put_nfs_open_context_async(ctx);
+ }
+ 
+ /*
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index b85a73ae7919f..32a46de106cd5 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -26,6 +26,7 @@
+ #include <linux/refcount.h>
+ #include <linux/rwsem.h>
+ #include <linux/wait.h>
++#include <linux/workqueue.h>
+ 
+ #include <linux/sunrpc/debug.h>
+ #include <linux/sunrpc/auth.h>
+@@ -115,6 +116,7 @@ struct nfs_open_context {
+ 	struct nfs4_threshold	*mdsthreshold;
+ 	struct list_head list;
+ 	struct rcu_head	rcu_head;
++	struct work_struct free_work;
+ 	struct nfs_file_localio nfl;
+ };
+ 
+-- 
+2.52.0
+
