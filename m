@@ -1,99 +1,78 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.218.45
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793586007;
-	b=lRT9uqih0mjsWmZ7saJz5TzSSl3swlaIB0g5s7wTL2/tYOpwQJrtBHSLF37mqwi3s2Jo
-	 rv+6mYNT3n+aPH0Zgq+RXpOs24iTX14HZBg6syhBy51RjzHFEgX1oGD4T7Z/2JPRPdiJE
-	 +gwNgkjndkKMUceZtRC23o9slvyElEhqgh++LX1wzeh9kJMqcse77PpSUQF4LnOAohRwp
-	 I7Bbkr9eAk/8kZnnUQIhOPjINAxDRKg3P3PyQN+Lbh2rmCStmxryTG+DpdwUfpDqoZirQ
-	 ECVh/CGgfCHtfFwljYzLZ+OLcdviKO8dwq3eGCeR8OtBeyfPNW0DsgrwzSKDbVKo8wQ==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793586007;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
-	 Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding;
-	bh=rnpOPb5ycOhSNbEyFKFTmBCIRpZrtLdppFDO3OKlKYc=;
-	b=j4QXUXT+oHEjNredUnrEiu08I48TAjvynVOm3YLoE769CSRQDKa2/oA7BGDvsFYv8B+l
-	 fHkpz0ObsslMX1/k5YWuBshAMUjRd2nyQTkMnyk0tAxwF1L1V8JOH3jdF3kbrnH2+UsdU
-	 5zXtRdPzoIWaqiIPCiphCAM5LxQaxbbARMCQIyWllyjdv3FMIk0R90TGUXyAnlWzDPY9n
-	 wrGk9Mfedi51errISuTvgl98xeG1tAmNiowlbcwpj6ADFQLDXAHyde+5w+2bzFNBeEQap
-	 AwBUGWjZxsEmkLDYANPm7pNl/Z4e0lmIIQ62YG4KXCJCsXQ6BJvzAqglpKl84DrWG0Q==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=IOFsOldk;
-	arc=none smtp.remote-ip=209.85.218.45
-Received: from mail-ej1-f45.google.com (mail-ej1-f45.google.com [209.85.218.45])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1793587421;
+	b=ezRNLoNpPPJ6dtqKTCuEBVsQMw4h0Ar/7tTzzZy5tKxmjZshGB6tYdfjL2D8awIS/mQv
+	 Dfd+iRiv96/PYrYztILNICUJom5uruf8ZfGqhtpy4Yw0HNT5qz4pkkkgrKqBxKJITh/3z
+	 g+JMY0JMqa8SdMrC+tjXEvECFN3qvndMxuCgVWmGmg7tWnfpYjEPifAhGq/Qr2zbGQG1o
+	 zd1E2lcGid9YIW6fTh1iImpdWN8J/ouh5YrOzHr8b69JZhjchZFHQyKQMDyOO1LDUX7bW
+	 IrbRjH9LbDgANDO2H5CdNdiQkT2XKCOS/GUydfFq5C/GEWreBMv0D27uXpa1HVmNCUQ==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793587421;
+	h=Received:DKIM-Signature:Received:From:Date:Subject:MIME-Version:
+	 Content-Type:Message-Id:X-B4-Tracking:X-Change-ID:To:Cc:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
+	 X-Original-From:Reply-To:Content-Transfer-Encoding;
+	bh=m3N8za2L/figfCzBPj4RCyQmLOipGBFMthCmsU6stDE=;
+	b=yT4/t0yDPgVzasOdIYPl7od0bly3ySaETodX3jNnEJAdCJ6KSP0dY4E063E2qS4y8k+I
+	 gop3eDiU5MdEHLf35nYbWpd+8wkCJ9M9fTGypP3e0qNjACtEJ75P4JQLMYqCZOPsl2zxL
+	 hEVx6k4W3gd6Xt/n5YVouFbP8RdBaE+FQHssPSZ8sCd6eW4O3P33ZZXzaKuM1QGzlhFcD
+	 DCMV3E4s0Yd7gGD34e+1Xxb07D30Rft9/ZYJWZSQCkPP66KYLe+a2xX4aeMdIB8mB18gK
+	 oki7cv4Rt87B5VJOY6Cd/kyPNNwALKJBSB8trUlyqQdbLBAJ8basALAotvIbhuICuhg==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HKH+OZBZ;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 741E3606A324
+	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 02:43:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HKH+OZBZ
+Authentication-Results: smtp.kernel.org; arc=none smtp.remote-ip=100.80.115.77
+ARC-Seal: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256; cv=none;
+	t=1793587421;
+	b=0EQflumglgo4iGhVBs3qmagabubjg5Xo1p/RJFN3uzTwp+r2L7h6pRtO0R84NwZ2hP6b
+	 taEfCUJCslnjMIx0E+C4kQqyfGg6TKzz5zHFlR0E401JiduTnz6nR9HjAn3CkeikVD9LK
+	 g+iIFrLYU3FmTDGuU4pPM2VJbcu+kf6BZGy9jeV/RCqzPPr07Qdb9phM7kapHkUbXfAc0
+	 wXIKzmTQIBuc+dZS3RR5AI8J1elE863D73WzBtsrKyzT+bkhyw415lcJ4BYCzke/7uRkR
+	 gVvFYMdTanX3TdqPJjvjIptguU4tboi1YZlig/RqqRtxj+SdZxR5c+kx34DWStj4wrw==
+ARC-Message-Signature: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256;
+	c=relaxed/relaxed; t=1793587421;
+	h=DKIM-Signature:Received:From:Date:Subject:MIME-Version:Content-Type:
+	 Message-Id:X-B4-Tracking:X-Change-ID:To:Cc:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
+	 X-Original-From:Reply-To:Content-Transfer-Encoding;
+	bh=m3N8za2L/figfCzBPj4RCyQmLOipGBFMthCmsU6stDE=;
+	b=hfog0u2bbdOYCCjR7cGvC2SaQTS4G7zZsSiFapIWxe6yJVuDO0ih00pYk7md6mVrkl93
+	 qksIGej52hw5qJqbUkT8pCgrB7j5ojm9W0ffkULyEOXP0UEk+VvXtObaB4mDFGG5SerMc
+	 MbsST9S9Mmlv6PNT0e6x2szYMtWN+9qz+qCvBTdgLuwqZ2AQYd3DLdMUOTLnNRL3kpO88
+	 M8EA9GY3Fk/h+j4STMsKBQ1Oa0ssdKU+X+/0+TxhWibNUtKsRJkfeonbkiCAKSHPIEMEu
+	 4AC/Z+zGOGjejg53FY/LwaaZBLHLMJThGl032abI5xhuErxa28ybH02s/domN7zAdiA==
+ARC-Authentication-Results: i=1; smtp.kernel.org; 
+	arc=none smtp.remote-ip=100.80.115.77
+Received: from lkml.kernel.org (nexus.subspace.kernel.org [100.80.115.77])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E2954606A324
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 02:20:06 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E2954606A324
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=IOFsOldk
-Received: by mail-ej1-f45.google.com with SMTP id a640c23a62f3a-c4cdc606b47so36677666b.0
-        for <linux-nfs@vger.kernel.org>; Sun, 01 Nov 2026 18:20:06 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1793586005; x=1794190805; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:mime-version:reply-to
-         :references:in-reply-to:message-id:date:subject:cc:to:from:from:to
-         :cc:subject:date:message-id:reply-to:content-type;
-        bh=rnpOPb5ycOhSNbEyFKFTmBCIRpZrtLdppFDO3OKlKYc=;
-        b=IOFsOldkqrg4ase1q+zqSv0TWRD+pb85fQ5Ef/63MJbxOOlwzVuDvzRvO8w7FllhKk
-         gdN7pPrf7FzOhWScYqL6ds4ig3FCGRvzcWx6SwYJtnrGdlWKTO60FfipgyDzowQjHpip
-         QjK+etr/GbiBSY/COeK5ke3OyVPyPJWNBOVmMQb98DQqzURXaNGAVq/THXiQViPphKPE
-         kCBX1ANMyWRAH80M9ntYnN97raWt0PpOY3g+BTYnSNmd7d7KG/QOWqRq1O7PPcbxG/Sc
-         WRxH1QHPYMwmvx8ZJyv5RdPEMAtkFee10CFUKvhNUQelph+6C2BxGGOWMdgRTmbw9Qwa
-         SyLw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793586005; x=1794190805;
-        h=content-transfer-encoding:content-type:mime-version:reply-to
-         :references:in-reply-to:message-id:date:subject:cc:to:from:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=rnpOPb5ycOhSNbEyFKFTmBCIRpZrtLdppFDO3OKlKYc=;
-        b=iFyI1Nnz7xe00A/13nHrl75CpPucrinQNC1OJxp30I1GAtLvB+g44GW8ELzA3zr//B
-         vJPbiQBRB/yrMGgjelMRplKfUuH5WbKzSDwNfBA5R8OAox/ZYM85BLnYpmVlDMIiucJn
-         7tmiCanNOP/hPe7lAf53v7x5G/eXavEWKwqYP4DksNE6kTZujEabOtP+Z6+Xx8Z7yEOW
-         ibwMueKtxuCVxSiJx7qEF7e5cRDCs6U/tC9pEgLp/bUozol4kD4DzP56R//pVZX9TZor
-         0fNdnG85Nbql1ZmYACqumbXHwdnNr6K9m5PiDB4znnpZ9Wrwwpi94qoSE2YjFsY4Wnxf
-         tWxg==
-X-Forwarded-Encrypted: i=1; AKwUvBwy0nHpPwEqqmb5eMV9qI0dei8z7OKfL+97oB4Ufvzj6scwPARet3jCQkmQ3F08tAudpHUn+ddA2ZA=@vger.kernel.org
-X-Gm-Message-State: AFq9FYK3dUdPRnfeyLAynmpJKKejrsVz/3OftOCK9yZKZHQs/BbyG80H
-	3q5gm9fB788gt/ckiYpJqmAq7dW459hjAQXJQryjnBvZbs2eU6JLtwZh
-X-Gm-Gg: AYBFou24XyZ241VfAdmX5zFNVwlLOh0VBE7CmXCGO+ATAldoht5BhGxcJ9lw4QpWVxf
-	Hlxm0Rv6A/h6hoauOnbMP4iyfI55Uk4cVBEvz8fZRbmw85UlcEX+L7Q+wPZ/6IMV0jSThf6Zo6R
-	a9AOhP7ndHH2XCYDKKv6gXiraQciGvxyodJMihyCCG1TKmPKrAI8lxVo47Xe3bA93WWgaCkTwZe
-	V9glJ61J8PIiH9Vxk+cUU8Qcte9kw3mEyd3liD0isOnhzyGCMrvd85YpXEdKYTfctSBI7yhoWHg
-	BlVgb1PFRcqbGkW+yBaM32ZD+M/QpAvmWWdNBnfsB9SuTVrEv+jNGLxUz6mQ1lBPeKoZ6MhFHrT
-	7FYwH82NLGOirKgMlGwdB8TRAS7Pwcf5axkDEukWHyrMyRm51HKLa5tgJ2pYSQKlc0TkmllLzae
-	yJ3zdDhkza47OwkGZW7eCogMNrq1NPrm652tjCUWV8A6LGKqP0KszR5Wh6bEcmm4H0gq/t1Q+Oy
-	B8Du+scSdq2E2ub5/jlNIWRUL83WP3FLws0s+kDDO7kVk8y/IJ5RfnyC0ESocll1dxGenxv8Zmf
-	UxIsbsOb90lZ7UyBtHOoyDu5KRDzXwK4Giz8CX6fs7C5/pxv0+KXY1jo9itboyvEcnrCT27Y
-X-Received: by 2002:a17:906:99cd:b0:c41:731c:534 with SMTP id a640c23a62f3a-c4ca7a86e67mr692218166b.24.1793586004998;
-        Sun, 01 Nov 2026 18:20:04 -0800 (PST)
-Received: from localhost.localdomain (173.242.112.181.16clouds.com. [173.242.112.181])
-        by smtp.gmail.com with ESMTPSA id 4fb4d7f45d1cf-6b4eca21224sm2648859a12.33.2026.11.01.18.20.01
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 01 Nov 2026 18:20:04 -0800 (PST)
-From: VeroFess <coderzeng@gmail.com>
-To: Chuck Lever <cel@kernel.org>
-Cc: Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v6 0/3] NFSD: Enforce export security after a deferred PUTFH check
-Date: Mon,  2 Nov 2026 10:19:22 +0800
-Message-ID: <20261102021922.674421-1-coderzeng@gmail.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20261101-verofess-v6-0-4d70097db7d3@kernel.org>
-References: <20261101-verofess-v6-0-4d70097db7d3@kernel.org>
-Reply-To: coderzeng@gmail.com
+	by smtp.kernel.org (Postfix) with ESMTPS id 746FB1F000C1;
+	Mon,  2 Nov 2026 02:43:40 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793587420;
+	bh=m3N8za2L/figfCzBPj4RCyQmLOipGBFMthCmsU6stDE=;
+	h=From:Date:Subject:To:Cc:Reply-To;
+	b=HKH+OZBZdp7zRlKYAp0Hiyebmj7lDk93T+skSlRmj/kCSwq6JxXGh1GD6LisNwRfz
+	 yh3KB2n6IlFIBKylyXl0WF6As/Id1o3L7ORxmL+lba+u4weVldvZgNOcY5lMtNtO5o
+	 R9x4c75NbM/53rCnIQ/wQD1cOCYcsDFtDwWH5/1qioB+/bZ6oWxdajVAgnnJJGIicG
+	 HG/+LAdxNPhm3EwyXGs24ZILw8e2LhtU1ZfjFrw0SpiWcgzspUZ5KtzXNsC/jNB47S
+	 3T+pcHuNuuRxiM2cTnZbg/RHVERe5rYt/rSMf7/vmoGXmSf58JRUUBEpHIP+LUHn18
+	 rmQLb8IjdWfdg==
+Received: from nexus.subspace.kernel.org (localhost [IPv6:::1])
+	by lkml.kernel.org (Postfix) with ESMTP id C35A4462BF;
+	Mon,  2 Nov 2026 02:43:39 +0000 (UTC)
+From: Nayeon Kim via B4 Relay <devnull+nayeoni.kim.samsung.com@kernel.org>
+Date: Mon, 02 Nov 2026 11:43:40 +0900
+Subject: [PATCH nfstest] NFSUtil: find OPEN when a later operation fails
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -103,63 +82,86 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Message-Id: <20261102-b4-fs19-open-partial-success-v1-1-5e0f55385d27@samsung.com>
+X-B4-Tracking: v=1; b=H4sIANv452oC/yWM3Q6CMAxGX8X02kZGFhJ8FeNFV4rMyFjaYUwI7
+ +7Qy/P9nA1MNIrB9bSByjtaXFIFdz4BT5QegnGoDG3Tds41LQaPo7kelywJM2mJ9EJbmcUM2Te
+ Dd71n6RxURVYZ4+env0EarYgVuP8LW8NTuBzyYxrIBINS4umI1mxFhebLTPWlsO9fkuoV5asAA
+ AA=
+X-Change-ID: 20261102-b4-fs19-open-partial-success-c40d4194ce61
+To: Jorge.Mora@netapp.com
+Cc: linux-nfs@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793587419; l=2619;
+ i=nayeoni.kim@samsung.com; s=20261102; h=from:subject:message-id;
+ bh=kM+8j/vfKTA/FNbh1boUK6kqOiP9hAPClcoKGunMq5Q=;
+ b=i4/GZfSnlp4aIqrZl96mMEntMk+JYSePdSBReFgdPJZJY9dvKiNGKS7kZtQ8KiwEzJkWVU/sV
+ wvL6DP/w92UCkbOHfME0DGxXthUk+6YXeFxET6k2AC6vvGxEQg6jJvW
+X-Developer-Key: i=nayeoni.kim@samsung.com; a=ed25519;
+ pk=6rdU/EioX/vzm132vDyAq+TUk6SqpWqob+mz30+/n5E=
+X-Endpoint-Received: by B4 Relay for nayeoni.kim@samsung.com/20261102 with
+ auth_id=1381
+X-Original-From: Nayeon Kim <nayeoni.kim@samsung.com>
+Reply-To: nayeoni.kim@samsung.com
+Content-Transfer-Encoding: 7bit
 
-On Sun, Nov 01, 2026 at 10:51:09AM -0500, Chuck Lever wrote:
-> Changes in v6:
-> - Verify the current filehandle in SECINFO_NO_NAME(CURRENT_FH) (sashiko).
+From: Nayeon Kim <nayeoni.kim@samsung.com>
 
-Hi Chuck,
+When the client sends LAYOUTGET in the OPEN compound and only the
+LAYOUTGET fails, e.g., with NFS4ERR_BAD_STATEID, the OPEN and GETFH
+still succeed but the compound status is the LAYOUTGET error.
+find_open() looks for the OPEN reply with "NFS.status == 0", which is
+the compound status, so it misses this OPEN and either returns
+(None, None, None) or picks a later OPEN of the same file.
 
-I tested all three v6 patches on the stated nfsd-testing base,
-d9130c9f6535392d423351ffb5521e7689cae6b6. I built and booted
-patch 1 alone, patches 1 and 2 together, and the full series in an
-x86_64 KASAN guest. The full-series tests also used a second guest for
-inter-server COPY and RPC-over-TLS.
+Fix this by matching on the status of the OPEN operation instead.
 
-I checked the v6 change directly with AUTH_SYS
-PUTROOTFH; SECINFO_NO_NAME(CURRENT_FH) on NFSv4.1 and v4.2. With an
-xprtsec=tls export over plain TCP, v5 returned OK and v6 returned
-NFS4ERR_ACCESS at SECINFO_NO_NAME. With a secure export and a high
-source port, v5 returned OK and v6 returned NFS4ERR_PERM at that
-operation. PUTROOTFH succeeded in both v6 cases. A mismatched sec=
-flavor still returned OK and listed krb5p, as SECINFO_NO_NAME needs
-to do. The operation succeeded from a reserved port and over real
-TLS 1.3 or mTLS when the export allowed the transport; TLS without
-a client certificate was denied by an xprtsec=mtls export.
+After this change, the matched OPEN reply may contain a failed
+LAYOUTGET, and find_layoutget() then looks at the same OPEN compound
+repeatedly until it hits the recursion limit. In that case, ignore the
+failed LAYOUTGET and look for the retried one.
 
-The original NFSv4.0 Kerberos OPEN stateid reproducer returned
-NFS4ERR_WRONGSEC at PUTFH for AUTH_SYS direct and SAVEFH READ/WRITE.
-The file was unchanged, and the Kerberos client could still read it.
-A second guest tried the same 108 stateid candidates as in the earlier
-test and obtained no data. With only patch 1, a protected saved-source
-COPY succeeded and changed the destination; CLONE also returned OK. With
-patch 2 added, both returned NFS4ERR_ACCESS at their own operations
-and left the destination unchanged; authorized COPY and CLONE passed.
+Signed-off-by: Nayeon Kim <nayeoni.kim@samsung.com>
+---
+This conflicts with the pending "nfstest: DELEG: accept the attribute
+delegation" patch, which changes the line right after the open_str
+line in find_open(). I can rebase on top of it if that goes in first.
 
-With patches 1 and 2, LOOKUPP still crossed from a sec=sys child to a
-sec=krb5p parent. The full series returned NFS4ERR_WRONGSEC there
-on v4.0, v4.1, and v4.2. SECINFO_NO_NAME(PARENT) remained usable on
-v4.1 and v4.2. I also reran the SECINFO name and permission cases,
-READDIR with and without rdattr_error or FILEHANDLE, the NFSv2/v3
-CREATE cases, and NFSv4 OPEN. Their status and error placement matched
-the v5 run.
+Tested by replaying packet traces with the failed LAYOUTGET through
+find_open() and find_layoutget().
+---
+ nfstest/nfs_util.py | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-The other regression tests passed: permitted Btrfs COPY and reflink
-CLONE returned matching destination bytes; asynchronous inter-server
-COPY completed 4096 bytes between the two guests; protected local
-COPY, LINK, and RENAME were rejected; and retained stateids could not
-be used after tightening the export's sec= policy. Plaintext, TLS,
-and mTLS mount crossings behaved as before on v4.0, v4.1, and v4.2.
-A raw v4.0 SECINFO request also succeeded over both TLS and mTLS.
+diff --git a/nfstest/nfs_util.py b/nfstest/nfs_util.py
+index cf8d6aecc6ae..e6a2dd21ae1a 100644
+--- a/nfstest/nfs_util.py
++++ b/nfstest/nfs_util.py
+@@ -566,7 +566,7 @@ class NFSUtil(Host):
+                 return (None, None, None)
+             save_pktcall = pktcall
+             xid = pktcall.rpc.xid
+-            open_str = "RPC.xid == %d and NFS.status == 0 and NFS.resop == %d" % (xid, OP_OPEN)
++            open_str = "RPC.xid == %d and NFS.opopen.status == 0 and NFS.resop == %d" % (xid, OP_OPEN)
+             if deleg_type is not None:
+                 open_str += " and NFS.delegation.deleg_type == %d" % deleg_type
+ 
+@@ -625,6 +625,12 @@ class NFSUtil(Host):
+                 self.layoutget_on_open = True
+                 if self.openreply:
+                     layoutget_res = self.getop(self.openreply, OP_LAYOUTGET)
++                    if layoutget_res is not None and status != layoutget_res.status:
++                        # The LAYOUTGET in the OPEN compound did not return
++                        # the expected status, look for another LAYOUTGET
++                        layoutget = None
++                        layoutget_res = None
++                        self.layoutget_on_open = False
+ 
+         if layoutget is None:
+             # Find LAYOUTGET request
 
-The 259-case source-derived decision test passed under ASan/UBSan.
-W=1 fs/nfsd/nfs4proc.o built cleanly with inter-server COPY enabled
-and disabled. I saw no KASAN report or kernel Oops. I found no v6
-regression in these tests.
+---
+base-commit: 94089545caa18bbe4be1b055125d0721fe8dee80
+change-id: 20261102-b4-fs19-open-partial-success-c40d4194ce61
 
-Tested-by: VeroFess <coderzeng@gmail.com>
 
-Thanks,
-VeroFess
