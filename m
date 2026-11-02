@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793631897;
-	b=AwmmcGiCCMW+lDaBOIu5X4dCdEp+z2f/oMCDJvOR69jyNfwP0lqD8uI0Nd6kehmO59R7
-	 4h4A3lXVr4zrxgl5hWk6pXe8m0HzM4yVwLBDj64t1jReLJfQO4cYJuaGQoz9OFGy1bJAT
-	 vvCf0OIa0gh0Rj+eYZ8p/lemadgYafGGKwdl3pVThqwg+VpeLW7XccSQZxd83Kf9j2zSV
-	 wzvHZdtXzcjQKND8P8iBYvh/4ifhJ7OLc8kd8U11reC90yA4dzY2JO3vy5rjp9GfaS/Dc
-	 zz9uvaDNFVam7sGZvQ4o16QPVAtksd3qK7aLXz7n3nRxth/qjmfF7EmC9LqFjROzyxw==
+	t=1793631915;
+	b=Lo2GAgZvXh0b6vObijxOPVdE8rDbFspFRb/nAHuEBlfm/lJDBXSyZuIWn/ATlMJrSGES
+	 XDULjuLRpjjODx9Jmczh/HnN28i+uHWHWvKSUVAPT20sjUsgTMD204TVfLjICpoVFZ0Ip
+	 LnbUHnj+wr8brTtFsjUZTwhVQli0t0lWRBZqPtd5OAjPAuiuUyNBCl/qzwBViBG+A3w51
+	 TDwAfPvQTILNYBjcVGXv5gEl5OU2lVMqcriRvYcH5VMr8nSByF/tznnGTGwTL/OFKkIK+
+	 KfCZvL/f+thkZjWh9oTu+qAr5a1ezl24lJ5d6bAlZ7Jw16//MbbecBURq0PDz8ingwg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793631897;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793631915;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer;
-	bh=7nrFZB8SEXLZU/mzbmWvrr/UMB/DFOM38jlkmOKcofA=;
-	b=K6nhL6hiMCFs20Ijd2HPTYDalBmlFoIY8jX/olI9f18n9cOvqv3VuYEvTBOfIStB5s15
-	 OU3LyqhW422yVov/rM8xEkZL1P9nWaQHDh8VLTEEXiH5BhSkWAdzr1uYwGP3IQA+yTiz5
-	 6GAz4qC9ISjJBIMbgVROQ/lmGI6HctlNQqV5DPHA88U+Ghm473GBv1apzCb097Z7xCAuU
-	 UGaRbzs7WKglYLk8CPHulWxyS37U703qVSf8JIbu9xfw5VPCNXpoLkBRnI/ZEKPqp5fgy
-	 6viGwqsgHixfYE53sLA88ZRluGswIf5Q4yevaXWbnJDlnshhDirnAaFyok+ufvsS92g==
+	bh=/usm8OdHJAbA2hfj2koEwGvMkvG3A+8dTBDDaCx7vxs=;
+	b=0f9RNaIkHqHTHXXfNtMVQyXi6HHXBqBXERquCXoUIkndbi6kTFxA38Kj/VbWQvDxUYL5
+	 PKcbaecd/6hJYYVI44RlV6o72pxcdg+OVQEPCw2LFUoeLTb53wWN+C7cppImpgrX7uFRI
+	 M+T2l4ITRFJXEVUvhW3ClpM3ic/M0XyBPh7Oxk3qc35CaJSkatBHDI1n7oSwLiM0y2ZZq
+	 /nVrukbUr8E/fjh26QkpDVpXsZpqGJflvh1fA7j6hkZOFUFOk5MsVef/yeUteqCY34ISW
+	 8x3vsGKhyZitfpWkIphUAkZxk32GoTVG1DceeOZ9PQRl31dghGaIK7v+7SoqlI0jVSQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="PWJB1/iB";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GwaRh4oG;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EAC9D609CDAF;
-	Mon,  2 Nov 2026 15:04:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8A3D5606AB90;
+	Mon,  2 Nov 2026 15:05:15 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PWJB1/iB
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C841D1F00A16;
-	Mon,  2 Nov 2026 15:04:43 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GwaRh4oG
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5E1171F00A1B;
+	Mon,  2 Nov 2026 15:05:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793631896;
-	bh=7nrFZB8SEXLZU/mzbmWvrr/UMB/DFOM38jlkmOKcofA=;
+	s=k20260515; t=1793631915;
+	bh=/usm8OdHJAbA2hfj2koEwGvMkvG3A+8dTBDDaCx7vxs=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=PWJB1/iBfhOBGJhYFAN08DibMR52AbswEVevpOPJlFFd/6YKCBFk0rjdPQlcIsJCu
-	 M7wETxh7POrPS2R+Bxe8GmEN+ztbrfn17IFousp5Q45SpUKBKeMwCZa4HLCkdaAMTL
-	 nGuwpeu7tYiAoCalRJnwkfTozxEROSln5Zntfv5jW4jL6w1IaglXpEtlA1N+4XsaUQ
-	 ixKM+Nu24AeZWPtukuV1DIGkbYg3XlqbEgIkFveiguvX3I5APXV8ea+vTsUzrvxLhH
-	 oQKy6vg2GUEAk0BT3S3W863rpi7gQfQhWY1o71BBu5E6HzUMTMlRLe2ZVsoDsvf6bw
-	 X9nFDARzygnDg==
+	b=GwaRh4oGylUX6g6CEqPXd69Ibpr3KQmakI0Nld+n+JLGApofu8ygx4WwNRI60EvYf
+	 DSOWIV++3VospwIjrvRsrg0mfaY7gRgUeihp43Au6D6HgV7Xv8KolBhRU7xFnfQdC1
+	 T7WNrsjJHzUGFZHB3CY8jnJ95TWdIrLVspjluFdHIKRvTNa2WFPvdVn+u5eXib/14W
+	 9Mf7AL8v6CpiYBfwScgPVzymR7ApEayesBtx54t9q1NbuhjbVtR1b4mKqnuDg4Wxmn
+	 KCXgiDmRsG7or4q0U1UicO9HEaUHCZVEQAI8u1qAq9b4HgJ4PMYdAOqXF8iMKD4/CK
+	 FsxoDOM8JDDag==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 16:01:37 +0100
-Subject: [PATCH RFC 10/22] sparc: led: let procfs copy in writes
+Date: Mon, 02 Nov 2026 16:01:38 +0100
+Subject: [PATCH RFC 11/22] um: let procfs copy in writes
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-arch-v1-10-c9492ab08480@kernel.org>
+Message-Id: <20261102-work-procfs-arch-v1-11-c9492ab08480@kernel.org>
 References: <20261102-work-procfs-arch-v1-0-c9492ab08480@kernel.org>
 In-Reply-To: <20261102-work-procfs-arch-v1-0-c9492ab08480@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -91,55 +91,82 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
 
-Implement ->proc_write_buf() so procfs copies in what is written to
-/proc/led before it pins the entry, and parse the command from that
-copy. Writes larger than PAGE_SIZE - 1 bytes fail with -EINVAL now.
+Implement ->proc_write_buf() for the mconsole and exitcode files so
+procfs copies in what is written before it pins the entry. Writes larger
+than PAGE_SIZE - 1 bytes fail with -EINVAL now.
+
+exitcode parses procfs' copy as is, so it no longer stops at the first
+six bytes of what is written.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- arch/sparc/kernel/led.c | 13 +++----------
- 1 file changed, 3 insertions(+), 10 deletions(-)
+ arch/um/drivers/mconsole_kern.c | 11 ++---------
+ arch/um/kernel/exitcode.c       | 14 ++++----------
+ 2 files changed, 6 insertions(+), 19 deletions(-)
 
-diff --git a/arch/sparc/kernel/led.c b/arch/sparc/kernel/led.c
-index 12400bb59ab8..01449b056cdd 100644
---- a/arch/sparc/kernel/led.c
-+++ b/arch/sparc/kernel/led.c
-@@ -60,17 +60,12 @@ static int led_proc_show(struct seq_file *m, void *v)
- 	return 0;
- }
+diff --git a/arch/um/drivers/mconsole_kern.c b/arch/um/drivers/mconsole_kern.c
+index f01b7d8a07bc..a4370470286f 100644
+--- a/arch/um/drivers/mconsole_kern.c
++++ b/arch/um/drivers/mconsole_kern.c
+@@ -769,21 +769,14 @@ static int __init mconsole_init(void)
+ __initcall(mconsole_init);
  
--static ssize_t led_proc_write(struct file *file, const char __user *buffer,
-+static ssize_t led_proc_write(struct file *file, char *buf,
- 			      size_t count, loff_t *ppos)
+ static ssize_t mconsole_proc_write(struct file *file,
+-		const char __user *buffer, size_t count, loff_t *pos)
++		char *buf, size_t count, loff_t *pos)
  {
--	char *buf = NULL;
--
- 	if (count > LED_MAX_LENGTH)
- 		count = LED_MAX_LENGTH;
+-	char *buf;
 -
 -	buf = memdup_user_nul(buffer, count);
 -	if (IS_ERR(buf))
 -		return PTR_ERR(buf);
-+	buf[count] = '\0';
- 
- 	/* work around \n when echo'ing into proc */
- 	if (count > 0 && buf[count - 1] == '\n')
-@@ -95,14 +90,12 @@ static ssize_t led_proc_write(struct file *file, const char __user *buffer,
- 		auxio_set_led(AUXIO_LED_OFF);
- 	}
- 
--	kfree(buf);
 -
+ 	mconsole_notify(notify_socket, MCONSOLE_USER_NOTIFY, buf, count);
+-	kfree(buf);
  	return count;
  }
  
- static const struct proc_ops led_proc_ops = {
- 	.proc_show	= led_proc_show,
--	.proc_write	= led_proc_write,
-+	.proc_write_buf	= led_proc_write,
+ static const struct proc_ops mconsole_proc_ops = {
+-	.proc_write	= mconsole_proc_write,
++	.proc_write_buf	= mconsole_proc_write,
+ 	.proc_lseek	= noop_llseek,
  };
- #endif
  
+diff --git a/arch/um/kernel/exitcode.c b/arch/um/kernel/exitcode.c
+index c71657df38f5..8f76e3b20c18 100644
+--- a/arch/um/kernel/exitcode.c
++++ b/arch/um/kernel/exitcode.c
+@@ -32,18 +32,12 @@ static int exitcode_proc_show(struct seq_file *m, void *v)
+ }
+ 
+ static ssize_t exitcode_proc_write(struct file *file,
+-		const char __user *buffer, size_t count, loff_t *pos)
++		char *buffer, size_t count, loff_t *pos)
+ {
+-	char *end, buf[sizeof("nnnnn\0")];
+-	size_t size;
++	char *end;
+ 	int tmp;
+ 
+-	size = min(count, sizeof(buf) - 1);
+-	if (copy_from_user(buf, buffer, size))
+-		return -EFAULT;
+-	buf[size] = '\0';
+-
+-	tmp = simple_strtol(buf, &end, 0);
++	tmp = simple_strtol(buffer, &end, 0);
+ 	if ((*end != '\0') && !isspace(*end))
+ 		return -EINVAL;
+ 
+@@ -53,7 +47,7 @@ static ssize_t exitcode_proc_write(struct file *file,
+ 
+ static const struct proc_ops exitcode_proc_ops = {
+ 	.proc_show	= exitcode_proc_show,
+-	.proc_write	= exitcode_proc_write,
++	.proc_write_buf	= exitcode_proc_write,
+ };
+ 
+ static int make_proc_exitcode(void)
 
 -- 
 2.53.0
