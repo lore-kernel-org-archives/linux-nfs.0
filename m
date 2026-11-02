@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793629392;
-	b=NxKfQ9lb6SaXb/XofOlaDplD5tN+QpsxmyJcIttBEw8X4L90pVVwHOxnP8TY9PWlcMcM
-	 p/q550TDaGnuAgiMDCD8P+38lbSznFDLz+waMZrNqjWq2ziOdS3f1+HdKFFDsL5KhRgHG
-	 1uYUWwkt1ccfWKsyt83Alu9qccFyqpHPMULJmaFEl/e2WMDEfuGSWsTXztNGJwNa/kCoR
-	 SCa8Jd0hulAHqH6Tkp+8esqpXzbUHlva9i9Kq1sPpvW+41To9bs3HqEelsbIrJ8XrDUDD
-	 IHvwowQldi6wwVxgz1V+E1tPwPZonglJ1c7lSWigWZmsfQcluCCv+XV0rQGF4U0jhjQ==
+	t=1793629406;
+	b=Sf27/VLbpAO9SzYUvnND6VHOAJ/hWsqesL9vX2v6N9NPSUyNUkZvCCK+4jNJZJmM+UuM
+	 ZOqFmgOKewInW4+zJ2/cdpyHcLTstOKAO2INj+g/9Sga6qZYchRckEXmBEmLvdHh38njZ
+	 Z+phxVM/o2t8ZAfa9Z9xEqTDWcRUZZnSlUuQ0qyQtGeAn0G18dOcbAaCVnTdeYoEailoI
+	 ujPVc0/YmnzBlL7JQ/gDDhZ70PNS0sWqR6BOFnkhBVrFypp3Ki/Cs2KBlU2SDSgNzqqB3
+	 ZZWMhhn6TTi6483okZjw4JOqpmn5Dyv+xxwZOqsvLvFxvhxNklpcUVsEzFQZMqY2Bdw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793629392;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793629406;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=MVs7ALsfOLkn53l0kYUUme/SDUyhPHOVCY6QDFUmXzg=;
-	b=KU6E5GJ+OjHqRRAZGa4APRK3qyYL+fgLIpIrVe4fbrtksijl8f+ufA3B/00S0P/QEb13
-	 b//BtRZlZUYxa64ln3L9cD3qj25acbSVv1KnbVbN8bJ/LY1XT2W+NyZgxvN4uoMjyaoTb
-	 nF24H5RuUCAPoshMCslv6p+xCF38vLBJCErbE56tbHapHoBpL5Gmjo54kYtWi9dOcdVMN
-	 GothnBLTJXdlHlNdBfnCuXnbzI5QDLJ/fa9e0n3EbLnkY32cU3VFPiSt2j42diZAs6PKE
-	 0v/uyqe+9Tk9I3y4zonP2Udc7ZbW3eibkEvJ4tofUMYIL1SAQnH26PYr/hz//4C3cJw==
+	bh=Ayyh3GSY9IX8l/NxmtUwOJrSt8ohKQ1xsnTJeKuAZFg=;
+	b=qZXGiu+UrDk0afyENWgb/KVUTqpXFnqUoJSlYONBLuWXnJ0znW/7C5LYnKoonC/F2RQN
+	 7XnIcLb+vEcB5bi1E64dzm4+amgoGBSc5Ey43WOYiSBtEqBFkBGMnWl0OMwmhBaGSRPl3
+	 cRhKdPdwj8KUyi6wsku52b/JlOq/aoEG1XYPkI4ExG3VD6YccpKWOVKkIldxzY41Mht4R
+	 3AJ6hq1LAdhU2hDaLcRUZcSPonRAm+eTlVL2iR8WHwkRTZ1j2z7EuOeG0MwR5Q83Wpt5e
+	 s2kMdNHhMVphb79IyCMXuvIIh2fNxAj2lbrT/jKOb+nwDh8Hvtu+E1DVOlR4z4XMVfw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=FLfR5DFe;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Tw8JvCxX;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E8592606B1D9;
-	Mon,  2 Nov 2026 14:23:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EDF4E606D807;
+	Mon,  2 Nov 2026 14:23:25 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=FLfR5DFe
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 38CDA1F00A16;
-	Mon,  2 Nov 2026 14:22:59 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Tw8JvCxX
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 48C471F00A18;
+	Mon,  2 Nov 2026 14:23:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793629391;
-	bh=MVs7ALsfOLkn53l0kYUUme/SDUyhPHOVCY6QDFUmXzg=;
+	s=k20260515; t=1793629405;
+	bh=Ayyh3GSY9IX8l/NxmtUwOJrSt8ohKQ1xsnTJeKuAZFg=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=FLfR5DFeQsSly/cabaQC7e9iY2bQ9zaa9/+MREBD4BU88eN1Xx3KqTRtm3qYQYpfl
-	 kCDavrMTvPYKs/rYn9gptjjElebcf4yPuRmKH7HVcqjqazHfqUR/Htiq7M6QYbzt4U
-	 zWa4rzDSZK1q8pK7OQVMGrLrU+xIoyILoyQv+YpF94q5kGFQx5QO63A+aw0aYwigp7
-	 8QwH/5quUO5K2fuIJpTTFlJf5GF8Ltsg0OQYaZW1HbdncmCkutEph8u81EsuVQiORQ
-	 PSv2MLOMncLKFj4vxCZCl4sIAOggQ39Y2OGr1AHxp6406Vqv9fSst95zy3PsIJt0ea
-	 Hqf1VPSexzNvw==
+	b=Tw8JvCxX+km1KBPRoMXNm8sioLL/SiBihZfuVNjDsAkWtVzRRNmE5Cc7zY4ut+0X5
+	 Rl0KHYQi1x1Sz9PF1RgpgzXpUFQuZfg50HWRXxjw+hQiC/PXAgk/eR8W2vWm2wLiWv
+	 tvpKqETwrDFgD85oMKX9xozlc6S0OZ/W5Nh9uZD5F+uNOl4/1vY/ZNRsBNo6TVAbtO
+	 9xct4ES9MUcb8Lk4gqF+MaFsGvGgcXWCF6AdUApSp4FQtJeMZ864LzSIASS1Tvf3o+
+	 oWd+nrIhC/gdzolHINRzQeTdVxMRiw3oiAWCylK9VGym+o8EZsK7NBzyrg6pK/30lF
+	 lKmpkvKak5tHQ==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 15:21:21 +0100
-Subject: [PATCH RFC 06/38] xtensa: simdisk: don't read the file name
- without the lock
+Date: Mon, 02 Nov 2026 15:21:22 +0100
+Subject: [PATCH RFC 07/38] powerpc/rtas_flash: don't read past the validate
+ message
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-bugfixes-v1-6-59422ed3e465@kernel.org>
+Message-Id: <20261102-work-procfs-bugfixes-v1-7-59422ed3e465@kernel.org>
 References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
 In-Reply-To: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -91,66 +91,41 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
  Chuck Lever <cel@kernel.org>, stable@vger.kernel.org
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1811; i=brauner@kernel.org;
- h=from:subject:message-id; bh=VTDmn8Fj5UlymIH+0OFfDD9d3Id2xocQBgXcavnnib4=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9mJP1/VRcytoDLK0ufy3WLzr3+sXFE+dzGyTVYqofd
- O+7u3tWckcpC4MYF4OsmCKLQ7tJuNxynorNRpkaMHNYmUCGMHBxCsBEUkQZ/rs27hJY5+amu8Rq
- WoJCkbXlpumL4jqiOpe4HNF66TkndBkjwwvt4L3fvCaeXKnVx7hb7eIq/dqmQN78dydXJQe4lqT
- uZgEA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1303; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=7JHU1Fe1PUKfNakrIeb+3f7MU5rT/9SRwlQjBFg57NM=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9mJN1X2VyVJzM0zaD4pd5IsePH+N4ZpyQLfS98+Jal
+ 7bIPwn8HaUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhnCwMUpADf5CyPDy8QjOeKy0icXe9kL
+ dWRVXnzVHu/eWiK//28XY7LslJsLGf4XMiSre1zfdibVUb/UVG51TJRjtezPFx79q/9o//kddZk
+ LAA==
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-proc_read_simdisk() looks at dev->filename without holding dev->lock. A
-write to the same file detaches the disk and frees the name under the
-lock, so a concurrent reader can copy out freed memory. Copy the name
-with the lock held.
+get_validate_flash_msg() adds up what snprintf() returns, which is the
+length of the whole string and not what fit into msg. If the update
+results the firmware hands back don't fit into what is left of the 256
+bytes, the length ends up larger than msg and validate_flash_read()
+copies whatever follows it on the stack to userspace. Use scnprintf().
 
-Fixes: b6c7e873daf7 ("xtensa: ISS: add host file-based simulated disk")
+Fixes: a94a14720eaf ("powerpc/rtas_flash: Fix validate_flash buffer overflow issue")
 Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- arch/xtensa/platforms/iss/simdisk.c | 25 ++++++++++++-------------
- 1 file changed, 12 insertions(+), 13 deletions(-)
+ arch/powerpc/kernel/rtas_flash.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/xtensa/platforms/iss/simdisk.c b/arch/xtensa/platforms/iss/simdisk.c
-index a2ddb49c269d..7b115e023de9 100644
---- a/arch/xtensa/platforms/iss/simdisk.c
-+++ b/arch/xtensa/platforms/iss/simdisk.c
-@@ -238,22 +238,21 @@ static ssize_t proc_read_simdisk(struct file *file, char __user *buf,
- 			size_t size, loff_t *ppos)
- {
- 	struct simdisk *dev = pde_data(file_inode(file));
--	const char *s = dev->filename;
--	if (s) {
--		ssize_t len = strlen(s);
--		char *temp = kmalloc(len + 2, GFP_KERNEL);
-+	ssize_t len;
-+	char *temp;
- 
--		if (!temp)
--			return -ENOMEM;
-+	/* a write sets at most a page, see proc_write_simdisk() */
-+	temp = kmalloc(PAGE_SIZE + 2, GFP_KERNEL);
-+	if (!temp)
-+		return -ENOMEM;
- 
--		len = scnprintf(temp, len + 2, "%s\n", s);
--		len = simple_read_from_buffer(buf, size, ppos,
--					      temp, len);
-+	spin_lock(&dev->lock);
-+	len = scnprintf(temp, PAGE_SIZE + 2, "%s\n", dev->filename ?: "");
-+	spin_unlock(&dev->lock);
- 
--		kfree(temp);
--		return len;
--	}
--	return simple_read_from_buffer(buf, size, ppos, "\n", 1);
-+	len = simple_read_from_buffer(buf, size, ppos, temp, len);
-+	kfree(temp);
-+	return len;
- }
- 
- static ssize_t proc_write_simdisk(struct file *file, const char __user *buf,
+diff --git a/arch/powerpc/kernel/rtas_flash.c b/arch/powerpc/kernel/rtas_flash.c
+index 722dbfb6fbf8..f1cd105f7426 100644
+--- a/arch/powerpc/kernel/rtas_flash.c
++++ b/arch/powerpc/kernel/rtas_flash.c
+@@ -448,7 +448,7 @@ static int get_validate_flash_msg(struct rtas_validate_flash_t *args_buf,
+ 		n = sprintf(msg, "%d\n", args_buf->update_results);
+ 		if ((args_buf->update_results >= VALIDATE_CUR_UNKNOWN) ||
+ 		    (args_buf->update_results == VALIDATE_TMP_UPDATE))
+-			n += snprintf(msg + n, msglen - n, "%s\n",
++			n += scnprintf(msg + n, msglen - n, "%s\n",
+ 					args_buf->buf);
+ 	} else {
+ 		n = sprintf(msg, "%d\n", args_buf->status);
 
 -- 
 2.53.0
