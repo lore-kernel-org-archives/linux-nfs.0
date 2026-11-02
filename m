@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793632257;
-	b=43qTP9ImhQDQ8UwODijvbWibc+fTTtcyFt3VZQxzH0/GZ34jyQdyZpMZzUagJC8PWIXi
-	 xH6orgP6Mm8t4T8+opLryqhAEzQdcc/MxXWCr9o1I0E/HT4jjKEb4C7LUV2UR1bwC768m
-	 Dujd/Ohyf34W5WhXqV/FUuS/kafG9LNP1BU7aMJFU63JLIYptSSz1SW0+2N1vdJB/07lJ
-	 fnkV904ZK9jcLBDC7Dm5X8EoRgu58ZfSii3OD4ETCEuy17U895y0NMfsfuFtllVBi3eI3
-	 rk/dvEyIOPm3FHP3JGBO1jyHeuDhecwO4tp8tte/AtusiiX2Hij1u0iYgWjm7kNkqSw==
+	t=1793632274;
+	b=LK3umSY3DLDT0beSMSLI0BqTQm3rRB8gnPS0MDYTjyEMEDqigx/ov1qDvR28dTy5QN1S
+	 JinTAJ3lph7zvrKxgw/v593bBOqFZsXncIE7b2dAmjVVoYOnWVmlDk7qfMPPVQuB6Nbm/
+	 q0H7JNbKveDDq5Z0TMBKREo+g/m4an5zso54t5tu0DzBqb8p7lN4agxJd2dVhbrEIjhKX
+	 STzelHFAzC1/kWgwwgyKAOp9na6BCpUcWpEb8af7cgUAjJ+DvdtRjoqc7NFRyAwCdPZav
+	 YHieXiUsm0a51b/eTLo9JiW4TIsTGum32IBsC1PREVXQOFOABiHZQgrhhxnO/T9QeaA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793632257;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793632274;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=gEfU3T2fMjgdZUubap6/Nt8I8xKTHWl/++QTJaSUEcE=;
-	b=bFTf1i8BElNv52Lc3XnmKCpysPR2oz30V0xgUPJ9vNAodCw07Ck0R5jYZ77tl7P5t+0J
-	 rFNqhLSW9N/wW2xyYYI4b256pWgxXRIFWH6zkTXaZfv1VnU+FSrfUaMmLmTXkZxUJIRtG
-	 XkBfMgy7EXaPZPpEYlx/cdqI+Ey0PoZLPbP5OKzDfv+XLJHo4hTXJV/FwyKl+SK9S3OjX
-	 ljQ0/Y2KZgYmpn5y/z+SQ2WHFli0Y/+a51XV+Ib62JBJP9m5p7C13KHlo/xaRy+IIkjsL
-	 erZA0nYOb/PaF+4JwAaRJKPLjmRFcCbOUetx1Md3bAAKT4v3GFvTvGKQbLNYRlOHmQA==
+	bh=vqkxnch8qakIwUVP+9QJA5QeGLg7HpbhcDTmIF75pEs=;
+	b=2fNgH7XGggPvv0OsRWHu1eYBwxVK9YVI8ZwtOLg0pbH8IgCQ1H7Q1VT75NIrh734RaG7
+	 ueQU6NK70/AKiq+AlLTNPmi+CYMgY1C2mWJq9UK5ufbpHl6yGMI7YKGoLCQIi105T3Bor
+	 Cg9VeH7YalK6PyCzso7alWYtKDKfd5uKYSMk0NivWQeDafplcBPj6MqzStQkkrtug0/8E
+	 WHjydgLfOT5abQyE2IypTcpQ6ueHyuYu0fuNobZkSCJWza44zYp3lvhXBB3oTs9oRCRD0
+	 4yxzUtGSDid9jYdSDcowtdqlqHcm16As8r2nSMZQBhQ+hAb12B2J74lke+U0UAeldfQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JEtEk3Xg;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cxCVzhBy;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 77E8C608C973;
-	Mon,  2 Nov 2026 15:10:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 613A1607672B;
+	Mon,  2 Nov 2026 15:11:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JEtEk3Xg
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AAFB91F00A18;
-	Mon,  2 Nov 2026 15:10:43 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cxCVzhBy
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A9C151F00A16;
+	Mon,  2 Nov 2026 15:11:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793632257;
-	bh=gEfU3T2fMjgdZUubap6/Nt8I8xKTHWl/++QTJaSUEcE=;
+	s=k20260515; t=1793632273;
+	bh=vqkxnch8qakIwUVP+9QJA5QeGLg7HpbhcDTmIF75pEs=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=JEtEk3XgkB7h/KCKSpjSx/GQWpU/P/7tvtCdnnzCxrDpIn594psdLHFTrmfuke6dM
-	 slBqHYXHnT54x/QPrsmxH3yeqxfZQPD2y0pgY1+PEiyIIJsHQEmrStcSZUBzYnriXr
-	 z1cAZ9kaI1mij4Fc3B7DH9EC4k1fIQp6BDZOK3UL5awrKforvD4qmdeHd8pveKvbcx
-	 iZMvCpnYB/tvXMP/UoxQpEd6uLwjQn9oT2yIsRi+8s3j66mGWx98OAk1gVJO1c+yd/
-	 xAonphmuY1qwZTlY+D0zGjvzNIJDEogTrjTuIG2qL99CLq6eIn2OG7zpSiKwd/V4oF
-	 8+lGx05vpGPgQ==
+	b=cxCVzhByWu3o4NPMXdI664xNWkShTHR36O9m/09VZ9+jFA9OG6kKc4h3juX9pF4hG
+	 KES/99TyZfxZMZsILDCBbUPiL2m0c7yvku8def0K3xyx1BZSfmHoibrjV4xOJY9TRv
+	 aRQUlDzCSvfjdbS81rVindZYNfHG/n3/STb1D5KKMtjDWOzG48TPwOOda5MyUodL1/
+	 sl6+1c+KcBwatTkHqiITxDL+ifFRuErDfWC3t7wYwV8vzWLwDTzNDzYcITGLDruDX/
+	 CBg0J86Rpsxds6f1vNXAUOdjLXrIDS/33ZjvCLz1gmlcS3YhkDRMkNQrIFMIeovXK6
+	 qXYbgPdy439+w==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 16:07:09 +0100
-Subject: [PATCH RFC 02/23] zorro: let procfs copy out reads
+Date: Mon, 02 Nov 2026 16:07:10 +0100
+Subject: [PATCH RFC 03/23] PCI/proc: let procfs copy in config space writes
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-drivers-v1-2-a994bd4d3b1a@kernel.org>
+Message-Id: <20261102-work-procfs-drivers-v1-3-a994bd4d3b1a@kernel.org>
 References: <20261102-work-procfs-drivers-v1-0-a994bd4d3b1a@kernel.org>
 In-Reply-To: <20261102-work-procfs-drivers-v1-0-a994bd4d3b1a@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -90,55 +90,124 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1540; i=brauner@kernel.org;
- h=from:subject:message-id; bh=0V4WXwhQL5pRZKlAhpvNvMMTbS/E9DKCsIQEEH9Ob/I=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG7AIbrx5h2jApOfJWsWGW9hzDP7Z1n71GbDkhKjd
- 1G75+1S7ShlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZjI/UaG36wcDIusu3nPOnFM
- /P+8oNKCR/ZZrpFyDV/sHU9NRa7UTIb/YfZNrhe7BR60inb8XH12tpIKe1zQvdmbziyrv3LhEYc
- VLwA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3416; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=FHhIortRJiKYhZazrarBsz8LKuG1O3uAWYPgQRTjmaQ=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG4Q5v+r4smER+KNHzUv/1vj6ThP4Dffzpik1rx7S
+ Ye2i2bmdJSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEzk62VGhs6XkTMTRfwbPBQL
+ /x4Lzpj+wfz/1vf3Y5U2mfjmTS4+wc7wz+JImkaMBv+rn36HnuYuOOJ748u9kLuro6932ZoynGx
+ 15wQA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Implement ->proc_read_buf() so procfs copies what is read from
-/proc/bus/zorro/<slot> to userspace after it unpinned the entry.
+Implement ->proc_write_buf() so procfs copies in what is written before
+it pins the entry, and write the config space from that copy with
+get_unaligned_le16() and get_unaligned_le32() instead of get_user().
+
+The copy holds at most PCI_CFG_SPACE_EXP_SIZE bytes. Larger writes come
+up short with PROC_ENTRY_SHORT_WRITES, like they did before because
+they were cut at the end of the config space.
+
+A buffer that can't be read used to write zeroes to the config space and
+report success. It fails with -EFAULT now and nothing is written.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/zorro/proc.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ drivers/pci/proc.c | 32 +++++++++++---------------------
+ 1 file changed, 11 insertions(+), 21 deletions(-)
 
-diff --git a/drivers/zorro/proc.c b/drivers/zorro/proc.c
-index f916bf60b312..4e4ba04752ea 100644
---- a/drivers/zorro/proc.c
-+++ b/drivers/zorro/proc.c
-@@ -28,7 +28,7 @@ proc_bus_zorro_lseek(struct file *file, loff_t off, int whence)
+diff --git a/drivers/pci/proc.c b/drivers/pci/proc.c
+index e0dc70123f82..d420353ee2b3 100644
+--- a/drivers/pci/proc.c
++++ b/drivers/pci/proc.c
+@@ -16,6 +16,7 @@
+ #include <linux/security.h>
+ #include <linux/panic.h>
+ #include <linux/sched.h>
++#include <linux/unaligned.h>
+ #include <asm/byteorder.h>
+ #include "pci.h"
+ 
+@@ -114,8 +115,8 @@ static ssize_t proc_bus_pci_read(struct file *file, char __user *buf,
+ 	return nbytes;
  }
  
- static ssize_t
--proc_bus_zorro_read(struct file *file, char __user *buf, size_t nbytes, loff_t *ppos)
-+proc_bus_zorro_read(struct file *file, char *buf, size_t nbytes, loff_t *ppos)
+-static ssize_t proc_bus_pci_write(struct file *file, const char __user *buf,
+-				  size_t nbytes, loff_t *ppos)
++static ssize_t proc_bus_pci_write(struct file *file, char *buf, size_t nbytes,
++				  loff_t *ppos)
  {
- 	struct zorro_dev *z = pde_data(file_inode(file));
- 	struct ConfigDev cd;
-@@ -49,8 +49,7 @@ proc_bus_zorro_read(struct file *file, char __user *buf, size_t nbytes, loff_t *
- 	cd.cd_BoardAddr = cpu_to_be32(zorro_resource_start(z));
- 	cd.cd_BoardSize = cpu_to_be32(zorro_resource_len(z));
+ 	struct inode *ino = file_inode(file);
+ 	struct pci_dev *dev = pde_data(ino);
+@@ -145,51 +146,38 @@ static ssize_t proc_bus_pci_write(struct file *file, const char __user *buf,
+ 		nbytes = size - pos;
+ 	cnt = nbytes;
  
--	if (copy_to_user(buf, (void *)&cd + pos, nbytes))
--		return -EFAULT;
-+	memcpy(buf, (void *)&cd + pos, nbytes);
- 	*ppos += nbytes;
+-	if (!access_ok(buf, cnt))
+-		return -EINVAL;
+-
+ 	pci_config_pm_runtime_get(dev);
  
- 	return nbytes;
-@@ -58,7 +57,7 @@ proc_bus_zorro_read(struct file *file, char __user *buf, size_t nbytes, loff_t *
+ 	if ((pos & 1) && cnt) {
+-		unsigned char val;
+-		get_user(val, buf);
+-		pci_user_write_config_byte(dev, pos, val);
++		pci_user_write_config_byte(dev, pos, *buf);
+ 		buf++;
+ 		pos++;
+ 		cnt--;
+ 	}
  
- static const struct proc_ops bus_zorro_proc_ops = {
- 	.proc_lseek	= proc_bus_zorro_lseek,
--	.proc_read	= proc_bus_zorro_read,
-+	.proc_read_buf	= proc_bus_zorro_read,
- };
+ 	if ((pos & 3) && cnt > 2) {
+-		__le16 val;
+-		get_user(val, (__le16 __user *) buf);
+-		pci_user_write_config_word(dev, pos, le16_to_cpu(val));
++		pci_user_write_config_word(dev, pos, get_unaligned_le16(buf));
+ 		buf += 2;
+ 		pos += 2;
+ 		cnt -= 2;
+ 	}
  
- static void * zorro_seq_start(struct seq_file *m, loff_t *pos)
+ 	while (cnt >= 4) {
+-		__le32 val;
+-		get_user(val, (__le32 __user *) buf);
+-		pci_user_write_config_dword(dev, pos, le32_to_cpu(val));
++		pci_user_write_config_dword(dev, pos, get_unaligned_le32(buf));
+ 		buf += 4;
+ 		pos += 4;
+ 		cnt -= 4;
+ 	}
+ 
+ 	if (cnt >= 2) {
+-		__le16 val;
+-		get_user(val, (__le16 __user *) buf);
+-		pci_user_write_config_word(dev, pos, le16_to_cpu(val));
++		pci_user_write_config_word(dev, pos, get_unaligned_le16(buf));
+ 		buf += 2;
+ 		pos += 2;
+ 		cnt -= 2;
+ 	}
+ 
+ 	if (cnt) {
+-		unsigned char val;
+-		get_user(val, buf);
+-		pci_user_write_config_byte(dev, pos, val);
++		pci_user_write_config_byte(dev, pos, *buf);
+ 		pos++;
+ 	}
+ 
+@@ -337,9 +325,11 @@ static int proc_bus_pci_release(struct inode *inode, struct file *file)
+ #endif /* HAVE_PCI_MMAP */
+ 
+ static const struct proc_ops proc_bus_pci_ops = {
++	.proc_flags	= PROC_ENTRY_SHORT_WRITES,
+ 	.proc_lseek	= proc_bus_pci_lseek,
+ 	.proc_read	= proc_bus_pci_read,
+-	.proc_write	= proc_bus_pci_write,
++	.proc_write_buf	= proc_bus_pci_write,
++	.proc_write_size = PCI_CFG_SPACE_EXP_SIZE,
+ 	.proc_ioctl	= proc_bus_pci_ioctl,
+ #ifdef CONFIG_COMPAT
+ 	.proc_compat_ioctl = proc_bus_pci_ioctl,
 
 -- 
 2.53.0
