@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793633235;
-	b=By/qwp9yZ+KXj2lTbj+EGfU97T/6dGkk400J3TEPXeSF9gGtCS5b0wzJGNEfFwa92gF/
-	 5zNZm+Gy505811BB6ud/qDqzliSx1ykP1cDKnL9VaMyOCOjgJ8DKdCCazezGW90dvTyfc
-	 dH4s/AbQR4Kt5qR3b0D2RCyVzf4QTa8VXm3pFD++es8Cczi9ItcGAnba55hO4PrrcyrpU
-	 mpi2qbUYZ1GgzrvFaVLBQBhykn8K9t6NUnoiREIKrHVgA+uulB6xPxWfRkoI/akqR5pkF
-	 AVrQKnOKMVreExCpZ4ugQP+oHFUplaZwG1aldmy9PHk+8aEBB75MXyfnNI7J6Er+Qaw==
+	t=1793633258;
+	b=2ikhWgWj3a3ofi8Gm580Lc0GLqmooslI+osd9+3+qJeac85BM7szs5dVjBWL/8YpMTJm
+	 SM5F/9SLkRuLSmzfbQmTdpX+ZRdwZPslhYM36GZzr0hDegqqQzLeKUcGzUdOLuaiuW+JF
+	 E2t7cB+DXkQ3GUIMcb+lXQoCCH6CSwZwKql67nMWFGEkEeWsI5n2FhKyMk8RPbF7/qRO0
+	 fypy8Ph5dt2UCORAVJ4GD5x+5cCNbRnZPeRTOZdsSr+Y1ua/kFHiC1RrLpFuszpqJVbsl
+	 Vuijx108H0sFZGuAc1fU/8b94x9teYaEtT4GCQstyZN4gd8D+qB1f35OSV2FiU+tbDw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793633235;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793633258;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=XTKgYPXjwGtd+Y2GluPCJ0QXSAilsjtjyt0vuaHdwds=;
-	b=hlbgacfx3xUF1EOGljUeu7ub7TiRH8IL1+2Nk5YBuktN/Hh9/I36qfy/es8LsG0BJwqH
-	 ryu2nXCL8QIIeNYWllxlcuOdZH1gE3D+tjtEiAVpWf3vAbAjOsD6dztzDN4KJDWw5W38z
-	 InCxfyX252pUJ781ZBqBgnUM0DI3Wga/0tKnswYSQbXe8/Wasy20o7RjWbaRLhDNfM0Bq
-	 kbcAi8rF88lk4ICpuV3kLRIhpac8sFYi0H/bFFZI1YsZYfEr6qqKCq21EVWsum1rWeTRs
-	 dWpc6f8ISY3eVqnqoYo7EP+pNCwIyI9pjucNmqBCinyYQOMQ0o2iwB2cDsLD6YZzsAw==
+	bh=fVQTaeb1oaPXPKdbaoAayfOvKvQGNQ+1mlgyJVhAprY=;
+	b=eJhZeZ68I3/8qZEXPXKXaxNSJEhKnEL0G0QHYGOrNFixyqvEUDR+akOi0DHgUOUa+C0C
+	 d+x7ql3pndqGkAs+fWq5MAVODYvUutvL9TkscJUIE9imXSo0FYHUyzKmG3pzt/XzCpRZl
+	 kW8hVzie8k3SeBmJ3YvpwIrByQq+w6IFS51CqiLjpC1pN8RlbAzXeaY/RizLF9OWhOlBi
+	 s5OgCcksTxcKptYGYLnR1uScvjUQ8i1XucoZPsQzQ1+Hw0WMgCS7rY3w1b4R4dX9zwdyP
+	 vrbRKLIddB+VzPQW+say0cwmzULYe8oF6wiuRZrPoCvMNZsnilYTmt1dIciB9+tDZ/Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kxAPIiB8;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Fbfunu5l;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0A1BB60716C5;
-	Mon,  2 Nov 2026 15:27:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 11150606AB8F;
+	Mon,  2 Nov 2026 15:27:38 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kxAPIiB8
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 497371F00A16;
-	Mon,  2 Nov 2026 15:26:57 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Fbfunu5l
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 970571F00A18;
+	Mon,  2 Nov 2026 15:27:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793633234;
-	bh=XTKgYPXjwGtd+Y2GluPCJ0QXSAilsjtjyt0vuaHdwds=;
+	s=k20260515; t=1793633257;
+	bh=fVQTaeb1oaPXPKdbaoAayfOvKvQGNQ+1mlgyJVhAprY=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=kxAPIiB8bZX2oCCzHcBO+Z+9M3+BVX1rvIx7nyXXRvMDmlNh8VaOR2aKmZd2R34hH
-	 Gw7+HXTv7VzusgWsZ9GsA33MUpaeH7qM1+3/U0mI5dpdOtBvO7SVe8UgtTS9zRl74w
-	 zVpSeL4wIOUBkjK4em3j/1wqw6UAi3uG8FIvW3rat4+P86CWAWdzAlWUQvV7vMVEpa
-	 S38kzwkwiuMhgYyorFO1fD6ITanbo/Z9kHp1r8cLKvafivXAqupn5zK/psHYFqdIdf
-	 /8feMEEXHbH1Vr1KKZJEdv5qVbaXwV5kRtN7tZQOORDjsgRAwj5Ih1oUQUGUkibHAd
-	 /P9IyT6izArUA==
+	b=Fbfunu5lnfSJErLeOUCsE8vip2ARFZN807qf74412UenKoepZwcVGYe+g3+TBcESM
+	 D1QwhFq6yCQFcA4O6bdiGxqgbUre+0RZ1J5auCotD4DKJJgxUPjFUcOalq5vmaPOF7
+	 r6K6N8o4y3fh9RsWfWA0H81XfT5u78die7geNeFBQSxWRGm/v2Zmi9RgIIPxgQXR+A
+	 0P2Coe1ocgqK6nbiBmEOjXtV6u2GvDvXXJrRu43HenABBgQi8+GrUdDlctWVDUHIoA
+	 N+wBbyncTDkFadiWb6329xq83Ar8JXpLh9NYV7HpnGSZ+ZP8CPs2xOKlBHbLeO+TYL
+	 LjxldllqCyblg==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 16:07:31 +0100
-Subject: [PATCH RFC 21/27] dyndbg: let procfs copy in writes to
- /proc/dynamic_debug/control
+Date: Mon, 02 Nov 2026 16:07:32 +0100
+Subject: [PATCH RFC 22/27] ipc: let procfs own the seq_file of the sysvipc
+ files
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-fs-v1-21-d09a996317b3@kernel.org>
+Message-Id: <20261102-work-procfs-fs-v1-22-d09a996317b3@kernel.org>
 References: <20261102-work-procfs-fs-v1-0-d09a996317b3@kernel.org>
 In-Reply-To: <20261102-work-procfs-fs-v1-0-d09a996317b3@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -91,88 +91,63 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2226; i=brauner@kernel.org;
- h=from:subject:message-id; bh=DMKbMmltc6KGAMcxoyJUHD9hv4JrUkNBMnfQsx/+9Q8=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG7ceqHmw/8zQZt7jtfybdlxWv7H8x3cq8MvN69Km
- /uTde1Zq45SFgYxLgZZMUUWh3aTcLnlPBWbjTI1YOawMoEMYeDiFICJONky/M//M+f6NIdFl39X
- +W2ZGKtX/Hnx0w8TwmWPzuNxWv/xS38Hw1/hO5kJ4eWe3065F7wIPZknI/zsrm6z8qW9zQ0q7Vs
- 0K5gA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1686; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=X6b7xxVI9/mXpsMyNcc27ZCzqI3OxIvLBKPC0zeU++I=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG6spcaqk/ik+Gn7rm/T2r/bxt6IFtUv/OG2907HJ
+ IYrlm67OkpZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACaisIPhr4w9w7Ls1452xknl
+ lgnt1kyG/EnKSVzp91b3nmSOzwjxZ/hfOCP6r1dRmdzzU13p7xgu/7jmd2iNKp+nYxzP4e9P69R
+ 5AA==
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Move the parsing into ddebug_proc_write_buf() and implement
-->proc_write_buf() with it so procfs copies in what is written before
-it pins the entry. The debugfs file keeps copying in itself. Writes
-larger than USER_BUF_PAGE - 1 bytes to the procfs file now fail with
--EINVAL from procfs instead of -E2BIG.
+Declare the seq_operations and the size of the iterator and let procfs
+open and free the seq_file of /proc/sysvipc/*. ->proc_open() only fills
+in the iterator now and ->proc_release() drops the references it holds.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- lib/dynamic_debug.c | 34 ++++++++++++++++++++++------------
- 1 file changed, 22 insertions(+), 12 deletions(-)
+ ipc/util.c | 14 ++++++--------
+ 1 file changed, 6 insertions(+), 8 deletions(-)
 
-diff --git a/lib/dynamic_debug.c b/lib/dynamic_debug.c
-index 64a211290872..1d6012c9eb41 100644
---- a/lib/dynamic_debug.c
-+++ b/lib/dynamic_debug.c
-@@ -1002,11 +1002,28 @@ __setup("dyndbg=", dyndbg_setup);
-  * command text from userspace, parses and executes it.
-  */
- #define USER_BUF_PAGE 4096
-+
-+static ssize_t ddebug_proc_write_buf(struct file *file, char *buf, size_t len,
-+				     loff_t *offp)
-+{
-+	int ret;
-+
-+	if (len == 0)
-+		return 0;
-+	v2pr_info("read %zu bytes from userspace\n", len);
-+
-+	ret = ddebug_exec_queries(buf, NULL);
-+	if (ret < 0)
-+		return ret;
-+
-+	*offp += len;
-+	return len;
-+}
-+
- static ssize_t ddebug_proc_write(struct file *file, const char __user *ubuf,
- 				  size_t len, loff_t *offp)
- {
--	char *tmpbuf;
--	int ret;
-+	char *tmpbuf __free(kfree) = NULL;
- 
- 	if (len == 0)
- 		return 0;
-@@ -1017,15 +1034,7 @@ static ssize_t ddebug_proc_write(struct file *file, const char __user *ubuf,
- 	tmpbuf = memdup_user_nul(ubuf, len);
- 	if (IS_ERR(tmpbuf))
- 		return PTR_ERR(tmpbuf);
--	v2pr_info("read %zu bytes from userspace\n", len);
--
--	ret = ddebug_exec_queries(tmpbuf, NULL);
--	kfree(tmpbuf);
--	if (ret < 0)
--		return ret;
--
--	*offp += len;
--	return len;
-+	return ddebug_proc_write_buf(file, tmpbuf, len, offp);
- }
- 
- /*
-@@ -1196,7 +1205,8 @@ static const struct file_operations ddebug_proc_fops = {
- static const struct proc_ops proc_fops = {
- 	.proc_seq_ops = &ddebug_proc_seqops,
- 	.proc_state_size = sizeof(struct ddebug_iter),
--	.proc_write = ddebug_proc_write
-+	.proc_write_buf = ddebug_proc_write_buf,
-+	.proc_write_size = USER_BUF_PAGE - 1,
+diff --git a/ipc/util.c b/ipc/util.c
+index 1737d776bc08..8ec3bc328657 100644
+--- a/ipc/util.c
++++ b/ipc/util.c
+@@ -894,13 +894,11 @@ static const struct seq_operations sysvipc_proc_seqops = {
+ 	.show  = sysvipc_proc_show,
  };
  
- static void ddebug_attach_module_classes(struct ddebug_table *dt,
++/* procfs opened the seq_file and allocated @iter */
+ static int sysvipc_proc_open(struct inode *inode, struct file *file)
+ {
+-	struct ipc_proc_iter *iter;
+-
+-	iter = __seq_open_private(file, &sysvipc_proc_seqops, sizeof(*iter));
+-	if (!iter)
+-		return -ENOMEM;
++	struct seq_file *m = file->private_data;
++	struct ipc_proc_iter *iter = m->private;
+ 
+ 	iter->iface = pde_data(inode);
+ 	iter->ns    = get_ipc_ns(current->nsproxy->ipc_ns);
+@@ -915,14 +913,14 @@ static int sysvipc_proc_release(struct inode *inode, struct file *file)
+ 	struct ipc_proc_iter *iter = seq->private;
+ 	put_ipc_ns(iter->ns);
+ 	put_pid_ns(iter->pid_ns);
+-	return seq_release_private(inode, file);
++	return 0;
+ }
+ 
+ static const struct proc_ops sysvipc_proc_ops = {
+ 	.proc_flags	= PROC_ENTRY_PERMANENT,
++	.proc_seq_ops	= &sysvipc_proc_seqops,
++	.proc_state_size = sizeof(struct ipc_proc_iter),
+ 	.proc_open	= sysvipc_proc_open,
+-	.proc_read	= seq_read,
+-	.proc_lseek	= seq_lseek,
+ 	.proc_release	= sysvipc_proc_release,
+ };
+ #endif /* CONFIG_PROC_FS */
 
 -- 
 2.53.0
