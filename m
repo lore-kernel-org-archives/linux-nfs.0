@@ -1,73 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793581202;
-	b=JNIVF5wjKo6THgetTSCFv8xU2FW5WNlfnkTIIDHNXtupYaaX4LrrIcl0eAtl/oN4rdwe
-	 AEapuLIBkM/jwt7Gq3YGEE0s3Trvl38N+K2/tPbmh05DU2lfuVLfuft5NEQObQ9VhztX1
-	 ule9rM/+wne6SBl6e12dYvLxwIaE09wPDeuhuFxOHd34hwQDS1hHhMnol8ipg6XXy1zi7
-	 sSe88I1xTqLOs+QqP2Li1HcCfVhq7I/WOkzyPcgJRHNCdKp7W1sf3+r6d41Sb4cmYGN8j
-	 e+R3Km2LK5UvfvSnscfPn2V6LoBrW6nD009FWpFZrT+vccHOV7T21ypZLfiU4TBlwmQ==
+	t=1793581849;
+	b=Ck1zBc4bp1dqBm9NLyZnExi9jUOSZUTYCSZWV2C2p3x2VHBEIdC3111R8BqY7+Z/8BgD
+	 upgLQ69qyV1kSmwFjNaTgNKEtRLSjXIzNYTBkAskvYyRqw+AjeDuuOEoEFW7gpXDxqtAw
+	 /+mri2Vbz+MwVUeuu0SJn5K1TuH7PplmYkYLUMq0cO3RLL0cyL/pp8UlsZNWz4G10hYbE
+	 LMs8BIDgdq2EMuJGaq4tlSXxyFwXiZ4YD5ZkRZeFQ1icxFdQ5S3xCqYsOYImSzsustY34
+	 Zp0dxmy5jw3MZ+pHLc3zxYSXjRyGTpl2jQtVr1yeMgBirPuk/1oG/jMDkXwvRPYGBcw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793581202;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type:Content-Transfer-Encoding;
-	bh=Hjkc+obzyLKi6m990tloWP/wzVdvqnjoeAb9+EaVM5k=;
-	b=bdwu9j5ei4nzhRcMYnIuYpEqf44Kx3fvEeW5fy9fzjaK8sELkyxlTZ+B0YthgHbkbCJD
-	 CSR7phTJZGtC45FrM6jyU//LP4HtSRAE+g45Sogyr5+c9653FcnYiG0LmBC/tOfaWOCJg
-	 c/z4Cq/fKdiESJHFXZE6BkhAencS3/Ij3pKgT+4DXS8Wgk+7SPbSUnCZCBgVCNAhvKr5c
-	 cUO16cRav53YHa20b/7FNHfBU9vbyVUxaH+6SK9DY67yt46tchQuTf07hRYIt20YeyJ7P
-	 8Cd0NdQfrs62cZcVJl54vpC65TsGW2BedET7fKB3NjHdETX6fm/9icYuwGOlxVglDcw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793581849;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 MIME-Version:Content-Transfer-Encoding;
+	bh=YYTrIGxUOSOb88OnIFx0hwwl3v23j5XFNga48Rjoaig=;
+	b=Yue+LD5bf+tklDJpAYy4dqkIjofzghza5xAF9ukth454AguBHYCBWzn7bsrAWaoaNG2t
+	 4TvWj5HoOn0TKFT8sTZKlKkAGw2ej+LH/yQUSuEObKvogkNDBe/7rdgcxodzsota0xOUT
+	 R4uINkLDWHr9Y8ed1n6/XXWqYGvUey5TzRPajV/nD+Cs48hBTUkeeYquTFlhAedP3GFU6
+	 sCkpZh/2rZCH1k/mlUxGrQ8RAOxCdVG/qX6AOvFWwyT+8qabwNLGJMAFg6FwsUmqMBjG7
+	 ZLe6urMHWHEHYcsxLk9fws5CMgzwahAowCEkezFXIl+KcjqCqfeYH2Eg8/x7DZJVziw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZApzT3Ox;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Kl3c6X45;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A74FA606A324
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 01:00:01 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C95B5606A324
+	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 01:10:48 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZApzT3Ox
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1DAF61F0093A
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 01:00:01 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Kl3c6X45
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EFD741F000C1;
+	Mon,  2 Nov 2026 01:10:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793581201;
-	bh=Hjkc+obzyLKi6m990tloWP/wzVdvqnjoeAb9+EaVM5k=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=ZApzT3OxTGdumT2RTS7fm6mdApRvqmj6qubqLev8GrvVuwJrhstCtZU7InQypB2cZ
-	 wcUf7twgKdy7eldenN0bTUnUmAN4/Uu+gcJaKK0iQu5JcmTFSDUT/q6CsaUbjokW0n
-	 AYNwpe/4ua7zOr4yklpnq5vjLoZE1wg9uav4iI4IB07nHyVYRXfK2c35M1SjAPDrQd
-	 pPlv6yQihZkDWwhSQrtXWeKV2UNHoo8VLfexC98f48II6B3ypFhmwmn71kYHanIBaw
-	 XyFHlqi5w535a+EPfBg/P0oq960BhCAMx2bYflKm1jqQUSSGY6MGi2AeAtoKkdbntZ
-	 UcR9emxB+gE1w==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id A7D0BF40067;
-	Sun,  1 Nov 2026 19:59:59 -0500 (EST)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Sun, 01 Nov 2026 19:59:59 -0500
-X-ME-Sender: <xms:j-DnamLepvFB3JtYUbIjxnZi5QjKd2OHj0mmZ1ChcM6E_OJLV7dcKg>
-    <xme:j-Dnao-Pv6kyQF6Yx9N9T7T7_cbsfrJTmKdozotxPQaaaM7sQcgwV8MsbW1x7HjGq
-    swEYmDbgZ6DwtiHtGk5a1Zhj3XrgZv02q15WI1n7-OAyJP3cUYApPU>
-X-ME-Proxy-Cause: dmFkZTEY6fq6S0qREoNd7bK0BgPQaUEbGlgAmUAaJj9OqOXgaDelLGjsHbNQEFztKwV94o
-    D6h5tHNahy8j5qWRGfZwjG9yVrb1VO+Y++ZouLTeKxtUMXren/UciUQWQI4DtMfLeLIRGg
-    nDd25uggMKOoaxzScrSkDBRWatDYwONh8xIqVEZuDnVWDoGGpQ3RQGio/i/aILTn1Q5qnn
-    kpqg9tGcTn6MGwfnA2uyvDbPC3FVbOJnhNTOr3kt9k/JsHe3/GvI3gaeiPE3TF0cd+ETBp
-    ApR+Gfax/P25jkw4lQJt2Xar+nddXeNcv6lOSa90p1TWCkoPVMMpy34gq7p4XHcmBDQvNV
-    uALNffogNNsYsHOCsWoy3u2fTw66Rnxzss5MrCFYBvfaUHgoeLfc1oWCQCXkZprZpMZz2I
-    HOn5odoV0M7RXWM+8txWfYwZro66QTmB+mlGCIMwLtKRhpOLtEo3XK6wJo7nAaIptX9V8F
-    Kol9PHKEqQ4lPXbqSqWOkmzfsmBwji2cKK0/tgxH2GAN7LGDsh2RqFT+wZsmpdICShIWob
-    nx6Pf1Qgxs5wpPK9MsfM4uAiqK/Qu7/pHsZVo0EIcPFCY75dwErirSsfvR9YNC1px7sk5T
-    Hq7gIssdXbr2ODwtU0bZttncCsodm48sNWvlIbUwt4DLPzULTBjnzoeFxr3Q
-X-ME-Proxy: <xmx:j-Dnal0mUpsvX6ldnVgdDCmPrG6IjVSCcwk_w7PPm6zYn0thburITg>
-    <xmx:j-DnalZTG9ic4k0S-96LChiG3WnI36BOV4Tck8P5Xv94sSSSoSQt7w>
-    <xmx:j-DnatKOP159NFTgkYLqhBgNd7XZXHAsysRz8qIWqiAmg6srks4u9g>
-    <xmx:j-DnakGaKJCfNvcTi7afSzTwsca2-ypWxotBn6KWUT1-RB_6pxlJIw>
-    <xmx:j-DnakuK1HsHJ0cjraSPX4rJZOxvIE84VP_7ks41RvU22we-ST7TridZ>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 7D8C8782738; Sun,  1 Nov 2026 19:59:59 -0500 (EST)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1793581848;
+	bh=YYTrIGxUOSOb88OnIFx0hwwl3v23j5XFNga48Rjoaig=;
+	h=From:To:Cc:Subject:Date;
+	b=Kl3c6X45XfZIFpX5gPSdh2/oYXtRWZ79ge0NMf0Y2nentxO3Z5t44URegMvp7qwve
+	 bKdmYs9R6vRIPoUk38hRie+FD1x10vdPtWrGlH+JNRjHDMtYO648NsbYgW4quoS1Kp
+	 7hzkCUUWHRgROujzdsvxo1j9lXMFYsR+n5D7bdWZzmgiCNjmNLPWYVfgfFuURr//ZA
+	 EWIdrQnFX9/Il6YgkCOgsqpLRZul+mpqDlBaE3n/mg27uzSdPCMZxTgngil002RJJi
+	 TcZ5lredOVxScxWu6eHmHKtmhrX/3djoi3REd5SpkKXBGnKDwPb6fDP9Avp+95DUiB
+	 N+qwVuHyJnyNw==
+From: Chuck Lever <cel@kernel.org>
+To: NeilBrown <neilb@ownmail.net>,
+	Jeff Layton <jlayton@kernel.org>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <dai.ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>
+Cc: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2] NFSD: Do not regrow a slot in the SEQUENCE that retired it
+Date: Sun,  1 Nov 2026 20:10:47 -0500
+Message-ID: <20261102011047.2659441-1-cel@kernel.org>
+X-Mailer: git-send-email 2.54.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,76 +59,85 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Date: Sun, 01 Nov 2026 19:59:39 -0500
-From: "Chuck Lever" <cel@kernel.org>
-To: NeilBrown <neil@brown.name>
-Cc: "Jeff Layton" <jlayton@kernel.org>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <dai.ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org
-Message-Id: <d80b6f2b-22c8-4848-99dc-787ef8bbd88a@slotpi15m67>
-In-Reply-To: <179356854478.547122.8943689348477321562@noble.neil.brown.name>
-References: <20261101154742.1950822-1-cel@kernel.org>
- <179356854478.547122.8943689348477321562@noble.neil.brown.name>
-Subject: Re: [PATCH v1] NFSD: Do not regrow a slot in the SEQUENCE that retired it
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Mon, 02 Nov 2026, NeilBrown wrote:
-> How would a client have a slot outstanding if it has acknowledged the
-> smaller slot table?
+When a SEQUENCE acknowledges a smaller slot table, free_session_slots()
+retires the slots above the target. If that SEQUENCE is on the new top
+slot, the growth test later in the same nfsd4_sequence() call finds the
+table at its target and allocates back the slot the call just freed.
 
-It had none when it encoded the acknowledgement. The client fills in
-sa_highest_slotid when it builds the request, from the slots in use
-at that moment. The request on the higher slot is sent afterward, and
-the two are in flight together. RFC 8881 Section 2.10.6.1 warns about
-exactly this ordering: "the request may have been sent from the
-requester before the update was received".
+A client fills in sa_highest_slotid from the slots in use when it
+builds a request, so a request it sends afterward on a higher slot can
+reach NFSD first. When the reply to that request is lost, the
+acknowledging SEQUENCE retires and rebuilds the slot inside one
+request, and the client's retransmit never sees NFS4ERR_BADSLOT. A
+retransmit of the slot's first request passes the seqid 1 rule for a
+rebuilt slot and executes a second time. A CREATE replayed this way
+returns NFS4ERR_EXIST, reproduced with pynfs against a two-slot session
+and one write to drop_caches. A retransmit of a later request matches
+the retained seqid on the uninitialized rebuilt slot and gets
+NFS4ERR_SEQ_MISORDERED, which the Linux client retries every 15 seconds
+without limit.
 
-The trace I have is from a TLA+ model of the slot table, and pynfs
-then reproduced it against a live NFSD. The target has been lowered
-to 1 and an earlier request on slot 0 has stamped the new generation.
-The client builds a request on slot 0 while slot 0 is its only slot
-in use, so sa_highest_slotid is 0, then sends a request on slot 1
-with the slot's current seqid. The nfsd threads handle the slot 1
-request first and cache its reply. The connection drops and that
-reply is lost. The slot 0 request then arrives. Slot 1 is no longer
-INUSE, the generation matches, sa_highest_slotid is 0, so NFSD frees
-slot 1. Slot 0 is now the top slot, so the same call allocates slot 1
-again, with the retained seqid and NFSD4_SLOT_REUSED but without
-NFSD4_SLOT_INITIALIZED or the cached reply.
+Skip the growth block in a call that retired slots. A retransmit that
+arrives while the slot is retired now gets NFS4ERR_BADSLOT, which the
+Linux client handles as a session reset. The next request on the top
+live slot still grows the table on demand, so a copy delayed past that
+request meets a rebuilt slot as before.
 
-The client reconnects and retransmits the slot 1 request with the
-same seqid. check_slot_seqid() reports a replay, the slot is not
-initialized, and NFSD returns SEQ_MISORDERED. The Linux client takes
-the out_retry path in nfs41_sequence_process() and resends the same
-seqid after NFS4_POLL_RETRY_MAX, with no limit. If the lost request
-was the first on the slot, its seqid 1 passes the REUSED rule instead
-and NFSD executes the compound a second time. pynfs shows both
-outcomes with a two-slot session: a CREATE on slot 1 whose reply the
-script discards, the table shrink, two requests on slot 0 with
-sa_highest_slotid 0, then the CREATE sent again on slot 1. At seqid 1
-the second CREATE returns NFS4ERR_EXIST. At seqid 2 every retransmit
-gets SEQ_MISORDERED.
+Fixes: fc8738c68d0b ("nfsd: add support for freeing unused session-DRC slots")
+Signed-off-by: Chuck Lever <cel@kernel.org>
+---
+Changes in v2:
+- Explain the request in flight on the retired slot (per Neil's review)
+- Rewrite the comment on the growth test (per Neil's review)
+- Link to v1: https://lore.kernel.org/r/20261101154742.1950822-1-cel@kernel.org
 
-"Outstanding" in the description was my word for a request whose
-reply the client has not seen. I'll fix that in v2.
+ fs/nfsd/nfs4state.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
 
-With the growth block skipped, slot 1 stays retired until a later
-request on the top live slot grows the table. The retransmit that
-arrives before then gets BADSLOT, which the Linux client handles as a
-session reset. That is not free, but it ends.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index cafdf80f32de..8b7483278f50 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5230,6 +5230,7 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct nfs4_client *clp;
+ 	struct nfsd4_slot *slot;
+ 	struct nfsd4_conn *conn;
++	bool retired = false;
+ 	__be32 status;
+ 	int buflen;
+ 	u32 maxlen, respsize;
+@@ -5301,9 +5302,11 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	    slot->sl_generation == session->se_slot_gen &&
+ 	    seq->maxslots <= session->se_target_maxslots &&
+ 	    seq->slotid < session->se_target_maxslots &&
+-	    !nfsd4_slots_inuse(session, session->se_target_maxslots))
++	    !nfsd4_slots_inuse(session, session->se_target_maxslots)) {
+ 		/* Client acknowledged our reduce maxreqs */
+ 		free_session_slots(session, session->se_target_maxslots);
++		retired = true;
++	}
+ 
+ 	buflen = (seq->cachethis) ?
+ 			session->se_fchannel.maxresp_cached :
+@@ -5360,8 +5363,15 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	 * configured maximum, not the running thread count, so a
+ 	 * client resuming from idle can grow back before the pool
+ 	 * scales up.
++	 *
++	 * Do not grow the table in the call that retired slots.  A
++	 * rebuilt slot has no cached reply, so a retransmit on it
++	 * is executed again or fails with SEQ_MISORDERED.  Left
++	 * retired, the slot returns BADSLOT, which the client
++	 * recovers from.
+ 	 */
+-	if (seq->slotid == session->se_fchannel.maxreqs - 1 &&
++	if (!retired &&
++	    seq->slotid == session->se_fchannel.maxreqs - 1 &&
+ 	    session->se_target_maxslots >= session->se_fchannel.maxreqs) {
+ 		int s = session->se_fchannel.maxreqs;
+ 		int ceiling = min_t(int, NFSD_MAX_SLOTS_PER_SESSION,
+-- 
+2.54.0
 
-A copy delayed past that later request still meets a rebuilt slot, as
-the last paragraph of the description admits. Closing that window
-takes more than this patch, though.
-
-
-> This comment could probably be improved.  As we don't (now) rebuild a
-> slot in the call that retires it, "A slot rebuilt in the call that
-> retires it" does not exist, so is not of interest...
-
-Agreed. I=E2=80=99ll clean this up for v2.
-
-
---=20
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
