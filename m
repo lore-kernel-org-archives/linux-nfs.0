@@ -1,49 +1,73 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793651916;
-	b=vxmG0B15rny67IUYHz/rMeQaIYPJeSOyfRKoonqEoo2OXFDD2wN3QY0SSQyBrmqbnV7b
-	 4hEpgj5SP0+wumh6jZHfc3g48sdkF8q1u20QUxOfcyWIZkuBUkRAnzqpxsapqT/0U00GI
-	 X1mXqXPffAUjD6yi1XBP+ZBndcvpGxIJLuAUHvB0Ya1s5NM6FWjgvr4LWiqgwdludYhkU
-	 m/H81/Mn8nx2F4AXNgkuZ6xuxKoVasXIUEaXKyalWTBY+1xpQAnSaq0dWjsIrHXG7XhI8
-	 oJF6Jkd5IaqHIQeD1PmDhHtipCTEkgXNSYjl5zLgH4+ubcZOkeX0VWQgOWXEx4Q2w5w==
+	t=1793653907;
+	b=W8o09YfhRAt7/Uf/W60wgP94TwHiB5PyJIfFJggQXwCkp+bmUuE5uc7TgAP2C9jl4wzm
+	 hh5GUo6DV18sUU44PTTIklDvhzNMb5NhEv+XoDaQtMOUJOq4HHnz1oYdY/xFvpmWmOXP+
+	 4UH4i6hqfbLiGNJ8pz63rXasqFQu/o7ighYrwSJXyzduyz3R+VA0dQnXX5ZAHt9wLU7qH
+	 5dZsZlsFIO9AVPgpNw9WFsiRUwGejlpKJYlADq1K+b/n5zgQRLRyM58mqdxUf6VquoQsW
+	 X0TBpEivMQ70kvuqtZQJLHYQJEpGjY7W0GpA0bt/kwSHdSODTTOVacvieWD7bcuKTjg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793651916;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=kew4vr9D/lX65hyEZonw0fC/8LUorIYJxt0gwq9n5sA=;
-	b=apNu6+dz/Fwm5RtNowrKlIUqb1SmOxJyuiwv1X9KzMtTAUrxzWLDkkuyUmZlCCgqTqQZ
-	 m5sT/apXznnc/nXfH+Igw8BxIG/UAWH6/QMpOAMkhZxzEOUcaeFix3+7FryGgxOHtXwZG
-	 ++zkmylyjupmJPkH2+Zkv5fVbb6qLRJys2R1W4QTL9bqPM3u0FEe+wRjECJZpYTCQoTte
-	 IuZqhBmBgvs7wqcErgS3dMww4cCglvDLjxvi4heUy2TiQ8PvoPhJKlpke4qTvmDomDrAh
-	 KWSPi8njmTl75dWkMT706TejYOoWma1DJNbnuNnOkWq/jD0c+Dnu8/+l5ImAm4J6p/A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793653907;
+	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
+	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
+	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
+	 References:Subject:Content-Type:Content-Transfer-Encoding;
+	bh=xxWoHxsw4VPFqHPAqACZbusTmTkHUnFSnkXXJwnJ4WA=;
+	b=mJdlIVJJriiy4tGT6xC+gAAmFRR2mON8MjBfuiZHV8Hmo6hfDicZC2gk4QtJxDglGM5K
+	 MBShJBwXHzYjlAM5qRXOotA4vCvbBNku9acs02zBP+9+38A6kSkwt02NyUorpBuVexLJp
+	 W3vmOzj1vYepJUMsjG2KrpSmOIBveiivt0MQ7BAbz8dLzP289bE8CgnKH7eanliDwGX1l
+	 AkkObsQU6TrBmk1rjEl324SqKkVii/U074zY6b03OGW+gxlS5DNoKhQ4pD4F0wFQ/8PHr
+	 pi2vFgJ5LhjJCpxChY6mmu7bxcg91Jidsv38VJxA5MRU+lyezkI0PndHyb6EzdfMO9w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PNjcQpXo;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dNDBoidi;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ADE1B606A32F;
-	Mon,  2 Nov 2026 20:38:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6A250606D810;
+	Mon,  2 Nov 2026 21:11:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PNjcQpXo
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C000D1F00A23;
-	Mon,  2 Nov 2026 20:38:34 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dNDBoidi
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5EBC91F00A1A;
+	Mon,  2 Nov 2026 21:11:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793651915;
-	bh=kew4vr9D/lX65hyEZonw0fC/8LUorIYJxt0gwq9n5sA=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=PNjcQpXo4zGa6xw4YW89dxi/9i8qq/lUFN2rkb2+oNb0lZ5r4gROeOvxhpfTXXDIi
-	 X+u5QEfjeBxybClG9H+CSRy1GmYY2OPn/96Nk3OCZ7BwB4Rs3buw7GNEqaOuT8Vj2C
-	 nuIXGHkHg6KyntbyJZpEUI7r8YNDDPu3AVyaoBETtckA0BfpnvPYwubrWbxRlFK0m6
-	 rt+DBmiNIX8k6EWzK8Qfh9uVE/nC+nMtGHQCxdo4A5slwOMF0vWFwftXoAnGXQJIKa
-	 6U8hiCzOUx0uGKiZ02my588/OUMLGko2He3R5qTT3qpO3zo1xRpkXKF+jK00CCFv/v
-	 IGE6COx3ucL/g==
-From: Jeff Layton <jlayton@kernel.org>
-Date: Mon, 02 Nov 2026 15:38:09 -0500
-Subject: [PATCH 1/2] nfsd: Report vetted delegated timestamps in GETATTR
- replies
+	s=k20260515; t=1793653907;
+	bh=xxWoHxsw4VPFqHPAqACZbusTmTkHUnFSnkXXJwnJ4WA=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=dNDBoidiMHuL2wzZuLuAcR2y81xpCDgwkS0jPMiuOz1hDmQcHPBHVLpe/eurDeIc6
+	 0QP40mIGdVms2YJGGkVjr72DZQ3Qy6LGB3WJi9fpQCsfISujOiuLPDEsN3HhDVyYJA
+	 NP0R0vcCve7pFHXNfT6Jbv6dCtnUUfz6t94JpXfv1SOy2mrpqjHCbhlHo2EL0lzabm
+	 VaCmh0/DUDyv4apj0JsUnQZAAcYnhzhZND7bT++OdNcHv2Pb1I7aSrCaWuC3IHDIaI
+	 92lPqtkbxGUwGCbUiY4ifB/boq31hhx+blzjeDbp2RPYCw9C+nXRNYRT0XdHWa+zUI
+	 ljjUNimhb6KYQ==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id A6FA8F4006B;
+	Mon,  2 Nov 2026 16:11:44 -0500 (EST)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Mon, 02 Nov 2026 16:11:44 -0500
+X-ME-Sender: <xms:kPzoaoxuxxTdjPhQc-3C1zahFZ9aLPvFlowSXGC4R9C8GitGRfcHEQ>
+    <xme:kPzoanGt2jIbLsy47fOpg3WSZ6PY5cBPEClcODOsbon89QNyNk_IgDaAKQadQr2gv
+    uVji238fOMsmLse7Ab600gs9JzJ4DZGzIXqA8TonRFGYfmnT8t3fbcj>
+X-ME-Proxy-Cause: dmFkZTE7nCOuYmDhbapfq9wnjcJo8I33hiQgEa8gG2mpUd6SiuGVjxefYxNF6ts7apvhL2
+    O5TBTvvYo35j+hcPabsgTVdffpGt9MvK5vyw0ZMRJyC2vP2RybIncEIE31yiniEOHW+BGf
+    KJmARPQ+h8rxdMmbqHuWCrc+Rw3W1Pf0ttMp3mPjsGk8H3PuZMLxakWBNCayAXhn4arSzS
+    SZT0vmmbKnAjrINdR7jALY8t/GQLDesfw1v5pO7HM0aidEkcoMk/IX3mKuG96bBGSC44od
+    6j/8Jj2EeiKpBxuZiOuoARjnD/H7MmHLm4946WLbdldIeKehhGb+AjzJw7psiDGcN84+AT
+    fxd1ztnRd84WKFx7SmijybVrXSJKl1AR6Etu7r8JTz1E2IGG2rbVvLkvpR2IBVnXEcQUHC
+    r3GDkPNpHJrO1FrRX5A6DIGX8s2wqnE6WbRRhP/2UYux7WzU3qFcGt1leEKU+a12CXazx+
+    obllJ0NCoPjY5PVFTCgHM6NA+K8OAWAC3Y3QpVQ0GtrFfYBqHxRpcYNa889BVVJkMXM0Xx
+    NfAqx7SCTsESPLk/r6Zjs10FtyBDV2ONG987Ot6HPmAwX9PryQz/c+/GTZobKPftcCgNbF
+    dMjgQuUNaOpeJy2SLb+WxTNiYQx6H//DcXk9Eak51jjRY6pefZcEU0xUdZXw
+X-ME-Proxy: <xmx:kPzoakX1575s1xPK_eRnHKHwfrJs0dh41R1DNgFe6QjSA1GNvloQig>
+    <xmx:kPzoaucrAaHqLBPd5fXUJKW90uwtgM36P2rOCnTrC3gEediQhDxGvg>
+    <xmx:kPzoaq1brQHn036GXHRWgb2TJPEUtB4n80avLnuqxkDWgbKvmiH79A>
+    <xmx:kPzoakc8_jk9jC4iv-WEqTZu5jnNeZJxZR4JSbSaITEBNtWbgxkbuQ>
+    <xmx:kPzoau7BSrFGgoTyo_PA1CYGAey1sR943z5_XGLHZHfJ_ObFFdVmJ7Se>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 7098678273B; Mon,  2 Nov 2026 16:11:44 -0500 (EST)
+X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -53,73 +77,62 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+X-ThreadId: AFgPYeWZplpR
+Date: Mon, 02 Nov 2026 16:11:23 -0500
+From: "Chuck Lever" <cel@kernel.org>
+To: "Christian Brauner" <brauner@kernel.org>, linux-fsdevel@vger.kernel.org
+Cc: "Linus Torvalds" <torvalds@linux-foundation.org>,
+ "Jann Horn" <jannh@google.com>, "Josef Bacik" <josef@toxicpanda.com>,
+ "Chris Mason" <mason@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
+ NeilBrown <neil@brown.name>, "Eric Dumazet" <edumazet@kernel.org>,
+ "Thomas Gleixner" <tglx@kernel.org>,
+ "Alexander Viro" <viro@zeniv.linux.org.uk>,
+ "Jonathan Corbet" <corbet@lwn.net>, "Christoph Hellwig" <hch@lst.de>,
+ "Greg Kroah-Hartman" <gregkh@suse.de>,
+ "Joel Granados" <joel.granados@kernel.org>, "Kees Cook" <kees@kernel.org>,
+ "Jan Kara" <jack@suse.cz>, "Jan Kara" <jack@suse.com>,
+ linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+ linux-acpi@vger.kernel.org, linux-kselftest@vger.kernel.org,
+ linux-s390@vger.kernel.org,
+ "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+ linux-um@lists.infradead.org, linux-wireless@vger.kernel.org,
+ "Linuxppc Dev" <linuxppc-dev@lists.ozlabs.org>, netdev@vger.kernel.org,
+ ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org,
+ coreteam@netfilter.org, kexec@lists.infradead.org, linux-pci@vger.kernel.org,
+ linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org,
+ dri-devel@lists.freedesktop.org, ibm-acpi-devel@lists.sourceforge.net,
+ jfs-discussion@lists.sourceforge.net, linux-alpha@vger.kernel.org,
+ linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org,
+ linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org,
+ linux-sh@vger.kernel.org, linux-usb@vger.kernel.org,
+ samba-technical@lists.samba.org, sparclinux@vger.kernel.org,
+ linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org,
+ linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net,
+ "Takashi Iwai" <tiwai@suse.de>, linux-input@vger.kernel.org,
+ linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org,
+ linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org
+Message-Id: <7ee779f9-db3d-4829-bdd8-1d09e3f74c43@app.fastmail.com>
+In-Reply-To: <20261102-work-procfs-net-v1-6-982104a4f592@kernel.org>
+References: <20261102-work-procfs-net-v1-0-982104a4f592@kernel.org>
+ <20261102-work-procfs-net-v1-6-982104a4f592@kernel.org>
+Subject: Re: [PATCH RFC 06/11] SUNRPC: let procfs own the seq_file of the cache content
+ file
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-deleg-cb-getattr-times-v1-1-ca0326d88623@kernel.org>
-References: <20261102-deleg-cb-getattr-times-v1-0-ca0326d88623@kernel.org>
-In-Reply-To: <20261102-deleg-cb-getattr-times-v1-0-ca0326d88623@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
- Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1486; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=63CvdnJ3D30Wf4u4qYlU9zOOUTNaBtg7jPVJhlMIX/w=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq6PTJInT/j9YFcdhkwdvoNvc68oFFR0c6iLctA
- OmKTkuw0kmJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCauj0yQAKCRAADmhBGVaC
- FVODEADORVYgbMP583uAHhqM/u5JZE/BlCk8KpDEoOEZck7fzsHJEMDxKD1IRX2misAKiKb+1Ge
- OEic3UHgxS07TrileSMqdS1wXXyifnZIP/SBwo3slxo7sH2nXAC0DVlyVt2s6low3znjKjdSd9u
- +b77unCDjVc+cLSFMTTmh7uQGZ/Hyk0LXMEcLe34fi0dyVdd699JF0JYXL02o4T5I8Q+HwRCjWd
- FXzYi8FKFPHI31L4qx0RA8ploDvjIsWMA74axjTkSeZOhtkWaY22BDyeS1bnmx+7I1xbUqkcbUL
- qcFmTnxPLemf0+PuddwNjWKiSC0fIBrl0j+sw7MQOFLFarZzB6x7P6aHXBxrYqajhsPKO8pRxMj
- OrUt6kRYaAdJdSuKK5NuSxctCP9MTRTHu6UFexFlT/znFVfi2xS9FtOYnKTz2AJZ3ulujgw/FYp
- Ge656fVhNeQhQxSY2bAGY0Kv5mZBiKzBnVYnDkk2CN+O1RhVzjt/1kV7jidfk+WA2f9cq88+PaC
- vDnXHCWLgaYY4e+dXsdCO2/OUOO/YwnVrdmgW/8bsdxBcogYiDJf1gBhQlzeAyW5aNl45p+4Wwc
- V1FgakL+uGAc+yA7I44tTxV5s4PFHRf1ZzsrW3sgl1rsda44/Q00zhQLorOKPasJ3StBdGM1oGH
- oy+V97Ldoo+QDPA==
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-When a CB_GETATTR reply shows the file modified, nfsd4_encode_fattr4()
-overrides atime and mtime with the raw time_deleg_access and
-time_deleg_modify values from the reply. cb_getattr_update_times() has
-already vetted those values per RFC 9754 section 5 and written the
-result to the inode, so the override undoes that vetting:
 
-- a time older than at delegation grant, which the server ignores, is
-  still reported to the querying client
-- a time in the future is reported unclamped
 
-vfs_getattr() runs after the update and already returns the vetted
-times. Drop the override.
+On Mon, Nov 2, 2026, at 10:07 AM, Christian Brauner wrote:
+> Declare the seq_operations and let procfs open and free the seq_file of
+> /proc/net/rpc/<cache>/content. ->proc_open() and ->proc_release() only
+> take and drop the module reference and set up ->private now. The
+> rpc_pipefs file is unchanged. Reading the procfs file then no longer
+> holds up its removal when the network namespace goes away.
+>
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-Fixes: 6ae30d6eb26b ("nfsd: add support for delegated timestamps")
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- fs/nfsd/nfs4xdr.c | 6 ------
- 1 file changed, 6 deletions(-)
+Acked-by: Chuck Lever <cel@kernel.org>
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 90b44163f886..434b6cfc5741 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -4098,14 +4098,8 @@ nfsd4_encode_fattr4(struct svc_rqst *rqstp, struct xdr_stream *xdr,
- 		if (ncf->ncf_file_modified) {
- 			++ncf->ncf_initial_cinfo;
- 			args.stat.size = ncf->ncf_cur_fsize;
--			if (!timespec64_is_epoch(&ncf->ncf_cb_mtime))
--				args.stat.mtime = ncf->ncf_cb_mtime;
- 		}
- 		args.change_attr = ncf->ncf_initial_cinfo;
--
--		if (!timespec64_is_epoch(&ncf->ncf_cb_atime))
--			args.stat.atime = ncf->ncf_cb_atime;
--
- 		nfs4_put_stid(&dp->dl_stid);
- 	} else {
- 		args.change_attr = nfsd4_change_attribute(&args.stat);
 
 -- 
-2.56.0
-
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
