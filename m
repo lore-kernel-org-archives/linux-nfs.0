@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793630961;
-	b=gaWWnMty+VK+tGOFcXu7kBLyVRkmxTJLwfuwLwEnj92wmYao8lBrk5xEkFrNSa4eJ6bb
-	 ZvBMUp0Wb5gFs730JhnVhv92NVx02fQSPGwCW4ht+UPmp/vodKs48E2sixeaH0GCCw3/r
-	 iHNnW1g8OtYgQJYjE5tehThd3vxQgwOOq2+hSZ8taWyoOHEnuX+8YaU/1pI6onp6BvTCc
-	 UWb2LiRU4+K0b0QASququK8OTvQw4cEzEAGKUP+Vd2MMKEX9kwgeVxbbTHHhPWZq7zrbR
-	 q8qZBADWvl8CK0/4jS8qya2Z/J/2f/wuBvZ7dpLdvcavYEQDAvzBZcGPrdThQqIpXTQ==
+	t=1793630982;
+	b=SyQWKt3gb2CUBEF5zYbjFnG8qMSTTTAV/GucPIKY3JT6iNpow08iHcbNQxsgB+NyWrar
+	 CeArBpJPZEz01Jr2KzQZuhOoIzHHc0VT8RSLbMQprUOJecUgzdD0TLDGKPVi9hrirvo6g
+	 eqsze+o64MW6Xwst4CBIYMIwtzCyzRbaDpST4eEnqOroWA5BRwgarPdyClxO+7sIEFjAa
+	 z5cFbhYPSeKU1FHZ7cLDJEArP/t29klOrjNSR+D8Xn2uq9ONl2nJNtq0y06qy8Hvwakf1
+	 Q9KzBlrVjh+F2/wpcEtCEviuj+ZYFX8eOtkBSbRiQqKMM362ljy1WfA7ceKkc2QN2GQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793630961;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793630982;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer;
-	bh=jrxxeu9FMCeaH9PPG0vvIdaQylBKAxxjB5EHgDoyGNY=;
-	b=PQGZTmiCRS1da8d4qYvuaWD23R52KxSOuA3WK05gRV70ChA9t/qk1Red8R3F8AGe4zTt
-	 irMRMczkIaDKrQ/LYnynBt58Qwo1M43jnyNEJL4M90A8KnsWvXdG99w2/b/RLoMYwINuA
-	 uf2wT7JEBLWa4BnDExKx1Vrmjdx/O/JrxFcyXyxHfuS2x+XF9TB2x724uudWKsZYquBtc
-	 tB/x/PIHIdQtHpOKEBZ8pXDTU5udO64NRnl35HJP1ulyGcTjaiqKJvmsD5Ploq+bmkmus
-	 dxbcmlt9DX5vSFd6LOxUy7uEPA4qp761uoOTeIqf5Hv26CU11z9e6wo3bo5eAWmltsg==
+	bh=KbfF7FDKuD8IgpxmK4NN79tddC7YrY9Y/+M606VrXfI=;
+	b=qE0NM677CZ2ad2lBqtMf7PugO1/5PMJhZ3Nkw4WHOMtvCyCc4voscxxbHoP74aADS9uB
+	 fN+m4zwLO+/NZSW/F18FG8qp0GY6Yz6WvESPXDdrVa7tkX++NB890G71CWa+XiyaDaO61
+	 Y2hYjDP6/KSqnRHjcxXvAhxaGIjQTQSExoLYIJW5oQPNsQbd7kJjcx37z+CGhrmGqR7Qt
+	 KzeB65Lq1tl2GIH22Boc0WZ1Zuum0MCefPZNpDpajyHuP0ehnayYvu78o4Q/94GycDXSA
+	 iow3a+T5gOG8JosPrX5Ag03vpRhJRH0/fm/AV+X8jtLFTVMo4ZjJBKPI2aHq5j1RgrA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ByuxxP2Y;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VTLKN1wP;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5EF2F606ABBD;
-	Mon,  2 Nov 2026 14:49:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D74296072C48;
+	Mon,  2 Nov 2026 14:49:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ByuxxP2Y
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D423F1F00A16;
-	Mon,  2 Nov 2026 14:49:04 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VTLKN1wP
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9B6901F00A1E;
+	Mon,  2 Nov 2026 14:49:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793630961;
-	bh=jrxxeu9FMCeaH9PPG0vvIdaQylBKAxxjB5EHgDoyGNY=;
+	s=k20260515; t=1793630981;
+	bh=KbfF7FDKuD8IgpxmK4NN79tddC7YrY9Y/+M606VrXfI=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=ByuxxP2Y0aL4EQ4HwE1D5VE6bk9SBZU78IecQNaoL/QqN2Y6I7ABFAIAs9mVScHNH
-	 SgYUHz+A/rbabkW8D5dGgo432jVpFe7FT/P6H+jA3wauUd5cjNIX0RjXLHQxPeZnwc
-	 ZHYHReIZ20MHWB1oFcj0/0Oig7/cat0HqyX7ecJpsbua1wSW9hsT6O0sgpvSBLGhfY
-	 xPgK550INOHZoI47HH3iTcy4uMo2SA7+Bla5KpVWGtw3gSqFOEGcd2cLWE8Js/8MoA
-	 b91eSZEjTRDcbicVa76y8vSAq+2z0cdK8bBOdtnHVxMyTugmPIsG5XGIzFlkoOVhvM
-	 mmiHRSg+JBAAQ==
+	b=VTLKN1wPsT77GXedBbfUnvAt3ZoU7sew0DlQ6CDb1yQtAYUOGaK37/vahZM8mEt3V
+	 KNlm7TNpeloU705YEFADDRXgb1PNF0htEEYt3ZevyltU7KddsRtahLRmp+qVB1QsTd
+	 d1RDDQ/dsYO4l943o0Mo5EdJqDBAb7oifdScdluIUo115yD9FyncmfVWtP9AkD23ow
+	 tjXAJUkgvsgAuYizPSgyetMJFRgtBO7xSarrqvzcn+4yaB6a8qaJUaOxhh7jACwPeW
+	 M76RUCqdpHd1iPp6/uReiis0Y94YYZahNZgzE5Coy02hiikfQy+mq13Dy1CXaqsGBr
+	 UxX8A03XOhI7g==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 15:48:41 +0100
-Subject: [PATCH RFC 01/16] proc: drop the compat file operations
+Date: Mon, 02 Nov 2026 15:48:42 +0100
+Subject: [PATCH RFC 02/16] proc: add pde_pin() and pde_unpin()
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-core-v1-1-75df35e4f8b8@kernel.org>
+Message-Id: <20261102-work-procfs-core-v1-2-75df35e4f8b8@kernel.org>
 References: <20261102-work-procfs-core-v1-0-75df35e4f8b8@kernel.org>
 In-Reply-To: <20261102-work-procfs-core-v1-0-75df35e4f8b8@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -91,161 +91,218 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
 
-procfs has both sets of file operations twice, with and without
-->compat_ioctl(), and picks the one with it for entries that have
-->proc_compat_ioctl(). That's from commit 778f3dd5a13c ("Fix procfs
-compat_ioctl regression") when a file without ->compat_ioctl() went
-through the translation tables in fs/compat_ioctl.c and one with it
-didn't. Those tables are gone since commit 77b9040195de ("compat_ioctl:
-simplify the implementation"). compat_sys_ioctl() answers -ENOTTY for a
-file without ->compat_ioctl() now, which is what
-proc_reg_compat_ioctl() answers for an entry without
-->proc_compat_ioctl().
-
-So always set ->compat_ioctl() and drop the second set of file
-operations and the flag that picked it.
+Every call into an entry that can go away is wrapped in use_pde() and
+unuse_pde(), and a permanent entry is called straight away. The read,
+write, poll, ioctl, mmap and lseek methods all spell that out as the
+same if-else. The next patches add a few more callers. So put it into
+pde_pin() and pde_unpin() and use them everywhere.
 
 No functional changes.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/proc/generic.c       |  4 ----
- fs/proc/inode.c         | 45 +++------------------------------------------
- fs/proc/internal.h      |  9 ---------
- include/linux/proc_fs.h |  1 -
- 4 files changed, 3 insertions(+), 56 deletions(-)
+ fs/proc/inode.c | 116 +++++++++++++++++++++++++++-----------------------------
+ 1 file changed, 55 insertions(+), 61 deletions(-)
 
-diff --git a/fs/proc/generic.c b/fs/proc/generic.c
-index 23fc026d7bbb..761f9958558f 100644
---- a/fs/proc/generic.c
-+++ b/fs/proc/generic.c
-@@ -445,10 +445,6 @@ static void pde_set_flags(struct proc_dir_entry *pde)
- 		pde->flags |= PROC_ENTRY_PERMANENT;
- 	if (proc_ops->proc_read_iter)
- 		pde->flags |= PROC_ENTRY_proc_read_iter;
--#ifdef CONFIG_COMPAT
--	if (proc_ops->proc_compat_ioctl)
--		pde->flags |= PROC_ENTRY_proc_compat_ioctl;
--#endif
- 	if (proc_ops->proc_lseek)
- 		pde->flags |= PROC_ENTRY_proc_lseek;
- }
 diff --git a/fs/proc/inode.c b/fs/proc/inode.c
-index 2d65f3c8ec03..18f6490bfe77 100644
+index 18f6490bfe77..66a3688757dd 100644
 --- a/fs/proc/inode.c
 +++ b/fs/proc/inode.c
-@@ -410,6 +410,8 @@ static long proc_reg_compat_ioctl(struct file *file, unsigned int cmd, unsigned
- 	}
+@@ -206,6 +206,18 @@ static void unuse_pde(struct proc_dir_entry *pde)
+ 		complete(pde->pde_unload_completion);
+ }
+ 
++/* Pin an entry that can go away around a call into it, see use_pde(). */
++static bool pde_pin(struct proc_dir_entry *pde)
++{
++	return pde_is_permanent(pde) || use_pde(pde);
++}
++
++static void pde_unpin(struct proc_dir_entry *pde)
++{
++	if (!pde_is_permanent(pde))
++		unuse_pde(pde);
++}
++
+ /*
+  * At most 2 contexts can enter this function: the one doing the last
+  * close on the descriptor and whoever is deleting PDE itself.
+@@ -275,14 +287,12 @@ void proc_entry_rundown(struct proc_dir_entry *de)
+ static loff_t proc_reg_llseek(struct file *file, loff_t offset, int whence)
+ {
+ 	struct proc_dir_entry *pde = PDE(file_inode(file));
+-	loff_t rv = -EINVAL;
++	loff_t rv;
+ 
+-	if (pde_is_permanent(pde)) {
+-		return pde->proc_ops->proc_lseek(file, offset, whence);
+-	} else if (use_pde(pde)) {
+-		rv = pde->proc_ops->proc_lseek(file, offset, whence);
+-		unuse_pde(pde);
+-	}
++	if (!pde_pin(pde))
++		return -EINVAL;
++	rv = pde->proc_ops->proc_lseek(file, offset, whence);
++	pde_unpin(pde);
  	return rv;
  }
-+#else
-+#define proc_reg_compat_ioctl NULL
- #endif
  
- static int pde_mmap(struct proc_dir_entry *pde, struct file *file, struct vm_area_struct *vma)
-@@ -569,6 +571,7 @@ static const struct file_operations proc_reg_file_ops = {
- 	.write		= proc_reg_write,
- 	.poll		= proc_reg_poll,
- 	.unlocked_ioctl	= proc_reg_unlocked_ioctl,
-+	.compat_ioctl	= proc_reg_compat_ioctl,
- 	.mmap		= proc_reg_mmap,
- 	.get_unmapped_area = proc_reg_get_unmapped_area,
- #ifndef CONFIG_MMU
-@@ -585,39 +588,6 @@ static const struct file_operations proc_iter_file_ops = {
- 	.splice_read	= copy_splice_read,
- 	.poll		= proc_reg_poll,
- 	.unlocked_ioctl	= proc_reg_unlocked_ioctl,
--	.mmap		= proc_reg_mmap,
--	.get_unmapped_area = proc_reg_get_unmapped_area,
--#ifndef CONFIG_MMU
--	.mmap_capabilities = proc_reg_mmap_capabilities,
--#endif
--	.open		= proc_reg_open,
--	.release	= proc_reg_release,
--};
--
--#ifdef CONFIG_COMPAT
--static const struct file_operations proc_reg_file_ops_compat = {
--	.llseek		= proc_reg_llseek,
--	.read		= proc_reg_read,
--	.write		= proc_reg_write,
--	.poll		= proc_reg_poll,
--	.unlocked_ioctl	= proc_reg_unlocked_ioctl,
--	.compat_ioctl	= proc_reg_compat_ioctl,
--	.mmap		= proc_reg_mmap,
--	.get_unmapped_area = proc_reg_get_unmapped_area,
--#ifndef CONFIG_MMU
--	.mmap_capabilities = proc_reg_mmap_capabilities,
--#endif
--	.open		= proc_reg_open,
--	.release	= proc_reg_release,
--};
--
--static const struct file_operations proc_iter_file_ops_compat = {
--	.llseek		= proc_reg_llseek,
--	.read_iter	= proc_reg_read_iter,
--	.splice_read	= copy_splice_read,
--	.write		= proc_reg_write,
--	.poll		= proc_reg_poll,
--	.unlocked_ioctl	= proc_reg_unlocked_ioctl,
- 	.compat_ioctl	= proc_reg_compat_ioctl,
- 	.mmap		= proc_reg_mmap,
- 	.get_unmapped_area = proc_reg_get_unmapped_area,
-@@ -627,7 +597,6 @@ static const struct file_operations proc_iter_file_ops_compat = {
- 	.open		= proc_reg_open,
- 	.release	= proc_reg_release,
- };
--#endif
+@@ -291,13 +301,10 @@ static ssize_t proc_reg_read_iter(struct kiocb *iocb, struct iov_iter *iter)
+ 	struct proc_dir_entry *pde = PDE(file_inode(iocb->ki_filp));
+ 	ssize_t ret;
  
- static const char *proc_get_link(struct dentry *dentry,
- 				 struct inode *inode,
-@@ -683,14 +652,6 @@ struct inode *proc_get_inode(struct super_block *sb, struct proc_dir_entry *de)
- 			inode->i_fop = &proc_iter_file_ops;
- 		else
- 			inode->i_fop = &proc_reg_file_ops;
--#ifdef CONFIG_COMPAT
--		if (pde_has_proc_compat_ioctl(de)) {
--			if (pde_has_proc_read_iter(de))
--				inode->i_fop = &proc_iter_file_ops_compat;
--			else
--				inode->i_fop = &proc_reg_file_ops_compat;
--		}
--#endif
- 	} else if (S_ISDIR(inode->i_mode)) {
- 		inode->i_op = de->proc_iops;
- 		inode->i_fop = de->proc_dir_ops;
-diff --git a/fs/proc/internal.h b/fs/proc/internal.h
-index 04f7ce2b24ed..268a0523be12 100644
---- a/fs/proc/internal.h
-+++ b/fs/proc/internal.h
-@@ -92,15 +92,6 @@ static inline bool pde_has_proc_read_iter(const struct proc_dir_entry *pde)
- 	return pde->flags & PROC_ENTRY_proc_read_iter;
+-	if (pde_is_permanent(pde))
+-		return pde->proc_ops->proc_read_iter(iocb, iter);
+-
+-	if (!use_pde(pde))
++	if (!pde_pin(pde))
+ 		return -EIO;
+ 	ret = pde->proc_ops->proc_read_iter(iocb, iter);
+-	unuse_pde(pde);
++	pde_unpin(pde);
+ 	return ret;
  }
  
--static inline bool pde_has_proc_compat_ioctl(const struct proc_dir_entry *pde)
--{
--#ifdef CONFIG_COMPAT
--	return pde->flags & PROC_ENTRY_proc_compat_ioctl;
--#else
--	return false;
--#endif
--}
--
- static inline bool pde_has_proc_lseek(const struct proc_dir_entry *pde)
+@@ -312,14 +319,12 @@ static ssize_t pde_read(struct proc_dir_entry *pde, struct file *file, char __us
+ static ssize_t proc_reg_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
  {
- 	return pde->flags & PROC_ENTRY_proc_lseek;
-diff --git a/include/linux/proc_fs.h b/include/linux/proc_fs.h
-index 47d7deaeed8f..6ad5150020bf 100644
---- a/include/linux/proc_fs.h
-+++ b/include/linux/proc_fs.h
-@@ -26,7 +26,6 @@ enum {
- #endif
+ 	struct proc_dir_entry *pde = PDE(file_inode(file));
+-	ssize_t rv = -EIO;
++	ssize_t rv;
  
- 	PROC_ENTRY_proc_read_iter	= 1U << 1,
--	PROC_ENTRY_proc_compat_ioctl	= 1U << 2,
- 	PROC_ENTRY_proc_lseek		= 1U << 3,
+-	if (pde_is_permanent(pde)) {
+-		return pde_read(pde, file, buf, count, ppos);
+-	} else if (use_pde(pde)) {
+-		rv = pde_read(pde, file, buf, count, ppos);
+-		unuse_pde(pde);
+-	}
++	if (!pde_pin(pde))
++		return -EIO;
++	rv = pde_read(pde, file, buf, count, ppos);
++	pde_unpin(pde);
+ 	return rv;
+ }
  
- 	PROC_ENTRY_FORCE_LOOKUP		= 1U << 7,
+@@ -334,14 +339,12 @@ static ssize_t pde_write(struct proc_dir_entry *pde, struct file *file, const ch
+ static ssize_t proc_reg_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
+ {
+ 	struct proc_dir_entry *pde = PDE(file_inode(file));
+-	ssize_t rv = -EIO;
++	ssize_t rv;
+ 
+-	if (pde_is_permanent(pde)) {
+-		return pde_write(pde, file, buf, count, ppos);
+-	} else if (use_pde(pde)) {
+-		rv = pde_write(pde, file, buf, count, ppos);
+-		unuse_pde(pde);
+-	}
++	if (!pde_pin(pde))
++		return -EIO;
++	rv = pde_write(pde, file, buf, count, ppos);
++	pde_unpin(pde);
+ 	return rv;
+ }
+ 
+@@ -356,14 +359,12 @@ static __poll_t pde_poll(struct proc_dir_entry *pde, struct file *file, struct p
+ static __poll_t proc_reg_poll(struct file *file, struct poll_table_struct *pts)
+ {
+ 	struct proc_dir_entry *pde = PDE(file_inode(file));
+-	__poll_t rv = DEFAULT_POLLMASK;
++	__poll_t rv;
+ 
+-	if (pde_is_permanent(pde)) {
+-		return pde_poll(pde, file, pts);
+-	} else if (use_pde(pde)) {
+-		rv = pde_poll(pde, file, pts);
+-		unuse_pde(pde);
+-	}
++	if (!pde_pin(pde))
++		return DEFAULT_POLLMASK;
++	rv = pde_poll(pde, file, pts);
++	pde_unpin(pde);
+ 	return rv;
+ }
+ 
+@@ -378,14 +379,12 @@ static long pde_ioctl(struct proc_dir_entry *pde, struct file *file, unsigned in
+ static long proc_reg_unlocked_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ {
+ 	struct proc_dir_entry *pde = PDE(file_inode(file));
+-	long rv = -ENOTTY;
++	long rv;
+ 
+-	if (pde_is_permanent(pde)) {
+-		return pde_ioctl(pde, file, cmd, arg);
+-	} else if (use_pde(pde)) {
+-		rv = pde_ioctl(pde, file, cmd, arg);
+-		unuse_pde(pde);
+-	}
++	if (!pde_pin(pde))
++		return -ENOTTY;
++	rv = pde_ioctl(pde, file, cmd, arg);
++	pde_unpin(pde);
+ 	return rv;
+ }
+ 
+@@ -401,13 +400,12 @@ static long pde_compat_ioctl(struct proc_dir_entry *pde, struct file *file, unsi
+ static long proc_reg_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ {
+ 	struct proc_dir_entry *pde = PDE(file_inode(file));
+-	long rv = -ENOTTY;
+-	if (pde_is_permanent(pde)) {
+-		return pde_compat_ioctl(pde, file, cmd, arg);
+-	} else if (use_pde(pde)) {
+-		rv = pde_compat_ioctl(pde, file, cmd, arg);
+-		unuse_pde(pde);
+-	}
++	long rv;
++
++	if (!pde_pin(pde))
++		return -ENOTTY;
++	rv = pde_compat_ioctl(pde, file, cmd, arg);
++	pde_unpin(pde);
+ 	return rv;
+ }
+ #else
+@@ -425,14 +423,12 @@ static int pde_mmap(struct proc_dir_entry *pde, struct file *file, struct vm_are
+ static int proc_reg_mmap(struct file *file, struct vm_area_struct *vma)
+ {
+ 	struct proc_dir_entry *pde = PDE(file_inode(file));
+-	int rv = -EIO;
++	int rv;
+ 
+-	if (pde_is_permanent(pde)) {
+-		return pde_mmap(pde, file, vma);
+-	} else if (use_pde(pde)) {
+-		rv = pde_mmap(pde, file, vma);
+-		unuse_pde(pde);
+-	}
++	if (!pde_pin(pde))
++		return -EIO;
++	rv = pde_mmap(pde, file, vma);
++	pde_unpin(pde);
+ 	return rv;
+ }
+ 
+@@ -457,14 +453,12 @@ proc_reg_get_unmapped_area(struct file *file, unsigned long orig_addr,
+ 			   unsigned long flags)
+ {
+ 	struct proc_dir_entry *pde = PDE(file_inode(file));
+-	unsigned long rv = -EIO;
++	unsigned long rv;
+ 
+-	if (pde_is_permanent(pde)) {
+-		return pde_get_unmapped_area(pde, file, orig_addr, len, pgoff, flags);
+-	} else if (use_pde(pde)) {
+-		rv = pde_get_unmapped_area(pde, file, orig_addr, len, pgoff, flags);
+-		unuse_pde(pde);
+-	}
++	if (!pde_pin(pde))
++		return -EIO;
++	rv = pde_get_unmapped_area(pde, file, orig_addr, len, pgoff, flags);
++	pde_unpin(pde);
+ 	return rv;
+ }
+ 
 
 -- 
 2.53.0
