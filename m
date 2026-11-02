@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793629475;
-	b=vVmNveRgxT5DrhSkPoYoRsx+2pZMM9tUaMoPRh3tETL0sk93LzduLbOYk8dhYYxmiPdq
-	 xrF9jrVYlWHnlpnh8jrNWQ9U52PwJbTxUKX7HWKw++K/xz1FoSOCg9R6EHSZgIo3BC0g4
-	 MfrRnYF5ePw7nAnS4vSNMh9tqICy4/I88kEnnguzSQgerEA+/XumH6aksx2z6NU/xEJ3F
-	 z0jj5bQoKU1RQ63D+TZ+RvjCX3A8uh6SbNjiDjpyr51QkKA9iIknoqgmjfkJk/QhLmM3L
-	 ttwSTgSqKJpWnE+7YayzyGOemGGww2viiuLKY5ZaucQrQy600LZLJ7c2w8Q8I4NSvDQ==
+	t=1793629489;
+	b=KGYSkkcegaoYgUkblu0yaM2Sqj1eJBbGCAQcO1vYZD7/PUx8zKsBZYlyYJC80pJeFfrb
+	 22aBwqkEguaoPxbuOK7IUDPhaswnVbq1puqdJgxzL9vAP1UXzxfzKy4bpZ+lnNaFq64Gh
+	 qvkIz9OuX96w9cqCpgE7Sa+1mmftJVBIGRWHG/e4HcW1hF/C8sadiAcFv7gtJL6rzeSWF
+	 goYsnr1Zw4n7gwTl0hlTBbFiPaVLp6Ooz+UsnFr74v9AUSA+9O/Qma7N+1mfiTUSsyULB
+	 yws+PNILAPM2E3PbmqBTc+miOPkJVqtEeWAwOvqmDNOnG8WuMJpQwUE4JGNO3obxUrA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793629475;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793629489;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=frXlYovGKxKiSN/Oj3/IY9GUET6etUhHzbC1M94LuG8=;
-	b=Aw82DG2PNTAkWHzTxP3V6UWRFt0flYg0vUOecNV9yOxbLnLynIbCirGV7u1NG9oh8jak
-	 2Ok2AKx9UZAJKCmj3Dem5m+hcqmlkWFr4USpbqiE6fnp/SLqc9P3+xQXyc5qiHO4l0SzV
-	 3OXb9w3DI6hHdLcjCbpL5bdCEjuAUj44GjOGEfNnImIJqAIQVyGc3LlC0Jj1KEEFikNVw
-	 c/MR0PYtWlXGdChYfovKKE/vQQ3PqRWls7rC0OrMNnhFEtDsqdg+cscfz217ysnIYEWq4
-	 zz2x52zwefSL+bgNjtDI0F4Yx6Qe6OhpxISeNwu9EfaL8Zkwwu18TuHLOSI4LkZB6aw==
+	bh=S8IXtzTL1USde6aV/lVKsFPWulIUW0ciUvC5Tm4lMm4=;
+	b=YXI3j26QaQtxs0P08ZpzQGa0RtvYBhbxskyuDQ9TaEeo/Fgovnp+/aROSxz8CYog3jM1
+	 Ug7YxW6maW+1TUqE8YlzKWAtHaJn2RBUKFjFV6YIDPqPopreG1D9gpkAPubuD5Lp9+GHr
+	 070d5ZprFc2Z48fzDRjiPQP/mtD+ZIY4/cNWIU940ESBeaLzooFRKhfLPJHUNkAOUt9w2
+	 Samyk33rz8XFFXnlAT46B1ndl0uEX81+nmR/Xp1mMfRuRlNAwUXXPucHtCBJiPJDgfj7R
+	 qp0VX1jMb4gJp2r1fqrQOb2jmsMAwShLEQ7MrqMFiMsml5HkiherCHqd8dbN3a7bitA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ReJoE6zf;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=eItiv4ZS;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 95061607039F;
-	Mon,  2 Nov 2026 14:24:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2A3466070CAF;
+	Mon,  2 Nov 2026 14:24:48 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ReJoE6zf
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3AA8A1F00A16;
-	Mon,  2 Nov 2026 14:24:22 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=eItiv4ZS
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A91FA1F00A17;
+	Mon,  2 Nov 2026 14:24:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793629475;
-	bh=frXlYovGKxKiSN/Oj3/IY9GUET6etUhHzbC1M94LuG8=;
+	s=k20260515; t=1793629488;
+	bh=S8IXtzTL1USde6aV/lVKsFPWulIUW0ciUvC5Tm4lMm4=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=ReJoE6zfwlMZdL/D4kBPHthe/7b2K1B/nPEO/E9fDnKPvAkMnG3q8iqFJyxNfgYxT
-	 +l0bLxPIHxAyiwwkTWc0uyVHHVBYLTR/rNVKqQ159RwHOdEMgFr70nBybxd8JaVcAZ
-	 INkOE+RqOwXO8hKmtfOe3uu52SEXEIDC8EbApa4h43uDc6EQp0NHZaMrKSPGxDLmTa
-	 z3JiBZz/mUJm70MBn3REHME7mTQy2jABNt0dk+JRXthyckWXmXkXSvKDQjG8t3ZaWQ
-	 U87w9Z+1qwvggD1ALH9JqxHF/VsBzvY+LBC2uMMhSucHH25d+pQJrzTmhyQC9KPZ4G
-	 gBzTDPDZGkvzA==
+	b=eItiv4ZSsA0o29cJddRhknzQ/bhOslnikosU7shAbLsc6vTsBfmDsItQHBMrbvVWd
+	 iPZbUolyR+DqkWlaAa0X2CnLcF2jyDfURGxamilT7KyJvcn1fKmbflZQF9mZNYHiZO
+	 V0ITbrToBCzB7hRC4b/UItl9wr2159FfzOymbnfHnOF2rwSD+IUlNRm9Mg0cMAS2zm
+	 5gwJPTLnvktaVBDt4cpf/GZOkyIf5vc3Gnqu0sv5l4CtGAi/V20ChSZvsil7rMsNnM
+	 0OhXFaQi0hOR9dRoU2RCfw23JXyWpcHF2yT6L1CDbIcvCpMbQZH6dQmQwY5xG0/KbE
+	 t+ML1xiLi3rHQ==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 15:21:27 +0100
-Subject: [PATCH RFC 12/38] wifi: libipw: don't return 0 from writes to
- debug_level
+Date: Mon, 02 Nov 2026 15:21:28 +0100
+Subject: [PATCH RFC 13/38] scsi: core: NUL-terminate what is written to the
+ host proc files
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-bugfixes-v1-12-59422ed3e465@kernel.org>
+Message-Id: <20261102-work-procfs-bugfixes-v1-13-59422ed3e465@kernel.org>
 References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
 In-Reply-To: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -89,42 +89,42 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, 
  linux-debuggers@vger.kernel.org, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
- Chuck Lever <cel@kernel.org>
+ Chuck Lever <cel@kernel.org>, stable@vger.kernel.org
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1059; i=brauner@kernel.org;
- h=from:subject:message-id; bh=PSZyn/5j7f+UAGnOkF9zGJ8rErtLF7uTzeHltQyv5ig=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9mJNt0aR9f0p/qPzeecf+P/MKzGqZHjSv9nAx10fn5
- wXb57eqdpSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAExE6x4jQyt32MU/mspx/OIz
- 9f/2BxhfmF6ZzrB0Ced7yZ3V6unKfxgZbjIUhrXNX37666wNDOpX7329dlJiQe1ekZ5/lQ3MWmr
- ruQE=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1011; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=jBwXVCCRpDjmnAajxR/zAvEvmAtZKAE0jCj6+Cnx3v0=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9mJOt8KzyxT3HqTxz47pOZlhlreHadWzKU9ECZ1HJM
+ /eTjxsd7ShlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZjInBpGhnblJ+n8i6QvucrH
+ 3L3hMeP2tqzHWnkyxe8aQsOergg+85jhr/wPVbOd51/rtnu/jeqzYHXMzjH9s/7NWaZa++nPtf+
+ 38wEA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-debug_level_proc_write() returns the length of the string it parsed. A
-write that starts with a NUL byte thus returns 0 and writers that use
-stdio retry it forever. Return the number of bytes that were written
-instead, which also stops writes longer than the 11 bytes it looks at
-from coming up short.
+proc_scsi_host_write() copies what is written into a page and hands it
+to ->write_info() without terminating it. ppa and imm parse it with
+strncmp() and simple_strtoul(), which read on past what was written into
+whatever the page held before. Terminate the copy. A write is at most
+PROC_BLOCK_SIZE bytes, so the page always has room for that.
 
-Fixes: b453872c35cf ("[NET] ieee80211 subsystem")
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/net/wireless/intel/ipw2x00/libipw_module.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/scsi/scsi_proc.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/net/wireless/intel/ipw2x00/libipw_module.c b/drivers/net/wireless/intel/ipw2x00/libipw_module.c
-index 22358b2c2ecd..552c8ff3928b 100644
---- a/drivers/net/wireless/intel/ipw2x00/libipw_module.c
-+++ b/drivers/net/wireless/intel/ipw2x00/libipw_module.c
-@@ -236,7 +236,7 @@ static ssize_t debug_level_proc_write(struct file *file,
- 	else
- 		libipw_debug_level = val;
- 
--	return strnlen(buf, len);
-+	return count;
- }
- 
- static const struct proc_ops debug_level_proc_ops = {
+diff --git a/drivers/scsi/scsi_proc.c b/drivers/scsi/scsi_proc.c
+index fdc355d783da..dbd03360b5a4 100644
+--- a/drivers/scsi/scsi_proc.c
++++ b/drivers/scsi/scsi_proc.c
+@@ -80,6 +80,7 @@ static ssize_t proc_scsi_host_write(struct file *file, const char __user *buf,
+ 		ret = -EFAULT;
+ 		if (copy_from_user(page, buf, count))
+ 			goto out;
++		page[count] = '\0';
+ 		ret = shost->hostt->write_info(shost, page, count);
+ 	}
+ out:
 
 -- 
 2.53.0
