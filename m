@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793631998;
-	b=MrPAE5D5cBXlD4FJpM/D169i83ERiCeQoK90KcXU66LPJ1Pa3i/S5QFbklTnOqojxuHO
-	 4S5KxPwVEyKpezu9gAmbry97M+A18k5/Z/+s8NUdb6hsRHj9AfdKrofyvuC8jAYbueRpR
-	 mIYsc4GRXxlDekphRt0/J6CDzvRkrXTRKFnmYWtVJ05lwE0KckokmQ4nIARXVYjKCeADc
-	 UWe2IrO03pytgTmHqTV5uqDpBFisbN9HI0Azu9B9e5STWQdQCIpoxe6vLxcIib9ZD2cJl
-	 DgNf0BlRBfgmXErxjdqwhtXgoLGPsxMSuGU5gMyIzZPfNM5OuRFMkrqK6mLAvEM+s7w==
+	t=1793632036;
+	b=Uq2mDBoOqDXzg14qm2ae/kwhWKg+xVjyNKVkz9RIC65rKplBQOH5fCHvuPqIeUqQJyWX
+	 UtUbq2YjKBKX4Lv9LUnW85RZfgosbUl3hLCAGPVduqoavjdQgRNJEfVLakBGXjw5uP8wx
+	 CQFRA7zmsiRShWdG8Um1W61A/H67uplLY4grumlVVZQW4+o1jLehYb1NKMBnl9pbCmIci
+	 HhfIzEjDII+43Q4am87WB0/V9li41wAbmi3SmwEJMZpzvZUbYXBCWYo6AHOk+1QgTxPG5
+	 r8lGGYNgtyyo1SgnoIQnH+mdrHRy82blHCHA5fe2XUzcx9uh2vLq3mfZvvQ8Sbh4utg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793631998;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793632036;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer;
-	bh=D0DFho69O6i+rlC573E8+GaY0MO1KK9pTFWx3bkx1uo=;
-	b=pg5bztbQY4RR20hjrDl3zrepr+0TAFA1JOah6ji13iUpkfQbvSyoqx5ZJKP4UEny2Mzx
-	 ul1cmAaz9/Sh80SGZOe2PBDYka9slEWunPKdNv4WSPL3O6iMxIAMesSh7935tSav+WLd8
-	 jbDK4swbWjus7lgiSgNPZAjI8HVEI55BlhOXWkeZZZRg401Ylxmwu+q58duPukoIB0eJb
-	 oMA55E4KbSQpwzJTA+aY4JdLGLfaD1NDMqaVSOaHDXNc+4QSVgtRMsl5iqgdey54xa/0e
-	 sv8Hw7P5XeVCI+DKzstHqFWF2Nv/6WXBKwMUaSa/Ve36wN96jy5dkV9TOiNrkaRjGfg==
+	bh=mGdLlGj/NJAJr68kXbSPslaJvhomImSQvB5hgldkHFg=;
+	b=uXwSx7SM7TnywRS2QyDW8cACsF62zMrmNfdUyRSmAd3DL4TrUy/XxxiN/SmjsSMAwcGk
+	 zZhrDapMcCdlsmA7elcSYs6H9mG9fvOog+SplyA/Jkg8v0zdkBl+y0R2jj6zG59augi/v
+	 0fIzd+a9QSD429KAj/k44qfhp33GcS28m6CxO0YEcurxdzjWz3SbYMzbZzwMN7va12lH3
+	 +Fg//SDoIc/b5NOvqS6PBnhctHkFxHnHyZ6Y+gevHhWWIqex2sCwamJ8j7OZ1Fl8sern+
+	 7rb0C4nel1rUClKm/jza1tYhUdzWIxX9PCc0Bp/xe8XJoAiZE+49IuF+jNI3QtYJiHA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=g5jXfmAk;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=IzlZDjTa;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7A819606B0C2;
-	Mon,  2 Nov 2026 15:06:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 815326072ED7;
+	Mon,  2 Nov 2026 15:07:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=g5jXfmAk
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7C9F61F00A18;
-	Mon,  2 Nov 2026 15:06:21 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=IzlZDjTa
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B26C51F00A16;
+	Mon,  2 Nov 2026 15:07:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793631997;
-	bh=D0DFho69O6i+rlC573E8+GaY0MO1KK9pTFWx3bkx1uo=;
+	s=k20260515; t=1793632036;
+	bh=mGdLlGj/NJAJr68kXbSPslaJvhomImSQvB5hgldkHFg=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=g5jXfmAkkpbVCcZt3JDC6TsuxQAsfUSbPkDCW7uGVgAQzBE/zvcO7qIvScymWJQ1K
-	 n8VazwD2M6Wv79JGlT69a8nmYNWac2kVIU0U/zNaRABKDdAMHpHFgYNA7PEr0PWLeq
-	 AebGp1CYYILUE3HH0K8Y/R8JSuxQScRPfh8nZYzeZx50h2vf5qPHNhypeg7PD0iwQv
-	 2+ikdTJsIqiI2yCYwee54jqzaLiVLYJuCtuzzPKkyLzadUHizvSp/DBA0MNt56rv5I
-	 6IBbiNCpEUyFyP/cack1HnEo1QC0pmP0eyaIxCT6k4iIzuTLNpD4qjm+qx0GtucpmL
-	 2tYUkabqdbO9Q==
+	b=IzlZDjTao7VjuIjRRsnw52RX/0AjF/WBmgT4NSpXmtjt4TJbN8zegt24j5DOlUa3Z
+	 44pMabJRvDCRlnweMnKPhfJPYcWc+E6OtpWq1y0Ac43VD4FbMRQP9qey5otxK1q5PL
+	 oT9zsk1HsUa3Ue3zXl6S6BVtFghJKXFiWTJwHmxl0PE/8ztq9iyqz6BcdrpCZDdpYi
+	 3XtzkYqJlHCU6ToIaLkgAjRlsjmuFBtw97UNIAceQYdi00vVfKPn4AuQDU9qRHk19M
+	 URA4zqhN0uKI8rAUpyUb++ZQsVmLXvF7KAChG6Fit1JA/MDvvneOl/7dLgJJZyJ32o
+	 yDuj9+i1oCVEA==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 16:01:42 +0100
-Subject: [PATCH RFC 15/22] xtensa: simdisk: let procfs copy in writes
+Date: Mon, 02 Nov 2026 16:01:43 +0100
+Subject: [PATCH RFC 16/22] xtensa: simdisk: let procfs copy out reads
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-arch-v1-15-c9492ab08480@kernel.org>
+Message-Id: <20261102-work-procfs-arch-v1-16-c9492ab08480@kernel.org>
 References: <20261102-work-procfs-arch-v1-0-c9492ab08480@kernel.org>
 In-Reply-To: <20261102-work-procfs-arch-v1-0-c9492ab08480@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -91,79 +91,45 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
 
-Implement ->proc_write_buf() so procfs copies in what is written to the
-simdisk files before it pins the entry, and take the file name from
-that copy. The files took up to PAGE_SIZE bytes and keep doing that
-through ->proc_write_size.
+Implement ->proc_read_buf() so procfs copies what is read to userspace
+after it unpinned the entry.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- arch/xtensa/platforms/iss/simdisk.c | 26 ++++++++++----------------
- 1 file changed, 10 insertions(+), 16 deletions(-)
+ arch/xtensa/platforms/iss/simdisk.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/arch/xtensa/platforms/iss/simdisk.c b/arch/xtensa/platforms/iss/simdisk.c
-index 7b115e023de9..b2f9e7f3ade3 100644
+index b2f9e7f3ade3..b597d8642e8a 100644
 --- a/arch/xtensa/platforms/iss/simdisk.c
 +++ b/arch/xtensa/platforms/iss/simdisk.c
-@@ -241,7 +241,7 @@ static ssize_t proc_read_simdisk(struct file *file, char __user *buf,
- 	ssize_t len;
- 	char *temp;
- 
--	/* a write sets at most a page, see proc_write_simdisk() */
-+	/* a write sets at most a page, see simdisk_proc_ops */
- 	temp = kmalloc(PAGE_SIZE + 2, GFP_KERNEL);
- 	if (!temp)
- 		return -ENOMEM;
-@@ -255,40 +255,34 @@ static ssize_t proc_read_simdisk(struct file *file, char __user *buf,
- 	return len;
- }
- 
--static ssize_t proc_write_simdisk(struct file *file, const char __user *buf,
-+static ssize_t proc_write_simdisk(struct file *file, char *buf,
- 			size_t count, loff_t *ppos)
- {
--	char *tmp;
- 	struct simdisk *dev = pde_data(file_inode(file));
- 	int err;
- 
--	if (count == 0 || count > PAGE_SIZE)
-+	if (count == 0)
- 		return -EINVAL;
- 
--	tmp = memdup_user_nul(buf, count);
--	if (IS_ERR(tmp))
--		return PTR_ERR(tmp);
--
- 	err = simdisk_detach(dev);
- 	if (err != 0)
--		goto out_free;
-+		return err;
- 
--	if (count > 0 && tmp[count - 1] == '\n')
--		tmp[count - 1] = 0;
-+	if (count > 0 && buf[count - 1] == '\n')
-+		buf[count - 1] = 0;
- 
--	if (tmp[0])
--		err = simdisk_attach(dev, tmp);
-+	if (buf[0])
-+		err = simdisk_attach(dev, buf);
- 
- 	if (err == 0)
- 		err = count;
--out_free:
--	kfree(tmp);
+@@ -234,7 +234,7 @@ static int simdisk_detach(struct simdisk *dev)
  	return err;
  }
  
- static const struct proc_ops simdisk_proc_ops = {
- 	.proc_read	= proc_read_simdisk,
--	.proc_write	= proc_write_simdisk,
-+	.proc_write_buf	= proc_write_simdisk,
-+	.proc_write_size = PAGE_SIZE,
- 	.proc_lseek	= default_llseek,
- };
+-static ssize_t proc_read_simdisk(struct file *file, char __user *buf,
++static ssize_t proc_read_simdisk(struct file *file, char *buf,
+ 			size_t size, loff_t *ppos)
+ {
+ 	struct simdisk *dev = pde_data(file_inode(file));
+@@ -250,7 +250,7 @@ static ssize_t proc_read_simdisk(struct file *file, char __user *buf,
+ 	len = scnprintf(temp, PAGE_SIZE + 2, "%s\n", dev->filename ?: "");
+ 	spin_unlock(&dev->lock);
  
+-	len = simple_read_from_buffer(buf, size, ppos, temp, len);
++	len = memory_read_from_buffer(buf, size, ppos, temp, len);
+ 	kfree(temp);
+ 	return len;
+ }
+@@ -280,7 +280,7 @@ static ssize_t proc_write_simdisk(struct file *file, char *buf,
+ }
+ 
+ static const struct proc_ops simdisk_proc_ops = {
+-	.proc_read	= proc_read_simdisk,
++	.proc_read_buf	= proc_read_simdisk,
+ 	.proc_write_buf	= proc_write_simdisk,
+ 	.proc_write_size = PAGE_SIZE,
+ 	.proc_lseek	= default_llseek,
 
 -- 
 2.53.0
