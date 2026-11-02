@@ -1,52 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793651482;
-	b=nDve3vOmoP//EEObjvcdfA66nGj95qp3WJxNXc/zVKyNu0rbMWpq0BpKzEvUifoTiVrf
-	 bK7Tl/WCrb4ywg+SN12pJMX/chZR3QtjDRDC68ihB5qODwvKNuW88oTMyWIZX9v5C7t/d
-	 lnmUSwyzVxRf44COMUDpmQnC7aAiGb6Lz3Nzm3kb2twnVA8tVaCS1Ou0hjbGLwEAKMSvR
-	 L/epD58ROlZcYAnJcgN6jzfp3pMROeRfAfJ9UUyawMZXwaGgZBrrbfdVnyfLbNI/QkF22
-	 qSDZaDg6fsWR2TOre+1Or7c8zABHA57IF6qbc6BxqpkqfXmmwcgkVDw4uVlC7BoTsjg==
+	t=1793651915;
+	b=xwhsPXM1mAEmjegVg4DcJf5EnlJLGwmx0oZ0dloVjcIPNR+hWEVjc2wRySJ9ZIHz5EcO
+	 MLxsKOVbY3wHe39W2QGUxzm/leEE7rYcHoHgtVtTGYBJTBPttg8ackdHJLanS6HlsAbau
+	 HeDZSe0nMx4sCoYhJ+Afr9SR8zdSYZLKHQEHNELrj1BKCr0KQuiQKQbtrFtgJZwmsXryD
+	 6VhkAqt/2L2elRYyflHQqYh7K4eF8NDlDcKaE3cMI8EDfYZTvJHHkUWNYoEfzkIiBeM/p
+	 /KBC43AGeZagIzdPdZSgm7gexjkxCIr/ejtHAeI/r9/vbLUMd91D+pWHJc4EuU8W9Hg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793651482;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=2fMN3WBtI3u0oxmrPVquXsLBrwfApvpq32Jn76MXxEI=;
-	b=epeBZVwkU71rOd7MgsI0ALd6pY+XfmqiAa88CscfyREhHzkl5djzc3LqfaNvdXczVB6v
-	 4ns6wDg2YMKWSgj15QGZdOSCEjMXckhQmC7AMAgqSAIgaBbWu2F7yLlIl8ISqh1F/dyu0
-	 PU69FUyRIwoptI3GP8HKBL5wm5Hv83yPbA1Wr9QahHkb5sLH7NErvLfj96IDfXLBJRFcT
-	 piVFMb5CdIeJxtHjVeJAIuSKqi/dRB+PKfi4HMf7v6RACqeNp41pDldR2umHqnz9nC227
-	 QoNLJjDDuZk5OZiKnzaQNcQMcErySE6mgRJf+zOhYP52KYjQ8SoWCNI+MkvucznYPPA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793651915;
+	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
+	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=df9x564ZsWQ1YlCAdFuR+tc6g3AdQ2uglH2tG8Nzp2g=;
+	b=3B/lOO0nBMLWjxyEj5OlJAFKwmkCwQOWjqUV0eA5BSd51ms3A0LRmKb9fVuySsPK0n6+
+	 TfqCSrT/z77y7K2YoftVYC2DW6MKF4fg6SyH/zPgf8xOtfdbty1I9J0VZr30XiiVbeBE9
+	 TXk+j0IOuMN+mT3U7NXnt8RGnSc4g9DOdaGqCwUUhW5OD5OrRIDKe1F9hdHL+LpmvnkjK
+	 FRuNxAvmOtA5epoSe0TwXU2bdT8fbpjHrPApFGE5whG4mfhWsTBo4AwQEjISAr1AygMHH
+	 DvlenbvBCB4MKznOU4MC+lgvj/DRHg0u2MHFiipJCpRZagEhKzPU+aMTXdhwx83SbQw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LXE2nWfy;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LM3sDaqR;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6EDB4606A329
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 20:31:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E090F606A32D;
+	Mon,  2 Nov 2026 20:38:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LXE2nWfy
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BD54A1F00A17;
-	Mon,  2 Nov 2026 20:31:21 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LM3sDaqR
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E9F9F1F00A16;
+	Mon,  2 Nov 2026 20:38:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793651482;
-	bh=2fMN3WBtI3u0oxmrPVquXsLBrwfApvpq32Jn76MXxEI=;
-	h=From:To:Cc:Subject:Date;
-	b=LXE2nWfyaPV5K4sU8X78Y5gJT5RwU5+i7poAVX3EuiEuNo38CpqAsiyyO2ATUENvR
-	 iDeTBkAayh/F0LlPHi59H2leXhqS6X5EQBs4Fu9COk2T+C1MMbWzOfVosMFpQkPJzt
-	 InTHMRBp6vC9GlQnmmtmPgIKBo+jB6eRSH/ajxraKcfx1sA17hXFtCGLGKi0s4kgF3
-	 Zlm4LA1H9ynZ8ltEX3HxaPCi32TwhtnlLxy2Xo5EItSfLYtnuBluQEtjf3xPZgGDKM
-	 ELBuKZoOKosKrq0zYd8qzsK8f3vQyySIoeG+U4kvB8r64a4M7FKb80lHN0xB7s5chk
-	 Crn+S2dwKhx9A==
-From: Mike Snitzer <snitzer@kernel.org>
-To: Anna Schumaker <anna@kernel.org>,
-	Trond Myklebust <trondmy@kernel.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 0/4] NFS: keep final releases out of writeback
-Date: Mon,  2 Nov 2026 15:31:16 -0500
-Message-ID: <20261102203120.14600-1-snitzer@kernel.org>
-X-Mailer: git-send-email 2.44.0
+	s=k20260515; t=1793651914;
+	bh=df9x564ZsWQ1YlCAdFuR+tc6g3AdQ2uglH2tG8Nzp2g=;
+	h=From:Subject:Date:To:Cc;
+	b=LM3sDaqRE8I2qEmkyJYeBxfLvRw8nV7lmWUScSCm21foYbPvaaUN6fLnk4czVmYT0
+	 7eCUDNjkQOISABXaY018YeQdeYWcVb0zEaxwdxI9nSPbTYVBZ44cb0vv7KRrgpisiw
+	 3XR3YI8QwqepMXCTiX0hU6XskJjlgp1c0RZkIVDZS0yLhXNuJqv6U3dY+h85ZWco2x
+	 3Nl/z+fb+F/nGQr3PRW6Qf9DQ6bxbfjrQ4PVvu7jK/BojIe/uvfAuzuGBzDIj2f8Af
+	 4DI1TtVvsAGtmYYBhHgnpQ2XNWn0MkoThCLOojmVpnWpd0LYGY79oOkvZoBch5/Mk6
+	 uHts09ndfbdaA==
+From: Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH 0/2] nfsd: more delegated timestamp fixes
+Date: Mon, 02 Nov 2026 15:38:08 -0500
+Message-Id: <20261102-deleg-cb-getattr-times-v1-0-ca0326d88623@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -56,113 +53,53 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MSwqEMBBF0a1IjS1IahBatyIOYnydLmg/JEEEc
+ e8Gh2dw70UZSZGpby5KODTrtlbYtqHw82sE61xNYsRZa4Rn/BE5TBxRfCmJiy7I/PG+E2ekm6y
+ jGu8JXz3f8TDe9wPYL2U5aAAAAA==
+X-Change-ID: 20261102-deleg-cb-getattr-times-8aa926029b16
+To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jeff Layton <jlayton@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=680; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=8zSd3J/2kYNwxJPhf/PPw+gedCJ9TUNUnrEoLsz/m5g=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq6PTDeCTPzMEO6jlw6LpqH1m+xVyGa04u/EqDa
+ F32l8lK2GyJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCauj0wwAKCRAADmhBGVaC
+ FS/OEAC4WnG4uN5TUmB+QY0cyQcAblkI/eDxBa77Z+PdAkEU2JGxzRPkKSqLtYpchEAYp+PZ8lo
+ QHizWPxUHkVoNw7weGSODQYT+sn+QbX/+q0TBW95rM0Z1fEICxBVtRh7ncgilF8NLSbY6j9Xl0n
+ D6jlE5pHbv8lqhqD2XKyCsv5/9/Kg3XFVKWTYiA20bVSYm4hDITKv1dILEuhAlFvbURGDzppefo
+ 1F/8+gubceC/k3k9epI+RwOiXVIRegz3wq7NolFYKtTWcZdcrtmvX+tNWbFCtTw3UJqNwEq+D/j
+ t9mNsowzWPUJNvv3WdAwWdm4WtuRA7wDXG/ZOoaQthx4k0eHogsgKHS+3UvKyscTnaVchwCjkYS
+ cmvF+pCqFjnCp0LcZPf5jukO3Mg5sThrBIvfR31clrbE1rYv9D50yZS0lTZP9F8tfv6v4EIxNMS
+ 8zwsan08HllRChar6dp1xq/fzxID47p3Z1Fdrn2kO7FKxfUpINSXLQngsWjzDYgUheiDtjeG0Z8
+ kLIx6wDdVNItUKyZRvAwdqTO57juei1JOKW9HiS/yGWVzj1YvZ2Yyf1SdPDU6ZAe2/Gu/9A19Y2
+ xOzsL7zMf28h0yaoqffj3Osb5rYC0owiLNERMM6FnbWjStexujDSc9P755Bgvl84wfpQxBGAKVW
+ K6vEd5L3K6jo1wg==
+X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
+ fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-v2: https://lore.kernel.org/linux-nfs/20260928185751.98682-1-snitzer@kernel.org/
-v1: https://lore.kernel.org/linux-nfs/20260911184239.90154-1-snitzer@kernel.org/
+Chuck recently added a new DELEG27 pynfs test that fails against nfsd.
+These patches fix the behavior of delegated timestamps (again), such
+that DELEG27 now passes.
 
-Releasing an open context closes NFSv4 state and drops what may be the
-last reference to the dentry, the inode and the superblock.  The flusher
-holds sb->s_umount and has set I_SYNC on the inode, so it must not do
-either final release.  It would wait for itself, on s_umount in
-deactivate_super() or on I_SYNC in evict().  A write normally avoids
-this because the RPC release callback of a WRITE or COMMIT runs on
-nfsiod.  This series fixes the four ways in which writeback can still
-run such a release itself:
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+Jeff Layton (2):
+      nfsd: Report vetted delegated timestamps in GETATTR replies
+      nfsd: Honor delegated timestamps when change and size match
 
-Patch 1: nfs_write_error() completes a write that fails before the
-client sends it, and it does that in the submitter.  A client hit this
-deadlock in the field when its server began to return AUTH_TOOWEAK.
+ fs/nfsd/nfs4state.c | 15 ++++++++++++++-
+ fs/nfsd/nfs4xdr.c   |  6 ------
+ 2 files changed, 14 insertions(+), 7 deletions(-)
+---
+base-commit: 08f97dfc517b50a00a41ce99f5af7b6ce2814592
+change-id: 20261102-deleg-cb-getattr-times-8aa926029b16
 
-Patch 2: nfs_initiate_pgio() and nfs_initiate_commit() drop their task
-reference with rpc_put_task().  If the task has already completed, that
-call runs the release callback in the submitter.  This is the deadlock
-that NeilBrown reported in 2014:
-https://lore.kernel.org/linux-nfs/20140407135001.56ef9f36@notabene.brown/
-
-Patch 3: the asynchronous LAYOUTCOMMIT that ->write_inode() sends has
-the same problem as patch 2.  It pins an inode and the superblock
-instead of an open context, and its task has no workqueue.
-
-Patch 4: when LOCALIO cannot allocate its fsync context for a COMMIT,
-nfs_local_commit() runs the release of the COMMIT in the submitter.
-
-All four move the release to nfsiod, where every other write already
-does it.  None changes how or when a filesystem shuts down, and
-nfs_sb_deactive() does not change.
-
-Why not take another reference instead?  These paths take and drop
-every reference in balance:
-
- - Each write request holds its open context.  So a closed file keeps
-   its context until the client writes or fails its requests.
- - Since commit 3d4ff43d895c ("nfs_open_context doesn't need struct path
-   either"), an open context holds the superblock active.  After umount,
-   the last open context can hold the last active reference.
- - The flusher holds s_umount and I_SYNC, but no reference of its own.
-   Commit 169ebd90131b ("writeback: Avoid iput() from flusher thread")
-   removed its inode reference on purpose.
-
-A missing reference would show as an early release: a use-after-free or
-a refcount warning.  Here the opposite happens: a thread waits for locks
-that it holds itself, because it drops the last reference.  Another
-reference only changes which put is the last one.  The flusher cannot
-drop a reference after it releases s_umount and I_SYNC, so the last put
-must run in another thread.  For writes that thread is already nfsiod,
-and commit bf294b41cefc ("SUNRPC: Close a race in
-__rpc_wait_for_completion_task()") added rpc_put_task_async() for this
-case.  The series moves the four exceptions to that rule.  It does not
-add a new way to defer a release.
-
-Testing: NFSv3 over loopback, with a test-only knob that makes
-nfs_do_writepage() see -EACCES in the pageio descriptor.  Dirty a file
-through a mapping after closing it, unmount, and let the periodic
-flusher write it back.  A plain umount is enough to leave the write
-requests as the only thing that keeps the superblock alive.
-
-                  plain file           sillyrenamed file
-  v1              shuts down, from     flusher hangs in evict(),
-                  v1's work item       waiting for I_SYNC
-
-  this series     shuts down, from     shuts down, from the release
-                  the context's        of the sillyrename REMOVE
-                  work item
-
-Patch 2 has a test of its own, with a second test-only knob.  The knob
-leaves the COMMIT to nfs_write_inode() in the flusher.  There it waits
-for the COMMIT to complete before nfs_initiate_commit() puts the task.
-Without patch 2, the flusher hangs in deactivate_super(), with the stack
-in the commit message of patch 2.  With patch 2, the release runs on
-nfsiod and the filesystem shuts down in 2 s.
-
-Patches 3 and 4 close a race and a rare error path, and neither test
-exercises them.  Each patch builds with W=1 on Anna's linux-next.
-
-Changes since v2:
-- New patch 4, for the LOCALIO COMMIT release on an allocation failure.
-- The cover letter now explains why the release is deferred rather than
-  another reference taken.  Its subject also covers patch 3.
-- Patch 1: put_nfs_open_context_async() is declared without extern.
-- Patch 2 now has a test that reproduces its deadlock, see Testing.
-- Rebased on Anna's linux-next.  v2's base-commit was not public.
-
-Mike Snitzer (4):
-  NFS: don't release the open context of a failed write from writeback
-  NFS: don't run the release of a WRITE or COMMIT in the submitter
-  NFSv4/pnfs: don't run the release of a LAYOUTCOMMIT in the submitter
-  NFS/localio: don't run the release of a failed COMMIT in the submitter
-
- fs/nfs/inode.c         | 37 ++++++++++++++++++++++++++++++++++---
- fs/nfs/internal.h      |  1 +
- fs/nfs/localio.c       | 28 +++++++++++++++++++++++++++-
- fs/nfs/nfs4proc.c      |  7 ++++++-
- fs/nfs/pagelist.c      |  3 ++-
- fs/nfs/write.c         |  8 +++++++-
- include/linux/nfs_fs.h |  2 ++
- 7 files changed, 79 insertions(+), 7 deletions(-)
-
-
-base-commit: ef30b3efb7e8bae94d790a6503a595e1051323e7
+Best regards,
 -- 
-2.52.0
+Jeff Layton <jlayton@kernel.org>
 
