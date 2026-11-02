@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793651917;
-	b=04gQlFsdDS/GfmAw5D6HAgB+bbzkylfqz6Mxet5AzK1lZf/oGnEknY5FKcnhvNN+tHWL
-	 Oo6ofnDLK1JGd8PUSPRq5ej/NPae5vGTYF72meyIwiSsAluSW3tj9VlXApZ9ik5bPC666
-	 EhQfXmG22wbRqeXUWD5TZZQnwDFbsZ0/dd0pUJXtV/CJqfkmfO11pZYplu+qqmr8mfWdZ
-	 HNcOkmPiF1QdzHbYH0joE1htcsrYAGuh1TrCBVJ52JDXbhG2LMqkXb6umh+RjdRpKEaqz
-	 RCGDK7zdgbVXSHzEEP/+cjCKQ2Vuny3Cs5q/lpJrVGY8reN5acHe66809aFTcUwqkMg==
+	t=1793651916;
+	b=vxmG0B15rny67IUYHz/rMeQaIYPJeSOyfRKoonqEoo2OXFDD2wN3QY0SSQyBrmqbnV7b
+	 4hEpgj5SP0+wumh6jZHfc3g48sdkF8q1u20QUxOfcyWIZkuBUkRAnzqpxsapqT/0U00GI
+	 X1mXqXPffAUjD6yi1XBP+ZBndcvpGxIJLuAUHvB0Ya1s5NM6FWjgvr4LWiqgwdludYhkU
+	 m/H81/Mn8nx2F4AXNgkuZ6xuxKoVasXIUEaXKyalWTBY+1xpQAnSaq0dWjsIrHXG7XhI8
+	 oJF6Jkd5IaqHIQeD1PmDhHtipCTEkgXNSYjl5zLgH4+ubcZOkeX0VWQgOWXEx4Q2w5w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793651917;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793651916;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=onegsaRrEGUYSzsonlLe9pt0lNSYzMi4Rer4fCtT5Hk=;
-	b=vPKSi0qOUNEV5lO1RUUurznmpFrchktKU4RGRnYLDurXCc5GK4BwFj2qb2ZXdVEwBrsc
-	 SligMNztq2h4/o8Tv0j6AmP/JCI3McOBTASjSxsmHKn1AyHlRXkgl2mFIoX7YvoKfeepg
-	 nfPokqreH93N0G7Lw1b4gdzE0n7D8WiIvgMpI/VtfhjjhE8+B8NTgeQl/kXz03LRWEAfB
-	 qBWRjxC1oHn/iJxI8T8asqJaA7zzCuOr/FArQSnS7D/Ir5zIZnErbd6MB5EAPw5912IDB
-	 rcVtpnVpc/YKlDIOSihH+/rhK44KCiQ6AzeHKBHbqGUHoMU2RFNVPFCvKPa73fMttXg==
+	bh=kew4vr9D/lX65hyEZonw0fC/8LUorIYJxt0gwq9n5sA=;
+	b=apNu6+dz/Fwm5RtNowrKlIUqb1SmOxJyuiwv1X9KzMtTAUrxzWLDkkuyUmZlCCgqTqQZ
+	 m5sT/apXznnc/nXfH+Igw8BxIG/UAWH6/QMpOAMkhZxzEOUcaeFix3+7FryGgxOHtXwZG
+	 ++zkmylyjupmJPkH2+Zkv5fVbb6qLRJys2R1W4QTL9bqPM3u0FEe+wRjECJZpYTCQoTte
+	 IuZqhBmBgvs7wqcErgS3dMww4cCglvDLjxvi4heUy2TiQ8PvoPhJKlpke4qTvmDomDrAh
+	 KWSPi8njmTl75dWkMT706TejYOoWma1DJNbnuNnOkWq/jD0c+Dnu8/+l5ImAm4J6p/A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="ZdN5F/zm";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PNjcQpXo;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BD5EA606A330;
-	Mon,  2 Nov 2026 20:38:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZdN5F/zm
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 94C8A1F00A1B;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ADE1B606A32F;
 	Mon,  2 Nov 2026 20:38:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PNjcQpXo
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C000D1F00A23;
+	Mon,  2 Nov 2026 20:38:34 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793651916;
-	bh=onegsaRrEGUYSzsonlLe9pt0lNSYzMi4Rer4fCtT5Hk=;
+	s=k20260515; t=1793651915;
+	bh=kew4vr9D/lX65hyEZonw0fC/8LUorIYJxt0gwq9n5sA=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=ZdN5F/zmT4mUwRmCv/YJebbq/ZERBQ72B0g1VJ6BZDf6KzvK9utl9OekpfWBuok2w
-	 zMRDnemKWyWtkZksW61PczgjHIUJKNLW9D+0zwQSxuXawnvlZpttRSyvKTO4HgEQmq
-	 O3P7kwqfGAoVWM/5gqyRizsE3Pc3fnuOPZXmbCjjgFb43wIVRsNcfkVm9GPc6g9cz+
-	 2e56J0hAlz/4ImFtKyaLTwZ1IBq+DgSaP8Tu8ynQXXtTGtzBpTRnY3hBCePvJOAOM1
-	 U2muOEL/bLpcjC9OC3SRwiO41tQo5M80Z45w8CXevvX+wnzRGQaGptvbuzwQteq3Eq
-	 7prc4VL2mnMjg==
+	b=PNjcQpXo4zGa6xw4YW89dxi/9i8qq/lUFN2rkb2+oNb0lZ5r4gROeOvxhpfTXXDIi
+	 X+u5QEfjeBxybClG9H+CSRy1GmYY2OPn/96Nk3OCZ7BwB4Rs3buw7GNEqaOuT8Vj2C
+	 nuIXGHkHg6KyntbyJZpEUI7r8YNDDPu3AVyaoBETtckA0BfpnvPYwubrWbxRlFK0m6
+	 rt+DBmiNIX8k6EWzK8Qfh9uVE/nC+nMtGHQCxdo4A5slwOMF0vWFwftXoAnGXQJIKa
+	 6U8hiCzOUx0uGKiZ02my588/OUMLGko2He3R5qTT3qpO3zo1xRpkXKF+jK00CCFv/v
+	 IGE6COx3ucL/g==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Mon, 02 Nov 2026 15:38:10 -0500
-Subject: [PATCH 2/2] nfsd: Honor delegated timestamps when change and size
- match
+Date: Mon, 02 Nov 2026 15:38:09 -0500
+Subject: [PATCH 1/2] nfsd: Report vetted delegated timestamps in GETATTR
+ replies
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-deleg-cb-getattr-times-v1-2-ca0326d88623@kernel.org>
+Message-Id: <20261102-deleg-cb-getattr-times-v1-1-ca0326d88623@kernel.org>
 References: <20261102-deleg-cb-getattr-times-v1-0-ca0326d88623@kernel.org>
 In-Reply-To: <20261102-deleg-cb-getattr-times-v1-0-ca0326d88623@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -64,91 +64,61 @@ To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>,
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2775; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=nc9COnIhB+A0quOumFWCa8sEV5bNcg18ILthQa0pBzU=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq6PTJUAX+HjMkHsSJLL+hO40LbPjiAJAvvEAVc
- aaVe6rYwuGJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCauj0yQAKCRAADmhBGVaC
- Feu8EACGy76heDATh0plCwnLSQZkD3UcJTWA/mC7XZlp/oiuCTbHtKHrtuLQcsVZCYkJkGjcFIi
- ZjwRwxpuR73hDubHuXiPfl1r/pQ7tZUztjJa//kqPD/zjr7nl8mV8oaBPxSe72j6F3oVl32P409
- zhSoLY00l3cWDrI0BdVRsEeFdngvnacr0UjAmXhPzA5mf1yaCKFvQ4Ob7IQe1YgcnYpHkoxsPtb
- Bw8Zc1IMvwBFNYDg+yuskzcpATz/Zd1cW57iV4GR4M3OOEQg5JV55VsWT4j0K7buLOGOaP+riOc
- gDK/KE5AVyPkbyDDx2pxxo+ceQG6aZzJE4pFxsQqul2VnAF3r0jfDBcPLy8TosnTUoT1jrl0xPx
- 3AHqJrFAPv43GLT4WyGeTp+jQEQQjQB+ciPnitWkWReiP8hm8x6cn+lPolRhZ+wcpRP7pA6flmE
- a2ddofn7cDt2sucaU5XXCR90MQe3RqTRiSaCvGwz3I/JzsqJNgTNzFFaMq3yA8kNqaV9kVSkBd9
- zSe/oWujIQxJr3UlsWBanjrrC6gt6Pl/XXC/xrGEBVza95hSxsbDhqOIQbrIS+mpyvEH5b3Lw4O
- zsiQ1zqmUgBFv1X69MsjpVlUgIu37ii1QFmr/Vje9KPL7oKj94vP3NL9Q71ry3puwoPUWi2YHb9
- 80QFcRS4pZir7+g==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1486; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=63CvdnJ3D30Wf4u4qYlU9zOOUTNaBtg7jPVJhlMIX/w=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq6PTJInT/j9YFcdhkwdvoNvc68oFFR0c6iLctA
+ OmKTkuw0kmJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCauj0yQAKCRAADmhBGVaC
+ FVODEADORVYgbMP583uAHhqM/u5JZE/BlCk8KpDEoOEZck7fzsHJEMDxKD1IRX2misAKiKb+1Ge
+ OEic3UHgxS07TrileSMqdS1wXXyifnZIP/SBwo3slxo7sH2nXAC0DVlyVt2s6low3znjKjdSd9u
+ +b77unCDjVc+cLSFMTTmh7uQGZ/Hyk0LXMEcLe34fi0dyVdd699JF0JYXL02o4T5I8Q+HwRCjWd
+ FXzYi8FKFPHI31L4qx0RA8ploDvjIsWMA74axjTkSeZOhtkWaY22BDyeS1bnmx+7I1xbUqkcbUL
+ qcFmTnxPLemf0+PuddwNjWKiSC0fIBrl0j+sw7MQOFLFarZzB6x7P6aHXBxrYqajhsPKO8pRxMj
+ OrUt6kRYaAdJdSuKK5NuSxctCP9MTRTHu6UFexFlT/znFVfi2xS9FtOYnKTz2AJZ3ulujgw/FYp
+ Ge656fVhNeQhQxSY2bAGY0Kv5mZBiKzBnVYnDkk2CN+O1RhVzjt/1kV7jidfk+WA2f9cq88+PaC
+ vDnXHCWLgaYY4e+dXsdCO2/OUOO/YwnVrdmgW/8bsdxBcogYiDJf1gBhQlzeAyW5aNl45p+4Wwc
+ V1FgakL+uGAc+yA7I44tTxV5s4PFHRf1ZzsrW3sgl1rsda44/Q00zhQLorOKPasJ3StBdGM1oGH
+ oy+V97Ldoo+QDPA==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-nfsd4_deleg_getattr_conflict() applies time_deleg_access and
-time_deleg_modify from a CB_GETATTR reply only when the reply's change
-attribute or size differs from the server's. RFC 9754 section 5 makes
-the holder of a timestamp delegation the authority for atime and mtime,
-and puts no such condition on accepting them.
+When a CB_GETATTR reply shows the file modified, nfsd4_encode_fattr4()
+overrides atime and mtime with the raw time_deleg_access and
+time_deleg_modify values from the reply. cb_getattr_update_times() has
+already vetted those values per RFC 9754 section 5 and written the
+result to the inode, so the override undoes that vetting:
 
-Because the delegation's file has FMODE_NOCMTIME, the holder's WRITEs
-change neither mtime nor the change attribute on the server. After a
-flushed WRITE, the CB_GETATTR reply matches on change and size, the
-holder's mtime is dropped, and other clients see new data with the
-pre-WRITE mtime. Since commit 304d81a2fbf2 ("nfsd: fix file change
-detection in CB_GETATTR") compares against the current file size, this
-also hits flushed extending WRITEs. Holder reads lose the atime the
-same way.
+- a time older than at delegation grant, which the server ignores, is
+  still reported to the querying client
+- a time in the future is reported unclamped
 
-- For timestamp delegations, always vet and apply the CB_GETATTR
-  times.
-- If that advances mtime, mark the file modified so that GETATTR
-  reports a new change attribute (RFC 9754: the change time is derived
-  from the modify time). An atime-only update must not advance the
-  change time, so leave the file unmodified in that case.
+vfs_getattr() runs after the update and already returns the vetted
+times. Drop the override.
 
 Fixes: 6ae30d6eb26b ("nfsd: add support for delegated timestamps")
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4state.c | 15 ++++++++++++++-
- 1 file changed, 14 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4xdr.c | 6 ------
+ 1 file changed, 6 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index cd70d86f4bc6..418b3ee37c68 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -10751,6 +10751,13 @@ static int cb_getattr_update_times(struct dentry *dentry, struct nfs4_delegation
- 	inode_lock(inode);
- 	ret = notify_change(&nop_mnt_idmap, dentry, &attrs, NULL);
- 	inode_unlock(inode);
-+
-+	/*
-+	 * FMODE_NOCMTIME kept the holder's WRITEs from bumping the change
-+	 * attribute; a newer delegated mtime is the only evidence of them.
-+	 */
-+	if (!ret && (attrs.ia_valid & ATTR_MTIME))
-+		ncf->ncf_file_modified = true;
- 	return ret;
- }
- 
-@@ -10836,7 +10843,11 @@ nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp, struct dentry *dentry,
- 		else if (i_size_read(inode) != ncf->ncf_cb_fsize)
- 			ncf->ncf_file_modified = true;
- 	}
--	if (ncf->ncf_file_modified) {
-+	/*
-+	 * The holder of a timestamp delegation is the authority for atime
-+	 * and mtime (RFC 9754, section 5), even if change and size match.
-+	 */
-+	if (ncf->ncf_file_modified || deleg_attrs_deleg(dp->dl_type)) {
- 		int err;
- 
- 		/*
-@@ -10849,6 +10860,8 @@ nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp, struct dentry *dentry,
- 			status = nfserrno(err);
- 			goto out_status;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 90b44163f886..434b6cfc5741 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -4098,14 +4098,8 @@ nfsd4_encode_fattr4(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 		if (ncf->ncf_file_modified) {
+ 			++ncf->ncf_initial_cinfo;
+ 			args.stat.size = ncf->ncf_cur_fsize;
+-			if (!timespec64_is_epoch(&ncf->ncf_cb_mtime))
+-				args.stat.mtime = ncf->ncf_cb_mtime;
  		}
-+	}
-+	if (ncf->ncf_file_modified) {
- 		ncf->ncf_cur_fsize = ncf->ncf_cb_fsize;
- 		*pdp = dp;
- 		return nfs_ok;
+ 		args.change_attr = ncf->ncf_initial_cinfo;
+-
+-		if (!timespec64_is_epoch(&ncf->ncf_cb_atime))
+-			args.stat.atime = ncf->ncf_cb_atime;
+-
+ 		nfs4_put_stid(&dp->dl_stid);
+ 	} else {
+ 		args.change_attr = nfsd4_change_attribute(&args.stat);
 
 -- 
 2.56.0
