@@ -1,94 +1,93 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.50
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.42
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793628529;
-	b=Q/7VJWHAZTUXj2eR1oXNI43Rr9HbASwUtg/hD2FAXAco8PJuDdPCZOZFPAjbRjJW2X0c
-	 FGT7tl6jTv1TM+V49XSVAoSRAK7TmBCEmVRIaRgG6rb2efoeuXCQsBDOKeqp0XYP/qURh
-	 DgdnyGk/m9VbF7vQOSSjUIFMiiug+G+an4TzsQjdSHJLUFy14+kLr6A5x7LlWRXsQGuFv
-	 L7Vw38AwgrObW/dGM8SslmgMHatg5lRs8KmgG+oiStyzE8XGSiqmBx92RUe631ocFUeU/
-	 9vMi20LYmIXOlj5orFRtxOtYnp+QuAIuDxmhVuloefFS7LAKGyjt1HQBYbUkMQG8sjQ==
+	t=1793628530;
+	b=hNeyiSyIykHL/cvvECuEval9lmonU31b7yPg5I5mjfokqyomeQ788HnN/DkmmgzL4FZt
+	 8ooy2FdoOaKKvNDB/+J2bRgWb2o4aLf2TwJTbfNhXyKS8p9WBYAL1zsdbxinIZ9K59W2e
+	 Zfm2XSlPwNPwO8kHFSkeRv6dlpcFw6ywIiaV98jxFfAxKNktMQcdHgsHPSPt3C2hZIrfe
+	 BoG0dZXqfnhQ0JtVJTA3qQGIoDKzqLNe/axsf3Dzoo77VfB3NxE5/rM0iidxjm12Tnrog
+	 nNu6MeLCumqLKV2ta5wMFeEDYa8s+iLL+6MX1b9JvWEZxEuQQNHXeRhQ7hdJSs3Ahmw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793628529;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793628530;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=wyrBww5sfzVjBLFAhQxqrAg0t/cy6G2gOCeJIiJUl3w=;
-	b=vRNwRyDTtUhshd1vY+p+GRJ1jANSGpgu3MkqjfLLdFCV/F6Nuic4k9vcIpRHWNy3PLCU
-	 QMJeTXmoDSEd3VaPOphwgxi1iD2qJo5SF5jdhkteGlZHt1lrc4NnvqFP2GmEk82KQT1S5
-	 T9iXHp8ROkZOc7pDkCBTQTBXayIrkuZy/Dpr/aw3YArTzq9alYxtbRAbPJsdCq3UW7KYE
-	 7smlwxFyWyrZJgpDSMCoJkNNTSW4MEtmdiHpeoDOcW1qrcSnT5O1dxpnnHoATEm0SiRor
-	 zqL1vAr+EQZZ4tXBH5PB18rK+uKLuo6HfYSFdkBWhBrNPBfThaYRA5w54zwOV6qmaZQ==
+	bh=uHiOF4LsW2xBysTRUmk9qFEJxoCqc42BfVQK5BItBZ4=;
+	b=eqWLHQUMlCcvNQBLTTWy83GuyNXBiR6spKLEnrPkIAdiPcXLChBP70Pbuu+iKbgOdUVT
+	 x7vIQPQA84kv21smf+UteFcBQG/6HiogELUdS7+H/pJz67BruqmncTJsjQOrUJ9gs/HKq
+	 BS+xMGTLId0ZtFb+ObzDSSLeyVSeIoTa4T5PDfzJUYFvrkZxnivMIXfDVlKz+GQ0shpMu
+	 Mjru27R7rTRMG9t/k9pkY5kWLCT/aE6xJajvF7B516X5PHZWZw61R+ifG2CKih1nXl2C0
+	 PFTUU7l1kJYK+wdTHczG1JFvOs83XRRVjrxUWga4I+sNvQNWmnxxn5su28SqfiMFY8w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=hammerspace.com;
 	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=KMW4qho6;
-	arc=none smtp.remote-ip=209.85.161.50
-Received: from mail-oo1-f50.google.com (mail-oo1-f50.google.com [209.85.161.50])
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b="KW/XEHN3";
+	arc=none smtp.remote-ip=209.85.161.42
+Received: from mail-oo1-f42.google.com (mail-oo1-f42.google.com [209.85.161.42])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 58ABF606A332
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 14:08:49 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 58ABF606A332
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83F03606A33A
+	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 14:08:50 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 83F03606A33A
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=KMW4qho6
-Received: by mail-oo1-f50.google.com with SMTP id 006d021491bc7-6deb848ddd7so2352417eaf.0
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2026 06:08:49 -0800 (PST)
+	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=KW/XEHN3
+Received: by mail-oo1-f42.google.com with SMTP id 006d021491bc7-6de1fd5f572so1271041eaf.3
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2026 06:08:50 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1793628528; x=1794233328; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1793628529; x=1794233329; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=wyrBww5sfzVjBLFAhQxqrAg0t/cy6G2gOCeJIiJUl3w=;
-        b=KMW4qho6bzG6yf6AN2KLoolnCmCP1FJQSyJlus3aHIRzlJjudsTY28wth6l47h0ZHK
-         zqm2KPAvADxyi54YAr7KvNk8fCGQlrOhrgLwPlpOu6SAjAKT93rAgo9mCZFUboKzPk5Q
-         5FVlNSliFdNyZpK5RuY7AiVdCwa9CM2kLOjs8njuQEqQ6eavVQlvxZwWK859UY1Y7izX
-         xUxPazIGpoU1C1AINTgFiOfEKjnM91Z1J4UB/ROhucq61NZl9RCu1gEWoFwiUEZloTiB
-         O7XI5WLtrZT2bKCjs5Yox0AiNT7oemABOYqxXPpmclHEQ+HD/zQqLBHC9x3nfTjWvKjl
-         NWSQ==
+        bh=uHiOF4LsW2xBysTRUmk9qFEJxoCqc42BfVQK5BItBZ4=;
+        b=KW/XEHN3IeFHbrSLZqUjm6D6Kkud4heNYwjcITQhSZ8ATM/V1AhdlHAQG0F0E8D9f3
+         LdAJS31MFEHSCRm7yPYeAcQVPLTUU1WJw9gktPeozdvmmeBz5+/SAkMDO0lvoa/dhXQ3
+         ZwLtY3sK4zpCnbBqsBGPQKLMnvXAUR4hVEQHv5CpSLvp3mFfVTpQ9kHzrxCvrPF6uO1Y
+         N0CsWW8YSoG4ixFicnpDa4w9Ah/WQhyGC1SvFV6PwwH0Y3EYchD7fbOsaHPoo2eNxy7L
+         DuZpSgh+jAKZzk+xJ3Rj5EwkXwXp+jxUTNMIwwAunrS/HDs7z8Vr8ePwgb4a7N39p3fu
+         qGuA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793628528; x=1794233328;
+        d=1e100.net; s=20260707; t=1793628529; x=1794233329;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=wyrBww5sfzVjBLFAhQxqrAg0t/cy6G2gOCeJIiJUl3w=;
-        b=sTVnBFHc7icvbb6H5Jrl+ZwhdfaIMecaDMNJGn1idI+d+gETWmSghcCmVEyFt4sWof
-         skK0SwaH81hjwvoCuqoq1UUXB73bMo4si27rD1xWrBY9lLB4HxOWqOQ8eq4VhXqi1+uQ
-         7haYONFuO1YFvawnF7Wxw3yhD5SESceGjgSTmm+XtbC3VGv9TmOKKRT/o4yJB4QykA3+
-         7p03G1N1VLtJqLs2sd2OV2qEaBCxAMmoFA0VaBhw1LDUOXm/0OXIO2MNxArAVirKiFIC
-         Xb+YgPnz9Kmnqrm6wcMvBxi2gIPkFFjsa0N+FzIb3blOakICx7HGJPeNA6luRFxjDJUt
-         iTYA==
-X-Gm-Message-State: AFq9FYLe7QHXU/Q8QkKEVZs01mre71KjNU8SywSfDRFZsHNo/fn9k1yG
-	BKVvdmPlYLfqgggQI2f72Ihm3N/QP6BQAlAiOCXHOOtMPnVZsyOyyl61SzKGkX23lhw=
-X-Gm-Gg: AYBFou0YwAD0vSEm5n5SUfQ+/jMNdiPe1JSlspyr9gOWtpAwxd5hezpslgukNjUfT3v
-	E+4jFgB7PdFWc5GB4l0BGq1CHosOv+vQoReMCunCimwAXzhzyua+Xl+t56fF7z3KkFXGQo83SnZ
-	BF9JL5jQTCk/ph8nfd6sULqjlGJA3Mz9pBwc1/wxa8BP4MZ3Nj+TBBGfLS6pwTdbz89u1FFrn2C
-	pZ8zFSP3eYHMh6NLv0LdQsAKFeKeURtWKqaQ1ZgGwZHJ65BrT/RhXJbM2n4TOCmSmIkqR93axCf
-	+Q0WPyX184DOpElytTu0MY85UPj5jzgT5M9aO0/nHCEspNgzJOxbAWFOL4g7QiL8MjxJ06XFcnd
-	f9IkXjM281dapTi6fNX5Oone+g9jkJlNI20vLw0CZZXgM0XxREj9AcH/bO/nSpIPYSvm8ZBzby2
-	0Np0g3Rt1TkpSqhNGZy/DGOFp921r9wPLrrC1HmuqPIBZrFu2pqwyP+W5BmZoN0CoQwym8WirmL
-	jDWrUzD4MKualodsACk5p2ZdpmUVlBh9OiRvoL5UiA41RSRi4A6qy27clY/SBrcrTiblU5hjenX
-	rdHjtNzXdUP59FCra5kPKFJObk10oLH4gNkOd+FwXQWJvUXs4SXoWyqZXHyCjO/YY8KSG3XYAgl
-	RY/m2Xb2qBauCdXJi8g==
-X-Received: by 2002:a05:6820:1517:b0:6f4:9618:badf with SMTP id 006d021491bc7-714f1fdbb1emr5712260eaf.10.1793628528109;
-        Mon, 02 Nov 2026 06:08:48 -0800 (PST)
+        bh=uHiOF4LsW2xBysTRUmk9qFEJxoCqc42BfVQK5BItBZ4=;
+        b=lxS52tEIHhFUU53O/bVTXDayrU+/+V1WVqzGsKw/iYTyfKbYRA0gP3HHaY+16VI3Yr
+         lypG1wBUhv2gFBLxT7ME7nAzLiPON9WMI8Q/3KLnPM7eRFQrWToX89EF+/a9lXHrmgX5
+         hFQixcow60PbQE0FydeVR0Ct2bAhd8sWpUpQDlU3837oJUDyI6UHeCloMBdkWgGb09ds
+         BCL0I2zx2aNZLCTnbCr5t9ecEe3kKMsltXP4TaEWjzjGBTspIZfRG3eraVtnvXP73+Oh
+         1uYxcCDkbyPA6gWnHn5zdtqJmo4GEiGaXNEX+MbjDvnX2BE+B9U0NcrRdYMrSbl5ixLQ
+         8NOQ==
+X-Gm-Message-State: AFq9FYKk7IVlS02hcno34K6o4qlclE6jmydaAUDsLWRJu0n/aqXQIGE2
+	CqPzpcDBRC2PcTx/pd3Hcw4fyVyR1zkcIGJRnQAGPdU2OFD+IBETBc4js09z2sc70p8=
+X-Gm-Gg: AYBFou3U9mczTQ/ak+yYHfI/w8vYKCpJpYhgnlYDpVtfraQa44M5GGAB81Wo7NPEDII
+	yKuosQqmb64UNMFBt+cZ/8LOR83n/CeWvaIT8oekjVjM3uPN+8LJ5ufBO9FPY6VvtqoDC0Lxdxk
+	S3sKKrMQBLznah//gbDdxWsWfGUHy2hE6KQeCVimYW4j1HE9+GmhUBiXDhktfOm4n44KzYkTEgx
+	TpU/zD+wV5moMeh4kb7rFc/Yk/AHNWN+pjr0WqCN/5oQFzeV5Pd5aX1jx5sAn29MaV22dke0F5Y
+	ajKmvy9SjFov6OrcXMbv0Cp2WjL+vUkiYKtfDPThy8OmWpHVXQO8VFucj10JSFlcUfYjr7905Qn
+	pNMJlLqwiytOAQ3mZC+OrJDrDYSWk/tuFBMM9jGwJfq9Y06K0gjwIBdJuArn6wpIY1qY6K2G1NZ
+	Gzk5KTPPAfm9izttbhaUiydagtf7mH/CVgsfoSwqOhzyRlKwYEH03tOW/t/tmHuJh9uzK3BQfCg
+	BI+uBe3RZ48BBnHLdOnJo8bspMqVDdVVPX4ZJc0cIPgS41KX1M0GQoXq1AAxDu311GcYexCMKq8
+	ik5fmLOCevtxfBjdd9NE8KzjjKMzhs8OyNM23QjqLAdyhkC4D+iiTkdunAtcQmtoYwVApzD5
+X-Received: by 2002:a05:6820:a515:10b0:704:b7df:f29c with SMTP id 006d021491bc7-714f24b9fbfmr3511916eaf.10.1793628529300;
+        Mon, 02 Nov 2026 06:08:49 -0800 (PST)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 006d021491bc7-714f2cf11fasm8826390eaf.3.2026.11.02.06.08.46
+        by smtp.gmail.com with ESMTPSA id 006d021491bc7-714f2cf11fasm8826390eaf.3.2026.11.02.06.08.48
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 02 Nov 2026 06:08:47 -0800 (PST)
+        Mon, 02 Nov 2026 06:08:48 -0800 (PST)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>,
 	Mike Snitzer <snitzer@kernel.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 5/6] pNFS: answer a file recall with NFS4ERR_DELAY while I/O drains
-Date: Mon,  2 Nov 2026 09:08:44 -0500
-Message-ID: <20261102140845.377775-1-ben.coddington@hammerspace.com>
+Subject: Re: [PATCH v2 6/6] pNFS/flexfiles: write through the MDS while a recalled layout drains
+Date: Mon,  2 Nov 2026 09:08:45 -0500
+Message-ID: <20261102140845.377775-2-ben.coddington@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
-In-Reply-To: <4b7f08366e3ae2b89f01527e3a63e89cf7202e22.1793373378.git.bcodding@hammerspace.com>
-References: <cover.1793373378.git.bcodding@hammerspace.com> <4b7f08366e3ae2b89f01527e3a63e89cf7202e22.1793373378.git.bcodding@hammerspace.com>
+In-Reply-To: <19211fc88f00f39a513bb1380e4675c066611bf8.1793373378.git.bcodding@hammerspace.com>
+References: <cover.1793373378.git.bcodding@hammerspace.com> <19211fc88f00f39a513bb1380e4675c066611bf8.1793373378.git.bcodding@hammerspace.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -102,20 +101,17 @@ Content-Transfer-Encoding: 8bit
 
 From: Benjamin Coddington <bcodding@hammerspace.com>
 
-sashiko raised two points on this patch [1].  I don't think either needs
-a change:
+sashiko flagged a writeback spin here [1]: with FF_FLAGS_NO_IO_THRU_MDS,
+ff_layout_pg_get_mirror_count_write() returns -EAGAIN without waiting
+whenever pnfs_update_layout() can't get a layout.  That happens with
+NFS_LAYOUT_RW_FAILED set after NFS4ERR_LAYOUTUNAVAILABLE, or while
+LAYOUTGETs are blocked by pnfs_commit_and_return_layout().
 
-1. A file recall with clora_changed set doesn't cancel I/O if an earlier
-   recall already set NFS_LAYOUT_BULK_RECALL.  That's what the valid
-   layout path does too: it answers NFS4ERR_DELAY on BULK_RECALL before
-   it gets to pnfs_mark_matching_lsegs_return().  The I/O drains instead
-   of being cancelled, and the recall gets NFS4ERR_DELAY until it has.
-
-2. After a recall of part of an invalid layout gets
-   NFS4ERR_NOMATCHING_LAYOUT, NFS_LAYOUT_BULK_RECALL stays set while I/O
-   on other segments is outstanding.  Patch 2 clears it when the last
-   segment is freed, the same as after a bulk recall, and writes go
-   through the MDS until then.
+That came in with 1d62e659c0bf.  This patch takes the draining recall
+case out of it and leaves the rest as it was.  The pg_init paths already
+wait a second in ff_layout_pg_retry_wait() before retrying
+(fde27289503b), and ff_layout_pg_get_mirror_count_write() could do the
+same.  I'd rather send that separately.
 
 [1] https://sashiko.dev/#/patchset/cover.1793373378.git.bcodding@hammerspace.com
 
