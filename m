@@ -1,93 +1,60 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.42
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793628530;
-	b=hNeyiSyIykHL/cvvECuEval9lmonU31b7yPg5I5mjfokqyomeQ788HnN/DkmmgzL4FZt
-	 8ooy2FdoOaKKvNDB/+J2bRgWb2o4aLf2TwJTbfNhXyKS8p9WBYAL1zsdbxinIZ9K59W2e
-	 Zfm2XSlPwNPwO8kHFSkeRv6dlpcFw6ywIiaV98jxFfAxKNktMQcdHgsHPSPt3C2hZIrfe
-	 BoG0dZXqfnhQ0JtVJTA3qQGIoDKzqLNe/axsf3Dzoo77VfB3NxE5/rM0iidxjm12Tnrog
-	 nNu6MeLCumqLKV2ta5wMFeEDYa8s+iLL+6MX1b9JvWEZxEuQQNHXeRhQ7hdJSs3Ahmw==
+	t=1793628876;
+	b=jenoJrGKDHp2PK0PvDHkVXV8t0CkvwsEe9z94nksg+n0cODJVVSF1f2rIC9PXnHckzRV
+	 vkEbuhETflFzW7LAv9c4F309YAex8xtL794usy+2Q5dBNJwdLLDWK8ceYN84XDw4wO/6J
+	 n4nndH1EZRpMkPE4OorVQ+tU9NTCDZTjdlCObtXbE6sM0XpiEwOiq24gaV7eO4bBxa/DI
+	 0y/dIy3vqBhWKU3VKZ/MCLEUnlTKWed8Mopt7RCsGh/fPmo67MBcTmHZYZpLlVqJhAJiY
+	 T9Fll1i2X3AyCo7lytuxRfDHoot0MmyzVgsBttqJ07oc/AUjulohdBGLpffFkdjqW2g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793628530;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
-	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
+	a=rsa-sha256; c=relaxed/relaxed; t=1793628876;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 In-Reply-To:References:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding;
-	bh=uHiOF4LsW2xBysTRUmk9qFEJxoCqc42BfVQK5BItBZ4=;
-	b=eqWLHQUMlCcvNQBLTTWy83GuyNXBiR6spKLEnrPkIAdiPcXLChBP70Pbuu+iKbgOdUVT
-	 x7vIQPQA84kv21smf+UteFcBQG/6HiogELUdS7+H/pJz67BruqmncTJsjQOrUJ9gs/HKq
-	 BS+xMGTLId0ZtFb+ObzDSSLeyVSeIoTa4T5PDfzJUYFvrkZxnivMIXfDVlKz+GQ0shpMu
-	 Mjru27R7rTRMG9t/k9pkY5kWLCT/aE6xJajvF7B516X5PHZWZw61R+ifG2CKih1nXl2C0
-	 PFTUU7l1kJYK+wdTHczG1JFvOs83XRRVjrxUWga4I+sNvQNWmnxxn5su28SqfiMFY8w==
+	bh=JAxbuZ/nMtyVx3Id0dCrZWQ+X27krEZ94KZnYOzEcYM=;
+	b=F5FVRMp8p50lRvop2QV2kH+u3MDlAedMU/aPzkEN7VpBviMeUIqw/lY/fSmjoHg0lCps
+	 IL6fyGld6bYNiWB8w6ou27RcTAQGdneIZbXZsnElC62O6RnDo2QuP4t5xUcW/y+kT8C1T
+	 d9gmfPkfPXLXLgcNpZo7ny9CWzmW4V3Qrl3RIW7UXrB120QDjjudFSLx4VfG4dXFMqnKF
+	 +S6FYC8b1aSjsACdTJgGw7PaI54iInl1bbZne/vzwN5lmvaYbAwKciGC32SkHAwGrSRqS
+	 du4uqyh5dCUKRyIEW+OLDKtgvTeJEX039CaRLHzmkoRj9Y3y1ZrPrl1R9vqivH/btrA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=hammerspace.com;
-	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b="KW/XEHN3";
-	arc=none smtp.remote-ip=209.85.161.42
-Received: from mail-oo1-f42.google.com (mail-oo1-f42.google.com [209.85.161.42])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="GfSE/mUD";
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83F03606A33A
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 14:08:50 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 83F03606A33A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8F2FA606A9BF;
+	Mon,  2 Nov 2026 14:14:36 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=KW/XEHN3
-Received: by mail-oo1-f42.google.com with SMTP id 006d021491bc7-6de1fd5f572so1271041eaf.3
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2026 06:08:50 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1793628529; x=1794233329; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=uHiOF4LsW2xBysTRUmk9qFEJxoCqc42BfVQK5BItBZ4=;
-        b=KW/XEHN3IeFHbrSLZqUjm6D6Kkud4heNYwjcITQhSZ8ATM/V1AhdlHAQG0F0E8D9f3
-         LdAJS31MFEHSCRm7yPYeAcQVPLTUU1WJw9gktPeozdvmmeBz5+/SAkMDO0lvoa/dhXQ3
-         ZwLtY3sK4zpCnbBqsBGPQKLMnvXAUR4hVEQHv5CpSLvp3mFfVTpQ9kHzrxCvrPF6uO1Y
-         N0CsWW8YSoG4ixFicnpDa4w9Ah/WQhyGC1SvFV6PwwH0Y3EYchD7fbOsaHPoo2eNxy7L
-         DuZpSgh+jAKZzk+xJ3Rj5EwkXwXp+jxUTNMIwwAunrS/HDs7z8Vr8ePwgb4a7N39p3fu
-         qGuA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793628529; x=1794233329;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=uHiOF4LsW2xBysTRUmk9qFEJxoCqc42BfVQK5BItBZ4=;
-        b=lxS52tEIHhFUU53O/bVTXDayrU+/+V1WVqzGsKw/iYTyfKbYRA0gP3HHaY+16VI3Yr
-         lypG1wBUhv2gFBLxT7ME7nAzLiPON9WMI8Q/3KLnPM7eRFQrWToX89EF+/a9lXHrmgX5
-         hFQixcow60PbQE0FydeVR0Ct2bAhd8sWpUpQDlU3837oJUDyI6UHeCloMBdkWgGb09ds
-         BCL0I2zx2aNZLCTnbCr5t9ecEe3kKMsltXP4TaEWjzjGBTspIZfRG3eraVtnvXP73+Oh
-         1uYxcCDkbyPA6gWnHn5zdtqJmo4GEiGaXNEX+MbjDvnX2BE+B9U0NcrRdYMrSbl5ixLQ
-         8NOQ==
-X-Gm-Message-State: AFq9FYKk7IVlS02hcno34K6o4qlclE6jmydaAUDsLWRJu0n/aqXQIGE2
-	CqPzpcDBRC2PcTx/pd3Hcw4fyVyR1zkcIGJRnQAGPdU2OFD+IBETBc4js09z2sc70p8=
-X-Gm-Gg: AYBFou3U9mczTQ/ak+yYHfI/w8vYKCpJpYhgnlYDpVtfraQa44M5GGAB81Wo7NPEDII
-	yKuosQqmb64UNMFBt+cZ/8LOR83n/CeWvaIT8oekjVjM3uPN+8LJ5ufBO9FPY6VvtqoDC0Lxdxk
-	S3sKKrMQBLznah//gbDdxWsWfGUHy2hE6KQeCVimYW4j1HE9+GmhUBiXDhktfOm4n44KzYkTEgx
-	TpU/zD+wV5moMeh4kb7rFc/Yk/AHNWN+pjr0WqCN/5oQFzeV5Pd5aX1jx5sAn29MaV22dke0F5Y
-	ajKmvy9SjFov6OrcXMbv0Cp2WjL+vUkiYKtfDPThy8OmWpHVXQO8VFucj10JSFlcUfYjr7905Qn
-	pNMJlLqwiytOAQ3mZC+OrJDrDYSWk/tuFBMM9jGwJfq9Y06K0gjwIBdJuArn6wpIY1qY6K2G1NZ
-	Gzk5KTPPAfm9izttbhaUiydagtf7mH/CVgsfoSwqOhzyRlKwYEH03tOW/t/tmHuJh9uzK3BQfCg
-	BI+uBe3RZ48BBnHLdOnJo8bspMqVDdVVPX4ZJc0cIPgS41KX1M0GQoXq1AAxDu311GcYexCMKq8
-	ik5fmLOCevtxfBjdd9NE8KzjjKMzhs8OyNM23QjqLAdyhkC4D+iiTkdunAtcQmtoYwVApzD5
-X-Received: by 2002:a05:6820:a515:10b0:704:b7df:f29c with SMTP id 006d021491bc7-714f24b9fbfmr3511916eaf.10.1793628529300;
-        Mon, 02 Nov 2026 06:08:49 -0800 (PST)
-Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 006d021491bc7-714f2cf11fasm8826390eaf.3.2026.11.02.06.08.48
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 02 Nov 2026 06:08:48 -0800 (PST)
-From: Benjamin Coddington <ben.coddington@hammerspace.com>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Mike Snitzer <snitzer@kernel.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 6/6] pNFS/flexfiles: write through the MDS while a recalled layout drains
-Date: Mon,  2 Nov 2026 09:08:45 -0500
-Message-ID: <20261102140845.377775-2-ben.coddington@hammerspace.com>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <19211fc88f00f39a513bb1380e4675c066611bf8.1793373378.git.bcodding@hammerspace.com>
-References: <cover.1793373378.git.bcodding@hammerspace.com> <19211fc88f00f39a513bb1380e4675c066611bf8.1793373378.git.bcodding@hammerspace.com>
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GfSE/mUD
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6FCE51F00A18;
+	Mon,  2 Nov 2026 14:14:35 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793628876;
+	bh=JAxbuZ/nMtyVx3Id0dCrZWQ+X27krEZ94KZnYOzEcYM=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=GfSE/mUDP2LBawMieQFlGlmhnw3DgxebhTlO7jWmZCZMSiUJpaXld9q8wTIku9ubT
+	 EwMWjvNCL8gly4SGmWHYqkQGMFMv35XzqygOEoWn6ZqqmHm5RrlCbIoNjEPftjKMow
+	 1jqKuS1pDCOUuQ7YnI9Mpph/XYH4G/0jpb2X1YFPs/uC1vxiKTFq39KEigvxcgW17M
+	 s3Zid1deDMZ/dHkLa9Mqu1EhRltW8jkn6Unr/IMAG/ddJfZCOtmDWFkCrkhYm8OOlS
+	 QT3I0pBcjG78xw2Y0iqWGZCCm+oTCVp7i5x2v8TurTmb2Rsd/W09wdiXG3OCPN7vZu
+	 7w2Z4aUYwKW0A==
+From: Chuck Lever <cel@kernel.org>
+To: Jeff Layton <jlayton@kernel.org>,
+	Haruka Kuze <harukak@zohomail.eu>
+Cc: NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] nfsd: don't access freed memory when cannot grant a write delegation
+Date: Mon,  2 Nov 2026 09:14:26 -0500
+Message-ID: <179362885856.3023377.13235486966347359157.b4-ty@b4>
+X-Mailer: git-send-email 2.54.0
+In-Reply-To: <20261101212135.1231222-1-harukak@zohomail.eu>
+References: <20261101212135.1231222-1-harukak@zohomail.eu>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -97,22 +64,26 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
-From: Benjamin Coddington <bcodding@hammerspace.com>
+On Mon, 02 Nov 2026 06:21:35 +0900, Haruka Kuze wrote:
+> nfs4_open_delegation() hashes the delegation before the call to
+> nfsd4_add_rdaccess_to_wrdeleg() and nfs4_delegation_stat(), both of which
+> can sleep, and it calls destroy_delegation() from the error path after
+> dropping the caller's reference.
+> 
+> Moreover, a DELEGRETURN from same client can unhash the delegation and
+> drop the hash reference in this window, so nfs4_put_stid() frees it and
+> destroy_delegation() then reads freed memory.
+> 
+> [...]
 
-sashiko flagged a writeback spin here [1]: with FF_FLAGS_NO_IO_THRU_MDS,
-ff_layout_pg_get_mirror_count_write() returns -EAGAIN without waiting
-whenever pnfs_update_layout() can't get a layout.  That happens with
-NFS_LAYOUT_RW_FAILED set after NFS4ERR_LAYOUTUNAVAILABLE, or while
-LAYOUTGETs are blocked by pnfs_commit_and_return_layout().
+Applied to nfsd-testing, thanks!
 
-That came in with 1d62e659c0bf.  This patch takes the draining recall
-case out of it and leaves the rest as it was.  The pg_init paths already
-wait a second in ff_layout_pg_retry_wait() before retrying
-(fde27289503b), and ff_layout_pg_get_mirror_count_write() could do the
-same.  I'd rather send that separately.
+[1/1] nfsd: don't access freed memory when cannot grant a write delegation
+      commit: 2d3259f652bb0f1d137ccabecac6763da05064ec
 
-[1] https://sashiko.dev/#/patchset/cover.1793373378.git.bcodding@hammerspace.com
+--
+Chuck Lever
 
-Ben
