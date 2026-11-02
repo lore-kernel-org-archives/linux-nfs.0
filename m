@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793633343;
-	b=fetnGAvTIx5eLLKnxSwW8YFiVsc7uhDKfvQWzrXkHAUWNzA1d1XFXOy0GfdL3dBJ8Y+l
-	 ZjKACm4FaYwoN52FUWVMScmD9qhIxy8G1TEGTlRK4kb8AxpZI2hBphnF606m325Tt5FwQ
-	 3yGiD7DXRPumDx+4ybRx/gxW5b+8OzewwtMgkFI7o41NUqi2uNatVQ83Ha5M6UxjnPfAu
-	 T/OixeufJyrs9ZGdtvmQtvLFzwbWKPWk9AGfRotJBhfTTwB0MM6lmx07BTzaqqDGEP0Zt
-	 3Y6nVeaWIw6W8TRiVRhoGDT7t2hUt34n2wkgCOcRkTvBjj5xni1YmwbNyr+bG78EhZw==
+	t=1793633364;
+	b=kEjQtkioXQ2j+4WCDamUu9G4KMql2qaQeOkZxdh2BOovGB6wyEmu3x4XRcQu5FPp4KH/
+	 Twm4EKY2z9mbZjRFeMOesSla4MYIhjtPdLGviDBjl/3HlSf4/bedfBmHXP8BOiTJhy9Na
+	 U2gDvsaofTbBON9++kwgs57HlUOgiduTtZOXC4wGYJ8Pwx7QAdmPbCL4oJDxwWr9oEiUr
+	 0LCbNTfgklEyLszolKAB9qtHy+6A9gULGi7+Bdhzmlp1RPB2UfoSywkaP8sccgkP1o1Pr
+	 Nl87AIW54T+uhy7HPfK1eYNVPNSHRAOJ5O8hJ0b0hU7ua/X5gUKjCef0jvzky42TtNQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793633343;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793633364;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=LBl2/qBMA7OV4BMTYua5kVHXByvRuxQ8RJbkH2xlEeQ=;
-	b=oArtFw6L+6IkbkdXw1/xaVm0ffI053QvlipWoxT1h75hXiq4Y06r0G/NcBVPUWGSxHKx
-	 7+0wyEVHSSigBTthC4dpSvPprn1LxI0xoajerEcPWi5Nng42ShUnmfiM/TwiWJn+ij+CN
-	 zCGkwQPka7Haj7w3tVqw0w3NApHP10HpsjALu9eDxC/lNPr8C6Ge/y/AAywo7P+WmFD0B
-	 Y/wTIa/tVaDm9KtNA/RMMQu/shxFojbNaXdKKpZZLt72suzQINlmhDORvcGpujDRnX2Qb
-	 QoZbDpY4KSEoypLJlP/dMrMK+B2a7txw4+aIdgT272kaI4feCJh94VTSLwM0aI6n2yA==
+	bh=jhlUxShJ2PAnaFYEGZj/acNyvX4jU2/JMVjl8Ac9zMQ=;
+	b=G7VVuwx6DIS5cO6Q+lpgkjy0SILW5utxeAQ2Z/OfAEIZU/s0vaCRS4deiGIUtPLhC/We
+	 KB7b18S+dInMEf87BJ7verfZWRAqNXmajchtfM47Tjc5zvK46s3zEAi4udX9wFA0Enwll
+	 GffsfHwoqiPyIBTZ+kmpwDG1ucjXqZWExjV+nGGllCIjCtEl3u+9A6a+bTojCR2Tj9Vgw
+	 Hna/ovRumKJ/qlN+3VVfQJ9jiIWT7v2khEbxWwflN0NU4ZBz5Gnj1w7eKzE02Jcgc4DXc
+	 drVvf/LlMx6ijvzM1SvY+zkH+ECWugDnCPkAsnsTtRAKOwCaIg45Jkt38sjjp06opmA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QnL5jL1t;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bEpjay2C;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4A762609D12B;
-	Mon,  2 Nov 2026 15:29:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1C386609CDBF;
+	Mon,  2 Nov 2026 15:29:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QnL5jL1t
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 66DFA1F00A28;
-	Mon,  2 Nov 2026 15:28:45 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bEpjay2C
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8429A1F00A17;
+	Mon,  2 Nov 2026 15:29:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793633342;
-	bh=LBl2/qBMA7OV4BMTYua5kVHXByvRuxQ8RJbkH2xlEeQ=;
+	s=k20260515; t=1793633363;
+	bh=jhlUxShJ2PAnaFYEGZj/acNyvX4jU2/JMVjl8Ac9zMQ=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=QnL5jL1tEy9t9hIsQkt3LByuIJ882KPXST1Vc1LfQVpUOFVJmtPqDPl7tY8JHPxCJ
-	 gmd8xNU3nOvuFGws/A+3+9aTACcobIp3siitSrYhwwkjrT4inswqca73nB5LOWSMIa
-	 gGXXKRCwtKQRlvorIFYPQ52q/KY/Id1kGa70Dc9UqY5W8w1sw/+9eA4OWn0UomElkO
-	 ts/p1SA4HIAxSUAqUU8NGTXimFKD4VawrMb8XauLcbSF/WPIlGbMbJJmy2bdk94vgL
-	 YTHmGiUOat2O0htpE7WGC5E8Rhw7yB2cZi5Bs9hAVElqV814vjKTN39YLPMJBp43E8
-	 SCJm5GLHZ5dEg==
+	b=bEpjay2CbnfGJBHly978mQVKfOK9NOWk818hauqaL6bJ1R9S6y4K750VMrYinkjRZ
+	 UJYMQ5lPJt9EqbCkMQJHIEzuAVhA0uBBsY3SQ52htvtKFFvqoAARzwAqIQhqo0yDks
+	 27SjH2upRcJP3c6/Pe085axMXe6Pi9Arnrh7pZAVs3x5e/XE9jaVeyQ0qsr8Qkyfkq
+	 yc1WiGpYMVgd0fNpip1lkFOhbQga6TG73wT6BHy5m4PYoCpETxzGPsM53biago4TWh
+	 aXiE38bqIKzr3MTvUNm540DqItq0eT865nVxWPsH4BWXKPHJwP7owlsDAuHhhrBWTO
+	 HoE9gxpbWNrtQ==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 16:07:35 +0100
-Subject: [PATCH RFC 25/27] mm/swapfile: let procfs own the seq_file of
- /proc/swaps
+Date: Mon, 02 Nov 2026 16:07:36 +0100
+Subject: [PATCH RFC 26/27] kernel/configs: let procfs copy out reads of
+ /proc/config.gz
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-fs-v1-25-d09a996317b3@kernel.org>
+Message-Id: <20261102-work-procfs-fs-v1-26-d09a996317b3@kernel.org>
 References: <20261102-work-procfs-fs-v1-0-d09a996317b3@kernel.org>
 In-Reply-To: <20261102-work-procfs-fs-v1-0-d09a996317b3@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -91,55 +91,49 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1169; i=brauner@kernel.org;
- h=from:subject:message-id; bh=xP8svTINdkdtOq03sFDyUkKM00LKGtRsGg97ENBLGtM=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG786nVF9oWW1sqzD1ne711zwHqjwVq2PUfPRB8uE
- 5qxxSg9q6OUhUGMi0FWTJHFod0kXG45T8Vmo0wNmDmsTCBDGLg4BWAi+2UYGU6ky8syZD9PsFvn
- wnogRfvDRWvVD16nimIPrPc107fJVmb4Kyb0Ma+ob8K8bRaH71p9WLH8S/zVPwIl0tHx/G6vHyj
- psgIA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1297; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=IZ5Jauw3jeCJbbKJV7DoExBPgNJSSia5o6c0KJSA0oY=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG68W/dM+SnW3p+PHz9Nr9SdtujbqdmGuR8kWUNv6
+ Ra5lWq6dpSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEzk9kRGhpbCF9v7uDqqLS5v
+ Fwy4tydWj4HvRde9J5lu+/I9+Jmacxj+ijqWtebXBD78UxAm+sZz3pqzV2uF96jusDvBcuLcpOk
+ H+QA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Declare the seq_operations and let procfs open and free the seq_file.
-->proc_open() only records the event count for ->proc_poll() now.
+Implement ->proc_read_buf() so procfs copies what is read to userspace
+after it unpinned the entry. Unloading configs.ko then no longer waits
+for a reader that faults on its buffer. /proc/config.gz asks for
+PROC_ENTRY_FULL_READS so that reading all of it at once keeps working.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- mm/swapfile.c | 13 +++----------
- 1 file changed, 3 insertions(+), 10 deletions(-)
+ kernel/configs.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 254ce86fa923..ee4868ecc3a7 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -3410,26 +3410,19 @@ static const struct seq_operations swaps_op = {
- 	.show =		swap_show
- };
+diff --git a/kernel/configs.c b/kernel/configs.c
+index a28c79c5f713..05b12c440168 100644
+--- a/kernel/configs.c
++++ b/kernel/configs.c
+@@ -38,17 +38,18 @@ extern char kernel_config_data;
+ extern char kernel_config_data_end;
  
-+/* procfs opens the seq_file */
- static int swaps_open(struct inode *inode, struct file *file)
+ static ssize_t
+-ikconfig_read_current(struct file *file, char __user *buf,
++ikconfig_read_current(struct file *file, char *buf,
+ 		      size_t len, loff_t * offset)
  {
--	struct seq_file *seq;
--	int ret;
--
--	ret = seq_open(file, &swaps_op);
--	if (ret)
--		return ret;
-+	struct seq_file *seq = file->private_data;
- 
--	seq = file->private_data;
- 	seq->poll_event = atomic_read(&proc_poll_event);
- 	return 0;
+-	return simple_read_from_buffer(buf, len, offset,
++	return memory_read_from_buffer(buf, len, offset,
+ 				       &kernel_config_data,
+ 				       &kernel_config_data_end -
+ 				       &kernel_config_data);
  }
  
- static const struct proc_ops swaps_proc_ops = {
- 	.proc_flags	= PROC_ENTRY_PERMANENT,
-+	.proc_seq_ops	= &swaps_op,
- 	.proc_open	= swaps_open,
--	.proc_read	= seq_read,
--	.proc_lseek	= seq_lseek,
--	.proc_release	= seq_release,
- 	.proc_poll	= swaps_poll,
+ static const struct proc_ops config_gz_proc_ops = {
+-	.proc_read	= ikconfig_read_current,
++	.proc_flags	= PROC_ENTRY_FULL_READS,
++	.proc_read_buf	= ikconfig_read_current,
+ 	.proc_lseek	= default_llseek,
  };
  
 
