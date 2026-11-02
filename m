@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793632594;
-	b=y45ybW5nbgxmVPGoKsE6/qu7QxY5S02quzzNguOj7cs4bjAGblKSdcP2vCyULncPz7hJ
-	 VBkMtZMfmr86jhz8gzmPSvbhc36T1sPkb8i1+rxXLbsUSJdeXJU7WRgn0/EjvPG+NLtAG
-	 PQ7DE32ujQ0kqGjOpsAW0Zbo8iBMwHs40ywI3R+EOAMb+BQMLA/W7JrwzejY6bh5/pCle
-	 2VWL9gb9a7c8m5dtdZknPdQiJ7wRp4j1PR7EqnK1mhMqbl6BsPYwFUjTx+7An6CLsuCK/
-	 1aEq3F0kjywsYEoMqRq0iNsg9xFXTJfp62WRu7lGa4N1/reV17Xwd8QlUXX2BcniM6w==
+	t=1793632613;
+	b=ybhTDJrEBPwFO54VdVJbTq8EN/+sS6e9roZI6DP+3IXoGS2+w+kLOHbGFTAj2+/YTeSX
+	 CNZAIEYsKgVjtgWECKUsyO/HMFKDdV4TOkGnZEiLwbwvc8i8b7wIm+PcZVrsRMRuPqakw
+	 Hr0QzEcPSMTWdp7lt1NK6M/fw/MPORlOFzxZ0jVyCQUbCfkNe9DgVK1Nx8/H4v6cBnGTq
+	 KIBbLMMrkJ2KlwjHcGnexgs3thS/AEkkPxuzczHq1RUZsDSuHR2ygUj6IH4YK9GmOHfKu
+	 jkwIsY0BnLrV6lIUM7Lu6bnQnWNaYSPlgQ2TxUrnk+Xg+pbM9IEOEn5ebtYbpBTsMhQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793632594;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793632613;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=zft31zEOyoxpoaQra2tyBUnsx6CBcNbPccBHjIcKUVg=;
-	b=3tb306VMPfHx/JdhQ9HG/YAiTUtsvKHcP3ekkkChp2OdR36IGmMp9u3WNZyaJepP4/8P
-	 9MxHRUeAFh3Wjky0/4tk6pKOF7Tscyac6p/3Q2ewj3O8JRntbDE2p2Yx31r4mgCZL/OSb
-	 Z3RCzTrmX/fKrZaJWKWmcA707aVHCXRfdwM/ForGipjZAPAP6y5qCwvzRnapuPcL0vBEx
-	 yw1B8Nv43v9vsze7YG1Mkt/sq9aZwPhypi1NT7Uf/TDh6BZqWyPe0HWSj3xbNQIonXuMw
-	 7067gI5AQWUQha4T7IglKY/rCrCRHIUcCrZogM3YTcxTd+s2u5u3UVqr/AEzI+nHJDA==
+	bh=IWME5YXmp+uBTllQI4bmngqtIL2M/ij2LxSZ5nW/iXQ=;
+	b=oCT+wavU0vbRcL0bD39QUqPMkFmpAUa1rIpIKiQnHOKDBqSJtz7xmNDt/8hjXztuv6hp
+	 7eyKwLe8DmV42MX8sjsExzEgcjkaZ9494weXoFcwst4CgatSnVgxk7BHBKGGejOwQGsi+
+	 i8s2yqXvprSrJ0080WZr6lOOrFhPxdNWSe/8W239BfJNEXFo57TyF6mGnCxiVxc8tfY6t
+	 p5fg4287Fmv/QGWbDuJGV9MXG3M8zOyqHMr/cxK8yJ7QHiiLsmnOKBXTJivwdNYq2xH7m
+	 N2qE/sI9PuSEmfc+Sb13hgHZ7Vvi5Re8BZgcmQdpDfM3qJ+aFDoTp+3PtccE5GabFqA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lwKeAIr5;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=he+g2nWN;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C88EA60BA901;
-	Mon,  2 Nov 2026 15:16:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D1DA5606A338;
+	Mon,  2 Nov 2026 15:16:52 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lwKeAIr5
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 700B71F00A17;
-	Mon,  2 Nov 2026 15:16:18 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=he+g2nWN
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 45A681F00A1B;
+	Mon,  2 Nov 2026 15:16:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793632593;
-	bh=zft31zEOyoxpoaQra2tyBUnsx6CBcNbPccBHjIcKUVg=;
+	s=k20260515; t=1793632612;
+	bh=IWME5YXmp+uBTllQI4bmngqtIL2M/ij2LxSZ5nW/iXQ=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=lwKeAIr5gfFdOVWI9d9xeAawLRX/+XVqTfNIZzgNtLrSPX6u/1CsXECEJL5tNDzMA
-	 81vHXmP4nFBhwRmc/4DERMlJX3QJMwM96cPu9uFbIdibRRS+aHrZI2E5D8a9x1Uv1l
-	 y72FYfS6k5k1GClENyne0V+By+vwxAzdEjY9MbyHJUJx3+nI4+K7kwwgkmi1p0ISO4
-	 9ghnaezbHX5aMMMApF32QawdIaGRPpRDQgJtdD1vqFI5zB7VZbE3n4IduXje7eWoWa
-	 uAZM2qTjPRKpyLwg4MYMHyPaKwvk2dOe0ToVz3+E2luGZiMaQunD5RVbSRamL0hSZ+
-	 ETwAKz10Wwghg==
+	b=he+g2nWN2axpHrzARSjuGxsrot205DCjbsjks2Uy9TZYl0RHdg/P9KBOh5oGD9JND
+	 DVayfm5Hfkeg2m/r223WtfRPwcGKlWcjL6gYiHh273PXIhoEhxNZiDNavPF6Cbag50
+	 rPSzGmz5EtQ1p1vq/YpFygUITCoUKTT249ouaHForUJOn3MhYmmCCKyIX0biE13ady
+	 0Xf3M/tsk29ygP+6Atj+xx/0LarrE/V/7VcEpc9Mo2h1gkeCSTTvoKfOUhKqdH7Eyh
+	 0y2lDzckjbfLpnh9+FD/2sWiSUe/HNZYfhNhwqWfP/i5T/FrHXFUuf714grP6oMM1K
+	 gpSJo+mPThsHQ==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 16:07:25 +0100
-Subject: [PATCH RFC 18/23] wifi: ipw2x00: let procfs copy in writes to the
- debug level
+Date: Mon, 02 Nov 2026 16:07:26 +0100
+Subject: [PATCH RFC 19/23] tty: sysrq: let procfs copy in writes to
+ /proc/sysrq-trigger
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-drivers-v1-18-a994bd4d3b1a@kernel.org>
+Message-Id: <20261102-work-procfs-drivers-v1-19-a994bd4d3b1a@kernel.org>
 References: <20261102-work-procfs-drivers-v1-0-a994bd4d3b1a@kernel.org>
 In-Reply-To: <20261102-work-procfs-drivers-v1-0-a994bd4d3b1a@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -91,54 +91,58 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1605; i=brauner@kernel.org;
- h=from:subject:message-id; bh=SZl2laNUZYNGFN2sYGUP5fs3tBGCqMuq/D28k7CZWwo=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG64euvV9Mi0G6e/pc2cvZ5tAkOWU9ijuqL1VrnM1
- 97MmMJxqaOUhUGMi0FWTJHFod0kXG45T8Vmo0wNmDmsTCBDGLg4BWAiBnMY/pddjIrb5bFlB/vq
- T/1p1gs8F8lNfdO6cLPPKu/tLFWSX2UZ/mk7OAg3F8ZXtHXzM/o7ck37wd4VdH5/R8b9gzV2lT9
- NGAA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1516; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=izKwZpZInQuHEIn3CG+CtVNE9UBdLWUqDQ+VPsYIx8o=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG6YzB/Ns2fpXStd8VP3V2XLLXvKV1i9aZtRzvQP/
+ 3g8wg9e7ihlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZjIx3iG/04To6e1njQ6Mb9X
+ dZKjsZxt3pH1lyYLZmw6XzB9b7lNLCvDfwcOT28tyyr+0J58PqZfrU9bfa+80lv3Xmue0ZOQ3RL
+ BDAA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
 Implement ->proc_write_buf() so procfs copies in what is written before
-it pins the entry, and parse the level from that copy. Writes larger
-than PAGE_SIZE - 1 bytes fail with -EINVAL now, and a buffer that can't
-be read fails with -EFAULT instead of looking like it was written.
+it pins the entry, and handle the keys from that copy. Writes larger
+than PAGE_SIZE - 1 bytes fail with -EINVAL now. They used to trigger the
+first key, or all of them in bulk mode. procfs allocates the copy, which
+is as small as the write, opening the file allocated as much already.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/net/wireless/intel/ipw2x00/libipw_module.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ drivers/tty/sysrq.c | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/net/wireless/intel/ipw2x00/libipw_module.c b/drivers/net/wireless/intel/ipw2x00/libipw_module.c
-index 15d9a5efb581..08cc0d7f57c1 100644
---- a/drivers/net/wireless/intel/ipw2x00/libipw_module.c
-+++ b/drivers/net/wireless/intel/ipw2x00/libipw_module.c
-@@ -216,14 +216,13 @@ static int debug_level_proc_show(struct seq_file *m, void *v)
+diff --git a/drivers/tty/sysrq.c b/drivers/tty/sysrq.c
+index f4571d05b496..99363e1b59ed 100644
+--- a/drivers/tty/sysrq.c
++++ b/drivers/tty/sysrq.c
+@@ -1200,17 +1200,14 @@ EXPORT_SYMBOL(unregister_sysrq_key);
+  * However, if the first character is an underscore,
+  * all characters are processed.
+  */
+-static ssize_t write_sysrq_trigger(struct file *file, const char __user *buf,
++static ssize_t write_sysrq_trigger(struct file *file, char *buf,
+ 				   size_t count, loff_t *ppos)
+ {
+ 	bool bulk = false;
+ 	size_t i;
+ 
+ 	for (i = 0; i < count; i++) {
+-		char c;
+-
+-		if (get_user(c, buf + i))
+-			return -EFAULT;
++		char c = buf[i];
+ 
+ 		if (c == '_')
+ 			bulk = true;
+@@ -1225,7 +1222,7 @@ static ssize_t write_sysrq_trigger(struct file *file, const char __user *buf,
  }
  
- static ssize_t debug_level_proc_write(struct file *file,
--		const char __user *buffer, size_t count, loff_t *pos)
-+		char *buffer, size_t count, loff_t *pos)
- {
- 	char buf[] = "0x00000000\n";
- 	size_t len = min(sizeof(buf) - 1, count);
- 	unsigned long val;
- 
--	if (copy_from_user(buf, buffer, len))
--		return count;
-+	memcpy(buf, buffer, len);
- 	buf[len] = 0;
- 	if (sscanf(buf, "%li", &val) != 1)
- 		printk(KERN_INFO DRV_NAME
-@@ -236,7 +235,7 @@ static ssize_t debug_level_proc_write(struct file *file,
- 
- static const struct proc_ops debug_level_proc_ops = {
- 	.proc_show	= debug_level_proc_show,
--	.proc_write	= debug_level_proc_write,
-+	.proc_write_buf	= debug_level_proc_write,
+ static const struct proc_ops sysrq_trigger_proc_ops = {
+-	.proc_write	= write_sysrq_trigger,
++	.proc_write_buf	= write_sysrq_trigger,
+ 	.proc_lseek	= noop_llseek,
  };
- #endif				/* CONFIG_LIBIPW_DEBUG */
  
 
 -- 
