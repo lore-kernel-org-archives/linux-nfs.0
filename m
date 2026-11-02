@@ -1,48 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793632972;
-	b=P+MuSxlqSEJ+5iSFxeOf+Dhq181FlkQtuAjycyHAzBF0got+6UHMBAr5m1fm+uQm/Q94
-	 4BeGbkG/WheYfdvU1OAPyz4szGemWdTl+kw4NEmIlmCLLsKiRGSOtFLkG6zeZUa2nGFQ9
-	 zx/a13TL5q+weHyV3Z3XjSOkqVKa4yyqoM6s3lJjfv7OgxiCf1LeLleP0d+rfLfMPr2kt
-	 GZSt+/yaPVcEMcbLEL6Ttwzs9NYnh8HvKRZffag8OEQaGKX3qJUrpOxsNk5mu7Nu972fl
-	 qylDmWg87GMKdlw3Yuf5d8MBpAQkFuP/V+ft2YHGoHPj6z1j3p70U1n4Acre2HIi39Q==
+	t=1793632953;
+	b=pBbNDnwn3qADNtyYXKv7vX5V4IwTcjNUzO1LCiUvvgEkyWrBzpB0SY7KdGzV3UhstZd0
+	 WVhNbkji8tQViirE4+l7LVzfkRUAcn7dHfaj/twR7uTKlyvw8arefShrQn4LVMBtMc1BC
+	 OtAa6PKboIj///+HyfwjPE5ppITK2OCpJAIZy3svln9H+1Xoh49UwtNuiIfb5M6/d1B4V
+	 T07/JpUB0pA1HQaf6wfqvusXjEnYTDWy2TF7/h7gwsFEaLLz8/dLPgOp7/2rbdwAWvB/N
+	 nejZaX1PfItelR/KTDc29h/wS8oRkp/FVC2v/05YlTYDh04biOMToGA3zKvxDz1Td6w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793632972;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793632953;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=nlVd2d+i8P+1hcARtfAVoMomzYlKlzmY39R4NNuEpHM=;
-	b=1mG0mP7hfB4Vvbf2KqSTkii573U8KadJ8Qu18TzllTrlFls5YFAGpm/Io/GgiGBnJHU1
-	 0TwkfmHBMTmVThHtF/ywXemWSY8d7AbaZTQmFX81ePL7PNxBzB3q3d1QzJmE1/wC+1Qy1
-	 ASepoIo7rxWZQLreztcmOv5bAQiWB+oJnGO7j1yjPr5TqAiARUgr2Un8CaHpZAbaI5Kv0
-	 Tj+vD6NYDkX54tnNIjFfcbZtR4mzgv0PBLEQK/BlWAzeEzT07QqLwQ8qzOxAwPWKEZh7/
-	 pO7Lw+zsp4gbNPbZc09wVzUi9ONM/MBDYdE8mEgswm0B+tuxqRhEpQh7c47nJ81zEGA==
+	bh=lzw2p1lwQVTXGjOVK+O2fRllw6EWFGiyVpP4wwnyOh0=;
+	b=xIlgnUUE6sRo8MIsf4UCALpYHCJLUzpdzfgoCC9Hkcz3ySMhGsld3m/0GRs4dyKb4TXW
+	 gNgfe5U3W8YPKZwLaSQmS2tyN9x5CTWs+vI+CamFOB95IgwuZ/Mae7skRvaiCkKt7HZLf
+	 DgqQ1LaDsGA0ENhS5YFQZp+fRZnckiolU+ihLS0Oa4AyL40KqkR+7I/aN+3sOGpfs/+OQ
+	 5EbctPUHOF3usgcUzyCZ3Ktj5IQYkSchUDtCUONFqSdIipVfcDDSmhK9di3x4LsHEhuNl
+	 WoczQ7qX1svwG76s50gik8kNeMVbmd2L9pX4W04+5HEhSL4UQHiVnvap2+w1CtqueRg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=N7s7Rr4t;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="jam/DikG";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7FACC60822AA;
-	Mon,  2 Nov 2026 15:22:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5827A6070DB0;
+	Mon,  2 Nov 2026 15:22:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=N7s7Rr4t
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B8A341F00A16;
-	Mon,  2 Nov 2026 15:22:36 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=jam/DikG
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AE0491F00A17;
+	Mon,  2 Nov 2026 15:22:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793632972;
-	bh=nlVd2d+i8P+1hcARtfAVoMomzYlKlzmY39R4NNuEpHM=;
+	s=k20260515; t=1793632953;
+	bh=lzw2p1lwQVTXGjOVK+O2fRllw6EWFGiyVpP4wwnyOh0=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=N7s7Rr4tn3noqVfU8ebbTIIEWsKpdqgT+vIEG2HnGddiV3nggMKyYoGDj/dhoH8Vq
-	 ykGauAPuLUU5xa/vSRC3ueradsxUXOZ+CU5fhTRxKMkYeniVJSxxh+7XnsbQo9GOIo
-	 kl5er4X6Zyfc19tK58DDmyE3rvqIlJMd5P+NnIHIYCW7eJ0nVIc3reeuMF9tI3shvO
-	 dJHH4mpYslPnfwvIjH5M1oVmYQ9fp/68TG4Lki2zdADEB+MxmTuGZLfFaIacVgOCTw
-	 EkE5kA3ueLSgfhcq7xnVt0sk26H7smSSBt3/KD8tcF0DWKT0j/NGB2fjO6tk/NHJav
-	 t2zQbmoM3V44w==
+	b=jam/DikGbP3IcdUEgRo2CFdrSnYZ/3MSMU4LaHUHhtBAwB6d0wN4GG1MyQdeaC9Ok
+	 wdJM+b/3RRtjlCv8z3tItr1QxtSmH9BkYdSP+SP67oPniRC+yl3OGovJKbnl6vggYQ
+	 Xw6S0FI/uqQMcc4B28EcQ0DDMaWkGXvvD/9rG4J+o8qpnbTPjubCx61OEoREYP+wT+
+	 n2SYcDkpCjIpsbDnXuLn3gvGvJMSkTaaQcGsDZNp5Sixc2gl8PYMoWuRLivBfr0Eti
+	 JYdHka5rVsIFLmn3fwhKKgzdpuCwWerAtbnpQ53n/tpOZi1eZbO6XiCI8qo1rd8OmY
+	 S9C/ymTqVEc8Q==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 16:07:19 +0100
-Subject: [PATCH RFC 09/27] smb: client: let procfs copy in writes
+Date: Mon, 02 Nov 2026 16:07:18 +0100
+Subject: [PATCH RFC 08/27] smb: client: let procfs own the seq_file of the
+ smbdirect files
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-fs-v1-9-d09a996317b3@kernel.org>
+Message-Id: <20261102-work-procfs-fs-v1-8-d09a996317b3@kernel.org>
 References: <20261102-work-procfs-fs-v1-0-d09a996317b3@kernel.org>
 In-Reply-To: <20261102-work-procfs-fs-v1-0-d09a996317b3@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -90,274 +91,45 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=8830; i=brauner@kernel.org;
- h=from:subject:message-id; bh=FT7LQYM7T+jx4y6th5QoquEbwgmi4EXWnyiLf7yiyR0=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG6UE1Kj2JasoSuw1cLeTY1F/vT+AL6dHQYRE+L/m
- /85fbWto5SFQYyLQVZMkcWh3SRcbjlPxWajTA2YOaxMIEMYuDgFYCK5iowMt/4Zrlyed+nx1PoX
- bZ8ueD2fvy8usejek35PnjnPrnG58jH8061VYfu2bPIkF7FFodNvdS9Wbv9bOE/KzDIo3I9hxR8
- udgA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1034; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=RIZYcDqYt7NhFvt2L4C6pTMn3DylkXBLCyRwuGHjm7I=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG6U8n4ug8YGx1uVNoYGj8zfPCt5xX+/1GRB/J/oU
+ N4J1w72dZSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAExk8ylGhs/Tfi77dN1/hsfq
+ 9zYVab+vKc/ddURfvDWri+u34qLfrzQY/tm3hDFcuBC2pbSmPpAxdem3TZc/mgiqPk5x3Kp2npv
+ flwsA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Implement ->proc_write_buf() for the files in /proc/fs/cifs so procfs
-copies in what is written before it pins the entry, and parse what was
-written from that copy. Writes larger than PAGE_SIZE - 1 bytes fail with
--EINVAL now, SecurityFlags never took more than 11 bytes. Empty writes
-to cifsFYI and dfscache fail with -EINVAL too, they looked at a byte
-that wasn't written before. kstrtoint_from_user() looked at the first
-34 bytes of a write to cifs_debug_dirs and the smbdirect files, now the
-whole write is parsed.
+Declare the show function in PROC_FILE_DEFINE() and let procfs open and
+free the seq_file. That makes the open functions unnecessary.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/smb/client/cifs_debug.c | 62 +++++++++++++++++++---------------------------
- fs/smb/client/dfs_cache.c  | 13 +++-------
- 2 files changed, 29 insertions(+), 46 deletions(-)
+ fs/smb/client/cifs_debug.c | 9 +--------
+ 1 file changed, 1 insertion(+), 8 deletions(-)
 
 diff --git a/fs/smb/client/cifs_debug.c b/fs/smb/client/cifs_debug.c
-index 664072ab3342..fb1323bf44c7 100644
+index dfcd2cdbb2a8..664072ab3342 100644
 --- a/fs/smb/client/cifs_debug.c
 +++ b/fs/smb/client/cifs_debug.c
-@@ -359,12 +359,12 @@ static int cifs_debug_dirs_proc_show(struct seq_file *m, void *v)
- #ifdef CONFIG_CIFS_DEBUG
- 
- /* Drop all cached directory entries across all CIFS mounts. */
--static ssize_t cifs_debug_dirs_proc_write(struct file *file, const char __user *buffer,
-+static ssize_t cifs_debug_dirs_proc_write(struct file *file, char *buffer,
- 					  size_t count, loff_t *ppos)
- {
- 	int rc, v;
- 
--	rc = kstrtoint_from_user(buffer, count, 10, &v);
-+	rc = kstrtoint(buffer, 10, &v);
- 	if (rc)
- 		return rc;
- 
-@@ -390,7 +390,7 @@ static ssize_t cifs_debug_dirs_proc_write(struct file *file, const char __user *
- 
- static const struct proc_ops cifs_debug_dirs_proc_ops = {
- 	.proc_show	= cifs_debug_dirs_proc_show,
--	.proc_write	= cifs_debug_dirs_proc_write,
-+	.proc_write_buf	= cifs_debug_dirs_proc_write,
- };
- #endif /* CONFIG_CIFS_DEBUG */
- 
-@@ -713,8 +713,8 @@ static int cifs_debug_data_proc_show(struct seq_file *m, void *v)
- 	return 0;
- }
- 
--static ssize_t cifs_stats_proc_write(struct file *file,
--		const char __user *buffer, size_t count, loff_t *ppos)
-+static ssize_t cifs_stats_proc_write(struct file *file, char *buffer,
-+		size_t count, loff_t *ppos)
- {
- 	bool bv;
- 	int rc;
-@@ -722,7 +722,7 @@ static ssize_t cifs_stats_proc_write(struct file *file,
- 	struct cifs_ses *ses;
- 	struct cifs_tcon *tcon;
- 
--	rc = kstrtobool_from_user(buffer, count, &bv);
-+	rc = kstrtobool(buffer, &bv);
- 	if (rc == 0) {
- #ifdef CONFIG_CIFS_STATS2
- 		int i;
-@@ -854,16 +854,16 @@ static int cifs_stats_proc_show(struct seq_file *m, void *v)
- 
- static const struct proc_ops cifs_stats_proc_ops = {
- 	.proc_show	= cifs_stats_proc_show,
--	.proc_write	= cifs_stats_proc_write,
-+	.proc_write_buf	= cifs_stats_proc_write,
- };
- 
- #ifdef CONFIG_CIFS_SMB_DIRECT
- #define PROC_FILE_DEFINE(name) \
--static ssize_t name##_write(struct file *file, const char __user *buffer, \
-+static ssize_t name##_write(struct file *file, char *buffer, \
- 	size_t count, loff_t *ppos) \
- { \
- 	int rc; \
--	rc = kstrtoint_from_user(buffer, count, 10, &name); \
-+	rc = kstrtoint(buffer, 10, &name); \
- 	if (rc) \
- 		return rc; \
- 	return count; \
-@@ -876,7 +876,7 @@ static int name##_proc_show(struct seq_file *m, void *v) \
+@@ -873,16 +873,9 @@ static int name##_proc_show(struct seq_file *m, void *v) \
+ 	seq_printf(m, "%d\n", name); \
+ 	return 0; \
+ } \
+-static int name##_open(struct inode *inode, struct file *file) \
+-{ \
+-	return single_open(file, name##_proc_show, NULL); \
+-} \
  \
  static const struct proc_ops cifs_##name##_proc_fops = { \
- 	.proc_show	= name##_proc_show, \
--	.proc_write	= name##_write, \
-+	.proc_write_buf	= name##_write, \
+-	.proc_open	= name##_open, \
+-	.proc_read	= seq_read, \
+-	.proc_lseek	= seq_lseek, \
+-	.proc_release	= single_release, \
++	.proc_show	= name##_proc_show, \
+ 	.proc_write	= name##_write, \
  }
  
- PROC_FILE_DEFINE(rdma_readwrite_threshold);
-@@ -990,16 +990,12 @@ static int cifsFYI_proc_show(struct seq_file *m, void *v)
- 	return 0;
- }
- 
--static ssize_t cifsFYI_proc_write(struct file *file, const char __user *buffer,
-+static ssize_t cifsFYI_proc_write(struct file *file, char *buffer,
- 		size_t count, loff_t *ppos)
- {
--	char c[2] = { '\0' };
-+	char c[2] = { buffer[0] };
- 	bool bv;
--	int rc;
- 
--	rc = get_user(c[0], buffer);
--	if (rc)
--		return rc;
- 	if (kstrtobool(c, &bv) == 0)
- 		cifsFYI = bv;
- 	else if ((c[0] > '1') && (c[0] <= '9'))
-@@ -1012,7 +1008,7 @@ static ssize_t cifsFYI_proc_write(struct file *file, const char __user *buffer,
- 
- static const struct proc_ops cifsFYI_proc_ops = {
- 	.proc_show	= cifsFYI_proc_show,
--	.proc_write	= cifsFYI_proc_write,
-+	.proc_write_buf	= cifsFYI_proc_write,
- };
- 
- static int cifs_linux_ext_proc_show(struct seq_file *m, void *v)
-@@ -1021,12 +1017,12 @@ static int cifs_linux_ext_proc_show(struct seq_file *m, void *v)
- 	return 0;
- }
- 
--static ssize_t cifs_linux_ext_proc_write(struct file *file,
--		const char __user *buffer, size_t count, loff_t *ppos)
-+static ssize_t cifs_linux_ext_proc_write(struct file *file, char *buffer,
-+		size_t count, loff_t *ppos)
- {
- 	int rc;
- 
--	rc = kstrtobool_from_user(buffer, count, &linuxExtEnabled);
-+	rc = kstrtobool(buffer, &linuxExtEnabled);
- 	if (rc)
- 		return rc;
- 
-@@ -1035,7 +1031,7 @@ static ssize_t cifs_linux_ext_proc_write(struct file *file,
- 
- static const struct proc_ops cifs_linux_ext_proc_ops = {
- 	.proc_show	= cifs_linux_ext_proc_show,
--	.proc_write	= cifs_linux_ext_proc_write,
-+	.proc_write_buf	= cifs_linux_ext_proc_write,
- };
- 
- static int cifs_lookup_cache_proc_show(struct seq_file *m, void *v)
-@@ -1044,12 +1040,12 @@ static int cifs_lookup_cache_proc_show(struct seq_file *m, void *v)
- 	return 0;
- }
- 
--static ssize_t cifs_lookup_cache_proc_write(struct file *file,
--		const char __user *buffer, size_t count, loff_t *ppos)
-+static ssize_t cifs_lookup_cache_proc_write(struct file *file, char *buffer,
-+		size_t count, loff_t *ppos)
- {
- 	int rc;
- 
--	rc = kstrtobool_from_user(buffer, count, &lookupCacheEnabled);
-+	rc = kstrtobool(buffer, &lookupCacheEnabled);
- 	if (rc)
- 		return rc;
- 
-@@ -1058,7 +1054,7 @@ static ssize_t cifs_lookup_cache_proc_write(struct file *file,
- 
- static const struct proc_ops cifs_lookup_cache_proc_ops = {
- 	.proc_show	= cifs_lookup_cache_proc_show,
--	.proc_write	= cifs_lookup_cache_proc_write,
-+	.proc_write_buf	= cifs_lookup_cache_proc_write,
- };
- 
- static int traceSMB_proc_show(struct seq_file *m, void *v)
-@@ -1067,12 +1063,12 @@ static int traceSMB_proc_show(struct seq_file *m, void *v)
- 	return 0;
- }
- 
--static ssize_t traceSMB_proc_write(struct file *file, const char __user *buffer,
-+static ssize_t traceSMB_proc_write(struct file *file, char *buffer,
- 		size_t count, loff_t *ppos)
- {
- 	int rc;
- 
--	rc = kstrtobool_from_user(buffer, count, &traceSMB);
-+	rc = kstrtobool(buffer, &traceSMB);
- 	if (rc)
- 		return rc;
- 
-@@ -1081,7 +1077,7 @@ static ssize_t traceSMB_proc_write(struct file *file, const char __user *buffer,
- 
- static const struct proc_ops traceSMB_proc_ops = {
- 	.proc_show	= traceSMB_proc_show,
--	.proc_write	= traceSMB_proc_write,
-+	.proc_write_buf	= traceSMB_proc_write,
- };
- 
- static int cifs_security_flags_proc_show(struct seq_file *m, void *v)
-@@ -1111,21 +1107,15 @@ cifs_security_flags_handle_must_flags(unsigned int *flags)
- }
- 
- static ssize_t cifs_security_flags_proc_write(struct file *file,
--		const char __user *buffer, size_t count, loff_t *ppos)
-+		char *flags_string, size_t count, loff_t *ppos)
- {
- 	int rc;
- 	unsigned int flags;
--	char flags_string[12];
- 	bool bv;
- 
- 	if ((count < 1) || (count > 11))
- 		return -EINVAL;
- 
--	memset(flags_string, 0, sizeof(flags_string));
--
--	if (copy_from_user(flags_string, buffer, count))
--		return -EFAULT;
--
- 	if (count < 3) {
- 		/* single char or single char followed by null */
- 		if (kstrtobool(flags_string, &bv) == 0) {
-@@ -1176,7 +1166,7 @@ static ssize_t cifs_security_flags_proc_write(struct file *file,
- 
- static const struct proc_ops cifs_security_flags_proc_ops = {
- 	.proc_show	= cifs_security_flags_proc_show,
--	.proc_write	= cifs_security_flags_proc_write,
-+	.proc_write_buf	= cifs_security_flags_proc_write,
- };
- 
- /* To make it easier to debug, can help to show mount params */
-diff --git a/fs/smb/client/dfs_cache.c b/fs/smb/client/dfs_cache.c
-index 58f16cf83d36..a6aa05430b15 100644
---- a/fs/smb/client/dfs_cache.c
-+++ b/fs/smb/client/dfs_cache.c
-@@ -191,17 +191,10 @@ static int dfscache_proc_show(struct seq_file *m, void *v)
- 	return 0;
- }
- 
--static ssize_t dfscache_proc_write(struct file *file, const char __user *buffer,
-+static ssize_t dfscache_proc_write(struct file *file, char *buffer,
- 				   size_t count, loff_t *ppos)
- {
--	char c;
--	int rc;
--
--	rc = get_user(c, buffer);
--	if (rc)
--		return rc;
--
--	if (c != '0')
-+	if (buffer[0] != '0')
- 		return -EINVAL;
- 
- 	cifs_dbg(FYI, "clearing dfs cache\n");
-@@ -215,7 +208,7 @@ static ssize_t dfscache_proc_write(struct file *file, const char __user *buffer,
- 
- const struct proc_ops dfscache_proc_ops = {
- 	.proc_show	= dfscache_proc_show,
--	.proc_write	= dfscache_proc_write,
-+	.proc_write_buf	= dfscache_proc_write,
- };
- 
- #ifdef CONFIG_CIFS_DEBUG2
 
 -- 
 2.53.0
