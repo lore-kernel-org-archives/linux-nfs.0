@@ -1,52 +1,54 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793656341;
-	b=X6zUK0KwUtmcyIwvNKeVCADCa/tVndH4AFog1IYMiUcXzlkiz3DMNbwcccCdh1RYn4DN
-	 Na+0n1NklXxa7bplUfj8fyty9pyqRynfTD7JMKYa4O6cxpRejxygwyJzwtBtTeewoYWBB
-	 zUXvEdwnkQMetkDNBTEdDPi8VZ16QpJXKVlDEoKt2/3AfZcUF/8DeiB7y0pApxUCYmjk1
-	 mhxQ7NuIKaYzpIs2la5TXuTaxoscWU00dT8uv96aZfugf3IwbCDNlHj79+FtvLyfmyI6P
-	 hdbXGZeaA9P0i86NGLYBUYGEP6ZlcZrBEgfEHaZ/Hqz5nqf1gq+hdHeYVSI2RrSWg8Q==
+	t=1793656343;
+	b=CfZJgcLF495Scwb6I4ELe2QNzD0yuBMy17WCFd+JjvJCH9UYuB2NTbqb75Oo55RAIIxP
+	 tcVxH23gcCxLZL1edlf7UtV1kkWGrLCj5wTn9o51cI9cr0y07jeHi1inBfY3IofKMmq67
+	 vMaGYyUm3WvEqWtNlj6KDjf3dk5Ak6Zs0fc+hw+d+P4em50uFbQpVWUrhhO6JTTKpe+tZ
+	 TQpmuaZgnuTxCvfqs6fwqkiqbLSpYNMLZT4bZ/5bThVTt1a242oRD0O1tOOOePrOFWq8A
+	 VEkKITigAu3ogvhy/MTkruTqkTbPOavsTfbecLcZqE+RomDKBKppZo5Ux8IZjk9RCyg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793656341;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793656343;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=k+dyEdy18r2kHry+PX7/SEWe+MrZgl1XINpYhTOIqQc=;
-	b=1ip7P8C57r7+9iQoVtMsa6O02tcH3vqPY15Y+tWuf6ir/TCAEHvezVkMR1i69+M0Y/pS
-	 Y6YVASxY27R42VQNLEf/JdM0wR0L1O8FdxU4aamzBb3C3anlhfsUJ60nJIQZLlii5f71a
-	 tbyyLUWFVbt3/OljARqzh/VYfERwiwpSMKwwVLgBIiONwx56wga+qrOjehI2E5Y+Pw6uF
-	 pa5SYLefczt2jvJKQOLcH+mWlPfSqpsq0jcJgFaez0q+Ix2BxP/Kab6FkAQ75+oHEzGwV
-	 jnQeQ4x6PdkcnYaBtnvY9dnbpOrqaZaEYqN9QA8mH5nyvA4tyET2A70fXz0rRrL0p6w==
+	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
+	bh=Vn/FlglUbN0CH+nAh0JbV/5DlKgBP6ETXiB1JyXezH4=;
+	b=vE8F/kbdbRN9t9euXejD3AhEG86B6Azdrw3VxwgR+ZsFkRI6EKi3ZSgAT43WG04Ybhn3
+	 cDPu2YX6n0Y2318wKTwvL7k5lbMutuEgrCHQ8ayLlkuq23EpF58J1aAk+D3j0mmrQ3Y33
+	 gfo28kLIZaU2sp0Bf2L9AUPy1Jxh7S0supXs1ePBQOheKaudIxYrM8NkurLmi3M9Eh+6U
+	 /PTM6DlwoCpKaOcyuoBfHfzd81MJlJAs6oot20qP405zqyKLEq/4YDUFDdD8hqawal3gI
+	 tkH2Bzwl36FhlAHqHV47sdVIXfERtl6VJ4+12PeJCJtqosGe/8S1YjeCAAnUfCEMg6g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PIwWQ9Tk;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TE00jDxI;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8CA07606A324
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 21:52:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0DFBA606A324
+	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 21:52:22 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PIwWQ9Tk
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 379AA1F00A16;
-	Mon,  2 Nov 2026 21:52:21 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TE00jDxI
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 773E71F00A1C;
+	Mon,  2 Nov 2026 21:52:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793656341;
-	bh=k+dyEdy18r2kHry+PX7/SEWe+MrZgl1XINpYhTOIqQc=;
-	h=From:To:Cc:Subject:Date;
-	b=PIwWQ9TkS1WPr4x667txn7CoDrFWdbdXbfbqHO9PPHMDI1w2c2ugXEuBJ/iLGpuNa
-	 Df1nj/jdg/7Iye/f+X/nVAiUewtJDY0kjqIzy1sd+WmgltCn4K7616JkcNVx0aZ6Kf
-	 rWZuDZ46skytM3HSJQo+UrkKoZ4fDWy99yxUCUT1tkv6YK3YbkvCsSGJj/n680fZbU
-	 jHwtJn7MkkyELZ8D0w8MaXansffifR59ArfUrBeOnfeKNFmJyf1USZ5UI3fF50fz2o
-	 5yMxZQMz021pFzSbT63kke1oGuZzvB/RAO7PNtYadcUnkkw+7/dRd+Fij5HzAgJF2X
-	 D2pZWT4yxnFFA==
+	s=k20260515; t=1793656342;
+	bh=Vn/FlglUbN0CH+nAh0JbV/5DlKgBP6ETXiB1JyXezH4=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=TE00jDxInhCswhVY6lde4Ixu9K2p7Gp6FDG9emkE5WSAVDkAPzsj/YQEud/11xamN
+	 Cn5JoIx7eFhRVYypvRJhlx73UznhbZPSi1yw0qYdq1ScJduHB2G0jMbuXfP0Zp9kqg
+	 rYNAl4T2LxZZRQ7bo8ukpI1hOIUELXfkBuLDpsg26UO0xGwsaOgVJI8v9jYZ3o/PaF
+	 Bo9Zph3AVpN5kF42+UfUSPB2+MnaVGizp+SHz2xI0kBfdeytO8aiR6j/XynevJ82bj
+	 9Uq0RlEBw5q7SJOhNWDxtD+wnlx0iS4mdBS2+FStSLq18LlZB/CLy/BOO/ifkX4/yf
+	 TzrHOqVOjtiyQ==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Anna Schumaker <anna@kernel.org>,
 	Trond Myklebust <trondmy@kernel.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/3] NFS/localio: make the LOCALIO probe safe, repeatable and bounded
-Date: Mon,  2 Nov 2026 16:52:17 -0500
-Message-ID: <20261102215220.16055-1-snitzer@kernel.org>
+Subject: [PATCH 1/3] NFS/localio: hold the client across an asynchronous LOCALIO probe
+Date: Mon,  2 Nov 2026 16:52:18 -0500
+Message-ID: <20261102215220.16055-2-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
+In-Reply-To: <20261102215220.16055-1-snitzer@kernel.org>
+References: <20261102215220.16055-1-snitzer@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -58,46 +60,53 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Hi,
+nfs_local_probe_async() queues the client's own cl_local_probe_work
+without a reference on the client, and nfs_free_client() does not cancel
+it.  The work takes a reference only once it runs.  If the last
+nfs_put_client() comes first, for example at umount after an NFSv3 I/O
+queued a throttled probe, the client is freed with its work queued, and
+the work then runs on freed memory.
 
-Three fixes to the LOCALIO probe.
+Take the reference when the work is queued, and drop it when the work
+has run.  If the work is already queued, it already holds a reference,
+and the one just taken is dropped.
 
-Patch 1 takes a reference on the client when nfs_local_probe_async()
-queues cl_local_probe_work, and drops it once the work has run.  The work
-was queued without one, so a client freed with a probe queued (e.g. at
-umount after an NFSv3 I/O queued a throttled probe) left the work to run
-on freed memory.
+Fixes: 76d4cb6345da ("nfs: probe for LOCALIO when v4 client reconnects to server")
+Signed-off-by: Mike Snitzer <snitzer@kernel.org>
+---
+ fs/nfs/localio.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
 
-Patch 2 probes again when localio_enabled is set back to Y.  A client
-that probed while localio_enabled was N was disabled by the probe, and
-nothing probed it again, so it stayed on the network.  Setting
-localio_enabled to Y now queues a probe for every ready client, in every
-network namespace, that does not use LOCALIO.
-
-Patch 3 gives the probe a short soft timeout of its own.  The probe's
-NULL ping and UUID_IS_LOCAL used the mount's timeout, so with timeo=600 a
-server that does not answer the LOCALIO program held each probe for about
-170 s.  The new nfs module parameter localio_timeout (seconds, 10 by
-default, at most 600; 0 keeps the mount's timeouts) bounds it: through a
-proxy dropping every LOCALIO call the probe gave up after 10.6 s, and
-logged nothing.
-
-The series is based on Anna's linux-next (nfs-for-7.4-1).
-
-Thanks,
-Mike
-
-Mike Snitzer (3):
-  NFS/localio: hold the client across an asynchronous LOCALIO probe
-  NFS/localio: probe again for LOCALIO when localio_enabled is set to Y
-  NFS/localio: give the LOCALIO probe a short timeout of its own
-
- Documentation/filesystems/nfs/localio.rst |  12 +++
- fs/nfs/localio.c                          | 118 ++++++++++++++++++++--
- 2 files changed, 123 insertions(+), 7 deletions(-)
-
-
-base-commit: ef30b3efb7e8bae94d790a6503a595e1051323e7
+diff --git a/fs/nfs/localio.c b/fs/nfs/localio.c
+index cdada6cbb13bf..d5859e8c2a2a8 100644
+--- a/fs/nfs/localio.c
++++ b/fs/nfs/localio.c
+@@ -203,15 +203,22 @@ void nfs_local_probe_async_work(struct work_struct *work)
+ 	struct nfs_client *clp =
+ 		container_of(work, struct nfs_client, cl_local_probe_work);
+ 
+-	if (!refcount_inc_not_zero(&clp->cl_count))
+-		return;
+ 	nfs_local_probe(clp);
++	/* The reference nfs_local_probe_async() took for this work */
+ 	nfs_put_client(clp);
+ }
+ 
++/*
++ * The work is part of the client, so it holds a reference on the client
++ * from when it is queued until it has run: the last nfs_put_client()
++ * cannot free the client under a queued probe.
++ */
+ void nfs_local_probe_async(struct nfs_client *clp)
+ {
+-	queue_work(nfsiod_workqueue, &clp->cl_local_probe_work);
++	if (!refcount_inc_not_zero(&clp->cl_count))
++		return;
++	if (!queue_work(nfsiod_workqueue, &clp->cl_local_probe_work))
++		nfs_put_client(clp);	/* already queued, with its reference */
+ }
+ EXPORT_SYMBOL_GPL(nfs_local_probe_async);
+ 
 -- 
 2.52.0
 
