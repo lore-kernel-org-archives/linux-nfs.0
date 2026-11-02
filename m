@@ -1,49 +1,51 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793633384;
-	b=IG30ULW5UX/jKR94oTW7/pK7bBsrx25VWntAfNQ3Ma3Y28QNejaV9+ZhlrF4YMCc32Or
-	 5cx5eQD7Ia6WHNPdtdQ9imvvKAhktDnF9xOqEV+4OMYpmbJVLxRSGquWmCvFxSDI4L4zq
-	 F+0MuN38mt5KLZjkDzsnrUmu/tz6hDk6hYl1mPkgcnNOwtzq2RBQ2qaUeTDJUxGlcstw4
-	 /2ZxKa4/Rz0fECamnnusNBLFF7tEmteVF2oW3JPz2I71S8y8aujTjeDDh3OUnccT5ORlN
-	 Qf3eVExfYeKvxHBFI5DAcz+bNumMMoPelEWLxj1uNwUYhJ4Z/7TU1R8ABiuTBbb5vyw==
+	t=1793633439;
+	b=tOLi7aIxdTJIXnFg1tvZZ1+QpFw72a+EWKB4Xu14u4mWLO5Wl4tSohYL7KxSBX47l09m
+	 rqoK3smbXi9XIjlLB3UP3ZgUyu7+27WG2rFmhesMg6RqvHgtn+oc9jdnNE+UPw84Hgh8C
+	 nY1gSldte2J1XE8amq8poHWNh+VyHT0pxYW1qaIqm4tgiZk+tZHkVwXOLIwy+cVfOQMdU
+	 h7Vt75MJsCPt9+wg71G4ioaBgDyi2o5fsTfLoUyUMknjd2gD1q5lxLQvK0jlIZFeVZgUN
+	 hbthA9kmFLR2nkj5h52syq/ho3b8GVYWBj6Ex1FjBU37dizbzzhmgWe9p2WTnbCWskA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793633384;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=AmPg73ZsTa4hWS3OOTC3awBO6zvZml45J7NYZXMvC60=;
-	b=5tUOLSMNujfwi2f0OTXtyHt9medIBpBk+sVG9wLwioq6fgYXV6F4R04r0gxTbcchIxFk
-	 4YrU+YoEsd/9vhoKuC3FpT5u61ZybjQVWyDLmF7pWQt/RtAEcFP1jU+ocurbO3itWZAkE
-	 mdNaru4ampcU5pgCQHHUzjrG74NPLCUPsp8+o7l+fArYev/Y2EKeakJ2hcfA6XWYmXXAr
-	 5uL0RGQBxizoNZMVZx/BQDTuSy5HIh+KYKFX1yBeu/nDpWNb80iEklBDwi5mnE3as44es
-	 ewEmjMmDLZ92AHYwZK5qNjwuBM56iXWZea9a6F7DknjUjDysZ/GfWYsXTjxrA3sCU5g==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793633439;
+	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:
+	 In-Reply-To:References:To:Cc:X-Mailer:X-Developer-Signature:
+	 X-Developer-Key;
+	bh=nWuCT5YfGLZKMaCIQ2u9uqZ5zT0FDhvi/3SVn3tmVzc=;
+	b=BV9D2kVpb2jYXDi/zadAcTjwtp4DcsgBOFwnRVhi35hrSpCXCo5B+pZe3J8UowY/bwFM
+	 wHRiSbuldYo3vBYVXjq5fFtVxhZis1LC1HDaHHwfmMgnFvCHaOOHfrxLnwEdI7G6WM2bm
+	 TsPPgTNNvQiAXMBrnfCHyGDQZPSU9XclBITJ45FWvSJrtR33cTXWAVOdLhata6Ils+0qF
+	 ce35CJ2/GTvqI66NPx7ICVH3Kq9eQWtFglo/IE0oHwex8kj8RYgNrMghILlWzBizljQlP
+	 XBlKLxrtfpM6qI9VrJ6nY58wijJKsKlb1fd+Kznv0utZH7MoBdduOi0k+Nf1NeobPlg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iCTZ0HLl;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JvJL3xSm;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E64D6608556B;
-	Mon,  2 Nov 2026 15:29:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 61295606A916;
+	Mon,  2 Nov 2026 15:30:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iCTZ0HLl
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5ABFE1F00A16;
-	Mon,  2 Nov 2026 15:29:27 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JvJL3xSm
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 577111F00A17;
+	Mon,  2 Nov 2026 15:30:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793633383;
-	bh=AmPg73ZsTa4hWS3OOTC3awBO6zvZml45J7NYZXMvC60=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=iCTZ0HLlYWpNnx3lzizxK8JbxxzlOIlnwN0PzIz6UY8TyRpRaYR72Sb+82Fin1P19
-	 Uq89Sc4uR18wsPrD2qwZSSQbzB+QEEeZcU53jf0zSz5eUKXBjmK4CUBUbNj4BpKSiH
-	 g1PfN1jUZKiW6zZ8IInfRG7plrh6BEL3vcjVxlzZSt4sfyNEOX+5HxH2pnDkByJ3iH
-	 zi3R2HChW+GDD79p3OJETo/fMAQjBeGqh0tgmAviJY9oTgndZHpyisDmAZcnyucmRF
-	 uqCOqicTKRLLVz6FAZmLIgCKbKzLivVkwBn/DT+cTH5rQKoiFnoIZfwVSbluahwRKT
-	 gCOgTGaDF9XdA==
+	s=k20260515; t=1793633439;
+	bh=nWuCT5YfGLZKMaCIQ2u9uqZ5zT0FDhvi/3SVn3tmVzc=;
+	h=From:Subject:Date:In-Reply-To:References:To:Cc;
+	b=JvJL3xSmCx1jEXZXFgCWdABT0EtARcgIeWlliBcwjsQggtBY2gtJtPeeTuwFe1En3
+	 yghubbz+b6akUmjQFQundlEviJxzYnXvvJ10JOd1KMP0/nBgMjIkXwZ/XC5Z80/QRU
+	 TM3v1jZON2+8k+xpLjLlBV7eV9w+fBiVNw5CKH84T3Q2OzPSyUKXQM3m+Ax30lI93Y
+	 OyoOQjlKotkqtBU9MfoL0KIPG2osrCvKNSLQ40t0sUClpEBfOkQbyLQFLb27zpFu+Y
+	 n8mMnghA5U6ON/ROReGn5Up0EpOwUQn7lOK4akX5XlElTMVXhFxJ9ikuqMVKjPgINC
+	 iKJ2YSbzsjVGA==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 16:07:37 +0100
-Subject: [PATCH RFC 27/27] selftests/proc: check that unloading configs
- doesn't wait for a reader
+Subject: [PATCH RFC 00/11] proc: convert the net entries and the kfifo
+ samples
+Date: Mon, 02 Nov 2026 16:07:14 +0100
+Message-Id: <20261102-work-procfs-net-v1-0-982104a4f592@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,9 +57,14 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-fs-v1-27-d09a996317b3@kernel.org>
-References: <20261102-work-procfs-fs-v1-0-d09a996317b3@kernel.org>
-In-Reply-To: <20261102-work-procfs-fs-v1-0-d09a996317b3@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22OQQ6CMBBFr0JmbQ0tiJWtiQdwa1i00xmtBqoto
+ onx7oIaVy7/z/w37wGJoqcEdfaASINPPnRjkLMM8GC6PQnvxgwqV5WUuRS3EE/iHANyEh31wqK
+ 2SlJBzDmMq3Mk9vc3cQfbzRqaT5mu9kjYT6zpzJpEwkbT4WGqJur8Q51z+nIiXa6jUP+F/Xzq7
+ K8NhkhCsylNyaVUyPUgf68wtK3v66xaWKO5KAm1rgiXyirMl86hRi6clgsslK5WDprn8wWY6yG
+ oHQEAAA==
+X-Change-ID: 20261101-work-procfs-net-bc8b21e3eff0
+In-Reply-To: <20261102-defizit-jobaussicht-kurios-7016c6e67442@brauner>
+References: <20261102-defizit-jobaussicht-kurios-7016c6e67442@brauner>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>, 
  Jann Horn <jannh@google.com>, Josef Bacik <josef@toxicpanda.com>, 
@@ -91,238 +98,119 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6916; i=brauner@kernel.org;
- h=from:subject:message-id; bh=oFCHsIIvTBz60E+Ak0mDBpMOymOH24bqy12BEzEjHtQ=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG5s9+n5iyVpzR1+S1Yv2LQn7sbvgAOy518pHj6k/
- 3vVix0NlzpKWRjEuBhkxRRZHNpNwuWW81RsNsrUgJnDygQyhIGLUwAmcjSIkeHy7QVrGFL87r7Z
- tTqn+l/utQKPCLlWdkbG2laOBQomEjcZGVq/pl+KCxWY775aK+r5+1f3Oh3yl/oJunu1PFcu1PK
- OYQQA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6204; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=Lm5+su7qsScEvEwR5OzG4cxYScUPPN8KO8cD1pJduAM=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG6sZzlnpdTObhHnrxsNnhcwhx7JdFJe6ZC4aXbLM
+ a/56SU2HaUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhnCwMUpABPZ58vwP2FCTv7c1nPufxUn
+ rxVffbXetcGH6/Pd/nXCDCUSoTFLchj+WfEH5fmX5SrzarKvehro8vvd34Piq3/NKC07Jbo2ZmU
+ OMwA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Read /proc/config.gz into a buffer whose first page is backed by
-userfaultfd and unload configs.ko while procfs copies what was read to
-userspace:
+This converts the proc entries of atm, l2tp, pktgen, xt_recent and
+sunrpc, and the kfifo samples, to what "proc: let procfs own the data
+path" set up: procfs owns the seq_file, copies in writes, copies out
+reads and copies ioctl arguments in and out, so the entries' code only
+ever runs with the entry pinned and never touches userspace memory.
 
-- removing the entry doesn't wait for the reader
+One patch per subsystem and method, in the order seq_file, write, read,
+ioctl. The sunrpc channel files take 32k downcalls, which is what
+->proc_write_size is for, and their ioctl goes away: do_vfs_ioctl()
+answers FIONREAD for regular files before the file's ioctl ever sees
+it. The sunrpc channel and the kfifo samples are streams. They hand out
+what is read before procfs copies it out, so a reader that passes a bad
+buffer loses that part. Where a write that is larger than anything the
+entry parses now fails with -EINVAL from procfs I've called that out in
+the commit.
 
-- the reader still gets the page that was read before the removal, and
-  nothing more
+Build tested per commit on x86_64 and with W=1 on the touched objects.
+The pktgen selftest behaves the same with and without the series and so
+do the entries I could get at in a VM.
 
-- and the next read fails with -EIO
-
-The test loads configs.ko if it isn't there, skips if configs is built
-in or can't be unloaded, and loads it again afterwards. It needs
-CONFIG_IKCONFIG=m. kselftest-merge keeps the =y that other fragments
-ask for, so it skips there.
+This is on top of "proc: let procfs own the data path". The other three
+conversion series don't depend on it and it doesn't depend on them.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- tools/testing/selftests/proc/.gitignore            |   1 +
- tools/testing/selftests/proc/Makefile              |   1 +
- tools/testing/selftests/proc/config                |   4 +
- .../proc/proc-remove-slow-config-reader.c          | 157 +++++++++++++++++++++
- 4 files changed, 163 insertions(+)
+Christian Brauner (11):
+      atm: let procfs copy out reads of the device files
+      l2tp: let procfs own the seq_file of /proc/net/pppol2tp
+      net: pktgen: let procfs copy in commands
+      netfilter: xt_recent: let procfs own the seq_file
+      netfilter: xt_recent: let procfs copy in writes
+      SUNRPC: let procfs own the seq_file of the cache content file
+      SUNRPC: let procfs copy in writes
+      SUNRPC: let procfs copy out reads
+      SUNRPC: drop the ioctl of the procfs channel files
+      samples/kfifo: let procfs copy in writes
+      samples/kfifo: let procfs copy out reads
 
-diff --git a/tools/testing/selftests/proc/.gitignore b/tools/testing/selftests/proc/.gitignore
-index 51969f81afc5..ed3f28652bb7 100644
---- a/tools/testing/selftests/proc/.gitignore
-+++ b/tools/testing/selftests/proc/.gitignore
-@@ -25,6 +25,7 @@
- /proc-remove-slow-reader
- /proc-remove-slow-readlink
- /proc-remove-slow-writer
-+/proc-remove-slow-config-reader
- /read
- /self
- /setns-dcache
-diff --git a/tools/testing/selftests/proc/Makefile b/tools/testing/selftests/proc/Makefile
-index aecec6b93173..adbb4b1e9e9e 100644
---- a/tools/testing/selftests/proc/Makefile
-+++ b/tools/testing/selftests/proc/Makefile
-@@ -36,5 +36,6 @@ TEST_GEN_PROGS += proc-remove-slow-sysctl
- TEST_GEN_PROGS += proc-remove-slow-reader
- TEST_GEN_PROGS += proc-remove-slow-readlink
- TEST_GEN_PROGS += proc-remove-slow-writer
-+TEST_GEN_PROGS += proc-remove-slow-config-reader
- 
- include ../lib.mk
-diff --git a/tools/testing/selftests/proc/config b/tools/testing/selftests/proc/config
-index c7c61a2d7927..8f672a8b49a8 100644
---- a/tools/testing/selftests/proc/config
-+++ b/tools/testing/selftests/proc/config
-@@ -8,3 +8,7 @@ CONFIG_SND_DUMMY=m
- CONFIG_SCSI=y
- CONFIG_SCSI_PROC_FS=y
- CONFIG_SCSI_DEBUG=m
-+CONFIG_MODULES=y
-+CONFIG_MODULE_UNLOAD=y
-+CONFIG_IKCONFIG=m
-+CONFIG_IKCONFIG_PROC=y
-diff --git a/tools/testing/selftests/proc/proc-remove-slow-config-reader.c b/tools/testing/selftests/proc/proc-remove-slow-config-reader.c
-new file mode 100644
-index 000000000000..5f7bcb27b315
---- /dev/null
-+++ b/tools/testing/selftests/proc/proc-remove-slow-config-reader.c
-@@ -0,0 +1,157 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * A read that faults while procfs copies it to userspace must not hold up
-+ * removal of the /proc entry. Unloading configs.ko removes /proc/config.gz,
-+ * which isn't a seq_file.
-+ */
-+#define _GNU_SOURCE
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <linux/userfaultfd.h>
-+#include <poll.h>
-+#include <pthread.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <sys/ioctl.h>
-+#include <sys/mman.h>
-+#include <sys/syscall.h>
-+#include <unistd.h>
-+
-+#include "../kselftest_harness.h"
-+
-+#define CONFIG_PATH	"/proc/config.gz"
-+#define CONFIG_MODULE	"/sys/module/configs"
-+#define READ_PAGES	2
-+#define TIMEOUT_MS	5000
-+
-+struct reader {
-+	int fd;
-+	char *buf;
-+	size_t len;
-+	ssize_t ret;
-+};
-+
-+struct unloader {
-+	int done;
-+	int ret;
-+};
-+
-+static void *read_thread(void *arg)
-+{
-+	struct reader *r = arg;
-+
-+	r->ret = read(r->fd, r->buf, r->len);
-+	return NULL;
-+}
-+
-+static void *unload_thread(void *arg)
-+{
-+	struct unloader *u = arg;
-+	ssize_t ret;
-+
-+	u->ret = syscall(__NR_delete_module, "configs", O_NONBLOCK) ? -errno : 0;
-+	ret = write(u->done, "x", 1);
-+	return (void *)ret;
-+}
-+
-+FIXTURE(configs) {
-+	bool loaded;
-+};
-+
-+FIXTURE_SETUP(configs)
-+{
-+	self->loaded = false;
-+	if (access(CONFIG_PATH, R_OK) && system("modprobe -q configs"))
-+		SKIP(return, "no " CONFIG_PATH);
-+	if (access(CONFIG_PATH, R_OK))
-+		SKIP(return, CONFIG_PATH ": %s", strerror(errno));
-+	if (access(CONFIG_MODULE, F_OK))
-+		SKIP(return, "configs isn't a module");
-+	self->loaded = true;
-+}
-+
-+FIXTURE_TEARDOWN(configs)
-+{
-+	/* an ASSERT may have fired with the module unloaded */
-+	if (self->loaded && access(CONFIG_PATH, F_OK) &&
-+	    system("modprobe -q configs"))
-+		TH_LOG("couldn't load configs again");
-+}
-+
-+TEST_F(configs, remove_while_reader_faults)
-+{
-+	struct uffdio_api api = { .api = UFFD_API };
-+	struct uffdio_register reg = {};
-+	struct uffdio_zeropage zero = {};
-+	long psz = sysconf(_SC_PAGESIZE);
-+	struct unloader u = {};
-+	struct reader r = {};
-+	struct uffd_msg msg;
-+	struct pollfd pfd;
-+	pthread_t rt, ut;
-+	int uffd, done[2];
-+	char *buf, *ref;
-+	ssize_t ref_len;
-+
-+	r.fd = open(CONFIG_PATH, O_RDONLY | O_CLOEXEC);
-+	ASSERT_GE(r.fd, 0);
-+
-+	/* what the first page of a read looks like */
-+	ref = malloc(psz);
-+	ASSERT_NE(ref, NULL);
-+	ref_len = pread(r.fd, ref, psz, 0);
-+	ASSERT_GT(ref_len, 0);
-+
-+	uffd = syscall(__NR_userfaultfd, O_CLOEXEC | O_NONBLOCK);
-+	if (uffd < 0)
-+		SKIP(return, "userfaultfd: %s", strerror(errno));
-+	ASSERT_EQ(ioctl(uffd, UFFDIO_API, &api), 0);
-+
-+	/* Only the first page of the buffer goes through userfaultfd. */
-+	buf = mmap(NULL, READ_PAGES * psz, PROT_READ | PROT_WRITE,
-+		   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-+	ASSERT_NE(buf, MAP_FAILED);
-+	reg.range.start = (unsigned long)buf;
-+	reg.range.len = psz;
-+	reg.mode = UFFDIO_REGISTER_MODE_MISSING;
-+	ASSERT_EQ(ioctl(uffd, UFFDIO_REGISTER, &reg), 0);
-+
-+	r.buf = buf;
-+	r.len = READ_PAGES * psz;
-+	ASSERT_EQ(pthread_create(&rt, NULL, read_thread, &r), 0);
-+
-+	/* The reader now sleeps in the copy to userspace. */
-+	pfd = (struct pollfd){ .fd = uffd, .events = POLLIN };
-+	ASSERT_EQ(poll(&pfd, 1, TIMEOUT_MS), 1);
-+	ASSERT_EQ(read(uffd, &msg, sizeof(msg)), sizeof(msg));
-+	ASSERT_EQ(msg.event, UFFD_EVENT_PAGEFAULT);
-+
-+	/* Unloading configs.ko removes the file that is being read. */
-+	ASSERT_EQ(pipe2(done, O_CLOEXEC), 0);
-+	u.done = done[1];
-+	ASSERT_EQ(pthread_create(&ut, NULL, unload_thread, &u), 0);
-+	pfd = (struct pollfd){ .fd = done[0], .events = POLLIN };
-+	EXPECT_EQ(poll(&pfd, 1, TIMEOUT_MS), 1) {
-+		TH_LOG("removing " CONFIG_PATH " waited for the reader");
-+	}
-+
-+	zero.range.start = (unsigned long)buf;
-+	zero.range.len = psz;
-+	ASSERT_EQ(ioctl(uffd, UFFDIO_ZEROPAGE, &zero), 0);
-+	ASSERT_EQ(pthread_join(rt, NULL), 0);
-+	ASSERT_EQ(pthread_join(ut, NULL), 0);
-+	if (u.ret)
-+		SKIP(return, "unloading configs: %s", strerror(-u.ret));
-+
-+	/*
-+	 * The page that was read before the removal still arrives and the
-+	 * next piece isn't filled anymore, then nothing.
-+	 */
-+	EXPECT_EQ(r.ret, ref_len);
-+	EXPECT_EQ(memcmp(buf, ref, ref_len), 0);
-+	EXPECT_EQ(read(r.fd, buf, psz), -1);
-+	EXPECT_EQ(errno, EIO);
-+	free(ref);
-+}
-+
-+TEST_HARNESS_MAIN
-
--- 
-2.53.0
+ net/atm/proc.c                     |   9 ++-
+ net/core/pktgen.c                  | 128 +++++++++++++----------------------
+ net/l2tp/l2tp_ppp.c                |  20 +++---
+ net/netfilter/xt_recent.c          |  19 ++----
+ net/sunrpc/auth_gss/svcauth_gss.c  |  34 +++-------
+ net/sunrpc/cache.c                 | 133 ++++++++++++++++++++++---------------
+ samples/kfifo/bytestream-example.c |  18 ++---
+ samples/kfifo/inttype-example.c    |  20 +++---
+ samples/kfifo/record-example.c     |  21 +++---
+ 9 files changed, 177 insertions(+), 225 deletions(-)
+---
+base-commit: 65ba8f34ec886ec72b2c07ddc8cf3d815c32869d
+change-id: 20261101-work-procfs-net-bc8b21e3eff0
+prerequisite-change-id: 20261101-work-procfs-core-8fa4a4f412cf:v1
+prerequisite-patch-id: 0474af12959624910718795bf86684383664c685
+prerequisite-patch-id: 540aa9ea28adcbc54d8264f66314e29e3b8c9d49
+prerequisite-patch-id: 2f7139d1c972c4439dccca610caa5f1288987a3d
+prerequisite-patch-id: b0031a7c4855b7ec38259c59f30f65101a8fc4b5
+prerequisite-patch-id: 0b7f226abf2b9ff41873a1aa55cf97747647d56b
+prerequisite-patch-id: f63e345f897619af54813958046617c655fb7daf
+prerequisite-patch-id: c0e21e762a2960e3324c5ab04634a7035e515fa6
+prerequisite-patch-id: fd59c71eadd8f39c58b3baea93567bc093bc9b0e
+prerequisite-patch-id: 5d52cc8a5c73e4c5ba16b8e24f51408c17583bf9
+prerequisite-patch-id: 1f9179284e2f3314d4b46ac5e989089a21c7576c
+prerequisite-patch-id: 10397bbf696bee16dc71eb79fff6c5e73842bcbc
+prerequisite-patch-id: 9b44279dcf08912238d2f6438a3328a778a79a0c
+prerequisite-patch-id: 16854b621a3a71dfc365aaf7abaa7f65adfe9f7e
+prerequisite-patch-id: ca42eea21fae1fd1cd3518ab057c74b61ffd68fe
+prerequisite-patch-id: 23255dc2be76b0479c083dbd4c897bfbb533aed5
+prerequisite-patch-id: 82129c687ebf0a41b369893b92f2c038420ab801
+prerequisite-patch-id: 56ad57a99a5bda075a9f4e844368974296744934
+prerequisite-patch-id: 288b3cbaa11e01a778cc3d7beb6c0549aacf59f2
+prerequisite-patch-id: a163b1549608652bfa5bd9ff93efa55b541010c4
+prerequisite-patch-id: 78f067c343177e52d49ddfe9ee2992e602549869
+prerequisite-patch-id: 19c12bc6e3fbed35acc1f657196b1a997f48cdfe
+prerequisite-patch-id: 5800c3076694bad719954b2ad4d7448c6e013bfd
+prerequisite-patch-id: 2a2f63d8843b159594b9eee6ddea028ce76a6270
+prerequisite-patch-id: 40a1951d57906c4a1b98a4bd96a814b80339b9c5
+prerequisite-patch-id: e2141077e69f20a2b27fab69c8d61d0686682f53
+prerequisite-patch-id: c4d6018c26c40dc549d88330d23ce48f872c2b7f
+prerequisite-patch-id: 6de8ec17746031bc6d1d9ac262c5be0f905fcd79
+prerequisite-patch-id: b87bcb167884605bff1fd0f2ed8a88942d07efd5
+prerequisite-patch-id: cfa9a8b4c67e20cfd22d77035bfd21ee96ab3298
+prerequisite-patch-id: abf3482ed2399b7b2e1ee72e937af05bb9200667
+prerequisite-patch-id: 02c175b2dee565a85b3308ecf2ec8e3c9a029e0f
+prerequisite-patch-id: 4ed6b3d3d45de49d4967e88ba4e7f03372775f55
+prerequisite-patch-id: dbe02fe3f784776fda5e7ae99f077bef0cd4b48d
+prerequisite-patch-id: 53edc9a95afff57c4acba40095a8054924261ea2
+prerequisite-patch-id: cf9ce0099005fd3bc31a1e15131d48e315ac3bee
+prerequisite-patch-id: 16a657a5d0046068dbace29e7ea046ac1441f46f
+prerequisite-patch-id: efeb2d6f7df71d5dede2c1d12fe999a28e38aab9
+prerequisite-patch-id: e6ffe2a5c3ee5645f56c8366b568fbc9f140848c
+prerequisite-patch-id: 117db27dcdef433de7c6be5e95973cac1e373927
+prerequisite-patch-id: a0844aa26ffb65ccb362b88ef6c2f4758e15edbf
+prerequisite-patch-id: 143fb91bddf33068b6ee11e205818c4c2815e23d
+prerequisite-patch-id: 6490e4da1cb2f543683bd164bc9a5a1c943057e7
+prerequisite-patch-id: cdefca57d3c552fb6f6b928699edd85f33be25fd
+prerequisite-patch-id: 2f0fdb970ddd760d85ff5d2caad0b96348270182
+prerequisite-patch-id: f2aa468ff5cbb1cabab3f70e1b8eeee0286cfb4a
+prerequisite-patch-id: 037030d95eeb7c49b1e43f638ec954f2cebbcfb1
+prerequisite-patch-id: 487141c49e2548310bfb6c2a0964a78f08b285a9
+prerequisite-patch-id: c3d3008819fa5629a18142ec9ba6d7024ade7fdb
+prerequisite-patch-id: ba15e7c86b60ccc2f0f7ee4c9bc99073068757bc
+prerequisite-patch-id: 9423f410b99853693db06c29f12f1c08278b050d
+prerequisite-patch-id: 4e7966978e4b11c4d843831f312cdcd5b848f00c
+prerequisite-patch-id: 3d24be1897a624d519ef144801f76d152c7528a9
+prerequisite-patch-id: 3b4d9fe7b26f6b7b9b3f7725ea333df357107c44
+prerequisite-patch-id: 7d9dd345428baeb88c862ef902612f7160dc1d8c
 
