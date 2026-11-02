@@ -1,90 +1,91 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.51
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.50
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793627821;
-	b=O8z+i11wd/Rbg24qpP3gvwSSaCOSK4WlBjId1EUi9SHO2eNs60SU1miLGzO1wEMraSLz
-	 eDccn1eQxn6f0Mpetb2WXHrpwTvsiE55qMplHRsXPP8LpACI5jpc0l3MfTCldoYPo8a5s
-	 vZWE9nXq4RrQAqH1VUwbP35si8n95+N8NQFHMcq562mdV56pm264e3V6XX/IYMRtwII5i
-	 dhGNqBhCmX+KWCHu9bx/0NMtd1vvLBsuK9l7cisIvRWVKRWAYO0veIjTDPsgwAJWrL5el
-	 dw7vMeGGKAVCYXkWWrpBmyCdUCGCaCbCxkNrdrKzURBmaawxe9dbTgRB7n/LssuIf2A==
+	t=1793627822;
+	b=13VtxMUCnJV+iO+okMEKJ0dTrBW6bK5YeKkF7jRyXM6xZ7BvMz6TPbYPfe33/gsEJm2i
+	 85AhH1nDmm0pFYhbA5EN5Uj4Yhn0A4uvgnh0GtG6Yo9nRP+o842hMFK3fNNdVwUZ7a9pJ
+	 6kG+KcgzUCOg5ftu84htN9EBo6SkA8VvqhA1KWvosWVG+xOpttazkfeM3ImsPfGjrVVj7
+	 uLP1ghtioxAsRUVq4OUag3Q5Kybt3ZVVA8ZX3+UnaJjd4x/eFn+jpRbhyt97UjHQYaz1A
+	 R5sRfaKpmGBx5ik10POckrNrPn53gi4TcTSSeY5KKm5AUvWEMWxNq/7A4MQ2aYmtoFQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793627821;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793627822;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=yKEoD2WnccSKIKjWMhLV0TgJJDrgekDC9vZ/Nxmeqh0=;
-	b=KVGu9i0KU8OgY4NNVzwhcfp4cCmB2R2Dnth+p/N2bYyB7b9SWXW34/QYC4FFPVSOxg3f
-	 68//flsV6Dn4/628Jl0x5o+xZ2p1qRfc+tQc4YgYXdHI2mhUCJ8uWHk/d5JQLpOkisdee
-	 xnkpQ5wcY9dr7WV+syCLy0iMP2ZQr+F+UdRoWoOcpH+m4BHn22d05rs6Sqx35H9gttaJw
-	 NANgDlFsRDc4D8N8ywom7goVzCRzl9OhQDG5i9IfUS77nT9nbyOF2/3yInt01gL+QpVk8
-	 gkYa2hQcVkryGUOOIqN5HAn42R8jC3OpyK++VSVaTfSisakuRCwwofZPNdpfvtKNFAg==
+	bh=O8baMiaE0fhZda2TyIGfcVSoOSJpHnUj6SY3szVRUN8=;
+	b=WeDy4/W+KnqwEE1LLZvlSo0AQTZ5+tH1j+MaIO1ttNeNKKxRCySOqPK3dorzZc5doRfm
+	 wKTDKQ7i2R3p/FSDqAHcqOcM7vMG46rNiOYz0dpVEUywczIbPSUK2m0GDkoY/KiIm1WhI
+	 3I4RtvO8veEQRlzk/r7jhk7QIIVsUXdAt4jhaAl+ddKyss6XnNoL0rM/0GxquXlLxxPmO
+	 KmRofTmVO2rPDy+7m9Qjq/NXP3xDf7EVwSf5FSQvJqp0bOyhOVfhpe1kjhQXNouH/H11U
+	 z1URZQ+0ABrfpno9N9ccaPCCZXuvFawUyaaD5RMnAOJFGgt41UCq1IQoR4IQaGpWiTw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=hammerspace.com;
 	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=X7wJzR8y;
-	arc=none smtp.remote-ip=209.85.210.51
-Received: from mail-ot1-f51.google.com (mail-ot1-f51.google.com [209.85.210.51])
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=mLROe5GO;
+	arc=none smtp.remote-ip=209.85.210.50
+Received: from mail-ot1-f50.google.com (mail-ot1-f50.google.com [209.85.210.50])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2999360A2606
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 13:57:01 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2999360A2606
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 44C3760A261E
+	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 13:57:02 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 44C3760A261E
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=X7wJzR8y
-Received: by mail-ot1-f51.google.com with SMTP id 46e09a7af769-854b6e2e41fso1939110a34.3
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2026 05:57:00 -0800 (PST)
+	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=mLROe5GO
+Received: by mail-ot1-f50.google.com with SMTP id 46e09a7af769-847ac7ccd85so2006638a34.3
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2026 05:57:02 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1793627820; x=1794232620; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1793627821; x=1794232621; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=yKEoD2WnccSKIKjWMhLV0TgJJDrgekDC9vZ/Nxmeqh0=;
-        b=X7wJzR8yIBe4PlI204Ft+HJhfgCS1+1PWAFsLA8vGXWhSX2py2cWbup3DaNlT5skAb
-         lci3LCecUPWv0K7pAdxw9njSQGhz6txD0D2Wuv9AMGYPVyrE9y24l5F1NMOlUKTFwI7q
-         RbgCfWzM9qd7gRRRRNhHC1SpYC8yeYTCo56cEoXpzX/Pugtoi24yA7zNdsGzo7uvKqsn
-         rUVFp3tktMufUY2wresKfqkujtumgVfvjYE4JEReMeHfvuX92K98Y2Y7+gpsB/1m3PRq
-         aszTiir/gnZYWxFOx+m/rE8XlLc/Ox1nWjcAxaV9zk2nyKKUi6kcTc4XuJf1HDwNwj3o
-         vJlA==
+        bh=O8baMiaE0fhZda2TyIGfcVSoOSJpHnUj6SY3szVRUN8=;
+        b=mLROe5GOoOhNE09bGauY3v7Y7xa3ol9e4b9oL0XHyKJQ74zbiX5qS3ZW7sNZQHsWoN
+         1yniieIEUObI4vFwNYdvVMlT9Oh42NHyRpHPMpPHXUbgyUMHfq4VYTQCc8tqWzrreqkA
+         4drMtpMXnBstm38ziFRKhXHSwz3dtKyQMPnFqV4beTmUCsd2ZD0+EQVssdZ3wf7i1Kpr
+         JH/DZTWldRJ0UR/ffEvC9B9hXDMr5KmtA0ilPfpzJwMx8/j/LOjL1GRU8RikARU5ixH4
+         W8BG6wP/4CXOu8OM2Qmc6L4/ZMnChzhRQoD2eblpMEWAwrStq4vaVyfVv7PJNTDwZCud
+         IJFA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793627820; x=1794232620;
+        d=1e100.net; s=20260707; t=1793627821; x=1794232621;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=yKEoD2WnccSKIKjWMhLV0TgJJDrgekDC9vZ/Nxmeqh0=;
-        b=QFAHkRRyYZll6MTWNXG7a0vFJxkpisIKoO/wtrgnCcy7C7lljvZv9YFAnCihMCKb/u
-         S0CPJAB0hPIvaENLSsQmUbaGeC236HAd1JeRfbettKbLG3QdZjSN4AdJEG5NgUPNL2xS
-         4m6m5vXWAr58Vxhd9xRiJh+VdG/tdz7QuXuApblNw3yghotaNbh4gq4+OGfyZc6fZepE
-         w4r/kBwh4EPL6+YVl9+0ovHEOLn0lUneyhsLP4HtIG66hls7QLfY/wiUOgfxbhh5xcCx
-         r/PNe6P4k0LoPPEtmHkIE2ARuQ1fxQdt22JdqSHIetcevUWqh3RECjUAZaQ561jSglb3
-         +rlw==
-X-Gm-Message-State: AFq9FYIy0Iy1aUJ5uLAa2dB5H/Mp0+7su6+ATt3i6fXHWd7K2CA/QXBI
-	8j0ejQZDW3Sz1W5j8/ZGk7y9nVkPHC+ihPj0pHkJq+69sLueWq8h6Aq8DHx9vSq/Tw4=
-X-Gm-Gg: AYBFou23zRCZQ6nD0EId8lhP16pSI1DRUxu9sbUyVg1RudmWiW3VYWi2LBYudr0+zM/
-	5etG4Xd/d04PCfDXRPct1ll8nfC0TtWNzzALmcppMHg+YR9BX45RgGssnJgIvzTimm73/VUd3tW
-	e/8r+2r4G10uOv0roCvnPwBSTLoGurvQ+sPUyb0wOUhLATd4ybZO3J1mljsTOVdO63Hc7Y+A8HL
-	UIGsS1gMe77FaTPzA+JsqUPLYL4up2As3TzpXgeZGoKhu1rhJWwsD5zqkEe2QV04ZmfU5m4fhKA
-	250fA+ygERxTzZ9iJjG2NmdKF2AANhgIuK6tZzbsXpqgVZHANbihUrNqsPqQqOCH1zhgxEmtuD/
-	WMjB8oSEhxy05JPh6GL3LVDqu9BtIkOtu/2iAisC3VUc7fWuggE7+LTNMIEroK7TRvMIbDyosVy
-	rWZax1zXQIodNAafBRZZRT/SdqYqmb8zv8S+dO1904f1BKlQjAxdelwADdJUc+IRdXyzdXKAgNB
-	9wzXyWSCHWgaBdSMEobANlHxSGIQCBiVHbOz9qtsGNffHEuNUH5yqapkHfmVExprgFFkMDC6WNd
-	7h18FqLwW/fQCWEMwLM9fjluOoExHVABAtscIMG7O3MzImFaK2A+C+vl0M2Uz076ht6K2Hc4
-X-Received: by 2002:a05:6808:198f:b0:4bd:c8be:1e00 with SMTP id 5614622812f47-5640dce8abcmr7761101b6e.13.1793627819881;
-        Mon, 02 Nov 2026 05:56:59 -0800 (PST)
+        bh=O8baMiaE0fhZda2TyIGfcVSoOSJpHnUj6SY3szVRUN8=;
+        b=BMf7ku8nwE1AY6riw0RPVlGfhB/H9XbOoaBKmOCQY0OzOKWnyw++hP0OqaptZ+4PG4
+         uxfCuCKzVm2gZGbUW+jd/LErcZ1mjdGQTbM8Y3Zj7S+vpvGWMuDxsMC+/XcZlUzHI7xT
+         TNBXIeVmJAm7+DWRHXLirPqmxt4jCWtxt0eqIVh9SmaQgblQHgrnlldtjqBMhJh4smVa
+         rqrjxHywFkBeX6sETDspjJvvDNqjGlJlpTsbHOZYzyREjgtRm1giHBX44t22qT1pqjf7
+         +uhg0Npr8u9LdCF6pRFisho7cfeqKJoyhAaMjkpzGg2Ewz8gWMLEHhLLCkHrTA89MZl0
+         ic/Q==
+X-Gm-Message-State: AFq9FYK0zf2Gzl7JfmytcbnyXdIk0DF4YIeDgMbzpF0Tqj/QcxSYxXy3
+	QfYMBbUicfgofKkkzTQEb2tEiC/xwkyvYwEIo24y+8QBBdN051RVIn4TQzKV4H4NsOo=
+X-Gm-Gg: AYBFou2sdE+T8/QiG/J/I3CmwT8npo7Jbh/PZoR4/P1CdPnJPbkER4EdQiJt4Mb8KcV
+	bf5E4xDp+CXVpy7mWiT4n8wXt4hQ+1WDuRiZpTnVENvW0u13qD/rCaRWWp6/h6f7rSsCICdwFE1
+	cWGkYXLg9+WV0dZtMVORJQH9ntA9GWgTVBvZN6/nNZaodSY3tVJpQ7W2fdKwO8F3e53KYXAL+0S
+	1S3AkvW4Lu4ZKNYvZggkqlZYmF8BO0T6SSFQC+zbG8di+W+Vvgw2SeULe3qwm6KWF2mkRAC51jL
+	JF/TDqmr99tTq8supwz2PRCamWlELCaNCeba3abJYHI7EWapF19VFiZGyL8PY86/akI/iGfBdFC
+	S1fBwzyeJCfv0a2sc0NBnUOCBlp9qYS/JaOqzVvZDMVzVkHJ4vmom96P/HvTfZjZWmZc3gKrW9g
+	i9yrTD0zs9ttZNg0tLkTMAtljQFJtmklPypE7VxIeiIJjyPITgflEvXlHli1mgLcXOgagPswacI
+	GhBYRCVt1ao3V19Jg7hOnbzBQdTc8MHaIItaM0QB/KGDKkfp2gdroQ1i62+PbzmaNiQ4AqqEu+I
+	J2ej9afuNeLb+YU2Vtmji6clFx3weoPhwJLmb3MawcWtRBGUNwFjGY9y0rYsyNujS24lReTh9g=
+	=
+X-Received: by 2002:a05:6808:1992:b0:4f4:be18:5de2 with SMTP id 5614622812f47-5640deea03dmr7297472b6e.13.1793627821070;
+        Mon, 02 Nov 2026 05:57:01 -0800 (PST)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-5640fd95562sm7980806b6e.4.2026.11.02.05.56.58
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-5640fd95562sm7980806b6e.4.2026.11.02.05.57.00
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 02 Nov 2026 05:56:59 -0800 (PST)
+        Mon, 02 Nov 2026 05:57:00 -0800 (PST)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>,
 	Mike Snitzer <snitzer@kernel.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 4/6] pNFS: don't send _NOMATCHING_LAYOUT if still doing IO on a layout
-Date: Mon,  2 Nov 2026 08:56:51 -0500
-Message-ID: <5f2d55cf0b37301ebe0a14427ded84767daaeffa.1793627813.git.bcodding@hammerspace.com>
+Subject: [PATCH v3 5/6] pNFS: answer a file recall with NFS4ERR_DELAY while I/O drains
+Date: Mon,  2 Nov 2026 08:56:52 -0500
+Message-ID: <9a4784a439d540b7ffdba1c201fce5f87e351b1e.1793627813.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1793627813.git.bcodding@hammerspace.com>
 References: <cover.1793627813.git.bcodding@hammerspace.com>
@@ -101,114 +102,111 @@ Content-Transfer-Encoding: 8bit
 
 From: Benjamin Coddington <bcodding@hammerspace.com>
 
-When a bulk CB_LAYOUTRECALL finds layout segments still referenced by
-outstanding I/O, pnfs_layout_free_bulk_destroy_list() invalidates the
-layout stateid, sets NFS_LAYOUT_BULK_RECALL, and the client replies
-NFS4ERR_DELAY.  If the server resends the recall, then
-pnfs_layout_bulk_destroy_byserver_locked() can skip layouts with an invalid
-stateid, so the resend finds nothing and the client replies
-NFS4ERR_NOMATCHING_LAYOUT with the I/O still in flight.  The server then
-treats the layout as gone, and that I/O can reach the storage device after
-the recall has completed.  The same happens on the first recall if another
-path, such as a DS error, invalidated the layout stateid while I/O was
-outstanding.
+A layout stateid can be invalidated without a LAYOUTRETURN, for example by
+pnfs_destroy_layout() after an NFS4ERR_BADHANDLE, while I/O still holds
+its layout segments.  pnfs_check_callback_stateid() then answers a
+CB_LAYOUTRECALL for the file with NFS4ERR_NOMATCHING_LAYOUT, so the server
+treats the layout as returned while that I/O can still reach the storage
+device.
 
-When answering a bulk recall, don't skip an invalid layout that still has
-segments.  pnfs_mark_layout_stateid_invalid() reports them, and the recall
-is answered with NFS4ERR_DELAY until the last segment is freed.
-CB_RECALL_ANY takes the same path, so it also blocks LAYOUTGET on these
-layouts until they drain.  This relies on "pNFS: clear
-NFS_LAYOUT_BULK_RECALL when an invalid layout's last segment is freed"
-to clear the flag once the layout drains.
+If the recall matches the invalid layout stateid and a segment within the
+recalled range is still in use, answer NFS4ERR_DELAY.  As for a valid
+layout, cancel the I/O on those segments if clora_changed is set, but only
+for the first such recall.  Set NFS_LAYOUT_BULK_RECALL so that I/O needing
+a new layout goes through the MDS, or is retried if the layout doesn't
+allow I/O through the MDS, rather than waiting on a LAYOUTGET the server
+won't grant while the recall is outstanding.  The flag is cleared when the
+last segment is freed, and the resent recall is answered
+NFS4ERR_NOMATCHING_LAYOUT.  This relies on "pNFS: clear
+NFS_LAYOUT_BULK_RECALL when an invalid layout's last segment is freed" to
+clear the flag.
 
-The other walkers, used by reboot recovery and when recallable state is
-revoked, keep skipping these layouts.  They send no reply to the server,
-and reboot recovery would otherwise retry on -EAGAIN without sleeping
-until the I/O completed.
-
-Fixes: b85f562049cc ("pNFS: Skip invalid stateids when doing a bulk destroy")
+Fixes: bd3d16a887b0 ("NFSv4.1: Fix a potential layoutget/layoutrecall deadlock")
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
-v3: test for remaining segments instead of NFS_LAYOUT_BULK_RECALL, so a
-    layout invalidated by another path with I/O outstanding is also
-    answered with NFS4ERR_DELAY.
-v2: only revisit these layouts when answering a bulk recall, so that
-    reboot recovery doesn't loop on -EAGAIN while the I/O is outstanding.
----
- fs/nfs/pnfs.c | 18 +++++++++++-------
- 1 file changed, 11 insertions(+), 7 deletions(-)
+ fs/nfs/callback_proc.c | 12 ++++++++++++
+ fs/nfs/pnfs.c          | 30 ++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.h          |  3 +++
+ 3 files changed, 45 insertions(+)
 
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 722bb5475a48..a132990194cb 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -276,6 +276,18 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 		goto out;
+ 	}
+ 	pnfs_get_layout_hdr(lo);
++	if (!pnfs_layout_is_valid(lo) &&
++	    nfs4_stateid_match_other(&lo->plh_stateid, &args->cbl_stateid) &&
++	    pnfs_invalid_layout_busy(lo, &args->cbl_range,
++				     be32_to_cpu(args->cbl_stateid.seqid),
++				     args->cbl_layoutchanged &&
++				     !test_bit(NFS_LAYOUT_BULK_RECALL,
++					       &lo->plh_flags))) {
++		/* Block LAYOUTGET until I/O on the invalidated layout drains */
++		set_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
++		rv = NFS4ERR_DELAY;
++		goto unlock;
++	}
+ 	rv = pnfs_check_callback_stateid(lo, &args->cbl_stateid, cps);
+ 	if (rv != NFS_OK)
+ 		goto unlock;
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 08deb4d811e4..2d2904eb7d34 100644
+index 2d2904eb7d34..5429ab72c4ba 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -846,7 +846,8 @@ pnfs_layout_add_bulk_destroy_list(struct inode *inode,
- static int
- pnfs_layout_bulk_destroy_byserver_locked(struct nfs_client *clp,
- 		struct nfs_server *server,
--		struct list_head *layout_list)
-+		struct list_head *layout_list,
-+		enum pnfs_layout_destroy_mode mode)
- 	__must_hold(&clp->cl_lock)
- 	__must_hold(RCU)
- {
-@@ -854,7 +855,9 @@ pnfs_layout_bulk_destroy_byserver_locked(struct nfs_client *clp,
- 	struct inode *inode;
- 
- 	list_for_each_entry_safe(lo, next, &server->layouts, plh_layouts) {
--		if (test_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags) ||
-+		if ((test_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags) &&
-+		     (mode != PNFS_LAYOUT_BULK_RETURN ||
-+		      list_empty(&lo->plh_segs))) ||
- 		    test_bit(NFS_LAYOUT_INODE_FREEING, &lo->plh_flags) ||
- 		    !list_empty(&lo->plh_bulk_destroy))
- 			continue;
-@@ -933,7 +936,7 @@ int pnfs_layout_destroy_byfsid(struct nfs_client *clp, struct nfs_fsid *fsid,
- 			continue;
- 		if (pnfs_layout_bulk_destroy_byserver_locked(clp,
- 				server,
--				&layout_list) != 0)
-+				&layout_list, mode) != 0)
- 			goto restart;
- 	}
- 	rcu_read_unlock();
-@@ -943,7 +946,8 @@ int pnfs_layout_destroy_byfsid(struct nfs_client *clp, struct nfs_fsid *fsid,
+@@ -2766,6 +2766,36 @@ pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
+ 	return -ENOENT;
  }
  
- static void pnfs_layout_build_destroy_list_byclient(struct nfs_client *clp,
--						    struct list_head *list)
-+						    struct list_head *list,
-+						    enum pnfs_layout_destroy_mode mode)
- {
- 	struct nfs_server *server;
- 
-@@ -952,7 +956,7 @@ static void pnfs_layout_build_destroy_list_byclient(struct nfs_client *clp,
- restart:
- 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
- 		if (pnfs_layout_bulk_destroy_byserver_locked(clp, server,
--							     list) != 0)
-+							     list, mode) != 0)
- 			goto restart;
- 	}
- 	rcu_read_unlock();
-@@ -963,7 +967,7 @@ static int pnfs_layout_do_destroy_byclid(struct nfs_client *clp,
- 					 struct list_head *list,
- 					 enum pnfs_layout_destroy_mode mode)
- {
--	pnfs_layout_build_destroy_list_byclient(clp, list);
-+	pnfs_layout_build_destroy_list_byclient(clp, list, mode);
- 	return pnfs_layout_free_bulk_destroy_list(list, mode);
- }
- 
-@@ -1000,7 +1004,7 @@ static void pnfs_layout_build_recover_list_byclient(struct nfs_client *clp,
- 		if (!(server->caps & NFS_CAP_REBOOT_LAYOUTRETURN))
- 			continue;
- 		if (pnfs_layout_bulk_destroy_byserver_locked(clp, server,
--							     list) != 0)
-+					list, PNFS_LAYOUT_INVALIDATE) != 0)
- 			goto restart;
- 	}
- 	rcu_read_unlock();
++/**
++ * pnfs_invalid_layout_busy - check for I/O on segments of an invalid layout
++ * @lo: pointer to the invalid layout header
++ * @recall_range: range being recalled
++ * @seq: seqid of the recall
++ * @cancel_io: cancel I/O on the matching segments
++ *
++ * Returns true if any segment matching the recall is still in use.
++ */
++bool pnfs_invalid_layout_busy(struct pnfs_layout_hdr *lo,
++			      const struct pnfs_layout_range *recall_range,
++			      u32 seq, bool cancel_io)
++{
++	struct nfs_server *server = NFS_SERVER(lo->plh_inode);
++	struct pnfs_layout_segment *lseg;
++	bool busy = false;
++
++	assert_spin_locked(&lo->plh_inode->i_lock);
++
++	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
++		if (!pnfs_match_lseg_recall(lseg, recall_range, seq))
++			continue;
++		busy = true;
++		if (!cancel_io)
++			break;
++		pnfs_lseg_cancel_io(server, lseg, NULL);
++	}
++	return busy;
++}
++
+ static void
+ pnfs_mark_layout_for_return(struct inode *inode,
+ 			    const struct pnfs_layout_range *range,
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 2774d4adf4c3..0fb3c7fd8a27 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -323,6 +323,9 @@ int pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
+ 				const struct pnfs_layout_range *recall_range,
+ 				u32 seq, bool cancel_io,
+ 				const struct nfs4_deviceid *devid);
++bool pnfs_invalid_layout_busy(struct pnfs_layout_hdr *lo,
++			      const struct pnfs_layout_range *recall_range,
++			      u32 seq, bool cancel_io);
+ int pnfs_mark_layout_stateid_invalid(struct pnfs_layout_hdr *lo,
+ 		struct list_head *lseg_list);
+ bool pnfs_roc(struct inode *ino, struct nfs4_layoutreturn_args *args,
 -- 
 2.53.0
 
