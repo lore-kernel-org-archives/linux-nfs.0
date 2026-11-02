@@ -1,49 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793632913;
-	b=GGfKPca+jsxsFZeKLAbrUl2PH7YuEcDFwp7FxtxuJQ4qJS+NccpghQpuz+f4w55PIkOg
-	 ebfp8JuCsnc10VzYb4NsWgdY9E9Mx6c4g4fMOunYiL6/syn1raOGm152yH0Pl5jTXcOBc
-	 EI+kLMVtjqTcqidBCt6C9aRqlRDLMY+COoQ9WMU9P2kotpb3MzwO33YhfIQZ5o2yRGD4c
-	 k9lsD8P56iKtZXMKyqt+w9WtJfHpc8XpXHt2wUXxN12lX7s2EhLeu7pVDwrdxLeS4XUOu
-	 +4zbqLuz/s91Oc93E0OizevVLhIrrCX+riv0e8/gXB7R/WDeB/4o97M6jGG2g1SbVKw==
+	t=1793632972;
+	b=P+MuSxlqSEJ+5iSFxeOf+Dhq181FlkQtuAjycyHAzBF0got+6UHMBAr5m1fm+uQm/Q94
+	 4BeGbkG/WheYfdvU1OAPyz4szGemWdTl+kw4NEmIlmCLLsKiRGSOtFLkG6zeZUa2nGFQ9
+	 zx/a13TL5q+weHyV3Z3XjSOkqVKa4yyqoM6s3lJjfv7OgxiCf1LeLleP0d+rfLfMPr2kt
+	 GZSt+/yaPVcEMcbLEL6Ttwzs9NYnh8HvKRZffag8OEQaGKX3qJUrpOxsNk5mu7Nu972fl
+	 qylDmWg87GMKdlw3Yuf5d8MBpAQkFuP/V+ft2YHGoHPj6z1j3p70U1n4Acre2HIi39Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793632913;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793632972;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=+Br5BKTNsV9SKJ+VKUXfa+LuXFyw/MNJN1rBJWSG1Dk=;
-	b=qEIaXexBeeOeFyhSwozOxj5XTNyvqnfzjLf8ClkH71cG6HpjtPi5KVl2g7VD4CCIcMeN
-	 OuIQ/0u3ouMmxMQzyllZfBgtlOaTFoDoiE8onEep7L9nZqRxRGwn7r7yKr60oOupZiQLf
-	 HLlE2OhG4b/gF5HTDbK4iNLMEQgXvzFmmSMRsOqP2cTEJJrgVW1DlwQm9dftjEgqPrDeo
-	 E63eNE6v47q9nKuooWga5rjF2iBb6RseqsEqLQuHyEgnyEQRiwCNnK+C9qDLX7gKPQPfx
-	 e08HO7UeQWZnsDGqjOV5g81i196an8VaW1VB7KWSNMfs4+m9x1g8XeWvl5C5gTV3kgA==
+	bh=nlVd2d+i8P+1hcARtfAVoMomzYlKlzmY39R4NNuEpHM=;
+	b=1mG0mP7hfB4Vvbf2KqSTkii573U8KadJ8Qu18TzllTrlFls5YFAGpm/Io/GgiGBnJHU1
+	 0TwkfmHBMTmVThHtF/ywXemWSY8d7AbaZTQmFX81ePL7PNxBzB3q3d1QzJmE1/wC+1Qy1
+	 ASepoIo7rxWZQLreztcmOv5bAQiWB+oJnGO7j1yjPr5TqAiARUgr2Un8CaHpZAbaI5Kv0
+	 Tj+vD6NYDkX54tnNIjFfcbZtR4mzgv0PBLEQK/BlWAzeEzT07QqLwQ8qzOxAwPWKEZh7/
+	 pO7Lw+zsp4gbNPbZc09wVzUi9ONM/MBDYdE8mEgswm0B+tuxqRhEpQh7c47nJ81zEGA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BaGFkmgd;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=N7s7Rr4t;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F36C66080484;
-	Mon,  2 Nov 2026 15:21:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7FACC60822AA;
+	Mon,  2 Nov 2026 15:22:52 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BaGFkmgd
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 51A5D1F00A16;
-	Mon,  2 Nov 2026 15:21:36 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=N7s7Rr4t
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B8A341F00A16;
+	Mon,  2 Nov 2026 15:22:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793632912;
-	bh=+Br5BKTNsV9SKJ+VKUXfa+LuXFyw/MNJN1rBJWSG1Dk=;
+	s=k20260515; t=1793632972;
+	bh=nlVd2d+i8P+1hcARtfAVoMomzYlKlzmY39R4NNuEpHM=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=BaGFkmgddplAg+7kWtOO3Xs2bTNw6C/l7s/H+s/ARAFWAG8PiIzq4DHKs1pIJtkZF
-	 MLQLlN2WfsWYgrHwMGc+LaYjthSVIYcPsAQ4ZVs0x8SWftIxeVXIb74Yi6DeQgLPv3
-	 MnvwnjVA4w76GNzJNNroqO1Ub2Of7dy2AD2kO3QhN5NULX8sENf6yS60Ffvc4YDPhz
-	 AVUwEuacSjAOwoVTTIoFEsTOOa+8af3coYqbYIzhqzqGrILTs/bIDcsXX7gywt7ryQ
-	 fcrmpnyg6ue+WCi9ocPVHrRqPbxVSWScBXs/eHykFP/KwB1QkPorU1BSb4GtLYc/Ew
-	 +SFzyKl+Rjtbg==
+	b=N7s7Rr4tn3noqVfU8ebbTIIEWsKpdqgT+vIEG2HnGddiV3nggMKyYoGDj/dhoH8Vq
+	 ykGauAPuLUU5xa/vSRC3ueradsxUXOZ+CU5fhTRxKMkYeniVJSxxh+7XnsbQo9GOIo
+	 kl5er4X6Zyfc19tK58DDmyE3rvqIlJMd5P+NnIHIYCW7eJ0nVIc3reeuMF9tI3shvO
+	 dJHH4mpYslPnfwvIjH5M1oVmYQ9fp/68TG4Lki2zdADEB+MxmTuGZLfFaIacVgOCTw
+	 EkE5kA3ueLSgfhcq7xnVt0sk26H7smSSBt3/KD8tcF0DWKT0j/NGB2fjO6tk/NHJav
+	 t2zQbmoM3V44w==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 16:07:17 +0100
-Subject: [PATCH RFC 07/27] ntfs3: let procfs copy in writes to the label
- file
+Date: Mon, 02 Nov 2026 16:07:19 +0100
+Subject: [PATCH RFC 09/27] smb: client: let procfs copy in writes
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-fs-v1-7-d09a996317b3@kernel.org>
+Message-Id: <20261102-work-procfs-fs-v1-9-d09a996317b3@kernel.org>
 References: <20261102-work-procfs-fs-v1-0-d09a996317b3@kernel.org>
 In-Reply-To: <20261102-work-procfs-fs-v1-0-d09a996317b3@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -91,86 +90,274 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2130; i=brauner@kernel.org;
- h=from:subject:message-id; bh=1xpKZw46Wve9Gi/wwfJco67jsfuLoZVG6n9ZzMkX5cA=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG70gMfQcsmsxZVZlz3llvU6P9Q+FGFvnWXM+sG1i
- OvlzHMNHaUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhnCwMUpABPZtYzhr8TWhVUbp6lu+ajh
- slFF/whfzqNX3hf5107YP/PoQl9+338M/32S/bhdbNlEs9ZN/nX/VOfslLOLVi/+18m6pJt1w+5
- V8TwA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8830; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=FT7LQYM7T+jx4y6th5QoquEbwgmi4EXWnyiLf7yiyR0=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG6UE1Kj2JasoSuw1cLeTY1F/vT+AL6dHQYRE+L/m
+ /85fbWto5SFQYyLQVZMkcWh3SRcbjlPxWajTA2YOaxMIEMYuDgFYCK5iowMt/4Zrlyed+nx1PoX
+ bZ8ueD2fvy8usejek35PnjnPrnG58jH8061VYfu2bPIkF7FFodNvdS9Wbv9bOE/KzDIo3I9hxR8
+ udgA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Implement ->proc_write_buf() so procfs copies in what is written before
-it pins the entry, and set the label from that copy. Writes larger than
-PAGE_SIZE - 1 bytes fail with -EINVAL from procfs now. A write that
-large only ever worked when most of it was trailing newlines or came
-after a NUL, ntfs_set_label() refused a label that long with
--ENAMETOOLONG or -EFBIG.
+Implement ->proc_write_buf() for the files in /proc/fs/cifs so procfs
+copies in what is written before it pins the entry, and parse what was
+written from that copy. Writes larger than PAGE_SIZE - 1 bytes fail with
+-EINVAL now, SecurityFlags never took more than 11 bytes. Empty writes
+to cifsFYI and dfscache fail with -EINVAL too, they looked at a byte
+that wasn't written before. kstrtoint_from_user() looked at the first
+34 bytes of a write to cifs_debug_dirs and the smbdirect files, now the
+whole write is parsed.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/ntfs3/super.c | 27 +++++++++------------------
- 1 file changed, 9 insertions(+), 18 deletions(-)
+ fs/smb/client/cifs_debug.c | 62 +++++++++++++++++++---------------------------
+ fs/smb/client/dfs_cache.c  | 13 +++-------
+ 2 files changed, 29 insertions(+), 46 deletions(-)
 
-diff --git a/fs/ntfs3/super.c b/fs/ntfs3/super.c
-index 3d669e957ea4..fca73d2766c0 100644
---- a/fs/ntfs3/super.c
-+++ b/fs/ntfs3/super.c
-@@ -536,37 +536,28 @@ static int ntfs3_label_show(struct seq_file *m, void *o)
- }
+diff --git a/fs/smb/client/cifs_debug.c b/fs/smb/client/cifs_debug.c
+index 664072ab3342..fb1323bf44c7 100644
+--- a/fs/smb/client/cifs_debug.c
++++ b/fs/smb/client/cifs_debug.c
+@@ -359,12 +359,12 @@ static int cifs_debug_dirs_proc_show(struct seq_file *m, void *v)
+ #ifdef CONFIG_CIFS_DEBUG
  
- /* write /proc/fs/ntfs3/<dev>/label */
--static ssize_t ntfs3_label_write(struct file *file, const char __user *buffer,
--				 size_t count, loff_t *ppos)
-+static ssize_t ntfs3_label_write(struct file *file, char *buf, size_t count,
-+				 loff_t *ppos)
+ /* Drop all cached directory entries across all CIFS mounts. */
+-static ssize_t cifs_debug_dirs_proc_write(struct file *file, const char __user *buffer,
++static ssize_t cifs_debug_dirs_proc_write(struct file *file, char *buffer,
+ 					  size_t count, loff_t *ppos)
  {
- 	int err;
- 	struct super_block *sb = pde_data(file_inode(file));
--	ssize_t ret = count;
--	u8 *label;
-+	size_t len = count;
+ 	int rc, v;
  
- 	if (sb_rdonly(sb))
- 		return -EROFS;
+-	rc = kstrtoint_from_user(buffer, count, 10, &v);
++	rc = kstrtoint(buffer, 10, &v);
+ 	if (rc)
+ 		return rc;
  
--	label = memdup_user(buffer, count);
--	if (IS_ERR(label))
--		return PTR_ERR(label);
-+	while (len > 0 && buf[len - 1] == '\n')
-+		len -= 1;
+@@ -390,7 +390,7 @@ static ssize_t cifs_debug_dirs_proc_write(struct file *file, const char __user *
  
--	while (ret > 0 && label[ret - 1] == '\n')
--		ret -= 1;
--
--	err = ntfs_set_label(sb->s_fs_info, label, ret);
-+	err = ntfs_set_label(sb->s_fs_info, (u8 *)buf, len);
+ static const struct proc_ops cifs_debug_dirs_proc_ops = {
+ 	.proc_show	= cifs_debug_dirs_proc_show,
+-	.proc_write	= cifs_debug_dirs_proc_write,
++	.proc_write_buf	= cifs_debug_dirs_proc_write,
+ };
+ #endif /* CONFIG_CIFS_DEBUG */
  
- 	if (err < 0) {
- 		ntfs_err(sb, "failed (%d) to write label", err);
--		ret = err;
--		goto out;
-+		return err;
- 	}
- 
- 	*ppos += count;
--	ret = count;
--out:
--	kfree(label);
--	return ret;
-+	return count;
+@@ -713,8 +713,8 @@ static int cifs_debug_data_proc_show(struct seq_file *m, void *v)
+ 	return 0;
  }
  
- static const struct proc_ops ntfs3_volinfo_fops = {
-@@ -575,7 +566,7 @@ static const struct proc_ops ntfs3_volinfo_fops = {
+-static ssize_t cifs_stats_proc_write(struct file *file,
+-		const char __user *buffer, size_t count, loff_t *ppos)
++static ssize_t cifs_stats_proc_write(struct file *file, char *buffer,
++		size_t count, loff_t *ppos)
+ {
+ 	bool bv;
+ 	int rc;
+@@ -722,7 +722,7 @@ static ssize_t cifs_stats_proc_write(struct file *file,
+ 	struct cifs_ses *ses;
+ 	struct cifs_tcon *tcon;
  
- static const struct proc_ops ntfs3_label_fops = {
- 	.proc_show = ntfs3_label_show,
--	.proc_write = ntfs3_label_write,
-+	.proc_write_buf = ntfs3_label_write,
+-	rc = kstrtobool_from_user(buffer, count, &bv);
++	rc = kstrtobool(buffer, &bv);
+ 	if (rc == 0) {
+ #ifdef CONFIG_CIFS_STATS2
+ 		int i;
+@@ -854,16 +854,16 @@ static int cifs_stats_proc_show(struct seq_file *m, void *v)
+ 
+ static const struct proc_ops cifs_stats_proc_ops = {
+ 	.proc_show	= cifs_stats_proc_show,
+-	.proc_write	= cifs_stats_proc_write,
++	.proc_write_buf	= cifs_stats_proc_write,
  };
  
- static void ntfs_create_procdir(struct super_block *sb)
+ #ifdef CONFIG_CIFS_SMB_DIRECT
+ #define PROC_FILE_DEFINE(name) \
+-static ssize_t name##_write(struct file *file, const char __user *buffer, \
++static ssize_t name##_write(struct file *file, char *buffer, \
+ 	size_t count, loff_t *ppos) \
+ { \
+ 	int rc; \
+-	rc = kstrtoint_from_user(buffer, count, 10, &name); \
++	rc = kstrtoint(buffer, 10, &name); \
+ 	if (rc) \
+ 		return rc; \
+ 	return count; \
+@@ -876,7 +876,7 @@ static int name##_proc_show(struct seq_file *m, void *v) \
+ \
+ static const struct proc_ops cifs_##name##_proc_fops = { \
+ 	.proc_show	= name##_proc_show, \
+-	.proc_write	= name##_write, \
++	.proc_write_buf	= name##_write, \
+ }
+ 
+ PROC_FILE_DEFINE(rdma_readwrite_threshold);
+@@ -990,16 +990,12 @@ static int cifsFYI_proc_show(struct seq_file *m, void *v)
+ 	return 0;
+ }
+ 
+-static ssize_t cifsFYI_proc_write(struct file *file, const char __user *buffer,
++static ssize_t cifsFYI_proc_write(struct file *file, char *buffer,
+ 		size_t count, loff_t *ppos)
+ {
+-	char c[2] = { '\0' };
++	char c[2] = { buffer[0] };
+ 	bool bv;
+-	int rc;
+ 
+-	rc = get_user(c[0], buffer);
+-	if (rc)
+-		return rc;
+ 	if (kstrtobool(c, &bv) == 0)
+ 		cifsFYI = bv;
+ 	else if ((c[0] > '1') && (c[0] <= '9'))
+@@ -1012,7 +1008,7 @@ static ssize_t cifsFYI_proc_write(struct file *file, const char __user *buffer,
+ 
+ static const struct proc_ops cifsFYI_proc_ops = {
+ 	.proc_show	= cifsFYI_proc_show,
+-	.proc_write	= cifsFYI_proc_write,
++	.proc_write_buf	= cifsFYI_proc_write,
+ };
+ 
+ static int cifs_linux_ext_proc_show(struct seq_file *m, void *v)
+@@ -1021,12 +1017,12 @@ static int cifs_linux_ext_proc_show(struct seq_file *m, void *v)
+ 	return 0;
+ }
+ 
+-static ssize_t cifs_linux_ext_proc_write(struct file *file,
+-		const char __user *buffer, size_t count, loff_t *ppos)
++static ssize_t cifs_linux_ext_proc_write(struct file *file, char *buffer,
++		size_t count, loff_t *ppos)
+ {
+ 	int rc;
+ 
+-	rc = kstrtobool_from_user(buffer, count, &linuxExtEnabled);
++	rc = kstrtobool(buffer, &linuxExtEnabled);
+ 	if (rc)
+ 		return rc;
+ 
+@@ -1035,7 +1031,7 @@ static ssize_t cifs_linux_ext_proc_write(struct file *file,
+ 
+ static const struct proc_ops cifs_linux_ext_proc_ops = {
+ 	.proc_show	= cifs_linux_ext_proc_show,
+-	.proc_write	= cifs_linux_ext_proc_write,
++	.proc_write_buf	= cifs_linux_ext_proc_write,
+ };
+ 
+ static int cifs_lookup_cache_proc_show(struct seq_file *m, void *v)
+@@ -1044,12 +1040,12 @@ static int cifs_lookup_cache_proc_show(struct seq_file *m, void *v)
+ 	return 0;
+ }
+ 
+-static ssize_t cifs_lookup_cache_proc_write(struct file *file,
+-		const char __user *buffer, size_t count, loff_t *ppos)
++static ssize_t cifs_lookup_cache_proc_write(struct file *file, char *buffer,
++		size_t count, loff_t *ppos)
+ {
+ 	int rc;
+ 
+-	rc = kstrtobool_from_user(buffer, count, &lookupCacheEnabled);
++	rc = kstrtobool(buffer, &lookupCacheEnabled);
+ 	if (rc)
+ 		return rc;
+ 
+@@ -1058,7 +1054,7 @@ static ssize_t cifs_lookup_cache_proc_write(struct file *file,
+ 
+ static const struct proc_ops cifs_lookup_cache_proc_ops = {
+ 	.proc_show	= cifs_lookup_cache_proc_show,
+-	.proc_write	= cifs_lookup_cache_proc_write,
++	.proc_write_buf	= cifs_lookup_cache_proc_write,
+ };
+ 
+ static int traceSMB_proc_show(struct seq_file *m, void *v)
+@@ -1067,12 +1063,12 @@ static int traceSMB_proc_show(struct seq_file *m, void *v)
+ 	return 0;
+ }
+ 
+-static ssize_t traceSMB_proc_write(struct file *file, const char __user *buffer,
++static ssize_t traceSMB_proc_write(struct file *file, char *buffer,
+ 		size_t count, loff_t *ppos)
+ {
+ 	int rc;
+ 
+-	rc = kstrtobool_from_user(buffer, count, &traceSMB);
++	rc = kstrtobool(buffer, &traceSMB);
+ 	if (rc)
+ 		return rc;
+ 
+@@ -1081,7 +1077,7 @@ static ssize_t traceSMB_proc_write(struct file *file, const char __user *buffer,
+ 
+ static const struct proc_ops traceSMB_proc_ops = {
+ 	.proc_show	= traceSMB_proc_show,
+-	.proc_write	= traceSMB_proc_write,
++	.proc_write_buf	= traceSMB_proc_write,
+ };
+ 
+ static int cifs_security_flags_proc_show(struct seq_file *m, void *v)
+@@ -1111,21 +1107,15 @@ cifs_security_flags_handle_must_flags(unsigned int *flags)
+ }
+ 
+ static ssize_t cifs_security_flags_proc_write(struct file *file,
+-		const char __user *buffer, size_t count, loff_t *ppos)
++		char *flags_string, size_t count, loff_t *ppos)
+ {
+ 	int rc;
+ 	unsigned int flags;
+-	char flags_string[12];
+ 	bool bv;
+ 
+ 	if ((count < 1) || (count > 11))
+ 		return -EINVAL;
+ 
+-	memset(flags_string, 0, sizeof(flags_string));
+-
+-	if (copy_from_user(flags_string, buffer, count))
+-		return -EFAULT;
+-
+ 	if (count < 3) {
+ 		/* single char or single char followed by null */
+ 		if (kstrtobool(flags_string, &bv) == 0) {
+@@ -1176,7 +1166,7 @@ static ssize_t cifs_security_flags_proc_write(struct file *file,
+ 
+ static const struct proc_ops cifs_security_flags_proc_ops = {
+ 	.proc_show	= cifs_security_flags_proc_show,
+-	.proc_write	= cifs_security_flags_proc_write,
++	.proc_write_buf	= cifs_security_flags_proc_write,
+ };
+ 
+ /* To make it easier to debug, can help to show mount params */
+diff --git a/fs/smb/client/dfs_cache.c b/fs/smb/client/dfs_cache.c
+index 58f16cf83d36..a6aa05430b15 100644
+--- a/fs/smb/client/dfs_cache.c
++++ b/fs/smb/client/dfs_cache.c
+@@ -191,17 +191,10 @@ static int dfscache_proc_show(struct seq_file *m, void *v)
+ 	return 0;
+ }
+ 
+-static ssize_t dfscache_proc_write(struct file *file, const char __user *buffer,
++static ssize_t dfscache_proc_write(struct file *file, char *buffer,
+ 				   size_t count, loff_t *ppos)
+ {
+-	char c;
+-	int rc;
+-
+-	rc = get_user(c, buffer);
+-	if (rc)
+-		return rc;
+-
+-	if (c != '0')
++	if (buffer[0] != '0')
+ 		return -EINVAL;
+ 
+ 	cifs_dbg(FYI, "clearing dfs cache\n");
+@@ -215,7 +208,7 @@ static ssize_t dfscache_proc_write(struct file *file, const char __user *buffer,
+ 
+ const struct proc_ops dfscache_proc_ops = {
+ 	.proc_show	= dfscache_proc_show,
+-	.proc_write	= dfscache_proc_write,
++	.proc_write_buf	= dfscache_proc_write,
+ };
+ 
+ #ifdef CONFIG_CIFS_DEBUG2
 
 -- 
 2.53.0
