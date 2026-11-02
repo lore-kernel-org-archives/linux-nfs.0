@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793632125;
-	b=iKwU/ODQ7EdX6a1MeiUV/lZJ4U5uJERn8dZEisWd/328dT6W9GZvvbAFnczyrhBMGva7
-	 zUCwTxBdtAPBsm9VFyIk6N0zPyGQ2joeoHA7fL+hvuagff2CfD916Eqo42FrbwYC5+835
-	 VG+XK8Nv0F6VipOPy1aHOvtxtzdmx26q5MUcwPhDoMjS+0eK3hCG/c/BeLwhmZ/nFL1RB
-	 7UFxegB8Hoxygy0yT38ybGpdXj539XA2owZIhQ57m7dzuywBI4OZv5B2FDEu4nw6c5+Hk
-	 qZQOvBOP4yZxvK/1bUkwj80WQJmFSUUpHakWBhXTpp30uWuwbRuaa3h/cOr/v8Q5kZw==
+	t=1793632142;
+	b=zyrWWTp/CjTMMI5y2omeY5l5xH2JpGK9OFB6Z+k0ECW2Y2lSsmq7ViqlYKi5rapa+gAN
+	 T+9Nc/ik8GLnYsg8n2BXFfp04wIjGVVJWR2zYGqNRhz2RyMHR4om0jRXDLhvE4E7XPEFv
+	 A7+uDEG9jHgDv95YzFjrdelFvTrkoxl2OkZINgxoBf04hbtzyNTU4Y3Q2pFS9YycJRjJs
+	 Uqn+Qmw+EWDOvoQ0f9fjo7bUWRmwM9fMXqLBMnuBsymEaXH9SCuVNT+2WTTpFBTq/k6pV
+	 zKDj++yBSh2WZt8HDEXBsB7zCl1xrR/CIaFvtr/o+CwPOXQ+GxtE9Yr21n9xtd1vBGQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793632125;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793632142;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer;
-	bh=zr7obOUiLNzJ4M2rJicyi/Ze6HCzMDPfBdGpZnrgFfM=;
-	b=uDChM7SrGRQJ95JDNpbj3YcfnXY37PLxMR8Jdn7G/jBOeRu3bBP+nTTYbqSDKhQUECDY
-	 hK7b62uaFhD9i5QaEttU7J5iop88Xcig8foRjNhhgv4IkMm1cUWvpWYydNZmt9PXqUMAm
-	 /TAjEIVjsTicf6Yvmy8p1pRyjTZHp7jVsZlGLNM+HeALbpqHdPBtlyVsmmDtE7fpd5LpT
-	 V1ZJF8f5TDwuCWzreU/qc5uPdJPeP0ZA2tD2CKr6l9HvKA03i9GE2MYmhxpYQD8VM6Odc
-	 oZ+7pLv4HsB/yfdNY2dcYoMpYCKobENUq9JTiPCtz2HglA0aPPU6llDXZ+Bla/VU0CQ==
+	bh=YGofg29spfHBU5j0sEupYlWEu86pUC9IfXeVVL8qINU=;
+	b=twVgazNZF6trvunndkBAVwho0erdNOWjjpp7r+vSLga6Z02R5BY5dv2Al4ch1VB9SPXn
+	 vKdvGQkcXQWOdl7x6X/FIq6GT4YhXGc/NpqvO7R/EdPlvIGHSYdOHJOA5i5a5xqffV5NV
+	 Dh2Q5oFjeGpUfeD7VGII3ZgsaKDNHHnuigCELlUDzxmCFfiAUm7F+h0LVbV6wllTiuOjk
+	 NKAyBWfWINq5sJ9K5Rfgun3Wex92IQoYSkYBASkbSGMk6m03adF32qkyV+PCfUu1DGiWJ
+	 D/armF62UdUu+PVqcIg+U0YlJ7N5QeYeQCGtK4JrM5WACAqHG3PPtSmX20IDZL7b8RQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kEGAtuEw;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JpmBPtZO;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 471C460A8C3F;
-	Mon,  2 Nov 2026 15:08:45 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0BA64606BA77;
+	Mon,  2 Nov 2026 15:09:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kEGAtuEw
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B133F1F00A1A;
-	Mon,  2 Nov 2026 15:08:29 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JpmBPtZO
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5BB991F00A18;
+	Mon,  2 Nov 2026 15:08:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793632124;
-	bh=zr7obOUiLNzJ4M2rJicyi/Ze6HCzMDPfBdGpZnrgFfM=;
+	s=k20260515; t=1793632141;
+	bh=YGofg29spfHBU5j0sEupYlWEu86pUC9IfXeVVL8qINU=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=kEGAtuEwvTMgDuPbyzJeFLVaUSWvZkCX/wUBabr5CM+BjM76qvrrMDRwKN+aUpp0M
-	 LwULw5zP7H3bcIRxCu2+BVsEU4zGp6OX1M94GYtTzJYZ1Sv0pAvkktXo+Zb0As3XcC
-	 7Tm5eTy1em1aicRexVm3TwZLua7XOaqJGZGjekvzyZG3iJISitPVfI4Rb1C6HoqO15
-	 zds1p1eADnGHiS7upjctx8NMqWH7A7NsO/n5J+MjqWiNif9k5AGi+lAXG6mfYJREeh
-	 /tq8fM2qbOInntFHxnk7n1aXVsuVbuc+aacS++TfSOw8xPUMY5Re+hh0DhYh68pv/r
-	 SxGHP8KpJ8aAQ==
+	b=JpmBPtZO6G/UqVUziPY4iWq6sxFWqxjtkt4mByDfSmQn4JPupogU0bEEb3whcdZpv
+	 bxJjhl9riucbcDZJP757/It4YGJC5UnRtX978pao8OmQBnQl2aSFvJGabRNROHyvpQ
+	 bZzdyysVF3U57cA3Ja1OK9TBd8Tsli7X4hjtxAFP6BIZk3DMCdCyX58cnbypS2jX2/
+	 rkwz1SxlnDr9giKtJvEtvZB1xm8ozK/+QHDHx5w/XweZen0aQhQjbqjSvObAObvY2I
+	 HxCcEBImWMheaGFA39+r4mxQ3C4umA03aHVfQBgmMCsinQB7bWR44TPgh7+0yTz50I
+	 jxnkq4gmT3FLQ==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 16:01:48 +0100
-Subject: [PATCH RFC 21/22] PNP: pnpbios: let procfs copy in writes
+Date: Mon, 02 Nov 2026 16:01:49 +0100
+Subject: [PATCH RFC 22/22] PNP: isapnp: let procfs copy out reads
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-arch-v1-21-c9492ab08480@kernel.org>
+Message-Id: <20261102-work-procfs-arch-v1-22-c9492ab08480@kernel.org>
 References: <20261102-work-procfs-arch-v1-0-c9492ab08480@kernel.org>
 In-Reply-To: <20261102-work-procfs-arch-v1-0-c9492ab08480@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -91,50 +91,63 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
 
-Implement ->proc_write_buf() so procfs copies in what is written to
-/proc/bus/pnp/<node> before it pins the entry, and take the node data
-from that copy. A node with more than PAGE_SIZE - 1 bytes of data can't
-be written anymore. I don't think there are any.
+Implement ->proc_read_buf() so procfs copies what is read from
+/proc/bus/isapnp/<card>/<dev> to userspace after it unpinned the entry.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/pnp/pnpbios/proc.c | 9 +++------
- 1 file changed, 3 insertions(+), 6 deletions(-)
+ drivers/pnp/isapnp/proc.c | 20 +++++++-------------
+ 1 file changed, 7 insertions(+), 13 deletions(-)
 
-diff --git a/drivers/pnp/pnpbios/proc.c b/drivers/pnp/pnpbios/proc.c
-index 14632a8d0da0..00163aedd738 100644
---- a/drivers/pnp/pnpbios/proc.c
-+++ b/drivers/pnp/pnpbios/proc.c
-@@ -171,7 +171,7 @@ static int pnpbios_proc_show(struct seq_file *m, void *v)
- 	return 0;
+diff --git a/drivers/pnp/isapnp/proc.c b/drivers/pnp/isapnp/proc.c
+index 8197c7f29743..152fd5bfbc06 100644
+--- a/drivers/pnp/isapnp/proc.c
++++ b/drivers/pnp/isapnp/proc.c
+@@ -19,37 +19,31 @@ static loff_t isapnp_proc_bus_lseek(struct file *file, loff_t off, int whence)
+ 	return fixed_size_llseek(file, off, whence, 256);
  }
  
--static ssize_t pnpbios_proc_write(struct file *file, const char __user *buf,
-+static ssize_t pnpbios_proc_write(struct file *file, char *buf,
- 				  size_t count, loff_t *pos)
+-static ssize_t isapnp_proc_bus_read(struct file *file, char __user * buf,
++static ssize_t isapnp_proc_bus_read(struct file *file, char *buf,
+ 				    size_t nbytes, loff_t * ppos)
  {
- 	void *data = pde_data(file_inode(file));
-@@ -191,10 +191,7 @@ static ssize_t pnpbios_proc_write(struct file *file, const char __user *buf,
- 		ret = -EINVAL;
- 		goto out;
- 	}
--	if (copy_from_user(node->data, buf, count)) {
--		ret = -EFAULT;
--		goto out;
--	}
-+	memcpy(node->data, buf, count);
- 	if (pnp_bios_set_dev_node(node->handle, boot, node) != 0) {
- 		ret = -EINVAL;
- 		goto out;
-@@ -207,7 +204,7 @@ out:
+ 	struct pnp_dev *dev = pde_data(file_inode(file));
+ 	loff_t pos = *ppos;
+-	int cnt, size = 256;
++	int size = 256;
++	size_t cnt;
  
- static const struct proc_ops pnpbios_proc_ops = {
- 	.proc_show	= pnpbios_proc_show,
--	.proc_write	= pnpbios_proc_write,
-+	.proc_write_buf	= pnpbios_proc_write,
+ 	if (pos >= size)
+ 		return 0;
+ 	if (nbytes > size - pos)
+ 		nbytes = size - pos;
+-	cnt = nbytes;
+-
+-	if (!access_ok(buf, cnt))
+-		return -EINVAL;
+ 
+ 	isapnp_cfg_begin(dev->card->number, dev->number);
+-	for (; pos < 256 && cnt > 0; pos++, buf++, cnt--) {
+-		unsigned char val;
+-		val = isapnp_read_byte(pos);
+-		put_user(val, buf);
+-	}
++	for (cnt = 0; cnt < nbytes; cnt++)
++		buf[cnt] = isapnp_read_byte(pos + cnt);
+ 	isapnp_cfg_end();
+ 
+-	*ppos = pos;
++	*ppos = pos + nbytes;
+ 	return nbytes;
+ }
+ 
+ static const struct proc_ops isapnp_proc_bus_proc_ops = {
+ 	.proc_lseek	= isapnp_proc_bus_lseek,
+-	.proc_read	= isapnp_proc_bus_read,
++	.proc_read_buf	= isapnp_proc_bus_read,
  };
  
- int pnpbios_interface_attach_device(struct pnp_bios_node *node)
+ static int isapnp_proc_attach_device(struct pnp_dev *dev)
 
 -- 
 2.53.0
