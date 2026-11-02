@@ -1,55 +1,99 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.218.45
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793581849;
-	b=Ck1zBc4bp1dqBm9NLyZnExi9jUOSZUTYCSZWV2C2p3x2VHBEIdC3111R8BqY7+Z/8BgD
-	 upgLQ69qyV1kSmwFjNaTgNKEtRLSjXIzNYTBkAskvYyRqw+AjeDuuOEoEFW7gpXDxqtAw
-	 /+mri2Vbz+MwVUeuu0SJn5K1TuH7PplmYkYLUMq0cO3RLL0cyL/pp8UlsZNWz4G10hYbE
-	 LMs8BIDgdq2EMuJGaq4tlSXxyFwXiZ4YD5ZkRZeFQ1icxFdQ5S3xCqYsOYImSzsustY34
-	 Zp0dxmy5jw3MZ+pHLc3zxYSXjRyGTpl2jQtVr1yeMgBirPuk/1oG/jMDkXwvRPYGBcw==
+	t=1793586007;
+	b=lRT9uqih0mjsWmZ7saJz5TzSSl3swlaIB0g5s7wTL2/tYOpwQJrtBHSLF37mqwi3s2Jo
+	 rv+6mYNT3n+aPH0Zgq+RXpOs24iTX14HZBg6syhBy51RjzHFEgX1oGD4T7Z/2JPRPdiJE
+	 +gwNgkjndkKMUceZtRC23o9slvyElEhqgh++LX1wzeh9kJMqcse77PpSUQF4LnOAohRwp
+	 I7Bbkr9eAk/8kZnnUQIhOPjINAxDRKg3P3PyQN+Lbh2rmCStmxryTG+DpdwUfpDqoZirQ
+	 ECVh/CGgfCHtfFwljYzLZ+OLcdviKO8dwq3eGCeR8OtBeyfPNW0DsgrwzSKDbVKo8wQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793581849;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=YYTrIGxUOSOb88OnIFx0hwwl3v23j5XFNga48Rjoaig=;
-	b=Yue+LD5bf+tklDJpAYy4dqkIjofzghza5xAF9ukth454AguBHYCBWzn7bsrAWaoaNG2t
-	 4TvWj5HoOn0TKFT8sTZKlKkAGw2ej+LH/yQUSuEObKvogkNDBe/7rdgcxodzsota0xOUT
-	 R4uINkLDWHr9Y8ed1n6/XXWqYGvUey5TzRPajV/nD+Cs48hBTUkeeYquTFlhAedP3GFU6
-	 sCkpZh/2rZCH1k/mlUxGrQ8RAOxCdVG/qX6AOvFWwyT+8qabwNLGJMAFg6FwsUmqMBjG7
-	 ZLe6urMHWHEHYcsxLk9fws5CMgzwahAowCEkezFXIl+KcjqCqfeYH2Eg8/x7DZJVziw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793586007;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
+	 Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding;
+	bh=rnpOPb5ycOhSNbEyFKFTmBCIRpZrtLdppFDO3OKlKYc=;
+	b=j4QXUXT+oHEjNredUnrEiu08I48TAjvynVOm3YLoE769CSRQDKa2/oA7BGDvsFYv8B+l
+	 fHkpz0ObsslMX1/k5YWuBshAMUjRd2nyQTkMnyk0tAxwF1L1V8JOH3jdF3kbrnH2+UsdU
+	 5zXtRdPzoIWaqiIPCiphCAM5LxQaxbbARMCQIyWllyjdv3FMIk0R90TGUXyAnlWzDPY9n
+	 wrGk9Mfedi51errISuTvgl98xeG1tAmNiowlbcwpj6ADFQLDXAHyde+5w+2bzFNBeEQap
+	 AwBUGWjZxsEmkLDYANPm7pNl/Z4e0lmIIQ62YG4KXCJCsXQ6BJvzAqglpKl84DrWG0Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Kl3c6X45;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=IOFsOldk;
+	arc=none smtp.remote-ip=209.85.218.45
+Received: from mail-ej1-f45.google.com (mail-ej1-f45.google.com [209.85.218.45])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C95B5606A324
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 01:10:48 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E2954606A324
+	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 02:20:06 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E2954606A324
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Kl3c6X45
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EFD741F000C1;
-	Mon,  2 Nov 2026 01:10:47 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793581848;
-	bh=YYTrIGxUOSOb88OnIFx0hwwl3v23j5XFNga48Rjoaig=;
-	h=From:To:Cc:Subject:Date;
-	b=Kl3c6X45XfZIFpX5gPSdh2/oYXtRWZ79ge0NMf0Y2nentxO3Z5t44URegMvp7qwve
-	 bKdmYs9R6vRIPoUk38hRie+FD1x10vdPtWrGlH+JNRjHDMtYO648NsbYgW4quoS1Kp
-	 7hzkCUUWHRgROujzdsvxo1j9lXMFYsR+n5D7bdWZzmgiCNjmNLPWYVfgfFuURr//ZA
-	 EWIdrQnFX9/Il6YgkCOgsqpLRZul+mpqDlBaE3n/mg27uzSdPCMZxTgngil002RJJi
-	 TcZ5lredOVxScxWu6eHmHKtmhrX/3djoi3REd5SpkKXBGnKDwPb6fDP9Avp+95DUiB
-	 N+qwVuHyJnyNw==
-From: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neilb@ownmail.net>,
-	Jeff Layton <jlayton@kernel.org>,
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=IOFsOldk
+Received: by mail-ej1-f45.google.com with SMTP id a640c23a62f3a-c4cdc606b47so36677666b.0
+        for <linux-nfs@vger.kernel.org>; Sun, 01 Nov 2026 18:20:06 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1793586005; x=1794190805; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:mime-version:reply-to
+         :references:in-reply-to:message-id:date:subject:cc:to:from:from:to
+         :cc:subject:date:message-id:reply-to:content-type;
+        bh=rnpOPb5ycOhSNbEyFKFTmBCIRpZrtLdppFDO3OKlKYc=;
+        b=IOFsOldkqrg4ase1q+zqSv0TWRD+pb85fQ5Ef/63MJbxOOlwzVuDvzRvO8w7FllhKk
+         gdN7pPrf7FzOhWScYqL6ds4ig3FCGRvzcWx6SwYJtnrGdlWKTO60FfipgyDzowQjHpip
+         QjK+etr/GbiBSY/COeK5ke3OyVPyPJWNBOVmMQb98DQqzURXaNGAVq/THXiQViPphKPE
+         kCBX1ANMyWRAH80M9ntYnN97raWt0PpOY3g+BTYnSNmd7d7KG/QOWqRq1O7PPcbxG/Sc
+         WRxH1QHPYMwmvx8ZJyv5RdPEMAtkFee10CFUKvhNUQelph+6C2BxGGOWMdgRTmbw9Qwa
+         SyLw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793586005; x=1794190805;
+        h=content-transfer-encoding:content-type:mime-version:reply-to
+         :references:in-reply-to:message-id:date:subject:cc:to:from:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=rnpOPb5ycOhSNbEyFKFTmBCIRpZrtLdppFDO3OKlKYc=;
+        b=iFyI1Nnz7xe00A/13nHrl75CpPucrinQNC1OJxp30I1GAtLvB+g44GW8ELzA3zr//B
+         vJPbiQBRB/yrMGgjelMRplKfUuH5WbKzSDwNfBA5R8OAox/ZYM85BLnYpmVlDMIiucJn
+         7tmiCanNOP/hPe7lAf53v7x5G/eXavEWKwqYP4DksNE6kTZujEabOtP+Z6+Xx8Z7yEOW
+         ibwMueKtxuCVxSiJx7qEF7e5cRDCs6U/tC9pEgLp/bUozol4kD4DzP56R//pVZX9TZor
+         0fNdnG85Nbql1ZmYACqumbXHwdnNr6K9m5PiDB4znnpZ9Wrwwpi94qoSE2YjFsY4Wnxf
+         tWxg==
+X-Forwarded-Encrypted: i=1; AKwUvBwy0nHpPwEqqmb5eMV9qI0dei8z7OKfL+97oB4Ufvzj6scwPARet3jCQkmQ3F08tAudpHUn+ddA2ZA=@vger.kernel.org
+X-Gm-Message-State: AFq9FYK3dUdPRnfeyLAynmpJKKejrsVz/3OftOCK9yZKZHQs/BbyG80H
+	3q5gm9fB788gt/ckiYpJqmAq7dW459hjAQXJQryjnBvZbs2eU6JLtwZh
+X-Gm-Gg: AYBFou24XyZ241VfAdmX5zFNVwlLOh0VBE7CmXCGO+ATAldoht5BhGxcJ9lw4QpWVxf
+	Hlxm0Rv6A/h6hoauOnbMP4iyfI55Uk4cVBEvz8fZRbmw85UlcEX+L7Q+wPZ/6IMV0jSThf6Zo6R
+	a9AOhP7ndHH2XCYDKKv6gXiraQciGvxyodJMihyCCG1TKmPKrAI8lxVo47Xe3bA93WWgaCkTwZe
+	V9glJ61J8PIiH9Vxk+cUU8Qcte9kw3mEyd3liD0isOnhzyGCMrvd85YpXEdKYTfctSBI7yhoWHg
+	BlVgb1PFRcqbGkW+yBaM32ZD+M/QpAvmWWdNBnfsB9SuTVrEv+jNGLxUz6mQ1lBPeKoZ6MhFHrT
+	7FYwH82NLGOirKgMlGwdB8TRAS7Pwcf5axkDEukWHyrMyRm51HKLa5tgJ2pYSQKlc0TkmllLzae
+	yJ3zdDhkza47OwkGZW7eCogMNrq1NPrm652tjCUWV8A6LGKqP0KszR5Wh6bEcmm4H0gq/t1Q+Oy
+	B8Du+scSdq2E2ub5/jlNIWRUL83WP3FLws0s+kDDO7kVk8y/IJ5RfnyC0ESocll1dxGenxv8Zmf
+	UxIsbsOb90lZ7UyBtHOoyDu5KRDzXwK4Giz8CX6fs7C5/pxv0+KXY1jo9itboyvEcnrCT27Y
+X-Received: by 2002:a17:906:99cd:b0:c41:731c:534 with SMTP id a640c23a62f3a-c4ca7a86e67mr692218166b.24.1793586004998;
+        Sun, 01 Nov 2026 18:20:04 -0800 (PST)
+Received: from localhost.localdomain (173.242.112.181.16clouds.com. [173.242.112.181])
+        by smtp.gmail.com with ESMTPSA id 4fb4d7f45d1cf-6b4eca21224sm2648859a12.33.2026.11.01.18.20.01
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 01 Nov 2026 18:20:04 -0800 (PST)
+From: VeroFess <coderzeng@gmail.com>
+To: Chuck Lever <cel@kernel.org>
+Cc: Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
 	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2] NFSD: Do not regrow a slot in the SEQUENCE that retired it
-Date: Sun,  1 Nov 2026 20:10:47 -0500
-Message-ID: <20261102011047.2659441-1-cel@kernel.org>
-X-Mailer: git-send-email 2.54.0
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v6 0/3] NFSD: Enforce export security after a deferred PUTFH check
+Date: Mon,  2 Nov 2026 10:19:22 +0800
+Message-ID: <20261102021922.674421-1-coderzeng@gmail.com>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <20261101-verofess-v6-0-4d70097db7d3@kernel.org>
+References: <20261101-verofess-v6-0-4d70097db7d3@kernel.org>
+Reply-To: coderzeng@gmail.com
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -59,85 +103,63 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 8bit
 
-When a SEQUENCE acknowledges a smaller slot table, free_session_slots()
-retires the slots above the target. If that SEQUENCE is on the new top
-slot, the growth test later in the same nfsd4_sequence() call finds the
-table at its target and allocates back the slot the call just freed.
+On Sun, Nov 01, 2026 at 10:51:09AM -0500, Chuck Lever wrote:
+> Changes in v6:
+> - Verify the current filehandle in SECINFO_NO_NAME(CURRENT_FH) (sashiko).
 
-A client fills in sa_highest_slotid from the slots in use when it
-builds a request, so a request it sends afterward on a higher slot can
-reach NFSD first. When the reply to that request is lost, the
-acknowledging SEQUENCE retires and rebuilds the slot inside one
-request, and the client's retransmit never sees NFS4ERR_BADSLOT. A
-retransmit of the slot's first request passes the seqid 1 rule for a
-rebuilt slot and executes a second time. A CREATE replayed this way
-returns NFS4ERR_EXIST, reproduced with pynfs against a two-slot session
-and one write to drop_caches. A retransmit of a later request matches
-the retained seqid on the uninitialized rebuilt slot and gets
-NFS4ERR_SEQ_MISORDERED, which the Linux client retries every 15 seconds
-without limit.
+Hi Chuck,
 
-Skip the growth block in a call that retired slots. A retransmit that
-arrives while the slot is retired now gets NFS4ERR_BADSLOT, which the
-Linux client handles as a session reset. The next request on the top
-live slot still grows the table on demand, so a copy delayed past that
-request meets a rebuilt slot as before.
+I tested all three v6 patches on the stated nfsd-testing base,
+d9130c9f6535392d423351ffb5521e7689cae6b6. I built and booted
+patch 1 alone, patches 1 and 2 together, and the full series in an
+x86_64 KASAN guest. The full-series tests also used a second guest for
+inter-server COPY and RPC-over-TLS.
 
-Fixes: fc8738c68d0b ("nfsd: add support for freeing unused session-DRC slots")
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
-Changes in v2:
-- Explain the request in flight on the retired slot (per Neil's review)
-- Rewrite the comment on the growth test (per Neil's review)
-- Link to v1: https://lore.kernel.org/r/20261101154742.1950822-1-cel@kernel.org
+I checked the v6 change directly with AUTH_SYS
+PUTROOTFH; SECINFO_NO_NAME(CURRENT_FH) on NFSv4.1 and v4.2. With an
+xprtsec=tls export over plain TCP, v5 returned OK and v6 returned
+NFS4ERR_ACCESS at SECINFO_NO_NAME. With a secure export and a high
+source port, v5 returned OK and v6 returned NFS4ERR_PERM at that
+operation. PUTROOTFH succeeded in both v6 cases. A mismatched sec=
+flavor still returned OK and listed krb5p, as SECINFO_NO_NAME needs
+to do. The operation succeeded from a reserved port and over real
+TLS 1.3 or mTLS when the export allowed the transport; TLS without
+a client certificate was denied by an xprtsec=mtls export.
 
- fs/nfsd/nfs4state.c | 14 ++++++++++++--
- 1 file changed, 12 insertions(+), 2 deletions(-)
+The original NFSv4.0 Kerberos OPEN stateid reproducer returned
+NFS4ERR_WRONGSEC at PUTFH for AUTH_SYS direct and SAVEFH READ/WRITE.
+The file was unchanged, and the Kerberos client could still read it.
+A second guest tried the same 108 stateid candidates as in the earlier
+test and obtained no data. With only patch 1, a protected saved-source
+COPY succeeded and changed the destination; CLONE also returned OK. With
+patch 2 added, both returned NFS4ERR_ACCESS at their own operations
+and left the destination unchanged; authorized COPY and CLONE passed.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index cafdf80f32de..8b7483278f50 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5230,6 +5230,7 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfs4_client *clp;
- 	struct nfsd4_slot *slot;
- 	struct nfsd4_conn *conn;
-+	bool retired = false;
- 	__be32 status;
- 	int buflen;
- 	u32 maxlen, respsize;
-@@ -5301,9 +5302,11 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	    slot->sl_generation == session->se_slot_gen &&
- 	    seq->maxslots <= session->se_target_maxslots &&
- 	    seq->slotid < session->se_target_maxslots &&
--	    !nfsd4_slots_inuse(session, session->se_target_maxslots))
-+	    !nfsd4_slots_inuse(session, session->se_target_maxslots)) {
- 		/* Client acknowledged our reduce maxreqs */
- 		free_session_slots(session, session->se_target_maxslots);
-+		retired = true;
-+	}
- 
- 	buflen = (seq->cachethis) ?
- 			session->se_fchannel.maxresp_cached :
-@@ -5360,8 +5363,15 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	 * configured maximum, not the running thread count, so a
- 	 * client resuming from idle can grow back before the pool
- 	 * scales up.
-+	 *
-+	 * Do not grow the table in the call that retired slots.  A
-+	 * rebuilt slot has no cached reply, so a retransmit on it
-+	 * is executed again or fails with SEQ_MISORDERED.  Left
-+	 * retired, the slot returns BADSLOT, which the client
-+	 * recovers from.
- 	 */
--	if (seq->slotid == session->se_fchannel.maxreqs - 1 &&
-+	if (!retired &&
-+	    seq->slotid == session->se_fchannel.maxreqs - 1 &&
- 	    session->se_target_maxslots >= session->se_fchannel.maxreqs) {
- 		int s = session->se_fchannel.maxreqs;
- 		int ceiling = min_t(int, NFSD_MAX_SLOTS_PER_SESSION,
--- 
-2.54.0
+With patches 1 and 2, LOOKUPP still crossed from a sec=sys child to a
+sec=krb5p parent. The full series returned NFS4ERR_WRONGSEC there
+on v4.0, v4.1, and v4.2. SECINFO_NO_NAME(PARENT) remained usable on
+v4.1 and v4.2. I also reran the SECINFO name and permission cases,
+READDIR with and without rdattr_error or FILEHANDLE, the NFSv2/v3
+CREATE cases, and NFSv4 OPEN. Their status and error placement matched
+the v5 run.
 
+The other regression tests passed: permitted Btrfs COPY and reflink
+CLONE returned matching destination bytes; asynchronous inter-server
+COPY completed 4096 bytes between the two guests; protected local
+COPY, LINK, and RENAME were rejected; and retained stateids could not
+be used after tightening the export's sec= policy. Plaintext, TLS,
+and mTLS mount crossings behaved as before on v4.0, v4.1, and v4.2.
+A raw v4.0 SECINFO request also succeeded over both TLS and mTLS.
+
+The 259-case source-derived decision test passed under ASan/UBSan.
+W=1 fs/nfsd/nfs4proc.o built cleanly with inter-server COPY enabled
+and disabled. I saw no KASAN report or kernel Oops. I found no v6
+regression in these tests.
+
+Tested-by: VeroFess <coderzeng@gmail.com>
+
+Thanks,
+VeroFess
