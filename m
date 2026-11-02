@@ -1,90 +1,90 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.41
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.53
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793627818;
-	b=W7Xsh7RP+2wkAuhq6e46WqQtU8wvmV756hZc5VxRptCBkBDHJeJKjbwFroUkuf3nia2u
-	 T5J0JIKmc3EqMq4VZGjdulboYrb7yS9o4Zfb21X8bYTZk2zYe1ma6SCEMJWnOgmP/+Yla
-	 cupGG7BnWZub7YzGbUa+2tLpV6LRlRA0zGQ58wQSPstGjA8K8NQ0thuHUvrMINGh159kz
-	 ldSele6nkm10RYGE8AniBCH2Rt3WT2OAe5FKH0Cz1yqyn8DY9PaMkJqA15ZBKQ7m6pQQ/
-	 06iZ90xtcNZzWChJenEMVHC7rCJBF/lOv51drnjhPVI42UmNeEPr6mnoXGA8wwk6E6A==
+	t=1793627819;
+	b=JhsgFdMp9jMkOhztL/VO9nqUaOEFcBfEic9DWJLGt9Iyf9+MeHxsOFAE4Sox/IMIH5IW
+	 0RoaMtbZFrIoIy3WYzYtJRsXu5fYk8vdhyq9W97Xp3WD2nfKGQX8vqATJw/82lquca8vQ
+	 EBGqCIoyteNXMOJvFn+bi5KU7RW60xjcPZADkk5cPfrISeDMZIgL/qkCZT/3gGapyVuXV
+	 HTn5evvUtUo0FhzHNrhtTw3D8vfTS1+nsnL9Z9FaiAona3CpIMzcJdAM5EsRp6PWtxfUd
+	 v2Lx4iZMUZkuvGeUQbvNuzR4wq/9/xcg8dzbliAjRIXzFhj4TzgdhmmIuOeZbGLi38A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793627818;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793627819;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=kCkvYfSpv5meezm4S7EoTqsEQXJyrxV1WFdOSy4aup4=;
-	b=VcIaVrybohaIXJdfP+xCz7BZTuoGwEFRkEebFan2qZvp9/P30QUbOc1gXhr6n0LuxkQS
-	 xlWjvRLzC3WjqAGiPKRRnJNnGnveJ9wpboxwCIV/BLRquOSJRU2tAXme/BvR5lRN1yrJG
-	 7jC+rQF20z/DhdeWq5ccujPNi3iyq0xOb9YkS606MgpVCfFZCZUYWjkPQP1BMCTMoJfBp
-	 Q2+aMLKH256yJbvf863wFV3LykSALkYYzOqnoTt+4yOilV15RaQf0QyZukbivVyuXEkA+
-	 S/wZIsxBDxGAyozdY5wfZN4yPOUYtEKY62wPVA+VQ3ky4WWIOy3TRY5ElaHwxLqeRNw==
+	bh=lGYrY710riRY7PYILjmn0q85yHcHHg02+ReDFP2Fo/0=;
+	b=MAMTk+AtfI2k7tAPrmkukQZIY8WV8ga4dj0QJzw9AawMb7lFq7hcu822YZJT4lqO/5US
+	 oeUYwmmlO5BLtvsedZ6HFpeOstsd7wax69MKliqxGGJ3eHgaFsvGk+6/XUzL3fFqgZSPe
+	 FAWZlyGWFWZyNfJY2dTw/1Dr9Mn0NmBJnfKUM8TaS+LRNV98ykW73drVhe97BywpEdrYs
+	 a+G4fQ3Brp0er5Y6cAav+durrESb4V/tUNOWAizFnr1JISJMKXXOoJDIJ0dJaMWD+Uw/L
+	 QWR4rel0D42oo3BgWhpGCcWmt8fdzzbU0LfeNo7vhTr6tDf0yKRM5+HQmV77J5mnM/g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=hammerspace.com;
 	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=XClGTUPh;
-	arc=none smtp.remote-ip=209.85.210.41
-Received: from mail-ot1-f41.google.com (mail-ot1-f41.google.com [209.85.210.41])
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=HTy+9kaD;
+	arc=none smtp.remote-ip=209.85.210.53
+Received: from mail-ot1-f53.google.com (mail-ot1-f53.google.com [209.85.210.53])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 310A3606A32D
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC8F3606A32F
 	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 13:56:58 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 310A3606A32D
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org EC8F3606A32F
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=XClGTUPh
-Received: by mail-ot1-f41.google.com with SMTP id 46e09a7af769-84d5e56f876so2210242a34.3
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2026 05:56:57 -0800 (PST)
+	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=HTy+9kaD
+Received: by mail-ot1-f53.google.com with SMTP id 46e09a7af769-85d363fb73cso1751891a34.1
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2026 05:56:58 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1793627817; x=1794232617; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1793627818; x=1794232618; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=kCkvYfSpv5meezm4S7EoTqsEQXJyrxV1WFdOSy4aup4=;
-        b=XClGTUPhjjk2ztML9UIU90lwNTOZBBACkx2/nT5n9vR6nIUjm3LZYBHwAz0jPgtKA6
-         eW/LnFUqcqSDHb8gQpT+yuBtKGU035vUGTH/koOuqb7IKL9GQckfhHrUy4LqOmsPrEHp
-         fjtIbpCEVWZkn5wvoaNJACBuFIhpw57USbOPbB3fIIjLFddt2//MhjcR36W+QDtV/bBC
-         jT1YiKv2FLxeT6FmiUwvjLY1OkMZUGJtXaiaU+S/xYDECEJiVZdbfZIacud1nnvVK+Bt
-         a+qFPH+h35PAGsN1tGSv7JD9CwdfMMqvDGHkwiv4VnWHA2j6NKGaIUenWZcjaugzF3Vq
-         Swkg==
+        bh=lGYrY710riRY7PYILjmn0q85yHcHHg02+ReDFP2Fo/0=;
+        b=HTy+9kaDrVOxJKdaG7QDAkO1pqd7IDOlRSegEqqS+44NETbzHyV7/6UHj7pxdHY5QN
+         10F1C5ZOPSgFgnCYGVrvAPYs3RwLezyxewJEE83eg1oHmgEYlTx1/qq3nZjRYDJUvjoo
+         5T/qJxYlH5/zIdyBW0owJJ0/mJqRQqc6PF2mYXiAML+YIDkm0Y5hYeaFQnRR65lXi5hh
+         QUa0lrfQTMna0JR6f//Xxi6AYnW++h5cq1WcwgCYl915o5/I9RUndj7VhgpbIftT4SuW
+         trOxWTrYyV4iGguanT6vM+hTHtS0hhUpXUeIUXbwPMyiOj48y+e2wUimcW0cRYKD8jgq
+         FGyg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793627817; x=1794232617;
+        d=1e100.net; s=20260707; t=1793627818; x=1794232618;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=kCkvYfSpv5meezm4S7EoTqsEQXJyrxV1WFdOSy4aup4=;
-        b=AkUUhdWY/fgtP7fWKLVIRzXP8wnEFM7zzLaSnmnvDczRmQMX1oJxGaAYtVkRzMvpdD
-         RWA3E1zXvq0N6OYciR2gISApIaR9OdQTCJ7iAcO/cIaYNhbLlGZMBpEwjqs3cQMKHdy+
-         GZiG6rcrFzqUCOHI1ye5eWM7z51OKALz3szspRMEFGFJ2EqEubqnbsCqT1oayucm3Ton
-         4eH3xMBUCv8BPpMXdPHaFBTxAUF1TDRkt4Kn1oczN6t3GcAelG4o17SEGD4ZniCcfidY
-         e9XZtQaCCwIdqxUChZnqgAZKBwIwWxD1hSF5+i6mQKTpWF0KvxaZz8y99dMZSki7xlLf
-         gFpg==
-X-Gm-Message-State: AFq9FYIPCEoqoq/Rmlu6wR6gJ0ChYkhq+lxZU1Rk5TNewitQWQalqjSd
-	gYLQqa47i0yvJcUUze6n9M4a0S3Rv8jOhmqyCUAG6UR1Gum6H4hHYfM6hl/7XKn8E3I=
-X-Gm-Gg: AYBFou1XxQdL4T29Y476x7s9ensLj1TGKB93YHoOBwGBU9LpLgJo5k2aGzyA4QwF0Ad
-	Lhur+YctquCQWbLTAiYbGQSB19FogW60kJhLKKr62QkKLpyStMMx75+YRoIU9WLDx4OQyNVMsi2
-	8S3VnkHnBMqHS0OCR/zqpJk4W/AqOFAAcgDXRvzaaEvR3yRVmhyXBYiciv432E2KMsHFgxu6ECO
-	x5nib/e7uIrTZMqqkCVhY74NUUBrx/tnqlDgklXpibUfjo2sZ0IL9DoduZBNyDJvb/YbsHiM5sb
-	eNin3Vwm4gb4IZnY8x5n2ZQ34WSNqiR9eUbUf5gPCNE4fFkXssYrt7NrXcxufDh8ez6HwXm+z5Z
-	4rNsd6Rlnwudy2BPlzzwb1RZv2czysCVXZeuZrpYVEekeRRMoL2RcLsJSzEGpB5j65SdivgTKTS
-	8K7LCFM2s5EhIcE9KOxKkHdauyQF6Wa3lQpEUqB0BasLA10yZBWf2cniDK57CjnRdX1vaq8ahwG
-	3SBsMyXREzqBsXFUjsEM6BtVqUiwRJGkv7dqGQN8nQPBrOr8DfnKEEMSSPuUpUpIytORQckohk5
-	HBAvVpImbMytDDbZURUZPHkK2qndpeTiA4p865NlyRl4GqxJO1KqQbg2fa/X80OkGOfqFwfp
-X-Received: by 2002:a05:6808:4f23:b0:4fb:a7f3:420d with SMTP id 5614622812f47-5640de58075mr6996355b6e.48.1793627816899;
-        Mon, 02 Nov 2026 05:56:56 -0800 (PST)
+        bh=lGYrY710riRY7PYILjmn0q85yHcHHg02+ReDFP2Fo/0=;
+        b=U5PlKmkR/PWjU9iP2cZX96DDamcokSeKrc2cv0/CqF+H5037P2dFH2FwejWByLXIgM
+         14sj7wEJIrw730+w2VL/oi1TEGF69PCYWIyNhUNnSB1TYMl9726xnckTTdTWQxzP3iX7
+         xAUDcDZYNpBD36/CLDGATcZzieNrjocbojVMeVISei7peG0t6U35MqukCzmsYeJ8m50C
+         32DlmU9DaaB6+LcDxOl5KRoRBTltTfFJ7cMmDxMDnz+FFg36QhSaBjU5zhiFyP/WfRnm
+         ykXpcsHFGb5P+ssUexbcl8+y204AGocIUhgebe+sCnXQh0g1g15FpCs9l6CSp9twCx2O
+         uWqw==
+X-Gm-Message-State: AFq9FYIlrkvLzwvZyStXVcGFN5qh696PqvERlHpOjFB5jLLMeT4cfPbT
+	7egy1H9zROTstS/7FaP2HOqvQNgV2f6bGFN9xCWhCCXbP64scpzFhjrllJs+D0MtXus=
+X-Gm-Gg: AYBFou1ACVwZWXyek8LD/EOP0pgZLjDZ5ZdtLU1Piilia3w2BAkHeeAxW82ti/1lWuS
+	8C+A2dFgn5wp1nga+6dLOdZtdvkxWNdfJvbsyAdPZHTVVdNkH0Oj3URMNWuN0dYxfCHJzmwwwK/
+	cIZOzS4IxSHtJwwAYQQKeN0kK35M2gVaVp4shAYH5cJ1Ce1n2SaTXhbQlxqFEJ0COUZMiZEKPWB
+	N2dDx53Ci18zNvb8eu1uULENfGdFxUPS0bBjw2TnV3VQsV7jdoD0vA/r7oxCZx+un+ncnOwRJVl
+	iUUxj75gafHgLlCD0n3fJgLQ5AtxBiBiF7fFKRWAC067DaFrmvCZv7bxNkbRFgD/F9KeFspcHE2
+	JNildKYq4WzhPtFg7iaA0uP7rwXAhfv40RlAd/84l5YHj9QUBIay/ilEqbQ8EFYOfYWmdgZqc4b
+	B2BEM+GwkM8QkyT30TKKfH1xtsDAsvgAGciv0IkBoA7R2HFuYA0wb+x8P7qKnShJdbMd1q+aWl/
+	q3j/NOpq+kl25TQX2n5S5G5aVjixc5uBkEhm0cd60gbbNIPWDVxWVwTLtcCUTW9UApOEpkqBp3e
+	WxdLNBoUZFYHTN//vsmlnbyM8EyfN6+iS8jWsQiqHenpVgNwp3SsVAUEu0lElFDQmGLpXp/U
+X-Received: by 2002:a05:6808:1a21:b0:4b9:e65b:8c2c with SMTP id 5614622812f47-5640dd69994mr7411157b6e.26.1793627817775;
+        Mon, 02 Nov 2026 05:56:57 -0800 (PST)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-5640fd95562sm7980806b6e.4.2026.11.02.05.56.55
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-5640fd95562sm7980806b6e.4.2026.11.02.05.56.57
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 02 Nov 2026 05:56:56 -0800 (PST)
+        Mon, 02 Nov 2026 05:56:57 -0800 (PST)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>,
 	Mike Snitzer <snitzer@kernel.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 1/6] NFSv4: add a tracepoint for bulk CB_LAYOUTRECALL replies
-Date: Mon,  2 Nov 2026 08:56:48 -0500
-Message-ID: <1cdcfef536459c717d7acb3b1f5571a07724b249.1793627813.git.bcodding@hammerspace.com>
+Subject: [PATCH v3 2/6] pNFS: clear NFS_LAYOUT_BULK_RECALL when an invalid layout's last segment is freed
+Date: Mon,  2 Nov 2026 08:56:49 -0500
+Message-ID: <b740e426e4480d70f439abfca5ae82d0e12e9b95.1793627813.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1793627813.git.bcodding@hammerspace.com>
 References: <cover.1793627813.git.bcodding@hammerspace.com>
@@ -101,96 +101,54 @@ Content-Transfer-Encoding: 8bit
 
 From: Benjamin Coddington <bcodding@hammerspace.com>
 
-There is a tracepoint for the reply to a CB_LAYOUTRECALL of a file, but
-none for a recall by fsid or of all layouts.  Add
-nfs4_cb_layoutrecall_bulk, which records the recall type, the fsid, and
-whether the client replied NFS4ERR_DELAY or NFS4ERR_NOMATCHING_LAYOUT.
+pnfs_layout_remove_lseg() clears NFS_LAYOUT_BULK_RECALL when the last
+segment is removed, but not if that segment is marked for return or the
+layout has a return requested or in progress.  I/O errors in any layout
+driver can mark segments for return, and flexfiles marks a segment for
+return on every I/O completion, so after a bulk recall that had to
+wait for outstanding I/O the flag usually stays set until the layout
+header is freed.  While it is set, pnfs_update_layout() sends I/O through
+the MDS without checking whether the fail bits have expired, so if a fail
+bit holds the layout header, I/O goes through the MDS until the layout is
+destroyed.
 
+NFS_LAYOUT_BULK_RECALL is only set on a layout with an invalid stateid,
+and the stateid can't become valid again while the flag is set.  Clear the
+flag whenever the last segment of an invalid layout is removed, ahead of
+the checks that guard setting NFS_LAYOUT_INVALID_STID.
+
+Fixes: abb3e1c8777e ("pNFS: Don't mark the layout as freed if the last lseg is marked for return")
+Fixes: 7b650994ab07 ("pNFS: Don't clear the layout stateid if a layout return is outstanding")
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/callback_proc.c |  7 +++++-
- fs/nfs/nfs4trace.h     | 49 ++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 55 insertions(+), 1 deletion(-)
+ fs/nfs/pnfs.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 9d836cb72e78..722bb5475a48 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -352,8 +352,13 @@ __be32 nfs4_callback_layoutrecall(void *argp, void *resp,
- 	struct cb_layoutrecallargs *args = argp;
- 	u32 res = NFS4ERR_OP_NOT_IN_SESSION;
- 
--	if (cps->clp)
-+	if (cps->clp) {
- 		res = do_callback_layoutrecall(cps->clp, args, cps);
-+		if (args->cbl_recall_type != RETURN_FILE)
-+			trace_nfs4_cb_layoutrecall_bulk(cps->clp,
-+							args->cbl_recall_type,
-+							&args->cbl_fsid, -res);
-+	}
- 	return cpu_to_be32(res);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index a057a06318c7..6d391985fb21 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -582,15 +582,15 @@ pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
+ 	list_del_init(&lseg->pls_list);
+ 	/* Matched by pnfs_get_layout_hdr in pnfs_layout_insert_lseg */
+ 	refcount_dec(&lo->plh_refcount);
++	if (list_empty(&lo->plh_segs) && !pnfs_layout_is_valid(lo))
++		clear_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
+ 	if (test_bit(NFS_LSEG_LAYOUTRETURN, &lseg->pls_flags))
+ 		return;
+ 	if (list_empty(&lo->plh_segs) &&
+ 	    !test_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags) &&
+-	    !test_bit(NFS_LAYOUT_RETURN, &lo->plh_flags)) {
+-		if (atomic_read(&lo->plh_outstanding) == 0)
+-			set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
+-		clear_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
+-	}
++	    !test_bit(NFS_LAYOUT_RETURN, &lo->plh_flags) &&
++	    atomic_read(&lo->plh_outstanding) == 0)
++		set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
  }
  
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index b5c89eeef2bc..e5abc186ecc4 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -1571,6 +1571,55 @@ TRACE_EVENT(nfs4_cb_layoutrecall_file,
- 		)
- );
- 
-+TRACE_DEFINE_ENUM(RETURN_FSID);
-+TRACE_DEFINE_ENUM(RETURN_ALL);
-+
-+#define show_layoutrecall_type(type) \
-+	__print_symbolic(type, \
-+		{ RETURN_FSID,	"FSID" }, \
-+		{ RETURN_ALL,	"ALL" })
-+
-+TRACE_EVENT(nfs4_cb_layoutrecall_bulk,
-+		TP_PROTO(
-+			const struct nfs_client *clp,
-+			u32 recall_type,
-+			const struct nfs_fsid *fsid,
-+			int error
-+		),
-+
-+		TP_ARGS(clp, recall_type, fsid, error),
-+
-+		TP_STRUCT__entry(
-+			__field(unsigned long, error)
-+			__field(u32, recall_type)
-+			__field(u64, fsid_major)
-+			__field(u64, fsid_minor)
-+			__string(dstaddr, clp ? clp->cl_hostname : "unknown")
-+		),
-+
-+		TP_fast_assign(
-+			__entry->error = error < 0 ? -error : 0;
-+			__entry->recall_type = recall_type;
-+			if (recall_type == RETURN_FSID) {
-+				__entry->fsid_major = fsid->major;
-+				__entry->fsid_minor = fsid->minor;
-+			} else {
-+				__entry->fsid_major = 0;
-+				__entry->fsid_minor = 0;
-+			}
-+			__assign_str(dstaddr);
-+		),
-+
-+		TP_printk(
-+			"error=%ld (%s) type=%s fsid=%llx:%llx dstaddr=%s",
-+			-__entry->error,
-+			show_nfs4_status(__entry->error),
-+			show_layoutrecall_type(__entry->recall_type),
-+			__entry->fsid_major, __entry->fsid_minor,
-+			__get_str(dstaddr)
-+		)
-+);
-+
- #define show_stateid_type(type) \
- 	__print_symbolic(type, \
- 		{ NFS4_INVALID_STATEID_TYPE,	"INVALID" }, \
+ static bool
 -- 
 2.53.0
 
