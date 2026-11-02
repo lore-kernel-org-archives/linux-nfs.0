@@ -1,55 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793631101;
-	b=OJ8b1BbYjjI2tpx/CEpVUmKxSQb3MaQS3WR5OIF4/hF5rhvgqlqA18QhXhxn9ezyvd8k
-	 mNtLZDVpZJKl/JHtqEApio1Gl8YCq6ZTSJo294UYmu1TQ7PeYhzslaWrCCZ2W5EzPrrzD
-	 yKo4v6NnD5nIcaHjyoIeUYWdf+DxuvvW4AexZcXZhYhOmZ8+RqUv1xRtfKkzwZ0kj06vQ
-	 Lkuy765P/c8dnxWZCoB+s2u1DGwObK0FMC9C1z6FNK/JfD9z4JrxaM7XuTmuW2jkTo4gy
-	 d+UhUtdOW5+4rrR/cR0kkz4TEXxeAhpbFc0JKKsyIiA5HiZ/nv+pBsi9yolXw5tmaCQ==
+	t=1793631127;
+	b=wixn1Ngf6mfA7ImPrdA0Xxlze+nOAKuy/n3N1iGCzQXlf+22yE6sxAHJgfL8gQa5Rtpm
+	 A8duKrl+6zqpJNUgpGXlkq5X1VBZKYj78g/EjXBwIWVg9rxvHcooddFJHfl2tbNxmr7Di
+	 IlPDzYkfVmsX6jkqBe1P9eVsiQ25mVZUsjooQ7MUz8mPmKDq7VV0gLFyvk6QlrqXMwYE9
+	 gKOsh3T+XpGHOj3T8EvRz2UqFoJDRxeZkH0ki5eYxzFGVIgyOEEs0E/Xtqf4pRszYhXgB
+	 JNVHrOYnaBqFJy+T5tQK90ILhQGjvk5JcUl2k1zULrW5Xo5XtiIiVfrBKHkm4/1wuhg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793631101;
-	h=Received:DKIM-Signature:Received:X-Forwarded-Encrypted:
-	 X-Gm-Message-State:X-Received:MIME-Version:References:In-Reply-To:
-	 From:Date:X-Gmail-Original-Message-ID:X-Gm-Features:Message-ID:
-	 Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=3PMBNHbf4ph/mdyR65c545+LMS26XozggfD62W0AADg=;
-	b=BrwkowI4l7jMG/ZlDVZNOno/acoq4WJgYu0i9qNqURnOZL68IkRrxKKKlnHAWSX4NX1/
-	 YLU8HycOWxA3ra51NQhy8XxV2zvzSVRlXIpI8ukcBODdoUxYMFlCMUPnv/PvmsamFlVXY
-	 Uu4WUpdyhPaz7IbCXgiIcrmJV0yspG6tA8run7tP29R5yqG2zLRa6LttcgNcjLcNGX93k
-	 lh8T4aHywF0SXqb4NZ9LbOkHfSU2SlT63mXx9CR9n5+hoduYaILbQHHLgwrKZUajDT4KL
-	 8qu8gkRKY09libxJXQCAoB9b+pMJYjlA0ZJiDd2YqFb63G1xbfwfU/6aQQV9Lh4PJCQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793631127;
+	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
+	 X-Mailer;
+	bh=iJ84nEP4YY4K28kLfEZAA/6j0sLXVTf/aEe1LCZ8e14=;
+	b=20hci1IwC9KOOhXLoLmFEzmVaLvIiUfKxToBHPDqMQhMGOXzDvQz5ot22hB7N+/kiGbK
+	 wkFll8l2EUSkUVQIOIIituG4jADJoFbWeGbEMRItc/ArgatVQFTqTvE3F/mMSV5bviyE6
+	 VpFHyWCuPoJu3f5qfajmSfCMpD+nXvRyOfHp6Q/uarZi/+lgHSi1js2nwhfMfsIeCgfsC
+	 gknE5un0JvYiHm7DLUaIwCSog8TTqj0zwMkVxgxgu0i6jITxHQinfcHw0qCZxRYDOlFtY
+	 FITfRDHLAjQhUJgpHLmF+24b0/G+cRGSctTfJ0KZU6mPzZHBm7iin+g6jc30FJouxfQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="GlNn/SoM";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PR4eStJu;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CBE136076D8F
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 14:51:40 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 36A71606D830;
+	Mon,  2 Nov 2026 14:52:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GlNn/SoM
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3E6FA1F01801
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2026 14:51:40 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PR4eStJu
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9FECC1F00A1B;
+	Mon,  2 Nov 2026 14:51:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793631100;
-	bh=3PMBNHbf4ph/mdyR65c545+LMS26XozggfD62W0AADg=;
-	h=References:In-Reply-To:From:Date:Subject:To:Cc;
-	b=GlNn/SoMWD5zqxxqX/eCuEquiTNPRgmYC+uyTlQFZ16kexqk/KmCRp3INGj7ss8oQ
-	 VUu1KkbtGSGsG3pM3YZ4MDiwbG5YrkBKBiN14T/X9emJ88g5DPj3pIXVn3phJmyVow
-	 KX2JEr2f7UDK3U8ijM+CbxeE6tC6vIkI/nKJYJzvIxjwONjYrUXdb0ed56rsLZ06JR
-	 rdYISyB5bt/rhPIvfR1HgK23GVD6ypB685bMRxWVtqNBK0a9B3nWL37+brdRtxbv2s
-	 OHz5HfLYY/uUgJVHbpI/TT4TXRUNjrxgB4dmkRp6j56kdwhka9W+cvSiBS0wLtgATL
-	 65EIv4d24CLeA==
-Received: by mail-lf1-f43.google.com with SMTP id 2adb3069b0e04-5be3ed646a5so3308392e87.1
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2026 06:51:40 -0800 (PST)
-X-Forwarded-Encrypted: i=1; AKwUvBzri0BGYPGpYIdUH01fxEIaN7lqKdnvKRCRFZaSqFHdfLrO9Guj5iiK4aQkNl5tycS3IJ8itxGLrmU=@vger.kernel.org
-X-Gm-Message-State: APuU4Z/WAEDsoLpQF1ETJH9Kzp3mmxPBEQWFAuWd8NScpM10DrZmmp32
-	MJ/apb4v52WTQxWUjnrU/5BQV7ofpbzHk04sws1Ol5p7Dc/1pP4YGdcYa/15FFahvzmhuY0xBNB
-	uQAHxiiBqa3Gqkn0CtFwrl5d4Zja6uAA=
-X-Received: by 2002:a05:6512:39cf:b0:5bc:b0b9:f457 with SMTP id
- 2adb3069b0e04-5bfd95827e8mr3755837e87.47.1793631098488; Mon, 02 Nov 2026
- 06:51:38 -0800 (PST)
+	s=k20260515; t=1793631126;
+	bh=iJ84nEP4YY4K28kLfEZAA/6j0sLXVTf/aEe1LCZ8e14=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=PR4eStJuCoR+mECGMaIVXtQASozW+a7AOmyTO4iG4xy4nIzb4PWW2BKxvYmoNRuHs
+	 x2Lm2Rfp+v90UcW719VC0BYV4O8DTyukQ9z+uecUIg7pY28G7drnWgQgVWiNUS+/ck
+	 xxhSirH9ZyCaYNU7/1qRcYlti7eFvPDGGsReRJYcEPKXsJ5iSGH7SZJURK2R0hC4aT
+	 hXX/7O0Tf8cPki+pg2H6SZ7pXnNxkptKTlJYs8cIZrx/PHwXHyzeBPMp/y/AzKyvOE
+	 N8mqzLmWmEBFNIMmXqg5H4OevB0bDwM2UM7fMf6GDHFGBq7FkN5sBI9EBYQrhUrLbY
+	 N6tJxPjUYmLBA==
+From: Christian Brauner <brauner@kernel.org>
+Date: Mon, 02 Nov 2026 15:48:48 +0100
+Subject: [PATCH RFC 08/16] selftests/proc: check that a faulting reader
+ doesn't hold up removal
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -59,91 +53,203 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org> <20261102-work-procfs-bugfixes-v1-2-59422ed3e465@kernel.org>
-In-Reply-To: <20261102-work-procfs-bugfixes-v1-2-59422ed3e465@kernel.org>
-From: "Rafael J. Wysocki (Intel)" <rafael@kernel.org>
-Date: Mon, 2 Nov 2026 15:51:25 +0100
-X-Gmail-Original-Message-ID: <CAJZ5v0gw6xykAX3dvJmjhVOQudF8qKgKLViY0oXGzUWqDsWDbg@mail.gmail.com>
-X-Gm-Features: AclHuK-8h3kqhIhfKB_FBrHc69T85DQwOpvSG7VveYTuGyJayTx7vBef-7fYqkY
-Message-ID: <CAJZ5v0gw6xykAX3dvJmjhVOQudF8qKgKLViY0oXGzUWqDsWDbg@mail.gmail.com>
-Subject: Re: [PATCH RFC 02/38] PNP: isapnp: don't read past the end of the
- buffer on a large pread()
-To: Christian Brauner <brauner@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, 
-	Linus Torvalds <torvalds@linux-foundation.org>, Jann Horn <jannh@google.com>, 
-	Josef Bacik <josef@toxicpanda.com>, Chris Mason <mason@kernel.org>, 
-	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, Eric Dumazet <edumazet@kernel.org>, 
-	Thomas Gleixner <tglx@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>, 
-	Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, Greg Kroah-Hartman <gregkh@suse.de>, 
-	Joel Granados <joel.granados@kernel.org>, Kees Cook <kees@kernel.org>, Jan Kara <jack@suse.cz>, 
-	Jan Kara <jack@suse.com>, linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, 
-	linux-acpi@vger.kernel.org, linux-kselftest@vger.kernel.org, 
-	linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, 
-	linux-um@lists.infradead.org, linux-wireless@vger.kernel.org, 
-	linuxppc-dev@lists.ozlabs.org, netdev@vger.kernel.org, ntfs3@lists.linux.dev, 
-	platform-driver-x86@vger.kernel.org, coreteam@netfilter.org, 
-	kexec@lists.infradead.org, linux-pci@vger.kernel.org, 
-	linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org, 
-	dri-devel@lists.freedesktop.org, ibm-acpi-devel@lists.sourceforge.net, 
-	jfs-discussion@lists.sourceforge.net, linux-alpha@vger.kernel.org, 
-	linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org, 
-	linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org, 
-	linux-sh@vger.kernel.org, linux-usb@vger.kernel.org, 
-	samba-technical@lists.samba.org, sparclinux@vger.kernel.org, 
-	linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org, 
-	linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net, 
-	Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
-	linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, 
-	linux-debuggers@vger.kernel.org, Chuck Lever <cel@kernel.org>, stable@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261102-work-procfs-core-v1-8-75df35e4f8b8@kernel.org>
+References: <20261102-work-procfs-core-v1-0-75df35e4f8b8@kernel.org>
+In-Reply-To: <20261102-work-procfs-core-v1-0-75df35e4f8b8@kernel.org>
+To: linux-fsdevel@vger.kernel.org
+Cc: Linus Torvalds <torvalds@linux-foundation.org>, 
+ Jann Horn <jannh@google.com>, Josef Bacik <josef@toxicpanda.com>, 
+ Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+ NeilBrown <neil@brown.name>, Eric Dumazet <edumazet@kernel.org>, 
+ Thomas Gleixner <tglx@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>, 
+ Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, 
+ Greg Kroah-Hartman <gregkh@suse.de>, 
+ Joel Granados <joel.granados@kernel.org>, Kees Cook <kees@kernel.org>, 
+ Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, 
+ linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, 
+ linux-acpi@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, 
+ linux-um@lists.infradead.org, linux-wireless@vger.kernel.org, 
+ linuxppc-dev@lists.ozlabs.org, netdev@vger.kernel.org, 
+ ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org, 
+ coreteam@netfilter.org, kexec@lists.infradead.org, 
+ linux-pci@vger.kernel.org, linux-sound@vger.kernel.org, 
+ netfilter-devel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ ibm-acpi-devel@lists.sourceforge.net, jfs-discussion@lists.sourceforge.net, 
+ linux-alpha@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-cifs@vger.kernel.org, linux-fbdev@vger.kernel.org, 
+ linux-hwmon@vger.kernel.org, linux-mm@kvack.org, linux-sh@vger.kernel.org, 
+ linux-usb@vger.kernel.org, samba-technical@lists.samba.org, 
+ sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org, 
+ linux-doc@vger.kernel.org, linux-serial@vger.kernel.org, 
+ linux-atm-general@lists.sourceforge.net, Takashi Iwai <tiwai@suse.de>, 
+ linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
+ linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, 
+ linux-debuggers@vger.kernel.org, 
+ "Christian Brauner (Amutable)" <brauner@kernel.org>, 
+ Chuck Lever <cel@kernel.org>
+X-Mailer: b4 0.17-dev
 
-On Mon, Nov 2, 2026 at 3:22=E2=80=AFPM Christian Brauner <brauner@kernel.or=
-g> wrote:
->
-> isapnp_proc_bus_read() truncates the position to an int. A pread() at
-> an offset like 0xfffffc00 turns it negative, the check against the size
-> of the configuration space passes, and the loop then puts everything
-> from that position up to byte 256 into the reader's buffer, no matter
-> how few bytes were asked for.
->
-> Keep the position as a loff_t and clamp the count against what is left
-> of the configuration space.
->
-> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+Read /proc/net/dev_snmp6/<dev> of a tun device into a buffer whose first
+page is backed by userfaultfd and remove the device while the reader
+sleeps in its copy to userspace:
 
-Reviewed-by: Rafael J. Wysocki (Intel) <rafael@kernel.org>
+- removing the entry doesn't wait for the reader
 
-> ---
->  drivers/pnp/isapnp/proc.c | 6 ++----
->  1 file changed, 2 insertions(+), 4 deletions(-)
->
-> diff --git a/drivers/pnp/isapnp/proc.c b/drivers/pnp/isapnp/proc.c
-> index c1f6e6bd0eb2..8197c7f29743 100644
-> --- a/drivers/pnp/isapnp/proc.c
-> +++ b/drivers/pnp/isapnp/proc.c
-> @@ -23,14 +23,12 @@ static ssize_t isapnp_proc_bus_read(struct file *file=
-, char __user * buf,
->                                     size_t nbytes, loff_t * ppos)
->  {
->         struct pnp_dev *dev =3D pde_data(file_inode(file));
-> -       int pos =3D *ppos;
-> +       loff_t pos =3D *ppos;
->         int cnt, size =3D 256;
->
->         if (pos >=3D size)
->                 return 0;
-> -       if (nbytes >=3D size)
-> -               nbytes =3D size;
-> -       if (pos + nbytes > size)
-> +       if (nbytes > size - pos)
->                 nbytes =3D size - pos;
->         cnt =3D nbytes;
->
->
-> --
-> 2.53.0
->
->
+- the reader still gets what was printed before the removal
+
+- and the next read fails with -EIO
+
+The entry is removed under RTNL, so a regression stalls the test for
+five seconds before it fails.
+
+Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+---
+ .../selftests/proc/proc-remove-slow-reader.c       | 133 +++++++++++++++++++++
+ 1 file changed, 133 insertions(+)
+
+diff --git a/tools/testing/selftests/proc/proc-remove-slow-reader.c b/tools/testing/selftests/proc/proc-remove-slow-reader.c
+new file mode 100644
+index 000000000000..a201645beca9
+--- /dev/null
++++ b/tools/testing/selftests/proc/proc-remove-slow-reader.c
+@@ -0,0 +1,133 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * A read that faults while copying to userspace must not hold up removal of
++ * the /proc entry. /proc/net/dev_snmp6/<dev> of a tun device is removed under
++ * RTNL when the device's file is closed.
++ */
++#define _GNU_SOURCE
++#include <errno.h>
++#include <fcntl.h>
++#include <linux/if.h>
++#include <linux/if_tun.h>
++#include <linux/userfaultfd.h>
++#include <poll.h>
++#include <pthread.h>
++#include <sched.h>
++#include <string.h>
++#include <sys/ioctl.h>
++#include <sys/mman.h>
++#include <sys/syscall.h>
++#include <unistd.h>
++
++#include "../kselftest_harness.h"
++
++#define TUN_NAME	"procslow0"
++#define SNMP6_PATH	"/proc/net/dev_snmp6/" TUN_NAME
++#define READ_PAGES	16
++#define TIMEOUT_MS	5000
++
++struct reader {
++	int fd;
++	char *buf;
++	size_t len;
++	ssize_t ret;
++};
++
++struct closer {
++	int tun;
++	int done;
++};
++
++static void *read_thread(void *arg)
++{
++	struct reader *r = arg;
++
++	r->ret = read(r->fd, r->buf, r->len);
++	return NULL;
++}
++
++static void *close_thread(void *arg)
++{
++	struct closer *c = arg;
++	ssize_t ret;
++
++	close(c->tun);
++	ret = write(c->done, "x", 1);
++	return (void *)ret;
++}
++
++TEST(remove_while_reader_faults)
++{
++	struct uffdio_api api = { .api = UFFD_API };
++	struct uffdio_register reg = {};
++	struct uffdio_zeropage zero = {};
++	long psz = sysconf(_SC_PAGESIZE);
++	struct ifreq ifr = {};
++	struct reader r = {};
++	struct closer c = {};
++	struct uffd_msg msg;
++	struct pollfd pfd;
++	pthread_t rt, ct;
++	int uffd, done[2];
++	char *buf;
++
++	if (unshare(CLONE_NEWNET))
++		SKIP(return, "unshare(CLONE_NEWNET): %s", strerror(errno));
++
++	c.tun = open("/dev/net/tun", O_RDWR | O_CLOEXEC);
++	if (c.tun < 0)
++		SKIP(return, "/dev/net/tun: %s", strerror(errno));
++	strncpy(ifr.ifr_name, TUN_NAME, IFNAMSIZ - 1);
++	ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
++	ASSERT_EQ(ioctl(c.tun, TUNSETIFF, &ifr), 0);
++
++	r.fd = open(SNMP6_PATH, O_RDONLY | O_CLOEXEC);
++	if (r.fd < 0)
++		SKIP(return, SNMP6_PATH ": %s", strerror(errno));
++
++	uffd = syscall(__NR_userfaultfd, O_CLOEXEC | O_NONBLOCK);
++	if (uffd < 0)
++		SKIP(return, "userfaultfd: %s", strerror(errno));
++	ASSERT_EQ(ioctl(uffd, UFFDIO_API, &api), 0);
++
++	/* Only the first page of the buffer goes through userfaultfd. */
++	buf = mmap(NULL, READ_PAGES * psz, PROT_READ | PROT_WRITE,
++		   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
++	ASSERT_NE(buf, MAP_FAILED);
++	reg.range.start = (unsigned long)buf;
++	reg.range.len = psz;
++	reg.mode = UFFDIO_REGISTER_MODE_MISSING;
++	ASSERT_EQ(ioctl(uffd, UFFDIO_REGISTER, &reg), 0);
++
++	r.buf = buf;
++	r.len = READ_PAGES * psz;
++	ASSERT_EQ(pthread_create(&rt, NULL, read_thread, &r), 0);
++
++	/* The reader now sleeps in its copy to userspace. */
++	pfd = (struct pollfd){ .fd = uffd, .events = POLLIN };
++	ASSERT_EQ(poll(&pfd, 1, TIMEOUT_MS), 1);
++	ASSERT_EQ(read(uffd, &msg, sizeof(msg)), sizeof(msg));
++	ASSERT_EQ(msg.event, UFFD_EVENT_PAGEFAULT);
++
++	/* Closing the device removes the file that is being read. */
++	ASSERT_EQ(pipe2(done, O_CLOEXEC), 0);
++	c.done = done[1];
++	ASSERT_EQ(pthread_create(&ct, NULL, close_thread, &c), 0);
++	pfd = (struct pollfd){ .fd = done[0], .events = POLLIN };
++	EXPECT_EQ(poll(&pfd, 1, TIMEOUT_MS), 1) {
++		TH_LOG("removing " SNMP6_PATH " waited for the reader");
++	}
++
++	zero.range.start = (unsigned long)buf;
++	zero.range.len = psz;
++	ASSERT_EQ(ioctl(uffd, UFFDIO_ZEROPAGE, &zero), 0);
++	ASSERT_EQ(pthread_join(rt, NULL), 0);
++	ASSERT_EQ(pthread_join(ct, NULL), 0);
++
++	/* What was printed before the removal still arrives, then nothing. */
++	EXPECT_GT(r.ret, 0);
++	EXPECT_EQ(read(r.fd, buf, psz), -1);
++	EXPECT_EQ(errno, EIO);
++}
++
++TEST_HARNESS_MAIN
+
+-- 
+2.53.0
+
