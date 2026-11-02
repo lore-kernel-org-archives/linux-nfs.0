@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793632575;
-	b=hh6GoLBRd3wrsg8+UAxpG/WpAK56UjGE8Jjj5Scs0tfyBF1ybl3H9PxMrDim7pdHX0rC
-	 gPYlV/K5P+UVrYeQwIfBJV0zHkri3SE6fPMhQpv+NxLaSj4Vj3bnh4eB88OyFCMKQ1xar
-	 sy+Bj5H9641lfrutfN8hGyA9EjUa9dIWchqxyWHqQiWMdx10I0Zf5c1WZE2gI2y3EvWiJ
-	 VIKDz3XnR67+fTe9XMgFhxTYlYoYsyA11oyTUtqyUZ6WDjJbpHU68Z4mAG1aHEeBfuuDm
-	 QIw6avpP28pjxNUuEVRE4oPHgxANfiDu7lykMnljwYImTjEM14LOruM703s0awX1/bQ==
+	t=1793632594;
+	b=y45ybW5nbgxmVPGoKsE6/qu7QxY5S02quzzNguOj7cs4bjAGblKSdcP2vCyULncPz7hJ
+	 VBkMtZMfmr86jhz8gzmPSvbhc36T1sPkb8i1+rxXLbsUSJdeXJU7WRgn0/EjvPG+NLtAG
+	 PQ7DE32ujQ0kqGjOpsAW0Zbo8iBMwHs40ywI3R+EOAMb+BQMLA/W7JrwzejY6bh5/pCle
+	 2VWL9gb9a7c8m5dtdZknPdQiJ7wRp4j1PR7EqnK1mhMqbl6BsPYwFUjTx+7An6CLsuCK/
+	 1aEq3F0kjywsYEoMqRq0iNsg9xFXTJfp62WRu7lGa4N1/reV17Xwd8QlUXX2BcniM6w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793632575;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793632594;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=goLGxFor5aDHmq+/63YZ7VsFVk0WPo8/IlwPxf0/q/E=;
-	b=PvViG6YL6Q022EZFeB5bsQFq6rDBKnbA/JoaN3tHMcrLjHohnRf2eqUIFqO7QOVLI0KB
-	 3HP6CDXan7JovGefOYN87bfBc/rrqJ8p+LmwTG/X2rNqFa6WFg2NUsmxhlcRoc+o0j3PQ
-	 UV9gLGZ2SDcZDOm59GPJIvpoo61jOUyxrpKehjf3yJqFFArnsu6n8TQr2BJJiW05xc6PX
-	 sS1NpSdRuhLyJq1uLd6y5oA+VV3qPXeB8yefAroAzI4tu01Cyn9+GCAcOxHpnAeoK8E25
-	 wf48zJfbCq2U6CsqDOAgm1YAGh251NNlJvNHYz0nlGLY00j+HaJ1yQrmd1dxRNplrqw==
+	bh=zft31zEOyoxpoaQra2tyBUnsx6CBcNbPccBHjIcKUVg=;
+	b=3tb306VMPfHx/JdhQ9HG/YAiTUtsvKHcP3ekkkChp2OdR36IGmMp9u3WNZyaJepP4/8P
+	 9MxHRUeAFh3Wjky0/4tk6pKOF7Tscyac6p/3Q2ewj3O8JRntbDE2p2Yx31r4mgCZL/OSb
+	 Z3RCzTrmX/fKrZaJWKWmcA707aVHCXRfdwM/ForGipjZAPAP6y5qCwvzRnapuPcL0vBEx
+	 yw1B8Nv43v9vsze7YG1Mkt/sq9aZwPhypi1NT7Uf/TDh6BZqWyPe0HWSj3xbNQIonXuMw
+	 7067gI5AQWUQha4T7IglKY/rCrCRHIUcCrZogM3YTcxTd+s2u5u3UVqr/AEzI+nHJDA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="ej70vPT/";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lwKeAIr5;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37C4A606A592;
-	Mon,  2 Nov 2026 15:16:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C88EA60BA901;
+	Mon,  2 Nov 2026 15:16:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ej70vPT/
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B757A1F00A16;
-	Mon,  2 Nov 2026 15:15:56 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lwKeAIr5
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 700B71F00A17;
+	Mon,  2 Nov 2026 15:16:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793632574;
-	bh=goLGxFor5aDHmq+/63YZ7VsFVk0WPo8/IlwPxf0/q/E=;
+	s=k20260515; t=1793632593;
+	bh=zft31zEOyoxpoaQra2tyBUnsx6CBcNbPccBHjIcKUVg=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=ej70vPT/y7NrhBgRnVeJZJCWCJCY4Ir+tDI0qb3+EynguB83LrhQsFn2l3M5OZtXE
-	 2VH+S87/JA3tEOQ5oF6NbafdeM5dvCGs7k+Pl66iGGY0VzHGdvfeTuOHMGET++saO9
-	 8CMGsO+isRtfapDtsUOvJJ1+uTuGk8RHjvFSx0T6P4hnrtLPTR2SSKodt/mLQIBmk2
-	 SzbEgwffy1kv1xXhMujkkGK8afuda14vw1NrfhyqY3qJhPF7pdO3kkpnpsfKhmpNYh
-	 jxGaC2jmsD4TftiMbXuIK38lcVEqXr7YxWPTdZiDHhvMHLfLf4/cExgZfn7c5HC9H0
-	 J+psMOIMcn0fQ==
+	b=lwKeAIr5gfFdOVWI9d9xeAawLRX/+XVqTfNIZzgNtLrSPX6u/1CsXECEJL5tNDzMA
+	 81vHXmP4nFBhwRmc/4DERMlJX3QJMwM96cPu9uFbIdibRRS+aHrZI2E5D8a9x1Uv1l
+	 y72FYfS6k5k1GClENyne0V+By+vwxAzdEjY9MbyHJUJx3+nI4+K7kwwgkmi1p0ISO4
+	 9ghnaezbHX5aMMMApF32QawdIaGRPpRDQgJtdD1vqFI5zB7VZbE3n4IduXje7eWoWa
+	 uAZM2qTjPRKpyLwg4MYMHyPaKwvk2dOe0ToVz3+E2luGZiMaQunD5RVbSRamL0hSZ+
+	 ETwAKz10Wwghg==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 16:07:24 +0100
-Subject: [PATCH RFC 17/23] usb: gadget: function: rndis: let procfs copy in
- writes
+Date: Mon, 02 Nov 2026 16:07:25 +0100
+Subject: [PATCH RFC 18/23] wifi: ipw2x00: let procfs copy in writes to the
+ debug level
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-drivers-v1-17-a994bd4d3b1a@kernel.org>
+Message-Id: <20261102-work-procfs-drivers-v1-18-a994bd4d3b1a@kernel.org>
 References: <20261102-work-procfs-drivers-v1-0-a994bd4d3b1a@kernel.org>
 In-Reply-To: <20261102-work-procfs-drivers-v1-0-a994bd4d3b1a@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -91,59 +91,55 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1569; i=brauner@kernel.org;
- h=from:subject:message-id; bh=saz4p5rW2UOPmCRi+6zEslqjX7E5721ehvji7/y2TLU=;
- b=kA0DAAoWkcYbwGV43KIByyZiAGropzGhaJWnu9+4zvQgXLhUThJNad18i/diIL3NsOXTHFLIm
- Yh1BAAWCgAdFiEEQIc0Vx6nDHizMmkokcYbwGV43KIFAmropzEACgkQkcYbwGV43KIUZwD+IHp+
- nA7hxed0nI3IkqLBHaX8l90Mx69iUsGXRMOlkboA/3KH9SLJ/MMw6rQ8ujZlKhQxzG1q+lU/vjC
- oZkDuYDUH
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1605; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=SZl2laNUZYNGFN2sYGUP5fs3tBGCqMuq/D28k7CZWwo=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9WG64euvV9Mi0G6e/pc2cvZ5tAkOWU9ijuqL1VrnM1
+ 97MmMJxqaOUhUGMi0FWTJHFod0kXG45T8Vmo0wNmDmsTCBDGLg4BWAiBnMY/pddjIrb5bFlB/vq
+ T/1p1gs8F8lNfdO6cLPPKu/tLFWSX2UZ/mk7OAg3F8ZXtHXzM/o7ck37wd4VdH5/R8b9gzV2lT9
+ NGAA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Implement ->proc_write_buf() so procfs copies in what is written to
-/proc/driver/rndis-<n> before it pins the entry, and handle the
-commands from that copy. Writes larger than PAGE_SIZE - 1 bytes fail
-with -EINVAL now.
+Implement ->proc_write_buf() so procfs copies in what is written before
+it pins the entry, and parse the level from that copy. Writes larger
+than PAGE_SIZE - 1 bytes fail with -EINVAL now, and a buffer that can't
+be read fails with -EFAULT instead of looking like it was written.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/usb/gadget/function/rndis.c | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+ drivers/net/wireless/intel/ipw2x00/libipw_module.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/usb/gadget/function/rndis.c b/drivers/usb/gadget/function/rndis.c
-index 3c7bd30b8a3a..e05e0c6ae8fb 100644
---- a/drivers/usb/gadget/function/rndis.c
-+++ b/drivers/usb/gadget/function/rndis.c
-@@ -1138,7 +1138,7 @@ static int rndis_proc_show(struct seq_file *m, void *v)
- 	return 0;
+diff --git a/drivers/net/wireless/intel/ipw2x00/libipw_module.c b/drivers/net/wireless/intel/ipw2x00/libipw_module.c
+index 15d9a5efb581..08cc0d7f57c1 100644
+--- a/drivers/net/wireless/intel/ipw2x00/libipw_module.c
++++ b/drivers/net/wireless/intel/ipw2x00/libipw_module.c
+@@ -216,14 +216,13 @@ static int debug_level_proc_show(struct seq_file *m, void *v)
  }
  
--static ssize_t rndis_proc_write(struct file *file, const char __user *buffer,
-+static ssize_t rndis_proc_write(struct file *file, char *buffer,
- 				size_t count, loff_t *ppos)
+ static ssize_t debug_level_proc_write(struct file *file,
+-		const char __user *buffer, size_t count, loff_t *pos)
++		char *buffer, size_t count, loff_t *pos)
  {
- 	rndis_params *p = pde_data(file_inode(file));
-@@ -1146,9 +1146,8 @@ static ssize_t rndis_proc_write(struct file *file, const char __user *buffer,
- 	int i, fl_speed = 0;
+ 	char buf[] = "0x00000000\n";
+ 	size_t len = min(sizeof(buf) - 1, count);
+ 	unsigned long val;
  
- 	for (i = 0; i < count; i++) {
--		char c;
--		if (get_user(c, buffer))
--			return -EFAULT;
-+		char c = *buffer;
-+
- 		switch (c) {
- 		case '0':
- 		case '1':
-@@ -1185,7 +1184,7 @@ static ssize_t rndis_proc_write(struct file *file, const char __user *buffer,
+-	if (copy_from_user(buf, buffer, len))
+-		return count;
++	memcpy(buf, buffer, len);
+ 	buf[len] = 0;
+ 	if (sscanf(buf, "%li", &val) != 1)
+ 		printk(KERN_INFO DRV_NAME
+@@ -236,7 +235,7 @@ static ssize_t debug_level_proc_write(struct file *file,
  
- static const struct proc_ops rndis_proc_ops = {
- 	.proc_show	= rndis_proc_show,
--	.proc_write	= rndis_proc_write,
-+	.proc_write_buf	= rndis_proc_write,
+ static const struct proc_ops debug_level_proc_ops = {
+ 	.proc_show	= debug_level_proc_show,
+-	.proc_write	= debug_level_proc_write,
++	.proc_write_buf	= debug_level_proc_write,
  };
+ #endif				/* CONFIG_LIBIPW_DEBUG */
  
- #define	NAME_TEMPLATE "driver/rndis-%03d"
 
 -- 
 2.53.0
