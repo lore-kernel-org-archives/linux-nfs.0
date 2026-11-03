@@ -1,21 +1,21 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=213.95.11.211
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793702798;
-	b=3veoQrr4jQ0kXYe5q4ImtTnDqJHpeUErR9O2iqt5K/bZi6zX5ohZuEpc9Z6lrJrgp8g0
-	 Nrr8pODiIhRplCwh3NvSy4WVueBNO+rPyUJI3kJ2mnDVsUC/f/lbGVFNrCdMQPLqqzwcU
-	 f4I8kMUlGrNmqTB4ynD+hyq8SCParsoLQz9ntsqeUj9OcCBIK9gnl+nWS1t9Av5qVC/PR
-	 p9j6G1Vlq2yd4aasO+u01r9Bg5F5quYXXC7tRFDat7PZyf1PRiaK4vCm7oBbNdPRjdm6T
-	 wmfovQkGjADTMq42t7Uq16WdjjpoOEQeBZJIwaZgcIxPU6CAoBsVS3OD7vOuO2Meywg==
+	t=1793703048;
+	b=ONj/c++VxA9Jo4Ayw5z81p2Q0VF+c4Gfuux3MS/X3hGS/B87kp+XDajbbAfLJIzieRcI
+	 86XPq+kf2aOWlGTaBahHBLg9nut6eVtNYhNY88/KcUKGZ899meAguVIQncBKvvMRVvI19
+	 0Ypg6Ato84hGkY1Xtayaz8XGOg15jt4c9+PnEIRC55XITJtbAksJ3SQ9kwSJBRE8kgiaG
+	 NQ0F2z+K2KQGAHUeUNoZ+YIjIg+FFqV9IVuc4qHAY0ckasdWXOwWq6tBQfcOj1j9bOTXD
+	 juavMCoF+aBUMSIkkJY1gSeArbvBqXwi/29hsMMKtZNGc5be2tM2Igt1XwB8NAq7H+w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793702798;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793703048;
 	h=DMARC-Filter:Received:Date:From:To:Cc:Subject:Message-ID:References:
 	 MIME-Version:Content-Type:Content-Disposition:In-Reply-To:User-Agent;
-	bh=LdIXNf/kbOEd603rTDv8mLco3g5Owvy0jg0HM9Q6Xrs=;
-	b=xRNnuR8UPeIy9spGNy/deSp29I3YMmFOc0SLIXWBeiSDI+h4IJRtkeRWq1cWXslTHGfC
-	 tyZ+BsRj1XM6+kgz7P0652CX/wvNN9Tu+oNNblk/SQ7Kkl7Ce3w1b7X3tOQIR9pHArYX0
-	 LVP+DOX2GNa8vYcdkg7tjq4yddrpYu/sGRasplUqwwzo07ALmTRWZyRLWgi3guaKk3LiV
-	 Bo2W7umf5b20v2Vpa42J639n1qRYDy7v6YwFDWwA1okr+IHF+LKof0FU+ZUgqOqeAbuIU
-	 Rw1MjMZDwDpjJ/q0y0RFh91b36NJga4LvJXkr50Zxb3v1CrhTWmsMczMmGqihBxw2PA==
+	bh=f/R88vgW0ovDUfLzxlud9DBVXC7y/E2SblSvUAHW808=;
+	b=Ref3BQmNXjjhw7TeF1mvxZqd4IL0hT5zrBhzmQf6/6OMU6AkimEgFaMbckXksaP4DG1u
+	 6asB8T1PUPKfG4a8wM5kMKjPWssWlgEd6bIaN9Ii62qNp7VLws5Dxr8hxXUnc8M0fZH37
+	 0IglCpxHkoFq2I6chTnjjcha5+WmolXuNtM9O2Fov3/ABaRTabeoiQNbraWcQPqD3L1Xo
+	 C7hVoaQeJrNWv7ZYXaarGc4UYUk6rrY0MpGbH5fLrjt4aygXrq1HG2rvwtc1yLQa1llBQ
+	 Ym3ht3z489TRTZSJ/GSZ625V/1vH+1k+oAUgPuSgoZrHl7fWZo5Pf6wu85Bm1CuC49A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=lst.de;
 	spf=pass smtp.mailfrom=lst.de;
@@ -23,14 +23,14 @@ ARC-Authentication-Results: i=1; smtp.subspace.kernel.org;
 Received: from verein.lst.de (verein.lst.de [213.95.11.211])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 45F206072C8E;
-	Tue,  3 Nov 2026 10:46:36 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 45F206072C8E
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CA66E606A32F;
+	Tue,  3 Nov 2026 10:50:47 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org CA66E606A32F
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
 Received: by verein.lst.de (Postfix, from userid 2407)
-	id AA59A68B05; Tue,  3 Nov 2026 11:46:29 +0100 (CET)
-Date: Tue, 3 Nov 2026 11:46:29 +0100
+	id CDEC168B05; Tue,  3 Nov 2026 11:50:42 +0100 (CET)
+Date: Tue, 3 Nov 2026 11:50:42 +0100
 From: Christoph Hellwig <hch@lst.de>
 To: Mike Snitzer <snitzer@kernel.org>
 Cc: Matthew Wilcox <willy@infradead.org>, linux-mm@kvack.org,
@@ -41,10 +41,10 @@ Cc: Matthew Wilcox <willy@infradead.org>, linux-mm@kvack.org,
 	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
 	Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
 	Jonathan Corbet <corbet@lwn.net>
-Subject: Re: [PATCH v9 1/6] mm: take a folio off WB_DONTCACHE_DIRTY only if
- it was counted there
-Message-ID: <20261103104629.GA7296@lst.de>
-References: <20261024221152.6965-1-snitzer@kernel.org> <20261024221152.6965-2-snitzer@kernel.org>
+Subject: Re: [PATCH v9 4/6] mm, iomap: keep a partly covered page until an
+ uncached write completes it
+Message-ID: <20261103105042.GB7296@lst.de>
+References: <20261024221152.6965-1-snitzer@kernel.org> <20261024221152.6965-5-snitzer@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -56,48 +56,53 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261024221152.6965-2-snitzer@kernel.org>
+In-Reply-To: <20261024221152.6965-5-snitzer@kernel.org>
 User-Agent: Mutt/1.5.17 (2007-11-01)
 
-Please write a concise commit log.  This is a long meandering thought
-of eletronic dreams making no sense.
+On Sat, Oct 24, 2026 at 06:11:50PM -0400, Mike Snitzer wrote:
+> An uncached (RWF_DONTCACHE) buffered write marks drop-behind every folio
+> it creates, so writeback drops each one as soon as this write's data is
+> on disk.
 
-> +/*
-> + * Clear the uncached flag of a folio a cached lookup found, and take the
-> + * folio off WB_DONTCACHE_DIRTY if it is counted there.
-> + *
-> + * folio_account_dirtied() counts a dropbehind folio under the i_pages lock,
-> + * in the section that sets its dirty tag, after PG_dirty has been set
-> + * without the folio lock.  Every path that uncounts a dirty folio holds the
-> + * folio lock.  So with the folio locked and the i_pages lock held, the folio
-> + * is counted when both PG_dirty and the dirty tag are set.  PG_dirty alone
-> + * is not enough: a dirtier past folio_test_set_dirty() but not yet counting
-> + * finds the flag clear and does not count the folio.  The tag alone is not
-> + * enough either: __folio_cancel_dirty() uncounts a folio and clears
-> + * PG_dirty, but leaves the tag until writeback or truncation clears it.  A
-> + * folio another task has locked keeps the flag, as it would have had this
-> + * lookup not run.
-> + */
+Please write proper commit message.  This sentence is absolutely
+unreadable crap, and it gets worse from there.
 
-And this comment isn't much better.
+If you can't state the problem you're fixing in your own words, you
+really should not be touching this code.
 
-> -	if (!(fgp_flags & FGP_DONTCACHE) && folio_test_clear_dropbehind(folio)) {
-> -		if (folio_test_dirty(folio) &&
-> -		    mapping_can_writeback(mapping)) {
-> -			struct inode *inode = mapping->host;
-> -			struct bdi_writeback *wb;
-> -			struct wb_lock_cookie cookie = {};
-> -			long nr = folio_nr_pages(folio);
-> -
-> -			wb = unlocked_inode_to_wb_begin(inode, &cookie);
-> -			wb_stat_mod(wb, WB_DONTCACHE_DIRTY, -nr);
-> -			unlocked_inode_to_wb_end(inode, &cookie);
-> -		}
-> -	}
-> +	if (!(fgp_flags & FGP_DONTCACHE) && folio_test_dropbehind(folio))
-> +		filemap_clear_dropbehind(mapping, folio, fgp_flags & FGP_LOCK);
+> Measured locally on XFS (emulated 4Kn NVMe, 4 KiB pages), 32 threads
 
-Please don't mix code moves and non-trivial behavior changes.
+And avoid useless details.  What is emulated here, why does it matter?
+Unlike SCSI/SATA nvme doesn't have the concept of native vs non-native
+4k block sizses, and even for SCSI/SATA HDD that was purely a marketing
+term which doesn't matter for code.
 
-Add a prep patch moving the code, and only then modify it.
+<snip pages and pages of irrelevant crap>
+
+Do you really expect someone to read all this?  Please!
+
+>  
+>  	if (iter->flags & IOMAP_NOWAIT)
+>  		fgp |= FGP_NOWAIT;
+> -	if (iter->flags & IOMAP_DONTCACHE)
+> +	if (iter->flags & IOMAP_DONTCACHE) {
+> +		size_t unit = mapping_min_folio_nrbytes(mapping);
+> +		size_t off = pos & (unit - 1);
+> +
+>  		fgp |= FGP_DONTCACHE;
+> +		/*
+> +		 * The smallest folio the mapping allows, a page or a block
+> +		 * where the block is larger, that this write covers only
+> +		 * partly is shared with a neighbouring write: get it as just
+> +		 * that, which is kept until the write that completes it.
+
+What the heck is this monster sentence supposed to mean?
+
+> +	/*
+> +	 * The page cache marks an edge it finds uptodate.  With blocks
+> +	 * smaller than the folio, the edge this write completes is not
+> +	 * uptodate yet: mark it if its other blocks are.
+> +	 */
+
+When did the page cache become an acting entity?
 
