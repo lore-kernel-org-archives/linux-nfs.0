@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793735577;
-	b=gOCgYMriEPKSsc9cN5xzoA/Tc2N5ZlelcR22qtTfz1ttb2hmDo+bX0VyOcCC2en44NtV
-	 IDm2OZKDarCcEXasql9eHxgI5R9/VIq95s7emQxIO2iwsQZxK9jWa1DnODwdiv6J6PrQj
-	 yQ9pvdCzWHlFVwkJTTEfKd8EoFoLJCwUzJMfB2lumwrFulZBvLzFnAMz0/eo1TJR9VGVG
-	 xqkF5pc7hHrDgu38xFM5pt/ZWrnxx9hxIOdA715n/WhTlsj4Z21kxvPkgvZSqyhC2t0Aw
-	 z6D9I6Bhaii83PPs+unOEi1bXIHkndKg6pKcGlJZkudDwWF31T7QpnlzHNOoBEYPw0Q==
+	t=1793735579;
+	b=trTeVB8QWPCofh0dyr9Vqviq7IkwEKxevGV8dBLKkI/FjmLUTSEevldt32IgY8XvLoAa
+	 IDrZC3LhgWiqAoNW2wf15McIBpn/PqpMiJemyEOgrKuaxEOXobnFYczZewlhJjZad33JT
+	 OYnKPvK0aX3LJKNNsIcT/oBvJCZ9mv1LlQfpsou9Hxjvwr0vbiKckaAWxnT/b1CtGvpkf
+	 bggY+uDKYTAMLTL4SIkLZzWohkWK3QnUHFRW7eL5Yw2d2OIHSZ782EnIzSFYcq0nnbzHN
+	 Xog1yMR2xyF8vUBcCtQCIJSwFVDUCAaMXuDyJ8sVEzL5KDYrRtxXnZVs4rMO94QBLBw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793735577;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793735579;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=Tp9ygbndpRe7hdKr5A4LjYmjioWE9eNw75RC8OyJKrw=;
-	b=mLnKLTpS0dkVFjBWA6rzZUMX+y/V5g5DQXjA2WnKXdDonwJ4pO0hV3epzxM32vFBUjLM
-	 8TibUaRMNgXTp/W0s0IT9Hl0eG166fs7RC7UkOmPTe8QnHho+YQSoTZmBBf8jePnetsmj
-	 ANf/y0VsSeXxBxPExmT2Wdjzv+pAIbOl8TGpDxLAcxu03EaUzyTv9v5ojmc0OaSc5heux
-	 aE+kduJK4Mp+4SIVVL2aYZL65nMkXo5arJNUlE1esgV93Ak4d3WL20/VVaCui7PtRn8nG
-	 BaN4p7KlQ/be2S8DzJqH4ir0gD/hdA872ZSinEEP1nXGUlkToyLWPBRGGecg54tgcEw==
+	bh=fQnMbPGAeOD+hohmVhWh2IGYCv30oDnP0ZygCcRvDjA=;
+	b=NuQju45XhEVNmLQ5Gg50Lwy3CT7WnexXrtoPEXLVF8HgOYAfEYlHjvPR1ZhbF1Qssk6x
+	 T9kK6xoC6+D3wD2M4OKXVoc9voz4w+QT1mt7ywvnaifcrc/CDB3jYk3unnKzqKvODsH7F
+	 3qvLKEsM6KkDqV8AIQPvCi5zb3XeNBTFZGCUwd7CTREDpaz/QVdmBsboXI26B/YZFdL4s
+	 kYdGwL7tP6Bhd7NEYMOFDIdm42QCc4AHSndTOpIB2rsBp0iPGmmeEDqJLKpQu2GJj0+AE
+	 t3LB0moHmzdomIPYOn74Ii2mk1kgv1QbtzJ4TlHCyxPfKWc6WWLAMhATDbHHOlvTobQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VbxWG5PT;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ehWgT4RH;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2016B606A339
-	for <linux-nfs@vger.kernel.org>; Tue,  3 Nov 2026 19:52:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 401F2606A336
+	for <linux-nfs@vger.kernel.org>; Tue,  3 Nov 2026 19:52:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VbxWG5PT
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 471801F00A16;
-	Tue,  3 Nov 2026 19:52:56 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ehWgT4RH
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2E52A1F00A1C;
+	Tue,  3 Nov 2026 19:52:58 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793735577;
-	bh=Tp9ygbndpRe7hdKr5A4LjYmjioWE9eNw75RC8OyJKrw=;
+	s=k20260515; t=1793735578;
+	bh=fQnMbPGAeOD+hohmVhWh2IGYCv30oDnP0ZygCcRvDjA=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=VbxWG5PTji/x9XnT5JO8dUtcCTzO1YPrmJHmkAW85DmB4Rf3A5mGugsjuL35bC5UQ
-	 es3c2Ya3YVpAQgGjXcmEQaKjT2qeZJfBszU7rso8pHu/CetCAH6AIUEy4TsnHJTyq4
-	 CtDRNWHbVUU8AmHy9AuQLYA0E8vi0fAsXsGUhr1LJnPrm9GQHWlib8PgcurnxLqXIt
-	 f9h521K852BKd/ojdvPx8wsRztad7NrODXZmf4zHiOewfCkoQWs3jCMjbqIuM/3FXR
-	 riFAHpDL81jggadWTek9qHizUeTac6AHjYwAQmYHGEv7nOADsH83bmL/4eDELj8qcE
-	 gCSMPzNS7Dq7A==
+	b=ehWgT4RHIRxLXfB6wHTVa0idQQS6j2XiiVeLjUi4EB+/G1rZaW4kjzpbnTBeMS1pJ
+	 fMS+O2pvWX5uoMK2angWvtjwG9sNVGbODqXIgNV/8v0lnaMY6+mbes6CD3Qu8TQj/R
+	 MXMij13SMfWes6kW1Y6gXBInt4dy8PKKOcE9UmA0m48Msub+yfMryNfZ/f7/l0qU5U
+	 OgjedIM+90cRMZZin8wVW2nS1t06wrhi982VOVY5cb2ldJm9Edm5sz9vLBMXyLLxsk
+	 wBiN13KaZUfGmI+iSKu3OiyYj7GxfRWRqTniQdyGAuwaLkW6aeHyBAxB956yFoEvFs
+	 cj/tRpqrlZruA==
 From: Chuck Lever <cel@kernel.org>
-Date: Tue, 03 Nov 2026 14:52:36 -0500
-Subject: [PATCH 1/5] NFSD: Check the secure-port policy when entering an
- export
+Date: Tue, 03 Nov 2026 14:52:38 -0500
+Subject: [PATCH 3/5] NFSD: Report WRONGSEC from PUTFH when OPEN uses the
+ current filehandle
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-verofess-2-v1-1-9e6568221beb@kernel.org>
+Message-Id: <20261103-verofess-2-v1-3-9e6568221beb@kernel.org>
 References: <20261103-verofess-2-v1-0-9e6568221beb@kernel.org>
 In-Reply-To: <20261103-verofess-2-v1-0-9e6568221beb@kernel.org>
 To: VeroFess <coderzeng@gmail.com>, Jeff Layton <jlayton@kernel.org>, 
@@ -64,242 +64,81 @@ To: VeroFess <coderzeng@gmail.com>, Jeff Layton <jlayton@kernel.org>,
  Al Viro <viro@zeniv.linux.org.uk>
 Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=9008; i=cel@kernel.org;
- h=from:subject:message-id; bh=/LbUttIbR/f4H1CWtneGuDP4xckyvkEDSzMvMdAJR2E=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq6juWipz6VkCuw4DUnK6EvoA5pon431NhqNFB+
- grpArP7PfeJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCauo7lgAKCRAzarMzb2Z/
- l0ZeD/9EMbfaaLL/YaE0dkKETJ2CZWldQz9pq62HWBK1+9kHrKYR2Dts92laknl3gg+vEF5V7zC
- LeTP3EXAcsPzvSlPRZ8dEts3ruTXDzqBKtS2IDFS2Hhwg26TW1qgcKfaGkQhQO+gWrRehzadBKd
- nOOOlLiyJJckSe8AcTJyB9XYbMOZm5n8mdTzTY9Qq6zVXvUGwh+gy5Gg6HL0KKK7b1DR/hlwe44
- uomT3PIfqGSrBxbkzvlf6ayYwOKj0GcBnfreJ8kmfmjgW8ENkRkAa49Zu9m+t0IXTvRkAj+ujGy
- R8Kywh4xEIF/gJE6qBLZc3nCPhMHW3YSyUhY2iLf/CmWi+aocf7LjdhCwvtMCb0ZSAhBge2Rt1x
- +mBYHIGXTODx6U7TW07ZFcg0eex7wo5j+fb6VIM2fWC9hY9T63MCwoKRWPnLi7ny9jYdB5AHF3n
- 7mrgG9Fx+e1MQo6CrPdrc/jj5aYYbMA3RdsAmDt2y8WR0dPdHevRBiU0OKZYupetSbkOp1CXeB/
- arMYnHKaAL3jfflxfnsbElOaFjLJKynTj0nEKdP3XGG4VkYCYQ3Uk+qRnW7zVBFU4uih4Hb+lg5
- 7rA6WwTiakLcZVGgU5R408PWYdLuuMeH2u59eaK5yztlM5TccZ+97L2AuK2z91jVYW1lx+effIx
- /SHGQyY6eM0sPgQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2131; i=cel@kernel.org;
+ h=from:subject:message-id; bh=jPn859bbpkD1nY7GYeYuwZRIVhwnKKUPz4A8ni/dhJA=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq6juWru7b4kZVWUHrxtSzNP8xPHVdI9CcDIAgl
+ G5mYB29L36JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCauo7lgAKCRAzarMzb2Z/
+ l10cD/4neK725xtohxwtcR3l4VpjBsjuu9V87NAHVdCQOpAkD4cYy/8bzHccAtTUfZ22/7noyQg
+ onesrrsp+O0AmqJ8ORjHOBfwfF/cVVn2lpXOBJBdGblK6N8DMexM7MXmBP11MymTuIpkRmbOBb4
+ oSkJZzPp60i5mClcaRb7nnZ2Pp3ep9TCb5YLyXEaz49/lgQHUCD1SLE9KvHcn8EWnj1A2QGWtFF
+ ARLepNiD3bMpcX4Nw0QsgORHmenkZlvnvmaqHouIOfdM6RAI24IXUDljyxMnM/aTMYXIhLTCewG
+ n+6ET9R3RDffVJD2sNVQtkGX9SkyKn5e1YVIyWBOKVWoXj1EaVkGSSWmUffiV8AgAIuCgsomTx0
+ Ee3wK1H3Jr708V6IQkM/9esfWXacKa6TAxq9TqmFKTP6BfivVYElp0xyqQVM96uqWCpYC905anb
+ 9siK3YZ9tmFIVcsW8XwKCgD8eR4ComL0etOOhOm3O/ErHBXn7qHrBMzQLk+f6PUQ0RP8l3YStX/
+ Q03n7DWGt+YZLdG8VzRfIRBGyBXAEidEd/v52vcQ9xAvR7reD8LsJEt+6PYdSoiNwkJjyrTlnXV
+ 4BydS7alwhTZwKjQyTCWhcDSOxgV5gzeHdLPniOWtDN5SSCQ+yk7Fmwn3Q3PRNq78RtkKSGysAU
+ pu2gr9ppfBYOUVA==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-When LOOKUP or LOOKUPP crosses into another export, check_nfsd_access()
-checks the xprtsec policy and security flavor of the entered export but
-skips the secure-port setting. An AUTH_SYS request from an insecure port
-can therefore enter a secure export by LOOKUP, though PUTFH of the same
-filehandle returns NFS4ERR_PERM. A client that obtained an OPEN stateid
-for a file in that export from a privileged port can then READ or CLONE
-the file from an insecure port. Commit 6fa02839bf94 ("nfsd4: recheck
-for secure ports in fh_verify") rechecks the port in fh_verify(), but
-READ and CLONE with an OPEN stateid go through
-nfs4_preprocess_stateid_op() and never call fh_verify().
+need_wrongsec_check() leaves the deferred security check to any
+following OPEN, because OPEN carries OP_HANDLES_WRONGSEC. That is
+right for an OPEN by component name, which verifies the parent
+directory during its lookup. An OPEN that uses the current filehandle
+(CLAIM_PREVIOUS, CLAIM_FH, CLAIM_DELEG_CUR_FH, or CLAIM_DELEG_PREV_FH)
+instead reports the denial from its own fh_verify() call. RFC 8881
+Section 2.6.3.1.1.7 requires the put-filehandle operation to return
+NFS4ERR_WRONGSEC in that case and forbids NFS4ERR_WRONGSEC from an
+OPEN by filehandle.
 
-Check the secure-port setting in check_nfsd_access() with
-nfsd_check_port(), factored out of fh_verify(). The SECINFO lookups
-must still skip the flavor check, so pass the NFSD_MAY_* access flags
-to check_nfsd_access() rather than have the mount-crossing paths
-assemble their own subset of its checks. After the change, a check
-added to check_nfsd_access() also covers the mount-crossing paths.
+Treat an OPEN that uses the current filehandle like any other
+consumer of the filehandle, so PUTFH reports the denial.
 
-Report a port denial to an NFSv4 client as NFS4ERR_WRONGSEC. RFC 8881
-does not permit NFS4ERR_PERM, the current result, from LOOKUP, LOOKUPP,
-or the put-filehandle operations. NFS4ERR_WRONGSEC is permitted there
-and is accurate, since a GSS flavor is exempt from the port check.
-READDIR, COPY, CLONE, SECINFO, and the NFSv2 and NFSv3 status mapping
-already convert NFS4ERR_WRONGSEC to an access error.
-
-Reported-by: VeroFess <coderzeng@gmail.com>
-Closes: https://patch.msgid.link/20261103013237.1174538-2-coderzeng@gmail.com
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Fixes: 68d93184352f ("nfsd4: fix wrongsec handling for PUTFH + op cases")
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/export.c   | 24 +++++++++++++++++-------
- fs/nfsd/export.h   |  3 ++-
- fs/nfsd/nfs4proc.c |  5 +++--
- fs/nfsd/nfsfh.c    | 34 +++++++++++++++++++++++++++++-----
- fs/nfsd/nfsfh.h    |  2 ++
- fs/nfsd/vfs.c      |  8 ++------
- 6 files changed, 55 insertions(+), 21 deletions(-)
+ fs/nfsd/nfs4proc.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index f0dd9fb22ec2..b5147c9797aa 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -1976,10 +1976,8 @@ static struct svc_export *exp_find(struct cache_detail *cd,
-  *
-  * Helper function for check_nfsd_access().  Note that callers should be
-  * using check_nfsd_access() instead of calling this function directly.  The
-- * exceptions are __fh_verify(), which has logic that may result in one
-- * or both of the helpers being skipped, and the mount-crossing paths in
-- * nfsd_cross_mnt() and nfsd_lookup_parent(), which enforce only the
-- * transport policy when NFSD_MAY_BYPASS_FLAVOR is set.
-+ * one exception is __fh_verify() since it has logic that may result in one
-+ * or both of the helpers being skipped.
-  *
-  * Return values:
-  *   %nfs_ok if access is granted, or
-@@ -2075,18 +2073,30 @@ __be32 check_security_flavor(struct svc_export *exp, struct svc_rqst *rqstp,
-  * check_nfsd_access - check if access to export is allowed.
-  * @exp: svc_export that is being accessed.
-  * @rqstp: svc_rqst attempting to access @exp.
-+ * @access: NFSD_MAY_* flags; %NFSD_MAY_BYPASS_FLAVOR skips the security
-+ *	flavor check
-+ *
-+ * Context: Process context.
-  *
-  * Return values:
-- *   %nfs_ok if access is granted, or
-- *   %nfserr_wrongsec if access is denied
-+ *   %nfs_ok if access is granted,
-+ *   %nfserr_wrongsec if access is denied, or
-+ *   %nfserr_perm if the secure-port check denies an NFSv2 or NFSv3
-+ *   request
-  */
--__be32 check_nfsd_access(struct svc_export *exp, struct svc_rqst *rqstp)
-+__be32 check_nfsd_access(struct svc_export *exp, struct svc_rqst *rqstp,
-+			 int access)
- {
- 	__be32 status;
- 
-+	status = nfsd_check_port(rqstp, &rqstp->rq_cred, exp);
-+	if (status != nfs_ok)
-+		return status;
- 	status = check_xprtsec_policy(exp, rqstp);
- 	if (status != nfs_ok)
- 		return status;
-+	if (access & NFSD_MAY_BYPASS_FLAVOR)
-+		return nfs_ok;
- 	return check_security_flavor(exp, rqstp, false);
- }
- 
-diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
-index dcff16618edf..640109da3dda 100644
---- a/fs/nfsd/export.h
-+++ b/fs/nfsd/export.h
-@@ -123,7 +123,8 @@ int nfsexp_flags(struct svc_cred *cred, struct svc_export *exp);
- __be32 check_xprtsec_policy(struct svc_export *exp, struct svc_rqst *rqstp);
- __be32 check_security_flavor(struct svc_export *exp, struct svc_rqst *rqstp,
- 			     bool may_bypass_gss);
--__be32 check_nfsd_access(struct svc_export *exp, struct svc_rqst *rqstp);
-+__be32 check_nfsd_access(struct svc_export *exp, struct svc_rqst *rqstp,
-+			 int access);
- 
- /*
-  * Function declarations
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 2c653027d578..af4cc3a66682 100644
+index faed08eb1b98..9762a56d30ad 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -1510,7 +1510,7 @@ nfsd4_verify_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_nofilehandle;
- 
- 	/* A cached open stateid does not authorize the saved source export. */
--	status = check_nfsd_access(cstate->save_fh.fh_export, rqstp);
-+	status = check_nfsd_access(cstate->save_fh.fh_export, rqstp, 0);
- 	if (status)
- 		return status == nfserr_wrongsec ? nfserr_acces : status;
- 
-@@ -3486,7 +3486,8 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
- 
- 			if (current_fh->fh_export &&
- 					need_wrongsec_check(rqstp))
--				op->status = check_nfsd_access(current_fh->fh_export, rqstp);
-+				op->status = check_nfsd_access(current_fh->fh_export,
-+							       rqstp, 0);
- 		}
- encode_op:
- 		if (op->status == nfserr_replay_me) {
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index 09391464803f..f76ce9cc405c 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -102,11 +102,23 @@ static bool nfsd_originating_port_ok(struct svc_rqst *rqstp,
- 	return test_bit(RQ_SECURE, &rqstp->rq_flags);
+@@ -3259,6 +3259,25 @@ bool nfsd4_cache_this_op(struct nfsd4_op *op)
+ 	return OPDESC(op)->op_flags & OP_CACHEME;
  }
  
--static __be32 nfsd_setuser_and_check_port(struct svc_rqst *rqstp,
--					  struct svc_cred *cred,
--					  struct svc_export *exp)
-+/**
-+ * nfsd_check_port - check an export's secure-port requirement
-+ * @rqstp: request being checked, or %NULL for a local caller
-+ * @cred: credential whose flavor selects the export options to check
-+ * @exp: export being checked
-+ *
-+ * Context: Process context.
-+ *
-+ * A GSS flavor is exempt from the port check, so a denial reports
-+ * NFS4ERR_WRONGSEC to an NFSv4 client.
-+ *
-+ * Return: %nfs_ok if allowed, %nfserr_wrongsec for an NFSv4 client,
-+ * %nfserr_perm otherwise.
++/*
++ * RFC 8881 Section 2.6.3.1.1.7: only an OPEN by component name may
++ * report NFS4ERR_WRONGSEC itself.
 + */
-+__be32 nfsd_check_port(struct svc_rqst *rqstp,
-+		       struct svc_cred *cred, struct svc_export *exp)
- {
--	/* Check if the request originated from a secure port. */
- 	if (rqstp && !nfsd_originating_port_ok(rqstp, cred, exp)) {
- 		if (IS_ENABLED(CONFIG_SUNRPC_DEBUG)) {
- 			char buf[RPC_MAX_ADDRBUFLEN];
-@@ -114,8 +126,20 @@ static __be32 nfsd_setuser_and_check_port(struct svc_rqst *rqstp,
- 			dprintk("nfsd: request from insecure port %s!\n",
- 			        svc_print_addr(rqstp, buf, sizeof(buf)));
- 		}
--		return nfserr_perm;
-+		return nfsd_v4client(rqstp) ? nfserr_wrongsec : nfserr_perm;
- 	}
-+	return nfs_ok;
++static bool open_handles_wrongsec(const struct nfsd4_op *op)
++{
++	/* A failed decode leaves op_claim_type unset. */
++	if (op->status != nfs_ok)
++		return false;
++	switch (op->u.open.op_claim_type) {
++	case NFS4_OPEN_CLAIM_NULL:
++	case NFS4_OPEN_CLAIM_DELEGATE_CUR:
++	case NFS4_OPEN_CLAIM_DELEGATE_PREV:
++		return true;
++	default:
++		return false;
++	}
 +}
 +
-+static __be32 nfsd_setuser_and_check_port(struct svc_rqst *rqstp,
-+					  struct svc_cred *cred,
-+					  struct svc_export *exp)
-+{
-+	__be32 status;
-+
-+	status = nfsd_check_port(rqstp, cred, exp);
-+	if (status)
-+		return status;
- 
- 	/* Set user creds for this exportpoint */
- 	return nfserrno(nfsd_setuser(cred, exp));
-diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-index aa3ff3086406..90b6429cbcef 100644
---- a/fs/nfsd/nfsfh.h
-+++ b/fs/nfsd/nfsfh.h
-@@ -226,6 +226,8 @@ extern char * SVCFH_fmt(struct svc_fh *fhp);
- /*
-  * Function prototypes
-  */
-+__be32	nfsd_check_port(struct svc_rqst *rqstp,
-+			struct svc_cred *cred, struct svc_export *exp);
- __be32	fh_verify(struct svc_rqst *, struct svc_fh *, umode_t, int);
- __be32	fh_verify_local(struct net *, struct svc_cred *, struct auth_domain *,
- 			struct svc_fh *, umode_t, int);
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 269dc4968f19..6332341a8fba 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -168,9 +168,7 @@ nfsd_cross_mnt(struct svc_rqst *rqstp, struct dentry **dpp,
- 			err = 0;
- 	} else if (nfsd_v4client(rqstp) ||
- 		(exp->ex_flags & NFSEXP_CROSSMOUNT) || EX_NOHIDE(exp2)) {
--		nfserr = (access & NFSD_MAY_BYPASS_FLAVOR) ?
--			 check_xprtsec_policy(exp2, rqstp) :
--			 check_nfsd_access(exp2, rqstp);
-+		nfserr = check_nfsd_access(exp2, rqstp, access);
- 		if (nfserr == nfs_ok) {
- 			/* successfully crossed mount point */
- 			/*
-@@ -222,9 +220,7 @@ static __be32 nfsd_lookup_parent(struct svc_rqst *rqstp, struct dentry *dparent,
- 	} else if (IS_ERR(exp2)) {
- 		nfserr = nfserrno(PTR_ERR(exp2));
- 	} else {
--		nfserr = (access & NFSD_MAY_BYPASS_FLAVOR) ?
--			 check_xprtsec_policy(exp2, rqstp) :
--			 check_nfsd_access(exp2, rqstp);
-+		nfserr = check_nfsd_access(exp2, rqstp, access);
- 		if (nfserr != nfs_ok) {
- 			exp_put(exp2);
- 		} else {
+ static bool need_wrongsec_check(struct svc_rqst *rqstp)
+ {
+ 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+@@ -3296,6 +3315,8 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
+ 	 */
+ 	if (resp->cstate.minorversion == 0 && next->opnum == OP_SECINFO)
+ 		return true;
++	if (next->opnum == OP_OPEN)
++		return !open_handles_wrongsec(next);
+ 	nextd = OPDESC(next);
+ 	/*
+ 	 * RFC 8881 Section 2.6.3.1.1.2: a later put-filehandle operation
 
 -- 
 2.56.0
