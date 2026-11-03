@@ -1,70 +1,91 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=113.46.200.219
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793674904;
-	b=Z3cEuwZlYTzcQnWr6iOMV7qfNzNHl8BAZzh0QRsHys+x6B3kjMF7ye5cOhR1tERDtiZa
-	 JEzoTg5gqpOtK4MM2vVUGu8rr0oECCqPJ1WC15DcnQRSwHDgk9Z7Xv0dshSCJ2RrUZTK4
-	 2F0dw97L4LitagTVpVG9lnng491dV14oxScSiSnWePWtZhdDKo2M2yV6iRI+C1EP5vf8B
-	 0AhRGmPoRdlokmbz8R98JdY+Iq3ICOy3jsaahG0/2MoEPXkoooqXMrgrPEYDMHa631/EZ
-	 JLBSJzH8+ueK4+EzorFSuG4oyGEfU0Y8kmjNenVupHEJaoGox9+JCcYaOyhaFQLBwOQ==
+	t=1793674980;
+	b=VVs8dwH68LoSsXbGhJSbOFOXcjkB2i6mEa4BEeIHgtvfHZgcb7LSFr0o6uDyhJRKtZKq
+	 0AEcyHos+G46jagNy6bjQNFDfmi11cY7DaYb14loNWGEfx3sEmblhyuXctEPqJrQPNX2E
+	 54YCMJ0B7Z+Zc2ORzV63ZWFzWM+TeOgCX4NghQNmbA4fDZMid0rPxwWlAgHax69kS5IHk
+	 n7pkC6JNDZgcn8VN86JUBVp9uC98X0e+AviwTmd3lDkbeHcaXwsgvB79ktG8Zd3/iMrmr
+	 8jRt5PzGtwaUVqPM1G7SNmLRPvB3i3hDKyLFjtNGVajYoWWoazbXMZUaLNGUhZRRxRA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793674904;
-	h=DMARC-Filter:dkim-signature:Received:Received:Received:From:To:CC:
-	 Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
-	 Content-Transfer-Encoding:Content-Type:X-Originating-IP:
-	 X-ClientProxiedBy;
-	bh=kIwTw4lYIB5MWsOEzSta9fxTnlqIytVjc6n1kXnGQ2U=;
-	b=wSUcQWJxb6MuE3DVVvBczhOxbmkiAFnviZD3aAf5q1axsQxqJYPSecDubGlyQA2FTrvw
-	 +zJWHrn93uJ2RSvLONzwxM2bvqYOBzX9dmokCdOgrSAG9VS68aCHZL2hsaKq4NOD5+ZSm
-	 4vwApRlaautqOxyQ6EQFZw5KuU7/oMnBB/aGummwsbo7xrQ6EUPm3ZeFw0gEXvTR9+6kv
-	 yyjof6ibi1TZpxIQxaEeiyawvsIBPptdvK5rN07SVIMxEi8iMj4zjsBtAHnWs/esuUOTe
-	 ZLwmgDtd6cytjILAiKO6NRM6c7cGkoVk2XCs96P1cx9sMI4lsab7gcE/N3i1UphBmMA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793674980;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
+	bh=Bqs38DpiAMDTxf3d0DpcOwxUeXEJbfBSjs7xg3AYXJg=;
+	b=BHn0M68NAkjyDpHg4qWB75aaPJWjteWMAQDdw1c0epj/g4AzLxmt6C10KEu7MoCE9ewk
+	 zOEaDwUWkVzzwMLzlmHW8j0dD8xTmc/KoElHpfkw1rr0P2A1S0NVINYx/t3a+bxqi7oQ/
+	 IjEvHw4lJdy9jkZVgW5abU5r6G8sjAlrGOPn3T6DANUp+1ZDqgvl8pr1spDPakJ29ucai
+	 28Rw9Ucr1qdGz/KeY0jbs0iItnF2zltSYRbVq/mzl8Eq6uh5T4jdRD7OocXwOsXIaJUiO
+	 K7h8XTP895+mrxwisY7VycPuM2p69WRAPoYkMXdu9oH8u0e93+2KvSrZqzZa4N4OtEw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=huawei.com;
-	spf=pass smtp.mailfrom=huawei.com;
-	dkim=pass header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=kSVQzPXZ;
-	arc=none smtp.remote-ip=113.46.200.219
-Received: from canpmsgout04.his.huawei.com (canpmsgout04.his.huawei.com [113.46.200.219])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=eRxj7l4g;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 49639606A326;
-	Tue,  3 Nov 2026 03:01:40 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 49639606A326
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id 113AC606A331;
+	Tue,  3 Nov 2026 03:02:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=kSVQzPXZ
-dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
-	c=relaxed/relaxed; q=dns/txt;
-	h=From;
-	bh=kIwTw4lYIB5MWsOEzSta9fxTnlqIytVjc6n1kXnGQ2U=;
-	b=kSVQzPXZPfWeYp0bWFg0eYL1fZJWeqW1M/KsQsgN/4zDkjIjvMDX0noruLwR0+rNusqVgDZgj
-	lqSh2fRZk53kceVgSPv64nkWdA3pD/KrPrdyYZsVuTPuUHzvlNLT8ntVF8FvXa3gwcrTtgtzBoC
-	MKQXOgHin3tLKn1XUbODnhc=
-Received: from mail.maildlp.com (unknown [172.19.163.104])
-	by canpmsgout04.his.huawei.com (SkyGuard) with ESMTPS id 4jJYHy5FFDz1prKx;
-	Tue,  3 Nov 2026 11:01:34 +0800 (CST)
-Received: from whupemk300014.china.huawei.com (unknown [7.152.185.8])
-	by mail.maildlp.com (Postfix) with ESMTPS id 8D1204056E;
-	Tue,  3 Nov 2026 11:01:38 +0800 (CST)
-Received: from huawei.com (10.50.85.128) by whupemk300014.china.huawei.com
- (7.152.185.8) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.2562.45; Tue, 3 Nov
- 2026 11:01:37 +0800
-From: Li Xiasong <lixiasong1@huawei.com>
-To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, NeilBrown
-	<neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo
-	<Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, Trond Myklebust
-	<trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
-CC: <linux-nfs@vger.kernel.org>, <linux-rdma@vger.kernel.org>,
-	<stable@vger.kernel.org>, <yuehaibing@huawei.com>,
-	<zhangchangzhong@huawei.com>, <weiyongjun1@huawei.com>
-Subject: [PATCH v2 1/3] rpcrdma: Serialize notification registration with device removal
-Date: Tue, 3 Nov 2026 11:27:56 +0800
-Message-ID: <20261103032758.1302493-2-lixiasong1@huawei.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20261103032758.1302493-1-lixiasong1@huawei.com>
-References: <20261103032758.1302493-1-lixiasong1@huawei.com>
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=eRxj7l4g
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 0A28E1F00A1D;
+	Tue,  3 Nov 2026 03:02:59 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793674979;
+	bh=Bqs38DpiAMDTxf3d0DpcOwxUeXEJbfBSjs7xg3AYXJg=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=eRxj7l4gaMO4uv0aHYV5FwM76bX2cIwC6eUXrTxVhsv90uNis3SkJCQ0/uU57NSmk
+	 1GGMfWxkLX8sRcNvT4JUuRhjX2VxJTB7CPzFIWFKLYnAWT5J3kLgtiUldLJV89gwMO
+	 p00f6OeASxs/G9iwyzUlj3SKo2dJVJJ363F3TJqG5gnVk0zkKday53CuyU5mW31J2o
+	 IWPnSVGQtvQR55MbRQ1AKShR4OdWUn0Du/wgevd1giuDB1gUa7iIQfB8f2AE+q7X6X
+	 5ROPRlAs3q4xOLKE+D29YxQbgGdgsbPoW3lp6F8eZlcbNTpxAPjfY+HUqnH9H5FC9j
+	 4nBdl8Aew0A/Q==
+From: Jarkko Sakkinen <jarkko@kernel.org>
+To: David Howells <dhowells@redhat.com>
+Cc: Eric Biggers <ebiggers@kernel.org>,
+	linux-integrity@vger.kernel.org,
+	Mimi Zohar <zohar@linux.ibm.com>,
+	keyrings@vger.kernel.org,
+	Jarkko Sakkinen <jarkko@kernel.org>,
+	Marc Dionne <marc.dionne@auristor.com>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Paulo Alcantara <pc@manguebit.org>,
+	Namjae Jeon <linkinjeon@kernel.org>,
+	Ronnie Sahlberg <ronniesahlberg@gmail.com>,
+	Shyam Prasad N <sprasad@microsoft.com>,
+	Tom Talpey <tom@talpey.com>,
+	Bharath SM <bharathsm@microsoft.com>,
+	Ilya Dryomov <idryomov@gmail.com>,
+	Alex Markuze <amarkuze@redhat.com>,
+	Xiubo Li <xiubo.li@clyso.com>,
+	Viacheslav Dubeyko <slava@dubeyko.com>,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@kernel.org>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>,
+	Roberto Sassu <roberto.sassu@huawei.com>,
+	Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+	Eric Snowberg <eric.snowberg@oracle.com>,
+	Paul Moore <paul@paul-moore.com>,
+	James Morris <jmorris@namei.org>,
+	"Serge E. Hallyn" <serge@hallyn.com>,
+	Thorsten Blum <blum@kernel.org>,
+	Tim Bird <tim.bird@sony.com>,
+	linux-afs@lists.infradead.org (open list:AFS FILESYSTEM),
+	linux-kernel@vger.kernel.org (open list),
+	linux-nfs@vger.kernel.org (open list:NFS, SUNRPC, AND LOCKD CLIENTS),
+	linux-cifs@vger.kernel.org (open list:COMMON INTERNET FILE SYSTEM CLIENT (CIFS and SMB3)),
+	samba-technical@lists.samba.org (moderated list:COMMON INTERNET FILE SYSTEM CLIENT (CIFS and SMB3)),
+	ceph-devel@vger.kernel.org (open list:CEPH COMMON CODE (LIBCEPH)),
+	netdev@vger.kernel.org (open list:NETWORKING [GENERAL]),
+	linux-security-module@vger.kernel.org (open list:SECURITY SUBSYSTEM)
+Subject: [RFC PATCH v2 03/11] dns_resolver: Clear .dns_resolver cache when the last client unloads
+Date: Tue,  3 Nov 2026 05:02:08 +0200
+Message-ID: <20261103030226.2685251-4-jarkko@kernel.org>
+X-Mailer: git-send-email 2.47.3
+In-Reply-To: <20261103030226.2685251-1-jarkko@kernel.org>
+References: <20261103030226.2685251-1-jarkko@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -75,127 +96,239 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-ClientProxiedBy: kwepems200001.china.huawei.com (7.221.188.67) To
- whupemk300014.china.huawei.com (7.152.185.8)
 
-rpcrdma_rn_register() checks RPCRDMA_RD_F_REMOVING before publishing the
-notification and taking a reference on the rpcrdma_device. Nothing
-serializes these operations with rpcrdma_remove_one(). Device removal
-can therefore free the private data after the check but before xa_alloc()
-or kref_get(), resulting in a use-after-free. It can also finish its
-notification walk before a new registration is published, leaving the
-removal path waiting for a registrant that was never notified.
+dns_query() caches resolved dns_resolver keys into the module-owned
+.dns_resolver keyring until the TTL expires or module_exit() revokes the
+keyring.
 
-Use a module-wide mutex to protect the client-data lookup, removal-state
-check, notification publication and reference acquisition against the
-transition to REMOVING. Clear client-data under the same mutex before
-destroying the XArray and freeing the private data, so a later lookup
-cannot return a stale pointer. Keep notification callbacks and completion
-waits outside the critical sections.
+Once live keys pin their key type, cached entries keep dns_resolver.ko
+pinned after its client modules unload.
 
-Fixes: 7e86845a0346 ("rpcrdma: Implement generic device removal")
-Signed-off-by: Li Xiasong <lixiasong1@huawei.com>
+Track active kernel client modules with dns_resolver_cache_get() and
+dns_resolver_cache_put(), and do the necessary plumbing for:
+
+1. nfsv4
+2. cifs
+3. libceph
+4. kafs
+
+When the last client unloads, clear .dns_resolver and flush key garbage
+collection so dns_resolver.ko can unload immediately.
+
+Signed-off-by: Jarkko Sakkinen <jarkko@kernel.org>
 ---
- net/sunrpc/xprtrdma/ib_client.c | 30 ++++++++++++++++++++++++++----
- 1 file changed, 26 insertions(+), 4 deletions(-)
+ fs/afs/main.c                |  4 ++++
+ fs/nfs/dns_resolve.h         |  7 ++++++-
+ fs/smb/client/cifsfs.c       |  4 ++++
+ include/linux/dns_resolver.h | 13 ++++++++++---
+ net/ceph/ceph_common.c       |  7 +++++++
+ net/dns_resolver/dns_key.c   | 28 ++++++++++++++++++++++++++++
+ 6 files changed, 59 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/ib_client.c b/net/sunrpc/xprtrdma/ib_client.c
-index 188f7a13397f..23ab1dfcb230 100644
---- a/net/sunrpc/xprtrdma/ib_client.c
-+++ b/net/sunrpc/xprtrdma/ib_client.c
-@@ -9,6 +9,7 @@
- #include <linux/types.h>
- #include <linux/kref.h>
- #include <linux/completion.h>
-+#include <linux/mutex.h>
+diff --git a/fs/afs/main.c b/fs/afs/main.c
+index 7a883c59976f..16ae947d371e 100644
+--- a/fs/afs/main.c
++++ b/fs/afs/main.c
+@@ -12,6 +12,7 @@
+ #include <linux/sched.h>
+ #include <linux/random.h>
+ #include <linux/proc_fs.h>
++#include <linux/dns_resolver.h>
+ #define CREATE_TRACE_POINTS
+ #include "internal.h"
  
- #include <linux/sunrpc/svc_rdma.h>
- #include <linux/sunrpc/rdma_rn.h>
-@@ -28,6 +29,11 @@ struct rpcrdma_device {
- #define RPCRDMA_RD_F_REMOVING	(0)
+@@ -183,6 +184,7 @@ static int __init afs_init(void)
+ 	if (ret < 0)
+ 		goto error_net;
  
- static struct ib_client rpcrdma_ib_client;
-+/*
-+ * Serialize registration with the removal transition and client-data teardown.
-+ * Invoke rn_done callbacks and wait for completion outside this mutex.
-+ */
-+static DEFINE_MUTEX(rpcrdma_device_mutex);
++	dns_resolver_cache_get();
+ 	/* register the filesystems */
+ 	ret = afs_fs_init();
+ 	if (ret < 0)
+@@ -199,6 +201,7 @@ static int __init afs_init(void)
+ error_proc:
+ 	afs_fs_exit();
+ error_fs:
++	dns_resolver_cache_put();
+ 	unregister_pernet_device(&afs_net_ops);
+ error_net:
+ 	destroy_workqueue(afs_lock_manager);
+@@ -232,6 +235,7 @@ static void __exit afs_exit(void)
+ 	destroy_workqueue(afs_wq);
+ 	afs_clean_up_permit_cache();
+ 	rcu_barrier();
++	dns_resolver_cache_put();
+ }
  
- /*
-  * Listeners have no associated device, so we never register them.
-@@ -56,15 +62,20 @@ static struct rpcrdma_device *rpcrdma_get_client_data(struct ib_device *device)
-  * cleared again if xa_alloc fails), so the @rn may safely be
-  * passed to rpcrdma_rn_unregister() without a separate
-  * registered/unregistered flag in the caller.
-+ *
-+ * Context: May sleep. Takes rpcrdma_device_mutex.
-  */
- int rpcrdma_rn_register(struct ib_device *device,
- 			struct rpcrdma_notification *rn,
- 			void (*done)(struct rpcrdma_notification *rn))
+ module_exit(afs_exit);
+diff --git a/fs/nfs/dns_resolve.h b/fs/nfs/dns_resolve.h
+index fe3b172c4de1..4b9ecfb4f7fe 100644
+--- a/fs/nfs/dns_resolve.h
++++ b/fs/nfs/dns_resolve.h
+@@ -9,13 +9,18 @@
+ 
+ 
+ #ifdef CONFIG_NFS_USE_KERNEL_DNS
++#include <linux/dns_resolver.h>
++
+ static inline int nfs_dns_resolver_init(void)
  {
--	struct rpcrdma_device *rd = rpcrdma_get_client_data(device);
-+	struct rpcrdma_device *rd;
-+	int ret = -ENETUNREACH;
- 
-+	mutex_lock(&rpcrdma_device_mutex);
-+	rd = rpcrdma_get_client_data(device);
- 	if (!rd || test_bit(RPCRDMA_RD_F_REMOVING, &rd->rd_flags))
--		return -ENETUNREACH;
-+		goto out_unlock;
- 
- 	/*
- 	 * Arm rn_done before xa_alloc() publishes @rn: once @rn is
-@@ -78,11 +89,15 @@ int rpcrdma_rn_register(struct ib_device *device,
- 	rn->rn_done = done;
- 	if (xa_alloc(&rd->rd_xa, &rn->rn_index, rn, xa_limit_32b, GFP_KERNEL) < 0) {
- 		rn->rn_done = NULL;
--		return -ENOMEM;
-+		ret = -ENOMEM;
-+		goto out_unlock;
- 	}
- 	kref_get(&rd->rd_kref);
- 	trace_rpcrdma_client_register(device, rn);
--	return 0;
-+	ret = 0;
-+out_unlock:
-+	mutex_unlock(&rpcrdma_device_mutex);
-+	return ret;
++	dns_resolver_cache_get();
+ 	return 0;
  }
  
- static void rpcrdma_rn_release(struct kref *kref)
-@@ -163,6 +178,8 @@ static int rpcrdma_add_one(struct ib_device *device)
-  *
-  * Upon return, all transports associated with @device have divested
-  * themselves from IB hardware resources.
-+ *
-+ * Context: May sleep. Takes rpcrdma_device_mutex.
-  */
- static void rpcrdma_remove_one(struct ib_device *device,
- 			       void *client_data)
-@@ -173,7 +190,9 @@ static void rpcrdma_remove_one(struct ib_device *device,
+ static inline void nfs_dns_resolver_destroy(void)
+-{}
++{
++	dns_resolver_cache_put();
++}
  
- 	trace_rpcrdma_client_remove_one(device);
+ static inline int nfs_dns_resolver_cache_init(struct net *net)
+ {
+diff --git a/fs/smb/client/cifsfs.c b/fs/smb/client/cifsfs.c
+index bf199a5ca084..9788052599ce 100644
+--- a/fs/smb/client/cifsfs.c
++++ b/fs/smb/client/cifsfs.c
+@@ -31,6 +31,7 @@
+ #include <linux/xattr.h>
+ #include <linux/mm.h>
+ #include <linux/key-type.h>
++#include <linux/dns_resolver.h>
+ #include <linux/fileattr.h>
+ #include <uapi/linux/magic.h>
+ #include <net/ipv6.h>
+@@ -2160,6 +2161,7 @@ init_cifs(void)
+ 		goto out_cifs_swn_init;
  
-+	mutex_lock(&rpcrdma_device_mutex);
- 	set_bit(RPCRDMA_RD_F_REMOVING, &rd->rd_flags);
-+	mutex_unlock(&rpcrdma_device_mutex);
- 	xa_for_each(&rd->rd_xa, index, rn)
- 		rn->rn_done(rn);
+ 	cifs_proc_init();
++	dns_resolver_cache_get();
  
-@@ -187,8 +206,11 @@ static void rpcrdma_remove_one(struct ib_device *device,
- 	}
+ 	rc = register_filesystem(&cifs_fs_type);
+ 	if (rc)
+@@ -2174,6 +2176,7 @@ init_cifs(void)
+ 	return 0;
  
- 	trace_rpcrdma_client_remove_one_done(device);
-+	mutex_lock(&rpcrdma_device_mutex);
-+	ib_set_client_data(device, &rpcrdma_ib_client, NULL);
- 	xa_destroy(&rd->rd_xa);
- 	kfree(rd);
-+	mutex_unlock(&rpcrdma_device_mutex);
+ out_clean_proc:
++	dns_resolver_cache_put();
+ 	cifs_proc_clean();
+ 	exit_cifs_idmap();
+ out_cifs_swn_init:
+@@ -2242,6 +2245,7 @@ exit_cifs(void)
+ 	destroy_workqueue(serverclose_wq);
+ 	destroy_workqueue(cfid_put_wq);
+ 	destroy_workqueue(cifsiod_wq);
++	dns_resolver_cache_put();
  }
  
- static struct ib_client rpcrdma_ib_client = {
+ MODULE_AUTHOR("Steve French");
+diff --git a/include/linux/dns_resolver.h b/include/linux/dns_resolver.h
+index 976cbbdb2832..cc11e09b0df3 100644
+--- a/include/linux/dns_resolver.h
++++ b/include/linux/dns_resolver.h
+@@ -27,8 +27,15 @@
+ #include <uapi/linux/dns_resolver.h>
+ 
+ struct net;
+-extern int dns_query(struct net *net, const char *type, const char *name, size_t namelen,
+-		     const char *options, char **_result, time64_t *_expiry,
+-		     bool invalidate);
++#if IS_ENABLED(CONFIG_DNS_RESOLVER)
++int dns_query(struct net *net, const char *type, const char *name, size_t namelen,
++	      const char *options, char **_result, time64_t *_expiry,
++	      bool invalidate);
++void dns_resolver_cache_get(void);
++void dns_resolver_cache_put(void);
++#else
++static inline void dns_resolver_cache_get(void) { }
++static inline void dns_resolver_cache_put(void) { }
++#endif
+ 
+ #endif /* _LINUX_DNS_RESOLVER_H */
+diff --git a/net/ceph/ceph_common.c b/net/ceph/ceph_common.c
+index a797c7360e3c..df62a269cb73 100644
+--- a/net/ceph/ceph_common.c
++++ b/net/ceph/ceph_common.c
+@@ -8,6 +8,7 @@
+ #include <linux/in6.h>
+ #include <linux/key.h>
+ #include <keys/ceph-type.h>
++#include <linux/dns_resolver.h>
+ #include <linux/module.h>
+ #include <linux/mount.h>
+ #include <linux/nsproxy.h>
+@@ -890,6 +891,9 @@ static int __init init_ceph_lib(void)
+ 	if (ret < 0)
+ 		goto out_msgr;
+ 
++#ifdef CONFIG_CEPH_LIB_USE_DNS_RESOLVER
++	dns_resolver_cache_get();
++#endif
+ 	pr_info("loaded (mon/osd proto %d/%d)\n",
+ 		CEPH_MONC_PROTOCOL, CEPH_OSDC_PROTOCOL);
+ 
+@@ -913,6 +917,9 @@ static void __exit exit_ceph_lib(void)
+ 	ceph_msgr_exit();
+ 	ceph_crypto_shutdown();
+ 	ceph_debugfs_cleanup();
++#ifdef CONFIG_CEPH_LIB_USE_DNS_RESOLVER
++	dns_resolver_cache_put();
++#endif
+ }
+ 
+ module_init(init_ceph_lib);
+diff --git a/net/dns_resolver/dns_key.c b/net/dns_resolver/dns_key.c
+index 451247864a63..63f4fac0dbc8 100644
+--- a/net/dns_resolver/dns_key.c
++++ b/net/dns_resolver/dns_key.c
+@@ -16,6 +16,7 @@
+ #include <linux/kernel.h>
+ #include <linux/keyctl.h>
+ #include <linux/err.h>
++#include <linux/mutex.h>
+ #include <linux/seq_file.h>
+ #include <linux/dns_resolver.h>
+ #include <keys/dns_resolver-type.h>
+@@ -31,6 +32,8 @@ module_param_named(debug, dns_resolver_debug, uint, 0644);
+ MODULE_PARM_DESC(debug, "DNS Resolver debugging mask");
+ 
+ const struct cred *dns_resolver_cache;
++static DEFINE_MUTEX(dns_resolver_cache_mutex);
++static unsigned int dns_resolver_cache_users;
+ 
+ #define	DNS_ERRORNO_OPTION	"dnserror"
+ 
+@@ -306,6 +309,31 @@ static long dns_resolver_read(const struct key *key,
+ 	return user_read(key, buffer, buflen);
+ }
+ 
++void dns_resolver_cache_get(void)
++{
++	mutex_lock(&dns_resolver_cache_mutex);
++	dns_resolver_cache_users++;
++	mutex_unlock(&dns_resolver_cache_mutex);
++}
++EXPORT_SYMBOL_GPL(dns_resolver_cache_get);
++
++void dns_resolver_cache_put(void)
++{
++	int ret;
++
++	mutex_lock(&dns_resolver_cache_mutex);
++	if (--dns_resolver_cache_users == 0 && dns_resolver_cache) {
++		ret = keyring_clear(dns_resolver_cache->thread_keyring);
++		if (ret)
++			pr_warn_ratelimited("dns_resolver: Failed to clear cache: %d\n",
++					    ret);
++		else
++			key_gc_flush();
++	}
++	mutex_unlock(&dns_resolver_cache_mutex);
++}
++EXPORT_SYMBOL_GPL(dns_resolver_cache_put);
++
+ struct key_type key_type_dns_resolver = {
+ 	.name		= "dns_resolver",
+ 	.flags		= KEY_TYPE_NET_DOMAIN | KEY_TYPE_INSTANT_REAP,
 -- 
-2.34.1
+2.47.3
 
