@@ -1,88 +1,92 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.208.44
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.208.41
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793669566;
-	b=YvUa0TeRvE0GnExyGb3Xt8byhUcryWNvM1c5RKqJ8iLwFltNKQzKHA4npA8X+CNz4KqT
-	 wFY3ZVWdGk9f+yS1+cF6mFJSaE7UqKcq6YhI8THfgaQAzwRx2VUeMmNBoKFLbOFm5W3t1
-	 6DfnC8PtwZaipiGRcA1QbO/6+yHWCS5Ah3Y5WcnSi8ThnsZzBhHwjQguIS8ccfmca/JkH
-	 n1it3Jd3b3ds0lUfFPU/pmzh7YCaDHnHbN8jAQ4rUwy+kbTswGqqixbZqwFEXruwtPDMd
-	 vVY+kG60ard7JTWUPY+xdqEOHDB57XV8VDZxrMHLWT1YDkqhCZGh1gVwLesz85yC32w==
+	t=1793669570;
+	b=UKz2jp3ZIm/pFHZHBSBrfnXur5MA/h5AdCdBaxPiZNuRiFXttgV2KhpHDUX/XiZ18lww
+	 8QTWYdm/ZZjr5efPGox8kM17iBg+00+e8a4MF12cKhvd/6i6b584IxGtWrrKTYJgD/slB
+	 nuQIEg94Y2a41uc5qM20HkCGVgsaftJGN00yxc7rcIhRv5RKCdKFMLZaz2xhyhDKl8cuD
+	 UZk4HdnDGvcEjzadh66C0WiRhWdcR/u1ZCsCjreDSflQsTvW16pJTzDJgnZTuJfKTTbKT
+	 TwBekb7osQX4yqs+aFbFJSi/q6ZStioaGAflIH6/4O3FLdGsKdVDBn8LWlDC5kwflHA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793669566;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793669570;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
-	 Date:Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
-	bh=GFf3MD21PXZ/TYBwUre518FDQK3YR25kr23kQ8uiUWk=;
-	b=Z2c6QEwyObAOuqNR20bIInePZ0RibB84Qo4mKfXnLVT0BYNEpX/CHW02RCFT/C6kFI/i
-	 ykxK1hSsyCVw7x1CuNmoAUKXr9Zg9rTcRr7xSBOKV157z4AQsjqrj7c+0H8IiugdhL0oV
-	 YQgvrn3SOc0793yVDSnE8jiRGAGS9mDOj6z/DUsrxBoCqcdCsigHY+1GCmF110JtsZ2DM
-	 4fPlB6/fIxYl5bSHcVncRwoAcZs14SvmrJvG/syiX5BJ6ZbJ1N9wUbcXEeY6ufMyVizAl
-	 Aqi/mqAa8h3bwlgAj/zVnL0F4HbXKBwMvyqT0oEIe0aBSSlLX82ABR0n8ftav97/fkw==
+	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=jX3IkR+2sL10OzJeXBMlegpXQtT3gERG6oDD2hz/J6E=;
+	b=tAQmojnndLJwQbA16+gow5LVDdUdKwqfB3zQLpqVkKOa3+vU2JobsQWM5faVF0bJmLzo
+	 ZOI8rlE3/lMq2H811xyJkqQaTlrohMPqeogJQyPOV9CV0w7hw/kLAYyzgJeAbR3uhroH3
+	 rzMsi64jM/FJFETz/Eo4N6wSU01HA33Cqqw70bOhIkCD0nsW3N8WjWUM5A2pxxGkQZPf/
+	 yQndzBpAVkz6Ip5+SOx9GR/0oXP0PnKmUdC+tD1RhucbLkaNrQxLLE0ibCVlAUfMPgaQ6
+	 /undMb0JspHjFs06tv1UMj2socK6D6e17tdTxLyiA7JmVv5TEKD9P5D5WuRO1uQUBLA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=NmvpgwCp;
-	arc=none smtp.remote-ip=209.85.208.44
-Received: from mail-ed1-f44.google.com (mail-ed1-f44.google.com [209.85.208.44])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=ZzCIWKHm;
+	arc=none smtp.remote-ip=209.85.208.41
+Received: from mail-ed1-f41.google.com (mail-ed1-f41.google.com [209.85.208.41])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8D725606A324
-	for <linux-nfs@vger.kernel.org>; Tue,  3 Nov 2026 01:32:45 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 8D725606A324
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BB885606A324
+	for <linux-nfs@vger.kernel.org>; Tue,  3 Nov 2026 01:32:49 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org BB885606A324
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=NmvpgwCp
-Received: by mail-ed1-f44.google.com with SMTP id 4fb4d7f45d1cf-6b203527bceso4891890a12.0
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2026 17:32:45 -0800 (PST)
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=ZzCIWKHm
+Received: by mail-ed1-f41.google.com with SMTP id 4fb4d7f45d1cf-6b1a86c0316so5017330a12.0
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2026 17:32:49 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1793669564; x=1794274364; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=GFf3MD21PXZ/TYBwUre518FDQK3YR25kr23kQ8uiUWk=;
-        b=NmvpgwCpcbpbjvC7YX+7WXNndm40m2Lu3mYNFXRcQPuRKUUTprbIlbQjDqqKyFf7Fc
-         4EuIW9rtodSk1gjQBS6WdVHXZz8KOQtES28BhSAY9ldgaomU6fphvYKlQU0fmNgKpTV4
-         1+4wIKbZ28F4vTYLzJq4gBifRVFt300MQIY1qNuuP1lKLYx0L+Y5w50irGQTuAwLpeRb
-         sZu3IETlu1RR7QcvM9Zp/Y+DW5o0TEXkVLBwerGMY2ImG7Kaa2ymIj4CpUbl4YzZrg6d
-         SGy1d03itjun2BvnLaH6I47is5Mr/il3e1IagIVBpVXtuqfQqoqDjNcvBbL5QGXtY6ZS
-         aBrg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793669564; x=1794274364;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+        d=gmail.com; s=20260707; t=1793669568; x=1794274368; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=GFf3MD21PXZ/TYBwUre518FDQK3YR25kr23kQ8uiUWk=;
-        b=Aat8EAM8uq/aOt170mvUfuPfWgMGevhx16QlTbvijW39zkF7LBa/eFQ4J2r2e53q0R
-         4FVEFt+6LEyHRRBE//g3q3jsMl/xhPJgC2izjW/xY5FABBS/CaL+yAEG/Cfo+No/85JZ
-         oYGi4scmsUhLw2uzskukEAObbNIDsK/Efr+wFljLFFUhCkRjCZQVjZR1Pk3K5lCs/wE6
-         I3ZDczh+QPbapfs5XKjwdBBgbA/Fjh3TTLLNk52zxPtcUxtecShpJzaHDGANWIgaSdt1
-         RQyset3RmjV0CosiZqTCkCWNvkj2sVTYY6YAKgaiu3s+7S4zvmAXWyDv6L5vzAmk0PFI
-         RjeA==
-X-Gm-Message-State: APuU4Z+154mDECkdmGUYi4+7A3g27T+vDIO9UdSxVm9vVijWtfqnb8Ss
-	iQ3tdsTtpiLpkxT+YcBDl0sNNdtX8g51oVdkzStbPnaWCeleO09Lj8xJuqrEpQtfofM=
-X-Gm-Gg: AYBFou1bL0QVgXbYDXukvmXQDaJxqGI6shQ0mrhNRThGpv29u61q/Ugsa/8exVGUwOc
-	SnWaEC45qTyHqb/lIzZb1s1PQ8ShIZlhnkqoFt45t5/IfEBobFd5PTS4mbY7ol4V1ot18hUFiet
-	BunRaCqmFtUn/kQkycyrVRqr7ts8dzQ5DXWhmJRGc9cImNjtmt2ihh5RhciRC+YrTCmf9sK77cL
-	UHvJ8hh+tGE2z2i1gWDDazDyH9AftwjPFGKiU21AzgUsYl+zNDPjZyxICGyeFlIzOpfGGm76Lcl
-	eg7uHKYI+IkzJhQlKwd9vn70ILv4LX0y71LaOSADw1GLJdNbWrKv+7H2wxkDzI976v3vFES4W53
-	eMN7Iq2B/9R8T6r5yzaZ/1hjh91+FE6gwy/ovBljvAzIFX77r1KQfbgH9bsDhheS+olSkcPd/Zo
-	c/DCmWuWmpDG1o1Lf8waIp24MjugRenR+WHyWZ/LJ7uBUSNE4cWyGQccJh9scwFi+U+hYYVtcbj
-	NQzSyn/sJWZWg3O6pPriqUQDor/mWsrqiAsVUSU2AJj2Sv9cDxcx2V4tjKjrMmt/S0PS5TwPGj2
-	BKJpRsIXeb/Lc4QtKj3p+nXSt3NojA94FMKLe9gE+HY2DswOoFgA+OF1uyf7kQ9bCSTFQ2CT
-X-Received: by 2002:a05:6402:a40d:b0:6b3:e575:f4ed with SMTP id 4fb4d7f45d1cf-6b4d4c76d2fmr5558341a12.21.1793669563841;
-        Mon, 02 Nov 2026 17:32:43 -0800 (PST)
+        bh=jX3IkR+2sL10OzJeXBMlegpXQtT3gERG6oDD2hz/J6E=;
+        b=ZzCIWKHmSqATzHz+kF2jVZKxhuOAWUrOfZWCTzvERIPDSleJlFoF+hz+BFYt4kGbgW
+         CVqDEg2DDzqphtNrz04Yge5N5KiP9lIu/ZOzPSvg2MXNNWTau2EKR3Dyf3HJglbhxHv8
+         rVsBI4UTY5AJtIRUkjJ9G83XhYPV08hIP0wFg39zOmiOYx6HPbxmvovRBGyrk/8++CsD
+         yzNxyJEyJtabA9t1U2P+FISohfGELD4I/w4YzUEj4ntzslL2pw00EeNmbXkN6CGaCaBz
+         TaKfyRuMYRsJWV5yWYnqESNX5kXnINPNoF9jz5sLLZCqWe8XbKWRVdPqScnLmg/5+26E
+         0I+w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793669568; x=1794274368;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=jX3IkR+2sL10OzJeXBMlegpXQtT3gERG6oDD2hz/J6E=;
+        b=GyoyEwOniRqZ6uZNjl4j700bqKdbHOhAvPBieCNDjLfQtslg+Sw+xe4mUN9np7qTLe
+         gp0TBsxWmbnCLAyB+UcqIkjUV+vJE1W/MCcJY5945zpsDLglBrzl2BFhAKz8EfYfn6HU
+         TxoxovW43okSEEd3e9aODecMqFonmRORZjRSCgPknxqxy1tCup7oIO/TmPFAx0pQ/9Tg
+         MBEvE7h1lqUvS6apfgm6zE398/DxGkMBR5mTA4bhiXWSXY2NvgIdq5my8EW5yP8+NXxV
+         dT7EQHJLIbIseasT6p8L7AmtE0f2JAkBtH6iBiaBE1ZJ4etc/ic/BPSeeN3fYrCLAGzy
+         XpQg==
+X-Gm-Message-State: APuU4Z/u9gzkwBYrkwr7JYwLRVfy4SkxxQncn5eM8/SiVk/FdZcsCiiY
+	a44zfdxsl0sOZGcgyCSE5Dow6WBxqk+bKh8UPm5LtqYk3KHbGxy+0AhfnuXqD/3flHY=
+X-Gm-Gg: AYBFou34/1ALonvzZ2sUK5aH9VLIoQXY7dvIK3RDDJKF3yB7qA2tjz0irWA75oGzX5z
+	Yu2ytaQDXpvRjzVKTghze/tBA1kvq3zyoI+4vDRe1kHOlDRzhRf2cX3/EPwT1Fl5gF9ZU0SeAnI
+	+yrcKtIQDwp176Ml+InneihLLP6D3XL+Vgy+nkFmTRShrwP5jjw7NUJxCCEEUa2lYZ0InvBRTWZ
+	hFz8LN2MWOsYm5+bIfA1O+g8iY28uRD10t/TLzOFWTmYPekyNUFCi+WmTBEsi/M3XgSfX1GPlPL
+	3InK9R21Oyg9Pgf8/rCjmWV4pdqPLqWEbCJ0nyCfeYgABESuwn+owqNZubAoVQ8xTdLW2o+JN5R
+	66AJPTZVWClcCuCDCDfV8Y62HaNPax7C5y4gaG5f1ZyUfr2cOhNi2iT8cZBj6fAsTSl3WqXWYuk
+	6B81U7h9V1AXk4Y0tPPtJd0KLstl4xHjH2D9lcFnNcgQJpC7T1VB8NNCRqSoGDqwQvoWRgwvHeH
+	hJ64zNpLWLhvg0hJWyrB/FUkC23qst7nxjfBmrDLn6TTwt9Y8qRiDYIJ8TIMiS6zbDpkMWLuC/1
+	pZV3rUviph3KUgRbrZnI8eCw7htfqdDpmKqlSsJ/8/uQPwFFFMk2HUm6QydYsimvK59GBrvt
+X-Received: by 2002:aa7:c0d7:0:b0:6b3:d0a0:39e5 with SMTP id 4fb4d7f45d1cf-6b4d438bdb7mr6016589a12.9.1793669568048;
+        Mon, 02 Nov 2026 17:32:48 -0800 (PST)
 Received: from localhost.localdomain (173.242.112.181.16clouds.com. [173.242.112.181])
-        by smtp.gmail.com with ESMTPSA id 4fb4d7f45d1cf-6b4ec91e2f2sm3776583a12.0.2026.11.02.17.32.41
+        by smtp.gmail.com with ESMTPSA id 4fb4d7f45d1cf-6b4ec91e2f2sm3776583a12.0.2026.11.02.17.32.45
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 02 Nov 2026 17:32:43 -0800 (PST)
+        Mon, 02 Nov 2026 17:32:47 -0800 (PST)
 From: VeroFess <coderzeng@gmail.com>
 To: linux-nfs@vger.kernel.org
 Cc: cel@kernel.org,
 	jlayton@kernel.org
-Subject: [PATCH 0/3] NFSD: Apply all export checks when a compound changes exports
-Date: Tue,  3 Nov 2026 09:32:34 +0800
-Message-ID: <20261103013237.1174538-1-coderzeng@gmail.com>
+Subject: [PATCH 1/3] NFSD: Check the secure-port policy when entering an export
+Date: Tue,  3 Nov 2026 09:32:35 +0800
+Message-ID: <20261103013237.1174538-2-coderzeng@gmail.com>
 X-Mailer: git-send-email 2.43.0
+In-Reply-To: <20261103013237.1174538-1-coderzeng@gmail.com>
+References: <20261103013237.1174538-1-coderzeng@gmail.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -94,48 +98,181 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-When a compound moves the current filehandle into another export,
-NFSD does not always apply all of that export's checks. These patches
-fix three such paths: LOOKUP entering an export, RESTOREFH, and COPY
-and CLONE with a source and destination in different exports. They
-apply to nfsd-testing at 08f97dfc517b.
+LOOKUP checks the parent filehandle before crossing a mountpoint.
+The crossing checks the entered export's flavor and transport policy,
+but not its secure-port setting. An AUTH_SYS request from an
+unreserved port can therefore enter a secure export by LOOKUP,
+although PUTFH of the same filehandle returns NFS4ERR_PERM. The
+requester must already hold an OPEN stateid for the file for the
+demonstrated READ and CLONE paths; the reproducer obtains it from a
+reserved port before sending the requests from an unreserved port.
 
-In each case, the requester must already hold an OPEN stateid that
-NFSD granted after a full export check.
+Check the port whenever check_nfsd_access() revalidates an export.
+Use the same port helper as fh_verify(), including SECINFO's flavor
+bypass path. Map a port denial to NFS4ERR_ACCESS in SECINFO and
+SECINFO_NO_NAME, as required for a denied name lookup.
 
-Patch 1 checks the secure-port setting of an export entered by LOOKUP.
-An AUTH_SYS request from an unreserved port can no longer enter a
-secure export that PUTFH of the same filehandle would reject.
+The omission is old; it dates back at least to Linux 2.6.12.
+Maintained LTS branches with this crossing path also need the check.
 
-Patch 2 applies the entered export's credentials after LOOKUP crosses
-into another export and after RESTOREFH, so root_squash and all_squash
-follow the export that owns the current filehandle.
-
-Patch 3 verifies the COPY and CLONE source and destination
-filehandles, so each stateid is checked with the credentials of its
-own export.
-
-The combined tree was built for x86-64 with KASAN, kernel TLS and
-NFSD_V4_2_INTER_SSC, and tested in a guest on NFSv4.0, v4.1 and v4.2.
-The test results are below the --- line of each patch. The guest log
-showed no KASAN report or oops. Each patch also applies and builds
-with W=1 on its own.
-
-VeroFess (3):
-  NFSD: Check the secure-port policy when entering an export
-  NFSD: Apply the entered export's credentials after LOOKUP and
-    RESTOREFH
-  NFSD: Verify COPY and CLONE source and destination filehandles
+Signed-off-by: VeroFess <coderzeng@gmail.com>
+---
+The combined fix tree was tested in an x86-64 KASAN guest. High-port
+AUTH_SYS LOOKUP returned NFS4ERR_PERM, named SECINFO returned
+NFS4ERR_ACCESS, and the CLONE destination was unchanged. Low-port COPY
+and CLONE and high-port GSS privacy access succeeded. This patch also
+built alone with W=1.
 
  fs/nfsd/export.c   |  8 ++++++--
- fs/nfsd/nfs4proc.c | 18 +++++++++++++++---
+ fs/nfsd/nfs4proc.c |  4 +++-
  fs/nfsd/nfsfh.c    | 26 ++++++++++++++++++++++----
  fs/nfsd/nfsfh.h    |  2 ++
- fs/nfsd/vfs.c      | 26 ++++++++++++++++++++------
- 5 files changed, 65 insertions(+), 15 deletions(-)
+ fs/nfsd/vfs.c      | 21 +++++++++++++++------
+ 5 files changed, 48 insertions(+), 13 deletions(-)
 
-base-commit: 08f97dfc517b50a00a41ce99f5af7b6ce2814592
-
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index f0dd9fb..3bdc6b8 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -2077,13 +2077,17 @@ __be32 check_security_flavor(struct svc_export *exp, struct svc_rqst *rqstp,
+  * @rqstp: svc_rqst attempting to access @exp.
+  *
+  * Return values:
+- *   %nfs_ok if access is granted, or
+- *   %nfserr_wrongsec if access is denied
++ *   %nfs_ok if access is granted, %nfserr_perm if the
++ *   originating port is not allowed, or %nfserr_wrongsec
++ *   if the transport or flavor is not allowed.
+  */
+ __be32 check_nfsd_access(struct svc_export *exp, struct svc_rqst *rqstp)
+ {
+ 	__be32 status;
+ 
++	status = nfsd_check_port(rqstp, &rqstp->rq_cred, exp);
++	if (status != nfs_ok)
++		return status;
+ 	status = check_xprtsec_policy(exp, rqstp);
+ 	if (status != nfs_ok)
+ 		return status;
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 2c65302..43c2aa9 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1086,7 +1086,9 @@ nfsd4_link(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+  */
+ static __be32 nfsd4_secinfo_status(__be32 status)
+ {
+-	return status == nfserr_wrongsec ? nfserr_acces : status;
++	if (status == nfserr_wrongsec || status == nfserr_perm)
++		return nfserr_acces;
++	return status;
+ }
+ 
+ static __be32 nfsd4_do_lookupp(struct svc_rqst *rqstp, struct svc_fh *fh,
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index 0939146..4b5280e 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -102,11 +102,17 @@ static bool nfsd_originating_port_ok(struct svc_rqst *rqstp,
+ 	return test_bit(RQ_SECURE, &rqstp->rq_flags);
+ }
+ 
+-static __be32 nfsd_setuser_and_check_port(struct svc_rqst *rqstp,
+-					  struct svc_cred *cred,
+-					  struct svc_export *exp)
++/**
++ * nfsd_check_port - check an export's secure-port requirement
++ * @rqstp: request being checked, or %NULL for a local caller
++ * @cred: credentials used for export option checks
++ * @exp: export being checked
++ *
++ * Return: %nfs_ok if allowed, %nfserr_perm otherwise.
++ */
++__be32 nfsd_check_port(struct svc_rqst *rqstp,
++		       struct svc_cred *cred, struct svc_export *exp)
+ {
+-	/* Check if the request originated from a secure port. */
+ 	if (rqstp && !nfsd_originating_port_ok(rqstp, cred, exp)) {
+ 		if (IS_ENABLED(CONFIG_SUNRPC_DEBUG)) {
+ 			char buf[RPC_MAX_ADDRBUFLEN];
+@@ -116,6 +122,18 @@ static __be32 nfsd_setuser_and_check_port(struct svc_rqst *rqstp,
+ 		}
+ 		return nfserr_perm;
+ 	}
++	return nfs_ok;
++}
++
++static __be32 nfsd_setuser_and_check_port(struct svc_rqst *rqstp,
++					  struct svc_cred *cred,
++					  struct svc_export *exp)
++{
++	__be32 status;
++
++	status = nfsd_check_port(rqstp, cred, exp);
++	if (status)
++		return status;
+ 
+ 	/* Set user creds for this exportpoint */
+ 	return nfserrno(nfsd_setuser(cred, exp));
+diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+index aa3ff30..90b6429 100644
+--- a/fs/nfsd/nfsfh.h
++++ b/fs/nfsd/nfsfh.h
+@@ -226,6 +226,8 @@ extern char * SVCFH_fmt(struct svc_fh *fhp);
+ /*
+  * Function prototypes
+  */
++__be32	nfsd_check_port(struct svc_rqst *rqstp,
++			struct svc_cred *cred, struct svc_export *exp);
+ __be32	fh_verify(struct svc_rqst *, struct svc_fh *, umode_t, int);
+ __be32	fh_verify_local(struct net *, struct svc_cred *, struct auth_domain *,
+ 			struct svc_fh *, umode_t, int);
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 269dc49..2775911 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -123,6 +123,19 @@ nfserrno(int errno)
+ 	return nfserr_io;
+ }
+ 
++static __be32 nfsd_check_crossing_access(struct svc_rqst *rqstp,
++					 struct svc_export *exp, int access)
++{
++	__be32 status;
++
++	if (!(access & NFSD_MAY_BYPASS_FLAVOR))
++		return check_nfsd_access(exp, rqstp);
++	status = nfsd_check_port(rqstp, &rqstp->rq_cred, exp);
++	if (status)
++		return status;
++	return check_xprtsec_policy(exp, rqstp);
++}
++
+ /*
+  * Check if we have crossed a mount point.
+  * Returns an nfs error leaving *dpp and *expp unchanged,
+@@ -168,9 +181,7 @@ nfsd_cross_mnt(struct svc_rqst *rqstp, struct dentry **dpp,
+ 			err = 0;
+ 	} else if (nfsd_v4client(rqstp) ||
+ 		(exp->ex_flags & NFSEXP_CROSSMOUNT) || EX_NOHIDE(exp2)) {
+-		nfserr = (access & NFSD_MAY_BYPASS_FLAVOR) ?
+-			 check_xprtsec_policy(exp2, rqstp) :
+-			 check_nfsd_access(exp2, rqstp);
++		nfserr = nfsd_check_crossing_access(rqstp, exp2, access);
+ 		if (nfserr == nfs_ok) {
+ 			/* successfully crossed mount point */
+ 			/*
+@@ -222,9 +233,7 @@ static __be32 nfsd_lookup_parent(struct svc_rqst *rqstp, struct dentry *dparent,
+ 	} else if (IS_ERR(exp2)) {
+ 		nfserr = nfserrno(PTR_ERR(exp2));
+ 	} else {
+-		nfserr = (access & NFSD_MAY_BYPASS_FLAVOR) ?
+-			 check_xprtsec_policy(exp2, rqstp) :
+-			 check_nfsd_access(exp2, rqstp);
++		nfserr = nfsd_check_crossing_access(rqstp, exp2, access);
+ 		if (nfserr != nfs_ok) {
+ 			exp_put(exp2);
+ 		} else {
 -- 
 2.43.0
 
