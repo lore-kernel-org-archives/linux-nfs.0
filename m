@@ -1,75 +1,75 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.197
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.198
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793745111;
-	b=QzSNbih28QDeRSIIPqNpx1xb4nCPngkWUaWB63bhGwggm0rLeWpX903FbZTFOjo553Hw
-	 ZRrqFKN0xjNMMsc7nUzd5O4vmzeC1l5E3ZTLfmSMh4n1PkzX3zizfbgzzC8jTcwgmwg/h
-	 HL46je3TyHh3lbIfbL42FXIQb+4cJ7Dve2Eua6ad/F2FXVUDrnPdunk/xe9LOrY0CarVN
-	 JD+X13SAv4c7m7r+/4tu/5IrfrLDiQ4ZKocGrz4hYcAWDl6JEWDE/eO7K1bLo0zrh1iOC
-	 j6Cb4KzPD0s4A8pF589d7fsl7EgVj2HWvpuPbDvNT2aToLsZGSuIu9ZJbsTjLZkB5fg==
+	t=1793745112;
+	b=Q7DuVUyJc2ks/rAmWqHdcb2v8Y2eWYZwrS8BCdsaJtCLSBpB4Jg55Zb2SzSIIEaWaIYP
+	 28x4LCh1yPPJnJ/y5mSTqDpz7vottBjvlimr/CjQejjBGsqZs0rq2GpSQ0v1i+iuG/7Nr
+	 tStBmnEuuO5yY0ttYVrTraYfDkcQXKtAMRCa18bcKNKnNEIHdSwmasGfz6UTFdPkUCrr1
+	 v8pkJK2Smkbyho9T9DHlPpqQroJEw2/GbZuUVu4eLPPFAg3duA4kZ+S7cHI/Egxn2ohZd
+	 tL6xoiNUN5R8D4BixYJ2CFrQ/INofnEykYTa397ma7XC2RNAcws7b2qkSx5rclsAU6g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793745111;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793745112;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Received:Date:In-Reply-To:
 	 Mime-Version:References:X-Mailer:Message-ID:Subject:From:To:Cc:
 	 Content-Type;
-	bh=BrTX3wJjILuApgcUkXldz9A0fDSI5dqDukx6+R/xaJI=;
-	b=4BNfml28zrQ8zGgX209lzr1h+zcX0wIYZa1VfEpIItrJlMpe/E4MvOwWTcD3YYgXP4uE
-	 edclC8GgLmHy14JdoCHeJUzEE3BHTSr3jz0ZhUdwh3Iy9XZcj3FgVyNjx1QMwrMez41cR
-	 B5L+4IOZSaViMaHziKXL4IUdaZXYZnoFHOgJ7AGa9CWLDcnJ+UvCqKyTZOGixtDxYFP35
-	 PQ+FiSF+8SmemKBx2fQorRUEDvQ2903i5OZn+FWdggpOREIV4c1n8TJBQsWaNI6wfu4js
-	 oPyPNoH+LPjZlXB1ZjnMrnNgkLUd1wyr3ykrIM6n252zCpK9ZQY9CjB18eBwMMDit3Q==
+	bh=b1QRyQDO5+0ViUOtVbl2pTjWS8q1UvDtamNlK0wDnbM=;
+	b=UnVQYZlUUQnE1CfzZTY267AVva+ZfpUztHPmrY1EEqLwdLLbfRTbx1iiGmoKDPodg4no
+	 7DB0oZuo0/ImBS/HN4iEx90pzIFfdVAt6xrb3mZr3A6sKYDiWiDOSuUO5TOlvCZt0iZij
+	 LPryWfAobvX/tX4ElmdCsdbjimkbU951T+Tx3lqWmY9cgQnYg4ND7tpf6EFJSqDFbgVKD
+	 +X4jqcFztS7Hduu+ujZwmKa/c+C+nQChPLWJvEKTOwZkwytLqcNO2Eit45Oxc3glGPzYx
+	 sswYhtupk9mhIv7137ydsDdrZsCMUELx+QmqTLGBW5cUVk0pRDf42ugkjSeFQ2f1qTw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=google.com;
 	spf=pass smtp.mailfrom=flex--nhuhuan.bounces.google.com;
-	dkim=pass header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=g60ZR+5c;
-	arc=none smtp.remote-ip=74.125.82.197
-Received: from mail-dy1-f197.google.com (mail-dy1-f197.google.com [74.125.82.197])
+	dkim=pass header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=bJyiuFya;
+	arc=none smtp.remote-ip=74.125.82.198
+Received: from mail-dy1-f198.google.com (mail-dy1-f198.google.com [74.125.82.198])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 16F59606A326
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 30ECC606A333
 	for <linux-nfs@vger.kernel.org>; Tue,  3 Nov 2026 22:31:51 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 16F59606A326
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 30ECC606A333
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=flex--nhuhuan.bounces.google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=g60ZR+5c
-Received: by mail-dy1-f197.google.com with SMTP id 5a478bee46e88-30c0d568830so49521eec.1
-        for <linux-nfs@vger.kernel.org>; Tue, 03 Nov 2026 14:31:50 -0800 (PST)
+	dkim=pass (2048-bit key, unprotected) header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=bJyiuFya
+Received: by mail-dy1-f198.google.com with SMTP id 5a478bee46e88-30c0d568830so49552eec.1
+        for <linux-nfs@vger.kernel.org>; Tue, 03 Nov 2026 14:31:51 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20260707; t=1793745110; x=1794349910; darn=vger.kernel.org;
+        d=google.com; s=20260707; t=1793745111; x=1794349911; darn=vger.kernel.org;
         h=content-type:cc:to:from:subject:message-id:references:mime-version
          :in-reply-to:date:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=BrTX3wJjILuApgcUkXldz9A0fDSI5dqDukx6+R/xaJI=;
-        b=g60ZR+5cGx3Kne5HRSgfcrUxFoC16c0uMvrcSowkwdKoy9+5+Q/Pxyi2+op5jAm8p4
-         Yyuqh4SsQLKZ5cHnuMhClKxfLJniePL/BjlkxzWDIoHdoWEmbuWIywaV2pOOr/4SNp3B
-         29y9lAgoxKELBeYFg38vm4dSle6GRGgfoQ3Iy5VwOEeJkyr1pU+Nd1vGvrYIHGQM0sxO
-         Q6317b86To14Zmz74Bta2GAO17929qdtFilbiLiybY/14xbyP702k1CK/BQkctHAwBlt
-         fT/1ASy8B2y0ayIn77VCIuijFr32uLBy4WVdcA0E6nZam9NhHmjx3mM2fy7sl01debTW
-         6knw==
+        bh=b1QRyQDO5+0ViUOtVbl2pTjWS8q1UvDtamNlK0wDnbM=;
+        b=bJyiuFyaKi8z+F7FYfiPHCvNqgp24FnmcXdPTXFBwaRp1esH0/LvaqH/65IFd+GC4p
+         dw2HjDy6Ri1aHCJNTouvg7i6n5CWpX6qeg2l94tMsF6TANayB5Yba29Crte/3KdP8j7M
+         Y1Cvvuk7L70H9dbepktWlh8b4cJYTjt+k2QBwI9Gc4hab9akbLtTXnzR/ukOYXJ9YVVl
+         uPOspPemlkzrvSiB1Fg8R6dgkatfbz8HK4vk6HZk2e4rguxkUWVODo3XKMNO0Jk5rMQy
+         RMsFGO3gZFfjMtgmn3btmFKmXsuDC28PngTa/YXknmrHH4y7zM3d5Oka8lQD2OMsPk9L
+         zOnw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793745110; x=1794349910;
+        d=1e100.net; s=20260707; t=1793745111; x=1794349911;
         h=content-type:cc:to:from:subject:message-id:references:mime-version
          :in-reply-to:date:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=BrTX3wJjILuApgcUkXldz9A0fDSI5dqDukx6+R/xaJI=;
-        b=gBzn1WBzf2oWe6EQY7xfsaT7Pk98OLcW2gtlY21lbYFA69VaQJ6M1qdrR8dKISvTSe
-         OLE4RKQhVFGL0Ibnhxej8ps0INb9AAeXQYCab6K37ZT10Ru9i4X28ASIL6yG867oLXfD
-         kGNBkLuN6lmSEwdY0X23X44XsJxNlRN8xe4so9VU9mmSs9kioKv3iYrsxAybpWoHIO49
-         vjqJ+NjWKkbNXHViQyTSRg3Qd/KqthqLNZRFLpjT40mfC3ccVrU69zIP6lgoIsHum3qR
-         BKdgPIdKVfUJhxWVbj0kdSCyGm+YtSghpocdcprEdJvPYCehw3JA/MUcDrVPddodng5l
-         Nb7A==
-X-Forwarded-Encrypted: i=1; AKwUvBy9In5CLZsPcBV0sW0RZgSNWVXZOpKJEvAcTxdEoEiQOpx3FjtVsXj7HqZcBeX8xGRK3d68tip3ke4=@vger.kernel.org
-X-Gm-Message-State: APuU4Z93MRXJFyLwQkD/YpzFNHxsOBfW26DMxa2Qs7K+RKvDywBhetZx
-	foLPs2R+NocLasjurXyR0h7eTatknMEGiLDJ9c2UX8Pj1e99VBqvZOwXsRgBxBpxB1z2hPBdzQv
-	yz9FnvpzNxw==
-X-Received: from dlbsv7.prod.google.com ([2002:a05:7022:3a07:b0:1b2:3bdb:f218])
- (user=nhuhuan job=prod-delivery.src-stubby-dispatcher) by 2002:a05:701b:4244:10b0:149:1b5b:1f25
- with SMTP id a92af1059eb24-1ac5b211405mr22122314c88.15.1793745109795; Tue, 03
- Nov 2026 14:31:49 -0800 (PST)
-Date: Tue,  3 Nov 2026 14:30:22 -0800
-In-Reply-To: <20260730-rfc-nt-demote-v2-0-452dbe3b5073@zptcorp.com>
+        bh=b1QRyQDO5+0ViUOtVbl2pTjWS8q1UvDtamNlK0wDnbM=;
+        b=1w+sncANxzDe9G77oKx/298h2zhQY7X5nsF2YDZa9sutx1/t7LjHY4q/yVoY6X5egV
+         /uUcZka9Ld/BDj/N1f6IHIp2WTfhhhwNh8SXfzRgKodwEURmKWjFF5SHZMBgGKzw0DUU
+         2QJ5KOgAficG6jXg9mRBr4952eUvflCQyg7zvrSXe0ic6R95aBiwz++Xp2+VwcN5CHZh
+         dgxJrCRBnIIJN626nQaLy6TA2e4GdE3xq/ZPYYsPoGsyVEJr6Z9rXa7EzKtHyRJC/cPu
+         h92gFhT5xPkglaUtGtK1Y+vaSCHuhVA2qgMRJcVudWaSPFFAN81s/A95y81CdJoWPkA1
+         eNCg==
+X-Forwarded-Encrypted: i=1; AKwUvBzkgwzvnxRsKAdQnukeZ3EdhWIXSL9xG0sgz/zC+T8jAmysEeg2Yb2OX/Eeu/bvKACdYJ3AwJ8dtD0=@vger.kernel.org
+X-Gm-Message-State: APuU4Z8NBPpNQrNURss+tvCFz/lm9nEF3C34c62rWnDImtkm97YxypuF
+	QG4szwppyEC1owD7lYBd8aVk4ICAPCegZqcJ3zFfkqt2VcbXM9WY+BorXUA6WtsH46ldkCNECNX
+	0APn9rX57eQ==
+X-Received: from dlea11-n1.prod.google.com ([2002:a05:701b:420b:10b0:1a8:14f9:6e3a])
+ (user=nhuhuan job=prod-delivery.src-stubby-dispatcher) by 2002:a05:7022:1711:b0:1ae:59d6:91d7
+ with SMTP id a92af1059eb24-1ae59d6945fmr16251403c88.40.1793745110700; Tue, 03
+ Nov 2026 14:31:50 -0800 (PST)
+Date: Tue,  3 Nov 2026 14:30:23 -0800
+In-Reply-To: <20261103223025.2482227-1-nhuhuan@google.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -79,10 +79,11 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 Mime-Version: 1.0
-References: <20260730-rfc-nt-demote-v2-0-452dbe3b5073@zptcorp.com>
+References: <20260730-rfc-nt-demote-v2-0-452dbe3b5073@zptcorp.com> <20261103223025.2482227-1-nhuhuan@google.com>
 X-Mailer: git-send-email 2.56.0.398.g882cbad275-goog
-Message-ID: <20261103223025.2482227-1-nhuhuan@google.com>
-Subject: [RFC PATCH v3 0/3] mm: use non-temporal stores for demotion
+Message-ID: <20261103223025.2482227-2-nhuhuan@google.com>
+Subject: [RFC PATCH v3 1/3] mm, x86: support copying a folio using
+ non-temporal stores
 From: Huan Nguyen <nhuhuan@google.com>
 To: tglx@kernel.org, mingo@redhat.com, bp@alien8.de, 
 	dave.hansen@linux.intel.com, x86@kernel.org, hpa@zytor.com, 
@@ -103,83 +104,212 @@ Cc: rientjes@google.com, dave@stgolabs.net, nifan.cxl@gmail.com,
 	linux-nfs@vger.kernel.org, linux-trace-kernel@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 
-This series continues the non-temporal demotion work originally posted
-by Yiannis Nikolakopoulos [1].
+On x86_64 architecture, copying cold memory folios using standard store
+instructions pollutes CPU caches with cold data, increasing memory
+latency and bandwidth overhead.
 
-Motivation
-==========
-Memory tier demotion moves cold folios from local DRAM to slower memory
-tiers, such as CXL or remote NUMA nodes. Standard store instructions
-force the CPU to allocate cache lines for cold data that is unlikely to
-be referenced in the near term.
+Support machine-check safe non-temporal copying of folios:
+- Add copy_mc_page_nt() to copy a 4KiB page using non-temporal stores,
+  prefetching, and MCE exception handling.
+- Add copy_mc_highpage_nt() to map and copy a 4KiB page.
+- Add folio_mc_copy_nt() to copy a folio using copy_mc_highpage_nt().
 
-Using non-temporal stores and prefetching on x86 bypasses CPU cache
-allocation, protecting active workload working sets and improving
-demotion throughput.
+Because non-temporal stores are weakly ordered, a wmb() is issued at the
+end of folio_mc_copy_nt() before page tables are updated to ensure the
+new folio contents are globally visible. In the event of task preemption
+and CPU migration mid-folio, the scheduler's locked instructions on the
+departing CPU serialize and drain earlier stores, while the final wmb()
+covers the remainder on the new CPU.
 
-Changes in v3
-=============
-- Unified MCE-safe NT copy (addressing v2 Open #1):
-  Implement copy_mc_page_nt() in x86 assembly to provide machine-check
-  safe copying using non-temporal stores (movnti) and prefetchnta.
-
-- Architecture abstraction (addressing v2 Open #2):
-  v2 relied on memcpy_flushcache(), which lacks non-temporal stores on
-  architectures like arm64. RFC v3 replaces this with a dedicated
-  __HAVE_ARCH_COPY_PAGE_NT interface and generic fallback, enabling
-  architectures to plug in native non-temporal routines independently.
-
-- Memory ordering:
-  Add a wmb() barrier at the end of folio_mc_copy_nt() to ensure weakly
-  ordered non-temporal stores are drained before page tables are updated.
-
-Discussions
-===========
-1. Migration mode vs. migration control refactoring:
-   Currently, this series introduces MIGRATE_ASYNC_NONTEMPORAL into
-   enum migrate_mode. In parallel, Shivank Garg's migration refactoring
-   series [2] consolidates migration arguments into migrate_control.
-   Once that lands, demotion can simply rely on the migration reason
-   instead of adding a dedicated migration mode and helper.
-
-2. Large folio copy optimization:
-   Multi-page folios (such as 2MiB THP) are supported by iterating over
-   constituent 4KiB pages via copy_mc_page_nt(). Once the batch page
-   copy series [3] lands, copy_mc_page_nt() can be extended to copy an
-   entire multi-page folio in a single invocation, eliminating per-4KiB
-   loop overhead and keeping the prefetchnta stream uninterrupted.
-
-Thanks to Yiannis Nikolakopoulos, Alirad Malek, and Dimitrios
-Palyvos-Giannas for their original work, feedback, and collaboration.
-
-References
-==========
-[1] https://lore.kernel.org/linux-mm/20260730-rfc-nt-demote-v2-0-452dbe3b5073@zptcorp.com/
-[2] https://lore.kernel.org/linux-mm/20260902-migrate-refactor-shivank-v1-9-9dcca87669c4@amd.com/
-[3] https://lore.kernel.org/linux-mm/20261019-batpagecopy-v2-1-d75e7d0dfaae@amd.com/
-
+Suggested-by: Alirad Malek <alirad.malek@zptcorp.com>
+Suggested-by: Dimitrios Palyvos-Giannas <dimitrios.palyvos@zptcorp.com>
 Signed-off-by: Huan Nguyen <nhuhuan@google.com>
-
-Huan Nguyen (3):
-  mm, x86: support copying a folio using non-temporal stores
-  mm/migrate: introduce async non-temporal migration mode
-  mm/vmscan: demote folios using non-temporal stores
-
+---
  arch/x86/include/asm/page_64.h |  2 ++
  arch/x86/lib/copy_page_64.S    | 65 ++++++++++++++++++++++++++++++++++
- fs/nfs/write.c                 |  2 +-
  include/linux/highmem.h        | 21 +++++++++++
- include/linux/migrate.h        |  5 +++
- include/linux/migrate_mode.h   |  1 +
  include/linux/mm.h             |  1 +
- include/trace/events/migrate.h |  1 +
- mm/compaction.c                | 18 +++++-----
- mm/migrate.c                   | 29 +++++++++------
  mm/util.c                      | 29 +++++++++++++++
- mm/vmscan.c                    |  2 +-
- 12 files changed, 154 insertions(+), 22 deletions(-)
+ 5 files changed, 118 insertions(+)
 
-base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
+diff --git a/arch/x86/include/asm/page_64.h b/arch/x86/include/asm/page_64.h
+index 1895c207f629..f37126b56239 100644
+--- a/arch/x86/include/asm/page_64.h
++++ b/arch/x86/include/asm/page_64.h
+@@ -114,7 +114,9 @@ static inline void clear_page(void *addr)
+ 	clear_pages(addr, 1);
+ }
+ 
++#define __HAVE_ARCH_COPY_PAGE_NT 1
+ void copy_page(void *to, void *from);
++unsigned long copy_mc_page_nt(void *to, const void *from);
+ KCFI_REFERENCE(copy_page);
+ 
+ /*
+diff --git a/arch/x86/lib/copy_page_64.S b/arch/x86/lib/copy_page_64.S
+index d8e87fedc20d..185fa3bc34c0 100644
+--- a/arch/x86/lib/copy_page_64.S
++++ b/arch/x86/lib/copy_page_64.S
+@@ -6,6 +6,7 @@
+ #include <linux/cfi_types.h>
+ #include <asm/cpufeatures.h>
+ #include <asm/alternative.h>
++#include <asm/asm.h>
+ 
+ /*
+  * Some CPUs run faster using the string copy instructions (sane microcode).
+@@ -88,3 +89,67 @@ SYM_FUNC_START_LOCAL(copy_page_regs)
+ 	addq	$2*8, %rsp
+ 	RET
+ SYM_FUNC_END(copy_page_regs)
++
++/*
++ * Copy an entire 4KB page using non-temporal stores (movnti).
++ * Returns 0 on success, or number of bytes not copied on error.
++ */
++SYM_TYPED_FUNC_START(copy_mc_page_nt)
++	subq	$2*8, %rsp
++	movq	%rbx, (%rsp)
++	movq	%r12, 1*8(%rsp)
++
++	xorl	%eax, %eax
++	.p2align 4,,10
++	.p2align 3
++
++.L_nt0:	movq	0x8*0(%rsi,%rax), %rdx
++.L_nt1:	movq	0x8*1(%rsi,%rax), %rcx
++.L_nt2:	movq	0x8*2(%rsi,%rax), %rbx
++.L_nt3:	movq	0x8*3(%rsi,%rax), %r8
++.L_nt4:	movq	0x8*4(%rsi,%rax), %r9
++.L_nt5:	movq	0x8*5(%rsi,%rax), %r10
++.L_nt6:	movq	0x8*6(%rsi,%rax), %r11
++.L_nt7:	movq	0x8*7(%rsi,%rax), %r12
++
++	prefetchnta 5*64(%rsi,%rax)
++
++	movnti	%rdx, 0x8*0(%rdi,%rax)
++	movnti	%rcx, 0x8*1(%rdi,%rax)
++	movnti	%rbx, 0x8*2(%rdi,%rax)
++	movnti	%r8,  0x8*3(%rdi,%rax)
++	movnti	%r9,  0x8*4(%rdi,%rax)
++	movnti	%r10, 0x8*5(%rdi,%rax)
++	movnti	%r11, 0x8*6(%rdi,%rax)
++	movnti	%r12, 0x8*7(%rdi,%rax)
++
++	addq	$64, %rax
++	cmpq	$4096, %rax
++	jne	.L_nt0
++
++	movq	(%rsp), %rbx
++	movq	1*8(%rsp), %r12
++	addq	$2*8, %rsp
++	xorl	%eax, %eax
++	RET
++
++.E_nt:
++	negl	%eax
++	addl	$4096, %eax
++	sfence
++	movq	(%rsp), %rbx
++	movq	1*8(%rsp), %r12
++	addq	$2*8, %rsp
++	RET
++
++	_ASM_EXTABLE_TYPE(.L_nt0, .E_nt, EX_TYPE_DEFAULT_MCE_SAFE)
++	_ASM_EXTABLE_TYPE(.L_nt1, .E_nt, EX_TYPE_DEFAULT_MCE_SAFE)
++	_ASM_EXTABLE_TYPE(.L_nt2, .E_nt, EX_TYPE_DEFAULT_MCE_SAFE)
++	_ASM_EXTABLE_TYPE(.L_nt3, .E_nt, EX_TYPE_DEFAULT_MCE_SAFE)
++	_ASM_EXTABLE_TYPE(.L_nt4, .E_nt, EX_TYPE_DEFAULT_MCE_SAFE)
++	_ASM_EXTABLE_TYPE(.L_nt5, .E_nt, EX_TYPE_DEFAULT_MCE_SAFE)
++	_ASM_EXTABLE_TYPE(.L_nt6, .E_nt, EX_TYPE_DEFAULT_MCE_SAFE)
++	_ASM_EXTABLE_TYPE(.L_nt7, .E_nt, EX_TYPE_DEFAULT_MCE_SAFE)
++
++SYM_FUNC_END(copy_mc_page_nt)
++EXPORT_SYMBOL_GPL(copy_mc_page_nt)
+diff --git a/include/linux/highmem.h b/include/linux/highmem.h
+index d7aac9de1c8a..264b3f109151 100644
+--- a/include/linux/highmem.h
++++ b/include/linux/highmem.h
+@@ -484,6 +484,27 @@ static inline int copy_mc_highpage(struct page *to, struct page *from)
+ }
+ #endif
+ 
++#ifdef __HAVE_ARCH_COPY_PAGE_NT
++static inline int copy_mc_highpage_nt(struct page *to, struct page *from)
++{
++	unsigned long ret;
++	char *vfrom, *vto;
++
++	vfrom = kmap_local_page(from);
++	vto = kmap_local_page(to);
++	ret = copy_mc_page_nt(vto, vfrom);
++	if (!ret)
++		kmsan_copy_page_meta(to, from);
++	kunmap_local(vto);
++	kunmap_local(vfrom);
++
++	if (ret)
++		memory_failure_queue(page_to_pfn(from), 0);
++
++	return ret;
++}
++#endif
++
+ static inline void memcpy_page(struct page *dst_page, size_t dst_off,
+ 			       struct page *src_page, size_t src_off,
+ 			       size_t len)
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index 9f167950926a..549bb21027e4 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -2127,6 +2127,7 @@ void __folio_put(struct folio *folio);
+ void split_page(struct page *page, unsigned int order);
+ void folio_copy(struct folio *dst, struct folio *src);
+ int folio_mc_copy(struct folio *dst, struct folio *src);
++int folio_mc_copy_nt(struct folio *dst, struct folio *src);
+ 
+ unsigned long nr_free_buffer_pages(void);
+ 
+diff --git a/mm/util.c b/mm/util.c
+index 8acfe2148ba5..0418529264fd 100644
+--- a/mm/util.c
++++ b/mm/util.c
+@@ -778,6 +778,35 @@ int folio_mc_copy(struct folio *dst, struct folio *src)
+ }
+ EXPORT_SYMBOL(folio_mc_copy);
+ 
++int folio_mc_copy_nt(struct folio *dst, struct folio *src)
++{
++	long nr = folio_nr_pages(src);
++	long i = 0;
++
++	for (;;) {
++#ifdef __HAVE_ARCH_COPY_PAGE_NT
++		if (copy_mc_highpage_nt(folio_page(dst, i), folio_page(src, i)))
++			return -EHWPOISON;
++#else
++		if (copy_mc_highpage(folio_page(dst, i), folio_page(src, i)))
++			return -EHWPOISON;
++#endif
++		if (++i == nr)
++			break;
++		cond_resched();
++	}
++
++#ifdef __HAVE_ARCH_COPY_PAGE_NT
++	/*
++	 * Drain weakly ordered non-temporal stores before the folio
++	 * is published.
++	 */
++	wmb();
++#endif
++	return 0;
++}
++EXPORT_SYMBOL(folio_mc_copy_nt);
++
+ int sysctl_overcommit_memory __read_mostly = OVERCOMMIT_GUESS;
+ static int sysctl_overcommit_ratio __read_mostly = 50;
+ static unsigned long sysctl_overcommit_kbytes __read_mostly;
 -- 
 2.56.0.398.g882cbad275-goog
 
