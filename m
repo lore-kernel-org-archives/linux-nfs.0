@@ -1,51 +1,62 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=213.95.11.211
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=51.81.61.61
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793684966;
-	b=4pVYQt1iGZFlHPNDUa7JUmfXT7DEdaWAtoa/joYpL1XYIFIpDVHhoQHaUydock34BlWO
-	 9Zkpwb1l2E1ngRxbI+179khdzxDhjM2sqz45AiAOMA1/KUahHy0G2jJkQ4SVKVEYMVXq6
-	 /T2wOr/Lu8Yn6TdFqHKPy0mwj6qfsnKu8dCcyV75xE7hSiz+d0SE0ToC3KxFtcoFe7wNY
-	 y99hiMJtRTUN4AeXaVqtmY+/7xZaXpSrjvArwo3bZAty/uhf+AgfvN9EjpeRFDuBtcKl0
-	 /Sp2NjMZFJ/yd5VWGTXMiXpEcj/FgIncbpibn9u3CPrz3hQWUquHSRfsH+wwKQ7BaSQ==
+	t=1793686088;
+	b=NBE6jac8Cn5Oe7KZP6r6IGtcvmU0r3W8jOi4G1EZS8OQIprQvFwQUP2BxUubCp484pPz
+	 mzQn651OeJZTA1ZNlE5Om6hn198SdnqGmQF3Xq+TN2yBf4xDqMp6oX3ovoLvBGOv592eT
+	 X69DVIp0dTX2lzmTuJiMFcxjQnqGpRxp+Oy5kGCYgUWRk89q1VRCzyH8Fzl/v/risq+tX
+	 ZhAOTt6zF1qnjiAKsJI/Bch+jZBqnqoHqQh2Hq1+io3FwPbGSwVHcYRjmsk75FwPrbmk5
+	 C4Ew5dAx+1SLr/Halk1lNFCx7TrpPTcE6o7u1i5bwYLtMNqzV8fze3jjwTpS5mPttYw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793684966;
-	h=DMARC-Filter:Received:Date:From:To:Cc:Subject:Message-ID:References:
-	 MIME-Version:Content-Type:Content-Disposition:In-Reply-To:User-Agent;
-	bh=bd6fkGaRBJH7OZId4JGBgWiNTZUGs+o/K6nHFnVDFa8=;
-	b=xVMXpuBc0PlzsymGh1caJHs2VGFFC3q0XkqWUqhW2LWm3pA9orR92s2jalQNMdoyxu23
-	 dmDf13u5aVM5Zjc9t0rvGvTJSIVPbjSAHWVGCZUN+UP0kvg+ctfa0sGdBBDt6c676aDZD
-	 neofIBSdtzpfA2ZbPt6zfSq3W1ijhVcBxDKfWomZJJ1rUapaxupNEBFIF9aePpSfuq7Ql
-	 7QCgyvDdJ4UPTZJ13N6IkOC+9zkyb7y50AZafQk6PIN3BdAkQDnt9jEHaaWcOsGgSFr9h
-	 2geVdGAGXjpXWG2enxOoXLNX1K3GxvsMyhy5u+VLPjQyhNKEJyY6CpJdyIV9DGANSIA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793686088;
+	h=DMARC-Filter:DKIM-Signature:Received:From:To:Cc:References:
+	 In-Reply-To:Subject:Date:Message-ID:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:X-Mailer:Thread-Index:Content-Language;
+	bh=t8G6CbFsg+EAS60xfvbx65hckUEbcoi9pIdPoIAeYSY=;
+	b=ESi4c+1b0cu+vYw6U9RACYS9hBNCYFwiGQp30OUjynhrUik1qEqqLsxXLoXpuDMDEOEL
+	 XwoQpTCqAc/z26oGMMlwJ/UpUOoCfHPFrvAK23IMeGg9en0BHN2+KQe5wiH8INOp009iu
+	 ROfTqB+mUGXl1kTNNPxv2MM11F3EtajWDAiS2ALwXut7WP295ykzdM84r8vq1x8Co3NWg
+	 yBhPVuJZLK4/nWzXGidyOk9yc8r+EN+r4+cCK//5rg1LB8AvGdfOzXJFQZWOAHonilBHJ
+	 FQ4tKhiZzKgatT9MpDaMCQVI6T/vpDrE4fqXOfP3n5AituqE1w2VLm0d5a90zZ6ZyJw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=lst.de;
-	spf=pass smtp.mailfrom=lst.de;
-	arc=none smtp.remote-ip=213.95.11.211
-Received: from verein.lst.de (verein.lst.de [213.95.11.211])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dmarc=pass header.from=mindspring.com;
+	spf=pass smtp.mailfrom=mindspring.com;
+	dkim=pass header.d=earthlink.net header.i=@earthlink.net header.a=rsa-sha256 header.s=dk12062016 header.b=CybntqE2;
+	arc=none smtp.remote-ip=51.81.61.61
+Received: from mta-101a.earthlink-vadesecure.net (mta-101b.earthlink-vadesecure.net [51.81.61.61])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6E855606A32C;
-	Tue,  3 Nov 2026 05:49:26 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6E855606A32C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
-Received: by verein.lst.de (Postfix, from userid 2407)
-	id 4E1CA68AFE; Tue,  3 Nov 2026 06:49:22 +0100 (CET)
-Date: Tue, 3 Nov 2026 06:49:22 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: daejun7.park@samsung.com
-Cc: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org,
-	Christoph Hellwig <hch@lst.de>,
-	"Darrick J. Wong" <djwong@kernel.org>,
-	Dave Chinner <dgc@kernel.org>, Pankaj Raghav <p.raghav@samsung.com>,
-	Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Sergey Bashirov <sergeybashirov@gmail.com>,
-	Andrey Albershteyn <aalbersh@kernel.org>, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH v5 5/9] xfs: cap the block count of
- xfs_iomap_write_direct() at one extent
-Message-ID: <20261103054922.GA1721@lst.de>
-References: <20261029-xfs-pnfs-batch-v5-0-ef8d2eafb7fa@samsung.com> <20261029-xfs-pnfs-batch-v5-5-ef8d2eafb7fa@samsung.com>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2C789606A329
+	for <linux-nfs@vger.kernel.org>; Tue,  3 Nov 2026 06:08:07 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2C789606A329
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mindspring.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mindspring.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=earthlink.net header.i=@earthlink.net header.a=rsa-sha256 header.s=dk12062016 header.b=CybntqE2
+DKIM-Signature: v=1; a=rsa-sha256; bh=t8G6CbFsg+EAS60xfvbx65hckUEbcoi9pIdPoI
+ AeYSY=; c=relaxed/relaxed; d=earthlink.net; h=from:reply-to:subject:
+ date:to:cc:resent-date:resent-from:resent-to:resent-cc:in-reply-to:
+ references:list-id:list-help:list-unsubscribe:list-unsubscribe-post:
+ list-subscribe:list-post:list-owner:list-archive; q=dns/txt;
+ s=dk12062016; t=1793686071; x=1794290871; b=CybntqE2BfNXXFiDXf7bg0p3+k9
+ ZMAhbixFRSL8Gj+FUNZC9i5S64j3Ey0KxTUMx3rPhrxvH+RKnVIC5WWJmkP2+0FInpP38m7
+ XTxsj0msWvTyje0c6/tneojJuXc8KFdz8u1wv/VLvMQTyE4KJenXGzYN2knzTsNpbfM34AQ
+ EpNlGceSeaywxy0hW45JTAJyU2tdsll8oLzJ9ZNmfylBzNgVL3UeOdeKx2ZfkhCrZ3vC4RT
+ eD/0cSQk8hX5NQgwgKlV7QAFax7Nsb7iasxaAVUvBJgGWZ6pjMuXWv56XuIhHSFg6nl1iDg
+ m+EdrktR6ETcJKJhZtbc9yM/d1FG3cg==
+Received: from FranksP16 ([24.21.95.216])
+ by vsel1nmtao01p.internal.vadesecure.com with ngmta
+ id 2ab930c5-18e473f9d012402b; Tue, 03 Nov 2026 06:07:51 +0000
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Chuck Lever'" <cel@kernel.org>,
+	"'Calum Mackay'" <calum.mackay@cdmnet.org>,
+	"'Jeff Layton'" <jlayton@kernel.org>
+Cc: <linux-nfs@vger.kernel.org>
+References: <20261102214351.602543-1-cel@kernel.org>
+In-Reply-To: <20261102214351.602543-1-cel@kernel.org>
+Subject: RE: [PATCH pynfs v1] 4.0 server tests: remove RPLY14
+Date: Mon, 2 Nov 2026 22:07:48 -0800
+Message-ID: <018501dd6b59$a92af8d0$fb80ea70$@mindspring.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,32 +66,72 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261029-xfs-pnfs-batch-v5-5-ef8d2eafb7fa@samsung.com>
-User-Agent: Mutt/1.5.17 (2007-11-01)
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+X-Mailer: Microsoft Outlook 15.0
+Thread-Index: AQLEzOCjqKXcmNdr+G6RhJo7D6gd6LVNGSDQ
+Content-Language: en-us
 
-On Thu, Oct 29, 2026 at 11:23:02AM +0900, Daejun Park via B4 Relay wrote:
-> From: Daejun Park <daejun7.park@samsung.com>
-> 
-> xfs_iomap_write_direct() reserves blocks for the whole count in an
-> unsigned int. For a pNFS layout the client chooses that count, and an
-> RW LAYOUTGET for 16 TiB wraps the reservation and shuts XFS down.
-> 
-> xfs_bmapi_write() maps at most XFS_MAX_BMBT_EXTLEN blocks here, so cap
-> the count at that. nfsd asks again for the rest. The other callers get
-> the same mapping as before.
-> 
-> Suggested-by: Darrick J. Wong <djwong@kernel.org>
-> Link: https://lore.kernel.org/r/20261008154017.GO2705364@frogsfrogsfrogs
-> Suggested-by: Christoph Hellwig <hch@lst.de>
-> Link: https://lore.kernel.org/r/20261015060932.GD14035@lst.de
-> Suggested-by: Pankaj Raghav <p.raghav@samsung.com>
-> Link: https://lore.kernel.org/r/atoImJxtg70XcIjS@quentin
+Could we keep this test case but change the flags from "replay all" to
+"ganesha"?
 
-I think this is overdoing it a bit with the Link tags.
+NFS-Ganesha still passes this test case.
 
-Otherwise looks good:
+Thanks
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Frank
+
+-----Original Message-----
+From: Chuck Lever [mailto:cel@kernel.org] 
+Sent: Monday, November 2, 2026 1:44 PM
+To: Calum Mackay <calum.mackay@cdmnet.org>; Jeff Layton <jlayton@kernel.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH pynfs v1] 4.0 server tests: remove RPLY14
+
+RPLY14 sends a CREATE, then resends it twice with the same XID on the same
+TCP connection and expects NFS4_OK each time. The other RPLY tests exercise
+the per-state-owner reply cache that RFC 7530 Section 9.1.7 requires, or
+replay an idempotent LOOKUP. RPLY14 alone depends on an XID-based duplicate
+request cache, which RFC 7530 does not specify.
+Section 3.1.1 also forbids an NFSv4.0 client from retrying a request unless
+the transport connection has been broken.
+
+A recent NFSD change drops a retransmission that arrives on the connection
+that carried the original request, so RPLY14 now fails against NFSD.
+Reconnecting before the replay does not rescue the test.
+NFSD may evict a DRC entry once the client has acknowledged the cached
+reply, so the replayed CREATE executes a second time and fails with
+NFS4ERR_EXIST.
+
+Remove RPLY14 and record its code as retired.
+
+Signed-off-by: Chuck Lever <cel@kernel.org>
+---
+ nfs4.0/servertests/st_replay.py | 12 +-----------
+ 1 file changed, 1 insertion(+), 11 deletions(-)
+
+diff --git a/nfs4.0/servertests/st_replay.py
+b/nfs4.0/servertests/st_replay.py index 48e5363432ec..7f490e3d48c3 100644
+--- a/nfs4.0/servertests/st_replay.py
++++ b/nfs4.0/servertests/st_replay.py
+@@ -250,14 +250,4 @@ def testOpenConfirmFail(t, env):
+     ops += [op.open_confirm(stateid, c.get_seqid(t.word())+1)]
+     _replay(env, c, ops, NFS4ERR_BAD_SEQID)
+ 
+-def testMkdirReplay(t, env):
+-    """REPLAY a succesful directory CREATE
+-
+-    FLAGS: replay all
+-    DEPEND: MKDIR
+-    CODE: RPLY14
+-    """
+-    c = env.c1
+-    c.init_connection()
+-    ops = c.go_home() + [op.create(createtype4(NF4DIR), t.word(), {})]
+-    _replay(env, c, ops)
++# RPLY14 permanently retired, please do not reuse
+--
+2.56.0
+
 
