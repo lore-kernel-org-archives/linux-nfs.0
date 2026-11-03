@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793740679;
-	b=bG7m9Z+oa+/h4g+k0jwUIzpK3VhmGXF5+ZiCwJ1pB2kV6cVvAmuW80VcahJZ6Lt0wFux
-	 c/5TmCmtph60uLovQb/TlJAijb6F/s8CDT6LAIZ4LCrLw9HViWA17HiDXwCL/DT5Rmm3U
-	 TzPWLBNzalVJTnS2zueRgiiqe++4ca+KzUHrXW41FNisE+ZxX4NNIBze99xUu498Jb4/q
-	 NGKGWEnxnySZ2v6vie+sR4btMTTa4k+b51ANmydqWkqBhfJvkJMsiBsbrtI/CPM9EPNiL
-	 J5gTIJnz1Svi8G/8UujHlHQXgR5LhCJHNmIGICLSkwdm8O8gE/Q5leP3FgcbW5dz1nQ==
+	t=1793740676;
+	b=hyj2CGNg/EHnneBAhrwMJAx8M/1q8TriOc1CDHRDn6BrMn4bYivNiT/Cx1p7MZlPWdjQ
+	 0f30qauba+QEIw8/udDF+HE3qtxCBA2zphd5sq95hSC1LT6u3CRc6I0HuhUWz4WuIpMDm
+	 RC70D66E2hGIOqrlGgHBYCzr0jVh8k/Er7cHnvwvQxdrwvJpSo4bwR2F/r2OD6K2QuQKs
+	 +RiD90LQ0vHOtRB+dBA5p9BqfVjPCX/8Dh9++hCd4BfAkoaKfZfZKhY6eVCFyIYOytyP1
+	 d+0H432pn1dY9M0c9/hUW3VV+FgsMBfJqVbGSVW2V7BjGQFX9FrEVY2BEt0E7Y59ffA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793740679;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793740676;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=1+SeaVehwt396QnIHnWRn5MKZzC9W7QYhwhH8JQg6As=;
-	b=pq4je+EJJAuId1E7y19g8jyyJ2dGaxkHQiI3EHeqOoDqm6bpQyByyRWJqD5vg5SBwxU0
-	 gXu3wuCwiKh0QQA7wtvX3DLm0CdzEkreuxAyqIfB1upG2bJuBtsIzIBupefc0qHM48xQ/
-	 tCsPUjj9v1rQvZjCu6XHAP0CRly37rRSTzxxtQymKYYO9FnrKjfC/RNYxEsZpszLMb+Wo
-	 XGEgd9Tlg3HyeKFhopTgVzeWRyOqSGeNErISozAqx0AC5n2ppiP2ooVgaMg+qNsuK9B22
-	 5/nQ9o3TfAZqQxgkiE5oslQKGiwPYjTvtp8/pETTDDBSA6ZkU94VWsMSfPzPi2Glp8A==
+	 MIME-Version:Content-Transfer-Encoding;
+	bh=XeXrDOc+70voGjQbABG90HUQoTF6Ii93pHEf5zCSnPs=;
+	b=uj/7b9NOWaPUtcVKmwNrrsUw2Dl6Kv9qZxN5KGvyter0MdgUYktxlb8zd40Vo85KQzO3
+	 bC/fCvbCFcUcMLUa16KnPBOq8af/9GI5Ap0wuaPNFKrUm+O6iAXWnEmm2dfnqI2ZGkxEL
+	 gtcbFjX7co0dYaC+j6We/eNuyrwi55ODgtHScie5l300DEDapuyjJmpsy1WQDR9rMPD0e
+	 rP1sCT8FLE9gNrrIPRPEQ9AoNUmUScjYjC+DE61v6NbS1wbcXd7YC3MrvreXShCiaw1B9
+	 B2HQKkdSvNuCOCA2lEPGg1dzajB4jQvPH533uf8OWoFukQ4bach8ZZMUit7BZnj7nbw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nsBBcQZv;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XXFrdsRK;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 99158606A329;
-	Tue,  3 Nov 2026 21:17:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0513E606A31B;
+	Tue,  3 Nov 2026 21:17:55 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nsBBcQZv
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 066C91F000C1;
-	Tue,  3 Nov 2026 21:17:58 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XXFrdsRK
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 531DE1F000C1;
+	Tue,  3 Nov 2026 21:17:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793740679;
-	bh=1+SeaVehwt396QnIHnWRn5MKZzC9W7QYhwhH8JQg6As=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=nsBBcQZvBukrCr6ZOO/LZhZdwZ2UeCaaLrXBy7YduO+XZ+qdB+zZcZ+70hLRx0iym
-	 LWa4m4h/8OIpWrMCwLZLT99KQSKS9bcqDa3xmfHUb8ym5/bamOIoBCQenlGGN0pZxq
-	 uzi6woLgmZBihfj+KoQpnX5OjJ8Mflm1N6HJR/Fyfwh4N1tELoKYDuTqvaJ5Hi2xy2
-	 +4MpPG5mOginkJf5dRid4rPNyc+GBAlewpMLkGEKcBjfUxRgAFakPkadlrVoqEWY6v
-	 jsTKF7k2z1FXPHA5KwiowiwUo/Ifx4GCk1Dr5HFx9rZEgnwJZXrANlh9G7aHCwWRoV
-	 UjAC280UkaWSQ==
+	s=k20260515; t=1793740675;
+	bh=XeXrDOc+70voGjQbABG90HUQoTF6Ii93pHEf5zCSnPs=;
+	h=From:To:Cc:Subject:Date;
+	b=XXFrdsRKSt+h1JHwiQ58mFXZpgsRd5fjML9ABRZ3ZDvlov2nYhH+d9yRcQbYq8Mh1
+	 B0eXvnBz0TGAuvfmLFnB5ubvdu9sVxe0kL4KuIJwRSdC+Qg9BG4GrxqHmjbB7JJR1Z
+	 6fBRlJCtkMWVBGwdomZFzqj0i05MPp2t7Ubi3tgDHtEXP7fa8CdTQIbHRLTEWyzwLH
+	 iZ8iVR1XD7BkVFYgqr3boVCL6pzMKEU3PIM8UNzczi2qiJz6TdAeR3J7RPWe/jZ4DE
+	 /jTxiS5uT5fHqmtSTd3JrAzIfbkqHnPvvbcICJzm/+9uD/KM755SSvo4FU/va6W3tz
+	 raykJvyMoID3Q==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Matthew Wilcox <willy@infradead.org>,
 	linux-mm@kvack.org,
@@ -53,12 +53,10 @@ Cc: Chuck Lever <cel@kernel.org>,
 	Christoph Hellwig <hch@lst.de>,
 	Jens Axboe <axboe@kernel.dk>,
 	Jonathan Corbet <corbet@lwn.net>
-Subject: [PATCH v10 3/7] mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats
-Date: Tue,  3 Nov 2026 16:17:50 -0500
-Message-ID: <20261103211754.35352-4-snitzer@kernel.org>
+Subject: [PATCH v10 0/7] mm, iomap, NFSD: stop uncached writes reading back shared pages
+Date: Tue,  3 Nov 2026 16:17:47 -0500
+Message-ID: <20261103211754.35352-1-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
-In-Reply-To: <20261103211754.35352-1-snitzer@kernel.org>
-References: <20261103211754.35352-1-snitzer@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -70,76 +68,99 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The per-bdi_writeback WB_DONTCACHE_DIRTY counter drives how much the
-flusher writes back in response to an IOCB_DONTCACHE kick, but it is
-not reported anywhere, so the DONTCACHE dirty backlog can only be
-inferred from MemFree/Cached movement.
+Hi,
 
-Report it as BdiDontcacheDirty in /sys/kernel/debug/bdi/<dev>/stats
-and as WbDontcacheDirty in the per-wb stats, next to the
-Reclaimable line.  Use wb_stat_sum() rather than wb_stat() to fold in
-the per-cpu batches: the flusher targets the summed value and small
-backlogs would otherwise read as zero.
+An uncached (RWF_DONTCACHE) buffered write drops each folio it writes
+once the folio is written back.  A folio that the write covers only
+partly is shared with the neighbouring write.  If it is dropped before
+the neighbour writes its part, the neighbour reads it back from disk
+first.  32 threads writing interleaved records to one XFS file, 4 KiB
+pages, before and after 5/7:
 
-Fixes: 88d6f128d06d ("mm: track DONTCACHE dirty pages per bdi_writeback")
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: Mike Snitzer <snitzer@kernel.org>
----
- mm/backing-dev.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+  record  pwritev2() flags          4 KiB device       MiB/s
+  bytes                             reads per write
+                                    before   after     before  after
+  47008   RWF_DONTCACHE             0.97     0.0005    831     2281
+  47008   RWF_DONTCACHE|RWF_DSYNC   0.99     0.0005    601     1227
+  6000    RWF_DONTCACHE             0.97     0.0001    121      488
+  6000    RWF_DONTCACHE|RWF_DSYNC   0.99     0.0002     90      206
 
-diff --git a/mm/backing-dev.c b/mm/backing-dev.c
-index fad1495d3b200..a09c21759fb9f 100644
---- a/mm/backing-dev.c
-+++ b/mm/backing-dev.c
-@@ -46,6 +46,7 @@ struct wb_stats {
- 	unsigned long nr_dirty_time;
- 	unsigned long nr_writeback;
- 	unsigned long nr_reclaimable;
-+	unsigned long nr_dontcache_dirty;
- 	unsigned long nr_dirtied;
- 	unsigned long nr_written;
- 	unsigned long dirty_thresh;
-@@ -78,6 +79,7 @@ static void collect_wb_stats(struct wb_stats *stats,
- 
- 	stats->nr_writeback += wb_stat(wb, WB_WRITEBACK);
- 	stats->nr_reclaimable += wb_stat(wb, WB_RECLAIMABLE);
-+	stats->nr_dontcache_dirty += wb_stat_sum(wb, WB_DONTCACHE_DIRTY);
- 	stats->nr_dirtied += wb_stat(wb, WB_DIRTIED);
- 	stats->nr_written += wb_stat(wb, WB_WRITTEN);
- 	stats->wb_thresh += wb_calc_thresh(wb, stats->dirty_thresh);
-@@ -125,6 +127,7 @@ static int bdi_debug_stats_show(struct seq_file *m, void *v)
- 	seq_printf(m,
- 		   "BdiWriteback:       %10lu kB\n"
- 		   "BdiReclaimable:     %10lu kB\n"
-+		   "BdiDontcacheDirty:  %10lu kB\n"
- 		   "BdiDirtyThresh:     %10lu kB\n"
- 		   "DirtyThresh:        %10lu kB\n"
- 		   "BackgroundThresh:   %10lu kB\n"
-@@ -139,6 +142,7 @@ static int bdi_debug_stats_show(struct seq_file *m, void *v)
- 		   "state:              %10lx\n",
- 		   K(stats.nr_writeback),
- 		   K(stats.nr_reclaimable),
-+		   K(stats.nr_dontcache_dirty),
- 		   K(stats.wb_thresh),
- 		   K(dirty_thresh),
- 		   K(background_thresh),
-@@ -163,6 +167,7 @@ static void wb_stats_show(struct seq_file *m, struct bdi_writeback *wb,
- 		   "WbCgIno:           %10lu\n"
- 		   "WbWriteback:       %10lu kB\n"
- 		   "WbReclaimable:     %10lu kB\n"
-+		   "WbDontcacheDirty:  %10lu kB\n"
- 		   "WbDirtyThresh:     %10lu kB\n"
- 		   "WbDirtied:         %10lu kB\n"
- 		   "WbWritten:         %10lu kB\n"
-@@ -179,6 +184,7 @@ static void wb_stats_show(struct seq_file *m, struct bdi_writeback *wb,
- #endif
- 		   K(stats->nr_writeback),
- 		   K(stats->nr_reclaimable),
-+		   K(stats->nr_dontcache_dirty),
- 		   K(stats->wb_thresh),
- 		   K(stats->nr_dirtied),
- 		   K(stats->nr_written),
+The test program and script: https://lore.kernel.org/linux-nfs/atqJBS8MlYfeUU-t@kernel.org/
+
+- 1/7 moves code into a helper, with no functional change.
+- 2/7 fixes 88d6f128d06d ("mm: track DONTCACHE dirty pages per
+  bdi_writeback"), in v7.3: WB_DONTCACHE_DIRTY could drift.
+- 3/7 reports WB_DONTCACHE_DIRTY in the bdi debugfs stats.
+- 4/7 adds folio_mark_dropbehind() for a folio that is already dirty.
+- 5/7 keeps a partly covered folio until the write that completes it.
+- 6/7 lets a writer that syncs its own write complete those folios
+  itself, after the sync.
+- 7/7 makes NFSD do that for the misaligned ends of a direct-mode WRITE.
+
+Merging: Chuck suggested taking the series through the mm tree.  1/7 to
+6/7 apply cleanly to each of these mm branches:
+
+  mm-unstable  0ea6dc8c4a21 ("fs/proc/task_mmu: fix lost maps entries above 2^63")
+  mm-new       74d73ffcffe0 ("riscv: mm: fix concurrency in mark_new_valid_map()")
+  mm-stable    6628e7d4c6b2 ("Linux 7.4-rc1")
+
+7/7 needs the NFSD direct-mode changes that are in cel/nfsd-testing.
+The whole series applies to cel/nfsd-testing at 693afd3ce9ae ("NFSD:
+Defer the PUTFH export security flavor check"), where each patch builds
+with W=1 with no warnings.  So 7/7 could follow in the nfsd tree once
+the mm part is merged.
+
+Changes since v9, from Christoph's review:
+- v9 1/6 is now two patches: 1/7 only moves the code, and 2/7 changes
+  it.
+- Every commit message is rewritten to state the problem, the fix and
+  the result, without the earlier detail.
+- The long code comments are shorter.
+- Rebased on the current cel/nfsd-testing, which now has b16607436d31
+  ("NFSD: cut a misaligned direct-mode WRITE at folio boundaries").
+- Jeff's Reviewed-by of v9 is carried on every patch but 1/7, which is
+  new, because the code changed only in comments and in the split of v9
+  1/6.
+
+The code is the same as in v9 apart from the comments, so the v9
+results hold.  Patches 2, 4, 5, 6 and 7 carry notes below the ---
+line: questions from earlier reviews, and the code that answers each.
+
+v9: https://lore.kernel.org/linux-nfs/20261024221152.6965-1-snitzer@kernel.org/
+v8: https://lore.kernel.org/linux-nfs/20261023024548.71123-1-snitzer@kernel.org/
+v7: https://lore.kernel.org/linux-nfs/20261020220346.28020-1-snitzer@kernel.org/
+v6: https://lore.kernel.org/linux-nfs/atbfEbgMU6UGkn2X@kernel.org/
+v5: https://lore.kernel.org/linux-nfs/20261019150725.1507-1-snitzer@kernel.org/
+v4: https://lore.kernel.org/linux-nfs/20261015233309.42999-1-snitzer@kernel.org/
+v3: https://lore.kernel.org/linux-nfs/20261001045502.48381-1-snitzer@kernel.org/
+v2: https://lore.kernel.org/linux-nfs/20260929231329.22018-1-snitzer@kernel.org/
+v1: https://lore.kernel.org/linux-nfs/20260929173423.16149-1-snitzer@kernel.org/
+
+Thanks,
+Mike
+
+Mike Snitzer (7):
+  mm: move clearing the uncached flag of a found folio into a helper
+  mm: take a folio off WB_DONTCACHE_DIRTY only if it was counted there
+  mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats
+  mm: add folio_mark_dropbehind() to mark a folio dropbehind and account it
+  mm, iomap: keep a partly covered page until an uncached write completes it
+  mm, iomap: let an uncached writer complete its shared pages itself
+  NFSD: drop a shared boundary page only once both WRITEs have written it
+
+ .../filesystems/nfs/nfsd-io-modes.rst         |  17 ++
+ fs/iomap/buffered-io.c                        |  30 ++-
+ fs/iomap/trace.h                              |   3 +-
+ fs/nfsd/vfs.c                                 | 106 ++++++++-
+ include/linux/fs.h                            |   5 +-
+ include/linux/iomap.h                         |   1 +
+ include/linux/pagemap.h                       |  11 +
+ mm/backing-dev.c                              |   6 +
+ mm/filemap.c                                  | 208 ++++++++++++++++--
+ 9 files changed, 356 insertions(+), 31 deletions(-)
+
+
+base-commit: 693afd3ce9ae5cddb7225ec87975e6ef1443e502
 -- 
 2.52.0
 
