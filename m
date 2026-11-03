@@ -1,63 +1,73 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793712790;
-	b=4/cckegL9WQ0M1JDz6Hc+P2d3PNDFWNpw3ojSX1fEbrrq+5Tdh4fHq8fO3UMEwbLiYFw
-	 VtO/tzE0qC3FZnXFqbmGE+ZPLOBsXzps5WT8V/4zCQ+K3hMPlQNqyrkFn9SWBp6IU3c/h
-	 dJNO9hyu2FyIunEDpjgcQ3tMHdl5O27wNhT9it6urxrJSxObny44Az6Fqjq+ggzOd1Auu
-	 MaYWSSDKnOarh5vaGsphWLNojc57Jdl1/MdLb/AbGqDJTGvEa3SxxdQaYnaDxz9+X5hMK
-	 IdRI2ft0Ffa6IzB9lMy0Zf3KjjyTrwZoOTwkxX+Kuq5gxSKrTLFegUaee+LP9dxymsg==
+	t=1793714808;
+	b=QoWxQOAejahMKEeVeKApyBHOa06Ho5I7MCOirDRnGpedmpsVppulwrYDgUtGr916eC6A
+	 uOZd58sZ3BvlFijD8szxrjkImf6V30jkmtEOgoLEXpLdOW0UvTPNlI9KKmH6NSk+WOKoo
+	 n4A+yh8YV0W5cNMah5htJ64dS0KMf+capKjp+n3NYACcmmVNAnd+O5LMRN6/VzAewgQ5+
+	 cxzMRXe5s5ubCK6UPv2qhoqxvXDVWFh+7mnR8edp9Etz/U/eYvocdq0GhwdQ8qXufYrB4
+	 Q0evH0zh0VLOSMfGsyakD+TP6TYffZBO4N+K+7qlf4sbcVmnpb0VvPFEBRaSv220omA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793712790;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=RMRHszNpCciqBBPZUBDOV70emHMegVWchWySc/2suFw=;
-	b=w0HlQsbSLh19Wd5eVIhb2SSan2STP4mVhLM/VFPS20i1XhH54aI8u7sHwwoagF50s2ZW
-	 BdqJg9n3COeAwW+VDRkDkcZFsVdUgRoop81a1zw1GeFhgvZHjBObMar762yIR7kuRAd7k
-	 bfN5k0ozBQSiYH6kZ5X4oDlJcEz5sZ5sx2fMDWLrqMy9PyYJOjXNUo0XyV2sOPvj28F24
-	 QkhaYB8XBEV+eXMIJ0KHr009/dOB83nE+FbpYhK0w5znxNfH9LYpE0tPIDgQNHKsF9wbE
-	 zgLC7XJSvDYEx7tNQgB9RbY8WKcy2rsQ5nofnhV2suqZ1LCJxdU87GOJfSObMyArdfg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793714808;
+	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
+	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
+	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
+	 References:Subject:Content-Type:Content-Transfer-Encoding;
+	bh=xvQFZ/v6kc7GTHEID9MGSok2w4qCNqxYqf6XgNpZ1WY=;
+	b=VVAn0kCNq9mLMLVwP1EoopgU0cZY6m4TuWjvfMSt25zG0XEboenMX9EFouhEyHk1oaUa
+	 jmRGCkmT8Opw3gTretPPXPlCeB8v8V4e8ibmJtIm3NP9R02mMXMDtvBhYrQiHweVBRXci
+	 CLvdAS0bUAVTLg94y42dgwQpZejB+FDi/QF2xWvnBNYdK3L3H0xr+u5nBEKdScCJ/gNjE
+	 wizLRhBu5yliyB7BgLQBeL8kA4wjv+q3zCk1W1HOlGUHln6o4VHhg3PBzPK+ajbuGDHcJ
+	 RUhcITW64BFB1VAzC0hXpPdhbd5Y9M2JuoVAn1aPevezp4jBHIr4Z+de2ZVTy1N2C2Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=OMtvuhnv;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JKOivCuM;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6932B608508C;
-	Tue,  3 Nov 2026 13:33:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37AEF606EEB7
+	for <linux-nfs@vger.kernel.org>; Tue,  3 Nov 2026 14:06:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=OMtvuhnv
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5932E1F0093A;
-	Tue,  3 Nov 2026 13:33:09 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JKOivCuM
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9DAE51F0093A;
+	Tue,  3 Nov 2026 14:06:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793712790;
-	bh=RMRHszNpCciqBBPZUBDOV70emHMegVWchWySc/2suFw=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=OMtvuhnv6GU7f2DlPAU0Ih/0W+Rv05MWsmj9kELv94tdKdWyovlQV5yZrexjgvhhp
-	 nOznbw7Xan62brbddvdJE/5Cy0cOzAo5ZWmuMzrYzaqJoJpc0uBiV3nTLLBEUmM7Ea
-	 /DNqO+EmZnKtxf849lXVc3OFBzCYxRYffpsov64fu6DJUSUjkTzXt9P3s/ew30xO3B
-	 btMPRls3hbYJ216eoBXTwq0BNm9W2ll2WndqqYuaQWgWXeAmAylNwvPUE87aAKBE0X
-	 DJzDihkJ8pVbEYvlBNjrIAkJzlLaNRzrvyDY/LlBCw2cf1zKxYNRTwJzHacBPaOxpl
-	 pTad+vw2rb0AQ==
-Date: Tue, 3 Nov 2026 15:28:00 +0200
-From: Leon Romanovsky <leon@kernel.org>
-To: Pranjal Shrivastava <praan@google.com>
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>, Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>, linux-kernel@vger.kernel.org,
-	Christoph Hellwig <hch@lst.de>,
-	Logan Gunthorpe <logang@deltatee.com>,
-	Jason Gunthorpe <jgg@ziepe.ca>, linux-pci@vger.kernel.org,
-	linux-rdma@vger.kernel.org, Shivaji Kant <shivajikant@google.com>,
-	Tom Talpey <tom@talpey.com>,
-	Unnati Sachan <unnatisachan@google.com>
-Subject: Re: [RFC PATCH v1 4/8] xprtrdma: return -EREMOTEIO on P2PDMA map
- failure
-Message-ID: <20261103132800.GI264423@unreal>
-References: <20261006233248.705086-1-praan@google.com>
- <20261006233248.705086-5-praan@google.com>
- <20261012070134.GG27033@unreal>
- <auCRpd73dok7Yys7@google.com>
+	s=k20260515; t=1793714807;
+	bh=xvQFZ/v6kc7GTHEID9MGSok2w4qCNqxYqf6XgNpZ1WY=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=JKOivCuM9zvCc5jlnDxGVpFReYBBp9CsyWYUjdQ0mJbWwmqvMyvXVRMp/6G5gHLsA
+	 LA/i5s1fhKc3DnkutLYsgdrJclxTF10qbuDOg0GsIstg+mmvegjGNSdMA5LKwwRiIa
+	 gWdukTY23xPhHZn7Y7/dit55ncfp0SBh9ozCmNQJZEcazSPwtOB/32NiApxCQ3TWec
+	 FHU1LRf1XDbk3OVLlKfZdfzQiw0pLJQtwgk2AWOe1SBmZQs2/KXR7rYnX2ybZoum5l
+	 YSNR5yHc1hcfZUM3YoyYpcCB7RXsy+bV4c5U4mJeMrcZ8za2GsihzfsJ75Tz4RklQM
+	 uvbWYH1JIkV/A==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id D4D70F40067;
+	Tue,  3 Nov 2026 09:06:46 -0500 (EST)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Tue, 03 Nov 2026 09:06:46 -0500
+X-ME-Sender: <xms:durpaq0XmXEGaNipxDJx6sAcc4_6MF4DTGVGlppBY5cjNs-vK1yFfQ>
+    <xme:durpan5Wf54Ycx_6DskgcsxA1b9-v5fi3VAvCKuTvwPbeIxP-z2XqMjNYG7PWQFXL
+    oc5FXIZOnfEyIrd-iHpT8s3REngQj9BgFwEn5SAIcbvZTk4nVv0s4F7>
+X-ME-Proxy-Cause: dmFkZTFy0L05d9uD78zkGdwcJCb86cXltBLzUGDgy+LT6NioesssvQJwLPwES3CG7zMILk
+    UfdEM7wendlaj+hFKKHOLrAeIx88lH9cnpstgB/12/0FaUJO8llNP+iuPAZhVk6TeXroSW
+    s+Sn6ZDRVwJEimTHOH0/xxX1sF/WqCilRC58EkM1jpdUqYTaFVYz0HI6dhXpsyu9SLxxw/
+    xIS8FygDDVwe1iPGchC0EGFCp/FcGflutNpc1MTz+7LwPIU/B81Et/fRpHEZv1hiGHLh4e
+    KcEcSkNhbQQ0ub6nX4iDSOcAuUPW3pwtbpUcr1XcLOJpmsSVBLPF1hgCqit64kkUC51iJO
+    ALzNzVpdjx+/Qvk/piitnLGQHNGH+19XwppsgFXlqycexKFC4QyeqXB+uunV7AFryRUpFl
+    3X+HZidwzgP4Wq3H/kolIPDQwvMeKejCwNeLW1lJd7eaXYj+StyE0wvj0OBBvMs2n+xOdo
+    0kjnxPYYMJkUTaFxzIpjvv/hYI3LqwnnokSvGIMx7RZDI4KGxEC1FDdo7noS8pb6gtyupZ
+    TVSbP3Tj04SjbnhlXvUh1zned/V3TAUz9OXJibaivczgaMC/NoNFes+FAXs5JU8A280ojs
+    bo4UPvLGFkEX8NrF8a8/Kl4KFYWrPmbiyMATAtXwel9z3T4Jhgh4OQT+ek6A
+X-ME-Proxy: <xmx:durpatxq1AFo1fzSg3ncDmUOxpeSt21Imu78TcsOyRLQi8AiuYCCWg>
+    <xmx:durpalCrDdOSN_8zLXS39fgFOUQYovaaC0OpRwXlxdW1Tn8DhvlqEQ>
+    <xmx:durpaqZM3dzcvQvD2mvBuv71ChI4myc0nvEp9Y5TNmgTIxj9YWPuvg>
+    <xmx:durpathHsIQ5zXkId3cvPTZYCMcEX4oOGH9-Idi5Qw2p7hce2rzjqw>
+    <xmx:durpas6wjdgUh_Ve0qgYJS6ezhyY-DI_scbkVzQHBcg3CAWSEFUBX-70>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id B5AE6782738; Tue,  3 Nov 2026 09:06:46 -0500 (EST)
+X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -67,83 +77,30 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <auCRpd73dok7Yys7@google.com>
+X-ThreadId: A94A4md1mbWN
+Date: Tue, 03 Nov 2026 09:06:26 -0500
+From: "Chuck Lever" <cel@kernel.org>
+To: VeroFess <coderzeng@gmail.com>
+Cc: linux-nfs@vger.kernel.org, jlayton@kernel.org
+Message-Id: <a36427bb-c62a-4b8c-a6fd-4b4901ab7e3e@slotpi15m67>
+In-Reply-To: <20261103013237.1174538-1-coderzeng@gmail.com>
+References: <20261103013237.1174538-1-coderzeng@gmail.com>
+Subject: Re: [PATCH 0/3] NFSD: Apply all export checks when a compound changes exports
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-On Tue, Oct 27, 2026 at 11:57:25AM +0000, Pranjal Shrivastava wrote:
-> On Mon, Oct 12, 2026 at 10:01:34AM +0300, Leon Romanovsky wrote:
-> > On Tue, Oct 06, 2026 at 11:32:44PM +0000, Pranjal Shrivastava wrote:
-> > > ib_dma_map_sg() returns 0 on any failure, so frwr_map() cannot tell
-> > > why a mapping failed and reports -EIO. Use ib_dma_map_sgtable_attrs()
-> > > instead, which returns the reason. Pass up -EREMOTEIO, which means
-> > > the device cannot reach the P2PDMA memory, so the RPC fails with the
-> > > same error as other P2PDMA refusals. Every other mapping failure
-> > > still returns -EIO.
-> > > 
-> > > Signed-off-by: Pranjal Shrivastava <praan@google.com>
-> > > ---
-> > >  net/sunrpc/xprtrdma/frwr_ops.c | 15 ++++++++++-----
-> > >  1 file changed, 10 insertions(+), 5 deletions(-)
-> > > 
-> > > diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-> > > index e83cef19e656..a55d5e11c0e2 100644
-> > > --- a/net/sunrpc/xprtrdma/frwr_ops.c
-> > > +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-> > > @@ -293,7 +293,8 @@ int frwr_map(struct rpcrdma_xprt *r_xprt,
-> > >  	bool sg_gaps = ep->re_mrtype == IB_MR_TYPE_SG_GAPS;
-> > >  	unsigned int max_depth = ep->re_max_fr_depth;
-> > >  	struct ib_reg_wr *reg_wr;
-> > > -	int i, n, dma_nents;
-> > > +	struct sg_table sgt;
-> > > +	int i, n, dma_nents, ret;
-> > >  	struct ib_mr *ibmr;
-> > >  	u8 key;
-> > >  
-> > > @@ -381,10 +382,13 @@ int frwr_map(struct rpcrdma_xprt *r_xprt,
-> > >  	mr->mr_dir = rpcrdma_data_dir(writing);
-> > >  	mr->mr_nents = i;
-> > >  
-> > > -	dma_nents = ib_dma_map_sg(ep->re_id->device, mr->mr_sg, mr->mr_nents,
-> > > -				  mr->mr_dir);
-> > > -	if (!dma_nents)
-> > > +	/* Unlike ib_dma_map_sg(), this reports why a mapping failed */
-> > > +	sgt.sgl = mr->mr_sg;
-> > > +	sgt.orig_nents = mr->mr_nents;
-> > > +	ret = ib_dma_map_sgtable_attrs(ep->re_id->device, &sgt, mr->mr_dir, 0);
-> > 
-> > Please avoid using this function. We are gradually moving away from SG tables
-> > in the RDMA code.
-> > 
-> > In general, it is never good thing to built API around try-and-fail
-> > approach. It will require from us to be aware of "specific" usage for
-> > the return value from one subsystem by another.
-> > 
-> 
-> Fair, I'll drop ib_dma_map_sgtable_attrs(), keep ib_dma_map_sg() as it 
-> is today, and check reachability explicitly before mapping instead.
-> 
-> rpcrdma_p2pdma_allowed() already asks ib_dma_pci_p2p_dma_supported()
-> whether the device can do P2PDMA at all. It would also run
-> pci_p2pdma_state() against the device's dma_device for the payload
-> pages, and refuse the RPC with -EREMOTEIO on
-> PCI_P2PDMA_MAP_NOT_SUPPORTED. A mapping failure then stays a plain
-> -EIO, and nothing depends on the DMA layer's return value.
-> 
-> xprtrdma can be built as a module, though, and pci_p2pdma_state() is
-> an inline wrapper around __pci_p2pdma_update_state(), which isn't
-> exported. I see two ways to handle that: export
-> __pci_p2pdma_update_state() as is, or add a small exported helper in
-> p2pdma.c that returns the map type for a page and a device, e.g.
-> pci_p2pdma_page_map_type(). Which would you prefer?
+On Tue, 03 Nov 2026 09:32:34 +0800, VeroFess wrote:
+> When a compound moves the current filehandle into another export,
+> NFSD does not always apply all of that export's checks.
 
-This isn't my decision to make, but my understanding is that these functions
-should not be exported. They are intended for use by subsystem core code,
-which should export the processed results to its local callers.
+Thanks for the report and the patches.
 
-Thanks
+Two comments about the series: first, LOOKUP is a frequent operation,
+so I want to be careful about adding more logic there; second, there
+are better ways to layer the helpers, IMO. I'll run with this, and
+add a Reported-by: VeroFess to each patch before posting here for
+review.
 
-> 
-> Thanks,
-> Praan
-> 
+
+-- 
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
