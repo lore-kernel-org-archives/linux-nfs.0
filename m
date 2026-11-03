@@ -1,73 +1,74 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793736724;
-	b=JhCPMzhu/jzK1/Ww8+1k6mwux5ELEp4ofxvSjtG/ZjqZhlnlPnlRS7KLpUGhlvrwtJ/L
-	 a7xBigIllYsoPenz83dWUE8xpD79l6ku/1YaURa93kodlta/7iQDbgxivuevX7vXwcFyc
-	 p9N0gReAdKVvnnpj8gzanZ7/S0Thd59L/pWuY/2mYIhTJafkCg4Y0AnbFYrkt0rmCy4Ot
-	 eqSNTyEJ2LLJHQNrBcBCMpJSIrtKNtzGP4nzu9LG5Ini8bCWEyyo1TukWB4xg/r7+Bnsg
-	 wQLRqLr5/29HvQL+x8UbdSRgE31yvXqHwr6y2uUSPu/EhqhgqZobeJkNtic9Ras2eeQ==
+	t=1793738850;
+	b=4SM92F9yarmKg5VM6u9v1HK8+pgtvTJ7mVFo9hcQspQPflEzR0b8Iafm5j59CIhiHOIe
+	 8GGL3dJ6pmQFyAU7aBVkA1kBlmC6O3BtVhB9ogWjN0F91iG8WqLADsA3A6wSK7T79dUBh
+	 YxI2cXJCqT211Vtbw6BC/5GWJZcXBicxQrkWLuOUv4NrzLMbwFNqPEV+7PMzeyav8rrLA
+	 zU0bM3cPTkJGKOZCh652Xd/HluSEuvhN64lTQ87r3+2QY3Tswf3V9VNurWuBxVJAFSW6X
+	 mqzLuOnWMqjNjXs2f7I5ov5lcVGI6Sy/uBW7Gjyq3oNCcZek45jFH+aGix23kia/EZw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793736724;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=LeE+MWHrgTUB+WqcVRjNoSznYn2YjEIF4vFqibDol/c=;
-	b=VYf4kXLwooxt83RqpNIvmLTjvYZOLMuTkK9sc5I7GpQrgYUV96x+NS07bIbUHqP97Ifi
-	 +XabuS8zJZfjhtWqMtmsuFsYibBFaKKp6dNj0kHi7ExxPNa1qIsQMmEHf01Dr25OcJb4x
-	 TmjP3c6+bm8HAcVhIpNQk/N50SMBCEoPQ0mYKJ8d8g1Y9DjREpaXqVJBIndiWN1aeAB8n
-	 +xEQQ9uU29qdML5cyvkLNp2ylTm7XSGQatVI26s6xpTcvnVFaBrWnwIRTneu0IWGftTA+
-	 fsS+Yw6bxehT6IghQSZuoDVPf2rbFSFCJs/N9Gj+2peCPCmYn04099BZ5zb4iw+I0ZQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793738850;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=WA4JldT6jZkiRqUOUhymd9+bMbgaai5DPTFvHOVFxkY=;
+	b=Qn5mIq53Zv5l+UvWGCZIwMdvweISPZamN04qnVrd6lC56+DYIYQooWSlDhyDSe0X+rfy
+	 0PU4dHD2lBTnmYzmdfRoGiQ+HGuujLIjQlnRnehkm0eIvogjhOcGYRXQ/3qyq5xQcX7/u
+	 EtVl7Sq8a+OFXYkd6pAHQljB2aIQ8UoK6Wcp86Rwn5We4/ItexRqg0R7EQYEt8sDRMeCB
+	 MRIeVEJLA/COh/Jle8itlIW2ViJhH2sR9Cv1wrpzgRTYS2F/X8YljuphOGuAKI7q8rSpg
+	 FE79rSje6yym9fqdUoq5Qd4ETWVnS9g0BYXVw7gPmJARfeFi3AmFVFMJlmupDiqUz2w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nes1fXq7;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MZ5aB4fV;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 476EF606A326
-	for <linux-nfs@vger.kernel.org>; Tue,  3 Nov 2026 20:12:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6ACCE606A332;
+	Tue,  3 Nov 2026 20:47:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nes1fXq7
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AD34E1F00919
-	for <linux-nfs@vger.kernel.org>; Tue,  3 Nov 2026 20:12:03 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MZ5aB4fV
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 219691F0093A;
+	Tue,  3 Nov 2026 20:47:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793736723;
-	bh=LeE+MWHrgTUB+WqcVRjNoSznYn2YjEIF4vFqibDol/c=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=nes1fXq7L2igAH8deqnyXgj0e53fG5p266sj4EPimth/rUMuupevnHMIGqg2IlQsa
-	 LHuDEngWPQ0NmXBZKhyyAppEGYXB5liiSjy/VtA9mT6VjdWADQ2ZHKC00+7vBU0amy
-	 Jgkvb6QCqH4gA8eLseUWg159zM8/UKwQaWxO01M9VGv0K1khz7simkfgrLT638hR9i
-	 3SAYZijah+7zXa6cXDfrjUSqjeWLMnPJUsJj24MG0Pr13ZNNmr/YZwEdktgUy80Ofj
-	 TLoLSUN4dcoYpE2xa0e5SJrdx71oJ1poqHX1mCYM7mj/p2h3NWPc5Z60IQJ4enyUWL
-	 8Fc+lJUM8jhNQ==
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailfauth.phl.internal (Postfix) with ESMTP id DB5FEF40067;
-	Tue,  3 Nov 2026 15:12:02 -0500 (EST)
-Received: from phl-imap-04 ([10.202.2.82])
-  by phl-compute-02.internal (MEProxy); Tue, 03 Nov 2026 15:12:02 -0500
-X-ME-Sender: <xms:EkDqat43DqiqEn1S8bkDgUsGIQdctP2eQ3mJblJFfwFxnwjoH7nZgg>
-    <xme:EkDqalsRdjRsqHc9cHHstPRll5Ej4Juz2owdWapSkW91Za_DccOf83MITxBPDQWQc
-    DfMFVLWBSZevp1t9Lcf4n8lBHS30hmPVYtY9vEWyn69Q5sAFRsivJo>
-X-ME-Proxy-Cause: dmFkZTGAXZViUWwjBMrfXV7CSJrQ/aIOylfJL9jSNMEjw+emr4njSek6v+Ngp/MRGkdcLg
-    YH3jLAIJh1mmqunJHQxdxMSoXm6to0XLzs6gHUO9duAo6JPn1neMY+Vu5GALFrtlhd1eWT
-    y9JqAgKDMxwRdY6Z6mS0NCDgfeu4msUS8oBJ+NmojxAX4bAeVT+vyjtHvoPsOndDOVNzU5
-    fIokcRWbTv80yrmlm8g79iOFZ8D+FHt3P/S5NG7kOCyH1HLeWORc4E23etjnSV7/1JSCFG
-    Bo8G+l6XmHT/MTA6apvSvXDj+6QVFzpMXQNpVRY6NNWJCTpPzEbIvmq2BQM27GeQ0TBnjY
-    eLkB4ikOC90FhXGc7/L7IU2NFNU/gctKWZDPcq1/Fcadh9UqSqC9D20y+ZItIIH5nRzHjA
-    PLtIGtDWYcSNoS2uCTLsIZmCCEL3GWFrcrJ8t9JMgACrdeErI2bnRCbCk0mVHTcS7oscSo
-    76yb8UsNtx5F5dptgEgeRNXnUyo9pYxExHdNv+7uzHrCpE19F3NxBOAdSffOYqMKRm62gj
-    jKtuGW11MfdrGfcHBPkqoIm3FUw5ZweAxL0bFgcGQ2OHySfwhZA5+lgbNiOujLF3NMoyjY
-    +zChgUTOAwQmtrNtuKp3UBhLPWTr8PxvVfbMYlsTobeKEzZ1XGI58Tu6G47A
-X-ME-Proxy: <xmx:EkDqanmZVa8GMSamEDf0XsReBSFeL-QgrglNRZdsqGS1krTl1vsr4w>
-    <xmx:EkDqahv1DRRHvylpFpSimkum7h43F3467AFLJ4zmd58t-zUs758AIQ>
-    <xmx:EkDqal8xHhbO9ZgBqGlJpPlTD7bqTccNXfduS3d3tSm8Orus8AoKlA>
-    <xmx:EkDqarOJa_bdXDjXtVkU1wefct4wMkKYkhiQ04o_JIpEjEa1BJbSHw>
-    <xmx:EkDqajEwmukqt5mE_dIleY_6FvIUaH8x7a-zvKSiEfSHYWjBcJ1Kl6z4>
-Feedback-ID: i20964851:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id BD611B6006E; Tue,  3 Nov 2026 15:12:02 -0500 (EST)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1793738850;
+	bh=WA4JldT6jZkiRqUOUhymd9+bMbgaai5DPTFvHOVFxkY=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=MZ5aB4fVto6FbxRg77AGVx0jiXNVhH38K6sxyQ4CgLc3S9lJLQH7InuTEYv8lfOaf
+	 5uoad99J7Yo66MZORzU1SueYppREaWAp7DnLjMArd/bw7llqmgjA7QeRkN0TecqOjw
+	 mgPYGDAwQqwyEL4ByoiIyUJS5Ynf7UPLyKjtpGQBMTUIJCZtNDazrMWwmoLIPejkIK
+	 R4yBtwITyXNn68MPxARx6qpkmGIeYtFfjYSs2zxU7gR3nB0yXltF941REAJYSVQAZs
+	 JOShTK4Swr6Tw/lPkD7UPNQLTdL9bwzUWCtu2lgQU5SbFGQKMkCODHWkdfiTaQncQD
+	 tHuce+fkMYTgw==
+Date: Wed, 4 Nov 2026 07:47:09 +1100
+From: Dave Chinner <dgc@kernel.org>
+To: Kaitao Cheng <kaitao.cheng@linux.dev>
+Cc: gregkh@linuxfoundation.org, arve@android.com, tkjos@android.com,
+	brauner@kernel.org, cmllamas@google.com, aliceryhl@google.com,
+	nat@pixelcluster.dev, arunpravin.paneerselvam@amd.com,
+	maarten.lankhorst@linux.intel.com, mripard@kernel.org,
+	tzimmermann@suse.de, airlied@gmail.com, simona@ffwll.ch,
+	viro@zeniv.linux.org.uk, agruenba@redhat.com, trondmy@kernel.org,
+	anna@kernel.org, cel@kernel.org, jlayton@kernel.org, cem@kernel.org,
+	akpm@linux-foundation.org, david@fromorbit.com, david@kernel.org,
+	hughd@google.com, hannes@cmpxchg.org, yosry@kernel.org,
+	nphamcs@gmail.com, matthew.auld@intel.com, matthew.brost@intel.com,
+	thomas.hellstrom@linux.intel.com, jack@suse.cz, neil@brown.name,
+	okorniev@redhat.com, Dai.Ngo@oracle.com, tom@talpey.com,
+	qi.zheng@linux.dev, roman.gushchin@linux.dev, muchun.song@linux.dev,
+	ziy@nvidia.com, baolin.wang@linux.alibaba.com, liam@infradead.org,
+	nico.pache@linux.dev, ryan.roberts@arm.com, dev.jain@arm.com,
+	baohua@kernel.org, lance.yang@linux.dev, usama.arif@linux.dev,
+	kas@kernel.org, mhocko@kernel.org, shakeel.butt@linux.dev,
+	ljs@kernel.org, kasong@tencent.com, axelrasmussen@google.com,
+	yuanchu@google.com, weixugc@google.com, baoquan.he@linux.dev,
+	chengming.zhou@linux.dev, linux-kernel@vger.kernel.org,
+	dri-devel@lists.freedesktop.org, linux-fsdevel@vger.kernel.org,
+	gfs2@lists.linux.dev, linux-nfs@vger.kernel.org,
+	linux-xfs@vger.kernel.org, linux-mm@kvack.org,
+	Kaitao Cheng <chengkaitao@kylinos.cn>
+Subject: Re: [PATCH] mm/list_lru: Account node removals in isolation helpers
+Message-ID: <aupITfr9pBKPrU20@dread>
+References: <20261103045053.59548-1-kaitao.cheng@linux.dev>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,87 +78,84 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: AOJsgsVqV2Ts
-Date: Tue, 03 Nov 2026 15:11:42 -0500
-From: "Anna Schumaker" <anna@kernel.org>
-To: "Joseph Qi" <joseph.qi@linux.alibaba.com>,
- "Trond Myklebust" <trondmy@kernel.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Message-Id: <0c67f568-586b-456a-be28-65d2ea16b633@app.fastmail.com>
-In-Reply-To: <20261103061654.2036827-1-joseph.qi@linux.alibaba.com>
-References: <20261103061654.2036827-1-joseph.qi@linux.alibaba.com>
-Subject: Re: [PATCH] NFS: don't raise i_size for DEALLOCATE in _nfs42_proc_fallocate()
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261103045053.59548-1-kaitao.cheng@linux.dev>
 
-Hi Joseph,
-
-On Tue, Nov 3, 2026, at 1:16 AM, Joseph Qi wrote:
-> _nfs42_proc_fallocate() raises i_size to offset + len on success, so
-> that the cached size is not left stale when a delegation blocks the
-> post-op attribute refresh.  The helper is shared by all three
-> fallocate modes, but DEALLOCATE always carries FALLOC_FL_KEEP_SIZE
-> and never extends the file on the server, so punching a hole that
-> reaches past EOF now wrongly enlarges the cached i_size.
->
-> The post-op update would normally restore the size from the returned
-> attributes, but nfs_update_inode() applies a differing size only when
-> no delegation is held, and then only when no write is in flight or the
-> new size is larger:
->
-> 	if (new_isize != cur_isize && !have_delegation) {
-> 		if (!nfs_have_writebacks(inode) || new_isize > cur_isize)
-> 			i_size_write(inode, new_isize);
-> 	}
->
-> With a concurrent mmap writer (nrequests != 0) or any outstanding
-> delegation, the shrinking server size is therefore ignored and the
-> client keeps reporting a file larger than the server has, in violation
-> of KEEP_SIZE, until some later revalidation without writebacks happens
-> to fix it up.
->
-> Skip the i_size bump for the DEALLOCATE procedure.  ALLOCATE (mode 0)
-> and ZERO_RANGE (which nfs42_fallocate() accepts only without
-> FALLOC_FL_KEEP_SIZE) do extend the file when the range reaches past
-> EOF, so they keep the update.
->
-> Fixes: 35168eb947f2 ("NFS: fix eof updates after NFSv4.2 fallocate/zero-range")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Joseph Qi <joseph.qi@linux.alibaba.com>
-> ---
->  fs/nfs/nfs42proc.c | 11 ++++++++++-
->  1 file changed, 10 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-> index ab86246fc364f..914499d30d47e 100644
-> --- a/fs/nfs/nfs42proc.c
-> +++ b/fs/nfs/nfs42proc.c
-> @@ -84,7 +84,16 @@ static int _nfs42_proc_fallocate(struct rpc_message 
-> *msg, struct file *filep,
->  		loff_t newsize = offset + len;
+On Tue, Nov 03, 2026 at 12:50:53PM +0800, Kaitao Cheng wrote:
+> From: Kaitao Cheng <chengkaitao@kylinos.cn>
 > 
->  		spin_lock(&inode->i_lock);
-> -		if (newsize > i_size_read(inode))
-> +		/*
-> +		 * DEALLOCATE always carries FALLOC_FL_KEEP_SIZE and never
-> +		 * extends the file on the server, so only ALLOCATE and
-> +		 * ZERO_RANGE may raise i_size here.  A wrongly raised size
-> +		 * can persist: nfs_update_inode() ignores a shrinking
-> +		 * post-op size while writebacks are outstanding or a
-> +		 * delegation is held.
-> +		 */
+> Successful writeback calls zswap_entry_free(), which removes the entry
+> from the LRU and decrements both the sublist and node item counts.
+> shrink_memcg_cb() then returns LRU_REMOVED_RETRY, causing the LRU walker
+> to decrement the node count again.
+> 
+> The affected call path before this change is:
+> 
+>   __list_lru_walk_one()
+>     shrink_memcg_cb()
+>       zswap_writeback_entry()
+>         zswap_entry_free()
+>           zswap_lru_del()
+>             list_lru_del()
+>               __list_lru_del()
+>                 atomic_long_dec()  /* first node count decrement */
+>       return LRU_REMOVED_RETRY
+>     atomic_long_dec()              /* second node count decrement */
 
-Is the comment really necessary? It's just restating things from the commit
-message, and could quickly go stale if the behavior of nfs_update_inode()
-ever needs to change in the future.
+That's a bug in the zswap code. You shouldn't be calling
+list_lru_del() from __list_lru_walk_one() context.
 
-Thanks,
-Anna
+Walker callbacks are supposed to use list_lru_isolate() or
+list_lru_isolate_move() to remove the item from the LRU under the
+lru lock. i.e. the walk and remove are a single atomic operation,
+accounted by the walker infrastructure.
 
-> +		if (msg->rpc_proc != &nfs4_procedures[NFSPROC4_CLNT_DEALLOCATE] &&
-> +		    newsize > i_size_read(inode))
->  			i_size_write(inode, newsize);
->  		nfs_set_cache_invalid(inode, NFS_INO_INVALID_BLOCKS);
->  		if (nfs_should_remove_suid(inode))
-> -- 
-> 2.39.3
+LRU_REMOVED_RETRY is for walkers that need to do work -after- the
+item has been removed from the LRU (e.g. reclaim work that can't run
+under the lru lock). i.e. the pattern for the callback code is
+remove-unlock-reclaim-LRU_REMOVED_RETRY.
+
+What the zswap code is doing is
+unlock-reclaim-lock-remove-unlock-LRU_REMOVED_RETRY. That's
+problematic, as we can have concurrent walkers, and so it's possible
+that two shrinker invocations try to remove the same item at the
+same time....
+
+.... oh, what a nasty hack.
+
+The zswap code is doing a list_move_tail() on the LRU object to
+rotate it to the end of the LRU list before dropping the LRU lock,
+in the hope that a concurrent scanner won't trip over it. That 
+doesn't fix anything...
+
+> During the mailing list discussion, Johannes Weiner suggested making
+> users of the isolation interface responsible for maintaining the item
+> counts, rather than having the walker decrement the node count based
+> on the callback's return value.
+
+urk. How is smearing the LRU NUMA abstraction into all the isolation
+interfaces an improvement?
+
+It seems to me that that this LRU hacking is all because of this:
+
+         * 2. Usually, objects are taken off the LRU for reclaim. In
+         *    this case this isn't possible, because if reclaim fails
+         *    for whatever reason, we have no means of knowing if the
+         *    entry is alive to put it back on the LRU.
+
+And so to work around this inability of zswap to handle failure
+sanely, the LRU list the reclaim code is being abused. And now the
+abuse of the lru list code is triggering problems with the LRU
+infrastructure, the suggestion is to push internal LRU structures
+into all LRU list walkers to allow racy (and IMO broken) walker
+behaviour?
+
+I'd much prefer the zswap code get fixed than to have to modify a
+dozen other subsystems to enable zswap to work around broken reclaim
+code...
+
+-Dave.
+-- 
+Dave Chinner
+dgc@kernel.org
