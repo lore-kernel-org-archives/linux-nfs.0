@@ -1,59 +1,79 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793695487;
-	b=sOmB1m0O8gyMefDwyRwALi5vT2dPQXumnh7myyJwQ1XkNSjXIXBbOc2RwRCjbHRMaSX3
-	 by/3NvSlbbnZCt01CuqrbFk0IxAkv0UQ7uomAPPXTSTVdH1SezNfzOI2mpbHDtIsmr8P0
-	 m9N1MJb+G8XLPwD6PhaZgvGhDxqQbiPKK9fT70lR0Ub5/z5ZnKttRdn5nbV3RFa71prdY
-	 Ajj+miw0cW0ahh+ti02s7IbH6IgRsUVBktR0VHmTypS2EDVsT4UqWlxL0KrmlkH2oyd8w
-	 Kp+ktddqtEEuWntkGy+zxzj+mriifOiLHO0tQ9XMWF5yrIaVLU+nLA5h/LhkAhaeKsg==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793695487;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=tBx0/BzAOlR+EPAUcAIIe3m2Wrzw4dHycFyhOBGYJ2w=;
-	b=vZC9cfltLScEMvpWxKDSPHiJx/r8+dVGAHQP7QRJMckJo3qW5XoaBoD/4snR6gfTXVeZ
-	 bZ/LepIfL6TuvFsDHsB6isOwcetl6zhaBWU1n34uL9HNWwi181fZkpKuO9HQs7iSrkHT6
-	 /cVOaN+WIqfsgEkDmeJzmYDiY4oc0h1cZeDob5JLbdSoAeKXX8Hr/9Uap8peclxMtxKHj
-	 K4EUzm9/BYyHFvl154BpOacg8+7jBfUW90bw0Uk9VbgnWfg8T2lajUXnVqz4uNPbXjA+W
-	 v2Q5KWnqCI6k//UTbPTplfBfGHs0gR969Qw5uNf9Z6sRYyW1Vp8U0AzBGKWuBFWgi4A==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SmpPBe+R;
-	arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1793696652;
+	b=VSBR19mXiiPacf+YYIG9KA2aqmf9Hy2VoUKIr9AB+wKnxyZNgk9itTR84JszTpqBr3yX
+	 ctXVQIaoMdK+Ys3v6EsitFZ92ZQEw8DQ2NVcrR5nrlNAKYQZ2TcQjWQPuyG0wQckVBhme
+	 1Z/2nZF9vMXCpOrw2PLKJN1fwfD4iNfGUUHD65RrsLe6gfLCZxRMnMz953EGviekhgYZ4
+	 qYg33P70Mh7oTdT0KHE3kmJ0lTacmXUVK8OwJHcKGbyyh3SuVT7jOuNmnXfVXr0+EpNkQ
+	 lPGVrA0eTVAu03gssn9GK2inJtlUkzMc9hMB5Kiz/sfsHG+GcSfBH5AHrrfYz9oC3mw==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793696652;
+	h=Received:DKIM-Signature:Received:From:Date:Subject:MIME-Version:
+	 Content-Type:Message-Id:X-B4-Tracking:To:Cc:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
+	 X-Original-From:Reply-To:Content-Transfer-Encoding;
+	bh=mnb0Wt+uJpkafFJvG4fZXvQtXwaLW2sFanFoZ+MVdLs=;
+	b=PMPtEPQZsp7RukCmP+9YZLNumlx2LkRU/1HNcTTxeMfKMe+JB9yWnjf+wn4Yd6xZVOa1
+	 3LfbQ88GaQx2b1UVTN7qSMuA6R9FOQ824hefvjWh3Mnue5Uk9Y+hdBGhdZbATj3wXsIoC
+	 eYE0AKIQhgWQv5Jh+Fj7alX52ZU0y0SzRYYZQih5v/TW8VB5julIJognS7YRvxrpjycLX
+	 hLqCe666dXHwGrVw3e0Ix1ZpwhGejD61v421PcVfozPsSIQnFkYDoDK9roSBW7qVMXI6J
+	 eREGa+/iYRL+6NWNj0seyHSewV89BKIOKKfH9Kh7U8cLXrbU1N3O+m7KihfYlEAUmRg==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="WK/TWXwy";
+	arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BB0C3606A32F;
-	Tue,  3 Nov 2026 08:44:46 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9975E606A324
+	for <linux-nfs@vger.kernel.org>; Tue,  3 Nov 2026 09:04:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SmpPBe+R
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 82C2F1F000C1;
-	Tue,  3 Nov 2026 08:44:43 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WK/TWXwy
+Authentication-Results: smtp.kernel.org; arc=none smtp.remote-ip=100.80.115.77
+ARC-Seal: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256; cv=none;
+	t=1793696652;
+	b=EWruJX8MDCI6O4u1/UwemDbHiJUsqXoOGUuBmgTRn48nDXSEbz0kTej9dJItEmhl/K79
+	 JyWBoG78yYqZTVLzA6iictvdiXcyQLsONKFCc4FSx70BzviNEJWlj0uh6D//CP3mZimkq
+	 M0qBOCklPK3rGU84Gg+nZ+DdgrauDOfV+/iMLjpILRwRLIBnscK5gMeQxMU1mZkBXZ0lK
+	 dQ7gsxxqaPNbuufFV2USgZDP/XgNBj/U/U+lkL8eyv1u5/Pz8XjyaK+PhLg4T4ZKP9tdb
+	 pp1taAT8NaAFCG9+U5v3SGEXvxNVrkKlLbydyd220zkzR6v9nI1dRfk1IzsIXIChE8g==
+ARC-Message-Signature: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256;
+	c=relaxed/relaxed; t=1793696652;
+	h=DKIM-Signature:Received:From:Date:Subject:MIME-Version:Content-Type:
+	 Message-Id:X-B4-Tracking:To:Cc:X-Mailer:X-Developer-Signature:
+	 X-Developer-Key:X-Endpoint-Received:X-Original-From:Reply-To:
+	 Content-Transfer-Encoding;
+	bh=mnb0Wt+uJpkafFJvG4fZXvQtXwaLW2sFanFoZ+MVdLs=;
+	b=qNMqCDhKkm56xUfnACR31utWTd9CJLfUDAmtQuky4dLJCNQgS/9HNNJt4iSGQyfve3N/
+	 GPApn2V6776vLdNb210kOzrQHXWYOSe0yt5KkCalCkhyzWjB8hU5VZiuqad0bfyswlRgr
+	 CTxSD6zLUpaACxMKQurIH5/3eaZKNjlEspizQ7xke45bUb4S3ae/0WCuQ4Dml2HSeuAqu
+	 4KPHw9gwQCf8lzl9uBU6yG4jOUodkm1MiDTF0mJLebwor21YogtijKOm0/hjQdO2L81H3
+	 301pwPNV/5ue4D5rOT/lIGdSXFw4SnoLL5csqua6+J1IYHArYxL54l6na8J3v2EXCzA==
+ARC-Authentication-Results: i=1; smtp.kernel.org; 
+	arc=none smtp.remote-ip=100.80.115.77
+Received: from lkml.kernel.org (nexus.subspace.kernel.org [100.80.115.77])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	(No client certificate requested)
+	by smtp.kernel.org (Postfix) with ESMTPS id BCF1D1F000C1;
+	Tue,  3 Nov 2026 09:04:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793695486;
-	bh=tBx0/BzAOlR+EPAUcAIIe3m2Wrzw4dHycFyhOBGYJ2w=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=SmpPBe+RK5lPWyCBnMddR7FCskcx6kKGYhAa2mA8qGT7qGClBAMmwt1yCdl8FNBO/
-	 tF5eYCFOZyop6KcyrcUZtTsQsEl0ARLsu+qlebv/nYcWIqvtyK+jTPqfgtJqb+SUPA
-	 HyliR1Jj66mImbZLMU3ZdFHkBDohneaf7UculBU5k58tWl7B3F8HpI8f/SQ7XiDAzK
-	 4Jr5G2L1dR/uHak3WEfeACFI4hEEf+cep2z3xyA8AGsylayGfe8c27C1wVamFm9MYi
-	 peKs1z1Ayp+zpxixAOpBj4OSUU0Bzqboyx7lMvr7cV39s/9jNH7MwAC7HtDrIIhCii
-	 ftSDHgzKIbpuQ==
-Date: Tue, 3 Nov 2026 09:44:40 +0100
-From: Carlos Maiolino <cem@kernel.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: daejun7.park@samsung.com, linux-xfs@vger.kernel.org, 
-	"Darrick J. Wong" <djwong@kernel.org>, Dave Chinner <dgc@kernel.org>, 
-	Pankaj Raghav <p.raghav@samsung.com>, Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
-	Dai Ngo <Dai.Ngo@oracle.com>, Sergey Bashirov <sergeybashirov@gmail.com>, 
-	Andrey Albershteyn <aalbersh@kernel.org>, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	stable@vger.kernel.org
-Subject: Re: [PATCH v5 5/9] xfs: cap the block count of
- xfs_iomap_write_direct() at one extent
-Message-ID: <aumezw2WGZUnI2nO@nidhogg.toxiclabs.cc>
-References: <20261029-xfs-pnfs-batch-v5-0-ef8d2eafb7fa@samsung.com>
- <20261029-xfs-pnfs-batch-v5-5-ef8d2eafb7fa@samsung.com>
- <20261103054922.GA1721@lst.de>
+	s=k20260515; t=1793696652;
+	bh=mnb0Wt+uJpkafFJvG4fZXvQtXwaLW2sFanFoZ+MVdLs=;
+	h=From:Date:Subject:To:Cc:Reply-To;
+	b=WK/TWXwyI1vULJvV3d3pptxBQy0Qpdz2pkN8rJjrYZoGU/TPZM/eYEH3P4Ima0QYQ
+	 SnbWJVj7X5wnuKRd9PfOel25I/a+JxmsElEdo2dKlYN1e6/3cRHydbs3faMg0Y5ise
+	 Pgz/Bk6MWpTtqEqk2f2mHcP+EGIU99S4WyVwflXm71KLjH85h2X2hRFF0YUcwTGZyq
+	 73cNs/TtZzmjIUQuyPbDgsLiZoUpI4oiIjFa+a2LZCbRSBelR0knhXtIQYF+Jmqj6d
+	 9pqJ6XkxpsjuL2FESIHS+B/Vs9xAOOA5RlnPMW9ChbculEJV8jbVVoC/cDO18WEoiK
+	 LQ1eIGwO0XFkg==
+Received: from nexus.subspace.kernel.org (localhost [IPv6:::1])
+	by lkml.kernel.org (Postfix) with ESMTP id 223A24684E;
+	Tue,  3 Nov 2026 09:04:11 +0000 (UTC)
+From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
+Date: Tue, 03 Nov 2026 18:04:11 +0900
+Subject: [PATCH] pnfs/blocklayout: commit the layout before reading through
+ the MDS
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -63,35 +83,98 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261103054922.GA1721@lst.de>
+Content-Type: text/plain; charset="utf-8"
+Message-Id: <20261103-nfs-bl-mdsread-v1-1-9b29915bbab7@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAIqj6WoC/x3MQQqAIBBA0avErBvIFKGuEi1MxxooCwcikO6et
+ HyL/wsIZSaBsSmQ6WbhM1WotgG/ubQScqiGvuut6rTCFAWXHY8gmVxAbWyM3tDgvIEaXZkiP/9
+ wmt/3A3KBvq9gAAAA
+To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
+Cc: Christoph Hellwig <hch@lst.de>, 
+ Benjamin Coddington <ben.coddington@hammerspace.com>, 
+ linux-nfs@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793696650; l=2270;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=WBV4O1aChXYgb5EMs6LEz+MGYblqNH73Uzx1H9P7xWs=;
+ b=MfOWEb1eb+VnNW12yPE3M4dqZNyh7pwb45bt0Tbf86q39cKdg2S+NZ4FsUiHDlZ0zrjhbvIRm
+ JJF8zzlKF16ACuVyqEup9uFBlYAWL+E7gv125j6CewpSudPQzDX6EXv
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
+ auth_id=1122
+X-Original-From: Daejun Park <daejun7.park@samsung.com>
+Reply-To: daejun7.park@samsung.com
+Content-Transfer-Encoding: 7bit
 
-On Tue, Nov 03, 2026 at 06:49:22AM +0100, Christoph Hellwig wrote:
-> On Thu, Oct 29, 2026 at 11:23:02AM +0900, Daejun Park via B4 Relay wrote:
-> > From: Daejun Park <daejun7.park@samsung.com>
-> > 
-> > xfs_iomap_write_direct() reserves blocks for the whole count in an
-> > unsigned int. For a pNFS layout the client chooses that count, and an
-> > RW LAYOUTGET for 16 TiB wraps the reservation and shuts XFS down.
-> > 
-> > xfs_bmapi_write() maps at most XFS_MAX_BMBT_EXTLEN blocks here, so cap
-> > the count at that. nfsd asks again for the rest. The other callers get
-> > the same mapping as before.
-> > 
-> > Suggested-by: Darrick J. Wong <djwong@kernel.org>
-> > Link: https://lore.kernel.org/r/20261008154017.GO2705364@frogsfrogsfrogs
-> > Suggested-by: Christoph Hellwig <hch@lst.de>
-> > Link: https://lore.kernel.org/r/20261015060932.GD14035@lst.de
-> > Suggested-by: Pankaj Raghav <p.raghav@samsung.com>
-> > Link: https://lore.kernel.org/r/atoImJxtg70XcIjS@quentin
-> 
-> I think this is overdoing it a bit with the Link tags.
-> 
-> Otherwise looks good:
-> 
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
-> 
-> 
+From: Daejun Park <daejun7.park@samsung.com>
 
-Yeah, I agree. I'll just rip off the Links when applying
+bl_pg_init_read() sends some reads to the MDS, such as unaligned
+O_DIRECT reads. The MDS need not see layout writes before LAYOUTCOMMIT
+(RFC 8881, section 12.5.4). With Linux nfsd on XFS, such a read after
+an O_DIRECT write into a hole returns zeroes.
+
+Send a synchronous LAYOUTCOMMIT first. An asynchronous one could be
+overtaken by the READ. If the LAYOUTCOMMIT returns an error, fail the
+read.
+
+Fixes: f742dc4a3258 ("pnfsblock: fix non-aligned DIO read")
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+---
+Tested with Linux nfsd on XFS, unaligned O_DIRECT reads only. The read
+after the write returned zeroes in 5 of 5 runs before and the data
+after. generic/013, 091 and 263 pass.
+
+A failed LAYOUTCOMMIT now fails the read instead of a later fsync.
+
+"pnfs/blocklayout: don't let a READ layout hide written extents" fixes
+the same zeroes for reads through a READ layout.
+---
+ fs/nfs/blocklayout/blocklayout.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index b7a3211c58..54825aaad3 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -839,12 +839,16 @@ is_aligned_req(struct nfs_pageio_descriptor *pgio,
+ static void
+ bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ {
++	int err;
++
+ 	if (!is_aligned_req(pgio, req, SECTOR_SIZE, false)) {
+ 		nfs_pageio_reset_read_mds(pgio);
+-		return;
++		goto out_commit;
+ 	}
+ 
+ 	pnfs_generic_pg_init_read(pgio, req);
++	if (pgio->pg_error < 0)
++		return;
+ 
+ 	if (pgio->pg_lseg &&
+ 		test_bit(NFS_LSEG_UNAVAILABLE, &pgio->pg_lseg->pls_flags)) {
+@@ -853,6 +857,13 @@ bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ 		pnfs_set_lo_fail(pgio->pg_lseg);
+ 		nfs_pageio_reset_read_mds(pgio);
+ 	}
++	if (pgio->pg_lseg)
++		return;
++out_commit:
++	/* The MDS may not see layout writes until LAYOUTCOMMIT. */
++	err = pnfs_layoutcommit_inode(pgio->pg_inode, true);
++	if (err < 0)
++		pgio->pg_error = err;
+ }
+ 
+ /*
+
+---
+base-commit: eea3fef32a9cf36abcb5975a5a594e4135a6b026
+change-id: 20261031-nfs-bl-mdsread-346ffc4e9ac4
+
+Best regards,
+-- 
+Daejun Park <daejun7.park@samsung.com>
+
+
