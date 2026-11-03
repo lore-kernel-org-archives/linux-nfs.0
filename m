@@ -1,74 +1,64 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793738850;
-	b=4SM92F9yarmKg5VM6u9v1HK8+pgtvTJ7mVFo9hcQspQPflEzR0b8Iafm5j59CIhiHOIe
-	 8GGL3dJ6pmQFyAU7aBVkA1kBlmC6O3BtVhB9ogWjN0F91iG8WqLADsA3A6wSK7T79dUBh
-	 YxI2cXJCqT211Vtbw6BC/5GWJZcXBicxQrkWLuOUv4NrzLMbwFNqPEV+7PMzeyav8rrLA
-	 zU0bM3cPTkJGKOZCh652Xd/HluSEuvhN64lTQ87r3+2QY3Tswf3V9VNurWuBxVJAFSW6X
-	 mqzLuOnWMqjNjXs2f7I5ov5lcVGI6Sy/uBW7Gjyq3oNCcZek45jFH+aGix23kia/EZw==
+	t=1793740679;
+	b=bG7m9Z+oa+/h4g+k0jwUIzpK3VhmGXF5+ZiCwJ1pB2kV6cVvAmuW80VcahJZ6Lt0wFux
+	 c/5TmCmtph60uLovQb/TlJAijb6F/s8CDT6LAIZ4LCrLw9HViWA17HiDXwCL/DT5Rmm3U
+	 TzPWLBNzalVJTnS2zueRgiiqe++4ca+KzUHrXW41FNisE+ZxX4NNIBze99xUu498Jb4/q
+	 NGKGWEnxnySZ2v6vie+sR4btMTTa4k+b51ANmydqWkqBhfJvkJMsiBsbrtI/CPM9EPNiL
+	 J5gTIJnz1Svi8G/8UujHlHQXgR5LhCJHNmIGICLSkwdm8O8gE/Q5leP3FgcbW5dz1nQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793738850;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=WA4JldT6jZkiRqUOUhymd9+bMbgaai5DPTFvHOVFxkY=;
-	b=Qn5mIq53Zv5l+UvWGCZIwMdvweISPZamN04qnVrd6lC56+DYIYQooWSlDhyDSe0X+rfy
-	 0PU4dHD2lBTnmYzmdfRoGiQ+HGuujLIjQlnRnehkm0eIvogjhOcGYRXQ/3qyq5xQcX7/u
-	 EtVl7Sq8a+OFXYkd6pAHQljB2aIQ8UoK6Wcp86Rwn5We4/ItexRqg0R7EQYEt8sDRMeCB
-	 MRIeVEJLA/COh/Jle8itlIW2ViJhH2sR9Cv1wrpzgRTYS2F/X8YljuphOGuAKI7q8rSpg
-	 FE79rSje6yym9fqdUoq5Qd4ETWVnS9g0BYXVw7gPmJARfeFi3AmFVFMJlmupDiqUz2w==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793740679;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
+	bh=1+SeaVehwt396QnIHnWRn5MKZzC9W7QYhwhH8JQg6As=;
+	b=pq4je+EJJAuId1E7y19g8jyyJ2dGaxkHQiI3EHeqOoDqm6bpQyByyRWJqD5vg5SBwxU0
+	 gXu3wuCwiKh0QQA7wtvX3DLm0CdzEkreuxAyqIfB1upG2bJuBtsIzIBupefc0qHM48xQ/
+	 tCsPUjj9v1rQvZjCu6XHAP0CRly37rRSTzxxtQymKYYO9FnrKjfC/RNYxEsZpszLMb+Wo
+	 XGEgd9Tlg3HyeKFhopTgVzeWRyOqSGeNErISozAqx0AC5n2ppiP2ooVgaMg+qNsuK9B22
+	 5/nQ9o3TfAZqQxgkiE5oslQKGiwPYjTvtp8/pETTDDBSA6ZkU94VWsMSfPzPi2Glp8A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MZ5aB4fV;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nsBBcQZv;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6ACCE606A332;
-	Tue,  3 Nov 2026 20:47:30 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 99158606A329;
+	Tue,  3 Nov 2026 21:17:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MZ5aB4fV
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 219691F0093A;
-	Tue,  3 Nov 2026 20:47:16 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nsBBcQZv
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 066C91F000C1;
+	Tue,  3 Nov 2026 21:17:58 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793738850;
-	bh=WA4JldT6jZkiRqUOUhymd9+bMbgaai5DPTFvHOVFxkY=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=MZ5aB4fVto6FbxRg77AGVx0jiXNVhH38K6sxyQ4CgLc3S9lJLQH7InuTEYv8lfOaf
-	 5uoad99J7Yo66MZORzU1SueYppREaWAp7DnLjMArd/bw7llqmgjA7QeRkN0TecqOjw
-	 mgPYGDAwQqwyEL4ByoiIyUJS5Ynf7UPLyKjtpGQBMTUIJCZtNDazrMWwmoLIPejkIK
-	 R4yBtwITyXNn68MPxARx6qpkmGIeYtFfjYSs2zxU7gR3nB0yXltF941REAJYSVQAZs
-	 JOShTK4Swr6Tw/lPkD7UPNQLTdL9bwzUWCtu2lgQU5SbFGQKMkCODHWkdfiTaQncQD
-	 tHuce+fkMYTgw==
-Date: Wed, 4 Nov 2026 07:47:09 +1100
-From: Dave Chinner <dgc@kernel.org>
-To: Kaitao Cheng <kaitao.cheng@linux.dev>
-Cc: gregkh@linuxfoundation.org, arve@android.com, tkjos@android.com,
-	brauner@kernel.org, cmllamas@google.com, aliceryhl@google.com,
-	nat@pixelcluster.dev, arunpravin.paneerselvam@amd.com,
-	maarten.lankhorst@linux.intel.com, mripard@kernel.org,
-	tzimmermann@suse.de, airlied@gmail.com, simona@ffwll.ch,
-	viro@zeniv.linux.org.uk, agruenba@redhat.com, trondmy@kernel.org,
-	anna@kernel.org, cel@kernel.org, jlayton@kernel.org, cem@kernel.org,
-	akpm@linux-foundation.org, david@fromorbit.com, david@kernel.org,
-	hughd@google.com, hannes@cmpxchg.org, yosry@kernel.org,
-	nphamcs@gmail.com, matthew.auld@intel.com, matthew.brost@intel.com,
-	thomas.hellstrom@linux.intel.com, jack@suse.cz, neil@brown.name,
-	okorniev@redhat.com, Dai.Ngo@oracle.com, tom@talpey.com,
-	qi.zheng@linux.dev, roman.gushchin@linux.dev, muchun.song@linux.dev,
-	ziy@nvidia.com, baolin.wang@linux.alibaba.com, liam@infradead.org,
-	nico.pache@linux.dev, ryan.roberts@arm.com, dev.jain@arm.com,
-	baohua@kernel.org, lance.yang@linux.dev, usama.arif@linux.dev,
-	kas@kernel.org, mhocko@kernel.org, shakeel.butt@linux.dev,
-	ljs@kernel.org, kasong@tencent.com, axelrasmussen@google.com,
-	yuanchu@google.com, weixugc@google.com, baoquan.he@linux.dev,
-	chengming.zhou@linux.dev, linux-kernel@vger.kernel.org,
-	dri-devel@lists.freedesktop.org, linux-fsdevel@vger.kernel.org,
-	gfs2@lists.linux.dev, linux-nfs@vger.kernel.org,
-	linux-xfs@vger.kernel.org, linux-mm@kvack.org,
-	Kaitao Cheng <chengkaitao@kylinos.cn>
-Subject: Re: [PATCH] mm/list_lru: Account node removals in isolation helpers
-Message-ID: <aupITfr9pBKPrU20@dread>
-References: <20261103045053.59548-1-kaitao.cheng@linux.dev>
+	s=k20260515; t=1793740679;
+	bh=1+SeaVehwt396QnIHnWRn5MKZzC9W7QYhwhH8JQg6As=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=nsBBcQZvBukrCr6ZOO/LZhZdwZ2UeCaaLrXBy7YduO+XZ+qdB+zZcZ+70hLRx0iym
+	 LWa4m4h/8OIpWrMCwLZLT99KQSKS9bcqDa3xmfHUb8ym5/bamOIoBCQenlGGN0pZxq
+	 uzi6woLgmZBihfj+KoQpnX5OjJ8Mflm1N6HJR/Fyfwh4N1tELoKYDuTqvaJ5Hi2xy2
+	 +4MpPG5mOginkJf5dRid4rPNyc+GBAlewpMLkGEKcBjfUxRgAFakPkadlrVoqEWY6v
+	 jsTKF7k2z1FXPHA5KwiowiwUo/Ifx4GCk1Dr5HFx9rZEgnwJZXrANlh9G7aHCwWRoV
+	 UjAC280UkaWSQ==
+From: Mike Snitzer <snitzer@kernel.org>
+To: Matthew Wilcox <willy@infradead.org>,
+	linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org
+Cc: Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	linux-nfs@vger.kernel.org,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	Christoph Hellwig <hch@lst.de>,
+	Jens Axboe <axboe@kernel.dk>,
+	Jonathan Corbet <corbet@lwn.net>
+Subject: [PATCH v10 3/7] mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats
+Date: Tue,  3 Nov 2026 16:17:50 -0500
+Message-ID: <20261103211754.35352-4-snitzer@kernel.org>
+X-Mailer: git-send-email 2.44.0
+In-Reply-To: <20261103211754.35352-1-snitzer@kernel.org>
+References: <20261103211754.35352-1-snitzer@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -78,84 +68,78 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261103045053.59548-1-kaitao.cheng@linux.dev>
+Content-Transfer-Encoding: 8bit
 
-On Tue, Nov 03, 2026 at 12:50:53PM +0800, Kaitao Cheng wrote:
-> From: Kaitao Cheng <chengkaitao@kylinos.cn>
-> 
-> Successful writeback calls zswap_entry_free(), which removes the entry
-> from the LRU and decrements both the sublist and node item counts.
-> shrink_memcg_cb() then returns LRU_REMOVED_RETRY, causing the LRU walker
-> to decrement the node count again.
-> 
-> The affected call path before this change is:
-> 
->   __list_lru_walk_one()
->     shrink_memcg_cb()
->       zswap_writeback_entry()
->         zswap_entry_free()
->           zswap_lru_del()
->             list_lru_del()
->               __list_lru_del()
->                 atomic_long_dec()  /* first node count decrement */
->       return LRU_REMOVED_RETRY
->     atomic_long_dec()              /* second node count decrement */
+The per-bdi_writeback WB_DONTCACHE_DIRTY counter drives how much the
+flusher writes back in response to an IOCB_DONTCACHE kick, but it is
+not reported anywhere, so the DONTCACHE dirty backlog can only be
+inferred from MemFree/Cached movement.
 
-That's a bug in the zswap code. You shouldn't be calling
-list_lru_del() from __list_lru_walk_one() context.
+Report it as BdiDontcacheDirty in /sys/kernel/debug/bdi/<dev>/stats
+and as WbDontcacheDirty in the per-wb stats, next to the
+Reclaimable line.  Use wb_stat_sum() rather than wb_stat() to fold in
+the per-cpu batches: the flusher targets the summed value and small
+backlogs would otherwise read as zero.
 
-Walker callbacks are supposed to use list_lru_isolate() or
-list_lru_isolate_move() to remove the item from the LRU under the
-lru lock. i.e. the walk and remove are a single atomic operation,
-accounted by the walker infrastructure.
+Fixes: 88d6f128d06d ("mm: track DONTCACHE dirty pages per bdi_writeback")
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
+Signed-off-by: Mike Snitzer <snitzer@kernel.org>
+---
+ mm/backing-dev.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-LRU_REMOVED_RETRY is for walkers that need to do work -after- the
-item has been removed from the LRU (e.g. reclaim work that can't run
-under the lru lock). i.e. the pattern for the callback code is
-remove-unlock-reclaim-LRU_REMOVED_RETRY.
-
-What the zswap code is doing is
-unlock-reclaim-lock-remove-unlock-LRU_REMOVED_RETRY. That's
-problematic, as we can have concurrent walkers, and so it's possible
-that two shrinker invocations try to remove the same item at the
-same time....
-
-.... oh, what a nasty hack.
-
-The zswap code is doing a list_move_tail() on the LRU object to
-rotate it to the end of the LRU list before dropping the LRU lock,
-in the hope that a concurrent scanner won't trip over it. That 
-doesn't fix anything...
-
-> During the mailing list discussion, Johannes Weiner suggested making
-> users of the isolation interface responsible for maintaining the item
-> counts, rather than having the walker decrement the node count based
-> on the callback's return value.
-
-urk. How is smearing the LRU NUMA abstraction into all the isolation
-interfaces an improvement?
-
-It seems to me that that this LRU hacking is all because of this:
-
-         * 2. Usually, objects are taken off the LRU for reclaim. In
-         *    this case this isn't possible, because if reclaim fails
-         *    for whatever reason, we have no means of knowing if the
-         *    entry is alive to put it back on the LRU.
-
-And so to work around this inability of zswap to handle failure
-sanely, the LRU list the reclaim code is being abused. And now the
-abuse of the lru list code is triggering problems with the LRU
-infrastructure, the suggestion is to push internal LRU structures
-into all LRU list walkers to allow racy (and IMO broken) walker
-behaviour?
-
-I'd much prefer the zswap code get fixed than to have to modify a
-dozen other subsystems to enable zswap to work around broken reclaim
-code...
-
--Dave.
+diff --git a/mm/backing-dev.c b/mm/backing-dev.c
+index fad1495d3b200..a09c21759fb9f 100644
+--- a/mm/backing-dev.c
++++ b/mm/backing-dev.c
+@@ -46,6 +46,7 @@ struct wb_stats {
+ 	unsigned long nr_dirty_time;
+ 	unsigned long nr_writeback;
+ 	unsigned long nr_reclaimable;
++	unsigned long nr_dontcache_dirty;
+ 	unsigned long nr_dirtied;
+ 	unsigned long nr_written;
+ 	unsigned long dirty_thresh;
+@@ -78,6 +79,7 @@ static void collect_wb_stats(struct wb_stats *stats,
+ 
+ 	stats->nr_writeback += wb_stat(wb, WB_WRITEBACK);
+ 	stats->nr_reclaimable += wb_stat(wb, WB_RECLAIMABLE);
++	stats->nr_dontcache_dirty += wb_stat_sum(wb, WB_DONTCACHE_DIRTY);
+ 	stats->nr_dirtied += wb_stat(wb, WB_DIRTIED);
+ 	stats->nr_written += wb_stat(wb, WB_WRITTEN);
+ 	stats->wb_thresh += wb_calc_thresh(wb, stats->dirty_thresh);
+@@ -125,6 +127,7 @@ static int bdi_debug_stats_show(struct seq_file *m, void *v)
+ 	seq_printf(m,
+ 		   "BdiWriteback:       %10lu kB\n"
+ 		   "BdiReclaimable:     %10lu kB\n"
++		   "BdiDontcacheDirty:  %10lu kB\n"
+ 		   "BdiDirtyThresh:     %10lu kB\n"
+ 		   "DirtyThresh:        %10lu kB\n"
+ 		   "BackgroundThresh:   %10lu kB\n"
+@@ -139,6 +142,7 @@ static int bdi_debug_stats_show(struct seq_file *m, void *v)
+ 		   "state:              %10lx\n",
+ 		   K(stats.nr_writeback),
+ 		   K(stats.nr_reclaimable),
++		   K(stats.nr_dontcache_dirty),
+ 		   K(stats.wb_thresh),
+ 		   K(dirty_thresh),
+ 		   K(background_thresh),
+@@ -163,6 +167,7 @@ static void wb_stats_show(struct seq_file *m, struct bdi_writeback *wb,
+ 		   "WbCgIno:           %10lu\n"
+ 		   "WbWriteback:       %10lu kB\n"
+ 		   "WbReclaimable:     %10lu kB\n"
++		   "WbDontcacheDirty:  %10lu kB\n"
+ 		   "WbDirtyThresh:     %10lu kB\n"
+ 		   "WbDirtied:         %10lu kB\n"
+ 		   "WbWritten:         %10lu kB\n"
+@@ -179,6 +184,7 @@ static void wb_stats_show(struct seq_file *m, struct bdi_writeback *wb,
+ #endif
+ 		   K(stats->nr_writeback),
+ 		   K(stats->nr_reclaimable),
++		   K(stats->nr_dontcache_dirty),
+ 		   K(stats->wb_thresh),
+ 		   K(stats->nr_dirtied),
+ 		   K(stats->nr_written),
 -- 
-Dave Chinner
-dgc@kernel.org
+2.52.0
+
