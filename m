@@ -1,73 +1,75 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.197
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793743636;
-	b=UNEhfS8zJKlrbcC26/BVA/z752LCVR6A1AMfmGrIHvUfksKBHAoLi8Q0pxwyMU1+Tvkp
-	 cbZ7lieiubmgFA5Ji99qyY/nVzVTgdR9SbgGwMopwEOw0Vlq+ECOSbHSIDJx8+hfOlAde
-	 ECUmmp90GAh/xjuUD1RaxL4STDdxs3njSmincCYZuRm/aR0Op3ylHgj4udjFFIsfWgjHx
-	 l+4BAjapyeuCYCs6Smt9cMAkvm2kNPYWAr5uiH/WBYNDP6nwhfieZ97Mv2ql5Ks3NQx7/
-	 jX8J5NJxXcDD2HD4W8uNXLlavHTzzbM9ZXafl9A2ZWQGsKS55+l/AQgmeBRRFhXx8Kg==
+	t=1793745111;
+	b=QzSNbih28QDeRSIIPqNpx1xb4nCPngkWUaWB63bhGwggm0rLeWpX903FbZTFOjo553Hw
+	 ZRrqFKN0xjNMMsc7nUzd5O4vmzeC1l5E3ZTLfmSMh4n1PkzX3zizfbgzzC8jTcwgmwg/h
+	 HL46je3TyHh3lbIfbL42FXIQb+4cJ7Dve2Eua6ad/F2FXVUDrnPdunk/xe9LOrY0CarVN
+	 JD+X13SAv4c7m7r+/4tu/5IrfrLDiQ4ZKocGrz4hYcAWDl6JEWDE/eO7K1bLo0zrh1iOC
+	 j6Cb4KzPD0s4A8pF589d7fsl7EgVj2HWvpuPbDvNT2aToLsZGSuIu9ZJbsTjLZkB5fg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793743636;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=968YowjBTk1iDJtq/i3DizyX/CDpSVhgwegFypfxBIk=;
-	b=cS0xQszTsxh9hu4MlyZtgB+/+VVVku0fj54hkMHh58rCJ3ftOfS/ptPTzAMae2mlrni7
-	 B4uJKmmglT6+yKgD447okHY95y4EP57MSA3RPYwjlRKpw8iMAksPrTHQ1bRPD8neGUxym
-	 f9tLZ0H9+F1GrZxPN+PK+dYi4LW+2RV2SDdWRCVFKY623W+Lv/4nJ0IOV41OzCAuwud1G
-	 gQj5f7V6Mahh22IWdp8AxgS0dDQYgSDCgp2ZUZRFBGIqaqBlw1Pny82FO3FYyh7n1Rhq9
-	 7t8Q1A1L9NMKeaFUbl3pL2FCJ/nX+uJbthaD8k6LmdwwzsoeIZWAqhzM6rutmEysKww==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793745111;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Received:Date:In-Reply-To:
+	 Mime-Version:References:X-Mailer:Message-ID:Subject:From:To:Cc:
+	 Content-Type;
+	bh=BrTX3wJjILuApgcUkXldz9A0fDSI5dqDukx6+R/xaJI=;
+	b=4BNfml28zrQ8zGgX209lzr1h+zcX0wIYZa1VfEpIItrJlMpe/E4MvOwWTcD3YYgXP4uE
+	 edclC8GgLmHy14JdoCHeJUzEE3BHTSr3jz0ZhUdwh3Iy9XZcj3FgVyNjx1QMwrMez41cR
+	 B5L+4IOZSaViMaHziKXL4IUdaZXYZnoFHOgJ7AGa9CWLDcnJ+UvCqKyTZOGixtDxYFP35
+	 PQ+FiSF+8SmemKBx2fQorRUEDvQ2903i5OZn+FWdggpOREIV4c1n8TJBQsWaNI6wfu4js
+	 oPyPNoH+LPjZlXB1ZjnMrnNgkLUd1wyr3ykrIM6n252zCpK9ZQY9CjB18eBwMMDit3Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AKD+23yk;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=google.com;
+	spf=pass smtp.mailfrom=flex--nhuhuan.bounces.google.com;
+	dkim=pass header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=g60ZR+5c;
+	arc=none smtp.remote-ip=74.125.82.197
+Received: from mail-dy1-f197.google.com (mail-dy1-f197.google.com [74.125.82.197])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B6BCA606A329;
-	Tue,  3 Nov 2026 22:07:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 16F59606A326
+	for <linux-nfs@vger.kernel.org>; Tue,  3 Nov 2026 22:31:51 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 16F59606A326
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=flex--nhuhuan.bounces.google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AKD+23yk
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BA1071F0093A;
-	Tue,  3 Nov 2026 22:07:14 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793743635;
-	bh=968YowjBTk1iDJtq/i3DizyX/CDpSVhgwegFypfxBIk=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=AKD+23ykJFDjUVSBW2uYSyiaWzmrR2nRA/HK2rro8M+UFbxj+n0WumcOsTC7WIuV5
-	 JCPevoTLlE+3gKm+NUitl/+yVChuwUK7enAZN9QEWnxUZ9dk3I7Iz9hz7U72LnlMZT
-	 UZuwbjjemxXsR2OGV9a+veMuIId9ULRGXHbWCoZzsoUItqyIQjyPZBt8RZrekkOqGY
-	 LELErqFMeFmbjebmvWSs/jIjkJbmc6RD7+A2/EmIim8wBpMVK19xrbM0M1KG0YHrD7
-	 /KqQfJzF0b2viNbBezkhBQZ7UHpBDj6NdyKNjzjhj28af6aeHCvDIICgyYg+rDOjhY
-	 3xF/VAIpwBP6w==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 13564F40066;
-	Tue,  3 Nov 2026 17:07:14 -0500 (EST)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Tue, 03 Nov 2026 17:07:14 -0500
-X-ME-Sender: <xms:ElvqasdYlED5KnO3zgNSjtTaETOYOK-YRPeG8mDf32ooHrHG_wAPVA>
-    <xme:ElvqapBq7wtHDoXg5Vq2cGJAYzHSRY-LmIGjoD5YZPS0jPUZ_9HIH-cfzlpdqCNjM
-    ZNtjh2Udn-L6M_hSzXMHWVla-KFGwNVhg9YVnSADeNOcrXSOmLixBgm>
-X-ME-Proxy-Cause: dmFkZTGkItqFyL5NRcDZHle1ib9///lTnwAbRuWI6qhGwwnIYZuPk+sLYZrLRkrMjTm5fA
-    rLBFhTJ7ujYTI1pRhTtDO1HmHMWhfXQPjNJwOJKkjfQ1v3pxBtq8CyxdPUTBiyvvlMg7EO
-    /V87+BOLDxYNcz+BdcyvUlpH8WLrt9DIZHOxFSAUjD8aftu2lMkUX95JaquOc2jhOea0E1
-    EeRb8OpaQVPo9cWXHX+X7MEadD7JyqPMWlfl/RlBWeh+qi+IL3r/CVs1yrHW3qHvTcMOjG
-    0YyQH1CHiIykJQS4EMi4LLae50ZfH0bYBsR9woNtrohR8HekgZhAhBfAc+lCYTcPOqQGm0
-    7n+XOWYNMJqzg6/fos/8jflb7AvtYBnIZSi4+TQ0i2hOYsUe0vBChcg0OSOGLQhoRR8NwS
-    w95wKQmWsrTXF5T62xAkXSJlWANVuPF+ey3ZQQ16bj0ljE5/jSPGGxZHSaM3qmxCJ0QB7h
-    p0bToaCd8IqUK4dXckr+E79L4kljKKzIiDaIkvGWGy7RuY3cIgjAjSFTcLPK60Cyjr3Ozw
-    sBhHL/7zNzW4F9xozcBsaq7EutksmbEdsvAYkfGWMClk7BHYmkHB6Gqx7hpwm662qdbQ7h
-    JdsuiazCZVFZJ3pJf7FvBMm0byVQupa9rPbcsRhHuqCtBiDzVW5hkDfhgZKQ
-X-ME-Proxy: <xmx:Elvqajuw2PXcbQwrgWrWqHmHthKttXHxg4uaVKey_YxItx6U2zMTCg>
-    <xmx:Elvqag2L3Dyb_yHY_2RE54fRMSPDMH-sYitzB128wUozrUV-rzcJXQ>
-    <xmx:ElvqarNzjMe5f83V1YpUxoPPquHUTB_JWpo8QYpSk55z73EYQ0I6Jg>
-    <xmx:ElvqagUq-ZB22huESTV6QzW2OUQZb3wC5BA7_KdeBpUNozTHPdIaJA>
-    <xmx:ElvqagYCOlUjnVcca0fHkWUkUHL1sOUXJqYlz6ZkNDtrOk8UIfF0KWjL>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id E812D782738; Tue,  3 Nov 2026 17:07:13 -0500 (EST)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key, unprotected) header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=g60ZR+5c
+Received: by mail-dy1-f197.google.com with SMTP id 5a478bee46e88-30c0d568830so49521eec.1
+        for <linux-nfs@vger.kernel.org>; Tue, 03 Nov 2026 14:31:50 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20260707; t=1793745110; x=1794349910; darn=vger.kernel.org;
+        h=content-type:cc:to:from:subject:message-id:references:mime-version
+         :in-reply-to:date:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=BrTX3wJjILuApgcUkXldz9A0fDSI5dqDukx6+R/xaJI=;
+        b=g60ZR+5cGx3Kne5HRSgfcrUxFoC16c0uMvrcSowkwdKoy9+5+Q/Pxyi2+op5jAm8p4
+         Yyuqh4SsQLKZ5cHnuMhClKxfLJniePL/BjlkxzWDIoHdoWEmbuWIywaV2pOOr/4SNp3B
+         29y9lAgoxKELBeYFg38vm4dSle6GRGgfoQ3Iy5VwOEeJkyr1pU+Nd1vGvrYIHGQM0sxO
+         Q6317b86To14Zmz74Bta2GAO17929qdtFilbiLiybY/14xbyP702k1CK/BQkctHAwBlt
+         fT/1ASy8B2y0ayIn77VCIuijFr32uLBy4WVdcA0E6nZam9NhHmjx3mM2fy7sl01debTW
+         6knw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793745110; x=1794349910;
+        h=content-type:cc:to:from:subject:message-id:references:mime-version
+         :in-reply-to:date:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=BrTX3wJjILuApgcUkXldz9A0fDSI5dqDukx6+R/xaJI=;
+        b=gBzn1WBzf2oWe6EQY7xfsaT7Pk98OLcW2gtlY21lbYFA69VaQJ6M1qdrR8dKISvTSe
+         OLE4RKQhVFGL0Ibnhxej8ps0INb9AAeXQYCab6K37ZT10Ru9i4X28ASIL6yG867oLXfD
+         kGNBkLuN6lmSEwdY0X23X44XsJxNlRN8xe4so9VU9mmSs9kioKv3iYrsxAybpWoHIO49
+         vjqJ+NjWKkbNXHViQyTSRg3Qd/KqthqLNZRFLpjT40mfC3ccVrU69zIP6lgoIsHum3qR
+         BKdgPIdKVfUJhxWVbj0kdSCyGm+YtSghpocdcprEdJvPYCehw3JA/MUcDrVPddodng5l
+         Nb7A==
+X-Forwarded-Encrypted: i=1; AKwUvBy9In5CLZsPcBV0sW0RZgSNWVXZOpKJEvAcTxdEoEiQOpx3FjtVsXj7HqZcBeX8xGRK3d68tip3ke4=@vger.kernel.org
+X-Gm-Message-State: APuU4Z93MRXJFyLwQkD/YpzFNHxsOBfW26DMxa2Qs7K+RKvDywBhetZx
+	foLPs2R+NocLasjurXyR0h7eTatknMEGiLDJ9c2UX8Pj1e99VBqvZOwXsRgBxBpxB1z2hPBdzQv
+	yz9FnvpzNxw==
+X-Received: from dlbsv7.prod.google.com ([2002:a05:7022:3a07:b0:1b2:3bdb:f218])
+ (user=nhuhuan job=prod-delivery.src-stubby-dispatcher) by 2002:a05:701b:4244:10b0:149:1b5b:1f25
+ with SMTP id a92af1059eb24-1ac5b211405mr22122314c88.15.1793745109795; Tue, 03
+ Nov 2026 14:31:49 -0800 (PST)
+Date: Tue,  3 Nov 2026 14:30:22 -0800
+In-Reply-To: <20260730-rfc-nt-demote-v2-0-452dbe3b5073@zptcorp.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -76,73 +78,108 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-X-ThreadId: AyyOFI-zorWw
-Date: Tue, 03 Nov 2026 17:06:53 -0500
-From: "Chuck Lever" <cel@kernel.org>
-To: "Li Xiasong" <lixiasong1@huawei.com>
-Cc: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>, linux-nfs@vger.kernel.org,
- linux-rdma@vger.kernel.org, stable@vger.kernel.org, yuehaibing@huawei.com,
- zhangchangzhong@huawei.com, weiyongjun1@huawei.com
-Message-Id: <15655075-99d7-417c-a0ac-0ab842da23c4@slotpi15m67>
-In-Reply-To: <20261103032758.1302493-3-lixiasong1@huawei.com>
-References: <20261103032758.1302493-1-lixiasong1@huawei.com>
- <20261103032758.1302493-3-lixiasong1@huawei.com>
-Subject: Re: [PATCH v2 2/3] rpcrdma: Pin notifications during removal callbacks
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Mime-Version: 1.0
+References: <20260730-rfc-nt-demote-v2-0-452dbe3b5073@zptcorp.com>
+X-Mailer: git-send-email 2.56.0.398.g882cbad275-goog
+Message-ID: <20261103223025.2482227-1-nhuhuan@google.com>
+Subject: [RFC PATCH v3 0/3] mm: use non-temporal stores for demotion
+From: Huan Nguyen <nhuhuan@google.com>
+To: tglx@kernel.org, mingo@redhat.com, bp@alien8.de, 
+	dave.hansen@linux.intel.com, x86@kernel.org, hpa@zytor.com, 
+	akpm@linux-foundation.org, david@kernel.org, ljs@kernel.org, 
+	Liam.Howlett@oracle.com, vbabka@kernel.org, rppt@kernel.org, 
+	surenb@google.com, mhocko@suse.com, trondmy@kernel.org, anna@kernel.org, 
+	ziy@nvidia.com, matthew.brost@intel.com, joshua.hahnjy@gmail.com, 
+	rakie.kim@sk.com, byungchul@sk.com, gourry@gourry.net, 
+	ying.huang@linux.alibaba.com, apopple@nvidia.com, rostedt@goodmis.org, 
+	mhiramat@kernel.org, mathieu.desnoyers@efficios.com, jackmanb@google.com, 
+	hannes@cmpxchg.org, shivankg@amd.com
+Cc: rientjes@google.com, dave@stgolabs.net, nifan.cxl@gmail.com, 
+	fvdl@google.com, jic23@kernel.org, rkodsara@amd.com, bharata@amd.com, 
+	sj@kernel.org, weixugc@google.com, xuezhengchu@huawei.com, 
+	yiannis@zptcorp.com, yiannis.nikolakop@gmail.com, 
+	dimitrios.palyvos@zptcorp.com, alirad.malek@zptcorp.com, ryan.roberts@arm.com, 
+	nhuhuan@google.com, linux-kernel@vger.kernel.org, linux-mm@kvack.org, 
+	linux-nfs@vger.kernel.org, linux-trace-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-On Tue, 03 Nov 2026 11:27:57 +0800, Li Xiasong wrote:
-> rpcrdma_remove_one() can race with unregister and invoke a notification
-> callback after its owner is freed. XArray RCU does not pin stored objects.
->
-> Pin notification owners under rpcrdma_device_mutex and serialize
-> unregister with the same lock. Also pin client RPC transports. Skip
-> owners in final release with kref_get_unless_zero().
+This series continues the non-temporal demotion work originally posted
+by Yiannis Nikolakopoulos [1].
 
-> +	xa_for_each(&rd->rd_xa, index, rn) {
-> +		struct rpcrdma_notification_ref ref = {};
-> +		bool notify;
-> +
-> +		notify = rn->rn_get(rn, &ref);
-> +		if (!ref.rr_owner && !ref.rr_xprt)
-> +			continue;
-> +		done = notify ? rn->rn_done : NULL;
-> +		put = rn->rn_put;
-> +		mutex_unlock(&rpcrdma_device_mutex);
-> +		if (done)
-> +			done(rn);
-> +		put(&ref);
-> +		mutex_lock(&rpcrdma_device_mutex);
-> +	}
+Motivation
+==========
+Memory tier demotion moves cold folios from local DRAM to slower memory
+tiers, such as CXL or remote NUMA nodes. Standard store instructions
+force the CPU to allocate cache lines for cold data that is unlikely to
+be referenced in the near term.
 
-I wonder whether the owner pin is needed once unregister takes
-the mutex. Both owners free their object only after
-rpcrdma_rn_unregister() returns, so a callback invoked with the
-mutex held cannot see a freed owner. Neither rn_done sleeps or
-takes the mutex: svc_rdma_xprt_done() sets XPT_CLOSE and
-enqueues, and after patch 3 rpcrdma_ep_removal_done() does a
-cmpxchg and a wake, or xprt_force_disconnect() under
-transport_lock. Invoking rn_done under the mutex would remove
-rn_get, rn_put, kref_get_unless_zero() on the owner, the
-rr_owner half of struct rpcrdma_notification_ref, and the
-unlock/relock around each callback. The contract would then be
-that rn_done must not sleep and must not call
-rpcrdma_rn_unregister().
+Using non-temporal stores and prefetching on x86 bypasses CPU cache
+allocation, protecting active workload working sets and improving
+demotion throughput.
 
-The transport pin is a different matter. xprt_force_disconnect()
-on a transport that is inside xprt_destroy() queues task_cleanup
-as autoclose while xprt_destroy() re-initializes that work for
-xprt_destroy_cb(), so rpcrdma_ep_removal_done() does need to know
-whether the transport is in its final put, and the matching
-xprt_put() has to happen outside the mutex. Neither requirement
-involves svcrdma, which leaves rr_xprt NULL, and the header now forward-
-declares struct rpc_xprt for one user. Could the transport pin
-live in verbs.c, with the generic API carrying only rn_done?
+Changes in v3
+=============
+- Unified MCE-safe NT copy (addressing v2 Open #1):
+  Implement copy_mc_page_nt() in x86 assembly to provide machine-check
+  safe copying using non-temporal stores (movnti) and prefetchnta.
 
+- Architecture abstraction (addressing v2 Open #2):
+  v2 relied on memcpy_flushcache(), which lacks non-temporal stores on
+  architectures like arm64. RFC v3 replaces this with a dedicated
+  __HAVE_ARCH_COPY_PAGE_NT interface and generic fallback, enabling
+  architectures to plug in native non-temporal routines independently.
 
+- Memory ordering:
+  Add a wmb() barrier at the end of folio_mc_copy_nt() to ensure weakly
+  ordered non-temporal stores are drained before page tables are updated.
+
+Discussions
+===========
+1. Migration mode vs. migration control refactoring:
+   Currently, this series introduces MIGRATE_ASYNC_NONTEMPORAL into
+   enum migrate_mode. In parallel, Shivank Garg's migration refactoring
+   series [2] consolidates migration arguments into migrate_control.
+   Once that lands, demotion can simply rely on the migration reason
+   instead of adding a dedicated migration mode and helper.
+
+2. Large folio copy optimization:
+   Multi-page folios (such as 2MiB THP) are supported by iterating over
+   constituent 4KiB pages via copy_mc_page_nt(). Once the batch page
+   copy series [3] lands, copy_mc_page_nt() can be extended to copy an
+   entire multi-page folio in a single invocation, eliminating per-4KiB
+   loop overhead and keeping the prefetchnta stream uninterrupted.
+
+Thanks to Yiannis Nikolakopoulos, Alirad Malek, and Dimitrios
+Palyvos-Giannas for their original work, feedback, and collaboration.
+
+References
+==========
+[1] https://lore.kernel.org/linux-mm/20260730-rfc-nt-demote-v2-0-452dbe3b5073@zptcorp.com/
+[2] https://lore.kernel.org/linux-mm/20260902-migrate-refactor-shivank-v1-9-9dcca87669c4@amd.com/
+[3] https://lore.kernel.org/linux-mm/20261019-batpagecopy-v2-1-d75e7d0dfaae@amd.com/
+
+Signed-off-by: Huan Nguyen <nhuhuan@google.com>
+
+Huan Nguyen (3):
+  mm, x86: support copying a folio using non-temporal stores
+  mm/migrate: introduce async non-temporal migration mode
+  mm/vmscan: demote folios using non-temporal stores
+
+ arch/x86/include/asm/page_64.h |  2 ++
+ arch/x86/lib/copy_page_64.S    | 65 ++++++++++++++++++++++++++++++++++
+ fs/nfs/write.c                 |  2 +-
+ include/linux/highmem.h        | 21 +++++++++++
+ include/linux/migrate.h        |  5 +++
+ include/linux/migrate_mode.h   |  1 +
+ include/linux/mm.h             |  1 +
+ include/trace/events/migrate.h |  1 +
+ mm/compaction.c                | 18 +++++-----
+ mm/migrate.c                   | 29 +++++++++------
+ mm/util.c                      | 29 +++++++++++++++
+ mm/vmscan.c                    |  2 +-
+ 12 files changed, 154 insertions(+), 22 deletions(-)
+
+base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
 -- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+2.56.0.398.g882cbad275-goog
+
