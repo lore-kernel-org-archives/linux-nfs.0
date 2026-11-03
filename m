@@ -1,73 +1,75 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793714808;
-	b=QoWxQOAejahMKEeVeKApyBHOa06Ho5I7MCOirDRnGpedmpsVppulwrYDgUtGr916eC6A
-	 uOZd58sZ3BvlFijD8szxrjkImf6V30jkmtEOgoLEXpLdOW0UvTPNlI9KKmH6NSk+WOKoo
-	 n4A+yh8YV0W5cNMah5htJ64dS0KMf+capKjp+n3NYACcmmVNAnd+O5LMRN6/VzAewgQ5+
-	 cxzMRXe5s5ubCK6UPv2qhoqxvXDVWFh+7mnR8edp9Etz/U/eYvocdq0GhwdQ8qXufYrB4
-	 Q0evH0zh0VLOSMfGsyakD+TP6TYffZBO4N+K+7qlf4sbcVmnpb0VvPFEBRaSv220omA==
+	t=1793723196;
+	b=de0t5tAyrnyXAbkQbiTZ2C+cbAYfDQs2cTyl/SqxKfDJG3XHdMeMj3022Ufe+mERdVAT
+	 +ZzygmdJOITO18ZCTcF6Hze1dneVPtjYSJLLNNOZ4bq4JZQoTyhfB2H4OWGAlSDtbAp8X
+	 lMw+lQb0HBhfuqekU6sPU6XOcgN62V2BzWtztyYNkR5lDMcxukdlo1ZJ+1pazOpZmQLfn
+	 yWXqCMjxYFEfYAIrmYqyKPh7vya7mLyXWm99lwJ3Yunl0DlePoZ15H46ZKsOVXA5XjajR
+	 amsBuX0CyCvpY0OOus2YL65Do0Uox5LMAGQG9R6+YMBItQrG2k2yVSvVPsokIp2mzZA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793714808;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=xvQFZ/v6kc7GTHEID9MGSok2w4qCNqxYqf6XgNpZ1WY=;
-	b=VVAn0kCNq9mLMLVwP1EoopgU0cZY6m4TuWjvfMSt25zG0XEboenMX9EFouhEyHk1oaUa
-	 jmRGCkmT8Opw3gTretPPXPlCeB8v8V4e8ibmJtIm3NP9R02mMXMDtvBhYrQiHweVBRXci
-	 CLvdAS0bUAVTLg94y42dgwQpZejB+FDi/QF2xWvnBNYdK3L3H0xr+u5nBEKdScCJ/gNjE
-	 wizLRhBu5yliyB7BgLQBeL8kA4wjv+q3zCk1W1HOlGUHln6o4VHhg3PBzPK+ajbuGDHcJ
-	 RUhcITW64BFB1VAzC0hXpPdhbd5Y9M2JuoVAn1aPevezp4jBHIr4Z+de2ZVTy1N2C2Q==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793723196;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=88x5nWCU4/5DUnm5J75+/44oJREtwTCj+m3lJcaJoNE=;
+	b=tdawQlYfgDrb3alGEDfr439O5Cw+xIZMzgxuDQTvu1eq98R7olpfgWnXNElxe+6RNneW
+	 +WtM6uldUVExM54iZpuquygLBgV4ss9v1DdlPrhBRgjlpJsdA9htasb5VqBuKI9xdRRZQ
+	 mXNqPuVznzoA01sj3DERKYaelKX3fIa36NpOutkvXGqh8Mxsj0eSKWhsIaJedFVEQIxti
+	 n7X9odVx6mncFTtIw7BeW8JUrJIaRC0dbILM11QFF47/8afyZkTDuml9E/fnFFfGtarJY
+	 +ME6FErInGL9MCUfBY7Ykc5Ds6s17BJZSRUQzGoG5BB1MPpvwHhtpkwzrDzTAt0asVQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JKOivCuM;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HyDteQG2;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37AEF606EEB7
-	for <linux-nfs@vger.kernel.org>; Tue,  3 Nov 2026 14:06:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 259F4606A327;
+	Tue,  3 Nov 2026 16:26:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JKOivCuM
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9DAE51F0093A;
-	Tue,  3 Nov 2026 14:06:47 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HyDteQG2
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 09A721F000C1;
+	Tue,  3 Nov 2026 16:26:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793714807;
-	bh=xvQFZ/v6kc7GTHEID9MGSok2w4qCNqxYqf6XgNpZ1WY=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=JKOivCuM9zvCc5jlnDxGVpFReYBBp9CsyWYUjdQ0mJbWwmqvMyvXVRMp/6G5gHLsA
-	 LA/i5s1fhKc3DnkutLYsgdrJclxTF10qbuDOg0GsIstg+mmvegjGNSdMA5LKwwRiIa
-	 gWdukTY23xPhHZn7Y7/dit55ncfp0SBh9ozCmNQJZEcazSPwtOB/32NiApxCQ3TWec
-	 FHU1LRf1XDbk3OVLlKfZdfzQiw0pLJQtwgk2AWOe1SBmZQs2/KXR7rYnX2ybZoum5l
-	 YSNR5yHc1hcfZUM3YoyYpcCB7RXsy+bV4c5U4mJeMrcZ8za2GsihzfsJ75Tz4RklQM
-	 uvbWYH1JIkV/A==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id D4D70F40067;
-	Tue,  3 Nov 2026 09:06:46 -0500 (EST)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Tue, 03 Nov 2026 09:06:46 -0500
-X-ME-Sender: <xms:durpaq0XmXEGaNipxDJx6sAcc4_6MF4DTGVGlppBY5cjNs-vK1yFfQ>
-    <xme:durpan5Wf54Ycx_6DskgcsxA1b9-v5fi3VAvCKuTvwPbeIxP-z2XqMjNYG7PWQFXL
-    oc5FXIZOnfEyIrd-iHpT8s3REngQj9BgFwEn5SAIcbvZTk4nVv0s4F7>
-X-ME-Proxy-Cause: dmFkZTFy0L05d9uD78zkGdwcJCb86cXltBLzUGDgy+LT6NioesssvQJwLPwES3CG7zMILk
-    UfdEM7wendlaj+hFKKHOLrAeIx88lH9cnpstgB/12/0FaUJO8llNP+iuPAZhVk6TeXroSW
-    s+Sn6ZDRVwJEimTHOH0/xxX1sF/WqCilRC58EkM1jpdUqYTaFVYz0HI6dhXpsyu9SLxxw/
-    xIS8FygDDVwe1iPGchC0EGFCp/FcGflutNpc1MTz+7LwPIU/B81Et/fRpHEZv1hiGHLh4e
-    KcEcSkNhbQQ0ub6nX4iDSOcAuUPW3pwtbpUcr1XcLOJpmsSVBLPF1hgCqit64kkUC51iJO
-    ALzNzVpdjx+/Qvk/piitnLGQHNGH+19XwppsgFXlqycexKFC4QyeqXB+uunV7AFryRUpFl
-    3X+HZidwzgP4Wq3H/kolIPDQwvMeKejCwNeLW1lJd7eaXYj+StyE0wvj0OBBvMs2n+xOdo
-    0kjnxPYYMJkUTaFxzIpjvv/hYI3LqwnnokSvGIMx7RZDI4KGxEC1FDdo7noS8pb6gtyupZ
-    TVSbP3Tj04SjbnhlXvUh1zned/V3TAUz9OXJibaivczgaMC/NoNFes+FAXs5JU8A280ojs
-    bo4UPvLGFkEX8NrF8a8/Kl4KFYWrPmbiyMATAtXwel9z3T4Jhgh4OQT+ek6A
-X-ME-Proxy: <xmx:durpatxq1AFo1fzSg3ncDmUOxpeSt21Imu78TcsOyRLQi8AiuYCCWg>
-    <xmx:durpalCrDdOSN_8zLXS39fgFOUQYovaaC0OpRwXlxdW1Tn8DhvlqEQ>
-    <xmx:durpaqZM3dzcvQvD2mvBuv71ChI4myc0nvEp9Y5TNmgTIxj9YWPuvg>
-    <xmx:durpathHsIQ5zXkId3cvPTZYCMcEX4oOGH9-Idi5Qw2p7hce2rzjqw>
-    <xmx:durpas6wjdgUh_Ve0qgYJS6ezhyY-DI_scbkVzQHBcg3CAWSEFUBX-70>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id B5AE6782738; Tue,  3 Nov 2026 09:06:46 -0500 (EST)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1793723195;
+	bh=88x5nWCU4/5DUnm5J75+/44oJREtwTCj+m3lJcaJoNE=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=HyDteQG2VBDz2pwudxJvRFZ3NzuhMM1n/qoJyRpSIEa+4sIo8qfNjCKCMkx9fqPnu
+	 PTXEB3HB8c+csEYJbUqrD18YNji+Wb3P0nPR4rCDriU41qd0d35Q951xfxtaew6zqD
+	 xTRV7HQa/evoV4YEWVb3yEGxlVh8/pDAOnR650sPVOaA2QtXNMiUjYtFVGzVyuFmxJ
+	 cuqSFcaDMPcPNDAwdq/HarCHKLW8nQ/TcudxBJnTO/IQN1HpQ6LTm2xHx92xHn7YRV
+	 9GYQVIg2n29fkajQrtiWC1hueIuFYRrAfwMXbzDr3+UFxfeou5MMiBIFbN+ZYhp4th
+	 RFlMkVbcaKQDw==
+Date: Tue, 3 Nov 2026 17:26:21 +0100
+From: Christian Brauner <brauner@kernel.org>
+To: Chuck Lever <cel@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, 
+	Linus Torvalds <torvalds@linux-foundation.org>, Jann Horn <jannh@google.com>, Josef Bacik <josef@toxicpanda.com>, 
+	Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
+	Eric Dumazet <edumazet@kernel.org>, Thomas Gleixner <tglx@kernel.org>, 
+	Alexander Viro <viro@zeniv.linux.org.uk>, Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, 
+	Greg Kroah-Hartman <gregkh@suse.de>, Joel Granados <joel.granados@kernel.org>, 
+	Kees Cook <kees@kernel.org>, Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, 
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, linux-acpi@vger.kernel.org, 
+	linux-kselftest@vger.kernel.org, linux-s390@vger.kernel.org, 
+	"linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>, linux-um@lists.infradead.org, linux-wireless@vger.kernel.org, 
+	Linuxppc Dev <linuxppc-dev@lists.ozlabs.org>, netdev@vger.kernel.org, ntfs3@lists.linux.dev, 
+	platform-driver-x86@vger.kernel.org, coreteam@netfilter.org, kexec@lists.infradead.org, 
+	linux-pci@vger.kernel.org, linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org, 
+	dri-devel@lists.freedesktop.org, ibm-acpi-devel@lists.sourceforge.net, 
+	jfs-discussion@lists.sourceforge.net, linux-alpha@vger.kernel.org, 
+	linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org, linux-fbdev@vger.kernel.org, 
+	linux-hwmon@vger.kernel.org, linux-mm@kvack.org, linux-sh@vger.kernel.org, 
+	linux-usb@vger.kernel.org, samba-technical@lists.samba.org, sparclinux@vger.kernel.org, 
+	linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org, linux-serial@vger.kernel.org, 
+	linux-atm-general@lists.sourceforge.net, Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, 
+	linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, 
+	linux-debuggers@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH RFC 27/38] sunrpc: make queue_wait a global wait queue
+ again
+Message-ID: <20261103-lufttemperatur-absondern-zweifach-31d272ad55ab@brauner>
+References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
+ <20261102-work-procfs-bugfixes-v1-27-59422ed3e465@kernel.org>
+ <16f91f93-16b4-49b1-b7fa-cec69759c349@app.fastmail.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,30 +79,72 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: A94A4md1mbWN
-Date: Tue, 03 Nov 2026 09:06:26 -0500
-From: "Chuck Lever" <cel@kernel.org>
-To: VeroFess <coderzeng@gmail.com>
-Cc: linux-nfs@vger.kernel.org, jlayton@kernel.org
-Message-Id: <a36427bb-c62a-4b8c-a6fd-4b4901ab7e3e@slotpi15m67>
-In-Reply-To: <20261103013237.1174538-1-coderzeng@gmail.com>
-References: <20261103013237.1174538-1-coderzeng@gmail.com>
-Subject: Re: [PATCH 0/3] NFSD: Apply all export checks when a compound changes exports
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <16f91f93-16b4-49b1-b7fa-cec69759c349@app.fastmail.com>
 
-On Tue, 03 Nov 2026 09:32:34 +0800, VeroFess wrote:
-> When a compound moves the current filehandle into another export,
-> NFSD does not always apply all of that export's checks.
+On Mon, Nov 02, 2026 at 10:12:12AM -0500, Chuck Lever wrote:
+> 
+> 
+> On Mon, Nov 2, 2026, at 9:21 AM, Christian Brauner wrote:
+> > Since commit 552d0e17ea04 ("sunrpc: convert queue_wait from global to
+> > per-cache-detail waitqueue") poll() and epoll queue their waiters for a
+> > channel file on the queue_wait head in struct cache_detail. But the
+> > cache_detail can be freed while its channel file is still open and
+> > waited on.
+> >
+> > The procfs channel files of a network namespace are removed when the
+> > namespace goes away. Removing a procfs file waits for the callers that
+> > are in one of its methods right now and then calls ->release on every
+> > file that is still open (cf. close_pdeo()). The waiters that poll() and
+> > epoll left on the head stay queued until their file is really closed.
+> > So:
+> >
+> >   sunrpc_exit_net()
+> >   -> ip_map_cache_destroy()
+> >      -> cache_unregister_net()
+> >         -> remove_cache_proc_entries()
+> >            -> proc_remove()      // ->release, the waiters stay queued
+> >      -> cache_destroy_net()      // kfree(cd)
+> >
+> > and when poll() returns remove_wait_queue() writes to the freed
+> > cache_detail:
+> >
+> >   BUG: KASAN: slab-use-after-free in _raw_spin_lock_irqsave+0x4b/0xa0
+> >   Read of size 1 at addr ff110001131bb570 by task sunrpc-poll-uaf/242
+> >   Call Trace:
+> >    remove_wait_queue+0x22/0x1c0
+> >    poll_freewait+0xc2/0x230
+> >    do_sys_poll+0x9ba/0xd50
+> >    __x64_sys_poll+0x165/0x470
+> >   Freed by task 12:
+> >    kfree+0x267/0x620
+> >    sunrpc_exit_net+0x34/0x80
+> >    ops_undo_list+0x271/0x8d0
+> >    cleanup_net+0x3f3/0x860
+> >
+> > Closing an epoll instance that watches the file gets there through
+> > ep_unregister_pollwait() instead.
+> >
+> > The channel files of a network namespace belong to the root of its
+> > user namespace and cache_open() doesn't check for a capability. So an
+> > unprivileged user can open the channel file of a namespace of its own
+> > from the outside, poll it and let the namespace die.
+> >
+> > Go back to a single static wait queue that never goes away. A wakeup
+> > for one cache wakes the waiters of all caches again but cache_poll()
+> > reports per cache_detail so that's just a spurious wakeup. procfs
+> > should really own the wait queue of its files like kernfs does but
+> > that's nothing for stable.
+> >
+> > Reported-by: Chris Mason <mason@kernel.org>
+> > Fixes: 552d0e17ea04 ("sunrpc: convert queue_wait from global to 
+> > per-cache-detail waitqueue")
+> > Cc: stable@vger.kernel.org
+> > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+> 
+> Acked-by: Chuck Lever <cel@kernel.org>
 
-Thanks for the report and the patches.
-
-Two comments about the series: first, LOOKUP is a frequent operation,
-so I want to be careful about adding more logic there; second, there
-are better ways to layer the helpers, IMO. I'll run with this, and
-add a Reported-by: VeroFess to each patch before posting here for
-review.
-
-
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+Fwiw, I have a patch series on top of this that makes procfs own the
+waitqueue and then this whole UAF issues goes away structurally and you
+get to elide that global thing here.
