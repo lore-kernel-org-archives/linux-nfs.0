@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793740676;
-	b=hyj2CGNg/EHnneBAhrwMJAx8M/1q8TriOc1CDHRDn6BrMn4bYivNiT/Cx1p7MZlPWdjQ
-	 0f30qauba+QEIw8/udDF+HE3qtxCBA2zphd5sq95hSC1LT6u3CRc6I0HuhUWz4WuIpMDm
-	 RC70D66E2hGIOqrlGgHBYCzr0jVh8k/Er7cHnvwvQxdrwvJpSo4bwR2F/r2OD6K2QuQKs
-	 +RiD90LQ0vHOtRB+dBA5p9BqfVjPCX/8Dh9++hCd4BfAkoaKfZfZKhY6eVCFyIYOytyP1
-	 d+0H432pn1dY9M0c9/hUW3VV+FgsMBfJqVbGSVW2V7BjGQFX9FrEVY2BEt0E7Y59ffA==
+	t=1793740677;
+	b=Oc3fw9hSNEMBeKW/FstmxyZNDoXjlgtwcMrgkS9RQpX/a/ovQAahAWbijb64CtwfmF3x
+	 MDqdyixK58LKmrwFDE1xC6Mys7ZVKAhXSCdVJZUeNJk2aEAu7ocNthi/1ElhFMex1qkI9
+	 Dzzh7CvUBoxi8plZqi9yMGxk2r9l/biOcQwyPkic2wnRfR+hFYEFCmjU9tUP1Py9YH74P
+	 4OYejs+GFcODGspMRuHuaakmaBikG7s7foltmT6LMqSZhKh2N+Fg496k2P4YyWTm1QOD2
+	 aREb6gI5IejeuwC33sl1CAiAYMZvOudZ7KwWoluRBcDnxaWxc1lLzyGhj+r/qVwDc2A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793740676;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793740677;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=XeXrDOc+70voGjQbABG90HUQoTF6Ii93pHEf5zCSnPs=;
-	b=uj/7b9NOWaPUtcVKmwNrrsUw2Dl6Kv9qZxN5KGvyter0MdgUYktxlb8zd40Vo85KQzO3
-	 bC/fCvbCFcUcMLUa16KnPBOq8af/9GI5Ap0wuaPNFKrUm+O6iAXWnEmm2dfnqI2ZGkxEL
-	 gtcbFjX7co0dYaC+j6We/eNuyrwi55ODgtHScie5l300DEDapuyjJmpsy1WQDR9rMPD0e
-	 rP1sCT8FLE9gNrrIPRPEQ9AoNUmUScjYjC+DE61v6NbS1wbcXd7YC3MrvreXShCiaw1B9
-	 B2HQKkdSvNuCOCA2lEPGg1dzajB4jQvPH533uf8OWoFukQ4bach8ZZMUit7BZnj7nbw==
+	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
+	bh=6HFvT67o+TI6VMILL8krBuuNC43u0v42N0ht6ClypRA=;
+	b=FWImY2hr5yoIGcgw2cBhHxx8Zdz1nXdqaYJbM9ZueLgjwlYktbXnR19jHVN9isVg83wo
+	 JY+wMkdWBu7NI+JWA8EqFnh24Ehaq5OtHJX3KhXcR1S7aMbhHgeGUIZVq3EDXKteEQFTs
+	 y1tyD/LSVOY/MgD57M2DcV2Hq7JJLc15ST7vUl3It+bYsdNFFiqSjTQyaLaz1Tm9GoAun
+	 vTONSTVisc4n1UiVE58m9h3zU4OGMrS5HanRhu8cAL0jPO2LNqXx6OQAVgUn09ReLurfc
+	 XRCBNmEy3DDDEkwZUVxZKnE+DW8M3YLurSLiToOu7QXgB6SftcySoL4Lmn3QMh2nmHA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XXFrdsRK;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=R6xv9O18;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0513E606A31B;
-	Tue,  3 Nov 2026 21:17:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 27BF4606A32F;
+	Tue,  3 Nov 2026 21:17:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XXFrdsRK
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 531DE1F000C1;
-	Tue,  3 Nov 2026 21:17:55 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=R6xv9O18
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 84C361F000C1;
+	Tue,  3 Nov 2026 21:17:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793740675;
-	bh=XeXrDOc+70voGjQbABG90HUQoTF6Ii93pHEf5zCSnPs=;
-	h=From:To:Cc:Subject:Date;
-	b=XXFrdsRKSt+h1JHwiQ58mFXZpgsRd5fjML9ABRZ3ZDvlov2nYhH+d9yRcQbYq8Mh1
-	 B0eXvnBz0TGAuvfmLFnB5ubvdu9sVxe0kL4KuIJwRSdC+Qg9BG4GrxqHmjbB7JJR1Z
-	 6fBRlJCtkMWVBGwdomZFzqj0i05MPp2t7Ubi3tgDHtEXP7fa8CdTQIbHRLTEWyzwLH
-	 iZ8iVR1XD7BkVFYgqr3boVCL6pzMKEU3PIM8UNzczi2qiJz6TdAeR3J7RPWe/jZ4DE
-	 /jTxiS5uT5fHqmtSTd3JrAzIfbkqHnPvvbcICJzm/+9uD/KM755SSvo4FU/va6W3tz
-	 raykJvyMoID3Q==
+	s=k20260515; t=1793740676;
+	bh=6HFvT67o+TI6VMILL8krBuuNC43u0v42N0ht6ClypRA=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=R6xv9O189toZnNtMOFLE7eGtRnp6nZKcRayCIILy1wQl8VBsjFzP1XLms8CplwP2l
+	 MLC1vq4UQ0Ls+BesRL7C6QcIuzlM3tSnJz6TSdc0xHnRT+d0LFrfv9hnbSXlET2MGv
+	 Mp8Fbzt9jGqeDWOYVuD5a9gZsDzoTpT1ZKPN1kn31e9M0KaBFMi6Z5UhsbCOK9kyp8
+	 uwKJHuJkzNoWtqUt1d4Dq+2NwJD8vK/yJub2UDLLqbDlblS1jajahTlMVj82lO/nvz
+	 A9M1McdlB56pXOUMRltRAppTRIc1sEuhw6hbd8vqk3tSpLxv0fxAm4PlXikeTPVhFf
+	 rAXX7h22u8yTg==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Matthew Wilcox <willy@infradead.org>,
 	linux-mm@kvack.org,
@@ -53,10 +53,12 @@ Cc: Chuck Lever <cel@kernel.org>,
 	Christoph Hellwig <hch@lst.de>,
 	Jens Axboe <axboe@kernel.dk>,
 	Jonathan Corbet <corbet@lwn.net>
-Subject: [PATCH v10 0/7] mm, iomap, NFSD: stop uncached writes reading back shared pages
-Date: Tue,  3 Nov 2026 16:17:47 -0500
-Message-ID: <20261103211754.35352-1-snitzer@kernel.org>
+Subject: [PATCH v10 1/7] mm: move clearing the uncached flag of a found folio into a helper
+Date: Tue,  3 Nov 2026 16:17:48 -0500
+Message-ID: <20261103211754.35352-2-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
+In-Reply-To: <20261103211754.35352-1-snitzer@kernel.org>
+References: <20261103211754.35352-1-snitzer@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -68,99 +70,67 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Hi,
+Move the code in __filemap_get_folio_mpol() that clears PG_dropbehind
+on a folio found by a cached lookup, and takes the folio off
+WB_DONTCACHE_DIRTY, into filemap_clear_dropbehind().  No functional
+change.  The next patch changes the helper.
 
-An uncached (RWF_DONTCACHE) buffered write drops each folio it writes
-once the folio is written back.  A folio that the write covers only
-partly is shared with the neighbouring write.  If it is dropped before
-the neighbour writes its part, the neighbour reads it back from disk
-first.  32 threads writing interleaved records to one XFS file, 4 KiB
-pages, before and after 5/7:
+Signed-off-by: Mike Snitzer <snitzer@kernel.org>
+---
+ mm/filemap.c | 33 ++++++++++++++++++++-------------
+ 1 file changed, 20 insertions(+), 13 deletions(-)
 
-  record  pwritev2() flags          4 KiB device       MiB/s
-  bytes                             reads per write
-                                    before   after     before  after
-  47008   RWF_DONTCACHE             0.97     0.0005    831     2281
-  47008   RWF_DONTCACHE|RWF_DSYNC   0.99     0.0005    601     1227
-  6000    RWF_DONTCACHE             0.97     0.0001    121      488
-  6000    RWF_DONTCACHE|RWF_DSYNC   0.99     0.0002     90      206
-
-The test program and script: https://lore.kernel.org/linux-nfs/atqJBS8MlYfeUU-t@kernel.org/
-
-- 1/7 moves code into a helper, with no functional change.
-- 2/7 fixes 88d6f128d06d ("mm: track DONTCACHE dirty pages per
-  bdi_writeback"), in v7.3: WB_DONTCACHE_DIRTY could drift.
-- 3/7 reports WB_DONTCACHE_DIRTY in the bdi debugfs stats.
-- 4/7 adds folio_mark_dropbehind() for a folio that is already dirty.
-- 5/7 keeps a partly covered folio until the write that completes it.
-- 6/7 lets a writer that syncs its own write complete those folios
-  itself, after the sync.
-- 7/7 makes NFSD do that for the misaligned ends of a direct-mode WRITE.
-
-Merging: Chuck suggested taking the series through the mm tree.  1/7 to
-6/7 apply cleanly to each of these mm branches:
-
-  mm-unstable  0ea6dc8c4a21 ("fs/proc/task_mmu: fix lost maps entries above 2^63")
-  mm-new       74d73ffcffe0 ("riscv: mm: fix concurrency in mark_new_valid_map()")
-  mm-stable    6628e7d4c6b2 ("Linux 7.4-rc1")
-
-7/7 needs the NFSD direct-mode changes that are in cel/nfsd-testing.
-The whole series applies to cel/nfsd-testing at 693afd3ce9ae ("NFSD:
-Defer the PUTFH export security flavor check"), where each patch builds
-with W=1 with no warnings.  So 7/7 could follow in the nfsd tree once
-the mm part is merged.
-
-Changes since v9, from Christoph's review:
-- v9 1/6 is now two patches: 1/7 only moves the code, and 2/7 changes
-  it.
-- Every commit message is rewritten to state the problem, the fix and
-  the result, without the earlier detail.
-- The long code comments are shorter.
-- Rebased on the current cel/nfsd-testing, which now has b16607436d31
-  ("NFSD: cut a misaligned direct-mode WRITE at folio boundaries").
-- Jeff's Reviewed-by of v9 is carried on every patch but 1/7, which is
-  new, because the code changed only in comments and in the split of v9
-  1/6.
-
-The code is the same as in v9 apart from the comments, so the v9
-results hold.  Patches 2, 4, 5, 6 and 7 carry notes below the ---
-line: questions from earlier reviews, and the code that answers each.
-
-v9: https://lore.kernel.org/linux-nfs/20261024221152.6965-1-snitzer@kernel.org/
-v8: https://lore.kernel.org/linux-nfs/20261023024548.71123-1-snitzer@kernel.org/
-v7: https://lore.kernel.org/linux-nfs/20261020220346.28020-1-snitzer@kernel.org/
-v6: https://lore.kernel.org/linux-nfs/atbfEbgMU6UGkn2X@kernel.org/
-v5: https://lore.kernel.org/linux-nfs/20261019150725.1507-1-snitzer@kernel.org/
-v4: https://lore.kernel.org/linux-nfs/20261015233309.42999-1-snitzer@kernel.org/
-v3: https://lore.kernel.org/linux-nfs/20261001045502.48381-1-snitzer@kernel.org/
-v2: https://lore.kernel.org/linux-nfs/20260929231329.22018-1-snitzer@kernel.org/
-v1: https://lore.kernel.org/linux-nfs/20260929173423.16149-1-snitzer@kernel.org/
-
-Thanks,
-Mike
-
-Mike Snitzer (7):
-  mm: move clearing the uncached flag of a found folio into a helper
-  mm: take a folio off WB_DONTCACHE_DIRTY only if it was counted there
-  mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats
-  mm: add folio_mark_dropbehind() to mark a folio dropbehind and account it
-  mm, iomap: keep a partly covered page until an uncached write completes it
-  mm, iomap: let an uncached writer complete its shared pages itself
-  NFSD: drop a shared boundary page only once both WRITEs have written it
-
- .../filesystems/nfs/nfsd-io-modes.rst         |  17 ++
- fs/iomap/buffered-io.c                        |  30 ++-
- fs/iomap/trace.h                              |   3 +-
- fs/nfsd/vfs.c                                 | 106 ++++++++-
- include/linux/fs.h                            |   5 +-
- include/linux/iomap.h                         |   1 +
- include/linux/pagemap.h                       |  11 +
- mm/backing-dev.c                              |   6 +
- mm/filemap.c                                  | 208 ++++++++++++++++--
- 9 files changed, 356 insertions(+), 31 deletions(-)
-
-
-base-commit: 693afd3ce9ae5cddb7225ec87975e6ef1443e502
+diff --git a/mm/filemap.c b/mm/filemap.c
+index b74bc1e5015c6..c75f49563b74b 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1945,6 +1945,24 @@ void *filemap_get_entry(struct address_space *mapping, pgoff_t index)
+ 	return folio;
+ }
+ 
++/* Clear the uncached flag of a folio that a cached lookup found. */
++static void filemap_clear_dropbehind(struct address_space *mapping,
++				     struct folio *folio)
++{
++	if (!folio_test_clear_dropbehind(folio))
++		return;
++	if (folio_test_dirty(folio) && mapping_can_writeback(mapping)) {
++		struct inode *inode = mapping->host;
++		struct bdi_writeback *wb;
++		struct wb_lock_cookie cookie = {};
++		long nr = folio_nr_pages(folio);
++
++		wb = unlocked_inode_to_wb_begin(inode, &cookie);
++		wb_stat_mod(wb, WB_DONTCACHE_DIRTY, -nr);
++		unlocked_inode_to_wb_end(inode, &cookie);
++	}
++}
++
+ /**
+  * __filemap_get_folio_mpol - Find and get a reference to a folio.
+  * @mapping: The address_space to search.
+@@ -2076,19 +2094,8 @@ struct folio *__filemap_get_folio_mpol(struct address_space *mapping,
+ 	if (!folio)
+ 		return ERR_PTR(-ENOENT);
+ 	/* not an uncached lookup, clear uncached if set */
+-	if (!(fgp_flags & FGP_DONTCACHE) && folio_test_clear_dropbehind(folio)) {
+-		if (folio_test_dirty(folio) &&
+-		    mapping_can_writeback(mapping)) {
+-			struct inode *inode = mapping->host;
+-			struct bdi_writeback *wb;
+-			struct wb_lock_cookie cookie = {};
+-			long nr = folio_nr_pages(folio);
+-
+-			wb = unlocked_inode_to_wb_begin(inode, &cookie);
+-			wb_stat_mod(wb, WB_DONTCACHE_DIRTY, -nr);
+-			unlocked_inode_to_wb_end(inode, &cookie);
+-		}
+-	}
++	if (!(fgp_flags & FGP_DONTCACHE))
++		filemap_clear_dropbehind(mapping, folio);
+ 	return folio;
+ }
+ EXPORT_SYMBOL(__filemap_get_folio_mpol);
 -- 
 2.52.0
 
