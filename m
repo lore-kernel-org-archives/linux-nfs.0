@@ -1,94 +1,61 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.180
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793729660;
-	b=x9xmfFj+nHXR9fLtRrFRAe3AHodySLCDvqo0/KCKFhZNSDDx3vtR1o0rHtJ0T+zIViC+
-	 I1YFboFm6MzExYg/dFu+uFXimXyx5P4acSCZsPQg0WvMb+efJzDOprtO2BaWUGW8s58Zz
-	 OqrXepef+Dysu/ZOTsB2Ug6IZSINwqbKNmv8tPUzk4kMj9hWB8an0H9EtfIRjf/G7iAU/
-	 rMoPRTDvx39yLg4hmuCRD2Vq2vFW5OXg7282BDVWGqOM7uLIBc8m5BIZgEl8sYjij0gwN
-	 NKWn+t4Jc7uT8gbS37XGB0yaqXSU8uvrmC1ZgOps8OK7v+kblFw0GjcsmwWfWrmIryA==
+	t=1793730323;
+	b=fMg914BT/asBU3ZC0n7PkKeUDiazOG9RCJRHpmUqaNUjw2inp7y4UNB2MKBKtXymZw8p
+	 IcIvlcWbNEaFPkoqgXslGd6yC2cFvka/vLCuXqgWjCEXa+vpzX7j9uN+5XR44fNpJQbsr
+	 DojFj3YCZb5m2p699GGBZ3VLe3p0F5OV5i/XFndiCuAbCFWMIVpAeHZBiYKoALXhlwC+w
+	 +SATxBPtYJCLh0RpQRrMr/ycZnyskwyF9Pn4V+9iORXzPSxOqudvT/0GqyYZKetuvY4bx
+	 VUNqyPdmsqGbdobuqyqgQfDhfuvYjYTtujyp2C2PUkn8EXLxqsUl0TKUfBxdiDVBG4Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793729660;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:To:Cc:Subject:Date:Message-Id:X-Mailer:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=OqWiK66+ITYgEweXXpu9oPRXdnmQupnf0R3lUGvBlJc=;
-	b=zVbyQNjTtwSYGxeN4cCDpcET8ck5LnF4/AT/HaL27HUtDKK8Qf6CSFSAaoxJKU0rdj8c
-	 /bND4G/f23aLIO63Pwfo0ClCRR+ZbWKRLls4/8QLh6jVnKzS5cQbCtz/3t2+CPzmsjiwV
-	 mbuRYykJQnvNjrDgViYUnhOVtljpdDqfr9pf1p/Yo06IherXu3/rMCvfbCB7lgl1EMfVD
-	 xZjHMNZLARhFJAGD3DONmEVgj1Ct7ulkRQeToRswOdKpL4kP7mmRvJcdCMZ+ftqnG/C7I
-	 pQhXjfheJwErNj+5hma0Tbrt+JgXj+Dv+f46BWRbW4rupMCCMRNMDh3YRaWtTEfqjpA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793730323;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=Ar8emD3X5W7roqEpkOTWnlmegs5JH/dC0liFSCJECJQ=;
+	b=TFLKImSn2PpildHIcezRUj3wdijIsNbq6mGVhcrxfbh9KGv59I5p3oyuOIW00jh5KFYe
+	 TLnQtD+9mKFSX53omJ4qYXSd5dCYJx1QejvOj4Qq3wREhZZPiXe80OoZVwFzFeKiMk1qw
+	 o1kT+JUoAN6fk2LFi9X6hzOtk8ISp1PowxAPLA2pa8Pq6CSrnvWbIl1i4ZONoWokhZHev
+	 FkkKvQ0pgr8bEK23fhuH6U7+YHV94a9WYt8F3qfXwFKfal3QgZ7adhLk9d+H8rMIvxOjk
+	 MD0tVZ+4bbYei+Ydr6wu++glt+qcqdYH/nWpYgWAxnQd/nJ5jGibneF6eidR0d6AdAA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b="bNRyP3U/";
-	arc=none smtp.remote-ip=74.125.82.180
-Received: from mail-dy1-f180.google.com (mail-dy1-f180.google.com [74.125.82.180])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KGMD3+7C;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5AE1D606A326
-	for <linux-nfs@vger.kernel.org>; Tue,  3 Nov 2026 18:14:20 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 5AE1D606A326
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7F9BD606A31B;
+	Tue,  3 Nov 2026 18:25:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=bNRyP3U/
-Received: by mail-dy1-f180.google.com with SMTP id 5a478bee46e88-36bd3dd31a6so108636eec.2
-        for <linux-nfs@vger.kernel.org>; Tue, 03 Nov 2026 10:14:20 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1793729659; x=1794334459; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=OqWiK66+ITYgEweXXpu9oPRXdnmQupnf0R3lUGvBlJc=;
-        b=bNRyP3U/CnE4DU3IS4KQPH9SCFHqw3ogyoj/xzEhUsdCCMtQdFDUiHslJnzgezPCnA
-         Jbk0hcOozBvYsPlgQaPaBHQZ0Av4UIZt0mJTnvS++/ZUxjCSrxLCU2ZG+XS0FxnCRbiE
-         vDw/anv23miCdy+FHc8LMez/AC0wKMWMxPEgabI7BfaDFNqiS7DKwacy/eJXwEn7+jeR
-         rtf9bxr6Y+DBFVfhhM0XTtcV42080oi/35G9AiLnopCLVkcYxVgqq6U3cbJ3xOYX0tQ8
-         svjgr7Bhr88FLMfTNxq/naf2qgerU73ObSVko39M6LoSzEljKWjdicPHhslBERS1i6V5
-         njQw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793729659; x=1794334459;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=OqWiK66+ITYgEweXXpu9oPRXdnmQupnf0R3lUGvBlJc=;
-        b=c3oWQDgUrPh/QPcfg5nISjDW8J+X2zAA7WOTNg3XFRSI1DvBHhhtHyFGPtaI2mz5x/
-         LJCl0cz1dhXjSCD7nwKqdCXxq9dPqQVFJWMaPu2k4k5Iom8sRqNu1OAIq86gUOYXM5Jc
-         7ssLr0ob+NX6EltDUYt2V9SCI63Do+QnCoPjJZF2rMQMF5a5qa7H8W3jJcyw2FM5cFSc
-         E8OuFiWoewMaWfYavthkvRIfOW4stEanl5muhFkT18Vj9OmbJAUd5DQC0/+ECMynyImL
-         x2EAlOGIW0XTdgVxZ/7G1opJ63w8WWJMNDqjd64ImuXRUgECWk03KJD/cMRbA5GokjkF
-         VhJA==
-X-Forwarded-Encrypted: i=1; AKwUvByxeeFvwpbC1UnCC1hVGWdTCzqPpJsbgh2x7u81q1azCMeghQasoR31hhU5HZ7KF+CIUhBhDWsWKmM=@vger.kernel.org
-X-Gm-Message-State: APuU4Z+RH4yG9QlqK1JsBShvxIocF7NWSKf8BNZDV35Ut4HkTH1X+bFd
-	wT1OJh6u64C7YYbEwtBZV+BGa6PcmckR/gm0cE/BfpaegIKJrvXBtHsn
-X-Gm-Gg: AYBFou2wpEQzEcp4i8yeeEoxeoE0Km6yLMZRqupK1Ubgdh7ua/42YX7fpbCK1uvGYf3
-	2dC09wUGDkfQoignvPQeOq4W0cMPUZGgmwdks4VO45LCcQVgdKbgi82Uj+luW4QzAM1KFjpfrkx
-	2bc2AAFr6jkju29yIa45ylLnkiCYX+fHlTgcHKK1A4PxRBBCqR7ElQuptyXinBA9c9tY157EnBk
-	Gy+5OYRwxEzLXRzR5+hmE0+tUvzG9eYLsfZIu//J6rCx7IrsXoPTUgOne+MH5/yQV6DiHG++8jH
-	DLLcmrDUgDZAPeE4VKsSkdrJyJrYnJEuoASKeo9E/bD/s3u4Yz56KLn0h9XnSrxlQaK9w0Maqep
-	YuroHq+l6Grx/uZu7loVDrXwD6xAHw335udPHN8NlSB6mknUEIoOrwxc1jDFafgjrMX2kzIURkl
-	VuitDbUH09D6yNIeIgZ2QZcW4LHpRvIoIz3Kr+k9C2/OX6j3LwicCBDhhm3sroaZAxlNskjGh4O
-	R+90xw7YFMHXMyDMC3QkYEKGfgi7dXi+CBwjHQB/YBFsKRe8zQjL6qM2sgct3wtRjdrO/rZbV3O
-	1FdJrNqTT44UBx8XntEqIOtS8vY9x8lWTxaTizVhwA==
-X-Received: by 2002:a05:7022:eb46:10b0:14b:edb2:c3bc with SMTP id a92af1059eb24-1ac4fd01362mr32675227c88.0.1793729659320;
-        Tue, 03 Nov 2026 10:14:19 -0800 (PST)
-Received: from CRASHEDROM.localdomain ([142.249.36.161])
-        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-36a428af1dfsm51929768eec.7.2026.11.03.10.14.16
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 03 Nov 2026 10:14:18 -0800 (PST)
-From: Chengyu Liu <lui2012qwq@gmail.com>
-To: trondmy@kernel.org,
-	anna@kernel.org
-Cc: cel@kernel.org,
-	jlayton@kernel.org,
-	linux-nfs@vger.kernel.org,
-	Chengyu Liu <lui2012qwq@gmail.com>,
-	stable@vger.kernel.org
-Subject: [PATCH] nfs_common: release decoded ACL on nfsacl_decode() error
-Date: Wed,  4 Nov 2026 02:14:10 +0800
-Message-Id: <20261103181410.1601083-1-lui2012qwq@gmail.com>
-X-Mailer: git-send-email 2.25.1
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KGMD3+7C
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2A5FC1F00919;
+	Tue,  3 Nov 2026 18:25:23 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793730323;
+	bh=Ar8emD3X5W7roqEpkOTWnlmegs5JH/dC0liFSCJECJQ=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=KGMD3+7CdxX59NPHv2j6CKQynclGhHXBE4b2NPPVYth0TxFavAsf2Z1gt/FnM2TOT
+	 0pN12WzFLknff4bqCy3kR9qm0laDLWVfFUFkjPyRfmILALQ7U/tZVJY6ChShw/XQYU
+	 VzjXphTrdMpcoNDmFBsSQzxnB2CWabqw8wbdf+QERbN6R9ETj08HOgAbyZgsVXZyTS
+	 M9U0agdaYGvkEnd0lsjjfG3Zp40yL52eJEpfOYRn2wyhrc+q8qrh/kdRxmbJebGS5x
+	 uRkNwSvnoicqQzMz8W94RiItUZUbhD6IX5Lwwj369Z9Zav4KitEKENQ5stTovVj9tM
+	 kXiNU6JZfFQJQ==
+Date: Tue, 3 Nov 2026 13:25:22 -0500
+From: Mike Snitzer <snitzer@kernel.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Matthew Wilcox <willy@infradead.org>, linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org, Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	Jens Axboe <axboe@kernel.dk>, Jonathan Corbet <corbet@lwn.net>,
+	Jonathan Flynn <jonathan.flynn@hammerspace.com>
+Subject: Re: [PATCH v9 6/6] NFSD: drop a shared boundary page only once both
+ WRITEs have written it
+Message-ID: <auonEkQ2Td15c58L@kernel.org>
+References: <20261024221152.6965-1-snitzer@kernel.org>
+ <20261024221152.6965-7-snitzer@kernel.org>
+ <20261103105134.GC7296@lst.de>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -98,48 +65,17 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261103105134.GC7296@lst.de>
 
-nfsacl_decode() is used by the NFSv3 client to decode GETACL replies.
-xdr_nfsace_decode() allocates desc->acl with posix_acl_alloc() before
-validating the entry contents, and the out: path of xdr_xcode_array2()
-only frees its temporary element buffer.  If decoding fails partway
-(e.g. an entry with an invalid id), nfsacl_decode() returns the error
-without releasing nfsacl_desc.acl, leaking an up-to-
-NFS_ACL_MAX_ENTRIES acl (about 8KB, a kmalloc-16K slot) per failed
-reply.
+On Tue, Nov 03, 2026 at 11:51:34AM +0100, Christoph Hellwig wrote:
+> FYI, this doesn't apply to mainline.  Together with the complete
+> garbage commit logs this doesn't really leave much to review
+> unfortunately.
 
-A malicious or compromised NFSv3 server can repeat this for every
-client GETACL (getfacl, getxattr system.posix_acl_access - also issued
-periodically by backup/scanner agents), slowly leaking client kernel
-memory.
+From the cover-letter:
 
-Release the acl on the error path; posix_acl_release() is NULL-safe.
-
-Found by static analysis.
-
-Cc: stable@vger.kernel.org
-Signed-off-by: Chengyu Liu <lui2012qwq@gmail.com>
----
- fs/nfs_common/nfsacl.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs_common/nfsacl.c b/fs/nfs_common/nfsacl.c
-index e2eaac14fd..e7ad47e2ca 100644
---- a/fs/nfs_common/nfsacl.c
-+++ b/fs/nfs_common/nfsacl.c
-@@ -353,8 +353,10 @@ int nfsacl_decode(struct xdr_buf *buf, unsigned int base, unsigned int *aclcnt,
- 		return -EINVAL;
- 	nfsacl_desc.desc.array_maxlen = entries;
- 	err = xdr_decode_array2(buf, base + 4, &nfsacl_desc.desc);
--	if (err)
-+	if (err) {
-+		posix_acl_release(nfsacl_desc.acl);
- 		return err;
-+	}
- 	if (pacl) {
- 		if (entries != nfsacl_desc.desc.array_len ||
- 		    posix_acl_from_nfsacl(nfsacl_desc.acl) != 0) {
--- 
-2.25.1
-
+"This series applies on cel/nfsd-testing at 6d13b7f74eec ("NFSD: Map
+every NFS_ACLv2 reply status into aclstat2")" -- that SHA1 is stale
+since Chuck rebased on Sunday but: baseline is cel/nfsd-testing
