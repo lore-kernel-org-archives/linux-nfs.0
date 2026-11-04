@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793820802;
-	b=PJiN1N3DzQ4R18Ayg28gmz10APdr2QBLtlVfe9AcV98bOaGs5/WeqINRpGyPKHatXabc
-	 jgn/oE0EGFiBOwzV3yBZFxrhGOGwMxscbR8+60rfB0hzPE2aqKerfjTcK3WI7PHIclatu
-	 2NXwVE914yecJY42e2Ndj5z/gYn85lq7B/4P0aNn8+J9KRAQfX8neO5kfRzkxaQ2yCKKm
-	 +lDQiR0CTgvJblbRFuV+fOYIGkwwU/jtC3gAH3vvKMlccF9C+gQ8ls5tl8zNbLOzHKgPT
-	 Q/JzBh9XVUtIdfk41/6M2Jk6+i9dUbK+2tt7F5E762FjASvemZUjHK7iCK+ss2ET6Kw==
+	t=1793820831;
+	b=Wky6XSZwrR0FGTii9iNym2V6Erwjpbw+lUIKUcmaVLSnyzQCmfWzF2Q7hkhY8RvPZn9Z
+	 rQTSOZxGyCndpsdvLl4HX50zwmWjXHCVufF0XaapNG3hug0Jrww+U2g/aKWUx+dWPUItC
+	 WBZyuokIDOqQay8GrNzoLyo3B+n+4AruHEoMDemNO6QBowpSeU9gd8yqhi+xz48EkntCO
+	 6Y3MoIlW7kVvfYAGnvlthSINHM9gzf5mHyzlf5CQ+Nh3LPGTJYwc/0rvGUgsZws5Fr7YZ
+	 UC3vgOmOLUw5x8MaexQ2LR9Ut+6nHdUr0HTtRvqzcpqx5VWlvTYzRYFtR1Qx4yg5aIg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793820802;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793820831;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=m5fnOjZPCdCthpmqWOs3L34lGoL1k3Cz80cer2f5luU=;
-	b=Etp2bF5AEcJdEy3Xtv+darGhdOgkfFygqSNm9pBwmxKwF7JUqgv3WDSKZ+x6EcD0kPLq
-	 t0j+LaiTkznOQ+K09ahzFbS77lo5y2yQYUYvXUMf4SOoi4flxIOaHOSKsaqRho2Itja78
-	 p7hKXhSUqT43JO30ciMLBd3XQcJIlADLfrtzxlDUKFSi1UD3E2wVzXhbR9IdB0IIaCOxH
-	 YSN+VqS+sNw1TDwXdOYqwxF6VMtlaokDDRNTPL87hnpWggm3gkErde9NFKcpPVSrf8Lhe
-	 LAt4A820OQuCbcWMLVyexNY5rMhqD/WB3aDWUS5ujxXf6Z9DUs3FCD+iu+rVE14aTkw==
+	bh=3MZo+TaiYyYx3tHsERSPy6nplvi8yhZWb/0lCcSs1KY=;
+	b=byocZKdTRi0J3mijnwSAt1xgW+WDGvyZt/BTcsjfhH7qu2sIb4kKzjEpiL1SdiyrMm9L
+	 RZ/GQ0FzUAnqLI2LqGnPCo52ZmsCJOLlQnZisYsq/3m4CH1ROzds30FaAtwry6WQpExLd
+	 ODhhDUUeDeCdnJaodFW7+KPsIDZ948R20qUcgAUSlE3Hn7AdIUfu1GlaAq00w+rCh0KlH
+	 Pi5pJYC2+11rvjkQyL2G5WxLV7N+i2Yf2lnaAT/A85EdeR1NISKgNH9xZ8CFxLQqhKqQL
+	 j4bDe3w2L/W4OJNEp4tdOIjs//tURpr3lzoDtPzbXJ36FYwnbr9VfuUvsmZg8F6hzZQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LQh9dOUg;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fK9Y4ENF;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0DA20606D4EF;
-	Wed,  4 Nov 2026 19:33:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DDE3B606C930;
+	Wed,  4 Nov 2026 19:33:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LQh9dOUg
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9D9FA1F00A15;
-	Wed,  4 Nov 2026 19:33:09 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fK9Y4ENF
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BCEC01F00A1A;
+	Wed,  4 Nov 2026 19:33:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793820801;
-	bh=m5fnOjZPCdCthpmqWOs3L34lGoL1k3Cz80cer2f5luU=;
+	s=k20260515; t=1793820830;
+	bh=3MZo+TaiYyYx3tHsERSPy6nplvi8yhZWb/0lCcSs1KY=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=LQh9dOUguZczFeerwVOxndMwGa9cSfoH+fhP8/3Rxa3DPH1G+HM/+za7WadZQAZ/D
-	 fq4TopM7uKGJZXNziRVvG3QJUkhqI5gLMgvkcBqdsoumv4l8nfzfDshfSBVOxZxBHm
-	 d3c7LWZdB2HKGoSI+d7ZlkEpANj3csWagleMS01d/UP0PQ1iNhncl7yqrSrJLx+/3X
-	 K5bN2l+amW6lxaeZ7FtF3rJYpe6HpiLOriOGELF4SvKo0lvOUsGtT4wc+u8RElFRu9
-	 B5D2UX6yl1GFTMAVHUTcM0UCtPI2Y3OIiqUgVz2B95tPby/8tvIjbVoFCZGBoCwbdo
-	 cioCcciQ8nukA==
+	b=fK9Y4ENFCiPjlRhFU8wV0NlIbZT/hojlER6vttE1d9qa9+Jv04mjKNT/AdVjfLsvE
+	 pnHGuiqlLIith7DXpu2rldR7OZ4JXxOrF3FmGhZ+hcAyvIfnXydcAkEbt0rsRswpWF
+	 rMaHm/bA7eZaczpsr7CrwIIykA6o23RG46MLlTwRYMZdak300MMJqwwACovyeq+tKT
+	 2KyHlejSNd+u0EofNWzRGgxy+TfjN9hTb+ITqwbkSil+9AMAkMiwkrDOmrdHy0cXp2
+	 PK79oEUo50XZ3m9hxyac2iJx7pLZU9KofoEu1kaGXYc6KIzGZy/s8yLmMVee57H8VV
+	 DqTwfEsFuyXtA==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 16/23] proc: let procfs copy out reads that don't go through seq_file
-Date: Wed,  4 Nov 2026 20:33:07 +0100
-Message-ID: <20261104-work-procfs-core-v2-16-76ace653a773@kernel.org>
+Subject: [PATCH RESEND v2 18/23] proc: let procfs copy ioctl arguments in and out
+Date: Wed,  4 Nov 2026 20:33:36 +0100
+Message-ID: <20261104-work-procfs-core-v2-18-76ace653a773@kernel.org>
 In-Reply-To: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
 References: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,226 +116,239 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7836; i=brauner@kernel.org; h=from:subject:message-id; bh=mbWG9ixnvuYkETLZWF9m7UYU/9GwiQQdqKoWR6bF7rs=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bm+ZfOxA288E569R1y9t+CIcLDHr2pknf3oS29uN4 nNU1oV1dZSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEzEhJ+R4dbcljMZoU9+7toU vvWYhMZ39lupMcF71bRLvu9YvfX2eQuG/0WCu2Y9ft04V/et0hmXjW48qu/X3j1hMT8kT+xU7OR oLi4A
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8290; i=brauner@kernel.org; h=from:subject:message-id; bh=UJky7Q6NDXKrSBAbJxpUbP7z2/GQ36tDnB+V6uTqjs0=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bm8Lmszu7LBi/Z/Xwars1f7rHT980A4ojrtZa3O2N KVHpC+ro5SFQYyLQVZMkcWh3SRcbjlPxWajTA2YOaxMIEMYuDgFYCLFCxn+CrjcND2wQ6JooomG RMbSs1fLmHq7nM8uW2k3/Y2a8WUjBoZ/9hq8GtYe398fWWuQOuvVBq3ZJ7dbr55R7fgxIG7vlwl GnAA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-proc_reg_read() and proc_reg_read_iter() pin the entry and call
-->proc_read() or ->proc_read_iter() which copy to userspace
-themselves. Like for seq_file reads and for writes, a reader can make
-a page fault in that copy take as long as it wants and
-remove_proc_entry() waits for it.
+proc_reg_unlocked_ioctl() pins the entry and calls ->proc_ioctl() which
+copies its argument from and to userspace itself. Like for reads and
+writes, an ioctl can make a page fault in those copies take as long as
+it wants and remove_proc_entry() waits for it.
 
-So do what kernfs does for these reads as well. An entry that implements
-->proc_read_buf() fills a kernel buffer of at most ->proc_read_size
-bytes, a page if the entry doesn't care, and procfs copies it to
-userspace after unpinning the entry. The entry moves the position like
-it did for ->proc_read() but that only sticks if the copy to userspace
-worked, like in kernfs_file_read_iter(). If the copy fails halfway the
-read fails with -EFAULT and the position stays, where
-simple_read_from_buffer() returned what it had copied until then.
-procfs remembers ->proc_read_size in the entry like ->proc_write_size.
+The command number doesn't reliably say what an ioctl copies. Some of
+the procfs ones aren't encoded at all, like the PCI ones or esas2r's,
+and i8k's encode the wrong sizes. So keep a table of the commands, like
+DRM keeps one of its ioctls, and let it say what each command copies.
+An entry that implements ->proc_ioctl_buf() lists its commands in
+->proc_ioctl_args with the number of bytes that go in and that come
+back out. procfs copies the argument in before it pins the entry, calls
+->proc_ioctl_buf() with that kernel copy and copies it back out after
+unpinning the entry if the ioctl succeeded. A command that copies
+neither gets its argument as is, a command that isn't in the table
+fails with -ENOTTY. PROC_IOCTL_IOC() fills in an entry from a command
+that encodes its argument.
 
-Larger reads come up short, like with kernfs. An entry whose readers
-want all of a large file in one read asks for PROC_ENTRY_FULL_READS and
-procfs fills the read in pieces of ->proc_read_size, unpinning the entry
-in between. A piece whose copy fails ends the read with what the pieces
-before it returned. kexec-tools treats any short read of /proc/vmcore
-as fatal for example (cf. [1]).
+Note that, like for writes, procfs copies the argument in before the
+entry's own checks run, permission checks included. So a bad pointer
+fails with -EFAULT where the entry used to say -EPERM first.
 
-These entries are read through ->read_iter() so readv(), splice(), aio,
-the RWF flags, kernel_read() and io_uring work for them like for the
-->proc_read_iter() ones. io_uring's nonblocking attempt gets -EAGAIN
-though, like loop_rw_iter() gave it for ->proc_read() entries. Neither
-the allocation nor the entry can honor IOCB_NOWAIT, and io_uring would
-take a short read of a record file for an unfinished one and glue the
-next record to it. So it retries from a worker like before.
-
-An entry that implements ->proc_read_buf() and also declares a seq_file
-or one of the other read methods fails to register.
+The table lives with the proc_ops, which go away with the entry, so
+procfs pins the entry to look the command up and lets go of it again
+before it copies anything. 32-bit tasks go through the same table with
+their pointer converted by compat_ptr(). An entry that implements
+->proc_ioctl_buf() and still has a ->proc_ioctl() or a
+->proc_compat_ioctl() fails to register, and so does one that lists
+commands without implementing it or implements it without listing any.
 
 No users yet.
-
-[1]: https://git.kernel.org/pub/scm/utils/kernel/kexec/kexec-tools.git/tree/util_lib/elf_info.c
-
-Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/proc/generic.c       |  9 ++++++++
- fs/proc/inode.c         | 60 ++++++++++++++++++++++++++++++++++++++++++++++++-
- fs/proc/internal.h      | 11 +++++++++
- include/linux/proc_fs.h | 16 +++++++++++++
- 4 files changed, 95 insertions(+), 1 deletion(-)
+ fs/proc/generic.c       | 17 +++++++++++++++
+ fs/proc/inode.c         | 58 +++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/proc/internal.h      |  5 +++++
+ include/linux/proc_fs.h | 35 +++++++++++++++++++++++++++++
+ 4 files changed, 115 insertions(+)
 
 diff --git a/fs/proc/generic.c b/fs/proc/generic.c
-index 5e2ed5a04ec9..2d503250de75 100644
+index 2d503250de75..1bad3b068d53 100644
 --- a/fs/proc/generic.c
 +++ b/fs/proc/generic.c
-@@ -474,6 +474,15 @@ static int pde_set_flags(struct proc_dir_entry *pde)
- 		if (proc_ops->proc_flags & PROC_ENTRY_SHORT_WRITES)
- 			pde->flags |= PROC_ENTRY_SHORT_WRITES;
+@@ -483,6 +483,23 @@ static int pde_set_flags(struct proc_dir_entry *pde)
+ 		if (proc_ops->proc_flags & PROC_ENTRY_FULL_READS)
+ 			pde->flags |= PROC_ENTRY_FULL_READS;
  	}
-+	if (proc_ops->proc_read_buf) {
-+		if (WARN_ON_ONCE(pde_is_seq_file(pde) || proc_ops->proc_read ||
-+				 proc_ops->proc_read_iter))
++	if (proc_ops->proc_ioctl_buf) {
++		if (WARN_ON_ONCE(proc_ops->proc_ioctl))
 +			return -EINVAL;
-+		pde->flags |= PROC_ENTRY_proc_read_buf;
-+		pde->read_size = proc_ops->proc_read_size ?: PAGE_SIZE;
-+		if (proc_ops->proc_flags & PROC_ENTRY_FULL_READS)
-+			pde->flags |= PROC_ENTRY_FULL_READS;
++#ifdef CONFIG_COMPAT
++		/* 32-bit tasks go through the table as well */
++		if (WARN_ON_ONCE(proc_ops->proc_compat_ioctl))
++			return -EINVAL;
++#endif
++		/* the table says what procfs copies, see pde_ioctl_arg() */
++		if (WARN_ON_ONCE(!proc_ops->proc_ioctl_args ||
++				 !proc_ops->proc_nr_ioctl_args))
++			return -EINVAL;
++		pde->flags |= PROC_ENTRY_proc_ioctl_buf;
++	} else if (WARN_ON_ONCE(proc_ops->proc_ioctl_args ||
++				proc_ops->proc_nr_ioctl_args)) {
++		return -EINVAL;
 +	}
  	return 0;
  }
  
 diff --git a/fs/proc/inode.c b/fs/proc/inode.c
-index df1caa0f238d..caa47933c233 100644
+index caa47933c233..717cbaad65df 100644
 --- a/fs/proc/inode.c
 +++ b/fs/proc/inode.c
-@@ -23,6 +23,8 @@
- #include <linux/sysctl.h>
- #include <linux/seq_file.h>
- #include <linux/slab.h>
-+#include <linux/sched/signal.h>
-+#include <linux/uio.h>
- #include <linux/mount.h>
- #include <linux/bug.h>
- #include <linux/wait_bit.h>
-@@ -377,11 +379,67 @@ static loff_t proc_reg_llseek(struct file *file, loff_t offset, int whence)
- 	return rv;
+@@ -6,6 +6,7 @@
+  */
+ 
+ #include <linux/cache.h>
++#include <linux/compat.h>
+ #include <linux/time.h>
+ #include <linux/proc_fs.h>
+ #include <linux/kernel.h>
+@@ -548,11 +549,66 @@ static long pde_ioctl(struct proc_dir_entry *pde, struct file *file, unsigned in
+ 	return -ENOTTY;
  }
  
-+/*
-+ * The entry fills a kernel buffer and procfs copies that to userspace after
-+ * unpinning the entry. A reader that faults on its buffer then doesn't hold
-+ * up remove_proc_entry().
-+ */
-+static ssize_t pde_read_buf(struct proc_dir_entry *pde, struct kiocb *iocb,
-+			    struct iov_iter *iter)
++/* the table lives in proc_ops, which goes away with the entry */
++static bool pde_ioctl_arg(struct proc_dir_entry *pde, unsigned int cmd,
++			  struct proc_ioctl_arg *arg)
 +{
-+	struct file *file = iocb->ki_filp;
-+	char *buf __free(kvfree) = NULL;
-+	ssize_t rv, done = 0;
-+	size_t len, count;
-+	loff_t pos;
++	const struct proc_ops *proc_ops = pde->proc_ops;
++	bool found = false;
 +
-+	if (!iov_iter_count(iter))
-+		return 0;
-+	/* neither the allocation nor the entry can honor IOCB_NOWAIT */
-+	if ((iocb->ki_flags & IOCB_NOWAIT) && !(file->f_flags & O_NONBLOCK))
-+		return -EAGAIN;
-+	len = min_t(size_t, iov_iter_count(iter), pde->read_size);
-+	buf = kvmalloc(len, GFP_KERNEL);
-+	if (!buf)
-+		return -ENOMEM;
-+
-+	/* PROC_ENTRY_FULL_READS fills the read in pieces */
-+	do {
-+		count = min_t(size_t, iov_iter_count(iter), len);
-+		pos = iocb->ki_pos;
-+		if (!pde_pin(pde)) {
-+			rv = -EIO;
++	if (!pde_pin(pde))
++		return false;
++	for (unsigned int i = 0; i < proc_ops->proc_nr_ioctl_args; i++) {
++		if (proc_ops->proc_ioctl_args[i].cmd == cmd) {
++			*arg = proc_ops->proc_ioctl_args[i];
++			found = true;
 +			break;
 +		}
-+		rv = pde->proc_ops->proc_read_buf(file, buf, count, &pos);
-+		pde_unpin(pde);
-+		if (rv <= 0)
-+			break;
-+		if (WARN_ON_ONCE(rv > count)) {
-+			rv = -EIO;
-+			break;
-+		}
-+		if (copy_to_iter(buf, rv, iter) != rv) {
-+			rv = -EFAULT;
-+			break;
-+		}
-+		iocb->ki_pos = pos;
-+		done += rv;
-+		if (!pde_has_full_reads(pde) || rv < count)
-+			break;
-+		cond_resched();
-+	} while (iov_iter_count(iter) && !fatal_signal_pending(current));
-+
-+	return done ?: rv;
++	}
++	pde_unpin(pde);
++	return found;
 +}
 +
- static ssize_t proc_reg_read_iter(struct kiocb *iocb, struct iov_iter *iter)
++/*
++ * procfs copies the argument in before it pins the entry and copies it back
++ * out after unpinning it. An ioctl that faults on its argument then doesn't
++ * hold up remove_proc_entry().
++ */
++static long pde_ioctl_buf(struct proc_dir_entry *pde, struct file *file,
++			  unsigned int cmd, void __user *uarg, unsigned long arg)
++{
++	void *buf __free(kvfree) = NULL;
++	struct proc_ioctl_arg a;
++	size_t size;
++	long rv;
++
++	if (!pde_ioctl_arg(pde, cmd, &a))
++		return -ENOTTY;
++	size = max(a.in, a.out);
++	if (size) {
++		buf = kvzalloc(size, GFP_KERNEL);
++		if (!buf)
++			return -ENOMEM;
++		if (a.in && copy_from_user(buf, uarg, a.in))
++			return -EFAULT;
++	}
++
++	if (!pde_pin(pde))
++		return -ENOTTY;
++	rv = pde->proc_ops->proc_ioctl_buf(file, cmd, buf ?: (void *)arg);
++	pde_unpin(pde);
++	if (rv >= 0 && a.out && copy_to_user(uarg, buf, a.out))
++		return -EFAULT;
++	return rv;
++}
++
+ static long proc_reg_unlocked_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
  {
- 	struct proc_dir_entry *pde = PDE(file_inode(iocb->ki_filp));
- 	ssize_t ret;
+ 	struct proc_dir_entry *pde = PDE(file_inode(file));
+ 	long rv;
  
-+	if (pde_has_proc_read_buf(pde))
-+		return pde_read_buf(pde, iocb, iter);
++	if (pde_has_proc_ioctl_buf(pde))
++		return pde_ioctl_buf(pde, file, cmd, (void __user *)arg, arg);
  	if (!pde_pin(pde))
- 		return -EIO;
- 	ret = pde->proc_ops->proc_read_iter(iocb, iter);
-@@ -793,7 +851,7 @@ struct inode *proc_get_inode(struct super_block *sb, struct proc_dir_entry *de)
- 		inode->i_op = de->proc_iops;
- 		if (pde_is_seq_file(de))
- 			inode->i_fop = &proc_seq_file_ops;
--		else if (pde_has_proc_read_iter(de))
-+		else if (pde_has_proc_read_iter(de) || pde_has_proc_read_buf(de))
- 			inode->i_fop = &proc_iter_file_ops;
- 		else
- 			inode->i_fop = &proc_reg_file_ops;
+ 		return -ENOTTY;
+ 	rv = pde_ioctl(pde, file, cmd, arg);
+@@ -574,6 +630,8 @@ static long proc_reg_compat_ioctl(struct file *file, unsigned int cmd, unsigned
+ 	struct proc_dir_entry *pde = PDE(file_inode(file));
+ 	long rv;
+ 
++	if (pde_has_proc_ioctl_buf(pde))
++		return pde_ioctl_buf(pde, file, cmd, compat_ptr(arg), arg);
+ 	if (!pde_pin(pde))
+ 		return -ENOTTY;
+ 	rv = pde_compat_ioctl(pde, file, cmd, arg);
 diff --git a/fs/proc/internal.h b/fs/proc/internal.h
-index 1d36fe4b1af5..b5c78f4f392c 100644
+index b5c78f4f392c..ae0f9779cf1b 100644
 --- a/fs/proc/internal.h
 +++ b/fs/proc/internal.h
-@@ -52,6 +52,7 @@ struct proc_dir_entry {
- 	void *data;
- 	unsigned int state_size;
- 	unsigned int write_size;
-+	unsigned int read_size;
- 	unsigned int low_ino;
- 	nlink_t nlink;
- 	kuid_t uid;
-@@ -120,6 +121,16 @@ static inline bool pde_has_short_writes(const struct proc_dir_entry *pde)
- 	return pde->flags & PROC_ENTRY_SHORT_WRITES;
+@@ -131,6 +131,11 @@ static inline bool pde_has_full_reads(const struct proc_dir_entry *pde)
+ 	return pde->flags & PROC_ENTRY_FULL_READS;
  }
  
-+static inline bool pde_has_proc_read_buf(const struct proc_dir_entry *pde)
++static inline bool pde_has_proc_ioctl_buf(const struct proc_dir_entry *pde)
 +{
-+	return pde->flags & PROC_ENTRY_proc_read_buf;
-+}
-+
-+static inline bool pde_has_full_reads(const struct proc_dir_entry *pde)
-+{
-+	return pde->flags & PROC_ENTRY_FULL_READS;
++	return pde->flags & PROC_ENTRY_proc_ioctl_buf;
 +}
 +
  /* procfs owns the seq_file, see pde_seq_start() */
  static inline bool pde_is_seq_file(const struct proc_dir_entry *pde)
  {
 diff --git a/include/linux/proc_fs.h b/include/linux/proc_fs.h
-index c81c93325044..0f0997898ba3 100644
+index 0f0997898ba3..2ba4e4a39e13 100644
 --- a/include/linux/proc_fs.h
 +++ b/include/linux/proc_fs.h
-@@ -38,6 +38,13 @@ enum {
- 	 * failing with -EINVAL.
+@@ -8,6 +8,7 @@
+ #include <linux/compiler.h>
+ #include <linux/types.h>
+ #include <linux/fs.h>
++#include <linux/ioctl.h>
+ 
+ struct proc_dir_entry;
+ struct seq_file;
+@@ -45,8 +46,29 @@ enum {
+ 	 * coming up short.
  	 */
- 	PROC_ENTRY_SHORT_WRITES		= 1U << 9,
-+	PROC_ENTRY_proc_read_buf	= 1U << 10,
-+
-+	/*
-+	 * Reads larger than ->proc_read_size are filled in pieces instead of
-+	 * coming up short.
-+	 */
-+	PROC_ENTRY_FULL_READS		= 1U << 11,
+ 	PROC_ENTRY_FULL_READS		= 1U << 11,
++	PROC_ENTRY_proc_ioctl_buf	= 1U << 12,
  };
  
++/*
++ * How many bytes of the argument of @cmd procfs copies in before calling
++ * ->proc_ioctl_buf() and copies back out after it. A command that copies
++ * neither gets its argument as is.
++ */
++struct proc_ioctl_arg {
++	unsigned int cmd;
++	unsigned int in;
++	unsigned int out;
++};
++
++#define PROC_IOCTL_ARG(_cmd, _in, _out) \
++	{ .cmd = (_cmd), .in = (_in), .out = (_out) }
++
++/* A command that encodes the size and direction of its argument. */
++#define PROC_IOCTL_IOC(_cmd)						\
++	PROC_IOCTL_ARG(_cmd,						\
++		       (_IOC_DIR(_cmd) & _IOC_WRITE) ? _IOC_SIZE(_cmd) : 0, \
++		       (_IOC_DIR(_cmd) & _IOC_READ) ? _IOC_SIZE(_cmd) : 0)
++
  struct proc_ops {
-@@ -84,6 +91,15 @@ struct proc_ops {
+ 	unsigned int proc_flags;
+ 	int	(*proc_open)(struct inode *, struct file *);
+@@ -100,6 +122,19 @@ struct proc_ops {
  	 */
- 	ssize_t	(*proc_write_buf)(struct file *, char *, size_t, loff_t *);
- 	unsigned int proc_write_size;
+ 	ssize_t	(*proc_read_buf)(struct file *, char *, size_t, loff_t *);
+ 	unsigned int proc_read_size;
 +	/*
-+	 * procfs calls ->proc_read_buf() to fill a kernel buffer of at most
-+	 * ->proc_read_size bytes, PAGE_SIZE if that's 0, and copies it to
-+	 * userspace afterwards. Larger reads come up short unless the entry
-+	 * asks for PROC_ENTRY_FULL_READS. The position the entry moves to only
-+	 * sticks if the copy works.
++	 * procfs looks the command up in ->proc_ioctl_args, copies in what it
++	 * passes before pinning the entry, calls ->proc_ioctl_buf() with that
++	 * copy and copies out what it returns after unpinning the entry.
++	 * Commands that aren't in the table fail with -ENOTTY. 32-bit tasks
++	 * go through the same table. The copy is zeroed and as large as the
++	 * larger of the two sizes, it only goes back out if the ioctl
++	 * succeeded, and a command that copies neither gets its argument as
++	 * is.
 +	 */
-+	ssize_t	(*proc_read_buf)(struct file *, char *, size_t, loff_t *);
-+	unsigned int proc_read_size;
++	long	(*proc_ioctl_buf)(struct file *, unsigned int, void *);
++	const struct proc_ioctl_arg *proc_ioctl_args;
++	unsigned int proc_nr_ioctl_args;
  } __randomize_layout;
  
  /* definitions for hide_pid field */
