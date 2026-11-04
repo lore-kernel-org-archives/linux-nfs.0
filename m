@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793819935;
-	b=x7hvMCOblRB/wJsibVIPH1tsDz+NvqUH3IkuHPhjbScv8Ow4hLCQsAaIS3TWIjen+6fL
-	 CiNGCKipjyyjc3oBjPDtiq8dA0n5cTa0F68kn2CRM+ZbtGL3GoYWkQN5a9qRNGljAPK92
-	 FlAnp4D4DAIrzECe0Y2xRXqjmBD+V+bMDxMpwUkZRMKYFlCfC0jgM0+xkWyqK+6yVw2Ef
-	 Hb15fcpN72+wJIpDWBKM8iE1D8/J8v9fo6MoLhzpyk3dxzM1FD4ZdF6h96Us2aP+e5vmb
-	 MKgb3Ha2taod67DLOZzI9q3dk3eiG26VxKsrwzhn8l+TC4rBIseijhDJRTzHF7TeTuQ==
+	t=1793819950;
+	b=gnM6b721FWOAViWdy38LzFjny4lN3EM1kUn/kZwqtMotMozDOr/d1WwXcM4KsqjOvIy0
+	 dRO7u4qBgbOoLiVpsoRm8YB+fJDHPPwBWJYz3nHD110Mw4rf/sKanJZCFZPKX4ZY50wTK
+	 v2SG5XyfE0ICyf37caFzLkH5XhPEzRemZkp34p0Vgkhw69eYjNya06NPElSOC9iWZQvyT
+	 6VcNh+G7CrNHVrEFhM8/wq8+fr6oxQWbWjZ7nYpqX9QTuT9hJt3Ja9rjLK7cq78wtcthH
+	 UFKbb4pacsPkLzYd0g3AD8qXRx1sIzWdhAM/OWWhp1m0ixZq7NzhKGGEnw+8TtQGg8w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793819935;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793819950;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=88D9snc5Fvfzc1+bIGylCXCzBagXIGxBtzK0BL7vNTc=;
-	b=0CYiC79dKyO/ZFzrjZC+C0LxaENDKfHmODR7IM6Hjb0YCkVTs6tT0HQe6Cv9B4T4jLkd
-	 zHdYxo/OOsYn7o3ABMxbHWiZFGXJA/MgeoIG59E0G42aFWJyxyhYhughNUR/Rw4HjIktt
-	 UpQvEnTKug3E1VDjMzI61IX73iGhbqYYj9ONbA/8mE0+PWyK0EbH0TWkRZRTVazjvzFLx
-	 /XfslsQyPYEiBxClf1OPpLW32Wlc1RjsJDD/XRFjAFmfWqREwuvgXICkX39e7Rhg4kxkh
-	 04i8m5NypuatLsgE74KJwAIEVq+9qLwaKN1W/Zy2edACqtxG9kFLz6keWduETkLvDLA==
+	bh=mdnthwMs9LvqnLJy6kPpeiwqrlhi6ADC7izliWiN2IE=;
+	b=y0DuHJ6Hqh10zF2HxgCOZ29yff9MPETAKUvhzDGYmuZrZ66COCwSFG90roW8M3j2X2HO
+	 6RaPAgJkkTmKzCWsNIqaatPRF4yf1JcPEM0VF/jnIZ3tr7eQotr698uCF3TcQUtPSJCdN
+	 3SeQ+NTNdoCy8OqpHEJRvd9Z+hJrJAuaqak09hZJpfrDNWryUuYwA3irwmolo/jQ5C5l0
+	 iyGQ1klJiLy6TjA839mbqVHIvI3OTPii9PLWLlma7UjgrAPd1A29Fyll6akOaTUMkCk73
+	 5m7ayUy8M+2qP+ZXXwiL3d2UM1i5P6LJHnaFryRLnLdmKZMp1V4WXD7V+18gbdR0tQA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GmEE1dbl;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ijnLltQe;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8A4E3606BA3A;
-	Wed,  4 Nov 2026 19:18:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B8603606D834;
+	Wed,  4 Nov 2026 19:19:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GmEE1dbl
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8BB631F000C1;
-	Wed,  4 Nov 2026 19:18:43 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ijnLltQe
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C86A61F000C1;
+	Wed,  4 Nov 2026 19:18:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793819935;
-	bh=88D9snc5Fvfzc1+bIGylCXCzBagXIGxBtzK0BL7vNTc=;
+	s=k20260515; t=1793819949;
+	bh=mdnthwMs9LvqnLJy6kPpeiwqrlhi6ADC7izliWiN2IE=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=GmEE1dblrL6P3slUDpoeGQBfKRlZceqbttyL3CdBYJ2HAmZ9lajl7o6aomohjTG+O
-	 JTa2xT0UeQwIgbWO0as8ILC2qonsH/MA+HbfcPcLDu6enbEF3xp9x5MarktZI1cLNN
-	 p49gpXsJRwhljLb1NoANyo0ZebStjoK1MQAOZ8SsuOmEWt9/Va7qy18DmNx/CKuVDD
-	 F61rqLrBCLbspjHBFEQrO4v5WSYQC3TxQQVgqakQ7sCvVAsMm5tshbmCStW23Fb73C
-	 HKw2C65QpNc+TsBCBKm/WrFquDZj8ghfTEOupR23/RjXQvAJZnpFNNP1XldO5G4qvo
-	 qTnFbXsGFvmcw==
+	b=ijnLltQe5Qk+CqE+VUlDwwHbbObH+9ltW/RmuNk6+QVTedz2m/LYfiuF9co7AFJwE
+	 sjrkuOfRO38+K7HcQrICBAwdPPqSWw81opUhQAieZFdKhLDYrT6ksUVuCvctpIzPGG
+	 5IfV2bo/AIGZF92z/NIw2/tSYbEzpTKjlj5R/IpCOGOCq9t1qLgWWrxzM1Ldm3iL6v
+	 jl4JL0l0pT78R+g4k6uEp1SAko5fY5xHs148DGpmxVJocVPvD8ORDyvyCDVv0yKLOp
+	 0BGiObxQ1YUEMDTuDs/OR2Xrm+87BYRn1BsklV+azupKzmP8Z1i0K9CmVfX9sZIjIF
+	 wvV04uPKt3MdQ==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 11/51] sparc: led: consume the whole write
-Date: Wed,  4 Nov 2026 20:18:41 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-11-021c84d852e0@kernel.org>
+Subject: [PATCH RESEND v2 12/51] powerpc/rtas: consume the whole write to /proc/powerpc/rtas/progress
+Date: Wed,  4 Nov 2026 20:18:55 +0100
+Message-ID: <20261104-work-procfs-bugfixes-v2-12-021c84d852e0@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,42 +116,42 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1161; i=brauner@kernel.org; h=from:subject:message-id; bh=5p0zMz40BbKdivFQo1NNbyIz4tkvEi3yC5tXL4aXaeU=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bryxTr/f46JN2aT7fqoMIobterOLr517VZK2/eVbF pMTq1cadJSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAExk6Q5GhpeRX3yP6jdm/nBn TDpmVrDk42u3AsOCWcVRi54YHnqrX8zIcGmRdthP9Rql7VIfc5K5Jlq/vCTExLioUWxJ93Lnjfk ujAA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1217; i=brauner@kernel.org; h=from:subject:message-id; bh=uNEn+pHXbIRRMkqtNF6NnFXDW3eMy9Pk3SJ7wJuNwck=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9brzZHzRlctZde+1Go+8eGv7b1+cVSZ7+f//NhYzz+ 8+/DW/t7ChlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZhI5ROG/2mHUo8Ur0zzZ3Z9 kx7D/2mua/jtI8eaYjr1fyTPTo02WcfIcOywWBSj5altb2eddZvFnrJ1ZrTjumSG/rNnerMtg50 vcgMA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-led_proc_write() looks at the first eight bytes of a write and returns
-that many, so a writer that loops until everything is written, stdio
-does, sends the rest as a second command. That one is unknown and
-switches the LED off. Return the whole count, the rest is ignored.
+ppc_rtas_progress_write() shows the first 255 bytes of a write and
+returns that many, so a writer that loops until everything is written
+shows the rest as a second message. Return the whole count, the rest is
+ignored.
 
-Fixes: ee1858d3122d ("[SPARC]: Add sun4m LED driver.")
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- arch/sparc/kernel/led.c | 3 ++-
+ arch/powerpc/kernel/rtas-proc.c | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/arch/sparc/kernel/led.c b/arch/sparc/kernel/led.c
-index 9b53ac1fe533..a1478de9fe5d 100644
---- a/arch/sparc/kernel/led.c
-+++ b/arch/sparc/kernel/led.c
-@@ -68,6 +68,7 @@ static int led_proc_open(struct inode *inode, struct file *file)
- static ssize_t led_proc_write(struct file *file, const char __user *buffer,
- 			      size_t count, loff_t *ppos)
+diff --git a/arch/powerpc/kernel/rtas-proc.c b/arch/powerpc/kernel/rtas-proc.c
+index f38df72e64b8..89b165986851 100644
+--- a/arch/powerpc/kernel/rtas-proc.c
++++ b/arch/powerpc/kernel/rtas-proc.c
+@@ -311,6 +311,7 @@ static int ppc_rtas_poweron_show(struct seq_file *m, void *v)
+ static ssize_t ppc_rtas_progress_write(struct file *file,
+ 		const char __user *buf, size_t count, loff_t *ppos)
  {
 +	size_t len = count;
- 	char *buf = NULL;
+ 	unsigned long hex;
  
- 	if (count > LED_MAX_LENGTH)
-@@ -102,7 +103,7 @@ static ssize_t led_proc_write(struct file *file, const char __user *buffer,
+ 	if (count >= MAX_LINELENGTH)
+@@ -324,7 +325,7 @@ static ssize_t ppc_rtas_progress_write(struct file *file,
+ 	hex = simple_strtoul(progress_led, NULL, 10);
  
- 	kfree(buf);
- 
+ 	rtas_progress ((char *)progress_led, hex);
 -	return count;
 +	return len;
- }
  
- static const struct proc_ops led_proc_ops = {
+ 	/* clear the line */
+ 	/* rtas_progress("                   ", 0xffff);*/
 
 -- 
 2.53.0
