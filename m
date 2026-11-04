@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793820125;
-	b=FhnwaPT6DwixzWazVQKYOvLnwPS0lF/Thui8xab6XFH7THKPtpDjDf0H/duNCSYkwL6w
-	 WgjOUI+7lG1GoeSlDCxg8VWo7RtLgrdL63jbg/bBLSzWBRAXrclhOGwaLmuRZnFAgJPxl
-	 csjMUvty69bpF05EjQBLWPtcM8yU4yn6k30hvwHkBiMIBEnQ8sl0GLH0c+JbxsEw7UU89
-	 fIO5G8zGe7ZF6qSzO5T6wdNSw8xZK9Gp2Dkhddz+WYEXcIVO8HHTzvgZxN4qDUZkt1Hjt
-	 tsUpiNVjKCy0jCun4CTwFMlGcJAwSE61ekyBBmZOQ7zHDSprrE0dwCfZgynZetXxFXQ==
+	t=1793820140;
+	b=bOBICy6Dj9CTXnEceF7geiRFDBpifes08k3ES2WYEqPEAw6qaiXhKbAh2nIradIFKDkc
+	 v3ri/bBvMrl/jHgl4NwDX7V+QMPXAsBW6iVPCbzmIlfB1n/W/T72Wzzx4fIKcoKHkbh6U
+	 48dRQhqHwnStOTIe9bTuZ2u4t+j9Y66/kd0Ou/82mCi9S65H1wiGLslXiIdSfBkUSLm+h
+	 gh1dlwRw7N0fCngxooiih6fO5Fl4aPkLNsrlVvRgcXdi/3VzZ+vN2eAc0UIhLqEqhQfWZ
+	 CtM1iOCxd47VrJvwRf2KaivxpxTxHzO/ejrKcyLVKU5T8nyL74dp0Bd+enBYWqMMdVw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793820125;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793820140;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=E1vD3O9CKVYh6HjmlrAgiThE5xPMlSXjct4LkBIJ4ZU=;
-	b=NxRf2jbhZs4PXacfu2t0DKd1mV+AHKt/CYFo0WtDDRMW0l5ugojwOqIbqqmMwGURqwPb
-	 pPa+utCiKAalNnmuio6rx2q/GqBSMLNWqaueIiDwjU8gYctFdmOXxuRObtQCobVOjikIY
-	 WSS2if+xD08wFrPNhixInJwq/5vSKIRdnfUcqLCLbJAjqhepfniKpaMiiAdoztpaY0RKA
-	 zjOVz28An6YRjXxbPg5vgj1FsNx7vyQruKtY64RUVKrNj6/OcncfytRFxilFAxH8d17Fv
-	 E8JIMQKzNS16GMhJwBjO0GceOX3y3g+kgLGTFFXwmh0UsJxA5RtlzQFAODL2EqWNy8w==
+	bh=frXlYovGKxKiSN/Oj3/IY9GUET6etUhHzbC1M94LuG8=;
+	b=VK1v6kiQLzDMhP8FLgkq9jFO1jbWsvNnQau/9r+BkkqS/ZdeHoQCQN8xzI/lFNrPmIh3
+	 lGtIgPbeco2nDTMset394w1hlXByTTVzEWiAL7oIsoKDGsJYfW3J2RJowCDSTrAnYCHB7
+	 SZ5AbThqK3PU7A/PLZZ8+sKzluXuuRSkX7sV8Qx3vIIPIe6t+tLPvlfiEYkODcdHo2yj2
+	 /vbiapFCZzep0o4KWhAl9EhkLxGtiAyaK9C6ucdxITfvPCLwbERf0TGCF4RXEdH5rSQB2
+	 bqV0qC86DFTh961Kjo7cQPxxZ1BIeTP2H0ixR7WysA4kEHK1L6hrXMvbQuFgkq66C2w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NswRMcqB;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=m4qlh5ad;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5A01B606D82A;
-	Wed,  4 Nov 2026 19:22:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BB963606B2C9;
+	Wed,  4 Nov 2026 19:22:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NswRMcqB
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D87571F000C1;
-	Wed,  4 Nov 2026 19:21:52 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=m4qlh5ad
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8A39E1F000C1;
+	Wed,  4 Nov 2026 19:22:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793820124;
-	bh=E1vD3O9CKVYh6HjmlrAgiThE5xPMlSXjct4LkBIJ4ZU=;
+	s=k20260515; t=1793820139;
+	bh=frXlYovGKxKiSN/Oj3/IY9GUET6etUhHzbC1M94LuG8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=NswRMcqBfCW7Yx+oHzm7X7x3Vx4jEKmXruK32+U47DYkhN6rM/lfoH6AjN/SxL36f
-	 PgY3FjroHKYvb5ZucZtjjxfeMesHu2aiCu42BfFriOzz2a4zJcMYsY+q/uNY/jVlJJ
-	 mQbA97oSkcIOHIdNHKCmo9rGnj+/+FM6G0eHvq02j3TpFo9jYjkaTorhB3ZPVCn8O/
-	 KrKgum+HPtAyA1T4+n9pWNsjQ+Y0I7sn0Fwghzv5FJeoW2kBqDX6BHChClQ+D48khG
-	 NOJNO5qh2fzt0fT/JulzaUiqzxtJvpPURLPvwRRXNWlyCu69pQW8Kq49mWs0Mw5ust
-	 pZrAkn/r9fpNg==
+	b=m4qlh5adzIihmnlMCPV3MfzvM9clEODdoNPI2uMqY4fs5tXjOCWDUSzu6mv2JPcnd
+	 rIPr1zKO2U3CjW3V1MIfmNbgfh1n07E+bfpMs8tk02/3DnE87bHvJw3d0jbyRKMVJD
+	 IyG1TCJ8IDfIKO9zXzTPhcHA+ABY+MPRa3JEdRoY9H5TpyzNGzOxFD39D4e/nEzri/
+	 xV3khedTdJnJfO/uoKUxMN3c9AMOVj129ZcQ4wKqGT6ApGnU+0jvS+ZI/4rijimnGb
+	 2/KGqEkHg6aA14vgzVafdv5HLYM59RkWvexV7pVOwnU2YNnoy7SUAi1RAXlTmBHVKt
+	 aZyeLWcmGYS+Q==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 24/51] scsi: ips: don't return 0 from writes to the proc file
-Date: Wed,  4 Nov 2026 20:21:50 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-24-021c84d852e0@kernel.org>
+Subject: [PATCH RESEND v2 25/51] wifi: libipw: don't return 0 from writes to debug_level
+Date: Wed,  4 Nov 2026 20:22:05 +0100
+Message-ID: <20261104-work-procfs-bugfixes-v2-25-021c84d852e0@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,34 +116,35 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=745; i=brauner@kernel.org; h=from:subject:message-id; bh=M56s+R4IzmhMvI79F+bEsnRzyAX8hD//ktSOts+7Usw=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bnzxmUHw2l7pkLsqhYUfQu3abymsV/u8xrZmTWDq2 g3r1DVfdZSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEyko5aR4VlF9Y6Ezj35Scu2 1YjO/m7UtL24teDezKI9Ly4oZn88c5fhv8cv7zNNOrwr0iK6hZPXPQ1f+pT5o1tFzHcBAQ/F8yd /cAIA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1059; i=brauner@kernel.org; h=from:subject:message-id; bh=PSZyn/5j7f+UAGnOkF9zGJ8rErtLF7uTzeHltQyv5ig=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bny1/eaz260dbT8unLZwrN5tXTy3yfvErX9TPsXMM V8nc4f3WkcpC4MYF4OsmCKLQ7tJuNxynorNRpkaMHNYmUCGMHBxCsBEjHoY/iffUCphqBDzD6jS 3KKZ9/nt+Yxbx7kDk6dL8t/4/j9YjZmR4beq8vlDlkeLZQ/dKD+x8ZzFnrPzDR5/5vD+ZfFD7WF 3CS8A
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-ips_write_info() ignores what is written to /proc/scsi/ips/<n> and
-returns 0. Writers that use stdio, echo for example, take that as no
-progress and retry forever. Return the number of bytes that were
-written.
+debug_level_proc_write() returns the length of the string it parsed. A
+write that starts with a NUL byte thus returns 0 and writers that use
+stdio retry it forever. Return the number of bytes that were written
+instead, which also stops writes longer than the 11 bytes it looks at
+from coming up short.
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Fixes: b453872c35cf ("[NET] ieee80211 subsystem")
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/scsi/ips.c | 2 +-
+ drivers/net/wireless/intel/ipw2x00/libipw_module.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/scsi/ips.c b/drivers/scsi/ips.c
-index c7d6c5aae340..85c4fb164743 100644
---- a/drivers/scsi/ips.c
-+++ b/drivers/scsi/ips.c
-@@ -1428,7 +1428,7 @@ ips_write_info(struct Scsi_Host *host, char *buffer, int length)
- 	if (!ha)
- 		return (-EINVAL);
+diff --git a/drivers/net/wireless/intel/ipw2x00/libipw_module.c b/drivers/net/wireless/intel/ipw2x00/libipw_module.c
+index 22358b2c2ecd..552c8ff3928b 100644
+--- a/drivers/net/wireless/intel/ipw2x00/libipw_module.c
++++ b/drivers/net/wireless/intel/ipw2x00/libipw_module.c
+@@ -236,7 +236,7 @@ static ssize_t debug_level_proc_write(struct file *file,
+ 	else
+ 		libipw_debug_level = val;
  
--	return 0;
-+	return length;
+-	return strnlen(buf, len);
++	return count;
  }
  
- static int
+ static const struct proc_ops debug_level_proc_ops = {
 
 -- 
 2.53.0
