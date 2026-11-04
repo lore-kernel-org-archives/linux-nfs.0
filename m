@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793822178;
-	b=vSHNld2cfNd7P300Y/A0CexWz3yJB5qyBvJDSmND3+RCQSxx/thgx9r8ouuVdrPtcklU
-	 WURN7ekhNr5kzims67jvCP/vM4NDzttNFwcfjcRI0Zc1p/I/a2EBSizmxUXDX0MKM71/6
-	 BHL2zRp6WupaCtAo7b3MKUTCOo/ua3jT0Oc/ku3H3zzcIriNfXlXEN8Wr0za3e0iVpC1B
-	 I9jWlJjlkHPX6n8q530XGF8D+XkuiD6IQVgKxltIF4Om2Jlr/QDPJunXdaKic0wSl1wPB
-	 Y/XMCfgjAqcrHKe/FQfOVROffUcmZ7MBCh5mj5rWCfClAze/LFP5cqq74wX3l+6EnkQ==
+	t=1793822207;
+	b=ZD1gSADUbK2VUfP6iJ2KSoahvp7G0p8cLkuq9z6ELIo+AWEfSFUqHB0oTsckhONKWFID
+	 XXBStZ9qxO4zM5EcAyMCDci6VDgCKkUgOfMBKteqFf+dif71iTr6HA5jTi6LOdR/LJ9LR
+	 Z2YbJuQv7YAGJhf3XifOW1BxExGdb8voG/I4lyoykxn68ewMP+8vuRcu7C9r5qlbxQA0/
+	 jZaiGezUXEokxv1qjs7A1sa855gEHrGAPEn+ErA5fLF5tchK9IuCUOzVDj3/1RGgtRJyb
+	 ky835ocO5dAA0DtE3ytCxKQm2ryr0sSoDora8AmxuNSPN5xPArz/HNH63QIPUjibvew==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793822178;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793822207;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=dVjHuUMxxd8FqQa8K43Wpa6+M00cK9gADu+rBdGhG5Q=;
-	b=XIOdViPkFGM/xakoa1rdT0vBd4tmkrNvKmPRh1kGLNCwkd3pLOPUKW0Dq/iF/28+zymm
-	 rfjr0rOnvKAQqFHTmsQsp429bSIqXrVV9wrwdeH6vpXyLd+b2U/+5CDyZdZ8af2kxgsSG
-	 qwTgK/SpvmZXrHSgeIZJe1c/5WcUSsmXZJM+TkCkaPcNrnNLOSk0Z2a6u/kmlyTOnif6W
-	 fPJWLAlsaZKT6TVh57HKrMsTbKgnALv4CXo4oy/Pern4nM/09nxx8TWGNEAxDpzeizUNT
-	 jSCgpIOdNMAbV+EETsurGZdIZrMzor1BAzWO9nFbcAp3qiILzQZZocGWycrbY7guKPA==
+	bh=9vYsQ2z6p4kEQ26Jb8WOubzMzQn6P43ATzZz2gRYd8s=;
+	b=vnrtSkuO08sunv0dEDeg93I+0tr0LRJwclQ4VLEOhr4HsJIsIpF31vDTISPhVUxtS99M
+	 Kdvk4ZTTtcQvInjTVkFCJ52wXX1kL9up487S4L15HG9VR1zGlmdmxBvOXEIzTmXmzvNxV
+	 k6VJJh2bCxSD5TxXutguE8SA64ZdAZHrzmVz41f9z5xYu5Mq7bYVmxGJuKcQSjnUwaFT3
+	 yvsIGTFTOKfvaQ+FkWK46l2k8HhysE1Pnw6cDeYWmvQcVAMicWYpx8xi5Vtx5tmpqtZMm
+	 1L2Xc3vxqbb6t2EaDgoZzHZrultQZov/kdS6G0/AT6wxyuPu24eGtWY/e/WVJEnwWmQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WciFxQke;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=e2uxiHux;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 315866078941;
-	Wed,  4 Nov 2026 19:56:17 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8C9106098F7B;
+	Wed,  4 Nov 2026 19:56:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WciFxQke
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 842BD1F000C1;
-	Wed,  4 Nov 2026 19:56:05 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=e2uxiHux
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7B8051F000C1;
+	Wed,  4 Nov 2026 19:56:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793822177;
-	bh=dVjHuUMxxd8FqQa8K43Wpa6+M00cK9gADu+rBdGhG5Q=;
+	s=k20260515; t=1793822207;
+	bh=9vYsQ2z6p4kEQ26Jb8WOubzMzQn6P43ATzZz2gRYd8s=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=WciFxQke7WU+TqGOiLHJFFvz51sxAv/rXDuJ65d7uc/uzhqt05C4NlVN6GEsTUCUu
-	 31fkRA/xip2bhOq8TqDrQhDe5z0BPJYsvkSt1ZtjXi0UWf4TITY4A9UV1Jj74iUycG
-	 lDsCZ5Dv6DN9dQs5WHRrbLlWLWWmKs07ZIwnLQxTmPhOa7InPJfbe0D8IVp3OjClGc
-	 ZmGH+yeDVq+4v+cg8g4xIPmzrh+E3sC00xuiXzIgXt8btDsGhRR0CoJ8fDZPxoEm+E
-	 OBg77f3DkM4ZaSWy1R28T5gZm41vTK6+WYOPbNiJOEt0Tph54u6+2Ht87F0UbPAKoU
-	 ENh1KteE9DOew==
+	b=e2uxiHuxfEJdhmjLozO9LVNrgHWWCvyZHjL6HCg7amaM22yI9yG0olu1uJ96j73/Z
+	 xTQNcQbMhTyIG8P3vbMDLmuT2phtFdMJBnVFMbLXmKKNtZbqq02BRamAUB44uazdL3
+	 urCr5eyZbIruy/giy8yhCYSK2FnSUIzF0uuLJu8guQkWA1W37endcFSgwzxgmXgdpv
+	 WgWqivOuiipmtpXNrqJUTWyUBgi0SwINwwt/Cqe2dz7mNJDn9EIm/pVofRmhuImUVo
+	 H8QqbrQNf9HFXNZ1hUfz4Fw5j+PPHT9mjrfkR6KYflVEzz/AoZKdc8Eb+kMcDaWwM1
+	 H1CvOEcsSWIHA==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 26/30] alloc_tag: let procfs copy the ioctl arguments of /proc/allocinfo
-Date: Wed,  4 Nov 2026 20:56:03 +0100
-Message-ID: <20261104-work-procfs-fs-v2-26-319e0f9a8aae@kernel.org>
+Subject: [PATCH RESEND v2 28/30] mm/swapfile: let procfs own the wait queue of /proc/swaps
+Date: Wed,  4 Nov 2026 20:56:33 +0100
+Message-ID: <20261104-work-procfs-fs-v2-28-319e0f9a8aae@kernel.org>
 In-Reply-To: <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
 References: <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,147 +116,68 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5002; i=brauner@kernel.org; h=from:subject:message-id; bh=qvFStIPYOo+XQCz7NGrfedfPC5AiqcBr63oE+4d+7KE=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97vE65vl9w02l+nm/3k8td487Mlf95K8LO9Yw6x35z bF1Qqund0cpC4MYF4OsmCKLQ7tJuNxynorNRpkaMHNYmUCGMHBxCsBE6roZ/sfzLc1cc19g8UpG p9ScMA2ZG2mxxusMN/5mfHVJ4JFJ0UmGvxIPbppe0fTgXiEh//pB3cedQhve/fx4peeqfYB+jj/ rQzYA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2019; i=brauner@kernel.org; h=from:subject:message-id; bh=VLC7S5nkyALdZiiw9586D7569GKKbKISIa7jUul9ZSQ=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97vEV3KXoYc6wwNTta5J2SbyikafkWx/po6m7FWtOr PLmcCroKGVhEONikBVTZHFoNwmXW85TsdkoUwNmDisTyBAGLk4BmMhMA4Z/KivFpjxV2sx0std/ mh+/+VeZnyvk60UXbOG53vWE+fLyG4wMk7fu+rgnv6JzYR1H2t24xj6e5tmlRd9mX90acdHdM9y RDwA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Implement ->proc_ioctl_buf() so procfs copies the arguments in before
-it pins the entry and back out after unpinning it. The commands encode
-their arguments. procfs converts the pointers of 32-bit tasks, so
-allocinfo_compat_ioctl() goes away.
+swaps_poll() sleeps the poller on a queue of its own. procfs owns the
+queue poll() uses now, so leave the poll_wait() to it and wake its
+pollers when a swap area comes or goes.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- mm/alloc_tag.c | 47 +++++++++++++++++------------------------------
- 1 file changed, 17 insertions(+), 30 deletions(-)
+ mm/swapfile.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
 
-diff --git a/mm/alloc_tag.c b/mm/alloc_tag.c
-index 697e44468ebc..b17457c8fb02 100644
---- a/mm/alloc_tag.c
-+++ b/mm/alloc_tag.c
-@@ -6,7 +6,6 @@
- #include <linux/kallsyms.h>
- #include <linux/module.h>
- #include <linux/mutex.h>
--#include <linux/compat.h>
- #include <linux/page_ext.h>
- #include <linux/pgalloc_tag.h>
- #include <linux/proc_fs.h>
-@@ -236,16 +235,14 @@ static void allocinfo_to_params(struct codetag *ct,
-  * Retrieves the unique content ID representing the current allocation tag module
-  * layout, allowing userspace to detect if modules were loaded / unloaded.
-  */
--static int allocinfo_ioctl_get_content_id(struct seq_file *m, void __user *arg)
-+static int allocinfo_ioctl_get_content_id(struct seq_file *m, void *arg)
- {
- 	struct allocinfo_content_id params;
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index ee4868ecc3a7..1d063a1cef43 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -111,7 +111,7 @@ static struct kmem_cache *swap_table_cachep;
+ /* Protects si->swap_file for /proc/swaps usage */
+ static DEFINE_MUTEX(swapon_mutex);
  
- 	codetag_lock_module_list(alloc_tag_cttype);
- 	params.id = codetag_get_content_id(alloc_tag_cttype);
- 	codetag_unlock_module_list(alloc_tag_cttype);
--	if (copy_to_user(arg, &params, sizeof(params)))
--		return -EFAULT;
+-static DECLARE_WAIT_QUEUE_HEAD(proc_poll_wait);
++static struct proc_dir_entry *proc_swaps;
+ /* Activity counter to indicate that a swapon or swapoff has occurred */
+ static atomic_t proc_poll_event = ATOMIC_INIT(0);
+ 
+@@ -3307,7 +3307,7 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
+ 
+ 	err = 0;
+ 	atomic_inc(&proc_poll_event);
+-	wake_up_interruptible(&proc_poll_wait);
++	proc_poll_notify(proc_swaps);
+ 
+ out_dput:
+ 	filp_close(victim, NULL);
+@@ -3319,8 +3319,6 @@ static __poll_t swaps_poll(struct file *file, poll_table *wait)
+ {
+ 	struct seq_file *seq = file->private_data;
+ 
+-	poll_wait(file, &proc_poll_wait, wait);
 -
-+	memcpy(arg, &params, sizeof(params));
+ 	if (seq->poll_event != atomic_read(&proc_poll_event)) {
+ 		seq->poll_event = atomic_read(&proc_poll_event);
+ 		return EPOLLIN | EPOLLRDNORM | EPOLLERR | EPOLLPRI;
+@@ -3428,7 +3426,7 @@ static const struct proc_ops swaps_proc_ops = {
+ 
+ static int __init procswaps_init(void)
+ {
+-	proc_create("swaps", 0, NULL, &swaps_proc_ops);
++	proc_swaps = proc_create("swaps", 0, NULL, &swaps_proc_ops);
  	return 0;
  }
+ __initcall(procswaps_init);
+@@ -3907,7 +3905,7 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
  
-@@ -310,7 +307,7 @@ static bool matches_filter(struct codetag *ct, struct allocinfo_filter *filter,
-  * Seeks the ioctl iterator to the specified 0-indexed tag position, reads its
-  * profiling data and returns it to userspace.
-  */
--static int allocinfo_ioctl_get_at(struct seq_file *m, void __user *arg)
-+static int allocinfo_ioctl_get_at(struct seq_file *m, void *arg)
- {
- 	struct allocinfo_private *priv;
- 	struct codetag *ct;
-@@ -319,8 +316,7 @@ static int allocinfo_ioctl_get_at(struct seq_file *m, void __user *arg)
- 	struct alloc_tag_counters counters;
- 	bool fetched_counters;
+ 	mutex_unlock(&swapon_mutex);
+ 	atomic_inc(&proc_poll_event);
+-	wake_up_interruptible(&proc_poll_wait);
++	proc_poll_notify(proc_swaps);
  
--	if (copy_from_user(&params, arg, sizeof(params)))
--		return -EFAULT;
-+	memcpy(&params, arg, sizeof(params));
- 
- 	if (params.filter.mask & ~ALLOCINFO_FILTER_MASKS)
- 		return -EINVAL;
-@@ -375,9 +371,7 @@ static int allocinfo_ioctl_get_at(struct seq_file *m, void __user *arg)
- 	if (!ct)
- 		return -ENOENT;
- 
--	if (copy_to_user(arg, &params, sizeof(params)))
--		return -EFAULT;
--
-+	memcpy(arg, &params, sizeof(params));
- 	return 0;
- }
- 
-@@ -385,7 +379,7 @@ static int allocinfo_ioctl_get_at(struct seq_file *m, void __user *arg)
-  * Advances the ioctl iterator to the next allocation tag in the sequence and
-  * returns its profiling data to userspace.
-  */
--static int allocinfo_ioctl_get_next(struct seq_file *m, void __user *arg)
-+static int allocinfo_ioctl_get_next(struct seq_file *m, void *arg)
- {
- 	struct allocinfo_private *priv;
- 	struct codetag *ct;
-@@ -425,10 +419,8 @@ static int allocinfo_ioctl_get_next(struct seq_file *m, void __user *arg)
- 	codetag_unlock_module_list(alloc_tag_cttype);
- 	mutex_unlock(&priv->ioctl_lock);
- 
--	if (ret == 0) {
--		if (copy_to_user(arg, &params, sizeof(params)))
--			return -EFAULT;
--	}
-+	if (ret == 0)
-+		memcpy(arg, &params, sizeof(params));
- 	return ret;
- }
- 
-@@ -436,10 +428,8 @@ static int allocinfo_ioctl_get_next(struct seq_file *m, void __user *arg)
-  * Entry point ioctl function for /proc/allocinfo routing requests to fetch the
-  * layout content ID, seek to a specific tag, or read sequential tags.
-  */
--static long allocinfo_ioctl(struct file *file, unsigned int cmd,
--			    unsigned long __arg)
-+static long allocinfo_ioctl(struct file *file, unsigned int cmd, void *arg)
- {
--	void __user *arg = (void __user *)__arg;
- 	int ret;
- 
- 	switch (cmd) {
-@@ -460,23 +450,20 @@ static long allocinfo_ioctl(struct file *file, unsigned int cmd,
- 	return ret;
- }
- 
--#ifdef CONFIG_COMPAT
--static long allocinfo_compat_ioctl(struct file *file, unsigned int cmd,
--				   unsigned long arg)
--{
--	return allocinfo_ioctl(file, cmd, (unsigned long)compat_ptr(arg));
--}
--#endif
-+static const struct proc_ioctl_arg allocinfo_ioctl_args[] = {
-+	PROC_IOCTL_IOC(ALLOCINFO_IOC_CONTENT_ID),
-+	PROC_IOCTL_IOC(ALLOCINFO_IOC_GET_AT),
-+	PROC_IOCTL_IOC(ALLOCINFO_IOC_GET_NEXT),
-+};
- 
- static const struct proc_ops allocinfo_proc_ops = {
- 	.proc_seq_ops		= &allocinfo_seq_op,
- 	.proc_state_size	= sizeof(struct allocinfo_private),
- 	.proc_open		= allocinfo_open,
- 	.proc_release		= allocinfo_release,
--	.proc_ioctl		= allocinfo_ioctl,
--#ifdef CONFIG_COMPAT
--	.proc_compat_ioctl	= allocinfo_compat_ioctl,
--#endif
-+	.proc_ioctl_buf		= allocinfo_ioctl,
-+	.proc_ioctl_args	= allocinfo_ioctl_args,
-+	.proc_nr_ioctl_args	= ARRAY_SIZE(allocinfo_ioctl_args),
- };
- 
- size_t alloc_tag_top_users(struct codetag_bytes *tags, size_t count, bool can_sleep)
+ 	error = 0;
+ 	goto out;
 
 -- 
 2.53.0
