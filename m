@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793820492;
-	b=b0uRbB3EJR1+pu9hdDA+1ol4pMO4xSbGhOs84/Bp9qeOnafRqRMJ8xaFYyKwt2c51Vhz
-	 eHzm5FrRagNychrlSL2kc3FOQuIcAFoK5c3+l6xliXID77N9SMJs6mU0QmbU/nfPdiiAb
-	 /ISpmiDNPpuxG4rR3hLWjgeUQbX2CKT9vTJAGqsZrjWrFvBdQYEAsdAYSsm2dhK+dGfmG
-	 iWmhg7BmujX9FuxjNTNfIv/ruceipCuA0KQ5X/wuw1Ihl52swZ6GozyhxqpKvC0+aYvBm
-	 xYMX3dOP6uBl7n1WztiWs2FhfzOPtEvY2YLfi7tcZeR6kdj11tb4+gqjUP135oWyLQA==
+	t=1793820507;
+	b=RWd67/pcnxjPNymrX+/yMKmifJIcyM4e+KPE4C5MrXv4skWy/NXeJfqEaMgQDmRhddks
+	 aFjmSYxTwh4+hPg7RItz7D1VHix981YXzNnFwd4jg8M69Jylde9CQ7bhV7NxNdQroJUWP
+	 CtKy4inFdYt8UrNUbllJpCwoceK1dujjK6cXLRpo3qov+e2PTSuwfULj0YeVsMF157Xbp
+	 GCO080VdJYgwldjSU5/kZROFhaA+I/oD/JVI2GL22c4yV1fvHsXrdtX7QWLz02bmXDU1/
+	 NnLSx0kVhs4npQOnajLwLh1EPAjVvvK5w8DlqYMEcyDgTLgcZSfRSfNGOljrS6bG82w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793820492;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793820507;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=NP9uzi8hQ+GlRLcZMObnNOIDymBGDWJ+1F292ZdPL1I=;
-	b=RVOkkh6R8HFTUs5tcqeoAZhBAJP5IiDXsmXmXbC+hkcDP4bFyVVID/cZHI04lvm1JVMT
-	 GoovKU3Tnt/wO5sRJ+fq9+46u2R9DwkO79GkHW6WK399Ev61hNlRGfF3A9pM4JKeu98gM
-	 BKeGznTCqNz5fbT6ryK4vk2YcDBt/JEjFzXjQTbhfYezXlNoXgvJUVDkLDwN2X4uA9hGh
-	 0i/mRgWnMFy4NGe4A+mTtHEXrIDFWMbuEd221caw4OgzWqQ3nAQmWNdjtZZxuABZ8gCYN
-	 VPdF6gnm+oeZTLqqor9Wa5/NqtMYu5zAZAmGmhgEE6X+8olwJONsjgHa+JxdgBm6+5A==
+	bh=gGh9qQAToZE5wrWgcgjg72Buy8fnK2LgswQGjbfg87A=;
+	b=Sm/fwv2gIGgWoL/I3l2M0Kmj/UnTX7+KS0mW+B82QMeQNZ+qcPsqK0e7dlyO0+aHFfw+
+	 z+GuHAJJsS1ESiTHeZfOmpi6e+FQA+bfN8dVglJ9WKykHXhj+muY4oyM5sobj/afkePrt
+	 nMvPY5V0ZGWg6PDTOEmQ8t4ErY7cndRxjfQ1TyHR/IxDwi3SD44e4kJK3H0Ep/Oss/xXU
+	 c1sw0rTzJFDPkzhhaEK5M+MTOPsj6f72A0ji+113+0RCzvPkzBd7d8yIRu3DRkMZRAWQs
+	 17KeD3kLz0e8vuQyepx67k493HTH8dn4MGabPYToi4yOSQscmqE8MWt9XFxx3yf2bVw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NAj0hod0;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=byXXsxYw;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 515DD606AB17;
-	Wed,  4 Nov 2026 19:28:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A1ED7606AB2B;
+	Wed,  4 Nov 2026 19:28:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NAj0hod0
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4F0181F00A1A;
-	Wed,  4 Nov 2026 19:28:00 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=byXXsxYw
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7F5B61F00A02;
+	Wed,  4 Nov 2026 19:28:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793820491;
-	bh=NP9uzi8hQ+GlRLcZMObnNOIDymBGDWJ+1F292ZdPL1I=;
+	s=k20260515; t=1793820506;
+	bh=gGh9qQAToZE5wrWgcgjg72Buy8fnK2LgswQGjbfg87A=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=NAj0hod0GiSh4qiNLTi1WX0FoLlXN1CGhLjOdCOe4qKNayvu6TCmjiiEC+ctqpF30
-	 Igi4m0MulaDp3RSFvu12z8/wJ0dZpMZZQme4XlhE5RIM8NWMXxDqUFA5eauZhBnQRO
-	 j2urs+dGqlCxGrcn5k38haREiKA82S2hwykYvSi0weYQCwh1ZmuLytX/pSd0D8M2hT
-	 L77+vI7tAfBbEJuHDq4CScHOXscr4x4MRY6of9vu1Cc+S8fMmRGO+jwvJWiZORMyjB
-	 7Dd2f7v8aATY8DgDMEEOJzcMqYDQ+r7ut2U0vVHHCtlWaUiln6c9F0ICijdirmp7HY
-	 syT8HsDpuWIgQ==
+	b=byXXsxYwwlEEzVCdRuUNyOsLcAI+STSe55KsEGh4BJlF7vBluSLDj7xpOzM7lQKQ4
+	 uvVISAxqyAtBDBpIeAqQ8oGCN092NLKfSJVGkw+BNmr8dzLnc2og/C96qttPNVfs93
+	 XwoNGni8iN/tC1YXe5AYuIZI6WQoC4tduRrr4C9eyl+yKXSLVR4nkDnOPM7geCc4uC
+	 ftqw04+u+hakNSgLNjIxLDcE9txZXHVKfyY+39OrDntZluhV0w61HCQ45L1DfF68Lg
+	 gd5gAsNrRK9OI6wE3u0lJntjeJWYJdgnxgjqgVsDg+10MAEUapfIUfBLUOI675u60V
+	 wveEeYDFgw+HA==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -99,10 +99,11 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-modules@vger.kernel.org,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
-	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 49/51] selftests/proc: check that faulting sysctl accesses don't hold up removal
-Date: Wed,  4 Nov 2026 20:27:58 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-49-021c84d852e0@kernel.org>
+	Chuck Lever <cel@kernel.org>,
+	stable@vger.kernel.org
+Subject: [PATCH RESEND v2 50/51] proc: don't pin a symlink's entry while readlink() copies it out
+Date: Wed,  4 Nov 2026 20:28:12 +0100
+Message-ID: <20261104-work-procfs-bugfixes-v2-50-021c84d852e0@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,279 +117,62 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7877; i=brauner@kernel.org; h=from:subject:message-id; bh=nCZPyQUbx5TtYoxg9V0ET+7jSg+MEw36C1ShZRwuIz8=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9buIQvq4skXTQTjUuXmTXOeOyKTNaPto9S5ZwizNK1 bd4x7mto5SFQYyLQVZMkcWh3SRcbjlPxWajTA2YOaxMIEMYuDgFYCL1kxj+Vyjv+nbt3OspWhEb vBoP9CTYsfBOVTztsymEa5vl9nmsgYwMbxrZPeK5fOzuqipN+Wp3d03//tlX/wmFFa3eVMgRE3m LFQA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1874; i=brauner@kernel.org; h=from:subject:message-id; bh=RrDLfW/scZN49peKw6fM9m5dxManPY8dszrBpi62+JM=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9buKUeD/54oKQeSXpZxZOuLHujuvOvQuDLBr9a+Q0/ fdzHMw27yhlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZjIxk+MDF0xzMdUqudtc4xq io94MDlmc+iGj38/VuQy/ygRejLx7E1Ghg97a149/ZQ8UYb1fduSSTfDdZwEJovX7fM76eJtPX3 mTFYA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Read, write and list /proc/sys/net/ipv6/conf/<dev>/ of a tun device
-with a buffer whose first page is backed by userfaultfd and remove the
-device while the task sleeps in its copy from or to userspace:
+proc_get_link() pins the entry with use_pde() and the delayed call
+unpins it. vfs_readlink() copies the link to userspace in between. So a
+page fault in that copy holds up remove_proc_entry() just like the
+copies of reads and writes do, and the callers hold locks while they
+wait. /proc/asound/<id> is removed with snd_card_mutex and info_mutex
+held when a card changes its id.
 
-- unregistering the table doesn't wait for a faulting read(), write()
-  or getdents64()
+The pin doesn't keep anything alive. proc_symlink() copies the target
+and pde_free() frees it with the entry, and the inode holds a reference
+to the entry. What the pin does is keep a removed symlink from being
+followed. So check ->in_use instead and drop the delayed call. That
+also takes an atomic pair off every traversal of /proc/net and
+/proc/mounts.
 
-- the read still gets the value that was produced before the removal
-  and the next read fails with -ENOENT
-
-- the write is copied in after the removal and fails with -ENOENT
-
-- getdents64() still lists what it looked up before the removal and
-  fails with -ENOENT afterwards
-
-The tables are unregistered under RTNL, so a regression stalls each
-test for five seconds before it fails.
-
+Fixes: 7e0e953bb0cf ("procfs: fix race between symlink removals and traversals")
+Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- tools/testing/selftests/proc/.gitignore            |   1 +
- tools/testing/selftests/proc/Makefile              |   1 +
- .../selftests/proc/proc-remove-slow-sysctl.c       | 215 +++++++++++++++++++++
- 3 files changed, 217 insertions(+)
+ fs/proc/inode.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/tools/testing/selftests/proc/.gitignore b/tools/testing/selftests/proc/.gitignore
-index 5b5e24e39cbd..7b8133492782 100644
---- a/tools/testing/selftests/proc/.gitignore
-+++ b/tools/testing/selftests/proc/.gitignore
-@@ -21,6 +21,7 @@
- /proc-uptime-001
- /proc-uptime-002
- /proc-pidns
-+/proc-remove-slow-sysctl
- /read
- /self
- /setns-dcache
-diff --git a/tools/testing/selftests/proc/Makefile b/tools/testing/selftests/proc/Makefile
-index dae09f333455..bce6beca7274 100644
---- a/tools/testing/selftests/proc/Makefile
-+++ b/tools/testing/selftests/proc/Makefile
-@@ -32,5 +32,6 @@ TEST_GEN_PROGS += proc-multiple-procfs
- TEST_GEN_PROGS += proc-fsconfig-hidepid
- TEST_GEN_PROGS += proc-sysctl-readdir-churn
- TEST_GEN_PROGS += proc-pidns
-+TEST_GEN_PROGS += proc-remove-slow-sysctl
+diff --git a/fs/proc/inode.c b/fs/proc/inode.c
+index 9933f03ab9fb..2d65f3c8ec03 100644
+--- a/fs/proc/inode.c
++++ b/fs/proc/inode.c
+@@ -629,19 +629,19 @@ static const struct file_operations proc_iter_file_ops_compat = {
+ };
+ #endif
  
- include ../lib.mk
-diff --git a/tools/testing/selftests/proc/proc-remove-slow-sysctl.c b/tools/testing/selftests/proc/proc-remove-slow-sysctl.c
-new file mode 100644
-index 000000000000..e2992a26ed69
---- /dev/null
-+++ b/tools/testing/selftests/proc/proc-remove-slow-sysctl.c
-@@ -0,0 +1,215 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * A read(), write() or getdents64() of /proc/sys that faults while copying
-+ * from or to userspace must not hold up unregistering the sysctl table.
-+ * /proc/sys/net/ipv6/conf/<dev>/ of a tun device is unregistered under RTNL
-+ * when the device's file is closed.
-+ */
-+#define _GNU_SOURCE
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <linux/if.h>
-+#include <linux/if_tun.h>
-+#include <linux/userfaultfd.h>
-+#include <poll.h>
-+#include <pthread.h>
-+#include <sched.h>
-+#include <string.h>
-+#include <sys/ioctl.h>
-+#include <sys/mman.h>
-+#include <sys/syscall.h>
-+#include <unistd.h>
+-static void proc_put_link(void *p)
+-{
+-	unuse_pde(p);
+-}
+-
+ static const char *proc_get_link(struct dentry *dentry,
+ 				 struct inode *inode,
+ 				 struct delayed_call *done)
+ {
+ 	struct proc_dir_entry *pde = PDE(inode);
+-	if (!use_pde(pde))
 +
-+#include "../kselftest_harness.h"
-+
-+#define TUN_NAME	"procslow0"
-+#define CONF_PATH	"/proc/sys/net/ipv6/conf/" TUN_NAME
-+#define MTU_PATH	CONF_PATH "/mtu"
-+#define BUF_PAGES	16
-+#define TIMEOUT_MS	5000
-+
-+enum sysctl_op {
-+	SYSCTL_READ,
-+	SYSCTL_WRITE,
-+	SYSCTL_GETDENTS,
-+};
-+
-+struct worker {
-+	enum sysctl_op op;
-+	int fd;
-+	char *buf;
-+	size_t len;
-+	ssize_t ret;
-+	int err;
-+};
-+
-+struct closer {
-+	int tun;
-+	int done;
-+};
-+
-+static void *work_thread(void *arg)
-+{
-+	struct worker *w = arg;
-+
-+	switch (w->op) {
-+	case SYSCTL_READ:
-+		w->ret = read(w->fd, w->buf, w->len);
-+		break;
-+	case SYSCTL_WRITE:
-+		w->ret = write(w->fd, w->buf, w->len);
-+		break;
-+	case SYSCTL_GETDENTS:
-+		w->ret = syscall(__NR_getdents64, w->fd, w->buf, w->len);
-+		break;
-+	}
-+	w->err = errno;
-+	return NULL;
-+}
-+
-+static void *close_thread(void *arg)
-+{
-+	struct closer *c = arg;
-+	ssize_t ret;
-+
-+	close(c->tun);
-+	ret = write(c->done, "x", 1);
-+	return (void *)ret;
-+}
-+
-+FIXTURE(proc_sys_slow) {
-+	int tun;
-+	int uffd;
-+	char *buf;
-+	long psz;
-+};
-+
-+FIXTURE_SETUP(proc_sys_slow)
-+{
-+	struct uffdio_api api = { .api = UFFD_API };
-+	struct uffdio_register reg = {};
-+	struct ifreq ifr = {};
-+
-+	if (unshare(CLONE_NEWNET))
-+		SKIP(return, "unshare(CLONE_NEWNET): %s", strerror(errno));
-+
-+	self->tun = open("/dev/net/tun", O_RDWR | O_CLOEXEC);
-+	if (self->tun < 0)
-+		SKIP(return, "/dev/net/tun: %s", strerror(errno));
-+	strncpy(ifr.ifr_name, TUN_NAME, IFNAMSIZ - 1);
-+	ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
-+	ASSERT_EQ(ioctl(self->tun, TUNSETIFF, &ifr), 0);
-+	if (access(CONF_PATH, F_OK))
-+		SKIP(return, CONF_PATH ": %s", strerror(errno));
-+
-+	self->uffd = syscall(__NR_userfaultfd, O_CLOEXEC | O_NONBLOCK);
-+	if (self->uffd < 0)
-+		SKIP(return, "userfaultfd: %s", strerror(errno));
-+	ASSERT_EQ(ioctl(self->uffd, UFFDIO_API, &api), 0);
-+
-+	/* Only the first page of the buffer goes through userfaultfd. */
-+	self->psz = sysconf(_SC_PAGESIZE);
-+	self->buf = mmap(NULL, BUF_PAGES * self->psz, PROT_READ | PROT_WRITE,
-+			 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-+	ASSERT_NE(self->buf, MAP_FAILED);
-+	reg.range.start = (unsigned long)self->buf;
-+	reg.range.len = self->psz;
-+	reg.mode = UFFDIO_REGISTER_MODE_MISSING;
-+	ASSERT_EQ(ioctl(self->uffd, UFFDIO_REGISTER, &reg), 0);
-+}
-+
-+FIXTURE_TEARDOWN(proc_sys_slow)
-+{
-+}
-+
-+/*
-+ * Let @w sleep in its copy from or to the first page of the buffer, then
-+ * close the device. Unregistering the table must not wait for @w.
-+ */
-+static void stall_and_remove(struct __test_metadata *_metadata,
-+			     FIXTURE_DATA(proc_sys_slow) *self,
-+			     struct worker *w)
-+{
-+	struct closer c = { .tun = self->tun };
-+	struct uffdio_zeropage zero = {};
-+	struct uffd_msg msg;
-+	struct pollfd pfd;
-+	pthread_t wt, ct;
-+	int done[2];
-+
-+	w->buf = self->buf;
-+	ASSERT_EQ(pthread_create(&wt, NULL, work_thread, w), 0);
-+
-+	pfd = (struct pollfd){ .fd = self->uffd, .events = POLLIN };
-+	ASSERT_EQ(poll(&pfd, 1, TIMEOUT_MS), 1);
-+	ASSERT_EQ(read(self->uffd, &msg, sizeof(msg)), sizeof(msg));
-+	ASSERT_EQ(msg.event, UFFD_EVENT_PAGEFAULT);
-+
-+	ASSERT_EQ(pipe2(done, O_CLOEXEC), 0);
-+	c.done = done[1];
-+	ASSERT_EQ(pthread_create(&ct, NULL, close_thread, &c), 0);
-+	pfd = (struct pollfd){ .fd = done[0], .events = POLLIN };
-+	EXPECT_EQ(poll(&pfd, 1, TIMEOUT_MS), 1) {
-+		TH_LOG("unregistering " CONF_PATH " waited for the faulting task");
-+	}
-+
-+	zero.range.start = (unsigned long)self->buf;
-+	zero.range.len = self->psz;
-+	ASSERT_EQ(ioctl(self->uffd, UFFDIO_ZEROPAGE, &zero), 0);
-+	ASSERT_EQ(pthread_join(wt, NULL), 0);
-+	ASSERT_EQ(pthread_join(ct, NULL), 0);
-+}
-+
-+TEST_F(proc_sys_slow, read)
-+{
-+	struct worker w = {
-+		.op	= SYSCTL_READ,
-+		.len	= BUF_PAGES * self->psz,
-+	};
-+
-+	w.fd = open(MTU_PATH, O_RDONLY | O_CLOEXEC);
-+	ASSERT_GE(w.fd, 0);
-+	stall_and_remove(_metadata, self, &w);
-+
-+	/* The value was produced before the table went away, then nothing. */
-+	EXPECT_GT(w.ret, 0);
-+	EXPECT_EQ(read(w.fd, self->buf, self->psz), -1);
-+	EXPECT_EQ(errno, ENOENT);
-+}
-+
-+TEST_F(proc_sys_slow, write)
-+{
-+	struct worker w = {
-+		.op	= SYSCTL_WRITE,
-+		.len	= 5,
-+	};
-+
-+	w.fd = open(MTU_PATH, O_WRONLY | O_CLOEXEC);
-+	ASSERT_GE(w.fd, 0);
-+	stall_and_remove(_metadata, self, &w);
-+
-+	/* The table went away while the value was copied in. */
-+	EXPECT_EQ(w.ret, -1);
-+	EXPECT_EQ(w.err, ENOENT);
-+}
-+
-+TEST_F(proc_sys_slow, getdents)
-+{
-+	struct worker w = {
-+		.op	= SYSCTL_GETDENTS,
-+		.len	= BUF_PAGES * self->psz,
-+	};
-+
-+	w.fd = open(CONF_PATH, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
-+	ASSERT_GE(w.fd, 0);
-+	/* start behind the dots so that it faults on an entry it looked up */
-+	ASSERT_EQ(lseek(w.fd, 2, SEEK_SET), 2);
-+	stall_and_remove(_metadata, self, &w);
-+
-+	/* What was looked up before the removal still arrives, then nothing. */
-+	EXPECT_GT(w.ret, 0);
-+	EXPECT_EQ(syscall(__NR_getdents64, w.fd, self->buf, self->psz), -1);
-+	EXPECT_EQ(errno, ENOENT);
-+}
-+
-+TEST_HARNESS_MAIN
++	/*
++	 * No pin. The link lives with the entry, which the inode holds, and a
++	 * reader could fault while vfs_readlink() copies it out. Just don't
++	 * follow a removed one.
++	 */
++	if (unlikely(atomic_read(&pde->in_use) < 0))
+ 		return ERR_PTR(-EINVAL);
+-	set_delayed_call(done, proc_put_link, pde);
+ 	return pde->data;
+ }
+ 
 
 -- 
 2.53.0
