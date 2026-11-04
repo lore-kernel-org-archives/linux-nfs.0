@@ -1,65 +1,75 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793783259;
-	b=ytbpjFhTbJyxsgkjgL5GCRYzJ4aa7jH+mrt1gp0gp5xsGgX68/cs1d4ZfRpLaMeSIRjH
-	 psVHUB52vHQBVggHAc4IuQCFwKwTtxEjXVjJloh13Y7CuYZbVTly4SaHSMz7VeMipSSwN
-	 73hFPDx46vhNaWTTE849PgECDBibcY/cGboHsh0s31YzlYQi38jN984ngdUFfTL5jSqX5
-	 zywrMpD78188GEP9QVnHe8V6vDE5fDl4jPibEPiyu7r5+mPTunklbTkuaAKzbI8et4XJj
-	 134qCmrVRup9asRGwmAucliWBp73gliFlw7B1QNxynUkUm8YSIjl8tutsqQHQPNWPZw==
+	t=1793783736;
+	b=heY8DZfjs596eoeBD5Z2sDOUU9B1ozsiyIw9Ub5j5NN18cL3ACo/mUb+8fdUQxz5eknT
+	 AGHLKCBcM82NzD0fuSMaukcw6smbGvzmBLwxSSuq5fKTgnyFK3wIgZtHAwOfjsyOLGNUl
+	 EiCrjnO3XhFFGMySJ3xCOCLWogk3C1BrrMYba4ksBCT8888DurqYn6Vt6hFNjwvkESbOU
+	 /ilzQS+Bmzpgc8XaQVtUdl3qH0LHiLromofkdHAcDZgzYez5ObWIz+6D+m3kF3Mt6fzkT
+	 kzuU+alJ51HWmnUBCnfr72czmjbMxJZizh+ZFsMPXlAwFP7C4rrf0/Ct+Mu9O4f6a7Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793783259;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793783736;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=/wtgYPMXZXp6zUY4OHNPQsnexKANsg38h6IetxV4HVw=;
-	b=VJpMiwYIzeyazWnax3Q4E4PwGp28W3IEyXShFaQNGP+u0s0xzPaJZZkjtanHNcQABTo7
-	 ahaSqbpqeBi/v7+PmnlAvBTlNotdwjS23pY3YE/6Ersjh3e2u6lpMY4G+dOPtsQ3tIU+x
-	 mE4CyGQW1OKNOuOBfTMz8kaL0knUAtTnwTAsoktO4RPMeS1w/Nn7mPrGK1YcYumhOEaTa
-	 UQ1DjXNrsbcCyH7g6LxGwG2cfTZbjqfnHT3uohRRp5GyjdCS6M+sRyHLUUlyVVMOmNwC9
-	 a+PLVeLY/Si94MNwoIgR90CeEkKUOjU0uqSI+OVZW2oMCyrZ2dRuPVJ395evT1+Czrw==
+	bh=tun3DxnivT6n8ykyvHDle1jgjloMyn9wMMyaVwUBJtE=;
+	b=xmcr7yec+WPhYpeNieSszKshZJXr/3jZlrcW8PLnr+8Zh4T2kyeXJvf1i/aGPlwa+qVS
+	 R6xPzgd1Ro2Z+SaMXtkyN6ZxEdLAAtVN6DqR2QjzGXvdlwahqdhv6qUOiaQl1kLdUMPPo
+	 svBQYusftCZ8mNsJ9Le9tpJsm1Jf6NSf+sX3zXiHp5gTlqJVORtB3x1oNI6PIm6r1kdGV
+	 PolVhj4xUkvFWlKwY7Lk1oM+acc8YBO0v7qi0n7xFCNGfHNKesXbXw7JqXVKcphP3VWel
+	 PHCWI5ukpuhM5nNOHoVBztxqRAXPCZbK895HWGrw28um8DVKOXnYgI8YqQOODf7vdeA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=G2dP9jW8;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QF98rpjB;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 62613606A326;
-	Wed,  4 Nov 2026 09:07:39 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C1070606A31B;
+	Wed,  4 Nov 2026 09:15:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=G2dP9jW8
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BF4D31F000C1;
-	Wed,  4 Nov 2026 09:07:27 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QF98rpjB
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 786C51F000C1;
+	Wed,  4 Nov 2026 09:15:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793783259;
-	bh=/wtgYPMXZXp6zUY4OHNPQsnexKANsg38h6IetxV4HVw=;
+	s=k20260515; t=1793783735;
+	bh=tun3DxnivT6n8ykyvHDle1jgjloMyn9wMMyaVwUBJtE=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=G2dP9jW8XN9fwXCrGnjt6PUjB94dMWk22P5oRER6/dYD3zXvvuzlKIrKLzPlfnYCC
-	 qOcuBRM28rAzRCFJukigtV7OTBeLQcFImEoDeS3a5YMb8bob19T1P9EA2nb4kKdQ0v
-	 WWHlHf/gkNd+l4NpDAM32yRLg64mUtajz2yXneujyfLyPRx2qQuV3v8Ma7iE4TggCu
-	 hw4qQHy1lBXXlmkThiO3lpG/9nEypbtPLVCAmyrzUS9uiZ4azhCT29uKjwonTiORlb
-	 ytNHnHqtR1POQ5gnAFwbKO4J0o16idIKO1z9oen/GYwHDy+SyUWj9m3HYs3YIT9dyZ
-	 mamCDVhtpL9BA==
-Date: Wed, 4 Nov 2026 09:07:25 +0000
-From: "Lorenzo Stoakes (ARM)" <ljs@kernel.org>
-To: Huan Nguyen <nhuhuan@google.com>
-Cc: tglx@kernel.org, mingo@redhat.com, bp@alien8.de, 
-	dave.hansen@linux.intel.com, x86@kernel.org, hpa@zytor.com, akpm@linux-foundation.org, 
-	david@kernel.org, Liam.Howlett@oracle.com, vbabka@kernel.org, rppt@kernel.org, 
-	surenb@google.com, mhocko@suse.com, trondmy@kernel.org, anna@kernel.org, 
-	ziy@nvidia.com, matthew.brost@intel.com, joshua.hahnjy@gmail.com, 
-	rakie.kim@sk.com, byungchul@sk.com, gourry@gourry.net, 
-	ying.huang@linux.alibaba.com, apopple@nvidia.com, rostedt@goodmis.org, mhiramat@kernel.org, 
-	mathieu.desnoyers@efficios.com, jackmanb@google.com, hannes@cmpxchg.org, shivankg@amd.com, 
-	rientjes@google.com, dave@stgolabs.net, nifan.cxl@gmail.com, fvdl@google.com, 
-	jic23@kernel.org, rkodsara@amd.com, bharata@amd.com, sj@kernel.org, 
-	weixugc@google.com, xuezhengchu@huawei.com, yiannis@zptcorp.com, 
-	yiannis.nikolakop@gmail.com, dimitrios.palyvos@zptcorp.com, alirad.malek@zptcorp.com, 
-	ryan.roberts@arm.com, linux-kernel@vger.kernel.org, linux-mm@kvack.org, 
-	linux-nfs@vger.kernel.org, linux-trace-kernel@vger.kernel.org
-Subject: Re: [RFC PATCH v3 0/3] mm: use non-temporal stores for demotion
-Message-ID: <aur1xv84Siddlg3P@gremlin>
-References: <20260730-rfc-nt-demote-v2-0-452dbe3b5073@zptcorp.com>
- <20261103223025.2482227-1-nhuhuan@google.com>
+	b=QF98rpjBzH7nX1jmz4Zo8ykeu0WPbxz0HGt6XxCXrOQ4V4PB3P/wbn5sluIzZ3bgP
+	 woOpkCVq06Ek6V7bKkHEP2phdvrGGARxXAl1OBE0IhgkRUa/IQ935AFbXxh1YUY5bJ
+	 utfjbIjp7LtybAhtZNGHqFcIoDw2mhpfxaUaUe5IHuBCvHt5tgYAPu/YfrtEAf4jWd
+	 v5zbJS1rE1Hby/io2vM2SNwmccLVR3w7pjdFYCtf7rR4Wu4skeBeZ5GH0Q1ajKmHHR
+	 yetiYqpJqieJOdcKUSYdWCjNW5p22mqd+bHsoVYbOTO4y8Ft2ybe6f5kRc5h/hiSzc
+	 /PiiXfUYZ7Gcw==
+Date: Wed, 4 Nov 2026 10:15:18 +0100
+From: Christian Brauner <brauner@kernel.org>
+To: Florian Westphal <fw@strlen.de>
+Cc: linux-fsdevel@vger.kernel.org, 
+	Linus Torvalds <torvalds@linux-foundation.org>, Jann Horn <jannh@google.com>, Josef Bacik <josef@toxicpanda.com>, 
+	Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
+	Eric Dumazet <edumazet@kernel.org>, Thomas Gleixner <tglx@kernel.org>, 
+	Al Viro <viro@zeniv.linux.org.uk>, Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, 
+	Greg Kroah-Hartman <gregkh@suse.de>, Joel Granados <joel.granados@kernel.org>, 
+	Kees Cook <kees@kernel.org>, Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, 
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, linux-acpi@vger.kernel.org, 
+	linux-kselftest@vger.kernel.org, linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, 
+	linux-um@lists.infradead.org, linux-wireless@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
+	netdev@vger.kernel.org, ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org, 
+	coreteam@netfilter.org, kexec@lists.infradead.org, linux-pci@vger.kernel.org, 
+	linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+	ibm-acpi-devel@lists.sourceforge.net, jfs-discussion@lists.sourceforge.net, 
+	linux-alpha@vger.kernel.org, linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org, 
+	linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org, 
+	linux-sh@vger.kernel.org, linux-usb@vger.kernel.org, samba-technical@lists.samba.org, 
+	sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org, 
+	linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net, 
+	Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
+	linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org, 
+	Chuck Lever <cel@kernel.org>, stable@vger.kernel.org
+Subject: Re: [PATCH RFC 03/38] netfilter: xt_recent: don't remove the proc
+ entries under a spinlock
+Message-ID: <20261104-entgangen-nettigkeiten-intuitiv-f39521735261@brauner>
+References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
+ <20261102-work-procfs-bugfixes-v1-3-59422ed3e465@kernel.org>
+ <auig_zhd3L0HEis3@strlen.de>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -69,27 +79,12 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20261103223025.2482227-1-nhuhuan@google.com>
+In-Reply-To: <auig_zhd3L0HEis3@strlen.de>
 
-Hi,
+On Mon, Nov 02, 2026 at 03:41:03PM +0100, Florian Westphal wrote:
+> Yes, but note that this change is already part of a pending nf -> net
+> merge request.
 
-Please always send new revisions of series individually, not in-reply-to
-any other email.
-
-The easiest way of accomplishing this is to use b4 [0] (the recommended
-way of sending patches to mm), otherwise format patches like this:
-
-For a patch series, e.g. at v2:
-
-$ git format-patch -v2 --cover-letter --thread ...
-
-For an individual patch, e.g. at v2:
-
-$ git format-patch -v2 HEAD~1
-
-[0]: https://b4.docs.kernel.org/en/latest/contributor/send.html
-
--- 
-Cheers, Lorenzo
+Dropped.
