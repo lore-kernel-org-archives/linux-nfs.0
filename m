@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793820846;
-	b=BPuFfi777/g5qht4UJhGDJbbQ0JReoQ0M7WJS3qsrGZEQsDlmVRmTRUqal2NJnJIIZxY
-	 /16SHUVhczeFvg8vXWDuY+0PzihaenGhxHHuS5BgS2inG2n9os5TcXBumIWFr5ulSjc0D
-	 l1IWXnLvussH/5qvNgf6SSx8/KIv9j1D2h/Z/ee5RsZtUEzShCTpnDtz8NzUIaMD4yqNA
-	 61MABD5bmnwlRUOg5VpbCH5F8fn8N8qd5Mt5I76f7ROrysCZ+J3hYUl60Zp8PoPx4yl/4
-	 eDexXDowFpkAFEftzUxTEzRbyxNMqEE+NbpPT+Lh5p0wNhGzaJ5eiIxSJoYD4w9xJBg==
+	t=1793820860;
+	b=QO+KDV9/JEYtMqhhsBEhh198aPKHBkfZqEZCk9HHWIIe+SDm3dga6oI43zZhotoagQ24
+	 fSwB0GmIptvUOyAFU8hLh7MXiWrQVLz03z2vzBYT/GiQ6/U8qXufudiPrucnG2XnERy5j
+	 s6iqJGBL4kM81m9co/IiQKJ7TK6sWLh39guIZlMNEAiwzO5xiGGt1uRbkcj7yqjsT5uLY
+	 uQCSvpctCS4UFIiGj0JivGrDp0KSVCuuWDMKqrNQWnZZ/NocqwYazbBhl/aURVTYEvkkn
+	 v5ftumZQM2vsvtAcfhzxbUzz7GDU3oIgXEydUZZ6DzS1GDtOFY80X8PsuM1/FWyyrvA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793820846;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793820860;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=wOiGbtXh+26P6cFgB3YXbnrWEhf8CPNBoutfZuqe0cI=;
-	b=TXXFHfctN89FmLpkmorhKCy7+CfMKXkEyIWmsqRIgvEwUFfAY8wvSaLrdjnsUilXnMTI
-	 EUzntCzx8GWeh8l1jz322iwCQSrGl2+2h66Q98+6n+wO5nUN7M9iEhqf8SHN4vt7GJaGE
-	 wAL7XmDT6YW5CF9BTS34AbBhSLDCIFA0YDLYEefYb/UUSw+Z4qFU5aIm1TsvcoC9arIcv
-	 9+zoA19xaMVzd0Uea5nVA5Ie8fkkktASW+Uyca3P+Zzc1WdCcOI5hiCPa35Mkiz4Qhnc1
-	 Wo7m1v0h+XhjOkEHygz6x6z7n9Rk4R4NTDskKis5mqP7eW2gg/tddbmsvqRR5yXspPQ==
+	bh=XPRk8xa2iNqVsjjcUeI0mWPc+8Y/qNwvFsdP9QcHm+Y=;
+	b=INv6CAvfcDL9tL0tBubmouI8P585iiqN7jEfBBiPAIsYD5FDqzQvCDbbj/svpAP/2okW
+	 8Qsy9o5uksZwDa8nbQciIv3lC5qi794qwTDAvPwbhvT3VRS3OXQ7x1aAvMVp66QMOyfhn
+	 TCXM9r72J/P5XL/D0+FZiOWXh5C8UBbJTjjl1ZzD57SPCx+u/tJJaAmVDobKkAeuaC77q
+	 LpwDC4Mz2BTWMzjtNbwTmQe51MZN0y+zZ0aTZshAXhxHonMqOZWrmt1wuPfummUNkEXxN
+	 wQ+9Y13/tVIVXi13hWpxHvWiQQ77riXW2hO3dslQEE64pQRALLVxFVUjOSx6r/KUgeg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GAUi2SUu;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=UNhMpYi9;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5DD0F607A7D6;
-	Wed,  4 Nov 2026 19:34:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B403606E813;
+	Wed,  4 Nov 2026 19:34:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GAUi2SUu
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 156601F00A02;
-	Wed,  4 Nov 2026 19:33:52 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=UNhMpYi9
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6EAED1F000C1;
+	Wed,  4 Nov 2026 19:34:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793820844;
-	bh=wOiGbtXh+26P6cFgB3YXbnrWEhf8CPNBoutfZuqe0cI=;
+	s=k20260515; t=1793820859;
+	bh=XPRk8xa2iNqVsjjcUeI0mWPc+8Y/qNwvFsdP9QcHm+Y=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=GAUi2SUug0UxPlfFUUONWwiBaqhW+CPwHi9ROt2tgHXEeUA5HnhKW49vg0h//eRek
-	 19VdBVnFuVj0FumboOxOLM8ZGbD/sXZJ18BizGNDqR7bU1rcpq9wqzj03DLTrZxycb
-	 xCZzycJdxDPLJft+HIdgBnsg1C2coUbbb6sFjgx+Z90PctyxTbRw87FiQL/EAfCnsD
-	 wiHtGkQ2vyZTUstIsghXbyaDluDmFswvpSimcZ+xR5fteGCZrQT/i14tZH1sOvmBSc
-	 l6QV3ryMIU8G+gcr/NG5UtajUyb9hEoWX8DYhdTOTtqkDHMl0qtdUHBBmVhxDrFDpD
-	 alh7bcK12D7bg==
+	b=UNhMpYi9iBi3sSb8K6vRL3AVudJYWbzQuMGR/ICND1KoaHjOskUuqvumDcfcjfd6K
+	 ijYufZXYFtMMXKypD4aHqfrjcDJ5P9E7mGA88Bbc5XKwZS4J2G6bgAUbtjzgydCj5c
+	 CMbGq978DMlUEIVBNwLUkmICilkcpIuILUWlDTO9oBqCop6Q2rT2BrBKj9tSMvpI5f
+	 mIfr0sAmHMehrxEf8R1Vxd1nxFT9mY8+v+LmVChZXn8FLaY6Ek9gVtZVyHvJ7Cd5NB
+	 lpPZDeCXrjw4w6xWu6pGAbvluUnAnWZKtALorygHi4AAnDmt2IczUeBmgec1AG7dqW
+	 U2/sWDkdd6LGA==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 19/23] proc: pin the entry around the vm_operations of its mappings
-Date: Wed,  4 Nov 2026 20:33:50 +0100
-Message-ID: <20261104-work-procfs-core-v2-19-76ace653a773@kernel.org>
+Subject: [PATCH RESEND v2 20/23] selftests/proc: check that a mapped entry can be removed
+Date: Wed,  4 Nov 2026 20:34:05 +0100
+Message-ID: <20261104-work-procfs-core-v2-20-76ace653a773@kernel.org>
 In-Reply-To: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
 References: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,300 +116,227 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=11693; i=brauner@kernel.org; h=from:subject:message-id; bh=1Gn60dKTBgMHLZNNt783bvPpMphe5Oyiwe1oBT0VS+Y=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bu+QKEs7mSWU5xnOGc8epSacpjzTovXorKiOP1wfa q7krTrcUcrCIMbFICumyOLQbhIut5ynYrNRpgbMHFYmkCEMXJwCMJFbTYwMF/JeHn5hJ2XP5f3c W3fLzrrjN1YX6loYlbr2VRpwJ074xfCH43/Y586lty6++81yYZFC6JEJB84FLxQ6q3urlnveMrt 2bgA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6487; i=brauner@kernel.org; h=from:subject:message-id; bh=jPDbXGY4cbCvO3GA1X2/Ctdyj/e7Mw7ZeqOfGQfxULg=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bu/8xLCt3Udlh9rJxEtBLOuvKWxb7B30qu+8xJIGm /Db96fUd5SyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEwkQ4mR4fwquSyvtz3Ne746 HTn1fX1AAaOl3YVTD7n+Heo0WvX+kQPDfyf/Xm+TiXFyJoacvlEsv149+Fb4tz9xPvfn/NiLR3d aMwAA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-proc_reg_mmap() pins the entry around ->proc_mmap() and that's it. What
-the entry hands out lives on without the pin: the vm_operations it put
-on the mapping run on every fault, on every write to a read-only page
-and on every ptrace access with the entry unpinned, and the mapping
-itself survives remove_proc_entry(). For /proc/vmcore that means the
-fault handler runs after vmcore_cleanup() freed what it looks at, and a
-mapping of the old memory keeps pointing at it after fadump gave that
-memory back to the page allocator. /proc/bus/pci has the same problem
-when a device goes away.
+Map a memory BAR of a PCI device through /proc/bus/pci and remove the
+device through sysfs:
 
-So do what kernfs does for the mappings of sysfs files. procfs puts
-vm_operations of its own on the mapping. They pin the entry around its
-->open(), ->fault(), ->page_mkwrite() and ->access() and fail with
-SIGBUS, or do nothing, once the entry is gone. The entry's
-vm_operations are kept in its open node, so every mapping of an entry
-has to use the same ones, like kernfs asks that of every mapping of an
-open file. ->close() can't be wrapped, it runs when the mapping goes
-away and that can be after the entry is gone, so a mapping that has
-one is refused.
+- the removal doesn't wait for the mapped file
 
-When the entry is removed procfs unmaps the mappings of every open file
-of an entry that has been mapped before it calls ->proc_release(), so a
-fault into one of them finds the entry gone. That unmaps the entry's
-own address space, the way kernfs_drain_open_files() does it.
-/proc/bus/pci maps through the iomem address space that /dev/mem and
-the sysfs resource files share, see iomem_get_mapping(), and
-unmapping that would take every /dev/mem and BAR mapping on the system
-with it. So those mappings are left alone, like the sysfs resource
-files leave theirs, and keep pointing at the BAR of a device that is
-gone. To know the files an entry that can be mapped gets an open node
-like an entry with a ->proc_release() has one. The mapping is linked
-into the file's address space only after ->mmap() returned, so a
-removal that runs in between doesn't find it. kernfs has the same
-window.
+- the entry is gone
 
-Entries that are never removed aren't wrapped, procfs never pins them.
+- and reading the file fails with -EIO
+
+The mapping itself survives. /proc/bus/pci maps through the iomem
+address space of /dev/mem and procfs leaves that alone, like the sysfs
+resource files leave theirs, so the test doesn't touch the mapping
+after the removal. What the BAR of a removed device reads like is
+between the reader and the hardware.
+
+Nothing in the test can know which device is safe to remove, so it
+takes the device from PROC_PCI_DEV, skips without it and rescans the bus
+afterwards. It also skips where PCI files can't be mapped or that isn't
+allowed.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/proc/generic.c       |   6 +--
- fs/proc/inode.c         | 126 ++++++++++++++++++++++++++++++++++++++++++++----
- fs/proc/internal.h      |   9 ++--
- include/linux/proc_fs.h |  15 ++++++
- 4 files changed, 140 insertions(+), 16 deletions(-)
+ tools/testing/selftests/proc/.gitignore           |   1 +
+ tools/testing/selftests/proc/Makefile             |   1 +
+ tools/testing/selftests/proc/proc-remove-mapped.c | 160 ++++++++++++++++++++++
+ 3 files changed, 162 insertions(+)
 
-diff --git a/fs/proc/generic.c b/fs/proc/generic.c
-index 1bad3b068d53..81a6cb560c75 100644
---- a/fs/proc/generic.c
-+++ b/fs/proc/generic.c
-@@ -505,14 +505,14 @@ static int pde_set_flags(struct proc_dir_entry *pde)
+diff --git a/tools/testing/selftests/proc/.gitignore b/tools/testing/selftests/proc/.gitignore
+index e2566cc0ae07..cafd8c263c9a 100644
+--- a/tools/testing/selftests/proc/.gitignore
++++ b/tools/testing/selftests/proc/.gitignore
+@@ -23,6 +23,7 @@
+ /proc-pidns
+ /proc-remove-slow-sysctl
+ /proc-remove-slow-reader
++/proc-remove-mapped
+ /proc-remove-slow-readlink
+ /read
+ /self
+diff --git a/tools/testing/selftests/proc/Makefile b/tools/testing/selftests/proc/Makefile
+index 6a9bdc999f54..c38297afc244 100644
+--- a/tools/testing/selftests/proc/Makefile
++++ b/tools/testing/selftests/proc/Makefile
+@@ -34,6 +34,7 @@ TEST_GEN_PROGS += proc-sysctl-readdir-churn
+ TEST_GEN_PROGS += proc-pidns
+ TEST_GEN_PROGS += proc-remove-slow-sysctl
+ TEST_GEN_PROGS += proc-remove-slow-reader
++TEST_GEN_PROGS += proc-remove-mapped
+ TEST_GEN_PROGS += proc-remove-slow-readlink
  
- /*
-  * procfs has to know the open files of an entry whose ->proc_release() it
-- * calls at removal. A permanent entry is never removed and skips all that,
-- * see proc_reg_open().
-+ * calls at removal and whose mappings it undoes then. A permanent entry is
-+ * never removed and skips all that, see proc_reg_open().
-  */
- static bool pde_needs_open_node(const struct proc_dir_entry *pde)
- {
- 	if (!S_ISREG(pde->mode) || pde_is_permanent(pde))
- 		return false;
--	return pde->proc_ops->proc_release;
-+	return pde->proc_ops->proc_release || pde->proc_ops->proc_mmap;
- }
- 
- /*
-diff --git a/fs/proc/inode.c b/fs/proc/inode.c
-index 717cbaad65df..5e423bcad278 100644
---- a/fs/proc/inode.c
-+++ b/fs/proc/inode.c
-@@ -312,7 +312,8 @@ static void pde_seq_release(struct proc_dir_entry *pde, struct inode *inode,
-  *
-  * PDE is locked on entry, unlocked on exit.
-  */
--static void close_pdeo(struct proc_dir_entry *pde, struct pde_opener *pdeo)
-+static void close_pdeo(struct proc_dir_entry *pde, struct pde_opener *pdeo,
-+		       bool rundown)
- 	__releases(&pde->pde_unload_lock)
- {
- 	/*
-@@ -336,7 +337,17 @@ static void close_pdeo(struct proc_dir_entry *pde, struct pde_opener *pdeo)
- 		spin_unlock(&pde->pde_unload_lock);
- 
- 		file = pdeo->file;
--		pde->proc_ops->proc_release(file_inode(file), file);
-+		/*
-+		 * A mapping of a removed entry faults, see proc_vm_ops. Like
-+		 * kernfs this unmaps the entry's own address space. A file
-+		 * that maps through another one, /proc/bus/pci through the
-+		 * iomem address space of /dev/mem, keeps its mappings like a
-+		 * sysfs resource file does.
-+		 */
-+		if (rundown && pde->open->vm_ops)
-+			unmap_mapping_range(file_inode(file)->i_mapping, 0, 0, 1);
-+		if (pde->proc_ops->proc_release)
-+			pde->proc_ops->proc_release(file_inode(file), file);
- 
- 		spin_lock(&pde->pde_unload_lock);
- 		/* Strictly after ->proc_release, see above. */
-@@ -362,7 +373,7 @@ void proc_entry_rundown(struct proc_dir_entry *de)
- 	while (!list_empty(&de->open->files)) {
- 		struct pde_opener *pdeo;
- 		pdeo = list_first_entry(&de->open->files, struct pde_opener, lh);
--		close_pdeo(de, pdeo);
-+		close_pdeo(de, pdeo, true);
- 		spin_lock(&de->pde_unload_lock);
- 	}
- 	spin_unlock(&de->pde_unload_lock);
-@@ -642,12 +653,106 @@ static long proc_reg_compat_ioctl(struct file *file, unsigned int cmd, unsigned
- #define proc_reg_compat_ioctl NULL
- #endif
- 
--static int pde_mmap(struct proc_dir_entry *pde, struct file *file, struct vm_area_struct *vma)
+ include ../lib.mk
+diff --git a/tools/testing/selftests/proc/proc-remove-mapped.c b/tools/testing/selftests/proc/proc-remove-mapped.c
+new file mode 100644
+index 000000000000..92860fb2a8f4
+--- /dev/null
++++ b/tools/testing/selftests/proc/proc-remove-mapped.c
+@@ -0,0 +1,160 @@
++// SPDX-License-Identifier: GPL-2.0
 +/*
-+ * The vm_operations of an entry's mappings run with the entry pinned, like
-+ * the entry's file methods do, and a mapping of a removed entry faults.
-+ * proc_entry_rundown() unmaps the mappings of every open file and a fault
-+ * after that finds the entry gone. Like kernfs_vm_ops, and like there only
-+ * these four methods of the entry's vm_operations are called.
++ * Removing a /proc entry with a mapped file open must not wait for that file
++ * and must leave the file dead. Map a memory BAR of a PCI device through
++ * /proc/bus/pci and remove the device, which removes its entry. Nothing here
++ * can know which device is safe to remove and rescan, so it is named in
++ * PROC_PCI_DEV, e.g. PROC_PCI_DEV=0000:00:03.0.
 + */
-+static void proc_vma_open(struct vm_area_struct *vma)
-+{
-+	struct proc_dir_entry *pde = PDE(file_inode(vma->vm_file));
-+	const struct vm_operations_struct *vm_ops = pde->open->vm_ops;
++#define _GNU_SOURCE
++#include <errno.h>
++#include <fcntl.h>
++#include <limits.h>
++#include <linux/pci.h>
++#include <setjmp.h>
++#include <signal.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/ioctl.h>
++#include <sys/mman.h>
++#include <unistd.h>
 +
-+	if (!pde_pin(pde))
-+		return;
-+	if (vm_ops->open)
-+		vm_ops->open(vma);
-+	pde_unpin(pde);
++#include "../kselftest_harness.h"
++
++#define DEV_ENV		"PROC_PCI_DEV"
++#define SYSFS_DEVICES	"/sys/bus/pci/devices/"
++#define SYSFS_RESCAN	"/sys/bus/pci/rescan"
++#define PROC_PCI	"/proc/bus/pci/"
++#define IORESOURCE_MEM	0x00000200
++
++static sigjmp_buf fault;
++
++static void on_sigbus(int sig)
++{
++	siglongjmp(fault, 1);
 +}
 +
-+static vm_fault_t proc_vma_fault(struct vm_fault *vmf)
++/* the first memory BAR of @dev */
++static int mem_bar(const char *dev, unsigned long long *start,
++		   unsigned long long *len)
 +{
-+	struct proc_dir_entry *pde = PDE(file_inode(vmf->vma->vm_file));
-+	const struct vm_operations_struct *vm_ops = pde->open->vm_ops;
-+	vm_fault_t ret = VM_FAULT_SIGBUS;
++	unsigned long long s, e, flags;
++	char path[PATH_MAX];
++	int ret = -ENODEV;
++	FILE *f;
 +
-+	if (!pde_pin(pde))
-+		return VM_FAULT_SIGBUS;
-+	if (vm_ops->fault)
-+		ret = vm_ops->fault(vmf);
-+	pde_unpin(pde);
++	snprintf(path, sizeof(path), SYSFS_DEVICES "%s/resource", dev);
++	f = fopen(path, "r");
++	if (!f)
++		return -errno;
++	while (fscanf(f, "%llx %llx %llx", &s, &e, &flags) == 3) {
++		if ((flags & IORESOURCE_MEM) && e >= s) {
++			*start = s;
++			*len = e - s + 1;
++			ret = 0;
++			break;
++		}
++	}
++	fclose(f);
 +	return ret;
 +}
 +
-+static vm_fault_t proc_vma_page_mkwrite(struct vm_fault *vmf)
++static int write_one(const char *path)
 +{
-+	struct proc_dir_entry *pde = PDE(file_inode(vmf->vma->vm_file));
-+	const struct vm_operations_struct *vm_ops = pde->open->vm_ops;
-+	vm_fault_t ret = 0;
++	int fd, ret;
 +
-+	if (!pde_pin(pde))
-+		return VM_FAULT_SIGBUS;
-+	if (vm_ops->page_mkwrite)
-+		ret = vm_ops->page_mkwrite(vmf);
-+	else
-+		file_update_time(vmf->vma->vm_file);
-+	pde_unpin(pde);
++	fd = open(path, O_WRONLY | O_CLOEXEC);
++	if (fd < 0)
++		return -errno;
++	ret = write(fd, "1", 1) < 0 ? -errno : 0;
++	close(fd);
 +	return ret;
 +}
 +
-+static int proc_vma_access(struct vm_area_struct *vma, unsigned long addr,
-+			   void *buf, int len, int write)
-+{
-+	struct proc_dir_entry *pde = PDE(file_inode(vma->vm_file));
-+	const struct vm_operations_struct *vm_ops = pde->open->vm_ops;
-+	int ret = -EINVAL;
-+
-+	if (!pde_pin(pde))
-+		return -EINVAL;
-+	if (vm_ops->access)
-+		ret = vm_ops->access(vma, addr, buf, len, write);
-+	pde_unpin(pde);
-+	return ret;
-+}
-+
-+static const struct vm_operations_struct proc_vm_ops = {
-+	.open		= proc_vma_open,
-+	.fault		= proc_vma_fault,
-+	.page_mkwrite	= proc_vma_page_mkwrite,
-+	.access		= proc_vma_access,
++FIXTURE(pci) {
++	char dev[16];
++	char path[64];
++	bool removed;
 +};
 +
-+static int pde_mmap(struct proc_dir_entry *pde, struct file *file,
-+		    struct vm_area_struct *vma)
- {
- 	const auto mmap = pde->proc_ops->proc_mmap;
--	if (mmap)
--		return mmap(file, vma);
--	return -EIO;
-+	struct pde_open_node *on = pde->open;
-+	int rv;
++FIXTURE_SETUP(pci)
++{
++	const char *dev = getenv(DEV_ENV);
 +
-+	if (!mmap)
-+		return -EIO;
-+	rv = mmap(file, vma);
-+	if (rv || pde_is_permanent(pde))
-+		return rv;
-+	/* the entry mapped something else, that isn't ours to wrap */
-+	if (vma->vm_file != file)
-+		return 0;
-+	/*
-+	 * ->close() can't be wrapped, it runs when the mapping goes away and
-+	 * that can be after the entry is gone, see close_pdeo().
-+	 */
-+	if (!vma->vm_ops || vma->vm_ops->close)
-+		return -EINVAL;
++	self->removed = false;
++	if (!dev)
++		SKIP(return, DEV_ENV " isn't set");
++	/* 0000:BB:DD.F is /proc/bus/pci/BB/DD.F */
++	if (strlen(dev) != 12 || strncmp(dev, "0000:", 5))
++		SKIP(return, "%s: not a device in PCI domain 0", dev);
++	strcpy(self->dev, dev);
++	snprintf(self->path, sizeof(self->path), PROC_PCI "%.2s/%s",
++		 dev + 5, dev + 8);
++	if (access(self->path, R_OK))
++		SKIP(return, "%s: %s", self->path, strerror(errno));
++}
 +
-+	/* every mapping of an entry uses the same vm_operations, see above */
-+	guard(spinlock)(&pde->pde_unload_lock);
-+	if (on->vm_ops && on->vm_ops != vma->vm_ops)
-+		return -EINVAL;
-+	on->vm_ops = vma->vm_ops;
-+	vma->vm_ops = &proc_vm_ops;
-+	return 0;
- }
- 
- static int proc_reg_mmap(struct file *file, struct vm_area_struct *vma)
-@@ -743,8 +848,9 @@ static int proc_reg_open(struct inode *inode, struct file *file)
- 	 * 2) rmmod isn't blocked by opening file in /proc and sitting on
- 	 *    the descriptor (including "rmmod foo </proc/foo" scenario).
- 	 *
--	 * Save every "struct file" with custom ->release hook. Those entries
--	 * have an open node, see proc_register().
-+	 * Save every "struct file" with custom ->release hook, and every
-+	 * one that can be mapped, proc_entry_rundown() unmaps those. Those
-+	 * entries have an open node, see proc_register().
- 	 */
- 	if (!use_pde(pde))
- 		return -ENOENT;
-@@ -794,7 +900,7 @@ static int proc_reg_release(struct inode *inode, struct file *file)
- 	spin_lock(&pde->pde_unload_lock);
- 	list_for_each_entry(pdeo, &pde->open->files, lh) {
- 		if (pdeo->file == file) {
--			close_pdeo(pde, pdeo);
-+			close_pdeo(pde, pdeo, false);
- 			goto out;
- 		}
- 	}
-diff --git a/fs/proc/internal.h b/fs/proc/internal.h
-index ae0f9779cf1b..0b1c0585d6a6 100644
---- a/fs/proc/internal.h
-+++ b/fs/proc/internal.h
-@@ -373,12 +373,15 @@ struct pde_opener {
- } __randomize_layout;
- 
- /*
-- * The open files of an entry whose ->proc_release() procfs has to call when
-- * the entry is removed while they are still open. Allocated with the entry,
-- * see proc_register().
-+ * The open files of an entry whose ->proc_release() procfs has to call and
-+ * whose mappings it has to undo when the entry is removed while they are
-+ * still open, that is of an entry with a ->proc_release() or a
-+ * ->proc_mmap(). Allocated with the entry, see proc_register().
-  */
- struct pde_open_node {
- 	struct list_head files;		/* who did ->open, but not ->release */
-+	/* of its mappings, the same for all of them, see pde_mmap() */
-+	const struct vm_operations_struct *vm_ops;
- };
- extern const struct inode_operations proc_link_inode_operations;
- extern const struct inode_operations proc_pid_link_inode_operations;
-diff --git a/include/linux/proc_fs.h b/include/linux/proc_fs.h
-index 2ba4e4a39e13..5bf039d20990 100644
---- a/include/linux/proc_fs.h
-+++ b/include/linux/proc_fs.h
-@@ -86,6 +86,21 @@ struct proc_ops {
- #ifdef CONFIG_COMPAT
- 	long	(*proc_compat_ioctl)(struct file *, unsigned int, unsigned long);
- #endif
++FIXTURE_TEARDOWN(pci)
++{
++	if (self->removed && write_one(SYSFS_RESCAN))
++		TH_LOG("couldn't rescan the PCI bus for %s", self->dev);
++}
++
++TEST_F(pci, remove_while_mapped)
++{
++	long psz = sysconf(_SC_PAGESIZE);
++	unsigned long long start = 0, len = 0;
++	char path[PATH_MAX];
++	volatile unsigned int *p;
++	unsigned int v;
++	int fd;
++
++	if (mem_bar(self->dev, &start, &len))
++		SKIP(return, "%s has no memory BAR", self->dev);
++
++	fd = open(self->path, O_RDONLY | O_CLOEXEC);
++	ASSERT_GE(fd, 0);
++	if (ioctl(fd, PCIIOC_MMAP_IS_MEM)) {
++		/* no PCI mmap on this architecture, or locked down */
++		if (errno == EINVAL || errno == EPERM) {
++			close(fd);
++			SKIP(return, "PCIIOC_MMAP_IS_MEM: %s", strerror(errno));
++		}
++		ASSERT_TRUE(false) {
++			TH_LOG("PCIIOC_MMAP_IS_MEM: %s", strerror(errno));
++		}
++	}
++	p = mmap(NULL, psz, PROT_READ, MAP_SHARED, fd, start);
++	if (p == MAP_FAILED)
++		SKIP(return, "mmap: %s", strerror(errno));
++
++	/* The BAR can be read while the device is there. */
++	ASSERT_NE(signal(SIGBUS, on_sigbus), SIG_ERR);
++	if (sigsetjmp(fault, 1) == 0) {
++		v = *p;
++	} else {
++		ASSERT_TRUE(false) {
++			TH_LOG("reading the mapping faulted before the removal");
++		}
++	}
++
++	/* Removing the device removes its entry. */
++	snprintf(path, sizeof(path), SYSFS_DEVICES "%s/remove", self->dev);
++	ASSERT_EQ(write_one(path), 0);
++	self->removed = true;
++	EXPECT_EQ(access(self->path, F_OK), -1);
++
 +	/*
-+	 * procfs pins the entry around ->proc_mmap() and wraps the
-+	 * vm_operations of the mapping so that ->open(), ->fault(),
-+	 * ->page_mkwrite() and ->access() run with the entry pinned as well.
-+	 * Nothing else of them is called, like for a kernfs file. Every
-+	 * mapping of an entry has to use the same vm_operations. A ->close()
-+	 * can't be wrapped, it runs when the mapping goes away and that can
-+	 * be after the entry is gone, so a mapping that has one is refused.
-+	 * Removing the entry unmaps the mappings in its own address space,
-+	 * like kernfs does, and a fault into one of them is SIGBUS from then
-+	 * on. A file that maps through another address space, /proc/bus/pci
-+	 * through the one of /dev/mem, keeps its mappings like a sysfs
-+	 * resource file does. The mappings of a permanent entry are left
-+	 * alone.
++	 * The file is dead. The mapping isn't procfs's to unmap, it lives in
++	 * the iomem address space of /dev/mem, see proc_bus_pci_open(), and
++	 * is left alone like a sysfs resource file's.
 +	 */
- 	int	(*proc_mmap)(struct file *, struct vm_area_struct *);
- 	unsigned long (*proc_get_unmapped_area)(struct file *, unsigned long, unsigned long, unsigned long, unsigned long);
- 	/*
++	EXPECT_EQ(pread(fd, &v, sizeof(v), 0), -1);
++	EXPECT_EQ(errno, EIO);
++
++	munmap((void *)p, psz);
++	close(fd);
++}
++
++TEST_HARNESS_MAIN
 
 -- 
 2.53.0
