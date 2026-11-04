@@ -1,58 +1,53 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793776304;
-	b=oVC0bppgf7vDcnyp4gEm4IzNVceGFmu/ltkWxfge0AqiPg9Vp8TywWbpXjxILQUvlAqC
-	 BpPBZbKblbZtTuBqzgrB6EAx+2YzC73fIQ+3PXWOOUH87esQiY/BcZvvzWOoyh0v5/tx4
-	 j8Kt6i/pb/TxUucR5YCRbX5eMOpMSFnwfrmkSLEYHSIPLbxF5cDsb26HZKnwkFMk/OPUk
-	 s6N4smW2JcxVRMFCBli3eFCKgcglGWknXpYPfFhdoxsHZ1HMobSCDRlltN9/RQQtUCFkk
-	 7EshvW6TFLbCvdSjU5aTsgxsWrL1j7HV6zn/PKS6b0i7cK6uOKB+FCHCsU1mB8Uw6kA==
+	t=1793776354;
+	b=gfZzYEO30Z4Y1iLrKryO2A6hapCofENsM6BSCo0kWVdIXJfYdbtMN1F92h7rnEk6P+OR
+	 kO0XfT7jQTzLPPPrCspvoDPjeUiFeFvwhnxIZZ0lnuc1lf70+9CILVZRpToDUqfWGIZhP
+	 9EvDrbSFZuRUAoro+s13ysdKXsAF4gAcNio9yPW1YmY/VwT3DEyPL71JHMVGNfm7Ihe3d
+	 pxqUlxZY4sZl+16YRxrmHSCgFzXM7byPunZ7QyAIhtMd5CP7ir6LDGD5o+HdhHxFNbL4Y
+	 Cjv3A8RWskFWcriTH2r4cWnG//ykqUR09NtgnYLLUTtNAAVpOexBswiNjDoDjTWLMCQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793776304;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793776354;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=bec9RzTPLLmJAAb1t+Dt4YBUMgyTBx8NXKAJ/4cYHqk=;
-	b=1Z5+9yWTlzuNGQDxF2cv4HKoiYz5FNDrsu9Af/XkV+MBNJqQwq5Ou760tCUHr5syrdzG
-	 fk2m3rkUaEjVdmbEsnc/2Ps8ioAQKDyJslyymOglBY8OrLGHIjQNVU0/ptdot2/PXQgL6
-	 W5pJX1JXJw7zWx/i8C2uyeeMtUyf2zcnMlRRXy9VXd8PofpFzYwVWFgJJgvTj6Bfag5iw
-	 K+x/BIsmXKGgnr+MNgxWI0ocx6vyG+UiQcSV/8/U8TEChHJ+lx+FiB615njMnnAzGolyV
-	 XVjzMl5aHmIQFNgMleFSNNNMIpjyPF7FQxf5ZsWE1zd5XyOPWLESq5FKF4moOg0vJow==
+	bh=Gvcc1SfUzRuxC7HCa25XUjDGmMMCYpKYK9b5tao3ttk=;
+	b=Q8fU2ro2eb/CSJsNIgZh5Q0rqg1ohPE5YznWESOo7ZObXsusR5ub1S54H125zHNjR8Bd
+	 q3o82lzdtN7FtGyrFeftsbcUojJ+q+Chq0DH+Y8zxgVdthrw7BwsxT4bTsDR7ColDcLKC
+	 R7S9FuRqxNOcvz+YJQ2YebGJTUTDLP9mRHnqd98Ka75Z91gjtV3Fswl/pis8lS12Z54Tm
+	 Pa+prRDgfwuKuGBiW08ekt3Ckr1KSotFyQDjTg5CJ4RikFaxgTRU210lGSThX4Y0uVwhN
+	 J3jyARB2UeCKmcurhREVoL5wzmQJNkyuAZxdHo2GnqLfrv+6jLGcBFjqKhB7zg7aPwg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ThlOQyHz;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=F5aeriKi;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 226E1606A31B;
-	Wed,  4 Nov 2026 07:11:44 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2BCCF606A32E
+	for <linux-nfs@vger.kernel.org>; Wed,  4 Nov 2026 07:12:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ThlOQyHz
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6B49A1F000C1;
-	Wed,  4 Nov 2026 07:11:43 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=F5aeriKi
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EA53B1F000C1;
+	Wed,  4 Nov 2026 07:12:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793776304;
-	bh=bec9RzTPLLmJAAb1t+Dt4YBUMgyTBx8NXKAJ/4cYHqk=;
+	s=k20260515; t=1793776353;
+	bh=Gvcc1SfUzRuxC7HCa25XUjDGmMMCYpKYK9b5tao3ttk=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=ThlOQyHz/xayqNhXt2GKt4v6ZaPZccwwetPDz4uBCv+G89DcYedZFCVjSZQPmIp3z
-	 ef+r5s3rIfP8zrML4glscx6rwfn7lWkxyQKLb8iMMk61qg6bNdXKXhl2ckWyqlS8W8
-	 kpff/k6siaFoGJ56cil9ZycYJeAaQAKsPfiBsGap5YS4BLI0VfQXgCZ1cXH69G2R8p
-	 ve6LRH7lUfQSwDVAg8AzzkWxdVaQfCpgSpplHOrZFsYiNLuxnfavqwb+GI28OYqCGj
-	 5fyaixoNhRQ9faS649I0hVqsX2vUQMsQJYEDkSoF37Zpyt0X1GUixNu747iiFDULlZ
-	 0zUfClrOZ910g==
-Date: Wed, 4 Nov 2026 08:11:40 +0100
+	b=F5aeriKidfl6vZf9bxk2KQHM7JXEhrqs+dexlHRy+D4Bqw3MolKx8HdetIak44CXk
+	 TqKjSXq/PFlxCF8cTksoqMcJ/21sGZY1R0jNAwBOOufPpJ+4aV/8UeZefV7bVsQ6qV
+	 vaJMB8z04Mm6fnfpSbpjY2i/eo+XGcDR1HoRN5JsttM09GPjUt7lFh6k5zbGpaHuXf
+	 qlDHliVbGR195VF4fSpCVU1ZZLjfgq8bOAh3H07vICpl8bgxqlwpM7EOiptIhtE+sd
+	 apgyKJ/iz+HuoeaSpyCc3Ykl5eGyzpLyDNeFn17XU7eHWCm4CjT3JtW9xb92DIuQKa
+	 2eCT6Y1nuhDmQ==
+Date: Wed, 4 Nov 2026 08:12:29 +0100
 From: Krzysztof Kozlowski <krzk@kernel.org>
 To: Wentao Liang <vulab@iscas.ac.cn>
-Cc: Dai Ngo <Dai.Ngo@oracle.com>, Jeff Layton <jlayton@kernel.org>, 
-	"David S. Miller" <davem@davemloft.net>, Paolo Abeni <pabeni@redhat.com>, 
-	Anna Schumaker <anna@kernel.org>, Chuck Lever <cel@kernel.org>, 
-	Olga Kornievskaia <okorniev@redhat.com>, Tom Talpey <tom@talpey.com>, netdev@vger.kernel.org, 
-	Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, linux-nfs@vger.kernel.org, 
-	Simon Horman <horms@kernel.org>, Trond Myklebust <trondmy@kernel.org>, 
-	NeilBrown <neil@brown.name>
-Subject: Re: [PATCH] svcrdma: drop the extra reference on the backchannel
- transport
-Message-ID: <20261104-colorful-rich-dinosaur-bfaeca@quoll>
-References: <20261104022813.1484267-1-vulab@iscas.ac.cn>
+Cc: Anna Schumaker <anna@kernel.org>, Trond Myklebust <trondmy@kernel.org>, 
+	linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: release the state owner reference in
+ __nfs42_ssc_open()
+Message-ID: <20261104-amiable-cheetah-of-politeness-badd8b@quoll>
+References: <20261104021550.1468884-1-vulab@iscas.ac.cn>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -64,31 +59,28 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20261104022813.1484267-1-vulab@iscas.ac.cn>
+In-Reply-To: <20261104021550.1468884-1-vulab@iscas.ac.cn>
 
 
-On Wed, 04 Nov 2026 02:28:13 +0000, Wentao Liang wrote:
-> xprt_setup_rdma_bc() takes two references on the new rpc_xprt: one for
-> the xpt_bc_xprt link, which svc_xprt_free() drops, and a second one
-> whose final put used to live in __svc_rdma_free().  That put was
-> removed when svc_xprt_free() took over releasing the backchannel
-> transport, but svc_xprt_free() only drops the reference belonging to
-> the xpt_bc_xprt link.  The second reference is therefore never
-> released: the rpc_xprt outlives the callback client and the
-> connection, and the net namespace reference taken by xprt_alloc() is
-> leaked with it.
+On Wed, 04 Nov 2026 02:15:50 +0000, Wentao Liang wrote:
+> __nfs42_ssc_open() takes a reference on the nfs4_state_owner with
+> nfs4_get_state_owner(), but the success path never releases it.
+> nfs4_get_open_state() takes its own reference when it creates a new
+> state, and the existing-state path does not consume the caller's
+> reference either, so the owner reference obtained at open time stays
+> around for the lifetime of the server.  Every inter-server copy source
+> open therefore leaks one state owner.
 > 
-> Keep only the reference that svc_xprt_free() releases, the same way
-> the TCP backchannel transport does, and drop the comment pointing at
-> the function that no longer performs the put.
+> Release the reference once the open context has been installed on the
+> file, as the success path in nfs4_do_open() does.
 > 
-> Fixes: 729580ddc53e ("svcrdma: xpt_bc_xprt is already clear in __svc_rdma_free()")
+> Fixes: ec4b092508982 ("NFS: inter ssc open")
 > Cc: stable@vger.kernel.org
 > Assisted-by: DeepSeek-V4.1-Flash and OpenAI Codex
 > Signed-off-by: Wentao Liang <vulab@iscas.ac.cn>
 > ---
->  net/sunrpc/xprtrdma/svc_rdma_backchannel.c | 3 ---
->  1 file changed, 3 deletions(-)
+>  fs/nfs/nfs4file.c | 1 +
+>  1 file changed, 1 insertion(+)
 > 
 
 Multiple things here:
