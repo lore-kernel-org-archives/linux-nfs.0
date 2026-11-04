@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793814913;
-	b=vaTRR1ccn+Zm7zgQrDBs/SpkE7VL3vj366cdNArYFCz0EM2LG9rGfBL9vFb8OxsAF7eP
-	 jrXNfzq9VZ86BaVKFiLOSMY7tSbhWZx+jhZAdrVUCEGuEhTtwJuW15o5lp+TnjTPsrSnV
-	 ehbCP2jXtUySq0iM3OdF1sUgoXz9Z2rCPU0G5z9kyNGqqMJZdedGvz8D093r1BGozHgMm
-	 qFJrq9FM0ifh7IGiXSWstebvqfFHNjGHqOFZd82ZyAlsCAmHlbWffnYeGYoRMJINTTwGG
-	 xaWV4NykPNxy0bOioEKBflHCJh9FDSf9R0oxsr9TyM/BDkyPgGVq3LfwY6ejkxyGB4w==
+	t=1793814937;
+	b=p0/c0wTUw9g8cRR66G5k2Is9hD4UWjW8YPYEj3gsAlDZLdvtBOD+KMttsc7671MGycjK
+	 noIscCStBNVIfmZOgWg6lZUcfJm6zuC49W4R3PQ52V4F5C/rWk1HCnhh0I624EA2Urth8
+	 O1E90qq0VPuDEVt4hhGqBflNNBUi2P208R0S2OlYIaux0kwfBvzMKva8NgITnegDLdNvU
+	 9rlrzuW4sjaM0vcBPNpxiY7Q2MyUv8S1N8owvb0EgkT1sj/tVTokZl29kh3M7jECKN7Of
+	 ntQfmQL8dp8QThtQNox1C1kmcqkj65G8s/XDoNAGjUpAj7iK9sWW1dTYEq6G65auC/A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793814913;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793814937;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=iZnPQiZm1xh8fsSdf/bokwm1XgR51VX0qi8vvYA3hwA=;
-	b=1qCn+X40gQQnxTarkD5Le5Q9tEgR3EsR4Qze/i492VtcjfVQ32maxSJ+gGZJ/sQ+gmXu
-	 sLcw8YaeFQq9tSkCniXsKCoJ6QuNB6cXC7PNH3H8VgNAojB+RNmp6PU4HwTjYMY5P77t1
-	 XvxMrCBXLQd2QA3qtP9uz5+v9rWu2ySybDu6FalUFNPJXatwbK81JPXkxldp7MGhMbJjv
-	 k/tagnV0P1YDi7KKG0/mY0fOGJ/JW1kVVHAZ5NgXUo86ZCg2+eTKvIZXB8YWwS/dOleDd
-	 zusZlTuclov1fFqeE97tFd76hvr7C99G1hSUQKFZx8IE98y+dZ/ZxtPug3qRGBCshkg==
+	bh=89c02+ELWuX5+S2o66zdN47fZ8jrr3os6Vl1YJUNtuU=;
+	b=m3Lq3wpv1j4fsJqMBLXZXC2aO8owjAnU0w+4ja8dCZiz+06GSA2jhLVw7YTaIgw2CKgF
+	 hFUcMZTnEUt1RlDet1amEmCw1qfyTUfTh6KTijoJPV8OtovIer5a8Hoz04wzzyhNCjHUX
+	 V9ltb02wg7uykF4xOEgrTHLv2c/gqERhtbqwDu9agYbL6d2pMnaTyPTQ/+Ngphay3EIIb
+	 r2iCn8Ibh5OLLHvXvuVZoAnUoiU9FBmgVRTGJJlfTqOkpTaWmaGxrkyosEWOM1WuelKJX
+	 YEDz7YegRiznl9pVZjdHs7KxrissJcgZ9b74SgJLXQj9RvTpx6+Doj7i0cNBwKCt1ew==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SlFSsHO5;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lv3gFXSS;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 74C44606D321;
-	Wed,  4 Nov 2026 17:55:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 18357606A68A;
+	Wed,  4 Nov 2026 17:55:37 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SlFSsHO5
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9D3271F000C1;
-	Wed,  4 Nov 2026 17:54:45 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lv3gFXSS
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DD4DE1F00A16;
+	Wed,  4 Nov 2026 17:55:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793814912;
-	bh=iZnPQiZm1xh8fsSdf/bokwm1XgR51VX0qi8vvYA3hwA=;
+	s=k20260515; t=1793814936;
+	bh=89c02+ELWuX5+S2o66zdN47fZ8jrr3os6Vl1YJUNtuU=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=SlFSsHO5MUq2O6WLRSzH/kwnOXG0RBDaVA5yuQO5hn4K+9IRHij4SFJOearozlUmu
-	 ryNjrwrxO93mrdKcwUpCtHe0cJOY6zqAy46TNETlRiewuda5MzZTRaXzHp1qbqSsWn
-	 rc91gDjcn/LnZxWaQBS7GHBKm4wFKYeuVgkhcm0VTkwyfObV4xm5tv8COyv1HWcC73
-	 uWh4HDfgN/YukgYQm84vDllPWKGLyrQjAsPJ6MdOB6m4XgVqnRwMrIybs3huKyAMx+
-	 TFo5AoSqNsJmUsyY7pn+8XyVC4dXBLRuVv2+B8CbX7oWJsvIKjv8oMnHCHB3fR0uhs
-	 bhPYLOIMy9M/A==
+	b=lv3gFXSSZQ1eyeFxl4sMw4NV+sDGb399yJy5J5a617cu3SzjnnFfUG43Lfl/7N2wR
+	 K+IhSwvXPWPYjM+q4YQ+IDJcS26tQY7yPe6vUEMgkrymmspdu0EotaGD42o6rpaRl9
+	 0A3kHepPv/ApdT3/KV9Zp4gd4PPOjbWG6usoLl5/UMWpBcxegT2cBWuUjFbtBLH7mv
+	 6ymbGGCGv3TrMbwp1kdSSvCMr+6QGHtpTwZWaklXV25iOtzvIgzYNxKq9awhT/uEik
+	 dFy+Ax1siZAlHQyp0vw3cAsPNd4lTDPGDdUR7g3JwRgFyHgFv3m15tZ2mAVMcDLMbJ
+	 1KqqoJMCmMAiQ==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH v2 34/51] proc: let proc_remove() remove the entry it was given
-Date: Wed,  4 Nov 2026 18:47:20 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-34-bbf7d5546809@kernel.org>
+Subject: [PATCH v2 35/51] proc: warn about entries left in /proc/net of a dying namespace
+Date: Wed,  4 Nov 2026 18:47:21 +0100
+Message-ID: <20261104-work-procfs-bugfixes-v2-35-bbf7d5546809@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,139 +116,44 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4142; i=brauner@kernel.org; h=from:subject:message-id; bh=TWEC0A9DF1l/jNuw2UHiBUJ2nMkOgHxIGSf9WilEatA=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zntx7JNDLLu2/KpNf38ZXuo0aZx2lqv1v1Pox44Z1 ixmC8u6O0pZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACZy8x/Df2fxE7yaG9luq2mf /vrk6F+dMN/lp6fcmf58/UaneOMM60JGhvVce13u7eXbvnJ7ldxy4c0neVaUrZh+PWKH0bO62B/ qqzgB
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1410; i=brauner@kernel.org; h=from:subject:message-id; bh=WtI/bNxyA4ZViPTNrsQhWLRSUjQUZ6M8VP3x2XTkww0=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9znslLxak6zXzI89Tlobt8x2XHObOOr/+XjXLr/wSD pcMiUNGHaUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhnCwMUpABOZcIHhv9PR9Kbfsr9EuEwS 1OuN4o2O2Xfx2elLdO/WqT/FzfBsLsMfvrrlGXyfnU+ePfxJ5/kd5mMSt0XZXSfwl/mEMKZnOc9 mAwA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-proc_remove() looks the entry up by its name in its parent and removes
-whatever it finds there:
+proc_net_ns_exit() runs after all the other pernet exits and frees
+net->proc_net right after removing "stat" from it. An entry that some
+pernet exit forgot to remove is left with a freed ->parent, and so
+PDE_NET() hands seq_open_net() and single_open_net() a freed struct net
+when the entry is opened through a file descriptor that someone kept.
 
-  remove_proc_subtree(de->name, de->parent);
-
-If the entry was removed already, say along with its parent, that is
-either nothing or a different entry that got the same name in the
-meantime, and de->parent may well be gone. Two removals of the same
-entry are a bug in the caller, but going by the name turns it into
-removing an entry that belongs to somebody else.
-
-Since commit 895b4c0c79b0 ("fs/proc: fix uaf in proc_readdir_de()")
-an entry that was unlinked has an empty rb node. So check for that
-under proc_subdir_lock and otherwise remove the entry itself, with the
-loop of remove_proc_subtree() moved into a helper both of them use.
-Nothing can help a caller that passes an entry that has been freed
-already.
+There is no such entry in the tree that we know of, but nothing would
+tell us about one either. So warn about it like remove_proc_entry()
+does for a directory that isn't empty.
 
 Reported-by: Chris Mason <mason@kernel.org>
-Fixes: a8ca16ea7b0a ("proc: Supply a function to remove a proc entry by PDE")
+Fixes: e9720acd728a ("[NET]: Make /proc/net a symlink on /proc/self/net (v3)")
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/proc/generic.c | 78 ++++++++++++++++++++++++++++++++++++-------------------
- 1 file changed, 51 insertions(+), 27 deletions(-)
+ fs/proc/proc_net.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/fs/proc/generic.c b/fs/proc/generic.c
-index 588999058e66..9a0a2fcac7c7 100644
---- a/fs/proc/generic.c
-+++ b/fs/proc/generic.c
-@@ -818,33 +818,14 @@ void remove_proc_entry(const char *name, struct proc_dir_entry *parent)
- }
- EXPORT_SYMBOL(remove_proc_entry);
+diff --git a/fs/proc/proc_net.c b/fs/proc/proc_net.c
+index dbcf87a257e1..df5484813d5d 100644
+--- a/fs/proc/proc_net.c
++++ b/fs/proc/proc_net.c
+@@ -410,7 +410,13 @@ out:
  
--int remove_proc_subtree(const char *name, struct proc_dir_entry *parent)
-+/*
-+ * Remove @root, already erased from its parent, and everything below it.
-+ * Called with proc_subdir_lock held for writing, returns with it dropped.
-+ */
-+static int __remove_proc_subtree(struct proc_dir_entry *root)
+ static __net_exit void proc_net_ns_exit(struct net *net)
  {
--	struct proc_dir_entry *root = NULL, *de, *next;
--	const char *fn = name;
--	unsigned int len;
--
--	write_lock(&proc_subdir_lock);
--	if (__xlate_proc_name(name, &parent, &fn) != 0) {
--		write_unlock(&proc_subdir_lock);
--		return -ENOENT;
--	}
--	len = strlen(fn);
-+	struct proc_dir_entry *de = root, *next;
- 
--	root = pde_subdir_find(parent, fn, len);
--	if (!root) {
--		write_unlock(&proc_subdir_lock);
--		return -ENOENT;
--	}
--	if (unlikely(pde_is_permanent(root))) {
--		write_unlock(&proc_subdir_lock);
--		WARN(1, "removing permanent /proc entry '%s/%s'",
--			root->parent->name, root->name);
--		return -EINVAL;
--	}
--	pde_erase(root, parent);
--
--	de = root;
- 	while (1) {
- 		next = pde_subdir_first(de);
- 		if (next) {
-@@ -872,6 +853,34 @@ int remove_proc_subtree(const char *name, struct proc_dir_entry *parent)
- 	pde_put(root);
- 	return 0;
++	struct proc_dir_entry *left;
++
+ 	remove_proc_entry("stat", net->proc_net);
++	/* Whatever is left still points at net->proc_net and so at net. */
++	left = rb_entry_safe(rb_first(&net->proc_net->subdir),
++			     struct proc_dir_entry, subdir_node);
++	WARN(left, "/proc/net: leaking at least '%s'\n", left->name);
+ 	pde_free(net->proc_net);
  }
-+
-+int remove_proc_subtree(const char *name, struct proc_dir_entry *parent)
-+{
-+	struct proc_dir_entry *root = NULL;
-+	const char *fn = name;
-+	unsigned int len;
-+
-+	write_lock(&proc_subdir_lock);
-+	if (__xlate_proc_name(name, &parent, &fn) != 0) {
-+		write_unlock(&proc_subdir_lock);
-+		return -ENOENT;
-+	}
-+	len = strlen(fn);
-+
-+	root = pde_subdir_find(parent, fn, len);
-+	if (!root) {
-+		write_unlock(&proc_subdir_lock);
-+		return -ENOENT;
-+	}
-+	if (unlikely(pde_is_permanent(root))) {
-+		write_unlock(&proc_subdir_lock);
-+		WARN(1, "removing permanent /proc entry '%s/%s'",
-+			root->parent->name, root->name);
-+		return -EINVAL;
-+	}
-+	pde_erase(root, parent);
-+	return __remove_proc_subtree(root);
-+}
- EXPORT_SYMBOL(remove_proc_subtree);
- 
- void *proc_get_parent_data(const struct inode *inode)
-@@ -883,8 +892,23 @@ EXPORT_SYMBOL_GPL(proc_get_parent_data);
- 
- void proc_remove(struct proc_dir_entry *de)
- {
--	if (de)
--		remove_proc_subtree(de->name, de->parent);
-+	if (!de)
-+		return;
-+
-+	write_lock(&proc_subdir_lock);
-+	/* Removed already, maybe along with its parent. */
-+	if (RB_EMPTY_NODE(&de->subdir_node)) {
-+		write_unlock(&proc_subdir_lock);
-+		return;
-+	}
-+	if (unlikely(pde_is_permanent(de))) {
-+		write_unlock(&proc_subdir_lock);
-+		WARN(1, "removing permanent /proc entry '%s/%s'",
-+		     de->parent->name, de->name);
-+		return;
-+	}
-+	pde_erase(de, de->parent);
-+	__remove_proc_subtree(de);
- }
- EXPORT_SYMBOL(proc_remove);
  
 
 -- 
