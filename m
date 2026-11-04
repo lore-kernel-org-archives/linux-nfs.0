@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793826991;
-	b=0OhJjc19R6XQtpF1bQDT9pio57aMv62pIEiAhyY9cyK/JiGFh5U+YqM29rx4ByITuv5W
-	 estlU/vdgP2e6OIL3Kz1zs94t6KbwmhE0KCjEeudPrmuCYfljHZq13RpPUsMt3Z8uceko
-	 j+IEEHUjyV6PXtclGTfgj+F1DsTsa7O2YklquO6o0J9k2Mc4H1VEdrx/HIlQwdcjEQ9d2
-	 qZTyKucs352zSoZGpd7Oy8z+Yy0wUmVjMN6gMcqGt29+TmK30hqf5AjEVZUsxXzACojw6
-	 jFqLehVjk+rILlzNXJN/Mnh0mlbANzfGW3b2q7pw9nEgWAYi6ukDAXfAkxcKTPGQq1g==
+	t=1793827007;
+	b=iKLxRDCXVAtFN5w41cv/cCkCDrorzemMGhs0HoguK4ui++Qlf73eejYJU4I3e5f45I9M
+	 XtK7olm/ZZ3ACmS3cN6hH99PWIU6iC7NCKmps86u2tzCWRS1Eq4Qn0INkrvPUCBQ9igGs
+	 CsA2vc/eM+2/+ubNPzKhH17LV0qNTrjS4a5xNG8q/NrKHhnn6Ek/7WwKbguyuQAYlze5a
+	 uz0H9dJuqSF37XBiiTS10rGXaU7SPuplaJMT3WsvHpHk967FHaak9wZnohSZ9qubPsmFN
+	 aOe7Ic4Z/TfJAUUSvzLmaRZAcpOvqbduWsiHZkd2Rz0UptQmUMlgg1UHk2zgXiT/u/w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793826991;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793827007;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=Z1ZOJsRk1XloR8+X/iuIjf2Funsf7/y+/bk4jcaChHA=;
-	b=OU6ruxm5hp+WYfoKo4utNTwfOUpRgFoeQGzCc+viknZLx89TGU9C7lW07RZA79U0oY2D
-	 8TaaKeItRg/1W7L+Bgp/7fw2mE62hqcd8Qg0vepdn/92u1z+VDNv8GESvUVgBewoaCQ97
-	 X6p6PDx96xH7Mka6C30Zvw4i4cYtX/x5Ka348TqXdqW6x8XHMDMCN60JfCxkYncUQOdoW
-	 UMX+BZ/rIk78Zjfl+Q9asCxBLPUag0wyHGWEw+yHxKmQB8ZcW1WGkML4/cTRIEcoedkgS
-	 y3cIGHIz5HU5kxGTzYElMT+Nh1c3yFD034kXdAaVqGbpvf3L23s/IcRTTk6npzXP3Ew==
+	bh=39Eo1ADQ2r0WqqGmbpdGGhoPoqOmzLr7hvMEOoHXnzM=;
+	b=y2LvYypB+GkUr71CLgisUwe7E82VFhEuqMLZpgIdHF39zFWS5KDej+iN3zhs7cjfwqFb
+	 hlx2PQSoe7t4+0GCJpWP+7r1NpOowx6IK+PEfplwIBJg1KRf6Av8LQU5qcg4IzYPeeIHQ
+	 wXE1zQVyon04x3c2UdM3qWpEwuS9kmsZnNkYOmWrHtM+jWcr7QAWZWV6W9kxfI3yc5ZN9
+	 2M4gvxsZfPKQiMdGkoefuOZRzoNo3mRyeFZbL5vqjoQ1s7aySQXctCRwdo8+WmH+/OKyC
+	 QVxAGvDZvo6Rf9J5UhsBsWz1X4RR5eFR+GLNK7fCRh00KxNywdgqCBiIwbgpUJYS8GA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=M5RO5Q8k;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=H3wF3DvU;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6FC1D6070AB2;
-	Wed,  4 Nov 2026 21:16:31 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 75B1A608662C;
+	Wed,  4 Nov 2026 21:16:46 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=M5RO5Q8k
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E1C8C1F00A17;
-	Wed,  4 Nov 2026 21:16:18 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=H3wF3DvU
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9CDA71F00919;
+	Wed,  4 Nov 2026 21:16:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793826991;
-	bh=Z1ZOJsRk1XloR8+X/iuIjf2Funsf7/y+/bk4jcaChHA=;
+	s=k20260515; t=1793827005;
+	bh=39Eo1ADQ2r0WqqGmbpdGGhoPoqOmzLr7hvMEOoHXnzM=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=M5RO5Q8kBtwDno+ViL1y5BXewnnzbSUiD0Ia6wQ1ZDr5urhi8E89jYOlntRIgMa6v
-	 r9RG9WmdIkXzJfLAx6IEAN4oxhymXK8NsuNUBDZD3nMRrupGitCaAlM5t0w1l3kDgL
-	 mARlOJCbNgn+LG3omXIPOAWaGFV2e55MLLVLTjfJkon0ltiDwAfT1Rt1ryiES87BRl
-	 cEGRifGzsCYmn1JslL4AfUjzCoN8zMhn9yu3J19mR1xJZ8GjCByKe2bS2hgjUJtRn4
-	 /Ud57A9OrseLYf/NwNssA42XtxJOU93lZkF6vGX3KXvmVx1xxIECpGp59Xx8FusjIn
-	 0mcxJDl2Ikwlw==
+	b=H3wF3DvUIbEVPE9hLCfLrvP6joVxdKi69FGcRxZb6IkRQTEVkJhZ7HCT57ln/V8q4
+	 iQct08gRRoBzNdGhSpSr4MY3HN1Bl1QzH+zRe/MCxRfeelV4h+UHuCh6N6+HxexQuh
+	 D+tvrncQPMZF0DdMB5vTrCpuQvLQD2uS5WR5BEbw2c83ypRt9D1OVwB4HbBr0Ar889
+	 hjpNeW9TTqiPcG3PTZL/eWgyQjATZQEocCMNxB2X1+ljnCXxadV7vl9qH9GwmMXLfv
+	 4XIv5/9SIJQCP2AYSJHempUTGWETCjfj8WMtKfxvetRZhK9ZfZ0yoNquKC0hr/zNuL
+	 21+2TAAn6u6wA==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 4/6] proc: drop ->proc_read() and ->proc_read_iter()
-Date: Wed,  4 Nov 2026 22:16:16 +0100
-Message-ID: <20261104-work-procfs-cleanup-v2-4-1e6687e226b1@kernel.org>
+Subject: [PATCH RESEND v2 5/6] proc: drop the _buf suffix from the new methods
+Date: Wed,  4 Nov 2026 22:16:31 +0100
+Message-ID: <20261104-work-procfs-cleanup-v2-5-1e6687e226b1@kernel.org>
 In-Reply-To: <20261104-work-procfs-cleanup-v2-0-1e6687e226b1@kernel.org>
 References: <20261104-work-procfs-cleanup-v2-0-1e6687e226b1@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,227 +116,1495 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7998; i=brauner@kernel.org; h=from:subject:message-id; bh=abGcIl8EeF+AIW6UdJlLnKo66cLyls2IFZNMcomaikg=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9XpBYNFfA2KRJOfDTZK74ZD22FKmLHxed5Kk6wORr/ ZpL4dihjlIWBjEuBlkxRRaHdpNwueU8FZuNMjVg5rAygQxh4OIUgIvYMTIcWimfoSnAVe9ge+Os 4tXw7JYtfefvJm1XPtb7fo/MxUtiDP9MH79h+uV3N1BJ9vml5a5/Vp2Wkxe2lT1h7Fs82/qXzEd WAA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=58339; i=brauner@kernel.org; h=from:subject:message-id; bh=w5PjPpFGjBYBHxGB9qC8T+2HH92/9f3TBjBto0jWfw8=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9XpDU3eatfmC54aSYZZIy5yUXqVg9VFJ9urW/4/Uan 3undgf1dZSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEyETY7hr+BRhlxeddbvbD68 L+bwift2bLGUyArg2FD748uvQ7Z5vQz/7L9Zld3RjJ285PaqxkW6R6+3tClK7bPMeJPJrFS+X2g 6DwA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Nothing implements them anymore. Every entry that can be removed fills
-procfs' buffer through ->proc_read_buf() or is a seq_file entry, and
-the permanent ones that still read straight into userspace have
-file_operations of their own now.
+The _buf suffix told them apart from ->proc_write(), ->proc_read() and
+->proc_ioctl(), which copied to and from userspace themselves. Those
+are gone now. So drop the suffix. ->proc_write(), ->proc_read() and
+->proc_ioctl() are the methods that work on procfs' buffers from now
+on, which is what kernfs calls its read and write as well.
 
-With them go the flag, the registration checks that kept them apart
-from ->proc_read_buf() and the seq_file entries, proc_reg_read(), and
-two of the three sets of file_operations for regular files:
-proc_reg_llseek() and proc_reg_read_iter() hand a seq_file entry to
-seq_lseek() and seq_read_iter() themselves now, like
-kernfs_fop_read_iter() does, so one set serves every entry that has
-proc_ops. That set has ->splice_read(), so a splice() from an entry
-that can't be read at all, a write-only one, fails with -EIO now
-instead of -EINVAL.
+Done with sed. The flags and helpers in fs/proc that go with them are
+renamed to match.
 
-Nothing in struct proc_ops takes a __user pointer anymore.
+No functional changes.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/proc/generic.c       | 14 ++++------
- fs/proc/inode.c         | 69 +++++--------------------------------------------
- fs/proc/internal.h      |  5 ----
- include/linux/proc_fs.h |  4 +--
- 4 files changed, 12 insertions(+), 80 deletions(-)
+ arch/alpha/kernel/srm_env.c                        |  2 +-
+ arch/arm/kernel/atags_proc.c                       |  2 +-
+ arch/arm/mm/alignment.c                            |  2 +-
+ arch/m68k/kernel/bootinfo_proc.c                   |  2 +-
+ arch/powerpc/kernel/proc_powerpc.c                 |  2 +-
+ arch/powerpc/kernel/rtas-proc.c                    | 10 ++++----
+ arch/powerpc/kernel/rtas_flash.c                   | 16 ++++++-------
+ arch/powerpc/kernel/rtasd.c                        |  2 +-
+ arch/powerpc/platforms/pseries/lpar.c              |  4 ++--
+ arch/powerpc/platforms/pseries/lparcfg.c           |  2 +-
+ arch/powerpc/platforms/pseries/reconfig.c          |  2 +-
+ arch/sh/mm/alignment.c                             |  2 +-
+ arch/sparc/kernel/led.c                            |  2 +-
+ arch/um/drivers/mconsole_kern.c                    |  2 +-
+ arch/um/kernel/exitcode.c                          |  2 +-
+ arch/x86/kernel/cpu/mtrr/if.c                      |  4 ++--
+ arch/xtensa/platforms/iss/simdisk.c                |  4 ++--
+ drivers/acpi/proc.c                                |  2 +-
+ drivers/hwmon/dell-smm-hwmon.c                     |  2 +-
+ drivers/macintosh/via-pmu.c                        |  2 +-
+ drivers/net/wireless/intel/ipw2x00/libipw_module.c |  2 +-
+ drivers/pci/proc.c                                 |  6 ++---
+ drivers/platform/x86/lenovo/thinkpad_acpi.c        |  2 +-
+ drivers/platform/x86/toshiba_acpi.c                |  8 +++----
+ drivers/pnp/isapnp/proc.c                          |  2 +-
+ drivers/pnp/pnpbios/proc.c                         |  2 +-
+ drivers/s390/block/dasd_proc.c                     |  2 +-
+ drivers/s390/cio/blacklist.c                       |  2 +-
+ drivers/s390/cio/css.c                             |  2 +-
+ drivers/scsi/esas2r/esas2r_main.c                  |  2 +-
+ drivers/scsi/scsi_devinfo.c                        |  2 +-
+ drivers/scsi/scsi_proc.c                           |  4 ++--
+ drivers/scsi/sg.c                                  |  4 ++--
+ drivers/tty/sysrq.c                                |  2 +-
+ drivers/usb/gadget/function/rndis.c                |  2 +-
+ drivers/video/fbdev/via/viafbdev.c                 | 14 +++++------
+ drivers/zorro/proc.c                               |  2 +-
+ fs/jfs/jfs_debug.c                                 |  2 +-
+ fs/lockd/procfs.c                                  |  4 ++--
+ fs/ntfs3/super.c                                   |  2 +-
+ fs/proc/generic.c                                  | 12 +++++-----
+ fs/proc/inode.c                                    | 28 +++++++++++-----------
+ fs/proc/internal.h                                 | 12 +++++-----
+ fs/proc/proc_net.c                                 |  4 ++--
+ fs/proc/vmcore.c                                   |  2 +-
+ fs/smb/client/cifs_debug.c                         | 16 ++++++-------
+ fs/smb/client/dfs_cache.c                          |  2 +-
+ include/linux/proc_fs.h                            | 20 ++++++++--------
+ kernel/configs.c                                   |  2 +-
+ kernel/irq/proc.c                                  |  6 ++---
+ kernel/latencytop.c                                |  2 +-
+ kernel/locking/lockdep_proc.c                      |  2 +-
+ kernel/profile.c                                   |  4 ++--
+ kernel/sched/psi.c                                 |  8 +++----
+ lib/dynamic_debug.c                                |  2 +-
+ mm/alloc_tag.c                                     |  2 +-
+ net/atm/proc.c                                     |  2 +-
+ net/core/pktgen.c                                  |  6 ++---
+ net/netfilter/xt_recent.c                          |  2 +-
+ net/sunrpc/auth_gss/svcauth_gss.c                  |  6 ++---
+ net/sunrpc/cache.c                                 |  8 +++----
+ samples/kfifo/bytestream-example.c                 |  4 ++--
+ samples/kfifo/inttype-example.c                    |  4 ++--
+ samples/kfifo/record-example.c                     |  4 ++--
+ sound/core/info.c                                  |  6 ++---
+ 65 files changed, 151 insertions(+), 151 deletions(-)
 
+diff --git a/arch/alpha/kernel/srm_env.c b/arch/alpha/kernel/srm_env.c
+index 6a1742b09a82..2817bf78742a 100644
+--- a/arch/alpha/kernel/srm_env.c
++++ b/arch/alpha/kernel/srm_env.c
+@@ -110,7 +110,7 @@ static ssize_t srm_env_proc_write(struct file *file, char *buffer,
+ 
+ static const struct proc_ops srm_env_proc_ops = {
+ 	.proc_show	= srm_env_proc_show,
+-	.proc_write_buf	= srm_env_proc_write,
++	.proc_write	= srm_env_proc_write,
+ };
+ 
+ static int __init
+diff --git a/arch/arm/kernel/atags_proc.c b/arch/arm/kernel/atags_proc.c
+index ff28bf24dd30..ff6fb346d3ee 100644
+--- a/arch/arm/kernel/atags_proc.c
++++ b/arch/arm/kernel/atags_proc.c
+@@ -18,7 +18,7 @@ static ssize_t atags_read(struct file *file, char *buf,
+ }
+ 
+ static const struct proc_ops atags_proc_ops = {
+-	.proc_read_buf	= atags_read,
++	.proc_read	= atags_read,
+ 	.proc_lseek	= default_llseek,
+ };
+ 
+diff --git a/arch/arm/mm/alignment.c b/arch/arm/mm/alignment.c
+index 11ceefdfa388..2d27b8bbb3b3 100644
+--- a/arch/arm/mm/alignment.c
++++ b/arch/arm/mm/alignment.c
+@@ -159,7 +159,7 @@ static ssize_t alignment_proc_write(struct file *file, char *buffer,
+ 
+ static const struct proc_ops alignment_proc_ops = {
+ 	.proc_show	= alignment_proc_show,
+-	.proc_write_buf	= alignment_proc_write,
++	.proc_write	= alignment_proc_write,
+ };
+ #endif /* CONFIG_PROC_FS */
+ 
+diff --git a/arch/m68k/kernel/bootinfo_proc.c b/arch/m68k/kernel/bootinfo_proc.c
+index 4936cf44e86a..f65555ddb7d3 100644
+--- a/arch/m68k/kernel/bootinfo_proc.c
++++ b/arch/m68k/kernel/bootinfo_proc.c
+@@ -27,7 +27,7 @@ static ssize_t bootinfo_read(struct file *file, char *buf,
+ }
+ 
+ static const struct proc_ops bootinfo_proc_ops = {
+-	.proc_read_buf	= bootinfo_read,
++	.proc_read	= bootinfo_read,
+ 	.proc_lseek	= default_llseek,
+ };
+ 
+diff --git a/arch/powerpc/kernel/proc_powerpc.c b/arch/powerpc/kernel/proc_powerpc.c
+index 46bc914d74b9..ca43a5dfe623 100644
+--- a/arch/powerpc/kernel/proc_powerpc.c
++++ b/arch/powerpc/kernel/proc_powerpc.c
+@@ -43,7 +43,7 @@ static int page_map_mmap( struct file *file, struct vm_area_struct *vma )
+ 
+ static const struct proc_ops page_map_proc_ops = {
+ 	.proc_lseek	= page_map_seek,
+-	.proc_read_buf	= page_map_read,
++	.proc_read	= page_map_read,
+ 	.proc_mmap	= page_map_mmap,
+ };
+ 
+diff --git a/arch/powerpc/kernel/rtas-proc.c b/arch/powerpc/kernel/rtas-proc.c
+index 75d64a410209..b2919f995c4e 100644
+--- a/arch/powerpc/kernel/rtas-proc.c
++++ b/arch/powerpc/kernel/rtas-proc.c
+@@ -156,27 +156,27 @@ static int ppc_rtas_rmo_buf_show(struct seq_file *m, void *v);
+ 
+ static const struct proc_ops ppc_rtas_poweron_proc_ops = {
+ 	.proc_show	= ppc_rtas_poweron_show,
+-	.proc_write_buf	= ppc_rtas_poweron_write,
++	.proc_write	= ppc_rtas_poweron_write,
+ };
+ 
+ static const struct proc_ops ppc_rtas_progress_proc_ops = {
+ 	.proc_show	= ppc_rtas_progress_show,
+-	.proc_write_buf	= ppc_rtas_progress_write,
++	.proc_write	= ppc_rtas_progress_write,
+ };
+ 
+ static const struct proc_ops ppc_rtas_clock_proc_ops = {
+ 	.proc_show	= ppc_rtas_clock_show,
+-	.proc_write_buf	= ppc_rtas_clock_write,
++	.proc_write	= ppc_rtas_clock_write,
+ };
+ 
+ static const struct proc_ops ppc_rtas_tone_freq_proc_ops = {
+ 	.proc_show	= ppc_rtas_tone_freq_show,
+-	.proc_write_buf	= ppc_rtas_tone_freq_write,
++	.proc_write	= ppc_rtas_tone_freq_write,
+ };
+ 
+ static const struct proc_ops ppc_rtas_tone_volume_proc_ops = {
+ 	.proc_show	= ppc_rtas_tone_volume_show,
+-	.proc_write_buf	= ppc_rtas_tone_volume_write,
++	.proc_write	= ppc_rtas_tone_volume_write,
+ };
+ 
+ static int ppc_rtas_find_all_sensors(void);
+diff --git a/arch/powerpc/kernel/rtas_flash.c b/arch/powerpc/kernel/rtas_flash.c
+index 5ebaee7683ef..e8ccfa614b19 100644
+--- a/arch/powerpc/kernel/rtas_flash.c
++++ b/arch/powerpc/kernel/rtas_flash.c
+@@ -623,8 +623,8 @@ static const struct rtas_flash_file rtas_flash_files[] = {
+ 		.handle		= RTAS_FN_IBM_UPDATE_FLASH_64_AND_REBOOT,
+ 		.status		= &rtas_update_flash_data.status,
+ 		.ops.proc_flags	= PROC_ENTRY_SHORT_WRITES,
+-		.ops.proc_read_buf = rtas_flash_read_msg,
+-		.ops.proc_write_buf = rtas_flash_write,
++		.ops.proc_read = rtas_flash_read_msg,
++		.ops.proc_write = rtas_flash_write,
+ 		.ops.proc_write_size = RTAS_BLK_SIZE,
+ 		.ops.proc_release = rtas_flash_release,
+ 		.ops.proc_lseek	= default_llseek,
+@@ -634,8 +634,8 @@ static const struct rtas_flash_file rtas_flash_files[] = {
+ 		.handle		= RTAS_FN_IBM_UPDATE_FLASH_64_AND_REBOOT,
+ 		.status		= &rtas_update_flash_data.status,
+ 		.ops.proc_flags	= PROC_ENTRY_SHORT_WRITES,
+-		.ops.proc_read_buf = rtas_flash_read_num,
+-		.ops.proc_write_buf = rtas_flash_write,
++		.ops.proc_read = rtas_flash_read_num,
++		.ops.proc_write = rtas_flash_write,
+ 		.ops.proc_write_size = RTAS_BLK_SIZE,
+ 		.ops.proc_release = rtas_flash_release,
+ 		.ops.proc_lseek	= default_llseek,
+@@ -645,8 +645,8 @@ static const struct rtas_flash_file rtas_flash_files[] = {
+ 		.handle		= RTAS_FN_IBM_VALIDATE_FLASH_IMAGE,
+ 		.status		= &rtas_validate_flash_data.status,
+ 		.ops.proc_flags	= PROC_ENTRY_SHORT_WRITES,
+-		.ops.proc_read_buf = validate_flash_read,
+-		.ops.proc_write_buf = validate_flash_write,
++		.ops.proc_read = validate_flash_read,
++		.ops.proc_write = validate_flash_write,
+ 		.ops.proc_write_size = VALIDATE_BUF_SIZE,
+ 		.ops.proc_release = validate_flash_release,
+ 		.ops.proc_lseek	= default_llseek,
+@@ -655,8 +655,8 @@ static const struct rtas_flash_file rtas_flash_files[] = {
+ 		.filename	= "powerpc/rtas/" MANAGE_FLASH_NAME,
+ 		.handle		= RTAS_FN_IBM_MANAGE_FLASH_IMAGE,
+ 		.status		= &rtas_manage_flash_data.status,
+-		.ops.proc_read_buf = manage_flash_read,
+-		.ops.proc_write_buf = manage_flash_write,
++		.ops.proc_read = manage_flash_read,
++		.ops.proc_write = manage_flash_write,
+ 		.ops.proc_lseek	= default_llseek,
+ 	}
+ };
+diff --git a/arch/powerpc/kernel/rtasd.c b/arch/powerpc/kernel/rtasd.c
+index fa9574131f40..49036790b67c 100644
+--- a/arch/powerpc/kernel/rtasd.c
++++ b/arch/powerpc/kernel/rtasd.c
+@@ -351,7 +351,7 @@ static __poll_t rtas_log_poll(struct file *file, poll_table * wait)
+ }
+ 
+ static const struct proc_ops rtas_log_proc_ops = {
+-	.proc_read_buf	= rtas_log_read,
++	.proc_read	= rtas_log_read,
+ 	.proc_poll	= rtas_log_poll,
+ 	.proc_open	= rtas_log_open,
+ 	.proc_release	= rtas_log_release,
+diff --git a/arch/powerpc/platforms/pseries/lpar.c b/arch/powerpc/platforms/pseries/lpar.c
+index dfd027cc9047..8147129ecd59 100644
+--- a/arch/powerpc/platforms/pseries/lpar.c
++++ b/arch/powerpc/platforms/pseries/lpar.c
+@@ -585,7 +585,7 @@ static int vcpudispatch_stats_display(struct seq_file *p, void *v)
+ 
+ static const struct proc_ops vcpudispatch_stats_proc_ops = {
+ 	.proc_show	= vcpudispatch_stats_display,
+-	.proc_write_buf	= vcpudispatch_stats_write,
++	.proc_write	= vcpudispatch_stats_write,
+ };
+ 
+ static ssize_t vcpudispatch_stats_freq_write(struct file *file,
+@@ -620,7 +620,7 @@ static int vcpudispatch_stats_freq_display(struct seq_file *p, void *v)
+ 
+ static const struct proc_ops vcpudispatch_stats_freq_proc_ops = {
+ 	.proc_show	= vcpudispatch_stats_freq_display,
+-	.proc_write_buf	= vcpudispatch_stats_freq_write,
++	.proc_write	= vcpudispatch_stats_freq_write,
+ };
+ 
+ static int __init vcpudispatch_stats_procfs_init(void)
+diff --git a/arch/powerpc/platforms/pseries/lparcfg.c b/arch/powerpc/platforms/pseries/lparcfg.c
+index bda3cac1552b..c587ac9fbb5c 100644
+--- a/arch/powerpc/platforms/pseries/lparcfg.c
++++ b/arch/powerpc/platforms/pseries/lparcfg.c
+@@ -797,7 +797,7 @@ static int lparcfg_data(struct seq_file *m, void *v)
+ }
+ 
+ static const struct proc_ops lparcfg_proc_ops = {
+-	.proc_write_buf	= lparcfg_write,
++	.proc_write	= lparcfg_write,
+ 	.proc_show	= lparcfg_data,
+ };
+ 
+diff --git a/arch/powerpc/platforms/pseries/reconfig.c b/arch/powerpc/platforms/pseries/reconfig.c
+index d74a0710ec74..edd150b9fe48 100644
+--- a/arch/powerpc/platforms/pseries/reconfig.c
++++ b/arch/powerpc/platforms/pseries/reconfig.c
+@@ -390,7 +390,7 @@ static ssize_t ofdt_write(struct file *file, char *kbuf, size_t count,
+ }
+ 
+ static const struct proc_ops ofdt_proc_ops = {
+-	.proc_write_buf	= ofdt_write,
++	.proc_write	= ofdt_write,
+ 	/* what memdup_user_nul() could copy in */
+ 	.proc_write_size = KMALLOC_MAX_SIZE - 1,
+ 	.proc_lseek	= noop_llseek,
+diff --git a/arch/sh/mm/alignment.c b/arch/sh/mm/alignment.c
+index d832249a8e18..d76596820a6f 100644
+--- a/arch/sh/mm/alignment.c
++++ b/arch/sh/mm/alignment.c
+@@ -148,7 +148,7 @@ static ssize_t alignment_proc_write(struct file *file,
+ 
+ static const struct proc_ops alignment_proc_ops = {
+ 	.proc_show	= alignment_proc_show,
+-	.proc_write_buf	= alignment_proc_write,
++	.proc_write	= alignment_proc_write,
+ };
+ 
+ /*
+diff --git a/arch/sparc/kernel/led.c b/arch/sparc/kernel/led.c
+index 1f244e394207..9b2d62aba018 100644
+--- a/arch/sparc/kernel/led.c
++++ b/arch/sparc/kernel/led.c
+@@ -97,7 +97,7 @@ static ssize_t led_proc_write(struct file *file, char *buf,
+ 
+ static const struct proc_ops led_proc_ops = {
+ 	.proc_show	= led_proc_show,
+-	.proc_write_buf	= led_proc_write,
++	.proc_write	= led_proc_write,
+ };
+ #endif
+ 
+diff --git a/arch/um/drivers/mconsole_kern.c b/arch/um/drivers/mconsole_kern.c
+index a4370470286f..882c6f30a3c2 100644
+--- a/arch/um/drivers/mconsole_kern.c
++++ b/arch/um/drivers/mconsole_kern.c
+@@ -776,7 +776,7 @@ static ssize_t mconsole_proc_write(struct file *file,
+ }
+ 
+ static const struct proc_ops mconsole_proc_ops = {
+-	.proc_write_buf	= mconsole_proc_write,
++	.proc_write	= mconsole_proc_write,
+ 	.proc_lseek	= noop_llseek,
+ };
+ 
+diff --git a/arch/um/kernel/exitcode.c b/arch/um/kernel/exitcode.c
+index 8f76e3b20c18..15b114fbaa05 100644
+--- a/arch/um/kernel/exitcode.c
++++ b/arch/um/kernel/exitcode.c
+@@ -47,7 +47,7 @@ static ssize_t exitcode_proc_write(struct file *file,
+ 
+ static const struct proc_ops exitcode_proc_ops = {
+ 	.proc_show	= exitcode_proc_show,
+-	.proc_write_buf	= exitcode_proc_write,
++	.proc_write	= exitcode_proc_write,
+ };
+ 
+ static int make_proc_exitcode(void)
+diff --git a/arch/x86/kernel/cpu/mtrr/if.c b/arch/x86/kernel/cpu/mtrr/if.c
+index 9c33c0428dfe..e0f0257cba32 100644
+--- a/arch/x86/kernel/cpu/mtrr/if.c
++++ b/arch/x86/kernel/cpu/mtrr/if.c
+@@ -410,8 +410,8 @@ static const struct proc_ioctl_arg mtrr_ioctl_args[] = {
+ static const struct proc_ops mtrr_proc_ops = {
+ 	.proc_show		= mtrr_seq_show,
+ 	.proc_open		= mtrr_open,
+-	.proc_write_buf		= mtrr_write,
+-	.proc_ioctl_buf		= mtrr_ioctl,
++	.proc_write		= mtrr_write,
++	.proc_ioctl		= mtrr_ioctl,
+ 	.proc_ioctl_args	= mtrr_ioctl_args,
+ 	.proc_nr_ioctl_args	= ARRAY_SIZE(mtrr_ioctl_args),
+ 	.proc_release		= mtrr_close,
+diff --git a/arch/xtensa/platforms/iss/simdisk.c b/arch/xtensa/platforms/iss/simdisk.c
+index cfddfcd06be7..f654c25c99cd 100644
+--- a/arch/xtensa/platforms/iss/simdisk.c
++++ b/arch/xtensa/platforms/iss/simdisk.c
+@@ -280,8 +280,8 @@ static ssize_t proc_write_simdisk(struct file *file, char *buf,
+ }
+ 
+ static const struct proc_ops simdisk_proc_ops = {
+-	.proc_read_buf	= proc_read_simdisk,
+-	.proc_write_buf	= proc_write_simdisk,
++	.proc_read	= proc_read_simdisk,
++	.proc_write	= proc_write_simdisk,
+ 	.proc_write_size = PAGE_SIZE,
+ 	.proc_lseek	= default_llseek,
+ };
+diff --git a/drivers/acpi/proc.c b/drivers/acpi/proc.c
+index feb8283fd855..4b5ca9300e9d 100644
+--- a/drivers/acpi/proc.c
++++ b/drivers/acpi/proc.c
+@@ -122,7 +122,7 @@ acpi_system_write_wakeup_device(struct file *file,
+ 
+ static const struct proc_ops acpi_system_wakeup_device_proc_ops = {
+ 	.proc_show	= acpi_system_wakeup_device_seq_show,
+-	.proc_write_buf	= acpi_system_write_wakeup_device,
++	.proc_write	= acpi_system_write_wakeup_device,
+ };
+ 
+ void __init acpi_sleep_proc_init(void)
+diff --git a/drivers/hwmon/dell-smm-hwmon.c b/drivers/hwmon/dell-smm-hwmon.c
+index 67b8c6e5752f..529386faa6a5 100644
+--- a/drivers/hwmon/dell-smm-hwmon.c
++++ b/drivers/hwmon/dell-smm-hwmon.c
+@@ -694,7 +694,7 @@ static int i8k_proc_show(struct seq_file *seq, void *offset)
+ 
+ static const struct proc_ops i8k_proc_ops = {
+ 	.proc_show	= i8k_proc_show,
+-	.proc_ioctl_buf	= i8k_ioctl,
++	.proc_ioctl	= i8k_ioctl,
+ 	.proc_ioctl_args = i8k_ioctl_args,
+ 	.proc_nr_ioctl_args = ARRAY_SIZE(i8k_ioctl_args),
+ };
+diff --git a/drivers/macintosh/via-pmu.c b/drivers/macintosh/via-pmu.c
+index 079c085be5d2..397a1c68cb04 100644
+--- a/drivers/macintosh/via-pmu.c
++++ b/drivers/macintosh/via-pmu.c
+@@ -957,7 +957,7 @@ static ssize_t pmu_options_proc_write(struct file *file,
+ 
+ static const struct proc_ops pmu_options_proc_ops = {
+ 	.proc_show	= pmu_options_proc_show,
+-	.proc_write_buf	= pmu_options_proc_write,
++	.proc_write	= pmu_options_proc_write,
+ };
+ #endif
+ 
+diff --git a/drivers/net/wireless/intel/ipw2x00/libipw_module.c b/drivers/net/wireless/intel/ipw2x00/libipw_module.c
+index 08cc0d7f57c1..e4061a4e2254 100644
+--- a/drivers/net/wireless/intel/ipw2x00/libipw_module.c
++++ b/drivers/net/wireless/intel/ipw2x00/libipw_module.c
+@@ -235,7 +235,7 @@ static ssize_t debug_level_proc_write(struct file *file,
+ 
+ static const struct proc_ops debug_level_proc_ops = {
+ 	.proc_show	= debug_level_proc_show,
+-	.proc_write_buf	= debug_level_proc_write,
++	.proc_write	= debug_level_proc_write,
+ };
+ #endif				/* CONFIG_LIBIPW_DEBUG */
+ 
+diff --git a/drivers/pci/proc.c b/drivers/pci/proc.c
+index 6b0cb5bcbea3..bae43df6e4ac 100644
+--- a/drivers/pci/proc.c
++++ b/drivers/pci/proc.c
+@@ -331,10 +331,10 @@ static const struct proc_ioctl_arg proc_bus_pci_ioctl_args[] = {
+ static const struct proc_ops proc_bus_pci_ops = {
+ 	.proc_flags	= PROC_ENTRY_SHORT_WRITES,
+ 	.proc_lseek	= proc_bus_pci_lseek,
+-	.proc_read_buf	= proc_bus_pci_read,
+-	.proc_write_buf	= proc_bus_pci_write,
++	.proc_read	= proc_bus_pci_read,
++	.proc_write	= proc_bus_pci_write,
+ 	.proc_write_size = PCI_CFG_SPACE_EXP_SIZE,
+-	.proc_ioctl_buf	= proc_bus_pci_ioctl,
++	.proc_ioctl	= proc_bus_pci_ioctl,
+ 	.proc_ioctl_args = proc_bus_pci_ioctl_args,
+ 	.proc_nr_ioctl_args = ARRAY_SIZE(proc_bus_pci_ioctl_args),
+ #ifdef HAVE_PCI_MMAP
+diff --git a/drivers/platform/x86/lenovo/thinkpad_acpi.c b/drivers/platform/x86/lenovo/thinkpad_acpi.c
+index 8287b36bd90d..c67e81549b3f 100644
+--- a/drivers/platform/x86/lenovo/thinkpad_acpi.c
++++ b/drivers/platform/x86/lenovo/thinkpad_acpi.c
+@@ -900,7 +900,7 @@ static ssize_t dispatch_proc_write(struct file *file,
+ 
+ static const struct proc_ops dispatch_proc_ops = {
+ 	.proc_show	= dispatch_proc_show,
+-	.proc_write_buf	= dispatch_proc_write,
++	.proc_write	= dispatch_proc_write,
+ };
+ 
+ /****************************************************************************
+diff --git a/drivers/platform/x86/toshiba_acpi.c b/drivers/platform/x86/toshiba_acpi.c
+index 895e321ada03..98c91463baf0 100644
+--- a/drivers/platform/x86/toshiba_acpi.c
++++ b/drivers/platform/x86/toshiba_acpi.c
+@@ -1504,7 +1504,7 @@ static ssize_t lcd_proc_write(struct file *file, char *buf,
+ 
+ static const struct proc_ops lcd_proc_ops = {
+ 	.proc_show	= lcd_proc_show,
+-	.proc_write_buf	= lcd_proc_write,
++	.proc_write	= lcd_proc_write,
+ };
+ 
+ /* Video-Out */
+@@ -1592,7 +1592,7 @@ static ssize_t video_proc_write(struct file *file, char *buf,
+ 
+ static const struct proc_ops video_proc_ops = {
+ 	.proc_show	= video_proc_show,
+-	.proc_write_buf	= video_proc_write,
++	.proc_write	= video_proc_write,
+ };
+ 
+ /* Fan status */
+@@ -1660,7 +1660,7 @@ static ssize_t fan_proc_write(struct file *file, char *buf,
+ 
+ static const struct proc_ops fan_proc_ops = {
+ 	.proc_show	= fan_proc_show,
+-	.proc_write_buf	= fan_proc_write,
++	.proc_write	= fan_proc_write,
+ };
+ 
+ /* Fan RPM */
+@@ -1718,7 +1718,7 @@ static ssize_t keys_proc_write(struct file *file, char *buf,
+ 
+ static const struct proc_ops keys_proc_ops = {
+ 	.proc_show	= keys_proc_show,
+-	.proc_write_buf	= keys_proc_write,
++	.proc_write	= keys_proc_write,
+ };
+ 
+ static int __maybe_unused version_proc_show(struct seq_file *m, void *v)
+diff --git a/drivers/pnp/isapnp/proc.c b/drivers/pnp/isapnp/proc.c
+index 2634db5f41e2..a142ee0f233f 100644
+--- a/drivers/pnp/isapnp/proc.c
++++ b/drivers/pnp/isapnp/proc.c
+@@ -46,7 +46,7 @@ static ssize_t isapnp_proc_bus_read(struct file *file, char *buf,
+ 
+ static const struct proc_ops isapnp_proc_bus_proc_ops = {
+ 	.proc_lseek	= isapnp_proc_bus_lseek,
+-	.proc_read_buf	= isapnp_proc_bus_read,
++	.proc_read	= isapnp_proc_bus_read,
+ };
+ 
+ static int isapnp_proc_attach_device(struct pnp_dev *dev)
+diff --git a/drivers/pnp/pnpbios/proc.c b/drivers/pnp/pnpbios/proc.c
+index 00163aedd738..6441212f7fe7 100644
+--- a/drivers/pnp/pnpbios/proc.c
++++ b/drivers/pnp/pnpbios/proc.c
+@@ -204,7 +204,7 @@ static ssize_t pnpbios_proc_write(struct file *file, char *buf,
+ 
+ static const struct proc_ops pnpbios_proc_ops = {
+ 	.proc_show	= pnpbios_proc_show,
+-	.proc_write_buf	= pnpbios_proc_write,
++	.proc_write	= pnpbios_proc_write,
+ };
+ 
+ int pnpbios_interface_attach_device(struct pnp_bios_node *node)
+diff --git a/drivers/s390/block/dasd_proc.c b/drivers/s390/block/dasd_proc.c
+index 6c3bbb7dfe85..002e2d2d498c 100644
+--- a/drivers/s390/block/dasd_proc.c
++++ b/drivers/s390/block/dasd_proc.c
+@@ -307,7 +307,7 @@ static ssize_t dasd_stats_proc_write(struct file *file,
+ 
+ static const struct proc_ops dasd_stats_proc_ops = {
+ 	.proc_show	= dasd_stats_proc_show,
+-	.proc_write_buf	= dasd_stats_proc_write,
++	.proc_write	= dasd_stats_proc_write,
+ };
+ 
+ /*
+diff --git a/drivers/s390/cio/blacklist.c b/drivers/s390/cio/blacklist.c
+index 1ec7915be6b3..d8a22c83626b 100644
+--- a/drivers/s390/cio/blacklist.c
++++ b/drivers/s390/cio/blacklist.c
+@@ -386,7 +386,7 @@ static const struct proc_ops cio_ignore_proc_ops = {
+ 	.proc_flags	= PROC_ENTRY_SHORT_WRITES,
+ 	.proc_seq_ops	= &cio_ignore_proc_seq_ops,
+ 	.proc_state_size = sizeof(struct ccwdev_iter),
+-	.proc_write_buf	= cio_ignore_write,
++	.proc_write	= cio_ignore_write,
+ 	.proc_write_size = SZ_64K,
+ };
+ 
+diff --git a/drivers/s390/cio/css.c b/drivers/s390/cio/css.c
+index efd3df3e90ba..1813074c8c72 100644
+--- a/drivers/s390/cio/css.c
++++ b/drivers/s390/cio/css.c
+@@ -1292,7 +1292,7 @@ static ssize_t cio_settle_write(struct file *file, char *buf,
+ 
+ static const struct proc_ops cio_settle_proc_ops = {
+ 	.proc_open	= nonseekable_open,
+-	.proc_write_buf	= cio_settle_write,
++	.proc_write	= cio_settle_write,
+ };
+ 
+ static int __init cio_settle_init(void)
+diff --git a/drivers/scsi/esas2r/esas2r_main.c b/drivers/scsi/esas2r/esas2r_main.c
+index 720be2a0907d..5effad56bb39 100644
+--- a/drivers/scsi/esas2r/esas2r_main.c
++++ b/drivers/scsi/esas2r/esas2r_main.c
+@@ -653,7 +653,7 @@ static const struct proc_ioctl_arg esas2r_proc_ioctl_args[] = {
+ 
+ static const struct proc_ops esas2r_proc_ops = {
+ 	.proc_lseek		= default_llseek,
+-	.proc_ioctl_buf		= esas2r_proc_ioctl_buf,
++	.proc_ioctl		= esas2r_proc_ioctl_buf,
+ 	.proc_ioctl_args	= esas2r_proc_ioctl_args,
+ 	.proc_nr_ioctl_args	= ARRAY_SIZE(esas2r_proc_ioctl_args),
+ };
+diff --git a/drivers/scsi/scsi_devinfo.c b/drivers/scsi/scsi_devinfo.c
+index d9093851b23e..6667661ca62d 100644
+--- a/drivers/scsi/scsi_devinfo.c
++++ b/drivers/scsi/scsi_devinfo.c
+@@ -690,7 +690,7 @@ static ssize_t proc_scsi_devinfo_write(struct file *file,
+ 
+ static const struct proc_ops scsi_devinfo_proc_ops = {
+ 	.proc_seq_ops	= &scsi_devinfo_seq_ops,
+-	.proc_write_buf	= proc_scsi_devinfo_write,
++	.proc_write	= proc_scsi_devinfo_write,
+ 	.proc_write_size = PAGE_SIZE,
+ };
+ #endif /* CONFIG_SCSI_PROC_FS */
+diff --git a/drivers/scsi/scsi_proc.c b/drivers/scsi/scsi_proc.c
+index 5962e671cc83..efc393fe9047 100644
+--- a/drivers/scsi/scsi_proc.c
++++ b/drivers/scsi/scsi_proc.c
+@@ -130,7 +130,7 @@ EXPORT_SYMBOL_GPL(scsi_template_proc_dir);
+ static const struct proc_ops proc_scsi_ops = {
+ 	.proc_show	= proc_scsi_show,
+ 	.proc_open	= proc_scsi_host_open,
+-	.proc_write_buf	= proc_scsi_host_write
++	.proc_write	= proc_scsi_host_write
+ };
+ 
+ /**
+@@ -495,7 +495,7 @@ static const struct seq_operations scsi_seq_ops = {
+ 
+ static const struct proc_ops scsi_scsi_proc_ops = {
+ 	.proc_seq_ops	= &scsi_seq_ops,
+-	.proc_write_buf	= proc_scsi_write,
++	.proc_write	= proc_scsi_write,
+ 	.proc_write_size = PAGE_SIZE,
+ };
+ 
+diff --git a/drivers/scsi/sg.c b/drivers/scsi/sg.c
+index df955896e65f..735240c6d10e 100644
+--- a/drivers/scsi/sg.c
++++ b/drivers/scsi/sg.c
+@@ -2292,14 +2292,14 @@ static ssize_t sg_proc_write_adio(struct file *filp, char *buffer,
+ 			          size_t count, loff_t *off);
+ static const struct proc_ops adio_proc_ops = {
+ 	.proc_show	= sg_proc_seq_show_int,
+-	.proc_write_buf	= sg_proc_write_adio,
++	.proc_write	= sg_proc_write_adio,
+ };
+ 
+ static ssize_t sg_proc_write_dressz(struct file *filp, 
+ 		char *buffer, size_t count, loff_t *off);
+ static const struct proc_ops dressz_proc_ops = {
+ 	.proc_show	= sg_proc_seq_show_int,
+-	.proc_write_buf	= sg_proc_write_dressz,
++	.proc_write	= sg_proc_write_dressz,
+ };
+ 
+ static int sg_proc_seq_show_version(struct seq_file *s, void *v);
+diff --git a/drivers/tty/sysrq.c b/drivers/tty/sysrq.c
+index 99363e1b59ed..d6000c9c3cbe 100644
+--- a/drivers/tty/sysrq.c
++++ b/drivers/tty/sysrq.c
+@@ -1222,7 +1222,7 @@ static ssize_t write_sysrq_trigger(struct file *file, char *buf,
+ }
+ 
+ static const struct proc_ops sysrq_trigger_proc_ops = {
+-	.proc_write_buf	= write_sysrq_trigger,
++	.proc_write	= write_sysrq_trigger,
+ 	.proc_lseek	= noop_llseek,
+ };
+ 
+diff --git a/drivers/usb/gadget/function/rndis.c b/drivers/usb/gadget/function/rndis.c
+index e05e0c6ae8fb..ef70d7bc1f0d 100644
+--- a/drivers/usb/gadget/function/rndis.c
++++ b/drivers/usb/gadget/function/rndis.c
+@@ -1184,7 +1184,7 @@ static ssize_t rndis_proc_write(struct file *file, char *buffer,
+ 
+ static const struct proc_ops rndis_proc_ops = {
+ 	.proc_show	= rndis_proc_show,
+-	.proc_write_buf	= rndis_proc_write,
++	.proc_write	= rndis_proc_write,
+ };
+ 
+ #define	NAME_TEMPLATE "driver/rndis-%03d"
+diff --git a/drivers/video/fbdev/via/viafbdev.c b/drivers/video/fbdev/via/viafbdev.c
+index 94b303006915..7732a5eea857 100644
+--- a/drivers/video/fbdev/via/viafbdev.c
++++ b/drivers/video/fbdev/via/viafbdev.c
+@@ -1168,7 +1168,7 @@ static ssize_t viafb_dvp0_proc_write(struct file *file,
+ 
+ static const struct proc_ops viafb_dvp0_proc_ops = {
+ 	.proc_show	= viafb_dvp0_proc_show,
+-	.proc_write_buf	= viafb_dvp0_proc_write,
++	.proc_write	= viafb_dvp0_proc_write,
+ };
+ 
+ static int viafb_dvp1_proc_show(struct seq_file *m, void *v)
+@@ -1223,7 +1223,7 @@ static ssize_t viafb_dvp1_proc_write(struct file *file,
+ 
+ static const struct proc_ops viafb_dvp1_proc_ops = {
+ 	.proc_show	= viafb_dvp1_proc_show,
+-	.proc_write_buf	= viafb_dvp1_proc_write,
++	.proc_write	= viafb_dvp1_proc_write,
+ };
+ 
+ static int viafb_dfph_proc_show(struct seq_file *m, void *v)
+@@ -1249,7 +1249,7 @@ static ssize_t viafb_dfph_proc_write(struct file *file,
+ 
+ static const struct proc_ops viafb_dfph_proc_ops = {
+ 	.proc_show	= viafb_dfph_proc_show,
+-	.proc_write_buf	= viafb_dfph_proc_write,
++	.proc_write	= viafb_dfph_proc_write,
+ };
+ 
+ static int viafb_dfpl_proc_show(struct seq_file *m, void *v)
+@@ -1275,7 +1275,7 @@ static ssize_t viafb_dfpl_proc_write(struct file *file,
+ 
+ static const struct proc_ops viafb_dfpl_proc_ops = {
+ 	.proc_show	= viafb_dfpl_proc_show,
+-	.proc_write_buf	= viafb_dfpl_proc_write,
++	.proc_write	= viafb_dfpl_proc_write,
+ };
+ 
+ static int viafb_vt1636_proc_show(struct seq_file *m, void *v)
+@@ -1401,7 +1401,7 @@ static ssize_t viafb_vt1636_proc_write(struct file *file,
+ 
+ static const struct proc_ops viafb_vt1636_proc_ops = {
+ 	.proc_show	= viafb_vt1636_proc_show,
+-	.proc_write_buf	= viafb_vt1636_proc_write,
++	.proc_write	= viafb_vt1636_proc_write,
+ };
+ 
+ #endif /* CONFIG_FB_VIA_DIRECT_PROCFS */
+@@ -1469,7 +1469,7 @@ static ssize_t viafb_iga1_odev_proc_write(struct file *file,
+ 
+ static const struct proc_ops viafb_iga1_odev_proc_ops = {
+ 	.proc_show	= viafb_iga1_odev_proc_show,
+-	.proc_write_buf	= viafb_iga1_odev_proc_write,
++	.proc_write	= viafb_iga1_odev_proc_write,
+ };
+ 
+ static int viafb_iga2_odev_proc_show(struct seq_file *m, void *v)
+@@ -1500,7 +1500,7 @@ static ssize_t viafb_iga2_odev_proc_write(struct file *file,
+ 
+ static const struct proc_ops viafb_iga2_odev_proc_ops = {
+ 	.proc_show	= viafb_iga2_odev_proc_show,
+-	.proc_write_buf	= viafb_iga2_odev_proc_write,
++	.proc_write	= viafb_iga2_odev_proc_write,
+ };
+ 
+ #define IS_VT1636(lvds_chip)	((lvds_chip).lvds_chip_name == VT1636_LVDS)
+diff --git a/drivers/zorro/proc.c b/drivers/zorro/proc.c
+index 99a8b478192d..13280fda2592 100644
+--- a/drivers/zorro/proc.c
++++ b/drivers/zorro/proc.c
+@@ -57,7 +57,7 @@ proc_bus_zorro_read(struct file *file, char *buf, size_t nbytes, loff_t *ppos)
+ 
+ static const struct proc_ops bus_zorro_proc_ops = {
+ 	.proc_lseek	= proc_bus_zorro_lseek,
+-	.proc_read_buf	= proc_bus_zorro_read,
++	.proc_read	= proc_bus_zorro_read,
+ };
+ 
+ static void * zorro_seq_start(struct seq_file *m, loff_t *pos)
+diff --git a/fs/jfs/jfs_debug.c b/fs/jfs/jfs_debug.c
+index e1c0211a6a32..a1fec8e51c7d 100644
+--- a/fs/jfs/jfs_debug.c
++++ b/fs/jfs/jfs_debug.c
+@@ -37,7 +37,7 @@ static ssize_t jfs_loglevel_proc_write(struct file *file, char *buffer,
+ 
+ static const struct proc_ops jfs_loglevel_proc_ops = {
+ 	.proc_show	= jfs_loglevel_proc_show,
+-	.proc_write_buf	= jfs_loglevel_proc_write,
++	.proc_write	= jfs_loglevel_proc_write,
+ };
+ #endif
+ 
+diff --git a/fs/lockd/procfs.c b/fs/lockd/procfs.c
+index 64195c564cd3..94002e36f78e 100644
+--- a/fs/lockd/procfs.c
++++ b/fs/lockd/procfs.c
+@@ -55,8 +55,8 @@ nlm_end_grace_read(struct file *file, char *buf, size_t size,
+ }
+ 
+ static const struct proc_ops lockd_end_grace_proc_ops = {
+-	.proc_write_buf	= nlm_end_grace_write,
+-	.proc_read_buf	= nlm_end_grace_read,
++	.proc_write	= nlm_end_grace_write,
++	.proc_read	= nlm_end_grace_read,
+ 	.proc_lseek	= default_llseek,
+ };
+ 
+diff --git a/fs/ntfs3/super.c b/fs/ntfs3/super.c
+index cdeccbe506e8..963a629a4544 100644
+--- a/fs/ntfs3/super.c
++++ b/fs/ntfs3/super.c
+@@ -590,7 +590,7 @@ static const struct proc_ops ntfs3_volinfo_fops = {
+ 
+ static const struct proc_ops ntfs3_label_fops = {
+ 	.proc_show = ntfs3_label_show,
+-	.proc_write_buf = ntfs3_label_write,
++	.proc_write = ntfs3_label_write,
+ };
+ 
+ static void ntfs_create_procdir(struct super_block *sb)
 diff --git a/fs/proc/generic.c b/fs/proc/generic.c
-index 4e0142fec582..2515df3a0110 100644
+index 2515df3a0110..9855aa7e6dc8 100644
 --- a/fs/proc/generic.c
 +++ b/fs/proc/generic.c
-@@ -454,8 +454,7 @@ static int pde_set_flags(struct proc_dir_entry *pde)
- 	}
- 	if (pde_is_seq_file(pde)) {
- 		/* procfs reads and seeks through the seq_file itself */
--		if (WARN_ON_ONCE(proc_ops->proc_read || proc_ops->proc_read_iter ||
--				 proc_ops->proc_lseek))
-+		if (WARN_ON_ONCE(proc_ops->proc_lseek))
- 			return -EINVAL;
- 		/* and frees it, see pde_seq_release() */
- 		if (WARN_ON_ONCE(proc_ops->proc_release == seq_release ||
-@@ -463,11 +462,8 @@ static int pde_set_flags(struct proc_dir_entry *pde)
- 				 proc_ops->proc_release == single_release))
- 			return -EINVAL;
- 		pde->flags |= PROC_ENTRY_proc_lseek;
--	} else {
--		if (proc_ops->proc_read_iter)
--			pde->flags |= PROC_ENTRY_proc_read_iter;
--		if (proc_ops->proc_lseek)
--			pde->flags |= PROC_ENTRY_proc_lseek;
-+	} else if (proc_ops->proc_lseek) {
-+		pde->flags |= PROC_ENTRY_proc_lseek;
- 	}
- 	if (proc_ops->proc_poll)
- 		pde->flags |= PROC_ENTRY_proc_poll;
-@@ -482,8 +478,8 @@ static int pde_set_flags(struct proc_dir_entry *pde)
+@@ -471,27 +471,27 @@ static int pde_set_flags(struct proc_dir_entry *pde)
+ 		pde->flags |= PROC_ENTRY_proc_release;
+ 	if (proc_ops->proc_mmap)
+ 		pde->flags |= PROC_ENTRY_proc_mmap;
+-	if (proc_ops->proc_write_buf) {
+-		pde->flags |= PROC_ENTRY_proc_write_buf;
++	if (proc_ops->proc_write) {
++		pde->flags |= PROC_ENTRY_proc_write;
+ 		pde->write_size = proc_ops->proc_write_size ?: PAGE_SIZE - 1;
+ 		if (proc_ops->proc_flags & PROC_ENTRY_SHORT_WRITES)
  			pde->flags |= PROC_ENTRY_SHORT_WRITES;
  	}
- 	if (proc_ops->proc_read_buf) {
--		if (WARN_ON_ONCE(pde_is_seq_file(pde) || proc_ops->proc_read ||
--				 proc_ops->proc_read_iter))
-+		/* procfs reads through the seq_file itself */
-+		if (WARN_ON_ONCE(pde_is_seq_file(pde)))
+-	if (proc_ops->proc_read_buf) {
++	if (proc_ops->proc_read) {
+ 		/* procfs reads through the seq_file itself */
+ 		if (WARN_ON_ONCE(pde_is_seq_file(pde)))
  			return -EINVAL;
- 		pde->flags |= PROC_ENTRY_proc_read_buf;
+-		pde->flags |= PROC_ENTRY_proc_read_buf;
++		pde->flags |= PROC_ENTRY_proc_read;
  		pde->read_size = proc_ops->proc_read_size ?: PAGE_SIZE;
+ 		if (proc_ops->proc_flags & PROC_ENTRY_FULL_READS)
+ 			pde->flags |= PROC_ENTRY_FULL_READS;
+ 	}
+-	if (proc_ops->proc_ioctl_buf) {
++	if (proc_ops->proc_ioctl) {
+ 		/* the table says what procfs copies, see pde_ioctl_arg() */
+ 		if (WARN_ON_ONCE(!proc_ops->proc_ioctl_args ||
+ 				 !proc_ops->proc_nr_ioctl_args))
+ 			return -EINVAL;
+-		pde->flags |= PROC_ENTRY_proc_ioctl_buf;
++		pde->flags |= PROC_ENTRY_proc_ioctl;
+ 	} else if (WARN_ON_ONCE(proc_ops->proc_ioctl_args ||
+ 				proc_ops->proc_nr_ioctl_args)) {
+ 		return -EINVAL;
 diff --git a/fs/proc/inode.c b/fs/proc/inode.c
-index 49ae30b6e515..9719c1b89de3 100644
+index 9719c1b89de3..7f6c63885f53 100644
 --- a/fs/proc/inode.c
 +++ b/fs/proc/inode.c
-@@ -413,6 +413,9 @@ static loff_t proc_reg_llseek(struct file *file, loff_t offset, int whence)
- 	struct proc_dir_entry *pde = PDE(file_inode(file));
- 	loff_t rv;
- 
-+	/* procfs seeks through the seq_file itself, see pde_seq_start() */
-+	if (pde_is_seq_file(pde))
-+		return seq_lseek(file, offset, whence);
- 	if (!pde_pin(pde))
- 		return -EINVAL;
- 	rv = pde->proc_ops->proc_lseek(file, offset, whence);
-@@ -477,37 +480,15 @@ static ssize_t pde_read_buf(struct proc_dir_entry *pde, struct kiocb *iocb,
- static ssize_t proc_reg_read_iter(struct kiocb *iocb, struct iov_iter *iter)
+@@ -428,7 +428,7 @@ static loff_t proc_reg_llseek(struct file *file, loff_t offset, int whence)
+  * unpinning the entry. A reader that faults on its buffer then doesn't hold
+  * up remove_proc_entry().
+  */
+-static ssize_t pde_read_buf(struct proc_dir_entry *pde, struct kiocb *iocb,
++static ssize_t pde_read(struct proc_dir_entry *pde, struct kiocb *iocb,
+ 			    struct iov_iter *iter)
  {
- 	struct proc_dir_entry *pde = PDE(file_inode(iocb->ki_filp));
--	ssize_t ret;
- 
-+	/* procfs reads through the seq_file itself, see pde_seq_start() */
-+	if (pde_is_seq_file(pde))
-+		return seq_read_iter(iocb, iter);
- 	if (pde_has_proc_read_buf(pde))
- 		return pde_read_buf(pde, iocb, iter);
--	if (!pde_pin(pde))
--		return -EIO;
--	ret = pde->proc_ops->proc_read_iter(iocb, iter);
--	pde_unpin(pde);
--	return ret;
--}
--
--static ssize_t pde_read(struct proc_dir_entry *pde, struct file *file, char __user *buf, size_t count, loff_t *ppos)
--{
--	const auto read = pde->proc_ops->proc_read;
--	if (read)
--		return read(file, buf, count, ppos);
+ 	struct file *file = iocb->ki_filp;
+@@ -455,7 +455,7 @@ static ssize_t pde_read_buf(struct proc_dir_entry *pde, struct kiocb *iocb,
+ 			rv = -EIO;
+ 			break;
+ 		}
+-		rv = pde->proc_ops->proc_read_buf(file, buf, count, &pos);
++		rv = pde->proc_ops->proc_read(file, buf, count, &pos);
+ 		pde_unpin(pde);
+ 		if (rv <= 0)
+ 			break;
+@@ -484,8 +484,8 @@ static ssize_t proc_reg_read_iter(struct kiocb *iocb, struct iov_iter *iter)
+ 	/* procfs reads through the seq_file itself, see pde_seq_start() */
+ 	if (pde_is_seq_file(pde))
+ 		return seq_read_iter(iocb, iter);
+-	if (pde_has_proc_read_buf(pde))
+-		return pde_read_buf(pde, iocb, iter);
++	if (pde_has_proc_read(pde))
++		return pde_read(pde, iocb, iter);
  	return -EIO;
  }
  
--static ssize_t proc_reg_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
--{
--	struct proc_dir_entry *pde = PDE(file_inode(file));
--	ssize_t rv;
--
--	if (!pde_pin(pde))
--		return -EIO;
--	rv = pde_read(pde, file, buf, count, ppos);
--	pde_unpin(pde);
--	return rv;
--}
--
- /*
+@@ -493,7 +493,7 @@ static ssize_t proc_reg_read_iter(struct kiocb *iocb, struct iov_iter *iter)
   * procfs copies in what is written before it pins the entry. A writer that
   * faults on its buffer then doesn't hold up remove_proc_entry().
-@@ -923,41 +904,7 @@ static int proc_reg_release(struct inode *inode, struct file *file)
- 	return 0;
+  */
+-static ssize_t pde_write_buf(struct proc_dir_entry *pde, struct file *file,
++static ssize_t pde_write(struct proc_dir_entry *pde, struct file *file,
+ 			     const char __user *ubuf, size_t count, loff_t *ppos)
+ {
+ 	char *buf __free(kvfree) = NULL;
+@@ -515,7 +515,7 @@ static ssize_t pde_write_buf(struct proc_dir_entry *pde, struct file *file,
+ 
+ 	if (!pde_pin(pde))
+ 		return -EIO;
+-	rv = pde->proc_ops->proc_write_buf(file, buf, count, ppos);
++	rv = pde->proc_ops->proc_write(file, buf, count, ppos);
+ 	pde_unpin(pde);
+ 	return rv;
+ }
+@@ -524,8 +524,8 @@ static ssize_t proc_reg_write(struct file *file, const char __user *buf, size_t
+ {
+ 	struct proc_dir_entry *pde = PDE(file_inode(file));
+ 
+-	if (pde_has_proc_write_buf(pde))
+-		return pde_write_buf(pde, file, buf, count, ppos);
++	if (pde_has_proc_write(pde))
++		return pde_write(pde, file, buf, count, ppos);
+ 	return -EIO;
  }
  
--/* For seq_file entries, see pde_seq_ops. */
--static const struct file_operations proc_seq_file_ops = {
--	.llseek		= seq_lseek,
--	.read_iter	= seq_read_iter,
--	.splice_read	= copy_splice_read,
--	.write		= proc_reg_write,
--	.poll		= proc_reg_poll,
--	.unlocked_ioctl	= proc_reg_unlocked_ioctl,
--	.compat_ioctl	= proc_reg_compat_ioctl,
--	.mmap		= proc_reg_mmap,
--	.get_unmapped_area = proc_reg_get_unmapped_area,
--#ifndef CONFIG_MMU
--	.mmap_capabilities = proc_reg_mmap_capabilities,
--#endif
--	.open		= proc_reg_open,
--	.release	= proc_reg_release,
--};
--
- static const struct file_operations proc_reg_file_ops = {
--	.llseek		= proc_reg_llseek,
--	.read		= proc_reg_read,
--	.write		= proc_reg_write,
--	.poll		= proc_reg_poll,
--	.unlocked_ioctl	= proc_reg_unlocked_ioctl,
--	.compat_ioctl	= proc_reg_compat_ioctl,
--	.mmap		= proc_reg_mmap,
--	.get_unmapped_area = proc_reg_get_unmapped_area,
--#ifndef CONFIG_MMU
--	.mmap_capabilities = proc_reg_mmap_capabilities,
--#endif
--	.open		= proc_reg_open,
--	.release	= proc_reg_release,
--};
--
--static const struct file_operations proc_iter_file_ops = {
- 	.llseek		= proc_reg_llseek,
- 	.read_iter	= proc_reg_read_iter,
- 	.write		= proc_reg_write,
-@@ -1026,10 +973,6 @@ struct inode *proc_get_inode(struct super_block *sb, struct proc_dir_entry *de)
- 		inode->i_op = de->proc_iops;
- 		if (pde_has_proc_fops(de))
- 			inode->i_fop = de->proc_fops;
--		else if (pde_is_seq_file(de))
--			inode->i_fop = &proc_seq_file_ops;
--		else if (pde_has_proc_read_iter(de) || pde_has_proc_read_buf(de))
--			inode->i_fop = &proc_iter_file_ops;
- 		else
- 			inode->i_fop = &proc_reg_file_ops;
- 	} else if (S_ISDIR(inode->i_mode)) {
+@@ -594,7 +594,7 @@ static bool pde_ioctl_arg(struct proc_dir_entry *pde, unsigned int cmd,
+  * out after unpinning it. An ioctl that faults on its argument then doesn't
+  * hold up remove_proc_entry().
+  */
+-static long pde_ioctl_buf(struct proc_dir_entry *pde, struct file *file,
++static long pde_ioctl(struct proc_dir_entry *pde, struct file *file,
+ 			  unsigned int cmd, void __user *uarg, unsigned long arg)
+ {
+ 	void *buf __free(kvfree) = NULL;
+@@ -615,7 +615,7 @@ static long pde_ioctl_buf(struct proc_dir_entry *pde, struct file *file,
+ 
+ 	if (!pde_pin(pde))
+ 		return -ENOTTY;
+-	rv = pde->proc_ops->proc_ioctl_buf(file, cmd, buf ?: (void *)arg);
++	rv = pde->proc_ops->proc_ioctl(file, cmd, buf ?: (void *)arg);
+ 	pde_unpin(pde);
+ 	if (rv >= 0 && a.out && copy_to_user(uarg, buf, a.out))
+ 		return -EFAULT;
+@@ -626,8 +626,8 @@ static long proc_reg_unlocked_ioctl(struct file *file, unsigned int cmd, unsigne
+ {
+ 	struct proc_dir_entry *pde = PDE(file_inode(file));
+ 
+-	if (pde_has_proc_ioctl_buf(pde))
+-		return pde_ioctl_buf(pde, file, cmd, (void __user *)arg, arg);
++	if (pde_has_proc_ioctl(pde))
++		return pde_ioctl(pde, file, cmd, (void __user *)arg, arg);
+ 	return -ENOTTY;
+ }
+ 
+@@ -636,8 +636,8 @@ static long proc_reg_compat_ioctl(struct file *file, unsigned int cmd, unsigned
+ {
+ 	struct proc_dir_entry *pde = PDE(file_inode(file));
+ 
+-	if (pde_has_proc_ioctl_buf(pde))
+-		return pde_ioctl_buf(pde, file, cmd, compat_ptr(arg), arg);
++	if (pde_has_proc_ioctl(pde))
++		return pde_ioctl(pde, file, cmd, compat_ptr(arg), arg);
+ 	return -ENOTTY;
+ }
+ #else
 diff --git a/fs/proc/internal.h b/fs/proc/internal.h
-index 84c5c13651aa..0a22237e6778 100644
+index 0a22237e6778..c4c5f5611e16 100644
 --- a/fs/proc/internal.h
 +++ b/fs/proc/internal.h
-@@ -103,11 +103,6 @@ static inline bool pde_has_proc_fops(const struct proc_dir_entry *pde)
- 	return pde->flags & PROC_ENTRY_proc_fops;
+@@ -118,9 +118,9 @@ static inline bool pde_has_proc_show(const struct proc_dir_entry *pde)
+ 	return pde->flags & PROC_ENTRY_proc_show;
  }
  
--static inline bool pde_has_proc_read_iter(const struct proc_dir_entry *pde)
--{
--	return pde->flags & PROC_ENTRY_proc_read_iter;
--}
--
- static inline bool pde_has_proc_lseek(const struct proc_dir_entry *pde)
+-static inline bool pde_has_proc_write_buf(const struct proc_dir_entry *pde)
++static inline bool pde_has_proc_write(const struct proc_dir_entry *pde)
  {
- 	return pde->flags & PROC_ENTRY_proc_lseek;
+-	return pde->flags & PROC_ENTRY_proc_write_buf;
++	return pde->flags & PROC_ENTRY_proc_write;
+ }
+ 
+ static inline bool pde_has_short_writes(const struct proc_dir_entry *pde)
+@@ -128,9 +128,9 @@ static inline bool pde_has_short_writes(const struct proc_dir_entry *pde)
+ 	return pde->flags & PROC_ENTRY_SHORT_WRITES;
+ }
+ 
+-static inline bool pde_has_proc_read_buf(const struct proc_dir_entry *pde)
++static inline bool pde_has_proc_read(const struct proc_dir_entry *pde)
+ {
+-	return pde->flags & PROC_ENTRY_proc_read_buf;
++	return pde->flags & PROC_ENTRY_proc_read;
+ }
+ 
+ static inline bool pde_has_full_reads(const struct proc_dir_entry *pde)
+@@ -138,9 +138,9 @@ static inline bool pde_has_full_reads(const struct proc_dir_entry *pde)
+ 	return pde->flags & PROC_ENTRY_FULL_READS;
+ }
+ 
+-static inline bool pde_has_proc_ioctl_buf(const struct proc_dir_entry *pde)
++static inline bool pde_has_proc_ioctl(const struct proc_dir_entry *pde)
+ {
+-	return pde->flags & PROC_ENTRY_proc_ioctl_buf;
++	return pde->flags & PROC_ENTRY_proc_ioctl;
+ }
+ 
+ static inline bool pde_has_proc_poll(const struct proc_dir_entry *pde)
+diff --git a/fs/proc/proc_net.c b/fs/proc/proc_net.c
+index 9ddd7c323dfc..fd6ee30199da 100644
+--- a/fs/proc/proc_net.c
++++ b/fs/proc/proc_net.c
+@@ -77,7 +77,7 @@ static int seq_release_net(struct inode *ino, struct file *f)
+ 
+ static const struct proc_ops proc_net_seq_ops = {
+ 	.proc_open	= seq_open_net,
+-	.proc_write_buf	= proc_simple_write,
++	.proc_write	= proc_simple_write,
+ 	.proc_release	= seq_release_net,
+ };
+ 
+@@ -186,7 +186,7 @@ static int single_release_net(struct inode *ino, struct file *f)
+ 
+ static const struct proc_ops proc_net_single_ops = {
+ 	.proc_open	= single_open_net,
+-	.proc_write_buf	= proc_simple_write,
++	.proc_write	= proc_simple_write,
+ 	.proc_release	= single_release_net,
+ };
+ 
+diff --git a/fs/proc/vmcore.c b/fs/proc/vmcore.c
+index 1c1e71231f4e..33af42dc9a6a 100644
+--- a/fs/proc/vmcore.c
++++ b/fs/proc/vmcore.c
+@@ -718,7 +718,7 @@ static const struct proc_ops vmcore_proc_ops = {
+ 	.proc_flags	= PROC_ENTRY_FULL_READS,
+ 	.proc_open	= open_vmcore,
+ 	.proc_release	= release_vmcore,
+-	.proc_read_buf	= read_vmcore,
++	.proc_read	= read_vmcore,
+ 	.proc_read_size	= SZ_128K,
+ 	.proc_lseek	= default_llseek,
+ 	.proc_mmap	= mmap_vmcore,
+diff --git a/fs/smb/client/cifs_debug.c b/fs/smb/client/cifs_debug.c
+index fb1323bf44c7..df449f6f5282 100644
+--- a/fs/smb/client/cifs_debug.c
++++ b/fs/smb/client/cifs_debug.c
+@@ -390,7 +390,7 @@ static ssize_t cifs_debug_dirs_proc_write(struct file *file, char *buffer,
+ 
+ static const struct proc_ops cifs_debug_dirs_proc_ops = {
+ 	.proc_show	= cifs_debug_dirs_proc_show,
+-	.proc_write_buf	= cifs_debug_dirs_proc_write,
++	.proc_write	= cifs_debug_dirs_proc_write,
+ };
+ #endif /* CONFIG_CIFS_DEBUG */
+ 
+@@ -854,7 +854,7 @@ static int cifs_stats_proc_show(struct seq_file *m, void *v)
+ 
+ static const struct proc_ops cifs_stats_proc_ops = {
+ 	.proc_show	= cifs_stats_proc_show,
+-	.proc_write_buf	= cifs_stats_proc_write,
++	.proc_write	= cifs_stats_proc_write,
+ };
+ 
+ #ifdef CONFIG_CIFS_SMB_DIRECT
+@@ -876,7 +876,7 @@ static int name##_proc_show(struct seq_file *m, void *v) \
+ \
+ static const struct proc_ops cifs_##name##_proc_fops = { \
+ 	.proc_show	= name##_proc_show, \
+-	.proc_write_buf	= name##_write, \
++	.proc_write	= name##_write, \
+ }
+ 
+ PROC_FILE_DEFINE(rdma_readwrite_threshold);
+@@ -1008,7 +1008,7 @@ static ssize_t cifsFYI_proc_write(struct file *file, char *buffer,
+ 
+ static const struct proc_ops cifsFYI_proc_ops = {
+ 	.proc_show	= cifsFYI_proc_show,
+-	.proc_write_buf	= cifsFYI_proc_write,
++	.proc_write	= cifsFYI_proc_write,
+ };
+ 
+ static int cifs_linux_ext_proc_show(struct seq_file *m, void *v)
+@@ -1031,7 +1031,7 @@ static ssize_t cifs_linux_ext_proc_write(struct file *file, char *buffer,
+ 
+ static const struct proc_ops cifs_linux_ext_proc_ops = {
+ 	.proc_show	= cifs_linux_ext_proc_show,
+-	.proc_write_buf	= cifs_linux_ext_proc_write,
++	.proc_write	= cifs_linux_ext_proc_write,
+ };
+ 
+ static int cifs_lookup_cache_proc_show(struct seq_file *m, void *v)
+@@ -1054,7 +1054,7 @@ static ssize_t cifs_lookup_cache_proc_write(struct file *file, char *buffer,
+ 
+ static const struct proc_ops cifs_lookup_cache_proc_ops = {
+ 	.proc_show	= cifs_lookup_cache_proc_show,
+-	.proc_write_buf	= cifs_lookup_cache_proc_write,
++	.proc_write	= cifs_lookup_cache_proc_write,
+ };
+ 
+ static int traceSMB_proc_show(struct seq_file *m, void *v)
+@@ -1077,7 +1077,7 @@ static ssize_t traceSMB_proc_write(struct file *file, char *buffer,
+ 
+ static const struct proc_ops traceSMB_proc_ops = {
+ 	.proc_show	= traceSMB_proc_show,
+-	.proc_write_buf	= traceSMB_proc_write,
++	.proc_write	= traceSMB_proc_write,
+ };
+ 
+ static int cifs_security_flags_proc_show(struct seq_file *m, void *v)
+@@ -1166,7 +1166,7 @@ static ssize_t cifs_security_flags_proc_write(struct file *file,
+ 
+ static const struct proc_ops cifs_security_flags_proc_ops = {
+ 	.proc_show	= cifs_security_flags_proc_show,
+-	.proc_write_buf	= cifs_security_flags_proc_write,
++	.proc_write	= cifs_security_flags_proc_write,
+ };
+ 
+ /* To make it easier to debug, can help to show mount params */
+diff --git a/fs/smb/client/dfs_cache.c b/fs/smb/client/dfs_cache.c
+index a6aa05430b15..8b5781e828b4 100644
+--- a/fs/smb/client/dfs_cache.c
++++ b/fs/smb/client/dfs_cache.c
+@@ -208,7 +208,7 @@ static ssize_t dfscache_proc_write(struct file *file, char *buffer,
+ 
+ const struct proc_ops dfscache_proc_ops = {
+ 	.proc_show	= dfscache_proc_show,
+-	.proc_write_buf	= dfscache_proc_write,
++	.proc_write	= dfscache_proc_write,
+ };
+ 
+ #ifdef CONFIG_CIFS_DEBUG2
 diff --git a/include/linux/proc_fs.h b/include/linux/proc_fs.h
-index 05e0d6e4f918..9c09766b8f72 100644
+index 9c09766b8f72..872f3bd54c11 100644
 --- a/include/linux/proc_fs.h
 +++ b/include/linux/proc_fs.h
-@@ -17,6 +17,7 @@ struct seq_operations;
- enum {
- 	/*
- 	 * All /proc entries using this ->proc_ops instance are never removed.
-+	 * procfs calls into them without pinning them.
- 	 *
- 	 * If in doubt, ignore this flag.
- 	 */
-@@ -26,7 +27,6 @@ enum {
- 	PROC_ENTRY_PERMANENT		= 1U << 0,
- #endif
+@@ -33,21 +33,21 @@ enum {
+ 	PROC_ENTRY_proc_show		= 1U << 5,
  
--	PROC_ENTRY_proc_read_iter	= 1U << 1,
- 	PROC_ENTRY_proc_fops		= 1U << 2,
- 	PROC_ENTRY_proc_lseek		= 1U << 3,
- 	PROC_ENTRY_proc_seq_ops		= 1U << 4,
-@@ -76,8 +76,6 @@ struct proc_ioctl_arg {
- struct proc_ops {
- 	unsigned int proc_flags;
- 	int	(*proc_open)(struct inode *, struct file *);
--	ssize_t	(*proc_read)(struct file *, char __user *, size_t, loff_t *);
--	ssize_t (*proc_read_iter)(struct kiocb *, struct iov_iter *);
+ 	PROC_ENTRY_FORCE_LOOKUP		= 1U << 7,
+-	PROC_ENTRY_proc_write_buf	= 1U << 8,
++	PROC_ENTRY_proc_write		= 1U << 8,
+ 
  	/*
- 	 * mandatory unless nonseekable_open() or equivalent is used, procfs
- 	 * seeks seq_file entries itself
+ 	 * Writes larger than ->proc_write_size come up short instead of
+ 	 * failing with -EINVAL.
+ 	 */
+ 	PROC_ENTRY_SHORT_WRITES		= 1U << 9,
+-	PROC_ENTRY_proc_read_buf	= 1U << 10,
++	PROC_ENTRY_proc_read		= 1U << 10,
+ 
+ 	/*
+ 	 * Reads larger than ->proc_read_size are filled in pieces instead of
+ 	 * coming up short.
+ 	 */
+ 	PROC_ENTRY_FULL_READS		= 1U << 11,
+-	PROC_ENTRY_proc_ioctl_buf	= 1U << 12,
++	PROC_ENTRY_proc_ioctl		= 1U << 12,
+ 	PROC_ENTRY_proc_poll		= 1U << 13,
+ 	PROC_ENTRY_proc_release		= 1U << 14,
+ 	PROC_ENTRY_proc_mmap		= 1U << 15,
+@@ -55,7 +55,7 @@ enum {
+ 
+ /*
+  * How many bytes of the argument of @cmd procfs copies in before calling
+- * ->proc_ioctl_buf() and copies back out after it. A command that copies
++ * ->proc_ioctl() and copies back out after it. A command that copies
+  * neither gets its argument as is.
+  */
+ struct proc_ioctl_arg {
+@@ -123,26 +123,26 @@ struct proc_ops {
+ 	unsigned int proc_state_size;
+ 	/*
+ 	 * procfs copies what is written into a kernel buffer and calls
+-	 * ->proc_write_buf() with it. The buffer is NUL-terminated and holds
++	 * ->proc_write() with it. The buffer is NUL-terminated and holds
+ 	 * at most ->proc_write_size bytes, PAGE_SIZE - 1 if that's 0. Larger
+ 	 * writes fail with -EINVAL unless the entry asks for
+ 	 * PROC_ENTRY_SHORT_WRITES. The position is NULL for a stream, like
+ 	 * for ->write().
+ 	 */
+-	ssize_t	(*proc_write_buf)(struct file *, char *, size_t, loff_t *);
++	ssize_t	(*proc_write)(struct file *, char *, size_t, loff_t *);
+ 	unsigned int proc_write_size;
+ 	/*
+-	 * procfs calls ->proc_read_buf() to fill a kernel buffer of at most
++	 * procfs calls ->proc_read() to fill a kernel buffer of at most
+ 	 * ->proc_read_size bytes, PAGE_SIZE if that's 0, and copies it to
+ 	 * userspace afterwards. Larger reads come up short unless the entry
+ 	 * asks for PROC_ENTRY_FULL_READS. The position the entry moves to only
+ 	 * sticks if the copy works.
+ 	 */
+-	ssize_t	(*proc_read_buf)(struct file *, char *, size_t, loff_t *);
++	ssize_t	(*proc_read)(struct file *, char *, size_t, loff_t *);
+ 	unsigned int proc_read_size;
+ 	/*
+ 	 * procfs looks the command up in ->proc_ioctl_args, copies in what it
+-	 * passes before pinning the entry, calls ->proc_ioctl_buf() with that
++	 * passes before pinning the entry, calls ->proc_ioctl() with that
+ 	 * copy and copies out what it returns after unpinning the entry.
+ 	 * Commands that aren't in the table fail with -ENOTTY. 32-bit tasks
+ 	 * go through the same table. The copy is zeroed and as large as the
+@@ -150,7 +150,7 @@ struct proc_ops {
+ 	 * succeeded, and a command that copies neither gets its argument as
+ 	 * is.
+ 	 */
+-	long	(*proc_ioctl_buf)(struct file *, unsigned int, void *);
++	long	(*proc_ioctl)(struct file *, unsigned int, void *);
+ 	const struct proc_ioctl_arg *proc_ioctl_args;
+ 	unsigned int proc_nr_ioctl_args;
+ } __randomize_layout;
+diff --git a/kernel/configs.c b/kernel/configs.c
+index 05b12c440168..6ce19fa7ad44 100644
+--- a/kernel/configs.c
++++ b/kernel/configs.c
+@@ -49,7 +49,7 @@ ikconfig_read_current(struct file *file, char *buf,
+ 
+ static const struct proc_ops config_gz_proc_ops = {
+ 	.proc_flags	= PROC_ENTRY_FULL_READS,
+-	.proc_read_buf	= ikconfig_read_current,
++	.proc_read	= ikconfig_read_current,
+ 	.proc_lseek	= default_llseek,
+ };
+ 
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index fe683457a088..4caf10e05e03 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -194,13 +194,13 @@ static ssize_t irq_affinity_list_proc_write(struct file *file,
+ 
+ static const struct proc_ops irq_affinity_proc_ops = {
+ 	.proc_show	= irq_affinity_proc_show,
+-	.proc_write_buf	= irq_affinity_proc_write,
++	.proc_write	= irq_affinity_proc_write,
+ 	.proc_write_size = IRQ_AFFINITY_WRITE_SIZE,
+ };
+ 
+ static const struct proc_ops irq_affinity_list_proc_ops = {
+ 	.proc_show	= irq_affinity_list_proc_show,
+-	.proc_write_buf	= irq_affinity_list_proc_write,
++	.proc_write	= irq_affinity_list_proc_write,
+ 	.proc_write_size = IRQ_AFFINITY_WRITE_SIZE,
+ };
+ 
+@@ -255,7 +255,7 @@ static ssize_t default_affinity_write(struct file *file,
+ 
+ static const struct proc_ops default_affinity_proc_ops = {
+ 	.proc_show	= default_affinity_show,
+-	.proc_write_buf	= default_affinity_write,
++	.proc_write	= default_affinity_write,
+ 	.proc_write_size = IRQ_AFFINITY_WRITE_SIZE,
+ };
+ 
+diff --git a/kernel/latencytop.c b/kernel/latencytop.c
+index 35f73ca07656..e90b1801f9b4 100644
+--- a/kernel/latencytop.c
++++ b/kernel/latencytop.c
+@@ -276,7 +276,7 @@ lstats_write(struct file *file, char *buf, size_t count, loff_t *offs)
+ 
+ static const struct proc_ops lstats_proc_ops = {
+ 	.proc_show	= lstats_show,
+-	.proc_write_buf	= lstats_write,
++	.proc_write	= lstats_write,
+ };
+ 
+ static int __init init_lstats_procfs(void)
+diff --git a/kernel/locking/lockdep_proc.c b/kernel/locking/lockdep_proc.c
+index 2a66ea09c2aa..0a95786bba88 100644
+--- a/kernel/locking/lockdep_proc.c
++++ b/kernel/locking/lockdep_proc.c
+@@ -699,7 +699,7 @@ static int lock_stat_release(struct inode *inode, struct file *file)
+ static const struct proc_ops lock_stat_proc_ops = {
+ 	.proc_seq_ops	= &lockstat_ops,
+ 	.proc_open	= lock_stat_open,
+-	.proc_write_buf	= lock_stat_write,
++	.proc_write	= lock_stat_write,
+ 	.proc_release	= lock_stat_release,
+ };
+ #endif /* CONFIG_LOCK_STAT */
+diff --git a/kernel/profile.c b/kernel/profile.c
+index 0c2672adcbb5..9a5b7d696227 100644
+--- a/kernel/profile.c
++++ b/kernel/profile.c
+@@ -204,8 +204,8 @@ static ssize_t write_profile(struct file *file, char *buf, size_t count,
+ 
+ static const struct proc_ops profile_proc_ops = {
+ 	.proc_flags	= PROC_ENTRY_PERMANENT | PROC_ENTRY_FULL_READS,
+-	.proc_read_buf	= read_profile,
+-	.proc_write_buf	= write_profile,
++	.proc_read	= read_profile,
++	.proc_write	= write_profile,
+ 	.proc_lseek	= default_llseek,
+ };
+ 
+diff --git a/kernel/sched/psi.c b/kernel/sched/psi.c
+index 97b5e2488106..9362c27d47ab 100644
+--- a/kernel/sched/psi.c
++++ b/kernel/sched/psi.c
+@@ -1624,7 +1624,7 @@ static int psi_fop_release(struct inode *inode, struct file *file)
+ static const struct proc_ops psi_io_proc_ops = {
+ 	.proc_flags	= PROC_ENTRY_PERMANENT,
+ 	.proc_show	= psi_io_show,
+-	.proc_write_buf	= psi_io_write,
++	.proc_write	= psi_io_write,
+ 	.proc_poll	= psi_fop_poll,
+ 	.proc_release	= psi_fop_release,
+ };
+@@ -1632,7 +1632,7 @@ static const struct proc_ops psi_io_proc_ops = {
+ static const struct proc_ops psi_memory_proc_ops = {
+ 	.proc_flags	= PROC_ENTRY_PERMANENT,
+ 	.proc_show	= psi_memory_show,
+-	.proc_write_buf	= psi_memory_write,
++	.proc_write	= psi_memory_write,
+ 	.proc_poll	= psi_fop_poll,
+ 	.proc_release	= psi_fop_release,
+ };
+@@ -1640,7 +1640,7 @@ static const struct proc_ops psi_memory_proc_ops = {
+ static const struct proc_ops psi_cpu_proc_ops = {
+ 	.proc_flags	= PROC_ENTRY_PERMANENT,
+ 	.proc_show	= psi_cpu_show,
+-	.proc_write_buf	= psi_cpu_write,
++	.proc_write	= psi_cpu_write,
+ 	.proc_poll	= psi_fop_poll,
+ 	.proc_release	= psi_fop_release,
+ };
+@@ -1660,7 +1660,7 @@ static ssize_t psi_irq_write(struct file *file, char *buf, size_t nbytes,
+ static const struct proc_ops psi_irq_proc_ops = {
+ 	.proc_flags	= PROC_ENTRY_PERMANENT,
+ 	.proc_show	= psi_irq_show,
+-	.proc_write_buf	= psi_irq_write,
++	.proc_write	= psi_irq_write,
+ 	.proc_poll	= psi_fop_poll,
+ 	.proc_release	= psi_fop_release,
+ };
+diff --git a/lib/dynamic_debug.c b/lib/dynamic_debug.c
+index 1d6012c9eb41..1f5076b05242 100644
+--- a/lib/dynamic_debug.c
++++ b/lib/dynamic_debug.c
+@@ -1205,7 +1205,7 @@ static const struct file_operations ddebug_proc_fops = {
+ static const struct proc_ops proc_fops = {
+ 	.proc_seq_ops = &ddebug_proc_seqops,
+ 	.proc_state_size = sizeof(struct ddebug_iter),
+-	.proc_write_buf = ddebug_proc_write_buf,
++	.proc_write = ddebug_proc_write_buf,
+ 	.proc_write_size = USER_BUF_PAGE - 1,
+ };
+ 
+diff --git a/mm/alloc_tag.c b/mm/alloc_tag.c
+index b17457c8fb02..00314df6603a 100644
+--- a/mm/alloc_tag.c
++++ b/mm/alloc_tag.c
+@@ -461,7 +461,7 @@ static const struct proc_ops allocinfo_proc_ops = {
+ 	.proc_state_size	= sizeof(struct allocinfo_private),
+ 	.proc_open		= allocinfo_open,
+ 	.proc_release		= allocinfo_release,
+-	.proc_ioctl_buf		= allocinfo_ioctl,
++	.proc_ioctl		= allocinfo_ioctl,
+ 	.proc_ioctl_args	= allocinfo_ioctl_args,
+ 	.proc_nr_ioctl_args	= ARRAY_SIZE(allocinfo_ioctl_args),
+ };
+diff --git a/net/atm/proc.c b/net/atm/proc.c
+index cea930b4b840..032adae4bf75 100644
+--- a/net/atm/proc.c
++++ b/net/atm/proc.c
+@@ -34,7 +34,7 @@ static ssize_t proc_dev_atm_read(struct file *file, char *buf,
+ 				 size_t count, loff_t *pos);
+ 
+ static const struct proc_ops atm_dev_proc_ops = {
+-	.proc_read_buf	= proc_dev_atm_read,
++	.proc_read	= proc_dev_atm_read,
+ 	.proc_lseek	= noop_llseek,
+ };
+ 
+diff --git a/net/core/pktgen.c b/net/core/pktgen.c
+index 84f4db86a5b0..ac17a15102e3 100644
+--- a/net/core/pktgen.c
++++ b/net/core/pktgen.c
+@@ -545,7 +545,7 @@ static ssize_t pgctrl_write(struct file *file, char *buf, size_t count,
+ 
+ static const struct proc_ops pktgen_proc_ops = {
+ 	.proc_show	= pgctrl_show,
+-	.proc_write_buf	= pgctrl_write,
++	.proc_write	= pgctrl_write,
+ };
+ 
+ static int pktgen_if_show(struct seq_file *seq, void *v)
+@@ -1829,7 +1829,7 @@ static ssize_t pktgen_if_write(struct file *file, char *user_buffer,
+ 
+ static const struct proc_ops pktgen_if_proc_ops = {
+ 	.proc_show	= pktgen_if_show,
+-	.proc_write_buf	= pktgen_if_write,
++	.proc_write	= pktgen_if_write,
+ };
+ 
+ static int pktgen_thread_show(struct seq_file *seq, void *v)
+@@ -1958,7 +1958,7 @@ static ssize_t pktgen_thread_write(struct file *file, char *user_buffer,
+ 
+ static const struct proc_ops pktgen_thread_proc_ops = {
+ 	.proc_show	= pktgen_thread_show,
+-	.proc_write_buf	= pktgen_thread_write,
++	.proc_write	= pktgen_thread_write,
+ };
+ 
+ /* Think find or remove for NN */
+diff --git a/net/netfilter/xt_recent.c b/net/netfilter/xt_recent.c
+index 72407eeaa9a6..4722631be846 100644
+--- a/net/netfilter/xt_recent.c
++++ b/net/netfilter/xt_recent.c
+@@ -623,7 +623,7 @@ static const struct proc_ops recent_mt_proc_ops = {
+ 	.proc_seq_ops	= &recent_seq_ops,
+ 	.proc_state_size = sizeof(struct recent_iter_state),
+ 	.proc_open	= recent_seq_open,
+-	.proc_write_buf	= recent_mt_proc_write,
++	.proc_write	= recent_mt_proc_write,
+ };
+ 
+ static int __net_init recent_proc_net_init(struct net *net)
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 67e086a7127c..e21c4d326384 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1456,8 +1456,8 @@ static ssize_t read_gssp(struct file *file, char *buf,
+ 
+ static const struct proc_ops use_gss_proxy_proc_ops = {
+ 	.proc_open	= nonseekable_open,
+-	.proc_write_buf	= write_gssp,
+-	.proc_read_buf	= read_gssp,
++	.proc_write	= write_gssp,
++	.proc_read	= read_gssp,
+ };
+ 
+ static int create_use_gss_proxy_proc_entry(struct net *net)
+@@ -1511,7 +1511,7 @@ static ssize_t read_gss_krb5_enctypes(struct file *file, char *buf,
+ 
+ static const struct proc_ops gss_krb5_enctypes_proc_ops = {
+ 	.proc_open	= nonseekable_open,
+-	.proc_read_buf	= read_gss_krb5_enctypes,
++	.proc_read	= read_gss_krb5_enctypes,
+ };
+ 
+ static int create_krb5_enctypes_proc_entry(struct net *net)
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index f220a3036b6e..b8f70d8c3b0c 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -1610,8 +1610,8 @@ static int cache_release_procfs(struct inode *inode, struct file *filp)
+ }
+ 
+ static const struct proc_ops cache_channel_proc_ops = {
+-	.proc_read_buf	= cache_read_procfs,
+-	.proc_write_buf	= cache_write_procfs,
++	.proc_read	= cache_read_procfs,
++	.proc_write	= cache_write_procfs,
+ 	.proc_write_size = CACHE_DOWNCALL_MAX,
+ 	.proc_poll	= cache_poll_procfs,
+ 	.proc_open	= cache_open_procfs,
+@@ -1680,8 +1680,8 @@ static ssize_t write_flush_procfs(struct file *filp, char *buf, size_t count,
+ 
+ static const struct proc_ops cache_flush_proc_ops = {
+ 	.proc_open	= open_flush_procfs,
+-	.proc_read_buf	= read_flush_procfs,
+-	.proc_write_buf	= write_flush_procfs,
++	.proc_read	= read_flush_procfs,
++	.proc_write	= write_flush_procfs,
+ 	.proc_write_size = CACHE_FLUSH_MAX,
+ 	.proc_release	= release_flush_procfs,
+ };
+diff --git a/samples/kfifo/bytestream-example.c b/samples/kfifo/bytestream-example.c
+index 214e46a64cc1..efb7ee0a3c56 100644
+--- a/samples/kfifo/bytestream-example.c
++++ b/samples/kfifo/bytestream-example.c
+@@ -141,8 +141,8 @@ static ssize_t fifo_read(struct file *file, char *buf,
+ }
+ 
+ static const struct proc_ops fifo_proc_ops = {
+-	.proc_read_buf	= fifo_read,
+-	.proc_write_buf	= fifo_write,
++	.proc_read	= fifo_read,
++	.proc_write	= fifo_write,
+ 	.proc_lseek	= noop_llseek,
+ };
+ 
+diff --git a/samples/kfifo/inttype-example.c b/samples/kfifo/inttype-example.c
+index 8384d7f8de6c..ce9111f59986 100644
+--- a/samples/kfifo/inttype-example.c
++++ b/samples/kfifo/inttype-example.c
+@@ -136,8 +136,8 @@ static ssize_t fifo_read(struct file *file, char *buf,
+ }
+ 
+ static const struct proc_ops fifo_proc_ops = {
+-	.proc_read_buf	= fifo_read,
+-	.proc_write_buf	= fifo_write,
++	.proc_read	= fifo_read,
++	.proc_write	= fifo_write,
+ 	.proc_lseek	= noop_llseek,
+ };
+ 
+diff --git a/samples/kfifo/record-example.c b/samples/kfifo/record-example.c
+index 29d08e90a63d..399dc07d9438 100644
+--- a/samples/kfifo/record-example.c
++++ b/samples/kfifo/record-example.c
+@@ -148,8 +148,8 @@ static ssize_t fifo_read(struct file *file, char *buf,
+ }
+ 
+ static const struct proc_ops fifo_proc_ops = {
+-	.proc_read_buf	= fifo_read,
+-	.proc_write_buf	= fifo_write,
++	.proc_read	= fifo_read,
++	.proc_write	= fifo_write,
+ 	.proc_lseek	= noop_llseek,
+ 	/* kfifo_from_user() cut a record to what its length byte holds */
+ 	.proc_flags	= PROC_ENTRY_SHORT_WRITES,
+diff --git a/sound/core/info.c b/sound/core/info.c
+index c8735a6ec789..3439ae341e26 100644
+--- a/sound/core/info.c
++++ b/sound/core/info.c
+@@ -267,8 +267,8 @@ static const struct proc_ops snd_info_entry_operations =
+ {
+ 	.proc_flags	= PROC_ENTRY_SHORT_WRITES | PROC_ENTRY_FULL_READS,
+ 	.proc_lseek	= snd_info_entry_llseek,
+-	.proc_read_buf	= snd_info_entry_read,
+-	.proc_write_buf	= snd_info_entry_write,
++	.proc_read	= snd_info_entry_read,
++	.proc_write	= snd_info_entry_write,
+ 	.proc_write_size = PAGE_SIZE,
+ 	.proc_poll	= snd_info_entry_poll,
+ 	.proc_mmap	= snd_info_entry_mmap,
+@@ -393,7 +393,7 @@ static const struct proc_ops snd_info_text_entry_ops =
+ 	.proc_show	= snd_info_seq_show,
+ 	.proc_open	= snd_info_text_entry_open,
+ 	.proc_release	= snd_info_text_entry_release,
+-	.proc_write_buf	= snd_info_text_entry_write,
++	.proc_write	= snd_info_text_entry_write,
+ 	.proc_write_size = SND_INFO_TEXT_WRITE_MAX,
+ };
+ 
 
 -- 
 2.53.0
