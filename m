@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793821218;
-	b=L4C1EroY5doNStlN7REalePt1UKH5qj75ITDy1An2uY262iyexLEjTloNhfOQvAnnJLP
-	 kMZD6kChEn5m4ExeKheivR6GrXiNq9oKwnD+cmoqaF2wweR5DVwEgBdQZ83VROz3gg9A8
-	 J1VvMYtj51eh+9KALGs5ZquB4SEHvXLFf7fc3jX1oL+81HUs1tcIDUnA7bBMb99Gc26QK
-	 GckQgZAOnxIeNuxzQFkZ9qMZFeh5pbMDKYR5AktLc0YlkCHdN5jh78JgP2GJXoiz0JYeB
-	 9ET1xzRvuQ220vpEjYWGHOVFBcEB7SbRayK6fMrqRsW+1MTvhvgInABQeHE1BKovtqA==
+	t=1793821233;
+	b=hz+mBAMiCbNGPGu8rTne7r7iGbxPeeuf7SU3Nf+7J/DpBNQY3uQTiP/EpbiOj3QUoCzD
+	 oDsOvbaQ6Ers12C/PD2+Or7U+LvE9EUY9zg0ZoSu3AeQ5Q2u3pm+KUQD98/hfF5X9IgxU
+	 QlvLF2CBxq1mtJljkcbReCYOPUYbTzGZb+lAFE2SSW4KIUp1hVvBsewbmbCWNjklbcGSn
+	 LsnlgfDe5jxRmXoTI+i+TfxCjqrixaU3bxF6RQIQYr3bZyj3DVqR+427tkroqg6wJSG+d
+	 +z9TeAfG9AImiKfPCtswqYYWLae5vrhvB6Zd0+plnWbLnhEyd7agA4PEyFY/oPH5Tyg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793821218;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793821233;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=Jqve5dom8G0YagWg0DUi21Qt2CUJnz11dMCfHhOCDkM=;
-	b=HMr+jJmKiHvzfXHZnFMVW5+qxT27uo55DVdWVSYZ0WyBUSj8uyZs4CWQ4e+4taSRasHn
-	 9a2z/EBStMiL3fo25o31c4aAXRhdvxxbDLwchI8KZPD3P9a8hM+UlREFE6jlrfNkWlxdw
-	 nYY8UezF1f3PZunRQvdABbDq12iXQp9ye5w2dHOr1HArZ7wQ507uj0al0E212wSEQLPnX
-	 l3rhexC6Q5rqXSv0UqPTn3ntSguTezm8DAnKC0ESDdhRLgJrX5yi6ixvAbMpg3IOtzkfM
-	 N/Dx3vQCaeMqgUe23Bp4rBcD6qqVxbU3nggpqzq4O5GnIgy6F/SbNW9WKiWAzn5z7cA==
+	bh=lzi0v2Iw6r5Nf2GLOsMSQBwdPNX93e2TzGzGfD3oQvk=;
+	b=Db44dKjGlRjpwQciQWCC0TYHcnILKrGSL8VSvORW0GozggDmsn7b7XdbpvA5rYtpPw6T
+	 1XmmMOUrePp4hWC4FpegS3GqPQXGuN9NCDOXoipQVJcw6B1AJ+YaCy3+m5WxUHSUk3os4
+	 PZXy2+G1j9JuoZj0SpmfpforM9hpZ6YpYpUz1qByNVzO75mr2EDwXzvsAui3YVsL0p+4t
+	 0REbWbipZsN9OatWfgWGRMI3FbKPqab+xpPua/dW6ksWQlT+CeSZnNRhGHhQXnGVgVhkZ
+	 uM9iBfyk1zQs1/eaNEIuzG7LED66ltD3rHv/eLK+oRCgzvrprxtuBFTFZ62Gn8dTtGw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DS3z8fo4;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Kq+FKfxG;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5A2596071A18;
-	Wed,  4 Nov 2026 19:40:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7AD806080787;
+	Wed,  4 Nov 2026 19:40:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DS3z8fo4
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 224F31F000C1;
-	Wed,  4 Nov 2026 19:40:05 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Kq+FKfxG
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D0DEB1F0093A;
+	Wed,  4 Nov 2026 19:40:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793821218;
-	bh=Jqve5dom8G0YagWg0DUi21Qt2CUJnz11dMCfHhOCDkM=;
+	s=k20260515; t=1793821233;
+	bh=lzi0v2Iw6r5Nf2GLOsMSQBwdPNX93e2TzGzGfD3oQvk=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=DS3z8fo4+XcVun7qDjz2NB285oy50w37ZhabVQ+2KTyYBD2yK9k0cv1ydfdyDbb2G
-	 F2kOHfTeVzmbTPa9e/WdAD70pmv8wAUop1Anni0EzwRVSbumICFkMK1x1F9P4tYZIC
-	 c3MZ0Kd/4HbFldytGX1vHUsdhINZ5NpZWDpvM+t0Z5wHT/E+VFr+t/6p+AttFRpI6Z
-	 mwCDXmDky64VEy6slIdAHdiThaCm746BEvz4eDgLL3BHUTx/IA08z0BMxgO0LJmQyT
-	 NF1MhcwXbC2axzqG1STp/J698+gtyVKqI7HYsWuCQMJlP4fOePGgiGm6vAX9LAFZim
-	 TqL2Dw1DliqSQ==
+	b=Kq+FKfxGol1yZkTvQK7XOf4MJYg3n2wT++qWRo+QnGi9jvJMQIfuuwXxBQd6HrxO9
+	 DzaQAB8BU2qMveOWYqXQf8uiF3jI1+TMalzy94+Rcd9plW4bEe5kD06s2YR2pJWce9
+	 B6hFJWwiorAIE62RUnEWt3yo5nQlNa9h0jz+aofQy/98+6YVivsZ0C7K1SwAby0aHP
+	 7T5oXbKe+XnQQnQPrW8rV5dPeOZRh0+N4R8p2Y7AHvXwgCCSGo3lTHp1Qs3mmTBfkR
+	 oBUp+SJ51x7+DV6W8OrsLZe3q3dTzc8ph41dFrQv8E2WNRYsf3TxqVqdtFkK0eHuLm
+	 os2hfJBqXQfoA==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 18/23] ACPI: proc: let procfs copy in writes to /proc/acpi/wakeup
-Date: Wed,  4 Nov 2026 20:40:03 +0100
-Message-ID: <20261104-work-procfs-arch-v2-18-2aeb952c9597@kernel.org>
+Subject: [PATCH RESEND v2 19/23] macintosh/via-pmu: let procfs copy in writes to the options file
+Date: Wed,  4 Nov 2026 20:40:18 +0100
+Message-ID: <20261104-work-procfs-arch-v2-19-2aeb952c9597@kernel.org>
 In-Reply-To: <20261104-work-procfs-arch-v2-0-2aeb952c9597@kernel.org>
 References: <20261104-work-procfs-arch-v2-0-2aeb952c9597@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,51 +116,51 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1423; i=brauner@kernel.org; h=from:subject:message-id; bh=IJsID2u9MwR2UWiBoMaBlflke6dvKtZBVcAIKZfI9/A=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97mTSWXVefuGeEyelmfYp78ycWKUkyn49ZGWQk+eRL 0tjb5df7ShlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZjIXhmGf+a115bOnrtr8gHR +0o1t4SK21/t283HxHqtW0P5SrNTrxYjQ6Pi/sVHc5622fk3Tnk5Q7znZtAi0aS07pWzZjY9Od9 YwQ0A
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1397; i=brauner@kernel.org; h=from:subject:message-id; bh=agoZq1LJSKBxY7yRmppNE5tnXNWd/ezen+xLPyCzOnY=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97mReIrzh9cx53/g23f7T5yBxj/3Wz2cX8wsWTF3AP 1t597qLVR2lLAxiXAyyYoosDu0m4XLLeSo2G2VqwMxhZQIZwsDFKQAT2cTOyNC6JvPZMlEVDrlF 196Vxjt56Gn83yn6YN/2thy+Tlspl+0M/+xtty1ZFrFn7v65W/6uCr1fY7JaSuT8qnn7/y2e7Ma Rt5IfAA==
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
 Implement ->proc_write_buf() so procfs copies in what is written before
-it pins the entry, and take the device name from that copy. Writes
-larger than PAGE_SIZE - 1 bytes fail with -EINVAL now.
+it pins the entry, and parse the option from that copy. Writes larger
+than PAGE_SIZE - 1 bytes fail with -EINVAL now.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/acpi/proc.c | 7 +++----
+ drivers/macintosh/via-pmu.c | 7 +++----
  1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/acpi/proc.c b/drivers/acpi/proc.c
-index b8a0bd4580e0..feb8283fd855 100644
---- a/drivers/acpi/proc.c
-+++ b/drivers/acpi/proc.c
-@@ -86,7 +86,7 @@ static void physical_device_enable_wakeup(struct acpi_device *adev)
+diff --git a/drivers/macintosh/via-pmu.c b/drivers/macintosh/via-pmu.c
+index 49f929ae10e4..079c085be5d2 100644
+--- a/drivers/macintosh/via-pmu.c
++++ b/drivers/macintosh/via-pmu.c
+@@ -913,7 +913,7 @@ static int pmu_options_proc_show(struct seq_file *m, void *v)
+ }
  
- static ssize_t
- acpi_system_write_wakeup_device(struct file *file,
--				const char __user * buffer,
-+				char *buffer,
- 				size_t count, loff_t * ppos)
+ static ssize_t pmu_options_proc_write(struct file *file,
+-		const char __user *buffer, size_t count, loff_t *pos)
++		char *buffer, size_t count, loff_t *pos)
  {
- 	struct acpi_device *dev, *tmp;
-@@ -96,8 +96,7 @@ acpi_system_write_wakeup_device(struct file *file,
- 	if (count > 4)
- 		count = 4;
- 
--	if (copy_from_user(strbuf, buffer, count))
+ 	char tmp[33];
+ 	char *label, *val;
+@@ -923,8 +923,7 @@ static ssize_t pmu_options_proc_write(struct file *file,
+ 		return -EINVAL;
+ 	if (count > 32)
+ 		count = 32;
+-	if (copy_from_user(tmp, buffer, count))
 -		return -EFAULT;
-+	memcpy(strbuf, buffer, count);
- 	strbuf[count] = '\0';
- 	sscanf(strbuf, "%s", str);
++	memcpy(tmp, buffer, count);
+ 	tmp[count] = 0;
  
-@@ -123,7 +122,7 @@ acpi_system_write_wakeup_device(struct file *file,
+ 	label = tmp;
+@@ -958,7 +957,7 @@ static ssize_t pmu_options_proc_write(struct file *file,
  
- static const struct proc_ops acpi_system_wakeup_device_proc_ops = {
- 	.proc_show	= acpi_system_wakeup_device_seq_show,
--	.proc_write	= acpi_system_write_wakeup_device,
-+	.proc_write_buf	= acpi_system_write_wakeup_device,
+ static const struct proc_ops pmu_options_proc_ops = {
+ 	.proc_show	= pmu_options_proc_show,
+-	.proc_write	= pmu_options_proc_write,
++	.proc_write_buf	= pmu_options_proc_write,
  };
+ #endif
  
- void __init acpi_sleep_proc_init(void)
 
 -- 
 2.53.0
