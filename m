@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793820421;
-	b=Q2ZJ9VcuDNBcvt3CPy+jyDyyY2wwNW8o0dpCLyokCy37ch06O5GwazFsB5mWdrmL8yWj
-	 ngIKjsCZqQXXrsOuWRmjoeqmdaFu+kQWJk60tgdyrjOOBz7vgRjna4G+ZzkQ38MaoAjc7
-	 l+hQ/MxQAEsSHCGqmpGcPM6Biv3er0i6lnTpgIxVhEeHOzVgNf1s8URpr+2Ml91FsLnqB
-	 wHgZQGG4oW+8LmSjuU0MYp9TFEHbuCWa0Hr3S7KU+NTqGeCnZ2Kv8sc6oA0atycU3Cs/7
-	 ycEAQR7bFPgwuPG47RDfRPXIIy0oFxqXk02KprAJLX1QFWedcoJrGHaQ4+JrRmIbTcQ==
+	t=1793820435;
+	b=xWhxCiki6OaHOwkl/n/xcBfaC9c/5F0FsmmBpm/G5rPqoKgC0BYqhYaBko/y+ZUty+FB
+	 fndWQHzz3+MoStvvLLYBTaMYlzeyfp8NrTjk0oVbAQQU03/JJojOl32jeFlVjns0dOaOH
+	 n1Ro106woeWZ6AhHwKJXe4KnvDbKpVKQJ2l8pC6gfKQPJ3uE7CIE8qn16BxhfYzI9Nwp+
+	 llQVyatp18GFiZ3USeYtpBLf3C7DvFYJbEuuLwYHMEnEnQuFYjJbpiLBQd0GXTxRr3Ca4
+	 4LBi5HnIGajEv+RW9zawFr3D7fuFCsJG1cT2fbEWfGU9KJ8ICdqgbltqKAIVexmQqbQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793820421;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793820435;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=7+iLqul4i6MH7HabpPra1XD+cE9kLUhjlQUujW+Foac=;
-	b=mKHT1U3k+19b7q7xPgHZgpdbgCQ/vuQ9+wX47zCSztCVx7/tgjdRqpV2CKztwOfpI45A
-	 mlt5RrlyEUE8GRUMLCOlTqdDSBBAjiHZlBWcgLtDq2wJ3W6dSBzGp7dL6PSqWiNgGl766
-	 DUQJ/XrP3L3QRt1467grGt8PsHUiyciMwC6GL46R1z6Zbx03X/nl0FkEB3TazXEDGitJr
-	 C+4nzxAOqnpi93GWna9PoHEJLGv6NNSNBKb85Zh+Fjx2/qz/RgAHPIAeez9YgYjufol0s
-	 2WjDF6pEeaJ+EAuVNDG3CXLKOZn/WO64GhWWXfyp1aBi/KEUIoyPMvbRR4Bp6vCOjjA==
+	bh=r5+oZHp7BRrXwItSZJfGO9IDNpMhGDSeaixBJWzgZo8=;
+	b=4pz6gdVR9uZaroG8nEbej1ZP2W+9UonfAMEt8EJTxiDVpeCOtVbjv8RBoAFAjJXcYpmA
+	 GdVQKLRC4jnyuu3in0gTV3DNiC9RN+HZSuwbe69Rv5TJUzgmSNAlByqVfHfxXNzR2pZI+
+	 q5L0prlVivPPlAbS5TPVxosGWKJT+SC7ISsIoogyXYCf0YSTTP8AEfpedPgEyTgqwdonZ
+	 m50JX8EJzTXHJQ50YCl0N75PtAEJmgBJEhIHMCShGhTl+wIhFwk6Ginha7B6SYj9jHCPH
+	 zlEGb9DjeUbckxrZC3d49WbDSsPCQSF4ygyIsQNFADwFVmVpvgEvLyLIswrWgmw+dJw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="AwuYQ/g0";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fZMD0huu;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B1360607032F;
-	Wed,  4 Nov 2026 19:27:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CC5A1607264F;
+	Wed,  4 Nov 2026 19:27:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AwuYQ/g0
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7056C1F000C1;
-	Wed,  4 Nov 2026 19:26:48 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fZMD0huu
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E0AAB1F00A02;
+	Wed,  4 Nov 2026 19:27:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793820420;
-	bh=7+iLqul4i6MH7HabpPra1XD+cE9kLUhjlQUujW+Foac=;
+	s=k20260515; t=1793820434;
+	bh=r5+oZHp7BRrXwItSZJfGO9IDNpMhGDSeaixBJWzgZo8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=AwuYQ/g05s3gCBWqi01st+AhG7zHew/xp8Uznvwn+sDxcWbOQHDx0K6MiMNaJlMnn
-	 FmRdPCKm7fkDETjs85IQuGrygG0+Kztae+2biv7affNlVGZa+740Q3EgS6bHLXzDAV
-	 aZg/kj7ORMq3jG1VJUSRX7BspNpMXg05Y19bYI5nFwDkTbUCy7DkbcjACUCYm39cJL
-	 1hjnL/Y8r5QEdR/ZG6gyEzvVACpd4uA3340dvWdaCzuD2XUKV78V0T86RZ4/PTZxmN
-	 6DWlsLGZikNjgCiYO3E2b9BOArDy2vTby4LS8qdcZoBLlt+6sqSyJxYEok/M8LmEf+
-	 KqqS4SWhqzhlw==
+	b=fZMD0huuUQp5LSr9n7+L0WCkQqKPzyWmpwqfqg+XzsqNRlIuKtlf3Iar8GeYyXaoh
+	 Duy1KTIkLZPd4wpyWSeEROyKAch5aD1WchnGy/bdzHJBKTDW5fUbZVdDqnccb3ML1S
+	 ynk82YbCOwpdp9OfHLn4Hk4TAslcNPy+3iNGpY8Onlv8nBJw5pFj50Y4poa5zyKxIw
+	 OVO6zjJj0L1s71YhuEz2nNM9sGb2RL+EkTlUz3tA5wau2YU3GduBQbxH1kPyHOemIX
+	 jzrV1tyP5WTyanlHmpiwciBJbTfxSsr8dPDlHohaL0lhPAdIlgdQvP+X/AxRNITsuF
+	 bSYKsfrnb9SrA==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -99,11 +99,10 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-modules@vger.kernel.org,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
-	Chuck Lever <cel@kernel.org>,
-	stable@vger.kernel.org
-Subject: [PATCH RESEND v2 44/51] proc: sysctl: resume readdir after the last name it returned
-Date: Wed,  4 Nov 2026 20:26:46 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-44-021c84d852e0@kernel.org>
+	Chuck Lever <cel@kernel.org>
+Subject: [PATCH RESEND v2 45/51] selftests/proc: check a sysctl listing while entries come and go
+Date: Wed,  4 Nov 2026 20:27:00 +0100
+Message-ID: <20261104-work-procfs-bugfixes-v2-45-021c84d852e0@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -117,201 +116,208 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6631; i=brauner@kernel.org; h=from:subject:message-id; bh=KA4vlzE2TMzRxzNzG7ghDFHvczKD3qjxMkOpFlB4RO0=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bmKaP+1dqtKk7Ry8h36o7w8+8ED+es07ge0M3E7bf EVjbtyc0lHKwiDGxSArpsji0G4SLrecp2KzUaYGzBxWJpAhDFycAjCRo+YM/xQP2S46ukZlhay/ dM9N5vuX+JaYFXVstFEvOrL+mO15sy0M//3tvzCq2Bx6uWV+/uS+iG11xZcyBKb+navC/L3kW8y Go9wA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5901; i=brauner@kernel.org; h=from:subject:message-id; bh=PpkRsqulHaX8LI6MUrkW65va02k7nMeISt9l3ZnWEgo=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bmK23C5Vd0CJeVXYmud2s9Pn+J3m37HmVpnFi7ow2 bTfWdpXOkpZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACYyeRLDfw/N+y99eaf/2OCk /PjiV39BNqFbYdWnZD3mCaZ8OpuwbArDb9buj/tfO6Qb3GbVUb7QsZ5hkv1nv0KD0viMIPmMExu SGQE=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-proc_sys_readdir() counts the entries of a directory and resumes a
-listing at the number getdents64() stopped at. The entries are sorted
-by name, so one that is registered or unregistered in between shifts
-everything behind it by one. Listing /proc/sys/net/ipv4/conf with a
-buffer that holds ".", ".." and "all" and registering a device whose
-name sorts before "all" makes the next call return "all" a second time.
-Unregistering one that sorted before the position makes it skip an
-entry instead. So a listing that takes more than one call shows a name
-twice, or not at all. Even the 64k buffer of ls needs a second call to
-find the end of the directory, so a device that comes up right then
-repeats the last entry.
+List /proc/sys/net/ipv4/conf of a new network namespace in two pieces:
 
-So remember the name of the last entry a call emitted in the file and
-resume at the first usable entry after it, like kernfs resumes after
-the node it stopped at. The entry itself can't be pinned across calls,
-unregistering waits for that. If the position was moved by a seek in
-between the listing counts from the start like before, seeking to an
-arbitrary position has never been better than that.
+- with a buffer that holds the dots and "all", register a tun device
+  whose name sorts first, finish the listing: "all" is listed once
 
-That also takes one walk down the tree to resume instead of a walk over
-every entry in front of the position with a round trip through
-sysctl_lock for each of them.
+- with that device registered and a buffer that holds the dots and it,
+  unregister it, finish the listing: "all" is still listed
 
-Fixes: 77b14db502cb ("[PATCH] sysctl: reimplement the sysctl proc support")
-Cc: stable@vger.kernel.org
+Both fail without the fix, the first lists "all" twice, the second not
+at all.
+
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/proc/proc_sysctl.c | 106 ++++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 103 insertions(+), 3 deletions(-)
+ tools/testing/selftests/proc/.gitignore            |   1 +
+ tools/testing/selftests/proc/Makefile              |   1 +
+ .../selftests/proc/proc-sysctl-readdir-churn.c     | 152 +++++++++++++++++++++
+ 3 files changed, 154 insertions(+)
 
-diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
-index b4a309d49698..ba52f13eb8f3 100644
---- a/fs/proc/proc_sysctl.c
-+++ b/fs/proc/proc_sysctl.c
-@@ -417,6 +417,54 @@ static void next_entry(struct ctl_table_header **phead, const struct ctl_table *
- 	*pentry = entry;
- }
+diff --git a/tools/testing/selftests/proc/.gitignore b/tools/testing/selftests/proc/.gitignore
+index 8520c7878ea2..5b5e24e39cbd 100644
+--- a/tools/testing/selftests/proc/.gitignore
++++ b/tools/testing/selftests/proc/.gitignore
+@@ -25,4 +25,5 @@
+ /self
+ /setns-dcache
+ /setns-sysvipc
++/proc-sysctl-readdir-churn
+ /thread-self
+diff --git a/tools/testing/selftests/proc/Makefile b/tools/testing/selftests/proc/Makefile
+index e0c0d313f4d0..dae09f333455 100644
+--- a/tools/testing/selftests/proc/Makefile
++++ b/tools/testing/selftests/proc/Makefile
+@@ -30,6 +30,7 @@ TEST_GEN_PROGS += setns-sysvipc
+ TEST_GEN_PROGS += thread-self
+ TEST_GEN_PROGS += proc-multiple-procfs
+ TEST_GEN_PROGS += proc-fsconfig-hidepid
++TEST_GEN_PROGS += proc-sysctl-readdir-churn
+ TEST_GEN_PROGS += proc-pidns
  
+ include ../lib.mk
+diff --git a/tools/testing/selftests/proc/proc-sysctl-readdir-churn.c b/tools/testing/selftests/proc/proc-sysctl-readdir-churn.c
+new file mode 100644
+index 000000000000..b2ad097b464a
+--- /dev/null
++++ b/tools/testing/selftests/proc/proc-sysctl-readdir-churn.c
+@@ -0,0 +1,152 @@
++// SPDX-License-Identifier: GPL-2.0
 +/*
-+ * The first usable entry of @dir after @name, or the first one at all for a
-+ * NULL @name. The entries are sorted by name, so that is where a listing
-+ * resumes when entries in front of it came or went in between. -ENOENT if
-+ * the directory is being unregistered.
++ * A listing of a /proc/sys directory that takes more than one getdents64()
++ * must not show an entry twice or skip one when an entry is registered or
++ * unregistered in between. /proc/sys/net/ipv4/conf/<dev> of a tun device
++ * comes and goes with the device.
 + */
-+static int entry_after(struct ctl_dir *dir, const char *name, int namelen,
-+		       struct ctl_table_header **phead,
-+		       const struct ctl_table **pentry)
++#define _GNU_SOURCE
++#include <dirent.h>
++#include <errno.h>
++#include <fcntl.h>
++#include <limits.h>
++#include <linux/if.h>
++#include <linux/if_tun.h>
++#include <sched.h>
++#include <string.h>
++#include <sys/ioctl.h>
++#include <sys/syscall.h>
++#include <unistd.h>
++
++#include "../kselftest_harness.h"
++
++#define CONF_DIR	"/proc/sys/net/ipv4/conf"
++#define TUN_NAME	"a0"		/* sorts before "all" */
++#define TUN_PATH	CONF_DIR "/" TUN_NAME
++#define SMALL_BUF	80		/* ".", ".." and one short name */
++#define NAMES		64
++
++static int tun_open(const char *name)
 +{
-+	struct ctl_table_header *head = NULL;
-+	const struct ctl_table *entry = NULL;
-+	struct rb_node *node, *after = NULL;
-+	struct ctl_node *ctl_node;
++	struct ifreq ifr = {};
++	int fd;
 +
-+	spin_lock(&sysctl_lock);
-+	if (unlikely(dir->header.unregistering)) {
-+		spin_unlock(&sysctl_lock);
-+		return -ENOENT;
++	fd = open("/dev/net/tun", O_RDWR | O_CLOEXEC);
++	if (fd < 0)
++		return -1;
++	strncpy(ifr.ifr_name, name, IFNAMSIZ - 1);
++	ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
++	if (ioctl(fd, TUNSETIFF, &ifr)) {
++		close(fd);
++		return -1;
 +	}
-+	if (!name) {
-+		after = rb_first(&dir->root);
-+	} else for (node = dir->root.rb_node; node;) {
-+		const struct ctl_table *table;
-+		struct ctl_table_header *h;
-+
-+		ctl_node = rb_entry(node, struct ctl_node, node);
-+		h = ctl_node->header;
-+		table = &h->ctl_table[ctl_node - h->node];
-+		if (namecmp(table->procname, strlen(table->procname),
-+			    name, namelen) > 0) {
-+			after = node;
-+			node = node->rb_left;
-+		} else {
-+			node = node->rb_right;
-+		}
-+	}
-+	ctl_node = first_usable_entry(after);
-+	spin_unlock(&sysctl_lock);
-+	if (ctl_node) {
-+		head = ctl_node->header;
-+		entry = &head->ctl_table[ctl_node - head->node];
-+	}
-+	*phead = head;
-+	*pentry = entry;
-+	return 0;
++	return fd;
 +}
 +
- /*
-  * sysctl_perm does NOT grant the superuser all rights automatically, because
-  * some sysctl variables are readonly even to root.
-@@ -675,6 +723,36 @@ out:
- 	return ret;
- }
- 
-+/*
-+ * Where the next readdir resumes. The entries are counted, so one that is
-+ * registered or unregistered in front of the position would shift what
-+ * the next call returns. The name of the last entry emitted doesn't move.
-+ */
-+struct sysctl_cursor {
-+	loff_t pos;			/* the position behind the entry */
-+	int len;
-+	char name[NAME_MAX + 1];
++/* one getdents64() into @buf, the names appended to @names */
++static int list(int fd, char *buf, size_t size, char names[][NAME_MAX + 1],
++		int *n)
++{
++	long ret, off;
++	int got = 0;
++
++	ret = syscall(__NR_getdents64, fd, buf, size);
++	if (ret < 0)
++		return -errno;
++	for (off = 0; off < ret;) {
++		struct dirent64 *d = (void *)(buf + off);
++
++		if (*n < NAMES)
++			strcpy(names[(*n)++], d->d_name);
++		got++;
++		off += d->d_reclen;
++	}
++	return got;
++}
++
++static int count(char names[][NAME_MAX + 1], int n, const char *name)
++{
++	int i, c = 0;
++
++	for (i = 0; i < n; i++)
++		if (!strcmp(names[i], name))
++			c++;
++	return c;
++}
++
++FIXTURE(sysctl_readdir) {
++	int dir;
++	int n;
++	char names[NAMES][NAME_MAX + 1];
++	char buf[65536];
 +};
 +
-+/* If this can't remember the entry the next call counts from the start. */
-+static void sysctl_cursor_set(struct file *file, const char *name, int len,
-+			      loff_t pos)
++FIXTURE_SETUP(sysctl_readdir)
 +{
-+	struct sysctl_cursor *cursor = file->private_data;
++	int tun;
 +
-+	if (len > NAME_MAX)
-+		return;
-+	if (!cursor) {
-+		cursor = kmalloc(sizeof(*cursor), GFP_KERNEL);
-+		if (!cursor)
-+			return;
-+		file->private_data = cursor;
-+	}
-+	cursor->pos = pos;
-+	cursor->len = len;
-+	memcpy(cursor->name, name, len);
++	if (unshare(CLONE_NEWNET))
++		SKIP(return, "unshare(CLONE_NEWNET): %s", strerror(errno));
++	tun = open("/dev/net/tun", O_RDWR | O_CLOEXEC);
++	if (tun < 0)
++		SKIP(return, "/dev/net/tun: %s", strerror(errno));
++	close(tun);
++	self->dir = open(CONF_DIR, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
++	if (self->dir < 0)
++		SKIP(return, CONF_DIR ": %s", strerror(errno));
++	self->n = 0;
 +}
 +
- static bool proc_sys_fill_cache(struct file *file,
- 				struct dir_context *ctx,
- 				struct ctl_table_header *head,
-@@ -756,8 +834,11 @@ static int scan(struct ctl_table_header *head, const struct ctl_table *table,
- 	else
- 		res = proc_sys_fill_cache(file, ctx, head, table);
- 
--	if (res)
-+	if (res) {
- 		ctx->pos = *pos;
-+		sysctl_cursor_set(file, table->procname, strlen(table->procname),
-+				  ctx->pos);
-+	}
- 
- 	return res;
- }
-@@ -765,6 +846,7 @@ static int scan(struct ctl_table_header *head, const struct ctl_table *table,
- static int proc_sys_readdir(struct file *file, struct dir_context *ctx)
- {
- 	struct ctl_table_header *head = grab_header(file_inode(file));
-+	struct sysctl_cursor *cursor = file->private_data;
- 	struct ctl_table_header *h = NULL;
- 	const struct ctl_table *entry;
- 	struct ctl_dir *ctl_dir;
-@@ -778,9 +860,20 @@ static int proc_sys_readdir(struct file *file, struct dir_context *ctx)
- 	if (!dir_emit_dots(file, ctx))
- 		goto out;
- 
--	pos = 2;
-+	/*
-+	 * Resume after the last entry the previous call emitted. Only a seek
-+	 * that moved the position away from it counts from the start, like
-+	 * seeking to an arbitrary position always did.
-+	 */
-+	if (cursor && cursor->pos == ctx->pos) {
-+		entry_after(ctl_dir, cursor->name, cursor->len, &h, &entry);
-+		pos = ctx->pos;
-+	} else {
-+		first_entry(ctl_dir, &h, &entry);
-+		pos = 2;
-+	}
- 
--	for (first_entry(ctl_dir, &h, &entry); h; next_entry(&h, &entry)) {
-+	for (; h; next_entry(&h, &entry)) {
- 		if (!scan(h, entry, &pos, file, ctx)) {
- 			sysctl_head_finish(h);
- 			break;
-@@ -791,6 +884,12 @@ out:
- 	return 0;
- }
- 
-+static int proc_sys_dir_release(struct inode *inode, struct file *file)
++FIXTURE_TEARDOWN(sysctl_readdir)
 +{
-+	kfree(file->private_data);
-+	return 0;
++	close(self->dir);
 +}
 +
- static int proc_sys_permission(const struct mnt_idmap *idmap,
- 			       struct inode *inode, int mask)
- {
-@@ -870,6 +969,7 @@ static const struct file_operations proc_sys_dir_file_operations = {
- 	.read		= generic_read_dir,
- 	.iterate_shared	= proc_sys_readdir,
- 	.llseek		= generic_file_llseek,
-+	.release	= proc_sys_dir_release,
- };
- 
- static const struct inode_operations proc_sys_inode_operations = {
++/* a device registered in front of the position doesn't repeat an entry */
++TEST_F(sysctl_readdir, register_in_front)
++{
++	int tun;
++
++	/* ".", ".." and "all", "default" doesn't fit */
++	ASSERT_EQ(list(self->dir, self->buf, SMALL_BUF, self->names, &self->n), 3);
++	ASSERT_EQ(count(self->names, self->n, "all"), 1);
++
++	tun = tun_open(TUN_NAME);
++	ASSERT_GE(tun, 0);
++	ASSERT_EQ(access(TUN_PATH, F_OK), 0);
++
++	while (list(self->dir, self->buf, sizeof(self->buf), self->names,
++		    &self->n) > 0)
++		;
++	EXPECT_EQ(count(self->names, self->n, "all"), 1);
++	EXPECT_EQ(count(self->names, self->n, "default"), 1);
++	EXPECT_EQ(count(self->names, self->n, "lo"), 1);
++	close(tun);
++}
++
++/* a device unregistered in front of the position doesn't skip an entry */
++TEST_F(sysctl_readdir, unregister_in_front)
++{
++	int tun;
++
++	tun = tun_open(TUN_NAME);
++	ASSERT_GE(tun, 0);
++	ASSERT_EQ(access(TUN_PATH, F_OK), 0);
++
++	/* ".", ".." and the device, "all" doesn't fit */
++	ASSERT_EQ(list(self->dir, self->buf, SMALL_BUF, self->names, &self->n), 3);
++	ASSERT_EQ(count(self->names, self->n, TUN_NAME), 1);
++
++	/* closing the device unregisters its sysctls under RTNL */
++	close(tun);
++	ASSERT_EQ(access(TUN_PATH, F_OK), -1);
++
++	while (list(self->dir, self->buf, sizeof(self->buf), self->names,
++		    &self->n) > 0)
++		;
++	EXPECT_EQ(count(self->names, self->n, "all"), 1);
++	EXPECT_EQ(count(self->names, self->n, "default"), 1);
++	EXPECT_EQ(count(self->names, self->n, "lo"), 1);
++}
++
++TEST_HARNESS_MAIN
 
 -- 
 2.53.0
