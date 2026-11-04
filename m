@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793813335;
-	b=vl7bKepQqGm55qmU42ObrW6jf1Nxk4t6lvnpC319HhlxYV7yyGT8aQiG23ULaj26Of3P
-	 L4t6Jz5xm30/2N/e8eE5v4vKf1RUQBj6y6hFElyiw0uck9mnj5l9qfsbcqo5U7Ng70Ep3
-	 6RjUdk3FkN1vi3MsT6qNsSZ3t9WuGo37jKQ2JhJ/0bwLoEQQ0tnDQdWq8YN8T1jDn2xMg
-	 bi9cZPYsJ5vEjj6aL+TUDLwpqX0XJ7P/aIzHZvlXUJGkHFpf9pOjKYP1Qchc9h9av359e
-	 nMiQtl0JyzWmbqIJxRk7CtDqbKCSfw4TtrK9Z6nAMTG+uHzzq3haD1EQkmfOErQAU7g==
+	t=1793813361;
+	b=F6Y59NDmb2Z63uA/0YJFVDaEIG6bB9+oAq4E5s7edu0gU46WhWSQ3grDbZjVa6C3qLEJ
+	 4YMXzv0hUmy9Y29KMOzDjjkktY8lLrJkeEompLDXjbd++9N2A24XIGIn26d2fXyJEmY6c
+	 bA0ddHzyir0KWzFnkuNhVxd1q+348khksjLE4K8sgwC8HhvGi9xPez6ZcjXJXVL6fJAaC
+	 agdciYHrRRp7EC8ROUXLYKGzHUQB8qX5u2NCt1lUfBVv5uB2l2lYXW6zpG/6QoGc1phE3
+	 MXAZTO1lvTlbI99CtMsS/CF2beUoQwro30Ymg2tp5zmq/3mSvtK4YCK/40mbeZpV+KQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793813335;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793813361;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=Em8mdDwLTSxa5ZBRNu+oIoQ2F8Zgf6ZNSHVwHsLTxqQ=;
-	b=0X/mMMk5yctkhCRkU8PDEzFBBwSw55+RPs4qJvc8QXjZHXQloje7KknPi/jVOf2Dd42Z
-	 ySm/BTcdzY0+sEUwEo29n3mSFUAEXBMzPhqsbgZhQjO5OnW1qPzckrpbTZ1QxiwTtKlLk
-	 uag+QOza43kmvKThrHt2zIkrxmC9RPGfaAAsYf6+76vNFcZnKxVYxJ26JLqC6X918TnRy
-	 uU2wQ5w6159JFhWA5cfAXmLkovUt5l8BXJb3PvswduT6NSsLKq8S6hjxm2QB7ljVtfb9x
-	 V//5+6vCl7ImGElkgMPfEo5Lm17WvpRK77rSydz6v8tBz3u1fZGYOO2kW4EpZEqISpQ==
+	bh=Cbujoj2vf5W42joV5o7W0AvKkij9cCOpaGGghku9+G8=;
+	b=4eGo81Bq3Vt6A23QcmPokOEnM+UhQh44T/AkYAeYqPWz+k12n69NVMitcbhNIzfaOPWo
+	 pLnNNFKkLAzEMjjvd6L5dw7LCZ6PV+HEqF856S/AQwD7wXQJxtYlj4/s0eEaTalnrxjbD
+	 huVZNP8Dgqp6Vxti/URc8bGuYN0KxkrugXzHCuuP0MYGCTW6j+1MXJTL3AobWo6YhPa6b
+	 dPRF6+U5pSYD2Jn69nz46PJMpJ53B3fQbI0f2Ck9DMpzkhL/XzWpA3/GovP//XFQ9wM2w
+	 BxxB7KVXshxwX6FgO6Znbunb2I6RSe65BLvQWMx2eYIW43WqHnAkjPV6P5Ma3Gi88FA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WlF7tGad;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="Z7eNSc/k";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F3187606D81B;
-	Wed,  4 Nov 2026 17:28:53 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 40F0E606EE9E;
+	Wed,  4 Nov 2026 17:29:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WlF7tGad
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 35F761F00919;
-	Wed,  4 Nov 2026 17:28:39 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Z7eNSc/k
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EB89C1F00A02;
+	Wed,  4 Nov 2026 17:29:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793813333;
-	bh=Em8mdDwLTSxa5ZBRNu+oIoQ2F8Zgf6ZNSHVwHsLTxqQ=;
+	s=k20260515; t=1793813360;
+	bh=Cbujoj2vf5W42joV5o7W0AvKkij9cCOpaGGghku9+G8=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=WlF7tGadWEgcoZaI1uK4E88iTTgepprrifasds75i7VthYlwDtZlbOT38njQBleEb
-	 UPbfRvu/3NbdJdmajozNFYEjQ7CLKo3CQ2J3GJ8KprOwgxaPeKR/tPjmsa1SVubVZc
-	 1en2pZ6ZJTtEVyIRxb8Akk8hz+i5vksUw5t9jkHwoekjj/VsrPO/9oQMYE5lUZ/Gmm
-	 GUjsDpi349fDqaFLbiGR7qDbPwtf9QbhpGmf9fVBlF6p4pM0JpJvP1ofrRorpGAY+w
-	 2xFkMHZ1ZzA18zc8/hnvV/Wnix3shLePBWHi7TeHk0dW6WQ7yqtTL3j1rmlfaIJEkz
-	 qVzdX/epmct3g==
+	b=Z7eNSc/k4A3ciQiMKYVuHgvIuitZuUBG1LsDDKn2PGqkyeTI60C2aGeIX/gOrwywh
+	 xtfTPVHdVi6oqn1gTkn9QtwCdpb9vO92jUAd8quwbbgGzLCmHr2yCQVt+CNwsUokAf
+	 3PdNxsqj0EooTVaHTwU9Byq22F9nTmWr9AhaMKmjfOIuszcJH2mYIrP4Rr4AnPpZkH
+	 h+7C63tA9sMWXTQV0Do399ArkxTfLMrSAloe1ryjs6twcaS2ODw+QTAKVaUx5fGvQN
+	 pG82LTMb3cdXiyyhejWUAX1q+C1HwuXnFf38S34Yh0i88ZGrZX053f2X4mX3pSqwVw
+	 kTy4TQ+sMGDOw==
 From: Christian Brauner <brauner@kernel.org>
-Date: Wed, 04 Nov 2026 18:27:18 +0100
-Subject: [PATCH v2 01/51] alloc_tag: don't remove /proc/allocinfo under the
- codetag module lock
+Date: Wed, 04 Nov 2026 18:27:20 +0100
+Subject: [PATCH v2 03/51] ALSA: cs46xx: hand the region to the region proc
+ files
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-work-procfs-bugfixes-v2-1-bbf7d5546809@kernel.org>
+Message-Id: <20261104-work-procfs-bugfixes-v2-3-bbf7d5546809@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -91,103 +91,41 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
  Chuck Lever <cel@kernel.org>, stable@vger.kernel.org
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3465; i=brauner@kernel.org;
- h=from:subject:message-id; bh=C5Mw1tWGzCvAVdyOdBCkcSqd8MeBZuRbzsUttoDJMVc=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zvplOalNaKKt8vuu2b8lsnQOcTE/KzbYPv1ll+Xp5
- mmPQhjTO0pZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACaSn8/wm81Zr+lISs2Ek/OM
- L7KdEcq5v/O1XVLdtyWXdiY8F0/he8vwV96O52JXaCnv3ctHP3V8+3Zga6R61CzWK7HM88uSHpZ
- tYwQA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1215; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=Z6ZRkJrhuCU4H5MdQ4cObdjJffW/paOotMbfYVXoKlo=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zvpj7yWamixwZtfSkBurLcoYw1rMGKfuu3YuiV09R
+ c7uw2HtjlIWBjEuBlkxRRaHdpNwueU8FZuNMjVg5rAygQxh4OIUgImc3c3wT+Hkjp3MZso6HVei
+ D0VKbZS5oKGx7I6p6Yuo7iatL+17dRkZfi8SqbU+57c5383JSH9+xYYuliMbRHb8cOA9JBYQHeL
+ GDQA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-codetag_alloc_module_section() takes the codetag type's mod_lock for
-writing and calls reserve_module_tags() with it held. When that can't
-reserve the tags, because the section's alignment doesn't fit, because
-there are too many tags for the page flag bits or because the memory
-for them can't be allocated, it shuts memory allocation profiling down
-and removes /proc/allocinfo, still with mod_lock held.
+snd_cs46xx_proc_init() stores the chip in the private data of the five
+region entries, but snd_cs46xx_io_read() reads that back as the region,
+so a read of /proc/asound/cardN/CS46xx_BA0 and friends copies from
+whatever sits at the region's offset in struct snd_cs46xx instead of
+the mapped registers. Store the region.
 
-remove_proc_entry() waits until every reader of the entry has let go of
-it, and a reader of /proc/allocinfo takes mod_lock for reading in
-allocinfo_start() while it holds the entry. So a module load that hits
-one of those paths while /proc/allocinfo is being read waits for the
-reader and the reader waits for the module load, for good.
-
-Let a work item remove the entry in that case. The profiling is shut
-down right away like before, the file just goes a moment later.
-
-Fixes: 4835f747d3ed ("alloc_tag: support for page allocation tag compression")
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
 Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- mm/alloc_tag.c | 27 ++++++++++++++++++++++++---
- 1 file changed, 24 insertions(+), 3 deletions(-)
+ sound/pci/cs46xx/cs46xx_lib.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/mm/alloc_tag.c b/mm/alloc_tag.c
-index 82e2c3448dcf..7d7ad6704953 100644
---- a/mm/alloc_tag.c
-+++ b/mm/alloc_tag.c
-@@ -15,6 +15,7 @@
- #include <linux/seq_file.h>
- #include <linux/string_choices.h>
- #include <linux/vmalloc.h>
-+#include <linux/workqueue.h>
- #include <linux/kmemleak.h>
- #include <uapi/linux/alloc_tag.h>
- 
-@@ -604,6 +605,26 @@ static void shutdown_mem_profiling(bool remove_file)
- 	mem_profiling_support = false;
- }
- 
-+static void remove_allocinfo_file(struct work_struct *work)
-+{
-+	remove_proc_entry(ALLOCINFO_FILE_NAME, NULL);
-+}
-+static DECLARE_WORK(remove_allocinfo_work, remove_allocinfo_file);
-+
-+/*
-+ * A module's tags are reserved with the codetag module lock held for
-+ * writing, and a reader of /proc/allocinfo takes that lock with the entry
-+ * pinned. Removing the entry there would wait for that reader for good, so
-+ * let a work item do it.
-+ */
-+static void shutdown_mem_profiling_async(void)
-+{
-+	if (!mem_profiling_support)
-+		return;
-+	shutdown_mem_profiling(false);
-+	schedule_work(&remove_allocinfo_work);
-+}
-+
- void __init alloc_tag_sec_init(void)
- {
- 	struct alloc_tag *last_codetag;
-@@ -855,7 +876,7 @@ static void *reserve_module_tags(struct module *mod, unsigned long size,
- 		align = 1;
- 
- 	if (!ensure_alignment(align, &prepend)) {
--		shutdown_mem_profiling(true);
-+		shutdown_mem_profiling_async();
- 		pr_err("%s: alignment %lu is incompatible with allocation tag indexing. Memory allocation profiling is disabled!\n",
- 			mod->name, align);
- 		return ERR_PTR(-EINVAL);
-@@ -905,14 +926,14 @@ unlock:
- 
- 		module_tags.size = offset + size;
- 		if (mem_alloc_profiling_enabled() && !tags_addressable()) {
--			shutdown_mem_profiling(true);
-+			shutdown_mem_profiling_async();
- 			pr_warn("With module %s there are too many tags to fit in %d page flag bits. Memory allocation profiling is disabled!\n",
- 				mod->name, NR_UNUSED_PAGEFLAG_BITS);
- 		}
- 
- 		grow_res = vm_module_tags_populate();
- 		if (grow_res) {
--			shutdown_mem_profiling(true);
-+			shutdown_mem_profiling_async();
- 			pr_err("Failed to allocate memory for allocation tags in the module %s. Memory allocation profiling is disabled!\n",
- 			       mod->name);
- 			return ERR_PTR(grow_res);
+diff --git a/sound/pci/cs46xx/cs46xx_lib.c b/sound/pci/cs46xx/cs46xx_lib.c
+index 797a5f09cade..efc7df444cb5 100644
+--- a/sound/pci/cs46xx/cs46xx_lib.c
++++ b/sound/pci/cs46xx/cs46xx_lib.c
+@@ -2764,7 +2764,7 @@ static int snd_cs46xx_proc_init(struct snd_card *card, struct snd_cs46xx *chip)
+ 		struct snd_cs46xx_region *region = &chip->region.idx[idx];
+ 		if (! snd_card_proc_new(card, region->name, &entry)) {
+ 			entry->content = SNDRV_INFO_CONTENT_DATA;
+-			entry->private_data = chip;
++			entry->private_data = region;
+ 			entry->c.ops = &snd_cs46xx_proc_io_ops;
+ 			entry->size = region->size;
+ 			entry->mode = S_IFREG | 0400;
 
 -- 
 2.53.0
