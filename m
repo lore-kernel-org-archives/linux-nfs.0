@@ -1,80 +1,49 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1793793377;
-	b=p5v9vPtPUrUFqF/gbLUSgA7xxy1DulZrDm9G1HZ1bUiqLYUzGkRKmXunYK+ULSSLnruh
-	 XcTrTqqvUC53tXiFqM8K21xzOHHTq+pRRgIUAH2sucucShzEUmJ9dK1nA0FAVLHkKwV4k
-	 WRkhWJ7GUZGqVk1E9CC9ISagOMrg6ptTyELNPIMzHouEuqAnMTK5i09iRafIZ3CusvTbi
-	 5LRQqjjQNgkfaefGTC6xlFT7SCn4S/oLxVoinOz0zMHHnekgdk/bFfETvUV3nj6UNui9y
-	 e2Th6Fht076EFCx5Uni96h1hrCXBb8ljB2wUMWSc+iNotVqUf8BzaFhgRhkvE45guTA==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793793377;
-	h=Received:DKIM-Signature:Received:From:Subject:Date:Message-Id:
-	 MIME-Version:Content-Type:Content-Transfer-Encoding:X-B4-Tracking:
-	 X-Change-ID:To:Cc:X-Mailer:X-Developer-Signature:X-Developer-Key:
-	 X-Endpoint-Received:X-Original-From:Reply-To;
-	bh=jyG/aG3AxvPO1fkCw9kea5Bx4LNY/1DvuFEFZf9uADY=;
-	b=NtkEskS7lEm5QcfjJIbq3MGT5W6wTXk3C8hegIpNLQ0bWWQf/6kmvul69MoBEC0+4h+D
-	 /oH84Cc8gkJeTlJ7uGq5vjD4bN2KQcOG7GFDLj73Ab6aa0SpwMyrjLdeKPYneqDouUGHL
-	 7mY0P0BmPnH2tX9ssiUX468jJ/PJKCIt+TSBzLsINgf/ZYoYnzjUlzGUhRvK2+LtF/hbX
-	 5AHIq5be+XkZLlwHPXYB51ssU4JjNtrCbqPVMESMjCbmj8lWxBHQ+9WsI6GxCktiVoSsS
-	 2hyr9+WP/Kr8fK4CdLYnnF1WBPzMWY0+shkhrijQXDCBjeVxY1c3qFKbskKaWmqs3MA==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bIhjDTGJ;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1793801475;
+	b=gwDaGshFoylPyI5dmOKo6a2aI5NFcBEqijb1SjozOOIyrSKI1LgjZ2JcIVXaNBaWC4Fb
+	 /yMtYLzl/ueVMJzUrhdsDTrH2oq7hbkR4V4ut+RYlPUDNnLUQ4VCLyg5nC1drePO8ZKUL
+	 q4wRka1J+lN4LpprMQDboxGtFcSeJFZ1/Af/A/5it+w9r1HudQ+znZ3DVzeTF8Zy7LrR8
+	 nOjqfzv6tjqNpZ+RDZRqMjqui3Ea6ZiQik0Fro+IEmG4xXC44pjQ83BFGv4AGzsxtGe94
+	 BfHPYhl2SRZ0LgSMf3a8niTCvmof/4rchs2933DPbxZKmtUTLngWkWM9LCVLUr793Dw==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793801475;
+	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
+	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=7yPliVTlL9I117Syk/sHIJ4deRyfsE7CLJT2w2bbfyE=;
+	b=CCg91s1oCHAC7D6UcVMa2fuPfNkkOBFmAFL3hd+LMq663Y8C1kiJm6ICnekFC2jDSI3E
+	 3UFGAVdyxFT5oRgWDlUUl+cgq0aNTxf+TiYb9BDf/nY47TWNQkkmjp7Tkxk81hVb82bUj
+	 QT/UlqxS7IuYkRei4z4tdkreBb2e4H/ojRIsrWoZ7g5qoj0aeWMOH/JsdMRBePWoPFV8D
+	 QQvN0jaoY//IdsV6IwXmjv7I3pFMkAgj3kygtpS8B2sPeAmgWaWDcFg+WAXBhdEBBxmEX
+	 /WuJds59yzFRhk7ebDluxDBVGbx9CaE0QsXLHxb+nrf8SV8u2D6sRIYcrjDzt5U1UlQ==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=OJNUMeai;
+	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0385C606A31B;
-	Wed,  4 Nov 2026 11:56:16 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 636DF606A32F;
+	Wed,  4 Nov 2026 14:11:15 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bIhjDTGJ
-Authentication-Results: smtp.kernel.org; arc=none smtp.remote-ip=100.80.115.77
-ARC-Seal: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256; cv=none;
-	t=1793793376;
-	b=I6nqSZulCbApW0p27y4m2hv6B3FdRyOo3VB8sAJzkqhJ98yUNycPzlEMo1ebRvqtUg9Q
-	 dqD/FF51YlzCgrjLShhIQxw+j7jn71Vbd0xa9zUHUptnca7DKdavJebWbzzfItVGdoFLg
-	 a/XFFeg8GxiQ64pFW6NJyHBYywHoa+qmunlIkroPdz6QSJSeyYsjTFiZ3toqEyqmLxhh4
-	 syJGzcjttZSUdIgeycFWn3bL9f07InUA+yfqC5yQ99hP0db5uYD++Q7BK1ikkv6A7FHtu
-	 Bu66QnYNL7uSNTPsVj2+bbFrPQtETt2WMJ25RVi9GGHL5cg8aT2ZDP0u8o4H4GhnPpw==
-ARC-Message-Signature: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256;
-	c=relaxed/relaxed; t=1793793376;
-	h=DKIM-Signature:Received:From:Subject:Date:Message-Id:MIME-Version:
-	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
-	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
-	 X-Original-From:Reply-To;
-	bh=jyG/aG3AxvPO1fkCw9kea5Bx4LNY/1DvuFEFZf9uADY=;
-	b=PXqEiKds9lX24ItxiH4/ZXcXAghAmUu39q1J2RQ9T8xpRQDorToHpxjuVd2rc2trooLq
-	 FmkrG8CRVKPCUsHhY1Mt4vkL5dFkB8HmCZotsPZgL7btVQQwEZOZTWK/37848hnJlufmY
-	 eI4wJ1CIaGa0w68v4Crw4CLvvzZmjqQ+Ol1/d04k7Fr48UFJHDMKv1bl9vYR2yd4VOTpB
-	 56olS3JddSutdpjExwc0TI0hDkP57zR5mYUZ9j/Fq+NQ9f72aMm71NdxbsHXeNkpSnSaQ
-	 tGt3UzvVQ3VLo1+0XiHbIzmy3+NUf9fFDloLFE7jaAM39+P17zabXG2pd41vFIsyKjQ==
-ARC-Authentication-Results: i=1; smtp.kernel.org; 
-	arc=none smtp.remote-ip=100.80.115.77
-Received: from lkml.kernel.org (nexus.subspace.kernel.org [100.80.115.77])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
-	(No client certificate requested)
-	by smtp.kernel.org (Postfix) with ESMTPS id 461271F000C1;
-	Wed,  4 Nov 2026 11:56:16 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=OJNUMeai
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 489BF1F00A16;
+	Wed,  4 Nov 2026 14:11:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793793376;
-	bh=jyG/aG3AxvPO1fkCw9kea5Bx4LNY/1DvuFEFZf9uADY=;
-	h=From:Subject:Date:To:Cc:Reply-To;
-	b=bIhjDTGJcYkKS3zO+f0/1IVJmLp3OhAmEWA3MKy7jm+B1wcLup2d65WEk8CG34oA6
-	 xiQnRARya+0R9Ag0RePCTdHT0XGdXupvN/AiXdq2RKxgmMlSMkgnU1/XuGIh4ZFQhz
-	 xhVvfaj36owC2ijqaX6nD9qZnOZC/9ZCI+4DwnDtw7L21ZfeeXasKQKLznRdlisoar
-	 AMynMpM0DADeDfRiyAbrE5zzqZYVddEOBuQB5gOH1leE3xpfXF0M7/Vd80bGF3G9Pi
-	 wDbuVaoj4vPbNUsKDwbOtlNQrfYwl+PpNj8hBtksHpHFQNM1AJ3lJ3nck+rzK5sFbO
-	 sL+h8mp+2z0OA==
-Received: from nexus.subspace.kernel.org (localhost [IPv6:::1])
-	by lkml.kernel.org (Postfix) with ESMTP id 95B2846E02;
-	Wed,  4 Nov 2026 11:56:15 +0000 (UTC)
-From: orkunsari via B4 Relay <devnull+sariorkunemin.gmail.com@kernel.org>
-Subject: [PATCH 0/2] nfsd: fix two mount-crossing regressions from the v7.4
- merge window
-Date: Wed, 04 Nov 2026 14:56:14 +0300
-Message-Id: <20261104-nfsd-cross-mnt-v1-0-5ec5fca0a553@gmail.com>
+	s=k20260515; t=1793801475;
+	bh=7yPliVTlL9I117Syk/sHIJ4deRyfsE7CLJT2w2bbfyE=;
+	h=From:Subject:Date:To:Cc;
+	b=OJNUMeai5z4F+tz9xI2sK/giaLlFfen8cuid2IuhF85aWz6OZ0gNnic1D7QaaUpzy
+	 zLS+NhVz7fyEUfseCwiAOr/S4zO/O0UY0jsvKXghptVQOAa86twI1pX7G7EiBYXIAb
+	 J37h0obs1ScI7k3WsTeV1Zcgg5TzPWYI+kfSy+JY9iqOhyQ0UbdhmS7SPt/656pkOR
+	 SsV2tGz2e00xIZZDn2bSWKZQ8Carxxa/yhHUEKYLGZDg0n2mbkBthFAE7C/a2K2ObC
+	 QgcLzj0vwL1dunxbKH5ge3pAxMxR/fkoozGb4hTsTkvd88Nk/ARMOm6oOePAh2qfHN
+	 mLIVKnzmwyDvA==
+From: Chuck Lever <cel@kernel.org>
+Subject: [PATCH v8 00/14] Improve the scalability of NFSD's classic DRC
+Date: Wed, 04 Nov 2026 09:11:00 -0500
+Message-Id: <20261104-duplicate-reply-cache-v8-0-eea5b90e4318@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -86,58 +55,176 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqEMAxA4atI1gZsEf+uIi60TTWCVRodBop3t
- 84sv8V7EYQCk0CXRQj0YeHdJ6g8A7OMfiZkmwy60JVSRYneiUUTdhHc/InKNaWt21o3VQspOgI
- 5/v6G/fC3XNNK5nwvcN8P5yNQGXIAAAA=
-X-Change-ID: 20261104-nfsd-cross-mnt-1f84d7972869
-To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
- NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- orkunsari <sariorkunemin@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793793374; l=1188;
- i=sariorkunemin@gmail.com; s=20261103; h=from:subject:message-id;
- bh=QUJUQXa5hExsDV/MhlbVSo+ywaTLPPSuOAFTqzJnnt0=;
- b=CgeTVhR+6frjNyCzeLzIPupeBtoQebyGkzSAuTI+npHVgN9XLA8+DUVJGp6yROp0bHdiXPQzL
- 8zWm8qAndLUAxr9nmZMlkeEIuV6uflMXh7Xu7KbK4ukzxdDKv6d31zO
-X-Developer-Key: i=sariorkunemin@gmail.com; a=ed25519;
- pk=MJ3Y3somkGDQVAXOSR189QAqWOcfzYCRkL1cSQgJXnE=
-X-Endpoint-Received: by B4 Relay for sariorkunemin@gmail.com/20261103 with
- auth_id=1408
-X-Original-From: orkunsari <sariorkunemin@gmail.com>
-Reply-To: sariorkunemin@gmail.com
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XRy2rDMBAF0F8JWlet3rK66n+ULvQYxWqNHSTHN
+ IT8e6UEWlPj5RWjwx3migrkBAW9Hq4ow5JKmsYauqcD8r0dj4BTqBkxwhThTOJwPg3J2xlwhtN
+ wwd76HnAkEbTXTgviUf17yhDT9919/3jkcnaf4OeGtQlnC2CX7ej79uRheBljCXiGMqfx2Eb6V
+ OYpX+7dFtqoR42OqZ0aC8UEOxokBWqj9PrtC/IIw/OUj6j1WNia6fYYVhkmiTKgFLHabRj+xxh
+ K9hheGU4lZ1Z4LYTZMGLNiD1GtKV8NIEp1lkjNoxcM7tLycYo66wBF1ncMmrFMLrHqMoEJ4HyG
+ IwRW0b/MpQws8foykTuSOQ+SvfvUrfb7QfBNdQdmgIAAA==
+X-Change-ID: 20260325-duplicate-reply-cache-f0fe7c7b740c
+To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>
+Cc: Rick Macklem <rmacklem@uoguelph.ca>, linux-nfs@vger.kernel.org, 
+ netdev@vger.kernel.org, Chuck Lever <cel@kernel.org>
+X-Mailer: b4 0.17-dev-9c833
+X-Developer-Signature: v=1; a=openpgp-sha256; l=7538; i=cel@kernel.org;
+ h=from:subject:message-id; bh=PQW/loGHulbDVpTg8OJ6IqzmoyJ2x2WEJoBYP/YZbjY=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq6zz4URC3kwsjnzgy5qrfjhm3fAqXYBtNcfWN1
+ 6TaWntJ5DyJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaus8+AAKCRAzarMzb2Z/
+ l+ekD/4/4+LXyvycTW4ZAjoOzDBAUuY8gqUWiMm110uAKveE7jJe8xzWgIadRAJhHsO85VDEcbq
+ og6f3bqRJov9Cqqo4WQqe0AqU8WJBmiSQAKI+kihYqiMrXJ2adnDPWUIHJCb91TP0i1qzw5rUa4
+ 0IspyJIZHNXVzRw3bvwrD/Y9i8QJPQD7328hNQPWf9u1vIHA9xuSjCcMsGzIjKBXQwA8/NTm/QB
+ nkOcW3uiAVi5v3nKNOixeJk4C8nHoXE2TcJpuY2JkDvlrch+Jw+daMxJ/N944CYD9Son/pc1s7F
+ sFbL2ztLNx2j7G0A+607zGqG+cFgKxqKWQZWyHju45QP3D/Donk5wipzg1wgXEOBNqpGlg6Ab2P
+ nlMZaDd2UnYxwLn76Cfte4Nv/rKHY8u/zTUj4igbcT1L2eevf5+zgJB7hGl21RKOgzKXrUlvCVl
+ O638/Jt7SJsWRGBPL3X++KWtR3MwXWS5d9DCTs2sdVn3/Z/WcJPpJ+7mFu0ViyKNafoB3kCyLb4
+ SBuQVXUNFT3QD2P/Eb62IqviYgwmitQa4x8lg198WWLsUkyeJ/jIFOTQzXJfFSlsvGDUePA4pPP
+ PbM4FuR4UuANn8AmJD9Biuk5Q026gR/EmllMhIjxmVneFfsLimZcdngAbFrON/l4rQ+FZ8llZm8
+ xeH61nVg4IBUBSA==
+X-Developer-Key: i=cel@kernel.org; a=openpgp;
+ fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-Two fixes for code merged for v7.4-rc1; released kernels are not
-affected.
+The NFSD Duplicate Reply Cache evicts cache entries older than 120
+seconds (RC_EXPIRE). On an NFS server with more than 64 GB of
+physical memory, during a steady-state workload the 256k-entry limit
+on DRC size, and not RC_EXPIRE, governs retention of DRC entries.
+Cache entries are thus evicted before a retransmit on a connected
+transport can hit them, since the the default retransmit timeout for
+such transports is 3 x 60 seconds.
 
-Patch 1 fixes the NFSv2/v3 CREATE paths, which pass the dentry returned
-by nfsd_cross_mnt() to end_creating() and so unlock the wrong directory
-when the target file has something mounted on it.
+To remedy this situation, this series modifies the DRC eviction
+algorithm to make an entry eligible for eviction once the RPC
+transport has seen the client peer acknowledge that entry's reply.
+This approach is used in several other common NFS server
+implementations today.
 
-Patch 2 makes nfsd_cross_mnt() check access to the export being entered
-rather than the one being left, and restores the check after ".." in
-nfsd_lookup(). SECINFO keeps its previous behaviour and does not return
-NFS4ERR_WRONGSEC.
+Each network connection publishes two positions: the reply it has
+just sent and the point up to which the peer has acknowledged. The
+DRC then compares only those two values to decide on eviction. UDP
+entries keep the current time-based eviction.
 
-Both were found by AI-assisted code review (Claude Code). The fixes are
-build-tested with W=1 only; no reproducer was run.
+TCP and RDMA transports provide acknowledgement semantics that are
+precise to the byte. On a TCP-with-TLS connection, byte-level
+acknowledgement is not available to consumers. Therefore the ACK
+position advances only while no TLS record is open or parked on a
+short send, and is withheld while decrypted data waits in the
+receive path.
 
 ---
-orkunsari (2):
-      nfsd: unlock the locked parent after crossing a mount in CREATE
-      nfsd: check access to the export being entered when crossing mounts
+Changes in v8:
+- Reject an AUTH_TLS probe sent inside a TLS session. (sashiko)
+- Count a request again when a procedure defers it after its lookup. (sashiko)
+- TLS: withhold the position while the strparser copies a record in. (sashiko)
+- TCP: take the mark from the out-of-order queue when it is not empty.
+- TCP: raise the mark to snd_wl1 to cover a wholly lost retransmit.
+- TCP: move svc_tcp_acked_pos()'s kernel-doc block onto that function.
+- svcrdma: correct the comment on why the position is not gated.
+- TCP: test the request count before taking the socket lock.
+- TCP: skip the position refresh for a service with no reply hook.
+- Scan the whole bucket for acknowledged entries, not just the oldest.
+- Link to v7: https://patch.msgid.link/20261029-duplicate-reply-cache-v7-0-f3b0f3cf5bc7@kernel.org
 
- fs/nfsd/nfs3proc.c | 14 +++++++++++---
- fs/nfsd/nfsproc.c  | 14 +++++++++++---
- fs/nfsd/vfs.c      | 46 +++++++++++++++++++++++++++++++++++++++-------
- 3 files changed, 61 insertions(+), 13 deletions(-)
+Changes in v7:
+- Count requests in flight per transport, from first read to lookup.
+- Withhold the acked position while another request is in flight.
+- TCP: hold the position until copied_seq passes the rcv_nxt mark.
+- TCP: read snd_una and rcv_nxt under the socket lock.
+- Add the svcsock_tcp_acked tracepoint.
+- Drop a call whose transport closed before its DRC lookup.
+- Explain why svcrdma publishes its position without a receive gate.
+- Narrow the reclaimability claim in the cap removal.
+- Correct the collision-window claim in the checksum removal.
+- New patch: advance the acked position on TLS connections.
+- Link to v6: https://patch.msgid.link/20260921-duplicate-reply-cache-v6-0-db5e13fd9944@kernel.org
+
+Changes in v6:
+- Make the DRC size limit independent of page size (Neil)
+- Drop same-connection retransmits (Neil)
+- Link to v5: https://patch.msgid.link/20260918-duplicate-reply-cache-v5-0-b6aba9ebf2f4@kernel.org
+
+Changes in v5:
+- Actually make xpt_id 64 bits wide (per Neil's review).
+- Move the DRC cap removal first (per Neil's review).
+- Rewrite the cap removal's description to stand on its own.
+- Drop the 4x visit bound from the prune walk (per Neil's review).
+- Evict acknowledged entries only where the prune walk reaches them.
+- Restore the shrinker's unlimited per-bucket scan.
+- Link to v4: https://patch.msgid.link/20260914-duplicate-reply-cache-v4-0-bcf9d2628a94@kernel.org
+
+Changes in v4:
+- Track reply positions instead of ack cookies (per Neil's review).
+- Make xpt_id a 64-bit counter and drop the xarray (per Neil's review).
+- Drop implied ACK and the last-request timestamp (per Neil's review).
+- Keep an unsent reply until RC_EXPIRE (per Neil's review).
+- Pin a DRC entry against eviction until its reply has been sent.
+- svcrdma: Serialize Send posting so positions match completion order.
+- Drop the nfsd_drc_reply_acked tracepoint.
+- Link to v3: https://patch.msgid.link/20260910-duplicate-reply-cache-v3-0-31532a4c7449@kernel.org
+
+Changes in v3:
+- Add the reply-acknowledged callback and its TCP and RDMA reporters
+  ahead of implied ACK, which now defers to a pending report.
+- Split the prune-loop restructure into its own patch.
+- Move the eviction tracepoints ahead of the ack patches; the
+  implied-ACK event now lands with implied ACK.
+- Keep err local to the pmap_register block in svc_setup_socket()
+  (per Jeff's review).
+- Never move xpt_last_recv backwards when nfsd threads race.
+- Fold the XPT_ORDERED patch into its consumer (per Jeff's review).
+- State the re-execution exposure of implied-ACK eviction instead of
+  calling the DRC advisory (per Jeff's review).
+- New patch: remove the DRC request checksum and payload_misses stat.
+- New patch: remove the 256k-entry cap on the DRC size.
+- Link to v2: https://patch.msgid.link/20260828-duplicate-reply-cache-v2-0-25069e660a7b@kernel.org
+
+Changes in v2:
+- Print the DRC eviction tracepoints' age field as unsigned.
+- Link to v1: https://patch.msgid.link/20260826-duplicate-reply-cache-v1-0-b1d51e1af5c7@kernel.org
+
 ---
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261104-nfsd-cross-mnt-1f84d7972869
+Chuck Lever (14):
+      SUNRPC: Reject an AUTH_TLS probe inside a TLS session
+      NFSD: Make the DRC size limit independent of page size
+      NFSD: Remove hard cap on duplicate reply cache size
+      SUNRPC: Assign a unique identifier to each svc_xprt
+      NFSD: Track transport in DRC entries
+      NFSD: Prepare bucket pruning for additional eviction reasons
+      NFSD: Add tracepoints for DRC entry eviction
+      NFSD: Record DRC population in lookup tracepoints
+      SUNRPC: Publish reply positions for upper-layer consumers
+      SUNRPC: Publish TCP reply positions
+      svcrdma: Publish RDMA reply positions
+      NFSD: Evict acknowledged DRC entries
+      NFSD: Remove DRC checksum and payload_misses stat
+      SUNRPC: Advance the acked position on TLS connections
+
+ .../ABI/testing/procfs-nfsd-reply_cache_stats      |  11 +-
+ fs/nfsd/cache.h                                    |  16 +-
+ fs/nfsd/netns.h                                    |   2 -
+ fs/nfsd/nfscache.c                                 | 238 ++++++++++++---------
+ fs/nfsd/nfsd.h                                     |   3 +
+ fs/nfsd/nfssvc.c                                   |  11 +-
+ fs/nfsd/stats.h                                    |   5 -
+ fs/nfsd/trace.h                                    |  47 ++--
+ include/linux/sunrpc/svc.h                         |  18 ++
+ include/linux/sunrpc/svc_rdma.h                    |   5 +-
+ include/linux/sunrpc/svc_xprt.h                    |  26 +++
+ include/linux/sunrpc/svcsock.h                     |  16 ++
+ include/trace/events/sunrpc.h                      |  62 +++++-
+ net/sunrpc/svc.c                                   |   3 +
+ net/sunrpc/svc_xprt.c                              |  73 ++++++-
+ net/sunrpc/svcauth_unix.c                          |   6 +
+ net/sunrpc/svcsock.c                               | 209 +++++++++++++++++-
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c         |   2 +-
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c              |  26 ++-
+ net/sunrpc/xprtrdma/svc_rdma_transport.c           |  15 ++
+ 20 files changed, 639 insertions(+), 155 deletions(-)
+---
+base-commit: 7931bbfa2e56dc27ddd7f1ef46f90fa0194a2868
+change-id: 20260325-duplicate-reply-cache-f0fe7c7b740c
 
 Best regards,
 --  
-orkunsari <sariorkunemin@gmail.com>
-
+Chuck Lever <cel@kernel.org>
 
