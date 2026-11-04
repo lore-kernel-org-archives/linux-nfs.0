@@ -1,98 +1,73 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.218.49
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793824344;
-	b=gMZ25zyFoiHHrNdv/bykLZOJCZhtFz/TX5dIRGj3QyQpNTXRoJrbCJiIeeLYUrLyamKM
-	 wH48ebK2Iwsb1hUXKQt6mei8N/rnmA8+tooyXfVXLlhr51/2P+QeYzKSm+iHgRTcw/8l1
-	 oXWW6aKMFRIS9D12b+VlGq6f8l2gzTfPEttXRmbJHf2jtRWQ+WKGqc7SsDFZABK+XY7CZ
-	 3CaAf0VV/K27+Uy0qLlpA/Plt9BafCnnUl9e291CzoAKpFo04ncfX+ePfBhrgo8UM/O6C
-	 eXEDLVc+hY4t/ZiovXuqiv6OTi0B+IR5taN+KG9WPlGQNMm9IjYtfaGPxex+i1K/dgg==
+	t=1793826421;
+	b=wwOyBYxCu+68B8FDm67RZJu2r4H4axE0SIlMKHkfzsX7nDiTjly2p2sGRWLyAqt/UxpI
+	 rXKgXG7DJKUbhQkmxF89wXo6gVxK0dqvOvFqRAFsWoD0QtVUMxc1DEBGEcP1O06HZAZ4y
+	 l/x4mQ8jRxct8EWjDQPpFL053dD/kl7s6okkeiUJ8sb5OKVnfK5SOnRG4ftZCkM03N3no
+	 F21cc4Vc1115xPGY4UW7HBhOagZwamBeiZlf3SM0WSCr9r1zlmD71XVs1CFXVor5nRPcv
+	 jVYmpBByPjZA3r7oT+K2E1A/7BE8h3t6ESN3ho/EbcyS+rtR7K45MTm4m95PIN5jcXA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793824344;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=vvPyObhECIqaYZATRXYy2VG26m0W8SXVp5G/EDqIdGI=;
-	b=VJNDL4FGhIrSo/e28pG0vyAiwBgx/GH4tutViC7tD8QPouIbCdC1c6Bz2WRvSqxj52P0
-	 BdmkPgJnl2RaVUoxHpQnK3pk3wIyoQfzhggwhN5Gx18E4TX07b1bh20uXvM9kJDqk7S+h
-	 Br5+d1U8WRWmLEsZDIdlqZxdCN64jRLdHVETICW7ZbSYE/O8GiCcINr5teFPZNjzUAayT
-	 QfGLFpLjFjkzTaxu7TwRDC7xkYLAYt8dQPCVvJDaAb39WhzwjwKIZ/DmO6L6Lfddi71B2
-	 f2lTo0Gv5WP4lzw1w5KxoxBN4VoL9E04pz5szBMSegvbUGH4zz55j82mj530V4snskA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793826421;
+	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
+	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
+	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
+	 References:Subject:Content-Type:Content-Transfer-Encoding;
+	bh=O8KeNsk7VgJFfi8zo53yBLg1pu0oo/p33FgXnzr6Qcg=;
+	b=B5OsTy+aBYzPw8wkT3qUW6ZIQyVC2SBz//sPYJUMcBQ4wBqf7JxP/Ly6fHa33zCQYmdV
+	 z6nJvsQQk4DE4B4CD/FWjJ0kmvVv2VT/S5Q7/Ond2B2gsKhFykGNuF+ND8UXzojzcRYtR
+	 QB1PQ2XMTbaQRNQP77zFBNXjRrJoDjVm6MzNxMJApFZcpCoetRV15cyNt6rr7AEJKqkHS
+	 erFFv2Tv+wRSDZk92SpFMuUXWJPpVCeW5zyUXej+OP13FKLNTuOoZCBNCauWytjkIAwS+
+	 MxaoV34DI603ldSzkfle1PGkUSZjl9nh9RRguE4q0BougOOrwFVMInMP7EPnq2Z6GAQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=msuN577Z;
-	arc=none smtp.remote-ip=209.85.218.49
-Received: from mail-ej1-f49.google.com (mail-ej1-f49.google.com [209.85.218.49])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cFS8GeKV;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E9B90608C992
-	for <linux-nfs@vger.kernel.org>; Wed,  4 Nov 2026 20:32:23 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E9B90608C992
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43535606E822
+	for <linux-nfs@vger.kernel.org>; Wed,  4 Nov 2026 21:07:01 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=msuN577Z
-Received: by mail-ej1-f49.google.com with SMTP id a640c23a62f3a-c34bff61551so203253066b.2
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Nov 2026 12:32:23 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1793824342; x=1794429142; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=vvPyObhECIqaYZATRXYy2VG26m0W8SXVp5G/EDqIdGI=;
-        b=msuN577Z90oNJPBzoXuD6/KKlHQB4PyXt32gCOsdNn3tSaluqhLVTSpy2yFISRWbfV
-         lciDOpS9NrHGtpcOKrVyeNKKqDe6IUoMdH8JxrNyzMP4N7tnyxa/N3deJ2tcXNQGaOTW
-         dF4PdOL6DITiP44JAfkRI2hhe5itSr29Se0H8xC9aeBmAgJS2f+hOw8J/nxcKQBNF2Cj
-         9kXnPFHehojrnrPb/eHu6EdKkFLudQgRqS1TWfWVHxJrdMW9ZoVcx/SLVDLfrn058b+0
-         Dd24++JZcDnbalb0/ZAjNz6nyD7PsN8exi92dgcipNptVqG7d1X13ucozJA0t5ev6syk
-         xJIQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793824342; x=1794429142;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=vvPyObhECIqaYZATRXYy2VG26m0W8SXVp5G/EDqIdGI=;
-        b=gCUwKOGsDHxibAWlPT7dpHZQ/pTBcy1f4cOijDsLDKK7b6KVz/UH6ieWsThpPzyW1U
-         nvbMcP9q9/05VVA6oJtVaNoPxr1V6PXySvYukEezOr+/9OfsYhhA5fGQcSlDNmFH1Ls0
-         5DFKT1cJ1U6/IES5b/gQ2pxPLceVYeKCoLbeNYmMHeLQSOXX1qy5ZvxnjP+IgFh3n8Gj
-         A5yyIDlhrDAFjcAyEirxMRAvcaPYGzfUmlecKnJAcTu/uMp9Lsb4YB4pQWdwuRI8OcVA
-         V6L8A9LJG+XC6+quhraBZ/UtxSTO93wyMhluu2sZKKom5UxwvCn1AEwnGyJRkhUNU0R0
-         PsKg==
-X-Forwarded-Encrypted: i=1; AKwUvBw6Fz3Eglk4VWXmyY/dECDgLrg2iyL21Yn0yOboIL4Lmf8IqatfpwGGtpM37kIPGAJMrCYzE6fR6Ag=@vger.kernel.org
-X-Gm-Message-State: APuU4Z/bGqoY6Me/drKrNmEtF42HjPIOi8FzMlqRB5pwU6HDj4SsGbWb
-	DghFFQ2cRJv5DI+5JQiYe7FiI8Ov2CukoCUs299rXdNYBAK134Nny4c/IXYv/J6Q3Vc=
-X-Gm-Gg: AYBFou1Z6cCYU/GPa0JWTEVZbU9pmP44hjNRn3LD54DRpZvKxlT/17Q39KP+c169S/i
-	/j/b4jx+BTjBk3Dt0PdOxhuaw7FZb/qyDWwXXJhbY+iJCuRk89Cp5eRfB03FZQi+kqENSC/7e/w
-	pv/EuwbLGuFAkGwLAJNcassinyaq5V6hhyhsciBtBPxgBLmf1odJR0oYvKifcQXIHRKJ3UVtTGB
-	w3ii9Vt7auyn4JXsRXny9p6EGoSizDwf0AfAtt38GyFCYpFpLvKHI0SjrN3xyVDOLttCpWFT325
-	92ic1sgjm1NvAmpy9Jf3H0AUWYRHudkrA+BnnGQhK3haGTT9xicnTPaHcrK5IpQe9nTL59wdXfq
-	YLkSO+s9UZ47hSi0UU0nJuoMzfO1e/VWc9+rYjniuNicrCkiUoJoD1D9qYz0KmOxw5Pi497Ga9M
-	T8+3ErDDBrjGCbfg0ILVvawCgfk6p5O4gOMawbhbSyBA3Zle+3oGj+vi4IuEE3rqwmXvCKYBt10
-	gjeo1wFTnfo8XeeZtMJzdpSZi6MH0eyeqmvWZUiiNuosWCjaeZMuZZpw3bkooCf1gL4ONG+5Oci
-	F4jjSZvM57qCeuInq+fj4HQe3iPgmeGEzL0pu+Rsk41ApTxqTUTYrLHOUNKOUuDdMJqwMHf3
-X-Received: by 2002:a17:907:ea8:b0:c49:a408:f682 with SMTP id a640c23a62f3a-c4ca7ad1a46mr1465857566b.42.1793824342155;
-        Wed, 04 Nov 2026 12:32:22 -0800 (PST)
-Received: from localhost.localdomain (173.242.112.181.16clouds.com. [173.242.112.181])
-        by smtp.gmail.com with ESMTPSA id 4fb4d7f45d1cf-6b55ac44f0csm1187131a12.7.2026.11.04.12.32.18
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 04 Nov 2026 12:32:21 -0800 (PST)
-From: VeroFess <coderzeng@gmail.com>
-To: cel@kernel.org
-Cc: Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/5] NFSD: Apply export security when a compound crosses exports
-Date: Thu,  5 Nov 2026 04:32:13 +0800
-Message-ID: <20261104203213.1214721-1-coderzeng@gmail.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20261103-verofess-2-v1-0-9e6568221beb@kernel.org>
-References: <20261103-verofess-2-v1-0-9e6568221beb@kernel.org>
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cFS8GeKV
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9209D1F00A02;
+	Wed,  4 Nov 2026 21:07:00 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793826420;
+	bh=O8KeNsk7VgJFfi8zo53yBLg1pu0oo/p33FgXnzr6Qcg=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=cFS8GeKVfd3yMT2AyA4aIyjt8ohaFdVtJlc6N7oczY/TndxLQPA32qd/FgSBsARUQ
+	 WL7+v9444rQzyLWxHU/g6L1ag02hF0ootyMC+LdAV46bEZUgIGHT8JnjEBxbBW62Yh
+	 shbsJVYbnTO2aRs0iGxJU6LMPR33yzaUL8NrvLt+vwmuV7ERcHtsFjdffiaN9OSJMk
+	 qlZD6HzqUGnshFXI7AJwEufjwKiZrib2TUG/ejK4cnFifDgQZnCSj9Y3o0QB5wQP2F
+	 nid66TO1A20YxHtpU4Me2ulccrP3MRVtNFtbXQVuxftrQ1gRoG2VlP/Hdr8PADm9LA
+	 p6tPCteVL7PEQ==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id C95ECF40067;
+	Wed,  4 Nov 2026 16:06:59 -0500 (EST)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Wed, 04 Nov 2026 16:06:59 -0500
+X-ME-Sender: <xms:c57ranc-eXy0qZA3Izz6tzGBWD74Y0LDCTUyIwuwUORxaZhaar07Bw>
+    <xme:c57raoBWAZGLVYZwz4km8y4F7mC9kKpSqIIooqwPleAyk31u3kn--LbngIcGsWq5D
+    YlpuBfhzhBqdsihqjdWWi4q9RMVF5oZ95wt7lFh_2WLUTR78qApNURA>
+X-ME-Proxy-Cause: dmFkZTESF0Phaa4oLLTTbol4xghPJHKqjaWtNLUZJD7XevwIpjhIgVnGkmbDO1LrYtt/ks
+    swepjUhAi2j0+1TNzdeuOE1t+NwGYTbjtmvyuW8bk/Hv4KQbvI6l5w0OGqQRoRpwxrT19z
+    CebSFfDOnxW02geUDHrhJSBgr8BJeD7e6Aav3DSgME//ElW3N9daqdBBB3khQxNJeC4t2r
+    12L5b5jyPevQnijYTRXVT0EMKke+EayYoUzH1sGMz3QgUCeP2vSx0HVJ4L22jdBZc/CPbV
+    PWgfCjGimZibfYjKbMXNbYOpl4Bt9qQjh8oUjnXlgVg4SqSBgZN/zqAjtJI7t5FO1AwMM9
+    J+1v/lPEOsK7NWxXgtNJBea8HRuPt+HEzzp/3C90b4OIgYt1ag6tTZAsvYEEj4Zjvz+NLC
+    9UxssI0qw5c5blB583tyN1ndQ2Dtb5i0WLjw8UppgZeOJzE4ziqzMNyyLZqgL3ZHpzXXz5
+    5DiJh5qXhw0c8pSxOLORbJr78iIylaBNrYmXvLWQouQzHu6eYdO47yZCfvRdkjGaXtStLJ
+    ec8WWfCjJwoUQdoHcYtjkrolPVSXFgm7DDkTCjsKKeq25qsVUY6lvSesb+z+ha7R7vLsbm
+    ULgVgBkc/HgDL52wYOb0XSWf3IozRqpJQdVQw9EoJkR0OkRHpG2R4mdFAPnw
+X-ME-Proxy: <xmx:c57rakMqRJ2mqk88Uba9wR420alWn9PD0avkuCDUE_60JBqCnVdCcA>
+    <xmx:c57ratgQdnbEgws9PeHVIZDwlZ-mgSy4hpzrQ6fvWxhTYUuFOICcGQ>
+    <xmx:c57rau4QpeHJJlciMpaV-EBOY-w7CS0Jbf65ZhRiedeeR-wJENAEFg>
+    <xmx:c57ras2-cm1XI_RyXutdb4D_c91oeWxKRh2Yd4PSW11QAGU55oPl4Q>
+    <xmx:c57rahubw90KPwURoffZ8jhYbr-NZ2cXfCCgz4NxEAbswHydxmGXj4B8>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id ADF21782738; Wed,  4 Nov 2026 16:06:59 -0500 (EST)
+X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -102,33 +77,54 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-ThreadId: ASp0-I3zjTPw
+Date: Wed, 04 Nov 2026 16:06:39 -0500
+From: "Chuck Lever" <cel@kernel.org>
+To: "Adolph Zeng" <coderzeng@gmail.com>
+Cc: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, "Alexander Viro" <viro@zeniv.linux.org.uk>,
+ linux-nfs@vger.kernel.org
+Message-Id: <40574671-0299-4c86-ada2-ab1f16106494@app.fastmail.com>
+In-Reply-To: <20261104203213.1214721-1-coderzeng@gmail.com>
+References: <20261103-verofess-2-v1-0-9e6568221beb@kernel.org>
+ <20261104203213.1214721-1-coderzeng@gmail.com>
+Subject: Re: [PATCH 0/5] NFSD: Apply export security when a compound crosses exports
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-Chuck,
 
-I tested the five patches on an x86-64 KASAN guest. They applied in
-order, the changed NFSD objects built with W=1, and the full bzImage
-built with Btrfs, TLS, and NFSv4.2 inter-server COPY enabled.
-The wire tests covered NFSv4.0, 4.1, and 4.2 where applicable.
 
-After a reserved-port OPEN, high-port AUTH_SYS compounds that used
-LOOKUP before READ, COPY, or CLONE stopped at LOOKUP with WRONGSEC.
-The destination was unchanged. Direct PUTFH returned WRONGSEC, while
-low-port COPY and CLONE succeeded. SECINFO and SECINFO_NO_NAME still
-succeeded on the high port. READDIR with rdattr_error omitted the
-protected filehandle.
+On Wed, Nov 4, 2026, at 3:32 PM, VeroFess wrote:
+> Chuck,
+>
+> I tested the five patches on an x86-64 KASAN guest. They applied in
+> order, the changed NFSD objects built with W=1, and the full bzImage
+> built with Btrfs, TLS, and NFSv4.2 inter-server COPY enabled.
+> The wire tests covered NFSv4.0, 4.1, and 4.2 where applicable.
+>
+> After a reserved-port OPEN, high-port AUTH_SYS compounds that used
+> LOOKUP before READ, COPY, or CLONE stopped at LOOKUP with WRONGSEC.
+> The destination was unchanged. Direct PUTFH returned WRONGSEC, while
+> low-port COPY and CLONE succeeded. SECINFO and SECINFO_NO_NAME still
+> succeeded on the high port. READDIR with rdattr_error omitted the
+> protected filehandle.
+>
+> After switching the source export to root_squash, LOOKUP; READ,
+> RESTOREFH; READ, and saved-source COPY/CLONE returned ACCESS with the
+> old OPEN stateid. The all_squash UID/GID cases and same-export
+> COPY/CLONE passed with the expected data.
+>
+> With krb5 or krb5i on a krb5p export, OPEN by filehandle returned
+> WRONGSEC at PUTFH; OPEN by name returned it at OPEN. krb5p worked from
+> a high port and over TLS. NFSv3 LOOKUP returned PERM from a high port
+> and succeeded from a reserved port. I saw no KASAN report or oops in
+> the guest log.
+>
+> Tested-by: VeroFess <coderzeng@gmail.com>
 
-After switching the source export to root_squash, LOOKUP; READ,
-RESTOREFH; READ, and saved-source COPY/CLONE returned ACCESS with the
-old OPEN stateid. The all_squash UID/GID cases and same-export
-COPY/CLONE passed with the expected data.
+Thank you! I've tagged all 5 with your Tested-by.
 
-With krb5 or krb5i on a krb5p export, OPEN by filehandle returned
-WRONGSEC at PUTFH; OPEN by name returned it at OPEN. krb5p worked from
-a high port and over TLS. NFSv3 LOOKUP returned PERM from a high port
-and succeeded from a reserved port. I saw no KASAN report or oops in
-the guest log.
 
-Tested-by: VeroFess <coderzeng@gmail.com>
-
-VeroFess
+-- 
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
