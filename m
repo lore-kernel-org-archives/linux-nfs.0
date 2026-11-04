@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793821881;
-	b=e3cKa77ZjtUPHX4HLGp3OoWnUnt/VMA2IehUWAskJ7xYSef3tU1VogQ9kZX7Qg45peq0
-	 nN9GPM/l/NkUknsWG1a0pdkoSIdf/iB3P6grM6mnqzayr6c1GS8+MMArHbcK49hV2cTKs
-	 XxROlWy2koBm1Z5n7vgvdR4SCk/Wll9zK6aV0L9eLrOC8HXk59QfAKpNba8laXEifMwsA
-	 GAdYNiPhzEAjtIU9FB0W5ojPi/SvRf/r8EusZ6oI1kdy13xWAS1UQR3GTGqo6hb2NMmZi
-	 ruRaLFWbP60F1BKe4DFITUXj1r0KwBF6gdZcmdNx/1mu8J+4VzNuhgHc1LRJ7njZnsQ==
+	t=1793821911;
+	b=zda1mzE+qFDN7At/H2Vsy3HxtjpgaDyaNS3f931hPzuG0ZkHdNQDKDGaDgk7s1idCIwE
+	 ubh3jsL0cHSnp04yMgd/7I4CG+jgViye/u3/bzGQBiDI5lMJaRLKqPTxAj+yUcUbmlCqG
+	 O6Ms8S+vpouEC1VVv+M/5Wz/Lx9/5asp+5Ix/oVgmHrNVtBGSAAAuS+NIw2Xi7osPycOw
+	 WwOutybnmq+OnVfY/pKFKAYbaOqFPMimA1eV03EPGtSkimDVq2v4wC6tresp5Sv/vgTNE
+	 PQ+aEtnj8nbKFKsbbguEj64IcfWIwL4TQ+jRhOWCvlXgf5wEtPaoAGVc4SkQb3DmSZA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793821881;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793821911;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=LP8R0bNSKS2QH/Zql1k1p4KE760gSx77oAIYdTk5FHQ=;
-	b=O8ojp4G3ZTqQtCnQ9vqxf1BpdjMlCA/CUxVHfNufrej4eulCXTH6FUoWlg7dNnbSN5K7
-	 OYVNlkLzmFqm07jPjzc+faGUqAQvzU6B36Ls3N9O2ldFxo6TqNQr8h3n2YFJEzjD4ntTa
-	 eCsW3dUcCWzILMZtbaoayovXmIweOcck+eJ+nh2p8TqwPj+9mUhprm4gEL7iH203JrsHl
-	 S2B6vc3PEVIT0WIxEZCLOSL1t7xbJwR+71Eqzn8pX+lKadi85c7dBcYv80t1RshBmYcCx
-	 XBQV6H87G5/zAUO72n5XaGuDI8JiX95nvNlTl722tv1SnJeO6eH3VE+vUiMj230Qlkw==
+	bh=lzw2p1lwQVTXGjOVK+O2fRllw6EWFGiyVpP4wwnyOh0=;
+	b=qDYoSIOxocN5AxdfVKvWW8Z8pzS6IHJu80jMsvk+jL4U2YaJRkHQI7K16D0G64moNf9Q
+	 yu6RXrFr0yZZqxUe5r9A09PGEZS9oHoub7MITEEdnmSTTZmCTxBNhGVHcjviRMdI+pBa7
+	 iMMmjdLimyLNdpWWhEnroBKkcxuyaxmH0IaZ27AQeCgn+VLXLkCPqOoqgocNJsOM+3W4K
+	 5zGcCshL3idye6MsOh98BZBXgLcyGqm2d33GKcN2kUMEQH8NRZka4sJYSI055sg9/h3bX
+	 MvB7WayvkV2Tapax0oRqpcha0UUtQVBKtpGdWWgEx/OEl93Mq0QfTtxKG7bk+HrDuXQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RsXLh3XH;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QAJQ3+WL;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E86D3606AC3D;
-	Wed,  4 Nov 2026 19:51:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C84EC606BA36;
+	Wed,  4 Nov 2026 19:51:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RsXLh3XH
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6873B1F000C1;
-	Wed,  4 Nov 2026 19:51:08 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QAJQ3+WL
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 515511F0093A;
+	Wed,  4 Nov 2026 19:51:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793821880;
-	bh=LP8R0bNSKS2QH/Zql1k1p4KE760gSx77oAIYdTk5FHQ=;
+	s=k20260515; t=1793821910;
+	bh=lzw2p1lwQVTXGjOVK+O2fRllw6EWFGiyVpP4wwnyOh0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=RsXLh3XHwh9i9KYLzGYCXUR/3jz6hvJBiKTUXoJMpIyHBIQckhaIML2AcsaatHJA1
-	 0eBgijXzBWphawzWAAAliBSKwy94Zq0H8fcdbx7zd77a8zoJ0Ue7FRHLvIZ7LfaCRL
-	 NWsF0xR2vHzqH47EGJ+b1zhQAPz56CBGLrP9V51eK/aUOfQX+ePGLsZp0VZGcq3umB
-	 NDozx0Pud3lqomDaEsA6NBp0dWh/oMo1BEzvyC9LXCvrcoisYiWT1saIA5w7Ryz3SA
-	 YyQib6eqTR5sEMMLmZee9CeR7k9yWAYrkLQ/ZLwHgmz6BrgXZZ6ltNiDOnrSr0ulvD
-	 XM4slagBXfM8w==
+	b=QAJQ3+WLDUkYLImp3HYyJ9xNQzT5ktofk3vTOb5CY1yyjGgMiMLV84eXcv7Ngn9pO
+	 0R1aIfFok0raVnzXU9Vxsqv/+8svHg8UrA6VN+qDutbG0MoaDiCzmWdmWTuVYeXa/I
+	 N2GChnCG6weK3daO3o2GHaFO3/dOVqhIMLzDjlCpOjj7c7+2YrdYYhUy9NCshP6wdl
+	 Lk+TkGZGwLWFEFiLx/wufa/ZxQYuvNY4PHonWIRM9HX3gymQ16OIyPKKYKRaJNOE5j
+	 ooOiwYlFZWYxO07ewx8hUYCero4307WQRVTKLVnFylG/X2Vx0yOkMhn63aRL8xUxMW
+	 sonQvq7YDKhvw==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 06/30] nfsd: let procfs own the seq_file of /proc/fs/nfs/exports
-Date: Wed,  4 Nov 2026 20:51:06 +0100
-Message-ID: <20261104-work-procfs-fs-v2-6-319e0f9a8aae@kernel.org>
+Subject: [PATCH RESEND v2 08/30] smb: client: let procfs own the seq_file of the smbdirect files
+Date: Wed,  4 Nov 2026 20:51:35 +0100
+Message-ID: <20261104-work-procfs-fs-v2-8-319e0f9a8aae@kernel.org>
 In-Reply-To: <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
 References: <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,53 +116,40 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1388; i=brauner@kernel.org; h=from:subject:message-id; bh=zWLMsIr05BMF/tXliLgjdHfvlEWh2osbn3SGLQ8SJYE=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97jGs4JaPtH3mH5ykZTabedr3t9eLXxuUWtVOVPA6f zVLaV15RykLgxgXg6yYIotDu0m43HKeis1GmRowc1iZQIYwcHEKwEQOxTEy7LkV8VeozHTu0b5W PgXDRpfpiWc3tHXbzdur9fTJDgPvGob/HiLTPjd/X3HGOa2I9VGcSnVnmAirzPkpT6wvTMpmfzi TEwA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1034; i=brauner@kernel.org; h=from:subject:message-id; bh=RIZYcDqYt7NhFvt2L4C6pTMn3DylkXBLCyRwuGHjm7I=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97jG5tPWrw/cVrCsb765In/OBvcn09R7LsHQ9/q6+O V1HHE9ndpSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAExkz01Ghl3rSlga96Rmhvie 3JVu2vHMZ1KgvNQ2f7ZfM06avi3c5s3wv8ZDfv2t3meZR3nKlGZN/Jj7Lukpr3r48QVnD/23mvz tIT8A
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Declare the seq_operations and let procfs open and free the seq_file.
-->proc_open() and ->proc_release() only set up ->private and take and
-drop the reference to the network namespace now. Reading the file then
-no longer holds up its removal.
+Declare the show function in PROC_FILE_DEFINE() and let procfs open and
+free the seq_file. That makes the open functions unnecessary.
 
-Acked-by: Chuck Lever <cel@kernel.org>
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/nfsd/nfsctl.c | 15 +++++++++++----
- 1 file changed, 11 insertions(+), 4 deletions(-)
+ fs/smb/client/cifs_debug.c | 9 +--------
+ 1 file changed, 1 insertion(+), 8 deletions(-)
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index f8ce3c0fb077..5b2782f9dbbd 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1407,16 +1407,23 @@ MODULE_ALIAS_FS("nfsd");
- 
- #ifdef CONFIG_PROC_FS
- 
-+/* procfs opens the seq_file */
- static int exports_proc_open(struct inode *inode, struct file *file)
- {
--	return exports_net_open(current->nsproxy->net_ns, file);
-+	exports_net_init(current->nsproxy->net_ns, file->private_data);
-+	return 0;
-+}
-+
-+static int exports_proc_release(struct inode *inode, struct file *file)
-+{
-+	exports_net_put(file->private_data);
-+	return 0;
+diff --git a/fs/smb/client/cifs_debug.c b/fs/smb/client/cifs_debug.c
+index dfcd2cdbb2a8..664072ab3342 100644
+--- a/fs/smb/client/cifs_debug.c
++++ b/fs/smb/client/cifs_debug.c
+@@ -873,16 +873,9 @@ static int name##_proc_show(struct seq_file *m, void *v) \
+ 	seq_printf(m, "%d\n", name); \
+ 	return 0; \
+ } \
+-static int name##_open(struct inode *inode, struct file *file) \
+-{ \
+-	return single_open(file, name##_proc_show, NULL); \
+-} \
+ \
+ static const struct proc_ops cifs_##name##_proc_fops = { \
+-	.proc_open	= name##_open, \
+-	.proc_read	= seq_read, \
+-	.proc_lseek	= seq_lseek, \
+-	.proc_release	= single_release, \
++	.proc_show	= name##_proc_show, \
+ 	.proc_write	= name##_write, \
  }
  
- static const struct proc_ops exports_proc_ops = {
-+	.proc_seq_ops	= &nfs_exports_op,
- 	.proc_open	= exports_proc_open,
--	.proc_read	= seq_read,
--	.proc_lseek	= seq_lseek,
--	.proc_release	= exports_release,
-+	.proc_release	= exports_proc_release,
- };
- 
- static int create_proc_exports_entry(void)
 
 -- 
 2.53.0
