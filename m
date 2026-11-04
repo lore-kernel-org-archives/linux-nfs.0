@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793820616;
-	b=qB+qtQ89FxpzP/vADP12n+BlctH7MoKizuIAfaiHQloklFOS0oW1otMqb1FbEAcUfxHq
-	 rAz7YQuIR+caMYO0GnfFHBcQMuWJ1sT2+Wdq5lXLw4TOWLV55kpXk/gipfNX5DeCh/7T5
-	 uU2VY9vPMmHwV4LvYL3sjWiLUMymccgRLpqYsfHkk8xjoLbqGXjMwtEM5T7wAjyu2BB70
-	 wdeXl8NsLzsP8DpSeJ0xv31yPC/lxuCp9jaCxbAlZU/gP8WE6Ln97UxaXAVV/DOTn92qU
-	 nyQh/5CQeBgqdlk/WQhsrCZJhUUHfpmG+PON8r4VPaukhopNc95qLl6Ff7+vcJKgbSQ==
+	t=1793820630;
+	b=a1Hsf5c7twM8c1QskfQ2156rjEzDgc5QBpmoSfq07DuNLwbjuGZB8pmHNS9SUqtkgu+4
+	 IFpeaWijY6rrQNySFcoTLiDiurOute0i8Wg1vDPSsOP+cUiNzdFJ1LqPExJEghLCF6lYM
+	 r1CxIQWLrF4+7MEkYovHDgQcxRVTSJmzTJ5QqAeEXpQ8GBSHRBPkcGjdx75bCuevs3YfE
+	 LiqfPDIA++de0FppZ84oylITksoiapo/Uzj28cHqj6AfSl3lR6pDfS0mXpEHehc5vFjG0
+	 i0wcvBGlAz9beOZ4wuIG2WESi6MlStT8uOXyVwCjrnu50Ba/lsebA4ol6rWkfRA00Ww==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793820616;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793820630;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=wXVlMWiDTu+69WMCdmpXWiSSm+c28yN85IUhl+IubT8=;
-	b=H5Mdy7Uuukscocv+TsvTE+Ex1srBMbzUx3KXUxrVlfrFwmRwOhkoGgkGO6JB2yf3FUAC
-	 a/ltam8bUknm7Sx1MdrUZo7lDc9EgWoiy9e5ud1UvPSC5TWgn/WwEs4oY8cfoBWaC8Nd4
-	 RsXE78TT5BO+G8UrIUnIN1pgBFdHSD6+dzXveD4mUKkKG0oc6wHq2M4jCxwSf8A6S5BcQ
-	 evtADxkvQDitICpk7JdPszQ95Rh/EQq3f5WgZDOWuE5VeY49evS5ZSeBgtbKcfPeWjgMn
-	 DJHOAPLZ22J7+7ywRsVdpAf+dShj43pxonu9iQkRF8tMHu6hnlUfQnRcD+iUxam6e4A==
+	bh=8PrbyLDFAjoLX2WIUniAe1t4rzdjlrNCOM5s/iYEHW4=;
+	b=h5IlA+Evy04XMlLkYH+IAUImm7EG6N5KCGPDJX18RjVa+xrhcmVQaf1SmoALJGMi+wd+
+	 R5D5ZxTccp1xEX5jIwQsuEXSEIpS4qdVIFGQ5kqWrRY8c5vl/bF3Ixk9isOsSaGukz/xU
+	 NHVj6gQdERsF4vFLHNK+cC772R/gWJD81eFBZNTXbUb+7XyOWjuCCOHFiDtloeKjG7Gw5
+	 Xbb+ojHPUP3Fi4Z8Fb94ZpSkV4qg9Gg+dLLgux/AtGo3YGnWCHl1n2CiNZ7adUCQgh4IU
+	 otR4NjhPR/rH9CyIGGNoZxSD5tKZDYaCucXKTkrgLBfSmShXrssvUvmee+Q0kcyR2XQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=erxYLb1X;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gJgUQqFP;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 99B266076CD9;
-	Wed,  4 Nov 2026 19:30:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0A40F606BA26;
+	Wed,  4 Nov 2026 19:30:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=erxYLb1X
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A3DD31F00919;
-	Wed,  4 Nov 2026 19:30:03 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gJgUQqFP
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 11E151F000C1;
+	Wed,  4 Nov 2026 19:30:17 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793820615;
-	bh=wXVlMWiDTu+69WMCdmpXWiSSm+c28yN85IUhl+IubT8=;
+	s=k20260515; t=1793820629;
+	bh=8PrbyLDFAjoLX2WIUniAe1t4rzdjlrNCOM5s/iYEHW4=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=erxYLb1X2DHiu8zWp8v0jRYZ5UGBGh+M5ta+MA4icX/zIpChkASF4X68Jon0h6gUC
-	 8nuq0rsoqvadx2nDVRRlBP2aj3ufS3vatM8TDiMeFwvrDbjUNZAnA9ofhKM5FJ6XdR
-	 sKm5V0II55oa6/vNBFqcvr+LbWPRO0kbZer+mED55WXozLJTUJG12joB4mMb5qG9J7
-	 VpqXXHbX8Uyy3Hnr9YOzD5moscAo3/2JptEeVKryH7YO1wOoswN1+5wJ5ax5tGm2mR
-	 +F9oKHdKLr81Lnpvjj/9p5jcmbN338nH1sT0ofHVHFecyj5pPtazwCt2Ap7nkxjs5Q
-	 Nyh8bzuW3jflg==
+	b=gJgUQqFPUdfHqbzO0yydZhimAxOsTiy3j7Gg5403vTetiLd8TkhBazxxcEfGmzx5W
+	 rVciL31qjq1dJ+7plUgL+tdmo2E2SJQ7PTYtqCx2yA5ZQXmFwpTZ/BfdBiLoaoCUxG
+	 lL06dxOJ7GUHhT6w/GTxKhllfZZxjGQKGJLvM2FgsjQySeffSyuwGPa5N1ogUjy23k
+	 pyZhFAReGbPqZK/rsbfRogg889zRCaP4JZXtWySOnvmSw9BhOsw3KUl59GOvqooX4d
+	 kXIZOW4f1sN3bBLyMvSBrt7Ky8oqzKQD4BdDN9Z0S+Gea/SE9ghcz9qcFKMYoNacQt
+	 L85SUfBFwN3lg==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 03/23] proc: share the readdir cursor with sysctl
-Date: Wed,  4 Nov 2026 20:30:01 +0100
-Message-ID: <20261104-work-procfs-core-v2-3-76ace653a773@kernel.org>
+Subject: [PATCH RESEND v2 04/23] proc: wait for the last user of an entry with wait_var_event()
+Date: Wed,  4 Nov 2026 20:30:15 +0100
+Message-ID: <20261104-work-procfs-core-v2-4-76ace653a773@kernel.org>
 In-Reply-To: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
 References: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,223 +116,77 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7727; i=brauner@kernel.org; h=from:subject:message-id; bh=T1jO1APZ3j3BQHDjVCpmuxMpr8V+h+I2OmQhvzCN9EY=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bi+58GPL4mlqj67P2u71ltNkzqaV66omL9vzZbrTm 6qaruBg345SFgYxLgZZMUUWh3aTcLnlPBWbjTI1YOawMoEMYeDiFICJLKxl+GfMdq5+mWH0iYYW pjurF5RIvVivMn2Ztpzp+jttleeahF4x/C9dvn1KMM+3u+sn3VvOYpmaw5XlpZepdd7umWXjkTf LRFkB
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2591; i=brauner@kernel.org; h=from:subject:message-id; bh=fMKtT8cQ8gIJJgjvKUq4bmwIClHWmBxP0YQIj81mIGk=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bi+tjeLVK3NRu/3AwmDiBg69+Yv9Pl1qUCpOO/S4p eB88dITHaUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhnCwMUpABPp+s7wP+3hike1RRfnnrx8 7ZbO37kO/mV/VGsDH0zbcnLeweWXS50Z/ucLe5/PfHaXt52J1YN/QouDsniPCP+rzsMti01ecAp LcAIA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-proc_readdir_de() and proc_sys_readdir() both resume a listing after
-the last entry it emitted and each remembers that entry in the open
-file with a cursor of its own: the same struct, the same way of
-setting it, the same release. Keep one in generic.c and let sysctl
-use it.
+proc_entry_rundown() waits for the last user of an entry with a
+completion on its stack that it points the entry at while it waits.
+That's a pointer in every struct proc_dir_entry for something that
+happens once in the life of an entry, if at all.
+
+Wait on the count itself with wait_var_event() instead and let
+unuse_pde() wake the waiter with wake_up_var() when the count hits the
+bias. The waiters sleep on the hashed wait queues behind that, so
+procfs doesn't need a wait queue of its own for this, neither in the
+entry nor a global one. kernfs keeps one per root for the same thing,
+deactivate_waitq. Note that atomic_dec_return() is fully ordered, so
+the count is visible before wake_up_var() looks for waiters.
 
 No functional changes.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/proc/generic.c     | 29 ++++++++++++-----------------
- fs/proc/internal.h    | 25 +++++++++++++++++++++++++
- fs/proc/proc_sysctl.c | 45 +++++----------------------------------------
- 3 files changed, 42 insertions(+), 57 deletions(-)
+ fs/proc/inode.c    | 7 +++----
+ fs/proc/internal.h | 1 -
+ 2 files changed, 3 insertions(+), 5 deletions(-)
 
-diff --git a/fs/proc/generic.c b/fs/proc/generic.c
-index e7264f0cf5ab..f6d620a5c3d2 100644
---- a/fs/proc/generic.c
-+++ b/fs/proc/generic.c
-@@ -301,22 +301,16 @@ struct dentry *proc_lookup(struct inode *dir, struct dentry *dentry,
+diff --git a/fs/proc/inode.c b/fs/proc/inode.c
+index 66a3688757dd..8795add1898d 100644
+--- a/fs/proc/inode.c
++++ b/fs/proc/inode.c
+@@ -25,6 +25,7 @@
+ #include <linux/slab.h>
+ #include <linux/mount.h>
+ #include <linux/bug.h>
++#include <linux/wait_bit.h>
+ 
+ #include "internal.h"
+ 
+@@ -203,7 +204,7 @@ static inline int use_pde(struct proc_dir_entry *pde)
+ static void unuse_pde(struct proc_dir_entry *pde)
+ {
+ 	if (unlikely(atomic_dec_return(&pde->in_use) == BIAS))
+-		complete(pde->pde_unload_completion);
++		wake_up_var(&pde->in_use);
  }
  
- /*
-- * Where the next readdir resumes. The entries are counted, so one that is
-- * added or removed in front of the position would shift what the next call
-- * returns. The name of the last entry emitted doesn't move.
-+ * Remember @name as the entry the listing is behind at @pos. If this can't
-+ * the next call counts from the start.
-  */
--struct proc_dir_cursor {
--	loff_t pos;			/* the position behind the entry */
--	unsigned int len;
--	char name[NAME_MAX + 1];
--};
--
--/* If this can't remember the entry the next call counts from the start. */
--static void proc_dir_cursor_set(struct file *file, struct proc_dir_entry *de,
--				loff_t pos)
-+void proc_dir_cursor_set(struct file *file, const char *name, unsigned int len,
-+			 loff_t pos)
+ /* Pin an entry that can go away around a call into it, see use_pde(). */
+@@ -266,11 +267,9 @@ static void close_pdeo(struct proc_dir_entry *pde, struct pde_opener *pdeo)
+ 
+ void proc_entry_rundown(struct proc_dir_entry *de)
  {
- 	struct proc_dir_cursor *cursor = file->private_data;
+-	DECLARE_COMPLETION_ONSTACK(c);
+ 	/* Wait until all existing callers into module are done. */
+-	de->pde_unload_completion = &c;
+ 	if (atomic_add_return(BIAS, &de->in_use) != BIAS)
+-		wait_for_completion(&c);
++		wait_var_event(&de->in_use, atomic_read(&de->in_use) == BIAS);
  
-+	if (len > NAME_MAX)
-+		return;
- 	if (!cursor) {
- 		cursor = kmalloc(sizeof(*cursor), GFP_KERNEL);
- 		if (!cursor)
-@@ -324,8 +318,8 @@ static void proc_dir_cursor_set(struct file *file, struct proc_dir_entry *de,
- 		file->private_data = cursor;
- 	}
- 	cursor->pos = pos;
--	cursor->len = de->namelen;
--	memcpy(cursor->name, de->name, de->namelen);
-+	cursor->len = len;
-+	memcpy(cursor->name, name, len);
- }
+ 	/* ->pde_openers list can't grow from now on. */
  
- int proc_dir_release(struct inode *inode, struct file *file)
-@@ -346,7 +340,7 @@ int proc_dir_release(struct inode *inode, struct file *file)
- int proc_readdir_de(struct file *file, struct dir_context *ctx,
- 		    struct proc_dir_entry *de)
- {
--	struct proc_dir_cursor *cursor = file->private_data;
-+	const struct proc_dir_cursor *cursor;
- 	struct proc_dir_entry *dir = de;
- 	int i;
- 
-@@ -354,7 +348,8 @@ int proc_readdir_de(struct file *file, struct dir_context *ctx,
- 		return 0;
- 
- 	read_lock(&proc_subdir_lock);
--	if (cursor && cursor->pos == ctx->pos) {
-+	cursor = proc_dir_cursor_at(file, ctx->pos);
-+	if (cursor) {
- 		/* Resume after the last entry emitted, wherever it is now. */
- 		de = pde_subdir_after(dir, cursor->name, cursor->len);
- 	} else {
-@@ -378,7 +373,7 @@ int proc_readdir_de(struct file *file, struct dir_context *ctx,
- 			return 0;
- 		}
- 		ctx->pos++;
--		proc_dir_cursor_set(file, de, ctx->pos);
-+		proc_dir_cursor_set(file, de->name, de->namelen, ctx->pos);
- 		read_lock(&proc_subdir_lock);
- 		/* Removed in the meantime, go on after its name. */
- 		if (RB_EMPTY_NODE(&de->subdir_node))
 diff --git a/fs/proc/internal.h b/fs/proc/internal.h
-index 268a0523be12..6b61d09ac5e5 100644
+index 6b61d09ac5e5..ab4d7bd1fb75 100644
 --- a/fs/proc/internal.h
 +++ b/fs/proc/internal.h
-@@ -278,6 +278,31 @@ extern struct dentry *proc_lookup(struct inode *, struct dentry *, unsigned int)
- struct dentry *proc_lookup_de(struct inode *, struct dentry *, struct proc_dir_entry *);
- extern int proc_readdir(struct file *, struct dir_context *);
- int proc_readdir_de(struct file *, struct dir_context *, struct proc_dir_entry *);
-+
-+/*
-+ * Where the next readdir resumes. The entries are counted, so one that is
-+ * added or removed in front of the position would shift what the next call
-+ * returns. The name of the last entry emitted doesn't move. The directory's
-+ * file keeps it, see proc_dir_release().
-+ */
-+struct proc_dir_cursor {
-+	loff_t pos;			/* the position behind the entry */
-+	unsigned int len;
-+	char name[NAME_MAX + 1];
-+};
-+
-+/* The entry to resume after, if the position is still the one behind it. */
-+static inline const struct proc_dir_cursor *
-+proc_dir_cursor_at(struct file *file, loff_t pos)
-+{
-+	const struct proc_dir_cursor *cursor = file->private_data;
-+
-+	if (cursor && cursor->pos == pos)
-+		return cursor;
-+	return NULL;
-+}
-+void proc_dir_cursor_set(struct file *file, const char *name, unsigned int len,
-+			 loff_t pos);
- int proc_dir_release(struct inode *, struct file *);
- 
- static inline void pde_get(struct proc_dir_entry *pde)
-diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
-index 6a92c33db9b5..c1e41a3f8f6b 100644
---- a/fs/proc/proc_sysctl.c
-+++ b/fs/proc/proc_sysctl.c
-@@ -787,36 +787,6 @@ out:
- 	return ret;
- }
- 
--/*
-- * Where the next readdir resumes. The entries are counted, so one that is
-- * registered or unregistered in front of the position would shift what
-- * the next call returns. The name of the last entry emitted doesn't move.
-- */
--struct sysctl_cursor {
--	loff_t pos;			/* the position behind the entry */
--	int len;
--	char name[NAME_MAX + 1];
--};
--
--/* If this can't remember the entry the next call counts from the start. */
--static void sysctl_cursor_set(struct file *file, const char *name, int len,
--			      loff_t pos)
--{
--	struct sysctl_cursor *cursor = file->private_data;
--
--	if (len > NAME_MAX)
--		return;
--	if (!cursor) {
--		cursor = kmalloc(sizeof(*cursor), GFP_KERNEL);
--		if (!cursor)
--			return;
--		file->private_data = cursor;
--	}
--	cursor->pos = pos;
--	cursor->len = len;
--	memcpy(cursor->name, name, len);
--}
--
- /*
-  * The inode number and type of the entry @d holds, instantiating its dentry
-  * if there is none. Needs the header pinned, proc_sys_make_inode() checks
-@@ -871,7 +841,7 @@ static int proc_sys_fill_dirent(struct file *file, struct sysctl_dirent *d)
- static int proc_sys_readdir(struct file *file, struct dir_context *ctx)
- {
- 	struct ctl_table_header *head = PROC_I(file_inode(file))->sysctl;
--	struct sysctl_cursor *cursor = file->private_data;
-+	const struct proc_dir_cursor *cursor;
- 	struct sysctl_dirent d = {};
- 	struct ctl_dir *ctl_dir;
- 	int err;
-@@ -888,7 +858,8 @@ static int proc_sys_readdir(struct file *file, struct dir_context *ctx)
- 	 * that moved the position away from it counts from the start, like
- 	 * seeking to an arbitrary position always did.
- 	 */
--	if (cursor && cursor->pos == ctx->pos) {
-+	cursor = proc_dir_cursor_at(file, ctx->pos);
-+	if (cursor) {
- 		err = sysctl_dir_next(ctl_dir, &d, cursor->name, cursor->len);
- 	} else {
- 		loff_t pos = 2;
-@@ -910,19 +881,13 @@ static int proc_sys_readdir(struct file *file, struct dir_context *ctx)
- 				break;
- 		}
- 		ctx->pos++;
--		sysctl_cursor_set(file, d.name, d.len, ctx->pos);
-+		proc_dir_cursor_set(file, d.name, d.len, ctx->pos);
- 		err = sysctl_dir_next(ctl_dir, &d, d.name, d.len);
- 	}
- 	sysctl_dir_done(&d);
- 	return err;
- }
- 
--static int proc_sys_dir_release(struct inode *inode, struct file *file)
--{
--	kfree(file->private_data);
--	return 0;
--}
--
- static int proc_sys_permission(const struct mnt_idmap *idmap,
- 			       struct inode *inode, int mask)
- {
-@@ -1002,7 +967,7 @@ static const struct file_operations proc_sys_dir_file_operations = {
- 	.read		= generic_read_dir,
- 	.iterate_shared	= proc_sys_readdir,
- 	.llseek		= generic_file_llseek,
--	.release	= proc_sys_dir_release,
-+	.release	= proc_dir_release,
- };
- 
- static const struct inode_operations proc_sys_inode_operations = {
+@@ -38,7 +38,6 @@ struct proc_dir_entry {
+ 	struct list_head pde_openers;	/* who did ->open, but not ->release */
+ 	/* protects ->pde_openers and all struct pde_opener instances */
+ 	spinlock_t pde_unload_lock;
+-	struct completion *pde_unload_completion;
+ 	const struct inode_operations *proc_iops;
+ 	union {
+ 		const struct proc_ops *proc_ops;
 
 -- 
 2.53.0
