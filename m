@@ -1,49 +1,111 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793814568;
-	b=NveGdTIM5hGpdLy6RxpUDCBC/hqebkC5E9o538Lu9IULtmBJ+AD/FWgVd5G505TN/R0l
-	 WZ0m/coqE3dcb/8qDLCd26GrutUSoWH/L1JL6pcDitRD9xRKHnBAiwIff/Tyu0/5UJeXz
-	 RwBL0I1fo0RlPNtlQPhOQ/9YOTHG/SS3D6ogo3LrMo1WFWnUx1DcY7wyQKRc+szjw9lyQ
-	 /9gzq2Z60XzQaDTrdN+E24PPqsWhNgUKP6hYRAcKeTb9kPo/QatzxzhTlKHd3tp0ZPO/c
-	 paAKh6vVbdnoL/sFUq9M4IypYwjxUbCVLkNXrcPG+DtRxsmvfcR51zpgZKviJ+o48+g==
+	t=1793814562;
+	b=cmYJkqflVGgsdb4aTyAm4/aeq5sq2OtBeuSI3vXXqkcektKj401MhCtVHbkydhQjoevj
+	 9FV6q8b3SrP2atG/G2z9gTxm+vppP88wyCqqC4BpkAbdabg/II2iBD3xEv9yOpo2q5gfo
+	 9SrIfDn63YjC9eptK+qI/JGdnosAO4WNADFhAo6VP5K4GlKZq6TsXoUOlzhUAIv54zrM6
+	 Frtgnb2T578Z9fC6vP/vVe6QrhqDRheIUj3pQNGPD+gMBT6N/7z0f6DWIcgbVraEaPMR0
+	 eJ25gkQ/oVZ52CKVoQ8UiQrEVowBTsw/wNzlKSUXO2+omY62pusW1yhPmQ/NHIz6m0Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793814568;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=9L0qjvrmIiRYsz9dkI9AndOxMttS1uM0FVF/xd/UrrI=;
-	b=SmOMQRnmghuLMMWwt4ICDvfJI0A2Q1QuZNeGgUSBAng9pnaMsHcmgdbI5p/jPPc1PYh5
-	 yP7wWvT6hxoyf2w7OCXD1DGZocsPf3ek2I6N9EvlexH4tfiNNx2deJuxcQjmPL95UIvy8
-	 8/r3PFusBYWM2326K3EuR46+/V+hi9ycE3UKxaM9whDQtQfYKa0NSNmQhVpOqG2AyW13x
-	 T1rQs1rkaSOH7Fs3RPHtVC0bWHrFxv6RpuqRNhsl9Ezaj0OsS8IeQcONdX8pClFlvwLwA
-	 QcbhuyWI1TN59VL3k0ObAiNat3VPHtf5rFPRjJvOyPZNFkwYHVftY9E3HGYBzEMIj0w==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793814562;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
+	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
+	bh=bDYBcNUn+VWuCpTwTZF6KvGO9475Dcj2RU9o+tvUNt0=;
+	b=5TLpe8cl+4HdsQng3lqVeffIXgdhFzTJk7RVbTHIFlkNQN9LYihNFWycA0IPL1fWBmCf
+	 32O7sqKxFpzzSiXnIcyrY9TZ52Ir01Jyjsb7eoxyMIu6Y40Eeozj8pILb/Yy+gPjfgyc4
+	 scGxy/P9NCAN3zl/CrVGbmPrpqP67XdlSKGKOZ5XnXGDSv7ZPf9FGu3/ARKVTbsRmA/RO
+	 DYF/pHwtH7c821XuFNOGSIoa40r39LO6oRgtW7ybBP7ozNUyKPVI9GmjmHNQ0C2/9um8/
+	 4dPe6Etd92dN1kGkb2XSa+xV+VfEDZ4mm47fL1oesvCV3sa5MqTCs1/CXFJ+knwyQOg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="Sk7HCl/j";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=L4z066t7;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DB2856070B00;
-	Wed,  4 Nov 2026 17:49:27 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 87006606D80F;
+	Wed,  4 Nov 2026 17:49:22 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Sk7HCl/j
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F22BB1F000C1;
-	Wed,  4 Nov 2026 17:49:26 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=L4z066t7
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 11ADA1F000C1;
+	Wed,  4 Nov 2026 17:49:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793814567;
-	bh=9L0qjvrmIiRYsz9dkI9AndOxMttS1uM0FVF/xd/UrrI=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=Sk7HCl/jlrMXPxfLlUEYytUsz3QRUr5xTbej9C82Ka4iAsf8Hgxvpmo1LtcK99iAj
-	 vRmbCeCpcadxzJK4HboiKHFc8iicpgH/ecUn273G32ke7hFRJSPKqX89mONi9GkOtQ
-	 jkcugtDdj3WXdZCg256IfZ7myxFF3dwjRO6cWVafq8yt3ojRboi+bA9FsFV/2zVH9N
-	 vVI/7NBtMZ/wjQyvz0p1oOghVJqd0WGtwgnamJbHnwviM/TzxOMrtzOpgMAqJQZv5q
-	 YN/n7s+aatIr8ByB9h6vfKeIx4FSqZ3QEku73iRtlZfAe7dBb9nly+WvK/vn3/jHc8
-	 kdT2xbnFgOjtQ==
-From: Chuck Lever <cel@kernel.org>
-Date: Wed, 04 Nov 2026 12:49:09 -0500
-Subject: [PATCH 5/5] SUNRPC: Set up the servername before the transport is
- created
+	s=k20260515; t=1793814562;
+	bh=bDYBcNUn+VWuCpTwTZF6KvGO9475Dcj2RU9o+tvUNt0=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=L4z066t7qk8SNBZ3qr8F1Dv4FM+zeL5UMqbVPpZhgdQRsqgneSAYM0s8mSty+AN6F
+	 uOpJwVDXNMcIMJN/l4FNHGQgvK/QCR0cqApE4XNvTdD9heJSFssRxRma5MIWbLp5q7
+	 KuStqfVc5Mi7/uCEtKU/XidV25HekngkokdSavKrGmFA9IR6yxAQ/fT2R/UVEXUpOV
+	 JshYWFM1jRBiauogMI9LETcKUpSEg7rlt/XCrsDvHcIcKKrKf+Lfu9grpGXEUlOUBw
+	 il1cziT3er+LG8IbGUfsHyBhUl9fEmWujhzvys7fEbuJMHuqJFLv3DIRlBTxlslyyu
+	 1lR419jEJXKMw==
+From: Christian Brauner <brauner@kernel.org>
+To: linux-fsdevel@vger.kernel.org
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	Jann Horn <jannh@google.com>,
+	Josef Bacik <josef@toxicpanda.com>,
+	Chris Mason <mason@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Eric Dumazet <edumazet@kernel.org>,
+	Thomas Gleixner <tglx@kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Jonathan Corbet <corbet@lwn.net>,
+	Christoph Hellwig <hch@lst.de>,
+	Greg Kroah-Hartman <gregkh@suse.de>,
+	Joel Granados <joel.granados@kernel.org>,
+	Kees Cook <kees@kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	Jan Kara <jack@suse.com>,
+	linux-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	linux-acpi@vger.kernel.org,
+	linux-kselftest@vger.kernel.org,
+	linux-s390@vger.kernel.org,
+	linux-scsi@vger.kernel.org,
+	linux-um@lists.infradead.org,
+	linux-wireless@vger.kernel.org,
+	linuxppc-dev@lists.ozlabs.org,
+	netdev@vger.kernel.org,
+	ntfs3@lists.linux.dev,
+	platform-driver-x86@vger.kernel.org,
+	coreteam@netfilter.org,
+	kexec@lists.infradead.org,
+	linux-pci@vger.kernel.org,
+	linux-sound@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	dri-devel@lists.freedesktop.org,
+	ibm-acpi-devel@lists.sourceforge.net,
+	jfs-discussion@lists.sourceforge.net,
+	linux-alpha@vger.kernel.org,
+	linux-arm-kernel@lists.infradead.org,
+	linux-cifs@vger.kernel.org,
+	linux-fbdev@vger.kernel.org,
+	linux-hwmon@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-sh@vger.kernel.org,
+	linux-usb@vger.kernel.org,
+	samba-technical@lists.samba.org,
+	sparclinux@vger.kernel.org,
+	linux-m68k@lists.linux-m68k.org,
+	linux-doc@vger.kernel.org,
+	linux-serial@vger.kernel.org,
+	linux-atm-general@lists.sourceforge.net,
+	Takashi Iwai <tiwai@suse.de>,
+	linux-input@vger.kernel.org,
+	linux-raid@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-modules@vger.kernel.org,
+	linux-debuggers@vger.kernel.org,
+	"Christian Brauner (Amutable)" <brauner@kernel.org>,
+	Chuck Lever <cel@kernel.org>,
+	stable@vger.kernel.org
+Subject: [PATCH v2 17/51] s390/dasd: don't look in front of the buffer on an empty write
+Date: Wed,  4 Nov 2026 18:47:03 +0100
+Message-ID: <20261104-work-procfs-bugfixes-v2-17-bbf7d5546809@kernel.org>
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
+References: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,109 +116,36 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-liange-v1-5-f097e10cea1b@kernel.org>
-References: <20261104-liange-v1-0-f097e10cea1b@kernel.org>
-In-Reply-To: <20261104-liange-v1-0-f097e10cea1b@kernel.org>
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
- Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>
-Cc: Wentao Liang <vulab@iscas.ac.cn>, linux-nfs@vger.kernel.org, 
- linux-rdma@vger.kernel.org, Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2561; i=cel@kernel.org;
- h=from:subject:message-id; bh=+xkoP883vPKVTB2ZIgrZ2t8hX4yhaRNHPvQhR8+3lGM=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq63Ah8bYzKBEYKM/HD1y7Tok7Tv2FfDNpAj363
- QYkmkX4SSKJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCautwIQAKCRAzarMzb2Z/
- l6FUD/9KWDgllkv61XD4belbidzAUiuU8SAPh4HNyPzIwgKjkIOEItSp+yfxLpGOxGRmBiIIt4E
- tZHzfXychKeJc5FP1leayP2EnTn2ca0oY5Ggkujr0ZNpSPSuZxoKneoM35JZSgCBB0hrJ10AcK9
- Mu8wy1RKEw6zpUMzDas9uv5ANJnuwsjwsnHWhMawap3K6zNqWxLNHAoa6FkipYU7mXlDG5qEiQs
- OdYIqNXFZFrKZ9PVNMEro2VfawEL5EBejSOImpZHokabMMjhvIt9MW/tjWJtTdhVHI1VoAyLM8C
- wYNlbZLif0auK6Inho2LufjZ80XU+izD9Syr3+otCygv0lKaxaynuWviBUr8j31wEe+mbe5wlK1
- gnV2MdwTZJ7ULPXg+6YPMKqjMG0Fyf53DGXcX9olqf/26YB2yflJRuO4yXD4wLWrgyuRMXXvVeC
- Q7Q6txAiSX+ycECZlzbX1qym3pAcKC7BGKftme1FFeH6wthEWulIX4Bk91rx/q4O2Y1MMBQjdRD
- tpCfNKR9ZDjKb9a0ep1esEyDL5UKSMWubpwQRdivP4HbUIS2pQN7BsTSsnCde00gK1itcRkNCBZ
- TtbZ9X6+qKeEjSJYZgwWY/80Bp8k2NvuHcEYS2alH+6uqDFFG5nvQTpgvR0XMqo5w4o1jgfYhxJ
- Imsx2NIhBtAubLA==
-X-Developer-Key: i=cel@kernel.org; a=openpgp;
- fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
+X-Developer-Signature: v=1; a=openpgp-sha256; l=952; i=brauner@kernel.org; h=from:subject:message-id; bh=vNxDJDpmoyfXJahneUuQ9vEH9eL70g/8w71rNTJgUxc=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zrsssUymaabA31Var5avOM5bfCJp4gvZaynZy78sz mbbvsPjXUcpC4MYF4OsmCKLQ7tJuNxynorNRpkaMHNYmUCGMHBxCsBEJKczMuyYrr82Yt6rR8wV ngvXr6z7d1Hu7s13rzfk5t00zdb9H3OckeGStmp/GZ/E1KSXmfqdfP1HWkLun/hu9/dXSsq18Bl 8+mwA
+X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
+Content-Transfer-Encoding: 8bit
 
-xprt_create_transport() checks the servername length and copies the
-string only after the class setup() routine has returned. A
-backchannel setup() routine publishes the new transport in the
-svc_xprt's xpt_bc_xprt field before it returns, and svc_xprt_free()
-puts that pointer when the svc_xprt goes away. When the length
-check or the kstrdup() then fails, xprt_create_transport() calls
-xprt_destroy(), which ignores the reference count and frees the
-transport. xpt_bc_xprt is left pointing at freed memory, and
-svc_xprt_free() later puts a dangling reference.
+dasd_get_user_string() strips a trailing newline by looking at the last
+byte that was written. For an empty write that's the byte in front of
+the buffer it just allocated. Only look if something was written.
 
-The setup() routines never read the servername, so validate and
-duplicate it before the transport is created. After the change, no
-failure remains between setup() and the return, and the
-xprt_destroy() calls on the error path go away with it.
-
-Fixes: 4e0038b6b246 ("SUNRPC: Move clnt->cl_server into struct rpc_xprt")
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
 Cc: stable@vger.kernel.org
-Signed-off-by: Chuck Lever <cel@kernel.org>
+Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- net/sunrpc/xprt.c | 23 ++++++++++++-----------
- 1 file changed, 12 insertions(+), 11 deletions(-)
+ drivers/s390/block/dasd.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 48a3618cbb29..a50fdd84daef 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -2076,18 +2076,29 @@ struct rpc_xprt *xprt_create_transport(struct xprt_create *args)
- {
- 	struct rpc_xprt	*xprt;
- 	const struct xprt_class *t;
-+	char *servername;
-+
-+	if (strlen(args->servername) > RPC_MAXNETNAMELEN)
-+		return ERR_PTR(-EINVAL);
-+	servername = kstrdup(args->servername, GFP_KERNEL);
-+	if (!servername)
-+		return ERR_PTR(-ENOMEM);
- 
- 	t = xprt_class_find_by_ident(args->ident);
- 	if (!t) {
- 		dprintk("RPC: transport (%d) not supported\n", args->ident);
-+		kfree(servername);
- 		return ERR_PTR(-EIO);
+diff --git a/drivers/s390/block/dasd.c b/drivers/s390/block/dasd.c
+index 2ffe404b890f..e97891e58957 100644
+--- a/drivers/s390/block/dasd.c
++++ b/drivers/s390/block/dasd.c
+@@ -933,7 +933,7 @@ char *dasd_get_user_string(const char __user *user_buf, size_t user_len)
+ 		return ERR_PTR(-EFAULT);
  	}
- 
- 	xprt = t->setup(args);
- 	xprt_class_release(t);
- 
--	if (IS_ERR(xprt))
-+	if (IS_ERR(xprt)) {
-+		kfree(servername);
- 		goto out;
-+	}
-+	xprt->servername = servername;
- 	if (args->flags & XPRT_CREATE_NO_IDLE_TIMEOUT)
- 		xprt->idle_timeout = 0;
- 	INIT_WORK(&xprt->task_cleanup, xprt_autoclose);
-@@ -2096,16 +2107,6 @@ struct rpc_xprt *xprt_create_transport(struct xprt_create *args)
+ 	/* got the string, now strip linefeed. */
+-	if (buffer[user_len - 1] == '\n')
++	if (user_len && buffer[user_len - 1] == '\n')
+ 		buffer[user_len - 1] = 0;
  	else
- 		timer_setup(&xprt->timer, NULL, 0);
- 
--	if (strlen(args->servername) > RPC_MAXNETNAMELEN) {
--		xprt_destroy(xprt);
--		return ERR_PTR(-EINVAL);
--	}
--	xprt->servername = kstrdup(args->servername, GFP_KERNEL);
--	if (xprt->servername == NULL) {
--		xprt_destroy(xprt);
--		return ERR_PTR(-ENOMEM);
--	}
--
- 	rpc_xprt_debugfs_register(xprt);
- 
- 	trace_xprt_create(xprt);
+ 		buffer[user_len] = 0;
 
 -- 
-2.54.0
+2.53.0
 
