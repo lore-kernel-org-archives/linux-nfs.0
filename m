@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793820347;
-	b=Nol8fzKcWQz5aCqGi8qXBq/qc7BSH4H7JbUvAIqZ0gkzhNR/T8Kv8BP53FubgBe4Bomq
-	 SD1bV8msdJDaEnRjGBxyCnjn+KsP9Z/uL0SwRkhal7WYNrQilDTqpqC0A82F0aCvhQ3n8
-	 La6pP0mi0pJj6ogjSp1sQWQIW/jjNCKLPvo5jQhYMFX0Zzx1sisUQOp4730ZIYjRjc1re
-	 AUvOFjr7Zmp1zh5eVhLlf0yIAyTIwdzg1pA91IN89Ej8B9DRaefN1QpmQJWadyiR9lQa+
-	 jT+jf6blPUWnmgk8h7etu+U3pFpdXb4la6W7PzUXw3a7RBpMedIi/wAUt4TwvL0D7NQ==
+	t=1793820362;
+	b=mtTMCazanCyplrDAP0A2RXRJ//Faq5QIecCZUdEmk4GvwpkklKReTqGdViK9vtKwDqlC
+	 y44G0aqLHa4i0y3QC2bEHr9uT1RNCLckT6yic6SLVTHPOe+7YwA0UOUdm997DOvxaZ+9y
+	 89qPtfxVGj6RFqIa0tQlxQ8tC/hsLXlqfpUzapLnGdVoZ/CSqpreHgpcSrs7IetDXAsHW
+	 otXyd4RKcJNAhSNLpmoUH1Ck8z/GJUGREmqcBnCIuq2eY0eUrFMFUShNFosXAx5innuWx
+	 jrd39TRJf/kYNVhWNcn/bicD5Nbyv9wFl0WJe1JsCPkwDJdlnKVzNc/bEFpbJcwXRFg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793820347;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793820362;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=qeQgphPdxdiWtw36JzKqWooMSgzPZU+EeD4NlyLVhDM=;
-	b=pnQiIb7ihnw51BEXVmgnCg7z3c7T1dgHJyphzcw2/fB8CyhgcyuzGbqzXesEX+mtlY+K
-	 8PtgYv5/Vsp31FgRRE5fRC9cj8HnZes/ViD+fT5LBu4B0G22O6WaTHfja17OMnsog8CyE
-	 by8FFfzGndZxdz/WrqtfatyNbwh21Uh24E0FZZFm/PF23kD0L3zJ32gC/5A+tGOpPQHoC
-	 IWo1DVE+rJxyjh4tQsrdcEBpMkWwc2+OmgwOCOBwfYETynUaNLyTK4JjdgVf/LBxH/Pvv
-	 rnNWm6T4YKYq9zkfYeNWBKQ+J/rbCZpEadeSqBttA6TtI/DbM/FlDpYiOY/tJxLtFjg==
+	bh=RXd/jlD2fYO+IzUitqn0Yxqt//n2gto42+U+qSH6QWU=;
+	b=nrtRLeQ947vKxo4DRLbxmpC11LjUQ2gdHLHwMvhhIPG7GnajiZan80NDr6Nht/vumd8x
+	 zJfkMCyTogUtyX5Et4hKElvCej3f3nnIyOxk4pA6C87MCV9XGcIsUpK43DU4chnXbvELz
+	 nWQ4beQ2iD5RoveDBVYd/fBiVfuD83+C2kw/MG6tHdAiJZL+OLzum9+WWj7807Uixhclt
+	 NnAHxvq0fatAOotZiwTofUtUaKRaSAjMeebmVn/5ptxKWIat3xu4qDwTAGEL7RdCmhdwD
+	 N1MbW6jzWtUuziRxxmyInaK7k6qEGcFeq/skv5CehrPrkIs0+Tu+Gfbnd1b4zVvieXA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hdJNDh6O;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GLlT6wTh;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B3446071A2A;
-	Wed,  4 Nov 2026 19:25:46 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 526896072643;
+	Wed,  4 Nov 2026 19:26:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hdJNDh6O
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 752A91F00A18;
-	Wed,  4 Nov 2026 19:25:34 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GLlT6wTh
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6879B1F000C1;
+	Wed,  4 Nov 2026 19:25:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793820346;
-	bh=qeQgphPdxdiWtw36JzKqWooMSgzPZU+EeD4NlyLVhDM=;
+	s=k20260515; t=1793820361;
+	bh=RXd/jlD2fYO+IzUitqn0Yxqt//n2gto42+U+qSH6QWU=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=hdJNDh6OaAui4lay7OJSmMgInc6T7e+u7rQGOiRGT5ecgJvEKZTk+bvy31gj25xp5
-	 EMlVcNskaOB166UEuHcs9M+Arv+SuzxXQANcu/UbyUjMc0+sWDzpbdt76bmGDk4jwv
-	 dzXVAXuyKiSVZ4ea/xwRNPPO1mVA9tLUIKS+h63z+xkJopkB5HFxrzEYzXBr5K3/DV
-	 4tqBQSe+LfkRA0E4BHcJdz2FUN/7x+h1XEREGcZZ7zmxMVbUH/gH7DuyHZmLjtDcQc
-	 J1yVCFHrELmM7UJtS3ngB8pEivcyFDbp7nlx9CIfgNwUk9+JqlDkEZunCVDa84Tte0
-	 905iHrsfzrTdg==
+	b=GLlT6wThOUa/KfNlTWuqZPz2Ih/LW2NYnzaWY0pki30umCZLIl1MRVBbUTMv9zOzQ
+	 KUvA2Y+BaOT4XHvhY/vbdRPf/ofxl4BOA7G2Cny/691CVbfE9SzJNG0H7841ayyiPW
+	 q1QKtzy42RoQEe16QVfbQhu1Trtg8T0HfuKYvU0jeicYSNp2+ODBxjEymSq0qmh803
+	 DkvXTDiylR93zfsmnmYdfkoSjx/mzTH9XVIFaqgxigm0SGf8nQQ7zg0Th1in/5RVHH
+	 UvwoKm7/7JzOhxW7xTQaC2jHyFnfQfIuSRDNs0GpztaoEROUElyxSGVsFyKXWU+016
+	 ZqAQCUwnhlOrQ==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -101,9 +101,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>,
 	stable@vger.kernel.org
-Subject: [PATCH RESEND v2 39/51] powerpc/crash_dump: recover from a machine check in copy_oldmem_page()
-Date: Wed,  4 Nov 2026 20:25:32 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-39-021c84d852e0@kernel.org>
+Subject: [PATCH RESEND v2 40/51] sunrpc: make queue_wait a global wait queue again
+Date: Wed,  4 Nov 2026 20:25:47 +0100
+Message-ID: <20261104-work-procfs-bugfixes-v2-40-021c84d852e0@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -117,60 +117,125 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2421; i=brauner@kernel.org; h=from:subject:message-id; bh=VIVKq8y+KdCJwnDd/z4L2OCrr1yqDfObdGoCOSjiCdM=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bvzdev5O1pqOqInnVq7QehNleaUr+ZQXg2RwxdMDB mu8jeRsO0pZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACby8zTDH46/Ovo1n1rt927Z GbOo3ko0bH+/ELda9QrWhpqiI0sd7zD8Fbm2sNi91NhmUkJA6g2DG31172P/sXlZMGhOKDWf+aC ZDQA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4370; i=brauner@kernel.org; h=from:subject:message-id; bh=UZe+zvZ7uAQTPHkJMC5sa/e/J7N81e8hQB7K9CX6y/s=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bvx78e/9TWXFnRv2n+0+Y7Bz41ZTh6+/N7u8dJn+Z vW+4nUTvnWUsjCIcTHIiimyOLSbhMst56nYbJSpATOHlQlkCAMXpwBMpO8Lw/8UM22Z1SoBq778 fmAYFTvHNOBq8s/y7Yt0nNzEbPj0c+UZGdbduHhO1LNCJf1l6qOLebn6Ed/D5rXesxVIOr3xlVR zNxcA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-A capture kernel reads the memory of the crashed kernel, and that memory
-may well have uncorrectable errors. On powerpc a machine check in the
-kernel is only recovered from if the instruction that took it has an
-exception table entry (cf. mce_common_process_ue()). copy_oldmem_page()
-copies with copy_to_iter(). For a read() of /proc/vmcore that is a user
-copy, all of whose loads have exception table entries, so the machine
-check turns into a short copy and read_from_oldmem() returns -EFAULT.
+Since commit 552d0e17ea04 ("sunrpc: convert queue_wait from global to
+per-cache-detail waitqueue") poll() and epoll queue their waiters for a
+channel file on the queue_wait head in struct cache_detail. But the
+cache_detail can be freed while its channel file is still open and
+waited on.
 
-But since commit 4a22fd20379c ("vmcore: convert __read_vmcore to use an
-iov_iter") /proc/vmcore can be spliced too, and splice(), sendfile()
-and copy_file_range() copy into kernel pages with memcpy(), which has
-no exception table entries. A machine check there panics the capture
-kernel. The same goes for the reads of the ELF headers and notes that
-vmcore does itself, and those have been memcpy() for as long as
-copy_oldmem_page() has had its kernel buffer branch, since commit
-54c32021eb6f ("[PATCH] powerpc: Add arch-dependent copy_oldmem_page").
+The procfs channel files of a network namespace are removed when the
+namespace goes away. Removing a procfs file waits for the callers that
+are in one of its methods right now and then calls ->release on every
+file that is still open (cf. close_pdeo()). The waiters that poll() and
+epoll left on the head stay queued until their file is really closed.
+So:
 
-Copy with _copy_mc_to_iter() instead. PPC64 selects ARCH_HAS_COPY_MC
-and there it uses copy_mc_generic() for kernel and user destinations
-alike, which has the exception table entries. Everywhere else it is
-_copy_to_iter().
+  sunrpc_exit_net()
+  -> ip_map_cache_destroy()
+     -> cache_unregister_net()
+        -> remove_cache_proc_entries()
+           -> proc_remove()      // ->release, the waiters stay queued
+     -> cache_destroy_net()      // kfree(cd)
+
+and when poll() returns remove_wait_queue() writes to the freed
+cache_detail:
+
+  BUG: KASAN: slab-use-after-free in _raw_spin_lock_irqsave+0x4b/0xa0
+  Read of size 1 at addr ff110001131bb570 by task sunrpc-poll-uaf/242
+  Call Trace:
+   remove_wait_queue+0x22/0x1c0
+   poll_freewait+0xc2/0x230
+   do_sys_poll+0x9ba/0xd50
+   __x64_sys_poll+0x165/0x470
+  Freed by task 12:
+   kfree+0x267/0x620
+   sunrpc_exit_net+0x34/0x80
+   ops_undo_list+0x271/0x8d0
+   cleanup_net+0x3f3/0x860
+
+Closing an epoll instance that watches the file gets there through
+ep_unregister_pollwait() instead.
+
+The channel files of a network namespace belong to the root of its
+user namespace and cache_open() doesn't check for a capability. So an
+unprivileged user can open the channel file of a namespace of its own
+from the outside, poll it and let the namespace die.
+
+Go back to a single static wait queue that never goes away. A wakeup
+for one cache wakes the waiters of all caches again but cache_poll()
+reports per cache_detail so that's just a spurious wakeup. procfs
+should really own the wait queue of its files like kernfs does but
+that's nothing for stable.
 
 Reported-by: Chris Mason <mason@kernel.org>
-Fixes: 54c32021eb6f ("[PATCH] powerpc: Add arch-dependent copy_oldmem_page")
-Fixes: 4a22fd20379c ("vmcore: convert __read_vmcore to use an iov_iter")
+Fixes: 552d0e17ea04 ("sunrpc: convert queue_wait from global to per-cache-detail waitqueue")
+Acked-by: Chuck Lever <cel@kernel.org>
 Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- arch/powerpc/kernel/crash_dump.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ include/linux/sunrpc/cache.h |  1 -
+ net/sunrpc/cache.c           | 12 +++++++++---
+ 2 files changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/arch/powerpc/kernel/crash_dump.c b/arch/powerpc/kernel/crash_dump.c
-index 1543917bd3e1..ca7e019ae3e9 100644
---- a/arch/powerpc/kernel/crash_dump.c
-+++ b/arch/powerpc/kernel/crash_dump.c
-@@ -83,12 +83,12 @@ ssize_t copy_oldmem_page(struct iov_iter *iter, unsigned long pfn,
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 2735c332ddb7..bf4fc543e1e5 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -119,7 +119,6 @@ struct cache_detail {
+ 	struct list_head	requests;
+ 	struct list_head	readers;
+ 	spinlock_t		queue_lock;
+-	wait_queue_head_t	queue_wait;
+ 	u64			next_seqno;
  
- 	if (memblock_is_region_memory(paddr, csize)) {
- 		vaddr = __va(paddr);
--		csize = copy_to_iter(vaddr + offset, csize, iter);
-+		csize = _copy_mc_to_iter(vaddr + offset, csize, iter);
- 	} else {
- 		vaddr = ioremap_cache(paddr, PAGE_SIZE);
- 		if (!vaddr)
- 			return -ENOMEM;
--		csize = copy_to_iter(vaddr + offset, csize, iter);
-+		csize = _copy_mc_to_iter(vaddr + offset, csize, iter);
- 		iounmap(vaddr);
- 	}
+ 	atomic_t		writers;		/* how many time is /channel open */
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 1bc04109d213..1ceaea7e01b9 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -404,7 +404,6 @@ void sunrpc_init_cache_detail(struct cache_detail *cd)
+ 	INIT_LIST_HEAD(&cd->requests);
+ 	INIT_LIST_HEAD(&cd->readers);
+ 	spin_lock_init(&cd->queue_lock);
+-	init_waitqueue_head(&cd->queue_wait);
+ 	cd->next_seqno = 1;
+ 	spin_lock(&cache_list_lock);
+ 	cd->nextcheck = 0;
+@@ -965,13 +964,20 @@ out:
+ 	return ret;
+ }
  
++/*
++ * Not in struct cache_detail: poll and epoll waiters stay queued until
++ * their file is closed, but a channel file in procfs can stay open after
++ * the cache_detail of its dying network namespace has been freed.
++ */
++static DECLARE_WAIT_QUEUE_HEAD(queue_wait);
++
+ static __poll_t cache_poll(struct file *filp, poll_table *wait,
+ 			       struct cache_detail *cd)
+ {
+ 	__poll_t mask;
+ 	struct cache_reader *rp = filp->private_data;
+ 
+-	poll_wait(filp, &cd->queue_wait, wait);
++	poll_wait(filp, &queue_wait, wait);
+ 
+ 	/* alway allow write */
+ 	mask = EPOLLOUT | EPOLLWRNORM;
+@@ -1236,7 +1242,7 @@ static int cache_do_upcall(struct cache_detail *detail, struct cache_head *h)
+ 	spin_unlock(&detail->queue_lock);
+ 	if (ret != -EAGAIN && detail->cache_notify)
+ 		detail->cache_notify(detail, h);
+-	wake_up(&detail->queue_wait);
++	wake_up(&queue_wait);
+ 	if (ret == -EAGAIN) {
+ 		kfree(buf);
+ 		kfree(crq);
 
 -- 
 2.53.0
