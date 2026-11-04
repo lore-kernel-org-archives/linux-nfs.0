@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793821100;
-	b=XWw6wL11nJi/X/Bmon+zj9Cuvbz0P+rlmt/MzIRy5/Cat10KYuzyafP8u/RK8j0NUG0C
-	 GgkMA9Ksm+5TlT5WquJhYYCHvymNbk10FmWkoJBvfCfQnZ+W8T/V+Hf7GEJEgQvA2QV5Z
-	 9o0Mtw27uiIBFzIAqj8A26oLKr9ZJzwCg9OHeX3g2UH7Jap3fPaEN8OjVmxdq/nk1B2Ot
-	 LAnAW9VqF7goF+IdyssyU1QqyMo+QtoHhTgFkBDfEUO7RdWMF94R5bfdiC/sqboP/TiuU
-	 Zyqu47npqweJpmojDR8+KPQ4iI/H/Ov7CyVYe9ACohnq0gPn5ijIJlgouKeVrsf72Qw==
+	t=1793821159;
+	b=V+BceG3Zy46nVlae9Q2zBiOH+gtblTZl2WEGI9EFsNP+QxEbbcAMPi9Nv3+pu7DrhLJF
+	 b4TZDCkZHZMZ3+PkS4XDS4+GJDQl9+QAV9j/IRkYdG3SJJHAj3WqG9gtgG6pHdH7QVf+U
+	 BME9ZjkB3JCX6/AUQ3Z4OIFHIsGQ8iHa4tld/JuCeP4v4Ko4uRVCJLeumzM2R6EQeb/A6
+	 s4vfDmwqfZKuRySSCWfPATGNWi5DPit66H/QXF2Mc96FqS82E5H+FlsECLWqF8JxHptLe
+	 Hq2KqOH9z5qspUR6fldOPXvKRSWPagq0DLX6901cZ1UDhGgqlnKeI6leAbfcz2WPyAA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793821100;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793821159;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=moTp49XZfW2IxIkO6/t4/a2jJtvDF10yNUa6q6hnE3E=;
-	b=S/SR0q4qvwFFUuE/Wj7KDCO6mBFvWs3w+skPOpqMMsvoHMCwwIH/Hraq37Oh9XmuC+kL
-	 GHwdKklwKuEDIELsq0MHYuek4hDqtFGzDX0Xa5Yq9AXi8TsrwJclTKUN03h5PiA8Ngrc7
-	 H8g1dfizzvE/S8NslvdeR47f6KTXZmQQpeIKwvesXAucoq4gqg59POPsm7RkAzT9C1fPG
-	 X2aZTpRPvexwVI4gzL/obi+Yve9FAJyLPfS1p6a/cqCeWXXZrO5bSJLHxIgWzd5SE4XHt
-	 X1nj8WjSTQIfieY+5Zu7zbl9Cay41Q5LR4vlPiXGkt931THj7fza2HXsWR2uVol/fyA==
+	bh=08oqN1TE6XF/zda2aaIy/jJ7rzXSJoF5jY3Jq8EQn3I=;
+	b=tjZ9yXAOM/ic0q+ifwfFkmAQpbf9i+zl4qyw0pO5CoiJrnJ1h7XNhPIoCOlSHAOxE6KF
+	 rO8DusOEuh/9zg4CrDQoq11Nz7wSxoMVPIr8LcPPNs6hnYcznHTddcIWIJt1rWJhQie7I
+	 eia6fcY8he2O1VBBNLONFFMtOQJ41+TK7NzNh9vBJEWFG2ivlFewYb/FgX0lbr9vZr6s2
+	 rTqhUdfPg6mYn7ex4Ix+9DCyHz/eWZWUyFg8ntETEWeAgqrkkpB22U4NbhB0rSO+Dxb/b
+	 SnKVRjt85V+oVxUnBFLZj3zaJMhW/BY8ARJP3n+RA138sYt0Kz+Fk22HViUcCvrKOoQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dEYUfVLB;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=EaJvHiAM;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EDE06607F296;
-	Wed,  4 Nov 2026 19:38:19 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 64DCF6070F24;
+	Wed,  4 Nov 2026 19:39:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dEYUfVLB
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 655801F00919;
-	Wed,  4 Nov 2026 19:38:07 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=EaJvHiAM
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C8DC61F000C1;
+	Wed,  4 Nov 2026 19:39:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793821099;
-	bh=moTp49XZfW2IxIkO6/t4/a2jJtvDF10yNUa6q6hnE3E=;
+	s=k20260515; t=1793821158;
+	bh=08oqN1TE6XF/zda2aaIy/jJ7rzXSJoF5jY3Jq8EQn3I=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=dEYUfVLBA2EwlpohdyDXzTpTkRMJNpEZw07PenB3nQEME5dlyhNXhUUoG8mOjVcfv
-	 oPDIsebnx4tZSNv75ByRLEUZV0ZfOVLMGkLYWrqFTsxkA4voQYbiWI7Chp/G19hq8j
-	 DKzQFd+kG9Z/ZczXaQksi6FimDULy8ynh1v+zV87qzzRKlJkR46N6iuYi3HyauJb0/
-	 ixnpXSjhwjAMxt3EXBGirkIdHW2TupS7i0FdK5IMsq4hJkLRXlD9MCqRth25zPpRvr
-	 XFXCckKRVb1cNliO2C/VaesIJ4kkrjLqwN3PZvlgzr9t7ORqmcl1O6UD3IPPtWLnEr
-	 6EHLI6lqSf6WA==
+	b=EaJvHiAMOM44mJ4AYyNn4VsI9tCdPZkXSAVa50U3NrOibefU8zFHhtlwKggezxc6f
+	 wnraA02g8NJXIrS3SZrOw/ckLDW5FYvi7jxpCw0K00BYbn5RYhILqubA1RmFr09QV/
+	 k8Ctg/JVPDQToSJB15j4p4jKQY0itLX/D67pNlmoINjEoJlweC93iKdvLzgAObEB/x
+	 Em9ifBMZxzKnjasz1lK0O58rkh4J6xzSeJOqNNv+26qOtx9ntPbRT5XujsHFDMwoNN
+	 HTnCPQ1IABzvSMZrUrPP3tBDAg5ZtkrqubTQztGluNNIqQgLtUfcYWfLXYTWYVi5vn
+	 yQ86hX5tNJ3+g==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 10/23] sh: alignment: let procfs copy in writes
-Date: Wed,  4 Nov 2026 20:38:05 +0100
-Message-ID: <20261104-work-procfs-arch-v2-10-2aeb952c9597@kernel.org>
+Subject: [PATCH RESEND v2 14/23] x86/mtrr: let procfs copy in writes to /proc/mtrr
+Date: Wed,  4 Nov 2026 20:39:04 +0100
+Message-ID: <20261104-work-procfs-arch-v2-14-2aeb952c9597@kernel.org>
 In-Reply-To: <20261104-work-procfs-arch-v2-0-2aeb952c9597@kernel.org>
 References: <20261104-work-procfs-arch-v2-0-2aeb952c9597@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,49 +116,53 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1293; i=brauner@kernel.org; h=from:subject:message-id; bh=pcWTmpkZi08Bh4Hys88761LsQ4siFbSCZrSZZozxPfE=; b=kA0DAAoWkcYbwGV43KIByyZiAGrriPihaE1Ps2uzOVufjFEo6SEyunTx1SnW2Cza+IFLmTCnS Ih1BAAWCgAdFiEEQIc0Vx6nDHizMmkokcYbwGV43KIFAmrriPgACgkQkcYbwGV43KIBxwEA3vYT I915GRHPWFgUXtRSl6XArUTI58ux3r8jCqihWjgA/RPKZfjZEripcr0Hh6B3Oon/z2/aODYAora Qp9As5NML
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1645; i=brauner@kernel.org; h=from:subject:message-id; bh=soK7T1bbUsg7MQd+qkvxTDp2+B/10GD8og0zR7/9Z5c=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97vgbYnk5w1TAv+cR/19mB87Hxr1yYY5rHB54MaZe7 z00yU+vo5SFQYyLQVZMkcWh3SRcbjlPxWajTA2YOaxMIEMYuDgFYCKfFzEyTOHm/S1/MZHxwIv8 7dtPVu6S3Lllwdu7ZYHrrz/Q+cjbY83IsGb+7VvZO/dOnXhuMvvjlQVn3RZfi/jDsjPicIm1t/+ HZBYA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Implement ->proc_write_buf() so procfs copies in what is written to the
-alignment files before it pins the entry, and take the mode from that
-copy. Writes larger than PAGE_SIZE - 1 bytes fail with -EINVAL now.
+Implement ->proc_write_buf() so procfs copies in what is written before
+it pins the entry, and parse the command from that copy. Writes larger
+than PAGE_SIZE - 1 bytes fail with -EINVAL now.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- arch/sh/mm/alignment.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ arch/x86/kernel/cpu/mtrr/if.c | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
 
-diff --git a/arch/sh/mm/alignment.c b/arch/sh/mm/alignment.c
-index 2198c6f2ea63..d832249a8e18 100644
---- a/arch/sh/mm/alignment.c
-+++ b/arch/sh/mm/alignment.c
-@@ -133,14 +133,13 @@ static int alignment_proc_show(struct seq_file *m, void *v)
- }
- 
- static ssize_t alignment_proc_write(struct file *file,
--		const char __user *buffer, size_t count, loff_t *pos)
-+		char *buffer, size_t count, loff_t *pos)
+diff --git a/arch/x86/kernel/cpu/mtrr/if.c b/arch/x86/kernel/cpu/mtrr/if.c
+index 9510e01d5103..038e2dc38797 100644
+--- a/arch/x86/kernel/cpu/mtrr/if.c
++++ b/arch/x86/kernel/cpu/mtrr/if.c
+@@ -91,7 +91,7 @@ mtrr_file_del(unsigned long base, unsigned long size,
+  *    "base=%Lx size=%Lx type=%s" or "disable=%d"
+  */
+ static ssize_t
+-mtrr_write(struct file *file, const char __user *buf, size_t len, loff_t * ppos)
++mtrr_write(struct file *file, char *buf, size_t len, loff_t * ppos)
  {
- 	int *data = pde_data(file_inode(file));
- 	char mode;
+ 	int i, err;
+ 	unsigned long reg;
+@@ -103,9 +103,8 @@ mtrr_write(struct file *file, const char __user *buf, size_t len, loff_t * ppos)
+ 	memset(line, 0, LINE_SIZE);
  
- 	if (count > 0) {
--		if (get_user(mode, buffer))
--			return -EFAULT;
-+		mode = buffer[0];
- 		if (mode >= '0' && mode <= '5')
- 			*data = mode - '0';
- 	}
-@@ -149,7 +148,7 @@ static ssize_t alignment_proc_write(struct file *file,
+ 	len = min_t(size_t, len, LINE_SIZE - 1);
+-	length = strncpy_from_user(line, buf, len);
+-	if (length < 0)
+-		return length;
++	length = strnlen(buf, len);
++	memcpy(line, buf, length);
  
- static const struct proc_ops alignment_proc_ops = {
- 	.proc_show	= alignment_proc_show,
--	.proc_write	= alignment_proc_write,
-+	.proc_write_buf	= alignment_proc_write,
- };
- 
- /*
+ 	ptr = line + length - 1;
+ 	if (length && *ptr == '\n')
+@@ -397,7 +396,7 @@ static int mtrr_open(struct inode *inode, struct file *file)
+ static const struct proc_ops mtrr_proc_ops = {
+ 	.proc_show		= mtrr_seq_show,
+ 	.proc_open		= mtrr_open,
+-	.proc_write		= mtrr_write,
++	.proc_write_buf		= mtrr_write,
+ 	.proc_ioctl		= mtrr_ioctl,
+ #ifdef CONFIG_COMPAT
+ 	.proc_compat_ioctl	= mtrr_ioctl,
 
 -- 
 2.53.0
