@@ -1,73 +1,110 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793826421;
-	b=wwOyBYxCu+68B8FDm67RZJu2r4H4axE0SIlMKHkfzsX7nDiTjly2p2sGRWLyAqt/UxpI
-	 rXKgXG7DJKUbhQkmxF89wXo6gVxK0dqvOvFqRAFsWoD0QtVUMxc1DEBGEcP1O06HZAZ4y
-	 l/x4mQ8jRxct8EWjDQPpFL053dD/kl7s6okkeiUJ8sb5OKVnfK5SOnRG4ftZCkM03N3no
-	 F21cc4Vc1115xPGY4UW7HBhOagZwamBeiZlf3SM0WSCr9r1zlmD71XVs1CFXVor5nRPcv
-	 jVYmpBByPjZA3r7oT+K2E1A/7BE8h3t6ESN3ho/EbcyS+rtR7K45MTm4m95PIN5jcXA==
+	t=1793826818;
+	b=iqnGXupxUviPY33zD1FStVk1VbklsJlNPmE2dcB5ghAM/EayDDG484DcqZ145NmQUzc5
+	 SvKHFiI/usLpwrK3ASDLRNgOlB5Ko6IbrvKGWJzjV26Bx4IEMrRNLwNavinG1q3IPCFmT
+	 hPxdQGv0MiQihLfOTbXL+P+HFXfdEhz7rkytigDiWh4ZEGQLHoVpvteMZKdgVLbkO5xvQ
+	 P5KloNFQfebP8yaVQMezRc0kML+Alylswhg1URIKfGXvYfUZEhJoo59PkLRuD/ynO9WRu
+	 FryAhV8Ndu489sXcgEJfrOi+fZUcxlFTf1dVshtTWmFIQnLFmCVq7E5tq3JK/lxPEBw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793826421;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=O8KeNsk7VgJFfi8zo53yBLg1pu0oo/p33FgXnzr6Qcg=;
-	b=B5OsTy+aBYzPw8wkT3qUW6ZIQyVC2SBz//sPYJUMcBQ4wBqf7JxP/Ly6fHa33zCQYmdV
-	 z6nJvsQQk4DE4B4CD/FWjJ0kmvVv2VT/S5Q7/Ond2B2gsKhFykGNuF+ND8UXzojzcRYtR
-	 QB1PQ2XMTbaQRNQP77zFBNXjRrJoDjVm6MzNxMJApFZcpCoetRV15cyNt6rr7AEJKqkHS
-	 erFFv2Tv+wRSDZk92SpFMuUXWJPpVCeW5zyUXej+OP13FKLNTuOoZCBNCauWytjkIAwS+
-	 MxaoV34DI603ldSzkfle1PGkUSZjl9nh9RRguE4q0BougOOrwFVMInMP7EPnq2Z6GAQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793826818;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
+	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
+	bh=jcn7jVvcEygiBPhKNySOIoE9F539N91xJ4TgqDQUCP0=;
+	b=xce7UO9Ek68T2WDZy46lxQ9ZbL/7rTxo9NcksIk0g2NIiPdKgfb4kPS8aG/r+M4iCs+A
+	 x0bXNcoqWn6cxxtBQPBlXDFOIFdlH1AnmLj9047bXZvOIfx5+A3xKkGhKkhogD9jUwiwi
+	 g9fKVtx0bFI4CXN8xBt3KwB5/jifga0mVw77MkD36djqDo91rH+4yCwV5afE2dx+63od9
+	 Y4J4HBEkUFCgwpZo1EqHoruz3VXAmXVsAxfLvA1oRlIdHatl86FDD8vNWfSZuyVdn0j4k
+	 jhCJYe0eLpjjM4QAcMC9v9A4m8bmPdmumA5DzPimuFHzjrdJHEJf21D3KTEnsUmPNBQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cFS8GeKV;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=V7uflGoo;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43535606E822
-	for <linux-nfs@vger.kernel.org>; Wed,  4 Nov 2026 21:07:01 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 963DD6070300;
+	Wed,  4 Nov 2026 21:13:37 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cFS8GeKV
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9209D1F00A02;
-	Wed,  4 Nov 2026 21:07:00 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=V7uflGoo
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 890731F000C1;
+	Wed,  4 Nov 2026 21:13:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793826420;
-	bh=O8KeNsk7VgJFfi8zo53yBLg1pu0oo/p33FgXnzr6Qcg=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=cFS8GeKVfd3yMT2AyA4aIyjt8ohaFdVtJlc6N7oczY/TndxLQPA32qd/FgSBsARUQ
-	 WL7+v9444rQzyLWxHU/g6L1ag02hF0ootyMC+LdAV46bEZUgIGHT8JnjEBxbBW62Yh
-	 shbsJVYbnTO2aRs0iGxJU6LMPR33yzaUL8NrvLt+vwmuV7ERcHtsFjdffiaN9OSJMk
-	 qlZD6HzqUGnshFXI7AJwEufjwKiZrib2TUG/ejK4cnFifDgQZnCSj9Y3o0QB5wQP2F
-	 nid66TO1A20YxHtpU4Me2ulccrP3MRVtNFtbXQVuxftrQ1gRoG2VlP/Hdr8PADm9LA
-	 p6tPCteVL7PEQ==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id C95ECF40067;
-	Wed,  4 Nov 2026 16:06:59 -0500 (EST)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Wed, 04 Nov 2026 16:06:59 -0500
-X-ME-Sender: <xms:c57ranc-eXy0qZA3Izz6tzGBWD74Y0LDCTUyIwuwUORxaZhaar07Bw>
-    <xme:c57raoBWAZGLVYZwz4km8y4F7mC9kKpSqIIooqwPleAyk31u3kn--LbngIcGsWq5D
-    YlpuBfhzhBqdsihqjdWWi4q9RMVF5oZ95wt7lFh_2WLUTR78qApNURA>
-X-ME-Proxy-Cause: dmFkZTESF0Phaa4oLLTTbol4xghPJHKqjaWtNLUZJD7XevwIpjhIgVnGkmbDO1LrYtt/ks
-    swepjUhAi2j0+1TNzdeuOE1t+NwGYTbjtmvyuW8bk/Hv4KQbvI6l5w0OGqQRoRpwxrT19z
-    CebSFfDOnxW02geUDHrhJSBgr8BJeD7e6Aav3DSgME//ElW3N9daqdBBB3khQxNJeC4t2r
-    12L5b5jyPevQnijYTRXVT0EMKke+EayYoUzH1sGMz3QgUCeP2vSx0HVJ4L22jdBZc/CPbV
-    PWgfCjGimZibfYjKbMXNbYOpl4Bt9qQjh8oUjnXlgVg4SqSBgZN/zqAjtJI7t5FO1AwMM9
-    J+1v/lPEOsK7NWxXgtNJBea8HRuPt+HEzzp/3C90b4OIgYt1ag6tTZAsvYEEj4Zjvz+NLC
-    9UxssI0qw5c5blB583tyN1ndQ2Dtb5i0WLjw8UppgZeOJzE4ziqzMNyyLZqgL3ZHpzXXz5
-    5DiJh5qXhw0c8pSxOLORbJr78iIylaBNrYmXvLWQouQzHu6eYdO47yZCfvRdkjGaXtStLJ
-    ec8WWfCjJwoUQdoHcYtjkrolPVSXFgm7DDkTCjsKKeq25qsVUY6lvSesb+z+ha7R7vLsbm
-    ULgVgBkc/HgDL52wYOb0XSWf3IozRqpJQdVQw9EoJkR0OkRHpG2R4mdFAPnw
-X-ME-Proxy: <xmx:c57rakMqRJ2mqk88Uba9wR420alWn9PD0avkuCDUE_60JBqCnVdCcA>
-    <xmx:c57ratgQdnbEgws9PeHVIZDwlZ-mgSy4hpzrQ6fvWxhTYUuFOICcGQ>
-    <xmx:c57rau4QpeHJJlciMpaV-EBOY-w7CS0Jbf65ZhRiedeeR-wJENAEFg>
-    <xmx:c57ras2-cm1XI_RyXutdb4D_c91oeWxKRh2Yd4PSW11QAGU55oPl4Q>
-    <xmx:c57rahubw90KPwURoffZ8jhYbr-NZ2cXfCCgz4NxEAbswHydxmGXj4B8>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id ADF21782738; Wed,  4 Nov 2026 16:06:59 -0500 (EST)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1793826817;
+	bh=jcn7jVvcEygiBPhKNySOIoE9F539N91xJ4TgqDQUCP0=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=V7uflGoo2J6W0Pkam2p2NQ2ygDWILS85YrEGrtDhRX9LSpjax7FTdN9yNxg/1nr/F
+	 V+6mFIzh3/JJOAXY6DVlJDG4EpV1IqKbiDMaZqe2+mP/VD4uYvDHSHZdC+YPnvDk4p
+	 B+fx/mBspdALJuO5S6++QQQg+yaKZfyhFe96p7DkhDOmjrSDCUkzL7D2l6jIRx9hog
+	 t02UJbdl2o8LcfstRp/uZbtHAIBJlVxjfK6tVrDPho366mZ6VCIHILqfMZVkkl7EFn
+	 VcPqHyjXoZJ1/HnO4R2TW6BDouO7Vr2s8cHixo92YGxXCqi5rLrqQLQrblFCpmhTUC
+	 1HY2L3LLxnrag==
+From: Christian Brauner <brauner@kernel.org>
+To: linux-fsdevel@vger.kernel.org
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	Jann Horn <jannh@google.com>,
+	Josef Bacik <josef@toxicpanda.com>,
+	Chris Mason <mason@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Eric Dumazet <edumazet@kernel.org>,
+	Thomas Gleixner <tglx@kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Jonathan Corbet <corbet@lwn.net>,
+	Christoph Hellwig <hch@lst.de>,
+	Greg Kroah-Hartman <gregkh@suse.de>,
+	Joel Granados <joel.granados@kernel.org>,
+	Kees Cook <kees@kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	Jan Kara <jack@suse.com>,
+	linux-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	linux-acpi@vger.kernel.org,
+	linux-kselftest@vger.kernel.org,
+	linux-s390@vger.kernel.org,
+	linux-scsi@vger.kernel.org,
+	linux-um@lists.infradead.org,
+	linux-wireless@vger.kernel.org,
+	linuxppc-dev@lists.ozlabs.org,
+	netdev@vger.kernel.org,
+	ntfs3@lists.linux.dev,
+	platform-driver-x86@vger.kernel.org,
+	coreteam@netfilter.org,
+	kexec@lists.infradead.org,
+	linux-pci@vger.kernel.org,
+	linux-sound@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	dri-devel@lists.freedesktop.org,
+	ibm-acpi-devel@lists.sourceforge.net,
+	jfs-discussion@lists.sourceforge.net,
+	linux-alpha@vger.kernel.org,
+	linux-arm-kernel@lists.infradead.org,
+	linux-cifs@vger.kernel.org,
+	linux-fbdev@vger.kernel.org,
+	linux-hwmon@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-sh@vger.kernel.org,
+	linux-usb@vger.kernel.org,
+	samba-technical@lists.samba.org,
+	sparclinux@vger.kernel.org,
+	linux-m68k@lists.linux-m68k.org,
+	linux-doc@vger.kernel.org,
+	linux-serial@vger.kernel.org,
+	linux-atm-general@lists.sourceforge.net,
+	Takashi Iwai <tiwai@suse.de>,
+	linux-input@vger.kernel.org,
+	linux-raid@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-modules@vger.kernel.org,
+	linux-debuggers@vger.kernel.org,
+	"Christian Brauner (Amutable)" <brauner@kernel.org>,
+	Chuck Lever <cel@kernel.org>
+Subject: [PATCH RESEND v2 09/13] SUNRPC: drop the ioctl of the procfs channel files
+Date: Wed,  4 Nov 2026 22:13:23 +0100
+Message-ID: <20261104-work-procfs-net-v2-9-221e2437fed1@kernel.org>
+In-Reply-To: <20261104-work-procfs-net-v2-0-221e2437fed1@kernel.org>
+References: <20261104-work-procfs-net-v2-0-221e2437fed1@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,54 +114,55 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: ASp0-I3zjTPw
-Date: Wed, 04 Nov 2026 16:06:39 -0500
-From: "Chuck Lever" <cel@kernel.org>
-To: "Adolph Zeng" <coderzeng@gmail.com>
-Cc: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Alexander Viro" <viro@zeniv.linux.org.uk>,
- linux-nfs@vger.kernel.org
-Message-Id: <40574671-0299-4c86-ada2-ab1f16106494@app.fastmail.com>
-In-Reply-To: <20261104203213.1214721-1-coderzeng@gmail.com>
-References: <20261103-verofess-2-v1-0-9e6568221beb@kernel.org>
- <20261104203213.1214721-1-coderzeng@gmail.com>
-Subject: Re: [PATCH 0/5] NFSD: Apply export security when a compound crosses exports
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+X-Mailer: b4 0.17-dev
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1562; i=brauner@kernel.org; h=from:subject:message-id; bh=I+ev37oI2qOnQB50E4hs4C0vKquyHn0mn+uzhhuE9es=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97tO7MzO6bl7rnYiJS+98LnRI2rB8SW+2zhcm6VmdL mnzZE2COkpZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACaimsHIsCL/pkeQ2tMV86Sm GCnwci6xzri2a8OqYh1BgwP67+/djmP4Z6MoeGKi/4+z3/fFeyZzP/p6Min5j4995fEbyvr+l0+ ZMwEA
+X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
+Content-Transfer-Encoding: 8bit
 
+do_vfs_ioctl() answers FIONREAD for regular files with i_size - f_pos
+before it gets to the file's ->unlocked_ioctl(). The channel files are
+regular files, so cache_ioctl_procfs() has never seen FIONREAD and only
+ever failed other commands with -EINVAL. Drop it. Other commands fail
+with -ENOTTY now.
 
+The rpc_pipefs channel files are regular files as well.
 
-On Wed, Nov 4, 2026, at 3:32 PM, VeroFess wrote:
-> Chuck,
->
-> I tested the five patches on an x86-64 KASAN guest. They applied in
-> order, the changed NFSD objects built with W=1, and the full bzImage
-> built with Btrfs, TLS, and NFSv4.2 inter-server COPY enabled.
-> The wire tests covered NFSv4.0, 4.1, and 4.2 where applicable.
->
-> After a reserved-port OPEN, high-port AUTH_SYS compounds that used
-> LOOKUP before READ, COPY, or CLONE stopped at LOOKUP with WRONGSEC.
-> The destination was unchanged. Direct PUTFH returned WRONGSEC, while
-> low-port COPY and CLONE succeeded. SECINFO and SECINFO_NO_NAME still
-> succeeded on the high port. READDIR with rdattr_error omitted the
-> protected filehandle.
->
-> After switching the source export to root_squash, LOOKUP; READ,
-> RESTOREFH; READ, and saved-source COPY/CLONE returned ACCESS with the
-> old OPEN stateid. The all_squash UID/GID cases and same-export
-> COPY/CLONE passed with the expected data.
->
-> With krb5 or krb5i on a krb5p export, OPEN by filehandle returned
-> WRONGSEC at PUTFH; OPEN by name returned it at OPEN. krb5p worked from
-> a high port and over TLS. NFSv3 LOOKUP returned PERM from a high port
-> and succeeded from a reserved port. I saw no KASAN report or oops in
-> the guest log.
->
-> Tested-by: VeroFess <coderzeng@gmail.com>
+Acked-by: Chuck Lever <cel@kernel.org>
+Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+---
+ net/sunrpc/cache.c | 10 ----------
+ 1 file changed, 10 deletions(-)
 
-Thank you! I've tagged all 5 with your Tested-by.
-
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 81a3f0068f36..d242b6f33cbc 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -1596,15 +1596,6 @@ static __poll_t cache_poll_procfs(struct file *filp, poll_table *wait)
+ 	return cache_poll(filp, wait, cd);
+ }
+ 
+-static long cache_ioctl_procfs(struct file *filp,
+-			       unsigned int cmd, unsigned long arg)
+-{
+-	struct inode *inode = file_inode(filp);
+-	struct cache_detail *cd = pde_data(inode);
+-
+-	return cache_ioctl(inode, filp, cmd, arg, cd);
+-}
+-
+ static int cache_open_procfs(struct inode *inode, struct file *filp)
+ {
+ 	struct cache_detail *cd = pde_data(inode);
+@@ -1624,7 +1615,6 @@ static const struct proc_ops cache_channel_proc_ops = {
+ 	.proc_write_buf	= cache_write_procfs,
+ 	.proc_write_size = CACHE_DOWNCALL_MAX,
+ 	.proc_poll	= cache_poll_procfs,
+-	.proc_ioctl	= cache_ioctl_procfs, /* for FIONREAD */
+ 	.proc_open	= cache_open_procfs,
+ 	.proc_release	= cache_release_procfs,
+ };
 
 -- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+2.53.0
+
