@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793821070;
-	b=kdEt0z929YAzul0V5pvhIEoVOeXPYhBjSGRKacRH3h21dQvq6JZSXs3MfBXrI/HLrJtb
-	 zFUrIFNSXRRmeJSe40oD5E4jXUM5o3gxtf2P/4sMOaRW/SBcLgkki8E5uVZlBjp1dS10L
-	 Sgun8e4xaoU6q6BrQbYoJa2lahch4q5sjo2HR2vLbynr0vGi2kseMhiHw3gPp9OlIpcAT
-	 otpxxXQGD6PR3GdZ3oSwzrTkFC/xGIAKqePSZPcQHk2I5jNQ6gpgBj3exBLBJ+sJbBzfg
-	 C1C0SqNmaCk9r94vq9snxiO0xQl8R7UTsgNfi+3Mrcc6NICBTps/CexeKr2EwWCo7Iw==
+	t=1793821085;
+	b=VkYEn9Pp6DqoqGMSVqyH4RPF+DX5AI06TnhlmPjEB73Y4NaTekd5lpJl20esrdLm8pyj
+	 RxIFE5xPUmNWjq6aO8/1Hrtpu5UMWprDTkyUq0l1GbO/81gTn7Z8RGEx6V82POsDWc1GH
+	 iNpgpVrRUJ299+Vo3Cl2BJXBdZkuyCMxHA+kgzy8Yic9gqdUVC1vkAS002eCKriqVpgP3
+	 GJKNTpzhKHgrIMq3nzCvMejoFVy0XomnUwKPWgZ1vYy4gFYNNLeOQnNFwBGtFCfTk/oXP
+	 hG+q3XCcaPd7u8W1AupVC8Rfx3q+AT4ZWxF13Vvxy/50eBFlWL9KDT+ODm1kAQedGNg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793821070;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793821085;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=JUeWoKePwtQbwIaIqH9pLOo2XgGktDed7c18k0485G4=;
-	b=Ejn8tvh32mxzbj+1YwlGk+ruhTHJgYGrE+RrNVzf5tVjGg+a4ZGm9+G33UmAvuajod1d
-	 L/zzGyz6qQhEJB1iTJbdG9N2O2nNNyo4B6kiByo+VhH6L8Aqg6sJW16aS48DSSuOr0kpo
-	 I2jqPUU/LQzE+RahYfvMJKD0Lpoz01upVJnoCcyj5pVjwEcNRBIkBr7fQZG37msyl4biW
-	 xOhc4D4llh9XKW8PccbY9fOjyvRkKCvf8pWjRXj1saINp0PrkBbnHlZtRSzoTAxndiDtC
-	 b65ysCKFnkSKBoxm7NQYOoDqSNjte0QMLn9Lc1d5DDWlvxVk4vxrYtiTZ6HGV2KrrbA==
+	bh=K/nPdp0KTrkO/JWfX0DeaffmMq6r1stKUZ+oHzzOxP0=;
+	b=3hHPyPBVw3qi03YyN6wHq6ZMeShAJkUbWJJfD2pOjDCvZfy7KXOqy+F9wy9WELrEd0CE
+	 EpMqS7c3ro9MWZl5aT88Sv1aWsyOKAvhSg6fd7vgGgSqs5LFvHsHtrCz1Z+3vbmvrFqgS
+	 2OtNGKcRgWbzP5kOQ1249oK3aSq5WntOC5IDdce/rPwdc3OqYXUhozc48SOM++AXxPF3B
+	 liX2QeUA3xTMwLqZiQ2o1ENtdm8AjVq1X316JJlLmVhWQIW84XtLpuO2ZLVTvTZdmyK9+
+	 HVAQzMtH3KxJgaKiGCA3IO1aFLFG8qf0b63YLQz13LSSxoB7Y+28JbOZ9jg5jYwLU8Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=IGC4y00A;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oLDqIOTw;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 664DC6070F1A;
-	Wed,  4 Nov 2026 19:37:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 10161607F96C;
+	Wed,  4 Nov 2026 19:38:04 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=IGC4y00A
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 099291F00A02;
-	Wed,  4 Nov 2026 19:37:37 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oLDqIOTw
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8D9BF1F00A1B;
+	Wed,  4 Nov 2026 19:37:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793821069;
-	bh=JUeWoKePwtQbwIaIqH9pLOo2XgGktDed7c18k0485G4=;
+	s=k20260515; t=1793821084;
+	bh=K/nPdp0KTrkO/JWfX0DeaffmMq6r1stKUZ+oHzzOxP0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=IGC4y00AETc18leOOoiGNlJjI14uptUXwL1lAk39h5bFLDzozGmXP95FjcQk1ai3d
-	 qHvAP6G/y59z8vruoDW5Y1VeWIGTKlWb3dS3NUkuiWuDTaM3k3qDR2DhBmAlAVa/1+
-	 jkEC8ZsTOxq9kedteP9jaXc0YU1IKsX6hdj0bx6p0gNUMMcxE+pQQ/pK252kFB4GIS
-	 hTq5UB6PWymKT/rN8RRkkmh+m3ZSylCXxhaihAqxEz2EOYZbBvhmLGNZuz6vL29QGa
-	 VhgHDRMX/6Xwut4w4xO7r/ecc/JCMProqA/4Q644WrS17ADmUJzAwlPQ6KlQcm2EPd
-	 PESuNHlL70alw==
+	b=oLDqIOTwTl44qDXUKo0I6FzsXq0+ba0WjB4YCiCZU9JLqh15F/mdEZNy1ACYE+I0B
+	 qPq4Ssz+iK/J+eJu6nff/NkdfEp6rYdZwfCVKcczyKz5fHXjpvVlG/Qm/dEw9ZL0xG
+	 8PXHN37KmNVPmN5T23ck2GcUncr5vJ52nd5OFcXFUE5Goto+9up/68B7m4SIC6mV83
+	 dUnBRd6UMVtOXc059f+OnYX0WXgqO/Uzy4tsZ8wr2OaUSvl2vGEki/eN5mj7meJO8a
+	 M72qqDynVfbDFqAmqr+C62uIaJhArxnrmC/9rNVTKL6uBLhc9SJ6BYF+yeJf+SxLKs
+	 ki60VRKb9D3jg==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 08/23] powerpc/pseries: let procfs copy in writes
-Date: Wed,  4 Nov 2026 20:37:35 +0100
-Message-ID: <20261104-work-procfs-arch-v2-8-2aeb952c9597@kernel.org>
+Subject: [PATCH RESEND v2 09/23] powerpc/procfs: let procfs copy out reads of /proc/powerpc/systemcfg
+Date: Wed,  4 Nov 2026 20:37:50 +0100
+Message-ID: <20261104-work-procfs-arch-v2-9-2aeb952c9597@kernel.org>
 In-Reply-To: <20261104-work-procfs-arch-v2-0-2aeb952c9597@kernel.org>
 References: <20261104-work-procfs-arch-v2-0-2aeb952c9597@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,170 +116,42 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5534; i=brauner@kernel.org; h=from:subject:message-id; bh=R72k2XaBDNkNWoVo7wOLN896i1gM+zYb0aj1A9vFVUU=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97vgWxbNt8wYWhvlH5RZK+OjxWGdnm7duUb1soNTor 3Rw5+3ijlIWBjEuBlkxRRaHdpNwueU8FZuNMjVg5rAygQxh4OIUgInkrmVk+MQl1Nv2KdDqueyX 08pFh+YVduR7t06b45nf4Rck/P9LDsN/n+PLK+08DBJ4p96cFfH166t5EqlFHC8yROYun/7XY7Y 9JwA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1293; i=brauner@kernel.org; h=from:subject:message-id; bh=BKyq5EW+jipwXgvVj6hm7sFkYOn+uIZEAZe7arc6MQo=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97vjOI7W5OU2Ecf0JRpsD2T2N0rxx3fUCk8WEDn860 LbzeX1YRykLgxgXg6yYIotDu0m43HKeis1GmRowc1iZQIYwcHEKwERWv2T4Z/np554211z5HPtN Ea8e5coKrXxtW8d48eZXNxb/m5d+8jD8T260OtJsUDiLw3pdFscpPeXZpb3vZ9Y1ll1xmP9kwnc DJgA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Implement ->proc_write_buf() for lparcfg, ofdt and the vcpudispatch
-files so procfs copies in what is written before it pins the entry, and
-parse what was written from that copy. ofdt takes as much as
-memdup_user_nul() could copy before since device tree updates can be
-large.
+Implement ->proc_read_buf() so procfs copies what is read to userspace
+after it unpinned the entry.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- arch/powerpc/platforms/pseries/lpar.c     | 14 ++++++--------
- arch/powerpc/platforms/pseries/lparcfg.c  |  7 +++----
- arch/powerpc/platforms/pseries/reconfig.c | 22 ++++++++--------------
- 3 files changed, 17 insertions(+), 26 deletions(-)
+ arch/powerpc/kernel/proc_powerpc.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/arch/powerpc/platforms/pseries/lpar.c b/arch/powerpc/platforms/pseries/lpar.c
-index 48fe0be71a89..dfd027cc9047 100644
---- a/arch/powerpc/platforms/pseries/lpar.c
-+++ b/arch/powerpc/platforms/pseries/lpar.c
-@@ -498,7 +498,7 @@ static void dtl_worker_disable(unsigned long *time_limit)
- 	up_write(&dtl_access_lock);
+diff --git a/arch/powerpc/kernel/proc_powerpc.c b/arch/powerpc/kernel/proc_powerpc.c
+index d083b4517065..46bc914d74b9 100644
+--- a/arch/powerpc/kernel/proc_powerpc.c
++++ b/arch/powerpc/kernel/proc_powerpc.c
+@@ -24,10 +24,10 @@ static loff_t page_map_seek(struct file *file, loff_t off, int whence)
+ 	return fixed_size_llseek(file, off, whence, PAGE_SIZE);
  }
  
--static ssize_t vcpudispatch_stats_write(struct file *file, const char __user *p,
-+static ssize_t vcpudispatch_stats_write(struct file *file, char *p,
- 		size_t count, loff_t *ppos)
+-static ssize_t page_map_read( struct file *file, char __user *buf, size_t nbytes,
++static ssize_t page_map_read( struct file *file, char *buf, size_t nbytes,
+ 			      loff_t *ppos)
  {
- 	unsigned long time_limit = jiffies + HZ;
-@@ -509,8 +509,7 @@ static ssize_t vcpudispatch_stats_write(struct file *file, const char __user *p,
- 	if (count > 15)
- 		return -EINVAL;
- 
--	if (copy_from_user(buf, p, count))
--		return -EFAULT;
-+	memcpy(buf, p, count);
- 
- 	buf[count] = 0;
- 	rc = kstrtoint(buf, 0, &cmd);
-@@ -586,11 +585,11 @@ static int vcpudispatch_stats_display(struct seq_file *p, void *v)
- 
- static const struct proc_ops vcpudispatch_stats_proc_ops = {
- 	.proc_show	= vcpudispatch_stats_display,
--	.proc_write	= vcpudispatch_stats_write,
-+	.proc_write_buf	= vcpudispatch_stats_write,
- };
- 
- static ssize_t vcpudispatch_stats_freq_write(struct file *file,
--		const char __user *p, size_t count, loff_t *ppos)
-+		char *p, size_t count, loff_t *ppos)
- {
- 	int rc, freq;
- 	char buf[16];
-@@ -598,8 +597,7 @@ static ssize_t vcpudispatch_stats_freq_write(struct file *file,
- 	if (count > 15)
- 		return -EINVAL;
- 
--	if (copy_from_user(buf, p, count))
--		return -EFAULT;
-+	memcpy(buf, p, count);
- 
- 	buf[count] = 0;
- 	rc = kstrtoint(buf, 0, &freq);
-@@ -622,7 +620,7 @@ static int vcpudispatch_stats_freq_display(struct seq_file *p, void *v)
- 
- static const struct proc_ops vcpudispatch_stats_freq_proc_ops = {
- 	.proc_show	= vcpudispatch_stats_freq_display,
--	.proc_write	= vcpudispatch_stats_freq_write,
-+	.proc_write_buf	= vcpudispatch_stats_freq_write,
- };
- 
- static int __init vcpudispatch_stats_procfs_init(void)
-diff --git a/arch/powerpc/platforms/pseries/lparcfg.c b/arch/powerpc/platforms/pseries/lparcfg.c
-index cb3d96efb225..bda3cac1552b 100644
---- a/arch/powerpc/platforms/pseries/lparcfg.c
-+++ b/arch/powerpc/platforms/pseries/lparcfg.c
-@@ -687,7 +687,7 @@ static ssize_t update_mpp(u64 *entitlement, u8 *weight)
-  * This function should be invoked only on systems with
-  * FW_FEATURE_SPLPAR.
-  */
--static ssize_t lparcfg_write(struct file *file, const char __user * buf,
-+static ssize_t lparcfg_write(struct file *file, char *buf,
- 			     size_t count, loff_t * off)
- {
- 	char kbuf[64];
-@@ -702,8 +702,7 @@ static ssize_t lparcfg_write(struct file *file, const char __user * buf,
- 	if (count == 0 || count >= sizeof(kbuf))
- 		return -EINVAL;
- 
--	if (copy_from_user(kbuf, buf, count))
--		return -EFAULT;
-+	memcpy(kbuf, buf, count);
- 	kbuf[count] = '\0';
- 	tmp = strchr(kbuf, '=');
- 	if (!tmp)
-@@ -798,7 +797,7 @@ static int lparcfg_data(struct seq_file *m, void *v)
+-	return simple_read_from_buffer(buf, nbytes, ppos,
++	return memory_read_from_buffer(buf, nbytes, ppos,
+ 			pde_data(file_inode(file)), PAGE_SIZE);
  }
  
- static const struct proc_ops lparcfg_proc_ops = {
--	.proc_write	= lparcfg_write,
-+	.proc_write_buf	= lparcfg_write,
- 	.proc_show	= lparcfg_data,
- };
+@@ -43,7 +43,7 @@ static int page_map_mmap( struct file *file, struct vm_area_struct *vma )
  
-diff --git a/arch/powerpc/platforms/pseries/reconfig.c b/arch/powerpc/platforms/pseries/reconfig.c
-index b543afbc1efb..d74a0710ec74 100644
---- a/arch/powerpc/platforms/pseries/reconfig.c
-+++ b/arch/powerpc/platforms/pseries/reconfig.c
-@@ -349,7 +349,7 @@ static int do_update_property(char *buf, size_t bufsize)
-  * ofdt_write - perform operations on the Open Firmware device tree
-  *
-  * @file: not used
-- * @buf: command and arguments
-+ * @kbuf: command and arguments
-  * @count: size of the command buffer
-  * @off: not used
-  *
-@@ -357,26 +357,19 @@ static int do_update_property(char *buf, size_t bufsize)
-  * whole nodes along with their properties.  Operations on individual
-  * properties are not implemented (yet).
-  */
--static ssize_t ofdt_write(struct file *file, const char __user *buf, size_t count,
-+static ssize_t ofdt_write(struct file *file, char *kbuf, size_t count,
- 			  loff_t *off)
- {
- 	int rv;
--	char *kbuf;
- 	char *tmp;
- 
- 	rv = security_locked_down(LOCKDOWN_DEVICE_TREE);
- 	if (rv)
- 		return rv;
- 
--	kbuf = memdup_user_nul(buf, count);
--	if (IS_ERR(kbuf))
--		return PTR_ERR(kbuf);
--
- 	tmp = strchr(kbuf, ' ');
--	if (!tmp) {
--		rv = -EINVAL;
--		goto out;
--	}
-+	if (!tmp)
-+		return -EINVAL;
- 	*tmp = '\0';
- 	tmp++;
- 
-@@ -392,13 +385,14 @@ static ssize_t ofdt_write(struct file *file, const char __user *buf, size_t coun
- 		rv = do_update_property(tmp, count - (tmp - kbuf));
- 	else
- 		rv = -EINVAL;
--out:
--	kfree(kbuf);
-+
- 	return rv ? rv : count;
- }
- 
- static const struct proc_ops ofdt_proc_ops = {
--	.proc_write	= ofdt_write,
-+	.proc_write_buf	= ofdt_write,
-+	/* what memdup_user_nul() could copy in */
-+	.proc_write_size = KMALLOC_MAX_SIZE - 1,
- 	.proc_lseek	= noop_llseek,
+ static const struct proc_ops page_map_proc_ops = {
+ 	.proc_lseek	= page_map_seek,
+-	.proc_read	= page_map_read,
++	.proc_read_buf	= page_map_read,
+ 	.proc_mmap	= page_map_mmap,
  };
  
 
