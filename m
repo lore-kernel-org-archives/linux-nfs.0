@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793820525;
-	b=DwtsAXtnTTWbqxFe/HyrJNPPvGdZsaNMXpB2xvZ9K9gSPQYxGsTE5/PNOudDLRZJ7Ei7
-	 wTYUcZkyPfn411IuYM+IrEHZn2bbjBq8vgWaUKYyq5jknEE84sMShhdJPncAw5UoPJlWV
-	 5KCEkYIOkyAbcqzu9k10QhXMVFAO18L7Y+oOfgEYeYTsPl66cUWqn4PAEguuXX1kVwNwC
-	 rAT/W4mqGafAeG3SBXMf2wWg5Hpiq/S9pbM58IILPdhJLnOvb+7jgkKki3QcIl3aJpZmJ
-	 rtOS/5RDBLL/jkVrm3UScV+jqb0Hj+2y/YUuAO+kwdgYNMbaWm2vWSTftZgQIiXqJ7Q==
+	t=1793820573;
+	b=JN9o+TMBgOFS+Nb/8n9PCPv3+gFmJ9Lfz8ZSn4uonYWY5qzXE1SMM16RQ32jyHPi0sBo
+	 oawEu+ZoYYI4rFnRz39UPDF0pkomB97jP95XqepdVIanBU6x6PqfbnpqgCJIlH9Z7oQad
+	 +ewL1ctJpd8dUOlT0uLLjuP0pU8HKP3TDS/RlfFtn2cG1C4Txs6LnsRq4REBRu1vCMhjn
+	 V+QaP58781EzvK6+2T2tPTmnuhrgd/b9vMBq3OKJiAYg9cs+o1Xo6kAXEgGun0TtSpCtY
+	 4QqAN/wkPcMAg53H9nKuYce5gB+VUXjYFuOa2wKgf3IyNbXaxskNGpIQHmLiE8dCRtQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793820525;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793820573;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
-	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
+	 In-Reply-To:References:MIME-Version:Content-Type:X-Change-ID:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=KE0FjFLg86Wqg2LOdvIKebjks/LaCpUOq5x1mMvJN8E=;
-	b=40xIcFy5tLLNmYD0TxRpjO+ol9Fk5LWfIqWSV5+uBlWCVC+NPnald0wK/x0mu54N947+
-	 UBwoI4O1p5ETIj3bRqi5EDMFFOc76eoNG6+aUO/8b+1usa5lEnli+ae0f8s3zN8Vcj/Ec
-	 lcS5HXQez9lbwRqK6ahb9K4bbv2pEwhC58sTq8uwo/RbwVUQP3AF0Ul8QuML/ucDKaM24
-	 fpr0ZTyNsprDPige5hDKeRTtOJHhmArgSUT7xYqVXHpJVn0pcaofsnICuCemXELHsN3FB
-	 Z7eRZuZfqUjHPYRu0a9QKXrudiPZ3RMr1FOcR4ZDniDkUs7mIeOb0HVZ2i2kao0/plA==
+	bh=BSR8KrA5WsWDAsnf7a3SEYyO4TT3rIWRkkpblhU3vC4=;
+	b=AsLw/32uBNouFGatfKxPA6axSqL08Xb4gIzLnFDiOB7uFK7d6zG3J9EXKOYP+lKsimOy
+	 5qvj0QfKPa9rLHagLVfs9s954qpCSwxeqFlOVwPwvt2svSxo2xKvB7Souv+djEzw2s6lg
+	 RJAcanRPKfgmCP8uxfiwYI/5C63KIOdXkLG96bZhRp9BrLIsBz3tsQ1lGVQ6RrFYWlofY
+	 7vhE7jpMufpA52rZbwfiDz59Zf0PLna3xbNg+ER0X8F6soHG/Tse+hiEX1b8oMHsEjjD4
+	 BF4k96y0w8tEHqOqAkheC33syUq52jNWFRtWaqEFFg7xGSazT8/7TEqP/yzro78Jo8g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NJukzHF4;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fm+snEsH;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C7542607524A;
-	Wed,  4 Nov 2026 19:28:40 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C1833606B2D7;
+	Wed,  4 Nov 2026 19:29:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NJukzHF4
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DC5AB1F000C1;
-	Wed,  4 Nov 2026 19:28:28 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fm+snEsH
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A1DAB1F000C1;
+	Wed,  4 Nov 2026 19:29:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793820520;
-	bh=KE0FjFLg86Wqg2LOdvIKebjks/LaCpUOq5x1mMvJN8E=;
+	s=k20260515; t=1793820572;
+	bh=BSR8KrA5WsWDAsnf7a3SEYyO4TT3rIWRkkpblhU3vC4=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=NJukzHF4aV1KUnciVzdApjdNLx1CFG6CVAD2vCJ43JPCAnjjn1zUpxzmLM9SfrWre
-	 gCGPTz2pnkhsoLDD0ufQYz7LJbRa17CKdFnkfKWFZpzCvx3VornSWUNThr1WFvwPGn
-	 CADeWgCgoQP5K7ENKjJkvGY6u4437GknzfxpYekJnpL3cgHKr3XG5TRSEcefhaKP7V
-	 nX57prmegY0CCerzsNzag/fJkXOMUpt/ed2ZwMst0kUSU+NPQt8+F88n3teURVqhXg
-	 7vNgcQSCorU7kpZuBp2BFO4KHe0i6WajNcx/gISK920csNZ4jtjgQF1W1PAyzKkO5E
-	 yV22BOQaWeKsQ==
+	b=fm+snEsHSUMdJQMYXWtJD8H75OujfOckcQGSgOUJCHoiXcnuWL5JqHO+xlPMJnNHh
+	 7L7gY4b8oU4/m94jZyMfjd1GdoeMs60fpGp9AIrXeVMfN31aiMuEzCyS+eWLbTLuPV
+	 BPA6rRRRrTTWpwaGwq0GiCB1IRfXCb4E10ZB+LQTgcJCp5dD5hAbq0xeoS5uD6mvGo
+	 XD6O9ShL3YDsjDBRPXV2CpOA2VgGaIsET3FaKweJoWfpyMC3h7R8xDixN1ERs055n+
+	 MwPpkjy3mlDsFA6EPjwSN35unN1AzQE3PB3MKS0y+nNSfE2LBKJlHHBhaGEtSZvTPv
+	 6mP8wZt8knuPw==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,11 +100,11 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 51/51] selftests/proc: check that a faulting readlink() doesn't hold up removal
-Date: Wed,  4 Nov 2026 20:28:26 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-51-021c84d852e0@kernel.org>
-In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
-References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
+Subject: [PATCH RESEND v2 00/23] proc: let procfs own the data path (Part 2/7)
+Date: Wed,  4 Nov 2026 20:29:18 +0100
+Message-ID: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
+In-Reply-To: <20261104-work-procfs-v2-0-b45cd5789ac5@brauner>
+References: <20261104-work-procfs-v2-0-b45cd5789ac5@brauner>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -115,265 +115,330 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
+X-Change-ID: 20261101-work-procfs-core-8fa4a4f412cf
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7257; i=brauner@kernel.org; h=from:subject:message-id; bh=tBvbDpChuad7Gf34o7zrAy5GeGJ/8Uzeoj8ryWST3Tk=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9buLeeHbphO3/N55kVVv59tmN3VuetO2e/UrKp4azz iWph8NwQkcpC4MYF4OsmCKLQ7tJuNxynorNRpkaMHNYmUCGMHBxCsBEjIIZ/vAeD7jB+vdim/Jj tQ0hkWc2r77GNq27cuqvPzkuqa9flfYz/NOXCS3acGvTlZz++E+JTd/e+ny6wif2bUN30YcXfYm /q1kB
+X-Developer-Signature: v=1; a=openpgp-sha256; l=16472; i=brauner@kernel.org; h=from:subject:message-id; bh=GiozsU5LVlTUmY0umOFVQ6uJF4f9wh0KdRccm0wVx6E=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bi+w5eOU3bi0Li6RX/SGgKzywiMKPIquQersv3v2b Ps69YR2RykLgxgXg6yYIotDu0m43HKeis1GmRowc1iZQIYwcHEKwER+yjH803JhEI5n71P+nKa9 xWamU7mPXk1MCJuAhO4leT7DomcRDH8FS92Wh1+8/7p17m/HyKiLn6eqPVfnNlV9vX8zYxZL/2d +AA==
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Add the symlink case:
+Part 2/7 of "proc: move procfs to what kernfs does", on top of part 1:
 
-- readlink() /proc/asound/<id> of a dummy card into a buffer backed by
-  userfaultfd
+  https://patch.msgid.link/20261104-work-procfs-v2-0-b45cd5789ac5@brauner
 
-- change the card's id through sysfs while the reader faults, which
-  removes the symlink with snd_card_mutex and info_mutex held
+remove_proc_entry() waits until every call into the entry has returned.
+A seq_file entry wait across seq_read_iter() including the copy to
+userspace. Non-seq_file entries wait across ->proc_read(),
+->proc_write() and ->proc_ioctl(), which copy to and from userspace
+as well.
 
-- expect that to finish without waiting for the reader
+A reader or writer can abuse a page fault to make copy take as long as
+it wants. For example, by using userfaultfd or by punching holes into a
+memfd over and over. And callers of remove_proc_entry() like to hold
+locks while they wait. For instance, addrconf holds RTNL when it removes
+/proc/net/dev_snmp6/<dev> and xt_hashlimit holds hashlimit_mutex which
+is shared by all network namespaces.
 
-Skipped without snd-dummy.
+There was a hackish and very narrow AI solution to a small part of this
+bug class which was sent off-list. In essence, it used a second
+buffering mechanism on top of seqfiles which was really nasty. It also
+didn't address any of the non-seqfile users.
+
+If we want to get rid of the this whole bug class we need a bigger
+hammer. That means reworking how procfs handles data. So I tried to work
+through all of that.
+
+This changes procfs so the entry's code only ever runs with the entry
+pinned and never touches userspace memory. This is the core procfs
+change required for this. The entries themselves are converted in four
+series on top of it. The are independent of each other. The last series
+drops all __user methods.
+
+* seq_file reads
+
+  procfs owns the seq_file and only calls into the entry with it pinned.
+  An entry declares its seq_operations, or just a show function, and the
+  size of its private state in struct proc_ops. procfs opens and frees
+  the seq_file and reads and seeks through seq_file directly.
+
+  ->proc_open() and ->proc_release() only deal with whatever the entry
+  needs on top of that. proc_create_seq() and friends already keep the
+  seq_operations in the entry so they're switched over in one go here.
+  That covers most of /proc/net.
+
+  The open coded single_open() and seq_open() users that don't do
+  anything else are converted with a coccinelle script. A nice side
+  effect is that opening one of these entries no longer allocates a
+  pde_opener as they have no ->proc_release() of their own anymore.
+
+* Writes
+
+  procfs copies in what is written before it pins the entry and hands
+  the entry a NUL-terminated kernel copy through ->proc_write_buf().
+
+  The copy is capped at PAGE_SIZE - 1 bytes unless the entry asks for
+  more in ->proc_write_size.
+
+  Entries that take binary data in pieces (the PCI config space, ALSA's
+  data entries, cio_ignore and the rtas flash files) ask for
+  PROC_ENTRY_SHORT_WRITES and their writes come up short.
+
+  Since procfs copies in the whole write first, a write that is too
+  large or whose buffer can't be read fails before the entry's own
+  checks now.
+
+* Reads that don't go through seq_file
+
+  An entry fills a kernel buffer in ->proc_read_buf(), procfs copies
+  that to userspace after unpinning the entry and only moves the
+  position if that copy worked, like kernfs_file_read_iter().
+
+  The buffer is a page unless the entry asks for more in
+  ->proc_read_size, and like with kernfs a larger read comes up short.
+
+  Entries whose readers want all of a large file in one read,
+  /proc/vmcore, /proc/config.gz and ALSA's data entries, ask for
+  PROC_ENTRY_FULL_READS and procfs fills their reads in pieces. These
+  entries are read through ->read_iter() now, so sendfile() and splice()
+  work for them.
+
+* ioctls
+
+  The command number doesn't reliably say what an ioctl copies. The PCI
+  ioctls aren't encoded at all, i8k's encode the wrong sizes and esas2r
+  uses a range of plain numbers.
+
+  So an entry lists its commands in ->proc_ioctl_args with what goes in
+  and what comes back out. That works like DRM's ioctl tables.
+
+  procfs copies the argument in before it pins the entry, calls
+  ->proc_ioctl_buf() with that copy and copies it back out after
+  unpinning the entry.
+
+  A command that isn't in the table fails with -ENOTTY. 32-bit tasks go
+  through the same table, so the compat hooks go away.
+
+* permanent entries
+
+  Entries that are never removed, kcore, kmsg and the kpage files, keep
+  reading straight into userspace. The last series gives them
+  file_operations of their own and takes the __user methods out of
+  struct proc_ops altogether.
+
+* mmap()
+
+  procfs pins the entry around ->proc_mmap() and then wraps the
+  vm_operations of the mapping the way kernfs does. So the entry's
+  ->fault(), ->page_mkwrite(), ->access() and ->open() run pinned as
+  well.
+
+  Removing the entry unmaps the mappings in its own address space, like
+  kernfs does, and a fault into one of them is SIGBUS from then on.
+
+  A file that maps through another address space, /proc/bus/pci through
+  the one of /dev/mem, keeps its mappings like a sysfs resource file
+  does. The entry's vm_operations live in its open node. vmcore's
+  mappings of the old memory no longer outlive fadump releasing it.
+
+* Poll
+
+  An entry with a ->proc_poll() used to sleep its pollers on a wait
+  queue of its own and procfs only pinned the entry around the call.
+
+  The poller stays on that queue after the call, so after
+   remove_proc_entry() ran ->proc_release() on the still open file and
+   the owner freed the queue with the rest.
+
+   sunrpc kept the queue of its channel files in the per-namespace
+   cache_detail, so a poll() across the end of the namespace was a
+   use-after-free. md works around the same thing at unload by waking
+   its pollers in a loop until nobody is left.
+
+   Make procfs own the wait queue. It lives in the open node,
+   proc_reg_poll() does the poll_wait() on it before it calls the
+   method. The owner wakes the pollers with proc_poll_notify(), and a
+   poll of a removed entry reports EPOLLERR | EPOLLPRI.
+
+   The seven pollable entries in the tree move over in the conversion
+   series.
+
+   The last series takes the poll_table away from ->proc_poll() once
+   nothing needs it anymore.
+
+* Lockdep
+
+  The pin is a read lock to lockdep and a removal takes the write side
+  around waiting for the last user, the way kernfs annotates its active
+  reference.
+
+  A method that takes a lock while pinned and a removal under that lock
+  is the deadlock xt_recent had, and lockdep reports it now instead of a
+  reviewer having to find it.
+
+  The class is per kind of entry, keyed on the seq_operations or
+  proc_ops the entries of a kind share, and per registration site for
+  the entries that only share a show function, like sysfs keys per
+  attribute.
+
+On a KASAN and lockdep kernel the reader selftest fails without the
+series and passes with it, and the mapped-entry selftest, run against
+a virtio-rng device in a VM, fails without the mmap patch and passes
+with it. The other proc selftests behave the same with and without the
+series and so do the entries converted here that I could get at in a
+VM.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- tools/testing/selftests/proc/.gitignore            |   1 +
- tools/testing/selftests/proc/Makefile              |   1 +
- tools/testing/selftests/proc/config                |   5 +
- .../selftests/proc/proc-remove-slow-readlink.c     | 191 +++++++++++++++++++++
- 4 files changed, 198 insertions(+)
+Changes in v2:
+- the open files of an entry live in an open node that only entries with
+  a release or mmap hook get, a removal waits with wait_var_event(), the
+  readdir cursor is shared with sysctl
+- procfs pins the entry around the vm_operations of its mappings and
+  unmaps a removed entry's own address space like kernfs does, with a
+  selftest; a file that maps through another address space,
+  /proc/bus/pci through the one of /dev/mem, keeps its mappings like a
+  sysfs resource file; vmcore's mappings of the old memory no longer
+  outlive fadump releasing it
+- lockdep checks the pin
+- procfs owns the wait queue of an entry with a ->proc_poll(), the
+  conversions are in the area series
+- the seq_file runs the entry's own ->next() and ->show() with procfs's
+  ->start() and ->stop() around them instead of a wrapper per record,
+  which cost up to 24% on /proc/vmstat, and the ERR_PTR(-EIO) sentinel
+  is gone
+- ioctls that only pass a value no longer copy to a NULL pointer
+  (-EFAULT on csky), and registration also refuses a
+  ->proc_compat_ioctl() next to ->proc_ioctl_buf()
+- rebased onto v7.4-rc1
+- Link to v1: https://patch.msgid.link/20261102-work-procfs-core-v1-0-75df35e4f8b8@kernel.org
 
-diff --git a/tools/testing/selftests/proc/.gitignore b/tools/testing/selftests/proc/.gitignore
-index 7b8133492782..3fa89f46b9c7 100644
---- a/tools/testing/selftests/proc/.gitignore
-+++ b/tools/testing/selftests/proc/.gitignore
-@@ -22,6 +22,7 @@
- /proc-uptime-002
- /proc-pidns
- /proc-remove-slow-sysctl
-+/proc-remove-slow-readlink
- /read
- /self
- /setns-dcache
-diff --git a/tools/testing/selftests/proc/Makefile b/tools/testing/selftests/proc/Makefile
-index bce6beca7274..df02699a3587 100644
---- a/tools/testing/selftests/proc/Makefile
-+++ b/tools/testing/selftests/proc/Makefile
-@@ -33,5 +33,6 @@ TEST_GEN_PROGS += proc-fsconfig-hidepid
- TEST_GEN_PROGS += proc-sysctl-readdir-churn
- TEST_GEN_PROGS += proc-pidns
- TEST_GEN_PROGS += proc-remove-slow-sysctl
-+TEST_GEN_PROGS += proc-remove-slow-readlink
- 
- include ../lib.mk
-diff --git a/tools/testing/selftests/proc/config b/tools/testing/selftests/proc/config
-index 052e365af5a9..1504a761b39b 100644
---- a/tools/testing/selftests/proc/config
-+++ b/tools/testing/selftests/proc/config
-@@ -3,3 +3,8 @@ CONFIG_NET_NS=y
- CONFIG_IPV6=y
- CONFIG_TUN=y
- CONFIG_USERFAULTFD=y
-+CONFIG_SOUND=y
-+CONFIG_SND=y
-+CONFIG_SND_DUMMY=m
-+CONFIG_MODULES=y
-+CONFIG_MODULE_UNLOAD=y
-diff --git a/tools/testing/selftests/proc/proc-remove-slow-readlink.c b/tools/testing/selftests/proc/proc-remove-slow-readlink.c
-new file mode 100644
-index 000000000000..3290225daecd
---- /dev/null
-+++ b/tools/testing/selftests/proc/proc-remove-slow-readlink.c
-@@ -0,0 +1,191 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * A readlink() that faults while copying out the link must not hold up
-+ * removal of the /proc symlink. Changing a sound card's id removes
-+ * /proc/asound/<id> with snd_card_mutex and info_mutex held.
-+ */
-+#define _GNU_SOURCE
-+#include <dirent.h>
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <limits.h>
-+#include <linux/userfaultfd.h>
-+#include <poll.h>
-+#include <pthread.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <sys/ioctl.h>
-+#include <sys/mman.h>
-+#include <sys/syscall.h>
-+#include <unistd.h>
-+
-+#include "../kselftest_harness.h"
-+
-+#define CARD_ID		"Dummy"
-+#define NEW_ID		"procslow"
-+#define LINK_PATH	"/proc/asound/" CARD_ID
-+#define TIMEOUT_MS	5000
-+
-+struct reader {
-+	char *buf;
-+	size_t len;
-+	ssize_t ret;
-+};
-+
-+struct renamer {
-+	const char *id_path;
-+	const char *id;
-+	int done;
-+	int ret;
-+};
-+
-+static void *readlink_thread(void *arg)
-+{
-+	struct reader *r = arg;
-+
-+	r->ret = readlink(LINK_PATH, r->buf, r->len);
-+	return NULL;
-+}
-+
-+/* a new id removes the card's old /proc/asound/<id> link */
-+static int set_id(const char *id_path, const char *id)
-+{
-+	int fd, ret;
-+
-+	fd = open(id_path, O_WRONLY | O_CLOEXEC);
-+	if (fd < 0)
-+		return -errno;
-+	ret = write(fd, id, strlen(id)) < 0 ? -errno : 0;
-+	close(fd);
-+	return ret;
-+}
-+
-+static void *rename_thread(void *arg)
-+{
-+	struct renamer *r = arg;
-+	ssize_t ret;
-+
-+	r->ret = set_id(r->id_path, r->id);
-+	ret = write(r->done, "x", 1);
-+	return (void *)ret;
-+}
-+
-+/* the sysfs id file of the card with @id */
-+static int find_card(const char *id, char *id_path, size_t size)
-+{
-+	struct dirent *d;
-+	int ret = -1;
-+	DIR *dir;
-+
-+	dir = opendir("/sys/class/sound");
-+	if (!dir)
-+		return -1;
-+	while (ret && (d = readdir(dir))) {
-+		char cur[32];
-+		FILE *f;
-+
-+		if (strncmp(d->d_name, "card", 4))
-+			continue;
-+		snprintf(id_path, size, "/sys/class/sound/%s/id", d->d_name);
-+		f = fopen(id_path, "r");
-+		if (!f)
-+			continue;
-+		if (fgets(cur, sizeof(cur), f)) {
-+			cur[strcspn(cur, "\n")] = '\0';
-+			if (!strcmp(cur, id))
-+				ret = 0;
-+		}
-+		fclose(f);
-+	}
-+	closedir(dir);
-+	return ret;
-+}
-+
-+FIXTURE(dummy) {
-+	char id_path[PATH_MAX];
-+	bool renamed;
-+};
-+
-+FIXTURE_SETUP(dummy)
-+{
-+	self->renamed = false;
-+	if (access(LINK_PATH, F_OK) && system("modprobe -q snd-dummy"))
-+		SKIP(return, "no snd-dummy");
-+	if (access(LINK_PATH, F_OK))
-+		SKIP(return, LINK_PATH ": %s", strerror(errno));
-+	if (find_card(CARD_ID, self->id_path, sizeof(self->id_path)))
-+		SKIP(return, "no sysfs id file for " CARD_ID);
-+	if (access(self->id_path, W_OK))
-+		SKIP(return, "%s: %s", self->id_path, strerror(errno));
-+}
-+
-+FIXTURE_TEARDOWN(dummy)
-+{
-+	if (self->renamed && set_id(self->id_path, CARD_ID))
-+		TH_LOG("couldn't name the card " CARD_ID " again");
-+}
-+
-+TEST_F(dummy, remove_while_readlink_faults)
-+{
-+	struct uffdio_api api = { .api = UFFD_API };
-+	struct uffdio_register reg = {};
-+	struct uffdio_zeropage zero = {};
-+	long psz = sysconf(_SC_PAGESIZE);
-+	struct renamer rn = {};
-+	struct reader r = {};
-+	struct uffd_msg msg;
-+	struct pollfd pfd;
-+	pthread_t rt, nt;
-+	int uffd, done[2];
-+	char *buf;
-+
-+	uffd = syscall(__NR_userfaultfd, O_CLOEXEC | O_NONBLOCK);
-+	if (uffd < 0)
-+		SKIP(return, "userfaultfd: %s", strerror(errno));
-+	ASSERT_EQ(ioctl(uffd, UFFDIO_API, &api), 0);
-+
-+	buf = mmap(NULL, psz, PROT_READ | PROT_WRITE,
-+		   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-+	ASSERT_NE(buf, MAP_FAILED);
-+	reg.range.start = (unsigned long)buf;
-+	reg.range.len = psz;
-+	reg.mode = UFFDIO_REGISTER_MODE_MISSING;
-+	ASSERT_EQ(ioctl(uffd, UFFDIO_REGISTER, &reg), 0);
-+
-+	r.buf = buf;
-+	r.len = psz;
-+	ASSERT_EQ(pthread_create(&rt, NULL, readlink_thread, &r), 0);
-+
-+	/* The reader now sleeps in the copy of the link to userspace. */
-+	pfd = (struct pollfd){ .fd = uffd, .events = POLLIN };
-+	ASSERT_EQ(poll(&pfd, 1, TIMEOUT_MS), 1);
-+	ASSERT_EQ(read(uffd, &msg, sizeof(msg)), sizeof(msg));
-+	ASSERT_EQ(msg.event, UFFD_EVENT_PAGEFAULT);
-+
-+	/* Renaming the card removes the link that is being read. */
-+	ASSERT_EQ(pipe2(done, O_CLOEXEC), 0);
-+	rn.id_path = self->id_path;
-+	rn.id = NEW_ID;
-+	rn.done = done[1];
-+	self->renamed = true;
-+	ASSERT_EQ(pthread_create(&nt, NULL, rename_thread, &rn), 0);
-+	pfd = (struct pollfd){ .fd = done[0], .events = POLLIN };
-+	EXPECT_EQ(poll(&pfd, 1, TIMEOUT_MS), 1) {
-+		TH_LOG("removing " LINK_PATH " waited for the reader");
-+	}
-+
-+	zero.range.start = (unsigned long)buf;
-+	zero.range.len = psz;
-+	ASSERT_EQ(ioctl(uffd, UFFDIO_ZEROPAGE, &zero), 0);
-+	ASSERT_EQ(pthread_join(rt, NULL), 0);
-+	ASSERT_EQ(pthread_join(nt, NULL), 0);
-+	EXPECT_EQ(rn.ret, 0);
-+
-+	/* The link was read before it went away. */
-+	EXPECT_GT(r.ret, 0);
-+	EXPECT_EQ(readlink(LINK_PATH, buf, psz), -1);
-+	EXPECT_EQ(errno, ENOENT);
-+}
-+
-+TEST_HARNESS_MAIN
+---
+Christian Brauner (23):
+      proc: drop the compat file operations
+      proc: add pde_pin() and pde_unpin()
+      proc: share the readdir cursor with sysctl
+      proc: wait for the last user of an entry with wait_var_event()
+      proc: keep the open files of an entry in an open node
+      proc: make room for more entry flags
+      proc: let procfs own the seq_file of seq_file entries
+      proc: let procfs own the seq_file of proc_create_seq() and friends
+      proc: let procfs own the seq_file of DEFINE_PROC_SHOW_ATTRIBUTE() files
+      treewide: let procfs own the seq_file of simple proc entries
+      selftests/proc: check that a faulting reader doesn't hold up removal
+      seq_file: add seq_preallocate()
+      proc: let procfs own the seq_file of /proc/stat
+      proc: let procfs copy in writes before pinning the entry
+      proc: copy in writes to the network namespace entries before pinning
+      proc: let procfs copy out reads that don't go through seq_file
+      fs/proc/vmcore: let procfs copy out reads
+      proc: let procfs copy ioctl arguments in and out
+      proc: pin the entry around the vm_operations of its mappings
+      selftests/proc: check that a mapped entry can be removed
+      proc: let lockdep check the pin
+      proc: own the wait queue of an entry with a ->proc_poll()
+      Documentation: seq_file: describe how a /proc file uses seq_file
 
--- 
-2.53.0
+ Documentation/filesystems/seq_file.rst             |  42 +-
+ arch/alpha/kernel/srm_env.c                        |  10 +-
+ arch/arm/mm/alignment.c                            |  10 +-
+ arch/powerpc/kernel/rtas-proc.c                    |  50 +-
+ arch/powerpc/platforms/pseries/lpar.c              |  20 +-
+ arch/powerpc/platforms/pseries/lparcfg.c           |  10 +-
+ arch/sh/mm/alignment.c                             |  10 +-
+ arch/sparc/kernel/led.c                            |  10 +-
+ arch/um/kernel/exitcode.c                          |  10 +-
+ drivers/acpi/proc.c                                |  12 +-
+ drivers/hwmon/dell-smm-hwmon.c                     |  10 +-
+ drivers/input/input.c                              |  24 +-
+ drivers/macintosh/via-pmu.c                        |  10 +-
+ drivers/net/wireless/intel/ipw2x00/libipw_module.c |  10 +-
+ drivers/platform/x86/lenovo/thinkpad_acpi.c        |  10 +-
+ drivers/platform/x86/toshiba_acpi.c                |  40 +-
+ drivers/pnp/pnpbios/proc.c                         |  10 +-
+ drivers/s390/block/dasd_proc.c                     |  10 +-
+ drivers/s390/cio/blacklist.c                       |  13 +-
+ drivers/scsi/scsi_devinfo.c                        |  10 +-
+ drivers/scsi/scsi_proc.c                           |  21 +-
+ drivers/usb/gadget/function/rndis.c                |  10 +-
+ drivers/video/fbdev/via/viafbdev.c                 |  70 +--
+ fs/jfs/jfs_debug.c                                 |  10 +-
+ fs/ntfs3/super.c                                   |  20 +-
+ fs/proc/cpuinfo.c                                  |  10 +-
+ fs/proc/generic.c                                  | 261 ++++++---
+ fs/proc/inode.c                                    | 652 ++++++++++++++++-----
+ fs/proc/internal.h                                 | 146 ++++-
+ fs/proc/proc_net.c                                 |  72 +--
+ fs/proc/proc_sysctl.c                              |  45 +-
+ fs/proc/stat.c                                     |   6 +-
+ fs/proc/vmcore.c                                   |  14 +-
+ fs/seq_file.c                                      |  36 +-
+ fs/smb/client/cifs_debug.c                         |  79 +--
+ fs/smb/client/dfs_cache.c                          |  10 +-
+ include/linux/proc_fs.h                            | 159 ++++-
+ include/linux/seq_file.h                           |  11 +-
+ kernel/irq/proc.c                                  |  30 +-
+ kernel/latencytop.c                                |  10 +-
+ lib/dynamic_debug.c                                |   6 +-
+ mm/slab_common.c                                   |  10 +-
+ net/core/pktgen.c                                  |  30 +-
+ net/sunrpc/stats.c                                 |  10 +-
+ tools/testing/selftests/proc/.gitignore            |   2 +
+ tools/testing/selftests/proc/Makefile              |   2 +
+ tools/testing/selftests/proc/proc-remove-mapped.c  | 160 +++++
+ .../selftests/proc/proc-remove-slow-reader.c       | 133 +++++
+ 48 files changed, 1440 insertions(+), 916 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261101-work-procfs-core-8fa4a4f412cf
+prerequisite-change-id: 20261101-work-procfs-bugfixes-054d00028491:v2
+prerequisite-patch-id: a81e8b894107e48d607f8257d2c9f56e0dd6f400
+prerequisite-patch-id: 7edf7ca7ecd32c9e09085e4b65922af10097beaa
+prerequisite-patch-id: 81f6893f79b4236637675553298a6f2892b603f3
+prerequisite-patch-id: 598c2b1a389f47adcac88ebcf1c9f74e2511fbab
+prerequisite-patch-id: 6f5a2172dacc5ff2491fa9832c48ccd0e1ce1eda
+prerequisite-patch-id: 8947af6490288e4e2a3b2bf8844a974bedb1d975
+prerequisite-patch-id: 8cbe756286fd95967d31b0c46cacfeb05f0a2c6b
+prerequisite-patch-id: 3fa159f2b6ccd0ac51a2662e4eec5587ec18de89
+prerequisite-patch-id: bfb4e4ffe9631cb58015fefe6bd3698cd53e2244
+prerequisite-patch-id: 56ff6667a57a962264c07c0227c61aa2f1f4c22c
+prerequisite-patch-id: bc506323e29944ec0c29eae84950c706a8592042
+prerequisite-patch-id: 326c0ebb5accf0f40cbee1323fb4c3378f5be154
+prerequisite-patch-id: d6eaf7690a54a0dfda7500936a048b769fa265dd
+prerequisite-patch-id: 7c7b2535642b4d388e13eab518cbe0f9550eb1e6
+prerequisite-patch-id: 0474af12959624910718795bf86684383664c685
+prerequisite-patch-id: f6d4191e23c22e2d2cc90cc5d04781f913e98a8e
+prerequisite-patch-id: b0031a7c4855b7ec38259c59f30f65101a8fc4b5
+prerequisite-patch-id: 0b7f226abf2b9ff41873a1aa55cf97747647d56b
+prerequisite-patch-id: f63e345f897619af54813958046617c655fb7daf
+prerequisite-patch-id: c0e21e762a2960e3324c5ab04634a7035e515fa6
+prerequisite-patch-id: fd59c71eadd8f39c58b3baea93567bc093bc9b0e
+prerequisite-patch-id: 5d52cc8a5c73e4c5ba16b8e24f51408c17583bf9
+prerequisite-patch-id: 1f9179284e2f3314d4b46ac5e989089a21c7576c
+prerequisite-patch-id: 10397bbf696bee16dc71eb79fff6c5e73842bcbc
+prerequisite-patch-id: 9b44279dcf08912238d2f6438a3328a778a79a0c
+prerequisite-patch-id: 16854b621a3a71dfc365aaf7abaa7f65adfe9f7e
+prerequisite-patch-id: ca42eea21fae1fd1cd3518ab057c74b61ffd68fe
+prerequisite-patch-id: 23255dc2be76b0479c083dbd4c897bfbb533aed5
+prerequisite-patch-id: 82129c687ebf0a41b369893b92f2c038420ab801
+prerequisite-patch-id: 56ad57a99a5bda075a9f4e844368974296744934
+prerequisite-patch-id: 288b3cbaa11e01a778cc3d7beb6c0549aacf59f2
+prerequisite-patch-id: a163b1549608652bfa5bd9ff93efa55b541010c4
+prerequisite-patch-id: 43b92dfc1a98fbf0d14597a3e3ae99972844773b
+prerequisite-patch-id: 19c12bc6e3fbed35acc1f657196b1a997f48cdfe
+prerequisite-patch-id: 5800c3076694bad719954b2ad4d7448c6e013bfd
+prerequisite-patch-id: 2a2f63d8843b159594b9eee6ddea028ce76a6270
+prerequisite-patch-id: 40a1951d57906c4a1b98a4bd96a814b80339b9c5
+prerequisite-patch-id: e2141077e69f20a2b27fab69c8d61d0686682f53
+prerequisite-patch-id: c4d6018c26c40dc549d88330d23ce48f872c2b7f
+prerequisite-patch-id: 6de8ec17746031bc6d1d9ac262c5be0f905fcd79
+prerequisite-patch-id: b87bcb167884605bff1fd0f2ed8a88942d07efd5
+prerequisite-patch-id: cfa9a8b4c67e20cfd22d77035bfd21ee96ab3298
+prerequisite-patch-id: abf3482ed2399b7b2e1ee72e937af05bb9200667
+prerequisite-patch-id: 02c175b2dee565a85b3308ecf2ec8e3c9a029e0f
+prerequisite-patch-id: d58c239fba616b366a725de6acba3f88734156d0
+prerequisite-patch-id: dbe02fe3f784776fda5e7ae99f077bef0cd4b48d
+prerequisite-patch-id: 53edc9a95afff57c4acba40095a8054924261ea2
+prerequisite-patch-id: 5348d8957eb7eae7430ca8b101aa84ce77d3aa4f
+prerequisite-patch-id: 36c96d781e2dd80b20932667bbe6e7fd14976069
+prerequisite-patch-id: efeb2d6f7df71d5dede2c1d12fe999a28e38aab9
+prerequisite-patch-id: 17f95c7fdf0bdc7c8aaaf7883bff1dcc19a0f529
 
