@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793817596;
-	b=BlQgriMZLGg/yfbCecgnT/WRHHdMyMysZ5/p+CO9fkZ2sHG8eo7X1pLiAU074Vtqdt62
-	 4nf/2o/wRFQS1htOabDUwzs9WrPQU9Xb0j48hVgq6dRvESExkCyAHBbKFeO1mv460jVCd
-	 XL7YmRZuIy5pY5DBF5FpSVv7tWBcJ0foc7xCB9W85WOqFZstnh+Qsc216l827yZCJIqPl
-	 E6KVXO/EYb/OyoFVQGBmC9mIRhfESuokZKYmrTpbcIn6vEvZ7YUDQBIZIGVcBN6YROBbx
-	 hH2o3cQsMLDk9yvP/KOMslRFXuJJlgkW5qYfmVR6IHh4r67ryrs/kMaRJ9AxxdxEGxQ==
+	t=1793817647;
+	b=iX6Il4vj51JSAUdA8CLTw16392HzXERcuN90ch28VhGss0O1uzZeg/LKXzOrrBL7Lpcj
+	 nbYGyj5p4ktXMCtIdrNw4ZzxNUIb6JIr9uiF+GtEWJKj385nTMTrwkFp/9uNNchBinghk
+	 ODZQ0ZD8XaOeQIOBNaEGoSKIbaCdVLbwyqPfwvyrHs8ERGNFkItfWfWSO7KeQU/DERugf
+	 EQN25m2u1KIIzD5yH4+qefc6q89vbl4g7mlY0bpYY9Jza4ny66VrJsSmWE1ZqxHTRanf1
+	 c+Nlc0g1ukZjQvw5qk7omT+Qxds1Vv/ORLvUWI2rPQSFU0uDKfdqGeRJSzZjftwoxEQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793817596;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793817647;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=cfX+RSDf63q8RdYOSefxL9B17eZvLgT/fF9r72R8ItM=;
-	b=JpGYuH62Vv5k02PpA0XvVss9NtYioYWRtz69gVxHJQEeqpNvr77/I4KuTb9VkV3L5XUO
-	 9jvVW9vuqOBaUjPjt64Phu7te06oPAul0ykvdEjKqj8PFHulCZsF5i1uhcE69M8W8fDIO
-	 /Z5KurUGXmfaPmfbAWxkquRdmUiO76oMFEaeP7fHcQ7S0BxDNysZeSGr1YPCvQLNGpmB4
-	 oa2WYUsLgb+AAYZzr8cbHqzwkcxmOz9z8boV7QT6aRxDHBvq/nIy+aFfKOBlUBrtPPP0U
-	 vXvvhlxmvtSYD9GcdQbGEr6fGCSogYCS+V8Fu7+Wy8aLgECQEQNhdoqRH1Dyr4cT/JQ==
+	bh=QZrg0qNWaXbTo0/xGfjrSEZ0b4f34qk5jOb+FqN16uE=;
+	b=Fx25u/lGarMfpnPrJ3wZShvE470yH6oJIqug4qY+gefDv87SlSctW57mMcLSn6MVEm5l
+	 Hc0fw7ePHT+9yS0cr5Q309NSTOM3DldwSbfre8DY9hwRWQw+//hfGyjIJ/HVhjcdaon4R
+	 IujHyMM2mb8oMlkV7uGDronFXylmGfZqLASyPv9sNE5O/1FUCNa6/uECSVXcWHCE7HmO9
+	 SHaKihTiKEmu/Pzb9IDiJuo1XeYBBgoP/eyZ7WV6+JiUKrgiLdm1GG90s/T/cwz3btNqJ
+	 eXkGNeBoerE1AmhAKVcUorfZB+ISNOXtWSO3mQMrAp0cOBciYuc83Z/Wm/Q4y2rkzdQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GDU8EuhU;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kJoHVIVR;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B2318606A337;
-	Wed,  4 Nov 2026 18:39:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 68488606EE95;
+	Wed,  4 Nov 2026 18:40:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GDU8EuhU
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6D94A1F000C1;
-	Wed,  4 Nov 2026 18:39:43 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kJoHVIVR
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C3B5D1F0093A;
+	Wed,  4 Nov 2026 18:40:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793817595;
-	bh=cfX+RSDf63q8RdYOSefxL9B17eZvLgT/fF9r72R8ItM=;
+	s=k20260515; t=1793817647;
+	bh=QZrg0qNWaXbTo0/xGfjrSEZ0b4f34qk5jOb+FqN16uE=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=GDU8EuhUF/10B5PY7Ge41gK5xPnjrcLHs7feXWHlvH4fq+/JLsc6ePLzmMcenBTV8
-	 F8DU2mNIqG7yMOIN0gPqiAwJM3jV9nVVVUEYkA/ePBSooGTee00ROqhKBnF1Bqim3H
-	 1MIVC6ndCg4IYSs9ehay5xqAR6tGspnn8txoZnqUV3a/rwlemC2StvUcjU4rBzRdDh
-	 smT5Fi28DptI2/GHQw2s7uG8id08IW1enmMV0ZcuUo2Xf6u9ciNae6b4/FwizkvKf5
-	 0O5jZIOLbbQIYlYObNdALqLNo9VEtQX1aZ+lQxJHqEn6uUf5MjI2wjNp8uWWy07SZL
-	 e+KRVPYe7/Ndw==
-Date: Wed, 4 Nov 2026 19:39:40 +0100
+	b=kJoHVIVRMDhMBnXEsnAe5u7zpLjzd7+MCZ16TzVPzknEMkH+SygeGbLr1cB1EuFHJ
+	 xRsFziB7AYKd6Mhhpn+XaIqvh4Cx6oR0IF5YD5hTWVK9qdGzZGqDtB09vA04e4GNIh
+	 gmvf+qmzc//ytZnlzvHO/6/uft/CaHdB0hsuAjqYwVhLfB3Ks7yJAR1O6zCQCoILM7
+	 7FSNmR//3JsJPL/FoNc85lYWK2E4ao7D0Q2RNB19ZXpttBP2DbzKEnPZ+uDd2qb6Jz
+	 UP+h4VZmlPCoaJVRtTyuBLxhzxSpg0j7ZPL1vwlCOQ73t7T4+hY/7Q5mBk/u31yY6C
+	 vajKYZo3usCaQ==
+Date: Wed, 4 Nov 2026 19:40:33 +0100
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>, 
@@ -64,9 +64,10 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	Chuck Lever <chuck.lever@oracle.com>, Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, 
 	linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, 
 	linux-debuggers@vger.kernel.org
-Subject: Re: [PATCH v2 0/7] proc: move procfs to what kernfs does
-Message-ID: <20261104-angriff-abgewandelt-ohnehin-e5ba30d31576@brauner>
-References: <20261104-trompete-gejagt-raddampfer-9fb5640a6102@brauner>
+Subject: Re: [PATCH v2 00/51] proc: fix a few old bugs in /proc handlers
+ (Part 1/7)
+Message-ID: <20261104-zermalmen-pechschwarz-hafen-b8a1cb79bac4@brauner>
+References: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -78,11 +79,12 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20261104-trompete-gejagt-raddampfer-9fb5640a6102@brauner>
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 
 Please ignore this. Network dropped halfway through and the umbrella
-went out under a broken message-id.
+went out under a broken message-id and so this doesn't reference the
+actual complete series.
 
-I'll resend it all correctly.
+I'll resend.
 
 -- 
