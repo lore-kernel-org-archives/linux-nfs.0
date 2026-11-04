@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793821248;
-	b=wjTYA/BFerLikYV2AqZatlkDESU/8Ga+7SW2wzDNUu+5MPNSfwiNpf0dcssJoceYjX7Z
-	 X/njJX+8UlqB45//cwqVRhcB+z07HM/Gn7Z/51J5kRsSk9h0JNDO4oYq/Ku/kzkt3C5Lu
-	 Rc7esj3Xut/tIoX494l7Ky/w83K07mhswbaErpL+6lMchmMzsG9PH4PkHxmq+wU+NQ+IJ
-	 MkfrhWf95Py1SZvF9lKTQ48cW+sTKCueYdtw0YRb1DeOn8WgoBFLBNNW1GTwwwbm45WEs
-	 WUrI0uM1cnDPstxSRe2VQm0EWbXLdwzsDuL/DVqyRizCG68KWLzgwLJCYRZdv/BqPgw==
+	t=1793821263;
+	b=Gk9ZXaSp35viWc562QZoO/aFo6lGt9azSMnaGSot9nfYy3nbgObCXsL017W5S+Vej9QN
+	 2FhFxvc0gLG0IaijMO7Abu/iSQlbT2BsBZQKs1OpzrP6Pgwg3YRPAXYumQ53n04Nl3icX
+	 1SHaa0cmGbXm0U/AcazGXc/sMh34EOUOdggOU/clsM/0ULP6+qisnkEXorgKkJLtKv/m3
+	 qjRZGNKnI2262FuI7SGUIYY3oO5TVK1TiJS3xn/lEBj+hx717yyXNLl10eO3fQi+ONWX+
+	 x9pJtSjTAkzXadOXo0EukNcNjWmaxiYWmPZFfYriQFKGJ0Nbax+w4ERWNM3iWjfyyfg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793821248;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793821263;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=ljglEsXifce2qfRBf9KQz9o848Hwgwzekl8g5JPLaig=;
-	b=oxpMo+4K+GOqTFTUe3tku8uVY3YEvWcN6VawhTiU6GQQx7pymfM1OnD+pI9SH9b07sYM
-	 FiQ8XCRsT1oZ+fYg6NNGazhuAWcHvmYrpUI8r6FhlVR/tvwa1mDdliLy372qfsNhsjdDj
-	 Ubsq4Pn+Rlva4VilQlcj/8A56YDwn7CkoBvhlOBWCNwuFAlj75gC96gPLOEydFqJwudjr
-	 XVAAkeyXrNMmR0znBOkuHVQI9zQ5wZYhiyV05Aya5jubJHrTL1qXpxKDtyeMtzGCU2ibV
-	 Q2w8PGEPmhPYAZfmou1PJ/XmNHJyxNMkuciCR+rHGJB9aWhqmE1fce7TEEn6TIvcxGA==
+	bh=Dp7sSooWMguSrSQWYm7n5WBM775aoRxhTJFL+eJzfGM=;
+	b=WeSxsbRIwF7ejaHyjKyCO6r59D/DPyN7tI7T+RJYPS8KkX9NOT/LBPMJ/6rCDliU715j
+	 KZAM6ZoxHLQTNdZyFcM3xCzDU4UaXqidVBdyzIx6765Mf7Fp606AvTf3qbXh1yxzd+v3H
+	 NQ2clIrjXDpyw4doV9gF8izbuwUBFmnk52hPr2cOcVezQ/ghNl3ZPSCjjW8SZK1ewKvJI
+	 ZSjCQHgUtAGtoyfUKgyWpZXjgWGb2GPgrLOKi86eS8Rg2S51AMCI1QGb+lSwRSLO8P5BU
+	 H25povewLl9cGhR8SVfe9vvkuPjvWYvv1SJcjPMVDLdoU/d/JSNDCI8zGbd4MtRqkmw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Wy0boZ5z;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ahsEbMnF;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 448136071A0E;
-	Wed,  4 Nov 2026 19:40:48 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2FCFA60BB939;
+	Wed,  4 Nov 2026 19:41:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Wy0boZ5z
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9FC2E1F0093A;
-	Wed,  4 Nov 2026 19:40:35 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ahsEbMnF
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8A2E21F0093A;
+	Wed,  4 Nov 2026 19:40:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793821247;
-	bh=ljglEsXifce2qfRBf9KQz9o848Hwgwzekl8g5JPLaig=;
+	s=k20260515; t=1793821262;
+	bh=Dp7sSooWMguSrSQWYm7n5WBM775aoRxhTJFL+eJzfGM=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=Wy0boZ5zanG430YNSID9PvLo8Hz+/29VvJoJ9WySCgaVz1GS+M9Ng0mKTlmCR6Sp3
-	 Wy6SgMb3/VqyekYQ/1cR/jjtPSaurM/Udr3bvNEYMuoz7g7KxSi3hffidsqtPL6rT+
-	 kNwUs9q+tNP6NBKx59NYF9AsYxVfTGuDi6XKbhHh4hcUsnEviZrGiHrP56E4+mGRvY
-	 JVVBJqh6UNVAz2b97ZBb5pcE8f/kvEg6BQoxsArkq6nlESYRlG+raNwuWLjBL5Fegx
-	 ogU0jkHe5zezEzx7v8f9ltgbWRNKY/tsEAVwKI2tVEh2fNgrnaN9ng+jA/EICHiT9S
-	 CNdt1XlVegAtA==
+	b=ahsEbMnF9zcnNZOEONOoSIvu9cB/0nOat4pciljDJZ1lRY0gTRvKf65J2iztGwXL3
+	 huM4R9vSdALKqE8kuklKvnq27vYWQMAxmVgCUbvndK1O7Tscoma0nZZWjwIVr64Nal
+	 AguF3O8aWJZFNil7eQDAip8OreykLWStP3mR0+20AhcQutDlARzzDrgsOcfJyuKTN6
+	 vdVJbAcKxMemVfPCg44rHRG0jAUzxpbHUfkxmOrX/3nzu0dDu4UEZEcIMh6AtXzlrR
+	 YNfvqpYbAwxxqtku+uDd0CYMxaNswLdUGY69k2hI9b40vSqwE2XUaCbFuuw+4NdJ/Y
+	 Ag3SSqZroL+MQ==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 20/23] platform/x86: thinkpad_acpi: let procfs copy in writes
-Date: Wed,  4 Nov 2026 20:40:33 +0100
-Message-ID: <20261104-work-procfs-arch-v2-20-2aeb952c9597@kernel.org>
+Subject: [PATCH RESEND v2 21/23] platform/x86: toshiba_acpi: let procfs copy in writes
+Date: Wed,  4 Nov 2026 20:40:48 +0100
+Message-ID: <20261104-work-procfs-arch-v2-21-2aeb952c9597@kernel.org>
 In-Reply-To: <20261104-work-procfs-arch-v2-0-2aeb952c9597@kernel.org>
 References: <20261104-work-procfs-arch-v2-0-2aeb952c9597@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,58 +116,153 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1670; i=brauner@kernel.org; h=from:subject:message-id; bh=B1JM/SyKlO95qrS7p0kfKzr/VxkM25eIJbDMnht8OJo=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97mSx1F3VulFfxXnpV5EtBz+raF7cItzSzr37e8o/J X1NniM3O0pZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACZydikjw5J2aZXovIq/n3/0 ZQtu+2Fn9/PUc5+zb7fMOXwlwMPtzzxGhsertpXcs3gT5Xh92pP36mKWQvHOiqu49M5OudX+dnL TCTYA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4887; i=brauner@kernel.org; h=from:subject:message-id; bh=X71uAmUiQrc004XgHk8qpFAD0vRjbeKoDlL8dmgq77k=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97mT79D1gq9YKw30dMYb3t286tu6JJ3vhh9JOzdMrP 0zjEJKd2lHKwiDGxSArpsji0G4SLrecp2KzUaYGzBxWJpAhDFycAjCRL6WMDL1XV200Vv8i9FyP 5dKKV2rBdT1C2kUBc2IWsqk3ly321GdkeJbKYML7O6yyimPD375nuVGffSeFhjysV744+YTLs2I rHgA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Implement ->proc_write_buf() so procfs copies in what is written to
-/proc/acpi/ibm/* before it pins the entry, and hand that copy to
-->write(). procfs already rejects writes larger than PAGE_SIZE - 1
-bytes.
+Implement ->proc_write_buf() for the files in /proc/acpi/toshiba so
+procfs copies in what is written before it pins the entry, and parse
+what was written from that copy. Commands longer than PAGE_SIZE - 1
+bytes are rejected now.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/platform/x86/lenovo/thinkpad_acpi.c | 12 +++---------
- 1 file changed, 3 insertions(+), 9 deletions(-)
+ drivers/platform/x86/toshiba_acpi.c | 36 ++++++++++++------------------------
+ 1 file changed, 12 insertions(+), 24 deletions(-)
 
-diff --git a/drivers/platform/x86/lenovo/thinkpad_acpi.c b/drivers/platform/x86/lenovo/thinkpad_acpi.c
-index 2ee208c82801..8287b36bd90d 100644
---- a/drivers/platform/x86/lenovo/thinkpad_acpi.c
-+++ b/drivers/platform/x86/lenovo/thinkpad_acpi.c
-@@ -882,7 +882,7 @@ static int dispatch_proc_show(struct seq_file *m, void *v)
+diff --git a/drivers/platform/x86/toshiba_acpi.c b/drivers/platform/x86/toshiba_acpi.c
+index 560e62da05a9..895e321ada03 100644
+--- a/drivers/platform/x86/toshiba_acpi.c
++++ b/drivers/platform/x86/toshiba_acpi.c
+@@ -1478,7 +1478,7 @@ static int set_lcd_status(struct backlight_device *bd)
+ 	return set_lcd_brightness(dev, bd->props.brightness);
  }
  
- static ssize_t dispatch_proc_write(struct file *file,
--			const char __user *userbuf,
-+			char *buf,
- 			size_t count, loff_t *pos)
+-static ssize_t lcd_proc_write(struct file *file, const char __user *buf,
++static ssize_t lcd_proc_write(struct file *file, char *buf,
+ 			      size_t count, loff_t *pos)
  {
- 	struct ibm_struct *ibm = pde_data(file_inode(file));
-@@ -890,14 +890,8 @@ static ssize_t dispatch_proc_write(struct file *file,
+ 	struct toshiba_acpi_dev *dev = pde_data(file_inode(file));
+@@ -1488,8 +1488,7 @@ static ssize_t lcd_proc_write(struct file *file, const char __user *buf,
+ 	int value;
  
- 	if (!ibm || !ibm->write)
- 		return -EINVAL;
--	if (count > PAGE_SIZE - 1)
--		return -EINVAL;
--
--	char *kernbuf __free(kfree) = memdup_user_nul(userbuf, count);
--	if (IS_ERR(kernbuf))
--		return PTR_ERR(kernbuf);
+ 	len = min(count, sizeof(cmd) - 1);
+-	if (copy_from_user(cmd, buf, len))
+-		return -EFAULT;
++	memcpy(cmd, buf, len);
+ 	cmd[len] = '\0';
  
--	ret = ibm->write(kernbuf);
-+	ret = ibm->write(buf);
- 	if (ret)
- 		return ret;
+ 	levels = dev->backlight_dev->props.max_brightness + 1;
+@@ -1505,7 +1504,7 @@ static ssize_t lcd_proc_write(struct file *file, const char __user *buf,
  
-@@ -906,7 +900,7 @@ static ssize_t dispatch_proc_write(struct file *file,
- 
- static const struct proc_ops dispatch_proc_ops = {
- 	.proc_show	= dispatch_proc_show,
--	.proc_write	= dispatch_proc_write,
-+	.proc_write_buf	= dispatch_proc_write,
+ static const struct proc_ops lcd_proc_ops = {
+ 	.proc_show	= lcd_proc_show,
+-	.proc_write	= lcd_proc_write,
++	.proc_write_buf	= lcd_proc_write,
  };
  
- /****************************************************************************
+ /* Video-Out */
+@@ -1541,24 +1540,17 @@ static int video_proc_show(struct seq_file *m, void *v)
+ 	return 0;
+ }
+ 
+-static ssize_t video_proc_write(struct file *file, const char __user *buf,
++static ssize_t video_proc_write(struct file *file, char *buf,
+ 				size_t count, loff_t *pos)
+ {
+ 	struct toshiba_acpi_dev *dev = pde_data(file_inode(file));
+-	char *buffer;
+-	char *cmd;
++	char *buffer = buf;
+ 	int lcd_out = -1, crt_out = -1, tv_out = -1;
+ 	int remain = count;
+ 	int value;
+ 	int ret;
+ 	u32 video_out;
+ 
+-	cmd = memdup_user_nul(buf, count);
+-	if (IS_ERR(cmd))
+-		return PTR_ERR(cmd);
+-
+-	buffer = cmd;
+-
+ 	/*
+ 	 * Scan expression.  Multiple expressions may be delimited with ;
+ 	 * NOTE: To keep scanning simple, invalid fields are ignored.
+@@ -1577,8 +1569,6 @@ static ssize_t video_proc_write(struct file *file, const char __user *buf,
+ 		} while (remain && *(buffer - 1) != ';');
+ 	}
+ 
+-	kfree(cmd);
+-
+ 	ret = get_video_status(dev, &video_out);
+ 	if (!ret) {
+ 		unsigned int new_video_out = video_out;
+@@ -1602,7 +1592,7 @@ static ssize_t video_proc_write(struct file *file, const char __user *buf,
+ 
+ static const struct proc_ops video_proc_ops = {
+ 	.proc_show	= video_proc_show,
+-	.proc_write	= video_proc_write,
++	.proc_write_buf	= video_proc_write,
+ };
+ 
+ /* Fan status */
+@@ -1644,7 +1634,7 @@ static int fan_proc_show(struct seq_file *m, void *v)
+ 	return 0;
+ }
+ 
+-static ssize_t fan_proc_write(struct file *file, const char __user *buf,
++static ssize_t fan_proc_write(struct file *file, char *buf,
+ 			      size_t count, loff_t *pos)
+ {
+ 	struct toshiba_acpi_dev *dev = pde_data(file_inode(file));
+@@ -1653,8 +1643,7 @@ static ssize_t fan_proc_write(struct file *file, const char __user *buf,
+ 	int value;
+ 
+ 	len = min(count, sizeof(cmd) - 1);
+-	if (copy_from_user(cmd, buf, len))
+-		return -EFAULT;
++	memcpy(cmd, buf, len);
+ 	cmd[len] = '\0';
+ 
+ 	if (sscanf(cmd, " force_on : %i", &value) != 1 ||
+@@ -1671,7 +1660,7 @@ static ssize_t fan_proc_write(struct file *file, const char __user *buf,
+ 
+ static const struct proc_ops fan_proc_ops = {
+ 	.proc_show	= fan_proc_show,
+-	.proc_write	= fan_proc_write,
++	.proc_write_buf	= fan_proc_write,
+ };
+ 
+ /* Fan RPM */
+@@ -1707,7 +1696,7 @@ static int keys_proc_show(struct seq_file *m, void *v)
+ 	return 0;
+ }
+ 
+-static ssize_t keys_proc_write(struct file *file, const char __user *buf,
++static ssize_t keys_proc_write(struct file *file, char *buf,
+ 			       size_t count, loff_t *pos)
+ {
+ 	struct toshiba_acpi_dev *dev = pde_data(file_inode(file));
+@@ -1716,8 +1705,7 @@ static ssize_t keys_proc_write(struct file *file, const char __user *buf,
+ 	int value;
+ 
+ 	len = min(count, sizeof(cmd) - 1);
+-	if (copy_from_user(cmd, buf, len))
+-		return -EFAULT;
++	memcpy(cmd, buf, len);
+ 	cmd[len] = '\0';
+ 
+ 	if (sscanf(cmd, " hotkey_ready : %i", &value) == 1 && value == 0)
+@@ -1730,7 +1718,7 @@ static ssize_t keys_proc_write(struct file *file, const char __user *buf,
+ 
+ static const struct proc_ops keys_proc_ops = {
+ 	.proc_show	= keys_proc_show,
+-	.proc_write	= keys_proc_write,
++	.proc_write_buf	= keys_proc_write,
+ };
+ 
+ static int __maybe_unused version_proc_show(struct seq_file *m, void *v)
 
 -- 
 2.53.0
