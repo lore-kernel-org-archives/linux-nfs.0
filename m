@@ -1,53 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793776354;
-	b=gfZzYEO30Z4Y1iLrKryO2A6hapCofENsM6BSCo0kWVdIXJfYdbtMN1F92h7rnEk6P+OR
-	 kO0XfT7jQTzLPPPrCspvoDPjeUiFeFvwhnxIZZ0lnuc1lf70+9CILVZRpToDUqfWGIZhP
-	 9EvDrbSFZuRUAoro+s13ysdKXsAF4gAcNio9yPW1YmY/VwT3DEyPL71JHMVGNfm7Ihe3d
-	 pxqUlxZY4sZl+16YRxrmHSCgFzXM7byPunZ7QyAIhtMd5CP7ir6LDGD5o+HdhHxFNbL4Y
-	 Cjv3A8RWskFWcriTH2r4cWnG//ykqUR09NtgnYLLUTtNAAVpOexBswiNjDoDjTWLMCQ==
+	t=1793776357;
+	b=s75KkmQj+3NS4nEeWW4pIrvRtTq8Jv42/ICwG0QSSJTRbYkl4EAsJPWt+Rm9okF0KPau
+	 GFb0/1yaUB1JsLJJHPaXK0l1Jt+nxgJa7cmFXuqcEeDHRDMXBw6NRJA+5/E9J/h5fdhwS
+	 lg2i8jso33+5Frp6xUPLLnMS8QGQDYomx3qbkY290rmLAbLSTf73bRTFH4zV4GCKUkQdG
+	 Nrns7r14M4M8HZ3J9eI2h/MFzTghjDdS2FqwJh+r6hWQo3sR6dY3HlqdpVMNwP1NJ85in
+	 WRHUpgvikUX7D3DfiQQqdeCdIw9iAd8v6ZV6Zp4boJhLFifmaOIQnUji0fNH9jEdiDw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793776354;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793776357;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=Gvcc1SfUzRuxC7HCa25XUjDGmMMCYpKYK9b5tao3ttk=;
-	b=Q8fU2ro2eb/CSJsNIgZh5Q0rqg1ohPE5YznWESOo7ZObXsusR5ub1S54H125zHNjR8Bd
-	 q3o82lzdtN7FtGyrFeftsbcUojJ+q+Chq0DH+Y8zxgVdthrw7BwsxT4bTsDR7ColDcLKC
-	 R7S9FuRqxNOcvz+YJQ2YebGJTUTDLP9mRHnqd98Ka75Z91gjtV3Fswl/pis8lS12Z54Tm
-	 Pa+prRDgfwuKuGBiW08ekt3Ckr1KSotFyQDjTg5CJ4RikFaxgTRU210lGSThX4Y0uVwhN
-	 J3jyARB2UeCKmcurhREVoL5wzmQJNkyuAZxdHo2GnqLfrv+6jLGcBFjqKhB7zg7aPwg==
+	bh=IO5qcDZIccvQg7caNJP/uh/0uCikE1QDZcQnhFjAtlM=;
+	b=ALFuyYVvXENqPX9DTeyc4qY+oTzAISxgLxbgjc1Ei7R2H7wbgeVVqK/OmpZUqEPiBB9g
+	 dcWnEJuOii4rTKrhWH9zrlbBV8HlvdcHkT7+L3/K5ub5NyWkcMy+qI18TqytWjtva5uHv
+	 86afeFxHe7r3E9Ww9IZi+Ql+oDbeWdPy/lDnXWk0WKLsuyqCUY/g6PKZTrF9ECuXrrg6h
+	 IpQ3moTZXlzXSRFtI2yw9iVSDRxjeiQX0MdKSTfqluP5AOzUCu5LDfCeU4AOdN0PL9BtG
+	 wfXn+ZQqDW1vCtZvfTb3rGrtDCSnwp9pZuHFDPZhY81YSGNJkGqtLUc4J1kGjvh19KQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=F5aeriKi;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=EhB6O6pV;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2BCCF606A32E
-	for <linux-nfs@vger.kernel.org>; Wed,  4 Nov 2026 07:12:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 814AB606A31B
+	for <linux-nfs@vger.kernel.org>; Wed,  4 Nov 2026 07:12:37 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=F5aeriKi
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EA53B1F000C1;
-	Wed,  4 Nov 2026 07:12:32 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=EhB6O6pV
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9D81E1F000C1;
+	Wed,  4 Nov 2026 07:12:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793776353;
-	bh=Gvcc1SfUzRuxC7HCa25XUjDGmMMCYpKYK9b5tao3ttk=;
+	s=k20260515; t=1793776357;
+	bh=IO5qcDZIccvQg7caNJP/uh/0uCikE1QDZcQnhFjAtlM=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=F5aeriKidfl6vZf9bxk2KQHM7JXEhrqs+dexlHRy+D4Bqw3MolKx8HdetIak44CXk
-	 TqKjSXq/PFlxCF8cTksoqMcJ/21sGZY1R0jNAwBOOufPpJ+4aV/8UeZefV7bVsQ6qV
-	 vaJMB8z04Mm6fnfpSbpjY2i/eo+XGcDR1HoRN5JsttM09GPjUt7lFh6k5zbGpaHuXf
-	 qlDHliVbGR195VF4fSpCVU1ZZLjfgq8bOAh3H07vICpl8bgxqlwpM7EOiptIhtE+sd
-	 apgyKJ/iz+HuoeaSpyCc3Ykl5eGyzpLyDNeFn17XU7eHWCm4CjT3JtW9xb92DIuQKa
-	 2eCT6Y1nuhDmQ==
-Date: Wed, 4 Nov 2026 08:12:29 +0100
+	b=EhB6O6pVhUislB83XNjVc8q9v7SEnUzgdMZrTK6P1CRir+mPIIBQXatEt4KeUoZfd
+	 6UQEkm5R1xLthYHMkxnf825W2Lh9wUR+mMVaaRN7S4yeg2EJpisc33FogLoJZvhrS5
+	 ZwyNXaLyGAq7ozSj9hvQb/lOwFgbeKPrggh3vDIKznK7d0Wgtsyj2resxsV5tfi7X2
+	 GLXq71IunwI9Uvzx7HpFKKRrCugnAg73h1UG6qrYVJ6Ky4P9lZ3JH0m2KXT7dq6dg6
+	 6eHkkvn6bgvjjW99ZUwFqYoW7tGBkOJOb9hEt/71XdK7kN3CepWdL5cHsZhFnEwrcx
+	 LTWoJarjgsCiw==
+Date: Wed, 4 Nov 2026 08:12:34 +0100
 From: Krzysztof Kozlowski <krzk@kernel.org>
 To: Wentao Liang <vulab@iscas.ac.cn>
-Cc: Anna Schumaker <anna@kernel.org>, Trond Myklebust <trondmy@kernel.org>, 
-	linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: release the state owner reference in
- __nfs42_ssc_open()
-Message-ID: <20261104-amiable-cheetah-of-politeness-badd8b@quoll>
-References: <20261104021550.1468884-1-vulab@iscas.ac.cn>
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>, 
+	NeilBrown <neil@brown.name>, Dai Ngo <Dai.Ngo@oracle.com>, Anna Schumaker <anna@kernel.org>, 
+	Olga Kornievskaia <okorniev@redhat.com>, Trond Myklebust <trondmy@kernel.org>, 
+	Tom Talpey <tom@talpey.com>, Jeff Layton <jlayton@kernel.org>
+Subject: Re: [PATCH] lockd: drop the host reference if the reclaimer cannot
+ be started
+Message-ID: <20261104-noble-girlish-velociraptor-c3eb5c@quoll>
+References: <20261104021540.1468799-1-vulab@iscas.ac.cn>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -59,28 +61,26 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20261104021550.1468884-1-vulab@iscas.ac.cn>
+In-Reply-To: <20261104021540.1468799-1-vulab@iscas.ac.cn>
 
 
-On Wed, 04 Nov 2026 02:15:50 +0000, Wentao Liang wrote:
-> __nfs42_ssc_open() takes a reference on the nfs4_state_owner with
-> nfs4_get_state_owner(), but the success path never releases it.
-> nfs4_get_open_state() takes its own reference when it creates a new
-> state, and the existing-state path does not consume the caller's
-> reference either, so the owner reference obtained at open time stays
-> around for the lifetime of the server.  Every inter-server copy source
-> open therefore leaks one state owner.
+On Wed, 04 Nov 2026 02:15:40 +0000, Wentao Liang wrote:
+> nlmclnt_recovery() takes a reference to the nlm_host before spawning the
+> reclaimer thread, and the new thread releases it when it is done.  If
+> kthread_run() fails there is no thread to do that, so the reference is
+> leaked and h_reclaiming stays set.
 > 
-> Release the reference once the open context has been installed on the
-> file, as the success path in nfs4_do_open() does.
+> Clear h_reclaiming and release the reference on that path, like the
+> reclaimer does when it finishes, so that a later recovery attempt for
+> the host can still be made.
 > 
-> Fixes: ec4b092508982 ("NFS: inter ssc open")
+> Fixes: df94f000c46c ("lockd: convert reclaimer thread to kthread interface")
 > Cc: stable@vger.kernel.org
 > Assisted-by: DeepSeek-V4.1-Flash and OpenAI Codex
 > Signed-off-by: Wentao Liang <vulab@iscas.ac.cn>
 > ---
->  fs/nfs/nfs4file.c | 1 +
->  1 file changed, 1 insertion(+)
+>  fs/lockd/clntlock.c | 5 ++++-
+>  1 file changed, 4 insertions(+), 1 deletion(-)
 > 
 
 Multiple things here:
