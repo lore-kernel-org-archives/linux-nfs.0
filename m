@@ -1,49 +1,52 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.98
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=159.226.251.21
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793756721;
-	b=ttFlVEJ1yWSwpcuAKqe0TiLuQLGzv0vCSDCkXc4cHaloxU3L0wG5deU5Qsxj6j9dHGjP
-	 AtIkY9t16SgEbwtATbno7Sue2mdQiPL/KorvKhIYBPN/kX0abPWMb1iNAW5xGN+ljK+gX
-	 OjdbXxD0jaIdSOS2nzPJYxF0mV5EINDI2d1r9TAZLcsTwKo/Nv7a049Ym5kpi3dDH6qIQ
-	 dKVX3fpZuzAahHx1kJVZYs0bet1x2ZZw5t2TAnUNzXdHO9f0Gb9Kcj13qBKj1iZFdLWxA
-	 eB1+N4Pa2z9XiiE2Z+N9rX4kxgGqDHcXov1ZL77NaFBDhD07LuXsd0bGLMjPE4RODyQ==
+	t=1793758539;
+	b=z32oxZujHe0cglUV8ebbfWT67cBFfStG6rqkEPj/NVynw7ChxMViY6h4HFUBwlYVWvgv
+	 D/rHFMnf7Cl55HP/YahbwYZ2aGfT2B1zeCo1+mPY5EgWUE6NXJfQZNojYwjfPF43ij98n
+	 mkhRJdO1CGRWAFlHo3hTepAD66Y5jj4oKNzOv8Pceu9lYWJQWlUHMOMMekm5VHshseQd7
+	 io+56RtW6Crsa+CtskMtB43dGGVaukIZ0G+oX+e0R6/AAMUepYw1IGLs2DHiY1kQIJk5P
+	 8t0OJvEPzSoiFnsdlj+aGVkBjZcQ2UaA37ijkjWcBJy02g9jpdVBj6/Cy3RcIX87YVw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793756721;
-	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:Message-ID:
-	 Date:MIME-Version:User-Agent:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type:Content-Transfer-Encoding;
-	bh=Yu7A9IfCons4QnPv1aLDZ6F+N4gkwUfnVBA3JUeiHFk=;
-	b=C3jYQPkDxBfT1De5yotagxP1KRrLpS/YWQqoTeTWU1ndkYOo8puJ2MGRzwW8gs9B/Mcw
-	 ksLwUPUWXJofRDo9fUHuI6IAxvTTnfKrCgklFhMGYVe1kqwnCYjXUf+4nUC4Ib3OXd+tk
-	 9+ThTA9g9a+d7pVkKBi83828g2S8uUvpJ6avaAhmgBqVcltCdhljUeLdkLI7C6gNrivLU
-	 rU8YSNgmCFj5nI5PP5MYVH0TK6kzlqF762l/JbiwTe6qIa3H8drizexvZJmnhxTrR4nRk
-	 IlAIHRdJtfLb1mnR7i1V++dSCH/aiYEAht7Yn/1lepDR89zEl4I8xgFUz3qJ1hk1M1Q==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793758539;
+	h=DMARC-Filter:Received:From:To:Cc:Subject:Date:Message-Id:X-Mailer:
+	 MIME-Version:Content-Transfer-Encoding:X-CM-TRANSID:
+	 X-Coremail-Antispam:X-Originating-IP:X-CM-SenderInfo;
+	bh=ev/MCQRcQulEBqWh7b56DIFoaYC3mCVJZNgRyTufn1U=;
+	b=zDcop1nlCPABT8cEj1T1gyyUUwzbVUxIIjuHU9R87fXzIFmsaROrlBvt8IXOyLc1PQIu
+	 UvaNepKeNfdO4tvGgTduJXqkocpO0X4GWsD+CjmQLZjPOiea78UlZcgmg8CqA8b1fDj7N
+	 t5+85Wcb5sFpizqJGsn9yu5iHhWEkXRQ3+zZmrIjG/k0f7CTXO5apx3Pk+pa8f3IlJYMD
+	 F5O2K1IuVmvG0NDC/AQXzqhHyI5rOBG/h/mrj1MtB9IdVl70GLh1SbsetZef90GQLe5lx
+	 fLDQYezR0Hys63GALrAQ79QNlwNPdEBn79DVz4zPa+4oe1eetIUibeUEDlqXaF+q7Zg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=linux.alibaba.com;
-	spf=pass smtp.mailfrom=linux.alibaba.com;
-	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=IbycN2wi;
-	arc=none smtp.remote-ip=115.124.30.98
-Received: from out30-98.freemail.mail.aliyun.com (out30-98.freemail.mail.aliyun.com [115.124.30.98])
+	dmarc=none header.from=iscas.ac.cn;
+	spf=pass smtp.mailfrom=iscas.ac.cn;
+	arc=none smtp.remote-ip=159.226.251.21
+Received: from cstnet.cn (smtp21.cstnet.cn [159.226.251.21])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E536C606A328;
-	Wed,  4 Nov 2026 01:45:19 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E536C606A328
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=IbycN2wi
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1793756717; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=Yu7A9IfCons4QnPv1aLDZ6F+N4gkwUfnVBA3JUeiHFk=;
-	b=IbycN2wiHbBLY8b7g8Mj3PbaRtQ9MiA+qd19HIv4OrvXt7hLs85bF0+SCFGHBFP96fJkLLeD9n1YedeMfu0MblNwgmtrGIIfVKcd0uDytvy9XUnSJ/SbfvoJPXmk9OYKK9A3wdWTRQekMrrm1zdwVtL4vLCnD6gTLDvPuSoz1og=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R201e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037026112;MF=joseph.qi@linux.alibaba.com;NM=1;PH=DS;RN=4;SR=0;TI=SMTPD_---0XE4Irvx_1793756716;
-Received: from 30.221.129.178(mailfrom:joseph.qi@linux.alibaba.com fp:SMTPD_---0XE4Irvx_1793756716 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Wed, 04 Nov 2026 09:45:17 +0800
-Message-ID: <50188292-83d9-4721-8f1f-76e4759ddb80@linux.alibaba.com>
-Date: Wed, 4 Nov 2026 09:45:16 +0800
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B8E70606A31B
+	for <linux-nfs@vger.kernel.org>; Wed,  4 Nov 2026 02:15:38 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B8E70606A31B
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=iscas.ac.cn
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=iscas.ac.cn
+Received: from dfae2b116770.home.arpa (unknown [36.110.52.2])
+	by APP-01 (Coremail) with SMTP id qwCowADXAPtDlepqHHg+AA--.9511S2;
+	Wed, 04 Nov 2026 10:15:31 +0800 (CST)
+From: Wentao Liang <vulab@iscas.ac.cn>
+To: Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] lockd: drop the host reference if the reclaimer cannot be started
+Date: Wed,  4 Nov 2026 02:15:40 +0000
+Message-Id: <20261104021540.1468799-1-vulab@iscas.ac.cn>
+X-Mailer: git-send-email 2.34.1
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -53,89 +56,62 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] NFS: don't raise i_size for DEALLOCATE in
- _nfs42_proc_fallocate()
-To: Anna Schumaker <anna@kernel.org>
-Cc: Trond Myklebust <trondmy@kernel.org>, linux-nfs@vger.kernel.org,
- linux-kernel@vger.kernel.org
-References: <20261103061654.2036827-1-joseph.qi@linux.alibaba.com>
- <0c67f568-586b-456a-be28-65d2ea16b633@app.fastmail.com>
-From: Joseph Qi <joseph.qi@linux.alibaba.com>
-In-Reply-To: <0c67f568-586b-456a-be28-65d2ea16b633@app.fastmail.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:qwCowADXAPtDlepqHHg+AA--.9511S2
+X-Coremail-Antispam: 1UD129KBjvJXoW7ZF43KF1UKw43ArWUuw17Jrb_yoW8Gr13pF
+	Z3Xrsak3s5JryavanrJa1UWr4rCws5K398Ca4kGw1Ivws5Xw43Ar9rCF1UZF4UAFyktFZ0
+	qF1UKrWrZr1DXaUanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvmb7Iv0xC_Kw4lb4IE77IF4wAFc2x0x2IEx4CE42xK8VAvwI8I
+	cIk0rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2
+	AK021l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v2
+	6r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVWxJr0_GcWl84ACjcxK6I8E87Iv6xkF7I0E14
+	v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xf
+	McIj6xIIjxv20xvE14v26rWY6Fy7McIj6I8E87Iv67AKxVW8Jr0_Cr1UMcvjeVCFs4IE7x
+	kEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0E
+	wIxGrwCF04k20xvE74AGY7Cv6cx26r48ZrWUJr1UMxC20s026xCaFVCjc4AY6r1j6r4UMI
+	8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AK
+	xVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26F1j6w1UMIIF0xvE2Ix0cI
+	8IcVCY1x0267AKxVW8Jr0_Cr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E
+	87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14v26r4UJVWxJrUvcSsGvfC2KfnxnU
+	UI43ZEXa7IU5ENtDUUUUU==
+X-CM-SenderInfo: pyxotu46lvutnvoduhdfq/1tbiBgIBA2rqY4K8dgABss
 
-Hi,
+nlmclnt_recovery() takes a reference to the nlm_host before spawning the
+reclaimer thread, and the new thread releases it when it is done.  If
+kthread_run() fails there is no thread to do that, so the reference is
+leaked and h_reclaiming stays set.
 
-On 11/4/26 4:11 AM, Anna Schumaker wrote:
-> Hi Joseph,
-> 
-> On Tue, Nov 3, 2026, at 1:16 AM, Joseph Qi wrote:
->> _nfs42_proc_fallocate() raises i_size to offset + len on success, so
->> that the cached size is not left stale when a delegation blocks the
->> post-op attribute refresh.  The helper is shared by all three
->> fallocate modes, but DEALLOCATE always carries FALLOC_FL_KEEP_SIZE
->> and never extends the file on the server, so punching a hole that
->> reaches past EOF now wrongly enlarges the cached i_size.
->>
->> The post-op update would normally restore the size from the returned
->> attributes, but nfs_update_inode() applies a differing size only when
->> no delegation is held, and then only when no write is in flight or the
->> new size is larger:
->>
->> 	if (new_isize != cur_isize && !have_delegation) {
->> 		if (!nfs_have_writebacks(inode) || new_isize > cur_isize)
->> 			i_size_write(inode, new_isize);
->> 	}
->>
->> With a concurrent mmap writer (nrequests != 0) or any outstanding
->> delegation, the shrinking server size is therefore ignored and the
->> client keeps reporting a file larger than the server has, in violation
->> of KEEP_SIZE, until some later revalidation without writebacks happens
->> to fix it up.
->>
->> Skip the i_size bump for the DEALLOCATE procedure.  ALLOCATE (mode 0)
->> and ZERO_RANGE (which nfs42_fallocate() accepts only without
->> FALLOC_FL_KEEP_SIZE) do extend the file when the range reaches past
->> EOF, so they keep the update.
->>
->> Fixes: 35168eb947f2 ("NFS: fix eof updates after NFSv4.2 fallocate/zero-range")
->> Cc: stable@vger.kernel.org
->> Signed-off-by: Joseph Qi <joseph.qi@linux.alibaba.com>
->> ---
->>  fs/nfs/nfs42proc.c | 11 ++++++++++-
->>  1 file changed, 10 insertions(+), 1 deletion(-)
->>
->> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
->> index ab86246fc364f..914499d30d47e 100644
->> --- a/fs/nfs/nfs42proc.c
->> +++ b/fs/nfs/nfs42proc.c
->> @@ -84,7 +84,16 @@ static int _nfs42_proc_fallocate(struct rpc_message 
->> *msg, struct file *filep,
->>  		loff_t newsize = offset + len;
->>
->>  		spin_lock(&inode->i_lock);
->> -		if (newsize > i_size_read(inode))
->> +		/*
->> +		 * DEALLOCATE always carries FALLOC_FL_KEEP_SIZE and never
->> +		 * extends the file on the server, so only ALLOCATE and
->> +		 * ZERO_RANGE may raise i_size here.  A wrongly raised size
->> +		 * can persist: nfs_update_inode() ignores a shrinking
->> +		 * post-op size while writebacks are outstanding or a
->> +		 * delegation is held.
->> +		 */
-> 
-> Is the comment really necessary? It's just restating things from the commit
-> message, and could quickly go stale if the behavior of nfs_update_inode()
-> ever needs to change in the future.
-> 
+Clear h_reclaiming and release the reference on that path, like the
+reclaimer does when it finishes, so that a later recovery attempt for
+the host can still be made.
 
-Thanks for reviewing this.
-So any review comments on the code change? I'll update the comments and
-send v2 if you're fine with fix.
+Fixes: df94f000c46c ("lockd: convert reclaimer thread to kthread interface")
+Cc: stable@vger.kernel.org
+Assisted-by: DeepSeek-V4.1-Flash and OpenAI Codex
+Signed-off-by: Wentao Liang <vulab@iscas.ac.cn>
+---
+ fs/lockd/clntlock.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-Thanks,
-Joseph
-
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index f797cc99f94d..78cdf86c4403 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -216,10 +216,13 @@ nlmclnt_recovery(struct nlm_host *host)
+ 	if (!host->h_reclaiming++) {
+ 		nlm_get_host(host);
+ 		task = kthread_run(reclaimer, host, "%s-reclaim", host->h_name);
+-		if (IS_ERR(task))
++		if (IS_ERR(task)) {
+ 			printk(KERN_ERR "lockd: unable to spawn reclaimer "
+ 				"thread. Locks for %s won't be reclaimed! "
+ 				"(%ld)\n", host->h_name, PTR_ERR(task));
++			host->h_reclaiming = 0;
++			nlmclnt_release_host(host);
++		}
+ 	}
+ }
+ 
+-- 
+2.34.1
 
