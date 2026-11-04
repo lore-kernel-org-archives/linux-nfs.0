@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793822290;
-	b=2ZmaxJqqktbO6Fuitg1VElCmDf+hW48n5ibKk6cH40gmM09L+sxJ/Cgs4V/MCdlje5XM
-	 5N7hzwYvcGMkpXu3PDrTIOuRlGn0e9XxkiMpfo9oSoJrc7EKmHSD/6YisIjNFZxnRwhF2
-	 uHxmGDG2UD/bdeqs8KyJ69wGe1qZ5cMgUOMjJcl2bjkFmWxlKSJNKP/aMY9ojmsWl2uye
-	 fAJKTDlAM0mYy4KW/V0dFQlpve4WLQtEh+biwnCZhQ4z+i23XhTaqgaqmt6dOJJ3wBL+Z
-	 YygRfRRckvE9RBvx2QtZtZVOb8PJcnCjICLbwn9eGRH2uXKrH5lHn80W7QMKyeN91eQ==
+	t=1793822318;
+	b=l+akshHWNiliuhQxEZnhcPTWNDm8VDGLU6k8pbD6cNJOljJGk5JSJOaL2zj3ce3LoMww
+	 iVYsCEfGg22+SSv3gkTKV6gVvVa6rVHWh6VHL4Zg5v77WWtbgCMPLMnDTxX5cpqKmtfB2
+	 IJnaxHphPIbcxBp/Q2tv+oHGDV5aCSjTXoI6p3gWInCb1vvJ/1wIV8dBTCBUnKpUA+sMV
+	 10MGk+ZXm4UM3CjR9tKhmSyfqg0i2nAulPGy83jX8HqtaS7hto4bVjL2W8yyaI74zRlkl
+	 Zsr/Xmckubx3w6pvmI4RO/puqY88Qy7Sz8rz08P7+HdVtw3MpPD/ptPA1eUe6PpYZmg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793822290;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793822318;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=8JYviDqoWsEGN3uNb5Mh66eaw6snQ2TUUnHcmJoMJ80=;
-	b=CZuBdvvgAi3MeHoqt48NYUkGecb0mI4xpSqB+y+H+/ycklqT7A0+25qjDTmst6C6C5+q
-	 7Sdt1V9iwedQmXMAn8Rt5KzOQulK4elcNRG71whQcaU13DdtFrtygZyGgXdb03OCKvnv6
-	 eNNK91wt03Hwzh15BGx747z+QgJuWk2/ydkbT9Ye0QIkzNuhvvsXR82pA1CFJ+sqJUxLa
-	 os8Wz0N3iyJjHDaE/8dz6NtwDTtwH/PVyFEoq2CZEdK6h7a0oEAZnFpjLQVcz2Hxhl7/b
-	 uy1y6/7zD5xUNSWTMMrXNwsTaXn+/oCKRCjTzjK3XdxTbaZg3obTMDXbSwKkGuYxjVw==
+	bh=FuQ+O9AN/EhfuAINsZT/2MGBlHToxixjGEE2AnbYkS0=;
+	b=1ACsr88mbRoYq2jNg+qW5ZDJU/ke6L6I7clu7ohFXy2gM7Pq+3NmdBlfAJbrPGC2YSmc
+	 nYM2sp/CqTpo9jJ4/jcSQJ1OXAAQ9n5jO5+bX3M5sqZKWy90Yw/XQz1YdGooXbKodGbAM
+	 raiNDX5EIp6lJ0xkBgLzLvJGUkM6D+POLHPfzK6WV1CDxiBsvNn3vd8MK/TJz3q9UV6mL
+	 0ts0XKYbg8Ahp4pkRPyrPQZ7FPbqVw3iPGmmzoEyWqyUTbEtIC5uKYPL1tls2BkV7yyZd
+	 l5uaCfGgzM4f69qUCBxzon9w62iKjeoK3ZyujQmFxaZWlthkH9FZqUkKflq8YHlplZA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=omYmnILU;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=jRideeBZ;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0AF2C606EE99;
-	Wed,  4 Nov 2026 19:58:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 18CC9606F293;
+	Wed,  4 Nov 2026 19:58:37 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=omYmnILU
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DCB771F00A1A;
-	Wed,  4 Nov 2026 19:57:56 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=jRideeBZ
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A6AF01F00919;
+	Wed,  4 Nov 2026 19:58:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793822288;
-	bh=8JYviDqoWsEGN3uNb5Mh66eaw6snQ2TUUnHcmJoMJ80=;
+	s=k20260515; t=1793822317;
+	bh=FuQ+O9AN/EhfuAINsZT/2MGBlHToxixjGEE2AnbYkS0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=omYmnILU6n/a/8ypDuatFcm5Yn1YdJM3CRKKuli7fcBySnvTgN50xiis4mVllM49v
-	 PV+Quk0y9VPAUT7onGY2p/nLF2xkGIDIWXqi4tkrhVP7JJganO4BAn8bDHMRztyoBl
-	 kDuAQDvNJ8Uuc3JHKiaYHNXgDWLaFbsRCKaJ0zpPBvI9qjf+zzVVphC8QUnWa1gAS9
-	 TqNqVumOE5u8pqbbZNrZhXFAdBkCmBN9rMMWYN4XW4rPv+P/EOoobKcvq4QxkXRKVJ
-	 s5UQbq8xS22dtefS2Q7ckkJlMa6rIUtShtzwuWqlg+ImTJMyCWJ++E2LN9ezNnICps
-	 7WSbKOm7NJ/JQ==
+	b=jRideeBZ8oxAXL6268eYmn+YEeTwdfLWgvKXD9/7wD79tZYk7c5DiZCAIV2Ed3bwb
+	 YWQRgSD2jU4vVyf5pd6Fp/OwMhqpw0pEzvJNc/5CO814j/jCHWPvNFJybI+doeQwSa
+	 OpQ46BOV+iwz4Cx5rb/iLqaBXNAMo8bJbHXV28HpUDKHDG7BprRhrw7b2hrCdF01bg
+	 0cpbc+GFBaegbtyEuAbtmzWoxuI04Ywy6El4+84vT4YlXPl9bsTkGJq2uYE28H64ez
+	 J2K0AA2qwL6I1M12hoT+BT/5TQUoZqOJ/cF7ZyMjn5hayi7nhzUJF/7Tom+ZjsTxWG
+	 7ClukSDqhmK1A==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 01/13] atm: let procfs copy out reads of the device files
-Date: Wed,  4 Nov 2026 20:57:54 +0100
-Message-ID: <20261104-work-procfs-net-v2-1-221e2437fed1@kernel.org>
+Subject: [PATCH RESEND v2 03/13] net: pktgen: let procfs copy in commands
+Date: Wed,  4 Nov 2026 20:58:23 +0100
+Message-ID: <20261104-work-procfs-net-v2-3-221e2437fed1@kernel.org>
 In-Reply-To: <20261104-work-procfs-net-v2-0-221e2437fed1@kernel.org>
 References: <20261104-work-procfs-net-v2-0-221e2437fed1@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,56 +116,411 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1517; i=brauner@kernel.org; h=from:subject:message-id; bh=gPjf1XFsI8l/uiq7gtBYaOS5PIZm1WCyT/xvmcgXYrk=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97lO2Xbpnsl62nNauWplf/xdYPBNLEnswIafyCd/XX xHhEwqnd5SyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEwkTZuR4eHSqRGfps/7dvOV 691dX8+Wbls1oSJgtmlB5Vsb0VvvEssY/hllnXhlJifSrl2270GVY8Ldju5SgRBVQfPATZXl+2b r8AIA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=12253; i=brauner@kernel.org; h=from:subject:message-id; bh=34PmFPP0nUXBNdGZFJGgCKj9cc2ZCkqII5e47ivrIBI=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97lPT47g02frChbkrDtYrT9WdJJ3C8at+YczFU1+49 1kz+DMu7ihlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZjIR0mG/9V9qu0rcn6cWtse rHOy7shiV8/57U/nfTfYwXmrweB/YR3D/ww7HSP/tNTFtY0WB3rKhG32Lfl1cJrxecFOqe05zSv u8QAA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Implement ->proc_read_buf() so procfs copies what is read from
-/proc/net/atm/<dev> to userspace after it unpinned the entry. The
-drivers' ->proc_read() keep filling their page.
+Implement ->proc_write_buf() for the files in /proc/net/pktgen so
+procfs copies in what is written before it pins the entry, and parse
+the commands from that copy. The parse helpers read the copy instead of
+fetching every character with get_user(). Commands longer than
+PAGE_SIZE - 1 bytes fail with -EINVAL now.
+
+With debug on, the dump of the command went through strndup_user() and
+failed the write with -EINVAL when there was no NUL right behind the
+command in the writer's buffer. The copy is NUL-terminated, so that's
+gone.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- net/atm/proc.c | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+ net/core/pktgen.c | 128 +++++++++++++++++++-----------------------------------
+ 1 file changed, 45 insertions(+), 83 deletions(-)
 
-diff --git a/net/atm/proc.c b/net/atm/proc.c
-index ca0fc6b90998..cea930b4b840 100644
---- a/net/atm/proc.c
-+++ b/net/atm/proc.c
-@@ -30,11 +30,11 @@
- #include "resources.h"
- #include "common.h" /* atm_proc_init prototype */
+diff --git a/net/core/pktgen.c b/net/core/pktgen.c
+index 12363a373fb8..84f4db86a5b0 100644
+--- a/net/core/pktgen.c
++++ b/net/core/pktgen.c
+@@ -516,11 +516,9 @@ static int pgctrl_show(struct seq_file *seq, void *v)
+ 	return 0;
+ }
  
--static ssize_t proc_dev_atm_read(struct file *file, char __user *buf,
-+static ssize_t proc_dev_atm_read(struct file *file, char *buf,
- 				 size_t count, loff_t *pos);
- 
- static const struct proc_ops atm_dev_proc_ops = {
--	.proc_read	= proc_dev_atm_read,
-+	.proc_read_buf	= proc_dev_atm_read,
- 	.proc_lseek	= noop_llseek,
- };
- 
-@@ -246,7 +246,7 @@ static const struct seq_operations vcc_seq_ops = {
- 	.show	= vcc_seq_show,
- };
- 
--static ssize_t proc_dev_atm_read(struct file *file, char __user *buf,
-+static ssize_t proc_dev_atm_read(struct file *file, char *buf,
- 				 size_t count, loff_t *pos)
+-static ssize_t pgctrl_write(struct file *file, const char __user *buf,
+-			    size_t count, loff_t *ppos)
++static ssize_t pgctrl_write(struct file *file, char *buf, size_t count,
++			    loff_t *ppos)
  {
- 	struct atm_dev *dev;
-@@ -267,8 +267,7 @@ static ssize_t proc_dev_atm_read(struct file *file, char __user *buf,
- 			length = -EINVAL;
- 	}
- 	if (length >= 0) {
--		if (copy_to_user(buf, (char *)page, length))
--			length = -EFAULT;
-+		memcpy(buf, (char *)page, length);
- 		(*pos)++;
- 	}
- 	free_page(page);
+-	char data[128];
+-	size_t max;
+ 	struct pktgen_net *pn = net_generic(current->nsproxy->net_ns, pg_net_id);
+ 
+ 	if (!capable(CAP_NET_ADMIN))
+@@ -529,20 +527,15 @@ static ssize_t pgctrl_write(struct file *file, const char __user *buf,
+ 	if (count < 1)
+ 		return -EINVAL;
+ 
+-	max = min(count, sizeof(data) - 1);
+-	if (copy_from_user(data, buf, max))
+-		return -EFAULT;
++	/* strip trailing '\n' */
++	if (buf[count - 1] == '\n')
++		buf[count - 1] = 0;
+ 
+-	if (data[max - 1] == '\n')
+-		data[max - 1] = 0; /* strip trailing '\n', terminate string */
+-	else
+-		data[max] = 0; /* terminate string */
+-
+-	if (!strcmp(data, "stop"))
++	if (!strcmp(buf, "stop"))
+ 		pktgen_stop_all_threads(pn);
+-	else if (!strcmp(data, "start"))
++	else if (!strcmp(buf, "start"))
+ 		pktgen_run_all_threads(pn);
+-	else if (!strcmp(data, "reset"))
++	else if (!strcmp(buf, "reset"))
+ 		pktgen_reset_all_threads(pn);
+ 	else
+ 		return -EINVAL;
+@@ -552,7 +545,7 @@ static ssize_t pgctrl_write(struct file *file, const char __user *buf,
+ 
+ static const struct proc_ops pktgen_proc_ops = {
+ 	.proc_show	= pgctrl_show,
+-	.proc_write	= pgctrl_write,
++	.proc_write_buf	= pgctrl_write,
+ };
+ 
+ static int pktgen_if_show(struct seq_file *seq, void *v)
+@@ -741,7 +734,7 @@ static int pktgen_if_show(struct seq_file *seq, void *v)
+ }
+ 
+ 
+-static ssize_t hex32_arg(const char __user *user_buffer, size_t maxlen,
++static ssize_t hex32_arg(const char *user_buffer, size_t maxlen,
+ 			 __u32 *num)
+ {
+ 	size_t i = 0;
+@@ -752,8 +745,7 @@ static ssize_t hex32_arg(const char __user *user_buffer, size_t maxlen,
+ 		int value;
+ 		char c;
+ 
+-		if (get_user(c, &user_buffer[i]))
+-			return -EFAULT;
++		c = user_buffer[i];
+ 		value = hex_to_bin(c);
+ 		if (value >= 0) {
+ 			*num <<= 4;
+@@ -765,15 +757,14 @@ static ssize_t hex32_arg(const char __user *user_buffer, size_t maxlen,
+ 	return i;
+ }
+ 
+-static ssize_t count_trail_chars(const char __user *user_buffer, size_t maxlen)
++static ssize_t count_trail_chars(const char *user_buffer, size_t maxlen)
+ {
+ 	size_t i;
+ 
+ 	for (i = 0; i < maxlen; i++) {
+ 		char c;
+ 
+-		if (get_user(c, &user_buffer[i]))
+-			return -EFAULT;
++		c = user_buffer[i];
+ 		switch (c) {
+ 		case '\"':
+ 		case '\n':
+@@ -790,7 +781,7 @@ done:
+ 	return i;
+ }
+ 
+-static ssize_t num_arg(const char __user *user_buffer, size_t maxlen,
++static ssize_t num_arg(const char *user_buffer, size_t maxlen,
+ 		       unsigned long *num)
+ {
+ 	size_t i;
+@@ -799,8 +790,7 @@ static ssize_t num_arg(const char __user *user_buffer, size_t maxlen,
+ 	for (i = 0; i < maxlen; i++) {
+ 		char c;
+ 
+-		if (get_user(c, &user_buffer[i]))
+-			return -EFAULT;
++		c = user_buffer[i];
+ 		if ((c >= '0') && (c <= '9')) {
+ 			*num *= 10;
+ 			*num += c - '0';
+@@ -810,15 +800,14 @@ static ssize_t num_arg(const char __user *user_buffer, size_t maxlen,
+ 	return i;
+ }
+ 
+-static ssize_t strn_len(const char __user *user_buffer, size_t maxlen)
++static ssize_t strn_len(const char *user_buffer, size_t maxlen)
+ {
+ 	size_t i;
+ 
+ 	for (i = 0; i < maxlen; i++) {
+ 		char c;
+ 
+-		if (get_user(c, &user_buffer[i]))
+-			return -EFAULT;
++		c = user_buffer[i];
+ 		switch (c) {
+ 		case '\"':
+ 		case '\n':
+@@ -840,7 +829,7 @@ done_str:
+  * where each entry consists of size and weight delimited by commas.
+  * "size1,weight_1 size2,weight_2 ... size_n,weight_n" for example.
+  */
+-static ssize_t get_imix_entries(const char __user *buffer,
++static ssize_t get_imix_entries(const char *buffer,
+ 				size_t maxlen,
+ 				struct pktgen_dev *pkt_dev)
+ {
+@@ -867,8 +856,7 @@ static ssize_t get_imix_entries(const char __user *buffer,
+ 		i += len;
+ 		if (i >= maxlen)
+ 			return -EINVAL;
+-		if (get_user(c, &buffer[i]))
+-			return -EFAULT;
++		c = buffer[i];
+ 		/* Check for comma between size_i and weight_i */
+ 		if (c != ',')
+ 			return -EINVAL;
+@@ -894,15 +882,14 @@ static ssize_t get_imix_entries(const char __user *buffer,
+ 
+ 		if (i >= maxlen)
+ 			break;
+-		if (get_user(c, &buffer[i]))
+-			return -EFAULT;
++		c = buffer[i];
+ 		i++;
+ 	} while (c == ' ');
+ 
+ 	return i;
+ }
+ 
+-static ssize_t get_labels(const char __user *buffer,
++static ssize_t get_labels(const char *buffer,
+ 			  size_t maxlen, struct pktgen_dev *pkt_dev)
+ {
+ 	unsigned int n = 0;
+@@ -936,8 +923,7 @@ static ssize_t get_labels(const char __user *buffer,
+ 		n++;
+ 		if (i >= maxlen)
+ 			break;
+-		if (get_user(c, &buffer[i]))
+-			return -EFAULT;
++		c = buffer[i];
+ 		i++;
+ 	} while (c == ',');
+ 
+@@ -974,9 +960,8 @@ static __u32 pktgen_read_flag(const char *f, bool *disable)
+ 	return 0;
+ }
+ 
+-static ssize_t pktgen_if_write(struct file *file,
+-			       const char __user *user_buffer, size_t count,
+-			       loff_t *offset)
++static ssize_t pktgen_if_write(struct file *file, char *user_buffer,
++			       size_t count, loff_t *offset)
+ {
+ 	struct seq_file *seq = file->private_data;
+ 	struct pktgen_dev *pkt_dev = seq->private;
+@@ -1009,8 +994,7 @@ static ssize_t pktgen_if_write(struct file *file,
+ 		return len;
+ 
+ 	memset(name, 0, sizeof(name));
+-	if (copy_from_user(name, &user_buffer[i], len))
+-		return -EFAULT;
++	memcpy(name, &user_buffer[i], len);
+ 	i += len;
+ 
+ 	max = count - i;
+@@ -1020,16 +1004,9 @@ static ssize_t pktgen_if_write(struct file *file,
+ 
+ 	i += len;
+ 
+-	if (debug) {
+-		size_t copy = min_t(size_t, count + 1, 1024);
+-		char *tp = strndup_user(user_buffer, copy);
+-
+-		if (IS_ERR(tp))
+-			return PTR_ERR(tp);
+-
+-		pr_debug("%s,%zu  buffer -:%s:-\n", name, count, tp);
+-		kfree(tp);
+-	}
++	if (debug)
++		pr_debug("%s,%zu  buffer -:%.*s:-\n", name, count,
++			 (int)min_t(size_t, count, 1023), user_buffer);
+ 
+ 	if (!strcmp(name, "min_pkt_size")) {
+ 		max = min(10, count - i);
+@@ -1322,8 +1299,7 @@ static ssize_t pktgen_if_write(struct file *file,
+ 			return len;
+ 
+ 		memset(f, 0, sizeof(f));
+-		if (copy_from_user(f, &user_buffer[i], len))
+-			return -EFAULT;
++		memcpy(f, &user_buffer[i], len);
+ 
+ 		if (strcmp(f, "start_xmit") == 0) {
+ 			pkt_dev->xmit_mode = M_START_XMIT;
+@@ -1362,8 +1338,7 @@ static ssize_t pktgen_if_write(struct file *file,
+ 			return len;
+ 
+ 		memset(f, 0, 32);
+-		if (copy_from_user(f, &user_buffer[i], len))
+-			return -EFAULT;
++		memcpy(f, &user_buffer[i], len);
+ 
+ 		flag = pktgen_read_flag(f, &disable);
+ 		if (flag) {
+@@ -1410,8 +1385,7 @@ static ssize_t pktgen_if_write(struct file *file,
+ 		if (len < 0)
+ 			return len;
+ 
+-		if (copy_from_user(buf, &user_buffer[i], len))
+-			return -EFAULT;
++		memcpy(buf, &user_buffer[i], len);
+ 		buf[len] = 0;
+ 		if (strcmp(buf, pkt_dev->dst_min) != 0) {
+ 			strscpy_pad(pkt_dev->dst_min, buf);
+@@ -1430,8 +1404,7 @@ static ssize_t pktgen_if_write(struct file *file,
+ 		if (len < 0)
+ 			return len;
+ 
+-		if (copy_from_user(buf, &user_buffer[i], len))
+-			return -EFAULT;
++		memcpy(buf, &user_buffer[i], len);
+ 		buf[len] = 0;
+ 		if (strcmp(buf, pkt_dev->dst_max) != 0) {
+ 			strscpy_pad(pkt_dev->dst_max, buf);
+@@ -1452,8 +1425,7 @@ static ssize_t pktgen_if_write(struct file *file,
+ 
+ 		pkt_dev->flags |= F_IPV6;
+ 
+-		if (copy_from_user(buf, &user_buffer[i], len))
+-			return -EFAULT;
++		memcpy(buf, &user_buffer[i], len);
+ 		buf[len] = 0;
+ 
+ 		in6_pton(buf, -1, pkt_dev->in6_daddr.s6_addr, -1, NULL);
+@@ -1475,8 +1447,7 @@ static ssize_t pktgen_if_write(struct file *file,
+ 
+ 		pkt_dev->flags |= F_IPV6;
+ 
+-		if (copy_from_user(buf, &user_buffer[i], len))
+-			return -EFAULT;
++		memcpy(buf, &user_buffer[i], len);
+ 		buf[len] = 0;
+ 
+ 		in6_pton(buf, -1, pkt_dev->min_in6_daddr.s6_addr, -1, NULL);
+@@ -1497,8 +1468,7 @@ static ssize_t pktgen_if_write(struct file *file,
+ 
+ 		pkt_dev->flags |= F_IPV6;
+ 
+-		if (copy_from_user(buf, &user_buffer[i], len))
+-			return -EFAULT;
++		memcpy(buf, &user_buffer[i], len);
+ 		buf[len] = 0;
+ 
+ 		in6_pton(buf, -1, pkt_dev->max_in6_daddr.s6_addr, -1, NULL);
+@@ -1518,8 +1488,7 @@ static ssize_t pktgen_if_write(struct file *file,
+ 
+ 		pkt_dev->flags |= F_IPV6;
+ 
+-		if (copy_from_user(buf, &user_buffer[i], len))
+-			return -EFAULT;
++		memcpy(buf, &user_buffer[i], len);
+ 		buf[len] = 0;
+ 
+ 		in6_pton(buf, -1, pkt_dev->in6_saddr.s6_addr, -1, NULL);
+@@ -1539,8 +1508,7 @@ static ssize_t pktgen_if_write(struct file *file,
+ 		if (len < 0)
+ 			return len;
+ 
+-		if (copy_from_user(buf, &user_buffer[i], len))
+-			return -EFAULT;
++		memcpy(buf, &user_buffer[i], len);
+ 		buf[len] = 0;
+ 		if (strcmp(buf, pkt_dev->src_min) != 0) {
+ 			strscpy_pad(pkt_dev->src_min, buf);
+@@ -1559,8 +1527,7 @@ static ssize_t pktgen_if_write(struct file *file,
+ 		if (len < 0)
+ 			return len;
+ 
+-		if (copy_from_user(buf, &user_buffer[i], len))
+-			return -EFAULT;
++		memcpy(buf, &user_buffer[i], len);
+ 		buf[len] = 0;
+ 		if (strcmp(buf, pkt_dev->src_max) != 0) {
+ 			strscpy_pad(pkt_dev->src_max, buf);
+@@ -1580,8 +1547,7 @@ static ssize_t pktgen_if_write(struct file *file,
+ 			return len;
+ 
+ 		memset(valstr, 0, sizeof(valstr));
+-		if (copy_from_user(valstr, &user_buffer[i], len))
+-			return -EFAULT;
++		memcpy(valstr, &user_buffer[i], len);
+ 
+ 		if (!mac_pton(valstr, pkt_dev->dst_mac))
+ 			return -EINVAL;
+@@ -1598,8 +1564,7 @@ static ssize_t pktgen_if_write(struct file *file,
+ 			return len;
+ 
+ 		memset(valstr, 0, sizeof(valstr));
+-		if (copy_from_user(valstr, &user_buffer[i], len))
+-			return -EFAULT;
++		memcpy(valstr, &user_buffer[i], len);
+ 
+ 		if (!mac_pton(valstr, pkt_dev->src_mac))
+ 			return -EINVAL;
+@@ -1864,7 +1829,7 @@ static ssize_t pktgen_if_write(struct file *file,
+ 
+ static const struct proc_ops pktgen_if_proc_ops = {
+ 	.proc_show	= pktgen_if_show,
+-	.proc_write	= pktgen_if_write,
++	.proc_write_buf	= pktgen_if_write,
+ };
+ 
+ static int pktgen_thread_show(struct seq_file *seq, void *v)
+@@ -1897,8 +1862,7 @@ static int pktgen_thread_show(struct seq_file *seq, void *v)
+ 	return 0;
+ }
+ 
+-static ssize_t pktgen_thread_write(struct file *file,
+-				   const char __user *user_buffer,
++static ssize_t pktgen_thread_write(struct file *file, char *user_buffer,
+ 				   size_t count, loff_t *offset)
+ {
+ 	struct seq_file *seq = file->private_data;
+@@ -1927,8 +1891,7 @@ static ssize_t pktgen_thread_write(struct file *file,
+ 		return len;
+ 
+ 	memset(name, 0, sizeof(name));
+-	if (copy_from_user(name, &user_buffer[i], len))
+-		return -EFAULT;
++	memcpy(name, &user_buffer[i], len);
+ 	i += len;
+ 
+ 	max = count - i;
+@@ -1959,8 +1922,7 @@ static ssize_t pktgen_thread_write(struct file *file,
+ 			ret = len;
+ 			goto out;
+ 		}
+-		if (copy_from_user(f, &user_buffer[i], len))
+-			return -EFAULT;
++		memcpy(f, &user_buffer[i], len);
+ 
+ 		mutex_lock(&pktgen_thread_lock);
+ 		ret = pktgen_add_device(t, f);
+@@ -1996,7 +1958,7 @@ out:
+ 
+ static const struct proc_ops pktgen_thread_proc_ops = {
+ 	.proc_show	= pktgen_thread_show,
+-	.proc_write	= pktgen_thread_write,
++	.proc_write_buf	= pktgen_thread_write,
+ };
+ 
+ /* Think find or remove for NN */
 
 -- 
 2.53.0
