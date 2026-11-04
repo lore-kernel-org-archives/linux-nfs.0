@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793822060;
-	b=JUuiifjFj0NN38/32rVcTYri+g6dWOpD+JD0mbNnNH7aFmrfeVLbKf3OjxbnLNp4vEXN
-	 E48ml/de36bhXh3S4auj7XmdJCzL1hpVtxWSCX+FkUoI9oatyQQrk7fOrBZTkxyedTaHB
-	 c2d/GfGh4IFQz+qi6vpYYs3GNFd7CvHqqSEg3ZyUYl1dRHuYIzIvuc+xrvWmIB/1Xyg01
-	 /Uvjs63MAGI+1PbGjA2senoc3V3b7yKPToj8yTy0UodIm5HiCgRr/fsOeD21fArNNMywb
-	 V0Sk5prR8zoaNVJmSoBEbXFZ/NcUU9nkKkopvWu+B1oadwWZe294nS/GVZbre+cYTcA==
+	t=1793822075;
+	b=yXaPkleNL0gfwywqyESbLoiVXqBbagJJOrXSr5+BUXMVmoIYpqulNlkXBSnNMvIGWoz8
+	 T+PsZ9JDqlc1CwOBA1lsA+30AZBQ1Oy/kd9K60Vs20cWHRyTBg4H1VyidCNpuW6bzQMI1
+	 qbD2wvBUZPXpECE8BE1+ly365OQOHDArBXQ9hwhdL32128Oaa72p6EnNgBZq2RGwdIzro
+	 msTUuOufpzH0emdzDcfJX93hM12uZBJ+VBojooojo8msQfARMr5OR/ov24R8XpGCGja4o
+	 /JosSB5eKtXNRFRmGvozYRgJOYTDHcJEDQMtq8AojrgapVCyquKw+f5aHdMuvJr5rcA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793822060;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793822075;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=3UZDf+ZvXwviYYRO81gR2i4wUh8T09vQdpdtKHPc3tY=;
-	b=2Vaihmdi5gqbzQAjaAefAolTNzba8hqSroa//xqjhWWSpmZGYZiKBrxJuqRa3U4c9BHi
-	 woOoqe+gyveqjVWypwm8wRUuMcsM06VZHiXFAcOnGsmX1fTx8BedloXEWUXgq56x1wLpk
-	 eN0JnnTkJ4Ax5AYtq6PFRdz2RNmRxifaUBycn6JqH36OCl6nVH3YxLY0ht9dxwAij+vVv
-	 fEYO1ZxtfUXp1XFXI6Oqcv4ou824Rg2Nxy/CbD095mDl3Kuby+qonp7AP2AMz4lbeCwN+
-	 PAdz0xR7k6jBw4DFf1WKAUPSC0f6tWw5T1mHajCEuvJ5U5KZEOMYSN1AlvJmZdh8LAQ==
+	bh=MznRqphvtEZQp5npCZI4V0Q6Ll7VzqUvC+SM21Py/Cg=;
+	b=rjA6373da6kigFVWKi97o8WujZneNvOd2wDLxFksgAHvHpcBQ2J7qYi6p7eU3Gz2GvOg
+	 M10APes13aqrnReba9/vpsO7XdYkkyTA2nYG8CACKg84vD95glOD3Ty745KEOVFcnd43h
+	 lGEf+15bTels1N0x/AsXxiAqUQ+MlbxvQCLJgsKWWMrdSF1AN14um0o7d5nKxP287SMuZ
+	 9KWz7F0qaR+rfFdybC8sqKA4/1UOKRn4CIp5dJcLA/Ex/b7B8avfg87YkPQmRE8tZU3gT
+	 dwpQqGVh7p0vgYDW/OmyOfDob3EAukU4Y0CY+80+P5k/Rzb/r6p8Mfug8OpPxIaMdqA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=T4zZjUyv;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HAw6s8BB;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 86DFA606C581;
-	Wed,  4 Nov 2026 19:54:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1768C606C59D;
+	Wed,  4 Nov 2026 19:54:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=T4zZjUyv
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3B4E51F00919;
-	Wed,  4 Nov 2026 19:54:08 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HAw6s8BB
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CA34F1F00919;
+	Wed,  4 Nov 2026 19:54:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793822060;
-	bh=3UZDf+ZvXwviYYRO81gR2i4wUh8T09vQdpdtKHPc3tY=;
+	s=k20260515; t=1793822074;
+	bh=MznRqphvtEZQp5npCZI4V0Q6Ll7VzqUvC+SM21Py/Cg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=T4zZjUyvc3j8nw3tiflJSUeNICqOlNSqZovU4PoZ6gqCLCJf1dfKY62TesU3x1UnQ
-	 rmZH4PA14yEQGPUY0YxDG0RLF29s2Tc2EyPqEGnB33L1aLAfYW2dCKFRRME35LIF5T
-	 ncjRWjlBOplt1Gz8nR2aQbwv2fsoF4i8azGGjYGRGrI199iNcnWxdpu1tFvYa5Pmpb
-	 JcJSuGXigc7SbojgiY5EU9UjG5D2ih3JJM0YL4I1nZic7W+eZGo5koWndEV1Ufg9G8
-	 /FSOwWp9czad84mKKOxlionZ073H7QGZaSlWz8kMTn/3mg1OD/MujBFOLbo3nYt0Gi
-	 26tgrAqEobkXA==
+	b=HAw6s8BBQpMyHhrBN/asRF3MyBAYmvDQG77oX4IdbQ/Fvo+Dc9HrA+ohRms91kTq1
+	 tGhNQ04Nlq/t5AfIo9I0c2aXY/M5rtDTWUuPNd15k0EftQU6IZz/1TwoK5ymzaduHR
+	 KvYeTEdLCNXdmy5ayLOGUZDs71r+gh7UBQKBI6RxE/xvbUti6reVcmIlIBukQg/oVZ
+	 3GplheA6ivbtF04reRE084gkHonlgWY7/SEBNKSZb4CeUx9EDq8ilSbzdKz6xramV4
+	 xWoLAYuCOzLrRq2otfJd3P7rRpoURXvc8stKQzocl2lC26pljUbnGmCOVptz3/wPze
+	 zCe5glH7FfhIg==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 18/30] sched/psi: let procfs copy in trigger writes
-Date: Wed,  4 Nov 2026 20:54:06 +0100
-Message-ID: <20261104-work-procfs-fs-v2-18-319e0f9a8aae@kernel.org>
+Subject: [PATCH RESEND v2 19/30] sched/psi: mark the pressure files permanent
+Date: Wed,  4 Nov 2026 20:54:20 +0100
+Message-ID: <20261104-work-procfs-fs-v2-19-319e0f9a8aae@kernel.org>
 In-Reply-To: <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
 References: <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,123 +116,63 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3970; i=brauner@kernel.org; h=from:subject:message-id; bh=wWLtSsgUcAuxacgI730BoqUXYkuflISVemeZC+f0CIc=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97nFwW38zhO9UotLDx/VsMk/yam9uPJLL+qFY6vTfF 3seHvV90FHKwiDGxSArpsji0G4SLrecp2KzUaYGzBxWJpAhDFycAjCRvX4Mv9kWr98nfWmlb03+ h81e7R+kzPqWLzi0OS2lKImDXydEfT7DPxutE1ttrSQnvPViFjQ72dR23S6Wj1Fuwh2VGOEVO53 dOAA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2074; i=brauner@kernel.org; h=from:subject:message-id; bh=Q4lGavm4ZGBXo39Ieuspgksaf3Gh3Wa2s1ilX3Hj4ok=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97nE6m3h911tVzfl3TOQ+HGv+VCMdmrs1riUii6Fn/ h6jaTe6O0pZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACbyOoXhv3tM6SuHq3u6jjOp iTG8jZr+w3t5XtOCK765Bxxfv0uo9GVkmHSW9bDFvZMHG36nuv3fEtB3J4a7ZO+RCd52Z7kzO6s y+AA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Implement ->proc_write_buf() for the files in /proc/pressure so procfs
-copies in what is written before it pins the entry, and take the
-trigger from that copy. Only the first 31 bytes were ever looked at.
-Writes larger than PAGE_SIZE - 1 bytes fail with -EINVAL now.
+/proc/pressure/* are created when psi initializes and never removed.
+Say so with PROC_ENTRY_PERMANENT, procfs then calls into them without
+pinning them, like it does for /proc/profile.
+
+That also takes care of a rule the files bent. psi_write() takes the
+seq_file's lock to serialize the triggers. A reader holds that lock
+while it copies to userspace, and now that procfs owns the seq_file it
+does that with the entry unpinned. So nothing that runs with the entry
+pinned may wait for that lock, and psi_write() ran pinned. Nothing ever
+waited for it since the files are never removed, but with the files
+permanent nothing runs pinned at all.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- kernel/sched/psi.c | 40 +++++++++++++++++++---------------------
- 1 file changed, 19 insertions(+), 21 deletions(-)
+ kernel/sched/psi.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
 diff --git a/kernel/sched/psi.c b/kernel/sched/psi.c
-index 9f1d9742bac9..9b99099017e1 100644
+index 9b99099017e1..cdb7a832333a 100644
 --- a/kernel/sched/psi.c
 +++ b/kernel/sched/psi.c
-@@ -1535,8 +1535,8 @@ static int psi_cpu_show(struct seq_file *m, void *v)
- 	return psi_show(m, &psi_system, PSI_CPU);
+@@ -1622,6 +1622,7 @@ static int psi_fop_release(struct inode *inode, struct file *file)
  }
- 
--static ssize_t psi_write(struct file *file, const char __user *user_buf,
--			 size_t nbytes, enum psi_res res)
-+static ssize_t psi_write(struct file *file, const char *kbuf, size_t nbytes,
-+			 enum psi_res res)
- {
- 	char buf[32];
- 	size_t buf_size;
-@@ -1552,9 +1552,7 @@ static ssize_t psi_write(struct file *file, const char __user *user_buf,
- 		return -EINVAL;
- 
- 	buf_size = min(nbytes, sizeof(buf) - 1);
--	if (copy_from_user(buf, user_buf, buf_size))
--		return -EFAULT;
--
-+	memcpy(buf, kbuf, buf_size);
- 	buf[buf_size] = '\0';
- 
- 	seq = file->private_data;
-@@ -1590,22 +1588,22 @@ static ssize_t psi_write(struct file *file, const char __user *user_buf,
- 	return nbytes;
- }
- 
--static ssize_t psi_io_write(struct file *file, const char __user *user_buf,
--			    size_t nbytes, loff_t *ppos)
-+static ssize_t psi_io_write(struct file *file, char *buf, size_t nbytes,
-+			    loff_t *ppos)
- {
--	return psi_write(file, user_buf, nbytes, PSI_IO);
-+	return psi_write(file, buf, nbytes, PSI_IO);
- }
- 
--static ssize_t psi_memory_write(struct file *file, const char __user *user_buf,
--				size_t nbytes, loff_t *ppos)
-+static ssize_t psi_memory_write(struct file *file, char *buf, size_t nbytes,
-+				loff_t *ppos)
- {
--	return psi_write(file, user_buf, nbytes, PSI_MEM);
-+	return psi_write(file, buf, nbytes, PSI_MEM);
- }
- 
--static ssize_t psi_cpu_write(struct file *file, const char __user *user_buf,
--			     size_t nbytes, loff_t *ppos)
-+static ssize_t psi_cpu_write(struct file *file, char *buf, size_t nbytes,
-+			     loff_t *ppos)
- {
--	return psi_write(file, user_buf, nbytes, PSI_CPU);
-+	return psi_write(file, buf, nbytes, PSI_CPU);
- }
- 
- static __poll_t psi_fop_poll(struct file *file, poll_table *wait)
-@@ -1625,21 +1623,21 @@ static int psi_fop_release(struct inode *inode, struct file *file)
  
  static const struct proc_ops psi_io_proc_ops = {
++	.proc_flags	= PROC_ENTRY_PERMANENT,
  	.proc_show	= psi_io_show,
--	.proc_write	= psi_io_write,
-+	.proc_write_buf	= psi_io_write,
+ 	.proc_write_buf	= psi_io_write,
  	.proc_poll	= psi_fop_poll,
- 	.proc_release	= psi_fop_release,
+@@ -1629,6 +1630,7 @@ static const struct proc_ops psi_io_proc_ops = {
  };
  
  static const struct proc_ops psi_memory_proc_ops = {
++	.proc_flags	= PROC_ENTRY_PERMANENT,
  	.proc_show	= psi_memory_show,
--	.proc_write	= psi_memory_write,
-+	.proc_write_buf	= psi_memory_write,
+ 	.proc_write_buf	= psi_memory_write,
  	.proc_poll	= psi_fop_poll,
- 	.proc_release	= psi_fop_release,
+@@ -1636,6 +1638,7 @@ static const struct proc_ops psi_memory_proc_ops = {
  };
  
  static const struct proc_ops psi_cpu_proc_ops = {
++	.proc_flags	= PROC_ENTRY_PERMANENT,
  	.proc_show	= psi_cpu_show,
--	.proc_write	= psi_cpu_write,
-+	.proc_write_buf	= psi_cpu_write,
+ 	.proc_write_buf	= psi_cpu_write,
  	.proc_poll	= psi_fop_poll,
- 	.proc_release	= psi_fop_release,
- };
-@@ -1650,15 +1648,15 @@ static int psi_irq_show(struct seq_file *m, void *v)
- 	return psi_show(m, &psi_system, PSI_IRQ);
- }
- 
--static ssize_t psi_irq_write(struct file *file, const char __user *user_buf,
--			     size_t nbytes, loff_t *ppos)
-+static ssize_t psi_irq_write(struct file *file, char *buf, size_t nbytes,
-+			     loff_t *ppos)
- {
--	return psi_write(file, user_buf, nbytes, PSI_IRQ);
-+	return psi_write(file, buf, nbytes, PSI_IRQ);
+@@ -1655,6 +1658,7 @@ static ssize_t psi_irq_write(struct file *file, char *buf, size_t nbytes,
  }
  
  static const struct proc_ops psi_irq_proc_ops = {
++	.proc_flags	= PROC_ENTRY_PERMANENT,
  	.proc_show	= psi_irq_show,
--	.proc_write	= psi_irq_write,
-+	.proc_write_buf	= psi_irq_write,
+ 	.proc_write_buf	= psi_irq_write,
  	.proc_poll	= psi_fop_poll,
- 	.proc_release	= psi_fop_release,
- };
 
 -- 
 2.53.0
