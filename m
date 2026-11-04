@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793813430;
-	b=VvpJDZAsLFsSynD+qInXJ5sh5ZKk4V1we0rlQ8cfmqVdc0uwLY4lnetx5nAN3/CiTgqv
-	 7vPRhaEYAw4dCx/puDLUGN9Ii4ZUh/KsUVA45z0r/di1UyWEimGJYxp6+8x4l4u11pfdg
-	 Jp1Cmmre3/jWoZG2DSE6BH63tRYeNUp8QUE5QG7fjIQBCkNyiIsEzMrDPBZEomDJnA1Z1
-	 VYyUxcM4YFxom1gh7r5AOMAk5XwOJ3p4AnXlwrmqrYzk2W30AxBPQhtwrN0Kngu3DGJXA
-	 1gb/FtcH3yQu5XUwIYwfmVR4hlT7iCiOMNqjW3odav5DtSgcJtmCQUwQ2EkYr5DBUIg==
+	t=1793813417;
+	b=gfD/6DFNjvtXO3CzdoPYk/Yhrx34a7WH6I8zYXExCVOeZ03BpvGvgfRHfVR3zo07NWrn
+	 bUhqQGFn/i+qftNnPMXf0iHSxU6Bv37N7+lSQn7zKDGmBd+Js1F8wSXdPzjxZhUQ24X9h
+	 CyRigXNadd5djExY0se9oCZlV07jQsv6ymIVi1d6DLxgRsnk7DX2W+A14nGd3p8z7RgBf
+	 4VP0CUFThFqf1sLg0eVlnKfJSHmYNjswPCwN+wLZdSc/3sNtduZjPDmPc6zKE8qyrqdKg
+	 aezBV4JQrMSvFMtjOcfL7Wu+1Jf0ps+/wgmmG4ehgPE7UImEqIVQY3XrHA9tNaBTRDw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793813430;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793813417;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=gnzz2fT926tAung/y7Xzshf60AQanFXIqjFC5KSqJW4=;
-	b=vwpbMmSzml903IPFA2a5qpxVcL1qG2ffAGrWMvI3zzmqcnZjWlZ+WeWaXA25ZVz7Gf+P
-	 28QjpyCZvg13XJgN/LUe7mMxbASlI6oJS7M2F0f01YLslpczcds/BkuYEgzdqp1wgpavG
-	 1MdtPOltxByLHDF9i4S2KqOpggQM1Yvp9JDDqA3m4N30boHfstK564KxiDQlm8IRX8xaB
-	 ZyY+KE5KW7D0qHxeNMYZQdirM+tOfa8d1v9YVbD8hFhencl5r81Qw8q2Lpt0AGQTmv08g
-	 sb0PdLWQF4HUGTvzAAwRa7AG/8xh++PRD1KNKezmizGwPhkgh5EjKv6wXOxSDXNalPg==
+	bh=Bp2DPgSMAVNPpocNHMMHSMxcgQhQwNKqaFQNAmEUdgU=;
+	b=LrYdNKvw8Ajr9ZccflA4DgKTvoJcBlFTfahxAS8hbD/J4++chd3qo9VQuc3FGBYvLLNS
+	 P+BQqVg5dhbJ4mg2ozWn+TfzPOXELefMnjOm4ivTzubI9gGDRyoNZpKmf5LmihGfKN/gF
+	 9ggfTDPWlgEg3Loaqd9U2YYHH6rH7im5YM+npjuOi4Wv00YnbG2ktDAUc7zqzgTaWBMdB
+	 9rB9Ns9nZV7ZGxZ7G+Q3lnOy61YGCOkuMcQBaHqyDvFmVCLC94n0hnl+HwN3OAQYCNOhm
+	 YL8nGnV3ZtOCp3HKrAPBT4tA2Xry282K0pXktQ9FLCxdtleiK22y/YzPkqB+qJ5p4Ng==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bKrAUcOe;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=g5u712B9;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1F19E608361C;
-	Wed,  4 Nov 2026 17:30:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bKrAUcOe
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D051B1F00A20;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B6D69606A92F;
 	Wed,  4 Nov 2026 17:30:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=g5u712B9
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 70FBE1F000C1;
+	Wed,  4 Nov 2026 17:30:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793813429;
-	bh=gnzz2fT926tAung/y7Xzshf60AQanFXIqjFC5KSqJW4=;
+	s=k20260515; t=1793813416;
+	bh=Bp2DPgSMAVNPpocNHMMHSMxcgQhQwNKqaFQNAmEUdgU=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=bKrAUcOeVzlg83/euOIHnVFterm+vHdMFNuNi2Dt0LF9VzWRfSHdWlR7H5c2KTzRF
-	 naRK5w+k54/QDDCRMfWgLxdTPqv4FCwBsr1kXOzQqhEOlC8vy1IWJ41ODhEZLno2LS
-	 jjGH8/XSd1jADyBL1p3Hc3Qgb7ui9/GDGzwbwzjY67qrbN3GQL5NP2Jybx4qUpUZX3
-	 CQMNjfOnMG5qtjvL2qoA6KmgJggxXjaC2t2PuKCscK2/RkukWsmgaXtZ0l6oKz5iz+
-	 P64zZ0Jt2cdani8OUoo4/+XjtpVm+osPlwpgz43htAz/C7aUhFTjPEXATp/jT4GDYM
-	 7OqOzge6sGwYQ==
+	b=g5u712B9uyY/EHBMvMcIJjwX1Q9oNafVwZZdSTe+wWNmne5PBjIRnbjMdNBKEaIP4
+	 4sN1akBTM0upEXPMnrPesATu9t0mv+J9tGR4BfcCUQnJpzUcbcj+IvUqAQlpKvEFAP
+	 maIQiS285xRthBs8kUjqLULi7ZlP9EZaMs6jvYgyfDdyykDtrKuOIUKXiUE5xq8j0K
+	 rnPkE+GVlVCE8ozm0404SgO7RYqyMkzZKzwWo1p+WxGQXY8MTkERhkp4+WNxvZiOYe
+	 CguRECqkxpVtUS2A9kODUDoxnBc90vENA1/MJjeZ4tQ9xNPhj1ug3QG1Rnyknyga3s
+	 5rdxM+QnpKA9g==
 From: Christian Brauner <brauner@kernel.org>
-Date: Wed, 04 Nov 2026 18:27:25 +0100
-Subject: [PATCH v2 08/51] powerpc/pseries/lparcfg: don't drop the last byte
- of a write
+Date: Wed, 04 Nov 2026 18:27:24 +0100
+Subject: [PATCH v2 07/51] lockd: don't hand out the terminator of
+ nlm_end_grace
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-work-procfs-bugfixes-v2-8-bbf7d5546809@kernel.org>
+Message-Id: <20261104-work-procfs-bugfixes-v2-7-bbf7d5546809@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -89,50 +89,40 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, 
  linux-debuggers@vger.kernel.org, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
- Chuck Lever <cel@kernel.org>, stable@vger.kernel.org
+ Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1293; i=brauner@kernel.org;
- h=from:subject:message-id; bh=N2rHHHUzfsZsGLUBvdMxa3o2qGAAPzh8wsvUFn8S2uA=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zmYqts+f6c771jBc691PB/aNiq5rYmuWq7o9SdKKM
- Ga7qdvUUcrCIMbFICumyOLQbhIut5ynYrNRpgbMHFYmkCEMXJwCMJFb8gz/a+f8MlT+0SWxMsTk
- QerGWIU8g/w227Ptd+ManyhO269pzsgwb7VmgtgD7UuXjjF+CvlTU3NkGv8+HhW+PC2DOSyTg2v
- 5AQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=879; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=tKzHzMLxBoW/zY681xcBM67Jqe2y1s4JEAk9OycZ8F8=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zma88mPSwzMZES8ZvfsaK7K5NIr2+azZ3b+Xc1Xpm
+ 7Wz/9nbdJSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAExkbT3DP623G/ymh8nr95bL
+ Sj1ZqVz5I/v5xTDO2LLF07okt9w1Ws/wP0bKWD8yk0Xj8wP2OJmbXq1N7z9lRV6ZFj3BvzE/x+E
+ BNwA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-lparcfg_write() terminates its copy of the write by overwriting the
-last byte, so a write without a trailing newline loses its last
-character: "partition_entitled_capacity=5" is parsed as an empty value
-and fails with -EINVAL. Terminate behind the copy instead, and refuse a
-write that fills the whole buffer, which can't be terminated.
+nlm_end_grace_read() answers with "Y\n" or "N\n" from a three byte
+buffer and hands out all three bytes, the terminating NUL included.
+Leave the NUL out.
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Cc: stable@vger.kernel.org
+Fixes: d68e3c4aa416 ("lockd: add a /proc/fs/lockd/nlm_end_grace file")
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- arch/powerpc/platforms/pseries/lparcfg.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ fs/lockd/procfs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/powerpc/platforms/pseries/lparcfg.c b/arch/powerpc/platforms/pseries/lparcfg.c
-index 3280b7968cab..9882f98c0efb 100644
---- a/arch/powerpc/platforms/pseries/lparcfg.c
-+++ b/arch/powerpc/platforms/pseries/lparcfg.c
-@@ -699,13 +699,12 @@ static ssize_t lparcfg_write(struct file *file, const char __user * buf,
- 	if (!firmware_has_feature(FW_FEATURE_SPLPAR))
- 		return -EINVAL;
+diff --git a/fs/lockd/procfs.c b/fs/lockd/procfs.c
+index a01f08c8c2f3..74f7ab77535a 100644
+--- a/fs/lockd/procfs.c
++++ b/fs/lockd/procfs.c
+@@ -57,7 +57,7 @@ nlm_end_grace_read(struct file *file, char __user *buf, size_t size,
+ 	resp[1] = '\n';
+ 	resp[2] = '\0';
  
--	if (count == 0 || count > sizeof(kbuf))
-+	if (count == 0 || count >= sizeof(kbuf))
- 		return -EINVAL;
+-	return simple_read_from_buffer(buf, size, pos, resp, sizeof(resp));
++	return simple_read_from_buffer(buf, size, pos, resp, sizeof(resp) - 1);
+ }
  
- 	if (copy_from_user(kbuf, buf, count))
- 		return -EFAULT;
--
--	kbuf[count - 1] = '\0';
-+	kbuf[count] = '\0';
- 	tmp = strchr(kbuf, '=');
- 	if (!tmp)
- 		return -EINVAL;
+ static const struct proc_ops lockd_end_grace_proc_ops = {
 
 -- 
 2.53.0
