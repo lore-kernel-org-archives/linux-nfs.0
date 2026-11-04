@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793820587;
-	b=tAEs9kmGTO0vOSImRy0B4po4bANbW3kgMVIqc5sE1gR67/ZsQ+XQTWTG1Q/LV9VUVR2n
-	 dRwIwZVqQNaf1m7AFRtLOXuGURe86wKw8HMEi/ADI0vPHH2EuqdOxaA6i84lAQVBS/OX4
-	 Me64NBHXH38Zo2rvLSSxpMu6rGeqpUoW1c9RO5sMZH1zfKxm7nCND9LJ0TVqo871aXQDa
-	 r1bDs7vX2xrdFRwBHjfeoZoQPDnhYMd1370Timef81t/d/mZGZuQmi8YdK4cth01h+1SN
-	 tTdPWz7nXVN3hCVhN2csldjZZYVMjbxg4P1Oyd2pa5cw5GMI3H1BUkPAEXNb1mLhd3g==
+	t=1793820616;
+	b=qB+qtQ89FxpzP/vADP12n+BlctH7MoKizuIAfaiHQloklFOS0oW1otMqb1FbEAcUfxHq
+	 rAz7YQuIR+caMYO0GnfFHBcQMuWJ1sT2+Wdq5lXLw4TOWLV55kpXk/gipfNX5DeCh/7T5
+	 uU2VY9vPMmHwV4LvYL3sjWiLUMymccgRLpqYsfHkk8xjoLbqGXjMwtEM5T7wAjyu2BB70
+	 wdeXl8NsLzsP8DpSeJ0xv31yPC/lxuCp9jaCxbAlZU/gP8WE6Ln97UxaXAVV/DOTn92qU
+	 nyQh/5CQeBgqdlk/WQhsrCZJhUUHfpmG+PON8r4VPaukhopNc95qLl6Ff7+vcJKgbSQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793820587;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793820616;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=jJveCArfJ4dJAlkDsE+PsTgPNAew1JtEqbKqeEtjh0c=;
-	b=SbKrvu2bNrsqHjeONx2HIaCVfQfKRQWbnkwrmFUC/qADLDTuyAp4Uivzu+vC0Aqg7p17
-	 Nr1pSqT11ONAqCYSmWrSAjsc9QHkw7wAXCe6NZsui2Yi7B8b+yuDyOgG5KOy1dYqCsREj
-	 w6lrmeb4t9eK1i/HuOH2CbT59jNKX5FwNce940615YI2aRyAl6ZRujkD1UvWUI87sQaw4
-	 XQgsJXPoqyYqlzlvGQOx6VUlyg+VuJgmfayWNpNcEhBvKC+fSGk+BvTo+LwenPuHzp8Et
-	 2mwZjGpJUnuoUHDk/x/XWISyHwF+0p+5GspoNX6df4+e5H/OkfCl1XWiYF1jINbcbGQ==
+	bh=wXVlMWiDTu+69WMCdmpXWiSSm+c28yN85IUhl+IubT8=;
+	b=H5Mdy7Uuukscocv+TsvTE+Ex1srBMbzUx3KXUxrVlfrFwmRwOhkoGgkGO6JB2yf3FUAC
+	 a/ltam8bUknm7Sx1MdrUZo7lDc9EgWoiy9e5ud1UvPSC5TWgn/WwEs4oY8cfoBWaC8Nd4
+	 RsXE78TT5BO+G8UrIUnIN1pgBFdHSD6+dzXveD4mUKkKG0oc6wHq2M4jCxwSf8A6S5BcQ
+	 evtADxkvQDitICpk7JdPszQ95Rh/EQq3f5WgZDOWuE5VeY49evS5ZSeBgtbKcfPeWjgMn
+	 DJHOAPLZ22J7+7ywRsVdpAf+dShj43pxonu9iQkRF8tMHu6hnlUfQnRcD+iUxam6e4A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="BjZ/Zf08";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=erxYLb1X;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EAF236076366;
-	Wed,  4 Nov 2026 19:29:46 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 99B266076CD9;
+	Wed,  4 Nov 2026 19:30:15 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BjZ/Zf08
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F1F0A1F00A17;
-	Wed,  4 Nov 2026 19:29:34 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=erxYLb1X
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A3DD31F00919;
+	Wed,  4 Nov 2026 19:30:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793820586;
-	bh=jJveCArfJ4dJAlkDsE+PsTgPNAew1JtEqbKqeEtjh0c=;
+	s=k20260515; t=1793820615;
+	bh=wXVlMWiDTu+69WMCdmpXWiSSm+c28yN85IUhl+IubT8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=BjZ/Zf08BvWFVtiPIjuPZ7YyWoio1bwIZMMZVBF20DzzjnxA22jWzFxc9KjKjaDvT
-	 rViB/7feQqOjmIju1fIMJ4a+1vVMheCQ/Lrk5pNSdEe7937GT4q7VYJRDRZ2FTv2lh
-	 C/KvEqXWJmv76siosW+mEyiwP42cccALGsX6OmqEmfv7sn7fyyyEhW4DwY1lepXGap
-	 VVEvKtdm//l0UV8A5yXcOdbtJeVrpe0JA8pTZmD3AlPnJBCkqJoqHuJZtDgqSt3khc
-	 88vcSfprY+zWqxmh00X2TKAsyOgox1rWtHhY7hk8VIBQVGLti3lb08ZLZo2VrV985S
-	 v/G8P54ivmf+A==
+	b=erxYLb1X2DHiu8zWp8v0jRYZ5UGBGh+M5ta+MA4icX/zIpChkASF4X68Jon0h6gUC
+	 8nuq0rsoqvadx2nDVRRlBP2aj3ufS3vatM8TDiMeFwvrDbjUNZAnA9ofhKM5FJ6XdR
+	 sKm5V0II55oa6/vNBFqcvr+LbWPRO0kbZer+mED55WXozLJTUJG12joB4mMb5qG9J7
+	 VpqXXHbX8Uyy3Hnr9YOzD5moscAo3/2JptEeVKryH7YO1wOoswN1+5wJ5ax5tGm2mR
+	 +F9oKHdKLr81Lnpvjj/9p5jcmbN338nH1sT0ofHVHFecyj5pPtazwCt2Ap7nkxjs5Q
+	 Nyh8bzuW3jflg==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 01/23] proc: drop the compat file operations
-Date: Wed,  4 Nov 2026 20:29:32 +0100
-Message-ID: <20261104-work-procfs-core-v2-1-76ace653a773@kernel.org>
+Subject: [PATCH RESEND v2 03/23] proc: share the readdir cursor with sysctl
+Date: Wed,  4 Nov 2026 20:30:01 +0100
+Message-ID: <20261104-work-procfs-core-v2-3-76ace653a773@kernel.org>
 In-Reply-To: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
 References: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,165 +116,223 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5437; i=brauner@kernel.org; h=from:subject:message-id; bh=2wrGueNUlsSX/cB6QD56PXJI32dZ2evqLoQHTbyNmak=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bi80rwldk9xsNCM88cQWmaL5ejXnqpvnZdyZxcf3a JOaS+/cjlIWBjEuBlkxRRaHdpNwueU8FZuNMjVg5rAygQxh4OIUgImkRjEyHDk9+33iyk/3v0l/ Pvmv4kDpyx/CU2XYgk81tbCteMR3V57hv3fbzJj2eNeqs4lze0saDYXOKnhp666eWf7l+JJnopF f+QE=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=7727; i=brauner@kernel.org; h=from:subject:message-id; bh=T1jO1APZ3j3BQHDjVCpmuxMpr8V+h+I2OmQhvzCN9EY=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bi+58GPL4mlqj67P2u71ltNkzqaV66omL9vzZbrTm 6qaruBg345SFgYxLgZZMUUWh3aTcLnlPBWbjTI1YOawMoEMYeDiFICJLKxl+GfMdq5+mWH0iYYW pjurF5RIvVivMn2Ztpzp+jttleeahF4x/C9dvn1KMM+3u+sn3VvOYpmaw5XlpZepdd7umWXjkTf LRFkB
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-procfs has both sets of file operations twice, with and without
-->compat_ioctl(), and picks the one with it for entries that have
-->proc_compat_ioctl(). That's from commit 778f3dd5a13c ("Fix procfs
-compat_ioctl regression") when a file without ->compat_ioctl() went
-through the translation tables in fs/compat_ioctl.c and one with it
-didn't. Those tables are gone since commit 77b9040195de ("compat_ioctl:
-simplify the implementation"). compat_sys_ioctl() answers -ENOTTY for a
-file without ->compat_ioctl() now, which is what
-proc_reg_compat_ioctl() answers for an entry without
-->proc_compat_ioctl().
-
-So always set ->compat_ioctl() and drop the second set of file
-operations and the flag that picked it.
+proc_readdir_de() and proc_sys_readdir() both resume a listing after
+the last entry it emitted and each remembers that entry in the open
+file with a cursor of its own: the same struct, the same way of
+setting it, the same release. Keep one in generic.c and let sysctl
+use it.
 
 No functional changes.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/proc/generic.c       |  4 ----
- fs/proc/inode.c         | 45 +++------------------------------------------
- fs/proc/internal.h      |  9 ---------
- include/linux/proc_fs.h |  1 -
- 4 files changed, 3 insertions(+), 56 deletions(-)
+ fs/proc/generic.c     | 29 ++++++++++++-----------------
+ fs/proc/internal.h    | 25 +++++++++++++++++++++++++
+ fs/proc/proc_sysctl.c | 45 +++++----------------------------------------
+ 3 files changed, 42 insertions(+), 57 deletions(-)
 
 diff --git a/fs/proc/generic.c b/fs/proc/generic.c
-index 9a0a2fcac7c7..e7264f0cf5ab 100644
+index e7264f0cf5ab..f6d620a5c3d2 100644
 --- a/fs/proc/generic.c
 +++ b/fs/proc/generic.c
-@@ -446,10 +446,6 @@ static void pde_set_flags(struct proc_dir_entry *pde)
- 		pde->flags |= PROC_ENTRY_PERMANENT;
- 	if (proc_ops->proc_read_iter)
- 		pde->flags |= PROC_ENTRY_proc_read_iter;
--#ifdef CONFIG_COMPAT
--	if (proc_ops->proc_compat_ioctl)
--		pde->flags |= PROC_ENTRY_proc_compat_ioctl;
--#endif
- 	if (proc_ops->proc_lseek)
- 		pde->flags |= PROC_ENTRY_proc_lseek;
+@@ -301,22 +301,16 @@ struct dentry *proc_lookup(struct inode *dir, struct dentry *dentry,
  }
-diff --git a/fs/proc/inode.c b/fs/proc/inode.c
-index 2d65f3c8ec03..18f6490bfe77 100644
---- a/fs/proc/inode.c
-+++ b/fs/proc/inode.c
-@@ -410,6 +410,8 @@ static long proc_reg_compat_ioctl(struct file *file, unsigned int cmd, unsigned
+ 
+ /*
+- * Where the next readdir resumes. The entries are counted, so one that is
+- * added or removed in front of the position would shift what the next call
+- * returns. The name of the last entry emitted doesn't move.
++ * Remember @name as the entry the listing is behind at @pos. If this can't
++ * the next call counts from the start.
+  */
+-struct proc_dir_cursor {
+-	loff_t pos;			/* the position behind the entry */
+-	unsigned int len;
+-	char name[NAME_MAX + 1];
+-};
+-
+-/* If this can't remember the entry the next call counts from the start. */
+-static void proc_dir_cursor_set(struct file *file, struct proc_dir_entry *de,
+-				loff_t pos)
++void proc_dir_cursor_set(struct file *file, const char *name, unsigned int len,
++			 loff_t pos)
+ {
+ 	struct proc_dir_cursor *cursor = file->private_data;
+ 
++	if (len > NAME_MAX)
++		return;
+ 	if (!cursor) {
+ 		cursor = kmalloc(sizeof(*cursor), GFP_KERNEL);
+ 		if (!cursor)
+@@ -324,8 +318,8 @@ static void proc_dir_cursor_set(struct file *file, struct proc_dir_entry *de,
+ 		file->private_data = cursor;
  	}
- 	return rv;
+ 	cursor->pos = pos;
+-	cursor->len = de->namelen;
+-	memcpy(cursor->name, de->name, de->namelen);
++	cursor->len = len;
++	memcpy(cursor->name, name, len);
  }
-+#else
-+#define proc_reg_compat_ioctl NULL
- #endif
  
- static int pde_mmap(struct proc_dir_entry *pde, struct file *file, struct vm_area_struct *vma)
-@@ -569,6 +571,7 @@ static const struct file_operations proc_reg_file_ops = {
- 	.write		= proc_reg_write,
- 	.poll		= proc_reg_poll,
- 	.unlocked_ioctl	= proc_reg_unlocked_ioctl,
-+	.compat_ioctl	= proc_reg_compat_ioctl,
- 	.mmap		= proc_reg_mmap,
- 	.get_unmapped_area = proc_reg_get_unmapped_area,
- #ifndef CONFIG_MMU
-@@ -585,39 +588,6 @@ static const struct file_operations proc_iter_file_ops = {
- 	.splice_read	= copy_splice_read,
- 	.poll		= proc_reg_poll,
- 	.unlocked_ioctl	= proc_reg_unlocked_ioctl,
--	.mmap		= proc_reg_mmap,
--	.get_unmapped_area = proc_reg_get_unmapped_area,
--#ifndef CONFIG_MMU
--	.mmap_capabilities = proc_reg_mmap_capabilities,
--#endif
--	.open		= proc_reg_open,
--	.release	= proc_reg_release,
--};
--
--#ifdef CONFIG_COMPAT
--static const struct file_operations proc_reg_file_ops_compat = {
--	.llseek		= proc_reg_llseek,
--	.read		= proc_reg_read,
--	.write		= proc_reg_write,
--	.poll		= proc_reg_poll,
--	.unlocked_ioctl	= proc_reg_unlocked_ioctl,
--	.compat_ioctl	= proc_reg_compat_ioctl,
--	.mmap		= proc_reg_mmap,
--	.get_unmapped_area = proc_reg_get_unmapped_area,
--#ifndef CONFIG_MMU
--	.mmap_capabilities = proc_reg_mmap_capabilities,
--#endif
--	.open		= proc_reg_open,
--	.release	= proc_reg_release,
--};
--
--static const struct file_operations proc_iter_file_ops_compat = {
--	.llseek		= proc_reg_llseek,
--	.read_iter	= proc_reg_read_iter,
--	.splice_read	= copy_splice_read,
--	.write		= proc_reg_write,
--	.poll		= proc_reg_poll,
--	.unlocked_ioctl	= proc_reg_unlocked_ioctl,
- 	.compat_ioctl	= proc_reg_compat_ioctl,
- 	.mmap		= proc_reg_mmap,
- 	.get_unmapped_area = proc_reg_get_unmapped_area,
-@@ -627,7 +597,6 @@ static const struct file_operations proc_iter_file_ops_compat = {
- 	.open		= proc_reg_open,
- 	.release	= proc_reg_release,
- };
--#endif
+ int proc_dir_release(struct inode *inode, struct file *file)
+@@ -346,7 +340,7 @@ int proc_dir_release(struct inode *inode, struct file *file)
+ int proc_readdir_de(struct file *file, struct dir_context *ctx,
+ 		    struct proc_dir_entry *de)
+ {
+-	struct proc_dir_cursor *cursor = file->private_data;
++	const struct proc_dir_cursor *cursor;
+ 	struct proc_dir_entry *dir = de;
+ 	int i;
  
- static const char *proc_get_link(struct dentry *dentry,
- 				 struct inode *inode,
-@@ -683,14 +652,6 @@ struct inode *proc_get_inode(struct super_block *sb, struct proc_dir_entry *de)
- 			inode->i_fop = &proc_iter_file_ops;
- 		else
- 			inode->i_fop = &proc_reg_file_ops;
--#ifdef CONFIG_COMPAT
--		if (pde_has_proc_compat_ioctl(de)) {
--			if (pde_has_proc_read_iter(de))
--				inode->i_fop = &proc_iter_file_ops_compat;
--			else
--				inode->i_fop = &proc_reg_file_ops_compat;
--		}
--#endif
- 	} else if (S_ISDIR(inode->i_mode)) {
- 		inode->i_op = de->proc_iops;
- 		inode->i_fop = de->proc_dir_ops;
+@@ -354,7 +348,8 @@ int proc_readdir_de(struct file *file, struct dir_context *ctx,
+ 		return 0;
+ 
+ 	read_lock(&proc_subdir_lock);
+-	if (cursor && cursor->pos == ctx->pos) {
++	cursor = proc_dir_cursor_at(file, ctx->pos);
++	if (cursor) {
+ 		/* Resume after the last entry emitted, wherever it is now. */
+ 		de = pde_subdir_after(dir, cursor->name, cursor->len);
+ 	} else {
+@@ -378,7 +373,7 @@ int proc_readdir_de(struct file *file, struct dir_context *ctx,
+ 			return 0;
+ 		}
+ 		ctx->pos++;
+-		proc_dir_cursor_set(file, de, ctx->pos);
++		proc_dir_cursor_set(file, de->name, de->namelen, ctx->pos);
+ 		read_lock(&proc_subdir_lock);
+ 		/* Removed in the meantime, go on after its name. */
+ 		if (RB_EMPTY_NODE(&de->subdir_node))
 diff --git a/fs/proc/internal.h b/fs/proc/internal.h
-index 04f7ce2b24ed..268a0523be12 100644
+index 268a0523be12..6b61d09ac5e5 100644
 --- a/fs/proc/internal.h
 +++ b/fs/proc/internal.h
-@@ -92,15 +92,6 @@ static inline bool pde_has_proc_read_iter(const struct proc_dir_entry *pde)
- 	return pde->flags & PROC_ENTRY_proc_read_iter;
+@@ -278,6 +278,31 @@ extern struct dentry *proc_lookup(struct inode *, struct dentry *, unsigned int)
+ struct dentry *proc_lookup_de(struct inode *, struct dentry *, struct proc_dir_entry *);
+ extern int proc_readdir(struct file *, struct dir_context *);
+ int proc_readdir_de(struct file *, struct dir_context *, struct proc_dir_entry *);
++
++/*
++ * Where the next readdir resumes. The entries are counted, so one that is
++ * added or removed in front of the position would shift what the next call
++ * returns. The name of the last entry emitted doesn't move. The directory's
++ * file keeps it, see proc_dir_release().
++ */
++struct proc_dir_cursor {
++	loff_t pos;			/* the position behind the entry */
++	unsigned int len;
++	char name[NAME_MAX + 1];
++};
++
++/* The entry to resume after, if the position is still the one behind it. */
++static inline const struct proc_dir_cursor *
++proc_dir_cursor_at(struct file *file, loff_t pos)
++{
++	const struct proc_dir_cursor *cursor = file->private_data;
++
++	if (cursor && cursor->pos == pos)
++		return cursor;
++	return NULL;
++}
++void proc_dir_cursor_set(struct file *file, const char *name, unsigned int len,
++			 loff_t pos);
+ int proc_dir_release(struct inode *, struct file *);
+ 
+ static inline void pde_get(struct proc_dir_entry *pde)
+diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
+index 6a92c33db9b5..c1e41a3f8f6b 100644
+--- a/fs/proc/proc_sysctl.c
++++ b/fs/proc/proc_sysctl.c
+@@ -787,36 +787,6 @@ out:
+ 	return ret;
  }
  
--static inline bool pde_has_proc_compat_ioctl(const struct proc_dir_entry *pde)
+-/*
+- * Where the next readdir resumes. The entries are counted, so one that is
+- * registered or unregistered in front of the position would shift what
+- * the next call returns. The name of the last entry emitted doesn't move.
+- */
+-struct sysctl_cursor {
+-	loff_t pos;			/* the position behind the entry */
+-	int len;
+-	char name[NAME_MAX + 1];
+-};
+-
+-/* If this can't remember the entry the next call counts from the start. */
+-static void sysctl_cursor_set(struct file *file, const char *name, int len,
+-			      loff_t pos)
 -{
--#ifdef CONFIG_COMPAT
--	return pde->flags & PROC_ENTRY_proc_compat_ioctl;
--#else
--	return false;
--#endif
+-	struct sysctl_cursor *cursor = file->private_data;
+-
+-	if (len > NAME_MAX)
+-		return;
+-	if (!cursor) {
+-		cursor = kmalloc(sizeof(*cursor), GFP_KERNEL);
+-		if (!cursor)
+-			return;
+-		file->private_data = cursor;
+-	}
+-	cursor->pos = pos;
+-	cursor->len = len;
+-	memcpy(cursor->name, name, len);
 -}
 -
- static inline bool pde_has_proc_lseek(const struct proc_dir_entry *pde)
+ /*
+  * The inode number and type of the entry @d holds, instantiating its dentry
+  * if there is none. Needs the header pinned, proc_sys_make_inode() checks
+@@ -871,7 +841,7 @@ static int proc_sys_fill_dirent(struct file *file, struct sysctl_dirent *d)
+ static int proc_sys_readdir(struct file *file, struct dir_context *ctx)
  {
- 	return pde->flags & PROC_ENTRY_proc_lseek;
-diff --git a/include/linux/proc_fs.h b/include/linux/proc_fs.h
-index 47d7deaeed8f..6ad5150020bf 100644
---- a/include/linux/proc_fs.h
-+++ b/include/linux/proc_fs.h
-@@ -26,7 +26,6 @@ enum {
- #endif
+ 	struct ctl_table_header *head = PROC_I(file_inode(file))->sysctl;
+-	struct sysctl_cursor *cursor = file->private_data;
++	const struct proc_dir_cursor *cursor;
+ 	struct sysctl_dirent d = {};
+ 	struct ctl_dir *ctl_dir;
+ 	int err;
+@@ -888,7 +858,8 @@ static int proc_sys_readdir(struct file *file, struct dir_context *ctx)
+ 	 * that moved the position away from it counts from the start, like
+ 	 * seeking to an arbitrary position always did.
+ 	 */
+-	if (cursor && cursor->pos == ctx->pos) {
++	cursor = proc_dir_cursor_at(file, ctx->pos);
++	if (cursor) {
+ 		err = sysctl_dir_next(ctl_dir, &d, cursor->name, cursor->len);
+ 	} else {
+ 		loff_t pos = 2;
+@@ -910,19 +881,13 @@ static int proc_sys_readdir(struct file *file, struct dir_context *ctx)
+ 				break;
+ 		}
+ 		ctx->pos++;
+-		sysctl_cursor_set(file, d.name, d.len, ctx->pos);
++		proc_dir_cursor_set(file, d.name, d.len, ctx->pos);
+ 		err = sysctl_dir_next(ctl_dir, &d, d.name, d.len);
+ 	}
+ 	sysctl_dir_done(&d);
+ 	return err;
+ }
  
- 	PROC_ENTRY_proc_read_iter	= 1U << 1,
--	PROC_ENTRY_proc_compat_ioctl	= 1U << 2,
- 	PROC_ENTRY_proc_lseek		= 1U << 3,
+-static int proc_sys_dir_release(struct inode *inode, struct file *file)
+-{
+-	kfree(file->private_data);
+-	return 0;
+-}
+-
+ static int proc_sys_permission(const struct mnt_idmap *idmap,
+ 			       struct inode *inode, int mask)
+ {
+@@ -1002,7 +967,7 @@ static const struct file_operations proc_sys_dir_file_operations = {
+ 	.read		= generic_read_dir,
+ 	.iterate_shared	= proc_sys_readdir,
+ 	.llseek		= generic_file_llseek,
+-	.release	= proc_sys_dir_release,
++	.release	= proc_dir_release,
+ };
  
- 	PROC_ENTRY_FORCE_LOOKUP		= 1U << 7,
+ static const struct inode_operations proc_sys_inode_operations = {
 
 -- 
 2.53.0
