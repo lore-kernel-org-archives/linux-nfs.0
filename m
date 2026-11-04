@@ -1,75 +1,51 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=213.95.11.211
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793783736;
-	b=heY8DZfjs596eoeBD5Z2sDOUU9B1ozsiyIw9Ub5j5NN18cL3ACo/mUb+8fdUQxz5eknT
-	 AGHLKCBcM82NzD0fuSMaukcw6smbGvzmBLwxSSuq5fKTgnyFK3wIgZtHAwOfjsyOLGNUl
-	 EiCrjnO3XhFFGMySJ3xCOCLWogk3C1BrrMYba4ksBCT8888DurqYn6Vt6hFNjwvkESbOU
-	 /ilzQS+Bmzpgc8XaQVtUdl3qH0LHiLromofkdHAcDZgzYez5ObWIz+6D+m3kF3Mt6fzkT
-	 kzuU+alJ51HWmnUBCnfr72czmjbMxJZizh+ZFsMPXlAwFP7C4rrf0/Ct+Mu9O4f6a7Q==
+	t=1793783751;
+	b=OssKobp25zAM1uF5m8uyHytB6WQ+TRLNAd41A/VOOWJoWlXs7gEMjOX4aoV9WFX3nuR1
+	 hkSBvxcjboCNuydjGPCmDOyhQ9aUTfB4PmqS9FcAAfSsqL1MQaEmSFOhYxovZ6+DiZ4p7
+	 0+ueeXAA/3WKQ+utgHwPmnQ5hriLNVwjGfCOMexdQRJkUj/rwM+bNqEYkE/eY3s6OH+OG
+	 wsRJmgxlgy8pvDZoBkrfxRQFiOFOD0Pa6jLpfxPlvPY7Qd6cnvMcaXwLBC8F8PxezhBcA
+	 Yg7t4vxCYzAdjwWO0eH4Gl7PkthUi6OmWj64jpeSWkqAVhkJglkPoZvLwOTaBx2Slrg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793783736;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=tun3DxnivT6n8ykyvHDle1jgjloMyn9wMMyaVwUBJtE=;
-	b=xmcr7yec+WPhYpeNieSszKshZJXr/3jZlrcW8PLnr+8Zh4T2kyeXJvf1i/aGPlwa+qVS
-	 R6xPzgd1Ro2Z+SaMXtkyN6ZxEdLAAtVN6DqR2QjzGXvdlwahqdhv6qUOiaQl1kLdUMPPo
-	 svBQYusftCZ8mNsJ9Le9tpJsm1Jf6NSf+sX3zXiHp5gTlqJVORtB3x1oNI6PIm6r1kdGV
-	 PolVhj4xUkvFWlKwY7Lk1oM+acc8YBO0v7qi0n7xFCNGfHNKesXbXw7JqXVKcphP3VWel
-	 PHCWI5ukpuhM5nNOHoVBztxqRAXPCZbK895HWGrw28um8DVKOXnYgI8YqQOODf7vdeA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793783751;
+	h=DMARC-Filter:Received:Date:From:To:Cc:Subject:Message-ID:References:
+	 MIME-Version:Content-Type:Content-Disposition:In-Reply-To:User-Agent;
+	bh=b2dMElOQFbRVtowHgZXN+VNpS2AR+GYKqef8wfoWtBE=;
+	b=QWLha9FXLSJEsolisMgkK7fe7W3G1YnMKImsrS8T7gfzRzLo3obPYcT8t0RV3f95Vt7l
+	 2NTE6iggKZOX+RjdNrmQpFH7skRJNte3LLn/Hs+nOha01fItMYR3xxUziF/QyJuZXkCM+
+	 6nFbBPK1etmF/KtoAVMgpjtt3/reWaFnyX3XpArNxzujf6RMMjeTo2jr0ZNgpZ8HPBuzk
+	 fdS0uCOROBJoA/Qj6w0mj4iQ+Z+Q9vSS82Lx/PPLzxcY/zOZ6NnukMatHLb/lfiQKXAXy
+	 dd2QW7axsEIE/fh8vDewPYXVGiYrCPtlsiTXLH45ilktQ3aIdDCW3ONVKcDp8ID8R9A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QF98rpjB;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=lst.de;
+	spf=pass smtp.mailfrom=lst.de;
+	arc=none smtp.remote-ip=213.95.11.211
+Received: from verein.lst.de (verein.lst.de [213.95.11.211])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C1070606A31B;
-	Wed,  4 Nov 2026 09:15:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QF98rpjB
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 786C51F000C1;
-	Wed,  4 Nov 2026 09:15:21 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793783735;
-	bh=tun3DxnivT6n8ykyvHDle1jgjloMyn9wMMyaVwUBJtE=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=QF98rpjBzH7nX1jmz4Zo8ykeu0WPbxz0HGt6XxCXrOQ4V4PB3P/wbn5sluIzZ3bgP
-	 woOpkCVq06Ek6V7bKkHEP2phdvrGGARxXAl1OBE0IhgkRUa/IQ935AFbXxh1YUY5bJ
-	 utfjbIjp7LtybAhtZNGHqFcIoDw2mhpfxaUaUe5IHuBCvHt5tgYAPu/YfrtEAf4jWd
-	 v5zbJS1rE1Hby/io2vM2SNwmccLVR3w7pjdFYCtf7rR4Wu4skeBeZ5GH0Q1ajKmHHR
-	 yetiYqpJqieJOdcKUSYdWCjNW5p22mqd+bHsoVYbOTO4y8Ft2ybe6f5kRc5h/hiSzc
-	 /PiiXfUYZ7Gcw==
-Date: Wed, 4 Nov 2026 10:15:18 +0100
-From: Christian Brauner <brauner@kernel.org>
-To: Florian Westphal <fw@strlen.de>
-Cc: linux-fsdevel@vger.kernel.org, 
-	Linus Torvalds <torvalds@linux-foundation.org>, Jann Horn <jannh@google.com>, Josef Bacik <josef@toxicpanda.com>, 
-	Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
-	Eric Dumazet <edumazet@kernel.org>, Thomas Gleixner <tglx@kernel.org>, 
-	Al Viro <viro@zeniv.linux.org.uk>, Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, 
-	Greg Kroah-Hartman <gregkh@suse.de>, Joel Granados <joel.granados@kernel.org>, 
-	Kees Cook <kees@kernel.org>, Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, 
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, linux-acpi@vger.kernel.org, 
-	linux-kselftest@vger.kernel.org, linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, 
-	linux-um@lists.infradead.org, linux-wireless@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
-	netdev@vger.kernel.org, ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org, 
-	coreteam@netfilter.org, kexec@lists.infradead.org, linux-pci@vger.kernel.org, 
-	linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
-	ibm-acpi-devel@lists.sourceforge.net, jfs-discussion@lists.sourceforge.net, 
-	linux-alpha@vger.kernel.org, linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org, 
-	linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org, 
-	linux-sh@vger.kernel.org, linux-usb@vger.kernel.org, samba-technical@lists.samba.org, 
-	sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org, 
-	linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net, 
-	Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
-	linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org, 
-	Chuck Lever <cel@kernel.org>, stable@vger.kernel.org
-Subject: Re: [PATCH RFC 03/38] netfilter: xt_recent: don't remove the proc
- entries under a spinlock
-Message-ID: <20261104-entgangen-nettigkeiten-intuitiv-f39521735261@brauner>
-References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
- <20261102-work-procfs-bugfixes-v1-3-59422ed3e465@kernel.org>
- <auig_zhd3L0HEis3@strlen.de>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B53E3606A336;
+	Wed,  4 Nov 2026 09:15:50 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B53E3606A336
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
+Received: by verein.lst.de (Postfix, from userid 2407)
+	id C108C68BEB; Wed,  4 Nov 2026 10:15:43 +0100 (CET)
+Date: Wed, 4 Nov 2026 10:15:43 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Mike Snitzer <snitzer@kernel.org>
+Cc: Matthew Wilcox <willy@infradead.org>, linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org, Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
+	Jonathan Corbet <corbet@lwn.net>,
+	Jonathan Flynn <jonathan.flynn@hammerspace.com>
+Subject: Re: [PATCH v10 7/7] NFSD: drop a shared boundary page only once
+ both WRITEs have written it
+Message-ID: <20261104091543.GA31130@lst.de>
+References: <20261103211754.35352-1-snitzer@kernel.org> <20261103211754.35352-8-snitzer@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -79,12 +55,44 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <auig_zhd3L0HEis3@strlen.de>
+In-Reply-To: <20261103211754.35352-8-snitzer@kernel.org>
+User-Agent: Mutt/1.5.17 (2007-11-01)
 
-On Mon, Nov 02, 2026 at 03:41:03PM +0100, Florian Westphal wrote:
-> Yes, but note that this change is already part of a pending nf -> net
-> merge request.
+On Tue, Nov 03, 2026 at 04:17:54PM -0500, Mike Snitzer wrote:
+> NFSD splits a misaligned direct-mode WRITE into a direct middle and
+> buffered DONTCACHE ends.  Each end covers its first or last unit, the
+> smallest folio the mapping allows, only partly, and shares that unit
+> with the neighbouring WRITE.
+> 
+> Issue the buffered ends with IOCB_DONTCACHE_DEFER.  Before writing an
+> end, ask filemap_dontcache_edge_completes() whether the neighbouring
+> WRITE has written its part of each shared unit.  Once the WRITE, its
+> fsync included, is done, complete those units with
 
-Dropped.
+Why does the write include an fsync?  Are these STABLE writes, and
+if yes, why?
+
+> filemap_dontcache_edge_complete().  A short write completes a unit only
+> if it wrote its own part of it.
+> 
+> With this commit, 32 interleaved writers of 47008-byte records through
+
+Can you explain where this very odd number comes from.  Is that just a
+worst case?  Or for some reason actually relevant?
+
+> NFSD DIRECT read 0.0001 to 0.0002 blocks per WRITE, instead of reading
+> 0.99 blocks per WRITE.  FILE_SYNC WRITEs no longer wake the DONTCACHE
+> writeback kick, where they woke it 23,000 to 65,000 times a run without
+> IOCB_DONTCACHE_DEFER.  On a four-server pNFS flexfiles rig, the page
+> cache grew by 2.9 GiB during the write phase instead of about 11 GiB.
+
+How does this compare to just not using DONTCACHE at all for unaligned
+tails (and maybe heads, if for some reason they I/O you care about
+reordered writes).  And how does it compare to that plus manual
+sync_file_range calls to micro-manage the I/O?
+
+In general I'm not in favour of so many core hacks for
+very nfsd-specific behavior.
+
