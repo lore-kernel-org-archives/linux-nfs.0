@@ -1,48 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793801489;
-	b=cTcpC067Tsi4J24SBosbFiG2c6cgBk/bUOOstrDvvR9yAT8jjWPW/ocl42MXFpAzDsoa
-	 efJY0+8eC03WouF3L4iEzctXCP2fAhTCHuxXOMd1+Lu5vaYh9zA61vMqZ2s+p/M564474
-	 Dd/8VENcBcWsWGKPjgqdIhDJAAVbLOM6eOcjTNT3eITENyNjs1xhk7/8us1vSLlZlBPQg
-	 ddS6Ye23R+MgJCFX1SEGov7g0H1SjO4RVf0pe1cqD56rRpBw96hJkNbrnUOa4osHGKThW
-	 3qLfrgx/f3Knugpryq9oJhQGbClfw+2pojB7FDe73TAbVl9bvvSv+7MFKV9DYNstOBA==
+	t=1793801491;
+	b=ZuU26McZ8gpVaDa5EZC9eypKq97wxFN+SoNklrgX9eeexbwMpocdQNNnhJK5GqWzzQyg
+	 bn0/CM2Y7bbiC9+Ski1ovIfEU+FWvPbYo6k8tNSiqOTklZYepK2+RRliM1k/pz2H8zfQ4
+	 uMDSCU3LfCc0OXI47iR82FvS1dYR/4dN3ntaGWSS1t9kXOfvgumteHVzlrYJG9wbFnUni
+	 9Yza+f5LjONeXOX6wHHWlGtorquM72v1RnpRWhDc17zDh3qKV26dxmg8s1tv4fcFTbFc8
+	 dH0ffySkGIFPS3fQG9I+xUAVgKG8bYnUYjBYkA1kyw6EjZRBscc8XLKFianyiLVLQnA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793801489;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793801491;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=H8BmcnzMiczpttE9N+WOKJQ5URVbokrYa0ycESGQ1tU=;
-	b=tuaZMLEFpNd1tzTNRcrBZtIe5qk1ODNtj4UIKz7+yfghkzWqbssbAB6xiaI9XSyQqIvB
-	 l0TBFaJUwOjoXTUoKPJ2cl0EAiu6fC0UDzQPTP/F3pc1GPa2zRXEgcEzrsIET51y3QIEm
-	 +CBhDA/XAumCRxwSW4koxo/yBmK8wHQYm2WSQKLaEgidarZhaBn23G+ORZT82+2H/CmFp
-	 kp9iW5503qfZmEbfzK6FosT0+gSCDU4b6zKbFS2k6HBrXJGXCYUIZi5II/+ukNXVQ33yy
-	 yxdB0HY+TKU6ivKljKr43HgE/N6WJbyh2RDWiSwLG91b5Uu/UacyCNk7e1mWzIbqRuA==
+	bh=lIbm011xFmW9dhLNUThahPU6leGSUpvEXe2J5N5uUlI=;
+	b=HJE1ucX/K486AFA3Qu+XRcBMXDHwKT2r5o+vEYaoOAwh7PVgNVBm7uqWEZFsofosj7u0
+	 zE51DinGbmnQS5e0Djj5NCD6Hv75OurNCpEcxH74lnNt6OAjvYCpB0z9yLkE3Ox4xRzaQ
+	 50mu/qa6vaeO4g3kboF4KiJVJByQ+EcuAnGccirgHorHW+UDdZlZSl5d2Nor47ZvCb4G/
+	 eH/r8tDwlpH+0KLrE5TRkK8zZU8exx7kpsT35qNW+Bg+BrkyuNka2kggXt4xb5E5RyJ+2
+	 OvWZYSK9u0WH59nldVWr2oyEmvGsVufmcHZWvUMratHMgNF3Tv08JBKj2mUUp2+PZsw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=E6P9bnsm;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=G5on4P3C;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4062A6082BC5;
-	Wed,  4 Nov 2026 14:11:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7AC67606D80F;
+	Wed,  4 Nov 2026 14:11:31 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=E6P9bnsm
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4B3E61F000C1;
-	Wed,  4 Nov 2026 14:11:28 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=G5on4P3C
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6DFAC1F000C1;
+	Wed,  4 Nov 2026 14:11:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793801489;
-	bh=H8BmcnzMiczpttE9N+WOKJQ5URVbokrYa0ycESGQ1tU=;
+	s=k20260515; t=1793801491;
+	bh=lIbm011xFmW9dhLNUThahPU6leGSUpvEXe2J5N5uUlI=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=E6P9bnsmMT1s2E3lYOj/LZUol3FV2Nvo2w/ghOf6PXrKhU/G+igVsZQB6VgqK+CSH
-	 IadDnjzm29eWPH3U93laXPeoO3hMyoDiN4glnwFSl2A+MykfeqlEgjNmhU86/aW/Ia
-	 efOCCUYK0v6trooaviYAnWGD8h+yEH3pLjfJ/y6vx611ofdDzLv9b36WM8qXbdKVix
-	 0HksRx4D6BVjBUsCD6iAwGSWXQtDBZKdqV7v+2NWj/2gqTnOs2tljNI0L5aXkZ91xG
-	 +b586cT6Vyn48D4FGAxIkq8bc/4r2SLHYe29M0BpGit/zFBrMhM989Pfpsk8YTi68m
-	 kq8LiqRi4WCJA==
+	b=G5on4P3CRwC3OY+7AmWSyhuERySMK6KT3G5Unmg+ww5bqvvQkD+MVI+D65GnWgELv
+	 Ci9822t+sTw2cgon9d0KU0AKdou7ft5ex8QXiAN7oGHv7iGTdhSFGiPy3/pN43ADei
+	 ONVI5nbTfpTh6y8gQ1wlf7veWriAmG1X5MMenSCRhe2S/xeRuIVwSyAazSjj0cdl8S
+	 np0Uu1pFyopRW4wnI8oO5eRwSo+5NhnElgmycnTHMhM6N2VKnUJjES6aBj3L1jFzcH
+	 TTsCEK4DhWUrgwxALU1j66Q8+lU09TJyAPE7iC1f40TklmDwRzVYbbfjPy7Kq6D+8B
+	 frk2/froMN+AA==
 From: Chuck Lever <cel@kernel.org>
-Date: Wed, 04 Nov 2026 09:11:12 -0500
-Subject: [PATCH v8 12/14] NFSD: Evict acknowledged DRC entries
+Date: Wed, 04 Nov 2026 09:11:14 -0500
+Subject: [PATCH v8 14/14] SUNRPC: Advance the acked position on TLS
+ connections
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-duplicate-reply-cache-v8-12-eea5b90e4318@kernel.org>
+Message-Id: <20261104-duplicate-reply-cache-v8-14-eea5b90e4318@kernel.org>
 References: <20261104-duplicate-reply-cache-v8-0-eea5b90e4318@kernel.org>
 In-Reply-To: <20261104-duplicate-reply-cache-v8-0-eea5b90e4318@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -63,363 +64,347 @@ To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
 Cc: Rick Macklem <rmacklem@uoguelph.ca>, linux-nfs@vger.kernel.org, 
  netdev@vger.kernel.org, Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=13172; i=cel@kernel.org;
- h=from:subject:message-id; bh=X3OflmFLzvwPOhi9Y0tvYwh4MRYPEpiIY0hwUSGw/FE=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq6z0BVFTIY0jkYvq+cAZw1QwyP0vFrGN+haHL4
- 35f1TrJlCqJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaus9AQAKCRAzarMzb2Z/
- l2p8D/9ONEYDiRyLwJT6sHrAzCI0vCGwdKl2heqO4VDNrQIOP0gOSC3Xfbua+rKrzysDrzN7e4K
- VUNLIqJCGlsz7CisW0iwuI4SmoNIldED2vORtlPxGOw5RIaHdrea99mk1s9O+WnM98sHdtZmhrC
- ShIAQQvBfsUPd8IN6/8s6RJNS2i8gMPZsnn70Fl8D5Qsfogj5sUoTSGC5bv/hcEx5FVCs+sFV90
- 9KAMUJ7ocVz5nYiM4XEadW15IItvWwqG/NdOdouB6ilLL+bSFOQGF6c4gA9Rvz4rJC/knPadRBD
- fmr6hyB/68NyMNdxiv9RZOx+clqSd0MP8LP27pXC+MS796ePHwbw4nqkO/5nwrr7ZbpbR/lYcSe
- mNPIcyxOXl0Jng5YZ7slDFboIpvSo9+2gLlNkdTLnZZCZUM06Q6rQnl4j49qxmqqlmVTvRKzpM9
- HE5sJSFEwqE4zkNDZlOea+T1mNiPj0UEuikNtBdV7Yc40FZ1by5Me3MOOxZrPck95Nvw+JLEUE8
- 0X9XwkvoJac7iQUFGmxN/y4Ury7zawOPTYi5RSLWLHYYEQ5J0WKB635Z0BioFLJnxDr+qLohgwY
- 4wlERdaBkXLt3K9ZU6k5orBnRg8xn7ivPLpDdJ2/jh4UYdZ3ISzWv1UZnoUlD0k1UGLNB0T4KB1
- H35Q6lvsrFTHw0Q==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=13338; i=cel@kernel.org;
+ h=from:subject:message-id; bh=6xH5emS8YEgMDxK/hkVBBlyGydjhA8RC4HA2SyQlC8o=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq6z0B2sXIc6Q++o1OeKnQl+qMzbjYT8lHVZjsu
+ Bl5wbfyPS2JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaus9AQAKCRAzarMzb2Z/
+ l12AEAC5MSXYBpe9Z0G3eK4DoPf/rdl4F4dpH22IHtJT5+aRsmNmEOJSoqha89WZhtrxOBpfEHZ
+ oXVCbv85axZKaF8rRGHbAkrC6rUqKz6Rst8Tbefo3B+v1qjk/JaUHlUVJQwgPcU5idySE1OG4nJ
+ pWSxANWyv40RyBG/ZknoRI8hn5TYxaoONcdaw21KQZW6ggucSHKM2S7ed6iU9rvS0QegeAvfHLB
+ zTm7naBMg7gNJKiDDRmf01gVsVgw+bEeqbRc87FeNHpBNvgQPzNF1e1B3W+ekIwOb+S6ha5qJnK
+ fs9YYXUA87rWgdNj/+pFmSVsmYd4uDcg1b7U+5VCwgola/iZt1SRZ1dAFSM+mrUpMjdDAw5tDTq
+ 89zZ8RnMV1OKkOjOqgYMWKh3edMsi9iTiQSZW83uFqoG+SsM8UKptdGDPV7KAEWpmjpxCtMRTso
+ AFDwRDAXVURiSzCNuwNiIDLmANk3FyrpPf+vmzQzkkD4Q5ntD2dyH8S1dCSb+Srnb1NM8r7Nv18
+ UDgvNiE/aXPgAh/Af3lgZn4skWG0PWboXIAWVxF8AeLcwkcn0GROyghf4FPfIhlUFVfawHQlfQ4
+ 0g5iS2/weMvOK4J0RSXQwXO2YDd7JD8diz2q5Tl5ot/yx0/uLdHhQIvDclfQ/wD4RdPFTnYCkBo
+ n5f4Qht1ykcpB0w==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-A duplicate reply cache entry exists to answer a retransmit. Once
-the client has received the reply, no retransmit of that XID can
-follow, yet the entry stays in the cache until RC_EXPIRE elapses or
-memory pressure forces it out. On a busy server the cache is mostly
-replies the client already has.
+The DRC retires an entry once its reply lies at or below the
+transport's xpt_acked_pos, the position svc_tcp_update_acked()
+advances as TCP acknowledgments arrive. When XPT_TLS_SESSION is set,
+svc_tcp_update_acked() leaves xpt_acked_pos alone, because kTLS can
+return a full count from sendmsg() while a record is still waiting to
+reach TCP. DRC entries on TLS connections therefore never retire by
+acknowledgment.
 
-Record each reply's transport position in its cache entry from the
-sv_reply_sent hook, and compare it with the transport's acknowledged
-position when a later request prunes the same bucket. An entry whose
-position the peer has acknowledged is evicted before the age and
-pressure checks run. Only entries that arrived on the current
-request's transport are compared: the prune holds a reference on
-that transport alone, so its acknowledged position is the only one
-safe to read. The shrinker passes no transport and never evicts on
-this basis. Entries from other connections interleave with this
-one's in every bucket, and none of them can be acknowledged from
-this request, so a walk that stopped at the first unexpired entry
-would reach this connection's acknowledged entries only when they
-are the oldest in the bucket. Past the first unexpired entry the
-walk therefore continues, testing only for acknowledgment, to the
-end of the bucket. The hash table is sized for a bucket of about
-TARGET_BUCKET_SIZE entries, so the scan is short, and the shrinker,
-which passes no transport, still stops at the first unexpired
-entry.
+Advance xpt_acked_pos on a TLS connection when no record is open,
+awaiting encryption, or parked on a short TCP send. Every field the
+check reads is declared in include/net/tls.h, so the predicate lives
+beside its one caller rather than in net/tls. After the change,
+a TLS connection takes the socket lock once per reply, as a plain
+TCP connection already does. Record in svcsock_tcp_acked why a reply
+published no position.
 
-Read the acknowledged position through svc_xprt_acked_pos() before
-taking cache_lock, since the transport may sleep, and report the
-lookup with svc_xprt_recv_done() under the lock, after the insert. A
-prune by another thread on the same bucket runs under the same lock,
-so the prune either sees this request still counted or runs after
-the request has found its entry. A position the transport vouched
-for before the lock stays safe under the lock: a retransmit arriving
-later follows the acknowledgment.
+On the receive side, copied_seq does not track plaintext under kTLS.
+tls_strp_msg_consume() advances copied_seq by the whole ciphertext
+record once the record is decrypted, before svc_tcp_recv_actor()
+sees any of its plaintext, and in copy mode the strparser advances
+copied_seq while pulling the ciphertext in. A record that spans the
+end of one call and the start of a retransmit leaves the
+retransmit's plaintext on rx_list, uncounted in xpt_recv_pending,
+with copied_seq already at the mark. Withhold the position while
+sk_is_readable() reports plaintext on rx_list or a record ready in
+the strparser. A record the strparser is still copying in is neither
+readable nor ready, so withhold the position while the strparser's
+copy_mode is set as well. The strparser fields are declared in
+include/net/tls.h with the socket lock named as their guard.
 
-A transport acknowledgment means the peer's transport holds the
-reply, not that the RPC layer above it has read the reply. Two
-retransmits can therefore find the entry already gone. A client that
-discards unread socket data when it resets a connection retransmits
-the call over the new connection. A client whose RPC timer fires
-after the reply was acknowledged but before its RPC layer read it
-retransmits the call on the same connection. The same-connection
-retransmit executes the call again, but TCP delivers the first reply
-ahead of the second, so the client completes the call with the first
-reply and discards the second as an unknown XID. The re-execution is
-visible only to a third party that reused the name in between. A
-call still in progress when its retransmit arrives has sent no
-reply, so its entry is not acknowledged and the retransmit is
-dropped as before. Retention therefore ends at delivery rather than
-at consumption. Only NFSv4.1 sessions close that gap.
+The close_notify alert and the FIN sent at detach go out without
+xpt_mutex. Both are non-blocking and never drop the socket lock
+mid-push, so their bytes either reach write_seq and lower the position,
+or park and hold it.
 
-A call read before its connection closed can still be stalled ahead
-of its lookup while the retransmit on the new connection runs and
-the retransmit's entry is acknowledged and evicted. The original
-call then misses and runs the procedure again. No reply to the
-original can reach the client, so drop a cacheable call at lookup
-when its transport is dead. A call on a transport whose close NFSD
-has not yet seen still runs. The per-transport accounting does not
-cover that call.
-
-Between nfsd_cache_update() and the hook the entry is pinned against
-eviction, and the nfsd thread keeps its pointer in thread-local
-state. Every nfsd_dispatch() path that leaves an entry in RC_DONE
-returns 1, so svc_process() runs the hook whether it sends the reply
-or drops it after svc_authorise() fails, and the pin is always
-cleared. The drop and encode-error paths update with RC_NOCACHE,
-which frees the entry without pinning it.
-
-A reply that never reached the wire, or that went out over UDP,
-keeps position zero and is retained for the full RC_EXPIRE interval.
-
-Link: https://patch.msgid.link/20260921-duplicate-reply-cache-v6-11-db5e13fd9944@kernel.org
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/cache.h    |   6 +++-
- fs/nfsd/nfscache.c | 104 ++++++++++++++++++++++++++++++++++++++++++++++++++---
- fs/nfsd/nfsd.h     |   3 ++
- fs/nfsd/nfssvc.c   |   1 +
- fs/nfsd/trace.h    |   1 +
- 5 files changed, 109 insertions(+), 6 deletions(-)
+ include/linux/sunrpc/svcsock.h |   9 ++++
+ include/trace/events/sunrpc.h  |  23 +++++++--
+ net/sunrpc/svcsock.c           | 111 +++++++++++++++++++++++++++++++++++------
+ 3 files changed, 125 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-index 589ffe4762d5..894e0b61cbfc 100644
---- a/fs/nfsd/cache.h
-+++ b/fs/nfsd/cache.h
-@@ -36,8 +36,11 @@ struct nfsd_cacherep {
- 	struct list_head	c_lru;
- 	unsigned char		c_state,	/* unused, inprog, done */
- 				c_type,		/* status, buffer */
--				c_secure : 1;	/* req came from port < 1024 */
-+				c_secure : 1,	/* req came from port < 1024 */
-+				c_inflight : 1;	/* reply cached but not yet sent */
- 	u64			c_xprt;		/* svc_xprt that carried req */
-+	u64			c_pos;		/* reply's position on c_xprt;
-+						 * 0 = never acknowledged */
- 	unsigned long		c_timestamp;
- 	union {
- 		struct kvec	u_vec;
-@@ -88,6 +91,7 @@ int	nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
- 			  unsigned int len, struct nfsd_cacherep **cacherep);
- void	nfsd_cache_update(struct svc_rqst *rqstp, struct nfsd_cacherep *rp,
- 			  int cachetype, __be32 *statp);
-+void	nfsd_cache_reply_sent(struct svc_rqst *rqstp);
- int	nfsd_reply_cache_stats_show(struct seq_file *m, void *v);
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 0fa62f9c6465..bd5cd79c1870 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -49,12 +49,21 @@ struct svc_sock {
+ 	u32			sk_acked_rcv;
  
- #endif /* NFSCACHE_H */
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 453ff718ff6c..d7120854dfad 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -112,6 +112,8 @@ nfsd_cacherep_alloc(struct svc_rqst *rqstp, __wsum csum,
- 		rp->c_key.k_len = rqstp->rq_arg.len;
- 		rp->c_key.k_csum = csum;
- 		rp->c_xprt = rqstp->rq_xprt->xpt_id;
-+		rp->c_inflight = 0;
-+		rp->c_pos = 0;
- 	}
- 	return rp;
- }
-@@ -258,22 +260,53 @@ nfsd_cache_bucket_find(__be32 xid, struct nfsd_net *nn)
- 	return &nn->drc_hashtbl[hash];
- }
+ 	struct completion	sk_handshake_done;
++	/* tls ULP installed, recorded once; the ULP has no removal path */
++	bool			sk_tls_ulp;
  
-+static bool
-+nfsd_cacherep_acked(const struct nfsd_cacherep *rp,
-+		    const struct svc_xprt *xprt, u64 acked)
-+{
-+	return rp->c_state == RC_DONE && rp->c_pos && acked &&
-+	       rp->c_xprt == xprt->xpt_id && rp->c_pos <= acked;
-+}
-+
- /*
-  * Remove and return no more than @max expired entries in bucket @b.
-  * If @max is zero, do not limit the number of removed entries.
-+ *
-+ * @xprt is the transport of the current request, or NULL when the
-+ * caller holds no transport, and @acked is the position
-+ * svc_xprt_acked_pos() returned for it, or zero. Only entries that
-+ * arrived on @xprt can be evicted as acknowledged: the caller holds
-+ * a reference on that transport alone, so it is the only position
-+ * safe to read. Entries behind the first unexpired one are younger
-+ * still, so from there the walk evicts only acknowledged entries,
-+ * which can sit anywhere in the bucket behind other transports'
-+ * entries.
-+ *
-+ * An in-flight entry is never evicted: its svc_rqst still points to
-+ * it and nfsd_cache_reply_sent() will write to it.
-  */
- static void
- nfsd_prune_bucket_locked(struct nfsd_net *nn, struct nfsd_drc_bucket *b,
--			 unsigned int max, struct list_head *dispose)
-+			 unsigned int max, struct list_head *dispose,
-+			 struct svc_xprt *xprt, u64 acked)
- {
- 	unsigned long expiry = jiffies - RC_EXPIRE;
- 	struct nfsd_cacherep *rp, *tmp;
- 	unsigned int freed = 0;
-+	bool acked_only = false;
- 
- 	lockdep_assert_held(&b->cache_lock);
- 
- 	/* The bucket LRU is ordered oldest-first. */
- 	list_for_each_entry_safe(rp, tmp, &b->lru_head, c_lru) {
-+		if (rp->c_inflight)
-+			continue;
-+		if (nfsd_cacherep_acked(rp, xprt, acked)) {
-+			trace_nfsd_drc_evict_acked(nn, rp);
-+			goto evict;
-+		}
-+		if (acked_only)
-+			continue;
- 		if (atomic_read(&nn->num_drc_entries) > nn->max_drc_entries) {
- 			trace_nfsd_drc_evict_pressure(nn, rp);
- 			goto evict;
-@@ -282,7 +315,10 @@ nfsd_prune_bucket_locked(struct nfsd_net *nn, struct nfsd_drc_bucket *b,
- 			trace_nfsd_drc_evict_expired(nn, rp);
- 			goto evict;
- 		}
--		break;
-+		if (!xprt)
-+			break;
-+		acked_only = true;
-+		continue;
- 
- evict:
- 		nfsd_cacherep_unlink_locked(nn, b, rp);
-@@ -337,7 +373,7 @@ nfsd_reply_cache_scan(struct shrinker *shrink, struct shrink_control *sc)
- 			continue;
- 
- 		spin_lock(&b->cache_lock);
--		nfsd_prune_bucket_locked(nn, b, 0, &dispose);
-+		nfsd_prune_bucket_locked(nn, b, 0, &dispose, NULL, 0);
- 		spin_unlock(&b->cache_lock);
- 
- 		freed += nfsd_cacherep_dispose(&dispose);
-@@ -488,8 +524,10 @@ int nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
- 	LIST_HEAD(dispose);
- 	unsigned int entries;
- 	int rtn = RC_DOIT;
-+	u64 acked;
- 
- 	if (type == RC_NOCACHE) {
-+		svc_xprt_recv_done(rqstp);
- 		nfsd_stats_rc_nocache_inc(nn);
- 		goto out;
- 	}
-@@ -501,17 +539,40 @@ int nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
- 	 * preallocate an entry.
- 	 */
- 	rp = nfsd_cacherep_alloc(rqstp, csum, nn);
--	if (!rp)
-+	if (!rp) {
-+		svc_xprt_recv_done(rqstp);
- 		goto out;
-+	}
-+
-+	/*
-+	 * Read before taking cache_lock: the transport may sleep. A
-+	 * position vouched for now stays safe to act on under the lock,
-+	 * since a retransmit that arrives later follows the
-+	 * acknowledgment.
-+	 */
-+	acked = svc_xprt_acked_pos(rqstp);
-+
-+	/*
-+	 * No reply can reach the client, and the retransmit on a new
-+	 * transport may already have run and had its entry evicted. The
-+	 * test follows both sleeps above so a close during either is seen.
-+	 */
-+	if (svc_xprt_is_dead(rqstp->rq_xprt)) {
-+		nfsd_cacherep_free(rp);
-+		svc_xprt_recv_done(rqstp);
-+		rtn = RC_DROPIT;
-+		goto out;
-+	}
- 
- 	b = nfsd_cache_bucket_find(rqstp->rq_xid, nn);
- 	spin_lock(&b->cache_lock);
- 	found = nfsd_cache_insert(b, rp, nn);
-+	svc_xprt_recv_done(rqstp);
- 	if (found != rp)
- 		goto found_entry;
- 	*cacherep = rp;
- 	rp->c_state = RC_INPROG;
--	nfsd_prune_bucket_locked(nn, b, 3, &dispose);
-+	nfsd_prune_bucket_locked(nn, b, 3, &dispose, rqstp->rq_xprt, acked);
- 	spin_unlock(&b->cache_lock);
- 
- 	nfsd_cacherep_dispose(&dispose);
-@@ -589,6 +650,7 @@ void nfsd_cache_update(struct svc_rqst *rqstp, struct nfsd_cacherep *rp,
- 		       int cachetype, __be32 *statp)
- {
- 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-+	struct nfsd_thread_local_info *ntli = rqstp->rq_private;
- 	struct kvec	*resv = &rqstp->rq_res.head[0], *cachv;
- 	struct nfsd_drc_bucket *b;
- 	int		len;
-@@ -635,10 +697,42 @@ void nfsd_cache_update(struct svc_rqst *rqstp, struct nfsd_cacherep *rp,
- 	rp->c_secure = test_bit(RQ_SECURE, &rqstp->rq_flags);
- 	rp->c_type = cachetype;
- 	rp->c_state = RC_DONE;
-+	rp->c_inflight = 1;
-+	ntli->ntli_cacherep = rp;
- 	spin_unlock(&b->cache_lock);
- 	return;
- }
- 
-+/**
-+ * nfsd_cache_reply_sent - record a reply's transport position
-+ * @rqstp: RPC transaction whose reply phase has just ended
-+ *
-+ * Installed as the svc_serv's sv_reply_sent hook. A transport that
-+ * does not publish positions (UDP), or a reply that svc_process()
-+ * dropped after dispatch, leaves rq_reply_pos at zero, and the entry
-+ * is then never evicted as acknowledged.
-+ *
-+ * Context: nfsd thread context. Takes and releases cache_lock.
-+ */
-+void nfsd_cache_reply_sent(struct svc_rqst *rqstp)
-+{
-+	struct nfsd_thread_local_info *ntli = rqstp->rq_private;
-+	struct nfsd_cacherep *rp = ntli->ntli_cacherep;
-+	struct nfsd_drc_bucket *b;
-+	struct nfsd_net *nn;
-+
-+	if (!rp)
-+		return;
-+	ntli->ntli_cacherep = NULL;
-+
-+	nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-+	b = nfsd_cache_bucket_find(rp->c_key.k_xid, nn);
-+	spin_lock(&b->cache_lock);
-+	rp->c_pos = rqstp->rq_reply_pos;
-+	rp->c_inflight = 0;
-+	spin_unlock(&b->cache_lock);
-+}
-+
- static int
- nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *data)
- {
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 8b4bed37b46b..b4c8cafbe373 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -52,9 +52,12 @@ extern atomic_t			nfsd_th_cnt;		/* number of available threads */
- 
- extern const struct seq_operations nfs_exports_op;
- 
-+struct nfsd_cacherep;
-+
- struct nfsd_thread_local_info {
- 	struct nfs4_client	**ntli_lease_breaker;
- 	int			ntli_cachetype;
-+	struct nfsd_cacherep	*ntli_cacherep;
+ 	/* received data */
+ 	unsigned long		sk_maxpages;
+ 	struct page *		sk_pages[] __counted_by(sk_maxpages);
  };
  
- /*
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index d945944c1514..d32c70e31f8b 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -697,6 +697,7 @@ int nfsd_create_serv(struct net *net, bool no_rpcbind)
- 		goto out_put;
- 	}
- 	serv->sv_tls = true;
-+	serv->sv_reply_sent = nfsd_cache_reply_sent;
++/* Why svc_tcp_update_acked() did or did not publish a position */
++enum svc_tcp_acked_reason {
++	SVC_TCP_ACKED_PUBLISHED,
++	SVC_TCP_ACKED_NO_ULP,
++	SVC_TCP_ACKED_TX_PENDING,
++};
++
+ static inline u32 svc_sock_reclen(struct svc_sock *svsk)
+ {
+ 	return be32_to_cpu(svsk->sk_marker) & RPC_FRAGMENT_SIZE_MASK;
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+index a5d914376627..a7e96e49e0d0 100644
+--- a/include/trace/events/sunrpc.h
++++ b/include/trace/events/sunrpc.h
+@@ -10,6 +10,7 @@
+ #include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/xprtsock.h>
+ #include <linux/sunrpc/svc_xprt.h>
++#include <linux/sunrpc/svcsock.h>
+ #include <net/tcp_states.h>
+ #include <linux/net.h>
+ #include <linux/tracepoint.h>
+@@ -2349,6 +2350,16 @@ TRACE_EVENT(svcsock_tcp_recv_short,
+ 	)
+ );
  
- 	/* svc_bind() reads this, so set it first. */
- 	serv->sv_no_rpcbind = no_rpcbind;
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 41a9407e3efa..dfb784a39712 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -1748,6 +1748,7 @@ DEFINE_EVENT(nfsd_drc_entry_class, nfsd_drc_##name,		\
- 
- DEFINE_NFSD_DRC_ENTRY_EVENT(evict_pressure);
- DEFINE_NFSD_DRC_ENTRY_EVENT(evict_expired);
-+DEFINE_NFSD_DRC_ENTRY_EVENT(evict_acked);
- 
- TRACE_EVENT(nfsd_cb_args,
++TRACE_DEFINE_ENUM(SVC_TCP_ACKED_PUBLISHED);
++TRACE_DEFINE_ENUM(SVC_TCP_ACKED_NO_ULP);
++TRACE_DEFINE_ENUM(SVC_TCP_ACKED_TX_PENDING);
++
++#define show_svc_tcp_acked_reason(reason)				\
++	__print_symbolic(reason,					\
++		{ SVC_TCP_ACKED_PUBLISHED,	"published" },		\
++		{ SVC_TCP_ACKED_NO_ULP,		"no_ulp" },		\
++		{ SVC_TCP_ACKED_TX_PENDING,	"tx_pending" })
++
+ TRACE_EVENT(svcsock_tcp_acked,
  	TP_PROTO(
+ 		const struct svc_xprt *xprt,
+@@ -2356,10 +2367,12 @@ TRACE_EVENT(svcsock_tcp_acked,
+ 		u32 write_seq,
+ 		u32 snd_una,
+ 		u64 candidate,
+-		u64 acked_pos
++		u64 acked_pos,
++		enum svc_tcp_acked_reason reason
+ 	),
+ 
+-	TP_ARGS(xprt, send_pos, write_seq, snd_una, candidate, acked_pos),
++	TP_ARGS(xprt, send_pos, write_seq, snd_una, candidate, acked_pos,
++		reason),
+ 
+ 	TP_STRUCT__entry(
+ 		__field(u64, xpt_id)
+@@ -2368,6 +2381,7 @@ TRACE_EVENT(svcsock_tcp_acked,
+ 		__field(u64, acked_pos)
+ 		__field(u32, write_seq)
+ 		__field(u32, snd_una)
++		__field(unsigned int, reason)
+ 		__string(addr, xprt->xpt_remotebuf)
+ 	),
+ 
+@@ -2378,13 +2392,14 @@ TRACE_EVENT(svcsock_tcp_acked,
+ 		__entry->acked_pos = acked_pos;
+ 		__entry->write_seq = write_seq;
+ 		__entry->snd_una = snd_una;
++		__entry->reason = reason;
+ 		__assign_str(addr);
+ 	),
+ 
+-	TP_printk("addr=%s xpt_id=%llu send_pos=%llu write_seq=%u snd_una=%u candidate=%llu acked_pos=%llu",
++	TP_printk("addr=%s xpt_id=%llu send_pos=%llu write_seq=%u snd_una=%u candidate=%llu acked_pos=%llu reason=%s",
+ 		__get_str(addr), __entry->xpt_id, __entry->send_pos,
+ 		__entry->write_seq, __entry->snd_una, __entry->candidate,
+-		__entry->acked_pos
++		__entry->acked_pos, show_svc_tcp_acked_reason(__entry->reason)
+ 	)
+ );
+ 
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 4eaa8eb4d537..79d8d4e2c90d 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -36,6 +36,7 @@
+ #include <net/udp.h>
+ #include <net/tcp.h>
+ #include <net/tcp_states.h>
++#include <net/tls.h>
+ #include <net/tls_prot.h>
+ #include <net/handshake.h>
+ #include <linux/uaccess.h>
+@@ -409,6 +410,14 @@ static void svc_tcp_kill_temp_xprt(struct svc_xprt *xprt)
+ 	sock_no_linger(svsk->sk_sock->sk);
+ }
+ 
++/* XPT_TLS_SESSION reflects tlshd's report, not an installed TLS ULP. */
++static bool svc_tcp_has_tls_ulp(struct sock *sk)
++{
++	const struct inet_connection_sock *icsk = inet_csk(sk);
++
++	return icsk->icsk_ulp_ops && !strcmp(icsk->icsk_ulp_ops->name, "tls");
++}
++
+ /**
+  * svc_tcp_handshake_done - Handshake completion handler
+  * @data: address of xprt to wake
+@@ -426,8 +435,13 @@ static void svc_tcp_handshake_done(void *data, int status, key_serial_t peerid)
+ 	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
+ 
+ 	if (!status) {
++		struct sock *sk = svsk->sk_sk;
++
+ 		if (peerid != TLS_NO_PEERID)
+ 			set_bit(XPT_PEER_AUTH, &xprt->xpt_flags);
++		lock_sock(sk);
++		WRITE_ONCE(svsk->sk_tls_ulp, svc_tcp_has_tls_ulp(sk));
++		release_sock(sk);
+ 		set_bit(XPT_TLS_SESSION, &xprt->xpt_flags);
+ 	}
+ 	clear_bit(XPT_HANDSHAKE, &xprt->xpt_flags);
+@@ -1401,9 +1415,60 @@ static int svc_tcp_sendmsg(struct svc_sock *svsk, struct svc_rqst *rqstp,
+ }
+ 
+ /*
+- * Bytes the socket has not seen acknowledged all belong to the most
+- * recent replies, so sk_send_pos less that count is the acknowledged
+- * position.
++ * A false return means every byte sendmsg() has accepted has reached the
++ * TCP write queue, provided no other blocking sender is on the socket. With
++ * TLS_HW, a sender can drop the socket lock inside tcp_sendmsg_locked()
++ * while its record sits in neither partially_sent_record nor an
++ * open record. TLS_SW keeps the record on tx_list until the push
++ * succeeds. TLS_HW_RECORD keeps its send accounting in the TOE driver,
++ * beyond this check's reach, so TLS_HW_RECORD always counts as pending.
++ *
++ * tx_lock is the documented guard for the partially_sent_* fields, but
++ * every store to them and to tx_list runs with the socket owned: sendmsg(),
++ * the tx worker, and the write-space callback, which the backlog defers
++ * while a process owns the socket. Owning the socket therefore reads a
++ * consistent snapshot without contending with the worker for tx_lock.
++ */
++static bool svc_tls_tx_pending(const struct sock *sk)
++{
++	struct tls_context *ctx = tls_get_ctx(sk);
++	struct tls_sw_context_tx *sw;
++
++	sock_owned_by_me(sk);
++	if (ctx->partially_sent_record || ctx->pending_open_record_frags)
++		return true;
++	switch (ctx->tx_conf) {
++	case TLS_SW:
++		sw = tls_sw_ctx_tx(ctx);
++		return sw->open_rec || !list_empty(&sw->tx_list);
++	case TLS_HW:
++		return false;
++	default:
++		return true;
++	}
++}
++
++/*
++ * In copy mode the strparser pulls a record's segments out of the
++ * receive queue as they arrive, advancing copied_seq, and reports the
++ * record readable only once the last segment is in. copy_mode stays
++ * set until the record is consumed. include/net/tls.h documents the
++ * bitfield as serialized by the socket lock.
++ */
++static bool svc_tls_rx_pending(const struct sock *sk)
++{
++	struct tls_context *ctx = tls_get_ctx(sk);
++
++	sock_owned_by_me(sk);
++	return tls_sw_ctx_rx(ctx) && tls_sw_ctx_rx(ctx)->strp.copy_mode;
++}
++
++/*
++ * Unacknowledged bytes follow every older reply, and each reply occupies at
++ * least as many wire bytes as sk_send_pos counts for it. sk_send_pos less
++ * the unacknowledged count is therefore at or below the position the client
++ * has acknowledged. Backchannel calls, TLS framing, alerts, the FIN sent at
++ * detach, and a stale snd_una only lower the result.
+  *
+  * A call the peer sent before it acknowledged a reply precedes the
+  * acknowledgment in the stream. When a segment of the call is lost on
+@@ -1418,13 +1483,17 @@ static int svc_tcp_sendmsg(struct svc_sock *svsk, struct svc_rqst *rqstp,
+  * from moving between the reads and orders them against
+  * svc_tcp_acked_pos().
+  *
+- * Under kTLS, tls_sw_sendmsg() can return the full plaintext count
+- * with part of a record still waiting for socket write space, leaving
+- * write_seq short of the reply. Whether a record is pending is private
+- * to net/tls, so a TLS session publishes no acknowledged position.
++ * kTLS can return a full count from sendmsg() with a record not yet
++ * handed to TCP, and the tls tx worker advances write_seq outside
++ * xpt_mutex. Evaluate svc_tls_tx_pending() and read both sequence numbers
++ * under one lock_sock() so all three describe the same instant. xpt_mutex
++ * keeps every other blocking sender off the socket, as svc_tls_tx_pending()
++ * requires.
++ *
+  * tlshd installs the ULP before XPT_TLS_SESSION reports the session,
+- * so neither does a reply sent while XPT_HANDSHAKE is set. Test
+- * XPT_HANDSHAKE first: it is cleared after XPT_TLS_SESSION is set.
++ * so a reply sent while XPT_HANDSHAKE is set publishes no position. Test
++ * XPT_HANDSHAKE first: svc_tcp_handshake_done() sets XPT_TLS_SESSION before
++ * clearing XPT_HANDSHAKE.
+  */
+ static void svc_tcp_update_acked(struct svc_sock *svsk)
+ {
+@@ -1432,15 +1501,21 @@ static void svc_tcp_update_acked(struct svc_sock *svsk)
+ 	struct tcp_sock *tp = tcp_sk(sk);
+ 	u64 unacked, acked = 0, acked_pos;
+ 	u32 write_seq, snd_una, mark;
++	enum svc_tcp_acked_reason reason = SVC_TCP_ACKED_PUBLISHED;
++	bool tls;
+ 
+-	if (test_bit(XPT_HANDSHAKE, &svsk->sk_xprt.xpt_flags) ||
+-	    test_bit(XPT_TLS_SESSION, &svsk->sk_xprt.xpt_flags))
++	if (test_bit(XPT_HANDSHAKE, &svsk->sk_xprt.xpt_flags))
+ 		return;
++	tls = test_bit(XPT_TLS_SESSION, &svsk->sk_xprt.xpt_flags);
++	if (tls && !READ_ONCE(svsk->sk_tls_ulp))
++		reason = SVC_TCP_ACKED_NO_ULP;
+ 	lock_sock(sk);
++	if (tls && reason == SVC_TCP_ACKED_PUBLISHED && svc_tls_tx_pending(sk))
++		reason = SVC_TCP_ACKED_TX_PENDING;
+ 	write_seq = READ_ONCE(tp->write_seq);
+ 	snd_una = READ_ONCE(tp->snd_una);
+ 	unacked = write_seq - snd_una;
+-	if (unacked < svsk->sk_send_pos)
++	if (reason == SVC_TCP_ACKED_PUBLISHED && unacked < svsk->sk_send_pos)
+ 		acked = svsk->sk_send_pos - unacked;
+ 	if (svc_xprt_advance_acked(&svsk->sk_xprt, acked)) {
+ 		if (RB_EMPTY_ROOT(&tp->out_of_order_queue))
+@@ -1454,7 +1529,7 @@ static void svc_tcp_update_acked(struct svc_sock *svsk)
+ 	acked_pos = atomic64_read(&svsk->sk_xprt.xpt_acked_pos);
+ 	release_sock(sk);
+ 	trace_svcsock_tcp_acked(&svsk->sk_xprt, svsk->sk_send_pos, write_seq,
+-				snd_una, acked, acked_pos);
++				snd_una, acked, acked_pos, reason);
+ }
+ 
+ static int svc_tcp_recv_pending(const struct svc_rqst *rqstp)
+@@ -1475,6 +1550,13 @@ static int svc_tcp_recv_pending(const struct svc_rqst *rqstp)
+  * from its first octet, so a partially read retransmit withholds the
+  * position too.
+  *
++ * Under kTLS, copied_seq advances by the whole ciphertext record when
++ * the strparser consumes it, before svc_tcp_recv_actor() sees any of
++ * its plaintext. Plaintext left on rx_list and a record ready in the
++ * strparser withhold the position as well; sk_is_readable() reports
++ * both. A record the strparser is still copying in is neither, and
++ * svc_tls_rx_pending() withholds the position for it.
++ *
+  * Context: process context. May take and release the socket lock.
+  * Return: xpt_acked_pos, or 0 while it cannot be acted on.
+  */
+@@ -1494,7 +1576,8 @@ static u64 svc_tcp_acked_pos(struct svc_rqst *rqstp)
+ 
+ 	lock_sock(sk);
+ 	pos = atomic64_read(&xprt->xpt_acked_pos);
+-	if (svc_tcp_recv_pending(rqstp) ||
++	if (svc_tcp_recv_pending(rqstp) || sk_is_readable(sk) ||
++	    (READ_ONCE(svsk->sk_tls_ulp) && svc_tls_rx_pending(sk)) ||
+ 	    before(READ_ONCE(tcp_sk(sk)->copied_seq), svsk->sk_acked_rcv))
+ 		pos = 0;
+ 	release_sock(sk);
 
 -- 
 2.56.0
