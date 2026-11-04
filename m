@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793814580;
-	b=1DrsLBl52FlHlET8FZO8a24O3qfQN4SmQaxuXPnO1XohsYOKfwDPeEBws7wqr9t6Ppgy
-	 TH4OzOvj56Dtle7Y/9KOb4uK+TdhgQ0bj2sNmlLbKs30xOAe01LsxTYAi5xS9iK3y2Skm
-	 wkjJvLXmUoKOl7JvmpxMM0ydCUJDqrXOywkHwPahc1lS34pqzDjHV0kzh8eXjvidgcXAA
-	 7nkH3O7le4fv1QiKR7/FbC6ibLYN8VeN9Eea1b9EnlibfWKQGf4xoh0O1Qcw8wmCopQvs
-	 WPVQPLA2zeCqNcDefx2bFH3eX8iCZzZfqdzTntJQLZJQ9sA1x8gUmq8m7C3sRH7XmnA==
+	t=1793814598;
+	b=PpdAh/g9DaRqv7RhIHnl12JZMsmFhsfY41u1Yva34PE2+rnLr9+9LkDqldsH7Jgv/zbk
+	 cAX/oxiCfrM5OZtJroqeG7LTFAqvowGBHrUAAVyoZSH/WQT/kyHziJQR5N+hFTTZVxp72
+	 LOvlbGm14f1hHzKzWsCrw8Cy300ZGcaEZr3dRRzkrVb9dPRrGOGdso6irlg6jYEouiGff
+	 QYBv3X7eV29W2+f+M/evx4PF0bAISEQTRZtXf5OqoTsVa7GzhepZYha5GXnBQFWHbz7Jd
+	 s538N+u871hA3eWwxwoOnQIZqK+4bjhMJiXqm7yDZun7hO1Ng564HitkZ1lBIC1m1Sw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793814580;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793814598;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=WXeWRtHDTvlcvQqGcGXKpHSOkC75TIYAS6cttW7V/+A=;
-	b=zbtpmK4GUlKSaPRyLg6OW0X//BpXYMvDA0dEKg4XqWK+JgOrhPeJZIf1siPqreHCWDHY
-	 uvaE82vMKsjse0jv0SFOkr2Hrz+4MZgFIGm8XR7hOvS+YinGs9UpkVuUJqcL57eRtloME
-	 NHR9X6vTRORkAvBxTvuB0ZPghva+cVoYXsx8j9hp0bXyqlss8goFNO0saeyDlgYgLqFfs
-	 ioUQag0AVa6nqCUFLfj3OsCe+HZFT7CVaY0UK8/srYt4vuuUN/vGItDgW+zwfFgT8ObdM
-	 IPKxyNoyEMyKGZ+ioQ64XJsU7GbO8nzbSOZekReFosHV2dW937E1zbf677MrChwJDUQ==
+	bh=weMUCFn2uihXk/tOxGBDEw27Pws++kgwJ6Tcia3ltcw=;
+	b=HuP2tlnA7T3Ow1v0DcvJ4OJU+iIUzWKwWUgCPfXqeeIDPLwm0453h+EOCyk1aDqjJOyU
+	 L5R3HdDSDCeNPz8v+PZU/B6RdqLw04wHH5mnFVTFJQfVFDVT+LvxgOb4t0vQk26+TxFB3
+	 CVvRYsctDbn8QPLyFct7DfGqt9SaWCd/tn+tBF91ognW8jSzP4eiD3FUKJSYjBPL+V76i
+	 7lTtXWJLIUY18o0Pw63DRKphUQWe8y1tPZEAVGqOAjeggWgscEyFKEID9LG0P65dXBy5E
+	 PsBma/FzSVViMHOElcKZN7iEwRcwa0cfJVL0c0kkC5g7ijm8+w9uvSFTj0zZ9ON/ocA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Lt+YaIK4;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TjKPb5Zz;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B8B76082BFE;
-	Wed,  4 Nov 2026 17:49:39 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5624E6082BFC;
+	Wed,  4 Nov 2026 17:49:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Lt+YaIK4
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DEBC01F00A02;
-	Wed,  4 Nov 2026 17:49:22 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TjKPb5Zz
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 77A9F1F000C1;
+	Wed,  4 Nov 2026 17:49:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793814579;
-	bh=WXeWRtHDTvlcvQqGcGXKpHSOkC75TIYAS6cttW7V/+A=;
+	s=k20260515; t=1793814597;
+	bh=weMUCFn2uihXk/tOxGBDEw27Pws++kgwJ6Tcia3ltcw=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=Lt+YaIK4iwvhO88yz6f+jCVQ4EeVtRm3q99whbt1o/jNi7xtD4GqEdXZoJFzfX6Mp
-	 WhMZbYdWqf2DxTyriqyK8bk+1pkoMOeKNlWc1KnsmnTw9VPIopuCsvCi1M52TYyyYy
-	 mLRpfJ5+g7TTPX7fTPYeQh+RWFIoWO07NXukL0yXrI10YEQ4gET0I5LF9DVoDQmUfc
-	 lxhs2rswNnIdaIHeRhuWnBLDBlekuRGf9w/PHx4KPTJhR73a5GVIB+8eRNFo3DUyff
-	 XmvJcy95iTPua8zzn9tBaoG3qUN1vOZ1Duxa0Dj2HpRO0snpxh5ps1EWgqor16H8rg
-	 xLTK+rVahkKTw==
+	b=TjKPb5ZzIiyiPgvuQdFoHuUkVx/a9GRzTloH+KR4l/JxBBb+Ol/moI3iP+vc7jhxh
+	 Ps/jhLkGJWT4b45mLDzTmXs0Nq6ur+emr3Mnae7d+PkH9J0ghZeeOzUERLhCb/2x/I
+	 Bwr8JHwweuJMSvPLSvB9rFxVcNiRrk8Nku+fNgyLtGVeEaDxUpEY6iJFDv9syz/nxS
+	 a2j63GShxcJSlKeqquyWTJ1SJRA6a75PgRtqXfY4thvlg42TMO3Ay+5b5+IY0bEO1l
+	 k3RvIz3DDBF5vn8/zalT+H7o+LqH0DwmSQZgpn2Tax7AQIoVLkHn44OG3fzujjSSY4
+	 17TkLkudUusDA==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -101,9 +101,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>,
 	stable@vger.kernel.org
-Subject: [PATCH v2 18/51] platform/x86: toshiba_acpi: reject malformed brightness and fan writes
-Date: Wed,  4 Nov 2026 18:47:04 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-18-bbf7d5546809@kernel.org>
+Subject: [PATCH v2 19/51] xtensa: simdisk: don't read the file name without the lock
+Date: Wed,  4 Nov 2026 18:47:05 +0100
+Message-ID: <20261104-work-procfs-bugfixes-v2-19-bbf7d5546809@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -117,53 +117,61 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1850; i=brauner@kernel.org; h=from:subject:message-id; bh=dBPyRrfA4AE5uU+SDwP01KQAXBYhly7L9ZsRpXHhzrM=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zruys4H5zATJQ56FL4QUZwrEz3fqPb76g29l8a1fL 34Us/t+6yhlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZjIpPMMf0V6J05hXXkg4U7m Il2PkyIVrevVp6rG3zbnfJ6waxtPdw/D/+K7i173sLVVenL7Mu5oFdvPFn8nM9t33dyDiXp7bPP NWAA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1811; i=brauner@kernel.org; h=from:subject:message-id; bh=wpJfI2N0Y4TYbGny8B/EWcsaN47/8hdz2WKuRaZg6Os=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zrtmmihY93BLSLDu9Ie5rjb2qRU3I+zPe+3cqF86e 5KJ7eaZHaUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhnCwMUpABNZeo6R4WJUn/qcs7t1vaJm L5zZ9iJOJiprB/f/Sr7aQnnr1cdmdDIy7M/18T9/7EByzmbvb0u/Gdlr8edumNMXNW0bh1H7s7O CzAA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-When lcd_proc_write() and fan_proc_write() were refactored their checks
-were inverted but the && stayed. They only fail if sscanf() didn't
-parse anything and the value is out of range at the same time, and for
-the brightness value < 0 && value > levels can't be true at all. So an
-out of range brightness or fan setting is passed on to the hardware,
-and so is the uninitialized value if nothing could be parsed.
+proc_read_simdisk() looks at dev->filename without holding dev->lock. A
+write to the same file detaches the disk and frees the name under the
+lock, so a concurrent reader can copy out freed memory. Copy the name
+with the lock held.
 
-Restore the checks as they were before the refactoring.
-
-Fixes: e1a949c1b988 ("toshiba_acpi: Refactor *{get, set} functions return value")
-Fixes: 3e07e5baa2af ("toshiba_acpi: Add set_fan_status function")
+Fixes: b6c7e873daf7 ("xtensa: ISS: add host file-based simulated disk")
 Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/platform/x86/toshiba_acpi.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ arch/xtensa/platforms/iss/simdisk.c | 25 ++++++++++++-------------
+ 1 file changed, 12 insertions(+), 13 deletions(-)
 
-diff --git a/drivers/platform/x86/toshiba_acpi.c b/drivers/platform/x86/toshiba_acpi.c
-index a0b8060836d0..9eb8f1e5aeda 100644
---- a/drivers/platform/x86/toshiba_acpi.c
-+++ b/drivers/platform/x86/toshiba_acpi.c
-@@ -1498,8 +1498,8 @@ static ssize_t lcd_proc_write(struct file *file, const char __user *buf,
- 	cmd[len] = '\0';
+diff --git a/arch/xtensa/platforms/iss/simdisk.c b/arch/xtensa/platforms/iss/simdisk.c
+index e51edb8cf872..1248d960e5d3 100644
+--- a/arch/xtensa/platforms/iss/simdisk.c
++++ b/arch/xtensa/platforms/iss/simdisk.c
+@@ -238,22 +238,21 @@ static ssize_t proc_read_simdisk(struct file *file, char __user *buf,
+ 			size_t size, loff_t *ppos)
+ {
+ 	struct simdisk *dev = pde_data(file_inode(file));
+-	const char *s = dev->filename;
+-	if (s) {
+-		ssize_t len = strlen(s);
+-		char *temp = kmalloc(len + 2, GFP_KERNEL);
++	ssize_t len;
++	char *temp;
  
- 	levels = dev->backlight_dev->props.max_brightness + 1;
--	if (sscanf(cmd, " brightness : %i", &value) != 1 &&
--	    value < 0 && value > levels)
-+	if (sscanf(cmd, " brightness : %i", &value) != 1 ||
-+	    value < 0 || value >= levels)
- 		return -EINVAL;
+-		if (!temp)
+-			return -ENOMEM;
++	/* a write sets at most a page, see proc_write_simdisk() */
++	temp = kmalloc(PAGE_SIZE + 2, GFP_KERNEL);
++	if (!temp)
++		return -ENOMEM;
  
- 	if (set_lcd_brightness(dev, value))
-@@ -1678,8 +1678,8 @@ static ssize_t fan_proc_write(struct file *file, const char __user *buf,
- 		return -EFAULT;
- 	cmd[len] = '\0';
+-		len = scnprintf(temp, len + 2, "%s\n", s);
+-		len = simple_read_from_buffer(buf, size, ppos,
+-					      temp, len);
++	spin_lock(&dev->lock);
++	len = scnprintf(temp, PAGE_SIZE + 2, "%s\n", dev->filename ?: "");
++	spin_unlock(&dev->lock);
  
--	if (sscanf(cmd, " force_on : %i", &value) != 1 &&
--	    value != 0 && value != 1)
-+	if (sscanf(cmd, " force_on : %i", &value) != 1 ||
-+	    value < 0 || value > 1)
- 		return -EINVAL;
+-		kfree(temp);
+-		return len;
+-	}
+-	return simple_read_from_buffer(buf, size, ppos, "\n", 1);
++	len = simple_read_from_buffer(buf, size, ppos, temp, len);
++	kfree(temp);
++	return len;
+ }
  
- 	if (set_fan_status(dev, value))
+ static ssize_t proc_write_simdisk(struct file *file, const char __user *buf,
 
 -- 
 2.53.0
