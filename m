@@ -1,111 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793814562;
-	b=cmYJkqflVGgsdb4aTyAm4/aeq5sq2OtBeuSI3vXXqkcektKj401MhCtVHbkydhQjoevj
-	 9FV6q8b3SrP2atG/G2z9gTxm+vppP88wyCqqC4BpkAbdabg/II2iBD3xEv9yOpo2q5gfo
-	 9SrIfDn63YjC9eptK+qI/JGdnosAO4WNADFhAo6VP5K4GlKZq6TsXoUOlzhUAIv54zrM6
-	 Frtgnb2T578Z9fC6vP/vVe6QrhqDRheIUj3pQNGPD+gMBT6N/7z0f6DWIcgbVraEaPMR0
-	 eJ25gkQ/oVZ52CKVoQ8UiQrEVowBTsw/wNzlKSUXO2+omY62pusW1yhPmQ/NHIz6m0Q==
+	t=1793814563;
+	b=S3RK5jbv2p9tSkaUw+N0HZXamN7v0fU9hzjV9QxiKH2Rdqs3T4w1dA9wehW/qDooDmlZ
+	 PPtakV8H8ln7rAtKOj/a/SW6SQefc/zmdckO2ar4xXQx5EY6U6xaUglGi0lLkAXEqj9Kr
+	 HKckz/Kzih12yggD5m208KjC7efoOeRadM5TwarErF2xIt1JV8/KIvyGKebqFTlcos7aW
+	 1oEqx01+RvsAH+EdDUbvNpbrhoI7D3/OCTjzadz52CSz7JtoRxgSUtKlp4OSU5BTmWuoN
+	 xHQ+wcoPxkajEjtQxn2LkJ3vK4NYg9AjWnch5nP2qKgRwrvZll90eZak9I9peHX1A7g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793814562;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
-	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
-	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=bDYBcNUn+VWuCpTwTZF6KvGO9475Dcj2RU9o+tvUNt0=;
-	b=5TLpe8cl+4HdsQng3lqVeffIXgdhFzTJk7RVbTHIFlkNQN9LYihNFWycA0IPL1fWBmCf
-	 32O7sqKxFpzzSiXnIcyrY9TZ52Ir01Jyjsb7eoxyMIu6Y40Eeozj8pILb/Yy+gPjfgyc4
-	 scGxy/P9NCAN3zl/CrVGbmPrpqP67XdlSKGKOZ5XnXGDSv7ZPf9FGu3/ARKVTbsRmA/RO
-	 DYF/pHwtH7c821XuFNOGSIoa40r39LO6oRgtW7ybBP7ozNUyKPVI9GmjmHNQ0C2/9um8/
-	 4dPe6Etd92dN1kGkb2XSa+xV+VfEDZ4mm47fL1oesvCV3sa5MqTCs1/CXFJ+knwyQOg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793814563;
+	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
+	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=gi7dS63RGgtIO+T+n3qdmpiMEsmAgzN2iR0aJeuR9rc=;
+	b=WIxRq/9uNh+v2CmuG78ERrb17JmQGbsygMXuElVNSxEC/rqg0m5VHISsY5tXZe6UiyPr
+	 aNXhVssYUqnzZpX9xvMhHGUJFg1ek7ouOYUURCc4CLjzFtrRw4BzYCj8+clnEzD+Q0+mB
+	 7ReA6yImlYE7sQwHqzqJ+AwWbII2HYtlywLgh7NZ39EaMXi/TJJNzEM84W8H9l+S4s0V4
+	 Qc8TSqsZxP9sygZLvN1I1lS2gwDOWk/ik1mOBew3M6qTY54BFIYA1s3cGb9GI2I9S79AH
+	 RlnUxOaX6pocv38hPHIsMzhBVYZWPVA+308xNYoAihSaRvDQ/dmGXyFFfoUS+l0cTIg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=L4z066t7;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BVMw1eYL;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 87006606D80F;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1C97460A6F5A;
 	Wed,  4 Nov 2026 17:49:22 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=L4z066t7
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 11ADA1F000C1;
-	Wed,  4 Nov 2026 17:49:04 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BVMw1eYL
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F35981F00919;
+	Wed,  4 Nov 2026 17:49:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1793814562;
-	bh=bDYBcNUn+VWuCpTwTZF6KvGO9475Dcj2RU9o+tvUNt0=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=L4z066t7qk8SNBZ3qr8F1Dv4FM+zeL5UMqbVPpZhgdQRsqgneSAYM0s8mSty+AN6F
-	 uOpJwVDXNMcIMJN/l4FNHGQgvK/QCR0cqApE4XNvTdD9heJSFssRxRma5MIWbLp5q7
-	 KuStqfVc5Mi7/uCEtKU/XidV25HekngkokdSavKrGmFA9IR6yxAQ/fT2R/UVEXUpOV
-	 JshYWFM1jRBiauogMI9LETcKUpSEg7rlt/XCrsDvHcIcKKrKf+Lfu9grpGXEUlOUBw
-	 il1cziT3er+LG8IbGUfsHyBhUl9fEmWujhzvys7fEbuJMHuqJFLv3DIRlBTxlslyyu
-	 1lR419jEJXKMw==
-From: Christian Brauner <brauner@kernel.org>
-To: linux-fsdevel@vger.kernel.org
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Jann Horn <jannh@google.com>,
-	Josef Bacik <josef@toxicpanda.com>,
-	Chris Mason <mason@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Thomas Gleixner <tglx@kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Jonathan Corbet <corbet@lwn.net>,
-	Christoph Hellwig <hch@lst.de>,
-	Greg Kroah-Hartman <gregkh@suse.de>,
-	Joel Granados <joel.granados@kernel.org>,
-	Kees Cook <kees@kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	Jan Kara <jack@suse.com>,
-	linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	linux-acpi@vger.kernel.org,
-	linux-kselftest@vger.kernel.org,
-	linux-s390@vger.kernel.org,
-	linux-scsi@vger.kernel.org,
-	linux-um@lists.infradead.org,
-	linux-wireless@vger.kernel.org,
-	linuxppc-dev@lists.ozlabs.org,
-	netdev@vger.kernel.org,
-	ntfs3@lists.linux.dev,
-	platform-driver-x86@vger.kernel.org,
-	coreteam@netfilter.org,
-	kexec@lists.infradead.org,
-	linux-pci@vger.kernel.org,
-	linux-sound@vger.kernel.org,
-	netfilter-devel@vger.kernel.org,
-	dri-devel@lists.freedesktop.org,
-	ibm-acpi-devel@lists.sourceforge.net,
-	jfs-discussion@lists.sourceforge.net,
-	linux-alpha@vger.kernel.org,
-	linux-arm-kernel@lists.infradead.org,
-	linux-cifs@vger.kernel.org,
-	linux-fbdev@vger.kernel.org,
-	linux-hwmon@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-sh@vger.kernel.org,
-	linux-usb@vger.kernel.org,
-	samba-technical@lists.samba.org,
-	sparclinux@vger.kernel.org,
-	linux-m68k@lists.linux-m68k.org,
-	linux-doc@vger.kernel.org,
-	linux-serial@vger.kernel.org,
-	linux-atm-general@lists.sourceforge.net,
-	Takashi Iwai <tiwai@suse.de>,
-	linux-input@vger.kernel.org,
-	linux-raid@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-modules@vger.kernel.org,
-	linux-debuggers@vger.kernel.org,
-	"Christian Brauner (Amutable)" <brauner@kernel.org>,
-	Chuck Lever <cel@kernel.org>,
-	stable@vger.kernel.org
-Subject: [PATCH v2 17/51] s390/dasd: don't look in front of the buffer on an empty write
-Date: Wed,  4 Nov 2026 18:47:03 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-17-bbf7d5546809@kernel.org>
-In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
-References: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
+	bh=gi7dS63RGgtIO+T+n3qdmpiMEsmAgzN2iR0aJeuR9rc=;
+	h=From:Subject:Date:To:Cc;
+	b=BVMw1eYLd83HVMOPQDK5CLAuaDRJ+ZSk/1v3I3NyGYN2phlPW1vdtWWwGYPDc2yLo
+	 pkEmmfhA9Qu2B/S1P/J89jHfrS4/jPDqV+9pGqTkD4QP2JlGlo15rSCC0GDGId50PT
+	 GnL/cvwGuLTYhUbhGkOOk6U4s2VhSictIvXNs/akCqsXBX4vzX8nlynvFf2lK61Jfu
+	 RxPmhvvIDoi9BDwqO2JfoS1MKY/OyhsdNrwvTu9k8F3tLfB640xh+Dp44J3aPj3sMf
+	 keb1ckMgVaXtZ+YWoH4ZKoBZP1MebOgK0cnKhgb46qRQ2uhOHQblFHK2hKTdkUfQUj
+	 ISFuG7uXv0KRQ==
+From: Chuck Lever <cel@kernel.org>
+Subject: [PATCH 0/5] SUNRPC: Fix backchannel transport lifetime bugs
+Date: Wed, 04 Nov 2026 12:49:04 -0500
+Message-Id: <20261104-liange-v1-0-f097e10cea1b@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -116,36 +54,91 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWM0QrCMAxFf2Xk2WJTZaC/Ij6kNd0i2kkyRRj7d
+ 9v5eA7n3gWMVdjg3C2g/BGTqVTAXQdppDKwk1tlCD70iP7oHrJZ7A8+B6KMfIIav5SzfLejy/X
+ P9o53TnNbtyKSsYtKJY1NTSqDlP2TbGaFdf0B1387FYoAAAA=
+X-Change-ID: 20261104-liange-1630f2aaf1e9
+To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+ Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>
+Cc: Wentao Liang <vulab@iscas.ac.cn>, linux-nfs@vger.kernel.org, 
+ linux-rdma@vger.kernel.org, Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=952; i=brauner@kernel.org; h=from:subject:message-id; bh=vNxDJDpmoyfXJahneUuQ9vEH9eL70g/8w71rNTJgUxc=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zrsssUymaabA31Var5avOM5bfCJp4gvZaynZy78sz mbbvsPjXUcpC4MYF4OsmCKLQ7tJuNxynorNRpkaMHNYmUCGMHBxCsBEJKczMuyYrr82Yt6rR8wV ngvXr6z7d1Hu7s13rzfk5t00zdb9H3OckeGStmp/GZ/E1KSXmfqdfP1HWkLun/hu9/dXSsq18Bl 8+mwA
-X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
-Content-Transfer-Encoding: 8bit
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2509; i=cel@kernel.org;
+ h=from:subject:message-id; bh=VN96Ltc4j3QQKtWWIuV6Vt8PSS22lE440AXtxZozM6w=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq63AZbdTX+U2qT+IC636DMWPD3sY7g2OZsesah
+ EJ9vLgL7UyJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCautwGQAKCRAzarMzb2Z/
+ l/nEEACSDZtPBWUaYh2+cFkW+9MIlOzWK93fePpZ+jhnGfq21pXyPs/7VXSJ/RtncO9pVG2NkG+
+ brmz0j2jW9PvgoBAqOiwfqK1qv1s5JSZYIpEA/FILycoe1H3HQI3cn3YFZHx4GHtaBe86sIFSKR
+ ox3Usq9NwlmcpKbSqJrcOg8Qy/h3gBpAkcHIOVTM/G/mt5pe9vXeOC74+FLtAemaIs3KQ1KFjRI
+ p3VD1sc7DLS9rr8vEqteIqn9/AjZojW7JmyNgMJneiMtKW6NBN1NZLRH11PFnlKuxlNKKfNQMM+
+ l49HIO0uNMM/jH6wDaxZPGP7onPk7cIzdD8AngI4Y12ggY2t93AZ5Zb4hurq7qyAqT/vfsuipCh
+ PkxGIJzej6onJ9492pAhHR6NQmyWTeHYh9mURfG2fwO56pHMtnOU3crb++sdhIycU7bEtOem+Xo
+ c0BgXGjLdbk2gq7h3dteNEgZlSbrfUngPVnq2+seK36spyJ41dKaD0rVuEE/Rv62nU3RH66B/vP
+ LUQYWKb9/3wsLTlX3l/LbkzK0rJBTwetZbgg8KKH9H9eahmTm4TsKUUtZ4WhHQQPwc1sKpJSmeq
+ Eqs9KAsU+EftK+W/g1DntUh0fRgJizm5pGZMwVCeebEbj4hxNRUX1/Be5+7liER4hMh54rKJX1t
+ QsQH/DVb/dL7/fw==
+X-Developer-Key: i=cel@kernel.org; a=openpgp;
+ fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-dasd_get_user_string() strips a trailing newline by looking at the last
-byte that was written. For an empty write that's the byte in front of
-the buffer it just allocated. Only look if something was written.
+Wentao Liang posted a fix for a reference leak in the RDMA
+backchannel transport:
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Cc: stable@vger.kernel.org
-Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+https://patch.msgid.link/20261104022813.1484267-1-vulab@iscas.ac.cn
+
+Since commit 729580ddc53e ("svcrdma: xpt_bc_xprt is already clear in
+__svc_rdma_free()"), xprt_setup_rdma_bc() takes one more reference
+than anything releases, so no RDMA backchannel rpc_xprt is ever freed.
+
+Applying Wentao's fix brings the final put back into play. The last
+put queues xprt_destroy_cb(), which calls xprt_rdma_bc_put() in
+rpcrdma, and nothing holds a module reference across that work item.
+An rmmod of rpcrdma can then race the work item and run freed module
+text. The module reference added right after Wentao's fix closes that
+race, so the two need to land together.
+
+This repost keeps Wentao's code as posted, with a reworded commit
+message.
+
+The series also addresses some pre-existing issues in the same area
+that turned up while reviewing Wentao's patch: a NULL xprt_class on
+the RDMA backchannel transport, an add_xprt sysfs write that rebinds
+xpt_bc_xprt, and an xprt_create_transport() error path that leaves
+xpt_bc_xprt pointing at a freed transport.
+
+The add_xprt rejection has to come before setting xprt_class.
+Currently an add_xprt write on the xprt_switch of an RDMA callback
+client oopses on the NULL xprt_class. Setting xprt_class without the
+rejection turns the oops into a leak of the previous backchannel
+rpc_xprt. With the module reference in place, the leak also keeps
+rpcrdma from being unloaded.
+
+The SUNRPC patches change client-side code: the sysfs add_xprt handler
+and xprt_create_transport(). Because of the ordering constraints
+above, can the whole series, Wentao's fix included, go through the
+NFS client tree?
+
 ---
- drivers/s390/block/dasd.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Chuck Lever (4):
+      SUNRPC: Reject add_xprt on a backchannel xprt_switch
+      svcrdma: Hold a module reference for the backchannel transport
+      svcrdma: Set xprt_class on the backchannel transport
+      SUNRPC: Set up the servername before the transport is created
 
-diff --git a/drivers/s390/block/dasd.c b/drivers/s390/block/dasd.c
-index 2ffe404b890f..e97891e58957 100644
---- a/drivers/s390/block/dasd.c
-+++ b/drivers/s390/block/dasd.c
-@@ -933,7 +933,7 @@ char *dasd_get_user_string(const char __user *user_buf, size_t user_len)
- 		return ERR_PTR(-EFAULT);
- 	}
- 	/* got the string, now strip linefeed. */
--	if (buffer[user_len - 1] == '\n')
-+	if (user_len && buffer[user_len - 1] == '\n')
- 		buffer[user_len - 1] = 0;
- 	else
- 		buffer[user_len] = 0;
+Wentao Liang (1):
+      svcrdma: drop the extra reference on the backchannel transport
 
--- 
-2.53.0
+ net/sunrpc/sysfs.c                         |  6 ++++++
+ net/sunrpc/xprt.c                          | 23 ++++++++++++-----------
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c | 12 ++++++++----
+ 3 files changed, 26 insertions(+), 15 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261104-liange-1630f2aaf1e9
+
+Best regards,
+--  
+Chuck Lever
 
