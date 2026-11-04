@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793820066;
-	b=jixBtQ/xcJ/aBoyMMRjgn2l2G8tHeXPuDhzYl4FB6VoGN0lJO4rFgvkOEJzdBDRDyI1h
-	 rSVVsghuQifC8aMpDiPDBJzhKJwRf69IB6hKQUluvRWoBvt/y7FzLMViaV3emqh9ONzSE
-	 q8ueeTSJGieTtFYomhRd+05tIudRDby577Gpw4P0y5lqaxGKIgktVvoAFUV3AqwBKPiNE
-	 /muO4j3N6KZFKtazvfLIetzxvO2iilErrfsBZgKyUqdfgtUyISDaKDMdg3redto1kv2U8
-	 1v5Lt3eYkZ7LfvX1g1/0jGKrXljanwc1UD5+hDc8P1pw5IiJgay3zD7oHluA1c0V3UQ==
+	t=1793820080;
+	b=qZR466aMeh4QgRe5q5AXuI8ea9c1oOkWYMscCF1tGopmUnANe4yb97i7yfQain7BE0TZ
+	 AZlCLGTncM2jGlvJKEER++dYD+A28OfJ3qriXmWoAPJpbaAfO1OMb/jdg1JFJgalanolP
+	 yP8WVrAffqnqWvc8qMA8i+RSAS7g1vVQwmYFioMcwxT4zqMk33zXP1aRr9hAPF8wtVKo+
+	 zeDt0yoXAXltTIvIhseW0Fp7upfOoLX0RgE4oVlInbxZKUl0IihMEyp2Z9J88FhZ3zO4T
+	 G9JZyQrTnXiCv0Hlp4K/1jy2WYSJdDnaHKUICOA09zO2RrPX4Rbh7BYRH0guw77u22g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793820066;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793820080;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=Ayyh3GSY9IX8l/NxmtUwOJrSt8ohKQ1xsnTJeKuAZFg=;
-	b=Ibfu+P5DN7bTtQV7dsCp2KoCumrUOajWGMvzLgLpfilwozo53rCOF5gLEqNo1UFbqz+W
-	 qiLfVr+cGrxCjEcTmrq33AhzIgEoUyV0IBFE9u+8mGwPJFFDvZOB7iDau+rXWUNqsswKV
-	 c7foFvIDpZgtp2oS4efwZTV8bKFokYQiEqmwuRVJ4LFBo9YZmy4x650jLDzmx9vVYpfU3
-	 x3iHgDMdR8R36Err+tAqaO0dHvuqRw6FMaglcNE1BbKGZBzk5CNOnLukPDOF+NL/Jikw7
-	 5AXtIHD7KbSijyVbcVJG9UDe6AuNh18nKhR7MH0idWObhrpkdGBgOAXlzkmG0MBvPJQ==
+	bh=p9+kMzHwjVYuWJQ2+obB/IGMwn7xV7y09JcSQ7GHv6w=;
+	b=v7KZ1fVRfZO0NSMi3LFU+6KOpuSSJE3JUnEjTIuDakkP8rgVQSQlKIR+LEpoUtYRnsu3
+	 iJRtj3flSKcQpyGhFcK9SFVkoHKPZ4UeuMv9K7e2PcDBaOflGzzwyusd1RVx8ytAmaKA6
+	 n/wSp8jkd9eBqGqhBv45TsAjVFDUKGz/xVDMRzk1SyLFxeG6n9h5CaYBIep/GfRGfsiUe
+	 WPG6ZT8WvNpbh9jqCplYHyVdLlvPGdS9KaaKv/Ti1+Eg/5rd04cxEZaQ5Fz7qIf2/8rNQ
+	 deDXdC+FAN3t12UsopZXxOoNLnDTZG0Y/48XIieJaD+XOZBXizSKjFgHXvjntTkH5Vg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PMovg2oc;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Da9qhDAh;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 16CCF6070A9F;
-	Wed,  4 Nov 2026 19:21:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 86050606A855;
+	Wed,  4 Nov 2026 19:21:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PMovg2oc
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 806C21F000C1;
-	Wed,  4 Nov 2026 19:20:53 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Da9qhDAh
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4AB7D1F000C1;
+	Wed,  4 Nov 2026 19:21:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793820065;
-	bh=Ayyh3GSY9IX8l/NxmtUwOJrSt8ohKQ1xsnTJeKuAZFg=;
+	s=k20260515; t=1793820080;
+	bh=p9+kMzHwjVYuWJQ2+obB/IGMwn7xV7y09JcSQ7GHv6w=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=PMovg2ocC+6+72mN+MPUqHUmY8Gh6jGtgFhxfGrbKQmCA+LwwQyl3c6SAd7ODK0Un
-	 TeSpRqADQ9Kqhq1oQjD9vPlOAPX0N4L6G2Yq972WfVK0QyS2eoZkVjrC7gXV2Wp9AD
-	 CUv1f8DxJzlMPkll9V0KMpG8czJ1Cdjc1NusWgGh651UisUDwupbe65VXluiYLVRKq
-	 bmTGqSa/cBkfg+tO9lwTlkqyyX8ntnHu3rqhgeRlRLNSz2FtgHHB11uhlH75pZze0J
-	 a0y9Qbx+5R9AkShgQfuaWjn2D8HWZ6fFJZRJfSSM3b8p5Slumunw5NJkGXiVuTlwsj
-	 o0bkzl5ZAaHdA==
+	b=Da9qhDAhe1gMlC4H3sEx9s8bGAWOfqOAYoq5Ueb9q8Ynl2389Maztmcp2QYHP5RUa
+	 OZi38NVuKARinV0XCKJY4csd2ZWdhTyFIQtFYAj0HTzWZSV2i1vKEm7P7/Pts5FZCn
+	 QcJTzEeOU9QU1jpuc0CN9kj/jSPx/znq777Ooa0/kAzqFdLCFoQLN31MunMZ6V42ul
+	 zYUXtsChACfm6Z+hTrPGrAKTMgQ5FfXYR+IE5qTYw8gsFIqpDD7UrTt1lKIhy24azZ
+	 jz8zin7Ffk74C14OK7JkiGN0Jj9FrbP13tt/L09oeijZ2cBW9SHXjgz22CRX5WoLnO
+	 SiIObxm9KtSIA==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -101,9 +101,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>,
 	stable@vger.kernel.org
-Subject: [PATCH RESEND v2 20/51] powerpc/rtas_flash: don't read past the validate message
-Date: Wed,  4 Nov 2026 20:20:51 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-20-021c84d852e0@kernel.org>
+Subject: [PATCH RESEND v2 21/51] powerpc/rtasd: zero the error log buffer
+Date: Wed,  4 Nov 2026 20:21:06 +0100
+Message-ID: <20261104-work-procfs-bugfixes-v2-21-021c84d852e0@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -117,36 +117,35 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1303; i=brauner@kernel.org; h=from:subject:message-id; bh=7JHU1Fe1PUKfNakrIeb+3f7MU5rT/9SRwlQjBFg57NM=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bnzclOH/9YSeueXTgCsviu6+YT3ptfO90YO+xGe3o vXy9vC4dpSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEzkEwsjw/ZKfvGdFYG8TydZ OMpPUCz4mPFg57VZEq4Ws+oPejxnmMPI8PHqDVmb3Q9X/9/a4700i1N297SNPI27n4dcu7jAKU/ qBTMA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1050; i=brauner@kernel.org; h=from:subject:message-id; bh=mkSbMC6ZDV5f4P2v+qDezcMlza9tkw/MXVPMWZSeje8=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bnx60+3VpD19ZT+7SySmfPjO+TBTt49lvc0+93eF3 4WPq6Z96ChlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZjIlBCGv0LG0fo2q8pr72Sl RxoY7Psg/0D2YuivaZvXryurm/TnzyVGhuV3JU9sXMk96YvRxJhvUz9Ozgtes07tY8uDXTNaVxx jf8kGAA==
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-get_validate_flash_msg() adds up what snprintf() returns, which is the
-length of the whole string and not what fit into msg. If the update
-results the firmware hands back don't fit into what is left of the 256
-bytes, the length ends up larger than msg and validate_flash_read()
-copies whatever follows it on the stack to userspace. Use scnprintf().
+rtas_log_read() hands out a whole slot of the error log but
+pSeries_log_error() only fills in the sequence number and the event,
+which is usually a lot shorter. The rest of the slot is whatever
+vmalloc() left there. Use vzalloc().
 
-Fixes: a94a14720eaf ("powerpc/rtas_flash: Fix validate_flash buffer overflow issue")
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
 Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- arch/powerpc/kernel/rtas_flash.c | 2 +-
+ arch/powerpc/kernel/rtasd.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/powerpc/kernel/rtas_flash.c b/arch/powerpc/kernel/rtas_flash.c
-index 722dbfb6fbf8..f1cd105f7426 100644
---- a/arch/powerpc/kernel/rtas_flash.c
-+++ b/arch/powerpc/kernel/rtas_flash.c
-@@ -448,7 +448,7 @@ static int get_validate_flash_msg(struct rtas_validate_flash_t *args_buf,
- 		n = sprintf(msg, "%d\n", args_buf->update_results);
- 		if ((args_buf->update_results >= VALIDATE_CUR_UNKNOWN) ||
- 		    (args_buf->update_results == VALIDATE_TMP_UPDATE))
--			n += snprintf(msg + n, msglen - n, "%s\n",
-+			n += scnprintf(msg + n, msglen - n, "%s\n",
- 					args_buf->buf);
- 	} else {
- 		n = sprintf(msg, "%d\n", args_buf->status);
+diff --git a/arch/powerpc/kernel/rtasd.c b/arch/powerpc/kernel/rtasd.c
+index fd40864bdb70..dd0df5e164a3 100644
+--- a/arch/powerpc/kernel/rtasd.c
++++ b/arch/powerpc/kernel/rtasd.c
+@@ -523,7 +523,7 @@ static int __init rtas_event_scan_init(void)
+ 	rtas_error_log_max = rtas_get_error_log_max();
+ 	rtas_error_log_buffer_max = rtas_error_log_max + sizeof(int);
+ 
+-	rtas_log_buf = vmalloc(array_size(LOG_NUMBER,
++	rtas_log_buf = vzalloc(array_size(LOG_NUMBER,
+ 					  rtas_error_log_buffer_max));
+ 	if (!rtas_log_buf) {
+ 		printk(KERN_ERR "rtasd: no memory\n");
 
 -- 
 2.53.0
