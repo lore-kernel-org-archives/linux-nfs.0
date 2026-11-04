@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793814563;
-	b=S3RK5jbv2p9tSkaUw+N0HZXamN7v0fU9hzjV9QxiKH2Rdqs3T4w1dA9wehW/qDooDmlZ
-	 PPtakV8H8ln7rAtKOj/a/SW6SQefc/zmdckO2ar4xXQx5EY6U6xaUglGi0lLkAXEqj9Kr
-	 HKckz/Kzih12yggD5m208KjC7efoOeRadM5TwarErF2xIt1JV8/KIvyGKebqFTlcos7aW
-	 1oEqx01+RvsAH+EdDUbvNpbrhoI7D3/OCTjzadz52CSz7JtoRxgSUtKlp4OSU5BTmWuoN
-	 xHQ+wcoPxkajEjtQxn2LkJ3vK4NYg9AjWnch5nP2qKgRwrvZll90eZak9I9peHX1A7g==
+	t=1793814566;
+	b=qo5HD5A0bKUmP9nRpU6FG2AYzNyUVwR8hrlIL+8hyvLd1cKSmQsd4EuHBgMhMHs8p9aY
+	 vG/lPMYe3p+s2eZZPkMgEN2xduyc7MGssxKlyExUw5utpDnHF4H/FaLCl35FCJGQg0+6B
+	 Df/rk8uNBvnnNTN1q0fi4VgR7yluIFDt22caLLIQYOv6/qsaswWPczR6j95nc2hTjTK+O
+	 OQIZtYMLZyqPhkcgydG0rPRngW8xjgmGCAav7QM67GHD3AR8YGWWe/X278o5dIB0WeE6v
+	 5u0sBA+7ffvyJaNYnZEgFGb48PqNJnt15fEnwZoeUsznQ/8ia4h3SNH5dqzysfjB+UA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793814563;
-	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
-	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
-	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=gi7dS63RGgtIO+T+n3qdmpiMEsmAgzN2iR0aJeuR9rc=;
-	b=WIxRq/9uNh+v2CmuG78ERrb17JmQGbsygMXuElVNSxEC/rqg0m5VHISsY5tXZe6UiyPr
-	 aNXhVssYUqnzZpX9xvMhHGUJFg1ek7ouOYUURCc4CLjzFtrRw4BzYCj8+clnEzD+Q0+mB
-	 7ReA6yImlYE7sQwHqzqJ+AwWbII2HYtlywLgh7NZ39EaMXi/TJJNzEM84W8H9l+S4s0V4
-	 Qc8TSqsZxP9sygZLvN1I1lS2gwDOWk/ik1mOBew3M6qTY54BFIYA1s3cGb9GI2I9S79AH
-	 RlnUxOaX6pocv38hPHIsMzhBVYZWPVA+308xNYoAihSaRvDQ/dmGXyFFfoUS+l0cTIg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793814566;
+	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
+	 X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=79KbJYMRYVF6dowBj0cqnH9uSO3tqSXNWuLE7dQ7rk4=;
+	b=B7tZKeob/qhw+nNaqWY07dyK395mLoPbRwB7ITrLHbfJ2g720q7SFXqQa85fU+MM4DEQ
+	 ru8WALIlymDzRuk2TjyNjl1FTNorYicO1hIeO1ly+rd/Mg/AEKUaI77EPR3XSIEvgyl2n
+	 w0oSly9Vp7W0RQ28LE6u+tGQMJG3vvZ6bRej75WQIy4rctSge3FS8IsZs0+17NaZX3cst
+	 nXoh9Q/al2ZfjSEJ7QUNPgo99D7wKIbfOi9kTGuPPNOvJB76Lqw8u+s2GCbh6TDhX0QEH
+	 MvSXuKbl2WRhl6Fe4YUxFF33vHz/zsXH9yWP+4yB25x2dk986nkTTkTTGOyZoT1l3Vg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BVMw1eYL;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Xvaycnxp;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1C97460A6F5A;
-	Wed,  4 Nov 2026 17:49:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2E1D160A6F76;
+	Wed,  4 Nov 2026 17:49:25 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BVMw1eYL
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F35981F00919;
-	Wed,  4 Nov 2026 17:49:21 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Xvaycnxp
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F112C1F000C1;
+	Wed,  4 Nov 2026 17:49:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793814562;
-	bh=gi7dS63RGgtIO+T+n3qdmpiMEsmAgzN2iR0aJeuR9rc=;
-	h=From:Subject:Date:To:Cc;
-	b=BVMw1eYLd83HVMOPQDK5CLAuaDRJ+ZSk/1v3I3NyGYN2phlPW1vdtWWwGYPDc2yLo
-	 pkEmmfhA9Qu2B/S1P/J89jHfrS4/jPDqV+9pGqTkD4QP2JlGlo15rSCC0GDGId50PT
-	 GnL/cvwGuLTYhUbhGkOOk6U4s2VhSictIvXNs/akCqsXBX4vzX8nlynvFf2lK61Jfu
-	 RxPmhvvIDoi9BDwqO2JfoS1MKY/OyhsdNrwvTu9k8F3tLfB640xh+Dp44J3aPj3sMf
-	 keb1ckMgVaXtZ+YWoH4ZKoBZP1MebOgK0cnKhgb46qRQ2uhOHQblFHK2hKTdkUfQUj
-	 ISFuG7uXv0KRQ==
+	s=k20260515; t=1793814565;
+	bh=79KbJYMRYVF6dowBj0cqnH9uSO3tqSXNWuLE7dQ7rk4=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=Xvaycnxp4Xr3Tm7xp2gBGl11JXzls0bfAU+YNNZhYKD7TpDbAnkp70tanwhPaiffF
+	 t/PvqFBQ7OPaMgfQ7k/XhpIgOqNWqtyERfX/1HDMYrKWAsj3A3RAOghqTABl1LozcA
+	 WPzztn/u/io9pRfDqDC688HuEHki8xv+/BUWc9QCpUcLPJGh9nRIlmxgxkQZ5JtZ89
+	 n12OVg0rdsuXiT8wuh/CWLEIb+fxhEU6QWZLYd3v8pBpMwwMET+TDu42nlJS8nIwCA
+	 wrQE3KRFoAJ3aFBc2OEEsJzo1tMbpmWTns1Pu/S46BH3E5KiK2q05Zm/PLOQUIRrn6
+	 bLXHnwoeotO2w==
 From: Chuck Lever <cel@kernel.org>
-Subject: [PATCH 0/5] SUNRPC: Fix backchannel transport lifetime bugs
-Date: Wed, 04 Nov 2026 12:49:04 -0500
-Message-Id: <20261104-liange-v1-0-f097e10cea1b@kernel.org>
+Date: Wed, 04 Nov 2026 12:49:07 -0500
+Subject: [PATCH 3/5] svcrdma: Hold a module reference for the backchannel
+ transport
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,10 +55,9 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWM0QrCMAxFf2Xk2WJTZaC/Ij6kNd0i2kkyRRj7d
- 9v5eA7n3gWMVdjg3C2g/BGTqVTAXQdppDKwk1tlCD70iP7oHrJZ7A8+B6KMfIIav5SzfLejy/X
- P9o53TnNbtyKSsYtKJY1NTSqDlP2TbGaFdf0B1387FYoAAAA=
-X-Change-ID: 20261104-liange-1630f2aaf1e9
+Message-Id: <20261104-liange-v1-3-f097e10cea1b@kernel.org>
+References: <20261104-liange-v1-0-f097e10cea1b@kernel.org>
+In-Reply-To: <20261104-liange-v1-0-f097e10cea1b@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
  Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
@@ -66,79 +65,75 @@ To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
 Cc: Wentao Liang <vulab@iscas.ac.cn>, linux-nfs@vger.kernel.org, 
  linux-rdma@vger.kernel.org, Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2509; i=cel@kernel.org;
- h=from:subject:message-id; bh=VN96Ltc4j3QQKtWWIuV6Vt8PSS22lE440AXtxZozM6w=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq63AZbdTX+U2qT+IC636DMWPD3sY7g2OZsesah
- EJ9vLgL7UyJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCautwGQAKCRAzarMzb2Z/
- l/nEEACSDZtPBWUaYh2+cFkW+9MIlOzWK93fePpZ+jhnGfq21pXyPs/7VXSJ/RtncO9pVG2NkG+
- brmz0j2jW9PvgoBAqOiwfqK1qv1s5JSZYIpEA/FILycoe1H3HQI3cn3YFZHx4GHtaBe86sIFSKR
- ox3Usq9NwlmcpKbSqJrcOg8Qy/h3gBpAkcHIOVTM/G/mt5pe9vXeOC74+FLtAemaIs3KQ1KFjRI
- p3VD1sc7DLS9rr8vEqteIqn9/AjZojW7JmyNgMJneiMtKW6NBN1NZLRH11PFnlKuxlNKKfNQMM+
- l49HIO0uNMM/jH6wDaxZPGP7onPk7cIzdD8AngI4Y12ggY2t93AZ5Zb4hurq7qyAqT/vfsuipCh
- PkxGIJzej6onJ9492pAhHR6NQmyWTeHYh9mURfG2fwO56pHMtnOU3crb++sdhIycU7bEtOem+Xo
- c0BgXGjLdbk2gq7h3dteNEgZlSbrfUngPVnq2+seK36spyJ41dKaD0rVuEE/Rv62nU3RH66B/vP
- LUQYWKb9/3wsLTlX3l/LbkzK0rJBTwetZbgg8KKH9H9eahmTm4TsKUUtZ4WhHQQPwc1sKpJSmeq
- Eqs9KAsU+EftK+W/g1DntUh0fRgJizm5pGZMwVCeebEbj4hxNRUX1/Be5+7liER4hMh54rKJX1t
- QsQH/DVb/dL7/fw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2006; i=cel@kernel.org;
+ h=from:subject:message-id; bh=B2dX5MvmGuwCETN8jvISr0gmX/jGKzCjYOE34BURN3k=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq63AhEXKmQEeWM07bvywVbIrOYvLInW0YGPO7P
+ bV6R2QIPaqJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCautwIQAKCRAzarMzb2Z/
+ lx86D/9xyzpZ223mVwn2ghN4K3i41KDmcLXMWdHoleRCBqq5PZw7fYl+iZB8DwcoNAyRSKSx71K
+ oKDqV7ceKYmSAPuGJwB7jWiL7uNgdR3YUYWWrJsifYmZCk4UT5Lx+2MGb1tISg/BpIEgfLX5Wfq
+ +64dydFDmk3u5GbFQreKRz6kZxKNdRL+925pGaTvVEExYgIW/3Hew0RVMlILCtkiVyULaTkmSFj
+ KYb/XEh3Y282JV9fQHzDHQcTOMmNAmhqxrTAkFmMGqaFsnfABs2APvmUnjE6WPmo7ZAVpXiCxEA
+ kFp7M+gbpxkscoxRY106zyidjLRfUJpQrzSKV42PTMe86VrgICmx+jcTCh02kpPMYCTFbgdon1U
+ nHkobf9OLSr7MEZYl9pEVSu4mELbfxThUFrhBDBgfZtNmCCB/xhlypHEfmc4tP1R4zcx6BeNFYU
+ PSaYQeBCfVMbILmz5O9HfhGmAnuHU/vF3Mz10O9vrgzvI8JJ/M7SWALjOEPaNoAmN9poKs2OpG0
+ hBvg8zq3APjzO/XvWfok5pHYAoqe9wNE0IYdEzHVlTrxMqXwIeTlKm/XGj93V3xrqp3FUz2ooVY
+ hbzPeLXPnirPTyN5YVmVxL674fE2eKmrqkqvCnta52EcXBgQYM/yjuuGQRu3AEqjsrpe+y+PQyB
+ hq0TfLwJvLJnV6A==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-Wentao Liang posted a fix for a reference leak in the RDMA
-backchannel transport:
+The last put on an RDMA backchannel rpc_xprt runs xprt_destroy(),
+which queues xprt_destroy_cb() on a workqueue. That work item calls
+xprt_rdma_bc_put() through xprt->ops. Nothing pins the rpcrdma
+module while the rpc_xprt exists: xprt_create_transport() drops the
+class reference as soon as ->setup() returns, and svc_xprt_free()
+releases its own module reference right after the final put. An
+rmmod of rpcrdma can therefore race the pending work item and run
+freed module text. The TCP backchannel in xs_setup_bc_tcp() and the
+forward transport in xprt_setup_rdma() both hold a module reference
+for the life of the rpc_xprt.
 
-https://patch.msgid.link/20261104022813.1484267-1-vulab@iscas.ac.cn
+Take a module reference in xprt_setup_rdma_bc() and release it in
+xprt_rdma_bc_put(), as xprt_setup_rdma() and xprt_rdma_destroy() do.
 
-Since commit 729580ddc53e ("svcrdma: xpt_bc_xprt is already clear in
-__svc_rdma_free()"), xprt_setup_rdma_bc() takes one more reference
-than anything releases, so no RDMA backchannel rpc_xprt is ever freed.
-
-Applying Wentao's fix brings the final put back into play. The last
-put queues xprt_destroy_cb(), which calls xprt_rdma_bc_put() in
-rpcrdma, and nothing holds a module reference across that work item.
-An rmmod of rpcrdma can then race the work item and run freed module
-text. The module reference added right after Wentao's fix closes that
-race, so the two need to land together.
-
-This repost keeps Wentao's code as posted, with a reworded commit
-message.
-
-The series also addresses some pre-existing issues in the same area
-that turned up while reviewing Wentao's patch: a NULL xprt_class on
-the RDMA backchannel transport, an add_xprt sysfs write that rebinds
-xpt_bc_xprt, and an xprt_create_transport() error path that leaves
-xpt_bc_xprt pointing at a freed transport.
-
-The add_xprt rejection has to come before setting xprt_class.
-Currently an add_xprt write on the xprt_switch of an RDMA callback
-client oopses on the NULL xprt_class. Setting xprt_class without the
-rejection turns the oops into a leak of the previous backchannel
-rpc_xprt. With the module reference in place, the leak also keeps
-rpcrdma from being unloaded.
-
-The SUNRPC patches change client-side code: the sysfs add_xprt handler
-and xprt_create_transport(). Because of the ordering constraints
-above, can the whole series, Wentao's fix included, go through the
-NFS client tree?
-
+Fixes: 5d252f90a800 ("svcrdma: Add class for RDMA backwards direction transport")
+Cc: stable@vger.kernel.org
+Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
-Chuck Lever (4):
-      SUNRPC: Reject add_xprt on a backchannel xprt_switch
-      svcrdma: Hold a module reference for the backchannel transport
-      svcrdma: Set xprt_class on the backchannel transport
-      SUNRPC: Set up the servername before the transport is created
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-Wentao Liang (1):
-      svcrdma: drop the extra reference on the backchannel transport
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+index 6a504806165c..6089d4ac85a5 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+@@ -205,6 +205,7 @@ xprt_rdma_bc_put(struct rpc_xprt *xprt)
+ {
+ 	xprt_rdma_free_addresses(xprt);
+ 	xprt_free(xprt);
++	module_put(THIS_MODULE);
+ }
+ 
+ static const struct rpc_xprt_ops xprt_rdma_bc_procs = {
+@@ -240,11 +241,16 @@ xprt_setup_rdma_bc(struct xprt_create *args)
+ 	if (args->addrlen > sizeof(xprt->addr))
+ 		return ERR_PTR(-EBADF);
+ 
++	if (!try_module_get(THIS_MODULE))
++		return ERR_PTR(-EIO);
++
+ 	xprt = xprt_alloc(args->net, sizeof(*new_xprt),
+ 			  RPCRDMA_MAX_BC_REQUESTS,
+ 			  RPCRDMA_MAX_BC_REQUESTS);
+-	if (!xprt)
++	if (!xprt) {
++		module_put(THIS_MODULE);
+ 		return ERR_PTR(-ENOMEM);
++	}
+ 
+ 	xprt->timeout = &xprt_rdma_bc_timeout;
+ 	xprt_set_bound(xprt);
 
- net/sunrpc/sysfs.c                         |  6 ++++++
- net/sunrpc/xprt.c                          | 23 ++++++++++++-----------
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c | 12 ++++++++----
- 3 files changed, 26 insertions(+), 15 deletions(-)
----
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261104-liange-1630f2aaf1e9
-
-Best regards,
---  
-Chuck Lever
+-- 
+2.54.0
 
