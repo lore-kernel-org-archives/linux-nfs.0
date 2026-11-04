@@ -1,49 +1,111 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793814566;
-	b=qo5HD5A0bKUmP9nRpU6FG2AYzNyUVwR8hrlIL+8hyvLd1cKSmQsd4EuHBgMhMHs8p9aY
-	 vG/lPMYe3p+s2eZZPkMgEN2xduyc7MGssxKlyExUw5utpDnHF4H/FaLCl35FCJGQg0+6B
-	 Df/rk8uNBvnnNTN1q0fi4VgR7yluIFDt22caLLIQYOv6/qsaswWPczR6j95nc2hTjTK+O
-	 OQIZtYMLZyqPhkcgydG0rPRngW8xjgmGCAav7QM67GHD3AR8YGWWe/X278o5dIB0WeE6v
-	 5u0sBA+7ffvyJaNYnZEgFGb48PqNJnt15fEnwZoeUsznQ/8ia4h3SNH5dqzysfjB+UA==
+	t=1793814580;
+	b=1DrsLBl52FlHlET8FZO8a24O3qfQN4SmQaxuXPnO1XohsYOKfwDPeEBws7wqr9t6Ppgy
+	 TH4OzOvj56Dtle7Y/9KOb4uK+TdhgQ0bj2sNmlLbKs30xOAe01LsxTYAi5xS9iK3y2Skm
+	 wkjJvLXmUoKOl7JvmpxMM0ydCUJDqrXOywkHwPahc1lS34pqzDjHV0kzh8eXjvidgcXAA
+	 7nkH3O7le4fv1QiKR7/FbC6ibLYN8VeN9Eea1b9EnlibfWKQGf4xoh0O1Qcw8wmCopQvs
+	 WPVQPLA2zeCqNcDefx2bFH3eX8iCZzZfqdzTntJQLZJQ9sA1x8gUmq8m7C3sRH7XmnA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793814566;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=79KbJYMRYVF6dowBj0cqnH9uSO3tqSXNWuLE7dQ7rk4=;
-	b=B7tZKeob/qhw+nNaqWY07dyK395mLoPbRwB7ITrLHbfJ2g720q7SFXqQa85fU+MM4DEQ
-	 ru8WALIlymDzRuk2TjyNjl1FTNorYicO1hIeO1ly+rd/Mg/AEKUaI77EPR3XSIEvgyl2n
-	 w0oSly9Vp7W0RQ28LE6u+tGQMJG3vvZ6bRej75WQIy4rctSge3FS8IsZs0+17NaZX3cst
-	 nXoh9Q/al2ZfjSEJ7QUNPgo99D7wKIbfOi9kTGuPPNOvJB76Lqw8u+s2GCbh6TDhX0QEH
-	 MvSXuKbl2WRhl6Fe4YUxFF33vHz/zsXH9yWP+4yB25x2dk986nkTTkTTGOyZoT1l3Vg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793814580;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
+	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
+	bh=WXeWRtHDTvlcvQqGcGXKpHSOkC75TIYAS6cttW7V/+A=;
+	b=zbtpmK4GUlKSaPRyLg6OW0X//BpXYMvDA0dEKg4XqWK+JgOrhPeJZIf1siPqreHCWDHY
+	 uvaE82vMKsjse0jv0SFOkr2Hrz+4MZgFIGm8XR7hOvS+YinGs9UpkVuUJqcL57eRtloME
+	 NHR9X6vTRORkAvBxTvuB0ZPghva+cVoYXsx8j9hp0bXyqlss8goFNO0saeyDlgYgLqFfs
+	 ioUQag0AVa6nqCUFLfj3OsCe+HZFT7CVaY0UK8/srYt4vuuUN/vGItDgW+zwfFgT8ObdM
+	 IPKxyNoyEMyKGZ+ioQ64XJsU7GbO8nzbSOZekReFosHV2dW937E1zbf677MrChwJDUQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Xvaycnxp;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Lt+YaIK4;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2E1D160A6F76;
-	Wed,  4 Nov 2026 17:49:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B8B76082BFE;
+	Wed,  4 Nov 2026 17:49:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Xvaycnxp
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F112C1F000C1;
-	Wed,  4 Nov 2026 17:49:24 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Lt+YaIK4
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DEBC01F00A02;
+	Wed,  4 Nov 2026 17:49:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793814565;
-	bh=79KbJYMRYVF6dowBj0cqnH9uSO3tqSXNWuLE7dQ7rk4=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=Xvaycnxp4Xr3Tm7xp2gBGl11JXzls0bfAU+YNNZhYKD7TpDbAnkp70tanwhPaiffF
-	 t/PvqFBQ7OPaMgfQ7k/XhpIgOqNWqtyERfX/1HDMYrKWAsj3A3RAOghqTABl1LozcA
-	 WPzztn/u/io9pRfDqDC688HuEHki8xv+/BUWc9QCpUcLPJGh9nRIlmxgxkQZ5JtZ89
-	 n12OVg0rdsuXiT8wuh/CWLEIb+fxhEU6QWZLYd3v8pBpMwwMET+TDu42nlJS8nIwCA
-	 wrQE3KRFoAJ3aFBc2OEEsJzo1tMbpmWTns1Pu/S46BH3E5KiK2q05Zm/PLOQUIRrn6
-	 bLXHnwoeotO2w==
-From: Chuck Lever <cel@kernel.org>
-Date: Wed, 04 Nov 2026 12:49:07 -0500
-Subject: [PATCH 3/5] svcrdma: Hold a module reference for the backchannel
- transport
+	s=k20260515; t=1793814579;
+	bh=WXeWRtHDTvlcvQqGcGXKpHSOkC75TIYAS6cttW7V/+A=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=Lt+YaIK4iwvhO88yz6f+jCVQ4EeVtRm3q99whbt1o/jNi7xtD4GqEdXZoJFzfX6Mp
+	 WhMZbYdWqf2DxTyriqyK8bk+1pkoMOeKNlWc1KnsmnTw9VPIopuCsvCi1M52TYyyYy
+	 mLRpfJ5+g7TTPX7fTPYeQh+RWFIoWO07NXukL0yXrI10YEQ4gET0I5LF9DVoDQmUfc
+	 lxhs2rswNnIdaIHeRhuWnBLDBlekuRGf9w/PHx4KPTJhR73a5GVIB+8eRNFo3DUyff
+	 XmvJcy95iTPua8zzn9tBaoG3qUN1vOZ1Duxa0Dj2HpRO0snpxh5ps1EWgqor16H8rg
+	 xLTK+rVahkKTw==
+From: Christian Brauner <brauner@kernel.org>
+To: linux-fsdevel@vger.kernel.org
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	Jann Horn <jannh@google.com>,
+	Josef Bacik <josef@toxicpanda.com>,
+	Chris Mason <mason@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Eric Dumazet <edumazet@kernel.org>,
+	Thomas Gleixner <tglx@kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Jonathan Corbet <corbet@lwn.net>,
+	Christoph Hellwig <hch@lst.de>,
+	Greg Kroah-Hartman <gregkh@suse.de>,
+	Joel Granados <joel.granados@kernel.org>,
+	Kees Cook <kees@kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	Jan Kara <jack@suse.com>,
+	linux-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	linux-acpi@vger.kernel.org,
+	linux-kselftest@vger.kernel.org,
+	linux-s390@vger.kernel.org,
+	linux-scsi@vger.kernel.org,
+	linux-um@lists.infradead.org,
+	linux-wireless@vger.kernel.org,
+	linuxppc-dev@lists.ozlabs.org,
+	netdev@vger.kernel.org,
+	ntfs3@lists.linux.dev,
+	platform-driver-x86@vger.kernel.org,
+	coreteam@netfilter.org,
+	kexec@lists.infradead.org,
+	linux-pci@vger.kernel.org,
+	linux-sound@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	dri-devel@lists.freedesktop.org,
+	ibm-acpi-devel@lists.sourceforge.net,
+	jfs-discussion@lists.sourceforge.net,
+	linux-alpha@vger.kernel.org,
+	linux-arm-kernel@lists.infradead.org,
+	linux-cifs@vger.kernel.org,
+	linux-fbdev@vger.kernel.org,
+	linux-hwmon@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-sh@vger.kernel.org,
+	linux-usb@vger.kernel.org,
+	samba-technical@lists.samba.org,
+	sparclinux@vger.kernel.org,
+	linux-m68k@lists.linux-m68k.org,
+	linux-doc@vger.kernel.org,
+	linux-serial@vger.kernel.org,
+	linux-atm-general@lists.sourceforge.net,
+	Takashi Iwai <tiwai@suse.de>,
+	linux-input@vger.kernel.org,
+	linux-raid@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-modules@vger.kernel.org,
+	linux-debuggers@vger.kernel.org,
+	"Christian Brauner (Amutable)" <brauner@kernel.org>,
+	Chuck Lever <cel@kernel.org>,
+	stable@vger.kernel.org
+Subject: [PATCH v2 18/51] platform/x86: toshiba_acpi: reject malformed brightness and fan writes
+Date: Wed,  4 Nov 2026 18:47:04 +0100
+Message-ID: <20261104-work-procfs-bugfixes-v2-18-bbf7d5546809@kernel.org>
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
+References: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,86 +116,55 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-liange-v1-3-f097e10cea1b@kernel.org>
-References: <20261104-liange-v1-0-f097e10cea1b@kernel.org>
-In-Reply-To: <20261104-liange-v1-0-f097e10cea1b@kernel.org>
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
- Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>
-Cc: Wentao Liang <vulab@iscas.ac.cn>, linux-nfs@vger.kernel.org, 
- linux-rdma@vger.kernel.org, Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2006; i=cel@kernel.org;
- h=from:subject:message-id; bh=B2dX5MvmGuwCETN8jvISr0gmX/jGKzCjYOE34BURN3k=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq63AhEXKmQEeWM07bvywVbIrOYvLInW0YGPO7P
- bV6R2QIPaqJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCautwIQAKCRAzarMzb2Z/
- lx86D/9xyzpZ223mVwn2ghN4K3i41KDmcLXMWdHoleRCBqq5PZw7fYl+iZB8DwcoNAyRSKSx71K
- oKDqV7ceKYmSAPuGJwB7jWiL7uNgdR3YUYWWrJsifYmZCk4UT5Lx+2MGb1tISg/BpIEgfLX5Wfq
- +64dydFDmk3u5GbFQreKRz6kZxKNdRL+925pGaTvVEExYgIW/3Hew0RVMlILCtkiVyULaTkmSFj
- KYb/XEh3Y282JV9fQHzDHQcTOMmNAmhqxrTAkFmMGqaFsnfABs2APvmUnjE6WPmo7ZAVpXiCxEA
- kFp7M+gbpxkscoxRY106zyidjLRfUJpQrzSKV42PTMe86VrgICmx+jcTCh02kpPMYCTFbgdon1U
- nHkobf9OLSr7MEZYl9pEVSu4mELbfxThUFrhBDBgfZtNmCCB/xhlypHEfmc4tP1R4zcx6BeNFYU
- PSaYQeBCfVMbILmz5O9HfhGmAnuHU/vF3Mz10O9vrgzvI8JJ/M7SWALjOEPaNoAmN9poKs2OpG0
- hBvg8zq3APjzO/XvWfok5pHYAoqe9wNE0IYdEzHVlTrxMqXwIeTlKm/XGj93V3xrqp3FUz2ooVY
- hbzPeLXPnirPTyN5YVmVxL674fE2eKmrqkqvCnta52EcXBgQYM/yjuuGQRu3AEqjsrpe+y+PQyB
- hq0TfLwJvLJnV6A==
-X-Developer-Key: i=cel@kernel.org; a=openpgp;
- fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1850; i=brauner@kernel.org; h=from:subject:message-id; bh=dBPyRrfA4AE5uU+SDwP01KQAXBYhly7L9ZsRpXHhzrM=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zruys4H5zATJQ56FL4QUZwrEz3fqPb76g29l8a1fL 34Us/t+6yhlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZjIpPMMf0V6J05hXXkg4U7m Il2PkyIVrevVp6rG3zbnfJ6waxtPdw/D/+K7i173sLVVenL7Mu5oFdvPFn8nM9t33dyDiXp7bPP NWAA=
+X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
+Content-Transfer-Encoding: 8bit
 
-The last put on an RDMA backchannel rpc_xprt runs xprt_destroy(),
-which queues xprt_destroy_cb() on a workqueue. That work item calls
-xprt_rdma_bc_put() through xprt->ops. Nothing pins the rpcrdma
-module while the rpc_xprt exists: xprt_create_transport() drops the
-class reference as soon as ->setup() returns, and svc_xprt_free()
-releases its own module reference right after the final put. An
-rmmod of rpcrdma can therefore race the pending work item and run
-freed module text. The TCP backchannel in xs_setup_bc_tcp() and the
-forward transport in xprt_setup_rdma() both hold a module reference
-for the life of the rpc_xprt.
+When lcd_proc_write() and fan_proc_write() were refactored their checks
+were inverted but the && stayed. They only fail if sscanf() didn't
+parse anything and the value is out of range at the same time, and for
+the brightness value < 0 && value > levels can't be true at all. So an
+out of range brightness or fan setting is passed on to the hardware,
+and so is the uninitialized value if nothing could be parsed.
 
-Take a module reference in xprt_setup_rdma_bc() and release it in
-xprt_rdma_bc_put(), as xprt_setup_rdma() and xprt_rdma_destroy() do.
+Restore the checks as they were before the refactoring.
 
-Fixes: 5d252f90a800 ("svcrdma: Add class for RDMA backwards direction transport")
+Fixes: e1a949c1b988 ("toshiba_acpi: Refactor *{get, set} functions return value")
+Fixes: 3e07e5baa2af ("toshiba_acpi: Add set_fan_status function")
 Cc: stable@vger.kernel.org
-Signed-off-by: Chuck Lever <cel@kernel.org>
+Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+ drivers/platform/x86/toshiba_acpi.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-index 6a504806165c..6089d4ac85a5 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-@@ -205,6 +205,7 @@ xprt_rdma_bc_put(struct rpc_xprt *xprt)
- {
- 	xprt_rdma_free_addresses(xprt);
- 	xprt_free(xprt);
-+	module_put(THIS_MODULE);
- }
+diff --git a/drivers/platform/x86/toshiba_acpi.c b/drivers/platform/x86/toshiba_acpi.c
+index a0b8060836d0..9eb8f1e5aeda 100644
+--- a/drivers/platform/x86/toshiba_acpi.c
++++ b/drivers/platform/x86/toshiba_acpi.c
+@@ -1498,8 +1498,8 @@ static ssize_t lcd_proc_write(struct file *file, const char __user *buf,
+ 	cmd[len] = '\0';
  
- static const struct rpc_xprt_ops xprt_rdma_bc_procs = {
-@@ -240,11 +241,16 @@ xprt_setup_rdma_bc(struct xprt_create *args)
- 	if (args->addrlen > sizeof(xprt->addr))
- 		return ERR_PTR(-EBADF);
+ 	levels = dev->backlight_dev->props.max_brightness + 1;
+-	if (sscanf(cmd, " brightness : %i", &value) != 1 &&
+-	    value < 0 && value > levels)
++	if (sscanf(cmd, " brightness : %i", &value) != 1 ||
++	    value < 0 || value >= levels)
+ 		return -EINVAL;
  
-+	if (!try_module_get(THIS_MODULE))
-+		return ERR_PTR(-EIO);
-+
- 	xprt = xprt_alloc(args->net, sizeof(*new_xprt),
- 			  RPCRDMA_MAX_BC_REQUESTS,
- 			  RPCRDMA_MAX_BC_REQUESTS);
--	if (!xprt)
-+	if (!xprt) {
-+		module_put(THIS_MODULE);
- 		return ERR_PTR(-ENOMEM);
-+	}
+ 	if (set_lcd_brightness(dev, value))
+@@ -1678,8 +1678,8 @@ static ssize_t fan_proc_write(struct file *file, const char __user *buf,
+ 		return -EFAULT;
+ 	cmd[len] = '\0';
  
- 	xprt->timeout = &xprt_rdma_bc_timeout;
- 	xprt_set_bound(xprt);
+-	if (sscanf(cmd, " force_on : %i", &value) != 1 &&
+-	    value != 0 && value != 1)
++	if (sscanf(cmd, " force_on : %i", &value) != 1 ||
++	    value < 0 || value > 1)
+ 		return -EINVAL;
+ 
+ 	if (set_fan_status(dev, value))
 
 -- 
-2.54.0
+2.53.0
 
