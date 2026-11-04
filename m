@@ -1,75 +1,50 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=213.95.11.211
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793783863;
-	b=Mp/cCq9dDUkW6x5kXXovUkU7J2Ex+2BqH69nJ8KhkeNbPD/7prSSk650FUwGrH8lOyLp
-	 DLUKUJJGIMlfk2qSqAmZ/79JddkC6q2vyUYRZMho57P0tgyJb5IbwLTDrbszeDlWXNztD
-	 Gja1FcEBx3NRAJSk+p5KUFPBlfef033sxwY0NreKWyNSaJuJGbZDdwIiB3L7duz0On+6C
-	 615q4ErCCEnxaZzLq9savxhB882DouhijwqN1Nfgxo170QqtMIzPKK5exJfPjdn+LmbV6
-	 SlJLqer8eJaJHAFTkyouKkld5rcONdezwYqmvMHy9LU8sNBpddBCF2OVfjO9cBOD4Qg==
+	t=1793783884;
+	b=IWCQnJYnoYXKrFJpClHIzTgkOWJM5I/Z5BlJT9OVtiv7oHRx+JqV8ztXm/9+0y7HQ8Cv
+	 2+kngzu360i2G7K+PtodWmMI3NPF9dbNKLIdRdWuz607TYbHHOZZHQnhpVOjP0JXu/zb2
+	 NOB5VfaXkQ2/QU+4uOUiRBRpFOfzs77zhAO7a+kMY88L4s72xzgy6sMSiXJ8dhccsdUfR
+	 atYF/iA4UoO8BpJa6MKPrr3Z70RvFerTJO7cIvI2dK4TYkUEdK9m7nzKZGVEvockh9FrH
+	 xm/TZPmg45MzdxCgkHmUY4wMjSL2zXdRnBGRcblplzCvKBwFK/j9gmWJPl/X9kZDCnA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793783863;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=vFLCfIpQzvj87maXuJncKjZMHxfbMjkVEErOwSrEMzQ=;
-	b=sFWKpBwLggaRTm8knp6AldUbYKl9CFDvHYpYxQ0aIYOK66knpWkwBJGQ6MrbCws4tUW5
-	 /9wYQlWzbbdct9yJklGSVNfw1Qeq5cFbORaIa5K5rluZFtqQOTrVIPaSU4CZtYHG0jcb+
-	 xMaxR5g4+0UmnzCKSr1qjjRNJN3steQAoDhNvG2fi2N/XYXPYtmBGpgeA06dgoa1P/1iT
-	 g+uT2q5j3TNWVFjsOSYaNjz0fftSURMmT1Jn/EFO7OnjczO9MBjHSYgydQl8PmosW8/m6
-	 dEDYZPS0Ljyow+DwVy65NwlNnPA2quntRu/FjrvBzizeDghFWwhhmsSlf+NdH31xglA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793783884;
+	h=DMARC-Filter:Received:Date:From:To:Cc:Subject:Message-ID:References:
+	 MIME-Version:Content-Type:Content-Disposition:In-Reply-To:User-Agent;
+	bh=M+g/PqMDYZQI68tfBBcin7qYEE0xbkk7OS+btL9Bc2c=;
+	b=TcGzfWHxzS/RcFTOGUUInYyeDWz2DH+o11bLB2z7RKqmsgQA1ImssYO8NwejrV7I5viZ
+	 JAswyDtXURT0FSUkgxPRs9OjuqZwA1bip9U2R2hAWXTyLvgTQZYWy2fImacnwp8NYBoHM
+	 Za9/875piTxaSzsWLyZosAhV18Y8quPzK3T7f4XRo5jg/4/A6rEfwoAWB1g+opHfiCMss
+	 XehlqL1TqkO8cmEknPgwX+7Wp5gRnsDd+8r9Q5BMB5jV9C1t7nlm9Exa+RP6GJwoSmvvT
+	 88QGS1dAXotPHuA4UIDZFhl7BuEUIClgwHzSkRwZplVguFcqIa+sohtXFgpgxbenAWA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AkGIp68v;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=lst.de;
+	spf=pass smtp.mailfrom=lst.de;
+	arc=none smtp.remote-ip=213.95.11.211
+Received: from verein.lst.de (verein.lst.de [213.95.11.211])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 54C20606A31B;
-	Wed,  4 Nov 2026 09:17:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AkGIp68v
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9461A1F000C1;
-	Wed,  4 Nov 2026 09:17:30 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793783862;
-	bh=vFLCfIpQzvj87maXuJncKjZMHxfbMjkVEErOwSrEMzQ=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=AkGIp68vobiZwB2XixXdCJHgtF8bS2InhigVuwsdqp6n5/W+M82eXJQmgMDIXncGQ
-	 ZsgLev6upKoTph4wRGMw/6Rt8tdd4yiEe0QTNTPemQ626tgZDkM1GcZGQlIINcGmX1
-	 rweyg/M+elK322suBIlSSUF7Ca/phJp24NGzpraEYkCKjrptZL+chTq0rR5ps9q2f2
-	 buSjg3t9Zzbjt9a55NJ2t3tMIsF7dtK6fdeAh04poa02hll2Rco50kbc8I+oEfsxAS
-	 NzUPxVvIxDSaOzz7ERaAm3QpoNHvfOUNEKEQothQH0rTaYd4IAl0SGRh52pJdJDENe
-	 eaiECSjcPGAaQ==
-Date: Wed, 4 Nov 2026 10:17:28 +0100
-From: Christian Brauner <brauner@kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>, 
-	Josef Bacik <josef@toxicpanda.com>, Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
-	NeilBrown <neil@brown.name>, Eric Dumazet <edumazet@kernel.org>, 
-	Thomas Gleixner <tglx@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>, 
-	Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, 
-	Greg Kroah-Hartman <gregkh@suse.de>, Joel Granados <joel.granados@kernel.org>, 
-	Kees Cook <kees@kernel.org>, Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, 
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, linux-acpi@vger.kernel.org, 
-	linux-kselftest@vger.kernel.org, linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, 
-	linux-um@lists.infradead.org, linux-wireless@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
-	netdev@vger.kernel.org, ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org, 
-	coreteam@netfilter.org, kexec@lists.infradead.org, linux-pci@vger.kernel.org, 
-	linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
-	ibm-acpi-devel@lists.sourceforge.net, jfs-discussion@lists.sourceforge.net, 
-	linux-alpha@vger.kernel.org, linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org, 
-	linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org, 
-	linux-sh@vger.kernel.org, linux-usb@vger.kernel.org, samba-technical@lists.samba.org, 
-	sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org, 
-	linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net, 
-	Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
-	linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org, 
-	Chuck Lever <cel@kernel.org>, stable@vger.kernel.org
-Subject: Re: [PATCH RFC 01/38] PCI/proc: don't truncate the position of
- config space accesses
-Message-ID: <20261104-beugt-kapern-geehrt-19e2e2dd58f6@brauner>
-References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
- <20261102-work-procfs-bugfixes-v1-1-59422ed3e465@kernel.org>
- <CAHk-=wiSA7-mqmAjTQDaU7UjUyWt0TxYwXHafL8ZAPudy+B_uQ@mail.gmail.com>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ABF13606A326;
+	Wed,  4 Nov 2026 09:18:03 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org ABF13606A326
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
+Received: by verein.lst.de (Postfix, from userid 2407)
+	id AF6C568BEB; Wed,  4 Nov 2026 10:17:59 +0100 (CET)
+Date: Wed, 4 Nov 2026 10:17:59 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Mike Snitzer <snitzer@kernel.org>
+Cc: Matthew Wilcox <willy@infradead.org>, linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org, Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
+	Jonathan Corbet <corbet@lwn.net>
+Subject: Re: [PATCH v10 1/7] mm: move clearing the uncached flag of a found
+ folio into a helper
+Message-ID: <20261104091759.GC31130@lst.de>
+References: <20261103211754.35352-1-snitzer@kernel.org> <20261103211754.35352-2-snitzer@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -79,28 +54,12 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CAHk-=wiSA7-mqmAjTQDaU7UjUyWt0TxYwXHafL8ZAPudy+B_uQ@mail.gmail.com>
+In-Reply-To: <20261103211754.35352-2-snitzer@kernel.org>
+User-Agent: Mutt/1.5.17 (2007-11-01)
 
-On Mon, Nov 02, 2026 at 09:58:51AM -0800, Linus Torvalds wrote:
-> I think this would actually be better with rw_verify_area() just
-> checking a per-file maxbytes.
->
-> We already have that logic for lseek and friends - using that fairly
-> hacky combination of s_maxbytes and !unsigned_offsets().
->
-> We should combine s_maxbytes and unsigned_offsets() at file open time
-> into f_maxbytes and check that not just at lseek but in
-> rw_verify_area.
->
-> And then things like proc_bus_pci could set it's size limit in one single place.
+Looks good as a general cleanup independent of the rest:
 
-Yeah, I like that.
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 
-Hm, maybe we should keep this and the isapnp thing small and do that
-change on top.
-
-This also might mean a change in behavior. Because a read past the end
-returns 0 for proc_bus_pci and for a regular file past s_maxbytes. So
-that would potentially need some more changes.
