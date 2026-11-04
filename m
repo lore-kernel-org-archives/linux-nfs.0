@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793820362;
-	b=mtTMCazanCyplrDAP0A2RXRJ//Faq5QIecCZUdEmk4GvwpkklKReTqGdViK9vtKwDqlC
-	 y44G0aqLHa4i0y3QC2bEHr9uT1RNCLckT6yic6SLVTHPOe+7YwA0UOUdm997DOvxaZ+9y
-	 89qPtfxVGj6RFqIa0tQlxQ8tC/hsLXlqfpUzapLnGdVoZ/CSqpreHgpcSrs7IetDXAsHW
-	 otXyd4RKcJNAhSNLpmoUH1Ck8z/GJUGREmqcBnCIuq2eY0eUrFMFUShNFosXAx5innuWx
-	 jrd39TRJf/kYNVhWNcn/bicD5Nbyv9wFl0WJe1JsCPkwDJdlnKVzNc/bEFpbJcwXRFg==
+	t=1793820377;
+	b=vOgVdsoAX65kkxtA5sBsilBBKzvzBwhaupybT+RXa2F0woEm73gzPMeKgO7aotMzQNCQ
+	 SY26q/HA2fGevXddX5VHZAPGoljxCJmLYySkqSDDSTntoyQElR/Avdv1adyPCISxwelIG
+	 raZubTQ0gxgERLOuKw62KChoU19QOfbWJ1/UeCNOccpTlPva2FKp/tDltPnGH0B08rAf2
+	 RBksm5FwqnrYcTACF+hLuVyHWJA7+gKCd5HWGyYcIpFuKaDvxTWTAVtjZ0PKCKG7aE0Ed
+	 AJpHlkp9e5LKWkc/6OlmFrL9o1GMn4dY0oJP7CTPi17RD95SDI/zmItXuibGDS9DtxQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793820362;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793820377;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=RXd/jlD2fYO+IzUitqn0Yxqt//n2gto42+U+qSH6QWU=;
-	b=nrtRLeQ947vKxo4DRLbxmpC11LjUQ2gdHLHwMvhhIPG7GnajiZan80NDr6Nht/vumd8x
-	 zJfkMCyTogUtyX5Et4hKElvCej3f3nnIyOxk4pA6C87MCV9XGcIsUpK43DU4chnXbvELz
-	 nWQ4beQ2iD5RoveDBVYd/fBiVfuD83+C2kw/MG6tHdAiJZL+OLzum9+WWj7807Uixhclt
-	 NnAHxvq0fatAOotZiwTofUtUaKRaSAjMeebmVn/5ptxKWIat3xu4qDwTAGEL7RdCmhdwD
-	 N1MbW6jzWtUuziRxxmyInaK7k6qEGcFeq/skv5CehrPrkIs0+Tu+Gfbnd1b4zVvieXA==
+	bh=XnpcpCSyDLdfO+af8k17UBoE0jHP5SM09VNPrTlP5mU=;
+	b=fPQId6cNy9TeRmztXIeIGIHy+bwD5oKlDeG/330OC2FTAvNMoqnlLooJBBxucLPRQOW8
+	 5Cho0Uu0PtVmafu3SrjBSxxXkZD/rQZ4x8yS/4gaXAgoF29iM52BIOrgMP7icfGzEKezR
+	 ndMTrCOQdEaVhmD5E9ZgA6G4JJufUtyfMNgnGijv0jj5piBzSDGMJVwSpIErwsgzSglNm
+	 zHZh+M6vv2bO2NvSe8Iv1u77Fr+z5CAZ3mfOTtlyAcqCFGIyfJXYClBFZ4fHek87khJ1I
+	 tf1dZ/rNcqYrbB7GLv06L11woG+gt/6UCR2VBNXr3AKclNFr6tJH2gBpXHjaL6C5VVQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GLlT6wTh;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Fe+qeY3o;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 526896072643;
-	Wed,  4 Nov 2026 19:26:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EA026606D812;
+	Wed,  4 Nov 2026 19:26:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GLlT6wTh
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6879B1F000C1;
-	Wed,  4 Nov 2026 19:25:49 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Fe+qeY3o
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 72DAD1F000C1;
+	Wed,  4 Nov 2026 19:26:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793820361;
-	bh=RXd/jlD2fYO+IzUitqn0Yxqt//n2gto42+U+qSH6QWU=;
+	s=k20260515; t=1793820376;
+	bh=XnpcpCSyDLdfO+af8k17UBoE0jHP5SM09VNPrTlP5mU=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=GLlT6wThOUa/KfNlTWuqZPz2Ih/LW2NYnzaWY0pki30umCZLIl1MRVBbUTMv9zOzQ
-	 KUvA2Y+BaOT4XHvhY/vbdRPf/ofxl4BOA7G2Cny/691CVbfE9SzJNG0H7841ayyiPW
-	 q1QKtzy42RoQEe16QVfbQhu1Trtg8T0HfuKYvU0jeicYSNp2+ODBxjEymSq0qmh803
-	 DkvXTDiylR93zfsmnmYdfkoSjx/mzTH9XVIFaqgxigm0SGf8nQQ7zg0Th1in/5RVHH
-	 UvwoKm7/7JzOhxW7xTQaC2jHyFnfQfIuSRDNs0GpztaoEROUElyxSGVsFyKXWU+016
-	 ZqAQCUwnhlOrQ==
+	b=Fe+qeY3o8miJBk7XZvXWRPJiLnP1GdJPOqLtWaz6J/8VQem5/V0ND1YF0y/caRLDt
+	 DgMyPqaYb8QP/iR50E51P8bLvmgXDHfJQAP+4NJ3uCNVkwg8J4gXwnwNVy6o82qXxc
+	 G4M//wQeR0/W9Y+xsP86unflMsj2VnJzFCD6/c4qwO8PIZgOw5+bi09ifndSMUg6Pu
+	 SBcZj+IhaDAR0z3bc6SfeGcPmjQvgoRYlFKz/iKxUED/8QkGs8uB9cNmos93pL495J
+	 NXdA035THee9lHe8V5hdzJBAPFs5jWlBFKpe5bzr3vs+R1j21omP9eJIItBPXuLVUe
+	 AfP65GL9MMizQ==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -101,9 +101,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>,
 	stable@vger.kernel.org
-Subject: [PATCH RESEND v2 40/51] sunrpc: make queue_wait a global wait queue again
-Date: Wed,  4 Nov 2026 20:25:47 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-40-021c84d852e0@kernel.org>
+Subject: [PATCH RESEND v2 41/51] scsi: esas2r: bound the lengths of the HBA, SMP and firmware ioctls
+Date: Wed,  4 Nov 2026 20:26:02 +0100
+Message-ID: <20261104-work-procfs-bugfixes-v2-41-021c84d852e0@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -117,125 +117,181 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4370; i=brauner@kernel.org; h=from:subject:message-id; bh=UZe+zvZ7uAQTPHkJMC5sa/e/J7N81e8hQB7K9CX6y/s=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bvx78e/9TWXFnRv2n+0+Y7Bz41ZTh6+/N7u8dJn+Z vW+4nUTvnWUsjCIcTHIiimyOLSbhMst56nYbJSpATOHlQlkCAMXpwBMpO8Lw/8UM22Z1SoBq778 fmAYFTvHNOBq8s/y7Yt0nNzEbPj0c+UZGdbduHhO1LNCJf1l6qOLebn6Ed/D5rXesxVIOr3xlVR zNxcA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6672; i=brauner@kernel.org; h=from:subject:message-id; bh=2aMnK188zalc9NOhuhHvIjnHW4mP6VOaoGggC08Jevg=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bvw38ZaPqVai5VQBfePvMdFLldYLB/4OlJ7R5jbN+ cnWF7WVHaUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhnCwMUpABNx2czIcNZ6Tv0XfyY9Wfn1 Dz4wh21XeGn22GPftdT+xljFz2cVORkZNr9fFHrlp67vsf/hjvXt0SfXTw4XF5NakZJvybXowMa J/AA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Since commit 552d0e17ea04 ("sunrpc: convert queue_wait from global to
-per-cache-detail waitqueue") poll() and epoll queue their waiters for a
-channel file on the queue_wait head in struct cache_detail. But the
-cache_detail can be freed while its channel file is still open and
-waited on.
+esas2r_ioctl_handler() copies in a struct atto_express_ioctl, a bit over
+512k, and hands the union member for the command to the handlers. For
+EXPRESS_IOCTL_HBA and EXPRESS_IOCTL_SMP the length of the buffered ioctl
+is the size of the member plus lengths that come straight from
+userspace:
 
-The procfs channel files of a network namespace are removed when the
-namespace goes away. Removing a procfs file waits for the callers that
-are in one of its methods right now and then calls ->release on every
-file that is still open (cf. close_pdeo()). The waiters that poll() and
-epoll left on the head stay queued until their file is really closed.
-So:
+  bi.length = sizeof(struct atto_ioctl) + ioctl_hba->data_length;
 
-  sunrpc_exit_net()
-  -> ip_map_cache_destroy()
-     -> cache_unregister_net()
-        -> remove_cache_proc_entries()
-           -> proc_remove()      // ->release, the waiters stay queued
-     -> cache_destroy_net()      // kfree(cd)
+  bi.length = sizeof(struct atto_ioctl_smp)
+	    + le32_to_cpu(si->req_length)
+	    + le32_to_cpu(si->rsp_length);
 
-and when poll() returns remove_wait_queue() writes to the freed
-cache_detail:
+handle_buffered_ioctl() copies bi.length bytes from the member into a
+DMA buffer and, once the adapter is done, copies the DMA buffer back
+over the member. Nothing checks that the lengths fit into the struct
+that was copied in. So a large data_length makes it read past the
+struct and then write the DMA buffer back over the memory behind it.
 
-  BUG: KASAN: slab-use-after-free in _raw_spin_lock_irqsave+0x4b/0xa0
-  Read of size 1 at addr ff110001131bb570 by task sunrpc-poll-uaf/242
-  Call Trace:
-   remove_wait_queue+0x22/0x1c0
-   poll_freewait+0xc2/0x230
-   do_sys_poll+0x9ba/0xd50
-   __x64_sys_poll+0x165/0x470
-  Freed by task 12:
-   kfree+0x267/0x620
-   sunrpc_exit_net+0x34/0x80
-   ops_undo_list+0x271/0x8d0
-   cleanup_net+0x3f3/0x860
+The firmware commands pass sizeof(struct atto_express_ioctl) to
+esas2r_{read,write}_{fw,fs}() as the length of data.fwrw.image, which
+starts 28 bytes into the struct. So they can read and write 28 bytes
+past it as well.
 
-Closing an epoll instance that watches the file gets there through
-ep_unregister_pollwait() instead.
+The handler is reachable through /proc/scsi/esas2r/ATTONode. It is
+created with mode 0, which procfs turns into 0444, and esas2r doesn't
+check for a capability anywhere. So any local user can do this on a
+machine with such an adapter.
 
-The channel files of a network namespace belong to the root of its
-user namespace and cache_open() doesn't check for a capability. So an
-unprivileged user can open the channel file of a namespace of its own
-from the outside, poll it and let the namespace die.
-
-Go back to a single static wait queue that never goes away. A wakeup
-for one cache wakes the waiters of all caches again but cache_poll()
-reports per cache_detail so that's just a spurious wakeup. procfs
-should really own the wait queue of its files like kernfs does but
-that's nothing for stable.
+Bound all of these by the room from the member to the end of the
+struct. read_hw() passes handle_hba_ioctl() a single struct atto_ioctl
+and only ever returns that, so there the data length has to be zero.
 
 Reported-by: Chris Mason <mason@kernel.org>
-Fixes: 552d0e17ea04 ("sunrpc: convert queue_wait from global to per-cache-detail waitqueue")
-Acked-by: Chuck Lever <cel@kernel.org>
+Fixes: 26780d9e12ed ("[SCSI] esas2r: ATTO Technology ExpressSAS 6G SAS/SATA RAID Adapter Driver")
 Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- include/linux/sunrpc/cache.h |  1 -
- net/sunrpc/cache.c           | 12 +++++++++---
- 2 files changed, 9 insertions(+), 4 deletions(-)
+ drivers/scsi/esas2r/esas2r.h       |  2 +-
+ drivers/scsi/esas2r/esas2r_ioctl.c | 41 ++++++++++++++++++++++++--------------
+ drivers/scsi/esas2r/esas2r_main.c  |  3 ++-
+ 3 files changed, 29 insertions(+), 17 deletions(-)
 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 2735c332ddb7..bf4fc543e1e5 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -119,7 +119,6 @@ struct cache_detail {
- 	struct list_head	requests;
- 	struct list_head	readers;
- 	spinlock_t		queue_lock;
--	wait_queue_head_t	queue_wait;
- 	u64			next_seqno;
- 
- 	atomic_t		writers;		/* how many time is /channel open */
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 1bc04109d213..1ceaea7e01b9 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -404,7 +404,6 @@ void sunrpc_init_cache_detail(struct cache_detail *cd)
- 	INIT_LIST_HEAD(&cd->requests);
- 	INIT_LIST_HEAD(&cd->readers);
- 	spin_lock_init(&cd->queue_lock);
--	init_waitqueue_head(&cd->queue_wait);
- 	cd->next_seqno = 1;
- 	spin_lock(&cache_list_lock);
- 	cd->nextcheck = 0;
-@@ -965,13 +964,20 @@ out:
- 	return ret;
+diff --git a/drivers/scsi/esas2r/esas2r.h b/drivers/scsi/esas2r/esas2r.h
+index a763edd05fe4..10101f50b282 100644
+--- a/drivers/scsi/esas2r/esas2r.h
++++ b/drivers/scsi/esas2r/esas2r.h
+@@ -967,7 +967,7 @@ int esas2r_write_params(struct esas2r_adapter *a, struct esas2r_request *rq,
+ int esas2r_ioctl_handler(void *hostdata, unsigned int cmd, void __user *arg);
+ int esas2r_ioctl(struct scsi_device *dev, unsigned int cmd, void __user *arg);
+ u8 handle_hba_ioctl(struct esas2r_adapter *a,
+-		    struct atto_ioctl *ioctl_hba);
++		    struct atto_ioctl *ioctl_hba, size_t room);
+ enum scsi_qc_status esas2r_queuecommand(struct Scsi_Host *host,
+ 					struct scsi_cmnd *cmd);
+ int esas2r_show_info(struct seq_file *m, struct Scsi_Host *sh);
+diff --git a/drivers/scsi/esas2r/esas2r_ioctl.c b/drivers/scsi/esas2r/esas2r_ioctl.c
+index c93d9265e100..80ae5b9d45db 100644
+--- a/drivers/scsi/esas2r/esas2r_ioctl.c
++++ b/drivers/scsi/esas2r/esas2r_ioctl.c
+@@ -311,17 +311,27 @@ static int smp_ioctl_callback(struct esas2r_adapter *a,
+ 	return true;
  }
  
-+/*
-+ * Not in struct cache_detail: poll and epoll waiters stay queued until
-+ * their file is closed, but a channel file in procfs can stay open after
-+ * the cache_detail of its dying network namespace has been freed.
-+ */
-+static DECLARE_WAIT_QUEUE_HEAD(queue_wait);
++/* The room from @member to the end of a struct atto_express_ioctl. */
++#define EXPRESS_IOCTL_ROOM(member)				\
++	(sizeof(struct atto_express_ioctl) -			\
++	 offsetof(struct atto_express_ioctl, member))
 +
- static __poll_t cache_poll(struct file *filp, poll_table *wait,
- 			       struct cache_detail *cd)
+ static u8 handle_smp_ioctl(struct esas2r_adapter *a, struct atto_ioctl_smp *si)
  {
- 	__poll_t mask;
- 	struct cache_reader *rp = filp->private_data;
+ 	struct esas2r_buffered_ioctl bi;
++	u64 length = (u64)sizeof(struct atto_ioctl_smp) +
++		     le32_to_cpu(si->req_length) +
++		     le32_to_cpu(si->rsp_length);
++
++	/* The request and the response follow @si in the same buffer. */
++	if (length > EXPRESS_IOCTL_ROOM(data.ioctl_smp))
++		return IOCTL_INVALID_PARAM;
  
--	poll_wait(filp, &cd->queue_wait, wait);
-+	poll_wait(filp, &queue_wait, wait);
+ 	memset(&bi, 0, sizeof(bi));
  
- 	/* alway allow write */
- 	mask = EPOLLOUT | EPOLLWRNORM;
-@@ -1236,7 +1242,7 @@ static int cache_do_upcall(struct cache_detail *detail, struct cache_head *h)
- 	spin_unlock(&detail->queue_lock);
- 	if (ret != -EAGAIN && detail->cache_notify)
- 		detail->cache_notify(detail, h);
--	wake_up(&detail->queue_wait);
-+	wake_up(&queue_wait);
- 	if (ret == -EAGAIN) {
- 		kfree(buf);
- 		kfree(crq);
+ 	bi.a = a;
+ 	bi.ioctl = si;
+-	bi.length = sizeof(struct atto_ioctl_smp)
+-		    + le32_to_cpu(si->req_length)
+-		    + le32_to_cpu(si->rsp_length);
++	bi.length = length;
+ 	bi.offset = 0;
+ 	bi.callback = smp_ioctl_callback;
+ 	return handle_buffered_ioctl(&bi);
+@@ -1221,11 +1231,16 @@ static void hba_ioctl_done_callback(struct esas2r_adapter *a,
+ 	}
+ }
+ 
++/* @room is the size of the buffer that starts with @ioctl_hba. */
+ u8 handle_hba_ioctl(struct esas2r_adapter *a,
+-		    struct atto_ioctl *ioctl_hba)
++		    struct atto_ioctl *ioctl_hba, size_t room)
+ {
+ 	struct esas2r_buffered_ioctl bi;
+ 
++	/* The data follows @ioctl_hba in the same buffer. */
++	if (ioctl_hba->data_length > room - sizeof(struct atto_ioctl))
++		return IOCTL_INVALID_PARAM;
++
+ 	memset(&bi, 0, sizeof(bi));
+ 
+ 	bi.a = a;
+@@ -1349,31 +1364,27 @@ int esas2r_ioctl_handler(void *hostdata, unsigned int cmd, void __user *arg)
+ 			err = esas2r_write_fw(a,
+ 					      (char *)ioctl->data.fwrw.image,
+ 					      0,
+-					      sizeof(struct
+-						     atto_express_ioctl));
++					      EXPRESS_IOCTL_ROOM(data.fwrw.image));
+ 
+ 			if (err >= 0) {
+ 				err = esas2r_read_fw(a,
+ 						     (char *)ioctl->data.fwrw.
+ 						     image,
+ 						     0,
+-						     sizeof(struct
+-							    atto_express_ioctl));
++						     EXPRESS_IOCTL_ROOM(data.fwrw.image));
+ 			}
+ 		} else if (ioctl->data.fwrw.img_type == FW_IMG_FS_API) {
+ 			err = esas2r_write_fs(a,
+ 					      (char *)ioctl->data.fwrw.image,
+ 					      0,
+-					      sizeof(struct
+-						     atto_express_ioctl));
++					      EXPRESS_IOCTL_ROOM(data.fwrw.image));
+ 
+ 			if (err >= 0) {
+ 				err = esas2r_read_fs(a,
+ 						     (char *)ioctl->data.fwrw.
+ 						     image,
+ 						     0,
+-						     sizeof(struct
+-							    atto_express_ioctl));
++						     EXPRESS_IOCTL_ROOM(data.fwrw.image));
+ 			}
+ 		} else {
+ 			ioctl->header.return_code = IOCTL_BAD_FLASH_IMGTYPE;
+@@ -1441,9 +1452,9 @@ int esas2r_ioctl_handler(void *hostdata, unsigned int cmd, void __user *arg)
+ 		break;
+ 
+ 	case EXPRESS_IOCTL_HBA:
+-		ioctl->header.return_code = handle_hba_ioctl(a,
+-							     &ioctl->data.
+-							     ioctl_hba);
++		ioctl->header.return_code =
++			handle_hba_ioctl(a, &ioctl->data.ioctl_hba,
++					 EXPRESS_IOCTL_ROOM(data.ioctl_hba));
+ 		break;
+ 
+ 	case EXPRESS_IOCTL_VDA:
+diff --git a/drivers/scsi/esas2r/esas2r_main.c b/drivers/scsi/esas2r/esas2r_main.c
+index ada278c24c51..75a70ae9441b 100644
+--- a/drivers/scsi/esas2r/esas2r_main.c
++++ b/drivers/scsi/esas2r/esas2r_main.c
+@@ -178,7 +178,8 @@ static ssize_t read_hw(struct file *file, struct kobject *kobj,
+ 	if (!a->local_atto_ioctl)
+ 		return -ENOMEM;
+ 
+-	if (handle_hba_ioctl(a, a->local_atto_ioctl) != IOCTL_SUCCESS)
++	if (handle_hba_ioctl(a, a->local_atto_ioctl,
++			     sizeof(struct atto_ioctl)) != IOCTL_SUCCESS)
+ 		return -ENOMEM;
+ 
+ 	memcpy(buf, a->local_atto_ioctl, length);
 
 -- 
 2.53.0
