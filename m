@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793826860;
-	b=PigivZFo4wKABwqlT+6YXzootfldEExfcxKa0Lq9PScJvne/PstHzMbc6e48pyY6EGMF
-	 6lRYpMiWF04qTB8CzCric3H3GKJOh5W5bSRYXR9d8YAVLn2m2iLQWp2DaUPsPwy7D+7kv
-	 T1F2fB+aFa9eEyOBFGxy+nPdx00ZGhPIaprMOVoJsyT+oC3HgJvI/d1rLBtedaXNRICip
-	 w2wWWvzzM6s/LyOfpYXM4DwzoyxjK5c3owWjDM6K13DyIgkV/DUNRIUU59VwT79YQta/M
-	 LMUWGKa7DpibA0Ke8ekuab1IYsEV/OUZU2fDGl151PS27UXSkcW5riLQCaDQ1NPVgig==
+	t=1793826875;
+	b=ki2sg9oAuKrq+As+a8F+tEswMMEqWyTko9auO9G8kT4stdSaWjpR/pTRC3gI13ubPn8J
+	 NoOx6JNC6jXS8DBSpLfx+nzgDpf79FGYf/+VR/6OEUB3afYUBs2shtGYu4HB7SJPrY1lX
+	 bBul9oFtjPy1dgy26HSi4wNH/1j3XHOS6LbomIXET0yCu2Q1g6rpJOrmyyJjwg6oscG85
+	 MCajehKnp47xWZ2O1xCaxjRPsT+r7ay3NskQqH8pPcWp3vx/fLh4IyfuNtsyQAwkQOQnQ
+	 n3Mn04XSoKSxzqYzQZG1mUm1tvQHp+Q7+f7PEqy6FuKdAOJpCKPlkWKYdclL++7RQzw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793826860;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793826875;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=ulWAa08tPZnJZAAMojZfgqs4wxYXZkHD77FK42yiGkc=;
-	b=2PtTa4R8gxKzLT1fQIi/HI4q8DaWSWV7xlhkh5OrfLqtbVmEREegF+kNgKe5/RAGLkKJ
-	 sT99B6EOPfCtudJodX2TabL3yYFxBNgUlg6dYG1T9Yc2lXmWI8PrHVO7vuFDB1U207kH4
-	 6aVBu0158o21E4YYjE7GowcpsaiyXmRd5Pd7ajSsYgSAVGXY1ZW9ipZ7+4Su3eXRjNa6e
-	 Wpz0G34j22JtHQvGLIRLsUZ87LIFLvfwSExpYnVPxLzZw9VLaxjKPkq1OFKdX1drdCkjV
-	 kuWmd7s0wMBt0h82dE9kELQxVpnZ6IvKBpex57rviOlZ8sSVjgWd/IV+y2MSoQpxcrw==
+	bh=e4hWAYy+9h5Ws1+QsnOeSYUee4W4bqw00qwXFyYDM2Q=;
+	b=sxKxn5XHTMyAvnBX3tvMHfm1ymsd918g3D5yeFT8p8aUo2fveZEPX38EHg23fauyzWWE
+	 wT5cO3PHZ/kPiXdRLzmK2tZnYeT32kSCW/eoYF4ADTA/w+YKJQttD/6OoTJZZf6oJOhUC
+	 Du5rJC+UCfo8RZlGil+wlZ79fOR13d4E6x9on6H6Mgieb3eDsMk8K7xx5TQXcZ+Fz1nwy
+	 Jkj8RQcn3Zv4ry73s0SHDgo40qiZM/XVtvgWucxJMdxkfTIa6twg1UAMmA+b4XBYm4Oqf
+	 Gcyd+fqW4srJ4fhAjvW9jr4bEbczncPw4/7aiSWL12biHMP/tUkFULyjDNrCP/HMdrQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gICWh0N0;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fINV72S8;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 860C3606EEB7;
-	Wed,  4 Nov 2026 21:14:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D51296072663;
+	Wed,  4 Nov 2026 21:14:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gICWh0N0
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A466B1F00919;
-	Wed,  4 Nov 2026 21:14:08 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fINV72S8
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 032A61F00A02;
+	Wed,  4 Nov 2026 21:14:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793826860;
-	bh=ulWAa08tPZnJZAAMojZfgqs4wxYXZkHD77FK42yiGkc=;
+	s=k20260515; t=1793826874;
+	bh=e4hWAYy+9h5Ws1+QsnOeSYUee4W4bqw00qwXFyYDM2Q=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=gICWh0N0cBEP36qoPjK07EDc0Aojrv63Cx+pq3ht7lC1Swqoe5+i3NPMXMP1HLqAh
-	 aYFDImUWgb2oQZfvZy0Eomed2z9bppjTMLZJqaCJ+P/lVF/sMbBDXyuQTYMAX6jaEG
-	 PZ2WLVcqSv9VuBvnWcTH3x8qTM6W0XC/ec65sI7vf6cdAdfTZxwUHxtQYl9brUxiQ+
-	 dMCuHf59LCoq+BPf/+eWD45uHwN16HzFpn4iF3C3dDC4Tki7Nt0/cDmwKsfuapAQM6
-	 WJY+xD/1Nj4i6s+oj2j1TqT1hys8Qp60ucvc7zwo51H/qzcJ2edAoUx8uzmvP8dUPB
-	 VqHIpYrdBBhDw==
+	b=fINV72S8bDDNAGDfuVdNkKEJ8IkqVCRv+9pBI3vQ5asq9IiLLozzE0QdmmFli8th5
+	 X4s5LvAfCGJyYoNEE5Wh/0hw46DJ/gYX99FhVUKbbQ9fpJN7vbIOTm0BON4CFe267M
+	 fjt8RFAd/brjcqiBtefp8sO8lO8+Jk10nEbQ6PlyE/7KlVHDLViBB+q3BjfLDENgvu
+	 +cfDHNU9ti/Im92D+yfRD+3y/UeJe2pfCEzwWfnk7g5gX1KGx3F4JUPAldHuRmAzQX
+	 R9u5jYwMUj2KA/fDxFq3B1ucLCU5hIL1w9JynYqO9s8HhX0xdmUp1Rax8ITizcXngq
+	 K4fOq7xS0CHnQ==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 12/13] samples/kfifo: let procfs copy out reads
-Date: Wed,  4 Nov 2026 22:14:06 +0100
-Message-ID: <20261104-work-procfs-net-v2-12-221e2437fed1@kernel.org>
+Subject: [PATCH RESEND v2 13/13] selftests/proc: check that removing a polled entry wakes its pollers
+Date: Wed,  4 Nov 2026 22:14:20 +0100
+Message-ID: <20261104-work-procfs-net-v2-13-221e2437fed1@kernel.org>
 In-Reply-To: <20261104-work-procfs-net-v2-0-221e2437fed1@kernel.org>
 References: <20261104-work-procfs-net-v2-0-221e2437fed1@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,128 +116,262 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3702; i=brauner@kernel.org; h=from:subject:message-id; bh=20rJkgesQhfyVvX+iP+2cn2t9uRQnDiG02PYUBwi/V4=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97jPsktFdvOpVs6nmzzyvU+U6ZXtuXBM8rzljz9wMw 1nV1yaYdJSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAExkmR4jw4orl8X8M5o+3ma9 GfZdRD43+XLkoesF4WpvMhbuurvzRQEjw6V1dx4JZH/R15uYuWfHNB9+M1aVOLPGyMglXg065jc nMgIA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=7551; i=brauner@kernel.org; h=from:subject:message-id; bh=fkaoStBZv6n90Leh8+p5gt2ttSaWSW3wQWIJomPzMyw=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97jO6eabzQ8af0CCncwxiapUmjm9LO9ZX+8151WM8/ 0fHlH+xHaUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhnCwMUpABMpiWJkWD31e+bEH6H98r+P hcf+KTFovSdbka6jnFTV2m3yOt4ygeGvZHu0Ve0uR+XXvqyXA8Nqj7+7aLx20bk/219c3a4dcte SEQA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Implement ->proc_read_buf() so procfs copies what is read to userspace
-after it unpinned the entry, and take the data out of the fifo with
-kfifo_out() instead of kfifo_to_user(). A reader that passes a bad
-buffer loses what was taken out for it now, kfifo_to_user() left that in
-the fifo. The samples can be spliced now too, and a sendfile() from them
-into a target that fails or takes less than was read drops what was
-taken out in between, like for the rtas error log.
+Poll the channel file of a sunrpc cache in /proc/net of a network
+namespace of its own and let the namespace die while the poller sleeps:
+
+- the poller wakes up and gets POLLERR | POLLPRI
+
+- so does an epoll with an item on the entry
+
+- a poll of the removed entry keeps reporting POLLERR, and a read of it
+  fails with -EIO
+
+The namespace is torn down from a workqueue, so a regression stalls the
+test for ten seconds before it fails.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- samples/kfifo/bytestream-example.c |  9 +++------
- samples/kfifo/inttype-example.c    | 10 ++++------
- samples/kfifo/record-example.c     |  9 +++------
- 3 files changed, 10 insertions(+), 18 deletions(-)
+ tools/testing/selftests/proc/.gitignore           |   1 +
+ tools/testing/selftests/proc/Makefile             |   1 +
+ tools/testing/selftests/proc/config               |   2 +
+ tools/testing/selftests/proc/proc-remove-polled.c | 189 ++++++++++++++++++++++
+ 4 files changed, 193 insertions(+)
 
-diff --git a/samples/kfifo/bytestream-example.c b/samples/kfifo/bytestream-example.c
-index 8c58fb46a2bf..214e46a64cc1 100644
---- a/samples/kfifo/bytestream-example.c
-+++ b/samples/kfifo/bytestream-example.c
-@@ -125,26 +125,23 @@ static ssize_t fifo_write(struct file *file, char *buf,
- 	return copied;
- }
- 
--static ssize_t fifo_read(struct file *file, char __user *buf,
-+static ssize_t fifo_read(struct file *file, char *buf,
- 						size_t count, loff_t *ppos)
- {
--	int ret;
- 	unsigned int copied;
- 
- 	if (mutex_lock_interruptible(&read_access))
- 		return -ERESTARTSYS;
- 
--	ret = kfifo_to_user(&test, buf, count, &copied);
-+	copied = kfifo_out(&test, buf, count);
- 
- 	mutex_unlock(&read_access);
--	if (ret)
--		return ret;
- 
- 	return copied;
- }
- 
- static const struct proc_ops fifo_proc_ops = {
--	.proc_read	= fifo_read,
-+	.proc_read_buf	= fifo_read,
- 	.proc_write_buf	= fifo_write,
- 	.proc_lseek	= noop_llseek,
- };
-diff --git a/samples/kfifo/inttype-example.c b/samples/kfifo/inttype-example.c
-index c5d16b815e73..8384d7f8de6c 100644
---- a/samples/kfifo/inttype-example.c
-+++ b/samples/kfifo/inttype-example.c
-@@ -119,26 +119,24 @@ static ssize_t fifo_write(struct file *file, char *buf,
- 	return copied;
- }
- 
--static ssize_t fifo_read(struct file *file, char __user *buf,
-+static ssize_t fifo_read(struct file *file, char *buf,
- 						size_t count, loff_t *ppos)
- {
--	int ret;
- 	unsigned int copied;
- 
- 	if (mutex_lock_interruptible(&read_access))
- 		return -ERESTARTSYS;
- 
--	ret = kfifo_to_user(&test, buf, count, &copied);
-+	copied = kfifo_out(&test, (int *)buf, count / sizeof(int)) *
-+		 sizeof(int);
- 
- 	mutex_unlock(&read_access);
--	if (ret)
--		return ret;
- 
- 	return copied;
- }
- 
- static const struct proc_ops fifo_proc_ops = {
--	.proc_read	= fifo_read,
-+	.proc_read_buf	= fifo_read,
- 	.proc_write_buf	= fifo_write,
- 	.proc_lseek	= noop_llseek,
- };
-diff --git a/samples/kfifo/record-example.c b/samples/kfifo/record-example.c
-index dcc749247c64..29d08e90a63d 100644
---- a/samples/kfifo/record-example.c
-+++ b/samples/kfifo/record-example.c
-@@ -132,26 +132,23 @@ static ssize_t fifo_write(struct file *file, char *buf,
- 	return copied;
- }
- 
--static ssize_t fifo_read(struct file *file, char __user *buf,
-+static ssize_t fifo_read(struct file *file, char *buf,
- 						size_t count, loff_t *ppos)
- {
--	int ret;
- 	unsigned int copied;
- 
- 	if (mutex_lock_interruptible(&read_access))
- 		return -ERESTARTSYS;
- 
--	ret = kfifo_to_user(&test, buf, count, &copied);
-+	copied = kfifo_out(&test, buf, count);
- 
- 	mutex_unlock(&read_access);
--	if (ret)
--		return ret;
- 
- 	return copied;
- }
- 
- static const struct proc_ops fifo_proc_ops = {
--	.proc_read	= fifo_read,
-+	.proc_read_buf	= fifo_read,
- 	.proc_write_buf	= fifo_write,
- 	.proc_lseek	= noop_llseek,
- 	/* kfifo_from_user() cut a record to what its length byte holds */
+diff --git a/tools/testing/selftests/proc/.gitignore b/tools/testing/selftests/proc/.gitignore
+index ed863db1688f..d06bb704d29d 100644
+--- a/tools/testing/selftests/proc/.gitignore
++++ b/tools/testing/selftests/proc/.gitignore
+@@ -31,5 +31,6 @@
+ /self
+ /setns-dcache
+ /setns-sysvipc
++/proc-remove-polled
+ /proc-sysctl-readdir-churn
+ /thread-self
+diff --git a/tools/testing/selftests/proc/Makefile b/tools/testing/selftests/proc/Makefile
+index 95c9212fb670..e4f5142da47d 100644
+--- a/tools/testing/selftests/proc/Makefile
++++ b/tools/testing/selftests/proc/Makefile
+@@ -30,6 +30,7 @@ TEST_GEN_PROGS += setns-sysvipc
+ TEST_GEN_PROGS += thread-self
+ TEST_GEN_PROGS += proc-multiple-procfs
+ TEST_GEN_PROGS += proc-fsconfig-hidepid
++TEST_GEN_PROGS += proc-remove-polled
+ TEST_GEN_PROGS += proc-sysctl-readdir-churn
+ TEST_GEN_PROGS += proc-pidns
+ TEST_GEN_PROGS += proc-remove-slow-sysctl
+diff --git a/tools/testing/selftests/proc/config b/tools/testing/selftests/proc/config
+index 15b307189392..3cc12e91e5a7 100644
+--- a/tools/testing/selftests/proc/config
++++ b/tools/testing/selftests/proc/config
+@@ -6,6 +6,8 @@ CONFIG_NET_NS=y
+ CONFIG_IPV6=y
+ CONFIG_TUN=y
+ CONFIG_USERFAULTFD=y
++CONFIG_USER_NS=y
++CONFIG_SUNRPC=y
+ CONFIG_SOUND=y
+ CONFIG_SND=y
+ CONFIG_SND_DUMMY=m
+diff --git a/tools/testing/selftests/proc/proc-remove-polled.c b/tools/testing/selftests/proc/proc-remove-polled.c
+new file mode 100644
+index 000000000000..e313d22be43f
+--- /dev/null
++++ b/tools/testing/selftests/proc/proc-remove-polled.c
+@@ -0,0 +1,189 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * A poll() or epoll on a /proc entry must wake up when the entry is removed,
++ * and report the removed entry as an error. The channel file of a sunrpc
++ * cache lives in /proc/net of a network namespace and goes away with it.
++ */
++#define _GNU_SOURCE
++#include <errno.h>
++#include <fcntl.h>
++#include <poll.h>
++#include <pthread.h>
++#include <sched.h>
++#include <stdarg.h>
++#include <stdio.h>
++#include <string.h>
++#include <sys/epoll.h>
++#include <sys/wait.h>
++#include <unistd.h>
++
++#include "../kselftest_harness.h"
++
++#define CHANNEL_FMT	"/proc/%d/net/rpc/auth.unix.ip/channel"
++#define TIMEOUT_MS	10000
++
++struct netns_child {
++	pid_t pid;
++	int go;		/* closing it lets the child exit, and its netns die */
++};
++
++struct poller {
++	int fd;
++	int done;
++	int ret;
++	short revents;
++};
++
++static int write_file(const char *path, const char *fmt, ...)
++{
++	char buf[64];
++	va_list ap;
++	int fd, len, ret;
++
++	va_start(ap, fmt);
++	len = vsnprintf(buf, sizeof(buf), fmt, ap);
++	va_end(ap);
++	fd = open(path, O_WRONLY | O_CLOEXEC);
++	if (fd < 0)
++		return -1;
++	ret = write(fd, buf, len) == len ? 0 : -1;
++	close(fd);
++	return ret;
++}
++
++/*
++ * A child in a network namespace of its own, owned by a user namespace that
++ * maps us to root, so that we may open the files in its /proc/net. The child
++ * is the only thing that keeps the namespace alive.
++ */
++static int start_netns_child(struct netns_child *c)
++{
++	uid_t uid = getuid();
++	gid_t gid = getgid();
++	int ready[2], go[2];
++	char ch = 'f';
++
++	if (pipe2(ready, O_CLOEXEC) || pipe2(go, O_CLOEXEC))
++		return -1;
++	c->pid = fork();
++	if (c->pid < 0)
++		return -1;
++	if (c->pid == 0) {
++		close(ready[0]);
++		close(go[1]);
++		if (!unshare(CLONE_NEWUSER) &&
++		    !write_file("/proc/self/setgroups", "deny") &&
++		    !write_file("/proc/self/uid_map", "0 %d 1", uid) &&
++		    !write_file("/proc/self/gid_map", "0 %d 1", gid) &&
++		    !unshare(CLONE_NEWNET))
++			ch = 'r';
++		if (write(ready[1], &ch, 1) == 1 && ch == 'r')
++			(void)!read(go[0], &ch, 1);
++		_exit(0);
++	}
++	close(ready[1]);
++	close(go[0]);
++	c->go = go[1];
++	if (read(ready[0], &ch, 1) != 1 || ch != 'r') {
++		close(ready[0]);
++		close(c->go);
++		waitpid(c->pid, NULL, 0);
++		errno = EPERM;
++		return -1;
++	}
++	close(ready[0]);
++	return 0;
++}
++
++static void end_netns_child(struct netns_child *c)
++{
++	close(c->go);
++	waitpid(c->pid, NULL, 0);
++}
++
++static int open_channel(struct netns_child *c, char *path, size_t len)
++{
++	snprintf(path, len, CHANNEL_FMT, c->pid);
++	return open(path, O_RDONLY | O_CLOEXEC);
++}
++
++static void *poll_thread(void *arg)
++{
++	struct poller *p = arg;
++	struct pollfd pfd = { .fd = p->fd, .events = POLLPRI };
++	ssize_t ret;
++
++	p->ret = poll(&pfd, 1, TIMEOUT_MS);
++	p->revents = pfd.revents;
++	ret = write(p->done, "x", 1);
++	return (void *)ret;
++}
++
++TEST(poll_wakes_on_removal)
++{
++	struct netns_child c;
++	struct poller p = {};
++	struct pollfd pfd;
++	char path[64], buf[16];
++	pthread_t pt;
++	int done[2];
++
++	if (start_netns_child(&c))
++		SKIP(return, "network namespace: %s", strerror(errno));
++	p.fd = open_channel(&c, path, sizeof(path));
++	if (p.fd < 0)
++		SKIP(return, "%s: %s", path, strerror(errno));
++
++	/* A fresh channel has nothing to read and no error. */
++	pfd = (struct pollfd){ .fd = p.fd, .events = POLLIN | POLLPRI };
++	ASSERT_EQ(poll(&pfd, 1, 0), 0);
++
++	ASSERT_EQ(pipe2(done, O_CLOEXEC), 0);
++	p.done = done[1];
++	ASSERT_EQ(pthread_create(&pt, NULL, poll_thread, &p), 0);
++
++	/* The poller sleeps on the entry, now its namespace goes away. */
++	end_netns_child(&c);
++	pfd = (struct pollfd){ .fd = done[0], .events = POLLIN };
++	EXPECT_EQ(poll(&pfd, 1, TIMEOUT_MS), 1) {
++		TH_LOG("removing %s didn't wake its poller", path);
++	}
++	ASSERT_EQ(pthread_join(pt, NULL), 0);
++	EXPECT_EQ(p.ret, 1);
++	EXPECT_EQ(p.revents & (POLLERR | POLLPRI), POLLERR | POLLPRI);
++
++	/* The removed entry stays an error, and there is nothing to read. */
++	pfd = (struct pollfd){ .fd = p.fd, .events = POLLIN };
++	EXPECT_EQ(poll(&pfd, 1, 0), 1);
++	EXPECT_TRUE(pfd.revents & POLLERR);
++	EXPECT_EQ(read(p.fd, buf, sizeof(buf)), -1);
++	EXPECT_EQ(errno, EIO);
++}
++
++TEST(epoll_wakes_on_removal)
++{
++	struct epoll_event ev = { .events = EPOLLPRI };
++	struct netns_child c;
++	char path[64];
++	int fd, epfd;
++
++	if (start_netns_child(&c))
++		SKIP(return, "network namespace: %s", strerror(errno));
++	fd = open_channel(&c, path, sizeof(path));
++	if (fd < 0)
++		SKIP(return, "%s: %s", path, strerror(errno));
++
++	epfd = epoll_create1(EPOLL_CLOEXEC);
++	ASSERT_GE(epfd, 0);
++	ASSERT_EQ(epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev), 0);
++	ASSERT_EQ(epoll_wait(epfd, &ev, 1, 0), 0);
++
++	/* The item sits on the entry's queue, now its namespace goes away. */
++	end_netns_child(&c);
++	EXPECT_EQ(epoll_wait(epfd, &ev, 1, TIMEOUT_MS), 1) {
++		TH_LOG("removing %s didn't wake epoll", path);
++	}
++	EXPECT_EQ(ev.events & (EPOLLERR | EPOLLPRI), EPOLLERR | EPOLLPRI);
++}
++
++TEST_HARNESS_MAIN
 
 -- 
 2.53.0
