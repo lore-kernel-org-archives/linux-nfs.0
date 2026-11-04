@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793821941;
-	b=Krhld1d/5QMC4SFD0TLPW7Wd+rJmuTHLyzQgmUgrmGnY3g3nQ9/u2EG/vCI5u99pY5aF
-	 m2ZivemS21N3UvVF97+TI8XRt7eCM5zNM2vFSyMsxYHCkeoWtZHCulJfVSPcY5G+7OXm4
-	 eX961ANve9ZQizx8HeEzlwTublDO109g0hjNFGI8f3ZjB1Vs7LBB//zHHgG0mOMkCtPCG
-	 gDaq4fkPZXAbsC/D2+9UgXGNVMbw/znOimN3c82octETXJuOQBTnOu52cKZ2MKiw3d1Mn
-	 Fzi+CmrF6766a0Hkm6HpI2TEzYkU5hjc1zqbQRRd6/XOs1fLI/b0q7jd6Dlai28fY7g==
+	t=1793821956;
+	b=5ImmeBhC4njlDReX7azQ/xBUhAk1bVcOGSHxIXZuDIryWt1iXFCfQ2D3tmE+PCJbHnol
+	 zgxD1LVMrMx4u8+NI2hAV8G4fwfAcO8lihaiJY2z0qS4X36mLnw4B8Z9LyF6Pb7xANhOH
+	 t532O66xPgnBZS8D70RvH30Wc07MqXcJLy7yX7krqlRwceIGqme1t304RULBMAcwrFc6+
+	 eDGYjJJpLhztnGxTa+ERlIc3UcZTymjT1i5mM3pZXx7LoZ1lPXeHoqzVku+lWIbKXlrES
+	 MXHCkgQYi4UisRzTA6UDDNLHW0fWmpa9PxEJjk56OZMnBMEKukAkOcM2aW3Nn0f9Rbw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793821941;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793821956;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=cbUv3n1tBnI1k6VxTZ3ZcHd/CVUe8/cnvkVP6mlO6Yc=;
-	b=R6zqzMdpBDK1jsRwYfffo+o4fsJZh1Yo8HpMeQrujK3BCRfxtg4tE4J0jaBQ7ZU6uUMo
-	 4y1Xjy7ke6HLpndo9qydkvUVQ+kXQGa3QzEQ/JKnMJHzaINN31CfCBFT7XHBViFEo7Xjc
-	 txOjxgFOa64/FyqPjM+q4Ptq+k4un6YGXCFHIVUPSfPVrqSX6wa7A/mgl1UTQAqgvTKif
-	 95e4ZjRFhn6rXXkNkpia5wb7WFuh0zAxoQG91UPnoIzpomwgJTxjliq0com00KW0tpUWF
-	 w0qncbwL2g4Rf53MXtj0vMZs77ruLBL3KhxTORkE0uQ0m306pyXQRsw8UWUMpo9mgmw==
+	bh=yr3akMspnIWFpqWJkjrAgv6glOgJhJX8fSAifemHFwA=;
+	b=bYJZFrpN/s4tezcsRcny9S2RAZ6c9Az9L8yQysuo4gbdbpJAAWOFVhUQTqUNDxDbyKk2
+	 dDpD2I2iIVw/vpHJg5qeCLYx3wkiMMZcJkXp1h1RkKwhh6GMhxojKg/vvA4J5WHA1CCLG
+	 mnYTamMhsmRRygCkgs9HGIF/B30R+cGeQCMP6v3wVq0KQ9BD3uADW/3J0/fV5HrwNxdGU
+	 lS5lJ8K+7W5NZRx6BL/vol3KNAqm3M55T3RNNnUqHWEnFwCBkIwdCn1YpI/hlJr/b4846
+	 EW0lGAA+ZtupX4bJ4woW4pgKCFZY3eaJZrYs67X1kK0jFi69Ue/nwN8GqLbLGKrzFOw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=E4RqvCC3;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="Wdi/cBrV";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 33F5F609528C;
-	Wed,  4 Nov 2026 19:52:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EB4C6609529D;
+	Wed,  4 Nov 2026 19:52:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=E4RqvCC3
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 84F8E1F00919;
-	Wed,  4 Nov 2026 19:52:08 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Wdi/cBrV
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 742AB1F00A17;
+	Wed,  4 Nov 2026 19:52:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793821940;
-	bh=cbUv3n1tBnI1k6VxTZ3ZcHd/CVUe8/cnvkVP6mlO6Yc=;
+	s=k20260515; t=1793821955;
+	bh=yr3akMspnIWFpqWJkjrAgv6glOgJhJX8fSAifemHFwA=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=E4RqvCC33TjJz3vsdxt6gVY1KKu7vjxv4xFkRitk2vuws+TlWcgf7WMt9M4i+MGOG
-	 5RqBFuiDLeSXKpam105hMVUy3rhZtAy4+MdMi+B7rIZnwUE4pEJ3q3s5wEaYNPAvME
-	 KGEwRiAVWj2XYJWhDQNc2XFGUB4R7PXjlOfMJ1Wd48dn4EheS4oMJIcqJ7f5JQYPgB
-	 TSPocNG2UWf2+B18aoxxNlwBlUst0KSwQJOkoIQQZUfrJ7zcLgoYvoDopw5KBBJBn/
-	 8DxYWNnsXOWVRZ4gVxW8YDBrz4dlklthAuCncsHXYWBPclGriCH6RWHTj0lVCLeuJN
-	 1w/HFHcR3YoYQ==
+	b=Wdi/cBrV+aPpgWRwzXpiA+ib3De0K0pQhXbyKJhu1iexPEaDfaOTHNqiiiqzPXo1n
+	 sHBvBkYLvUp265kZxirmL7Ost0iN+Glcw1jB+xXLZfNzc7jQ/+vNrfyJuIub3D24aH
+	 FJeeaeTI1JKYgVteizb9BzRe2OXphrQw0/Z3qIHs6/g1diX9mzri9ugVAFK0faPBni
+	 4fNDrMwo9L4EM/Oii/TzK2gV2q/Po1jRRBmUKKs+oPw3OgQB1bIjbd27ca1yrbdHfk
+	 Mgqqa9yGsWvWaLe2ghGBqK/zKktWtu1oUQAE7grmxfWRAs9G65+CGMdjqpjfo1wZXs
+	 QP7jFCWB/AzOQ==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 10/30] genirq/proc: let procfs copy in the affinity masks
-Date: Wed,  4 Nov 2026 20:52:06 +0100
-Message-ID: <20261104-work-procfs-fs-v2-10-319e0f9a8aae@kernel.org>
+Subject: [PATCH RESEND v2 11/30] latencytop: let procfs copy in writes to /proc/latency_stats
+Date: Wed,  4 Nov 2026 20:52:21 +0100
+Message-ID: <20261104-work-procfs-fs-v2-11-319e0f9a8aae@kernel.org>
 In-Reply-To: <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
 References: <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -116,119 +116,43 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3770; i=brauner@kernel.org; h=from:subject:message-id; bh=WZPzG5+ElQbjbcTuZJJKbql/hLS5VpybW+Y2WsbSVy8=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97jFTOsnPsPqVcfq0tE/cqcL/tgpv8fLebHHL7+Kde 1dYK5Ofd5SyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAExEejPDf4d249cV1q+X8Xi5 lzKEZHld3P2sJ++tcMq/aU/+3/3eHMjwvy5Y6WGkzT+rx1e/T7mY5upvvFxP0ovZMPeTMvtUxrP urAA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1161; i=brauner@kernel.org; h=from:subject:message-id; bh=9/PXHkkWFBWwJpiw0GjnsftfBxXIsWStv0RQuWJfsao=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97rHYoefdeeu3Wu6hdxnVaz7v/WWclHzHXeCSxcHZu dEaxyrZOkpZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACZiz8Xwz0LT9mYft9DOxTmH s3zMX0Q82m1+d9ocNc7ZMcs3fnzYeY2R4XCAwMyUHolzwR/2ZJ/ocma7der9hQWXfd9w6kXPqxW I5gUA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Implement ->proc_write_buf() for smp_affinity, smp_affinity_list and
-default_smp_affinity so procfs copies in what is written before it pins
-the entry, and parse the masks from that copy. A list of CPUs can be
-longer than a page on large machines, so the files take as much as
-memdup_user_nul() could copy in before. Anything larger fails with
--EINVAL instead of -ENOMEM.
+Implement ->proc_write_buf() so procfs copies in what is written before
+it pins the entry. The write only clears the statistics and doesn't look
+at what was written anyway. Writes larger than PAGE_SIZE - 1 bytes fail
+with -EINVAL now.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- kernel/irq/proc.c | 27 +++++++++++++++++----------
- 1 file changed, 17 insertions(+), 10 deletions(-)
+ kernel/latencytop.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
-index aa3d5544cfc1..fe683457a088 100644
---- a/kernel/irq/proc.c
-+++ b/kernel/irq/proc.c
-@@ -9,6 +9,7 @@
- #include <linux/gfp.h>
- #include <linux/proc_fs.h>
- #include <linux/seq_file.h>
-+#include <linux/slab.h>
- #include <linux/interrupt.h>
- #include <linux/kernel.h>
- #include <linux/kernel_stat.h>
-@@ -134,8 +135,11 @@ static inline int irq_select_affinity_usr(unsigned int irq)
+diff --git a/kernel/latencytop.c b/kernel/latencytop.c
+index b764f47606d3..35f73ca07656 100644
+--- a/kernel/latencytop.c
++++ b/kernel/latencytop.c
+@@ -267,8 +267,7 @@ static int lstats_show(struct seq_file *m, void *v)
  }
- #endif
  
-+/* lists of CPUs can outgrow a page, take what memdup_user_nul() took */
-+#define IRQ_AFFINITY_WRITE_SIZE	(KMALLOC_MAX_SIZE - 1)
-+
- static ssize_t write_irq_affinity(int type, struct file *file,
--		const char __user *buffer, size_t count, loff_t *pos)
-+		char *buffer, size_t count, loff_t *pos)
+ static ssize_t
+-lstats_write(struct file *file, const char __user *buf, size_t count,
+-	     loff_t *offs)
++lstats_write(struct file *file, char *buf, size_t count, loff_t *offs)
  {
- 	unsigned int irq = (int)(long)pde_data(file_inode(file));
- 	cpumask_var_t new_value;
-@@ -148,9 +152,9 @@ static ssize_t write_irq_affinity(int type, struct file *file,
- 		return -ENOMEM;
+ 	clear_global_latency_tracing();
  
- 	if (type)
--		err = cpumask_parselist_user(buffer, count, new_value);
-+		err = cpulist_parse(buffer, new_value);
- 	else
--		err = cpumask_parse_user(buffer, count, new_value);
-+		err = cpumask_parse(buffer, new_value);
- 	if (err)
- 		goto free_cpumask;
+@@ -277,7 +276,7 @@ lstats_write(struct file *file, const char __user *buf, size_t count,
  
-@@ -177,25 +181,27 @@ free_cpumask:
- }
- 
- static ssize_t irq_affinity_proc_write(struct file *file,
--		const char __user *buffer, size_t count, loff_t *pos)
-+		char *buffer, size_t count, loff_t *pos)
- {
- 	return write_irq_affinity(0, file, buffer, count, pos);
- }
- 
- static ssize_t irq_affinity_list_proc_write(struct file *file,
--		const char __user *buffer, size_t count, loff_t *pos)
-+		char *buffer, size_t count, loff_t *pos)
- {
- 	return write_irq_affinity(1, file, buffer, count, pos);
- }
- 
- static const struct proc_ops irq_affinity_proc_ops = {
- 	.proc_show	= irq_affinity_proc_show,
--	.proc_write	= irq_affinity_proc_write,
-+	.proc_write_buf	= irq_affinity_proc_write,
-+	.proc_write_size = IRQ_AFFINITY_WRITE_SIZE,
+ static const struct proc_ops lstats_proc_ops = {
+ 	.proc_show	= lstats_show,
+-	.proc_write	= lstats_write,
++	.proc_write_buf	= lstats_write,
  };
  
- static const struct proc_ops irq_affinity_list_proc_ops = {
- 	.proc_show	= irq_affinity_list_proc_show,
--	.proc_write	= irq_affinity_list_proc_write,
-+	.proc_write_buf	= irq_affinity_list_proc_write,
-+	.proc_write_size = IRQ_AFFINITY_WRITE_SIZE,
- };
- 
- #ifdef CONFIG_GENERIC_IRQ_EFFECTIVE_AFF_MASK
-@@ -217,7 +223,7 @@ static int default_affinity_show(struct seq_file *m, void *v)
- }
- 
- static ssize_t default_affinity_write(struct file *file,
--		const char __user *buffer, size_t count, loff_t *ppos)
-+		char *buffer, size_t count, loff_t *ppos)
- {
- 	cpumask_var_t new_value;
- 	int err;
-@@ -225,7 +231,7 @@ static ssize_t default_affinity_write(struct file *file,
- 	if (!zalloc_cpumask_var(&new_value, GFP_KERNEL))
- 		return -ENOMEM;
- 
--	err = cpumask_parse_user(buffer, count, new_value);
-+	err = cpumask_parse(buffer, new_value);
- 	if (err)
- 		goto out;
- 
-@@ -249,7 +255,8 @@ out:
- 
- static const struct proc_ops default_affinity_proc_ops = {
- 	.proc_show	= default_affinity_show,
--	.proc_write	= default_affinity_write,
-+	.proc_write_buf	= default_affinity_write,
-+	.proc_write_size = IRQ_AFFINITY_WRITE_SIZE,
- };
- 
- static int irq_node_proc_show(struct seq_file *m, void *v)
+ static int __init init_lstats_procfs(void)
 
 -- 
 2.53.0
