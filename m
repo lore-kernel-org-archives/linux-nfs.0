@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793813389;
-	b=EJtTMwfN8Vb4bVZGiXgbUaQeSGmj9faIfIiNKPdMICfh7F7dfW8KCbaA1gM1/Sin4XNE
-	 rMOO0bmwLYg/p+nYcEGV7SEwsNOnnH4SDnI5W+dp+XJFFntSMd0f7Pn8QuNXLsLGC/5TU
-	 XTYGh+EW6niyL+GjBVAfSrLIsDT+UBrLfoedctYUAKDuqM1w3JDHNFsSMJggIZyFUXOkR
-	 baZIBqL20Jnyy3TmJsPU5LHme6D5gPMKVS1z4xUHM9jFwmxzkBlU/6tf7dFWEIR0bna7H
-	 l3xN2erEe+mydJvmnMBablPLb4yXow7jCTneKg+qbs+gNqvCAb+k8N/QZmxzvIcSbPA==
+	t=1793813403;
+	b=dF/fcoCc5QAwae1Z8Zuln1dmiLSIOo5qX96buR09qKIoEctoRpPKa5UqLNfK5AuBYVgj
+	 DG7XfnawhwMHZZ7im5WQEFtzyDqjorp8PtukETTbtpqMm9CD6dA014U/NOmO0oH9hTyrS
+	 1lpV9wTohNSnd9zos03Y2x4GgASomxNePhyc/kZWRgNGrB9dDw5FWe17OEjf/GLta5juE
+	 gOIoIbaL9BHnda3pvOODQul1amCz3KCU2uu434UaRM6f5TmwDLivhlUNV9YjjlCOsoHln
+	 6COBH7CRZ/8vJNf0OBmX+YeSwYMrHcWv3x8Q9/+f74mX8HmA/mV0eiSM1ditZOAiTjw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793813389;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793813403;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=jP/hayhlpAKZdjJKk3r9BHeVVOYyvJcLU3d1z3kH9u8=;
-	b=sMqlL/Jq1E0mTxGzloD0Of/AxkGQVQGLZKmtyCAAC+Q5M09fsOgWMiFV4HdlDIAJtcLo
-	 IV496OKKCqP70TAV9lvEB/NeDrBBPFvM+QiRiVaAyOkJt0Jh7c5zrQfmtPS8fZT3UaMEp
-	 gJfLhpc4bcLy8+dgQfV19G6ID8qH0PfBXNubAQ0QwWoH+VLZOf/NMzDuJeVWyyQTkw6wc
-	 N9HZ7W9PqQUQ8D7yuHNjV3uRllM9DTHwGdSsp/W9KFqaOnK/YSrdEpdI8OV+IZWyfwRAB
-	 4Gg1kx7LVg4nOkeYa1dBitcROECfCf/2JKWwFEc+rDrBpw/fY4OyD6yx9vgXsg53B0w==
+	bh=7dKsu59FtDy8aNyG4WRUkN7aPYhsNBybpSNJpPGyZ1Y=;
+	b=iAOVTJPgBJSfNonnDJ4uFdyNMMd4CMDTynjjUpzLgkHwsCCvclU9gEVS0DzMlOS7PnaS
+	 /eYq7WSqihByPMB53veAoBosK2guQlusSMFl/SCdHoNtLPDgo8t+siESwZ1Pz5vhtm79F
+	 OeEu9juDUbYa7tUKbbmpUzt+p8jKDuRm7Xtbx7+ZAlnQ0QvL7me5aRbp/IKzGGvP1+vdH
+	 kNcuRcqAVhciS1cFU1wZj+9gRBp0ADSSn6HwItMh+SPM/34C7MmagX3CSTsvn1cB0OrGk
+	 w8jmzYQO659dtbjFxT5CogAW5FnguHpPRVzlHcP7iQSd95/48jvkhYvxwLpsOoWc5Kw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=k29wYoDm;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gfbswzaD;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 90DCF606A331;
-	Wed,  4 Nov 2026 17:29:49 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5E95F606A906;
+	Wed,  4 Nov 2026 17:30:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=k29wYoDm
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8F7C51F000C1;
-	Wed,  4 Nov 2026 17:29:35 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gfbswzaD
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E7E771F00919;
+	Wed,  4 Nov 2026 17:29:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793813389;
-	bh=jP/hayhlpAKZdjJKk3r9BHeVVOYyvJcLU3d1z3kH9u8=;
+	s=k20260515; t=1793813402;
+	bh=7dKsu59FtDy8aNyG4WRUkN7aPYhsNBybpSNJpPGyZ1Y=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=k29wYoDmBb6ORIk/YigyTAaPtSyeooMT9Gehkig8HAb2s5/Z8UK6XLxRTz9EDVGnx
-	 eGiDz9bKPGnbG5+h4f2SaQeQuToessREwOdzcuVK45laKtepD5/4l2EkSVetuFazGP
-	 CpZi4D+axCqGJyyCzcjUodz4iFV75O3vIJZr+FuouuBv26oCOdXws7TH/pp445vvA+
-	 XWOP3PhxdwKX/fQLJFUO/FuU7suEDOp3lVbp7cTbUmYfkzbYCBmWMOBUGP0APptS+H
-	 BJ5uoSpfpKEmuDle2PpFnddFwy9xwQS99ffHUVrrShSkfHcu9R7iUf2ztEg6CLx6Z0
-	 avdFtYzV4BmjA==
+	b=gfbswzaDVBU7GKHdo96TauMKv1ceaJJyNilcKhGi1iENsVgvyZyYNALew+6JI6AWe
+	 pnCrSRXKJFZI76CSsVO2k0ZfaudiGPDz4H6nanxp+IyJlIS7zpWq7WbGYIpqXvffaY
+	 YPXkZIViE9ginAIsagyAOsm2dADTElAlSFhpb7mW7+aUif42uY6NuovJjFCkr22t+o
+	 8YZgU+wGhNeEvlg8uYowdA2V5/tkllZe4obLrFZwBz6wKkhavF4aJ1MAwudrDBYgmg
+	 iqyQouJN+3c3V4Q9h3e+svUJCBV88Hc0/UG53sSExSaEIpQZoLXQ7yhOlSnC5s6p6e
+	 /vqOf39HCSJtQ==
 From: Christian Brauner <brauner@kernel.org>
-Date: Wed, 04 Nov 2026 18:27:22 +0100
-Subject: [PATCH v2 05/51] xtensa: simdisk: remove the proc entry before the
- disk
+Date: Wed, 04 Nov 2026 18:27:23 +0100
+Subject: [PATCH v2 06/51] powerpc/pseries: put the node that the ofdt
+ property commands look up
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-work-procfs-bugfixes-v2-5-bbf7d5546809@kernel.org>
+Message-Id: <20261104-work-procfs-bugfixes-v2-6-bbf7d5546809@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -89,49 +89,61 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, 
  linux-debuggers@vger.kernel.org, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
- Chuck Lever <cel@kernel.org>, stable@vger.kernel.org
+ Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1246; i=brauner@kernel.org;
- h=from:subject:message-id; bh=f7Qg/00vnZM3tuJ138yAFxD6JPv6/GBN+HDx2x0z8gg=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zvo3+8l6vuY9izMzGv+zF0+8zvxIgy/yWdNkY/Huk
- 2e/XjWN6ihlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZhIUDXDX1nmkANzS/S1E9dt
- 3WFX/Lro3morHw1n24ovs6+YTz8QwsjwT6HT/Ztok6F1lkCbjcPRzduKzU87T1/j1tyZf3L9t5Y
- fLAA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1735; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=9GgvRCMv4/Dc1Z942cy3A7/ul6cTW5I084eAKnASIT8=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zmZ4quyyZkXDnPt7l06dpyFV4qG0w25zxJ4t0hO4d
+ EKlP1YEd5SyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEykTo6R4ULmC811i1exrd39
+ SCDIqSZw/sIzLju3fTqjXqriV5H7NIjhf6qrTt6RLRKL95YYMKbV3Ltr0FNg0RZ8ear5gYvqs+r
+ mMQEA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-simdisk_teardown() frees the gendisk and only then removes
-/proc/simdisk/<n>. A write to that entry in between attaches the file
-that was written to the disk, and simdisk_attach() sets the capacity of
-the gendisk that is gone. Remove the entry first, remove_proc_entry()
-waits for a writer that is in the middle of that.
+parse_node() looks the node up with of_find_node_by_phandle(), which
+returns it with a reference, and do_add_property(),
+do_remove_property() and do_update_property() never put that
+reference. Every property command written to /proc/powerpc/ofdt leaks
+one. Put it when the command is done.
 
-Fixes: b6c7e873daf7 ("xtensa: ISS: add host file-based simulated disk")
-Cc: stable@vger.kernel.org
+Fixes: 610d91511f99 ("[PATCH] powerpc: Add support for changing properties from userspace")
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- arch/xtensa/platforms/iss/simdisk.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ arch/powerpc/platforms/pseries/reconfig.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/arch/xtensa/platforms/iss/simdisk.c b/arch/xtensa/platforms/iss/simdisk.c
-index a2ddb49c269d..e51edb8cf872 100644
---- a/arch/xtensa/platforms/iss/simdisk.c
-+++ b/arch/xtensa/platforms/iss/simdisk.c
-@@ -379,12 +379,13 @@ static void simdisk_teardown(struct simdisk *dev, int which,
+diff --git a/arch/powerpc/platforms/pseries/reconfig.c b/arch/powerpc/platforms/pseries/reconfig.c
+index 18e3f1a036e3..5a0c9c0b6253 100644
+--- a/arch/powerpc/platforms/pseries/reconfig.c
++++ b/arch/powerpc/platforms/pseries/reconfig.c
+@@ -271,8 +271,8 @@ static char *parse_node(char *buf, size_t bufsize, struct device_node **npp)
+ 
+ static int do_add_property(char *buf, size_t bufsize)
  {
- 	char tmp[2] = { '0' + which, 0 };
++	struct device_node *np __free(device_node) = NULL;
+ 	struct property *prop = NULL;
+-	struct device_node *np;
+ 	unsigned char *value;
+ 	char *name, *end;
+ 	int length;
+@@ -296,7 +296,7 @@ static int do_add_property(char *buf, size_t bufsize)
  
-+	/* a write to the entry attaches a file to the disk, so it goes first */
-+	remove_proc_entry(tmp, procdir);
- 	simdisk_detach(dev);
- 	if (dev->gd) {
- 		del_gendisk(dev->gd);
- 		put_disk(dev->gd);
- 	}
--	remove_proc_entry(tmp, procdir);
- }
+ static int do_remove_property(char *buf, size_t bufsize)
+ {
+-	struct device_node *np;
++	struct device_node *np __free(device_node) = NULL;
+ 	char *tmp;
+ 	buf = parse_node(buf, bufsize, &np);
  
- static void __exit simdisk_exit(void)
+@@ -315,7 +315,7 @@ static int do_remove_property(char *buf, size_t bufsize)
+ 
+ static int do_update_property(char *buf, size_t bufsize)
+ {
+-	struct device_node *np;
++	struct device_node *np __free(device_node) = NULL;
+ 	unsigned char *value;
+ 	char *name, *end, *next_prop;
+ 	int length;
 
 -- 
 2.53.0
