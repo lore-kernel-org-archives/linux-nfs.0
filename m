@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793840000;
-	b=EgW++X8NSUHY8mYRujZStt1bOcf7ip/MEQxYTfNv8u1y2vObluumbo1/Pf05anmPD59B
-	 q9vobClNpiWpPOCMm6CKBaBdoBIO/t0xjQGuJ9Q/1Iwq3hYCUuAMIaQaclAIUI+UNYYln
-	 5skhrOXFTQa9ogqB0WIGr2sybBnAsS2DvMfBz0Wkuh6iVxVUk4wpb3dbbVzwoIeMRvd70
-	 bnLxSN0s2qv83jWgq0HbkeqlrFxDVaeESZHeN19YtD2XR7lwXqtxGImW60QznRUThBRTw
-	 tgimSunUxTwmxwYmic+feYZi4TT2Wj7gI1SHLDWyzMry3W5opVtkJ3I9Q3fapClKQ/w==
+	t=1793840004;
+	b=aR3SNToywPpu+dRrtrs2Sb6eFByBUsK+7o6m1EjxEN9IZkRyAyX4IDrHeOrBh73VXAEZ
+	 4+rPlGB/ko2scaxy+XONNmXs5yyMnCALxFn5zFEombUOvhnMpUMHdagj8c3kyWtb++tYV
+	 s4pNVC+sidNEHxqG+buP5nun6HDKlh6Lw/LySz0WCuIV3k7WjfZLTpvOPwF8M+x3vSC1c
+	 t49rxeiqXfVZpdNVCTV+tEyQLYdvZRJc93YNJHyHO5nUg+Jq4P4txJUoiOZq1DYVhEPwX
+	 HQHnOmm6oSsiAXgUxxCY5aHc9x0Wlh0BSKSOdm3pmOce23nyEhQco5XAi9Tf9K/4Pzg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793840000;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793840004;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=VRz/fr2W5XuC5uSGQ1HwHlJlRaYB2g29XfbHOGVqqEg=;
-	b=pm5mI5cER6W4gFqZE9n1CroOs7wYCYqecSSkJjpb8Z68gaQWOkhCrZgijIDAExBhzlhX
-	 brnUF+e8VS6ltqWRds8oh/BaxqhDfk880TD87VUu350Z7rZ/B9HbMz/eg5oM4pWVeqHbZ
-	 4sSEp87GDM/Z7Ak5K2hOctJPyEzXGSdiKYHriuKQhE/6zDDkeQmA4eusomfnftFHfhy/9
-	 mwys7UAz9mMgu66vuq1KX279cigCug0SzqqwTioLrJYn//KSbF5u3fxKk3dcj9GBwg/Cq
-	 oIqx5SpLYAbev/qjFI8sfWCgbkCTsz2mratJS9CkqndBSXPx3tp6AuHcgWQHaAS365g==
+	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
+	bh=INED4MMgZrZwufn0swCTjWvWb3dcmH2/0DSknrA89G0=;
+	b=OdHn/FQ/3JxcXlmrlUBbppO6gPQ9BDf1xlapmL8CqJeacaz0Y+1LI8u605Cz+1t4NklT
+	 uT9A9bsf/su5oM0jHvG96IBDK7WbsTJollYU/iV1jUaF/oVQju4Vv3s+jeGiW/VpEzAaH
+	 0UAzH2/CppKcmfR0Bu7DU21H7O2itqDR//tj4ahKKDj2G+d8opwY8m95fUmReooLhxQm2
+	 CnaJrT9Fzeve20noinVytdsnQ5RwM+vSvl+zs+lATuN1OdZ5tZpPtBL3F8OF053eroRYL
+	 IMiofV30bqVUD8gdemUWcqgXWePDHJtaoMC6hRMR6DTSgELMtno5jBH8HaDcyi4UbpA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=biGpPmbr;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Mii+wzo2;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id 514EC606A31B;
-	Thu,  5 Nov 2026 00:53:19 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id 0E8E3606A330;
+	Thu,  5 Nov 2026 00:53:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=biGpPmbr
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 240B21F000C1;
-	Thu,  5 Nov 2026 00:53:19 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Mii+wzo2
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id F16691F00A16;
+	Thu,  5 Nov 2026 00:53:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793839999;
-	bh=VRz/fr2W5XuC5uSGQ1HwHlJlRaYB2g29XfbHOGVqqEg=;
-	h=From:To:Cc:Subject:Date;
-	b=biGpPmbr7mxbjpmYiMiR7S0h+DjiNBCcSJhGp65qcu7SPBIZ9i/YqIulnrwG0sr50
-	 jYlfxviw16RWhT/60c2g2iu69BB5l2NsJ9QRlw+Zhwnl5XFGSOodjTZ1887uKu6DuE
-	 yjvxfaOffAc0oDY6QPn6bZyXQEt8sCQr7BYNoXiQcfASKiwiNi9Yt//h5o4EZn7G9e
-	 RgU0RWTEmjjSIdxMgRHs5XmLlLfeDwl4pV5fDIp1JVmzna/j7b9ELvTf5UY2kQg2XO
-	 O8RgV4KPvvIEUAaV5nV7A97Ud9lo2sSix9k8hiJvfy0UgT2w6CoDWaKeUHfxDL67q6
-	 iZs3gcyLwkePA==
+	s=k20260515; t=1793840003;
+	bh=INED4MMgZrZwufn0swCTjWvWb3dcmH2/0DSknrA89G0=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=Mii+wzo2/rerto/JBSeFPMQndeo0ek3k/cm0U4priwQ5d3HDuhYm+3b3XPeMtYwRh
+	 C2zYUwmCCLB66+lg6DBrFlzp3MTGwy7XzNL+w8rM0uQw+m1eiGS/C3YLW+rwPyXdVM
+	 WvWIq3FZx8BhstJT4U3hgcLsi7E2vZWbt5SHJN+Wpsp3IwiokcrtNneGQol1ZUH3jP
+	 QaAZfYEZE7HAVAbhuXyRU6z6K3HvStJuVfrU126xx5Zdg6q0yKTaeKq4d9nQ+yn/mu
+	 OsczNayQosk7VO8ryg08ZiH21v45Xijo5VoVcvbaCZ+mKHqa3yzrhMw/KQFZMU/4B1
+	 VhyjXc53/PywA==
 From: Jarkko Sakkinen <jarkko@kernel.org>
 To: David Howells <dhowells@redhat.com>
 Cc: Jarkko Sakkinen <jarkko@kernel.org>,
@@ -78,10 +78,12 @@ Cc: Jarkko Sakkinen <jarkko@kernel.org>,
 	Tom Talpey <tom@talpey.com>,
 	Trond Myklebust <trondmy@kernel.org>,
 	Vasily Gorbik <gor@linux.ibm.com>
-Subject: [RFC PATCH v3 00/11] KEYS: Sanitize the garbage collector
-Date: Thu,  5 Nov 2026 02:52:59 +0200
-Message-ID: <20261105005311.804098-1-jarkko@kernel.org>
+Subject: [RFC PATCH v3 01/11] KEYS: Add key_gc_flush() for draining RCU callbacks
+Date: Thu,  5 Nov 2026 02:53:00 +0200
+Message-ID: <20261105005311.804098-2-jarkko@kernel.org>
 X-Mailer: git-send-email 2.47.3
+In-Reply-To: <20261105005311.804098-1-jarkko@kernel.org>
+References: <20261105005311.804098-1-jarkko@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -93,128 +95,63 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-1. Replace key_type_dead retyping with module reference pinning so live
-   keys and restrictions keep their backing key_type module loaded until
-   key_gc_unused_keys() or keyring_destroy() completes.
-2. Process serial-tree scans and graveyard destruction in fixed 64-key
-   chunks to a bound workqueue execution latency without hurting overall
-   throughput for a significant amount.
+keyring_clear() and key_invalidate() release keyring links via call_rcu(),
+and key_put() defers final key destruction to key_gc_work.
 
-The first part has a user-space visible effect: rmmod returns -EBUSY while
-keys or keyring restrictions still pin the backing module.
+Once keys pin their type, callers that clear an internal cache before
+module unload need a synchronous barrier so module references can be
+dropped before delete_module() checks the refcount.
 
-Internal key caches or transport state bottlenecks are addressed by either
-clearing their private caches on last-client teardown or splitting key
-types into dedicated provider modules.
+Add key_gc_flush() for flushing the remaining key_gc_work passes.
 
-CHANGES
-=======
+Signed-off-by: Jarkko Sakkinen <jarkko@kernel.org>
+---
+ include/linux/key.h |  2 ++
+ security/keys/gc.c  | 11 +++++++++++
+ 2 files changed, 13 insertions(+)
 
-v3:
-- Split dns_resolver and rxrpc key types into dedicated provider modules
-  (dns_resolver_key.ko and rxrpc_keys.ko) instead of client refcounting,
-  so cached or retained keys do not pin dns_resolver.ko or rxrpc.ko.
-- Dropped the standalone nvme-keyring fix as it was picked up by the
-  subsystem maintainers.
-- Hardened key_gc_flush() to serialize against chunked key_gc_work
-  continuations, and fixed a restriction module reference leak on failed
-  keyring instantiation.
-
-v2:
-- Used v1 as a test probe for Sashiko to detect the corner cases instead
-  of trying to resolve even the known ones beforehand.
-- Converted the client subsystems to be compatible with the module
-  pinning semantics.
-
-VERSIONS
-========
-
-- v2:
-  https://lore.kernel.org/linux-integrity/20261103030226.2685251-1-jarkko@kernel.org/
-
-Cc: keyrings@vger.kernel.org
-Cc: linux-afs@lists.infradead.org
-Cc: linux-cifs@vger.kernel.org
-Cc: linux-integrity@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org
-Cc: linux-s390@vger.kernel.org
-Cc: linux-security-module@vger.kernel.org
-Cc: netdev@vger.kernel.org
-Cc: samba-technical@lists.samba.org
-Cc: Alexander Gordeev <agordeev@linux.ibm.com>
-Cc: Anna Schumaker <anna@kernel.org>
-Cc: Bharath SM <bharathsm@microsoft.com>
-Cc: Christian Borntraeger <borntraeger@linux.ibm.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: Eric Biggers <ebiggers@kernel.org>
-Cc: Eric Dumazet <edumazet@kernel.org>
-Cc: Heiko Carstens <hca@linux.ibm.com>
-Cc: Jakub Kicinski <kuba@kernel.org>
-Cc: James Bottomley <James.Bottomley@HansenPartnership.com>
-Cc: James Morris <jmorris@namei.org>
-Cc: Jarkko Sakkinen <jarkko@kernel.org>
-Cc: Marc Dionne <marc.dionne@auristor.com>
-Cc: Mimi Zohar <zohar@linux.ibm.com>
-Cc: Namjae Jeon <linkinjeon@kernel.org>
-Cc: Paolo Abeni <pabeni@redhat.com>
-Cc: Paul Moore <paul@paul-moore.com>
-Cc: Paulo Alcantara <pc@manguebit.org>
-Cc: Ronnie Sahlberg <ronniesahlberg@gmail.com>
-Cc: "Serge E. Hallyn" <serge@hallyn.com>
-Cc: Shyam Prasad N <sprasad@microsoft.com>
-Cc: Simon Horman <horms@kernel.org>
-Cc: Sumit Garg <sumit.garg@kernel.org>
-Cc: Sven Schnelle <svens@linux.ibm.com>
-Cc: Tom Talpey <tom@talpey.com>
-Cc: Trond Myklebust <trondmy@kernel.org>
-Cc: Vasily Gorbik <gor@linux.ibm.com>
-
-Jarkko Sakkinen (11):
-  KEYS: Add key_gc_flush() for draining RCU callbacks
-  dns_resolver: Move the key type into a separate module
-  NFSv4: Clear idmap keyring cache when the last client unloads
-  smb: client: Clear idmap/SPNEGO caches when the last session is
-    unloaded
-  s390/cert_store: Start tracking subsystem keys
-  KEYS: trusted: TEE: Disable sysfs bind attributes
-  KEYS: trusted: TEE: Synchronize session lifetime
-  rxrpc: Move key types to their own module
-  KEYS: Pin the backing kernel module for a key type
-  KEYS: Remove key_type_dead
-  KEYS: key_garbage_collector(): process in chunks
-
- arch/s390/kernel/cert_store.c             | 161 +++++-------
- fs/nfs/nfs4idmap.c                        |  21 ++
- fs/smb/client/cifs_spnego.c               |   6 +
- fs/smb/client/cifsacl.c                   |   6 +
- fs/smb/client/cifsproto.h                 |   8 +
- fs/smb/client/misc.c                      |  19 +-
- include/linux/key-type.h                  |   6 +-
- include/linux/key.h                       |   2 +
- net/Makefile                              |   4 +-
- net/dns_resolver/Kconfig                  |  15 ++
- net/dns_resolver/Makefile                 |   4 +-
- net/dns_resolver/dns_key.c                |  65 +----
- net/dns_resolver/dns_query.c              |  64 +++++
- net/dns_resolver/internal.h               |   5 -
- net/rxrpc/Kconfig                         |  20 ++
- net/rxrpc/Makefile                        |   7 +-
- net/rxrpc/af_rxrpc.c                      |  19 +-
- net/rxrpc/ar-internal.h                   |  25 +-
- net/rxrpc/key.c                           | 122 +++------
- net/rxrpc/rxgk.c                          |  66 -----
- net/rxrpc/rxkad.c                         |  47 ----
- net/rxrpc/security.c                      | 184 ++++++++++++++
- net/rxrpc/server_key.c                    | 260 ++++++++++++--------
- security/keys/gc.c                        | 287 ++++++++++------------
- security/keys/internal.h                  |   7 +-
- security/keys/key.c                       |  61 +++--
- security/keys/keyring.c                   |  88 +++----
- security/keys/trusted-keys/trusted_core.c |  15 +-
- security/keys/trusted-keys/trusted_tee.c  |  89 +++++--
- 29 files changed, 906 insertions(+), 777 deletions(-)
-
---
+diff --git a/include/linux/key.h b/include/linux/key.h
+index 420412aab926..0f408255f740 100644
+--- a/include/linux/key.h
++++ b/include/linux/key.h
+@@ -439,6 +439,7 @@ extern int restrict_link_reject(struct key *keyring,
+ 				struct key *restriction_key);
+ 
+ extern int keyring_clear(struct key *keyring);
++void key_gc_flush(void);
+ 
+ extern key_ref_t keyring_search(key_ref_t keyring,
+ 				struct key_type *type,
+@@ -526,6 +527,7 @@ extern void key_init(void);
+ #define key_free_user_ns(ns)		do { } while(0)
+ #define key_remove_domain(d)		do { } while(0)
+ #define key_lookup(k)			NULL
++#define key_gc_flush()			do { } while (0)
+ 
+ #endif /* CONFIG_KEYS */
+ #endif /* __KERNEL__ */
+diff --git a/security/keys/gc.c b/security/keys/gc.c
+index eda445f815d4..2c3eddc0443a 100644
+--- a/security/keys/gc.c
++++ b/security/keys/gc.c
+@@ -21,6 +21,17 @@ unsigned key_gc_delay = 5 * 60;
+ static void key_garbage_collector(struct work_struct *work);
+ DECLARE_WORK(key_gc_work, key_garbage_collector);
+ 
++/**
++ * key_gc_flush - Drain the garbage collector RCU callbacks
++ */
++void key_gc_flush(void)
++{
++	do {
++		rcu_barrier();
++	} while (flush_work(&key_gc_work));
++}
++EXPORT_SYMBOL_GPL(key_gc_flush);
++
+ /*
+  * Reaper for links from keyrings to dead keys.
+  */
+-- 
 2.47.3
 
