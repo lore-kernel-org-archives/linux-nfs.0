@@ -1,73 +1,64 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793914895;
-	b=JFLQf3zropcd72YccIsUYGWcqqmWKgosaWUcAyTNLgwtR9UNntj7QtSkp1+RwfY7E236
-	 UOTLwgz/QxqHZ9tZgXX++stU4FMkJIfyD2rNujDundHCEDRnBlmWNLSK7RSrxsKfKUdjX
-	 wDmCeOcbHACRPq4aKxEfgABbyw20/4IhohOxfk1LJFf5ZDYB8D2xiF7BeLRQbLHMqDy4r
-	 ZOVucj0fQF07tPSGA6gry6u8iq4AtaIvit4IU7VFKYn+yXS8KvarticG/nypJj4RnHDmf
-	 01Td4s/+5G++WxpCNkjv+uOiV1yeU0Wmu30J2wDXh370+iUetOtZfPaA2o4pTBmTqXQ==
+	t=1793918975;
+	b=PALXASzSuk8hH9CybqKAU7YJ8a4xJ70okWUvvGD5+4jJ8MvwbIurubKJ1ivyVrYeCH7B
+	 de/szgMdB2sXXaJXVAMS9zmFYT9cNbsZZMNP6cHnnmd8vriUz/QXpRBoWwNs7DBM3lUms
+	 w/QNfhG6dNN5WOY6dJJA9W5RgdHEc6WNbXliSOqLiCuqnQSaYZpZAE7WSgqufTKQowvUD
+	 IrDX+dRAHO/aO6ox1MNJNinQkFVZezJmhmqQjFxER/VFAAdi7W/Dwsfh8vvme6mTqvqK9
+	 K01+5HfCGwFCtSMg1Ww/dycCwOpq4m5HcrQL1VS/M4acFFlT9EyaMLxhcX7Y4qhNu4Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793914895;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=H3ivgvaNMvv1gD2r+xpMiJAFdCsRCXUkzVwpwertxM8=;
-	b=k1j3+wtXGoTXtfOHLTo8AVlp7Pf6qg7FHS2ufbnfcee/Wj8cGD9vwV9OyLVD1GbpMgPO
-	 ZZ7YS1NUZ1i2SMWN0YIlypfswdLvbimx212W1X/U1WNmkJ9JRqyxd8kCD8XsgWRAxURSw
-	 dpFbrjtF4V2VNOohws8wzNeZiX64yym6gUkoikSQc/5SY1M7ZKxBJZCrnyY4hCIaJJ5ot
-	 GyNqcZpaHLdSzAKOhDrFHh6nMeKJbOwFuNWiVYtDrZYZmth7etOT9BjVgEsOzQAm2mMzR
-	 RvX6CPFFeTAUzjexrPPcqmS9+v9YRAfdxmeW0cz5rtbO85oh78jbeGX/Sg43hb715ew==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793918975;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=S+nYe4I8JfGZ8iq7Bvfptw+3SVmUNoB+MIDzTrsXpZc=;
+	b=V9ybLqb6ZpdR0L3Ud6ifMldFekOW+f3YbHx/q98xpR9lVr7R0TekvqdR6LLdppw8nh8a
+	 LNu+xdNM2DTw8LijH3IiN42QyomLOXzkqjzm6zAl9WtkKGekOwjIFxvlknl70dVS11rM/
+	 WcvzL0nK1VDwcU6/5uutXltJD/IGfSDlJXrSAs95BxjWpP1I6+G9U0uXCgFC96j39q/WW
+	 C6Gr+IuhDlEmM1UHzYJMwvoudDCHb9lTGRph+MRYG/Rk0+0P6vgXsb7oazKNQ5ffYSWy/
+	 RszBDelaQA2Rx6av5qEoPeJl89QaMVUXaWQtf1o5r1bF8fxB5IebjKgYDBNlTx64/oQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TQn9RMTC;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TgHZ7LH2;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 65E1F606A328
-	for <linux-nfs@vger.kernel.org>; Thu,  5 Nov 2026 21:41:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6887B606A326;
+	Thu,  5 Nov 2026 22:49:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TQn9RMTC
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B8D301F008A2;
-	Thu,  5 Nov 2026 21:41:34 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TgHZ7LH2
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D243F1F0089F;
+	Thu,  5 Nov 2026 22:49:34 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793914895;
-	bh=H3ivgvaNMvv1gD2r+xpMiJAFdCsRCXUkzVwpwertxM8=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=TQn9RMTCmhARDUlin3bOoS8ZLIgcAnX5kmqUK1S3JcS96TFIQ5pyIK16iUh7syWj4
-	 jRcrEgYT+KJ1YJZjGLi4X5+VzhZvxzk4Cr0zTBCx8dvPRNYAZJi4NRSyLjW0qlxL9H
-	 6Y+EEMPtD799PMq5k4aOd61p09nqiha+37bOwul7bW5RU0d1m+C/E9iGZPtcbGZpMQ
-	 9AnbnB3bqVwnCTtCb3qFXS8UMa6I4pv3MlO8QjSMOFo5s/B+7vmZGfeU8XuYYLmvaK
-	 O/fl+OgPhH45vKyjp8mhLp3+oJqT4Vmdwiu0TdjozUOzgRhKtApsqF2hgj420yeyDC
-	 8e3Jrm4pSvfBQ==
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 0D623F40066;
-	Thu,  5 Nov 2026 16:41:34 -0500 (EST)
-Received: from phl-imap-04 ([10.202.2.82])
-  by phl-compute-02.internal (MEProxy); Thu, 05 Nov 2026 16:41:34 -0500
-X-ME-Sender: <xms:Dfjsao3xnqGxTbxVkYJChIY90juFOVzSh2cZovfgEc0fXhlyJwRv8A>
-    <xme:Dfjsat5aPG0OAPdrE4DzyI_jPce2oTErYCor8VtRvVML7EVDLLQxNrRlK5gHpkfhy
-    hiG5_yJbG-fzwO7vI-IAeh-SgcmLF1s2xPUgig_gRsjhUfljCV8MctK>
-X-ME-Proxy-Cause: dmFkZTEGt+wcswX+hiT5janCl/MKepeOX0IXo2BV+ChUqgQKldXCwZr8cej5Y4eGyqNvg5
-    A2OiJVFmpP3aS3KM0ECwUJbqWgeaQZyfRSt0jeeV5pgaH36594oxpWvnfWeE5jw4zmTJcQ
-    QxvING0ssh+Y7WJTYtQCG5fTf+FBxMnCNmNvJd/2kYsUcdrp3C4EFtIvOCRD3M9iKZh02n
-    RMU88s+DfbSz2E4HSsPV7xGyQWSzT4FcMC7tUuzBkwRgyHFdDQj1ycKgbRZvnmKPk6zb3m
-    YtlG25tEteWdo1j1kIIXr/RwYqms/vWmr3gQ+j0WmulzRwFSmBdA2ZNpLS7r8ulSC8hUEG
-    0egoHNoGhaCrXA3plYoUJ/tzAn01lFZ+oU3IXTYcq5cuO52GbwtFqlgP/Rs+YIijPwthZp
-    BHNLNe+Sh5k6uoZvpQA58BfmgZvWg5gt0VRH013ndNGxM/Gr3Td1dYUEjUMWKXOwfiguoI
-    NdAHMWH0NJMQkFcrxwV46J0libif+RrpijWO8aV9NggmjRnvr4fE+WVmVV2Xosx+xoXMKX
-    ALz0nfq0TIic5e9TI3WpI6tWfAJD/V4WDQW01rq2sgrw6YJ0sKEtJ0tnVzr7Cl6lsbCesD
-    QjWxh9oKLn3j9jMba6dmRponC9nIYBKvMLsDUqbsKWabM4TsgOIoA6zFFdaA
-X-ME-Proxy: <xmx:DvjsaueaebWKaBqC3YBBSr2NiNy0tasIyJ-ugSemgahXhlsrFHAPpA>
-    <xmx:DvjsamCMBn6kW7dSDxsSvDH6RH_pclC-KjT0Q37t9bs1IsLtg_edTA>
-    <xmx:Dvjsap86qeBFejaqSuv_lAGuCmXmaRtznt1MphAtDFHhDoROUjC_Vw>
-    <xmx:DvjsapId4-03x9mQxdWGhXK8wqb-n0UNBLS33bN3mdGHT5aWWNgPmg>
-    <xmx:DvjsaqjWx7ySAlMTOQmZJkbFmqkoxVzWaFRqCs5tWU-fU0YuE9iJ1yoX>
-Feedback-ID: i20964851:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id E5223B6006E; Thu,  5 Nov 2026 16:41:33 -0500 (EST)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1793918975;
+	bh=S+nYe4I8JfGZ8iq7Bvfptw+3SVmUNoB+MIDzTrsXpZc=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=TgHZ7LH2yAs2qyGTAyNNtl8frCxxpwAJZEf6PU2DcWnxnWy8Gwr2rY4WWscjskyEm
+	 piib1sPyrp16ZX0SGTmaIsDb7pvL5paKi/uBo8avrLOrUUi1aOj/A7Z5bjfMQBMSjN
+	 j4Eq9xsHFuM2pB920goI6zViijasUSIFu7KXGqFRJvCPeVMdAzEHY6fyhJDfuKuq+E
+	 J58K9DIZLC3V7zC732nScfU/zhzvvw1oMRaZTKz8cZFFqEXg9rdDKXASjqjxeSqrtZ
+	 ELHH8o3eXZWSf+wF68UCbIny6kkYndjaeDR7pwKDeuguD1MRYu20E2srlmlgMetBGp
+	 cv4tnszSs4FrQ==
+Date: Thu, 5 Nov 2026 17:49:33 -0500
+From: Mike Snitzer <snitzer@kernel.org>
+To: Chuck Lever <cel@kernel.org>
+Cc: Christoph Hellwig <hch@lst.de>,
+	"Matthew Wilcox (Oracle)" <willy@infradead.org>, linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>,
+	linux-nfs@vger.kernel.org, NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	Jens Axboe <axboe@kernel.dk>, Jonathan Corbet <corbet@lwn.net>,
+	Jonathan Flynn <jonathan.flynn@hammerspace.com>
+Subject: Re: [PATCH v10 7/7] NFSD: drop a shared boundary page only once both
+ WRITEs have written it
+Message-ID: <au0H_TZCp1Snf_5U@kernel.org>
+References: <20261103211754.35352-1-snitzer@kernel.org>
+ <20261103211754.35352-8-snitzer@kernel.org>
+ <20261104091543.GA31130@lst.de>
+ <autk-osSQ8l2LKz1@kernel.org>
+ <20261105075935.GA18069@lst.de>
+ <29851456-2e7c-48a7-bf00-11a1f1a35024@app.fastmail.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,159 +68,85 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: AR9fqhuuqVHc
-Date: Thu, 05 Nov 2026 16:41:13 -0500
-From: "Anna Schumaker" <anna@kernel.org>
-To: "Mike Snitzer" <snitzer@kernel.org>,
- "Trond Myklebust" <trondmy@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
- "Jonathan Flynn" <jonathan.flynn@hammerspace.com>
-Message-Id: <ba32777f-8f47-4c0a-9ade-af44928721da@app.fastmail.com>
-In-Reply-To: <20261102191109.13470-11-snitzer@kernel.org>
-References: <20261102191109.13470-1-snitzer@kernel.org>
- <20261102191109.13470-11-snitzer@kernel.org>
-Subject: Re: [PATCH 10/11] NFSv4/flexfiles: rotate LAYOUTSTATS reporting across a
- mirror's stripes
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <29851456-2e7c-48a7-bf00-11a1f1a35024@app.fastmail.com>
 
-Hi Mike,
-
-On Mon, Nov 2, 2026, at 2:11 PM, Mike Snitzer wrote:
-> From: Mike Snitzer <snitzer@hammerspace.com>
->
-> Both callers of ff_layout_mirror_prepare_stats() cap it at four
-> ff_layoutupdate4 entries -- PNFS_LAYOUTSTATS_MAXDEV for LAYOUTSTATS and
-> ARRAY_SIZE(ff_args->devinfo), which is FF_LAYOUTSTATS_MAXDEV, for
-> LAYOUTRETURN.  The scan walks mirror->dss[] from index 0 every time and
-> stops once the budget is spent.
-
-Why does the commit message need to specify starting at index 0? That's
-just standard looping over an array behavior.
-
->
->   What the server sees without this patch: for a mirror with more than
->   four busy stripes, the same low dss_ids every report, forever.  The
->   previous patch widened that from one stripe to four -- it did not stop
->   it being the same four.  On the 32-stripe RAID0 layout this series
->   targets, stripes 4..31 are reported only when the layout is returned,
->   so a data server that is only ever backing a high stripe index stays
->   invisible to the server's placement decisions no matter how much I/O it
->   does.
-
-The "what the server sees" interludes seem randomly placed in this patch
-and break the flow of what I'm reading. I don't think it's adding much.
-
->
-> Remember where each mirror's scan stopped and resume there.  The cursor
-> advances past each stripe that actually fills a slot, so a report picks
-> up where its predecessor left off and idle stripes, which are skipped
-> without consuming a slot, do not stall the rotation.
->
->   What the server sees with this patch: still up to four entries per
->   report, but rotating, so every busy stripe of a mirror is reported
->   within ceil(busy_stripes / 4) report intervals -- eight intervals, or
->   about eight minutes at the default 60 second interval, for 32 busy
->   stripes.  A given stripe's numbers therefore arrive less often than
->   before but, unlike before, they arrive.  The values are unchanged:
->   cumulative ops_completed and bytes_completed since the layout was
->   granted, so a server differencing successive reports for a stripe still
->   gets a correct delta, just over a longer window.  Nothing about the
->   encoding, the deviceid or the ordering within a report changes.
->
-> The mirror loop gets the same dev_limit test as the stripe loop, so a
-> full report stops scanning instead of walking the remaining mirrors to
-> break immediately on each.
->
-> [jonathan.flynn: read dss_report_start once per mirror, before the stripe
->  loop.  The loop advances it after each stripe it reports, so re-reading
->  it moved the index twice: stripes were skipped, and on a mirror with
->  stripes not yet written (and so skipped) the index wrapped back onto a
->  stripe already reported.  That put the same deviceid in one ff_iostats4
->  array twice with identical counters.]
-> Signed-off-by: Jonathan Flynn <jonathan.flynn@hammerspace.com>
-> Signed-off-by: Mike Snitzer <snitzer@hammerspace.com>
-> ---
->  fs/nfs/flexfilelayout/flexfilelayout.c | 22 +++++++++++++++++++---
->  fs/nfs/flexfilelayout/flexfilelayout.h |  7 +++++++
->  2 files changed, 26 insertions(+), 3 deletions(-)
->
-> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c 
-> b/fs/nfs/flexfilelayout/flexfilelayout.c
-> index 670780bb3d353..591363e2cf460 100644
-> --- a/fs/nfs/flexfilelayout/flexfilelayout.c
-> +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-> @@ -3153,14 +3153,28 @@ ff_layout_mirror_prepare_stats(struct 
-> pnfs_layout_hdr *lo,
->  	struct nfs4_ff_layout_ds_stripe *dss_info;
->  	struct nfs4_ff_layout_ds *mirror_ds;
->  	__u64 read_count, read_bytes, write_count, write_bytes, ops;
-> -	int i = 0, dss_id;
-> +	u32 dss_id, scanned, base;
-> +	int i = 0;
+On Thu, Nov 05, 2026 at 08:33:34AM -0500, Chuck Lever wrote:
 > 
->  	rcu_read_lock();
->  	list_for_each_entry(mirror, &ff_layout->mirrors, mirrors) {
-> -		for (dss_id = 0; dss_id < mirror->dss_count; ++dss_id) {
-> -			dss_info = &mirror->dss[dss_id];
-> +		if (i >= dev_limit)
-> +			break;
-> +		base = mirror->dss_report_start;
-> +		for (scanned = 0; scanned < mirror->dss_count; ++scanned) {
->  			if (i >= dev_limit)
->  				break;
-> +			/* Resume where the last report of this mirror left
-> +			 * off; one subtraction suffices to wrap, as both
-> +			 * terms are below dss_count.  Use the start as it
-> +			 * was on entry: this loop advances it for the next
-> +			 * report, and re-reading it would skip stripes and
-> +			 * wrap back onto one already reported.
-> +			 */
-
-The code is self-documenting enough to not need this comment.
-
-> +			dss_id = base + scanned;
-> +			if (dss_id >= mirror->dss_count)
-> +				dss_id -= mirror->dss_count;
-> +			dss_info = &mirror->dss[dss_id];
->  			mirror_ds = rcu_dereference(dss_info->mirror_ds);
->  			if (IS_ERR_OR_NULL(mirror_ds))
->  				continue;
-> @@ -3189,6 +3203,8 @@ ff_layout_mirror_prepare_stats(struct 
-> pnfs_layout_hdr *lo,
->  			if (!refcount_inc_not_zero(&mirror->ref))
->  				continue;
->  			dss_info->last_reported_ops = ops;
-> +			mirror->dss_report_start =
-> +				dss_id + 1 < mirror->dss_count ? dss_id + 1 : 0;
->  			/* The pin holds a reference; it is exchanged out only
->  			 * under i_lock.  Put in ff_layout_free_layoutstats().
->  			 */
-> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h 
-> b/fs/nfs/flexfilelayout/flexfilelayout.h
-> index 743957cd12300..33724f2db5d62 100644
-> --- a/fs/nfs/flexfilelayout/flexfilelayout.h
-> +++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-> @@ -141,6 +141,13 @@ struct nfs4_ff_layout_mirror {
->  	struct nfs4_ff_layout_ds_stripe *dss;
->  	refcount_t			ref;
->  	u32				report_interval;
-> +	/*
-> +	 * dss[] index to begin the next LAYOUTSTATS scan of this mirror at,
-> +	 * so that a mirror with more stripes than a report has room for
-> +	 * rotates through them rather than always reporting the lowest.
-> +	 * Serialised by the inode's i_lock, like last_reported_ops.
-> +	 */
-> +	u32				dss_report_start;
-
-Can this be renamed to either dss_report_base or dss_report_index? Then
-we can drop the wordy comment entirely.
-
-Thanks,
-Anna
-
->  };
 > 
->  struct nfs4_ff_layout_segment {
-> -- 
-> 2.52.0
+> On Thu, Nov 5, 2026, at 2:59 AM, Christoph Hellwig wrote:
+> > On Wed, Nov 04, 2026 at 12:01:46PM -0500, Mike Snitzer wrote:
+> >> It is the transfer size of IO500's ior-hard: every rank writes
+> >> 47008-byte records, interleaved with the other ranks, into one shared
+> >> file, with O_DIRECT.  It is meant as a hard case, and it is the
+> >> workload that showed the problem on our servers.  The same happens
+> >> with any record size that is not a multiple of the page size.  The
+> >> cover letter also has 6000-byte records.
+> >
+> > So based on a bit googling your totally optimize this for an intentionally
+> > stupid benchmarking workload.  And that's not been disclosed anywhere.
+
+Why we're even debating this, like "IO500" is taboo or something, is
+what's stupid.  Not a surprise: handling misaligned IO is "hard".
+
+Public service announcement: Don't let Christoph taint others' work
+with trivialities and needlessly hostile strawman arguments.
+
+For would-be MM reviewers (and you too Jens), my previous reply to
+Christoph in this thread [0] delivered a lot of useful context that
+made this patchset instantly approachable and yet rather than
+acknowledge that fact he attacked a misaligned IO benchmark as
+irrelevant.
+[0]: https://lore.kernel.org/linux-nfs/autk-osSQ8l2LKz1@kernel.org/
+
+But anyone who is active in HPC filesystems development _knows_ that
+"47008 bytes" is IOR-hard (part of IO500's benchmark suite).  And yes,
+its aptly named as a "hard" workload to handle efficiently.
+
+I have named "47008 bytes" and "IOR-hard" and "IO500" _to_ Christoph
+and others multiple times before:
+11 Jun 2025 https://lore.kernel.org/linux-nfs/aEl1RhqybSCAzv3H@kernel.org/
+12 Jun 2025 https://lore.kernel.org/linux-nfs/aEs6gmTXzhzuDZOI@kernel.org/
+29 Oct 2025 https://lore.kernel.org/linux-nfs/aQJG2LIuui08Bx3H@kernel.org/
+
+Even in the context of this MM DONTCACHE patchset (now on v10)
+Christoph's "not been disclosed anywhere" doesn't hold. IOR-hard was
+named, with its 47008-byte record, on 22 October in a v7 reply he was
+copied on, two weeks before v10:
+https://lore.kernel.org/linux-nfs/atqCTLf42kkGZmSd@kernel.org/
+But it was only in replies, never in a cover letter or commit message.
+
+> > I guess everyone else was right and just ignored this bordline malicious
+> > submission.
+>
+> It's not fair to ascribe that kind of intent. I think it's fairly
+> well known that Mike and Jon are using IO500, and not mentioning it
+> in the documentation for this series was a simple oversight.
+
+Thanks Chuck.  If there is a need for v11 I will explicitly mention
+IO500's ior-hard benchmark's use of misaligned IO of 47008 bytes.
+
+Jeff Layton reviewed and provided his Reviewed-by.
+
+I suspect MM engineers have just been busy with the merge window.
+Hopefully Willy and/or Jens will give v10 the courtesy of fair review?
+
+But as I mentioned in [0] any misaligned IO has this issue:
+"The same happens with any record size that is not a multiple of the
+page size.  The cover letter also has 6000-byte records."
+
+> But IMO we do need a broader variety of benchmark results to
+> understand the impact of these changes. IO500 on big hardware is
+> an uncommon workload for NFSD.
+
+IO500's IOR-hard reflects worst case, I understand the reluctance to
+care about it BUT the reality is that not all IO is sized optimally.
+So if steps can be taken to avoid pathological inefficiency during
+worst case (misaligned IO) _without_ hurting the fast path (when IO is
+sized properly) then why not take them?
+
+This patchset doesn't hurt fast path at all.  But happy to take
+direction for benchmarks others would like to see results for.
+
+Mike
