@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793840040;
-	b=ZzJwbKI7NneI99wEMkAJoMJKbmtWiuwLyP8tc+Vf7Tei9vzVqENfD8vM2axiCgu1UUKX
-	 mxndbOw2MoAWAwuAsjqoPf9AO6xZrsIBgaZL3EZhBeaxopibCYmr6TPL0c9Q/zPXV41Gr
-	 Xu82B8mhqE4GociocDDfizpSyRzenHaRTPVFfy2G5kTa/d+ieBxV2MYde7cbOawyFcNs8
-	 f+B426g39kgPQ1oz/m9sJ0zJhtnEh3Rm3q7tEmWTZ09aMxrjt+UvS7W2A6HnfKp0+bIEH
-	 6QxEfhRZ89OijWdgdPSIZjqjHRFEn+PcL4VcCGZvLRsXNlrowYXdxsabvn5m8pMtMBA==
+	t=1793840020;
+	b=jjI+5Tgu9xw+r9mPnhtIT9b7BWB7793oBv5aFqTr/mharrvA5/+CutJtc+kiPdaFgNLh
+	 nRKAFRu6RvLv3zcXoQlPk9LySjGK1Z2ipdL0CZu5dAe7hUQApJur1bweuysMRRnd1qfJ7
+	 pi5/OKV+S8BHFy36sBKyZ7yFWdH4KoFP6pAFx78RkaUFHreJ/rZTy9UF/AB0ZsIL3S8Mh
+	 AAtsuelwNyX8p6fwr25cCz58ZtRVDM3Vnun2DvtotmJVwuXcJhR9MQvS+f2Dl27/qaFIp
+	 dRRYLtqo1Yys3ydQjHt/K2QHgyxsfAAogNDsMIXNfXr0iHtMYV3OLnCD5Gcm1RVgClg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793840040;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793840020;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=O7btpVFFsO0UhSIczKYQr8BCag3x0w5xnXNp05KaBgA=;
-	b=A/cU0FFDyvByKeq3k/QpjjY1uet6dCd7eRrtf4Zh3cRk5p/qbk/AX+CW6B1utVoaIhaC
-	 Sa+KpaQ1srWTneS8QJlAgfDsnnB+VmL4HPij3SjRukZ09CNONLoxIhDWK8+yXujZfrwuc
-	 oja7jYebHnwqM1niZFbemb3UcNBGeMsWLvtt7nQVsGvp+ghIR0uNZwD8RnDhHtrAyOfNv
-	 ZxwplYfEiywiaFvPX3UGq/UEKIkvT/0Xy7TILy5GvUOP3gCngLPl1oxwOFPTfEmMKXAxH
-	 aYbh3RX226IeyqNMCZloxuv0Q7PRuSw6I6AmI1RMNEdTtKnbBsRX4TWabK6Z2kEf9ug==
+	bh=lkqe98CyLBgQ52rBxXU0ciHtvnWKRuThjgKaQZqo1VU=;
+	b=Z3yYFB5u9dZjQvfNyCh/b6zL0sFWWF6eUywShEQBZvGF21zqiaxO1LzapvEC7OsDkL4R
+	 kh32qc3M8njTfQ3C0SM/3GZqiXtuxqZE9jv4h35ibvBoq3RXlwRssxt0PHstTZWW9uJoN
+	 5tuhf1fZz0TH4xb6FNjc1oJzNaaJUkijXNLDzZojw7ctvRYdcchN4c3JSDcHCXbUDBix3
+	 lsyJuPwg4SpgDnXvULgvrLhgR+bVkFbliMI2QvyuJedPX1J/vSfgxTdgcqhU38vJtAI6O
+	 SOrXGt9TAlDfxqVvDYV0AVT9t79SKWQgrO3m+XcdI2k5uHGUHDQFOWS7Cmu+FuMbtFA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Kq8MEoGz;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nlA2Yq6X;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id 93021606D83C;
-	Thu,  5 Nov 2026 00:53:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id BE1BD606EE9E;
+	Thu,  5 Nov 2026 00:53:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Kq8MEoGz
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id C179C1F00A15;
-	Thu,  5 Nov 2026 00:53:58 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nlA2Yq6X
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id E71531F00A16;
+	Thu,  5 Nov 2026 00:53:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793840039;
-	bh=O7btpVFFsO0UhSIczKYQr8BCag3x0w5xnXNp05KaBgA=;
+	s=k20260515; t=1793840019;
+	bh=lkqe98CyLBgQ52rBxXU0ciHtvnWKRuThjgKaQZqo1VU=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=Kq8MEoGzOfwWIlkOza7sZwaDHXW5Y2ZqWiDu34N1O5T4WK5gVaXIzutA+H11bMr9/
-	 vMJ5Ol5tgUhXbn4YcNqIs/b1yQXNU1V8rrnpFiCaDzBlXJt7tfL20VKOOM10kmzJ83
-	 6tMHT3FEUMvJmel4rn+20ALg8LcsznBc+fTTPjNYN/yyWlp6/BtXzUGqrLJ/nppokf
-	 qWhqqMn1N6AxPjC0KKnwdSeWWLesJKvfrEcwELg8mFHa2yEwqUllEzkeGkqcQeeghv
-	 EMaVwHx0A/ObB9Kjec2CVOiTfnl1ViuBoOZ0BMefGflSdxc2253jOoRxg/gyqHhPPG
-	 3N/TZiBNvL+YQ==
+	b=nlA2Yq6XEpov2xGMrjdcMIsZiCwjZIs39yI6qAqw7rUEg6UqdUaui6n6yWBUU/oRF
+	 HBrzB8zFN4Gyz54LQK0jDusMFmiCja2dFdsmdEUWp1Idd+DoL2h+DDR340cOk4SzkM
+	 9cod+lVUMm8MLtt9RCE2zLXOg0i/d4XpuyzjlM+UuxkJK/0rLuYaTV4u/0Jq962C0l
+	 HW3J7Znftph+RS8pLgXokMPSINbcLolU88ykNSGazpYMFg3Z0lqMDP80CcgZu0R+TH
+	 3trrUawXqwmilXk1YAFfLFg5WzpbmlkfRIYYVAeWZSzLOxkSQYT7YDX6+9YxooELYp
+	 IH0Oaue8SJzeQ==
 From: Jarkko Sakkinen <jarkko@kernel.org>
 To: David Howells <dhowells@redhat.com>
 Cc: Jarkko Sakkinen <jarkko@kernel.org>,
@@ -78,9 +78,9 @@ Cc: Jarkko Sakkinen <jarkko@kernel.org>,
 	Tom Talpey <tom@talpey.com>,
 	Trond Myklebust <trondmy@kernel.org>,
 	Vasily Gorbik <gor@linux.ibm.com>
-Subject: [RFC PATCH v3 10/11] KEYS: Remove key_type_dead
-Date: Thu,  5 Nov 2026 02:53:09 +0200
-Message-ID: <20261105005311.804098-11-jarkko@kernel.org>
+Subject: [RFC PATCH v3 05/11] s390/cert_store: Start tracking subsystem keys
+Date: Thu,  5 Nov 2026 02:53:04 +0200
+Message-ID: <20261105005311.804098-6-jarkko@kernel.org>
 X-Mailer: git-send-email 2.47.3
 In-Reply-To: <20261105005311.804098-1-jarkko@kernel.org>
 References: <20261105005311.804098-1-jarkko@kernel.org>
@@ -95,362 +95,291 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-unregister_key_type() no longer needs to retype live keys as keys and
-restrictions pin the module while they reference it.
+cert_store refreshes its keyring by unregistering and then registering
+again key_type_cert_store_key. Once keys pin to the kernel module of their
+key type, this is no longer necessary.
 
-Remove key_type_dead and associated code from the keyring GC.
+Register key_type_cert_store_key once during init before creating sysfs
+attributes, and track subsystem-created keys explicitly so that the refresh
+operationunlinks and invalidates previous entries directly.
 
 Signed-off-by: Jarkko Sakkinen <jarkko@kernel.org>
 ---
- security/keys/gc.c       | 136 ++-------------------------------------
- security/keys/internal.h |   4 --
- security/keys/key.c      |   9 +--
- security/keys/keyring.c  |  50 --------------
- 4 files changed, 9 insertions(+), 190 deletions(-)
+ arch/s390/kernel/cert_store.c | 161 ++++++++++++++--------------------
+ 1 file changed, 67 insertions(+), 94 deletions(-)
 
-diff --git a/security/keys/gc.c b/security/keys/gc.c
-index 94f01fb5050f..8e2c83ef29bc 100644
---- a/security/keys/gc.c
-+++ b/security/keys/gc.c
-@@ -40,22 +40,8 @@ static void key_gc_timer_func(struct timer_list *);
- static DEFINE_TIMER(key_gc_timer, key_gc_timer_func);
- 
- static time64_t key_gc_next_run = TIME64_MAX;
--static struct key_type *key_gc_dead_keytype;
--
- static unsigned long key_gc_flags;
- #define KEY_GC_KEY_EXPIRED	0	/* A key expired and needs unlinking */
--#define KEY_GC_REAP_KEYTYPE	1	/* A keytype is being unregistered */
--#define KEY_GC_REAPING_KEYTYPE	2	/* Cleared when keytype reaped */
--
--
--/*
-- * Any key whose type gets unregistered will be re-typed to this if it can't be
-- * immediately unlinked.
-- */
--struct key_type key_type_dead = {
--	.name = ".dead",
--};
--
- /*
-  * Schedule a garbage collection run.
-  * - time precision isn't particularly important
-@@ -67,7 +53,7 @@ void key_schedule_gc(time64_t gc_at)
- 
- 	kenter("%lld", gc_at - now);
- 
--	if (gc_at <= now || test_bit(KEY_GC_REAP_KEYTYPE, &key_gc_flags)) {
-+	if (gc_at <= now) {
- 		kdebug("IMMEDIATE");
- 		schedule_work(&key_gc_work);
- 	} else if (gc_at < key_gc_next_run) {
-@@ -111,36 +97,6 @@ static void key_gc_timer_func(struct timer_list *unused)
- 	key_schedule_gc_links();
+diff --git a/arch/s390/kernel/cert_store.c b/arch/s390/kernel/cert_store.c
+index 998f2da56175..ab1a78cdfd4c 100644
+--- a/arch/s390/kernel/cert_store.c
++++ b/arch/s390/kernel/cert_store.c
+@@ -17,6 +17,7 @@
+ #include <linux/key.h>
+ #include <linux/keyctl.h>
+ #include <linux/kobject.h>
++#include <linux/list.h>
+ #include <linux/module.h>
+ #include <linux/seq_file.h>
+ #include <linux/slab.h>
+@@ -296,6 +297,18 @@ static int check_certificate_valid(const struct vce *vce)
+ 	return check_certificate_hash(vce);
  }
  
--/*
-- * Reap keys of dead type.
-- *
-- * We use three flags to make sure we see three complete cycles of the garbage
-- * collector: the first to mark keys of that type as being dead, the second to
-- * collect dead links and the third to clean up the dead keys.  We have to be
-- * careful as there may already be a cycle in progress.
-- *
-- * The caller must be holding key_types_sem.
-- */
--void key_gc_keytype(struct key_type *ktype)
++struct cert_store_key {
++	struct list_head list;
++	struct key *key;
++};
++
++static DEFINE_MUTEX(cs_refresh_lock);
++/* Owned references, protected by cs_refresh_lock. */
++static LIST_HEAD(cs_keys);
++static struct key *active_cs_keyring;
++static struct key *cs_keyring_parent;
++
++/* Return an owned reference to the user session keyring. */
+ static struct key *get_user_session_keyring(void)
+ {
+ 	key_ref_t us_keyring_ref;
+@@ -305,118 +318,66 @@ static struct key *get_user_session_keyring(void)
+ 	if (IS_ERR(us_keyring_ref)) {
+ 		pr_dbf_msg("Couldn't get user session keyring: %ld",
+ 			   PTR_ERR(us_keyring_ref));
+-		return ERR_PTR(-ENOKEY);
++		return ERR_CAST(us_keyring_ref);
+ 	}
+-	key_ref_put(us_keyring_ref);
+ 	return key_ref_to_ptr(us_keyring_ref);
+ }
+ 
+-/* Invalidate all keys from cert_store keyring. */
+-static int invalidate_keyring_keys(struct key *keyring)
 -{
--	kenter("%s", ktype->name);
+-	unsigned long num_keys, key_index;
+-	size_t keyring_payload_len;
+-	key_serial_t *key_array;
+-	struct key *current_key;
+-	int rc;
 -
--	key_gc_dead_keytype = ktype;
--	set_bit(KEY_GC_REAPING_KEYTYPE, &key_gc_flags);
--	smp_mb();
--	set_bit(KEY_GC_REAP_KEYTYPE, &key_gc_flags);
+-	keyring_payload_len = key_type_keyring.read(keyring, NULL, 0);
+-	num_keys = keyring_payload_len / sizeof(key_serial_t);
+-	key_array = kzalloc_objs(key_serial_t, num_keys);
+-	if (!key_array)
+-		return -ENOMEM;
 -
--	kdebug("schedule");
--	schedule_work(&key_gc_work);
+-	rc = key_type_keyring.read(keyring, (char *)key_array, keyring_payload_len);
+-	if (rc != keyring_payload_len) {
+-		pr_dbf_msg("Couldn't read keyring payload");
+-		goto out;
+-	}
 -
--	kdebug("sleep");
--	wait_on_bit(&key_gc_flags, KEY_GC_REAPING_KEYTYPE,
--		    TASK_UNINTERRUPTIBLE);
+-	for (key_index = 0; key_index < num_keys; key_index++) {
+-		current_key = key_lookup(key_array[key_index]);
+-		pr_dbf_msg("Invalidating key %08x", current_key->serial);
 -
--	key_gc_dead_keytype = NULL;
--	kleave("");
+-		key_invalidate(current_key);
+-		key_put(current_key);
+-		rc = key_unlink(keyring, current_key);
+-		if (rc) {
+-			pr_dbf_msg("Couldn't unlink key %08x: %d", current_key->serial, rc);
+-			break;
+-		}
+-	}
+-out:
+-	kfree(key_array);
+-	return rc;
 -}
 -
- /*
-  * Garbage collect a list of unreferenced, detached keys
-  */
-@@ -199,30 +155,20 @@ static noinline void key_gc_unused_keys(struct list_head *keys)
- static void key_garbage_collector(struct work_struct *work)
- {
- 	static LIST_HEAD(graveyard);
--	static u8 gc_state;		/* Internal persistent state */
-+	u8 gc_state = 0;
- #define KEY_GC_REAP_AGAIN	0x01	/* - Need another cycle */
- #define KEY_GC_REAPING_LINKS	0x02	/* - We need to reap links */
--#define KEY_GC_REAPING_DEAD_1	0x10	/* - We need to mark dead keys */
--#define KEY_GC_REAPING_DEAD_2	0x20	/* - We need to reap dead key links */
--#define KEY_GC_REAPING_DEAD_3	0x40	/* - We need to reap dead keys */
--#define KEY_GC_FOUND_DEAD_KEY	0x80	/* - We found at least one dead key */
- 
- 	struct rb_node *cursor;
- 	struct key *key;
- 	time64_t new_timer, limit, expiry;
- 
--	kenter("[%lx,%x]", key_gc_flags, gc_state);
-+	kenter("[%lx]", key_gc_flags);
- 
- 	limit = ktime_get_real_seconds();
- 
--	/* Work out what we're going to be doing in this pass */
--	gc_state &= KEY_GC_REAPING_DEAD_1 | KEY_GC_REAPING_DEAD_2;
--	gc_state <<= 1;
- 	if (test_and_clear_bit(KEY_GC_KEY_EXPIRED, &key_gc_flags))
- 		gc_state |= KEY_GC_REAPING_LINKS;
--
--	if (test_and_clear_bit(KEY_GC_REAP_KEYTYPE, &key_gc_flags))
--		gc_state |= KEY_GC_REAPING_DEAD_1;
- 	kdebug("new pass %x", gc_state);
- 
- 	new_timer = TIME64_MAX;
-@@ -244,18 +190,6 @@ static void key_garbage_collector(struct work_struct *work)
- 			goto found_unreferenced_key;
- 		}
- 
--		if (unlikely(gc_state & KEY_GC_REAPING_DEAD_1)) {
--			if (key->type == key_gc_dead_keytype) {
--				gc_state |= KEY_GC_FOUND_DEAD_KEY;
--				set_bit(KEY_FLAG_DEAD, &key->flags);
--				key->perm = 0;
--				goto skip_dead_key;
--			} else if (key->type == &key_type_keyring &&
--				   key->restrict_link) {
--				goto found_restricted_keyring;
--			}
--		}
--
- 		expiry = key->expiry;
- 		if (expiry != TIME64_MAX) {
- 			if (!(key->type->flags & KEY_TYPE_INSTANT_REAP))
-@@ -267,21 +201,10 @@ static void key_garbage_collector(struct work_struct *work)
- 			}
- 		}
- 
--		if (unlikely(gc_state & KEY_GC_REAPING_DEAD_2))
--			if (key->type == key_gc_dead_keytype)
--				gc_state |= KEY_GC_FOUND_DEAD_KEY;
--
--		if ((gc_state & KEY_GC_REAPING_LINKS) ||
--		    unlikely(gc_state & KEY_GC_REAPING_DEAD_2)) {
--			if (key->type == &key_type_keyring)
--				goto found_keyring;
--		}
--
--		if (unlikely(gc_state & KEY_GC_REAPING_DEAD_3))
--			if (key->type == key_gc_dead_keytype)
--				goto destroy_dead_key;
-+		if ((gc_state & KEY_GC_REAPING_LINKS) &&
-+		    key->type == &key_type_keyring)
-+			goto found_keyring;
- 
--	skip_dead_key:
- 		if (spin_is_contended(&key_serial_lock) || need_resched())
- 			goto contended;
- 	}
-@@ -307,8 +230,7 @@ static void key_garbage_collector(struct work_struct *work)
- 		key_schedule_gc(new_timer);
- 	}
- 
--	if (unlikely(gc_state & KEY_GC_REAPING_DEAD_2) ||
--	    !list_empty(&graveyard)) {
-+	if (!list_empty(&graveyard)) {
- 		/* Make sure that all pending keyring payload destructions are
- 		 * fulfilled and that people aren't now looking at dead or
- 		 * dying keys that they don't have a reference upon or a link
-@@ -316,32 +238,10 @@ static void key_garbage_collector(struct work_struct *work)
- 		 */
- 		kdebug("gc sync");
- 		synchronize_rcu();
--	}
--
--	if (!list_empty(&graveyard)) {
- 		kdebug("gc keys");
- 		key_gc_unused_keys(&graveyard);
- 	}
- 
--	if (unlikely(gc_state & (KEY_GC_REAPING_DEAD_1 |
--				 KEY_GC_REAPING_DEAD_2))) {
--		if (!(gc_state & KEY_GC_FOUND_DEAD_KEY)) {
--			/* No remaining dead keys: short circuit the remaining
--			 * keytype reap cycles.
--			 */
--			kdebug("dead short");
--			gc_state &= ~(KEY_GC_REAPING_DEAD_1 | KEY_GC_REAPING_DEAD_2);
--			gc_state |= KEY_GC_REAPING_DEAD_3;
--		} else {
--			gc_state |= KEY_GC_REAP_AGAIN;
--		}
--	}
--
--	if (unlikely(gc_state & KEY_GC_REAPING_DEAD_3)) {
--		kdebug("dead wake");
--		clear_and_wake_up_bit(KEY_GC_REAPING_KEYTYPE, &key_gc_flags);
--	}
--
- 	if (gc_state & KEY_GC_REAP_AGAIN)
- 		schedule_work(&key_gc_work);
- 	kleave(" [end %x]", gc_state);
-@@ -359,14 +259,6 @@ static void key_garbage_collector(struct work_struct *work)
- 	gc_state |= KEY_GC_REAP_AGAIN;
- 	goto maybe_resched;
- 
--	/* We found a restricted keyring and need to update the restriction if
--	 * it is associated with the dead key type.
--	 */
--found_restricted_keyring:
--	spin_unlock(&key_serial_lock);
--	keyring_restriction_gc(key, key_gc_dead_keytype);
--	goto maybe_resched;
--
- 	/* We found a keyring and we need to check the payload for links to
- 	 * dead or expired keys.  We don't flag another reap immediately as we
- 	 * have to wait for the old payload to be destroyed by RCU before we
-@@ -376,18 +268,4 @@ static void key_garbage_collector(struct work_struct *work)
- 	spin_unlock(&key_serial_lock);
- 	keyring_gc(key, limit);
- 	goto maybe_resched;
--
--	/* We found a dead key that is still referenced.  Reset its type and
--	 * destroy its payload with its semaphore held.
--	 */
--destroy_dead_key:
--	spin_unlock(&key_serial_lock);
--	kdebug("destroy key %d", key->serial);
--	down_write(&key->sem);
--	key->type = &key_type_dead;
--	if (key_gc_dead_keytype->destroy)
--		key_gc_dead_keytype->destroy(key);
--	memset(&key->payload, KEY_DESTROY, sizeof(key->payload));
--	up_write(&key->sem);
--	goto maybe_resched;
- }
-diff --git a/security/keys/internal.h b/security/keys/internal.h
-index b7b622bc36a1..005d609ae2df 100644
---- a/security/keys/internal.h
-+++ b/security/keys/internal.h
-@@ -38,7 +38,6 @@ struct iovec;
- 	no_printk(KERN_DEBUG FMT"\n", ##__VA_ARGS__)
- #endif
- 
--extern struct key_type key_type_dead;
- extern struct key_type key_type_user;
- extern struct key_type key_type_logon;
- 
-@@ -165,12 +164,9 @@ extern void key_change_session_keyring(struct callback_head *twork);
- extern struct work_struct key_gc_work;
- extern unsigned key_gc_delay;
- extern void keyring_gc(struct key *keyring, time64_t limit);
--extern void keyring_restriction_gc(struct key *keyring,
--				   struct key_type *dead_type);
- void key_set_expiry(struct key *key, time64_t expiry);
- extern void key_schedule_gc(time64_t gc_at);
- extern void key_schedule_gc_links(void);
--extern void key_gc_keytype(struct key_type *ktype);
- 
- extern int key_task_permission(const key_ref_t key_ref,
- 			       const struct cred *cred,
-diff --git a/security/keys/key.c b/security/keys/key.c
-index 0b2a03c511e5..df6af8066212 100644
---- a/security/keys/key.c
-+++ b/security/keys/key.c
-@@ -1294,18 +1294,14 @@ EXPORT_SYMBOL(__register_key_type);
-  * unregister_key_type - Unregister a type of key.
-  * @ktype: The key type.
-  *
-- * Unregister a key type and mark all the extant keys of this type as dead.
-- * Those keys of this type are then destroyed to get rid of their payloads and
-- * they and their links will be garbage collected as soon as possible.
-+ * Unregister a key type.
-  */
- void unregister_key_type(struct key_type *ktype)
- {
- 	down_write(&key_types_sem);
- 	list_del_init(&ktype->link);
--	downgrade_write(&key_types_sem);
--	key_gc_keytype(ktype);
- 	pr_notice("Key type %s unregistered\n", ktype->name);
--	up_read(&key_types_sem);
-+	up_write(&key_types_sem);
- }
- EXPORT_SYMBOL(unregister_key_type);
- 
-@@ -1320,7 +1316,6 @@ void __init key_init(void)
- 
- 	/* add the special key types */
- 	list_add_tail(&key_type_keyring.link, &key_types_list);
--	list_add_tail(&key_type_dead.link, &key_types_list);
- 	list_add_tail(&key_type_user.link, &key_types_list);
- 	list_add_tail(&key_type_logon.link, &key_types_list);
- 
-diff --git a/security/keys/keyring.c b/security/keys/keyring.c
-index f90ab46ecfab..b51abf698aa9 100644
---- a/security/keys/keyring.c
-+++ b/security/keys/keyring.c
-@@ -1793,53 +1793,3 @@ void keyring_gc(struct key *keyring, time64_t limit)
- 	up_write(&keyring->sem);
- 	kleave(" [gc]");
- }
--
--/*
-- * Garbage collect restriction pointers from a keyring.
-- *
-- * Keyring restrictions are associated with a key type, and must be cleaned
-- * up if the key type is unregistered. The restriction is altered to always
-- * reject additional keys so a keyring cannot be opened up by unregistering
-- * a key type.
-- *
-- * Not called with any keyring locks held. The keyring's key struct will not
-- * be deallocated under us as only our caller may deallocate it.
-- *
-- * The caller is required to hold key_types_sem and dead_type->sem. This is
-- * fulfilled by key_gc_keytype() holding the locks on behalf of
-- * key_garbage_collector(), which it invokes on a workqueue.
-- */
--void keyring_restriction_gc(struct key *keyring, struct key_type *dead_type)
+-static struct key *find_cs_keyring(void)
 -{
--	struct key_restriction *keyres;
+-	key_ref_t cs_keyring_ref;
+-	struct key *cs_keyring;
 -
--	kenter("%x{%s}", keyring->serial, keyring->description ?: "");
+-	cs_keyring_ref = keyring_search(make_key_ref(get_user_session_keyring(), true),
+-					&key_type_keyring, CERT_STORE_KEYRING_NAME,
+-					false);
+-	if (!IS_ERR(cs_keyring_ref)) {
+-		cs_keyring = key_ref_to_ptr(cs_keyring_ref);
+-		key_ref_put(cs_keyring_ref);
+-		goto found;
+-	}
+-	/* Search default locations: thread, process, session keyrings */
+-	cs_keyring = request_key(&key_type_keyring, CERT_STORE_KEYRING_NAME, NULL);
+-	if (IS_ERR(cs_keyring))
+-		return NULL;
+-	key_put(cs_keyring);
+-found:
+-	return cs_keyring;
+-}
 -
+ static void cleanup_cs_keys(void)
+ {
+-	struct key *cs_keyring;
++	struct cert_store_key *entry, *tmp;
++	int rc;
+ 
+-	cs_keyring = find_cs_keyring();
+-	if (!cs_keyring)
++	if (!active_cs_keyring)
+ 		return;
+ 
+-	pr_dbf_msg("Found cert_store keyring. Purging...");
 -	/*
--	 * keyring->restrict_link is only assigned at key allocation time
--	 * or with the key type locked, so the only values that could be
--	 * concurrently assigned to keyring->restrict_link are for key
--	 * types other than dead_type. Given this, it's ok to check
--	 * the key type before acquiring keyring->sem.
+-	 * Remove cert_store_key_type in case invalidation
+-	 * of old cert_store keys failed (= severe error).
 -	 */
--	if (!dead_type || !keyring->restrict_link ||
--	    keyring->restrict_link->keytype != dead_type) {
--		kleave(" [no restriction gc]");
--		return;
--	}
+-	if (invalidate_keyring_keys(cs_keyring))
+-		unregister_key_type(&key_type_cert_store_key);
++	/* Invalidate even certificates unlinked or linked into other keyrings. */
++	list_for_each_entry_safe(entry, tmp, &cs_keys, list) {
++		key_invalidate(entry->key);
++		key_put(entry->key);
++		list_del(&entry->list);
++		kfree(entry);
++	}
+ 
+-	keyring_clear(cs_keyring);
+-	key_invalidate(cs_keyring);
+-	key_put(cs_keyring);
+-	key_unlink(get_user_session_keyring(), cs_keyring);
++	rc = keyring_clear(active_cs_keyring);
++	if (rc)
++		pr_dbf_msg("Couldn't clear cert_store keyring: %d", rc);
++	key_invalidate(active_cs_keyring);
++	rc = key_unlink(cs_keyring_parent, active_cs_keyring);
++	if (rc)
++		pr_dbf_msg("Couldn't unlink cert_store keyring: %d", rc);
++	key_put(active_cs_keyring);
++	key_put(cs_keyring_parent);
++	active_cs_keyring = NULL;
++	cs_keyring_parent = NULL;
+ }
+ 
++/* Return a borrowed reference; cleanup_cs_keys() owns the keyring. */
+ static struct key *create_cs_keyring(void)
+ {
+-	static struct key *cs_keyring;
++	struct key *cs_keyring, *parent;
+ 
+ 	/* Cleanup previous cs_keyring and all associated keys if any. */
+ 	cleanup_cs_keys();
++	parent = get_user_session_keyring();
++	if (IS_ERR(parent))
++		return parent;
++
+ 	cs_keyring = keyring_alloc(CERT_STORE_KEYRING_NAME, GLOBAL_ROOT_UID,
+ 				   GLOBAL_ROOT_GID, current_cred(),
+ 				   (KEY_POS_ALL & ~KEY_POS_SETATTR) | KEY_USR_VIEW | KEY_USR_READ,
+ 				   KEY_ALLOC_NOT_IN_QUOTA | KEY_ALLOC_SET_KEEP,
+-				   NULL, get_user_session_keyring());
++				   NULL, parent);
+ 	if (IS_ERR(cs_keyring)) {
+ 		pr_dbf_msg("Can't allocate cert_store keyring");
+-		return NULL;
++		key_put(parent);
++		return cs_keyring;
+ 	}
+ 
++	active_cs_keyring = cs_keyring;
++	cs_keyring_parent = parent;
+ 	pr_dbf_msg("Successfully allocated cert_store keyring: %08x", cs_keyring->serial);
+ 
+-	/*
+-	 * In case a previous clean-up ran into an
+-	 * error and unregistered key type.
+-	 */
+-	register_key_type(&key_type_cert_store_key);
 -
--	/* Lock the keyring to ensure that a link is not in progress */
--	down_write(&keyring->sem);
--
--	keyres = keyring->restrict_link;
--
--	keyres->check = restrict_link_reject;
--
--	key_put(keyres->key);
--	keyres->key = NULL;
--	keyres->keytype = NULL;
--
--	up_write(&keyring->sem);
--
--	kleave(" [restriction gc]");
--}
+ 	return cs_keyring;
+ }
+ 
+@@ -454,6 +415,7 @@ static char *get_key_description(struct vcssb *vcssb, const struct vce *vce)
+ static int create_key_from_vce(struct vcssb *vcssb, struct vce *vce,
+ 			       struct key *keyring)
+ {
++	struct cert_store_key *entry;
+ 	key_ref_t newkey;
+ 	char *desc;
+ 	int rc;
+@@ -462,6 +424,13 @@ static int create_key_from_vce(struct vcssb *vcssb, struct vce *vce,
+ 	if (!desc)
+ 		return -ENOMEM;
+ 
++	/* Reserve cleanup tracking before the key can be linked elsewhere. */
++	entry = kmalloc_obj(*entry);
++	if (!entry) {
++		rc = -ENOMEM;
++		goto out;
++	}
++
+ 	newkey = key_create_or_update(
+ 		make_key_ref(keyring, true), CERT_STORE_KEY_TYPE_NAME,
+ 		desc, (u8 *)vce + vce->vce_hdr.vc_offset,
+@@ -473,10 +442,12 @@ static int create_key_from_vce(struct vcssb *vcssb, struct vce *vce,
+ 	if (rc) {
+ 		pr_dbf_msg("Couldn't create a key from Certificate Entry (%d)", rc);
+ 		rc = -ENOKEY;
++		kfree(entry);
+ 		goto out;
+ 	}
+ 
+-	key_ref_put(newkey);
++	entry->key = key_ref_to_ptr(newkey);
++	list_add_tail(&entry->list, &cs_keys);
+ out:
+ 	kfree(desc);
+ 	return rc;
+@@ -704,19 +675,18 @@ static int fill_cs_keyring(void)
+ 	if (rc)
+ 		goto cleanup_keys;
+ 
+-	rc = -ENOMEM;
+ 	cs_keyring = create_cs_keyring();
+-	if (!cs_keyring)
++	if (IS_ERR(cs_keyring)) {
++		rc = PTR_ERR(cs_keyring);
+ 		goto cleanup_keys;
++	}
+ 
+ 	rc = add_certificates_to_keyring(vcssb, cs_keyring);
+ 	if (rc)
+-		goto cleanup_cs_keyring;
++		goto cleanup_keys;
+ 
+ 	goto out;
+ 
+-cleanup_cs_keyring:
+-	key_put(cs_keyring);
+ cleanup_keys:
+ 	cleanup_cs_keys();
+ out:
+@@ -724,7 +694,6 @@ static int fill_cs_keyring(void)
+ 	return rc;
+ }
+ 
+-static DEFINE_MUTEX(cs_refresh_lock);
+ static int cs_status_val = -1;
+ 
+ static ssize_t cs_status_show(struct kobject *kobj,
+@@ -794,14 +763,18 @@ static int __init cert_store_init(void)
+ 	if (!cert_store_kobj)
+ 		goto cleanup_dbf;
+ 
+-	rc = sysfs_create_files(cert_store_kobj, cert_store_attrs);
++	rc = register_key_type(&key_type_cert_store_key);
+ 	if (rc)
+ 		goto cleanup_kobj;
+ 
+-	register_key_type(&key_type_cert_store_key);
++	rc = sysfs_create_files(cert_store_kobj, cert_store_attrs);
++	if (rc)
++		goto cleanup_key_type;
+ 
+ 	return rc;
+ 
++cleanup_key_type:
++	unregister_key_type(&key_type_cert_store_key);
+ cleanup_kobj:
+ 	kobject_put(cert_store_kobj);
+ cleanup_dbf:
 -- 
 2.47.3
 
