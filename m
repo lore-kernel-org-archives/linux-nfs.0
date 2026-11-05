@@ -1,64 +1,93 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.52
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793918975;
-	b=PALXASzSuk8hH9CybqKAU7YJ8a4xJ70okWUvvGD5+4jJ8MvwbIurubKJ1ivyVrYeCH7B
-	 de/szgMdB2sXXaJXVAMS9zmFYT9cNbsZZMNP6cHnnmd8vriUz/QXpRBoWwNs7DBM3lUms
-	 w/QNfhG6dNN5WOY6dJJA9W5RgdHEc6WNbXliSOqLiCuqnQSaYZpZAE7WSgqufTKQowvUD
-	 IrDX+dRAHO/aO6ox1MNJNinQkFVZezJmhmqQjFxER/VFAAdi7W/Dwsfh8vvme6mTqvqK9
-	 K01+5HfCGwFCtSMg1Ww/dycCwOpq4m5HcrQL1VS/M4acFFlT9EyaMLxhcX7Y4qhNu4Q==
+	t=1793920922;
+	b=24Ll2u8ZHZYfX2odBtDFwW5QiVFIeY12MQS9Dqto2hw2P4e2jLHHBQ6ax2c/iHQQPCCz
+	 avKpxhOpjwonPu3F+r9euDeK/HdWGBfnFSz+zCWV8cckJ8ReI4FxPgW3MsZrQp9te5nZf
+	 xIFpcynj9cxBK5vvrp3xX17fSi5yiitoaGYYb5Lt9/FRodY/yyg1IKgPpffEFQthYGTqJ
+	 uUEXXu55C8yAix6lTeyTE2ZgzxAQrr5ZZoS1BZASfn/qzHUWCYyZVKnAIs+WEqnrqYis/
+	 xl+znbjsnXN02eXgg8Hsh2VFZ88fNZ4UVKOQYZ5le5X2Ik4RHW8wYVsDTx4jEwa6aJQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793918975;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=S+nYe4I8JfGZ8iq7Bvfptw+3SVmUNoB+MIDzTrsXpZc=;
-	b=V9ybLqb6ZpdR0L3Ud6ifMldFekOW+f3YbHx/q98xpR9lVr7R0TekvqdR6LLdppw8nh8a
-	 LNu+xdNM2DTw8LijH3IiN42QyomLOXzkqjzm6zAl9WtkKGekOwjIFxvlknl70dVS11rM/
-	 WcvzL0nK1VDwcU6/5uutXltJD/IGfSDlJXrSAs95BxjWpP1I6+G9U0uXCgFC96j39q/WW
-	 C6Gr+IuhDlEmM1UHzYJMwvoudDCHb9lTGRph+MRYG/Rk0+0P6vgXsb7oazKNQ5ffYSWy/
-	 RszBDelaQA2Rx6av5qEoPeJl89QaMVUXaWQtf1o5r1bF8fxB5IebjKgYDBNlTx64/oQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793920922;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:
+	 X-Google-Original-From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 MIME-Version:Content-Transfer-Encoding;
+	bh=y1zQ+4cFK5JvWjYX6XtFePLCtfXcVQN4627X0niiLQc=;
+	b=kHfq6J9sWxlKOPeybZYC9Nb+vtpdBH3HmpH4y6H892kHfjpQ0zpM4kkLlUqjwxiuD9SD
+	 cY9+GgnOBStp2Amp3pKA8QXNULJtfGaoybpNNBPQrETQ4yZFMVHNLVISqTIVmxohGCJKW
+	 vuoSucdJrjS/NJaRPVdAcyB87zNE9x2PSmryxtbpXGx71kO7TU7XE+ybKiO4P/cNH1NT9
+	 y+VR/k9x/Sb8rzwvsqS0MooYe8wO39UIyj0K6xkwUGBDGw4XG71zi+E8sQjRJlDPw6335
+	 5RZ9zvDtVCvTDrTsapYpuKrHnvM6aDLm641a/708OFMN+vLRACJBn9hryiIuvm7sO6w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TgHZ7LH2;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=cBYN+L7L;
+	arc=none smtp.remote-ip=209.85.161.52
+Received: from mail-oo1-f52.google.com (mail-oo1-f52.google.com [209.85.161.52])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6887B606A326;
-	Thu,  5 Nov 2026 22:49:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 00CEB606A31B
+	for <linux-nfs@vger.kernel.org>; Thu,  5 Nov 2026 23:22:01 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 00CEB606A31B
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TgHZ7LH2
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D243F1F0089F;
-	Thu,  5 Nov 2026 22:49:34 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793918975;
-	bh=S+nYe4I8JfGZ8iq7Bvfptw+3SVmUNoB+MIDzTrsXpZc=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=TgHZ7LH2yAs2qyGTAyNNtl8frCxxpwAJZEf6PU2DcWnxnWy8Gwr2rY4WWscjskyEm
-	 piib1sPyrp16ZX0SGTmaIsDb7pvL5paKi/uBo8avrLOrUUi1aOj/A7Z5bjfMQBMSjN
-	 j4Eq9xsHFuM2pB920goI6zViijasUSIFu7KXGqFRJvCPeVMdAzEHY6fyhJDfuKuq+E
-	 J58K9DIZLC3V7zC732nScfU/zhzvvw1oMRaZTKz8cZFFqEXg9rdDKXASjqjxeSqrtZ
-	 ELHH8o3eXZWSf+wF68UCbIny6kkYndjaeDR7pwKDeuguD1MRYu20E2srlmlgMetBGp
-	 cv4tnszSs4FrQ==
-Date: Thu, 5 Nov 2026 17:49:33 -0500
-From: Mike Snitzer <snitzer@kernel.org>
-To: Chuck Lever <cel@kernel.org>
-Cc: Christoph Hellwig <hch@lst.de>,
-	"Matthew Wilcox (Oracle)" <willy@infradead.org>, linux-mm@kvack.org,
-	linux-fsdevel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>,
-	linux-nfs@vger.kernel.org, NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
-	Jens Axboe <axboe@kernel.dk>, Jonathan Corbet <corbet@lwn.net>,
-	Jonathan Flynn <jonathan.flynn@hammerspace.com>
-Subject: Re: [PATCH v10 7/7] NFSD: drop a shared boundary page only once both
- WRITEs have written it
-Message-ID: <au0H_TZCp1Snf_5U@kernel.org>
-References: <20261103211754.35352-1-snitzer@kernel.org>
- <20261103211754.35352-8-snitzer@kernel.org>
- <20261104091543.GA31130@lst.de>
- <autk-osSQ8l2LKz1@kernel.org>
- <20261105075935.GA18069@lst.de>
- <29851456-2e7c-48a7-bf00-11a1f1a35024@app.fastmail.com>
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=cBYN+L7L
+Received: by mail-oo1-f52.google.com with SMTP id 006d021491bc7-6f5a0893610so82491eaf.1
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Nov 2026 15:22:01 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1793920921; x=1794525721; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=y1zQ+4cFK5JvWjYX6XtFePLCtfXcVQN4627X0niiLQc=;
+        b=cBYN+L7L3AoQKYdguR132jfd1Rg5lW9v2Wf+PDjVH0JBWnWNGL3jgdfLDPl6RlnU/f
+         oFy6T/cYonMaBN8PXqka2zsJ6qNTD1/YEJdR1VAtmPvx6rtPHD2cj+Y32y4U92ZtrutU
+         u+O8JAcbX1JpnY4ANt44UG19pDhXVHtCW/su6MDogTLP4Y0QKKZSEnVA3sg9Y13twUiI
+         rR2QVY6eaSBLcuTShD1bNHX/BSaTB6NZsbQaxSDhE05vD/naG97QWmvmCQ8+HA/VnNhr
+         ueya0twYQVvmr/dy9eaB6nUL9Z9emuGxeiB8iIQcEx4RWke4DREQ/OVoDBfSobx39ZgU
+         x+AQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793920921; x=1794525721;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=y1zQ+4cFK5JvWjYX6XtFePLCtfXcVQN4627X0niiLQc=;
+        b=l23Apjl4QRqjfz1/Eq01bVCob87ho4j38ls2+v3huoCGcc3mFZlrtZQZtnO5Zl7haU
+         joAf7tfH+/MyTK5eIIGIbWFhLzMYyZomiLEmV93w07XBZuuvMjylX+EJSomm4NgaA3fu
+         3ofE9DZ6vmkbkP7OdNFbwuCBmqyKfK1Lc2ZKokrPQOBuVlbfnigOxDfAuYQk1bw8vgFs
+         /ek26absR/9wpEyEOZPs373SwnQOz9svqJWcLXBGhSWFGVd71wVFq/ES8VAaP/d5wNjR
+         KQtUGw/rngoYQsmRv4UfpBUpcyem4DGI51DqGROk0JN/Tv8y/F7DFU7CjNHMZULDk3Gz
+         8s8w==
+X-Gm-Message-State: APuU4Z/C/fUYHi6O4J8ozsNXEGx1IHM2x7ZwVMQ4zSC6vWYB8HD+cRlo
+	q1dUu+P2xABvAEx5Q5iV9x2caVwP6jb504sIAtBStAnIcAajxFgQDmaGSLvojg==
+X-Gm-Gg: AYBFou2SN+43R/oz0RFqlBKHw4LyzC82eCQCHVIxFUTGu9v0mbqDX9Cu7rjWpwT9QBV
+	2s8d38YuyTluM65iZK2hNv8NImAmgsCIlzYsPO97cISfOb+TbY6YWTarbv/mUeMw7DRqQpUVBiY
+	mCszRc2NxXqafQ2h9ytHB0/0POyLlePUYRI4JdPEYQnbK2bdu8+LovCOd0RYmlxrM/mRhc+eFCH
+	PQd8808imUgIFtcWeGhYR/eSvpyJaWWRjribXi9dxQxjMFrVujLG4kw6KU+Q7G0C8xXdwmf2EWy
+	FTfCmd8xC5j4z+MgrOyseA8Lf3Ii0mMJPICq/r78IajXZdnRf9O7WOnXpxsoapChkKDBejNcKaB
+	fDa5rGTYStS0EMGdMiXn9eptqfERjezi9/NOZlKi0CfmsYSgrAlzIVWsLCVuby76hZNrVJjdIiD
+	Y5VQFGujm1BRcWOkDir1kLIP39WN6bnSZtozFXRrMx9kkCun+5WrFqsEj2IUnWCIE1yz0CPc8L+
+	0YpLtc4Ltq+pdJTu9tK6oV7B7Sxxv8Lz4QrKbd79mIzq5sWky8Hb+dEIyZWPvL4XPn4ULyFt6XT
+	YHFO4cXiHhl5qV5ZW0qKz8z/DurWi4gmssBK
+X-Received: by 2002:a05:6820:7612:b0:713:e433:f41a with SMTP id 006d021491bc7-716e7912e15mr624216eaf.25.1793920920825;
+        Thu, 05 Nov 2026 15:22:00 -0800 (PST)
+Received: from netapp30 ([192.63.62.92])
+        by smtp.gmail.com with ESMTPSA id 006d021491bc7-716ea16753csm478202eaf.13.2026.11.05.15.21.59
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 05 Nov 2026 15:22:00 -0800 (PST)
+From: Jorge Mora <jmora1300@gmail.com>
+X-Google-Original-From: Jorge Mora <mora@netapp.com>
+To: linux-nfs@vger.kernel.org,
+	cel@kernel.org
+Cc: trondmy@kernel.org,
+	anna@kernel.org,
+	Rakesh.Bhargava@netapp.com,
+	Mohit.Kumar@netapp.com
+Subject: [PATCH v2] xprtrdma: fix race between frwr_unmap_sync() and transport disconnect
+Date: Thu,  5 Nov 2026 16:21:37 -0700
+Message-ID: <20261105232137.4706-1-mora@netapp.com>
+X-Mailer: git-send-email 2.52.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -68,85 +97,221 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <29851456-2e7c-48a7-bf00-11a1f1a35024@app.fastmail.com>
+Content-Transfer-Encoding: 8bit
 
-On Thu, Nov 05, 2026 at 08:33:34AM -0500, Chuck Lever wrote:
-> 
-> 
-> On Thu, Nov 5, 2026, at 2:59 AM, Christoph Hellwig wrote:
-> > On Wed, Nov 04, 2026 at 12:01:46PM -0500, Mike Snitzer wrote:
-> >> It is the transfer size of IO500's ior-hard: every rank writes
-> >> 47008-byte records, interleaved with the other ranks, into one shared
-> >> file, with O_DIRECT.  It is meant as a hard case, and it is the
-> >> workload that showed the problem on our servers.  The same happens
-> >> with any record size that is not a multiple of the page size.  The
-> >> cover letter also has 6000-byte records.
-> >
-> > So based on a bit googling your totally optimize this for an intentionally
-> > stupid benchmarking workload.  And that's not been disclosed anywhere.
+From: Rakesh Bhargava <Rakesh.Bhargava@netapp.com>
 
-Why we're even debating this, like "IO500" is taboo or something, is
-what's stupid.  Not a surprise: handling misaligned IO is "hard".
+frwr_unmap_sync() is called from xprt_rdma_free() via ->buf_free, which
+xprt_release() invokes without holding the transport send lock and
+without XPRT_LOCKED. rpcrdma_xprt_disconnect() runs from xprt_autoclose()
+under XPRT_LOCKED and, after draining the QP, resets every rpcrdma_req
+(rpcrdma_reqs_reset) and destroys every MR (rpcrdma_mrs_destroy). Nothing
+orders the two, so both can walk and list_del() the same req's
+rl_registered list and the same MRs. Observed on RHEL 10.2
+(6.12.0-211.7.3.el10_2) NFS/RDMA FlexFiles clients as:
 
-Public service announcement: Don't let Christoph taint others' work
-with trivialities and needlessly hostile strawman arguments.
+  kernel BUG at lib/list_debug.c:65!
+  frwr_unmap_sync+0x75 [rpcrdma]
+  xprt_release+... [sunrpc]
 
-For would-be MM reviewers (and you too Jens), my previous reply to
-Christoph in this thread [0] delivered a lot of useful context that
-made this patchset instantly approachable and yet rather than
-acknowledge that fact he attacked a misaligned IO benchmark as
-irrelevant.
-[0]: https://lore.kernel.org/linux-nfs/autk-osSQ8l2LKz1@kernel.org/
+In a vmcore, the panicking task was in frwr_unmap_sync() for r_xprt X
+while another kworker was in xprt_autoclose -> rpcrdma_xprt_disconnect
+-> rpcrdma_reqs_reset -> frwr_mr_release for the same r_xprt X. The
+window was large because 256 transports were being torn down at once,
+each blocked in mlx5_core_destroy_mkey waiting on firmware.
 
-But anyone who is active in HPC filesystems development _knows_ that
-"47008 bytes" is IOR-hard (part of IO500's benchmark suite).  And yes,
-its aptly named as a "hard" workload to handle efficiently.
+Fix it by making frwr_unmap_sync() and disconnect cooperate through
+rb_lock:
 
-I have named "47008 bytes" and "IOR-hard" and "IO500" _to_ Christoph
-and others multiple times before:
-11 Jun 2025 https://lore.kernel.org/linux-nfs/aEl1RhqybSCAzv3H@kernel.org/
-12 Jun 2025 https://lore.kernel.org/linux-nfs/aEs6gmTXzhzuDZOI@kernel.org/
-29 Oct 2025 https://lore.kernel.org/linux-nfs/aQJG2LIuui08Bx3H@kernel.org/
+ - frwr_unmap_sync() reads rx_ep, checks rb_closing and that
+   rl_registered is non-empty, and claims all of the req's MRs under
+   rb_lock. It bumps rb_unmap_users while it still references the MRs
+   and the ep, and drops it (waking rb_unmap_wq) when done.
+ - If rb_closing is set, frwr_unmap_sync() returns and leaves the MRs on
+   rl_registered. rb_closing is only set after rdma_disconnect(), when
+   the QP is in the error state and the peer cannot reach the MRs;
+   rpcrdma_reqs_reset() then releases them.
+ - rpcrdma_xprt_disconnect() sets rb_closing after rdma_disconnect(),
+   waits for rb_unmap_users to reach zero after draining the QP and
+   before releasing reps, reqs and MRs, and clears rx_ep and rb_closing
+   together under rb_lock after dropping the ep reference.
 
-Even in the context of this MM DONTCACHE patchset (now on v10)
-Christoph's "not been disclosed anywhere" doesn't hold. IOR-hard was
-named, with its 47008-byte record, on 22 October in a v7 reply he was
-copied on, two weeks before v10:
-https://lore.kernel.org/linux-nfs/atqCTLf42kkGZmSd@kernel.org/
-But it was only in replies, never in a cover letter or commit message.
+Signed-off-by: Rakesh Bhargava <Rakesh.Bhargava@netapp.com>
+Signed-off-by: Jorge Mora <mora@netapp.com>
+---
+ net/sunrpc/xprtrdma/frwr_ops.c  | 43 +++++++++++++++++++++++++++------
+ net/sunrpc/xprtrdma/verbs.c     | 31 ++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/xprt_rdma.h | 14 +++++++++++
+ 3 files changed, 81 insertions(+), 7 deletions(-)
 
-> > I guess everyone else was right and just ignored this bordline malicious
-> > submission.
->
-> It's not fair to ascribe that kind of intent. I think it's fairly
-> well known that Mike and Jon are using IO500, and not mentioning it
-> in the documentation for this series was a simple oversight.
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index e83cef19e656..03e0e6c475b1 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -567,12 +567,33 @@ static void frwr_wc_localinv_wake(struct ib_cq *cq, struct ib_wc *wc)
+  */
+ void frwr_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ {
++	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+ 	struct ib_send_wr *first, **prev, *last;
+-	struct rpcrdma_ep *ep = r_xprt->rx_ep;
+ 	const struct ib_send_wr *bad_wr;
++	struct rpcrdma_ep *ep;
+ 	struct rpcrdma_mr *mr;
+ 	int rc;
+ 
++	/* This function is invoked via ->buf_free, which does not
++	 * hold the transport send lock. It therefore races with
++	 * rpcrdma_xprt_disconnect(), which resets every req and
++	 * destroys every MR.
++	 *
++	 * Claim the req's MRs, and pin the transport's ep, under
++	 * rb_lock. If the disconnect path has already put the QP
++	 * into the error state, leave the MRs on rl_registered:
++	 * the peer can no longer reach them, and
++	 * rpcrdma_reqs_reset() releases them.
++	 */
++	spin_lock(&buf->rb_lock);
++	ep = r_xprt->rx_ep;
++	if (buf->rb_closing || !ep ||
++	    list_empty(&req->rl_registered)) {
++		spin_unlock(&buf->rb_lock);
++		return;
++	}
++	buf->rb_unmap_users++;
++
+ 	/* ORDER: Invalidate all of the MRs first
+ 	 *
+ 	 * Chain the LOCAL_INV Work Requests and post them with
+@@ -598,6 +619,7 @@ void frwr_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ 		*prev = last;
+ 		prev = &last->next;
+ 	} while ((mr = rpcrdma_mr_pop(&req->rl_registered)));
++	spin_unlock(&buf->rb_lock);
+ 
+ 	mr = container_of(last, struct rpcrdma_mr, mr_invwr);
+ 
+@@ -621,15 +643,22 @@ void frwr_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ 	 */
+ 	if (bad_wr != first)
+ 		wait_for_completion(&mr->mr_linv_done);
+-	if (!rc)
+-		return;
++	if (rc) {
++		/* On error, the MRs get destroyed once the QP has drained. */
++		trace_xprtrdma_post_linv_err(req, rc);
+ 
+-	/* On error, the MRs get destroyed once the QP has drained. */
+-	trace_xprtrdma_post_linv_err(req, rc);
++		/* Force a connection loss to ensure complete recovery.
++		 */
++		rpcrdma_force_disconnect(ep);
++	}
+ 
+-	/* Force a connection loss to ensure complete recovery.
++	/* The MRs and the ep are no longer referenced. Allow
++	 * rpcrdma_xprt_disconnect() to proceed.
+ 	 */
+-	rpcrdma_force_disconnect(ep);
++	spin_lock(&buf->rb_lock);
++	if (!--buf->rb_unmap_users)
++		wake_up(&buf->rb_unmap_wq);
++	spin_unlock(&buf->rb_lock);
+ }
+ 
+ /**
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 54957295a631..b0c42cbe38ec 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -580,6 +580,7 @@ int rpcrdma_xprt_connect(struct rpcrdma_xprt *r_xprt)
+  */
+ void rpcrdma_xprt_disconnect(struct rpcrdma_xprt *r_xprt)
+ {
++	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+ 	struct rpcrdma_ep *ep = r_xprt->rx_ep;
+ 	struct rdma_cm_id *id;
+ 	int rc;
+@@ -594,7 +595,27 @@ void rpcrdma_xprt_disconnect(struct rpcrdma_xprt *r_xprt)
+ 	rc = rdma_disconnect(id);
+ 	trace_xprtrdma_disconnect(r_xprt, rc);
+ 
++	/* The QP is in the error state now, so the peer can no
++	 * longer access any registered MR. From here on, a
++	 * frwr_unmap_sync() caller that has not yet claimed a req's
++	 * MRs leaves them on rl_registered: rpcrdma_reqs_reset()
++	 * releases them below.
++	 */
++	spin_lock(&buf->rb_lock);
++	buf->rb_closing = true;
++	spin_unlock(&buf->rb_lock);
++
+ 	rpcrdma_xprt_drain(r_xprt);
++
++	/* frwr_unmap_sync() runs without the transport send lock.
++	 * Callers that claimed MRs before rb_closing was set may
++	 * still be posting or waiting on LOCAL_INV Work Requests.
++	 * Those complete (or flush) because the QP has been
++	 * drained, but the callers still reference the MRs and the
++	 * ep, so wait for them before anything is released.
++	 */
++	wait_event(buf->rb_unmap_wq, !READ_ONCE(buf->rb_unmap_users));
++
+ 	rpcrdma_reps_unmap(r_xprt);
+ 	rpcrdma_sendctxs_destroy(r_xprt);
+ 	rpcrdma_reqs_reset(r_xprt);
+@@ -603,7 +624,14 @@ void rpcrdma_xprt_disconnect(struct rpcrdma_xprt *r_xprt)
+ 	if (rpcrdma_ep_put(ep))
+ 		rdma_destroy_id(id);
+ 
++	/* rb_closing stays set until rx_ep is cleared, so a late
++	 * frwr_unmap_sync() caller returns before it can use a stale
++	 * rx_ep.
++	 */
++	spin_lock(&buf->rb_lock);
+ 	r_xprt->rx_ep = NULL;
++	buf->rb_closing = false;
++	spin_unlock(&buf->rb_lock);
+ }
+ 
+ /* Fixed-size circular FIFO queue. This implementation is wait-free and
+@@ -1171,6 +1199,9 @@ int rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
+ 
+ 	buf->rb_bc_srv_max_requests = 0;
+ 	spin_lock_init(&buf->rb_lock);
++	buf->rb_closing = false;
++	buf->rb_unmap_users = 0;
++	init_waitqueue_head(&buf->rb_unmap_wq);
+ 	INIT_LIST_HEAD(&buf->rb_mrs);
+ 	INIT_LIST_HEAD(&buf->rb_all_mrs);
+ 	INIT_WORK(&buf->rb_refresh_worker, rpcrdma_mr_refresh_worker);
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 4cbc941e4a3e..0161317e4916 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -402,6 +402,20 @@ struct rpcrdma_buffer {
+ 	u32			rb_bc_max_requests;
+ 
+ 	struct work_struct	rb_refresh_worker;
++
++	/* Serializes frwr_unmap_sync(), which runs from ->buf_free
++	 * without holding the transport send lock, against
++	 * rpcrdma_xprt_disconnect(). Protected by rb_lock.
++	 *
++	 * rb_closing: the QP is in the error state and the disconnect
++	 *	path is about to reset all reqs and destroy all MRs.
++	 * rb_unmap_users: number of frwr_unmap_sync() callers that
++	 *	own MRs taken from a req's rl_registered list, or have
++	 *	LOCAL_INV Work Requests outstanding on the QP.
++	 */
++	bool			rb_closing;
++	unsigned int		rb_unmap_users;
++	wait_queue_head_t	rb_unmap_wq;
+ };
+ 
+ /*
 
-Thanks Chuck.  If there is a need for v11 I will explicitly mention
-IO500's ior-hard benchmark's use of misaligned IO of 47008 bytes.
+base-commit: ef30b3efb7e8bae94d790a6503a595e1051323e7
+-- 
+2.52.0
 
-Jeff Layton reviewed and provided his Reviewed-by.
-
-I suspect MM engineers have just been busy with the merge window.
-Hopefully Willy and/or Jens will give v10 the courtesy of fair review?
-
-But as I mentioned in [0] any misaligned IO has this issue:
-"The same happens with any record size that is not a multiple of the
-page size.  The cover letter also has 6000-byte records."
-
-> But IMO we do need a broader variety of benchmark results to
-> understand the impact of these changes. IO500 on big hardware is
-> an uncommon workload for NFSD.
-
-IO500's IOR-hard reflects worst case, I understand the reluctance to
-care about it BUT the reality is that not all IO is sized optimally.
-So if steps can be taken to avoid pathological inefficiency during
-worst case (misaligned IO) _without_ hurting the fast path (when IO is
-sized properly) then why not take them?
-
-This patchset doesn't hurt fast path at all.  But happy to take
-direction for benchmarks others would like to see results for.
-
-Mike
