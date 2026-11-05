@@ -1,100 +1,100 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793881017;
-	b=ljlfIxlYHrLjdN12JYZvm15+CyDA2hydyG+p13Ww7+zXBSqTEp4AnVKJq7Mn75f1r8DB
-	 +9O31RfBfVBYuiYXxHrooGz2s2la/h5RLiVhnqrJvBM0i0+xGYlquhPS6c3x9m6TABfgA
-	 KatCB12rLNO3MF4A/7BEXgfYyLalBya0/kVBzyArs8Qdx42Uwq/3AWYkGqZzlL1/+cuW9
-	 NNpk0GPZOQDsJz8LeT5MmpYDLcAhGHlTrq+O80m4vuBQUUO+rrAUNt2gXBYjxf0VvRfYA
-	 zhN/iBN8Y+88lOfAE0PS7/GAZSQ4Dr7Z/2jHuzyP3cOJeB+dFlj2wrB1LtzdiZRGXFQ==
+	t=1793881272;
+	b=GrOilbdOtQpmJCYD6zNmiS8orXdDCEPoLswcwsVKFmSMBHUFfgJ83MKwydAZbT+lDwWw
+	 0RxnFaDbR1CuBVCjNeWq5gmZ/y6jjjqSWAZGAB6bmNAbZM7loOCi9gyI4dSY+mJnf+ruT
+	 wu6qKyYCINgXMiL3XoKxQ0+O19cvrlrl/ctLY61I8qZSUoh2wShoW3DuGO7I9Ha6oSigs
+	 RhK0e+sp6plgZdoFbG9q01qRI/f3USNwedPGEVqWo5BOm9077E6dW/nOcevnFwJkuD2e2
+	 AAiFVGo3uvfCs0/15sU1m53Em8TZYZdKyHQrGTAkUE+wzJJm8lCUL/ztXF0i1XNdTyQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793881017;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793881272;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
 	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
 	 In-Reply-To:X-Spamd-Result:X-Rspamd-Server:X-Rspamd-Action:
 	 X-Spam-Flag:X-Spam-Score:X-Spam-Level:X-Rspamd-Queue-Id;
-	bh=ADzlvyamTQU4UnQoclm/eaQzV+qRhdj3W0LtVIZccYw=;
-	b=LsnINoozfAegRNqL8gA539tnQZBRx0I0sYN02EaYQ0MGx1SZfOHyrxTFDCbESVGRWGb2
-	 bx0s4p0Zsfy3zDTZ6Co5m815DWIIvwEPs7JrUbEnnmNJHNkSzy4CmsrBsvtOO+Lpsf/FL
-	 k0ZXURbvm/095R7sSrhrtU/qhsFemcaGSAifrj4kUNuIIgavpXiqML47OZ0Xs3DUHVnQG
-	 Y2IMNSJwX3mZ5R0HqIqc3zlc7aRVdDvLpff5rQ+aKRPPTKYIztbQpflcJGnyghrBk4NYY
-	 cNnhCjZaW/Qmvf9pms0QXnwLHCF7ldBCKfMF3es/th7JWID5zy+/mcTckfXJZuKHa/w==
+	bh=qLuvYgtpasAKkOVBQjswAHWXysKN7cRsF9p74hK2S2g=;
+	b=x8A8egmCVprwVmaP6TKoEbHQSkWxE7ch1EwooTyriKIl4Byn10U6dVfI31J0M0vyMVwg
+	 qLpuzorHjFoCa6kXdaBvvvxBhDZxoX8SfBwT+V53TkzXUdgEFhf2vGkbSc2UnWGeTuY8h
+	 ToOtyAispZrhKd+j4kZhaqCswWDLrgX3QGj0CgEEfUTy/sSXEHl5xUp9amYpTbarkLOSN
+	 xwDg+HMMuDuB47QutlciT58uDhygQ27wCgK0ZgI/OhusTpi5DZaEOXkbAqCiBkV18p4GY
+	 yccKCnhR5L/S7QNi/EbNSKWPbvB/fAMPIk1XyzTrQYZwO9nen/Bv6wZN0EZdLXc5RpQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=suse.cz;
 	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=cYe8TYsk;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=QIbMvVJs;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=qcWXmYyb;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=YQFOqDtq;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=KhcIIhhy;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=6n5z2yLa;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=TFuQlAZ+;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=IYRGa8XW;
 	arc=none smtp.remote-ip=195.135.223.131
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6F656606A329;
-	Thu,  5 Nov 2026 12:16:56 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6F656606A329
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C93B4606D804;
+	Thu,  5 Nov 2026 12:21:11 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C93B4606D804
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=cYe8TYsk;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=QIbMvVJs;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=qcWXmYyb;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=YQFOqDtq
+	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=KhcIIhhy;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=6n5z2yLa;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=TFuQlAZ+;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=IYRGa8XW
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 58A511F458;
-	Thu,  5 Nov 2026 12:16:53 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id D5C3D1F458;
+	Thu,  5 Nov 2026 12:21:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1793881014; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1793881270; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=ADzlvyamTQU4UnQoclm/eaQzV+qRhdj3W0LtVIZccYw=;
-	b=cYe8TYskNgcCDl9X/k1KW8A+of6s9HPRYsn3eNTPIV5RsFlT7AWS/MQE3Ksi3uh3QV4KD5
-	Hi2guTuJU7x2qqFFTRs6JOAz8i6Q55GuiUnI2xO+KTPomgEeNxSjhoYwnOYxznNqbm63Mo
-	5qtfkmh5zv/NMPGB0+8MSe7zifKcXmA=
+	bh=qLuvYgtpasAKkOVBQjswAHWXysKN7cRsF9p74hK2S2g=;
+	b=KhcIIhhyXURXrxsFKNrS5/KQBWOxVAoWljoB38cQtiYrDrFV8sed3xw/zXNPMim53TtxIA
+	7ZbhM5diXv9jAcO7L3DVJNrAZi+K4lsRTnJWaMYMlYugOK16bRU+y/fGzxnSLhmlcVsvyG
+	csbL8slrND45GD1FIeOECoj0f7hJMwQ=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1793881014;
+	s=susede2_ed25519; t=1793881270;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=ADzlvyamTQU4UnQoclm/eaQzV+qRhdj3W0LtVIZccYw=;
-	b=QIbMvVJsr8XvPWk78XYqkteMct1dWNms40BmNTEwa1LXYhQgAGTS+dajwGjNJCINSsxxSt
-	HemSrC/mVhMQ9jBA==
+	bh=qLuvYgtpasAKkOVBQjswAHWXysKN7cRsF9p74hK2S2g=;
+	b=6n5z2yLaHgAEN7/Tcd0WzA7lHAxJSKkismyyu/ILXPkdtd7h0WOyyJxNx+8962qMQ9rlAn
+	/2Drg5p7a9P7WmBA==
 Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=qcWXmYyb;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=YQFOqDtq
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=TFuQlAZ+;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=IYRGa8XW
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1793881013; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1793881269; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=ADzlvyamTQU4UnQoclm/eaQzV+qRhdj3W0LtVIZccYw=;
-	b=qcWXmYyb5+mCW0254eM18Rdi4r0I1vVFScoBAC1JoCDgbQr+JVrkM2hgqEp84Kj2sVZnX6
-	yOxI9PyPOhb6xWYpHefOBtPtMSEL6Mz2dqvUxPwKWIeCnNhnabJauUjOIrpt/Ne/cxy6NC
-	ZAMNOvP3NI2+Dh4POTu44wQ8ZjW2uSA=
+	bh=qLuvYgtpasAKkOVBQjswAHWXysKN7cRsF9p74hK2S2g=;
+	b=TFuQlAZ+5WF2YAdSPtrseTWbdG8rKLEqW19DJvUMZa96SoqlsHphdrzQTVaeQPeOfbKMve
+	vRvg45whLPGgBVqZinymhyPdhVasORALEjL7ZX6GmXX/o3Zhkt8KhhIcC5N1tdRheYHdXR
+	b1H4KWKbL93llPPXVmqHJ4S/SUjD100=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1793881013;
+	s=susede2_ed25519; t=1793881269;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=ADzlvyamTQU4UnQoclm/eaQzV+qRhdj3W0LtVIZccYw=;
-	b=YQFOqDtq+4SGdkOEWqs8BsjsIPs8cBY5Z7x8DRzRezIETmSxSypiEkth9ev7JNqvuGFopt
-	jijBqci6GEVKGZDw==
+	bh=qLuvYgtpasAKkOVBQjswAHWXysKN7cRsF9p74hK2S2g=;
+	b=IYRGa8XWDYOBq7+hiG0V0rUlmwe1TyUTdwZG614Lw3QLxr1E6xwKO0uuM9xtMm5Wn4Th8n
+	Jk1SsJkUbIlOijDw==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 1F927133F6;
-	Thu,  5 Nov 2026 12:16:53 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 9880B133F6;
+	Thu,  5 Nov 2026 12:21:09 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 8uYuO7Rz7GpKHAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 05 Nov 2026 12:16:53 +0000
+	id 38udGrV07Gp0IAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 05 Nov 2026 12:21:09 +0000
 Received: by quack.suse.cz (Postfix, from userid 1000)
-	id A35F0B6D5; Thu, 05 Nov 2026 13:16:52 +0100 (CET)
-Date: Thu, 5 Nov 2026 13:16:52 +0100
+	id 1B713B6D8; Thu, 05 Nov 2026 13:21:05 +0100 (CET)
+Date: Thu, 5 Nov 2026 13:21:05 +0100
 From: Jan Kara <jack@suse.cz>
 To: Christian Brauner <brauner@kernel.org>
 Cc: linux-fsdevel@vger.kernel.org, 
@@ -119,11 +119,11 @@ Cc: linux-fsdevel@vger.kernel.org,
 	Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
 	linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org, 
 	Chuck Lever <cel@kernel.org>, stable@vger.kernel.org
-Subject: Re: [PATCH RFC 31/38] proc: sysctl: resume readdir after the last
- name it returned
-Message-ID: <ba3zz2mphlmojth4kk3gvistj555c2sos6ft4ofb6cm5xfcsnp@3xas2kz2irvu>
+Subject: Re: [PATCH RFC 33/38] proc: sysctl: copy to and from userspace
+ without holding the table
+Message-ID: <cbocsd4qe254dc7mgzk3jkieahrp5kfxpnfh5owopkulg5oo6l@jd5sw3l4nw5c>
 References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
- <20261102-work-procfs-bugfixes-v1-31-59422ed3e465@kernel.org>
+ <20261102-work-procfs-bugfixes-v1-33-59422ed3e465@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -135,7 +135,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261102-work-procfs-bugfixes-v1-31-59422ed3e465@kernel.org>
+In-Reply-To: <20261102-work-procfs-bugfixes-v1-33-59422ed3e465@kernel.org>
 X-Spamd-Result: default: False [-11.51 / 50.00];
 	SUSE_INTERNAL_BYPASS(-9.00)[];
 	BAYES_HAM(-3.00)[100.00%];
@@ -163,55 +163,137 @@ X-Spamd-Result: default: False [-11.51 / 50.00];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
 	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
 	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:email,suse.cz:dkim,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:email,suse.cz:dkim]
 X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
 X-Rspamd-Action: no action
 X-Spam-Flag: NO
 X-Spam-Score: -11.51
 X-Spam-Level: 
-X-Rspamd-Queue-Id: 58A511F458
+X-Rspamd-Queue-Id: D5C3D1F458
 
-On Mon 02-11-26 15:21:46, Christian Brauner wrote:
-> proc_sys_readdir() counts the entries of a directory and resumes a
-> listing at the number getdents64() stopped at. The entries are sorted
-> by name, so one that is registered or unregistered in between shifts
-> everything behind it by one. Listing /proc/sys/net/ipv4/conf with a
-> buffer that holds ".", ".." and "all" and registering a device whose
-> name sorts before "all" makes the next call return "all" a second time.
-> Unregistering one that sorted before the position makes it skip an
-> entry instead. So a listing that takes more than one call shows a name
-> twice, or not at all. Even the 64k buffer of ls needs a second call to
-> find the end of the directory, so a device that comes up right then
-> repeats the last entry.
+On Mon 02-11-26 15:21:48, Christian Brauner wrote:
+> proc_sys_call_handler() grabs the table, copies in what is written,
+> calls the handler and copies what it produced out to userspace before
+> it lets go of the table again. Unregistering a table waits until nobody
+> uses it anymore. So a reader or writer whose copy faults for as long as
+> it wants, with userfaultfd or a stalled FUSE mapping, keeps
+> unregister_sysctl_table() waiting, and its callers like to hold locks
+> while they do that. addrconf unregisters the ipv6 sysctls of a device
+> with RTNL held, so a stalled read of /proc/sys/net/ipv6/conf/<dev>/mtu
+> holds up every RTNL user until the reader gives up.
 > 
-> So remember the name of the last entry a call emitted in the file and
-> resume at the first usable entry after it, like kernfs resumes after
-> the node it stopped at. The entry itself can't be pinned across calls,
-> unregistering waits for that. If the position was moved by a seek in
-> between the listing counts from the start like before, seeking to an
-> arbitrary position has never been better than that.
+> Copy in before grabbing the table and copy out after letting go of it,
+> like procfs and kernfs do for their files. The buffer is ours, nothing
+> needs the table for the copies.
 > 
-> That also takes one walk down the tree to resume instead of a walk over
-> every entry in front of the position with a round trip through
-> sysctl_lock for each of them.
+> That moves the allocation and the copy in before the permission check.
+> A write that can't be copied in, or a request that is too large, now
+> fails with -EFAULT or -ENOMEM where it used to fail with -EPERM.
 > 
-> Fixes: 77b14db502cb ("[PATCH] sysctl: reimplement the sysctl proc support")
+> Fixes: 330d57fb98a9 ("[PATCH] Fix sysctl unregistration oops (CVE-2005-2709)")
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-Just one coding style nit below. Otherwise feel free to add:
+Looks good. Feel free to add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
-> +	if (!name) {
-> +		after = rb_first(&dir->root);
-> +	} else for (node = dir->root.rb_node; node;) {
-
-This indentation looks too inventive to me :) I'd just use
-	} else {
-		for (...) {
-
 								Honza
+
+> ---
+>  fs/proc/proc_sysctl.c | 50 ++++++++++++++++++++++++++++----------------------
+>  1 file changed, 28 insertions(+), 22 deletions(-)
+> 
+> diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
+> index 38b61887b59c..2150cf842919 100644
+> --- a/fs/proc/proc_sysctl.c
+> +++ b/fs/proc/proc_sysctl.c
+> @@ -602,14 +602,36 @@ static ssize_t proc_sys_call_handler(struct kiocb *iocb, struct iov_iter *iter,
+>  		int write)
+>  {
+>  	struct inode *inode = file_inode(iocb->ki_filp);
+> -	struct ctl_table_header *head = grab_header(inode);
+>  	const struct ctl_table *table = PROC_I(inode)->sysctl_entry;
+> +	struct ctl_table_header *head;
+>  	size_t count = iov_iter_count(iter);
+>  	char *kbuf;
+>  	ssize_t error;
+>  
+> -	if (IS_ERR(head))
+> -		return PTR_ERR(head);
+> +	/* don't even try if the size is too large */
+> +	if (count >= KMALLOC_MAX_SIZE)
+> +		return -ENOMEM;
+> +	kbuf = kvzalloc(count + 1, GFP_KERNEL);
+> +	if (!kbuf)
+> +		return -ENOMEM;
+> +
+> +	/*
+> +	 * Copy in before grabbing the table and copy out after letting go of
+> +	 * it. Unregistering the table waits for us and a copy that faults can
+> +	 * take as long as userspace wants.
+> +	 */
+> +	if (write) {
+> +		error = -EFAULT;
+> +		if (!copy_from_iter_full(kbuf, count, iter))
+> +			goto out_free_buf;
+> +		kbuf[count] = '\0';
+> +	}
+> +
+> +	head = grab_header(inode);
+> +	if (IS_ERR(head)) {
+> +		error = PTR_ERR(head);
+> +		goto out_free_buf;
+> +	}
+>  
+>  	/*
+>  	 * At this point we know that the sysctl was not unregistered
+> @@ -624,28 +646,15 @@ static ssize_t proc_sys_call_handler(struct kiocb *iocb, struct iov_iter *iter,
+>  	if (!table->proc_handler)
+>  		goto out;
+>  
+> -	/* don't even try if the size is too large */
+> -	error = -ENOMEM;
+> -	if (count >= KMALLOC_MAX_SIZE)
+> -		goto out;
+> -	kbuf = kvzalloc(count + 1, GFP_KERNEL);
+> -	if (!kbuf)
+> -		goto out;
+> -
+> -	if (write) {
+> -		error = -EFAULT;
+> -		if (!copy_from_iter_full(kbuf, count, iter))
+> -			goto out_free_buf;
+> -		kbuf[count] = '\0';
+> -	}
+> -
+>  	error = BPF_CGROUP_RUN_PROG_SYSCTL(head, table, write, &kbuf, &count,
+>  					   &iocb->ki_pos);
+>  	if (error)
+> -		goto out_free_buf;
+> +		goto out;
+>  
+>  	/* careful: calling conventions are nasty here */
+>  	error = table->proc_handler(table, write, kbuf, &count, &iocb->ki_pos);
+> +out:
+> +	sysctl_head_finish(head);
+>  	if (error)
+>  		goto out_free_buf;
+>  
+> @@ -658,9 +667,6 @@ static ssize_t proc_sys_call_handler(struct kiocb *iocb, struct iov_iter *iter,
+>  	error = count;
+>  out_free_buf:
+>  	kvfree(kbuf);
+> -out:
+> -	sysctl_head_finish(head);
+> -
+>  	return error;
+>  }
+>  
+> 
+> -- 
+> 2.53.0
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
