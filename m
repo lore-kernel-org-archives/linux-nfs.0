@@ -1,76 +1,96 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.219.54
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=192.198.163.8
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793872913;
-	b=ej/BI0Dbtg+bIBV3e/ZlXC+0Ur1r2EAy7EzvMeX27AAxw980UJRf0yVPwOWsuNCb65/R
-	 zEexgkHaHoRBj0XObCIBKDlOVJ6a7xJGkTumRDrf0AMDp8PIJUpiPzu5gYs6x6ATOxwWn
-	 DFxodTdN/aUhJP2cSof0dDy4HHsDV+iU0V/SbfdxbZDpRMyq88Oni0dxUPV0rnIUDW4d+
-	 JUzPkOurvNU+xsOMqnR4QLWKZiG2Hp/zjMicLZAsYvBgR3JSek5dYHLDRdLXDDoZZQy/O
-	 0LbjOsL/vuekX8sQmXPS61vxjUd6NflD9Uj5C28P4BczqXiD/2jndnxhGu7UG8VAeaQ==
+	t=1793878599;
+	b=LU4Lw8iw3L4t8K/n9Hh6UJocvA+pzDOKA0VqDcJycGal9N9qVKv7jP40LTqCwmsDG66c
+	 GWerN5hzcQ+OcZNSUwp/UMiVhb4fXgnfGvP3sq8ArzqS60SepQ0IEOYh8eqyhMw+WdAHb
+	 xuhmdYlauENK5eAJsb4pjzkK9ziARyy8yFo+zbPd/4qvbxWMXT6dcmpey5FJuaTVwiTPy
+	 G7GetQSk5HEVd1DPBc2+4IddUJAVrFzwgoeYeBH4TsiBk2Nm6Ji/RB48GKXb6p72Ie8Mm
+	 ZLf3qzjHDrsWGIxEZth9e/Mbx6UQd/vShHRA42fUoWDV12vA+zsCez3IUmJSNvEmu1w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793872913;
-	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:Received:
-	 X-Forwarded-Encrypted:X-Received:MIME-Version:References:In-Reply-To:
-	 From:Date:X-Gmail-Original-Message-ID:X-Gm-Features:Message-ID:
-	 Subject:To:Cc:Content-Type;
-	bh=n+1lmuZTLENNkpqKh8T8PUriZ63OKZ7RGcjsYNzzAGM=;
-	b=W14McEl3YYA+rTlNZZsuctuR4UTG6KcECku/YoUYHXDnz6KGppn7S0LKvA8jwndx4r9n
-	 8lk03cFy76E4Li23wgO2cZkhyNh1Htsw1kRWOxaKU0D5R3FpyY/CwHtgWMY6TVqwpQDTE
-	 pxgA5JoD9wp/xTkdM9yry8Mwg43ogpVmULm0Xr8cptCoxzh/qOAb4yZK/CtKrgbwkHsd4
-	 78QKqv65Fb2z7KxbG1R+gltu8oico05SyD7ypatglq6HJdCp5x+/mN+XBRGA8krJqv/jy
-	 YSbAltSkVyeM/hi2/hz0ebO0LskqN5rj9/24lkv+OrLmyuj/XhnG2Rr0R6p6ZQqu7gA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793878599;
+	h=DMARC-Filter:DKIM-Signature:X-CSE-ConnectionGUID:X-CSE-MsgGUID:
+	 X-IronPort-AV:X-IronPort-AV:Received:X-CSE-ConnectionGUID:
+	 X-CSE-MsgGUID:X-ExtLoop1:X-IronPort-AV:Received:Received:Date:From:To:
+	 Cc:Subject:Message-ID:References:MIME-Version:Content-Type:
+	 Content-Disposition:In-Reply-To;
+	bh=30J4sbOlYJiNq7Z4tRszcjWu8hBcWrg7tEn3jlctPwo=;
+	b=xRxzWa8Xy4evAl6NaL+mYks4IQacTnLfihp+tzxY8uHo+NLYRbz3tSNSLnEL+1FfvDD2
+	 D3UZh7Sdoe6MocHg6nC5GUObrjQ/GPDZebN/rvGlBt+1pRd49aXzeOiCNfAVhObDYPjqo
+	 SYF5bSg2fqmzfE6lfpcNInuPiYYpxbPm5jQMqdiSoPLRyOvQtnFWh3lLz86ILih1SIJts
+	 zAyaf9Iz+mUIYRg/rSH7RZB2uaEGoZgCQ8tPkFM8HvoH9nbKCfxaFijqflQL51ChPlssy
+	 7VDNqq3k9XuUeQNw96pJK2OJHqW/ogIy4nTJ9Ufw8pEGM3hW82pHdNSrea78h3Z3XpQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=linux-m68k.org;
-	spf=pass smtp.mailfrom=gmail.com;
-	arc=none smtp.remote-ip=209.85.219.54
-Received: from mail-qv1-f54.google.com (mail-qv1-f54.google.com [209.85.219.54])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dmarc=pass header.from=intel.com;
+	spf=pass smtp.mailfrom=intel.com;
+	dkim=pass header.d=intel.com header.i=@intel.com header.a=rsa-sha256 header.s=Intel header.b=kH6kTpAi;
+	arc=none smtp.remote-ip=192.198.163.8
+Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.8])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7AE49606A326
-	for <linux-nfs@vger.kernel.org>; Thu,  5 Nov 2026 10:01:53 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 7AE49606A326
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=linux-m68k.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Received: by mail-qv1-f54.google.com with SMTP id 6a1803df08f44-91c79a9a739so23694876d6.1
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Nov 2026 02:01:53 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793872912; x=1794477712;
-        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
-         :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=n+1lmuZTLENNkpqKh8T8PUriZ63OKZ7RGcjsYNzzAGM=;
-        b=t9RaOc21firEjPbB4K7+LIZOIFXT0CW8/IBjKLZUdQjindXbKUZkFQdO9VtkD1FWPK
-         cKmf0VhWyj+Z3qGTB7rfHi3sbaL+SzJydDxF6vc/dXuYyKjy8Kj7ONXQjdbyyiFwyA/D
-         ZiOqaC9wMmtltkpvYfRqw5rDMbs1/qob14T7oU3T1NpaqjsTKM+idMjszJzq9LiGXOCb
-         fQ9ermP8VoqtLNhRX8G02qqx5QCOtRY0Qc4vqOIAwhFEhlNrDQmEkX/gGMFQvgZraRJD
-         6HyZnvF83B+AmeLNNHnijfjJ2spTPNhwSuSUB9nDu9eaHmAf09y32v4JZpEwnV2A24s0
-         60NA==
-X-Forwarded-Encrypted: i=1; AKwUvBzJnuydJ1+6dliaIdzmnIseUeoNHttXhwCT04MKCfJ3wGCcUkNKQfo7ctpl5q4f/R2qFd8GlUvBl6U=@vger.kernel.org
-X-Gm-Message-State: APuU4Z9kxxdOs+djf6i/5SXTylg5R324XipmtbD11wqvEtN8A3imQ6Ic
-	fbEpii8WMSOH/Jf2MsohMlIxi8ikd3GSIYnmy18zabKr+wSZvvHUnFCkPFYK7AVfbAI=
-X-Gm-Gg: AYBFou0qdnJyQLWT7izKIUg8BtOFj/f39CRrZnRq/+vMq9Ltr5j3xvF3b+Vl36zVfQo
-	QsC6UvBiUs6cfw++pO9OpONasngjxapm/xT/nts8YMclgSIbm5DbGcRsCIut+0jSMaD1aVFzybs
-	Os63nNN/hH8IOtErDh0JVbUXAKKICuEkBMY1yqWSvisVXpRjH3q20dQ6C4CoQ+EW6g8V7RA2prN
-	7SnQ2JXpP/ot7sT9VUn2Sspnu1dwwmzOcs+LTN34d7UiuCa6RJZfpfTiO1Ir8VZT0Sb9oqxAnlI
-	RN7r/+UoxPezv3YZjKzAlw3CIpknFLlLmPs2RTzu+/+0LlGYvekQBVNdNmcEF06/KhDY1unxNfc
-	UjPh3aXkIjWKRKGZK9z5rCFnGWeub8aJ5hzIUxiyEmoButCsyy1jbTHn+eF3iM/YzeBhbw883Vk
-	k1w7mN7CugRFvWVGDZAA22pG3aBSMDwOXYp1brQ3OAtZ7mR8587xhkmV0tsmWh6YXwyCJCG4xwT
-	IqwG+oGET7QdEZFOxalEMm8fEUslfWZ7nt119y92vs4uujmzmKHZl9ADlGnwRQVCPhdd2s+kaVA
-	GxECWWr5QFENLr+tyRQWCqsBIoRTcWJGqVrAYj0F4OvDhF7mmKDGjpHITWp7zHGp7Q==
-X-Received: by 2002:a05:6214:5248:b0:91e:8cb1:b842 with SMTP id 6a1803df08f44-91e8cb1bb8fmr51416616d6.49.1793872912433;
-        Thu, 05 Nov 2026 02:01:52 -0800 (PST)
-Received: from mail-qv1-f48.google.com (mail-qv1-f48.google.com. [209.85.219.48])
-        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-91e7dfe9730sm43660786d6.17.2026.11.05.02.01.51
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 05 Nov 2026 02:01:52 -0800 (PST)
-Received: by mail-qv1-f48.google.com with SMTP id 6a1803df08f44-91c7a0c1617so23375906d6.0
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Nov 2026 02:01:51 -0800 (PST)
-X-Forwarded-Encrypted: i=1; AKwUvByitzfhg803A9QvPk3ZD0sPgA05FdqaEfDYDyl8PE2+lizgQumrD2jil94WGtGK4GcLhXgkPtHTTDs=@vger.kernel.org
-X-Received: by 2002:a05:6102:6449:b0:7cb:bc5e:7dad with SMTP id
- ada2fe7eead31-7d072baa450mr7614890137.10.1793872492413; Thu, 05 Nov 2026
- 01:54:52 -0800 (PST)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 79418606A336;
+	Thu,  5 Nov 2026 11:36:37 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 79418606A336
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=intel.com header.i=@intel.com header.a=rsa-sha256 header.s=Intel header.b=kH6kTpAi
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1793878598; x=1825414598;
+  h=date:from:to:cc:subject:message-id:references:
+   mime-version:in-reply-to;
+  bh=J9dOmPMshDIpYmZ/TrqPMjz7mHsp3Z6+Ou1qHQ88q2c=;
+  b=kH6kTpAiQCWPXNnHfol4Ir8+s9VJjZqKUrEiOYYXZ519D9v6B5xP2gry
+   GnxiwbeLFhRczydH6mZJ0OLOiGGGZE6rGnuWsdi7YptLDmfnzWYK9ipH0
+   dFC+58sXrURL/5et1b81u3MYRwTIazl4W9H6PFyG6JrBjGDynR8P86946
+   XGW7UEKjEwT0v0iPok/BKikScign00RZapSIvNNIiIqAoLcjFjvBcwcNF
+   mL/HcsTXXDUec0Erc9ynncQVAqW6Z3TJ/1Z9sXlIVcBTPVZLkkuPAbbCG
+   vltsW6FpoPg9oXfRHm1xluCStSwpy0jt6Dfl66lBwsO3byRFQOjk4dw6n
+   g==;
+X-CSE-ConnectionGUID: cQ8hzN4ESnqlamJQ6T0ujw==
+X-CSE-MsgGUID: KjYgmGU8SNG9TKQz2y0m6w==
+X-IronPort-AV: E=McAfee;i="6800,10657,11956"; a="2547422"
+X-IronPort-AV: E=Sophos;i="6.27,197,1787036400"; 
+   d="scan'208";a="2547422"
+Received: from fmviesa003.fm.intel.com ([10.60.135.143])
+  by fmvoesa102.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 05 Nov 2026 03:36:37 -0800
+X-CSE-ConnectionGUID: NU49M+y7SoqJQQ7rq8Z1Cw==
+X-CSE-MsgGUID: /gbM1bnkQwynnPU6B2caeg==
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="6.27,197,1787036400"; 
+   d="scan'208";a="7163862"
+Received: from lkp-server01.sh.intel.com (HELO 0caa9d2d175c) ([10.239.97.150])
+  by fmviesa003.fm.intel.com with ESMTP; 05 Nov 2026 03:36:29 -0800
+Received: from kbuild by 0caa9d2d175c with local (Exim 4.98.2)
+	(envelope-from <lkp@intel.com>)
+	id 1xOvlZ-00000000m7v-0S9w;
+	Thu, 05 Nov 2026 11:36:25 +0000
+Date: Thu, 5 Nov 2026 19:35:46 +0800
+From: kernel test robot <lkp@intel.com>
+To: Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org
+Cc: oe-kbuild-all@lists.linux.dev, Jann Horn <jannh@google.com>,
+	Josef Bacik <josef@toxicpanda.com>,
+	Chris Mason <chris.mason@fusionio.com>,
+	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+	Eric Dumazet <edumazet@kernel.org>,
+	Thomas Gleixner <tglx@kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>, Jonathan Corbet <corbet@lwn.net>,
+	Christoph Hellwig <hch@lst.de>,
+	Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+	Joel Granados <joel.granados@kernel.org>,
+	Kees Cook <kees@kernel.org>, Jan Kara <jack@suse.cz>,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-acpi@vger.kernel.org, linux-kselftest@vger.kernel.org,
+	linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org,
+	linux-um@lists.infradead.org, linux-wireless@vger.kernel.org,
+	linuxppc-dev@lists.ozlabs.org, netdev@vger.kernel.org,
+	ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org,
+	coreteam@netfilter.org, kexec@lists.infradead.org,
+	linux-pci@vger.kernel.org
+Subject: Re: [PATCH RESEND v2 01/51] alloc_tag: don't remove /proc/allocinfo
+ under the codetag module lock
+Message-ID: <202611051923.pLSSWWkA-lkp@intel.com>
+References: <20261104-work-procfs-bugfixes-v2-1-021c84d852e0@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -80,60 +100,54 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <20261104-work-procfs-arch-v2-0-2aeb952c9597@kernel.org> <20261104-work-procfs-arch-v2-4-2aeb952c9597@kernel.org>
-In-Reply-To: <20261104-work-procfs-arch-v2-4-2aeb952c9597@kernel.org>
-From: Geert Uytterhoeven <geert@linux-m68k.org>
-Date: Thu, 5 Nov 2026 10:54:40 +0100
-X-Gmail-Original-Message-ID: <CAMuHMdUNBs_NyhFpXonirMXkYptUWsAizMvVpGHUDLzto1LGJg@mail.gmail.com>
-X-Gm-Features: AclHuK_RsrcE7hVRjmpZezBV5tMd490Mza2XAQiqUTgUNqAiHAzRP5z7NIbtMh8
-Message-ID: <CAMuHMdUNBs_NyhFpXonirMXkYptUWsAizMvVpGHUDLzto1LGJg@mail.gmail.com>
-Subject: Re: [PATCH RESEND v2 04/23] m68k/bootinfo: let procfs copy out reads
- of /proc/bootinfo
-To: Christian Brauner <brauner@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, 
-	Linus Torvalds <torvalds@linux-foundation.org>, Jann Horn <jannh@google.com>, 
-	Josef Bacik <josef@toxicpanda.com>, Chris Mason <mason@kernel.org>, 
-	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, Eric Dumazet <edumazet@kernel.org>, 
-	Thomas Gleixner <tglx@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>, 
-	Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, Greg Kroah-Hartman <gregkh@suse.de>, 
-	Joel Granados <joel.granados@kernel.org>, Kees Cook <kees@kernel.org>, Jan Kara <jack@suse.cz>, 
-	Jan Kara <jack@suse.com>, linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, 
-	linux-acpi@vger.kernel.org, linux-kselftest@vger.kernel.org, 
-	linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, 
-	linux-um@lists.infradead.org, linux-wireless@vger.kernel.org, 
-	linuxppc-dev@lists.ozlabs.org, netdev@vger.kernel.org, ntfs3@lists.linux.dev, 
-	platform-driver-x86@vger.kernel.org, coreteam@netfilter.org, 
-	kexec@lists.infradead.org, linux-pci@vger.kernel.org, 
-	linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org, 
-	dri-devel@lists.freedesktop.org, ibm-acpi-devel@lists.sourceforge.net, 
-	jfs-discussion@lists.sourceforge.net, linux-alpha@vger.kernel.org, 
-	linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org, 
-	linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org, 
-	linux-sh@vger.kernel.org, linux-usb@vger.kernel.org, 
-	samba-technical@lists.samba.org, sparclinux@vger.kernel.org, 
-	linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org, 
-	linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net, 
-	Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
-	linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, 
-	linux-debuggers@vger.kernel.org, Chuck Lever <cel@kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-1-021c84d852e0@kernel.org>
 
-On Wed, 4 Nov 2026 at 20:36, Christian Brauner <brauner@kernel.org> wrote:
-> Implement ->proc_read_buf() so procfs copies what is read to userspace
-> after it unpinned the entry.
->
-> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+Hi Christian,
 
-Reviewed-by: Geert Uytterhoeven <geert@linux-m68k.org>
-Acked-by: Geert Uytterhoeven <geert@linux-m68k.org>
+kernel test robot noticed the following build warnings:
 
-Gr{oetje,eeting}s,
+[auto build test WARNING on 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4]
 
-                        Geert
+url:    https://github.com/intel-lab-lkp/linux/commits/Christian-Brauner/alloc_tag-don-t-remove-proc-allocinfo-under-the-codetag-module-lock/20261104-200606
+base:   6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+patch link:    https://lore.kernel.org/r/20261104-work-procfs-bugfixes-v2-1-021c84d852e0%40kernel.org
+patch subject: [PATCH RESEND v2 01/51] alloc_tag: don't remove /proc/allocinfo under the codetag module lock
+config: sh-randconfig-1001-20261105 (https://download.01.org/0day-ci/archive/20261105/202611051923.pLSSWWkA-lkp@intel.com/config)
+compiler: sh4-linux-gcc (GCC) 16.2.0
+reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20261105/202611051923.pLSSWWkA-lkp@intel.com/reproduce)
 
--- 
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
+If you fix the issue in a separate patch/commit (i.e. not just a new version of
+the same patch/commit), kindly add following tags
+| Reported-by: kernel test robot <lkp@intel.com>
+| Closes: https://lore.kernel.org/oe-kbuild-all/202611051923.pLSSWWkA-lkp@intel.com/
 
-In personal conversations with technical people, I call myself a hacker. But
-when I'm talking to journalists I just say "programmer" or something like that.
-                                -- Linus Torvalds
+All warnings (new ones prefixed by >>):
+
+>> mm/alloc_tag.c:620:13: warning: 'shutdown_mem_profiling_async' defined but not used [-Wunused-function]
+     620 | static void shutdown_mem_profiling_async(void)
+         |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+vim +/shutdown_mem_profiling_async +620 mm/alloc_tag.c
+
+   613	
+   614	/*
+   615	 * A module's tags are reserved with the codetag module lock held for
+   616	 * writing, and a reader of /proc/allocinfo takes that lock with the entry
+   617	 * pinned. Removing the entry there would wait for that reader for good, so
+   618	 * let a work item do it.
+   619	 */
+ > 620	static void shutdown_mem_profiling_async(void)
+   621	{
+   622		if (!mem_profiling_support)
+   623			return;
+   624		shutdown_mem_profiling(false);
+   625		schedule_work(&remove_allocinfo_work);
+   626	}
+   627	
+
+--
+0-DAY CI Kernel Test Service
+https://github.com/intel/lkp-tests/wiki
