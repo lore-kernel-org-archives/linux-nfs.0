@@ -1,72 +1,72 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793900682;
-	b=DavjcKDha+PK7RQftcToFYT/PTItSS2KezaBCgwy3aDwf1WOTGyu8hlzWFqoY8To58h5
-	 w0yAPyxi8bKyJbCsb9orORnPRKiNRLZLPEhnJzzXkAlAPDBWNC4rsvrGQdF17FOuIQxzs
-	 5ThGgEaeNExL/AQqjBgpVPZ4SZ8XQPEk98eOtgcTjGsF/RQd/GZVffC9IcLLr7thgiS55
-	 7ZGOTZDooKlT4h17adEyLfwIX6SDVi9JgK6UAM/Iex/vA0krEZsJiv1iSaAi4UNWCwmjY
-	 CTdxwGPI2WoLiiQRYKh7SyU7lxYJzl1xmNQB9UvwuyUVTiEH+lQ0a0yXrTdv2sXFx/Q==
+	t=1793901683;
+	b=CPoAw4snH6UjwXXkGpyPl5Q5KraZsfErPL1Pq5rZwxAv3yI4CCkZSQpuZKu0g/aa44vX
+	 sOSgjJrsmhc6AQE/yfshKm4VbKDkEvbo6D3QGmf7JsiOkhyiU15JCh6+5LVecZE/R4wM1
+	 alj9Gu370NHR4AaM5FTCQ9NX73daNw3nf+46Ydnc8AZx5ZK3yKGE9EMUK7u43PwgAKsJd
+	 kOkdMJpvTlhhIQSoYd6q2fx51uTMKST45SwXwRrbREtRdNSzQYzoOcGK9XMGSA4AKiCvL
+	 OSvwl4die0BM9bVh+ybppY3imIWFly7g7D8iaVDS2mRBmixjg9nZJMlRU7xzWF5w6uA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793900682;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793901683;
 	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
 	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
 	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
 	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=auQzEt43FXWDZiekdNqinox6nHqmw0kwClS/UWBUz3c=;
-	b=1GpjKIIC1QDS0gfYspG7c+x+7GMEU7NUwZ2yCNpMsULzWRO0u8sScR0S+eBdKaTpDPWj
-	 ZgXqSqlMu0DWsS03etwMwh9/ZpX81BAa7m23Wlq9ZjTNDF85vg/yrpoDCgEBpWgDciZKy
-	 JNSD6CWYIszCbQ7Ps7ULiOKiVfq3S8HXi4TOV8ZSCJQSmRl3SCiwNMyobr/Glnlqz+5R/
-	 pZ0K0GI14wh9m4v4k8Xb/T2lpVyCWWajI9io5OYYJf0Dofgqk5+A9En9Iyb/gKnXcpZUy
-	 V1R9iuF2zfAslEAT99Pm0X++pXEgEoXSEJkce6dFnrLB76XrCP1xc1S3ae4almxmPBA==
+	bh=ASmShQokumGxc3MJ9wrQQLmYoPdK2iE1KW6OF8t7UrY=;
+	b=2k9crvr0DlRBPATEgZM1eRuqiWouk2kJ+bdcC4ps/MGAiyBg346Y62xm+g7JCq0F4xi6
+	 UysCBOQHf2pGv6lchUQQUwBZxm+e1RGxCVBxKCOJPVYypg7+rodJH8UabMpehW5tASWzb
+	 YPlgLTEIU/z8QRusj8Ez2c+m657Wfhj0ddNEY3qK3MuAmCQELAkyT/A5jEdc2I/If54Q6
+	 UV8+FKKxgEurqKu854pNrby43XVhCvwqti2O1DnCrQ9EjanG6GaIAhAwPbj/Ek6ig0rrD
+	 i+Yhk7rnf3mx0uElrfYg+kk36icJy8wfCzGVFAwFB7vqOG0me95eNDy6tecMpk2uTCw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=meKA+uAJ;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=G4IHdvmu;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B9A5606A32E
-	for <linux-nfs@vger.kernel.org>; Thu,  5 Nov 2026 17:44:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4F7B3606A31B
+	for <linux-nfs@vger.kernel.org>; Thu,  5 Nov 2026 18:01:22 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=meKA+uAJ
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 058391F00919
-	for <linux-nfs@vger.kernel.org>; Thu,  5 Nov 2026 17:44:41 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=G4IHdvmu
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5FEAE1F00919;
+	Thu,  5 Nov 2026 18:01:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793900682;
-	bh=auQzEt43FXWDZiekdNqinox6nHqmw0kwClS/UWBUz3c=;
+	s=k20260515; t=1793901682;
+	bh=ASmShQokumGxc3MJ9wrQQLmYoPdK2iE1KW6OF8t7UrY=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=meKA+uAJPllS6lONzwiopjWWKawXW8pvxR/uqJHwBnzhAujGDLtpOXtNlDbiDVU2s
-	 koWey3ECXzm15TQB0cd6t7GzYbm4laasnfEw4WZDU2cZkPyYoz7/j838FjktJdkAvD
-	 f9ULaF2gHAqWO4ACDeGiJxut7VFihc1SoD5zstJEQ5UwhnSZK1VV95zqKAMMxPg6wG
-	 KzRvc9LHbxgKxJ4tbqc7pyoiuj2QnNKlN5/V/0wDSvZoqlDme52GgN5RYpOErCWbmS
-	 5Y8lEY33vLBH36P5BHA8iDN5s35y6RzvNKBS5mbBPaqP0zO86L25CO9yBhIJxZ6+Sq
-	 yCaYEKNhukSFw==
+	b=G4IHdvmuxDtXTkUCieHRTtRovSODCe1uPyoTLtc8kV32r7mD2b5N6xp1k+dJmM3H0
+	 m6YuMDHXnKaZoqqE9rVG6fDPO8uSbH0SwrlesqhI/dLUA6SUIouo6l50+8G5I8nf1v
+	 ERfDKgIVmD3AKko2AQwqgE5ll/PfmD23aXhKrUP8XdK7ftQ5g4yeXtMIRxQg49LKn0
+	 mnjqXbY15Nsiib+kW5m3aWfDAyVysPx8EnW5uW3vLDxnK88gfwthblclyC7Uw85juL
+	 fhPyATlb0yelVlRYEHbKtXAHDuyBJo5wdrsl8LjUn6qZQ710ZqdnnRU1sfrVTC1dWH
+	 i0/aL8X9s/QeA==
 Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 34819F4006A;
-	Thu,  5 Nov 2026 12:44:41 -0500 (EST)
+	by mailfauth.phl.internal (Postfix) with ESMTP id A856EF40069;
+	Thu,  5 Nov 2026 13:01:21 -0500 (EST)
 Received: from phl-imap-04 ([10.202.2.82])
-  by phl-compute-02.internal (MEProxy); Thu, 05 Nov 2026 12:44:41 -0500
-X-ME-Sender: <xms:icDsaoPs_0ze-Z6SxA0XTYGBT8xL7D4iQvoLDhKCMPxjQ6I-U--grg>
-    <xme:icDsapw5yDU9JBMfSmgd6JrFoWvViYkApg1dsrDuGoqcIIKnVdZkD4hoZ_NShRsSm
-    ixCiWKmjoDWwzBFf8oe_DMFx7vAFtCCdwr6AM_4MNPKLBr8E4HDUDqj>
-X-ME-Proxy-Cause: dmFkZTETDpa/HILfC6Oth9fKrVbOfk9CZNX3da2CNiMqErLe0dNfZzv3EqhrSdzni45/Ld
-    RyVJ1RF5ymV+Dp77sxUJlYCh1SIA8iwlnhuSkazKw1Tm04O5wIFRM7BXpEoUimmjNaWI5s
-    kt37MmjME7NB452R2W1q0PSCGOFp3RrO+Pl0mdJfZZwM2itHPM/UJSnfdGNw4fYl4NDQVp
-    5jE/rCBpZZgYz20c6hmuSPTwJ77KuBydFGXfZ1Xz51XWQcbrEn5PVF4Qp9B46OqZ5CWG/r
-    ubGfLaTriQYOYlGPPfyW0sPCDPV9YuRaXnwrE797afWjgB5nnSIJq58bXdBwQ1fETry3Vc
-    DSAHtB/TQKgh1dwM1P9DVqChTM/6pbVRr6guYGoPYpPjkQdFTfiVuc7LIIxNlwy7KP9aAY
-    oTF2r+8FiHRqh8V8w1pnhfNaSAG2KEjmNxOVrwKbYQBFEkwf9e2HLNQJlLRyjXOHcKpBjh
-    t+SPkZZt5x60COL6xcQJSlc+rC+G4wznqrSxEgbs12cfHAF+tkorQUHN1pWTUPESCFKyGl
-    uBIAg1fQdF5hXvQzN3vLAgniaJeC6aHCB/hp7uk+fSF/uENKHPmBVFgq57Zp6B/AWJ3T5m
-    Aadu+28nkjVbE1pb0zYGlHCqB1m+gB5WlplURrb9K6DsNPziyS89ub4zUWAg
-X-ME-Proxy: <xmx:icDsan31hUQ62Yk0hRtQxEovOMgDi4AByXM-mAZqmyGq1nyaLwIliA>
-    <xmx:icDsaj7i8xWLAKBeyvkklAt5Uip_F4yL4TbWC6Dpq1OXKXB5sib2DA>
-    <xmx:icDsaiU-hHjktv_299pSBHWJ-FVUF4LXB_gMi7NbBuR-9kI_K2GvUg>
-    <xmx:icDsaqAB1s52eL50YO5b0_avQbjyqXXLbz7TNPojXMXGGkdxE_9vBQ>
-    <xmx:icDsap6E_x3Iz0qjmnzByZVRE5eJXAGno1JQVpruhCXNlHjHxu41pnIv>
+  by phl-compute-02.internal (MEProxy); Thu, 05 Nov 2026 13:01:21 -0500
+X-ME-Sender: <xms:ccTsajEqLXmOq9H1-Hn-Q43wXdhddIwzeCxdiF1_-OORH2_FBaglsg>
+    <xme:ccTsarLQ3WoHbqliFtFhSQSwD26VcGhpx_Xc3dN2ojA39lYqHj-eFiUyomniFim9q
+    3KWqbQClwaqQZsdeIOoKXaXKIq04psr8HoKNcY2_6469WHFFieojXA8>
+X-ME-Proxy-Cause: dmFkZTFt95Ivq7PehjkOJ4Gl6JM/zBiDC+7flefJUwESFbBGmMMmTrzvPPqhMznytqoB76
+    sY8tGCasxUCQU7f1gu+E8ZtOYBnwcaDUmM6FQ34owpB4jo6fpMnV7kl6gK3ilg0KObV3Hq
+    fFNLchawFgPAzuOa83fqi7LIYuh8+DXvbr7guptevpOkPPVm7SWq8VPCt7pWc6QSuL+kHn
+    oFL6h4gXT2fKKV8gedxlVxlmpKFH0UTM+xWfZXxtM6zD0YEBSjBk92Mq8pLZTDztj2rm5O
+    zCXeYUA9e7DhWTyfm8R8YPB1Afx/5mv/Yli9oygD1sixZm5uUdG+FQRMOxFpz09zZ8BWes
+    HWxOLAnC5mPH1WoxJUSEjE8ZQmSn114Bu8gAA8JwHvyqJJ5PmyjPrJeONT9PqpoQWup2EA
+    qi+E0MvMerW+nLAW98JJAcIRODp0VE6vxini6mMLVFqfthYSeoVsycrWkGUC2BmdWz+/A2
+    e6QpVIuYNpe5z7Do5L3sKu64r7BxQx+WcMR/Pb/r4/yciN1+s2+2oMk352+ZCApxxEO/2K
+    WA2HmWTDM8ydFYXwcEybvu/eZEGJYVIivkFJMLk8RJ0fXFvHmVGlo/QaQsxgR/49JPhs8H
+    voQHBwOa04N0TcG/5sow3zsDPeo+ATK/hHjr5h7bQ3vX3T48xBzcsE6riIhQ
+X-ME-Proxy: <xmx:ccTsaktTnCbfckqNEXNMoGeDJuwzMhgBz0WkOJZuh0eEDE-5O8gBYA>
+    <xmx:ccTsavTmqI-Am9yioA3pfTSd2dV6yuaILHma-IEbykf9CxIQ3QCoEg>
+    <xmx:ccTsaqPDmhjScRUa7zjJA0laHvgVHGsaGe2BRymGbmZjAbG3gOJvFw>
+    <xmx:ccTsakYMhIhiDYie1VwdbVf30im3MxyZJnGknmwsl5uHmVpn-zze5g>
+    <xmx:ccTsakwxs0-b5nX2wHkZKvvmKJmsztJNyS-HJphmj0NKIKIoKajr1LbR>
 Feedback-ID: i20964851:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 17157B6006E; Thu,  5 Nov 2026 12:44:41 -0500 (EST)
+	id 8E202B6006E; Thu,  5 Nov 2026 13:01:21 -0500 (EST)
 X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -77,19 +77,19 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: AanSU5p_fP17
-Date: Thu, 05 Nov 2026 12:44:19 -0500
+X-ThreadId: Azlk8exdQmDB
+Date: Thu, 05 Nov 2026 13:01:01 -0500
 From: "Anna Schumaker" <anna@kernel.org>
 To: "Mike Snitzer" <snitzer@kernel.org>,
  "Trond Myklebust" <trondmy@kernel.org>
 Cc: linux-nfs@vger.kernel.org,
  "Jonathan Flynn" <jonathan.flynn@hammerspace.com>
-Message-Id: <be94aec3-41a1-4e48-8ab7-86ad45c78fa2@app.fastmail.com>
-In-Reply-To: <20261102191109.13470-7-snitzer@kernel.org>
+Message-Id: <c730c4c7-84be-4a28-bd8e-ea03edff09e7@app.fastmail.com>
+In-Reply-To: <20261102191109.13470-8-snitzer@kernel.org>
 References: <20261102191109.13470-1-snitzer@kernel.org>
- <20261102191109.13470-7-snitzer@kernel.org>
-Subject: Re: [PATCH 06/11] NFSv4/flexfiles: pair the in-flight count with the
- layoutstats updates
+ <20261102191109.13470-8-snitzer@kernel.org>
+Subject: Re: [PATCH 07/11] NFSv4/flexfiles: derive ffil_ops_requested rather than
+ storing it
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
@@ -98,246 +98,126 @@ Hi Mike,
 On Mon, Nov 2, 2026, at 2:11 PM, Mike Snitzer wrote:
 > From: Mike Snitzer <snitzer@hammerspace.com>
 >
-> The busy timer's in-flight op count and the requested-side statistics are
-> two halves of the same accounting, but they lived in two helpers that the
-> callers invoked back to back.  Nothing stopped a new requested-side path
-> from updating one and missing the other.
+> nfs4_ff_io_stat::ops_requested carries no information that the stripe
+> does not already hold.  An op is in flight from the moment it is counted
+> as requested until it is counted as completed, and the previous patch
+> put both halves of that accounting in one place each, so
 >
-> Fold nfs4_ff_layout_stat_io_update_requested() into
-> nfs4_ff_layoutstat_start_io() so both happen in one place, and rename
-> nfs4_ff_layout_stat_io_update_completed() to nfs4_ff_layoutstat_end_io()
-> for symmetry -- it already dropped the in-flight count alongside the
-> completed-side statistics.
+> 	ops_requested == ops_completed + ops_in_flight
 >
-> Rename nfs4_ff_busy_timer::n_ops to ops_in_flight while here.  It is what
-> the field holds, and it makes its relationship to the op counters legible
-> at the point of use.
+> holds at all times under the lock.
 >
-> Both helpers now take the stripe rather than mirror + dss_id, which lets
-> them assert the lock they run under.  Since the previous patch made
-> ops_in_flight a plain int, that lock is the only thing keeping it
-> consistent, so assert it rather than document it; lockdep_assert_held()
-> compiles out without CONFIG_PROVE_LOCKING.  The callers get a dss_info
-> local, which is what they were open coding.
+> Drop the field and compute the value at encode time.  It had exactly one
+> producer and one consumer, the LAYOUTSTATS encoder, so nothing else
+> needs to change and the wire format is untouched -- ffil_ops_requested
+> is still a uint64, and nfs4_ff_ops_requested() returns __u64.
+> ff_layout_encode_io_latency() now takes the whole nfs4_ff_layoutstat,
+> since the in-flight count lives beside the statistics rather than in
+> them.
+
+Let's cut the above paragraph.
+
 >
-> No functional change.
+> This takes 8 bytes off each direction's statistics, which is what lets
+> each direction fit in a cacheline of its own; see the next patch.
 >
 > Signed-off-by: Mike Snitzer <snitzer@hammerspace.com>
 > ---
->  fs/nfs/flexfilelayout/flexfilelayout.c | 104 ++++++++++++++-----------
->  fs/nfs/flexfilelayout/flexfilelayout.h |   2 +-
->  2 files changed, 58 insertions(+), 48 deletions(-)
+>  fs/nfs/flexfilelayout/flexfilelayout.c | 12 +++++-------
+>  fs/nfs/flexfilelayout/flexfilelayout.h | 19 ++++++++++++++++++-
+>  2 files changed, 23 insertions(+), 8 deletions(-)
 >
 > diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c 
 > b/fs/nfs/flexfilelayout/flexfilelayout.c
-> index 6a474fa7b0446..bfe8288a14a08 100644
+> index bfe8288a14a08..846544977cf30 100644
 > --- a/fs/nfs/flexfilelayout/flexfilelayout.c
 > +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-> @@ -711,7 +711,7 @@ static void
->  nfs4_ff_start_busy_timer(struct nfs4_ff_busy_timer *timer, ktime_t now)
->  {
->  	/* first IO request? */
-> -	if (++timer->n_ops == 1)
-> +	if (++timer->ops_in_flight == 1)
->  		timer->start_time = now;
->  }
-> 
-> @@ -720,7 +720,7 @@ nfs4_ff_end_busy_timer(struct nfs4_ff_busy_timer 
-> *timer, ktime_t now)
->  {
->  	ktime_t start;
-> 
-> -	WARN_ON_ONCE(--timer->n_ops < 0);
-> +	WARN_ON_ONCE(--timer->ops_in_flight < 0);
-> 
->  	start = timer->start_time;
->  	timer->start_time = now;
-> @@ -743,18 +743,31 @@ nfs4_ff_layoutstat_set_start_time(struct 
+> @@ -764,7 +764,6 @@ nfs4_ff_layoutstat_start_io(struct 
 > nfs4_ff_layout_ds_stripe *dss_info,
->  		try_cmpxchg64(&dss_info->start_time, &unset, now);
->  }
+>  	lockdep_assert_held(&dss_info->lock);
 > 
-> +/*
-> + * Account for an I/O about to be sent to this stripe, and return true if a
-> + * LAYOUTSTATS report is due.
-> + *
-> + * The in-flight count and the requested-side counters are bumped here
-> + * together, so a new requested-side path cannot update one and miss the
-> + * other.
-> + */
->  static bool
-> -nfs4_ff_layoutstat_start_io(struct nfs4_ff_layout_mirror *mirror,
-> -			    u32 dss_id,
-> +nfs4_ff_layoutstat_start_io(struct nfs4_ff_layout_ds_stripe *dss_info,
->  			    struct nfs4_ff_layoutstat *layoutstat,
-> -			    ktime_t now)
-> +			    __u64 requested, ktime_t now)
->  {
-> -	s64 report_interval = FF_LAYOUTSTATS_REPORT_INTERVAL;
-> +	struct nfs4_ff_layout_mirror *mirror = dss_info->mirror;
->  	struct nfs4_flexfile_layout *ffl = FF_LAYOUT_FROM_HDR(mirror->layout);
-> +	s64 report_interval = FF_LAYOUTSTATS_REPORT_INTERVAL;
->  	ktime_t last_report;
-> 
-> +	lockdep_assert_held(&dss_info->lock);
-> +
 >  	nfs4_ff_start_busy_timer(&layoutstat->busy_timer, now);
-> -	nfs4_ff_layoutstat_set_start_time(&mirror->dss[dss_id], now);
-> +	layoutstat->io_stat.ops_requested++;
-> +	layoutstat->io_stat.bytes_requested += requested;
-> +
-> +	nfs4_ff_layoutstat_set_start_time(dss_info, now);
->  	if (mirror->report_interval != 0)
->  		report_interval = (s64)mirror->report_interval * 1000LL;
->  	else if (layoutstats_timer != 0)
-> @@ -772,27 +785,25 @@ nfs4_ff_layoutstat_start_io(struct 
-> nfs4_ff_layout_mirror *mirror,
->  	return try_cmpxchg64(&ffl->last_report_time, &last_report, now);
->  }
+> -	layoutstat->io_stat.ops_requested++;
+>  	layoutstat->io_stat.bytes_requested += requested;
+> 
+>  	nfs4_ff_layoutstat_set_start_time(dss_info, now);
+> @@ -3066,12 +3065,13 @@ ff_layout_encode_nfstime(struct xdr_stream *xdr,
+> 
+>  static void
+>  ff_layout_encode_io_latency(struct xdr_stream *xdr,
+> -			    struct nfs4_ff_io_stat *stat)
+> +			    const struct nfs4_ff_layoutstat *layoutstat)
+>  {
+> +	const struct nfs4_ff_io_stat *stat = &layoutstat->io_stat;
+>  	__be32 *p;
+> 
+>  	p = xdr_reserve_space(xdr, 5 * 8);
+> -	p = xdr_encode_hyper(p, stat->ops_requested);
+> +	p = xdr_encode_hyper(p, nfs4_ff_ops_requested(layoutstat));
+>  	p = xdr_encode_hyper(p, stat->bytes_requested);
+>  	p = xdr_encode_hyper(p, stat->ops_completed);
+>  	p = xdr_encode_hyper(p, stat->bytes_completed);
+> @@ -3101,11 +3101,9 @@ ff_layout_encode_ff_layoutupdate(struct 
+> xdr_stream *xdr,
+>  	xdr_encode_opaque(p, fh->data, fh->size);
+>  	/* ff_io_latency4 read */
+>  	spin_lock(&dss_info->lock);
+> -	ff_layout_encode_io_latency(xdr,
+> -				    &dss_info->read_stat.io_stat);
+> +	ff_layout_encode_io_latency(xdr, &dss_info->read_stat);
+>  	/* ff_io_latency4 write */
+> -	ff_layout_encode_io_latency(xdr,
+> -				    &dss_info->write_stat.io_stat);
+> +	ff_layout_encode_io_latency(xdr, &dss_info->write_stat);
+>  	spin_unlock(&dss_info->lock);
+>  	/* nfstime4 */
+>  	ff_layout_encode_nfstime(xdr,
+> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h 
+> b/fs/nfs/flexfilelayout/flexfilelayout.h
+> index b0653a652d3b8..23f665fef4985 100644
+> --- a/fs/nfs/flexfilelayout/flexfilelayout.h
+> +++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+> @@ -55,7 +55,6 @@ struct nfs4_ff_layout_ds_err {
+>  };
+> 
+>  struct nfs4_ff_io_stat {
+> -	__u64				ops_requested;
+>  	__u64				bytes_requested;
+>  	__u64				ops_completed;
+>  	__u64				bytes_completed;
+> @@ -78,6 +77,24 @@ struct nfs4_ff_layoutstat {
+>  	struct nfs4_ff_busy_timer busy_timer;
+>  };
 > 
 > +/*
-> + * Account for an I/O that has completed on this stripe.  The in-flight count
-> + * is dropped here, alongside the completed-side counters, for the same reason
-> + * it is bumped in nfs4_ff_layoutstat_start_io().
-> + */
->  static void
-> -nfs4_ff_layout_stat_io_update_requested(struct nfs4_ff_layoutstat *layoutstat,
-> -		__u64 requested)
-> -{
-> -	struct nfs4_ff_io_stat *iostat = &layoutstat->io_stat;
-> -
-> -	iostat->ops_requested++;
-> -	iostat->bytes_requested += requested;
-> -}
-> -
-> -static void
-> -nfs4_ff_layout_stat_io_update_completed(struct nfs4_ff_layoutstat *layoutstat,
-> -		__u64 requested,
-> -		__u64 completed,
-> -		ktime_t time_completed,
-> -		ktime_t time_started)
-> +nfs4_ff_layoutstat_end_io(struct nfs4_ff_layout_ds_stripe *dss_info,
-> +			  struct nfs4_ff_layoutstat *layoutstat,
-> +			  __u64 requested,
-> +			  __u64 completed,
-> +			  ktime_t time_completed,
-> +			  ktime_t time_started)
->  {
->  	struct nfs4_ff_io_stat *iostat = &layoutstat->io_stat;
->  	ktime_t completion_time = ktime_sub(time_completed, time_started);
->  	ktime_t timer;
-> 
-> +	lockdep_assert_held(&dss_info->lock);
-> +
->  	iostat->ops_completed++;
->  	iostat->bytes_completed += completed;
->  	iostat->bytes_not_delivered += requested - completed;
-> @@ -811,14 +822,13 @@ nfs4_ff_layout_stat_io_start_read(struct inode *inode,
->  		u32 dss_id,
->  		__u64 requested, ktime_t now)
->  {
-> +	struct nfs4_ff_layout_ds_stripe *dss_info = &mirror->dss[dss_id];
->  	bool report;
-> 
-> -	spin_lock(&mirror->dss[dss_id].lock);
-> -	report = nfs4_ff_layoutstat_start_io(
-> -		mirror, dss_id, &mirror->dss[dss_id].read_stat, now);
-> -	nfs4_ff_layout_stat_io_update_requested(
-> -		&mirror->dss[dss_id].read_stat, requested);
-> -	spin_unlock(&mirror->dss[dss_id].lock);
-> +	spin_lock(&dss_info->lock);
-> +	report = nfs4_ff_layoutstat_start_io(dss_info, &dss_info->read_stat,
-> +					     requested, now);
-> +	spin_unlock(&dss_info->lock);
+> + * ffil_ops_requested is not stored.  An op is in flight from the moment it is
+> + * counted as requested until it is counted as completed, so
+> + *
+> + *	ops_requested == ops_completed + ops_in_flight
+> + *
+> + * holds by construction; see nfs4_ff_layoutstat_start_io() and
+> + * nfs4_ff_layoutstat_end_io(), which maintain both halves together.
+> + *
+> + * Caller must hold the lock guarding this nfs4_ff_layoutstat.
 
-I noticed that this function and nfs4_ff_layout_stat_io_start_write() are
-almost identical (the only difference being read_stat vs write_stat). I
-was wondering if it might be possible to combine them in the future to
-reduce code duplication?
+This comment could be cut down too, and leave the one note about
+holding the lock.
+
+Otherwise, this is a nice cleanup!
 
 Thanks,
 Anna
 
->  	set_bit(NFS4_FF_MIRROR_STAT_AVAIL, &mirror->flags);
-> 
->  	if (report)
-> @@ -832,11 +842,13 @@ nfs4_ff_layout_stat_io_end_read(struct rpc_task *task,
->  		__u64 requested,
->  		__u64 completed)
->  {
-> -	spin_lock(&mirror->dss[dss_id].lock);
-> -	nfs4_ff_layout_stat_io_update_completed(&mirror->dss[dss_id].read_stat,
-> -			requested, completed,
-> -			ktime_get(), task->tk_start);
-> -	spin_unlock(&mirror->dss[dss_id].lock);
-> +	struct nfs4_ff_layout_ds_stripe *dss_info = &mirror->dss[dss_id];
+> + */
+> +static inline __u64
+> +nfs4_ff_ops_requested(const struct nfs4_ff_layoutstat *layoutstat)
+> +{
+> +	return layoutstat->io_stat.ops_completed +
+> +	       layoutstat->busy_timer.ops_in_flight;
+> +}
 > +
-> +	spin_lock(&dss_info->lock);
-> +	nfs4_ff_layoutstat_end_io(dss_info, &dss_info->read_stat,
-> +				  requested, completed,
-> +				  ktime_get(), task->tk_start);
-> +	spin_unlock(&dss_info->lock);
->  	set_bit(NFS4_FF_MIRROR_STAT_AVAIL, &mirror->flags);
->  }
+>  struct nfs4_ff_layout_mirror;
 > 
-> @@ -846,18 +858,13 @@ nfs4_ff_layout_stat_io_start_write(struct inode *inode,
->  		u32 dss_id,
->  		__u64 requested, ktime_t now)
->  {
-> +	struct nfs4_ff_layout_ds_stripe *dss_info = &mirror->dss[dss_id];
->  	bool report;
-> 
-> -	spin_lock(&mirror->dss[dss_id].lock);
-> -	report = nfs4_ff_layoutstat_start_io(
-> -		mirror,
-> -		dss_id,
-> -		&mirror->dss[dss_id].write_stat,
-> -		now);
-> -	nfs4_ff_layout_stat_io_update_requested(
-> -		&mirror->dss[dss_id].write_stat,
-> -		requested);
-> -	spin_unlock(&mirror->dss[dss_id].lock);
-> +	spin_lock(&dss_info->lock);
-> +	report = nfs4_ff_layoutstat_start_io(dss_info, &dss_info->write_stat,
-> +					     requested, now);
-> +	spin_unlock(&dss_info->lock);
->  	set_bit(NFS4_FF_MIRROR_STAT_AVAIL, &mirror->flags);
-> 
->  	if (report)
-> @@ -872,13 +879,16 @@ nfs4_ff_layout_stat_io_end_write(struct rpc_task *task,
->  		__u64 completed,
->  		enum nfs3_stable_how committed)
->  {
-> +	struct nfs4_ff_layout_ds_stripe *dss_info = &mirror->dss[dss_id];
-> +
->  	if (committed == NFS_UNSTABLE)
->  		requested = completed = 0;
-> 
-> -	spin_lock(&mirror->dss[dss_id].lock);
-> -	nfs4_ff_layout_stat_io_update_completed(&mirror->dss[dss_id].write_stat,
-> -			requested, completed, ktime_get(), task->tk_start);
-> -	spin_unlock(&mirror->dss[dss_id].lock);
-> +	spin_lock(&dss_info->lock);
-> +	nfs4_ff_layoutstat_end_io(dss_info, &dss_info->write_stat,
-> +				  requested, completed,
-> +				  ktime_get(), task->tk_start);
-> +	spin_unlock(&dss_info->lock);
->  	set_bit(NFS4_FF_MIRROR_STAT_AVAIL, &mirror->flags);
->  }
-> 
-> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h 
-> b/fs/nfs/flexfilelayout/flexfilelayout.h
-> index d97001abc0d22..b0653a652d3b8 100644
-> --- a/fs/nfs/flexfilelayout/flexfilelayout.h
-> +++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-> @@ -70,7 +70,7 @@ struct nfs4_ff_io_stat {
->   */
->  struct nfs4_ff_busy_timer {
->  	ktime_t start_time;
-> -	int n_ops;
-> +	int ops_in_flight;
->  };
-> 
->  struct nfs4_ff_layoutstat {
+>  struct nfs4_ff_layout_ds_stripe {
 > -- 
 > 2.52.0
