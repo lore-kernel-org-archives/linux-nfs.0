@@ -1,100 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.215.227
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=95.215.58.103
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793844202;
-	b=wcmZSDYaQcR7NgLmGKfP+w4FAe3SAMt6mIgsQ/pLRvcZNpUjt0zsxEjlmHPRj3BTvcEX
-	 6QfIY6i/BImehrNXeGJV3cqK48iPSS79VVtgzHpz03jZmsQslk966RALL8nEsr3IqQgWZ
-	 HoNgaitnhP82jzfkDsHqyvJiWS0SDqZCBef47UwHRgyu9kOOV6g75PL7V+6yIfD9iirhW
-	 g5wcVJxLPxzSIT3+Ty/5kQVl0MWzXnGKVRHIRtXGoPW8ueMrpRb4V2/iW+gxVIgOEIsWp
-	 SDXXeWq84PfadimMBK3yA6GByG0kFIpQL1ahNYa6aeoXxD04iUFqMUwNq+x3dIkY94A==
+	t=1793844846;
+	b=oBnwkHZBkeWs6+ackufcXrr5UoFGhqwTNxzNZO6tnPIy3zwTkuRkM8Yq0Rg9xC1UDdka
+	 nEynl+h8s43/2dpi2GKuJlSz827poTKpRB7At7zMNo00k37Hmj2ycFu2PwOYqELww/015
+	 0jZtpCEKeLqqBmGVXAhEK646l9LRft49RIDxTvzDfJsGLJ+xDLmQ/bSTLG1eim7o/ppdb
+	 k6TFBvrTLUhsqUxIBLPMQZ11G76xRxLykvuJbFqeKH9h2amb434dnwxYlRVPaTGHMPSrl
+	 4buHhHu3VCfIFarWovBckcwuZTwRz0AF/7uhMJIJayLReEuQWvkM3x4mamhxS0VxpSA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793844202;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 X-Relaying-Domain:Received:From:To:Cc:Subject:Date:Message-ID:
-	 X-Mailer:MIME-Version:Content-Transfer-Encoding;
-	bh=EQfIAOrQJdusvyYnUH0bVt07oZDCi/o3NqYD4NHITMs=;
-	b=d/BnRkBYaMi6stTdrRcFiBKfy7QZUMOKmBqKUSg+7zdHj3iswXxP87lyljW2RxtyxPPU
-	 OHf0pfovds8Ic6xd6NZ+pP0clxACB3JSJT3We6gFVQgBMQDPbCKqZ+NR7yhZn4HwjbzWC
-	 92bjyvAohegiZoHQMoCAynker63YKhNIRknWGAzowazuFpe0VIkUlcjTzM+h40kaGmMJm
-	 eGTwQe5jpoz8A8UtvClG6GDuNm/liui+gDI1d52fBX72sSoeY6w4HMkqBdpXGRYBCZjB7
-	 IcolD8PUDBjcvrihCR9tDWMZqqh7APXWXLkI6os0UduEZw8BIvPbupJKUe0ZHqmnWYg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793844846;
+	h=DMARC-Filter:X-Envelope-To:DKIM-Signature:X-Envelope-To:Received:
+	 X-Mizu-Trace-ID:X-Migadu-Flow:Message-ID:Date:MIME-Version:User-Agent:
+	 Subject:To:Cc:References:Content-Language:From:In-Reply-To:
+	 Content-Type:Content-Transfer-Encoding;
+	bh=tXeq94tKXH8bHOz1amsH5XRU51n2PYOOTkgxfF1PjyI=;
+	b=OuQjchW9n/1pu0hwZ6bl3wKwE1B6QCl8DgGHmNhQ2edMbqpgTIbbqfDcl+wG+Q9hYDrF
+	 fhkoNE7LGAKX+myzWE748+P8DYEQrFQcoo6ESqpDSb3mA0QCsaCTq0bvmuglAU13Sbv3H
+	 CAwn2IwEo/9Y5YVw3G7f/mt0Fy4DqWCMfFUNOyF9EDt1JqNZkQs5j/NU/IVr5YqSc53cx
+	 tmRbEBXJPfOhTHa0sK1kljNMQiEgv0P6cBxkCgWV0mHk/dOuP3IjfFu/SPEDFSfJzzy3D
+	 DI6s4DuBBA+7z2Q5w/xYavpjtocA5lP2i91Ez+IRiXITm/HYPi0h/uG0UwvOTnvlcAQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=purestorage.com;
-	spf=pass smtp.mailfrom=purestorage.com;
-	dkim=pass header.d=purestorage.com header.i=@purestorage.com header.a=rsa-sha256 header.s=google2022 header.b=GkW1ZmRS;
-	arc=none smtp.remote-ip=209.85.215.227
-Received: from mail-pg1-f227.google.com (mail-pg1-f227.google.com [209.85.215.227])
+	dmarc=pass header.from=linux.dev;
+	spf=pass smtp.mailfrom=linux.dev;
+	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=j2sTp789;
+	arc=none smtp.remote-ip=95.215.58.103
+Received: from mta1.migadu.com (out-103.mta1.migadu.com [95.215.58.103])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4A9DE606A337
-	for <linux-nfs@vger.kernel.org>; Thu,  5 Nov 2026 02:03:21 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4A9DE606A337
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=purestorage.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=purestorage.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0DAB8606A330
+	for <linux-nfs@vger.kernel.org>; Thu,  5 Nov 2026 02:14:05 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 0DAB8606A330
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=purestorage.com header.i=@purestorage.com header.a=rsa-sha256 header.s=google2022 header.b=GkW1ZmRS
-Received: by mail-pg1-f227.google.com with SMTP id 41be03b00d2f7-cdab8873d9dso580256a12.1
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Nov 2026 18:03:21 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=purestorage.com; s=google2022; t=1793844201; x=1794449001; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=EQfIAOrQJdusvyYnUH0bVt07oZDCi/o3NqYD4NHITMs=;
-        b=GkW1ZmRSpSFfkokdZSUjXrT1WnzmH4jmdbE5YxNIOWGzejsxgAzJ+QcbgMaYBr/TcY
-         y/9DTwSGT2OAqkiPA9DO3xjoeDMNWq/cglIDmENrAsciQv2pHOjPeTvYheYhniVp8Vws
-         0jTFpd5+218Tf2l9uj9L4a3jJ+AT69WnxcI5nshMC0GZjbQ3flZrbHoukEUHFZ5lX7na
-         tQj0YP0umvFSqQKkqgLRYSXR2lnXTHCFzGEi07kLXxEOUM4wceSpGSKGerical0TWjqa
-         eQAus6mWnUAJZ455DpUBGUPG/pnAKEcoRdKZ4TvNUZhMDcdHJNF8jUZ7zEdfv9zTa0Bz
-         bOTQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793844201; x=1794449001;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=EQfIAOrQJdusvyYnUH0bVt07oZDCi/o3NqYD4NHITMs=;
-        b=iIR33V4ZRqF9b8+i7RcXCqmHYKSysIE7QuThh4s+AipYNHwJI2DKy7NNXb+gaop2LK
-         4Q9eGX3wI4k5BESIrzwrBLSWag3kJiD8hg9T8FFhflvhVtpHjpKtdJamxFvaUWtyuabA
-         WLXBEXwYx7R54kvRoNlgbj1bUuFGfjQrEd5/0prSqPk/soWwUkBdjs4XuFFDhAR+pFou
-         MaCuubS72imV5iaITZDHk6fJ35dlES5ybcEJyn2fsAcl2Ep37q4529k1blT1+r1JfmNf
-         VE2bMvXvNL5NXBQ1FPADVl6b8shLFDtv5yWHCMq9q1w4ZYhr89Ynhw9os1RToyPwy2Uf
-         yFxg==
-X-Forwarded-Encrypted: i=1; AKwUvBzCfHhAJreacvYFjDsq91s2yPQP8/fB3zM7WbL4DWS91sxNpFZARk2DPAjoqfNdJgf+YMBihDO+98I=@vger.kernel.org
-X-Gm-Message-State: APuU4Z+xy9N1Gb+Po3E6r8yy7AXxLJfPbgG0cpErDMqcohGBs0W/CqiM
-	cYpH2JcfZeH5ByEN/0McXeRT9AjLaGAdg+DI6Bsqtv3xOQKXjiBLpMEAe4R+2edRlKF5Y03X5Ya
-	c6ufS7fNZaCmXCcVGtoqDN1JGTN9ygQD5fSwE
-X-Gm-Gg: AYBFou05SCShIraZP1CmV4fm4sh+7x3zAXDHnFYzqaaG9U05rOaZDilkSNik5zdHTW2
-	dk4gzIj0vWVxNYsPartk6qfMCjsf4bMKYsTvDj1SBd/nlbDFSqiF15xCnUyCbRh01Y5LTKgI/Eo
-	QWE9NnAA034LnJFRASnyNWJC8y2Bq9OZcezqJo42BfdMUN9esbL0pWME0KC9Kq5+NwTFgGGPOiu
-	vXG4g7daBGjUveQhP1eAg2J35s9OJ8uPuvRCBQX3hWIhXYPhA0HrdVnrRC/C4VGZZlQX39oGeQ4
-	p/5+CBY7vfQpt/T9LIwezDs+LT6tGzOTFdkPKaq5gSAcVT6+8TrJ2EUy7bRgr913/q8mM3Vd2w/
-	tT7Z4t70N592V7RpuYO9tfvSA/bsPWTO9UiIqzg==
-X-Received: by 2002:a17:90b:2d84:b0:3b0:9a1b:b708 with SMTP id 98e67ed59e1d1-3b09a1bb881mr3168053a91.62.1793844200546;
-        Wed, 04 Nov 2026 18:03:20 -0800 (PST)
-Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.128])
-        by smtp-relay.gmail.com with ESMTPS id 98e67ed59e1d1-3b0b31f880fsm824975a91.7.2026.11.04.18.03.20
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 04 Nov 2026 18:03:20 -0800 (PST)
-X-Relaying-Domain: purestorage.com
-Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
-	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id 943B534014E;
-	Wed,  4 Nov 2026 18:02:49 -0800 (PST)
-From: tmenninger@purestorage.com
-To: anna@kernel.org,
-	trondmy@kernel.org
-Cc: cel@kernel.org,
-	ebadger@everpuredata.com,
-	jcurley@everpuredata.com,
-	jlayton@kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	netdev@vger.kernel.org,
-	slingappa@everpuredata.com,
-	Tim Menninger <tmenninger@everpuredata.com>
-Subject: [PATCH v2 0/2] SUNRPC/NFS: limit transport disconnects when cancelling flexfiles I/O
-Date: Thu,  5 Nov 2026 02:02:47 +0000
-Message-ID: <20261105020249.2607367-1-tmenninger@purestorage.com>
-X-Mailer: git-send-email 2.53.0
+	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=j2sTp789
+X-Envelope-To: linux-nfs@vger.kernel.org
+DKIM-Signature: a=rsa-sha256; bh=l5hRS8qgzR0WOCPLF0tQbQ+of37lp1oZsgw+XUQqwhg=;
+ c=simple/simple; d=linux.dev;
+ h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
+ t=1793844844; v=1; x=1794449644;
+ b=j2sTp789TAzH4+lGZ7lYWfaDwj4tzc9cwnz9VymVYz+93eIx1j2P1wIewQP0NcIfVbJQKLyf
+ 0DO8NIIghKzDouBSBnDym1wAnQyGpqJsD9irj2dQSZrGObeDZJB96QtjMGxheDIwPErfv1cfpzT
+ zdnAQ3fG/Xx2Ge3hDWonFfXo=
+X-Envelope-To: linux-nfs@vger.kernel.org
+Received: by smtp.migadu.com with ESMTPS id 7ce234fbb2517b84;
+	Thu, 05 Nov 2026 02:14:03 +0000
+X-Mizu-Trace-ID: 7ce234fbb2517b84
+X-Migadu-Flow: FLOW_OUT
+Message-ID: <fc4939cc-84ec-4c5c-88a7-658ca800377d@linux.dev>
+Date: Thu, 5 Nov 2026 10:15:13 +0800
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -104,128 +58,189 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH RESEND v2 01/51] alloc_tag: don't remove /proc/allocinfo
+ under the codetag module lock
+To: Christian Brauner <brauner@kernel.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+ Jann Horn <jannh@google.com>, Josef Bacik <josef@toxicpanda.com>,
+ Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+ NeilBrown <neil@brown.name>, Eric Dumazet <edumazet@kernel.org>,
+ Thomas Gleixner <tglx@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>,
+ Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>,
+ Greg Kroah-Hartman <gregkh@suse.de>, Joel Granados
+ <joel.granados@kernel.org>, Kees Cook <kees@kernel.org>,
+ Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>,
+ linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+ linux-acpi@vger.kernel.org, linux-kselftest@vger.kernel.org,
+ linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org,
+ linux-um@lists.infradead.org, linux-wireless@vger.kernel.org,
+ linuxppc-dev@lists.ozlabs.org, netdev@vger.kernel.org,
+ ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org,
+ coreteam@netfilter.org, kexec@lists.infradead.org,
+ linux-pci@vger.kernel.org, linux-sound@vger.kernel.org,
+ netfilter-devel@vger.kernel.org, dri-devel@lists.freedesktop.org,
+ ibm-acpi-devel@lists.sourceforge.net, jfs-discussion@lists.sourceforge.net,
+ linux-alpha@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+ linux-cifs@vger.kernel.org, linux-fbdev@vger.kernel.org,
+ linux-hwmon@vger.kernel.org, linux-mm@kvack.org, linux-sh@vger.kernel.org,
+ linux-usb@vger.kernel.org, samba-technical@lists.samba.org,
+ sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org,
+ linux-doc@vger.kernel.org, linux-serial@vger.kernel.org,
+ linux-atm-general@lists.sourceforge.net, Takashi Iwai <tiwai@suse.de>,
+ linux-input@vger.kernel.org, linux-raid@vger.kernel.org,
+ linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org,
+ linux-debuggers@vger.kernel.org, Chuck Lever <cel@kernel.org>,
+ stable@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ Suren Baghdasaryan <surenb@google.com>
+References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
+ <20261104-work-procfs-bugfixes-v2-1-021c84d852e0@kernel.org>
+Content-Language: en-US
+From: Hao Ge <hao.ge@linux.dev>
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-1-021c84d852e0@kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-From: Tim Menninger <tmenninger@everpuredata.com>
+Cc Suren
 
-This series narrows the transport disconnects performed when flexfiles
-cancels I/O for a recalled or revoked layout segment.
+Hi Christian
 
-Today ff_layout_cancel_io() first cancels matching RPC tasks and then
-calls rpc_clnt_disconnect() if any tasks matched. rpc_clnt_disconnect()
-operates on the entire rpc_clnt, so for a data server client using
-multiple transports it disconnects transports that may have had no I/O
-associated with the affected layout segment.
+On 2026/11/5 03:06, Christian Brauner wrote:
+> codetag_alloc_module_section() takes the codetag type's mod_lock for
+> writing and calls reserve_module_tags() with it held. When that can't
+> reserve the tags, because the section's alignment doesn't fit, because
+> there are too many tags for the page flag bits or because the memory
+> for them can't be allocated, it shuts memory allocation profiling down
+> and removes /proc/allocinfo, still with mod_lock held.
+> 
+> remove_proc_entry() waits until every reader of the entry has let go of
+> it, and a reader of /proc/allocinfo takes mod_lock for reading in
+> allocinfo_start() while it holds the entry. So a module load that hits
+> one of those paths while /proc/allocinfo is being read waits for the
+> reader and the reader waits for the module load, for good.
+> 
+> Let a work item remove the entry in that case. The profiling is shut
+> down right away like before, the file just goes a moment later.
+> 
+> Fixes: 4835f747d3ed ("alloc_tag: support for page allocation tag compression")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-I encountered this while testing pNFS over RPC/RDMA during data server
-recovery. Restarting the NFS service on a data server while sustained
-direct-read I/O was active could cause repeated reconnect activity and a
-large throughput drop. The client-wide disconnect from
-ff_layout_cancel_io() amplified the disruption by tearing down otherwise
-unaffected transports.
+Thanks.
 
-The first patch adds a SUNRPC helper that combines task cancellation with
-request-scoped conditional disconnects. Matching tasks are cancelled as
-before. A subsequent transport-queue pass marks matching requests
-belonging to the same rpc_clnt that remain on the transmit or receive
-queues so that, when released, xprt_conditional_disconnect() is called
-using the request's saved connection cookie.
+is this a problem you have hit in practice?
+Sashiko discovered this issue earlier and reported it as follows:
 
-The disconnect state is stored on struct rpc_rqst rather than struct
-rpc_task. A task can release one request and later acquire another, so a
-task-scoped indication could otherwise be consumed by a successor
-request and applied to the wrong transport generation.
+> diff --git a/mm/alloc_tag.c b/mm/alloc_tag.c
+> index 2070e682fe106..112a014d4b890 100644
+> --- a/mm/alloc_tag.c
+> +++ b/mm/alloc_tag.c
+> @@ -950,10 +950,12 @@ static void *reserve_module_tags(struct module *mod, unsigned long size,
+>  		int grow_res;
+>  
+>  		module_tags.size = offset + size;
+> -		if (mem_alloc_profiling_enabled() && !tags_addressable()) {
+> +		if (!tags_addressable()) {
+>  			shutdown_mem_profiling(true);
+This is a pre-existing issue, but does this shutdown_mem_profiling(true) call
+introduce an AB-BA deadlock between /proc/allocinfo file readers (pde->in_use)
+and module loading (cttype->mod_lock)?
+A user reading /proc/allocinfo acquires the procfs in_use reference in
+use_pde(), then blocks on down_read(&alloc_tag_cttype->mod_lock) in
+allocinfo_start().
+Concurrently, if a module loads and tags_addressable() fails,
+codetag_alloc_module_section() holds down_write(&cttype->mod_lock) and calls
+shutdown_mem_profiling(true), which removes the proc entry. This removal waits
+indefinitely for the in_use reference to drop to zero, hanging both procfs
+reads and module loading.
+> -			pr_warn("With module %s there are too many tags to fit in %d page flag bits. Memory allocation profiling is disabled!\n",
+> -				mod->name, NR_UNUSED_PAGEFLAG_BITS);
+> +			pr_warn_once("With module %s there are too many tags to fit in %d page flag bits. Memory allocation profiling is disabled!\n",
+> +				     mod->name, NR_UNUSED_PAGEFLAG_BITS);
+> +			release_module_tags(mod, false);
+> +			return ERR_PTR(-EAGAIN);
+>  		}
+>  
+>  		grow_res = vm_module_tags_populate();
 
-The request-marking pass also preserves the rpc_clnt selection used by
-rpc_cancel_tasks(). An rpc_xprt may be shared by multiple rpc_clnt
-instances, so requests belonging to other clients sharing the same
-transport are not marked.
+I previously sent a patch with a comparable idea, though Sashiko remained unconvinced.
 
-The second patch switches flexfiles to the new helper, preserving its
-I/O cancellation behavior while avoiding client-wide transport
-disconnects.
+[patch]: https://lore.kernel.org/all/20260817062726.106511-3-hao.ge@linux.dev/
 
-Testing:
+[Sashiko's objections]: https://sashiko.dev/#/patchset/20260817062726.106511-1-hao.ge@linux.dev
 
-The code in this series does not depend on:
+Could this patch perhaps wait for mine? No worries if this is inconvenient.
 
-    https://lore.kernel.org/all/20261105000131.2512336-1-tmenninger@everpuredata.com/
+Best regards                                                                                                                                                                                                                                                                  
+Hao
 
-However, I used that change while collecting the results below because,
-without it, the client enters the earlier recovery livelock before the
-transport-disconnect behavior can be observed cleanly.
-
-As a control experiment, I also tested skipping the
-ff_layout_cancel_io() task-cancellation and client-disconnect path
-entirely for RPC/RDMA. Doing so eliminates the reconnect pathology. This
-shows that the pathology depends on the cancellation/disconnect path
-introduced by commit b739a5bd9d9f ("NFSv4/flexfiles: Cancel I/O if the
-layout is recalled or revoked"), but simply opting RPC/RDMA out of that
-behavior would also remove the cancellation that is intended to drain
-I/O associated with a recalled or revoked layout segment.
-
-This series instead preserves that cancellation while limiting transport
-disconnects to matching requests that remain in flight.
-
-I have repeated the data-server restart test many times and the behavior
-is consistent. The counters below are intentionally collected after the
-restart event, once throughput has partially recovered and the client has
-entered the post-recovery state in which it remains until the workload
-completes.
-
-This distinction matters because some transport activity during the
-data-server restart itself is expected. The problem addressed here is
-the continued reconnect activity after that transition has completed:
-once recovery has settled, the client should not continue cycling
-otherwise healthy RPC/RDMA connections.
-
-Over a 30-second post-recovery sampling window, this series reduces
-sunrpc events from 4,526 to 289, a roughly
-16-fold reduction. RPC/RDMA disconnect and connect events fall by about
-6.6-fold. During the same interval, read throughput improves from
-approximately 0.4-1.1 GB/s to 1.9-2.2 GB/s.
-
-Before (throughput: approximately 0.4-1.1 GB/s):
-
-    Performance counter stats for 'system wide':
-
-                 4,526      sunrpc:xprt_disconnect_force
-                 1,911      rpcrdma:xprtrdma_disconnect
-                 1,909      rpcrdma:xprtrdma_connect
-
-          30.021267692 seconds time elapsed
-
-After (throughput: approximately 1.9-2.2 GB/s):
-
-    Performance counter stats for 'system wide':
-
-                   289      sunrpc:xprt_disconnect_force
-                   289      rpcrdma:xprtrdma_disconnect
-                   291      rpcrdma:xprtrdma_connect
-
-          30.080790959 seconds time elapsed
-
----
-Changes in v2:
-- Rebase onto v7.4-rc1.
-- Adapt to the device-ID-aware ff_layout_cancel_io() interface,
-  preserving device-node reference cleanup.
-- No functional changes to the SUNRPC implementation.
-
-v1: https://lore.kernel.org/all/20260924204525.3381590-1-tmenninger@everpuredata.com/
-
-Tim Menninger (2):
-  SUNRPC: add request-scoped disconnects when cancelling tasks
-  NFSv4/flexfiles: limit transport disconnects when cancelling I/O
-
- fs/nfs/flexfilelayout/flexfilelayout.c |  7 +-
- include/linux/sunrpc/sched.h           |  4 ++
- include/linux/sunrpc/xprt.h            |  5 ++
- net/sunrpc/clnt.c                      | 94 +++++++++++++++++++++-----
- net/sunrpc/sunrpc.h                    |  5 ++
- net/sunrpc/xprt.c                      | 76 +++++++++++++++++++++
- 6 files changed, 170 insertions(+), 21 deletions(-)
-
--- 
-2.53.0
-
+> ---
+>  mm/alloc_tag.c | 27 ++++++++++++++++++++++++---
+>  1 file changed, 24 insertions(+), 3 deletions(-)
+> 
+> diff --git a/mm/alloc_tag.c b/mm/alloc_tag.c
+> index 82e2c3448dcf..7d7ad6704953 100644
+> --- a/mm/alloc_tag.c
+> +++ b/mm/alloc_tag.c
+> @@ -15,6 +15,7 @@
+>  #include <linux/seq_file.h>
+>  #include <linux/string_choices.h>
+>  #include <linux/vmalloc.h>
+> +#include <linux/workqueue.h>
+>  #include <linux/kmemleak.h>
+>  #include <uapi/linux/alloc_tag.h>
+>  
+> @@ -604,6 +605,26 @@ static void shutdown_mem_profiling(bool remove_file)
+>  	mem_profiling_support = false;
+>  }
+>  
+> +static void remove_allocinfo_file(struct work_struct *work)
+> +{
+> +	remove_proc_entry(ALLOCINFO_FILE_NAME, NULL);
+> +}
+> +static DECLARE_WORK(remove_allocinfo_work, remove_allocinfo_file);
+> +
+> +/*
+> + * A module's tags are reserved with the codetag module lock held for
+> + * writing, and a reader of /proc/allocinfo takes that lock with the entry
+> + * pinned. Removing the entry there would wait for that reader for good, so
+> + * let a work item do it.
+> + */
+> +static void shutdown_mem_profiling_async(void)
+> +{
+> +	if (!mem_profiling_support)
+> +		return;
+> +	shutdown_mem_profiling(false);
+> +	schedule_work(&remove_allocinfo_work);
+> +}
+> +
+>  void __init alloc_tag_sec_init(void)
+>  {
+>  	struct alloc_tag *last_codetag;
+> @@ -855,7 +876,7 @@ static void *reserve_module_tags(struct module *mod, unsigned long size,
+>  		align = 1;
+>  
+>  	if (!ensure_alignment(align, &prepend)) {
+> -		shutdown_mem_profiling(true);
+> +		shutdown_mem_profiling_async();
+>  		pr_err("%s: alignment %lu is incompatible with allocation tag indexing. Memory allocation profiling is disabled!\n",
+>  			mod->name, align);
+>  		return ERR_PTR(-EINVAL);
+> @@ -905,14 +926,14 @@ unlock:
+>  
+>  		module_tags.size = offset + size;
+>  		if (mem_alloc_profiling_enabled() && !tags_addressable()) {
+> -			shutdown_mem_profiling(true);
+> +			shutdown_mem_profiling_async();
+>  			pr_warn("With module %s there are too many tags to fit in %d page flag bits. Memory allocation profiling is disabled!\n",
+>  				mod->name, NR_UNUSED_PAGEFLAG_BITS);
+>  		}
+>  
+>  		grow_res = vm_module_tags_populate();
+>  		if (grow_res) {
+> -			shutdown_mem_profiling(true);
+> +			shutdown_mem_profiling_async();
+>  			pr_err("Failed to allocate memory for allocation tags in the module %s. Memory allocation profiling is disabled!\n",
+>  			       mod->name);
+>  			return ERR_PTR(grow_res);
+> 
