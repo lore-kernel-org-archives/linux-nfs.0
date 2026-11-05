@@ -1,58 +1,104 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=113.46.200.224
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.216.98
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793841079;
-	b=iYy4m0vb1cGNYfRZY0KQ7/vaL4+yQk2IF0rZUTkaCYMHUZpT5etdx98raUAe1yziCxsT
-	 MHatmsb3vIBrM7ijUXUZyB3nLuK3CSazah/YwNJz/8vZQj++DTB9Mh9nNS3m10k67t/u2
-	 1+O6CKezBrv7TtsrMhCILr/qfNovw0n13Rbt1LOAaRpyOKtIgwXMF7oL7o+Sc+LSsC6tN
-	 GWeJ4VgXu4kZlc7eLOKZHUWJ3MnCK8C52E5FtUxbVwZ6WREshTvV/I8nLeK0++9pSL7n1
-	 htfzk+nWTAiWaTT81Jn1z5w378XUjhErOnisH0WMSs4rnDlOMWkuPA/CrXYKT2jgV3Q==
+	t=1793844176;
+	b=osr9fg4nx+wXZQcSqdbQiYmjpppmPIW2IqBsCBrV4CjCSrCYQPN3og8f9PUcKgsCV6ec
+	 4Uce3SOQsYkQfoda5mzWbGyKjiyp0VMZt0u44jk1i8na0T6AgY0iVqqVUNxrJzhgn0oiB
+	 W5o3C0dsIZ5LL8y0fYSlTZ47SHcWxCgKOX+LgX46MaZbn5Qcges7w+o8X8l9kKobu4dZu
+	 0q8WSvDk7tafebR4M5lfLF49rZB85YbFlVyGp9JW14ObRnb3gzFlUOkckfKMgA1gkmV7Z
+	 ZeHowxYbYpcsKajNw3eINmmI8Nb/nTD1mLZosv/aBK0GL8OWK3yLHrsc3TmFJb/zk2w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793841079;
-	h=DMARC-Filter:dkim-signature:Received:Received:Received:Message-ID:
-	 Date:MIME-Version:User-Agent:Subject:To:CC:References:From:
-	 In-Reply-To:Content-Type:Content-Transfer-Encoding:X-Originating-IP:
-	 X-ClientProxiedBy;
-	bh=2UlnfVNGDD6KvMEc2fU81K3LEQe/mZwN7o76G/XWM5s=;
-	b=bKrIXNXM9tGJosy4SbRYUaTzYwTtihtCifJkkpDuSjDj3qUZYCYW6965XppFMMjaDq69
-	 Ki9oHy5zSlr0wPB5QLL40qCzK8huvEGmDNt4ECO0Riu8Ukg/6o6DsY3DLi4FniaJl38os
-	 y+kZev7PHYOrJ/Kb/JOgOuAAzDU5OWhTSIXf6fQKfGnIhSZwF4tV122tg5NT/hiujYfos
-	 Dcpgin8loeokx8uvKIxw3tmc7gjJbVAqX87Jbiq3ktYGZUxjx0fs6WfrpDushmgxQ04jD
-	 sKUJrb/cv7y5MpPHm0afOsBEoZUw58J6OVFe7FWkilp/If3vvfAxnBxIK6JKTmVS2qQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793844176;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 X-Relaying-Domain:Received:From:To:Cc:Subject:Date:Message-ID:
+	 X-Mailer:In-Reply-To:References:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=HpFmULoD3PKNQA7nQ1ArjNPpfG8VSqQMXNJlOpOCtTU=;
+	b=1hMYB5l1aQjsFiFbqYA9dxUKOwx8NyRXawMVcKk4eRifej2U0SGUbFyVvGW9zxZWh7ic
+	 Hlukq8IeVLiI8ScigAB6LzkGwKxaKTpOX9NZCDzEYDjfrzriviD1BsZVJl/luugNfCOLj
+	 PfoTMrsEAfUXqsU4IvFxFrmR3fRk6fXltTYy7i1O0nxh5rXR1KZQqCQq+wQ7JwfkDTRiw
+	 H7SkHmddwdWy57J67vO6tpcmwQzGOYL1KdHL0matIRrrfjF52yjF3e78TUqxgNWjMZoeA
+	 /GC7YBwhuL8bRKRjz5+JbNxbTkRme02u8nPj5gVH41suCzH2nHC9prAsBWbRUUx5tIQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=huawei.com;
-	spf=pass smtp.mailfrom=huawei.com;
-	dkim=pass header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=AtzlCBaZ;
-	arc=none smtp.remote-ip=113.46.200.224
-Received: from canpmsgout09.his.huawei.com (canpmsgout09.his.huawei.com [113.46.200.224])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=pass header.from=purestorage.com;
+	spf=pass smtp.mailfrom=purestorage.com;
+	dkim=pass header.d=purestorage.com header.i=@purestorage.com header.a=rsa-sha256 header.s=google2022 header.b=LB5J9swY;
+	arc=none smtp.remote-ip=209.85.216.98
+Received: from mail-pj1-f98.google.com (mail-pj1-f98.google.com [209.85.216.98])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 598F4606A326;
-	Thu,  5 Nov 2026 01:11:16 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 598F4606A326
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 10C79606A332
+	for <linux-nfs@vger.kernel.org>; Thu,  5 Nov 2026 02:02:50 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 10C79606A332
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=purestorage.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=purestorage.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=AtzlCBaZ
-dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
-	c=relaxed/relaxed; q=dns/txt;
-	h=From;
-	bh=2UlnfVNGDD6KvMEc2fU81K3LEQe/mZwN7o76G/XWM5s=;
-	b=AtzlCBaZdAAK7PW/2RxxZuF3O5U9kqNqHOqZr3+usZ3hWsD75vD1DHHAjBDLN69K87t/D+JoN
-	BLAkcNDuIvi3vz32A536gDqVrdVlJFA/ASAmDtEzqVDYL7FlbIehpreFazipnoFBeh8nK82X2fi
-	8D3SPhRPG/pvIoAJNgn6jqs=
-Received: from mail.maildlp.com (unknown [172.19.163.214])
-	by canpmsgout09.his.huawei.com (SkyGuard) with ESMTPS id 4jKklT1zbDz1cySG;
-	Thu,  5 Nov 2026 09:11:01 +0800 (CST)
-Received: from whupemk300014.china.huawei.com (unknown [7.152.185.8])
-	by mail.maildlp.com (Postfix) with ESMTPS id C6F0C4056C;
-	Thu,  5 Nov 2026 09:11:12 +0800 (CST)
-Received: from [10.174.177.221] (10.174.177.221) by
- whupemk300014.china.huawei.com (7.152.185.8) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.2562.45; Thu, 5 Nov 2026 09:11:11 +0800
-Message-ID: <5dcebf01-f1f5-48b0-b5ac-69e7d1c33d24@huawei.com>
-Date: Thu, 5 Nov 2026 09:11:00 +0800
+	dkim=pass (2048-bit key, unprotected) header.d=purestorage.com header.i=@purestorage.com header.a=rsa-sha256 header.s=google2022 header.b=LB5J9swY
+Received: by mail-pj1-f98.google.com with SMTP id 98e67ed59e1d1-3ad2b3b1c02so784355a91.1
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Nov 2026 18:02:50 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=purestorage.com; s=google2022; t=1793844170; x=1794448970; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=HpFmULoD3PKNQA7nQ1ArjNPpfG8VSqQMXNJlOpOCtTU=;
+        b=LB5J9swYrhk+rpnpdAYM+m0KVsDTZ4C4Bx7BBtl7ax5j0XJo3KQPDhhX9bb/vANb28
+         0lI6V+bsivTqCXJGHe+zZ6dhF6Gk2pj5Myax/kQCbQ60k/qk39nTK0zwl9vMccqEUTKE
+         qBgeSix2/DhK4pR9v61LNGXde4KVGpC5HEkEjsAqPUNokSdH+Td6JupmHX5KaZ67VwvZ
+         y4gu4MuZe5VFL6+Zr1zIFhvKUoYpdUX9CdjScI/p8xyXdVUkIiekxfQRIxxQtLmWPQ4d
+         K9+6SsRG3ctncHS3Mnugm2i5sdt07SJ2zKS1ypflTGEaHhsWY04HetPYUFp1yU2ZiGIx
+         0wOg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793844170; x=1794448970;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=HpFmULoD3PKNQA7nQ1ArjNPpfG8VSqQMXNJlOpOCtTU=;
+        b=I+dbzHkJ0zPUtgydpMPyDqAPUpdPMpEJK970QX+fArEf5r5vkdQlPByJDflaUaoai3
+         LE9oEmqoSUEnCt1gbPNvgyvGY4nwFuyfn0L8kL6Ak5Ef6XcMxMkMM2N2JRVT9oaoIQv9
+         IsIwtgNJ6qPcoEFQzpvr6W+3IMZd5KIHOm31gWv12DJi4RMvZ4lY9KPdGM7pc/dQI1MT
+         xKpdwmMEK+3VisYR2/ZvtbqpcnnVW2uL310Na9HR+iD/rPMCgzK2v+TANTbEBpFfXArv
+         5sV3iEjeK8hvQs0FjUUmIzgZx37aDw5UaQKKpjyO2FrTGX+Inu8shgbDvlwVo8CBEm5m
+         eIBQ==
+X-Forwarded-Encrypted: i=1; AKwUvBzqxWnev74qBlBQ0qQAJpK2PwG8f6hAB8bFEuv1z1PZn4zHGTpL3WXzIJ7kYSRJ2XTGSDzgxp8PSDA=@vger.kernel.org
+X-Gm-Message-State: APuU4Z+hlGJOKfRTlVpA99+wFM1sa4aMvcFsyEwwyL4FovwDYkiI5PbA
+	eUS/8fwjdeLm2evD6bDnFDaQ/JvBJAT2+JIn0clOuQ79EoZExflcIDsVC3aydY3sspHg7xZUdbM
+	7nSHHnNp7jGRKq63S2N9YcOzKdUC8tBe7Izlv
+X-Gm-Gg: AYBFou3j2y8Hr3+rqcvB/YSIm+8KhO70kHTtcCuuYf635RAhurPPL+m4XUrt9wyM121
+	BLCbWT8IWGBkDZivoMBXXGpeWepPRAAFbIS8cuq6S1RB6/GWYA0ya6kl8awKfjz4WabVXngchKT
+	jsg2CZXqK6AW3ptJOUGBqd+jiv9j/xuFl50D56CxIdbjHjU35NODRfWwWbNWZWoHbilMHQg5qyu
+	H3v3NaCM8LkBoV3l1/JuCzLX6/IsLW0H6LJfA53USFm4qtk5d2xN632Mf9y13wQvStPYlHBfXoB
+	wLrAFm81rVChPN0UFaK4UBj/5LJNWdxNJNI6CC57RXTFpytkS5xyCRUogs+0KLEbohDLVFJR6OQ
+	oorVA18qOctrWtet/X8A4b3baC9i95S9OuzDBMA==
+X-Received: by 2002:a17:90b:4d05:b0:3ad:c482:ae93 with SMTP id 98e67ed59e1d1-3ae897f55f1mr15463825a91.27.1793844170366;
+        Wed, 04 Nov 2026 18:02:50 -0800 (PST)
+Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.129])
+        by smtp-relay.gmail.com with ESMTPS id 98e67ed59e1d1-3b0b93e8cf1sm370875a91.8.2026.11.04.18.02.50
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 04 Nov 2026 18:02:50 -0800 (PST)
+X-Relaying-Domain: purestorage.com
+Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
+	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id A268D340292;
+	Wed,  4 Nov 2026 18:02:49 -0800 (PST)
+From: tmenninger@purestorage.com
+To: anna@kernel.org,
+	trondmy@kernel.org
+Cc: cel@kernel.org,
+	ebadger@everpuredata.com,
+	jcurley@everpuredata.com,
+	jlayton@kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org,
+	slingappa@everpuredata.com,
+	Tim Menninger <tmenninger@everpuredata.com>
+Subject: [PATCH v2 2/2] NFSv4/flexfiles: limit transport disconnects when cancelling I/O
+Date: Thu,  5 Nov 2026 02:02:49 +0000
+Message-ID: <20261105020249.2607367-3-tmenninger@purestorage.com>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <20261105020249.2607367-1-tmenninger@purestorage.com>
+References: <20261105020249.2607367-1-tmenninger@purestorage.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -62,71 +108,58 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2 1/3] rpcrdma: Serialize notification registration with
- device removal
-To: Chuck Lever <cel@kernel.org>
-CC: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey
-	<tom@talpey.com>, Trond Myklebust <trondmy@kernel.org>, Anna Schumaker
-	<anna@kernel.org>, "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-	"stable@vger.kernel.org" <stable@vger.kernel.org>, yuehaibing
-	<yuehaibing@huawei.com>, zhangchangzhong <zhangchangzhong@huawei.com>,
-	"weiyongjun (A)" <weiyongjun1@huawei.com>
-References: <20261103032758.1302493-1-lixiasong1@huawei.com>
- <20261103032758.1302493-2-lixiasong1@huawei.com>
- <03cf178a-bbcf-448e-88bb-84e4dd994baf@slotpi15m67>
-From: Li Xiasong <lixiasong1@huawei.com>
-In-Reply-To: 03cf178a-bbcf-448e-88bb-84e4dd994baf@slotpi15m67
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-X-ClientProxiedBy: kwepems200002.china.huawei.com (7.221.188.68) To
- whupemk300014.china.huawei.com (7.152.185.8)
+Content-Transfer-Encoding: 8bit
 
-On 11/4/2026 6:06 AM, Chuck Lever wrote:
-> On Tue, 03 Nov 2026 11:27:56 +0800, Li Xiasong wrote:
-> 
->> +	mutex_lock(&rpcrdma_device_mutex);
->> +	rd = rpcrdma_get_client_data(device);
->>  	if (!rd || test_bit(RPCRDMA_RD_F_REMOVING, &rd->rd_flags))
->> -		return -ENETUNREACH;
->> +		goto out_unlock;
->>
->>  	/*
->>  	 * Arm rn_done before xa_alloc() publishes @rn: once @rn is
->> @@ -78,11 +89,15 @@ int rpcrdma_rn_register(struct ib_device *device,
->>  	rn->rn_done = done;
->>  	if (xa_alloc(&rd->rd_xa, &rn->rn_index, rn, xa_limit_32b, GFP_KERNEL) < 0) {
-> 
-> This xa_alloc() now runs with rpcrdma_device_mutex held, and the
-> mutex is module-wide. Every xprtrdma connect, every svcrdma accept,
-> and rpcrdma_remove_one() take it. GFP_KERNEL here can enter direct
-> reclaim with the mutex held.
-> 
-> Before this patch, a connect worker that blocked in that wait
-> could wait only on its own transport, and every other
-> transport reconnected independently. With the mutex held across
-> the allocation, a connect worker for transport A that is waiting in
-> reclaim on an RPC over disconnected transport B blocks transport
-> B's reconnect in rpcrdma_rn_register(). The same holds for an nfsd
-> thread in svc_rdma_accept() on a host that also runs an NFS client.
-> Device removal queues behind the same mutex.
-> 
-> The mutex does not need to cover the allocation. xa_reserve() or
-> xa_insert() with a slot reserved before mutex_lock(), or
-> memalloc_noio_save() around the critical section, keeps the
-> serialization this patch needs without holding the lock across
-> reclaim.
-> 
+From: Tim Menninger <tmenninger@everpuredata.com>
 
-Thanks for pointing this out. I missed the reclaim dependency while
-holding the module-wide mutex.
+ff_layout_cancel_io() cancels RPC tasks associated with a recalled or
+revoked layout segment. If any matching tasks are found, it then calls
+rpc_clnt_disconnect().
 
-I'll revisit the allocation path and make sure registration remains
-serialized with device removal without introducing this dependency.
+rpc_clnt_disconnect() disconnects every transport attached to the RPC
+client. A data server client can have multiple transports, while the
+cancelled requests may have used only a subset of them. Cancelling I/O
+for one layout segment can therefore disrupt unrelated I/O using other
+transports belonging to the same data server client.
 
-Thanks,
-Li Xiasong
+This is particularly disruptive with RPC/RDMA during data server
+recovery, where unnecessary transport disconnects can result in repeated
+reconnect activity on otherwise unaffected connections.
 
+Use rpc_cancel_tasks_and_disconnect() instead. Matching tasks are still
+cancelled, but only matching requests belonging to that client that
+remain on the transport transmit or receive queues are marked for
+disconnect. When such a request is released, SUNRPC conditionally
+disconnects the connection generation on which that request was sent.
+
+This preserves cancellation and draining of I/O associated with the
+layout segment without disconnecting unrelated transports attached to
+the same RPC client.
+
+Fixes: b739a5bd9d9f ("NFSv4/flexfiles: Cancel I/O if the layout is recalled or revoked")
+Signed-off-by: Tim Menninger <tmenninger@everpuredata.com>
+---
+ fs/nfs/flexfilelayout/flexfilelayout.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 9492d6bc1d1a7..700f0e4606e8f 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -2599,10 +2599,9 @@ static void ff_layout_cancel_io(struct pnfs_layout_segment *lseg,
+ 			clnt = ds_clp->cl_rpcclient;
+ 			if (!clnt)
+ 				goto next;
+-			if (!rpc_cancel_tasks(clnt, -ECANCELED,
+-					      ff_layout_match_io, lseg))
+-				goto next;
+-			rpc_clnt_disconnect(clnt);
++			rpc_cancel_tasks_and_disconnect(clnt, -ECANCELED,
++							ff_layout_match_io,
++							lseg);
+ next:
+ 			nfs4_ff_layout_put_deviceid(mirror_ds);
+ 		}
+-- 
+2.53.0
 
