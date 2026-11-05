@@ -1,98 +1,100 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793881462;
-	b=5JW2Wde9QMkIHT7C+PzKgc4B6u9vYCsM+TpmMhCMzWDt/nW6vuKWquA7ywYnSj/hjEuR
-	 fOaBf507Dh34evZedsc/dT+qVu66Qvk9DajWFyU1rPqLUBswNAlE+v13zcQJXIOpqyQma
-	 kXYxUn4RXA4i60QCesqY3U9yTEuc1ZiJyi6xbtr1AkTpvpCPvbn8xQhNG838syux3CpvZ
-	 7ekND5yx7H0N0rkaqurDXxJIaNDjfYX4+7rJk8KOwOrqF9pNoT03Jwysfv/aXaJlChJqF
-	 aY9Rh0JBdsZioWNNkHfz86wJW8Y1LlOvr4nrJ/Es/gByoyUh/PfD/MlYZ8PHXib5TYw==
+	t=1793882195;
+	b=Ou+2wGsVzn7Z6SNv9XPpgKZIcN4U1wCJG1VpAOKi1SmWp5onJbrGNZdJEvozkLm2NwVJ
+	 NpHGpQsTMZGRHi4ADPfAKQvrcEhKQbFjGBaVmg1JUtGEWMo2zu+h7AxBN+gLL1mWAtDDT
+	 169ZyhpNwZYSCnh9w9AiiHBx6AM90dRM8ZOFb7WcqSSKl7PemKOC32SkSFDGSU3Jxuf1h
+	 voH4dC8CwY92b2w589oImM1bTcipbX2SpeFWKVYazstzKprfDt/nRMwE2QKBXGWoiSoHQ
+	 DPDcrbPHjRjb+VR/9vTr7B4zZVy8Af+/UEMlBYa8Fk8LBTLMI2aHlZYbImZez4Fkj8Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793881462;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793882195;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
 	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spamd-Result:X-Spam-Score:X-Spam-Level:X-Spam-Flag;
-	bh=qZ2SbYk3GrokaaO0nBX/KKA3dRohO53XWjNLOWBHmzM=;
-	b=v6bWeXDUwWFs9mrhAfmJiSd7sbsGejmLVWx6QwIxApw+C5KK6crS1f3i//R/pFbvIAt9
-	 MqdV9lQQhdEnVq+9vr04dhualGK3TFB0rhBzN5v4jjOzsLkfcjqKko7ZIQF2KF2I5iIFJ
-	 4jZlOmllQQ9glBuV3dmTWHe1mt8yLmBSIVaHODDXMkLy5Hq3sezYXvjJ0BcLyCliNZPqO
-	 0XswLb87ctsvnGzl1g9u3lI8zFJgyHDYKb3hdVIK5VUWSxSxqiSMrK/lRxQHfkDi9dyo/
-	 5xhDgYdUFRv55shmgApRYfrURiqFxW33zFdgnGqZ/XMn4kRinBeK3EuY9dYqEK6qJxA==
+	 In-Reply-To:X-Spamd-Result:X-Rspamd-Server:X-Rspamd-Action:
+	 X-Spam-Flag:X-Spam-Score:X-Spam-Level:X-Rspamd-Queue-Id;
+	bh=DpjKnWhAHhajlU0N8yPm40hOORTtvriSHlYmNC33ga8=;
+	b=RbwwUhaA/Pii3DB2MbvmPooi4HQozb4wv93GyhL9w+1mnuIb53SNMAUg1+J7Ub9sdHaz
+	 pKeQzuU9CADjko+4nANGHQ+oWT1OMVqSmE/H8rCk/pQbYNq2eh8m6mBcktqa35lqVWxU2
+	 HVATF+zwWkgiWxoBSE9V06eqXPQaE3KdYT0l53Kigfxn7K4fBiLDDn8NTPA3fOgsOhUBn
+	 2lKQgpfotvuXrQW3D/mdYxVIawB0R2ayTyO0b865LzEdAMWEa0BKdq7QlcUZqqUj8yBim
+	 JLj5dZhvsnMzJlrvWJ6eVT9JgUbWlKqPC8I9E8pOYhvCiV1AjB5e8AQj49ftC74O7cQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=suse.cz;
 	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=x9Zosn4E;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=OA7rJSNx;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=x9Zosn4E;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=OA7rJSNx;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=JZx76L+g;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b="8/5XD6W9";
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=T3Jse+8w;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=BYgAZw+U;
 	arc=none smtp.remote-ip=195.135.223.130
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4E6B3606A326;
-	Thu,  5 Nov 2026 12:24:21 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4E6B3606A326
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 212C9606A32F;
+	Thu,  5 Nov 2026 12:36:34 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 212C9606A32F
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=x9Zosn4E;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=OA7rJSNx;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=x9Zosn4E;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=OA7rJSNx
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=JZx76L+g;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=8/5XD6W9;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=T3Jse+8w;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=BYgAZw+U
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 9F5B121F9C;
-	Thu,  5 Nov 2026 12:24:19 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 2C5F621E5A;
+	Thu,  5 Nov 2026 12:36:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1793881459; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1793882193; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=qZ2SbYk3GrokaaO0nBX/KKA3dRohO53XWjNLOWBHmzM=;
-	b=x9Zosn4EbchHGeE5udevL1r29rgPf9Y02dysOElisjHj+VO5UilfwMafmPydaCNnTjwNzv
-	UF86KGWPiD1Le7Ah5EEn+d+JCboYs72l6yBZbRCo6mTyh4eKiPufQjAAHaHoFJVIZkad7k
-	Ds8jF1cavCxTYhTDUloFMVoekboGBwY=
+	bh=DpjKnWhAHhajlU0N8yPm40hOORTtvriSHlYmNC33ga8=;
+	b=JZx76L+ggOq++v50JrM+txlftOOqxJaKF/tK8uhPwld5Q9GnNQfLXM1whyLb1DsMeHXH/C
+	/uTr5WEx4MoDADem0Lt2IRl8UnJCEvNjej74YyT5VZBSM782Vk2aNTEZTgyxnuBLnPZ/fS
+	Mhf/U17g3frl5lC6gN/6C/6ftmbFF2E=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1793881459;
+	s=susede2_ed25519; t=1793882193;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=qZ2SbYk3GrokaaO0nBX/KKA3dRohO53XWjNLOWBHmzM=;
-	b=OA7rJSNxuyCmeklmiqZ15Mq0PWDdCAvs2gjXUAdfvq+IV2EYP6LI9FD76bFqQPglYJgSmh
-	0coVcjc/QUeRzhDA==
+	bh=DpjKnWhAHhajlU0N8yPm40hOORTtvriSHlYmNC33ga8=;
+	b=8/5XD6W9JBZBD7IT0Gng8T7errG+mfSR55zIjyH58gQPHLQ3a+6mBXLPeQK6OumZ9O/ASJ
+	a0+wPfZoC8vZgnDQ==
 Authentication-Results: smtp-out1.suse.de;
-	none
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=T3Jse+8w;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=BYgAZw+U
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1793881459; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1793882192; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=qZ2SbYk3GrokaaO0nBX/KKA3dRohO53XWjNLOWBHmzM=;
-	b=x9Zosn4EbchHGeE5udevL1r29rgPf9Y02dysOElisjHj+VO5UilfwMafmPydaCNnTjwNzv
-	UF86KGWPiD1Le7Ah5EEn+d+JCboYs72l6yBZbRCo6mTyh4eKiPufQjAAHaHoFJVIZkad7k
-	Ds8jF1cavCxTYhTDUloFMVoekboGBwY=
+	bh=DpjKnWhAHhajlU0N8yPm40hOORTtvriSHlYmNC33ga8=;
+	b=T3Jse+8wWvU2m0agalLdcO3u4gc4aSPygpqteqhLhNd/aBjFrhyiDCC1i0Lv+iYh3z1s6e
+	fnA2+Jf6Yg0jKvkbvYGo3ERh6eFq09U2ijwb8SlUT+DSbyddzL3tu06qm3Tz++uFh8zr+9
+	+TrYzUca/b6bladItMQ0Kk0+pK0H3fw=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1793881459;
+	s=susede2_ed25519; t=1793882192;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=qZ2SbYk3GrokaaO0nBX/KKA3dRohO53XWjNLOWBHmzM=;
-	b=OA7rJSNxuyCmeklmiqZ15Mq0PWDdCAvs2gjXUAdfvq+IV2EYP6LI9FD76bFqQPglYJgSmh
-	0coVcjc/QUeRzhDA==
+	bh=DpjKnWhAHhajlU0N8yPm40hOORTtvriSHlYmNC33ga8=;
+	b=BYgAZw+Ujm4L/dnuxqWK1yrVNISlV/1cL+J702exe7XcXF17FVJLhwkbWz39x0ZpRyHhhI
+	iDaH9TFqNTx9SSCA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 6CAA4133F6;
-	Thu,  5 Nov 2026 12:24:19 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 05AD3133F6;
+	Thu,  5 Nov 2026 12:36:32 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id HDRiEnN17Gp/IwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 05 Nov 2026 12:24:19 +0000
+	id AKP0Nk947Go1MAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 05 Nov 2026 12:36:32 +0000
 Received: by quack.suse.cz (Postfix, from userid 1000)
-	id 0060FB6DF; Thu, 05 Nov 2026 13:24:18 +0100 (CET)
-Date: Thu, 5 Nov 2026 13:24:18 +0100
+	id 9532FB6E6; Thu, 05 Nov 2026 13:36:31 +0100 (CET)
+Date: Thu, 5 Nov 2026 13:36:31 +0100
 From: Jan Kara <jack@suse.cz>
 To: Christian Brauner <brauner@kernel.org>
 Cc: linux-fsdevel@vger.kernel.org, 
@@ -116,12 +118,12 @@ Cc: linux-fsdevel@vger.kernel.org,
 	linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net, 
 	Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
 	linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org, 
-	Chuck Lever <cel@kernel.org>
-Subject: Re: [PATCH RFC 34/38] proc: sysctl: look at the table under
- sysctl_lock when creating an inode
-Message-ID: <tmxt2djcskr7qa6a2ewpelbhnyxtd4xp6dabc2uq5cdea5xdex@qn7wcwyjf5ah>
+	Chuck Lever <cel@kernel.org>, stable@vger.kernel.org
+Subject: Re: [PATCH RFC 37/38] proc: don't pin a symlink's entry while
+ readlink() copies it out
+Message-ID: <krgvwwpug6brspfpubssohr6cknwd2wtkrxo6uqaoalfi2ay4v@3dtbsctwca3n>
 References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
- <20261102-work-procfs-bugfixes-v1-34-59422ed3e465@kernel.org>
+ <20261102-work-procfs-bugfixes-v1-37-59422ed3e465@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -133,115 +135,99 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261102-work-procfs-bugfixes-v1-34-59422ed3e465@kernel.org>
-X-Spamd-Result: default: False [-11.30 / 50.00];
+In-Reply-To: <20261102-work-procfs-bugfixes-v1-37-59422ed3e465@kernel.org>
+X-Spamd-Result: default: False [-11.51 / 50.00];
 	SUSE_INTERNAL_BYPASS(-9.00)[];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
+	MX_GOOD(-0.01)[];
 	RCVD_COUNT_THREE(0.00)[3];
+	MIME_TRACE(0.00)[0:+];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	ARC_NA(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	R_RATELIMIT(0.00)[to_ip_from(RLpnapcpkwxdkc5mopt1ezhhna)];
 	TO_MATCH_ENVRCPT_SOME(0.00)[];
 	FROM_EQ_ENVFROM(0.00)[];
-	R_RATELIMIT(0.00)[to_ip_from(RL63fqwwx8ot6gmekemcs76f9d)];
-	RCVD_TLS_LAST(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCPT_COUNT_GT_50(0.00)[59];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:email,imap1.dmz-prg2.suse.org:helo]
-X-Spam-Score: -11.30
-X-Spam-Level: 
+	TO_DN_SOME(0.00)[];
+	RCPT_COUNT_GT_50(0.00)[60];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	MISSING_XM_UA(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.cz:dkim,suse.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo]
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Rspamd-Action: no action
 X-Spam-Flag: NO
+X-Spam-Score: -11.51
+X-Spam-Level: 
+X-Rspamd-Queue-Id: 2C5F621E5A
 
-On Mon 02-11-26 15:21:49, Christian Brauner wrote:
-> proc_sys_make_inode() checks under sysctl_lock that @head isn't being
-> unregistered, lets go of the lock, and then reads the mode of @table
-> and calls ->set_ownership() with @head. That's fine as long as the
-> caller holds @head in use, which keeps unregistering from getting past
-> that check. The next patch has a caller that only pins the memory of
-> @head. For that one the table, and whatever the owner of the header
-> keeps behind it, is only there for as long as nobody unregisters the
-> header, which happens under sysctl_lock. So read the mode and set the
-> ownership before letting go of the lock. The ->set_ownership()
-> callbacks only look up ids in a user namespace.
+On Mon 02-11-26 15:43:28, Christian Brauner wrote:
+> proc_get_link() pins the entry with use_pde() and the delayed call
+> unpins it. vfs_readlink() copies the link to userspace in between. So a
+> page fault in that copy holds up remove_proc_entry() just like the
+> copies of reads and writes do, and the callers hold locks while they
+> wait. /proc/asound/<id> is removed with snd_card_mutex and info_mutex
+> held when a card changes its id.
 > 
-> No functional changes.
+> The pin doesn't keep anything alive. proc_symlink() copies the target
+> and pde_free() frees it with the entry, and the inode holds a reference
+> to the entry. What the pin does is keep a removed symlink from being
+> followed. So check ->in_use instead and drop the delayed call. That
+> also takes an atomic pair off every traversal of /proc/net and
+> /proc/mounts.
 > 
+> Fixes: 7e0e953bb0cf ("procfs: fix race between symlink removals and traversals")
+> Cc: stable@vger.kernel.org
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-Looks good to me. Feel free to add:
+Looks good. Feel free to add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > ---
->  fs/proc/proc_sysctl.c | 20 +++++++++++++-------
->  1 file changed, 13 insertions(+), 7 deletions(-)
+>  fs/proc/inode.c | 14 +++++++-------
+>  1 file changed, 7 insertions(+), 7 deletions(-)
 > 
-> diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
-> index 2150cf842919..a1242247f492 100644
-> --- a/fs/proc/proc_sysctl.c
-> +++ b/fs/proc/proc_sysctl.c
-> @@ -500,6 +500,7 @@ static struct inode *proc_sys_make_inode(struct super_block *sb,
->  	struct ctl_table_root *root = head->root;
->  	struct inode *inode;
->  	struct proc_inode *ei;
-> +	umode_t mode;
+> diff --git a/fs/proc/inode.c b/fs/proc/inode.c
+> index 9933f03ab9fb..2d65f3c8ec03 100644
+> --- a/fs/proc/inode.c
+> +++ b/fs/proc/inode.c
+> @@ -629,19 +629,19 @@ static const struct file_operations proc_iter_file_ops_compat = {
+>  };
+>  #endif
 >  
->  	inode = new_inode(sb);
->  	if (!inode)
-> @@ -509,12 +510,22 @@ static struct inode *proc_sys_make_inode(struct super_block *sb,
->  
->  	ei = PROC_I(inode);
->  
-> +	inode->i_uid = GLOBAL_ROOT_UID;
-> +	inode->i_gid = GLOBAL_ROOT_GID;
->  	spin_lock(&sysctl_lock);
->  	if (unlikely(head->unregistering)) {
->  		spin_unlock(&sysctl_lock);
->  		iput(inode);
->  		return ERR_PTR(-ENOENT);
->  	}
-> +	/*
-> +	 * The table, and whatever the owner of the header keeps behind it,
-> +	 * is only there for as long as nobody unregisters the header, which
-> +	 * happens under sysctl_lock. So look at them before letting go of it.
-> +	 */
-> +	mode = table->mode;
-> +	if (root->set_ownership)
-> +		root->set_ownership(head, &inode->i_uid, &inode->i_gid);
->  	ei->sysctl = head;
->  	ei->sysctl_entry = table;
->  	hlist_add_head_rcu(&ei->sibling_inodes, &head->inodes);
-> @@ -522,8 +533,8 @@ static struct inode *proc_sys_make_inode(struct super_block *sb,
->  	spin_unlock(&sysctl_lock);
->  
->  	simple_inode_init_ts(inode);
-> -	inode->i_mode = table->mode;
-> -	if (!S_ISDIR(table->mode)) {
-> +	inode->i_mode = mode;
-> +	if (!S_ISDIR(mode)) {
->  		inode->i_mode |= S_IFREG;
->  		inode->i_op = &proc_sys_inode_operations;
->  		inode->i_fop = &proc_sys_file_operations;
-> @@ -535,11 +546,6 @@ static struct inode *proc_sys_make_inode(struct super_block *sb,
->  			make_empty_dir_inode(inode);
->  	}
->  
-> -	inode->i_uid = GLOBAL_ROOT_UID;
-> -	inode->i_gid = GLOBAL_ROOT_GID;
-> -	if (root->set_ownership)
-> -		root->set_ownership(head, &inode->i_uid, &inode->i_gid);
+> -static void proc_put_link(void *p)
+> -{
+> -	unuse_pde(p);
+> -}
 > -
->  	return inode;
+>  static const char *proc_get_link(struct dentry *dentry,
+>  				 struct inode *inode,
+>  				 struct delayed_call *done)
+>  {
+>  	struct proc_dir_entry *pde = PDE(inode);
+> -	if (!use_pde(pde))
+> +
+> +	/*
+> +	 * No pin. The link lives with the entry, which the inode holds, and a
+> +	 * reader could fault while vfs_readlink() copies it out. Just don't
+> +	 * follow a removed one.
+> +	 */
+> +	if (unlikely(atomic_read(&pde->in_use) < 0))
+>  		return ERR_PTR(-EINVAL);
+> -	set_delayed_call(done, proc_put_link, pde);
+>  	return pde->data;
 >  }
 >  
 > 
