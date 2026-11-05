@@ -1,55 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793913839;
-	b=gx1knNIGpfVE9WoUHbejrxsoUBaEakwVbIt9bqzwUe5qy9PqcXIZPBcjz0X7WWQCKEhR
-	 ao6aFg0UK+QBLIzBxbr8KK9NbBFtOnuwYnbCpIpTVh37WCYoQ4U1FdGrcOaRZMEPrz09R
-	 43BtI7Dj8Z6hchMZGRXvmDJ88DdHUf3rzQnH9VwD0R3hBDSPluvJ+7sBvfoyxWV3CMjis
-	 oYyyOJ6INPnAuqDkXt8YCoTzeie/7YirM3n9WJbfBHUq9dEZm6kZDCIo+1wXykMEElZmQ
-	 qBACWpqg4n4j4s/2xCkrpoq/cYPLjeu2TIqZgdVoYOK1PS89kPc/7JJFd5PjcV/utfQ==
+	t=1793914059;
+	b=fglcfkUB5xifSpZJoYdI9pslZzfgZIqP1KSP1XisXxsyUrsua4XB6w7eIVc8vtey2hv3
+	 N/nNIvz9gdTdoVTurLcPu5317qDd9OAn9HnCMCtlQGllJYBQXA0ueAIxW9lldJqCW2WNA
+	 88GG9wbrkunnTVv34wuiyxmqNJE6GVeuSWIfRXZOiusfftMFni83j+Nn4zuq/fwf+1l3G
+	 B4W+YV6W31jEMu7PNQIAPugcBhF4feMMazwt+asBUvMoP4BNe03PEq9t/eFMbS1CWegMg
+	 IeFTZXp6UIMJ2VP198wzxSHVy5esX1LVCxSfPMXXkxptTtVEs/DgvutiscEusOe081A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793913839;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793914059;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=GHNo6a8cM54H0KXv/W5SueN6cDG7j5EhzwqVFrjUQ3Q=;
-	b=U1d31EPXcY4eHTBOWifPjsKjCkkPGpMSUerUxIcTLzTfWYaJjukTuQ1UxOT1kpNN27b6
-	 cotzG+dWVnBl8iW2Eky2b2rzecPuzuuuVwDvz/F7vOYGqIddMt1qWSZWnGRop4StHYsnB
-	 NLDW5lOZ4uYhywgJBcdz7JiN0TvcmncPcyaP24CzpeJLVVK6UZyS8CBrzc8q9IGb2Jev1
-	 RU2j9hx1p7Xprlr+Szwr4fZ2zRrD3/5PAb6hzvczVx4VuQHagCJ3Ovuvztc5TtGzpsg0D
-	 tCYaAx+4QSmSMH/XJJwoxmUTclcAinuZjGtqXCh55a/lE4Mfujf7rfBMUIoRPM2jpbA==
+	bh=/43GDL06nu28877nsn6GPnInacjA21UTWPyT4M3fu28=;
+	b=Xlp3a+7namNgW72kbJ6DH/Sw8XEX30RGo9vRrwexwxJ/mqHMNamKjk8F9g2rcg7tDp0Q
+	 Ojkw60ZMQiL/6Qq6T3lbYbTnHboE67jDVMtDCGPFZm1th9jRGrt5zZh1CeOnVjPh9YVNu
+	 K3UxyIZonvqDDi4MKfICZ0r2wEu0lxryovrZQHO0PpAJ8e8GbSgM/Pq1ku2tdhXppBSZt
+	 ynHlCML+Nh4HsD1cBLrkaspJ1IALgFLNUVQ3/Ej83GgFXLCM6L89dkaIvyMLeG5aRoocO
+	 ESFwa3zSKTDe4UVYWqH7Mx8maP72kwafNVtwyipH9fMayBcCToZfs94jOKQ9ulkKY8Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BZ5kvDnQ;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=okewdbaA;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8E89B606A326
-	for <linux-nfs@vger.kernel.org>; Thu,  5 Nov 2026 21:23:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8492D606A32D
+	for <linux-nfs@vger.kernel.org>; Thu,  5 Nov 2026 21:27:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BZ5kvDnQ
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E9DF61F0089F;
-	Thu,  5 Nov 2026 21:23:58 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=okewdbaA
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D022E1F0089F;
+	Thu,  5 Nov 2026 21:27:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793913839;
-	bh=GHNo6a8cM54H0KXv/W5SueN6cDG7j5EhzwqVFrjUQ3Q=;
+	s=k20260515; t=1793914059;
+	bh=/43GDL06nu28877nsn6GPnInacjA21UTWPyT4M3fu28=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=BZ5kvDnQHg5VBSpBPBZYXIgwVPzjc+HQ2hFbWhjpBLMrbp4eCxyhNQgayZZf25SiO
-	 dPikCH3wLXN6SbYryrb7kDPt5mvmleUIoWfIELqY5AhDnl33evBs865zqWZ+Iwsx8w
-	 NG2Evmj/OywRDk026a/Z9//vXO9pvY9uGF19JRTInO1KIAuTy3i3brXqbPQF2StyrA
-	 ikzXv4WDB013KrpNf6dxJdlEwiXeoG82zMutA3yoPheSgEQJYe2vn2TT+p+/udEnsI
-	 c6YmQcuy4w3eokxWzJakFYRATsGA3K7B9ozBoEosAmbkUqh5ahUXjzylVqdvqmN6Mj
-	 670Mj1r1cQfpw==
-Date: Thu, 5 Nov 2026 16:23:58 -0500
+	b=okewdbaAuCzg9M7h++x2ftnfBI/GWS/oc7Kp65zWaXCH8n0g90fc7/J4ec2xPiXG6
+	 3vGGuVC0fAe4UYoZZgiX3h1NVN7SmUmHMhfdLLUKlL/ZCYQFJFoWURf0lfAHrK4n70
+	 Q/x9u6OMp74Gn+0MnAlYs8evKz8aZODXI6tmztLF4dZJKmeG4Q7y9GKCb5Cglj6BXO
+	 Ro+8VvMuzSJikChPSiz0d0jda8yVPfwVqplpEmHv2uCn1zlnw3f/RydnX67K2FQVZ7
+	 R/+GGsCS1Rxk8xWc9D8YjU7uEbiyOcztdalF8aHt0H/bviqRAgM1Wgr47Hdl5hkTlj
+	 PiK3gqU59Jbaw==
+Date: Thu, 5 Nov 2026 16:27:38 -0500
 From: Mike Snitzer <snitzer@kernel.org>
 To: Anna Schumaker <anna@kernel.org>
 Cc: Trond Myklebust <trondmy@kernel.org>, linux-nfs@vger.kernel.org,
 	Jonathan Flynn <jonathan.flynn@hammerspace.com>
-Subject: Re: [PATCH 03/11] NFSv4/flexfiles: cacheline align the per-stripe
- layoutstats
-Message-ID: <auzz7kWlLrpeuurX@kernel.org>
+Subject: Re: [PATCH 04/11] NFSv4/flexfiles: make dss_info->start_time
+ write-once
+Message-ID: <auz0yhZstrpx2O4l@kernel.org>
 References: <20261102191109.13470-1-snitzer@kernel.org>
- <20261102191109.13470-4-snitzer@kernel.org>
- <5a9801cf-b4af-4a04-8ebd-86ab9b5160f5@app.fastmail.com>
+ <20261102191109.13470-5-snitzer@kernel.org>
+ <2e7ab5bd-11dc-4b02-827f-7a4983f755c0@app.fastmail.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -61,126 +61,87 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <5a9801cf-b4af-4a04-8ebd-86ab9b5160f5@app.fastmail.com>
+In-Reply-To: <2e7ab5bd-11dc-4b02-827f-7a4983f755c0@app.fastmail.com>
 
-On Thu, Nov 05, 2026 at 10:34:56AM -0500, Anna Schumaker wrote:
-> Hi Mike,
+On Thu, Nov 05, 2026 at 11:14:10AM -0500, Anna Schumaker wrote:
+> Hi MIke,
 > 
 > On Mon, Nov 2, 2026, at 2:11 PM, Mike Snitzer wrote:
 > > From: Mike Snitzer <snitzer@hammerspace.com>
 > >
-> > Moving the layoutstats lock into struct nfs4_ff_layout_ds_stripe stopped
-> > stripes serialising on one spinlock, but it left them sharing cachelines
-> > with each other.
-> >
-> > The lock and the statistics it guards sat at the tail of a struct whose
-> > sizeof() was 296 and whose alignof() was only 8, so in mirror->dss[]
-> > stripe i began at i * 296.  296 mod 64 = 40, so every stripe started 40
-> > bytes further into a line than the last and no stripe's lock was line
-> > aligned.  Acquiring stripe i's lock therefore invalidated the line
-> > holding stripe i+1's lock and counters.  A RAID0-style layout -- one
-> > mirror, many stripes -- is exactly the case the per-stripe lock was
-> > introduced for, so this false sharing ate into the win.
-> >
-> > Align the first member of the guarded set.  That does two things: the
-> > lock now starts on a line boundary, so the guarded set occupies lines of
-> > its own and shares none with the read-mostly members above; and it raises
-> > the struct's alignment to 64, which forces sizeof() up to a multiple of
-> > 64 and makes the array stride line aligned.  The stride is what actually
-> > separates stripe i from stripe i+1.
-> >
-> > Verified with pahole on flexfilelayout.o built with DWARF5.  The layout
-> > is identical on x86_64, arm64 4K pages and arm64 64K pages -- cachelines
-> > are 64 bytes on both architectures, so page size does not enter into it
-> > -- and was taken with neither CONFIG_DEBUG_SPINLOCK nor
-> > CONFIG_PROVE_LOCKING, both of which fatten spinlock_t and change it:
-> >
-> >   /* --- cacheline 3 boundary (192 bytes) --- */
-> >   spinlock_t                 lock __aligned(64);  /*   192     4 */
-> >   /* XXX 4 bytes hole */
-> >   struct nfs4_ff_layoutstat  read_stat;           /*   200    72 */
-> >   struct nfs4_ff_layoutstat  write_stat;          /*   272    72 */
-> >   ktime_t                    start_time;          /*   344     8 */
-> >   /* size: 384, cachelines: 6 */
-> >   } __attribute__((__aligned__(64)));
-> >
-> > A read RPC now dirties two lines of its own stripe and a write three, and
-> > neither disturbs a neighbouring stripe.  Later patches give each
-> > direction a line of its own.
-> >
-> > Cost is 296 -> 384 bytes per stripe, i.e. 2816 bytes for a 32 stripe
-> > layout, which is negligible beside the rest of the per-file layout state.
-> > 384 is also a multiple of 128, so the stride holds for implementations
-> > with a 128 byte coherency granule.
-> >
-> > Note that the alignment attribute only orders the stripes relative to the
-> > start of mirror->dss[], not that array's own base.  The base is aligned
-> > too, under either allocator kvmalloc() may pick for it:
-> >
-> >   - From the slab.  kmalloc() documents a size based alignment guarantee
-> >     for power-of-two sizes only, but the smallest possible request is now
-> >     384 bytes, and every kmalloc bucket at or above that is a power of
-> >     two whose objects SLUB lays out at multiples of the object size from
-> >     a page aligned slab, so the base is at least 512 byte aligned.  The
-> >     exceptions, kmalloc-96 and kmalloc-192, are both smaller than one
-> >     stripe and cannot be selected.
-> >
-> >   - From vmalloc.  A stripe array wide enough to need a high order
-> >     allocation is served by the vmalloc() fallback instead, which returns
-> >     page aligned memory.
-> >
-> > Either is comfortably more than the 64 bytes this needs.
+> > start_time was written under the stripe lock in
+> > nfs4_ff_layoutstat_start_io() and read outside it in
+> > ff_layout_encode_ff_layoutupdate().  Pre-existing -- mirror->lock had the
+> > same shape -- and benign, since it is a single naturally aligned 8 byte
+> > value, but it is an unannotated race either way.
 > 
-> This commit message is very wordy, and can probably be edited down.
+> We can probably drop this last sentence.
+> 
+> >
+> > The lock is the wrong tool for it.  ffl_duration is measured from this
+> > stripe's first I/O, so the field is written once and read-only for the
+> > rest of the stripe's life.  Say that instead: publish it with
+> 
+> This portion needs editing too. My brain tripped over "Say that instead"
+> while reading.
+> 
+> > try_cmpxchg64() and let the first I/O win, and read it with READ_ONCE().
+> > Only the first I/O to a stripe pays the read-modify-write; every one
+> > after it short circuits on the READ_ONCE().
+> 
+> This sentence is just rewording the previous sentence.
 
-OK, will fix. (I'll go over the entire series on this point.)
-
+Sorry, I will review all commit headers and code comments.
+ 
+> >
+> > ffl->last_report_time two lines away is already published this way, so
+> > the pattern is not new to this file.
+> >
+> > This also stops start_time depending on there being exactly one lock per
+> > stripe, which a later patch changes.
 > >
 > > Signed-off-by: Mike Snitzer <snitzer@hammerspace.com>
 > > ---
-> >  fs/nfs/flexfilelayout/flexfilelayout.h | 14 ++++++++++++--
-> >  1 file changed, 12 insertions(+), 2 deletions(-)
+> >  fs/nfs/flexfilelayout/flexfilelayout.c | 21 ++++++++++++++++++---
+> >  fs/nfs/flexfilelayout/flexfilelayout.h |  3 ++-
+> >  2 files changed, 20 insertions(+), 4 deletions(-)
 > >
-> > diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h 
-> > b/fs/nfs/flexfilelayout/flexfilelayout.h
-> > index 8fa2d8851166a..f48860450cf28 100644
-> > --- a/fs/nfs/flexfilelayout/flexfilelayout.h
-> > +++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-> > @@ -14,6 +14,7 @@
-> >  #define FF_FLAGS_NO_IO_THRU_MDS  2
-> >  #define FF_FLAGS_NO_READ_IO      4
+> > diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c 
+> > b/fs/nfs/flexfilelayout/flexfilelayout.c
+> > index 7fc1369df8439..7c328f2ec900d 100644
+> > --- a/fs/nfs/flexfilelayout/flexfilelayout.c
+> > +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+> > @@ -729,6 +729,22 @@ nfs4_ff_end_busy_timer(struct nfs4_ff_busy_timer 
+> > *timer, ktime_t now)
+> >  	return ktime_sub(now, start);
+> >  }
 > > 
-> > +#include <linux/cache.h>
-> >  #include <linux/refcount.h>
-> >  #include "../pnfs.h"
-> > 
-> > @@ -86,8 +87,17 @@ struct nfs4_ff_layout_ds_stripe {
-> >  	const struct cred __rcu		*ro_cred;
-> >  	const struct cred __rcu		*rw_cred;
-> >  	struct nfs_file_localio		nfl;
-> > -	/* Protects read_stat, write_stat and start_time below */
-> > -	spinlock_t			lock;
-> > +	/*
-> > +	 * Protects read_stat, write_stat and start_time below.
-> > +	 *
-> > +	 * Cacheline aligned so that the layoutstats accounting done on
-> > +	 * every I/O to this stripe does not share cachelines with the
-> > +	 * read-mostly members above, nor with the neighbouring stripes
-> > +	 * in mirror->dss[]: aligning the first member of the guarded
-> > +	 * set also rounds sizeof() up to a multiple of the cacheline,
-> > +	 * which is what makes the array stride line-aligned.
+> > +/*
+> > + * ffl_duration is measured from this stripe's first I/O, so 
+> > start_time is
+> > + * written once and read-only for the rest of the stripe's life.  
+> > Publish it
+> > + * with a cmpxchg and let the first I/O win, rather than depending on 
+> > a lock
+> > + * that every reader would then have to take.
+> > + */
+> > +static void
+> > +nfs4_ff_layoutstat_set_start_time(struct nfs4_ff_layout_ds_stripe 
+> > *dss_info,
+> > +				  ktime_t now)
+> > +{
+> > +	ktime_t unset = 0;
+> > +
+> > +	if (!READ_ONCE(dss_info->start_time))
+> > +		try_cmpxchg64(&dss_info->start_time, &unset, now);
 > 
-> Let's leave the original comment alone, since most of this information
-> is  duplicated in the commit message and can be easily found with
-> `git blame`.
+> I have the same atomic64_try_cmpxchg() question as in patch 1 here.
 
-Sure.
+Right, I noted that in my reply to patch 1.  I don't think its
+something to be overly concerned about.  Given the use of ktime_t
+(s64) it really is the more appropriate interface AFAICT.
 
-> > +	 */
-> > +	spinlock_t			lock ____cacheline_aligned_in_smp;
-> 
-> Making this cacheline aligned seems like a good idea!
+Happy to take instruction from others on this though!
 
-Yes, thanks.
-
+Thanks,
 Mike
