@@ -1,68 +1,55 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=51.159.188.251
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793912171;
-	b=dE1rnmQxblL4Xcv4lgVBqlgwQMwfWzy67jy+SPAsCXvpEsFxY5/Q+VVrbEA+NgDjVTs+
-	 hbdhpBMouav/MrijrpTDfmh4UDIPWkXgkTwM9nYshroD579Uop+R/R9cE/NNATSwbZYii
-	 jT2wLBVYfF6Dxkq3L0nL92100RRweAqJN7Za2iE6Vxb81F6BACxgKHIFYVBwHJsVo2rnU
-	 l/EX0npQCrxEOP0bXKg4CiM1ck1P7dU96BOgPZgVhuOTsK4Rh4mU0qrdsAjBTdB1Foeoa
-	 rSm09BgEtyJGL4LFrsMok0QsmosicK1YEngn8IYI6G6jsv+44Lk5EJlbvtffnJ178Hg==
+	t=1793913573;
+	b=wc7+Ohn8/oTztnAZjV/pr/vUxDZuJ//9N1CUYL+pmMhJP2bNiOso4wiyga17c+9f7QJu
+	 fCHLoJLjHWGr6/7FIbl30DHLx5hOvCiG5tu9/bmecpFe3I6HTm/Eoa4GDyMopfsomjyj1
+	 dsdBu2h15Q+EVuEG+nExEbV3xlbkiOLSH9P/5WEgmtOjXPgYJbvDQ1zBAKblflmRgZ+E4
+	 QO7udyndPAbDHQXo1x2mZFFNGordGvMeCoFRmEMvHVG/YxraCFc03KUamwLesta22zGDQ
+	 LaE4MThqcv9uE4CJJfB4DLtVjQhU7ya2o9TzV/UolSkK+cW9GEBGBB5uaRlbp4uEmjQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793912171;
-	h=DMARC-Filter:DKIM-Signature:Received:From:To:Cc:Subject:Date:
-	 Message-ID:X-Mailer:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:X-AntiAbuse:X-AntiAbuse:X-AntiAbuse:
-	 X-AntiAbuse:X-AntiAbuse:X-Get-Message-Sender-Via:
-	 X-Authenticated-Sender:X-Source:X-Source-Args:X-Source-Dir;
-	bh=4vkCF+GeDl/arZVLp4QCimt9/Wq5wID7Smb6j+U+Awg=;
-	b=jPwIIgX3PSkLkLxq8S5ke2ltMhgExCLFsb/0BkcFZfl875SS56Z/lskwtGJP+J0pGQ2A
-	 //8hWTR5xuP3UUU7qBsB0e5lfg4enxdNskeHWMn7gCJL/MP/dzhNo67iOHZsDEyR/caAv
-	 aFKZ5kq8/A8l7p7xyWnqG6C2ZYsDdksKpEvsNrLZxn2Pk59w4wGguYbiSuDGvWcww9Qvg
-	 UzEfQsw3WzQx9Ye4K/RQHNLT4MKRxF8fBa5TPOHvdyCGpkDAD6MpbUmqtLvBrWGJKu/rs
-	 MSfyhoDxH4cIRyGBpYqaWXS1qoRHj8gunsdUemQPfrKuD4E1PyW4x39+kJMCMlm2Bag==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793913573;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=ad0K9MxXeRoXa7eArWOLsAmwLaFZowA1m9nSCEjlJh0=;
+	b=jdoFDoaNsgLmsuqmyWc3dirbmOW/A3mElwbzglPS6MpGDGdPlpuDjlecgCGNwjosX0Ha
+	 +tRVhQ3Ut73Gz+GKh7DOI7IU5XAPoPJqnG/dk1VE7o+entOv4TkthI/bXQIQd3Cc59a2I
+	 f/KTZ4AvyCobz9EgQrnnHA78bPdsKVfokdsdJDjNfDW7Cg22k/j9TWnReeCcEQSyl55ST
+	 D1Sp/AqOzeyBE8yPD6vTOoxS6q3DnGTMCcpOhWPyM6g9iF1iQsGoU6Aly0JOBc9lfSo/W
+	 uz6h4r1TSUms6F23p6YOEk7owYvb4WKbe4OPyma64GaxJ/oII1Ihx41HRdCb7TBqTgQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=oss.cyber.gouv.fr;
-	spf=pass smtp.mailfrom=oss.cyber.gouv.fr;
-	dkim=pass header.d=oss.cyber.gouv.fr header.i=@oss.cyber.gouv.fr header.a=rsa-sha256 header.s=default header.b="Qf/i1ALW";
-	arc=none smtp.remote-ip=51.159.188.251
-Received: from oss.cyber.gouv.fr (oss.cyber.gouv.fr [51.159.188.251])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=E2WjA3gq;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 63BAB606A328;
-	Thu,  5 Nov 2026 20:56:10 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 63BAB606A328
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=oss.cyber.gouv.fr
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oss.cyber.gouv.fr
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 39C20606A329
+	for <linux-nfs@vger.kernel.org>; Thu,  5 Nov 2026 21:19:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=oss.cyber.gouv.fr header.i=@oss.cyber.gouv.fr header.a=rsa-sha256 header.s=default header.b=Qf/i1ALW
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=oss.cyber.gouv.fr; s=default; h=Content-Transfer-Encoding:Content-Type:
-	MIME-Version:Message-ID:Date:Subject:Cc:To:From:Reply-To:Sender:Content-ID:
-	Content-Description:Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc
-	:Resent-Message-ID:In-Reply-To:References;
-	bh=4vkCF+GeDl/arZVLp4QCimt9/Wq5wID7Smb6j+U+Awg=; b=Qf/i1ALWVP8Gb7tSyOpoZd5w3s
-	mK71KqrFyUN+wItq2zpzHWPrSwB1snHbCkAVoL1BJgDIJkLIZILkHJbcf9hHe5rVx8Q+84RrGqt3e
-	Ysn9v6tRuDiWn6u9lRA+HyMLS8EmuP1XBYBZNBS4C0YMWk8VeHb3W1jWgVcd3gmW5c7bPU+APHFxH
-	JmpzxTHHPSTA4PsaiK5TwVY/BOXJz8Wf5hymsGxwTl9vELmXHnf6B3XEISJpIH2bStIkoXO18JEDO
-	3sjaN68+aqnTE7X4dLAuN/L5/MD0YWZ+sA3iYupu6HadZT4MarD/C/5oDq3rGGlXog1eD2gT0Pn4z
-	+UToT3IQ==;
-Received: from [151.115.150.205] (port=55576 helo=gepetto..)
-	by pf-012.whm.fr-par.scw.cloud with esmtpsa  (TLS1.3) tls TLS_AES_256_GCM_SHA384
-	(Exim 4.100.1)
-	(envelope-from <Jeremy.Jean@oss.cyber.gouv.fr>)
-	id 1xP4VG-0000000B44E-2eHJ;
-	Thu, 05 Nov 2026 21:56:08 +0100
-From: =?UTF-8?q?J=C3=A9r=C3=A9my=20Jean?= <Jeremy.Jean@oss.cyber.gouv.fr>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	=?UTF-8?q?J=C3=A9r=C3=A9my=20Jean?= <Jeremy.Jean@oss.cyber.gouv.fr>,
-	stable@vger.kernel.org
-Subject: [PATCH RESEND] NFS: blocklayout: reject oversized SCSI designators
-Date: Thu,  5 Nov 2026 20:55:36 +0000
-Message-ID: <20261105205536.250173-2-Jeremy.Jean@oss.cyber.gouv.fr>
-X-Mailer: git-send-email 2.47.3
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=E2WjA3gq
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0D4891F008A1;
+	Thu,  5 Nov 2026 21:19:31 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793913572;
+	bh=ad0K9MxXeRoXa7eArWOLsAmwLaFZowA1m9nSCEjlJh0=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=E2WjA3gqGE16LI3kFIAglokCZGlQjrEBKNgncatr4JcoLuyBgg/d8gx3ZJwV66Edg
+	 nR/GPdohx5Of1Aojn8CtGxvJ7OC5fvxBrq/SbyWttm6J74BBZKy0mNYcqQC6YJKMC0
+	 k8TOM7JUTi09crHEuWyGRzUnT2ZDKuzBS9bQgAxoTa66exjVxsZlWiHx9YCbz5f7wF
+	 XFgk4nAvCrhbSvI+sXfHgBvBwvFKp4vpC/PW5NSKxG00kAlHqF3MFA6lAiqfqDQHj4
+	 HXy9qRxYd9YOpiY56ERFqiVdDFpXPFR6pFnQA0AREUp4TgJTh2c0reazxr7b2G9PHK
+	 TANOI9lBEWxKw==
+Date: Thu, 5 Nov 2026 16:19:31 -0500
+From: Mike Snitzer <snitzer@kernel.org>
+To: Anna Schumaker <anna@kernel.org>
+Cc: Trond Myklebust <trondmy@kernel.org>, linux-nfs@vger.kernel.org,
+	Jonathan Flynn <jonathan.flynn@hammerspace.com>
+Subject: Re: [PATCH 01/11] NFSv4/flexfiles: move layoutstats accounting to a
+ per-stripe lock
+Message-ID: <auzy4-viIAkPoUVA@kernel.org>
+References: <20261102191109.13470-1-snitzer@kernel.org>
+ <20261102191109.13470-2-snitzer@kernel.org>
+ <6fe7924c-dbd8-4121-a467-4645855b58ea@app.fastmail.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -72,94 +59,96 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
-X-AntiAbuse: Primary Hostname - pf-012.whm.fr-par.scw.cloud
-X-AntiAbuse: Original Domain - vger.kernel.org
-X-AntiAbuse: Originator/Caller UID/GID - [47 12] / [47 12]
-X-AntiAbuse: Sender Address Domain - oss.cyber.gouv.fr
-X-Get-Message-Sender-Via: pf-012.whm.fr-par.scw.cloud: authenticated_id: jeremy.jean@oss.cyber.gouv.fr
-X-Authenticated-Sender: pf-012.whm.fr-par.scw.cloud: jeremy.jean@oss.cyber.gouv.fr
-X-Source: 
-X-Source-Args: 
-X-Source-Dir: 
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <6fe7924c-dbd8-4121-a467-4645855b58ea@app.fastmail.com>
 
-A SCSI GETDEVICEINFO reply can encode designator_len as 0xffffffff.
-The signed field turns that into -1, so the size check is bypassed
-and the value is converted to SIZE_MAX for xdr_inline_decode() and
-memcpy().
+On Thu, Nov 05, 2026 at 11:12:44AM -0500, Anna Schumaker wrote:
+> Hi Mike,
+> 
+> On Mon, Nov 2, 2026, at 2:10 PM, Mike Snitzer wrote:
+> > From: Jonathan Flynn <jonathan.flynn@hammerspace.com>
+> >
+> > Since striped layouts were introduced, a mirror owns an array of
+> > struct nfs4_ff_layout_ds_stripe and each stripe carries its own
+> > read_stat and write_stat.  The lock protecting those statistics stayed
+> > behind in the mirror, so every DS RPC in the layout serialises on the
+> > same spinlock twice: once in ff_layout_{read,write}_prepare_common()
+> > and again on completion in ff_layout_{read,write}_count_stats().
+> >
+> > For a RAID0-style layout (one mirror, many stripes) that lock is
+> > effectively per-file, and striping then multiplies RPC parallelism
+> > without multiplying lock parallelism.
+> >
+> > On a 64-core client reading a single file from a 32-stripe layout with
+> > a 128KiB stripe unit (2MB O_DIRECT reads, ~36.7 GB/s, ~275k NFSv3 READ
+> > RPCs/s, i.e. ~550k acquisitions/s of one lock), perf reports 45% of all
+> > CPU in native_queued_spin_lock_slowpath, and lock:contention_begin
+> > attributes 73% of the contention events to the two layoutstats paths:
+> >
+> >   36.4%  rpc_exit_task -> ff_layout_read_count_stats ->
+> >          ff_layout_read_record_layoutstats_done -> _raw_spin_lock
+> >   36.3%  ff_layout_read_prepare_v3 ->
+> >          ff_layout_read_record_layoutstats_start -> _raw_spin_lock
+> >
+> > Move the lock into struct nfs4_ff_layout_ds_stripe, next to the
+> > statistics it protects, so that I/O to different stripes no longer
+> > contends.  The reporting paths take the same per-stripe lock.
+> >
+> > NFS4_FF_MIRROR_STAT_AVAIL is a mirror-wide bit operation and does not
+> > need the lock; set it outside the critical section so the mirror's
+> > cacheline is not written under it.
+> >
+> > ffl->last_report_time is shared by every mirror and stripe of a layout
+> > and was already updated under different mirror locks, so it was never
+> > serialised.  Make that explicit with a cmpxchg(): whichever racer wins
+> > sends the LAYOUTSTATS report.
+> >
+> > Signed-off-by: Jonathan Flynn <jonathan.flynn@hammerspace.com>
+> > Signed-off-by: Mike Snitzer <snitzer@hammerspace.com>
+> > ---
+> >  fs/nfs/flexfilelayout/flexfilelayout.c | 45 +++++++++++++++-----------
+> >  fs/nfs/flexfilelayout/flexfilelayout.h |  2 ++
+> >  2 files changed, 28 insertions(+), 19 deletions(-)
+> >
+> > diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c 
+> > b/fs/nfs/flexfilelayout/flexfilelayout.c
+> > index 9492d6bc1d1a7..bac0b7f559201 100644
+> > --- a/fs/nfs/flexfilelayout/flexfilelayout.c
+> > +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+> > @@ -744,13 +747,17 @@ nfs4_ff_layoutstat_start_io(struct 
+> > nfs4_ff_layout_mirror *mirror,
+> >  		report_interval = (s64)mirror->report_interval * 1000LL;
+> >  	else if (layoutstats_timer != 0)
+> >  		report_interval = (s64)layoutstats_timer * 1000LL;
+> > -	if (ktime_to_ms(ktime_sub(now, ffl->last_report_time)) >=
+> > -			report_interval) {
+> > -		ffl->last_report_time = now;
+> > -		return true;
+> > -	}
+> > 
+> > -	return false;
+> > +	/*
+> > +	 * last_report_time is shared by every mirror and stripe of this
+> > +	 * layout, so it was never serialised by the mirror lock either.
+> > +	 * Make that explicit: whoever wins the cmpxchg() reports.
+> > +	 */
+> > +	last_report = READ_ONCE(ffl->last_report_time);
+> > +	if (ktime_to_ms(ktime_sub(now, last_report)) < report_interval)
+> > +		return false;
+> > +
+> > +	return try_cmpxchg64(&ffl->last_report_time, &last_report, now);
+> 
+> As far as I can tell, this is the first use of try_cmpxchg64 in any filesystem
+> code. This has me worried it's the wrong function to be calling here. Is there
+> any reason we can't use atomic64_try_cmpxchg(), which is what I see being used
+> by other filesystem code?
 
-KASAN reports:
+Not seeing any other caller of atomic64_try_cmpxchg() that isn't using
+atomic64_t.
 
-  BUG: KASAN: out-of-bounds in bl_alloc_deviceid_node+0x616/0x1110
-  Read of size 18446744073709551615 at addr ffff88800262c014 by task trigger/50
-  ...
-  __asan_memcpy+0x23/0x60
-  bl_alloc_deviceid_node+0x616/0x1110
-  nfs4_find_get_deviceid+0x565/0x810
-  bl_alloc_lseg+0x638/0x12d0
-  pnfs_layout_process+0x2b6/0xcf0
-  nfs4_proc_layoutget+0x4b3/0xd30
+nfs4_flexfile_layout's last_report_time datatype is s64 (ktime_t), not
+atomic64_t.
 
-Store the length as u32 and reject oversized values before decoding.
-
-Fixes: d9186c039765 ("nfs/blocklayout: add SCSI layout support")
-Cc: stable@vger.kernel.org
-Signed-off-by: Jérémy Jean <Jeremy.Jean@oss.cyber.gouv.fr>
----
- fs/nfs/blocklayout/blocklayout.h | 2 +-
- fs/nfs/blocklayout/dev.c         | 8 ++++----
- 2 files changed, 5 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index e242b1d5b4bda..8a0b4e0d7cd3d 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -84,7 +84,7 @@ struct pnfs_block_volume {
- 		struct {
- 			enum scsi_code_set		code_set;
- 			enum scsi_designator_type	designator_type;
--			int				designator_len;
-+			u32				designator_len;
- 			u8				designator[256];
- 			u64				pr_key;
- 		} scsi;
-diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
-index 00462e6affb12..e085e1b7e0555 100644
---- a/fs/nfs/blocklayout/dev.c
-+++ b/fs/nfs/blocklayout/dev.c
-@@ -216,11 +216,11 @@ nfs4_block_decode_volume(struct xdr_stream *xdr, struct pnfs_block_volume *b)
- 		b->scsi.code_set = be32_to_cpup(p++);
- 		b->scsi.designator_type = be32_to_cpup(p++);
- 		b->scsi.designator_len = be32_to_cpup(p++);
-+		if (b->scsi.designator_len > sizeof(b->scsi.designator))
-+			return -EIO;
- 		p = xdr_inline_decode(xdr, b->scsi.designator_len);
- 		if (!p)
- 			return -EIO;
--		if (b->scsi.designator_len > 256)
--			return -EIO;
- 		memcpy(&b->scsi.designator, p, b->scsi.designator_len);
- 		p = xdr_inline_decode(xdr, 8);
- 		if (!p)
-@@ -368,14 +368,14 @@ bl_validate_designator(struct pnfs_block_volume *v)
- 	case PS_DESIGNATOR_T10:
- 	case PS_DESIGNATOR_NAME:
- 		pr_err("pNFS: unsupported designator "
--			"(code set %d, type %d, len %d.\n",
-+			"(code set %d, type %d, len %u.\n",
- 			v->scsi.code_set,
- 			v->scsi.designator_type,
- 			v->scsi.designator_len);
- 		return false;
- 	default:
- 		pr_err("pNFS: invalid designator "
--			"(code set %d, type %d, len %d.\n",
-+			"(code set %d, type %d, len %u.\n",
- 			v->scsi.code_set,
- 			v->scsi.designator_type,
- 			v->scsi.designator_len);
--- 
-2.47.3
-
+Later in this series nfs4_ff_layoutstat_set_start_time() also uses it
+with nfs4_ff_layout_mirror's start_time.
