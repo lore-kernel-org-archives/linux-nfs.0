@@ -1,75 +1,98 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.208.99
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793832370;
-	b=GiPJj/b5IETTgaiAxC956zQaYbDdSyZGCxNYuLZCFetISqeOrO3uXvnnxHK/YH+Y5AdN
-	 4y8iWiN+H2uWkXG5NYIeMWDex1F6hAD7Iiwz8nY+Y/tgL3WlQEzCOoYI9bNEtMBe9C1VJ
-	 Z9NOIQQ9aeTnjEUWkEV93rwBqp+0i4UklS/GTPjExFt6z7o5tIVZHumYX25qS1/VXXXZo
-	 W/t6qH6hbIPDpGauq8KUwS60tWoCyzSZyhrKape3UE6/6HA5ZCLzUWE5ww0+Gbs2PdKIw
-	 bfE8s5rueKgjC9MAVHCQX4l3CO3W0PJYEIeu5pCJ7/8DoJ43V/TWU8KY+Kgw6AoKxOw==
+	t=1793836896;
+	b=yLdEMj3uWqLUoWYL1NYyeLsyOLcJm4eMKfck5MmA4nbHMyNcHtlIjQVmdY7L7+jQgFu2
+	 yC0gNiTrOAxq6nGd59cXWQGRcH2zWKBnuI5CR0WLJ6JHoh7QsWzJvHFlx0tUK7Kpk9By+
+	 MyTKDyZ9yGmsIYdLN5WZWDPSKkYmEN1vGDoifho39TKa52AtUZ/G85hwWx3Dh8+cJblER
+	 POXd20II9ClXKhNwOPb9HDVhrMf7RDBoq1hjX07E4xyWqfLWap2IS6HE88y4RDh2SijNF
+	 mvl2rfzjYjmt75gpWI0pe+2HMJg7YKv83ue2mScqk7V1cKflsLcotvtJk7TlSfkoyAA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793832370;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=XBOw8umZc0PSygGL6ZhSsNEhyMPfzoczgqWFX+5YDNY=;
-	b=Re/6Rg9jSD9Xebvi70a84ZeMmu/I2lfDULXQp8gVW/rAcQgEQo7H7Bm2B45i/4cWD2Qz
-	 bA5PiYIc9GvM4LsvRra4bsZTC675SEPOrg8kMw2nb505Tv9nEXMOEXBmWOA2oIxYMgmqJ
-	 +lHWOwBIftcc35KCKzB0hLHvHE/OhEFsHLfPgbhC0Ts/pbORmj97PoUbWtjBounXmDjiB
-	 mQfvZZDBX4X96/9TtFlVhx528WLd9pGG+gUaWMkQQO/cRYvFd1uTPq/NWJKxb2Q0AZYRH
-	 dcHEjS7kMdFBNNoIBuEl1SVfzq//hK+nG7BkfvMxHJqFrp/DW75GAm8UPQXw5VfKfrw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793836896;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 X-Relaying-Domain:Received:From:To:Cc:Subject:Date:Message-ID:
+	 X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=gm/vDnlTuFKVMqL/TZnaqXKn5wezgntxiqdLKGHEK7Q=;
+	b=TTxCOPJFUVHheaQ/q1DoUS8H/boOdYL8/A/88UMoU8TxcDIMCWE9sBQMBOTt9shdhbQw
+	 PBXS8Rs4vZJ1JPmrJtKyIojcLH6VwL8eLhkCogxhZzXhX/PgI/FoLke30keRIOFQB6Jnz
+	 czKaSZMTzEfo+r6aVJZOnzhbn+5POxycqH+K56g5XgeTmXFBhEUuFMUJwHVTgUwHo0N7i
+	 QCakbNZ78DNjrR/jZ3kzoOC5fgjDdnzW80kVf5Kzr+YobJb6dwNbcrugMf0NCsueFjVCS
+	 wafMvTEi6aQtCqaEjiJpOTwG3b/j9Hg6iHZU6xgj5UAOdf5YehWrke4SL0lYtKL65yg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Y+guEyix;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=everpuredata.com;
+	spf=pass smtp.mailfrom=everpuredata.com;
+	dkim=pass header.d=everpuredata.com header.i=@everpuredata.com header.a=rsa-sha256 header.s=google header.b=VEOkF4in;
+	arc=none smtp.remote-ip=209.85.208.99
+Received: from mail-ed1-f99.google.com (mail-ed1-f99.google.com [209.85.208.99])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F24D4606A31B;
-	Wed,  4 Nov 2026 22:46:09 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE207606D821
+	for <linux-nfs@vger.kernel.org>; Thu,  5 Nov 2026 00:01:34 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org CE207606D821
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=everpuredata.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Y+guEyix
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C6C1B1F000C1;
-	Wed,  4 Nov 2026 22:45:57 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793832369;
-	bh=XBOw8umZc0PSygGL6ZhSsNEhyMPfzoczgqWFX+5YDNY=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=Y+guEyixDVYqpS8g3d4FmlRYq/qp1tQeGL16K2BSxNthPOaRsDL0VFTK+tjHByNf5
-	 UG3G3TR4IbDk5BaZwlgwVySr0HiRvL1WeYdDEujyS+zzG35LMJqu1Pm8BzfQ5Z+w4F
-	 3DGZwBGiTOYlKSVRIgaBstWj6LtjUlnMrGUfTY6AgB7LPx3pVl/0nxTfWzl1eRWVeu
-	 9SzZPPQ7yLUIbBzvzOD5olkzaVc7Od6fJQ93jvoDvEvbyLIezG28vK5PJuGqQJ/Zu+
-	 C/TFnkMniWMHftytXgdebgJiyvQu099dnGFvQXlwnwRKY6VGKt0bkFzVDUexAPr+Sm
-	 GvRbuyQmKti0Q==
-Date: Wed, 4 Nov 2026 23:45:55 +0100
-From: Christian Brauner <brauner@kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>, 
-	Josef Bacik <josef@toxicpanda.com>, Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
-	NeilBrown <neil@brown.name>, Eric Dumazet <edumazet@kernel.org>, 
-	Thomas Gleixner <tglx@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>, 
-	Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, 
-	Greg Kroah-Hartman <gregkh@suse.de>, Joel Granados <joel.granados@kernel.org>, 
-	Kees Cook <kees@kernel.org>, Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, 
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, linux-acpi@vger.kernel.org, 
-	linux-kselftest@vger.kernel.org, linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, 
-	linux-um@lists.infradead.org, linux-wireless@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
-	netdev@vger.kernel.org, ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org, 
-	coreteam@netfilter.org, kexec@lists.infradead.org, linux-pci@vger.kernel.org, 
-	linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
-	ibm-acpi-devel@lists.sourceforge.net, jfs-discussion@lists.sourceforge.net, 
-	linux-alpha@vger.kernel.org, linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org, 
-	linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org, 
-	linux-sh@vger.kernel.org, linux-usb@vger.kernel.org, samba-technical@lists.samba.org, 
-	sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org, 
-	linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net, 
-	Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
-	linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org, 
-	Chuck Lever <cel@kernel.org>
-Subject: Re: [PATCH RESEND v2 00/30] proc: convert the fs, kernel and mm
- entries (Part 5/7)
-Message-ID: <20261104-allein-bepacken-hitzig-5e517d3c129f@brauner>
-References: <20261104-work-procfs-v2-0-b45cd5789ac5@brauner>
- <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
- <CAHk-=wj9Y9NcOesBBm+jhPjYa7qO00fD7g7uwX+H-k0-R2difA@mail.gmail.com>
+	dkim=pass (2048-bit key, unprotected) header.d=everpuredata.com header.i=@everpuredata.com header.a=rsa-sha256 header.s=google header.b=VEOkF4in
+Received: by mail-ed1-f99.google.com with SMTP id 4fb4d7f45d1cf-6b581b6b0e9so25422a12.2
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Nov 2026 16:01:34 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=everpuredata.com; s=google; t=1793836893; x=1794441693; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=gm/vDnlTuFKVMqL/TZnaqXKn5wezgntxiqdLKGHEK7Q=;
+        b=VEOkF4inkPh8PvmCzWkhTF6gsH5LTk6ABZ3caXemnHl/vTA7F+i+F/gPLE1EkH9gZq
+         gfXpSTEP5SvZesmtMEPiNvrHCinzSzd6e+Q6aspzUyH0RJ8wgJMmeEgdg+4zsO5qgUpr
+         NfggPGOqFFnSLj8YdC6iHWrOxd+o92VbaKr+XyjNJAOv9ii7w3DkLu4z1LQ3SeSC0ixM
+         GaaB+WYh48Y7Ft3W/y4HpASfe0kiLkFIrCTW91IzMjt6sBNp3Ik5JpNMWDeaGGLPrDU8
+         by40Qyxl6xeJqIEBqjq1farP+Qn9YkhxJ+fTKneYFh7erYcIkN02lsA51wLS7djIVgKD
+         Pgfw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793836893; x=1794441693;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=gm/vDnlTuFKVMqL/TZnaqXKn5wezgntxiqdLKGHEK7Q=;
+        b=KLimqqLXvbwfRxaWURO/1jlILCP0hunSpu2lBIDc9oIihhUTYPK0bn8QBxN3kKXIfS
+         PQ5I9+OkPacYliFdv79hTYJkbjP6YajpEN/mbv9a6ZuA+nCKDHI/fl50M8SYnKI0FM1T
+         7Q8bkfmKjshijEr5yNGYsr6UTzWlIrcTvQB5HA+WjqKLyF4/abkbpHXCUW93qjFsbrG0
+         cZtzxLEbfvon4O7E1STQepaGujDWmf8G/Al9LcLaEnh1d8EX4OaAb1FdEjoJw8981Nlb
+         ntUFt06phszRkTvTtORGoX3VvLUVWx1RZEp7smqBRksJ1d+PW6iltjU3SoAkqnl1NfZh
+         n7BQ==
+X-Forwarded-Encrypted: i=1; AKwUvBxa6PSqH6zbu3UnRw0sG+Gnk85lS3cD0N/EQplZlKsVQ+uDhvYHbc8SHxTC0n2x2X/KlMw58SuboNg=@vger.kernel.org
+X-Gm-Message-State: APuU4Z/m1YUzz+QyW0NuevMgpgrqvvboyhrS5GQKboZSj1t5P60f/nLO
+	FH8FpPGiShA6iD4EdB1owbTbnWfgljr/7yQGPwjmfIhQVyMglA12E9wp4nhu3000GIkyrLZCdBQ
+	JNcQ9xPRaszZYwjWQjQym6mMblIk5hLYB7TSm
+X-Gm-Gg: AYBFou03PwQCkuLl/kHdRqJ6nDsFSZhWfuR5vV6xmpGDBWiRk6byrNhLJz6cWwa7gmu
+	G2Y0am08+HEyYmydEXQSvvqG/wEuzAGfQSTK7NWHrzvPRQ7piMTV81fa5RmJRkMBl/XRU0NwUI0
+	lPycpu8bBWkQSTP+Gui4Uk/2E1fi3jbn2OpGxgcbf0vFyDSLcixYTY3VeF+DqYJFrrvGBr5DnDn
+	jrrEaCreyYE7z7a/XLqh+T5hUfJzXI6SoUyty7BWfs01Kls5688VYa1NF8S5mroTv4HSbqPCFY5
+	lPjeeTvxX8tOxngoYlzl3E/gAso+EY43HrCxH3qg3N4AVP61t1ASHmsXIR3xnfZ2VpS8h46KS/M
+	WfbqHrMYtf9hEUEg8G9QEKR9Lwoy5vsPT1gQZXwo=
+X-Received: by 2002:a05:6402:223c:b0:6b4:2806:b057 with SMTP id 4fb4d7f45d1cf-6b4d4d80570mr8548816a12.35.1793836893130;
+        Wed, 04 Nov 2026 16:01:33 -0800 (PST)
+Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.129])
+        by smtp-relay.gmail.com with ESMTPS id 4fb4d7f45d1cf-6b55acdf034sm713224a12.16.2026.11.04.16.01.32
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 04 Nov 2026 16:01:33 -0800 (PST)
+X-Relaying-Domain: everpuredata.com
+Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
+	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id 5FAA8341883;
+	Wed,  4 Nov 2026 16:01:31 -0800 (PST)
+From: Tim Menninger <tmenninger@everpuredata.com>
+To: trondmy@kernel.org,
+	anna@kernel.org
+Cc: bcodding@hammerspace.com,
+	Eric Badger <ebadger@everpuredata.com>,
+	Jon Curley <jcurley@everpuredata.com>,
+	Prabhakar Pujeri <prabhakar.pujeri@dell.com>,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org
+Subject: [PATCH v2] pNFS: avoid repeatedly cancelling I/O for the same lseg
+Date: Thu,  5 Nov 2026 00:01:31 +0000
+Message-ID: <20261105000131.2512336-1-tmenninger@everpuredata.com>
+X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -79,20 +102,112 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <CAHk-=wj9Y9NcOesBBm+jhPjYa7qO00fD7g7uwX+H-k0-R2difA@mail.gmail.com>
+Content-Transfer-Encoding: 8bit
 
-On Wed, Nov 04, 2026 at 12:05:08PM -0800, Linus Torvalds wrote:
-> On Wed, 4 Nov 2026 at 11:49, Christian Brauner <brauner@kernel.org> wrote:
-> >
-> > Part 5/7 of "proc: move procfs to what kernfs does", on top of part 2
-> 
-> Christian - way too many patches, re-sent much too often, cc'd to way
-> too many people.
-> 
-> Nobody is going to read these repeated resends, and all you are doing
-> is clogging up peoples mailboxes.
+Commit b739a5bd9d9f ("NFSv4/flexfiles: Cancel I/O if the layout is
+recalled or revoked") added I/O cancellation when a layout segment is
+invalidated while outstanding references remain.
 
-I resent once after I cleaned things up post RFC and I don't plan on
-resending (one failed attempt due to my network dropping).
+The invalid segment stays on the layout's segment list until those
+references drain. Subsequent scans can find it again and repeatedly
+invoke the layout driver's cancel_io() callback. For flexfiles, this
+cancels matching RPC tasks and disconnects data server RPC clients.
+During RPC/RDMA data server recovery, repeated cancellation can cause a
+reconnect loop that consumes essentially all client CPU and prevents
+forward progress.
+
+Record cancellation requests per mirror stripe in the flexfiles layout
+segment. Each stripe is cancelled at most once, regardless of how many
+times the invalid segment is encountered. A per-stripe bitmap rather
+than a single per-segment bit preserves the ability to cancel I/O to a
+different device after an earlier device-specific cancellation.
+
+Cancellation is best-effort. An RPC that has already passed the
+layout-validity check may not yet be visible to the cancellation
+scan. Such I/O retains its lseg reference and remains subject to
+the normal RPC completion and recovery paths. Suppress repeated
+cancellation and disconnect requests without changing the existing
+lseg lifetime and deferred layout-return accounting.
+
+This reproduced on 6.8.0, 7.0.0, and 7.4.0-rc1. It was tested on
+7.4.0-rc1 with sustained pNFS/flexfiles I/O over RPC/RDMA while
+restarting the NFS service on a data server. Without it, repeated
+cancellation led to a reconnect loop and no workload recovery. With it,
+the client recovered after the data server returned.
+
+Fixes: b739a5bd9d9f ("NFSv4/flexfiles: Cancel I/O if the layout is recalled or revoked")
+Cc: stable@vger.kernel.org
+Signed-off-by: Tim Menninger <tmenninger@everpuredata.com>
+---
+Changes in v2:
+- Rework cancellation tracking to accommodate per-device cancellation.
+- Track cancellation per stripe rather than per layout segment.
+- Clarify that cancellation is best-effort.
+- Document the data-server restart reproducer.
+- Drop Reviewed-by tag due to substantial implementation changes.
+
+v1: https://lore.kernel.org/all/20260916232906.4101987-1-tmenninger@everpuredata.com/
+
+ fs/nfs/flexfilelayout/flexfilelayout.c | 12 ++++++++++++
+ fs/nfs/flexfilelayout/flexfilelayout.h |  1 +
+ 2 files changed, 13 insertions(+)
+
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 9492d6bc1d1a7..4419ded8fe586 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -11,6 +11,7 @@
+ #include <linux/nfs_mount.h>
+ #include <linux/nfs_page.h>
+ #include <linux/module.h>
++#include <linux/bitmap.h>
+ #include <linux/file.h>
+ #include <linux/sched/mm.h>
+ 
+@@ -340,6 +341,7 @@ static void _ff_layout_free_lseg(struct nfs4_ff_layout_segment *fls)
+ {
+ 	if (fls) {
+ 		ff_layout_free_mirror_array(fls);
++		bitmap_free(fls->cancelled_stripes);
+ 		kfree(fls);
+ 	}
+ }
+@@ -653,6 +655,12 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
+ 		fls->mirror_array[i]->report_interval = be32_to_cpup(p);
+ 
+ out_sort_mirrors:
++	fls->cancelled_stripes = bitmap_zalloc(
++		fls->mirror_array_cnt * dss_count, gfp_flags);
++	if (!fls->cancelled_stripes) {
++		rc = -ENOMEM;
++		goto out_err_free;
++	}
+ 	ff_layout_sort_mirrors(fls);
+ 	ret = &fls->generic_hdr;
+ 	dprintk("<-- %s (success)\n", __func__);
+@@ -2582,6 +2590,10 @@ static void ff_layout_cancel_io(struct pnfs_layout_segment *lseg,
+ 			if (devid && memcmp(&mirror->dss[dss_id].devid, devid,
+ 					    sizeof(*devid)) != 0)
+ 				continue;
++			/* Do not cancel a stripe again while this lseg drains. */
++			if (test_and_set_bit(idx * mirror->dss_count + dss_id,
++					     flseg->cancelled_stripes))
++				continue;
+ 			rcu_read_lock();
+ 			mirror_ds = rcu_dereference(mirror->dss[dss_id].mirror_ds);
+ 			if (IS_ERR_OR_NULL(mirror_ds) ||
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
+index 09c3cd6964fd6..5d5587fded76f 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.h
++++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+@@ -109,6 +109,7 @@ struct nfs4_ff_layout_segment {
+ 	u64				stripe_unit;
+ 	u32				flags;
+ 	u32				mirror_array_cnt;
++	unsigned long			*cancelled_stripes;
+ 	struct nfs4_ff_layout_mirror	*mirror_array[] __counted_by(mirror_array_cnt);
+ };
+ 
+-- 
+2.53.0
+
