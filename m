@@ -1,59 +1,59 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793848827;
-	b=ftBzx9yy++2MlHtLTy1SJbcCVkirXsS3Gkd3S5wU5T7/E0yfcz0S4D674lJk+C9UU0s9
-	 DXN/iijVttQr6KspjGdyJiWoEOSkwUPNaO+pp56Qm/bIsza7koudAt/UUGaz2JjQoMbnV
-	 iuKPiLhX+LsKuZq+AhXBw6IwEGBLt2jZDFa5E92GhqsaxXKTpRxCpenHYHRbsF/1DEGVb
-	 rHzkOiAQHJ2kB8nayF5uyBSiyTzaHvENoxX72HQ8fLExl8zkrV/lxUYtOYp3CpyJCfdf3
-	 HgoS4ceaJy0F1gw+UcIZHEPIeFq0n0EAMItYdId+16P0haG+h4+wkHp8o0BPvUEkz9A==
+	t=1793853853;
+	b=mv7mcPd6gZvArWooVWNL2opQvQ29uJOWulkivA9SxVDtlqsz/YGAJhDsff+xUGa/BcrV
+	 v5x+7ZTuITd/Z7TR7zT8hUJPJ9bYFPJeGzMv5cont2TjfFimvAMfJHI5VwhIPLFc/O/XP
+	 PC/AmbuSLxh9lXuRAjBb2WRIoLjdLqbN14eiUxiSUDPMTJ2Hk5dv1JSMZeJwJnQg4h1NP
+	 zvdIuLb7f0y6GO3AiR0ay8i045Gf6BqG9oc2JN/Vdy0EZEbS2irs7PuuqDWMDDPN72tlh
+	 Q+UDvDIsIHW/RD/XdzvmmAepm4EEsbeUYpQSwqfr+QJ+Gy4kQYAVHJnyZZij1Eti8LA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793848827;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793853853;
 	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:
 	 User-Agent:MIME-Version;
-	bh=f1k09c1wR/2ZTf34h9QyJ4bsorM7gCNcAVQZ4O8hKBU=;
-	b=NTcbkow6K8phrnWcFQ8C5aOlRx6cyEZ2i74+ZqLFjlEcUcTMp9tfgZ74LwvRGE+MgTZx
-	 cM7O2loUj40In0cpTMU4as48iO9UT6bcce/EfIeJ85BjeKZANh224Gs/fWqWNEDuv0Lct
-	 CZ/cv+mURV/LVH6KEJlsoesadLrjDLzw1ro6PQv/7nZXzWSHOwHphF/mGVAQrcD25bz/v
-	 G9AejFS57/0Ea/bjSGqs30M2CnOifVCHFXOvqcqBsEumFQc8J1CIJBRWafUaei7DzvQr/
-	 FK25JIJI3Ia8RBrCfLjAxsWZE6jVhYG2IM7jAb70znKO7+G6cLxadDL6Qra4yzSAOwQ==
+	bh=cjZaG6teJBMpRPveZWGFKHIszckiYfAZ7rtTb21UQEI=;
+	b=aYsn+V2i1Z+r0eX9N/w7pNdDjNCyohb4ZRSQESmPv4NnDH07skKWX/igymn8KwolsORm
+	 J/F0cgXXuzwP4Zh+45Jl0PWd4ZqeiJmxhraqhSBBOeFkZGp5df+07SpYwa49CF/Nuj+vM
+	 La4jVCvx6QRESrBcYTxYBh0uevy05SrMvCfdrVFSXcvXtytKKrM+4nc/XlxVMBBxkUy1Z
+	 L+oCHj0QVFpsP6tBsmx+1IMO93eW6AmRs1EBIp/fVAPw58ufUAfi4nlV6JrGyS+fvGw0v
+	 SB2vTV3dU7U8SGM6eqqIrTKqiSmazcf4GTp4IBzZ/PEsSVnagA9R6UDUdiF6PjIaRjQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LVufgj4a;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BXTXaRWL;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37602606A31B;
-	Thu,  5 Nov 2026 03:20:26 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EEAFA606A32D;
+	Thu,  5 Nov 2026 04:44:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LVufgj4a
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D555C1F000C1;
-	Thu,  5 Nov 2026 03:20:25 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BXTXaRWL
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 842151F00919;
+	Thu,  5 Nov 2026 04:44:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793848826;
-	bh=f1k09c1wR/2ZTf34h9QyJ4bsorM7gCNcAVQZ4O8hKBU=;
+	s=k20260515; t=1793853852;
+	bh=cjZaG6teJBMpRPveZWGFKHIszckiYfAZ7rtTb21UQEI=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=LVufgj4aKr3Qdju5kzCcj9anfQIgtXx4CcZmT9o4Jh6mt4FDHsKgOvFYwCrnmjO5I
-	 pJUBVrQknvnIS4q5g8aH6flzN/GQeIlOMOfJyz2N9JSvOrMPIdHVOjjjEw/wzaO2Zs
-	 MN+HLUzlCwssmHgeYLQ/glWpTIogak1Muym77DbfcYNNmsDeMQpZap5JCuAxKYDQI0
-	 6wAlCnHiWfpflzpi6WGHJ4fjHBTxUqJ64dr89Zc5oQJFhjemQM/6zUMhXTB/XMlBdV
-	 LMGQggTsxG/gn98zNiJrIRkidLWfj1UI5ddCp6PzVcc1IdRd9Dq1QKgWge0DLhKDId
-	 PjycxIt62Y5qQ==
-Message-ID: <b9ed2a8b5f687d7f581d4867a7867c5c012bb2cc.camel@kernel.org>
-Subject: Re: [PATCH v2 1/2] SUNRPC: add request-scoped disconnects when
- cancelling tasks
+	b=BXTXaRWLRG6jUyL8mpwKwxfaua9HPFxpraX8fXIiXpK8SF/ChHswi3WFqYKOr12HB
+	 jE895s8sqa7AQkbQSRhQmnDTMMPk63zZVXHn1UGi3V2WfWNZXm2veeNg+MVk/oeGOi
+	 pJx98kJFJ35nWFebfjxdKA+dSIhpmucmgzpGqZAdN6UI6d8HbN9qmratFNFyyPsCdZ
+	 Y8INCFgGUcw8rxmiNlQ4FU3Zjel4rBX2RUn8yU8nRa+cli4p7qV+148X2pJ5ELyL4Z
+	 XD8uXooeCqIhxmx3DEu0FquKKo9QcGPIx/F1g4x5WRUIt+XkhakBhlOr3KeuGUmZ7p
+	 Gf2219OclNVYg==
+Message-ID: <96ac6e0326d2ed38b307915d969c8b2696494ddb.camel@kernel.org>
+Subject: Re: [PATCH 0/2] SUNRPC: let cancelled RPC/RDMA requests drain
+ before release
 From: Trond Myklebust <trondmy@kernel.org>
-To: tmenninger@purestorage.com, anna@kernel.org
-Cc: cel@kernel.org, ebadger@everpuredata.com, jcurley@everpuredata.com, 
-	jlayton@kernel.org, linux-kernel@vger.kernel.org,
- linux-nfs@vger.kernel.org, 	netdev@vger.kernel.org,
- slingappa@everpuredata.com, Tim Menninger	 <tmenninger@everpuredata.com>
-Date: Wed, 04 Nov 2026 22:20:24 -0500
-In-Reply-To: <681354cdb85b67410793908d9aa4ee37a06408d2.camel@kernel.org>
-References: <20261105020249.2607367-1-tmenninger@purestorage.com>
-		 <20261105020249.2607367-2-tmenninger@purestorage.com>
-	 <681354cdb85b67410793908d9aa4ee37a06408d2.camel@kernel.org>
+To: Tim Menninger <tmenninger@everpuredata.com>, Anna Schumaker
+	 <anna@kernel.org>
+Cc: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+ NeilBrown	 <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai
+ Ngo	 <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+ linux-nfs@vger.kernel.org, 	linux-kernel@vger.kernel.org, Eric Badger
+ <ebadger@everpuredata.com>, Jon Curley	 <jcurley@everpuredata.com>
+Date: Wed, 04 Nov 2026 23:44:10 -0500
+In-Reply-To: <20261105030710.2652306-1-tmenninger@everpuredata.com>
+References: <20261105030710.2652306-1-tmenninger@everpuredata.com>
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 User-Agent: Evolution 3.62.1 (3.62.1-1.fc45) 
@@ -67,153 +67,160 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 
-On Wed, 2026-11-04 at 22:14 -0500, Trond Myklebust wrote:
-> On Thu, 2026-11-05 at 02:02 +0000, tmenninger@purestorage.com=C2=A0wrote:
-> > From: Tim Menninger <tmenninger@everpuredata.com>
-> >=20
-> > rpc_cancel_tasks() allows callers to cancel a selected set of RPC
-> > tasks,
-> > but callers that also need to tear down the connection currently
-> > have
-> > to
-> > disconnect at the rpc_clnt level.
-> >=20
-> > That is broader than necessary for clients with multiple
-> > transports.
-> > A
-> > cancelled request is associated with a specific rpc_xprt and
-> > records
-> > the
-> > connection generation on which it was transmitted in
-> > rq_connect_cookie.
-> >=20
-> > Add rpc_cancel_tasks_and_disconnect() to cancel matching tasks and
-> > mark
-> > matching requests that remain on the transport transmit or receive
-> > queues
-> > for conditional transport disconnect when the request is released.
-> >=20
-> > Store the disconnect indication in struct rpc_rqst rather than
-> > struct
-> > rpc_task. An RPC task can release one request and later acquire
-> > another,
-> > so task-scoped state could otherwise be consumed by a successor
-> > request
-> > and disconnect the wrong transport generation.
-> >=20
-> > After cancelling matching tasks, walk the client's transports and
-> > mark
-> > matching requests belonging to that client that remain on the
-> > transmit
-> > or receive queues. An rpc_xprt may be shared by multiple rpc_clnt
-> > instances, so requests belonging to other clients are left
-> > untouched.
-> >=20
-> > When a marked request is released, use
-> > xprt_conditional_disconnect()
-> > with
-> > its saved rq_connect_cookie. This disconnects the transport only if
-> > it is
-> > still using the same connection generation on which the request was
-> > sent,
-> > and leaves a replacement connection untouched.
-> >=20
-> > Requests that were never transmitted do not require a disconnect.
-> >=20
+On Thu, 2026-11-05 at 03:07 +0000, Tim Menninger wrote:
+> Restarting a data server's NFS engine during sustained pNFS/flexfiles
+> READ I/O over RPC/RDMA can leave the client repeatedly reconnecting
+> after the server becomes available again. I reproduced this on Linux
+> 6.8.0, 6.18.34, and 7.4-rc1.
 >=20
-> I'm all for optimising where it makes sense, however this is adding
-> another spinlock protected section in xprt_release() for something
-> that
-> is clearly a rare corner case.
+> Cancelling an RPC task does not establish that the server has
+> finished
+> accessing its advertised Read or Write chunks. Releasing the request
+> can
+> invalidate those registrations before the server finishes using them.
+> A
+> subsequent remote access can fault the QP, disrupting other RPCs and
+> driving further layout cancellation and transport recovery.
 >=20
-> So how about something like the following change instead?
+> This series lets eligible cancelled RPC/RDMA requests remain
+> available
+> for normal Reply-driven cleanup instead of immediately releasing
+> them.
 >=20
-Sorry, I oversimplified. Something like this:
+> Patch 1 records the first RPC error and any (possibly subsequent)
+> signal
+> indication in one atomic state. This allows a signal to interrupt
+> optional draining even when an earlier cancellation error is already
+> recorded, without overwriting that error. Accepted RPC restarts clear
+> both together atomically, leaving the behavior from commit
+> 5bbd6e863b15
+> ("SUNRPC: Prevent looping due to rpc_signal_task() races") in tact.
+>=20
+> Patch 2 adds transport-controlled deferred release for cancelled
+> asynchronous tasks. RPC/RDMA opts in while registered MRs remain on
+> the
+> same live connection. Wake callbacks retain their transport status,
+> and
+> waiting uses the existing request timeout and transport timer.=C2=A0 Afte=
+r
+> normal no-reply timeout handling, an already-cancelled task exits
+> rather
+> than repeatedly re-entering draining with an expired timeout.=C2=A0 A
+> request
+> whose Reply completed before release no longer triggers its
+> previously
+> requested conditional disconnect.
+>=20
+> Testing:
+>=20
+> This series is based on v7.4-rc1.
+>=20
+> There is a patch in
+> https://lore.kernel.org/all/20261105000131.2512336-1-tmenninger@everpured=
+ata.com/
+> :
+>=20
+> =C2=A0 pNFS: avoid repeatedly cancelling I/O for the same lseg
+>=20
+> which is required to cleanly observe the transport-recovery behavior.
+> Without this, my client livelocks after NFS restart.
+>=20
+> There are also two strict prerequisite patches in
+> https://lore.kernel.org/all/20261105020249.2607367-1-tmenninger@purestora=
+ge.com/
+> :
+>=20
+> =C2=A0 SUNRPC: add request-scoped disconnects when cancelling tasks
+> =C2=A0 NFSv4/flexfiles: limit transport disconnects when cancelling I/O
+>=20
+> Those patches are required for applying this series and are required
+> to
+> observe full recovery after DS restart.
+>=20
+> Finally, I applied the patch in
+> https://lore.kernel.org/all/20260823134640.3083136-1-tmenninger@everpured=
+ata.com/
+>=20
+> =C2=A0 xprtrdma: serialize unmap_sync with xprt_disconnect
+>=20
+> to avoid a separate disconnect-time deadlock. The described reconnect
+> storm makes this otherwise rare condition easier to encounter.
+>=20
+> The principal workload used one client, one MDS, and one DS, with
+> RPC/RDMA, nconnect=3D16, sustained direct READ I/O, 160 threads,
+> iodepth
+> 64, and 1 MiB I/O.
+>=20
+> With this series in the tested configuration, restarting the DS's NFS
+> engine restores full throughput and normal operation in approximately
+> 20
+> seconds, matching the expected recovery interval.=C2=A0 The continuous
+> post-recovery reconnect loop is no longer observed.
+>=20
+> Related experiments:
+>=20
+> While not the direct cause, this is exacerbated by commit
+> b739a5bd9d9f
+> ("NFSv4/flexfiles: Cancel I/O if the layout is recalled or revoked").
+> Skipping this behavior for RDMA xprt suffices to avoid the issue
+> during
+> DS/NFS restart, but the underlying issue remains that stale rkeys can
+> access invalidated MRs.
+>=20
+> In antoher experiment, fencing MRs during teardown and waiting for
+> all
+> request-release waiters before disconnecting sufficed to eliminate
+> protection error messages in dmesg during recovery, but does not slow
+> down the xprt disconnect feedback loop.
+>=20
+> When applied, a separately posted layoutreturn-seqid change at
+> https://lore.kernel.org/all/20260921235520.502987-1-tmenninger@everpureda=
+ta.com/
+> leaves some workload ranks slow after recovery even though the
+> reconnect
+> loop is gone. The cause of that interaction is not yet established,
+> and
+> I've asked to hold off merging that submission.
+>=20
+> Tim Menninger (2):
+> =C2=A0 SUNRPC: maintain an rpc_task signalled flag
+> =C2=A0 SUNRPC: let cancelled RPC/RDMA requests drain before release
+>=20
+> =C2=A0fs/nfs/nfs4proc.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 |=C2=A0 12 ++-
+> =C2=A0fs/nfs/pnfs.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 |=C2=A0 11 ++-
+> =C2=A0include/linux/sunrpc/sched.h=C2=A0=C2=A0=C2=A0 |=C2=A0 21 +++++-
+> =C2=A0include/linux/sunrpc/xprt.h=C2=A0=C2=A0=C2=A0=C2=A0 |=C2=A0=C2=A0 3=
+ +
+> =C2=A0include/trace/events/sunrpc.h=C2=A0=C2=A0 |=C2=A0=C2=A0 1 +
+> =C2=A0net/sunrpc/clnt.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 |=C2=A0=C2=A0 2 +-
+> =C2=A0net/sunrpc/sched.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 |=C2=A0 53 ++++++++++---
+> =C2=A0net/sunrpc/xprt.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 | 129
+> +++++++++++++++++++++++++++++++-
+> =C2=A0net/sunrpc/xprtrdma/transport.c |=C2=A0 33 ++++++++
+> =C2=A09 files changed, 241 insertions(+), 24 deletions(-)
+>=20
+>=20
+> base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
+> prerequisite-patch-id: 2e8f35e38c760c42d04307b131ce55f80df66fef
+> prerequisite-patch-id: e7030ad56461efdd80f97ab1e0790fd4593805a7
+> prerequisite-patch-id: 8be1a2d2043bc7c018bb8e85af50ef438786a2aa
+> prerequisite-patch-id: 17803adca3ad2c820fc719d6976327e5981adafe
 
-8<------------------------------------------------------
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout=
-/flexfilelayout.c
-index 7fe8b91fa47c..42b0b04de659 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -2459,6 +2459,12 @@ static bool ff_layout_match_io(const struct rpc_task=
- *task, const void *data)
- =09return false;
- }
-=20
-+static bool ff_layout_match_untransmitted_io(const struct rpc_task *task,
-+=09=09=09=09=09     const void *data)
-+{
-+=09return !RPC_WAS_SENT(task) && ff_layout_match_io(task, data);
-+}
-+
- static void ff_layout_cancel_io(struct pnfs_layout_segment *lseg)
- {
- =09struct nfs4_ff_layout_segment *flseg =3D FF_LAYOUT_LSEG(lseg);
-@@ -2484,6 +2490,9 @@ static void ff_layout_cancel_io(struct pnfs_layout_se=
-gment *lseg)
- =09=09=09clnt =3D ds_clp->cl_rpcclient;
- =09=09=09if (!clnt)
- =09=09=09=09continue;
-+=09=09=09rpc_cancel_tasks(clnt, -ECANCELED,
-+=09=09=09=09=09 ff_layout_match_untransmitted_io,
-+=09=09=09=09=09 lseg);
- =09=09=09if (!rpc_cancel_tasks(clnt, -ECANCELED,
- =09=09=09=09=09      ff_layout_match_io, lseg))
- =09=09=09=09continue;
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 0dbdf3722537..28f5bacb59f9 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -219,8 +219,8 @@ struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req,
- =09=09struct rpc_timeout *timeout);
- void=09=09rpc_put_task(struct rpc_task *);
- void=09=09rpc_put_task_async(struct rpc_task *);
--bool=09=09rpc_task_set_rpc_status(struct rpc_task *task, int rpc_status);
--void=09=09rpc_task_try_cancel(struct rpc_task *task, int error);
-+bool =09=09rpc_task_set_rpc_status(struct rpc_task *task, int rpc_status);
-+bool=09=09rpc_task_try_cancel(struct rpc_task *task, int error);
- void=09=09rpc_signal_task(struct rpc_task *);
- void=09=09rpc_exit_task(struct rpc_task *);
- void=09=09rpc_exit(struct rpc_task *, int);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 6cedc824cf82..503e95647270 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -930,7 +930,8 @@ unsigned long rpc_cancel_tasks(struct rpc_clnt *clnt, i=
-nt error,
- =09=09=09continue;
- =09=09if (!fnmatch(task, data))
- =09=09=09continue;
--=09=09rpc_task_try_cancel(task, error);
-+=09=09if (!rpc_task_try_cancel(task, error))
-+=09=09=09continue;
- =09=09count++;
- =09}
- =09spin_unlock(&clnt->cl_lock);
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 016f16ca5779..97727732400b 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -869,15 +869,16 @@ void rpc_signal_task(struct rpc_task *task)
- =09=09rpc_wake_up_queued_task(queue, task);
- }
-=20
--void rpc_task_try_cancel(struct rpc_task *task, int error)
-+bool rpc_task_try_cancel(struct rpc_task *task, int error)
- {
- =09struct rpc_wait_queue *queue;
-=20
- =09if (!rpc_task_set_rpc_status(task, error))
--=09=09return;
-+=09=09return false;
- =09queue =3D READ_ONCE(task->tk_waitqueue);
- =09if (queue)
- =09=09rpc_wake_up_queued_task(queue, task);
-+=09return true;
- }
-=20
- void rpc_exit(struct rpc_task *task, int status)
+This needs to be reworked. RDMA-specific error handling belongs in the
+RDMA layer, and not in rpc_execute().
+
+I'd suggest using the 'wait_for_reply_request' hook to install a custom
+task->tk_callback that replaces xprt_timer, and does whatever error
+handling that's needed when being woken up from the 'pending' state.
+
+I'd also like to understand why we need to introduce a 64-bit atomic
+signalling flag. Under which circumstances do we want to set this new
+"signalled" status?
 
 --=20
 Trond Myklebust
