@@ -1,93 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.52
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793920922;
-	b=24Ll2u8ZHZYfX2odBtDFwW5QiVFIeY12MQS9Dqto2hw2P4e2jLHHBQ6ax2c/iHQQPCCz
-	 avKpxhOpjwonPu3F+r9euDeK/HdWGBfnFSz+zCWV8cckJ8ReI4FxPgW3MsZrQp9te5nZf
-	 xIFpcynj9cxBK5vvrp3xX17fSi5yiitoaGYYb5Lt9/FRodY/yyg1IKgPpffEFQthYGTqJ
-	 uUEXXu55C8yAix6lTeyTE2ZgzxAQrr5ZZoS1BZASfn/qzHUWCYyZVKnAIs+WEqnrqYis/
-	 xl+znbjsnXN02eXgg8Hsh2VFZ88fNZ4UVKOQYZ5le5X2Ik4RHW8wYVsDTx4jEwa6aJQ==
+	t=1793923983;
+	b=3S237bxCfkTZccyZ+LPH9MBhRuT8qDZ8nDevidRG1ywWu1TBCks+j97JAq9Im4fxO5cJ
+	 877HAVYvIzRyIYW9heuQiq7Raw+nZ+SXxQM+IGd8UwOcvrLIFN4pxoWacBV1fQyEonqzN
+	 46HtTo680UzcikZ3kfx8KDHVwGZwiYaY25Rk/ag8MYu4ekbxIKsVnEBt+gv89WefUSzdj
+	 VHCafqbXDFy5nK8FJ449K7Ohl2dbIRTJ23Ftc10x0E8qiApnwb05ULO4u7G1dMFogYHx8
+	 qn72WwPqyKjN8PRqT8Py9zGHSML5NsD3j0OqzrCGkG+A/4FTWTmJD3Tt6QWBGwiYIJQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793920922;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:
-	 X-Google-Original-From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	a=rsa-sha256; c=relaxed/relaxed; t=1793923983;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 MIME-Version:Content-Transfer-Encoding;
-	bh=y1zQ+4cFK5JvWjYX6XtFePLCtfXcVQN4627X0niiLQc=;
-	b=kHfq6J9sWxlKOPeybZYC9Nb+vtpdBH3HmpH4y6H892kHfjpQ0zpM4kkLlUqjwxiuD9SD
-	 cY9+GgnOBStp2Amp3pKA8QXNULJtfGaoybpNNBPQrETQ4yZFMVHNLVISqTIVmxohGCJKW
-	 vuoSucdJrjS/NJaRPVdAcyB87zNE9x2PSmryxtbpXGx71kO7TU7XE+ybKiO4P/cNH1NT9
-	 y+VR/k9x/Sb8rzwvsqS0MooYe8wO39UIyj0K6xkwUGBDGw4XG71zi+E8sQjRJlDPw6335
-	 5RZ9zvDtVCvTDrTsapYpuKrHnvM6aDLm641a/708OFMN+vLRACJBn9hryiIuvm7sO6w==
+	bh=dfu/vSR8ASAnogI/MQXLw3nN3ozhcoS/89AEzqWBp40=;
+	b=K/Z5EE5S+DJeENY7a07XkDlQNmycR5vjiH0OQcjkJsisCG4EYhyCawQkBMgbnuNF/4yE
+	 jmmAjxcwyJDWOOxQNDobSZ4FaoerLoVj2aZDp+qST1RAzXfFbqNJwtt6ds1xVtugANJmK
+	 HGjm/LrlSLOUdP+y9vZBC663n5EM2GS6q+92IU0HbXJtAr4g+XQnTN98YfXAz0QPJUVpW
+	 szJnnTb3/CBG/tsI70nV8qAcw6kpT8+5tocMB43O8G9rmqjbjfv/wfZO6b38zom68TQ00
+	 fdYXPekIjWlauJHj7ape8UKyhbqnykOcJ2/5M/kvSytR2qCIWdTOqp+Bcd1sGIb49ww==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=cBYN+L7L;
-	arc=none smtp.remote-ip=209.85.161.52
-Received: from mail-oo1-f52.google.com (mail-oo1-f52.google.com [209.85.161.52])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cEWEOdxw;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 00CEB606A31B
-	for <linux-nfs@vger.kernel.org>; Thu,  5 Nov 2026 23:22:01 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 00CEB606A31B
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D23CD606A31B
+	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 00:13:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=cBYN+L7L
-Received: by mail-oo1-f52.google.com with SMTP id 006d021491bc7-6f5a0893610so82491eaf.1
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Nov 2026 15:22:01 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1793920921; x=1794525721; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=y1zQ+4cFK5JvWjYX6XtFePLCtfXcVQN4627X0niiLQc=;
-        b=cBYN+L7L3AoQKYdguR132jfd1Rg5lW9v2Wf+PDjVH0JBWnWNGL3jgdfLDPl6RlnU/f
-         oFy6T/cYonMaBN8PXqka2zsJ6qNTD1/YEJdR1VAtmPvx6rtPHD2cj+Y32y4U92ZtrutU
-         u+O8JAcbX1JpnY4ANt44UG19pDhXVHtCW/su6MDogTLP4Y0QKKZSEnVA3sg9Y13twUiI
-         rR2QVY6eaSBLcuTShD1bNHX/BSaTB6NZsbQaxSDhE05vD/naG97QWmvmCQ8+HA/VnNhr
-         ueya0twYQVvmr/dy9eaB6nUL9Z9emuGxeiB8iIQcEx4RWke4DREQ/OVoDBfSobx39ZgU
-         x+AQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793920921; x=1794525721;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=y1zQ+4cFK5JvWjYX6XtFePLCtfXcVQN4627X0niiLQc=;
-        b=l23Apjl4QRqjfz1/Eq01bVCob87ho4j38ls2+v3huoCGcc3mFZlrtZQZtnO5Zl7haU
-         joAf7tfH+/MyTK5eIIGIbWFhLzMYyZomiLEmV93w07XBZuuvMjylX+EJSomm4NgaA3fu
-         3ofE9DZ6vmkbkP7OdNFbwuCBmqyKfK1Lc2ZKokrPQOBuVlbfnigOxDfAuYQk1bw8vgFs
-         /ek26absR/9wpEyEOZPs373SwnQOz9svqJWcLXBGhSWFGVd71wVFq/ES8VAaP/d5wNjR
-         KQtUGw/rngoYQsmRv4UfpBUpcyem4DGI51DqGROk0JN/Tv8y/F7DFU7CjNHMZULDk3Gz
-         8s8w==
-X-Gm-Message-State: APuU4Z/C/fUYHi6O4J8ozsNXEGx1IHM2x7ZwVMQ4zSC6vWYB8HD+cRlo
-	q1dUu+P2xABvAEx5Q5iV9x2caVwP6jb504sIAtBStAnIcAajxFgQDmaGSLvojg==
-X-Gm-Gg: AYBFou2SN+43R/oz0RFqlBKHw4LyzC82eCQCHVIxFUTGu9v0mbqDX9Cu7rjWpwT9QBV
-	2s8d38YuyTluM65iZK2hNv8NImAmgsCIlzYsPO97cISfOb+TbY6YWTarbv/mUeMw7DRqQpUVBiY
-	mCszRc2NxXqafQ2h9ytHB0/0POyLlePUYRI4JdPEYQnbK2bdu8+LovCOd0RYmlxrM/mRhc+eFCH
-	PQd8808imUgIFtcWeGhYR/eSvpyJaWWRjribXi9dxQxjMFrVujLG4kw6KU+Q7G0C8xXdwmf2EWy
-	FTfCmd8xC5j4z+MgrOyseA8Lf3Ii0mMJPICq/r78IajXZdnRf9O7WOnXpxsoapChkKDBejNcKaB
-	fDa5rGTYStS0EMGdMiXn9eptqfERjezi9/NOZlKi0CfmsYSgrAlzIVWsLCVuby76hZNrVJjdIiD
-	Y5VQFGujm1BRcWOkDir1kLIP39WN6bnSZtozFXRrMx9kkCun+5WrFqsEj2IUnWCIE1yz0CPc8L+
-	0YpLtc4Ltq+pdJTu9tK6oV7B7Sxxv8Lz4QrKbd79mIzq5sWky8Hb+dEIyZWPvL4XPn4ULyFt6XT
-	YHFO4cXiHhl5qV5ZW0qKz8z/DurWi4gmssBK
-X-Received: by 2002:a05:6820:7612:b0:713:e433:f41a with SMTP id 006d021491bc7-716e7912e15mr624216eaf.25.1793920920825;
-        Thu, 05 Nov 2026 15:22:00 -0800 (PST)
-Received: from netapp30 ([192.63.62.92])
-        by smtp.gmail.com with ESMTPSA id 006d021491bc7-716ea16753csm478202eaf.13.2026.11.05.15.21.59
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 05 Nov 2026 15:22:00 -0800 (PST)
-From: Jorge Mora <jmora1300@gmail.com>
-X-Google-Original-From: Jorge Mora <mora@netapp.com>
-To: linux-nfs@vger.kernel.org,
-	cel@kernel.org
-Cc: trondmy@kernel.org,
-	anna@kernel.org,
-	Rakesh.Bhargava@netapp.com,
-	Mohit.Kumar@netapp.com
-Subject: [PATCH v2] xprtrdma: fix race between frwr_unmap_sync() and transport disconnect
-Date: Thu,  5 Nov 2026 16:21:37 -0700
-Message-ID: <20261105232137.4706-1-mora@netapp.com>
-X-Mailer: git-send-email 2.52.0
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cEWEOdxw
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 375891F008A2;
+	Fri,  6 Nov 2026 00:13:02 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793923982;
+	bh=dfu/vSR8ASAnogI/MQXLw3nN3ozhcoS/89AEzqWBp40=;
+	h=From:To:Cc:Subject:Date;
+	b=cEWEOdxw7QFziLjhnF6HOmBNgneTvySthBrqVKVM+3f0T6TDf3UO0GlBN/ZuP/2CB
+	 Ob4UJiZrrtMDRsD+XFdaVgkn4ZB3HKf5mNLvcMm2UcnM80laACpKmWhncQe0p+iTxd
+	 U9Wu6/G9j1Y8yfFvFvuJ1mgrr7ua3KRqMH3q1JWpPoRJ7fD9IoWvg0zYgGecmFQVYa
+	 oH1AIFTS9AqZLFaFhGCpIW9AHUSIcmwg0dMmUySjuNj3+AvlQt+hS5+ziYp8h4L/7f
+	 YJpBggHHVa7ZsZlZu7aGA1GweXXv7VZ6v41xOl0x1neKIycuHDGC+qdUNfxvWnZAv7
+	 RBxLcUbmDqNMQ==
+From: Mike Snitzer <snitzer@kernel.org>
+To: Anna Schumaker <anna@kernel.org>,
+	Trond Myklebust <trondmy@kernel.org>
+Cc: Mike Snitzer <snitzer@kernel.org>,
+	linux-nfs@vger.kernel.org,
+	Jonathan Flynn <jonathan.flynn@hammerspace.com>
+Subject: [PATCH v2 00/12] NFSv4/flexfiles: scale layoutstats for striped layouts
+Date: Thu,  5 Nov 2026 19:12:37 -0500
+Message-ID: <20261106001251.73472-1-snitzer@kernel.org>
+X-Mailer: git-send-email 2.44.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -99,219 +60,83 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: Rakesh Bhargava <Rakesh.Bhargava@netapp.com>
+Hi,
 
-frwr_unmap_sync() is called from xprt_rdma_free() via ->buf_free, which
-xprt_release() invokes without holding the transport send lock and
-without XPRT_LOCKED. rpcrdma_xprt_disconnect() runs from xprt_autoclose()
-under XPRT_LOCKED and, after draining the QP, resets every rpcrdma_req
-(rpcrdma_reqs_reset) and destroys every MR (rpcrdma_mrs_destroy). Nothing
-orders the two, so both can walk and list_del() the same req's
-rl_registered list and the same MRs. Observed on RHEL 10.2
-(6.12.0-211.7.3.el10_2) NFS/RDMA FlexFiles clients as:
+Each stripe of a flexfiles mirror has its own read_stat and write_stat,
+but the lock that protects them is in the mirror.  For a RAID0-style
+layout (one mirror, many stripes) that lock is per file, and every DS
+RPC takes it twice.
 
-  kernel BUG at lib/list_debug.c:65!
-  frwr_unmap_sync+0x75 [rpcrdma]
-  xprt_release+... [sunrpc]
+A 64-core client reads one file from a 32-stripe layout with a 128KiB
+stripe unit (~36.7 GB/s, ~275k NFSv3 READ RPCs/s).  perf puts 45% of
+its CPU in native_queued_spin_lock_slowpath, and 73% of the lock
+contention events in the two layoutstats paths.
 
-In a vmcore, the panicking task was in frwr_unmap_sync() for r_xprt X
-while another kworker was in xprt_autoclose -> rpcrdma_xprt_disconnect
--> rpcrdma_reqs_reset -> frwr_mr_release for the same r_xprt X. The
-window was large because 256 transports were being torn down at once,
-each blocked in mlx5_core_destroy_mkey waiting on firmware.
+This series removes that bottleneck.  It also fixes which stripes a
+LAYOUTSTATS report contains for a striped mirror.
 
-Fix it by making frwr_unmap_sync() and disconnect cooperate through
-rb_lock:
+Patches 1-2 (Jonathan) move the lock into the stripe and remove the
+mirror lock.
 
- - frwr_unmap_sync() reads rx_ep, checks rb_closing and that
-   rl_registered is non-empty, and claims all of the req's MRs under
-   rb_lock. It bumps rb_unmap_users while it still references the MRs
-   and the ep, and drops it (waking rb_unmap_wq) when done.
- - If rb_closing is set, frwr_unmap_sync() returns and leaves the MRs on
-   rl_registered. rb_closing is only set after rdma_disconnect(), when
-   the QP is in the error state and the peer cannot reach the MRs;
-   rpcrdma_reqs_reset() then releases them.
- - rpcrdma_xprt_disconnect() sets rb_closing after rdma_disconnect(),
-   waits for rb_unmap_users to reach zero after draining the QP and
-   before releasing reps, reqs and MRs, and clears rx_ep and rb_closing
-   together under rb_lock after dropping the ep reference.
+Patches 3-8 keep the per-stripe hot path in the stripe's own
+cachelines.  After patch 8, an I/O dirties one cacheline, and reads and
+writes to one stripe share no lock.
 
-Signed-off-by: Rakesh Bhargava <Rakesh.Bhargava@netapp.com>
-Signed-off-by: Jorge Mora <mora@netapp.com>
----
- net/sunrpc/xprtrdma/frwr_ops.c  | 43 +++++++++++++++++++++++++++------
- net/sunrpc/xprtrdma/verbs.c     | 31 ++++++++++++++++++++++++
- net/sunrpc/xprtrdma/xprt_rdma.h | 14 +++++++++++
- 3 files changed, 81 insertions(+), 7 deletions(-)
+Patches 9-10 fix LAYOUTSTATS for striped mirrors.  A report contained
+only the lowest usable stripe of each mirror.  It now contains each
+stripe with new completions, and rotates through the stripes when there
+are more than four.
 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index e83cef19e656..03e0e6c475b1 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -567,12 +567,33 @@ static void frwr_wc_localinv_wake(struct ib_cq *cq, struct ib_wc *wc)
-  */
- void frwr_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- {
-+	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
- 	struct ib_send_wr *first, **prev, *last;
--	struct rpcrdma_ep *ep = r_xprt->rx_ep;
- 	const struct ib_send_wr *bad_wr;
-+	struct rpcrdma_ep *ep;
- 	struct rpcrdma_mr *mr;
- 	int rc;
- 
-+	/* This function is invoked via ->buf_free, which does not
-+	 * hold the transport send lock. It therefore races with
-+	 * rpcrdma_xprt_disconnect(), which resets every req and
-+	 * destroys every MR.
-+	 *
-+	 * Claim the req's MRs, and pin the transport's ep, under
-+	 * rb_lock. If the disconnect path has already put the QP
-+	 * into the error state, leave the MRs on rl_registered:
-+	 * the peer can no longer reach them, and
-+	 * rpcrdma_reqs_reset() releases them.
-+	 */
-+	spin_lock(&buf->rb_lock);
-+	ep = r_xprt->rx_ep;
-+	if (buf->rb_closing || !ep ||
-+	    list_empty(&req->rl_registered)) {
-+		spin_unlock(&buf->rb_lock);
-+		return;
-+	}
-+	buf->rb_unmap_users++;
-+
- 	/* ORDER: Invalidate all of the MRs first
- 	 *
- 	 * Chain the LOCAL_INV Work Requests and post them with
-@@ -598,6 +619,7 @@ void frwr_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- 		*prev = last;
- 		prev = &last->next;
- 	} while ((mr = rpcrdma_mr_pop(&req->rl_registered)));
-+	spin_unlock(&buf->rb_lock);
- 
- 	mr = container_of(last, struct rpcrdma_mr, mr_invwr);
- 
-@@ -621,15 +643,22 @@ void frwr_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- 	 */
- 	if (bad_wr != first)
- 		wait_for_completion(&mr->mr_linv_done);
--	if (!rc)
--		return;
-+	if (rc) {
-+		/* On error, the MRs get destroyed once the QP has drained. */
-+		trace_xprtrdma_post_linv_err(req, rc);
- 
--	/* On error, the MRs get destroyed once the QP has drained. */
--	trace_xprtrdma_post_linv_err(req, rc);
-+		/* Force a connection loss to ensure complete recovery.
-+		 */
-+		rpcrdma_force_disconnect(ep);
-+	}
- 
--	/* Force a connection loss to ensure complete recovery.
-+	/* The MRs and the ep are no longer referenced. Allow
-+	 * rpcrdma_xprt_disconnect() to proceed.
- 	 */
--	rpcrdma_force_disconnect(ep);
-+	spin_lock(&buf->rb_lock);
-+	if (!--buf->rb_unmap_users)
-+		wake_up(&buf->rb_unmap_wq);
-+	spin_unlock(&buf->rb_lock);
- }
- 
- /**
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 54957295a631..b0c42cbe38ec 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -580,6 +580,7 @@ int rpcrdma_xprt_connect(struct rpcrdma_xprt *r_xprt)
-  */
- void rpcrdma_xprt_disconnect(struct rpcrdma_xprt *r_xprt)
- {
-+	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
- 	struct rpcrdma_ep *ep = r_xprt->rx_ep;
- 	struct rdma_cm_id *id;
- 	int rc;
-@@ -594,7 +595,27 @@ void rpcrdma_xprt_disconnect(struct rpcrdma_xprt *r_xprt)
- 	rc = rdma_disconnect(id);
- 	trace_xprtrdma_disconnect(r_xprt, rc);
- 
-+	/* The QP is in the error state now, so the peer can no
-+	 * longer access any registered MR. From here on, a
-+	 * frwr_unmap_sync() caller that has not yet claimed a req's
-+	 * MRs leaves them on rl_registered: rpcrdma_reqs_reset()
-+	 * releases them below.
-+	 */
-+	spin_lock(&buf->rb_lock);
-+	buf->rb_closing = true;
-+	spin_unlock(&buf->rb_lock);
-+
- 	rpcrdma_xprt_drain(r_xprt);
-+
-+	/* frwr_unmap_sync() runs without the transport send lock.
-+	 * Callers that claimed MRs before rb_closing was set may
-+	 * still be posting or waiting on LOCAL_INV Work Requests.
-+	 * Those complete (or flush) because the QP has been
-+	 * drained, but the callers still reference the MRs and the
-+	 * ep, so wait for them before anything is released.
-+	 */
-+	wait_event(buf->rb_unmap_wq, !READ_ONCE(buf->rb_unmap_users));
-+
- 	rpcrdma_reps_unmap(r_xprt);
- 	rpcrdma_sendctxs_destroy(r_xprt);
- 	rpcrdma_reqs_reset(r_xprt);
-@@ -603,7 +624,14 @@ void rpcrdma_xprt_disconnect(struct rpcrdma_xprt *r_xprt)
- 	if (rpcrdma_ep_put(ep))
- 		rdma_destroy_id(id);
- 
-+	/* rb_closing stays set until rx_ep is cleared, so a late
-+	 * frwr_unmap_sync() caller returns before it can use a stale
-+	 * rx_ep.
-+	 */
-+	spin_lock(&buf->rb_lock);
- 	r_xprt->rx_ep = NULL;
-+	buf->rb_closing = false;
-+	spin_unlock(&buf->rb_lock);
- }
- 
- /* Fixed-size circular FIFO queue. This implementation is wait-free and
-@@ -1171,6 +1199,9 @@ int rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
- 
- 	buf->rb_bc_srv_max_requests = 0;
- 	spin_lock_init(&buf->rb_lock);
-+	buf->rb_closing = false;
-+	buf->rb_unmap_users = 0;
-+	init_waitqueue_head(&buf->rb_unmap_wq);
- 	INIT_LIST_HEAD(&buf->rb_mrs);
- 	INIT_LIST_HEAD(&buf->rb_all_mrs);
- 	INIT_WORK(&buf->rb_refresh_worker, rpcrdma_mr_refresh_worker);
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 4cbc941e4a3e..0161317e4916 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -402,6 +402,20 @@ struct rpcrdma_buffer {
- 	u32			rb_bc_max_requests;
- 
- 	struct work_struct	rb_refresh_worker;
-+
-+	/* Serializes frwr_unmap_sync(), which runs from ->buf_free
-+	 * without holding the transport send lock, against
-+	 * rpcrdma_xprt_disconnect(). Protected by rb_lock.
-+	 *
-+	 * rb_closing: the QP is in the error state and the disconnect
-+	 *	path is about to reset all reqs and destroy all MRs.
-+	 * rb_unmap_users: number of frwr_unmap_sync() callers that
-+	 *	own MRs taken from a req's rl_registered list, or have
-+	 *	LOCAL_INV Work Requests outstanding on the QP.
-+	 */
-+	bool			rb_closing;
-+	unsigned int		rb_unmap_users;
-+	wait_queue_head_t	rb_unmap_wq;
- };
- 
- /*
+Patch 11 moves the report decision out of the critical section.
 
-base-commit: ef30b3efb7e8bae94d790a6503a595e1051323e7
+Patch 12 (new in v2) combines the read and write start helpers.
+
+The wire encoding does not change.
+
+Changes since v1, from Anna's review:
+- Shorter commit messages throughout.  Removed the paragraphs and the
+  "what the server sees" passages that Anna named.
+- Code comments: the cacheline explanations are now only in the commit
+  messages.  Patch 3 keeps the original lock comment.  Patch 7 cuts the
+  ops_requested comment to its locking note.  Patch 9 cuts the
+  last_reported_ops comment to its first sentence.  Patch 10 removes the
+  scan comment.
+- Patch 10: renamed dss_report_start to dss_report_index and removed its
+  comment.
+- New patch 12: one start helper for reads and writes.
+- American spelling throughout.
+- try_cmpxchg64() stays: last_report_time and start_time are ktime_t,
+  not atomic64_t.
+
+v1: https://lore.kernel.org/linux-nfs/20261102191109.13470-1-snitzer@kernel.org/
+
+The series is based on Anna's linux-next (nfs-for-7.4-1).
+
+Thanks,
+Mike
+
+Jonathan Flynn (2):
+  NFSv4/flexfiles: move layoutstats accounting to a per-stripe lock
+  NFSv4/flexfiles: drop the now-unused per-mirror lock
+
+Mike Snitzer (10):
+  NFSv4/flexfiles: cacheline align the per-stripe layoutstats
+  NFSv4/flexfiles: make dss_info->start_time write-once
+  NFSv4/flexfiles: drop the redundant atomic from the busy timer
+  NFSv4/flexfiles: pair the in-flight count with the layoutstats updates
+  NFSv4/flexfiles: derive ffil_ops_requested rather than storing it
+  NFSv4/flexfiles: give each direction its own lock and cacheline
+  NFSv4/flexfiles: drop NFS4_FF_MIRROR_STAT_AVAIL
+  NFSv4/flexfiles: rotate LAYOUTSTATS reporting across a mirror's stripes
+  NFSv4/flexfiles: take the report decision out of the critical section
+  NFSv4/flexfiles: share one helper for the start of a read and a write
+
+ fs/nfs/flexfilelayout/flexfilelayout.c | 257 +++++++++++++------------
+ fs/nfs/flexfilelayout/flexfilelayout.h |  35 ++--
+ 2 files changed, 151 insertions(+), 141 deletions(-)
+
+
+base-commit: 8cdff0c1549d3fce6bb652e6bc5dd7546e1cd1e3
 -- 
 2.52.0
 
