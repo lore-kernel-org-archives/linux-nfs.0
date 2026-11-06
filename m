@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793997656;
-	b=sb702DcwCpg+t9GtV7/sY0hrWnRGvhVqUD2NM3zchR3vL63Lztq91dxePo0MdAi9COYc
-	 JFWnOgdZE/XlIOAWHlK64DYcu7zWbBN3PwMUolUyvm7OqqR9kfRZUT48KxbNHrnIdAfLJ
-	 i5sijVwp0hkcYKLA+1JRnsZc49xLnhFecrhRzjoN+YsgNfUD4S3LYpyJUTNK3Tj3PucdR
-	 AyHf+gN1kpoEXegLWzDB5t4WCPZV/w23mBEwtnVeUdkTe+wkS3q/RSbO7Sp7Fuf7/A+0k
-	 DJPI2fuRmuShc7a3SdD8f+HHPqG3du04vsoXAllUx5aErEI2oDD9pqJNZY77AxDyGwg==
+	t=1793997652;
+	b=MpQ3VCb/+RrmAFVl0PHm5vw8xGvEtfm07pCJatP+FKCMYiTd7m8pA0YpHjO546/QKobA
+	 NY6OabmHdih3MBrQ4RviDKjTwY6nJWnoT46/PEoY7oRj1nrTlODyD2qqzxWgqtwzSaBFx
+	 sxFADbXlmdVuCRgp0ml2hmfK/2V+ep0bUke9hIzBGX69vCilx/YptkA+BviWpPEsxNC3G
+	 THOx2RrtN+WhlbfKv6c5yJPdFQtZecAkskbq3gVcPkspeM4vTHcB8mN+EGC6ZKXZ4WMl5
+	 AHIkbDsqtwsFP6OEryCoAV0cHnLiLzMyz0WNfmjVzh3y7a0OjVPIT0INMeWdZfexwew==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793997656;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=yzxi5MO+FZ+4cCKKvEI+jYQFL51rqA8IqdeXo9rNAd8=;
-	b=rDCTrP2ODamInxok8vkjXmlEtaG6rSwvYLgEu6MUi3hhcdx3DyxtzAp4l8LgYkXvF96e
-	 SgGRdIbZD0DNJ7856itAV+v1dfk4QUo/G2m5iFIOrxEwIhUu1rQg+Wb7deD/caGytrfZx
-	 XHslmrw5UxMm6lETEvAFfN15BLOpdxvkt5lC7KP4GOUyrJcJWMwAhnR7Jz4ZfX7o/VoyG
-	 BqYFBHH3wpD9jMDsO0c7uRPFBU5tMI1d0TFi2fV3YC5HTEh7KMJLBR18u1jvKGjm8pYrB
-	 WzJP22kJGHOuekUH9hb9tPei22hS29UvkU6v/E5XO3yF3+mnuG83c1CJZxW8ImA/93Q==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793997652;
+	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
+	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=iXFMD8bNJXl3WNfiWK1Luz5NKRL0I4G3hoBjtxJzpjk=;
+	b=bNXxLAtdh+XeryWZF9gQyKzyFd19MB3Hx9Ggi583aPqsjCXqwXh0COK4BAoUKodrwwO4
+	 JWWny0/0psBR/q3sLUAEvBO45P3JOY1RbfCU91Fxd8VXQe6WrNKeybO+Pv/aqQ6AnSKlr
+	 J9PWyBb5KnmH1J743PdIL77DVO3TlazsFakuNwLO9i8lVFlqJKxIVGtLgfQU4p0OPGBL8
+	 LMovP6K5lEGekxIpICU+E9flAHzAMOdi0LCwecBD4qKHS/i7AKUNZvcEXSczfXjdmzamn
+	 ebuTA9pzLRXr7dyvWMn/yUZXsCjV8OgD+U3filU/b3MylKdgxQBnfP0nuynzF+7g9Sw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oB0QMvrh;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SI61XZ76;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D7921606D801;
-	Fri,  6 Nov 2026 20:40:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 603B9606A329;
+	Fri,  6 Nov 2026 20:40:51 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oB0QMvrh
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DF5541F008A2;
-	Fri,  6 Nov 2026 20:40:54 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SI61XZ76
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 45BB01F0089F;
+	Fri,  6 Nov 2026 20:40:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793997655;
-	bh=yzxi5MO+FZ+4cCKKvEI+jYQFL51rqA8IqdeXo9rNAd8=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=oB0QMvrh5xW6YV+DbiktqaVcvZuYe6p1N1HGwfen8Rvyw28tdsi1LSnoxIa7OO+rr
-	 0e/VccxM2Ab/kEktFUMv7ncaSO/M344LDSx08JMAbX6R5O+4AXyDW0w9eSfHoso6Vu
-	 ZhdEA9HLX7Cj4eYMTAlvO2FFEXAHu+IqklEd0bGw6/AcubDD6vETd/5ftA5U7n/s22
-	 fZ0d+7kzzU93tqTsHVt7uLrgNYYNcN661nf7hQywEh3PaBStAS4wTSSQ9s1LpVIoap
-	 t+kDcEzp6LWegwiOd5C3E/gwQJbf+LLQNitTdfUapipzlnAXVm09vRmz29nN4xHJ0c
-	 wdMuXfrHg/sVA==
+	s=k20260515; t=1793997651;
+	bh=iXFMD8bNJXl3WNfiWK1Luz5NKRL0I4G3hoBjtxJzpjk=;
+	h=From:Subject:Date:To:Cc;
+	b=SI61XZ76FMat+huIvV+GsHp3vaxoBXFyJ0yZQCLLgh2xi/SgF32JScHijnjhCnLvg
+	 TxQpwmPLIFQlEZ7mR1q16Ebdb35Irj5rFMMsYq2HZoMddxcTDzphh4tbfO6jra74aJ
+	 AA96ufF3IrH00G5cPI4YUQ23qmRTVwUVlX10m+ubT9uhJGaZ32jEhh+cQDhkbBm3Cd
+	 jp3PQh4GGTvRAxdhKYAHzoLNjT940O8r0Ro6xxv12ehVDOw49KBGaEG1y/WmqLD/v1
+	 +Tb24w/RWt3XbIcvu9wrOKd3EVkn3G/n9wI9goVZl7mxVbt1DJ6Xzif6sW9Wa/zhuj
+	 G2uYV+Q8gJp6A==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Fri, 06 Nov 2026 15:40:31 -0500
-Subject: [PATCH v2 5/5] nfsd: mark the delegation written on COPY/CLONE
- instead of stamping c/mtime
+Subject: [PATCH v2 0/5] nfsd: more delegated timestamp fixes
+Date: Fri, 06 Nov 2026 15:40:26 -0500
+Message-Id: <20261106-deleg-cb-getattr-times-v2-0-8433618ab9a1@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,194 +55,80 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-deleg-cb-getattr-times-v2-5-8433618ab9a1@kernel.org>
-References: <20261106-deleg-cb-getattr-times-v2-0-8433618ab9a1@kernel.org>
-In-Reply-To: <20261106-deleg-cb-getattr-times-v2-0-8433618ab9a1@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0Jm7Zh2SBpw5T0MiwJjmYhgpk2jI
+ dzdygVcvpf89zeIrMIRLtUGylmirEsBOlUwTH4JjDIWBjLkrDWEI88ccOgxcPIpKSZ5csTG+5a
+ coba3Dsr4pXyX9xG+dYUniWnVz/GT7c/+TWaLBgdvanJj0ziqrw/WhefzqgG6fd+/kcvlfr0AA
+ AA=
+X-Change-ID: 20261102-deleg-cb-getattr-times-8aa926029b16
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>
 Cc: Tom Haynes <loghyr@gmail.com>, linux-nfs@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6510; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=QDZmG66B93zNtGVblZ7nkvT1E3eui/pn2XB86GIcVzk=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq7jtRpwEOO2UIkB4OFpgrCvETBkTpVvsb63iNB
- IGHjUb+QqqJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCau47UQAKCRAADmhBGVaC
- FUXAD/wIcaY24TPTH933FXBVuWM+HlKZMxoAS07ldpkRH7qy6QOcMkZH8cmR4he3OSyY6VUQx4v
- CIvcOll6xTymJcd3ffWz2mtAuXugJuDqanhxvBeNK2mWvhPmqwlVQNaSecAWWxamChwL0d0LB9s
- DW615Ti75T/S7h8Dcj5Py9aqZWRAezNl+P1Uc+N5xpE7XI/idNVzX4Q//yj166DDB1TAXbfbEIr
- TKxC/pAaX1mopxlSl6mVhyRIC+DF8PfX9aD+KZPXdkag0MCjFkLQUg6vSHQTxcKYhvO7kkpluvr
- RLsC0LQn8/K3QC4OUFzLgMraSQItoXB/WWCcZrjjTIyH4syjU74hf9x5PT75wySbyUsPz62cyYn
- snk8Lh2iraFl4cCQEP+u8BwYeh/+SaEXIm7SHGYewVBxUvXlr1mIGCa/0028uwAwxWxBhxxXFK0
- BCGgHOPNNG1+aOWOy3KSney+Hi1OJ959SW4xyLLZOtSe94BphuFDhEJJbK1A6oeZuEHVWVDSGCf
- RifJXtspRLB+p0bEi5UQ5Bgv2CclTuiVka5BzkcsH6bYtKiy8GAnyQ2Ue+JSvAelcjTsdb3COKD
- cr8aN0POIPIP+/N2qeAvDfLynLUnISftxQmkZfytRJaLtudIhuEb/j7ol/j0L0fHA1Q1i/xZo/M
- vK6BRa207kH1dCw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2261; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=xFQLQeviQDXYIKn20H8XDm4+ItG3EiFqYRBs9erky8Q=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq7jtL+Q8VGoXXwkLHM6zDax09WEQxmhQ0AoSqR
+ TaRudACui6JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCau47SwAKCRAADmhBGVaC
+ FcMpD/9L1oBAH0zhJwzPQNRo5zpQMTk6dKJZ4eEerNiKrmkdLygEUAwPXBTNttedz0ll4SzgiMj
+ TUN1qwczUTA57ltRlwOZ7U5dNQ8uhQSLamsB6N36KDMaLrRuhP3rDm+LCh4bwVerjG1MZYrgGbG
+ xmFC8+XgMBbqtAFzc05LnEZM5toMyothqqSZCk6us+THIDxnSO1oUQpAHaPfqZmX4AX73KGjHVE
+ YVyHw/mdassrMKfSzpBMOn5RwUQLQD3M9hmiPzDxFav9q3c4Eh2RzFsZhjOqhbu9s2HvmBca+oN
+ e2H5oxYd1tQRYiUTXNT4qGbZU/eBGO4DE/JRMmsm9Bw5c8QjZuMGu8jBcGHJvA8Jh+RCx2yxQXp
+ abM5WUp3XziI/jekQqUsLRHwf1JX3NLdaXOnxRvttOpBIqoERwkpV5O7kLNjULfRcQKrnYr4pI8
+ DLk2sAwFS9i0TiX8RJdlbvFpYdApkNUUxNSPblqrMNpnDey4Q3c74zZP9+mSvdn/fbk0v0yenuO
+ OeDBvEoCZ3zYVF1Y2F6FkBqvt8+u6n8qHfLbF3V76rL5bFhlyySxdoBASW/2zfx43yd1PJTR7as
+ 8y3q16wwSUnkPWBS95BdJyzo3bNJzrEHs99/vRhPvWHw5iMcxLidA7OslYtA8UnBtmag6ydfC2N
+ NPAWA2SSkpPSEzA==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Under a timestamp delegation, nfsd stamps the destination's c/mtime to
-the server's "now" after a COPY or CLONE. Since commit 6e7daa3dad29
-("NFSv4.2: fix CLONE/COPY attrs in presence of delegated attributes"),
-the client also stamps its own c/mtime afterwards and ignores the
-server's. If the client's coarse stamp lands even slightly before the
-server's, the server can't move ctime back when the holder returns its
-times, and ctime changes after DELEGRETURN. COPY returns no attributes,
-so the client can't avoid this.
+Chuck recently added a new DELEG27 pynfs test that fails against nfsd.
+These patches fix the behavior of delegated timestamps (again), such
+that DELEG27 now passes.
 
-Treat COPY/CLONE like WRITE: mark the delegation written and let the
-holder supply the times. If the holder never returns them, DELEGRETURN
-stamps them via nfsd4_finalize_deleg_timestamps(); other clients' GETATTRs
-go through CB_GETATTR. The async COPY thread has no filehandle, so look
-up the nfs4_file at launch, and have the thread mark the delegation when
-the copy has written something. That also covers a delegation granted
-while the copy ran.
+I also ran some tests with the git regression testsuite which turns out
+to be very sensitive to timestamp bugs, and that turned up a few more
+server-side bugs.
 
-Fixes: 2863bac7f49c ("nfsd: update mtime/ctime on CLONE in presense of delegated attributes")
-Fixes: 4183cf383b6f ("nfsd: update mtime/ctime on COPY in presence of delegated attributes")
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4proc.c  | 49 ++++++++++++++++++++++++++++++++++++++-----------
- fs/nfsd/nfs4state.c |  2 +-
- fs/nfsd/state.h     |  1 +
- fs/nfsd/xdr4.h      |  3 ++-
- 4 files changed, 42 insertions(+), 13 deletions(-)
+Changes in v2:
+- "Honor delegated timestamps when change and size match" reworked:
+  - set ATTR_FORCE when applying the holder's times
+  - record applied times in dl_[amc]time; vet and record under inode_lock
+  - vet SETATTR's delegated times in nfsd_setattr() under inode_lock
+  - also mark file modified on a holder WRITE whose mtime didn't pass dl_mtime
+  - always report ncf_initial_cinfo as the change attr for timestamp delegations
+  - catch the holder's own server-side changes (SETATTR, xattrs, etc.)
+    via a change attribute saved at grant
+  - log, rather than fail the GETATTR, if applying the holder's times fails
+- New: don't stamp over an applied delegated mtime at DELEGRETURN
+- New: don't vet delegated times against an exclusive-create verifier
+- New: mark the delegation written on COPY/CLONE instead of stamping c/mtime
+- Link to v1: https://lore.kernel.org/r/20261102-deleg-cb-getattr-times-v1-0-ca0326d88623@kernel.org
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 25613c1ffaaf..c7ede1e7f697 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1438,6 +1438,25 @@ static void nfsd4_file_mark_deleg_written(struct nfs4_file *fi)
- 	spin_unlock(&fi->fi_lock);
- }
- 
-+/*
-+ * A COPY or CLONE into a file under a timestamp delegation is the holder's
-+ * modification, like a WRITE: the holder supplies the c/mtime, and DELEGRETURN
-+ * stamps them if it doesn't.
-+ */
-+static void nfsd4_copy_mark_deleg_written(struct svc_fh *fhp,
-+					  struct nfsd_file *dst)
-+{
-+	struct nfs4_file *fi;
-+
-+	if (!(READ_ONCE(dst->nf_file->f_mode) & FMODE_NOCMTIME))
-+		return;
-+	fi = nfsd4_file_hash_lookup(fhp);
-+	if (fi) {
-+		nfsd4_file_mark_deleg_written(fi);
-+		put_nfs4_file(fi);
-+	}
-+}
-+
- static __be32
- nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	    union nfsd4_op_u *u)
-@@ -1576,8 +1595,8 @@ nfsd4_clone(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	}
- 	status = nfserrno(host_err);
- 
--	if (!status && (READ_ONCE(dst->nf_file->f_mode) & FMODE_NOCMTIME) != 0)
--		nfsd_update_cmtime_attr(dst->nf_file, 0);
-+	if (!status)
-+		nfsd4_copy_mark_deleg_written(&cstate->current_fh, dst);
- 
- 	nfsd_file_put(dst);
- 	nfsd_file_put(src);
-@@ -2198,6 +2217,10 @@ static void release_copy_files(struct nfsd4_copy *copy)
- 		nfsd_file_put(copy->nf_dst);
- 		copy->nf_dst = NULL;
- 	}
-+	if (copy->cp_dst_fi) {
-+		put_nfs4_file(copy->cp_dst_fi);
-+		copy->cp_dst_fi = NULL;
-+	}
- }
- 
- /*
-@@ -2301,8 +2324,9 @@ static int nfsd4_do_async_copy(void *data)
- 	set_bit(NFSD4_COPY_F_COMPLETED, &copy->cp_flags);
- 	trace_nfsd_copy_async_done(async->cp_stid.sc_client, copy);
- 	atomic_dec(&copy->cp_nn->pending_async_copies);
--	if (copy->cp_res.wr_bytes_written > 0 && copy->attr_update)
--		nfsd_update_cmtime_attr(copy->nf_dst->nf_file, 0);
-+	/* Before CB_OFFLOAD tells the holder to supply the times */
-+	if (copy->cp_res.wr_bytes_written > 0 && copy->cp_dst_fi)
-+		nfsd4_file_mark_deleg_written(copy->cp_dst_fi);
- 	nfsd4_send_cb_offload(async);
- 	/* Drop the kthread's reference (taken in nfsd4_copy()); copy may be freed after this. */
- 	nfs4_put_copy(async);
-@@ -2382,9 +2406,13 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		 * the callback stateid zeroed.
- 		 */
- 		dup_copy_fields(copy, &async_copy->cp_copy);
--		if ((READ_ONCE(copy->nf_dst->nf_file->f_mode) &
--			       FMODE_NOCMTIME) != 0)
--			async_copy->cp_copy.attr_update = true;
-+		/*
-+		 * The copy thread has no filehandle. Look up the file now;
-+		 * the thread marks its delegation if the copy writes.
-+		 */
-+		if (READ_ONCE(copy->nf_dst->nf_file->f_mode) & FMODE_NOCMTIME)
-+			async_copy->cp_copy.cp_dst_fi =
-+				nfsd4_file_hash_lookup(&cstate->current_fh);
- 		memcpy(async_copy->cp_cb_offload.co_referring_sessionid.data,
- 		       cstate->session->se_sessionid.data,
- 		       NFS4_MAX_SESSIONID_LEN);
-@@ -2415,10 +2443,9 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	} else {
- 		status = nfsd4_do_copy(copy, copy->nf_src->nf_file,
- 				       copy->nf_dst->nf_file, true);
--		if ((READ_ONCE(copy->nf_dst->nf_file->f_mode) &
--			       FMODE_NOCMTIME) != 0 &&
--				copy->cp_res.wr_bytes_written > 0)
--			nfsd_update_cmtime_attr(copy->nf_dst->nf_file, 0);
-+		if (copy->cp_res.wr_bytes_written > 0)
-+			nfsd4_copy_mark_deleg_written(&cstate->current_fh,
-+						      copy->nf_dst);
- 	}
- out:
- 	trace_nfsd_copy_done(copy, status);
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 360b8886dbc0..fcf7874514cf 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -6288,7 +6288,7 @@ move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
- 		nfs4_put_stid(&last->st_stid);
- }
- 
--static noinline_for_stack struct nfs4_file *
-+noinline_for_stack struct nfs4_file *
- nfsd4_file_hash_lookup(const struct svc_fh *fhp)
- {
- 	struct inode *inode = d_inode(fhp->fh_dentry);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 9c36076921de..f7a8c04be540 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -988,6 +988,7 @@ int nfsd_handle_dir_event(u32 mask, const struct inode *dir, const void *data,
- 			  int data_type, const struct qstr *name);
- 
- void put_nfs4_file(struct nfs4_file *fi);
-+struct nfs4_file *nfsd4_file_hash_lookup(const struct svc_fh *fhp);
- extern void nfs4_put_cpntf_state(struct nfsd_net *nn,
- 				 struct nfs4_cpntf_state *cps);
- extern __be32 manage_cpntf_state(struct nfsd_net *nn, stateid_t *st,
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index feda5464f260..8cebeafbfc20 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -646,7 +646,8 @@ struct nfsd4_copy {
- 
- 	struct nfsd_file        *nf_src;
- 	struct nfsd_file        *nf_dst;
--	bool			attr_update;
-+	/* async: file whose timestamp delegation the copy marks written */
-+	struct nfs4_file	*cp_dst_fi;
- 
- 	struct nfsd4_ssc_umount_item *ss_nsui;
- 	struct nfs_fh		c_fh;
+---
+Jeff Layton (5):
+      nfsd: Report vetted delegated timestamps in GETATTR replies
+      nfsd: Honor delegated timestamps when change and size match
+      nfsd: don't stamp over an applied delegated mtime at DELEGRETURN
+      nfsd: don't vet delegated times against an exclusive-create verifier
+      nfsd: mark the delegation written on COPY/CLONE instead of stamping c/mtime
 
+ fs/nfsd/nfs4proc.c  |  98 ++++++++++++++---------------
+ fs/nfsd/nfs4state.c | 173 +++++++++++++++++++++++++++++++++++++++++++++-------
+ fs/nfsd/nfs4xdr.c   |  10 +--
+ fs/nfsd/state.h     |   5 +-
+ fs/nfsd/vfs.c       |   4 ++
+ fs/nfsd/vfs.h       |  13 ++++
+ fs/nfsd/xdr4.h      |   9 ++-
+ 7 files changed, 229 insertions(+), 83 deletions(-)
+---
+base-commit: d692f252c52b8d1b4bc7481554f314df31ed8249
+change-id: 20261102-deleg-cb-getattr-times-8aa926029b16
+
+Best regards,
 -- 
-2.56.0
+Jeff Layton <jlayton@kernel.org>
 
