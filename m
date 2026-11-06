@@ -1,53 +1,53 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793989273;
-	b=LFrlRzlCkPDXxqMiyL7vb3A+EP8GUM8svdKD0VkQXfXvSYd4uErW5g/X/YqfVJZ2QjRh
-	 tCbp1pmWl7//RzFGuS5tXFxmebDOtTpcTJp4uU+GCCXjXyazuhN/59PJXZ90H6rBhqzUR
-	 Bo3Ayu+v8EhnRQqkz/JtGeqNzuzi8QJTp4m0o+yiJTxbwmJ5ZgexqFCyBnJtzNOGCnJDR
-	 BVbYYtkIK9OJGHlaqaG84Zw5uJfGRoBWmUmY0RN+ar4UzzxW7XXtIYrVDneV5I1ihWbzA
-	 nDpGQrGBg+TKA5xfRapK/dNTyOHKeH85hV2zbY+rl14CtUROQt1xEkNX4QIfaiXlITQ==
+	t=1793989275;
+	b=LMwpmmAXP6DESfrs07e/2k523oWVIbR41OUFVg6sKQTwBqARg9hkp3j6wET4Pm/Ry1Aj
+	 czlp1c10O644FOnEqwewjQ3w3i+nw1WQ/L/U/AfiF+1V04mY3aEtNJCJ4U6VmbfXtIdfq
+	 ZdFw2dZ1GloEcE3cXti3djr/f7l4Z/hxYCz44Kg+hyqbp4yHiu2RvPNZuq1/sKvhIRP4U
+	 Y5uKUNTRyfzCxayQDisCCq/chCZ5n8OO1R9FMqnbFsu2dAWh9hYo8ZRFO2i8YEJN/D2mO
+	 Rf+p7VhgxVbJpDf5UvZugvpw60GesPJ741P7gBOdFPLsUxHuYBcc6ua7HJbhdsUC23A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793989273;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793989275;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=fOXSRhKpMVHAY0PwkQKl8WfBGbcHOvR+Z3vQ4LdoRPU=;
-	b=oCfD3vfip3UK7xqARyZw61QLqqIGYYXDQaFrQdaHYlG3VJO1NQsAQvn4c1H75yswp3ZW
-	 ecI6ACf2Kn8WxwppuK8oD0ExCJBG6/biIUJEihqQfy3AFlSxWY9DbGYJLE8CvhhHqg6r/
-	 WWrstGgbIck4AzatiuNtL9INvI2in197JteJVYxsizyGSxpdWnqAtZsu/oyMxwchMFrP0
-	 jjFNPS0Ylgq8BF2wdVDIFtPgOHKhvI5aKoHb6wNFogpWiKenUodyXmM24DgQEkxHSEOvV
-	 ZcsDDdwJ+S5jXVK2Xv9STkYxI9U3uecy80BAOXmxa0Ja+YXSEo7178Ezr+roxbMvuBg==
+	bh=etzwXHaOFnuaKdMyR5iW7duktUlg4iYZnZhbLBpqT4A=;
+	b=L3MCA1r+WLv8jnNqNId1S3NElGE1kjQ65YcNAhbhfjVLryFEHDOvWjrCvsjcsO1buFu3
+	 OIuBE4kkeFgheAMuyEa+US+/RKTU6XMn/wbKQz3//yukez1m6nC5XeLgmEye+2pmPcEMj
+	 RWz9pm6IOQJSHRzIWUakpHrLLsrA5mZ/8C8lS6buuDN+Fv1HcTwv3/RDPKajwmFzZl6WP
+	 8u3UIH1bJaCobiHS9iMi1Nos0oCD8Q9R2GmG/edqLwCZduSsePzifGYdW0CVEinPpqX8b
+	 J0QjddZy3u0QKJxJ36KHo0bu6TXm3pap5yUZVW6GeUCYXUc0VxQxHsgCArwHriQ08xw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bxLeM3OB;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PCOMOt1q;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91934606A337
-	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 18:21:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 13F72606A32F
+	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 18:21:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bxLeM3OB
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DF34A1F008A6;
-	Fri,  6 Nov 2026 18:21:12 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PCOMOt1q
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 722A11F008AB;
+	Fri,  6 Nov 2026 18:21:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793989273;
-	bh=fOXSRhKpMVHAY0PwkQKl8WfBGbcHOvR+Z3vQ4LdoRPU=;
+	s=k20260515; t=1793989274;
+	bh=etzwXHaOFnuaKdMyR5iW7duktUlg4iYZnZhbLBpqT4A=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=bxLeM3OBSUg3riazhpDbuHpZgEAshvwbS3vajtktLAgxCJnDrTkhK1HrgkyWzi4bG
-	 B919mdqmrCzMIwsX/a1busVgKgGtn1hyqsaHdhn3h5aGP1GrSPkoOSFLOepfS2RJz9
-	 zaPD0t9LIR4x2MiFS5CS+GCa12JLieH1U/Lltdlai0Q52aQlB1WIWxcrq+dofsuegR
-	 2+fqeMcf2k/qB7Xv7MtdEFuyUKWtU5VpCLKODr7xWSikX7Yq4yAAs2hPNZCEQfvRMz
-	 Qeu2NEdvWOQqYTRm1ZtMjwrLQEKKQe/AKQL8gHE0M//OTABJ9dEmh/e/8huyCBs00y
-	 eiXlDz5uXCOew==
+	b=PCOMOt1q/T3aK0UeNi2z+l8/1UNTDsd+dGbPCq0VIeEErRlmxMikxAA45EyAsqJ1p
+	 JF8QM1Q0Nh4Muzbe0Ipv/NZgsgprnxrGiDo3/kCfeHvepP+SQUKa8Z6PYPoTwq+sA2
+	 yJ9V2WGYREwvoqddB06Y/LlCvCvweBVXlQLLT4++x9Rd+HMI7UTZI+e08+m8r3RX0L
+	 C2W8+0Qk4trQsl9en5SkG/206hpOrj6LTWElmGSVg3ceGmnPo86MLf+LmPjSeiw9Qi
+	 SZTV6ewrlSMqjauynKI3rfnrGD08yefGvYfqLHYtOsYD0uFzAGFU3I4O0vIuZNeBDR
+	 Ag8Kd9TbanjoQ==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Anna Schumaker <anna@kernel.org>,
 	Trond Myklebust <trondmy@kernel.org>
 Cc: Mike Snitzer <snitzer@hammerspace.com>,
 	linux-nfs@vger.kernel.org,
 	Jonathan Flynn <jonathan.flynn@hammerspace.com>
-Subject: [PATCH v3 04/12] NFSv4/flexfiles: make dss_info->start_time write-once
-Date: Fri,  6 Nov 2026 13:20:52 -0500
-Message-ID: <20261106182105.78611-5-snitzer@kernel.org>
+Subject: [PATCH v3 05/12] NFSv4/flexfiles: drop the redundant atomic from the busy timer
+Date: Fri,  6 Nov 2026 13:20:53 -0500
+Message-ID: <20261106182105.78611-6-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20261106182105.78611-1-snitzer@kernel.org>
 References: <20261106182105.78611-1-snitzer@kernel.org>
@@ -64,84 +64,56 @@ Content-Transfer-Encoding: 8bit
 
 From: Mike Snitzer <snitzer@hammerspace.com>
 
-nfs4_ff_layoutstat_start_io() writes start_time under the stripe lock,
-and ff_layout_encode_ff_layoutupdate() reads it without the lock.
-
-ffl_duration is measured from the stripe's first I/O, so start_time is
-written once and then only read.  Make it an atomic64_t, publish it
-with atomic64_try_cmpxchg() so that the first I/O sets it, and read it
-with atomic64_read().  Later I/O sees the value is set and does not
-write it.  ffl->last_report_time is already published this way.
-
-start_time then does not depend on the stripe lock, which a later patch
-splits in two.
+nfs4_ff_busy_timer::n_ops is an atomic_t, but the stripe lock already
+serializes every access to it.  Make it a plain int.
 
 Signed-off-by: Mike Snitzer <snitzer@hammerspace.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 16 +++++++++++++---
- fs/nfs/flexfilelayout/flexfilelayout.h |  5 +++--
- 2 files changed, 16 insertions(+), 5 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 6 ++----
+ fs/nfs/flexfilelayout/flexfilelayout.h | 3 ++-
+ 2 files changed, 4 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 57cd8b5d6d71d..dd493ff51d512 100644
+index dd493ff51d512..81c3d9dd413e5 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayout.c
 +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -729,6 +729,17 @@ nfs4_ff_end_busy_timer(struct nfs4_ff_busy_timer *timer, ktime_t now)
- 	return ktime_sub(now, start);
+@@ -711,9 +711,8 @@ static void
+ nfs4_ff_start_busy_timer(struct nfs4_ff_busy_timer *timer, ktime_t now)
+ {
+ 	/* first IO request? */
+-	if (atomic_inc_return(&timer->n_ops) == 1) {
++	if (++timer->n_ops == 1)
+ 		timer->start_time = now;
+-	}
  }
  
-+/* ffl_duration runs from the stripe's first I/O: publish start_time once. */
-+static void
-+nfs4_ff_layoutstat_set_start_time(struct nfs4_ff_layout_ds_stripe *dss_info,
-+				  ktime_t now)
-+{
-+	s64 unset = 0;
-+
-+	if (!atomic64_read(&dss_info->start_time))
-+		atomic64_try_cmpxchg(&dss_info->start_time, &unset, now);
-+}
-+
- static bool
- nfs4_ff_layoutstat_start_io(struct nfs4_ff_layout_mirror *mirror,
- 			    u32 dss_id,
-@@ -740,8 +751,7 @@ nfs4_ff_layoutstat_start_io(struct nfs4_ff_layout_mirror *mirror,
- 	s64 last_report;
+ static ktime_t
+@@ -721,8 +720,7 @@ nfs4_ff_end_busy_timer(struct nfs4_ff_busy_timer *timer, ktime_t now)
+ {
+ 	ktime_t start;
  
- 	nfs4_ff_start_busy_timer(&layoutstat->busy_timer, now);
--	if (!mirror->dss[dss_id].start_time)
--		mirror->dss[dss_id].start_time = now;
-+	nfs4_ff_layoutstat_set_start_time(&mirror->dss[dss_id], now);
- 	if (mirror->report_interval != 0)
- 		report_interval = (s64)mirror->report_interval * 1000LL;
- 	else if (layoutstats_timer != 0)
-@@ -3083,7 +3093,7 @@ ff_layout_encode_ff_layoutupdate(struct xdr_stream *xdr,
- 	/* nfstime4 */
- 	ff_layout_encode_nfstime(xdr,
- 				 ktime_sub(ktime_get(),
--					   dss_info->start_time));
-+					   atomic64_read(&dss_info->start_time)));
- 	/* bool */
- 	p = xdr_reserve_space(xdr, 4);
- 	*p = cpu_to_be32(false);
+-	if (atomic_dec_return(&timer->n_ops) < 0)
+-		WARN_ON_ONCE(1);
++	WARN_ON_ONCE(--timer->n_ops < 0);
+ 
+ 	start = timer->start_time;
+ 	timer->start_time = now;
 diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
-index 9ce09e02f1ad9..90a0ed1dd822e 100644
+index 90a0ed1dd822e..483d730659713 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayout.h
 +++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-@@ -87,11 +87,12 @@ struct nfs4_ff_layout_ds_stripe {
- 	const struct cred __rcu		*ro_cred;
- 	const struct cred __rcu		*rw_cred;
- 	struct nfs_file_localio		nfl;
--	/* Protects read_stat, write_stat and start_time below */
-+	/* Protects read_stat and write_stat below */
- 	spinlock_t			lock ____cacheline_aligned_in_smp;
- 	struct nfs4_ff_layoutstat	read_stat;
- 	struct nfs4_ff_layoutstat	write_stat;
--	ktime_t				start_time;
-+	/* Published once by the first I/O; see nfs4_ff_layoutstat_set_start_time() */
-+	atomic64_t			start_time;
+@@ -64,9 +64,10 @@ struct nfs4_ff_io_stat {
+ 	ktime_t				aggregate_completion_time;
  };
  
- struct nfs4_ff_layout_mirror {
++/* Both members are protected by the enclosing stripe's lock */
+ struct nfs4_ff_busy_timer {
+ 	ktime_t start_time;
+-	atomic_t n_ops;
++	int n_ops;
+ };
+ 
+ struct nfs4_ff_layoutstat {
 -- 
 2.52.0
 
