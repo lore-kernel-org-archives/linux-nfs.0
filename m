@@ -1,72 +1,72 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793977642;
-	b=gEOOzEvIpC8UxSB9TXrVUou0jgrk9qU/7mGQPpe92mD/vSrxeivyps1FPOmNqvk9imx1
-	 6MfXxerShAhqInfl203ckCR5aaznsSfv6X6pVcD59PmtXxXMQIt/SSr0qH4EZTdin8V47
-	 jG2WU4yh2+LJf1ACD2tUUQ9ufPGLyW8sZW93Cnwc8bJwCjWfblLzkntlsvQz0odWkXiFj
-	 vTu4VLlTuSut+ZuxQVHcR1JMvOiJu874XcbuQdfJg3e2FcVuDA/hsgD1nkLLiSlkDzDJc
-	 JmVKbtzTspuv33wO6VRl6x0eiJHkjkstU3bTL0UWd7pUpjDLFbYEA7mT4Q/TOaNEQig==
+	t=1793977766;
+	b=N3FeFMDlB+utmqAu8xSWQwHYQdrJGxdqkLB1iYlEs7z94jTjbR6q9w4gjbM8bDCt4C5L
+	 epKtdd5oqtxSyhaqO8xIMPDkWRdngAIEyAGGSs/WcTcm+d8EQJkjAqMoty3kqMQ2e8kK9
+	 x6Ls2oyQNURRWQpPyQG4JB5RjqhjFFygUNJfh5d5GCsz549+W4DlaBGs1kSHdTx9W8VYA
+	 MAU2hLREIjkBEFl7QSDI8K1m6++drQ4b19pVDc5dzjGXeA5rj/sIVLd7Kipsiud4Wjl93
+	 Q/LIIfyEHCDoHPnueN14UX2UwTe332+yKRsVhJFZbTOMT8CleKq0gLRwPq8qGcbOiVQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793977642;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793977766;
 	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
 	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
 	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
 	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=hjFtLT/eT39ja2rH1EdF5U1lL49IsAZiy06+1wX1i5Q=;
-	b=zlLkN4IspmfUOHccR1hhYh7hbr8uAO/zTyvK4Flwt+UDT70CL30fC1K1LZFDgOGH+IHm
-	 EZuu82CzXYqATX4W+YqGNCeho9zjGUOs5ABTt+TMo3vIK/8HrR5y1fSd/MQSkdN9120PI
-	 XEZ84EmEsLF0eOv7615QtLjI7bDe3RWI4t6mnUAH5S6pvuukDiuExUar7zqHDQxByYCis
-	 mWBqk6NbbUhUVrYQHvtLtvU+AD5CVZThBRYKEdWKtcpKqejaEfvAL28FtZKsNCn5cKJAS
-	 sry3232k81wNnAP0fvWs/d+//Fqe2gxfmPWuISu4WVN9SWVNRshNOagZli+pu/O/Nrg==
+	bh=npuYSel4O9FrV/jNGZ9cdAPDnmYjQUkDZB008eKUgGc=;
+	b=LnPLqmURb7RfB86rzQvIxUkhg/b/8CvWViyy8JI1V4JgCsorKEobrRCSeuBWsDMUwfHj
+	 ZaSVNXAsQjEDcm1pxNXj9HsV1kTFoiNKamxt2R+RtlukGlZuCtZHyB818dlsSICKBYx7B
+	 CcICWbSV5BFjSNaFbZTahy+VfJzk+hxJcHPXs3sp+T1ncXd7U5nuzLpMZ/tlBPlFWhOX0
+	 kkJZuG9O8L0rUD9HbajUh5uOH8qV0pSqsgpe5qiO1CeX1Cuk5hsqIx91gcd85/383UXlG
+	 Qnem5NkLwp1rExoRzP1JHpWsfY/yoY7jpSNOA8F+YzW1vAEah5GUe1puHfv8UCWZrfQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=K+05ewYK;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Q6iIcqsC;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E3431606A32E
-	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 15:07:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 57A12606A329
+	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 15:09:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=K+05ewYK
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 443041F0089F;
-	Fri,  6 Nov 2026 15:07:21 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Q6iIcqsC
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 88F5E1F0089F;
+	Fri,  6 Nov 2026 15:09:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793977641;
-	bh=hjFtLT/eT39ja2rH1EdF5U1lL49IsAZiy06+1wX1i5Q=;
+	s=k20260515; t=1793977765;
+	bh=npuYSel4O9FrV/jNGZ9cdAPDnmYjQUkDZB008eKUgGc=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=K+05ewYKnZAepnVsimd3G5S6jDSV7gprH48dKPBnxplAl6wpOAOhZqepW7muqO5mj
-	 YNuwxVLy6JZ7M0KAUHoqg1OT5uOyWWoBIBrNQgmgiwG6AYHg22zA0uzzjANWmrg0y9
-	 hWhRzI2/rr2m6YV1HNrBzpAuYOucyG8pTffTKuO6Lqr37XPCmg15Wc5FNGVQk5CeFE
-	 X5dSiEZ2SluxLtSTYVNzV5x6t6yF3zmRlilr0tsCm+OGwJ1oHYEc2MiEdUl8CzarUO
-	 6LzloG53gwJb660WBTHWMb9F4Aj2s+FeQVeHPWjdKRkWsv7ESGMIJcTPgtnSUB/ahR
-	 98CRR33O+ogwQ==
+	b=Q6iIcqsCd9wG7B1voqWAlSzFkSsgKNR1OrSEz/90X1y5NUSI3avVEaO2RTGm9tyEI
+	 wXH7q2vQOW2/14yEN7bOwKgrz2n5xQlA+q6k3idVIWglCRPPzFUWPKl0ohV0kOHGcn
+	 UV2z6ptrdtYa74ko27JCfY3vYGGb1mHw6cKvNy8NUXzdj42t7J/9sK+y8QRmS+6bfc
+	 yr9NXbg32Tq0KPxx2IMnetHMv+XuD75QJL9iOpvyq08s6WsLTzbWhnrmQz5Us9Lpz2
+	 d6C/JJewlJ5q0Q+KGdHmokvvgzL8onw8CkztLFz1aP3A+FfgNjn4Nyu5/0zuexfJBW
+	 CSG9M8B+XFxEQ==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id A569CF40066;
-	Fri,  6 Nov 2026 10:07:20 -0500 (EST)
+	by mailfauth.phl.internal (Postfix) with ESMTP id EA5B6F40066;
+	Fri,  6 Nov 2026 10:09:24 -0500 (EST)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Fri, 06 Nov 2026 10:07:20 -0500
-X-ME-Sender: <xms:KO3tarTDSdmnh5AgX6SwR_4N3UgWO33HcNVlMW-GmF5A9Us7LQoEzg>
-    <xme:KO3tannfuiepK2UNRkNEAne6Mt_TmmvaFlNVIOcJlpISUCcLbjWZRaw-GTMHOe1pj
-    P1R61rcoc5VzAO4bt2w5w3wG8tV5Ab9dt5wprn8HfZZDJ4wR6vgYcY>
-X-ME-Proxy-Cause: dmFkZTENjV9qYvDOprlF+HAgK8H6xLK52nqRTr0FiJq9Ts+Ql2TTUavN+P3rxeJX/uYPXr
-    tXhvMCGowjxgZ0rSgSwSSgSgI25vIKm1hxsNNO6ccv5o0KyNrASkpnMiB0LN9SdY2Ju3PZ
-    3JXdPqb2ym6Gs46w9YocT/SYusrBlmbmsU61pKR0woQFtMASEWlMGvcd7ETX/6n+bjbvZC
-    cV11soYoJz1iMb7V1YQ/TWUkojMihU3t/bgZgxcfvkxZ3vxcRJn6HLK3AkTtGaqy9a17ev
-    A6EB9dbjmn6ibiuwGBBcVKuiuoUUKT85g/+S51hwneRZDI2GssNP8u7A0sqS9PmIybp9G3
-    K73L+iH945gnSO/zw2vjiB896xAMed3+XqCkytKbX/asmDX9PNpRVTbrqnulfEHtntr0ee
-    x7uxx6tHwnNmj676r3fXU+jj+MoToa6D7ABjWi+dUCiaPiE+W7iPjo4ZE3UCcsBcYwGmKK
-    7B7Q4gSMYQj+JUmm5kie9XsGOoTjLSz9FyS+Sl3MuSAHYSR7YeSsrGrlcRUTlBCCklzm5n
-    N0CUHk5EIMGLK/tijEN1n+nSetvzrpBClW5mm2W73urLfCZP72xNpJI/Xozfhv1L/jg+xg
-    PTRiRxZxrBir/B0X16f/UdUk/qUUmfUSV3LEhr0Llbex1ZGiOKFlnT2DBWjA
-X-ME-Proxy: <xmx:KO3taiKpz3_c514sVhmcFy4NBkbWE5m-QuBa1HXAW3lU8qZpAqgyvQ>
-    <xmx:KO3taq39ZvPG5SOwPx-ME6GgrKBMxT5MEfnH07Cvsl25vDG1rbHMNw>
-    <xmx:KO3tag5F9FOxTREJ3TW8yiOHJgkb4ATdr3lrKaVGQQn4npynCFFpIQ>
-    <xmx:KO3tar9aQVTgWNLhqh4xDkR2rp8qTR-QnMOvICMtH6xhN_t8HjLWPQ>
-    <xmx:KO3tavWYSVVNcA8CAnn5WA3e5gEohfWrmiG0UtSeu3n83wkHOFna2Ctx>
+  by phl-compute-10.internal (MEProxy); Fri, 06 Nov 2026 10:09:24 -0500
+X-ME-Sender: <xms:pO3tavCpLhKAHBgB1GqJOZtIxf2vvwdmlMg8IaorUUw81lrmVn82YA>
+    <xme:pO3tagXPWk9VQ-cL5bnGPzSlRAD3oWm0OvesAi2q7t5H0WyR3fnmpJa5sMmmJkEsa
+    Fnx7CRxyWa9m9hkooh3_4c2lnkApxozb4rDjuwt5_73pV4kTsNZ0K8>
+X-ME-Proxy-Cause: dmFkZTFEhyjgIWT9Pl7QSDXtVhusfaBv7ZIEID3b6YaYkY/PL4NFOj9jmbZBiJKasYMxrT
+    cHTZQ+y/cKTOkkwTy3bgReD6eZWCZ4oFOP3Fheauuru/hu6APs/VMcM8CSa4tMi0yHZpV3
+    Q055OM8A6Zu+3SdJrgCjERVT17kvzH7TihJ4vwOkhIBI7Sx8wYrOMWXuMe8oHbSYEJ633K
+    TVgnEWoJGyQ2jyMWfbPQbJstCtXUnCk3uQ1UzH99NSAJjoueBgrsfby6dcWc95nK9JJk4l
+    n9cdoA7lVuSur778GyQzFCPedD2JhDWkUG7+1a3cYAo/M4Q9bisUAXTeERjfmTvtsZWwQ6
+    DL3JueRN62cGgtN4zFP17T4wtrdxw90UQ2A+kJ8WmDDz4wcJRhtsprKS+731WsC2kdEdcN
+    Iovo9fGC9z6Bl8pcg3cl90ark4c/eFRbxxR0meVzU8n+CM9nOZ/wTfTAx/VWpP5iC18LQE
+    T017Af6YvGdcZykgdjNz6/1QenNOfwjpEbsC8IQJlTkW2HyWM+YMlgvkTZUXwaAxvrjiD4
+    j1o5XnmdBwXcQU3YzCGMG+s6S8XsBjZpjEjK1KXvsTkQB/liAWuGUYgzQFwkeoqmDdCb8R
+    jC4eOaLYNHw8Br+kT+mG90lO84My3d3X5R6Avlt5IhPrOuslw6lIY3tq2Vgg
+X-ME-Proxy: <xmx:pO3taskkJ7VxndqivvrJnBr5tevANTi-D6_ZFsCII6HJrdZwg3rNQg>
+    <xmx:pO3tansS6HrnkCJ4h6NuE77MOPzzaE5UchXJGwMULm6V4M71pFcFJA>
+    <xmx:pO3tanp7mVj9ajDYDwY-JLxXZaLPH9WvM4WvBCrUdiKdEncz080H0g>
+    <xmx:pO3tateZ8vte2uvNWpQJVszzitYXsdCkGDYfNo9K1GXlVyxtmrn3hA>
+    <xmx:pO3tavnjB0nh0BCcD8kbwKwlPtk0JjWADyclTpeBbHVi9mTxN_sKbrJk>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 8604478273B; Fri,  6 Nov 2026 10:07:20 -0500 (EST)
+	id CFBA9782738; Fri,  6 Nov 2026 10:09:24 -0500 (EST)
 X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -77,89 +77,91 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: AAPwM5BZBMgc
-Date: Fri, 06 Nov 2026 10:07:00 -0500
+X-ThreadId: As7mHhrShI7Z
+Date: Fri, 06 Nov 2026 10:09:04 -0500
 From: "Chuck Lever" <cel@kernel.org>
-To: "Jorge Mora" <jmora1300@gmail.com>
-Cc: linux-nfs@vger.kernel.org, trondmy@kernel.org, anna@kernel.org,
- Rakesh.Bhargava@netapp.com, Mohit.Kumar@netapp.com,
- tmenninger@everpuredata.com
-Message-Id: <e62137dd-e1ce-46bb-8973-734ce8ed5489@slotpi15m67>
-In-Reply-To: <20261105232137.4706-1-mora@netapp.com>
-References: <20261105232137.4706-1-mora@netapp.com>
-Subject: Re: [PATCH v2] xprtrdma: fix race between frwr_unmap_sync() and transport
- disconnect
+To: "Tim Menninger" <tmenninger@everpuredata.com>
+Cc: anna@kernel.org, trondmy@kernel.org, ebadger@everpuredata.com,
+ jcurley@everpuredata.com, linux-nfs@vger.kernel.org,
+ slingappa@everpuredata.com, stable@vger.kernel.org, tom@talpey.com,
+ mora@netapp.com, Rakesh.Bhargava@netapp.com
+Message-Id: <dce03323-90e7-400f-8deb-63010d928460@slotpi15m67>
+In-Reply-To: <20261106142039.1066437-1-tmenninger@everpuredata.com>
+References: <20261106142039.1066437-1-tmenninger@everpuredata.com>
+Subject: Re: [PATCH v5] xprtrdma: serialize unmap_sync with xprt_disconnect
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
-On 11/5/26 6:21 PM, Jorge Mora wrote:
-> frwr_unmap_sync() is called from xprt_rdma_free() via ->buf_free, which
-> xprt_release() invokes without holding the transport send lock and
-> without XPRT_LOCKED. rpcrdma_xprt_disconnect() runs from xprt_autoclose()
-> under XPRT_LOCKED and, after draining the QP, resets every rpcrdma_req
-> (rpcrdma_reqs_reset) and destroys every MR (rpcrdma_mrs_destroy). Nothing
-> orders the two, so both can walk and list_del() the same req's
-> rl_registered list and the same MRs.
+On 11/6/26 9:20 AM, Tim Menninger wrote:
+> frwr_unmap_sync() posts LOCAL_INV Work Requests to the QP and waits
+> for the matching CQE. This can race with rpcrdma_xprt_disconnect():
 
-Thanks for the vmcore analysis, and for the detail about the
-destroy_mkey stall widening the window. That explains why the
-list corruption is what shows up on your systems.
+Thanks for sticking with this one. Before the rest, a pointer: a
+second report of the same race went to the list yesterday, as a
+list_debug BUG in frwr_unmap_sync() rather than a hang:
 
-Tim Menninger has been working the same race from the other
-symptom, a hung task in frwr_unmap_sync() when the LOCAL_INV chain
-is posted after the QP drain. His v5 went out this morning:
+  https://lore.kernel.org/linux-nfs/20261105232137.4706-1-mora@netapp.com/
 
-  https://lore.kernel.org/linux-nfs/20261106142039.1066437-1-tmenninger@everpuredata.com/
+That is the other outcome of the same window. rpcrdma_req_reset()
+and frwr_unmap_sync() both pop rl_registered with no lock, so which
+symptom appears depends on timing. I've replied there suggesting the
+two efforts be combined on this patch.
 
-> + - If rb_closing is set, frwr_unmap_sync() returns and leaves the MRs on
-> +   rl_registered. rb_closing is only set after rdma_disconnect(), when
-> +   the QP is in the error state and the peer cannot reach the MRs;
-> +   rpcrdma_reqs_reset() then releases them.
+I'd like to see the patch get smaller.
 
-When frwr_unmap_sync() returns here, xprt_rdma_free() returns and
-the RPC's pages go back to the consumer while the MRs are still
-DMA-mapped. frwr_mr_unmap() does not run until rpcrdma_req_reset()
-reaches that req. On a platform with swiotlb or a bounce-buffering
-IOMMU, the deferred dma_unmap_sg() for a FROM_DEVICE mapping copies
-the bounce buffer into a page that may already be freed and reused.
-Tim's version always unmaps before frwr_unmap_sync() returns,
-either in the LOCAL_INV completion handler or because the reset
-already ran.
-
-
-> +	/* frwr_unmap_sync() runs without the transport send lock.
-> +	 * Callers that claimed MRs before rb_closing was set may
-> +	 * still be posting or waiting on LOCAL_INV Work Requests.
-> +	 * Those complete (or flush) because the QP has been
-> +	 * drained, but the callers still reference the MRs and the
-> +	 * ep, so wait for them before anything is released.
+> +	/*
+> +	 * Hold an endpoint reference so ep, its QP, and its CM ID remain
+> +	 * valid after the rwsem is dropped and through the completion wait.
 > +	 */
-> +	wait_event(buf->rb_unmap_wq, !READ_ONCE(buf->rb_unmap_users));
+> +	rpcrdma_ep_get(ep);
 
-A caller that bumped rb_unmap_users just before rb_closing was set
-can still reach ib_post_send() after rpcrdma_xprt_drain() has
-returned. The comment relies on the provider flushing a WR posted
-to an error-state QP. Tim's report is that no CQE arrived in that
-case on his hardware. I can't tell from here which providers
-guarantee the flush, but if his observation holds, this patch
-leaves that hang in place and adds a second waiter: disconnect now
-sleeps in wait_event() for the stuck caller, so the autoclose work
-and the whole transport stop with it.
+As far as I can tell, the only use of @ep after up_read() is the
+rpcrdma_force_disconnect(ep) call on the error path. If that call
+moves up before up_read(), the write side still holds disconnect
+off while @ep is dereferenced, and the kref isn't needed:
 
-Tim's rwsem makes the post happen before the drain or not at all,
-which removes the dependence on provider behavior. The counter,
-flag, and waitqueue here are doing the same job as his rwsem by
-hand, with that one ordering missing.
+	bad_wr = NULL;
+	rc = ib_post_send(ep->re_id->qp, first, &bad_wr);
+	if (rc) {
+		trace_xprtrdma_post_linv_err(req, rc);
+		rpcrdma_force_disconnect(ep);
+	}
+	up_read(&r_xprt->rx_unmap_rwsem);
 
-Would you be able to run Tim's v5 against your reproducer? If it
-holds up, a Tested-by from NetApp, plus the vmcore details added
-to his patch description, would make a stronger single submission
-than either patch alone.
+	if (bad_wr != first)
+		wait_for_completion(&req->rl_linv_done);
 
-I'm a reviewer here, not the maintainer, so the final call on
-which fix goes in is Anna's and Trond's. Tim's looks a little
-more complete. Sorry I didn't realize earlier that both of you
-were working the same issue.
+With that, the export of rpcrdma_ep_get(), the new
+rpcrdma_ep_release(), the kernel-doc for both, and the header
+changes for them all drop out. What remains is the rwsem and its
+init, the down/up pairs, and the completion move. That is about
+half the current diff for the same guarantee.
+
+The ordering is the same as today for the error case:
+rpcrdma_force_disconnect() only sets a flag and queues the
+autoclose work, so calling it under the read side does not recurse
+into rpcrdma_xprt_disconnect().
+
+
+> +	/*
+> +	 * Orders frwr_unmap_sync()'s LOCAL_INV submission ahead of the
+> +	 * QP drain. Disconnect holds the write side across the drain
+> +	 * and resource teardown.
+> +	 */
+> +	struct rw_semaphore	rx_unmap_rwsem;
+
+With the write side held across rpcrdma_mrs_destroy(), every
+xprt_release() on this transport waits out the ib_dereg_mr()
+loop. The NetApp report describes that loop stalling in
+mlx5_core_destroy_mkey when a couple hundred transports tear
+down at once. I don't see a deadlock, since the drain needs only
+the CQ workqueue, but it is added latency on rpciod. If that
+turns out to matter, the write side could end after
+rpcrdma_reqs_reset() rather than after the ep put. I'd leave
+it as is unless someone measures a problem.
+
+I'm a reviewer here, not the maintainer, so take the above as a
+suggestion for Anna and Trond to weigh.
 
 
 -- 
