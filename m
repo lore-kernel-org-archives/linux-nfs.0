@@ -1,98 +1,78 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.221.173
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1793953700;
-	b=aESNimND4TpL92UbTyQWmgv8IhhzEh6shZQOj450f94pIB9+POpta9eNgVK0Qty1GK6y
-	 U9Q4js4ptSzDh1o13oJjvqB9TwMo6+K9mtwgF2gP89RKl3EBlO8ub7gQw1MmtOPYN3bSv
-	 cD9EqoZa0B2SSuIqQUaDQMzVmMr3w02VZwFdkfqHXgZlHsKqWwFnFQSWjNv/tkXEWVeaf
-	 2eXpR2jXLu7Tgkfn79kF5kRgfMXWO9Co6J7nKe6PgJWkOu77KYYbof0vjeTz/JH9c6sDu
-	 PaA/4iRmd7n/XmsVn6vFkov9z4NsHq13MhRVV3WpWHMJu7O6v6vpU4FQImzc/CeMBxA==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793953700;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:MIME-Version:From:Date:
-	 X-Gm-Features:Message-ID:Subject:To:Cc:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=fzch6gNPoeN7mgRwny32Lar1PhjRofvxVtU+yCqkgPQ=;
-	b=3azRifVJZNTUdeOeitqUx84TQ0Gez5PbY+qyNozKkZYQ/4JzBdb+WILyffbpPoBBK+Za
-	 Xqt8PZlnleaDcJa3M0LEbENSnI9Z1vNRX2nwOnqHCZK6OldwEMn01Yl2xrQ/hg8ULwQwb
-	 YOgCcNvRTsCqqdoZzdVTC+JsWin3Nf4mNhGjOQTsSM6PUHB6IMmvaTQtTkkhydk4XY+mu
-	 Ocd4mcpNsIk3DKxR+4n7lB1esNIjIEIq4l4HdGrnSzkizqMwUZ4s912YoZukS065Ry1wN
-	 Ypmf5pCPV0EgCZuNk4TxSJjVO6Vw4F5v8PKWRh5U9Ot/p9S86SQJnlgwoEOvKPMsBbQ==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=xELRvfsm;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.221.173
-Received: from mail-vk1-f173.google.com (mail-vk1-f173.google.com [209.85.221.173])
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.127.231.113
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1793955072;
+	b=kTnKwd4TtSWL3lbRYO3vFxCViWw4F3/mABMuotYRKD1YR4AMyncWrf5z66UvX6ZmaRTH
+	 RTmZIhKXtU2dVFPH3NDY9T2+LUlgy6b4YmKwdgEmaPayiHeA6+1Se3o7yLifnX58309Ja
+	 0Lkyl8XZqqUx9U8P33zYuDwz3+O/9iDWxGnZEZUtcoI3veeKpOv24/exeeZhCnVOUqmhy
+	 sTpERGXI5N2bHOje+7hvTJCqy6ad+l7H6fOlSC+kJSwG4dshd3Bj0MirRQjcuCci4K+ql
+	 a0eSjfO4UAXy+PtgnzweotGTZuXgsa1mHo3749uxc/rXbt+kREit9tVLlJlyu10mHxA==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793955072;
+	h=DMARC-Filter:DKIM-Signature:To:Content-Transfer-Encoding:Subject:
+	 Content-Type:X-Original-From:X-Lms-Return-Path:Cc:Date:Message-Id:
+	 In-Reply-To:X-Mailer:From:Mime-Version:References;
+	bh=uw2jcbo2K94Ipub2qP4Q99pSQbMkC01ncZoy8NZ7ZtE=;
+	b=ty0+XR4x3XmbVTJ7pnMVeqUalI+6YM/i2WGbuSvlfn+U0frcUhj+HCAzL1d6xlh4Cq09
+	 pMdP1DZwynO91M/QyMQejPISrFLsvckw0Qa8lT/QufwKazr8bicE+sn+YfcY/BJfhseWL
+	 MtmzifOjQrB1QEMFu7RqF4ESoS+Ge4PlGpQpIpppIGIasQ1gZXbtkOpmr1eYI07f8Cj8y
+	 m9p1iq9l/hV3ytfZUqKOmGAkaLKWMr8LXgYXgqG/6Wc7TsikGLl5gLj0kbRspjIMk1Wbk
+	 HCzmudfx1a3IzR1MlQ8Zr9OncS3WGtpGsViZRBba49ef7N7YNpE9TEIiFJQeP5BqM+w==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=bytedance.com;
+	spf=pass smtp.mailfrom=bytedance.com;
+	dkim=pass header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=2212171451 header.b="PA/XBQAm";
+	arc=none smtp.remote-ip=209.127.231.113
+Received: from va-2-113.ptr.blmpb.com (va-2-113.ptr.blmpb.com [209.127.231.113])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EA2B5606A326
-	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 08:28:19 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org EA2B5606A326
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BCE86606A32E
+	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 08:51:10 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org BCE86606A32E
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=xELRvfsm
-Received: by mail-vk1-f173.google.com with SMTP id 71dfb90a1353d-5ec6f271883so319682e0c.3
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Nov 2026 00:28:19 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1793953699; cv=none;
-        d=google.com; s=arc-20260327;
-        b=JM3ZYIRbFLCAwHzqAC1AjF/DFWnrEs1TaAiUb4QSeWb8z3fxSXJPdxuQ/LqJFhsZ9d
-         b9xu80nLUtuVybH8GyY4QnYe1NiADDnEq3grUC+EbR62Hw3RsLz2Pq9TaxDcQ9NLp4Bw
-         TCo5QIDz4ThU4rKfMpnFXIOhMS+Q6tNZ/Db6BJ5Pv8eHFG+4ytYcQsoP3Xa6w5XZAh34
-         z5xM3f5V4MDcQ+yNvt0rhQinZNnE07kcDrf/o9AvPiyrz3SbZ9i1Cd++8c59dIZVspIU
-         D3QoiFjS8hyof/1wKKGgVdqzCigkZn5zydDrAt/07hV/wUV+Ma+5YHXugA3NkkO7PRVz
-         sG8g==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :mime-version:dkim-signature;
-        bh=fzch6gNPoeN7mgRwny32Lar1PhjRofvxVtU+yCqkgPQ=;
-        fh=UJUmHi6VPweiYLbrR07m4rWRkmMNhoqRJ5xzesOHmRU=;
-        b=l0gptD40lAd2bt8zLZkBJE3o3EQqXgS/exLT7+eUet6DozQfxWOkjAZNDtKCGXB4zH
-         ZDHEhSBW7Mqbd6t8zVnlFrUrHylLF01fZzLK5/7VxU4pLR36cvQsmG/OwAmiOQj6zBct
-         ITf//grmMB4ZOb81T4eDjI9DR5zC5bdgS075V815bbIutBQsF1Re4XqE11MkcL+EBKrV
-         DEw+TcA8Mu1zZiXVNUBlktbL1FHpqSptJBlvyWgtvnZSoHGNx+1LUe1XzbvolRISsnhx
-         wpkqLnL6vvHFJ3B3XgdM+pj3rtkxCJ649457qUL4w8/Pz6VPmHUCp2cJu4+TjYaSJC+7
-         Lldg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1793953699; x=1794558499; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:mime-version:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=fzch6gNPoeN7mgRwny32Lar1PhjRofvxVtU+yCqkgPQ=;
-        b=xELRvfsmX0muHLGQsiNfhE+4JYSsWtdU+FR1e++1HDhNV8tZh2dGByR5d76BIigBif
-         ZoRReBMLxIw2FPckbVYv7Zko7nnZTOGOpbjMu0O8hRBmIkrguKN1YNDCWH33rpDDmD66
-         WjH7oyzn63C8jbr81XuUQed8maeiNdSQqINnSowgvuisTMuuBI6c/zhyS5Yam/k3Hunj
-         YhHjWhqekIrq4s+20AuAP0kBQc7JKcKaOHEKLRcrEwWBDwaHwQGiwA9auAVRVZtvXIlz
-         791uLQtlVJmeh74iPfqkivXW2al7PINOyC3ZywVTn2NmUPAoFn7UeuwdO6gXRrsXppsp
-         E8kg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793953699; x=1794558499;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=fzch6gNPoeN7mgRwny32Lar1PhjRofvxVtU+yCqkgPQ=;
-        b=c1aSk0xeOB63HtXM/hj0or7V1VQaNDaGlrsNyl35OesYCWE3GoWQZUd7IgWcWhnb2E
-         EItfjU0O0TwmNcwP8jEzV6JTFuMXUwAb1JMugB8d87f2yMql1gwnK8pwyndUzICBj9T/
-         wwrj9ULLJ/BUPM5jIp6LSK+3Ka/G+2HoJr/0Qzb4wRtgh9oK3825ixWBfVKFoXRiJ9iG
-         HIeN1B+5NKSp/ux4wp1wSR7HS/GqKdPkBVToiLZt1X1Um8eUW3HnCDDwumdudRsl5q2I
-         Q20KINrR/L5g9OOHJvnydgFu3g7k66yZcadiUwYo2zzUT8/9eXEKEKbqtP8GuyqhZaHe
-         wyLQ==
-X-Gm-Message-State: APuU4Z+T/myUSADM8N5FXLWJPBBKNA3H1tncKarvdPKCtgot3YoijqYj
-	G3OZO0CyKDRhw+SuR1Ke0iIe9BBdHz3JNdCEhCZb8JcEJpw2Ehq6rGpg5QglN1I6uRmTIrcPu7P
-	ooqZ4RRqYK9NRhQ+UATNGhdrDdjuu62ICgqz7lkE=
-X-Gm-Gg: AYBFou3XvtZGHesShLRqcPkYIRqjsQCN7eQyvTVx6l29xcSrCxEnJR/up9hFGK+DpZ/
-	cyASbMIc+Huo7cUgGWGdzTVf48H4pTpzn5bR6rGBW1P0J6KMXM+9zbDZHTeEQH30W9E3x/N+djI
-	ZCjsn+mypsePPLXfmzo4JbPTXhUwFxJyvxdj5p6NePe7ddK/VsTBxr7GQMJZ0SsP21dVOpRMriq
-	sND+aWakZJ57UkDTctGUPtpnJXNKjNnFMbh28867SefogkphW+WZm+xxte/abDUsQmiRp9qTlXP
-	7BO5liPRQgDo+h5KkCgMHKQUSC8KdCq/2Zdy9d8YRGLyT/8OhHZei0hqV1ZI71SFfr4L8TGO5Vt
-	Eta/VqbWRVLe2YPlWB7+SK/S/Flkifpt6QWJfRA==
-X-Received: by 2002:a05:6122:2108:b0:5ec:3e18:a855 with SMTP id
- 71dfb90a1353d-5ecc43a4cefmr914144e0c.5.1793953698434; Fri, 06 Nov 2026
- 00:28:18 -0800 (PST)
+	dkim=pass (2048-bit key, unprotected) header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=2212171451 header.b=PA/XBQAm
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+ s=2212171451; d=bytedance.com; t=1793955065; h=from:subject:
+ mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
+ mime-version:in-reply-to:message-id;
+ bh=uw2jcbo2K94Ipub2qP4Q99pSQbMkC01ncZoy8NZ7ZtE=;
+ b=PA/XBQAmEx8IsPS/7OJFQLeZ4Vjk/Xgf6CGt3AkrAKm6p3LefoZj01Twa7vDqugD69JTCX
+ OoLavvqGtxiChoXZtxmsdKYlGIOffsC3eZp2ygVGEhoOVkIQv/V0wdij/ExxrW9gptS4sC
+ huFbds+bdNGUJQ5pscQMUUnTSvwRyhYbmRpMSuoA+T2UFt+TfZJvf67gSlEl3Zn81x+XTK
+ mQqcX7/6ZQthHCYwoS+rLfXUyD2l4P7ZcBA9bUtUSn1hRuYf/bd4ZCUgVcf/YA5GdKe8D1
+ AI1y+Li+bj7iFxzsRI/E00L2eRhtPBCcqpeBV17nEuyFfspF748Rn6I2/QnlNA==
+To: <nhuhuan@google.com>
+Content-Transfer-Encoding: 7bit
+Subject: Re: [RFC PATCH v3 0/3] mm: use non-temporal stores for demotion
+Content-Type: text/plain; charset=UTF-8
+X-Original-From: Li Zhe <lizhe.67@bytedance.com>
+X-Lms-Return-Path: <lba+26aed94f7+7c0e03+vger.kernel.org+lizhe.67@bytedance.com>
+Cc: <Liam.Howlett@oracle.com>, <akpm@linux-foundation.org>, 
+	<alirad.malek@zptcorp.com>, <anna@kernel.org>, <apopple@nvidia.com>, 
+	<bharata@amd.com>, <bp@alien8.de>, <byungchul@sk.com>, 
+	<dave.hansen@linux.intel.com>, <dave@stgolabs.net>, <david@kernel.org>, 
+	<dimitrios.palyvos@zptcorp.com>, <fvdl@google.com>, <gourry@gourry.net>, 
+	<hannes@cmpxchg.org>, <hpa@zytor.com>, <jackmanb@google.com>, 
+	<jic23@kernel.org>, <joshua.hahnjy@gmail.com>, 
+	<linux-kernel@vger.kernel.org>, <linux-mm@kvack.org>, 
+	<linux-nfs@vger.kernel.org>, <linux-trace-kernel@vger.kernel.org>, 
+	<ljs@kernel.org>, <mathieu.desnoyers@efficios.com>, 
+	<matthew.brost@intel.com>, <mhiramat@kernel.org>, <mhocko@suse.com>, 
+	<mingo@redhat.com>, <nifan.cxl@gmail.com>, <rakie.kim@sk.com>, 
+	<rientjes@google.com>, <rkodsara@amd.com>, <rostedt@goodmis.org>, 
+	<rppt@kernel.org>, <ryan.roberts@arm.com>, <shivankg@amd.com>, 
+	<sj@kernel.org>, <surenb@google.com>, <tglx@kernel.org>, 
+	<trondmy@kernel.org>, <vbabka@kernel.org>, <weixugc@google.com>, 
+	<x86@kernel.org>, <xuezhengchu@huawei.com>, 
+	<yiannis.nikolakop@gmail.com>, <yiannis@zptcorp.com>, 
+	<ying.huang@linux.alibaba.com>, <ziy@nvidia.com>
+Date: Fri,  6 Nov 2026 16:50:19 +0800
+Message-Id: <20261106085019.90487-1-lizhe.67@bytedance.com>
+In-Reply-To: <20261103223025.2482227-1-nhuhuan@google.com>
+X-Mailer: git-send-email 2.45.2
+From: "Li Zhe" <lizhe.67@bytedance.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -101,71 +81,29 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-From: =?UTF-8?Q?Tony_Saraj=C3=A4rvi?= <tsarajar@gmail.com>
-Date: Fri, 6 Nov 2026 10:28:06 +0200
-X-Gm-Features: AclHuK_o6wwufNnm__DUHhi2RTCXYQKwA-Yery8uVthVOxHjFAoSyKTsKGooEeM
-Message-ID: <CAL8k9GtqggKFgRo1RhAvKxO4UdvrkDgSpVrsxWx_WeSttm99eQ@mail.gmail.com>
-Subject: nfs: duplicate READ RPCs with fscache + large readahead folios
- (nfs_netfs_issue_read re-adds whole folios per rsize slice)
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trondmy@kernel.org>, anna@kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Mime-Version: 1.0
+References: <20261103223025.2482227-1-nhuhuan@google.com>
 
-With the help of Claude I ended up debugging why our NFS transfers way
-more data than requested, and this is what we came up with:
+On Tue, 3 Nov 2026 14:30:22 -0800, Huan Nguyen wrote:
 
-With an NFS mount using fsc and a readahead window larger than rsize,
-a cold sequential read transfers N times the file size from the
-server, where N =3D readahead / rsize (2x at the default 128 KiB
-readahead with rsize 64 KiB). Without fsc the same read transfers each
-byte once.
+> Using non-temporal stores and prefetching on x86 bypasses CPU cache
+> allocation, protecting active workload working sets and improving
+> demotion throughput.
 
-Environment: Ubuntu 26.04, 7.0.0-38-generic (also 7.0.0-42-generic,
-seen as a 2x ratio in client counters), x86_64. NFSv4.2 against a
-NetApp ONTAP server using pNFS files layout. Mount:
-vers=3D4.2,rsize=3D65536,wsize=3D65536,fsc,nconnect=3D12, cachefilesd runni=
-ng,
-default read_ahead_kb=3D128. The nfs_netfs_issue_read code is identical
-in v7.0 and current master.
+Could you show some real workload numbers for this? I am wondering
+whether the reduced cache allocation and improved demotion throughput
+also translate into visible application-level benefits.
 
-Reproducer: write a fresh 256 MiB file on the mount (cold FS-Cache),
-echo 3 > /proc/sys/vm/drop_caches, then dd if=3Dfile of=3D/dev/null
-bs=3D128k, while tracing nfs:nfs_initiate_read.
+> - Memory ordering:
+>   Add a wmb() barrier at the end of folio_mc_copy_nt() to ensure weakly
+>   ordered non-temporal stores are drained before page tables are updated.
 
-Result (bytes requested from the server for 256 MiB, rsize 64 KiB):
+I have not looked into all the details here, so I may be missing
+something. But before migration completes, there should eventually be a
+publication step that makes the new folio visible. In theory, that
+publication step should already provide the required ordering before
+userspace can observe the new folio. So I wonder whether the wmb() in
+folio_mc_copy_nt() is really needed here.
 
-read_ahead_kb641282561024
-with fsc256 MiB512 MiB1022 MiB4047 MiB
-
-Control: a second mount of the same export with nofsc, readahead 128:
-256 MiB. With the server's transfer size raised so a fresh session
-negotiates rsize =3D 1 MiB, all four values give 256 MiB. With rsize
-81016 the amplification is 1.06 / 3.18 / 12.5 times at 128 / 256 /
-1024.
-
-Trace: each READAHEAD request is split into 64 KiB sub-requests, but
-from the fourth window onward each window produces four 64 KiB RPCs,
-the same two ranges twice, issued by the same thread within
-microseconds. A kprobe on nfs_read_add_folio for a 32 MiB file records
-551 calls; 506 are 128 KiB (order-5) folios, and 253 distinct folios
-are each added exactly twice.
-
-Analysis: nfs_netfs_init_request sets sreq_max_len =3D rsize.
-nfs_netfs_issue_read then walks the sub-request's page range with
-xa_for_each_range() and calls nfs_read_add_folio(...,
-page_folio(page)) for each entry. A large folio spanning several rsize
-slices is found by every slice and read in full each time, so a folio
-of N =C3=97 rsize is read N times. The non-fscache nfs_readahead path
-issues each folio once. One possible direction (untested): skip folios
-that begin before sreq->start, or slice on folio boundaries.
-
-Workarounds: read_ahead_kb =E2=89=A4 rsize, rsize =E2=89=A5 the window, or =
-nofsc. I
-can test patches on this setup.
-
-Hope that helps!
-
-Regards,
--Tony Saraj=C3=A4rvi
+Thanks,
+Zhe
