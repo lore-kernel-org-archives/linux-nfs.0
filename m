@@ -1,53 +1,53 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793923996;
-	b=a/o2BtxkrabFukTtr5+OLq8U+PVvf/BJJC2ae1xf/oTebHHldzDtepl3a1DTfxHvp2Zf
-	 Y6ALJT1f89flNDC/vcJZesWZX2jvoKssv3lvIIXaa6LL20UkMUlbeU26qN83lOGvFksyL
-	 L9v7yWVFUM9rFoExw1SwFGWSBaDiEfCPdlo3uOchJvBTtnJyxO2X4dVkVve0QqLMT33ZK
-	 RVyTDWozoYflvgGyO60NRpVlHxQmQr47Eeb6c8x0/PLkJ97wXMuVQfqXl+S5a0mB/WMyN
-	 8Xy1QJutbBKOMWMuf6tVTNFzUwmwWo0ZTm4g88AGSFswqaaEBGpvnKO0cfTnfIwW0eQ==
+	t=1793923997;
+	b=yrI/rXCWd27L0hmst+MtntusF2AYp7FQxlrLFa0ATxPVUefAtvzmYpurqM4+0A6OdoNT
+	 oqAtobMoaGuobt/53AdXmp/CX2tGaUpkFuvfGgOgyF6m7qCX5XwnreqsuhSsBIIb6T3uB
+	 wEoZr/DZIIkmHkjEO8s+HzFAQCyAF+VcSwM8UFjw3L48itqsvt7V2eDClfLx7pAzzBiAh
+	 QKOXxrftTMA+zFW4Fldfrviwqxi7EsIX3CVXriEruXm/qdYGeS727p8vUSaVIEc7AwMLM
+	 dGqz4OPC9Dz3J1bD9QjZnYPyP/DWYBoAX5a/Gr2GPbWVu1xpx3kZTlt4r3GJ1g/2N/A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793923996;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793923997;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=3V7EkQIypRvjQegORdtKadadUPKRR5HE4JRoYCLlFlU=;
-	b=yB0uTN5edpAOyd32nu0TAABzmWmftJmcArVk2YwLY29vD+ptF9jya3WdDAttlH35rSse
-	 0Q9jlFA9rO9rQBQpScQGmWfUol1Z6Ww28BXUNJXrHsxi6k90sCp3yCr6g3r1Lnbrl/FCJ
-	 SBNPbvbMLKKjNQA85aGWDUedUEmtsTs+v5eD6mROeOlSxjePUCfwKNfnedNsY0ODWttYY
-	 RKN4t5hdO7bANDQBweGzvOU/n68WZsBI8d56Xy9ns9s6Dz05vO45jSjVwwy8d4d9ftyiD
-	 rcqkwOgIyZMsU70zmxRAn7oHRCg7xacp60gg9ZaAGGeUeAWXxal1TtP+R7s7HzisxDg==
+	bh=zEMIDTKCvvZMK897dEqBE+NtLZOXLgoxzq6DTCl9cTM=;
+	b=pIP+OLsRX8lcKwiTD/xHHkXiBAPqUXDjr/y1jcCMxGxLaU59n+Wqy/fJkFf0deqXeoWV
+	 lHL/HcHgVNkRDB4TWg3EcmqYmjtRkoaIXIUpRKqmWB7X2LN1ouwKRE5lotQ8eDi1IYRI7
+	 wFiF3tcLAMPcUV6/u1hasYD2UAGQmNR2HrfJsrp2H6MFGNO35nb3gjWXuskdLFPA0mZ1A
+	 9385BJz8pk+Fsjg0vjYK4QQU7fpDyniX84ccrmbmaQlKBpl1puUm5Jkrtsx5xkLI6RbEs
+	 y+kxFJTCRRlbvtu782C5cDyJbCaGuabKjhEGUrh0Jhdrmic+nQ15bAiHbJKjq+Lf1BA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gYW94LQ1;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fKrB2Z9T;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 133E6606A31B
-	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 00:13:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 49A55606A31B
+	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 00:13:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gYW94LQ1
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6A4211F008A3;
-	Fri,  6 Nov 2026 00:13:15 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fKrB2Z9T
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A27881F008A1;
+	Fri,  6 Nov 2026 00:13:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793923995;
-	bh=3V7EkQIypRvjQegORdtKadadUPKRR5HE4JRoYCLlFlU=;
+	s=k20260515; t=1793923996;
+	bh=zEMIDTKCvvZMK897dEqBE+NtLZOXLgoxzq6DTCl9cTM=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=gYW94LQ1qC9zY3vtw71alZHbkym0raNDdobzJQXua5932jOlL3yy4K8YxyMCLcwoO
-	 7amKRYWmFUFH4A1ZG+iKAJtWf9avxHZBN4/Io5X1EqaK483xbMOAFxb05EP90F7Lw6
-	 lcgXcMsXdi7CE8NFXnA9dNwWzxGImtFKO+IURVQ3typel1qv+LrW6yywrvuwu6oreT
-	 GG7Vib9K5SvF9oDkz4jbPGY0sFG5f+p0yOqFtLrsW65NYiAWrQpT9pMqtQ/Gtv0Mbb
-	 7ah5IlBpmook5yoyKcw+iasBaZXN3Ebj/92FXxW1q8q4BO7rjHWVN9s1NNkGHtsoNG
-	 v0iYPV7H36Zkg==
+	b=fKrB2Z9TIxwpqFIQJSnEi2E3Qxmv/TxA1VeYkl81OxKBJy/D9QFxpO+JOQs+fQzYD
+	 KMPNuG6kSaNwMOXaFdNiLG2jzp9IUI6iZ5ICcj9RpsCqXXlmSyFJG0DtgWmWZs6659
+	 UDuhNsix+Hit7x4UwAtBFjfPHkPwcswNdFSH19zjhwAPkcSA6Ul93GMt+aYomk0Md5
+	 ep+/Gk47UXY5+1cMa9w3bYB/egLNIX1aai7+nn8dmR3lLXyBsGKkcDUC1yvYhVky47
+	 o7KxgOEYlrWwNqidPU3kof+R0qz5/NCcIFHNOfzoFR97UFz4CdXX4jzOfVg7C1jUCJ
+	 M3p0ZDcFaSnzw==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Anna Schumaker <anna@kernel.org>,
 	Trond Myklebust <trondmy@kernel.org>
 Cc: Mike Snitzer <snitzer@hammerspace.com>,
 	linux-nfs@vger.kernel.org,
 	Jonathan Flynn <jonathan.flynn@hammerspace.com>
-Subject: [PATCH v2 10/12] NFSv4/flexfiles: rotate LAYOUTSTATS reporting across a mirror's stripes
-Date: Thu,  5 Nov 2026 19:12:47 -0500
-Message-ID: <20261106001251.73472-11-snitzer@kernel.org>
+Subject: [PATCH v2 11/12] NFSv4/flexfiles: take the report decision out of the critical section
+Date: Thu,  5 Nov 2026 19:12:48 -0500
+Message-ID: <20261106001251.73472-12-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20261106001251.73472-1-snitzer@kernel.org>
 References: <20261106001251.73472-1-snitzer@kernel.org>
@@ -64,81 +64,134 @@ Content-Transfer-Encoding: 8bit
 
 From: Mike Snitzer <snitzer@hammerspace.com>
 
-Both callers of ff_layout_mirror_prepare_stats() limit a report to four
-ff_layoutupdate4 entries, and the scan of mirror->dss[] stops when the
-limit is reached.  On a mirror with more than four busy stripes, every
-report contains the same four stripes, and the others are reported only
-at LAYOUTRETURN.
+When an I/O to a data server starts, the stripe lock also covered the
+decision to send a LAYOUTSTATS report.  That decision reads the mirror
+and the layout header, divides in ktime_to_ms(), and does a cmpxchg on
+ffl->last_report_time.  None of it is data that the lock protects.
 
-Record where each mirror's scan stopped, and start the next scan there.
-The index moves past each stripe that gets a slot, and idle stripes do
-not use a slot.  So every busy stripe is reported within
-ceil(busy_stripes / 4) report intervals.  The values and the encoding
-do not change.
+Move the decision into nfs4_ff_layoutstat_report_due() and call it,
+and nfs4_ff_layoutstat_set_start_time(), after the unlock.  The lock now
+covers two writes to one cacheline.  The order of the updates and the
+report does not change.
 
-The mirror loop gets the same dev_limit test as the stripe loop, so a
-full report stops the scan.
+nfs4_ff_layoutstat_end_io() loses its unused dss_info argument.
 
-[jonathan.flynn: read dss_report_index once per mirror, before the
- stripe loop.  Reading it again in the loop skipped stripes and could
- report one stripe twice.]
-Signed-off-by: Jonathan Flynn <jonathan.flynn@hammerspace.com>
 Signed-off-by: Mike Snitzer <snitzer@hammerspace.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 15 ++++++++++++---
- fs/nfs/flexfilelayout/flexfilelayout.h |  1 +
- 2 files changed, 13 insertions(+), 3 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 49 ++++++++++++++------------
+ 1 file changed, 27 insertions(+), 22 deletions(-)
 
 diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 91600086526ee..b4d4971816145 100644
+index b4d4971816145..f3f4573880d98 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayout.c
 +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -3136,14 +3136,21 @@ ff_layout_mirror_prepare_stats(struct pnfs_layout_hdr *lo,
- 	struct nfs4_ff_layout_ds_stripe *dss_info;
- 	struct nfs4_ff_layout_ds *mirror_ds;
- 	__u64 read_count, read_bytes, write_count, write_bytes, ops;
--	int i = 0, dss_id;
-+	u32 dss_id, scanned, base;
-+	int i = 0;
+@@ -739,32 +739,36 @@ nfs4_ff_layoutstat_set_start_time(struct nfs4_ff_layout_ds_stripe *dss_info,
+ 		try_cmpxchg64(&dss_info->start_time, &unset, now);
+ }
  
- 	rcu_read_lock();
- 	list_for_each_entry(mirror, &ff_layout->mirrors, mirrors) {
--		for (dss_id = 0; dss_id < mirror->dss_count; ++dss_id) {
--			dss_info = &mirror->dss[dss_id];
-+		if (i >= dev_limit)
-+			break;
-+		base = mirror->dss_report_index;
-+		for (scanned = 0; scanned < mirror->dss_count; ++scanned) {
- 			if (i >= dev_limit)
- 				break;
-+			dss_id = base + scanned;
-+			if (dss_id >= mirror->dss_count)
-+				dss_id -= mirror->dss_count;
-+			dss_info = &mirror->dss[dss_id];
- 			mirror_ds = rcu_dereference(dss_info->mirror_ds);
- 			if (IS_ERR_OR_NULL(mirror_ds))
- 				continue;
-@@ -3167,6 +3174,8 @@ ff_layout_mirror_prepare_stats(struct pnfs_layout_hdr *lo,
- 			if (!refcount_inc_not_zero(&mirror->ref))
- 				continue;
- 			dss_info->last_reported_ops = ops;
-+			mirror->dss_report_index =
-+				dss_id + 1 < mirror->dss_count ? dss_id + 1 : 0;
- 			/* The pin holds a reference; it is exchanged out only
- 			 * under i_lock.  Put in ff_layout_free_layoutstats().
- 			 */
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
-index df91165ba72ee..33ad85d1d07a2 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.h
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-@@ -108,6 +108,7 @@ struct nfs4_ff_layout_mirror {
- 	struct nfs4_ff_layout_ds_stripe *dss;
- 	refcount_t			ref;
- 	u32				report_interval;
-+	u32				dss_report_index;
- };
+-/*
+- * Account for an I/O about to be sent to this stripe, and return true if a
+- * LAYOUTSTATS report is due.
+- */
+-static bool
+-nfs4_ff_layoutstat_start_io(struct nfs4_ff_layout_ds_stripe *dss_info,
+-			    struct nfs4_ff_layoutstat *layoutstat,
++/* Account for an I/O about to be sent to this stripe. */
++static void
++nfs4_ff_layoutstat_start_io(struct nfs4_ff_layoutstat *layoutstat,
+ 			    __u64 requested, ktime_t now)
++{
++	lockdep_assert_held(&layoutstat->lock);
++
++	nfs4_ff_start_busy_timer(layoutstat, now);
++	layoutstat->io_stat.bytes_requested += requested;
++}
++
++/*
++ * Is a LAYOUTSTATS report due?  Called outside the statistics locks, which
++ * protect none of this.  last_report_time is shared by every mirror and
++ * stripe of the layout: the cmpxchg winner reports.
++ */
++static bool
++nfs4_ff_layoutstat_report_due(struct nfs4_ff_layout_ds_stripe *dss_info,
++			      ktime_t now)
+ {
+ 	struct nfs4_ff_layout_mirror *mirror = dss_info->mirror;
+ 	struct nfs4_flexfile_layout *ffl = FF_LAYOUT_FROM_HDR(mirror->layout);
+ 	s64 report_interval = FF_LAYOUTSTATS_REPORT_INTERVAL;
+ 	ktime_t last_report;
  
- struct nfs4_ff_layout_segment {
+-	lockdep_assert_held(&layoutstat->lock);
+-
+-	nfs4_ff_start_busy_timer(layoutstat, now);
+-	layoutstat->io_stat.bytes_requested += requested;
+-
+-	nfs4_ff_layoutstat_set_start_time(dss_info, now);
+ 	if (mirror->report_interval != 0)
+ 		report_interval = (s64)mirror->report_interval * 1000LL;
+ 	else if (layoutstats_timer != 0)
+ 		report_interval = (s64)layoutstats_timer * 1000LL;
+ 
+-	/* Shared by every mirror and stripe: the cmpxchg winner reports. */
+ 	last_report = READ_ONCE(ffl->last_report_time);
+ 	if (ktime_to_ms(ktime_sub(now, last_report)) < report_interval)
+ 		return false;
+@@ -774,8 +778,7 @@ nfs4_ff_layoutstat_start_io(struct nfs4_ff_layout_ds_stripe *dss_info,
+ 
+ /* Account for an I/O that has completed on this stripe. */
+ static void
+-nfs4_ff_layoutstat_end_io(struct nfs4_ff_layout_ds_stripe *dss_info,
+-			  struct nfs4_ff_layoutstat *layoutstat,
++nfs4_ff_layoutstat_end_io(struct nfs4_ff_layoutstat *layoutstat,
+ 			  __u64 requested,
+ 			  __u64 completed,
+ 			  ktime_t time_completed,
+@@ -809,10 +812,11 @@ nfs4_ff_layout_stat_io_start_read(struct inode *inode,
+ 	bool report;
+ 
+ 	spin_lock(&dss_info->read_stat.lock);
+-	report = nfs4_ff_layoutstat_start_io(dss_info, &dss_info->read_stat,
+-					     requested, now);
++	nfs4_ff_layoutstat_start_io(&dss_info->read_stat, requested, now);
+ 	spin_unlock(&dss_info->read_stat.lock);
+ 
++	nfs4_ff_layoutstat_set_start_time(dss_info, now);
++	report = nfs4_ff_layoutstat_report_due(dss_info, now);
+ 	if (report)
+ 		pnfs_report_layoutstat(inode, nfs_io_gfp_mask());
+ }
+@@ -827,7 +831,7 @@ nfs4_ff_layout_stat_io_end_read(struct rpc_task *task,
+ 	struct nfs4_ff_layout_ds_stripe *dss_info = &mirror->dss[dss_id];
+ 
+ 	spin_lock(&dss_info->read_stat.lock);
+-	nfs4_ff_layoutstat_end_io(dss_info, &dss_info->read_stat,
++	nfs4_ff_layoutstat_end_io(&dss_info->read_stat,
+ 				  requested, completed,
+ 				  ktime_get(), task->tk_start);
+ 	spin_unlock(&dss_info->read_stat.lock);
+@@ -843,10 +847,11 @@ nfs4_ff_layout_stat_io_start_write(struct inode *inode,
+ 	bool report;
+ 
+ 	spin_lock(&dss_info->write_stat.lock);
+-	report = nfs4_ff_layoutstat_start_io(dss_info, &dss_info->write_stat,
+-					     requested, now);
++	nfs4_ff_layoutstat_start_io(&dss_info->write_stat, requested, now);
+ 	spin_unlock(&dss_info->write_stat.lock);
+ 
++	nfs4_ff_layoutstat_set_start_time(dss_info, now);
++	report = nfs4_ff_layoutstat_report_due(dss_info, now);
+ 	if (report)
+ 		pnfs_report_layoutstat(inode, nfs_io_gfp_mask());
+ }
+@@ -865,7 +870,7 @@ nfs4_ff_layout_stat_io_end_write(struct rpc_task *task,
+ 		requested = completed = 0;
+ 
+ 	spin_lock(&dss_info->write_stat.lock);
+-	nfs4_ff_layoutstat_end_io(dss_info, &dss_info->write_stat,
++	nfs4_ff_layoutstat_end_io(&dss_info->write_stat,
+ 				  requested, completed,
+ 				  ktime_get(), task->tk_start);
+ 	spin_unlock(&dss_info->write_stat.lock);
 -- 
 2.52.0
 
