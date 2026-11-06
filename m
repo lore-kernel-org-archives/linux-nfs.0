@@ -1,116 +1,98 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.182
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.101
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793973969;
-	b=5fUbc1eyKnQrGsnmXbnj9wSlqmLmu9uvGHoHNLYGRVHL18k6KETg5O/jOViyMINBIngU
-	 rknPxfubgMqf23OsYxOawG5CZkVRhgw7gLjpcoErByr1P5StLSs9CWTX2T/LZFREk7hP5
-	 vd3FfNOEKZNNs2JhpY/uHw+o0Weq3SE2MiWuIXVIrBxzMp7VL6omwQVrQ17Dcetb9O839
-	 ICC6eIfIR+Z9+Tc9TeQy/WOKM13sq+lkOBRJ8mfRjPjv9VORqE4iXiM03oBXCrxE3TXG7
-	 2Nz/9Dt/GFWfvKv/LLeDbPof5OTmvsEgwVhZ4k/I2HMDWUuVnXwf7ysxs6xQQ+mH6yw==
+	t=1793974876;
+	b=jUFj4KmbCod49WJC5msPji3l6DRLHEIfgzcJ6rEOzKZeFHydM/6F4SeEQSSrjjqM4hMe
+	 2Oshmb1dv0SWu9htlEpmjQ2Cc3BEpem9V22OCv1/sEHFR0lJhb3Z/yVwFjpQO9rvqfLQW
+	 goTu4juq5KKJm4k49g+ihvuSqvxjBMWZOR+YN+Zns/WisDMTQZUlKv+gEyVIAkBVXKm8J
+	 +H6ShA6a+M0cpWocMqwEFCQldJ+O2xlq58nhT1jE0wpa/Ya0kJ7mmMe6lxCWkEk/jedWR
+	 5IGkqQviJecBPjt3rVFx/SBCw9XyHeulI1XhFIVgU9NsjoKOrrS185tuKFtY/chVD+A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793973969;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793974876;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To;
-	bh=eqhBVbUtw3dy734MGt0XscJMrayl/heBjdE55TwHpBE=;
-	b=yVmJfd4zlsMY/A99ThIMS6u2sz5cRrVEpJWJ+KsAOz1Har8+XSBLRaLIz1K42kcaGXA5
-	 dBe07M+k5QH5X+ncTvbcc3rumy/IT/wTQha0T01PvXENEqBCUsCYoWkjBeunbh+2O93yq
-	 sYCOqI27+RL/mbeHc08R83/Y8rOWiZrbVTENMx5H0WgRPWlGjFZPtXtl/1jCU73dUCEkD
-	 7W4u/zMZJ5Kn3PNLJzleZmryjdK8tYp9gMej1VI8Ig8bvcmpV7vj9tw8E/rRASaR8qlTP
-	 5v0CpH5QE8q5dGWdGxYAVFd21/jMtOra0mCIlV9l6Cyx8XCjT/cBya97G7bdXAGf4Ng==
+	 X-Relaying-Domain:Received:From:To:Cc:Subject:Date:Message-ID:
+	 X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=nGOR4tDkLacm4ZLrXHP/oAENb1HqDMQ1DZAzDXXud+k=;
+	b=Ph+EYPYgdDlgMtMYdhgoXxs8k5n06sQk/0YKX4KyVWjFm+yMybO3jrMvfn0SELm2IfyG
+	 BPVBh26QbZ4PXDcFDv2NDbaeBFIrJ70q3kvWFfULnJ8j9Gec4MoxDWRX9LMLlaFeLMlzL
+	 LY7Vlww2FDRBW55yTd1vs3LWp0fQ5PLWD6OJP4djr7tvx3zxiB63AzWTihHMTqSq/E1vG
+	 LmmOPN/fF4muUcO8zpleX8LYwsQ7Wi2P986685NB3BNSKnghJU91I0PxmP7V0FVwRwSGS
+	 FVvPuTELbDxg2VPtXgnXrMIV6Q2J/0cz4sR2LnXDwB0PReADw7XjTCbby7PiDdDi+QQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=cmpxchg.org;
-	spf=pass smtp.mailfrom=cmpxchg.org;
-	dkim=pass header.d=cmpxchg.org header.i=@cmpxchg.org header.a=rsa-sha256 header.s=google header.b=rEFjIsRc;
-	arc=none smtp.remote-ip=209.85.128.182
-Received: from mail-yw1-f182.google.com (mail-yw1-f182.google.com [209.85.128.182])
+	dmarc=pass header.from=everpuredata.com;
+	spf=pass smtp.mailfrom=everpuredata.com;
+	dkim=pass header.d=everpuredata.com header.i=@everpuredata.com header.a=rsa-sha256 header.s=google header.b=0Jc8amRn;
+	arc=none smtp.remote-ip=209.85.128.101
+Received: from mail-wm1-f101.google.com (mail-wm1-f101.google.com [209.85.128.101])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E439E606A330
-	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 14:06:07 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E439E606A330
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=cmpxchg.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=cmpxchg.org
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EFB9F606A329
+	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 14:21:14 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org EFB9F606A329
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=everpuredata.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=cmpxchg.org header.i=@cmpxchg.org header.a=rsa-sha256 header.s=google header.b=rEFjIsRc
-Received: by mail-yw1-f182.google.com with SMTP id 00721157ae682-8b309147589so5647087b3.1
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Nov 2026 06:06:07 -0800 (PST)
+	dkim=pass (2048-bit key, unprotected) header.d=everpuredata.com header.i=@everpuredata.com header.a=rsa-sha256 header.s=google header.b=0Jc8amRn
+Received: by mail-wm1-f101.google.com with SMTP id 5b1f17b1804b1-4a9a8d6cea8so6460065e9.1
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Nov 2026 06:21:14 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=cmpxchg.org; s=google; t=1793973967; x=1794578767; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=eqhBVbUtw3dy734MGt0XscJMrayl/heBjdE55TwHpBE=;
-        b=rEFjIsRctA59Iu2/BHBn1Bio1Z530ac+g4EEE4umpjlRFctJ/W1yi+oJAJdR8sIKtC
-         0ANk4+IEeh+gWZdP8+5Abj0Wi+7JUGtI3eOPnJ0wMnngrGVtvT7+mdXKDwBc4VjMOreA
-         HRXNX16MAj9gPw3V6sQG29RsCMeifuq7vktm82eZ1OL9M0wUFDM8b1mHYrWOWDjP7hoA
-         FgchrqECOX93FzgDhG9Sn07L+FCR1PCSxN8pDG5a+ABli7EEuG5ifSugYUsuO9WbK3uX
-         2labLzJdsWWlMl8/Ibz30wICnbSFS6Rx+DAJRAtH3OrhgDaH9x+c/HNq/PuJNNkUGIVa
-         0UdQ==
+        d=everpuredata.com; s=google; t=1793974873; x=1794579673; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=nGOR4tDkLacm4ZLrXHP/oAENb1HqDMQ1DZAzDXXud+k=;
+        b=0Jc8amRnrlbSUFL7YLN1ZK0uiHpcC4jCvCpM+CIZlVTX13Qe8MheQ8fu33Lr02rNEM
+         WLF0lUOyF6Sd9Z4OojxzfTRSVStZP9RvBGgZvEjFttNmjioHSfl6ZuCL3RmpbC048RFZ
+         qxtO8rgzh0tcsIsYjR7fFkvOtJlEga+gJqVK3Gy7PU+f3rE9a/QInLjinktH64bEXoxt
+         sE7H24AjOp/mPjbA3p4PYtrZIKLdLLYBQwtY+b2AnGIg9GpOXlU921TNeWiqM+lH6/hO
+         dU5nfBN742hGH/yng4a1wZ/O1N3hAge8tDHmG51bShrVjkwylz4Dxu/u15IrncZG7NiM
+         2Izg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793973967; x=1794578767;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=eqhBVbUtw3dy734MGt0XscJMrayl/heBjdE55TwHpBE=;
-        b=zR3yzqgxmeZLvx/lx/qoC5OlulZoKGUjAK6x6EuMVEPcrHktvG0E2ClFxORFjRImFd
-         QEhOKMC59ZQblnmuq8Sw8CRKdmEVKGOH8R6ovNbylg4Y0F8aRmNTapV8A3sZXJ5DI4v/
-         RNfnARVjfT/XHcHLdsAAYiB9Ose0HUseRV8RwkmwzW5Iqz1D+iKMXFxMVZUlymsIO1f5
-         IDyVkKZlPTXxFHW+cew0lLuYp2eXep7bNvG4r0o6jIpCMtdkA8SduP2kVJuyKy4OHRnZ
-         5XfnUQZM0AqAlJ5kCcxp5pObbQCOGxdaTFqzZVPF5yqJWEV8tPheTb/iUimWIVZiPPWj
-         V5WQ==
-X-Forwarded-Encrypted: i=1; AL+hErEi7m670eBkL9X9BfnxdXfCCHnzf6kyF+k9yXQUNXLYqSkNYc1hKePHr3H5QU6YR1yxDKSCnqL+Vj8=@vger.kernel.org
-X-Gm-Message-State: APuU4Z9ISrkHw+fk8qyRboAkpQcYmR/fVmLQS7Jf9+Qv4aAik1/hBX0o
-	7h/LzXue1QaFzL98zUIZ0P1EMOVQVWe1fDbIROLZ2wj0VKQa7oP4fA+0kgG2yPc8EHU=
-X-Gm-Gg: AYBFou08//jOxpxQL2xmuIzL89zN3SV7We3oQKxKKAkzFiE9TkJ3gEgGXcew95qzBxa
-	eYVW0IsOX/TU3oVgTXfIknaLlcVayS5l6ekBhNR9fORLZJXFUSVWysWhIGiE20PiRp6ejCE5QYS
-	TH1YbwIhNSAJHk3UnL+/rhlRvgeqPIVZUy0QvCQB69bH24JTt7hNQMHTrRX0mViQCVt0/VR5p/m
-	0XX1QV+0mKIB3eG4gA/KL7zmKrzRvlW4G3XgyXkRFAU0jMuYgKwtFjcIgFsANrl5U6S3t34aD24
-	rYJ20zIDdLq74CNgbW2LDh/z1IrTwea/MRdq6nJu46LEbJGA90NsZ5pgXSonnIIZerDPoQk8Zz4
-	BcpNmkpoRW+H2x2e1umzfaU/B3CgPnrClQqfm1aEq4xcVgxm1BHJp6M17MR5JrJPUC9whgN9kG5
-	/uZ4bnrGRDYkW1y0LfYzw0hb5+Z70NqGhuyfNq3C9hUKXLv83TuPKlQkXU9u+CTxlpzNj3kGLG0
-	BDMOrsbdGruZg+l8TqjpRl9PEygeh5YE2C+CGxVqerBbN3eeukB7uqAmdmLQe4SB2f8MRMo930Z
-	30wxa/tvngBdh6dK1PDA7NH4IkCd
-X-Received: by 2002:a05:690c:560f:10b0:8b3:10df:54a3 with SMTP id 00721157ae682-8b341b1ebe2mr10611897b3.65.1793973966605;
-        Fri, 06 Nov 2026 06:06:06 -0800 (PST)
-Received: from localhost ([2605:8600:200:14e3:365a:60ff:fe62:ff29])
-        by smtp.gmail.com with ESMTPSA id 00721157ae682-8b33f856f99sm19108527b3.34.2026.11.06.06.06.04
+        d=1e100.net; s=20260707; t=1793974873; x=1794579673;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=nGOR4tDkLacm4ZLrXHP/oAENb1HqDMQ1DZAzDXXud+k=;
+        b=NGDWyg0w4VPvaaI0hc8x5+Nx2L7+kc+dGomK6uFsCUy/cQMVf7k1P0lyfKq4hpNVxw
+         gNuuZjTF7v3GWxkSLFAFnstmjXJ+0onBV8dbjGExQ7FCtqdDZgSImugZRW/Kh4D5+ZTP
+         hAR7saap5ovcUoVDTpSN6B1rC7TzscS95ZYO7guYL176HpowVSe78I81IU9w5H6RwJtT
+         9RmZgx8PGvbs4NVn8s6fDTIjbsu5Zcds8JEb0dhQ39k0LifY/fooa/XrNEsQ0J7uELrN
+         KcsNkV4u5tFzX9Zwnvmw/thZLQjZwe25874fuwB2LqxuOkv1Yz894YgWK1H3FtlUgFks
+         un8w==
+X-Forwarded-Encrypted: i=1; AKwUvBzzlXDOw2IcTVNq7dsP6nPZvoDJ+h5nwXP34REiBz/SKzW1LR0rppmID+LhOlU7mwbThrBX2IeWU08=@vger.kernel.org
+X-Gm-Message-State: APuU4Z/GO98WPFoZE73OoEEknAsZDxdMHUZoOEZ6no9cjlEIU3WR6bO1
+	kOXAQ1qkFrs4ZLEPmoBuEd+mfWSEO9xm3Fzv5wYNk5uvQRow9VmEcy6OAueGxFRCAEyyOwVRa78
+	RXehWcYr2NdnuOOugyERHAxAh4MpH5Tzk6enN
+X-Gm-Gg: AYBFou1rpXa8WDZffeSRZ4WRaeK78whKTyLUeECtYqP3zvwRQCxcAgDhH0C8ontzIJ3
+	mC8d0OZQZOBBaYMJQ2opOs81px1SnIVa9SWgtn0pZHLPXdTjchXvXQdHOHNDXyV85kBjA/GCbgd
+	RXEFysK0cCNEPel9dnwoMhgWqyOMJ186rDYY0EpdgmMNrZ6vaqHtxO3cOYw1osiksfjV82QP2nR
+	MCV9+CSRgB1n5IVpfvlP3BbWHcUqchaYoURCNsoI0LDCCwGVj2JhvrGU1L0ogEAS59TcmNkEE17
+	h9koGt6ah+hKeEo6CS3C3Wc/2hZJ9F4N2e0n7bahk2mgT/kgKAMKeks9V3ZiYkqsT+8I+BmuaO/
+	GCvy0dS6nkwxS06Fxrqd/cgVHaZiJkxW9nRjLSQo=
+X-Received: by 2002:a05:600c:8b05:b0:4a1:efbe:529c with SMTP id 5b1f17b1804b1-4b6dff855a6mr50997395e9.12.1793974872118;
+        Fri, 06 Nov 2026 06:21:12 -0800 (PST)
+Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.128])
+        by smtp-relay.gmail.com with ESMTPS id 5b1f17b1804b1-4b56d6337f3sm12140885e9.0.2026.11.06.06.21.11
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 06 Nov 2026 06:06:04 -0800 (PST)
-Date: Fri, 6 Nov 2026 09:06:00 -0500
-From: Johannes Weiner <hannes@cmpxchg.org>
-To: Dave Chinner <dgc@kernel.org>
-Cc: Kaitao Cheng <kaitao.cheng@linux.dev>, gregkh@linuxfoundation.org,
-	arve@android.com, tkjos@android.com, brauner@kernel.org,
-	cmllamas@google.com, aliceryhl@google.com, nat@pixelcluster.dev,
-	arunpravin.paneerselvam@amd.com, maarten.lankhorst@linux.intel.com,
-	mripard@kernel.org, tzimmermann@suse.de, airlied@gmail.com,
-	simona@ffwll.ch, viro@zeniv.linux.org.uk, agruenba@redhat.com,
-	trondmy@kernel.org, anna@kernel.org, cel@kernel.org,
-	jlayton@kernel.org, cem@kernel.org, akpm@linux-foundation.org,
-	david@fromorbit.com, david@kernel.org, hughd@google.com,
-	yosry@kernel.org, nphamcs@gmail.com, matthew.auld@intel.com,
-	matthew.brost@intel.com, thomas.hellstrom@linux.intel.com,
-	jack@suse.cz, neil@brown.name, okorniev@redhat.com,
-	Dai.Ngo@oracle.com, tom@talpey.com, qi.zheng@linux.dev,
-	roman.gushchin@linux.dev, muchun.song@linux.dev, ziy@nvidia.com,
-	baolin.wang@linux.alibaba.com, liam@infradead.org,
-	nico.pache@linux.dev, ryan.roberts@arm.com, dev.jain@arm.com,
-	baohua@kernel.org, lance.yang@linux.dev, usama.arif@linux.dev,
-	kas@kernel.org, mhocko@kernel.org, shakeel.butt@linux.dev,
-	ljs@kernel.org, kasong@tencent.com, axelrasmussen@google.com,
-	yuanchu@google.com, weixugc@google.com, baoquan.he@linux.dev,
-	chengming.zhou@linux.dev, linux-kernel@vger.kernel.org,
-	dri-devel@lists.freedesktop.org, linux-fsdevel@vger.kernel.org,
-	gfs2@lists.linux.dev, linux-nfs@vger.kernel.org,
-	linux-xfs@vger.kernel.org, linux-mm@kvack.org,
-	Kaitao Cheng <chengkaitao@kylinos.cn>
-Subject: Re: [PATCH] mm/list_lru: Account node removals in isolation helpers
-Message-ID: <au3eyCrHiuhbJx3u@cmpxchg.org>
-References: <20261103045053.59548-1-kaitao.cheng@linux.dev>
- <aupITfr9pBKPrU20@dread>
+        Fri, 06 Nov 2026 06:21:12 -0800 (PST)
+X-Relaying-Domain: everpuredata.com
+Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
+	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id 1590A3404E1;
+	Fri,  6 Nov 2026 06:20:40 -0800 (PST)
+From: Tim Menninger <tmenninger@everpuredata.com>
+To: anna@kernel.org,
+	trondmy@kernel.org
+Cc: cel@kernel.org,
+	ebadger@everpuredata.com,
+	jcurley@everpuredata.com,
+	linux-nfs@vger.kernel.org,
+	slingappa@everpuredata.com,
+	stable@vger.kernel.org,
+	tom@talpey.com
+Subject: [PATCH v5] xprtrdma: serialize unmap_sync with xprt_disconnect
+Date: Fri,  6 Nov 2026 14:20:39 +0000
+Message-ID: <20261106142039.1066437-1-tmenninger@everpuredata.com>
+X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -120,55 +102,466 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <aupITfr9pBKPrU20@dread>
+Content-Transfer-Encoding: 8bit
 
-On Wed, Nov 04, 2026 at 07:47:09AM +1100, Dave Chinner wrote:
-> On Tue, Nov 03, 2026 at 12:50:53PM +0800, Kaitao Cheng wrote:
-> > From: Kaitao Cheng <chengkaitao@kylinos.cn>
-> > 
-> > Successful writeback calls zswap_entry_free(), which removes the entry
-> > from the LRU and decrements both the sublist and node item counts.
-> > shrink_memcg_cb() then returns LRU_REMOVED_RETRY, causing the LRU walker
-> > to decrement the node count again.
-> > 
-> > The affected call path before this change is:
-> > 
-> >   __list_lru_walk_one()
-> >     shrink_memcg_cb()
-> >       zswap_writeback_entry()
-> >         zswap_entry_free()
-> >           zswap_lru_del()
-> >             list_lru_del()
-> >               __list_lru_del()
-> >                 atomic_long_dec()  /* first node count decrement */
-> >       return LRU_REMOVED_RETRY
-> >     atomic_long_dec()              /* second node count decrement */
-> 
-> That's a bug in the zswap code. You shouldn't be calling
-> list_lru_del() from __list_lru_walk_one() context.
+frwr_unmap_sync() posts LOCAL_INV Work Requests to the QP and waits
+for the matching CQE. This can race with rpcrdma_xprt_disconnect():
 
-Grr, Kaitao you dropped the wrong thing that I thought had merit in my
-proposal...
+    1. frwr_unmap_sync() samples r_xprt->rx_ep
+    2. rpcrdma_xprt_disconnect() drains the QP
+    3. frwr_unmap_sync() posts LOCAL_INV WRs after the drain
+    4. No CQE arrives, so wait_for_completion() blocks indefinitely
 
-Dave, would you mind taking a look at my patch at
-https://lore.kernel.org/all/auJkvb-Lq0M5Enkz@cmpxchg.org/?
+The hung task appears in the rpciod workqueue:
 
-Ignore zswap for a second. I know it has problems. Most of it stems
-from the fact that we rely on the swap locking and do none of our own
-locking/lifetime on the zswap entry. As a result we work around it in
-odd ways. Sorry, you didn't ask :-) That's worth revisiting, although
-it's likely more invasive work.
+Workqueue: rpciod rpc_async_schedule [sunrpc]
+    wait_for_completion()
+    frwr_unmap_sync()
+    xprt_rdma_free()
+    xprt_release()
 
-The observation that led to the patch above was a much simpler one:
-since we now have the caller-locked __list_lru_del() anyway, the only
-difference between that and the list_lru_isolate* is the
-accounting. The patch is about one thing: removing the isolate helpers
-entirely. There is then simply one tool for caller-locked list
-unlinking, __list_lru_del(). It removes an avoidable distinction,
-shrinks the API surface, makes it harder to screw up.
+Serialize synchronous MR invalidation against QP teardown with
+rx_unmap_rwsem. frwr_unmap_sync() holds the read side while it builds
+and submits the LOCAL_INV chain. Disconnect holds the write side across
+QP drain and resource teardown. Drop the read side before waiting so
+disconnect can drain the submitted Work Requests and deliver their CQEs.
 
-The zswap weirdness made me look at list_lru. Consider it a stress
-test from idiotic code :-) But I would propose the list_lru
-simplification for its own sake, regardless of what we do with zswap.
+Disconnect can reset a request while frwr_unmap_sync() waits for the
+read side. Recheck rl_registered after acquiring the rwsem and return
+without posting if the request has already been reset.
+
+Move the synchronous invalidation completion from the final MR to the
+request, whose lifetime covers xprt_rdma_free(), and hold a reference
+to the sampled endpoint through the completion wait and error path.
+This allows disconnect to destroy MRs after draining the QP and release
+the transport-owned endpoint reference without a separate active-unmap
+counter.
+
+frwr_unmap_async() runs inline from Receive completion processing.
+rpcrdma_xprt_drain() drains the Receive Queue before the Send Queue, so
+asynchronous LOCAL_INV Work Requests are submitted before Send Queue
+drain. frwr_unmap_sync(), however, runs from xprt_rdma_free() after the
+transport send lock has been released, so it is not ordered against
+disconnect.
+
+Tested on v7.2-rc6 under pNFS load with repeated data server restarts
+to provoke rapid QP disconnect/reconnect cycling. Without the fix, a
+hung task in frwr_unmap_sync() reproduced twice in six attempts. With
+the fix, no hang occurred across 200 cycles.
+
+Also observed on v6.8 and v6.18.34.
+
+Fixes: e28ce90083f0 ("xprtrdma: kmalloc rpcrdma_ep separate from rpcrdma_xprt")
+Cc: stable@vger.kernel.org
+Assisted-by: Claude:opus-4-7
+Reviewed-by: Chuck Lever <cel@kernel.org>
+Signed-off-by: Tim Menninger <tmenninger@everpuredata.com>
+---
+Changes in v5:
+- Rebase onto v7.4-rc1. Resolve context conflict with commit
+  0b5bb4e586f7b ("xprtrdma: prevent disconnect feedback during
+  endpoint teardown") in rpcrdma_xprt_disconnect(). No functional
+  changes.
+
+v4: https://lore.kernel.org/all/20260823134640.3083136-1-tmenninger@everpuredata.com/
+
+Changes in v4:
+- Add kernel-doc comments for rpcrdma_ep_get() and
+  rpcrdma_ep_release().
+- Convert the rpcrdma_ep_put() comment to ordinary comment style.
+
+v3: https://lore.kernel.org/all/20260821234827.1560856-1-tmenninger@purestorage.com/
+
+Changes in v3:
+- Document the sleepable rx_unmap_rwsem locking context in
+  frwr_unmap_sync() and rpcrdma_xprt_disconnect().
+- Add rpcrdma_ep_release() so CM ID destruction remains encapsulated
+  in verbs.c; export the endpoint get/release pair instead of get/put.
+- Use ep->re_id->qp directly while frwr_unmap_sync() holds the rwsem
+  read side.
+- Correct rpcrdma_xprt_disconnect() documentation to account for
+  endpoint resources that can outlive the disconnect operation.
+- Narrow the rx_unmap_rwsem comment to describe the LOCAL_INV versus
+  QP-drain ordering it provides.
+
+v2: https://lore.kernel.org/all/20260820211700.318824-1-tmenninger@everpuredata.com/
+
+Changes in v2:
+- Change the Fixes tag to e28ce90083f0, which made rx_ep a separately
+  allocated, kref-managed pointer.
+- Explain why Receive-before-Send Queue drain orders
+  frwr_unmap_async(), but does not order frwr_unmap_sync().
+- Move the synchronous LOCAL_INV completion from struct rpcrdma_mr to
+  struct rpcrdma_req.
+- Hold a reference to the sampled endpoint through the completion wait
+  and error path.
+- Remove rx_unmap_active and its disconnect-side wait.
+- Recheck rl_registered after acquiring the rwsem in case disconnect
+  reset the request while the reader was blocked.
+- Update the transport-recovery comments, LOCAL_INV wake kernel-doc,
+  frwr_unmap_sync() kernel-doc, and the QP-posting locking comment.
+- Keep rx_unmap_rwsem in struct rpcrdma_xprt so the reader can
+  synchronize with disconnect before retaining the current endpoint.
+
+v1: https://lore.kernel.org/all/20260818122825.2347594-1-tmenninger@purestorage.com/
+
+ net/sunrpc/xprtrdma/frwr_ops.c  | 97 ++++++++++++++++++++++-----------
+ net/sunrpc/xprtrdma/transport.c |  2 +
+ net/sunrpc/xprtrdma/verbs.c     | 52 ++++++++++++++----
+ net/sunrpc/xprtrdma/xprt_rdma.h | 12 +++-
+ 4 files changed, 118 insertions(+), 45 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index e83cef19e6569..6a5d243167145 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -27,13 +27,17 @@
+ 
+ /* Transport recovery
+  *
+- * frwr_map and frwr_unmap_* cannot run at the same time the transport
+- * connect worker is running. The connect worker holds the transport
+- * send lock, just as ->send_request does. This prevents frwr_map and
+- * the connect worker from running concurrently. When a connection is
+- * closed, the Receive completion queue is drained before the allowing
+- * the connect worker to get control. This prevents frwr_unmap and the
+- * connect worker from running concurrently.
++ * frwr_map() is serialized with the connect worker by the transport
++ * send lock.
++ *
++ * frwr_unmap_async() runs from Receive completion processing.
++ * rpcrdma_xprt_drain() drains the Receive Queue before the Send Queue,
++ * so asynchronous LOCAL_INV Work Requests are submitted before Send
++ * Queue drain.
++ *
++ * frwr_unmap_sync() runs after the transport send lock is released.
++ * rx_unmap_rwsem orders its LOCAL_INV submission before disconnect
++ * drains the QP.
+  *
+  * When the underlying transport disconnects, MRs that are in flight
+  * are flushed and are likely unusable. Thus all MRs are destroyed.
+@@ -139,7 +143,6 @@ int frwr_mr_init(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr *mr)
+ 	mr->mr_ibmr = frmr;
+ 	mr->mr_device = NULL;
+ 	INIT_LIST_HEAD(&mr->mr_list);
+-	init_completion(&mr->mr_linv_done);
+ 	frwr_cid_init(ep, mr);
+ 
+ 	sg_init_table(sg, depth);
+@@ -539,40 +542,64 @@ static void frwr_wc_localinv(struct ib_cq *cq, struct ib_wc *wc)
+  * @cq: completion queue
+  * @wc: WCE for a completed LocalInv WR
+  *
+- * Awaken anyone waiting for an MR to finish being fenced.
++ * Wake frwr_unmap_sync() after the final LOCAL_INV completion.
+  */
+ static void frwr_wc_localinv_wake(struct ib_cq *cq, struct ib_wc *wc)
+ {
+ 	struct ib_cqe *cqe = wc->wr_cqe;
+ 	struct rpcrdma_mr *mr = container_of(cqe, struct rpcrdma_mr, mr_cqe);
++	struct rpcrdma_req *req = mr->mr_req;
+ 
+ 	/* WARNING: Only wr_cqe and status are reliable at this point */
+ 	trace_xprtrdma_wc_li_wake(wc, &mr->mr_cid);
+ 	frwr_mr_done(wc, mr);
+-	complete(&mr->mr_linv_done);
++	complete(&req->rl_linv_done);
+ 
+ 	rpcrdma_flush_disconnect(cq->cq_context, wc);
+ }
+ 
+ /**
+- * frwr_unmap_sync - invalidate memory regions that were registered for @req
++ * frwr_unmap_sync - synchronously invalidate MRs registered for @req
+  * @r_xprt: controlling transport instance
+- * @req: rpcrdma_req with a non-empty list of MRs to process
++ * @req: request whose registered MRs are to be invalidated
+  *
+- * Sleeps until it is safe for the host CPU to access the previously mapped
+- * memory regions. This guarantees that registered MRs are properly fenced
+- * from the server before the RPC consumer accesses the data in them. It
+- * also ensures proper Send flow control: waking the next RPC waits until
+- * this RPC has relinquished all its Send Queue entries.
++ * If @req still owns registered MRs after synchronizing with transport
++ * disconnect, post a chain of LOCAL_INV Work Requests and wait for the
++ * final completion. On successful completion, this fences the mapped
++ * regions from remote access and preserves Send Queue flow control.
++ *
++ * A concurrent disconnect can reset @req while this function waits for
++ * the read side. In that case the MRs have already been released and no
++ * LOCAL_INV Work Requests are posted.
++ *
++ * Context: Process context. Takes and releases
++ *	    @r_xprt->rx_unmap_rwsem for read. May sleep.
+  */
+ void frwr_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ {
+ 	struct ib_send_wr *first, **prev, *last;
+-	struct rpcrdma_ep *ep = r_xprt->rx_ep;
+ 	const struct ib_send_wr *bad_wr;
++	struct rpcrdma_ep *ep;
+ 	struct rpcrdma_mr *mr;
+ 	int rc;
+ 
++	/* serialize against rpcrdma_xprt_disconnect() */
++	down_read(&r_xprt->rx_unmap_rwsem);
++
++	/*
++	 * Disconnect can reset this request while we wait for the read side.
++	 * Recheck rl_registered in case rx_ep now refers to a new connection.
++	 */
++	ep = r_xprt->rx_ep;
++	if (!ep || list_empty(&req->rl_registered))
++		goto out_unlock;
++
++	/*
++	 * Hold an endpoint reference so ep, its QP, and its CM ID remain
++	 * valid after the rwsem is dropped and through the completion wait.
++	 */
++	rpcrdma_ep_get(ep);
++
+ 	/* ORDER: Invalidate all of the MRs first
+ 	 *
+ 	 * Chain the LOCAL_INV Work Requests and post them with
+@@ -599,37 +626,43 @@ void frwr_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ 		prev = &last->next;
+ 	} while ((mr = rpcrdma_mr_pop(&req->rl_registered)));
+ 
+-	mr = container_of(last, struct rpcrdma_mr, mr_invwr);
+-
+ 	/* Strong send queue ordering guarantees that when the
+ 	 * last WR in the chain completes, all WRs in the chain
+ 	 * are complete.
+ 	 */
+ 	last->wr_cqe->done = frwr_wc_localinv_wake;
+-	reinit_completion(&mr->mr_linv_done);
++	reinit_completion(&req->rl_linv_done);
+ 
+-	/* Transport disconnect drains the receive CQ before it
+-	 * replaces the QP. The RPC reply handler won't call us
+-	 * unless re_id->qp is a valid pointer.
++	/*
++	 * The read side prevents disconnect from draining this QP until the
++	 * LOCAL_INV chain has been submitted.
+ 	 */
+ 	bad_wr = NULL;
+ 	rc = ib_post_send(ep->re_id->qp, first, &bad_wr);
+ 
++	up_read(&r_xprt->rx_unmap_rwsem);
++
+ 	/* The final LOCAL_INV WR in the chain is supposed to
+ 	 * do the wake. If it was never posted, the wake will
+ 	 * not happen, so don't wait in that case.
+ 	 */
+ 	if (bad_wr != first)
+-		wait_for_completion(&mr->mr_linv_done);
+-	if (!rc)
+-		return;
++		wait_for_completion(&req->rl_linv_done);
+ 
+-	/* On error, the MRs get destroyed once the QP has drained. */
+-	trace_xprtrdma_post_linv_err(req, rc);
++	if (rc) {
++		/* On error, the MRs get destroyed once the QP has drained. */
++		trace_xprtrdma_post_linv_err(req, rc);
+ 
+-	/* Force a connection loss to ensure complete recovery.
+-	 */
+-	rpcrdma_force_disconnect(ep);
++		/* Force a connection loss to ensure complete recovery.
++		 */
++		rpcrdma_force_disconnect(ep);
++	}
++
++	rpcrdma_ep_release(ep);
++	return;
++
++out_unlock:
++	up_read(&r_xprt->rx_unmap_rwsem);
+ }
+ 
+ /**
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index d4e6746d8ecd3..e38637c2ec787 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -364,6 +364,8 @@ xprt_setup_rdma(struct xprt_create *args)
+ 	INIT_DELAYED_WORK(&new_xprt->rx_connect_worker,
+ 			  xprt_rdma_connect_worker);
+ 
++	init_rwsem(&new_xprt->rx_unmap_rwsem);
++
+ 	xprt->max_payload = RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT;
+ 
+ 	return xprt;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 54957295a6310..1e109600031c6 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -74,7 +74,6 @@ static void rpcrdma_reqs_reset(struct rpcrdma_xprt *r_xprt);
+ static void rpcrdma_reps_unmap(struct rpcrdma_xprt *r_xprt);
+ static void rpcrdma_mrs_create(struct rpcrdma_xprt *r_xprt);
+ static void rpcrdma_mrs_destroy(struct rpcrdma_xprt *r_xprt);
+-static void rpcrdma_ep_get(struct rpcrdma_ep *ep);
+ static int rpcrdma_ep_put(struct rpcrdma_ep *ep);
+ static struct rpcrdma_regbuf *
+ rpcrdma_regbuf_alloc_node(size_t size, enum dma_data_direction direction,
+@@ -374,20 +373,39 @@ static void rpcrdma_ep_destroy(struct kref *kref)
+ 	module_put(THIS_MODULE);
+ }
+ 
+-static noinline void rpcrdma_ep_get(struct rpcrdma_ep *ep)
++/**
++ * rpcrdma_ep_get - Acquire an endpoint reference
++ * @ep: RPC/RDMA endpoint to retain
++ *
++ * Context: Any context.
++ */
++noinline void rpcrdma_ep_get(struct rpcrdma_ep *ep)
+ {
+ 	kref_get(&ep->re_kref);
+ }
+ 
+-/* Returns:
+- *     %0 if @ep still has a positive kref count, or
+- *     %1 if @ep was destroyed successfully.
+- */
++/* Return 1 if ep was destroyed, otherwise 0. */
+ static noinline int rpcrdma_ep_put(struct rpcrdma_ep *ep)
+ {
+ 	return kref_put(&ep->re_kref, rpcrdma_ep_destroy);
+ }
+ 
++/**
++ * rpcrdma_ep_release - Release an endpoint reference
++ * @ep: RPC/RDMA endpoint to release
++ *
++ * The final release destroys @ep and its RDMA CM ID.
++ *
++ * Context: Process context. May sleep.
++ */
++void rpcrdma_ep_release(struct rpcrdma_ep *ep)
++{
++	struct rdma_cm_id *id = ep->re_id;
++
++	if (rpcrdma_ep_put(ep))
++		rdma_destroy_id(id);
++}
++
+ static int rpcrdma_ep_create(struct rpcrdma_xprt *r_xprt)
+ {
+ 	struct rpcrdma_connect_private *pmsg;
+@@ -572,20 +590,25 @@ int rpcrdma_xprt_connect(struct rpcrdma_xprt *r_xprt)
+  * rpcrdma_xprt_disconnect - Disconnect underlying transport
+  * @r_xprt: controlling transport instance
+  *
+- * Caller serializes. Either the transport send lock is held,
+- * or we're being called to destroy the transport.
++ * Context: Caller serializes. Either the transport send lock is held,
++ *	    or the transport is being destroyed. Takes and releases
++ *	    @r_xprt->rx_unmap_rwsem for write. May sleep.
+  *
+- * On return, @r_xprt is completely divested of all hardware
+- * resources and prepared for the next ->connect operation.
++ * On return, @r_xprt is prepared for the next ->connect operation.
++ * The detached endpoint and its resources can outlive this function
++ * until the final endpoint reference is released.
+  */
+ void rpcrdma_xprt_disconnect(struct rpcrdma_xprt *r_xprt)
+ {
+-	struct rpcrdma_ep *ep = r_xprt->rx_ep;
++	struct rpcrdma_ep *ep;
+ 	struct rdma_cm_id *id;
+ 	int rc;
+ 
++	down_write(&r_xprt->rx_unmap_rwsem);
++
++	ep = r_xprt->rx_ep;
+ 	if (!ep)
+-		return;
++		goto out_unlock;
+ 
+ 	/* Prevent teardown-generated events from requesting another close. */
+ 	atomic_xchg(&ep->re_force_disconnect, 1);
+@@ -595,6 +618,7 @@ void rpcrdma_xprt_disconnect(struct rpcrdma_xprt *r_xprt)
+ 	trace_xprtrdma_disconnect(r_xprt, rc);
+ 
+ 	rpcrdma_xprt_drain(r_xprt);
++
+ 	rpcrdma_reps_unmap(r_xprt);
+ 	rpcrdma_sendctxs_destroy(r_xprt);
+ 	rpcrdma_reqs_reset(r_xprt);
+@@ -604,6 +628,9 @@ void rpcrdma_xprt_disconnect(struct rpcrdma_xprt *r_xprt)
+ 		rdma_destroy_id(id);
+ 
+ 	r_xprt->rx_ep = NULL;
++
++out_unlock:
++	up_write(&r_xprt->rx_unmap_rwsem);
+ }
+ 
+ /* Fixed-size circular FIFO queue. This implementation is wait-free and
+@@ -927,6 +954,7 @@ struct rpcrdma_req *rpcrdma_req_create(struct rpcrdma_xprt *r_xprt,
+ 
+ 	INIT_LIST_HEAD(&req->rl_free_mrs);
+ 	INIT_LIST_HEAD(&req->rl_registered);
++	init_completion(&req->rl_linv_done);
+ 	spin_lock(&buffer->rb_lock);
+ 	list_add(&req->rl_all, &buffer->rb_allreqs);
+ 	spin_unlock(&buffer->rb_lock);
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 4cbc941e4a3eb..08dfe9414657c 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -46,6 +46,7 @@
+ #include <linux/spinlock.h> 		/* spinlock_t, etc */
+ #include <linux/atomic.h>		/* atomic_t, etc */
+ #include <linux/kref.h>			/* struct kref */
++#include <linux/rwsem.h>		/* struct rw_semaphore */
+ #include <linux/workqueue.h>		/* struct work_struct */
+ #include <linux/llist.h>
+ 
+@@ -249,7 +250,6 @@ struct rpcrdma_mr {
+ 	int			mr_nents;
+ 	enum dma_data_direction	mr_dir;
+ 	struct ib_cqe		mr_cqe;
+-	struct completion	mr_linv_done;
+ 	union {
+ 		struct ib_reg_wr	mr_regwr;
+ 		struct ib_send_wr	mr_invwr;
+@@ -348,6 +348,7 @@ struct rpcrdma_req {
+ 
+ 	struct list_head	rl_free_mrs;
+ 	struct list_head	rl_registered;
++	struct completion	rl_linv_done;
+ };
+ 
+ static inline struct rpcrdma_req *
+@@ -449,6 +450,13 @@ struct rpcrdma_xprt {
+ 	struct delayed_work	rx_connect_worker;
+ 	struct rpc_timeout	rx_timeout;
+ 	struct rpcrdma_stats	rx_stats;
++
++	/*
++	 * Orders frwr_unmap_sync()'s LOCAL_INV submission ahead of the
++	 * QP drain. Disconnect holds the write side across the drain
++	 * and resource teardown.
++	 */
++	struct rw_semaphore	rx_unmap_rwsem;
+ };
+ 
+ #define rpcx_to_rdmax(x) container_of(x, struct rpcrdma_xprt, rx_xprt)
+@@ -479,6 +487,8 @@ extern unsigned int xprt_rdma_memreg_strategy;
+  * Endpoint calls - xprtrdma/verbs.c
+  */
+ void rpcrdma_force_disconnect(struct rpcrdma_ep *ep);
++void rpcrdma_ep_get(struct rpcrdma_ep *ep);
++void rpcrdma_ep_release(struct rpcrdma_ep *ep);
+ void rpcrdma_flush_disconnect(struct rpcrdma_xprt *r_xprt, struct ib_wc *wc);
+ int rpcrdma_xprt_connect(struct rpcrdma_xprt *r_xprt);
+ void rpcrdma_xprt_disconnect(struct rpcrdma_xprt *r_xprt);
+
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+-- 
+2.53.0
+
