@@ -1,53 +1,53 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793923997;
-	b=yrI/rXCWd27L0hmst+MtntusF2AYp7FQxlrLFa0ATxPVUefAtvzmYpurqM4+0A6OdoNT
-	 oqAtobMoaGuobt/53AdXmp/CX2tGaUpkFuvfGgOgyF6m7qCX5XwnreqsuhSsBIIb6T3uB
-	 wEoZr/DZIIkmHkjEO8s+HzFAQCyAF+VcSwM8UFjw3L48itqsvt7V2eDClfLx7pAzzBiAh
-	 QKOXxrftTMA+zFW4Fldfrviwqxi7EsIX3CVXriEruXm/qdYGeS727p8vUSaVIEc7AwMLM
-	 dGqz4OPC9Dz3J1bD9QjZnYPyP/DWYBoAX5a/Gr2GPbWVu1xpx3kZTlt4r3GJ1g/2N/A==
+	t=1793923998;
+	b=bvV32GedWLlFpXoIkPk/4vg9gR7D9staOyLYuK6bRVfbosNlu25aBIlCDcKOyn+9wNt5
+	 5v6R916maebvFveBFni0RrUNKClPWD8hn/iTskgxmfmDhMWVvc+qoAZNW6hrNuDUCPZFC
+	 yeoxspJpFiprYmCRORCIBoWgiU9t4U5zLtq2Po+1BEbxKayW2vjLpjhfdChrkaFvzYeJ2
+	 dTG+e0Gj3qxIHTa8vTPc64Jwl+EOxePYS3F8nBVwfl8egzWPA6S3gLOsGBYjothHWuL+n
+	 HSP2HsGvHiWjQwFODUQXfsEtN/vnefj7Selq1+IgY4/AyiIqFBMhG6xtH0g5E9IVtNg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793923997;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793923998;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=zEMIDTKCvvZMK897dEqBE+NtLZOXLgoxzq6DTCl9cTM=;
-	b=pIP+OLsRX8lcKwiTD/xHHkXiBAPqUXDjr/y1jcCMxGxLaU59n+Wqy/fJkFf0deqXeoWV
-	 lHL/HcHgVNkRDB4TWg3EcmqYmjtRkoaIXIUpRKqmWB7X2LN1ouwKRE5lotQ8eDi1IYRI7
-	 wFiF3tcLAMPcUV6/u1hasYD2UAGQmNR2HrfJsrp2H6MFGNO35nb3gjWXuskdLFPA0mZ1A
-	 9385BJz8pk+Fsjg0vjYK4QQU7fpDyniX84ccrmbmaQlKBpl1puUm5Jkrtsx5xkLI6RbEs
-	 y+kxFJTCRRlbvtu782C5cDyJbCaGuabKjhEGUrh0Jhdrmic+nQ15bAiHbJKjq+Lf1BA==
+	bh=ongKTCtGb0Pcj3VTXHH/Su+cpQRpt0t9nhyyBbQwa3M=;
+	b=OqtCRDND6llDmWJpriAYa3ZEql0VkgzTESU1CsMwA5vhXr66EjOqH9LYLRLDJpxabuK7
+	 We+1WCUnmv30GBaLs9K+Y1R15DBbyKHyNc5KoupnMFdsw37PZR1Jg6S8eeX3mptm4qhlQ
+	 IXOc47d0FAerG93He01O2OJwcSJRTcL/Tlu0cPHNkF4bd7l6JH0shQ/iz+INrIfgcr5TL
+	 bvDqmJckE73aEv9SNOicOKmRVNaDLa9sGQ0TOZxKSS3/xp7Wl/iA4vTLsdhAIlxqNkC8w
+	 Fneldq4hM/O4RfPDmRBURDR7NgAOUKKSK7D2spU3fcn/3kin74TSAl4VDq5dCetvXbg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fKrB2Z9T;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="RFbkyAA/";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 49A55606A31B
-	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 00:13:17 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 826A1606A31B
+	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 00:13:18 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fKrB2Z9T
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A27881F008A1;
-	Fri,  6 Nov 2026 00:13:16 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RFbkyAA/
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E4C4D1F008A6;
+	Fri,  6 Nov 2026 00:13:17 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793923996;
-	bh=zEMIDTKCvvZMK897dEqBE+NtLZOXLgoxzq6DTCl9cTM=;
+	s=k20260515; t=1793923998;
+	bh=ongKTCtGb0Pcj3VTXHH/Su+cpQRpt0t9nhyyBbQwa3M=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=fKrB2Z9TIxwpqFIQJSnEi2E3Qxmv/TxA1VeYkl81OxKBJy/D9QFxpO+JOQs+fQzYD
-	 KMPNuG6kSaNwMOXaFdNiLG2jzp9IUI6iZ5ICcj9RpsCqXXlmSyFJG0DtgWmWZs6659
-	 UDuhNsix+Hit7x4UwAtBFjfPHkPwcswNdFSH19zjhwAPkcSA6Ul93GMt+aYomk0Md5
-	 ep+/Gk47UXY5+1cMa9w3bYB/egLNIX1aai7+nn8dmR3lLXyBsGKkcDUC1yvYhVky47
-	 o7KxgOEYlrWwNqidPU3kof+R0qz5/NCcIFHNOfzoFR97UFz4CdXX4jzOfVg7C1jUCJ
-	 M3p0ZDcFaSnzw==
+	b=RFbkyAA/HcEqvzocFqte5B4iBiCsWkF/8rGkPBuagmHIVRSDk4an4NsS/Ao9dDIj2
+	 W5SIpY83c/h06MsokEaich4ZiIqXhzQn/KhUSsxvcCU3eD1BtfZ3TKe8NaSbnrkT1b
+	 tDSv54halaoAtN+9cWImT75XLm4icfo5/tDZUltzE1VDT6SKfGWnD10NuH3q4jcsZi
+	 c46840MoE7rUGhFfA+WC1CXmTwyedXpuJ6hCoxI6rxc9Ox1qx4W9VwvO8lqKJHqZ12
+	 rin907dCcxO/KfwqTgTbjfAqwWqJ1IuLgamn3rXen44eUDfje3SgldrZIHqgK961RX
+	 mP1rcjez2krPw==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Anna Schumaker <anna@kernel.org>,
 	Trond Myklebust <trondmy@kernel.org>
 Cc: Mike Snitzer <snitzer@hammerspace.com>,
 	linux-nfs@vger.kernel.org,
 	Jonathan Flynn <jonathan.flynn@hammerspace.com>
-Subject: [PATCH v2 11/12] NFSv4/flexfiles: take the report decision out of the critical section
-Date: Thu,  5 Nov 2026 19:12:48 -0500
-Message-ID: <20261106001251.73472-12-snitzer@kernel.org>
+Subject: [PATCH v2 12/12] NFSv4/flexfiles: share one helper for the start of a read and a write
+Date: Thu,  5 Nov 2026 19:12:49 -0500
+Message-ID: <20261106001251.73472-13-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20261106001251.73472-1-snitzer@kernel.org>
 References: <20261106001251.73472-1-snitzer@kernel.org>
@@ -64,134 +64,125 @@ Content-Transfer-Encoding: 8bit
 
 From: Mike Snitzer <snitzer@hammerspace.com>
 
-When an I/O to a data server starts, the stripe lock also covered the
-decision to send a LAYOUTSTATS report.  That decision reads the mirror
-and the layout header, divides in ktime_to_ms(), and does a cmpxchg on
-ffl->last_report_time.  None of it is data that the lock protects.
+nfs4_ff_layout_stat_io_start_read() and
+nfs4_ff_layout_stat_io_start_write() differ only in the statistics they
+update.  Replace them with nfs4_ff_layout_stat_io_start(), which takes
+the direction of the I/O.
 
-Move the decision into nfs4_ff_layoutstat_report_due() and call it,
-and nfs4_ff_layoutstat_set_start_time(), after the unlock.  The lock now
-covers two writes to one cacheline.  The order of the updates and the
-report does not change.
+No functional change.
 
-nfs4_ff_layoutstat_end_io() loses its unused dss_info argument.
-
+Suggested-by: Anna Schumaker <anna@kernel.org>
 Signed-off-by: Mike Snitzer <snitzer@hammerspace.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 49 ++++++++++++++------------
- 1 file changed, 27 insertions(+), 22 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 62 +++++++-------------------
+ 1 file changed, 17 insertions(+), 45 deletions(-)
 
 diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index b4d4971816145..f3f4573880d98 100644
+index f3f4573880d98..a28224637d394 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayout.c
 +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -739,32 +739,36 @@ nfs4_ff_layoutstat_set_start_time(struct nfs4_ff_layout_ds_stripe *dss_info,
- 		try_cmpxchg64(&dss_info->start_time, &unset, now);
+@@ -803,21 +803,21 @@ nfs4_ff_layoutstat_end_io(struct nfs4_ff_layoutstat *layoutstat,
  }
  
--/*
-- * Account for an I/O about to be sent to this stripe, and return true if a
-- * LAYOUTSTATS report is due.
-- */
--static bool
--nfs4_ff_layoutstat_start_io(struct nfs4_ff_layout_ds_stripe *dss_info,
--			    struct nfs4_ff_layoutstat *layoutstat,
-+/* Account for an I/O about to be sent to this stripe. */
-+static void
-+nfs4_ff_layoutstat_start_io(struct nfs4_ff_layoutstat *layoutstat,
- 			    __u64 requested, ktime_t now)
-+{
-+	lockdep_assert_held(&layoutstat->lock);
-+
-+	nfs4_ff_start_busy_timer(layoutstat, now);
-+	layoutstat->io_stat.bytes_requested += requested;
-+}
-+
-+/*
-+ * Is a LAYOUTSTATS report due?  Called outside the statistics locks, which
-+ * protect none of this.  last_report_time is shared by every mirror and
-+ * stripe of the layout: the cmpxchg winner reports.
-+ */
-+static bool
-+nfs4_ff_layoutstat_report_due(struct nfs4_ff_layout_ds_stripe *dss_info,
-+			      ktime_t now)
+ static void
+-nfs4_ff_layout_stat_io_start_read(struct inode *inode,
+-		struct nfs4_ff_layout_mirror *mirror,
+-		u32 dss_id,
+-		__u64 requested, ktime_t now)
++nfs4_ff_layout_stat_io_start(struct inode *inode,
++			     struct nfs4_ff_layout_mirror *mirror,
++			     u32 dss_id, bool write,
++			     __u64 requested, ktime_t now)
  {
- 	struct nfs4_ff_layout_mirror *mirror = dss_info->mirror;
- 	struct nfs4_flexfile_layout *ffl = FF_LAYOUT_FROM_HDR(mirror->layout);
- 	s64 report_interval = FF_LAYOUTSTATS_REPORT_INTERVAL;
- 	ktime_t last_report;
+ 	struct nfs4_ff_layout_ds_stripe *dss_info = &mirror->dss[dss_id];
+-	bool report;
++	struct nfs4_ff_layoutstat *layoutstat =
++		write ? &dss_info->write_stat : &dss_info->read_stat;
  
--	lockdep_assert_held(&layoutstat->lock);
+-	spin_lock(&dss_info->read_stat.lock);
+-	nfs4_ff_layoutstat_start_io(&dss_info->read_stat, requested, now);
+-	spin_unlock(&dss_info->read_stat.lock);
++	spin_lock(&layoutstat->lock);
++	nfs4_ff_layoutstat_start_io(layoutstat, requested, now);
++	spin_unlock(&layoutstat->lock);
+ 
+ 	nfs4_ff_layoutstat_set_start_time(dss_info, now);
+-	report = nfs4_ff_layoutstat_report_due(dss_info, now);
+-	if (report)
++	if (nfs4_ff_layoutstat_report_due(dss_info, now))
+ 		pnfs_report_layoutstat(inode, nfs_io_gfp_mask());
+ }
+ 
+@@ -837,25 +837,6 @@ nfs4_ff_layout_stat_io_end_read(struct rpc_task *task,
+ 	spin_unlock(&dss_info->read_stat.lock);
+ }
+ 
+-static void
+-nfs4_ff_layout_stat_io_start_write(struct inode *inode,
+-		struct nfs4_ff_layout_mirror *mirror,
+-		u32 dss_id,
+-		__u64 requested, ktime_t now)
+-{
+-	struct nfs4_ff_layout_ds_stripe *dss_info = &mirror->dss[dss_id];
+-	bool report;
 -
--	nfs4_ff_start_busy_timer(layoutstat, now);
--	layoutstat->io_stat.bytes_requested += requested;
+-	spin_lock(&dss_info->write_stat.lock);
+-	nfs4_ff_layoutstat_start_io(&dss_info->write_stat, requested, now);
+-	spin_unlock(&dss_info->write_stat.lock);
 -
 -	nfs4_ff_layoutstat_set_start_time(dss_info, now);
- 	if (mirror->report_interval != 0)
- 		report_interval = (s64)mirror->report_interval * 1000LL;
- 	else if (layoutstats_timer != 0)
- 		report_interval = (s64)layoutstats_timer * 1000LL;
- 
--	/* Shared by every mirror and stripe: the cmpxchg winner reports. */
- 	last_report = READ_ONCE(ffl->last_report_time);
- 	if (ktime_to_ms(ktime_sub(now, last_report)) < report_interval)
- 		return false;
-@@ -774,8 +778,7 @@ nfs4_ff_layoutstat_start_io(struct nfs4_ff_layout_ds_stripe *dss_info,
- 
- /* Account for an I/O that has completed on this stripe. */
+-	report = nfs4_ff_layoutstat_report_due(dss_info, now);
+-	if (report)
+-		pnfs_report_layoutstat(inode, nfs_io_gfp_mask());
+-}
+-
  static void
--nfs4_ff_layoutstat_end_io(struct nfs4_ff_layout_ds_stripe *dss_info,
--			  struct nfs4_ff_layoutstat *layoutstat,
-+nfs4_ff_layoutstat_end_io(struct nfs4_ff_layoutstat *layoutstat,
- 			  __u64 requested,
- 			  __u64 completed,
- 			  ktime_t time_completed,
-@@ -809,10 +812,11 @@ nfs4_ff_layout_stat_io_start_read(struct inode *inode,
- 	bool report;
+ nfs4_ff_layout_stat_io_end_write(struct rpc_task *task,
+ 		struct nfs4_ff_layout_mirror *mirror,
+@@ -1772,12 +1753,8 @@ static void ff_layout_read_record_layoutstats_start(struct rpc_task *task,
+ 		mirror->dss_count,
+ 		hdr->args.offset);
  
- 	spin_lock(&dss_info->read_stat.lock);
--	report = nfs4_ff_layoutstat_start_io(dss_info, &dss_info->read_stat,
--					     requested, now);
-+	nfs4_ff_layoutstat_start_io(&dss_info->read_stat, requested, now);
- 	spin_unlock(&dss_info->read_stat.lock);
- 
-+	nfs4_ff_layoutstat_set_start_time(dss_info, now);
-+	report = nfs4_ff_layoutstat_report_due(dss_info, now);
- 	if (report)
- 		pnfs_report_layoutstat(inode, nfs_io_gfp_mask());
+-	nfs4_ff_layout_stat_io_start_read(
+-		hdr->inode,
+-		mirror,
+-		dss_id,
+-		hdr->args.count,
+-		task->tk_start);
++	nfs4_ff_layout_stat_io_start(hdr->inode, mirror, dss_id, false,
++				     hdr->args.count, task->tk_start);
  }
-@@ -827,7 +831,7 @@ nfs4_ff_layout_stat_io_end_read(struct rpc_task *task,
- 	struct nfs4_ff_layout_ds_stripe *dss_info = &mirror->dss[dss_id];
  
- 	spin_lock(&dss_info->read_stat.lock);
--	nfs4_ff_layoutstat_end_io(dss_info, &dss_info->read_stat,
-+	nfs4_ff_layoutstat_end_io(&dss_info->read_stat,
- 				  requested, completed,
- 				  ktime_get(), task->tk_start);
- 	spin_unlock(&dss_info->read_stat.lock);
-@@ -843,10 +847,11 @@ nfs4_ff_layout_stat_io_start_write(struct inode *inode,
- 	bool report;
+ static void ff_layout_read_record_layoutstats_done(struct rpc_task *task,
+@@ -2002,12 +1979,8 @@ static void ff_layout_write_record_layoutstats_start(struct rpc_task *task,
+ 		mirror->dss_count,
+ 		hdr->args.offset);
  
- 	spin_lock(&dss_info->write_stat.lock);
--	report = nfs4_ff_layoutstat_start_io(dss_info, &dss_info->write_stat,
--					     requested, now);
-+	nfs4_ff_layoutstat_start_io(&dss_info->write_stat, requested, now);
- 	spin_unlock(&dss_info->write_stat.lock);
- 
-+	nfs4_ff_layoutstat_set_start_time(dss_info, now);
-+	report = nfs4_ff_layoutstat_report_due(dss_info, now);
- 	if (report)
- 		pnfs_report_layoutstat(inode, nfs_io_gfp_mask());
+-	nfs4_ff_layout_stat_io_start_write(
+-		hdr->inode,
+-		mirror,
+-		dss_id,
+-		hdr->args.count,
+-		task->tk_start);
++	nfs4_ff_layout_stat_io_start(hdr->inode, mirror, dss_id, true,
++				     hdr->args.count, task->tk_start);
  }
-@@ -865,7 +870,7 @@ nfs4_ff_layout_stat_io_end_write(struct rpc_task *task,
- 		requested = completed = 0;
  
- 	spin_lock(&dss_info->write_stat.lock);
--	nfs4_ff_layoutstat_end_io(dss_info, &dss_info->write_stat,
-+	nfs4_ff_layoutstat_end_io(&dss_info->write_stat,
- 				  requested, completed,
- 				  ktime_get(), task->tk_start);
- 	spin_unlock(&dss_info->write_stat.lock);
+ static void ff_layout_write_record_layoutstats_done(struct rpc_task *task,
+@@ -2121,10 +2094,9 @@ static void ff_layout_commit_record_layoutstats_start(struct rpc_task *task,
+ 
+ 	idx = calc_mirror_idx_from_commit(cdata->lseg, cdata->ds_commit_index);
+ 	dss_id = calc_dss_id_from_commit(cdata->lseg, cdata->ds_commit_index);
+-	nfs4_ff_layout_stat_io_start_write(cdata->inode,
+-			FF_LAYOUT_COMP(cdata->lseg, idx),
+-			dss_id,
+-			0, task->tk_start);
++	nfs4_ff_layout_stat_io_start(cdata->inode,
++				     FF_LAYOUT_COMP(cdata->lseg, idx),
++				     dss_id, true, 0, task->tk_start);
+ }
+ 
+ static void ff_layout_commit_record_layoutstats_done(struct rpc_task *task,
 -- 
 2.52.0
 
