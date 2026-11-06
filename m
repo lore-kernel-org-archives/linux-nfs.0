@@ -1,73 +1,56 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793974910;
-	b=OYDpFEnvGYh59bWz5lzDnO5QqPrdBM9mvzT+tQQixEz1oycxhF+oG2ra5PaqO/gURfmS
-	 lJnD3G/i2MYmobOe18FtyeMR/1TtdK/5SPd7tR1lgvAvuj10bZfNA1U9ZJZsDN1Cbs357
-	 5OX3qVIz1/RzY5X81LtaX9qJacPCgphv7LwBOQBD95QhaDe7iX0/vFR6kn9SMmbY8honS
-	 xfjjLJT51WHDdi6klq2x4v65ObMFwGqbDPh/LuwmpgEY1sfEtimpUW0D+ao5lyHAsvMaV
-	 jVlII+xaAcjD2xbLzNSP1pRDFAcwC1m7HWn/+vA0BTuoww95n1Co80YD24O6duUadnw==
+	t=1793977324;
+	b=GRSF4CZdDV8q+2JQsAOStNiSDf7X3bu/X+MSEcDZebXJMZRVxXf4yfYBAAGm7gE44q3v
+	 fGEL5MmLVkqh9EvP48MjWOpYH8XiiwZnSiTBe/3XZIUZmiKOL7lDWntb0sfMeXSe59RS1
+	 HwLEoq2wUYxprJNY8sO6Ej7e760DXAHQ5tHGVWhN3AialKzQleMRSrXJWRKNyfq6i6kJM
+	 2bw+t5NKWH0QwCe5PdM7ck2XU361QgdnC3JHmxpNDYyT3xyHINv0gb8Fj2ZEU9we4wiHR
+	 oDhr7Lyj4e3xBuDriKPJQoElQ402mzG3G2Dwi6J8eDlAMDw99ipVqCTbOYh1nZFlamQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793974910;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=Qxmf++OdXmvNQjqneVICiQMhLuKJZ5A4y7qik8rj9LM=;
-	b=Ldommn3NwyV1fe4As1+Hi+LaWxFi0JxQkqPS3M7VT8CgpLsoIpKi9zDLlNZsYbYYy3QF
-	 dgBsy5+6W2pSyk6Fq3vQzls/hXX4hGZgyMdK8i7mtpYLR5ueVvBW4AQB9H9y7vHlA4bep
-	 SdqfcE+Wi+389ybwr8v6FTUsU3Cdb0svrnuQLaGq+TcG0KBVCoG6BW3cKjtPEtULnr0rP
-	 htd6dSPHL76MYTaedoJ2CPRpfJsPWRL84LN+zOP2T+188y1m0UFu/pqka6/BNM/U+eeV3
-	 Rik7GE5hmkpB9MP4lT1hjEebAwFlIBTXpgdeIgRhBnLYxdcdZRe/R7XYSzRgCsNGX8Q==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793977324;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 MIME-Version:Content-Transfer-Encoding;
+	bh=OJGwMOZr8wszMXP4PUI9DRebX0Fe8M4M+JLp3x5FAMo=;
+	b=dM1LOeXUGvIAn9nTUjZL/it8ehIli8+DDEBer3Kwsay61kDG3U6LvhMyXGjtfbAhF2X7
+	 kOiGOn6QXq7/QpIZFupld++7toJoR/tw3I6DPo+CWeo5xnD9xTWDe3SI0J66GBsAh/+1K
+	 MzecmLuJnW+/b+qT0fcFoaVI9zsCqOuVLSrDlaURl1FzjBGpc4YTlcjOVN2EoknAr0Qjc
+	 kSb+B00M1kmgS4npqeM5ohbBBisYvzrsvW2weArQhIgG6JoEap0KlVxOo9gaPCvEHmxVS
+	 Dbk2BCOT8jLi7TxWy8N3mrDN3bHmBKoTuJwThQcE1pYIi+t14dfCRmseU2eIC6eFCbA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=YqGHO8SW;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Dni3PlMe;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 247C8606A329
-	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 14:21:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E2D3C606A334;
+	Fri,  6 Nov 2026 15:02:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=YqGHO8SW
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7C6791F0089F;
-	Fri,  6 Nov 2026 14:21:49 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Dni3PlMe
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DA7FD1F0089F;
+	Fri,  6 Nov 2026 15:02:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793974909;
-	bh=Qxmf++OdXmvNQjqneVICiQMhLuKJZ5A4y7qik8rj9LM=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=YqGHO8SWu091Ub4+rgIBUOs8cWBchcrwC5QfMN857vJ9NFt5+MGk2vdTY6aCkoQ5T
-	 YygPEj2B6ZP8IkpQIj/jdECMyzDjWsCaGFies0Cf6KVBzFM17ZfE5H7ntoHHZyKFzd
-	 2XLiv7aM8QeFddMy4FbZxnZupjX7HCFgOLE9xwl2P/8762T3TqG2mlIdxn2eUc4+k2
-	 ngOq6a4dAk1roN57dQy3c7yj7EuerMbeiivm3LrXiXcWBzEicC4u7E/t8LYswZshkI
-	 ykFuwpohKsprIfGGCw3wWmh/+yBhFM0AJexbIpaB6E5LRoK3zYAMLUDu9hSVNYw4Rq
-	 sdT823/Rn2uug==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id C0F75F40066;
-	Fri,  6 Nov 2026 09:21:48 -0500 (EST)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Fri, 06 Nov 2026 09:21:48 -0500
-X-ME-Sender: <xms:fOLtatsKfokU5KJkkWd-39gRGRb7k52IKscKDPfPT-xuParxfB_Dsg>
-    <xme:fOLtahQ13o993YBky7UwnDkzM2hCK0qylt1lWGQmIOdCHKrxM7fvIuopSzuACF2xz
-    f43lmUWRHz-F1fWKLrMn1PNMidHYAD0Ijcu8PcOkhMxx54FAkH7lJU>
-X-ME-Proxy-Cause: dmFkZTGb/nsXTrLbFf6NLkl4yzWUKasKf1vr/SxNKlfICOIyS4FfdI/SZtcFuJ1njZvNR/
-    8XZxNGP8KhZASLsh1/+E4MZHUdelII678Nfg15/ktIau/mrQTXJ4XxcnaA6DuSvihEoxAF
-    hijPsrJ/YpmaBTjVIGDx5jGYg3F+0l1dcFXDtMc/+9IQ6QB/WDtzl4egxbv/f0kDbhisxD
-    B9glY/Ffo8D6K/DcpKd+gn7q/jdTq/PLM0Kfk+tNd2FcUW4pFXsZrPQqUaGWd0RnUY4Nwt
-    FmCFAVZcMnuTTKmBJafbeV5LtE/5CIvBPYhXGkSQ1x/zvoCvsERJEWhgRWt4sGScRqpHfc
-    W5LUWGBCMDPVD/5D2NpvFQrVWEFbWvHIhv4L9H1C7+SR2O7a/G+KaZh0gC/MGkWLcQr5Co
-    l9ZU3OoJTqYvdV3MAoPo+ht2tTyTgh3nqYbJwvXX294K6YUKcGSItC7f5gC3HfqkpZzD1u
-    k5VWi2ZcwpbVkcwuWPHZE6xcgMDXRsgjsI3S5ryO3vYTeLZ5S/Be+eZVYCdJW7BiIKcppz
-    rvkxfLiF38/3RkZxR30CShy7KqHB/WxqTpG3+YlPgx1Dpf+wtq6WkI9ZqjHZlK/lK4pi5m
-    qMvIftuxWLBwT+MjM+y0zHzklH4+Ze7WhH4XbICqhEimC7Wp7AISGti/AQoQ
-X-ME-Proxy: <xmx:fOLtakEIDkvTAdGscgsNKfCWtqFUVxTZb0jXK7sGSqFgjrcLRQKE4A>
-    <xmx:fOLtale7TrUD-y4BERRtaHBkawKSrLmvydKXYkIghnAI9RIrDaoUQA>
-    <xmx:fOLtatr7ot5VWOKFR05-t8UaNEv6_SMvH9WOQqTxDJG82Dq9QSqs4w>
-    <xmx:fOLtamCWDcUgGoOuyHLLKkFo5HHz37amnFGY5WQGGl_0obXF6RANTg>
-    <xmx:fOLtamdoU3k4Q8rdOMh8vg7bgKsyL66HIQWJrvKY6TbdFmNlNBkJJpWY>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 9F057782738; Fri,  6 Nov 2026 09:21:48 -0500 (EST)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1793977323;
+	bh=OJGwMOZr8wszMXP4PUI9DRebX0Fe8M4M+JLp3x5FAMo=;
+	h=From:To:Cc:Subject:Date;
+	b=Dni3PlMeE484Iio3dTd57C8UoEN9onhzXtRfIJLPZfMXotBe3zZz0lg80gmaRQiKG
+	 5N1oR+G5ti1DGCHcXUrbV0u/yhUgPmItlPCPvjStiYThn+zkMr6AAHU/pcGKR14xQ1
+	 /Poq8ytyVHyEhVplE8fDs4aeJRWlVzP+IjFPPk2vKkEUWSGEv9gJ4Lm5CKZmY6zBAS
+	 HTxEDh9qry5O62R+X25qO1/VnZZf35SrUvEzv8lRDl4BANcGG5wJZpNVdDnAT4yOB9
+	 A6TJmCM28lXuz6gN3/xrVQbT5icC4BflYEE0ROQ3cdPgh390pC96+Xx3ZJmh3OO1Xu
+	 6SEIclcaPtDYA==
+From: Chuck Lever <cel@kernel.org>
+To: NeilBrown <neil@brown.name>,
+	Jeff Layton <jlayton@kernel.org>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <dai.ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>
+Cc: <linux-nfs@vger.kernel.org>,
+	stable@vger.kernel.org
+Subject: [PATCH] SUNRPC: Honor page_base beyond the first page in xdr_buf_to_bvec()
+Date: Fri,  6 Nov 2026 10:01:59 -0500
+Message-ID: <20261106150159.847600-1-cel@kernel.org>
+X-Mailer: git-send-email 2.56.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,41 +60,49 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: AqskSCTaNkUk
-Date: Fri, 06 Nov 2026 09:21:28 -0500
-From: "Chuck Lever" <cel@kernel.org>
-To: "J Louis Kaplan" <Louis.Kaplan@arm.com>
-Cc: dai.ngo@oracle.com, jlayton@kernel.org, neil@brown.name,
- okorniev@redhat.com, tom@talpey.com, anna@kernel.org, jgg@ziepe.ca,
- leon@kernel.org, linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
- trondmy@kernel.org
-Message-Id: <7e3bbd89-b01f-43b8-9ce7-b549e949b0f4@slotpi15m67>
-In-Reply-To: <20261008225450.664642-1-Louis.Kaplan@arm.com>
-References: <59261d53-53fc-4195-a7f4-d9f117bb0150@app.fastmail.com>
- <20261008225450.664642-1-Louis.Kaplan@arm.com>
-Subject: Re: [RFC PATCH 3/6] svcrdma: Coalesce contiguous pages when mapping replies
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-On Thu, Oct 8, 2026, at 6:54 PM, J Louis Kaplan wrote:
-> Glad to hear that. I'm happy to split out smaller parts of work from
-> this patch series if helpful.
+xdr_buf_to_bvec() takes offset_in_page(page_base) but starts its
+walk at pages[0], so the page index that page_base carries above
+PAGE_SIZE is dropped. nfsd_direct_read() sets rq_res.page_base to
+the pad below the file's DIO offset alignment. When that alignment
+exceeds PAGE_SIZE, as with 8K to 64K logical blocks under xfs or
+ext4 on a 4K-page NFSD, a direct READ whose pad reaches a full page
+sends the page before the one that holds the data. The defect was
+found by inspection, not reproduced.
 
-I have a soon-to-be posted series that converts svcrdma to send and
-receive through the bio_vec array in rqstp->rq_bvec, and it rewrites
-the code your patches touch. A companion series does the same
-conversion for svcsock and has to be posted first, because the two
-series share helpers in net/sunrpc.
+Advance the page pointer by page_base >> PAGE_SHIFT before the walk.
 
-As I alluded to before, our long-term goal for the transport code is
-to replace the use of the xdr_buf.pages array with an array of
-pointers to biovecs. The goal is to replace struct page pointers
-as the common coin in the NFS stack from filesystem to network layer.
-The refactor will continue to represent only one page with a biovec.
+Commit 2eb2b9358181 ("SUNRPC: Convert svc_tcp_sendmsg to use
+bio_vecs directly") introduced the dropped shift, but no caller
+produced a page_base of a page or more until direct READ.
 
-I think you should be able to continue your focused improvements to
-svcrdma on top of this work.
+This fix depends at run time on nfsd4_encode_operation() deriving
+rq_next_page from page_base as well as page_len. Otherwise the READ
+encoder accounts for one page fewer than xdr_buf_to_bvec() now
+transmits, and the last page sent sits outside the release range
+while TCP still references the page.
 
+Fixes: d686e64e931c ("NFSD: Implement NFSD_IO_DIRECT for NFS READ")
+Cc: <stable@vger.kernel.org> # v6.19+
+Signed-off-by: Chuck Lever <cel@kernel.org>
+---
+ net/sunrpc/xdr.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 7353109fdbae..7eef50634175 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -161,7 +161,7 @@ int xdr_buf_to_bvec(struct bio_vec *bvec, unsigned int bvec_size,
+ 
+ 	if (xdr->page_len) {
+ 		unsigned int offset, len, remaining;
+-		struct page **pages = xdr->pages;
++		struct page **pages = xdr->pages + (xdr->page_base >> PAGE_SHIFT);
+ 
+ 		offset = offset_in_page(xdr->page_base);
+ 		remaining = xdr->page_len;
 -- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+2.56.0
+
