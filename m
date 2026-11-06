@@ -1,103 +1,49 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.53
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793997630;
-	b=gkCFrP1zfp1xVgLkQfYJsNVgusjSTfeQbTl5SYxg1kGdoR+V5yaXIUVg1hIym+1moTiW
-	 /PUurvqCwOgoqxX/KhSyeeZtkkAQQTUldsOKMM87+eXXGk6RxYJHHNKcD4+iPsIXDxbgt
-	 Xki4dat3J6y6t1mq7vcnt8pVC2E7fKBQ1OxRkQdMEl+13upRiD8Yxcgj06OgSZB0EoB5x
-	 q3gKdrtHMk3crCK5+wDVNLkDhw8yT8hC8rGFa+CLU88Qgo47AVJsAUbD96SPRo6KCO5aO
-	 5YVlj7/5O1xBS3zQ/UyQlZjW0qP0Topb/sXnl549acYv9vunsKBrKF7+pZGs8j3umyw==
+	t=1793997653;
+	b=lpWL1MGu7tb+xJ+sIRIxZs7quEcWOOuQdJ//73BmuzPYOi9p4D0xwC6S4MeMIt2RUJKj
+	 AfF0gOZAWcIgigUDlp0bGZsRM0XyQl4sAa5+dE1AfhnvVp7mW2iE/XBq5AVvxhKNOSzQ4
+	 wY2NhtByrPDsU483NJbdoOSoP/q+ySdERBn9CVzR9w0+Hr9IEPJhF+nliEVmxBnE/5Y3z
+	 VygLflYoQ/3ifizIVWnDMYm0nNl3dixUGxhrA9mXgpXBPL8i3MzwrGVsxgPIzeme5Zk0r
+	 HczKnrdy5aMS1VENP0eqoOOmUT7JSNGygjfVsL2Lu59+57Bcplowt7I7EyyUnfJiOFg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793997630;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=D/PxjqMUnoRNvdLWmtMbPlTvfojIHeVHPRoAErTV6bk=;
-	b=MkLoFXoMHokPGI5BDUerdeZqR4pXpTL0LPPicMLM0Y86e8911Mv5CWciRpmo+6v1fDjW
-	 YiNALEM0ILvIBsM7ATghwlA4lZatWb5O7tHOttyJylZsCfT9M3tp848yaS0qle3B+/1Ya
-	 P7HrojMlBekH+XmtTk34OXvvdfuC3hJWcTvLhlBzV7DPdB3IC5EOS+0st7LkXh/NIAPSO
-	 Ne6O6tMzh3yIdu81iQDpX5PI/fBYd/V0SbdnmIUuwLUKCVLEI64zcWaR7OOHjA2kewJE4
-	 Q6Zh5tWvXZXlvfe5acWMW+PaUWxUBxsIp47wHGBw8ac/odx+R1RPTgtBVrRcxL/qxfQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793997653;
+	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
+	 X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=dDcga8x1t2Mz0U84bROvlxnSmjwl5bpBj7aWQNiL0h0=;
+	b=g9PRpawHydxrV8Z0Fqn8F5pRL8Ho0zclY+NVyCCF7qaeIhpKoHha0eM454/dhAPEXD8D
+	 yQu7b35LO3kb5BB8jUz6y8pUZGvCg+7IOi+kZY9RVuezTVKtWXDKsw+Xfy/DoNX8C+ab5
+	 tmaH2CvDn21eT1tdJE5h/QvDN5FsJk36N/3BwQJ0KmhMVPw1lEnQToa9xzRS0DepNv/aa
+	 V/LE+6ugJ0DmI/q4OWw6rjngfG5Dlfa3K7v1FfwIoLIu6CeA+zinVFpN+/S+Fkqah4Dm0
+	 KjwYbWf6OadtmB5VflNXBZuvh4KFwq55HsJCPy95NR5r9eJfzqCD8JqaWbAKHA7cbZw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=SIJeD92Q;
-	arc=none smtp.remote-ip=209.85.167.53
-Received: from mail-lf1-f53.google.com (mail-lf1-f53.google.com [209.85.167.53])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="dyhP/ub0";
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0371B606A32C
-	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 20:40:29 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 0371B606A32C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2C521606A330;
+	Fri,  6 Nov 2026 20:40:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=SIJeD92Q
-Received: by mail-lf1-f53.google.com with SMTP id 2adb3069b0e04-5be3ea5a7adso860519e87.2
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Nov 2026 12:40:29 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1793997628; x=1794602428; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=D/PxjqMUnoRNvdLWmtMbPlTvfojIHeVHPRoAErTV6bk=;
-        b=SIJeD92Qu1ghLn6Diwyb6fKrNsRE4AsbWWViYIN/gXJsQyeupZTIwUP8vl58BvBs2t
-         YI+JBoAXYqrypkee0TpRKbjDCNK7XjE+X8s+DbIKRMNyYguo2UimIdmlW9FHJFkxsj6F
-         PRe74jak0M/nBlafEMyhrTfp5sy9m+5Y5AKj9tYqSQiZ8qhvXj75WvrXgfTpfb7Q8+QW
-         27tEhwXkHqsMzu2hu7fLcBCVVP92uvzvKB+vrrQgbQ1Xrnke6CxmcQt+JKCUCDBBy4tG
-         X4eElH8xoqVZzURtTRS97dAV9yMuUmrqd4xvPFm8WmomV7UhwzX7c9nlGhmbkKTPspy/
-         Z6QQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793997628; x=1794602428;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=D/PxjqMUnoRNvdLWmtMbPlTvfojIHeVHPRoAErTV6bk=;
-        b=XfRrnRXYF+bGwQTF3S4jCqxOSqaQy8S+CJ8AbfASLl10qJBUlA1/G8IRxJMPwN6EGC
-         UwP1IrgiuvXF9Nh7zqmCn6Pt4xJFgmVVp8NqRt6TAIXfQPCeMJbrsDq5cGBVnfR42cJd
-         lw69NCoOcVKCbcXFVfYz1CYYL20UAaBOuAVND/zELhSr19+j8OwYOUxDf2fsJkC0cNQT
-         ydPe6xVDE3yJk6TnCEDojpkdu7bIe19eeBVNR2CF5Q/kIGpBNfI+v51l2HnTiwgAkXzX
-         o1c1cNM4KTvMthuYmhnvBscJx4V4WYRD0SPX+QXMV9t8oSPivLBPunf/FOoLvffjmW21
-         4/kA==
-X-Forwarded-Encrypted: i=1; AL+hErGaJah1ARMtrxmvrA58Z3rUoUBXprddVZOlYikMq7Py9BL09mxaFGZi0GNq6lV5EAXCR24/92m9cdY=@vger.kernel.org
-X-Gm-Message-State: APuU4Z+M/3ARPTznrIYka9cXIx2g8la5McbC3Xs0mBHofZL2UHM3/mAg
-	xmh+UShqHhCykCNMEWhPTy9xc1XFCOMNWiLGVdg48wOJmPTHJ64iT4AV
-X-Gm-Gg: AYBFou3GGPfE28RAy9FbizBz84YUgult9M2ms/vHaHmBov2SgQdlcuFRWesMlOz7soo
-	0GUyoc7P7ScEm7P/FG2QOVylNYYw6ADBnGBAZ5osK/LqL4lC5MF2Bwxl3KKI+g0AUTLVdQZet9Y
-	oYVtOetX1DO5ulXfLBcHwp3zMWmsKzzv0VXOsoWt1yKE46nbDnlbtpnNLBOXVn7LS1XWpb14fNz
-	mHERArHEW7ycCnW/IRGwAd75Cr/hG4RBDdnyoAN5gAiL1nSWIX36E1bI3taiKYlFId7bxXRwa5D
-	uR5CvF41eGD4WN2VhNXp4PPzFIxVIuHQB5/eLb5Ortw7bB2hEyFMLTjLpCvRgqXNmPRZrJIFfVN
-	Lqnkfyt4WwKkhAFQA97dqC97L+x9782fFTdz6BR7i9Rvxo157tbFyQDYmWf4J8Tm001YPl8oT+7
-	AynLAGgWyFCtKhj1gDkHQLS2KB3K6RMjinXXQkkmtlHihopm/QOnrTmjUYKKxtndLEnDvjK3gRv
-	cBgLZuvlGj4hxEKegdWFHje2LNBkHV6hM0po/qqGfX5lvgBo2gt3mOswuWR6h2uyLdJg0/QcPnq
-	xhrsQvc8vWjoN8a8qE2W8RMx223bhf2zk0+BBRqVU4WpSfiD9P7SsJfhY/BOQjF+1hS0w95Z4p8
-	3uFyw7/mxtebl1olpTcWnPL6fa4AHvT1na3Uvo9NF2xqLHck0G+dyyjcXLov3
-X-Received: by 2002:a05:6512:1104:b0:5bf:e341:b175 with SMTP id 2adb3069b0e04-5c003ab5418mr1155367e87.39.1793997627853;
-        Fri, 06 Nov 2026 12:40:27 -0800 (PST)
-Received: from Lauri-G-Pro-14-M4.intra.lakuz.com (n2vuxegy3pwmc89dqti-1.v6.elisa-laajakaista.fi. [2001:99a:2ab:bb00:c40d:a019:da27:d206])
-        by smtp.gmail.com with ESMTPSA id 2adb3069b0e04-5c00306f939sm494383e87.52.2026.11.06.12.40.27
-        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
-        Fri, 06 Nov 2026 12:40:27 -0800 (PST)
-From: Lauri Gates <lauri.gates@gmail.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Dave Chinner <dgc@kernel.org>,
-	linux-xfs@vger.kernel.org,
-	Carlos Maiolino <cem@kernel.org>,
-	Christian Brauner <christian@brauner.io>,
-	"Darrick J. Wong" <djwong@kernel.org>,
-	linux-api@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-btrfs@vger.kernel.org,
-	ocfs2-devel@lists.linux.dev,
-	linux-nfs@vger.kernel.org,
-	linux-cifs@vger.kernel.org
-Subject: Re: Concurrent FIEMAP on reflinked files serialises on the AGF buffer lock
-Date: Fri,  6 Nov 2026 22:40:26 +0200
-Message-ID: <20261106204026.14530-1-lauri.gates@gmail.com>
-X-Mailer: git-send-email 2.56.0
-In-Reply-To: <au3wJNbRPXQZG5Op@infradead.org>
-References: <au3wJNbRPXQZG5Op@infradead.org>
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dyhP/ub0
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1AF401F008A1;
+	Fri,  6 Nov 2026 20:40:52 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793997652;
+	bh=dDcga8x1t2Mz0U84bROvlxnSmjwl5bpBj7aWQNiL0h0=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=dyhP/ub0J+BV2YPEXBSPQfpU9KBYBM5TcGAB85azW6t94gZqYigg3k4PGLLnefySt
+	 EmrPxky3zcGtnvmkX5jLaHgJiK5+TYvC0z6ehszaWCGw7oL7qbA9LhPZnPlJvbNVlZ
+	 8Kkoua7fv96BqfzLCPOj35CnAXgeoZVQHliBHt0MB7Xq35XKGifvU5GTruBTISkuEH
+	 yLJ0nsOYoSiXItN9KM/9nW2c7+TwHgLGYi+qGwAx+lZFIG3nxAjn2mOKwLx2f2ndbq
+	 TPlj0MOoP+9YEhZdjaUs1lE0GFA+L6FpugMIN210chNkpBu7ge4TmzYVTugzk+mWcL
+	 Glg2VPfKSSV+g==
+From: Jeff Layton <jlayton@kernel.org>
+Date: Fri, 06 Nov 2026 15:40:28 -0500
+Subject: [PATCH v2 2/5] nfsd: Honor delegated timestamps when change and
+ size match
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -107,149 +53,494 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261106-deleg-cb-getattr-times-v2-2-8433618ab9a1@kernel.org>
+References: <20261106-deleg-cb-getattr-times-v2-0-8433618ab9a1@kernel.org>
+In-Reply-To: <20261106-deleg-cb-getattr-times-v2-0-8433618ab9a1@kernel.org>
+To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>
+Cc: Tom Haynes <loghyr@gmail.com>, linux-nfs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=17112; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=Vv37uF8tVTPFFbGKVGgftIcWhDT9s/pK60Gif7/Qx/k=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq7jtRI2abCGQd4CaX2vCCZT6DN/pxXt91fFOvE
+ 9QQ3rSwZIeJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCau47UQAKCRAADmhBGVaC
+ FX5vD/0eKko3r7SQuwTU9au7crZgkKr/aoebSoscMdDsSy/F/P9hSoVyczvwDBLdOEr+gOPo0Al
+ FUVMcozIU+lBdfsA0twV0jVx2sATv3uLExFxi1AZBT9sukCUXLaB3OSQnyaasJYMQ6SlvLM79gA
+ 2PeI5dz/cfg55gXdoQAgag3059/DHuDI0uhGiiQzw3BXpmH6jeE7+QQpZCbXofSUdMfcy6C0jEg
+ he0pYaR7DAuninHKvan6ggL7TVQYEcuCpP2vo26RvH8B3sRT/jFdwHMZMNF7UP9tlJlJTf1uaSI
+ LPsWir5hZglcaen0UROU/IgyN3Jm4dRbAeBSOvWe8KoanIz+Nltrm0rHQ0Y2lpHJlGzPtE8a9a2
+ 1e0fH2pgl0MnLTJSsaLbYmIsLRVOxs57iZsQ1I7P9F/KRqEQ0gVA+fEi31W7VKeja+rNNRYLv/1
+ OcgSOnny1amdUZqrX7a3sqEy4DTN/x6daMtPEcOPbyuPRS2gYiAUQgn0FtPsy6uUPfl+ksy2Awa
+ bWEo+l0bTKKQwDRRhfng+JMLqCXpBriCs38Cq8+RgvPk3kUn8c5qfHhDW+pyhh8THLpR4lq+u9L
+ IxhiCMWjUoZv1KMOPsw17rF2UIUtwKAKYXp4+TDxylpCbvxZsUHAwjgWWH4GlBwyoW5ys1CgKET
+ d7jESl/mjrD3oSQ==
+X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
+ fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-On Fri, Nov 06, 2026 at 07:20:04AM -0800, Christoph Hellwig wrote:
-> Please do.  The main question are:
->
->  - do we want it in fileattr_get or as a STATX_ATTR_ in statx.
->  - how do we make the query reliable, and do we even need to?
+nfsd4_deleg_getattr_conflict() applies time_deleg_access and
+time_deleg_modify from a CB_GETATTR reply only when the reply's change
+attribute or size differs from the server's. RFC 9754 section 5 makes
+the holder of a timestamp delegation the authority for atime and mtime,
+and puts no such condition on accepting them.
 
-Thanks. For the newly Cc'd lists: the thread [1] started from du-like
-tools that call FIEMAP on every file to count shared extents, which on
-XFS serialises on the AGF buffer lock. Dave suggested a per-file "may
-have shared extents" flag so such tools can skip FIEMAP on files that
-cannot share, and Christoph asked for a patch. Before writing one I'd
-like to settle the two questions above and the "two bits" question
-below.
+Because the delegation's file has FMODE_NOCMTIME, the holder's WRITEs
+change neither mtime nor the change attribute on the server. After a
+flushed WRITE, the CB_GETATTR reply matches on change and size, the
+holder's mtime is dropped, and other clients see new data with the
+pre-WRITE mtime. Since commit 304d81a2fbf2 ("nfsd: fix file change
+detection in CB_GETATTR") compares against the current file size, this
+also hits flushed extending WRITEs. Holder reads lose the atime the
+same way.
 
-To see what the flag would buy, I emulated it: a walker that calls
-statx() on every file and runs open + FIEMAP + close only on files
-whose XFS_DIFLAG2_REFLINK was set, read beforehand with xfs_db -r. In
-all 80 configurations (trees 0-100% reflinked, 1-24 threads, two
-machines) it found the same shared files and extents as FIEMAP on
-every file.
+- For timestamp delegations, always vet and apply the CB_GETATTR
+  times. Set ATTR_FORCE: the times are the holder's, and the GETATTR
+  caller need not own the file.
+- Record applied times in dl_[amc]time so a repeated CB_GETATTR reply
+  doesn't reapply them. Vet and record under inode_lock.
+- dl_[amc]time now change after the grant, so vet a SETATTR's delegated
+  times in nfsd_setattr() under the same inode_lock. Otherwise a
+  CB_GETATTR can advance them between vetting and applying, and the
+  SETATTR moves the times backward.
+- Mark the file modified if mtime advanced, or if dl_written shows a
+  holder WRITE whose mtime didn't pass dl_mtime (clock skew).
+- Setting atime can bump i_version, which would leak into the stat-based
+  change attribute and later go backwards against ++ncf_initial_cinfo.
+  For timestamp delegations, always report ncf_initial_cinfo instead.
+- The holder's own server-side changes (SETATTR, xattrs, fallocate,
+  LINK, ...) neither break its delegation nor show up in its CB_GETATTR
+  reply. Save the server's change attribute at grant and after each of
+  our timestamp updates, and mark the file modified if it moved
+  otherwise. dl_written can't be used: it would stamp mtime at
+  DELEGRETURN.
+- Log, rather than fail the GETATTR, if applying the holder's times
+  fails.
+- Annotate the lockless ncf_file_modified and dl_written accesses.
 
-On placement, a STATX_ATTR_ bit (say STATX_ATTR_MAY_SHARE) looks like
-the better fit to me, for two reasons, though I may well be missing
-history here.
+Fixes: 6ae30d6eb26b ("nfsd: add support for delegated timestamps")
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/nfsd/nfs4proc.c  |  43 ++++-----------
+ fs/nfsd/nfs4state.c | 147 ++++++++++++++++++++++++++++++++++++++++++++--------
+ fs/nfsd/nfs4xdr.c   |   4 +-
+ fs/nfsd/state.h     |   4 +-
+ fs/nfsd/vfs.c       |   4 ++
+ fs/nfsd/vfs.h       |  13 +++++
+ 6 files changed, 157 insertions(+), 58 deletions(-)
 
-A du walk needs statx() for stx_blocks anyway, so a bit in
-stx_attributes would cost it no extra syscall, while the path-based
-file_getattr(2) adds a second call and lookup per file. Median of 5
-runs, 100,000 files, warm cache, Ryzen 9 3900X on 6.17:
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 03ea955f1fe9..4e5d5852bf57 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1338,35 +1338,6 @@ nfsd4_secinfo_no_name_release(union nfsd4_op_u *u)
+ 		exp_put(u->secinfo_no_name.sin_exp);
+ }
+ 
+-/*
+- * Validate that the requested timestamps are within the acceptable range. If
+- * timestamp appears to be in the future, then it will be clamped to
+- * current_time().
+- */
+-static void
+-vet_deleg_attrs(struct nfsd4_setattr *setattr, struct nfs4_delegation *dp)
+-{
+-	struct timespec64 now = current_time(dp->dl_stid.sc_file->fi_inode);
+-	struct iattr *iattr = &setattr->sa_iattr;
+-
+-	if ((setattr->sa_bmval[2] & FATTR4_WORD2_TIME_DELEG_ACCESS) &&
+-	    !nfsd4_vet_deleg_time(&iattr->ia_atime, &dp->dl_atime, &now))
+-		iattr->ia_valid &= ~(ATTR_ATIME | ATTR_ATIME_SET);
+-
+-	if (setattr->sa_bmval[2] & FATTR4_WORD2_TIME_DELEG_MODIFY) {
+-		if (nfsd4_vet_deleg_time(&iattr->ia_mtime, &dp->dl_mtime, &now)) {
+-			iattr->ia_ctime = iattr->ia_mtime;
+-			if (nfsd4_vet_deleg_time(&iattr->ia_ctime, &dp->dl_ctime, &now))
+-				dp->dl_setattr = true;
+-			else
+-				iattr->ia_valid &= ~(ATTR_CTIME | ATTR_CTIME_SET);
+-		} else {
+-			iattr->ia_valid &= ~(ATTR_CTIME | ATTR_CTIME_SET |
+-					     ATTR_MTIME | ATTR_MTIME_SET);
+-		}
+-	}
+-}
+-
+ static __be32
+ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	      union nfsd4_op_u *u)
+@@ -1378,10 +1349,11 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		.na_pacl	= posix_acl_dup(setattr->sa_pacl),
+ 		.na_dpacl	= posix_acl_dup(setattr->sa_dpacl),
+ 	};
+-	bool save_no_wcc, deleg_attrs;
+ 	struct nfs4_stid *st = NULL;
+ 	struct inode *inode;
+ 	__be32 status = nfs_ok;
++	bool save_no_wcc;
++	u32 deleg_attrs;
+ 	int err;
+ 
+ 	deleg_attrs = setattr->sa_bmval[2] & (FATTR4_WORD2_TIME_DELEG_ACCESS |
+@@ -1407,13 +1379,13 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 			/* Only for *_ATTRS_DELEG flavors */
+ 			if (deleg_attrs_deleg(dp->dl_type)) {
+-				vet_deleg_attrs(setattr, dp);
++				/* nfsd_setattr() vets them under inode_lock */
++				attrs.na_deleg = dp;
++				attrs.na_deleg_attrs = deleg_attrs;
+ 				status = nfs_ok;
+ 			}
+ 		}
+ 	}
+-	if (st)
+-		nfs4_put_stid(st);
+ 	if (status)
+ 		goto out_err;
+ 
+@@ -1452,6 +1424,8 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ out:
+ 	fh_drop_write(&cstate->current_fh);
+ out_err:
++	if (st)
++		nfs4_put_stid(st);
+ 	nfsd_attrs_free(&attrs);
+ 	return status;
+ }
+@@ -1463,8 +1437,9 @@ static void nfsd4_file_mark_deleg_written(struct nfs4_file *fi)
+ 		struct nfs4_delegation *dp = list_first_entry(&fi->fi_delegations,
+ 							      struct nfs4_delegation, dl_perfile);
+ 
++		/* Read locklessly by nfsd4_deleg_getattr_conflict() */
+ 		if (dp->dl_type == OPEN_DELEGATE_WRITE_ATTRS_DELEG)
+-			dp->dl_written = true;
++			WRITE_ONCE(dp->dl_written, true);
+ 	}
+ 	spin_unlock(&fi->fi_lock);
+ }
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index cd70d86f4bc6..8306a647fe9b 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1472,7 +1472,7 @@ static void nfsd4_finalize_deleg_timestamps(struct nfs4_delegation *dp, struct f
+ 	spin_unlock(&f->f_lock);
+ 
+ 	/* was it never written? */
+-	if (!dp->dl_written)
++	if (!READ_ONCE(dp->dl_written))
+ 		return;
+ 
+ 	/* did it get a setattr for the timestamps at some point? */
+@@ -7539,6 +7539,7 @@ nfs4_open_delegation(struct svc_rqst *rqstp, struct nfsd4_open *open,
+ 		open->op_delegate_type = deleg_ts ? OPEN_DELEGATE_WRITE_ATTRS_DELEG :
+ 						    OPEN_DELEGATE_WRITE;
+ 		dp->dl_cb_fattr.ncf_initial_cinfo = nfsd4_change_attribute(&stat);
++		dp->dl_cb_fattr.ncf_srv_cinfo = dp->dl_cb_fattr.ncf_initial_cinfo;
+ 		dp->dl_atime = stat.atime;
+ 		dp->dl_ctime = stat.ctime;
+ 		dp->dl_mtime = stat.mtime;
+@@ -10718,16 +10719,82 @@ bool nfsd4_vet_deleg_time(struct timespec64 *req, const struct timespec64 *orig,
+ 	return true;
+ }
+ 
+-static int cb_getattr_update_times(struct dentry *dentry, struct nfs4_delegation *dp)
++/**
++ * nfsd4_vet_deleg_attrs - vet the delegated timestamps in a SETATTR
++ * @iattr: attributes to be set
++ * @dp: timestamp delegation held by the SETATTR's sender
++ * @deleg_attrs: FATTR4_WORD2_TIME_DELEG_* bits in the SETATTR
++ *
++ * Drop requested timestamps that don't pass nfsd4_vet_deleg_time(), and
++ * clamp ones in the future. The caller holds the inode_lock across this
++ * and applying @iattr, so cb_getattr_update_times() can't move dl_*time
++ * in between.
++ */
++void nfsd4_vet_deleg_attrs(struct iattr *iattr, struct nfs4_delegation *dp,
++			   u32 deleg_attrs)
++{
++	struct inode *inode = dp->dl_stid.sc_file->fi_inode;
++	struct timespec64 now = current_time(inode);
++
++	lockdep_assert_held_write(&inode->i_rwsem);
++
++	if ((deleg_attrs & FATTR4_WORD2_TIME_DELEG_ACCESS) &&
++	    !nfsd4_vet_deleg_time(&iattr->ia_atime, &dp->dl_atime, &now))
++		iattr->ia_valid &= ~(ATTR_ATIME | ATTR_ATIME_SET);
++
++	if (deleg_attrs & FATTR4_WORD2_TIME_DELEG_MODIFY) {
++		if (nfsd4_vet_deleg_time(&iattr->ia_mtime, &dp->dl_mtime, &now)) {
++			iattr->ia_ctime = iattr->ia_mtime;
++			if (nfsd4_vet_deleg_time(&iattr->ia_ctime, &dp->dl_ctime, &now))
++				dp->dl_setattr = true;
++			else
++				iattr->ia_valid &= ~(ATTR_CTIME | ATTR_CTIME_SET);
++		} else {
++			iattr->ia_valid &= ~(ATTR_CTIME | ATTR_CTIME_SET |
++					     ATTR_MTIME | ATTR_MTIME_SET);
++		}
++	}
++}
++
++static int nfsd4_srv_cinfo(const struct path *path, u64 *cinfo)
+ {
+-	struct inode *inode = d_inode(dentry);
++	struct kstat stat;
++	int ret;
++
++	ret = vfs_getattr(path, &stat,
++			  STATX_MODE | STATX_CTIME | STATX_CHANGE_COOKIE,
++			  AT_STATX_SYNC_AS_STAT);
++	if (!ret)
++		*cinfo = nfsd4_change_attribute(&stat);
++	return ret;
++}
++
++static void cb_getattr_update_times(const struct path *path,
++				    struct nfs4_delegation *dp)
++{
++	struct inode *inode = d_inode(path->dentry);
+ 	struct nfs4_cb_fattr *ncf = &dp->dl_cb_fattr;
+ 	struct iattr attrs = { };
++	u64 cinfo;
+ 	int ret;
+ 
++	/* Serialize vetting against dl_*time with their update below */
++	inode_lock(inode);
+ 	if (deleg_attrs_deleg(dp->dl_type)) {
+ 		struct timespec64 now = current_time(inode);
+ 
++		/*
++		 * The holder's own SETATTRs, xattr changes, fallocates, LINKs
++		 * etc. don't break its delegation and don't show up in its
++		 * CB_GETATTR reply. Any change to the server's change
++		 * attribute other than our own timestamp updates is one of
++		 * those.
++		 */
++		if (!READ_ONCE(ncf->ncf_file_modified) &&
++		    (nfsd4_srv_cinfo(path, &cinfo) ||
++		     cinfo != ncf->ncf_srv_cinfo))
++			WRITE_ONCE(ncf->ncf_file_modified, true);
++
+ 		attrs.ia_atime = ncf->ncf_cb_atime;
+ 		attrs.ia_mtime = ncf->ncf_cb_mtime;
+ 
+@@ -10740,24 +10807,55 @@ static int cb_getattr_update_times(struct dentry *dentry, struct nfs4_delegation
+ 			if (nfsd4_vet_deleg_time(&attrs.ia_ctime, &dp->dl_ctime, &now))
+ 				attrs.ia_valid |= ATTR_CTIME | ATTR_CTIME_SET;
+ 		}
++
++		/*
++		 * The times are the holder's, so don't hold the GETATTR
++		 * caller to the owner check for setting them.
++		 */
++		if (attrs.ia_valid)
++			attrs.ia_valid |= ATTR_FORCE;
+ 	} else {
+ 		attrs.ia_valid |= ATTR_MTIME | ATTR_CTIME;
+ 	}
+ 
+ 	if (!attrs.ia_valid)
+-		return 0;
++		goto out_unlock;
+ 
+ 	attrs.ia_valid |= ATTR_DELEG;
+-	inode_lock(inode);
+-	ret = notify_change(&nop_mnt_idmap, dentry, &attrs, NULL);
++	ret = notify_change(&nop_mnt_idmap, path->dentry, &attrs, NULL);
++	if (ret) {
++		/* Don't fail the GETATTR over the holder's times */
++		pr_notice_ratelimited("nfsd: Unable to apply delegated timestamps on inode %02x:%02x:%llu: %d\n",
++				      MAJOR(inode->i_sb->s_dev),
++				      MINOR(inode->i_sb->s_dev),
++				      inode->i_ino, ret);
++		goto out_unlock;
++	}
++
++	/* Don't reapply the same times on every CB_GETATTR */
++	if (attrs.ia_valid & ATTR_ATIME_SET)
++		dp->dl_atime = attrs.ia_atime;
++	if (attrs.ia_valid & ATTR_CTIME_SET)
++		dp->dl_ctime = attrs.ia_ctime;
++	if (attrs.ia_valid & ATTR_MTIME_SET) {
++		dp->dl_mtime = attrs.ia_mtime;
++		/*
++		 * FMODE_NOCMTIME kept the holder's WRITEs from bumping the
++		 * change attribute; a newer delegated mtime is evidence of
++		 * them.
++		 */
++		WRITE_ONCE(ncf->ncf_file_modified, true);
++	}
++	if (deleg_attrs_deleg(dp->dl_type) && !nfsd4_srv_cinfo(path, &cinfo))
++		ncf->ncf_srv_cinfo = cinfo;
++out_unlock:
+ 	inode_unlock(inode);
+-	return ret;
+ }
+ 
+ /**
+  * nfsd4_deleg_getattr_conflict - Recall if GETATTR causes conflict
+  * @rqstp: RPC transaction context
+- * @dentry: dentry of inode to be checked for a conflict
++ * @path: path of inode to be checked for a conflict
+  * @pdp: returned WRITE delegation, if one was found
+  *
+  * This function is called when there is a conflict between a write
+@@ -10772,7 +10870,7 @@ static int cb_getattr_update_times(struct dentry *dentry, struct nfs4_delegation
+  * caller must put the reference.
+  */
+ __be32
+-nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp, struct dentry *dentry,
++nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp, const struct path *path,
+ 			     struct nfs4_delegation **pdp)
+ {
+ 	struct nfsd_thread_local_info *ntli = rqstp->rq_private;
+@@ -10780,7 +10878,7 @@ nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp, struct dentry *dentry,
+ 	struct nfs4_delegation *dp = NULL;
+ 	struct file_lease *fl;
+ 	struct nfs4_cb_fattr *ncf;
+-	struct inode *inode = d_inode(dentry);
++	struct inode *inode = d_inode(path->dentry);
+ 	__be32 status;
+ 
+ 	ctx = locks_inode_context(inode);
+@@ -10830,25 +10928,32 @@ nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp, struct dentry *dentry,
+ 		status = nfs_ok;
+ 		goto out_status;
+ 	}
+-	if (!ncf->ncf_file_modified) {
++	if (!READ_ONCE(ncf->ncf_file_modified)) {
+ 		if (ncf->ncf_initial_cinfo != ncf->ncf_cb_change)
+-			ncf->ncf_file_modified = true;
++			WRITE_ONCE(ncf->ncf_file_modified, true);
+ 		else if (i_size_read(inode) != ncf->ncf_cb_fsize)
+-			ncf->ncf_file_modified = true;
++			WRITE_ONCE(ncf->ncf_file_modified, true);
++		/* FMODE_NOCMTIME hid flushed WRITEs from the change attribute */
++		else if (READ_ONCE(dp->dl_written))
++			WRITE_ONCE(ncf->ncf_file_modified, true);
+ 	}
+-	if (ncf->ncf_file_modified) {
+-		int err;
+-
++	/*
++	 * The holder of a timestamp delegation is the authority for atime
++	 * and mtime (RFC 9754, section 5), even if change and size match.
++	 * Applying them can bump i_version, so for these delegations the
++	 * reply always takes its change attribute from ncf_initial_cinfo.
++	 */
++	if (READ_ONCE(ncf->ncf_file_modified) || deleg_attrs_deleg(dp->dl_type)) {
+ 		/*
+ 		 * Per section 10.4.3 of RFC 8881, the server would
+ 		 * not update the file's metadata with the client's
+ 		 * modified size
+ 		 */
+-		err = cb_getattr_update_times(dentry, dp);
+-		if (err) {
+-			status = nfserrno(err);
+-			goto out_status;
+-		}
++		cb_getattr_update_times(path, dp);
++		/*
++		 * Set even if unmodified: another thread may set
++		 * ncf_file_modified before our caller encodes the reply.
++		 */
+ 		ncf->ncf_cur_fsize = ncf->ncf_cb_fsize;
+ 		*pdp = dp;
+ 		return nfs_ok;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 434b6cfc5741..c6e0cfba07da 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -4084,7 +4084,7 @@ nfsd4_encode_fattr4(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 	    (attrmask[1] & (FATTR4_WORD1_TIME_ACCESS |
+ 			    FATTR4_WORD1_TIME_MODIFY |
+ 			    FATTR4_WORD1_TIME_METADATA))) {
+-		status = nfsd4_deleg_getattr_conflict(rqstp, dentry, &dp);
++		status = nfsd4_deleg_getattr_conflict(rqstp, &path, &dp);
+ 		if (status)
+ 			goto out;
+ 	}
+@@ -4095,7 +4095,7 @@ nfsd4_encode_fattr4(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 	if (dp) {
+ 		struct nfs4_cb_fattr *ncf = &dp->dl_cb_fattr;
+ 
+-		if (ncf->ncf_file_modified) {
++		if (READ_ONCE(ncf->ncf_file_modified)) {
+ 			++ncf->ncf_initial_cinfo;
+ 			args.stat.size = ncf->ncf_cur_fsize;
+ 		}
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index d9aecef95bae..9c36076921de 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -212,6 +212,8 @@ struct nfs4_cb_fattr {
+ 
+ 	bool ncf_file_modified;
+ 	u64 ncf_initial_cinfo;
++	/* server change attr after our last timestamp update, under inode_lock */
++	u64 ncf_srv_cinfo;
+ 	u64 ncf_cur_fsize;
+ };
+ 
+@@ -1041,7 +1043,7 @@ static inline bool try_to_expire_client(struct nfs4_client *clp)
+ }
+ 
+ extern __be32 nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp,
+-		struct dentry *dentry, struct nfs4_delegation **pdp);
++		const struct path *path, struct nfs4_delegation **pdp);
+ 
+ struct nfsd4_get_dir_delegation;
+ struct nfs4_delegation *nfsd_get_dir_deleg(struct nfsd4_compound_state *cstate,
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 02df2ff02d60..c06a834caa26 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -631,6 +631,10 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		}
+ 	}
+ 
++	if (attr->na_deleg)
++		nfsd4_vet_deleg_attrs(iap, attr->na_deleg,
++				      attr->na_deleg_attrs);
++
+ 	for (retries = 1;;) {
+ 		struct iattr attrs;
+ 
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index 73ab9d34a275..0fad264b7aeb 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -103,6 +103,10 @@ struct nfsd_attrs {
+ 	struct posix_acl	*na_pacl;	/* input */
+ 	struct posix_acl	*na_dpacl;	/* input */
+ 
++	/* input: vet these FATTR4_WORD2_TIME_DELEG_* times under inode_lock */
++	struct nfs4_delegation	*na_deleg;
++	u32			na_deleg_attrs;
++
+ 	int			na_labelerr;	/* output */
+ 	int			na_dpaclerr;	/* output */
+ 	int			na_paclerr;	/* output */
+@@ -177,6 +181,15 @@ int		nfsd_clone_file_range(struct file *src, u64 src_pos,
+ 				      u64 count, errseq_t *since);
+ int		nfsd_clone_sync_range(struct file *src, struct file *dst,
+ 				      u64 dst_pos, u64 count, errseq_t since);
++void		nfsd4_vet_deleg_attrs(struct iattr *iattr,
++				      struct nfs4_delegation *dp,
++				      u32 deleg_attrs);
++#else
++static inline void nfsd4_vet_deleg_attrs(struct iattr *iattr,
++					 struct nfs4_delegation *dp,
++					 u32 deleg_attrs)
++{
++}
+ #endif /* CONFIG_NFSD_V4 */
+ __be32		nfsd_create_locked(struct svc_rqst *, struct svc_fh *,
+ 				struct nfsd_attrs *attrs, int type, dev_t rdev,
 
-                               1 thread   24 threads
-    statx()                      195 ms      11.4 ms
-    statx() + file_getattr()     352 ms      19.9 ms
+-- 
+2.56.0
 
-(An arm64 VM on 7.2 shows a smaller gap: statx() alone vs with
-file_getattr() is 79 vs 97 ms on 1 thread, 8.9 vs 11.0 ms on 13.)
-
-The other is that for a "may share" bit, clear is the unsafe answer,
-so a filesystem that cannot answer should not look like one that
-answers "not shared". As I understand it, stx_attributes_mask makes
-that distinction, while struct file_attr has no validity mask today
-(it is size-versioned, so one could be added), so through
-file_getattr() btrfs would currently read as never shared. A spare
-bit in stx_attributes adds no field to struct statx, which I hope
-meets the concern Christian raised about spending statx space on the
-case-folding RFC [2]. If fileattr is preferred, the bit could instead
-mean "no shared extents", so that clear is the safe default, as it is
-for FS_XFLAG_CASEFOLD.
-
-> Besides xfs, btrfs and ocfs2 also support reflinks, and nfs (and maybe
-> cifs?) can export the semanics remotely.  So we really need a way
-> to indicate if the file system could support reflinks to start with,
-> and then one that the file could, so we probably need two bits
-
-For du, I think the mask could stand in for the "could support
-reflinks" bit if it means "this filesystem can answer for this file":
-
-  mask clear            not reported, fall back to FIEMAP
-  mask set, bit clear   no shared extents
-  mask set, bit set     may have shared extents
-
-A filesystem that cannot share extents at all would set the mask and
-leave the bit clear. If I read v7.4-rc1 right, only xfs, btrfs and
-ocfs2 report shared extents, and all three implement
-->remap_file_range, so the VFS might set the mask itself for files
-whose filesystem lacks ->remap_file_range. What I could find per
-filesystem:
-
- - xfs: XFS_DIFLAG2_REFLINK is set on both inodes in
-   xfs_reflink_remap_prep() before any extent is remapped, so clear
-   means no shared extents.
- - ocfs2: OCFS2_HAS_REFCOUNT_FL is set on both inodes before the
-   remap and cleared only at zero clusters, which looks like the same
-   meaning.
- - btrfs: I could not find a persisted per-inode reflink record
-   (last_reflink_trans is in memory only and reset to last_trans when
-   the inode is loaded), so btrfs would leave the bit out of the mask
-   for now. btrfs folks, please correct me if I missed something.
- - nfs, cifs: I could not find a per-file attribute in NFSv4.2 or
-   MS-FSCC that could carry it (space_freed comes closest, and nfsd
-   does not implement it), so no mask bit there.
-
-A filesystem-level "could reflink" bit might be a separate need:
-nfsd encodes clone_blksize for every export and ksmbd advertises
-FILE_SUPPORTS_BLOCK_REFCOUNTING unconditionally, I assume because
-neither can ask the exported filesystem. Did you have nfsd and ksmbd
-in mind for that bit?
-
-On reliability, my tentative answer is that the bit does not need to
-be exact for this use. A clear bit must never be wrong, and it never
-was in my tests, including a survey of my desktop's XFS root (2.0M
-files, flags read with xfs_db -r and matched by inode number). A
-stale set bit costs one FIEMAP, so I would document it as "may have
-shared extents"; since the contract is only "may", clearing it more
-eagerly later would not change the uapi.
-
-Stale bits do limit what it saves, though. The flag stays set when
-the other copy is deleted or the file is overwritten; only truncation
-to zero and FALLOC_FL_UNSHARE_RANGE (see the caveat below) clear it.
-Ordinary copies set it: coreutils 9.4 cp and install, cat (which
-copies with copy_file_range), Rust's std::fs::copy, and overlayfs
-copy-up all reflink on XFS. On my desktop, leaving out benchmark
-trees, 18% of inodes have the flag and 41% of those share nothing.
-That leaves out ~/.rustup too: an earlier test reflink-copied it, so
-all of its 132k inodes are flagged and none share; counting it, the
-figures are 25% and 62%.
-
-On real trees (24 threads, median of 5), statx() on every file, then
-open + FIEMAP + close on every file, on flagged files, or on files
-with shared extents only, the lower bound for a flag cleared when
-sharing ends (/usr has no shared files):
-
-                       statx only  every file  flagged  shared only
-  /usr      224k files      28 ms      264 ms    29 ms       -
-  ~/.local  372k files      63 ms      506 ms   487 ms    322 ms
-  ~/.rustup 132k files      20 ms      319 ms   318 ms     21 ms
-
-Would there be a reasonable point for XFS to clear the flag once
-sharing ends? I don't know the code well enough to tell what that
-would cost.
-
-The caveat, which may be unintended or may be my misreading:
-FALLOC_FL_UNSHARE_RANGE over a whole shared file does not clear the
-flag on the first call. bpftrace on 7.2 shows
-xfs_reflink_clear_inode_flag() entered and
-xfs_reflink_inode_has_shared_extents() not, so it looks like
-xfs_can_free_cowblocks() returned false, perhaps on I_DIRTY_PAGES
-left by the unshare. A second call after sync clears the flag.
-
-On Darrick's XFS_IOC_GETFSREFCOUNTS patch from your other mail:
-thanks for the pointer. It gives a device-wide total without
-privileges, which a du tool could show for the whole filesystem,
-though not per directory.
-
-If the statx direction sounds reasonable, I would be glad to put
-together an RFC with the uapi bit, xfs and ocfs2 support, a man-pages
-patch and an xfstest. This would be my first kernel patch, so
-corrections on any of the above are very welcome.
-
-[1] https://lore.kernel.org/linux-xfs/20261102193533.93690-1-lauri.gates@gmail.com/
-[2] https://lore.kernel.org/all/20251006-zypressen-paarmal-4167375db973@brauner/
-
-Thanks,
-Lauri
