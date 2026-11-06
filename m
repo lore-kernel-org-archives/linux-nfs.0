@@ -1,53 +1,53 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793989271;
-	b=ORvI7svtnWU2i3AqDbxj2uEORQamMRpjnwtrA/FgAEA/6L521Vx8CX2TnkhaLJ4zHfZu
-	 1QkvnRLlh1l13KmFUJVQcF5fTycm0Ov13+LKxUBAvptdluN7t5A1T40lpk8UB88G+5Meh
-	 iFcnl/9yIEmZkRH8d0JzVXou+PjgpeVNBsWP6mV0iGvGGmMgaVi6CPmwYr7gAswMfXAr7
-	 HtQvfQEnsniiL9OSjORiIgCPjJ+mfCcp5O476jBx/ubWqnBqKUJHkswHgr7WbnP2lktXh
-	 thuuGw6H4j1IUY8E65inQerSOyVsYoNtTPz+rgD8UKf5OlWSw91jQep35QG9kGhMaog==
+	t=1793989272;
+	b=mRDZ7XLjdRihO1psc+p3NuHM4W0cYrfIz5mFvzgLVlxQhd3aSUGiI8LOL93j4BPC/jxh
+	 Nc/kmeAgD3hEZIm3qSq6otf5Jnow9U2EwWCQqrL0hBlBD9HvD3hKiJREoyMgg2wsUW5TX
+	 K8DnfzhUzLQEzYzf7vENn+ltmG4+KrOlZ704jjJ9qX4QZuS7/F6USVjZRmKvP+xdXi/OQ
+	 UmGo4QOWDMMaoA1BtXEPbYllLcGEhER3wfcl6L/Cm951m7PZeuEBbrKEaU5IuLtk6LzkX
+	 3xBqI5ql71DnF74ejRJphrEsv6LkLfYJS/T/XqLuhEPgdXbB9FfylM1o/43dp6fD6pg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793989271;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793989272;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=IsXnZ1MXVzfLWspghA+5iaTXafuT2NhbQMWE9mfFUIA=;
-	b=zpSeA8An0jydW6W+6qbCVroRXI3nFIeXBPEjfETm12XW5uOYbzUf/5tPCEQLEtzhG2Fb
-	 GBnsBfnOviabMKh2zOImRx/4E2PaF7FA3LsD7UheyPSrAIZJ/Yl2gH/GELZ9GRd1HOVSb
-	 a45Q04twFdEm/d29B8G1Do+BE+GG5KK21Ac9tiVprYMWFVln6E8TnwtSQ7JVH3QsNWb3w
-	 85UnE4Ru2hgqffNox4Pwr3Hq23fQNmrn3jdoeGuc4+cGgZJQOS+tpep1JrT+0d2zbGDz7
-	 2dH88flib3fj11NlgrsM9OQi8cqfBMx96f7VREsHkD+u7WRPeaqYSX3jQz5a0Mtu4og==
+	bh=ObXserv6wK0CP8wT5BlMaXZtcyvdz4dAegxnXRrJDGY=;
+	b=HIp6bQkSj9xsiAXuRHNZAIqzyerTPYivvATinuBP/nvchX4smWAFlDJZLJfOr2mpSmzb
+	 twks0eezZcTMNBUnqxWFY8S64+7o1FC+6/Y6IT8n0flBaVFANyXBBgGRP+86wsKlZJRaC
+	 80fD5v76JjJaEnI3im0Dic19YZqefSjc2YA6eXRbEx1Jd/NSV3MNJB6uRGYn/JbdKY5fL
+	 If4KuLdCQQXn/q60d4O4CsSC95y51KPe4rc/cEq3fTuZ5S6EIEfK12Fo56a4Xp2zwrMB8
+	 1OstEwK9T+SMbN2oZXOS+jS70/l8Sv7opA/TzTlyLi8h00PWzZejYJn7ROkpl65XAFw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZJ5PQlzi;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AcLih41h;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F178E606A32C
-	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 18:21:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 004C6606A32C
+	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 18:21:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZJ5PQlzi
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 66B6B1F008A5;
-	Fri,  6 Nov 2026 18:21:10 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AcLih41h
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9F17B1F008A7;
+	Fri,  6 Nov 2026 18:21:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793989270;
-	bh=IsXnZ1MXVzfLWspghA+5iaTXafuT2NhbQMWE9mfFUIA=;
+	s=k20260515; t=1793989271;
+	bh=ObXserv6wK0CP8wT5BlMaXZtcyvdz4dAegxnXRrJDGY=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=ZJ5PQlzi74oqe8uTLjShUMRTJE1Esk7v6i+d2j6P8de4Y2hHpLBvDKqQ1bqnGPZAq
-	 qV8gUnq9f3cYg7QfwmXLYtNIOvWzMhIr1XKpFVbXzgBXyxYYw3psFtoRJ7tBUyRHOa
-	 0T3rMh1zh2tcSCoTm7eqfNnQzhFC7ig5QjGmELX7N4pmVFhXH8HbL/SaFIfN+riIZz
-	 c3A36X4eJVrvFRiRnLxcggbVMQE2mIpxSgvXFlL999NlW1t1yx3VdM0iLn897L0bkP
-	 BW492+p/o7G63OEasJbbkafGxwHwwv1ALurxby2EgSH2wjlsS+uuM8f+x/E4WVyYjB
-	 3Yli5kP3PN/eg==
+	b=AcLih41h8AvpUp9G8O48i32M/OwnQ3PUtOedX9RFVoNfzIBZMnAtQo5zHY6i3Rxwz
+	 yiYW04qNGkUqXj2R1GXW7iu9jOB/GV/nRyons0DzyMaUSv2n2eCEPoPzBL3UmGdyAy
+	 /BbkoHOq/UfkNbj280oFgl8McY9ltr8ES7pmeZYBFpR02jC6XNMZuMIFl5YaGIiLKy
+	 BC85R2g8NwEsR6jR+qWbg4FiUaAJsusMywstocsf/ltNJA2o9bvyIc4THucVniN8So
+	 na1j/eOa/0kdLKC9uVGAWJusaDrVlGzx34+mq9eAR/lfTLR6ykz5SclWMnkg89eHT5
+	 o1rHnzx7ZLlkA==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Anna Schumaker <anna@kernel.org>,
 	Trond Myklebust <trondmy@kernel.org>
-Cc: Jonathan Flynn <jonathan.flynn@hammerspace.com>,
+Cc: Mike Snitzer <snitzer@hammerspace.com>,
 	linux-nfs@vger.kernel.org,
-	Mike Snitzer <snitzer@hammerspace.com>
-Subject: [PATCH v3 02/12] NFSv4/flexfiles: drop the now-unused per-mirror lock
-Date: Fri,  6 Nov 2026 13:20:50 -0500
-Message-ID: <20261106182105.78611-3-snitzer@kernel.org>
+	Jonathan Flynn <jonathan.flynn@hammerspace.com>
+Subject: [PATCH v3 03/12] NFSv4/flexfiles: cacheline align the per-stripe layoutstats
+Date: Fri,  6 Nov 2026 13:20:51 -0500
+Message-ID: <20261106182105.78611-4-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20261106182105.78611-1-snitzer@kernel.org>
 References: <20261106182105.78611-1-snitzer@kernel.org>
@@ -62,41 +62,48 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: Jonathan Flynn <jonathan.flynn@hammerspace.com>
+From: Mike Snitzer <snitzer@hammerspace.com>
 
-After the previous patch, nothing takes mirror->lock.  Remove it.
+With a lock per stripe, stripes no longer share a lock, but they still
+share cachelines.  struct nfs4_ff_layout_ds_stripe is 296 bytes with
+8-byte alignment.  So in mirror->dss[], each stripe starts 40 bytes
+further into a cacheline than the one before.  Taking stripe i's lock
+invalidates the line with stripe i+1's lock and counters.
 
-Signed-off-by: Jonathan Flynn <jonathan.flynn@hammerspace.com>
+Cacheline align the lock.  The guarded members then start on a line
+boundary.  The struct's alignment of 64 also rounds sizeof() up to a
+multiple of 64.  So each stripe in the array starts on its own line.
+
+The stripe grows from 296 to 384 bytes, 2816 bytes for a 32-stripe
+layout.  The array base is aligned too: kvmalloc() gets it from a
+kmalloc bucket of 512 bytes or more, or from vmalloc().
+
 Signed-off-by: Mike Snitzer <snitzer@hammerspace.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 1 -
- fs/nfs/flexfilelayout/flexfilelayout.h | 1 -
- 2 files changed, 2 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.h | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 7bd88f596e888..57cd8b5d6d71d 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -280,7 +280,6 @@ static struct nfs4_ff_layout_mirror *ff_layout_alloc_mirror(u32 dss_count,
- 	if (mirror == NULL)
- 		return NULL;
- 
--	spin_lock_init(&mirror->lock);
- 	refcount_set(&mirror->ref, 1);
- 	INIT_LIST_HEAD(&mirror->mirrors);
- 
 diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
-index 3f94a08c30305..0e94bc289746c 100644
+index 0e94bc289746c..9ce09e02f1ad9 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayout.h
 +++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-@@ -99,7 +99,6 @@ struct nfs4_ff_layout_mirror {
- 	u32				dss_count;
- 	struct nfs4_ff_layout_ds_stripe *dss;
- 	refcount_t			ref;
+@@ -14,6 +14,7 @@
+ #define FF_FLAGS_NO_IO_THRU_MDS  2
+ #define FF_FLAGS_NO_READ_IO      4
+ 
++#include <linux/cache.h>
+ #include <linux/refcount.h>
+ #include "../pnfs.h"
+ 
+@@ -87,7 +88,7 @@ struct nfs4_ff_layout_ds_stripe {
+ 	const struct cred __rcu		*rw_cred;
+ 	struct nfs_file_localio		nfl;
+ 	/* Protects read_stat, write_stat and start_time below */
 -	spinlock_t			lock;
- 	unsigned long			flags;
- 	u32				report_interval;
- };
++	spinlock_t			lock ____cacheline_aligned_in_smp;
+ 	struct nfs4_ff_layoutstat	read_stat;
+ 	struct nfs4_ff_layoutstat	write_stat;
+ 	ktime_t				start_time;
 -- 
 2.52.0
 
