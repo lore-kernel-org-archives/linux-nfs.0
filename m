@@ -1,56 +1,73 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793977324;
-	b=GRSF4CZdDV8q+2JQsAOStNiSDf7X3bu/X+MSEcDZebXJMZRVxXf4yfYBAAGm7gE44q3v
-	 fGEL5MmLVkqh9EvP48MjWOpYH8XiiwZnSiTBe/3XZIUZmiKOL7lDWntb0sfMeXSe59RS1
-	 HwLEoq2wUYxprJNY8sO6Ej7e760DXAHQ5tHGVWhN3AialKzQleMRSrXJWRKNyfq6i6kJM
-	 2bw+t5NKWH0QwCe5PdM7ck2XU361QgdnC3JHmxpNDYyT3xyHINv0gb8Fj2ZEU9we4wiHR
-	 oDhr7Lyj4e3xBuDriKPJQoElQ402mzG3G2Dwi6J8eDlAMDw99ipVqCTbOYh1nZFlamQ==
+	t=1793977642;
+	b=gEOOzEvIpC8UxSB9TXrVUou0jgrk9qU/7mGQPpe92mD/vSrxeivyps1FPOmNqvk9imx1
+	 6MfXxerShAhqInfl203ckCR5aaznsSfv6X6pVcD59PmtXxXMQIt/SSr0qH4EZTdin8V47
+	 jG2WU4yh2+LJf1ACD2tUUQ9ufPGLyW8sZW93Cnwc8bJwCjWfblLzkntlsvQz0odWkXiFj
+	 vTu4VLlTuSut+ZuxQVHcR1JMvOiJu874XcbuQdfJg3e2FcVuDA/hsgD1nkLLiSlkDzDJc
+	 JmVKbtzTspuv33wO6VRl6x0eiJHkjkstU3bTL0UWd7pUpjDLFbYEA7mT4Q/TOaNEQig==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793977324;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=OJGwMOZr8wszMXP4PUI9DRebX0Fe8M4M+JLp3x5FAMo=;
-	b=dM1LOeXUGvIAn9nTUjZL/it8ehIli8+DDEBer3Kwsay61kDG3U6LvhMyXGjtfbAhF2X7
-	 kOiGOn6QXq7/QpIZFupld++7toJoR/tw3I6DPo+CWeo5xnD9xTWDe3SI0J66GBsAh/+1K
-	 MzecmLuJnW+/b+qT0fcFoaVI9zsCqOuVLSrDlaURl1FzjBGpc4YTlcjOVN2EoknAr0Qjc
-	 kSb+B00M1kmgS4npqeM5ohbBBisYvzrsvW2weArQhIgG6JoEap0KlVxOo9gaPCvEHmxVS
-	 Dbk2BCOT8jLi7TxWy8N3mrDN3bHmBKoTuJwThQcE1pYIi+t14dfCRmseU2eIC6eFCbA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793977642;
+	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
+	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
+	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
+	 References:Subject:Content-Type:Content-Transfer-Encoding;
+	bh=hjFtLT/eT39ja2rH1EdF5U1lL49IsAZiy06+1wX1i5Q=;
+	b=zlLkN4IspmfUOHccR1hhYh7hbr8uAO/zTyvK4Flwt+UDT70CL30fC1K1LZFDgOGH+IHm
+	 EZuu82CzXYqATX4W+YqGNCeho9zjGUOs5ABTt+TMo3vIK/8HrR5y1fSd/MQSkdN9120PI
+	 XEZ84EmEsLF0eOv7615QtLjI7bDe3RWI4t6mnUAH5S6pvuukDiuExUar7zqHDQxByYCis
+	 mWBqk6NbbUhUVrYQHvtLtvU+AD5CVZThBRYKEdWKtcpKqejaEfvAL28FtZKsNCn5cKJAS
+	 sry3232k81wNnAP0fvWs/d+//Fqe2gxfmPWuISu4WVN9SWVNRshNOagZli+pu/O/Nrg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Dni3PlMe;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=K+05ewYK;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E2D3C606A334;
-	Fri,  6 Nov 2026 15:02:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E3431606A32E
+	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 15:07:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Dni3PlMe
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DA7FD1F0089F;
-	Fri,  6 Nov 2026 15:02:02 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=K+05ewYK
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 443041F0089F;
+	Fri,  6 Nov 2026 15:07:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793977323;
-	bh=OJGwMOZr8wszMXP4PUI9DRebX0Fe8M4M+JLp3x5FAMo=;
-	h=From:To:Cc:Subject:Date;
-	b=Dni3PlMeE484Iio3dTd57C8UoEN9onhzXtRfIJLPZfMXotBe3zZz0lg80gmaRQiKG
-	 5N1oR+G5ti1DGCHcXUrbV0u/yhUgPmItlPCPvjStiYThn+zkMr6AAHU/pcGKR14xQ1
-	 /Poq8ytyVHyEhVplE8fDs4aeJRWlVzP+IjFPPk2vKkEUWSGEv9gJ4Lm5CKZmY6zBAS
-	 HTxEDh9qry5O62R+X25qO1/VnZZf35SrUvEzv8lRDl4BANcGG5wJZpNVdDnAT4yOB9
-	 A6TJmCM28lXuz6gN3/xrVQbT5icC4BflYEE0ROQ3cdPgh390pC96+Xx3ZJmh3OO1Xu
-	 6SEIclcaPtDYA==
-From: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neil@brown.name>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>,
-	stable@vger.kernel.org
-Subject: [PATCH] SUNRPC: Honor page_base beyond the first page in xdr_buf_to_bvec()
-Date: Fri,  6 Nov 2026 10:01:59 -0500
-Message-ID: <20261106150159.847600-1-cel@kernel.org>
-X-Mailer: git-send-email 2.56.0
+	s=k20260515; t=1793977641;
+	bh=hjFtLT/eT39ja2rH1EdF5U1lL49IsAZiy06+1wX1i5Q=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=K+05ewYKnZAepnVsimd3G5S6jDSV7gprH48dKPBnxplAl6wpOAOhZqepW7muqO5mj
+	 YNuwxVLy6JZ7M0KAUHoqg1OT5uOyWWoBIBrNQgmgiwG6AYHg22zA0uzzjANWmrg0y9
+	 hWhRzI2/rr2m6YV1HNrBzpAuYOucyG8pTffTKuO6Lqr37XPCmg15Wc5FNGVQk5CeFE
+	 X5dSiEZ2SluxLtSTYVNzV5x6t6yF3zmRlilr0tsCm+OGwJ1oHYEc2MiEdUl8CzarUO
+	 6LzloG53gwJb660WBTHWMb9F4Aj2s+FeQVeHPWjdKRkWsv7ESGMIJcTPgtnSUB/ahR
+	 98CRR33O+ogwQ==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id A569CF40066;
+	Fri,  6 Nov 2026 10:07:20 -0500 (EST)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Fri, 06 Nov 2026 10:07:20 -0500
+X-ME-Sender: <xms:KO3tarTDSdmnh5AgX6SwR_4N3UgWO33HcNVlMW-GmF5A9Us7LQoEzg>
+    <xme:KO3tannfuiepK2UNRkNEAne6Mt_TmmvaFlNVIOcJlpISUCcLbjWZRaw-GTMHOe1pj
+    P1R61rcoc5VzAO4bt2w5w3wG8tV5Ab9dt5wprn8HfZZDJ4wR6vgYcY>
+X-ME-Proxy-Cause: dmFkZTENjV9qYvDOprlF+HAgK8H6xLK52nqRTr0FiJq9Ts+Ql2TTUavN+P3rxeJX/uYPXr
+    tXhvMCGowjxgZ0rSgSwSSgSgI25vIKm1hxsNNO6ccv5o0KyNrASkpnMiB0LN9SdY2Ju3PZ
+    3JXdPqb2ym6Gs46w9YocT/SYusrBlmbmsU61pKR0woQFtMASEWlMGvcd7ETX/6n+bjbvZC
+    cV11soYoJz1iMb7V1YQ/TWUkojMihU3t/bgZgxcfvkxZ3vxcRJn6HLK3AkTtGaqy9a17ev
+    A6EB9dbjmn6ibiuwGBBcVKuiuoUUKT85g/+S51hwneRZDI2GssNP8u7A0sqS9PmIybp9G3
+    K73L+iH945gnSO/zw2vjiB896xAMed3+XqCkytKbX/asmDX9PNpRVTbrqnulfEHtntr0ee
+    x7uxx6tHwnNmj676r3fXU+jj+MoToa6D7ABjWi+dUCiaPiE+W7iPjo4ZE3UCcsBcYwGmKK
+    7B7Q4gSMYQj+JUmm5kie9XsGOoTjLSz9FyS+Sl3MuSAHYSR7YeSsrGrlcRUTlBCCklzm5n
+    N0CUHk5EIMGLK/tijEN1n+nSetvzrpBClW5mm2W73urLfCZP72xNpJI/Xozfhv1L/jg+xg
+    PTRiRxZxrBir/B0X16f/UdUk/qUUmfUSV3LEhr0Llbex1ZGiOKFlnT2DBWjA
+X-ME-Proxy: <xmx:KO3taiKpz3_c514sVhmcFy4NBkbWE5m-QuBa1HXAW3lU8qZpAqgyvQ>
+    <xmx:KO3taq39ZvPG5SOwPx-ME6GgrKBMxT5MEfnH07Cvsl25vDG1rbHMNw>
+    <xmx:KO3tag5F9FOxTREJ3TW8yiOHJgkb4ATdr3lrKaVGQQn4npynCFFpIQ>
+    <xmx:KO3tar9aQVTgWNLhqh4xDkR2rp8qTR-QnMOvICMtH6xhN_t8HjLWPQ>
+    <xmx:KO3tavWYSVVNcA8CAnn5WA3e5gEohfWrmiG0UtSeu3n83wkHOFna2Ctx>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 8604478273B; Fri,  6 Nov 2026 10:07:20 -0500 (EST)
+X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -60,49 +77,90 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-ThreadId: AAPwM5BZBMgc
+Date: Fri, 06 Nov 2026 10:07:00 -0500
+From: "Chuck Lever" <cel@kernel.org>
+To: "Jorge Mora" <jmora1300@gmail.com>
+Cc: linux-nfs@vger.kernel.org, trondmy@kernel.org, anna@kernel.org,
+ Rakesh.Bhargava@netapp.com, Mohit.Kumar@netapp.com,
+ tmenninger@everpuredata.com
+Message-Id: <e62137dd-e1ce-46bb-8973-734ce8ed5489@slotpi15m67>
+In-Reply-To: <20261105232137.4706-1-mora@netapp.com>
+References: <20261105232137.4706-1-mora@netapp.com>
+Subject: Re: [PATCH v2] xprtrdma: fix race between frwr_unmap_sync() and transport
+ disconnect
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-xdr_buf_to_bvec() takes offset_in_page(page_base) but starts its
-walk at pages[0], so the page index that page_base carries above
-PAGE_SIZE is dropped. nfsd_direct_read() sets rq_res.page_base to
-the pad below the file's DIO offset alignment. When that alignment
-exceeds PAGE_SIZE, as with 8K to 64K logical blocks under xfs or
-ext4 on a 4K-page NFSD, a direct READ whose pad reaches a full page
-sends the page before the one that holds the data. The defect was
-found by inspection, not reproduced.
+On 11/5/26 6:21 PM, Jorge Mora wrote:
+> frwr_unmap_sync() is called from xprt_rdma_free() via ->buf_free, which
+> xprt_release() invokes without holding the transport send lock and
+> without XPRT_LOCKED. rpcrdma_xprt_disconnect() runs from xprt_autoclose()
+> under XPRT_LOCKED and, after draining the QP, resets every rpcrdma_req
+> (rpcrdma_reqs_reset) and destroys every MR (rpcrdma_mrs_destroy). Nothing
+> orders the two, so both can walk and list_del() the same req's
+> rl_registered list and the same MRs.
 
-Advance the page pointer by page_base >> PAGE_SHIFT before the walk.
+Thanks for the vmcore analysis, and for the detail about the
+destroy_mkey stall widening the window. That explains why the
+list corruption is what shows up on your systems.
 
-Commit 2eb2b9358181 ("SUNRPC: Convert svc_tcp_sendmsg to use
-bio_vecs directly") introduced the dropped shift, but no caller
-produced a page_base of a page or more until direct READ.
+Tim Menninger has been working the same race from the other
+symptom, a hung task in frwr_unmap_sync() when the LOCAL_INV chain
+is posted after the QP drain. His v5 went out this morning:
 
-This fix depends at run time on nfsd4_encode_operation() deriving
-rq_next_page from page_base as well as page_len. Otherwise the READ
-encoder accounts for one page fewer than xdr_buf_to_bvec() now
-transmits, and the last page sent sits outside the release range
-while TCP still references the page.
+  https://lore.kernel.org/linux-nfs/20261106142039.1066437-1-tmenninger@everpuredata.com/
 
-Fixes: d686e64e931c ("NFSD: Implement NFSD_IO_DIRECT for NFS READ")
-Cc: <stable@vger.kernel.org> # v6.19+
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- net/sunrpc/xdr.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> + - If rb_closing is set, frwr_unmap_sync() returns and leaves the MRs on
+> +   rl_registered. rb_closing is only set after rdma_disconnect(), when
+> +   the QP is in the error state and the peer cannot reach the MRs;
+> +   rpcrdma_reqs_reset() then releases them.
 
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 7353109fdbae..7eef50634175 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -161,7 +161,7 @@ int xdr_buf_to_bvec(struct bio_vec *bvec, unsigned int bvec_size,
- 
- 	if (xdr->page_len) {
- 		unsigned int offset, len, remaining;
--		struct page **pages = xdr->pages;
-+		struct page **pages = xdr->pages + (xdr->page_base >> PAGE_SHIFT);
- 
- 		offset = offset_in_page(xdr->page_base);
- 		remaining = xdr->page_len;
+When frwr_unmap_sync() returns here, xprt_rdma_free() returns and
+the RPC's pages go back to the consumer while the MRs are still
+DMA-mapped. frwr_mr_unmap() does not run until rpcrdma_req_reset()
+reaches that req. On a platform with swiotlb or a bounce-buffering
+IOMMU, the deferred dma_unmap_sg() for a FROM_DEVICE mapping copies
+the bounce buffer into a page that may already be freed and reused.
+Tim's version always unmaps before frwr_unmap_sync() returns,
+either in the LOCAL_INV completion handler or because the reset
+already ran.
+
+
+> +	/* frwr_unmap_sync() runs without the transport send lock.
+> +	 * Callers that claimed MRs before rb_closing was set may
+> +	 * still be posting or waiting on LOCAL_INV Work Requests.
+> +	 * Those complete (or flush) because the QP has been
+> +	 * drained, but the callers still reference the MRs and the
+> +	 * ep, so wait for them before anything is released.
+> +	 */
+> +	wait_event(buf->rb_unmap_wq, !READ_ONCE(buf->rb_unmap_users));
+
+A caller that bumped rb_unmap_users just before rb_closing was set
+can still reach ib_post_send() after rpcrdma_xprt_drain() has
+returned. The comment relies on the provider flushing a WR posted
+to an error-state QP. Tim's report is that no CQE arrived in that
+case on his hardware. I can't tell from here which providers
+guarantee the flush, but if his observation holds, this patch
+leaves that hang in place and adds a second waiter: disconnect now
+sleeps in wait_event() for the stuck caller, so the autoclose work
+and the whole transport stop with it.
+
+Tim's rwsem makes the post happen before the drain or not at all,
+which removes the dependence on provider behavior. The counter,
+flag, and waitqueue here are doing the same job as his rwsem by
+hand, with that one ordering missing.
+
+Would you be able to run Tim's v5 against your reproducer? If it
+holds up, a Tested-by from NetApp, plus the vmcore details added
+to his patch description, would make a stronger single submission
+than either patch alone.
+
+I'm a reviewer here, not the maintainer, so the final call on
+which fix goes in is Anna's and Trond's. Tim's looks a little
+more complete. Sorry I didn't realize earlier that both of you
+were working the same issue.
+
+
 -- 
-2.56.0
-
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
