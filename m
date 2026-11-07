@@ -1,101 +1,165 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.167.48
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1794031567;
-	b=kKQfJAXZaedsX6dGU8YGL9rbp+w8fgzXdzivupRGnkXGnKWcmGAv3cPoMxNz0et51GPH
-	 DWYXBWySNdUfnXZmSd3x4GiyP+9epQNpKWHZshkmY0Piqcf4Pv2db7+rgMnMRymiAZ79H
-	 KtFcWOXGw7cPmr+xSqErCnkCRw2z13lBxQoBRsri8jgSJlxSUamnrtCktny8DkKl4W++O
-	 39WBIO6Yp7dgYb7VstuzZ7SWh2tK4IGK/E3DyW7u5kiuCh4+bAcP7BWB0nYNNmrPhJ7Qz
-	 dDbgTF/hwW/G1HbNJMthHnqon7btI8Y2YSH1kWNwtqDu8ZJxVb9ZMDmged/0pPmbIlA==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794031567;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:Received:From:
-	 MIME-Version:Date:X-Gm-Features:Message-ID:Subject:To:Cc:
-	 Content-Type;
-	bh=Zv9Wwix0Wl9ji6g1q9+egVqK021IPU9Yv4uSbk/ntw4=;
-	b=s0DCTsLE/9dr6fj3j/saDb3j7gDGQh2zhf0E101Y564e1/SMoTKFmwIkrwEcu/CzQexG
-	 EkLrO2hG7tE00niMcRADNggDfP7zjt60BiWQkIr16tIPYTy/ekmCbfPte3TsJq4t9PiD3
-	 Wax02pts6OXXoko+0SCXXI3nDxsPAi9PAws4d8eyWgpdKVVoRCj6ajQp8r7gRRkHTYA5h
-	 U2nxNJYQ6jK1N5LbdfOzy4mZkecvuvkbTpKNyjXW9z/XuUcRwBWRvyhU7YW1Bcm64EI9e
-	 /hCSs3UjD8brU5yyJKSMu567EyGxMhXCNNp/bNYQtQlUaYEkf5WurJfywzMmH9Rk4Cg==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=FRSC5N9H;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.167.48
-Received: from mail-lf1-f48.google.com (mail-lf1-f48.google.com [209.85.167.48])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1794042019;
+	b=e2fPw7Y2rRfKFAQfgwC5LjDb0RhR4W31LDr7IxSWb6hORKRWERUu+1WEtFOl92kMR+Zo
+	 KghAG8ZirLzfM7O1gCouNZzUt68wkwJV6tgZ3db2UgMcM0W2QqUOf+0rU7XvntFCPDPTH
+	 6DoYyeBDsdz0YtWcS2VHIGxLgZ5S5ulHoTuNVuDTsgWQczKtNgnwyeuE7JnG7oBfgc8bB
+	 MRbq+6xUakG07XZz2ZBE9I5J17UE1f/LP2TegmIelH/wNPkqoa6dkh2qRke1qcsAe+adS
+	 QjuLnrXh/kdciTOZEvHuYPlZFVJTgL6hxN2rk8dC6vB84lMaEuI+53+LWws/WsqcQwQ==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794042019;
+	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
+	 DKIM-Signature:Received:Received:Date:Message-ID:From:To:Cc:Subject:
+	 In-Reply-To:References:User-Agent:MIME-Version:Content-Type:
+	 X-Spamd-Result:X-Rspamd-Server:X-Rspamd-Action:X-Spam-Flag:
+	 X-Spam-Score:X-Spam-Level:X-Rspamd-Queue-Id;
+	bh=2pUKIrJSjwOPfwhHfcJFzwrup6gCdhbZ3XgMEjE3Sk8=;
+	b=5D5/GGSofHUZCuwGhKeC7U+sxjjoltIbDqU/QjDFsQ2ceMBoFrfaSYU7jb/1Ur+pAwN2
+	 4akgWSfdDrLoE000HVYCnn60RmiK0eCIHPypjyVxYdt8JNhTKiEIfkBfRVwH+MAFkhPND
+	 ERS+RS4lfKADF/CttTLIpX8/Ad3MYi+RL+VPHI9LVJVgIz192TU4HV7DRen8mHy+lfBja
+	 yqu//OkUoKd5MDeSIJZ0cSXHezE/3klqx2NGRqL9RhqqraIv/TIetiP7yEbkhA/FjOkMW
+	 /MaRIhfGsrx4+1WO4ZDaqTZ+lEa3tvkeGgxoDgaZ1KojurV2QCO/cdhlAoO0t1CbQLw==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=suse.de;
+	spf=pass smtp.mailfrom=suse.de;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=AwkH5jyM;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=JTEoL3TZ;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=nvoaJ0mE;
+	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=DZerp02L;
+	arc=none smtp.remote-ip=195.135.223.131
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F2375606A32C
-	for <linux-nfs@vger.kernel.org>; Sat,  7 Nov 2026 06:06:06 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org F2375606A32C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B62B6606A32D;
+	Sat,  7 Nov 2026 09:00:18 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B62B6606A32D
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=FRSC5N9H
-Received: by mail-lf1-f48.google.com with SMTP id 2adb3069b0e04-5be502e1adaso144419e87.0
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Nov 2026 22:06:06 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1794031564; cv=none;
-        d=google.com; s=arc-20260327;
-        b=eraI+qXjMLNoj+bdQxVKEt8tQuanoVO9sM3OmLrHSQn57owz1q6n8RqTkoQiTuDHki
-         ECM2yonnu+c5BQhi+VXn1NHb14PRxMerejPMum+hBRAMQqDWGdqwkJgqMGYMSGtJGucw
-         SSy5UuLQ3HJF76+JWiNlKY3WidCOQaHv1EgRN3y/dhW6IXxS0gEgpRpt5m0n7YRp9u++
-         FThLhG65oY4p+0GkP6qaGy/A5Z7jkii3JABS2Bkq9Ae1EV7wxvPBuEFDSFaEKvTrdoQA
-         Kr3v1KV7b81ej3jm5UTLaaPTGmIexayc1nZcNjUqWIkzFwtChs2tUwoaifhCHO0VsSor
-         Ku7w==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=cc:to:subject:message-id:date:mime-version:from:dkim-signature;
-        bh=Zv9Wwix0Wl9ji6g1q9+egVqK021IPU9Yv4uSbk/ntw4=;
-        fh=ymfhShoCUKxLn7czh2H3/oZetPTS67X53Vhfwc0U5jI=;
-        b=FXFU3+oEWmBd2qGFPa13c0SPdobaKpYINPLQB/npLCFmEyzQI7HLsSQwJV+Tw5BaM7
-         AnPU8D6m34jd++Wcc7eu6ZevlnCszP4O46TwO6BFF+jES9++bCr304zd7fiIqCU6lMgp
-         S5TFPNQCs8sclHzq4mYUOsD1dKO8MTW1MjTU0LqDBdsnOsRsQaaSdLY8GCu6ClL9bgEW
-         YwFQv3Oh6ZfCzsh88URUYCLF50/N0FQmonQTv658ide4AT18FUOFxf9kmj7G5XVE3lEq
-         l3weZDyq3FlUdAu9Vc3Bk4mSRDe+4zG5VQUDRK/Em9zk2t/AOufp/njhI6P8ThzZr4vM
-         Pxsw==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1794031564; x=1794636364; darn=vger.kernel.org;
-        h=content-type:cc:to:subject:message-id:date:mime-version:from:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=Zv9Wwix0Wl9ji6g1q9+egVqK021IPU9Yv4uSbk/ntw4=;
-        b=FRSC5N9Hgw8OXO9geWOY+oxpQxb7xzncCii6Xjh+XDOJINUou+ytjFWRECxKmSNEDt
-         atv1lOUugfIuST/z3cuyuu/foXf6H/brEceojhSNPDrOPq1uypZAiHxCmc2TDuZEF2/F
-         GPFs3t0ZGv4W+pEJAmYQ9fOdQoo892WNeu1FWVgTxLJqK9sVjUrpcpoZmOcJywR+28Tk
-         xaEYef+2kxg11r3wrW+vkRkt3BUt058bKyVL/tt2yz3N4mQbTiNQRReISBGRixRVSrmo
-         Br10W1L5KKWSOqd5IPaQ2WveD74DQSYEMhLPuygo8PgUhX+9Ith8KINFaAA/rsZj/W67
-         NKnQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794031564; x=1794636364;
-        h=content-type:cc:to:subject:message-id:date:mime-version:from
-         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to:content-type;
-        bh=Zv9Wwix0Wl9ji6g1q9+egVqK021IPU9Yv4uSbk/ntw4=;
-        b=qAl4m3v+YrGHZd5YoBpbn3GE0EXI/qYbavGH8Nl4XRXKS1lVLcpCDeGFTmsT7OIc0I
-         6dPuN4LjQaJJi6WWdRFXuLzrGtK7B9Z9H8Tv/NootnCGrbxuVCkgcum88Ny1tTvYo4Od
-         3BfEVi+h/vZhqk/6qxKQEdg7YX35bVgY6RKmrg7Hd8G87CqmszWIvu/mBdKgEgTLzmHK
-         VGyjfKFFEA2dJsn5YDKMextz0qZ4rd1HcV6FXHIj4NK0Eb+BG4K46Qhwa6sO/+OSxCQO
-         n4qQTF+ITbG/bCCQBnqDuYQRh9NCAtP57wDq/PKkV1WDRSRwYZUEN2FB+B7dsa6ZVuq/
-         HMaA==
-X-Gm-Message-State: APuU4Z+g8KVO3s+kJnWUiVEG2+PiU7cujid8lMftSX/1xaWyNdaDw+2p
-	E4+TieqjtELb29tI/WFmKqUOiakP81OrcaN1lOZ+DSNiip+O9kehII6asbLjCG/TBqM4JDiOYNB
-	ef691n6ZXkDA4lXxxangp89pSwhYeA7t69S+7
-X-Gm-Gg: AYBFou0BeoFzrCBheLM9j/9KxuKI0qx2OxL2e/unMnZLCUO3HFGOBhDCvkpjMLvnH4q
-	6BODP2eM6Y/t2FYB0E+NMUQ/lNhEE9nsfonHzhc9AKqkzdbx7HobI815EAg0t2db07Fu8XSDw6h
-	UFSDuj1gVFr2bYqD+tyCTZKiGU2+vQMNZA1NRosk4Mm3oUZf09aibctzxvi6/c5FYRaOX1z0zmF
-	dLLUAyrcma+hRiOjI0WMUyPW36XE7+Uj0wvD+h7USQ/MBgkiUhBMeh8HoNUd+Lh7BuVZH37KiFT
-	waGhDt6RhJDZxg5NhzgS1JpniD/isO8LfE+6tD+9TDTOpTbBVAY31aVPlGVhg/UtUD67SHeraXf
-	XhfEr6b288Mn4sfDkd7H5oJN1FAgmBUE+htT5rsxW31cuCmvm0qaFnG1k
-X-Received: by 2002:a05:6512:1156:b0:5bf:e6a1:3115 with SMTP id
- 2adb3069b0e04-5c00394e554mr1649938e87.2.1794031564200; Fri, 06 Nov 2026
- 22:06:04 -0800 (PST)
-Received: from 779715102257 named unknown by gmailapi.google.com with
- HTTPREST; Fri, 6 Nov 2026 22:06:03 -0800
-Received: from 779715102257 named unknown by gmailapi.google.com with
- HTTPREST; Fri, 6 Nov 2026 22:03:03 -0800
-From: =?UTF-8?B?7YyM656R7IOI?= <lhjnano@gmail.com>
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=AwkH5jyM;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=JTEoL3TZ;
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=nvoaJ0mE;
+	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=DZerp02L
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 630761F74D;
+	Sat,  7 Nov 2026 09:00:15 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1794042016; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=2pUKIrJSjwOPfwhHfcJFzwrup6gCdhbZ3XgMEjE3Sk8=;
+	b=AwkH5jyM7t60XRGf7G1aRSt+1A3cbarzW4z/QkvISjLGNPrA/fY2MleEP5q/AQIm+UOa85
+	wJkleCWTNZsU7rGkzPqgTOEFser1A2ESxcK9o91TyOKwj1NxwYRnab9MqOSmomM2duqzSM
+	4ziRifDlEsg/eNGZ4IfRyZBtKF7+5L4=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1794042016;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=2pUKIrJSjwOPfwhHfcJFzwrup6gCdhbZ3XgMEjE3Sk8=;
+	b=JTEoL3TZlb1DCclunsyxaCbXUYbLeMKEOnsS7PWO9bNheMA+zCRiSp1byJB7A+sAicRsv4
+	5OXD2QVrenEMHmAQ==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=nvoaJ0mE;
+	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=DZerp02L
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1794042015; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=2pUKIrJSjwOPfwhHfcJFzwrup6gCdhbZ3XgMEjE3Sk8=;
+	b=nvoaJ0mEP/zd/0bKFGcoiLmtApr9OQGHZOiEECFWhUq1H30dGD7ZkdmACOX8M4XQGS4NuW
+	oB4Mc0g4OfzK2wWf0UF/9cqPMqA/oflypYavZBONS2BSNW+J/B7gdSUDzy/0qA9b4r1pv4
+	UXAedxogQW7c2CJkDX8oa4Afmn/sre4=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1794042015;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=2pUKIrJSjwOPfwhHfcJFzwrup6gCdhbZ3XgMEjE3Sk8=;
+	b=DZerp02LRPNT9d5/AecFdQdh+IJlOFhOxwpkpzQNy3DQvQ4hOwgMkZ3mhYuZ46BFCA5rf0
+	CaTL33x7XZsPDhBQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E0528132C9;
+	Sat,  7 Nov 2026 09:00:13 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id 19k0LZ3o7mq9VwAAD6G6ig
+	(envelope-from <tiwai@suse.de>); Sat, 07 Nov 2026 09:00:13 +0000
+Date: Sat, 07 Nov 2026 10:00:13 +0100
+Message-ID: <87jympyq1u.wl-tiwai@suse.de>
+From: Takashi Iwai <tiwai@suse.de>
+To: Christian Brauner <brauner@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Jann Horn <jannh@google.com>,
+	Josef Bacik <josef@toxicpanda.com>,
+	Chris Mason <mason@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Eric Dumazet <edumazet@kernel.org>,
+	Thomas Gleixner <tglx@kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Jonathan Corbet <corbet@lwn.net>,
+	Christoph Hellwig <hch@lst.de>,
+	Greg Kroah-Hartman <gregkh@suse.de>,
+	Joel Granados <joel.granados@kernel.org>,
+	Kees Cook <kees@kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	Jan Kara <jack@suse.com>,
+	linux-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	linux-acpi@vger.kernel.org,
+	linux-kselftest@vger.kernel.org,
+	linux-s390@vger.kernel.org,
+	linux-scsi@vger.kernel.org,
+	linux-um@lists.infradead.org,
+	linux-wireless@vger.kernel.org,
+	linuxppc-dev@lists.ozlabs.org,
+	netdev@vger.kernel.org,
+	ntfs3@lists.linux.dev,
+	platform-driver-x86@vger.kernel.org,
+	coreteam@netfilter.org,
+	kexec@lists.infradead.org,
+	linux-pci@vger.kernel.org,
+	linux-sound@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	dri-devel@lists.freedesktop.org,
+	ibm-acpi-devel@lists.sourceforge.net,
+	jfs-discussion@lists.sourceforge.net,
+	linux-alpha@vger.kernel.org,
+	linux-arm-kernel@lists.infradead.org,
+	linux-cifs@vger.kernel.org,
+	linux-fbdev@vger.kernel.org,
+	linux-hwmon@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-sh@vger.kernel.org,
+	linux-usb@vger.kernel.org,
+	samba-technical@lists.samba.org,
+	sparclinux@vger.kernel.org,
+	linux-m68k@lists.linux-m68k.org,
+	linux-doc@vger.kernel.org,
+	linux-serial@vger.kernel.org,
+	linux-atm-general@lists.sourceforge.net,
+	Takashi Iwai <tiwai@suse.de>,
+	linux-input@vger.kernel.org,
+	linux-raid@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-modules@vger.kernel.org,
+	linux-debuggers@vger.kernel.org,
+	Chuck Lever <cel@kernel.org>,
+	stable@vger.kernel.org
+Subject: Re: [PATCH RESEND v2 03/51] ALSA: cs46xx: hand the region to the region proc files
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-3-021c84d852e0@kernel.org>
+References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
+	<20261104-work-procfs-bugfixes-v2-3-021c84d852e0@kernel.org>
+User-Agent: Wanderlust/2.15.9 (Almost Unreal) Emacs/30.2 Mule/6.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -104,106 +168,57 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-Date: Fri, 6 Nov 2026 22:06:03 -0800
-X-Gm-Features: AclHuK-HJ-T3Qt48WRvYwHF-g2wTD3rKc5L8toXrVwzv19ILbU7Pxf4OwXCYS1I
-Message-ID: <CAN+dWLYt7=WDO-wGHt5_1K2JcqDgrHs1bX2WBOvaTt-PFi1meg@mail.gmail.com>
-Subject: [PATCH nfs-utils] nfsdcld: signal readiness only after the pipefs
- watch is installed
-To: SteveD@redhat.com
-Cc: linux-nfs@vger.kernel.org, cel@kernel.org
-Content-Type: text/plain; charset="UTF-8"
+MIME-Version: 1.0 (generated by SEMI-EPG 1.14.7 - "Harue")
+Content-Type: text/plain; charset=US-ASCII
+X-Spamd-Result: default: False [-11.01 / 50.00];
+	SUSE_INTERNAL_BYPASS(-9.00)[];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	MID_CONTAINS_FROM(1.00)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	ARC_NA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RCVD_TLS_ALL(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.de:email,suse.de:dkim];
+	R_RATELIMIT(0.00)[to_ip_from(RLij3mi59gqb8x3hiq1dpi8wgt)];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	TO_MATCH_ENVRCPT_SOME(0.00)[];
+	RCPT_COUNT_GT_50(0.00)[60];
+	RCVD_COUNT_TWO(0.00)[2];
+	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	DKIM_TRACE(0.00)[suse.de:+]
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Rspamd-Action: no action
+X-Spam-Flag: NO
+X-Spam-Score: -11.01
+X-Spam-Level: 
+X-Rspamd-Queue-Id: 630761F74D
 
-nfsdcld daemonizes with daemon(0, 0) and nfsdcld.service is Type=forking,
-so systemd considers the service started when the daemonizing parent exits.
-The child, however, only installs its inotify watch on the rpc_pipefs
-directory much later, after the sqlite database is prepared and
-cld_pipe_init() runs. Until the watch is installed, nfsdcld cannot notice
-that the kernel has (re)created the cld pipe.
+On Wed, 04 Nov 2026 20:16:45 +0100,
+Christian Brauner wrote:
+> 
+> snd_cs46xx_proc_init() stores the chip in the private data of the five
+> region entries, but snd_cs46xx_io_read() reads that back as the region,
+> so a read of /proc/asound/cardN/CS46xx_BA0 and friends copies from
+> whatever sits at the region's offset in struct snd_cs46xx instead of
+> the mapped registers. Store the region.
+> 
+> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-nfs-server.service orders itself After=nfsdcld.service, but that ordering
-is meaningless with Type=forking: on a busy boot or a restart storm,
-systemd starts nfsd while nfsdcld is still doing schema migration or legacy
-record import, and the kernel's one second wait for nfsdcld to open the pipe
-(see nfs4recover.c:nfsd4_cld_tracking_init()) can expire unused. An observed
-instance of this race took an NFS server down for 44 minutes when nothing
-restarted the failed nfsd.
+Reviewed-by: Takashi Iwai <tiwai@suse.de>
 
-Fix by converting nfsdcld to the daemon_init()/daemon_ready() helpers used
-by the other nfs-utils daemons: the parent no longer exits until the child
-signals, and the child signals right after cld_pipe_init() has installed
-the inotify watch. With that, the existing After=nfsdcld.service ordering
-means what it claims, and the kernel's one second window is sufficient.
 
-The event base is now created after daemonizing: daemon_init() renumbers fds
-(its status pipe takes fd 3) and would otherwise clobber the epoll descriptor
-created before daemonizing. The event base allocation failure is now reported
-through xlog() instead of fprintf(stderr): stderr is /dev/null after
-daemonizing, so an fprintf() message would be lost, while xlog() routes it to
-the syslog.
+thanks,
 
-Suggested-by: Chuck Lever <cel@kernel.org>
-Link: https://lore.kernel.org/linux-nfs/20261015114755.33331-1-lhjnano@gmail.com/
-Signed-off-by: HeonJe Lee <lhjnano@gmail.com>
----
-Hi Steve,
-
-Chuck Lever suggested on linux-nfs that I direct this patch to you as
-the maintainer of nfs-utils. The thread originated from an NFSD startup
-race investigation.
-
- utils/nfsdcld/nfsdcld.c | 22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
-
-diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-index 8551dc9..772cf31 100644
---- a/utils/nfsdcld/nfsdcld.c
-+++ b/utils/nfsdcld/nfsdcld.c
-@@ -819,12 +819,6 @@ main(int argc, char **argv)
- 		return 1;
- 	}
-
--	evbase = event_base_new();
--	if (evbase == NULL) {
--		fprintf(stderr, "%s: unable to allocate event base.\n", argv[0]);
--		free(progname);
--		return 1;
--	}
- 	xlog_syslog(0);
- 	xlog_stderr(1);
-
-@@ -866,14 +860,18 @@ main(int argc, char **argv)
-
- 	strlcat(pipepath, DEFAULT_CLD_PATH, sizeof(pipepath));
- 	xlog_open(progname);
-+	daemon_init(foreground);
- 	if (!foreground) {
- 		xlog_syslog(1);
- 		xlog_stderr(0);
--		rc = daemon(0, 0);
--		if (rc) {
--			xlog(L_ERROR, "Unable to daemonize: %m");
--			goto out;
--		}
-+	}
-+
-+	/* daemon_init() renumbers fds and would clobber the epoll fd. */
-+	evbase = event_base_new();
-+	if (evbase == NULL) {
-+		xlog(L_ERROR, "unable to allocate event base.");
-+		free(progname);
-+		return 1;
- 	}
-
- 	/* drop all capabilities */
-@@ -925,6 +923,8 @@ main(int argc, char **argv)
- 	signal(SIGINT, sig_die);
- 	signal(SIGTERM, sig_die);
-
-+	daemon_ready();
-+
- 	xlog(D_GENERAL, "%s: Starting event dispatch handler.", __func__);
- 	rc = event_base_dispatch(evbase);
- 	if (rc < 0)
--- 
-2.34.1
+Takashi
