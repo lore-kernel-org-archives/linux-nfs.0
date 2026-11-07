@@ -1,88 +1,70 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.229.137
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.133.124
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794020911;
-	b=RyCCS6RhirYZBafUuyFlIt5+WCUazI+7rRXuaTIfalErogxNd/yvJ+WKx0TN8oi/uyjD
-	 QXGAvDyGP4xx+7OL7xgmBYEbH+9IYtqIUHXkAt9wEqL2YTlS0yMoLdKpSlWWxguEHtlJF
-	 ilVLoCxb9PLDKKXqbl8LpEZTYXRDcn6SXIosVtzvMiCljKZDIyPRVXJbhWrvhNoiGDMex
-	 BPl7DvxygDt6uj3r5prL2ymZUuGvokUoSVNSWK15r695lq2Xh656aYr9+oGDELqdrmSDr
-	 /bsNWSutCf30uiOYeuhksg3anA5y4q75dEeE0JEchQc5MmoSHFtBrfoSo4WmJtMVBHA==
+	t=1794021160;
+	b=qhC+AA9enCvCzex2egcq8oy7TslJ69ec2jtPDM/48OV0XNpmfk4FnIgSRjel1i5U4pE/
+	 v3zuc4PZOY9I0Ctj3v8QVvg8U+tvauVxRjgYuiaim6Cf4ui94eesCbeb2txes2ld8QRSw
+	 TYGtgJuR/KEC0F9sl2T9+BIx0g5iE1zRLXwh7q407NTsFlWvwJ0DW3jhxwBZjUXK1TCmj
+	 /mBPws5XFIxBs60TzE+iU8nrU1mlOMCaY2xiCc8jrxMeRolGRHvmBQKyf8cjaplzd61Xw
+	 EPXVtWIKSj1sbC+YMhv13cP2kTT0Jq//iF5jUiiDTg63Au6Scu/Bi9HWZzfovOuMlEA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794020911;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:Content-Type:
-	 Content-Transfer-Encoding:Mime-Version:Subject:Message-Id:Date:Cc:To:
-	 X-Mailer;
-	bh=Q4ukWM7DpgFNrydoMRpyPkCUicGMK+tCe1e4JeuavAw=;
-	b=wlxs/Q5o6XeC2vYJwsVmlmg3qNirXIxPvvyIHTL70gxPGE1UuIDt+9E3q9Pdo/1MwHrM
-	 N1EP55k4gp1KZ9UGOVD3p/58502V7eF12bVj4dZgPfQOUvnrxyhtz9BBPE4p5h6wDQC/5
-	 d6sXw2UMbTcCy1Pp0G2vgESGcEXl9CXLG2KDe4ml3wWPoGJoKtkqVfS1NnHzDJJpWf1GP
-	 tIFT3bEdynlNrtEKmRFhGPRuCZnx2ebaO0SdL0mcZZGA4Y///nkDiYVLzRKtknGrtlHmD
-	 /6J/vc4s5LVb7MnjjYqyYC/1cGIvduiyEq2Jm6PIaGbMt7h7Q4YWE90+FhPyA2EXwKw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794021160;
+	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
+	 X-Mimecast-MFC-AGG-ID:Received:Received:From:To:Cc:Subject:Date:
+	 Message-ID:MIME-Version:Content-Transfer-Encoding:X-Scanned-By;
+	bh=J2lV//bc1TggjRT3bFWXt+yH8QO1hT7IDi6qP0XbCVo=;
+	b=PJ7/VWyp8BdSR/oGKCYck+x+a9jYXQdwsGOjdEi+wGD643LSYUjHjZhSPYyk3lAcD65S
+	 Ke2TSOpSdUBKdyzudLwMS5Mxp0lKCXTFUrlliwNQAGNMfmewv82q0Ss3iCDmRj/XIEP0O
+	 XDi8oq87ffEXG+3jAN4nppEDo3nsu90eUQIvpg2Dq+1A4tB2M3LQIMV43Tv7dt7f2dwVe
+	 IzoJwj6ei1QqI4BNmy/0PIb5EdaKC/G2wS9ngb0aC8pdQajAJhAvXr+z15skchgJS/TbA
+	 6Q457ks/HjXVjDDVqY9hrmQwtWSMXb4D/cR4n3+Bfnv1BMQCyLy5rlUQfhBkNJAxs3A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=VrW3faqh;
-	arc=none smtp.remote-ip=74.125.229.137
-Received: from mail-dl2-f9.google.com (mail-dl2-f9.google.com [74.125.229.137])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=pass header.from=redhat.com;
+	spf=pass smtp.mailfrom=redhat.com;
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=K0ntF4Kn;
+	arc=none smtp.remote-ip=170.10.133.124
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 57DAA606A326
-	for <linux-nfs@vger.kernel.org>; Sat,  7 Nov 2026 03:08:31 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 57DAA606A326
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2D71A606A32E
+	for <linux-nfs@vger.kernel.org>; Sat,  7 Nov 2026 03:12:39 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2D71A606A32E
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=VrW3faqh
-Received: by mail-dl2-f9.google.com with SMTP id a92af1059eb24-19305bcb6d5so318927c88.0
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Nov 2026 19:08:31 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1794020910; x=1794625710; darn=vger.kernel.org;
-        h=to:cc:date:message-id:subject:mime-version
-         :content-transfer-encoding:content-type:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=Q4ukWM7DpgFNrydoMRpyPkCUicGMK+tCe1e4JeuavAw=;
-        b=VrW3faqhRLDiqG665Iz2oKMC3CnRHv91xXTceaFrQD8vZlMHmt1yAA9WGMkW864GvY
-         wBZyMq42kp8vIKxhqpD7DewHA/valK+ohNM3mnu6AFeJrxXDbmFuLxFspG32lbwl0dUf
-         WSOrL6joEIDFTwr4ZukC/xWa+xg1yDIYx0rrLzu1bJuNtl0KLiATgu53hd1CNReFaNcV
-         9RFczwUa1Hw17aqu7rW1dCt8BwWk46u6xuz7+SqKzeV4MbLZLkge5HErujGmc0m2Ydb5
-         TijdD0iVAuQozuHFq95rUYtRufzbC6cYJRHVmsjkdQxCruQ7gQGJlfvlz1Ekp6xj6PH0
-         v6kw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794020910; x=1794625710;
-        h=to:cc:date:message-id:subject:mime-version
-         :content-transfer-encoding:content-type:from:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=Q4ukWM7DpgFNrydoMRpyPkCUicGMK+tCe1e4JeuavAw=;
-        b=mCA7NvJfOWb7dV2Cgn8aLGZUf8odAkG+36F5R/izhhn5A66O5tkzoMDXZxbw4r5xdn
-         /HYH5Nm+o4dxGQC5ajvNi0lb3mPzjERsauCBfCZJco/VnEUbyNh+Oxle8Gf9H1KkyA2K
-         XvogaVF5jhTOMvof3LtB9V2evNb1fS1IKNoptTaI1CPeBGPhhTkbvAfaR/9ffK74E5sL
-         XLP0pSci3azfzNZ8yZBw6mPmWJqu0kVMkuFfFKkCqlXJb5YzQwpGdJmeC6iA0XPPB8UR
-         A3EAVopLeA+apZY7iOYSV0saUyFOzfDWMV56tMxHSbL1C7J9erphJUQG/KkfP4jJcJMK
-         yAlw==
-X-Gm-Message-State: APuU4Z9GcJ2SQH9dPAyVWErPHZxRBmmA42N/sYadUA+Yky2I1ZgqsqhM
-	4vGVdmxFX5XCImbLYisoCdTYgBUJVrfGktuPDf1bOSqVE807QhR8kmfu
-X-Gm-Gg: AYBFou2Vsa0KRbicI4wmpZWbxsqLIOZBoFu+rIeAwBmcvnavmW7CwVz1xw0Sjog3bh+
-	/KWqXxgXkEt5+eZpFkWrN474u5gppxUM2BX+FNqKFv0k2QABD51pQoE4ZEjMIM2HgXLXwU836l6
-	NW2/I2H8N2DH8TBEVzwVF4zKeUJE5aIQ9sLBJ4fyv+26D1aCecf3N6FODktAO/PLAZ28iL8GTGd
-	AWfq0gTxjiV/Nv+095nTNzspg1+1M92gX2yu9zUuw5t/P3NaHyJb6MnFBmeYbApumc4AvSYEE2/
-	XdfgAm6CelXGUIGsCcoS/BKPxr+dUsiB1LlEhADBZ9ZnhioHCb1YLSYCa1Gde1H3Hpr06qj2DLr
-	eAupNqnsytaB8adj/yZzEY09PyKFfc4lzn5BYrCXZi9NN7Pl/2/8BEXg5puEXHf0zDmtNYXDZuj
-	o8TFEX1jNfC4iCJ44+CDaFiZ6UuDtj8GEbSyrihCrllykw1sWaw9L4krQ4lzVCBw6+pl183CLbP
-	hP1Lwut36mTIR+v9dTx0fi7HsgLGvdG7IonLA/O5WeLwiPFc4OsWaoW9T4FfqGUEf7dommYAkyx
-	tpVSgpd/T3dTPLqi2cLeRiyHtsEYv9hDNgWg/EuZDQHBtCJINlFHuEO1HF5aEhNDkXlqs43KaDi
-	mg0OR5pVodUctXzeQt4fw7A==
-X-Received: by 2002:a05:701b:424c:10b0:195:1a77:85cb with SMTP id a92af1059eb24-1b25d28c302mr5621868c88.1.1794020910303;
-        Fri, 06 Nov 2026 19:08:30 -0800 (PST)
-Received: from smtpclient.apple (pa49-196-205-9.pa.vic.optusnet.com.au. [49.196.205.9])
-        by smtp.gmail.com with ESMTPSA id a92af1059eb24-1b25e4e079esm11197751c88.19.2026.11.06.19.08.28
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 06 Nov 2026 19:08:30 -0800 (PST)
-From: Evan Champion <evan.champion31@gmail.com>
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
+	dkim=pass (1024-bit key, unprotected) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=K0ntF4Kn
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1794021159;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=J2lV//bc1TggjRT3bFWXt+yH8QO1hT7IDi6qP0XbCVo=;
+	b=K0ntF4KnN8Uu7jgg+n6tP6/EwXSqiiXJ/FnpKtW+WR/V7c6GCTLlgnF0V9VAS7vrcuYfuf
+	RU6xNASe8uBoY4Sz8vpK6ye5AMJM933C98wLoc8yi31osvvSN6L8s3W3CMfo4RbmtBqtiI
+	ps+QKy5KTaIsCJ4MzKjEW5L4cdtTH9Q=
+Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-376-UxxPEOrCOxihqelSi7IcgA-1; Fri,
+ 06 Nov 2026 22:12:35 -0500
+X-MC-Unique: UxxPEOrCOxihqelSi7IcgA-1
+X-Mimecast-MFC-AGG-ID: UxxPEOrCOxihqelSi7IcgA_1794021154
+Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 56EFF1955F2A;
+	Sat,  7 Nov 2026 03:12:34 +0000 (UTC)
+Received: from okorniev-mac.redhat.com (unknown [10.22.64.6])
+	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 9FE17187C364;
+	Sat,  7 Nov 2026 03:12:33 +0000 (UTC)
+From: Olga Kornievskaia <okorniev@redhat.com>
+To: trondmy@kernel.org,
+	anna@kernel.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/2] NFSv4: fix blocking lock stalls under a delegation
+Date: Fri,  6 Nov 2026 22:12:30 -0500
+Message-ID: <20261107031232.97464-1-okorniev@redhat.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -91,42 +73,51 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
-Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3901.200.71.1.16\))
-Subject: [PATCH] 4.1 server tests: check the BACKCHANNEL_CTL result in
- _testDeleg
-Message-Id: <CF4E8861-DE6A-4895-B333-7C67E8142F79@gmail.com>
-Date: Sat, 7 Nov 2026 11:08:16 +0800
-Cc: linux-nfs@vger.kernel.org
-To: calum.mackay@oracle.com
-X-Mailer: Apple Mail (2.3901.200.71.1.16)
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
 
-_testDeleg ignored the result of BACKCHANNEL_CTL. If the server
-doesn't support it (it is REQUIRED in RFC 8881), the test carries on
-with the original callback security, and later fails or passes for
-reasons unrelated to what DELEG7 tests.
+A test on a single client runs two processes that repeatedly acquire and
+release a POSIX lock on the same file on an NFSv4.1 mount, so that they
+compete for it, and measures how long each acquisition takes. When the
+open is granted a delegation, some acquisitions take unexpectedly long -
+almost exactly 1, 3 or 7 seconds - although the holder releases the lock
+within microseconds.
 
-Check the result, so such a server fails DELEG7 at BACKCHANNEL_CTL.
+Over 20s and 2.4M acquisitions the slowest five were 3119404us,
+3119248us, 1040679us, 1040288us and 1040212us. When the server grants no
+delegation, nothing exceeds 12ms.
 
-Signed-off-by: Evan Champion <evan.champion31@gmail.com>
----
- nfs4.1/server41tests/st_delegation.py | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+The delegation case breaks the notification of waiters on the unlock
+path, in two independent places:
 
-diff --git a/nfs4.1/server41tests/st_delegation.py =
-b/nfs4.1/server41tests/st_delegation.py
-index 26373a3..295401d 100644
---- a/nfs4.1/server41tests/st_delegation.py
-+++ b/nfs4.1/server41tests/st_delegation.py
-@@ -42,7 +42,8 @@ def _testDeleg(t, env, openaccess, want, breakaccess, =
-sec =3D None, sec2 =3D None):
-     sess1.client.cb_pre_hook(OP_CB_RECALL, pre_hook)
-     sess1.client.cb_post_hook(OP_CB_RECALL, post_hook)
-     if sec2:
--        sess1.compound([op.backchannel_ctl(env.c1.prog, sec2)])
-+        res =3D sess1.compound([op.backchannel_ctl(env.c1.prog, sec2)])
-+        check(res, msg=3D"BACKCHANNEL_CTL")
-     fh =3D _create_file_with_deleg(sess1, env.testname(t), openaccess | =
-want)
-     sess2 =3D env.c1.new_client_session(b"%s_2" % env.testname(t))
-     claim =3D open_claim4(CLAIM_NULL, env.testname(t))
---  2.54.0 (Apple Git-157)=
+ - NFS_STATE_MAY_NOTIFY_LOCK can only be learned from an OPEN reply, and
+   an open satisfied from a delegation produces none. The waiter is
+   therefore not on clp->cl_lock_waitq at all, and polls instead with a
+   doubling 1s/2s/4s backoff - which is where the 1, 3 and 7 second
+   acquisitions come from.
+
+ - Nothing wakes cl_lock_waitq when such a lock is released, since the
+   server never saw it and cannot send a CB_NOTIFY_LOCK. A waiter that
+   does reach that queue sleeps out the full 30s NFS4_LOCK_MAXTIMEOUT.
+
+Both need fixing: one puts the waiter somewhere reachable, the other
+reaches it. They are ordered so that no halfway point regresses - the
+wake comes first, since adding it alone is harmless, whereas routing
+waiters onto the queue first would turn the 1-7s stalls into 30s ones.
+
+With both applied the same test shows no acquisition over 2476us, total
+throughput up 23%, and the two processes splitting the work evenly
+(1464283/1464448, against 1029148/1355029 before).
+
+Olga Kornievskaia (2):
+  NFSv4: wake blocking lock waiters when a delegated lock  is released
+  NFSv4: remember that the server may send CB_NOTIFY_LOCK
+
+ fs/nfs/nfs4proc.c         | 21 ++++++++++++++++++---
+ include/linux/nfs_fs_sb.h |  1 +
+ 2 files changed, 19 insertions(+), 3 deletions(-)
+
+-- 
+2.52.0
+
