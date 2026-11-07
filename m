@@ -1,106 +1,106 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.129.124
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794071861;
-	b=0awn+agZaRw7kvpllfBQMPzQgYk0vu/3osiuK7WHgMQy7z2ykCirjjnsBAUwV79K3BP2
-	 npFIRTsRVF6nkY3C6K7mlr6w5CgzmS6YVaDc13SidMPZhhusXkrtCxjNdELzWeg7uh1BL
-	 7r+4Lhryl39BcQVbMwgkg3W/Mhe+iz8koZLZ7KvYBOcgwBUn5AuGz9S9NXjcsfF66ty6x
-	 bfAih4x6m90FDN1JbPAud/8s/zbguP8m1hOBdIG8i1iZ853Ei5Slaa+SIq8gxZWRK0BhA
-	 nuCC5+/+X0zw7CLMW/QmtWAU7B0+VkSjvG/thMcg7+xKSFulVZso1dbrztQM6TaScTA==
+	t=1794071929;
+	b=1q2GE/8yXQszBLBhjNgSdnUVXt//uv9gI4XTwKip8NWEWMRyWwId7Qjx1wij0onovNq4
+	 gOIyIKHuj34p6niZmjZiQnyrZsqljH+rYLwKqdSnmtQciDDO8sjM7KRblm+wEZQLTTCAD
+	 ULxcOpKKc3QWoydfjUFcAMk9QlF+bbbpElvsmMWQ83Xe+9emPF7o+K5EPsy7khSLT69r0
+	 l0Kh5IEgzofAlTabA4TFHcJA/pOAO5N5QzBKS7XWCfNe2JbvUFclDyrt5TUm8u8C7Qvty
+	 KcSRx3R66eV4E7LYxGmTHFN4MnnhHp2QN2lgjGzKDFslAPD5CkzjZfIm+BcwzEioklg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794071861;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794071929;
 	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
 	 X-Mimecast-MFC-AGG-ID:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 X-Received:Received:Message-ID:Date:MIME-Version:User-Agent:Subject:
-	 To:References:Content-Language:From:In-Reply-To:Content-Type:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:X-Received:Received:Message-ID:
+	 Date:MIME-Version:User-Agent:Subject:To:Cc:References:
+	 Content-Language:From:In-Reply-To:Content-Type:
 	 Content-Transfer-Encoding;
-	bh=EmODTmdYepMiQcSp2cht9psWVJwSQmAFCmFYw8SfCnA=;
-	b=kox+eIyJ2Xzi0oNgZrdwc5vIiNL8aMhyRHhaZaaeoq1SbjUghj0o8lE5H3G13NfEcnJ/
-	 CeWnCOJnNON1a9I4GoSGpY69qvSQFWHKZYklqOsxGF9lhStV+BIZtEp23E99lksdy3nFq
-	 3g5nGNCgK9MudL5tvwu0qq1ZiHLgpUWHUAIwjdD1B1I5ePD5oEHNLgPF2IOjqwVNKojYT
-	 NB+JvZC+pne8pno++oYrKr8VhhNZuEZiGfGr5Beo6rDzMZ2UbeXa0ISrIu1WRaZTSIXSf
-	 W3oU7bt3wAqa4e+BNcCk4WorJmVkNMj5jMpD7Zfdb303J2zMHwUh2LUrxh968UlUctQ==
+	bh=x2y+Qo7gZ6giSO/fHwPAkNJyPN86vjj5rYvWf1XuWa8=;
+	b=Ac5fYKPCPUquQlx7DQYdD7Se06uswUKB4zjlSwjUbtSoRoyufKVNHeq48pKbsPh2Y6T6
+	 G3LvA2wrTK5dzGg9tvrlp6OVtnt8t2qrj9EgzZRqFZgtAJ7C2zYwiDpdOIuJCsmoW2yZb
+	 B/u3VhBpVDXGK8Ks5DmgqwA7Mt3YMPKwDCI3vgXZiOXZvG4m14tUpgRwgEziZl1pP+y44
+	 opwfV4SjE3r9JgIE4LVhJkB2DsvAKHjG2OoDLaq8xo8Nq4lNIPFy1Ud+ImtN1i+KQjk7I
+	 LNE5sBZg0UIb8CLI11gSnaZEjC/1y8L82ghreTYLs0YgTelU9z9EsQ1SBsJgILpkSKQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=redhat.com;
 	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=ABaHttJj;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=C0vbgC4q;
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=e3B2PtJR;
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=RSCMZ+8+;
 	arc=none smtp.remote-ip=170.10.129.124
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C5302606A326
-	for <linux-nfs@vger.kernel.org>; Sat,  7 Nov 2026 17:17:40 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C5302606A326
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B4ACE606A326
+	for <linux-nfs@vger.kernel.org>; Sat,  7 Nov 2026 17:18:48 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B4ACE606A326
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=ABaHttJj;
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=C0vbgC4q
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=e3B2PtJR;
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=RSCMZ+8+
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1794071859;
+	s=mimecast20190719; t=1794071927;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:mime-version:mime-version:content-type:content-type:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=EmODTmdYepMiQcSp2cht9psWVJwSQmAFCmFYw8SfCnA=;
-	b=ABaHttJj9FgIwzIDItRvndEr90wv5XU0Y41kofOCJP3TbTaNOTJib+K03geIoNqMa4j1Ly
-	I43J/fBnJThVsvWrMJ+hZZ3vRHwxy02X44K5iwLVnxktf0hmCB7idodALizw3/CcV3ZixC
-	+5sYdxFpF8qWbnMjIGsH56QCHcM5YvM=
-Received: from mail-qt1-f197.google.com (mail-qt1-f197.google.com
- [209.85.160.197]) by relay.mimecast.com with ESMTP with STARTTLS
+	bh=x2y+Qo7gZ6giSO/fHwPAkNJyPN86vjj5rYvWf1XuWa8=;
+	b=e3B2PtJRWsuKlFE/XRv9+9x32dnMaSQ7hXH1snvh7nfMjb4jcukr732G2BC6T3QvaqIXmX
+	KlVywNk9+sJqRkEAFrZGlrExWYpXCOYu6MoSTog1q4cMiMHY9yCFHZI5vfrvXDMroT8N6u
+	PP5hPFnAqxZmA4lU3wzSegSiEEOspOk=
+Received: from mail-qt1-f198.google.com (mail-qt1-f198.google.com
+ [209.85.160.198]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-279-n3f2jWNrMBWYgzV9nzBDgQ-1; Sat, 07 Nov 2026 12:17:38 -0500
-X-MC-Unique: n3f2jWNrMBWYgzV9nzBDgQ-1
-X-Mimecast-MFC-AGG-ID: n3f2jWNrMBWYgzV9nzBDgQ_1794071858
-Received: by mail-qt1-f197.google.com with SMTP id d75a77b69052e-53664602c7fso32862571cf.1
-        for <linux-nfs@vger.kernel.org>; Sat, 07 Nov 2026 09:17:38 -0800 (PST)
+ us-mta-271-7Dnqm0LvMwurtnHct_IuFA-1; Sat, 07 Nov 2026 12:18:46 -0500
+X-MC-Unique: 7Dnqm0LvMwurtnHct_IuFA-1
+X-Mimecast-MFC-AGG-ID: 7Dnqm0LvMwurtnHct_IuFA_1794071926
+Received: by mail-qt1-f198.google.com with SMTP id d75a77b69052e-537548d4bc0so44178471cf.2
+        for <linux-nfs@vger.kernel.org>; Sat, 07 Nov 2026 09:18:46 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1794071858; x=1794676658; darn=vger.kernel.org;
+        d=redhat.com; s=google; t=1794071926; x=1794676726; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:to:subject:user-agent:mime-version:date
-         :message-id:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=EmODTmdYepMiQcSp2cht9psWVJwSQmAFCmFYw8SfCnA=;
-        b=C0vbgC4qemrCAAjVY5FEseykt4/UztDHUxMXRWGeEyqexDaykijOO9nWfOVr+mKZD+
-         eAoilKBQeBS0BGxIFxeEQVANdICAmaObmOKxtymSf1D1nLwcdqP98NF70oHxh4vHkOMs
-         vjd+DM3v1fcaCveF28AxB8U2tumtVOV7na1I/gBy8bAfkiPwlTnNUm9cp6a5lWGkstHg
-         vX/fzrLcFZxSq3IuCxFfkEJey0MJ3xZ9hFyLFjztFkR0rDqryiTNRg5x0KTs8bBxhVri
-         /mFpPzPD3q+/wTrzgLgPDIZwyONqXHyamKmRLgLC2fWYRw1J4EwKGfom58ef3CW6fsdm
-         n8LQ==
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=x2y+Qo7gZ6giSO/fHwPAkNJyPN86vjj5rYvWf1XuWa8=;
+        b=RSCMZ+8+FU5aM3mDQzjqTO2YiTqaAWPD7mG8MLZtwhlurQ+ijJHOjBvgHXt/Uw0DSM
+         NtQuFwFZWjc9mjuw4GWB4kpjHu83Ckr4p3CtdwHVmsmAyJHCmmPe5zZR/5Byamu3Ffmc
+         TG6X/G9GY/3NwfudEQr5VCOSRJvUtISmdX3jMkhI8oBeSeys5tEeMsp5c/c35woARJvY
+         +bleSQZ5cNL5BUtfX1jI1DYZmNT5LTSO76jksJhom9JkiSo0phy6VVFUbO/q5sny7r+e
+         pRCrocTMgfn/mc5Eeu94Gdhx5GXriPAQn+5f2pF/hP2gD7moK7DJ/hrQO2NEUNF6Lo+9
+         XviA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794071858; x=1794676658;
+        d=1e100.net; s=20260707; t=1794071926; x=1794676726;
         h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:to:subject:user-agent:mime-version:date
-         :message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=EmODTmdYepMiQcSp2cht9psWVJwSQmAFCmFYw8SfCnA=;
-        b=1PwVcoQxIhv4Z8nQ77QZnJVz6yGOacjdXGErlsF3SKUqSDBW+17QZY3hU7T6SBXIlX
-         s9zY6afcy0skjODObM+dBI0+9u1v33VUzaRlPPs5yHgrhMBpVNSCRp586wVYfNz+QXjD
-         qDHCX+qm0TyeEK8jdHimdoiI+7sxNQ2M0ph+0OoaNpVWBD/hShyzMe9XWh8zdiNdh6S/
-         NTrU2JbcF01LPkFaW3IQprMW0PLm1YACxP36xznC6OKmBHDV27ZCUgS6MFa/efK5OXTZ
-         sAzlujhswpB8njG1mXNhwqctQOgNAFyxqpOXbkRXP6pAFrMhbjjRrHoB4kK6MnF8YXSY
-         Yw0w==
-X-Forwarded-Encrypted: i=1; AKwUvBw4gAa2gF37VdZNtn9XelAbLp90VRqkVJvgPN5+i9GftkIJADau9kbQ9PAh+oRtgTQg+QQSKCJ3rzw=@vger.kernel.org
-X-Gm-Message-State: APuU4Z8UidRJwpwi/3VNhY4/AGEsKZMmG3RLdeGpILWK6sJzRBP85lKC
-	cZw7+3dSzP06Ly/8f7ih3qMm2NQsurZfYVJw00AWxIOeN8ZQa7QjNBxzqBz76EiyRIdjM7JH0U8
-	hEQFKqYuD7ADGUNL0TkBdiEVbMS0dSCCzmAqZM0hGDCVyAr7GLBvYrlir/iqseg==
-X-Gm-Gg: AYBFou1+2dNuddiRUOgCKYgnQ2F1ySZ7p3xU4OpiQU295uzk0fOtv0+qj20w8xdGstw
-	zOXWnJZQLlCTrDcf7cK6ljFs3ovQxzDmtWesEs6x1/xwiHe/bnk4KHasZWXtnVa2NbayNuy2EJH
-	0+JDb69y8vA/550AEBcwPnT23jSI5+ZDJ557tA5ohtxDcb08B8uvriTs43207vFr351lw8jF4fN
-	ijrS3bmJ5n3tYhr4iaJMkIte8mR24pLT1prFTaB78rLh2eSlj3dxoLJBulTCXCq8GBBIZpJYDvc
-	3z/FAYdzbfQSf6qrU9JHf03xG+TNFyTQKxQs5ockPgW8t2JupkI0jYoDQTXmzMZSTGekQngSMa8
-	BdE0S2kwnx3KGLeHcpNItUaB/OfIVgXBnLgJxmllEXWGDuQ==
-X-Received: by 2002:a05:622a:2485:b0:53f:a444:dc7c with SMTP id d75a77b69052e-54e156631cemr89224071cf.56.1794071857766;
-        Sat, 07 Nov 2026 09:17:37 -0800 (PST)
-X-Received: by 2002:a05:622a:2485:b0:53f:a444:dc7c with SMTP id d75a77b69052e-54e156631cemr89223681cf.56.1794071857081;
-        Sat, 07 Nov 2026 09:17:37 -0800 (PST)
+        bh=x2y+Qo7gZ6giSO/fHwPAkNJyPN86vjj5rYvWf1XuWa8=;
+        b=M5ZxXgFam5wsFa6PvfV48nsIEOKMCq103sYF3XgqROVs9Nj4UZi3km287D22Vk39l3
+         ryVbICJCppNkIRqV2huIiOz+kQGIqDgYac2GgxIW1j4AzpsR2kCgXmC5V80m7831ZjYw
+         0ep2HSm3EfQKPqaSHZZ6T3W3cpuofYyPvtIVpXC8oXoJrppfBHweiE0UoHN38gjdCWEl
+         Sxt/JtC7D6IyLmCLY09qdNgJpU0bUAkg6xnmx6dqQabaF7HdmZOpix5NdnESpdPsbiUO
+         NyTr64/Ye135IceUpuu5B0ZoerSafC+I1sh8LDENTcxi30wmWfh9F4+Wbzb/fGhtERLJ
+         r7qQ==
+X-Gm-Message-State: APuU4Z8nRUaVaB5M4uQtoV0Lr/rckrUa13EUj5nfCyk3uBbu1l9ogtcq
+	z1dJjNP9MnYIYAEKSRwS2Y/565at8DVY6mMNKhusD4lL1vemnOrXHyFX0u30MpX4qb+9MD9+XdO
+	LW1izmbZ6Bw1/JwjTmOTUP7hziIWpfYmfWivw8M8uNgqPMGUwUPJAdIYqBLtHjoeQDn3cKw==
+X-Gm-Gg: AYBFou1hxAmh6iXdFRenfjtBxHddlNMiPgHMl+m0c1Q6s7PSOYzP+lEkkypcwb/9Khi
+	KU3pmGKDeQJUHh9fCFLka7gQf7uNAQ/vkRpno/PBImioxMfPz7Mu2OH+jU9lNQJjaEIP44DXWmK
+	3xIXi1TTfV8wRFidSu1ug96RhUgEW1dsLJagIOffUnQ0P8IQAy79Q24E9+cNc0ALxSLX8PTdIf0
+	fbQ/B4LYmwC2Wdl/feu3vTFQyvnToiiojG8V0q3QOnHXmFoqlQ2GPnFQq8x6kihWN29dkblCg6U
+	TjUMnPkZVeJQgk/5MqsZcd/sHyqUgxkwn0sD5Ds5fPt4Sg56VeeQn4sr/Zt8W7eNwH8wdU5C2Q7
+	9h97DOiOh0URMZwIrXb3M8y5RAPt7f+tFRc9V0dHPu5VqQQ==
+X-Received: by 2002:a05:622a:1f85:b0:536:6ef3:105 with SMTP id d75a77b69052e-54e1388222dmr97591371cf.21.1794071925627;
+        Sat, 07 Nov 2026 09:18:45 -0800 (PST)
+X-Received: by 2002:a05:622a:1f85:b0:536:6ef3:105 with SMTP id d75a77b69052e-54e1388222dmr97591141cf.21.1794071925180;
+        Sat, 07 Nov 2026 09:18:45 -0800 (PST)
 Received: from [172.31.1.12] ([70.105.246.93])
-        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-91ea6acebb0sm47546086d6.45.2026.11.07.09.17.35
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-91ea675224bsm48329366d6.0.2026.11.07.09.18.44
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sat, 07 Nov 2026 09:17:36 -0800 (PST)
-Message-ID: <7a18bcc9-515e-4b80-84ef-ee812ed06fd3@redhat.com>
-Date: Sat, 7 Nov 2026 12:17:35 -0500
+        Sat, 07 Nov 2026 09:18:44 -0800 (PST)
+Message-ID: <e0314a68-f0d4-4624-b35b-879778ed6c8a@redhat.com>
+Date: Sat, 7 Nov 2026 12:18:43 -0500
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -111,76 +111,80 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] nfsiostat: display READ_PLUS statistics when available
-To: Karim Manaouil <kmanaouil.dev@gmail.com>, linux-nfs@vger.kernel.org
-References: <20260929012258.7objh6we7hdzqlzv@wrangler>
+Subject: Re: [PATCH 0/4] mountd/exportd: exit signal handling fixups
+To: Benjamin Coddington <ben.coddington@hammerspace.com>
+Cc: linux-nfs@vger.kernel.org
+References: <cover.1790263469.git.bcodding@hammerspace.com>
 Content-Language: en-US
 From: Steve Dickson <steved@redhat.com>
-In-Reply-To: <20260929012258.7objh6we7hdzqlzv@wrangler>
+In-Reply-To: <cover.1790263469.git.bcodding@hammerspace.com>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 
 
 
-On 9/28/26 9:22 PM, Karim Manaouil wrote:
-> NFSv4.2 mounts may report READ_PLUS operations separately from READ
-> in /proc/self/mountstats. nfsiostat parses these counters but does
-> not display them, leaving read activity out of its reports.
+On 9/24/26 11:29 AM, Benjamin Coddington wrote:
+> mountd and exportd exit from inside their SIGTERM handler: killer()
+> unregisters with rpcbind, frees, logs and calls exit(), none of which is
+> async-signal-safe.  It mostly gets away with it because mountd spends
+> nearly all its time in select().
 > 
-> Display READ_PLUS in the default and page cache reports when the
-> operation is present. Document the conditional output.
+> Setting rootdir in the [exports] section of nfs.conf makes it much
+> easier to hit.  nfsd_path_init() then starts a workqueue thread to do
+> path lookups in the chroot, and it does that after killer() is
+> installed.  pthread_create() allocates the new thread's TLS with
+> calloc(), so a SIGTERM there - say, from a reboot while mountd is still
+> coming up - runs killer() on top of a half-finished malloc.  We hit this
+> in a reboot test:
 > 
-> Signed-off-by: Karim Manaouil <karim.manaouil@ed.ac.uk>
-Committed... (tag: nfs-utils-3-1-2.rc1
+>    malloc(): unsorted double linked list corrupted
+>    ...
+>    calloc
+>    clnt_vc_create
+>    local_rpcb
+>    rpcb_unset
+>    nfs_svc_unregister
+>    unregister_services
+>    killer
+>    <signal handler called>
+>    _int_malloc
+>    calloc
+>    allocate_dtv
+>    _dl_allocate_tls
+>    pthread_create
+>    main
+> 
+> Once that thread exists malloc takes the arena lock, so the same
+> re-entry later can deadlock instead of aborting.  Out of 400 SIGTERMs
+> sent during startup with rootdir set, one mountd hung on a futex, which
+> I think is that, though I didn't catch a stack.
+> 
+> These patches take HUP, INT and TERM through a signalfd in the cache
+> loop, so the shutdown work runs in normal context.  The parent of forked
+> workers keeps a handler, but all it does is kill(0, SIGTERM).  The last
+> patch holds signals while mountd registers with rpcbind rather than
+> ignoring them; a SIGTERM there used to just get dropped.
+> 
+> Tested in a private net namespace with its own rpcbind: foreground and
+> -t 4, HUP, TERM, an ha-callout, and 400 SIGTERMs at random points in
+> startup with rootdir set.  No aborts or hangs, and nothing dropped.
+> 
+> Benjamin Coddington (4):
+>    support/export: take SIGINT/SIGTERM/SIGHUP via signalfd
+>    mountd: stop exiting from a signal handler
+>    exportd: stop exiting from a signal handler
+>    mountd: hold SIGTERM during rpcbind registration instead of ignoring
+>      it
+> 
+>   support/export/cache.c       | 122 ++++++++++++++++++++++++++++++++++-
+>   support/export/export.h      |   2 +
+>   support/include/ha-callout.h |   5 +-
+>   utils/exportd/exportd.c      |  30 +++------
+>   utils/mountd/mountd.c        |  32 +++------
+>   utils/mountd/svc_run.c       |   2 +
+>   6 files changed, 147 insertions(+), 46 deletions(-)
+> 
+Committed... (tag: nfs-utils-3-1-2.rc1)
 
-steved.> ---
->   tools/nfs-iostat/nfs-iostat.py | 4 ++++
->   tools/nfs-iostat/nfsiostat.man | 5 ++++-
->   2 files changed, 8 insertions(+), 1 deletion(-)
-> 
-> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
-> index af04aac5..2a681bbe 100755
-> --- a/tools/nfs-iostat/nfs-iostat.py
-> +++ b/tools/nfs-iostat/nfs-iostat.py
-> @@ -436,6 +436,8 @@ class DeviceData:
->   
->           if which == 0:
->               self.__print_rpc_op_stats('READ', sample_time, use_mb)
-> +            if 'READ_PLUS' in self.__rpc_data:
-> +                self.__print_rpc_op_stats('READ_PLUS', sample_time, use_mb)
->               self.__print_rpc_op_stats('WRITE', sample_time, use_mb)
->           elif which == 1:
->               self.__print_rpc_op_stats('GETATTR', sample_time, use_mb)
-> @@ -449,6 +451,8 @@ class DeviceData:
->               self.__print_dir_cache_stats(sample_time)
->           elif which == 3:
->               self.__print_rpc_op_stats('READ', sample_time, use_mb)
-> +            if 'READ_PLUS' in self.__rpc_data:
-> +                self.__print_rpc_op_stats('READ_PLUS', sample_time, use_mb)
->               self.__print_rpc_op_stats('WRITE', sample_time, use_mb)
->               self.__print_page_stats(sample_time)
->   
-> diff --git a/tools/nfs-iostat/nfsiostat.man b/tools/nfs-iostat/nfsiostat.man
-> index 4f24318d..b06e65aa 100644
-> --- a/tools/nfs-iostat/nfsiostat.man
-> +++ b/tools/nfs-iostat/nfsiostat.man
-> @@ -10,6 +10,8 @@ nfsiostat \- Emulate iostat for NFS mount points using /proc/self/mountstats
->   The
->   .B nfsiostat
->   command displays NFS client per-mount statistics.
-> +The default report displays READ and WRITE statistics.  It also displays
-> +READ_PLUS when it is present in /proc/self/mountstats.
->   .TP
->   <interval>
->   specifies the amount of time in seconds between each report.
-> @@ -126,7 +128,8 @@ only print stats for first LIST mount points
->   display throughput in megabytes per second
->   .TP
->   .B \-p " or " \-\-page
-> -displays statistics related to the page cache
-> +displays statistics related to the page cache, including READ_PLUS
-> +when it is present in /proc/self/mountstats
->   .TP
->   .B \-s " or " \-\-sort
->   Sort NFS mount points by ops/second
+steved.
 
