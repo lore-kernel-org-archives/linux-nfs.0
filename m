@@ -1,103 +1,88 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.216.98
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.229.6
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794008303;
-	b=oqvCOzCyVJztI0LYHLUlvVZdLPOOmrcTOzX/pCDZyrgHDmy9GBROOWPHPLgaA72/gYsJ
-	 nj8QwXoMvbJPSfyrK5kLSc+7u5D/lwMR+u3FJ50hU4DwkAku+AAOz7wHRBxgIkjEZJIo3
-	 0X0tflT+KRntrCMSZ3oyQ0x0f2foctdSKLXIr3F3jUxqadRLNPp4pFfTBQ8eRMEZ8EYaS
-	 h/lZETB64OEtIP5G3QpKwTrq5cOyo6YMC8BRgfIO/dc1NZUipTEN9zzBdq3QkyGpnJse0
-	 iHoUaDZznG1PpS/L71nxml8yV1QHHoSKYThleZkTz26VUYLWsp/ZC2AHzXnJiS2tmUg==
+	t=1794020817;
+	b=ZlevMO+WBNhAbCQdcBqK5ZBNP50tfVxXgdNqY2UQmhQ/74sSzmPKPvBqAJlrQNulnsT6
+	 o3HqkfdSHCFBjfZI5TqvTtNU+oq4fRP0E6qwAY1EEDLdEhh23zw/8oOmSQ1Vh+oj7g7NC
+	 7Tk1pwjm6eQdYnN0Rw2/SsuvP+nDHqqGq9LGIq8hTHz5VdvD2h1qKXf1xohW7HOXs7a7x
+	 wMdmKmV0lm72e+GWIlGL/rGPeVTYv/sY9S1cOcD6swyXlcQvE7rKK2C6Lq/DEH7FlOwaw
+	 PJ40m0og/zzCUG/rrv3xI/bJjAohndXTLmHDxFVqmUWpYvcZDlVTXA5vJaRH22PKbMg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794008303;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794020817;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 X-Relaying-Domain:Received:From:To:Cc:Subject:Date:Message-ID:
-	 X-Mailer:In-Reply-To:References:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=N4DPvPiEv18XL9E0HU5NSnRDXM9pLl3JEb1r3sKAKNM=;
-	b=W/5AlT297pHC1xgluyx7I8u6CL7wcbY0eprr5X8zWK/q/20wHe6GRDSCDpScIRjk7O4r
-	 IvMoVaG7UZHVxoDGkkkAPIJFXfJDEBrQDUMojsvmoSgCOzHJadkB+pYW6/rLLYgsKXcy9
-	 VDjn9+soSSSLjVDXFGUCSOFvRA7M90K6lnuBZ9g+4kixHDpOXsapulTtpMKlbDYXSGPt5
-	 6Z/V6Yu1lwB9vjMPbAWHQ8IuQxjd2lV1Vp5c9GN3830G5XHBqpv1eEOr1/Mha2J1Gxsrt
-	 qxchNdmjqaL1D65XwC2tShYajAOZWgsr5HsIG4eIKuA7vC2rAqZELLccdEc2TPSRxYQ==
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:Content-Type:
+	 Content-Transfer-Encoding:Mime-Version:Subject:Message-Id:Date:Cc:To:
+	 X-Mailer;
+	bh=Xs9oCjjqQQnawAC4dbSe2dkYXjaO/ew8g3Tmh9DPaSM=;
+	b=gqsmhAmOhXeLEFAg6a2U//FTWPsNUWuZuvwnm0wjtwmBTT4CmyZkViJQVSFhrsquMEkF
+	 OTDeeCr6QWCOEw51bmsB3YH2HaxtzSUglhfEx8OGEgXpdSszqpFY1maqyx8JKXlCga/I2
+	 WcmqYZZ9Du5ltSZsq5fINnkSgB2BTlADIz3UcIdJKoGCYoX5zWSWYc+6TLQvkHVtrJ62n
+	 0jEL6tIwBZxTdOAe1hIjyuHytqoM9hqGNTiR1a+Fip571Ur2/sqxJ0zkp14kxex2L1Vpr
+	 rIWDZeaNqV9IxucqaxkeQB7HtoVsoicKYQXOIvThVM+ENyZYvHk0jPLatiU0Wdh2zMA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=everpuredata.com;
-	spf=pass smtp.mailfrom=everpuredata.com;
-	dkim=pass header.d=everpuredata.com header.i=@everpuredata.com header.a=rsa-sha256 header.s=google header.b="uft3M/kZ";
-	arc=none smtp.remote-ip=209.85.216.98
-Received: from mail-pj1-f98.google.com (mail-pj1-f98.google.com [209.85.216.98])
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=obgB8bMp;
+	arc=none smtp.remote-ip=74.125.229.6
+Received: from mail-dy2-f6.google.com (mail-dy2-f6.google.com [74.125.229.6])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 92943606A32D
-	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2026 23:38:22 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 92943606A32D
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=everpuredata.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DBA2E606A326
+	for <linux-nfs@vger.kernel.org>; Sat,  7 Nov 2026 03:06:56 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org DBA2E606A326
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=everpuredata.com header.i=@everpuredata.com header.a=rsa-sha256 header.s=google header.b=uft3M/kZ
-Received: by mail-pj1-f98.google.com with SMTP id 98e67ed59e1d1-3b08cf16decso799680a91.0
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Nov 2026 15:38:22 -0800 (PST)
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=obgB8bMp
+Received: by mail-dy2-f6.google.com with SMTP id 5a478bee46e88-35adc681e1aso1567811eec.0
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Nov 2026 19:06:56 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=everpuredata.com; s=google; t=1794008302; x=1794613102; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+        d=gmail.com; s=20260707; t=1794020816; x=1794625616; darn=vger.kernel.org;
+        h=to:cc:date:message-id:subject:mime-version
+         :content-transfer-encoding:content-type:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=N4DPvPiEv18XL9E0HU5NSnRDXM9pLl3JEb1r3sKAKNM=;
-        b=uft3M/kZNtWMfwjzHoEKEfcv0xeGY1LFpaLGdGijed3dylbSlMh+emOTfhlOLh9Zq7
-         nRMyZWZfjTGaYcPX06pV0RViMhCeTv8CWuIbhw4/6gVn/bAtaz2dytdvNQkNPQzEi1eR
-         KJ1vTeL5wSX8wMJkHUrNB2uDIaD4LVcxIZ1D7OVRGudzTX6qPX4I8Pnihx7TY6G9gs2K
-         yj4u4DHfb7ZVkZS0LemR7LfNMhynMHLYil9YIsnRFPzFo5/usB1LpGMPhb+jwerJwIBk
-         zqFTppoT9BI3Qz2q7fEeWTnYDxr8eHrOxbhwyV4M3Ui4UKUawhy/7UkCMCGBFotUEzRz
-         pfVg==
+        bh=Xs9oCjjqQQnawAC4dbSe2dkYXjaO/ew8g3Tmh9DPaSM=;
+        b=obgB8bMp0Fy59o84TGAAkYtUnssbZN+C4l1iBEt0rMT18MyKkhpmF+/3b3YC4E7ua0
+         sxsQQEfcyoP+PdiTBMVeJQx5W9L00l8PD2mhfWA9ky5GBN/h03+xGabIfDH8B9m+XvGV
+         MeB0c8bWx3ZTnR1A9/9p2XTwWq4Oi8x6Ygh6ROXrzpyyFhHftIFDCHtRNb/Wlo+z1s4J
+         2i2i8Bkp4BPfhuM9LhvB+lRzp/mHTA/v3tbJ+kHKthaKis/pRjeqvO1T8/oDcixHw/20
+         23AKftPL/WcrAYLLdbj/bYIBlxMelCI87Ez4hsBoo9nrfpBzLWMFtU77mdze0pOerR46
+         +3aw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794008302; x=1794613102;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=N4DPvPiEv18XL9E0HU5NSnRDXM9pLl3JEb1r3sKAKNM=;
-        b=MHK93jtsenIcjuHf7HnQfI9ZKV9+wcDSWvzcp5UfcWcHNLoXqyz71qJfJD5RpnVFQO
-         RlMSp0opRG70IPn5+K5Rntv7WeLZBOChqzh56C1if4v85kezUsnn92ccaJpsp559IEB1
-         0zzOMF/cq/+93BfKIJM5fFUVCSnumzBQecM1jexIkpVJp8SchiDYRtzR+vs66ho1PnCQ
-         LWiEF2cUjnehudnBA15Zr7clcEqPPzE0EXbLVs4uUU1/6PxXb8K8UO2+vNrYodk3uQaF
-         guBblPb8kKSHgMY4LO1deP3DAxYQ/iWrvr02FGq9pHbEhmANUunU2H3ziM/4aqGdXUbi
-         6H2A==
-X-Forwarded-Encrypted: i=1; AL+hErGJ66AJOgJQb89kY/tLqf2w3kdtPx1ssQU+eDWDFSCegXUiMOlJko1hotSD1GghcNrxPoNJdJT4JiI=@vger.kernel.org
-X-Gm-Message-State: APuU4Z8FjKOWGmNu/XUeRWUKtJgJLeOutb4yy6rxtSB7u81CcfMkw0Hc
-	oH0mVIna/rKj1zBgpgm1YblMj1aq2syRL568UPjz5sML2G3GbnyhOIwkYHrifUAp0Nzw/73mqSE
-	oHfCm0aCKph+nsMQ+AIKcNJZ8j3JJvfPbBdtk
-X-Gm-Gg: AYBFou1qp6ytRPmQJ9Aulf3yJBI00rfaEFQzLRSYdEBGM06rfItdnDlT1aUALGjbQop
-	uY9rJLloNZOQ3yg/j1sPJLnI3+FjYITzKkxY4xK2t8oOWGmNCepOJRCX/GlGJs6EbQAwmyopqZG
-	8jl3jdVILScSiC1gaGrP3uQ7FINgZuNssRxjvCRp7YDMK4NBPudIGRsD+lu6WkGP/MbuJCsBFr8
-	hSsnyIs5AB0f4+A5kls9JC8x0irNeXe8zJ5ihrIpj49Xn4rkWsQDmmEg0YnPkhkTgiNPVfM1fPw
-	ETVZ6WHE/BD9AhHNOUFlEt0MCyHTpya5P8wFi6Bo4sYu9Bn4GnpRMJdS5Dp2BKVOM109JLGEMx7
-	BD5p/rSWWKJj6ybZh3K6DLayjwJq7OFa5zqstLZk=
-X-Received: by 2002:a17:90b:1c0f:b0:3a4:b8dd:1447 with SMTP id 98e67ed59e1d1-3b0db6f69aamr3787723a91.34.1794008301864;
-        Fri, 06 Nov 2026 15:38:21 -0800 (PST)
-Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.129])
-        by smtp-relay.gmail.com with ESMTPS id 98e67ed59e1d1-3b1058d66absm412329a91.4.2026.11.06.15.38.21
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 06 Nov 2026 15:38:21 -0800 (PST)
-X-Relaying-Domain: everpuredata.com
-Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
-	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id 1C11634039C;
-	Fri,  6 Nov 2026 15:38:21 -0800 (PST)
-From: Tim Menninger <tmenninger@everpuredata.com>
-To: trondmy@kernel.org,
-	anna@kernel.org
-Cc: cel@kernel.org,
-	ebadger@everpuredata.com,
-	jcurley@everpuredata.com,
-	jlayton@kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	netdev@vger.kernel.org,
-	slingappa@everpuredata.com
-Subject: Re: [PATCH v2 1/2] SUNRPC: add request-scoped disconnects when cancelling tasks
-Date: Fri,  6 Nov 2026 23:38:20 +0000
-Message-ID: <20261106233820.2182993-1-tmenninger@everpuredata.com>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20261105170653.3200815-1-tmenninger@everpuredata.com>
-References: <20261105170653.3200815-1-tmenninger@everpuredata.com>
+        d=1e100.net; s=20260707; t=1794020816; x=1794625616;
+        h=to:cc:date:message-id:subject:mime-version
+         :content-transfer-encoding:content-type:from:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=Xs9oCjjqQQnawAC4dbSe2dkYXjaO/ew8g3Tmh9DPaSM=;
+        b=N+rkiRe+05xoz0pd2IMSnyokMS2pWb1xYakIxLlaKSmP4l9XGi25biZ3V/uata2UP/
+         Kw8cztSN/WaBJT64xP3+CilOUhtC9slTf1QE1m6rbeIQX6B1MXQyG3ghm5nx8zo8aQV3
+         znsG/njGzGdfWT6J8JPPgahoFVed3ko7hAESMkKISjx5QlKrHJ+saWkHf1vQNuqqx7EY
+         CZFSYfMpcvAnpf48w3xmtAlRlEGhVikdxy3ijT1z5ltxK7SbGqtJiPS868di/wvFBSbB
+         7w4BZXEe9Qy2rV4hJoIOEthB1XP6zz1pTkaUN1wZrpJFr3iWCSF1VcEmG5YrDifwwXe+
+         wP0Q==
+X-Gm-Message-State: APuU4Z+qbRXnHM8ougAnwb0WXlbxdryfcOf5q4wIfJwdOG98SBeS0zWn
+	DQjSPrKLRwsN8m4fCH3H7fiRKnc4oX03vV/Ta1k24EUXruK4aeCDvUS0uKguOs43
+X-Gm-Gg: AYBFou3cFFptETC4JAHwAXdvLtjwyItWesWfzK7LBmBDXHGoQtE39jO0rXf7d2OWkrn
+	P8nxpB22Hc7Ef+9a8VcnknleZnKsXEKPtISakH3VTpGBkQdBeGBy1J0ZCxcYmp4FFKg4IhUGFA6
+	p8h1mzr6cVz0N9sH+NXFjYdj7uwUHtFtP03Jekb58YHDwtCI6IA8kbtWTJFnYoYsqeNEjP1hbju
+	cO6z2Id0Ajz+ifWSadW/biZUP4qvHIWzKXgDCyOn2Xy2WBKuykdhCG1CpSXDCCouULFfAN4Dnh7
+	cmi+AT8NsLbLT72amQoZvy+3qoFbEsBcDme62PrkO2+eZDK6T5iA/dS9jzO4Nazvnj2rw/ypS36
+	aF447x3xZdmYFeoLv3Pk72LSar3ZcZ1BXrhaNazZqbTDMqPMYwPJ1l3Z643GR70uyGCOra+Siqk
+	qqHmZ6WiICJXLLxh2asUADoEuM3GUuIl3KV3l9hQZDquwDQNK0p1Z6kI0uT4kRhzxq6WNTJXuJQ
+	pTtusnkk0eRRmcEu9b+xkTffxkhVBZ41tezsXwmpGVM+/HZZeG29YtxqYgUCug+f00e9ouGXPBB
+	/espJ41ISTAm3mF41uF9lbasMb5tXuIY5SFHSnDBxEL1Owulhl8/qcyCjJt449j81kPbF1ufoHg
+	hISjq5vLhxOOMhmxHrIq3
+X-Received: by 2002:a05:701b:2917:b0:1a7:979f:ecc0 with SMTP id a92af1059eb24-1b25d335fd1mr5086704c88.27.1794020815696;
+        Fri, 06 Nov 2026 19:06:55 -0800 (PST)
+Received: from smtpclient.apple (pa49-196-205-9.pa.vic.optusnet.com.au. [49.196.205.9])
+        by smtp.gmail.com with ESMTPSA id a92af1059eb24-1b25e4fad14sm8818841c88.22.2026.11.06.19.06.54
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 06 Nov 2026 19:06:55 -0800 (PST)
+From: Evan Champion <evan.champion31@gmail.com>
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: quoted-printable
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -106,25 +91,64 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3901.200.71.1.16\))
+Subject: [PATCH] 4.1 server tests: check the GETATTR result in _testCbGetattr
+ before using it
+Message-Id: <37505443-B677-43AA-894E-026D4F0B5D5A@gmail.com>
+Date: Sat, 7 Nov 2026 11:06:41 +0800
+Cc: linux-nfs@vger.kernel.org
+To: calum.mackay@oracle.com
+X-Mailer: Apple Mail (2.3901.200.71.1.16)
 
-> Would retaining the request/connection-generation scope, while removing
-> the additional unconditional lock acquisition from xprt_release(), be a
-> reasonable direction?
+_testCbGetattr read obj_attributes from the GETATTR reply before
+checking its status. A server may answer that GETATTR with
+NFS4ERR_DELAY while it waits for the CB_GETATTR reply (RFC 8881
+section 10.4.3), in which case there are no attributes and the test
+fails with an AttributeError rather than a result.
 
-I've posted v3 with the additional unconditional lock acquisition
-removed:
+Retry the GETATTR on NFS4ERR_DELAY, as a client would, and check the
+result before reading the attributes.
 
-    https://lore.kernel.org/all/20261106232844.2176820-1-tmenninger@everpuredata.com
+Signed-off-by: Evan Champion <evan.champion31@gmail.com>
+---
+ nfs4.1/server41tests/st_delegation.py | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
 
-There is still a broader question about when we should cancel I/O in the
-first place. This series does not change those cancellation decisions. I
-still think the narrower disconnect scope is useful independently of how
-we resolve that broader question. Where cancellation does require a
-disconnect, it should not also tear down unrelated transports or a
-replacement connection generation that did not carry the affected
-requests.
-
-I posted v3 to put that narrower change forward for review, not to
-suggest that the cancellation-policy question is settled.
+diff --git a/nfs4.1/server41tests/st_delegation.py =
+b/nfs4.1/server41tests/st_delegation.py
+index 41095b9..26373a3 100644
+--- a/nfs4.1/server41tests/st_delegation.py
++++ b/nfs4.1/server41tests/st_delegation.py
+@@ -340,17 +340,25 @@ def _testCbGetattr(t, env, change=3D0, size=3D0):
+       # create a new client session and do a GETATTR
+     sess2 =3D env.c1.new_client_session(b"%s_2" % env.testname(t))
+-    slot =3D sess2.compound_async([op.putfh(fh), =
+op.getattr(1<<FATTR4_CHANGE | 1<<FATTR4_SIZE |
+-                                                          =
+1<<FATTR4_TIME_ACCESS | 1<<FATTR4_TIME_MODIFY)])
++    getattr_ops =3D [op.putfh(fh), op.getattr(1<<FATTR4_CHANGE | =
+1<<FATTR4_SIZE |
++                                            1<<FATTR4_TIME_ACCESS | =
+1<<FATTR4_TIME_MODIFY)]
++    slot =3D sess2.compound_async(getattr_ops)
+       # wait for the CB_GETATTR
+     completed =3D cb.wait(2)
+     res =3D sess2.listen(slot)
+-    attrs2 =3D res.resarray[-1].obj_attributes
++    # The server may return NFS4ERR_DELAY until the CB_GETATTR reply is =
+in;
++    # retry, as a client would
++    tries =3D 0
++    while res.status =3D=3D NFS4ERR_DELAY and tries < 10:
++        env.sleep(1, "GETATTR returned NFS4ERR_DELAY")
++        res =3D sess2.compound(getattr_ops)
++        tries +=3D 1
+     sess1.compound([op.putfh(fh), op.delegreturn(deleg.write.stateid)])
+-    check(res, [NFS4_OK, NFS4ERR_DELAY])
++    check(res, msg=3D"GETATTR of a file with a write delegation")
+     if not completed:
+         fail("CB_GETATTR not received")
++    attrs2 =3D res.resarray[-1].obj_attributes
+     return attrs1, attrs2
+   def testCbGetattrNoChange(t, env):
+--  2.54.0 (Apple Git-157)=
