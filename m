@@ -1,84 +1,84 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.229.6
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.229.137
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794020817;
-	b=ZlevMO+WBNhAbCQdcBqK5ZBNP50tfVxXgdNqY2UQmhQ/74sSzmPKPvBqAJlrQNulnsT6
-	 o3HqkfdSHCFBjfZI5TqvTtNU+oq4fRP0E6qwAY1EEDLdEhh23zw/8oOmSQ1Vh+oj7g7NC
-	 7Tk1pwjm6eQdYnN0Rw2/SsuvP+nDHqqGq9LGIq8hTHz5VdvD2h1qKXf1xohW7HOXs7a7x
-	 wMdmKmV0lm72e+GWIlGL/rGPeVTYv/sY9S1cOcD6swyXlcQvE7rKK2C6Lq/DEH7FlOwaw
-	 PJ40m0og/zzCUG/rrv3xI/bJjAohndXTLmHDxFVqmUWpYvcZDlVTXA5vJaRH22PKbMg==
+	t=1794020911;
+	b=RyCCS6RhirYZBafUuyFlIt5+WCUazI+7rRXuaTIfalErogxNd/yvJ+WKx0TN8oi/uyjD
+	 QXGAvDyGP4xx+7OL7xgmBYEbH+9IYtqIUHXkAt9wEqL2YTlS0yMoLdKpSlWWxguEHtlJF
+	 ilVLoCxb9PLDKKXqbl8LpEZTYXRDcn6SXIosVtzvMiCljKZDIyPRVXJbhWrvhNoiGDMex
+	 BPl7DvxygDt6uj3r5prL2ymZUuGvokUoSVNSWK15r695lq2Xh656aYr9+oGDELqdrmSDr
+	 /bsNWSutCf30uiOYeuhksg3anA5y4q75dEeE0JEchQc5MmoSHFtBrfoSo4WmJtMVBHA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794020817;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794020911;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:Content-Type:
 	 Content-Transfer-Encoding:Mime-Version:Subject:Message-Id:Date:Cc:To:
 	 X-Mailer;
-	bh=Xs9oCjjqQQnawAC4dbSe2dkYXjaO/ew8g3Tmh9DPaSM=;
-	b=gqsmhAmOhXeLEFAg6a2U//FTWPsNUWuZuvwnm0wjtwmBTT4CmyZkViJQVSFhrsquMEkF
-	 OTDeeCr6QWCOEw51bmsB3YH2HaxtzSUglhfEx8OGEgXpdSszqpFY1maqyx8JKXlCga/I2
-	 WcmqYZZ9Du5ltSZsq5fINnkSgB2BTlADIz3UcIdJKoGCYoX5zWSWYc+6TLQvkHVtrJ62n
-	 0jEL6tIwBZxTdOAe1hIjyuHytqoM9hqGNTiR1a+Fip571Ur2/sqxJ0zkp14kxex2L1Vpr
-	 rIWDZeaNqV9IxucqaxkeQB7HtoVsoicKYQXOIvThVM+ENyZYvHk0jPLatiU0Wdh2zMA==
+	bh=Q4ukWM7DpgFNrydoMRpyPkCUicGMK+tCe1e4JeuavAw=;
+	b=wlxs/Q5o6XeC2vYJwsVmlmg3qNirXIxPvvyIHTL70gxPGE1UuIDt+9E3q9Pdo/1MwHrM
+	 N1EP55k4gp1KZ9UGOVD3p/58502V7eF12bVj4dZgPfQOUvnrxyhtz9BBPE4p5h6wDQC/5
+	 d6sXw2UMbTcCy1Pp0G2vgESGcEXl9CXLG2KDe4ml3wWPoGJoKtkqVfS1NnHzDJJpWf1GP
+	 tIFT3bEdynlNrtEKmRFhGPRuCZnx2ebaO0SdL0mcZZGA4Y///nkDiYVLzRKtknGrtlHmD
+	 /6J/vc4s5LVb7MnjjYqyYC/1cGIvduiyEq2Jm6PIaGbMt7h7Q4YWE90+FhPyA2EXwKw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=obgB8bMp;
-	arc=none smtp.remote-ip=74.125.229.6
-Received: from mail-dy2-f6.google.com (mail-dy2-f6.google.com [74.125.229.6])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=VrW3faqh;
+	arc=none smtp.remote-ip=74.125.229.137
+Received: from mail-dl2-f9.google.com (mail-dl2-f9.google.com [74.125.229.137])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DBA2E606A326
-	for <linux-nfs@vger.kernel.org>; Sat,  7 Nov 2026 03:06:56 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org DBA2E606A326
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 57DAA606A326
+	for <linux-nfs@vger.kernel.org>; Sat,  7 Nov 2026 03:08:31 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 57DAA606A326
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=obgB8bMp
-Received: by mail-dy2-f6.google.com with SMTP id 5a478bee46e88-35adc681e1aso1567811eec.0
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Nov 2026 19:06:56 -0800 (PST)
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=VrW3faqh
+Received: by mail-dl2-f9.google.com with SMTP id a92af1059eb24-19305bcb6d5so318927c88.0
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Nov 2026 19:08:31 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1794020816; x=1794625616; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1794020910; x=1794625710; darn=vger.kernel.org;
         h=to:cc:date:message-id:subject:mime-version
          :content-transfer-encoding:content-type:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=Xs9oCjjqQQnawAC4dbSe2dkYXjaO/ew8g3Tmh9DPaSM=;
-        b=obgB8bMp0Fy59o84TGAAkYtUnssbZN+C4l1iBEt0rMT18MyKkhpmF+/3b3YC4E7ua0
-         sxsQQEfcyoP+PdiTBMVeJQx5W9L00l8PD2mhfWA9ky5GBN/h03+xGabIfDH8B9m+XvGV
-         MeB0c8bWx3ZTnR1A9/9p2XTwWq4Oi8x6Ygh6ROXrzpyyFhHftIFDCHtRNb/Wlo+z1s4J
-         2i2i8Bkp4BPfhuM9LhvB+lRzp/mHTA/v3tbJ+kHKthaKis/pRjeqvO1T8/oDcixHw/20
-         23AKftPL/WcrAYLLdbj/bYIBlxMelCI87Ez4hsBoo9nrfpBzLWMFtU77mdze0pOerR46
-         +3aw==
+        bh=Q4ukWM7DpgFNrydoMRpyPkCUicGMK+tCe1e4JeuavAw=;
+        b=VrW3faqhRLDiqG665Iz2oKMC3CnRHv91xXTceaFrQD8vZlMHmt1yAA9WGMkW864GvY
+         wBZyMq42kp8vIKxhqpD7DewHA/valK+ohNM3mnu6AFeJrxXDbmFuLxFspG32lbwl0dUf
+         WSOrL6joEIDFTwr4ZukC/xWa+xg1yDIYx0rrLzu1bJuNtl0KLiATgu53hd1CNReFaNcV
+         9RFczwUa1Hw17aqu7rW1dCt8BwWk46u6xuz7+SqKzeV4MbLZLkge5HErujGmc0m2Ydb5
+         TijdD0iVAuQozuHFq95rUYtRufzbC6cYJRHVmsjkdQxCruQ7gQGJlfvlz1Ekp6xj6PH0
+         v6kw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794020816; x=1794625616;
+        d=1e100.net; s=20260707; t=1794020910; x=1794625710;
         h=to:cc:date:message-id:subject:mime-version
          :content-transfer-encoding:content-type:from:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=Xs9oCjjqQQnawAC4dbSe2dkYXjaO/ew8g3Tmh9DPaSM=;
-        b=N+rkiRe+05xoz0pd2IMSnyokMS2pWb1xYakIxLlaKSmP4l9XGi25biZ3V/uata2UP/
-         Kw8cztSN/WaBJT64xP3+CilOUhtC9slTf1QE1m6rbeIQX6B1MXQyG3ghm5nx8zo8aQV3
-         znsG/njGzGdfWT6J8JPPgahoFVed3ko7hAESMkKISjx5QlKrHJ+saWkHf1vQNuqqx7EY
-         CZFSYfMpcvAnpf48w3xmtAlRlEGhVikdxy3ijT1z5ltxK7SbGqtJiPS868di/wvFBSbB
-         7w4BZXEe9Qy2rV4hJoIOEthB1XP6zz1pTkaUN1wZrpJFr3iWCSF1VcEmG5YrDifwwXe+
-         wP0Q==
-X-Gm-Message-State: APuU4Z+qbRXnHM8ougAnwb0WXlbxdryfcOf5q4wIfJwdOG98SBeS0zWn
-	DQjSPrKLRwsN8m4fCH3H7fiRKnc4oX03vV/Ta1k24EUXruK4aeCDvUS0uKguOs43
-X-Gm-Gg: AYBFou3cFFptETC4JAHwAXdvLtjwyItWesWfzK7LBmBDXHGoQtE39jO0rXf7d2OWkrn
-	P8nxpB22Hc7Ef+9a8VcnknleZnKsXEKPtISakH3VTpGBkQdBeGBy1J0ZCxcYmp4FFKg4IhUGFA6
-	p8h1mzr6cVz0N9sH+NXFjYdj7uwUHtFtP03Jekb58YHDwtCI6IA8kbtWTJFnYoYsqeNEjP1hbju
-	cO6z2Id0Ajz+ifWSadW/biZUP4qvHIWzKXgDCyOn2Xy2WBKuykdhCG1CpSXDCCouULFfAN4Dnh7
-	cmi+AT8NsLbLT72amQoZvy+3qoFbEsBcDme62PrkO2+eZDK6T5iA/dS9jzO4Nazvnj2rw/ypS36
-	aF447x3xZdmYFeoLv3Pk72LSar3ZcZ1BXrhaNazZqbTDMqPMYwPJ1l3Z643GR70uyGCOra+Siqk
-	qqHmZ6WiICJXLLxh2asUADoEuM3GUuIl3KV3l9hQZDquwDQNK0p1Z6kI0uT4kRhzxq6WNTJXuJQ
-	pTtusnkk0eRRmcEu9b+xkTffxkhVBZ41tezsXwmpGVM+/HZZeG29YtxqYgUCug+f00e9ouGXPBB
-	/espJ41ISTAm3mF41uF9lbasMb5tXuIY5SFHSnDBxEL1Owulhl8/qcyCjJt449j81kPbF1ufoHg
-	hISjq5vLhxOOMhmxHrIq3
-X-Received: by 2002:a05:701b:2917:b0:1a7:979f:ecc0 with SMTP id a92af1059eb24-1b25d335fd1mr5086704c88.27.1794020815696;
-        Fri, 06 Nov 2026 19:06:55 -0800 (PST)
+        bh=Q4ukWM7DpgFNrydoMRpyPkCUicGMK+tCe1e4JeuavAw=;
+        b=mCA7NvJfOWb7dV2Cgn8aLGZUf8odAkG+36F5R/izhhn5A66O5tkzoMDXZxbw4r5xdn
+         /HYH5Nm+o4dxGQC5ajvNi0lb3mPzjERsauCBfCZJco/VnEUbyNh+Oxle8Gf9H1KkyA2K
+         XvogaVF5jhTOMvof3LtB9V2evNb1fS1IKNoptTaI1CPeBGPhhTkbvAfaR/9ffK74E5sL
+         XLP0pSci3azfzNZ8yZBw6mPmWJqu0kVMkuFfFKkCqlXJb5YzQwpGdJmeC6iA0XPPB8UR
+         A3EAVopLeA+apZY7iOYSV0saUyFOzfDWMV56tMxHSbL1C7J9erphJUQG/KkfP4jJcJMK
+         yAlw==
+X-Gm-Message-State: APuU4Z9GcJ2SQH9dPAyVWErPHZxRBmmA42N/sYadUA+Yky2I1ZgqsqhM
+	4vGVdmxFX5XCImbLYisoCdTYgBUJVrfGktuPDf1bOSqVE807QhR8kmfu
+X-Gm-Gg: AYBFou2Vsa0KRbicI4wmpZWbxsqLIOZBoFu+rIeAwBmcvnavmW7CwVz1xw0Sjog3bh+
+	/KWqXxgXkEt5+eZpFkWrN474u5gppxUM2BX+FNqKFv0k2QABD51pQoE4ZEjMIM2HgXLXwU836l6
+	NW2/I2H8N2DH8TBEVzwVF4zKeUJE5aIQ9sLBJ4fyv+26D1aCecf3N6FODktAO/PLAZ28iL8GTGd
+	AWfq0gTxjiV/Nv+095nTNzspg1+1M92gX2yu9zUuw5t/P3NaHyJb6MnFBmeYbApumc4AvSYEE2/
+	XdfgAm6CelXGUIGsCcoS/BKPxr+dUsiB1LlEhADBZ9ZnhioHCb1YLSYCa1Gde1H3Hpr06qj2DLr
+	eAupNqnsytaB8adj/yZzEY09PyKFfc4lzn5BYrCXZi9NN7Pl/2/8BEXg5puEXHf0zDmtNYXDZuj
+	o8TFEX1jNfC4iCJ44+CDaFiZ6UuDtj8GEbSyrihCrllykw1sWaw9L4krQ4lzVCBw6+pl183CLbP
+	hP1Lwut36mTIR+v9dTx0fi7HsgLGvdG7IonLA/O5WeLwiPFc4OsWaoW9T4FfqGUEf7dommYAkyx
+	tpVSgpd/T3dTPLqi2cLeRiyHtsEYv9hDNgWg/EuZDQHBtCJINlFHuEO1HF5aEhNDkXlqs43KaDi
+	mg0OR5pVodUctXzeQt4fw7A==
+X-Received: by 2002:a05:701b:424c:10b0:195:1a77:85cb with SMTP id a92af1059eb24-1b25d28c302mr5621868c88.1.1794020910303;
+        Fri, 06 Nov 2026 19:08:30 -0800 (PST)
 Received: from smtpclient.apple (pa49-196-205-9.pa.vic.optusnet.com.au. [49.196.205.9])
-        by smtp.gmail.com with ESMTPSA id a92af1059eb24-1b25e4fad14sm8818841c88.22.2026.11.06.19.06.54
+        by smtp.gmail.com with ESMTPSA id a92af1059eb24-1b25e4e079esm11197751c88.19.2026.11.06.19.08.28
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 06 Nov 2026 19:06:55 -0800 (PST)
+        Fri, 06 Nov 2026 19:08:30 -0800 (PST)
 From: Evan Champion <evan.champion31@gmail.com>
 Content-Type: text/plain;
 	charset=us-ascii
@@ -92,63 +92,41 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3901.200.71.1.16\))
-Subject: [PATCH] 4.1 server tests: check the GETATTR result in _testCbGetattr
- before using it
-Message-Id: <37505443-B677-43AA-894E-026D4F0B5D5A@gmail.com>
-Date: Sat, 7 Nov 2026 11:06:41 +0800
+Subject: [PATCH] 4.1 server tests: check the BACKCHANNEL_CTL result in
+ _testDeleg
+Message-Id: <CF4E8861-DE6A-4895-B333-7C67E8142F79@gmail.com>
+Date: Sat, 7 Nov 2026 11:08:16 +0800
 Cc: linux-nfs@vger.kernel.org
 To: calum.mackay@oracle.com
 X-Mailer: Apple Mail (2.3901.200.71.1.16)
 
-_testCbGetattr read obj_attributes from the GETATTR reply before
-checking its status. A server may answer that GETATTR with
-NFS4ERR_DELAY while it waits for the CB_GETATTR reply (RFC 8881
-section 10.4.3), in which case there are no attributes and the test
-fails with an AttributeError rather than a result.
+_testDeleg ignored the result of BACKCHANNEL_CTL. If the server
+doesn't support it (it is REQUIRED in RFC 8881), the test carries on
+with the original callback security, and later fails or passes for
+reasons unrelated to what DELEG7 tests.
 
-Retry the GETATTR on NFS4ERR_DELAY, as a client would, and check the
-result before reading the attributes.
+Check the result, so such a server fails DELEG7 at BACKCHANNEL_CTL.
 
 Signed-off-by: Evan Champion <evan.champion31@gmail.com>
 ---
- nfs4.1/server41tests/st_delegation.py | 16 ++++++++++++----
- 1 file changed, 12 insertions(+), 4 deletions(-)
+ nfs4.1/server41tests/st_delegation.py | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/nfs4.1/server41tests/st_delegation.py =
 b/nfs4.1/server41tests/st_delegation.py
-index 41095b9..26373a3 100644
+index 26373a3..295401d 100644
 --- a/nfs4.1/server41tests/st_delegation.py
 +++ b/nfs4.1/server41tests/st_delegation.py
-@@ -340,17 +340,25 @@ def _testCbGetattr(t, env, change=3D0, size=3D0):
-       # create a new client session and do a GETATTR
+@@ -42,7 +42,8 @@ def _testDeleg(t, env, openaccess, want, breakaccess, =
+sec =3D None, sec2 =3D None):
+     sess1.client.cb_pre_hook(OP_CB_RECALL, pre_hook)
+     sess1.client.cb_post_hook(OP_CB_RECALL, post_hook)
+     if sec2:
+-        sess1.compound([op.backchannel_ctl(env.c1.prog, sec2)])
++        res =3D sess1.compound([op.backchannel_ctl(env.c1.prog, sec2)])
++        check(res, msg=3D"BACKCHANNEL_CTL")
+     fh =3D _create_file_with_deleg(sess1, env.testname(t), openaccess | =
+want)
      sess2 =3D env.c1.new_client_session(b"%s_2" % env.testname(t))
--    slot =3D sess2.compound_async([op.putfh(fh), =
-op.getattr(1<<FATTR4_CHANGE | 1<<FATTR4_SIZE |
--                                                          =
-1<<FATTR4_TIME_ACCESS | 1<<FATTR4_TIME_MODIFY)])
-+    getattr_ops =3D [op.putfh(fh), op.getattr(1<<FATTR4_CHANGE | =
-1<<FATTR4_SIZE |
-+                                            1<<FATTR4_TIME_ACCESS | =
-1<<FATTR4_TIME_MODIFY)]
-+    slot =3D sess2.compound_async(getattr_ops)
-       # wait for the CB_GETATTR
-     completed =3D cb.wait(2)
-     res =3D sess2.listen(slot)
--    attrs2 =3D res.resarray[-1].obj_attributes
-+    # The server may return NFS4ERR_DELAY until the CB_GETATTR reply is =
-in;
-+    # retry, as a client would
-+    tries =3D 0
-+    while res.status =3D=3D NFS4ERR_DELAY and tries < 10:
-+        env.sleep(1, "GETATTR returned NFS4ERR_DELAY")
-+        res =3D sess2.compound(getattr_ops)
-+        tries +=3D 1
-     sess1.compound([op.putfh(fh), op.delegreturn(deleg.write.stateid)])
--    check(res, [NFS4_OK, NFS4ERR_DELAY])
-+    check(res, msg=3D"GETATTR of a file with a write delegation")
-     if not completed:
-         fail("CB_GETATTR not received")
-+    attrs2 =3D res.resarray[-1].obj_attributes
-     return attrs1, attrs2
-   def testCbGetattrNoChange(t, env):
+     claim =3D open_claim4(CLAIM_NULL, env.testname(t))
 --  2.54.0 (Apple Git-157)=
