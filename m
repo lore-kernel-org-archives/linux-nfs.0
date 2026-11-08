@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794176863;
-	b=Sy+zidOI1YABshX4nTFYX9PU3DH7I4v8GkGxDkWaWbgMYMdS8Dga1sSLIQa007mNVPB0
-	 lNWBqWz3KS3V4G2694Ty3v8Gvd1AQLEGt/qVZxDpuRt0NE1nJC0YcaFMxwNRvWNxr1p/K
-	 zUKEX4hrTUNz8KtmKxcs9WS2YGVKJHiDXkA9OtN0FgNYENFGgcsXz1rUApQfyI7TtaFYj
-	 JiPt1ulV7NGqIVNdWh7Xx5rF4jLUryS7WUIhlvxH3byHZZ/yvQBqEgi3szWWovtFADc7v
-	 /4+uY+web/8fNMnXLwIavT6MwmnSCDu9JDAMut7P437mHTz1W+5n98P2SdXdO7QGz3w==
+	t=1794176878;
+	b=5sg4oBYPMNMrLvb990Vm/Umeen/ZiWOy+08hzH7zKvyvhEKEp9SBgNvz6jGlmYu9r4/o
+	 fyFgWKwU7f+mm83xqIHNmTk3To+rI4XGsMVlMu3dITeEzQINcVzTu+fXKA4vvmy937HA0
+	 jpm65MuNmS9djm/TSOeXXuQXuS93fqUrmANm+i0XJYBYoodmSN8Fw3zUphGpp2+FaJeEx
+	 88Dn/pPioNKRG7Yw18KdYbgXwOFIj97VlUtO/HjcGZ/6PGfppFnUVnphIg0KtPi1uPZ6w
+	 /oBGJcoapBwKythvfMu5dU9MSM6vIg9itqE3HSm6mZSUL6u3OvrjMiiH9IHAW2XrWgA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794176863;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794176878;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=0drM0M3oPrheYDlOFbCeBdCWAIsAz86/BkD133KazZQ=;
-	b=yC+ladE8cWbbiVE6JndoVV62//pgfK6lUgWUmL14VzWQXCeLyqD2SacqqXrv/Vpe+Uro
-	 yYa19VmlUMpmdJyZ69R/E0mFWd9U44EA3HPiuFgg/VuIRATT3++yIC6ZGyM09X6D2A9T/
-	 4gVwBctTQuaVS9ABInkUfv/1YmIpF9dx4uoEMh2sJIC2naPydxZMYbJsyO2KX5JB7gxlA
-	 tQuLQwBuREH/7Kf67iTrp/Rm7gxRtNDDFGyP5pDQYBuRgHDTvbeTSjxhe8GFHe5HtlxNH
-	 k+O/WAtVVPS6FhaDFNO6fble8wDmo02Zf7OY/q1AEHuYl3qP7nEI/RXRVv+4p2bjkhg==
+	bh=4IKEyNNVMbtlH/YtAA2tKyWfWnOYgIJubMPziZyywq8=;
+	b=Ts4fw4imjA0TwARk1zLjWZ8olsZTAGOoRuYtZ4EGqHrK3g4HXbJ+0heMgfwF5hlDBgU7
+	 3mU5YpX4Vly73Nde4gIvlpobyg1FR/sEU9ZpHUHSKsba8u/QEM8mOQ9orUYEEckPh2CAw
+	 eRQHNy1rXaIvtnxprIX7iVw/71RaJFaMvZmPVyrmnMuRePr0szA35JdScEKz8twynqgqo
+	 VSpqj6VKohCQBdyQGX9wWAt8/lTdL73VKoMGbhXxnWBL3Cs7v9LuwDAbtHV3Uzh7Rq8SB
+	 Sde+2r5CbVvjifho8Iu9CAJgG2iCy9S3M+Eghv2TAVVAwfKlqgU2XI64lC4p7+ijSgg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=diNjKykQ;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Wdz8J4g0;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id B713B606A323;
-	Sun,  8 Nov 2026 22:27:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id 73F58606EE85;
+	Sun,  8 Nov 2026 22:27:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=diNjKykQ
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id DD1801F008A3;
-	Sun,  8 Nov 2026 22:27:41 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Wdz8J4g0
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 6053F1F008A7;
+	Sun,  8 Nov 2026 22:27:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794176862;
-	bh=0drM0M3oPrheYDlOFbCeBdCWAIsAz86/BkD133KazZQ=;
+	s=k20260515; t=1794176878;
+	bh=4IKEyNNVMbtlH/YtAA2tKyWfWnOYgIJubMPziZyywq8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=diNjKykQ0OWyBkItsEkGxnSTBT/OUe4lN7QnjIdkvXBjph2alyyrP/xERUltG5ikw
-	 I5qirRtCU7csKf3akOyXPr3fdAt9mPXOdqwd+b7+2uW27EyYkm1HoznfKo45l84ua6
-	 +LqAYOvvF1w6Mw0IJ+7YcTXhgDFzD7lbbVRAYqXrLdhaV032XfDwiuAuuu1SCHXXyL
-	 VNyyxsReXRZvkpjM1IxMXLTkY/XVl3RxZYkgw1g1Q5ahp8XcbdrTIMB2HxHN/SygQI
-	 YBJr6JrOdk8IiLMRFF7LcW+PUmdasnEuvjgzD44rJM0v7DbL55FRFheZyT6YoNxYkG
-	 9ayuMQEeZdHlA==
+	b=Wdz8J4g0bCy5/NMiYmiXLZEcK/qa4mel5KA7dJrd8tffkLSNG4nTfsy+tUud6n96D
+	 Oep2KRKcpj2qhHBRybpakcdAxPYttSAgI+RlPRdXhaFNAzYbsUlBJ7aHjXRHxrQaPq
+	 up6TwtBpMMZez0cEPxlEdFLrSHXR1zcdaGa6edNOAhDbzIowLYX8zrsMalfCLnOdh0
+	 AV1Nz92M8PG5intxsbRTRhr/stS166lY/nk2sIISEV+xFww6Loh8GjmCTAlk9oTokV
+	 cv/29jRI3sBgpLmBie9AIk84wQ73VlQhxemKPq8HSOYy7Bcw/gMp5VcwDundLNG0/o
+	 UWGH3KuLDX/vg==
 From: Jarkko Sakkinen <jarkko@kernel.org>
 To: David Howells <dhowells@redhat.com>
 Cc: Jarkko Sakkinen <jarkko@kernel.org>,
@@ -77,9 +77,9 @@ Cc: Jarkko Sakkinen <jarkko@kernel.org>,
 	Tom Talpey <tom@talpey.com>,
 	Trond Myklebust <trondmy@kernel.org>,
 	Vasily Gorbik <gor@linux.ibm.com>
-Subject: [PATCH v5 04/12] smb: client: Clear idmap/SPNEGO caches when the last session is unloaded
-Date: Mon,  9 Nov 2026 00:27:10 +0200
-Message-ID: <20261108222719.304712-5-jarkko@kernel.org>
+Subject: [PATCH v5 08/12] rxrpc: Release conn->key when init_connection_security() fails
+Date: Mon,  9 Nov 2026 00:27:14 +0200
+Message-ID: <20261108222719.304712-9-jarkko@kernel.org>
 X-Mailer: git-send-email 2.47.3
 In-Reply-To: <20261108222719.304712-1-jarkko@kernel.org>
 References: <20261108222719.304712-1-jarkko@kernel.org>
@@ -94,169 +94,48 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-CIFS caches cifs.idmap and cifs.spnego keys in the module-owned keyrings
-that are only destroyed in module_exit().
+Clear conn->key before calling key_put() when init_connection_security()
+fails, and pair with READ_ONCE() in rxrpc_connection_seq_show().
 
-Once keys pin the kernel module of the key type, the cached entries will
-retain CIFS pinned after the last SMB session has been torned down.
-
-Serialize the session count transitions with a mutex and clear the idmap
-and SPNEGO cache keyrings when the last session is freed.
-
+Fixes: 17926a79320a ("[AF_RXRPC]: Provide secure RxRPC sockets for use by userspace and kernel both")
 Signed-off-by: Jarkko Sakkinen <jarkko@kernel.org>
 ---
- fs/smb/client/cifs_spnego.c | 12 ++++++++++++
- fs/smb/client/cifsacl.c     | 12 ++++++++++++
- fs/smb/client/cifsproto.h   |  8 ++++++++
- fs/smb/client/misc.c        | 19 +++++++++++++++++--
- 4 files changed, 49 insertions(+), 2 deletions(-)
+ net/rxrpc/conn_event.c | 7 ++++++-
+ net/rxrpc/proc.c       | 2 +-
+ 2 files changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/fs/smb/client/cifs_spnego.c b/fs/smb/client/cifs_spnego.c
-index 44c407275680..e974f396e07f 100644
---- a/fs/smb/client/cifs_spnego.c
-+++ b/fs/smb/client/cifs_spnego.c
-@@ -15,6 +15,7 @@
- #include <linux/key-type.h>
- #include <linux/keyctl.h>
- #include <linux/inet.h>
-+#include <linux/ratelimit.h>
- #include "cifsglob.h"
- #include "cifs_spnego.h"
- #include "cifs_debug.h"
-@@ -190,6 +191,17 @@ cifs_get_spnego_key(struct cifs_ses *sesInfo,
- 	return spnego_key;
- }
+diff --git a/net/rxrpc/conn_event.c b/net/rxrpc/conn_event.c
+index 611c790bc6d0..096807f13354 100644
+--- a/net/rxrpc/conn_event.c
++++ b/net/rxrpc/conn_event.c
+@@ -298,8 +298,13 @@ static int rxrpc_process_event(struct rxrpc_connection *conn,
  
-+void
-+cifs_spnego_clear_cache(void)
-+{
-+	int ret;
+ 		ret = conn->security->init_connection_security(
+ 			conn, conn->key->payload.data[0]);
+-		if (ret < 0)
++		if (ret < 0) {
++			struct key *key = conn->key;
 +
-+	ret = keyring_clear(spnego_cred->thread_keyring);
-+	if (ret)
-+		pr_warn_ratelimited("Failed to clear SPNEGO cache: %d; cache pins remain\n",
-+				    ret);
-+}
-+
- int
- init_cifs_spnego(void)
- {
-diff --git a/fs/smb/client/cifsacl.c b/fs/smb/client/cifsacl.c
-index 346899da91eb..60c60c23dd34 100644
---- a/fs/smb/client/cifsacl.c
-+++ b/fs/smb/client/cifsacl.c
-@@ -13,6 +13,7 @@
- #include <linux/string.h>
- #include <linux/keyctl.h>
- #include <linux/key-type.h>
-+#include <linux/ratelimit.h>
- #include <uapi/linux/posix_acl.h>
- #include <linux/posix_acl.h>
- #include <linux/posix_acl_xattr.h>
-@@ -539,6 +540,17 @@ sid_to_id(struct cifs_sb_info *cifs_sb, struct smb_sid *psid,
- 	return 0;
- }
++			WRITE_ONCE(conn->key, NULL);
++			key_put(key);
+ 			return ret;
++		}
  
-+void
-+cifs_idmap_clear_cache(void)
-+{
-+	int ret;
-+
-+	ret = keyring_clear(root_cred->thread_keyring);
-+	if (ret)
-+		pr_warn_ratelimited("Failed to clear idmap cache: %d; cache pins remain\n",
-+				    ret);
-+}
-+
- int
- init_cifs_idmap(void)
- {
-diff --git a/fs/smb/client/cifsproto.h b/fs/smb/client/cifsproto.h
-index f9ea35597bc2..2930a40d1b67 100644
---- a/fs/smb/client/cifsproto.h
-+++ b/fs/smb/client/cifsproto.h
-@@ -58,8 +58,16 @@ do {									\
- } while (0)
- int init_cifs_idmap(void);
- void exit_cifs_idmap(void);
-+void cifs_idmap_clear_cache(void);
- int init_cifs_spnego(void);
- void exit_cifs_spnego(void);
-+#ifdef CONFIG_CIFS_UPCALL
-+void cifs_spnego_clear_cache(void);
-+#else
-+static inline void cifs_spnego_clear_cache(void)
-+{
-+}
-+#endif
- const char *build_path_from_dentry(struct dentry *direntry, void *page);
- char *__build_path_from_dentry_optional_prefix(struct dentry *direntry,
- 					       void *page, const char *tree,
-diff --git a/fs/smb/client/misc.c b/fs/smb/client/misc.c
-index ec28f102ea08..11c0330be489 100644
---- a/fs/smb/client/misc.c
-+++ b/fs/smb/client/misc.c
-@@ -9,6 +9,8 @@
- #include <linux/slab.h>
- #include <linux/ctype.h>
- #include <linux/mempool.h>
-+#include <linux/key.h>
-+#include <linux/mutex.h>
- #include <linux/vmalloc.h>
- #include "cifsglob.h"
- #include "cifsproto.h"
-@@ -33,6 +35,9 @@ struct tcon_list {
- 	struct cifs_tcon *tcon;
- };
- 
-+/* Serialize session admission with the last session's cache clear. */
-+static DEFINE_MUTEX(cifs_session_mutex);
-+
- /* The xid serves as a useful identifier for each incoming vfs request,
-    in a similar way to the mid which is useful to track each sent smb,
-    and CurrentXid can also provide a running counter (although it
-@@ -74,7 +79,6 @@ sesInfoAlloc(void)
- 
- 	ret_buf = kzalloc_obj(struct cifs_ses);
- 	if (ret_buf) {
--		atomic_inc(&sesInfoAllocCount);
- 		spin_lock_init(&ret_buf->ses_lock);
- 		ret_buf->ses_status = SES_NEW;
- 		++ret_buf->ses_count;
-@@ -84,6 +88,10 @@ sesInfoAlloc(void)
- 		spin_lock_init(&ret_buf->iface_lock);
- 		INIT_LIST_HEAD(&ret_buf->iface_list);
- 		spin_lock_init(&ret_buf->chan_lock);
-+
-+		mutex_lock(&cifs_session_mutex);
-+		atomic_inc(&sesInfoAllocCount);
-+		mutex_unlock(&cifs_session_mutex);
- 	}
- 	return ret_buf;
- }
-@@ -99,7 +107,6 @@ sesInfoFree(struct cifs_ses *buf_to_free)
- 	}
- 
- 	unload_nls(buf_to_free->local_nls);
--	atomic_dec(&sesInfoAllocCount);
- 	kfree(buf_to_free->serverOS);
- 	kfree(buf_to_free->serverDomain);
- 	kfree(buf_to_free->serverNOS);
-@@ -115,6 +122,14 @@ sesInfoFree(struct cifs_ses *buf_to_free)
- 		kref_put(&iface->refcount, release_iface);
- 	spin_unlock(&buf_to_free->iface_lock);
- 	kfree_sensitive(buf_to_free);
-+
-+	mutex_lock(&cifs_session_mutex);
-+	if (atomic_dec_and_test(&sesInfoAllocCount)) {
-+		cifs_idmap_clear_cache();
-+		cifs_spnego_clear_cache();
-+		key_gc_flush();
-+	}
-+	mutex_unlock(&cifs_session_mutex);
- }
- 
- struct cifs_tcon *
+ 		spin_lock_irq(&conn->state_lock);
+ 		if (conn->state == RXRPC_CONN_SERVICE_CHALLENGING) {
+diff --git a/net/rxrpc/proc.c b/net/rxrpc/proc.c
+index e9a27fa7b25d..2bf34b85c2f9 100644
+--- a/net/rxrpc/proc.c
++++ b/net/rxrpc/proc.c
+@@ -182,7 +182,7 @@ static int rxrpc_connection_seq_show(struct seq_file *seq, void *v)
+ 		   refcount_read(&conn->ref),
+ 		   atomic_read(&conn->active),
+ 		   state,
+-		   key_serial(conn->key),
++		   key_serial(READ_ONCE(conn->key)),
+ 		   conn->tx_serial,
+ 		   conn->hi_serial,
+ 		   conn->channels[0].call_id,
 -- 
 2.47.3
 
