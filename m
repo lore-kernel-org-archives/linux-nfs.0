@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794176878;
-	b=5sg4oBYPMNMrLvb990Vm/Umeen/ZiWOy+08hzH7zKvyvhEKEp9SBgNvz6jGlmYu9r4/o
-	 fyFgWKwU7f+mm83xqIHNmTk3To+rI4XGsMVlMu3dITeEzQINcVzTu+fXKA4vvmy937HA0
-	 jpm65MuNmS9djm/TSOeXXuQXuS93fqUrmANm+i0XJYBYoodmSN8Fw3zUphGpp2+FaJeEx
-	 88Dn/pPioNKRG7Yw18KdYbgXwOFIj97VlUtO/HjcGZ/6PGfppFnUVnphIg0KtPi1uPZ6w
-	 /oBGJcoapBwKythvfMu5dU9MSM6vIg9itqE3HSm6mZSUL6u3OvrjMiiH9IHAW2XrWgA==
+	t=1794176875;
+	b=swDhdZFJxH9Xlnp7JNBp2WNn9LcvGl9nT41F5MG6IYhvCHDFDB02+on2T0ZOVlh3e0oW
+	 7S3ifJ9U+kiUkjL0Lah/1iObirGDjSuS4b1JS10sbC/nWg1w8Aii1Z9W7d6/AQtUQ6bvx
+	 I0bQppD68SJsNCuLeJ85PNscNsGgD8bCHhj1ZZrjDLoxc4pi+Hv18Xyv+F4FtGK6CSqXw
+	 zpCYZddHaICtmep/6u2tEH6c1ICpmRe78fQ1RevIDq7FoEJHxWoKUveMfOvG5L9559UO/
+	 o9lHjjMc2prY7HfYB1poX5UiLqemHIpyJRBVVJzdyPg4VD2sqxhhN5KPbXPZnhw4T/Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794176878;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794176875;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=4IKEyNNVMbtlH/YtAA2tKyWfWnOYgIJubMPziZyywq8=;
-	b=Ts4fw4imjA0TwARk1zLjWZ8olsZTAGOoRuYtZ4EGqHrK3g4HXbJ+0heMgfwF5hlDBgU7
-	 3mU5YpX4Vly73Nde4gIvlpobyg1FR/sEU9ZpHUHSKsba8u/QEM8mOQ9orUYEEckPh2CAw
-	 eRQHNy1rXaIvtnxprIX7iVw/71RaJFaMvZmPVyrmnMuRePr0szA35JdScEKz8twynqgqo
-	 VSpqj6VKohCQBdyQGX9wWAt8/lTdL73VKoMGbhXxnWBL3Cs7v9LuwDAbtHV3Uzh7Rq8SB
-	 Sde+2r5CbVvjifho8Iu9CAJgG2iCy9S3M+Eghv2TAVVAwfKlqgU2XI64lC4p7+ijSgg==
+	bh=c8QBGr1yE6MKO7128lCzkFcPbJ/myyIRf4OSZLFtjRI=;
+	b=d1jCqkLXBNHQTvbYNpxo3BuwvSPbG6dxb0JMDJ+HfDEqSsKijfoUT28BOn7B07SwiYra
+	 CdJUEQ1/552DOozbWf+SIVZFuKN99eGMHH0sQ51kG24gMZWi5wAl+w1NMh3pyO1fDnGmi
+	 BLGx85O5EsgLKuX4wpGZ6IohmAtrJvz5m9vWXzkKmwCHSaHlTkhW0dY1FXff22Tf5HIr2
+	 JkYylSbbCqTY7/mVIEr8TZDh3eapTs/lcUQbAOP92Vz1Vvd77q4Pt2vZFIAbbI+r7Rg7V
+	 dRXpBPmz9lMxx+FxQf3nTzXBh2HgW3q0Ds0b1rcRXkNcdYaSDkGXtefMQgBc1bovhlQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Wdz8J4g0;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Jdu3+wtZ;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id 73F58606EE85;
-	Sun,  8 Nov 2026 22:27:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id BB731606D839;
+	Sun,  8 Nov 2026 22:27:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Wdz8J4g0
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 6053F1F008A7;
-	Sun,  8 Nov 2026 22:27:57 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Jdu3+wtZ
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 8AACE1F008A2;
+	Sun,  8 Nov 2026 22:27:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794176878;
-	bh=4IKEyNNVMbtlH/YtAA2tKyWfWnOYgIJubMPziZyywq8=;
+	s=k20260515; t=1794176874;
+	bh=c8QBGr1yE6MKO7128lCzkFcPbJ/myyIRf4OSZLFtjRI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=Wdz8J4g0bCy5/NMiYmiXLZEcK/qa4mel5KA7dJrd8tffkLSNG4nTfsy+tUud6n96D
-	 Oep2KRKcpj2qhHBRybpakcdAxPYttSAgI+RlPRdXhaFNAzYbsUlBJ7aHjXRHxrQaPq
-	 up6TwtBpMMZez0cEPxlEdFLrSHXR1zcdaGa6edNOAhDbzIowLYX8zrsMalfCLnOdh0
-	 AV1Nz92M8PG5intxsbRTRhr/stS166lY/nk2sIISEV+xFww6Loh8GjmCTAlk9oTokV
-	 cv/29jRI3sBgpLmBie9AIk84wQ73VlQhxemKPq8HSOYy7Bcw/gMp5VcwDundLNG0/o
-	 UWGH3KuLDX/vg==
+	b=Jdu3+wtZipXmwcBOiBA0negJi0bvNfj6sWJuAU8IG3LBGMZcIeTCsnrygWQ2gQTca
+	 iTO8jh6JqkRJmbDfM9m6ROf2oGmhtxfcchWvUJkZwsruDnUUP4pSQ3IkPtXZtc5nkX
+	 iij8W9RHfRoRMWrmCfXGfKIaNYLcbawuRM9N8fFsIA6uEGMKZvj7nyrIOYLtjVK4Yh
+	 MR/iMeEkYTmisfC/prps3ury+HfxF2zPZG8wCODyYgimSe9w+g6nr7gpxw+MTG4FwN
+	 Wp2HuscCErLIpL6ju6u+dMmpEPmnrBZ9Ri1sleIVr4sU+qztV4Qebz9eknS+HJ9YKv
+	 FD4MPCPoSjv3Q==
 From: Jarkko Sakkinen <jarkko@kernel.org>
 To: David Howells <dhowells@redhat.com>
 Cc: Jarkko Sakkinen <jarkko@kernel.org>,
@@ -77,9 +77,9 @@ Cc: Jarkko Sakkinen <jarkko@kernel.org>,
 	Tom Talpey <tom@talpey.com>,
 	Trond Myklebust <trondmy@kernel.org>,
 	Vasily Gorbik <gor@linux.ibm.com>
-Subject: [PATCH v5 08/12] rxrpc: Release conn->key when init_connection_security() fails
-Date: Mon,  9 Nov 2026 00:27:14 +0200
-Message-ID: <20261108222719.304712-9-jarkko@kernel.org>
+Subject: [PATCH v5 07/12] KEYS: trusted: TEE: Disable sysfs bind attributes
+Date: Mon,  9 Nov 2026 00:27:13 +0200
+Message-ID: <20261108222719.304712-8-jarkko@kernel.org>
 X-Mailer: git-send-email 2.47.3
 In-Reply-To: <20261108222719.304712-1-jarkko@kernel.org>
 References: <20261108222719.304712-1-jarkko@kernel.org>
@@ -94,48 +94,29 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Clear conn->key before calling key_put() when init_connection_security()
-fails, and pair with READ_ONCE() in rxrpc_connection_seq_show().
+Suppress sysfs bind and unbind attributes on trusted_key_driver so that
+userspace cannot unbind the driver and unregister key_type_trusted while
+the trusted module remains loaded.
 
-Fixes: 17926a79320a ("[AF_RXRPC]: Provide secure RxRPC sockets for use by userspace and kernel both")
 Signed-off-by: Jarkko Sakkinen <jarkko@kernel.org>
 ---
- net/rxrpc/conn_event.c | 7 ++++++-
- net/rxrpc/proc.c       | 2 +-
- 2 files changed, 7 insertions(+), 2 deletions(-)
+ security/keys/trusted-keys/trusted_tee.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/net/rxrpc/conn_event.c b/net/rxrpc/conn_event.c
-index 611c790bc6d0..096807f13354 100644
---- a/net/rxrpc/conn_event.c
-+++ b/net/rxrpc/conn_event.c
-@@ -298,8 +298,13 @@ static int rxrpc_process_event(struct rxrpc_connection *conn,
+diff --git a/security/keys/trusted-keys/trusted_tee.c b/security/keys/trusted-keys/trusted_tee.c
+index ad9c7baddcef..87ea549f7f0b 100644
+--- a/security/keys/trusted-keys/trusted_tee.c
++++ b/security/keys/trusted-keys/trusted_tee.c
+@@ -307,7 +307,8 @@ static struct tee_client_driver trusted_key_driver = {
+ 	.remove		= trusted_key_remove,
+ 	.id_table	= trusted_key_id_table,
+ 	.driver		= {
+-		.name		= DRIVER_NAME,
++		.name			= DRIVER_NAME,
++		.suppress_bind_attrs	= true,
+ 	},
+ };
  
- 		ret = conn->security->init_connection_security(
- 			conn, conn->key->payload.data[0]);
--		if (ret < 0)
-+		if (ret < 0) {
-+			struct key *key = conn->key;
-+
-+			WRITE_ONCE(conn->key, NULL);
-+			key_put(key);
- 			return ret;
-+		}
- 
- 		spin_lock_irq(&conn->state_lock);
- 		if (conn->state == RXRPC_CONN_SERVICE_CHALLENGING) {
-diff --git a/net/rxrpc/proc.c b/net/rxrpc/proc.c
-index e9a27fa7b25d..2bf34b85c2f9 100644
---- a/net/rxrpc/proc.c
-+++ b/net/rxrpc/proc.c
-@@ -182,7 +182,7 @@ static int rxrpc_connection_seq_show(struct seq_file *seq, void *v)
- 		   refcount_read(&conn->ref),
- 		   atomic_read(&conn->active),
- 		   state,
--		   key_serial(conn->key),
-+		   key_serial(READ_ONCE(conn->key)),
- 		   conn->tx_serial,
- 		   conn->hi_serial,
- 		   conn->channels[0].call_id,
 -- 
 2.47.3
 
