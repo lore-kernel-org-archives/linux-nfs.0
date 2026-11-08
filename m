@@ -1,104 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.46
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.70
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794106229;
-	b=lzR4Kavk0n1qOTJ9U31QzNzsKtvViYM6OGtPR1XhhGA9Weyewj7MKaJPIy/gNYBhGuEZ
-	 iZj/xAe+swzRUs0wxp1yIQYmozZeO5LySP8yvhFpxzh6m45GDIq62c9uGhtWOF8IJnLJ0
-	 s6aB32Kqpn7OoM8EPm0lCeYxiaFrl/iV5cSIwiH/L/0usrnUQR/39Kx4fbx2V661Uj51r
-	 IM0oLX6xnTNlBRBh1tRl1OFgd4pRBtrS2ZwngmhvpzcRd7MltkCcY744vL7BA40jYiwHA
-	 XHEQ+HWqpHw8uEiZC+Sx9WkDf5M9RxMNuo32lwp7BhC299sowdEXccgGRBUxayeF+Lg==
+	t=1794117149;
+	b=NPTCzfwdGRfgIAleF0Iw21cyU3LNMF+mS6fECBwdpsOdweEJNwrJ5VL0D6G1FExO3so7
+	 N+HhiVKKvFowqEFWkAo2e43RdqKHSZFQ2R8oXe3JwYLMIWZtbvS/g3qOBS3jkfxSIR8MQ
+	 VCFm7mShtz4O7/PfNaEY6qsZnGw/ykLAHA/MGNR4H/EJTXcVVYTUyORudHPpnQW7HVV+9
+	 fXO3Ve5s98ePz0UxRCGbM27W1qAnnJ5bI3gWwA665zmGHXcNwqzFOZZ5crPRlW+PXRzgf
+	 PYcaeNOIWMdZESJz+uHL52z07TTAop1951kmNgWl2U7c07SxlIxUpo92hxV2f83P6kw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794106229;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=+XgAKvL9Yz88WJI2U+RHkRWBYREJXUrZL2P4iN0ZY3c=;
-	b=LVpQjzc5ThX+JSIxU1EKkLHJgH+GNb+l70In2YjwsXoomSsg8WwuIlcWtFQIlQXI3fq1
-	 NkEaq72lkJv9XCsgbPIPpRUPE0u5ivwOToLfYbS8OtteWJhV4teKBlVLey35YfA1c7pft
-	 kivG3pXXsIs4DjVOEDkhhLf3n8dA/U4KGMLrhrvygDp6Shat9U9hDuPWa+oAZpLNjFBuC
-	 /lpJGYUFLKlrpm0BQqtKHUblHSsEDscMJjf81Kbu2/OOTJqIsk4VYSFswj3jmIvkWhqBK
-	 /fsW9NBtAzNx23Kv+lUtinmzQ1x7nQn2TWwZ736hjPQnXwhLv+Z5ArE37TyJ5lKfxgw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794117149;
+	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
+	 X-Gm-Message-State:MIME-Version:X-Received:Date:In-Reply-To:
+	 X-Google-Appengine-App-Id:X-Google-Appengine-App-Id-Alias:Message-ID:
+	 Subject:From:To:Content-Type;
+	bh=QJc37cJ/S1g5YDvC+KD7J+WHe+A8KLkh38XT8Ub/b9w=;
+	b=joBrUo8DxsIFQcv1o0R7f8vNolS+d9NOjSJ86skDIs5w6CgbMoi7/sxNDh5mwL0E+qAP
+	 coeO1RigpLspS88qWICE9fRotNkkNJBrluBmKUgAly9GucGx3ML3zo9n0r3nCDv5dcNio
+	 Z5VNU7p/DMGtzzFYMI3LHXAopghMcRV0QPLpP/p2OQc+EjzzN/5RY3jP7R2lDjvnfTkLC
+	 Z+w47O7OIJb+g8vEu8zXwR9ki3guw2ruHkyrBNW9lTws1lR8e3KNkMtgxCFOOXL5LpPiR
+	 595N5p245xpM0GoL+2PaP/4TDbPnfKKRW0EKRTC2IeIZ66eH28wJ2VK/wTfRAq2nV4A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=rV9OCWC5;
-	arc=none smtp.remote-ip=209.85.128.46
-Received: from mail-wm1-f46.google.com (mail-wm1-f46.google.com [209.85.128.46])
+	dmarc=fail header.from=syzkaller.appspotmail.com;
+	spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com;
+	arc=none smtp.remote-ip=209.85.210.70
+Received: from mail-ot1-f70.google.com (mail-ot1-f70.google.com [209.85.210.70])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 06E8F606A31C
-	for <linux-nfs@vger.kernel.org>; Sun,  8 Nov 2026 02:50:28 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 06E8F606A31C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=rV9OCWC5
-Received: by mail-wm1-f46.google.com with SMTP id 5b1f17b1804b1-4a5720b0a57so3870135e9.0
-        for <linux-nfs@vger.kernel.org>; Sat, 07 Nov 2026 18:50:28 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1794106227; x=1794711027; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=+XgAKvL9Yz88WJI2U+RHkRWBYREJXUrZL2P4iN0ZY3c=;
-        b=rV9OCWC54JHnc2+elgYOl3F1cX5u5r2YX4E36xLsQbCNz+QaH6o10fMNpaqruDMCjU
-         7w1i3BzMQXB8vvFjokaJEQ+5iD0QCIYQGOm+wQWv04cnUESwY9YB1o6wqFrTQqetE4Gn
-         7JEzOWyLwbZ852yIybo/pV7ZqesvThY8h2zZUxyqg2yDLpT6TYzBhleGvnzCA4btnOYk
-         PTCGmzKgjmyhhcK/qJPYdhjx7gbUJjiNo92kXyH8esiEcEoTZ+Nob2yGg6yC0c58/Eeu
-         KdX2qoR5gl/FnwNco4JDmIheY3c/oC1rF4lbZmbKmJ76yV/x7wbLlDq4XJOrTY1Ml278
-         fZbA==
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 66739606A31C
+	for <linux-nfs@vger.kernel.org>; Sun,  8 Nov 2026 05:52:29 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 66739606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-ot1-f70.google.com with SMTP id 46e09a7af769-85ef7e83c5dso206386a34.2
+        for <linux-nfs@vger.kernel.org>; Sat, 07 Nov 2026 21:52:29 -0800 (PST)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794106227; x=1794711027;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=+XgAKvL9Yz88WJI2U+RHkRWBYREJXUrZL2P4iN0ZY3c=;
-        b=VwWq7RjmLAsBFjmNbzSs9rjpgokWXhX74pwEtIaF0I0KXg24hrF56Ve2a/tXKm4+Ry
-         GwKf7Hlg4bbfPq2+neHpG+3nSZU0pw1gNUYT2ZeSv8LH2lWKhKDQibf2oLK0DDVD/sIe
-         CcVyTxgxuXDGyu5ZO1QiRiEN6T/niJKvYRZzvwMtntNH8SctgEIz5mvxrON8uR3jpBmw
-         rVuRyUt9VG6TOk/LN8McZrYt8DgS5hfRU9FSMERlcIKZGacFF8JOidr13WFBYgV0g3Dp
-         Ud6qWCnsvolO4LecpisvMV5vmdJhqjXtvyFxPgYSudJJqmglTdHiFYMUqNAEVJBvO9p/
-         uAog==
-X-Forwarded-Encrypted: i=1; AKwUvByYwYHi37ci8YLN34KMZmNcGEYfK/GQIMwaq6ktTwP26M7655u+LmG/FDw7KADnmmhN71uXa+2WCy4=@vger.kernel.org
-X-Gm-Message-State: APuU4Z9swyYNRYVS/WJFxdSarAxQpjUBJ08b6BzUs7fdjY3Vzpru0niR
-	bD2lri6KlBeH9Y5HK9cnrFhd4nETVXek3ZD65gDBGhRaHEyiyRUscBMv
-X-Gm-Gg: AYBFou2FtWyicyvqqZr62GvW357Z9zsOXAPIlEl9KmCPS6ATXoIUjKrq8pXT3NF9qw3
-	SiakFMykfoWBrjapuI+OgQDEvujvf8rinu2ejri7zWZwB6QzB2YJM4mX5Pv1CJqg+qafJv+45zW
-	/u7kojJN1Q+Eyw8m2cXnfpjcnmLlayqTHPCcVYW9OajtOjN/ZojIJ8IoBz3XH6DgvbXhhsBR8ab
-	VeBJI/6vAHJKQhP33LhRKPklF9n59zx0N8LJsP0/UCZvJvblvPm9Qxvq8I28h0HP7NS6e+DS0Ns
-	G8cCZc1eSomL6IY3dNlWCxRUK3pjjvXMZZhqcq1p/Foqnn9KpRY+ia9BF4QBv5jH4WnIu5FbeBx
-	l+LBuWuplO2ZHYZdYN+oZX5lbn3uBaXVKPXMbJlL2Xrr2f1pbpD0WxVNiIHRlzniUBHZ2XkYs3U
-	IBv5TMHCqDgdzEb9820crC0Jk4XnZGSwNLPnI2wqeR/n0g03tx2uN6vJMGximfL3ZeFXBoZPgnQ
-	Xd1v9XVToMWYO2J1mBozysyXl652RLkJ+9vE3K9I0J05W/VbCsliXOxHRizFyPCmoGd7p3pBwhu
-	zl8irtwENZ4xBSNhE5cqFLXA4FeEBCeNOaoW6kPp0HkDLrNPqGnDEdUIV+pp/xzlVkthDjPJdJZ
-	mBg1rfn5paNzDRYZm+6K4EZ9KAjjs7lU/2QqsCl+KgzxqLzksRT6CUjt3YWpW9tpcUQ==
-X-Received: by 2002:a05:600c:190e:b0:49e:65f2:db64 with SMTP id 5b1f17b1804b1-4b960d9c5f8mr7744875e9.5.1794106227158;
-        Sat, 07 Nov 2026 18:50:27 -0800 (PST)
-Received: from maria-VMware-Virtual-Platform ([187.55.90.25])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4b90f10c681sm22969665e9.10.2026.11.07.18.50.24
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 07 Nov 2026 18:50:25 -0800 (PST)
-From: Maria Sheikh <mariasheikh812@gmail.com>
-To: cel@kernel.org,
-	jlayton@kernel.org,
-	neil@brown.name,
-	okorniev@redhat.com,
-	Dai.Ngo@oracle.com,
-	tom@talpey.com,
-	rostedt@goodmis.org,
-	mhiramat@kernel.org,
-	mathieu.desnoyers@efficios.com,
-	trond.myklebust@primarydata.com,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-trace-kernel@vger.kernel.org
-Cc: outreachy@lists.linux.dev,
-	julianbraha@gmail.com,
-	Maria Sheikh <mariasheikh812@gmail.com>
-Subject: [PATCH] sunrpc: Remove unused rpc_socket_reset_connection tracepoint
-Date: Sun,  8 Nov 2026 07:49:42 +0500
-Message-ID: <20261108024943.8130-2-mariasheikh812@gmail.com>
-X-Mailer: git-send-email 2.53.0
+        d=1e100.net; s=20260707; t=1794117148; x=1794721948;
+        h=content-type:to:from:subject:message-id:in-reply-to:date
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=QJc37cJ/S1g5YDvC+KD7J+WHe+A8KLkh38XT8Ub/b9w=;
+        b=xrmQlKIbbMJBU6KgVaowHH3Cuq2pSL6k+8xG8yZ3bjWuGgdPU7BXjV75JD7eQNnU7B
+         UIk4BNJZdPud4uXgSxo4WTuWPzr+CQbtYWfTosKjveKk1ggLtc1oHTb2T7vdALzNqiO6
+         u0YYT+yrveO1ozDrIGNuu8ttvlHIxYA3yZURCe0AzWFu7MJzELzlufULm05VGp5ZP8AJ
+         jh2nnU1ysFOuDN5RVkadBa1EccRjlyWJnfPp40a0GuJV9jMOf4YGs02hd5Rmeh97YuJq
+         jA+KZUvrWKUpb8LZQQvEDrooP0nSQLNIR3uZsGP3d3vvpo4XrBuFEX1LFfe+PJTR4qBD
+         y9WQ==
+X-Forwarded-Encrypted: i=1; AKwUvBwyDe9CYIpl+LDU95M2oK0EoU8p6AsIKaMqZYd5GMYfbzaIWIKYnE1lF8e9ZugJM5eK4bOhtmtqFmI=@vger.kernel.org
+X-Gm-Message-State: APuU4Z+hAZTglK5jo2BP5snSfzBytbaWmAmMgXk0GLQ3+5t8mFBhyqH5
+	I6iqkODdHvULLISfRdhr2LBsXDr1QCsDuIf4mOn5SRf3o6hDq3vS7RI8uigi4PpRCfoDvXlNU3n
+	2jD6ag8b2mLeGFORPnkZtPzc0MNlhPyLu2uxyF8RWc1cxu1Hm3mjN3Cr5xQY=
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -108,34 +58,122 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-Received: by 2002:a05:6808:c125:b0:4f6:a430:1822 with SMTP id
+ 5614622812f47-568141ffe0fmr509756b6e.7.1794117148467; Sat, 07 Nov 2026
+ 21:52:28 -0800 (PST)
+Date: Sat, 07 Nov 2026 21:52:28 -0800
+In-Reply-To: <6aee17c4.8be4ead1.3b45e1.0199.GAE@google.com>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6af00e1c.5a668245.1aceb6.0005.GAE@google.com>
+Subject: Re: [syzbot] [nfs?] [net?] WARNING in svc_destroy
+From: syzbot <syzbot+8cbdf9aa6c281a4e6bbe@syzkaller.appspotmail.com>
+To: anna@kernel.org, cel@kernel.org, dai.ngo@oracle.com, davem@davemloft.net, 
+	edumazet@kernel.org, horms@kernel.org, jlayton@kernel.org, kuba@kernel.org, 
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, neil@brown.name, 
+	netdev@vger.kernel.org, okorniev@redhat.com, pabeni@redhat.com, 
+	syzkaller-bugs@googlegroups.com, tom@talpey.com, trondmy@kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-Tracepoint definitions consume kernel memory even when they are not
-used. The rpc_socket_reset_connection tracepoint has had no callers
-since commit 4efdd92c9211 ("SUNRPC: Remove TCP client connection reset
-hack") removed the code that used it, but its definition was left
-behind.
-Remove unused definition. This reduces the size of sunrpc.ko by 628
-bytes.
+syzbot has found a reproducer for the following issue on:
 
-Fixes: 4efdd92c9211 ("SUNRPC: Remove TCP client connection reset hack")
-Signed-off-by: Maria Sheikh <mariasheikh812@gmail.com>
+HEAD commit:    d164c7d754f0 Merge tag 'devicetree-fixes-for-7.4-1' of git..
+git tree:       git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+console output: https://syzkaller.appspot.com/x/log.txt?x=13ac11a1580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=1cf189394a856f11
+dashboard link: https://syzkaller.appspot.com/bug?extid=8cbdf9aa6c281a4e6bbe
+compiler:       gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=1494d369580000
+
+AI-generated root cause summary:
+In fs/nfs/callback.c, nfs4_callback_up_net() first initializes an IPv4 TCP
+listener transport via svc_xprt_create(..., PF_INET, ...), which links the
+transport onto serv->sv_permsocks. When a subsequent call to
+svc_xprt_create(..., PF_INET6, ...) fails with an error other than
+-EAFNOSUPPORT, nfs4_callback_up_net() returns the error immediately without
+tearing down the existing IPv4 transport. As a result, nfs_callback_up() unwinds
+on error and calls xprt_svc_destroy_nullify_bc() -> svc_destroy(), which
+triggers the WARN_ONCE(!list_empty(&serv->sv_permsocks)) warning because the
+IPv4 transport is still attached to the service, and subsequently frees the
+service while leaving the active listener with a dangling pointer.
+
+full analysis:  https://syzkaller.appspot.com/x/ai_root_cause?x=8cbdf9aa6c281a4e6bbe
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+8cbdf9aa6c281a4e6bbe@syzkaller.appspotmail.com
+
+NFS: callback service start failed
+------------[ cut here ]------------
+SVC: permsocks remain for NFSv4 callback
+WARNING: net/sunrpc/svc.c:532 at svc_destroy+0x299/0x330 net/sunrpc/svc.c:532, CPU#1: syz-executor154/6024
+Modules linked in:
+CPU: 1 UID: 0 PID: 6024 Comm: syz-executor154 Not tainted syzkaller #0 PREEMPT(full) 
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 11/06/2026
+RIP: 0010:svc_destroy+0x29d/0x330 net/sunrpc/svc.c:532
+Code: 48 b8 00 00 00 00 00 fc ff df 49 8b 5d 00 48 8d 7b 18 48 89 fa 48 c1 ea 03 80 3c 02 00 75 67 48 8d 3d e7 6d 77 07 48 8b 73 18 <67> 48 0f b9 3a e9 d0 fd ff ff 48 8b 7c 24 08 e8 7f 4d 85 f7 e9 a5
+RSP: 0018:ffffc9000393f860 EFLAGS: 00010246
+RAX: dffffc0000000000 RBX: ffffffff9040bf80 RCX: 0000000000000000
+RDX: 1ffffffff20817f3 RSI: ffffffff8c37ebc0 RDI: ffffffff927b0660
+RBP: 0000000000000000 R08: 00000000ffffffff R09: 0000000000000000
+R10: 0000000000000001 R11: 0000000000000000 R12: ffff888020bcc000
+R13: ffff8880274a0000 R14: ffff88802c3c4000 R15: ffffffff9cd624c0
+FS:  000055556ff69400(0000) GS:ffff888122575000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 000055fdb0009fd0 CR3: 00000000377ff000 CR4: 00000000003526f0
+Call Trace:
+ <TASK>
+ nfs_callback_up+0x511/0xad0 fs/nfs/callback.c:236
+ nfs4_init_callback fs/nfs/nfs4client.c:327 [inline]
+ nfs4_init_client_minor_version fs/nfs/nfs4client.c:379 [inline]
+ nfs4_init_client+0x236/0x420 fs/nfs/nfs4client.c:429
+ nfs_get_client+0xf38/0x1230 fs/nfs/client.c:467
+ nfs4_set_client+0x3f6/0x640 fs/nfs/nfs4client.c:763
+ nfs4_init_server.isra.0+0x5be/0xf80 fs/nfs/nfs4client.c:1014
+ nfs4_create_server+0x185/0x2b0 fs/nfs/nfs4client.c:1063
+ nfs4_try_get_tree+0x93/0x140 fs/nfs/nfs4super.c:228
+ nfs_get_tree+0xa61/0x1440 fs/nfs/fs_context.c:1621
+ vfs_get_tree+0x92/0x320 fs/super.c:1881
+ fc_mount fs/namespace.c:1282 [inline]
+ do_new_mount_fc fs/namespace.c:3910 [inline]
+ do_new_mount fs/namespace.c:3986 [inline]
+ path_mount+0x7d0/0x2850 fs/namespace.c:4337
+ do_mount fs/namespace.c:4350 [inline]
+ __do_sys_mount fs/namespace.c:4565 [inline]
+ __se_sys_mount fs/namespace.c:4542 [inline]
+ __x64_sys_mount+0x293/0x310 fs/namespace.c:4542
+ do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
+ do_syscall_64+0x123/0x790 arch/x86/entry/syscall_64.c:84
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7fd324de7f1a
+Code: 48 c7 c2 d8 ff ff ff f7 d8 64 89 02 b8 ff ff ff ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00 49 89 ca b8 a5 00 00 00 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 d8 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007ffca5d506e8 EFLAGS: 00000246 ORIG_RAX: 00000000000000a5
+RAX: ffffffffffffffda RBX: 0000000000000003 RCX: 00007fd324de7f1a
+RDX: 00007fd324e4603f RSI: 00007fd324e45ffe RDI: 00007fd324e46044
+RBP: 0000000000000004 R08: 00007ffca5d50760 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 00007fd324e45ffe
+R13: 0000000000001789 R14: 0000000000000801 R15: 00007ffca5d50760
+ </TASK>
+----------------
+Code disassembly (best guess):
+   0:	48 b8 00 00 00 00 00 	movabs $0xdffffc0000000000,%rax
+   7:	fc ff df
+   a:	49 8b 5d 00          	mov    0x0(%r13),%rbx
+   e:	48 8d 7b 18          	lea    0x18(%rbx),%rdi
+  12:	48 89 fa             	mov    %rdi,%rdx
+  15:	48 c1 ea 03          	shr    $0x3,%rdx
+  19:	80 3c 02 00          	cmpb   $0x0,(%rdx,%rax,1)
+  1d:	75 67                	jne    0x86
+  1f:	48 8d 3d e7 6d 77 07 	lea    0x7776de7(%rip),%rdi        # 0x7776e0d
+  26:	48 8b 73 18          	mov    0x18(%rbx),%rsi
+* 2a:	67 48 0f b9 3a       	ud1    (%edx),%rdi <-- trapping instruction
+  2f:	e9 d0 fd ff ff       	jmp    0xfffffe04
+  34:	48 8b 7c 24 08       	mov    0x8(%rsp),%rdi
+  39:	e8 7f 4d 85 f7       	call   0xf7854dbd
+  3e:	e9                   	.byte 0xe9
+  3f:	a5                   	movsl  %ds:(%rsi),%es:(%rdi)
+
+
 ---
- include/trace/events/sunrpc.h | 1 -
- 1 file changed, 1 deletion(-)
-
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index ff855197880d..a0d02d735a7c 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -950,7 +950,6 @@ DECLARE_EVENT_CLASS(xs_socket_event_done,
- DEFINE_RPC_SOCKET_EVENT(rpc_socket_state_change);
- DEFINE_RPC_SOCKET_EVENT_DONE(rpc_socket_connect);
- DEFINE_RPC_SOCKET_EVENT_DONE(rpc_socket_error);
--DEFINE_RPC_SOCKET_EVENT_DONE(rpc_socket_reset_connection);
- DEFINE_RPC_SOCKET_EVENT(rpc_socket_close);
- DEFINE_RPC_SOCKET_EVENT(rpc_socket_shutdown);
- 
--- 
-2.53.0
-
+If you want syzbot to run the reproducer, reply with:
+#syz test: git://repo/address.git branch-or-commit-hash
+If you attach or paste a git patch, syzbot will apply it before testing.
