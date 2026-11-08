@@ -1,135 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794142106;
-	b=oGAAUOMjnOpER8wH8RPqUPmmNNp+utRFTPA7HTT1YFCuY8AOpyiEqv53E5NHnBpGlLgc
-	 Sr3eyNt9kqhHPuvpp+TSDf9f+/9OIzTzAg4jSwDT1oDtNtZUoBaxYcJkShjrHWEN8oLEM
-	 YnchYe57UjqsVVJHiEFWWdq5kHubRco5npPmXH5PtVCT0uCd1kpqmI6D3iVse1RHddhZu
-	 BFl0b9REenqksCKYhdBmmXKHdFTX/sH/j367H8RO7LlCcUrET5GHmmNVgS9G7pyWiwuzn
-	 3s9ln5mdQR2fwMGoBZoDEaCBMMEF3RSpK6Aey+5vENAj70ijkLzVNhUFKhS0dVFkzxQ==
+	t=1794160504;
+	b=DvyHQSRS4TfTziIF1PqyKCSmQ95I7Y0Vz2OXCqyUrCbMAtFpD6RA3uPwj25XNJMXu6De
+	 L51wa9Avz+6GN2vLH20TXXcz1M0+9SPEHGXaP7zhfqYtfKCsxe06p8oPeAPVS+wdguTrW
+	 SBryNrK99Y6+2ShSy/335RbyZs3THm2YulUyhAfL1XRAB1tBQU87hB/7eUIHJJ2Bz/9yA
+	 7aYm/LCl32pNiFV7De/wm61qRAa3uqKAWjftHOIwRYCTzbjSqJ/b9jsqzz+VqUWdn+e/e
+	 MNuTDujjDt+V89/0+D1Tkrlzcg502sIhVU/O9OOM1wlP3Hk4jJPYqVKkt4VU2ExTfAg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794142106;
-	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
-	 In-Reply-To:References:Autocrypt:Content-Type:
-	 Content-Transfer-Encoding:User-Agent:MIME-Version;
-	bh=i3fScoYq2tKuXGNDb7x7fROa8Y1+Tfxv6jIYPhqmQ+0=;
-	b=YL5TFIP4k2EqUHQi8EImbNC6QcA6auTQLhxDSEHCQH+qESNOnyz9YyhFHJ5WoYJ+sXEf
-	 kGY6PEo3WINVFzP0IMGRMjE2QNwU905s6k+ca2vkbEXjyNye5L0y6oSYTPVILMZLqlXSt
-	 yEf1PenbGuKYFX+VJDIOBIZ0fqXiRxP89QPDckx4+BRmop7T5WBIKveQpErZ0pSL4y86u
-	 QeblA73ni4ls42CX/1XNfmqgfK9YEa/Grmep/5LsCAZ7RFYEAnrFTMJ0TbUC/s6EFlcaZ
-	 tKzb8GM0k6bnPpMy1GKo5XHyF/ApMAXKV8RyaCx3aZ4k9KSkAMgfezs07YNtNLG6+1Q==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794160504;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 MIME-Version:Content-Transfer-Encoding;
+	bh=3v9LBX+D4kL6Cnom17dz7DIT2Ps+o+JK1OZiS9Zr4fw=;
+	b=vsJb8fO5UM4Q0c65sBdqbOPktF0vJIUZfyKBx6V81hcRCqUadWyME+blyPD4m7NHzP+y
+	 5cjU1Pc+JL4h8+1h8Mvy4y/5mOEFTuYVVbCE1SdMBo85tz86mZeIHck32m2sgRLdFi5In
+	 lWG0XDcil4APsk9v3biLBC1F0eo4u5cDZOARoqMOztbmsuGiutKdrNFaZIG1jqh1KRllZ
+	 SkeZBoRrLDubQegp90qhrEI8xK4AMYxR2VZchxaab0YY0ZtXMWMc1hrj/05dFxTxjNWCH
+	 cRvNfQILhSkmGYWtZVVtCRcsrPhlBvaV+ZDGvs4orTaVUNANaI8g29nsOS8cjAImzUg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=UGvGK91m;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ODONZtBC;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2AD19606A320;
-	Sun,  8 Nov 2026 12:48:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 79759606A31C
+	for <linux-nfs@vger.kernel.org>; Sun,  8 Nov 2026 17:55:04 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=UGvGK91m
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8BCA81F0089F;
-	Sun,  8 Nov 2026 12:48:24 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ODONZtBC
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6458E1F0089F;
+	Sun,  8 Nov 2026 17:55:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794142105;
-	bh=i3fScoYq2tKuXGNDb7x7fROa8Y1+Tfxv6jIYPhqmQ+0=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=UGvGK91myv0p6lFzbthO3S2lztPS4T5btsP3aPuiCnuMEkd1PjY2/b7lqoE99iLXF
-	 z1qL9ud0RHHzhiu0f27bYRgKhw3PdiYw7kxRepBsdLS/YYA7Diq+xlPYka8ZJhTyAq
-	 OVQVwN5hMpnY7fR0hWCx/CVorTKqVWsUTAYB+tgmZCkXN/NAr4BeOQUpFQW7xgBTb1
-	 XycLdcKRvvvYBaqGc/5PnLv4CsMdpoKHOgCvAVRt4bWkpI/IVLd4/3e1jT00N4Ng+W
-	 HkeBH9hXK82vvhVYyCM2kJMMsx1FtA0kFFfCAAqG6gZxFfUOtUOOEDf3yMVn9KEVrg
-	 pyxfnk0A4AjAw==
-Message-ID: <c44435291fe8c2116fd84795f2ebb3045d18559e.camel@kernel.org>
-Subject: Re: [PATCH] sunrpc: Remove unused rpc_socket_reset_connection
- tracepoint
-From: Jeff Layton <jlayton@kernel.org>
-To: Maria Sheikh <mariasheikh812@gmail.com>, cel@kernel.org,
- neil@brown.name, 	okorniev@redhat.com, Dai.Ngo@oracle.com, tom@talpey.com,
- rostedt@goodmis.org, 	mhiramat@kernel.org, mathieu.desnoyers@efficios.com, 
-	trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org
-Cc: outreachy@lists.linux.dev, julianbraha@gmail.com
-Date: Sun, 08 Nov 2026 07:48:13 -0500
-In-Reply-To: <20261108024943.8130-2-mariasheikh812@gmail.com>
-References: <20261108024943.8130-2-mariasheikh812@gmail.com>
-Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
- keydata=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
- QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.62.1 (3.62.1-1.fc45) 
+	s=k20260515; t=1794160503;
+	bh=3v9LBX+D4kL6Cnom17dz7DIT2Ps+o+JK1OZiS9Zr4fw=;
+	h=From:To:Cc:Subject:Date;
+	b=ODONZtBCVJrqVC9TstNPquClsSNu0Z2JkVb64l0d3QF9Qsy1G3BG0RsQoEhZOYo9T
+	 Suqz7Mz5L/Pk/fLHDefcAd58nB2ZTu6T2WvHnm+wIIa8JM8ix/h+c5q28AKHjAXY/E
+	 tWPsHgGNPnIFosRa3nuDoETepGZ3+xmt7so9ssKvF6E1k3IEtF4VHP9Cu3opBrdRej
+	 9zvOUea2yx9HquSG4HSkKo+0LFR85QU9KmNXzc1l+Ocgtghb2x3+a4rwqEIzHb86LH
+	 IXYejor6rZ55YdeAQWJbNNANSmJw0xJYC0ydCO0Y7WLb5JCqNAprnqnH+zZ0A1QTSk
+	 flKbIrKqWTWwQ==
+From: Chuck Lever <cel@kernel.org>
+To: NeilBrown <neilb@ownmail.net>,
+	Jeff Layton <jlayton@kernel.org>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <dai.ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>
+Cc: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2] NFSD: Use direct I/O only for the last operation in a COMPOUND
+Date: Sun,  8 Nov 2026 12:55:02 -0500
+Message-ID: <20261108175502.75385-1-cel@kernel.org>
+X-Mailer: git-send-email 2.56.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -139,34 +59,150 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-On Sun, 2026-11-08 at 07:49 +0500, Maria Sheikh wrote:
-> Tracepoint definitions consume kernel memory even when they are not
-> used. The rpc_socket_reset_connection tracepoint has had no callers
-> since commit 4efdd92c9211 ("SUNRPC: Remove TCP client connection reset
-> hack") removed the code that used it, but its definition was left
-> behind.
-> Remove unused definition. This reduces the size of sunrpc.ko by 628
-> bytes.
->=20
-> Fixes: 4efdd92c9211 ("SUNRPC: Remove TCP client connection reset hack")
-> Signed-off-by: Maria Sheikh <mariasheikh812@gmail.com>
-> ---
->  include/trace/events/sunrpc.h | 1 -
->  1 file changed, 1 deletion(-)
->=20
-> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.=
-h
-> index ff855197880d..a0d02d735a7c 100644
-> --- a/include/trace/events/sunrpc.h
-> +++ b/include/trace/events/sunrpc.h
-> @@ -950,7 +950,6 @@ DECLARE_EVENT_CLASS(xs_socket_event_done,
->  DEFINE_RPC_SOCKET_EVENT(rpc_socket_state_change);
->  DEFINE_RPC_SOCKET_EVENT_DONE(rpc_socket_connect);
->  DEFINE_RPC_SOCKET_EVENT_DONE(rpc_socket_error);
-> -DEFINE_RPC_SOCKET_EVENT_DONE(rpc_socket_reset_connection);
->  DEFINE_RPC_SOCKET_EVENT(rpc_socket_close);
->  DEFINE_RPC_SOCKET_EVENT(rpc_socket_shutdown);
-> =20
+A direct read widens the requested byte range to the file system's
+alignment and leaves the payload at a nonzero rq_res.page_base. The
+xdr_stream encoder does not account for page_base:
+xdr_reserve_space_vec() sizes each chunk from page_len alone, and
+xdr_get_next_encode_buffer() opens each new page at its first byte.
+The stream's position lags the end of the payload by page_base
+bytes.
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+An NFSv4 operation encoded after such a READ overwrites the tail of
+the payload, and the transport sends alignment padding in place of
+that operation's result. The client sees corrupted file data
+followed by an undecodable reply. NFSv2 and NFSv3 are unaffected:
+their READ encoders pass page_base explicitly, and nothing is
+encoded into the pages after the payload.
+
+Have nfsd4_read() permit a direct read only for the last operation
+in its COMPOUND, next to the same decision it already makes for
+splice reads, and pass the result to nfsd_iter_read() as a new
+argument. The NFSv2 and NFSv3 READ path always permits a direct
+read. The decision is NFSv4 reply-encoding policy, so it stays out
+of fs/nfsd/vfs.c.
+
+Fixes: d686e64e931c ("NFSD: Implement NFSD_IO_DIRECT for NFS READ")
+Signed-off-by: Chuck Lever <cel@kernel.org>
+---
+Changes in v2:
+- Split from the "NFSD short subjects" series and post on its own
+- Move NFSv4-specific logic out of fs/nfsd/vfs.c
+- Link to v1: https://lore.kernel.org/r/20261004194029.10714-2-cel@kernel.org
+
+ fs/nfsd/nfs4proc.c |  2 ++
+ fs/nfsd/nfs4xdr.c  |  3 ++-
+ fs/nfsd/vfs.c      | 15 ++++++++++++---
+ fs/nfsd/vfs.h      |  3 ++-
+ fs/nfsd/xdr4.h     |  1 +
+ 5 files changed, 19 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index a50f9dcb3a31..aaca7d3c3e04 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1143,6 +1143,8 @@ nfsd4_read(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 		argp->splice_ok = false;
+ 	}
++	/* The xdr_stream encoder does not account for rq_res.page_base */
++	read->rd_dio_ok = nfsd4_last_compound_op(rqstp);
+ 
+ 	/* check stateid */
+ 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index c4fd840da4d9..feb50abccff4 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -5308,7 +5308,8 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ 	__be32 nfserr;
+ 
+ 	nfserr = nfsd_iter_read(resp->rqstp, read->rd_fhp, read->rd_nf,
+-				read->rd_offset, &maxcount, &read->rd_eof);
++				read->rd_offset, &maxcount, &read->rd_eof,
++				read->rd_dio_ok);
+ 	read->rd_length = maxcount;
+ 	if (nfserr)
+ 		return nfserr;
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index cb4bf7b235b4..97077f18a1b7 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1234,6 +1234,8 @@ nfsd_direct_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+  * @offset: starting byte offset
+  * @count: IN: requested number of bytes; OUT: number of bytes read
+  * @eof: OUT: set non-zero if operation reached the end of the file
++ * @dio_ok: false forces a buffered read even when the export selects
++ *	    direct I/O
+  *
+  * Some filesystems or situations cannot use nfsd_splice_read. This
+  * function is the slightly less-performant fallback for those cases.
+@@ -1241,12 +1243,17 @@ nfsd_direct_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+  * records. On return, @rqstp->rq_next_page points past the last page
+  * offered to the read.
+  *
++ * A direct read leaves its alignment pad at the front of the pages and
++ * records the pad length in @rqstp->rq_res.page_base. The xdr_stream
++ * encoder does not account for page_base, so pass @dio_ok false when
++ * more XDR items follow the payload in the pages.
++ *
+  * Returns nfs_ok on success, otherwise an nfserr stat value is
+  * returned.
+  */
+ __be32 nfsd_iter_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		      struct nfsd_file *nf, loff_t offset, unsigned long *count,
+-		      u32 *eof)
++		      u32 *eof, bool dio_ok)
+ {
+ 	struct xdr_buf *buf = &rqstp->rq_res;
+ 	struct page **page = buf->pages + (buf->page_len >> PAGE_SHIFT);
+@@ -1265,7 +1272,8 @@ __be32 nfsd_iter_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		break;
+ 	case NFSD_IO_DIRECT:
+ 		/* When dio_read_offset_align is zero, dio is not supported */
+-		if (nf->nf_dio_read_offset_align && !rqstp->rq_res.page_len)
++		if (dio_ok && nf->nf_dio_read_offset_align &&
++		    !rqstp->rq_res.page_len)
+ 			return nfsd_direct_read(rqstp, fhp, nf, offset,
+ 						count, page, eof);
+ 		fallthrough;
+@@ -1649,7 +1657,8 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	if (file->f_op->splice_read && nfsd_read_splice_ok(rqstp))
+ 		err = nfsd_splice_read(rqstp, fhp, file, offset, count, eof);
+ 	else
+-		err = nfsd_iter_read(rqstp, fhp, nf, offset, count, eof);
++		err = nfsd_iter_read(rqstp, fhp, nf, offset, count, eof,
++				     true);
+ 
+ 	nfsd_file_put(nf);
+ 	trace_nfsd_read_done(rqstp, fhp, offset, *count);
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index 1f05c83a3ea6..0b0152ba56b3 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -182,7 +182,8 @@ __be32		nfsd_splice_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 				u32 *eof);
+ __be32		nfsd_iter_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 				struct nfsd_file *nf, loff_t offset,
+-				unsigned long *count, u32 *eof);
++				unsigned long *count, u32 *eof,
++				bool dio_ok);
+ bool		nfsd_read_splice_ok(struct svc_rqst *rqstp);
+ __be32		nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 				loff_t offset, unsigned long *count,
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index ec198993429e..61afbabc1773 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -301,6 +301,7 @@ struct nfsd4_read {
+ 	u32			rd_length;          /* request */
+ 	int			rd_vlen;
+ 	struct nfsd_file	*rd_nf;
++	bool			rd_dio_ok;
+ 
+ 	struct svc_rqst		*rd_rqstp;          /* response */
+ 	struct svc_fh		*rd_fhp;            /* response */
+-- 
+2.56.0
+
