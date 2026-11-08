@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794176867;
-	b=QiX9P2kBb8fW5Cn9XNcGHH3y0oTXMnQGH2x0cPveEUQXTwhIX+xRc7SJUntU6Ngen93F
-	 ON1Ib6CZZOR/teZxpA7oS+uTGpJRU+Col5wpvYA7X2zUK31oVH23RxcJmYhTgw0nNYEek
-	 0UL1iabbv3FOxLNA5IzJaa+mdL3nVFhspO73BDly2wzCqMlT1VubaMTdlRapgrckMLDST
-	 nfcHHAEgvD3dnyM7MRhS9JjbFElXo9/kpUaPtHbNfbP9gekjq6XuHRKtHbeK+di0ktMzJ
-	 V412zph1nnmn4gHs/TLcw2kRa7XnLmRE+U8U69Vgl2sVfmhDQ8MPKPrUkHUS+C+LGyA==
+	t=1794176863;
+	b=Sy+zidOI1YABshX4nTFYX9PU3DH7I4v8GkGxDkWaWbgMYMdS8Dga1sSLIQa007mNVPB0
+	 lNWBqWz3KS3V4G2694Ty3v8Gvd1AQLEGt/qVZxDpuRt0NE1nJC0YcaFMxwNRvWNxr1p/K
+	 zUKEX4hrTUNz8KtmKxcs9WS2YGVKJHiDXkA9OtN0FgNYENFGgcsXz1rUApQfyI7TtaFYj
+	 JiPt1ulV7NGqIVNdWh7Xx5rF4jLUryS7WUIhlvxH3byHZZ/yvQBqEgi3szWWovtFADc7v
+	 /4+uY+web/8fNMnXLwIavT6MwmnSCDu9JDAMut7P437mHTz1W+5n98P2SdXdO7QGz3w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794176867;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794176863;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=lkqe98CyLBgQ52rBxXU0ciHtvnWKRuThjgKaQZqo1VU=;
-	b=HFBEABYVLQf3vIhnf37jbKGKT2kpfto9sGSRlsuXa/g1JoQd6NYYY2Yf5TEj+nsJcQn8
-	 QpcevGvMQBFzdtKOWz1iC1MTFqDKPs1F5WsK78N0/iX+sC4iuWRBYpo2GImG9WMLODyJs
-	 6USId1xq5MHT6so9wX4hqz9nFrGqCePt/YfcH+mqrKoW+CdSF6ua+9zjEXwhh3TZBbHqh
-	 CIzwDHpH/OsUxO9Xd1d5winZ2Kao3LWk6PE3IPvhZHBDlT+ampIGuzO9fUPdNafS5J9KP
-	 0RtC/Nq6Vr0mypWvtjfPLYUvhCJAcm+wAuOZIYm9bGAmNhvaBWzokIxF3gVXqWvJqtQ==
+	bh=0drM0M3oPrheYDlOFbCeBdCWAIsAz86/BkD133KazZQ=;
+	b=yC+ladE8cWbbiVE6JndoVV62//pgfK6lUgWUmL14VzWQXCeLyqD2SacqqXrv/Vpe+Uro
+	 yYa19VmlUMpmdJyZ69R/E0mFWd9U44EA3HPiuFgg/VuIRATT3++yIC6ZGyM09X6D2A9T/
+	 4gVwBctTQuaVS9ABInkUfv/1YmIpF9dx4uoEMh2sJIC2naPydxZMYbJsyO2KX5JB7gxlA
+	 tQuLQwBuREH/7Kf67iTrp/Rm7gxRtNDDFGyP5pDQYBuRgHDTvbeTSjxhe8GFHe5HtlxNH
+	 k+O/WAtVVPS6FhaDFNO6fble8wDmo02Zf7OY/q1AEHuYl3qP7nEI/RXRVv+4p2bjkhg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="ZMLS/4e6";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=diNjKykQ;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id CD612606A320;
-	Sun,  8 Nov 2026 22:27:46 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id B713B606A323;
+	Sun,  8 Nov 2026 22:27:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZMLS/4e6
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id B27F11F0089F;
-	Sun,  8 Nov 2026 22:27:45 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=diNjKykQ
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id DD1801F008A3;
+	Sun,  8 Nov 2026 22:27:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794176866;
-	bh=lkqe98CyLBgQ52rBxXU0ciHtvnWKRuThjgKaQZqo1VU=;
+	s=k20260515; t=1794176862;
+	bh=0drM0M3oPrheYDlOFbCeBdCWAIsAz86/BkD133KazZQ=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=ZMLS/4e6MO2zjFLOJ8N4lgCDZba84PNGl9qwbIkYP70l3sDbUh5GmdbUUsNA5U2kh
-	 XQ5UDFcBGOHD2/JY9msIYEJ4igqkV3VJAiw+R1mLWxyL42UYYgeSIKSw6+Ca1kUadI
-	 p4NYnCnhp0GiSz+Jk73wT0KP+73k6Q6DZ8OA0AVbq9hyoXWG9cZIw53AkyzA3G/Yyj
-	 hPE3/c3+StuKsrHmJraoo8/Tnn0/AQ2mek/MZDy3hy0r8A/bs+l2QKblty877bIZB9
-	 kyUS0K5djTjvVu8VFcYq+MUibZfBGiSiF/xjY3sCQmpLDMF995oKXDfuaKipXMkv5B
-	 6h7mIgdqC0vNQ==
+	b=diNjKykQ0OWyBkItsEkGxnSTBT/OUe4lN7QnjIdkvXBjph2alyyrP/xERUltG5ikw
+	 I5qirRtCU7csKf3akOyXPr3fdAt9mPXOdqwd+b7+2uW27EyYkm1HoznfKo45l84ua6
+	 +LqAYOvvF1w6Mw0IJ+7YcTXhgDFzD7lbbVRAYqXrLdhaV032XfDwiuAuuu1SCHXXyL
+	 VNyyxsReXRZvkpjM1IxMXLTkY/XVl3RxZYkgw1g1Q5ahp8XcbdrTIMB2HxHN/SygQI
+	 YBJr6JrOdk8IiLMRFF7LcW+PUmdasnEuvjgzD44rJM0v7DbL55FRFheZyT6YoNxYkG
+	 9ayuMQEeZdHlA==
 From: Jarkko Sakkinen <jarkko@kernel.org>
 To: David Howells <dhowells@redhat.com>
 Cc: Jarkko Sakkinen <jarkko@kernel.org>,
@@ -77,9 +77,9 @@ Cc: Jarkko Sakkinen <jarkko@kernel.org>,
 	Tom Talpey <tom@talpey.com>,
 	Trond Myklebust <trondmy@kernel.org>,
 	Vasily Gorbik <gor@linux.ibm.com>
-Subject: [PATCH v5 05/12] s390/cert_store: Start tracking subsystem keys
-Date: Mon,  9 Nov 2026 00:27:11 +0200
-Message-ID: <20261108222719.304712-6-jarkko@kernel.org>
+Subject: [PATCH v5 04/12] smb: client: Clear idmap/SPNEGO caches when the last session is unloaded
+Date: Mon,  9 Nov 2026 00:27:10 +0200
+Message-ID: <20261108222719.304712-5-jarkko@kernel.org>
 X-Mailer: git-send-email 2.47.3
 In-Reply-To: <20261108222719.304712-1-jarkko@kernel.org>
 References: <20261108222719.304712-1-jarkko@kernel.org>
@@ -94,291 +94,169 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-cert_store refreshes its keyring by unregistering and then registering
-again key_type_cert_store_key. Once keys pin to the kernel module of their
-key type, this is no longer necessary.
+CIFS caches cifs.idmap and cifs.spnego keys in the module-owned keyrings
+that are only destroyed in module_exit().
 
-Register key_type_cert_store_key once during init before creating sysfs
-attributes, and track subsystem-created keys explicitly so that the refresh
-operationunlinks and invalidates previous entries directly.
+Once keys pin the kernel module of the key type, the cached entries will
+retain CIFS pinned after the last SMB session has been torned down.
+
+Serialize the session count transitions with a mutex and clear the idmap
+and SPNEGO cache keyrings when the last session is freed.
 
 Signed-off-by: Jarkko Sakkinen <jarkko@kernel.org>
 ---
- arch/s390/kernel/cert_store.c | 161 ++++++++++++++--------------------
- 1 file changed, 67 insertions(+), 94 deletions(-)
+ fs/smb/client/cifs_spnego.c | 12 ++++++++++++
+ fs/smb/client/cifsacl.c     | 12 ++++++++++++
+ fs/smb/client/cifsproto.h   |  8 ++++++++
+ fs/smb/client/misc.c        | 19 +++++++++++++++++--
+ 4 files changed, 49 insertions(+), 2 deletions(-)
 
-diff --git a/arch/s390/kernel/cert_store.c b/arch/s390/kernel/cert_store.c
-index 998f2da56175..ab1a78cdfd4c 100644
---- a/arch/s390/kernel/cert_store.c
-+++ b/arch/s390/kernel/cert_store.c
-@@ -17,6 +17,7 @@
- #include <linux/key.h>
+diff --git a/fs/smb/client/cifs_spnego.c b/fs/smb/client/cifs_spnego.c
+index 44c407275680..e974f396e07f 100644
+--- a/fs/smb/client/cifs_spnego.c
++++ b/fs/smb/client/cifs_spnego.c
+@@ -15,6 +15,7 @@
+ #include <linux/key-type.h>
  #include <linux/keyctl.h>
- #include <linux/kobject.h>
-+#include <linux/list.h>
- #include <linux/module.h>
- #include <linux/seq_file.h>
+ #include <linux/inet.h>
++#include <linux/ratelimit.h>
+ #include "cifsglob.h"
+ #include "cifs_spnego.h"
+ #include "cifs_debug.h"
+@@ -190,6 +191,17 @@ cifs_get_spnego_key(struct cifs_ses *sesInfo,
+ 	return spnego_key;
+ }
+ 
++void
++cifs_spnego_clear_cache(void)
++{
++	int ret;
++
++	ret = keyring_clear(spnego_cred->thread_keyring);
++	if (ret)
++		pr_warn_ratelimited("Failed to clear SPNEGO cache: %d; cache pins remain\n",
++				    ret);
++}
++
+ int
+ init_cifs_spnego(void)
+ {
+diff --git a/fs/smb/client/cifsacl.c b/fs/smb/client/cifsacl.c
+index 346899da91eb..60c60c23dd34 100644
+--- a/fs/smb/client/cifsacl.c
++++ b/fs/smb/client/cifsacl.c
+@@ -13,6 +13,7 @@
+ #include <linux/string.h>
+ #include <linux/keyctl.h>
+ #include <linux/key-type.h>
++#include <linux/ratelimit.h>
+ #include <uapi/linux/posix_acl.h>
+ #include <linux/posix_acl.h>
+ #include <linux/posix_acl_xattr.h>
+@@ -539,6 +540,17 @@ sid_to_id(struct cifs_sb_info *cifs_sb, struct smb_sid *psid,
+ 	return 0;
+ }
+ 
++void
++cifs_idmap_clear_cache(void)
++{
++	int ret;
++
++	ret = keyring_clear(root_cred->thread_keyring);
++	if (ret)
++		pr_warn_ratelimited("Failed to clear idmap cache: %d; cache pins remain\n",
++				    ret);
++}
++
+ int
+ init_cifs_idmap(void)
+ {
+diff --git a/fs/smb/client/cifsproto.h b/fs/smb/client/cifsproto.h
+index f9ea35597bc2..2930a40d1b67 100644
+--- a/fs/smb/client/cifsproto.h
++++ b/fs/smb/client/cifsproto.h
+@@ -58,8 +58,16 @@ do {									\
+ } while (0)
+ int init_cifs_idmap(void);
+ void exit_cifs_idmap(void);
++void cifs_idmap_clear_cache(void);
+ int init_cifs_spnego(void);
+ void exit_cifs_spnego(void);
++#ifdef CONFIG_CIFS_UPCALL
++void cifs_spnego_clear_cache(void);
++#else
++static inline void cifs_spnego_clear_cache(void)
++{
++}
++#endif
+ const char *build_path_from_dentry(struct dentry *direntry, void *page);
+ char *__build_path_from_dentry_optional_prefix(struct dentry *direntry,
+ 					       void *page, const char *tree,
+diff --git a/fs/smb/client/misc.c b/fs/smb/client/misc.c
+index ec28f102ea08..11c0330be489 100644
+--- a/fs/smb/client/misc.c
++++ b/fs/smb/client/misc.c
+@@ -9,6 +9,8 @@
  #include <linux/slab.h>
-@@ -296,6 +297,18 @@ static int check_certificate_valid(const struct vce *vce)
- 	return check_certificate_hash(vce);
- }
+ #include <linux/ctype.h>
+ #include <linux/mempool.h>
++#include <linux/key.h>
++#include <linux/mutex.h>
+ #include <linux/vmalloc.h>
+ #include "cifsglob.h"
+ #include "cifsproto.h"
+@@ -33,6 +35,9 @@ struct tcon_list {
+ 	struct cifs_tcon *tcon;
+ };
  
-+struct cert_store_key {
-+	struct list_head list;
-+	struct key *key;
-+};
++/* Serialize session admission with the last session's cache clear. */
++static DEFINE_MUTEX(cifs_session_mutex);
 +
-+static DEFINE_MUTEX(cs_refresh_lock);
-+/* Owned references, protected by cs_refresh_lock. */
-+static LIST_HEAD(cs_keys);
-+static struct key *active_cs_keyring;
-+static struct key *cs_keyring_parent;
+ /* The xid serves as a useful identifier for each incoming vfs request,
+    in a similar way to the mid which is useful to track each sent smb,
+    and CurrentXid can also provide a running counter (although it
+@@ -74,7 +79,6 @@ sesInfoAlloc(void)
+ 
+ 	ret_buf = kzalloc_obj(struct cifs_ses);
+ 	if (ret_buf) {
+-		atomic_inc(&sesInfoAllocCount);
+ 		spin_lock_init(&ret_buf->ses_lock);
+ 		ret_buf->ses_status = SES_NEW;
+ 		++ret_buf->ses_count;
+@@ -84,6 +88,10 @@ sesInfoAlloc(void)
+ 		spin_lock_init(&ret_buf->iface_lock);
+ 		INIT_LIST_HEAD(&ret_buf->iface_list);
+ 		spin_lock_init(&ret_buf->chan_lock);
 +
-+/* Return an owned reference to the user session keyring. */
- static struct key *get_user_session_keyring(void)
- {
- 	key_ref_t us_keyring_ref;
-@@ -305,118 +318,66 @@ static struct key *get_user_session_keyring(void)
- 	if (IS_ERR(us_keyring_ref)) {
- 		pr_dbf_msg("Couldn't get user session keyring: %ld",
- 			   PTR_ERR(us_keyring_ref));
--		return ERR_PTR(-ENOKEY);
-+		return ERR_CAST(us_keyring_ref);
++		mutex_lock(&cifs_session_mutex);
++		atomic_inc(&sesInfoAllocCount);
++		mutex_unlock(&cifs_session_mutex);
  	}
--	key_ref_put(us_keyring_ref);
- 	return key_ref_to_ptr(us_keyring_ref);
+ 	return ret_buf;
  }
- 
--/* Invalidate all keys from cert_store keyring. */
--static int invalidate_keyring_keys(struct key *keyring)
--{
--	unsigned long num_keys, key_index;
--	size_t keyring_payload_len;
--	key_serial_t *key_array;
--	struct key *current_key;
--	int rc;
--
--	keyring_payload_len = key_type_keyring.read(keyring, NULL, 0);
--	num_keys = keyring_payload_len / sizeof(key_serial_t);
--	key_array = kzalloc_objs(key_serial_t, num_keys);
--	if (!key_array)
--		return -ENOMEM;
--
--	rc = key_type_keyring.read(keyring, (char *)key_array, keyring_payload_len);
--	if (rc != keyring_payload_len) {
--		pr_dbf_msg("Couldn't read keyring payload");
--		goto out;
--	}
--
--	for (key_index = 0; key_index < num_keys; key_index++) {
--		current_key = key_lookup(key_array[key_index]);
--		pr_dbf_msg("Invalidating key %08x", current_key->serial);
--
--		key_invalidate(current_key);
--		key_put(current_key);
--		rc = key_unlink(keyring, current_key);
--		if (rc) {
--			pr_dbf_msg("Couldn't unlink key %08x: %d", current_key->serial, rc);
--			break;
--		}
--	}
--out:
--	kfree(key_array);
--	return rc;
--}
--
--static struct key *find_cs_keyring(void)
--{
--	key_ref_t cs_keyring_ref;
--	struct key *cs_keyring;
--
--	cs_keyring_ref = keyring_search(make_key_ref(get_user_session_keyring(), true),
--					&key_type_keyring, CERT_STORE_KEYRING_NAME,
--					false);
--	if (!IS_ERR(cs_keyring_ref)) {
--		cs_keyring = key_ref_to_ptr(cs_keyring_ref);
--		key_ref_put(cs_keyring_ref);
--		goto found;
--	}
--	/* Search default locations: thread, process, session keyrings */
--	cs_keyring = request_key(&key_type_keyring, CERT_STORE_KEYRING_NAME, NULL);
--	if (IS_ERR(cs_keyring))
--		return NULL;
--	key_put(cs_keyring);
--found:
--	return cs_keyring;
--}
--
- static void cleanup_cs_keys(void)
- {
--	struct key *cs_keyring;
-+	struct cert_store_key *entry, *tmp;
-+	int rc;
- 
--	cs_keyring = find_cs_keyring();
--	if (!cs_keyring)
-+	if (!active_cs_keyring)
- 		return;
- 
--	pr_dbf_msg("Found cert_store keyring. Purging...");
--	/*
--	 * Remove cert_store_key_type in case invalidation
--	 * of old cert_store keys failed (= severe error).
--	 */
--	if (invalidate_keyring_keys(cs_keyring))
--		unregister_key_type(&key_type_cert_store_key);
-+	/* Invalidate even certificates unlinked or linked into other keyrings. */
-+	list_for_each_entry_safe(entry, tmp, &cs_keys, list) {
-+		key_invalidate(entry->key);
-+		key_put(entry->key);
-+		list_del(&entry->list);
-+		kfree(entry);
-+	}
- 
--	keyring_clear(cs_keyring);
--	key_invalidate(cs_keyring);
--	key_put(cs_keyring);
--	key_unlink(get_user_session_keyring(), cs_keyring);
-+	rc = keyring_clear(active_cs_keyring);
-+	if (rc)
-+		pr_dbf_msg("Couldn't clear cert_store keyring: %d", rc);
-+	key_invalidate(active_cs_keyring);
-+	rc = key_unlink(cs_keyring_parent, active_cs_keyring);
-+	if (rc)
-+		pr_dbf_msg("Couldn't unlink cert_store keyring: %d", rc);
-+	key_put(active_cs_keyring);
-+	key_put(cs_keyring_parent);
-+	active_cs_keyring = NULL;
-+	cs_keyring_parent = NULL;
- }
- 
-+/* Return a borrowed reference; cleanup_cs_keys() owns the keyring. */
- static struct key *create_cs_keyring(void)
- {
--	static struct key *cs_keyring;
-+	struct key *cs_keyring, *parent;
- 
- 	/* Cleanup previous cs_keyring and all associated keys if any. */
- 	cleanup_cs_keys();
-+	parent = get_user_session_keyring();
-+	if (IS_ERR(parent))
-+		return parent;
-+
- 	cs_keyring = keyring_alloc(CERT_STORE_KEYRING_NAME, GLOBAL_ROOT_UID,
- 				   GLOBAL_ROOT_GID, current_cred(),
- 				   (KEY_POS_ALL & ~KEY_POS_SETATTR) | KEY_USR_VIEW | KEY_USR_READ,
- 				   KEY_ALLOC_NOT_IN_QUOTA | KEY_ALLOC_SET_KEEP,
--				   NULL, get_user_session_keyring());
-+				   NULL, parent);
- 	if (IS_ERR(cs_keyring)) {
- 		pr_dbf_msg("Can't allocate cert_store keyring");
--		return NULL;
-+		key_put(parent);
-+		return cs_keyring;
+@@ -99,7 +107,6 @@ sesInfoFree(struct cifs_ses *buf_to_free)
  	}
  
-+	active_cs_keyring = cs_keyring;
-+	cs_keyring_parent = parent;
- 	pr_dbf_msg("Successfully allocated cert_store keyring: %08x", cs_keyring->serial);
- 
--	/*
--	 * In case a previous clean-up ran into an
--	 * error and unregistered key type.
--	 */
--	register_key_type(&key_type_cert_store_key);
--
- 	return cs_keyring;
- }
- 
-@@ -454,6 +415,7 @@ static char *get_key_description(struct vcssb *vcssb, const struct vce *vce)
- static int create_key_from_vce(struct vcssb *vcssb, struct vce *vce,
- 			       struct key *keyring)
- {
-+	struct cert_store_key *entry;
- 	key_ref_t newkey;
- 	char *desc;
- 	int rc;
-@@ -462,6 +424,13 @@ static int create_key_from_vce(struct vcssb *vcssb, struct vce *vce,
- 	if (!desc)
- 		return -ENOMEM;
- 
-+	/* Reserve cleanup tracking before the key can be linked elsewhere. */
-+	entry = kmalloc_obj(*entry);
-+	if (!entry) {
-+		rc = -ENOMEM;
-+		goto out;
-+	}
+ 	unload_nls(buf_to_free->local_nls);
+-	atomic_dec(&sesInfoAllocCount);
+ 	kfree(buf_to_free->serverOS);
+ 	kfree(buf_to_free->serverDomain);
+ 	kfree(buf_to_free->serverNOS);
+@@ -115,6 +122,14 @@ sesInfoFree(struct cifs_ses *buf_to_free)
+ 		kref_put(&iface->refcount, release_iface);
+ 	spin_unlock(&buf_to_free->iface_lock);
+ 	kfree_sensitive(buf_to_free);
 +
- 	newkey = key_create_or_update(
- 		make_key_ref(keyring, true), CERT_STORE_KEY_TYPE_NAME,
- 		desc, (u8 *)vce + vce->vce_hdr.vc_offset,
-@@ -473,10 +442,12 @@ static int create_key_from_vce(struct vcssb *vcssb, struct vce *vce,
- 	if (rc) {
- 		pr_dbf_msg("Couldn't create a key from Certificate Entry (%d)", rc);
- 		rc = -ENOKEY;
-+		kfree(entry);
- 		goto out;
- 	}
- 
--	key_ref_put(newkey);
-+	entry->key = key_ref_to_ptr(newkey);
-+	list_add_tail(&entry->list, &cs_keys);
- out:
- 	kfree(desc);
- 	return rc;
-@@ -704,19 +675,18 @@ static int fill_cs_keyring(void)
- 	if (rc)
- 		goto cleanup_keys;
- 
--	rc = -ENOMEM;
- 	cs_keyring = create_cs_keyring();
--	if (!cs_keyring)
-+	if (IS_ERR(cs_keyring)) {
-+		rc = PTR_ERR(cs_keyring);
- 		goto cleanup_keys;
++	mutex_lock(&cifs_session_mutex);
++	if (atomic_dec_and_test(&sesInfoAllocCount)) {
++		cifs_idmap_clear_cache();
++		cifs_spnego_clear_cache();
++		key_gc_flush();
 +	}
- 
- 	rc = add_certificates_to_keyring(vcssb, cs_keyring);
- 	if (rc)
--		goto cleanup_cs_keyring;
-+		goto cleanup_keys;
- 
- 	goto out;
- 
--cleanup_cs_keyring:
--	key_put(cs_keyring);
- cleanup_keys:
- 	cleanup_cs_keys();
- out:
-@@ -724,7 +694,6 @@ static int fill_cs_keyring(void)
- 	return rc;
++	mutex_unlock(&cifs_session_mutex);
  }
  
--static DEFINE_MUTEX(cs_refresh_lock);
- static int cs_status_val = -1;
- 
- static ssize_t cs_status_show(struct kobject *kobj,
-@@ -794,14 +763,18 @@ static int __init cert_store_init(void)
- 	if (!cert_store_kobj)
- 		goto cleanup_dbf;
- 
--	rc = sysfs_create_files(cert_store_kobj, cert_store_attrs);
-+	rc = register_key_type(&key_type_cert_store_key);
- 	if (rc)
- 		goto cleanup_kobj;
- 
--	register_key_type(&key_type_cert_store_key);
-+	rc = sysfs_create_files(cert_store_kobj, cert_store_attrs);
-+	if (rc)
-+		goto cleanup_key_type;
- 
- 	return rc;
- 
-+cleanup_key_type:
-+	unregister_key_type(&key_type_cert_store_key);
- cleanup_kobj:
- 	kobject_put(cert_store_kobj);
- cleanup_dbf:
+ struct cifs_tcon *
 -- 
 2.47.3
 
