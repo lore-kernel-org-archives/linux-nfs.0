@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794176875;
-	b=swDhdZFJxH9Xlnp7JNBp2WNn9LcvGl9nT41F5MG6IYhvCHDFDB02+on2T0ZOVlh3e0oW
-	 7S3ifJ9U+kiUkjL0Lah/1iObirGDjSuS4b1JS10sbC/nWg1w8Aii1Z9W7d6/AQtUQ6bvx
-	 I0bQppD68SJsNCuLeJ85PNscNsGgD8bCHhj1ZZrjDLoxc4pi+Hv18Xyv+F4FtGK6CSqXw
-	 zpCYZddHaICtmep/6u2tEH6c1ICpmRe78fQ1RevIDq7FoEJHxWoKUveMfOvG5L9559UO/
-	 o9lHjjMc2prY7HfYB1poX5UiLqemHIpyJRBVVJzdyPg4VD2sqxhhN5KPbXPZnhw4T/Q==
+	t=1794176886;
+	b=xKg1bk1GCPHhtBNCSKzxLwAZMS+Ei7kg3og0r4p3BXQCkdKB+OlcSnCYZ9m0Vzi6bkcb
+	 YtYNxN584/1Y1Vr8478KFEkqZNEsLbK1C2IKVyMh4r94filfureTAh95xFElvCTsQ28Bu
+	 Fm6DOhR/l5kwZLBrv5VJhWCwt15KuYpzx26UqoZXrtUd8XvBN4cPzwO9cuDfvmdd64Ju5
+	 /EkEeZkfy6GIXRhKDOrpF6Gts6uAcPCOqsz1H1S/cxj+PuXHFtT+Zp2gEeh/g51kXbN4r
+	 bZatBBjv/Pv4W2meHWar5zKn5R1aB8AnGxbg/bHhvdhYiQ8I14kiIMCd3DOrBm56PMA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794176875;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794176886;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=c8QBGr1yE6MKO7128lCzkFcPbJ/myyIRf4OSZLFtjRI=;
-	b=d1jCqkLXBNHQTvbYNpxo3BuwvSPbG6dxb0JMDJ+HfDEqSsKijfoUT28BOn7B07SwiYra
-	 CdJUEQ1/552DOozbWf+SIVZFuKN99eGMHH0sQ51kG24gMZWi5wAl+w1NMh3pyO1fDnGmi
-	 BLGx85O5EsgLKuX4wpGZ6IohmAtrJvz5m9vWXzkKmwCHSaHlTkhW0dY1FXff22Tf5HIr2
-	 JkYylSbbCqTY7/mVIEr8TZDh3eapTs/lcUQbAOP92Vz1Vvd77q4Pt2vZFIAbbI+r7Rg7V
-	 dRXpBPmz9lMxx+FxQf3nTzXBh2HgW3q0Ds0b1rcRXkNcdYaSDkGXtefMQgBc1bovhlQ==
+	bh=pPJtaNXXVN6W3aSE9iN/Uh6en78jkh+qXfwU+6KoP0E=;
+	b=Tut27j8bphzXdJwz7V/Tsqwk1zc80EDJ1cP9UxKvR8UwHYo76oIzPl5eH1D8U5UVDdjC
+	 UnPQ9lvhgmlRYStvj27NZQNZMsEQL2Xgt6/2Li6ZndbQMOxo0gNU2jzAe78q+Pz19NSjU
+	 tZgmgxs0awp1kuh5N0mGwhYjizSvywXVYCyyhLzfZofVlG4zQj+2h967Ix+EbqoTy7MB9
+	 bZq2im2eW4ovzLzn7mP0kdgC98I3mk6JVcsFAqhTa9EGC3ygWVnxNq19PolJ9QUBkZMEE
+	 CQH/1WLF4bb3KkIVJwe1cdtEFCAISsS4Xgh6bMhkXiAQHoTokNQcDZl/7HGRf7Kz6MQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Jdu3+wtZ;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=e2hYSWFB;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id BB731606D839;
-	Sun,  8 Nov 2026 22:27:54 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id 53082606D819;
+	Sun,  8 Nov 2026 22:28:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Jdu3+wtZ
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 8AACE1F008A2;
-	Sun,  8 Nov 2026 22:27:53 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=e2hYSWFB
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 2CEF21F008A3;
+	Sun,  8 Nov 2026 22:28:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794176874;
-	bh=c8QBGr1yE6MKO7128lCzkFcPbJ/myyIRf4OSZLFtjRI=;
+	s=k20260515; t=1794176885;
+	bh=pPJtaNXXVN6W3aSE9iN/Uh6en78jkh+qXfwU+6KoP0E=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=Jdu3+wtZipXmwcBOiBA0negJi0bvNfj6sWJuAU8IG3LBGMZcIeTCsnrygWQ2gQTca
-	 iTO8jh6JqkRJmbDfM9m6ROf2oGmhtxfcchWvUJkZwsruDnUUP4pSQ3IkPtXZtc5nkX
-	 iij8W9RHfRoRMWrmCfXGfKIaNYLcbawuRM9N8fFsIA6uEGMKZvj7nyrIOYLtjVK4Yh
-	 MR/iMeEkYTmisfC/prps3ury+HfxF2zPZG8wCODyYgimSe9w+g6nr7gpxw+MTG4FwN
-	 Wp2HuscCErLIpL6ju6u+dMmpEPmnrBZ9Ri1sleIVr4sU+qztV4Qebz9eknS+HJ9YKv
-	 FD4MPCPoSjv3Q==
+	b=e2hYSWFB4Q86hiXFZvJKZYFc9sVaGrYGHg+uVGAQknBcn1oAKpOJd3Bj3RFztVztj
+	 ALLKsIB/GH3symVZgEpzP7WTpnZtsOxNWeloaoic86R/HLgK1cxZknX1loIHthECW6
+	 dcWKguSJ8LCBVepfcQX8mzlX3FlAOrmyXmt/fEbJ1DkJIm9izlPYRgxj4OqYjFnISD
+	 kaWZLma5jW1/1zr9RtgNEeECrqJMXZBDapDSkna8sFEg2kpAoqU32F9BlnkeZKRpBf
+	 b+n50R6ESr8BnP9eZz1U5GYGXOEDL4tKEsAWlUaOWyc4QuhRAV97nsl+J6h+G4sHda
+	 N5V0DLoXoRexQ==
 From: Jarkko Sakkinen <jarkko@kernel.org>
 To: David Howells <dhowells@redhat.com>
 Cc: Jarkko Sakkinen <jarkko@kernel.org>,
@@ -77,9 +77,9 @@ Cc: Jarkko Sakkinen <jarkko@kernel.org>,
 	Tom Talpey <tom@talpey.com>,
 	Trond Myklebust <trondmy@kernel.org>,
 	Vasily Gorbik <gor@linux.ibm.com>
-Subject: [PATCH v5 07/12] KEYS: trusted: TEE: Disable sysfs bind attributes
-Date: Mon,  9 Nov 2026 00:27:13 +0200
-Message-ID: <20261108222719.304712-8-jarkko@kernel.org>
+Subject: [PATCH v5 10/12] KEYS: Pin the backing kernel module for a key type
+Date: Mon,  9 Nov 2026 00:27:16 +0200
+Message-ID: <20261108222719.304712-11-jarkko@kernel.org>
 X-Mailer: git-send-email 2.47.3
 In-Reply-To: <20261108222719.304712-1-jarkko@kernel.org>
 References: <20261108222719.304712-1-jarkko@kernel.org>
@@ -94,28 +94,312 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Suppress sysfs bind and unbind attributes on trusted_key_driver so that
-userspace cannot unbind the driver and unregister key_type_trusted while
-the trusted module remains loaded.
+Add the owner field (populated with THIS_MODULE) to struct key_type.
+
+Pin the module in key_alloc() and keyring_restrict(), and release it in
+key_gc_unused_keys() and keyring_destroy(), which are wires to the keys
+and restrictions.
+
+Reject module owners still in MODULE_STATE_COMING so that the failed
+module_init() paths cannot leave behind referenced keys.
 
 Signed-off-by: Jarkko Sakkinen <jarkko@kernel.org>
 ---
- security/keys/trusted-keys/trusted_tee.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ include/linux/key-type.h |  6 ++++-
+ security/keys/gc.c       | 14 ++++++++++--
+ security/keys/key.c      | 48 ++++++++++++++++++++++++++++++----------
+ security/keys/keyring.c  | 36 +++++++++++++++++++++++++-----
+ 4 files changed, 83 insertions(+), 21 deletions(-)
 
-diff --git a/security/keys/trusted-keys/trusted_tee.c b/security/keys/trusted-keys/trusted_tee.c
-index ad9c7baddcef..87ea549f7f0b 100644
---- a/security/keys/trusted-keys/trusted_tee.c
-+++ b/security/keys/trusted-keys/trusted_tee.c
-@@ -307,7 +307,8 @@ static struct tee_client_driver trusted_key_driver = {
- 	.remove		= trusted_key_remove,
- 	.id_table	= trusted_key_id_table,
- 	.driver		= {
--		.name		= DRIVER_NAME,
-+		.name			= DRIVER_NAME,
-+		.suppress_bind_attrs	= true,
- 	},
- };
+diff --git a/include/linux/key-type.h b/include/linux/key-type.h
+index c4f329b6ae3f..9ecec31ad571 100644
+--- a/include/linux/key-type.h
++++ b/include/linux/key-type.h
+@@ -10,9 +10,11 @@
+ 
+ #include <linux/key.h>
+ #include <linux/errno.h>
++#include <linux/init.h>
+ 
+ #ifdef CONFIG_KEYS
+ 
++struct module;
+ struct kernel_pkey_query;
+ struct kernel_pkey_params;
+ 
+@@ -161,6 +163,7 @@ struct key_type {
+ 				     const void *in, const void *in2);
+ 
+ 	/* internal fields */
++	struct module		*owner;
+ 	atomic64_t		index_id;	/* Opaque keyring index ID */
+ 	struct list_head	link;		/* link in types list */
+ 	struct lock_class_key	lock_class;	/* key->sem lock class */
+@@ -168,7 +171,8 @@ struct key_type {
+ 
+ extern struct key_type key_type_keyring;
+ 
+-extern int register_key_type(struct key_type *ktype);
++int __register_key_type(struct key_type *ktype, struct module *owner);
++#define register_key_type(ktype) __register_key_type(ktype, THIS_MODULE)
+ extern void unregister_key_type(struct key_type *ktype);
+ 
+ extern int key_payload_reserve(struct key *key, size_t datalen);
+diff --git a/security/keys/gc.c b/security/keys/gc.c
+index 9b625436d3b5..7b2f32998f58 100644
+--- a/security/keys/gc.c
++++ b/security/keys/gc.c
+@@ -6,6 +6,7 @@
+  */
+ 
+ #include <linux/slab.h>
++#include <linux/module.h>
+ #include <linux/security.h>
+ #include <keys/keyring-type.h>
+ #include "internal.h"
+@@ -150,6 +151,7 @@ static noinline void key_gc_unused_keys(struct list_head *keys)
+ 	while (!list_empty(keys)) {
+ 		struct key *key =
+ 			list_entry(keys->next, struct key, graveyard_link);
++		struct module *owner = key->type->owner;
+ 		short state = key->state;
+ 
+ 		list_del(&key->graveyard_link);
+@@ -163,8 +165,15 @@ static noinline void key_gc_unused_keys(struct list_head *keys)
+ #endif
+ 
+ 		/* Throw away the key data if the key is instantiated */
+-		if (state == KEY_IS_POSITIVE && key->type->destroy)
+-			key->type->destroy(key);
++		if (state == KEY_IS_POSITIVE) {
++			if (key->type->destroy)
++				key->type->destroy(key);
++		} else if (key->restrict_link) {
++			if (key->restrict_link->keytype)
++				module_put(key->restrict_link->keytype->owner);
++			key_put(key->restrict_link->key);
++			kfree(key->restrict_link);
++		}
+ 
+ 		security_key_free(key);
+ 
+@@ -178,6 +187,7 @@ static noinline void key_gc_unused_keys(struct list_head *keys)
+ 
+ 		memzero_explicit(key, sizeof(*key));
+ 		kmem_cache_free(key_jar, key);
++		module_put(owner);
+ 	}
+ }
+ 
+diff --git a/security/keys/key.c b/security/keys/key.c
+index 3e604d25d35e..be68d19f91d3 100644
+--- a/security/keys/key.c
++++ b/security/keys/key.c
+@@ -7,6 +7,7 @@
+ 
+ #include <linux/export.h>
+ #include <linux/init.h>
++#include <linux/module.h>
+ #include <linux/poison.h>
+ #include <linux/sched.h>
+ #include <linux/slab.h>
+@@ -234,19 +235,34 @@ struct key *key_alloc(struct key_type *type, const char *desc,
+ 
+ 	key = ERR_PTR(-EINVAL);
+ 	if (!desc || !*desc)
+-		goto error;
++		goto out;
++
++	/* Failed module initialization ignores outstanding module references. */
++	if ((type->owner && module_is_coming(type->owner)) ||
++	    !try_module_get(type->owner)) {
++		key = ERR_PTR(-ENOENT);
++		goto out;
++	}
++
++	if (restrict_link && restrict_link->keytype &&
++	    ((restrict_link->keytype->owner &&
++	      module_is_coming(restrict_link->keytype->owner)) ||
++	     !try_module_get(restrict_link->keytype->owner))) {
++		key = ERR_PTR(-ENOENT);
++		goto out_put_module;
++	}
+ 
+ 	if (type->vet_description) {
+ 		ret = type->vet_description(desc);
+ 		if (ret < 0) {
+ 			key = ERR_PTR(ret);
+-			goto error;
++			goto out_put_restrict_module;
+ 		}
+ 	}
+ 
+ 	desclen = strlen(desc);
+ 	if (desclen >= KEY_MAX_DESC_SIZE)
+-		goto error;
++		goto out_put_restrict_module;
+ 	quotalen = desclen + 1 + type->def_datalen;
+ 
+ 	/* get hold of the key tracking for this user */
+@@ -323,8 +339,6 @@ struct key *key_alloc(struct key_type *type, const char *desc,
+ 	refcount_inc(&key->domain_tag->usage);
+ 	atomic_inc(&user->nkeys);
+ 	key_alloc_serial(key);
+-
+-error:
+ 	return key;
+ 
+ security_error:
+@@ -338,7 +352,7 @@ struct key *key_alloc(struct key_type *type, const char *desc,
+ 	}
+ 	key_user_put(user);
+ 	key = ERR_PTR(ret);
+-	goto error;
++	goto out_put_restrict_module;
+ 
+ no_memory_3:
+ 	kmem_cache_free(key_jar, key);
+@@ -352,13 +366,22 @@ struct key *key_alloc(struct key_type *type, const char *desc,
+ 	key_user_put(user);
+ no_memory_1:
+ 	key = ERR_PTR(-ENOMEM);
+-	goto error;
++	goto out_put_restrict_module;
+ 
+ no_quota:
+ 	spin_unlock_irqrestore(&user->lock, irqflags);
+ 	key_user_put(user);
+ 	key = ERR_PTR(-EDQUOT);
+-	goto error;
++
++out_put_restrict_module:
++	if (restrict_link && restrict_link->keytype)
++		module_put(restrict_link->keytype->owner);
++
++out_put_module:
++	module_put(type->owner);
++
++out:
++	return key;
+ }
+ EXPORT_SYMBOL(key_alloc);
+ 
+@@ -1231,19 +1254,20 @@ int generic_key_instantiate(struct key *key, struct key_preparsed_payload *prep)
+ EXPORT_SYMBOL(generic_key_instantiate);
+ 
+ /**
+- * register_key_type - Register a type of key.
++ * __register_key_type - Register a type of key.
+  * @ktype: The new key type.
++ * @owner: Module owning the key type.
+  *
+  * Register a new key type.
+  *
+  * Returns 0 on success or -EEXIST if a type of this name already exists.
+  */
+-int register_key_type(struct key_type *ktype)
++int __register_key_type(struct key_type *ktype, struct module *owner)
+ {
+ 	struct key_type *p;
+ 	int ret;
+ 
+-	memset(&ktype->lock_class, 0, sizeof(ktype->lock_class));
++	ktype->owner = owner;
+ 
+ 	ret = -EEXIST;
+ 	down_write(&key_types_sem);
+@@ -1264,7 +1288,7 @@ int register_key_type(struct key_type *ktype)
+ 	up_write(&key_types_sem);
+ 	return ret;
+ }
+-EXPORT_SYMBOL(register_key_type);
++EXPORT_SYMBOL(__register_key_type);
+ 
+ /**
+  * unregister_key_type - Unregister a type of key.
+diff --git a/security/keys/keyring.c b/security/keys/keyring.c
+index 5281da9d5bf7..f90ab46ecfab 100644
+--- a/security/keys/keyring.c
++++ b/security/keys/keyring.c
+@@ -7,6 +7,7 @@
+ 
+ #include <linux/export.h>
+ #include <linux/init.h>
++#include <linux/module.h>
+ #include <linux/sched.h>
+ #include <linux/slab.h>
+ #include <linux/security.h>
+@@ -436,6 +437,9 @@ static void keyring_destroy(struct key *keyring)
+ 	if (keyring->restrict_link) {
+ 		struct key_restriction *keyres = keyring->restrict_link;
+ 
++		if (keyres->keytype)
++			module_put(keyres->keytype->owner);
++
+ 		key_put(keyres->key);
+ 		kfree(keyres);
+ 	}
+@@ -540,6 +544,9 @@ struct key *keyring_alloc(const char *description, kuid_t uid, kgid_t gid,
+ 	if (!IS_ERR(keyring)) {
+ 		ret = key_instantiate_and_link(keyring, NULL, 0, dest, NULL);
+ 		if (ret < 0) {
++			if (restrict_link && restrict_link->keytype)
++				module_put(restrict_link->keytype->owner);
++			keyring->restrict_link = NULL;
+ 			key_put(keyring);
+ 			keyring = ERR_PTR(ret);
+ 		}
+@@ -1062,7 +1069,7 @@ int keyring_restrict(key_ref_t keyring_ref, const char *type,
+ 
+ 		if (!restrict_type->lookup_restriction) {
+ 			ret = -ENOENT;
+-			goto error;
++			goto out;
+ 		}
+ 
+ 		restrict_link = restrict_type->lookup_restriction(restriction);
+@@ -1070,7 +1077,15 @@ int keyring_restrict(key_ref_t keyring_ref, const char *type,
+ 
+ 	if (IS_ERR(restrict_link)) {
+ 		ret = PTR_ERR(restrict_link);
+-		goto error;
++		goto out;
++	}
++
++	if (restrict_link && restrict_link->keytype &&
++	    ((restrict_link->keytype->owner &&
++	      module_is_coming(restrict_link->keytype->owner)) ||
++	     !try_module_get(restrict_link->keytype->owner))) {
++		ret = -ENOENT;
++		goto out_free_restriction;
+ 	}
+ 
+ 	down_write(&keyring->sem);
+@@ -1088,12 +1103,21 @@ int keyring_restrict(key_ref_t keyring_ref, const char *type,
+ 	up_write(&keyring_serialise_restrict_sem);
+ 	up_write(&keyring->sem);
+ 
+-	if (ret < 0) {
++	if (ret < 0)
++		goto out_put_module;
++
++	goto out;
++
++out_put_module:
++	if (restrict_link && restrict_link->keytype)
++		module_put(restrict_link->keytype->owner);
++
++out_free_restriction:
++	if (restrict_link)
+ 		key_put(restrict_link->key);
+-		kfree(restrict_link);
+-	}
++	kfree(restrict_link);
+ 
+-error:
++out:
+ 	if (restrict_type)
+ 		key_type_put(restrict_type);
  
 -- 
 2.47.3
