@@ -1,55 +1,125 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.52
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794160504;
-	b=DvyHQSRS4TfTziIF1PqyKCSmQ95I7Y0Vz2OXCqyUrCbMAtFpD6RA3uPwj25XNJMXu6De
-	 L51wa9Avz+6GN2vLH20TXXcz1M0+9SPEHGXaP7zhfqYtfKCsxe06p8oPeAPVS+wdguTrW
-	 SBryNrK99Y6+2ShSy/335RbyZs3THm2YulUyhAfL1XRAB1tBQU87hB/7eUIHJJ2Bz/9yA
-	 7aYm/LCl32pNiFV7De/wm61qRAa3uqKAWjftHOIwRYCTzbjSqJ/b9jsqzz+VqUWdn+e/e
-	 MNuTDujjDt+V89/0+D1Tkrlzcg502sIhVU/O9OOM1wlP3Hk4jJPYqVKkt4VU2ExTfAg==
+	t=1794164398;
+	b=FnQEhYe5ZkVyHzP3aEtubg0Av8SevJIbMxH3oxVj+rzvLg8PvDhKm8c2bYIbRGZWv2NO
+	 OE4tDUMUD5/KVkMQNDHYss8DaGHOwVheedwRmlycbLHfhxq5T7T/FM6b84gUwsJerNQwk
+	 8LyZLkTnoKofP9Qus766DRrtL8LoXIxVwdD8OGJIGmFZ5M77DyVt5XFmIB1+RO2OnLLyZ
+	 iFKX4zu4RTuuh/tV5gctGeRNUnO2kuIl0kOso7nJcwIzvAQvSCGCs+q5t6T6aylR7o+g0
+	 TrekyVsbr8oWucGlLipoMlsgYBd51+QhuY0iE/xmyzPM5lgM+obXPNzd6f30yNYJYnA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794160504;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=3v9LBX+D4kL6Cnom17dz7DIT2Ps+o+JK1OZiS9Zr4fw=;
-	b=vsJb8fO5UM4Q0c65sBdqbOPktF0vJIUZfyKBx6V81hcRCqUadWyME+blyPD4m7NHzP+y
-	 5cjU1Pc+JL4h8+1h8Mvy4y/5mOEFTuYVVbCE1SdMBo85tz86mZeIHck32m2sgRLdFi5In
-	 lWG0XDcil4APsk9v3biLBC1F0eo4u5cDZOARoqMOztbmsuGiutKdrNFaZIG1jqh1KRllZ
-	 SkeZBoRrLDubQegp90qhrEI8xK4AMYxR2VZchxaab0YY0ZtXMWMc1hrj/05dFxTxjNWCH
-	 cRvNfQILhSkmGYWtZVVtCRcsrPhlBvaV+ZDGvs4orTaVUNANaI8g29nsOS8cjAImzUg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794164398;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:X-Mailer:
+	 MIME-Version:Content-Type:Content-Transfer-Encoding;
+	bh=JLhUwzup1lwefYy8NOOFjthYnrByVfTsqIe79kkV+Lk=;
+	b=N1+VrlkWmRfo1kqX/W7X3it7W3ZxYNBTo5om461keTHqkmKA7yZqD1aNAvh9hCtdH8wf
+	 i0o+9gqW43mY3PvcyvPil1lFkVitgqSCncR2uIQgsg56lE4XH8oRJ8jiZLzUYtyylxn4Y
+	 5B9NkeR8FOou9rNSO/05e04CegsjFUjvaakok2n9Dp2VDhlt/k8a5naTAUH59NeyJ1kZM
+	 TOoC/7s0CoBJS8zD1LRck7TD/q4Sg416sIvlqVtlgf7wWCybKSPFIO6jC4spHllG5w8VX
+	 /XM7DQsmshyIyBg8DtUZqRojy8yDsE/p3lW6rGfIiXj6PaVRKdZcrlDjPykevBhJ07g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ODONZtBC;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=XrEUEgHU;
+	arc=none smtp.remote-ip=209.85.128.52
+Received: from mail-wm1-f52.google.com (mail-wm1-f52.google.com [209.85.128.52])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 79759606A31C
-	for <linux-nfs@vger.kernel.org>; Sun,  8 Nov 2026 17:55:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3E7D7606A33E
+	for <linux-nfs@vger.kernel.org>; Sun,  8 Nov 2026 18:59:58 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3E7D7606A33E
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ODONZtBC
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6458E1F0089F;
-	Sun,  8 Nov 2026 17:55:03 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794160503;
-	bh=3v9LBX+D4kL6Cnom17dz7DIT2Ps+o+JK1OZiS9Zr4fw=;
-	h=From:To:Cc:Subject:Date;
-	b=ODONZtBCVJrqVC9TstNPquClsSNu0Z2JkVb64l0d3QF9Qsy1G3BG0RsQoEhZOYo9T
-	 Suqz7Mz5L/Pk/fLHDefcAd58nB2ZTu6T2WvHnm+wIIa8JM8ix/h+c5q28AKHjAXY/E
-	 tWPsHgGNPnIFosRa3nuDoETepGZ3+xmt7so9ssKvF6E1k3IEtF4VHP9Cu3opBrdRej
-	 9zvOUea2yx9HquSG4HSkKo+0LFR85QU9KmNXzc1l+Ocgtghb2x3+a4rwqEIzHb86LH
-	 IXYejor6rZ55YdeAQWJbNNANSmJw0xJYC0ydCO0Y7WLb5JCqNAprnqnH+zZ0A1QTSk
-	 flKbIrKqWTWwQ==
-From: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neilb@ownmail.net>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2] NFSD: Use direct I/O only for the last operation in a COMPOUND
-Date: Sun,  8 Nov 2026 12:55:02 -0500
-Message-ID: <20261108175502.75385-1-cel@kernel.org>
-X-Mailer: git-send-email 2.56.0
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=XrEUEgHU
+Received: by mail-wm1-f52.google.com with SMTP id 5b1f17b1804b1-4a35ac4475dso1148485e9.2
+        for <linux-nfs@vger.kernel.org>; Sun, 08 Nov 2026 10:59:58 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1794164397; x=1794769197; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:subject:cc:to:from:date:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=JLhUwzup1lwefYy8NOOFjthYnrByVfTsqIe79kkV+Lk=;
+        b=XrEUEgHUwv+lt2Z0T4RzlOQuYT1yMbnY/MJrtF5HY2pc8m0ujKE+1IGJbqc3A1SsPJ
+         Pz+po0Wh7ECcrOl1hyNdZBme+OsO/r11IeCA1lW9KMbstFhlOkC0Hm7Ef+TTavGsfrDk
+         7T2AE8nlcorDhYFpLo0KTCt4xOv09AacMRilfH2h4PS2mZ0iBReAF8XAcgtI3iT+qlRY
+         EJQPYUIUlDRCCjadf1+24R8V0flZyhCZpLCroCVsidoQ510350k4POOaAcSXgGRrBTWF
+         rbpUnz5O6K0TOR8uz/zwLHiObwDAqnCJFWP0+ssCNYCBYnXJwQ2yMfUqdKkv6ro/lp/q
+         XMaA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794164397; x=1794769197;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:subject:cc:to:from:date:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=JLhUwzup1lwefYy8NOOFjthYnrByVfTsqIe79kkV+Lk=;
+        b=MJ2O1V6KpaF1GLo5tjIiM4rKqanhtkQ5Z8mNX5wlI944TXKcqbBEO2aSpV1EtkAZu2
+         Y+MK6eGkxgV9E2W+bJDPdnCfwmP/qyNWKWXmz5/B57Ppue+ScL27vSAVPifj/cRiyX8B
+         X1CohNZRhvJfjk2ZMMKiQCgPzCfRKsbWDXsOhSAdmuNKKtw0FwuBOOMKnTbb8z2xqK9c
+         YqQBYmzcbonz6kBfnKUvhl2Xq+M52XbYRQ3m0OwMOucI6TTGpyf4dJRuoXcr1J2w1UP9
+         DKAT94ycR/xDAI///Vvqg1NqztHkwMPT8sB+qNWFLY1KoltrUr+OJ/ZhEY+gei0ndOZ+
+         lFuA==
+X-Forwarded-Encrypted: i=1; AL+hErF2duSqIy8LVR+JeqQmdlbj7xzrIOi7EX5yZeqrB6d7VB8QVglOEbhYHG/L00nzprWn5ERSDuoLKTU=@vger.kernel.org
+X-Gm-Message-State: APuU4Z8ijdMF9VbiizOajHiObVIDq2F2YJ5FeDlzQZEdn38E89wV6wvS
+	j4i0fKNFub976yLUp6qZ1TZ9tH6zToc5mn74lochKpkLbVQm1RBNT028
+X-Gm-Gg: AYBFou3FQs+g/jm6tEk5JQq3h+WiujAYnakjwNcSbsaCR7FQo4YZX63/msWT102ShHj
+	ihnVKLaRBGSRDB5AyeNmNqg+clyposoRkB2Dwdu4JyFvk3Be/bVIZNYemv9ioDO+tYmbMUs2X2x
+	iOn+YK9PFAotF8R/6eiEG91ICvG3wku1wSxAZCPl8OuDSFwPlYx4P3eePQbTqfIq2rAmIyHNcJR
+	SPLSrE59wF3O4aMBcfTj8Wiigrsijf07AZaLcJdlfJ1rcEeWtzKgagl6odn4Z+wv4XYlYwGqVtU
+	6l4pGtGdn5d8UTXm5bTi8Ow6tG6Okz5cPyidSsfWbsSnlpFbXSD/STuQS3HwEaFFjgxwe5qLGlg
+	CwSw2canECxE/ChllZOhDRgS6MBH7N3htWUWVO29NkeKcTAHtLU+1CUKaQlQGZ8Zp4+nMEEqYYi
+	2B+nEwxJ8VPVby5n2NOoNEDyRhmAOpvP9Lkm5jVruODiEip+wjLJ1gn/SqVVHO9ki121oluaNtv
+	MHIcdsgLYOnfotq/w72QzrX9JK4A6lp5hvlxNpx0tzUCAiRT8UTWXNwGwV3rC8ZdDXpgIOu6tR9
+	1i/SAWn7IQ1YTZyfkIr58gA0kHCV1/CtS0x8L60bHNVd6pj9nDt8foh8ba801o9l
+X-Received: by 2002:a05:600c:468f:b0:4a1:7e77:c382 with SMTP id 5b1f17b1804b1-4b960d9b170mr35982125e9.5.1794164396406;
+        Sun, 08 Nov 2026 10:59:56 -0800 (PST)
+Received: from pumpkin (82-69-66-36.dsl.in-addr.zen.co.uk. [82.69.66.36])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4b7efb1f3acsm185228445e9.14.2026.11.08.10.59.55
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 08 Nov 2026 10:59:56 -0800 (PST)
+Date: Sun, 8 Nov 2026 18:59:53 +0000
+From: David Laight <david.laight.linux@gmail.com>
+To: Christian Brauner <brauner@kernel.org>
+Cc: Geert Uytterhoeven <geert@linux-m68k.org>,
+ linux-fsdevel@vger.kernel.org, Linus Torvalds
+ <torvalds@linux-foundation.org>, Jann Horn <jannh@google.com>, Josef Bacik
+ <josef@toxicpanda.com>, Chris Mason <mason@kernel.org>, Jeff Layton
+ <jlayton@kernel.org>, NeilBrown <neil@brown.name>, Eric Dumazet
+ <edumazet@kernel.org>, Thomas Gleixner <tglx@kernel.org>, Al Viro
+ <viro@zeniv.linux.org.uk>, Jonathan Corbet <corbet@lwn.net>, Christoph
+ Hellwig <hch@lst.de>, Greg Kroah-Hartman <gregkh@suse.de>, Joel Granados
+ <joel.granados@kernel.org>, Kees Cook <kees@kernel.org>, Jan Kara
+ <jack@suse.cz>, Jan Kara <jack@suse.com>, linux-kernel@vger.kernel.org,
+ linux-nfs@vger.kernel.org, linux-acpi@vger.kernel.org,
+ linux-kselftest@vger.kernel.org, linux-s390@vger.kernel.org,
+ linux-scsi@vger.kernel.org, linux-um@lists.infradead.org,
+ linux-wireless@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
+ netdev@vger.kernel.org, ntfs3@lists.linux.dev,
+ platform-driver-x86@vger.kernel.org, coreteam@netfilter.org,
+ kexec@lists.infradead.org, linux-pci@vger.kernel.org,
+ linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org,
+ dri-devel@lists.freedesktop.org, ibm-acpi-devel@lists.sourceforge.net,
+ jfs-discussion@lists.sourceforge.net, linux-alpha@vger.kernel.org,
+ linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org,
+ linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org,
+ linux-mm@kvack.org, linux-sh@vger.kernel.org, linux-usb@vger.kernel.org,
+ samba-technical@lists.samba.org, sparclinux@vger.kernel.org,
+ linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org,
+ linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net,
+ Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org,
+ linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org,
+ linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org, Chuck Lever
+ <cel@kernel.org>
+Subject: Re: [PATCH RESEND v2 14/23] proc: let procfs copy in writes before
+ pinning the entry
+Message-ID: <20261108185953.28054fb3@pumpkin>
+In-Reply-To: <20261107-akteur-gemieden-eckdaten-21304d085e35@brauner>
+References: <20261104-work-procfs-core-v2-14-76ace653a773@kernel.org>
+	<CAMuHMdVfakapgBK6TBhO1iWX8qzvLDk8jzRS=t2MVa5G=MCUeg@mail.gmail.com>
+	<20261107-akteur-gemieden-eckdaten-21304d085e35@brauner>
+X-Mailer: Claws Mail 4.1.1 (GTK 3.24.38; arm-unknown-linux-gnueabihf)
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -59,150 +129,19 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 
-A direct read widens the requested byte range to the file system's
-alignment and leaves the payload at a nonzero rq_res.page_base. The
-xdr_stream encoder does not account for page_base:
-xdr_reserve_space_vec() sizes each chunk from page_len alone, and
-xdr_get_next_encode_buffer() opens each new page at its first byte.
-The stream's position lags the end of the payload by page_base
-bytes.
+On Sat, 7 Nov 2026 10:48:35 +0100
+Christian Brauner <brauner@kernel.org> wrote:
 
-An NFSv4 operation encoded after such a READ overwrites the tail of
-the payload, and the transport sends alignment padding in place of
-that operation's result. The client sees corrupted file data
-followed by an undecodable reply. NFSv2 and NFSv3 are unaffected:
-their READ encoders pass page_base explicitly, and nothing is
-encoded into the pages after the payload.
+> > While at it, I think it would be good to use this conversion as an
+> > opportunity to replace "char *" by "void *", which will probably let
+> > you drop several casts from users.  
+> 
+> So I tried that too. The thing is it drops exactly one u8 * cast in
+> ntfs3's label write. 
 
-Have nfsd4_read() permit a direct read only for the last operation
-in its COMPOUND, next to the same decision it already makes for
-splice reads, and pass the result to nfsd_iter_read() as a new
-argument. The NFSv2 and NFSv3 READ path always permits a direct
-read. The decision is NFSv4 reply-encoding policy, so it stays out
-of fs/nfsd/vfs.c.
+Since char is now unsigned that one isn't even needed...
 
-Fixes: d686e64e931c ("NFSD: Implement NFSD_IO_DIRECT for NFS READ")
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
-Changes in v2:
-- Split from the "NFSD short subjects" series and post on its own
-- Move NFSv4-specific logic out of fs/nfsd/vfs.c
-- Link to v1: https://lore.kernel.org/r/20261004194029.10714-2-cel@kernel.org
-
- fs/nfsd/nfs4proc.c |  2 ++
- fs/nfsd/nfs4xdr.c  |  3 ++-
- fs/nfsd/vfs.c      | 15 ++++++++++++---
- fs/nfsd/vfs.h      |  3 ++-
- fs/nfsd/xdr4.h     |  1 +
- 5 files changed, 19 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index a50f9dcb3a31..aaca7d3c3e04 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1143,6 +1143,8 @@ nfsd4_read(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 
- 		argp->splice_ok = false;
- 	}
-+	/* The xdr_stream encoder does not account for rq_res.page_base */
-+	read->rd_dio_ok = nfsd4_last_compound_op(rqstp);
- 
- 	/* check stateid */
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index c4fd840da4d9..feb50abccff4 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -5308,7 +5308,8 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
- 	__be32 nfserr;
- 
- 	nfserr = nfsd_iter_read(resp->rqstp, read->rd_fhp, read->rd_nf,
--				read->rd_offset, &maxcount, &read->rd_eof);
-+				read->rd_offset, &maxcount, &read->rd_eof,
-+				read->rd_dio_ok);
- 	read->rd_length = maxcount;
- 	if (nfserr)
- 		return nfserr;
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index cb4bf7b235b4..97077f18a1b7 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1234,6 +1234,8 @@ nfsd_direct_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
-  * @offset: starting byte offset
-  * @count: IN: requested number of bytes; OUT: number of bytes read
-  * @eof: OUT: set non-zero if operation reached the end of the file
-+ * @dio_ok: false forces a buffered read even when the export selects
-+ *	    direct I/O
-  *
-  * Some filesystems or situations cannot use nfsd_splice_read. This
-  * function is the slightly less-performant fallback for those cases.
-@@ -1241,12 +1243,17 @@ nfsd_direct_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
-  * records. On return, @rqstp->rq_next_page points past the last page
-  * offered to the read.
-  *
-+ * A direct read leaves its alignment pad at the front of the pages and
-+ * records the pad length in @rqstp->rq_res.page_base. The xdr_stream
-+ * encoder does not account for page_base, so pass @dio_ok false when
-+ * more XDR items follow the payload in the pages.
-+ *
-  * Returns nfs_ok on success, otherwise an nfserr stat value is
-  * returned.
-  */
- __be32 nfsd_iter_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		      struct nfsd_file *nf, loff_t offset, unsigned long *count,
--		      u32 *eof)
-+		      u32 *eof, bool dio_ok)
- {
- 	struct xdr_buf *buf = &rqstp->rq_res;
- 	struct page **page = buf->pages + (buf->page_len >> PAGE_SHIFT);
-@@ -1265,7 +1272,8 @@ __be32 nfsd_iter_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		break;
- 	case NFSD_IO_DIRECT:
- 		/* When dio_read_offset_align is zero, dio is not supported */
--		if (nf->nf_dio_read_offset_align && !rqstp->rq_res.page_len)
-+		if (dio_ok && nf->nf_dio_read_offset_align &&
-+		    !rqstp->rq_res.page_len)
- 			return nfsd_direct_read(rqstp, fhp, nf, offset,
- 						count, page, eof);
- 		fallthrough;
-@@ -1649,7 +1657,8 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	if (file->f_op->splice_read && nfsd_read_splice_ok(rqstp))
- 		err = nfsd_splice_read(rqstp, fhp, file, offset, count, eof);
- 	else
--		err = nfsd_iter_read(rqstp, fhp, nf, offset, count, eof);
-+		err = nfsd_iter_read(rqstp, fhp, nf, offset, count, eof,
-+				     true);
- 
- 	nfsd_file_put(nf);
- 	trace_nfsd_read_done(rqstp, fhp, offset, *count);
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 1f05c83a3ea6..0b0152ba56b3 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -182,7 +182,8 @@ __be32		nfsd_splice_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 				u32 *eof);
- __be32		nfsd_iter_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 				struct nfsd_file *nf, loff_t offset,
--				unsigned long *count, u32 *eof);
-+				unsigned long *count, u32 *eof,
-+				bool dio_ok);
- bool		nfsd_read_splice_ok(struct svc_rqst *rqstp);
- __be32		nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 				loff_t offset, unsigned long *count,
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index ec198993429e..61afbabc1773 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -301,6 +301,7 @@ struct nfsd4_read {
- 	u32			rd_length;          /* request */
- 	int			rd_vlen;
- 	struct nfsd_file	*rd_nf;
-+	bool			rd_dio_ok;
- 
- 	struct svc_rqst		*rd_rqstp;          /* response */
- 	struct svc_fh		*rd_fhp;            /* response */
--- 
-2.56.0
-
+David
