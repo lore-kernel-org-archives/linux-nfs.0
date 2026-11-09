@@ -1,73 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794239880;
-	b=Qezh/R3Tj4qdJZ+KAfkIGOZKTipbAtNGUm/eBE1d/hPOfKSPWwbvmED0DL32m1qBxb5s
-	 puRanK5NLR81TDeY+Iw6yX51Ep0jSw/MR9pN2X08lM3GToLJiMAEdNPee+iDtz1v/YvWX
-	 2CW482JfahrKpq1qos2WvPjTaZv6Cw/1kwX47BaWtbsdjSwTXR2uo2cDUQdzaafOqayDT
-	 bf0uYMrWjtFPYnVui3iKuW3gxig49MneJXk2MLZt4dTIV7UFoXjbS6Ex75XyrbhMrJ2nZ
-	 t95LSHX1cQDsVvAotUMauGPvHX8925pZEc+VZme1WbqUFCL4CH0aKrHEVDLP0AmxT7Q==
+	t=1794254010;
+	b=b1OgRQIXO65oOuvXvNVqB99t+pXvf83MNK8i4BB2FM4rwvKLQHKh17qqWI5CDNeRr6Ki
+	 VARqpX8XI53v7sHA0nRk5cwM89HdxfvHgeAZNlqKNwRdgH4UNnoWplfxPbZYT2E2EgdXZ
+	 pw36gByTC2f5usOTAw3E4+4XO2ls0LhSLaxUHI+BIaoxndckAoC7zbMI1rLJrBB+F1UDK
+	 z0V3yZ/nIXkKKJe6080WVpmh+ltOL4stQZElO16WXvDO0PzpX81GwxJMg0BlLHb2pyg0P
+	 MEWSOQ/DQjASow1jW8hx0kkN1shnRBYhZYpxOLFu1Hkp7o0WW5TLDemIBWqGmSa1awg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794239880;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=nD0Fov5vstqjfV2RIFBuUwZ2sOez8ALAEleCpoWGU44=;
-	b=NnrAGgN4PMuH097Sas7nHcdAYA0sYhfdcJES8VGzVmy6mCOnMpR2+CkeiX2fHnhFAy8E
-	 VG5Xgji6RiqSS2V3/sA2OKPGZpqrH6YafCqx0jwCsXbwjG6WsXz4AUGNfiHQFnnz4kffO
-	 ReX0MGjB4ioGbvtwZUSOzsNXOqxru153KflV0a53c/LQ2xEZBy7+DviTczihlfpVyU3X1
-	 XeiZiyuMdKblXw8eR1pRqyUw6Y5xfCwmkDEBv+NccD3wgjGzl+k+Gk/s1LMLMlHIX+kmE
-	 uRFxTys6/sIzLaXdM7ut064E9ZsF4FH7Uvm8mMVLGmFESPOSdpj2Tv+EZBvBD4gMC8A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794254010;
+	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
+	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=knj6PiH8eRc0ubGmCl+dX7YkVYwV5uayueKD3zMEfhI=;
+	b=KjViKMmULiUORcN1d10TSSoj5jd8ReWyEwqeMUVLTHsMz4zAc3uhdz1jupw490kvSPRd
+	 uh1+NW7EfG/CSkRnnoIZyCGD5D2Wp1hDvuJ9pXq9+/W2RFDbw5XdY6Ctb09qkwsjsO2gW
+	 UzRutmqmxUpwA+dieCudk2d6ff6x9c/yniwN8pyVomq1wXGCf3AsdZn2WJAgd3uLXwlGe
+	 p+dpjNMM/42P0KaunP3F7Wh055bNbURDF06wds8Y4t4Ti3C/1b/JsP+uIFxjfIYRgoThO
+	 FXevMpmha1FA/nAdJIM+qtEwdrTJ6E2ULEXTtBwB/MK4sEQ5fFQgY3MMdsiGk5IsZ9A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=edfVcKt5;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iur2x88z;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8F171606A332
-	for <linux-nfs@vger.kernel.org>; Mon,  9 Nov 2026 15:58:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8A90C60A2636
+	for <linux-nfs@vger.kernel.org>; Mon,  9 Nov 2026 19:53:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=edfVcKt5
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EF8961F008A5;
-	Mon,  9 Nov 2026 15:57:59 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iur2x88z
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9BCDA1F008AB;
+	Mon,  9 Nov 2026 19:53:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794239880;
-	bh=nD0Fov5vstqjfV2RIFBuUwZ2sOez8ALAEleCpoWGU44=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=edfVcKt5dT9bfkM2H0Jq0cZiq4DPMfPE1s30SGSpkuIUfvjO3oe7m1Uk7sennngmU
-	 VkO0wZXhhSy5RfpzjbEwTNB3/24rP7Yufu9aUHTgRtDDaSdcFl/Do8ylXFbkpQKk+y
-	 9LcffWdccj0/AK+f8Y12S1A8JPzLkmHHY/8s8wdskbzlz+tr/tiUUaKVPFRvhdtNHV
-	 fuYA60JcZOxpZWWsXK4cJ1W2W1M59JEPk6mholrDMf0Rud0tEdYtkqAn0+3w+RKEvs
-	 jevOSC1O+/woYL5NhWrEavhCfZ70QWW3bTN1aRENt2ZuErwfpbSGMPnIv5EFZWe3mF
-	 rbr8Ihe3DV+Jw==
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 59618F40066;
-	Mon,  9 Nov 2026 10:57:59 -0500 (EST)
-Received: from phl-imap-04 ([10.202.2.82])
-  by phl-compute-02.internal (MEProxy); Mon, 09 Nov 2026 10:57:59 -0500
-X-ME-Sender: <xms:h-3xavUN0dat1XpGQdZLiqVMSZV0lfpgNpengUMltQqU2_XKn1ccHA>
-    <xme:h-3xaibj93i9STPG8Rpb2zd9jLWotfz7e2JDA4Tp7gwTmFE1qI7rwIr4Rxfwv9Cp2
-    wQ88eFpVrBvQoStl1ZQ5teFgE8j1shaQhfFMUuDmg4uMRReoiYyBDqmnQ>
-X-ME-Proxy-Cause: dmFkZTGOsAKy6WsaaPBJ+vhVKMmGpGpgbJkEBwqSB3xiZt3OBEUw2ME/6CNCRzkgRi1S6M
-    UjLJPCojG8lhpPpbAceO69dc1qG1XXa21fs7x0sdc85JB7Z0uTT3Fae+kIcUFawO3jwz2M
-    v3ReSsnuXR100ur5B9IXGXuZzvEeWCD3mXCkw6B69Pq2plsgr/mmasxZSpDGhqQYnEvwUq
-    CWMCFF7qw010sYJMyD3O7P1JDsv8hD73cH2Td8cb2c1ARpXXkD1vQAFulMFsHEojsplSav
-    tXkveGdoQEJJkiE6GUS4VPasmwZTFtBr1ixqu2atK541Bpn976xcVNyauueZcGZbReJcgG
-    y5/bhAv51cUPjtJlxZ1KTYM2N4R1re5yGg4sJQaT6xLdSJa93yW2sQrYutrDELKZ6MLOg5
-    NSuxGX9RvGm8X6wplpGA2wzLMm7j+n6G0GrpOcGi5WoccOsTossQvlZeKVGCjaeCwl/qeh
-    bjAoKQsJSdLNsY76UUTh/V10PEWtcOCx1y6sNNAMPEEx10In/duX2XlNpdbf3WyiZipKqA
-    2wqX7Ma4ZesXbd3K0SNo/r4/1BLsigEGrrsZzYcx/jNeoturlfJggBdGu0OHzZbEaKkiNw
-    Jkoy6+vRZ6m0piCrrP7ldUwNGWJq9c7vKF7gzcVdKuQf++8yxWCllEFqDb9Q
-X-ME-Proxy: <xmx:h-3xauQA_aP9lwYILWQUh3XLOpiso486gr_EiExsj-mDVXlhsROPYQ>
-    <xmx:h-3xari8gJSEtHsuHKnSH9t39gAt_xX7K9CdbSoSe8_athZPnO9vqA>
-    <xmx:h-3xau4lX9i_XSY7CbS0Llkv5TDk-kTuYzuGqrWqx748GAq4SdgtQw>
-    <xmx:h-3xaoB7kAJjt0rdHNi88pOIK3Ev9-bG0F79cVmng9RwvNjBYPl40w>
-    <xmx:h-3xalafTC5GquCbKQ6yeRFTlJJ-tX7ucN5gtPZfloA3OTDTt7itBMq0>
-Feedback-ID: i20964851:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 3F946B6006F; Mon,  9 Nov 2026 10:57:59 -0500 (EST)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1794254010;
+	bh=knj6PiH8eRc0ubGmCl+dX7YkVYwV5uayueKD3zMEfhI=;
+	h=From:Subject:Date:To:Cc;
+	b=iur2x88z6B5wAnf7l87S+itqlngtptYxxqrvO5bk3ZArZfVrGBm69FCfaD36SGELB
+	 S+jDoW6hs7ug8FrztBbhn3Z0hVw5njgpL4FLBJfMLVw3JQpnwdoH5vQ+f3I+sjPlgl
+	 T1xPLbUuvPCdVjKQm0hwSIXLBGZek3tQS8e2hULiMsg4pU/knntdvYszF0R2+7GpG+
+	 tssXauIw4iWKLFLchnydpvE9K2ArWpiqfHSxzwgDMxm1UsEYDPPfwaJ7vVn56RPA9I
+	 CrnrCCmjSvi0oyPpk/nrt6XhbEb1Hd38wh9+P7Mj9oJ9Iaiu87YsZUm6fH7rNCWYuO
+	 vznWw2c9EHNiA==
+From: Chuck Lever <cel@kernel.org>
+Subject: [PATCH 00/13] NFSD: Address XDR corner cases
+Date: Mon, 09 Nov 2026 14:53:16 -0500
+Message-Id: <20261109-xdr-page-base-v1-0-a4f4411d760d@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,164 +53,77 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: ArXanrC7RZNR
-Date: Mon, 09 Nov 2026 10:57:39 -0500
-From: "Anna Schumaker" <anna@kernel.org>
-To: "Mike Snitzer" <snitzer@kernel.org>
-Cc: "Trond Myklebust" <trondmy@kernel.org>, linux-nfs@vger.kernel.org
-Message-Id: <66beadbd-5735-4941-821e-059d5cb9850a@app.fastmail.com>
-In-Reply-To: <avHiX4PgUIEQFbX2@kernel.org>
-References: <20261102215220.16055-1-snitzer@kernel.org>
- <20261102215220.16055-4-snitzer@kernel.org>
- <c8f51ae8-9b07-4187-ab11-349322f636b2@app.fastmail.com>
- <avHiX4PgUIEQFbX2@kernel.org>
-Subject: Re: [PATCH 3/3] NFS/localio: give the LOCALIO probe a short timeout of its own
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMywqDMBBFf0Vm3YEk0ID+Sukij4mOi1QyaRHEf
+ zexy3O45x4gVJgEpuGAQj8W/uQG+jFAWFyeCTk2BqOM1VqNuMeCm2veOyG0MQQ1Pk2K1kBrtkK
+ J9/vv9f6zfP1KofaTvrgzX1wOS1c5ScRKUjnPcJ4XgOYXNZAAAAA=
+X-Change-ID: 20261109-xdr-page-base-6dcc0952fd62
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
+Cc: Mike Snitzer <snitzer@kernel.org>, linux-nfs@vger.kernel.org
+X-Mailer: b4 0.17-dev
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2251; i=cel@kernel.org;
+ h=from:subject:message-id; bh=7s+ztilR9aaoTV0khzIem2QiaStZWFMUv9IpMqnv2JI=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq8iSwF2c3gpoAJ3fEnOGROl0OZnmaRTNa9pHwr
+ QfAld4YiieJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavIksAAKCRAzarMzb2Z/
+ l0HMD/wISUEzpNDIdaYUzxSfYNGHSnpuFFNZbf3hmPQ61NrlF1fbPSpzHatsSYJoGP6Z8T8wmG9
+ wGGYvNzxMbEZaxd1EehPyMHqmZmMkEIZN/FeMX4S8PEbfWr7c1wct0Y+m88f0YdyM+i8xwWJvk4
+ sBYjhx1e2f9jfEAc0GLuU6c+Kc4IpJ2cWDBZRpqxYiXL0dT8BRZRiZg3nnacb6OtM5IoJR7IZL0
+ fn/T613xr7EtH+4ga2rpzine9fad6VoNoC8hltjpFdII9O3XEpxWuIJuNkenxkmA+mKtXCdiIUu
+ yb5YldlG3qdYjL1X+v8qazsGugIGLDJP2qXKNXWfCZBsGGtmzpNZ06wkY+1l0Dyrz+jc57igRxv
+ +CgMFRHdym0lTsftgvAdiKf+O1jF1vL9+yERG/73eVbzlMqP9acPdD4cr9soM7jDOI97ePn4jre
+ 82gktwEhQtGzkG6okYj3UIXvwhh+EUmWYD7k6r02RAZ9KAUOp/DOI9f2G5edz4uRe0CR+AFyhDc
+ 9fzW6Yk5gS6uEuufHgq9QP1oQb6lNUA4vQ8FYppDpQJEbFdRaq+gQMT1aEAFMu8qXbwJmKvjilI
+ S2rHHkM/fPjo9cpoOTBsbMPIIasxEH2Mn6TPkkHTRUrQOhnGrWJqop+j/jDD40PRralKQDtPFKD
+ yYXPkN6hVRffhrQ==
+X-Developer-Key: i=cel@kernel.org; a=openpgp;
+ fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-Hi Mike,
+While I was working on other development efforts, code review
+spotted a number of pre-existing bugs.
 
-On Mon, Nov 9, 2026, at 10:10 AM, Mike Snitzer wrote:
-> On Fri, Nov 06, 2026 at 05:02:09PM -0500, Anna Schumaker wrote:
->> 
->> 
->> On Mon, Nov 2, 2026, at 4:52 PM, Mike Snitzer wrote:
->> > The LOCALIO probe clones the NFS client with rpc_bind_new_program(),
->> > which NULL-pings the new program before the probe sends UUID_IS_LOCAL.
->> > Both calls use the mount's timeout.  With timeo=600 and the default
->> > retrans, a server that does not answer the LOCALIO program holds each
->> > probe for about 170 s.  The client then logs "nfslocalio: server ... not
->> > responding, timed out".  On such a server, one mkdir took about 170 s
->> > of a 202 s run and ended when the probe gave up.
->> >
->> > Give the probe a soft timeout of its own, with no retries and no log
->> > message.  The new nfs module parameter localio_timeout sets it in
->> > seconds, 10 by default and at most 600.  Set it on a private clone of
->> > the NFS client before rpc_bind_new_program(), so that the ping uses it
->> > as well.  Clear cl_noretranstimeo, which NFSv4 mounts set, because with
->> > it a sent call does not time out while the connection stays up.  With
->> > localio_timeout set to 0, the probe uses the NFS client's timeouts, as
->> > before.  The probe still shares the NFS client's transport and runs
->> > beside its RPCs.  The NFS client's own timeouts do not change.
->> >
->> > Tested through a proxy that drops every call to the LOCALIO program:
->> > the probe gave up after 10.6 s and logged nothing.  With
->> > localio_timeout=0 it took 182.9 s and logged the message above.  The
->> > probe still succeeds against a server that supports LOCALIO: with no
->> > proxy, a 64 MiB O_DIRECT write through LOCALIO sent no WRITE RPCs.
->> >
->> > Signed-off-by: Mike Snitzer <snitzer@kernel.org>
->> > ---
->> >  Documentation/filesystems/nfs/localio.rst |  9 ++++
->> >  fs/nfs/localio.c                          | 54 +++++++++++++++++++++--
->> >  2 files changed, 60 insertions(+), 3 deletions(-)
->> >
->> > diff --git a/Documentation/filesystems/nfs/localio.rst 
->> > b/Documentation/filesystems/nfs/localio.rst
->> > index e8f44332cc806..45c6981da0d89 100644
->> > --- a/Documentation/filesystems/nfs/localio.rst
->> > +++ b/Documentation/filesystems/nfs/localio.rst
->> > @@ -316,6 +316,15 @@ It is checked on every I/O: setting it to N sends 
->> > the next I/O of every
->> >  client over the network, and setting it back to Y resumes LOCALIO.  A
->> >  client that probed while it was N is probed again when it is set to Y.
->> > 
->> > +/sys/module/nfs/parameters/localio_timeout (uint)
->> > +sets how many seconds the LOCALIO probe waits for each reply from the
->> > +server, defaults to 10, at most 600.  A server that does not support
->> > +LOCALIO may not answer the probe at all.  If no reply comes in time,
->> > +the probe gives up without a log message.  The client then does not use
->> > +LOCALIO.  The mount's timeouts do not apply to the probe.  Set to 0, the
->> > +probe uses the mount's timeouts instead, as an NFS RPC would.  A change
->> > +applies to the next probe.
->> > +
->> >  /sys/module/nfs/parameters/localio_O_DIRECT_semantics (bool)
->> >  controls if O_DIRECT extends down to the underlying filesystem, defaults
->> >  to N. Application IO must be logical blocksize aligned, otherwise
->> > diff --git a/fs/nfs/localio.c b/fs/nfs/localio.c
->> > index 80a496d6fe0d6..06d0755b1f203 100644
->> > --- a/fs/nfs/localio.c
->> > +++ b/fs/nfs/localio.c
->> > @@ -82,6 +82,22 @@ static const struct kernel_param_ops localio_enabled_ops = {
->> >  };
->> >  module_param_cb(localio_enabled, &localio_enabled_ops, &localio_enabled, 0644);
->> > 
->> > +/* Seconds the LOCALIO probe waits for each reply; 0: the NFS client's 
->> > own */
->> 
->> I'm having trouble parsing this. What does '0' mean here?
->> 
->> Thanks,
->> Anna
->
-> Sorry about that, not sure what happened.  But how 0 is handled is
-> documented in localio.rst (above) and in the comment above
-> nfs_init_localioclient() (below).  In any case, this comment can be:
->
->   /*
->    * Seconds the LOCALIO probe waits for each reply.  With 0, the probe uses
->    * the NFS client's timeouts instead.
->    */
->
-> Can you fold this in or should I send v2?
+The git regression suite passes on an NFSv4.1 over RDMA mount point.
+Direct READs at unaligned offsets were verified by md5 over krb5i on
+NFSv3 and NFSv4.1.
 
-That reads much better to me. I'll fold it into the patch!
+---
+Chuck Lever (13):
+      NFSD: Drop the READ payload when the NFSv2 GETATTR fails
+      NFSD: Pass the link text offset as the READLINK result payload
+      NFSD: Check the Write chunk before inserting a spliced READ payload
+      SUNRPC: Check the Write chunk before inserting an opaque payload
+      NFSD: Return NFS4ERR_IO when a payload overflows the Write chunk
+      NFSD: Place a word-unaligned direct READ's XDR pad in the tail
+      SUNRPC: Account for page_base when encoding into the reply pages
+      SUNRPC: Add KUnit tests for encoding after a nonzero page_base
+      SUNRPC: Restore the auth slack before encoding the integrity MIC
+      NFSD: Round the session's reply limit down to a word
+      NFSD: Account for page_base in reply-space decisions
+      NFSD: Allow a word-aligned direct READ in any COMPOUND position
+      NFSD: Do not truncate an operation that reported an out-of-space error
 
-Anna
+ Documentation/filesystems/nfs/nfsd-io-modes.rst |  15 +-
+ fs/nfsd/nfs4proc.c                              |  12 +-
+ fs/nfsd/nfs4state.c                             |   2 +-
+ fs/nfsd/nfs4xdr.c                               | 181 +++++++--
+ fs/nfsd/nfsproc.c                               |   3 +
+ fs/nfsd/trace.h                                 |   2 +
+ fs/nfsd/vfs.c                                   |  15 +-
+ fs/nfsd/xdr4.h                                  |  32 +-
+ include/linux/sunrpc/svc.h                      |  67 +++-
+ net/sunrpc/Kconfig                              |  14 +
+ net/sunrpc/Makefile                             |   3 +
+ net/sunrpc/auth_gss/svcauth_gss.c               |   1 +
+ net/sunrpc/tests/xdr_kunit.c                    | 505 ++++++++++++++++++++++++
+ net/sunrpc/xdr.c                                |  53 ++-
+ 14 files changed, 825 insertions(+), 80 deletions(-)
+---
+base-commit: 2cf04da22a850a733c0e09b17ce95cfd9b642558
+change-id: 20261109-xdr-page-base-6dcc0952fd62
 
->
-> Thanks,
-> Mike
->
->
->> > @@ -156,13 +172,45 @@ const struct rpc_program nfslocalio_program = {
->> > 
->> >  /*
->> >   * nfs_init_localioclient - Initialise an NFS localio client connection
->> > + *
->> > + * A server that does not support LOCALIO may not answer its RPCs at all.
->> > + * The probe shares the NFS client's transport and runs beside its RPCs.
->> > + * With localio_timeout set, it gets a quiet, soft timeout of that many
->> > + * seconds of its own, whatever timeouts the mount uses.  With 0, it uses
->> > + * the NFS client's timeouts, as an NFS RPC would.
->> >   */
->> >  static struct rpc_clnt *nfs_init_localioclient(struct nfs_client *clp)
->> >  {
->> > -	struct rpc_clnt *rpcclient_localio;
->> > +	unsigned int timeout_secs = READ_ONCE(localio_timeout);
->> > +	struct rpc_clnt *parent = clp->cl_rpcclient;
->> > +	struct rpc_clnt *probe = NULL, *rpcclient_localio;
->> > 
->> > -	rpcclient_localio = rpc_bind_new_program(clp->cl_rpcclient,
->> > -						 &nfslocalio_program, 1);
->> > +	/*
->> > +	 * rpc_bind_new_program() pings the new program with the timeout of
->> > +	 * the client it clones, so set the probe's timeout on a private
->> > +	 * clone first.  The clone's cl_timeout points at the transport's
->> > +	 * timeout: give it its own copy rather than write through it.
->> > +	 */
->> > +	if (timeout_secs) {
->> > +		probe = rpc_clone_client(parent);
->> > +		if (IS_ERR(probe))
->> > +			return probe;
->> > +		probe->cl_timeout_default = (struct rpc_timeout) {
->> > +			.to_initval	= timeout_secs * HZ,
->> > +			.to_maxval	= timeout_secs * HZ,
->> > +			.to_retries	= 0,
->> > +		};
->> > +		probe->cl_timeout = &probe->cl_timeout_default;
->> > +		probe->cl_softrtry = 1;
->> > +		probe->cl_noretranstimeo = 0;
->> > +		probe->cl_chatty = 0;
->> > +		parent = probe;
->> > +	}
->> > +
->> > +	rpcclient_localio = rpc_bind_new_program(parent, &nfslocalio_program, 1);
->> > +	/* The new client holds a reference to its parent, the probe clone */
->> > +	if (probe)
->> > +		rpc_shutdown_client(probe);
->> > 
->> >  	dprintk_rcu("%s: server (%s) %s NFS LOCALIO.\n",
->> >  		__func__, rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR),
->> > -- 
->> > 2.52.0
+Best regards,
+--  
+Chuck Lever
+
