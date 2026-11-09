@@ -1,49 +1,106 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.133.124
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794257096;
-	b=fdZmo3cRvyhKD9cT3JQWAcVEfiq7iq610Y2+pRhT+EOFtr+2+NLLBKPNUl4yPbgK3Ui2
-	 xxEnK2zopMfZl46UJFPgsMrODRzXgFYKOBThglZ5aAbf2g55pSH7As/27eq+734Ro+4hy
-	 zF5JjkZfRN53v68nhUu9WV3fzi96qQtYUJR2tuym1QbBrF20XaxSr8chIch6srTAVvpYl
-	 H47HV/CJnJ3tCf/nizMkjUqIN363vRfvWNDmu/wBU6r9ataqCOMhQQvtmmbFIW4C+qiO7
-	 +p5rY46jTMC/IjIB3NNNxVE3uUTeqE/c8qMGughFzjUjzkh/AKjpUDtHxaUfJ6t6KSw==
+	t=1794258158;
+	b=Pk9a7yQxyLa8eHD7EHJH3F5A9fR0K1BhOm7h6M03WiuvucgQWbA8LV4slD8MrLneoK8a
+	 GARWKGCEmxvDsM73wWQ+E96rSpOLCcdBds7kq6VwP7EeKK/T9wvd6PYPjoCUpn5wwBDBn
+	 v+u3eZsYT7UHaKkj9E+vKyUFx9Wq/ulk7zzFlP4GxXLKAGHqjz20gpKc2JbS0ibchD7ci
+	 Y9aO8GI3uyiK4yi5USt8hJr65MHGi1YBL9aNmsUT4LKmegIZ1lU1vcrM2kfWXnUGmHvku
+	 89+Wz9ENywD1q90UbEeCwli9apbA4aYb5itmeht9VRrZkKul9l7nMwg2I5JjRCBo/Xg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794257096;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=EvtGLzC16JVEkSNGJ3HsHG8HsYJk0ieesatCfJD6Adk=;
-	b=uMU7zOFaQ0/oBw2FWO3XDbrVEaRkfxAZ/INWxeWotM2NGI9JGmg/Q47ejbHN/kgD3CNW
-	 fneEKKChuI/lwHb5yAumN1eCCgRD32l1SqzM8MQVlas97QAN9RT62sgpw6lUFV6qqVJVR
-	 Po09pd3nfBMkC3aB32/SXZD+1btQjsSlpd/H59wJ1N/o1OVWo7a5vHbDE/md0ElcXBHWk
-	 B9r2bx3L4eK9Z8aB4ztPyVAv0r6qLGgaZtbDtHTU0ef5xMyUKJq2GgIGvSyM1cYzgJKYo
-	 6d/xUHqi5j/eHbtgGa3P9a3q063MvFq4nGPeEbf/xb2VIMJi3I7gJEJPk4vQfBKCaYQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794258158;
+	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
+	 X-Mimecast-MFC-AGG-ID:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:X-Received:Received:Message-ID:
+	 Date:MIME-Version:User-Agent:Subject:To:Cc:References:
+	 Content-Language:From:In-Reply-To:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=MnGK8snWRLUf2DP6MV0CVJ7z2tIT3TBH19TgRltKZ5Y=;
+	b=OjzLcomlo22eQz5oCpKjzJgwVVpWDZ/JiHgEV6rje6oO08rUnNjDrf0HRPL0nmLBdeVC
+	 1IxmxNX605y0ZbmyjrPZYThxd6x9WkDDcjXrjhT2DATf3pO9in5GjE24aZ+CCbJxs7lnN
+	 4B/4MT1szRCFX/GHdNuqwhk0B8h3xHlPQTeCWPDx59kemvbRfAD3DABAwl2utdPAptTzd
+	 tw/fTEAWLrIqNaOkJMD+vttopnbJLIx+60vQsu05xlhzxbMLpUKNKEwh+XAzCYHysBaHZ
+	 oIPB8b5TTx87YDLHZS1YQR3evRV4drqzT3O+AByIprg6+tAbW8ksgh6J8zr1FD4gHrg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gPAAx3VI;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=redhat.com;
+	spf=pass smtp.mailfrom=redhat.com;
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=f9UdmFW9;
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=K1dQHWut;
+	arc=none smtp.remote-ip=170.10.133.124
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A8708606A33A;
-	Mon,  9 Nov 2026 20:44:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CC9D4606A31C
+	for <linux-nfs@vger.kernel.org>; Mon,  9 Nov 2026 21:02:37 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org CC9D4606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gPAAx3VI
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CBAC31F008A2;
-	Mon,  9 Nov 2026 20:44:54 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794257095;
-	bh=EvtGLzC16JVEkSNGJ3HsHG8HsYJk0ieesatCfJD6Adk=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=gPAAx3VIa2Z/aMs5LyvUoqomIcVDPeI9Ct6Ul0cqTE89nLLQfNM1n2XI1W67ouGLv
-	 SQD7Uw4CPaAue8OdhokEqEO1HYl4GsvKhyZw5v+DJF0Sd1Ac5oYYt5YrnL5OaDnH21
-	 YLFAJleAtCKxPkwg69pIJ6HnOrStRR8CkReNG0cdDQ5sGzwfJWK7mOuvWsbEVLpff5
-	 olQwUiokyhYxPF5DJ1UrWZoGrFgviGAMAcQMCxvFws1L3G5Etf4U1HN83R0vcoqUBy
-	 lYMjwxy10Xg6U8B8us5CNuewQaCvWIourxTuHO6dNpaDj3/SqcqSrSre2YRzbJIFi9
-	 v9i6aTO+DvE3g==
-From: Jeff Layton <jlayton@kernel.org>
-Date: Mon, 09 Nov 2026 15:44:49 -0500
-Subject: [PATCH v2 3/3] NFS: stamp after the server's ctime following a
- CLONE
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=f9UdmFW9;
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=K1dQHWut
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1794258156;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=MnGK8snWRLUf2DP6MV0CVJ7z2tIT3TBH19TgRltKZ5Y=;
+	b=f9UdmFW9rh0q9v8OTuEY7f6qgsxdP/I1d58gU3MgcoljGn6Xaoo6EICrbLuemIBqxLQaJr
+	8FUoZb9EUSYwtm/4ilNr9ue9lexgWcym9fAKe+fUKUPKMlYWNur4YEymsEaEU6FQ9cU0s6
+	iY3Nd34IX8C3UqVR/9wces0yeApSbWg=
+Received: from mail-qt1-f198.google.com (mail-qt1-f198.google.com
+ [209.85.160.198]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-486-Gjey6FCYP9O1W9LynJes7A-1; Mon, 09 Nov 2026 16:02:35 -0500
+X-MC-Unique: Gjey6FCYP9O1W9LynJes7A-1
+X-Mimecast-MFC-AGG-ID: Gjey6FCYP9O1W9LynJes7A_1794258155
+Received: by mail-qt1-f198.google.com with SMTP id d75a77b69052e-5364605e74bso36770191cf.3
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Nov 2026 13:02:35 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1794258155; x=1794862955; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=MnGK8snWRLUf2DP6MV0CVJ7z2tIT3TBH19TgRltKZ5Y=;
+        b=K1dQHWutvpX+n0gEyLAM0mOFY588e2ObaCd8YMY5muW91u2BAF7dFDW8ae94emxkmi
+         VmZToKNDR+HEsZIFl+tAcIRXHiraJPSoWL3fJYt2cVkSaTkquBnSTOwxTrkQ73269AWF
+         CbgGq+Yq39kNKYvSwS+zuvYZEMFKpLWwCpTrXv8dwKLhn/xmDeooeH4DjlZtRD+4RFPX
+         i8bFXUZuH03/IZNI8CZ2oZBIQeGhT/oAiNWuY8ncFbOQXiTFQInZPUB760y1rKWuuPJk
+         U4srwQZxZovMZHB64ebtEQMx70XHPPJHOGhTnZS7ok78TmZ0IQG1p+zn7HBhp3CZI13R
+         J5Fg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794258155; x=1794862955;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=MnGK8snWRLUf2DP6MV0CVJ7z2tIT3TBH19TgRltKZ5Y=;
+        b=Y/VK9cnf8u4vehDPzwxZXEV+EESTpGJSAOeFIhUNWhxI7DbOHLLNT3RVPp5GJyFLK0
+         XPb/DAcgrfKEPT/dYfFgo6FrTzYN72fZ13rqTJheSpKe/j1Go1BL6StRaNVl8YnnltvX
+         di4rzFlTjZW2BIHi9O78Lgz3FnK44gFP4MLXx0Fgtz0jRDJZ2/kVEVdq91Qc1823R7Kr
+         KSOEEy0b/IyDd1KgR/PMAqAYujhSWc+L4bbyBNrRX/3jFxAUxDxvS4hNM2wM5PHexPeQ
+         iKTsRhb7e0uoM1MjbODz27quVfkyaaJMlYDi5LpmsHbdhrIgn7M8WJJ5GiJqN2EyxUJe
+         mAKw==
+X-Gm-Message-State: APuU4Z80MlHNeH9hPZQgAJIj9g6HqB95c6y0yH6uqJBfMQcXCuEYh6Vn
+	fv9aYx5buDZONPsq4ujojmD4kle9GOnYkCsiI2gGUCdnGjFKGmDmOf1P0vOarRfwK+F1E3GFPOB
+	JEUoRdfOO+wtSo0qtKdyWU2FRleCuu+g8YicuZV9kdQI2klU44UT6Xlm3pfOXT8TXkmGt0Q==
+X-Gm-Gg: AYBFou0hW1um+3H+6oVkgBGWpw+Cp2xdop77bhD7n5HDiTsuDbfTil9FskBX/aWLwQs
+	p5sZAFlG7g+tZjoks9qZ7Vr0C0y2nR2t1qTMMPV08+sdOc6DuykGM1VBtn1GIOMNGEFUtRbXaTF
+	cPd1XxdONUed6dzxO5LxtYv9ISEgF/1WSZPJitEA2XTCbf46MyL69iSNuNchuDU3zR1oqlsybzx
+	fdp6gbwNqPtplziUTbeWHCaLg8glhHes2MrIoI1t1b/uqQALotbByWbfDADljPjVa1a1VFGgmnk
+	Fr6N/Aq7+8beEYMn8O84V/f8dTWA7/45qmdRZoLOxGeVe0A0RMczcwuXdbqZNuD9+gnF6/M/1s5
+	17KpnQ/2QqCJTp/5fWAl7NJ/kqO9hxj4di18tNYdI6kptOjg=
+X-Received: by 2002:a05:622a:301:b0:539:c527:259 with SMTP id d75a77b69052e-5552a174972mr8194281cf.76.1794258154728;
+        Mon, 09 Nov 2026 13:02:34 -0800 (PST)
+X-Received: by 2002:a05:622a:301:b0:539:c527:259 with SMTP id d75a77b69052e-5552a174972mr8193461cf.76.1794258153914;
+        Mon, 09 Nov 2026 13:02:33 -0800 (PST)
+Received: from [172.31.1.12] ([70.105.245.156])
+        by smtp.gmail.com with ESMTPSA id d75a77b69052e-555093d9c3fsm6815801cf.3.2026.11.09.13.02.31
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Mon, 09 Nov 2026 13:02:31 -0800 (PST)
+Message-ID: <d101fd8f-9909-4cb6-81a1-2b8be8faa080@redhat.com>
+Date: Mon, 9 Nov 2026 16:02:31 -0500
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -53,173 +110,187 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+User-Agent: Mozilla Thunderbird
+Subject: Re: [libtirpc PATCH] __binddynport: honor ip_local_port_range
+To: Scott Mayhew <smayhew@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+References: <20261021224136.2273107-1-smayhew@redhat.com>
+Content-Language: en-US
+From: Steve Dickson <steved@redhat.com>
+In-Reply-To: <20261021224136.2273107-1-smayhew@redhat.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-delegts-nfs-v2-3-9d1e926cc3d5@kernel.org>
-References: <20261109-delegts-nfs-v2-0-9d1e926cc3d5@kernel.org>
-In-Reply-To: <20261109-delegts-nfs-v2-0-9d1e926cc3d5@kernel.org>
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- Lance Shelton <lance.shelton@hammerspace.com>, 
- Olga Kornievskaia <okorniev@redhat.com>
-Cc: Thomas Haynes <loghyr@gmail.com>, linux-nfs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5985; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=F/T5qRcBFZHKvCcKilkvvFSLkFlxkA/4B6gqzSyX66M=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq8jDDpwMReoSepMzT88TWCQGKRLJqBqjo5Nf5b
- rahq4k3HE+JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCavIwwwAKCRAADmhBGVaC
- FXnuEACKaPOCSzd2cMataL4IWL65eXYwHJYEoO7nTdBJ7Vqo1Tt57aT8EpoIkGm6q0YaniB4rBG
- RU1zM69jKNLgJddn2dTFO3sP0GfpWsh1JqTabNGk18fJn4gaQ5Hu2rervNE8jUwDrUxluOnXyBQ
- MVFuZvGJhn+02gLf76fBMIFBIx7TqmEjmClM1z+RzCMOTpksfDl52guIzDakNyGLF+Ks38k7cI2
- DcprgvnUhcEFVdDhnrJtfkLHXwvHQDgbdaff+PxZkxl1WpWN/gL4rht918HA3+omBwOgMQdSBkj
- 624q1yhBhetA16RjigRnGEhVbndV+RzASiZqzyoUKSdLJQU+ChL4EN9hA6/nOIuvtNQ1Dy30tdw
- foqiPX+56WXcfKfStEyYcztFllYyr/IN2V0I0RYJsUa3ad4wBlgIBz0bOdO5Y3D35dNjuNKy8l7
- vnivYksBxellYE/T3Z8cVJ3aNJ2gTyDnO+3gWko6G461nY2xexC9tTJ9ATZJr8UNcD8TPjJkUpN
- X9vd+RUjTJ3qpbdsNHPRihpWYypZNAHPnMWfvabc6E5S75N21r9o8xhCAsT7NrIZLinOEpPebc3
- ky6hMdwBvaViY4eYZVa3l7+289P11nrCkBGg/a6BMoTX2nc/X0TA1fr2GpSTZbF0rXhOgMzTSa0
- J4xUFV75aefRmHA==
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-nfs42_copy_dest_done() stamps the client's own c/mtime when it holds
-delegated timestamps. A server that stamps c/mtime on CLONE (as nfsd did
-before "nfsd: mark the delegation written on COPY/CLONE instead of
-stamping c/mtime", and as btrfs did before "btrfs: honor FMODE_NOCMTIME
-when cloning") can end up with a ctime newer than the client's coarse
-stamp, which it won't move back when the holder returns its times.
 
-The stamp didn't survive anyway: nfs_post_op_update_inode() then marks
-ctime invalid, so nfs_fattr_fixup_delegated() keeps the reply's ctime
-and nfs_update_inode() writes it over the stamp. Against a server that
-no longer stamps on CLONE, the client's ctime goes back to its old value
-until DELEGRETURN.
 
-- Pass the CLONE reply's attributes to nfs42_copy_dest_done() and raise
-  the cached ctime to the server's before stamping. COPY returns no
-  attributes, so it passes NULL.
-- Stamp before dropping i_lock, so a concurrent refresh can't take the
-  server's times while ctime and mtime are marked invalid.
-- Under delegated timestamps, apply the reply with nfs_refresh_inode(),
-  which doesn't mark ctime invalid.
+On 10/21/26 6:41 PM, Scott Mayhew wrote:
+> __binddynport() currently binds to ports in the dynamic port range
+> defined by RFC 6335, which is ports 49152-65535.
+> 
+> If rpcbind is built with remotecalls enabled, it binds 2 dynamic ports
+> for the remotecall sockets.  The selinux-policy allows rpcbind_t to bind
+> ports with ephemeral_port_t, which is ports 32768-60999.  It does not
+> allow rpcbind_t to bind ports with unreserved_port_t, which is ports in
+> the ranges 61000-65535 and 1024-32767.  Currently, the random port
+> selected by __binddynport might land in the former range, which triggers
+> both an AVC error in selinux and an error from rpcbind in the syslog.
+> 
+> Read /proc/sys/net/ipv4/ip_local_port_range and constrain the range of
+> ports used by __binddynport() to the intersection of the compiled-in
+> defaults and the range defined by ip_local_port_range.
+> 
+> The default values for ip_local_port_range is "32768 60999", so the
+> resulting dynamic range used by __binddynport() would be lowport=49152,
+> highport=60999, nports=11848.
+> 
+> Link: https://bugzilla.redhat.com/show_bug.cgi?id=1758147
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Committed... (tag: libtircp-1-3-8-rc3)
 
-Fixes: 6e7daa3dad29 ("NFSv4.2: fix CLONE/COPY attrs in presence of delegated attributes")
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- fs/nfs/delegation.h |  2 ++
- fs/nfs/inode.c      |  6 ++++--
- fs/nfs/nfs42proc.c  | 25 ++++++++++++++++++++-----
- 3 files changed, 26 insertions(+), 7 deletions(-)
-
-diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-index fba4699952b8..cd6142939d34 100644
---- a/fs/nfs/delegation.h
-+++ b/fs/nfs/delegation.h
-@@ -95,6 +95,8 @@ void nfs4_inode_make_writeable(struct inode *inode);
- void nfs_update_delegated_atime(struct inode *inode);
- void nfs_update_delegated_mtime(struct inode *inode);
- void nfs_update_delegated_mtime_locked(struct inode *inode);
-+void nfs_delegated_ctime_raise(struct inode *inode,
-+			       const struct nfs_fattr *fattr);
- 
- static inline int nfs_have_read_or_write_delegation(struct inode *inode)
- {
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 270d8bb46110..5a682f74d7d1 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -652,8 +652,8 @@ static struct timespec64 nfs_delegated_stamp(struct inode *inode)
-  * cached ctime to the server's so that the next delegated stamp lands
-  * after it.
-  */
--static void nfs_delegated_ctime_raise(struct inode *inode,
--				      const struct nfs_fattr *fattr)
-+void nfs_delegated_ctime_raise(struct inode *inode,
-+			       const struct nfs_fattr *fattr)
- {
- 	struct timespec64 ctime = inode_get_ctime(inode);
- 
-@@ -661,6 +661,7 @@ static void nfs_delegated_ctime_raise(struct inode *inode,
- 	    timespec64_compare(&fattr->ctime, &ctime) > 0)
- 		inode_set_ctime_to_ts(inode, fattr->ctime);
- }
-+EXPORT_SYMBOL_GPL(nfs_delegated_ctime_raise);
- 
- static void nfs_set_timestamps_to_ts(struct inode *inode, struct iattr *attr)
- {
-@@ -711,6 +712,7 @@ void nfs_update_delegated_mtime_locked(struct inode *inode)
- 	    nfs_have_directory_delegation(inode))
- 		nfs_update_mtime(inode);
- }
-+EXPORT_SYMBOL_GPL(nfs_update_delegated_mtime_locked);
- 
- void nfs_update_delegated_mtime(struct inode *inode)
- {
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index ab86246fc364..09b4a6ecad88 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -380,6 +380,7 @@ static int process_copy_commit(struct file *dst, loff_t pos_dst,
-  * @pos: destination offset
-  * @len: copy length
-  * @oldsize: length of the file prior to clone/copy
-+ * @fattr: destination attributes from the reply, or NULL
-  *
-  * Punch a hole in the inode page cache, so that the NFS client will
-  * know to retrieve new data.
-@@ -387,7 +388,7 @@ static int process_copy_commit(struct file *dst, loff_t pos_dst,
-  * invalid cached values for change attribute, ctime, mtime and space used.
-  */
- static void nfs42_copy_dest_done(struct file *file, loff_t pos, loff_t len,
--				 loff_t oldsize)
-+				 loff_t oldsize, const struct nfs_fattr *fattr)
- {
- 	struct inode *inode = file_inode(file);
- 	struct address_space *mapping = file->f_mapping;
-@@ -405,8 +406,12 @@ static void nfs42_copy_dest_done(struct file *file, loff_t pos, loff_t len,
- 					     NFS_INO_INVALID_CTIME |
- 					     NFS_INO_INVALID_MTIME |
- 					     NFS_INO_INVALID_BLOCKS);
-+	/* The server may have stamped c/mtime; stamp after it */
-+	if (fattr && nfs_have_delegated_mtime(inode))
-+		nfs_delegated_ctime_raise(inode, fattr);
-+	/* Before a refresh can see the times invalid and take the server's */
-+	nfs_update_delegated_mtime_locked(inode);
- 	spin_unlock(&inode->i_lock);
--	nfs_update_delegated_mtime(inode);
- }
- 
- static ssize_t _nfs42_proc_copy(struct file *src,
-@@ -506,7 +511,8 @@ static ssize_t _nfs42_proc_copy(struct file *src,
- 			goto out;
- 	}
- 
--	nfs42_copy_dest_done(dst, pos_dst, res->write_res.count, oldsize_dst);
-+	nfs42_copy_dest_done(dst, pos_dst, res->write_res.count, oldsize_dst,
-+			     NULL);
- 	nfs_invalidate_atime(src_inode);
- 	status = res->write_res.count;
- out:
-@@ -1311,8 +1317,17 @@ static int _nfs42_proc_clone(struct rpc_message *msg, struct file *src_f,
- 		/* a zero-length count means clone to EOF in src */
- 		if (count == 0 && res.dst_fattr->valid & NFS_ATTR_FATTR_SIZE)
- 			count = nfs_size_to_loff_t(res.dst_fattr->size) - dst_offset;
--		nfs42_copy_dest_done(dst_f, dst_offset, count, oldsize_dst);
--		status = nfs_post_op_update_inode(dst_inode, res.dst_fattr);
-+		nfs42_copy_dest_done(dst_f, dst_offset, count, oldsize_dst,
-+				     res.dst_fattr);
-+		/*
-+		 * nfs_post_op_update_inode() would mark ctime invalid, so the
-+		 * reply's ctime would overwrite the delegated stamp.
-+		 */
-+		if (nfs_have_delegated_mtime(dst_inode))
-+			status = nfs_refresh_inode(dst_inode, res.dst_fattr);
-+		else
-+			status = nfs_post_op_update_inode(dst_inode,
-+							  res.dst_fattr);
- 	}
- 
- 	kfree(res.dst_fattr);
-
--- 
-2.56.0
+steved.> ---
+>   src/binddynport.c | 90 ++++++++++++++++++++++++++++++++++++++++++-----
+>   1 file changed, 81 insertions(+), 9 deletions(-)
+> 
+> diff --git a/src/binddynport.c b/src/binddynport.c
+> index c2e9a20..52bac17 100644
+> --- a/src/binddynport.c
+> +++ b/src/binddynport.c
+> @@ -57,6 +57,75 @@ enum {
+>   	NPORTS		= ENDPORT - LOWPORT + 1,
+>   };
+>   
+> +int lowport = LOWPORT;
+> +int endport = ENDPORT;
+> +int nports = NPORTS;
+> +
+> +/*
+> + * Parse the first and last local port numbers from
+> + *	/proc/sys/net/ipv4/ip_local_port_range.
+> + *
+> + * @first - the first (low) port in the range
+> + * @last - the last (high) port in the range
+> + *
+> + * Returns 0 on success, and both @first and @last are updated.
+> + * Returns -1 on failure, and neither @first nor @last are updated.
+> + */
+> +static int parse_ip_local_port_range(int *first, int *last)
+> +{
+> +	int res, new_first, new_last;
+> +	FILE *fp;
+> +
+> +	fp = fopen("/proc/sys/net/ipv4/ip_local_port_range", "r");
+> +	if (fp == NULL) {
+> +		(void) syslog(LOG_ERR,
+> +			"Unable to open open /proc/sys/net/ipv4/ip_local_port_range.");
+> +		return -1;
+> +	}
+> +
+> +	res = fscanf(fp, "%d %d", &new_first, &new_last);
+> +	if (res != 2) {
+> +		(void) syslog(LOG_ERR,
+> +			"An error occurred while parsing ip_local_port_range.");
+> +		fclose(fp);
+> +		return -1;
+> +	}
+> +
+> +	*first = new_first;
+> +	*last = new_last;
+> +
+> +	fclose(fp);
+> +	return 0;
+> +}
+> +
+> +/*
+> + * Try to update our dynamic port range using information from the kernel.
+> + *
+> + * Returns 0 on success, and lowport, endport, and nports should be the
+> + *	intersection of the compiled-in defaults and the values reported
+> + *	by /proc/sys/net/ipv4/ip_local_port_range.
+> + * Returns -1 on failure, and lowport, endport, and nports retain their
+> + *	default values.
+> + *
+> + * This function is called by __binddynport() before using any of:
+> + *	endport, lowport, nports
+> + */
+> +static int update_dynamic_port_range(void)
+> +{
+> +	int ret, low, end;
+> +
+> +	ret = parse_ip_local_port_range(&low, &end);
+> +	if (ret < 0)
+> +		return -1;
+> +
+> +	if (lowport < low)
+> +		lowport = low;
+> +	if (endport > end)
+> +		endport = end;
+> +	nports = endport - lowport + 1;
+> +	return 0;
+> +}
+> +
+>   /*
+>    * This function decodes information about given port from provided array and
+>    * return if port is reserved or not.
+> @@ -67,8 +136,8 @@ enum {
+>    * Returns 0 if port is not reserved, non-negative if port is reserved.
+>    */
+>   static int is_reserved(char *reserved_ports, int port) {
+> -	port -= LOWPORT;
+> -	if (port < 0 || port >= NPORTS)
+> +	port -= lowport;
+> +	if (port < 0 || port >= nports)
+>   		return 0;
+>   	return reserved_ports[port/(8*sizeof(char))] & 1<<(port%(8*sizeof(char)));
+>   }
+> @@ -82,8 +151,8 @@ static int is_reserved(char *reserved_ports, int port) {
+>    *
+>    */
+>   static void set_reserved(char *reserved_ports, int port) {
+> -	port -= LOWPORT;
+> -	if (port < 0 || port >= NPORTS)
+> +	port -= lowport;
+> +	if (port < 0 || port >= nports)
+>   		return;
+>   	reserved_ports[port/(8*sizeof(char))] |= 1<<(port%(8*sizeof(char)));
+>   }
+> @@ -193,13 +262,16 @@ int __binddynport(int fd)
+>   		goto out;
+>   	}
+>   
+> +	if (update_dynamic_port_range() < 0)
+> +		(void) syslog(LOG_ERR, "Using default port range.");
+> +
+>   	if (!seed) {
+>   		struct timeval tv;
+>   
+>   		gettimeofday(&tv, NULL);
+>   		seed = tv.tv_usec * getpid();
+>   	}
+> -	array_size = NPORTS / (8*sizeof(char)) + 1;
+> +	array_size = nports / (8*sizeof(char)) + 1;
+>   	reserved_ports = malloc(array_size);
+>   	if (!reserved_ports) {
+>   		goto out;
+> @@ -208,8 +280,8 @@ int __binddynport(int fd)
+>   	if (parse_reserved_ports(reserved_ports) < 0)
+>   		goto out;
+>   
+> -	port = (rand_r(&seed) % NPORTS) + LOWPORT;
+> -	for (i = 0; i < NPORTS; ++i) {
+> +	port = (rand_r(&seed) % nports) + lowport;
+> +	for (i = 0; i < nports; ++i) {
+>   		*portp = htons(port);
+>   		if (!is_reserved(reserved_ports, port++)) {
+>   			res = bind(fd, sap, salen);
+> @@ -220,8 +292,8 @@ int __binddynport(int fd)
+>   			if (errno != EADDRINUSE)
+>   				break;
+>   		}
+> -		if (port > ENDPORT)
+> -			port = LOWPORT;
+> +		if (port > endport)
+> +			port = lowport;
+>   	}
+>   
+>   out:
 
