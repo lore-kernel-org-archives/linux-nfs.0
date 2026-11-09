@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794254010;
-	b=b1OgRQIXO65oOuvXvNVqB99t+pXvf83MNK8i4BB2FM4rwvKLQHKh17qqWI5CDNeRr6Ki
-	 VARqpX8XI53v7sHA0nRk5cwM89HdxfvHgeAZNlqKNwRdgH4UNnoWplfxPbZYT2E2EgdXZ
-	 pw36gByTC2f5usOTAw3E4+4XO2ls0LhSLaxUHI+BIaoxndckAoC7zbMI1rLJrBB+F1UDK
-	 z0V3yZ/nIXkKKJe6080WVpmh+ltOL4stQZElO16WXvDO0PzpX81GwxJMg0BlLHb2pyg0P
-	 MEWSOQ/DQjASow1jW8hx0kkN1shnRBYhZYpxOLFu1Hkp7o0WW5TLDemIBWqGmSa1awg==
+	t=1794254011;
+	b=tFnRA/HStyyo/o7SABofnpztpzk0MvxSgZagTkgQc3I45JoNNSWvbeRpNBQv5Bb/9B9g
+	 1GfMzmzfXCqjnfn2ZspHTZv1GQXdVUPZzEKfk/MT+Gsl17mbLmGzeYEvMksai3098s9q0
+	 CYlfk2ZpFTpInTn1udslKqx5USIasyfj/RV+uWGh1Cv9tibdkWpbPVovQtS6OFmCM1Rs/
+	 YL6WMBXJ6FONA4P3BoJrt8CSbx45rRyXw1YWf9DiLol167IEGMXgeU2i5VXlUVWS4P4Uu
+	 Rs53HE5v8yODyk1MPtVf+YKkGgPdDWbcjZyY+cTwEJN2f8DRQUXbq0s+f8wd8gYJEqg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794254010;
-	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
-	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
-	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=knj6PiH8eRc0ubGmCl+dX7YkVYwV5uayueKD3zMEfhI=;
-	b=KjViKMmULiUORcN1d10TSSoj5jd8ReWyEwqeMUVLTHsMz4zAc3uhdz1jupw490kvSPRd
-	 uh1+NW7EfG/CSkRnnoIZyCGD5D2Wp1hDvuJ9pXq9+/W2RFDbw5XdY6Ctb09qkwsjsO2gW
-	 UzRutmqmxUpwA+dieCudk2d6ff6x9c/yniwN8pyVomq1wXGCf3AsdZn2WJAgd3uLXwlGe
-	 p+dpjNMM/42P0KaunP3F7Wh055bNbURDF06wds8Y4t4Ti3C/1b/JsP+uIFxjfIYRgoThO
-	 FXevMpmha1FA/nAdJIM+qtEwdrTJ6E2ULEXTtBwB/MK4sEQ5fFQgY3MMdsiGk5IsZ9A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794254011;
+	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
+	 X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=FsNY2SK3ODIJsftMeulpNs6x14Hha1KqnFoT7tg3dBI=;
+	b=stRH+jjqitTJxMG6Qt9wgFU85BJwx1IhNdCiSBQHCwLCpr92d56JWayUL9s5j7yRwI27
+	 XHDARwKQYngcwqGiJIA+uJqMgkjzW4BZPLCr6OCGlDhGirGhHMSBj1l4vNItWCECROF2s
+	 lxTcRcsOq7dhDCgjO7sqZGN/0aPTfRN0Ce/V2k5T1WjsQCa3AYfPKfSXfI0u/32G0AHIM
+	 3HDYdL9FLYs6Tp113znnvo2mTYpNF5oeBFIVR+5vHGZ97SWpDnGwMNiTXaFDN4rL14E6v
+	 M7NlxIwnVevN4k2wiKgsApkPiY53uHGzdCq6A5L99REwLpenGqrlmX+cvMJz2wydetQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iur2x88z;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="ex/7dhj3";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8A90C60A2636
-	for <linux-nfs@vger.kernel.org>; Mon,  9 Nov 2026 19:53:30 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2F89560A263E
+	for <linux-nfs@vger.kernel.org>; Mon,  9 Nov 2026 19:53:31 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iur2x88z
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9BCDA1F008AB;
-	Mon,  9 Nov 2026 19:53:29 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ex/7dhj3
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7234A1F00902;
+	Mon,  9 Nov 2026 19:53:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794254010;
-	bh=knj6PiH8eRc0ubGmCl+dX7YkVYwV5uayueKD3zMEfhI=;
-	h=From:Subject:Date:To:Cc;
-	b=iur2x88z6B5wAnf7l87S+itqlngtptYxxqrvO5bk3ZArZfVrGBm69FCfaD36SGELB
-	 S+jDoW6hs7ug8FrztBbhn3Z0hVw5njgpL4FLBJfMLVw3JQpnwdoH5vQ+f3I+sjPlgl
-	 T1xPLbUuvPCdVjKQm0hwSIXLBGZek3tQS8e2hULiMsg4pU/knntdvYszF0R2+7GpG+
-	 tssXauIw4iWKLFLchnydpvE9K2ArWpiqfHSxzwgDMxm1UsEYDPPfwaJ7vVn56RPA9I
-	 CrnrCCmjSvi0oyPpk/nrt6XhbEb1Hd38wh9+P7Mj9oJ9Iaiu87YsZUm6fH7rNCWYuO
-	 vznWw2c9EHNiA==
+	s=k20260515; t=1794254011;
+	bh=FsNY2SK3ODIJsftMeulpNs6x14Hha1KqnFoT7tg3dBI=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=ex/7dhj3QvTl61PI94TFEiIfr+hJlQXw9xTHBca3sz779f3LJgm/gV9I/3D0W8dBH
+	 IsqvMNthSRviI9pMinusHnYYn1qb7b3VHYuMr77eNhQMRhgEwVKJUWLwmmlxtzUDkT
+	 zMKzrZ9IHaRPz3AnBNlbsrrW5OsFfsN9Gf499Gjxtlq5whoWPQlu7HA2IfWmUkYNOz
+	 Ccf3bm7wklKLqFceDUPTD2Vq7ajt+FAHl3T1LAhIvRYjYHcbFXw7JDMbUeAVGcOx7B
+	 LeaBhj7TVg/qzpg34BgeVTwW4tYHVAALe5kZ7z5/WIkdumoFkVZ2ZXiBuFauYD3b8a
+	 Eb3n1LK+C67LQ==
 From: Chuck Lever <cel@kernel.org>
-Subject: [PATCH 00/13] NFSD: Address XDR corner cases
-Date: Mon, 09 Nov 2026 14:53:16 -0500
-Message-Id: <20261109-xdr-page-base-v1-0-a4f4411d760d@kernel.org>
+Date: Mon, 09 Nov 2026 14:53:17 -0500
+Subject: [PATCH 01/13] NFSD: Drop the READ payload when the NFSv2 GETATTR
+ fails
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,75 +55,69 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMywqDMBBFf0Vm3YEk0ID+Sukij4mOi1QyaRHEf
- zexy3O45x4gVJgEpuGAQj8W/uQG+jFAWFyeCTk2BqOM1VqNuMeCm2veOyG0MQQ1Pk2K1kBrtkK
- J9/vv9f6zfP1KofaTvrgzX1wOS1c5ScRKUjnPcJ4XgOYXNZAAAAA=
-X-Change-ID: 20261109-xdr-page-base-6dcc0952fd62
+Message-Id: <20261109-xdr-page-base-v1-1-a4f4411d760d@kernel.org>
+References: <20261109-xdr-page-base-v1-0-a4f4411d760d@kernel.org>
+In-Reply-To: <20261109-xdr-page-base-v1-0-a4f4411d760d@kernel.org>
 To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
  NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
 Cc: Mike Snitzer <snitzer@kernel.org>, linux-nfs@vger.kernel.org
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2251; i=cel@kernel.org;
- h=from:subject:message-id; bh=7s+ztilR9aaoTV0khzIem2QiaStZWFMUv9IpMqnv2JI=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq8iSwF2c3gpoAJ3fEnOGROl0OZnmaRTNa9pHwr
- QfAld4YiieJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavIksAAKCRAzarMzb2Z/
- l0HMD/wISUEzpNDIdaYUzxSfYNGHSnpuFFNZbf3hmPQ61NrlF1fbPSpzHatsSYJoGP6Z8T8wmG9
- wGGYvNzxMbEZaxd1EehPyMHqmZmMkEIZN/FeMX4S8PEbfWr7c1wct0Y+m88f0YdyM+i8xwWJvk4
- sBYjhx1e2f9jfEAc0GLuU6c+Kc4IpJ2cWDBZRpqxYiXL0dT8BRZRiZg3nnacb6OtM5IoJR7IZL0
- fn/T613xr7EtH+4ga2rpzine9fad6VoNoC8hltjpFdII9O3XEpxWuIJuNkenxkmA+mKtXCdiIUu
- yb5YldlG3qdYjL1X+v8qazsGugIGLDJP2qXKNXWfCZBsGGtmzpNZ06wkY+1l0Dyrz+jc57igRxv
- +CgMFRHdym0lTsftgvAdiKf+O1jF1vL9+yERG/73eVbzlMqP9acPdD4cr9soM7jDOI97ePn4jre
- 82gktwEhQtGzkG6okYj3UIXvwhh+EUmWYD7k6r02RAZ9KAUOp/DOI9f2G5edz4uRe0CR+AFyhDc
- 9fzW6Yk5gS6uEuufHgq9QP1oQb6lNUA4vQ8FYppDpQJEbFdRaq+gQMT1aEAFMu8qXbwJmKvjilI
- S2rHHkM/fPjo9cpoOTBsbMPIIasxEH2Mn6TPkkHTRUrQOhnGrWJqop+j/jDD40PRralKQDtPFKD
- yYXPkN6hVRffhrQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1542; i=cel@kernel.org;
+ h=from:subject:message-id; bh=JCi/y8+FGBxzaj+mnHPXheW37sJw5SJ0RjDxG455YQU=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq8iS3IlU8CpWBq6114aBb5lMoqzuy1fhG/T/Yq
+ WPHGxep8KeJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavIktwAKCRAzarMzb2Z/
+ lzQfEACgUq2aiBSIjt/McKeTeQrSziaKf6Q26jTJJf/0evQh5rF6SD3d123exlEbelYnmrmn2k8
+ aIjnO4PiGSPTgVGOD2ZbZq+zkhJ9uuGjuIaj2EB++7Tf8reSJHyn+5JA1d717ZfHxkaE7g/X6xk
+ te+ES6JNQ4EdvWtS4xlawwVO1ni876AwVzKsXIi4Dl7JcHSKOCF8e+8RcoeWknpsbgK6GLbnLl9
+ 90Nj5uktYzTXT5ZdGRyeYpHH/R4JhooYhD66KjvQaLR5AStRPpyL7UgHkYoihwjh9ud9tn/MUGY
+ gpNZevYZ8SCpAV4nCHE9Ae1MNH86bjsfza9jj3sZVlerHDJVdLqoYSbiPnGKaqs2wNF2DGShchx
+ fOR++yeoG1922F3iEq6ykDGCjzqNTirzpvgzPMGeMhk8Mz7e0uf6NtoUHBCcn6ryt6k8QlgYon8
+ uGAs673TWcicrqr5t61hvcBOKdYT9VUW/7aY/AdU5MSiBtfMrV1RSax5jnt3kcCUyWTB5FvT8e0
+ E8ez0iAmrJI+LtJz7qGZZl3yoyt7gRQP0OWRf+VkG7MGwZDgpXydEUw/QCeqdQIc8583RSrknhf
+ EV37aR8X7m4rzS9AjNLMeSNZJU0HDg+vaN/l4B81sdLpanMvZ+Il5/0WdaewcVjrX3dSCxoy1Rx
+ QbKfTjP4AQWRAFg==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-While I was working on other development efforts, code review
-spotted a number of pre-existing bugs.
+nfsd_proc_read() calls fh_getattr() after nfsd_read() has completed.
+When the read was spliced, nfsd_splice_actor() has already set
+rq_res.page_len to the byte count, but rq_res.len does not cover
+those bytes until the encoder inserts them. If fh_getattr() fails,
+the status flips and the encoder takes the error branch without
+calling svcxdr_encode_opaque_payload(), so page_len stays set with
+no payload accounted for.
 
-The git regression suite passes on an NFSv4.1 over RDMA mount point.
-Direct READs at unaligned offsets were verified by md5 over krb5i on
-NFSv3 and NFSv4.1.
+TCP sends rq_res.len bytes, so the stray page_len has no effect
+there. svc_rdma_xb_dma_map() walks page_len and maps those pages
+into the Send, so an RDMA error reply carries the file data after
+the status word.
 
+Clear page_len when fh_getattr() fails. NFSv3 READ fills a
+post_op_attr and cannot flip its status, and NFSv4 clears page_len
+in nfsd4_encode_splice_read().
+
+Fixes: 846f2fcd7785 ("[PATCH] knfsd: Provide missing NFSv2 part of patch for checking vfs_getattr.")
+Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
-Chuck Lever (13):
-      NFSD: Drop the READ payload when the NFSv2 GETATTR fails
-      NFSD: Pass the link text offset as the READLINK result payload
-      NFSD: Check the Write chunk before inserting a spliced READ payload
-      SUNRPC: Check the Write chunk before inserting an opaque payload
-      NFSD: Return NFS4ERR_IO when a payload overflows the Write chunk
-      NFSD: Place a word-unaligned direct READ's XDR pad in the tail
-      SUNRPC: Account for page_base when encoding into the reply pages
-      SUNRPC: Add KUnit tests for encoding after a nonzero page_base
-      SUNRPC: Restore the auth slack before encoding the integrity MIC
-      NFSD: Round the session's reply limit down to a word
-      NFSD: Account for page_base in reply-space decisions
-      NFSD: Allow a word-aligned direct READ in any COMPOUND position
-      NFSD: Do not truncate an operation that reported an out-of-space error
+ fs/nfsd/nfsproc.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
- Documentation/filesystems/nfs/nfsd-io-modes.rst |  15 +-
- fs/nfsd/nfs4proc.c                              |  12 +-
- fs/nfsd/nfs4state.c                             |   2 +-
- fs/nfsd/nfs4xdr.c                               | 181 +++++++--
- fs/nfsd/nfsproc.c                               |   3 +
- fs/nfsd/trace.h                                 |   2 +
- fs/nfsd/vfs.c                                   |  15 +-
- fs/nfsd/xdr4.h                                  |  32 +-
- include/linux/sunrpc/svc.h                      |  67 +++-
- net/sunrpc/Kconfig                              |  14 +
- net/sunrpc/Makefile                             |   3 +
- net/sunrpc/auth_gss/svcauth_gss.c               |   1 +
- net/sunrpc/tests/xdr_kunit.c                    | 505 ++++++++++++++++++++++++
- net/sunrpc/xdr.c                                |  53 ++-
- 14 files changed, 825 insertions(+), 80 deletions(-)
----
-base-commit: 2cf04da22a850a733c0e09b17ce95cfd9b642558
-change-id: 20261109-xdr-page-base-6dcc0952fd62
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index eb2a0605c1e1..9871b52dec04 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -601,6 +601,9 @@ static __be32 nfsd_proc_read(struct svc_rqst *rqstp)
+ 		if (resp->status == nfs_ok)
+ 			nfsd_stat_to_fattr(rqstp, &resok->attributes, &stat,
+ 					   fhp);
++		else
++			/* A spliced payload is already in rq_res */
++			rqstp->rq_res.page_len = 0;
+ 	}
+ 	if (resp->status == nfserr_jukebox)
+ 		set_bit(RQ_DROPME, &rqstp->rq_flags);
 
-Best regards,
---  
-Chuck Lever
+-- 
+2.56.0
 
