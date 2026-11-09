@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794254016;
-	b=DCdBfQPgM2sMTy//rNC2CS9txlhbW3uNbLIwft3Bq8yJxpd+5gyXGcE7kGFB7R8Ohiu4
-	 7GEpvK80gdaXCWUyXrff/ByXmTmOGQ6NN1eBqc/MTJ/P06cwvOPDxHwlYVYTKJLJyyG2Q
-	 sTgBG5kBE7hueFNH49204vA3v1Ub+znBdcRpRRx2DMh5n3amo1ZOKbR13LMBIkj7k2ln/
-	 p15eBRO9eqXJUtQjTIVJoRroKdp6sA9Gx2SnoKxZ2HU7k6FiUWk+9nqpmAtw42pLwEMBx
-	 4fT3ckF8t0iM3+PtrhadRm+QGKch/oNJl8mHv7ZbVJIil/YnTisL0LKbxgcuFL5Cypg==
+	t=1794254017;
+	b=ih4mM0JxIpkwpN0HhojHI7Qd5JBN7MQYJzO+3yXbVJ89Q83hBGH5QTGH4EgUQV3YcGHa
+	 RGI9r90FpIZ9ZVeHKvyeqWnHgBVOU1sjUSFbYkqMQmybAv254k3DHYe5Ic0sYBGoYDqKl
+	 nMCrjuA78ZNjolV8+4BEOX+pj8kWoDYqdnegfApX+JYdDQcokA3FilVLez6zsEMRiNVbU
+	 O5xoMNtpiVM84eqoUFQUU4zTTrGvPh1UxaATuIKi2czxEREREyaQVK8Eprd7wYe9KGddm
+	 sxvAxBGOB06yCWhd+HyWwqxXNaHQSMJ4xGIEuyF8+hITYUHVUoX72seGtrYNJ5vspGw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794254016;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794254017;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=HLertC06EAGdnjD+XqE2s8GP/ukp0RyA+0ZM3AAMzTQ=;
-	b=YyZWojHa1wVsHPKQzMKHuQ1VHEkETgt3lv4H9G1ulfIzmUMV2GOxpvppFQ/GzNVJ+B1J
-	 LdRwtLa//IOBovqxLEXtP5LVK92U65X6y0580Pu2VAqSSNIsskoRgbBeT7nq7U+VD7S5b
-	 6bGRlVY0F0/4EF5NpxIVdImqChyH1wf+Sm818e6BCCZgHIw6fu7d1mYzPVcetAbrtA0Ri
-	 GT+kLHByIgNS2sSoHWTFo7jT7doEb8HCk0JTpic+9FWl9stbD3Kj0DjtAQ8TSI8vU2jOL
-	 xe5by8Y1E2Z+bd9gMN39ab+VtwsphOzKbKN8r0pRv93EY5vK5a0nYVSdcEMRn5MnF6w==
+	bh=De+Rth8QR2sqHiQ5tHo274U34Z0fP/sIRZXusv4dQNo=;
+	b=l7j8mYa+Gt0Xd9IfDsFX6NDLNc/Kl4k62HZbb1CKqcu373mqWRyTQvnju/dvOqsUN/hf
+	 1LS+s/N+YsyiYNuIlYDg+waYcO2XaaxglF6mwUjWc2fn5LwB8JNa/N0V88kB5gUu0ZK9M
+	 Lyya7b/kAHuisdhibRAt41VjDEb9fWqEJyjjpCCa4lWnvJc1c0PhNvKcUCxdh5Ib/InNn
+	 t6HNITP4Glnh3BxcixYz90fSj448iuf7reBN9loLzbb0lQ7liCj0R1BNPEVhqNDYKSV30
+	 SVlxQOReK+3415MaPcBkY+t9rO5pK/zhBkFENVXC+8SqdGi61igWSZez+u381L7swSw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="Vgs/VVMu";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cBEQYbR7;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7C12F60A5BC3
-	for <linux-nfs@vger.kernel.org>; Mon,  9 Nov 2026 19:53:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3156E60A5BE9
+	for <linux-nfs@vger.kernel.org>; Mon,  9 Nov 2026 19:53:37 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Vgs/VVMu
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 736B01F008A3;
-	Mon,  9 Nov 2026 19:53:35 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cBEQYbR7
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4C67C1F00903;
+	Mon,  9 Nov 2026 19:53:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1794254016;
-	bh=HLertC06EAGdnjD+XqE2s8GP/ukp0RyA+0ZM3AAMzTQ=;
+	bh=De+Rth8QR2sqHiQ5tHo274U34Z0fP/sIRZXusv4dQNo=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=Vgs/VVMuIlasU2wG3ecNVl8xNO9S7wNksV/mWi1MKrjGac2/h0WN6vk1L8qc4oRHG
-	 nFr7gBfXw6TEh1Y1Y/cAMUwPDn1V0gGIo0a2RmVp8uYBvQmfCE3B7R8nmHNY4XrU2z
-	 f4wtVNNGySHhChQoyVyMmVF516O+ahEGaAdQDE0Px81E+nEQuISG0QEH3WzH+/z28x
-	 VBTVqZLvaCuXmirLJLrm+dhhRfkqIcQvTYl1GuA0k526PIqJm3pAhC48c3q2/g5KB/
-	 VyVIN8j9k1mvHhIC5FfqsI/I7akKZoGGO2StD0mskPekNMNvFaedjvze/lM5tm/Pnx
-	 Qy1luhZpI1j6g==
+	b=cBEQYbR7Hhpp0L0mg8uiF8BfwMC4aSuladuaMVQKmtURxNqsv/8s69GPB6YcZx8xD
+	 Hp4hrBSvA4gBQ7+nHhmeqc9k8hEZNFut018mdOf3tawHJyeHLiMURuKGdqX+tmECjt
+	 AIANuq1Z3B9pVms6h05ZUiXhxwFlWa6J+zIyZ7OAiLJmeVHF+YQnGRigM/z/UwBKfn
+	 NQVd7ac4feCcthTTqVTE99XE5thNSEkD76jPQqNcMR/mB0c+emx7LptmnTdE/CMSRc
+	 mQ0TEdsYJDjfs8RM+Fvfvj2Ez32sxfmJBb0md6jD+9LBrAZ/azfyFX7yh8OMqvc257
+	 Q3VqtcXZfovQA==
 From: Chuck Lever <cel@kernel.org>
-Date: Mon, 09 Nov 2026 14:53:23 -0500
-Subject: [PATCH 07/13] SUNRPC: Account for page_base when encoding into the
- reply pages
+Date: Mon, 09 Nov 2026 14:53:24 -0500
+Subject: [PATCH 08/13] SUNRPC: Add KUnit tests for encoding after a nonzero
+ page_base
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-xdr-page-base-v1-7-a4f4411d760d@kernel.org>
+Message-Id: <20261109-xdr-page-base-v1-8-a4f4411d760d@kernel.org>
 References: <20261109-xdr-page-base-v1-0-a4f4411d760d@kernel.org>
 In-Reply-To: <20261109-xdr-page-base-v1-0-a4f4411d760d@kernel.org>
 To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
@@ -63,271 +63,466 @@ To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
 Cc: Mike Snitzer <snitzer@kernel.org>, linux-nfs@vger.kernel.org
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=10114; i=cel@kernel.org;
- h=from:subject:message-id; bh=4inEsvZDJZcNtzHOp890W7CpqestfVmueCwEDAeeqe4=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq8iS4t3f49VJZF6zxnQeZM2iOu/QwgA7JjLvka
- CEfXpoXa0WJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavIkuAAKCRAzarMzb2Z/
- l4DpEACp1SG5Jo9gMzhrw4l2FxSc1MW8MY1rFWZDgQAorHrr1dd3EjEmGRABZmz4146aOGBH8nQ
- k+JNiia8P1zKcAgfdKK+zcRl582pgxYwKPfYfQhNf1BDMlwoYXRFdDzlUrkoVTKCETSzxpU3fnb
- LrrWyRtDOacpn6uNy7KPmK0h+vIRxUNsF/Krk2npRQfGbcZhC0bo56fywsxGInzuQB3nEOOLSMk
- qzOef6qavm3FaXOyP6AIv/YNJX67cnQOQEW+szqVzLTT9fngdbqJwFdluYpZ632gufiVuwrI8To
- 93t+TuA24TV+cAA6V7OVbX6pDPfn1fhFcJ5mz7yoC3f7vmKjqVn7uo20sf/rZZT2cHys/5Jv7o3
- DAO+tLy6l34qKh+nNbbCKmtwGz/y2WU69rhHRw037tXp49aV+yWU9PUW1KLRII67wHhVUVqU04D
- Le7eBbnzga5XMqbiDUAzzDGIQDmG7ZSrXQXs5nw/zWt1kD9Kdo1k5vR4OWGXeBwY2thTBsFS8se
- HoFi9EbJth2GWGLoKLB3usAI+crY4o7ScOKHcwNTo+OVLyzdJinHSxUTlN0ZvxG5+fcaZ8svJgJ
- PM6+wAcwNSzZXEWHxurGXshK1vMq1QZsMLkl+z54RBK1Ni3bJ5C08ZPxuW0UbTX48CyRIh4qpyh
- bvaOxVREU9jvRfg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=15380; i=cel@kernel.org;
+ h=from:subject:message-id; bh=q53UZSq82ZEVJdd8vSYBlkC8HzCKV+H7BlEwzLXohnY=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq8iS4IL2hrHFYTxnVG8RCfs+S2LRttLllo7Ag6
+ tJOnej1236JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavIkuAAKCRAzarMzb2Z/
+ l3oRD/4vv3yG82lE6cKb9SH81D+nxITqfYyvFwS2jccaUJAA3nFQ2SteuyKObEsgP1PhDdrwT2Q
+ +ij7FOjIba0EfbSsXYLJF4Qq4uPh5UGJWyuUizqvIXW7gmSd692GfH07PHt9epDFycne+3Y2Cpc
+ 4yxo3tBx4cWVO45Ptlkv/X+8PThdLLCwy2MSWge9hNDYUWsJ1BvJ9Eqah4MlsHF/W8STymvMhZm
+ Lg5Ww+h6wdlv+6EYGbn1l7EkKYvtJ+dkTdsxNSn0LsP6xYbia7mbOIXlywB6VA7dqd3/pfOQ/Xt
+ ppPHVnV+kvKM/EBaOZzlneAxk7Gu+PZNqwMRlMJjKwtR4rjWz9Jutkysr3BBxJ+hHK6ifDEvPXF
+ HZ7wVKpo+kA6aDrNUXCDdH0fpn+1m0rywlHwIACUWzuL1Es4lj/G6cwKcoCdSJrwmDQoNkENO/Y
+ Ssne0QrxorFutXOhVmA/TeSAW9++oM45gKSgnL0R43JSfzwLVs4FM/ji2r13ERRE7jjq6mGwYj4
+ bUJ9aZBXEhEkDWNu0potmrrDuMx+cvqT3QrjDJo/xBeKmSKhVHUQR1PlzvOAuQzsA9dd3ieFSjy
+ svWBC3SiKDnVFdkkY5n2vipf3FxBO4BTv70VKvlp9Qai5+2DEPwQyNT1ru0idRvQT3JzETBjQIG
+ 5xoH+5nHTWV8yhg==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-A direct READ leaves an alignment pad at the front of the reply pages
-records the pad's length in rq_res.page_base.
-xdr_get_next_encode_buffer() enters the pages at offset 0 and
-xdr_reserve_space_vec() sizes its chunks from page_len alone, so
-nfsd4_encode_readv() leaves the stream page_base bytes short of the
-payload's end.
+On x86 a misaligned store is silent and a write past the Reply pages
+corrupts memory without a fault. A wire test sees the krb5i integrity
+failure but not the store or the overrun. net/sunrpc has no KUnit suite
+to hold a test that does.
 
-svcauth_gss_wrap_integ() then writes the krb5i GSS MIC over the end of
-the payload. READs from a read_io=direct export over a krb5i mount fail
-with an integrity error whenever the READ offset is not aligned to the
-device.
+Add one. svcxdr_init_encode() sets up the stream on a kunit-allocated
+svc_rqst, as the server path does, and a canary page stands in for the
+NULL sentinel at rq_page_end. The cases run at page_base values on both
+sides of a page boundary and check that xdr->p stays word-aligned, that
+the payload reads back, and that the canary is intact.
 
-When a server reply stream enters the pages with page_len zero and
-page_base nonzero, start at the offset page_base names and size
-each xdr_reserve_space_vec() chunk from page_base + page_len. When
-xdr_truncate_encode() returns the stream to the head, clear page_base
-so a failed READ does not leave its pad to the next operation.
+Without the preceding "SUNRPC: Account for page_base when encoding into
+the reply pages", three cases fail and UML crashes before the remaining
+cases run.
 
-The capacity check still compares buf->len + nbytes against buflen.
-Under an NFSv4.1 session buflen is the client's maxresp_sz less the
-auth slack, a wire-byte budget the pad does not consume, so charging
-the pad there would refuse a maximum-size READ. Add
-nfsd4_reply_buflen_with_pad(), which returns the page array's size
-less the pad and the auth slack, or the current buflen when that is
-smaller, and have nfsd4_encode_readv() restrict buflen to it once a
-direct read has left a word-multiple pad in page_base. The slack
-comes off because svcauth_gss restores it to buflen after the Reply
-is encoded.
-
-A stable backport of this patch needs the preceding "NFSD: Place a
-word-unaligned direct READ's XDR pad in the tail" first.
-
-Fixes: d686e64e931c ("NFSD: Implement NFSD_IO_DIRECT for NFS READ")
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs4proc.c |  2 +-
- fs/nfsd/nfs4xdr.c  | 13 +++++++++++--
- fs/nfsd/vfs.c      |  6 +++---
- fs/nfsd/xdr4.h     | 31 +++++++++++++++++++++++++++++++
- net/sunrpc/xdr.c   | 53 +++++++++++++++++++++++++++++++++++++++++------------
- 5 files changed, 87 insertions(+), 18 deletions(-)
+ net/sunrpc/Kconfig           |  14 ++
+ net/sunrpc/Makefile          |   3 +
+ net/sunrpc/tests/xdr_kunit.c | 379 +++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 396 insertions(+)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index ca7d7303545c..bd0af3b59c61 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1178,7 +1178,7 @@ nfsd4_read(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (status)
- 		return status;
+diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
+index e7808e5714dc..5a4e098887d6 100644
+--- a/net/sunrpc/Kconfig
++++ b/net/sunrpc/Kconfig
+@@ -61,6 +61,20 @@ config SUNRPC_DEBUG_TRACE
+           logged at boot time, so say N unless you are debugging a problem
+           with sunrpc-based clients or services.
  
--	/* The xdr_stream encoder does not account for rq_res.page_base */
-+	/* The NFSv4 reply-space checks do not account for rq_res.page_base */
- 	read->rd_dio_ok = nfsd4_last_compound_op(rqstp);
- 	if (!read->rd_dio_ok &&
- 	    nfsd_read_io_mode(read->rd_fhp->fh_export) == NFSD_IO_DIRECT)
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index bb8d7a2f2a22..38d38176cdad 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -5367,6 +5367,16 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
- 	if (xdr->buf->page_base & (XDR_UNIT - 1))
- 		return nfsd4_encode_page_payload(resp, maxcount);
- 
-+	/* A direct READ's pad occupies pages that buf->len never counts */
-+	if (xdr->buf->page_base) {
-+		unsigned int buflen;
++config SUNRPC_KUNIT_TEST
++	tristate "KUnit tests for the SunRPC XDR encoder" if !KUNIT_ALL_TESTS
++	depends on SUNRPC && KUNIT
++	default KUNIT_ALL_TESTS
++	help
++	  This builds KUnit tests for encoding an RPC Reply into pages
++	  that begin at a nonzero offset, as an NFSD direct READ leaves
++	  them. The tests report their results in TAP format.
 +
-+		buflen = nfsd4_reply_buflen_with_pad(resp->rqstp,
-+						     xdr->buf->page_base);
-+		if (xdr_restrict_buflen(xdr, buflen))
-+			return nfserr_resource;
-+	}
++	  For more information on KUnit and unit tests in general, refer
++	  to the KUnit documentation in Documentation/dev-tools/kunit/.
 +
- 	/*
- 	 * svcxdr_encode_opaque_pages() is not used here because
- 	 * we don't want to encode subsequent results in this
-@@ -6859,8 +6869,7 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- release:
- 	/*
- 	 * Account for pages consumed while encoding this operation. The
--	 * xdr_stream primitives don't manage rq_next_page, and
--	 * xdr->page_ptr does not account for page_base. XDR padding can
-+	 * xdr_stream primitives don't manage rq_next_page. XDR padding can
- 	 * carry page_base + page_len past rq_page_end.
- 	 */
- 	next_page = xdr->buf->pages +
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index c265f627fa21..00d669e779cd 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1326,9 +1326,9 @@ int nfsd_write_io_mode(struct svc_export *exp)
-  * offered to the read.
-  *
-  * A direct read leaves its alignment pad at the front of the pages and
-- * records the pad length in @rqstp->rq_res.page_base. The xdr_stream
-- * encoder does not account for page_base, so pass @dio_ok false when
-- * more XDR items follow the payload in the pages.
-+ * records the pad length in @rqstp->rq_res.page_base. A caller whose
-+ * reply-space accounting ignores page_base passes @dio_ok false when more
-+ * XDR items follow the payload in the pages.
-  *
-  * Returns nfs_ok on success, otherwise an nfserr stat value is
-  * returned.
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 20a7cbcf64e6..ba409a879cae 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -853,6 +853,37 @@ bool nfsd4_mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp);
- bool nfs4svc_decode_compoundargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool nfs4svc_encode_compoundres(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *, u32);
++	  If unsure, say N.
 +
-+/**
-+ * nfsd4_reply_buflen_with_pad - Reply buflen once a pad is in the pages
-+ * @rqstp: RPC transaction
-+ * @pad: bytes a direct READ skips at the front of the Reply pages
-+ *
-+ * rq_res.buflen bounds rq_res.len, and len never counts the pad a direct
-+ * READ leaves at the front of its payload, yet the pad occupies Reply pages.
-+ * Once the pad is in place, buflen has to leave room for it in the page
-+ * array. A session's maxresp_sz bound on buflen is a wire-byte budget that
-+ * the pad does not consume, so a buflen below the page array's size is left
-+ * alone.
-+ *
-+ * The auth slack comes off the page array as well: the security
-+ * flavor restores it to buflen after the Reply is encoded, and that
-+ * restored space has to be pages the pad does not already occupy.
-+ *
-+ * Context: Any context.
-+ *
-+ * Return: the page array's size less @pad and the auth slack, or the
-+ * current buflen when that is smaller.
+ config SUNRPC_XPRT_RDMA
+ 	tristate "RPC-over-RDMA transport"
+ 	depends on SUNRPC && INFINIBAND && INFINIBAND_ADDR_TRANS
+diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
+index 96727df3aa85..de080ed08314 100644
+--- a/net/sunrpc/Makefile
++++ b/net/sunrpc/Makefile
+@@ -19,3 +19,6 @@ sunrpc-$(CONFIG_SUNRPC_DEBUG) += debugfs.o
+ sunrpc-$(CONFIG_SUNRPC_BACKCHANNEL) += backchannel_rqst.o
+ sunrpc-$(CONFIG_PROC_FS) += stats.o
+ sunrpc-$(CONFIG_SYSCTL) += sysctl.o
++
++obj-$(CONFIG_SUNRPC_KUNIT_TEST) += sunrpc_kunit.o
++sunrpc_kunit-y := tests/xdr_kunit.o
+diff --git a/net/sunrpc/tests/xdr_kunit.c b/net/sunrpc/tests/xdr_kunit.c
+new file mode 100644
+index 000000000000..25eb69dbcc90
+--- /dev/null
++++ b/net/sunrpc/tests/xdr_kunit.c
+@@ -0,0 +1,379 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * KUnit tests for encoding an RPC Reply into pages that begin at a
++ * nonzero page_base, as an NFSD direct READ leaves them. The entry past
++ * the last Reply page holds a canary in place of the NULL sentinel,
++ * since a store through page_address(NULL) kills the test thread.
 + */
-+static inline unsigned int nfsd4_reply_buflen_with_pad(struct svc_rqst *rqstp,
-+						       unsigned int pad)
++#include <kunit/test.h>
++#include <linux/mm.h>
++#include <linux/string.h>
++#include <linux/sunrpc/svc.h>
++#include <linux/sunrpc/xdr.h>
++
++#define XDR_TEST_NPAGES		4
++#define XDR_TEST_HEAD_LEN	(XDR_UNIT * 3)
++#define XDR_TEST_CANARY		0xa5
++#define XDR_TEST_TRAILER	0xfeedface
++
++struct xdr_test_fixture {
++	/* [0] is the head, then the Reply pages, then the canary */
++	struct page		*respages[XDR_TEST_NPAGES + 2];
++};
++
++static const unsigned int xdr_test_bases[] = {
++	0, 4, PAGE_SIZE - 4, PAGE_SIZE + 4,
++};
++
++static void xdr_test_base_desc(const unsigned int *base, char *desc)
 +{
-+	const struct xdr_buf *buf = &rqstp->rq_res;
-+	s64 pages = (s64)PAGE_SIZE * (rqstp->rq_page_end - buf->pages) -
-+		    pad - rqstp->rq_auth_slack;
-+
-+	return min_t(s64, buf->buflen, max_t(s64, pages, 0));
++	snprintf(desc, KUNIT_PARAM_DESC_SIZE, "page_base=%u", *base);
 +}
- void nfsd4_encode_operation(struct nfsd4_compoundres *, struct nfsd4_op *);
- void nfsd4_encode_replay(struct xdr_stream *xdr, struct nfsd4_op *op);
- __be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 779db27ef588..3b66a0962920 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -1218,21 +1218,48 @@ EXPORT_SYMBOL_GPL(__xdr_commit_encode);
- static noinline __be32 *xdr_get_next_encode_buffer(struct xdr_stream *xdr,
- 						   size_t nbytes)
- {
-+	struct xdr_buf *buf = xdr->buf;
-+	unsigned int base = 0, offset = 0;
- 	int space_left;
- 	int frag1bytes, frag2bytes;
- 	void *p;
- 
- 	if (nbytes > PAGE_SIZE)
- 		goto out_overflow; /* Bigger buffers require special handling */
--	if (xdr->buf->len + nbytes > xdr->buf->buflen)
-+	if (buf->len + nbytes > buf->buflen)
- 		goto out_overflow; /* Sorry, we're totally out of space */
 +
-+	/*
-+	 * A direct READ leaves page_base bytes of alignment pad at the front of
-+	 * the reply pages, so the stream enters the pages past the pad. The pad
-+	 * is already taken off buflen, so the capacity check above stands.
-+	 */
-+	if (unlikely(buf->page_base) && xdr->iov != buf->tail) {
-+		if (!xdr->xdrgen_ctx)
-+			WARN_ON_ONCE(!buf->page_len);
-+		else if (WARN_ON_ONCE(buf->page_base & (XDR_UNIT - 1)))
-+			goto out_overflow;
-+		else
-+			base = buf->page_base;
++KUNIT_ARRAY_PARAM(xdr_test_base, xdr_test_bases, xdr_test_base_desc);
++
++static void xdr_test_free_pages(void *data)
++{
++	struct xdr_test_fixture *f = data;
++	unsigned int i;
++
++	for (i = 0; i < ARRAY_SIZE(f->respages); i++)
++		if (f->respages[i])
++			__free_page(f->respages[i]);
++}
++
++static struct page *xdr_test_canary(struct kunit *test)
++{
++	struct xdr_test_fixture *f = test->priv;
++
++	return f->respages[XDR_TEST_NPAGES + 1];
++}
++
++/*
++ * Mirror a direct READ: nfsd_direct_read() sets page_base before the
++ * payload is reserved, and nfsd4_encode_readv() takes the pad off buflen
++ * because len never counts it.
++ */
++static struct xdr_stream *xdr_test_setup(struct kunit *test,
++					 unsigned int page_base)
++{
++	struct xdr_test_fixture *f;
++	struct svc_rqst *rqstp;
++	struct xdr_buf *buf;
++	unsigned int i;
++	__be32 *p;
++	int ret;
++
++	f = kunit_kzalloc(test, sizeof(*f), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, f);
++	ret = kunit_add_action_or_reset(test, xdr_test_free_pages, f);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	for (i = 0; i < ARRAY_SIZE(f->respages); i++) {
++		f->respages[i] = alloc_page(GFP_KERNEL | __GFP_ZERO);
++		KUNIT_ASSERT_NOT_NULL(test, f->respages[i]);
 +	}
- 	frag1bytes = (xdr->end - xdr->p) << 2;
- 	frag2bytes = nbytes - frag1bytes;
-+	if (base && !buf->page_len) {
-+		/* __xdr_commit_encode() moves a fragment to offset 0 only */
-+		if (WARN_ON_ONCE(frag1bytes))
-+			goto out_overflow;
-+		offset = offset_in_page(base);
-+		/* A reservation cannot span two pages */
-+		if (nbytes > PAGE_SIZE - offset)
-+			goto out_overflow;
-+		xdr->page_ptr = buf->pages + (base >> PAGE_SHIFT);
-+	} else {
-+		xdr->page_ptr++;
++	memset(page_address(f->respages[XDR_TEST_NPAGES + 1]),
++	       XDR_TEST_CANARY, PAGE_SIZE);
++
++	rqstp = kunit_kzalloc(test, sizeof(*rqstp), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, rqstp);
++	test->priv = f;
++
++	rqstp->rq_page_end = &f->respages[XDR_TEST_NPAGES + 1];
++	buf = &rqstp->rq_res;
++	buf->head[0].iov_base = page_address(f->respages[0]);
++	buf->pages = &f->respages[1];
++
++	svcxdr_init_encode(rqstp);
++	p = xdr_reserve_space(&rqstp->rq_res_stream, XDR_TEST_HEAD_LEN);
++	KUNIT_ASSERT_NOT_NULL(test, p);
++	memset(p, 0, XDR_TEST_HEAD_LEN);
++
++	buf->page_base = page_base;
++	ret = xdr_restrict_buflen(&rqstp->rq_res_stream,
++				  PAGE_SIZE * (rqstp->rq_page_end - buf->pages) -
++				  page_base);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	return &rqstp->rq_res_stream;
++}
++
++static void xdr_test_check_stream(struct kunit *test, struct xdr_stream *xdr)
++{
++	struct xdr_buf *buf = xdr->buf;
++
++	KUNIT_EXPECT_EQ(test, (unsigned long)xdr->p % XDR_UNIT, 0UL);
++	KUNIT_EXPECT_TRUE(test,
++			  xdr->page_ptr <= buf->pages + XDR_TEST_NPAGES - 1);
++	KUNIT_EXPECT_NULL(test, memchr_inv(page_address(xdr_test_canary(test)),
++					   XDR_TEST_CANARY, PAGE_SIZE));
++}
++
++/*
++ * The i >> 8 term keeps a shift by whole pages from reading back right.
++ * The i >> 16 term does the same on a 64 KiB page kernel, where the
++ * first two terms repeat every page.
++ */
++static u8 xdr_test_pattern(unsigned int i)
++{
++	return (u8)(i * 7 + (i >> 8) + (i >> 16) + 1);
++}
++
++/* Pattern each byte by its logical offset so misplacement reads back wrong */
++static void xdr_test_fill_payload(struct xdr_buf *buf, unsigned int start,
++				  unsigned int count)
++{
++	unsigned int i, off;
++
++	for (i = start; i < start + count; i++) {
++		off = buf->page_base + i;
++		((u8 *)page_address(buf->pages[off >> PAGE_SHIFT]))
++			[offset_in_page(off)] = xdr_test_pattern(i);
 +	}
- 	if (xdr->iov)
- 		xdr->iov->iov_len += frag1bytes;
- 	else
--		xdr->buf->page_len += frag1bytes;
--	xdr->page_ptr++;
-+		buf->page_len += frag1bytes;
- 	xdr->iov = NULL;
- 
- 	/*
-@@ -1248,16 +1275,16 @@ static noinline __be32 *xdr_get_next_encode_buffer(struct xdr_stream *xdr,
- 	 * xdr->p is where the next encode will start after
- 	 * xdr_commit_encode() has shifted this one back:
- 	 */
--	p = page_address(*xdr->page_ptr);
-+	p = page_address(*xdr->page_ptr) + offset;
- 	xdr->p = p + frag2bytes;
--	space_left = xdr->buf->buflen - xdr->buf->len;
--	if (space_left - frag1bytes >= PAGE_SIZE)
--		xdr->end = p + PAGE_SIZE;
-+	space_left = buf->buflen - buf->len;
-+	if (space_left - frag1bytes >= PAGE_SIZE - offset)
-+		xdr->end = p + PAGE_SIZE - offset;
- 	else
- 		xdr->end = p + space_left - frag1bytes;
- 
--	xdr->buf->page_len += frag2bytes;
--	xdr->buf->len += nbytes;
-+	buf->page_len += frag2bytes;
-+	buf->len += nbytes;
- 	return p;
- out_overflow:
- 	trace_rpc_xdr_overflow(xdr, nbytes);
-@@ -1330,7 +1357,8 @@ int xdr_reserve_space_vec(struct xdr_stream *xdr, size_t nbytes)
- 
- 	/* XXX: Let's find a way to make this more efficient */
- 	while (nbytes) {
--		thislen = xdr->buf->page_len % PAGE_SIZE;
-+		thislen = (xdr->buf->page_base + xdr->buf->page_len) %
-+			  PAGE_SIZE;
- 		thislen = min_t(size_t, nbytes, PAGE_SIZE - thislen);
- 
- 		p = xdr_reserve_space(xdr, thislen);
-@@ -1402,10 +1430,11 @@ void xdr_truncate_encode(struct xdr_stream *xdr, size_t len)
- 		WARN_ON_ONCE(xdr->iov);
- 		return;
- 	}
--	if (fraglen)
-+	if (fraglen || !xdr->iov)
- 		xdr->end = head->iov_base + head->iov_len;
- 	/* (otherwise assume xdr->end is already set) */
--	xdr->page_ptr--;
-+	xdr->page_ptr = buf->pages - 1;
-+	buf->page_base = 0;
- 	head->iov_len = len;
- 	buf->len = len;
- 	xdr->p = head->iov_base + head->iov_len;
++}
++
++/* Reserve a payload whose bytes are already in the pages, then pad it */
++static void xdr_test_reserve_payload(struct kunit *test, struct xdr_stream *xdr,
++				     unsigned int start, unsigned int count)
++{
++	__be32 zero = xdr_zero;
++	int ret;
++
++	xdr_test_fill_payload(xdr->buf, start, count);
++	KUNIT_ASSERT_EQ(test, xdr_reserve_space_vec(xdr, count), 0);
++	ret = write_bytes_to_xdr_buf(xdr->buf, XDR_TEST_HEAD_LEN + start + count,
++				     &zero, xdr_pad_size(count));
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	xdr_test_check_stream(test, xdr);
++}
++
++/* The payload reads back by logical offset and its pad reads back as zero */
++static void xdr_test_check_payload(struct kunit *test, struct xdr_buf *buf,
++				   unsigned int start, unsigned int count)
++{
++	unsigned int end = xdr_align_size(start + count);
++	unsigned int i;
++	u8 *data;
++	int ret;
++
++	data = kunit_kmalloc(test, end - start, GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, data);
++	ret = read_bytes_from_xdr_buf(buf, XDR_TEST_HEAD_LEN + start, data,
++				      end - start);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	for (i = 0; i < count; i++)
++		if (data[i] != xdr_test_pattern(start + i))
++			break;
++	KUNIT_EXPECT_EQ(test, i, count);
++	for (; i < end - start; i++)
++		KUNIT_EXPECT_EQ(test, data[i], 0);
++}
++
++/*
++ * One word per reserve, as an operation's result is encoded. At
++ * page_base = PAGE_SIZE - 4 the second word steps to the next page.
++ */
++static void xdr_test_encode_two_words(struct kunit *test,
++				      struct xdr_stream *xdr)
++{
++	__be32 *p;
++
++	p = xdr_reserve_space(xdr, XDR_UNIT);
++	KUNIT_ASSERT_NOT_NULL(test, p);
++	*p = cpu_to_be32(1);
++	p = xdr_reserve_space(xdr, XDR_UNIT);
++	KUNIT_ASSERT_NOT_NULL(test, p);
++	*p = cpu_to_be32(XDR_TEST_TRAILER);
++	xdr_commit_encode(xdr);
++	xdr_test_check_stream(test, xdr);
++}
++
++static void xdr_test_check_two_words(struct kunit *test, struct xdr_buf *buf,
++				     unsigned int offset)
++{
++	__be32 words[2];
++	int ret;
++
++	ret = read_bytes_from_xdr_buf(buf, offset, words, sizeof(words));
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, be32_to_cpu(words[0]), 1);
++	KUNIT_EXPECT_EQ(test, be32_to_cpu(words[1]), XDR_TEST_TRAILER);
++}
++
++static unsigned int xdr_test_room(unsigned int base)
++{
++	return XDR_TEST_NPAGES * PAGE_SIZE - XDR_TEST_HEAD_LEN - base;
++}
++
++/* A padded payload, then two more words; all read back at logical offsets */
++static void xdr_test_payload(struct kunit *test)
++{
++	unsigned int base = *(const unsigned int *)test->param_value;
++	unsigned int count = 2 * PAGE_SIZE + 5;
++	struct xdr_stream *xdr;
++
++	xdr = xdr_test_setup(test, base);
++	xdr_test_reserve_payload(test, xdr, 0, count);
++	KUNIT_EXPECT_EQ(test, xdr->buf->page_len, xdr_align_size(count));
++	xdr_test_encode_two_words(test, xdr);
++	xdr_test_check_payload(test, xdr->buf, 0, count);
++	xdr_test_check_two_words(test, xdr->buf,
++				 XDR_TEST_HEAD_LEN + xdr_align_size(count));
++}
++
++/* A payload that fills the Reply pages exactly leaves no more room */
++static void xdr_test_exact_fit(struct kunit *test)
++{
++	unsigned int base = *(const unsigned int *)test->param_value;
++	unsigned int room = xdr_test_room(base);
++	struct xdr_stream *xdr;
++
++	xdr = xdr_test_setup(test, base);
++	KUNIT_ASSERT_EQ(test, xdr_reserve_space_vec(xdr, room), 0);
++	xdr_test_check_stream(test, xdr);
++	KUNIT_EXPECT_EQ(test, xdr->buf->page_len, room);
++	KUNIT_EXPECT_NULL(test, xdr_reserve_space(xdr, XDR_UNIT));
++	xdr_test_check_stream(test, xdr);
++}
++
++/* One byte more than the room, rounded to a word, is refused */
++static void xdr_test_one_over(struct kunit *test)
++{
++	unsigned int base = *(const unsigned int *)test->param_value;
++	unsigned int room = xdr_test_room(base);
++	struct xdr_stream *xdr;
++
++	xdr = xdr_test_setup(test, base);
++	KUNIT_EXPECT_EQ(test, xdr_reserve_space_vec(xdr, room + 1), -EMSGSIZE);
++	xdr_test_check_stream(test, xdr);
++}
++
++/* After a zero-byte xdr_reserve_space_vec(), the next reserve enters pages */
++static void xdr_test_zero_vec(struct kunit *test)
++{
++	unsigned int base = *(const unsigned int *)test->param_value;
++	struct xdr_stream *xdr;
++
++	xdr = xdr_test_setup(test, base);
++	KUNIT_ASSERT_EQ(test, xdr_reserve_space_vec(xdr, 0), 0);
++	KUNIT_EXPECT_NULL(test, xdr->iov);
++
++	xdr_test_encode_two_words(test, xdr);
++	xdr_test_check_two_words(test, xdr->buf, XDR_TEST_HEAD_LEN);
++}
++
++/* A reserve entering the pages has to fit in the rest of the entry page */
++static void xdr_test_entry_too_large(struct kunit *test)
++{
++	struct xdr_stream *xdr;
++
++	xdr = xdr_test_setup(test, PAGE_SIZE - XDR_UNIT);
++	KUNIT_ASSERT_EQ(test, xdr_reserve_space_vec(xdr, 0), 0);
++	KUNIT_EXPECT_NULL(test, xdr_reserve_space(xdr, 2 * XDR_UNIT));
++	KUNIT_EXPECT_EQ(test, xdr->buf->page_len, 0);
++	xdr_test_check_stream(test, xdr);
++}
++
++/* Truncating back to the head clears page_base along with the payload */
++static void xdr_test_truncate(struct kunit *test)
++{
++	unsigned int base = *(const unsigned int *)test->param_value;
++	struct xdr_stream *xdr;
++	struct xdr_buf *buf;
++
++	xdr = xdr_test_setup(test, base);
++	buf = xdr->buf;
++	KUNIT_ASSERT_EQ(test, xdr_reserve_space_vec(xdr, PAGE_SIZE + 8), 0);
++
++	xdr_truncate_encode(xdr, XDR_TEST_HEAD_LEN);
++	KUNIT_EXPECT_EQ(test, buf->page_base, 0);
++	KUNIT_EXPECT_EQ(test, buf->page_len, 0);
++	KUNIT_EXPECT_EQ(test, buf->len, XDR_TEST_HEAD_LEN);
++	KUNIT_EXPECT_PTR_EQ(test, xdr->page_ptr, buf->pages - 1);
++	KUNIT_EXPECT_PTR_EQ(test, xdr->iov, &buf->head[0]);
++	KUNIT_EXPECT_PTR_EQ(test, (void *)xdr->p,
++			    buf->head[0].iov_base + XDR_TEST_HEAD_LEN);
++	xdr_test_check_stream(test, xdr);
++}
++
++/* A server stream does not enter the pages at an unaligned page_base */
++static void xdr_test_unaligned_base(struct kunit *test)
++{
++	struct xdr_stream *xdr;
++	int ret = 0;
++
++	xdr = xdr_test_setup(test, 1);
++	kunit_warning_suppress(test) {
++		ret = xdr_reserve_space_vec(xdr, 16);
++	}
++	KUNIT_EXPECT_EQ(test, ret, -EMSGSIZE);
++	KUNIT_EXPECT_EQ(test, xdr->buf->page_len, 0);
++	xdr_test_check_stream(test, xdr);
++}
++
++/*
++ * A second payload at page_base + page_len, where a second READ in one
++ * COMPOUND lands. Both payloads, and the words encoded after the second,
++ * read back at logical offsets.
++ */
++static void xdr_test_second_payload(struct kunit *test)
++{
++	unsigned int base = *(const unsigned int *)test->param_value;
++	unsigned int count1 = PAGE_SIZE + 5, count2 = PAGE_SIZE + 7;
++	unsigned int start2 = xdr_align_size(count1);
++	unsigned int end2 = start2 + xdr_align_size(count2);
++	struct xdr_stream *xdr;
++
++	xdr = xdr_test_setup(test, base);
++	xdr_test_reserve_payload(test, xdr, 0, count1);
++	xdr_test_reserve_payload(test, xdr, start2, count2);
++	KUNIT_EXPECT_EQ(test, xdr->buf->page_len, end2);
++	xdr_test_encode_two_words(test, xdr);
++	xdr_test_check_payload(test, xdr->buf, 0, count1);
++	xdr_test_check_payload(test, xdr->buf, start2, count2);
++	xdr_test_check_two_words(test, xdr->buf, XDR_TEST_HEAD_LEN + end2);
++}
++
++/*
++ * A reserve straddling the head's end is refused: the fragment would
++ * be copied back to page offset 0, not to page_base.
++ */
++static void xdr_test_straddle(struct kunit *test)
++{
++	struct xdr_stream *xdr;
++	__be32 *p;
++
++	xdr = xdr_test_setup(test, XDR_UNIT);
++	p = xdr_reserve_space(xdr, PAGE_SIZE - XDR_TEST_HEAD_LEN - XDR_UNIT);
++	KUNIT_ASSERT_NOT_NULL(test, p);
++	KUNIT_ASSERT_PTR_EQ(test, xdr->iov, &xdr->buf->head[0]);
++
++	kunit_warning_suppress(test) {
++		p = xdr_reserve_space(xdr, 2 * XDR_UNIT);
++	}
++	KUNIT_EXPECT_NULL(test, p);
++	KUNIT_EXPECT_EQ(test, xdr->buf->page_len, 0);
++	xdr_test_check_stream(test, xdr);
++}
++
++static struct kunit_case xdr_test_cases[] = {
++	KUNIT_CASE_PARAM(xdr_test_payload, xdr_test_base_gen_params),
++	KUNIT_CASE_PARAM(xdr_test_exact_fit, xdr_test_base_gen_params),
++	KUNIT_CASE_PARAM(xdr_test_one_over, xdr_test_base_gen_params),
++	KUNIT_CASE_PARAM(xdr_test_zero_vec, xdr_test_base_gen_params),
++	KUNIT_CASE(xdr_test_entry_too_large),
++	KUNIT_CASE_PARAM(xdr_test_truncate, xdr_test_base_gen_params),
++	KUNIT_CASE(xdr_test_unaligned_base),
++	KUNIT_CASE_PARAM(xdr_test_second_payload, xdr_test_base_gen_params),
++	KUNIT_CASE(xdr_test_straddle),
++	{}
++};
++
++static struct kunit_suite xdr_test_suite = {
++	.name = "sunrpc_xdr",
++	.test_cases = xdr_test_cases,
++};
++
++kunit_test_suite(xdr_test_suite);
++
++MODULE_DESCRIPTION("KUnit tests for the SunRPC XDR encoder");
++MODULE_LICENSE("GPL");
 
 -- 
 2.56.0
