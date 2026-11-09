@@ -1,59 +1,75 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.130
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794214195;
-	b=TMXZMknhupjSOJI7eg0rSvT2oVp1NwicXSKhg0ZURu73LmDlG5H2viX1gdPvpOhQ+OJ2
-	 sN9pVhX7/LnLrgM0MgeS69vjCiFfqWi6jWSrdTud6tUlZ9XwXPLMoNJ/H/5JPfCMYPLQ4
-	 uQeLMKVh1VY2shFxqFAikHEFJmF2wImuGKLEXgomWizYtqnZ7Q8I50ka1CA6bVXxe+sXy
-	 wmNg4IOjUEWF4HHImcPM56cg2zH1FZxs3PkNxj6fmGcE0Nn/SqjppDrcLiWxh38VNL9Ii
-	 sn8LoVkv3tkOzq3FCqCiTP4rDmBxSaDtH28R6zFYwP/epoXPKtg8V8cnzT2mRdmLmow==
+	t=1794223657;
+	b=spEtiLHs1vykCb7mu18k+fj5gS7BEkKaMdlKxXuZJw3m5VVuJjpOfkW4LAMFYy+Mly6E
+	 VZKQbyZF2edVcC2p8IWqFFLV1YOlSllKdKV/KNi86+yQ9vWNWc9G9wgPMVVGLrMpuOU3s
+	 g01geXp53SmaWi3iH5M0YLchwGkOSqRtXngI8Gy+F8sRhrqFmOTJr1/xm7/7x8/Zn/SS+
+	 T+y62K9SOKsPGV5pY8CNL3u2US196cooTgHmR6ypd+jSSRn/H5IN5QHvbvg4V3ubmStst
+	 PYejedaFY/tIGx9zQ5yBtUVV0s8UZkV9Lp0tO+as/awA/wK8fpPtrRtwfN7L4q+M7yQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794214195;
-	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:From:To:Cc:
-	 Subject:Date:Message-Id:X-Mailer:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=HQ35mHfqr5BP8Q6j3XzqWeTinQG71M7XJLfQgHXsqNk=;
-	b=Wcsr7TXaXbG7tj5RutPL8MpIvbfbxO3fHKWjzSSqTZaeIS+86fivud4nuzn59x0iyWvs
-	 mUvbK6/W/vEJvn+somH2vmpKZrsQShAUUMlIvzyZbs9mZtV2CqYuQXNzXv/6Dr6kT0LM1
-	 TzcUh4f4I1CSHLa7o+PGF4W2ZtJ/F2fogLqz4YfJ+AW5t+dxkiqOzTOwvHPfjHcVK57Zh
-	 O0gMTtToL5T0Ik1LSGsULbVuyHMTUqPj54FsUFueq9xDv+DP7jTR55bsu+tzVVMsHr0cC
-	 4goj/60L/TJkVqNBQlTqSzeZLuFrwRJZkfZHjLG2u30RQ2PforE5FyTODt32MgHhASQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794223657;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=GTe3rVqqBFubJwfvXPNDDRZX+sidHXepwnZzWomDy5A=;
+	b=NfU9kT2bZiORXw5zCXCda/QL8aJYOgH2BUdYtc79k8w+H+He5VhdNu9Cnf2/2IcxBuZu
+	 whoIpQKrD35eFow0FLSeMsppAHs7T/JowXmdaEvnahhYKBHCrBHaeXZYVCvXSKNKTWszk
+	 Bu8qi6oDSgI1VXT2Gz0/7R+qYdNY941e6XcKfGF8hCMO9ChGo+afDYbgil6zPxFQW8Ini
+	 zhqGLTzGo1Higv2QnpkZm+THa5sLuSQ314SC+lkWoKCvQA7uNE01oHPo+7+uf7W7pI2vb
+	 YaXO+uRyI3C57qCB2gf8wMWl5rPrj/0D0L6RxC02HaZZJotqm2D1dRWZD7LMkPwW/AA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=linux.alibaba.com;
-	spf=pass smtp.mailfrom=linux.alibaba.com;
-	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=uq8XmEk+;
-	arc=none smtp.remote-ip=115.124.30.130
-Received: from out30-130.freemail.mail.aliyun.com (out30-130.freemail.mail.aliyun.com [115.124.30.130])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iU5O51DC;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 924D8606D825;
-	Mon,  9 Nov 2026 08:49:52 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 924D8606D825
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E54B7606A31C;
+	Mon,  9 Nov 2026 11:27:36 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=uq8XmEk+
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1794214188; h=From:To:Subject:Date:Message-Id:MIME-Version;
-	bh=HQ35mHfqr5BP8Q6j3XzqWeTinQG71M7XJLfQgHXsqNk=;
-	b=uq8XmEk+daPltY+282MUkEKxL9N2QtaK9hJgNfT/ArHWTsQp89eAkLR50cjgNSZnmCEtSaqTBk6DMXeEvW6q+u/CFEdXEfiAcs8AP9m/CoqBGA1M+2cGyRUPkXi1zqP0JcNnqN9DLa2Y1W4fiDCl2yaepH0Gb/QXgPt8D+YtZUo=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R661e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037033178;MF=joseph.qi@linux.alibaba.com;NM=1;PH=DS;RN=7;SR=0;TI=SMTPD_---0XEMNcY3_1794214187;
-Received: from localhost(mailfrom:joseph.qi@linux.alibaba.com fp:SMTPD_---0XEMNcY3_1794214187 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Mon, 09 Nov 2026 16:49:47 +0800
-From: Joseph Qi <joseph.qi@linux.alibaba.com>
-To: Sasha Levin <sashal@kernel.org>,
-	Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>
-Cc: stable@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Joseph Qi <joseph.qi@linux.alibaba.com>
-Subject: [PATCH 6.6.y] nfsd: fix NULL dereference in nfsd4_free_layout_stateid()
-Date: Mon,  9 Nov 2026 16:49:32 +0800
-Message-Id: <20261109084932.3861080-1-joseph.qi@linux.alibaba.com>
-X-Mailer: git-send-email 2.39.3
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iU5O51DC
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 96EA41F0089F;
+	Mon,  9 Nov 2026 11:27:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794223656;
+	bh=GTe3rVqqBFubJwfvXPNDDRZX+sidHXepwnZzWomDy5A=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=iU5O51DC6zVVQKzDHuys9tIxjfbSOhYw8z0UcE86pb//wkXavh32S2N8S2PUurU2A
+	 o1E3RopKG7W94xtmWo25LA834OkIsoplK5Zc5sWRxNqoMBKXFQxzncUeAVAHVqzYUN
+	 x0xzl99BebTVjgItzYyFM18S+rvSgi3xMyTZJ/jJZ69X0Gf56Vq2vszIAP9EEsAUq5
+	 YP1A5SHoyPmQVAQUq/DaV61yYmuj4yVaaeC+HIcZMJhadQiWUxN4AW86j7fp4xdZK/
+	 SKtdAofdOgM6AVAC0cEZ3+8Z/6By8LpM/kvwzBv9E4RtCHAt3TdDxZIlKuxADBPb0I
+	 863RWmyUQ6DWA==
+Date: Mon, 9 Nov 2026 12:27:22 +0100
+From: Christian Brauner <brauner@kernel.org>
+To: Kees Cook <kees@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, 
+	Linus Torvalds <torvalds@linux-foundation.org>, Jann Horn <jannh@google.com>, Josef Bacik <josef@toxicpanda.com>, 
+	Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
+	Eric Dumazet <edumazet@kernel.org>, Thomas Gleixner <tglx@kernel.org>, 
+	Al Viro <viro@zeniv.linux.org.uk>, Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, 
+	Greg Kroah-Hartman <gregkh@suse.de>, Joel Granados <joel.granados@kernel.org>, 
+	Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, linux-kernel@vger.kernel.org, 
+	linux-nfs@vger.kernel.org, linux-acpi@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+	linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, linux-um@lists.infradead.org, 
+	linux-wireless@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, netdev@vger.kernel.org, 
+	ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org, coreteam@netfilter.org, 
+	kexec@lists.infradead.org, linux-pci@vger.kernel.org, linux-sound@vger.kernel.org, 
+	netfilter-devel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+	ibm-acpi-devel@lists.sourceforge.net, jfs-discussion@lists.sourceforge.net, 
+	linux-alpha@vger.kernel.org, linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org, 
+	linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org, 
+	linux-sh@vger.kernel.org, linux-usb@vger.kernel.org, samba-technical@lists.samba.org, 
+	sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org, 
+	linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net, 
+	Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
+	linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org, 
+	Chuck Lever <cel@kernel.org>
+Subject: Re: [PATCH RESEND v2 07/23] proc: let procfs own the seq_file of
+ seq_file entries
+Message-ID: <20261109-atemberaubend-begabung-bedienen-85aade0f99b4@brauner>
+References: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
+ <20261104-work-procfs-core-v2-7-76ace653a773@kernel.org>
+ <8A21EE2A-F392-40B7-9152-CBC440FDDA70@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -63,54 +79,37 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <8A21EE2A-F392-40B7-9152-CBC440FDDA70@kernel.org>
 
-Commit d12af460df27 ("nfsd: fix BUG_ON in nfsd4_alloc_layout_stateid on
-racing delegation revoke") replaced BUG_ON(!ls->ls_file) with a bail-out
-that calls nfs4_put_stid() on the partially initialized layout stateid.
+On Sat, Nov 07, 2026 at 08:10:28AM -0800, Kees Cook wrote:
+> Please use the new style typed allocation calls for objects:
+> 
+> ops = kmalloc_obj(*ops);
+> 
+> (This happened to jump out at me, but please check the other patches for this pattern.)
 
-nfs4_alloc_stid() leaves sc_count at 1 and nothing takes another
-reference before that bail-out, so the put runs sc_free, which is
-nfsd4_free_layout_stateid().  That function uses ls->ls_file
-unconditionally, both for vfs_setlease() and for nfsd_file_put(), and
-nfsd_file_put() does not accept NULL either.  The new error path thus
-turns the race it was meant to handle gracefully into a NULL pointer
-dereference.  The nfsd4_layout_setlease() failure path that already
-called nfs4_put_stid() was safe only because the BUG_ON guaranteed
-ls_file was non-NULL.
+Done, there are 5 of them in total:
 
-Upstream does not have this problem because its destructor goes through
-nfsd4_close_layout(), which tests the pointer before using it.  That
-helper came in with the admin-revoke series, which is not in 6.6, so
-just add the NULL test here.
+proc: resume readdir after the last name it returned
+-		cursor = kmalloc(sizeof(*cursor), GFP_KERNEL_ACCOUNT);
++		cursor = kmalloc_obj(*cursor, GFP_KERNEL_ACCOUNT);
 
-Fixes: d12af460df27 ("nfsd: fix BUG_ON in nfsd4_alloc_layout_stateid on racing delegation revoke")
-Signed-off-by: Joseph Qi <joseph.qi@linux.alibaba.com>
----
- fs/nfsd/nfs4layouts.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+proc: sysctl: resume readdir after the last name it returned
+-		cursor = kmalloc(sizeof(*cursor), GFP_KERNEL_ACCOUNT);
++		cursor = kmalloc_obj(*cursor, GFP_KERNEL_ACCOUNT);
 
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index bea7513a0de90..7c3f0948a610c 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -168,9 +168,13 @@ nfsd4_free_layout_stateid(struct nfs4_stid *stid)
- 	list_del_init(&ls->ls_perfile);
- 	spin_unlock(&fp->fi_lock);
- 
--	if (!nfsd4_layout_ops[ls->ls_layout_type]->disable_recalls)
--		vfs_setlease(ls->ls_file->nf_file, F_UNLCK, NULL, (void **)&ls);
--	nfsd_file_put(ls->ls_file);
-+	/* ls_file is NULL if nfsd4_alloc_layout_stateid() bailed out early */
-+	if (ls->ls_file) {
-+		if (!nfsd4_layout_ops[ls->ls_layout_type]->disable_recalls)
-+			vfs_setlease(ls->ls_file->nf_file, F_UNLCK, NULL,
-+				     (void **)&ls);
-+		nfsd_file_put(ls->ls_file);
-+	}
- 
- 	if (ls->ls_recalled)
- 		atomic_dec(&ls->ls_stid.sc_file->fi_lo_recalls);
+proc: keep the open files of an entry in an open node
+-		dp->open = kzalloc(sizeof(*dp->open), GFP_KERNEL);
++		dp->open = kzalloc_obj(*dp->open);
+
+proc: own the wait queue of an entry with a ->proc_poll()
+-	on = kzalloc(sizeof(*on), GFP_KERNEL);
++	on = kzalloc_obj(*on);
+
+proc: let procfs own the seq_file of seq_file entries
+-	ops = kmalloc(sizeof(*ops), GFP_KERNEL);
++	ops = kmalloc_obj(*ops);
+
 -- 
-2.39.3
-
