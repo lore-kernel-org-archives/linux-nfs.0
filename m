@@ -1,106 +1,49 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794256830;
-	b=NxZYAv/Bh25uYAjnKqBiF7RmlIim0janJ2mcHUae42BHzzKIjpOqOMo/zq9sNpumFVjb
-	 7+60HiY2iplRqZgXou6uW8MjJBqMqZhgCoBaJ3RWJsFqYWc9UzO5qvD7MrFEXd9VwVLLX
-	 FDzA5Vu+LR0nc4Rp7G05lWNp0nOFBTJZ6nC8HxyS1eCM89wzXaEH4lcqIeNn1S2SKn6Jd
-	 XVhCISReKX2worVtl3CyuwqcS4jCnu9fxiFCI4QWeNu8D0CyFSGUY76wdHiF/r7/Zeecs
-	 e5fPhAiQ/owcCBeZMeR1Owbd6dnbUuWiWQPRQqwdpXle+5DBiRDeX5quc1lg0RVyVnw==
+	t=1794257093;
+	b=RUBpjuTsi/k9WVppdZDnhWwCevSOM52v+JMbRxX31ouRc8ELu3ojcP3X2zrkDmk+fs1F
+	 ct0Yxeb8ELWLNOOAUZC68X8ZKJkfQe8hOFdQkXB7GqFsNeDEk3Aydgp/XtPQnrnwZbSzK
+	 qvHhjWxSHAIVFTKAyIpdmb0SHUiSKKubDFBE2y8DR5T3JJnLRug9Rtg77b3+jboSLGuAf
+	 pGFWCqBI4KP7q0CteFe9O84iX9/lPhaIbcsiuM5ocp87omuHD0eD9hF5YjThlxjM83GXh
+	 /KpvbQjgFzNOGi1a+Mpg5fipUBMmAyUTY8xtB0x7mI8x6gfSdiw5+0Wr7I2P/AcfmNw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794256830;
-	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
-	 X-Mimecast-MFC-AGG-ID:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 X-Received:Received:Message-ID:Date:MIME-Version:User-Agent:Subject:
-	 To:References:Content-Language:From:In-Reply-To:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=MdiKeGP7O5ZGOQBfri/HkycbA3OkA90HO2mjHp2zSQQ=;
-	b=h3l4MEz3y1S0rvVimJ+l/4niBHTRKMDjAul52I1NBxzXXaqJF5/8j9XzEy7l8nGPdiRC
-	 cazmpbsxp11yPspSHSeDp+Ip7C05ysijrBKSYjd5z34oM7BwiDTZIKk3AgaHCCXl5rF+y
-	 hZCho2ThqQPhSXr/5M9IktWc/tk5lvmuoKTsIgPGUdCRspFhPjv6/Cu9xj7xwMb9FDsSV
-	 xBn7kNUIIIE6hI1aZnufXm3lGDKHPZEgnaRi6mHIDS8ZDBD5+b4bNPIgVTrqEV0L9IUU1
-	 HcbW4y9V2B9bA5VgI6YV8hxXCuZutQKTM+GrC/r5bWNwa98Q1mYIPTOrVQ5KpQXRNmA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794257093;
+	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
+	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=FL5B+ZobyMcavVUt7atRUnc2Wr0kOuMry15Yk9u4RYs=;
+	b=y4Y+yeYX57BNzJBu5AO984mx4OMHGuiojeeTWRyctMwZBd2TqpLokO8Rv7mPfsXaeTKX
+	 j49GuFs6j2VXCvQmm/GlJAxAh9CLSJU1psobTLTWbYWBjXAlTDOScKzm/CkQXHROGkaDk
+	 6TTfPMIy5/guE/5C9rdXJQEOfD2N75YthRj3Ko5MSR2zZAnwch/AKUWuw4YA7+TuqVeDH
+	 mL/ZcoGzYavB1ev2wfqVt2hmqvNW1gnk1lsiGTzXjez9Rh6RieBR4FeKXxALJ7JPUyVkK
+	 nynx1yFKXo1trkDNMDw20B0MTBSQHrUYz47b79RB1UGdUFWIH5hiA/mJCM+sfgsl6nA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=redhat.com;
-	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=GYQ5ZwJe;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=dOqe7gWp;
-	arc=none smtp.remote-ip=170.10.133.124
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HCUh66uJ;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 88D2A606A326
-	for <linux-nfs@vger.kernel.org>; Mon,  9 Nov 2026 20:40:29 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 88D2A606A326
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4DB57606A325;
+	Mon,  9 Nov 2026 20:44:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=GYQ5ZwJe;
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=dOqe7gWp
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1794256828;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=MdiKeGP7O5ZGOQBfri/HkycbA3OkA90HO2mjHp2zSQQ=;
-	b=GYQ5ZwJe2zOGlPRJ6VVhNrxBciMB4TIPzB2xp3MIESCpvapZ2qxl8SVcW0q7iPJCTLy1Xm
-	CVQx5GFwUd78+etPHmzddFoMtdHz70ZbTCQ2gMtgB9wJxtwWbZBiG9Kcn1LSyiWNtmu+Is
-	TUaguugIfHz/Yz492N7M6fb2uefotG0=
-Received: from mail-qk1-f197.google.com (mail-qk1-f197.google.com
- [209.85.222.197]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-56-mtbW6qIhMuakrRGMO5ITJA-1; Mon, 09 Nov 2026 15:40:27 -0500
-X-MC-Unique: mtbW6qIhMuakrRGMO5ITJA-1
-X-Mimecast-MFC-AGG-ID: mtbW6qIhMuakrRGMO5ITJA_1794256826
-Received: by mail-qk1-f197.google.com with SMTP id af79cd13be357-94607500fb0so231020785a.2
-        for <linux-nfs@vger.kernel.org>; Mon, 09 Nov 2026 12:40:27 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1794256826; x=1794861626; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:to:subject:user-agent:mime-version:date
-         :message-id:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=MdiKeGP7O5ZGOQBfri/HkycbA3OkA90HO2mjHp2zSQQ=;
-        b=dOqe7gWp7u6jU8EzEdlDsQGkb2A4bSpSOVuLbtGs7B8jfplfsdF2+HQAQKA5+eA37n
-         6A6YHm1hwrRwmdtrHDYLXaHZFZuwsDs56QHgViOgrTDuHDNtYOZj7RF109Gc9zk1sj6S
-         mHzSSJnKEN0oSwEom/3/Jfg7B+bKd3zK+n9Fb7j7tH6dFSos+W4NpzqTvI3W0UadFr07
-         6dhtVHI7ESpT8cXl6E8xCz4XdX7VPVID1lwtZYDoIU3ooMaJ4Jvjtlqxkq5H1X0JtGYZ
-         yZmWlf5OpWwqag+QabRf+eoXpg+Y2Ja/ec1ilGedBva/0QkHHanMV5ouks4Ecq0y/D86
-         uWuA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794256826; x=1794861626;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:to:subject:user-agent:mime-version:date
-         :message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=MdiKeGP7O5ZGOQBfri/HkycbA3OkA90HO2mjHp2zSQQ=;
-        b=dYW1vZtnP8P5t420vag1LmqPn1g4Z7dV0HCcwF/k2DAWDWh2V51CoT8xzBCuWsTGdh
-         y9g+IBSzaPOWzGyFrWG2oKSLQKGN6o2Rhj2lEEEHoh5iDqKq+hMvyNnmGIBS7yP8YrRU
-         i0m6EkzthAAxy53Mx0R3F2lUSFUyIdnzXFdpFO13LpC37UHdGmbZhG+we+CfiWd8HeF7
-         RZgvGjNjbYfOKEsxewPcArn7kRDY7PJt0qPiSkYagq1amYnT4uc91WjSO1FLxguM7Bzm
-         eoftSdFpU71xT8SwVT7+HqNdj1A0DdtmU8Gxm85svsJ7u0gy/fWUcYRoIJ5yQewXCrvV
-         aPMA==
-X-Forwarded-Encrypted: i=1; AL+hErGgskIuveqEzEYv0OtKU3QzNhBZmUayjkpJizVjJ5yg9zELtdx/xGieDgPrCEPXI5DBLPIuprlEWyE=@vger.kernel.org
-X-Gm-Message-State: APuU4Z8w3bo6iSLJqnYKgvZhfIf1JKZXMsoCogMho2/SN69O4irs2fP1
-	Py9RR3K3WFND3G6Y3F1zutFNjk0G7O3z/2kurakJ5Z5FVka8ly+uKmsfK7S+EikF9pds1WszuV2
-	y5YV6PIUF6iFJ0mFxXaccKJZzNCgdOWV8rulvcU/csAYgyPl4abI9kuPXGqNB2w==
-X-Gm-Gg: AYBFou0iulziTp45BC/8LL4T1fhcis0kOoz4p6GnRjHOnPA7aY/usrshPyX/8X8hpXa
-	sUCOp0NdMqsXLGJ6WIpj/2GHa9I7FIj8pG0ZWtG3Pev/rGa4kN0vGoAS7gl8iyyni3Dy6/Kt6to
-	aXqUaEpVulAfYsSdsVJpZ8HeWcr+nDhhIqg0Vc5/9nEYJVx0l6C2wQVl5TPxbM5N773q/hIxmv1
-	b+MYPOXafVSB6GIVYJG4sgJmtMKGN8Lqk1Ne7vOCvyV+Zk06Sw+Ii4KWJwrFh6u3g3eK4StGLGk
-	+1hkYHghtZZQO5pkkTELM42MQCnuYPVOSGM7OAmenUF3o8jb54nAysXyPVAxa5031mTOwJG8Smv
-	L2tHQ3pTCZ2+NFQ43HVevuwNTSl5iJ467u1B6U32HFQYchrk=
-X-Received: by 2002:a05:620a:8806:b0:93e:5fbf:a41c with SMTP id af79cd13be357-9479f2b05e5mr106017885a.16.1794256826262;
-        Mon, 09 Nov 2026 12:40:26 -0800 (PST)
-X-Received: by 2002:a05:620a:8806:b0:93e:5fbf:a41c with SMTP id af79cd13be357-9479f2b05e5mr106013385a.16.1794256825576;
-        Mon, 09 Nov 2026 12:40:25 -0800 (PST)
-Received: from [172.31.1.12] ([70.105.245.156])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-9479e7a8348sm59726985a.26.2026.11.09.12.40.23
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 09 Nov 2026 12:40:23 -0800 (PST)
-Message-ID: <8e468ecc-7874-4473-a04f-8ac8432ae2e6@redhat.com>
-Date: Mon, 9 Nov 2026 15:40:22 -0500
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HCUh66uJ
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3A5FB1F0089F;
+	Mon,  9 Nov 2026 20:44:52 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794257092;
+	bh=FL5B+ZobyMcavVUt7atRUnc2Wr0kOuMry15Yk9u4RYs=;
+	h=From:Subject:Date:To:Cc;
+	b=HCUh66uJD+7y76ZPRX7KJdrupTMF1HYS1etOg2QhxsOp7qYXdnFTsvP2L+zyjY6LW
+	 bCSCoQfdNJT9Cy/rwRKxXcWgRfQ4t/P68xfjRnbcv3WJEqFCh9gocryYZOtnbYZE3i
+	 dvFRp4VPKAJj6nEDpMRY4i/eRic94f7fvwdu302PvRH14gKsRxA+yiYYsCbBfb09Iu
+	 bXS8JuxrV7O+MkEC5lLbjTvVfpODQHLaTZwNV2r4cUxRK1d6H3cO/hV1f89udSK1dx
+	 hvxy2GQJ7z0YriI12Juqmg+njEo9MKNaoWLjykGRd9Cz0zZloRGZ0SJ/+eziSOOmWK
+	 6Qi5Ecy5TOoyw==
+From: Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH v2 0/3] NFS: fixes for delegated timestamps
+Date: Mon, 09 Nov 2026 15:44:46 -0500
+Message-Id: <20261109-delegts-nfs-v2-0-9d1e926cc3d5@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -110,93 +53,69 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH rpcbind] rpcbind: bind the TCP listeners to the -h
- addresses too
-To: Orgad Shaneh <orgads@gmail.com>, linux-nfs@vger.kernel.org
-References: <20261006083746.353335-1-orgads@gmail.com>
-Content-Language: en-US
-From: Steve Dickson <steved@redhat.com>
-In-Reply-To: <20261006083746.353335-1-orgads@gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23MQQrDIBCF4auEWXeKGjXQVe8RsrBxNNJgigZpC
+ d69Nusu/wfvOyBTCpTh1h2QqIQctthCXDqYFxM9YbCtQTChOWcaLa3k94zRZRTKGkdyeMheQnu
+ 8ErnwPrVxar2EvG/pc+KF/9b/TuHIkFs1K+q1NGy4PylFWq9b8jDVWr8J4+3tpwAAAA==
+X-Change-ID: 20261106-delegts-nfs-25dafe47b434
+To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+ Lance Shelton <lance.shelton@hammerspace.com>, 
+ Olga Kornievskaia <okorniev@redhat.com>
+Cc: Thomas Haynes <loghyr@gmail.com>, linux-nfs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1485; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=zhrPj/mSUknYvQp+Q3SXYYKqnBrNegs6RQkz2xBo3+Q=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq8jDDw3hCHj2FIJC6UNmA901DIJ0N3TB0RrZhU
+ zOM6T78wQSJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCavIwwwAKCRAADmhBGVaC
+ FeeoD/41Qcr8SmDCGkqzQ1fUG1xealXyK/Fp0tnipGNZkqLgApJbSho4lVxixo6A78/AeGweSm2
+ Zh2Xft18ZIKIRCAJpCOzWpOrN6e3j+sAjRXFLCW8KJu3LhOLnXMslgxRBoflmPCVSKEZFiFYoI7
+ Z7hA64JWuud/5YaKfmyNpbaUGDIlWRaOWdnan7ogS23m+7tfkcNxXr4wK40ZHJcuZ3xa3ExpwbJ
+ cizeZmeSRquttjCpz9XRSAH4hjqDdn9e1cr3I1rSB6jLFY+bryXRynSG85zO4ftCc63/oDPUCeX
+ HamcudcWlr9HDX6HX1y+QbZtC8eBrtfkUhQhzqiAXyh8tehX3VTf/ZsydRts7Vy2RzeFjrnE4DN
+ ujlmScyDtNu8rF0/3nqOCskAUJrjdzbbZgc8kb+cuXmwcHCCjMSGddOwoiY07G6SmbmcMjDVWs0
+ aPAAtvFwqN0sQqM8eMkY9Z9LUzJ6peYzaruY0Fbjz/o0EQFMtQgvMLWHqDs+/Ix1rzm0oju2eE/
+ syySgnUWdeR2W9WdHMnxdn61qnbu46NiP0kO89NzCLypn5ZjsjxisY1E2Y56aS5fJzbCp0c7XY8
+ dYI2dbJozV9XJE12I/bG5Y2o0rx0myiy95MtpDfeVpdssGccsLJQd3ccB2Bi+ttbu0LdfXP7VKp
+ DwBm7oQt6ST8fRA==
+X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
+ fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
+This version fixes some issues that Sashiko pointed out.
 
+These are some client-side fixes for problems that I was seeing with
+delegated timestamps. Mostly this was evident in the git regression
+testsuite (which is particularly sensitive to timestamp issues).
 
-On 10/6/26 4:37 AM, Orgad Shaneh wrote:
-> -h restricts only the datagram transports: tcp and tcp6 still bind to
-> the wildcard address, so rpcbind answers on every interface over TCP
-> even when -h names loopback and a single internal address. A host that
-> uses -h to keep rpcbind off its external interfaces gets that only for
-> UDP.
-> 
-> When -h is given, take the stream transports through the same
-> per-address loop as the datagram ones (AF_LOCAL ones have no address
-> and keep their own path), with the SO_REUSEADDR and listen() that the
-> wildcard path already does for them. Without -h nothing changes.
-> 
-> Assisted-by: Claude:claude-opus-5-5
-> Signed-off-by: Orgad Shaneh<orgads@gmail.com>
-Committed... (tag: rpcbind-1_3_2-rc1)
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+Changes in v2:
+- "don't let delegated c/mtime stamps go backward": compute the stamp
+  before storing it, so lockless readers never see the coarse time
+- "stamp after the server's ctime when truncating under delegated times":
+  stamp before nfs_vmtruncate() drops i_lock
+- "stamp after the server's ctime following a CLONE":
+  - stamp under i_lock
+  - apply the reply with nfs_refresh_inode() under delegated times, so
+    its ctime doesn't overwrite the stamp
+- Link to v1: https://lore.kernel.org/r/20261106-delegts-nfs-v1-0-1d5c5e364a07@kernel.org
 
-steved.> ---
->   man/rpcbind.8 |  2 +-
->   src/rpcbind.c | 15 ++++++++++++++-
->   2 files changed, 15 insertions(+), 2 deletions(-)
-> 
-> diff --git a/man/rpcbind.8 b/man/rpcbind.8
-> index 15b70f9..03b5514 100644
-> --- a/man/rpcbind.8
-> +++ b/man/rpcbind.8
-> @@ -85,7 +85,7 @@ checks are shown in detail.
->   .It Fl f
->   Do not fork and become a background process.
->   .It Fl h
-> -Specify specific IP addresses to bind to for UDP requests.
-> +Specify specific IP addresses to bind to for UDP and TCP requests.
->   This option may be specified multiple times and can be used to
->   restrict the interfaces rpcbind will respond to.
->   When specifying IP addresses with
-> diff --git a/src/rpcbind.c b/src/rpcbind.c
-> index c39df97..1215c73 100644
-> --- a/src/rpcbind.c
-> +++ b/src/rpcbind.c
-> @@ -535,7 +535,13 @@ init_transport(struct netconfig *nconf)
->   		hints.ai_socktype = si.si_socktype;
->   		hints.ai_protocol = si.si_proto;
->   	}
-> -	if (nconf->nc_semantics == NC_TPI_CLTS) {
-> +	/*
-> +	 * With -h, bind the stream transports to the given addresses too,
-> +	 * not only the datagram ones; AF_LOCAL transports have no address.
-> +	 */
-> +	if (nconf->nc_semantics == NC_TPI_CLTS ||
-> +	    (nhosts > 0 && strcmp(nconf->nc_netid, "local") != 0 &&
-> +	     strcmp(nconf->nc_netid, "unix") != 0)) {
->   		/*
->   		 * If no hosts were specified, just bind to INADDR_ANY.  Otherwise
->   		 * make sure 127.0.0.1 is added to the list.
-> @@ -621,6 +627,11 @@ init_transport(struct netconfig *nconf)
->   			}
->   			addrlen = res->ai_addrlen;
->   			sa = (struct sockaddr *)res->ai_addr;
-> +			if (nconf->nc_semantics != NC_TPI_CLTS &&
-> +			    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on,
-> +				       sizeof(on)) != 0)
-> +				syslog(LOG_ERR, "cannot set SO_REUSEADDR on %s",
-> +				    nconf->nc_netid);
->   			oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
->                           if (bind(fd, sa, addrlen) != 0) {
->   				syslog(LOG_ERR, "cannot bind %s on %s: %m",
-> @@ -673,6 +684,8 @@ init_transport(struct netconfig *nconf)
->   				(void) free(uaddr);
->   			}
->   #endif
-> +			if (nconf->nc_semantics != NC_TPI_CLTS)
-> +				listen(fd, SOMAXCONN);
->   			my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf, &taddr,
->                                   RPC_MAXDATASIZE, RPC_MAXDATASIZE);
->   			if (my_xprt == (SVCXPRT *)NULL) {
-> -- 2.53.0
-> 
+---
+Jeff Layton (3):
+      NFS: don't let delegated c/mtime stamps go backward
+      NFS: stamp after the server's ctime when truncating under delegated times
+      NFS: stamp after the server's ctime following a CLONE
+
+ fs/nfs/delegation.h |  2 ++
+ fs/nfs/inode.c      | 65 ++++++++++++++++++++++++++++++++++++++++-------------
+ fs/nfs/nfs42proc.c  | 25 ++++++++++++++++-----
+ 3 files changed, 72 insertions(+), 20 deletions(-)
+---
+base-commit: 5e810a57a1cf2fc785d89e711ff40f1112f6404c
+change-id: 20261106-delegts-nfs-25dafe47b434
+
+Best regards,
+-- 
+Jeff Layton <jlayton@kernel.org>
 
