@@ -1,48 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794257094;
-	b=AikRLYWm05B72nEIR50K0JGqzz12VoEBKt85UVsGm5J5dakXH+2nn/lpvJPm+6KPLzDq
-	 5ivnWqVO/i48CmAC/bfOyZY4q6OBCRL8nnNXmwZO5/yKVi61pqKARNH4EEZXB23bdu2QS
-	 gJ8u1L2Rra/LY4IBTOoVND/ZTPATi68FK8eh6fqPbKX0exSiy1tk6j/N8pbEQFo2iHYmo
-	 KLRfDWf7rXbre+gDpttSQgw4GefmH7j4oys2VnvpJ8NjImw9t4nAXTt1ZSPUVWnCn+DhJ
-	 Sj0hkqFC+uXGHKl6YQVEpWBZcHC8w16OSs4g7Rv4kF11g3YxGGd1cFeqiUGGiEmstDQ==
+	t=1794257095;
+	b=gjA1ob30X1YD0cf2P4lGeXpLen0W+faZHU7IyCE+B/TCHCVO5HpVEKIoBtP0XjV2lwOY
+	 oxZM6pcD0ubxnJE4monTFR8Uxr7hEbwMvEvIK2yp5Ac8smxkDBkWKboZB549tDVJ+gYRa
+	 MgKGDo+6WAEIP69cvRcANyL5RPc4qqSV/6wjtdMW/TmWYtLPoK9tnoiTGGgCHqZXgqX/6
+	 ygYSOWq+j8SleOIfFQrXIbTAdHEECgsY4XYmp+f8tz9TNE4a0wfVqQwspcSV8r0lj+tWA
+	 Ib68C+Aka/ce5HwvBYFFyozrrlGX6hZDp/cXo3VsE/e8wOYn5KKv9z9dyPEJBELIxPA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794257094;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794257095;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=wg3N0zeCU+V87W+DhVAiPtVIVV/pYPZTF3215VLc+s4=;
-	b=qT5IhSfdTCML4wi0Ylou6q/v7c/K6opxhcfcQ5lkIY3eSjfQwKe2i1CKMSsvW3ouRtFN
-	 920YHk0B7mCEhuI2/Ma96lagUPvIFIGhKAb/IvPhy4nEyPLUFYIj1Vl4ZMDHU5rcQV9FS
-	 W7YG+vlaReduPN3zGaeRpxvaBau7kAe0GKWu2nnwZUmp2taH9vB/KsXbpvvlgSlXrq+XE
-	 C4y2cRz1aKvIpqG8mHhk+HUwzc+lBQGxbZhMsqSytT95mrgziGq+6mIo9lW2UCKWRB++C
-	 Vm3gmiZOTYCuPAq2F2BLosScU2GPnUhMJSLM5xWAzGRqv4OfghtW0Dn3L5Z7CztvKNw==
+	bh=PT4qNdAVgNcP+Z1rBfN7L8rcVqRdXgkGRwEp1ADfZh8=;
+	b=p2XeJiVeUzM5UfPctork2I4mGxcNL6GQgdRoXxXw6hejWzJKLVBZc5kUnWOSl1kMEibN
+	 zI6CRDXoyq4IT35LDNJB6iuVd+io7XTOX+xmK1svrd+AnO9tl/RHqWmgoRkT8yYhV0jUn
+	 dxZWPEkSyaHd4SZKAozoP7rugbw+ZKJU5jF5gw9Ri5icpBZbGlk2lG+PHhZQyBj0TACii
+	 gCqlUQz+htCQ/HsUCPUwFntUgkyERf9lNndzwk9v9VDXDIxRWB4FEA7rrUr1zK6m0CcUC
+	 Sl8kGUy5xbx3TXGKPCobLdU/Niy0+W1ip5M4UB3dwauvorEZw7Tvq1JWvs3C5rXVLIw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XoHtTmRL;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=I08M7gHT;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E455D606A331;
-	Mon,  9 Nov 2026 20:44:53 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 06093606A330;
+	Mon,  9 Nov 2026 20:44:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XoHtTmRL
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1D6931F008A3;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=I08M7gHT
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F138C1F008A5;
 	Mon,  9 Nov 2026 20:44:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794257093;
-	bh=wg3N0zeCU+V87W+DhVAiPtVIVV/pYPZTF3215VLc+s4=;
+	s=k20260515; t=1794257094;
+	bh=PT4qNdAVgNcP+Z1rBfN7L8rcVqRdXgkGRwEp1ADfZh8=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=XoHtTmRLHgVdiYjcxOxjlSkkFUd/FtDJPlYIXUcHtgPg40sZQg+ai2KLHjfS+HOYp
-	 09XtAvC4nBLhSky06yhv9SVSqL94MrMKpy0pO/Ccbgkf4aBvgx7Kc1M8mt9k64PmM4
-	 /8+XtXVZGSrGkZnnFLS167d4fKug1ear4srGKwEpuqQ/QehBRA9WFZgK0h1YgonAAi
-	 02qz6kuApOLY2l3xxGNtWfjpFHiy59aRimbLvZCeHUapzIINrDjhJAw9zQ8wZh2rmr
-	 upyJY4McJQhUGsjOCKmCR1vERgdPSd6qmzBYYeJoXWQpXBgWMLJlfj8FzfhSgqG2Kz
-	 KkuDubC+xsOqg==
+	b=I08M7gHTC6+683vySY5yg1BDlv6CLlEKbEpgR/I+EuWmlO2sQFap3DtJZ0RkwmnG2
+	 4c5y9uLXZVnC8wOYmBzjPsgdIby8aTgv0inAQvHHW3ZkT1iU1nKQv8Bxb3RwPF6eGx
+	 r+RopQokPal2y6BOZfLTQFNb0iDHhrPerUpXCiB4QJRuZdH7WrXmEXJuSD53+fxb3P
+	 HsGizurpJUcCCHU0cUaBHRtdn0syY7Qq5+GUPi1cF2smcwWcmp3hS2ALqZgTl0+zsB
+	 fgIjmyyxoqhJJPdew15G7jVvQwVhk8hcjGyd2uemSRBXi77iO00sfbPbk0v+Z/WFvU
+	 xpTWJ5C43KW1w==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Mon, 09 Nov 2026 15:44:47 -0500
-Subject: [PATCH v2 1/3] NFS: don't let delegated c/mtime stamps go backward
+Date: Mon, 09 Nov 2026 15:44:48 -0500
+Subject: [PATCH v2 2/3] NFS: stamp after the server's ctime when truncating
+ under delegated times
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-delegts-nfs-v2-1-9d1e926cc3d5@kernel.org>
+Message-Id: <20261109-delegts-nfs-v2-2-9d1e926cc3d5@kernel.org>
 References: <20261109-delegts-nfs-v2-0-9d1e926cc3d5@kernel.org>
 In-Reply-To: <20261109-delegts-nfs-v2-0-9d1e926cc3d5@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
@@ -63,106 +64,95 @@ To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
 Cc: Thomas Haynes <loghyr@gmail.com>, linux-nfs@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3172; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=/i+WgRkUTNLoT+wZXDiWG93r/fsgNbR+dFkibZFuirs=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq8jDDiVYldjueX0OrVuKTDBFgjmWyCDfaZE83J
- 2HosYwTPyOJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCavIwwwAKCRAADmhBGVaC
- FZRIEACCPS6FuiAmKDRj+am+Ge8Lbyhg0lzWzZwAq0N60XemXTowRN2l08BjLOZV5ERwJ/uiufx
- RhfS+ANphcgSlTeAMYSzhhsFD8GWf1fD2zfN1HhkL5BBeEzCyOwdCawMBwFBJA/eyrOWqCHoBch
- 0OGjpg0GDf/PU6WbfPBPyG1cyNvA5S4GCUW3DdV1eJPYF51tl+EwblQkO37+CJzuYEM0hoLkyD7
- XhPdP3Nd36K+VCSVvDeZ9LDl13scPpcZA5ExAHKL3i+y4VAHIQ5DUiZ8CGThJs4BbsA9ehpoxND
- L8/p4SRcbdtgM8MVderZhOTsoR9znBKNSTKduXPzeNCsQanChoqG8S9C5goYRu9WVfPF5agaApa
- SHHaRaasaKeBQXYN6RdZg5vtXnl7IY5l9F/tWE8YPCZtRVE5djArzbCmRwKv9MYdjF/Ep8H9MsX
- sugsT+m6033nj35gR3bkfLF3bQc9TM0m2uM0y6h16LAI5QvLRxZU1qmn474waqZISVHVxRCX5NY
- 8Y8AQQpxPXtbHKROLZPWB551fIwdx9kmOTN/CgscpWfWRtddnNRjVzDSwnSqAaPSzRkebCiwqbX
- GwcPnFzvnpMT8rNZ23yF7T75mB4LzF8+w5LMJOugOpVQhDmyQe+val6bQ3FIe1qBmwR25kENYhb
- zcB/OAQDYjSxImQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2896; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=jTklTz9WAknWTty2zyrDg3XUt/Gl6uXBLVG+hpjv5DQ=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBq8jDDnT74PjQqQZIKiqEzH9GG/lxijBfyCQoj8
+ KVqqJGlYdyJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCavIwwwAKCRAADmhBGVaC
+ Fcg8EACpBZdAIdv3l4NqZjfwAQ79qSVVI6wtexUX0bLRnfEicP5iCfUGuUge/52XrSbbxnlY96l
+ cy/RBoKXSiQIRNVoU3BaSYmqUkPa2CDTXCyqp8uDbMVCnU05/TpdU8X5tWeEKgxBcBxsrgWKTP9
+ CMBW0f9+W2RltnBH0CQFurwNTrCX+xXZ/OxnfY1sH+v5liBtJbLnrQ3XS2v0VZRmoNdDwnrDOxz
+ 0t+IuCDTCgUVXD4Eizvxnc3c/urow/fdOSaxQZmD/vgSv2WEbFz+1wmRk6i2bAgsHEg3N+KQVjR
+ 35OvHHvSvDA6aIXCHkcq+IPolAIDj3TAFux5EKnOAE+CVbOC2Y07eoq1VrJ430YMlx9GCmROT6g
+ WuaYAmmSdmMLQmKfZbBfBclvQWSpBY4vFGawFfIdpAVAuOv+5fo9Z2rhzo96kbxEmhFxPwFwZtu
+ nfagKgMSQUHYNmd5dL4rf94+6441P8QtnwbHBu0LQdzeAg2/3/w2xsfVfE01AxIkygLONb9EVls
+ Sr8vK2HgoHF1fARJE5JcXgdgXaMfiEPU1NhLjG24kMZYAqWDFURhIuofGic3MplrANAM4zjFYoD
+ aoMQU/jt/IQP6CnfJGXNhkA9KISH/5r16Vs0mgQ8nnMtSuYGDVhyXnX7iB3/M1oJZFKCWSE51UF
+ 8NjzKRyRMjKLfwA==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-With a timestamp delegation the client stamps c/mtime from its own
-coarse clock. That can land before the server's fine-grained ctime the
-client cached from the OPEN or SETATTR reply, e.g. on a WRITE right
-after an exclusive create. The server then either rejects the times
-(they don't pass dl_ctime) or can't apply the ctime, since
-inode_set_ctime_deleg() never moves ctime backward. Either way the
-c/mtime the client reported while holding the delegation changes
-after DELEGRETURN; git t1092 over NFSv4.2 sees a stat-dirty file.
+A size-changing SETATTR always has the server stamp c/mtime
+(__nfsd_setattr(), per RFC 5661 section 18.30.4). With delegated
+timestamps the client discards the reply's ctime and stamps its own in
+nfs_vmtruncate(), clamped only against its cached ctime. A coarse client
+stamp can still land before the server's, which then won't move ctime
+back when the holder returns its times, so ctime changes after
+DELEGRETURN.
 
-When a delegated stamp isn't after the cached ctime, use the cached
-ctime + 1ns instead. Compute the stamp before storing it, so lockless
-readers (getattr, CB_GETATTR) never see the trailing coarse time.
+- Raise the cached ctime to the reply's before nfs_vmtruncate() stamps,
+  so the delegated stamp lands after the server's.
+- Stamp before nfs_vmtruncate() drops i_lock for truncate_pagecache(),
+  not after. A delegation return starting in that window made the stamp
+  a no-op, and DELEGRETURN sent the pre-truncate mtime, which the server
+  could apply over its own truncate stamp.
 
 Fixes: e12912d94137 ("NFSv4: Add support for delegated atime and mtime attributes")
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfs/inode.c | 40 ++++++++++++++++++++++++++--------------
- 1 file changed, 26 insertions(+), 14 deletions(-)
+ fs/nfs/inode.c | 23 ++++++++++++++++++++++-
+ 1 file changed, 22 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 9839087cf373..98d8a34fab9d 100644
+index 98d8a34fab9d..270d8bb46110 100644
 --- a/fs/nfs/inode.c
 +++ b/fs/nfs/inode.c
-@@ -629,25 +629,33 @@ nfs_fattr_fixup_delegated(struct inode *inode, struct nfs_fattr *fattr)
- 	}
+@@ -647,6 +647,21 @@ static struct timespec64 nfs_delegated_stamp(struct inode *inode)
+ 	return now;
  }
  
 +/*
-+ * With delegated timestamps, the client's coarse clock can trail the
-+ * server's fine-grained ctime cached from an OPEN or SETATTR reply. The
-+ * server won't move ctime backward when the times are returned, so a
-+ * new stamp must land after the cached ctime.
++ * The server stamped c/mtime itself (e.g. for a size change). Raise the
++ * cached ctime to the server's so that the next delegated stamp lands
++ * after it.
 + */
-+static struct timespec64 nfs_delegated_stamp(struct inode *inode)
++static void nfs_delegated_ctime_raise(struct inode *inode,
++				      const struct nfs_fattr *fattr)
 +{
 +	struct timespec64 ctime = inode_get_ctime(inode);
-+	struct timespec64 now = current_time(inode);
 +
-+	if (timespec64_compare(&now, &ctime) <= 0) {
-+		now = ctime;
-+		timespec64_add_ns(&now, 1);
-+	}
-+	return now;
++	if ((fattr->valid & NFS_ATTR_FATTR_CTIME) &&
++	    timespec64_compare(&fattr->ctime, &ctime) > 0)
++		inode_set_ctime_to_ts(inode, fattr->ctime);
 +}
 +
  static void nfs_set_timestamps_to_ts(struct inode *inode, struct iattr *attr)
  {
  	unsigned int cache_flags = 0;
- 
- 	if (attr->ia_valid & ATTR_MTIME_SET) {
--		struct timespec64 ctime = inode_get_ctime(inode);
--		struct timespec64 mtime = inode_get_mtime(inode);
--		struct timespec64 now;
--		bool updated = false;
--
--		now = inode_set_ctime_current(inode);
--		if (!timespec64_equal(&now, &ctime))
--			updated = true;
--
-+		/* The stamp is always after the old ctime */
-+		inode_set_ctime_to_ts(inode, nfs_delegated_stamp(inode));
- 		inode_set_mtime_to_ts(inode, attr->ia_mtime);
--		if (!timespec64_equal(&now, &mtime))
--			updated = true;
--
--		inode_maybe_inc_iversion(inode, updated);
-+		inode_maybe_inc_iversion(inode, true);
- 		cache_flags |= NFS_INO_INVALID_CTIME | NFS_INO_INVALID_MTIME;
+@@ -820,10 +835,14 @@ static int nfs_vmtruncate(struct inode * inode, loff_t offset)
+ 		nfs_ooo_clear(NFS_I(inode));
  	}
- 	if (attr->ia_valid & ATTR_ATIME) {
-@@ -665,7 +673,11 @@ static void nfs_update_atime(struct inode *inode)
+ 	NFS_I(inode)->cache_validity &= ~NFS_INO_INVALID_SIZE;
++	/*
++	 * Stamp in the same i_lock section that checked the delegation and
++	 * raised ctime, before a delegation return can start.
++	 */
++	nfs_update_delegated_mtime_locked(inode);
  
- static void nfs_update_mtime(struct inode *inode)
- {
--	inode_update_time(inode, FS_UPD_CMTIME, 0);
-+	struct timespec64 now = nfs_delegated_stamp(inode);
-+
-+	/* Not inode_update_time(): lockless readers would see its stamp */
-+	inode_set_ctime_to_ts(inode, now);
-+	inode_set_mtime_to_ts(inode, now);
- 	NFS_I(inode)->cache_validity &=
- 		~(NFS_INO_INVALID_CTIME | NFS_INO_INVALID_MTIME);
- }
+ 	spin_unlock(&inode->i_lock);
+ 	truncate_pagecache(inode, offset);
+-	nfs_update_delegated_mtime_locked(inode);
+ 	spin_lock(&inode->i_lock);
+ out:
+ 	return err;
+@@ -849,6 +868,8 @@ void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr,
+ 	if ((attr->ia_valid & ATTR_SIZE) != 0) {
+ 		if (!nfs_have_delegated_mtime(inode))
+ 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_MTIME);
++		else
++			nfs_delegated_ctime_raise(inode, fattr);
+ 		nfs_set_cache_invalid(inode, NFS_INO_INVALID_BLOCKS);
+ 		nfs_inc_stats(inode, NFSIOS_SETATTRTRUNC);
+ 		nfs_vmtruncate(inode, attr->ia_size);
 
 -- 
 2.56.0
