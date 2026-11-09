@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1794254021;
-	b=tSYJiZ+xg+6oukiqkSTNHKyc/5i476qdE/FQjFrB/orNAnaG20tF+0DUhG/QclND9v4v
-	 bb/p8cdy74omEx6tni7dpQqSS6nwrHqzS3RaLvYOtwW1bQg9oMQPY8Nm5BVdhCCwlLyLw
-	 dcoaLXYgzL+Gtnbgi94GG5lPfpNMpy8mjhlU2bsM0I4kPha+no77c+3KIMFwiOQUmZxm5
-	 kAZO4y6yJZAuxEVTX/bT5LSY/S4ty9OKHW++QbbrCKmsCv8dpK3bWHo304FyZcNk+a2W0
-	 d4r4kMfmVfNqSq07eO51i3aS96QKAZ4RVaMrkt2ZOEAYCp2HvWptiGyXmTrnrOIs0oQ==
+	b=NaR56ZTz9+uwKmfBfHhujQRG7tuVH4PFRJK2dwzZS+qekzQCA65mRfLWjFlxttq02+Ar
+	 1HhbkjS23nxWlz3F9oZ0rMJ+fo0nNSdWlvj8SL/RjUlTF87R72GXIMpSjhjO8BVdKTTy9
+	 E/Q/yMbI4Efltmshpqw9Az2pph+/eqo7Z7aUIvHIeoTSAbDFOKFPCenjeFnK/uAONDxm3
+	 2H52V9iPGHcM8wbDh8pgtJPvmx7vrcWfMUkw7hGk+a8VsSIdMEpQD5FiihVaT/C+Azhlk
+	 rMJqaxKoKXZLfNh9GFgcu1LGDjXFBul4rVUbyEPzm8WVFfNWbTXWVwKZhnaUZwOzqYQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1794254021;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=9mvGOU4nP2OPD9oU5qu6EGpGz9w6nP02TNlxA2JnlA0=;
-	b=xFbaE/mvBzghBEPYKExGhvL3Mf+OCmGCeqDxAteyd7nLhdwfKXzYGpUe6QvFqcdg+MX/
-	 Ekuf0SxgDi3lzNWyxNoxGES7aj235jhDuiS+JKM5Mjco97OpvphdZ0xk/MRwwoAiWHbfm
-	 Kt5vgahGJ38J1UT6f9Xvn7GaAI6j7dvXHWiOEE75C9sYqzaWDvZfdBsiuPvDe6B+KAvwx
-	 RflP7X0BQOUZe3tSPAKHYIsY961d7f61HE+yYP6BjwVfQZ6kB9uH4eixEyxTSl9XK/PQF
-	 dR609bKdfSD91BrPiP24B/5usa6sNw79Qp3OkW4CefXZb1T79+4pVLZObNmvz1o7o2w==
+	bh=l65AfVenJpNwpqbYPLp0GptgKn7gQoYYkmjGxFI+1Ls=;
+	b=2S6N0psO2U1n++V9pd/XoSltKOnZank4d+lxGZjWKfP62BLBZHv8xOCWeh+/T03bFDuD
+	 I1ReTu/HqvtLl4d0o2hat29zPxTeKwFPskoOYgXoaxGxqAyUWHew86IGOeedVeSU76Ogo
+	 clP4v9kl1HMQ7qIFES0F+LQl/iXT9SE+HX+m0GdcYAM1QLIz4nwhiqH80tMWIxQLqsAkK
+	 Ck0fnRHuJmqYaKC/CqxeCELeJkvQwPTotmXMZakoTYEORiX/sa8yT585InsGbAekAck5F
+	 EfuFNrP0LWDGrSNJjUgcs3ue+GCAWwaDIWj/1gzqcLzwNWapZNivZJOKUakffi9xGug==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BRzW2kFg;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZaLo9gGf;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AAC7360A6F4A
-	for <linux-nfs@vger.kernel.org>; Mon,  9 Nov 2026 19:53:40 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5B9C060A260C
+	for <linux-nfs@vger.kernel.org>; Mon,  9 Nov 2026 19:53:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BRzW2kFg
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id ABBCE1F00A10;
-	Mon,  9 Nov 2026 19:53:39 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZaLo9gGf
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8C63C1F01560;
+	Mon,  9 Nov 2026 19:53:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794254020;
-	bh=9mvGOU4nP2OPD9oU5qu6EGpGz9w6nP02TNlxA2JnlA0=;
+	s=k20260515; t=1794254021;
+	bh=l65AfVenJpNwpqbYPLp0GptgKn7gQoYYkmjGxFI+1Ls=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=BRzW2kFgZwidd3PHMhh2OmByN/vtchASaIIiutoezguy7R45xGo2PFNwy+HYBOGaz
-	 DobthgziomAlIov+ORY+quOEzkMsbDwNt74Yq2eHYJjwff61yrQARBYm4difQ8CkmO
-	 MgTi+8ModgBiX/U20XRAAnlzMVBMeGB6hygpTx3owQWMiW7GZXUkABB6phe4WetUYp
-	 DPp7XBtVd8wwePVOZhN6KsXT48XApiS+CdIM8xmXfzz3IQhoRrzinxtbw009hTqvx1
-	 dZpKycLNQPYGTBYgg/VGB5ltiRjfvF0fL393nSH5yaVHh34YF6nEMVMeZfQSeCoEfe
-	 5P+0wtc/Ig21A==
+	b=ZaLo9gGfvBc91H7IWFE8Nao//ErabggqUJMWRbnr14OoRGemKd8YOI7GlVa36o0FS
+	 V3YsQTs7HPXJwJh/KZql+I37HOUTZFO5QRX0UntaROKBz8HyPRMpMsWajzGfBFQenj
+	 D6npsw/wlXUB6BtCvy+BzMV+Hk+ZHVYyJHRtZEYdGuvtgT2RdJ5l0sTKZgm5LRZ+1h
+	 fGg8LfwPWIM65FQiZJW1ORpoaoaX/XtNefNb5LpeZ+RefbgB2uxBL6V5nvx0ZxgJbC
+	 AvlDWPqVgf5PXKbuAZgsQfplAHbu9NU+mKgBw+psVsv5v5lBLEiVArHY6qsnnxQE41
+	 AVo8wZn/NkYPw==
 From: Chuck Lever <cel@kernel.org>
-Date: Mon, 09 Nov 2026 14:53:28 -0500
-Subject: [PATCH 12/13] NFSD: Allow a word-aligned direct READ in any
- COMPOUND position
+Date: Mon, 09 Nov 2026 14:53:29 -0500
+Subject: [PATCH 13/13] NFSD: Do not truncate an operation that reported an
+ out-of-space error
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-xdr-page-base-v1-12-a4f4411d760d@kernel.org>
+Message-Id: <20261109-xdr-page-base-v1-13-a4f4411d760d@kernel.org>
 References: <20261109-xdr-page-base-v1-0-a4f4411d760d@kernel.org>
 In-Reply-To: <20261109-xdr-page-base-v1-0-a4f4411d760d@kernel.org>
 To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
@@ -63,156 +63,100 @@ To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
 Cc: Mike Snitzer <snitzer@kernel.org>, linux-nfs@vger.kernel.org
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5624; i=cel@kernel.org;
- h=from:subject:message-id; bh=DTQ5aJQyUFSMKxrYJEGmbkKjtVmBzRMmsfCsPz00tJ8=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq8iS4v9FJKLQBBLEVIS3hJh7n6W8dRgG0Ja20z
- QUscRWrK9WJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavIkuAAKCRAzarMzb2Z/
- l9baEAC/BovPZIigIGZ+lKTuKRK6joN9HIyLnXiONlRJU2tAoX5kx2Ya6TJ6GRKPgcjf+zwjPVd
- r7a/wKX813+D+RWorwdZUbdR6ZIulXsDBK9BSbp4znq+R/+dduPICEwLEITYfnjcuatEf2zZ71J
- yWUsgWAQszJWEG6ajoXnoNmN9LsM31YxPzxRmG5XDYxx0zKCxotYLmZ7FgumKiL35ZkdfVQuzoi
- Sc3wefpsQM4/RsS2wsjK7CTB9R9LWKXyaxbRBELdPGJoAToceByKvojOcrPujx3Ti3TCujBDI/a
- yt0OthBlwho/t7egv9hXyyxae6HY+eBNFRmTnX+sDjV1jU26+e8vgxEwHuxWwRF2tmc/96lKZZJ
- VVj0GheM+0JQLLLwhafIUnOTcqmH5wNLEngD8t09B4OgLMajI4TvKbA0Tme0dYac9I7btz5JFV8
- Hijn2MfnOUkWBALRoStbPggM7MLv211HJwMppoFV4Wx+/nL8LcoWvM+xR+lh5hotgcUWK3CLNoW
- zjgOmzfPWBPz76TuNklIbESKfAbuBIjBJDjo6ZYtuyFlM+jV+QbOrhM+vh49qwwQg7Oj2rGJ5dS
- sZiZvklIgPqZxM8p+dTwfaaebqHSTk7Pxkr7R1vRf6gmONuXc8BegTRkRDYOBvFOQZ10pj8W1J3
- ZLPxHVPZBTIB/vg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3398; i=cel@kernel.org;
+ h=from:subject:message-id; bh=1RqSlo2DWay9dW8LhPjNdCiWiJsbS4g9BZxEqKTMrvQ=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq8iS4TF4G3X42nGmDAQT8jKlOzimUKtcE7Qwe/
+ 9wh+xwARgiJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavIkuAAKCRAzarMzb2Z/
+ l61LD/9pjFvn3Yd/PM+Eh0eLgLde5CmcSUvw94XS/3iR6BK8TYcDIZ7hEEzuH/FriqQ3fb4Qb/1
+ TJy8GV0+ASpSWWfEtJbHLYd3jEgNS3ScK2qqir2amrd6WgRXCMPPXXznrMVZA8dL1uhTOPY2aCY
+ 01nYNXZ04BBAwPUftZMUAmivI+OlmrCitPp8nj7K5bIpNM/izYG4EayyMIjioK+fFvY69N1JGvi
+ TkMj4qJjwWvH0oBtbcrPyLDg/IL3D+ZE6qhm/XWiqLeIQs8i2aO68OLwOTjxGBFbuj0oN8Y6Dfd
+ BU3kL/cjM+ebRbCI1Ki0YCLTCZe8Hz5ePPN770+ER29DRXXymPep7y6y8EdRLVBAV7nkUBiswuD
+ qDPcZOAocoTeSobXlrTueawOWZtDPilFuU4AifqWuYONZA0Enh4ZTVyXGyRpnr6IBH6DBKy9srG
+ /8PxXDvLTIPqJs6kjmrVEI3CEgmvtxEe832Kn1MXby0YAxlKfeyv79RlwciJE+YFHo9sUMjoVG7
+ l0juLWRk1M0wiwyMitwma7jT5ld9FbH9yV5XGxRCIqyZrhj6qtCgpCmtFZMIg7DfMdQZJGS9E87
+ 7EoqySG8S2SOx5RavS6ELwFxUKMI2IhEM5Z3Wr3hpGO3niF165WCIeU3QqV2r4DGLSIf8r3UHD7
+ 6kgCRX5/e/wKgYw==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-nfsd4_read() sends an NFSv4 READ that is not the last operation of
-its COMPOUND to the buffered path, because the encoder,
-nfsd_iter_read(), and the reply-space checks ignored the alignment
-pad a direct READ leaves in rq_res.page_base. A result encoded after
-the READ landed on the payload's tail. All three now honor a
-word-multiple page_base.
+nfsd4_proc_compound() sets NFS4ERR_RESOURCE or NFS4ERR_REP_TOO_BIG
+on a non-idempotent operation whose result might not fit in the
+reply, without running it. nfsd4_encode_operation() cannot tell
+that status from one the encoder produced on running out of space,
+and truncates the result back to the status word either way.
+SETATTR4res carries a bitmap4 in its error form, so when a
+session's maxresponsesize leaves between 16 and 23 bytes after the
+READ in PUTFH;READ;SETATTR, the client gets a SETATTR result
+missing its bitmap and NFSD logs "unable to encode reply to
+nonidempotent op 34 (OP_SETATTR)".
 
-Behind a pad that is not a word multiple, the stream cannot continue
-in the pages. nfsd4_encode_readv() parks the stream in the tail.
-Keep the restriction for a READ at such an offset and lift it for
-the rest.
+Truncate only when the encoder or the post-encode size check
+changed the status.
 
-The Linux NFS client already positions READ operations last.
-
+Fixes: 07d1f8020738 ("nfsd4: fix encoding of out-of-space replies")
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- Documentation/filesystems/nfs/nfsd-io-modes.rst | 13 ++++++++-----
- fs/nfsd/nfs4proc.c                              | 12 +-----------
- fs/nfsd/nfs4xdr.c                               | 18 +++++++++++-------
- fs/nfsd/xdr4.h                                  |  1 -
- 4 files changed, 20 insertions(+), 24 deletions(-)
+ fs/nfsd/nfs4xdr.c | 24 +++++++++++++++---------
+ 1 file changed, 15 insertions(+), 9 deletions(-)
 
-diff --git a/Documentation/filesystems/nfs/nfsd-io-modes.rst b/Documentation/filesystems/nfs/nfsd-io-modes.rst
-index 29fb0be5af75..d57b7916f6c2 100644
---- a/Documentation/filesystems/nfs/nfsd-io-modes.rst
-+++ b/Documentation/filesystems/nfs/nfsd-io-modes.rst
-@@ -220,15 +220,18 @@ Tracing:
-                                   COMPOUND already put data in the
-                                   reply's pages
-       nfsd_read_dio_head_full     an NFSv4 READ whose offset is not a
--                                  multiple of four bytes, when the
--                                  reply's head has no room for the
--                                  payload's XDR pad
-+                                  multiple of four bytes, when the XDR
-+                                  stream has left the reply's head or
-+                                  the head has no room for the payload's
-+                                  XDR pad
-       nfsd_read_dio_reply_full    an NFSv4 READ whose offset is a
-                                   multiple of four bytes, when its
-                                   payload and alignment pad would not
-                                   fit in the reply's pages
--      nfsd_read_dio_not_last_op   an NFSv4 READ that is not the last
--                                  operation of its COMPOUND
-+      nfsd_read_dio_not_last_op   an NFSv4 READ whose offset is not a
-+                                  multiple of four bytes and that is
-+                                  not the last operation of its
-+                                  COMPOUND
- 
-     This combination of trace events is useful for READs::
- 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 954bd32c7607..03ea955f1fe9 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1175,17 +1175,7 @@ nfsd4_read(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 
- 	read->rd_rqstp = rqstp;
- 	read->rd_fhp = &cstate->current_fh;
--	if (status)
--		return status;
--
--	/* Nothing is yet encoded behind a direct READ's payload */
--	read->rd_dio_ok = nfsd4_last_compound_op(rqstp);
--	if (!read->rd_dio_ok &&
--	    nfsd_read_io_mode(read->rd_fhp->fh_export) == NFSD_IO_DIRECT)
--		trace_nfsd_read_dio_not_last_op(rqstp, read->rd_fhp,
--						read->rd_offset, read->rd_length,
--						read->rd_nf->nf_dio_read_offset_align);
--	return nfs_ok;
-+	return status;
- }
- 
- 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 24e45e3364e0..a55cb8857a54 100644
+index a55cb8857a54..0b3d77bb9941 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -5355,8 +5355,10 @@ static bool nfsd4_direct_read_fits(struct nfsd4_compoundres *resp,
- 	pad = offset - round_down(offset, offset_align);
- 	if (pad & (XDR_UNIT - 1)) {
+@@ -6823,6 +6823,8 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 	unsigned int op_status_offset;
+ 	struct page **next_page;
+ 	nfsd4_enc encoder;
++	__be32 nfserr;
++	bool overflow;
+ 
+ 	/*
+ 	 * nfsd4_proc_compound() stops the COMPOUND early only
+@@ -6847,7 +6849,8 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 	BUG_ON(op->opnum >= ARRAY_SIZE(nfsd4_enc_ops) ||
+ 	       !nfsd4_enc_ops[op->opnum]);
+ 	encoder = nfsd4_enc_ops[op->opnum];
+-	op->status = encoder(resp, op->status, &op->u);
++	nfserr = op->status;
++	op->status = encoder(resp, nfserr, &op->u);
+ 	if (op->status)
+ 		trace_nfsd_compound_encode_err(rqstp, op->opnum, op->status);
+ 	xdr_commit_encode(xdr);
+@@ -6859,6 +6862,7 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 			space_needed = COMPOUND_ERR_SLACK_SPACE;
+ 		op->status = nfsd4_check_resp_size(resp, space_needed);
+ 	}
++	overflow = op->status != nfserr;
+ 	if (op->status == nfserr_resource && nfsd4_has_session(&resp->cstate)) {
+ 		struct nfsd4_slot *slot = resp->cstate.slot;
+ 
+@@ -6867,15 +6871,17 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 		else
+ 			op->status = nfserr_rep_too_big;
+ 	}
+-	if (op->status == nfserr_resource ||
+-	    op->status == nfserr_rep_too_big ||
+-	    op->status == nfserr_rep_too_big_to_cache) {
++	if (overflow &&
++	    (op->status == nfserr_resource ||
++	     op->status == nfserr_rep_too_big ||
++	     op->status == nfserr_rep_too_big_to_cache)) {
  		/*
--		 * The XDR pad goes in the tail, and moving the stream
--		 * there takes a word of room in the head.
-+		 * The XDR pad goes in the tail, and moving the stream there
-+		 * takes a word of room in the head. Like a splice read, this
-+		 * READ has to be the last operation: the stream cannot
-+		 * continue in the pages behind such a pad.
+-		 * The operation may have already been encoded or
+-		 * partially encoded.  No op returns anything additional
+-		 * in the case of one of these three errors, so we can
+-		 * just truncate back to after the status.  But it's a
+-		 * bug if we had to do this on a non-idempotent op:
++		 * The encoder ran out of reply space, so nothing past the
++		 * status word is valid. Truncate back to after the status. An
++		 * operation that returned one of these errors itself is not
++		 * truncated: its error form can carry a body (SETATTR's
++		 * bitmap) and is already encoded in full. Truncating a
++		 * non-idempotent op is a bug:
  		 */
- 		if (!nfsd4_pad_fits_in_head(xdr)) {
- 			trace_nfsd_read_dio_head_full(rqstp, read->rd_fhp,
-@@ -5364,6 +5366,12 @@ static bool nfsd4_direct_read_fits(struct nfsd4_compoundres *resp,
- 						      offset_align);
- 			return false;
- 		}
-+		if (!nfsd4_last_compound_op(rqstp)) {
-+			trace_nfsd_read_dio_not_last_op(rqstp, read->rd_fhp,
-+							offset, count,
-+							offset_align);
-+			return false;
-+		}
- 	} else {
- 		s64 space = (s64)nfsd4_reply_buflen_with_pad(rqstp, pad) -
- 			    rqstp->rq_res.len;
-@@ -5384,16 +5392,12 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
- {
- 	struct xdr_stream *xdr = resp->xdr;
- 	unsigned int starting_len = xdr->buf->len;
--	bool dio_ok = read->rd_dio_ok;
- 	__be32 zero = xdr_zero;
- 	__be32 nfserr;
- 
--	if (dio_ok && !nfsd4_direct_read_fits(resp, read, maxcount))
--		dio_ok = false;
--
- 	nfserr = nfsd_iter_read(resp->rqstp, read->rd_fhp, read->rd_nf,
- 				read->rd_offset, &maxcount, &read->rd_eof,
--				dio_ok);
-+				nfsd4_direct_read_fits(resp, read, maxcount));
- 	read->rd_length = maxcount;
- 	if (nfserr)
- 		return nfserr;
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index ba409a879cae..4e8d4b957158 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -301,7 +301,6 @@ struct nfsd4_read {
- 	u32			rd_length;          /* request */
- 	int			rd_vlen;
- 	struct nfsd_file	*rd_nf;
--	bool			rd_dio_ok;
- 
- 	struct svc_rqst		*rd_rqstp;          /* response */
- 	struct svc_fh		*rd_fhp;            /* response */
+ 		warn_on_nonidempotent_op(op);
+ 		xdr_truncate_encode(xdr, op_status_offset + XDR_UNIT);
 
 -- 
 2.56.0
