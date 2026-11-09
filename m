@@ -1,75 +1,60 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.111
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794223657;
-	b=spEtiLHs1vykCb7mu18k+fj5gS7BEkKaMdlKxXuZJw3m5VVuJjpOfkW4LAMFYy+Mly6E
-	 VZKQbyZF2edVcC2p8IWqFFLV1YOlSllKdKV/KNi86+yQ9vWNWc9G9wgPMVVGLrMpuOU3s
-	 g01geXp53SmaWi3iH5M0YLchwGkOSqRtXngI8Gy+F8sRhrqFmOTJr1/xm7/7x8/Zn/SS+
-	 T+y62K9SOKsPGV5pY8CNL3u2US196cooTgHmR6ypd+jSSRn/H5IN5QHvbvg4V3ubmStst
-	 PYejedaFY/tIGx9zQ5yBtUVV0s8UZkV9Lp0tO+as/awA/wK8fpPtrRtwfN7L4q+M7yQ==
+	t=1794224021;
+	b=bwtsA80xbV5yEGu0sBM48lHbECz1ljLKysyHqx9ceSYiH2qToXLqmdPoZ5uLW8IuhOop
+	 817KIu412llMeH/HsngyLlgABPO+MkJGyLCjaBj+DOPo3+d7WPGvzjuBOtkBvLbRMRRk3
+	 iE8qx5GBYW6mIoL8lu/9bHVQPk+bDO4S3apYZSygKTH8t3dpOCkQb656PQH4fQvd5jEmg
+	 hBMLqaWz5Tq81Uknednqqf20fZuZWjxVSP2jsQmZ1121Y46AuSLyQqaVX1fX/KPBRmg/0
+	 kLdAoWKlk7Ye2b8m0P7ce6u2rw3Sx4qX/OpDrFxUq+puPalLmshHjyg9K6fpK4lJUiw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794223657;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=GTe3rVqqBFubJwfvXPNDDRZX+sidHXepwnZzWomDy5A=;
-	b=NfU9kT2bZiORXw5zCXCda/QL8aJYOgH2BUdYtc79k8w+H+He5VhdNu9Cnf2/2IcxBuZu
-	 whoIpQKrD35eFow0FLSeMsppAHs7T/JowXmdaEvnahhYKBHCrBHaeXZYVCvXSKNKTWszk
-	 Bu8qi6oDSgI1VXT2Gz0/7R+qYdNY941e6XcKfGF8hCMO9ChGo+afDYbgil6zPxFQW8Ini
-	 zhqGLTzGo1Higv2QnpkZm+THa5sLuSQ314SC+lkWoKCvQA7uNE01oHPo+7+uf7W7pI2vb
-	 YaXO+uRyI3C57qCB2gf8wMWl5rPrj/0D0L6RxC02HaZZJotqm2D1dRWZD7LMkPwW/AA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794224021;
+	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:From:To:Cc:
+	 Subject:Date:Message-Id:X-Mailer:In-Reply-To:References:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=C/IN6KS61ksc0rGNEp6x77vvpUWHuUzbVSpcmOuc7/4=;
+	b=cNEb4p5/KmSkMy6/w7HM4da300XjEYWYf+JgADG4tiB0MyZwDlxI+rEd28CBTrgb86EC
+	 P7WX+vAakjX+/RzgOBbENTPxmuWYek1eF/h0Vuo/C0vBZ37AzPrfCTnrv/VGeMMZq/M6C
+	 hOHeGvBdtaOojNqeuCY8s+xTkAwwCZ+cwRRumg/mKXQIObgX3AYYUqGFAQ+Sf8Yll0nW1
+	 Ky5uVM+doKiMjhhWR0XGXGGPjGZlw4348EeUdGZ+F81F398262ok17nY4CYPlFVXgqCCd
+	 oIIehQGUIDRrGCT9Z5oPejqz82Ziw352ZzM/bMsKVdHinh23NBESz6ZMg9X+FGAp03A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iU5O51DC;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=linux.alibaba.com;
+	spf=pass smtp.mailfrom=linux.alibaba.com;
+	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=FoeZkdSx;
+	arc=none smtp.remote-ip=115.124.30.111
+Received: from out30-111.freemail.mail.aliyun.com (out30-111.freemail.mail.aliyun.com [115.124.30.111])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E54B7606A31C;
-	Mon,  9 Nov 2026 11:27:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 14FB2606A31C;
+	Mon,  9 Nov 2026 11:33:38 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 14FB2606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iU5O51DC
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 96EA41F0089F;
-	Mon,  9 Nov 2026 11:27:24 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794223656;
-	bh=GTe3rVqqBFubJwfvXPNDDRZX+sidHXepwnZzWomDy5A=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=iU5O51DC6zVVQKzDHuys9tIxjfbSOhYw8z0UcE86pb//wkXavh32S2N8S2PUurU2A
-	 o1E3RopKG7W94xtmWo25LA834OkIsoplK5Zc5sWRxNqoMBKXFQxzncUeAVAHVqzYUN
-	 x0xzl99BebTVjgItzYyFM18S+rvSgi3xMyTZJ/jJZ69X0Gf56Vq2vszIAP9EEsAUq5
-	 YP1A5SHoyPmQVAQUq/DaV61yYmuj4yVaaeC+HIcZMJhadQiWUxN4AW86j7fp4xdZK/
-	 SKtdAofdOgM6AVAC0cEZ3+8Z/6By8LpM/kvwzBv9E4RtCHAt3TdDxZIlKuxADBPb0I
-	 863RWmyUQ6DWA==
-Date: Mon, 9 Nov 2026 12:27:22 +0100
-From: Christian Brauner <brauner@kernel.org>
-To: Kees Cook <kees@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, 
-	Linus Torvalds <torvalds@linux-foundation.org>, Jann Horn <jannh@google.com>, Josef Bacik <josef@toxicpanda.com>, 
-	Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
-	Eric Dumazet <edumazet@kernel.org>, Thomas Gleixner <tglx@kernel.org>, 
-	Al Viro <viro@zeniv.linux.org.uk>, Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, 
-	Greg Kroah-Hartman <gregkh@suse.de>, Joel Granados <joel.granados@kernel.org>, 
-	Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, linux-kernel@vger.kernel.org, 
-	linux-nfs@vger.kernel.org, linux-acpi@vger.kernel.org, linux-kselftest@vger.kernel.org, 
-	linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, linux-um@lists.infradead.org, 
-	linux-wireless@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, netdev@vger.kernel.org, 
-	ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org, coreteam@netfilter.org, 
-	kexec@lists.infradead.org, linux-pci@vger.kernel.org, linux-sound@vger.kernel.org, 
-	netfilter-devel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
-	ibm-acpi-devel@lists.sourceforge.net, jfs-discussion@lists.sourceforge.net, 
-	linux-alpha@vger.kernel.org, linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org, 
-	linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org, 
-	linux-sh@vger.kernel.org, linux-usb@vger.kernel.org, samba-technical@lists.samba.org, 
-	sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org, 
-	linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net, 
-	Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
-	linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org, 
-	Chuck Lever <cel@kernel.org>
-Subject: Re: [PATCH RESEND v2 07/23] proc: let procfs own the seq_file of
- seq_file entries
-Message-ID: <20261109-atemberaubend-begabung-bedienen-85aade0f99b4@brauner>
-References: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
- <20261104-work-procfs-core-v2-7-76ace653a773@kernel.org>
- <8A21EE2A-F392-40B7-9152-CBC440FDDA70@kernel.org>
+	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=FoeZkdSx
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1794224015; h=From:To:Subject:Date:Message-Id:MIME-Version;
+	bh=C/IN6KS61ksc0rGNEp6x77vvpUWHuUzbVSpcmOuc7/4=;
+	b=FoeZkdSxuojiMi+sfjdVesGX1MNr25gzlNeATNT2W+2J5qdKy8/iUm0+A74P93/U/Bv0ylepkcNau9bmInyG4BphZa8qxu4kvAo7ijYhw94v6Vnk5qHIwMDjcQ6cjZqtNm2s+f5KDOd5AV7cgC2uzQF8hbzMrdU8wEi623f5fMQ=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R151e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045098064;MF=joseph.qi@linux.alibaba.com;NM=1;PH=DS;RN=6;SR=0;TI=SMTPD_---0XEO4pLh_1794224013;
+Received: from localhost(mailfrom:joseph.qi@linux.alibaba.com fp:SMTPD_---0XEO4pLh_1794224013 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Mon, 09 Nov 2026 19:33:33 +0800
+From: Joseph Qi <joseph.qi@linux.alibaba.com>
+To: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Joseph Qi <joseph.qi@linux.alibaba.com>,
+	stable@vger.kernel.org
+Subject: [PATCH v2] NFS: don't raise i_size for DEALLOCATE in _nfs42_proc_fallocate()
+Date: Mon,  9 Nov 2026 19:32:44 +0800
+Message-Id: <20261109113244.4136089-1-joseph.qi@linux.alibaba.com>
+X-Mailer: git-send-email 2.39.3
+In-Reply-To: <20261103061654.2036827-1-joseph.qi@linux.alibaba.com>
+References: <20261103061654.2036827-1-joseph.qi@linux.alibaba.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -79,37 +64,58 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <8A21EE2A-F392-40B7-9152-CBC440FDDA70@kernel.org>
+Content-Transfer-Encoding: 8bit
 
-On Sat, Nov 07, 2026 at 08:10:28AM -0800, Kees Cook wrote:
-> Please use the new style typed allocation calls for objects:
-> 
-> ops = kmalloc_obj(*ops);
-> 
-> (This happened to jump out at me, but please check the other patches for this pattern.)
+_nfs42_proc_fallocate() raises i_size to offset + len on success, so
+that the cached size is not left stale when a delegation blocks the
+post-op attribute refresh.  The helper is shared by all three
+fallocate modes, but DEALLOCATE always carries FALLOC_FL_KEEP_SIZE
+and never extends the file on the server, so punching a hole that
+reaches past EOF now wrongly enlarges the cached i_size.
 
-Done, there are 5 of them in total:
+The post-op update would normally restore the size from the returned
+attributes, but nfs_update_inode() applies a differing size only when
+no delegation is held, and then only when no write is in flight or the
+new size is larger:
 
-proc: resume readdir after the last name it returned
--		cursor = kmalloc(sizeof(*cursor), GFP_KERNEL_ACCOUNT);
-+		cursor = kmalloc_obj(*cursor, GFP_KERNEL_ACCOUNT);
+	if (new_isize != cur_isize && !have_delegation) {
+		if (!nfs_have_writebacks(inode) || new_isize > cur_isize)
+			i_size_write(inode, new_isize);
+	}
 
-proc: sysctl: resume readdir after the last name it returned
--		cursor = kmalloc(sizeof(*cursor), GFP_KERNEL_ACCOUNT);
-+		cursor = kmalloc_obj(*cursor, GFP_KERNEL_ACCOUNT);
+With a concurrent mmap writer (nrequests != 0) or any outstanding
+delegation, the shrinking server size is therefore ignored and the
+client keeps reporting a file larger than the server has, in violation
+of KEEP_SIZE, until some later revalidation without writebacks happens
+to fix it up.
 
-proc: keep the open files of an entry in an open node
--		dp->open = kzalloc(sizeof(*dp->open), GFP_KERNEL);
-+		dp->open = kzalloc_obj(*dp->open);
+Skip the i_size bump for the DEALLOCATE procedure.  ALLOCATE (mode 0)
+and ZERO_RANGE (which nfs42_fallocate() accepts only without
+FALLOC_FL_KEEP_SIZE) do extend the file when the range reaches past
+EOF, so they keep the update.
 
-proc: own the wait queue of an entry with a ->proc_poll()
--	on = kzalloc(sizeof(*on), GFP_KERNEL);
-+	on = kzalloc_obj(*on);
+Fixes: 35168eb947f2 ("NFS: fix eof updates after NFSv4.2 fallocate/zero-range")
+Cc: stable@vger.kernel.org
+Signed-off-by: Joseph Qi <joseph.qi@linux.alibaba.com>
+---
+ fs/nfs/nfs42proc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-proc: let procfs own the seq_file of seq_file entries
--	ops = kmalloc(sizeof(*ops), GFP_KERNEL);
-+	ops = kmalloc_obj(*ops);
-
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index ab86246fc364f..d76bface87f74 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -84,7 +84,9 @@ static int _nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
+ 		loff_t newsize = offset + len;
+ 
+ 		spin_lock(&inode->i_lock);
+-		if (newsize > i_size_read(inode))
++		/* DEALLOCATE implies KEEP_SIZE, so don't extend i_size */
++		if (msg->rpc_proc != &nfs4_procedures[NFSPROC4_CLNT_DEALLOCATE] &&
++		    newsize > i_size_read(inode))
+ 			i_size_write(inode, newsize);
+ 		nfs_set_cache_invalid(inode, NFS_INO_INVALID_BLOCKS);
+ 		if (nfs_should_remove_suid(inode))
 -- 
+2.39.3
+
