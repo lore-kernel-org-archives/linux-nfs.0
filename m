@@ -1,81 +1,80 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=77.238.36.76
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794237375;
-	b=uDvc7yHoni8OjAn+ICyzO1JCmVOXxY/bn96DiCV+/UsdKB8mfqzf9Hnf1ztWGiu5spWM
-	 3tawC4ztWDNEFLrgyHPOKojVaCo9Naiws1UUvVXa5SWOfIYIyLQDT08EHDVy8BJD+HZxi
-	 zkNQcm+i6+xb3sxyXP4wPJRkWgaz5cjd5J7sO6loSEl0B7u4Hi0TyoV1S+9s1RwFkimEY
-	 soODaB4Hu+ZNKnPw93wC7B9439DFnjBnp46bvvIpME5V+Bjl8Cn+F1TH5oCRK0eiaHlV+
-	 qWeoBezbQaWTC1pKElF/meg2JZ0SOuP52A7VaN9+skWWSekYroDOX5m4STMqMTzZHtA==
+	t=1794237679;
+	b=yOGL+FEoskmOsXy6/aBUrbS3ceO3/EDnMibNeuAHg4qD0dew5zmC91GkpkQyVAII1o/o
+	 wdOZmqbb5TkpAECf3AkvR7izlI00cJJ9IBxlEx0It8JyK2X5785stnlRsZ+0JKxNi0k4b
+	 czMDb6zuzMn8EBn8kaWQtN8C9HcqlGgFNSmS2ddFlzFmruj7Zjhrlqqcfpj9uELt1uokj
+	 9bXFp6V97dPxGv9XjfkDp4jtXptXE1XVJEJYxX28z7oH8FeVLrQNqKDU+JNUJ+EMqaDzv
+	 xZrWBNrqAvRtL48tehlAHP8yxEQ1gZ4eOEXmKzaY7sXMblRZWw/7d3a+6FQYWM08yGw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794237375;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=ILLwKIY1l8/2C2M3tEMK5/2Wk4x1T0msHL+198Sb7AA=;
-	b=vtByuf/G9fMJKnPGQwkxJ4yN0q7Y6uZChp88BqLNWRPoeA96YDoFFgL59MXSzy56Lpwn
-	 DJjmCZ1z+TEpDbzDSssGgf1Yk6LZngNcjEZc+QXFByaymivEXgKH7RxcXMBoeY3mLnZcP
-	 SUhTms/IBqsec9MsBe0RQrXVITffN3LnBy5SNstLE/M7M9Nt26GuPc/z7JtMOtof9MNMg
-	 siDrAn7RLrXGTu5xJcXdEeniH0js+NukDpqTDp3Ig+6TgSltExJXtPBhmE7Vn6CNI5LQU
-	 aoKo7W6gtVJaEQtL85bXynxHLhGAbvoiVCb1YJVDFNMhOo0bDpTwlxWE8G7yKVhbTPQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794237679;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Halon-ID:Received:Received:
+	 Received:From:To:Subject:Thread-Topic:Thread-Index:Date:Message-ID:
+	 Accept-Language:Content-Language:X-MS-Has-Attach:X-MS-TNEF-Correlator:
+	 x-originating-ip:Content-Type:Content-Transfer-Encoding:MIME-Version;
+	bh=7NyIN+kd6fL4g084z0NHE5PkANBPFmzRv1/2b5Yjdac=;
+	b=SwaFrTDSfYT9ccRmdtcB2aJmc6ZIDs7MvzaEsgiUnXi7h0R4yrxRd4DWAhCK5m3Q2r2p
+	 C6fxpvJ027iKIWHjbIrNilD0m0jE1ddr4vRhuWmtaP9IIhYfn26rX8ogRYH4k0byQYDku
+	 yutmYae5IJ8sOLr2CnFjNoEsf1nKCtDbRrAkEUOMw61s9OCKWKo+Tdy5UzuacUQ8f8cVh
+	 CeynX5pFESxx99e5plsKJ9l4LFye+5+J8+6pRwHa3VCOsJvpNBqCt/YLYSplqjcWET3x3
+	 fJA64ImlqiWQbihLPGmBH+nKhnIeMHjYZxouW66VXt2+ZiadTzJXARSoA2I86Gs//NA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DE7b8BP7;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=astro.su.se;
+	spf=pass smtp.mailfrom=astro.su.se;
+	dkim=pass header.d=astro.su.se header.i=@astro.su.se header.a=rsa-sha256 header.s=halonv1 header.b=XcPXlKS0;
+	arc=none smtp.remote-ip=77.238.36.76
+Received: from mail-prod-route11.it.su.se (mail-prod-route11.it.su.se [77.238.36.76])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id 6C7FB606A31C;
-	Mon,  9 Nov 2026 15:16:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 16F10606EE8F
+	for <linux-nfs@vger.kernel.org>; Mon,  9 Nov 2026 15:21:16 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 16F10606EE8F
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=astro.su.se
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=astro.su.se
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DE7b8BP7
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 5444D1F0089F;
-	Mon,  9 Nov 2026 15:16:14 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794237375;
-	bh=ILLwKIY1l8/2C2M3tEMK5/2Wk4x1T0msHL+198Sb7AA=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=DE7b8BP7Cij3P//t/Vui28Z7jAeD71euvurnOgD5m2eGnFpoJ8cX8Ct+Xn/n+h/Vr
-	 /vfXa0aZBFB80IYdROdppGXAgmseq3YTH7vkDkH9e6IzF24cUT45prMu20v30XQVa3
-	 bJ68sHIanl12vGG+3QWFuX9ngSrv3KDgBbbmSH2CCHNL45Dwx60FpbXNWdcJ4zBIxy
-	 GmHDKnbSG/R8/ZYHoGqE6PIk6ep1OdEFThID70rausnaalZsFsdr/JbqOkh1z2jcqs
-	 wk09RE9oz7EcbZFL8pDOaKfc50mzyvWQqqxmPdjeZwG/u8kOK23oyHmN12jmNg+VRx
-	 xpKODiRtpF+gg==
-Date: Mon, 9 Nov 2026 17:16:11 +0200
-From: Jarkko Sakkinen <jarkko@kernel.org>
-To: Sumit Garg <sumit.garg@kernel.org>
-Cc: David Howells <dhowells@redhat.com>, keyrings@vger.kernel.org,
-	linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org,
-	linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org, linux-s390@vger.kernel.org,
-	linux-security-module@vger.kernel.org, netdev@vger.kernel.org,
-	Alexander Gordeev <agordeev@linux.ibm.com>,
-	Anna Schumaker <anna@kernel.org>,
-	Bharath SM <bharathsm@microsoft.com>,
-	Christian Borntraeger <borntraeger@linux.ibm.com>,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Biggers <ebiggers@kernel.org>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Heiko Carstens <hca@linux.ibm.com>,
-	Jakub Kicinski <kuba@kernel.org>,
-	James Bottomley <James.Bottomley@hansenpartnership.com>,
-	James Morris <jmorris@namei.org>,
-	Marc Dionne <marc.dionne@auristor.com>,
-	Mimi Zohar <zohar@linux.ibm.com>,
-	Namjae Jeon <linkinjeon@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>, Paul Moore <paul@paul-moore.com>,
-	Paulo Alcantara <pc@manguebit.org>,
-	Ronnie Sahlberg <ronniesahlberg@gmail.com>,
-	"Serge E. Hallyn" <serge@hallyn.com>,
-	Shyam Prasad N <sprasad@microsoft.com>,
-	Simon Horman <horms@kernel.org>,
-	Sven Schnelle <svens@linux.ibm.com>, Tom Talpey <tom@talpey.com>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Vasily Gorbik <gor@linux.ibm.com>
-Subject: Re: [PATCH v5 07/12] KEYS: trusted: TEE: Disable sysfs bind
- attributes
-Message-ID: <avHju9kZBiNHhhTu@kernel.org>
-References: <20261108222719.304712-1-jarkko@kernel.org>
- <20261108222719.304712-8-jarkko@kernel.org>
- <avF19RckYZWu_3FD@sumit-xelite>
+	dkim=pass (2048-bit key, unprotected) header.d=astro.su.se header.i=@astro.su.se header.a=rsa-sha256 header.s=halonv1 header.b=XcPXlKS0
+Received: from mailfilter-ng-1.sunet.se (mailfilter-ng-1.sunet.se [192.36.171.207])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mail-prod-route11.it.su.se (Postfix) with ESMTPS id 4jNYQY1WQyz1q4
+	for <linux-nfs@vger.kernel.org>; Mon,  9 Nov 2026 16:21:09 +0100 (CET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=astro.su.se; s=halonv1;
+	h=mime-version:content-transfer-encoding:content-type:message-id:date:subject:
+	 to:from:from;
+	bh=7NyIN+kd6fL4g084z0NHE5PkANBPFmzRv1/2b5Yjdac=;
+	b=XcPXlKS0B7RG9Y8mmppHpL68TU3d4X5n8QOVSk0Xm6fdJi0QRn49EII7gJsABnynUEGwWGAxVZZ/i
+	 xVmU1aBTDcn15fNHKfg472B6AglGYqrWJ+p7PXzVbY7prVqCmbMFgE0xmksVYBJFq4Pzl4qUmaf0Li
+	 wI1gmPqW+TeCXCul3h3N4eKB3tIzlzQ3WQH8ocyeI80rhO1+bmF5Xubat9e1x9A7Mp8bceZY8Qzy5q
+	 f2GOk/dmE8uuxNdTzx6ngR0mppPWZ2deKEvFSLDHQEUKvdhijyMRaz0qWmJ9Gm+lKu16/cpaYbSKST
+	 Xo9naCH96VAKQzg0B2HrXF16tC7dL4Q==
+X-Halon-ID: 2ebcf670-dc51-11f1-aa92-0050569a42e2
+Received: from mail.su.se (ebox-prod-srv28.win.su.se [130.237.162.248])
+	by mailfilter-ng-1.sunet.se (Halon) with ESMTPS
+	id 2ebcf670-dc51-11f1-aa92-0050569a42e2;
+	Mon, 09 Nov 2026 15:21:05 +0000 (UTC)
+Received: from ebox-prod-srv24.win.su.se (130.237.162.54) by
+ ebox-prod-srv28.win.su.se (130.237.162.248) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.2562.56; Mon, 9 Nov 2026 16:21:05 +0100
+Received: from ebox-prod-srv24.win.su.se ([169.254.3.135]) by
+ ebox-prod-srv24.win.su.se ([169.254.3.135]) with mapi id 15.02.2562.056; Mon,
+ 9 Nov 2026 16:21:05 +0100
+From: Sergio Gelato <sergio.gelato@astro.su.se>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Documentation bug: instructions on how to report bugs
+Thread-Topic: Documentation bug: instructions on how to report bugs
+Thread-Index: AQHdcFp8K1jSUbRWyUmzb8QQnOYG+A==
+Date: Mon, 9 Nov 2026 15:21:05 +0000
+Message-ID: <3a7fbd2993f44ad8a0744b482ad3b006@astro.su.se>
+Accept-Language: en-SE, sv-SE, it-IT, en-US, en-IE, ja-JP
+Content-Language: aa
+X-MS-Has-Attach:
+X-MS-TNEF-Correlator:
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -85,26 +84,26 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <avF19RckYZWu_3FD@sumit-xelite>
 
-On Mon, Nov 09, 2026 at 12:57:49PM +0530, Sumit Garg wrote:
-> On Mon, 09 Nov 2026 at 00:27:13 +0200, Jarkko Sakkinen wrote:
-> > Suppress sysfs bind and unbind attributes on trusted_key_driver so that
-> > userspace cannot unbind the driver and unregister key_type_trusted while
-> > the trusted module remains loaded.
-> > 
-> > Signed-off-by: Jarkko Sakkinen <jarkko@kernel.org>
-> > ---
-> > security/keys/trusted-keys/trusted_tee.c | 3 ++-
-> > 1 file changed, 2 insertions(+), 1 deletion(-)
-> > 
-> 
-> Sounds reasonable to me, FWIW:
-> 
-> Reviewed-by: Sumit Garg <sumit.garg@oss.qualcomm.com>
+According to https://wiki.linux-nfs.org/wiki/index.php/Reporting_bugs this =
+list is the official place to report bugs about nfs-utils. The list address=
+ also appears as the value of the bug-report argument to AC_INIT in configu=
+re.ac; as far as I can tell that is only used in utils/mount/error.c.
 
-Thank you (for both).
+Various files in the nfs-utils distribution (I'm looking at version 3.1.1) =
+suggest different reporting channels. This can be confusing. Here is a poss=
+ibly incomplete list:
 
-Br, Jarkko
+support/nfsidmap/idmapd.conf.5:Report bugs to <nfsv4@linux-nfs.org>
+utils/idmapd/idmapd.man:.\"Please report any bugs to Marius Aamodt Eriksen
+utils/nfsstat/nfsstat.man: Further bugs can be found or reported at http://=
+nfs.sf.net/ [which has a dead link to http://www.spinics.net/lists/linux-nf=
+s/]
+tools/rpcdebug/rpcdebug.man: ditto
+
+The nfsdclnts(8) man page, on the other hand, looks OK.
+
+The README file in the distribution mentions the address of this list but d=
+oesn't mention bugs. The links in section 0 may also need updating; e.g., l=
+ibevent is now at https://libevent.org/ and the SourceForge page states "Ol=
+d home of linux NFS development; see linux-nfs.org instead now."=
