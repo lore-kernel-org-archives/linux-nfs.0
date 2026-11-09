@@ -1,69 +1,68 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=77.238.37.81
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794239206;
-	b=xrpoiGiv0w/WTzjnZRdQ8pWEOVm7NLUt2f8y2YjM2fyyiLUvMy8jTm0Dt0m9hhiEapyV
-	 +0RLTMizCHY/d84irrmR7jWSgtzu4EaPeT5kZIezCBHznordLpBYyKD9q7FzZkZg/nZ5E
-	 ZvLAw7Ccg1Pr4RNOh8XJFwNI/7SvZxt3lRnBedvdaMxAx/e3oMPpF0TDY8HSmKU99B287
-	 1b23bIruVtXJsLO5J5/UxSATslFiRZicHYxwyDmEMAZdOBedRu/NC+daSAyvdUGqGaksU
-	 NZnS3WbY2hWh3ySDXKie1RWoGhXe9d4SmaW8byTJZ2bBnAm0UpPNmazO/uHDBA2T82Q==
+	t=1794239521;
+	b=eQEaDW28IxQzaiIsLnCzc4h6TyUAVn84RdjFoYsqv9tTAowo5IIXwYMlqGC+kW5igsvr
+	 0kBCSLJMHbGudPKvJdGcpON+C6Y6t2t3PIpcqczSWKRXuqHx9oR9tCMKpt5FOUiKZ5I+C
+	 Mq4ur1PpKxr5tffK31ZHnpghWaMYcaemX6uw7ho8rKLqDdMf/wBvJdiN6TDsJfrIXJ2A4
+	 z3QqAdPIhtw444y99xIegZY7OkqAT1Z9g3d8CWS5QvlPCddpRah9mEH2yffsNN1yhBa17
+	 HZAo7rfM+yuvh+GPipXM6r/jEPCWP0OrZuQT4lCdU22ZoaYhvokPIn1EGfDiXAfHh8w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794239206;
-	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
-	 X-Mimecast-MFC-AGG-ID:Received:Received:From:To:Cc:Subject:Date:
-	 Message-ID:MIME-Version:Content-Transfer-Encoding:X-Scanned-By;
-	bh=9Y0vZkRlNckuDFsxSKp+K9KqcD52agRAgRMV3KSAYIA=;
-	b=ywve1IV75VSmDFWat/eQEx1r+sllUJEYLNnTBDqyMZ8UrXrdekHaRd/OuHhDjqEg6zs9
-	 xnSVAuePivKxg8XJRmNpS5Sqv9vYuvDWo8uFCSqxeZn6xUosdtIDIoAYq1Hzk9gvILJWZ
-	 kocaTzw8wanL1RhTIH7QUDjZRxF/2gPB3uOaeIHKAqnJZimfN9hJ8ZxDoCjpvFDYzVLKn
-	 da0xUjgczfEE2d1TTOtkPWkUJdYyJri8i7Ch5Kk8YT24WYJL66FXOxdh1t70WfGtUAoPs
-	 ZFA5pCfQLQuw7wRo1oLIxJhZcNpsLo/Rez2bniIDWFcES8QPNrgy+zJ4ESfXnJL3e6g==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794239521;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Halon-ID:Received:Received:
+	 Date:From:To:Subject:Message-ID:MIME-Version:Content-Type:
+	 Content-Disposition:X-Originating-IP:X-ClientProxiedBy;
+	bh=o6GgudDXCYl3fDfEQ1wQIjy1JvU5vBBqHW4cXH9t1i4=;
+	b=lx4zc07Z/PnQyZnx6UK/idNeY+csLFwWsV2Ec6SWG5SPErWxBM5DHcACeJEXMy30x+yS
+	 x+tSWapLKNuTSJx+/NHFVNuipGOJmjBYycqnd+x9preSPuFYnKAqoCBd7EEnWh9550KLM
+	 nV3lyZD7QUEY8Tl/Dqiq/Wu0824V+3iZy31LiQ8yVcuzXzG84LnE2MCCsfe+uEorMp/iU
+	 GMZmKLLogHpg3fYqGUQNsLVABiUUA25hWZErYCSyJ4sDcMES7w1ud/aKbcDIEHMlhb2q+
+	 Mw1m1/oM/eooU6WyOeGexcjcfU4dr28vy/KlGmLLj/A1ez0dFmORL1h5PokUeF7RF8Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=redhat.com;
-	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=VoR10VEK;
-	arc=none smtp.remote-ip=170.10.129.124
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	dmarc=pass header.from=astro.su.se;
+	spf=pass smtp.mailfrom=astro.su.se;
+	dkim=pass header.d=astro.su.se header.i=@astro.su.se header.a=rsa-sha256 header.s=halonv1 header.b=mWHkFFlS;
+	arc=none smtp.remote-ip=77.238.37.81
+Received: from mail-prod-route12.it.su.se (mail-prod-route12.it.su.se [77.238.37.81])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EE340606A325
-	for <linux-nfs@vger.kernel.org>; Mon,  9 Nov 2026 15:46:45 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org EE340606A325
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BEAA4606A31C
+	for <linux-nfs@vger.kernel.org>; Mon,  9 Nov 2026 15:51:59 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org BEAA4606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=astro.su.se
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=astro.su.se
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=VoR10VEK
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1794239205;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=9Y0vZkRlNckuDFsxSKp+K9KqcD52agRAgRMV3KSAYIA=;
-	b=VoR10VEKoXa09QGXR9Mc+rlvRS+b1ZRrTvVa5NuX3mdEJwM81YGLz+j4Keq/Udx7Fz2KOS
-	B6Pm8Yj22924qp3MWfIxHc5r4cW+IaSTiMCQn2lAJnrWRObYNGpb0Mo8VG2NvCU60D496x
-	B+JMfErBiUGBg2PTBnUJqmcJQ9PzX+Q=
-Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-219-NcBLLbY_MTKGj4sW8fl6cA-1; Mon,
- 09 Nov 2026 10:46:43 -0500
-X-MC-Unique: NcBLLbY_MTKGj4sW8fl6cA-1
-X-Mimecast-MFC-AGG-ID: NcBLLbY_MTKGj4sW8fl6cA_1794239202
-Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
+	dkim=pass (2048-bit key) header.d=astro.su.se header.i=@astro.su.se header.a=rsa-sha256 header.s=halonv1 header.b=mWHkFFlS
+Received: from mailfilter-ng-1.sunet.se (mailfilter-ng-1.sunet.se [192.36.171.207])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 887F11800550
-	for <linux-nfs@vger.kernel.org>; Mon,  9 Nov 2026 15:46:42 +0000 (UTC)
-Received: from okorniev-mac.redhat.com (unknown [10.22.80.36])
-	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id EAE6A30000E5;
-	Mon,  9 Nov 2026 15:46:41 +0000 (UTC)
-From: Olga Kornievskaia <okorniev@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/1] libtirpc: add missing boundary restriction to xdr_rpc_gss_unwrap_data
-Date: Mon,  9 Nov 2026 10:46:41 -0500
-Message-ID: <20261109154641.55252-1-okorniev@redhat.com>
+	by mail-prod-route12.it.su.se (Postfix) with ESMTPS id 4jNZ5z3T47z1cS
+	for <linux-nfs@vger.kernel.org>; Mon,  9 Nov 2026 16:51:51 +0100 (CET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=astro.su.se; s=halonv1;
+	h=content-type:mime-version:message-id:subject:to:from:date:from;
+	bh=o6GgudDXCYl3fDfEQ1wQIjy1JvU5vBBqHW4cXH9t1i4=;
+	b=mWHkFFlSAhBiIbxd+AQAnALui/WKKoeLR7Avbt54SAYi9YV+OLDDM7rLK21AMs31aUXeviH15t3wb
+	 euCEnPP5k49GHCvAo/pOhbLcNn7Y+NgTfvY/Xh472PWpuB6q/5EikGqnNzJOdrBhNNbjUOAfhHp6Om
+	 CO2jZsP7JpdO8oC1alhLFDreVyYjxAV0TxIuHkHyrjeP/w8wXwNV3ZKLUhdFdfcp89VLm3OztzgyN3
+	 skd3ShDJKfz1oLT+0x7wKSyvRIsFT6TXoW9MKKMTpoTNF03Ugxsr3e1Gsdum2OHAJX74zn/YlPTl6z
+	 e7mGYONys9huUIpZRlOVkf0XY5+q1Eg==
+X-Halon-ID: 7a6cfaf5-dc55-11f1-aa92-0050569a42e2
+Received: from mail.su.se (ebox-prod-srv24.win.su.se [130.237.162.54])
+	by mailfilter-ng-1.sunet.se (Halon) with ESMTPS
+	id 7a6cfaf5-dc55-11f1-aa92-0050569a42e2;
+	Mon, 09 Nov 2026 15:51:50 +0000 (UTC)
+Received: from as-2866.astro.su.se (130.237.200.210) by
+ ebox-prod-srv24.win.su.se (130.237.162.54) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.2562.56; Mon, 9 Nov 2026 16:51:50 +0100
+Date: Mon, 9 Nov 2026 16:51:41 +0100
+From: <Sergio.Gelato@astro.su.se>
+To: <linux-nfs@vger.kernel.org>
+Subject: idmapd uses [Static] lookups for group names, contrary to the
+ documentation
+Message-ID: <avHsDTif7HkPWrKj@as-2866.astro.su.se>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -73,30 +72,27 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
+Content-Type: text/plain; charset="us-ascii"
+Content-Disposition: inline
+X-ClientProxiedBy: ebox-prod-srv28.win.su.se (130.237.162.248) To
+ ebox-prod-srv24.win.su.se (130.237.162.54)
 
-Add a boundary restriction to the xdr_rpc_gss_buf() call for the RPCSEC_GSS_SVC_PRIVACY case.
+According to the idmapd.conf(5) man page, the [Static] section consists of principal to username mappings.
 
-Fixes: 65d27459fe56 ("libtirpc: Bound maxsize in xdr_rpc_gss_unwrap_data() decode calls"
-Signed-off-by: Olga Kornievskaia <okorniev@redhat.com>
----
- src/authgss_prot.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+In reality, support/nfsidmap/static.c performs lookups both in static_getpwnam() (as documented) and in static_getgrnam() (undocumented as far as I can tell, and problematic since there is currently no way to distinguish between principal-to-username and principal-to-group mappings in the configuration file).
 
-diff --git a/src/authgss_prot.c b/src/authgss_prot.c
-index c7de1fd..620b294 100644
---- a/src/authgss_prot.c
-+++ b/src/authgss_prot.c
-@@ -254,7 +254,7 @@ xdr_rpc_gss_unwrap_data(XDR *xdrs, xdrproc_t xdr_func, caddr_t xdr_ptr,
- 	}
- 	else if (svc == RPCSEC_GSS_SVC_PRIVACY) {
- 		/* Decode databody_priv. */
--		if (!xdr_rpc_gss_buf(xdrs, &wrapbuf, (u_int)-1)) {
-+		if (!xdr_rpc_gss_buf(xdrs, &wrapbuf, RPCSEC_GSS_MAX_UNWRAP)) {
- 			LIBTIRPC_DEBUG(1, ("xdr_rpc_gss_unwrap_data: decode databody_priv failed"));
- 			return (FALSE);
- 		}
--- 
-2.52.0
+Seen in source code in version 3.1.1 of nfs-utils (and observed in
+production using version 2.6.2). The symptom is spurious log messages
+of the form
 
+nfsidmap[PID]: static_getgrnam: local group 'USER' for 'PRINCIPAL' not found
+
+where the [Static] section in /etc/idmapd.conf contains a mapping of the
+form PRINCIPAL = USER but there is no local group named USER. This is
+relatively benign, but what about the case where there is a group named
+USER but it is not appopriate for PRINCIPAL?
+
+My preference would be to remove the lookup from static_getgrnam().
+Otherwise one may need new syntax in the configuration file, perhaps
+PRINCIPAL = USER:GROUP
+and additional parsing logic to go with it.
