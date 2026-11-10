@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794302411;
-	b=gRhd+L/0kpcOtABgnt2TM6dP8AhGqQt+NmKwlnYcfG0BG+UrJK6c2Szsiklfl8e5cEE+
-	 FlFC2bM9amI5z5OxNBtnCx0xnObJPS8JUJHdafdqMR1gj8YPNu8pq8a2HPrQ0HanQDYC3
-	 yFJQMDUD4SrVlza8y9q0u9y9aJGI6EU9hitvxtm+jCWI0/eWjuukVhT62AlsKuPhTkPNA
-	 dbyqVT4BnHJygq05KBWHkz2FjG0fpO5NIX5KAuadlzmlQ8dmss3rs/BQyiAzxWcoLZ6j/
-	 zLCd+iriti4i59EPgAxN5kjZZkwzaO9J0KZQ/GsEb1sFtZuOb1pdezlsopCiDYbQ2TQ==
+	t=1794302425;
+	b=XJv75ARIlNdgk0M2nJtnvqtYw6+h/2qRS/vV9B8PcHqO5ob0eRfIgFjcHdOJ40pi6Sgu
+	 su7oYsRP8cTwaSO/ZvVraJYrMQWSYsqqDtaPXJ4t5daL+PFK7FnBMjI8uLLJLyziO0prl
+	 yXzcvXlMH6P1+BtTycVWP4OwtaBGxJ8GxGfj7UXIk8a18q0vkieu95jVZJotkdfsiKVAB
+	 hcIRR+U0pbcWhmFNhMoZp5eFyt0F5N0jkGLE8nxuP3wistfmt7Al6KzqT0w2W2DcUmIbK
+	 YRejg7HE/u8ir8DtxHobeZMt8yr6wFghlynemb5S2cReRIKv4oPKwQFAsKF+lkdM54g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794302411;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794302425;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=wvcrRKkVitwBIHc8bsc86Ap1TkghVmPhKT6D7YPBbwY=;
-	b=micBf6BzPCTfrdTIuI5m5QfLqV2O7AkAdg5WO2sSBZTTqyYKuoUxb1uEJHyGbXX3vzql
-	 K3YgEFs1Dq25y/qAkMtggPxy+RhOodLntj2SuVQOVNDsUccUvCJ78F877TsRDpq5Y46Ev
-	 wBCsmQ8ZJ0KO2JMg/s6HMWSMSLPS6s8s1xfLbv6EKWFTI1QSuG6wzO9wfYiXsS+GBDP91
-	 WeiC/Hsf+0Z4WmYgE2B/uVDEjTSsNCjD20ucH3+1DhlovXQDVjB3bFT91WMCdqYqM1OF9
-	 VwW88kS2UIKa/LA0fueHlIs+nTLnFhsWNJLk2parNT8bZKY2wTmNc49TnBEsvAitcWQ==
+	bh=5v6oTkZQz6qlfBhdJSuXnvnO8rYqx/rzC+7+Nl5/OGM=;
+	b=iD08AoSh0gQECC1jh9zW9fpnu19dtOX9V4wVeEXGCUSP4M4KOU8/4veQC3dVeDheeIsv
+	 vEBdcqaTziZBI8BaXFq/IyKsX50H/wqjG7j15sN/joUkwTx9ZmlwQ1gdP+LxmGAgTUJ+Y
+	 mwFaQa/jhnfdWmEEnzfAI1gSvqhcUb3yodGApQtex3jSUZsnLgj4D7EL0tWo2PDtNgJaW
+	 5sfd2U1dAPtEcqjMVwHrWinI0rMtunSVKFE9TiPv5hQ0KO9dJpRqxcUhqBr6yClLcA2Ah
+	 HepyCzCE1vmVOzFAnlljfHj/3qalIOJVJXzgOyUr672hZl+R1ApK2hEei4luKhKMGWQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lugfFYds;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=eIJ0bZ6Y;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4F1D6607C095;
-	Tue, 10 Nov 2026 09:20:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1124D606DABA;
+	Tue, 10 Nov 2026 09:20:24 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lugfFYds
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 61E501F008A1;
-	Tue, 10 Nov 2026 09:20:04 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=eIJ0bZ6Y
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 515E81F0089F;
+	Tue, 10 Nov 2026 09:20:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794302410;
-	bh=wvcrRKkVitwBIHc8bsc86Ap1TkghVmPhKT6D7YPBbwY=;
+	s=k20260515; t=1794302424;
+	bh=5v6oTkZQz6qlfBhdJSuXnvnO8rYqx/rzC+7+Nl5/OGM=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=lugfFYdsp+5acpRZ62DrLNSRpPTqwD6ALObkR4htZDZ7jJ4CwxnL+J31LlzQBLdHg
-	 S3Q6wKQ8rLKVDvOjaO/7i9LdpOAAGQkJVKTTZnDkbfMZ0mXM3yVItsw5AH/x4JgMCS
-	 r17kh6jTusP0FcEnEBzFzqzJtQ746vPtMKO+E1iLTHLZ7PgzOBIB9SrMppxD4aMf6g
-	 ++c6vcWP0wgZ4rHVjr+6Av5KOdeAceVogEGD1LonYdJsm5MlecXYdFkPg3OEFOR0DA
-	 l4vCIncvJpwPXykOZGsC4m66wbdnnjiMUoL8mSoluVAzhYGK1Oc9EGsTAAgpOcHIVj
-	 fpmwuommLUy7A==
+	b=eIJ0bZ6YykzyfYaq0uQnsLuPNj+m0vg4MOIRUUV7WyIHrzOWlMn5BpzKyvQO1xQnK
+	 lIgHxLYXr0xM6gXAPduca8fCpGnrbXmRu3n7sX++lmrPokRdnMxOQCvAaieuNDey1/
+	 rDMY2lnbcyTg88AQ5EnW+l0uOlH6KcCfGavMFZPvkrzrCwVDMo4o1H9usL4RbMeid9
+	 8ju7v6AtrNpyzqVV8uy5DYhL2Vr+eLE/ymRsWc8pcaS97R4A8Z95dfIgLeSJCXVpWi
+	 mDeT0clD8WfcFmQfLKdl3Rcurbo/W+eyqIPzNmzhefzjE4bnqF8y5kxjx80v9c4Gko
+	 v/as+SN9c7AFA==
 From: Christian Brauner <brauner@kernel.org>
-Date: Tue, 10 Nov 2026 10:14:53 +0100
-Subject: [PATCH RFC 37/41] target: fileio: refuse files on pseudo
- filesystems as backing files
+Date: Tue, 10 Nov 2026 10:14:55 +0100
+Subject: [PATCH RFC 39/41] usb: gadget: f_mass_storage: refuse files on
+ pseudo filesystems
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-work-loop-pseudo-v1-37-4c998976c6c7@kernel.org>
+Message-Id: <20261110-work-loop-pseudo-v1-39-4c998976c6c7@kernel.org>
 References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org>
 In-Reply-To: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -76,43 +76,43 @@ Cc: Jann Horn <jannh@google.com>, Chris Mason <mason@kernel.org>,
  linux-kselftest@vger.kernel.org, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=995; i=brauner@kernel.org;
- h=from:subject:message-id; bh=BDYGZBkzpJOf0luK2Iqx3jSxHLpIeW6e4aOnDtryI1I=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9erDf6mtMEqNwmyJbTeSGX/PXP05KecQy9ejD6kOb9
- /3cf9Hkd0cpC4MYF4OsmCKLQ7tJuNxynorNRpkaMHNYmUCGMHBxCsBETl9m+F99+X7Ky605zSv7
- GErvWk1zaPix/Pxk04Q9+p1/0oTy/pgx/JXbprm34uPtr4v2Ll0y0cL+SOu1/dVOakafmv0qqj/
- fj+YCAA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1124; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=5CZmEVUvUM8phb7GCUC0PbdIONUtutPPh5jN88b8MUg=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9enDwpOymfbk/lix9c8OUO8H7nMDJjqNuYfXt8RN5b
+ SZ7VM/p6yhlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZhIsgXDP81qmQUMxt7JIhtj
+ H769H+D76yOfp7vrv8Uv+XNqFL+3cjL8szGK7szT6zNcPi0pgC3zv/C19XHNGld3L/vwMHyKxLW
+ bjAA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-fd_dev_name can name any file including files on procfs or sysfs. The
-initiator then gets to read and write kernel interfaces through the LUN
-with kernel credentials. Refuse files on pseudo filesystems just like
-loop does.
+fsg_lun_open() takes any regular file as the backing file of a LUN. The
+file-storage kthread then reads and writes it with kernel_read() and
+kernel_write() on behalf of the USB host. With a procfs or sysfs file
+behind a LUN the host gets to read and write kernel interfaces with
+kernel credentials. Refuse files on pseudo filesystems just like loop
+does.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/target/target_core_file.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ drivers/usb/gadget/function/storage_common.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/drivers/target/target_core_file.c b/drivers/target/target_core_file.c
-index a5391e57e9aa..7a3cf63dc979 100644
---- a/drivers/target/target_core_file.c
-+++ b/drivers/target/target_core_file.c
-@@ -152,6 +152,13 @@ static int fd_configure_device(struct se_device *dev)
- 		goto fail;
+diff --git a/drivers/usb/gadget/function/storage_common.c b/drivers/usb/gadget/function/storage_common.c
+index 75831f2c7abe..83683ade20c2 100644
+--- a/drivers/usb/gadget/function/storage_common.c
++++ b/drivers/usb/gadget/function/storage_common.c
+@@ -211,6 +211,11 @@ int fsg_lun_open(struct fsg_lun *curlun, const char *filename)
+ 		goto out;
  	}
  
-+	if (file_is_pseudo(file)) {
-+		pr_err("FILEIO: %s is on a pseudo filesystem\n",
-+		       fd_dev->fd_dev_name);
-+		ret = -EINVAL;
-+		goto fail;
++	if (file_is_pseudo(filp)) {
++		LINFO(curlun, "file on a pseudo filesystem: %s\n", filename);
++		goto out;
 +	}
 +
  	/*
- 	 * If using a block backend with this struct file, we extract
- 	 * fd_dev->fd_[block,dev]_size from struct block_device.
+ 	 * If we can't read the file, it's no good.
+ 	 * If we can't write the file, use it read-only.
 
 -- 
 2.53.0
