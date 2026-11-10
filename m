@@ -1,56 +1,58 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794312392;
-	b=fw/B76vqM3O0Js3E5bWMG3qvH6Rn+Z0U2mKPr2ArPL2MyzHCA1wY/jrHygJF/H+i3yM9
-	 tXOzTrZ7RI6nz3uyL4D9eGYxoRPoBxSDaOfINvKvSNhVvyuXaIStyr/vYWRA15sNtqS8E
-	 L4HYNyCZrHpjBaAgo/1ZgxLLG5ZS4GabZrEFCNRQH8Dr2jaSddTgnJ1yMlGbHif9KC+hL
-	 2QA1joD0CRKOlkg2tpLvSWA0Avrs72is8HqojUNOy4v4EKm+ENJYMX8qXOHHDMTDVrBwe
-	 7trHkCH4bgefbDuHP2bqmCfG2T7zXaiZRviMP9zaz7QacVq8v58DHIqQzOCWQVuZ1bA==
+	t=1794313309;
+	b=Kr0xTTF1Ser7+qJ0grePrtRBT2u5Y9M58rhp9IE11cN+14Z/R8z3SLDxvgn53bQJ+2Ih
+	 56ib1L+orcPeUcHeHRyGqz7APODeivtBVzUuAYQ4iaVQn7p0HVJxc5xiTMygeYWy9zB3b
+	 G0FdDE44jLLsZiFyr6E+3sXY7MMwlfbBcRMnoM2bkvwbVvA8DMRaqInH3mtbC/hrLYinl
+	 FOeQGZ/H9gHNd2ljVIauj7UFGptWyxi2o2dO0b6qn61RHi2YLSVKFVkThoSI4Wb+7K4Zn
+	 gMKeTWMl03YsRuAWBDnAQDAqDmMDFajU54/mcnJCuq+I2WazpdbirindEe3hI/LI5+Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794312392;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794313309;
 	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
 	 In-Reply-To:References:Autocrypt:Content-Type:
 	 Content-Transfer-Encoding:User-Agent:MIME-Version;
-	bh=Us9kQMAOmFE/+VvAfGAo/hQiWABPWeXHg2J2cVMK8vU=;
-	b=zZZdvkExVfvkifcrOmAbjOFpIIiJD8HUJrMHPnmJgMAgvNg0h3mFMmQ1+asR9PEZQCB/
-	 NW7fVAJbgRUCVVjI2T+3z/CmHf1y1HN9RCQvO2kdyK3lxvQ36U0k/+2Sv1rf5SnXlubdz
-	 SaQGzrg9NGNGuRDURiRJFhsR4kupzn3J+DaxKEV5yRbit86WtZ4Ra1cUsD75cI+5yVftv
-	 XpVZrAj8DfpXaJPJJujQEo/tONEvNntGizgHrIeH5N5F3U6W3EppbopmmHV5sEmI6Z17B
-	 BatrtYyDzO3v9rPcLBXg0vIZTsXiwPFOPkscdPtgHJcB+xCjJaE/Me5+elgaN5NRm5A==
+	bh=ILicECQ9zANN0An0v45y04zpUrUGB3SIAyGWP6qA6Mk=;
+	b=k0SjAaGlcPArmfF3y4oxi9cVEf78Xi6gFVVsenQ3i5oY2KSdIOHoUP8oqiN5bQc6+XNx
+	 1DEVZlfit+DH6hDYpvBq3PF6cAXTnnSfrdKddQTwcwokYivua5bVA3Ro7YxAbmTJcVZWz
+	 bD+78FXCJvPplCZOn0ll2QlxfdAjfF4LquminsKzi17/SlTgyW3wtgGqn90Nx6/pi72OH
+	 iWq524nLUEpwlVsQbXqGyFxU+qfEuW2k26e9RaCKNlOexDosGgXQNoQM/btCEIC4QX9FN
+	 JSnEL6cHdIOOUKjPa3mkWCCqXh4h16m8UphmhWqrIWRHy1SliZUQYN2QC6AHxlfjEJA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DFggj4++;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iZr+C+Hs;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 11E96606A31C;
-	Tue, 10 Nov 2026 12:06:31 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C2100606A325;
+	Tue, 10 Nov 2026 12:21:48 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DFggj4++
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E76231F0089F;
-	Tue, 10 Nov 2026 12:06:30 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iZr+C+Hs
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5F6FF1F0089F;
+	Tue, 10 Nov 2026 12:21:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794312391;
-	bh=Us9kQMAOmFE/+VvAfGAo/hQiWABPWeXHg2J2cVMK8vU=;
+	s=k20260515; t=1794313308;
+	bh=ILicECQ9zANN0An0v45y04zpUrUGB3SIAyGWP6qA6Mk=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=DFggj4++STuthaBISEHPAIMD6jFXpnAW00xcRPWV58fjEjWysD4OInNEzT5WCzUZ2
-	 ypHMB4Da7gkl8ky52mpkGoJSdG+mjQK2exfoBdAkqPcaBPJL+zoOsKp18/tsB9HabY
-	 UVXhsGPUdJq/f0TTo2gHP5bpcUDC0plFRzKkeILQ7xd2b2JXj+jfnGO6DFB9eXxqo7
-	 gw4O3/Feu6CP+wQE5iMOu0MHFtccC3qCXiQ6mhSipjhwwPciHtnzwZs70fAmVclDfk
-	 CF2O++kWskWVpEg62Q3VcO0pPc+u3Lj3bLEKsDhP/lPXDRQNZbTNe2t05lc9VF+nRc
-	 r0xnRaFqISW/w==
-Message-ID: <275cd7c9ce7b078b20a10ae247a6a4dc3ac56ad5.camel@kernel.org>
-Subject: Re: [PATCH] nfsd: don't block on a file lease while holding the
- parent lock
+	b=iZr+C+HsLndylzAK8sgjQuWsi/PR3RQXROFqUQiFg5KTC44IY3y+shcxYEyN/CmBv
+	 8+HpWHWQPp3D+LXt5m+jJSUr8KojIMpLXvBr2lQY5uzRPK+j5tMg5m1n1aX4EZoLre
+	 wIRyu49/SvrDmD8mVii/VevwGyYQtlSPmEhldHRFC2rJrqPzDRyTfAzW/X1PO1mfhe
+	 8hyLc6An2niCYDhDNH4zvJdl0NGM+E6CDmYNAISIGKytwZYKqs73+YY80GuK61RP2M
+	 upO+8J8ac1J3CJMskvB2cQYX8g9KLwrRLNB39VH/6sCv3fbK0hmcTjEvbciZszPwR/
+	 v2Xo9XCLmKA0w==
+Message-ID: <991d7a98e92d0a28f5b750b0a04226ea1d3f938a.camel@kernel.org>
+Subject: Re: [PATCH] SUNRPC: Load the GSS module by OID only when the
+ mechanism is missing
 From: Jeff Layton <jlayton@kernel.org>
-To: Zhan Xusheng <zhanxusheng1024@gmail.com>, cel@kernel.org
-Cc: neil@brown.name, okorniev@redhat.com, Dai.Ngo@oracle.com,
- tom@talpey.com, 	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
- zhanxusheng@xiaomi.com
-Date: Tue, 10 Nov 2026 07:06:20 -0500
-In-Reply-To: <20261110080038.232210-1-zhanxusheng1024@gmail.com>
-References: <20261110080038.232210-1-zhanxusheng1024@gmail.com>
+To: Sasha Levin <sashal@kernel.org>, Chuck Lever <cel@kernel.org>, Trond
+ Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
+Cc: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+ linux-nfs@vger.kernel.org, 	netdev@vger.kernel.org,
+ linux-kernel@vger.kernel.org, "kernelci.org bot"	 <bot@kernelci.org>
+Date: Tue, 10 Nov 2026 07:21:36 -0500
+In-Reply-To: <20261110030947.179738-1-sashal@kernel.org>
+References: <20261110030947.179738-1-sashal@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -138,65 +140,78 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 
-On Tue, 2026-11-10 at 16:00 +0800, Zhan Xusheng wrote:
-> From: Zhan Xusheng <zhanxusheng@xiaomi.com>
+On Mon, 2026-11-09 at 22:09 -0500, Sasha Levin wrote:
+> gss_mech_get_by_OID() calls request_module() before it looks at the
+> list of registered mechanisms, so every lookup forks a modprobe, even
+> when the mechanism is already registered or built in.
+> gss_mech_get_by_name() and gss_mech_get_by_pseudoflavor() only load
+> the module when the lookup fails.
 >=20
-> Since commit 2a60db3525d4 ("nfsd: (almost) always open file in
-> nfsd4_create_file()"), an NFSv4 OPEN with create that finds an
-> existing file opens it with dentry_open() while start_creating()
-> still holds the parent directory lock. The open flags lack
-> O_NONBLOCK, so break_lease() in do_dentry_open() blocks. Before that
-> commit the file was opened later by __nfsd_open(), which breaks
-> leases with O_NONBLOCK, and the client retried on NFS4ERR_DELAY.
+> The read handler of /proc/net/rpc/gss_krb5_enctypes uses this lookup,
+> so every read() of that file runs modprobe, two per cat. The file is
+> present in every /proc/<pid>/net/rpc and /proc/<pid>/task/<tid>/net/rpc
+> directory, and LTP read_all gives each read one second. On a slow board
+> in KernelCI its workers stall on this file and the test times out.
 >=20
-> A lease on the file now stalls an nfsd thread for up to
-> lease-break-time with the directory locked, and other creates,
-> unlinks and renames in that directory wait for it.
+> Look up the mechanism first and call request_module() only when it is
+> not found, as the other two lookup functions do.
 >=20
-> To reproduce, set fs.lease-break-time=3D15, take F_SETLEASE F_WRLCK on
-> /srv/g from a local process and keep it, and run "echo x >> /mnt/g"
-> on an NFSv4.2 mount of /srv from localhost. The nfsd thread blocks
-> in break_lease() for 15s, and "touch /srv/other" on the server takes
-> 13s.
->=20
-> Pass O_NONBLOCK so that break_lease() returns -EWOULDBLOCK and the
-> client gets NFS4ERR_DELAY again.
->=20
-> Fixes: 2a60db3525d4 ("nfsd: (almost) always open file in nfsd4_create_fil=
-e()")
-> Signed-off-by: Zhan Xusheng <zhanxusheng@xiaomi.com>
+> Reported-by: kernelci.org bot <bot@kernelci.org>
+> Closes: https://d.kernelci.org/test/maestro:6af225865b429d354e253b9b
+> Fixes: f783288f0cf4 ("SUNRPC: Load GSS kernel module by OID")
+> Signed-off-by: Sasha Levin <sashal@kernel.org>
 > ---
-> With this patch the same test hits break_lease_noblock and the touch
-> takes 20-30ms (QEMU guest, f66469d9905b).
+>  net/sunrpc/auth_gss/gss_mech_switch.c | 23 +++++++++++++++++------
+>  1 file changed, 17 insertions(+), 6 deletions(-)
 >=20
-> NeilBrown's "nfsd: switch NFS4 OPEN to use vfs_lookup_open()" (v2
-> 12/14) makes the same change; that series is not merged.
->=20
->  fs/nfsd/nfs4proc.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
->=20
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 3a82af381a8d..e95258b44c72 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -312,7 +312,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_=
-fh *fhp,
->  		.na_iattr	=3D iap,
->  		.na_seclabel	=3D &open->op_label,
->  	};
-> -	int oflags =3D O_CREAT | O_LARGEFILE;
-> +	int oflags =3D O_CREAT | O_LARGEFILE | O_NONBLOCK;
->  	struct dentry *child =3D ERR_PTR(-EINVAL);
->  	struct path parent =3D {
->  		.mnt =3D fhp->fh_export->ex_path.mnt,
+> diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/=
+gss_mech_switch.c
+> index 78eab245f94a7..d8b6ff9505399 100644
+> --- a/net/sunrpc/auth_gss/gss_mech_switch.c
+> +++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+> @@ -157,14 +157,9 @@ struct gss_api_mech * gss_mech_get_by_name(const cha=
+r *name)
+>  	return gm;
+>  }
+> =20
+> -struct gss_api_mech *gss_mech_get_by_OID(struct rpcsec_gss_oid *obj)
+> +static struct gss_api_mech *_gss_mech_get_by_OID(struct rpcsec_gss_oid *=
+obj)
+>  {
+>  	struct gss_api_mech	*pos, *gm =3D NULL;
+> -	char buf[32];
+> -
+> -	if (sprint_oid(obj->data, obj->len, buf, sizeof(buf)) < 0)
+> -		return NULL;
+> -	request_module("rpc-auth-gss-%s", buf);
+> =20
+>  	rcu_read_lock();
+>  	list_for_each_entry_rcu(pos, &registered_mechs, gm_list) {
+> @@ -177,6 +172,22 @@ struct gss_api_mech *gss_mech_get_by_OID(struct rpcs=
+ec_gss_oid *obj)
+>  		}
+>  	}
+>  	rcu_read_unlock();
+> +	return gm;
+> +}
+> +
+> +struct gss_api_mech *gss_mech_get_by_OID(struct rpcsec_gss_oid *obj)
+> +{
+> +	struct gss_api_mech *gm;
+> +	char buf[32];
+> +
+> +	if (sprint_oid(obj->data, obj->len, buf, sizeof(buf)) < 0)
+> +		return NULL;
+> +
+> +	gm =3D _gss_mech_get_by_OID(obj);
+> +	if (!gm) {
+> +		request_module("rpc-auth-gss-%s", buf);
+> +		gm =3D _gss_mech_get_by_OID(obj);
+> +	}
+>  	if (!gm)
+>  		trace_rpcgss_oid_to_mech(buf);
+>  	return gm;
 
-Looks reasonable, but Sashiko has a (valid) comment:
+Nice catch!
 
-https://sashiko.dev/#/patchset/20261110080038.232210-1-zhanxusheng1024%40gm=
-ail.com
-
-Can you either rebut that or send an updated version?
-
-Thanks,
---=20
-Jeff Layton <jlayton@kernel.org>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
