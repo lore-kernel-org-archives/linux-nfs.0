@@ -1,100 +1,100 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794321503;
-	b=cJet30eIg2yx2CViMBCJUUjhjUmTp2hJuiAecMgMHpSmHwiSSm6GoLLf9f5/ug/UiwmA
-	 Ri1rtBew7f2f1VeUgw+piGoVsSbIC9jmnHuXKM0HXPvPLhQfAZHJqg7CYO+zK8m1kUWKi
-	 AA2lJV/hGMqDZ2k0QxTRJ/mWt4Wyw5rbOvWH5kYeMOL9trkOXsNZxQ5VtxOJ7JfW0H1rh
-	 +C8jtYwdb98HylgoD9G01xFWY9EvGVSEGWYUG5f1YjDGISWo5svzebO6I5O6JRdh8blhp
-	 sFIYPWhSXQfy9OvlC7F+yoj0ll1UcQr4Bh+idUQ+H8ol2DIPcp8TcOUI8BfETiHMB+w==
+	t=1794321680;
+	b=qamPRb65Cqu+k96KhgXpo+aozC1EFRDV4zuOlQNzvB0gW6T1KfzDp2KEWB/Q9yGrlUSk
+	 E4Q5hpmQ8zQsAdYxbDlRJSyQQUiKZmzdwctoLyKDmKb+qogTH0hZVRE6siazxEmyTBk35
+	 zyqfklAJXKK6MTmAsKkt+vgXO9FaqIxXOaSob0HBeLlTYThCatVL3YvLNk6GDoSH94Ypw
+	 N6qH5CSYyH9haefnNVhwLpoJZ+LU726GgbsOhevIvUGFVCxBsFHFapzFnmovXr00WowNF
+	 Ff8bryIu0jXU0tRTn2ZOweeKr3aVI5bsAMZXp4occj3RRhRVa41yGqm3yA7derCE3rw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794321503;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794321680;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
 	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
 	 In-Reply-To:X-Rspamd-Queue-Id:X-Spam-Level:X-Rspamd-Server:
 	 X-Rspamd-Action:X-Spam-Flag:X-Spamd-Result:X-Spam-Score;
-	bh=Fh5qOtVM6KsLzFpIRsYYHC+bSYz/O+LnqFiFi3TOwW4=;
-	b=I6CrmyTINyILtriZCWeqEfFDV6+YExIoiBNZ/dcqo81sziuk+PtddkFKqJw63BOMgWEf
-	 5Rt0iD6xy2Bug4GoJGfwjLFX0NX7RTmAyPfBj5JvzObWzG49LJcOcf5zKa64P8Q2Brt7y
-	 aw0jvoTeLIsAb8JVLWI/PIeOPvFPAYz6BHosRRzzfrfmxd+qtORdxHHCixe3KGUJJVX88
-	 wvWk5paazMD8l8ofQrQGUUHRgbqkYtVzM2iKBGheFHGcDLo0hqJZgmsMNkdnsEsRlta9Z
-	 w8KvWNSzQsoJMITh4M1Ww7FkaRTGZ5Ms8WxpdrdbT54NcrcbOZLAoLn7DKYXrAG0YYg==
+	bh=n9Z1w4YYO/lfKbwO0/Zyyv0ODPBk2vg1/mG8PGnweiw=;
+	b=ayY+DLL+3Mmi5q7xXGhHt+NDjdRyAjKHKsBaWXf4cT+6l1gw5GCnRFE+6+dxneRSycQd
+	 wlsQt/c4C2TNFrNCYT138VG1WxdBsnMniv/LmA1nBqr1XLJRJwTcpZ0MHj4FOD7n7Kr7V
+	 tH1+1FSKvU2vy4d+TKe1Jjjk/qD3lD6sdqUcqlYVSErYiu7QangpkYT8eTPjMCKMa1AFq
+	 ukEL/AmQCWaXjQiAjiO8rugpE1TemTKBll4Dxnn+Ji4aQGswTLRkZeYXOKGpb9uqdx4k3
+	 XIV30G9m8CtaXU5jxMXlgpMxBuiB/gCL0lqA7yrtk6Hi7COMn/rZAX7/9HRVTDRgxdg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=suse.cz;
 	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=MUVsr+ph;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=zZopj+90;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=MUVsr+ph;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=zZopj+90;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=zgDVyhh8;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=369eyxEs;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=zgDVyhh8;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=369eyxEs;
 	arc=none smtp.remote-ip=195.135.223.130
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3BF0C606A339;
-	Tue, 10 Nov 2026 14:38:22 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3BF0C606A339
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 38B7C60A262B;
+	Tue, 10 Nov 2026 14:41:20 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 38B7C60A262B
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=MUVsr+ph;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=zZopj+90;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=MUVsr+ph;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=zZopj+90
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=zgDVyhh8;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=369eyxEs;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=zgDVyhh8;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=369eyxEs
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 6600221E9C;
-	Tue, 10 Nov 2026 14:38:20 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 5C15521EA9;
+	Tue, 10 Nov 2026 14:41:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1794321500; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1794321678; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=Fh5qOtVM6KsLzFpIRsYYHC+bSYz/O+LnqFiFi3TOwW4=;
-	b=MUVsr+phhfZbFW8xjR4b3N1UtGCeg+l0uYLOI5bLig6ZTedYwIElDXlSxhCLTjeiSHCd6k
-	bg+NDUgRn4V4Cz63o4lwC/9gvtBeJXiSrYK+hYpxXqxLvSnhU0GeyZW39zoyzRQ0nyBJQY
-	pyMpVSkOGDsd5a+gix4rvbt7CSWAcbw=
+	bh=n9Z1w4YYO/lfKbwO0/Zyyv0ODPBk2vg1/mG8PGnweiw=;
+	b=zgDVyhh8pCYegE1kzm5xIANNPglMEgeuZuIQhodg3Iqv/wmt77lmYCRPxvkovOojFne6ow
+	xYY18x6DlFzq3ln+FuD7YcKaRbr9DnDPAC2XyRl48GG8goA6gsBhUKpVrrgGwTQE9D6lAy
+	YLWLP+bL+HAY3ZU8JGWkN/YRjQArPjo=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1794321500;
+	s=susede2_ed25519; t=1794321678;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=Fh5qOtVM6KsLzFpIRsYYHC+bSYz/O+LnqFiFi3TOwW4=;
-	b=zZopj+90aGJKBJGWq3ccQNKWjno338Dvu06+ctjiTjzqDLlDaVJHiPN7g0hSfMYZ4HR0wM
-	fsnCVhe8MldfL9AQ==
+	bh=n9Z1w4YYO/lfKbwO0/Zyyv0ODPBk2vg1/mG8PGnweiw=;
+	b=369eyxEsAFmpmDiuBidhIEN7pEn7fzlKO8/ywBH2pvsXDNxLEXvezP0hQQ7rW/b6nD06GK
+	hdXtKW5t/c3G3NDw==
 Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=MUVsr+ph;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=zZopj+90
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=zgDVyhh8;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=369eyxEs
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1794321500; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1794321678; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=Fh5qOtVM6KsLzFpIRsYYHC+bSYz/O+LnqFiFi3TOwW4=;
-	b=MUVsr+phhfZbFW8xjR4b3N1UtGCeg+l0uYLOI5bLig6ZTedYwIElDXlSxhCLTjeiSHCd6k
-	bg+NDUgRn4V4Cz63o4lwC/9gvtBeJXiSrYK+hYpxXqxLvSnhU0GeyZW39zoyzRQ0nyBJQY
-	pyMpVSkOGDsd5a+gix4rvbt7CSWAcbw=
+	bh=n9Z1w4YYO/lfKbwO0/Zyyv0ODPBk2vg1/mG8PGnweiw=;
+	b=zgDVyhh8pCYegE1kzm5xIANNPglMEgeuZuIQhodg3Iqv/wmt77lmYCRPxvkovOojFne6ow
+	xYY18x6DlFzq3ln+FuD7YcKaRbr9DnDPAC2XyRl48GG8goA6gsBhUKpVrrgGwTQE9D6lAy
+	YLWLP+bL+HAY3ZU8JGWkN/YRjQArPjo=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1794321500;
+	s=susede2_ed25519; t=1794321678;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=Fh5qOtVM6KsLzFpIRsYYHC+bSYz/O+LnqFiFi3TOwW4=;
-	b=zZopj+90aGJKBJGWq3ccQNKWjno338Dvu06+ctjiTjzqDLlDaVJHiPN7g0hSfMYZ4HR0wM
-	fsnCVhe8MldfL9AQ==
+	bh=n9Z1w4YYO/lfKbwO0/Zyyv0ODPBk2vg1/mG8PGnweiw=;
+	b=369eyxEsAFmpmDiuBidhIEN7pEn7fzlKO8/ywBH2pvsXDNxLEXvezP0hQQ7rW/b6nD06GK
+	hdXtKW5t/c3G3NDw==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 1A3411339F;
-	Tue, 10 Nov 2026 14:38:20 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 0C9731339F;
+	Tue, 10 Nov 2026 14:41:18 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id w7B7OFss82qaLgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 10 Nov 2026 14:38:20 +0000
+	id HT40MQ0t82qpMQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 10 Nov 2026 14:41:18 +0000
 Received: by quack.suse.cz (Postfix, from userid 1000)
-	id 7F6FA22545; Tue, 10 Nov 2026 15:38:15 +0100 (CET)
-Date: Tue, 10 Nov 2026 15:38:15 +0100
+	id EF45D2254C; Tue, 10 Nov 2026 15:41:12 +0100 (CET)
+Date: Tue, 10 Nov 2026 15:41:12 +0100
 From: Jan Kara <jack@suse.cz>
 To: Christian Brauner <brauner@kernel.org>
 Cc: linux-fsdevel@vger.kernel.org, 
@@ -119,11 +119,11 @@ Cc: linux-fsdevel@vger.kernel.org,
 	Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
 	linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org, 
 	Chuck Lever <cel@kernel.org>
-Subject: Re: [PATCH v2 34/51] proc: let proc_remove() remove the entry it was
- given
-Message-ID: <gb7ibchjlghrlulokvwae7khr6w3uxutfbfq6kuvypmhiinha6@4557bv2sr4im>
+Subject: Re: [PATCH v2 35/51] proc: warn about entries left in /proc/net of a
+ dying namespace
+Message-ID: <redzyadnsedot7ckkbzf5wi3zqlwtujbbupudri6riwxxt3hka@w32wugbs5mdf>
 References: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
- <20261104-work-procfs-bugfixes-v2-34-bbf7d5546809@kernel.org>
+ <20261104-work-procfs-bugfixes-v2-35-bbf7d5546809@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -135,8 +135,8 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261104-work-procfs-bugfixes-v2-34-bbf7d5546809@kernel.org>
-X-Rspamd-Queue-Id: 6600221E9C
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-35-bbf7d5546809@kernel.org>
+X-Rspamd-Queue-Id: 5C15521EA9
 X-Spam-Level: 
 X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
 X-Rspamd-Action: no action
@@ -167,146 +167,51 @@ X-Spamd-Result: default: False [-11.51 / 50.00];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
 	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
 	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.cz:dkim,suse.cz:email]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:dkim,suse.cz:email]
 X-Spam-Score: -11.51
 
-On Wed 04-11-26 18:47:20, Christian Brauner wrote:
-> proc_remove() looks the entry up by its name in its parent and removes
-> whatever it finds there:
+On Wed 04-11-26 18:47:21, Christian Brauner wrote:
+> proc_net_ns_exit() runs after all the other pernet exits and frees
+> net->proc_net right after removing "stat" from it. An entry that some
+> pernet exit forgot to remove is left with a freed ->parent, and so
+> PDE_NET() hands seq_open_net() and single_open_net() a freed struct net
+> when the entry is opened through a file descriptor that someone kept.
 > 
->   remove_proc_subtree(de->name, de->parent);
-> 
-> If the entry was removed already, say along with its parent, that is
-> either nothing or a different entry that got the same name in the
-> meantime, and de->parent may well be gone. Two removals of the same
-> entry are a bug in the caller, but going by the name turns it into
-> removing an entry that belongs to somebody else.
-> 
-> Since commit 895b4c0c79b0 ("fs/proc: fix uaf in proc_readdir_de()")
-> an entry that was unlinked has an empty rb node. So check for that
-> under proc_subdir_lock and otherwise remove the entry itself, with the
-> loop of remove_proc_subtree() moved into a helper both of them use.
-> Nothing can help a caller that passes an entry that has been freed
-> already.
+> There is no such entry in the tree that we know of, but nothing would
+> tell us about one either. So warn about it like remove_proc_entry()
+> does for a directory that isn't empty.
 > 
 > Reported-by: Chris Mason <mason@kernel.org>
-> Fixes: a8ca16ea7b0a ("proc: Supply a function to remove a proc entry by PDE")
+> Fixes: e9720acd728a ("[NET]: Make /proc/net a symlink on /proc/self/net (v3)")
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-Looks good. Feel free to add:
+Makes sense. Feel free to add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > ---
->  fs/proc/generic.c | 78 ++++++++++++++++++++++++++++++++++++-------------------
->  1 file changed, 51 insertions(+), 27 deletions(-)
+>  fs/proc/proc_net.c | 6 ++++++
+>  1 file changed, 6 insertions(+)
 > 
-> diff --git a/fs/proc/generic.c b/fs/proc/generic.c
-> index 588999058e66..9a0a2fcac7c7 100644
-> --- a/fs/proc/generic.c
-> +++ b/fs/proc/generic.c
-> @@ -818,33 +818,14 @@ void remove_proc_entry(const char *name, struct proc_dir_entry *parent)
->  }
->  EXPORT_SYMBOL(remove_proc_entry);
+> diff --git a/fs/proc/proc_net.c b/fs/proc/proc_net.c
+> index dbcf87a257e1..df5484813d5d 100644
+> --- a/fs/proc/proc_net.c
+> +++ b/fs/proc/proc_net.c
+> @@ -410,7 +410,13 @@ out:
 >  
-> -int remove_proc_subtree(const char *name, struct proc_dir_entry *parent)
-> +/*
-> + * Remove @root, already erased from its parent, and everything below it.
-> + * Called with proc_subdir_lock held for writing, returns with it dropped.
-> + */
-> +static int __remove_proc_subtree(struct proc_dir_entry *root)
+>  static __net_exit void proc_net_ns_exit(struct net *net)
 >  {
-> -	struct proc_dir_entry *root = NULL, *de, *next;
-> -	const char *fn = name;
-> -	unsigned int len;
-> -
-> -	write_lock(&proc_subdir_lock);
-> -	if (__xlate_proc_name(name, &parent, &fn) != 0) {
-> -		write_unlock(&proc_subdir_lock);
-> -		return -ENOENT;
-> -	}
-> -	len = strlen(fn);
-> +	struct proc_dir_entry *de = root, *next;
->  
-> -	root = pde_subdir_find(parent, fn, len);
-> -	if (!root) {
-> -		write_unlock(&proc_subdir_lock);
-> -		return -ENOENT;
-> -	}
-> -	if (unlikely(pde_is_permanent(root))) {
-> -		write_unlock(&proc_subdir_lock);
-> -		WARN(1, "removing permanent /proc entry '%s/%s'",
-> -			root->parent->name, root->name);
-> -		return -EINVAL;
-> -	}
-> -	pde_erase(root, parent);
-> -
-> -	de = root;
->  	while (1) {
->  		next = pde_subdir_first(de);
->  		if (next) {
-> @@ -872,6 +853,34 @@ int remove_proc_subtree(const char *name, struct proc_dir_entry *parent)
->  	pde_put(root);
->  	return 0;
+> +	struct proc_dir_entry *left;
+> +
+>  	remove_proc_entry("stat", net->proc_net);
+> +	/* Whatever is left still points at net->proc_net and so at net. */
+> +	left = rb_entry_safe(rb_first(&net->proc_net->subdir),
+> +			     struct proc_dir_entry, subdir_node);
+> +	WARN(left, "/proc/net: leaking at least '%s'\n", left->name);
+>  	pde_free(net->proc_net);
 >  }
-> +
-> +int remove_proc_subtree(const char *name, struct proc_dir_entry *parent)
-> +{
-> +	struct proc_dir_entry *root = NULL;
-> +	const char *fn = name;
-> +	unsigned int len;
-> +
-> +	write_lock(&proc_subdir_lock);
-> +	if (__xlate_proc_name(name, &parent, &fn) != 0) {
-> +		write_unlock(&proc_subdir_lock);
-> +		return -ENOENT;
-> +	}
-> +	len = strlen(fn);
-> +
-> +	root = pde_subdir_find(parent, fn, len);
-> +	if (!root) {
-> +		write_unlock(&proc_subdir_lock);
-> +		return -ENOENT;
-> +	}
-> +	if (unlikely(pde_is_permanent(root))) {
-> +		write_unlock(&proc_subdir_lock);
-> +		WARN(1, "removing permanent /proc entry '%s/%s'",
-> +			root->parent->name, root->name);
-> +		return -EINVAL;
-> +	}
-> +	pde_erase(root, parent);
-> +	return __remove_proc_subtree(root);
-> +}
->  EXPORT_SYMBOL(remove_proc_subtree);
->  
->  void *proc_get_parent_data(const struct inode *inode)
-> @@ -883,8 +892,23 @@ EXPORT_SYMBOL_GPL(proc_get_parent_data);
->  
->  void proc_remove(struct proc_dir_entry *de)
->  {
-> -	if (de)
-> -		remove_proc_subtree(de->name, de->parent);
-> +	if (!de)
-> +		return;
-> +
-> +	write_lock(&proc_subdir_lock);
-> +	/* Removed already, maybe along with its parent. */
-> +	if (RB_EMPTY_NODE(&de->subdir_node)) {
-> +		write_unlock(&proc_subdir_lock);
-> +		return;
-> +	}
-> +	if (unlikely(pde_is_permanent(de))) {
-> +		write_unlock(&proc_subdir_lock);
-> +		WARN(1, "removing permanent /proc entry '%s/%s'",
-> +		     de->parent->name, de->name);
-> +		return;
-> +	}
-> +	pde_erase(de, de->parent);
-> +	__remove_proc_subtree(de);
->  }
->  EXPORT_SYMBOL(proc_remove);
 >  
 > 
 > -- 
