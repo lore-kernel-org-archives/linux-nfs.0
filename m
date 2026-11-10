@@ -1,49 +1,108 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.208.44
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794302438;
-	b=K3dcWz5WiMT2ECJu5FmcN5xFDNLp+QxpnX904vCAX6HMXU1xnpCD8ECPUHFGoT5CVE8b
-	 QDXhysdEZCdnEUEtWde5UXpBvr3xzG/7ihbzWSLcsbqwWJwccUvC//DHhdgsjJCWRNy27
-	 c9YNCFmOJb9EuKMjsYi4ODApyOUgozrzGdYRI5ZkYWAOjFPSy79CvaiX0M3s+IfqE/VkM
-	 1KJBt1/3vK2ef6l2EvaCIjVofvXrnmPGMdZQmIerx6emE6uXG15h+8mMyWsItrpTWK7oa
-	 HgzAB6ndgFGxHCKS+i4agxjrVahAW4ObuA4iqnsEYi3eHGNDR3QAoKjxPRtTh0jI2Sw==
+	t=1794305680;
+	b=0GFTjgjCAKdz6T0zmj+X7+E7RXEtpuoUqaOhCpBcDDNIMi1eZsRJM23ADXDdoAo4xcAC
+	 wmv2vHmMGwWdh8aTSTIBOQ43T0qHPG1jVZfqulafluUCJCkvVqstq+KZdcir1RUcM/pBs
+	 Lt2WA0qzNymB7wD4av2VB18+4lLciDYghZ127yYO4x3Yo7Ucdq/JI6dlOQY4upVvbHQEo
+	 C9SkPXkKyzO3foRPcbliRZvBPzfC5tBdBlQAGAycBvveGR58RJZWA2m1G8zsaTOEmk1gs
+	 BGsuE9Cmdf/0Quhr6hFcr0iIn63wchq5H9qJ6lFcq/bSXUJutL9NvHmSpcUDgUV4PlA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794302438;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=HcRXRAYOuW3Mg9I3hu0cD8PLY2YH/pH7TktBJyJSNx8=;
-	b=DILopGwmo+0E7uYCLSbC4U+LBlv4hH8+/paBMg8qVGQ8gxqxR+sC4jHW7Lvp7m3dGJNP
-	 jLKUCf4gy+VZaq57CnEtcvdAynhFoaI1LjunEU1Ytz26XZnxaWpVFOsyVWWOgEPzDU6SA
-	 tPKDEdfE9R366OfYpfo6ZNy8pSLmyyyzrOalJWEbgNCcmRrRtAYfwDML/wozde5ojOje1
-	 BXrdgOilosINsn5wzuP5V4u2TmR2dmIoepVcYejl8y+JzBE/eoF58XSHxwHc4QmWM85Xk
-	 AZaaedj1uQBH6v8CQXR+bOrUgzJawXBN7z+8IDwhiCwu8tRyT0fBdokWzYghiqWU2Mg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794305680;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To;
+	bh=9WFltYRvNkpM0HMxRLJxGiCTEiP83WtKPHu+oXy3KTg=;
+	b=xDXw1/OLE7vvB73xMkiDcvuxUPYF3PZHUxB9FOYj68EJAnvfOdTctV30W3e7KR8Z7BM9
+	 VgpEUKACU/5TGiyrOcaFc67davJl6fH4qMHgWwmAu2no1gTYNfIgg0WLHpZNCO7c133/2
+	 hxMhLCPO9m9kZN1XnDuQkxUBcd9hnpo+MVZwUkEo/RBYOGt9XezywxttXYv/iLYovQO/W
+	 axWMuQQ/jH/1BnIMmpxUCwpPnZ7a6moIqaoxM8zQWzAt/RdjJGYixgUi2NgxiAj86VaUy
+	 qRsVjcVdRKOp5GEQZFwBxidrjOrWqfSZQwE8yanwSnQDHupAdOs4XY7Vmd4JUKhmlkg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZJA+k4jF;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=DrlQYRb4;
+	arc=none smtp.remote-ip=209.85.208.44
+Received: from mail-ed1-f44.google.com (mail-ed1-f44.google.com [209.85.208.44])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4AD21606B9C6;
-	Tue, 10 Nov 2026 09:20:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8E200606AA45
+	for <linux-nfs@vger.kernel.org>; Tue, 10 Nov 2026 10:14:39 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 8E200606AA45
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZJA+k4jF
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D341A1F008A2;
-	Tue, 10 Nov 2026 09:20:31 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794302438;
-	bh=HcRXRAYOuW3Mg9I3hu0cD8PLY2YH/pH7TktBJyJSNx8=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=ZJA+k4jFVB7QcXl0KFVo6FAm8XI4UkHhmuHM+xAo6A08HhRmiH/wYZOdlnlgLrh/9
-	 rcM+5k5rzdiLJi52fkaGO8lhYCA13C2aDo9CFXO/uzKhnDpIZ5rI/vU3Ljq7x3I7Bm
-	 MkhWlzcBR2LGti6K8n98z2uTbwDhWQPDuXr4DHrqemvTOVN3Tx4nNOe+6eX4Ml7Fyp
-	 9Vko9fTHjCHZ5NBoWCSVWvJBcx8Fv6eWP7XqdB6tuOAdRQweUL01pdhN1qREgq1HLW
-	 tKInp2gJ5HWhSiFiMhTw2dXTpS/ltNMOEyHElB6ILu033FIsaRQKmc4sbsA3Bxf7u6
-	 4uHy8e3VDnRvw==
-From: Christian Brauner <brauner@kernel.org>
-Date: Tue, 10 Nov 2026 10:14:57 +0100
-Subject: [PATCH RFC 41/41] selftests/filesystems: add backing file tests
- for pseudo files
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=DrlQYRb4
+Received: by mail-ed1-f44.google.com with SMTP id 4fb4d7f45d1cf-6b547d6c07bso2304487a12.1
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Nov 2026 02:14:39 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1794305678; x=1794910478; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=9WFltYRvNkpM0HMxRLJxGiCTEiP83WtKPHu+oXy3KTg=;
+        b=DrlQYRb4d+FJBQLFk4gip1vdMb9pZcbFm0QRoW/O9nsnnIGk5B/dcI7komCKzkv/uM
+         Uz0TTkL3EB0XOLA2v0TTxwYvqDOvah1wiwbB4uUsiRRXfj1OcdvtnHWnMQS6yfKTNN5Y
+         2S+sbZpFj/oUd6OIfB1K+t4luOgmpm8MRta8dNUBz+XdEb16ui6jztHrAySR2QYDDBtW
+         UcH7ksMk3kyTCuhLg24n4RSbgP43bR1MD63YWBBHbNHKba+s6Adtgd3r0iiTavTYgvkx
+         vCBmyxhjfzRfUpjuhY0K7x1CK/3uUIf/0FzbTbFW5bHu/k5G1xko0Cr6O3LrrObY61iA
+         y+ww==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794305678; x=1794910478;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=9WFltYRvNkpM0HMxRLJxGiCTEiP83WtKPHu+oXy3KTg=;
+        b=fnI4DPYrspOoObtvI/z4AKi2AOVpVxEp8znkcPFmdX3vEE/6Jdh5dLeeEwU7lm5V56
+         uLf7z+wyF4NjXhO2mKIA3K51acMGg0v9yvI/SZkeG2Wc7+ZU6cRMFO7KlQ+jpdktQjGx
+         diGTsRqbvQC4JeKs9isrT22MndBNOPA9m2OKSYBfwV3/AG9SifQgfK3viQeLxt2+UIHV
+         Kv+dgrOFqQfrBdfcwQEIh7VdhINKDIxFbEzWY6tLf905bG6gwy+Fj+3UxUFSiSO1KaEb
+         LDiz7HDtk0hGVTVC2ET/IT4dDCAU0vqWcsjIkkIemOmz9T9sZ/AMo61JvJZZC10abSJH
+         aYyA==
+X-Forwarded-Encrypted: i=1; AL+hErFz+HqCEwIHfJJzotwycnaosKwBajhRe84li5B59FcdYWtm7ANpIKnwAyRUTSUafSLneK3apmD96EE=@vger.kernel.org
+X-Gm-Message-State: APuU4Z+ZxmWW/HJGvmVTIzjxBlf1375pwsWyB2ZdRX2U9nqdEvnQcOD9
+	V+FBkkUnGgB47b9CIShXEZbHrNi8gSNpAlrFT0UlKCCuK0sir+PO95xG
+X-Gm-Gg: AYBFou3cgnvijqlSwgeVHImUZkQbHR5GCqXPN8ExMNTBDUekeuKinT25rqaVCBwELhD
+	cY6mNRuyi+oAtIiur5jrqwOOg1GnCa1mhR7ucEFwHSb+dhXEJothrS8La3JGVsvDx2NSafaPxl3
+	+NYss7Bf257Y3bGKuQzBd3EFjX9u6lrm70lvOShO/JLtPgKGIrPwrYiXHbxZA5COe5GdtahYe7h
+	oblpcB5RLOwygAQUVPA7+/TVldDuEWJQmz/ChIdSXIbIxxAZmGnM1OeMJnR2rqsZ2odKOUiKBPG
+	YfJ2VQfGUpjKB+wkGRW6+ronjw/J7tpmpY9Np16W9FBYqsztK1y4uszdFLWQcktl/567Fj3JEdB
+	b47i31sWv4fA9nHnCGq3+uYGAa72wJL/9LfMnlx/H/0BR1GOR85EWU5BpG3BkK8crWiDpLIUH8e
+	DLD4REWL/l5G3b8nfvRcUNLKRZQGqTToKK4Mh+rR9R2otRPwq6OvUIJNJeUDZfm3j6NLP0M7OuZ
+	fSOW5hI2FVv2glyDQyhm7CLX/qOkf0eWos+a4YgbooxzLn7cBmvu5N0QYpyx87VosI1KM/45NB8
+	1b/21tM9GlvXqocUa3/Mf44Y3X/PJ03UeJqdTUo0bCjWxlizkf3+0hviCfs7V+SrjQzV+wRWt/t
+	c1tISIcGKS/9a
+X-Received: by 2002:a17:907:944d:b0:c41:4c20:5a80 with SMTP id a640c23a62f3a-c504963ce05mr189793966b.44.1794305677695;
+        Tue, 10 Nov 2026 02:14:37 -0800 (PST)
+Received: from localhost (178-84-201-199.dynamic.upc.nl. [178.84.201.199])
+        by smtp.gmail.com with ESMTPSA id a640c23a62f3a-c504a593eacsm90433466b.36.2026.11.10.02.14.36
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 10 Nov 2026 02:14:36 -0800 (PST)
+Date: Tue, 10 Nov 2026 11:14:35 +0100
+From: Amir Goldstein <amir73il@gmail.com>
+To: Christian Brauner <brauner@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>,
+	Chris Mason <mason@kernel.org>, Josef Bacik <josef@toxicpanda.com>,
+	Christoph Hellwig <hch@lst.de>, linux-block@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-nvme@lists.infradead.org,
+	Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>,
+	linux-scsi@vger.kernel.org, target-devel@vger.kernel.org,
+	driver-core@lists.linux.dev, linux-mm@kvack.org,
+	bpf@vger.kernel.org, linux-security-module@vger.kernel.org,
+	selinux@vger.kernel.org, apparmor@lists.ubuntu.com,
+	linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+	fuse-devel@lists.linux.dev, linux-efi@vger.kernel.org,
+	xen-devel@lists.xenproject.org, ocfs2-devel@lists.linux.dev,
+	linux-s390@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
+	linux-usb@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+	linux-kselftest@vger.kernel.org
+Subject: Re: [PATCH RFC 38/41] fuse: refuse files on pseudo filesystems as
+ passthrough backing files
+Message-ID: <avLui6Mpf8GbKbtc@amir-ThinkPad-T480>
+References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org>
+ <20261110-work-loop-pseudo-v1-38-4c998976c6c7@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -53,378 +112,41 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-work-loop-pseudo-v1-41-4c998976c6c7@kernel.org>
-References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org>
-In-Reply-To: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org>
-To: linux-fsdevel@vger.kernel.org
-Cc: Jann Horn <jannh@google.com>, Chris Mason <mason@kernel.org>, 
- Josef Bacik <josef@toxicpanda.com>, Christoph Hellwig <hch@lst.de>, 
- linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-nvme@lists.infradead.org, Alexander Viro <viro@zeniv.linux.org.uk>, 
- Jan Kara <jack@suse.cz>, linux-scsi@vger.kernel.org, 
- target-devel@vger.kernel.org, driver-core@lists.linux.dev, 
- linux-mm@kvack.org, bpf@vger.kernel.org, 
- linux-security-module@vger.kernel.org, selinux@vger.kernel.org, 
- apparmor@lists.ubuntu.com, linux-nfs@vger.kernel.org, 
- netdev@vger.kernel.org, fuse-devel@lists.linux.dev, 
- linux-efi@vger.kernel.org, xen-devel@lists.xenproject.org, 
- ocfs2-devel@lists.linux.dev, linux-s390@vger.kernel.org, 
- linuxppc-dev@lists.ozlabs.org, linux-usb@vger.kernel.org, 
- Amir Goldstein <amir73il@gmail.com>, linux-erofs@lists.ozlabs.org, 
- linux-kselftest@vger.kernel.org, 
- "Christian Brauner (Amutable)" <brauner@kernel.org>
-X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=9874; i=brauner@kernel.org;
- h=from:subject:message-id; bh=WrNqWZ7KkNp+RAbIFwB8NnBVD99KxYHQRcnlviAxa6g=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9enD4WbX5pPn5ziIC13kaPmfytEQmM0ZuPbw7WXPnm
- gSxsqe1HSUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhnCwMUpABNZ8ZHhf973fTs7218EO58x
- 7P0e6Ze9+P+LjPP3fh7Xiy851MXwVZ/hx12Ja4+3MNaXiaTntPJ9281nGrssMtLdPjC4ZaFVjDA
- DAA==
-X-Developer-Key: i=brauner@kernel.org; a=openpgp;
- fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261110-work-loop-pseudo-v1-38-4c998976c6c7@kernel.org>
 
-Add tests that files on pseudo filesystems can't be used as storage:
+On Tue, Nov 10, 2026 at 10:14:54AM +0100, Christian Brauner wrote:
+> The fuse server can register any regular file as a backing file. procfs
+> and binfmt_misc files are already refused by the stacking depth check as
+> both set s_stack_depth to FILESYSTEM_MAX_STACK_DEPTH. sysfs and the
+> other pseudo filesystems aren't. Reads and writes of the fuse file would
+> then be done on the pseudo file with the fuse server's credentials.
+> Refuse files on pseudo filesystems just like loop does.
+> 
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+> ---
+>  fs/fuse/backing.c | 3 +++
+>  1 file changed, 3 insertions(+)
+> 
+> diff --git a/fs/fuse/backing.c b/fs/fuse/backing.c
+> index 8c21a8a74efb..4e4fb810ddaa 100644
+> --- a/fs/fuse/backing.c
+> +++ b/fs/fuse/backing.c
+> @@ -147,6 +147,9 @@ static int fuse_backing_open_file(struct fuse_conn *fc, struct fuse_backing *fb,
+>  		if (inode->i_sb->s_stack_depth >= fc->max_stack_depth)
+>  			return -ELOOP;
+>  
+> +		if (file_is_pseudo(file))
+> +			return -EINVAL;
+> +
+>  		fb->type = FUSE_BACKING_PATH;
+>  		fb->path = file->f_path;
+>  		path_get(&fb->path);
+> 
+> -- 
+> 2.53.0
+> 
 
-- a procfs file attached read-only to a loop device
-- sysfs files attached read-only and read-write to a loop device
-- a sysfs file behind a lower-only overlayfs attached to a loop device
-- a sysfs file as the backing file of a usb mass storage gadget LUN
-- a sysfs file as the source of a file-backed erofs mount
-
-And make sure that a memfd and another loop device still work as loop
-backing files and that loop refuses a backing file that isn't open for
-reading.
-
-Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
----
- tools/testing/selftests/filesystems/.gitignore     |   1 +
- tools/testing/selftests/filesystems/Makefile       |   2 +-
- tools/testing/selftests/filesystems/config         |   9 +
- .../selftests/filesystems/pseudo_backing_test.c    | 274 +++++++++++++++++++++
- 4 files changed, 285 insertions(+), 1 deletion(-)
-
-diff --git a/tools/testing/selftests/filesystems/.gitignore b/tools/testing/selftests/filesystems/.gitignore
-index cf79000e4092..8df38eabb125 100644
---- a/tools/testing/selftests/filesystems/.gitignore
-+++ b/tools/testing/selftests/filesystems/.gitignore
-@@ -7,3 +7,4 @@ kernfs_test
- idmapped_tmpfile
- ustat_test
- rw_hint_test
-+pseudo_backing_test
-diff --git a/tools/testing/selftests/filesystems/Makefile b/tools/testing/selftests/filesystems/Makefile
-index fbd5c27505ef..0ebb9005bcd2 100644
---- a/tools/testing/selftests/filesystems/Makefile
-+++ b/tools/testing/selftests/filesystems/Makefile
-@@ -2,7 +2,7 @@
- 
- CFLAGS += $(KHDR_INCLUDES)
- TEST_GEN_PROGS := devpts_pts anon_inode_test kernfs_test fclog ustat_test rw_hint_test
--TEST_GEN_PROGS += idmapped_tmpfile
-+TEST_GEN_PROGS += idmapped_tmpfile pseudo_backing_test
- TEST_GEN_PROGS_EXTENDED := dnotify_test
- 
- include ../lib.mk
-diff --git a/tools/testing/selftests/filesystems/config b/tools/testing/selftests/filesystems/config
-index 9f45bc493a30..228196160d29 100644
---- a/tools/testing/selftests/filesystems/config
-+++ b/tools/testing/selftests/filesystems/config
-@@ -6,3 +6,12 @@ CONFIG_NET=y
- CONFIG_NET_NS=y
- CONFIG_INET=y
- CONFIG_SYSFS=y
-+CONFIG_BLK_DEV_LOOP=y
-+CONFIG_OVERLAY_FS=y
-+CONFIG_TMPFS=y
-+CONFIG_CONFIGFS_FS=y
-+CONFIG_USB_GADGET=y
-+CONFIG_USB_CONFIGFS=y
-+CONFIG_USB_CONFIGFS_MASS_STORAGE=y
-+CONFIG_EROFS_FS=y
-+CONFIG_EROFS_FS_BACKED_BY_FILE=y
-diff --git a/tools/testing/selftests/filesystems/pseudo_backing_test.c b/tools/testing/selftests/filesystems/pseudo_backing_test.c
-new file mode 100644
-index 000000000000..bc8e17ab8e6e
---- /dev/null
-+++ b/tools/testing/selftests/filesystems/pseudo_backing_test.c
-@@ -0,0 +1,274 @@
-+// SPDX-License-Identifier: GPL-2.0
-+#define _GNU_SOURCE
-+
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <limits.h>
-+#include <sched.h>
-+#include <stdbool.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <unistd.h>
-+#include <linux/loop.h>
-+#include <linux/magic.h>
-+#include <sys/ioctl.h>
-+#include <sys/mman.h>
-+#include <sys/mount.h>
-+#include <sys/stat.h>
-+#include <sys/vfs.h>
-+
-+#include "kselftest_harness.h"
-+#include "wrappers.h"
-+
-+/*
-+ * Put @fd behind a free loop device. The device is set up with
-+ * LO_FLAGS_AUTOCLEAR and goes away again when it is closed here.
-+ */
-+static int loop_attach(int fd, bool rw, char *dev, size_t len)
-+{
-+	struct loop_config cfg = {};
-+	int ctl, nr, lfd, ret = 0;
-+
-+	ctl = open("/dev/loop-control", O_RDWR | O_CLOEXEC);
-+	if (ctl < 0)
-+		return -errno;
-+	nr = ioctl(ctl, LOOP_CTL_GET_FREE);
-+	if (nr < 0)
-+		ret = -errno;
-+	close(ctl);
-+	if (ret)
-+		return ret;
-+
-+	snprintf(dev, len, "/dev/loop%d", nr);
-+	lfd = open(dev, (rw ? O_RDWR : O_RDONLY) | O_CLOEXEC);
-+	if (lfd < 0)
-+		return -errno;
-+
-+	cfg.fd = fd;
-+	cfg.info.lo_flags = LO_FLAGS_AUTOCLEAR;
-+	if (!rw)
-+		cfg.info.lo_flags |= LO_FLAGS_READ_ONLY;
-+	if (ioctl(lfd, LOOP_CONFIGURE, &cfg)) {
-+		ret = -errno;
-+		close(lfd);
-+	} else {
-+		ret = lfd;
-+	}
-+	return ret;
-+}
-+
-+static int attach_path(const char *path, bool rw)
-+{
-+	char dev[PATH_MAX];
-+	int fd, ret;
-+
-+	fd = open(path, (rw ? O_RDWR : O_RDONLY) | O_CLOEXEC);
-+	if (fd < 0)
-+		return -errno;
-+	ret = loop_attach(fd, rw, dev, sizeof(dev));
-+	close(fd);
-+	if (ret >= 0) {
-+		close(ret);
-+		ret = 0;
-+	}
-+	return ret;
-+}
-+
-+static bool can_use_loop(void)
-+{
-+	return geteuid() == 0 && access("/dev/loop-control", R_OK | W_OK) == 0;
-+}
-+
-+TEST(memfd_backing_file)
-+{
-+	char dev[PATH_MAX];
-+	int fd, lfd;
-+
-+	if (!can_use_loop())
-+		SKIP(return, "loop devices unavailable");
-+
-+	fd = memfd_create("pseudo_backing_test", MFD_CLOEXEC);
-+	ASSERT_GE(fd, 0);
-+	ASSERT_EQ(ftruncate(fd, 1 << 20), 0);
-+
-+	lfd = loop_attach(fd, true, dev, sizeof(dev));
-+	ASSERT_GE(lfd, 0);
-+	EXPECT_EQ(close(lfd), 0);
-+	EXPECT_EQ(close(fd), 0);
-+}
-+
-+TEST(loop_device_backing_file)
-+{
-+	char dev[PATH_MAX], dev2[PATH_MAX];
-+	int fd, lfd, bfd, lfd2;
-+
-+	if (!can_use_loop())
-+		SKIP(return, "loop devices unavailable");
-+
-+	fd = memfd_create("pseudo_backing_test", MFD_CLOEXEC);
-+	ASSERT_GE(fd, 0);
-+	ASSERT_EQ(ftruncate(fd, 1 << 20), 0);
-+	lfd = loop_attach(fd, true, dev, sizeof(dev));
-+	ASSERT_GE(lfd, 0);
-+
-+	/* A block device stays fine as a backing file. */
-+	bfd = open(dev, O_RDWR | O_CLOEXEC);
-+	ASSERT_GE(bfd, 0);
-+	lfd2 = loop_attach(bfd, true, dev2, sizeof(dev2));
-+	ASSERT_GE(lfd2, 0);
-+
-+	EXPECT_EQ(close(lfd2), 0);
-+	EXPECT_EQ(close(bfd), 0);
-+	EXPECT_EQ(close(lfd), 0);
-+	EXPECT_EQ(close(fd), 0);
-+}
-+
-+TEST(write_only_backing_file)
-+{
-+	char dev[PATH_MAX], path[PATH_MAX];
-+	int fd, wfd, lfd;
-+
-+	if (!can_use_loop())
-+		SKIP(return, "loop devices unavailable");
-+
-+	fd = memfd_create("pseudo_backing_test", MFD_CLOEXEC);
-+	ASSERT_GE(fd, 0);
-+	ASSERT_EQ(ftruncate(fd, 1 << 20), 0);
-+
-+	/* Loop reads from its backing file so it must be open for reading. */
-+	snprintf(path, sizeof(path), "/proc/self/fd/%d", fd);
-+	wfd = open(path, O_WRONLY | O_CLOEXEC);
-+	ASSERT_GE(wfd, 0);
-+
-+	lfd = loop_attach(wfd, true, dev, sizeof(dev));
-+	if (lfd >= 0)
-+		close(lfd);
-+	EXPECT_EQ(lfd, -EBADF);
-+	EXPECT_EQ(close(wfd), 0);
-+	EXPECT_EQ(close(fd), 0);
-+}
-+
-+TEST(procfs_backing_file)
-+{
-+	if (!can_use_loop())
-+		SKIP(return, "loop devices unavailable");
-+
-+	ASSERT_EQ(attach_path("/proc/cpuinfo", false), -EINVAL);
-+}
-+
-+TEST(sysfs_backing_file)
-+{
-+	if (!can_use_loop())
-+		SKIP(return, "loop devices unavailable");
-+
-+	ASSERT_EQ(attach_path("/sys/kernel/warn_count", false), -EINVAL);
-+
-+	if (access("/sys/kernel/reboot/mode", F_OK))
-+		SKIP(return, "no /sys/kernel/reboot/mode");
-+	ASSERT_EQ(attach_path("/sys/kernel/reboot/mode", true), -EINVAL);
-+}
-+
-+TEST(overlayfs_on_sysfs_backing_file)
-+{
-+	if (!can_use_loop())
-+		SKIP(return, "loop devices unavailable");
-+
-+	ASSERT_EQ(unshare(CLONE_NEWNS), 0);
-+	ASSERT_EQ(mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL), 0);
-+	ASSERT_EQ(mount("tmpfs", "/tmp", "tmpfs", 0, NULL), 0);
-+	ASSERT_EQ(mkdir("/tmp/empty", 0755), 0);
-+	ASSERT_EQ(mkdir("/tmp/merged", 0755), 0);
-+
-+	/* A lower-only overlayfs serves reads from sysfs. */
-+	if (mount("overlay", "/tmp/merged", "overlay", MS_RDONLY,
-+		  "lowerdir=/sys/kernel:/tmp/empty"))
-+		SKIP(return, "no overlayfs on top of sysfs: %s", strerror(errno));
-+
-+	ASSERT_EQ(attach_path("/tmp/merged/warn_count", false), -EINVAL);
-+}
-+
-+#define CONFIGFS_DIR "/sys/kernel/config"
-+#define GADGET_DIR CONFIGFS_DIR "/usb_gadget/pseudo_backing_test"
-+#define MASS_STORAGE_DIR GADGET_DIR "/functions/mass_storage.0"
-+
-+TEST(usb_mass_storage_backing_file)
-+{
-+	const char *path = "/sys/kernel/warn_count";
-+	struct statfs sfs;
-+	ssize_t ret;
-+	int fd, err;
-+
-+	if (geteuid())
-+		SKIP(return, "needs root");
-+
-+	/* Mounting configfs on top of itself fails with EBUSY. */
-+	if (statfs(CONFIGFS_DIR, &sfs) || sfs.f_type != CONFIGFS_MAGIC) {
-+		ASSERT_EQ(unshare(CLONE_NEWNS), 0);
-+		ASSERT_EQ(mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL), 0);
-+		if (mount("configfs", CONFIGFS_DIR, "configfs", 0, NULL))
-+			SKIP(return, "no configfs: %s", strerror(errno));
-+	}
-+
-+	if (mkdir(GADGET_DIR, 0755))
-+		SKIP(return, "no usb gadget configfs: %s", strerror(errno));
-+	if (mkdir(MASS_STORAGE_DIR, 0755)) {
-+		err = errno;
-+		rmdir(GADGET_DIR);
-+		SKIP(return, "no usb mass storage function: %s", strerror(err));
-+	}
-+
-+	/* Writing the path opens the LUN's backing file right away. */
-+	fd = open(MASS_STORAGE_DIR "/lun.0/file", O_WRONLY | O_CLOEXEC);
-+	EXPECT_GE(fd, 0);
-+	if (fd >= 0) {
-+		ret = write(fd, path, strlen(path));
-+		err = errno;
-+		EXPECT_EQ(ret, -1);
-+		EXPECT_EQ(err, EINVAL);
-+		EXPECT_EQ(close(fd), 0);
-+	}
-+
-+	EXPECT_EQ(rmdir(MASS_STORAGE_DIR), 0);
-+	EXPECT_EQ(rmdir(GADGET_DIR), 0);
-+}
-+
-+TEST(erofs_backing_file)
-+{
-+	bool refused = false;
-+	char buf[256];
-+	int fsfd, ret, err;
-+	ssize_t n;
-+
-+	if (geteuid())
-+		SKIP(return, "needs root");
-+
-+	fsfd = sys_fsopen("erofs", FSOPEN_CLOEXEC);
-+	if (fsfd < 0)
-+		SKIP(return, "no erofs: %s", strerror(errno));
-+
-+	ASSERT_EQ(sys_fsconfig(fsfd, FSCONFIG_SET_STRING, "source",
-+			       "/sys/kernel/warn_count", 0), 0);
-+	ret = sys_fsconfig(fsfd, FSCONFIG_CMD_CREATE, NULL, NULL, 0);
-+	err = errno;
-+	if (ret && err == ENOTBLK) {
-+		close(fsfd);
-+		SKIP(return, "no file-backed erofs mounts");
-+	}
-+	ASSERT_EQ(ret, -1);
-+	ASSERT_EQ(err, EINVAL);
-+
-+	/*
-+	 * Something that isn't an erofs image fails with EINVAL as well so
-+	 * check that the source itself was refused.
-+	 */
-+	while ((n = read(fsfd, buf, sizeof(buf) - 1)) > 0) {
-+		buf[n] = '\0';
-+		if (strstr(buf, "pseudo filesystem"))
-+			refused = true;
-+	}
-+	EXPECT_TRUE(refused);
-+	EXPECT_EQ(close(fsfd), 0);
-+}
-+
-+TEST_HARNESS_MAIN
-
--- 
-2.53.0
+Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 
