@@ -1,100 +1,98 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794315395;
-	b=0iaVo5ZVdMOS2zgCkG2WlUI+LM3nFPf4lI1PCTnlQ/i6wySWrNb3tSyzXwUtEP639PPR
-	 PeHJyjAGIRA3cqURlQR+XTHa9hI9qQUI+oMOJ4hFJjQxiHx+aK7RYE1QJjj6t0ppLG1ll
-	 xs8cCERKgPwTD6Swh7iqFXQAhc0GCA3EJfTClY1VVoHOlYrufOOV8coA3O6KLZSRQ10DK
-	 sdmbLa0zdTbEK10ksF/wbEgNR0AjytvPtMGPgPKoGxf17OzVitssFvpykMi2iuE7lM0Le
-	 QOFENc9JvkyCezTZD7PC7HDgE3gF1FQAc4dZ5YhUdpbz080iojBS89W8J8igLxPo1pw==
+	t=1794315419;
+	b=DcUuSOp5NUf9iRu4aTQyabW5HqxzIgVq3TRNZTxmeQT2PzVY0le+x9RD3896NDPvPtFs
+	 W1BBgcpRjSvaVVDquY9JkEJjHIdgzVWFL5/1Zv/NMKTIRmQuMVQk0EcMpIX/gF7g/SDIi
+	 zxEd/3/vsAZtzYUILNQxIzUFyYqnfkhWL3CE306XJ5OgQqRnjQp00j0R+wGXza0uOCLp9
+	 pOCGZbG97USwGnYXYyAF+l8rnkyD5fGifCHseehzjx1P342R99Av/MAFO0oXOeLJaOqLR
+	 LoZsDnvGFrBqavw/uSd68TTKL5hMSzrELUa7BoMObLQTAKUe2jsCqPwVrAuKYHugN3g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794315395;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794315419;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
 	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spamd-Result:X-Rspamd-Server:X-Rspamd-Action:
-	 X-Spam-Flag:X-Spam-Score:X-Spam-Level:X-Rspamd-Queue-Id;
-	bh=HPonFqTWiUmtrNs+Qb0D36Y6ciEfhMadviiHreNFwYc=;
-	b=FBgMzOlEDo/vA4W9a0b1iRMBBcuWSeo0Fyrju9GNAs1E+atEU/Su8RzkFEmgysHH+rd5
-	 goJqqDL4KeoNQrPGDxb2Q9ZRKtq5tOg4QQx0y8jdGkg1nhfmn3+hzqY6y6YvNVm38QGjf
-	 y8jOQfiFweatczhkaOSYo5k7UCBhkWCx4JbwRU5XzqXjLjjReFjUi6O2oZ/vBv9P4APtj
-	 Fkr8C2j970tZI4iOnZN0e/BDZ0jjhon/7bD/hqh6w+6lgg2iKs6btQNoAVWqO3xok4dsF
-	 UmVTwXdNBjoNurriwtJJJfO3vviVmzeKW/nmWQJOpksC5fpG28ZZurXwQYrMM+FyaKQ==
+	 In-Reply-To:X-Spam-Flag:X-Spam-Level:X-Spamd-Result:X-Spam-Score;
+	bh=8ydl7Tmlsy6sB/5DKTtOnjnkkw2YCPYFk9bjL7BuvBI=;
+	b=WAWO7yNyF6Uar8xD37Pk3Bm2RXqVRrPTPJmw1ODHapxmc1M2Vz6EKBpvdl5+PVfA435d
+	 MkhHabfLLFBiM8DGd1BOIQHizkAzaA+FCWRPs6U/paxH38v+XyUuJsLvhqa6tn3agGNl1
+	 fVmWHNc5r2MNLodh+lLWYXWlBhpQB0mSExL3BZAmDA0hz3+73cLL/fJ4GmTYNUyARdH8U
+	 Y+el/saO2OGAHRW3rJkRFMU1wIpimc6kPaiLeE2ooOQMwNiQp8ZblAiSOEYHaUhf7hic3
+	 8Iar1xuzTlWykXrNUl52d+pDOWkIZadnkoDhTMZ8TJGfOLzm+6JfBrYFSzoKemD4IhA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=suse.cz;
 	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=iI7ym2rR;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=d7Rq00c+;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=iI7ym2rR;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=d7Rq00c+;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=tSFQYWyR;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=V1tJ5Byu;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=tSFQYWyR;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=V1tJ5Byu;
 	arc=none smtp.remote-ip=195.135.223.130
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 58D9A606A336;
-	Tue, 10 Nov 2026 12:56:34 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 58D9A606A336
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CDD6F606E455;
+	Tue, 10 Nov 2026 12:56:58 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org CDD6F606E455
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=iI7ym2rR;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=d7Rq00c+;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=iI7ym2rR;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=d7Rq00c+
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=tSFQYWyR;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=V1tJ5Byu;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=tSFQYWyR;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=V1tJ5Byu
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 76D2521F51;
-	Tue, 10 Nov 2026 12:56:32 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 10FD721F68;
+	Tue, 10 Nov 2026 12:56:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1794315392; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1794315417; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=HPonFqTWiUmtrNs+Qb0D36Y6ciEfhMadviiHreNFwYc=;
-	b=iI7ym2rRMMc3VrhaaAlN5WNcqZznLEHDbtpYqtRkG5n1tfi+3M5v/n/1WuSOFedMo1sqbz
-	Sc32CgTVFd7/opphYDcFWOT80BR/RRxVs/vkTtWjRDJpkb4OidIs7+B5BXeAuF4BOYbj/J
-	KLIaaDFlgWnKom1lHgtRS/Kk0HCzFnQ=
+	bh=8ydl7Tmlsy6sB/5DKTtOnjnkkw2YCPYFk9bjL7BuvBI=;
+	b=tSFQYWyRwwv+kHYE8YhpOGU4Ki3HgKpsjkr+3bnlJF4cyRVZi+z6dmRnLVspPlNWBQ97T6
+	CjWhI8INKAvD/P6E+SsUzIAB++2Mfn4yUQshTJILp/aD0y+vMUsCGK8B/SvT9SJxrm+lD6
+	OfAmAtDkJMnT/TjtT42JjMJHwAmLTYA=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1794315392;
+	s=susede2_ed25519; t=1794315417;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=HPonFqTWiUmtrNs+Qb0D36Y6ciEfhMadviiHreNFwYc=;
-	b=d7Rq00c+LDwkQJ8CY66ztb5ybwTC8KjmYM3gSgR5ZqtZLmPfIVg22YnOIpbxkR6cuLihJP
-	WLfQ9WIdsrYIm9Aw==
+	bh=8ydl7Tmlsy6sB/5DKTtOnjnkkw2YCPYFk9bjL7BuvBI=;
+	b=V1tJ5Byu2B6p1tefK4YDbMgOvwybp9VjU+aSU5c9lZUhOg8WFHNH3DAT2n59zkgMTRqYSW
+	vjk8sfZwK3dN1ECg==
 Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=iI7ym2rR;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=d7Rq00c+
+	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1794315392; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1794315417; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=HPonFqTWiUmtrNs+Qb0D36Y6ciEfhMadviiHreNFwYc=;
-	b=iI7ym2rRMMc3VrhaaAlN5WNcqZznLEHDbtpYqtRkG5n1tfi+3M5v/n/1WuSOFedMo1sqbz
-	Sc32CgTVFd7/opphYDcFWOT80BR/RRxVs/vkTtWjRDJpkb4OidIs7+B5BXeAuF4BOYbj/J
-	KLIaaDFlgWnKom1lHgtRS/Kk0HCzFnQ=
+	bh=8ydl7Tmlsy6sB/5DKTtOnjnkkw2YCPYFk9bjL7BuvBI=;
+	b=tSFQYWyRwwv+kHYE8YhpOGU4Ki3HgKpsjkr+3bnlJF4cyRVZi+z6dmRnLVspPlNWBQ97T6
+	CjWhI8INKAvD/P6E+SsUzIAB++2Mfn4yUQshTJILp/aD0y+vMUsCGK8B/SvT9SJxrm+lD6
+	OfAmAtDkJMnT/TjtT42JjMJHwAmLTYA=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1794315392;
+	s=susede2_ed25519; t=1794315417;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=HPonFqTWiUmtrNs+Qb0D36Y6ciEfhMadviiHreNFwYc=;
-	b=d7Rq00c+LDwkQJ8CY66ztb5ybwTC8KjmYM3gSgR5ZqtZLmPfIVg22YnOIpbxkR6cuLihJP
-	WLfQ9WIdsrYIm9Aw==
+	bh=8ydl7Tmlsy6sB/5DKTtOnjnkkw2YCPYFk9bjL7BuvBI=;
+	b=V1tJ5Byu2B6p1tefK4YDbMgOvwybp9VjU+aSU5c9lZUhOg8WFHNH3DAT2n59zkgMTRqYSW
+	vjk8sfZwK3dN1ECg==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 4B4391339F;
-	Tue, 10 Nov 2026 12:56:32 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E25DE1339F;
+	Tue, 10 Nov 2026 12:56:56 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 7R2CCoAU82qzQwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 10 Nov 2026 12:56:32 +0000
+	id 6y7vMJgU82poRAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 10 Nov 2026 12:56:56 +0000
 Received: by quack.suse.cz (Postfix, from userid 1000)
-	id E835D224E7; Tue, 10 Nov 2026 13:56:27 +0100 (CET)
-Date: Tue, 10 Nov 2026 13:56:27 +0100
+	id 8D370224E9; Tue, 10 Nov 2026 13:56:56 +0100 (CET)
+Date: Tue, 10 Nov 2026 13:56:56 +0100
 From: Jan Kara <jack@suse.cz>
 To: Christian Brauner <brauner@kernel.org>
 Cc: linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>, 
@@ -108,10 +106,10 @@ Cc: linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>,
 	linux-efi@vger.kernel.org, xen-devel@lists.xenproject.org, ocfs2-devel@lists.linux.dev, 
 	linux-s390@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, linux-usb@vger.kernel.org, 
 	Amir Goldstein <amir73il@gmail.com>, linux-erofs@lists.ozlabs.org, linux-kselftest@vger.kernel.org
-Subject: Re: [PATCH RFC 06/41] proc: use fc_init_pseudo()
-Message-ID: <sqdczu46saxh7e2x5d7cuzkfqnlrp2naoqau374n2chx55ylpm@tirkx2qx4uju>
+Subject: Re: [PATCH RFC 07/41] binfmt_misc: use fc_init_pseudo()
+Message-ID: <pgygyhsa4yghzrnta5qgeqehqixklm4tzdjz76ro7j6zy5r5ib@2xq25urai24i>
 References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org>
- <20261110-work-loop-pseudo-v1-6-4c998976c6c7@kernel.org>
+ <20261110-work-loop-pseudo-v1-7-4c998976c6c7@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -123,85 +121,79 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261110-work-loop-pseudo-v1-6-4c998976c6c7@kernel.org>
-X-Spamd-Result: default: False [-13.01 / 50.00];
+In-Reply-To: <20261110-work-loop-pseudo-v1-7-4c998976c6c7@kernel.org>
+X-Spam-Flag: NO
+X-Spam-Level: 
+X-Spamd-Result: default: False [-16.80 / 50.00];
 	SUSE_INTERNAL_BYPASS(-9.00)[];
+	REPLY(-4.00)[];
 	BAYES_HAM(-3.00)[100.00%];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	MIME_TRACE(0.00)[0:+];
 	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[31];
-	RCVD_TLS_LAST(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	MIME_TRACE(0.00)[0:+];
 	TO_DN_SOME(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	R_RATELIMIT(0.00)[to_ip_from(RLbde8anocd1dffa59fn6d5qp8)];
 	MISSING_XM_UA(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[31];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	R_RATELIMIT(0.00)[to_ip_from(RLdu9otajk16idfrkma9mbkf9b)];
+	FROM_HAS_DN(0.00)[];
 	FREEMAIL_CC(0.00)[vger.kernel.org,google.com,kernel.org,toxicpanda.com,lst.de,lists.infradead.org,zeniv.linux.org.uk,suse.cz,lists.linux.dev,kvack.org,lists.ubuntu.com,lists.xenproject.org,lists.ozlabs.org,gmail.com];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.cz:dkim,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email]
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Rspamd-Action: no action
-X-Spam-Flag: NO
-X-Spam-Score: -13.01
-X-Spam-Level: 
-X-Rspamd-Queue-Id: 76D2521F51
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo,suse.cz:email]
+X-Spam-Score: -16.80
 
-On Tue 10-11-26 10:14:22, Christian Brauner wrote:
-> Initialize procfs as a pseudo filesystem instead of raising
+On Tue 10-11-26 10:14:23, Christian Brauner wrote:
+> Initialize binfmt_misc as a pseudo filesystem instead of raising
 > SB_I_NOEXEC and SB_I_NODEV by hand. This adds SB_I_PSEUDO.
 > 
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-Makes sense. Feel free to add:
+OK. Feel free to add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > ---
->  fs/proc/root.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
+>  fs/binfmt_misc.c | 5 +++--
+>  1 file changed, 3 insertions(+), 2 deletions(-)
 > 
-> diff --git a/fs/proc/root.c b/fs/proc/root.c
-> index 7fbbe92bf73a..ca0e75081934 100644
-> --- a/fs/proc/root.c
-> +++ b/fs/proc/root.c
-> @@ -17,6 +17,7 @@
->  #include <linux/bitops.h>
->  #include <linux/user_namespace.h>
+> diff --git a/fs/binfmt_misc.c b/fs/binfmt_misc.c
+> index d945b4f6e158..7dc233becd98 100644
+> --- a/fs/binfmt_misc.c
+> +++ b/fs/binfmt_misc.c
+> @@ -22,6 +22,7 @@
+>  #include <linux/file.h>
+>  #include <linux/fs.h>
 >  #include <linux/fs_context.h>
 > +#include <linux/pseudo_fs.h>
->  #include <linux/mount.h>
->  #include <linux/pid_namespace.h>
->  #include <linux/fs_parser.h>
-> @@ -265,8 +266,6 @@ static int proc_fill_super(struct super_block *s, struct fs_context *fc)
->  	if (ret)
->  		return ret;
+>  #include <linux/init.h>
+>  #include <linux/kstrtox.h>
+>  #include <linux/limits.h>
+> @@ -1575,8 +1576,7 @@ static int bm_fill_super(struct super_block *sb, struct fs_context *fc)
+>  	if (user_ns != current_user_ns())
+>  		return -EINVAL;
 >  
-> -	/* User space would break if executables or devices appear on proc */
-> -	s->s_iflags |= SB_I_NOEXEC | SB_I_NODEV;
->  	s->s_flags |= SB_NODIRATIME | SB_NOSUID | SB_NOEXEC;
->  	s->s_blocksize = 1024;
->  	s->s_blocksize_bits = 10;
-> @@ -350,6 +349,7 @@ static int proc_init_fs_context(struct fs_context *fc)
->  	put_user_ns(fc->user_ns);
->  	fc->user_ns = get_user_ns(ctx->pid_ns->user_ns);
->  	fc->fs_private = ctx;
+> -	/* Never exec off this instance and never let anything stack on it. */
+> -	sb->s_iflags |= SB_I_NOEXEC | SB_I_NODEV;
+> +	/* Never let anything stack on this instance. */
+>  	sb->s_stack_depth = FILESYSTEM_MAX_STACK_DEPTH;
+>  
+>  	/*
+> @@ -1660,6 +1660,7 @@ static void bm_kill_sb(struct super_block *sb)
+>  
+>  static int bm_init_fs_context(struct fs_context *fc)
+>  {
 > +	fc_init_pseudo(fc);
->  	fc->ops = &proc_fs_context_ops;
+>  	fc->ops = &bm_context_ops;
 >  	return 0;
 >  }
 > 
