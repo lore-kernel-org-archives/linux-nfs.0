@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794302233;
-	b=GH/WQnPamwX9UdPk+9/zBP6vncegTm7mvkf6U8YP7nXbGxSiT4GW6ROzNRlMb29xeyCh
-	 o0FpSNZz2WeD484SrsyBzNFYCRzyFeKCjLJkP4+ZdMM40EsLsCKXyU2CFpCNWUB/DTDsJ
-	 b3pk5s8BLRyI4eD5xcE8/wVrhQBGSa1b3vYMYumBP7zm8E/bFn18VBcom7reIP3hebyu9
-	 FMYvvJ7zBwi86SyW6hX9bYDTlZ/AQz7MQkzSQVwmy7+2oEGlJIBWtqVXh4p1eFvCnk5MR
-	 hOakOtJa98r2bleWEHTmso15So08UM6TFS7Tbc1BcEIU1fX2adTIysJsqxxK4pHmyag==
+	t=1794302240;
+	b=RQZGyuUUGMxugwnNK6vOpQ7E3wZxD1CNqeNWLe8WYWr/FpLGS2qHugwB/TFSN3wxRh6O
+	 GA7svMLNrmf2mzZtqUt6m3Uh9SCqKU7KyBC2sxG1tCKrmtm4jpaGhriE/JRhJxrwte/2d
+	 Eu91ueDmiuP9j7NL/LmWyI3o8qFLILeAvBCMs65zjmWSD95IXxERB/1PGTC8fVS/yhYbj
+	 T2gyAQdClpZAL4hwhd639c2AD0CcgzCzAzd7lzovhugxCxUvZY/J1MXH1kXGv42ZteDDy
+	 p2O3ymfJP1g7+kw1ufXYOdvRGIC/7awS5Gft04sGdvWN5w32hLpONlk0exOFoc8QJqg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794302233;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794302240;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=Aeiu3UyUCzSAfqYn5Q8bZyz+wYYebjsNU8IIX+ZzMDg=;
-	b=arNT1i6enV+d4VNRSFmEAU+jXkwF+gYcOvsMlHwJPw3WLNRqynwAjdzM9ITq/CwT/X0E
-	 wi+b2JQimaTOVOYj/aFTlGxHj4jI92BVb3mktgTpmrP+QrR+jzz+23SP0HFoTnXzoaixp
-	 zPQNMPk4eTD6AQVQlsQRMLS4T9pQTFyjPmKbR1WknQV7UdzuVZ1sSglQXpL/UdA2vDPYl
-	 B71np5Sh1uabndVNqYw9cXQWUWAEErZ0vUQJkRyQKIIuyu7nlYZDqhEQyBxNDQuJ0N6Yr
-	 2F1xSJ6arpOOqBU2wn8RLDZJPhUWnoFSqUu0Et40Tr73+CyRbOvZ4enUKMcZbKk/VRw==
+	bh=BDssZE8GnxXJphkJa/7u6Kmpiz0qYyZXv4DcRb36RZU=;
+	b=IbjyGDPWRejUa60ukfGkiMp46sdTxA/QevUFwi646UkZBJGwGuVD8PtYEwNwnLcvg8uG
+	 OXDjhR4c1CWgkSfZ5qzO6dSZV4IlXMsMpi3jMMBfNgEp4kcsVlxMbye9hpF1+tMzgsKGM
+	 jvfkteUa1sMm6NQFY/5lV43xAfJCkreU4b8ZT2mSjt+suHGvRYYnykexAOxLxupAXSM/k
+	 ZMkcIy1SJst/OTJqLQRcbXe3EJRKo3e4hT4JhzO3G4cbyesFTZqSkm0F0WFNPOt9lC0HH
+	 /1OCaz8LRLJZNq7Bpz+TR4NRb6vywLFQl8PZGRx/2rHu/8Z0ixgezdBydQBiSLicXig==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="oIOs/EM+";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HZwAEC7y;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3FED560A5BDC;
-	Tue, 10 Nov 2026 09:17:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4843460A260E;
+	Tue, 10 Nov 2026 09:17:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oIOs/EM+
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9A3D61F008A2;
-	Tue, 10 Nov 2026 09:17:06 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HZwAEC7y
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5F81D1F008A1;
+	Tue, 10 Nov 2026 09:17:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794302232;
-	bh=Aeiu3UyUCzSAfqYn5Q8bZyz+wYYebjsNU8IIX+ZzMDg=;
+	s=k20260515; t=1794302239;
+	bh=BDssZE8GnxXJphkJa/7u6Kmpiz0qYyZXv4DcRb36RZU=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=oIOs/EM+KXYJ1grlTivKYR/ku8jTJ0m+cIlI+pG3YVNmGlTgU+6mJXjsBjanfGWq1
-	 8T4XFq0QNRg8zsAR7ESB+aTONXWP2FVgpzDjvL9j6/UuounNAWxRDH5vAS4BK+FriA
-	 AfJ2mWd7w+XhNvm479SKkBvm8bw9ZW4l45/S/N6hJoGcFILfLfz/Qcj/WnSIAKKHlR
-	 aZu74imaFzIlgEUKmwdk+yZz0BxAbckL3QBgudLh+hdwVCHz4VM3nz2NTqfxr8RO87
-	 0wJDp5SY816Gwv6wS5IRgzFg66syGlemxNOlITSZvr+VV0w4yn0U9xfFOWxx2iUo1Q
-	 ypT2aD1Wz0XJQ==
+	b=HZwAEC7yTB7xRGKnMoMrQZ9sxFhShy/lcUuZ/x28dAQF2zKH4dms8JkefpvImrQ6x
+	 XC17RCkuC5DS1kjza0TXcL7CFDfklhb43tkgjYep+m/Ktv9OM8WFbgu+n53zFr0v99
+	 oA4dvldcm7IP98DtTd9OniKq7I49xL8jcVtYPn+hdsEuh9403uECXy9gbC3SQ3i3KX
+	 69hVJ4ZtgMy9pBNrX3/NQCtI3QLLlYI9QKbR1ljiyee3SOwCPkfnPUCR39DKczXa41
+	 B7rewxNEm+xa8FVjYKfML4jkp/JG7IHWJl4xIRYdJ5VcaUC/EIXdXrICC3YYuo9a0Q
+	 vQiRwTkVcDJ/A==
 From: Christian Brauner <brauner@kernel.org>
-Date: Tue, 10 Nov 2026 10:14:27 +0100
-Subject: [PATCH RFC 11/41] failfs: use fc_init_pseudo()
+Date: Tue, 10 Nov 2026 10:14:28 +0100
+Subject: [PATCH RFC 12/41] rust_binderfs: use fc_init_pseudo()
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-work-loop-pseudo-v1-11-4c998976c6c7@kernel.org>
+Message-Id: <20261110-work-loop-pseudo-v1-12-4c998976c6c7@kernel.org>
 References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org>
 In-Reply-To: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -75,44 +75,52 @@ Cc: Jann Horn <jannh@google.com>, Chris Mason <mason@kernel.org>,
  linux-kselftest@vger.kernel.org, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=879; i=brauner@kernel.org;
- h=from:subject:message-id; bh=jMBLnsAt3YLGCzcD1+vp96riKCztRaww7Mw52ZY6Vqk=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9erDgSsTlaLm0BaZPb2g9zFBdk3jqJpvVSZWp6w78u
- SDN++zJ2Y5SFgYxLgZZMUUWh3aTcLnlPBWbjTI1YOawMoEMYeDiFICJ6BQy/M9iFhSuKGdsOHT4
- K5PvuWfptRIcgVqXrHXW3VP44fKMUYvhn/I1R41K+fPTD11o4sx5ED/hfMxLg0sltflhfgn7d1b
- yMQAA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1349; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=ia59pqse5bfG3zsSypUZSF6rnakCYrHaj4vJVOgAczE=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9erBwbu+MRZLWcXVeu3+t3xy2+WPblfNtxmUPzkxuZ
+ kvRVVts01HKwiDGxSArpsji0G4SLrecp2KzUaYGzBxWJpAhDFycAjARzmhGhtUeaQcz2VY03m2x
+ 8X+zz3bz86e+3F0Sc0+/XnSvs/WJ/nKGfybCIVeWvGvzeXz9a3rPAre2kNeaOolzS/+H7js9+Wh
+ DJgsA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Initialize failfs as a pseudo filesystem instead of raising
-SB_I_NOEXEC and SB_I_NODEV by hand. This adds SB_I_PSEUDO.
+Initialize binderfs as a pseudo filesystem instead of raising SB_I_NOEXEC
+by hand. This adds SB_I_PSEUDO. binderfs_fill_super() keeps clearing
+SB_I_NODEV for the binder device nodes.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/failfs.c | 3 ++-
+ drivers/android/binder/rust_binderfs.c | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/failfs.c b/fs/failfs.c
-index 437cdc981c2d..f03334f361c0 100644
---- a/fs/failfs.c
-+++ b/fs/failfs.c
+diff --git a/drivers/android/binder/rust_binderfs.c b/drivers/android/binder/rust_binderfs.c
+index 5f020226720d..04468c5b5c11 100644
+--- a/drivers/android/binder/rust_binderfs.c
++++ b/drivers/android/binder/rust_binderfs.c
 @@ -3,6 +3,7 @@
+ #include <linux/compiler_types.h>
+ #include <linux/errno.h>
  #include <linux/fs.h>
- #include <linux/fs/super_types.h>
- #include <linux/fs_context.h>
 +#include <linux/pseudo_fs.h>
- #include <linux/fs_struct.h>
- #include <linux/magic.h>
- #include <linux/mount.h>
-@@ -132,7 +133,7 @@ static int failfs_init_fs_context(struct fs_context *fc)
- 	fc->ops		= &failfs_context_ops;
- 	fc->global	= true;
- 	fc->sb_flags	|= SB_NOUSER;
--	fc->s_iflags	|= SB_I_NOEXEC | SB_I_NODEV;
-+	fc_init_pseudo(fc);
- 	return 0;
- }
+ #include <linux/fsnotify.h>
+ #include <linux/gfp.h>
+ #include <linux/idr.h>
+@@ -667,7 +668,6 @@ static int binderfs_fill_super(struct super_block *sb, struct fs_context *fc)
+ 	 * necessary and safe.
+ 	 */
+ 	sb->s_iflags &= ~SB_I_NODEV;
+-	sb->s_iflags |= SB_I_NOEXEC;
+ 	sb->s_magic = RUST_BINDERFS_SUPER_MAGIC;
+ 	sb->s_op = &binderfs_super_ops;
+ 	sb->s_time_gran = 1;
+@@ -759,6 +759,7 @@ static int binderfs_init_fs_context(struct fs_context *fc)
+ 	ctx->stats_mode = binderfs_stats_mode_unset;
  
+ 	fc->fs_private = ctx;
++	fc_init_pseudo(fc);
+ 	fc->ops = &binderfs_fs_context_ops;
+ 
+ 	return 0;
 
 -- 
 2.53.0
