@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794302164;
-	b=FdbvbUK+GLBkOQgaztPrjC5AyvlwfeK6g5qCCKvPIAGSYsPNB0+w33Es9298osBCWyu6
-	 apsTs2XV8QIKKAzWjCo8aj2AccMkMNO9npi/NZKD54ZBwXIiefcQ/WbvW2BBBsU4qsQHU
-	 hkhxRqVMWLi56coGuG0RWDOO5xxQFG3mGIHa/CZt7W4UJD1+wafKWW9b/0wXfSp5j7R5x
-	 /yHiXFMLwjk2Ah+X7+UDfYeKj8AgleYPrJxqewAH+ogQf0OIzOgS6oTs7M/d8Ue78cInq
-	 8cax40wfLAyqCnPelSDWTk2Qrf2QmuxcmEHnZss3nMMEGc519hqjI5vyfXk94JTs0kg==
+	t=1794302171;
+	b=XBo0ztfDUDzzRBZnGPJTv3mVeNJav+NltBtqFPDKLxUmmkZ2KwQdgr5MEi6HsvKYfhdW
+	 Lfep2b/0DDYjQEGynV9y/V50chfu1A/bmJKd6E/q8lQWaOgm49Z0KEHZk/dBIb5mVLjxD
+	 MeAEO6dFt/a41Z55JVWcFuiy23xVtJQClq3u1WkFe4Tx54jngpTb2mNwDEb+gwTUdh+/v
+	 z4Qmwi2OyFsmUp534LGZ9m/BW2x45ZUN+M/oJynLeLlsfcFVWob0WKVLS6Iuvz36DuNuW
+	 iaKsyv2FFHfgGBeEPLjX5kGmg28wlp1c1iWbKj6Vh6FP//wB44mXYRBcSPBe90GjPjg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794302164;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794302171;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=2Uxnm4Cd0mizACq2HNobDQRQcgrPnhEO2KA80+bveeM=;
-	b=Czr4VCEzsGA5KjLlvOoN4FHNyHWabD/A2YSGAbacuRue8HfTgSRFTe85z0Be0Z0SOIS8
-	 UsU0syR8UWa8p1gMZvhWvnxZf72NO8ypSqHIiexG+0shvzPXYIv7klZSroBs2HKch6JS4
-	 pAhByfoKJ4A06cuDEtVUKc2rr/SdYBswEGwT8lgjCE6H2Lo73dDn9qmeNx+Xwsk1uNEwY
-	 JH6MABSaLbSrehge133cUAfi3gDbSkTpb9kjqWoZ2LlCwmm0ZW97PlOqRPW66p4gVzIQ0
-	 HF+BWeANU/8yBskBeqGyMw28q6EzDAvmhyiKED8ycPOxcxABb6SwFrQnocvKcxmLeBQ==
+	bh=48wS641dZNlMgTbgKHYJJRZjCIIpBYSCk6vN7nPVst0=;
+	b=DR+dwbHrptfZhTChU9EVE8BOBIF54/7M6fH5dqWSjfGkYUWpK5s/rzjy6iJd74c3+dv2
+	 o4VXtAj9jziof5IoWK0n3LgOr7vX7cChgiwkj5osckXe6R/V6sio3GShjTlOcVEsUqHQJ
+	 3cA0JYkMkAz+5gsvZK1vcdOH/lk+M8l7esCrhIeA4IxH0PMAvmlHXRTeAq8QHYxJO2bOX
+	 wyt61hQQjHWekiCq1D+4CM+yvAucApRPOYRfTzLizJirt+Kcvv51T6xrBTxnY6J0c4AkX
+	 551Y42Ab7LDAhwTRGRVmL+ddcV35eWxQOJLz3B8JHh20exlxApu5yIt4Ka8pNwrlaZA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ba3Pyp5O;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=B3k5bbEA;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9EF40606A33B;
-	Tue, 10 Nov 2026 09:16:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 93CFE606A325;
+	Tue, 10 Nov 2026 09:16:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ba3Pyp5O
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D92891F008A2;
-	Tue, 10 Nov 2026 09:15:57 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=B3k5bbEA
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EF7381F0089F;
+	Tue, 10 Nov 2026 09:16:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794302164;
-	bh=2Uxnm4Cd0mizACq2HNobDQRQcgrPnhEO2KA80+bveeM=;
+	s=k20260515; t=1794302171;
+	bh=48wS641dZNlMgTbgKHYJJRZjCIIpBYSCk6vN7nPVst0=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=ba3Pyp5OpjsLWNS18IN6KJmuJFLn691WGOW4O+tQFCTWln2eXYVZ3JE1wBRhcmoW6
-	 hLpwpT4jz67cKW4CJB9uIhzhbMhfgiFHlr2CZK53VaqCwK5HM1YqSaiFHCScsFMBkn
-	 Q0OzOCwsepsGyP/WRgtRo4+3FcZl8eUfyuWZ7KuL8XDVDG6tcU8rd25pxcEBVszf1y
-	 XJvR4c13VrmJU77uH8rLkN68FB+fLrhpSvF6buW7PxoKBBbfZNWSogmUA09LLIYVWc
-	 o8T8B1sqCgT2o3NyN+rjS4hlvf0pw7ESlo7MI8nYdimYq23hA2cdZ9j7+asrP+da9o
-	 Z/f8j2gHp/WZg==
+	b=B3k5bbEAWfpJtZp1vzeXux0KzrY0ieZxwUJi/83P+f7eKHCKBYc9mkYVfNK2b/51Z
+	 IE7odp0lQqQ7mwusK6pgB1WlHVkO/UlsckyLpTfE8Yp89sMOk+QjYT1he8sjTHJobl
+	 zbSxv5PQZ8XY+Ts/6iaugpn66hCj3rJCosVRpDg0+EuqU7+TpcsCN1TcwITx1L6QCL
+	 1C6NNljvCVnJ+dNekIZ/1LCG3UXVW6y81kv+eHD0umTjqyrBp3lV94BaeU5UIyHZKc
+	 zDKybfsspnrP1qhiqd+dsnxznVfYXFvZSeoRYSBElTyxocH2QJC3b5d8zXbtpIhziF
+	 ygU0pzxGVue5w==
 From: Christian Brauner <brauner@kernel.org>
-Date: Tue, 10 Nov 2026 10:14:17 +0100
-Subject: [PATCH RFC 01/41] loop: refuse backing files that aren't open for
- reading
+Date: Tue, 10 Nov 2026 10:14:18 +0100
+Subject: [PATCH RFC 02/41] nvmet: check that the file backend supports
+ ->{read,write}_iter
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-work-loop-pseudo-v1-1-4c998976c6c7@kernel.org>
+Message-Id: <20261110-work-loop-pseudo-v1-2-4c998976c6c7@kernel.org>
 References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org>
 In-Reply-To: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -74,58 +74,49 @@ Cc: Jann Horn <jannh@google.com>, Chris Mason <mason@kernel.org>,
  linuxppc-dev@lists.ozlabs.org, linux-usb@vger.kernel.org, 
  Amir Goldstein <amir73il@gmail.com>, linux-erofs@lists.ozlabs.org, 
  linux-kselftest@vger.kernel.org, 
- "Christian Brauner (Amutable)" <brauner@kernel.org>, stable@vger.kernel.org
+ "Christian Brauner (Amutable)" <brauner@kernel.org>
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1688; i=brauner@kernel.org;
- h=from:subject:message-id; bh=k5rFTn5qwSY0P1NIV6SDcJMZmh5p3efbZZ8FHYDs+to=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9ejBVvfNKBs+f5kIhpoaev8LtD4oXZ1xL0i19ll21p
- i5fZsmkjlIWBjEuBlkxRRaHdpNwueU8FZuNMjVg5rAygQxh4OIUgInc3s/I0OHqXaH2k1fp545n
- UtNUpkUwfzq4/7uEmpjnzfcNZ9bvT2JkeCygm5CxsPhqWqRgSqf6D/8dk2afLnMX1LJ/rjh/3zZ
- BPgA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1206; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=9rTO3vQgbbKMLgtf9DhInii/7oHGTrugRkWUh4dwMMs=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9ejBtltmGmxnek3mf9QvZzp8xjWWx5Y+Awzls7lyHP
+ /4+2Dk3oqOUhUGMi0FWTJHFod0kXG45T8Vmo0wNmDmsTCBDGLg4BWAivzwZGU4478oq2RB1Nuut
+ 48Jj7Tu4n8+545UyJdpwumO4VdS2g7kM/9TW5p9ep3/AsD+mInRXw3I+rR/SC0xnPXVmN7wifGZ
+ vBB8A
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-loop_configure() takes any file as long as it implements ->read_iter().
-Loop itself never checked whether the file was actually opened for
-reading. Buffered I/O went through vfs_iter_read() which refuses files
-without FMODE_READ. Direct I/O has called ->read_iter() of the backing
-file directly ever since loop grew support for it.
+The file backend calls ->read_iter() and ->write_iter() of the backing
+file directly but never checks that they exist. Everything that isn't a
+block device ends up in the file backend. So a namespace pointing to a
+file without them calls a NULL pointer on its first I/O. Only
+buffered_io=1 gets that far as the O_DIRECT open fails for such files.
 
-Since commit f2fed441c69b ("loop: stop using vfs_iter_{read,write} for
-buffered I/O") buffered I/O calls ->read_iter() directly as well. That
-commit was about O_DIRECT handling and the FMODE_READ check went away
-as a side effect.
+Refuse them when the namespace is enabled the same way zloop does since
+commit 0c10f8a1a7ae ("zloop: check that the zone backing file support
+->{read,write}_iter").
 
-So whoever can set up a loop device can read a file it was only allowed
-to open for writing. Open the file O_WRONLY, configure a loop device
-with it and read the contents through the loop device.
-
-Refuse backing files that aren't open for reading. Loop always reads
-from its backing file so a write-only backing file never made sense in
-the first place.
-
-Fixes: bc07c10a3603 ("block: loop: support DIO & AIO")
-Fixes: f2fed441c69b ("loop: stop using vfs_iter_{read,write} for buffered I/O")
-Cc: stable@vger.kernel.org
+Fixes: d5eff33ee6f8 ("nvmet: add simple file backed ns support")
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/block/loop.c | 3 +++
- 1 file changed, 3 insertions(+)
+ drivers/nvme/target/io-cmd-file.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index a3325ceab484..c96e35c3ef42 100644
---- a/drivers/block/loop.c
-+++ b/drivers/block/loop.c
-@@ -528,6 +528,9 @@ static void loop_assign_backing_file(struct loop_device *lo, struct file *file)
+diff --git a/drivers/nvme/target/io-cmd-file.c b/drivers/nvme/target/io-cmd-file.c
+index 695963dd932e..dfa8aa46188c 100644
+--- a/drivers/nvme/target/io-cmd-file.c
++++ b/drivers/nvme/target/io-cmd-file.c
+@@ -47,6 +47,11 @@ int nvmet_file_ns_enable(struct nvmet_ns *ns)
+ 		return ret;
+ 	}
  
- static int loop_check_backing_file(struct file *file)
- {
-+	if (!(file->f_mode & FMODE_READ))
-+		return -EBADF;
++	if (!ns->file->f_op->read_iter || !ns->file->f_op->write_iter) {
++		ret = -EINVAL;
++		goto err;
++	}
 +
- 	if (!file->f_op->read_iter)
- 		return -EINVAL;
+ 	nvmet_file_ns_revalidate(ns);
  
+ 	/*
 
 -- 
 2.53.0
