@@ -1,49 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794302390;
-	b=G4KxU88QRxB5Y5CpweeGCXbJo7oyZoAZhTWAzq6lc2+OWCjfeT40PmoeI48DdoNwYSnS
-	 uL6bIxqrJP4MH3b7GfNc3OXiKYxoujkerzY8McpBh5J+4WE2X+3htVeaw/Pufwri9urw3
-	 rlOZ6TXIbZs+1dpvsPWCTIPDUC6aTTKuBAWORXJxtp0aXpVhu1sr/JR0L9fe5Lhq4vIUS
-	 ZAf1V3uJ3yQLzD2jrvSFzB65BNh2nY1zubsRmGOYRMgCpqeKA1AJppQjEywxWYOnHghA/
-	 oDyb4Ksr05Xp9Ovpr1ehMELRUTdNHFcoeEl2Wh4C8HrcsT1RHXNa4fgj4rtkj9TnKHw==
+	t=1794302397;
+	b=UuCmnP1qjKwpPs+oV46MMbBbBFaojimi2zt3qX2+5V4KLen2M9rD6z6b0XbueOw1A8zT
+	 9/LutZ5J59UnqQNMTyZrwXQCO/y18f3zR6XiQ9mjE+M3Bp/gY4Zclg6qsxRY+5jND0Psa
+	 UWoSLytVmpSmqMudrFEkn5+wE+0ntjoRrAtaPjD7pHmX9k1Zk52FGLSWswLBvmp0NNSK6
+	 2CQC5yCNZMXcX/xKvhBdW2hU73KSX5eC/0FwTK04Vwj8i9Aa4fIiNXcV7tzYNwaIndSY4
+	 WSNBF7b0jXriarJ6/mz9+DE1gtQgf9oMD1BqzwQww/4d/rQb7bPE9U5fZ1pONezoZTQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794302390;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794302397;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=lnImahtJn5lfCdVuO4byE9DJbFXiWtZ50f1CyF0t2Q8=;
-	b=HPwask5QvCWvIR6GzDSNp3x9zLA6Fy5ccrih4VWdvbqUE1sbaZTWqxYRYy6YLAzww7wZ
-	 qw+RTUxRTeZNYJkXJuPV4w+Onps9UfH/Cpvz1f3yZt49Xi1lAElmjEYLUdCc9T2BiAY5K
-	 c1/UiKg40Kq3yfAX1BuGjsWNYFThZdhuj0IIbFZuMeUK3U+ON77b8/Z6T/ufb+ElnOo8G
-	 jd3kUqcOT46EhzPYpDe/CtI2gUOeIxTpnYbTez4w0unWznPS/mxp1I14DpSIVW1ZlcoU3
-	 IQJE2OANZS0BzKPc3b63VR7wU0WmAAcHhxCZai/Taoc31Xfu2w52l0C+U+JfJei3wag==
+	bh=qJiFf9w4hToXcclP9ppmON8B46ZerQobJ1F8sM9X2a8=;
+	b=Un35AGctUTmNLtwz27i+LwRjeQIprcH0Qnm4/FSiZ/smd3gySMZY9ucAZCgoWaY/b59Q
+	 ue5zqdtsVaMEVeCmTgfzU5Ql4Ppj21qtAlfcHxSOATWJhENkToBAByfyREJd4gR5tHKjs
+	 nhwVOVtsQOxViupPUsDdA79ih/yNSwy9RapJjikmM+t4SRNmVj1ll/iPIm/JkDh5vcYMN
+	 GYct2xyHvo67qB4ynduSa/2/IvARcLoYPBgItu5rugLMWHAhplyeKUnrCfhsuWmYq1iJs
+	 a1982/0/nqkOB0Lr4iZofuUSfLgJ5eKtgwcUUVgZoOw/LPUvhhS7n6VCk/jgxLf/RAQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WqGsamIv;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=YSj0RR1a;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2B944607A622;
-	Tue, 10 Nov 2026 09:19:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0E6DB607B02E;
+	Tue, 10 Nov 2026 09:19:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WqGsamIv
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B3DA11F0089F;
-	Tue, 10 Nov 2026 09:19:43 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=YSj0RR1a
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7F39D1F008A1;
+	Tue, 10 Nov 2026 09:19:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794302390;
-	bh=lnImahtJn5lfCdVuO4byE9DJbFXiWtZ50f1CyF0t2Q8=;
+	s=k20260515; t=1794302396;
+	bh=qJiFf9w4hToXcclP9ppmON8B46ZerQobJ1F8sM9X2a8=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=WqGsamIv3dtdaZQphHLu2DsjqE2y3/FcP3C64OYa+8HjMiTSq+RUo0e7SVbClrF0O
-	 Rn64RbDtjIQ3O+Vwx+jQosyxP133oDpbH9LaXZygD1MM6NsgOa8bfIBMBWinhY4voF
-	 I9LMB4dtUD9EnoSvdxBHOJx1kUnEZi+cO6zl0AnUxitmo0r0cS4AhTxoDqU/IE3/8N
-	 uJ4rAQbKeN2qr/1Nlrm7L9UeP+8U9vKXU8KBqCqhmY0R54patPnEALsIObSrmc3hKW
-	 Bz6GWE9fyD5MsVicN0uDrDB/5zSB2xN3jmDYfNnm8pkYJ/yFyaHVRy4YEgK/zJNLVt
-	 IxoVCfI/XEEcA==
+	b=YSj0RR1aG6qNPyxHpaLvknjLVj91ILD+92zWFulNcS/9GzuRoaQHatZawU0nYbR8y
+	 wus7ohgAGQBai1txsuKrJnXmIbOHGPu8ofJJf/FVDtHI8ClyJKzU7qfsjBbW0aZ+ce
+	 zWv3AeSLtwvY+Mjd5A9NqJjMByywMDui/mH5eL6dgY9srHxtjNOSh4WuAXPTmUK3oc
+	 rj74FmSQAg97IU/fPvixOSTy1hGHbrW8yJHlHbDd2o5Lngy9Nmbmsk6Ah2dyvn2OaD
+	 xaVAA8ELW3uvaLp+l18HV1m2/38wuA8CuBANF9a3ezWOwggIRGtvqG3gki5e2MoaKT
+	 vZL834m+QNo/A==
 From: Christian Brauner <brauner@kernel.org>
-Date: Tue, 10 Nov 2026 10:14:50 +0100
-Subject: [PATCH RFC 34/41] loop: refuse files on pseudo filesystems as
- backing files
+Date: Tue, 10 Nov 2026 10:14:51 +0100
+Subject: [PATCH RFC 35/41] zloop: refuse zone files on pseudo filesystems
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-work-loop-pseudo-v1-34-4c998976c6c7@kernel.org>
+Message-Id: <20261110-work-loop-pseudo-v1-35-4c998976c6c7@kernel.org>
 References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org>
 In-Reply-To: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -76,72 +75,40 @@ Cc: Jann Horn <jannh@google.com>, Chris Mason <mason@kernel.org>,
  linux-kselftest@vger.kernel.org, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2497; i=brauner@kernel.org;
- h=from:subject:message-id; bh=chnbD225AeAwL2r22LyY9vS4RRPeXQFSJ1x6B/QmHi8=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9erD71lG1GUFqk8J3zhE9HKjc6rfqomb6Dp9nHvd2b
- viaPiNickcpC4MYF4OsmCKLQ7tJuNxynorNRpkaMHNYmUCGMHBxCsBE7v5lZPgek5sy6Z/MydVb
- 5OSibJ/WcXMc/DFdcI1ZQY3Sv+l7b1ow/OHYs+VfAseimIV2yX857n1k8RKW83f7u2n9y0MtbJd
- Ss1gB
+X-Developer-Signature: v=1; a=openpgp-sha256; l=822; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=li+gC8cc0Mt1bD1j4gMcmL8SOHESlN2++n5Uf9tP8Fo=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9erDHcu21pTOZuhx19nwxdyrrCmUMb3503015p6SPw
+ 76FMcqxHaUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhnCwMUpABN5bMvwv9AwrjaFoTvl5SXZ
+ U7d+5SbufCNqdW372nkxojHPVJnq7Rn+R03u+RT9ITNnZY8fx/JF32OmNseuuiD0fVMyz/+nq9X
+ nMAAA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Currently loop accepts any regular file that implements ->read_iter() as
-a backing file and any that also implements ->write_iter() as a writable
-one. That includes files on procfs, sysfs and other pseudo filesystems.
-For example, /proc/kcore attaches read-only as a loop device the size of
-the kernel's virtual address space, 64 PiB with 5-level paging. sysfs
-attributes attach read-write as 4096 byte loop devices. Writing a block
-to the loop device of /sys/kernel/mm/transparent_hugepage/enabled
-changes the THP setting.
-
-That's not just nonsensical, it can be abused. Loop calls ->read_iter()
-and ->write_iter() of the backing file directly from its worker which
-runs with kernel credentials. But pseudo files enforce part of their
-access rules at read and write time against current. Dozens of sysfs
-->show() and ->store() methods call capable(). Behind a loop device all
-of these checks are done against the loop worker instead of the task
-that opened the file. And setting up a loop device requires no
-capabilities, only access to the device nodes. So on v7.4-rc1:
-
-- uid 0 without any capabilities can't write to /sys/kernel/reboot/mode
-  as mode_store() requires CAP_SYS_BOOT. Writing "warm" through a loop
-  device works.
-
-- uid 0 without any capabilities can't read the files in
-  /sys/firmware/dmi/entries/*/ as dmi_sysfs_attr_show() requires
-  CAP_SYS_ADMIN. Reading them through a loop device works.
-
-- An unprivileged container that was handed a loop device can't change
-  gro_flush_timeout of its own network devices as
-  gro_flush_timeout_store() requires CAP_NET_ADMIN in the initial user
-  namespace. Writing it through a loop device works.
-
-The same goes for hard_offline_page, the md and sd attributes, rfkill
-and others.
-
-Refuse files on pseudo filesystems as loop backing files. Note that
-file_is_pseudo() looks through overlayfs so stacking overlayfs on top of
-sysfs doesn't get around this.
+zloop opens its zone files by name below the base directory but a bind
+mount can put any file there, including a procfs or sysfs file. Refuse
+files on pseudo filesystems as zone files just like loop does.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/block/loop.c | 3 +++
- 1 file changed, 3 insertions(+)
+ drivers/block/zloop.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index c96e35c3ef42..1482580a1979 100644
---- a/drivers/block/loop.c
-+++ b/drivers/block/loop.c
-@@ -537,6 +537,9 @@ static int loop_check_backing_file(struct file *file)
- 	if ((file->f_mode & FMODE_WRITE) && !file->f_op->write_iter)
- 		return -EINVAL;
+diff --git a/drivers/block/zloop.c b/drivers/block/zloop.c
+index 65634a39b0bf..dcc06dd47b04 100644
+--- a/drivers/block/zloop.c
++++ b/drivers/block/zloop.c
+@@ -1137,6 +1137,11 @@ static int zloop_init_zone(struct zloop_device *zlo, struct zloop_options *opts,
+ 		goto out_fput;
+ 	}
  
-+	if (file_is_pseudo(file))
-+		return -EINVAL;
++	if (file_is_pseudo(zone->file)) {
++		ret = -EINVAL;
++		goto out_fput;
++	}
 +
- 	return 0;
- }
- 
+ 	if (zlo->block_size) {
+ 		ret = zloop_get_block_size(zlo, zone);
+ 		if (ret)
 
 -- 
 2.53.0
