@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794302219;
-	b=WRexICK3vYd42nB4lnnGyJ4qQnC8jQFDnxMxDxROPyjtn5umz1eFQYjMXcfGa+d5OR+W
-	 voldUakvITsroHgzNdRcCh3uW6owDXFpZLKjysGW35xlGQiTx7gqb2xQQtWALj6J5HobT
-	 JiUNmNc+VObMtPsQ60kIVcwpsU+e8eRWGdteveY3id9hBoijv8+S1rneXkdsC9h5Rh8Na
-	 3yqsA6/ii61mSUu4rzvRPp32hLkLilkVSOw+2NWVdslZqHe7eUew5xv3vJnUxOCCFNMp7
-	 j0GjD5qe+MLmlCLJdrtISvzTwTLD9QQn45MtpeA2DCHrm5ye702uftl/M73QPgZ6XpA==
+	t=1794302226;
+	b=rO0mxl+arGntcVkkKsYOGEnFGKaQeCd9vunrY/8dWo9PeU1F8d7ozUIwZO9Uzv9XCJfv
+	 WGiNNrsrLO69xObcycpbM92WttPEA/pSqMXxoUOFHboNShnP0bcJ6aFbJ9WhFrMEhOU0W
+	 0G0PLLH4YUIKqjhAqkdSQwYlOPrVuHp5qdBQzCPAqRr2a/uzt38vi+EZNECjG0kB0Tdif
+	 2zCLvHKKW43+ZyPOeHX7Stq3a8rOal9AElQMXTSEEN+bm8U0JIhX9FHQUQmga0o2DkBYi
+	 EByZR62abY/3vtk+PUk1Cuir9lPhYmyI0GR0TrrOkPVxstc10sDLMJthtqTZsVuZAjw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794302219;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794302226;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=WY71Uo54gYhZKR4pKqr/19QlXycB+RRfAfSK6SBkMOo=;
-	b=N/pM4b+lR6q7G6ACk7vki8NrmZCVkCar+YPc1nA97WJFMKgGZ8oOLEURUkie0YSJ09g9
-	 skn3SN+WWobiSbWAtOg0vvbHmXMjtK9acCBJcmlH5W6pswvkchO5rrop6rL0qjji0cfAx
-	 kQOCusyWIrvhQ3rIdEMD4n4Myt5phSqHIz1TqxnJ32MCgvz+jX3Da9oDjdqTQTHXfVfNx
-	 OhIh70wlFcgFEUqz6+aZ+MjvXsK2z7AJD27uOpwAgAfl94n7WXiNkf3xgSYMZ0GV747Ja
-	 7nCU2Ee03Tx/CLsGqXVCE6E4Z9bDXFgmoI5YWnR1VkRl2WpDOYr3e5pYNxkm4Gsta2A==
+	bh=ZmsVWE65gHf0tYCZOotZ2fbgGfTg77o991kqs+Fgm8I=;
+	b=yxx6+HbQTaE7H3zLMM0sqttqGclhCvT5XzWpgEPyzwhg7rpHTHzRdRDHpk1BtjU+B9ir
+	 dnz79nD8huiqDa0DNs1ExxXN7vctybkbaBjVzVZZmqB1vS8Ie27CggwTcjYYljNDlA/FH
+	 F3tropWKsE1Ub4+rnZyjc/hsns/udxJCoufFwYNzOkeSC0FeK7z1QGtAj12GB3gUmXxMz
+	 5zYdEu4x3rQimjQ+NQ3vSSoKZpVDL49Ig/vCxQZgDZ/ddKdzRfAnG+M2K2s5MEHnE/Apg
+	 tgYifbp9lNPNT7FIRwWMA47CsCYyn0SyvVXBH4pnKPq4n/BSPDMzXdyo4bhF1D25rIQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LlMaKIGP;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BW8cSBu5;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D09C60A380C;
-	Tue, 10 Nov 2026 09:16:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 34334606DA05;
+	Tue, 10 Nov 2026 09:17:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LlMaKIGP
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A02601F008A1;
-	Tue, 10 Nov 2026 09:16:52 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BW8cSBu5
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 977E81F008A3;
+	Tue, 10 Nov 2026 09:16:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794302219;
-	bh=WY71Uo54gYhZKR4pKqr/19QlXycB+RRfAfSK6SBkMOo=;
+	s=k20260515; t=1794302226;
+	bh=ZmsVWE65gHf0tYCZOotZ2fbgGfTg77o991kqs+Fgm8I=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=LlMaKIGPglPkcvGNxGDrg7KApXX+gHKG5SrrawRrOpvdcrBWjo8TZvaYC/dVHXPkL
-	 o7Q4vzGLaTH3tPVI6EK6P52H//aWm8LX6LNA9wx7GzZylS8Tm5t7Uihc8gqN/tYIDQ
-	 PP3rUbIEqyxUIjeAdPOxrVHEdBQihQ2084RfxCjhwr5G5bFc0E6zHMFFmmj7AzSVaR
-	 tXO6WvEI79qn/4DPL9toj7+CN6z0DqQ1WOgva9FN1PkhAS1Orh3mr0q9GB2K5qslXC
-	 scXEvlIXqJ5srN3BcqIAjqdwqr7UK9xIGt0dTlwV0MKzMAeX4GxKcYRYlOYndv3UdD
-	 j0+mmKCFyRsXw==
+	b=BW8cSBu5u5r410tEcT+zMEpXHphJlFpdpAvRKAvEiKkqyi0xID6vk2b0Tbjr4F3K7
+	 awaBsefdY+MBphndwr9KbPvoSGcCvsFqAgttwi2fLxH3+R18Qt4275it2lfQHkFKW3
+	 UWJSti38mAmdmLS3tX3vRlC5H3kzbz/lg2YywjKPfSIrMY163nLZvxRzgh12Gfu740
+	 fCVYcWuwLy19s6iKyC6ZAEcLuBFbK0G08kyGDUPlYe/7HLPPSEk9rvbQ36ZpaFxa7H
+	 vhskSHci2E1kOmUw3DCi+DzAu6HlXgBa1yUahbo2TZ2iHpM1c2csxa56tO5nlkWHht
+	 owe5/3f9zcJNw==
 From: Christian Brauner <brauner@kernel.org>
-Date: Tue, 10 Nov 2026 10:14:25 +0100
-Subject: [PATCH RFC 09/41] bpf: use fc_init_pseudo() for bpffs
+Date: Tue, 10 Nov 2026 10:14:26 +0100
+Subject: [PATCH RFC 10/41] nullfs: use fc_init_pseudo()
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-work-loop-pseudo-v1-9-4c998976c6c7@kernel.org>
+Message-Id: <20261110-work-loop-pseudo-v1-10-4c998976c6c7@kernel.org>
 References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org>
 In-Reply-To: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -75,52 +75,44 @@ Cc: Jann Horn <jannh@google.com>, Chris Mason <mason@kernel.org>,
  linux-kselftest@vger.kernel.org, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1203; i=brauner@kernel.org;
- h=from:subject:message-id; bh=NuPA4jHbua+UQUqvE1NH9WnvUCJeB7nsXYSG49yrfac=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9ejBv9qN9iY0qd75n8gck3laXYJGcP/Xvwpp6nhV1l
- +fz+Fhu7yhlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZjIHQmGvyJmG6+tnBjH3qJw
- I1e/7XGpNFv1HyWFz9buJ/bVbr2pzsjIsPmDUI3mIZewOZLzrAJLZy6ad+vu3j8/r72fuW2C0oR
- /b/kA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=901; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=sE5h4xDpaVEC2u2QAThbBNjL9uzfl1yRVOrJAX0MUt4=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9ejD//EYdt1/rJsiFfvkoZ/8qOqx4q8M6HwH1m6/ZZ
+ AI224nydZSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEykdCnDPxurz9VH1LyPmPhq
+ vwyuY532xsvTcZ32qt+q1sFHglVuuzD8D18Z213yU2Sl5aU3uX8PWyTKlr/7O0218syUZaL+TwX
+ WcgEA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Initialize bpffs as a pseudo filesystem instead of raising
+Initialize nullfs as a pseudo filesystem instead of raising
 SB_I_NOEXEC and SB_I_NODEV by hand. This adds SB_I_PSEUDO.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- kernel/bpf/inode.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/nullfs.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/kernel/bpf/inode.c b/kernel/bpf/inode.c
-index c6f328e4752e..57cf3775c076 100644
---- a/kernel/bpf/inode.c
-+++ b/kernel/bpf/inode.c
-@@ -15,6 +15,7 @@
- #include <linux/namei.h>
- #include <linux/fs.h>
+diff --git a/fs/nullfs.c b/fs/nullfs.c
+index 319c2f5c5a67..2fe24cb97160 100644
+--- a/fs/nullfs.c
++++ b/fs/nullfs.c
+@@ -2,6 +2,7 @@
+ /* Copyright (c) 2026 Christian Brauner <brauner@kernel.org> */
+ #include <linux/fs/super_types.h>
  #include <linux/fs_context.h>
 +#include <linux/pseudo_fs.h>
- #include <linux/fs_parser.h>
- #include <linux/kdev_t.h>
- #include <linux/filter.h>
-@@ -1197,8 +1198,6 @@ static int bpf_fill_super(struct super_block *sb, struct fs_context *fc)
- 	sb->s_magic = BPF_FS_MAGIC;
- 	sb->s_op = &bpf_super_ops;
- 	sb->s_xattr = bpf_fs_xattr_handlers;
--	sb->s_iflags |= SB_I_NOEXEC;
--	sb->s_iflags |= SB_I_NODEV;
- 	sb->s_time_gran = 1;
- 
- 	inode = bpf_get_inode(sb, NULL, S_IFDIR | 0777);
-@@ -1261,6 +1260,7 @@ static int bpf_init_fs_context(struct fs_context *fc)
- 	opts->delegate_attachs = 0;
- 
- 	fc->s_fs_info = opts;
+ #include <linux/magic.h>
+ #include <linux/splice.h>
+ #include <linux/uio.h>
+@@ -174,7 +175,7 @@ static int nullfs_init_fs_context(struct fs_context *fc)
+ {
+ 	fc->ops		= &nullfs_fs_context_ops;
+ 	fc->sb_flags	|= SB_NOUSER;
+-	fc->s_iflags	|= SB_I_NOEXEC | SB_I_NODEV;
 +	fc_init_pseudo(fc);
- 	fc->ops = &bpf_context_ops;
  	return 0;
  }
+ 
 
 -- 
 2.53.0
