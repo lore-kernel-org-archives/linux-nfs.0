@@ -1,77 +1,62 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794329543;
-	b=MqUrDRKNkm5LTuWw/p72EmWMN8y5gRS7IKO9coqAv0GrbEWIJsBAT987R4Icfg+VWKI2
-	 uo4ni/3H9tbkzcfyK89ILbPx2po3H4aJt8bADreecaLh6FLcAahbfvoewTUJCStR54Bk0
-	 JkbQES+PqiCgbMDyF1EAIJilLbna8+LZHRvL2MPVmcTpyKzzbXa2rQF+IWXQEj0blP8ym
-	 WgivW55NuDvwXCrregevCDHueABXJ1HvJA+1Z++6bstcMbA/95HTL3+D31s3o6SMuwFgR
-	 VlIH7aw/1GBxOdCm8o9fF+QmMVKT9YNCFkJQeswK5esi27KX1ayMXXTXdDTj4VVAQYA==
+	t=1794331382;
+	b=FwZbHJ/wbeQ41YzhlXy+SLywCucAF9BavWOHJf5k0qiD8DlIVoF2qgxKnICilnDoNSNv
+	 b9oxabfl8zuvTOxENzPbTYVjipabnOmGa/qxw28hpIiz6GGI3H/ioTGDH1UiTHRIJQA/w
+	 BFY/gSjsFs4l/WBdU1I8sJ7FZ8kmqt2juTQkAMOOodbL25LU3XeZwx46mJ3Z53afxQWkV
+	 l4H72L+8V+2QIllad9K4NEpSNRQzc9Xqw6yLeDA03HL1cypKa/jMiAHR8Wse1U+By8TVC
+	 4Qj0qt+R7/e1CP6nRlmUiSJ4ejhJZk3txsu0QUOamfTr9xha5MHefpDA+hPk3zPbHdQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794329543;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794331382;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=KyDcpTwF2G84cUTe+PVKDz9G3rULU78GRC2w0kOsrLc=;
-	b=l4aw2tre8GbBz5g9LuX5bM4yQTz96CFbLG8LsM7VKIXayuVmXV30ZQ32DPTyLKLklvnF
-	 fYFQ3zY+xdGIl+RC9ylnA/C7J49VUkApYGigBDyRkZo5czIM8Cqw8hUKbFZyn1/IgtQ3m
-	 Z/RGVRymJUJsoZqE4xFLoNPCFQbl09Pa3uiRQy/26ID/0+MFb3/zKlbTzp+JvVrStnzwK
-	 eWITQsh2iQT/0NCBfg5oKIZVh3Q6CWsgmG0dT0HwHYfcy3NvJnhpa5fox9BM20Ijf/wdi
-	 YYcsCHji+6Oik6v5hEeEl7hh1kCC4piXf0Q3DTWANagDf07zGSFRMlxB9cJ+9m6KinQ==
+	bh=qU/YBwcBTSW09tcoeJ7GijBACLV9An/e2EuN4/Zc9Sg=;
+	b=oZ4Q1a2yxr3TMNPMKEC1xXLTAKAbFl+mRh5nu8R+W1hBdhMLkk8fuj/V7dowgeGUqXcR
+	 uCk6beiBVf+xO/RaSUrX/lhxQ8OblgJaU37kleVC/xGP/28A5A/WjBpABQjM+LwrEt1tx
+	 oKf8f5rDj5riM24b/OVE4upi6OrVfCxdh3P9qVJfPKsaB0pyvVa+Zv0Ci3oDHauYHyFtx
+	 elLtZZFPPXFpeh+Cf+fJ+lNpydsAze5Z8+RKbO3QapRkg4mXjdaCzNVproOW27m3RhQhx
+	 L5zTpFr/worAwHJ703LIbIg0WRKobiS29HK0Zo9+0el13ZHRW7SIbgDvvBpDIfhR7/Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="WSR4/meg";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MdpJFCRO;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 57DB6606A330;
-	Tue, 10 Nov 2026 16:52:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1666A606A31C;
+	Tue, 10 Nov 2026 17:23:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WSR4/meg
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0C6B21F0089F;
-	Tue, 10 Nov 2026 16:52:05 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MdpJFCRO
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9AC5E1F0089F;
+	Tue, 10 Nov 2026 17:23:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794329543;
-	bh=KyDcpTwF2G84cUTe+PVKDz9G3rULU78GRC2w0kOsrLc=;
+	s=k20260515; t=1794331381;
+	bh=qU/YBwcBTSW09tcoeJ7GijBACLV9An/e2EuN4/Zc9Sg=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=WSR4/megdggMO9wsDWOY+uoQSmNtO3j2yfbZkG8wNi5rB7hE651wqOzDxlgDXK7Ew
-	 RmAWiz2VBpllg4ynVFTcPIjgzyk7nAxhySjvb+byysmSgsCnpkfEzxkJqRWKHq9/mc
-	 YNAQhE0ikpxZ0sqlywqGqK0vnkiWmSjRjigl1fL7x76Q0lUOnOc+fEhl7WUDNrnt2X
-	 Hda+VOxkwzLr8arHFGMZFn9v/vCdMOGy5b+eY24hGBQ3e42uhb8xHhCF/aPlSMJPft
-	 3tCywwxXOQqTXxdhv8EqxUpg5QCSLRW2i8oyD+4B0ftty6ddfdgKmdarmtnmAcuyq1
-	 heVa4ehNncfYw==
-Date: Tue, 10 Nov 2026 17:52:03 +0100
-From: Christian Brauner <brauner@kernel.org>
-To: Cai Xinchen <caixinchen1@huawei.com>
-Cc: mic@digikod.net, gnoack@google.com, paul@paul-moore.com, 
-	jmorris@namei.org, serge@hallyn.com, corbet@lwn.net, skhan@linuxfoundation.org, 
-	utilityemal77@gmail.com, ast@kernel.org, daniel@iogearbox.net, andrii@kernel.org, 
-	eddyz87@gmail.com, memxor@gmail.com, martin.lau@linux.dev, song@kernel.org, 
-	yonghong.song@linux.dev, jolsa@kernel.org, emil@etsalapatis.com, ihor.solodrai@linux.dev, 
-	rdunlap@infradead.org, gregkh@linuxfoundation.org, rafael@kernel.org, dakr@kernel.org, 
-	johan@kernel.org, dlemoal@kernel.org, hch@lst.de, axboe@kernel.dk, 
-	viro@zeniv.linux.org.uk, jack@suse.cz, dhowells@redhat.com, code@tyhicks.com, 
-	linkinjeon@kernel.org, sj1557.seo@samsung.com, yuezhang.mo@sony.com, 
-	hirofumi@mail.parknet.co.jp, cel@kernel.org, jlayton@kernel.org, neil@brown.name, 
-	okorniev@redhat.com, Dai.Ngo@oracle.com, tom@talpey.com, hyc.lee@gmail.com, 
-	miklos@szeredi.hu, amir73il@gmail.com, senozhatsky@chromium.org, 
-	chenxiaosong@chenxiaosong.com, dsterba@suse.com, mason@kernel.org, kpsingh@kernel.org, 
-	matt@bobrowski.net, rostedt@goodmis.org, mhiramat@kernel.org, 
-	mathieu.desnoyers@efficios.com, john.johansen@canonical.com, georgia.garcia@canonical.com, 
-	zohar@linux.ibm.com, roberto.sassu@huawei.com, dmitry.kasatkin@gmail.com, 
-	eric.snowberg@oracle.com, stephen.smalley.work@gmail.com, omosnacek@gmail.com, 
-	casey@schaufler-ca.com, takedakn@nttdata.co.jp, penguin-kernel@i-love.sakura.ne.jp, 
-	xiujianfeng@huawei.com, nanx95726@gmail.com, djwong@kernel.org, lujialin4@huawei.com, 
-	bpf@vger.kernel.org, linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	linux-security-module@vger.kernel.org, driver-core@lists.linux.dev, linux-block@vger.kernel.org, 
-	linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org, netfs@lists.linux.dev, 
-	ecryptfs@vger.kernel.org, exfat@lists.linux.dev, linux-nfs@vger.kernel.org, 
-	ntfs@lists.linux.dev, linux-unionfs@vger.kernel.org, linux-cifs@vger.kernel.org, 
-	linux-trace-kernel@vger.kernel.org, apparmor@lists.ubuntu.com, linux-integrity@vger.kernel.org, 
-	selinux@vger.kernel.org, linux-kselftest@vger.kernel.org
-Subject: Re: [PATCH v3 -next 00/18] landlock: Add READ_METADATA and
- WRITE_METADATA access rights
-Message-ID: <20261110-rekonstruieren-erbfolge-vollversammlung-26be74966211@brauner>
-References: <20261027121151.1887650-1-caixinchen1@huawei.com>
+	b=MdpJFCROGyBYcN7mWJ2h78QRBDr/Fl/ZsKQlWVpd8pwT/yq01ngNExJ8X15QOrwsR
+	 sk7rL5FOYp6lPcx+x7fPzofmSxgGVAAFFGCEFCaP56Ah/LP7eSEf3RX1TCMtNt798T
+	 mExzsrT7iYw6hTvC27mzgrufj/d1QZhxdsOsBdcR2H15L2qEIivVxUj8ZXVLcRxPdP
+	 lJ4Aw4IpoOBm6O9FTWQ/Bfr5ALMiZqvLhRXCXfc1ikWYB5vTiTmmTHV9fmRfW6j6ZH
+	 QkD3b+xn5qIF5y56iQP2D++WMSIAkzp6r/hjK81fRf5EEf+2rFl6PzUScHmIke0Jl/
+	 4oDe2DIyKoqLA==
+Date: Tue, 10 Nov 2026 12:23:00 -0500
+From: Mike Snitzer <snitzer@kernel.org>
+To: Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>,
+	linux-mm@kvack.org, Christian Brauner <brauner@kernel.org>,
+	linux-fsdevel@vger.kernel.org
+Cc: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+	linux-nfs@vger.kernel.org, Jens Axboe <axboe@kernel.dk>
+Subject: MM/iomap review of this v10 patchset is needed please [was: Re:
+ [PATCH v10 7/7] NFSD: drop a shared boundary page only once both WRITEs have
+ written it]
+Message-ID: <avNS9HrDV8TbDTqH@kernel.org>
+References: <20261103211754.35352-1-snitzer@kernel.org>
+ <20261103211754.35352-8-snitzer@kernel.org>
+ <20261104091543.GA31130@lst.de>
+ <autk-osSQ8l2LKz1@kernel.org>
+ <20261105075935.GA18069@lst.de>
+ <29851456-2e7c-48a7-bf00-11a1f1a35024@app.fastmail.com>
+ <au0H_TZCp1Snf_5U@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -81,27 +66,42 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261027121151.1887650-1-caixinchen1@huawei.com>
+In-Reply-To: <au0H_TZCp1Snf_5U@kernel.org>
 
-On Tue, Oct 27, 2026 at 08:11:33PM +0800, Cai Xinchen wrote:
-> - The idmap is passed separately from the struct path again, instead
->   of being derived from path->mnt inside the helpers and the hooks.
->   As Christian explains in his review of patch 1, the idmap must be
->   taken of the mount at the time it was checked and passed down to
->   the filesystem so that the VFS and the filesystem are guaranteed
->   to see the same idmap.
+[Cc: trimmed given To: refocused to required audience]
 
-This regresses AT_EMPTY_PATH. fchmodat2(), fchownat() and utimensat()
-with an empty path now go through CLASS(fd) which is fdget() and that 
-refuses O_PATH file descriptors. IOW, this is very very broken.
+On Thu, Nov 05, 2026 at 05:49:33PM -0500, Mike Snitzer wrote:
+> 
+> I suspect MM engineers have just been busy with the merge window.
+> Hopefully Willy and/or Jens will give v10 the courtesy of fair review?
 
-Please also go through Sashiko's review of v3 (cf. [1]). The new struct
-file arguments need __nullable or bpf programs can dereference NULL,
-and the ntfs3 stream setattr and overlayfs fileattr paths that bypass
-the hooks need treatment.
+I checked with Jens to see if he'd have time to review v10 but he is
+unable due to his attention being needed elsewhere.
 
-[1]: https://sashiko.dev/#/patchset/20261027121151.1887650-1-caixinchen1%40huawei.com
+So Willy, Jan, Christian: can you please coordinate on reviewing this
+v10 submission with consideration for 7.5?
 
--- 
+Probably worth me restating this note from the cover-letter:
+https://lore.kernel.org/linux-nfs/20261103211754.35352-1-snitzer@kernel.org/
+
+"Merging: Chuck suggested taking the series through the mm tree.  1/7 to
+6/7 apply cleanly to each of these mm branches:
+
+  mm-unstable  0ea6dc8c4a21 ("fs/proc/task_mmu: fix lost maps entries above 2^63")
+  mm-new       74d73ffcffe0 ("riscv: mm: fix concurrency in mark_new_valid_map()")
+  mm-stable    6628e7d4c6b2 ("Linux 7.4-rc1")
+
+7/7 needs the NFSD direct-mode changes that are in cel/nfsd-testing.
+The whole series applies to cel/nfsd-testing at 693afd3ce9ae ("NFSD:
+Defer the PUTFH export security flavor check"), where each patch builds
+with W=1 with no warnings.  So 7/7 could follow in the nfsd tree once
+the mm part is merged."
+
+(and I have just revalidated that patches 1-6 still apply cleanly to
+the latest mm trees listed above, with commits 93d7a816a2df,
+488f62a72b8e and fa4ad798f6f6 respectively)
+
+Thanks,
+Mike
