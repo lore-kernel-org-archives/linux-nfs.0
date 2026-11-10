@@ -1,105 +1,84 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.225
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794335503;
-	b=DsB4AqtUEaUPJQZqhnp0IfCnPoj5fXBmDt9b7vNRYLjZBaeNyXaOTEmzKovohG2ZKkZ2
-	 /yKXVlTuM6cRWTKBzcBwjdx1eFoeoWEx0Q+tXSBbD5T6ZOt41QHXty6ALWxOQyH8iBZ/p
-	 wPnIGt7QeJm0Ds+Wqc/3fye89YDEzGgkeNbu4S9KMzWNN9jYHdxpgxX9ESbxRJPs1wRi2
-	 JeB8spJqwZJ3pKlSuU7J0vpUKqjhK4uEye/XjnTtX5w60eR4CQuc9ADhQ/RJDpxDYX66k
-	 nDAbwQjga0JrZo4zEHP6hVQNbb+zOdoJ6c2KQW90abKCGIYUSkW6ZZnUVEk/W7qxOrA==
+	t=1794343565;
+	b=HNsC/vjJBuB5u/YK1G2yiqB2RKoFSadg3+fEXWHpxKyVV+t3ZMJlnzs3cuBbSaVwbkFi
+	 /QUt6or7HXVdMYUwrMAUZmBIpy7q7xyR4+u3E/zreORvVooq+tQdV8OmGcMIOybHw7SkY
+	 mEkd1VNBxmJw66WC+0IkwA4LsSs+nMyZyLW59wEelZz5VTKD7uC2KALCBSuPU0MC94vlx
+	 jTmrQqrd2xg8AePF0QrE49nK3ufouENS3Usdy1iZn3hAHyJ1AHx+BOSLYfm5yXeYDL4pN
+	 2xX2SrSe58Pdm+uuRkZH1tKAssOPEN6XT6ijayhuSckHrwKT9QgohBCqQfqFFmBNtqQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794335503;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 X-Relaying-Domain:Received:From:To:Cc:Subject:Date:Message-ID:
-	 X-Mailer:In-Reply-To:References:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=gbmSihoOxS8+qs59nCpK+zlfjMhPtRlMpwSw2IB+/W0=;
-	b=j7K1gKeeaBk7hX7jlsUPijBpuEnYNj3y5Whr1BxHL21I1S/8b/JsltITi46y3NF5Jb/Y
-	 LB+U3SD8yNtpaY0ec85c/M1bIhX5mU1+9L2jYFf37rdlOv2GTc82vndGYxTQhNdD9c/Jb
-	 KG+SUJjEAAc8vfY+hx76OGAY4iIGFJWxPiX6TZmN+v+rABXZSpE1pwrtEYVniLS9nnI3Y
-	 qPBC8xycIv/iJ4hG9+ALkLvCMtMX/3NMWxAuCRfzS1RS6EB6QGL/o/d2/bP26Z0SRSPcd
-	 Ab5fOLdQ4WclmTR0tx6q8mE/uPe311lg62oJdQMl/1Rg407aPG74DzuM4lsI94UkAkg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794343565;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 Mail-Followup-To:References:MIME-Version:Content-Type:
+	 Content-Disposition:In-Reply-To;
+	bh=rMRPONQOYjAF9HKKBayLjA2YuezRW4mL6HNg3dL1nlo=;
+	b=KVq5pWAZaN9ymIusfsctj4IF8fI8xdDg0PjE3VK/9sG5Wcm23Gc3dcn8FcRTXagiFayO
+	 kVJuNT6Q1MSw9YO4wWwTIrzSjEfFIdlFSOkvE2DPzPl6Fv4Z7BpDWj/k0ykNyktmZFpIU
+	 qQKJZBpnBknfsr687Y3S7sqB5QcURQhpFxC+Bj+VjIKK1bVqMsqDQ29LCEh3H19jbYTCJ
+	 IgQK67NjD+MbALDbGYFn7/n7Mwtkm9k4/8B1h42pi5npeqDd25xsiLhUI5W3cichSML6g
+	 W3ZPwzQ99nyaUR+991RrbE4tPHjiC9LRIcu47uRTMNLMR+hXmKpmFerdwgtf1sAyD7Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=everpuredata.com;
-	spf=pass smtp.mailfrom=everpuredata.com;
-	dkim=pass header.d=everpuredata.com header.i=@everpuredata.com header.a=rsa-sha256 header.s=google header.b=PrOoXgqs;
-	arc=none smtp.remote-ip=209.85.221.225
-Received: from mail-vk1-f225.google.com (mail-vk1-f225.google.com [209.85.221.225])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HzRYE13j;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E45F2606A325
-	for <linux-nfs@vger.kernel.org>; Tue, 10 Nov 2026 18:31:42 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E45F2606A325
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=everpuredata.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 117BB60A2603;
+	Tue, 10 Nov 2026 20:46:04 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=everpuredata.com header.i=@everpuredata.com header.a=rsa-sha256 header.s=google header.b=PrOoXgqs
-Received: by mail-vk1-f225.google.com with SMTP id 71dfb90a1353d-5eabf7d5bbeso1444254e0c.1
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Nov 2026 10:31:42 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=everpuredata.com; s=google; t=1794335502; x=1794940302; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=gbmSihoOxS8+qs59nCpK+zlfjMhPtRlMpwSw2IB+/W0=;
-        b=PrOoXgqsL16lXToUusS+qZtwaT9GFgP+vViq0F3mVZQFv7CrWmDImxCxt+zXsZ0qx+
-         YiXhWN5SgHr5fm0c3l5BzC2qjJWycSrk0a9F3qZnWt7N/oUBOQe1Kai1gCdebQusUB5u
-         9Tw/nFtjMwmCNxZGNRAc3O2a8FUFc59A9v7l8dSqdjPMyVpMVoO0OTtB/C+CeWUS9Liz
-         7z+EgoDRaldwa2csFNLGRxndgakbHAf+SMqwtnIVHybiA1tH/IyrKghBsptuIod2i4oa
-         cBV0GFIe35W/t0tQnJKwNBo8e+hN+Xhxw6CQggTTZxM/rbNamOaPhkIZoJ1nXUHoyftr
-         CjnQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794335502; x=1794940302;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=gbmSihoOxS8+qs59nCpK+zlfjMhPtRlMpwSw2IB+/W0=;
-        b=p1MQ2NxxYUyxRUJHajfb+o0AKPRZLbseyduGmSVb90dawq1yNG6dWsWbw8eS1P8iP1
-         dW9GHMhOqOKinxRsjcdt48EWwdmFn4DQi3a21s6CZkTRjokTS/KO/g4QuX4RDmHVxaM4
-         brhymCDWwAZTTEVEERboRmixA111X7zuedjhD1z+rDBKotopI/vXYY451AHlUSsamsY8
-         ayDG9zGASlFgnihqktO0Op5NXVZZYQ65SMxebG/qbBv+iUneT41gIfTDznK9k191XIZF
-         dkSfWvQpBiFYsa0GFDC7YNtyauEHeHkmYAJ34tkAleNi98mn/m+KOwt3kWn5j6VweGMp
-         AFkw==
-X-Forwarded-Encrypted: i=1; AL+hErGHzSvocZHJodlY1jZ+QCWuq/u6fDtsN2Bf3nsvQ3VmvimsgpxLLPxK2f2KsMgW6ntqvIRSZ2unNCY=@vger.kernel.org
-X-Gm-Message-State: APuU4Z+ZOKaIKhVJN3y2ODG5dEshT9N+U+eI8edbfs3szqv8m7haBlGv
-	/HUjxVeyPBwmcdJ+w9zCVULfuGWJAuFgUIg94kz9VDf2WSa8OQPoybW635aINO1j1VfwqpIvYRP
-	ifaIUckUJTDH/sUkZ12e81SqL/6fmqZNwM669
-X-Gm-Gg: AYBFou1P/a6MK4U3Rq8dFC+dxrkqKF5KcXIy8RBpIDOjTQiB3lGuwOlv8nCvy/aQ9oo
-	u31+s9JhpgwDDeCzvXy3B9UDyc77zq9DjSWKtFSlHnUFRDUW1q64ntgyH/YKPplHKQAxmu22aJT
-	2sRSMzMJQY+MLXqjopNs7EtYT9OSnsNNcHxS3gAsMPtXxKNA7LDB3AisDFXHxBlcT2nejxaemwL
-	tvKVTlRfAxj0clTja2AO+O+5sW9h3hMrorfHgAgBmW6EbdOIWA1QWdh3EFOa1BOmxiTfm7rirEZ
-	8hyd4fWtPvedUJyxxEPgDd7tegDWj0HjQf87F+6tx7ymR50Wy4y7s2QXAHIYGgBsK/ko2e5NafQ
-	isQ+URUZX5dM4AF0VGiHoUhFBg+RfC7rR/QmafJU=
-X-Received: by 2002:a05:6122:1313:b0:5ea:e197:93d9 with SMTP id 71dfb90a1353d-5ee0d1b1687mr1626172e0c.19.1794335501776;
-        Tue, 10 Nov 2026 10:31:41 -0800 (PST)
-Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.129])
-        by smtp-relay.gmail.com with ESMTPS id a1e0cc1a2514c-99c203e7280sm176166241.16.2026.11.10.10.31.40
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 10 Nov 2026 10:31:41 -0800 (PST)
-X-Relaying-Domain: everpuredata.com
-Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
-	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id 108DB34039E;
-	Tue, 10 Nov 2026 10:31:40 -0800 (PST)
-From: Tim Menninger <tmenninger@everpuredata.com>
-To: cel@kernel.org
-Cc: Rakesh.Bhargava@netapp.com,
-	anna@kernel.org,
-	ebadger@everpuredata.com,
-	jcurley@everpuredata.com,
-	linux-nfs@vger.kernel.org,
-	mora@netapp.com,
-	slingappa@everpuredata.com,
-	stable@vger.kernel.org,
-	tmenninger@everpuredata.com,
-	tom@talpey.com,
-	trondmy@kernel.org
-Subject: Re: [PATCH v5] xprtrdma: serialize unmap_sync with xprt_disconnect
-Date: Tue, 10 Nov 2026 18:31:39 +0000
-Message-ID: <20261110183139.1742129-1-tmenninger@everpuredata.com>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <dce03323-90e7-400f-8deb-63010d928460@slotpi15m67>
-References: <dce03323-90e7-400f-8deb-63010d928460@slotpi15m67>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HzRYE13j
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 47D441F008AB;
+	Tue, 10 Nov 2026 20:45:58 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794343564;
+	bh=rMRPONQOYjAF9HKKBayLjA2YuezRW4mL6HNg3dL1nlo=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=HzRYE13jB8RdQv3aSy711gVTQF5aN3kmny3Bm+Tqd6DGpMnW/UdmBhwvuV3tDKwWA
+	 qBQkdAe99fCfyY4HwhHW6vpWLb11tiX1rqZm0gqSH24JDOLS4Qw49hrn6RKPLTZ5tX
+	 8yK911/kTi5YKMv0Zeg0t9hinxeSS095ez81rveTvDj3lhZIp5MNrpZ0TzLVXjAROD
+	 H+8sIgKlcwqIAFUbaPlcIA/mKF9hJXlPwet/3tzJzqABID/FKMqpm7AOyUBYjWme3C
+	 0bNu78jINjA9S3ckBH6UNePnv8GkZJATc2s+TTg1AYJLjtNo7jNr7qgY8y7Qdi6pm5
+	 ugUx9cOxV5vJQ==
+Date: Tue, 10 Nov 2026 21:45:52 +0100
+From: Gao Xiang <xiang@kernel.org>
+To: Christian Brauner <brauner@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>,
+	Chris Mason <mason@kernel.org>, Josef Bacik <josef@toxicpanda.com>,
+	Christoph Hellwig <hch@lst.de>, linux-block@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-nvme@lists.infradead.org,
+	Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>,
+	linux-scsi@vger.kernel.org, target-devel@vger.kernel.org,
+	driver-core@lists.linux.dev, linux-mm@kvack.org,
+	bpf@vger.kernel.org, linux-security-module@vger.kernel.org,
+	selinux@vger.kernel.org, apparmor@lists.ubuntu.com,
+	linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+	fuse-devel@lists.linux.dev, linux-efi@vger.kernel.org,
+	xen-devel@lists.xenproject.org, ocfs2-devel@lists.linux.dev,
+	linux-s390@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
+	linux-usb@vger.kernel.org, Amir Goldstein <amir73il@gmail.com>,
+	linux-erofs@lists.ozlabs.org, linux-kselftest@vger.kernel.org
+Subject: Re: [PATCH RFC 40/41] erofs: refuse files on pseudo filesystems as
+ backing files
+Message-ID: <avOCgJPOwRdsIxgd@MacBookPro.fritz.box>
+Mail-Followup-To: Christian Brauner <brauner@kernel.org>,
+	linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>,
+	Chris Mason <mason@kernel.org>, Josef Bacik <josef@toxicpanda.com>,
+	Christoph Hellwig <hch@lst.de>, linux-block@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-nvme@lists.infradead.org,
+	Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>,
+	linux-scsi@vger.kernel.org, target-devel@vger.kernel.org,
+	driver-core@lists.linux.dev, linux-mm@kvack.org,
+	bpf@vger.kernel.org, linux-security-module@vger.kernel.org,
+	selinux@vger.kernel.org, apparmor@lists.ubuntu.com,
+	linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+	fuse-devel@lists.linux.dev, linux-efi@vger.kernel.org,
+	xen-devel@lists.xenproject.org, ocfs2-devel@lists.linux.dev,
+	linux-s390@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
+	linux-usb@vger.kernel.org, Amir Goldstein <amir73il@gmail.com>,
+	linux-erofs@lists.ozlabs.org, linux-kselftest@vger.kernel.org
+References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org>
+ <20261110-work-loop-pseudo-v1-40-4c998976c6c7@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -109,8 +88,20 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <20261110-work-loop-pseudo-v1-40-4c998976c6c7@kernel.org>
 
-Thanks for the feedback. I have incorporated the suggestions in v6 at:
+On Tue, Nov 10, 2026 at 10:14:56AM +0100, Christian Brauner wrote:
+> File-backed mounts take any regular file as the image and the same goes
+> for the extra devices of such a mount. erofs reads them with the
+> credentials of the mounter so this doesn't hand out anything the mounter
+> couldn't read anyway. But files on pseudo filesystems aren't images.
+> Refuse them just like loop does.
+> 
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-    https://lore.kernel.org/all/20261110182727.1739245-1-tmenninger@everpuredata.com/
+Reviewed-by: Gao Xiang <xiang@kernel.org>
+
+Thanks,
+Gao Xiang
