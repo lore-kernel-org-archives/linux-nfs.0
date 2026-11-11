@@ -1,65 +1,65 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.129.124
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794429089;
-	b=tW2iZnUiaKDuJk8h8W1NLj/CKstyIhTIK4FyOUtisUrk435mPFc7SHeWgV/XJC2z7agG
-	 WKCwXk0D45dg6Pp6EpRnU6aeEq6gqZqmAClJX2rcAtkoSLk10JqVePLSmG1Iols/hqTsn
-	 qpqXN6HRr1dFjktN76GwB3B3KVHyIPjvjYiJJQmphAvbsLobUHtZ3T6nwaEbRM0aUi4g5
-	 7zD1lGdttZ4jZFyAN7+k8ihliTR+WhPz+vukQgWpoYXxTpfnRLwKoq9obDrkJmSzq5ckz
-	 Zh5IOV3iEnV1h12Uaa82eT8vdTbZchT15gMvPj2wfqw4cddOgosJE//pn9K6X+NFi1w==
+	t=1794429092;
+	b=YWxmdlYFP5IWGkvt570HlEIaVUaXCa1C9DegLQ5eBJK4mvK856R8aMY/9CAsSeuqDOHT
+	 VXLM0xnn/Rj7gu54VmAqMQ/lwU92OP2wAjJz3wzIsW2+42w4msM0PvHb/7IvFH2kgH8hw
+	 9U7z4JqEndSwoZqlESDcSvmyYl8420FjzB4ZfaVWipgpD1kHa4Ez1Optp9c/wgtMy+6Zp
+	 JNUq4dLtlqH/8DT+Ox5jGs6cGBmIxMkW+z4btdaHhxwf0sAqyCMJtuEwQl6H90Kn1eQ2p
+	 56TUR583SKaw5GPrrdjNNi5yIh0C2G+arhgo9ZMp3Dbysl1k6ebHYfr8vFbacCH3IgQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794429089;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794429092;
 	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
 	 X-Mimecast-MFC-AGG-ID:Received:Received:From:To:Cc:Subject:Date:
 	 Message-ID:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding:X-Scanned-By;
-	bh=Fe2sSEdFPOKmyukmXlZ2ZviW28nApSy5FtVdRrmsU1k=;
-	b=0xrL/yxlpPdYZvN499dhtKeF/TdSgtNl3LF3k67nulgx3MIFKERh7uJXIkr0shF6BY9J
-	 3UTaoTnJQt4kPOz0Tr9S+zLpvkFFZDylum3LtLjGNsXtQtE12MzZA7vt/Kh002e0QJz0k
-	 uinHUuWSqIG5QrdW3qc3N5Dx/umceuUtBBoVfWBmsNLNisREx/y8kfYim+lwAF6WdfNN/
-	 itf/tiCkJPlFcfr+Jz5Fm8rXtMu4pywQ5Bz4go6Ss3NeeIg2p0AAZkKSC+TEbI1LB4svk
-	 UU9oENs6oSof6bvq+kgiO7urkgZnkSq9mE41Vy9nd0KRimV//YkXnPq/hD19sgCYg/A==
+	bh=CZaqB8zLqbirkp9myGrNJcVtQI5qFYQmk8ue8ilaeuU=;
+	b=wQKHPtQdLJONRmlRHiH5c6QwMs/IGKLMFykaesnEfLOJ5N7ehG23I8hMfGMG6bvhtqti
+	 lPwgH6UjgOW0iZmkreWAhb222P+dZ+oGWg1dzzpFzX3lh4djJGa6ZdWFoc/t2BoxUuNvS
+	 r6ZWGjmWEI1h2FSPEJRmowwG7foQ+x0feQFOHOIZSus9ZezO7xEpZV84qdcUgaeU1D9yi
+	 0FqOxPM6YCWYQpYlFDToTbQ6EvqbKWhp964tbxCbeHyFsl3avR3YtWM9pTLjwdY1+mWsO
+	 iwhhlrrFuWT0UTUM6pEYGoCCVEptNeMx494q/BE0rUTjsVyA8sUrt1ADdPKTpXT6D9A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=redhat.com;
 	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=iWWAUAAV;
-	arc=none smtp.remote-ip=170.10.133.124
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=Lxk6OXL3;
+	arc=none smtp.remote-ip=170.10.129.124
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 36A5960A2639
-	for <linux-nfs@vger.kernel.org>; Wed, 11 Nov 2026 20:31:28 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 36A5960A2639
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0C3D7606A884
+	for <linux-nfs@vger.kernel.org>; Wed, 11 Nov 2026 20:31:31 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 0C3D7606A884
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=iWWAUAAV
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=Lxk6OXL3
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1794429087;
+	s=mimecast20190719; t=1794429091;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=Fe2sSEdFPOKmyukmXlZ2ZviW28nApSy5FtVdRrmsU1k=;
-	b=iWWAUAAV+zZNdUAv+/JnLbt2xrxGQh2S1wTlOgqXyAOOAeqsHSG4TKylAnSO8hddMOPf6p
-	h6nolWNYXSkFXrEa/HK3uaGlAaiVjvoT5HJyZSaybAy9Igt/uEM/wbinpw6O7hJv6y9DbL
-	qyg3B3+EjhVzd2VOgXMO/VCl9Waab9U=
+	bh=CZaqB8zLqbirkp9myGrNJcVtQI5qFYQmk8ue8ilaeuU=;
+	b=Lxk6OXL3doollkSX9VegSw1+LAMS7Cj9P0tEjBFyODg6el+gL23GYgeWgnGQCE1k2R6DF9
+	GVSDRBwqTvPj1jYedH0RV6aKbY4vKFDfcpIZvsEV4TZqWDu1LGL8AXclJapr6DJVPcOZhZ
+	QZx6zRxkodYZhO29xpzFiKFvhfKgbFY=
 Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
  (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-680-3KtlnSipOO2aLfGkMZ8mTA-1; Wed,
- 11 Nov 2026 15:31:21 -0500
-X-MC-Unique: 3KtlnSipOO2aLfGkMZ8mTA-1
-X-Mimecast-MFC-AGG-ID: 3KtlnSipOO2aLfGkMZ8mTA_1794429079
-Received: from mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.93])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-439-33PCyQqaMDaG7U0gjV2qMg-1; Wed,
+ 11 Nov 2026 15:31:27 -0500
+X-MC-Unique: 33PCyQqaMDaG7U0gjV2qMg-1
+X-Mimecast-MFC-AGG-ID: 33PCyQqaMDaG7U0gjV2qMg_1794429085
+Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 5B32018005BE;
-	Wed, 11 Nov 2026 20:31:19 +0000 (UTC)
+	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 2886D1800615;
+	Wed, 11 Nov 2026 20:31:25 +0000 (UTC)
 Received: from dhowells-thinkpadp1gen8.rmtgb.csb (headnet04.pony-001.prod.iad2.dc.redhat.com [10.2.32.116])
-	by mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id C553A18004FC;
-	Wed, 11 Nov 2026 20:31:14 +0000 (UTC)
+	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id CD2C11966650;
+	Wed, 11 Nov 2026 20:31:20 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>
 Cc: David Howells <dhowells@redhat.com>,
@@ -79,12 +79,10 @@ Cc: David Howells <dhowells@redhat.com>,
 	v9fs@lists.linux.dev,
 	linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
-	Jens Axboe <axboe@kernel.dk>,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-block@vger.kernel.org
-Subject: [PATCH v17 06/17] iov_iter: Add a bvecq kunit test
-Date: Wed, 11 Nov 2026 20:30:19 +0000
-Message-ID: <20261111203034.2126314-7-dhowells@redhat.com>
+	Christoph Hellwig <hch@infradead.org>
+Subject: [PATCH v17 07/17] afs: Fix an inconsistency in the symlink code
+Date: Wed, 11 Nov 2026 20:30:20 +0000
+Message-ID: <20261111203034.2126314-8-dhowells@redhat.com>
 In-Reply-To: <20261111203034.2126314-1-dhowells@redhat.com>
 References: <20261111203034.2126314-1-dhowells@redhat.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -97,720 +95,46 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.93
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
 
-Add a bvecq kunit test to exercise the bvecq iterator in a bunch of
-different ways.  Each kunit test sets up a series of folios of different
-sizes (1, 2, 4 or 8 pages) and fills each subpage thereof with a distinct
-predictable pattern that it can then sample to check that the iterator
-appears to be in the right place.
+Fix the afs symlink code to set ->directory_size to the size of the buffer,
+not PAGE_SIZE-1 or i_size.  This doesn't actually change the operation
+since the value is ignored by the symlink writeback path (which writes to
+the cache).
 
-The folios are then assembled into a bvecq chain depending on a particular
-recipe and partialness list and then advance, revert and copy-out is
-tested, along with checking iov_iter_npages() at each point.
-
-Each test is a combination of a bvecq chain recipe:
-
- - A single bvecq with 16 folios with no gaps (zero-len bio_vec).
- - A chain of two bvecqs, each with 8 folios and no gaps.
- - As the previous, but with a gap at the end of the first chain.
- - A chain of four bvecqs, each with 4 folios and scattered gaps,
-   including at the front and back.
- - A chain of five bvecqs, 3 with folios and two with no folios, one empty
-   and one with a couple of gaps.
- - A chain of seven bvecqs, 3 with folios, 3 completely empty (including
-   first and last bvecqs in the chain) and 1 with just a couple of gaps.
-
-and a selection of folio parts:
-
- - Whole folios only.
- - Scattered parts of folios, with some contiguities.
- - Every folio with the first and last bytes excluded.
-
-and a test algorithm:
-
- - For each possible starting position in the bvecq, do a small advance,
-   check fill, a couple of small reverts, each checked and then advance to
-   the next starting position.
- - Starting at the beginning, advance in jumps by a largish step forward,
-   checking after each jump; then when the end is hit revert in jumps by a
-   slightly larger step back, checking each time; then double the step and
-   repeat until the step exceeds the size of the iterator.
-
-iov_iter_alignment() is compared at the beginning of one of the test sets
-to a compound of alignments from an ITER_BVEC.  Note that the ITER_BVEC
-alignment check malfunctions if given a zero-length bio_vec array.
-
-Exercising extraction, copy-from and copy-to is done in kunit_iov_iter.c,
-with those bits added in a different patch.
+This was spotted by Claude.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Paulo Alcantara (Red Hat) <pc@manguebit.org>
+cc: Paulo Alcantara <pc@manguebit.org>
 cc: Matthew Wilcox <willy@infradead.org>
-cc: Jens Axboe <axboe@kernel.dk>
+cc: Marc Dionne <marc.dionne@auristor.com>
 cc: Christoph Hellwig <hch@infradead.org>
-cc: linux-block@vger.kernel.org
+cc: linux-afs@lists.infradead.org
 cc: netfs@lists.linux.dev
 cc: linux-fsdevel@vger.kernel.org
 ---
- MAINTAINERS             |   1 +
- lib/Kconfig.debug       |  13 +
- lib/tests/Makefile      |   1 +
- lib/tests/kunit_bvecq.c | 599 ++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 614 insertions(+)
- create mode 100644 lib/tests/kunit_bvecq.c
+ fs/afs/symlink.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 9cb3785a5bd2..bdda4ad58ab4 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -10391,6 +10391,7 @@ F:	include/linux/fscache*.h
- F:	include/linux/netfs.h
- F:	include/trace/events/fscache.h
- F:	include/trace/events/netfs.h
-+F:	lib/tests/kunit_bvecq.c
+diff --git a/fs/afs/symlink.c b/fs/afs/symlink.c
+index 6b8c122877ca..a1dbd552ddff 100644
+--- a/fs/afs/symlink.c
++++ b/fs/afs/symlink.c
+@@ -99,7 +99,7 @@ static ssize_t afs_do_read_symlink(struct afs_vnode *vnode)
+ 		ret = netfs_alloc_folioq_buffer(NULL,
+ 						&vnode->directory, &cur_size, PAGE_SIZE,
+ 						mapping_gfp_mask(vnode->netfs.inode.i_mapping));
+-		vnode->directory_size = PAGE_SIZE - 1;
++		vnode->directory_size = PAGE_SIZE;
+ 		if (ret < 0)
+ 			return ret;
+ 	}
+@@ -116,7 +116,6 @@ static ssize_t afs_do_read_symlink(struct afs_vnode *vnode)
+ 			trace_afs_file_error(vnode, -EFBIG, afs_file_error_dir_big);
+ 			return -EFBIG;
+ 		}
+-		vnode->directory_size = i_size;
  
- FILESYSTEMS [STACKABLE]
- M:	Miklos Szeredi <miklos@szeredi.hu>
-diff --git a/lib/Kconfig.debug b/lib/Kconfig.debug
-index 2d22638ec13a..06b4546421a1 100644
---- a/lib/Kconfig.debug
-+++ b/lib/Kconfig.debug
-@@ -2385,6 +2385,19 @@ config TEST_IOV_ITER
- 
- 	  If unsure, say N.
- 
-+config TEST_BVECQ
-+	tristate "Test bvecq operation" if !KUNIT_ALL_TESTS
-+	depends on KUNIT
-+	depends on MMU
-+	depends on NETFS_SUPPORT
-+	default KUNIT_ALL_TESTS
-+	help
-+	  Enable this to turn on testing of the operation of the bvecq
-+	  structure.  This test is executed only once during system
-+	  boot (so affects only boot time), or at module load time.
-+
-+	  If unsure, say N.
-+
- config KPROBES_SANITY_TEST
- 	tristate "Kprobes sanity tests" if !KUNIT_ALL_TESTS
- 	depends on DEBUG_KERNEL
-diff --git a/lib/tests/Makefile b/lib/tests/Makefile
-index df0537e1b91f..85e3c5e1f7d2 100644
---- a/lib/tests/Makefile
-+++ b/lib/tests/Makefile
-@@ -27,6 +27,7 @@ obj-$(CONFIG_GLOB_KUNIT_TEST) += glob_kunit.o
- obj-$(CONFIG_HASHTABLE_KUNIT_TEST) += hashtable_test.o
- obj-$(CONFIG_HASH_KUNIT_TEST) += test_hash.o
- obj-$(CONFIG_TEST_IOV_ITER) += kunit_iov_iter.o
-+obj-$(CONFIG_TEST_BVECQ) += kunit_bvecq.o
- obj-$(CONFIG_IS_SIGNED_TYPE_KUNIT_TEST) += is_signed_type_kunit.o
- obj-$(CONFIG_KPROBES_SANITY_TEST) += test_kprobes.o
- obj-$(CONFIG_LIST_KUNIT_TEST) += list-test.o
-diff --git a/lib/tests/kunit_bvecq.c b/lib/tests/kunit_bvecq.c
-new file mode 100644
-index 000000000000..19f3dc41eda7
---- /dev/null
-+++ b/lib/tests/kunit_bvecq.c
-@@ -0,0 +1,599 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/* bvecq iterator tests.  Exercises:
-+ *	- advance
-+ *	- revert
-+ *	- npages
-+ *	- alignment
-+ *
-+ * See also kunit_iov_iter.c for bvecq copy and extract tests.
-+ *
-+ * Copyright (C) 2026 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
-+ */
-+
-+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-+
-+#include <linux/module.h>
-+#include <linux/mm.h>
-+#include <linux/uio.h>
-+#include <linux/bvecq.h>
-+#include <kunit/test.h>
-+
-+MODULE_DESCRIPTION("bvecq testing");
-+MODULE_AUTHOR("David Howells <dhowells@redhat.com>");
-+MODULE_LICENSE("GPL");
-+
-+/*
-+ * Info for the fill pattern generator.
-+ */
-+static const u8 bvecq_kunit_orders[16] = {
-+	0, 1, 2, 3,
-+	0, 1, 3, 2,
-+	0, 2, 1, 3,
-+	2, 0, 3, 1
-+};
-+
-+static const s8 bvecq_kunit_fills[16] = {
-+	1, 2, 3, 5, 7, 11, 13, 17,
-+	-1, -2, -3, -5, -7, -11, -13, -17
-+};
-+static struct folio *bvecq_kunit_folios[16];
-+static size_t bvecq_kunit_folios_nr;
-+
-+/*
-+ * Info for the fill pattern predictor.
-+ */
-+struct bvecq_test_pagemap {
-+	u32 pos;
-+	u32 offset;
-+	u8 folio;
-+	u8 subpage;
-+};
-+
-+static struct bvecq_test_pagemap bvecq_kunit_pagemap[64];
-+static int bvecq_kunit_pagemap_nr;
-+
-+/*
-+ * bvecq assembly recipes.
-+ */
-+enum bvecq_test_cmd {
-+	BVECQ_KUNIT_STOP,	/* Stop loading */
-+	BVECQ_KUNIT_ALLOC,	/* Append new bvecq of size count and move to it */
-+	BVECQ_KUNIT_LOAD,	/* Load count segments into current bvecq */
-+	BVECQ_KUNIT_EMPTY,	/* Add count empty segments into current bvecq */
-+} __mode(byte);
-+
-+struct bvecq_test_recipe {
-+	enum bvecq_test_cmd	cmd;
-+	u8			count;
-+};
-+
-+#define ALLOC(C) { .cmd = BVECQ_KUNIT_ALLOC, .count = C }
-+#define LOAD(C)  { .cmd = BVECQ_KUNIT_LOAD,  .count = C }
-+#define EMPTY(C) { .cmd = BVECQ_KUNIT_EMPTY, .count = C }
-+#define END	 { .cmd = BVECQ_KUNIT_STOP, }
-+
-+static const struct bvecq_test_recipe bvecq_test_recipe_0[] = {
-+	ALLOC(16), LOAD(16),
-+	END
-+};
-+
-+static const struct bvecq_test_recipe bvecq_test_recipe_1[] = {
-+	ALLOC(8), LOAD(8),
-+	ALLOC(8), LOAD(8),
-+	END
-+};
-+
-+static const struct bvecq_test_recipe bvecq_test_recipe_2[] = {
-+	ALLOC(9), LOAD(8), EMPTY(1),
-+	ALLOC(8), LOAD(8),
-+	END
-+};
-+
-+static const struct bvecq_test_recipe bvecq_test_recipe_3[] = {
-+	ALLOC(9), EMPTY(1), LOAD(2), EMPTY(2), LOAD(2), EMPTY(1),
-+	ALLOC(8), LOAD(4), EMPTY(2),
-+	ALLOC(8), EMPTY(1), LOAD(4),
-+	ALLOC(8), EMPTY(2), LOAD(4), EMPTY(1),
-+	END
-+};
-+
-+static const struct bvecq_test_recipe bvecq_test_recipe_4[] = {
-+	ALLOC(9), LOAD(2), EMPTY(1),
-+	ALLOC(2),
-+	ALLOC(2), LOAD(2),
-+	ALLOC(2), EMPTY(2),
-+	ALLOC(8), LOAD(8),
-+	END
-+};
-+
-+static const struct bvecq_test_recipe bvecq_test_recipe_5[] = {
-+	ALLOC(2),
-+	ALLOC(9), LOAD(2), EMPTY(1),
-+	ALLOC(2),
-+	ALLOC(2), LOAD(2),
-+	ALLOC(2), EMPTY(2),
-+	ALLOC(8), LOAD(8),
-+	ALLOC(2),
-+	END
-+};
-+
-+static const struct bvecq_test_recipe bvecq_test_recipe_6[] = {
-+	ALLOC(2), EMPTY(1),
-+	ALLOC(2),
-+	ALLOC(9), LOAD(2), EMPTY(1),
-+	ALLOC(2),
-+	ALLOC(2), LOAD(2),
-+	ALLOC(2), EMPTY(2),
-+	ALLOC(8), LOAD(8),
-+	ALLOC(2),
-+	ALLOC(2), EMPTY(1),
-+	END
-+};
-+
-+/*
-+ * Sets of variations of how much of each folio is added to the bvecq chain,
-+ * allowing a part of the folio to be excluded from each end.
-+ */
-+struct bvecq_test_partials {
-+	u16	add_start;	/* Amount to exclude from the low end */
-+	u16	sub_end;	/* Amount to exclude from the high end */
-+};
-+
-+/* All whole folios. */
-+static const struct bvecq_test_partials bvecq_test_partials_full[16] = {
-+	[0 ... 15] = { 0, 0 }
-+};
-+
-+/* Scattered partial folios, with some folios contiguous. */
-+static const struct bvecq_test_partials bvecq_test_partials_scattered[16] = {
-+	//0, 1, 2, 3,
-+	{ 0x277,  0x136 },
-+	{ 0x999,  0x1011 },
-+	{ 0x2020, 0x0 },
-+	{ 0x0,    0x1123 },
-+	//0, 1, 3, 2,
-+	{ 0x0,    0x136 },
-+	{ 0x27,   0x777 },
-+	{ 0x771,  0x0 },
-+	{ 0x555,  0x0 },
-+	//0, 2, 1, 3,
-+	{ 0x277,  0x136 },
-+	{ 0x1123, 0x0 },
-+	{ 0x0,	  0x0 },
-+	{ 0,      0x5011 },
-+	//2, 0, 3, 1
-+	{ 0x2020, 0x0 },
-+	{ 0x277,  0x136 },
-+	{ 0x1999, 0x1011 },
-+	{ 0x0,    0x1010 },
-+};
-+
-+/* Partial folios, all with a byte excluded from each end. */
-+static const struct bvecq_test_partials bvecq_test_partials_edges[16] = {
-+	[0 ... 15] = { 1, 1 }
-+};
-+
-+/*
-+ * Clean up routines.
-+ */
-+static void bvecq_kunit_release_folios(void *data)
-+{
-+	release_pages(bvecq_kunit_folios, bvecq_kunit_folios_nr);
-+	memset(bvecq_kunit_folios, 0, sizeof(bvecq_kunit_folios));
-+	bvecq_kunit_folios_nr = 0;
-+}
-+
-+static void bvecq_kunit_bvecq_put(void *data)
-+{
-+	bvecq_put(data);
-+}
-+
-+/*
-+ * Calculate the fill pattern, for a particular byte of a particular subpage of
-+ * a particular folio.
-+ */
-+static inline u8 bvecq_kunit_pattern(unsigned int folio, int subpage, int offset)
-+{
-+	int fill_step = bvecq_kunit_fills[folio];
-+
-+	return (subpage + offset * fill_step) & 0xff;
-+}
-+
-+/*
-+ * Calculate the fill pattern, given the 'byte position' in the bvecq chain.
-+ * This looks up the folio, subpage and offset from a table generated whilst
-+ * the bvecq is being assembled.
-+ */
-+static inline u8 bvecq_kunit_predict(struct kunit *test, size_t pos)
-+{
-+	size_t last_pos = 0;
-+
-+	for (int i = 0; i < bvecq_kunit_pagemap_nr; i++) {
-+		if (pos < bvecq_kunit_pagemap[i].pos)
-+			return bvecq_kunit_pattern(
-+				bvecq_kunit_pagemap[i].folio,
-+				bvecq_kunit_pagemap[i].subpage,
-+				bvecq_kunit_pagemap[i].offset + (pos - last_pos));
-+		last_pos = bvecq_kunit_pagemap[i].pos;
-+	}
-+
-+	KUNIT_FAIL(test, "Overran pagemap pos=%zx\n", pos);
-+	return 0;
-+}
-+
-+/*
-+ * Determine which page we're looking at, taking all the folios to be split
-+ * into pages.  This can be used to determine what iov_iter_npages() will say.
-+ */
-+static inline int bvecq_kunit_pos2page(struct kunit *test, size_t pos)
-+{
-+	for (int i = 0; i < bvecq_kunit_pagemap_nr; i++)
-+		if (pos < bvecq_kunit_pagemap[i].pos)
-+			return i;
-+
-+	if (pos > bvecq_kunit_pagemap[bvecq_kunit_pagemap_nr - 1].pos)
-+		KUNIT_FAIL(test, "Overran pagemap pos=%zx\n", pos);
-+	return bvecq_kunit_pagemap_nr;
-+}
-+
-+/*
-+ * Allocate a variety of folios of different orders and fill them with the
-+ * pattern set for each folio.
-+ */
-+static void iov_bvecq_alloc_folios(struct kunit *test)
-+{
-+	struct folio *folio, **folios = bvecq_kunit_folios;
-+	const int nr = ARRAY_SIZE(bvecq_kunit_folios);
-+
-+	bvecq_kunit_pagemap_nr = 0;
-+	memset(bvecq_kunit_pagemap, 0, sizeof(bvecq_kunit_pagemap));
-+	memset(bvecq_kunit_folios, 0, sizeof(bvecq_kunit_folios));
-+
-+	kunit_add_action_or_reset(test, bvecq_kunit_release_folios, NULL);
-+
-+	for (int i = 0; i < nr; i++) {
-+		folio = folio_alloc(GFP_KERNEL, bvecq_kunit_orders[i]);
-+		KUNIT_ASSERT_NOT_NULL(test, folio);
-+		folios[i] = folio;
-+		bvecq_kunit_folios_nr = i + 1;
-+
-+		/* Fill each subpage with a different but predictable pattern. */
-+		for (int j = 0; j < folio_nr_pages(folio); j++) {
-+			u8 *p = kmap_local_folio(folio, PAGE_SIZE * j);
-+
-+			for (int k = 0; k < PAGE_SIZE; k++)
-+				p[k] = bvecq_kunit_pattern(i, j, k);
-+			kunmap_local(p);
-+		}
-+	}
-+}
-+
-+/*
-+ * Follow the specified recipe to allocate a bvecq chain and stick the folios
-+ * and empty gaps into it.  Further, the offset into and length of each folio
-+ * is adjusted from the partials list.  Each ALLOC command will append a new
-+ * bvecq to the chain and move to filling that.
-+ */
-+static struct bvecq *bvecq_kunit_load_chain(struct kunit *test,
-+					    const struct bvecq_test_recipe *rec,
-+					    const struct bvecq_test_partials *parts,
-+					    size_t *size)
-+{
-+	struct bvecq *head = NULL, *bq = NULL, *p;
-+	size_t pos = 0;
-+	int folio_index = 0;
-+
-+	*size = 0;
-+
-+	for (; rec->cmd != BVECQ_KUNIT_STOP; rec++) {
-+		if (!head)
-+			KUNIT_ASSERT_EQ(test, rec->cmd, BVECQ_KUNIT_ALLOC);
-+
-+		switch (rec->cmd) {
-+		case BVECQ_KUNIT_STOP:
-+			break;
-+
-+		case BVECQ_KUNIT_ALLOC:
-+			p = bvecq_alloc_one(rec->count, GFP_KERNEL, false);
-+			KUNIT_ASSERT_NOT_NULL(test, p);
-+
-+			if (!head) {
-+				head = p;
-+				kunit_add_action_or_reset(test, bvecq_kunit_bvecq_put, head);
-+				bq = p;
-+			} else {
-+				bvecq_append(bq, p);
-+				bq = p;
-+			}
-+			break;
-+
-+		case BVECQ_KUNIT_LOAD:
-+			KUNIT_ASSERT_LE(test, folio_index + rec->count,
-+					ARRAY_SIZE(bvecq_kunit_orders));
-+			KUNIT_ASSERT_LE(test, bq->nr_slots + rec->count, bq->max_slots);
-+			for (int i = 0; i < rec->count; i++) {
-+				struct folio *folio = bvecq_kunit_folios[folio_index];
-+				size_t flen = PAGE_SIZE << bvecq_kunit_orders[folio_index];
-+				size_t foff = 0;
-+
-+				KUNIT_ASSERT_LE(test,
-+						parts[folio_index].add_start +
-+						parts[folio_index].sub_end,
-+						flen);
-+
-+				foff += parts[folio_index].add_start;
-+				flen -= parts[folio_index].add_start;
-+				flen -= parts[folio_index].sub_end;
-+
-+				bvec_set_page(&bq->bv[bq->nr_slots + i],
-+					      folio_page(folio, 0), flen, foff);
-+				*size += flen;
-+
-+				for (int j = 0; j < folio_nr_pages(folio); j++) {
-+					struct bvecq_test_pagemap *pm;
-+					size_t part;
-+
-+					if (foff >= PAGE_SIZE) {
-+						foff -= PAGE_SIZE;
-+						continue;
-+					}
-+					part = min(flen, PAGE_SIZE - foff);
-+					pos += part;
-+					pm = &bvecq_kunit_pagemap[bvecq_kunit_pagemap_nr];
-+					pm->pos     = pos;
-+					pm->folio   = folio_index;
-+					pm->subpage = j;
-+					pm->offset  = foff;
-+					bvecq_kunit_pagemap_nr++;
-+					flen -= part;
-+					if (!flen)
-+						break;
-+					foff = 0;
-+				}
-+
-+				folio_index++;
-+			}
-+			bvecq_filled_to(bq, bq->nr_slots + rec->count);
-+			break;
-+
-+		case BVECQ_KUNIT_EMPTY:
-+			KUNIT_ASSERT_LE(test, bq->nr_slots + rec->count, bq->max_slots);
-+			for (int i = 0; i < rec->count; i++) {
-+				bq->bv[bq->nr_slots + i].bv_page = ERR_PTR(-EIO);
-+				bq->bv[bq->nr_slots + i].bv_offset = 0;
-+				bq->bv[bq->nr_slots + i].bv_len = 0;
-+			}
-+			bvecq_filled_to(bq, bq->nr_slots + rec->count);
-+			break;
-+		}
-+	}
-+
-+	return head;
-+}
-+
-+/*
-+ * Check the next few bytes of pattern from an iterator.  Note that it is
-+ * permitted for the iterator to have less data remaining than the number to
-+ * check - in which case the copy is required to come up short.
-+ */
-+static void bvecq_kunit_check_next(struct kunit *test, struct iov_iter *iter,
-+				   size_t *pos, size_t *left, size_t nr)
-+{
-+	size_t part, n;
-+	u8 buf[3], pred[3];
-+
-+	KUNIT_ASSERT_EQ(test, iov_iter_count(iter), *left);
-+
-+	part = min(*left, nr);
-+	n = copy_from_iter(buf, nr, iter);
-+	KUNIT_ASSERT_EQ(test, n, part);
-+	*left -= n;
-+
-+	for (size_t i = 0; i < n; i++)
-+		pred[i] = bvecq_kunit_predict(test, *pos + i);
-+
-+	for (size_t i = 0; i < n; i++) {
-+		if (buf[i] != pred[i]) {
-+			pr_notice(">>> pos=%05zx+%zx c=%zx buf=%*phN pred=%*phN\n",
-+				  *pos, i, iov_iter_count(iter) + n,
-+				  (int)n, buf, (int)n, pred);
-+		}
-+		KUNIT_ASSERT_EQ(test, buf[i], pred[i]);
-+	}
-+
-+	*pos += n;
-+}
-+
-+/*
-+ * Test advancing and reverting over a bvecq chain.
-+ *
-+ * The loop starts at each 'byte position' in the chain, advancing a small
-+ * amount, copying a few bytes of data, checking the fill pattern, reverting a
-+ * bit, checking, reverting, checking and then reverting to a byte position one
-+ * further on than the previous loop.  Use small prime numbers for the advance
-+ * and first revert so that we should test crossing the edges of the folios.
-+ */
-+static void bvecq_kunit_advance(struct kunit *test,
-+				const struct bvecq_test_recipe *recipe,
-+				const struct bvecq_test_partials *parts)
-+{
-+	struct iov_iter iter;
-+	struct bvecq *bq, *p;
-+	unsigned long bvec_align = 0;
-+	size_t size, pos = 0, from;
-+	int npages;
-+
-+	iov_bvecq_alloc_folios(test);
-+	bq = bvecq_kunit_load_chain(test, recipe, parts, &size);
-+
-+	/* Compound up the alignments for ITER_BVEC on each individual bvecq
-+	 * span and compare that to the alignment for ITER_BVECQ.  There is an
-+	 * issue in ITER_BVEC, however, in that it includes bv_offset from
-+	 * bio_vecs for which bv_len is 0, which ITER_BVECQ does not.
-+	 */
-+	for (p = bq; p; p = p->next) {
-+		size_t psize = 0;
-+
-+		for (int i = 0; i < p->nr_slots; i++)
-+			psize += p->bv[i].bv_len;
-+
-+		if (!psize)
-+			continue;
-+		iov_iter_bvec(&iter, ITER_SOURCE, p->bv, p->nr_slots, psize);
-+		bvec_align |= iov_iter_alignment(&iter);
-+	}
-+
-+	iov_iter_bvec_queue(&iter, ITER_SOURCE, bq, 0, 0, size);
-+
-+	KUNIT_ASSERT_EQ(test, iov_iter_alignment(&iter), bvec_align);
-+
-+	npages = iov_iter_npages(&iter, INT_MAX);
-+	from = iov_iter_count(&iter);
-+	do {
-+		size_t left = from, part;
-+
-+		KUNIT_ASSERT_EQ(test, iov_iter_npages(&iter, INT_MAX),
-+				npages - bvecq_kunit_pos2page(test, pos));
-+
-+		/* 3 steps forward. */
-+		part = min(left, 3);
-+		iov_iter_advance(&iter, 3); /* May be short. */
-+		pos += part;
-+		left -= part;
-+		bvecq_kunit_check_next(test, &iter, &pos, &left, 3);
-+
-+		/* 2 steps back */
-+		part = umin(2, left);
-+		iov_iter_revert(&iter, part);
-+		pos -= part;
-+		left += part;
-+		bvecq_kunit_check_next(test, &iter, &pos, &left, 2);
-+
-+		/* 1 more step back */
-+		part = umin(1, left);
-+		iov_iter_revert(&iter, part);
-+		pos -= part;
-+		left += part;
-+		bvecq_kunit_check_next(test, &iter, &pos, &left, 1);
-+
-+		KUNIT_ASSERT_EQ(test, left, iov_iter_count(&iter));
-+
-+		/* Move to one place on from the current loop. */
-+		from--;
-+		if (iov_iter_count(&iter) < from) {
-+			part = from - iov_iter_count(&iter);
-+			iov_iter_revert(&iter, part);
-+			pos -= part;
-+		}
-+		KUNIT_ASSERT_EQ(test, from, iov_iter_count(&iter));
-+	} while (from > 0);
-+}
-+
-+/*
-+ * Test jumping around in a bvecq chain using advance and revert.
-+ *
-+ * The loop starts at the start of the chain, then jumps forwards through the
-+ * chain and then back again by large amounts, sampling the data each time.
-+ */
-+static void bvecq_kunit_jump(struct kunit *test,
-+			     const struct bvecq_test_recipe *recipe,
-+			     const struct bvecq_test_partials *parts)
-+{
-+	struct iov_iter iter;
-+	struct bvecq *bq;
-+	size_t size, pos = 0, step = 0x100;
-+	bool dir = false;
-+	int npages;
-+
-+	iov_bvecq_alloc_folios(test);
-+	bq = bvecq_kunit_load_chain(test, recipe, parts, &size);
-+
-+	iov_iter_bvec_queue(&iter, ITER_SOURCE, bq, 0, 0, size);
-+
-+	npages = iov_iter_npages(&iter, INT_MAX);
-+	while (step < size) {
-+		size_t left = iov_iter_count(&iter), part;
-+
-+		KUNIT_ASSERT_EQ(test, iov_iter_npages(&iter, INT_MAX),
-+				npages - bvecq_kunit_pos2page(test, pos));
-+
-+		if (!dir) {
-+			/* Advance by step and then 3 more in check. */
-+			part = min(left, step);
-+			iov_iter_advance(&iter, step); /* May be short. */
-+			pos += part;
-+			left -= part;
-+			bvecq_kunit_check_next(test, &iter, &pos, &left, 3);
-+
-+			KUNIT_ASSERT_EQ(test, left, iov_iter_count(&iter));
-+
-+			if (left == 0) {
-+				/* Switch to reverting. */
-+				dir = true;
-+				step += 3;
-+			}
-+		} else {
-+			/* Revert by step and then advance by 3 in check. */
-+			part = min(size - left, step);
-+			iov_iter_revert(&iter, part);
-+			pos -= part;
-+			left += part;
-+			bvecq_kunit_check_next(test, &iter, &pos, &left, 3);
-+
-+			KUNIT_ASSERT_EQ(test, left, iov_iter_count(&iter));
-+
-+			if (pos <= 3) {
-+				/* Switch to advancing. */
-+				dir = false;
-+				step *= 2;
-+			}
-+		}
-+	}
-+}
-+
-+/*
-+ * Run the individual test combinations
-+ */
-+#define ADVANCE_TESTS_SET(CHECK, PARTIALS) \
-+	TEST(CHECK, PARTIALS, 0)	\
-+	TEST(CHECK, PARTIALS, 1)	\
-+	TEST(CHECK, PARTIALS, 2)	\
-+	TEST(CHECK, PARTIALS, 3)	\
-+	TEST(CHECK, PARTIALS, 4)	\
-+	TEST(CHECK, PARTIALS, 5)	\
-+	TEST(CHECK, PARTIALS, 6)
-+
-+#define ADVANCE_TESTS(CHECK)			\
-+	ADVANCE_TESTS_SET(CHECK, full)		\
-+	ADVANCE_TESTS_SET(CHECK, scattered)	\
-+	ADVANCE_TESTS_SET(CHECK, edges)
-+
-+#define TEST(CHECK, PARTIALS, RECIPE) \
-+static void bvecq_kunit_##CHECK##_##PARTIALS##_##RECIPE(struct kunit *test) \
-+{ \
-+	bvecq_kunit_##CHECK(test, \
-+			    bvecq_test_recipe_##RECIPE,	      \
-+			    bvecq_test_partials_##PARTIALS);  \
-+}
-+
-+/* Emit test stub functions. */
-+ADVANCE_TESTS(advance);
-+ADVANCE_TESTS(jump);
-+#undef TEST
-+
-+#define TEST(CHECK, PARTIALS, RECIPE)				\
-+	KUNIT_CASE(bvecq_kunit_##CHECK##_##PARTIALS##_##RECIPE),
-+
-+static struct kunit_case bvecq_kunit_cases[] = {
-+	ADVANCE_TESTS(advance)
-+	ADVANCE_TESTS(jump)
-+	{}
-+};
-+
-+static struct kunit_suite bvecq_kunit_suite = {
-+	.name = "bvecq",
-+	.test_cases = bvecq_kunit_cases,
-+};
-+
-+kunit_test_suites(&bvecq_kunit_suite);
+ 		/* Copy the symlink. */
+ 		symlink = kmalloc_flex(struct afs_symlink, content, i_size + 1);
 
