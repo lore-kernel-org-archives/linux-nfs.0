@@ -1,21 +1,21 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=213.95.11.211
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794408969;
-	b=dIeCR5Pmu5nR2W0foX84y04hiF1cH0zgc2L08vhdnKpt9QjWKt2WuE1pBBCdttveBweF
-	 Gmz6Plc2c63OHmFAD/aAf/BxmhQBV++/mxPFHBvDQbPDnPCA3B6WZPDmLfrcIRstHEdSB
-	 q8sOFGODOmuFSQYa1V/mTtECo215f2s4KDUMqocR7UzdSz/G9PqUeytxZthmFHPcCIDv8
-	 DJA4ajtmMR4mV/LcNwX2Fi4cLwkn5HQBlrGWY3T622VTPU3PgORj8594H48Ssn4LMDB7b
-	 zOb+6X2otgK46B5s/ZX0LpuL3m1qJpFRD/DUO8E9VCBm0dMfwf9r3XnBQm29Y5r2Jxw==
+	t=1794408995;
+	b=nb4Fj8/mpIcsCgH6THk63/hNibg6h+mY6xahwJw397nb1ctD7xjZ+HWNiJqbNry+l83i
+	 VNastHeHnE23T89iw18jjnCQ5q2jvwXkDtqmk0hA1k4JhLGDCt+Ad6hi+jcsA2f3AgcA+
+	 Neo0WYSdmsNsYFyFbRblgr38mxvryIrA6gqpgJ7XfTyJCFz3ccc1zJP3HCzpQGiehOKiU
+	 BNgJONslvI2DBCCagHTM1jrEJVQnhlgsoWGpjrj8/tncLk7NjdOtozVwWDRxckabUMOMU
+	 Nrd7QZtc60Hs5ffFBX6+LDcu0beV2eSnCiAZsanGoKFRlbBiJcKfqFAjI7TYp7Ttrew==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794408969;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794408995;
 	h=DMARC-Filter:Received:Date:From:To:Cc:Subject:Message-ID:References:
 	 MIME-Version:Content-Type:Content-Disposition:In-Reply-To:User-Agent;
-	bh=GonZG2wwIvN+gNPTSiAAkhawJ65Nfia9tR3JjSU8YK0=;
-	b=mVUqUUIl9I68CTSs6VL+CmZl25CaJwiSxBF1BYoOHkt13ChzaAW4QKy6rUVqCnLXCU1G
-	 CcwzDG4Y1fj5DikasrTKF8XXLIaYo5/MI9swsLvYTeWhqqcqhPby9DpGnlZ8FzMHREBHO
-	 Qjez13aus+YFug1G97yA5GUApLVxx/0kiMPmCX0BSlsR3cAeSsUQ8cNpTZCEgICIvf8UU
-	 wo/LjeplYRy98hXHA7/cKV157AXYfkXt61g7v51MMlOa0kWyYS1ZUEdoAdVFlwdng3cI2
-	 eHICJce41eA6QmfvU/kzq5Hj/jXmFahalRyBPUBUzFxJ4nBpQ8wCrhXiAHzcOMFi1Yg==
+	bh=M7NmYC/Iylm9myghHwqILim55SAUt9QrM+UZYk0eJlw=;
+	b=LaK6jybiNSlNXQej1mhBAxeQj82i0WRPfBBrqoj1kg3Wk0tLJYvKOk34T3hUfneeBGTW
+	 SkqKpvrBR+yYcbXn6SacbvL8EU/nJd4IOo4NQoMvBqGBoopkCsD5Bp0RFGqTdHWRIExs1
+	 idY5xlSnfjDY0vjCGoaZ2bkCtPrl+K2jJh2YloAUWGyaz2UMn3fknKHsjCsn604JdqWgU
+	 nbPftWgN8MSmXE3j52IheIAm4DCrqU2qnIYKI56rR5gB9UGRkDmGx6Sxj/Qa4zlU1SQt5
+	 VIG+TiAyS8pSYRotM5V+nvW7HNCmTJNeBi4MFvnw0RamdRhU49QR9VBwKCkJD+kqB7A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=lst.de;
 	spf=pass smtp.mailfrom=lst.de;
@@ -23,14 +23,14 @@ ARC-Authentication-Results: i=1; smtp.subspace.kernel.org;
 Received: from verein.lst.de (verein.lst.de [213.95.11.211])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DDCB9606A324;
-	Wed, 11 Nov 2026 14:56:07 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org DDCB9606A324
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D85E9606A321;
+	Wed, 11 Nov 2026 14:56:34 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D85E9606A321
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
 Received: by verein.lst.de (Postfix, from userid 2407)
-	id 4C15C68B05; Wed, 11 Nov 2026 15:55:56 +0100 (CET)
-Date: Wed, 11 Nov 2026 15:55:55 +0100
+	id 3FC4B68D05; Wed, 11 Nov 2026 15:56:31 +0100 (CET)
+Date: Wed, 11 Nov 2026 15:56:30 +0100
 From: Christoph Hellwig <hch@lst.de>
 To: Christian Brauner <brauner@kernel.org>
 Cc: linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>,
@@ -47,12 +47,11 @@ Cc: linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>,
 	xen-devel@lists.xenproject.org, ocfs2-devel@lists.linux.dev,
 	linux-s390@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
 	linux-usb@vger.kernel.org, Amir Goldstein <amir73il@gmail.com>,
-	linux-erofs@lists.ozlabs.org, linux-kselftest@vger.kernel.org,
-	stable@vger.kernel.org
-Subject: Re: [PATCH RFC 01/41] loop: refuse backing files that aren't open
- for reading
-Message-ID: <20261111145555.GA9996@lst.de>
-References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org> <20261110-work-loop-pseudo-v1-1-4c998976c6c7@kernel.org>
+	linux-erofs@lists.ozlabs.org, linux-kselftest@vger.kernel.org
+Subject: Re: [PATCH RFC 02/41] nvmet: check that the file backend supports
+ ->{read,write}_iter
+Message-ID: <20261111145630.GB9996@lst.de>
+References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org> <20261110-work-loop-pseudo-v1-2-4c998976c6c7@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -64,13 +63,10 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261110-work-loop-pseudo-v1-1-4c998976c6c7@kernel.org>
+In-Reply-To: <20261110-work-loop-pseudo-v1-2-4c998976c6c7@kernel.org>
 User-Agent: Mutt/1.5.17 (2007-11-01)
 
-The fix itself looks good:
+Looks good:
 
 Reviewed-by: Christoph Hellwig <hch@lst.de>
-
-But i wonder if we want a thin wrapper around ->read_iter/_write_iter
-to do this check so that it matches the normal read/write path?
 
