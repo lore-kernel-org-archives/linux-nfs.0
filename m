@@ -1,60 +1,96 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.170
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794362178;
-	b=rpAsluBztUqPfx/sSUmmX4MvZB2h8IVJTeqHAlhR83FOuwYzTPhp0O/eO/v2iwtrVhj8
-	 4/4d5ZCaXjNyOzW4LpH9HZ8ec2nmgPVI4X7G9MRzpmQn4AFdYhdfCZok+VxWiANzqW0T6
-	 PkVCqLQrgGNSor5ovUaHvh6cRO+9z3J+z9/QQwEvwEx3cJt9C28RwzY9fdHDtxRux/uy5
-	 j/C/Ynpuf2woIgTaWQVZ9yIDW1EAH/oZOopb1F/TgZbmLXYQpGdK7AcdCIK+fQH801Z/2
-	 Dc9uVwSWr0qoOFw72zdu4BQ1RODsTAb+gO+oeJYtvFyDTf7Z6C0D7/ByyGR9KWtsYPw==
+	t=1794383322;
+	b=0neailIHjVADAzjPUQODsgAivgpIIYoVqRO7WaKt2vYtsc7ZBOm9dY0TBZNw5jG+oa+i
+	 bPWKLUpbMyb4NwYPC8qF/kk5BZw9WAs5VH7TsU3a75NJeBwJpunfCazlgQVodxwmZOuFd
+	 Mw0LbDeMW+vciGhXz/SO73KOx0/UO50NZm408s39Qp6m3O7Txy+t2M/DYitRewPFLQMkK
+	 zTiVQiQ3LEdUTb/MgdijFjI55j/FCf5s0hQcMNvz1F9a1laxtacVzI1VohFJoxJBrEScY
+	 Lv6uxXmmuKg4JNpze01TqZWaUusfI0W3o4V4FV5PiLnU+Oqf+ke3J1eXq9s3gNS1eGA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794362178;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=dvsdJA1xQSyMPMbuSIp+CFlJpnM6Fc37qh/WwEbiFd4=;
-	b=llScP13PfjRGZrs9m2Js0dVc38G9K3vjzdZeJQNGd1Ke/EC022Q8vhF8yVV+D8ePpnje
-	 +Kh/4fOi4YBWhgvkqRbPp74HuHuDtp0duRsWz/Vq4Yo57+jI7OedwrJxp0o2eJa29yM6c
-	 MTJyUZuG0T9zx+TXYGSZA9F84vUo9KYMtm7dHE0/VDphtNOH5pNSvWhcJJ4vMzZl5I8lA
-	 vuzOWiIjr4qs4U/OwGbTyIy9D8OnqCVd46ATzsKQ7Ng8ZjfgJdURjxlkM/561xN6pOKJK
-	 0Hx7z3+hXYguGCZvyAgfb56sYJtiscOq1U6HtgKwsFnKLu5VF8ooncfOkadgm5Am6vA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794383322;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=KmH4ZXitu/F5zLcyKAJJuc2GxRLS44lxp/qvIGKdIQs=;
+	b=UnFtnrth/2OAuP/ZRNv7JsDABEIwGltqQDLOoaRdieDg8ufVop+Li/CsmwGEYn1xRmK5
+	 I/NOVTf0bewMNXXjbLGSx8Kywi0/exwj5LNwf5VmHUiLfanqB/8wihjRUokQhIfSjgq1d
+	 mjFsY4+mcbPXW/LEySlvPwzf2HLLozu6xSGtLGqGdWV3m2Op5tLs1oiN25khO/8BZQeEs
+	 aher7ASD//I1uKDcl28/SPM/h8oyT+DiIFiMDMQaUTOlLR2HMQpwRyML6TaL2+MOiO4G4
+	 ZIGLOXtsJ/ccP6dNBfUJXyjIgAVJyK5/DJ06KNVQiO4iUUU9mjwhug/pGo8Jg4Ru8fw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Acg7IhlG;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=iLe2eJFf;
+	arc=none smtp.remote-ip=74.125.82.170
+Received: from mail-dy1-f170.google.com (mail-dy1-f170.google.com [74.125.82.170])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37C6D606A333;
-	Wed, 11 Nov 2026 01:56:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 16BA6606A31C
+	for <linux-nfs@vger.kernel.org>; Wed, 11 Nov 2026 07:48:41 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 16BA6606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Acg7IhlG
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D0A7A1F00A11;
-	Wed, 11 Nov 2026 01:56:17 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794362178;
-	bh=dvsdJA1xQSyMPMbuSIp+CFlJpnM6Fc37qh/WwEbiFd4=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=Acg7IhlGIGwr0r+3nJ6IcWCdWUIkQZLmqg6JA2AN7PQL7lWQ2W9lb2Mdx6WfG0n3Q
-	 GQGV9qt9trNQwSS3O/3P+c0Ilr/DFP82vZvQSnnoMnKGJ+kOIT0dtDwq5ahah1bhyi
-	 2ljgkFg2xki+m1iWt50SAW2VcV5+Arh6cbhIBONXK7bPM9k74+pmCX0vPjCxRA2tzh
-	 PAf+kWo2rLGcs5UR+JYfIJbdwmZdjRyR5W38WmeCgD/i+EdKMddM/AcgQG1NKpX86g
-	 cB0CcsS4T0zep5OyMd+zdC0+rj2cT6bOx5Z55DT+CrVVS0TDNlKZ1TiCsV4sJOj8p/
-	 OoXhfkfH7hnkw==
-From: Mike Snitzer <snitzer@kernel.org>
-To: Matthew Wilcox <willy@infradead.org>,
-	Jan Kara <jack@suse.cz>,
-	linux-mm@kvack.org,
-	Christian Brauner <brauner@kernel.org>,
-	linux-fsdevel@vger.kernel.org
-Cc: Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=iLe2eJFf
+Received: by mail-dy1-f170.google.com with SMTP id 5a478bee46e88-3645f0f3fcdso5949658eec.0
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Nov 2026 23:48:41 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1794383321; x=1794988121; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=KmH4ZXitu/F5zLcyKAJJuc2GxRLS44lxp/qvIGKdIQs=;
+        b=iLe2eJFfKAcFCdWrwD05o+538qgEn4Wi7msKHKTQhjfH+ddAg00tMoDW93HTHjh2EV
+         0Nn8yDtKnO6s8BACiq9sJ5b/O9ET7Axn9Z6mGHrconoSjUS22IZi6jcIQst+dNfr0qcS
+         Z0IWIMZRLd1dqCqNs9cJMwettXn+oqS3bGDTm0uWUVqk2OwjtPnw4qyikZhPF4MgF7FV
+         1Ncz7nbFzs+QmXVkL7EMg/4SoaKqopb9jWZfZ+xy6mPsBfWXYOpKCCYGRlsYaN9KXHoo
+         mkHce4cpfJX+D72MW+9oCpghH38MKL9mOI8QWxp12J5mfY0zkkrI/63gtHyMVwh2G5pX
+         28tg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794383321; x=1794988121;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=KmH4ZXitu/F5zLcyKAJJuc2GxRLS44lxp/qvIGKdIQs=;
+        b=z9vU9KchUVVpF5pk+SP6HBVoGYGCMWBzODQyVQ9NCzwcLgKo6knil3mXG48SH94Mx3
+         9nnyCjp5QzgVFo7g9qJ0as8k6vOsup9lIcnS2bDq/bMZ/czFfQbpAO2WdOZU4pYx765Q
+         wWJt504gOsR+x6vXJN9+paIPgKrL0I0WvEnkjTc46ve8gSspmnPFV7qwpAw9qhqFyo6u
+         aOoUN5noliDTG/5gwFOl5B0gDQ+Bkupv+oqyb1Pg78jh0CrqaTs1X3gP4IMKMHpPrgYo
+         l1FoNavKrYjKXgVf2SDZca6XAosRCpIDAtzF28MU9wca4Jr5hCccV5/7jac6aLBhV3sy
+         /ahQ==
+X-Forwarded-Encrypted: i=1; AL+hErHHFowf4n0+mR7Ejrz6hxOY5bCegkPD9fenWDGyluHDVVb5WzUSS+8vW6JinJXLdLlGf8MejQyt0g4=@vger.kernel.org
+X-Gm-Message-State: APuU4Z9GqA/dizVLl5KTDXlDna9XDUKm5X5wsiup+K2O+VR566BvJDrp
+	/rZykDIiiBut3JZXzovItlc9Z5ZTI0o8MGM2NDOYf4cc6NOpPS2d5Azk
+X-Gm-Gg: AYBFou1oWSVk1V7/vCvyYK4eALFrxn1jmC29BczYScX3VqOsbDsa3SVEHAo5Wp9NRmO
+	GZXR9CuglepjVm4GBQcmlwT4VqkTfNy6bSjjeo6Si8i1O701lqrnmlTUSBJdYBqOVASCecKx6js
+	o8X23jkZ0tDIE+6vwvqiFfpE/PRh58NtIzxhZbkY+VJSg4bFISujZ1tPdDczfI2ObozdOJ3RY0I
+	I35Z7/ii5JjV9ERQLKpQ9H/17Uh51HwrVRAdfRUUquObVs7gMRoue0s99iDNoOvJvEuO1y8oeNh
+	DjEVL4RS9bQj0qcIrG8mn+MaqDD2mKaHPodl7GbchDUzybLZpoviQc1j9eqeQuGYEg15aOvtbQB
+	/5td6ymQZdX9u98xpSEP0l9wbuFPgaCQNutKx70n9uVxy3JZXWoRnwlKdbXbG4gDrW3M/zm/Gsz
+	BCJTw8mCG3re5g+/rddZR40PnfJFDEXWsRwS2CQRwJFpbMWXeWQ5Ya4dRTn665+01ZIr/en3gPo
+	TFxcl0ussymGZe4fzVlMgayi4AMibQDZ24MPtWXVQrok2UTWZn5OPmwy0/LHw3kz/NHr8o2q4/X
+	oCafW1KcQXx6xlmM7+faIx0k8OWHU97ZvQX61ZDYEe/Ol4CwdYFa8YdvejPzArAAEN4=
+X-Received: by 2002:a05:7300:d18f:b0:366:703c:5ef8 with SMTP id 5a478bee46e88-376850cefb9mr2028290eec.7.1794383321067;
+        Tue, 10 Nov 2026 23:48:41 -0800 (PST)
+Received: from osman.mioffice.cn ([43.224.245.178])
+        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-3752060c4b6sm13675956eec.15.2026.11.10.23.48.38
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 10 Nov 2026 23:48:40 -0800 (PST)
+From: Zhan Xusheng <zhanxusheng1024@gmail.com>
+To: cel@kernel.org,
+	jlayton@kernel.org
+Cc: neil@brown.name,
+	okorniev@redhat.com,
+	Dai.Ngo@oracle.com,
+	tom@talpey.com,
 	linux-nfs@vger.kernel.org,
-	Jonathan Flynn <jonathan.flynn@hammerspace.com>
-Subject: [PATCH v11 7/7] NFSD: drop a shared boundary page only once both WRITEs have written it
-Date: Tue, 10 Nov 2026 20:56:07 -0500
-Message-ID: <20261111015607.46338-8-snitzer@kernel.org>
-X-Mailer: git-send-email 2.44.0
-In-Reply-To: <20261111015607.46338-1-snitzer@kernel.org>
-References: <20261111015607.46338-1-snitzer@kernel.org>
+	linux-kernel@vger.kernel.org,
+	zhanxusheng@xiaomi.com
+Subject: [PATCH v2] nfsd: don't block on a file lease while holding the parent lock
+Date: Wed, 11 Nov 2026 15:48:35 +0800
+Message-ID: <20261111074835.599584-1-zhanxusheng1024@gmail.com>
+X-Mailer: git-send-email 2.43.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -66,249 +102,165 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-NFSD splits a misaligned direct-mode WRITE into a direct middle and
-buffered DONTCACHE ends.  Each end covers its first or last unit, the
-smallest folio the mapping allows, only partially.  The other WRITE that
-covers the rest of that unit shares it.
+From: Zhan Xusheng <zhanxusheng@xiaomi.com>
 
-Issue the buffered ends with IOCB_DONTCACHE_DEFER.  Before writing an
-end, ask filemap_dontcache_edge_completes() whether the other WRITE has
-written its part of each shared unit.  Once the WRITE is done, complete
-those units with filemap_dontcache_edge_complete().  If the client sent
-the WRITE as FILE_SYNC or DATA_SYNC, that is after the one
-vfs_fsync_range() that NFSD runs over the whole WRITE.  An UNSTABLE
-WRITE has no fsync, so its units are completed while still dirty.  A
-short write completes a unit only if it wrote its own part of it.
+Since commit 2a60db3525d4 ("nfsd: (almost) always open file in
+nfsd4_create_file()"), an NFSv4 OPEN with create that finds an
+existing file opens it with dentry_open() while start_creating()
+still holds the parent directory lock. The open flags lack
+O_NONBLOCK, so break_lease() in do_dentry_open() blocks. Before that
+commit the file was opened later by __nfsd_open(), which breaks
+leases with O_NONBLOCK, and the client retried on NFS4ERR_DELAY.
 
-With this commit, 32 interleaved writers of 47008-byte records through
-NFSD DIRECT read 0.0001 to 0.0002 blocks per WRITE.  Before, they read
-0.99 blocks per WRITE.  FILE_SYNC WRITEs no longer wake the DONTCACHE
-writeback kick, where they woke it 23,000 to 65,000 times a run without
-IOCB_DONTCACHE_DEFER.  On a four-server pNFS flexfiles rig, the page
-cache grew by 2.9 GiB during the write phase instead of about 11 GiB.
+A lease on the file now stalls an nfsd thread for up to
+lease-break-time with the directory locked, and other creates,
+unlinks and renames in that directory wait for it.
 
-47008 bytes is the transfer size of IO500's ior-hard, in which each rank
-writes interleaved records to one shared file with O_DIRECT.  The Linux
-client sends an O_DIRECT write that fits in one WRITE as FILE_SYNC.
+To reproduce, set fs.lease-break-time=15, take F_SETLEASE F_WRLCK on
+/srv/g from a local process and keep it, and run "echo x >> /mnt/g"
+on an NFSv4.2 mount of /srv from localhost. The nfsd thread blocks
+in break_lease() for 15s, and "touch /srv/other" on the server takes
+13s.
 
-Reported-by: Jonathan Flynn <jonathan.flynn@hammerspace.com>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: Mike Snitzer <snitzer@kernel.org>
+Pass O_NONBLOCK so that break_lease() returns -EWOULDBLOCK and the
+client gets NFS4ERR_DELAY again.
+
+Guarded creates and exclusive creates with a different verifier
+fail with NFS4ERR_EXIST on an existing file and have no use for the
+open. Skip it for them, as nfsd did before that commit, so that they
+don't break the lease and, with O_NONBLOCK, don't return
+NFS4ERR_DELAY instead of NFS4ERR_EXIST.
+
+Fixes: 2a60db3525d4 ("nfsd: (almost) always open file in nfsd4_create_file()")
+Signed-off-by: Zhan Xusheng <zhanxusheng@xiaomi.com>
 ---
- .../filesystems/nfs/nfsd-io-modes.rst         |  18 +++
- fs/nfsd/vfs.c                                 | 107 ++++++++++++++++--
- 2 files changed, 113 insertions(+), 12 deletions(-)
+v2: also skip the open for guarded and non-matching exclusive
+creates (sashiko, via Jeff). The other part of that report, the open
+running before the permission check, is older than this patch and is
+not changed here.
 
-diff --git a/Documentation/filesystems/nfs/nfsd-io-modes.rst b/Documentation/filesystems/nfs/nfsd-io-modes.rst
-index d57b7916f6c2e..6f5941e9ea7b6 100644
---- a/Documentation/filesystems/nfs/nfsd-io-modes.rst
-+++ b/Documentation/filesystems/nfs/nfsd-io-modes.rst
-@@ -197,6 +197,24 @@ Misaligned WRITE:
-     above. Set it to N for a workload that reads back or rewrites what
-     it just wrote.
- 
-+    The page holding a start or end segment is shared with the other
-+    WRITE that covers the rest of the page, which may arrive before,
-+    after or at the same time, from any client. So that the second WRITE
-+    to such a page does not have to read it back from disk, the page
-+    cache keeps a page a DONTCACHE write covers only partially,
-+    unmarked, for the write that completes it. NFSD asks, immediately
-+    before writing a start or end segment, whether the other WRITE has
-+    already written its part; if it has, NFSD marks the page DONTCACHE
-+    once its own WRITE, including its fsync, is complete, and the page
-+    is dropped. A page that no other WRITE completes, or that the other
-+    WRITE writes at the same time, stays cached until it is reclaimed.
-+    The first and last pages of a WRITE that is not split are handled
-+    the same way.
-+
-+    None of this applies when the start and end segments are normal
-+    buffered IO, or for a filesystem that does not use iomap for
-+    buffered writes.
-+
- Tracing:
-     The nfsd_read_direct trace event marks a READ that NFSD issues as
-     O_DIRECT. It records the offset and length the client requested.
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 10ea334cfdab6..5d265b2294b00 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1432,6 +1432,7 @@ static int wait_for_concurrent_writes(struct file *file)
- struct nfsd_write_dio_seg {
- 	struct iov_iter			iter;
- 	int				flags;
-+	bool				claim;		/* completes shared pages */
- };
- 
- static unsigned long
-@@ -1451,6 +1452,79 @@ nfsd_write_dio_seg_init(struct nfsd_write_dio_seg *segment,
- 		iov_iter_advance(&segment->iter, start);
- 	iov_iter_truncate(&segment->iter, len);
- 	segment->flags = iocb->ki_flags;
-+	segment->claim = false;
-+}
-+
-+/* The shared pages a segment completes, and how much of it was written. */
-+struct nfsd_write_dio_hold {
-+	loff_t	first, last;
-+	size_t	first_len;	/* the segment's bytes in its first unit */
-+	bool	complete_first, complete_last;
-+	size_t	written;
-+};
-+
-+/*
-+ * A page that a buffered DONTCACHE segment covers only partially is shared
-+ * with the other WRITE that covers the rest of the page.  The page cache keeps
-+ * it, unmarked, for the write that completes it; the segment is issued
-+ * IOCB_DONTCACHE_DEFER so that this WRITE, not the page cache, marks it, once
-+ * the whole WRITE, its fsync included, is complete.  Ask whether the other
-+ * WRITE has already written its part immediately before writing @seg: asking
-+ * earlier gives the other WRITE time to write its part and find this WRITE's
-+ * part missing.
-+ */
-+static void
-+nfsd_write_dio_seg_hold(struct file *file, const struct nfsd_write_dio_seg *seg,
-+			loff_t pos, size_t len, struct nfsd_write_dio_hold *hold)
-+{
-+	struct address_space *mapping = file->f_mapping;
-+	size_t unit, last_len;
-+	loff_t mask, last_unit;
-+	bool one_unit, head, tail;
-+
-+	hold->first = pos;
-+	hold->last = pos + len - 1;
-+	hold->complete_first = false;
-+	hold->complete_last = false;
-+	hold->written = 0;
-+	if (!seg->claim || !len)
-+		return;
-+
-+	/* The shared unit is the smallest folio the mapping allows. */
-+	unit = mapping_min_folio_nrbytes(mapping);
-+	mask = ~(loff_t)(unit - 1);
-+	one_unit = (hold->first & mask) == (hold->last & mask);
-+	head = hold->first & (unit - 1);
-+	tail = (hold->last + 1) & (unit - 1);
-+	last_unit = hold->last & mask;
-+	last_len = (hold->last & (unit - 1)) + 1;
-+
-+	hold->first_len = min_t(size_t, len,
-+				unit - (hold->first & (unit - 1)));
-+	if (head || (one_unit && tail))
-+		hold->complete_first =
-+			filemap_dontcache_edge_completes(mapping, hold->first,
-+							 hold->first_len);
-+	if (!one_unit && tail)
-+		hold->complete_last =
-+			filemap_dontcache_edge_completes(mapping, last_unit,
-+							 last_len);
-+}
-+
-+/* Drop the shared pages this WRITE was the second of two to write. */
-+static void
-+nfsd_write_dio_seg_release(struct file *file,
-+			   const struct nfsd_write_dio_hold *hold)
-+{
-+	struct address_space *mapping = file->f_mapping;
-+
-+	/* A short write may have stopped inside the first unit. */
-+	if (hold->complete_first && hold->written >= hold->first_len)
-+		filemap_dontcache_edge_complete(mapping, hold->first);
-+	/* A short write did not reach the last unit. */
-+	if (hold->complete_last &&
-+	    hold->written == hold->last - hold->first + 1)
-+		filemap_dontcache_edge_complete(mapping, hold->last);
+QEMU guest on b3dfbde62cf1, a local write lease held on f:
+
+                  touch in f's dir while    open(O_CREAT|O_EXCL)
+                  "echo x >> f" waits       of f
+  b3dfbde62cf1    13.0s                     EEXIST after 15.3s
+  + v1            20ms                      EEXIST after 26.5s
+  + v2            10ms                      EEXIST after 2ms
+
+v1: https://lore.kernel.org/all/20261110080038.232210-1-zhanxusheng1024@gmail.com/
+
+ fs/nfsd/nfs4proc.c | 43 ++++++++++++++++++++++++++++++-------------
+ 1 file changed, 30 insertions(+), 13 deletions(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 3a82af381a8d..f19bd69d66f4 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -250,10 +250,21 @@ static inline bool nfsd4_create_is_exclusive(int createmode)
+ 		createmode == NFS4_CREATE_EXCLUSIVE4_1;
  }
  
- static unsigned int
-@@ -1473,7 +1547,9 @@ nfsd_write_dio_iters_init(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 
- 	if (nf->nf_file->f_op->fop_flags & FOP_DONTCACHE)
- 		dontcache_flags = IOCB_DONTCACHE;
--	buffered_flags = nfsd_direct_misaligned_dontcache ? dontcache_flags : 0;
-+	/* NFSD marks their shared pages itself, see nfsd_write_dio_seg_hold() */
-+	buffered_flags = nfsd_direct_misaligned_dontcache && dontcache_flags ?
-+			 dontcache_flags | IOCB_DONTCACHE_DEFER : 0;
- 
- 	/*
- 	 * Check if direct I/O is feasible for this write request.
-@@ -1527,7 +1603,8 @@ nfsd_write_dio_iters_init(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	if (prefix) {
- 		nfsd_write_dio_seg_init(&segments[nsegs], bvec,
- 					nvecs, total, 0, prefix, iocb);
--		segments[nsegs++].flags |= buffered_flags;
-+		segments[nsegs].flags |= buffered_flags;
-+		segments[nsegs++].claim = !!buffered_flags;
- 	}
- 
- 	nfsd_write_dio_seg_init(&segments[nsegs], bvec, nvecs,
-@@ -1560,7 +1637,8 @@ nfsd_write_dio_iters_init(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	if (suffix) {
- 		nfsd_write_dio_seg_init(&segments[nsegs], bvec, nvecs, total,
- 					prefix + middle, suffix, iocb);
--		segments[nsegs++].flags |= buffered_flags;
-+		segments[nsegs].flags |= buffered_flags;
-+		segments[nsegs++].claim = !!buffered_flags;
- 	}
- 	return nsegs;
- 
-@@ -1569,6 +1647,7 @@ nfsd_write_dio_iters_init(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	nfsd_write_dio_seg_init(&segments[0], bvec, nvecs, total, 0,
- 				total, iocb);
- 	segments[0].flags |= buffered_flags;
-+	segments[0].claim = !!buffered_flags;
- 	return 1;
- }
- 
-@@ -1577,12 +1656,13 @@ nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		  struct nfsd_file *nf, unsigned int nvecs,
- 		  unsigned long *cnt, struct kiocb *kiocb)
++/* Does @child carry the verifier of an earlier exclusive create? */
++static bool nfsd4_create_verf_matches(struct dentry *child, const u32 *verf)
++{
++	struct inode *inode = d_inode(child);
++
++	return inode_get_mtime_sec(inode) == verf[0] &&
++	       inode_get_atime_sec(inode) == verf[1] &&
++	       inode->i_size == 0;
++}
++
+ static struct file *do_lookup_open(struct path *parent,
+ 				   struct qstr *name,
+ 				   unsigned int oflags,
+-				   umode_t mode)
++				   umode_t mode,
++				   const u32 *verf)
  {
-+	struct nfsd_write_dio_hold holds[3];
- 	struct nfsd_write_dio_seg segments[3];
- 	struct file *file = nf->nf_file;
- 	loff_t start = kiocb->ki_pos;
--	unsigned int nsegs, i;
-+	unsigned int nsegs, nheld = 0, i;
-+	ssize_t host_err = 0;
- 	int sync_flags;
--	ssize_t host_err;
- 	size_t expected;
+ 	struct file *filp = NULL;
+ 	struct path path;
+@@ -277,8 +288,16 @@ static struct file *do_lookup_open(struct path *parent,
+ 		 */
+ 		int err = nfsd_check_obj_isreg(child);
  
- 	nsegs = nfsd_write_dio_iters_init(rqstp, fhp, nf, rqstp->rq_bvec,
-@@ -1612,23 +1692,26 @@ nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 					kiocb->ki_flags);
++		/*
++		 * Guarded creates and exclusive creates with another
++		 * verifier fail with EEXIST. Don't open the file for them,
++		 * that would only break a lease.
++		 */
+ 		if (err)
+ 			filp = ERR_PTR(err);
++		else if ((oflags & O_EXCL) ||
++			 (verf && !nfsd4_create_verf_matches(child, verf)))
++			filp = ERR_PTR(-EEXIST);
+ 		else
+ 			filp = dentry_open(&path, oflags, current_cred());
+ 	} else if (!(oflags & O_CREAT)) {
+@@ -312,13 +331,13 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		.na_iattr	= iap,
+ 		.na_seclabel	= &open->op_label,
+ 	};
+-	int oflags = O_CREAT | O_LARGEFILE;
++	int oflags = O_CREAT | O_LARGEFILE | O_NONBLOCK;
+ 	struct dentry *child = ERR_PTR(-EINVAL);
+ 	struct path parent = {
+ 		.mnt = fhp->fh_export->ex_path.mnt,
+ 		.dentry = fhp->fh_dentry,
+ 	};
+-	__u32 v_mtime, v_atime;
++	u32 verf[2] = {};
+ 	__be32 status, create_status;
+ 	int want_write_err;
  
- 		expected = iov_iter_count(&segments[i].iter);
--
-+		nfsd_write_dio_seg_hold(file, &segments[i], kiocb->ki_pos,
-+					expected, &holds[nheld]);
- 		host_err = vfs_iocb_iter_write(file, kiocb, &segments[i].iter);
- 		if (host_err < 0)
--			return host_err;
-+			break;
-+		holds[nheld++].written = host_err;
- 		*cnt += host_err;
- 		if (host_err < (ssize_t)expected)
- 			break;	/* partial write */
+@@ -395,8 +414,6 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		attrs.na_pacl = posix_acl_dup(open->op_pacl);
  	}
  
--	if (sync_flags && *cnt) {
-+	if (host_err >= 0 && sync_flags && *cnt)
- 		host_err = vfs_fsync_range(file, start, start + *cnt - 1,
- 					   !(sync_flags & IOCB_SYNC));
--		if (host_err < 0)
--			return host_err;
--	}
+-	v_mtime = 0;
+-	v_atime = 0;
+ 	if (nfsd4_create_is_exclusive(open->op_createmode)) {
+ 		u32 *verifier = (u32 *)open->op_verf.data;
  
--	return 0;
-+	/* Complete the shared units once the WRITE and its fsync are done. */
-+	for (i = 0; i < nheld; i++)
-+		nfsd_write_dio_seg_release(file, &holds[i]);
-+
-+	return host_err < 0 ? host_err : 0;
- }
+@@ -408,13 +425,13 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		 * verifier, then do_open_lookup() will also need to be
+ 		 * fixed accordingly.
+ 		 */
+-		v_mtime = verifier[0] & 0x7fffffff;
+-		v_atime = verifier[1] & 0x7fffffff;
++		verf[0] = verifier[0] & 0x7fffffff;
++		verf[1] = verifier[1] & 0x7fffffff;
  
- /**
+ 		iap->ia_valid |= ATTR_MTIME | ATTR_ATIME |
+ 				 ATTR_MTIME_SET|ATTR_ATIME_SET;
+-		iap->ia_mtime.tv_sec = v_mtime;
+-		iap->ia_atime.tv_sec = v_atime;
++		iap->ia_mtime.tv_sec = verf[0];
++		iap->ia_atime.tv_sec = verf[1];
+ 		iap->ia_mtime.tv_nsec = 0;
+ 		iap->ia_atime.tv_nsec = 0;
+ 	}
+@@ -428,7 +445,9 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 				       &QSTR_LEN(open->op_fname,
+ 						 open->op_fnamelen),
+ 				       oflags,
+-				       open->op_iattr.ia_mode);
++				       open->op_iattr.ia_mode,
++				       nfsd4_create_is_exclusive(open->op_createmode) ?
++				       verf : NULL);
+ 	if (IS_ERR(open->op_filp)) {
+ 		int hosterr = PTR_ERR(open->op_filp);
+ 
+@@ -456,9 +475,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 
+ 	if (!open->op_created &&
+ 	    nfsd4_create_is_exclusive(open->op_createmode) &&
+-	    inode_get_mtime_sec(d_inode(child)) == v_mtime &&
+-	    inode_get_atime_sec(d_inode(child)) == v_atime &&
+-	    d_inode(child)->i_size == 0)
++	    nfsd4_create_verf_matches(child, verf))
+ 		open->op_created = true;
+ 
+ 	if (!open->op_created) {
 -- 
-2.52.0
+2.43.0
 
