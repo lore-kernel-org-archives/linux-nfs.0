@@ -1,65 +1,65 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.133.124
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794429111;
-	b=Qq5iZEUS74BhLUMAbo5rchzg80/vqAidI16m2ssJZvsZ6jpZ3chMRXhcK/ZbNQa4AzbI
-	 Naep1/JX7w4KDDBqaHcVLvMICq+/xtWGT3lVVF6c4i+CfBith48GPKohG5/CaW0R8PldV
-	 mKLO2hjGZiXPVcPL/slyziYMdwnKm9QYwBvzm4Lv6+RDMzqLBNGU4il8zFvC307DzlCgF
-	 W2KEYNPeAKyZgOfaTtXPnZSCCzUvMOD/7IIpHgXjGf54kzHH1fRJcVo4r0VDzHYAwEEVF
-	 EH4T3GzwW3guwKtTQPdZnyHWpNOd2lZJ96DfHNmi728r9RKFnakL+lZFncX1YrOYM/w==
+	t=1794429115;
+	b=k2yzvbzP352GMDiFW61y5tX5dH5y2T4TtFDBqQp4XLJSC8IPymeWoB1scD3KoHnX3qel
+	 E6L2LhEff0nB1GRjijfDVdYe5KLLAJA9CwLDlLpK3dZMYzYzhlopVeQgS0HCg0LkQVIU8
+	 vjWwO1g/Xk8DW7+HogUTRErk3y+eJYiK3z5oVCl3ZH9wpnbm2gqzD/qKd4eCzQHfi3zmK
+	 Pr8QUslOCkLihyz8TLA6qFrFJtQwgzNecY7E0kQf3zZgEtvpYqUJc7tYjk5tVVB7hIFGA
+	 B38oVzu7TzM1PpL8lRiiI0yeG9uV+Ag2AKjp0D+oQulXp8HtEOWiQ40OLbOW949/jYw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794429111;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794429115;
 	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
 	 X-Mimecast-MFC-AGG-ID:Received:Received:From:To:Cc:Subject:Date:
 	 Message-ID:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding:X-Scanned-By;
-	bh=tK0dZyl7e3FDAoG0X291uyTee6BThmEr1BW3X0wbAjQ=;
-	b=IbLc8IWcmRGZIOjPN+jK6AWj7j+CKZpEC588+994HS3ibupk6hgbANdKgjanOiycorfs
-	 I/Y2EmYrox4kXlRX7Ko5D3GE/JOy2266+rbkwCeuGdn+AkDfHq3eYyEtGPVg6KB5LHuIY
-	 Y8cYIGpIZnTeO2poqPwlQwglgqJiLhNs+PEI2XgheU/IG27dvmyA6KW+QHSbkI7q0EhLS
-	 wwLQP6BNJCo6pvWJGwdgI9DvF26y5KZVYTBe+yA4z2Med+hjhoybpc/JfXz1ywQ/7rwZz
-	 1SePaOSAWhQ+7OBDDpZI4UiAvgTYhFQ1ZpxHw84vVtYXL8jV2YZQ2F74ezOpYAwA9Mw==
+	bh=ixmMQzdasAf2NVsHQAdIHHEVS3hvRQgzpLvuaZdFCPM=;
+	b=pZHDXAwx0xUZip/IPZOSGLnp1wQj6PyQl5IHzSJHVd/6ddR+/INiMeCL1ATy7rnFsEEN
+	 rM7r7ifr5uE/1fKR7tNwHuQI2ic0tR1FmRFG07vSIh08BH5A7J0GlQb5C4OPe9ie42URq
+	 ABUHp3tc9OeMenTwnAZtWXC2RIGSeYI7ahgi0pYg6gYDBG+brMnCD7cCoBm9yuI59Vslf
+	 GTNqqD1eNYnHw3EF3h7n5QKcPkARqFaP8iBbiLkTdbJMkdRGAhUhzoiH1YEvBc3g5XLh/
+	 ZVjOIUjCjlxcPGyccZgUA3pbUTUVifNIMbEXTb24W6KjzwSOuesbMbPsuqxx4cCCL2A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=redhat.com;
 	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=a+tWFD62;
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=DGh9tbwn;
 	arc=none smtp.remote-ip=170.10.133.124
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3964160A6F4A
-	for <linux-nfs@vger.kernel.org>; Wed, 11 Nov 2026 20:31:50 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3964160A6F4A
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 47FFE606B248
+	for <linux-nfs@vger.kernel.org>; Wed, 11 Nov 2026 20:31:54 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 47FFE606B248
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=a+tWFD62
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=DGh9tbwn
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1794429109;
+	s=mimecast20190719; t=1794429113;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=tK0dZyl7e3FDAoG0X291uyTee6BThmEr1BW3X0wbAjQ=;
-	b=a+tWFD62VBJQYIUmBZYkd0vDBQAHuaDoK17agsK1cYO6o1QXNUaiE7dRAv0fbVU/le5vIa
-	I9H/onqRS5H3LswFUsgkOVGHiaX10Gl4flPqifiwGebsRJ6zgAYGOVm12Xswp9dRehKerS
-	VLFOYT5cGMdJmmdQWXHP7Go0o/4PGf4=
-Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+	bh=ixmMQzdasAf2NVsHQAdIHHEVS3hvRQgzpLvuaZdFCPM=;
+	b=DGh9tbwnna8lTdRZP9z/2Al3ECRb4uDKtvQaAFV0zW9YxF4B7avBcxu0Lg9pzjEntuZePW
+	Uf7X0W/f7GsXSIVa3PGjWjY1N/wafud9ltdIvetsGlwQUDugkFK3ebGAri4AK7noDEzCOa
+	MCQ2xas2ckyTpywhPmTDOJ0is3P8C8c=
+Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-546-HymhSmWJPLKXs-XlmxyqVw-1; Wed,
- 11 Nov 2026 15:31:43 -0500
-X-MC-Unique: HymhSmWJPLKXs-XlmxyqVw-1
-X-Mimecast-MFC-AGG-ID: HymhSmWJPLKXs-XlmxyqVw_1794429101
-Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-590-0Zoj6SYSOvycRv_hrAliqw-1; Wed,
+ 11 Nov 2026 15:31:48 -0500
+X-MC-Unique: 0Zoj6SYSOvycRv_hrAliqw-1
+X-Mimecast-MFC-AGG-ID: 0Zoj6SYSOvycRv_hrAliqw_1794429105
+Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 69F3518002D1;
-	Wed, 11 Nov 2026 20:31:40 +0000 (UTC)
+	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 820B41977695;
+	Wed, 11 Nov 2026 20:31:45 +0000 (UTC)
 Received: from dhowells-thinkpadp1gen8.rmtgb.csb (headnet04.pony-001.prod.iad2.dc.redhat.com [10.2.32.116])
-	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 41B9730000E5;
-	Wed, 11 Nov 2026 20:31:36 +0000 (UTC)
+	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id CAB21180054A;
+	Wed, 11 Nov 2026 20:31:41 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>
 Cc: David Howells <dhowells@redhat.com>,
@@ -79,12 +79,10 @@ Cc: David Howells <dhowells@redhat.com>,
 	v9fs@lists.linux.dev,
 	linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
-	Jens Axboe <axboe@kernel.dk>,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-block@vger.kernel.org
-Subject: [PATCH v17 10/17] netfs: Pass the write length to request creation where appropriate
-Date: Wed, 11 Nov 2026 20:30:23 +0000
-Message-ID: <20261111203034.2126314-11-dhowells@redhat.com>
+	Christoph Hellwig <hch@infradead.org>
+Subject: [PATCH v17 11/17] afs: Use a bvecq to hold dir content rather than folioq
+Date: Wed, 11 Nov 2026 20:30:24 +0000
+Message-ID: <20261111203034.2126314-12-dhowells@redhat.com>
 In-Reply-To: <20261111203034.2126314-1-dhowells@redhat.com>
 References: <20261111203034.2126314-1-dhowells@redhat.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -97,121 +95,499 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
 
-For unbuffered/DIO writes and writes to single-type objects, pass the
-length down into the request creation function so that wreq->len gets set
-correctly.  For buffered writeback and pgpriv2 copying, this remains 0 as
-we don't know in advance how big the request will be.
+Use a bvecq to hold the contents of a directory rather than the folioq so
+that the latter can be phased out.  This is also applied to the symlink I/O
+buffer.
 
-A subsequent patch will use this to set as the i_size on single-type
-objects (e.g. afs directories) as we don't care what the old i_size was and
-we don't want to see inode->i_size in the netfs file changing due to
-third-party invalidation before we update fscache to say how big the object
-is going to be.
+Also use the bvecq chain being refcounted to fix an issue in afs directory
+handling and netfs_writeback_single() whereby the application of
+third-party induced invalidation can race with the writeback code because
+afs doesn't hold the vnode validate_lock when updating the inode info.
+
+Now, AFS FS RPC calls typically return a status update any time they access
+a vnode (file) on the server and the Linux afs fs driver applies it
+directly in the postprocessing of the RPC and, ideally, it would take the
+vnode's validate_lock whilst doing so - unfortunately, however, the caller
+may already be holding the validate_lock, as does afs_dir_writepages().
+
+Worse, afs_dir_writepages() takes a shared lock so the inode info can't be
+updated exclusively under that lock.
+
+Fix this by getting the directory contents, dir buffer size and inode size
+inside the cb_lock so that the set is at least consistent (if not currently
+valid).  Invalidation will replace the cachefile anyway to discard
+in-progress old writebacks.
+
+Further, in netfs_alloc_request() called from netfs_writeback_single(), use
+the content length parameter rather than i_size (we don't care about the
+cachefile size) on behalf of single-writeback.
+
+Link: https://sashiko.dev/#/patchset/20261107160823.1465553-1-dhowells%40redhat.com
 
 Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Paulo Alcantara (Red Hat) <pc@manguebit.org>
+Reviewed-by: Paulo Alcantara <pc@manguebit.org>
 cc: Matthew Wilcox <willy@infradead.org>
-cc: Jens Axboe <axboe@kernel.dk>
+cc: Marc Dionne <marc.dionne@auristor.com>
 cc: Christoph Hellwig <hch@infradead.org>
-cc: linux-block@vger.kernel.org
+cc: linux-afs@lists.infradead.org
 cc: netfs@lists.linux.dev
 cc: linux-fsdevel@vger.kernel.org
 ---
- fs/netfs/direct_write.c | 4 ++--
- fs/netfs/internal.h     | 2 +-
- fs/netfs/read_pgpriv2.c | 2 +-
- fs/netfs/write_issue.c  | 9 +++++----
- 4 files changed, 9 insertions(+), 8 deletions(-)
+ fs/afs/dir.c        | 54 ++++++++++++++++++++++++++-------------------
+ fs/afs/dir_edit.c   | 44 +++++++++++++++++-------------------
+ fs/afs/dir_search.c | 33 +++++++++++++--------------
+ fs/afs/inode.c      |  2 +-
+ fs/afs/internal.h   |  6 ++---
+ fs/afs/symlink.c    | 42 +++++++++++++++++------------------
+ fs/netfs/objects.c  |  4 ++++
+ 7 files changed, 95 insertions(+), 90 deletions(-)
 
-diff --git a/fs/netfs/direct_write.c b/fs/netfs/direct_write.c
-index cc46b7d9321f..ff1795e1f0cb 100644
---- a/fs/netfs/direct_write.c
-+++ b/fs/netfs/direct_write.c
-@@ -222,7 +222,7 @@ static void netfs_unbuffered_write_async(struct work_struct *work)
-  * encrypted file.  This can also be used for direct I/O writes.
-  */
- ssize_t netfs_unbuffered_write_iter_locked(struct kiocb *iocb, struct iov_iter *iter,
--						  struct netfs_group *netfs_group)
-+					   struct netfs_group *netfs_group)
- {
- 	struct netfs_io_request *wreq;
- 	ssize_t ret, n;
-@@ -241,7 +241,7 @@ ssize_t netfs_unbuffered_write_iter_locked(struct kiocb *iocb, struct iov_iter *
+diff --git a/fs/afs/dir.c b/fs/afs/dir.c
+index 51c158d8f723..9cefd90fd4f8 100644
+--- a/fs/afs/dir.c
++++ b/fs/afs/dir.c
+@@ -140,9 +140,9 @@ static void afs_dir_dump(struct afs_vnode *dvnode)
+ 	pr_warn("DIR %llx:%llx is=%llx\n",
+ 		dvnode->fid.vid, dvnode->fid.vnode, i_size);
  
- 	_debug("uw %llx-%llx", start, end);
+-	iov_iter_folio_queue(&iter, ITER_SOURCE, dvnode->directory, 0, 0, i_size);
+-	iterate_folioq(&iter, iov_iter_count(&iter), NULL, NULL,
+-		       afs_dir_dump_step);
++	iov_iter_bvec_queue(&iter, ITER_SOURCE, dvnode->directory, 0, 0, i_size);
++	iterate_bvecq(&iter, iov_iter_count(&iter), NULL, NULL,
++		      afs_dir_dump_step);
+ }
  
--	wreq = netfs_create_write_req(iocb->ki_filp->f_mapping, iocb->ki_filp, start,
-+	wreq = netfs_create_write_req(iocb->ki_filp->f_mapping, iocb->ki_filp, start, len,
- 				      iocb->ki_flags & IOCB_DIRECT ?
- 				      NETFS_DIO_WRITE : NETFS_UNBUFFERED_WRITE);
- 	if (IS_ERR(wreq))
-diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
-index d554468bf694..6e30112c9112 100644
---- a/fs/netfs/internal.h
-+++ b/fs/netfs/internal.h
-@@ -238,7 +238,7 @@ void netfs_write_collection_worker(struct work_struct *work);
-  */
- struct netfs_io_request *netfs_create_write_req(struct address_space *mapping,
- 						struct file *file,
--						uoff_t start,
-+						uoff_t start, size_t len,
- 						enum netfs_io_origin origin);
- void netfs_prepare_write(struct netfs_io_request *wreq,
- 			 struct netfs_io_stream *stream,
-diff --git a/fs/netfs/read_pgpriv2.c b/fs/netfs/read_pgpriv2.c
-index 5280b606fda4..85084aad9e31 100644
---- a/fs/netfs/read_pgpriv2.c
-+++ b/fs/netfs/read_pgpriv2.c
-@@ -103,7 +103,7 @@ static struct netfs_io_request *netfs_pgpriv2_begin_copy_to_cache(
- 	if (!fscache_resources_valid(&rreq->cache_resources))
- 		goto cancel;
+ /*
+@@ -203,9 +203,9 @@ static int afs_dir_check(struct afs_vnode *dvnode)
+ 	if (unlikely(!i_size))
+ 		return 0;
  
--	creq = netfs_create_write_req(rreq->mapping, NULL, folio_pos(folio),
-+	creq = netfs_create_write_req(rreq->mapping, NULL, folio_pos(folio), 0,
- 				      NETFS_PGPRIV2_COPY_TO_CACHE);
- 	if (IS_ERR(creq))
- 		goto cancel;
-diff --git a/fs/netfs/write_issue.c b/fs/netfs/write_issue.c
-index f084a6796667..4c1e597a6d03 100644
---- a/fs/netfs/write_issue.c
-+++ b/fs/netfs/write_issue.c
-@@ -89,7 +89,7 @@ static void netfs_kill_dirty_pages(struct address_space *mapping,
-  */
- struct netfs_io_request *netfs_create_write_req(struct address_space *mapping,
- 						struct file *file,
--						uoff_t start,
-+						uoff_t start, size_t len,
- 						enum netfs_io_origin origin)
- {
- 	struct netfs_io_request *wreq;
-@@ -98,7 +98,7 @@ struct netfs_io_request *netfs_create_write_req(struct address_space *mapping,
- 			     origin == NETFS_WRITEBACK_SINGLE ||
- 			     origin == NETFS_PGPRIV2_COPY_TO_CACHE);
+-	iov_iter_folio_queue(&iter, ITER_SOURCE, dvnode->directory, 0, 0, i_size);
+-	checked = iterate_folioq(&iter, iov_iter_count(&iter), dvnode, NULL,
+-				 afs_dir_check_step);
++	iov_iter_bvec_queue(&iter, ITER_SOURCE, dvnode->directory, 0, 0, i_size);
++	checked = iterate_bvecq(&iter, iov_iter_count(&iter), dvnode, NULL,
++				afs_dir_check_step);
+ 	if (checked != i_size) {
+ 		afs_dir_dump(dvnode);
+ 		return -EIO;
+@@ -250,16 +250,16 @@ static ssize_t afs_do_read_single(struct afs_vnode *dvnode, struct file *file)
+ 	if (dvnode->directory_size < i_size) {
+ 		size_t cur_size = dvnode->directory_size;
  
--	wreq = netfs_alloc_request(mapping, file, start, 0, origin);
-+	wreq = netfs_alloc_request(mapping, file, start, len, origin);
- 	if (IS_ERR(wreq))
- 		return wreq;
- 
-@@ -573,7 +573,8 @@ int netfs_writepages(struct address_space *mapping,
- 	if (!folio)
- 		goto out;
- 
--	wreq = netfs_create_write_req(mapping, NULL, folio_pos(folio), NETFS_WRITEBACK);
-+	wreq = netfs_create_write_req(mapping, NULL, folio_pos(folio), 0,
-+				      NETFS_WRITEBACK);
- 	if (IS_ERR(wreq)) {
- 		error = PTR_ERR(wreq);
- 		goto couldnt_start;
-@@ -659,7 +660,7 @@ int netfs_writeback_single(struct address_space *mapping,
- 		return 1;
+-		ret = netfs_alloc_folioq_buffer(NULL,
+-						&dvnode->directory, &cur_size, i_size,
+-						mapping_gfp_mask(dvnode->netfs.inode.i_mapping) |
+-						__GFP_ZERO);
++		ret = bvecq_expand_buffer(&dvnode->directory, &cur_size,
++					  round_up(i_size, PAGE_SIZE),
++					  mapping_gfp_mask(dvnode->netfs.inode.i_mapping) |
++					  __GFP_ZERO);
+ 		dvnode->directory_size = cur_size;
+ 		if (ret < 0)
+ 			return ret;
  	}
  
--	wreq = netfs_create_write_req(mapping, NULL, 0, NETFS_WRITEBACK_SINGLE);
-+	wreq = netfs_create_write_req(mapping, NULL, 0, len, NETFS_WRITEBACK_SINGLE);
- 	if (IS_ERR(wreq)) {
- 		ret = PTR_ERR(wreq);
- 		goto couldnt_start;
+-	iov_iter_folio_queue(&iter, ITER_DEST, dvnode->directory, 0, 0, dvnode->directory_size);
++	iov_iter_bvec_queue(&iter, ITER_DEST, dvnode->directory, 0, 0, dvnode->directory_size);
+ 
+ 	/* AFS requires us to perform the read of a directory synchronously as
+ 	 * a single unit to avoid issues with the directory contents being
+@@ -281,8 +281,8 @@ static ssize_t afs_do_read_single(struct afs_vnode *dvnode, struct file *file)
+ 		}
+ 
+ 		if (ret >= 0 && ret < dvnode->directory_size) {
+-			iov_iter_folio_queue(&iter, ITER_DEST, dvnode->directory,
+-					     0, 0, dvnode->directory_size);
++			iov_iter_bvec_queue(&iter, ITER_DEST, dvnode->directory,
++					    0, 0, dvnode->directory_size);
+ 			iov_iter_advance(&iter, ret);
+ 			iov_iter_zero(dvnode->directory_size - ret, &iter);
+ 		}
+@@ -302,8 +302,8 @@ static ssize_t afs_read_single(struct afs_vnode *dvnode, struct file *file)
+ }
+ 
+ /*
+- * Read the directory into a folio_queue buffer in one go, scrubbing the
+- * previous contents.  We return -ESTALE if the caller needs to call us again.
++ * Read the directory into the buffer in one go, scrubbing the previous
++ * contents.  We return -ESTALE if the caller needs to call us again.
+  */
+ ssize_t afs_read_dir(struct afs_vnode *dvnode, struct file *file)
+ 	__acquires(&dvnode->validate_lock)
+@@ -491,7 +491,7 @@ static size_t afs_dir_iterate_step(void *iter_base, size_t progress, size_t len,
+ }
+ 
+ /*
+- * Iterate through the directory folios.
++ * Iterate through the directory content.
+  */
+ static int afs_dir_iterate_contents(struct inode *dir, struct dir_context *dir_ctx)
+ {
+@@ -506,11 +506,11 @@ static int afs_dir_iterate_contents(struct inode *dir, struct dir_context *dir_c
+ 	if (i_size <= 0 || dir_ctx->pos >= i_size)
+ 		return 0;
+ 
+-	iov_iter_folio_queue(&iter, ITER_SOURCE, dvnode->directory, 0, 0, i_size);
++	iov_iter_bvec_queue(&iter, ITER_SOURCE, dvnode->directory, 0, 0, i_size);
+ 	iov_iter_advance(&iter, round_down(dir_ctx->pos, AFS_DIR_BLOCK_SIZE));
+ 
+-	iterate_folioq(&iter, iov_iter_count(&iter), dvnode, &ctx,
+-		       afs_dir_iterate_step);
++	iterate_bvecq(&iter, iov_iter_count(&iter), dvnode, &ctx,
++		      afs_dir_iterate_step);
+ 
+ 	if (ctx.error == -ESTALE)
+ 		afs_invalidate_dir(dvnode, afs_dir_invalid_iter_stale);
+@@ -2220,6 +2220,7 @@ static int afs_dir_writepages(struct address_space *mapping,
+ 			      struct writeback_control *wbc)
+ {
+ 	struct afs_vnode *dvnode = AFS_FS_I(mapping->host);
++	struct bvecq *directory = NULL;
+ 	struct iov_iter iter;
+ 	int ret = 0;
+ 
+@@ -2236,14 +2237,21 @@ static int afs_dir_writepages(struct address_space *mapping,
+ 	}
+ 
+ 	if (test_bit(AFS_VNODE_DIR_VALID, &dvnode->flags)) {
+-		iov_iter_folio_queue(&iter, ITER_SOURCE, dvnode->directory,
+-				     0, 0, dvnode->directory_size);
+-		ret = netfs_writeback_single(mapping, wbc, &iter,
+-					     i_size_read(&dvnode->netfs.inode));
++		size_t i_size, d_size;
++
++		read_seqlock_excl(&dvnode->cb_lock);
++		i_size = i_size_read(&dvnode->netfs.inode);
++		d_size = dvnode->directory_size;
++		directory = bvecq_get(dvnode->directory);
++		read_sequnlock_excl(&dvnode->cb_lock);
++
++		iov_iter_bvec_queue(&iter, ITER_SOURCE, directory, 0, 0, d_size);
++		ret = netfs_writeback_single(mapping, wbc, &iter, i_size);
+ 		if (ret == 1)
+ 			ret = 0; /* Skipped write due to lock conflict. */
+ 	}
+ 
+ 	up_read(&dvnode->validate_lock);
++	bvecq_put(directory);
+ 	return ret;
+ }
+diff --git a/fs/afs/dir_edit.c b/fs/afs/dir_edit.c
+index 185e8819e424..870921f32fc8 100644
+--- a/fs/afs/dir_edit.c
++++ b/fs/afs/dir_edit.c
+@@ -10,7 +10,6 @@
+ #include <linux/namei.h>
+ #include <linux/pagemap.h>
+ #include <linux/iversion.h>
+-#include <linux/folio_queue.h>
+ #include "internal.h"
+ #include "xdr_fs.h"
+ 
+@@ -110,9 +109,8 @@ static void afs_clear_contig_bits(union afs_xdr_dir_block *block,
+  */
+ static union afs_xdr_dir_block *afs_dir_get_block(struct afs_dir_iter *iter, size_t block)
+ {
+-	struct folio_queue *fq;
+ 	struct afs_vnode *dvnode = iter->dvnode;
+-	struct folio *folio;
++	struct bvecq *bq;
+ 	size_t blpos = block * AFS_DIR_BLOCK_SIZE;
+ 	size_t blend = (block + 1) * AFS_DIR_BLOCK_SIZE, fpos = iter->fpos;
+ 	int ret;
+@@ -120,41 +118,39 @@ static union afs_xdr_dir_block *afs_dir_get_block(struct afs_dir_iter *iter, siz
+ 	if (dvnode->directory_size < blend) {
+ 		size_t cur_size = dvnode->directory_size;
+ 
+-		ret = netfs_alloc_folioq_buffer(
+-			NULL, &dvnode->directory, &cur_size, blend,
+-			mapping_gfp_mask(dvnode->netfs.inode.i_mapping) | __GFP_ZERO);
++		ret = bvecq_expand_buffer(&dvnode->directory, &cur_size, blend,
++					  mapping_gfp_mask(dvnode->netfs.inode.i_mapping) |
++					  __GFP_ZERO);
+ 		dvnode->directory_size = cur_size;
+ 		if (ret < 0)
+ 			goto fail;
+ 	}
+ 
+-	fq = iter->fq;
+-	if (!fq)
+-		fq = dvnode->directory;
++	bq = iter->bq;
++	if (!bq)
++		bq = dvnode->directory;
+ 
+-	/* Search the folio queue for the folio containing the block... */
+-	for (; fq; fq = fq->next) {
+-		for (int s = iter->fq_slot; s < folioq_count(fq); s++) {
+-			size_t fsize = folioq_folio_size(fq, s);
++	/* Search the contents for the region containing the block... */
++	for (; bq; bq = bq->next) {
++		for (int s = iter->bq_slot; s < bq->nr_slots; s++) {
++			struct bio_vec *bv = &bq->bv[s];
++			size_t bsize = bv->bv_len;
+ 
+-			if (blend <= fpos + fsize) {
++			if (blend <= fpos + bsize) {
+ 				/* ... and then return the mapped block. */
+-				folio = folioq_folio(fq, s);
+-				if (WARN_ON_ONCE(folio_pos(folio) != fpos))
+-					goto fail;
+-				iter->fq = fq;
+-				iter->fq_slot = s;
++				iter->bq = bq;
++				iter->bq_slot = s;
+ 				iter->fpos = fpos;
+-				return kmap_local_folio(folio, blpos - fpos);
++				return bvec_kmap_partial(bv, blpos - fpos);
+ 			}
+-			fpos += fsize;
++			fpos += bsize;
+ 		}
+-		iter->fq_slot = 0;
++		iter->bq_slot = 0;
+ 	}
+ 
+ fail:
+-	iter->fq = NULL;
+-	iter->fq_slot = 0;
++	iter->bq = NULL;
++	iter->bq_slot = 0;
+ 	afs_invalidate_dir(dvnode, afs_dir_invalid_edit_get_block);
+ 	return NULL;
+ }
+diff --git a/fs/afs/dir_search.c b/fs/afs/dir_search.c
+index 11ebdfffcb1d..e1f91b3ac6e2 100644
+--- a/fs/afs/dir_search.c
++++ b/fs/afs/dir_search.c
+@@ -66,12 +66,11 @@ bool afs_dir_init_iter(struct afs_dir_iter *iter, const struct qstr *name)
+  */
+ union afs_xdr_dir_block *afs_dir_find_block(struct afs_dir_iter *iter, size_t block)
+ {
+-	struct folio_queue *fq = iter->fq;
+ 	struct afs_vnode *dvnode = iter->dvnode;
+-	struct folio *folio;
++	struct bvecq *bq = iter->bq;
+ 	size_t blpos = block * AFS_DIR_BLOCK_SIZE;
+ 	size_t blend = (block + 1) * AFS_DIR_BLOCK_SIZE, fpos = iter->fpos;
+-	int slot = iter->fq_slot;
++	int slot = iter->bq_slot;
+ 
+ 	_enter("%zx,%d", block, slot);
+ 
+@@ -80,36 +79,34 @@ union afs_xdr_dir_block *afs_dir_find_block(struct afs_dir_iter *iter, size_t bl
+ 	if (dvnode->directory_size < blend)
+ 		goto fail;
+ 
+-	if (!fq || blpos < fpos) {
+-		fq = dvnode->directory;
++	if (!bq || blpos < fpos) {
++		bq = dvnode->directory;
+ 		slot = 0;
+ 		fpos = 0;
+ 	}
+ 
+ 	/* Search the folio queue for the folio containing the block... */
+-	for (; fq; fq = fq->next) {
+-		for (; slot < folioq_count(fq); slot++) {
+-			size_t fsize = folioq_folio_size(fq, slot);
++	for (; bq; bq = bq->next) {
++		for (; slot < bq->nr_slots; slot++) {
++			struct bio_vec *bv = &bq->bv[slot];
++			size_t bsize = bv->bv_len;
+ 
+-			if (blend <= fpos + fsize) {
++			if (blend <= fpos + bsize) {
+ 				/* ... and then return the mapped block. */
+-				folio = folioq_folio(fq, slot);
+-				if (WARN_ON_ONCE(folio_pos(folio) != fpos))
+-					goto fail;
+-				iter->fq = fq;
+-				iter->fq_slot = slot;
++				iter->bq = bq;
++				iter->bq_slot = slot;
+ 				iter->fpos = fpos;
+-				iter->block = kmap_local_folio(folio, blpos - fpos);
++				iter->block = bvec_kmap_partial(bv, blpos - fpos);
+ 				return iter->block;
+ 			}
+-			fpos += fsize;
++			fpos += bsize;
+ 		}
+ 		slot = 0;
+ 	}
+ 
+ fail:
+-	iter->fq = NULL;
+-	iter->fq_slot = 0;
++	iter->bq = NULL;
++	iter->bq_slot = 0;
+ 	afs_invalidate_dir(dvnode, afs_dir_invalid_edit_get_block);
+ 	return NULL;
+ }
+diff --git a/fs/afs/inode.c b/fs/afs/inode.c
+index 0733abff77a5..af95640da03f 100644
+--- a/fs/afs/inode.c
++++ b/fs/afs/inode.c
+@@ -683,7 +683,7 @@ void afs_evict_inode(struct inode *inode)
+ 	flush_delayed_work(&vnode->lock_work);
+ 	netfs_wait_for_outstanding_io(inode);
+ 	truncate_inode_pages_final(&inode->i_data);
+-	netfs_free_folioq_buffer(vnode->directory);
++	bvecq_put(vnode->directory);
+ 	if (vnode->symlink)
+ 		afs_evict_symlink(vnode);
+ 
+diff --git a/fs/afs/internal.h b/fs/afs/internal.h
+index 7cea5ba0d20d..2a8b029b4d69 100644
+--- a/fs/afs/internal.h
++++ b/fs/afs/internal.h
+@@ -712,7 +712,7 @@ struct afs_vnode {
+ #define AFS_VNODE_MODIFYING	10		/* Set if we're performing a modification op */
+ #define AFS_VNODE_DIR_READ	11		/* Set if we've read a dir's contents */
+ 
+-	struct folio_queue	*directory;	/* Directory contents */
++	struct bvecq		*directory;	/* Directory contents */
+ 	struct afs_symlink __rcu *symlink;	/* Symlink content */
+ 	struct list_head	wb_keys;	/* List of keys available for writeback */
+ 	struct list_head	pending_locks;	/* locks waiting to be granted */
+@@ -993,9 +993,9 @@ static inline void afs_invalidate_cache(struct afs_vnode *vnode, unsigned int fl
+ struct afs_dir_iter {
+ 	struct afs_vnode	*dvnode;
+ 	union afs_xdr_dir_block *block;
+-	struct folio_queue	*fq;
++	struct bvecq		*bq;
+ 	unsigned int		fpos;
+-	int			fq_slot;
++	int			bq_slot;
+ 	unsigned int		loop_check;
+ 	u8			nr_slots;
+ 	u8			bucket;
+diff --git a/fs/afs/symlink.c b/fs/afs/symlink.c
+index c18e4f806423..f437c3108c6c 100644
+--- a/fs/afs/symlink.c
++++ b/fs/afs/symlink.c
+@@ -56,7 +56,6 @@ void afs_evict_symlink(struct afs_vnode *vnode)
+ void afs_init_new_symlink(struct afs_vnode *vnode, struct afs_operation *op)
+ {
+ 	struct afs_symlink *symlink = op->create.symlink;
+-	size_t dsize = 0;
+ 	size_t size = strlen(symlink->content) + 1;
+ 	char *p;
+ 
+@@ -66,12 +65,15 @@ void afs_init_new_symlink(struct afs_vnode *vnode, struct afs_operation *op)
+ 	if (!fscache_cookie_enabled(netfs_i_cookie(&vnode->netfs)))
+ 		return;
+ 
+-	if (netfs_alloc_folioq_buffer(NULL, &vnode->directory, &dsize, size,
+-				      mapping_gfp_mask(vnode->netfs.inode.i_mapping)) < 0)
++	vnode->directory =
++		bvecq_alloc_buffer(PAGE_SIZE,
++				   mapping_gfp_mask(vnode->netfs.inode.i_mapping),
++				   false);
++	if (!vnode->directory)
+ 		return;
+ 
+-	vnode->directory_size = dsize;
+-	p = kmap_local_folio(folioq_folio(vnode->directory, 0), 0);
++	vnode->directory_size = PAGE_SIZE;
++	p = bvec_kmap_partial(&vnode->directory->bv[0], 0);
+ 	memcpy(p, symlink->content, size);
+ 	kunmap_local(p);
+ 	netfs_single_mark_inode_dirty(&vnode->netfs.inode);
+@@ -94,17 +96,14 @@ static ssize_t afs_do_read_symlink(struct afs_vnode *vnode)
+ 	}
+ 
+ 	if (!vnode->directory) {
+-		size_t cur_size = 0;
+-
+-		ret = netfs_alloc_folioq_buffer(NULL,
+-						&vnode->directory, &cur_size, PAGE_SIZE,
+-						mapping_gfp_mask(vnode->netfs.inode.i_mapping));
++		vnode->directory = bvecq_alloc_buffer(
++			PAGE_SIZE, mapping_gfp_mask(vnode->netfs.inode.i_mapping), false);
++		if (!vnode->directory)
++			return -ENOMEM;
+ 		vnode->directory_size = PAGE_SIZE;
+-		if (ret < 0)
+-			return ret;
+ 	}
+ 
+-	iov_iter_folio_queue(&iter, ITER_DEST, vnode->directory, 0, 0, PAGE_SIZE);
++	iov_iter_bvec_queue(&iter, ITER_DEST, vnode->directory, 0, 0, PAGE_SIZE);
+ 
+ 	/* AFS requires us to perform the read of a symlink as a single unit to
+ 	 * avoid issues with the content being changed between reads.
+@@ -125,7 +124,7 @@ static ssize_t afs_do_read_symlink(struct afs_vnode *vnode)
+ 		refcount_set(&symlink->ref, 1);
+ 		symlink->content[i_size] = 0;
+ 
+-		const char *s = kmap_local_folio(folioq_folio(vnode->directory, 0), 0);
++		const char *s = bvec_kmap_partial(&vnode->directory->bv[0], 0);
+ 
+ 		memcpy(symlink->content, s, i_size);
+ 		kunmap_local(s);
+@@ -134,7 +133,7 @@ static ssize_t afs_do_read_symlink(struct afs_vnode *vnode)
+ 	}
+ 
+ 	if (!fscache_cookie_enabled(netfs_i_cookie(&vnode->netfs))) {
+-		netfs_free_folioq_buffer(vnode->directory);
++		bvecq_put(vnode->directory);
+ 		vnode->directory = NULL;
+ 		vnode->directory_size = 0;
+ 	}
+@@ -195,7 +194,7 @@ const char *afs_get_link(struct dentry *dentry, struct inode *inode,
+ 	}
+ 
+ 	downgrade_write(&vnode->validate_lock);
+-	
++
+ good:
+ 	symlink = rcu_dereference_protected(vnode->symlink,
+ 					    lockdep_is_held(&vnode->validate_lock));
+@@ -254,19 +253,20 @@ int afs_symlink_writepages(struct address_space *mapping,
+ 		size_t i_size = i_size_read(&vnode->netfs.inode);
+ 
+ 		if (i_size < vnode->directory_size) {
+-			iov_iter_folio_queue(&iter, ITER_DEST, vnode->directory, 0, 0,
+-					     vnode->directory_size);
++			iov_iter_bvec_queue(&iter, ITER_DEST, vnode->directory, 0, 0,
++					    vnode->directory_size);
+ 			iov_iter_advance(&iter, i_size);
+ 			iov_iter_zero(vnode->directory_size - i_size, &iter);
+ 		}
+-		iov_iter_folio_queue(&iter, ITER_SOURCE, vnode->directory, 0, 0,
+-				     vnode->directory_size);
++
++		iov_iter_bvec_queue(&iter, ITER_SOURCE, vnode->directory, 0, 0,
++				    vnode->directory_size);
+ 		ret = netfs_writeback_single(mapping, wbc, &iter, i_size);
+ 	}
+ 
+ 	if (ret == 0) {
+ 		netfs_wb_begin(&vnode->netfs, false);
+-		netfs_free_folioq_buffer(vnode->directory);
++		bvecq_put(vnode->directory);
+ 		vnode->directory = NULL;
+ 		vnode->directory_size = 0;
+ 		netfs_wb_end(&vnode->netfs);
+diff --git a/fs/netfs/objects.c b/fs/netfs/objects.c
+index 6d7839c0498d..9895cf662bca 100644
+--- a/fs/netfs/objects.c
++++ b/fs/netfs/objects.c
+@@ -78,6 +78,10 @@ struct netfs_io_request *netfs_alloc_request(struct address_space *mapping,
+ 		rreq->io_streams[0].avail = true;
+ 	} else {
+ 		INIT_WORK(&rreq->work, netfs_write_collection_worker);
++
++		/* For single-type, we disregard the previous content. */
++		if (origin == NETFS_WRITEBACK_SINGLE)
++			rreq->i_size = rreq->len;
+ 	}
+ 
+ 	__set_bit(NETFS_RREQ_IN_PROGRESS, &rreq->flags);
 
