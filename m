@@ -1,21 +1,21 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=213.95.11.211
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794408995;
-	b=nb4Fj8/mpIcsCgH6THk63/hNibg6h+mY6xahwJw397nb1ctD7xjZ+HWNiJqbNry+l83i
-	 VNastHeHnE23T89iw18jjnCQ5q2jvwXkDtqmk0hA1k4JhLGDCt+Ad6hi+jcsA2f3AgcA+
-	 Neo0WYSdmsNsYFyFbRblgr38mxvryIrA6gqpgJ7XfTyJCFz3ccc1zJP3HCzpQGiehOKiU
-	 BNgJONslvI2DBCCagHTM1jrEJVQnhlgsoWGpjrj8/tncLk7NjdOtozVwWDRxckabUMOMU
-	 Nrd7QZtc60Hs5ffFBX6+LDcu0beV2eSnCiAZsanGoKFRlbBiJcKfqFAjI7TYp7Ttrew==
+	t=1794409012;
+	b=lBIJqOfVroz66XqZMACwnq77wFnnibNZ9d6xCCqANCKLR8L+z+uR/cIKCcnEhiTiyTRC
+	 iol0jq1B3h6zZ9BAswMEr0+Gi/YpG+rDVLnRDitVv8pUV/DFJkM+2zSgLxywBDLSXoURJ
+	 HkRbhy90QMaf1Nxl6Wo7MpYFnTORH6PoRi1aC7sKFMY6MEhUYdQcDOxa7m+gmqi6Hg0Ew
+	 ptpuD9uQdyL4hl/H+zeQxt+PoIKYujw23qB/mAHpNt8TP0RltncoYCZ/bXmMN0MyqeRcn
+	 Pf3PizwXQkjjkM6VHPzd0XlDmS/hgS3efl+4VgsPx3rkBHAAJXiaHRtmviJtKQwMJDA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794408995;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794409012;
 	h=DMARC-Filter:Received:Date:From:To:Cc:Subject:Message-ID:References:
 	 MIME-Version:Content-Type:Content-Disposition:In-Reply-To:User-Agent;
-	bh=M7NmYC/Iylm9myghHwqILim55SAUt9QrM+UZYk0eJlw=;
-	b=LaK6jybiNSlNXQej1mhBAxeQj82i0WRPfBBrqoj1kg3Wk0tLJYvKOk34T3hUfneeBGTW
-	 SkqKpvrBR+yYcbXn6SacbvL8EU/nJd4IOo4NQoMvBqGBoopkCsD5Bp0RFGqTdHWRIExs1
-	 idY5xlSnfjDY0vjCGoaZ2bkCtPrl+K2jJh2YloAUWGyaz2UMn3fknKHsjCsn604JdqWgU
-	 nbPftWgN8MSmXE3j52IheIAm4DCrqU2qnIYKI56rR5gB9UGRkDmGx6Sxj/Qa4zlU1SQt5
-	 VIG+TiAyS8pSYRotM5V+nvW7HNCmTJNeBi4MFvnw0RamdRhU49QR9VBwKCkJD+kqB7A==
+	bh=uTScRtTvc50Ly2VnPZ+IRL7zVmHRGtRnjIEMUslXOU4=;
+	b=Qobh15CJ3JpoTdqtIsJPaZ4wbdspYIDAKZ8haFc3oVC5+YRq8uyZXzAw7VqpXVYavruy
+	 BZvIuh31v+f5Xm69m9HpVd6exHSKnu5D7WixXZS7CYYjd9MGVYxRTgyV28vghBPGWvjX2
+	 8axfaQRopt9gI24sSklTdzPNqedWv3dV3uU+7+Lyk9cKh50z2KgzSLoz6zj0LwhMWcbzG
+	 v01GEbalvED5ZoYPi3+OyJq6qwblxWqKxR6weT9IYbMeulfkLaBNKH7A34rIJCaMiFfFr
+	 ZrXjxjMlOI719XN0ejuOimrm2yCAnSLtFkqufP++Fd2ZGpVH6b3SlI3pqN+bGkjwX5Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=lst.de;
 	spf=pass smtp.mailfrom=lst.de;
@@ -23,14 +23,14 @@ ARC-Authentication-Results: i=1; smtp.subspace.kernel.org;
 Received: from verein.lst.de (verein.lst.de [213.95.11.211])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D85E9606A321;
-	Wed, 11 Nov 2026 14:56:34 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D85E9606A321
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 824FE606A331;
+	Wed, 11 Nov 2026 14:56:51 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 824FE606A331
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
 Received: by verein.lst.de (Postfix, from userid 2407)
-	id 3FC4B68D05; Wed, 11 Nov 2026 15:56:31 +0100 (CET)
-Date: Wed, 11 Nov 2026 15:56:30 +0100
+	id BF2AF68D09; Wed, 11 Nov 2026 15:56:47 +0100 (CET)
+Date: Wed, 11 Nov 2026 15:56:47 +0100
 From: Christoph Hellwig <hch@lst.de>
 To: Christian Brauner <brauner@kernel.org>
 Cc: linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>,
@@ -48,10 +48,10 @@ Cc: linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>,
 	linux-s390@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
 	linux-usb@vger.kernel.org, Amir Goldstein <amir73il@gmail.com>,
 	linux-erofs@lists.ozlabs.org, linux-kselftest@vger.kernel.org
-Subject: Re: [PATCH RFC 02/41] nvmet: check that the file backend supports
- ->{read,write}_iter
-Message-ID: <20261111145630.GB9996@lst.de>
-References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org> <20261110-work-loop-pseudo-v1-2-4c998976c6c7@kernel.org>
+Subject: Re: [PATCH RFC 03/41] target: fileio: check that the backing file
+ supports ->{read,write}_iter
+Message-ID: <20261111145647.GC9996@lst.de>
+References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org> <20261110-work-loop-pseudo-v1-3-4c998976c6c7@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -63,8 +63,19 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261110-work-loop-pseudo-v1-2-4c998976c6c7@kernel.org>
+In-Reply-To: <20261110-work-loop-pseudo-v1-3-4c998976c6c7@kernel.org>
 User-Agent: Mutt/1.5.17 (2007-11-01)
+
+On Tue, Nov 10, 2026 at 10:14:19AM +0100, Christian Brauner wrote:
+> With fd_async_io=1 the fileio backend calls ->read_iter() and
+> ->write_iter() of the backing file directly. The synchronous path goes
+> through vfs_iter_read() and vfs_iter_write() which check for them but
+> the aio path doesn't. So a backing file without them calls a NULL
+> pointer on its first I/O.
+> 
+> Refuse such files when configuring the device. On the synchronous path
+> every read or write that needed the missing method failed with EINVAL
+> anyway.
 
 Looks good:
 
