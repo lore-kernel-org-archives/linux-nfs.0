@@ -1,57 +1,57 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=213.95.11.211
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794409928;
-	b=MWPJKmPyp8wx+wGW7VKUKHdaMXkk6tsOcpRoNXGlWeRhpmrfU+LuN/+Fbw0rSmN2giCF
-	 zhUx5VkcGmilppk9o666JBYv8eJva8qD0It9DQ8F97ft/fHSVLj4GS3diqBvcPeFTi/d/
-	 gUl8aap5dMBwOif5ts3ECTXN3w/CwhsOLxKjyPkTCAgC33wYX+50RkAHwrwhahJbSvLsU
-	 XTFQSGheD13JTP19bHaOro5xVetjkD17JcXXuiMOcbz9mUFkFPgUCIXaEDissL/3z/IxR
-	 1GEh9utTXqsBSZ2CjGwkiWDIX/d4lsYs/anBHXm44f8cKvEt2XglCkJBMUPieT2ddKw==
+	t=1794410454;
+	b=gVPApvJGyaO8UQZdbd+A1+Q6W6R94DerWmcrkNt3w1m0NWjNbhgMdoxQdTAzlchW6Szw
+	 4h8JP9T72Pc+iiplaArcKIRSYhhhkaxTXETCXb6ydKLe70EUpWZahgM2GGtrYMGIJ2KmI
+	 SqzuUU18dCnKSJqxyv+glcUd35sP9+NGY2//ZNKjkmx0/AFVgGpuxzwAq+4R2fbOoxQUQ
+	 ObkKsxfUrztU/pCgVdejwgsdb6zpdqTDwlyFl7Uk98RFxdRJrD/cdTfderjvFAfe726kx
+	 gd5t9vxBXB+f+nTcNym3XhUO8E2kNZ5riwSaExqYWpdFFOnXa4+Y3eVgtBwf8/Ia5mQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794409928;
-	h=DMARC-Filter:Received:Date:From:To:Cc:Subject:Message-ID:References:
-	 MIME-Version:Content-Type:Content-Disposition:In-Reply-To:User-Agent;
-	bh=dehBO8Yxo1qlGsyLOmGqdqT0CExk2sS3MX1Vk4oa/6A=;
-	b=DbhAT6FgGRL3UmCOe8v7NLD7ilAdyvziIOjYNx3OXqQf0y1zEOUqvTCitYOphUofvTdU
-	 fvjQBy7iA0nJJ5s1k8s9TYNxV3KWWBMuQtNFCSsPpSLwCKfzV5xk3lojvnD2P69rUW3u4
-	 4hO5Z9dYMOA7KMuaujF2k20ovhu/LVsDvgCcwZP9ICypkUAldvF0vk5uX3FB3/R4I3lgO
-	 10xMB7+vfNUYAwZbSJqZr9DO3uN3Kaj5XIl/m+FpaCq9TSJBiSl/Lai778mLWbBqsW6Ga
-	 sYkATyl8o1KkffkKQNybi0mnoB7kjkOn8R3CoebYoM3ax26NHBWREbsvq5y00q9+o7A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794410454;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 MIME-Version:Content-Transfer-Encoding;
+	bh=/2e4/hUq4SeSeae8q6Tc/nz5Wwz91Vz1J4AND14RFC8=;
+	b=yHvm1DVfeXyfiR5z6wERbGcSs0olmT/AiDEF2TmNqYzcQd+BkERHmPcnAfdaMUmv/QFd
+	 WZZBq3GpNeHona3/wvmr5fDJk44zoI/+8+QkwXjWr0E7+IDKBdk2VVKb+MprASRMh6m+x
+	 gOCArnkrLtm5Ez5D4aWcXHzqha/unK1Yjb8y09qvsBiF0Tfy/0RmjqhdIfs1n0aKllDmO
+	 pDQMm99m8se5ryJHK8gcAdxcT8rnqFdIJIlndPYoGJs8GWuc/s0BjxJmQX+XIYryWqxGD
+	 w2OUsOs4Ho5X4d9Gw2dqVmTRKZVzliOd6gyBiBHsxmv2xzSDKGFXGwLEgxD+UKI9goA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=lst.de;
-	spf=pass smtp.mailfrom=lst.de;
-	arc=none smtp.remote-ip=213.95.11.211
-Received: from verein.lst.de (verein.lst.de [213.95.11.211])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PoFL3tDu;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B90E5606A326;
-	Wed, 11 Nov 2026 15:12:07 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B90E5606A326
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
-Received: by verein.lst.de (Postfix, from userid 2407)
-	id 52A7668D16; Wed, 11 Nov 2026 16:12:03 +0100 (CET)
-Date: Wed, 11 Nov 2026 16:12:02 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Christian Brauner <brauner@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>,
-	Chris Mason <mason@kernel.org>, Josef Bacik <josef@toxicpanda.com>,
-	Christoph Hellwig <hch@lst.de>, linux-block@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-nvme@lists.infradead.org,
-	Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>,
-	linux-scsi@vger.kernel.org, target-devel@vger.kernel.org,
-	driver-core@lists.linux.dev, linux-mm@kvack.org,
-	bpf@vger.kernel.org, linux-security-module@vger.kernel.org,
-	selinux@vger.kernel.org, apparmor@lists.ubuntu.com,
-	linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-	fuse-devel@lists.linux.dev, linux-efi@vger.kernel.org,
-	xen-devel@lists.xenproject.org, ocfs2-devel@lists.linux.dev,
-	linux-s390@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
-	linux-usb@vger.kernel.org, Amir Goldstein <amir73il@gmail.com>,
-	linux-erofs@lists.ozlabs.org, linux-kselftest@vger.kernel.org
-Subject: Re: [PATCH RFC 38/41] fuse: refuse files on pseudo filesystems as
- passthrough backing files
-Message-ID: <20261111151202.GA11391@lst.de>
-References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org> <20261110-work-loop-pseudo-v1-38-4c998976c6c7@kernel.org>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43A8C606A321
+	for <linux-nfs@vger.kernel.org>; Wed, 11 Nov 2026 15:20:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PoFL3tDu
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1D0A11F00A05;
+	Wed, 11 Nov 2026 15:20:53 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794410453;
+	bh=/2e4/hUq4SeSeae8q6Tc/nz5Wwz91Vz1J4AND14RFC8=;
+	h=From:To:Cc:Subject:Date;
+	b=PoFL3tDuA0SaT6NlzWYvOjcPD1FkbByxrOVnCz25aHb/RnCNP0XbxI/CqS5lDhMEO
+	 8WfGi6zKwoqD+plfKEJanXVWyizL9RzJY0ssyOwL/KIO4g/P5TRSCzliVpUL+fvAP5
+	 io5GNq1gMWoEl+ckyeU4bDHtYomVjEDFZjAkAL+i9VCNjGeVjGcGLSTN9r07qYmGBz
+	 lrpgjXaLrxUJ1nWVAAB0Rczuzx8bHQpNRWOUicC32Uh2ivEYbpuuOfZMXzfyNhN/sg
+	 YnSRz3HbQkxWOd5fvItbaDW/N83CzNpC+nr7VcjuVR7QKRMnD1kLFlLjuUzpqjOWRF
+	 0IoLVOvkZhFlw==
+From: Chuck Lever <cel@kernel.org>
+To: NeilBrown <neil@brown.name>,
+	Jeff Layton <jlayton@kernel.org>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <dai.ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	Mike Snitzer <snitzer@kernel.org>
+Cc: <linux-nfs@vger.kernel.org>,
+	sashiko-bot <sashiko-bot@kernel.org>
+Subject: [PATCH] NFSD: Refuse a direct READ whose aligned range exceeds the reply pages
+Date: Wed, 11 Nov 2026 10:20:50 -0500
+Message-ID: <20261111152050.172047-1-cel@kernel.org>
+X-Mailer: git-send-email 2.56.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -61,12 +61,121 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261110-work-loop-pseudo-v1-38-4c998976c6c7@kernel.org>
-User-Agent: Mutt/1.5.17 (2007-11-01)
+Content-Transfer-Encoding: 8bit
 
-I've seen setups where people use fuse to mediate access to sysfs
-sysfs in odd ways.  No idea if that's still around, but if so, this
-patch will break it.
+nfsd_direct_read() expands the READ's byte range to the file's direct
+I/O alignment, then maps reply pages until the range is covered or
+rq_page_end is reached. A block device whose logical block size
+exceeds PAGE_SIZE reports an alignment larger than PAGE_SIZE. With
+16KB blocks and 4KB pages, a maximum-size READ at an offset that is
+not a multiple of 16KB needs one more page than the svc_rqst has.
+The loop stops at rq_page_end and passes a truncated iterator to the
+filesystem. iomap rejects the unaligned length with -EINVAL, and NFSD
+returns NFSERR_SERVERFAULT for a READ that a buffered read would have
+satisfied.
+
+Check the aligned range against the reply pages in
+nfsd_direct_read_ok(), and fall back to a buffered read when the
+range does not fit.
+
+Reported-by: sashiko-bot <sashiko-bot@kernel.org>
+Closes: https://sashiko.dev/#/patchset/20261109-xdr-page-base-v1-0-a4f4411d760d@kernel.org?part=11
+Fixes: d686e64e931c ("NFSD: Implement NFSD_IO_DIRECT for NFS READ")
+Signed-off-by: Chuck Lever <cel@kernel.org>
+---
+ Documentation/filesystems/nfs/nfsd-io-modes.rst |  7 +++++++
+ fs/nfsd/nfs4xdr.c                               |  5 -----
+ fs/nfsd/trace.h                                 |  1 +
+ fs/nfsd/vfs.c                                   | 14 ++++++++++++--
+ 4 files changed, 20 insertions(+), 7 deletions(-)
+
+diff --git a/Documentation/filesystems/nfs/nfsd-io-modes.rst b/Documentation/filesystems/nfs/nfsd-io-modes.rst
+index d57b7916f6c2..28235eceb0c7 100644
+--- a/Documentation/filesystems/nfs/nfsd-io-modes.rst
++++ b/Documentation/filesystems/nfs/nfsd-io-modes.rst
+@@ -219,6 +219,13 @@ Tracing:
+       nfsd_read_dio_pages_in_use  an earlier operation in the same
+                                   COMPOUND already put data in the
+                                   reply's pages
++      nfsd_read_dio_range_too_large
++                                  the DIO read offset alignment exceeds
++                                  the page size and the READ, expanded
++                                  to that alignment, needs more pages
++                                  than the reply has. An NFSv4 READ
++                                  that also meets one of the conditions
++                                  below reports that condition instead.
+       nfsd_read_dio_head_full     an NFSv4 READ whose offset is not a
+                                   multiple of four bytes, when the XDR
+                                   stream has left the reply's head or
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 0b3d77bb9941..950c67362566 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -5327,11 +5327,6 @@ static __be32 nfsd4_encode_splice_read(
+ 	return nfserr;
+ }
+ 
+-/*
+- * Reply-buffer checks that nfsd_direct_read_ok() cannot make: the
+- * payload's placement depends on the alignment pad, and the pad on the
+- * READ offset.
+- */
+ static bool nfsd4_direct_read_fits(struct nfsd4_compoundres *resp,
+ 				   struct nfsd4_read *read,
+ 				   unsigned long count)
+diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+index 11a6d7d66f6f..45a5db9def39 100644
+--- a/fs/nfsd/trace.h
++++ b/fs/nfsd/trace.h
+@@ -662,6 +662,7 @@ DEFINE_EVENT(nfsd_read_dio_class, nfsd_read_dio_##name,		\
+ DEFINE_NFSD_READ_DIO_EVENT(no_alignment);
+ DEFINE_NFSD_READ_DIO_EVENT(too_small);
+ DEFINE_NFSD_READ_DIO_EVENT(pages_in_use);
++DEFINE_NFSD_READ_DIO_EVENT(range_too_large);
+ DEFINE_NFSD_READ_DIO_EVENT(head_full);
+ DEFINE_NFSD_READ_DIO_EVENT(reply_full);
+ DEFINE_NFSD_READ_DIO_EVENT(not_last_op);
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 10ea334cfdab..123c38f3bd88 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1250,9 +1250,11 @@ nfsd_direct_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 
+ static bool nfsd_direct_read_ok(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 				struct nfsd_file *nf, loff_t offset,
+-				unsigned long count, bool dio_ok)
++				unsigned long count, struct page **page,
++				bool dio_ok)
+ {
+ 	u32 offset_align = nf->nf_dio_read_offset_align;
++	u64 dio_len;
+ 
+ 	/* When dio_read_offset_align is zero, dio is not supported */
+ 	if (!offset_align) {
+@@ -1273,6 +1275,14 @@ static bool nfsd_direct_read_ok(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	}
+ 	if (!dio_ok)
+ 		return false;
++	/* An alignment above PAGE_SIZE can round the range past rq_page_end */
++	dio_len = round_up((u64)offset + count, offset_align) -
++		  round_down(offset, offset_align);
++	if ((s64)dio_len > (s64)PAGE_SIZE * (rqstp->rq_page_end - page)) {
++		trace_nfsd_read_dio_range_too_large(rqstp, fhp, offset, count,
++						    offset_align);
++		return false;
++	}
+ 	return true;
+ }
+ 
+@@ -1356,7 +1366,7 @@ __be32 nfsd_iter_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		break;
+ 	case NFSD_IO_DIRECT:
+ 		if (nfsd_direct_read_ok(rqstp, fhp, nf, offset, *count,
+-					dio_ok))
++					page, dio_ok))
+ 			return nfsd_direct_read(rqstp, fhp, nf, offset,
+ 						count, page, eof,
+ 						storage_start);
+-- 
+2.56.0
 
