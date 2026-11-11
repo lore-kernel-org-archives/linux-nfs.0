@@ -1,21 +1,21 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=213.95.11.211
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794409468;
-	b=uV6IaHeur+XV8s41e4abmU3xpiJDAnJO1Q3UEiR77JlQRLXgVWlhqE1fWFqaHLZE/S4Y
-	 HBOomD9N6+1/kzYH8cj1LXqhdPgy/nOlApjrtOUE1Hd+IdSvmvARSL0N8ktCW2yhQYjs/
-	 U3vT9chpY907vKq7wqJGgSjjvm4Ka4tUA1NflJpY4ioMgVmT/lj69U3Eonr1cErbTW9Xz
-	 TOy/xD4Q0Cj4I13hIk5F6PVlhRf+4UvvhG8tNzHvlv8ISI9Ac73Ik4QHhAgu/nL0gsCGk
-	 5+FVzc7SvNHK8hvPXaiZ5Usq9A4MQ0YSkqF/i/eRypBUaFV66re/ORNzPf/+liJFLsw==
+	t=1794409482;
+	b=JNTgig+JfygPcr/AhBosCANXLu51Wg2rgPoazRmZRo6zokgpoStrTFrWE84gRu49K/lP
+	 OoNFFT04uZkI0EKK/BJg+sxchO5MHsvoSApNd/r/KOVaURxlSItjyDYhRDMGQSjZXMlSG
+	 n6XL9LwSdpitsSglbyxJieAMF/tctybgO/Cqc/7E32Xm/BU3JrDi9vKbVQwFyNLm3vUgh
+	 gZa4wwM5dMxTmJ+zdhn6ibmOJjEHbjnQxaEF7xHeTgr4HcrBP37ZkNKIsmQLy35mW0Va4
+	 1QS3IzhN78SDIBDF/2LXO007xlhiOqwtIYDuVnak7AyEE1c0sp3+8Ps5zVNVCas/Cfw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794409468;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794409482;
 	h=DMARC-Filter:Received:Date:From:To:Cc:Subject:Message-ID:References:
 	 MIME-Version:Content-Type:Content-Disposition:In-Reply-To:User-Agent;
 	bh=M7NmYC/Iylm9myghHwqILim55SAUt9QrM+UZYk0eJlw=;
-	b=uwmwluH+XglHcST8XlEdABuodfKjhsfuYf1tFKPh9HyH4JlGnlyj+ADjtU+alkUYrNuM
-	 h8Hd97hJf/vB1Bucfpy5EuliO/w+ezvau9AgjSB/ChMihuj22VC6IPAqrpXfQLyQtl8k9
-	 GQ0aknav3DqtVHk95yWA5jw/oght6CHa9viaKUSzAfVZFFBo7k7V7R0HMdNKIMjowoopQ
-	 j2xr5naxQaSHdzoVdfXijtioPwI7Ys7PXJam9QjX4aO7VuEbcJJno3WGqqf60w8o+E1wd
-	 POAHD2Uv96SDkuPnkdRig/E6jvyWqW1nP47hcCYxTEzGZjg4BOLjqt4B9/T29bi8uDg==
+	b=2kJswL4u+LSWFmHcWLHv8GBCrNzgWIaLHXnkq22DWSJdSo2yAheZwKXv1mGQzOGcWuNC
+	 moAw5ZCalVXQ0w4fXhGF3DH2idlweuQ7RxwO9NWo3yt9k7ODXGHIl6gCvJu2MraUceTz4
+	 zHTcgU4EL+1lN062c/PuNhInw0ukrV9usczV+MFm0M74+U7mMU1ZXqulOLEYeu9YqUMKP
+	 EFBSxaxoChKiduW6PjLXlAXE/iIGxtHB56mX0NZwjBY/VyY48zYf6OTMhCg+WE27wPkim
+	 Max7MY+Fg+SRR6OmsI4TH+XaRMV8BayCtZxMbWgmuejGltGunXA+/R74Hw8cMzaSCeg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=lst.de;
 	spf=pass smtp.mailfrom=lst.de;
@@ -23,14 +23,14 @@ ARC-Authentication-Results: i=1; smtp.subspace.kernel.org;
 Received: from verein.lst.de (verein.lst.de [213.95.11.211])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9787D606A334;
-	Wed, 11 Nov 2026 15:04:27 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9787D606A334
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AC6CF606A336;
+	Wed, 11 Nov 2026 15:04:41 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org AC6CF606A336
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
 Received: by verein.lst.de (Postfix, from userid 2407)
-	id 9B6F068D0A; Wed, 11 Nov 2026 16:04:20 +0100 (CET)
-Date: Wed, 11 Nov 2026 16:04:19 +0100
+	id 269A268D0F; Wed, 11 Nov 2026 16:04:37 +0100 (CET)
+Date: Wed, 11 Nov 2026 16:04:36 +0100
 From: Christoph Hellwig <hch@lst.de>
 To: Christian Brauner <brauner@kernel.org>
 Cc: linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>,
@@ -48,9 +48,9 @@ Cc: linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>,
 	linux-s390@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
 	linux-usb@vger.kernel.org, Amir Goldstein <amir73il@gmail.com>,
 	linux-erofs@lists.ozlabs.org, linux-kselftest@vger.kernel.org
-Subject: Re: [PATCH RFC 04/41] fs: add SB_I_PSEUDO
-Message-ID: <20261111150419.GA10644@lst.de>
-References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org> <20261110-work-loop-pseudo-v1-4-4c998976c6c7@kernel.org>
+Subject: Re: [PATCH RFC 05/41] kernfs: use fc_init_pseudo()
+Message-ID: <20261111150436.GB10644@lst.de>
+References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org> <20261110-work-loop-pseudo-v1-5-4c998976c6c7@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -62,7 +62,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261110-work-loop-pseudo-v1-4-4c998976c6c7@kernel.org>
+In-Reply-To: <20261110-work-loop-pseudo-v1-5-4c998976c6c7@kernel.org>
 User-Agent: Mutt/1.5.17 (2007-11-01)
 
 Looks good:
