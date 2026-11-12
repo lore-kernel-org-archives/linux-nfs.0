@@ -1,57 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=62.149.158.132
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794501742;
-	b=n0MHUvzrUWS5qPFGn+RBraU3py6Qr6+D6NaTjJGIRymYgATZ4aQgt3+ZB6PwJEk/D7vo
-	 lINSiNKHj4N/k+hzUbHlNzB71uVuj1r+UTzuQ+IAoZ8b41JFrz7ubqGWaocvOeWOQkXLm
-	 MkvHB8YU4swGhUI1pzX4qL9iLFFWc3K2GaTKW3B4qink29m9kHFQdzy+BzUY9YmGpypHx
-	 fnEAAQMYyf+2wqOvh8JLHMD+EC4oGCB+yU/JBF65tveQ8MpZHSRO9ZCo8uP1aCNmvO7S8
-	 rQtgYYzjySd9vck9GxI3IjMfleofBBQxW6HyQ82IUKsfD8pnU7w0Lqs+gfNlAatStig==
+	t=1794504457;
+	b=O1d91QDymhvkgyLxCZR4+NEGKvJE0v6NNngRFhu3OduMSpMt2Zh0gDuOSvlkAnI5dQ1Z
+	 tn377HkTi2Q2EIKWoxesp0A66jVwNxcYXq2UuZeF8+9AMZP9VaXB7Z51DpKXYvIH2rdGz
+	 7XDAYBBafuFLLXoul4vxc8QhxGS+6N1bzhKrrXv5ijFizQ3e2EamNjrnrlyK8TmJ6S3Cm
+	 hX4B22e2N5dxVGGXUAjOAKYD8uOt7W6hhdg0y8WXZp+jF5DWH9phFWsuN4hDLobuTtQPR
+	 SU3i03cOH+W0jmHeQoKYXYibSIe4o9WpeCqsWtGJd9gyCW1zM358osivHAXOpwNe2/Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794501742;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794504457;
 	h=DMARC-Filter:Received:DKIM-Signature:From:To:Cc:Subject:Date:
 	 Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding:
 	 X-CMAE-Envelope;
-	bh=m9QujdoC5KR1MfIicpzuxpuwTbjNtNXun3FTjcqzIvI=;
-	b=0NE+PZPdsMC4erPkBGG9Fy4wZITKnXZxNGQ+7gjA5mqnhFCHpn98Nbzf24mDJeAEIIJj
-	 KiuPyKbwQoZ5Xr5wL1WEXtaTZhdKp4TzhHNqoen3Vow11scQoHoS3+1UxXKh1v85eIZFp
-	 SHERVwekuwonixmNjfhd7ZFNaidG9vBAwZV0Z960KwHks18fGJK7jeEH0MlWORhHFba/A
-	 iZF4DfkK3iq2nBmsEWd4Ei+7glhc71wpCe07BAxmTA9Qa8KDwOEhBOQBXKquWrmN1gYZR
-	 DmWVt+moyGBcKNVJweaRuJdfsTJCSIyJ4oX1hMdNfdiqkC4klZMyV4dpE9Z6TZ+Oeig==
+	bh=2KptuAQwrNk4xbuZh/I6e3msgM3ob6P+ME/333AlGDQ=;
+	b=XTBpDo+uDEiSfWPH74yu+JKKx2/YzAWgQfU8+9t7DIm6p4F3M7/l7L1M8NoidT1yndpU
+	 07MeapzHx5iO4Lt9dxrKK1p7vw5Jqna7/g/+eejkS1Hh8RIowx506YDKWMkzNbfO8ftED
+	 cckQTxL0BWifpVEuEEJwTeAp/2rHkPsoiB0ADAqnxq+hOq1BksrUPUAIJgfF7HfoJGryL
+	 0OWgvjIGz1e1oz61TrJB+g6ENqE64jicQWioz6Wi6p6GdEqhz0PXWyuAB1RDDt4vZh72d
+	 zSknBEXygiBoqFiEFxlFg9oqEXQZ/KOOqry3TlERyGBhhTE1Wc8J7Wa8jZQwcZoAIKw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=benettiengineering.com;
 	spf=pass smtp.mailfrom=benettiengineering.com;
-	dkim=pass header.d=aruba.it header.i=@aruba.it header.a=rsa-sha256 header.s=a1 header.b=KB5Yipi7;
+	dkim=pass header.d=aruba.it header.i=@aruba.it header.a=rsa-sha256 header.s=a1 header.b=DJrMhjYX;
 	arc=none smtp.remote-ip=62.149.158.132
 Received: from smtpcmd04132.aruba.it (smtpcmd04132.aruba.it [62.149.158.132])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0CB90606A332
-	for <linux-nfs@vger.kernel.org>; Thu, 12 Nov 2026 16:42:20 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 0CB90606A332
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D3F34606A32D
+	for <linux-nfs@vger.kernel.org>; Thu, 12 Nov 2026 17:27:35 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D3F34606A32D
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=benettiengineering.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=benettiengineering.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=aruba.it header.i=@aruba.it header.a=rsa-sha256 header.s=a1 header.b=KB5Yipi7
+	dkim=pass (2048-bit key) header.d=aruba.it header.i=@aruba.it header.a=rsa-sha256 header.s=a1 header.b=DJrMhjYX
 Received: from localhost.localdomain ([151.95.84.63])
 	by Aruba SMTP with ESMTPSA
-	id RXsJx5dbJtleFRXsJx8AHQ; Thu, 12 Nov 2026 17:42:11 +0100
+	id RYaDx66OStleFRYaDx8S2B; Thu, 12 Nov 2026 18:27:33 +0100
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=aruba.it; s=a1;
-	t=1794501733; bh=4lxDmo0xyavbG2h0SbO+zZvjqkYy8Ik5nzQrsXIJDdc=;
+	t=1794504453; bh=m0B1o877mQk1cYgb0QOACN9Z3jkzKnejp3mwo7KZw1A=;
 	h=From:To:Subject:Date:MIME-Version;
-	b=KB5Yipi7CKiAJoT5957Vm8yQOzfonBsojZQJT0uydPdAzs/4hoSpKFazJ+VkX9+LC
-	 VGwu1rdWPf51D7GD2J6lg5H/46qyn2NMR5wKohGdArxyQRY6RLJskOceLGgsur1cMa
-	 ZeeiCWCVTqVip1A72YRJEVRsXX2PdRr+UKmXNGwbPs/Xp1fh6JSpgR1S6sCT13IUGf
-	 zT77FNfZLwVIgLgNksaS9MFE2HuXVrlF0H84JHy5Gjw1ZbvhJGMnRmdr7wj4lSEmr/
-	 OU+QHkUdpo7WXZLVVvN5348TnRHDIe7ID5NAvBSTAScGzT6m6PiIkIqLNgntwzLa7j
-	 JgwdQkRPhMSMw==
+	b=DJrMhjYXjQsMp0UH+GcrO6ADUE9ouQW3pzj9X1gu7m7FCrqJwdh4B4DXAjLyUx3cZ
+	 5DdG0p1LODNbVAKfCavaLTKRt9coBx54HKfRBwnhfgs4810sIth6xvLoZYLQSER+N4
+	 6XmciyDQrWmPkDy9/k3/qVXT+0n8dLUjp2HqKnFOu+nihh7Fi4hxvF2YEeUksuMBN5
+	 cZ3nAv7hpLNdsOdKfWojRszHo8hImVhT/dBSRikcV8cs1sVTvUW+dR8PAfCotxpw3n
+	 WfiM7Om5zusfy3VfL4Kbk0Xiy+APFSw9XlTyJLEeaMPDM+c7ZU0nzEqFrgOzcehfQu
+	 9FqwdP0/fi3Vw==
 From: Giulio Benetti <giulio.benetti@benettiengineering.com>
 To: linux-nfs@vger.kernel.org
 Cc: Giulio Benetti <giulio.benetti@benettiengineering.com>,
 	"Claude Opus 5.5" <noreply@anthropic.com>
-Subject: [PATCH] gssd: fix build failure with musl libc
-Date: Thu, 12 Nov 2026 17:42:10 +0100
-Message-ID: <20261112164210.369677-1-giulio.benetti@benettiengineering.com>
+Subject: [PATCH v2] gssd: fix build failure with musl libc
+Date: Thu, 12 Nov 2026 18:27:32 +0100
+Message-ID: <20261112172732.397411-1-giulio.benetti@benettiengineering.com>
 X-Mailer: git-send-email 2.47.3
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -63,22 +63,27 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CMAE-Envelope: MS4xfOASsFMvN4jiw048eEJo7xqwuVpKIvOw/SHZd6wkUroKwl3sLEcDDOvq/9XCb05v67YxxXINhIGejH8ltjjPZSuDWKrHTO/CJfwolrYm6IKIc4fzmRwC
- E2dEo1KnCap1jWqlLpAFt93e9zZ6b2+J87+BpDcjc0smod1TFiuyjBgMobwhV3kPVBgBwpbr0Ibgr3Vg/ZxqZe8X+jD/u0FePc85HCUdrGYLHuFkweeur5O0
- CX5re64Ott9LAv8j0GQsNLKkjxH2mnjUOJmS163lZrB9OGs6UrjedaSVRkSZBJJcxay7/Tm5RnxJKB4MSE6BzQ==
+X-CMAE-Envelope: MS4xfKbiANUI3az+ffU+fk/EQmbsBrQjPPzgQQkEllUuQoDTCb4m//ZzdAVJ4PjZxnKbM06wDL86XnA4IMDs8puJjyDY//mRcWf4ycqDsDqS1Wfkg03n23cr
+ Er3rqSmcNKfkxZLYAGGkR0Zb1303gPYyxRRsjqakbQu1EszxiICzih096yb2CZENwXHRg9PjpjOftpjvg/bJNS4Vnjw4ZC0ptpMyo+i7cwQPYOCDVPgpcU6U
+ TPDwqCMqYs9nGkMfJdf1niduUwuiLXF2vAzmOaOBrZEOM94Gqh88Hq9nxgpvm3DuO38v6PY5tmDqJqbDZSpN/Q==
 
-On musl pthread_t is defined as 'struct __pthread *', so printing it
-with '%lx' triggers -Werror=format errors:
+gssd prints thread IDs with the '%lx' format specifier, which assumes
+pthread_t is an unsigned long. This holds on glibc, but on musl
+pthread_t is an opaque pointer type ('struct __pthread *'), so building
+with -Werror=format fails:
 
 gssd.c:546:78: error: format '%lx' expects argument of type 'long unsigned int', but argument 3 has type 'pthread_t' {aka 'struct __pthread *'} [-Werror=format=]
 
-Let's explicitly cast pthread_t to unsigned long wherever it's printed
-with '%lx'. This keeps the output unchanged on glibc, where pthread_t is
-already an unsigned long.
+Fix this by explicitly casting pthread_t to unsigned long wherever it
+is printed with '%lx' in gssd.c, gssd_proc.c and krb5_util.c. The cast
+is safe since the value is only used for logging and unsigned long is
+pointer-sized on all Linux ABIs. The output is unchanged on glibc.
 
-Upstream: TODO
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Signed-off-by: Giulio Benetti <giulio.benetti@benettiengineering.com>
+---
+V1->V2:
+* fixed and improved commit log
 ---
  utils/gssd/gssd.c      | 14 +++++++-------
  utils/gssd/gssd_proc.c | 18 +++++++++---------
