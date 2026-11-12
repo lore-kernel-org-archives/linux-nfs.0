@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794510557;
-	b=vwlMGx4gr5uCcZEZG3PEMhPsXYp7uePTUh/ox5gTU0kWwX3tmpBTSIWr5vgA7LZ4AsG1
-	 vgVrc8QFDUT+s8k0rRQmvD5u9ezJS1AhRwCQqaZbo2izSrMTcrTt3m6PBWwtQ38rqykQm
-	 huB3LXzN4FRe9kZ0hr90SN0D/NDcNXqQ8tiTGvgwCT39nbnw9qCwURbBx9NeaXKUx9iU5
-	 IT9qm15WoNal1my5tMGVf2xPYHfqX6Hn2NJfRzFJaMfop5vVoJYfekE1NYoFeXmumBf0j
-	 66QbC42qBfUUKoK28CY9EIZ4lM9qjfkhDB3Cziqge6szcHADrA0zzR57yIzAFXYyHBA==
+	t=1794510560;
+	b=fHlR/F/6aQHw+BABG5MmrFeDEnowIuwCKDNKDAPofHu2zcXwqMkec9bwhZEEmg0kpfT1
+	 h5/eOQ+cNkjAv1hNmRWnv3axiCfEdwH8YnuwR7R+aU3F+h7bXfpgG8iIFNp7dhBSV70WN
+	 2Rt1T+PAgiRyVF60p5tLJS7WxUgaw2S5JjVTMIKnNQ+JtEYd3sPa/LizeRWoIDv8Py4wE
+	 yV6Wwed0DAPVjKpzZ+Dmuoktukhd0WAUkEAi93g61jnkov+/aZ7mrssK/xvn9+UZPcUb2
+	 Gbu0uXZeE2E0jNZ5ciKGyf8f0tyq4mbhM+BIaH2jx9wJMkWysKUdRqLuAsCDGtqQoWw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794510557;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794510560;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=FRT2/+R9YmYPDM76NCkeURQmSSsjMxRjRdu/RF1CsXY=;
-	b=DyIht2HUFkYQZ40c12UxDl1H+eHjTkAzcKcWW9Yp1J5r8CIGLhqkZu8Hsj80TEAq9Uga
-	 IZ7e2KfcDX8O7OK8kciH5CzvilnavOHzQN4bJ6Y1ERlx1VCRYuVWvJ++O2grmKNYuifT4
-	 nsM1aOBm+ewwCTc9aob+rS67l40XiCqkiRSr+L/3cwVQjKnCxkURIn7aqN4QLyJwwefXW
-	 k9IpNBY4G5OP2Hj+KbOcwceRmZRAqA4BpJJB6SM30uC9rqd+xrPgtWhwgMd7gWqkV9mhi
-	 wNqWkSWwpN1c1Pio+6tur0wSzwTGUgoqRT4+lnrXaFSiB8KLsVDBnDnQ2Kcjc2UUDZA==
+	bh=1+SeaVehwt396QnIHnWRn5MKZzC9W7QYhwhH8JQg6As=;
+	b=eXIuXPvn81kYzuB/4v1AK4rEZFGdsqshxms6h4Cw891jD9CchpAnRFvdwRVV4B6Edazo
+	 JknHJWqbTAhCkDr+mn7qpkg79i8q/xf8PhpEyLzuq/6QQr8+GbGvz1f2YrBrikN1/oZB8
+	 6aVMe2Vn3bE/ZGD1SoRcHNRBKC8s3A/FWVFGjbdDXm/Acw59NUx3QWdYd3TdR6TskU+rA
+	 8R8V4CrsSEkDwNyEusjmp2flvFgbIN1umXmZrct++0/c+m3EA7daXxeaMB4XEfqN/vP47
+	 0Fwq4IcV1ed3SyRXFgGUNg9o0Wkbu9XJqeNxiE5+u7JbnRzSD8FmAh0E/bLj/sN5HTQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=R8hk5Dwv;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mRRNG3IF;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D5683606A332;
-	Thu, 12 Nov 2026 19:09:17 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 205E7606A882;
+	Thu, 12 Nov 2026 19:09:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=R8hk5Dwv
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 35EDE1F000C8;
-	Thu, 12 Nov 2026 19:09:17 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mRRNG3IF
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BE0F61F000D4;
+	Thu, 12 Nov 2026 19:09:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794510557;
-	bh=FRT2/+R9YmYPDM76NCkeURQmSSsjMxRjRdu/RF1CsXY=;
+	s=k20260515; t=1794510560;
+	bh=1+SeaVehwt396QnIHnWRn5MKZzC9W7QYhwhH8JQg6As=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=R8hk5Dwv9vAwELb2ZJKK7TvMFh4spMzUdEtBRAfSLVwWI/st5fWdQZo/N2LJEdCdA
-	 hKyPNrDt8bff1GXsVM37dh6jqyKzp6nd45paYHdsJxDGdmk7I23AabomXADvcP34e1
-	 HIjqnxLbu6n2/vIjpn9rbIJ7ZUNze2NaYRiLvZk74KLZZDNzx9eX2GqkfoAyKVwlfO
-	 vUSRv57dQiUwMr5xwh4UZJWUcd0r9Vg9QUelmaesJNPoQVEc/eA+6ihplO7DpSeEb5
-	 kM6Wt9D4f7Kjs0+cOuCF/n9OrOCIBHtdIj63g+qDA35uBc3g4X9VTbI9RE5nilt0d1
-	 1J6ILoemZz8aw==
+	b=mRRNG3IF7VudZcwh4cqiVMNCUHH4sOIQkPODFYxjF6VVdN7Amv/1OT00M2ftUcuF9
+	 EFIXVnWWcEt+0eXCmmNU8X+r2RnDVzuG6yfSf5Y/0M7ojHrS2yk8U239QZnI3qZ+Lk
+	 6pR8RzV8tcebiPECs+5iBFoFf0yiyGcwr1ZghoutBg8hSmDyncKS27mRUTmnWqroyj
+	 L/SKZp0FA859Q4W+eJP7ekc/fe9Mw8RBwFkiWG+xfjE6VToljzYbMiRZ6pDFU+2y4h
+	 LF5KAJ8o2RQKKRtLOVtjbnm9D6+NC8KZTufBiQ30mbO0rgBhiX2YtfyO7SQvePeTqc
+	 u45+zU/l1rX5Q==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Matthew Wilcox <willy@infradead.org>,
 	Jan Kara <jack@suse.cz>,
@@ -48,11 +48,10 @@ To: Matthew Wilcox <willy@infradead.org>,
 Cc: Mike Snitzer <snitzer@kernel.org>,
 	Chuck Lever <cel@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>,
-	linux-nfs@vger.kernel.org,
-	Christoph Hellwig <hch@lst.de>
-Subject: [PATCH v12 1/7] mm: move clearing the dropbehind flag of a found folio into a helper
-Date: Thu, 12 Nov 2026 14:09:04 -0500
-Message-ID: <20261112190911.84702-2-snitzer@kernel.org>
+	linux-nfs@vger.kernel.org
+Subject: [PATCH v12 3/7] mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats
+Date: Thu, 12 Nov 2026 14:09:06 -0500
+Message-ID: <20261112190911.84702-4-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20261112190911.84702-1-snitzer@kernel.org>
 References: <20261112190911.84702-1-snitzer@kernel.org>
@@ -67,68 +66,76 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Move the code in __filemap_get_folio_mpol() that clears PG_dropbehind
-on a folio found by a cached lookup, and takes the folio off
-WB_DONTCACHE_DIRTY, into filemap_clear_dropbehind().  No functional
-change.  The next patch changes the helper.
+The per-bdi_writeback WB_DONTCACHE_DIRTY counter drives how much the
+flusher writes back in response to an IOCB_DONTCACHE kick, but it is
+not reported anywhere, so the DONTCACHE dirty backlog can only be
+inferred from MemFree/Cached movement.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Report it as BdiDontcacheDirty in /sys/kernel/debug/bdi/<dev>/stats
+and as WbDontcacheDirty in the per-wb stats, next to the
+Reclaimable line.  Use wb_stat_sum() rather than wb_stat() to fold in
+the per-cpu batches: the flusher targets the summed value and small
+backlogs would otherwise read as zero.
+
+Fixes: 88d6f128d06d ("mm: track DONTCACHE dirty pages per bdi_writeback")
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: Mike Snitzer <snitzer@kernel.org>
 ---
- mm/filemap.c | 33 ++++++++++++++++++++-------------
- 1 file changed, 20 insertions(+), 13 deletions(-)
+ mm/backing-dev.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index b04be64a5069f..437113addbddf 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1956,6 +1956,24 @@ void *filemap_get_entry(struct address_space *mapping, pgoff_t index)
- 	return folio;
- }
+diff --git a/mm/backing-dev.c b/mm/backing-dev.c
+index fad1495d3b200..a09c21759fb9f 100644
+--- a/mm/backing-dev.c
++++ b/mm/backing-dev.c
+@@ -46,6 +46,7 @@ struct wb_stats {
+ 	unsigned long nr_dirty_time;
+ 	unsigned long nr_writeback;
+ 	unsigned long nr_reclaimable;
++	unsigned long nr_dontcache_dirty;
+ 	unsigned long nr_dirtied;
+ 	unsigned long nr_written;
+ 	unsigned long dirty_thresh;
+@@ -78,6 +79,7 @@ static void collect_wb_stats(struct wb_stats *stats,
  
-+/* Clear the dropbehind flag of a folio that a cached lookup found. */
-+static void filemap_clear_dropbehind(struct address_space *mapping,
-+				     struct folio *folio)
-+{
-+	if (!folio_test_clear_dropbehind(folio))
-+		return;
-+	if (folio_test_dirty(folio) && mapping_can_writeback(mapping)) {
-+		struct inode *inode = mapping->host;
-+		struct bdi_writeback *wb;
-+		struct wb_lock_cookie cookie = {};
-+		long nr = folio_nr_pages(folio);
-+
-+		wb = unlocked_inode_to_wb_begin(inode, &cookie);
-+		wb_stat_mod(wb, WB_DONTCACHE_DIRTY, -nr);
-+		unlocked_inode_to_wb_end(inode, &cookie);
-+	}
-+}
-+
- /**
-  * __filemap_get_folio_mpol - Find and get a reference to a folio.
-  * @mapping: The address_space to search.
-@@ -2087,19 +2105,8 @@ struct folio *__filemap_get_folio_mpol(struct address_space *mapping,
- 	if (!folio)
- 		return ERR_PTR(-ENOENT);
- 	/* not an uncached lookup, clear uncached if set */
--	if (!(fgp_flags & FGP_DONTCACHE) && folio_test_clear_dropbehind(folio)) {
--		if (folio_test_dirty(folio) &&
--		    mapping_can_writeback(mapping)) {
--			struct inode *inode = mapping->host;
--			struct bdi_writeback *wb;
--			struct wb_lock_cookie cookie = {};
--			long nr = folio_nr_pages(folio);
--
--			wb = unlocked_inode_to_wb_begin(inode, &cookie);
--			wb_stat_mod(wb, WB_DONTCACHE_DIRTY, -nr);
--			unlocked_inode_to_wb_end(inode, &cookie);
--		}
--	}
-+	if (!(fgp_flags & FGP_DONTCACHE))
-+		filemap_clear_dropbehind(mapping, folio);
- 	return folio;
- }
- EXPORT_SYMBOL(__filemap_get_folio_mpol);
+ 	stats->nr_writeback += wb_stat(wb, WB_WRITEBACK);
+ 	stats->nr_reclaimable += wb_stat(wb, WB_RECLAIMABLE);
++	stats->nr_dontcache_dirty += wb_stat_sum(wb, WB_DONTCACHE_DIRTY);
+ 	stats->nr_dirtied += wb_stat(wb, WB_DIRTIED);
+ 	stats->nr_written += wb_stat(wb, WB_WRITTEN);
+ 	stats->wb_thresh += wb_calc_thresh(wb, stats->dirty_thresh);
+@@ -125,6 +127,7 @@ static int bdi_debug_stats_show(struct seq_file *m, void *v)
+ 	seq_printf(m,
+ 		   "BdiWriteback:       %10lu kB\n"
+ 		   "BdiReclaimable:     %10lu kB\n"
++		   "BdiDontcacheDirty:  %10lu kB\n"
+ 		   "BdiDirtyThresh:     %10lu kB\n"
+ 		   "DirtyThresh:        %10lu kB\n"
+ 		   "BackgroundThresh:   %10lu kB\n"
+@@ -139,6 +142,7 @@ static int bdi_debug_stats_show(struct seq_file *m, void *v)
+ 		   "state:              %10lx\n",
+ 		   K(stats.nr_writeback),
+ 		   K(stats.nr_reclaimable),
++		   K(stats.nr_dontcache_dirty),
+ 		   K(stats.wb_thresh),
+ 		   K(dirty_thresh),
+ 		   K(background_thresh),
+@@ -163,6 +167,7 @@ static void wb_stats_show(struct seq_file *m, struct bdi_writeback *wb,
+ 		   "WbCgIno:           %10lu\n"
+ 		   "WbWriteback:       %10lu kB\n"
+ 		   "WbReclaimable:     %10lu kB\n"
++		   "WbDontcacheDirty:  %10lu kB\n"
+ 		   "WbDirtyThresh:     %10lu kB\n"
+ 		   "WbDirtied:         %10lu kB\n"
+ 		   "WbWritten:         %10lu kB\n"
+@@ -179,6 +184,7 @@ static void wb_stats_show(struct seq_file *m, struct bdi_writeback *wb,
+ #endif
+ 		   K(stats->nr_writeback),
+ 		   K(stats->nr_reclaimable),
++		   K(stats->nr_dontcache_dirty),
+ 		   K(stats->wb_thresh),
+ 		   K(stats->nr_dirtied),
+ 		   K(stats->nr_written),
 -- 
 2.52.0
 
