@@ -1,92 +1,58 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.171
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=62.149.158.132
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794501004;
-	b=nox+Z2kIiv5ZIoiOYnLSIL2Ivt4lAc3Vn0eF6ZcBh+JeSwGzq+N4MT6Nf85EOk5mvOsC
-	 SZjOgqlNppNQnQwFS6STsOfuH0k+XoEWYAPJ3+g9OcRCtyRvoG7gAJTE3ssO/WM28SbQs
-	 QkBztKZx8PuMyvBb+TN9XiBVKV4BGpHJjGmLnW2gf7EtBaOC+d04zdyzgVYxKZxpF+U88
-	 fYR+9fn9nB9aRuEFimpI0S1ymn5MNhf3//Fn/+kz8IKmHND0qsZ5jZwZ2mX0K4ulvNqek
-	 HksmFDy5TOFCZoQiWhD49CKJvq9J5+67QwfTQwyhzqMliQe0d/Wu/n0uJV9ijTgwS4w==
+	t=1794501742;
+	b=n0MHUvzrUWS5qPFGn+RBraU3py6Qr6+D6NaTjJGIRymYgATZ4aQgt3+ZB6PwJEk/D7vo
+	 lINSiNKHj4N/k+hzUbHlNzB71uVuj1r+UTzuQ+IAoZ8b41JFrz7ubqGWaocvOeWOQkXLm
+	 MkvHB8YU4swGhUI1pzX4qL9iLFFWc3K2GaTKW3B4qink29m9kHFQdzy+BzUY9YmGpypHx
+	 fnEAAQMYyf+2wqOvh8JLHMD+EC4oGCB+yU/JBF65tveQ8MpZHSRO9ZCo8uP1aCNmvO7S8
+	 rQtgYYzjySd9vck9GxI3IjMfleofBBQxW6HyQ82IUKsfD8pnU7w0Lqs+gfNlAatStig==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794501004;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=nIeidz39YEWLTsdrWkspKgvwARrIKlL4u59uZHie4Bk=;
-	b=dtyvYZjSDz8V3FHolJhhiKtYcrAlJoym6+v5dk2BUVLY50Z4R6JBycf4RiQgPSb+4jbb
-	 iecPkSM4oDwjCG/TFEdcPAuSmjsUhT/ShMk+fyhxT4SKNe1srxRO1Zq/rjquPCYr/AXTO
-	 IdlGMBowU95QXhu8ypohHGk+j3wxdVsTNMqi1xp10tqD7CLivNBE319q2l1kt5CT2d/zo
-	 SYWw3iUcCQFqWY5ocLFOL1GdaEbuUf32WMqJHrsB5l7wFyBMZq5LBTxDUZXWmHx26Hvwo
-	 QkLqjMent2e04XD7pIyBhdSYt6/GTkukckjlL3kdo/1s7aVnWUjNrxQqWtbydTC/0sg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794501742;
+	h=DMARC-Filter:Received:DKIM-Signature:From:To:Cc:Subject:Date:
+	 Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding:
+	 X-CMAE-Envelope;
+	bh=m9QujdoC5KR1MfIicpzuxpuwTbjNtNXun3FTjcqzIvI=;
+	b=0NE+PZPdsMC4erPkBGG9Fy4wZITKnXZxNGQ+7gjA5mqnhFCHpn98Nbzf24mDJeAEIIJj
+	 KiuPyKbwQoZ5Xr5wL1WEXtaTZhdKp4TzhHNqoen3Vow11scQoHoS3+1UxXKh1v85eIZFp
+	 SHERVwekuwonixmNjfhd7ZFNaidG9vBAwZV0Z960KwHks18fGJK7jeEH0MlWORhHFba/A
+	 iZF4DfkK3iq2nBmsEWd4Ei+7glhc71wpCe07BAxmTA9Qa8KDwOEhBOQBXKquWrmN1gYZR
+	 DmWVt+moyGBcKNVJweaRuJdfsTJCSIyJ4oX1hMdNfdiqkC4klZMyV4dpE9Z6TZ+Oeig==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=uGbbynci;
-	arc=none smtp.remote-ip=74.125.82.171
-Received: from mail-dy1-f171.google.com (mail-dy1-f171.google.com [74.125.82.171])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=pass header.from=benettiengineering.com;
+	spf=pass smtp.mailfrom=benettiengineering.com;
+	dkim=pass header.d=aruba.it header.i=@aruba.it header.a=rsa-sha256 header.s=a1 header.b=KB5Yipi7;
+	arc=none smtp.remote-ip=62.149.158.132
+Received: from smtpcmd04132.aruba.it (smtpcmd04132.aruba.it [62.149.158.132])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 67F96606A323
-	for <linux-nfs@vger.kernel.org>; Thu, 12 Nov 2026 16:30:04 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 67F96606A323
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0CB90606A332
+	for <linux-nfs@vger.kernel.org>; Thu, 12 Nov 2026 16:42:20 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 0CB90606A332
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=benettiengineering.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=benettiengineering.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=uGbbynci
-Received: by mail-dy1-f171.google.com with SMTP id 5a478bee46e88-36e99cf7bb3so76642eec.0
-        for <linux-nfs@vger.kernel.org>; Thu, 12 Nov 2026 08:30:04 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1794501003; x=1795105803; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=nIeidz39YEWLTsdrWkspKgvwARrIKlL4u59uZHie4Bk=;
-        b=uGbbyncilLtXMuA7FCuPCR2hXppaswn/eKnx6cVUI+wGxmWGn8qPfnoLJe7tncnZsN
-         8/fFr0+2GjHUh4NWOy0T4/pdfJqH/+SWX+jM0hq0kPk3HaWc2t70PKIvoDGRjmt40SNF
-         n8kb587+GDI0TKNmyP/ByOQowRvXIOyn30WWG2L+800frxfW/C1AzGxu4njCKRO95GiP
-         8cHkBFEwnwX7est4qrXSFoJbwOQlW7fW4dacKYeRhirSU3U7Eiy0de/siUv29gzpPNJE
-         bkLb43Upk3tuuLaG4vo34skJI/wYST76rXLBNdBo+LkQLdPYsPTEv/CGXS8qfMRaRhrG
-         VFJw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794501003; x=1795105803;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=nIeidz39YEWLTsdrWkspKgvwARrIKlL4u59uZHie4Bk=;
-        b=uJrr17Ny5NoEtU4bh9iKbKF5adTgL7iwvXI0m9+e4vhOESormT2QjEg2GcXFBaLjSZ
-         ybaSUVQkUtdvXepoz1XLpUCy6jHlqowYuk0fMa5xKk7d8hrAGntMtSoRT6R+qhNLbPcR
-         7mJjiPQyyliHbjWxkb0AvmqN8TvEzlywWOPSnl+cSWJ34yLDUBKQiMEhB6K4Pi0Bhx+E
-         mgcjq6U8Xv201Sw4VXfDSBhNknNW8jz6KKkkxk7l2ocSe/b242quEWirizUbfMaLL7iW
-         qJTja6+PwlelcVdRPLi6LUd5TNJcuf8WoFgYa2YcNCW137OshZHCsrZIFl0myD06XwP6
-         IYbg==
-X-Forwarded-Encrypted: i=1; AL+hErHVXrjCdkLv6yR5uiwBg3ODd9a9F5QH9lG6Zzen9dyybFCt2LWZN579wkVknkA1DXCJV/0pEWwdzng=@vger.kernel.org
-X-Gm-Message-State: APuU4Z8cGheXk2cgMKxhwZt/oCK2/X1fTTFOjxNjgGLjzpSMozJbhdSo
-	PEYCf1HG5B06LqVKVrmfumCAuXaualjvvVd5wQVnN6zMrxxNcuxRdvIS
-X-Gm-Gg: AYBFou19eTmPetuhQvABahCkZZ1QtUF0S1aRMQTTZNo50wpdTX6YAhuP6OYSMAG4J1M
-	3CCYL8RBjBeL9o5wPo6s3apONv/d58A6Z6QAg/JatVzvDp8p7ZnL52TonPhbruy1CvE5fGmBx8W
-	gDL7WsZ66buwY9tyVfRT+Hr+PDu5M2T8XM+06jYSF+/leVclDaYlxb+QgxgxIHqK2M+ga3RNr/d
-	lyBv/6cpooWv7fBvLtExO30D5tcoAqM7KWS5vafzAunfhrjGHJ2p1o5sovGWDM/OHyU9Cr9MCRs
-	EkdL/uKYcdj2obyu+GY9tMFyKIKUxzuqboR+oZi/TiyAlhPtMvrh5s+V1Tlz7RHhVhvizAwUCHM
-	HXT0KXTGHw15O6GXEFYek2qrNOSJeki687aDyTUv1nYICQZwf1Bc0ylN3xRU/z4fnqE5yDXOuPS
-	K0P9PWNo7B0ZPaz3SqJzqNqVvnP66h5xPsRjoIpAXVJ/AxJSHxkxrI1ted8vkUnmaIX/ipuqj2V
-	VNSi0tL2hq9B/7j1hxAgEFS0soMFErYWx2NRQR91cZTAfOwoE+5Si24j/hXPPfpuNjXaFdsVql7
-	cuq+DjRkKmZvikP3f9k5nuO6s58=
-X-Received: by 2002:a05:7301:4184:b0:36c:ec0:23ef with SMTP id 5a478bee46e88-3768617340amr8581887eec.16.1794501003121;
-        Thu, 12 Nov 2026 08:30:03 -0800 (PST)
-Received: from ubuntu.. ([2405:201:8026:213e:d30:9c98:e9c8:b461])
-        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-3792003aefasm1209418eec.0.2026.11.12.08.29.58
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 12 Nov 2026 08:30:02 -0800 (PST)
-From: mdshahid03@gmail.com
-To: trondmy@kernel.org
-Cc: anna@kernel.org,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Mohammad Shahid <mdshahid03@gmail.com>
-Subject: [PATCH v2] NFS: idmap: handle zero return from nfs_idmap_get_key()
-Date: Thu, 12 Nov 2026 21:59:38 +0530
-Message-ID: <20261112162938.14329-1-mdshahid03@gmail.com>
-X-Mailer: git-send-email 2.43.0
+	dkim=pass (2048-bit key, unprotected) header.d=aruba.it header.i=@aruba.it header.a=rsa-sha256 header.s=a1 header.b=KB5Yipi7
+Received: from localhost.localdomain ([151.95.84.63])
+	by Aruba SMTP with ESMTPSA
+	id RXsJx5dbJtleFRXsJx8AHQ; Thu, 12 Nov 2026 17:42:11 +0100
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=aruba.it; s=a1;
+	t=1794501733; bh=4lxDmo0xyavbG2h0SbO+zZvjqkYy8Ik5nzQrsXIJDdc=;
+	h=From:To:Subject:Date:MIME-Version;
+	b=KB5Yipi7CKiAJoT5957Vm8yQOzfonBsojZQJT0uydPdAzs/4hoSpKFazJ+VkX9+LC
+	 VGwu1rdWPf51D7GD2J6lg5H/46qyn2NMR5wKohGdArxyQRY6RLJskOceLGgsur1cMa
+	 ZeeiCWCVTqVip1A72YRJEVRsXX2PdRr+UKmXNGwbPs/Xp1fh6JSpgR1S6sCT13IUGf
+	 zT77FNfZLwVIgLgNksaS9MFE2HuXVrlF0H84JHy5Gjw1ZbvhJGMnRmdr7wj4lSEmr/
+	 OU+QHkUdpo7WXZLVVvN5348TnRHDIe7ID5NAvBSTAScGzT6m6PiIkIqLNgntwzLa7j
+	 JgwdQkRPhMSMw==
+From: Giulio Benetti <giulio.benetti@benettiengineering.com>
+To: linux-nfs@vger.kernel.org
+Cc: Giulio Benetti <giulio.benetti@benettiengineering.com>,
+	"Claude Opus 5.5" <noreply@anthropic.com>
+Subject: [PATCH] gssd: fix build failure with musl libc
+Date: Thu, 12 Nov 2026 17:42:10 +0100
+Message-ID: <20261112164210.369677-1-giulio.benetti@benettiengineering.com>
+X-Mailer: git-send-email 2.47.3
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -97,33 +63,225 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-CMAE-Envelope: MS4xfOASsFMvN4jiw048eEJo7xqwuVpKIvOw/SHZd6wkUroKwl3sLEcDDOvq/9XCb05v67YxxXINhIGejH8ltjjPZSuDWKrHTO/CJfwolrYm6IKIc4fzmRwC
+ E2dEo1KnCap1jWqlLpAFt93e9zZ6b2+J87+BpDcjc0smod1TFiuyjBgMobwhV3kPVBgBwpbr0Ibgr3Vg/ZxqZe8X+jD/u0FePc85HCUdrGYLHuFkweeur5O0
+ CX5re64Ott9LAv8j0GQsNLKkjxH2mnjUOJmS163lZrB9OGs6UrjedaSVRkSZBJJcxay7/Tm5RnxJKB4MSE6BzQ==
 
-From: Mohammad Shahid <mdshahid03@gmail.com>
+On musl pthread_t is defined as 'struct __pthread *', so printing it
+with '%lx' triggers -Werror=format errors:
 
-nfs_idmap_get_key() can return zero, but nfs_idmap_lookup_name()
-treats only negative values as errors.
+gssd.c:546:78: error: format '%lx' expects argument of type 'long unsigned int', but argument 3 has type 'pthread_t' {aka 'struct __pthread *'} [-Werror=format=]
 
-Treat zero as an error to avoid reporting an unsuccessful lookup
-as successful.
+Let's explicitly cast pthread_t to unsigned long wherever it's printed
+with '%lx'. This keeps the output unchanged on glibc, where pthread_t is
+already an unsigned long.
 
-Signed-off-by: Mohammad Shahid <mdshahid03@gmail.com>
+Upstream: TODO
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Signed-off-by: Giulio Benetti <giulio.benetti@benettiengineering.com>
 ---
- fs/nfs/nfs4idmap.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ utils/gssd/gssd.c      | 14 +++++++-------
+ utils/gssd/gssd_proc.c | 18 +++++++++---------
+ utils/gssd/krb5_util.c | 10 +++++-----
+ 3 files changed, 21 insertions(+), 21 deletions(-)
 
-diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-index 06b193722660..8f5f0abf804d 100644
---- a/fs/nfs/nfs4idmap.c
-+++ b/fs/nfs/nfs4idmap.c
-@@ -353,7 +353,7 @@ static ssize_t nfs_idmap_lookup_name(__u32 id, const char *type, char *buf,
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index 022f0a89..5203d0a7 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -544,7 +544,7 @@ cleanup_active_thread_list(void)
+ 		default:
+ 			/* EDEADLK, EINVAL, and ESRCH... none of which should happen! */
+ 			printerr(0, "watchdog: attempt to join thread id 0x%lx returned %d (%s)!\n",
+-					info->tid, err, strerror(err));
++					(unsigned long)info->tid, err, strerror(err));
+ 			break;
+ 		}
+ 	}
+@@ -554,12 +554,12 @@ cleanup_active_thread_list(void)
+ 			switch (err) {
+ 			case EBUSY:
+ 				printerr(0, "watchdog: thread id 0x%lx still busy on shutdown\n",
+-					 info->tid);
++					 (unsigned long)info->tid);
+ 				/* fall through */
+ 			default:
+ 				/* EDEADLK, EINVAL, and ESRCH... none of which should happen! */
+ 				printerr(0, "watchdog: attempt to join thread id 0x%lx returned %d (%s)!\n",
+-						info->tid, err, strerror(err));
++						(unsigned long)info->tid, err, strerror(err));
+ 				/* fall through */
+ 			case 0:
+ 				saveprev = info->list.tqe_prev;
+@@ -611,7 +611,7 @@ scan_active_thread_list(void)
+ 			 */
+ 			if (tret == PTHREAD_CANCELED)
+ 				printerr(2, "watchdog: thread id 0x%lx cancelled successfully\n",
+-						info->tid);
++						(unsigned long)info->tid);
+ 			saveprev = info->list.tqe_prev;
+ 			TAILQ_REMOVE(&active_thread_list, info, list);
+ 			free(info);
+@@ -628,14 +628,14 @@ scan_active_thread_list(void)
+ 			if (now.tv_sec >= info->timeout.tv_sec) {
+ 				if (cancel_timed_out_upcalls && !(info->flags & UPCALL_THREAD_CANCELED)) {
+ 					printerr(0, "watchdog: thread id 0x%lx timed out\n",
+-							info->tid);
++							(unsigned long)info->tid);
+ 					pthread_cancel(info->tid);
+ 					info->flags |= (UPCALL_THREAD_CANCELED|UPCALL_THREAD_WARNED);
+ 					do_error_downcall(info->fd, info->uid, -ETIMEDOUT);
+ 				} else {
+ 					if (!(info->flags & UPCALL_THREAD_WARNED)) {
+ 						printerr(0, "watchdog: thread id 0x%lx running for %lld seconds\n",
+-								info->tid,
++								(unsigned long)info->tid,
+ 								(long long int)(now.tv_sec - info->timeout.tv_sec + upcall_timeout));
+ 						info->flags |= UPCALL_THREAD_WARNED;
+ 					}
+@@ -656,7 +656,7 @@ scan_active_thread_list(void)
+ 		default:
+ 			/* EDEADLK, EINVAL, and ESRCH... none of which should happen! */
+ 			printerr(0, "watchdog: attempt to join thread id 0x%lx returned %d (%s)!\n",
+-					info->tid, err, strerror(err));
++					(unsigned long)info->tid, err, strerror(err));
+ 			break;
+ 		}
+ 	}
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index d59c8a19..6bf5f2b5 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -186,7 +186,7 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
  
- 	id_len = nfs_map_numeric_to_string(id, id_str, sizeof(id_str));
- 	ret = nfs_idmap_get_key(id_str, id_len, type, buf, buflen, idmap);
--	if (ret < 0)
-+	if (ret <= 0)
- 		return -EINVAL;
- 	return ret;
+ 	if (get_verbosity() > 1)
+ 		printerr(2, "do_downcall(0x%lx): lifetime_rec=%s acceptor=%.*s\n",
+-			tid, sec2time(lifetime_rec), (int)acceptor->length, (char *)acceptor->value);
++			(unsigned long)tid, sec2time(lifetime_rec), (int)acceptor->length, (char *)acceptor->value);
+ 	buf_size = sizeof(uid) + sizeof(timeout) + sizeof(pd->pd_seq_win) +
+ 		sizeof(pd->pd_ctx_hndl.length) + pd->pd_ctx_hndl.length +
+ 		sizeof(context_token->length) + context_token->length +
+@@ -212,7 +212,7 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+ 	return;
+ out_err:
+ 	free(buf);
+-	printerr(1, "do_downcall(0x%lx): Failed to write downcall!\n", tid);
++	printerr(1, "do_downcall(0x%lx): Failed to write downcall!\n", (unsigned long)tid);
+ 	return;
  }
+ 
+@@ -225,7 +225,7 @@ do_error_downcall(int k5_fd, uid_t uid, int err)
+ 	int	zero = 0;
+ 	pthread_t tid = pthread_self();
+ 
+-	printerr(2, "do_error_downcall(0x%lx): uid %d err %d\n", tid, uid, err);
++	printerr(2, "do_error_downcall(0x%lx): uid %d err %d\n", (unsigned long)tid, uid, err);
+ 
+ 	if (WRITE_BYTES(&p, end, uid)) goto out_err;
+ 	if (WRITE_BYTES(&p, end, timeout)) goto out_err;
+@@ -388,7 +388,7 @@ create_auth_rpc_client(struct clnt_info *clp,
+ 	/* create an rpc connection to the nfs server */
+ 
+ 	printerr(3, "create_auth_rpc_client(0x%lx): creating %s client for server %s\n", 
+-		tid, clp->protocol, clp->servername);
++		(unsigned long)tid, clp->protocol, clp->servername);
+ 
+ 	protocol = IPPROTO_TCP;
+ 	if ((strcmp(clp->protocol, "udp")) == 0)
+@@ -432,7 +432,7 @@ create_auth_rpc_client(struct clnt_info *clp,
+ 		tgtname = clp->servicename;
+ 
+ 	printerr(3, "create_auth_rpc_client(0x%lx): creating context with server %s\n", 
+-		tid, tgtname);
++		(unsigned long)tid, tgtname);
+ #ifdef HAVE_TIRPC_GSS_SECCREATE
+ 	memset(&req, 0, sizeof(req));
+ 	req.my_cred = sec.cred;
+@@ -583,7 +583,7 @@ krb5_not_machine_creds(struct clnt_info *clp, uid_t uid, char *tgtname,
+ 	pthread_t tid = pthread_self();
+ 
+ 	printerr(2, "krb5_not_machine_creds(0x%lx): uid %d tgtname %s\n", 
+-		tid, uid, tgtname);
++		(unsigned long)tid, uid, tgtname);
+ 
+ 	*chg_err = change_identity(uid);
+ 	if (*chg_err) {
+@@ -632,7 +632,7 @@ krb5_use_machine_creds(struct clnt_info *clp, uid_t uid,
+ 	pthread_t tid = pthread_self();
+ 
+ 	printerr(2, "krb5_use_machine_creds(0x%lx): uid %d tgtname %s\n", 
+-		tid, uid, tgtname);
++		(unsigned long)tid, uid, tgtname);
+ 
+ 	do {
+ 		gssd_refresh_krb5_machine_credential(clp->servername,
+@@ -976,7 +976,7 @@ start_upcall_thread(void (*func)(struct clnt_upcall_info *), struct clnt_upcall_
+ 		return ret;
+ 	}
+ 	printerr(2, "start_upcall_thread(0x%lx): created thread id 0x%lx\n", 
+-		tid, th);
++		(unsigned long)tid, (unsigned long)th);
+ 
+ 	tinfo->tid = th;
+ 	pthread_mutex_lock(&active_thread_list_lock);
+@@ -1041,7 +1041,7 @@ handle_gssd_upcall(struct clnt_info *clp)
+ 	}
+ 	lbuf[lbuflen-1] = 0;
+ 
+-	printerr(2, "\n%s(0x%lx): '%s' (%s)\n", __func__, tid,
++	printerr(2, "\n%s(0x%lx): '%s' (%s)\n", __func__, (unsigned long)tid,
+ 		 lbuf, clp->relpath);
+ 
+ 	for (p = strtok(lbuf, " "); p; p = strtok(NULL, " ")) {
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 7ad67131..0e8f889b 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -435,7 +435,7 @@ gssd_get_single_krb5_cred(krb5_context context,
+ 	pthread_mutex_lock(&ple_lock);
+ 	if (ple->ccname && ple->endtime > now && !nocache && !force_renew) {
+ 		printerr(3, "%s(0x%lx): Credentials in CC '%s' are good until %s",
+-			 __func__, tid, ple->ccname, ctime((time_t *)&ple->endtime));
++			 __func__, (unsigned long)tid, ple->ccname, ctime((time_t *)&ple->endtime));
+ 		code = 0;
+ 		pthread_mutex_unlock(&ple_lock);
+ 		goto out;
+@@ -495,7 +495,7 @@ gssd_get_single_krb5_cred(krb5_context context,
+ 
+ 	code = 0;
+ 	printerr(2, "%s(0x%lx): principal '%s' ccache:'%s'\n",
+-		__func__, tid, pname, ple->ccname);
++		__func__, (unsigned long)tid, pname, ple->ccname);
+   out:
+ 	if (opts)
+ 		krb5_get_init_creds_opt_free(context, opts);
+@@ -631,7 +631,7 @@ get_full_hostname(const char *inhost, char *outhost, int outhostlen)
+ 	retval = getaddrinfo(inhost, NULL, &hints, &addrs);
+ 	if (retval) {
+ 		printerr(1, "%s(0x%lx): getaddrinfo(%s) failed: %s\n",
+-			 __func__, tid, inhost, gai_strerror(retval));
++			 __func__, (unsigned long)tid, inhost, gai_strerror(retval));
+ 		goto out;
+ 	}
+ 	strncpy(outhost, addrs->ai_canonname, outhostlen);
+@@ -642,7 +642,7 @@ get_full_hostname(const char *inhost, char *outhost, int outhostlen)
+ 
+ 	if (get_verbosity() && strcmp(inhost, outhost))
+ 		printerr(1, "%s(0x%0lx): inhost '%s' different than outhost '%s'\n", 
+-			 __func__, tid, inhost, outhost);
++			 __func__, (unsigned long)tid, inhost, outhost);
+ 
+ 	retval = 0;
+ out:
+@@ -990,7 +990,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt,
+ 					tried_upper = 1;
+ 				}
+ 			} else {
+-				printerr(2, "find_keytab_entry(0x%lx): Success getting keytab entry for '%s'\n",tid, spn);
++				printerr(2, "find_keytab_entry(0x%lx): Success getting keytab entry for '%s'\n", (unsigned long)tid, spn);
+ 				retval = 0;
+ 				goto out;
+ 			}
 -- 
-2.43.0
+2.47.3
 
