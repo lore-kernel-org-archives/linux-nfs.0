@@ -1,88 +1,69 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=114.111.35.228
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794456214;
-	b=Mw2vUcXRkoGQRBnc/s2QyCrQ6bJLqrgghhMRQWAlV7gnXm2+4mY+127WhfgEk8sYAXAD
-	 dFl+Gdgnsl4IvzkfEzAz7FMkghJRtsciv+YftIycPpCreOCEv9HSlqrEwz+adZefUGKnX
-	 l3ptRQHMpkNRHhCprGep7HdjjgprFfV6YnbzYrV/xH3f2zv8er4BYygJcrpYzQDwGySSK
-	 xer3/VJVrLhH4KSerswhij849CXnUcSUyfawhOdq3QF7D3+RgYp3PYWS01Yq/XNF7DqJk
-	 RB3hCtuCJWaQMVfT6YgbLUgsNIChEBhrGQlTP2bWsfz7KMImlk+6Y41e/YbUxIk9Few==
+	t=1794460883;
+	b=RN8IEab2k0CUMZRK4iEctb47msW/Li0tCVpTNIqmWc4VRkap8yYMMXXf2bmIT/N2IDJv
+	 866Zq/x2oPm3VymdlRUr6TQp85Q5GggtWskYGTL88mQqCQ+K+qmatkeqni8BExda0MKZ4
+	 bd7E+Pvm56W9pFLZk20SLpVs9dodmfFHhWIfdCPJxdZEiU6fQNEaa9h/QIbVoAPZV/yAc
+	 DqfhHAAAie5Oxtqe9UOK3GuE/ZSIQd5OiaQf+D8BYq45bYSG2o52kj2xhqL/sTmdir1A3
+	 PS47HgxZxkCfiOjxxfg0uj/3XXQqJjsC+vjlzWtlqoceheTuJ+OhDV0pJXcjzUD1+5Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794456214;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=knxVZaWGbCIJIbZzfOnY/wGHpwl82+U5Asy2wWcfQ2c=;
-	b=ZtTW8UHRHAug06Inp1O4KTHuM7h5Qb4J8arhng0NymfN2Jc/x22aUps+hJtCLeiCJVJN
-	 ofBfjJZxOcmV2Vh+CVQZBEzkHVgEKSd0Y2plQgSGHXyvkTj3NAYK9seBFklpDWXXSP46R
-	 tTIWBWxgKNtIczD+LLOKZKk9k3Ip7rJuOrjOPWJp66/sjK9hmQQWK3grRoqYTzl3zMo22
-	 xymFuRoY4oRv2G/fsvtFGtEgmgtkUSfH0IxKeyZM9nvpKZ+a9CYgMeaxm25kQpgrs+JBr
-	 STlD+VLfb8omYOqRaLJZeoAqYtFq0Dlqa4EER9w+3tc+uWVaISgWT+3nvpLj1fspZXg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794460883;
+	h=DMARC-Filter:X-Originating-IP:Received:DKIM-Signature:X-Session-ID:
+	 X-Originating-IP:X-Works-Send-Opt:X-Works-Smtp-Source:Received:From:
+	 To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=YQILBZu0VHafbb/PEwV9bvCOruIDFvJhbtzsSaHgXAM=;
+	b=p16NZIRhQ7B+tnyEoKo+o3OuPCfmxWFwwYtzeWxpXrlP0dctiSRbKard05lBeuApgm6H
+	 6j4Mvv9qK2dbzPg5CkbWOaAogtDJgPoyhPje1qbuIDkJ/Ey2Pl6s9s4OfVcCSkJvf1W3v
+	 BV/nTpI/5ICE8bUhExxKDybz94KgYX9uHqKL37SpPl6pNGag6uOmZAqMae1ZVuyEMey1J
+	 AsR1Mh1l3oiFm0DrHfEwDSEyHfoIwmUkLm7GahphMyqvA6y+0m21XFj2MqvSYxB9Mc3EE
+	 sPnr1QGN8xrlO7HNDQffL/dv7gqmkWXk/eWNUXtIY1XRchmQGlsxHNwrKH55fBXejoQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=S8x9LEqP;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=naver.com;
+	spf=pass smtp.mailfrom=naver.com;
+	dkim=pass header.d=naver.com header.i=@naver.com header.a=rsa-sha256 header.s=s20171208 header.b=KSHaodhj;
+	arc=none smtp.remote-ip=114.111.35.228
+Received: from cvsmtppost04.nm.naver.com (cvsmtppost04.nm.naver.com [114.111.35.228])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id 25516606C645;
-	Thu, 12 Nov 2026 04:03:34 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC3E3606A321
+	for <linux-nfs@vger.kernel.org>; Thu, 12 Nov 2026 05:21:21 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org EC3E3606A321
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=naver.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=naver.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=S8x9LEqP
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 55F5B1F00A07;
-	Thu, 12 Nov 2026 04:03:33 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794456214;
-	bh=knxVZaWGbCIJIbZzfOnY/wGHpwl82+U5Asy2wWcfQ2c=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=S8x9LEqP9BPgwxvCcBpHn9fFtNUdXY+zAaDhMR8K4rqsZq37QS1hndAn2m5Cw9YPZ
-	 +3Ay4EkrNg8MQ4cMfdgvSl/kzgqkeyNgH0ZHM7XKeZnzIP1SjKMQ95Ymv7kd3m4SaZ
-	 p68S9FO2a/4ut0HEF1BlZCOG+bZQWrKxgJ2YpdnP+9FQwF9QOoGGotexS4Rvxm8ilN
-	 YrOx6/Y66j/ZRdJA11o2X/RI0ngsq2gII81x52lnTkRIKHFHme/EWjIt0zlCeAHrej
-	 41OnmUAgE2FLF/XH0Di82Bq+7J8iQibWV5/uLH37fTR1aTybi60KBB/msI1Bmmc511
-	 YHRKQBz6FhOdA==
-From: Jarkko Sakkinen <jarkko@kernel.org>
-To: David Howells <dhowells@redhat.com>
-Cc: Jarkko Sakkinen <jarkko@kernel.org>,
-	keyrings@vger.kernel.org,
-	linux-afs@lists.infradead.org,
-	linux-cifs@vger.kernel.org,
-	linux-integrity@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	linux-s390@vger.kernel.org,
-	linux-security-module@vger.kernel.org,
-	netdev@vger.kernel.org,
-	Alexander Gordeev <agordeev@linux.ibm.com>,
-	Anna Schumaker <anna@kernel.org>,
-	Bharath SM <bharathsm@microsoft.com>,
-	Christian Borntraeger <borntraeger@linux.ibm.com>,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Biggers <ebiggers@kernel.org>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Heiko Carstens <hca@linux.ibm.com>,
-	Jakub Kicinski <kuba@kernel.org>,
-	James Bottomley <James.Bottomley@HansenPartnership.com>,
-	James Morris <jmorris@namei.org>,
-	Marc Dionne <marc.dionne@auristor.com>,
-	Mimi Zohar <zohar@linux.ibm.com>,
-	Namjae Jeon <linkinjeon@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>,
-	Paul Moore <paul@paul-moore.com>,
-	Paulo Alcantara <pc@manguebit.org>,
-	Ronnie Sahlberg <ronniesahlberg@gmail.com>,
-	"Serge E. Hallyn" <serge@hallyn.com>,
-	Shyam Prasad N <sprasad@microsoft.com>,
-	Simon Horman <horms@kernel.org>,
-	Sumit Garg <sumit.garg@kernel.org>,
-	Sven Schnelle <svens@linux.ibm.com>,
-	Tom Talpey <tom@talpey.com>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Vasily Gorbik <gor@linux.ibm.com>
-Subject: [PATCH v6 12/13] KEYS: Remove key_type_dead
-Date: Thu, 12 Nov 2026 06:02:41 +0200
-Message-ID: <20261112040242.247168-13-jarkko@kernel.org>
-X-Mailer: git-send-email 2.47.3
-In-Reply-To: <20261112040242.247168-1-jarkko@kernel.org>
-References: <20261112040242.247168-1-jarkko@kernel.org>
+	dkim=pass (2048-bit key, unprotected) header.d=naver.com header.i=@naver.com header.a=rsa-sha256 header.s=s20171208 header.b=KSHaodhj
+Received: from nv1m-hmac-real-22 ([10.174.201.121])
+  by cvsmtppost04.nm.naver.com with ESMTP id QK+B9BGtTL2yYg8UEzhgyw
+  for <linux-nfs@vger.kernel.org>;
+  Thu, 12 Nov 2026 05:21:13 -0000
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=naver.com; s=s20171208;
+	t=1794460873; bh=xboaKLdhNKtTVxezqECN7DIxSaQRxHU8Z6jdWDtqAIM=;
+	h=From:To:Subject:Date:Message-ID:From:Subject:Feedback-ID:
+	 X-Works-Security;
+	b=KSHaodhjdgihkA79nj2IhwoAFm1zMwVcQnxGj/u75t5thekqoETzA6mAhNZNFHR4M
+	 If/yZD4IibmmUvHWnmW5K8hZ63hx8CmKqtNk8wpSw1WiPAezkzHHJXg948OkfjX2xI
+	 rXvQnyCgacqQKRqMxHJ6ze9E6YPTXEuzJ+sq/a7bAtYj4np7uJUtCHpWHUN2w7IePb
+	 0L6iehGrrlhuz1aNWqJmpmuhedEwCpc8w9u1MtTAJzMHNZQxvWleJhOEPkM3VWR4QU
+	 yzW6ZM9oZL3Ki9JOHLr6xboUxzKG3Kuq7vUBATT2AcRUt/Kw3W7KeBET7npN3tws+y
+	 HptElgjStAk7g==
+X-Session-ID: QvtsGinwSyqTmVBfuZdBAw
+X-Works-Send-Opt: C9+CWNFNjHmqjAIYFrkOjAuZaAUwaAt9FxJYEu9YKBmm
+X-Works-Smtp-Source: sdnZFAtlFqJZ+HmqFqt/+6E=
+Received: from localhost.localdomain ([123.215.20.15])
+  by cvnsmtp009.nm.naver.com with ESMTP id QvtsGinwSyqTmVBfuZdBAw
+  for <multiple recipients>
+  (version=TLSv1.3 cipher=TLS_CHACHA20_POLY1305_SHA256);
+  Thu, 12 Nov 2026 05:21:13 -0000
+From: Minsu Kim <gsnake7@naver.com>
+To: Steve Dickson <steved@redhat.com>
+Cc: linux-nfs@vger.kernel.org,
+	bobtobabz@gmail.com
+Subject: [PATCH] rpc.svcgssd: stop using raw pointers as continuation handles
+Date: Thu, 12 Nov 2026 14:20:53 +0900
+Message-ID: <20261112052054.29215-1-gsnake7@naver.com>
+X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -94,362 +75,279 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-unregister_key_type() no longer needs to retype live keys as keys and
-restrictions pin the module while they reference it.
+rpc.svcgssd currently serializes gss_ctx_id_t itself as the continuation
+handle when gss_accept_sec_context() returns GSS_S_CONTINUE_NEEDED. A
+client then sends that value back in a CONTINUE_INIT request, where the
+daemon converts it directly into a live GSS context.
 
-Remove key_type_dead and associated code from the keyring GC.
+This exposes a daemon address and trusts a client-controlled value as a
+live GSS context pointer. An unauthenticated NFS client can replace or
+replay the handle before rpc.svcgssd passes it to the GSS implementation.
 
-Signed-off-by: Jarkko Sakkinen <jarkko@kernel.org>
+Keep pending contexts in a daemon-owned search tree. Return a random
+64-bit ID from /dev/urandom instead of the context pointer. Take the
+matching entry before processing a continuation, return the same ID if
+negotiation needs another step, and reject unknown IDs with
+GSS_S_NO_CONTEXT. Discard the saved context if writing its reply fails.
+
+The behavior was introduced in commit 62c4197d5b41 and first shipped in
+nfs-utils 1.0.8-rc1. It remains present in nfs-utils 3.1.1.
+rpc.svcgssd is built only when --enable-svcgss is selected, which is
+disabled by default.
+
+On an unpatched x86_64 build, an INIT request that required another GSS
+step returned an 8-byte value matching the in-process gss_ctx_id_t
+address. Modified and stale continuation handles caused invalid memory
+accesses and daemon termination.
+
+With this patch, an unknown ID and a consumed ID both returned
+GSS_S_NO_CONTEXT, initial negotiations returned opaque 8-byte IDs, and
+63 outstanding negotiations produced 63 distinct IDs. I also completed
+an NFSv4.2 sec=krb5 mount with the patched daemon, which remained active
+throughout the tests. The reproducer and complete logs are available
+privately on request.
+
+The vulnerability research and validation were conducted by members of
+the Tobabz team as part of the Best of the Best 15th program.
+
+Fixes: 62c4197d5b41 ("Updates from Kevin Coffman at UMich")
+Assisted-by: LLM
+Signed-off-by: Minsu Kim <gsnake7@naver.com>
 ---
- security/keys/gc.c       | 136 ++-------------------------------------
- security/keys/internal.h |   4 --
- security/keys/key.c      |   9 +--
- security/keys/keyring.c  |  50 --------------
- 4 files changed, 9 insertions(+), 190 deletions(-)
+ utils/gssd/svcgssd_proc.c | 159 ++++++++++++++++++++++++++++++++++----
+ 1 file changed, 145 insertions(+), 14 deletions(-)
 
-diff --git a/security/keys/gc.c b/security/keys/gc.c
-index 7b2f32998f58..859f331549ce 100644
---- a/security/keys/gc.c
-+++ b/security/keys/gc.c
-@@ -42,22 +42,8 @@ static void key_gc_timer_func(struct timer_list *);
- static DEFINE_TIMER(key_gc_timer, key_gc_timer_func);
+diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
+index 7fecd1aa..81216c38 100644
+--- a/utils/gssd/svcgssd_proc.c
++++ b/utils/gssd/svcgssd_proc.c
+@@ -42,6 +42,11 @@
+ #include <rpc/rpc.h>
  
- static time64_t key_gc_next_run = TIME64_MAX;
--static struct key_type *key_gc_dead_keytype;
--
- static unsigned long key_gc_flags;
- #define KEY_GC_KEY_EXPIRED	0	/* A key expired and needs unlinking */
--#define KEY_GC_REAP_KEYTYPE	1	/* A keytype is being unregistered */
--#define KEY_GC_REAPING_KEYTYPE	2	/* Cleared when keytype reaped */
--
--
--/*
-- * Any key whose type gets unregistered will be re-typed to this if it can't be
-- * immediately unlinked.
-- */
--struct key_type key_type_dead = {
--	.name = ".dead",
--};
--
- /*
-  * Schedule a garbage collection run.
-  * - time precision isn't particularly important
-@@ -69,7 +55,7 @@ void key_schedule_gc(time64_t gc_at)
+ #include <pwd.h>
++#include <stdint.h>
++/* <search.h> and nfs_prot.h both define struct entry. */
++#define entry search_entry
++#include <search.h>
++#undef entry
+ #include <stdio.h>
+ #include <unistd.h>
+ #include <ctype.h>
+@@ -74,6 +79,109 @@ struct svc_cred {
+ 	gid_t	cr_groups[NGROUPS];
+ };
  
- 	kenter("%lld", gc_at - now);
++struct pending_context {
++	uint64_t id;
++	gss_ctx_id_t ctx;
++};
++
++static void *pending_contexts;
++
++static int
++pending_context_compare(const void *a, const void *b)
++{
++	const struct pending_context *pa = a;
++	const struct pending_context *pb = b;
++
++	return (pa->id > pb->id) - (pa->id < pb->id);
++}
++
++static struct pending_context *
++pending_context_find(uint64_t id)
++{
++	struct pending_context key = { .id = id };
++	void *result;
++
++	result = tfind(&key, &pending_contexts, pending_context_compare);
++	return result ? *(struct pending_context **)result : NULL;
++}
++
++static int
++pending_context_new_id(uint64_t *id)
++{
++	unsigned char *p = (unsigned char *)id;
++	size_t done = 0;
++	ssize_t len;
++	int fd;
++
++	fd = open("/dev/urandom", O_RDONLY);
++	if (fd < 0)
++		return -1;
++	while (done < sizeof(*id)) {
++		len = read(fd, p + done, sizeof(*id) - done);
++		if (len > 0) {
++			done += len;
++			continue;
++		}
++		if (len < 0 && errno == EINTR)
++			continue;
++		close(fd);
++		return -1;
++	}
++	close(fd);
++	return 0;
++}
++
++static struct pending_context *
++pending_context_take(uint64_t id)
++{
++	struct pending_context *pending = pending_context_find(id);
++
++	if (pending)
++		tdelete(pending, &pending_contexts, pending_context_compare);
++	return pending;
++}
++
++static struct pending_context *
++pending_context_save(struct pending_context *pending, gss_ctx_id_t *ctx)
++{
++	void *result;
++
++	if (!pending) {
++		pending = calloc(1, sizeof(*pending));
++		if (!pending)
++			return NULL;
++		do {
++			if (pending_context_new_id(&pending->id) != 0) {
++				free(pending);
++				return NULL;
++			}
++		} while (pending->id == 0 ||
++			 pending_context_find(pending->id));
++	}
++
++	result = tsearch(pending, &pending_contexts,
++			 pending_context_compare);
++	if (!result) {
++		free(pending);
++		return NULL;
++	}
++	pending->ctx = *ctx;
++	*ctx = GSS_C_NO_CONTEXT;
++	return pending;
++}
++
++static void
++pending_context_discard(struct pending_context *pending)
++{
++	OM_uint32 min_stat;
++
++	tdelete(pending, &pending_contexts, pending_context_compare);
++	if (pending->ctx != GSS_C_NO_CONTEXT)
++		gss_delete_sec_context(&min_stat, &pending->ctx,
++				       GSS_C_NO_BUFFER);
++	free(pending);
++}
++
+ static int
+ do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
+ 		gss_OID mech, gss_buffer_desc *context_token,
+@@ -337,11 +445,13 @@ handle_nullreq(char *cp) {
+ 	gss_ctx_id_t		ctx = GSS_C_NO_CONTEXT;
+ 	gss_name_t		client_name = NULL;
+ 	gss_OID			mech = GSS_C_NO_OID;
++	struct pending_context	*pending = NULL;
+ 	u_int32_t		maj_stat = GSS_S_FAILURE, min_stat = 0;
+ 	u_int32_t		ignore_min_stat;
+ 	struct svc_cred		cred;
+ 	int32_t			ctx_endtime;
+ 	char			*hostbased_name = NULL;
++	uint64_t		context_id;
  
--	if (gc_at <= now || test_bit(KEY_GC_REAP_KEYTYPE, &key_gc_flags)) {
-+	if (gc_at <= now) {
- 		kdebug("IMMEDIATE");
- 		queue_work(key_gc_wq, &key_gc_work);
- 	} else if (gc_at < key_gc_next_run) {
-@@ -113,36 +99,6 @@ static void key_gc_timer_func(struct timer_list *unused)
- 	key_schedule_gc_links();
- }
+ 	printerr(1, "handling null request\n");
  
--/*
-- * Reap keys of dead type.
-- *
-- * We use three flags to make sure we see three complete cycles of the garbage
-- * collector: the first to mark keys of that type as being dead, the second to
-- * collect dead links and the third to clean up the dead keys.  We have to be
-- * careful as there may already be a cycle in progress.
-- *
-- * The caller must be holding key_types_sem.
-- */
--void key_gc_keytype(struct key_type *ktype)
--{
--	kenter("%s", ktype->name);
--
--	key_gc_dead_keytype = ktype;
--	set_bit(KEY_GC_REAPING_KEYTYPE, &key_gc_flags);
--	smp_mb();
--	set_bit(KEY_GC_REAP_KEYTYPE, &key_gc_flags);
--
--	kdebug("schedule");
--	queue_work(key_gc_wq, &key_gc_work);
--
--	kdebug("sleep");
--	wait_on_bit(&key_gc_flags, KEY_GC_REAPING_KEYTYPE,
--		    TASK_UNINTERRUPTIBLE);
--
--	key_gc_dead_keytype = NULL;
--	kleave("");
--}
--
- /*
-  * Garbage collect a list of unreferenced, detached keys
-  */
-@@ -201,30 +157,20 @@ static noinline void key_gc_unused_keys(struct list_head *keys)
- static void key_garbage_collector(struct work_struct *work)
- {
- 	static LIST_HEAD(graveyard);
--	static u8 gc_state;		/* Internal persistent state */
-+	u8 gc_state = 0;
- #define KEY_GC_REAP_AGAIN	0x01	/* - Need another cycle */
- #define KEY_GC_REAPING_LINKS	0x02	/* - We need to reap links */
--#define KEY_GC_REAPING_DEAD_1	0x10	/* - We need to mark dead keys */
--#define KEY_GC_REAPING_DEAD_2	0x20	/* - We need to reap dead key links */
--#define KEY_GC_REAPING_DEAD_3	0x40	/* - We need to reap dead keys */
--#define KEY_GC_FOUND_DEAD_KEY	0x80	/* - We found at least one dead key */
- 
- 	struct rb_node *cursor;
- 	struct key *key;
- 	time64_t new_timer, limit, expiry;
- 
--	kenter("[%lx,%x]", key_gc_flags, gc_state);
-+	kenter("[%lx]", key_gc_flags);
- 
- 	limit = ktime_get_real_seconds();
- 
--	/* Work out what we're going to be doing in this pass */
--	gc_state &= KEY_GC_REAPING_DEAD_1 | KEY_GC_REAPING_DEAD_2;
--	gc_state <<= 1;
- 	if (test_and_clear_bit(KEY_GC_KEY_EXPIRED, &key_gc_flags))
- 		gc_state |= KEY_GC_REAPING_LINKS;
--
--	if (test_and_clear_bit(KEY_GC_REAP_KEYTYPE, &key_gc_flags))
--		gc_state |= KEY_GC_REAPING_DEAD_1;
- 	kdebug("new pass %x", gc_state);
- 
- 	new_timer = TIME64_MAX;
-@@ -246,18 +192,6 @@ static void key_garbage_collector(struct work_struct *work)
- 			goto found_unreferenced_key;
- 		}
- 
--		if (unlikely(gc_state & KEY_GC_REAPING_DEAD_1)) {
--			if (key->type == key_gc_dead_keytype) {
--				gc_state |= KEY_GC_FOUND_DEAD_KEY;
--				set_bit(KEY_FLAG_DEAD, &key->flags);
--				key->perm = 0;
--				goto skip_dead_key;
--			} else if (key->type == &key_type_keyring &&
--				   key->restrict_link) {
--				goto found_restricted_keyring;
--			}
--		}
--
- 		expiry = key->expiry;
- 		if (expiry != TIME64_MAX) {
- 			if (!(key->type->flags & KEY_TYPE_INSTANT_REAP))
-@@ -269,21 +203,10 @@ static void key_garbage_collector(struct work_struct *work)
- 			}
- 		}
- 
--		if (unlikely(gc_state & KEY_GC_REAPING_DEAD_2))
--			if (key->type == key_gc_dead_keytype)
--				gc_state |= KEY_GC_FOUND_DEAD_KEY;
--
--		if ((gc_state & KEY_GC_REAPING_LINKS) ||
--		    unlikely(gc_state & KEY_GC_REAPING_DEAD_2)) {
--			if (key->type == &key_type_keyring)
--				goto found_keyring;
--		}
--
--		if (unlikely(gc_state & KEY_GC_REAPING_DEAD_3))
--			if (key->type == key_gc_dead_keytype)
--				goto destroy_dead_key;
-+		if ((gc_state & KEY_GC_REAPING_LINKS) &&
-+		    key->type == &key_type_keyring)
-+			goto found_keyring;
- 
--	skip_dead_key:
- 		if (spin_is_contended(&key_serial_lock) || need_resched())
- 			goto contended;
- 	}
-@@ -309,8 +232,7 @@ static void key_garbage_collector(struct work_struct *work)
- 		key_schedule_gc(new_timer);
- 	}
- 
--	if (unlikely(gc_state & KEY_GC_REAPING_DEAD_2) ||
--	    !list_empty(&graveyard)) {
-+	if (!list_empty(&graveyard)) {
- 		/* Make sure that all pending keyring payload destructions are
- 		 * fulfilled and that people aren't now looking at dead or
- 		 * dying keys that they don't have a reference upon or a link
-@@ -318,32 +240,10 @@ static void key_garbage_collector(struct work_struct *work)
- 		 */
- 		kdebug("gc sync");
- 		synchronize_rcu();
--	}
--
--	if (!list_empty(&graveyard)) {
- 		kdebug("gc keys");
- 		key_gc_unused_keys(&graveyard);
- 	}
- 
--	if (unlikely(gc_state & (KEY_GC_REAPING_DEAD_1 |
--				 KEY_GC_REAPING_DEAD_2))) {
--		if (!(gc_state & KEY_GC_FOUND_DEAD_KEY)) {
--			/* No remaining dead keys: short circuit the remaining
--			 * keytype reap cycles.
--			 */
--			kdebug("dead short");
--			gc_state &= ~(KEY_GC_REAPING_DEAD_1 | KEY_GC_REAPING_DEAD_2);
--			gc_state |= KEY_GC_REAPING_DEAD_3;
--		} else {
--			gc_state |= KEY_GC_REAP_AGAIN;
--		}
--	}
--
--	if (unlikely(gc_state & KEY_GC_REAPING_DEAD_3)) {
--		kdebug("dead wake");
--		clear_and_wake_up_bit(KEY_GC_REAPING_KEYTYPE, &key_gc_flags);
--	}
--
- 	if (gc_state & KEY_GC_REAP_AGAIN)
- 		queue_work(key_gc_wq, &key_gc_work);
- 	kleave(" [end %x]", gc_state);
-@@ -361,14 +261,6 @@ static void key_garbage_collector(struct work_struct *work)
- 	gc_state |= KEY_GC_REAP_AGAIN;
- 	goto maybe_resched;
- 
--	/* We found a restricted keyring and need to update the restriction if
--	 * it is associated with the dead key type.
--	 */
--found_restricted_keyring:
--	spin_unlock(&key_serial_lock);
--	keyring_restriction_gc(key, key_gc_dead_keytype);
--	goto maybe_resched;
--
- 	/* We found a keyring and we need to check the payload for links to
- 	 * dead or expired keys.  We don't flag another reap immediately as we
- 	 * have to wait for the old payload to be destroyed by RCU before we
-@@ -378,18 +270,4 @@ static void key_garbage_collector(struct work_struct *work)
- 	spin_unlock(&key_serial_lock);
- 	keyring_gc(key, limit);
- 	goto maybe_resched;
--
--	/* We found a dead key that is still referenced.  Reset its type and
--	 * destroy its payload with its semaphore held.
--	 */
--destroy_dead_key:
--	spin_unlock(&key_serial_lock);
--	kdebug("destroy key %d", key->serial);
--	down_write(&key->sem);
--	key->type = &key_type_dead;
--	if (key_gc_dead_keytype->destroy)
--		key_gc_dead_keytype->destroy(key);
--	memset(&key->payload, KEY_DESTROY, sizeof(key->payload));
--	up_write(&key->sem);
--	goto maybe_resched;
- }
-diff --git a/security/keys/internal.h b/security/keys/internal.h
-index 84f14307552b..f8918b69dc77 100644
---- a/security/keys/internal.h
-+++ b/security/keys/internal.h
-@@ -38,7 +38,6 @@ struct iovec;
- 	no_printk(KERN_DEBUG FMT"\n", ##__VA_ARGS__)
+@@ -358,15 +468,21 @@ handle_nullreq(char *cp) {
  #endif
  
--extern struct key_type key_type_dead;
- extern struct key_type key_type_user;
- extern struct key_type key_type_logon;
+ 	if (in_handle.length != 0) { /* CONTINUE_INIT case */
+-		if (in_handle.length != sizeof(ctx)) {
++		if (in_handle.length != sizeof(context_id)) {
+ 			printerr(0, "WARNING: handle_nullreq: "
+ 				    "input handle has unexpected length %zd\n",
+ 				    in_handle.length);
++			maj_stat = GSS_S_NO_CONTEXT;
++			goto out_err;
++		}
++		memcpy(&context_id, in_handle.value, sizeof(context_id));
++		pending = pending_context_take(context_id);
++		if (!pending) {
++			maj_stat = GSS_S_NO_CONTEXT;
+ 			goto out_err;
+ 		}
+-		/* in_handle is the context id stored in the out_handle
+-		 * for the GSS_S_CONTINUE_NEEDED case below.  */
+-		memcpy(&ctx, in_handle.value, in_handle.length);
++		ctx = pending->ctx;
++		pending->ctx = GSS_C_NO_CONTEXT;
+ 	}
  
-@@ -166,12 +165,9 @@ extern struct work_struct key_gc_work;
- extern unsigned key_gc_delay;
- extern struct workqueue_struct *key_gc_wq;
- extern void keyring_gc(struct key *keyring, time64_t limit);
--extern void keyring_restriction_gc(struct key *keyring,
--				   struct key_type *dead_type);
- void key_set_expiry(struct key *key, time64_t expiry);
- extern void key_schedule_gc(time64_t gc_at);
- extern void key_schedule_gc_links(void);
--extern void key_gc_keytype(struct key_type *ktype);
+ 	if (svcgssd_limit_krb5_enctypes()) {
+@@ -380,10 +496,19 @@ handle_nullreq(char *cp) {
+ 	if (maj_stat == GSS_S_CONTINUE_NEEDED) {
+ 		printerr(1, "gss_accept_sec_context GSS_S_CONTINUE_NEEDED\n");
  
- extern int key_task_permission(const key_ref_t key_ref,
- 			       const struct cred *cred,
-diff --git a/security/keys/key.c b/security/keys/key.c
-index be68d19f91d3..80962c3ae12d 100644
---- a/security/keys/key.c
-+++ b/security/keys/key.c
-@@ -1294,18 +1294,14 @@ EXPORT_SYMBOL(__register_key_type);
-  * unregister_key_type - Unregister a type of key.
-  * @ktype: The key type.
-  *
-- * Unregister a key type and mark all the extant keys of this type as dead.
-- * Those keys of this type are then destroyed to get rid of their payloads and
-- * they and their links will be garbage collected as soon as possible.
-+ * Unregister a key type.
-  */
- void unregister_key_type(struct key_type *ktype)
- {
- 	down_write(&key_types_sem);
- 	list_del_init(&ktype->link);
--	downgrade_write(&key_types_sem);
--	key_gc_keytype(ktype);
- 	pr_notice("Key type %s unregistered\n", ktype->name);
--	up_read(&key_types_sem);
-+	up_write(&key_types_sem);
- }
- EXPORT_SYMBOL(unregister_key_type);
+-		/* Save the context handle for future calls */
+-		out_handle.length = sizeof(ctx);
+-		memcpy(out_handle.value, &ctx, sizeof(ctx));
+-		goto continue_needed;
++		pending = pending_context_save(pending, &ctx);
++		if (!pending) {
++			maj_stat = GSS_S_FAILURE;
++			goto out_err;
++		}
++		out_handle.length = sizeof(pending->id);
++		memcpy(out_handle.value, &pending->id, out_handle.length);
++		if (send_response(&in_handle, &in_tok, maj_stat, min_stat,
++				  &out_handle, &out_tok) != 0) {
++			pending_context_discard(pending);
++			pending = NULL;
++		}
++		goto out;
+ 	}
+ 	else if (maj_stat != GSS_S_COMPLETE) {
+ 		printerr(1, "WARNING: gss_accept_sec_context failed\n");
+@@ -402,11 +527,17 @@ handle_nullreq(char *cp) {
+ 		goto out_err;
+ 	}
  
-@@ -1324,7 +1320,6 @@ void __init key_init(void)
+-	/* Context complete. Pass handle_seq in out_handle to use
+-	 * for context lookup in the kernel. */
+-	handle_seq++;
+-	out_handle.length = sizeof(handle_seq);
+-	memcpy(out_handle.value, &handle_seq, sizeof(handle_seq));
++	/* Preserve the handle throughout a multi-step negotiation. */
++	if (pending) {
++		out_handle.length = sizeof(pending->id);
++		memcpy(out_handle.value, &pending->id, out_handle.length);
++		free(pending);
++		pending = NULL;
++	} else {
++		handle_seq++;
++		out_handle.length = sizeof(handle_seq);
++		memcpy(out_handle.value, &handle_seq, sizeof(handle_seq));
++	}
  
- 	/* add the special key types */
- 	list_add_tail(&key_type_keyring.link, &key_types_list);
--	list_add_tail(&key_type_dead.link, &key_types_list);
- 	list_add_tail(&key_type_user.link, &key_types_list);
- 	list_add_tail(&key_type_logon.link, &key_types_list);
+ 	/* kernel needs ctx to calculate verifier on null response, so
+ 	 * must give it context before doing null call: */
+@@ -421,7 +552,6 @@ handle_nullreq(char *cp) {
  
-diff --git a/security/keys/keyring.c b/security/keys/keyring.c
-index 6fff91d276c2..2d65356129ba 100644
---- a/security/keys/keyring.c
-+++ b/security/keys/keyring.c
-@@ -1793,53 +1793,3 @@ void keyring_gc(struct key *keyring, time64_t limit)
- 	up_write(&keyring->sem);
- 	kleave(" [gc]");
- }
--
--/*
-- * Garbage collect restriction pointers from a keyring.
-- *
-- * Keyring restrictions are associated with a key type, and must be cleaned
-- * up if the key type is unregistered. The restriction is altered to always
-- * reject additional keys so a keyring cannot be opened up by unregistering
-- * a key type.
-- *
-- * Not called with any keyring locks held. The keyring's key struct will not
-- * be deallocated under us as only our caller may deallocate it.
-- *
-- * The caller is required to hold key_types_sem and dead_type->sem. This is
-- * fulfilled by key_gc_keytype() holding the locks on behalf of
-- * key_garbage_collector(), which it invokes on a workqueue.
-- */
--void keyring_restriction_gc(struct key *keyring, struct key_type *dead_type)
--{
--	struct key_restriction *keyres;
--
--	kenter("%x{%s}", keyring->serial, keyring->description ?: "");
--
--	/*
--	 * keyring->restrict_link is only assigned at key allocation time
--	 * or with the key type locked, so the only values that could be
--	 * concurrently assigned to keyring->restrict_link are for key
--	 * types other than dead_type. Given this, it's ok to check
--	 * the key type before acquiring keyring->sem.
--	 */
--	if (!dead_type || !keyring->restrict_link ||
--	    keyring->restrict_link->keytype != dead_type) {
--		kleave(" [no restriction gc]");
--		return;
--	}
--
--	/* Lock the keyring to ensure that a link is not in progress */
--	down_write(&keyring->sem);
--
--	keyres = keyring->restrict_link;
--
--	keyres->check = restrict_link_reject;
--
--	key_put(keyres->key);
--	keyres->key = NULL;
--	keyres->keytype = NULL;
--
--	up_write(&keyring->sem);
--
--	kleave(" [restriction gc]");
--}
+ 	do_svc_downcall(&out_handle, &cred, mech, &ctx_token, ctx_endtime,
+ 			hostbased_name);
+-continue_needed:
+ 	send_response(&in_handle, &in_tok, maj_stat, min_stat,
+ 			&out_handle, &out_tok);
+ out:
+@@ -436,6 +566,7 @@ out:
+ 	return;
+ 
+ out_err:
++	free(pending);
+ 	if (ctx != GSS_C_NO_CONTEXT)
+ 		gss_delete_sec_context(&ignore_min_stat, &ctx, &ignore_out_tok);
+ 	send_response(&in_handle, &in_tok, maj_stat, min_stat,
+
+base-commit: c2dc3ff598dec9786217d22e40eaca3f295e8b45
 -- 
-2.47.3
+2.54.0 (Apple Git-157)
 
