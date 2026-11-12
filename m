@@ -1,94 +1,80 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.219.47
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=66.163.188.212
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794438097;
-	b=aRCOGGqBUrdWF4EDqXvdw95DIW2Zq7pAXklpVxZ2ocpp9rd8LxAABd+e8eOiZgH31Om8
-	 JIdwUzU8TBDzqWrDej9yrlWekRkIfRBExxtScetjcyZkXpRYiteapI0oCTuln3VFAl0aA
-	 tPOWchY8p76fPwiOZRnrG3yMCNcC470++wFo6aEbboC50jeRb+eWIs7/z95V4IS4uGJ+5
-	 Budm+2DNlx8KkeBQegpoLiTtONiAgGKbnxvl460DgatrvmdsdPI4WpSF4zLXFHj2G5WVX
-	 tFDiyNTLMTYVu7jcVWMRYDNKrW5UanH5twTnLYcf9F8JxKM8ps2JuAvvSMFE8Tg8jaw==
+	t=1794448237;
+	b=LhdQNn7F1IdCuzRamuSzENzIAHwSaAITi/r7m5iGJLjgaITHo0hAC7ZV7xGih4ug1t8C
+	 MjM7L2l2nMlPar3rDLsNbnF66kOeKghqSzrjef+uSqpfZSLYPNkkMSZM1LJIuRSTlttzF
+	 2Egd5Qi4j74M4czY0Uaz+ZlufCzclTqiYvKmSWmjICIJi/HSSL4SM6iOBIieXxSR6XPlM
+	 0KvGDCjQowzvzEUcLsKujO+Gm61VxGKyvJRmuOBpjkbUGg0m5m34XVU0FpesGW0JnCCNr
+	 Gd7e973Sp0U2SVEAlQRqNHQg285O8z7sgZoiQrm8WMfE4hTzWCAeLHYNvHJyseMkXDA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794438097;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 Sender:From:X-Google-Original-From:To:Cc:Subject:Date:Message-ID:
-	 X-Mailer:MIME-Version:Content-Transfer-Encoding;
-	bh=vrjxIwYzgzIno/ZvKWb4GfBW1iRpVpfDFeiRjMrdKCo=;
-	b=BVGP6mbhHo4Y5g0cfMSg57Q7Q7Az2jYbuCaAHghD5iKVRl5VZcYh08rZWCzJ2Ys+cpms
-	 MGrHUeSAysNCywup9ij7hRUw1pZfxKkFuhLjVrv82R8RCyMxovQpP+ksS9ga8mn4WmOyd
-	 9LenXP1XgVxxxLxMST9O3N41Vb3ABnZnPjLu6OkS7JipfIi6NW0AyJ2uadmBM6jyqR4dI
-	 tV+n5BXHZSEnHpur5vHQ4+iYGv/9an7AkyUTOP9ePHnnzs+aADLuBAel/5S8dM5fXvGfk
-	 9aAz1WRCsM2sU0PHSRNivfAxtEtG19qzEY08D0I0Kj5BGVGYU6b+fBxsGhUaxFs+T0A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794448237;
+	h=DMARC-Filter:DKIM-Signature:X-SONIC-DKIM-SIGN:X-YMail-OSG:X-Sonic-MF:
+	 X-Sonic-ID:Received:Received:Message-ID:Date:MIME-Version:User-Agent:
+	 Subject:To:Cc:References:Content-Language:From:In-Reply-To:
+	 Content-Type:Content-Transfer-Encoding:X-Mailer;
+	bh=O8h9fybdyu+Al7CdWlfRBQ6LgqQutaBSF+Rc2HGjCVE=;
+	b=cANzdJbkH4qAssQ46NNMMBrMOqeAmcC0w0SPXaMvPzS1dz6M4U4wZz6csQijRX95IQ9I
+	 9Gu6CFOUNzG5fA4y5w4S17WIISrpRGtRIBl66mlukS1y1v4NvlhHMajgwNaQXsSR59Rg+
+	 NDIQ36k/GzuHPOBMdyVn7nP/3lA/zDgRVuIgK67+H9wnwLDh1Q5r1+BpqqqCZ7oCVYeiB
+	 oiavfz17mMlvN3v+yU5BSBsaK7/RPj4c7EHL63GYnGe2i9Wxtv5o/gC+e5muJFuEU3WNl
+	 LUq33mHCATGm2voEw2rpSh4bBSHckpxWMxOMGbD3zz56Lbb5sMKKv+cqmP6/dp7+Vhw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=hammerspace.com;
-	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=IAgA8Ftr;
-	arc=none smtp.remote-ip=209.85.219.47
-Received: from mail-qv1-f47.google.com (mail-qv1-f47.google.com [209.85.219.47])
+	dmarc=pass header.from=schaufler-ca.com;
+	spf=pass smtp.mailfrom=schaufler-ca.com;
+	dkim=pass header.d=yahoo.com header.i=@yahoo.com header.a=rsa-sha256 header.s=s2048 header.b=F+m434hx;
+	arc=none smtp.remote-ip=66.163.188.212
+Received: from sonic311-31.consmr.mail.ne1.yahoo.com (sonic311-31.consmr.mail.ne1.yahoo.com [66.163.188.212])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E1518606A336
-	for <linux-nfs@vger.kernel.org>; Wed, 11 Nov 2026 23:01:36 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E1518606A336
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B5293606A33E
+	for <linux-nfs@vger.kernel.org>; Thu, 12 Nov 2026 01:50:36 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B5293606A33E
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=schaufler-ca.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=schaufler-ca.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=IAgA8Ftr
-Received: by mail-qv1-f47.google.com with SMTP id 6a1803df08f44-91f0b9f0b1cso7938926d6.1
-        for <linux-nfs@vger.kernel.org>; Wed, 11 Nov 2026 15:01:36 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1794438096; x=1795042896; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:sender:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=vrjxIwYzgzIno/ZvKWb4GfBW1iRpVpfDFeiRjMrdKCo=;
-        b=IAgA8FtrnA7XZuPG3Hwe6HbxqkONUzUvxcz8f9YPOLPxN/wTIUtknO/bs7UNGoqr//
-         ro0l87l7i+UX4E26pFHzHFIjWZFZNipuAKBWz0+u+q2MPtTbN0aCZ/2qxX4dADUdmNi7
-         +sQQ/+aH4SQwDbM0wangc7+82OHyG1VLZpQFvuv6yTUmnRHnmiZgURM96n6DGUatbz+2
-         EJaX+sNIDP29JRh5JdMAMX90IVheeRl/I1/YaTEcRzM5AYecFxrJ1KKD4oPTnc3oT+Hz
-         fSbyF8/cVkZl/V0/BnTqcMpUmw8DdduoYu3lc2Y9od55CJ0Uy7elEH45PnhDquwCcM+R
-         11qg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794438096; x=1795042896;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:sender:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=vrjxIwYzgzIno/ZvKWb4GfBW1iRpVpfDFeiRjMrdKCo=;
-        b=jCQtJpgQke0/JoXGULlSBFC8mwzr8YhGw1Osr4LYuv0OicSgGZ62adO4ydMc9mkhZm
-         D7jyYpIYNzDFtgdnbMVQ4uj1XoFWYH42WHhky5X//qXVbjuuE0BPVEJwYMiBz9QdFaYL
-         KYAfIckDAaA/eiTREndu6i2MJGn6EhdgJil2za0Q0p4gEeD0SL5AvQxwc8XjqegzN2/l
-         FWQoyV91yhUMDxDmDYRWSrgNTSXi40K2XRgm8scz+k8KYuCzTHEZ0NHea9rCy44iiJxx
-         TUx+8RTijYyJHvbmRxa477vHQsbd6pOkC0+1vHFGUA2vtbTl5AtU15vzUKwgUINDJA6K
-         zyHQ==
-X-Forwarded-Encrypted: i=1; AL+hErFHUVCWqiwWb9kVfTb2po/LWArmoo93N4VovjdQfiHYGNcnDPKQqsXgX5iFz/HpBcFNQ2Ps5UVwHFM=@vger.kernel.org
-X-Gm-Message-State: APuU4Z8StFub+7AZc9nuxYqRSfUiu06PGSwAh7ud3gGElgDojAHnxlMt
-	1sLGwbsjTZeMdpVmryWdYnCda+y7O05qN8HGfziCfb1tFLGmdD0bhwJ+svQostHtFgM=
-X-Gm-Gg: AYBFou25XXzhlO+tlBRLCSJLhgClOKZncFrv8e/3u/ktDJRkcDPonksvSlJSZvxPN1p
-	0os256GOOl0Cp7OEE2yUBY1nksxNSwetSNYHh1POeoG98XhjD6WtqGMhcLja68ay4jEtC7Y4k4o
-	GlypOAfUgQtMx0y8tLRO20jycLAg6IxKZCUg7BttdLtOJ+so6aoJEUvWr0ConDrfcN4yu09l0R0
-	kNndPVjr6sf+Cky+1ymIfglmP/0p4X2L0I6CxVtJebDnOosFCk8wlH0cdVS7fkeXi9WsS3o3xgv
-	VIYyJ3VwTfEfbRA+TR9zGlGHsnKwFlqJwEUS5528/yzdfva5uuT1oK80PjqpoAzvOcrdG+YuLUW
-	iEWIimo+yjpS9QXZkOYCs9zZ2e2Az3Ys2FY2l912cbumnPUP6ShdC03Qrel4Bq1fgM1lMkATEPK
-	okIijyaN7g5PFg4Qk/mJ1UcZH+Kp83VAlerZbpSQKW9lGmpydnUwvmvjJlZxP4Z3D5esX+irKg7
-	hlfNVhJ/IDfSTyZKRUrj9yoCbBV20kSxeDyuPfkHi9rwbM89gYu3SQopCSmAtGJQELXwEeh57hf
-	9HYf/55YuIBDeQJ/U7P3D5iPLu4Qsq3Zff9mfO2YgklA9Ur4/NxMqfiMd0De9/rp6XoQO5fDcJA
-	BdPS01EaV5QkWMZg6jY8VwVJ/49wa56o5wZcOKHM=
-X-Received: by 2002:a05:6214:2301:b0:91c:9002:6286 with SMTP id 6a1803df08f44-91f040e1132mr68269396d6.24.1794438095239;
-        Wed, 11 Nov 2026 15:01:35 -0800 (PST)
-Received: from localhost (pool-68-160-167-46.bstnma.fios.verizon.net. [68.160.167.46])
-        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-91ef051dc53sm57384976d6.32.2026.11.11.15.01.34
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 11 Nov 2026 15:01:34 -0800 (PST)
-Sender: Mike Snitzer <mike.snitzer@hammerspace.com>
-From: Mike Snitzer <snitzer@hammerspace.com>
-X-Google-Original-From: Mike Snitzer <snitzer@kernel.org>
-To: Anna Schumaker <anna@kernel.org>
-Cc: Trond Myklebust <trondmy@kernel.org>,
-	linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs/localio: remove the localio_O_DIRECT_semantics documentation
-Date: Wed, 11 Nov 2026 18:01:33 -0500
-Message-ID: <20261111230133.65304-1-snitzer@kernel.org>
-X-Mailer: git-send-email 2.44.0
+	dkim=pass (2048-bit key) header.d=yahoo.com header.i=@yahoo.com header.a=rsa-sha256 header.s=s2048 header.b=F+m434hx
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1794448235; bh=O8h9fybdyu+Al7CdWlfRBQ6LgqQutaBSF+Rc2HGjCVE=; h=Date:Subject:To:Cc:References:From:In-Reply-To:Content-Type:From:Subject:Reply-To:Content-Type; b=F+m434hxnazo+znIsDN87b1q6q2BjDXrSK85l4sPO4/7/Nv6ouklEMGBpfrTHUnO8eGiNQoV5Bbw/uB3JZACliQBg8PtdTRYRP97HHZoegx3ArYwH69kAdVaUPkV7WcyNd89YKs91cZCwmWeziNsUM+FCRLahqzZW3a6Ku8pvIiJlMO/7XaKbdkzRicymfmmSk9XFsFNG+fkHI8UO70pZ1hFT9v2XQiwRrAslvpHUFbDR+3rpTT4Ikh/N/oSBL0qRMnhxDrBkdI0Mmku6tTsyJWpgcJjSTSvBuepznmh0kGiP8yElqSHRAm6ov8qvVTBbZJZj+71HtVfmpD+WAp7XA==
+X-SONIC-DKIM-SIGN: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1794448235; bh=cB6ms4YZu3OSr7Oj5Ktyy9vRYllWqlKKBSjCDtAOhd3=; h=X-Sonic-MF:Date:Subject:To:From:From:Subject; b=Wh5tO+A7k6l9RAB9CmF+7nFPpV+s7vwQOvHRCpB836zmpk+EmZdiT1obFQYb3eEYUV/ZZrDMNSGrpqiSFrVBvEAP1+BcX3bVXL8AkZe5aM0djERGyxVy+oivb40ItIA89tHRP/kW5BzO7GaPGZrOTfFkDQF1HHnKQVH/ifoH5PYTL/BXjLkbPViq5JKecTMlRIryhz3iU6NkOHkP1F3oliaijdeTD+Tk00HCA4w802Q1PFZvsZSndMk6hlb4A1wMRPh3z4tVeu12oZckS5JIJR1ywCFknBKWBE+hVxojbZ57Qr3RCaKJrua5vLBD1s/SnsdmRZ+/JLOhUlVDaAQyJw==
+X-YMail-OSG: zqmnDtkVM1n5t6ueog55b_vkFHSYM5E1qoECEJywzBr3UwiKAfUIVI_o6w7R9SH
+ CQ1t93f4qyBpZEcVGjU2OBO9C0Of8.lRAD_UtcVdUMSf6_GiG98G7rNXb1ZhUGsyYLDyJE5oLG69
+ MPpknxdoviNcfunvMa.q1ATsxUiRNZaaYFEtaSi7o3ARz3uzFbYwa4zXUFVTxVNR1M4yEm8E_vMu
+ CX3lc6b1b0MWbnmh3DAeGebLmTpZwI12LuF9QH7MRRpV.Y7YkiPkkooycQl42qWPa_ZCsKSCVnTi
+ cfYjzn7ZtEqmGYVjYEY1kEbVCA4JoS5GMMDKMoO39G5YhBugROnX2jrgGh0AwdwAby30.ZBxmd.l
+ S62hS2hlPvIDoPxGhzS2whxCcIZrt8XbiUGRsBq2lfu8t9x.TIubZ4wIiRqzfDYoZIwioLDCjm6k
+ .cljRFJEOnSix_ImX_sSyVP7eQAAEJ1GsHeUHb7atzAIHDlw0lV7YT_EQZaDbjuCghjYyGwMa7FJ
+ LxdRDFOXlr05WMcbROqV0a4sd0J7UyT01rGVa2p8mqlfg_ZPSk1p0.zKLMJDr5A1o8n0sxe4LbiR
+ qbREBgT6XAwECEJNbNHKO1YTM4iOmevp8GvnGDd6MDNapigfFoPwfu59SMy7zYd9LO3Z8_0VkIJt
+ aPlGTgcyxBF.v1wQggIdb30_WaSmydGJlcGPdQ03irHq2wrwxiCoQO6IJUZEr0jypo3mUQnAGyDG
+ k9vUUntKtCsyi.w0t_vFjR1T1M3Z6Xk5RLKDL9njS7LNW.CupQSEmNQ1GkX7kSwPFQP21HwmyMsp
+ i9SdJowJ0s5y.bw2SrHxrP7sM6YbNToNL5ZVELMODpe5VuCBtDWl7VcCxYMmahr5455.ZE_hGmHs
+ LrmFJx1uQ46OcZ2Ii956498sukETOy0INQsrtoq.ypS01I6QTO8GSI7rVFeq81ZNfcHhvUGJ06ME
+ B8yJmeeVBase_8cBDx_Yk7y0xRppCWZz9S9bNwiHzQcmhSHJ99JaTf4E0zOIsgLWqU5tZh4wLZKp
+ MnYneLIuBkBNwjBcYTuKXcpCwff8fTcsfan2g9ag6_HRqbKvb3lqTrnQRPIG.IGMBIXdu4D1HB2r
+ Ygn65JHFmN1QF2ROBGshwilsGajQNSqHXHgx.co9RO5Evfjv8vx67t__1ew7rn3sc1C.7W_m4N4M
+ cSR8SYdV43PcknGSee9yB1x8pWannWLYRUROzisZnoPLwDPX1S0a5pIeYojUo9jnHaAdfaOw5IJs
+ bc0nB3tQZQ.0b782FrYX_n_pf05DxifKK1hrJ0OqXSo23BlRt.p63_4auT8X4tq9HTs9fxQLg0OA
+ ydi2BtTIKopjFdQtWH0NOUC1U6_wILbgtZfZnlVsbVhHJ7Tk.UZGmAVff_vQl8b4id5D4T9jwtS9
+ 8nKfk1Ghey2tqeZDF9SgVACRH_x6kJa81R1e4J_83TMyBY4Ays_MTt39YbFzXRfBMRqG0I92h9IS
+ Xl4i4wMK_gUqmjpP0P_oaDsTzptxLp7NMOmOY3T81w3i60pQpmuYMvggEU3dv.ebRC4Brat.KcXq
+ ZyjrZ4BouQUvapbNSNNP1Y253sBId7Ys37DryRT0fCsyFp6LIN0DYA1xElaICSH34S2v84muDGZe
+ .CGRnjEo0Q2679LeUfRrG7eDmdHtGbtXa02kyQjntuOc7VrR9y8jRUHqkLiiITgSdxH1QGB5PWuQ
+ ARpFP1xjX3OHKFGeQd7o8WX3xDhKeppcWAPJEhIosno79RY0IQ4.4JX7WCaXgDYbj6BL4okuPPnu
+ 9CEiWKr_A1oRBHcXo_t2XyX1N2Jd1tPqjLAB1WY0vIGe1SVdGRdRloM6.RT24mU1pbFP4DjeRn1w
+ _aXrAymHoztvd7BVNk78MI6f1URU2iBFJ6msmP6JgXQac5cfrtvlS9yn2eohnwEPfv__IKNy26n1
+ mYs7i0yOvj6LH9jEvBJfejsFOAeuf8LBdL.MbTk8ZZiVorhzaxO81Zf4PRAQwZfM29CLtP5dAKbb
+ klVicXy3HgsPrMZiM94qTb2yOlO2WSLEgrPS_2Vx31FNEHJNJpuKXHkfgTtKgjLPmpCr4Taq44yO
+ KB8vbaoDybAHzNwFN22pWQG3NDp.x8aciLmMT8fUQgwMgW8NlLKb6ErL7ChYlwsHUhzhzMbUfvnT
+ 2bA6QlHpoN4OcRsGeb2ygbIpUCMhvL1tqClAnkg41oGlCJa3crNRCKKeXXqZBarf9KzLHJa8i581
+ 0YgHHROuHzbtZ8GRm6ggBoLbsrITMfTGKIshO9uwpGYYxl6nVscbC6LtZUsxlV5iP8t8XsYi.ga0
+ EDsRWYHlK
+X-Sonic-MF: <casey@schaufler-ca.com>
+X-Sonic-ID: 4e6572e0-628c-4102-8309-f6caa349ac8e
+Received: from sonic.gate.mail.ne1.yahoo.com by sonic311.consmr.mail.ne1.yahoo.com with HTTP; Thu, 12 Nov 2026 01:50:35 +0000
+Received: by hermes--production-gq1-fd7994565-9vhlr (Yahoo Inc. Hermes SMTP Server) with ESMTPA ID 15d81e1a8a6348ae9dcd84771e3b8196;
+          Thu, 12 Nov 2026 01:50:33 +0000 (UTC)
+Message-ID: <41617b0a-90d9-484e-a143-78e2a92e872c@schaufler-ca.com>
+Date: Wed, 11 Nov 2026 17:50:30 -0800
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -98,69 +84,68 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [apparmor] [PATCH RFC 19/41] smack: use fc_init_pseudo() for
+ smackfs
+To: Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org
+Cc: linux-efi@vger.kernel.org, Jan Kara <jack@suse.cz>,
+ Amir Goldstein <amir73il@gmail.com>, linux-nvme@lists.infradead.org,
+ fuse-devel@lists.linux.dev, linux-mm@kvack.org,
+ target-devel@vger.kernel.org, linux-kselftest@vger.kernel.org,
+ Chris Mason <mason@kernel.org>, Christoph Hellwig <hch@lst.de>,
+ linux-s390@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+ linux-scsi@vger.kernel.org, xen-devel@lists.xenproject.org,
+ driver-core@lists.linux.dev, Jann Horn <jannh@google.com>,
+ selinux@vger.kernel.org, apparmor@lists.ubuntu.com,
+ Josef Bacik <josef@toxicpanda.com>, linux-block@vger.kernel.org,
+ ocfs2-devel@lists.linux.dev, Alexander Viro <viro@zeniv.linux.org.uk>,
+ linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+ linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org,
+ linux-security-module@vger.kernel.org, bpf@vger.kernel.org,
+ linuxppc-dev@lists.ozlabs.org, Casey Schaufler <casey@schaufler-ca.com>
+References: <20261110-work-loop-pseudo-v1-0-4c998976c6c7@kernel.org>
+ <20261110-work-loop-pseudo-v1-19-4c998976c6c7@kernel.org>
+Content-Language: en-US
+From: Casey Schaufler <casey@schaufler-ca.com>
+In-Reply-To: <20261110-work-loop-pseudo-v1-19-4c998976c6c7@kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-Mailer: WebService/1.1.26943 mail.backend.jedi.jws.acl:role.jedi.acl.token.atz.jws.hermes.yahoo
 
-Commit 25ba2b84c38f ("nfs/localio: avoid issuing misaligned IO using
-O_DIRECT") removed the localio_O_DIRECT_semantics module parameter.
-LOCALIO now issues an application's O_DIRECT to the underlying local
-filesystem.  It issues IO that is not DIO-aligned as buffered IO, so
-that misaligned IO does not fail.  But localio.rst still documents the
-parameter, in its description of how the client issues IO and in its
-list of module parameters.
+On 11/10/2026 1:14 AM, Christian Brauner via AppArmor wrote:
+> Initialize smackfs as a pseudo filesystem. This raises SB_I_PSEUDO and
+> also SB_I_NOEXEC and SB_I_NODEV. smackfs never holds executables or
+> device nodes.
+>
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-Remove the parameter from both places, and say what LOCALIO does with
-O_DIRECT now.
+Please include me at least as a CC on Smack patches.
+I ain't dead yet. Nonetheless,
 
-Fixes: 25ba2b84c38f ("nfs/localio: avoid issuing misaligned IO using O_DIRECT")
-Signed-off-by: Mike Snitzer <snitzer@kernel.org>
----
- Documentation/filesystems/nfs/localio.rst | 24 ++++-------------------
- 1 file changed, 4 insertions(+), 20 deletions(-)
+Acked-by: Casey Schaufler <casey@schaufler-ca.com>
 
-diff --git a/Documentation/filesystems/nfs/localio.rst b/Documentation/filesystems/nfs/localio.rst
-index 45c6981da0d89..9f1eb2a3c2db6 100644
---- a/Documentation/filesystems/nfs/localio.rst
-+++ b/Documentation/filesystems/nfs/localio.rst
-@@ -272,21 +272,10 @@ is issuing IO to the underlying local filesystem that it is sharing with
- the NFS server. See: fs/nfs/localio.c:nfs_local_doio() and
- fs/nfs/localio.c:nfs_local_commit().
- 
--With normal NFS that makes use of RPC to issue IO to the server, if an
--application uses O_DIRECT the NFS client will bypass the pagecache but
--the NFS server will not. The NFS server's use of buffered IO affords
--applications to be less precise with their alignment when issuing IO to
--the NFS client. But if all applications properly align their IO, LOCALIO
--can be configured to use end-to-end O_DIRECT semantics from the NFS
--client to the underlying local filesystem, that it is sharing with
--the NFS server, by setting the 'localio_O_DIRECT_semantics' nfs module
--parameter to Y, e.g.:
--
--    echo Y > /sys/module/nfs/parameters/localio_O_DIRECT_semantics
--
--Once enabled, it will cause LOCALIO to use end-to-end O_DIRECT semantics
--(but again, this may cause IO to fail if applications do not properly
--align their IO).
-+With LOCALIO, an application's O_DIRECT extends down to the underlying
-+local filesystem. LOCALIO issues DIO-aligned IO as O_DIRECT. It issues
-+IO that is not DIO-aligned as buffered IO, so misaligned application IO
-+does not fail.
- 
- Security
- ========
-@@ -325,11 +314,6 @@ LOCALIO.  The mount's timeouts do not apply to the probe.  Set to 0, the
- probe uses the mount's timeouts instead, as an NFS RPC would.  A change
- applies to the next probe.
- 
--/sys/module/nfs/parameters/localio_O_DIRECT_semantics (bool)
--controls if O_DIRECT extends down to the underlying filesystem, defaults
--to N. Application IO must be logical blocksize aligned, otherwise
--O_DIRECT will fail.
--
- /sys/module/nfsv3/parameters/nfs3_localio_probe_throttle (uint)
- controls if NFSv3 read and write IOs will trigger (re)enabling of
- LOCALIO every N (nfs3_localio_probe_throttle) IOs, defaults to 0
-
-base-commit: 5e810a57a1cf2fc785d89e711ff40f1112f6404c
--- 
-2.52.0
-
+> ---
+>  security/smack/smackfs.c | 2 ++
+>  1 file changed, 2 insertions(+)
+>
+> diff --git a/security/smack/smackfs.c b/security/smack/smackfs.c
+> index a72bc7fabea9..4a56bbeaeca3 100644
+> --- a/security/smack/smackfs.c
+> +++ b/security/smack/smackfs.c
+> @@ -25,6 +25,7 @@
+>  #include <linux/magic.h>
+>  #include <linux/mount.h>
+>  #include <linux/fs_context.h>
+> +#include <linux/pseudo_fs.h>
+>  #include "smack.h"
+>  
+>  #define BEBITS	(sizeof(__be32) * 8)
+> @@ -2880,6 +2881,7 @@ static const struct fs_context_operations smk_context_ops = {
+>   */
+>  static int smk_init_fs_context(struct fs_context *fc)
+>  {
+> +	fc_init_pseudo(fc);
+>  	fc->ops = &smk_context_ops;
+>  	return 0;
+>  }
+>
