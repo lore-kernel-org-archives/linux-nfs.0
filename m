@@ -1,99 +1,50 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.167.44
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1794483667;
-	b=g3XUcItLoEdA/ngwoZag/wO8CuuB7BwPUnc8BsKteEXcCkHBtbSEo+edMQTEpJzv0IYd
-	 kG03Q2ujC6ePE8Z09KJs+8aRr6+K0qAUd1hFDNxhe+UvfXWsI8Z7I6OSKQ4JuyjCGCcnH
-	 QgdrRaJkYDdFjDSeeH9Rlsut+oHFZhBKxkUgwoWEpEPTk7GYzSmUyY6YiNQjJZg33ODRp
-	 uoBfjbCLSznVy16+XRdShmrE8bdpvynrUI5sDKYSp4DEMPYF8Ncya7vPOzE/bECbFeSEe
-	 essJPSxEyCZZhEjpk7658CAEKfzq6ngnRPPyndigA1+4ajJ7Z3gW/+C4SMMVJksVxag==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794483667;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:MIME-Version:References:
-	 In-Reply-To:From:Date:X-Gm-Features:Message-ID:Subject:To:Cc:
-	 Content-Type:Content-Transfer-Encoding;
-	bh=nXI7xYZgxnpfLKHFm8ZvAIfm4pFkD5dHlOX1GBrtPmA=;
-	b=ydDiiYMDGk3gpSVE2Vxu4OEnFthmQzq/+1Puwms8FXo06bIKqRe1Ke974vbcmdv3FQHk
-	 895Ux4FV5tcajbxjV7toh1Y4TY/APwKRUiDXopEBz9P0k1eeaYsUtNgvWo6oyeS4UaFJT
-	 Fe/yIfFxW2SxHekxH0xAqDETgvD+WpS2GcMmeVrrt5gP5P2qsoRnc7EROoeltT/8Hj44T
-	 dAhLi5Ht8JJNoA+Tb9UThc0USvRG85EvG4tJrfeVqwscD1hYJAEGbgsr8qefcgDqiP0kD
-	 sPSiLpb3OxD3qt6uVwDJmNzy+NKLUNa3Wos7XAqz4LeXGNld+7js/OgdXc/IQktjmug==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=ihANWpv4;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.167.44
-Received: from mail-lf1-f44.google.com (mail-lf1-f44.google.com [209.85.167.44])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1794495140;
+	b=sdHGABrnoaxWzvXXcIPMgurd58+PIsYCcjfOU2pRoTZLb8jE6FsBAPOdSKIv6suSg+bJ
+	 IlNJle/ZSNpph9gfPbJ9K6haPLz73SYYXraSS+dtqVd8iyFat9reLs7VKOb1rWQog/uCv
+	 5hvPjsgk08iVuc3j62DEEpJSvJWc0iwz7nnYnDY9i5Jw5e81tahRj/QllK3vezSCukz01
+	 IjQ/kCNw23croSgojp1LDlWxj1PgCwXu9f44pyLR9yk1/ynXHagmlq9zc9ccxUK7fc8gj
+	 yGnHhz8tzn8RIH7xILk/5aY4dV/UNAhLgszN+DA6XfHr/Nai9bZJbmgbJS5pXs1Yy5g==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794495140;
+	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
+	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=oHKGckLKjhKuC8TFxfYio1TRXf55zru0s2A4nn+WqcQ=;
+	b=WdFbxvZMw06V6F74dHB3ijDms5QTPvTXtOddqy5asRQARM0xOvt9YHeI5fCwCKB6QSuk
+	 8wmqgJORtuS1ZB6qaGJGRN5iQsrPC6f1yo3V6yU2PEx0W/luBHt9RMc4M3dljs/lUIRof
+	 4hfP1Cl6Z1jBwMu2MEKKQxamsoq2oQ5b6zCJwgzFtcNEriFII53NDLeJs6AX/AXf56/XJ
+	 5u3d+CNOPfmJrGiE/2yDI+nAXkX5Rg/s0vAXmb8zOV96N73+XlDVdQ3me4RBot4jea5ZP
+	 T6kX2futS2ICcScFAOV+DfraianCfTo7WBqKc7wmIJ2a3DyDEwJ0fDNRoBkncY1HiZA==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=H4NZhvs6;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8C0BE606A327
-	for <linux-nfs@vger.kernel.org>; Thu, 12 Nov 2026 11:41:07 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 8C0BE606A327
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1295C606A31C;
+	Thu, 12 Nov 2026 14:52:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=ihANWpv4
-Received: by mail-lf1-f44.google.com with SMTP id 2adb3069b0e04-5c14f7768acso3072896e87.3
-        for <linux-nfs@vger.kernel.org>; Thu, 12 Nov 2026 03:41:07 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1794483666; cv=none;
-        d=google.com; s=arc-20260327;
-        b=H9CQSrj7BI5wg3UmAZZfxhC99xeApB/Np3MpOYq+cDABZW5cjSWR6pz50Prua/h9+Q
-         sOo6UtXUFGzhmVL7XcBdFeLyvqXHOdhCTundSf9wzOPQRnQgcFbX5nix1yRd5pLfWIfW
-         JcMszx0tmjRBvnmpppzlIbNwVBF6u1uPdBcFBDZQxwexQSZAWXqUFbEz4D0Cnw0OfLqZ
-         9mlb+F5RQmgaM1DTIuQBHrHkh87+GdgPPgrYFzq+lhQHueyrhfMaR5/XeYW4Me9hmT5E
-         sVsKfetNnQ122cjl2xxGohHBOF6jzlbEjr087IOUmBcjrLrYWWtEXXXqZm+06BqW6p7l
-         daxA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=nXI7xYZgxnpfLKHFm8ZvAIfm4pFkD5dHlOX1GBrtPmA=;
-        fh=+EkHVdStwtii5wkzgUNAZeXPjCx95tlIXWplKyPL+Wc=;
-        b=mDPJ0ejFt1+QFXEVyN8MG1cuMHZ3AdwI+wphJFgVQDlK7VcD7GO/NiHgV0No9pwCyO
-         FwHOpKnLCpxsnt43dwZlsGBhIuLPaKzQkxzHDNmyEdy7RhBaUz3EXEqHankSXWgrRaFr
-         59HOaly0NX72OxYrjvZjRruWZ75aXeDZQAC+Hr5je3uMWdRZk1j2tvHj7eclzFkSds1K
-         DJZOcYd6IFNJdhNQuiy+jpG4b3yo6iQolScBU4CsnmGNuct2Y86wJGrt7mrRSiAE1Mmf
-         kLbDXcEVajddCXfVUaOtHgfQSW1xZnzQar1jlkrOxvc5qKWslaeFgSO7fZ+bYMlHy4ja
-         D8tA==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1794483666; x=1795088466; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=nXI7xYZgxnpfLKHFm8ZvAIfm4pFkD5dHlOX1GBrtPmA=;
-        b=ihANWpv4YvOF7GeQaUYSLUviFOALE7/UOOuxTnBtBcjp9uXbckjgxo8U9pFNwLvLHf
-         RNCRINQwXl9qXHglhb9SVKerNn5MgRTLxUqv+a0klzHJOsEaXDlck+NvIiZEiO+E4mZF
-         47somZb75K2oFTVz/uopuy4lk0tsfoZLEou/+pUxWpHKMyt5Eti55qIcALn1ZoU+asoi
-         38au4Cby0BfrbsGZcVoDzfW5ziDCHgbtvxUSX5I3j5Fv61QJuv12qnkq85UgFzvnUsb8
-         nn50imcTCxcyP+LZktDJjNgrJwoiQbIYsNxQ61vVmrCxogUiMbTAi2CRNEx3C7x1thN2
-         IIWQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794483666; x=1795088466;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=nXI7xYZgxnpfLKHFm8ZvAIfm4pFkD5dHlOX1GBrtPmA=;
-        b=NhjYseC8ZNGdotdZthLT6GtTEF9ILPyAxNHU77KNzLjfIuB9Tvd6uc3q7YqsnmtLd7
-         gIrtyk/WhIvzLBeyRNnWowbT9IQ2IELwUTlfWwIXs8T6sl7FREkMC+xJLUc54ASWgacM
-         bImb//0D4pd9HeS8NghuDvV6Qz7xQVkvjBp3W7Cx0j7Wbux+P9ULIIIOx6xBm8K5evx1
-         k7o4tN5/duN1VQlWGveUgHr79md2TrTi99h7oz2NndiDhpG1CU7U2MpnMkUYO7CLKiXB
-         N1D9gsyZqWtVWPXiLVfKArLrJxIEp5YAusLIKF5KpMVSUte8FoGlV07gIJaFu02Bs/uN
-         hbZg==
-X-Gm-Message-State: APuU4Z/6vAJ57BFm05xAQJle3GiNuJZFLikoI5obSo43jylVCgJqoWYU
-	u7gd0VDmtyCnYEdRpIZM2GSIgwTSfmtA7z/UnCcB2pMmwP0WrMmEOD9hPqe7NUmfz1kWhPvtryi
-	04V990o+VT51lxe0swzZF/Mim2ijRXRjGhA==
-X-Gm-Gg: AYBFou1iu/onI6SavalKyjVwUQKOZXrFGStNZEup9UfxPLala8g8anaKESD+EiUTIQP
-	6le7X4BgypNH7KAxXnlDljsEljt0K1gvaJ7S1go5LoxvFRG0A/dArNpxbZzODtxlXtAju8RRVYX
-	bIkTXfoBT2+MyarplQRWw/rmZfoeiCZsEXEMvdNNBcolTuvCKSncnfRqv678x3txvab8BPHTeZu
-	HF33rX92NWyqrI4KcyjReSNvzFUl/fDqUA4Su6ubmpKJaCMHL2KQpylKAOg+AvSoBoJ+ngVvwdA
-	LEyjH/4T2YZiJ0bDBc2PKcngUaEHqpjWZQGgKzFqhLxThYnNQzKaAFYyShJABaRMCPE7c9Jlpqv
-	oRp0EDGGhFhs6rgxhCf5QU9OBXnSDkTJNTgxd5Q==
-X-Received: by 2002:a05:6512:3a8c:b0:5c0:b5c:4052 with SMTP id
- 2adb3069b0e04-5c15d58a6eemr1875176e87.2.1794483665562; Thu, 12 Nov 2026
- 03:41:05 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=H4NZhvs6
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5264C1F00A08;
+	Thu, 12 Nov 2026 14:52:17 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794495139;
+	bh=oHKGckLKjhKuC8TFxfYio1TRXf55zru0s2A4nn+WqcQ=;
+	h=From:Subject:Date:To:Cc;
+	b=H4NZhvs6yrF5U2b5PE0UkP9/EK0zs28ghNjyy8pVfXOgVbPrPcvKG/GdSjP3p00VA
+	 UfRgh89IOZt/vDnt9xrRK02cSXrgBczEEunqsGH0JlgJ9BxF66z3UYRE096TzHsv3n
+	 PlmwTtDqlFwxrn12vwd+X/h+c/G6j0bDNx0FsvGDT0Rru/pGN4ycChrl/zFvdQKBxI
+	 rveyJ9nUvC0hkeTASM7iwHsToe7I81cZ/BLRU2OX1gG8ubA+0FY6ucAj+/Tv6kGhxk
+	 DlSL5N/LU8+Eas3QNSYu9PhtwXpDZ1xvhzqAFquvtdMEv6vzCibye0ctJaKk4Y3kLx
+	 p7uifPwzZlozw==
+From: Chuck Lever <cel@kernel.org>
+Subject: [PATCH net-next v2 00/10] Deliver TLS session tags to upper-layer
+ consumers (NFSD)
+Date: Thu, 12 Nov 2026 09:52:04 -0500
+Message-Id: <20261112-tls-session-tags-v2-0-a587a50de7fc@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -103,110 +54,169 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <CAHnbEGLHGX2rMnf=S6CasoNyc939DTe-whcsjt9WhSWG920OoA@mail.gmail.com>
- <434f6474-b960-4383-8d61-0705632b4c33@oracle.com> <CAHnbEGJq-w4CMS1dg8UBraV+6kLMkmC-hO4Dq7f4z8Af6maitA@mail.gmail.com>
- <41e9ed40-311d-42ee-9fe2-5af3ecda67d4@oracle.com> <CAHnbEGLuYq6vYqq9M3w+W0iR-r0OOeCfSD3cEV-yekAbo-yAQw@mail.gmail.com>
- <CAHnbEG+qCwHRptvTGYDY_PeCN+61DVQRf+UcGDnhB+m6H9Np1g@mail.gmail.com>
-In-Reply-To: <CAHnbEG+qCwHRptvTGYDY_PeCN+61DVQRf+UcGDnhB+m6H9Np1g@mail.gmail.com>
-From: Sebastian Feld <sebastian.n.feld@gmail.com>
-Date: Thu, 12 Nov 2026 12:40:27 +0100
-X-Gm-Features: AclHuK-I-9jbTBeQqqpElHlN3AqN0JJHznUWSYtQAmwQIlS15cJfT8Fsf5XfmSA
-Message-ID: <CAHnbEG+HGsubEYwa6b2zmTgiJJYCeWqAaekZiG0iFDtaf1Xm9Q@mail.gmail.com>
-Subject: Re: fattr4_hidden and fattr4_system r/w attributes in Linux NFSD?
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Cc: open list <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2WOyw6CMBBFf4XM2tFSi6+V/2FYlHaUGmhNpxIN4
+ d+lGFcu79wzN2cEpuiI4VSMEGlw7IKfg1wVYFrtb4TOzhmkkDtRlRJTx8jEmcOkb4xHK4SS1WF
+ 7VQrmt0ekq3stkxfwlNDTK0H9bfjZ3MmkvJjZRjNhE7U3bT796E2vnc996ziF+F7shnJZXERml
+ X+RoUSBat/Y0h6VrSp5DlGbjtYm9FBP0/QBSExGIu0AAAA=
+X-Change-ID: 20260512-tls-session-tags-9d0042583f44
+To: Donald Hunter <donald.hunter@gmail.com>, 
+ Jakub Kicinski <kuba@kernel.org>, "David S. Miller" <davem@davemloft.net>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ John Fastabend <john.fastabend@gmail.com>, 
+ Sabrina Dubroca <sd@queasysnail.net>, Keith Busch <kbusch@kernel.org>, 
+ Jens Axboe <axboe@kernel.dk>, Christoph Hellwig <hch@lst.de>, 
+ Sagi Grimberg <sagi@grimberg.me>, Chaitanya Kulkarni <kch@nvidia.com>, 
+ Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
+ Eric Dumazet <edumazet@kernel.org>
+Cc: kernel-tls-handshake@lists.linux.dev, netdev@vger.kernel.org, 
+ linux-nvme@lists.infradead.org, linux-nfs@vger.kernel.org, 
+ Hannes Reinecke <hare@kernel.org>
+X-Mailer: b4 0.17-dev-9c833
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6480; i=cel@kernel.org;
+ h=from:subject:message-id; bh=1YbGJ7P3cSrTs9FPZDlebICr4QrVxyKnLFjrnYFH80A=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq9dKYNJriI/yAPqV6HOqTr4MQlqQp2W3ed/0lk
+ vWPnXSj/MKJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavXSmAAKCRAzarMzb2Z/
+ l2KOD/9bFLU4QM8kqngzwuhSOKvwW1p5bYMcMs14TnqMpeXYapglkyQ7ER3dtShXNbE2dTnnfN1
+ JuRzvhLmwZnkYSenS/5LlzwUK3x6hHdSG2175BGBf96zjzxAC3ohlh03vuP/RKsh9vUv83b7eGG
+ UtlcKVKxKcc20qlVKCnsoQULixEPg3NtCCUyXI798OqIeQHg7IM6FdHxBNJs4ekvqoSyNkRdCPg
+ 7CCRFHSoMV9RkTTTJR1O7aBMG1aQaEyENtogJ74vE19EujlAwYguyBXQNtCzx+YYJPk1IH0++sj
+ OYWOn0mkc3yaiH1Q3SplwaSHobNwTXEGruCr59DJizgCpq3PBl0/h+GAH6/0+ajpwyBAHxHltFQ
+ v1lUhL6U8f/WJYv58mf58ZsZWm/E3qHsR1QhklC5c4+Af9OOSBa4Lapln40RV8RtFvKjR+3uHVa
+ COEusp614I3/ir+VtIvX1KqZmVt4wM/JBJLi1FmRtaLraKT8TUVDTW/BlmcpQeMPiUh4bX6YqDg
+ jouUZcFpAbmtY9uugMQES4pH91TBjHGJFFfHeeWj/V2rVKtfjPpywaxt59wiU3uIXoVXd4K30Kd
+ gf4k9X2JwKyxvHfaoyM/1gTlOXQDoqwT6U/fHcyWi6m5Usy8PO3CERpD8tpvNEyOcqVlrs1XEN/
+ AseUqA97FNtBecQ==
+X-Developer-Key: i=cel@kernel.org; a=openpgp;
+ fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-Somehow my email did not get through to the list, so again...
+NFSD and similar upper-layer services want access-control decisions
+based on TLS peer-certificate characteristics, but in-kernel x.509
+parsing would duplicate work mature userspace libraries already do.
+tlshd evaluates certificates against admin-defined policy and reports
+the policies that matched back to the kernel as opaque string tags.
+Intersection against per-resource tag sets stays the consumer's
+problem.
 
-Sebi
+The series builds on commit 81246a65303d ("handshake: Require admin
+permission for DONE command"), now in net-next. Without it a forged
+DONE downcall could set session tags for a real handshake.
 
-On Tue, Nov 10, 2026 at 6:40=E2=80=AFPM Sebastian Feld
-<sebastian.n.feld@gmail.com> wrote:
->
-> Yearly reminder that this is still not fixed.
->
-> Sebi
->
-> On Tue, Jun 17, 2025 at 9:59=E2=80=AFAM Sebastian Feld
-> <sebastian.n.feld@gmail.com> wrote:
-> >
-> > On Tue, Apr 29, 2025 at 3:45=E2=80=AFPM Chuck Lever <chuck.lever@oracle=
-.com> wrote:
-> > >
-> > > On 4/29/25 9:10 AM, Sebastian Feld wrote:
-> > > > On Mon, Apr 28, 2025 at 4:15=E2=80=AFPM Chuck Lever <chuck.lever@or=
-acle.com> wrote:
-> > > >>
-> > > >> Hi Sebastian -
-> > > >>
-> > > >> On 4/28/25 7:06 AM, Sebastian Feld wrote:
-> > > >>> I've been debating with Opentext support about their Windows NFS4=
-.0
-> > > >>> client about a problem that the Windows attributes HIDDEN and SYS=
-TEM
-> > > >>> work with a Solaris NFSD, but not with a Linux NFSD.
-> > > >>>
-> > > >>> Their support said it's a known bug in LInux NFSD that "fattr4_hi=
-dden
-> > > >>> and fattr4_system, specified in RFC 3530, are broken in Linux NFS=
-D".
-> > > >>
-> > > >> RFC 7530 updates and replaces RFC 3530.
-> > > >>
-> > > >> Section 5.7 lists "hidden" and "system" as RECOMMENDED attributes,
-> > > >> meaning that NFSv4 servers are not required to implement them.
-> > > >>
-> > > >> So that tells me that both the Solaris NFS server and the Linux NF=
-S
-> > > >> server are spec compliant in this regard. This is NOTABUG, but rat=
-her it
-> > > >> is a server implementation choice that is permitted by RFC.
-> > > >>
-> > > >> It is more correct to say that the Linux NFS server does not curre=
-ntly
-> > > >> implement either of these attributes. The reason is that native Li=
-nux
-> > > >> file systems do not support these attributes, and I believe that n=
-either
-> > > >> does the Linux VFS. So there is nowhere to store these, and no way=
- to
-> > > >> access them in filesystems (such as the Linux port of NTFS) that d=
-o
-> > > >> implement them.
-> > > >>
-> > > >> We want to have a facility that can be used by native applications
-> > > >> (such as Wine), Samba, and NFSD. So implementing side-car storage
-> > > >> for such attributes that only NFSD can see and use is not really
-> > > >> desirable.
-> > > >
-> > > > I did a bit of digging, that debate started in 2002.
-> > > >
-> > > > 23 years later, nothing happened. No Solution.
-> > > > Very depressing.
-> > >
-> > > It's a hard problem.
-> > >
-> > > Focus on the recent work. It appears to be promising and there have
-> > > been few objections to it.
-> >
-> > Do you have any reference to that work? Are there status updates?
-> >
-> > Sebi
-> > --
-> > Sebastian Feld - IT security consultant
->
->
->
-> --
-> Sebi
-> --
-> Sebastian Feld - IT security consultant
+Four architectural choices shape the series, only one of which is
+visible in any single patch.
 
+The tagging vocabulary is opaque to the kernel. tlshd decides what
+each tag means, and the handshake layer and its consumers only test
+membership. Any future attribute the kernel wants to gate on has to
+be expressed as a tag rather than as a new netlink field.
 
+HANDSHAKE_MAX_SESSIONTAGS rides on every ACCEPT reply as
+HANDSHAKE_A_ACCEPT_MAX_SESSION_TAGS (patch 7), so tlshd can size its
+DONE-side tag list to the running kernel's limit rather than to a
+header constant.
 
---=20
-Sebi
---=20
-Sebastian Feld - IT security consultant
+Session tags have one owner at each step. The DONE handler collects
+them into a private stringset before taking the completion gate, so
+no allocation happens inside the gate. The gate's winner hands the
+set to handshake_finish_complete() (patch 6 adds a kunit test for the
+gate). svcsock copies the set into the transport and orders the copy
+before setting XPT_TLS_SESSION. check_xprtsec_policy() reads that bit
+with test_bit_acquire(), so a transport that reports a TLS session
+always has its tags visible.
+
+The stringset helper (patch 2) is a generic library so that NFSD
+export tagging (patches 9 and 10) can use it without further churn in
+net/handshake/.
+
+This series applies to the nfsd-testing branch of
+https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git
+The base-commit below is the tip of that branch as of August 18.
+
+---
+Changes in v2:
+- Drop v1's 1/9, sent ahead of the set per Jeff and now merged.
+- Adopt the pinned hr_file/fput lifetime model.
+- Adapt to the errno-valued handshake status (hp_done takes int).
+- Rename "tagset" to "stringset" throughout (Hannes)
+- Warn and return false when a query precedes stringset_finalize().
+- Add a patch with KUnit tests for stringset.
+- Split the hp_done session-tags argument into its own patch.
+- Collect the session tags before taking the completion gate.
+- Pass ownership of the tag set to handshake_finish_complete().
+- Add handshake_session_tag_len(), shared with the NFSD parser.
+- Add KUnit tests for session-tag collection.
+- Check the file reference count in the completion-gate KUnit case.
+- Rename the ACCEPT cap attribute MAX_TAGS to MAX_SESSION_TAGS.
+- Publish the saved tags with smp_wmb() and test_bit_acquire().
+- Deny a tagged export on the non-mTLS arms of check_xprtsec_policy().
+- Extract nfsd_nl_parse_allow_tags() from the netlink export parser.
+- Build stringset only when a consumer selects CONFIG_STRINGSET.
+- Free the session tags as soon as hp_done() returns.
+- Report a rejected session tag or allow-tag through the extack.
+- Show allow_tags in /proc/fs/nfsd/exports.
+- Record the client address and XID in nfsd_export_tags_denied.
+- Link to v1: https://patch.msgid.link/20260605-tls-session-tags-v1-0-47bd1d94d552@oracle.com
+
+---
+Chuck Lever (10):
+      handshake: Add tags to "done" downcall
+      lib: Add a "stringset" data structure
+      lib: Add KUnit tests for the stringset data structure
+      handshake: Add a session-tags argument to the TLS done callback
+      handshake: Pick up session tags passed during the DONE downcall
+      handshake: Add a kunit test for the completion gate
+      handshake: Advertise the session-tag cap to user space
+      SUNRPC: Copy the TLS session tags when they are available
+      NFSD: Implement export tagging
+      NFSD: Add allow_tags to the netlink export interface
+
+ Documentation/core-api/index.rst           |   1 +
+ Documentation/core-api/stringset.rst       | 243 +++++++++++++++++++++++
+ Documentation/netlink/specs/handshake.yaml |  19 ++
+ Documentation/netlink/specs/nfsd.yaml      |  10 +
+ Documentation/networking/tls-handshake.rst |  62 +++++-
+ MAINTAINERS                                |   8 +
+ drivers/nvme/host/tcp.c                    |   3 +-
+ drivers/nvme/target/tcp.c                  |   3 +-
+ fs/nfsd/Kconfig                            |   1 +
+ fs/nfsd/export.c                           | 194 +++++++++++++++++-
+ fs/nfsd/export.h                           |   9 +
+ fs/nfsd/netlink.c                          |   4 +-
+ fs/nfsd/netlink.h                          |   3 +-
+ fs/nfsd/trace.h                            |  27 +++
+ include/linux/stringset.h                  | 191 ++++++++++++++++++
+ include/linux/sunrpc/svc_xprt.h            |   7 +-
+ include/net/handshake.h                    |  50 ++++-
+ include/uapi/linux/handshake.h             |   4 +
+ include/uapi/linux/nfsd_netlink.h          |   1 +
+ lib/Kconfig                                |  12 ++
+ lib/Kconfig.debug                          |   6 +
+ lib/Makefile                               |   1 +
+ lib/stringset.c                            | 190 ++++++++++++++++++
+ lib/tests/Makefile                         |   1 +
+ lib/tests/stringset_kunit.c                | 308 +++++++++++++++++++++++++++++
+ net/Kconfig                                |   1 +
+ net/handshake/genl.c                       |   5 +-
+ net/handshake/handshake-test.c             | 307 ++++++++++++++++++++++++++++
+ net/handshake/handshake.h                  |   9 +
+ net/handshake/netlink.c                    | 110 ++++++++++-
+ net/handshake/request.c                    |  61 +++++-
+ net/handshake/tlshd.c                      |  10 +-
+ net/sunrpc/Kconfig                         |   1 +
+ net/sunrpc/svc_xprt.c                      |  11 +-
+ net/sunrpc/svcauth_unix.c                  |  14 +-
+ net/sunrpc/svcsock.c                       |  63 +++++-
+ net/sunrpc/xprtsock.c                      |   4 +-
+ tools/net/ynl/Makefile.deps                |   3 +-
+ 38 files changed, 1911 insertions(+), 46 deletions(-)
+---
+base-commit: c88fd6989aea9237a60a4859139a265bfb7ddc0b
+change-id: 20260512-tls-session-tags-9d0042583f44
+
+Best regards,
+--  
+Chuck Lever <cel@kernel.org>
+
