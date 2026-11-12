@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794495148;
-	b=nDfBrP4yu7FjafKHlUiwJ4QjrC83vDuJKKfgoB12BmGHJbpCPFDMliHbeKap3uhipP8I
-	 UHRPK9ARYtT/0J902VaEAatKTCAqSBG/D2WZ82bCaA2qZfe07coy/ksIIyDXQSl9adN/l
-	 t1MQ48O20ZDhYnBO6ChprpwY9UzVa6pyzwFPmvGlwknmM07oPcy11ID221igFo5Q4A2ZA
-	 nR4JoKQyszKb8kfia6xpN4fl26GBpHm2MsryuLqk40IEzi6rymh9kIvG4dmMUEtZvTA6J
-	 LxI46opZRELax231BR/hvS1erDF6uKNM8jSlVv4yBpSGivqwJ1+EE3tgiVHfpc0Pm2Q==
+	t=1794495150;
+	b=rnCH72dLSq05lyHx7E9OFPqJZpDbEA42D3pzKu8qQt34/l8LJFFA8DK/p8L1hPQCKN9E
+	 Hqcyxrhodlkz3x4SPuKCrCp6QvCUMgdMa7hi5mYK0H7u/C8KGJxwXh3YCvV4j4cSHUkno
+	 B9QSSAJ7HAQwBfsK4o2V8kex+M+PVakH8m4Ej4dRhct/ngdR3WBRyWlVL4GqIwxYZNlyI
+	 AOfKsw0bvOiYtZOetNegBfTpgMrdpJv4OEZDX5zbOoby5zDQ2x2RHXwaPKRsKO35yPOx3
+	 /0THQ3NUgt2VsXR+JUGf1amuOOi73d0qNLLdpjisbTTGIpqa3Z8AR/40QGMQ0pScXlg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794495148;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794495150;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=x4U9OY83AMdIM4GpHSz9bMVAQFf6A9UKYeHUYwQz6Vw=;
-	b=BJv81VhCQdxC0DYEF/Lz5RdLF5TRSp86uWQFPGliWspzT+cJAV1MjbPl2PyrDpZbUzPR
-	 jZglhq5+58UlLR2sQ1lmILa51EitHJ4jRi6Xc7uIb+Jhvj3QOi2TBkLmPrHHk5j0d9vEY
-	 u+oOPL0XZ5P6C41XqS511+r0VDUrNY6yllS4yHzxBzhDPSlfhWJQT5gtJsQtp2qwb4KO5
-	 rjxGEpr004oDgIsxPl7WsdyGhInhXIdgOmBo6AZfDwTcl5ddekgzlmKyp5n32QUal4bQ1
-	 wpOOGIo5lGuKKeieKjhsBSTon40jKApv+0LYFQKJuT7SEnh5Ph0foZBt4BnHS4Hi82A==
+	bh=wFhoqXgYMWt3Fq99iuC3P9N51U08a+2UJApHOOEUO5A=;
+	b=SnP1QE3AN53Uxxudbttl9OaDYwFciH97OmRouPkSP+F7NC98HfgQiJHVLEA+fe3Tj/v1
+	 JpqcNb3x0wImK+3EYUsfVh03bqD3o+zriiKWwLAAvyt7T/MIKFv4qztJHQldtRvSnX20J
+	 qBsGcs/qAIu49QaNDWbk0+IgSAQwXLIBrbmDz+oDB54oJygXZ6yiQFbftcIij4SvwfDyS
+	 iMfJU3JKoXb6SoU08MEAT5kUZnG/PcBnDNruYoOvOROP+HaxSPCPOJtT3RGcFZPyxBgDl
+	 oErHhuzDJkFdFIjCb/7MUlEOOHjCxHI8ZDP9x+VyYPbVNyVjDbDSEPP8+tu4KroBd1A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PemdNlyW;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GxbWXcYW;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 15F5D606A31C;
-	Thu, 12 Nov 2026 14:52:27 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E122E606A31C;
+	Thu, 12 Nov 2026 14:52:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PemdNlyW
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 165471F00AC9;
-	Thu, 12 Nov 2026 14:52:25 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GxbWXcYW
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BD22F1F00A0D;
+	Thu, 12 Nov 2026 14:52:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794495147;
-	bh=x4U9OY83AMdIM4GpHSz9bMVAQFf6A9UKYeHUYwQz6Vw=;
+	s=k20260515; t=1794495149;
+	bh=wFhoqXgYMWt3Fq99iuC3P9N51U08a+2UJApHOOEUO5A=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=PemdNlyWtcT7rrpT5SJUqOs8/ENDEgey5apvG1na4czVQN5UKf3g4cn24HF3HPTN7
-	 92MaJXIP8WX7PH/lCjjOuSA0hZTqjAsXzBf6jdJ29eEHvbMey5cY+zNb0KT0j45wKo
-	 BJK+xOZi2PM7NpsiWvFd4UMuYEKZJ4RfYijthkAATpbLG4vmlXRceEB2173lSB5wuB
-	 3xIKP7Yjd0iu3Kr+xJsqb0qkbhEsobF4q+MUPtMhff1+eX2BCNHYI2LSFaHVPyzA2K
-	 UEnrTvJ7xoFr80SFnBzYw42j17msGJTxZx40USJOD6r34uwyNqwfV0sXwElWbfWeuj
-	 LOMg97/YF19JA==
+	b=GxbWXcYWbA7xFjN9rM3F0PtGEKQ30ZofK255oHai8nsMA0otHCu6tYHjS5XY4hPAT
+	 LJ/IxbnDSQq5RTpzJg0a3MRv4LujpoNOS8tLJORhIZWe6MdTXzpHHehC2etoyg4epv
+	 fTfVVSQrMNZ0aORCrx7YJrPo11OP0iKp6CBxj+lt/zFlu5wSAkJS251xSjmOTxPhfY
+	 adYe7BG/PIgwHj7ORUwsP7OZIWlSDfh6Sbr2tZMl9XQsZ2fgR5r0PpaFcv1WXu71w3
+	 2JfX68HQ8eFlspBTMrzhG0c+bB4FM2H+RFv9FnclVqCXMX+trAKRdYgA6cCvmA8AFE
+	 yUj77mLgyAamQ==
 From: Chuck Lever <cel@kernel.org>
-Date: Thu, 12 Nov 2026 09:52:07 -0500
-Subject: [PATCH net-next v2 03/10] lib: Add KUnit tests for the stringset
- data structure
+Date: Thu, 12 Nov 2026 09:52:08 -0500
+Subject: [PATCH net-next v2 04/10] handshake: Add a session-tags argument
+ to the TLS done callback
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-tls-session-tags-v2-3-a587a50de7fc@kernel.org>
+Message-Id: <20261112-tls-session-tags-v2-4-a587a50de7fc@kernel.org>
 References: <20261112-tls-session-tags-v2-0-a587a50de7fc@kernel.org>
 In-Reply-To: <20261112-tls-session-tags-v2-0-a587a50de7fc@kernel.org>
 To: Donald Hunter <donald.hunter@gmail.com>, 
@@ -72,406 +72,183 @@ To: Donald Hunter <donald.hunter@gmail.com>,
 Cc: kernel-tls-handshake@lists.linux.dev, netdev@vger.kernel.org, 
  linux-nvme@lists.infradead.org, linux-nfs@vger.kernel.org
 X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=12969; i=cel@kernel.org;
- h=from:subject:message-id; bh=omxHm6T2o0sGNkjApdWyBqv4k1eCEIcyvkVmhYMLXNE=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq9dKgZu9jjzfqDINiTD+4JPgCmjAAGtpJWKlwB
- nuF8RT4hcWJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavXSoAAKCRAzarMzb2Z/
- l5rrD/9VEQ9SPoxURYpvf73q9WGkdGSPixe25347Wr+juLjNqB1JIlqb2k1z1lBErZmVvujq6N1
- LRpJdMDZBpiM86p16/mB+bZi8MvQyvg7awT8/whmc54+pRvMeG4pSSQaT2xjSWX4590h5ay0t36
- VTd1Kz4fMiWqEAqbAlLM5y2GNFiqPZJQ35hZw8OmJDJkgjcUVTysADLIiiE9WuzlnkXLItLcSkQ
- jyQ5fBvKPgWC8RH0uR7li/+KZwf8nmXdqw/rlsCBsuLGJpzME9a4DptLDa3bJ+ssZg3XSU4Q6rH
- CJbsJmoPu5Hu7B9daeRSOqISMQR9IxVBhhe/b6OhkfgBFkKPDFqQs2L7aknq29yKU7ChfDoQZWb
- S6cR3dlACaaxlrZGNMIqONbkiT5r/y1RzbNadg9EYWhX4uAGzBMZC22XjJoDdtKVoPoHgA3dRhd
- ASTp0RsjmOi07LSN8K6uZpWjibp5EthAejEZSvUBygocZhXeRpnUS3frgHWZ9nucQA9i2CmSiLB
- rFToteRjEFLM4yxRV8EngCKyJOaqqM1YCUF5Tgj7z5Lt1q7QE7w+w90QN0okrU+LWhDNihVnJWT
- /NyYUDfnxNudAfkz1hhje+iUYB5ilGmxVcvL8fqcCzi0sdvYok2Iv+s7diH/Ygl1MK9ZPTP6u4C
- tlnT7RvVOK+5QuQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6425; i=cel@kernel.org;
+ h=from:subject:message-id; bh=TrKpLsYSnUBTQ+eSZXkbDYZrEL3/QrsYvQ0xILjo8vE=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq9dKgIaO1QMmNr1VLg5xlLxLrbSjoJZ6nTWgF6
+ jO9D0eXRh6JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavXSoAAKCRAzarMzb2Z/
+ l+D7D/4xpMDlgduooKtcqz5ceezMNdo4nR9izKoPLgdolC1E8X0X9yYH+5xJw1rQuVk/5faxnZA
+ vycsNYkVMv5fEGTjUHD+39oAUbcBlwbnLjC6ofBD/vAQHBXSt6D6sFMyWtwY60g3ZUUiFE+TgDB
+ RFT+xPFJ6e47MoQqVBSunUcu8+6Asw9DHO/JweNfzYDeFVgSHAFBlnx4uMBh/IZhdZ1ABXiu42p
+ hyyM/D5/Ml3iVoTA1jW2daiCQhatAxrA/aXdhtxHv9rcy8+F0YJvZgjOQW5yZC/HbnbftIdOJWw
+ ChlQLqCBB1uPi9az49UkRm+C6jfCg74QUnI/nQR08msYA2cVADG7sEZH1Ov8GDJW5P9sec6VE93
+ jzLMDqAA6bWyRysWZzk6odEwIeFIUBKcBio7FVyoXvLR3BWFG5P2hObvVtITQhU3xX9uukYy+Vu
+ URR5j/xkBCy3A4wQqNHjWZOxqWtr7g6CLSAOunXeV0Ha6Ws44LCr0kTvrAMHDwOBsbIu7Kt1tIi
+ 9/hOqqyFW2dzi9+y4QLnlK5iBoBr7DoEQwu/Ucgu+iJjglNE8hZ0cKgzK1UqJ6Q/UtdNit/ZFSU
+ xz63rJCFJptgQj/DAa9YCfUIlLigQfjYCLUHqjM/ELCMRtiRVAKSvkXAbduNS2DI0YwhWL92s/g
+ xWyDYSZRsCKNEJQ==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-The stringset data structure carries invariants that are easy to
-regress silently: stringset_add() transfers ownership of the passed
-pointer, stringset_finalize() both sorts and drops duplicate
-strings, queries are valid only after finalization, and
-stringset_copy() must produce a set that survives destruction of
-its source. None of these are exercised today.
+Session tags arriving in the DONE downcall have to reach handshake
+consumers for authorization decisions. The completion callback is
+the only path to a consumer, so carrying the tags there requires a
+new argument on tls_done_func_t. That signature change ripples
+through every existing TLS handshake consumer in the tree.
 
-Add a KUnit suite that drives the supported usage pattern and
-checks the observable results: capacity bounds and the once-only
-allocation rule, the post-finalize sort and dedup, binary-search
-membership at the array boundaries and in gaps, intersection over
-overlapping, disjoint, and empty sets, and copy independence.
-Built with KASAN, the dedup and copy cases become use-after-free
-detectors. Under kmemleak, the ownership case catches a transfer
-that never happened.
-
-The misuse paths guarded by WARN_ON_ONCE() are intentionally left
-out: tripping them taints the kernel, and KUnit has no facility to
-mark a warning as expected.
+Add the @tags parameter ahead of the functional change. No consumer
+reads it yet and the handshake core passes NULL, so behavior is
+unchanged. Isolating the mechanical signature churn confines the
+tag-collection patch that follows to the handshake core.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- MAINTAINERS                 |   1 +
- lib/Kconfig.debug           |   6 +
- lib/tests/Makefile          |   1 +
- lib/tests/stringset_kunit.c | 308 ++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 316 insertions(+)
+ Documentation/networking/tls-handshake.rst |  3 ++-
+ drivers/nvme/host/tcp.c                    |  3 ++-
+ drivers/nvme/target/tcp.c                  |  3 ++-
+ include/net/handshake.h                    | 16 +++++++++++++++-
+ net/handshake/tlshd.c                      |  5 +++--
+ net/sunrpc/svcsock.c                       |  4 +++-
+ net/sunrpc/xprtsock.c                      |  4 +++-
+ 7 files changed, 30 insertions(+), 8 deletions(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index b977559f24f6..fecbbc7b3d60 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -27019,6 +27019,7 @@ S:	Maintained
- F:	Documentation/core-api/stringset.rst
- F:	include/linux/stringset.h
- F:	lib/stringset.c
-+F:	lib/tests/stringset_kunit.c
+diff --git a/Documentation/networking/tls-handshake.rst b/Documentation/networking/tls-handshake.rst
+index 4f7bc1087df9..7e9f4bd659b4 100644
+--- a/Documentation/networking/tls-handshake.rst
++++ b/Documentation/networking/tls-handshake.rst
+@@ -169,7 +169,8 @@ The synopsis of this function is:
+ .. code-block:: c
  
- SUN HAPPY MEAL ETHERNET DRIVER
- M:	Sean Anderson <seanga2@gmail.com>
-diff --git a/lib/Kconfig.debug b/lib/Kconfig.debug
-index 2d22638ec13a..4ae7922d90ef 100644
---- a/lib/Kconfig.debug
-+++ b/lib/Kconfig.debug
-@@ -2531,6 +2531,12 @@ config STRING_HELPERS_KUNIT_TEST
- 	depends on KUNIT
- 	default KUNIT_ALL_TESTS
+   typedef void	(*tls_done_func_t)(void *data, int status,
+-                                   key_serial_t peerid);
++                                   key_serial_t peerid,
++                                   const struct stringset *tags);
  
-+config STRINGSET_KUNIT_TEST
-+	tristate "KUnit test the stringset data structure at runtime" if !KUNIT_ALL_TESTS
-+	depends on KUNIT
-+	select STRINGSET
-+	default KUNIT_ALL_TESTS
-+
- config STRING_KUNIT_BENCH
-        bool "Benchmark string functions at runtime"
-        depends on STRING_KUNIT_TEST
-diff --git a/lib/tests/Makefile b/lib/tests/Makefile
-index df0537e1b91f..aabc70c40840 100644
---- a/lib/tests/Makefile
-+++ b/lib/tests/Makefile
-@@ -54,6 +54,7 @@ CFLAGS_stackinit_kunit.o += $(call cc-disable-warning, switch-unreachable)
- obj-$(CONFIG_STACKINIT_KUNIT_TEST) += stackinit_kunit.o
- obj-$(CONFIG_STRING_KUNIT_TEST) += string_kunit.o
- obj-$(CONFIG_STRING_HELPERS_KUNIT_TEST) += string_helpers_kunit.o
-+obj-$(CONFIG_STRINGSET_KUNIT_TEST) += stringset_kunit.o
- obj-$(CONFIG_USERCOPY_KUNIT_TEST) += usercopy_kunit.o
- obj-$(CONFIG_UTIL_MACROS_KUNIT) += util_macros_kunit.o
- obj-$(CONFIG_RATELIMIT_KUNIT_TEST) += test_ratelimit.o
-diff --git a/lib/tests/stringset_kunit.c b/lib/tests/stringset_kunit.c
-new file mode 100644
-index 000000000000..2a50a5c634d8
---- /dev/null
-+++ b/lib/tests/stringset_kunit.c
-@@ -0,0 +1,308 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * KUnit tests for the stringset data structure.
-+ *
-+ * Copyright (c) 2025, Oracle and/or its affiliates.
-+ */
-+
-+#include <kunit/resource.h>
-+#include <kunit/test.h>
+ The consumer provides a cookie in the @ta_data field of the
+ tls_handshake_args structure that is returned in the @data parameter of
+diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
+index bc46e5f3eaa7..c792ac1c3c6d 100644
+--- a/drivers/nvme/host/tcp.c
++++ b/drivers/nvme/host/tcp.c
+@@ -1919,7 +1919,8 @@ static void nvme_tcp_set_queue_io_cpu(struct nvme_tcp_queue *queue)
+ 		qid, queue->io_cpu);
+ }
+ 
+-static void nvme_tcp_tls_done(void *data, int status, key_serial_t pskid)
++static void nvme_tcp_tls_done(void *data, int status, key_serial_t pskid,
++			      const struct stringset *tags)
+ {
+ 	struct nvme_tcp_queue *queue = data;
+ 	struct nvme_tcp_ctrl *ctrl = queue->ctrl;
+diff --git a/drivers/nvme/target/tcp.c b/drivers/nvme/target/tcp.c
+index 8092ce4914b6..5064d1f6c28e 100644
+--- a/drivers/nvme/target/tcp.c
++++ b/drivers/nvme/target/tcp.c
+@@ -1865,7 +1865,8 @@ static int nvmet_tcp_tls_key_lookup(struct nvmet_tcp_queue *queue,
+ }
+ 
+ static void nvmet_tcp_tls_handshake_done(void *data, int status,
+-					 key_serial_t peerid)
++					 key_serial_t peerid,
++					 const struct stringset *tags)
+ {
+ 	struct nvmet_tcp_queue *queue = data;
+ 
+diff --git a/include/net/handshake.h b/include/net/handshake.h
+index 8ebd4f9ed26e..c227d42bd767 100644
+--- a/include/net/handshake.h
++++ b/include/net/handshake.h
+@@ -10,6 +10,8 @@
+ #ifndef _NET_HANDSHAKE_H
+ #define _NET_HANDSHAKE_H
+ 
 +#include <linux/stringset.h>
 +
-+KUNIT_DEFINE_ACTION_WRAPPER(stringset_destroy_action, stringset_destroy,
-+			    struct stringset *);
-+
-+/*
-+ * Cleanup actions run after a failed assertion has ended the test
-+ * thread, so the set cannot live on that thread's stack.
+ enum {
+ 	TLS_NO_KEYRING = 0,
+ 	TLS_NO_PEERID = 0,
+@@ -17,8 +19,20 @@ enum {
+ 	TLS_NO_PRIVKEY = 0,
+ };
+ 
++/**
++ * typedef tls_done_func_t - TLS handshake completion callback
++ * @data: opaque context pointer set via tls_handshake_args.ta_data
++ * @status: zero on success, otherwise a negative errno
++ * @peerid: serial number of peer identity key, or TLS_NO_PEERID
++ * @tags: session tags assigned by the handshake agent
++ *
++ * The @tags pointer is valid only for the duration of this callback.
++ * A consumer requiring persistent access must copy the set with
++ * stringset_copy().
 + */
-+static struct stringset *new_set(struct kunit *test)
-+{
-+	struct stringset *set;
-+	int err;
-+
-+	set = kunit_kzalloc(test, sizeof(*set), GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, set);
-+	stringset_init(set);
-+	err = kunit_add_action_or_reset(test, stringset_destroy_action, set);
-+	KUNIT_ASSERT_EQ(test, err, 0);
-+	return set;
-+}
-+
-+/* Build a populated (but not yet finalized) set from an array of literals. */
-+static struct stringset *build_set(struct kunit *test,
-+				   const char * const *strs, unsigned int n)
-+{
-+	struct stringset *set = new_set(test);
-+	unsigned int i;
-+
-+	KUNIT_ASSERT_TRUE(test, stringset_alloc(set, n, GFP_KERNEL));
-+	for (i = 0; i < n; i++)
-+		KUNIT_ASSERT_TRUE(test,
-+				  stringset_add_dup(set, strs[i], GFP_KERNEL));
-+	return set;
-+}
-+
-+static void stringset_init_empty(struct kunit *test)
-+{
-+	DEFINE_STRINGSET(set);
-+
-+	KUNIT_EXPECT_TRUE(test, stringset_is_empty(&set));
-+	KUNIT_EXPECT_EQ(test, stringset_count(&set), 0u);
-+	stringset_destroy(&set);
-+}
-+
-+static void stringset_alloc_zero_is_empty_set(struct kunit *test)
-+{
-+	DEFINE_STRINGSET(set);
-+
-+	KUNIT_EXPECT_TRUE(test, stringset_alloc(&set, 0, GFP_KERNEL));
-+	stringset_finalize(&set);
-+	KUNIT_EXPECT_FALSE(test, stringset_is_member(&set, "anything"));
-+	KUNIT_EXPECT_EQ(test, stringset_count(&set), 0u);
-+	stringset_destroy(&set);
-+}
-+
-+static void stringset_alloc_twice_fails(struct kunit *test)
-+{
-+	DEFINE_STRINGSET(set);
-+
-+	KUNIT_EXPECT_TRUE(test, stringset_alloc(&set, 4, GFP_KERNEL));
-+	KUNIT_EXPECT_FALSE(test, stringset_alloc(&set, 4, GFP_KERNEL));
-+	stringset_destroy(&set);
-+}
-+
-+static void stringset_realloc_after_destroy(struct kunit *test)
-+{
-+	const char * const in[] = { "a", "b" };
-+	struct stringset *set;
-+
-+	set = build_set(test, in, ARRAY_SIZE(in));
-+	stringset_finalize(set);
-+	stringset_destroy(set);
-+	KUNIT_EXPECT_TRUE(test, stringset_alloc(set, 2, GFP_KERNEL));
-+}
-+
-+static void stringset_add_capacity_exhausted(struct kunit *test)
-+{
-+	struct stringset *set = new_set(test);
-+	char *overflow;
-+
-+	KUNIT_ASSERT_TRUE(test, stringset_alloc(set, 1, GFP_KERNEL));
-+	KUNIT_EXPECT_TRUE(test, stringset_add_dup(set, "a", GFP_KERNEL));
-+	KUNIT_EXPECT_FALSE(test, stringset_add_dup(set, "b", GFP_KERNEL));
-+
-+	/* The failed add does not transfer ownership, so free the string. */
-+	overflow = kstrdup("b", GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, overflow);
-+	KUNIT_EXPECT_FALSE(test, stringset_add(set, overflow));
-+	kfree(overflow);
-+
-+	KUNIT_EXPECT_EQ(test, stringset_count(set), 1u);
-+}
-+
-+static void stringset_add_null_rejected(struct kunit *test)
-+{
-+	DEFINE_STRINGSET(set);
-+
-+	KUNIT_ASSERT_TRUE(test, stringset_alloc(&set, 1, GFP_KERNEL));
-+	KUNIT_EXPECT_FALSE(test, stringset_add(&set, NULL));
-+	KUNIT_EXPECT_FALSE(test, stringset_add_dup(&set, NULL, GFP_KERNEL));
-+	stringset_destroy(&set);
-+}
-+
-+/*
-+ * stringset_add takes ownership; destroy must free it. A missed
-+ * transfer leaks the string, which leak checkers (kmemleak) catch.
-+ */
-+static void stringset_add_takes_ownership(struct kunit *test)
-+{
-+	struct stringset *set = new_set(test);
-+	char *str;
-+
-+	KUNIT_ASSERT_TRUE(test, stringset_alloc(set, 1, GFP_KERNEL));
-+	str = kstrdup("owned", GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, str);
-+	KUNIT_EXPECT_TRUE(test, stringset_add(set, str));
-+	stringset_finalize(set);
-+}
-+
-+static void stringset_add_is_queryable(struct kunit *test)
-+{
-+	struct stringset *set = new_set(test);
-+	char *str;
-+
-+	KUNIT_ASSERT_TRUE(test, stringset_alloc(set, 1, GFP_KERNEL));
-+	str = kstrdup("owned", GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, str);
-+	KUNIT_EXPECT_TRUE(test, stringset_add(set, str));
-+	KUNIT_EXPECT_FALSE(test, stringset_is_empty(set));
-+	stringset_finalize(set);
-+	KUNIT_EXPECT_TRUE(test, stringset_is_member(set, "owned"));
-+}
-+
-+static void stringset_finalize_dedups(struct kunit *test)
-+{
-+	const char * const in[] = { "a", "b", "a", "b" };
-+	struct stringset *set;
-+
-+	set = build_set(test, in, ARRAY_SIZE(in));
-+	KUNIT_EXPECT_EQ(test, stringset_count(set), 4u);
-+	stringset_finalize(set);
-+	KUNIT_EXPECT_EQ(test, stringset_count(set), 2u);
-+	KUNIT_EXPECT_TRUE(test, stringset_is_member(set, "a"));
-+	KUNIT_EXPECT_TRUE(test, stringset_is_member(set, "b"));
-+}
-+
-+/*
-+ * Callers must not depend on iteration order, but the sort is what
-+ * makes binary-search membership work, so check it directly here.
-+ */
-+static void stringset_finalize_sorts(struct kunit *test)
-+{
-+	const char * const in[] = { "charlie", "alpha", "bravo" };
-+	const char *prev = NULL, *str;
-+	struct stringset *set;
-+	unsigned int i;
-+
-+	set = build_set(test, in, ARRAY_SIZE(in));
-+	stringset_finalize(set);
-+	stringset_for_each(set, i, str) {
-+		if (prev)
-+			KUNIT_EXPECT_LT(test, strcmp(prev, str), 0);
-+		prev = str;
-+	}
-+}
-+
-+static void stringset_is_member_present_and_absent(struct kunit *test)
-+{
-+	const char * const in[] = { "b", "d", "f", "h" };
-+	struct stringset *set;
-+
-+	set = build_set(test, in, ARRAY_SIZE(in));
-+	stringset_finalize(set);
-+	/* present: first, middle, last */
-+	KUNIT_EXPECT_TRUE(test, stringset_is_member(set, "b"));
-+	KUNIT_EXPECT_TRUE(test, stringset_is_member(set, "f"));
-+	KUNIT_EXPECT_TRUE(test, stringset_is_member(set, "h"));
-+	/* absent: before first, in a gap, after last */
-+	KUNIT_EXPECT_FALSE(test, stringset_is_member(set, "a"));
-+	KUNIT_EXPECT_FALSE(test, stringset_is_member(set, "e"));
-+	KUNIT_EXPECT_FALSE(test, stringset_is_member(set, "z"));
-+}
-+
-+static void stringset_intersection_overlap(struct kunit *test)
-+{
-+	const char * const a[] = { "a", "c", "e" };
-+	const char * const b[] = { "b", "c", "d" };
-+	struct stringset *s1, *s2;
-+
-+	s1 = build_set(test, a, ARRAY_SIZE(a));
-+	s2 = build_set(test, b, ARRAY_SIZE(b));
-+	stringset_finalize(s1);
-+	stringset_finalize(s2);
-+	KUNIT_EXPECT_TRUE(test, stringset_intersection(s1, s2));
-+}
-+
-+static void stringset_intersection_disjoint(struct kunit *test)
-+{
-+	const char * const a[] = { "a", "b", "c" };
-+	const char * const b[] = { "x", "y", "z" };
-+	struct stringset *s1, *s2;
-+
-+	s1 = build_set(test, a, ARRAY_SIZE(a));
-+	s2 = build_set(test, b, ARRAY_SIZE(b));
-+	stringset_finalize(s1);
-+	stringset_finalize(s2);
-+	KUNIT_EXPECT_FALSE(test, stringset_intersection(s1, s2));
-+}
-+
-+static void stringset_intersection_with_empty(struct kunit *test)
-+{
-+	const char * const a[] = { "a", "b" };
-+	struct stringset *s1;
-+	DEFINE_STRINGSET(empty);
-+
-+	s1 = build_set(test, a, ARRAY_SIZE(a));
-+	stringset_finalize(s1);
-+	stringset_finalize(&empty);
-+	KUNIT_EXPECT_FALSE(test, stringset_intersection(s1, &empty));
-+	stringset_destroy(&empty);
-+}
-+
-+/* Copy is deep: destroying the source must not disturb the copy. */
-+static void stringset_copy_is_independent(struct kunit *test)
-+{
-+	const char * const in[] = { "one", "two", "three" };
-+	struct stringset *src, *dst;
-+
-+	src = build_set(test, in, ARRAY_SIZE(in));
-+	stringset_finalize(src);
-+	dst = new_set(test);
-+	KUNIT_ASSERT_TRUE(test, stringset_copy(dst, src, GFP_KERNEL));
-+	KUNIT_EXPECT_EQ(test, stringset_count(dst), 3u);
-+
-+	stringset_destroy(src);
-+	KUNIT_EXPECT_TRUE(test, stringset_is_member(dst, "one"));
-+	KUNIT_EXPECT_TRUE(test, stringset_is_member(dst, "three"));
-+}
-+
-+static void stringset_copy_empty_src(struct kunit *test)
-+{
-+	DEFINE_STRINGSET(src);
-+	DEFINE_STRINGSET(dst);
-+
-+	stringset_finalize(&src);
-+	KUNIT_EXPECT_TRUE(test, stringset_copy(&dst, &src, GFP_KERNEL));
-+	KUNIT_EXPECT_EQ(test, stringset_count(&dst), 0u);
-+	/* dst is finalized, so a query is well-defined and returns false */
-+	KUNIT_EXPECT_FALSE(test, stringset_is_member(&dst, "x"));
-+	stringset_destroy(&dst);
-+	stringset_destroy(&src);
-+}
-+
-+static void stringset_iteration_visits_all(struct kunit *test)
-+{
-+	const char * const in[] = { "a", "b", "c", "d" };
-+	unsigned int i, seen = 0;
-+	struct stringset *set;
-+	char *str;
-+
-+	set = build_set(test, in, ARRAY_SIZE(in));
-+	stringset_finalize(set);
-+	stringset_for_each(set, i, str) {
-+		KUNIT_EXPECT_TRUE(test, stringset_is_member(set, str));
-+		seen++;
-+	}
-+	KUNIT_EXPECT_EQ(test, seen, stringset_count(set));
-+}
-+
-+static struct kunit_case stringset_test_cases[] = {
-+	KUNIT_CASE(stringset_init_empty),
-+	KUNIT_CASE(stringset_alloc_zero_is_empty_set),
-+	KUNIT_CASE(stringset_alloc_twice_fails),
-+	KUNIT_CASE(stringset_realloc_after_destroy),
-+	KUNIT_CASE(stringset_add_capacity_exhausted),
-+	KUNIT_CASE(stringset_add_null_rejected),
-+	KUNIT_CASE(stringset_add_takes_ownership),
-+	KUNIT_CASE(stringset_add_is_queryable),
-+	KUNIT_CASE(stringset_finalize_dedups),
-+	KUNIT_CASE(stringset_finalize_sorts),
-+	KUNIT_CASE(stringset_is_member_present_and_absent),
-+	KUNIT_CASE(stringset_intersection_overlap),
-+	KUNIT_CASE(stringset_intersection_disjoint),
-+	KUNIT_CASE(stringset_intersection_with_empty),
-+	KUNIT_CASE(stringset_copy_is_independent),
-+	KUNIT_CASE(stringset_copy_empty_src),
-+	KUNIT_CASE(stringset_iteration_visits_all),
-+	{}
-+};
-+
-+static struct kunit_suite stringset_test_suite = {
-+	.name = "stringset",
-+	.test_cases = stringset_test_cases,
-+};
-+kunit_test_suite(stringset_test_suite);
-+
-+MODULE_DESCRIPTION("KUnit tests for the stringset data structure");
-+MODULE_LICENSE("GPL");
+ typedef void	(*tls_done_func_t)(void *data, int status,
+-				   key_serial_t peerid);
++				   key_serial_t peerid,
++				   const struct stringset *tags);
+ 
+ struct tls_handshake_args {
+ 	struct socket		*ta_sock;
+diff --git a/net/handshake/tlshd.c b/net/handshake/tlshd.c
+index 7567150c2a4f..997edc3fe31c 100644
+--- a/net/handshake/tlshd.c
++++ b/net/handshake/tlshd.c
+@@ -26,7 +26,8 @@
+ 
+ struct tls_handshake_req {
+ 	void			(*th_consumer_done)(void *data, int status,
+-						    key_serial_t peerid);
++						    key_serial_t peerid,
++						    const struct stringset *tags);
+ 	void			*th_consumer_data;
+ 
+ 	int			th_type;
+@@ -105,7 +106,7 @@ static void tls_handshake_done(struct handshake_req *req,
+ 		set_bit(HANDSHAKE_F_REQ_SESSION, &req->hr_flags);
+ 
+ 	treq->th_consumer_done(treq->th_consumer_data, status,
+-			       treq->th_peerid[0]);
++			       treq->th_peerid[0], NULL);
+ }
+ 
+ #if IS_ENABLED(CONFIG_KEYS)
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 498c5096eef9..f21522dd51f2 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -414,13 +414,15 @@ static void svc_tcp_kill_temp_xprt(struct svc_xprt *xprt)
+  * @data: address of xprt to wake
+  * @status: status of handshake
+  * @peerid: serial number of key containing the remote peer's identity
++ * @tags: session tags assigned by the handshake agent
+  *
+  * If a security policy is specified as an export option, we don't
+  * have a specific export here to check. So we set a "TLS session
+  * is present" flag on the xprt and let an upper layer enforce local
+  * security policy.
+  */
+-static void svc_tcp_handshake_done(void *data, int status, key_serial_t peerid)
++static void svc_tcp_handshake_done(void *data, int status, key_serial_t peerid,
++				   const struct stringset *tags)
+ {
+ 	struct svc_xprt *xprt = data;
+ 	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 027b37de694b..ade473f1a312 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2593,9 +2593,11 @@ static int xs_tcp_tls_finish_connecting(struct rpc_xprt *lower_xprt,
+  * @data: address of xprt to wake
+  * @status: status of handshake
+  * @peerid: serial number of key containing the remote's identity
++ * @tags: session tags assigned by the handshake agent
+  *
+  */
+-static void xs_tls_handshake_done(void *data, int status, key_serial_t peerid)
++static void xs_tls_handshake_done(void *data, int status, key_serial_t peerid,
++				  const struct stringset *tags)
+ {
+ 	struct rpc_xprt *lower_xprt = data;
+ 	struct sock_xprt *lower_transport =
 
 -- 
 2.56.0
