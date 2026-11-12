@@ -1,49 +1,100 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794516201;
-	b=5M0uuKh72Cl3j7nsys64R73pF+BXwx6z6aEefepRWyGXpB6S0y94n7rUFi3kDR1NYQ2o
-	 0orspJde+lnz+J6WWewlwGDcpMRflQlZ3jt2Ow1upExr+YgUwNkQgGNpXa56QYAx5O1wL
-	 elqbBlU9ZEQbLTa/3kw+DtGR3oVzOSJmCq/4sClhqu9RPpPj5HBFNYa1hsh3UNlLAgyY4
-	 1jzlpAHzufyuxgGkXqaca++EXEsQ47Nps4+5206WaHwSm77nQ8YyYSREz+X1s1pdp+eI2
-	 ik1CHBLVlQ4dauLQ5+BsMG8hzUCSm2PJ1iTB5TfXbDcAx7TJ2haqPQMmXE5cD6c33bw==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794516201;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=DC/qP9LjAFeKtw7OZ6NgwF5JMeyJn9r895+QBQXZW2Y=;
-	b=OYebpf5NtZMNBLallfWJhc1NznNM6ZZg5x/3htbh1jaRp+kg1QiESvlJcVaMDutmGGTB
-	 4xKgz9qHd5JsrksgteDWUi/l73M9qJgzxWUWkwLU00BjASBstaGDXcccpnfanH3ZRedx9
-	 FY2sz/GhX04Yovg7S06+zVu0lbiLZqGUjUOrEX7VCJoZ9j2t2WRg/aaO7sr01CFWZmkGP
-	 V0snbCDlBGJiWx8Du6ae0JJ2/l/qZW/yMbf5xh5p+aJopD07VBvv++Xut3eoqtQmM02d/
-	 SDY6u3/8ZUKYz9CIVljD/92mAGzN7CqQ0RQ/DgalLYjXJb73qQlK+AENcBU2adW4wNw==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HkjdEttO;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.160.177
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1794524367;
+	b=JCMtFU48jtU8hMnfBvZQ+dIoyoLnJ7sRanXEs4PGSsTWWaEkygfUNZMVCm2OoBJ8IkLc
+	 freDMkIwIxkLM53d52yR1xtCUd3/oJ3vUlsGvP+qzrVxSFnEb9svPmYsC8QYVjQMQSG1M
+	 XIT7CpqFdrtcVAgyMFhoQDqjwb0RZWu3YvHw8GuJu6o8iiOuG7q7ber47m+FBEuTLucG2
+	 b17qMQuaJVWIrIoMZZfYKcKj5vs1u8eRCgDCTAAkr32Fu6g+AvGMEXpf95C9L5y4cEMLs
+	 iK7taOQZh5kWBk7ZMJ463MZK7RMw4HNkskx8LTqgJkXIS5n0dpbunBos2Pvu4KuVGjg==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794524367;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
+	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
+	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
+	bh=ZsSjLqJE2zg5KnRT+r/w8Y0ianrVtar664vxU/qkfmw=;
+	b=f2hywTDhMhH/gc/TvnezHJ5uvcAPxN1lNXdnjrnbfMJeDk3ahwx4xH9kj+Q+1wUl3iIA
+	 ebD+QmUruYKDrHEejI/1xmS4EMZd+Ni+aIRU++0yodiIpOf2EvpvvrLGQ7XzhgxntiKZf
+	 qmzWA8SWNqUksBWvp5MqZeWR87DeYxLY6bVljEgnSdWMEAw92FrMZGsd6G/ZqqpdLM1yI
+	 HiCAnTiVai5n+wLwMumFHbygQg0MFFA9jWDjJWIYbMq1aOyaqoDSC9h6rryfrCMHvyzgA
+	 Vd8Ku84797wQ6Gcj3Wk8Jy3M08ImtcuenqsfcW6SzZ+oXlAZyj3Enqi+gqFMvSFmgJw==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=google.com;
+	spf=pass smtp.mailfrom=google.com;
+	dkim=pass header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=NRwZn7LS;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.160.177
+Received: from mail-qt1-f177.google.com (mail-qt1-f177.google.com [209.85.160.177])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A8513606A321
-	for <linux-nfs@vger.kernel.org>; Thu, 12 Nov 2026 20:43:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB96760A5BDF
+	for <linux-nfs@vger.kernel.org>; Thu, 12 Nov 2026 22:59:26 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org AB96760A5BDF
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HkjdEttO
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 93DC41F000C4;
-	Thu, 12 Nov 2026 20:43:20 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794516201;
-	bh=DC/qP9LjAFeKtw7OZ6NgwF5JMeyJn9r895+QBQXZW2Y=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=HkjdEttOHElKzS8XW3wQD5C3gAwawpqFL2hPKJZ9ruNEJYEPjU2MCfvlfn0ZkA4wJ
-	 +4EIASL+Gh82WwnnV3HwkwiYA7DbHwTP8J0lWqP3N/yyBUAgYfcC1MZhfPI5I1Kck9
-	 ydiQ/pPV+9aaU63O41ATq4xsqX/l1cJG6iNN0H5gdoeJnyY7RXpQvrTf2bUekDxeFG
-	 QJE0DJzX5IrLJYH1TO9VPugVasrby8XJNaYqLfQ67J3Vd0DQeODUb/mLtw8KQBXPK1
-	 LQHxsuec8+V3++0x677D9Qqt2t9Y6z4z3Z4e544iDkC6wof9L/OSAofp4ZvOQrykdV
-	 uUpTBk+qh0u6g==
-From: Chuck Lever <cel@kernel.org>
-Date: Thu, 12 Nov 2026 15:43:07 -0500
-Subject: [PATCH v3 7/7] NFSD: Verify the target directory last in
- nfsd_link()
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=NRwZn7LS
+Received: by mail-qt1-f177.google.com with SMTP id d75a77b69052e-5383c97c8cfso7211cf.1
+        for <linux-nfs@vger.kernel.org>; Thu, 12 Nov 2026 14:59:26 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1794524366; cv=none;
+        d=google.com; s=arc-20260327;
+        b=iTBtRbIMAbZNUeX6XFWHgqS93iy7E3g8H0ue7hKneniLsS/Ca8FKZDqPAz3XkHCqrt
+         Q37srxt0jYt1w4FgH2PukriwRdSDjL28u1IU6gVlmksnASR1uQ45gJDRYyD6/WTC/dL/
+         YWfSHXN4rXXHs6wiKAD8nnDDBNfIG0tXDS/DDDwBhR+mUQMS7tnyhSxne524zAr+rOHe
+         BQjEiO93uDRmNtIw6G2zJbNmT6TaMBB/rV+D818EasTDMr7HCNk4x9l2xmVteO3Xtftx
+         pV3Y2cYdbco3TWrrAscpTaB8oBU/GKdYRgvRz6D5nQa8cAQ0jV4HgMYZksc/BOz1Wpcq
+         FB9Q==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=ZsSjLqJE2zg5KnRT+r/w8Y0ianrVtar664vxU/qkfmw=;
+        fh=nbxJdJSlp7wS+rHyOtRZIGGmbrAMKvxPamxh5UaovMU=;
+        b=SoPliMvGM9sotM+WfDrmw31QBcGnliKd9/xbNz3g+JBGYXtE72fAovVUX1DJgdPTtM
+         laeltd8fKgIXteAkws+fomC28GYHndNIfnVSByFn8v1Vsj20K/TvlcYbOHIKdjXKznKP
+         y5jmdO9A/QAV7acwdiPIJ6mzEiHLsNbyzeI4B7/nSRvRS0J6bvv/Xfv4XbWpd/CLoSNO
+         CsWBI384z9mF9263YzPoAG3kR5bkvukUfAZR1EesE0F/0FAMiDUcAdDuYOsq6gUmepTr
+         0YG5c86D6Q8IOWYQ+LbLfe7DvhJ04L3ItBhCr4kozjMBi1unCeYJWlN1Bi6B2UTsYg/l
+         /sYQ==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20260707; t=1794524366; x=1795129166; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=ZsSjLqJE2zg5KnRT+r/w8Y0ianrVtar664vxU/qkfmw=;
+        b=NRwZn7LSFGPxX3NtvX3Y7sFS2xItJxs0r16isV8pawPhbKhy9B1louAe6i72I/3N2P
+         UniuOLDEYa6TVxl3FcjF+9fSBbbE6bEf8pNLK7WB6YbLd65ecGFIrlmSNUlXyyjpJ8vf
+         ohFZkafmiEpB/6QdOpX3lVI6mIhmWqe6T/e+zzki4c0Prg7mBZOQ6GWxsjlHiixSscXX
+         A2EnFSV9dgOF5i1DaoquT+PzW0SfWsEl1uNHbNVAhiQrzGs9Og4DdpgCz+Yv7QqLqs4H
+         +ukKqWpoNHIUUbHnQO7MzVkr7o1J4ZHyugW+l4ektn2xy8z/xNEMyuKzLtfe2JdeXdLm
+         aMkQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794524366; x=1795129166;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=ZsSjLqJE2zg5KnRT+r/w8Y0ianrVtar664vxU/qkfmw=;
+        b=Yx/D6sKK6+GSq4Q0P4eOriMsG59T72TEhJiQqmRYDU6p1n2qbdy9gZTZAUDvTjQfqn
+         i1IiTqsSBiz0wOshdsRTiIYyeVxo7nRquLrfHAN/nxuSwtcdV54v8SqLHCRIBIGA6O8C
+         vGCCiY9xCy8elbMqDRyook4Ah0/LLrwaw46jS7zSK6wFIU0NztZzPRZyLVRNNTtOzkhw
+         UvD6oAyvxop/STNBPBdb0uFA3GUuLhKwzF/A6NSK7OiVnalNz+N7Vi7lV8YRbVqN6gSA
+         L0RdJFGKkLYhTd44fakS/Wfl76ooiNIm+ZSrjHtvgXOA0AiA/V3xhJLnqxMvFdbzP6mS
+         9tlQ==
+X-Forwarded-Encrypted: i=1; AL+hErHmHMd7UPvAOiShMJntohH58It/nswhBT6VNZ+EowKuoxC1Neyx+2afUU1+fUYscWlMXLzGk21UfQo=@vger.kernel.org
+X-Gm-Message-State: APuU4Z9bjpJeLsZl7oHO+G+hwQHVi1YERZlUKSSHdLZTu0TkUHvSjBbZ
+	VkdbmVf+ZMVNwUJ5HTJdSZ+Qzh5X7UjLFEQsKDGb0c+/t7dyLseP9du9y/7JhmA8dW+ODIV+jlu
+	Z6ya+IAex9OkMUztN3iYjmkOiac1puZ+vYRGl2Vxp
+X-Gm-Gg: AYBFou2ERAFNMo4J6lwBeuJ4sMS1y/JZYpDxZNV0yLu/vN68H4mYnbkXJuK4ctLdJrL
+	58ygQRpd/3fFtAmHoVqUY9wA2JBxM/tuVLTlCcbfkfYs6ByZJyGJfq0jl4aShRlVFRihZwEhk0N
+	4OQehQVdspzoVIrpXREtgcMeU4lKd68opLFRwz6QStHTaEoYOOBqlVfwrIKrnqi0sF5a5+d6LSt
+	m7LhrrqGanA/Axbmaox9J5njZn5lREUwu3a3MNTiJC7uoTEKeu0vZnszfOFeDlnM+inGeY8Ds11
+	RA+tmYBQKw+6RYVTFWVI6R48duG+xpz49++nkVaMOcps974fCWPih/11Xf9V+jkun+vuUMbtZmv
+	11kG9ZnOhYqj0OsWVE6TutyjPuvy4/vyWDYopMQO2SLxJKUpJmXcsMBTAbzVvjT2cUJU=
+X-Received: by 2002:a05:622a:98c:b0:532:eff9:ca08 with SMTP id
+ d75a77b69052e-55afcbede04mr2871271cf.12.1794524364998; Thu, 12 Nov 2026
+ 14:59:24 -0800 (PST)
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -53,83 +104,80 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-verofess-2-v3-7-487532e4d7ca@kernel.org>
-References: <20261112-verofess-2-v3-0-487532e4d7ca@kernel.org>
-In-Reply-To: <20261112-verofess-2-v3-0-487532e4d7ca@kernel.org>
-To: VeroFess <coderzeng@gmail.com>, Jeff Layton <jlayton@kernel.org>, 
- NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
- Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, sashiko-bot <sashiko-bot@kernel.org>, 
- Chuck Lever <cel@kernel.org>
-X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2153; i=cel@kernel.org;
- h=from:subject:message-id; bh=tQmV/yDHMVeHQfYD5uMAYogJsbItIBaRRwuTPz8w8n0=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq9iTe+LDzzuNuj9tdy9dWvSNMzEw5kvfLFGPp0
- OTxDRSdZGmJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavYk3gAKCRAzarMzb2Z/
- lyH7D/9+09zUmcfASaGtodlgGUhn8zcN+eK3mnEAqtH7N0PPbm/HmNDsDqmcVlsK7Ga6R63Hi8D
- xj43hboynUKjCmMc/A9jub6i/HNYXVC5frmiq77jQNYI5/Ydn8P6+m7qmdc77UHAwJ7hcPqltSI
- LHuXKhejWIdR4MT5mORLqG63Y6sqilV4QHjjhVKid2TrolwagyE7cdVUHiNoVnMScCFMmkRgqPF
- 4tZixcCxm2IBT3j02kMlEAWx5ChUbhnBv+UMp7me2pgaaQsscY/lKZAo3x/f5QfL8D/IKLXKAm9
- +lT4TvoBN9UEQSq34Vg+Yfe2g7WiKyz+OOlXBDPakgIQwiyDQvaZy1M6ISM9ykBImdgn4bVALqG
- sIJa7yJ+oVNy1GBknFcTHmfMWtjFgQ1/Gdjs27crkizVEJCz1x09vaeEgLmaHt4fosjl0MNAi/k
- A/fC9mgDmni4V2KoR/n25SXF/A+eptwTHeEkQHyJbWLrBH+Ux+DuHpKgT5K14yXXojG759EK4p3
- XO6fBycipcpHIWwLg1iZMTBzPU5eZmhv9RYb6nIuNrM2+pmocjmEGG/Hay7BmvYyfHbn67t6fdP
- Br97N1k5H2JCkH+vcCY/RsCW3XOJZbpQqSEXJwgLKEZeVXR2vRJU2P86r4pAvSCL2F+sxx5UVtr
- u7uEpXozVGb21Kw==
-X-Developer-Key: i=cel@kernel.org; a=openpgp;
- fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
+References: <20261103223025.2482227-1-nhuhuan@google.com> <20261106085019.90487-1-lizhe.67@bytedance.com>
+In-Reply-To: <20261106085019.90487-1-lizhe.67@bytedance.com>
+From: Huan Nguyen <nhuhuan@google.com>
+Date: Thu, 12 Nov 2026 14:58:48 -0800
+X-Gm-Features: AclHuK_MjdqInx2d6Ru3Fw1h0wqnaU6otNi9RKFyMPSDK4f5OfZNd4Zh3wXDlV8
+Message-ID: <CALwWd5tttbaNWoaXnPZjHFgYhG8yMyT67_9nhRKN336EHOVhqg@mail.gmail.com>
+Subject: Re: [RFC PATCH v3 0/3] mm: use non-temporal stores for demotion
+To: Li Zhe <lizhe.67@bytedance.com>
+Cc: Liam.Howlett@oracle.com, akpm@linux-foundation.org, 
+	alirad.malek@zptcorp.com, anna@kernel.org, apopple@nvidia.com, 
+	bharata@amd.com, bp@alien8.de, byungchul@sk.com, dave.hansen@linux.intel.com, 
+	dave@stgolabs.net, david@kernel.org, dimitrios.palyvos@zptcorp.com, 
+	fvdl@google.com, gourry@gourry.net, hannes@cmpxchg.org, hpa@zytor.com, 
+	jackmanb@google.com, jic23@kernel.org, joshua.hahnjy@gmail.com, 
+	linux-kernel@vger.kernel.org, linux-mm@kvack.org, linux-nfs@vger.kernel.org, 
+	linux-trace-kernel@vger.kernel.org, ljs@kernel.org, 
+	mathieu.desnoyers@efficios.com, matthew.brost@intel.com, mhiramat@kernel.org, 
+	mhocko@suse.com, mingo@redhat.com, nifan.cxl@gmail.com, rakie.kim@sk.com, 
+	rientjes@google.com, rkodsara@amd.com, rostedt@goodmis.org, rppt@kernel.org, 
+	ryan.roberts@arm.com, shivankg@amd.com, sj@kernel.org, surenb@google.com, 
+	tglx@kernel.org, trondmy@kernel.org, vbabka@kernel.org, weixugc@google.com, 
+	x86@kernel.org, xuezhengchu@huawei.com, yiannis.nikolakop@gmail.com, 
+	yiannis@zptcorp.com, ying.huang@linux.alibaba.com, ziy@nvidia.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-nfsd_link() verifies the target directory first and the source file
-last, and fh_verify() installs the credentials of the export it
-verifies. When the two filehandles are in different exports of one
-file system, vfs_link() checks and modifies the target directory with
-the source export's squash mapping, and a LINK that the target export
-permits can fail with EACCES. After an NFSv4 LINK, the source export's
-credentials also stay installed while the current filehandle stays in
-the target export. Operations that follow in the same compound without
-calling fh_verify(), such as READ with an OPEN stateid, then run on
-the target export with the source export's squash mapping. RENAME
-verifies its target directory last, so it is not affected.
+On Fri, Nov 6, 2026 at 12:51=E2=80=AFAM Li Zhe <lizhe.67@bytedance.com> wro=
+te:
+>
+> On Tue, 3 Nov 2026 14:30:22 -0800, Huan Nguyen wrote:
+>
+> > Using non-temporal stores and prefetching on x86 bypasses CPU cache
+> > allocation, protecting active workload working sets and improving
+> > demotion throughput.
+>
+> Could you show some real workload numbers for this? I am wondering
+> whether the reduced cache allocation and improved demotion throughput
+> also translate into visible application-level benefits.
 
-Verify the source file first and the target directory last. After the
-change, the target export's credentials are in effect for vfs_link()
-and for the rest of an NFSv4 compound. When neither filehandle passes
-fh_verify(), nfsd_link() now returns the source file's error.
+I do not have direct benchmark numbers for non-temporal demotion with
+this implementation yet. As far as I know, Alirad and Yiannis (cc'd)
+are currently evaluating its real-workload impact and may share
+results once available.
 
-Reported-by: sashiko-bot <sashiko-bot@kernel.org>
-Closes: https://sashiko.dev/#/patchset/20261103-verofess-2-v1-0-9e6568221beb@kernel.org?part=4
-Closes: https://sashiko.dev/#/patchset/20261111-verofess-2-v2-0-01596ca4d8b1@kernel.org?part=7
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- fs/nfsd/vfs.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+>
+> > - Memory ordering:
+> >   Add a wmb() barrier at the end of folio_mc_copy_nt() to ensure weakly
+> >   ordered non-temporal stores are drained before page tables are update=
+d.
+>
+> I have not looked into all the details here, so I may be missing
+> something. But before migration completes, there should eventually be a
+> publication step that makes the new folio visible. In theory, that
+> publication step should already provide the required ordering before
+> userspace can observe the new folio. So I wonder whether the wmb() in
+> folio_mc_copy_nt() is really needed here.
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index c227a3d3a805..77ca88618b13 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -2297,10 +2297,14 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
- 
- 	trace_nfsd_vfs_link(rqstp, ffhp, tfhp, name, len);
- 
--	err = fh_verify(rqstp, ffhp, S_IFDIR, NFSD_MAY_CREATE);
-+	/*
-+	 * Verify @ffhp last so that the credentials of its export are in
-+	 * effect for vfs_link() and after return.
-+	 */
-+	err = fh_verify(rqstp, tfhp, 0, NFSD_MAY_NOP);
- 	if (err)
- 		goto out;
--	err = fh_verify(rqstp, tfhp, 0, NFSD_MAY_NOP);
-+	err = fh_verify(rqstp, ffhp, S_IFDIR, NFSD_MAY_CREATE);
- 	if (err)
- 		goto out;
- 	err = nfserr_isdir;
+On weakly-ordered architectures like arm64, the publication step
+indeed provides the required ordering, because smp_wmb() and
+smp_store_release() emit real hardware barriers before the new folio
+becomes visible.
 
--- 
-2.56.0
+On x86_64, however, those primitives compile down to a compiler
+barrier() with no CPU instructions, since x86 assumes TSO. Because
+movnti bypasses TSO, the standard publication barriers do not order
+non-temporal writes on x86_64, which is why folio_mc_copy_nt() needs
+an explicit wmb() at the end.
 
+Right now __HAVE_ARCH_COPY_PAGE_NT is only defined on x86_64, so that
+the wmb() is effectively x86-only today. If another architecture
+implements __HAVE_ARCH_COPY_PAGE_NT in the future, we can move the
+wmb() into an x86-specific scope in v4 so weakly-ordered architectures
+do not pay for an unnecessary barrier.
+
+>
+> Thanks,
+> Zhe
