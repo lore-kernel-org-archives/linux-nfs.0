@@ -1,49 +1,73 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794599058;
-	b=jEFvsaxGtn+7vm0T7YL9BgDEsCljGrEPmVd4OJ14HsloxqNiwwcaaq5G3xPR/aM+pu4Q
-	 pPEjfQRLpcnROwYhQE/CGC8F20k5pQgFoHXc9W+NQ/EIINsiJQuHXXTIsddPcJEZI7FNI
-	 chRUntwpxKdeTw+p6bY5QfyZTVnp3aAtwoWgfun6a5J+b4pGer5qSmWOgW3gI7OiJ7OC3
-	 cLHHWcZHVtmANIUSq8w/yGPhi8eXi7XckxDd9Q0WFbLjSCS7W9kJ/lO9dnYIrg6X9X42q
-	 QIBak6oXbNhLykGgyJKpG4JAj3XMMa8QxLgC5Qb7TZJNM5gr8CPwbhJquLTwa6osYEg==
+	t=1794605187;
+	b=4SVbCw6BdMposqUCldZynqAYCrmmbIc5/zuVNil3cqiXhOwnZrBIidSdC7qDfXpeqYAI
+	 Kr4ZPOkkU5MYXn+rvIUoZMi8ECa1bLUrO+j7FutQH3ONjbl9896QDqEJ3MwOPjNWTNj6w
+	 rQVjsWta17togjVJfbTiRpnfQXO2hceS9FjctTVEss9TVSw0I41MSNOaH/SYdWQqL7cer
+	 LsqTWHnbAz6Sw75xZlb/CBUMDOV2SzeiMWoJXlq5pjyKWr7YsBOuBx9QOLqsWZHJSVjAD
+	 RvsfdTQ9h4kKf2vERWs+jfSL3EXn+/eZQxx0M4soyDp4ZZyHlaSsA3T8iZX5rH6GuRg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794599058;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=qI4uhRcp/n5ztbG7n5fXFQE3jhszdLuNf6s7bLdAbP0=;
-	b=fRkdeAgNj8l5WaofC++2oTyWL5zatbn0VjwyDYiqxp6NLYYF5B7gt/tQ/rmcjSMtif1X
-	 wpgOh8C6HrhWuN/OW3e2SUfhUXyjNXiG4QyNSFJhSK9c6NnJAK50Mcf2DWmSpZiL3WkT6
-	 J6eqahOnVXvq0GVQcY5NyB9r5OkYxGAQE1tcENsQyf7+XDFYlhlDgYEw316F4ae69S3pk
-	 eaWmk6Lu9gnZCINOEMKpPSFh6jvbZ6pmwOL7kgMhfZ9PHgKbe2zts7nMlCOVurfEi0Opk
-	 aiLYgcpaqjgwDQDdzK4NXUrzOx7oqvHvSyAfUHvxVPp5OTByr4le9vc3mFQ7cFyac/A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794605187;
+	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
+	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
+	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
+	 References:Subject:Content-Type:Content-Transfer-Encoding;
+	bh=+LhmUueiZDpNp+el4ZZxKEiRLNHwEM9VF8h0HiTLPj0=;
+	b=uxKEmD3rctmwhT+W+v/RAIRg0QXSGyBQd17f0sYt4oB+8p0Pnyy/YXGCLMxlsFoBReGA
+	 MGRRtyAik63qyzKEMY3xQVDLTK2U/+rqzTSWSS+MPyv6B70+Agw+09Z8gF3jnC+BWdTsV
+	 iUWL0qAAtvo/kEliVv4CjPaPm1xokgiZAYBIdNvpPiOgJFukRaKpRrxbxBhtrG1Ug4skj
+	 q7jHc/36K6eECMxWWJL5Sro2ZG1VY6UPfehIGh958/3/PUudgLxsNaZ8moQJSj5YYkwOk
+	 pfMTp8sbSNEqj2rnZotwMwhm0Jtccwlu1QhL0IEi9rBHdQTi0VHuxzVG/+iFA7CuTvg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XPbSLbOR;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bbDK0+5B;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 99D10606A334
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2026 19:44:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B5C15606A332
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2026 21:26:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XPbSLbOR
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 74C931F000C4;
-	Fri, 13 Nov 2026 19:44:17 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bbDK0+5B
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 250981F000C6;
+	Fri, 13 Nov 2026 21:26:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794599058;
-	bh=qI4uhRcp/n5ztbG7n5fXFQE3jhszdLuNf6s7bLdAbP0=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=XPbSLbORhiRAtUvTUCTduc5EON82vflRE3lFsO3n5YWsPnKukT4SXeNuYJrQQQ8xC
-	 vToaRGRMCYol+CGPzhXrqlR1OvuwWRnvbM0tnBeJx5+czzlusEIBjA+jVZlXeNG5Xb
-	 JmIct6LT3ly6qnb8bi6s8TPDTcOhxQJaqzvWz0LBfqMIKwxieCiCfafhEbrEvWXRdV
-	 kDAEP/K1p2RgQYWMdps1XVRb3EJL+as9HaPimwQAYE0cvN7yjdxcAbxXpLC4EhV15p
-	 gpr/PnxBt3yeKe/bRxTZ6ndHBq96YB93hb4euE1cLbnjQZ0gnFuC3HZU7vjj0S6WAf
-	 4M9tBwd3H53SA==
-From: Chuck Lever <cel@kernel.org>
-Date: Fri, 13 Nov 2026 14:44:06 -0500
-Subject: [PATCH 8/8] SUNRPC: Receive UDP datagrams into rq_pages through a
- bvec iterator
+	s=k20260515; t=1794605187;
+	bh=+LhmUueiZDpNp+el4ZZxKEiRLNHwEM9VF8h0HiTLPj0=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=bbDK0+5BoMUQbO3EKY72gpQOUgfM5CsILh5+VE0tbBwMxeovYLpJXMYmf+rmeahKB
+	 2KH0TjnHQmdurdIX+gceNdqmpcbQ4YQkhH1p4n8+QdaluVajnCbbpBcFL5OwW7diTg
+	 M/G+WY2JBarGAyezs9LAj48l7JTctTCikwbtHmbzDyZ2zoyZ5/Rlm1b5lAn8JjWxrW
+	 gT786WGHjmJRvO11aeSglmfFnubgcC+Ep3FTN/26+G2B4apUr4P1/yy7y9CdSefRbG
+	 94McLi4rVidSygFhoP6MfTv+H5v6ckCLhPrwhcCzTs4vv1Qp/jkOKdr+oY8vYHfcy2
+	 AgTOB3jBS73Bg==
+Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 5E96BF40068;
+	Fri, 13 Nov 2026 16:26:26 -0500 (EST)
+Received: from phl-imap-04 ([10.202.2.82])
+  by phl-compute-02.internal (MEProxy); Fri, 13 Nov 2026 16:26:26 -0500
+X-ME-Sender: <xms:goD3amuCfgvygbDZVidsH3bAoFEGVqgsZNqls0kZhCk6jOhXZ2iiZQ>
+    <xme:goD3amR9PG6xwsZOLDqq29HkhRB_4Ls5lzsV_jHujpV6GCg9N_CCg7fufEGptmfF9
+    4LZH55nh5PS5OsaIOWZSq1TDuyeyfweJfUWtkiC7FiYahF5jIJoovz7>
+X-ME-Proxy-Cause: dmFkZTGS0741Ia/KPz0rVczqUp+pe41+OSK3M4C2zvp0z9nKAsJwDak3rG6HuLglOCLNdH
+    kGY+EFGxDnqXeLTBb3MYXBYcVBD20XAOHjLSPDf1pzkP7h/KFyxQrDy2W5gi+xcBuQ/kAg
+    bbHzdW8anbA2YCrU7KUO+Sws1uoyPtFQFt1ZAQRtiwWjhr+ziUXgShAAy/9fxd378aQFfM
+    hjJ3DHSuHTR08Bt3mSIDQ3GXHPkshEtx7eaME765GiM707qycsXtfbJllx4G4h7olko7oV
+    l9qrQeITl3BAFI37h3zlys/l5dsoqr/ruJD4oCGSot6HVihuJM3UwFNzcQGHFRoAwkJFBr
+    z3gag5ZhYcItGGuZsMx6t7uw9ea8Mxv8GuHgqyMBIOI/PXJna3p6yOOfKsKhPGtqKR6lb5
+    8eUJicpaPWBhDy/uV3y14iAKS3DhrDaF1njRchCoLRjudTFUpdP9fRXbrB7tVa7t0K4lRk
+    YvqQCXu4ByA73rqyl0zfZ4WkGGdXsHeuLNBXGd6nD1x5zmcxKTnhrwJmigoLgvhaWxVo4b
+    jBdFAfYZ6rQwlKIteja4tkIXlJyQ1kKrcDoaqDY3jBUDnJ/BsPm26lJVK90j3Qsd9rgxgd
+    93t56lF+FVvTwDofRuDeYEnCLxBj3cNAk+xBEMp3fRfZ2x5btb9cliNpPmPg
+X-ME-Proxy: <xmx:goD3auVQnMKxxM90ciYzTCz11XFS3cKifVEWsxZmVWAyGTNrV6JNxg>
+    <xmx:goD3aoY9eE8ntCf7iYTYoLKD7KvJ5MDCs2Az3roKD_Mx_zZHSrYJNA>
+    <xmx:goD3as3LQXaIUzGC_aVcAY-yzve5HOJklAU63otbAx8DolcUwjSj7Q>
+    <xmx:goD3aihCsGx54UbUM2jvCPhk-dGOAkxT2IXcs0PqKcQUBUeGoR0VHg>
+    <xmx:goD3aoYuR9cDmkgac1Ey4GAhqZW619Of3QR-KfmNVBvDizaLnMZgKtTj>
+Feedback-ID: i20964851:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 40FBFB6006F; Fri, 13 Nov 2026 16:26:26 -0500 (EST)
+X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -53,203 +77,181 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+X-ThreadId: AgNBXAS72eqc
+Date: Fri, 13 Nov 2026 16:26:06 -0500
+From: "Anna Schumaker" <anna@kernel.org>
+To: "Mike Snitzer" <snitzer@kernel.org>,
+ "Anna Schumaker" <anna.schumaker@oracle.com>
+Cc: "Trond Myklebust" <trondmy@kernel.org>, linux-nfs@vger.kernel.org
+Message-Id: <ea496fb4-06a8-4ac4-a174-8c2d612704ca@app.fastmail.com>
+In-Reply-To: <20261113001611.90519-3-snitzer@kernel.org>
+References: <20261113001611.90519-1-snitzer@kernel.org>
+ <20261113001611.90519-3-snitzer@kernel.org>
+Subject: Re: [PATCH 2/2] SUNRPC: Splice a request's pages into the TCP socket
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-svcsock-bvecs-v1-8-5dd41f205aeb@kernel.org>
-References: <20261113-svcsock-bvecs-v1-0-5dd41f205aeb@kernel.org>
-In-Reply-To: <20261113-svcsock-bvecs-v1-0-5dd41f205aeb@kernel.org>
-To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
- NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
- Mike Snitzer <snitzer@kernel.org>
-Cc: linux-nfs@vger.kernel.org
-X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6272; i=cel@kernel.org;
- h=from:subject:message-id; bh=es0hClf0XCOgge4gnEWvhyiLAloatTONy54lLfoTfAE=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq92iHZZId7RR7hJZJpCQBFzykW6VB/kIVNjm7g
- J1OoFXsA/eJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavdohwAKCRAzarMzb2Z/
- l/uiEACpbciIaSVu1W5gGKFloVka7CbruP9IBiapUgeMjEiTEgr17Awa2cP2D+GeNkKHEmg4mqS
- 8WM4D8Lkn31cvlJSTh+BCzZ1O7bY6E5DLD7/xJmb828BHjRR6oGK/P9qCFluR+9FwRCKhw6a+WX
- WQcZ/2r4viK5COng9j5Peqoi+IHBOV+5EwCyWpGrEJ1bS/otHYo7SlJPi8VPk1LPrwSaqIjE63s
- yMzI5nz4xgQJklU+EhU/FFuafom/P5vbQWh55B/vPZdZmlegC19bL7QzRz5GIz+JISnMAvBL+Cx
- B4vz2MJkyKLOnv+CxizsV7Fg+IOaNJTzEM3HYXGqgvg2dw2IOS3gv4r7dAl8k5B/Xyl3MjDeF5A
- hcdDRTqJf8kAxrI140owfb4nrA0GFTsaP0CduGXj34RewVpfzO6lNCNXzEm6DgSu9lr4Ox8ze36
- rFbUFWboqKuixTGIJSGjxxkwoMAxnBKLZY/V5rbAgAKLzifpJB0K9rWtphf5Spf23tqMMJWRY0a
- DWBfwan7Q0H66LtAYbtp/Am+Ag3u6hrWK6PX7a/5a0/9gwnOcfcdMkeR+anaklJMuKk/iG8k4Hh
- xYIZQvvh/XrJakeTko1N3wD1ezje4tKl7yMoCKjMX3Dipwcx0X/qz8Yn2S8H8ybuefhrUCvYbDS
- UAJd/SYO8IIBtcg==
-X-Developer-Key: i=cel@kernel.org; a=openpgp;
- fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-svc_udp_recvfrom() copies a nonlinear skb into rq_arg through
-csum_partial_copy_to_xdr() but aliases a linear one: rq_arg.head
-points into the skb, and the skb rides in rq_xprt_ctxt until the
-reply is sent or the deferred request is revisited. The alias is
-the one case that keeps svcsock from handing every receive buffer
-around as a bvec array, and the last UDP code that cannot share
-the receive helpers with TCP.
+Hi Mike,
 
-Copy every datagram into rq_pages through an ITER_DEST bvec
-iterator. A datagram larger than the capacity svc_alloc_arg() left
-in rq_arg is dropped before the copy and reported through the
-svcsock_udp_recv_err tracepoint with -EMSGSIZE. Lockd's buffer is
-near 16 KB and no conformant NLM Call exceeds 5 KB. With
-rq_xprt_ctxt unused, both transports share one empty
-svc_sock_release_ctxt().
+On Thu, Nov 12, 2026, at 7:16 PM, Mike Snitzer wrote:
+> xprt_sock_sendmsg() sends a request's page array to the socket as a
+> bvec, and tcp_sendmsg_locked() copies every byte of it into the
+> socket's skbs under the socket lock.  For an NFS WRITE that is the
+> whole payload, copied by rpciod one request at a time a transport: at
+> 1 MiB a WRITE it comes to about 3 GB/s a connection, and on a client
+> with 24 connections to a server whose storage takes more, it is the
+> ceiling of the rate, with 18% of the client's 48 CPUs in memcpy under
+> tcp_sendmsg_locked().
+>
+> Until commit 0472e4766049 ("SUNRPC: Convert socket page send code to
+> use iov_iter()") the client sent the pages with kernel_sendpage(), so
+> the socket held them and copied nothing.  Send them with
+> MSG_SPLICE_PAGES, as the server's svc_tcp_sendmsg() has since
+> commit 5df5dd03a8f7 ("sunrpc: Use sendmsg(MSG_SPLICE_PAGES) rather then
+> sendpage"), and the socket holds them again.  Only the page array is
+> spliced: the head and the tail are kvecs over the request's buffer,
+> memory the socket may not hold a reference to, and are copied as
+> before.
+>
+> A request's pages are the caller's until the reply, and TCP delivers
+> them before the server can reply, so a first transmission is safe to
+> splice.  A retransmission is not: the reply to the first transmission
+> may complete the call and release the pages to be rewritten while the
+> socket still holds them for the second, the corruption that
+> commit a6b31d18b02f ("SUNRPC: Fix a data corruption issue when
+> retransmitting RPC calls") found with kernel_sendpage().  So a
+> retransmission is copied, as it was then, and only the TCP transport
+> asks for the splice: UDP and AF_LOCAL copy as before.
+>
+> Signed-off-by: Mike Snitzer <snitzer@kernel.org>
+> ---
+>  net/sunrpc/socklib.c  | 26 ++++++++++++++++++++++----
+>  net/sunrpc/xprtsock.c |  9 +++++++++
+>  2 files changed, 31 insertions(+), 4 deletions(-)
+>
+> diff --git a/net/sunrpc/socklib.c b/net/sunrpc/socklib.c
+> index d8d8842c7de5c..ba18387f8ed6d 100644
+> --- a/net/sunrpc/socklib.c
+> +++ b/net/sunrpc/socklib.c
+> @@ -173,11 +173,17 @@ static int xprt_send_kvec(struct socket *sock, 
+> struct msghdr *msg,
+>  }
+> 
+>  static int xprt_send_pagedata(struct socket *sock, struct msghdr *msg,
+> -			      struct xdr_buf *xdr, size_t base)
+> +			      struct xdr_buf *xdr, size_t base,
+> +			      unsigned int splice)
+>  {
+> +	int ret;
+> +
+>  	iov_iter_bvec(&msg->msg_iter, ITER_SOURCE, xdr->bvec, xdr_buf_pagecount(xdr),
+>  		      xdr->page_len + xdr->page_base);
+> -	return xprt_sendmsg(sock, msg, base + xdr->page_base);
+> +	msg->msg_flags |= splice;
+> +	ret = xprt_sendmsg(sock, msg, base + xdr->page_base);
+> +	msg->msg_flags &= ~MSG_SPLICE_PAGES;
+> +	return ret;
+>  }
+> 
+>  /* Common case:
+> @@ -207,6 +213,12 @@ static int xprt_send_rm_and_kvec(struct socket 
+> *sock, struct msghdr *msg,
+>   * @sock: open socket to send on
+>   * @msg: socket message metadata
+>   * @xdr: xdr_buf containing this request
+> + *
+> + * With %MSG_SPLICE_PAGES set in @msg->msg_flags, the pages of @xdr are
+> + * spliced into the socket rather than copied, and the caller must 
+> leave
+> + * them unchanged until the socket has sent them.  The head and the 
+> tail
+> + * are always copied.
+> + *
 
-skb_copy_datagram_iter() and skb_copy_and_csum_datagram_msg()
-replace the two branches of csum_partial_copy_to_xdr(), except
-that a checksum fault is reported without the receiving device's
-name. The local_bh_disable() around the copy goes, because
-udp_recvmsg() calls the same helpers in process context.
+What an odd place to put this comment. I honestly don't think it's needed,
+however. 
 
-The alias set head[0].iov_len to the datagram length, so
-svc_defer() accepted any linear datagram. After this patch the
-head is capped at PAGE_SIZE, and a request over one page whose
-upcall outlasts cache_defer_req()'s inline wait is dropped for the
-client to retransmit, as a nonlinear datagram already is. In an
-NFSv3 run over an igb NIC with a 1500-byte MTU, svc_udp_recvfrom()
-received 4721 datagrams and none was both linear and over one page.
-All 2224 nonlinear datagrams were reassembled from IP fragments. At
-that MTU a datagram over one page is always fragmented, so the
-patch does not change which requests svc_defer() drops.
+>   * @base: starting position in the buffer
+>   * @marker: stream record marker field
+>   * @sent_p: return the total number of bytes successfully queued for 
+> sending
+> @@ -221,6 +233,7 @@ int xprt_sock_sendmsg(struct socket *sock, struct 
+> msghdr *msg,
+>  {
+>  	unsigned int rmsize = marker ? sizeof(marker) : 0;
+>  	unsigned int remainder = rmsize + xdr->len - base;
+> +	unsigned int splice = msg->msg_flags & MSG_SPLICE_PAGES;
+>  	unsigned int want;
+>  	int err = 0;
+> 
+> @@ -229,6 +242,10 @@ int xprt_sock_sendmsg(struct socket *sock, struct 
+> msghdr *msg,
+>  	if (unlikely(!sock))
+>  		return -ENOTSOCK;
+> 
+> +	/* The head and tail are kvecs over memory the socket may not
+> +	 * hold a reference to, so only the page array is spliced.
+> +	 */
 
-The copy costs at most one MTU of data per small request, and a
-copying checksum replaces skb_checksum_complete() on linear skbs.
-The effect on NFSv3 NULL and GETATTR rates has not been measured.
+Same here. Code should be self-documenting enough that comments should
+be saved to explain tricky decisions and not describe basic behavior.
 
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- net/sunrpc/svcsock.c | 57 ++++++++++++++++------------------------------------
- 1 file changed, 17 insertions(+), 40 deletions(-)
+> +	msg->msg_flags &= ~MSG_SPLICE_PAGES;
+>  	msg->msg_flags |= MSG_MORE;
+>  	want = xdr->head[0].iov_len + rmsize;
+>  	if (base < want) {
+> @@ -256,7 +273,7 @@ int xprt_sock_sendmsg(struct socket *sock, struct 
+> msghdr *msg,
+>  		remainder -= len;
+>  		if (remainder == 0)
+>  			msg->msg_flags &= ~MSG_MORE;
+> -		err = xprt_send_pagedata(sock, msg, xdr, base);
+> +		err = xprt_send_pagedata(sock, msg, xdr, base, splice);
+>  		if (remainder == 0 || err != len)
+>  			goto out;
+>  		*sent_p += err;
+> @@ -266,10 +283,11 @@ int xprt_sock_sendmsg(struct socket *sock, struct 
+> msghdr *msg,
+>  	}
+> 
+>  	if (base >= xdr->tail[0].iov_len)
+> -		return 0;
+> +		goto out;
+>  	msg->msg_flags &= ~MSG_MORE;
+>  	err = xprt_send_kvec(sock, msg, &xdr->tail[0], base);
+>  out:
+> +	msg->msg_flags |= splice;
+>  	if (err > 0) {
+>  		*sent_p += err;
+>  		err = 0;
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 173e3b0fd7a3b..2a077cddcc8ad 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1136,6 +1136,15 @@ static int xs_tcp_send_request(struct rpc_rqst *req)
+> 
+>  	xs_set_srcport(transport, transport->sock);
+> 
+> +	/* Splice the pages of a first transmission into the socket: TCP
+> +	 * delivers them before the server can reply, and the reply is
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 4c33a1d95594..1586c8f3c78f 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -53,7 +53,6 @@
- #include <trace/events/sock.h>
- #include <trace/events/sunrpc.h>
- 
--#include "socklib.h"
- #include "sunrpc.h"
- 
- #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
-@@ -113,29 +112,15 @@ static void svc_reclassify_socket(struct socket *sock)
- #endif
- 
- /**
-- * svc_tcp_release_ctxt - Release transport-related resources
-+ * svc_sock_release_ctxt - Release transport-related resources
-  * @xprt: the transport which owned the context
-  * @ctxt: the context from rqstp->rq_xprt_ctxt or dr->xprt_ctxt
-  *
-  */
--static void svc_tcp_release_ctxt(struct svc_xprt *xprt, void *ctxt)
-+static void svc_sock_release_ctxt(struct svc_xprt *xprt, void *ctxt)
- {
- }
- 
--/**
-- * svc_udp_release_ctxt - Release transport-related resources
-- * @xprt: the transport which owned the context
-- * @ctxt: the context from rqstp->rq_xprt_ctxt or dr->xprt_ctxt
-- *
-- */
--static void svc_udp_release_ctxt(struct svc_xprt *xprt, void *ctxt)
--{
--	struct sk_buff *skb = ctxt;
--
--	if (skb)
--		consume_skb(skb);
--}
--
- union svc_pktinfo_u {
- 	struct in_pktinfo pkti;
- 	struct in6_pktinfo pkti6;
-@@ -613,22 +598,20 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		goto out_cmsg_err;
- 	rqstp->rq_daddrlen = svc_addr_len(svc_daddr(rqstp));
- 
--	if (skb_is_nonlinear(skb)) {
--		/* we have to copy */
--		local_bh_disable();
--		if (csum_partial_copy_to_xdr(&rqstp->rq_arg, skb))
--			goto out_bh_enable;
--		local_bh_enable();
--		consume_skb(skb);
--	} else {
--		/* we can use it in-place */
--		rqstp->rq_arg.head[0].iov_base = skb->data;
--		rqstp->rq_arg.head[0].iov_len = len;
--		if (skb_checksum_complete(skb))
--			goto out_free;
--		rqstp->rq_xprt_ctxt = skb;
-+	if (len > rqstp->rq_arg.head[0].iov_len + rqstp->rq_arg.page_len ||
-+	    svc_rqst_arg_iter_init(rqstp, &msg.msg_iter, 0, len)) {
-+		trace_svcsock_udp_recv_err(&svsk->sk_xprt, -EMSGSIZE);
-+		goto out_free;
- 	}
-+	if (skb_csum_unnecessary(skb))
-+		err = skb_copy_datagram_iter(skb, 0, &msg.msg_iter, len);
-+	else
-+		err = skb_copy_and_csum_datagram_msg(skb, 0, &msg);
-+	if (err)
-+		goto out_free;
-+	consume_skb(skb);
- 
-+	svc_rqst_arg_flush(rqstp, len);
- 	svc_rqst_set_arg_len(rqstp, len);
- 
- 	if (serv->sv_stats)
-@@ -648,9 +631,6 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
- out_cmsg_err:
- 	net_warn_ratelimited("svc: received unknown control message %d/%d; dropping RPC reply datagram\n",
- 			     cmh->cmsg_level, cmh->cmsg_type);
--	goto out_free;
--out_bh_enable:
--	local_bh_enable();
- out_free:
- 	kfree_skb(skb);
- out_clear_busy:
-@@ -683,9 +663,6 @@ static int svc_udp_sendto(struct svc_rqst *rqstp)
- 	int count;
- 	int err;
- 
--	svc_udp_release_ctxt(xprt, rqstp->rq_xprt_ctxt);
--	rqstp->rq_xprt_ctxt = NULL;
--
- 	svc_set_cmsg_data(rqstp, cmh);
- 
- 	count = svc_rqst_res_to_bvec(rqstp, 0);
-@@ -762,7 +739,7 @@ static const struct svc_xprt_ops svc_udp_ops = {
- 	.xpo_recvfrom = svc_udp_recvfrom,
- 	.xpo_sendto = svc_udp_sendto,
- 	.xpo_result_payload = svc_sock_result_payload,
--	.xpo_release_ctxt = svc_udp_release_ctxt,
-+	.xpo_release_ctxt = svc_sock_release_ctxt,
- 	.xpo_detach = svc_sock_detach,
- 	.xpo_free = svc_sock_free,
- 	.xpo_has_wspace = svc_udp_has_wspace,
-@@ -1345,7 +1322,7 @@ static int svc_tcp_sendto(struct svc_rqst *rqstp)
- 					 (u32)xdr->len);
- 	int count, sent;
- 
--	svc_tcp_release_ctxt(xprt, rqstp->rq_xprt_ctxt);
-+	svc_sock_release_ctxt(xprt, rqstp->rq_xprt_ctxt);
- 	rqstp->rq_xprt_ctxt = NULL;
- 
- 	BUILD_BUG_ON(SVC_TCP_MARKER_BVECS > RPCSVC_BVEC_HEADROOM);
-@@ -1389,7 +1366,7 @@ static const struct svc_xprt_ops svc_tcp_ops = {
- 	.xpo_recvfrom = svc_tcp_recvfrom,
- 	.xpo_sendto = svc_tcp_sendto,
- 	.xpo_result_payload = svc_sock_result_payload,
--	.xpo_release_ctxt = svc_tcp_release_ctxt,
-+	.xpo_release_ctxt = svc_sock_release_ctxt,
- 	.xpo_detach = svc_tcp_sock_detach,
- 	.xpo_free = svc_sock_free,
- 	.xpo_has_wspace = svc_tcp_has_wspace,
+Does "TCP delivers them before the server can reply" really need to be stated?
 
--- 
-2.56.0
+Anyway, what do you think is the right path forward for this? Chuck's patches
+seem to replace your 1/2, so should I just put this one on top of those?
 
+Thanks,
+Anna
+
+> +	 * what releases them.  A retransmission is copied, since the
+> +	 * reply to the first transmission may complete the call and
+> +	 * release the pages while the socket still holds them.
+> +	 */
+> +	if (!RPC_WAS_SENT(req->rq_task))
+> +		msg.msg_flags |= MSG_SPLICE_PAGES;
+> +
+>  	/* Continue transmitting the packet/record. We must be careful
+>  	 * to cope with writespace callbacks arriving _after_ we have
+>  	 * called sendmsg(). */
+> -- 
+> 2.52.0
