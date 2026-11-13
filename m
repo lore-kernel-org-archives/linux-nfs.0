@@ -1,54 +1,53 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.104.188.4
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794528975;
-	b=JxHoOB+xLOxWZsmkHAnqyboSdQl+OF4XFyRzUZNjrUghqW0UB/6zCQZ6nqtbo2hWedQc
-	 jD+lC3YNDGbFsatXOskxeGGCoNXYp0rLgcBHFLFeAMIo16wzyedAZ6U22C3/RgxIKvbHp
-	 ZIy6DuYXJAY2jDEZD7xnvnBo1f2Qho+No0gCBT7uAB06WuQqCJDQmMimtSawkoPOmFUud
-	 lLZNjfFaY+qnFljFMXYFjuFgnfcy1XNYCnWtSwKmsBc8AnFRtlrBJJSWQ8BE5tZxdyVf9
-	 Z5vfuOK5lDQ3Odn5hSSRC2sblcFXue9zFy+RYGKrZ9BYdTx526hFywnBttJqnykn86A==
+	t=1794530252;
+	b=V33a0iT2D9+470ylBsiiWdN2J4bQZAf//MIyjEGE0uBTHwQdxFhAeuB0dtOsom2VcYuL
+	 Wh68m/UI7F4n0HY8kfNZxtCeCLseEBxZKTZd3ls+z7pjlRUL12lePYsJzq6Qb/l01w3qJ
+	 RJXKCdwB57HgqmNGgB7oAiP1K6OFrwEv2DPZc6kq/yZxR+i4BXqdNGB4a8n7yjQ7uxyZ7
+	 d+h9m6XfQWLcs5yMJMGhMqcdIn7jL/0Wgo3WjvO+w5u/QhJ6/duJa5BjIfUR8HPFhMqCE
+	 dkOv3BHsp2aH7gFM8gUBW2XXYjpUAyhXyHmkrjmlSjfJb+g1AiESi1rNzTW0tBkSVIg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794528975;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=5BiYSLry/tbqBUTFDglrfHyEDaiX82e5XrRFzLwGfdk=;
-	b=neG6r/EaFQ2ihDHvtLj3ovbmPrmVElLXt9JDjrqQ3mgFjWfeLXRLwknmjnb8frDNA9w1
-	 cez44rBvIm/Jgo3AE3Tec9mgScIejmgRWtpO07Qr9AZ18Wo0hORC/+nc7X93+60fZWT6N
-	 gDVfPq1bEQLc7WPuBni17rPSCl5fLOqvxEeeC+4a8elo9+rgntsHbag+6xgQ920Mi0T3A
-	 F3FxT8o92aIWQkJZ/JNv//0jOr/bCYQ4Gv8xEOOxIZA1JaMKD3Glfq19RVvXLBuXi/kMS
-	 HYs6/QqxF1psH5Aqyudaf8aKQL6jbv/RnptJhVFEBgLQ+c6UZiw+jiayVHIeLFG8TPw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794530252;
+	h=DMARC-Filter:Received:Received:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To:
+	 X-Spam-Status:X-Spam-Checker-Version;
+	bh=fZeMFX6Sitm2JOQVaGbJERpx2uJOFy+G5V29NoE50oE=;
+	b=vkHAC5CPoVmPcFjTyYpsYiPDe+OGqvg+0jT1WAhx6bKZhJOE8C+2m4Yp4b2KHXEYj0Fz
+	 y4NNc9wXOOQPvVGRzioYJ3Se8SSsaCm/d9A/GeLlUzM82DFOFMgJmXaa5d9/IlLskNj4J
+	 QckFzsMJGtb+c5B/I0fYDmTA5yDEkvb8T2pbE5aC+7btc6fWlw0WOVc8SN5Bm/Y6XY3ZB
+	 iHTbmJZ2FnafOgTNFW+B5Evkjgp9RgNhJbRDxnFMyh9/xdEOHmQV6xGLo8YjHkaE5saZc
+	 2PbILbMh52iRQ4sSTUwzoDxqhltaJqU7ymZUT8cR2ZcEofRkD87BJSwRzspPWh9ahTg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=S+LcWsqI;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=none header.from=m5p.com;
+	spf=pass smtp.mailfrom=m5p.com;
+	arc=none smtp.remote-ip=74.104.188.4
+Received: from mailhost.m5p.com (mailhost.m5p.com [74.104.188.4])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B6059606A339
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2026 00:16:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=S+LcWsqI
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 415FC1F000C8;
-	Fri, 13 Nov 2026 00:16:15 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794528975;
-	bh=5BiYSLry/tbqBUTFDglrfHyEDaiX82e5XrRFzLwGfdk=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=S+LcWsqIUYKybfWo4rlp8HL5cJH+DCvKayIYRA0jLhcY+FSXdX4FHmhfJHaYgHgFI
-	 NH1fOVudExRMIBYqz/seLxmsP8VrqDQQXiP0tV1JV2SroODwADtSWyvINpk4Cmn3VV
-	 eFOCv0Tnb0Gg4iJTMiD4eJR6KWquC66F17Inf1Irj0lscPn6h+jtu81FYoAjgRfKIX
-	 rsZJJOFt2u19bIAEMyMTZWrynuCShGBzlypW/HnDmBmGo2YcL7+M0ldha488u3R7v4
-	 ErMy+f3kHr2mPuQSLkjjZy6tMOtKOr47aAHC+83Ys1LkwqpVdaJfQRwxwz8QRdF8l+
-	 hLDZp0v+XHB2A==
-From: Mike Snitzer <snitzer@kernel.org>
-To: Anna Schumaker <anna.schumaker@oracle.com>
-Cc: Trond Myklebust <trondmy@kernel.org>,
-	linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] SUNRPC: Splice a request's pages into the TCP socket
-Date: Thu, 12 Nov 2026 19:16:11 -0500
-Message-ID: <20261113001611.90519-3-snitzer@kernel.org>
-X-Mailer: git-send-email 2.44.0
-In-Reply-To: <20261113001611.90519-1-snitzer@kernel.org>
-References: <20261113001611.90519-1-snitzer@kernel.org>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 48C1B606B566
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2026 00:37:30 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 48C1B606B566
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=m5p.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=m5p.com
+Received: from m5p.com (mailhost.m5p.com [IPv6:fdc4:6ee8:648f:6bf6:0:0:0:f7])
+	by mailhost.m5p.com (8.18.1/8.17.1) with ESMTPS id 6AD0aiu3063697
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NO);
+	Thu, 12 Nov 2026 19:37:10 -0500 (EST)
+	(envelope-from ehem@m5p.com)
+Received: (from ehem@localhost)
+	by m5p.com (8.18.1/8.15.2/Submit) id 6AD0aiPn063696;
+	Thu, 12 Nov 2026 16:36:44 -0800 (PST)
+	(envelope-from ehem)
+Date: Thu, 12 Nov 2026 16:36:44 -0800
+From: Elliott Mitchell <ehem+debian@m5p.com>
+To: Salvatore Bonaccorso <carnil@debian.org>
+Cc: linux-nfs@vger.kernel.org, Steve Dickson <steved@redhat.com>,
+        1151866@bugs.debian.org
+Subject: Re: Bug#1151866: nfs-common: host= setting in nfs.conf inadaquate
+Message-ID: <avZbnBDUZdwgzSIv@mattapan.m5p.com.>
+References: <atwPkawUy68vuesl@mattapan.m5p.com.>
+ <auLmYFzpKg58BUKW@eldamar.lan>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -58,141 +57,67 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <auLmYFzpKg58BUKW@eldamar.lan>
 
-xprt_sock_sendmsg() sends a request's page array to the socket as a
-bvec, and tcp_sendmsg_locked() copies every byte of it into the
-socket's skbs under the socket lock.  For an NFS WRITE that is the
-whole payload, copied by rpciod one request at a time a transport: at
-1 MiB a WRITE it comes to about 3 GB/s a connection, and on a client
-with 24 connections to a server whose storage takes more, it is the
-ceiling of the rate, with 18% of the client's 48 CPUs in memcpy under
-tcp_sendmsg_locked().
+On Thu, Oct 29, 2026 at 07:23:28AM +0100, Salvatore Bonaccorso wrote:
+> 
+> On Fri, Oct 23, 2026 at 06:53:21PM -0700, Elliott Mitchell wrote:
+> > Package: nfs-common
+> > Version: 1:2.8.3-1
+> > 
+> > The "host=" setting in /etc/nfs.conf isn't fit for the function it needs
+> > to perform.  Of note it doesn't allow binding to multiple addresses.  It
+> > also doesn't allow restricting to binding IPv4-only nor IPv6-only.  In
+> > fact I was unable to get it to restrict IPv6 binding at all.
+> > 
+> > Multiple addresses is a common configuration.  Disabling IPv4 or IPv6
+> > are also common.
+> > 
+> > It also appears stopping/starting `/etc/init.d/nfs-kernel-server` appears
+> > to leave old address bindings in place.  If the "host=" setting is added,
+> > then the daemon is restarted it will remain bound to the wildcard
+> > address.
+> > 
+> > NFS is a service which should be filtered at firewalls, but it should
+> > still be possible to restrict binding as a backup security measure.  I'm
+> > tempted to rate this as pretty high importance.
+> 
+> Thanks for your report. Those are rather questions and issues to bring
+> to upstream. Can you report them to upstream via the linux-nfs
+> mailinglist (linux-nfs@vger.kernel.org) and please include as well
+> both Steve Dickson <steved@redhat.com> directly and this Debian
+> downstream bugreport, so we can keep track.
 
-Until commit 0472e4766049 ("SUNRPC: Convert socket page send code to
-use iov_iter()") the client sent the pages with kernel_sendpage(), so
-the socket held them and copied nothing.  Send them with
-MSG_SPLICE_PAGES, as the server's svc_tcp_sendmsg() has since
-commit 5df5dd03a8f7 ("sunrpc: Use sendmsg(MSG_SPLICE_PAGES) rather then
-sendpage"), and the socket holds them again.  Only the page array is
-spliced: the head and the tail are kvecs over the request's buffer,
-memory the socket may not hold a reference to, and are copied as
-before.
+Hopefully more than enough in the initial message.
 
-A request's pages are the caller's until the reply, and TCP delivers
-them before the server can reply, so a first transmission is safe to
-splice.  A retransmission is not: the reply to the first transmission
-may complete the call and release the pages to be rewritten while the
-socket still holds them for the second, the corruption that
-commit a6b31d18b02f ("SUNRPC: Fix a data corruption issue when
-retransmitting RPC calls") found with kernel_sendpage().  So a
-retransmission is copied, as it was then, and only the TCP transport
-asks for the splice: UDP and AF_LOCAL copy as before.
+Restarting the kernel nfs server doesn't remove old bindings.
 
-Signed-off-by: Mike Snitzer <snitzer@kernel.org>
----
- net/sunrpc/socklib.c  | 26 ++++++++++++++++++++++----
- net/sunrpc/xprtsock.c |  9 +++++++++
- 2 files changed, 31 insertions(+), 4 deletions(-)
+The host= directive appears to only work for a single IPv4 host.
 
-diff --git a/net/sunrpc/socklib.c b/net/sunrpc/socklib.c
-index d8d8842c7de5c..ba18387f8ed6d 100644
---- a/net/sunrpc/socklib.c
-+++ b/net/sunrpc/socklib.c
-@@ -173,11 +173,17 @@ static int xprt_send_kvec(struct socket *sock, struct msghdr *msg,
- }
- 
- static int xprt_send_pagedata(struct socket *sock, struct msghdr *msg,
--			      struct xdr_buf *xdr, size_t base)
-+			      struct xdr_buf *xdr, size_t base,
-+			      unsigned int splice)
- {
-+	int ret;
-+
- 	iov_iter_bvec(&msg->msg_iter, ITER_SOURCE, xdr->bvec, xdr_buf_pagecount(xdr),
- 		      xdr->page_len + xdr->page_base);
--	return xprt_sendmsg(sock, msg, base + xdr->page_base);
-+	msg->msg_flags |= splice;
-+	ret = xprt_sendmsg(sock, msg, base + xdr->page_base);
-+	msg->msg_flags &= ~MSG_SPLICE_PAGES;
-+	return ret;
- }
- 
- /* Common case:
-@@ -207,6 +213,12 @@ static int xprt_send_rm_and_kvec(struct socket *sock, struct msghdr *msg,
-  * @sock: open socket to send on
-  * @msg: socket message metadata
-  * @xdr: xdr_buf containing this request
-+ *
-+ * With %MSG_SPLICE_PAGES set in @msg->msg_flags, the pages of @xdr are
-+ * spliced into the socket rather than copied, and the caller must leave
-+ * them unchanged until the socket has sent them.  The head and the tail
-+ * are always copied.
-+ *
-  * @base: starting position in the buffer
-  * @marker: stream record marker field
-  * @sent_p: return the total number of bytes successfully queued for sending
-@@ -221,6 +233,7 @@ int xprt_sock_sendmsg(struct socket *sock, struct msghdr *msg,
- {
- 	unsigned int rmsize = marker ? sizeof(marker) : 0;
- 	unsigned int remainder = rmsize + xdr->len - base;
-+	unsigned int splice = msg->msg_flags & MSG_SPLICE_PAGES;
- 	unsigned int want;
- 	int err = 0;
- 
-@@ -229,6 +242,10 @@ int xprt_sock_sendmsg(struct socket *sock, struct msghdr *msg,
- 	if (unlikely(!sock))
- 		return -ENOTSOCK;
- 
-+	/* The head and tail are kvecs over memory the socket may not
-+	 * hold a reference to, so only the page array is spliced.
-+	 */
-+	msg->msg_flags &= ~MSG_SPLICE_PAGES;
- 	msg->msg_flags |= MSG_MORE;
- 	want = xdr->head[0].iov_len + rmsize;
- 	if (base < want) {
-@@ -256,7 +273,7 @@ int xprt_sock_sendmsg(struct socket *sock, struct msghdr *msg,
- 		remainder -= len;
- 		if (remainder == 0)
- 			msg->msg_flags &= ~MSG_MORE;
--		err = xprt_send_pagedata(sock, msg, xdr, base);
-+		err = xprt_send_pagedata(sock, msg, xdr, base, splice);
- 		if (remainder == 0 || err != len)
- 			goto out;
- 		*sent_p += err;
-@@ -266,10 +283,11 @@ int xprt_sock_sendmsg(struct socket *sock, struct msghdr *msg,
- 	}
- 
- 	if (base >= xdr->tail[0].iov_len)
--		return 0;
-+		goto out;
- 	msg->msg_flags &= ~MSG_MORE;
- 	err = xprt_send_kvec(sock, msg, &xdr->tail[0], base);
- out:
-+	msg->msg_flags |= splice;
- 	if (err > 0) {
- 		*sent_p += err;
- 		err = 0;
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 173e3b0fd7a3b..2a077cddcc8ad 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1136,6 +1136,15 @@ static int xs_tcp_send_request(struct rpc_rqst *req)
- 
- 	xs_set_srcport(transport, transport->sock);
- 
-+	/* Splice the pages of a first transmission into the socket: TCP
-+	 * delivers them before the server can reply, and the reply is
-+	 * what releases them.  A retransmission is copied, since the
-+	 * reply to the first transmission may complete the call and
-+	 * release the pages while the socket still holds them.
-+	 */
-+	if (!RPC_WAS_SENT(req->rq_task))
-+		msg.msg_flags |= MSG_SPLICE_PAGES;
-+
- 	/* Continue transmitting the packet/record. We must be careful
- 	 * to cope with writespace callbacks arriving _after_ we have
- 	 * called sendmsg(). */
+It should be possible to be IPv4-only on a dual-stack computer.  It
+should be possible to be IPv6-only on a dual-stack computer.
+
+I guess I should also add I could imagine someone wanting to bind to
+different ports on different addresses.
+
+
+
+
+I could see allowing multiple "host=" lines (single entry per).
+
+I could see using commas to separate entries on a single "host=" line.
+
+I could see using spaces to separate entries on a single "host=" line.
+
+I could see allowing multiple of those.
+
+
 -- 
-2.52.0
+(\___(\___(\______          --=> 8-) EHM <=--          ______/)___/)___/)
+ \BS (    |         ehem+sigmsg@m5p.com  PGP 87145445         |    )   /
+  \_CS\   |  _____  -O #include <stddisclaimer.h> O-   _____  |   /  _/
+8A19\___\_|_/58D2 7E3D DDF4 7BA6 <-PGP-> 41D1 B375 37D0 8714\_|_/___/5445
+
 
