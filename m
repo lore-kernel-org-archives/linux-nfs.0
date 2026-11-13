@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794597742;
-	b=SM6tT6P9kETDmsxvrB5/lABOiwse0hO2Pxj5sQ0dg8DAswyPTEkgqgvE+VeMVq3/okPK
-	 vgA3Y/0C8AO8UMixRyb3WtdmgfMTcKsBmkop3LTo0XQAy9zyvuHZ7etko0P5f3H7bjXiZ
-	 Rm37kXE/CQ4Vlqi5wEFY/09M2fUwlKdowgKdUyCQAwjej0TcexfSXx/Tsx8zxoMmi7op1
-	 SELKSLYMJ0Js3+DvC6o6YfAe21Uc/klkuQFbGevQ4NSlSttyB0Q/tJzqprmoQSelrz0P1
-	 DKwBp4eJyuAW5R1SnsznLHiZn6innfVx8FgP7joTkF7KxAHckuafALXb+4dFOqII3UQ==
+	t=1794597745;
+	b=huZrDDOAOFHHRWIEoEsk4fQfIh8n06PGXXBIveN0azJE0G1xb1VgHYGtPBLLNxUA8zi3
+	 PYRbF2i3XeIWH0BrBeLEFcvyc7RpnFMRIxc8VCq1iI+hvFdgs6d7s+lTcEUV2IxiDd8Y2
+	 PCNrMhd/wzoTPuZu+KHbcnNlFnNsAKUX0y6xk/e0+TUfzGnbI6CWCwbr9nEU8E7A80VFf
+	 AyObTY8iu5Fva9cZCuum2B9F64hSvHjTgLE5AsBw4si9nxeoElBHgqZci17JvIOSY0w8W
+	 KrPRmljA5u/oz8plF6sXanQzBRLG8IuUdK2dgdSCb/qP0ME8Ob83ewWhnrlIrshHsoA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794597742;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794597745;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=w9nWleZzlt35y0AB6Peyb5uZmvSNbhq05kf6t/OgLN4=;
-	b=jeUn+gmKUCZWA09lA3qwEkt8NmN7O4aQfDrVxTjn/GtCXptM10dO3YFlPxDeYAtE1OyA
-	 tKf3eq4R9VSvgqQrTE8JMlprh7nVj7/AKPIFIMuiAmmgVntqkGlkgDWL5UGJbXVoRnoLT
-	 Vblw1K4B4AT+RF3ElPUG5jvkaOWDGHOvlbULCv1ai/B7UDnCdsfZ1r9k7y3NhTkSJmfVe
-	 u5HPbDGPlrN0Lk06QqBlameYuoSElEfcHy9hyOdOWXiz/+fW2QCsKrSxRtaGosNbDwQJD
-	 KpeREQs4rocveQlejCwba431jkbVxSpNx4GtNT6V9Xi++bNP0u4uY14bsuAunGmIjDA==
+	bh=TNqEaE07RbLYeZRDl3iiX/LvUVC2RS7cpVRrznQnOms=;
+	b=nZHl13jpGmwPBgV0XguVHYf8BqzwOJFxP2f5C2facRip+EiKpqa6Tl9EaTtOfBxgLP8f
+	 uXtB20D9wNxv58NvQa76X2giyUfPwZ4/Oa80RN7gQCH6gtV7MvMOELM8iv0B4Roe6TFIn
+	 M+Tz4P0iG2Le0+tP5kCBaUCQot5ZIT7syjGy4DZ8CZl98XlACKoXEAxoDJi1ivXN5OKI/
+	 TMBFGUWFGAe+oQk52p8ns0VsPH+xF5mrdfbvTgaWgEUFfndwsrFm9CS/eOH/eVyy6WKc4
+	 o62uXS+Kb8sz4KKWKAMDPGgjs6gdety6nZGzylE91+B2NGEm6HcXpit9XWg2RvnHxiw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=d3thmonP;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=OJT6Hyzr;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9309B60A260D;
-	Fri, 13 Nov 2026 19:22:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 454EC60A2622;
+	Fri, 13 Nov 2026 19:22:25 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=d3thmonP
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 216941F000C5;
-	Fri, 13 Nov 2026 19:22:20 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=OJT6Hyzr
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A92101F000C6;
+	Fri, 13 Nov 2026 19:22:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794597742;
-	bh=w9nWleZzlt35y0AB6Peyb5uZmvSNbhq05kf6t/OgLN4=;
+	s=k20260515; t=1794597744;
+	bh=TNqEaE07RbLYeZRDl3iiX/LvUVC2RS7cpVRrznQnOms=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=d3thmonPFq1j3T68R94ixKzQPwHKqAfesRHwIL+6Xt5WC2grdqBJk2G3WyD1vply/
-	 NQvzX1IwggKt/FQTl4KONLANV3FvLriNQW1d/SC2C1If71NEgVTT6sa6ySmiibye+7
-	 nOCZnGtvS8zNxPD+YTt28N3yyRfCVXT8VzaWtVaDbyXdBcwIy6em8+aBcLOYlIOyex
-	 4Qczq+BdoesU3AT7hEa/0hyl9B7s6LoWya+dQDS0FTqy2ra83WixHgobRqwsDAH1xJ
-	 10PAXtgJM0J0Q0TtWTt3CJRTnUxnQmmxPfCMsX9KTq6jN5dud7kSE4WEHAeqEDyUxd
-	 Xpd9XqUvdhcUw==
+	b=OJT6Hyzr+1UloIHcICasVy93Vj/R1wsa3ZP4e019PZ+D9gozcvhMJth55cJY5WA9r
+	 HK+veupdFw8VsHldu5HXqK02i+M8QZ5f4YbZo7DVtGf2Bul2cItfi6GuSTdTraEEDC
+	 OI5w5yb7Qih3+so+LywIekywXyvmt5tpzKFn4VPDqPVpCcN43/SbRlD9/FCNWuHlto
+	 Z//7D6M4BF8BIGeiQEIhWlO5JboSkcbiaT6FAiGpLfKf9iotJM17eeAAcE/XZ66gMw
+	 0gaDGNrilQ2Hd/H3skkbb3WJHaSejqDgCjZukf7FtZN0QEVZAReBeb316qdB24u+0o
+	 g0jpzfjjSFeXw==
 From: Chuck Lever <cel@kernel.org>
-Date: Fri, 13 Nov 2026 14:22:02 -0500
-Subject: [PATCH net-next v3 04/10] handshake: Add a session-tags argument
- to the TLS done callback
+Date: Fri, 13 Nov 2026 14:22:03 -0500
+Subject: [PATCH net-next v3 05/10] handshake: Pick up session tags passed
+ during the DONE downcall
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-tls-session-tags-v3-4-91271964cdb0@kernel.org>
+Message-Id: <20261113-tls-session-tags-v3-5-91271964cdb0@kernel.org>
 References: <20261113-tls-session-tags-v3-0-91271964cdb0@kernel.org>
 In-Reply-To: <20261113-tls-session-tags-v3-0-91271964cdb0@kernel.org>
 To: Donald Hunter <donald.hunter@gmail.com>, 
@@ -72,183 +72,736 @@ To: Donald Hunter <donald.hunter@gmail.com>,
 Cc: kernel-tls-handshake@lists.linux.dev, netdev@vger.kernel.org, 
  linux-nvme@lists.infradead.org, linux-nfs@vger.kernel.org
 X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6425; i=cel@kernel.org;
- h=from:subject:message-id; bh=rhwy0XqO0S/M76i3i9VLH4Bdu/i8zn4NgMolJCM2XZs=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq92NfGdwO9/YIsngSYU0q4cefdI//6VVrhTOEV
- yoERjGKrouJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavdjXwAKCRAzarMzb2Z/
- l/F+D/9tdcGXGO9Iipn6Rny0S5v4EEbfrIWwE4yrr5+832f3/DE1QYlBmX2jMU1HgPW9uRexl3t
- 2Ep6/ygfuOqtG6w5oMR6l+HS0Eo3ceFHKLnmHyCaVh4aeB9tpTTQN0Uj80h8ygmukMKKHCp03f6
- VnYSz5jsvgjMebJn2UPGA+u3Gms+/fvADtXUCX72DG9No3Rbmw80hOIi8Tydtlz5YvFEKTOkdMX
- D3ihuqq6om1pXjfwPk72fm8t/2pQ06tVG/IPVqC7G9/2nXeP8uXg5JJy4OjMXxXQIup5KSR6mVP
- URs3ul+0KFCEWg0q/dWAbErX+7XGZTXNLVlWbpg6FTyoKfmUj/7OlgPLJfVRRxpnId4nDQPbiy2
- xyprj9ZWVd1JaVw9DVa44Wm2jJEG5rlYywttQCZwD2ujwvok8hcALMlOjBi6JDSK9ElWdyQku/j
- YewfzpL8AJr0krEM3iskrFZuiIueI0thQ6pTk5IKvdrnoNhcMN1yhV4PGHpumQTENsC77oc134j
- v2vEsf/qfhU0oSDOQO21JL+k/I6IcBA2dzNlNDkBxSJZ383fBb8SaqMlxx+MZqde/sF1ynbWBX7
- tMsA7r90CaZ+5aY3LcnHmJTCtKZmf88pLaiShQNJUnFscQl+niHHI50a9/bLoUsil0vlNStSg4t
- SR0XPuKJ6VDAOlA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=24204; i=cel@kernel.org;
+ h=from:subject:message-id; bh=gCJ0oIpeZj9N2IDLXiEMkUW15J6F7gVxdOPPgsYwhGE=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq92NfIcrrK6jE3DiXvyjb++ByqNAD6axbTmqed
+ YClfeYVwRCJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavdjXwAKCRAzarMzb2Z/
+ l+IbEACHKCV7MqlHBEboNwqXI8uta4pYp3l0lXWzbVI9sCcMfbGYt/48O0aNJ4PYbNqcJcMPQHR
+ jqtULCLoZ/NzT3ympvx2O8o82oPTOIKHyC8XyJJc65eOpn6/eWJNTDXXSLW66t5yc+pCoRE+pgT
+ mpp8bDOejh3vPvvGNT9B0QFt6zc10LCwu6H6dmuw7on4RiJ0c0skuAjPpOz3w+HIrSJDBnkuEyG
+ DoY9J+pyyqo+NAXmHDJnDwBjHBpVnug6xncXTc6GDwa3cN1PkErU6SEJ8s3Qtn8RB/Yy0TqaNjY
+ j0hEpyjUL6V1qDiJ0ujsHWjqITOw35NC0VJsMK/VxiA9hZ+IP9FSkoUq/FF++MfeHE+XSu1BQDf
+ I79Ip1L5qScTM+2n4X/XUxCiwHSNWLG7r+b1HSabDs73O66iMP+VFXbgReHJmN1OA3cMutn8x4o
+ 0iLFyhYr7LdE9opQkUCHNI1+M7si+J2EPHf/nWfcC5VL7FN3RmR4rMezkoVk/rsn7CSax4fDhlX
+ 0nn98jR2sZQN2KOC0SPsw5RbGthOFDWbiDSrsQKTI8X5yRXSOrOLdLSFJKuVPv5ftHKO1VY6Va7
+ pm4u+7PO0X88VqjZy9yB/HZmUYieRIC1mGFmYpzv2CJchMNeBEeUDrNm+7A799sGnvQ0++daBV8
+ kg1V9P9IQllFXUw==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-Session tags arriving in the DONE downcall have to reach handshake
-consumers for authorization decisions. The completion callback is
-the only path to a consumer, so carrying the tags there requires a
-new argument on tls_done_func_t. That signature change ripples
-through every existing TLS handshake consumer in the tree.
+Upper Layer Protocols such as NFS have no way to base access control
+on TLS certificate characteristics. Parsing x.509 in the kernel
+duplicates work user space libraries already do. The tlshd daemon can
+evaluate certificates against administrator-defined policies and
+assign tags indicating which policies a certificate satisfies.
 
-Add the @tags parameter ahead of the functional change. No consumer
-reads it yet and the handshake core passes NULL, so behavior is
-unchanged. Isolating the mechanical signature churn confines the
-tag-collection patch that follows to the handshake core.
+Collect session tags from the DONE netlink downcall and pass them to
+handshake consumers via their completion callback. NFSD, for example,
+can then restrict export access to connections whose certificate
+earned a particular tag, without parsing the certificate itself. The
+tags are valid only while the callback runs. Release them as soon
+as the callback returns, so a long-lived transport such as an NFS
+connection does not hold them for the life of the socket.
+
+The genl family runs DONE with parallel_ops, so concurrent downcalls
+for the same socket can both reach the same handshake_req. Split
+handshake_complete() into a try/finish pair. The handler collects
+tags into a private stringset before taking the completion gate, and
+the winner hands the set to handshake_finish_complete(). A duplicate
+downcall is refused with -EBUSY. handshake_req_cancel() returns false
+once the gate is taken, and svc_tcp_handshake() then waits
+uninterruptibly for its callback. Collecting the tags first keeps the
+handler's GFP_KERNEL allocations out of that wait.
+
+The DONE downcall can now fail, where before it always returned
+success. A tag the parser rejects completes the handshake with -EIO
+and returns the parse error to tlshd. The extended ACK names the
+rejected tag attribute. The request is complete on that path, so a
+retry collects -EBUSY.
+
+When the count of distinct tags exceeds HANDSHAKE_MAX_SESSIONTAGS, the
+handler truncates the list, logs pr_warn_once(), and returns success.
+Failing the DONE with -E2BIG would signal the daemon definitively, but
+it would also tear down an otherwise usable handshake.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- Documentation/networking/tls-handshake.rst |  3 ++-
- drivers/nvme/host/tcp.c                    |  3 ++-
- drivers/nvme/target/tcp.c                  |  3 ++-
- include/net/handshake.h                    | 16 +++++++++++++++-
- net/handshake/tlshd.c                      |  5 +++--
- net/sunrpc/svcsock.c                       |  4 +++-
- net/sunrpc/xprtsock.c                      |  4 +++-
- 7 files changed, 30 insertions(+), 8 deletions(-)
+ Documentation/networking/tls-handshake.rst |  51 +++++++
+ include/net/handshake.h                    |  31 +++-
+ net/Kconfig                                |   1 +
+ net/handshake/handshake-test.c             | 225 +++++++++++++++++++++++++++++
+ net/handshake/handshake.h                  |   9 ++
+ net/handshake/netlink.c                    | 110 +++++++++++++-
+ net/handshake/request.c                    |  59 +++++++-
+ net/handshake/tlshd.c                      |   2 +-
+ 8 files changed, 476 insertions(+), 12 deletions(-)
 
 diff --git a/Documentation/networking/tls-handshake.rst b/Documentation/networking/tls-handshake.rst
-index 4f7bc1087df9..7e9f4bd659b4 100644
+index 7e9f4bd659b4..eb8cfe3367cb 100644
 --- a/Documentation/networking/tls-handshake.rst
 +++ b/Documentation/networking/tls-handshake.rst
-@@ -169,7 +169,8 @@ The synopsis of this function is:
- .. code-block:: c
+@@ -201,6 +201,10 @@ The @peerid parameter contains the serial number of a key containing the
+ remote peer's identity or the value TLS_NO_PEERID if the session is not
+ authenticated.
  
-   typedef void	(*tls_done_func_t)(void *data, int status,
--                                   key_serial_t peerid);
-+                                   key_serial_t peerid,
-+                                   const struct stringset *tags);
++The @tags parameter points to a stringset containing session metadata
++assigned by the handshake agent. See the "Session Tags" section
++below for details on lifetime and safe access patterns.
++
+ A best practice is to close and destroy the socket immediately if the
+ handshake failed.
  
- The consumer provides a cookie in the @ta_data field of the
- tls_handshake_args structure that is returned in the @data parameter of
-diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
-index 7ecc6c007f8d..5956b176e936 100644
---- a/drivers/nvme/host/tcp.c
-+++ b/drivers/nvme/host/tcp.c
-@@ -1920,7 +1920,8 @@ static void nvme_tcp_set_queue_io_cpu(struct nvme_tcp_queue *queue)
- 		qid, queue->io_cpu);
- }
- 
--static void nvme_tcp_tls_done(void *data, int status, key_serial_t pskid)
-+static void nvme_tcp_tls_done(void *data, int status, key_serial_t pskid,
-+			      const struct stringset *tags)
- {
- 	struct nvme_tcp_queue *queue = data;
- 	struct nvme_tcp_ctrl *ctrl = queue->ctrl;
-diff --git a/drivers/nvme/target/tcp.c b/drivers/nvme/target/tcp.c
-index 5105317cc61e..40f0cd9d9960 100644
---- a/drivers/nvme/target/tcp.c
-+++ b/drivers/nvme/target/tcp.c
-@@ -1871,7 +1871,8 @@ static int nvmet_tcp_tls_key_lookup(struct nvmet_tcp_queue *queue,
- }
- 
- static void nvmet_tcp_tls_handshake_done(void *data, int status,
--					 key_serial_t peerid)
-+					 key_serial_t peerid,
-+					 const struct stringset *tags)
- {
- 	struct nvmet_tcp_queue *queue = data;
- 
+@@ -221,3 +225,50 @@ received message data is TLS record data or session metadata.
+ See tls.rst for details on how a kTLS consumer recognizes incoming
+ (decrypted) application data, alerts, and handshake packets once the
+ socket has been promoted to use the TLS ULP.
++
++
++Session Tags
++============
++
++When a TLS handshake completes successfully, the handshake agent may
++assign metadata tags to the session. These tags enable kernel consumers
++to make authorization decisions based on certificate characteristics
++without parsing x.509 certificates directly.
++
++The handshake agent evaluates the peer's certificate against
++administrator-defined policies and assigns tags indicating which
++policies the certificate satisfies. For example, an administrator
++might configure the agent to assign an "internal-servers" tag when a
++certificate's Issuer DN matches a particular corporate CA.
++
++Tags are delivered to the consumer via the @tags parameter of the
++completion callback. The stringset is valid only for the duration of the
++callback. Consumers needing persistent access must copy the stringset
++using stringset_copy() before returning.
++
++To check whether a session has a particular tag:
++
++.. code-block:: c
++
++  if (stringset_is_member(tags, "internal-servers")) {
++          /* Certificate matched the internal-servers policy */
++  }
++
++To check whether a session has any tag from a small fixed set:
++
++.. code-block:: c
++
++  if (stringset_is_member(tags, "admin") ||
++      stringset_is_member(tags, "operator")) {
++          /* Certificate matched admin or operator policy */
++  }
++
++When the required set is dynamic (e.g., parsed from an export option),
++construct a stringset and use stringset_intersection() to test for any
++overlap. See Documentation/core-api/stringset.rst for the
++initialization, add, and finalize sequence.
++
++If the handshake failed or no tags were assigned, the stringset is
++empty. The handshake layer always delivers a finalized stringset to
++the callback, so consumers may call stringset_is_member() and
++stringset_intersection() unconditionally without a separate guard.
 diff --git a/include/net/handshake.h b/include/net/handshake.h
-index 8ebd4f9ed26e..c227d42bd767 100644
+index c227d42bd767..ad96e92af04d 100644
 --- a/include/net/handshake.h
 +++ b/include/net/handshake.h
-@@ -10,6 +10,8 @@
+@@ -10,8 +10,36 @@
  #ifndef _NET_HANDSHAKE_H
  #define _NET_HANDSHAKE_H
  
-+#include <linux/stringset.h>
++#include <linux/errno.h>
+ #include <linux/stringset.h>
+ 
++/*
++ * Bounds the cost of stringset_intersection() in consumer
++ * authorization checks.
++ */
++#define HANDSHAKE_MAX_SESSIONTAGS	64
++
++/**
++ * handshake_session_tag_len - Content length of a session tag payload
++ * @data: start of an NLA_STRING tag payload
++ * @len: payload length in bytes, including any trailing NUL
++ *
++ * A tag payload may arrive with or without a single trailing NUL, and
++ * the terminator is not part of the content. NLA_STRING cannot express
++ * "no NUL except as terminator," so callers validate the payload here.
++ *
++ * Return: content length in bytes, or -EINVAL if the payload is empty
++ * or carries an embedded NUL.
++ */
++static inline int handshake_session_tag_len(const char *data, size_t len)
++{
++	if (len > 0 && data[len - 1] == '\0')
++		len--;
++	if (len == 0 || memchr(data, '\0', len))
++		return -EINVAL;
++	return len;
++}
 +
  enum {
  	TLS_NO_KEYRING = 0,
  	TLS_NO_PEERID = 0,
-@@ -17,8 +19,20 @@ enum {
- 	TLS_NO_PRIVKEY = 0,
+@@ -24,7 +52,8 @@ enum {
+  * @data: opaque context pointer set via tls_handshake_args.ta_data
+  * @status: zero on success, otherwise a negative errno
+  * @peerid: serial number of peer identity key, or TLS_NO_PEERID
+- * @tags: session tags assigned by the handshake agent
++ * @tags: session tags assigned by the handshake agent; never NULL,
++ *        always finalized, and empty when no tags were assigned
+  *
+  * The @tags pointer is valid only for the duration of this callback.
+  * A consumer requiring persistent access must copy the set with
+diff --git a/net/Kconfig b/net/Kconfig
+index 76ab44aa439a..aab2d2f03d4d 100644
+--- a/net/Kconfig
++++ b/net/Kconfig
+@@ -93,6 +93,7 @@ source "net/xdp/Kconfig"
+ config NET_HANDSHAKE
+ 	bool
+ 	depends on SUNRPC || NVME_TARGET_TCP || NVME_TCP
++	select STRINGSET
+ 	default y
+ 
+ config NET_HANDSHAKE_KUNIT_TEST
+diff --git a/net/handshake/handshake-test.c b/net/handshake/handshake-test.c
+index 4b99acd9f9c7..b4a56c4350bd 100644
+--- a/net/handshake/handshake-test.c
++++ b/net/handshake/handshake-test.c
+@@ -12,7 +12,9 @@
+ 
+ #include <net/sock.h>
+ #include <net/genetlink.h>
++#include <net/netlink.h>
+ #include <net/netns/generic.h>
++#include <net/handshake.h>
+ 
+ #include <uapi/linux/handshake.h>
+ #include "handshake.h"
+@@ -516,6 +518,197 @@ static void handshake_req_destroy_test1(struct kunit *test)
+ 	KUNIT_EXPECT_PTR_EQ(test, handshake_req_destroy_test, req);
+ }
+ 
++static struct sk_buff *handshake_done_msg(struct kunit *test,
++					  struct nlmsghdr **nlhp)
++{
++	struct sk_buff *skb;
++
++	skb = nlmsg_new(NLMSG_DEFAULT_SIZE, GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, skb);
++	*nlhp = nlmsg_put(skb, 0, 0, HANDSHAKE_CMD_DONE, GENL_HDRLEN, 0);
++	KUNIT_ASSERT_NOT_NULL(test, *nlhp);
++	return skb;
++}
++
++/*
++ * handshake_get_sessiontags() leaves the collected set unfinalized,
++ * as the netlink handler does. Cases below that query membership
++ * finalize first, the way handshake_finish_complete() does before
++ * delivery to the consumer.
++ */
++static void handshake_sessiontags_basic(struct kunit *test)
++{
++	struct genl_info info = {};
++	struct nlmsghdr *nlh;
++	struct sk_buff *skb;
++	DEFINE_STRINGSET(tags);
++
++	skb = handshake_done_msg(test, &nlh);
++	nla_put_string(skb, HANDSHAKE_A_DONE_TAG, "alpha");
++	nla_put_string(skb, HANDSHAKE_A_DONE_TAG, "beta");
++	nlmsg_end(skb, nlh);
++	info.nlhdr = nlh;
++
++	KUNIT_EXPECT_EQ(test, handshake_get_sessiontags(&tags, &info), 0);
++	stringset_finalize(&tags);
++	KUNIT_EXPECT_EQ(test, stringset_count(&tags), 2);
++	KUNIT_EXPECT_TRUE(test, stringset_is_member(&tags, "alpha"));
++	KUNIT_EXPECT_TRUE(test, stringset_is_member(&tags, "beta"));
++
++	stringset_destroy(&tags);
++	kfree_skb(skb);
++}
++
++static void handshake_sessiontags_none(struct kunit *test)
++{
++	struct genl_info info = {};
++	struct nlmsghdr *nlh;
++	struct sk_buff *skb;
++	DEFINE_STRINGSET(tags);
++
++	skb = handshake_done_msg(test, &nlh);
++	nla_put_u32(skb, HANDSHAKE_A_DONE_STATUS, 0);
++	nlmsg_end(skb, nlh);
++	info.nlhdr = nlh;
++
++	KUNIT_EXPECT_EQ(test, handshake_get_sessiontags(&tags, &info), 0);
++	KUNIT_EXPECT_EQ(test, stringset_count(&tags), 0);
++
++	stringset_destroy(&tags);
++	kfree_skb(skb);
++}
++
++static void handshake_sessiontags_trailing_nul(struct kunit *test)
++{
++	struct genl_info info = {};
++	struct nlmsghdr *nlh;
++	struct sk_buff *skb;
++	DEFINE_STRINGSET(tags);
++
++	/* A payload of 6 carries "gamma" plus its terminator. */
++	skb = handshake_done_msg(test, &nlh);
++	nla_put(skb, HANDSHAKE_A_DONE_TAG, 6, "gamma");
++	nlmsg_end(skb, nlh);
++	info.nlhdr = nlh;
++
++	KUNIT_EXPECT_EQ(test, handshake_get_sessiontags(&tags, &info), 0);
++	stringset_finalize(&tags);
++	KUNIT_EXPECT_EQ(test, stringset_count(&tags), 1);
++	KUNIT_EXPECT_TRUE(test, stringset_is_member(&tags, "gamma"));
++
++	stringset_destroy(&tags);
++	kfree_skb(skb);
++}
++
++static void handshake_sessiontags_embedded_nul(struct kunit *test)
++{
++	struct genl_info info = {};
++	struct nlmsghdr *nlh;
++	struct sk_buff *skb;
++	DEFINE_STRINGSET(tags);
++
++	skb = handshake_done_msg(test, &nlh);
++	nla_put(skb, HANDSHAKE_A_DONE_TAG, 3, "a\0b");
++	nlmsg_end(skb, nlh);
++	info.nlhdr = nlh;
++
++	KUNIT_EXPECT_EQ(test, handshake_get_sessiontags(&tags, &info), -EINVAL);
++	KUNIT_EXPECT_EQ(test, stringset_count(&tags), 0);
++
++	stringset_destroy(&tags);
++	kfree_skb(skb);
++}
++
++static void handshake_sessiontags_empty(struct kunit *test)
++{
++	struct genl_info info = {};
++	struct nlmsghdr *nlh;
++	struct sk_buff *skb;
++	DEFINE_STRINGSET(tags);
++
++	skb = handshake_done_msg(test, &nlh);
++	nla_put(skb, HANDSHAKE_A_DONE_TAG, 0, "");
++	nlmsg_end(skb, nlh);
++	info.nlhdr = nlh;
++
++	KUNIT_EXPECT_EQ(test, handshake_get_sessiontags(&tags, &info), -EINVAL);
++
++	stringset_destroy(&tags);
++	kfree_skb(skb);
++}
++
++static void handshake_sessiontags_duplicate(struct kunit *test)
++{
++	struct genl_info info = {};
++	struct nlmsghdr *nlh;
++	struct sk_buff *skb;
++	DEFINE_STRINGSET(tags);
++
++	skb = handshake_done_msg(test, &nlh);
++	nla_put_string(skb, HANDSHAKE_A_DONE_TAG, "dup");
++	nla_put_string(skb, HANDSHAKE_A_DONE_TAG, "dup");
++	nlmsg_end(skb, nlh);
++	info.nlhdr = nlh;
++
++	KUNIT_EXPECT_EQ(test, handshake_get_sessiontags(&tags, &info), 0);
++	KUNIT_EXPECT_EQ(test, stringset_count(&tags), 1);
++	stringset_finalize(&tags);
++	KUNIT_EXPECT_EQ(test, stringset_count(&tags), 1);
++	KUNIT_EXPECT_TRUE(test, stringset_is_member(&tags, "dup"));
++
++	stringset_destroy(&tags);
++	kfree_skb(skb);
++}
++
++static void handshake_sessiontags_duplicate_at_cap(struct kunit *test)
++{
++	struct genl_info info = {};
++	struct nlmsghdr *nlh;
++	struct sk_buff *skb;
++	DEFINE_STRINGSET(tags);
++	unsigned int i;
++
++	skb = handshake_done_msg(test, &nlh);
++	for (i = 0; i < HANDSHAKE_MAX_SESSIONTAGS; i++)
++		nla_put_string(skb, HANDSHAKE_A_DONE_TAG, "dup");
++	nla_put_string(skb, HANDSHAKE_A_DONE_TAG, "last");
++	nlmsg_end(skb, nlh);
++	info.nlhdr = nlh;
++
++	KUNIT_EXPECT_EQ(test, handshake_get_sessiontags(&tags, &info), 0);
++	KUNIT_EXPECT_EQ(test, stringset_count(&tags), 2);
++	stringset_finalize(&tags);
++	KUNIT_EXPECT_TRUE(test, stringset_is_member(&tags, "last"));
++
++	stringset_destroy(&tags);
++	kfree_skb(skb);
++}
++
++static void handshake_sessiontags_truncate(struct kunit *test)
++{
++	struct genl_info info = {};
++	struct nlmsghdr *nlh;
++	struct sk_buff *skb;
++	DEFINE_STRINGSET(tags);
++	unsigned int i;
++
++	skb = handshake_done_msg(test, &nlh);
++	for (i = 0; i < HANDSHAKE_MAX_SESSIONTAGS + 6; i++) {
++		char tag[16];
++
++		snprintf(tag, sizeof(tag), "tag%u", i);
++		nla_put_string(skb, HANDSHAKE_A_DONE_TAG, tag);
++	}
++	nlmsg_end(skb, nlh);
++	info.nlhdr = nlh;
++
++	KUNIT_EXPECT_EQ(test, handshake_get_sessiontags(&tags, &info), 0);
++	KUNIT_EXPECT_EQ(test, stringset_count(&tags), HANDSHAKE_MAX_SESSIONTAGS);
++
++	stringset_destroy(&tags);
++	kfree_skb(skb);
++}
++
+ static struct kunit_case handshake_api_test_cases[] = {
+ 	{
+ 		.name			= "req_alloc API fuzzing",
+@@ -562,6 +755,38 @@ static struct kunit_case handshake_api_test_cases[] = {
+ 		.name			= "req_destroy works",
+ 		.run_case		= handshake_req_destroy_test1,
+ 	},
++	{
++		.name			= "sessiontags basic",
++		.run_case		= handshake_sessiontags_basic,
++	},
++	{
++		.name			= "sessiontags none present",
++		.run_case		= handshake_sessiontags_none,
++	},
++	{
++		.name			= "sessiontags trailing NUL",
++		.run_case		= handshake_sessiontags_trailing_nul,
++	},
++	{
++		.name			= "sessiontags embedded NUL",
++		.run_case		= handshake_sessiontags_embedded_nul,
++	},
++	{
++		.name			= "sessiontags empty tag",
++		.run_case		= handshake_sessiontags_empty,
++	},
++	{
++		.name			= "sessiontags duplicate",
++		.run_case		= handshake_sessiontags_duplicate,
++	},
++	{
++		.name			= "sessiontags duplicates at cap",
++		.run_case		= handshake_sessiontags_duplicate_at_cap,
++	},
++	{
++		.name			= "sessiontags truncate at cap",
++		.run_case		= handshake_sessiontags_truncate,
++	},
+ 	{}
  };
  
-+/**
-+ * typedef tls_done_func_t - TLS handshake completion callback
-+ * @data: opaque context pointer set via tls_handshake_args.ta_data
-+ * @status: zero on success, otherwise a negative errno
-+ * @peerid: serial number of peer identity key, or TLS_NO_PEERID
-+ * @tags: session tags assigned by the handshake agent
-+ *
-+ * The @tags pointer is valid only for the duration of this callback.
-+ * A consumer requiring persistent access must copy the set with
-+ * stringset_copy().
-+ */
- typedef void	(*tls_done_func_t)(void *data, int status,
--				   key_serial_t peerid);
-+				   key_serial_t peerid,
-+				   const struct stringset *tags);
+diff --git a/net/handshake/handshake.h b/net/handshake/handshake.h
+index da61cadd1ad3..11f57d09b511 100644
+--- a/net/handshake/handshake.h
++++ b/net/handshake/handshake.h
+@@ -10,6 +10,8 @@
+ #ifndef _INTERNAL_HANDSHAKE_H
+ #define _INTERNAL_HANDSHAKE_H
  
- struct tls_handshake_args {
- 	struct socket		*ta_sock;
++#include <linux/stringset.h>
++
+ /* Per-net namespace context */
+ struct handshake_net {
+ 	spinlock_t		hn_lock;	/* protects next 3 fields */
+@@ -36,6 +38,7 @@ struct handshake_req {
+ 	struct file			*hr_file;
+ 	struct sock			*hr_sk;
+ 	void				(*hr_odestruct)(struct sock *sk);
++	struct stringset		hr_tags;
+ 
+ 	/* Always the last field */
+ 	char				hr_priv[];
+@@ -77,6 +80,9 @@ int handshake_genl_notify(struct net *net, const struct handshake_proto *proto,
+ struct nlmsghdr *handshake_genl_put(struct sk_buff *msg,
+ 				    struct genl_info *info);
+ struct handshake_net *handshake_pernet(struct net *net);
++#if IS_ENABLED(CONFIG_KUNIT)
++int handshake_get_sessiontags(struct stringset *tags, struct genl_info *info);
++#endif
+ 
+ /* request.c */
+ struct handshake_req *handshake_req_alloc(const struct handshake_proto *proto,
+@@ -88,6 +94,9 @@ struct handshake_req *handshake_req_hash_lookup(struct sock *sk);
+ struct handshake_req *handshake_req_next(struct handshake_net *hn, int class);
+ int handshake_req_submit(struct socket *sock, struct handshake_req *req,
+ 			 gfp_t flags);
++bool handshake_try_complete(struct handshake_req *req);
++void handshake_finish_complete(struct handshake_req *req, int status,
++			       struct genl_info *info, struct stringset *tags);
+ void handshake_complete(struct handshake_req *req, int status,
+ 			struct genl_info *info);
+ bool handshake_req_cancel(struct sock *sk);
+diff --git a/net/handshake/netlink.c b/net/handshake/netlink.c
+index 73b8314d9010..b03e33f97e60 100644
+--- a/net/handshake/netlink.c
++++ b/net/handshake/netlink.c
+@@ -16,6 +16,7 @@
+ 
+ #include <net/sock.h>
+ #include <net/genetlink.h>
++#include <net/handshake.h>
+ #include <net/netns/generic.h>
+ 
+ #include <kunit/visibility.h>
+@@ -130,11 +131,93 @@ int handshake_nl_accept_doit(struct sk_buff *skb, struct genl_info *info)
+ 	return err;
+ }
+ 
++static bool handshake_sessiontag_is_dup(const struct stringset *tags,
++					const struct nlattr *nla)
++{
++	unsigned int i;
++	char *tag;
++
++	stringset_for_each(tags, i, tag) {
++		if (!nla_strcmp(nla, tag))
++			return true;
++	}
++	return false;
++}
++
++/**
++ * handshake_get_sessiontags - Collect session tags from a DONE downcall
++ * @tags: initialized stringset to fill, left unfinalized on return
++ * @info: netlink message context for the downcall
++ *
++ * The caller retains ownership of @tags. Tags dropped under memory
++ * pressure, or truncated at HANDSHAKE_MAX_SESSIONTAGS, are not an
++ * error.
++ *
++ * Context: May sleep. Must be called before the completion gate is
++ *          taken.
++ *
++ * Return: 0 on success, or a negative errno if a tag payload was
++ * malformed, in which case no tags are collected.
++ */
++VISIBLE_IF_KUNIT int handshake_get_sessiontags(struct stringset *tags,
++					       struct genl_info *info)
++{
++	unsigned int count = 0;
++	struct nlattr *nla;
++	int rem;
++
++	nlmsg_for_each_attr_type(nla, HANDSHAKE_A_DONE_TAG, info->nlhdr,
++				 GENL_HDRLEN, rem) {
++		if (handshake_session_tag_len(nla_data(nla), nla_len(nla)) < 0) {
++			NL_SET_BAD_ATTR(info->extack, nla);
++			return -EINVAL;
++		}
++		count++;
++	}
++	if (count == 0)
++		return 0;
++	if (count > HANDSHAKE_MAX_SESSIONTAGS)
++		count = HANDSHAKE_MAX_SESSIONTAGS;
++	if (!stringset_alloc(tags, count, GFP_KERNEL)) {
++		pr_warn_once("handshake: dropping session tags under memory pressure\n");
++		return 0;
++	}
++
++	nlmsg_for_each_attr_type(nla, HANDSHAKE_A_DONE_TAG, info->nlhdr,
++				 GENL_HDRLEN, rem) {
++		char *tag;
++
++		/* A repeated tag does not count against the cap. */
++		if (handshake_sessiontag_is_dup(tags, nla))
++			continue;
++
++		/*
++		 * At most HANDSHAKE_MAX_SESSIONTAGS tags are kept. A
++		 * dropped tag can only narrow the consumer's
++		 * authorization, never widen it.
++		 */
++		if (stringset_count(tags) >= HANDSHAKE_MAX_SESSIONTAGS) {
++			pr_warn_once("handshake: more than %u session tags\n",
++				     HANDSHAKE_MAX_SESSIONTAGS);
++			break;
++		}
++
++		tag = nla_strdup(nla, GFP_KERNEL);
++		if (!tag)
++			continue;
++		if (!stringset_add(tags, tag))
++			kfree(tag);
++	}
++	return 0;
++}
++EXPORT_SYMBOL_IF_KUNIT(handshake_get_sessiontags);
++
+ int handshake_nl_done_doit(struct sk_buff *skb, struct genl_info *info)
+ {
+ 	struct net *net = sock_net(skb->sk);
+ 	struct handshake_req *req;
+ 	struct socket *sock;
++	DEFINE_STRINGSET(tags);
+ 	int fd, status, err;
+ 
+ 	if (GENL_REQ_ATTR_CHECK(info, HANDSHAKE_A_DONE_SOCKFD))
+@@ -158,10 +241,33 @@ int handshake_nl_done_doit(struct sk_buff *skb, struct genl_info *info)
+ 	status = -EIO;
+ 	if (info->attrs[HANDSHAKE_A_DONE_STATUS])
+ 		status = -(int)nla_get_u32(info->attrs[HANDSHAKE_A_DONE_STATUS]);
++	err = 0;
++	if (!status) {
++		int ret = handshake_get_sessiontags(&tags, info);
+ 
+-	handshake_complete(req, status, info);
++		/*
++		 * A malformed tag casts doubt on the rest of the
++		 * agent's tag set, so the consumer sees a failed
++		 * handshake.
++		 */
++		if (ret < 0) {
++			err = ret;
++			trace_handshake_cmd_done_err(net, req, sock->sk, err);
++			status = -EIO;
++		}
++	}
++
++	if (!handshake_try_complete(req)) {
++		trace_handshake_cmd_done_err(net, req, sock->sk, -EBUSY);
++		stringset_destroy(&tags);
++		sockfd_put(sock);
++		return -EBUSY;
++	}
++
++	/* handshake_finish_complete() takes ownership, so no destroy here. */
++	handshake_finish_complete(req, status, info, &tags);
+ 	sockfd_put(sock);
+-	return 0;
++	return err;
+ }
+ 
+ static unsigned int handshake_net_id;
+diff --git a/net/handshake/request.c b/net/handshake/request.c
+index ff739ee81cb8..72515e5e8cc2 100644
+--- a/net/handshake/request.c
++++ b/net/handshake/request.c
+@@ -80,6 +80,7 @@ static void handshake_req_destroy(struct handshake_req *req)
+ 		req->hr_proto->hp_destroy(req);
+ 	rhashtable_remove_fast(&handshake_rhashtbl, &req->hr_rhash,
+ 			       handshake_rhash_params);
++	stringset_destroy(&req->hr_tags);
+ 	kfree(req);
+ }
+ 
+@@ -125,6 +126,7 @@ struct handshake_req *handshake_req_alloc(const struct handshake_proto *proto,
+ 		return NULL;
+ 
+ 	INIT_LIST_HEAD(&req->hr_list);
++	stringset_init(&req->hr_tags);
+ 	req->hr_proto = proto;
+ 	return req;
+ }
+@@ -321,20 +323,61 @@ int handshake_req_submit(struct socket *sock, struct handshake_req *req,
+ }
+ EXPORT_SYMBOL(handshake_req_submit);
+ 
+-void handshake_complete(struct handshake_req *req, int status,
+-			struct genl_info *info)
++/**
++ * handshake_try_complete - Take the unique-completer gate
++ * @req: handshake request to complete
++ *
++ * Exactly one caller wins the gate and drives completion to the
++ * consumer. handshake_req_cancel() returns %false once the gate is
++ * taken, so a winner that sleeps first lets a concurrent cancel free
++ * callback data while the consumer callback is still pending.
++ *
++ * Context: The winner must reach handshake_finish_complete() without
++ *          sleeping.
++ * Return: %true if the caller won the gate, %false otherwise.
++ */
++bool handshake_try_complete(struct handshake_req *req)
++{
++	return !test_and_set_bit(HANDSHAKE_F_REQ_COMPLETED, &req->hr_flags);
++}
++
++/**
++ * handshake_finish_complete - Deliver completion to the consumer
++ * @req: handshake request to complete
++ * @status: 0, or the negative errno to report to the consumer
++ * @info: netlink message context, or NULL if not from a downcall
++ * @tags: session tags to publish, or NULL; ownership passes to @req
++ *
++ * Context: The caller has won the gate via handshake_try_complete()
++ *          and has not slept since.
++ */
++void handshake_finish_complete(struct handshake_req *req, int status,
++			       struct genl_info *info, struct stringset *tags)
+ {
+ 	struct sock *sk = req->hr_sk;
+ 	struct net *net = sock_net(sk);
++	struct file *file = req->hr_file;
+ 
+-	if (!test_and_set_bit(HANDSHAKE_F_REQ_COMPLETED, &req->hr_flags)) {
+-		struct file *file = req->hr_file;
++	if (tags)
++		req->hr_tags = *tags;
+ 
+-		trace_handshake_complete(net, req, sk, status);
+-		req->hr_proto->hp_done(req, status, info);
++	trace_handshake_complete(net, req, sk, status);
++	/*
++	 * Consumers may query hr_tags on any completion path, and
++	 * stringset_is_member() WARNs on an unfinalized set.
++	 */
++	stringset_finalize(&req->hr_tags);
++	req->hr_proto->hp_done(req, status, info);
++	stringset_destroy(&req->hr_tags);
+ 
+-		fput(file);
+-	}
++	fput(file);
++}
++
++void handshake_complete(struct handshake_req *req, int status,
++			struct genl_info *info)
++{
++	if (handshake_try_complete(req))
++		handshake_finish_complete(req, status, info, NULL);
+ }
+ EXPORT_SYMBOL_IF_KUNIT(handshake_complete);
+ 
 diff --git a/net/handshake/tlshd.c b/net/handshake/tlshd.c
-index 7567150c2a4f..997edc3fe31c 100644
+index 997edc3fe31c..a9c5e5bedced 100644
 --- a/net/handshake/tlshd.c
 +++ b/net/handshake/tlshd.c
-@@ -26,7 +26,8 @@
- 
- struct tls_handshake_req {
- 	void			(*th_consumer_done)(void *data, int status,
--						    key_serial_t peerid);
-+						    key_serial_t peerid,
-+						    const struct stringset *tags);
- 	void			*th_consumer_data;
- 
- 	int			th_type;
-@@ -105,7 +106,7 @@ static void tls_handshake_done(struct handshake_req *req,
+@@ -106,7 +106,7 @@ static void tls_handshake_done(struct handshake_req *req,
  		set_bit(HANDSHAKE_F_REQ_SESSION, &req->hr_flags);
  
  	treq->th_consumer_done(treq->th_consumer_data, status,
--			       treq->th_peerid[0]);
-+			       treq->th_peerid[0], NULL);
+-			       treq->th_peerid[0], NULL);
++			       treq->th_peerid[0], &req->hr_tags);
  }
  
  #if IS_ENABLED(CONFIG_KEYS)
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 498c5096eef9..f21522dd51f2 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -414,13 +414,15 @@ static void svc_tcp_kill_temp_xprt(struct svc_xprt *xprt)
-  * @data: address of xprt to wake
-  * @status: status of handshake
-  * @peerid: serial number of key containing the remote peer's identity
-+ * @tags: session tags assigned by the handshake agent
-  *
-  * If a security policy is specified as an export option, we don't
-  * have a specific export here to check. So we set a "TLS session
-  * is present" flag on the xprt and let an upper layer enforce local
-  * security policy.
-  */
--static void svc_tcp_handshake_done(void *data, int status, key_serial_t peerid)
-+static void svc_tcp_handshake_done(void *data, int status, key_serial_t peerid,
-+				   const struct stringset *tags)
- {
- 	struct svc_xprt *xprt = data;
- 	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 027b37de694b..ade473f1a312 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2593,9 +2593,11 @@ static int xs_tcp_tls_finish_connecting(struct rpc_xprt *lower_xprt,
-  * @data: address of xprt to wake
-  * @status: status of handshake
-  * @peerid: serial number of key containing the remote's identity
-+ * @tags: session tags assigned by the handshake agent
-  *
-  */
--static void xs_tls_handshake_done(void *data, int status, key_serial_t peerid)
-+static void xs_tls_handshake_done(void *data, int status, key_serial_t peerid,
-+				  const struct stringset *tags)
- {
- 	struct rpc_xprt *lower_xprt = data;
- 	struct sock_xprt *lower_transport =
 
 -- 
 2.56.0
