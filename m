@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794599052;
-	b=fWXC3Pb8Qq5ALEQU/+lb7z67ytCC1K6XVZZsziZRo1WJQsqg+G5BhuS+/MaQO7FO6YdD
-	 nGuGS3azLMOX3Fr9d8P7aFHHzoSHcNOEiTGKB0X/AwI9meNh8CXm44cvTwe5VBxw+DRIP
-	 kDM0GwARqSzBHlS6muiZ6AWDWzdwOGFktMLr9dl0nWci4Jw38tDdz57mahddqZTqkjwp+
-	 HLgTaAWvAxErKv6jOV+t3Q2k2Fr8YkHJ6ivxwD1hBUtTS+JXPRYl6rZKSHixL5poG10ZG
-	 46w6ATJKe38vjchyCEGUn37TJBd/4h9iZFXZpVoXr5ndYG/Q4oaAjw3MIl69cI1s2og==
+	t=1794599054;
+	b=TuxPbwA+aqcIgCoE0Lnc4ZDhBqOTv3YxOo2dSg3z8x6nlUoVSwxo1jMjnjGgL6MDWaFE
+	 ymi/GjXO8W0EcbyLVyiXcbAJF/wHzHFvP3FxUfLYS34NdelahLhTpF11Nzl9H8VrNThTc
+	 hbDzwP+Ez1Jk1srEmhscAk5cd2FwPM5/FaPKxT3bAwlqDnNbi07WxET7KgLAv9LM5jxq4
+	 cJJAF9mxPx7vH22oOGXxLm/AmVIlZLFJm8pVbD9gMlPL9yDzMlQeXSqRXSECp6Ze3wxJb
+	 UFiDXZMmVpCgaIUTDBvfGQy+vQFiQlwBVSBLm3S4zSnDReQlK+527+GFWg7CDK04Qhg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794599052;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794599054;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=CkVrdOI4sYk9iR4q4jnNIhm/80c+biMSK/L7Q3IS92o=;
-	b=Z2FxieG4AmF7g7Vxw+kq1XC97HkLTeTvN/2K2oM9jdd1IZOWtW2n2vOWAVuibAZASCv4
-	 BH/VbIUIHETm9362AjCiRoMn5mod14w5EItjqxZbhZ6LzGM88oEMZokpLgog3X59qvPCK
-	 rshFBmfEGtEyjj3PWb2nyszDlxdlvEbomkSkM1Uuc0Frn3bOiTpckCA6PKf9hI7aObyX7
-	 MsxCkcvHRwnmssSblCm7hK3CC5DZV7uSSyVztxAswZSLNUPIql+q7g50O/Ww/n2nIXX8Z
-	 SPoZSPHn9EN2WDued4e9d7WV48rpwjqp3+rejeRKOAFaQVc3nrKWgxBl7GN6xX/ZqRA==
+	bh=ea8B2SU5S5KJ7ltB7R8iF7UdTX3/t4h/MCFD3b7YyZQ=;
+	b=thS6jISgZZbV8HWJ351oBA7hZEWvwryLE8YGXK5xAN2ZQj39g1ACiTTu1U6Y3aR50iJf
+	 O6zB3ZaGNZnLmsJcIMc9ALjFxMMpsThHEvSO4w6YlrrmXfpg43KirITO43Wwd8gyQXcNf
+	 Rr/+9vNWwXCGnpPNQJpV3z43qCIj20zKfhhtoQWakEy7Jf/ypV13V7+Q4OYzLIqlp2Iuj
+	 lCsJGq24Qfc16KMnGHrB/BiWZ86wdTiY1s6MFLQyy9bQhNZ179Ta0taMeeLbPhLGvwAXb
+	 HPT+hNLqKMpc7CixD5WnXi2fHD6mrk+AaspRuowfCQc/E6jPmQaR7WuOyVvEI8S5Mug==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bir4vkss;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dHcRZtpC;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CF2CA606A338
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2026 19:44:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 08059606A335
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2026 19:44:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bir4vkss
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D1D011F000CB;
-	Fri, 13 Nov 2026 19:44:11 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dHcRZtpC
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1A0CF1F000CB;
+	Fri, 13 Nov 2026 19:44:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794599052;
-	bh=CkVrdOI4sYk9iR4q4jnNIhm/80c+biMSK/L7Q3IS92o=;
+	s=k20260515; t=1794599053;
+	bh=ea8B2SU5S5KJ7ltB7R8iF7UdTX3/t4h/MCFD3b7YyZQ=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=bir4vkssPJ7GWEjyTDtM0h4H7h4XCQp8WwRlM9ZS36YgMPIjB4RWO4XxN4qjm3526
-	 6crHqktwd5sxLxduB/RM21tJpnJWGn7OEDH7aH50bFd6IgyNCQ4xQHnUcJI7Asw4Ch
-	 HOHYYN7pk9idCdgwbL0mwyFWDLOQPzRLkDQQ39UqUse7038ysYA45Gv2PuL6SB1JVa
-	 jAyI9R7xkAINuEa9b+X9SqPVjSQgqyQiUt4B+LXG5LBHN0g9P6gayD88U8d5qGIst/
-	 QCSgS2QaNkaPnaXbh6KgoWqhKwp74lXA3QuKwvFU/0rHpLN5h4eqKOEPeeFwZxojVm
-	 +m8xflaM1AbfA==
+	b=dHcRZtpCz3yvJ5tg3mDHy+1cwUFBq+v6plUXL3QTAmm6regRpxe4Ow1+Nsv2AH94r
+	 nS3ftxaO5OblWtL8EnPhxzcz9b3Cli2I9g5dS6IYNU9iEogqytOEtlCmYyVisFW/QI
+	 W0VwT85aJMTsL1LYiTYLptupUycirgUfun1Vs7Wgwur/V3VhNOz/+0dsTcRx0iGHGi
+	 d81MEJ1ij0nRvg8NAkwFVi9GbXl+o5Wb2I3FXjZWJXjAaebKNFwZhaa7xPv1xmwscC
+	 YSU9fEzy5w4eSoBlRXhSE4tuYVbzH5M/g5tQyDG7tGB+tpUwFhh+NGGS9r7acAvQE/
+	 4CSOa1Hwny+0w==
 From: Chuck Lever <cel@kernel.org>
-Date: Fri, 13 Nov 2026 14:44:01 -0500
-Subject: [PATCH 3/8] SUNRPC: Send TCP replies from rq_bvec
+Date: Fri, 13 Nov 2026 14:44:02 -0500
+Subject: [PATCH 4/8] SUNRPC: Send UDP replies from rq_bvec
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-svcsock-bvecs-v1-3-5dd41f205aeb@kernel.org>
+Message-Id: <20261113-svcsock-bvecs-v1-4-5dd41f205aeb@kernel.org>
 References: <20261113-svcsock-bvecs-v1-0-5dd41f205aeb@kernel.org>
 In-Reply-To: <20261113-svcsock-bvecs-v1-0-5dd41f205aeb@kernel.org>
 To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
@@ -63,154 +63,88 @@ To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
  Mike Snitzer <snitzer@kernel.org>
 Cc: linux-nfs@vger.kernel.org
 X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4529; i=cel@kernel.org;
- h=from:subject:message-id; bh=8JOxZX9WGOoTE2++Q+YzmZ9TAVydOL5RrT4cUoh66Qo=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq92iHhr+ba+gZxVq4Wbz3JRvr/XunZo7W+waoS
- XORNi/tUMiJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavdohwAKCRAzarMzb2Z/
- l49EEADCKCsGB6vcrRL6ESeqPXUcO9yO4w8a+EC0RNzdoJELig+g3cRCp4aZShRtRcE/NIq8YsU
- ZfxPCFCAMpwkaPBaPE0kqwU+26ZLBQialjBJBCsnauI8Gu7x9PBJ9gJtb2hQwcM1FqaL8i8QOcz
- wOJde5b4oHHK7yU+eIRExerqk8+nVhp2qiylNdut5myzeR+969LUJDW9rDolefIpL/8vww0vukW
- LBUKgdZteXcenjbOISgoS5KvbadJwBq1YDxX38BrfdKmlQCrJfrO+CEt9VWxgARpgDZ7J/KTMLP
- k7oivLuMDpGIS0IJnvOpSaGCxkn3AaDD7nfvuSno8+jSwD+pe4FiB+ypd+Af5L5etd+w6cvuxtA
- WLaIL1HE9Xt86qQoTTmdJ6JbiPUACfSrejMGHDAxrVHJIQGhX6dpCJPa7MVGEpFcbQzwjwH5oWg
- YRPzWWLwwwOfH2U+wuWu5VC7hSke+FhWa7Ex+6g7im22nXfFhZeaX3injKVXuvj5649cfbHyx9C
- Cc9k9OBjbIiO0J1H2ERa4Dw9jV5V2N0ZUa0Cwb3ezkC/yfB+LNbkK0A4yPi/nzrdzeVP8OqkFpn
- VnBChACOBjSX2og+JZhZ/dLD4EGvNaT2Vt0WQW71YLEjanxv42qoxNs9E7Vk1i2hYeyiba55J69
- ktsyTfF5ZeWvWWg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2274; i=cel@kernel.org;
+ h=from:subject:message-id; bh=fcoykbAj6DZExNtsCQhi//LnFBbA8SDni1QiWsDEbgY=;
+ b=owEBbAKT/ZANAwAKATNqszNvZn+XAcsmYgBq92iHcc22GhMpM/GWgHyTnb+2nm5XoA3A6YMgX
+ GGrZ8qv6aqJAjIEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavdohwAKCRAzarMzb2Z/
+ l17AD/dU4PgfC2XxVggnKwFB3A4sue/PGINKO92by9gzYDztwMIO6lhTBAd3IW8/Q9KfjvtR/C3
+ llZPmp0AkieYkimnYyyq+tBhIVLgDdxoiXGp/Fh+ECw/UXV8qGlrpxJu7PFd5qAQtgWjFLKI3kj
+ Q8AC4vRArDX1fsmWZLAVbx85eeand+9izPx3TIRXexJ4rmT+S9zPau/wyQBf+KCgGAq6HrOUKvr
+ qFyIV7MmI5KR4izpcy7d5IlEECaKsiM3bfjbGFpCkSciumA1vdtR37cMVC2tlFms1rUbV/fhKMJ
+ rAYE9Lm0ULOWDTnpHeBIxRddfVYZTPe2Fkp/oaFhokxjcSJNN+zQp0XVAdwUtPuBu1hlAdO9kP7
+ F2ORzAMs5NsYKNplu4GL8VEWB9hVvghTCDAi7+uMBxI6ldAO7oXzzE9UdmcxnqEQPfkBHqmmFi+
+ jZd44LqzQy+NcBxY7khxFcfz23H++hypwVeuxIvGogAtfNl7MEWHKEYYTA8J1rh/n2eGMiuQ7Lp
+ 3IWWlCVHEcWtFR3XxPA2yaZZ+pXPVLeeaLPFDLVLsJAfmSDaE/m9+ZSeYDHY9vHry92HZDOD1R9
+ 27bvwqhMq4vkXenle7skT40+ILvnOOf8JHNlQZskZwQxeECI9PpV+3Ib841MSb+PyXjso4uzERG
+ 06dl+wyMA6XgH
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-svc_tcp_sendmsg() builds the reply's bio_vec array in the per-socket
-sk_bvec, so every accepted socket carries an array sized for the largest
-reply although the sending thread already has rq_bvec.
+svc_udp_sendto() is the last user of the per-socket sk_bvec array.
+Once UDP replies are sent from rq_bvec, sk_bvec can be removed.
 
-Build the array in rq_bvec, and stop allocating sk_bvec for stream
-sockets. NFSD finishes its READ and WRITE use of rq_bvec before
-svc_send() runs, so the two uses do not overlap. rq_bvec is private to
-the thread, so convert rq_res before taking xpt_mutex.
+Convert rq_res into rq_bvec before taking xpt_mutex, as
+svc_tcp_sendto() does. A UDP reply is bounded by
+RPCSVC_MAXPAYLOAD_UDP, so rq_bvec has room for the reply.
+
+A datagram goes out in one sendmsg, so drop the kernel-doc sentence
+about xpt_mutex.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- include/linux/sunrpc/svc.h |  2 ++
- net/sunrpc/svcsock.c       | 40 ++++++++++++++++++----------------------
- 2 files changed, 20 insertions(+), 22 deletions(-)
+ net/sunrpc/svcsock.c | 13 +++++--------
+ 1 file changed, 5 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 497f56cdf7b5..47545866b41d 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -232,6 +232,8 @@ struct svc_rqst {
- 	struct page *		*rq_page_end;  /* one past the last reply page */
- 
- 	struct folio_batch	rq_fbatch;
-+
-+	/* Scratch array: ->xpo_recvfrom and ->xpo_sendto overwrite it */
- 	struct bio_vec		*rq_bvec;
- 
- 	__be32			rq_xid;		/* transmission id */
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index fd2f62652b93..a88ca9b9afd6 100644
+index a88ca9b9afd6..77a57bb74235 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -1342,42 +1342,36 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 	return 0;	/* record not complete */
- }
- 
-+#define SVC_TCP_MARKER_BVECS	1
-+
- /*
-  * MSG_SPLICE_PAGES is used exclusively to reduce the number of
-  * copy operations in this path. Therefore the caller must ensure
-- * that the pages backing @xdr are unchanging.
-+ * that the pages backing rq_res are unchanging.
+@@ -681,16 +681,12 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+  * svc_udp_sendto - Send out a reply on a UDP socket
+  * @rqstp: completed svc_rqst
+  *
+- * xpt_mutex ensures @rqstp's whole message is written to the socket
+- * without interruption.
+- *
+- * Returns the number of bytes sent, or a negative errno.
++ * Return: the number of bytes sent, or a negative errno.
   */
- static int svc_tcp_sendmsg(struct svc_sock *svsk, struct svc_rqst *rqstp,
--			   rpc_fraghdr marker)
-+			   rpc_fraghdr marker, unsigned int count)
+ static int svc_udp_sendto(struct svc_rqst *rqstp)
  {
- 	struct msghdr msg = {
- 		.msg_flags	= MSG_SPLICE_PAGES,
- 	};
--	int count;
- 	void *buf;
- 	int ret;
+ 	struct svc_xprt *xprt = rqstp->rq_xprt;
+ 	struct svc_sock	*svsk = container_of(xprt, struct svc_sock, sk_xprt);
+-	struct xdr_buf *xdr = &rqstp->rq_res;
+ 	union {
+ 		struct cmsghdr	hdr;
+ 		long		all[SVC_PKTINFO_SPACE / sizeof(long)];
+@@ -711,23 +707,24 @@ static int svc_udp_sendto(struct svc_rqst *rqstp)
  
- 	/* The stream record marker is copied into a temporary page
--	 * fragment buffer so that it can be included in sk_bvec.
-+	 * fragment buffer so that it can be included in rq_bvec.
- 	 */
- 	buf = page_frag_alloc(&svsk->sk_frag_cache, sizeof(marker),
- 			      GFP_KERNEL);
- 	if (!buf)
- 		return -ENOMEM;
- 	memcpy(buf, &marker, sizeof(marker));
--	bvec_set_virt(svsk->sk_bvec, buf, sizeof(marker));
-+	bvec_set_virt(rqstp->rq_bvec, buf, sizeof(marker));
+ 	svc_set_cmsg_data(rqstp, cmh);
  
--	count = xdr_buf_to_bvec(svsk->sk_bvec + 1, rqstp->rq_maxpages,
--				&rqstp->rq_res);
--	if (count < 0) {
--		ret = count;
--		goto out;
--	}
--
--	iov_iter_bvec(&msg.msg_iter, ITER_SOURCE, svsk->sk_bvec,
--		      1 + count, sizeof(marker) + rqstp->rq_res.len);
-+	iov_iter_bvec(&msg.msg_iter, ITER_SOURCE, rqstp->rq_bvec,
-+		      SVC_TCP_MARKER_BVECS + count,
-+		      sizeof(marker) + rqstp->rq_res.len);
- 	ret = sock_sendmsg(svsk->sk_sock, &msg);
--out:
- 	page_frag_free(buf);
- 	return ret;
- }
-@@ -1398,15 +1392,20 @@ static int svc_tcp_sendto(struct svc_rqst *rqstp)
- 	struct xdr_buf *xdr = &rqstp->rq_res;
- 	rpc_fraghdr marker = cpu_to_be32(RPC_LAST_STREAM_FRAGMENT |
- 					 (u32)xdr->len);
--	int sent;
-+	int count, sent;
- 
- 	svc_tcp_release_ctxt(xprt, rqstp->rq_xprt_ctxt);
- 	rqstp->rq_xprt_ctxt = NULL;
- 
-+	BUILD_BUG_ON(SVC_TCP_MARKER_BVECS > RPCSVC_BVEC_HEADROOM);
-+	count = svc_rqst_res_to_bvec(rqstp, SVC_TCP_MARKER_BVECS);
++	count = svc_rqst_res_to_bvec(rqstp, 0);
 +
  	mutex_lock(&xprt->xpt_mutex);
+ 
  	if (svc_xprt_is_dead(xprt))
  		goto out_notconn;
--	sent = svc_tcp_sendmsg(svsk, rqstp, marker);
-+	sent = count;
-+	if (count >= 0)
-+		sent = svc_tcp_sendmsg(svsk, rqstp, marker, count);
- 	trace_svcsock_tcp_send(xprt, sent);
- 	if (sent < 0 || sent != (xdr->len + sizeof(marker)))
- 		goto out_close;
-@@ -1520,13 +1519,10 @@ void svc_sock_update_bufs(struct svc_serv *serv)
- 	spin_unlock_bh(&serv->sv_lock);
- }
  
--static int svc_sock_sendpages(struct svc_serv *serv, struct socket *sock, int flags)
-+static int svc_sock_sendpages(struct socket *sock)
- {
- 	switch (sock->type) {
- 	case SOCK_STREAM:
--		/* +1 for TCP record marker */
--		if (flags & SVC_SOCK_TEMPORARY)
--			return svc_serv_maxpages(serv) + 1;
- 		return 0;
- 	case SOCK_DGRAM:
- 		return SUNRPC_MAX_UDP_SENDPAGES;
-@@ -1547,7 +1543,7 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 	int		sendpages;
- 	unsigned long	pages;
+-	count = xdr_buf_to_bvec(svsk->sk_bvec, SUNRPC_MAX_UDP_SENDPAGES, xdr);
+ 	if (count < 0) {
+ 		err = count;
+ 		goto out_trace;
+ 	}
  
--	sendpages = svc_sock_sendpages(serv, sock, flags);
-+	sendpages = svc_sock_sendpages(sock);
- 	if (sendpages < 0)
- 		return ERR_PTR(sendpages);
- 
+-	iov_iter_bvec(&msg.msg_iter, ITER_SOURCE, svsk->sk_bvec,
++	iov_iter_bvec(&msg.msg_iter, ITER_SOURCE, rqstp->rq_bvec,
+ 		      count, rqstp->rq_res.len);
+ 	err = sock_sendmsg(svsk->sk_sock, &msg);
+ 	if (err == -ECONNREFUSED) {
+ 		/* ICMP error on earlier request. */
+-		iov_iter_bvec(&msg.msg_iter, ITER_SOURCE, svsk->sk_bvec,
++		iov_iter_bvec(&msg.msg_iter, ITER_SOURCE, rqstp->rq_bvec,
+ 			      count, rqstp->rq_res.len);
+ 		err = sock_sendmsg(svsk->sk_sock, &msg);
+ 	}
 
 -- 
 2.56.0
